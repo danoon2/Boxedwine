@@ -19,9 +19,9 @@
 #include "../common/common_fpu.h"
 
 #undef FPU_0
-#define FPU_0(name) void DynamicData::dynamic_##name(DecodedOp* op) {callHostFunction((void*)common_##name, false, 1, 0, DYN_PARAM_CPU, false);incrementEip(op->len);}
+#define FPU_0(name) void DynamicData::dynamic_##name(DecodedOp* op) {call(common_##name);incrementEip(op->len);}
 #undef FPU_R
-#define FPU_R(name) void DynamicData::dynamic_##name(DecodedOp* op) {callHostFunction((void*)common_##name, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false);incrementEip(op->len);}
+#define FPU_R(name) void DynamicData::dynamic_##name(DecodedOp* op) {call_I(common_##name, op->reg);incrementEip(op->len);}
 #undef FPU_A
-#define FPU_A(name) void DynamicData::dynamic_##name(DecodedOp* op) {calculateEaa(op, DYN_ADDRESS);callHostFunction((void*)common_##name, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);incrementEip(op->len);}
+#define FPU_A(name) void DynamicData::dynamic_##name(DecodedOp* op) {call_R(common_##name, JitWidth::b32, calculateEaaV2(op));incrementEip(op->len);}
 #include "../common/common_fpu_def.h"

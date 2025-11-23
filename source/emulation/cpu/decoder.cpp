@@ -1152,10 +1152,10 @@ const InstructionInfo instructionInfo[] = {
     {0, 128, 0, 0, 0, 0}, // CmppsXmmE128
     {0, 0, 0, 0, 0, 0}, // CmpssXmmXmm
     {0, 32, 0, 0, 0, 0}, // CmpssXmmE32
-    {0, 0, 0, 0, 0, 0}, // ComissXmmXmm
-    {0, 32, 0, 0, 0, 0}, // ComissXmmE32
-    {0, 0, 0, 0, 0, 0}, // UcomissXmmXmm
-    {0, 32, 0, 0, 0, 0}, // UcomissXmmE32
+    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0}, // ComissXmmXmm
+    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0}, // ComissXmmE32
+    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0}, // UcomissXmmXmm
+    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0}, // UcomissXmmE32
 
     {0, 0, 0, 0, 0, 0}, // AddpdXmmXmm
     {0, 128, 0, 0, 0, 0}, // AddpdXmmE128
@@ -1277,10 +1277,10 @@ const InstructionInfo instructionInfo[] = {
     {0, 128, 0, 0, 0, 0}, // CmppdXmmE128
     {0, 0, 0, 0, 0, 0}, // CmpsdXmmXmm
     {0, 64, 0, 0, 0, 0}, // CmpsdXmmE64
-    {0, 0, 0, 0, 0, 0}, // ComisdXmmXmm
-    {0, 64, 0, 0, 0, 0}, // ComisdXmmE64
-    {0, 0, 0, 0, 0, 0}, // UcomisdXmmXmm
-    {0, 64, 0, 0, 0, 0}, // UcomisdXmmE64
+    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0}, // ComisdXmmXmm
+    {0, 64, 0, CF|AF|ZF|SF|OF|PF, 0, 0}, // ComisdXmmE64
+    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0}, // UcomisdXmmXmm
+    {0, 64, 0, CF|AF|ZF|SF|OF|PF, 0, 0}, // UcomisdXmmE64
     {0, 0, 0, 0, 0, 0}, // PcmpgtbXmmXmm
     {0, 128, 0, 0, 0, 0}, // PcmpgtbXmmE128
     {0, 0, 0, 0, 0, 0}, // PcmpgtwXmmXmm

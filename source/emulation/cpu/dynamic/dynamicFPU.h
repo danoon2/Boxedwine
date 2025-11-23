@@ -39,20 +39,20 @@ public:
 
     DynamicCodeGenFPU(CPU* cpu) : DynamicCodeGen(cpu) {}
 
-    virtual void storeCpuFpuReg(DynFpuReg reg, DynReg index, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
-    virtual void loadCpuFpuReg(DynFpuReg reg, DynReg index, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
+    virtual void storeCpuFpuReg(DynFpuReg reg, RegPtr index, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
+    virtual void loadCpuFpuReg(DynFpuReg reg, RegPtr index, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
     virtual void loadCpuFpuRegConst(DynFpuReg reg, U32 offset) = 0;
 
-    virtual void storeFpuReg(DynFpuReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
-    virtual void loadFpuReg(DynFpuReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
-    virtual void loadFpuRegFromInt(DynFpuReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
+    virtual void storeFpuReg(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
+    virtual void loadFpuReg(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
+    virtual void loadFpuRegFromInt(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
     virtual void fpuRegExtend32To64(DynFpuReg dst, DynFpuReg src) = 0;
     virtual void fpuReg64To32(DynFpuReg dst, DynFpuReg src) = 0;
-    virtual void fpuRegToInt32(DynReg regDst, DynFpuReg fpuRegSrc, bool truncate) = 0;
+    virtual RegPtr fpuRegToInt32(DynFpuReg fpuRegSrc, bool truncate) = 0;
     virtual void fpuRegToInt64(DynFpuReg regDst, DynFpuReg fpuRegSrc, bool truncate) = 0;
     virtual void fpuRegInt64To64(DynFpuReg regDst, DynFpuReg fpuRegSrc) = 0;
-    virtual void regToFpuReg(DynFpuReg dst, DynReg src) = 0;
-    virtual void updateFPURounding(DynReg tmp1, DynReg tmp2) = 0;
+    virtual void regToFpuReg(DynFpuReg dst, RegPtr src) = 0;
+    virtual void updateFPURounding() = 0;
     virtual void restoreFPURounding() = 0;
 
     virtual void fpuAdd(DynFpuReg dst, DynFpuReg src) = 0;
@@ -62,20 +62,20 @@ public:
     virtual void fpuXor(DynFpuReg dst, DynFpuReg src) = 0;
     virtual void fpuAnd(DynFpuReg dst, DynFpuReg src) = 0;
     virtual void fpuSqrt(DynFpuReg dst, DynFpuReg src) = 0;
-    virtual void fcompare(DynFpuReg fpuReg1, DynFpuReg fpuReg2, DynReg ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) = 0;
+    virtual void fcompare(DynFpuReg fpuReg1, DynFpuReg fpuReg2, RegPtr ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) = 0;
 
-    void getTopReg(DynReg reg);
-    void calculateIndexReg(DynReg result, DynReg topReg, U32 index);
-    void getIsCachedReg(DynReg result, DynReg indexReg);
-    void setRegIsCached(U8 regIsCached, DynReg indexReg);
-    void syncXmmToCPU(DynReg topReg, DynFpuReg xmm, U8 regIndex, DynReg tmpReg);
-    void syncXmmToCPUWithIndexReg(DynReg indexReg, DynFpuReg fpuReg, DynReg tmpReg);
-    void syncCPUToXmm(DynReg topReg, DynFpuReg xmm, U8 regIndex, DynReg calculatedIndexReg, DynReg tmpReg2, bool doneWithIndexReg);
-    void readFPUTag(DynReg indexReg, DynReg resultReg);
-    void writeFPUTag(DynReg indexReg, DynReg valueReg);
+    RegPtr getTopReg();
+    RegPtr calculateIndexReg(RegPtr topReg, U32 index);
+    void IfNotRegCached(RegPtr indexReg, bool bigJump = false);
+    void setRegIsCached(RegPtr indexReg, bool regIsCached);
+    void syncXmmToCPU(RegPtr topReg, DynFpuReg xmm, U8 regIndex);
+    void syncXmmToCPUWithIndexReg(RegPtr indexReg, DynFpuReg fpuReg);
+    RegPtr syncCPUToXmm(RegPtr topReg, DynFpuReg xmm, U8 regIndex);
+    RegPtr readFPUTag(RegPtr indexReg);
+    void writeFPUTag(RegPtr indexReg, RegPtr valueReg);
 
-    void dynamic_FPU_POP(DynReg topReg, U8 amount = 1);
-    void dynamic_FPU_PREP_PUSH(DynReg topReg, bool writeTag);
+    void dynamic_FPU_POP(RegPtr topReg, U8 amount = 1);
+    void dynamic_FPU_PREP_PUSH(RegPtr topReg, bool writeTag);
     void dynamic_doCMov(U8 regIndex);
     void dynamic_ST0_STj(DecodedOp* op, XmmXmmCallback callback, bool reverse = false);
     void dynamic_FADD_ST0_STj(DecodedOp* op) override { dynamic_ST0_STj(op, &DynamicCodeGenFPU::fpuAdd); }
@@ -183,30 +183,32 @@ public:
     void dynamic_FISTTP32(DecodedOp* op) override;
     void dynamic_FIST_DWORD_INTEGER(DecodedOp* op) override;
     void dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) override;
-    
-    void dynamic_FFREE_STi(DecodedOp* op);
-    void dynamic_FUCOM_STi(DecodedOp* op);
-    void dynamic_FUCOM_STi_Pop(DecodedOp* op);
-    void dynamic_FLD_DOUBLE_REAL(DecodedOp* op);
-    void dynamic_FISTTP64(DecodedOp* op);
-    void dynamic_FST_DOUBLE_REAL(DecodedOp* op);
-    void dynamic_FST_DOUBLE_REAL_Pop(DecodedOp* op);
-    void dynamic_FNSTSW(DecodedOp* op);
-    void dynamic_FFREEP_STi(DecodedOp* op);
-    void dynamic_FNSTSW_AX(DecodedOp* op);
-    void dynamic_FUCOMI_ST0_STj_Pop(DecodedOp* op);
-    void dynamic_FCOMI_ST0_STj_Pop(DecodedOp* op);
-    void dynamic_FILD_WORD_INTEGER(DecodedOp* op);
-    void dynamic_FISTTP16(DecodedOp* op);
-    void dynamic_FIST_WORD_INTEGER(DecodedOp* op);
-    void dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op);
+
+    void dynamic_FFREE_STi(DecodedOp* op) override;
+    void dynamic_FUCOM_STi(DecodedOp* op) override;
+    void dynamic_FUCOM_STi_Pop(DecodedOp* op) override;
+    void dynamic_FLD_DOUBLE_REAL(DecodedOp* op) override;
+    void dynamic_FISTTP64(DecodedOp* op) override;
+    void dynamic_FST_DOUBLE_REAL(DecodedOp* op) override;
+    void dynamic_FST_DOUBLE_REAL_Pop(DecodedOp* op) override;
+    void dynamic_FNSTSW(DecodedOp* op) override;
+    void dynamic_FFREEP_STi(DecodedOp* op) override;
+    void dynamic_FNSTSW_AX(DecodedOp* op) override;
+    void dynamic_FUCOMI_ST0_STj_Pop(DecodedOp* op) override;
+    void dynamic_FCOMI_ST0_STj_Pop(DecodedOp* op) override;
+    void dynamic_FILD_WORD_INTEGER(DecodedOp* op) override;
+    void dynamic_FISTTP16(DecodedOp* op) override;
+    void dynamic_FIST_WORD_INTEGER(DecodedOp* op) override;
+    void dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op) override;
     // special handling, will store as 80-bit float
     // void dynamic_FILD_QWORD_INTEGER(DecodedOp* op);
     // void dynamic_FISTP_QWORD_INTEGER1(DecodedOp* op);
 
-private:    
-    void doFCOM(DynFpuReg fpuReg1, DynFpuReg fpuReg2, DynReg ordTags, DynReg tmpReg);
-    void doFCOMI(DynFpuReg fpuReg1, DynFpuReg fpuReg2, DynReg ordTags, DynReg flagsReg);
+private:
+    void loadFpuRegFromShort(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp);
+    void fpuLoadConst(U32 offset);
+    void doFCOM(DynFpuReg fpuReg1, DynFpuReg fpuReg2, RegPtr ordTags);
+    void doFCOMI(DynFpuReg fpuReg1, DynFpuReg fpuReg2, RegPtr ordTags);
     void doFST_STi(DecodedOp* op, bool pop);
     void doFCOM_STi(DecodedOp* op, bool pop);
     void doFCOMI_ST0_STj(DecodedOp* op, bool pop);

@@ -47,8 +47,7 @@ void DynamicCodeGenSSE::opXmmImm(DecodedOp* op, XmmImmCallback callback) {
 }
 
 void DynamicCodeGenSSE::opXmmE128(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool loadDest) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_128bit, DYN_ADDRESS, true, [op, callback, loadDest, this](DynReg address, DynReg offset) {
+    read(JitWidth::b128, calculateEaaV2(op), [op, callback, loadDest, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpMMX = getTmpXMM(op->reg);
         if (loadDest) {
             loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -63,8 +62,7 @@ void DynamicCodeGenSSE::opXmmE128(DecodedOp* op, XmmXmmCallback callback, std::f
 }
 
 void DynamicCodeGenSSE::opXmmE64Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, callback, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, callback, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpMMX = getTmpXMM(op->reg);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         loadXMMFromMem64(tmpMMX, address, offset, 0, 0);
@@ -77,8 +75,7 @@ void DynamicCodeGenSSE::opXmmE64Imm(DecodedOp* op, XmmXmmImmCallback callback, s
 }
 
 void DynamicCodeGenSSE::opXmmE64(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool loadDest) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, callback, loadDest, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, callback, loadDest, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpMMX = getTmpXMM(op->reg);
         if (loadDest) {
             loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -87,14 +84,13 @@ void DynamicCodeGenSSE::opXmmE64(DecodedOp* op, XmmXmmCallback callback, std::fu
         (this->*callback)((DynXMMReg)op->reg, tmpMMX);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-        }, [fallback]() {
-            fallback();
-            });
+    }, [fallback]() {
+        fallback();
+    });
 }
 
 void DynamicCodeGenSSE::opXmmE128Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_128bit, DYN_ADDRESS, true, [op, callback, this](DynReg address, DynReg offset) {
+    read(JitWidth::b128, calculateEaaV2(op), [op, callback, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpMMX = getTmpXMM(op->reg);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         loadXMMFromMem128(tmpMMX, address, offset, 0, 0);
@@ -107,8 +103,7 @@ void DynamicCodeGenSSE::opXmmE128Imm(DecodedOp* op, XmmXmmImmCallback callback, 
 }
 
 void DynamicCodeGenSSE::opXmmE32(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, callback, this](DynReg address, DynReg offset) {
+    read(JitWidth::b32, calculateEaaV2(op), [op, callback, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpMMX = getTmpXMM(op->reg);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         loadXMMFromMem32(tmpMMX, address, offset, 0, 0);
@@ -121,8 +116,7 @@ void DynamicCodeGenSSE::opXmmE32(DecodedOp* op, XmmXmmCallback callback, std::fu
 }
 
 void DynamicCodeGenSSE::opXmmE32Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, callback, this](DynReg address, DynReg offset) {
+    read(JitWidth::b32, calculateEaaV2(op), [op, callback, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpMMX = getTmpXMM(op->reg);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         loadXMMFromMem32(tmpMMX, address, offset, 0, 0);
@@ -143,8 +137,7 @@ void DynamicCodeGenSSE::dynamic_cvtpi2psXmmMmx(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_cvtpi2psXmmE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynMMXReg tmpMMX = getTmpMMX(op->reg);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg); // high 64-bit remains untouched so we need to load it
         loadMMXFromMem64(tmpMMX, address, offset, 0, 0);
@@ -164,8 +157,7 @@ void DynamicCodeGenSSE::dynamic_cvtps2piMmxXmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_cvtps2piMmxE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpXMM = getTmpXMM(op->reg);
         loadXMMFromMem64(tmpXMM, address, offset, 0, 0);
         cvtps2piMmxXmm((DynMMXReg)op->reg, tmpXMM);
@@ -184,8 +176,7 @@ void DynamicCodeGenSSE::dynamic_cvttps2piMmxXmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_cvttps2piMmxE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpXMM = getTmpXMM(op->reg);
         loadXMMFromMem64(tmpXMM, address, offset, 0, 0);
         cvttps2piMmxXmm((DynMMXReg)op->reg, tmpXMM);
@@ -198,18 +189,17 @@ void DynamicCodeGenSSE::dynamic_cvttps2piMmxE64(DecodedOp* op) {
 
 void DynamicCodeGenSSE::dynamic_cvtsi2ssXmmR32(DecodedOp* op) {
     loadCpuXMMReg(DynXMMReg(op->reg), op->reg); // must load since top 96 bits are unchanged
-    loadReg(op->rm, DYN_SRC, DYN_32bit);
-    cvtsi2ssXmmR32((DynXMMReg)op->reg, DYN_SRC);
+    cvtsi2ssXmmR32((DynXMMReg)op->reg, getReadOnlyReg(op->rm));
     storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_cvtsi2ssXmmE32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        readMem(DYN_SRC, DYN_32bit, address, offset, 0, 0);
+    read(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
+        RegPtr reg = getTmpReg();
+        read(JitWidth::b32, reg, address, offset, 0, 0);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg); // must load since top 96 bits are unchanged
-        cvtsi2ssXmmR32((DynXMMReg)op->reg, DYN_SRC);
+        cvtsi2ssXmmR32((DynXMMReg)op->reg, reg);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
     }, [op, this]() {
@@ -219,19 +209,15 @@ void DynamicCodeGenSSE::dynamic_cvtsi2ssXmmE32(DecodedOp* op) {
 
 void DynamicCodeGenSSE::dynamic_cvtss2siR32Xmm(DecodedOp* op) {
     loadCpuXMMReg(DynXMMReg(op->rm), op->rm); // must load since top 96 bits are unchanged
-    // loadReg(op->reg, DYN_SRC, DYN_32bit); // don't need to load since it will be clobbered
-    cvtss2siR32Xmm(DYN_SRC, (DynXMMReg)op->rm);
-    storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+    cvtss2siR32Xmm(getReg(op->reg, -1, false), (DynXMMReg)op->rm);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_cvtss2siR32E32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpXMM = getTmpXMM(0);
         loadXMMFromMem32(tmpXMM, address, offset, 0, 0);
-        cvtss2siR32Xmm(DYN_SRC, tmpXMM);
-        storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+        cvtss2siR32Xmm(getReg(op->reg, -1, false), tmpXMM);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_cvtss2siR32E32(op);
@@ -240,19 +226,15 @@ void DynamicCodeGenSSE::dynamic_cvtss2siR32E32(DecodedOp* op) {
 
 void DynamicCodeGenSSE::dynamic_cvttss2siR32Xmm(DecodedOp* op) {
     loadCpuXMMReg(DynXMMReg(op->rm), op->rm); // must load since top 96 bits are unchanged
-    // loadReg(op->reg, DYN_SRC, DYN_32bit); // don't need to load since it will be clobbered
-    cvttss2siR32Xmm(DYN_SRC, (DynXMMReg)op->rm);
-    storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+    cvttss2siR32Xmm(getReg(op->reg, -1, false), (DynXMMReg)op->rm);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_cvttss2siR32E32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpXMM = getTmpXMM(0);
         loadXMMFromMem32(tmpXMM, address, offset, 0, 0);
-        cvttss2siR32Xmm(DYN_SRC, tmpXMM);
-        storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+        cvttss2siR32Xmm(getReg(op->reg, -1, false), tmpXMM);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_cvttss2siR32E32(op);
@@ -266,8 +248,7 @@ void DynamicCodeGenSSE::dynamic_movupsXmmXmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movupsXmmE128(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_128bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b128, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpXMM = getTmpXMM(0);
         loadXMMFromMem128(tmpXMM, address, offset, 0, 0);
         storeCpuXMMReg(tmpXMM, op->reg);
@@ -278,8 +259,7 @@ void DynamicCodeGenSSE::dynamic_movupsXmmE128(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movupsE128Xmm(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_128bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b128, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem128(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
@@ -289,10 +269,9 @@ void DynamicCodeGenSSE::dynamic_movupsE128Xmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movhpsXmmE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
-        loadHighXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);        
+        loadHighXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
     }, [op, this]() {
@@ -301,8 +280,7 @@ void DynamicCodeGenSSE::dynamic_movhpsXmmE64(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movlpsXmmE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         loadLowXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -313,8 +291,7 @@ void DynamicCodeGenSSE::dynamic_movlpsXmmE64(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movhpsE64Xmm(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_128bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b128, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeHighXMMToMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
@@ -324,8 +301,7 @@ void DynamicCodeGenSSE::dynamic_movhpsE64Xmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movlpsE64Xmm(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_128bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b128, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
@@ -336,14 +312,12 @@ void DynamicCodeGenSSE::dynamic_movlpsE64Xmm(DecodedOp* op) {
 
 void DynamicCodeGenSSE::dynamic_movmskpsR32Xmm(DecodedOp* op) {
     loadCpuXMMReg(DynXMMReg(op->rm), op->rm);
-    movmskpsR32Xmm(DYN_SRC, DynXMMReg(op->rm));
-    storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+    movmskpsR32Xmm(getReg(op->reg, -1, false), DynXMMReg(op->rm));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_movssXmmE32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         // will fill top 96 with 0's
         loadXMMFromMem32(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -354,8 +328,7 @@ void DynamicCodeGenSSE::dynamic_movssXmmE32(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movssE32Xmm(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_32bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b32, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem32(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
@@ -365,9 +338,8 @@ void DynamicCodeGenSSE::dynamic_movssE32Xmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_stmxcsr(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_32bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        addRegReg(address, offset, DYN_32bit, false);
+    write(JitWidth::b32, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+        addReg(JitWidth::b32, address, offset);
         stmxcsr(address);
         incrementEip(op->len);
     }, [op, this]() {
@@ -376,9 +348,8 @@ void DynamicCodeGenSSE::dynamic_stmxcsr(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_ldmxcsr(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        addRegReg(address, offset, DYN_32bit, false);
+    read(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
+        addReg(JitWidth::b32, address, offset);
         ldmxcsr(address);
         incrementEip(op->len);
     }, [op, this]() {
@@ -388,6 +359,7 @@ void DynamicCodeGenSSE::dynamic_ldmxcsr(DecodedOp* op) {
 
 void DynamicCodeGenSSE::dynamic_sfence(DecodedOp* op) {
     sfence();
+    incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_comissXmmXmm(DecodedOp* op) {
@@ -400,8 +372,7 @@ void DynamicCodeGenSSE::dynamic_comissXmmXmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_comissXmmE32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpReg = getTmpXMM(op->reg);
         loadXMMFromMem32(tmpReg, address, offset, 0, 0);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -423,9 +394,8 @@ void DynamicCodeGenSSE::dynamic_ucomissXmmXmm(DecodedOp* op) {
     storeLazyFlags(FLAGS_NONE);
 }
 
-void DynamicCodeGenSSE::dynamic_ucomissXmmE32(DecodedOp* op) {    
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+void DynamicCodeGenSSE::dynamic_ucomissXmmE32(DecodedOp* op) {
+    read(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpReg = getTmpXMM(op->reg);
         loadXMMFromMem32(tmpReg, address, offset, 0, 0);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -448,8 +418,7 @@ void DynamicCodeGenSSE::dynamic_comisdXmmXmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_comisdXmmE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpReg = getTmpXMM(op->reg);
         loadXMMFromMem64(tmpReg, address, offset, 0, 0);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -472,8 +441,7 @@ void DynamicCodeGenSSE::dynamic_ucomisdXmmXmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_ucomisdXmmE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpReg = getTmpXMM(op->reg);
         loadXMMFromMem64(tmpReg, address, offset, 0, 0);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -494,8 +462,7 @@ void DynamicCodeGenSSE::dynamic_cvtpd2piMmxXmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_cvtpd2piMmxE128(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_128bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b128, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpReg = getTmpXMM(op->reg);
         loadXMMFromMem128(tmpReg, address, offset, 0, 0);
         cvtpd2piMmxXmm(DynMMXReg(op->reg), tmpReg);
@@ -514,8 +481,7 @@ void DynamicCodeGenSSE::dynamic_cvtpi2pdXmmMmx(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_cvtpi2pdXmmE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_128bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b128, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynMMXReg tmpReg = getTmpMMX(op->reg);
         loadMMXFromMem64(tmpReg, address, offset, 0, 0);
         cvtpi2pdXmmMmx(DynXMMReg(op->reg), tmpReg);
@@ -534,8 +500,7 @@ void DynamicCodeGenSSE::dynamic_cvttpd2piMmxXmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_cvttpd2piMmE128(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_128bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b128, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpReg = getTmpXMM(op->reg);
         loadXMMFromMem128(tmpReg, address, offset, 0, 0);
         cvttpd2piMmxXmm(DynMMXReg(op->reg), tmpReg);
@@ -548,18 +513,15 @@ void DynamicCodeGenSSE::dynamic_cvttpd2piMmE128(DecodedOp* op) {
 
 void DynamicCodeGenSSE::dynamic_cvtsd2siR32Xmm(DecodedOp* op) {
     loadCpuXMMReg(DynXMMReg(op->rm), op->rm);
-    cvtsd2siR32Xmm(DYN_DEST, DynXMMReg(op->rm));
-    storeReg(op->reg, DYN_DEST, DYN_32bit, true);
+    cvtsd2siR32Xmm(getReg(op->reg, -1, false), DynXMMReg(op->rm));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_cvtsd2siR32E64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpReg = getTmpXMM(op->reg);
         loadXMMFromMem64(tmpReg, address, offset, 0, 0);
-        cvtsd2siR32Xmm(DYN_DEST, tmpReg);
-        storeReg(op->reg, DYN_DEST, DYN_32bit, true);
+        cvtsd2siR32Xmm(getReg(op->reg, -1, false), tmpReg);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_cvtsd2siR32E64(op);
@@ -567,19 +529,18 @@ void DynamicCodeGenSSE::dynamic_cvtsd2siR32E64(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_cvtsi2sdXmmR32(DecodedOp* op) {
-    loadReg(op->rm, DYN_SRC, DYN_32bit);
     loadCpuXMMReg(DynXMMReg(op->reg), op->reg); // top bits are unchanged
-    cvtsi2sdXmmR32(DynXMMReg(op->reg), DYN_SRC);
+    cvtsi2sdXmmR32(DynXMMReg(op->reg), getReadOnlyReg(op->rm));
     storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_cvtsi2sdXmmE32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        readMem(DYN_SRC, DYN_32bit, address, offset, 0, 0);
+    read(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
+        RegPtr tmp = getTmpReg();
+        read(JitWidth::b32, tmp, address, offset, 0, 0);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg); // top bits are unchanged
-        cvtsi2sdXmmR32(DynXMMReg(op->reg), DYN_SRC);
+        cvtsi2sdXmmR32(DynXMMReg(op->reg), tmp);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
     }, [op, this]() {
@@ -589,18 +550,15 @@ void DynamicCodeGenSSE::dynamic_cvtsi2sdXmmE32(DecodedOp* op) {
 
 void DynamicCodeGenSSE::dynamic_cvttsd2siR32Xmm(DecodedOp* op) {
     loadCpuXMMReg(DynXMMReg(op->rm), op->rm);
-    cvttsd2siR32Xmm(DYN_DEST, DynXMMReg(op->rm));
-    storeReg(op->reg, DYN_DEST, DYN_32bit, true);
+    cvttsd2siR32Xmm(getReg(op->reg, -1, false), DynXMMReg(op->rm));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_cvttsd2siR32E64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpReg = getTmpXMM(op->reg);
         loadXMMFromMem64(tmpReg, address, offset, 0, 0);
-        cvttsd2siR32Xmm(DYN_DEST, tmpReg);
-        storeReg(op->reg, DYN_DEST, DYN_32bit, true);
+        cvttsd2siR32Xmm(getReg(op->reg, -1, false), tmpReg);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_cvttsd2siR32E64(op);
@@ -614,8 +572,7 @@ void DynamicCodeGenSSE::dynamic_movqXmmXmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movqE64Xmm(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_64bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b64, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
@@ -625,8 +582,7 @@ void DynamicCodeGenSSE::dynamic_movqE64Xmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movqXmmE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         loadXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
@@ -636,8 +592,7 @@ void DynamicCodeGenSSE::dynamic_movqXmmE64(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movsdXmmE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         loadXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
@@ -647,8 +602,7 @@ void DynamicCodeGenSSE::dynamic_movsdXmmE64(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movsdE64Xmm(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_64bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b64, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
@@ -658,8 +612,7 @@ void DynamicCodeGenSSE::dynamic_movsdE64Xmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movupdXmmE128(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_128bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b128, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         loadXMMFromMem128(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
@@ -669,8 +622,7 @@ void DynamicCodeGenSSE::dynamic_movupdXmmE128(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movupdE128Xmm(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_128bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b128, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem128(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
@@ -680,8 +632,7 @@ void DynamicCodeGenSSE::dynamic_movupdE128Xmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movhpdXmmE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg); // so that low 64 bits are preserved
         loadHighXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -692,8 +643,7 @@ void DynamicCodeGenSSE::dynamic_movhpdXmmE64(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movhpdE64Xmm(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_64bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b64, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeHighXMMToMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
@@ -703,8 +653,7 @@ void DynamicCodeGenSSE::dynamic_movhpdE64Xmm(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movlpdXmmE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg); // so that top 64 bits are preserved
         loadLowXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -715,8 +664,7 @@ void DynamicCodeGenSSE::dynamic_movlpdXmmE64(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_movlpdE64Xmm(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_64bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b64, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
@@ -727,21 +675,18 @@ void DynamicCodeGenSSE::dynamic_movlpdE64Xmm(DecodedOp* op) {
 
 void DynamicCodeGenSSE::dynamic_movmskpdR32Xmm(DecodedOp* op) {
     loadCpuXMMReg(DynXMMReg(op->rm), op->rm);
-    movmskpd(DYN_DEST, DynXMMReg(op->rm));
-    storeReg(op->reg, DYN_DEST, DYN_32bit, true);
+    movmskpd(getReg(op->reg, -1, false), DynXMMReg(op->rm));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_movdXmmR32(DecodedOp* op) {
-    loadReg(op->rm, DYN_SRC, DYN_32bit);
-    movd(DynXMMReg(op->reg), DYN_SRC);
+    movd(DynXMMReg(op->reg), getReadOnlyReg(op->rm));
     storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_movdXmmE32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         loadXMMFromMem32(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
@@ -752,14 +697,12 @@ void DynamicCodeGenSSE::dynamic_movdXmmE32(DecodedOp* op) {
 
 void DynamicCodeGenSSE::dynamic_movdR32Xmm(DecodedOp* op) {
     loadCpuXMMReg(DynXMMReg(op->rm), op->rm);
-    movd(DYN_DEST, DynXMMReg(op->rm));
-    storeReg(op->reg, DYN_DEST, DYN_32bit, true);
+    movd(getReg(op->reg, -1, false), DynXMMReg(op->rm));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_movdE32Xmm(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem32(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
@@ -783,15 +726,17 @@ void DynamicCodeGenSSE::dynamic_movq2dqXmmMmx(DecodedOp* op) {
 }
 
 void DynamicCodeGenSSE::dynamic_maskmovdquE128XmmXmm(DecodedOp* op) {
-    loadReg(7, DYN_ADDRESS, DYN_32bit);
-    if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
-        loadSegAddress(op->base, DYN_SRC);
-        addRegReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true);
+    RegPtr address;
+    if (op->base < 6 && cpu->thread->process->hasSetSeg[op->base]) {
+        address = getTmpReg(7);
+        addReg(JitWidth::b32, address, getReadOnlySegAddress(op->base));
+    } else {
+        address = getReadOnlyReg(7);
     }
-    movToMem(DYN_ADDRESS, DYN_64bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b64, address, nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         loadCpuXMMReg(DynXMMReg(op->rm), op->rm);
-        addRegReg(address, offset, DYN_32bit, false);
+        addReg(JitWidth::b32, address, offset);
         maskmovdqu(DynXMMReg(op->reg), DynXMMReg(op->rm), address);
         incrementEip(op->len);
     }, [op, this]() {
@@ -801,18 +746,16 @@ void DynamicCodeGenSSE::dynamic_maskmovdquE128XmmXmm(DecodedOp* op) {
 
 void DynamicCodeGenSSE::dynamic_pextrwR32Xmm(DecodedOp* op) {
     loadCpuXMMReg(DynXMMReg(op->rm), op->rm); // must load since top 96 bits are unchanged
-    // loadReg(op->reg, DYN_SRC, DYN_32bit); // don't need to load since it will be clobbered
-    pextrwR32Xmm(DYN_SRC, (DynXMMReg)op->rm, op->imm);
-    storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+    pextrwR32Xmm(getReg(op->reg, -1, false), (DynXMMReg)op->rm, op->imm);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_pextrwE16Xmm(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_64bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b64, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
-        pextrwR32Xmm(DYN_SRC, (DynXMMReg)op->reg, op->imm);
-        writeMem(DYN_SRC, DYN_16bit, address, offset, 0, 0);
+        RegPtr tmp = getTmpReg();
+        pextrwR32Xmm(tmp, (DynXMMReg)op->reg, op->imm);
+        write(JitWidth::b16, address, offset, 0, 0, tmp);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_pextrwE16Xmm(op);
@@ -821,18 +764,17 @@ void DynamicCodeGenSSE::dynamic_pextrwE16Xmm(DecodedOp* op) {
 
 void DynamicCodeGenSSE::dynamic_pinsrwXmmR32(DecodedOp* op) {
     loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
-    loadReg(op->rm, DYN_SRC, DYN_32bit);
-    pinsrwXmmR32((DynXMMReg)op->reg, DYN_SRC, op->imm);
+    pinsrwXmmR32((DynXMMReg)op->reg, getReadOnlyReg(op->rm), op->imm);;
     storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_pinsrwXmmE16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b16, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
-        readMem(DYN_SRC, DYN_16bit, address, offset, 0, 0);
-        pinsrwXmmR32((DynXMMReg)op->reg, DYN_SRC, op->imm);
+        RegPtr tmp = getTmpReg();
+        read(JitWidth::b16, tmp, address, offset, 0, 0);
+        pinsrwXmmR32((DynXMMReg)op->reg, tmp, op->imm);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
     }, [op, this]() {
@@ -842,15 +784,12 @@ void DynamicCodeGenSSE::dynamic_pinsrwXmmE16(DecodedOp* op) {
 
 void DynamicCodeGenSSE::dynamic_pmovmskbR32Xmm(DecodedOp* op) {
     loadCpuXMMReg(DynXMMReg(op->rm), op->rm);
-    // loadReg(op->reg, DYN_SRC, DYN_32bit); clobbered
-    pmovmskbR32Xmm(DYN_DEST, DynXMMReg(op->rm));
-    storeReg(op->reg, DYN_DEST, DYN_32bit, true);
+    pmovmskbR32Xmm(getReg(op->reg, -1, false), DynXMMReg(op->rm));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenSSE::dynamic_clflush(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_8bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b8, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         clflush(address, offset, 0, 0);
         incrementEip(op->len);
     }, [op, this]() {

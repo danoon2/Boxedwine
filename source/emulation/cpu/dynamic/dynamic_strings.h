@@ -17,18 +17,96 @@
  */
 
 #include "../normal/normal_strings.h"
+
+// :TODO: what about read/write exception, eax/ecx/esi/edi might be in a temp register and not written back during the exception
+void DynamicData::movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth) {
+    // U32 dBase = cpu->seg[ES].address;
+    // U32 sBase = cpu->seg[base].address;
+    // S32 inc = cpu->getDirection() << 1;
+    // cpu->memory->writew(dBase + DI, cpu->memory->readw(sBase + SI));
+    // DI += inc;
+    // SI += inc;
+    RegPtr esi = getReg(6);
+    RegPtr edi = getReg(7);
+
+    if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[base]) {
+        RegPtr readAddress = getTmpSegAddress(base);
+
+        if (regWidth == JitWidth::b32) {
+            addReg(JitWidth::b32, readAddress, esi);
+        } else {
+            RegPtr si = getTmpReg();
+            xorReg(JitWidth::b32, si, si);
+            mov(regWidth, si, esi);
+            addReg(JitWidth::b32, readAddress, si);
+        }
+        RegPtr value = read(valueWidth, std::move(readAddress));
+
+        RegPtr writeAddress = getTmpSegAddress(ES);
+        if (regWidth == JitWidth::b32) {
+            addReg(JitWidth::b32, writeAddress, edi);
+        } else {
+            RegPtr di = getTmpReg();
+            xorReg(JitWidth::b32, di, di);
+            mov(regWidth, di, edi);
+            addReg(JitWidth::b32, writeAddress, di);
+        }
+        write(valueWidth, std::move(writeAddress), value);
+    } else {
+        write(valueWidth, edi, read(valueWidth, esi));
+    }
+    IfFlagSet(DF); {
+        subValue(regWidth, esi, size);
+        subValue(regWidth, edi, size);
+    } StartElse(); {
+        addValue(regWidth, esi, size);
+        addValue(regWidth, edi, size);
+    } EndIf();
+}
+
+void DynamicData::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
+    RegPtr esi = getReg(6);
+    RegPtr edi = getReg(7);
+    RegPtr ecx = getReg(1);
+
+    IfFlagSet(DF, true); {
+        U32 label = MarkJumpLocation();
+        If(regWidth, ecx, true); {
+            write(valueWidth, edi, read(valueWidth, esi));
+            subValue(regWidth, esi, size);
+            subValue(regWidth, edi, size);
+            decReg(regWidth, ecx);
+            Goto(label);
+        } EndIf(true);
+    } StartElse(true); {
+        U32 label = MarkJumpLocation();
+        If(regWidth, ecx, true); {
+            write(valueWidth, edi, read(valueWidth, esi));
+            addValue(regWidth, esi, size);
+            addValue(regWidth, edi, size);
+            decReg(regWidth, ecx);
+            Goto(label);
+        } EndIf(true);
+    }
+    EndIf(true);
+}
+
 void DynamicData::dynamic_movsb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)movsb16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
-        } else { 
-            callHostFunction((void*)movsb16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            call_I(movsb16r, op->base);
+        } else {
+            movs(op->base, JitWidth::b8, 1, JitWidth::b16);
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)movsb32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
-        } else { 
-            callHostFunction((void*)movsb32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
+                call_I(movsb32r, op->base);
+            } else {
+                movsr(JitWidth::b8, 1, JitWidth::b32);
+            }
+        } else {
+            movs(op->base, JitWidth::b8, 1, JitWidth::b32);
         }
     }
     incrementEip(op->len);
@@ -36,15 +114,19 @@ void DynamicData::dynamic_movsb_op(DecodedOp* op) {
 void DynamicData::dynamic_movsw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)movsw16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
-        } else { 
-            callHostFunction((void*)movsw16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            call_I(movsw16r, op->base);
+        } else {
+            movs(op->base, JitWidth::b16, 2, JitWidth::b16);
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)movsw32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
-        } else { 
-            callHostFunction((void*)movsw32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
+                call_I(movsw32r, op->base);
+            } else {
+                movsr(JitWidth::b16, 2, JitWidth::b32);
+            }
+        } else {
+            movs(op->base, JitWidth::b16, 2, JitWidth::b32);
         }
     }
     incrementEip(op->len);
@@ -52,55 +134,213 @@ void DynamicData::dynamic_movsw_op(DecodedOp* op) {
 void DynamicData::dynamic_movsd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)movsd16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
-        } else { 
-            callHostFunction((void*)movsd16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            call_I(movsd16r, op->base);
+        } else {
+            movs(op->base, JitWidth::b32, 4, JitWidth::b16);
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)movsd32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
-        } else { 
-            callHostFunction((void*)movsd32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
+                call_I(movsd32r, op->base);
+            } else {
+                movsr(JitWidth::b32, 4, JitWidth::b32);
+            }
+        } else {
+            movs(op->base, JitWidth::b32, 4, JitWidth::b32);
         }
     }
     incrementEip(op->len);
 }
+
+void DynamicData::cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, const LazyFlags* lazyFlags) {
+    // U32 dBase = cpu->seg[ES].address;
+    // U32 sBase = cpu->seg[base].address;
+    // S32 inc = cpu->getDirection();
+    // U8 v1 = cpu->memory->readb(dBase + DI);
+    // U8 v2 = cpu->memory->readb(sBase + SI);
+    // DI += inc;
+    // SI += inc;
+    // cpu->dst.u8 = v2;
+    // cpu->src.u8 = v1;
+    // cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
+    // cpu->lazyFlags = FLAGS_SUB8;
+    RegPtr esi = getReg(6);
+    RegPtr edi = getReg(7);
+
+    RegPtr src;
+    RegPtr dest;
+
+    if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[base]) {
+        RegPtr srcAddress = getTmpSegAddress(base);
+
+        if (regWidth == JitWidth::b32) {
+            addReg(JitWidth::b32, srcAddress, esi);
+        } else {
+            RegPtr si = getTmpReg();
+            xorReg(JitWidth::b32, si, si);
+            mov(regWidth, si, esi);
+            addReg(JitWidth::b32, srcAddress, si);
+        }
+        dest = read(valueWidth, std::move(srcAddress), nullptr, nullptr, false, getTmpReg8());
+
+        RegPtr destAddress = getTmpSegAddress(ES);
+        if (regWidth == JitWidth::b32) {
+            addReg(JitWidth::b32, destAddress, edi);
+        } else {
+            RegPtr di = getTmpReg();
+            xorReg(JitWidth::b32, di, di);
+            mov(regWidth, di, edi);
+            addReg(JitWidth::b32, destAddress, di);
+        }
+
+        src = read(valueWidth, std::move(destAddress), nullptr, nullptr, false, getTmpReg8());
+    } else {
+        dest = read(valueWidth, esi);
+        src = read(valueWidth, edi);
+    }
+    storeLazyFlagsDest(dest);
+    storeLazyFlagsSrc(src);
+    subReg(valueWidth, dest, src);
+    storeLazyFlagsResult(dest);
+    storeLazyFlags(lazyFlags);
+
+    IfFlagSet(DF); {
+        subValue(regWidth, esi, size);
+        subValue(regWidth, edi, size);
+    } StartElse(); {
+        addValue(regWidth, esi, size);
+        addValue(regWidth, edi, size);
+    } EndIf();
+}
+
+void DynamicData::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, const LazyFlags* lazyFlags) {
+    // U32 dBase = cpu->seg[ES].address;
+    // U32 sBase = cpu->seg[base].address;
+    // S32 inc = cpu->getDirection();
+    // U32 count = ECX;
+    // if (count) {
+    //     U8 v1 = 0;
+    //     U8 v2 = 0;
+    //     for (U32 i = 0; i < count; i++) {
+    //         v1 = cpu->memory->readb(dBase + EDI);
+    //         v2 = cpu->memory->readb(sBase + ESI);
+    //         EDI += inc;
+    //         ESI += inc;
+    //         ECX--;
+    //         if ((v1 == v2) != rep_zero) break;
+    //     }
+    //     cpu->dst.u8 = v2;
+    //     cpu->src.u8 = v1;
+    //     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
+    //     cpu->lazyFlags = FLAGS_SUB8;
+    // }
+    RegPtr esi = getReg(6);
+    RegPtr edi = getReg(7);
+    RegPtr dest = getTmpReg8();
+    RegPtr src = getTmpReg8();
+
+    IfFlagSet(DF, true); {
+        If(regWidth, getReadOnlyReg(1), true); {
+            U32 label = MarkJumpLocation();
+            If(regWidth, getReadOnlyReg(1), true); {
+                read(valueWidth, esi, nullptr, nullptr, false, dest);
+                read(valueWidth, edi, nullptr, nullptr, false, src);                
+                subValue(regWidth, esi, size);
+                subValue(regWidth, edi, size);
+                decReg(regWidth, getReg(1));
+
+                if (rep_zero) {
+                    IfEqual(valueWidth, dest, src); {
+                        Goto(label);
+                    } EndIf();
+                } else {
+                    IfNotEqual(valueWidth, dest, src); {
+                        Goto(label);
+                    } EndIf();
+                }                
+            } EndIf(true);
+            storeLazyFlagsDest(dest);
+            storeLazyFlagsSrc(src);
+            subReg(valueWidth, dest, src);
+            storeLazyFlagsResult(dest);
+            storeLazyFlags(lazyFlags);
+        } EndIf(true);
+    } StartElse(true); {
+        If(regWidth, getReadOnlyReg(1), true); {
+            U32 label = MarkJumpLocation();
+            If(regWidth, getReadOnlyReg(1), true); {
+                read(valueWidth, esi, nullptr, nullptr, false, dest);
+                read(valueWidth, edi, nullptr, nullptr, false, src);
+                addValue(regWidth, esi, size);
+                addValue(regWidth, edi, size);
+                decReg(regWidth, getReg(1));
+
+                if (rep_zero) {
+                    IfEqual(valueWidth, dest, src); {
+                        Goto(label);
+                    } EndIf();
+                } else {
+                    IfNotEqual(valueWidth, dest, src); {
+                        Goto(label);
+                    } EndIf();
+                }
+            } EndIf(true);
+            storeLazyFlagsDest(dest);
+            storeLazyFlagsSrc(src);
+            subReg(valueWidth, dest, src);
+            storeLazyFlagsResult(dest);
+            storeLazyFlags(lazyFlags);
+        } EndIf(true);
+    }
+    EndIf(true);
+}
+
 void DynamicData::dynamic_cmpsb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)cmpsb16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            call_II(cmpsb16r, op->repZero, op->base);
             currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
-        } else { 
-            callHostFunction((void*)cmpsb16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            currentLazyFlags=FLAGS_SUB8;
+        } else {
+            cmps(op->base, JitWidth::b8, 1, JitWidth::b16, FLAGS_SUB8);
+            currentLazyFlags = FLAGS_SUB8;
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)cmpsb32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
-        } else { 
-            callHostFunction((void*)cmpsb32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            currentLazyFlags=FLAGS_SUB8;
+            if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
+                call_II(cmpsb32r, op->repZero, op->base);
+                currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+            } else {
+                cmpsr(JitWidth::b8, 1, JitWidth::b32, op->repZero, FLAGS_SUB8);
+                currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+            }
+        } else {
+            cmps(op->base, JitWidth::b8, 1, JitWidth::b32, FLAGS_SUB8);
+            currentLazyFlags = FLAGS_SUB8;
         }
-    }    
+    }
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpsw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)cmpsw16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            call_II(cmpsw16r, op->repZero, op->base);
             currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
-        } else { 
-            callHostFunction((void*)cmpsw16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            currentLazyFlags=FLAGS_SUB16;
+        } else {
+            cmps(op->base, JitWidth::b16, 2, JitWidth::b16, FLAGS_SUB16);
+            currentLazyFlags = FLAGS_SUB16;
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)cmpsw32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
-        } else { 
-            callHostFunction((void*)cmpsw32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            currentLazyFlags=FLAGS_SUB16;
+            if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
+                call_II(cmpsw32r, op->repZero, op->base);
+                currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+            } else {
+                cmpsr(JitWidth::b16, 2, JitWidth::b32, op->repZero, FLAGS_SUB16);
+                currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+            }
+        } else {
+            cmps(op->base, JitWidth::b16, 2, JitWidth::b32, FLAGS_SUB8);
+            currentLazyFlags = FLAGS_SUB16;
         }
     }
     incrementEip(op->len);
@@ -108,35 +348,105 @@ void DynamicData::dynamic_cmpsw_op(DecodedOp* op) {
 void DynamicData::dynamic_cmpsd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)cmpsd16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            call_II(cmpsd16r, op->repZero, op->base);
             currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
-        } else { 
-            callHostFunction((void*)cmpsd16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            currentLazyFlags=FLAGS_SUB32;
+        } else {
+            cmps(op->base, JitWidth::b32, 4, JitWidth::b16, FLAGS_SUB32);
+            currentLazyFlags = FLAGS_SUB32;
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)cmpsd32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
-        } else { 
-            callHostFunction((void*)cmpsd32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            currentLazyFlags=FLAGS_SUB32;
+            if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
+                call_II(cmpsd32r, op->repZero, op->base);
+                currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+            } else {
+                cmpsr(JitWidth::b32, 4, JitWidth::b32, op->repZero, FLAGS_SUB32);
+                currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+            }
+        } else {
+            cmps(op->base, JitWidth::b32, 4, JitWidth::b32, FLAGS_SUB32);
+            currentLazyFlags = FLAGS_SUB32;
         }
     }
     incrementEip(op->len);
 }
+
+void DynamicData::stos(JitWidth valueWidth, U32 size, JitWidth regWidth) {
+    // cpu->memory->writeb(cpu->seg[ES].address + EDI, AL);
+    // EDI += cpu->getDirection();    
+    RegPtr edi = getReg(7);
+
+    if (cpu->thread->process->hasSetSeg[ES]) {
+        RegPtr writeAddress = getTmpSegAddress(ES);
+        if (regWidth == JitWidth::b32) {
+            addReg(JitWidth::b32, writeAddress, edi);
+        } else {
+            RegPtr di = getTmpReg();
+            xorReg(JitWidth::b32, di, di);
+            mov(regWidth, di, edi);
+            addReg(JitWidth::b32, writeAddress, di);
+        }
+        write(valueWidth, std::move(writeAddress), getReadOnlyReg8(0));
+    } else {
+        write(valueWidth, edi, getReadOnlyReg8(0));
+    }
+    IfFlagSet(DF); {
+        subValue(regWidth, edi, size);
+    } StartElse(); {
+        addValue(regWidth, edi, size);
+    } EndIf();
+}
+
+void DynamicData::stosr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
+    // U32 dBase = cpu->seg[ES].address;
+    // S32 inc = cpu->getDirection();
+    // U32 count = ECX;
+    // 
+    // for (U32 i = 0; i < count; i++) {
+    // cpu->memory->writeb(dBase + EDI, AL);
+    //     EDI += inc;
+    //     ECX--;
+    // }
+    RegPtr edi = getReg(7);
+    RegPtr ecx = getReg(1);
+    RegPtr al = getReadOnlyReg8(0);
+
+    IfFlagSet(DF, true); {
+        U32 label = MarkJumpLocation();
+        If(regWidth, ecx, true); {
+            write(valueWidth, edi, al);
+            subValue(regWidth, edi, size);
+            decReg(regWidth, ecx);
+            Goto(label);
+        } EndIf(true);
+    } StartElse(true); {
+        U32 label = MarkJumpLocation();
+        If(regWidth, ecx, true); {
+            write(valueWidth, edi, al);
+            addValue(regWidth, edi, size);
+            decReg(regWidth, ecx);
+            Goto(label);
+        } EndIf(true);
+    }
+    EndIf(true);
+}
+
 void DynamicData::dynamic_stosb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)stosb16r, false, 1, 0, DYN_PARAM_CPU, false);
-        } else { 
-            callHostFunction((void*)stosb16, false, 1, 0, DYN_PARAM_CPU, false);
+            call(stosb16r);
+        } else {
+            stos(JitWidth::b8, 1, JitWidth::b16);
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)stosb32r, false, 1, 0, DYN_PARAM_CPU, false);
-        } else { 
-            callHostFunction((void*)stosb32, false, 1, 0, DYN_PARAM_CPU, false);
+            if (cpu->thread->process->hasSetSeg[ES]) {
+                call(stosb32r);
+            } else {
+                stosr(JitWidth::b8, 1, JitWidth::b32);
+            }
+        } else {
+            stos(JitWidth::b8, 1, JitWidth::b32);
         }
     }
     incrementEip(op->len);
@@ -144,15 +454,19 @@ void DynamicData::dynamic_stosb_op(DecodedOp* op) {
 void DynamicData::dynamic_stosw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)stosw16r, false, 1, 0, DYN_PARAM_CPU, false);
-        } else { 
-            callHostFunction((void*)stosw16, false, 1, 0, DYN_PARAM_CPU, false);
+            call(stosw16r);
+        } else {
+            stos(JitWidth::b16, 2, JitWidth::b16);
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)stosw32r, false, 1, 0, DYN_PARAM_CPU, false);
-        } else { 
-            callHostFunction((void*)stosw32, false, 1, 0, DYN_PARAM_CPU, false);
+            if (cpu->thread->process->hasSetSeg[ES]) {
+                call(stosw32r);
+            } else {
+                stosr(JitWidth::b16, 2, JitWidth::b32);
+            }
+        } else {
+            stos(JitWidth::b16, 2, JitWidth::b32);
         }
     }
     incrementEip(op->len);
@@ -160,31 +474,107 @@ void DynamicData::dynamic_stosw_op(DecodedOp* op) {
 void DynamicData::dynamic_stosd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)stosd16r, false, 1, 0, DYN_PARAM_CPU, false);
-        } else { 
-            callHostFunction((void*)stosd16, false, 1, 0, DYN_PARAM_CPU, false);
+            call(stosd16r);
+        } else {
+            stos(JitWidth::b32, 4, JitWidth::b16);
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)stosd32r, false, 1, 0, DYN_PARAM_CPU, false);
-        } else { 
-            callHostFunction((void*)stosd32, false, 1, 0, DYN_PARAM_CPU, false);
+            if (cpu->thread->process->hasSetSeg[ES]) {
+                call(stosd32r);
+            } else {
+                stosr(JitWidth::b32, 4, JitWidth::b32);
+            }
+        } else {
+            stos(JitWidth::b32, 4, JitWidth::b32);
         }
     }
     incrementEip(op->len);
 }
+
+void DynamicData::lods(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth) {
+    // AL = cpu->memory->readb(cpu->seg[base].address+ESI);
+    // ESI += cpu->getDirection();
+    RegPtr esi = getReg(6);
+    RegPtr al;
+
+    if (valueWidth == JitWidth::b8) {
+        al = getReg8(0);
+    } else {
+        al = getReg(0);
+    }
+    if (cpu->thread->process->hasSetSeg[base]) {
+        RegPtr readAddress = getTmpSegAddress(base);
+
+        if (regWidth == JitWidth::b32) {
+            addReg(JitWidth::b32, readAddress, esi);
+        } else {
+            RegPtr si = getTmpReg();
+            xorReg(JitWidth::b32, si, si);
+            mov(regWidth, si, esi);
+            addReg(JitWidth::b32, readAddress, si);
+        }
+        mov(valueWidth, al, read(valueWidth, std::move(readAddress), nullptr, nullptr, false, getTmpReg8()));
+    } else {
+        mov(valueWidth, al, read(valueWidth, esi, nullptr, nullptr, false, getTmpReg8()));
+    }
+    IfFlagSet(DF); {
+        subValue(regWidth, esi, size);
+    } StartElse(); {
+        addValue(regWidth, esi, size);
+    } EndIf();
+}
+
+void DynamicData::lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
+    // U32 sBase = cpu->seg[base].address;
+    // S32 inc = cpu->getDirection();
+    // U32 count = ECX;
+
+    // for (U32 i = 0; i < count; i++) {
+    //     AL = cpu->memory->readb(sBase + ESI);
+    //     ESI += inc;
+    //     ECX--;
+    // }
+    RegPtr esi = getReg(6);
+    RegPtr ecx = getReg(1);
+    RegPtr al = getReg8(0);
+
+    IfFlagSet(DF, true); {
+        U32 label = MarkJumpLocation();
+        If(regWidth, ecx, true); {
+            mov(valueWidth, al, read(valueWidth, esi, nullptr, nullptr, false, getTmpReg8()));
+            subValue(regWidth, esi, size);
+            decReg(regWidth, ecx);
+            Goto(label);
+        } EndIf(true);
+    } StartElse(true); {
+        U32 label = MarkJumpLocation();
+        If(regWidth, ecx, true); {
+            mov(valueWidth, al, read(valueWidth, esi, nullptr, nullptr, false, getTmpReg8()));
+            addValue(regWidth, esi, size);
+            decReg(regWidth, ecx);
+            Goto(label);
+        } EndIf(true);
+    }
+    EndIf(true);
+}
+
 void DynamicData::dynamic_lodsb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)lodsb16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
-        } else { 
-            callHostFunction((void*)lodsb16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            call_I(lodsb16r, op->base);
+        } else {
+            lods(op->base, JitWidth::b8, 1, JitWidth::b16);
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)lodsb32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
-        } else { 
-            callHostFunction((void*)lodsb32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            if (cpu->thread->process->hasSetSeg[op->base]) {
+                call_I(lodsb32r, op->base);
+            } else {
+                lodsr(JitWidth::b8, 1, JitWidth::b32);
+            }
+        } else {
+            lods(op->base, JitWidth::b8, 1, JitWidth::b32);
         }
     }
     incrementEip(op->len);
@@ -192,15 +582,19 @@ void DynamicData::dynamic_lodsb_op(DecodedOp* op) {
 void DynamicData::dynamic_lodsw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)lodsw16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
-        } else { 
-            callHostFunction((void*)lodsw16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            call_I(lodsw16r, op->base);
+        } else {
+            lods(op->base, JitWidth::b16, 2, JitWidth::b16);
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)lodsw32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
-        } else { 
-            callHostFunction((void*)lodsw32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            if (cpu->thread->process->hasSetSeg[op->base]) {
+                call_I(lodsw32r, op->base);
+            } else {
+                lodsr(JitWidth::b16, 2, JitWidth::b32);
+            }
+        } else {
+            lods(op->base, JitWidth::b16, 2, JitWidth::b32);
         }
     }
     incrementEip(op->len);
@@ -208,55 +602,186 @@ void DynamicData::dynamic_lodsw_op(DecodedOp* op) {
 void DynamicData::dynamic_lodsd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)lodsd16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
-        } else { 
-            callHostFunction((void*)lodsd16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            call_I(lodsd16r, op->base);
+        } else {
+            lods(op->base, JitWidth::b32, 4, JitWidth::b16);
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)lodsd32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
-        } else { 
-            callHostFunction((void*)lodsd32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            if (cpu->thread->process->hasSetSeg[op->base]) {
+                call_I(lodsd32r, op->base);
+            } else {
+                lodsr(JitWidth::b32, 4, JitWidth::b32);
+            }
+        } else {
+            lods(op->base, JitWidth::b32, 4, JitWidth::b32);
         }
     }
     incrementEip(op->len);
 }
+
+void DynamicData::scas(JitWidth valueWidth, U32 size, JitWidth regWidth, const LazyFlags* lazyFlags) {
+    // U32 dBase = cpu->seg[ES].address;
+    // S32 inc = cpu->getDirection();
+    // U8 v1 = cpu->memory->readb(dBase + EDI);
+    // EDI += inc;
+    // cpu->dst.u8 = AL;
+    // cpu->src.u8 = v1;
+    // cpu->result.u8 = AL - v1;
+    // cpu->lazyFlags = FLAGS_SUB8;
+    RegPtr edi = getReg(7);
+
+    RegPtr src;
+    RegPtr dest = getReadOnlyReg8(0);
+
+    if (cpu->thread->process->hasSetSeg[ES]) {
+        RegPtr destAddress = getTmpSegAddress(ES);
+        if (regWidth == JitWidth::b32) {
+            addReg(JitWidth::b32, destAddress, edi);
+        } else {
+            RegPtr di = getTmpReg();
+            xorReg(JitWidth::b32, di, di);
+            mov(regWidth, di, edi);
+            addReg(JitWidth::b32, destAddress, di);
+        }
+
+        src = read(valueWidth, std::move(destAddress), nullptr, nullptr, false, getTmpReg8());
+    } else {
+        src = read(valueWidth, edi);
+    }
+    storeLazyFlagsDest(dest);
+    storeLazyFlagsSrc(src);
+    subReg(valueWidth, dest, src);
+    storeLazyFlagsResult(dest);
+    storeLazyFlags(lazyFlags);
+
+    IfFlagSet(DF); {
+        subValue(regWidth, edi, size);
+    } StartElse(); {
+        addValue(regWidth, edi, size);
+    } EndIf();
+}
+
+void DynamicData::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, const LazyFlags* lazyFlags) {
+    // U32 dBase = cpu->seg[ES].address;
+    // S32 inc = cpu->getDirection();
+    // U32 count = ECX;
+    // if (count) {
+    //     U8 v1 = 0;
+    //     for (U32 i = 0; i < count; i++) {
+    //         v1 = cpu->memory->readb(dBase + EDI);
+    //         EDI += inc;
+    //         ECX--;
+    //         if ((AL == v1) != rep_zero) break;
+    //    }
+    //     cpu->dst.u8 = AL;
+    //     cpu->src.u8 = v1;
+    //     cpu->result.u8 = AL - v1;
+    //     cpu->lazyFlags = FLAGS_SUB8;
+    // }
+    RegPtr edi = getReg(7);
+    RegPtr dest = getTmpReg8(0); // tmp because result = AL - v1, basstour/opentdd wil fail if AL is written back after math
+    RegPtr src = getTmpReg8();
+    RegPtr ecx = getReg(1);
+
+    IfFlagSet(DF, true); {
+        If(regWidth, ecx, true); {
+            U32 label = MarkJumpLocation();
+            If(regWidth, ecx, true); {
+                read(valueWidth, edi, nullptr, nullptr, false, src);
+                subValue(regWidth, edi, size);
+                decReg(regWidth, ecx);
+
+                if (rep_zero) {
+                    IfEqual(valueWidth, dest, src); {
+                        Goto(label);
+                    } EndIf();
+                } else {
+                    IfNotEqual(valueWidth, dest, src); {
+                        Goto(label);
+                    } EndIf();
+                }
+            } EndIf(true);
+            storeLazyFlagsDest(dest);
+            storeLazyFlagsSrc(src);
+            subReg(valueWidth, dest, src);
+            storeLazyFlagsResult(dest);
+            storeLazyFlags(lazyFlags);
+        } EndIf(true);
+    } StartElse(true); {
+        If(regWidth, ecx, true); {
+            U32 label = MarkJumpLocation();
+            If(regWidth, ecx, true); {
+                read(valueWidth, edi, nullptr, nullptr, false, src);
+                addValue(regWidth, edi, size);
+                decReg(regWidth, ecx);
+
+                if (rep_zero) {
+                    IfEqual(valueWidth, dest, src); {
+                        Goto(label);
+                    } EndIf();
+                } else {
+                    IfNotEqual(valueWidth, dest, src); {
+                        Goto(label);
+                    } EndIf();
+                }
+            } EndIf(true);
+            storeLazyFlagsDest(dest);
+            storeLazyFlagsSrc(src);
+            subReg(valueWidth, dest, src);
+            storeLazyFlagsResult(dest);
+            storeLazyFlags(lazyFlags);
+        } EndIf(true);
+    }
+    EndIf(true);
+}
+
 void DynamicData::dynamic_scasb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)scasb16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            call_I(scasb16r, op->repZero);
             currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
-        } else { 
-            callHostFunction((void*)scasb16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            currentLazyFlags=FLAGS_SUB8;
+        } else {
+            scas(JitWidth::b8, 1, JitWidth::b16, FLAGS_SUB8);
+            currentLazyFlags = FLAGS_SUB8;
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)scasb32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
-        } else { 
-            callHostFunction((void*)scasb32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            currentLazyFlags=FLAGS_SUB8;
+            if (cpu->thread->process->hasSetSeg[ES]) {
+                call_I(scasb32r, op->repZero);
+                currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+            } else {
+                scasr(JitWidth::b8, 1, JitWidth::b32, op->repZero, FLAGS_SUB8);
+                currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+            }
+        } else {
+            scas(JitWidth::b8, 1, JitWidth::b32, FLAGS_SUB8);
+            currentLazyFlags = FLAGS_SUB8;
         }
-    }
+    }    
     incrementEip(op->len);
 }
 void DynamicData::dynamic_scasw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)scasw16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            call_I(scasw16r, op->repZero);
             currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
-        } else { 
-            callHostFunction((void*)scasw16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            currentLazyFlags=FLAGS_SUB16;
+        } else {
+            scas(JitWidth::b16, 2, JitWidth::b16, FLAGS_SUB16);
+            currentLazyFlags = FLAGS_SUB16;
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)scasw32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
-        } else { 
-            callHostFunction((void*)scasw32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            currentLazyFlags=FLAGS_SUB16;
+            if (cpu->thread->process->hasSetSeg[ES]) {
+                call_I(scasw32r, op->repZero);
+                currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+            } else {
+                scasr(JitWidth::b16, 2, JitWidth::b32, op->repZero, FLAGS_SUB16);
+                currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+            }
+        } else {
+            scas(JitWidth::b16, 2, JitWidth::b32, FLAGS_SUB16);
+            currentLazyFlags = FLAGS_SUB16;
         }
     }
     incrementEip(op->len);
@@ -264,19 +789,24 @@ void DynamicData::dynamic_scasw_op(DecodedOp* op) {
 void DynamicData::dynamic_scasd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)scasd16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            call_I(scasd16r, op->repZero);
             currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
-        } else { 
-            callHostFunction((void*)scasd16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            currentLazyFlags=FLAGS_SUB32;
+        } else {
+            scas(JitWidth::b32, 4, JitWidth::b16, FLAGS_SUB32);
+            currentLazyFlags = FLAGS_SUB32;
         }
-    } else { 
+    } else {
         if (op->repZero || op->repNotZero) {
-            callHostFunction((void*)scasd32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
-        } else { 
-            callHostFunction((void*)scasd32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            currentLazyFlags=FLAGS_SUB32;
+            if (cpu->thread->process->hasSetSeg[ES]) {
+                call_I(scasd32r, op->repZero);
+                currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+            } else {
+                scasr(JitWidth::b32, 4, JitWidth::b32, op->repZero, FLAGS_SUB32);
+                currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+            }
+        } else {
+            scas(JitWidth::b32, 4, JitWidth::b32, FLAGS_SUB32);
+            currentLazyFlags = FLAGS_SUB32;
         }
     }
     incrementEip(op->len);

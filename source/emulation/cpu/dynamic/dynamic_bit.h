@@ -17,215 +17,585 @@
  */
 
 #include "../common/common_bit.h"
+
+RegPtr DynamicData::calculateEffectiveEaa32(DecodedOp* op) {
+    RegPtr result = calculateEaaV2(op);
+    RegPtr reg = getTmpReg(op->reg);
+
+    sarValue(JitWidth::b32, reg, 5);
+    shlValue(JitWidth::b32, reg, 2);
+    addReg(JitWidth::b32, result, reg);
+    return result;
+}
+
+RegPtr DynamicData::calculateEffectiveEaa16(DecodedOp* op) {
+    RegPtr result = calculateEaaV2(op);
+    RegPtr reg = getTmpReg(op->reg);
+
+    sarValue(JitWidth::b16, reg, 4);
+    shlValue(JitWidth::b16, reg, 1);
+    movzx(JitWidth::b32, reg, JitWidth::b16, reg);
+    addReg(JitWidth::b32, result, reg);
+    return result;
+}
+
+RegPtr DynamicData::calculateEffectiveEaa(DecodedOp* op) {
+    if (op->ea16) {
+        return calculateEffectiveEaa16(op);
+    }
+    return calculateEffectiveEaa32(op);
+}
+bool DynamicData::btStartFlags(DecodedOp* op) {
+    // The CF flag contains the value of the selected bit. The ZF flag is unaffected. The OF, SF, AF, and PF flags are undefined.
+    U32 flagsNeeded = op->needsToSetFlags(cpu);
+    if (flagsNeeded) {        
+        if (op->getNeededFlagsAfter(ZF)) {
+            RegPtr zf = getZF();
+            andCPUFlagsImmV2(~ZF);
+            orCPUFlags(zf);
+        }
+        //if (currentLazyFlags != FLAGS_NONE) {
+            storeLazyFlags(FLAGS_NONE);
+            currentLazyFlags = FLAGS_NONE;
+        //}
+    }
+    return flagsNeeded != 0;
+}
+
+RegPtr DynamicData::btMask(U32 bitMask, U32 reg) {
+    RegPtr mask = getTmpReg();
+    movValue(JitWidth::b32, mask, 1);
+    RegPtr cl = getTmpReg(reg, false, 1);
+    andValue(JitWidth::b32, cl, bitMask);
+    shlReg(JitWidth::b32, mask, cl);
+    return mask;
+}
+
 void DynamicData::dynamic_btr16r16(DecodedOp* op) {
-    callHostFunction((void*)common_btr16r16, false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    btStartFlags(op);
+    IfTest(JitWidth::b32, getReadOnlyReg(op->reg), btMask(0xf, op->rm)); {
+        orCPUFlagsImmV2(CF);
+    } StartElse(); {
+        andCPUFlagsImmV2(~CF);
+    } EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btr16(DecodedOp* op) {
-    callHostFunction((void*)common_btr16, false, 3, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_16, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    btStartFlags(op);
+    IfTest(JitWidth::b32, getReadOnlyReg(op->reg), op->imm); {
+        orCPUFlagsImmV2(CF);
+    } StartElse(); {
+        andCPUFlagsImmV2(~CF);
+    } EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_bte16r16(DecodedOp* op) {
-    callHostFunction((void*)common_bte16r16, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
+    btStartFlags(op);
+    IfTest(JitWidth::b32, read(JitWidth::b16, calculateEffectiveEaa(op)), btMask(0xf, op->reg)); {
+        orCPUFlagsImmV2(CF);
+    } StartElse(); {
+        andCPUFlagsImmV2(~CF);
+    } EndIf();
     incrementEip(op->len);
-    currentLazyFlags=FLAGS_NONE;
 }
 void DynamicData::dynamic_bte16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_bte16, false, 4, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_16, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    btStartFlags(op);
+    IfTest(JitWidth::b32, read(JitWidth::b16, calculateEaaV2(op)), op->imm); {
+        orCPUFlagsImmV2(CF);
+    } StartElse(); {
+        andCPUFlagsImmV2(~CF);
+    } EndIf();
     incrementEip(op->len);
-    currentLazyFlags=FLAGS_NONE;
 }
 void DynamicData::dynamic_btr32r32(DecodedOp* op) {
-    callHostFunction((void*)common_btr32r32, false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    btStartFlags(op);
+    IfTest(JitWidth::b32, getReadOnlyReg(op->reg), btMask(0x1f, op->rm)); {
+        orCPUFlagsImmV2(CF);
+    } StartElse(); {
+        andCPUFlagsImmV2(~CF);
+    } EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btr32(DecodedOp* op) {
-    callHostFunction((void*)common_btr32, false, 3, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    btStartFlags(op);
+    IfTest(JitWidth::b32, getReadOnlyReg(op->reg), op->imm); {
+        orCPUFlagsImmV2(CF);
+    } StartElse(); {
+        andCPUFlagsImmV2(~CF);
+    } EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_bte32r32(DecodedOp* op) {
-    callHostFunction((void*)common_bte32r32, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    btStartFlags(op);
+    IfTest(JitWidth::b32, read(JitWidth::b32, calculateEffectiveEaa(op)), btMask(0x1f, op->reg)); {
+        orCPUFlagsImmV2(CF);
+    } StartElse(); {
+        andCPUFlagsImmV2(~CF);
+    } EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_bte32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_bte32, false, 4, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    btStartFlags(op);
+    IfTest(JitWidth::b32, read(JitWidth::b32, calculateEaaV2(op)), op->imm); {
+        orCPUFlagsImmV2(CF);
+    } StartElse(); {
+        andCPUFlagsImmV2(~CF);
+    } EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btsr16r16(DecodedOp* op) {
-    callHostFunction((void*)common_btsr16r16, false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr mask = btMask(0xf, op->rm);
+    RegPtr reg = getReg(op->reg);
+    if (flags) {
+        IfTest(JitWidth::b32, reg, mask); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    }
+    orReg(JitWidth::b16, reg, mask);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btsr16(DecodedOp* op) {
-    callHostFunction((void*)common_btsr16, false, 3, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_16, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr reg = getReg(op->reg);
+    if (flags) {
+        IfTest(JitWidth::b32, reg, op->imm); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    }
+    orValue(JitWidth::b16, reg, op->imm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btse16r16(DecodedOp* op) {
-    callHostFunction((void*)common_btse16r16, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
+    bool flags = btStartFlags(op);
+    readWriteMem(JitWidth::b16, calculateEffectiveEaa(op), [flags, op, this](RegPtr value) {
+        RegPtr mask = btMask(0xf, op->reg);
+        if (flags) {
+            IfTest(JitWidth::b32, value, mask); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        }
+        orReg(JitWidth::b16, value, mask);
+    });
     incrementEip(op->len);
-    currentLazyFlags=FLAGS_NONE;
 }
 void DynamicData::dynamic_btse16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_btse16, false, 4, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_16, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    bool flags = btStartFlags(op);
+    readWriteMem(JitWidth::b16, calculateEaaV2(op), [flags, op, this](RegPtr value) {
+        if (flags) {
+            IfTest(JitWidth::b32, value, op->imm); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        }
+        orValue(JitWidth::b16, value, op->imm);
+    });
     incrementEip(op->len);
-    currentLazyFlags=FLAGS_NONE;
 }
 void DynamicData::dynamic_btsr32r32(DecodedOp* op) {
-    callHostFunction((void*)common_btsr32r32, false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr mask = btMask(0x1f, op->rm);
+    RegPtr reg = getReg(op->reg);
+    if (flags) {
+        IfTest(JitWidth::b32, reg, mask); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    }
+    orReg(JitWidth::b32, reg, mask);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btsr32(DecodedOp* op) {
-    callHostFunction((void*)common_btsr32, false, 3, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr reg = getReg(op->reg);
+    if (flags) {
+        IfTest(JitWidth::b32, reg, op->imm); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    }
+    orValue(JitWidth::b32, reg, op->imm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btse32r32(DecodedOp* op) {
-    callHostFunction((void*)common_btse32r32, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    readWriteMem(JitWidth::b32, calculateEffectiveEaa(op), [flags, op, this](RegPtr value) {
+        RegPtr mask = btMask(0x1f, op->reg);
+        if (flags) {
+            IfTest(JitWidth::b32, value, mask); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        }
+        orReg(JitWidth::b32, value, mask);
+        });
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btse32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_btse32, false, 4, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    readWriteMem(JitWidth::b32, calculateEaaV2(op), [flags, op, this](RegPtr value) {
+        if (flags) {
+            IfTest(JitWidth::b32, value, op->imm); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        }
+        orValue(JitWidth::b32, value, op->imm);
+    });
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btrr16r16(DecodedOp* op) {
-    callHostFunction((void*)common_btrr16r16, false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr mask = btMask(0xf, op->rm);
+    RegPtr reg = getReg(op->reg);
+    if (flags) {
+        IfTest(JitWidth::b32, reg, mask); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    }
+    notReg2(JitWidth::b16, mask);
+    andReg(JitWidth::b16, reg, mask);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btrr16(DecodedOp* op) {
-    callHostFunction((void*)common_btrr16, false, 3, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_16, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr reg = getReg(op->reg);
+    if (flags) {
+        IfTest(JitWidth::b32, reg, op->imm); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    }
+    andValue(JitWidth::b16, reg, ~op->imm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btre16r16(DecodedOp* op) {
-    callHostFunction((void*)common_btre16r16, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
+    bool flags = btStartFlags(op);
+    readWriteMem(JitWidth::b16, calculateEffectiveEaa(op), [flags, op, this](RegPtr value) {
+        RegPtr mask = btMask(0xf, op->reg);
+        if (flags) {
+            IfTest(JitWidth::b32, value, mask); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        }
+        notReg2(JitWidth::b16, mask);
+        andReg(JitWidth::b16, value, mask);
+        });
     incrementEip(op->len);
-    currentLazyFlags=FLAGS_NONE;
 }
 void DynamicData::dynamic_btre16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_btre16, false, 4, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_16, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    bool flags = btStartFlags(op);
+    readWriteMem(JitWidth::b16, calculateEaaV2(op), [flags, op, this](RegPtr value) {
+        if (flags) {
+            IfTest(JitWidth::b32, value, op->imm); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        }
+        andValue(JitWidth::b16, value, ~op->imm);
+        });
     incrementEip(op->len);
-    currentLazyFlags=FLAGS_NONE;
 }
 void DynamicData::dynamic_btrr32r32(DecodedOp* op) {
-    callHostFunction((void*)common_btrr32r32, false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr mask = btMask(0x1f, op->rm);
+    RegPtr reg = getReg(op->reg);
+    if (flags) {
+        IfTest(JitWidth::b32, reg, mask); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    }
+    notReg2(JitWidth::b32, mask);
+    andReg(JitWidth::b32, reg, mask);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btrr32(DecodedOp* op) {
-    callHostFunction((void*)common_btrr32, false, 3, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr reg = getReg(op->reg);
+    if (flags) {
+        IfTest(JitWidth::b32, reg, op->imm); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    }
+    andValue(JitWidth::b32, reg, ~op->imm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btre32r32(DecodedOp* op) {
-    callHostFunction((void*)common_btre32r32, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    readWriteMem(JitWidth::b32, calculateEffectiveEaa(op), [flags, op, this](RegPtr value) {
+        RegPtr mask = btMask(0x1f, op->reg);
+        if (flags) {
+            IfTest(JitWidth::b32, value, mask); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        }
+        notReg2(JitWidth::b32, mask);
+        andReg(JitWidth::b32, value, mask);
+        });
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btre32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_btre32, false, 4, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    readWriteMem(JitWidth::b32, calculateEaaV2(op), [flags, op, this](RegPtr value) {
+        if (flags) {
+            IfTest(JitWidth::b32, value, op->imm); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        }
+        andValue(JitWidth::b32, value, ~op->imm);
+        });
     incrementEip(op->len);
 }
+
 void DynamicData::dynamic_btcr16r16(DecodedOp* op) {
-    callHostFunction((void*)common_btcr16r16, false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr mask = btMask(0xf, op->rm);
+    RegPtr reg = getReg(op->reg);
+    if (flags) {
+        IfTest(JitWidth::b32, reg, mask); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    }
+    xorReg(JitWidth::b16, reg, mask);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btcr16(DecodedOp* op) {
-    callHostFunction((void*)common_btcr16, false, 3, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_16, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr reg = getReg(op->reg);
+    if (flags) {
+        IfTest(JitWidth::b32, reg, op->imm); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    }
+    xorValue(JitWidth::b16, reg, op->imm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btce16r16(DecodedOp* op) {
-    callHostFunction((void*)common_btce16r16, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
+    bool flags = btStartFlags(op);
+    readWriteMem(JitWidth::b16, calculateEffectiveEaa(op), [flags, op, this](RegPtr value) {
+        RegPtr mask = btMask(0xf, op->reg);
+        if (flags) {
+            IfTest(JitWidth::b32, value, mask); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        }
+        xorReg(JitWidth::b16, value, mask);
+        });
     incrementEip(op->len);
-    currentLazyFlags=FLAGS_NONE;
 }
 void DynamicData::dynamic_btce16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_btce16, false, 4, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_16, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    bool flags = btStartFlags(op);
+    readWriteMem(JitWidth::b16, calculateEaaV2(op), [flags, op, this](RegPtr value) {
+        if (flags) {
+            IfTest(JitWidth::b32, value, op->imm); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        }
+        xorValue(JitWidth::b16, value, op->imm);
+        });
     incrementEip(op->len);
-    currentLazyFlags=FLAGS_NONE;
 }
 void DynamicData::dynamic_btcr32r32(DecodedOp* op) {
-    callHostFunction((void*)common_btcr32r32, false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr mask = btMask(0x1f, op->rm);
+    RegPtr reg = getReg(op->reg);
+    if (flags) {
+        IfTest(JitWidth::b32, reg, mask); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    }
+    xorReg(JitWidth::b32, reg, mask);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btcr32(DecodedOp* op) {
-    callHostFunction((void*)common_btcr32, false, 3, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr reg = getReg(op->reg);
+    if (flags) {
+        IfTest(JitWidth::b32, reg, op->imm); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    }
+    xorValue(JitWidth::b32, reg, op->imm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btce32r32(DecodedOp* op) {
-    callHostFunction((void*)common_btce32r32, false, 3, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    readWriteMem(JitWidth::b32, calculateEffectiveEaa(op), [flags, op, this](RegPtr value) {
+        RegPtr mask = btMask(0x1f, op->reg);
+        if (flags) {
+            IfTest(JitWidth::b32, value, mask); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        }
+        xorReg(JitWidth::b32, value, mask);
+        });
     incrementEip(op->len);
 }
 void DynamicData::dynamic_btce32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_btce32, false, 4, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    readWriteMem(JitWidth::b32, calculateEaaV2(op), [flags, op, this](RegPtr value) {
+        if (flags) {
+            IfTest(JitWidth::b32, value, op->imm); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        }
+        xorValue(JitWidth::b32, value, op->imm);
+        });
     incrementEip(op->len);
 }
+// bsf/bsr The ZF flag is set to 1 if the source operand is 0; otherwise, the ZF flag is cleared. The CF, OF, SF, AF, and PF flags are undefined.
+bool DynamicData::bsStartFlags(DecodedOp* op) {
+    U32 flagsNeeded = op->needsToSetFlags(cpu);
+    if (flagsNeeded) {
+        if (currentLazyFlags != FLAGS_NONE) {
+            storeLazyFlags(FLAGS_NONE);
+            currentLazyFlags = FLAGS_NONE;
+        }
+    }
+    return flagsNeeded != 0;
+}
 void DynamicData::dynamic_bsfr16r16(DecodedOp* op) {
-    callHostFunction((void*)common_bsfr16r16, false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr src = getReadOnlyReg(op->rm);
+    if (flags) {
+        If(JitWidth::b16, src); {
+            andCPUFlagsImmV2(~ZF);
+        } StartElse(); {
+            orCPUFlagsImmV2(ZF);
+        } EndIf();
+    }
+    bsfReg(JitWidth::b16, getReg(op->reg), src);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_bsfr16e16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_bsfr16e16, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr src = read(JitWidth::b16, calculateEaaV2(op));
+    if (flags) {
+        If(JitWidth::b16, src); {
+            andCPUFlagsImmV2(~ZF);
+        } StartElse(); {
+            orCPUFlagsImmV2(ZF);
+        } EndIf();
+    }
+    bsfReg(JitWidth::b16, getReg(op->reg), src);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_bsfr32r32(DecodedOp* op) {
-    callHostFunction((void*)common_bsfr32r32, false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr src = getReadOnlyReg(op->rm);
+    if (flags) {
+        If(JitWidth::b32, src); {
+            andCPUFlagsImmV2(~ZF);
+        } StartElse(); {
+            orCPUFlagsImmV2(ZF);
+        } EndIf();
+    }
+    bsfReg(JitWidth::b32, getReg(op->reg), src);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_bsfr32e32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_bsfr32e32, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr src = read(JitWidth::b32, calculateEaaV2(op));
+    if (flags) {
+        If(JitWidth::b32, src); {
+            andCPUFlagsImmV2(~ZF);
+        } StartElse(); {
+            orCPUFlagsImmV2(ZF);
+        } EndIf();
+    }
+    bsfReg(JitWidth::b32, getReg(op->reg), src);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_bsrr16r16(DecodedOp* op) {
-    callHostFunction((void*)common_bsrr16r16, false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr src = getReadOnlyReg(op->rm);
+    if (flags) {
+        If(JitWidth::b16, src); {
+            andCPUFlagsImmV2(~ZF);
+        } StartElse(); {
+            orCPUFlagsImmV2(ZF);
+        } EndIf();
+    }
+    bsrReg(JitWidth::b16, getReg(op->reg), src);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_bsrr16e16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_bsrr16e16, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr src = read(JitWidth::b16, calculateEaaV2(op));
+    if (flags) {
+        If(JitWidth::b16, src); {
+            andCPUFlagsImmV2(~ZF);
+        } StartElse(); {
+            orCPUFlagsImmV2(ZF);
+        } EndIf();
+    }
+    bsrReg(JitWidth::b16, getReg(op->reg), src);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_bsrr32r32(DecodedOp* op) {
-    callHostFunction((void*)common_bsrr32r32, false, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr src = getReadOnlyReg(op->rm);
+    if (flags) {
+        If(JitWidth::b32, src); {
+            andCPUFlagsImmV2(~ZF);
+        } StartElse(); {
+            orCPUFlagsImmV2(ZF);
+        } EndIf();
+    }
+    bsrReg(JitWidth::b32, getReg(op->reg), src);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_bsrr32e32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_bsrr32e32, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    bool flags = btStartFlags(op);
+    RegPtr src = read(JitWidth::b32, calculateEaaV2(op));
+    if (flags) {
+        If(JitWidth::b32, src); {
+            andCPUFlagsImmV2(~ZF);
+        } StartElse(); {
+            orCPUFlagsImmV2(ZF);
+        } EndIf();
+    }
+    bsrReg(JitWidth::b32, getReg(op->reg), src);
     incrementEip(op->len);
 }

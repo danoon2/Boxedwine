@@ -1378,6 +1378,9 @@ U32 common_setSegment(CPU* cpu, U32 seg, U32 value) {
 }
 
 void common_setFlags(CPU* cpu, U32 flags, U32 mask) {
+    if (cpu->lazyFlags != FLAGS_NONE) {
+        cpu->fillFlags();
+    }
     cpu->setFlags(flags, mask);
 }
 

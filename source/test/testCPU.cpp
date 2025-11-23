@@ -177,7 +177,7 @@ void pushCode32(int value) {
 void newInstruction(int flags) {
     cseip=CODE_ADDRESS;
     cpu->lazyFlags = FLAGS_NONE;
-    cpu->flags = flags;
+    cpu->setFlags(flags, FMASK_ALL);
     //cpu.blocks.clear();
     EAX=0;
     ECX=0;
@@ -721,17 +721,33 @@ void EbIb(int instruction, int which, struct Data* data, bool address32, bool in
         int rm;
         U32 result;
 
-        for (eb = 0; eb < 8; eb++) {
-            U8* e;
+        for (int setsFlags = 0; setsFlags < 3; setsFlags++) {
+            for (eb = 0; eb < 8; eb++) {
+                U8* e;
 
-            rm = eb | (which << 3) | 0xC0;
-            newInstructionWithRM(instruction, rm, data->flags);
-            pushCode8(data->var2);
-            e = cpu->reg8[E(rm)];
-            cpu->reg[E8(rm)].u32 = DEFAULT;
-            *e=data->var1;
-            runTestCPU();
-            assertResult(data, cpu, instruction, *e, 0, E8(rm), -1, 0, 8);
+                rm = eb | (which << 3) | 0xC0;
+                newInstructionWithRM(instruction, rm, data->flags);
+                pushCode8(data->var2);
+                e = cpu->reg8[E(rm)];
+                cpu->reg[E8(rm)].u32 = DEFAULT;
+                *e = data->var1;
+
+                if (setsFlags == 0) {
+                    pushCode8(0x50); // push eax
+                    pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                } else if (setsFlags == 2) {
+                    // flags will be calculate in JIT
+                    U8 reg = 5;
+                    if (eb == 5) {
+                       reg = 6;
+                    }
+                    pushCode8(0x9c); // push flags
+                    pushCode8(0x58 + reg); // pop reg
+                }
+
+                runTestCPU();
+                assertResult(data, cpu, instruction, *e, 0, E8(rm), -1, 0, 8, setsFlags == 0);
+            }
         }
 
         for (int lock = 0; lock < 3; lock++) {
@@ -787,27 +803,45 @@ void EbGb(int instruction, struct Data* data, bool includeLock = false) {
         int gb;
         int rm;
 
-        for (eb = 0; eb < 8; eb++) {
-            for (gb = 0; gb < 8; gb++) {
-                U8* e;
-                U8* g;
+        for (int setsFlags = 0; setsFlags < 3; setsFlags++) {
+            for (eb = 0; eb < 8; eb++) {
+                for (gb = 0; gb < 8; gb++) {
+                    U8* e;
+                    U8* g;
 
-                if (eb == gb)
-                    continue;
-                rm = eb | (gb << 3) | 0xC0;
-                newInstructionWithRM(instruction, rm, data->flags);
-                pushConstant(data);
-                e = cpu->reg8[E(rm)];
-                g = cpu->reg8[G(rm)];
-                cpu->reg[E8(rm)].u32 = DEFAULT;
-                cpu->reg[G8(rm)].u32 = DEFAULT;
-                *e=data->var1;
-                *g=data->var2;
-                runTestCPU();                
-                assertResult(data, cpu, instruction, *e, *g, E8(rm), G8(rm), 0, 8);
+                    if (eb == gb)
+                        continue;
+                    rm = eb | (gb << 3) | 0xC0;
+                    newInstructionWithRM(instruction, rm, data->flags);
+                    pushConstant(data);
+                    e = cpu->reg8[E(rm)];
+                    g = cpu->reg8[G(rm)];
+                    cpu->reg[E8(rm)].u32 = DEFAULT;
+                    cpu->reg[G8(rm)].u32 = DEFAULT;
+                    *e = data->var1;
+                    *g = data->var2;
+
+                    if (setsFlags == 0) {
+                        pushCode8(0x50); // push eax
+                        pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                    } else if (setsFlags == 2) {
+                        // flags will be calculate in JIT
+                        U8 reg = 5;
+                        if (eb == 5 || gb == 5) {
+                            if (eb == 6 || gb == 6) {
+                                reg = 7;
+                            } else {
+                                reg = 6;
+                            }
+                        }
+                        pushCode8(0x9c); // push flags
+                        pushCode8(0x58 + reg); // pop reg
+                    }
+                    runTestCPU();
+                    assertResult(data, cpu, instruction, *e, *g, E8(rm), G8(rm), 0, 8, setsFlags == 0);
+                }
             }
         }
-
         for (int lock = 0; lock < 3; lock++) {
             for (gb = 0; gb < 8; gb++) {
                 U8* g;
@@ -834,6 +868,39 @@ void EbGb(int instruction, struct Data* data, bool includeLock = false) {
                 runTestCPU();
                 result = memory->readb(cpu->seg[DS].address + offset);
                 assertResult(data, cpu, instruction, result, *g, G8(rm), -1, cpu->seg[DS].address + offset, 8);
+            }
+            if (!includeLock) {
+                break;
+            }
+        }
+
+        // read/write to code page, this takes a different path for JIT
+        for (int lock = 0; lock < 3; lock++) {
+            for (gb = 0; gb < 8; gb++) {
+                U8* g;
+                U32 result;
+
+                rm = (gb << 3);
+                if (cpu->big)
+                    rm += 5;
+                else
+                    rm += 6;
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0, 0x2e); // 0x2e CS seg
+                U16 offset = lock == 2 ? 201 : 200;
+
+                if (cpu->big)
+                    pushCode32(offset);
+                else
+                    pushCode16(offset);
+                pushConstant(data);
+                memory->writed(cpu->seg[CS].address + offset, DEFAULT);
+                memory->writeb(cpu->seg[CS].address + offset, data->var1);
+                g = cpu->reg8[G(rm)];
+                cpu->reg[G8(rm)].u32 = DEFAULT;
+                *g = data->var2;
+                runTestCPU();
+                result = memory->readb(cpu->seg[CS].address + offset);
+                assertResult(data, cpu, instruction, result, *g, G8(rm), -1, cpu->seg[CS].address + offset, 8);
             }
             if (!includeLock) {
                 break;
@@ -892,6 +959,7 @@ void GbEb(int instruction, struct Data* data) {
             runTestCPU();
             assertResult(data, cpu, instruction, *g, memory->readb(cpu->seg[DS].address + 200), G8(rm), -1, cpu->seg[DS].address + 200, 8);
         }
+
         data++;
     }
 }
@@ -6155,6 +6223,23 @@ void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32
         newInstruction(inst, startFlags);
     }
     cpu->flags = startFlags; // x64CPU needs this to be setup
+
+    U32 savedDS = 0;
+
+    if (prefix && cpu->big) {
+        startEDI += esAddress;
+        endEDI += esAddress;
+        esAddress = 0;
+        startESI += cpu->seg[DS].address;
+        endESI += cpu->seg[DS].address;
+        savedDS = cpu->seg[DS].address;
+        cpu->seg[DS].address = 0;
+        cpu->thread->process->hasSetSeg[DS] = false;
+        cpu->thread->process->hasSetSeg[ES] = false;
+    }
+    if (esAddress) {
+        cpu->thread->process->hasSetSeg[ES] = true;
+    }
     cpu->seg[ES].address = esAddress;
     EDI = startEDI;
     ESI = startESI;
@@ -6192,6 +6277,11 @@ void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32
         assertTrue(endZF==hasZF);
     }
     cpu->seg[ES].address = 0;
+    cpu->thread->process->hasSetSeg[ES] = false;
+    if (savedDS) {
+        cpu->seg[DS].address = savedDS;
+        cpu->thread->process->hasSetSeg[DS] = true;        
+    }
 }
 
 void testCmpsb0x0a6() {
@@ -8762,6 +8852,7 @@ void testPopSeg16(int inst, U8 seg) {
         pushCode8(0);
         pushCode8(0);
         checkReadValueIntoAX = true;
+        process->hasSetSeg[seg] = true;
     }
     runTestCPU();
     if (cpu->reg[4].u16!=prevStack+2) {
@@ -10461,6 +10552,36 @@ void testSelfModifyingMovsb() {
     assertTrue(EAX == 0x1b); // 0x20 from first run - 0x05 from second run
 }
 
+void testReverseBits() {
+    // initialize
+    newInstruction(0);
+
+    EAX = 0xAB; // 1010 1011 -> 1101 0101 (D5)
+    ECX = 8;
+    EDX = 0;
+
+    // shr EAX, 1
+    pushCode8(0xd1);
+    pushCode8(0xe8);
+
+    // rcl edx, 1
+    pushCode8(0xd1);
+    pushCode8(0xd2);
+
+    // dec ecx
+    pushCode8(0x49);
+
+    // jnz
+    pushCode8(0x75);
+    pushCode8((U8)-7);
+
+    runTestCPU();
+
+    assertTrue(ECX == 0);
+    assertTrue(EAX == 0);
+    assertTrue(EDX == 0xD5);
+}
+
 void testSplitPageWrite() {
     // initialize
     newInstruction(0);
@@ -11529,6 +11650,7 @@ int runCpuTests() {
     run(testLockedInc, "Multi-threaded locked inc");
 #endif
     run(testSplitPageWrite, "Split Page Write");
+    run(testReverseBits, "Reverse bits with RCL");
     printf("%d tests FAILED\n", totalFails);
     KNativeThread::sleep(5000);
     if (totalFails)

@@ -29,12 +29,12 @@ void OPCALL normal_rol8_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_rol8cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rol8cl_reg(cpu, op->reg, CL & 0x1F);
+    rol8cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_rol8cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rol8cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    rol8cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_rol16_reg_op(CPU* cpu, DecodedOp* op) {
@@ -49,12 +49,12 @@ void OPCALL normal_rol16_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_rol16cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rol16cl_reg(cpu, op->reg, CL & 0x1F);
+    rol16cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_rol16cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rol16cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    rol16cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_rol32_reg_op(CPU* cpu, DecodedOp* op) {
@@ -69,12 +69,12 @@ void OPCALL normal_rol32_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_rol32cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rol32cl_reg(cpu, op->reg, CL & 0x1F);
+    rol32cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_rol32cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rol32cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    rol32cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_ror8_reg_op(CPU* cpu, DecodedOp* op) {
@@ -89,12 +89,12 @@ void OPCALL normal_ror8_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_ror8cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    ror8cl_reg(cpu, op->reg, CL & 0x1F);
+    ror8cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_ror8cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    ror8cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    ror8cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_ror16_reg_op(CPU* cpu, DecodedOp* op) {
@@ -109,12 +109,12 @@ void OPCALL normal_ror16_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_ror16cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    ror16cl_reg(cpu, op->reg, CL & 0x1F);
+    ror16cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_ror16cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    ror16cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    ror16cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_ror32_reg_op(CPU* cpu, DecodedOp* op) {
@@ -129,12 +129,12 @@ void OPCALL normal_ror32_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_ror32cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    ror32cl_reg(cpu, op->reg, CL & 0x1F);
+    ror32cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_ror32cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    ror32cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    ror32cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_rcl8_reg_op(CPU* cpu, DecodedOp* op) {
@@ -149,12 +149,12 @@ void OPCALL normal_rcl8_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_rcl8cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rcl8cl_reg(cpu, op->reg, CL & 0x1F);
+    rcl8cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_rcl8cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rcl8cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    rcl8cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_rcl16_reg_op(CPU* cpu, DecodedOp* op) {
@@ -169,12 +169,12 @@ void OPCALL normal_rcl16_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_rcl16cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rcl16cl_reg(cpu, op->reg, CL & 0x1F);
+    rcl16cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_rcl16cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rcl16cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    rcl16cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_rcl32_reg_op(CPU* cpu, DecodedOp* op) {
@@ -189,12 +189,12 @@ void OPCALL normal_rcl32_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_rcl32cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rcl32cl_reg(cpu, op->reg, CL & 0x1F);
+    rcl32cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_rcl32cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rcl32cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    rcl32cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_rcr8_reg_op(CPU* cpu, DecodedOp* op) {
@@ -209,12 +209,12 @@ void OPCALL normal_rcr8_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_rcr8cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rcr8cl_reg(cpu, op->reg, CL & 0x1F);
+    rcr8cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_rcr8cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rcr8cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    rcr8cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_rcr16_reg_op(CPU* cpu, DecodedOp* op) {
@@ -229,12 +229,12 @@ void OPCALL normal_rcr16_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_rcr16cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rcr16cl_reg(cpu, op->reg, CL & 0x1F);
+    rcr16cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_rcr16cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rcr16cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    rcr16cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_rcr32_reg_op(CPU* cpu, DecodedOp* op) {
@@ -249,12 +249,12 @@ void OPCALL normal_rcr32_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_rcr32cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rcr32cl_reg(cpu, op->reg, CL & 0x1F);
+    rcr32cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_rcr32cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    rcr32cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    rcr32cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_shl8_reg_op(CPU* cpu, DecodedOp* op) {
@@ -269,12 +269,12 @@ void OPCALL normal_shl8_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_shl8cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    shl8cl_reg(cpu, op->reg, CL & 0x1F);
+    shl8cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_shl8cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    shl8cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    shl8cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_shl16_reg_op(CPU* cpu, DecodedOp* op) {
@@ -289,12 +289,12 @@ void OPCALL normal_shl16_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_shl16cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    shl16cl_reg(cpu, op->reg, CL & 0x1F);
+    shl16cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_shl16cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    shl16cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    shl16cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_shl32_reg_op(CPU* cpu, DecodedOp* op) {
@@ -309,12 +309,12 @@ void OPCALL normal_shl32_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_shl32cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    shl32cl_reg(cpu, op->reg, CL & 0x1F);
+    shl32cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_shl32cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    shl32cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    shl32cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_shr8_reg_op(CPU* cpu, DecodedOp* op) {
@@ -329,12 +329,12 @@ void OPCALL normal_shr8_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_shr8cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    shr8cl_reg(cpu, op->reg, CL & 0x1F);
+    shr8cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_shr8cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    shr8cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    shr8cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_shr16_reg_op(CPU* cpu, DecodedOp* op) {
@@ -349,12 +349,12 @@ void OPCALL normal_shr16_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_shr16cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    shr16cl_reg(cpu, op->reg, CL & 0x1F);
+    shr16cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_shr16cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    shr16cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    shr16cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_shr32_reg_op(CPU* cpu, DecodedOp* op) {
@@ -369,12 +369,12 @@ void OPCALL normal_shr32_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_shr32cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    shr32cl_reg(cpu, op->reg, CL & 0x1F);
+    shr32cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_shr32cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    shr32cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    shr32cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_sar8_reg_op(CPU* cpu, DecodedOp* op) {
@@ -389,12 +389,12 @@ void OPCALL normal_sar8_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_sar8cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    sar8cl_reg(cpu, op->reg, CL & 0x1F);
+    sar8cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_sar8cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    sar8cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    sar8cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_sar16_reg_op(CPU* cpu, DecodedOp* op) {
@@ -409,12 +409,12 @@ void OPCALL normal_sar16_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_sar16cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    sar16cl_reg(cpu, op->reg, CL & 0x1F);
+    sar16cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_sar16cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    sar16cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    sar16cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_sar32_reg_op(CPU* cpu, DecodedOp* op) {
@@ -429,12 +429,12 @@ void OPCALL normal_sar32_mem_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_sar32cl_reg_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    sar32cl_reg(cpu, op->reg, CL & 0x1F);
+    sar32cl_reg(cpu, op->reg, CL);
     NEXT();
 }
 void OPCALL normal_sar32cl_mem_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    sar32cl_mem(cpu, eaa(cpu, op), CL & 0x1F);
+    sar32cl_mem(cpu, eaa(cpu, op), CL);
     NEXT();
 }
 void OPCALL normal_dshlr16r16(CPU* cpu, DecodedOp* op) {

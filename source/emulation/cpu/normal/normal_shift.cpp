@@ -52,6 +52,7 @@ void rol8_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writeb(eaa, result);
 }
 void rol8cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     U8 var1 = *cpu->reg8[reg];
     if (!(var2 & 7)) {
         if (var2 & 0x18) {
@@ -69,6 +70,7 @@ void rol8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     *cpu->reg8[reg] = result;
 }
 void rol8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     U8 var1 = cpu->memory->readb(eaa);
     if (!(var2 & 7)) {
         if (var2 & 0x18) {
@@ -120,6 +122,7 @@ void rol16_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writew(eaa, result);
 }
 void rol16cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     U16 var1 = cpu->reg[reg].u16;
     if (!(var2 & 0xf)) {
         if (var2 & 0x10) {
@@ -137,6 +140,7 @@ void rol16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     cpu->reg[reg].u16 = result;
 }
 void rol16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     U16 var1 = cpu->memory->readw(eaa);
     if (!(var2 & 0xf)) {
         if (var2 & 0x10) {
@@ -170,6 +174,7 @@ void rol32_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writed(eaa, result);
 }
 void rol32cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->reg[reg].u32;
         cpu->fillFlagsNoCFOF();
@@ -180,6 +185,7 @@ void rol32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void rol32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->memory->readd(eaa);
         cpu->fillFlagsNoCFOF();
@@ -224,6 +230,7 @@ void ror8_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writeb(eaa, result);
 }
 void ror8cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     U8 var1 = *cpu->reg8[reg];
     if (!(var2 & 7)) {
         if (var2 & 0x18) {
@@ -241,6 +248,7 @@ void ror8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     *cpu->reg8[reg] = result;
 }
 void ror8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     U8 var1 = cpu->memory->readb(eaa);
     if (!(var2 & 7)) {
         if (var2 & 0x18) {
@@ -292,6 +300,7 @@ void ror16_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writew(eaa, result);
 }
 void ror16cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     U16 var1 = cpu->reg[reg].u16;
     if (!(var2 & 0xf)) {
         if (var2 & 0x10) {
@@ -309,6 +318,7 @@ void ror16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     cpu->reg[reg].u16 = result;
 }
 void ror16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     U16 var1 = cpu->memory->readw(eaa);
     if (!(var2 & 0xf)) {
         if (var2 & 0x10) {
@@ -342,6 +352,7 @@ void ror32_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writed(eaa, result);
 }
 void ror32cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->reg[reg].u32;
         cpu->fillFlagsNoCFOF();
@@ -352,6 +363,7 @@ void ror32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void ror32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->memory->readd(eaa);
         cpu->fillFlagsNoCFOF();
@@ -378,6 +390,7 @@ void rcl8_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writeb(eaa, result);
 }
 void rcl8cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         var2=var2 % 9;
         U8 var1 = *cpu->reg8[reg];
@@ -389,6 +402,7 @@ void rcl8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void rcl8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         var2=var2 % 9;
         U8 var1 = cpu->memory->readb(eaa);
@@ -416,6 +430,7 @@ void rcl16_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writew(eaa, result);
 }
 void rcl16cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         var2=var2 % 17;
         U16 var1 = cpu->reg[reg].u16;
@@ -427,6 +442,7 @@ void rcl16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void rcl16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         var2=var2 % 17;
         U16 var1 = cpu->memory->readw(eaa);
@@ -464,6 +480,7 @@ void rcl32_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writed(eaa, result);
 }
 void rcl32cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 result = 0;
         U32 var1 = cpu->reg[reg].u32;
@@ -479,6 +496,7 @@ void rcl32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void rcl32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 result = 0;
         U32 var1 = cpu->memory->readd(eaa);
@@ -510,6 +528,7 @@ void rcr8_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writeb(eaa, result);
 }
 void rcr8cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         var2=var2 % 9;
         U8 var1 = *cpu->reg8[reg];
@@ -521,6 +540,7 @@ void rcr8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void rcr8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         var2=var2 % 9;
         U8 var1 = cpu->memory->readb(eaa);
@@ -548,6 +568,7 @@ void rcr16_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writew(eaa, result);
 }
 void rcr16cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         var2=var2 % 17;
         U16 var1 = cpu->reg[reg].u16;
@@ -559,6 +580,7 @@ void rcr16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void rcr16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         var2=var2 % 17;
         U16 var1 = cpu->memory->readw(eaa);
@@ -596,6 +618,7 @@ void rcr32_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writed(eaa, result);
 }
 void rcr32cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 result = 0;
         U32 var1 = cpu->reg[reg].u32;        
@@ -610,7 +633,8 @@ void rcr32cl_reg(CPU* cpu, U32 reg, U32 var2) {
         cpu->reg[reg].u32 = result;
     }
 }
-void rcr32cl_mem(CPU* cpu, U32 eaa, U32 var2) {    
+void rcr32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 result = 0;
         U32 var1 = cpu->memory->readd(eaa);
@@ -644,6 +668,7 @@ void shl8_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writeb(eaa, result);
 }
 void shl8cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U8 var1 = *cpu->reg8[reg];
         U8 result = var1 << var2;
@@ -655,6 +680,7 @@ void shl8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void shl8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U8 var1 = cpu->memory->readb(eaa);
         U8 result = var1 << var2;
@@ -684,6 +710,7 @@ void shl16_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writew(eaa, result);
 }
 void shl16cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U16 var1 = cpu->reg[reg].u16;
         U16 result = var1 << var2;
@@ -695,6 +722,7 @@ void shl16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void shl16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U16 var1 = cpu->memory->readw(eaa);
         U16 result = var1 << var2;
@@ -724,6 +752,7 @@ void shl32_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writed(eaa, result);
 }
 void shl32cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->reg[reg].u32;
         U32 result = var1 << var2;
@@ -735,6 +764,7 @@ void shl32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void shl32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->memory->readd(eaa);
         U32 result = var1 << var2;
@@ -764,6 +794,7 @@ void shr8_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writeb(eaa, result);
 }
 void shr8cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U8 var1 = *cpu->reg8[reg];
         U8 result = var1 >> var2;
@@ -775,6 +806,7 @@ void shr8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void shr8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U8 var1 = cpu->memory->readb(eaa);
         U8 result = var1 >> var2;
@@ -804,6 +836,7 @@ void shr16_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writew(eaa, result);
 }
 void shr16cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U16 var1 = cpu->reg[reg].u16;
         U16 result = var1 >> var2;
@@ -815,6 +848,7 @@ void shr16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void shr16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U16 var1 = cpu->memory->readw(eaa);
         U16 result = var1 >> var2;
@@ -844,6 +878,7 @@ void shr32_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writed(eaa, result);
 }
 void shr32cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->reg[reg].u32;
         U32 result = var1 >> var2;
@@ -855,6 +890,7 @@ void shr32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void shr32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->memory->readd(eaa);
         U32 result = var1 >> var2;
@@ -884,6 +920,7 @@ void sar8_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writeb(eaa, result);
 }
 void sar8cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U8 var1 = *cpu->reg8[reg];
         U8 result = (S8)var1 >> var2;
@@ -895,6 +932,7 @@ void sar8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void sar8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U8 var1 = cpu->memory->readb(eaa);
         U8 result = (S8)var1 >> var2;
@@ -924,6 +962,7 @@ void sar16_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writew(eaa, result);
 }
 void sar16cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U16 var1 = cpu->reg[reg].u16;
         U16 result = (S16)var1 >> var2;
@@ -935,6 +974,7 @@ void sar16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void sar16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U16 var1 = cpu->memory->readw(eaa);
         U16 result = (S16)var1 >> var2;
@@ -964,6 +1004,7 @@ void sar32_mem(CPU* cpu, U32 eaa, U32 var2) {
     cpu->memory->writed(eaa, result);
 }
 void sar32cl_reg(CPU* cpu, U32 reg, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->reg[reg].u32;
         U32 result = (S32)var1 >> var2;
@@ -975,6 +1016,7 @@ void sar32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     }
 }
 void sar32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
+    var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->memory->readd(eaa);
         U32 result = (S32)var1 >> var2;

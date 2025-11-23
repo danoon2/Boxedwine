@@ -22,197 +22,197 @@
 #include "dynamicMMX.h"
 
 enum DynXMMReg {
-    DYN_XMM_REG_0 = 0,
-    DYN_XMM_REG_1 = 1,
-    DYN_XMM_REG_2 = 2,
-    DYN_XMM_REG_3 = 3,
-    DYN_XMM_REG_4 = 4,
-    DYN_XMM_REG_5 = 5,
-    DYN_XMM_REG_6 = 6,
-    DYN_XMM_REG_7 = 7,
+	DYN_XMM_REG_0 = 0,
+	DYN_XMM_REG_1 = 1,
+	DYN_XMM_REG_2 = 2,
+	DYN_XMM_REG_3 = 3,
+	DYN_XMM_REG_4 = 4,
+	DYN_XMM_REG_5 = 5,
+	DYN_XMM_REG_6 = 6,
+	DYN_XMM_REG_7 = 7,
 };
 
 // Implementation of JIT that is host instruction independent
 class DynamicCodeGenSSE : public DynamicCodeGenMMX {
 public:
-    using XmmXmmCallback = void(DynamicCodeGenSSE::*)(DynXMMReg dst, DynXMMReg src);
-    using XmmXmmImmCallback = void(DynamicCodeGenSSE::*)(DynXMMReg dst, DynXMMReg src, U32 imm);
+	using XmmXmmCallback = void(DynamicCodeGenSSE::*)(DynXMMReg dst, DynXMMReg src);
+	using XmmXmmImmCallback = void(DynamicCodeGenSSE::*)(DynXMMReg dst, DynXMMReg src, U32 imm);
 	using XmmImmCallback = void(DynamicCodeGenSSE::*)(DynXMMReg dst, U32 imm);
 
-    DynamicCodeGenSSE(CPU* cpu) : DynamicCodeGenMMX(cpu) {}
+	DynamicCodeGenSSE(CPU* cpu) : DynamicCodeGenMMX(cpu) {}
 
-    virtual DynXMMReg getTmpXMM(U8 inUse) = 0;
-    virtual void storeCpuXMMReg(DynXMMReg reg, U32 index) = 0;
-    virtual void loadCpuXMMReg(DynXMMReg reg, U32 index) = 0;
+	virtual DynXMMReg getTmpXMM(U8 inUse) = 0;
+	virtual void storeCpuXMMReg(DynXMMReg reg, U32 index) = 0;
+	virtual void loadCpuXMMReg(DynXMMReg reg, U32 index) = 0;
 	virtual void loadCpuXMMReg64ZeroExtend(DynXMMReg reg, U32 index) = 0;
-    virtual void loadXMMFromMem128(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void loadXMMFromMem32(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void loadXMMFromMem64(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void loadLowXMMFromMem64(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void loadHighXMMFromMem64(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void storeXMMToMem128(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void storeXMMToMem64(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void storeXMMToMem32(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void storeHighXMMToMem64(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
+	virtual void loadXMMFromMem128(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+	virtual void loadXMMFromMem32(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+	virtual void loadXMMFromMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+	virtual void loadLowXMMFromMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+	virtual void loadHighXMMFromMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+	virtual void storeXMMToMem128(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+	virtual void storeXMMToMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+	virtual void storeXMMToMem32(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+	virtual void storeHighXMMToMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
 
-    void opXmmXmm(DecodedOp* op, XmmXmmCallback callback, bool loadDest = true);
-    void opXmmXmmImm(DecodedOp* op, XmmXmmImmCallback callback);
+	void opXmmXmm(DecodedOp* op, XmmXmmCallback callback, bool loadDest = true);
+	void opXmmXmmImm(DecodedOp* op, XmmXmmImmCallback callback);
 	void opXmmImm(DecodedOp* op, XmmImmCallback callback);
-    void opXmmE128(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool loadDest = true);
-    void opXmmE128Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback);
+	void opXmmE128(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool loadDest = true);
+	void opXmmE128Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback);
 	void opXmmE64(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool loadDest = true);
 	void opXmmE64Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback);
-    void opXmmE32(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback);
-    void opXmmE32Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback);
+	void opXmmE32(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback);
+	void opXmmE32Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback);
 
-    virtual void addpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void addssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void subpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void subssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void mulpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void mulssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void divpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void divssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void rcppsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void rcpssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void sqrtpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void sqrtssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void rsqrtpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void rsqrtssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void maxpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void maxssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void minpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void minssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void andnpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void andpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void orpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void xorpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void cvtpi2psXmmMmx(DynXMMReg dst, DynMMXReg src) = 0;
-    virtual void cvtps2piMmxXmm(DynMMXReg dst, DynXMMReg src) = 0;
-    virtual void cvtsi2ssXmmR32(DynXMMReg dst, DynReg src) = 0;
-    virtual void cvtss2siR32Xmm(DynReg dst, DynXMMReg src) = 0;
-    virtual void cvttps2piMmxXmm(DynMMXReg dst, DynXMMReg src) = 0;
-    virtual void cvttss2siR32Xmm(DynReg dst, DynXMMReg src) = 0;
-    virtual void movhlpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void movlhpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void movmskpsR32Xmm(DynReg dst, DynXMMReg src) = 0;
-    virtual void movssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void shufpsXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
-    virtual void unpckhpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void unpcklpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void cmppsXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
-    virtual void cmpssXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
-    virtual void comissXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void ucomissXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void sfence() = 0;
-    virtual void stmxcsr(DynReg address) = 0;
-    virtual void ldmxcsr(DynReg address) = 0;
-    
-    void dynamic_addpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::addpsXmmXmm); }
-    void dynamic_addpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::addpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_addpsE128(op); }); }
-    void dynamic_addssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::addssXmmXmm); }
-    void dynamic_addssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::addssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_addssE32(op); }); }
-    void dynamic_subpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::subpsXmmXmm); }
-    void dynamic_subpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::subpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_subpsE128(op); }); }
-    void dynamic_subssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::subssXmmXmm); }
-    void dynamic_subssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::subssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_subssE32(op); }); }
-    void dynamic_mulpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::mulpsXmmXmm); }
-    void dynamic_mulpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::mulpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_mulpsE128(op); }); }
-    void dynamic_mulssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::mulssXmmXmm); }
-    void dynamic_mulssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::mulssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_mulssE32(op); }); }
-    void dynamic_divpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::divpsXmmXmm); }
-    void dynamic_divpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::divpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_divpsE128(op); }); }
-    void dynamic_divssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::divssXmmXmm); }
-    void dynamic_divssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::divssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_divssE32(op); }); }
-    void dynamic_rcppsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::rcppsXmmXmm); }
-    void dynamic_rcppsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::rcppsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_rcppsE128(op); }); }
-    void dynamic_rcpssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::rcpssXmmXmm); }
-    void dynamic_rcpssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::rcpssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_rcpssE32(op); }); }
-    void dynamic_sqrtpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::sqrtpsXmmXmm); }
-    void dynamic_sqrtpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::sqrtpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_sqrtpsE128(op); }); }
-    void dynamic_sqrtssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::sqrtssXmmXmm); }
-    void dynamic_sqrtssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::sqrtssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_sqrtssE32(op); }); }
-    void dynamic_rsqrtpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::rsqrtpsXmmXmm); }
-    void dynamic_rsqrtpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::rsqrtpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_rsqrtpsE128(op); }); }
-    void dynamic_rsqrtssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::rsqrtssXmmXmm); }
-    void dynamic_rsqrtssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::rsqrtssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_rsqrtssE32(op); }); }
-    void dynamic_maxpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::maxpsXmmXmm); }
-    void dynamic_maxpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::maxpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_maxpsE128(op); }); }
-    void dynamic_maxssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::maxssXmmXmm); }
-    void dynamic_maxssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::maxssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_maxssE32(op); }); }
-    void dynamic_minpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::minpsXmmXmm); }
-    void dynamic_minpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::minpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_minpsE128(op); }); }
-    void dynamic_minssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::minssXmmXmm); }
-    void dynamic_minssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::minssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_minssE32(op); }); }
-    
-    void dynamic_andnpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::andnpsXmmXmm); }
-    void dynamic_andnpsXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::andnpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_andnpsXmmE128(op); }); }
-    void dynamic_andpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::andpsXmmXmm); }
-    void dynamic_andpsXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::andpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_andpsXmmE128(op); }); }
-    void dynamic_orpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::orpsXmmXmm); }
-    void dynamic_orpsXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::orpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_orpsXmmE128(op); }); }
-    void dynamic_xorpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::xorpsXmmXmm); }
-    void dynamic_xorpsXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::xorpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_xorpsXmmE128(op); }); }
+	virtual void addpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void addssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void subpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void subssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void mulpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void mulssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void divpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void divssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void rcppsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void rcpssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void sqrtpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void sqrtssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void rsqrtpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void rsqrtssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void maxpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void maxssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void minpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void minssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void andnpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void andpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void orpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void xorpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void cvtpi2psXmmMmx(DynXMMReg dst, DynMMXReg src) = 0;
+	virtual void cvtps2piMmxXmm(DynMMXReg dst, DynXMMReg src) = 0;
+	virtual void cvtsi2ssXmmR32(DynXMMReg dst, RegPtr src) = 0;
+	virtual void cvtss2siR32Xmm(RegPtr dst, DynXMMReg src) = 0;
+	virtual void cvttps2piMmxXmm(DynMMXReg dst, DynXMMReg src) = 0;
+	virtual void cvttss2siR32Xmm(RegPtr dst, DynXMMReg src) = 0;
+	virtual void movhlpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void movlhpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void movmskpsR32Xmm(RegPtr dst, DynXMMReg src) = 0;
+	virtual void movssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void shufpsXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
+	virtual void unpckhpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void unpcklpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void cmppsXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
+	virtual void cmpssXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
+	virtual void comissXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void ucomissXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
+	virtual void sfence() = 0;
+	virtual void stmxcsr(RegPtr address) = 0;
+	virtual void ldmxcsr(RegPtr address) = 0;
 
-    void dynamic_cvtpi2psXmmMmx(DecodedOp* op) override;
-    void dynamic_cvtpi2psXmmE64(DecodedOp* op) override;
-    void dynamic_cvtps2piMmxXmm(DecodedOp* op) override;
-    void dynamic_cvtps2piMmxE64(DecodedOp* op) override;
-    void dynamic_cvtsi2ssXmmR32(DecodedOp* op) override;
-    void dynamic_cvtsi2ssXmmE32(DecodedOp* op) override;
-    void dynamic_cvtss2siR32Xmm(DecodedOp* op) override;
-    void dynamic_cvtss2siR32E32(DecodedOp* op) override;
-    void dynamic_cvttps2piMmxXmm(DecodedOp* op) override;
-    void dynamic_cvttps2piMmxE64(DecodedOp* op) override;
-    void dynamic_cvttss2siR32Xmm(DecodedOp* op) override;
-    void dynamic_cvttss2siR32E32(DecodedOp* op) override;
+	void dynamic_addpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::addpsXmmXmm); }
+	void dynamic_addpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::addpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_addpsE128(op); }); }
+	void dynamic_addssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::addssXmmXmm); }
+	void dynamic_addssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::addssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_addssE32(op); }); }
+	void dynamic_subpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::subpsXmmXmm); }
+	void dynamic_subpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::subpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_subpsE128(op); }); }
+	void dynamic_subssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::subssXmmXmm); }
+	void dynamic_subssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::subssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_subssE32(op); }); }
+	void dynamic_mulpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::mulpsXmmXmm); }
+	void dynamic_mulpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::mulpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_mulpsE128(op); }); }
+	void dynamic_mulssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::mulssXmmXmm); }
+	void dynamic_mulssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::mulssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_mulssE32(op); }); }
+	void dynamic_divpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::divpsXmmXmm); }
+	void dynamic_divpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::divpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_divpsE128(op); }); }
+	void dynamic_divssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::divssXmmXmm); }
+	void dynamic_divssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::divssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_divssE32(op); }); }
+	void dynamic_rcppsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::rcppsXmmXmm); }
+	void dynamic_rcppsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::rcppsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_rcppsE128(op); }); }
+	void dynamic_rcpssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::rcpssXmmXmm); }
+	void dynamic_rcpssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::rcpssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_rcpssE32(op); }); }
+	void dynamic_sqrtpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::sqrtpsXmmXmm); }
+	void dynamic_sqrtpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::sqrtpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_sqrtpsE128(op); }); }
+	void dynamic_sqrtssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::sqrtssXmmXmm); }
+	void dynamic_sqrtssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::sqrtssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_sqrtssE32(op); }); }
+	void dynamic_rsqrtpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::rsqrtpsXmmXmm); }
+	void dynamic_rsqrtpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::rsqrtpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_rsqrtpsE128(op); }); }
+	void dynamic_rsqrtssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::rsqrtssXmmXmm); }
+	void dynamic_rsqrtssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::rsqrtssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_rsqrtssE32(op); }); }
+	void dynamic_maxpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::maxpsXmmXmm); }
+	void dynamic_maxpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::maxpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_maxpsE128(op); }); }
+	void dynamic_maxssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::maxssXmmXmm); }
+	void dynamic_maxssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::maxssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_maxssE32(op); }); }
+	void dynamic_minpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::minpsXmmXmm); }
+	void dynamic_minpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::minpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_minpsE128(op); }); }
+	void dynamic_minssXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::minssXmmXmm); }
+	void dynamic_minssE32(DecodedOp* op) override { opXmmE32(op, &DynamicCodeGenSSE::minssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_minssE32(op); }); }
 
-    void dynamic_movapsXmmXmm(DecodedOp* op) override { dynamic_movupsXmmXmm(op); }
-    void dynamic_movapsXmmE128(DecodedOp* op) override { dynamic_movupsXmmE128(op); }
-    void dynamic_movapsE128Xmm(DecodedOp* op) override { dynamic_movupsE128Xmm(op); }
-    void dynamic_movupsXmmXmm(DecodedOp* op) override;
-    void dynamic_movupsXmmE128(DecodedOp* op) override;
-    void dynamic_movupsE128Xmm(DecodedOp* op) override;
-    void dynamic_movhlpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::movhlpsXmmXmm); }
-    void dynamic_movlhpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::movlhpsXmmXmm); }
-    void dynamic_movhpsXmmE64(DecodedOp* op) override;
-    void dynamic_movhpsE64Xmm(DecodedOp* op) override;
-    void dynamic_movlpsXmmE64(DecodedOp* op) override;
-    void dynamic_movlpsE64Xmm(DecodedOp* op) override;
-    void dynamic_movmskpsR32Xmm(DecodedOp* op) override;
-    void dynamic_movssXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::movssXmmXmm); }
-    void dynamic_movssXmmE32(DecodedOp* op) override;
-    void dynamic_movssE32Xmm(DecodedOp* op) override;
-    void dynamic_movntpsE128Xmm(DecodedOp* op) override { dynamic_movupsE128Xmm(op); }
-    
-    void dynamic_shufpsXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &DynamicCodeGenSSE::shufpsXmmXmm); }
-    void dynamic_shufpsXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &DynamicCodeGenSSE::shufpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_shufpsXmmE128(op); }); }
-    void dynamic_unpckhpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::unpckhpsXmmXmm); }
-    void dynamic_unpckhpsXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::unpckhpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_unpckhpsXmmE128(op); }); }
-    void dynamic_unpcklpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::unpcklpsXmmXmm); }
-    void dynamic_unpcklpsXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::unpcklpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_unpcklpsXmmE128(op); }); }
+	void dynamic_andnpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::andnpsXmmXmm); }
+	void dynamic_andnpsXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::andnpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_andnpsXmmE128(op); }); }
+	void dynamic_andpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::andpsXmmXmm); }
+	void dynamic_andpsXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::andpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_andpsXmmE128(op); }); }
+	void dynamic_orpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::orpsXmmXmm); }
+	void dynamic_orpsXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::orpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_orpsXmmE128(op); }); }
+	void dynamic_xorpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::xorpsXmmXmm); }
+	void dynamic_xorpsXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::xorpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_xorpsXmmE128(op); }); }
 
-    void dynamic_prefetchT0(DecodedOp* op) override {}
-    void dynamic_prefetchT1(DecodedOp* op) override {}
-    void dynamic_prefetchT2(DecodedOp* op) override {}
-    void dynamic_prefetchNTA(DecodedOp* op) override {}
+	void dynamic_cvtpi2psXmmMmx(DecodedOp* op) override;
+	void dynamic_cvtpi2psXmmE64(DecodedOp* op) override;
+	void dynamic_cvtps2piMmxXmm(DecodedOp* op) override;
+	void dynamic_cvtps2piMmxE64(DecodedOp* op) override;
+	void dynamic_cvtsi2ssXmmR32(DecodedOp* op) override;
+	void dynamic_cvtsi2ssXmmE32(DecodedOp* op) override;
+	void dynamic_cvtss2siR32Xmm(DecodedOp* op) override;
+	void dynamic_cvtss2siR32E32(DecodedOp* op) override;
+	void dynamic_cvttps2piMmxXmm(DecodedOp* op) override;
+	void dynamic_cvttps2piMmxE64(DecodedOp* op) override;
+	void dynamic_cvttss2siR32Xmm(DecodedOp* op) override;
+	void dynamic_cvttss2siR32E32(DecodedOp* op) override;
 
-    void dynamic_cmppsXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &DynamicCodeGenSSE::cmppsXmmXmm); }
-    void dynamic_cmppsXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &DynamicCodeGenSSE::cmppsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_cmppsXmmE128(op); }); }
+	void dynamic_movapsXmmXmm(DecodedOp* op) override { dynamic_movupsXmmXmm(op); }
+	void dynamic_movapsXmmE128(DecodedOp* op) override { dynamic_movupsXmmE128(op); }
+	void dynamic_movapsE128Xmm(DecodedOp* op) override { dynamic_movupsE128Xmm(op); }
+	void dynamic_movupsXmmXmm(DecodedOp* op) override;
+	void dynamic_movupsXmmE128(DecodedOp* op) override;
+	void dynamic_movupsE128Xmm(DecodedOp* op) override;
+	void dynamic_movhlpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::movhlpsXmmXmm); }
+	void dynamic_movlhpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::movlhpsXmmXmm); }
+	void dynamic_movhpsXmmE64(DecodedOp* op) override;
+	void dynamic_movhpsE64Xmm(DecodedOp* op) override;
+	void dynamic_movlpsXmmE64(DecodedOp* op) override;
+	void dynamic_movlpsE64Xmm(DecodedOp* op) override;
+	void dynamic_movmskpsR32Xmm(DecodedOp* op) override;
+	void dynamic_movssXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::movssXmmXmm); }
+	void dynamic_movssXmmE32(DecodedOp* op) override;
+	void dynamic_movssE32Xmm(DecodedOp* op) override;
+	void dynamic_movntpsE128Xmm(DecodedOp* op) override { dynamic_movupsE128Xmm(op); }
 
-    void dynamic_cmpssXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &DynamicCodeGenSSE::cmpssXmmXmm); }
-    void dynamic_cmpssXmmE32(DecodedOp* op) override { opXmmE32Imm(op, &DynamicCodeGenSSE::cmpssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_cmpssXmmE32(op); }); }
+	void dynamic_shufpsXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &DynamicCodeGenSSE::shufpsXmmXmm); }
+	void dynamic_shufpsXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &DynamicCodeGenSSE::shufpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_shufpsXmmE128(op); }); }
+	void dynamic_unpckhpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::unpckhpsXmmXmm); }
+	void dynamic_unpckhpsXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::unpckhpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_unpckhpsXmmE128(op); }); }
+	void dynamic_unpcklpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::unpcklpsXmmXmm); }
+	void dynamic_unpcklpsXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::unpcklpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_unpcklpsXmmE128(op); }); }
 
-    void dynamic_comissXmmXmm(DecodedOp* op) override;
-    void dynamic_comissXmmE32(DecodedOp* op) override;
-    void dynamic_ucomissXmmXmm(DecodedOp* op) override;
-    void dynamic_ucomissXmmE32(DecodedOp* op) override;
+	void dynamic_prefetchT0(DecodedOp* op) override {}
+	void dynamic_prefetchT1(DecodedOp* op) override {}
+	void dynamic_prefetchT2(DecodedOp* op) override {}
+	void dynamic_prefetchNTA(DecodedOp* op) override {}
 
-    void dynamic_stmxcsr(DecodedOp* op) override;
-    void dynamic_ldmxcsr(DecodedOp* op) override;
-    void dynamic_sfence(DecodedOp* op) override;
+	void dynamic_cmppsXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &DynamicCodeGenSSE::cmppsXmmXmm); }
+	void dynamic_cmppsXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &DynamicCodeGenSSE::cmppsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_cmppsXmmE128(op); }); }
 
-    // SSE2
+	void dynamic_cmpssXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &DynamicCodeGenSSE::cmpssXmmXmm); }
+	void dynamic_cmpssXmmE32(DecodedOp* op) override { opXmmE32Imm(op, &DynamicCodeGenSSE::cmpssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_cmpssXmmE32(op); }); }
+
+	void dynamic_comissXmmXmm(DecodedOp* op) override;
+	void dynamic_comissXmmE32(DecodedOp* op) override;
+	void dynamic_ucomissXmmXmm(DecodedOp* op) override;
+	void dynamic_ucomissXmmE32(DecodedOp* op) override;
+
+	void dynamic_stmxcsr(DecodedOp* op) override;
+	void dynamic_ldmxcsr(DecodedOp* op) override;
+	void dynamic_sfence(DecodedOp* op) override;
+
+	// SSE2
 	virtual void addpdXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void addsdXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void subpdXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
@@ -292,22 +292,22 @@ public:
 	virtual void cvttpd2piMmxXmm(DynMMXReg dst, DynXMMReg src) = 0;
 	virtual void cvtps2dqXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void cvtps2pdXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-	virtual void cvtsd2siR32Xmm(DynReg dst, DynXMMReg src) = 0;
+	virtual void cvtsd2siR32Xmm(RegPtr dst, DynXMMReg src) = 0;
 	virtual void cvtsd2ssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-	virtual void cvtsi2sdXmmR32(DynXMMReg dst, DynReg src) = 0;
+	virtual void cvtsi2sdXmmR32(DynXMMReg dst, RegPtr src) = 0;
 	virtual void cvtss2sdXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void cvttpd2dqXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void cvttps2dqXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-	virtual void cvttsd2siR32Xmm(DynReg dst, DynXMMReg src) = 0;
+	virtual void cvttsd2siR32Xmm(RegPtr dst, DynXMMReg src) = 0;
 	virtual void movsdXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void movupdXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-	virtual void movmskpd(DynReg dst, DynXMMReg src) = 0;
-	virtual void movd(DynReg dst, DynXMMReg src) = 0;
-	virtual void movd(DynXMMReg dst, DynReg src) = 0;
+	virtual void movmskpd(RegPtr dst, DynXMMReg src) = 0;
+	virtual void movd(RegPtr dst, DynXMMReg src) = 0;
+	virtual void movd(DynXMMReg dst, RegPtr src) = 0;
 	virtual void movdq2q(DynMMXReg dst, DynXMMReg src) = 0;
 	virtual void movq2dq(DynXMMReg dst, DynMMXReg src) = 0;
 
-	virtual void maskmovdqu(DynXMMReg dst, DynXMMReg src, DynReg address) = 0;
+	virtual void maskmovdqu(DynXMMReg dst, DynXMMReg src, RegPtr address) = 0;
 	virtual void pshufdXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
 	virtual void pshufhwXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
 	virtual void pshuflwXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
@@ -335,11 +335,11 @@ public:
 	virtual void pmulhuwXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void lfence() = 0;
 	virtual void mfence() = 0;
-	virtual void clflush(DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
+	virtual void clflush(RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
 	virtual void pause() = 0;
-	virtual void pextrwR32Xmm(DynReg dst, DynXMMReg src, U32 imm) = 0;
-	virtual void pinsrwXmmR32(DynXMMReg dst, DynReg src, U32 imm) = 0;
-	virtual void pmovmskbR32Xmm(DynReg dst, DynXMMReg src) = 0;
+	virtual void pextrwR32Xmm(RegPtr dst, DynXMMReg src, U32 imm) = 0;
+	virtual void pinsrwXmmR32(DynXMMReg dst, RegPtr src, U32 imm) = 0;
+	virtual void pmovmskbR32Xmm(RegPtr dst, DynXMMReg src) = 0;
 
 	void dynamic_addpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::addpdXmmXmm); }
 	void dynamic_addpdXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::addpdXmmXmm, [op, this]() {DynamicCodeGen::dynamic_addpdXmmE128(op); }); }
@@ -475,7 +475,7 @@ public:
 	void dynamic_cvtdq2pdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::cvtdq2pdXmmXmm, false); }
 	void dynamic_cvtdq2pdXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::cvtdq2pdXmmXmm, [op, this]() {DynamicCodeGen::dynamic_cvtdq2pdXmmE128(op); }, false); }
 	void dynamic_cvtdq2psXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::cvtdq2psXmmXmm, false); }
-	void dynamic_cvtdq2psXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::cvtdq2psXmmXmm, [op, this]() {DynamicCodeGen::dynamic_cvtdq2psXmmE128(op); }, false); }	
+	void dynamic_cvtdq2psXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::cvtdq2psXmmXmm, [op, this]() {DynamicCodeGen::dynamic_cvtdq2psXmmE128(op); }, false); }
 	void dynamic_cvtpd2dqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::cvtpd2dqXmmXmm, false); } // top bits in dest are zero'd
 	void dynamic_cvtpd2dqXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::cvtpd2dqXmmXmm, [op, this]() {DynamicCodeGen::dynamic_cvtpd2dqXmmE128(op); }, false); }
 	void dynamic_cvtpd2psXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::cvtpd2psXmmXmm, false); } // top bits in dest are zero'd
@@ -496,7 +496,7 @@ public:
 	void dynamic_cvtps2dqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::cvtps2dqXmmXmm, false); }
 	void dynamic_cvtps2dqXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::cvtps2dqXmmXmm, [op, this]() {DynamicCodeGen::dynamic_cvtpd2psXmmE128(op); }, false); }
 	void dynamic_cvtps2pdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::cvtps2pdXmmXmm, false); }
-	void dynamic_cvtps2pdXmmE64(DecodedOp* op) override { opXmmE64(op, &DynamicCodeGenSSE::cvtps2pdXmmXmm, [op, this]() {DynamicCodeGen::dynamic_cvtps2pdXmmE64(op); }, false); }	
+	void dynamic_cvtps2pdXmmE64(DecodedOp* op) override { opXmmE64(op, &DynamicCodeGenSSE::cvtps2pdXmmXmm, [op, this]() {DynamicCodeGen::dynamic_cvtps2pdXmmE64(op); }, false); }
 	void dynamic_cvtsd2ssXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::cvtsd2ssXmmXmm); }
 	void dynamic_cvtsd2ssXmmE64(DecodedOp* op) override { opXmmE64(op, &DynamicCodeGenSSE::cvtsd2ssXmmXmm, [op, this]() {DynamicCodeGen::dynamic_cvtsd2ssXmmE64(op); }); }
 	void dynamic_cvtss2sdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::cvtss2sdXmmXmm); }
@@ -542,20 +542,20 @@ public:
 	void dynamic_movntdqE128Xmm(DecodedOp* op) override { dynamic_movupdE128Xmm(op); }
 	void dynamic_movntiE32R32(DecodedOp* op) override { dynamic_move32r32(op); }
 
-	
+
 	void dynamic_pshufdXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &DynamicCodeGenSSE::pshufdXmmXmm); }
 	void dynamic_pshufdXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &DynamicCodeGenSSE::pshufdXmmXmm, [op, this]() {DynamicCodeGen::dynamic_pshufdXmmE128(op); }); }
 	void dynamic_pshufhwXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &DynamicCodeGenSSE::pshufhwXmmXmm); }
 	void dynamic_pshufhwXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &DynamicCodeGenSSE::pshufhwXmmXmm, [op, this]() {DynamicCodeGen::dynamic_pshufhwXmmE128(op); }); }
 	void dynamic_pshuflwXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &DynamicCodeGenSSE::pshuflwXmmXmm); }
 	void dynamic_pshuflwXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &DynamicCodeGenSSE::pshuflwXmmXmm, [op, this]() {DynamicCodeGen::dynamic_pshuflwXmmE128(op); }); }
-	
+
 	void dynamic_shufpdXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &DynamicCodeGenSSE::shufpdXmmXmm); }
 	void dynamic_shufpdXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &DynamicCodeGenSSE::shufpdXmmXmm, [op, this]() {DynamicCodeGen::dynamic_shufpdXmmE128(op); }); }
 	void dynamic_unpckhpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::unpckhpdXmmXmm); }
 	void dynamic_unpckhpdXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::unpckhpdXmmXmm, [op, this]() {DynamicCodeGen::dynamic_unpckhpdXmmE128(op); }); }
 	void dynamic_unpcklpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::unpcklpdXmmXmm); }
-	
+
 	void dynamic_unpcklpdXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::unpcklpdXmmXmm, [op, this]() {DynamicCodeGen::dynamic_unpcklpdXmmE128(op); }); }
 	void dynamic_punpckhbwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::punpckhbwXmmXmm); }
 	void dynamic_punpckhbwXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::punpckhbwXmmXmm, [op, this]() {DynamicCodeGen::dynamic_punpckhbwXmmE128(op); }); }
@@ -585,7 +585,7 @@ public:
 	void dynamic_pavgwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::pavgwXmmXmm); }
 	void dynamic_pavgwXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::pavgwXmmXmm, [op, this]() {DynamicCodeGen::dynamic_pavgwXmmE128(op); }); }
 	void dynamic_psadbwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::psadbwXmmXmm); }
-	void dynamic_psadbwXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::psadbwXmmXmm, [op, this]() {DynamicCodeGen::dynamic_psadbwXmmE128(op); }); }	
+	void dynamic_psadbwXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::psadbwXmmXmm, [op, this]() {DynamicCodeGen::dynamic_psadbwXmmE128(op); }); }
 	void dynamic_pmaxswXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::pmaxswXmmXmm); }
 	void dynamic_pmaxswXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::pmaxswXmmXmm, [op, this]() {DynamicCodeGen::dynamic_pmaxswXmmE128(op); }); }
 	void dynamic_pmaxubXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::pmaxubXmmXmm); }

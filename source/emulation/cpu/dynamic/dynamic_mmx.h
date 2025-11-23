@@ -19,11 +19,11 @@
 #include "../common/common_mmx.h"
 
 #undef MMX_0
-#define MMX_0(name) void DynamicData::dynamic_##name(DecodedOp* op) {callHostFunction((void*)common_##name, false, 1, 0, DYN_PARAM_CPU, false);incrementEip(op->len);}
+#define MMX_0(name) void DynamicData::dynamic_##name(DecodedOp* op) {call(common_##name);incrementEip(op->len);}
 #undef MMX_RR
-#define MMX_RR(name) void DynamicData::dynamic_##name(DecodedOp* op) {callHostFunction((void*)common_##name, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);incrementEip(op->len);}
+#define MMX_RR(name) void DynamicData::dynamic_##name(DecodedOp* op) {call_II(common_##name, op->reg, op->rm);incrementEip(op->len);}
 #undef MMX_RE
-#define MMX_RE(name) void DynamicData::dynamic_##name(DecodedOp* op) {calculateEaa(op, DYN_ADDRESS);callHostFunction((void*)common_##name, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);incrementEip(op->len);}
+#define MMX_RE(name) void DynamicData::dynamic_##name(DecodedOp* op) {call_IR(common_##name, op->reg, JitWidth::b32, calculateEaaV2(op));incrementEip(op->len);}
 #undef MMX_RI
-#define MMX_RI(name) void DynamicData::dynamic_##name(DecodedOp* op) {callHostFunction((void*)common_##name, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, (U8)op->imm, DYN_PARAM_CONST_32, false);incrementEip(op->len);}
+#define MMX_RI(name) void DynamicData::dynamic_##name(DecodedOp* op) {call_II8(common_##name, op->reg, op->imm);incrementEip(op->len);}
 #include "../common/common_mmx_def.h"

@@ -30,6 +30,10 @@ public:
     virtual U32 getOF(CPU* cpu) const=0;
     virtual U32 getAF(CPU* cpu) const=0;
     virtual U32 getPF(CPU* cpu) const=0;
+    virtual bool usesResult(U32 mask) const= 0;
+    virtual bool usesSrc(U32 mask) const= 0;
+    virtual bool usesDst(U32 mask) const= 0;
+    virtual bool usesOldCF(U32 mask) const = 0;
     U32 width;
 };
 
@@ -67,12 +71,6 @@ extern const LazyFlags* FLAGS_SHL32;
 extern const LazyFlags* FLAGS_SHR8;
 extern const LazyFlags* FLAGS_SHR16;
 extern const LazyFlags* FLAGS_SHR32;
-extern const LazyFlags* FLAGS_SHR8_1;
-extern const LazyFlags* FLAGS_SHR16_1;
-extern const LazyFlags* FLAGS_SHR32_1;
-extern const LazyFlags* FLAGS_SHR8_N1;
-extern const LazyFlags* FLAGS_SHR16_N1;
-extern const LazyFlags* FLAGS_SHR32_N1;
 extern const LazyFlags* FLAGS_SAR8;
 extern const LazyFlags* FLAGS_SAR16;
 extern const LazyFlags* FLAGS_SAR32;

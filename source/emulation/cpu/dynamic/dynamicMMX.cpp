@@ -26,22 +26,23 @@ void start_mmx(CPU* cpu) {
 }
 
 void DynamicCodeGenMMX::startMMX() {
-    movToCpu(offsetof(CPU, fpu.sw), DYN_32bit, 0);
-    movToCpu(offsetof(CPU, fpu.top), DYN_32bit, 0);
-    movToCpu(offsetof(CPU, fpu.isMMXInUse), DYN_8bit, 1);
-    movToCpu(offsetof(CPU, fpu.tags[0]), DYN_32bit, 0);
-    movToCpu(offsetof(CPU, fpu.tags[0]) + 4, DYN_32bit, 0);
-    movToCpu(offsetof(CPU, fpu.isRegCached), DYN_32bit, 0);
-    movToCpu(offsetof(CPU, fpu.isRegCached) + 4, DYN_32bit, 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.sw), 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.top), 0);
+    writeCPUValue(JitWidth::b8, offsetof(CPU, fpu.isMMXInUse), 1);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.isRegCached), 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.isRegCached) + 4, 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.tags[0]), 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.tags[0]) + 4, 0);
 }
 
 void DynamicCodeGenMMX::dynamic_emms(DecodedOp* op) {
-    movToCpu(offsetof(CPU, fpu.isMMXInUse), DYN_8bit, 0);
-    movToCpu(offsetof(CPU, fpu.isRegCached), DYN_32bit, 0);
-    movToCpu(offsetof(CPU, fpu.isRegCached) + 4, DYN_32bit, 0);
+    writeCPUValue(JitWidth::b8, offsetof(CPU, fpu.isMMXInUse), 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.isRegCached), 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.isRegCached) + 4, 0);
 
-    movToCpu(offsetof(CPU, fpu.tags[0]), DYN_32bit, TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));
-    movToCpu(offsetof(CPU, fpu.tags[0]) + 4, DYN_32bit, TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.tags[0]), TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.tags[0]) + 4, TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));
+
     incrementEip(op->len);
 }
 
@@ -66,15 +67,13 @@ void DynamicCodeGenMMX::dynamic_movPqR32(DecodedOp* op) {
     // rmrq->ud.d1 = 0;
     // cpu->fpu.startMMX();
     startMMX();
-    loadReg(op->rm, DYN_SRC, DYN_32bit);
-    loadMMXFromReg(DynMMXReg(op->reg), DYN_SRC);
+    loadMMXFromReg(DynMMXReg(op->reg), getReadOnlyReg(op->rm));
     storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenMMX::dynamic_movPqE32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         startMMX();
         loadMMXFromMem32(DynMMXReg(op->reg), address, offset, 0, 0);
         storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
@@ -87,14 +86,12 @@ void DynamicCodeGenMMX::dynamic_movPqE32(DecodedOp* op) {
 void DynamicCodeGenMMX::dynamic_movR32Pq(DecodedOp* op) {
     // cpu->reg[r1].u32 = cpu->reg_mmx[r2].ud.d0;
     loadCpuMMXReg(DynMMXReg(op->rm), op->rm);
-    storeMMXToReg(DynMMXReg(op->rm), DYN_SRC);
-    storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+    storeMMXToReg(DynMMXReg(op->rm), getReg(op->reg, -1, false));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenMMX::dynamic_movE32Pq(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_32bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b32, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         // writed(address, cpu->reg_mmx[reg].ud.d0);
         loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
         storeMMXToMem32(DynMMXReg(op->reg), address, offset, 0, 0);
@@ -117,8 +114,7 @@ void DynamicCodeGenMMX::dynamic_movMmxPq(DecodedOp* op) {
 }
 
 void DynamicCodeGenMMX::dynamic_movPqE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         // cpu->reg_mmx[reg].q = readq(address);
         startMMX();
         loadMMXFromMem64(DynMMXReg(op->reg), address, offset, 0, 0);
@@ -131,8 +127,7 @@ void DynamicCodeGenMMX::dynamic_movPqE64(DecodedOp* op) {
 
 void DynamicCodeGenMMX::dynamic_movE64Pq(DecodedOp* op) {
     // writeq(address, cpu->reg_mmx[reg].q);
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_64bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b64, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         // writed(address, cpu->reg_mmx[reg].ud.d0);
         loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
         storeMMXToMem64(DynMMXReg(op->reg), address, offset, 0, 0);
@@ -151,8 +146,7 @@ void DynamicCodeGenMMX::opMmxMmx(DecodedOp* op, MmxMmxCallback callback) {
 }
 
 void DynamicCodeGenMMX::opMmxE64(DecodedOp* op, MmxMmxCallback callback, std::function<void()> fallback) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, callback, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, callback, this](RegPtr address, RegPtr offset) {
         // cpu->reg_mmx[reg].q = readq(address);
         DynMMXReg tmpMMX = getTmpMMX(op->reg);
         loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
@@ -175,24 +169,22 @@ void DynamicCodeGenMMX::opMmx(DecodedOp* op, MmxImmCallback callback) {
 
 void DynamicCodeGenMMX::dynamic_pmovmskbR32Mmx(DecodedOp* op) {
     loadCpuMMXReg(DynMMXReg(op->rm), op->rm);
-    pmovmskbMmxMmx(DYN_SRC, (DynMMXReg)op->rm);
-    storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+    pmovmskbMmxMmx(getReg(op->reg, -1, false), (DynMMXReg)op->rm);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenMMX::dynamic_pextrwR32Mmx(DecodedOp* op) {
     loadCpuMMXReg(DynMMXReg(op->rm), op->rm);
-    pextrwRegMmx(DYN_SRC, (DynMMXReg)op->rm, op->imm & 3);
-    storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+    pextrwRegMmx(getReg(op->reg, -1, false), (DynMMXReg)op->rm, op->imm & 3);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenMMX::dynamic_pextrwE16Mmx(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_16bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b16, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
-        pextrwRegMmx(DYN_DEST, (DynMMXReg)op->reg, op->imm & 3);
-        writeMem(DYN_DEST, DYN_16bit, address, offset, 0, 0);
+        RegPtr tmp = getTmpReg();
+        pextrwRegMmx(tmp, (DynMMXReg)op->reg, op->imm & 3);
+        write(JitWidth::b16, address, offset, 0, 0, tmp);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_pextrwE16Mmx(op);
@@ -201,18 +193,17 @@ void DynamicCodeGenMMX::dynamic_pextrwE16Mmx(DecodedOp* op) {
 
 void DynamicCodeGenMMX::dynamic_pinsrwMmxR32(DecodedOp* op) {
     loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
-    loadReg(op->rm, DYN_SRC, DYN_32bit);
-    pinsrwMmxReg((DynMMXReg)op->reg, DYN_SRC, op->imm & 3);
+    pinsrwMmxReg((DynMMXReg)op->reg, getReadOnlyReg(op->rm), op->imm & 3);
     storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenMMX::dynamic_pinsrwMmxE16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b16, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
-        readMem(DYN_SRC, DYN_16bit, address, offset, 0, 0);
-        pinsrwMmxReg((DynMMXReg)op->reg, DYN_SRC, op->imm & 3);
+        RegPtr tmp = getTmpReg();
+        read(JitWidth::b16, tmp, address, offset, 0, 0);
+        pinsrwMmxReg((DynMMXReg)op->reg, tmp, op->imm & 3);
         storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
         incrementEip(op->len);
     }, [op, this]() {
@@ -229,8 +220,7 @@ void DynamicCodeGenMMX::dynamic_pshufwMmxMmx(DecodedOp* op) {
 }
 
 void DynamicCodeGenMMX::dynamic_pshufwMmxE64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(JitWidth::b64, calculateEaaV2(op), [op, this](RegPtr address, RegPtr offset) {
         // cpu->reg_mmx[reg].q = readq(address);
         DynMMXReg tmpMMX = getTmpMMX(op->reg);
         loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
@@ -244,15 +234,17 @@ void DynamicCodeGenMMX::dynamic_pshufwMmxE64(DecodedOp* op) {
 }
 
 void DynamicCodeGenMMX::dynamic_maskmovqEDIMmxMmx(DecodedOp* op) {
-    loadReg(7, DYN_ADDRESS, DYN_32bit);
-    if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
-        loadSegAddress(op->base, DYN_SRC);
-        addRegReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true);
+    RegPtr address;
+    if (op->base < 6 && cpu->thread->process->hasSetSeg[op->base]) {
+        address = getTmpReg(7);
+        addReg(JitWidth::b32, address, getReadOnlySegAddress(op->base));
+    } else {
+        address = getReadOnlyReg(7);
     }
-    movToMem(DYN_ADDRESS, DYN_64bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
+    write(JitWidth::b64, std::move(address), nullptr, [op, this](RegPtr address, RegPtr offset) {
         loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
         loadCpuMMXReg(DynMMXReg(op->rm), op->rm);
-        addRegReg(address, offset, DYN_32bit, false);
+        addReg(JitWidth::b32, address, offset);
         maskmovq(DynMMXReg(op->reg), DynMMXReg(op->rm), address);
         incrementEip(op->len);
     }, [op, this]() {

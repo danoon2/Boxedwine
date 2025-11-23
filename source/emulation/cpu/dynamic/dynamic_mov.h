@@ -17,250 +17,231 @@
  */
 
 void DynamicData::dynamic_movr8r8(DecodedOp* op) {
-    loadRegStoreReg(op->reg, op->rm, DYN_8bit, DYN_SRC);
+    mov(JitWidth::b8, getReg8(op->reg), getReadOnlyReg8(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_move8r8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    loadReg(op->reg, DYN_SRC, DYN_8bit); 
-    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true, DYN_DEST);
+    write(JitWidth::b8, calculateEaaV2(op), getReadOnlyReg8(op->reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr8e8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    storeRegFromMem(op->reg, DYN_8bit, DYN_ADDRESS, true, true);
+    mov(JitWidth::b8, getReg8(op->reg), read(JitWidth::b8, calculateEaaV2(op)));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr8(DecodedOp* op) {
-    storeReg(op->reg, DYN_8bit, op->imm);
+    movValue(JitWidth::b8, getReg8(op->reg), op->imm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_move8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); movToMemFromImm(DYN_ADDRESS, DYN_8bit, op->imm, true, DYN_DEST);
+    writeValue(JitWidth::b8, calculateEaaV2(op), op->imm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr16r16(DecodedOp* op) {
-    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC);
+    mov(JitWidth::b16, getReg(op->reg), getReadOnlyReg(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_move16r16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    loadReg(op->reg, DYN_SRC, DYN_16bit);
-    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true, DYN_DEST);
+    write(JitWidth::b16, calculateEaaV2(op), getReadOnlyReg(op->reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr16e16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    mov(JitWidth::b16, getReg(op->reg), read(JitWidth::b16, calculateEaaV2(op)));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr16(DecodedOp* op) {
-    storeReg(op->reg, DYN_16bit, op->imm);
+    movValue(JitWidth::b16, getReg(op->reg), op->imm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_move16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); movToMemFromImm(DYN_ADDRESS, DYN_16bit, op->imm, true, DYN_DEST);
+    writeValue(JitWidth::b16, calculateEaaV2(op), op->imm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr32r32(DecodedOp* op) {
-    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC);
+    mov(JitWidth::b32, getReg(op->reg, -1, false), getReadOnlyReg(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_move32r32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    loadReg(op->reg, DYN_SRC, DYN_32bit);
-    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true, DYN_DEST);
+    write(JitWidth::b32, calculateEaaV2(op), getReadOnlyReg(op->reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr32e32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    mov(JitWidth::b32, getReg(op->reg, -1, false), read(JitWidth::b32, calculateEaaV2(op)));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr32(DecodedOp* op) {
-    storeReg(op->reg, DYN_32bit, op->imm);
+    movValue(JitWidth::b32, getReg(op->reg, -1, false), op->imm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_move32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); movToMemFromImm(DYN_ADDRESS, DYN_32bit, op->imm, true, DYN_DEST);
+    writeValue(JitWidth::b32, calculateEaaV2(op), op->imm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr16s16(DecodedOp* op) {
-    loadSegValue(op->rm, DYN_SRC);
-    movToRegFromReg(DYN_SRC, DYN_16bit, DYN_SRC, DYN_32bit, false);
-    storeReg(op->reg, DYN_SRC, DYN_16bit, true);
+    mov(JitWidth::b16, getReg(op->reg), getReadOnlySegValue(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr32s16(DecodedOp* op) {
-    loadSegValueStoreReg(op->reg, op->rm, DYN_SRC);
+    mov(JitWidth::b32, getReg(op->reg, -1, false), getReadOnlySegValue(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_move16s16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    loadSegValue(op->reg, DYN_SRC);
-    movToRegFromReg(DYN_SRC, DYN_16bit, DYN_SRC, DYN_32bit, false); 
-    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true, DYN_DEST);
+    write(JitWidth::b16, calculateEaaV2(op), getReadOnlySegValue(op->reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movs16e16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
-    IfNot(DYN_CALL_RESULT, true);
-    blockDone(true);
-    EndIf();
+    // the weird getTmpReg is to override the behavior of read, to make it not use getTmpRegForCallResult so that EAX is available to use for callAndReturn
+    RegPtr result = callAndReturn_IR(common_setSegment, op->reg, JitWidth::b16, read(JitWidth::b16, calculateEaaV2(op), nullptr, nullptr, false, getTmpReg()));
+    IfNot(JitWidth::b32, result); {
+        blockDone(true);
+    } EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movs16r16(DecodedOp* op) {
-    callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CPU_REG_16, false);
-    IfNot(DYN_CALL_RESULT, true);
-    blockDone(true);
-    EndIf();
+    RegPtr result = callAndReturn_IR(common_setSegment, op->rm, JitWidth::b16, getReadOnlyReg(op->reg));
+    IfNot(JitWidth::b32, result); {
+        blockDone(true);
+    } EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movAlOb(DecodedOp* op) {
-    loadSegAddress(op->base, DYN_ADDRESS);
-    addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
-    movFromMem(DYN_8bit, DYN_ADDRESS, true);
-    storeReg(0, DYN_CALL_RESULT, DYN_8bit, true);
+    RegPtr reg;
+    if (cpu->thread->process->hasSetSeg[op->base]) {
+        reg = getTmpSegAddress(op->base);
+        addValue(JitWidth::b32, reg, op->data.disp);
+    } else {
+        reg = getTmpReg();
+        movValue(JitWidth::b32, reg, op->data.disp);
+    }
+    mov(JitWidth::b8, getReg8(0), read(JitWidth::b8, reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movAxOw(DecodedOp* op) {
-    loadSegAddress(op->base, DYN_ADDRESS);
-    addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    storeReg(0, DYN_CALL_RESULT, DYN_16bit, true);
+    RegPtr reg;
+    if (cpu->thread->process->hasSetSeg[op->base]) {
+        reg = getTmpSegAddress(op->base);
+        addValue(JitWidth::b32, reg, op->data.disp);
+    } else {
+        reg = getTmpReg();
+        movValue(JitWidth::b32, reg, op->data.disp);
+    }
+    mov(JitWidth::b16, getReg(0), read(JitWidth::b16, reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movEaxOd(DecodedOp* op) {
-    loadSegAddress(op->base, DYN_ADDRESS);
-    addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true);
-    storeReg(0, DYN_CALL_RESULT, DYN_32bit, true);
+    RegPtr reg;
+    if (cpu->thread->process->hasSetSeg[op->base]) {
+        reg = getTmpSegAddress(op->base);
+        addValue(JitWidth::b32, reg, op->data.disp);
+    } else {
+        reg = getTmpReg();
+        movValue(JitWidth::b32, reg, op->data.disp);
+    }
+    mov(JitWidth::b32, getReg(0, -1, false), read(JitWidth::b32, reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movObAl(DecodedOp* op) {
-    loadSegAddress(op->base, DYN_ADDRESS);
-    addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
-    loadReg(0, DYN_SRC, DYN_8bit);
-    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true, DYN_DEST);
+    RegPtr reg;
+    if (cpu->thread->process->hasSetSeg[op->base]) {
+        reg = getTmpSegAddress(op->base);
+        addValue(JitWidth::b32, reg, op->data.disp);
+    } else {
+        reg = getTmpReg();
+        movValue(JitWidth::b32, reg, op->data.disp);
+    }
+    write(JitWidth::b8, reg, getReadOnlyReg8(0));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movOwAx(DecodedOp* op) {
-    loadSegAddress(op->base, DYN_ADDRESS);
-    addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
-    loadReg(0, DYN_SRC, DYN_16bit);
-    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true, DYN_DEST);
+    RegPtr reg;
+    if (cpu->thread->process->hasSetSeg[op->base]) {
+        reg = getTmpSegAddress(op->base);
+        addValue(JitWidth::b32, reg, op->data.disp);
+    } else {
+        reg = getTmpReg();
+        movValue(JitWidth::b32, reg, op->data.disp);
+    }
+    write(JitWidth::b16, reg, getReadOnlyReg(0));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movOdEax(DecodedOp* op) {
-    loadSegAddress(op->base, DYN_ADDRESS);
-    addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
-    loadReg(0, DYN_SRC, DYN_32bit);
-    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true, DYN_DEST);
+    RegPtr reg;
+    if (cpu->thread->process->hasSetSeg[op->base]) {
+        reg = getTmpSegAddress(op->base);
+        addValue(JitWidth::b32, reg, op->data.disp);
+    } else {
+        reg = getTmpReg();
+        movValue(JitWidth::b32, reg, op->data.disp);
+    }
+    write(JitWidth::b32, reg, getReadOnlyReg(0));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGwXzR8(DecodedOp* op) {
-    loadReg(op->rm, DYN_SRC, DYN_8bit);
-    movToRegFromReg(DYN_SRC, DYN_16bit, DYN_SRC, DYN_8bit, false);
-    storeReg(op->reg, DYN_SRC, DYN_16bit, true);
+    movzx(JitWidth::b16, getReg(op->reg), JitWidth::b8, getReadOnlyReg8(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGwXzE8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    movFromMem(DYN_8bit, DYN_ADDRESS, true);  
-    movToRegFromReg(DYN_CALL_RESULT, DYN_16bit, DYN_CALL_RESULT, DYN_8bit, false); 
-    storeReg(op->reg, DYN_CALL_RESULT, DYN_16bit, true);
+    movzx(JitWidth::b16, getReg(op->reg), JitWidth::b8, read(JitWidth::b8, calculateEaaV2(op)));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGwSxR8(DecodedOp* op) {
-    loadReg(op->rm, DYN_SRC, DYN_8bit); 
-    movToRegFromRegSignExtend(DYN_SRC, DYN_16bit, DYN_SRC, DYN_8bit, false);
-    storeReg(op->reg, DYN_SRC, DYN_16bit, true);
+    movsx(JitWidth::b16, getReg(op->reg), JitWidth::b8, getReadOnlyReg8(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGwSxE8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    movFromMem(DYN_8bit, DYN_ADDRESS, true);  
-    movToRegFromRegSignExtend(DYN_CALL_RESULT, DYN_16bit, DYN_CALL_RESULT, DYN_8bit, false); 
-    storeReg(op->reg, DYN_CALL_RESULT, DYN_16bit, true);
+    movsx(JitWidth::b16, getReg(op->reg), JitWidth::b8, read(JitWidth::b8, calculateEaaV2(op)));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGdXzR8(DecodedOp* op) {
-    loadReg(op->rm, DYN_SRC, DYN_8bit); 
-    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit, false);
-    storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+    movzx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b8, getReadOnlyReg8(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGdXzE8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    movFromMem(DYN_8bit, DYN_ADDRESS, true);
-    movToRegFromReg(DYN_CALL_RESULT, DYN_32bit, DYN_CALL_RESULT, DYN_8bit, false);
-    storeReg(op->reg, DYN_CALL_RESULT, DYN_32bit, true);
+    movzx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b8, read(JitWidth::b8, calculateEaaV2(op)));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGdSxR8(DecodedOp* op) {
-    loadReg(op->rm, DYN_SRC, DYN_8bit); 
-    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit, false);
-    storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+    movsx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b8, getReadOnlyReg8(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGdSxE8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_8bit, DYN_ADDRESS, true);
-    movToRegFromRegSignExtend(DYN_CALL_RESULT, DYN_32bit, DYN_CALL_RESULT, DYN_8bit, false);
-    storeReg(op->reg, DYN_CALL_RESULT, DYN_32bit, true);
+    movsx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b8, read(JitWidth::b8, calculateEaaV2(op)));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGdXzR16(DecodedOp* op) {
-    loadReg(op->rm, DYN_SRC, DYN_16bit); 
-    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false);
-    storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+    movzx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b16, getReadOnlyReg(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGdXzE16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    movToRegFromReg(DYN_CALL_RESULT, DYN_32bit, DYN_CALL_RESULT, DYN_16bit, false);
-    storeReg(op->reg, DYN_CALL_RESULT, DYN_32bit, true);
+    movzx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b16, read(JitWidth::b16, calculateEaaV2(op)));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGdSxR16(DecodedOp* op) {
-    loadReg(op->rm, DYN_SRC, DYN_16bit); 
-    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false);
-    storeReg(op->reg, DYN_SRC, DYN_32bit, true);
+    movsx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b16, getReadOnlyReg(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGdSxE16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    movToRegFromRegSignExtend(DYN_CALL_RESULT, DYN_32bit, DYN_CALL_RESULT, DYN_16bit, false);
-    storeReg(op->reg, DYN_CALL_RESULT, DYN_32bit, true);
+    movsx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b16, read(JitWidth::b16, calculateEaaV2(op)));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movRdCRx(DecodedOp* op) {
-    callHostFunction((void*)common_readCrx, true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-    IfNot(DYN_CALL_RESULT, true);
-    blockDone(true);
-    EndIf();
+    RegPtr result = callAndReturn_II(common_readCrx, op->rm, op->reg);
+    IfNot(JitWidth::b32, result); {
+        blockDone(true);
+    } EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movCRxRd(DecodedOp* op) {
-    loadReg(op->reg, DYN_SRC, DYN_32bit);
-    callHostFunction((void*)common_writeCrx, true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, DYN_SRC, DYN_PARAM_REG_32, true);
-    IfNot(DYN_CALL_RESULT, true);
-    blockDone(true);
-    EndIf();
+    RegPtr result = callAndReturn_IR(common_writeCrx, op->rm, JitWidth::b32, getReadOnlyReg(op->reg));
+    IfNot(JitWidth::b32, result); {
+        blockDone(true);
+    } EndIf();
     incrementEip(op->len);
 }
-
 void DynamicData::dynamic_leaR16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    storeReg(op->reg, DYN_ADDRESS, DYN_16bit, true);
+    mov(JitWidth::b16, getReg(op->reg), calculateEaaV2(op));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_leaR32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    storeReg(op->reg, DYN_ADDRESS, DYN_32bit, true);
+    mov(JitWidth::b32, getReg(op->reg, -1, false), calculateEaaV2(op));
     incrementEip(op->len);
 }

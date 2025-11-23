@@ -16,208 +16,300 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+void DynamicData::push16(RegPtr reg) {
+    // U32 new_esp = (THIS_ESP & this->stackNotMask) | ((THIS_ESP - 2) & this->stackMask);
+    // memory->writew(this->seg[SS].address + (new_esp & this->stackMask), value);
+    // THIS_ESP = new_esp;
+
+    RegPtr address = getTmpReg(4);
+
+    IfSmallStack(true); {
+        andValue(JitWidth::b32, address, 0xFFFF);
+        subValue(JitWidth::b16, address, 2);
+        addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
+        write(JitWidth::b16, address, reg);
+        subValue(JitWidth::b16, getReg(4), 2);
+    } StartElse(true); {
+        subValue(JitWidth::b32, address, 2);
+        addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
+        write(JitWidth::b16, address, reg);
+        subValue(JitWidth::b32, getReg(4), 2);
+    } EndIf(true);
+}
+
+void DynamicData::push32(RegPtr reg) {
+    if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
+        RegPtr address = getTmpReg(4);
+        subValue(JitWidth::b32, address, 4);
+        write(JitWidth::b32, address, reg);
+        subValue(JitWidth::b32, getReg(4), 4);
+    } else {
+        RegPtr address = getTmpReg(4);
+
+        IfSmallStack(true); {
+            andValue(JitWidth::b32, address, 0xFFFF);
+            subValue(JitWidth::b16, address, 4);
+            addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
+            write(JitWidth::b32, address, reg);
+            subValue(JitWidth::b16, getReg(4), 4);
+        } StartElse(true); {
+            subValue(JitWidth::b32, address, 4);
+            addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
+            write(JitWidth::b32, address, reg);
+            subValue(JitWidth::b32, getReg(4), 4);
+        } EndIf(true);
+    }
+}
+
+RegPtr DynamicData::pop32(RegPtr reg, U32 amount) {
+    if (!reg) {
+        reg = getTmpReg();
+    }
+    mov(JitWidth::b32, reg, peek32());
+    IfSmallStack(); {
+        addValue(JitWidth::b16, getReg(4), amount);
+    } StartElse(); {
+        addValue(JitWidth::b32, getReg(4), amount);
+    } EndIf();
+    return reg;
+}
+
+RegPtr DynamicData::pop16(RegPtr reg, U32 amount) {
+    if (!reg) {
+        reg = getTmpReg();
+    }
+    mov(JitWidth::b16, reg, peek16());
+    IfSmallStack(); {
+        addValue(JitWidth::b16, getReg(4), amount);
+    } StartElse(); {
+        addValue(JitWidth::b32, getReg(4), amount);
+    } EndIf();
+    return reg;
+}
+
+RegPtr DynamicData::peek16(RegPtr resultReg) {
+    RegPtr address = getTmpReg(4);
+
+    IfSmallStack(); {
+        andValue(JitWidth::b32, address, 0xFFFF);
+    } EndIf();
+    addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
+    return read(JitWidth::b16, address, nullptr, nullptr, false, resultReg);
+}
+RegPtr DynamicData::peek32(RegPtr resultReg) {
+    RegPtr address = getTmpReg(4);
+
+    IfSmallStack(); {
+        andValue(JitWidth::b32, address, 0xFFFF);
+    } EndIf();
+    addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
+    return read(JitWidth::b32, address, nullptr, nullptr, false, resultReg);
+}
 void DynamicData::dynamic_pushEw_reg(DecodedOp* op) {
-    callHostFunction((void*)common_push16, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_16, false);
+    push16(getReadOnlyReg(op->reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popEw_reg(DecodedOp* op) {
-    callHostFunction((void*)common_pop16, true, 1, 0, DYN_PARAM_CPU, false);
-    storeReg(op->reg, DYN_CALL_RESULT, DYN_16bit, true);
+    pop16(getReg(op->reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushEw_mem(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    callHostFunction((void*)common_push16, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
+    push16(read(JitWidth::b16, calculateEaaV2(op)));
     incrementEip(op->len);
 }
-void DynamicData::dynamic_popEw_mem(DecodedOp* op) {    
-    // save current ESP
-    loadReg(4, DYN_SRC, DYN_32bit);
-    // pop stack
-    callHostFunction((void*)common_pop16, true, 1, 0, DYN_PARAM_CPU, false);
-    // calculate write address
-    calculateEaa(op, DYN_ADDRESS);
-    // set ESP back to original ESP before it was incremented in case the write throws an exception
-    loadReg(4, DYN_DEST, DYN_32bit);
-    storeReg(4, DYN_SRC, DYN_32bit, true);
-    // do write
-    movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true, DYN_SRC);
-    // restore to calculated ESP from common_pop16 after write succeeds
-    storeReg(4, DYN_DEST, DYN_32bit, true);
+void DynamicData::dynamic_popEw_mem(DecodedOp* op) {
+    write(JitWidth::b16, calculateEaaV2(op, 2), peek16()); // eaa must be calculated after esp is incremented which is why we pass 2 here
 
+    IfSmallStack(); {
+        addValue(JitWidth::b16, getReg(4), 2);
+    } StartElse(); {
+        addValue(JitWidth::b32, getReg(4), 2);
+    } EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushEd_reg(DecodedOp* op) {
-    if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
-        loadReg(4, DYN_ADDRESS, DYN_32bit);
-        subRegImm(DYN_ADDRESS, DYN_32bit, 4);
-        loadReg(op->reg, DYN_SRC, DYN_32bit);
-        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true, DYN_DEST); // need to discard DYN_ADDRESS, otherwise will be out of regs
-        subCPUImm(4, DYN_32bit, 4, DYN_ADDRESS);
-    } else {
-        callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_32, false);
-    }
+    push32(getReadOnlyReg(op->reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popEd_reg(DecodedOp* op) {
-    if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
-        loadReg(4, DYN_ADDRESS, DYN_32bit);
-        addCPUImm(4, DYN_32bit, 4, DYN_DEST); // increment before assign, in case esp=pop32()
-        storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    } else {
-        callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
-        storeReg(op->reg, DYN_CALL_RESULT, DYN_32bit, true);
-    }
+    pop32(getReg(op->reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushEd_mem(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true);
-    if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
-        loadReg(4, DYN_ADDRESS, DYN_32bit);
-        subRegImm(DYN_ADDRESS, DYN_32bit, 4);
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST); // need to discard DYN_ADDRESS, otherwise will be out of regs
-        subCPUImm(4, DYN_32bit, 4, DYN_ADDRESS);
-    } else {
-        callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
-    }
+    push32(read(JitWidth::b32, calculateEaaV2(op)));
     incrementEip(op->len);
 }
-void DynamicData::dynamic_popEd_mem(DecodedOp* op) {    
-    if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
-        loadReg(4, DYN_ADDRESS, DYN_32bit);
-        movFromMem(DYN_32bit, DYN_ADDRESS, true);
-        // address calculation happens after ESP is incremented, but we don't want it committed
-        // before the write happens in case the write throws an exception, iexplorer.exe will exercise 
-        // that esp needs to be increated before calculateEaa
-        if (op->rm == 4 || op->sibIndex == 4) {
-            addCPUImm(4, DYN_32bit, 4, DYN_DEST);
-            calculateEaa(op, DYN_ADDRESS);
-            subCPUImm(4, DYN_32bit, 4, DYN_DEST);
-        } else {
-            calculateEaa(op, DYN_ADDRESS);
-        }
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST);
-        addCPUImm(4, DYN_32bit, 4, DYN_DEST);
-    } else {
-        // save current esp
-        loadReg(4, DYN_SRC, DYN_32bit);
-        // pop stack
-        callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);        
-        // calculate write address
-        calculateEaa(op, DYN_ADDRESS);
-        // set ESP back to original ESP before it was incremented in case the write throws an exception
-        loadReg(4, DYN_DEST, DYN_32bit);
-        storeReg(4, DYN_SRC, DYN_32bit, true);
-        // do write
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_SRC);
-        // restore to calculated ESP from common_pop32 after write succeeds
-        storeReg(4, DYN_DEST, DYN_32bit, true);
-    }
+void DynamicData::dynamic_popEd_mem(DecodedOp* op) {
+    write(JitWidth::b32, calculateEaaV2(op, 4), peek32()); // eaa must be calculated after esp is incremented which is why we pass 2 here
+
+    IfSmallStack();
+    addValue(JitWidth::b16, getReg(4), 4);
+    StartElse();
+    addValue(JitWidth::b32, getReg(4), 4);
+    EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushSeg16(DecodedOp* op) {
-    loadSegValue(op->reg, DYN_SRC);
-    callHostFunction((void*)common_push16, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_16, true);
+    push16(getReadOnlySegValue(op->reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popSeg16(DecodedOp* op) {
-    callHostFunction((void*)common_peek16, true, 2, 0, DYN_PARAM_CPU, false, 0, DYN_PARAM_CONST_32, false);
-    callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
-    IfNot(DYN_CALL_RESULT, true);
+    RegPtr result = callAndReturn_IR(common_setSegment, op->reg, JitWidth::b16, peek16(getTmpReg())); // getTmpReg so that peek16 won't use hardware EAX on x86, callAndReturn needs that. :TODO: maybe callAndReturn can be enhanced to allow a param using EAX but that doesn't need it after its used as a param.
+
+    IfNot(JitWidth::b32, result);
     blockDone(true);
     EndIf();
-    loadStackMask(DYN_DEST);
-    loadReg(4, DYN_SRC, DYN_32bit);
-    movToRegFromReg(DYN_ADDRESS, DYN_32bit, DYN_SRC, DYN_32bit, false);
-    addRegImm(DYN_SRC, DYN_32bit, 2);
-    andRegReg(DYN_SRC, DYN_DEST, DYN_32bit, true);
-    loadStackNotMask(DYN_DEST);
-    andRegReg(DYN_ADDRESS, DYN_DEST, DYN_32bit, true);
-    orRegReg(DYN_SRC, DYN_ADDRESS, DYN_32bit, true);
-    storeReg(4, DYN_SRC, DYN_32bit, true);
+
+    IfSmallStack(); {
+        addValue(JitWidth::b16, getReg(4), 2);
+    } StartElse(); {
+        addValue(JitWidth::b32, getReg(4), 2);
+    } EndIf();
+
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushSeg32(DecodedOp* op) {
-    loadSegValue(op->reg, DYN_SRC);
-    dynamic_pushReg32(DYN_SRC, true);
+    push32(getReadOnlySegValue(op->reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popSeg32(DecodedOp* op) {
-    callHostFunction((void*)common_peek32, true, 2, 0, DYN_PARAM_CPU, false, 0, DYN_PARAM_CONST_32, false);
-    callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
-    IfNot(DYN_CALL_RESULT, true);
-    blockDone(true);
-    EndIf();
-    loadStackMask(DYN_DEST);
-    loadReg(4, DYN_SRC, DYN_32bit);
-    movToRegFromReg(DYN_ADDRESS, DYN_32bit, DYN_SRC, DYN_32bit, false);
-    addRegImm(DYN_SRC, DYN_32bit, 4);
-    andRegReg(DYN_SRC, DYN_DEST, DYN_32bit, true);
-    loadStackNotMask(DYN_DEST);
-    andRegReg(DYN_ADDRESS, DYN_DEST, DYN_32bit, true);
-    orRegReg(DYN_SRC, DYN_ADDRESS, DYN_32bit, true);
-    storeReg(4, DYN_SRC, DYN_32bit, true);
+    RegPtr result = callAndReturn_IR(common_setSegment, op->reg, JitWidth::b32, peek32(getTmpReg())); // getTmpReg so that peek16 won't use hardware EAX on x86, callAndReturn needs that. :TODO: maybe callAndReturn can be enhanced to allow a param using EAX but that doesn't need it after its used as a param.
+
+    IfNot(JitWidth::b32, result); {
+        blockDone(true);
+    } EndIf();
+
+    IfSmallStack(); {
+        addValue(JitWidth::b16, getReg(4), 4);
+    } StartElse(); {
+        addValue(JitWidth::b32, getReg(4), 4);
+    } EndIf();
+
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushA16(DecodedOp* op) {
-    callHostFunction((void*)common_pushA16, false, 1, 0, DYN_PARAM_CPU, false);
+    RegPtr esp = getTmpReg(4);
+
+    IfSmallStack(); {
+        andValue(JitWidth::b32, esp, 0xFFFF);
+    } EndIf();
+    addReg(JitWidth::b32, esp, getReadOnlySegAddress(SS));
+    subValue(JitWidth::b32, esp, 16);
+
+    // 8x 2 byte pushes is 128 bits, if we have permission and space on one page to write this, then we only need to do the memory checks once
+    write(JitWidth::b128, esp, nullptr, [this](RegPtr address, RegPtr offset) {
+        for (int i = 0; i < 8; i++) {
+            write(JitWidth::b16, address, offset, 0, 2 * i, getReadOnlyReg(7 - i));
+        }
+        IfSmallStack(); {
+            subValue(JitWidth::b16, getReg(4), 16);
+        } StartElse(); {
+            subValue(JitWidth::b32, getReg(4), 16);
+        }EndIf();
+    }, [this]() {
+        call(common_pushA16);
+    });
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushA32(DecodedOp* op) {
-    callHostFunction((void*)common_pushA32, false, 1, 0, DYN_PARAM_CPU, false);
+    RegPtr esp = getTmpReg(4);
+
+    IfSmallStack(); {
+        andValue(JitWidth::b32, esp, 0xFFFF);
+    }EndIf();
+    addReg(JitWidth::b32, esp, getReadOnlySegAddress(SS));
+    subValue(JitWidth::b32, esp, 32);
+
+    // 8x 4 byte pushes is 256 bits, if we have permission and space on one page to write this, then we only need to do the memory checks once
+    write(JitWidth::b256, esp, nullptr, [this](RegPtr address, RegPtr offset) {
+        for (int i = 0; i < 8; i++) {
+            write(JitWidth::b32, address, offset, 0, 4 * i, getReadOnlyReg(7 - i));
+        }
+        IfSmallStack(); {
+            subValue(JitWidth::b16, getReg(4), 32);
+        } StartElse(); {
+            subValue(JitWidth::b32, getReg(4), 32);
+        } EndIf();
+    }, [this]() {
+        call(common_pushA32);
+    });
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popA16(DecodedOp* op) {
-    callHostFunction((void*)common_popA16, false, 1, 0, DYN_PARAM_CPU, false);
+    RegPtr esp = getTmpReg(4);
+
+    IfSmallStack(); {
+        andValue(JitWidth::b32, esp, 0xFFFF);
+    } EndIf();
+    addReg(JitWidth::b32, esp, getReadOnlySegAddress(SS));
+
+    // 8x 2 byte is 128 bits, if we have permission and space on one page to read this, then we only need to do the memory checks once
+    read(JitWidth::b128, esp, [this](RegPtr address, RegPtr offset) {
+        for (int i = 0; i < 8; i++) {
+            if (i != 3) {
+                read(JitWidth::b16, getReg(7 - i), address, offset, 0, 2 * i);
+            }
+        }
+        IfSmallStack(); {
+            addValue(JitWidth::b16, getReg(4), 16);
+        } StartElse(); {
+            addValue(JitWidth::b32, getReg(4), 16);
+        } EndIf();
+    }, [this]() {
+        call(common_popA16);
+    });
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popA32(DecodedOp* op) {
-    callHostFunction((void*)common_popA32, false, 1, 0, DYN_PARAM_CPU, false);
+    RegPtr esp = getTmpReg(4);
+
+    IfSmallStack(); {
+        andValue(JitWidth::b32, esp, 0xFFFF);
+    } EndIf();
+    addReg(JitWidth::b32, esp, getReadOnlySegAddress(SS));
+
+    // 8x 4 byte is 256 bits, if we have permission and space on one page to read this, then we only need to do the memory checks once
+    read(JitWidth::b256, esp, [this](RegPtr address, RegPtr offset) {
+        for (int i = 0; i < 8; i++) {
+            if (i != 3) {
+                read(JitWidth::b32, getReg(7 - i), address, offset, 0, 4 * i);
+            }
+        }
+        IfSmallStack(); {
+            addValue(JitWidth::b16, getReg(4), 32);
+        } StartElse(); {
+            addValue(JitWidth::b32, getReg(4), 32);
+        } EndIf();
+    }, [this]() {
+        call(common_popA32);
+    });
     incrementEip(op->len);
 }
 void DynamicData::dynamic_push16imm(DecodedOp* op) {
-    callHostFunction((void*)common_push16, false, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_16, false);
+    RegPtr reg = getTmpReg();
+    movValue(JitWidth::b16, reg, op->imm);
+    push16(reg);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_push32imm(DecodedOp* op) {
-     if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
-         loadReg(4, DYN_ADDRESS, DYN_32bit);
-         subRegImm(DYN_ADDRESS, DYN_32bit, 4);
-         movToMemFromImm(DYN_ADDRESS, DYN_32bit, op->imm, true, DYN_DEST); // need to discard DYN_ADDRESS, otherwise will be out of regs
-         subCPUImm(4, DYN_32bit, 4, DYN_ADDRESS);
-     } else {
-         callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false);
-     }
+    RegPtr reg = getTmpReg();
+    movValue(JitWidth::b32, reg, op->imm);
+    push32(reg);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popf16(DecodedOp* op) {
-    storeLazyFlags(FLAGS_NONE);
-    callHostFunction((void*)common_pop16, true, 1, 0, DYN_PARAM_CPU, false);
-    callHostFunction((void*)common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true, FMASK_ALL & 0xFFFF, DYN_PARAM_CONST_16, false);
-    currentLazyFlags=FLAGS_NONE;
+    setFlags(pop16(), FMASK_ALL & 0xFFFF);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popf32(DecodedOp* op) {
-    storeLazyFlags(FLAGS_NONE);
-    callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
-    callHostFunction((void*)common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true, FMASK_ALL, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    setFlags(pop32(), FMASK_ALL);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushf16(DecodedOp* op) {
-    dynamic_fillFlags();
-    loadCPUFlags(DYN_SRC);
-    orRegImm(DYN_SRC, DYN_32bit, 2);
-    callHostFunction((void*)common_push16, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
+    push16(getReadOnlyFlags());
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushf32(DecodedOp* op) {
-    dynamic_fillFlags();
-    loadCPUFlags(DYN_SRC);
-    orRegImm(DYN_SRC, DYN_32bit, 2);
-    andRegImm(DYN_SRC, DYN_32bit, 0xFCFFFF);
-    dynamic_pushReg32(DYN_SRC, true);
+    push32(getReadOnlyFlags());
     incrementEip(op->len);
 }

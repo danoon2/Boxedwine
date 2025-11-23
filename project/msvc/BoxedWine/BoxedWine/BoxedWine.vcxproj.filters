@@ -1815,6 +1815,9 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamicSSE.h">
       <Filter>source\emulation\cpu\dynamic</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_flags.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
