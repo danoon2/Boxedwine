@@ -27,7 +27,7 @@ void Jit::dynamic_cmov_R(JitWidth width, DecodedOp* op, JitConditional condition
 void Jit::dynamic_cmov_M(JitWidth width, DecodedOp* op, JitConditional condition) {
     IfCondition(condition); {
         RegPtr dest = getReg(op->reg);
-        mov(width, dest, read(width, calculateEaaV2(op)));
+        mov(width, dest, read(width, calculateEaa(op)));
     } EndIf();
     incrementEip(op->len);
 }

@@ -23,7 +23,7 @@
 #undef MMX_RR
 #define MMX_RR(name) void Jit::dynamic_##name(DecodedOp* op) {call_II(common_##name, op->reg, op->rm);incrementEip(op->len);}
 #undef MMX_RE
-#define MMX_RE(name) void Jit::dynamic_##name(DecodedOp* op) {call_IR(common_##name, op->reg, JitWidth::b32, calculateEaaV2(op));incrementEip(op->len);}
+#define MMX_RE(name) void Jit::dynamic_##name(DecodedOp* op) {call_IR(common_##name, op->reg, JitWidth::b32, calculateEaa(op));incrementEip(op->len);}
 #undef MMX_RI
 #define MMX_RI(name) void Jit::dynamic_##name(DecodedOp* op) {call_II8(common_##name, op->reg, op->imm);incrementEip(op->len);}
 #include "../common/common_mmx_def.h"

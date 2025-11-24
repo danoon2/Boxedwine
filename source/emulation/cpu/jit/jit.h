@@ -124,7 +124,7 @@ public:
     virtual void pushReg(RegPtr reg) = 0;
     virtual void popReg(RegPtr reg) = 0;
     virtual RegPtr getEip(bool load = true) = 0;
-    virtual RegPtr calculateEaaV2(DecodedOp* op, U32 popEspAmount = 0);
+    virtual RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0);
     virtual void jmp(RegPtr reg) = 0;
 
     RegPtr calculateEffectiveEaa16(DecodedOp* op);
@@ -174,8 +174,8 @@ public:
     virtual void imulReg(JitWidth regWidth, RegPtr reg) = 0;
     virtual void imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2) = 0;
     virtual void imulRR(JitWidth regWidth, RegPtr dst, RegPtr src) = 0;
-    virtual void divRegRegWithRemainder2(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) = 0; // src should be checked for 0 before calling
-    virtual void idivRegRegWithRemainder2(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) = 0; // src should be checked for 0 before calling
+    virtual void divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) = 0; // src should be checked for 0 before calling
+    virtual void idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) = 0; // src should be checked for 0 before calling
     virtual void byteSwapReg32(RegPtr reg) = 0;
     virtual RegPtr compareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition, RegPtr resultReg = nullptr) = 0; // will return 0 or 1 in result    
     virtual RegPtr compareValue(JitWidth regWidth, RegPtr reg, U32 value, JitEvaluate condition, RegPtr resultReg = nullptr) = 0; // will return 0 or 1 in result
@@ -235,7 +235,7 @@ public:
     virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool isBigJump = false) = 0;
     virtual void writeValue(JitWidth width, RegPtr addressReg, U32 imm) = 0;
     
-    // I would say that most ops should use these directly, but pusha/popa needs it
+    // I would say that most ops shouldn't use these directly, but pusha/popa needs it
     virtual void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
     virtual void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
 
@@ -262,8 +262,6 @@ public:
     U32 currentEip = 0;
     DecodedOp* currentOp = nullptr;
 
-    // per instruction, not per block.  
-    bool regUsed[32]; // host regs might index into this, only the first 4 are important
     virtual bool canJumpInBlock(DecodedOp* op) = 0;
 
     virtual void blockCall(DecodedOp* op) = 0;

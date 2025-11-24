@@ -37,7 +37,7 @@ void Jit::dynamic_xchgr8r8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_xchge8r8(DecodedOp* op) {
-    readWriteMem(JitWidth::b8, calculateEaaV2(op), [op, this](RegPtr value) {
+    readWriteMem(JitWidth::b8, calculateEaa(op), [op, this](RegPtr value) {
         RegPtr reg = getReg8(op->reg);
         xchgReg(JitWidth::b8, reg, value);
     });
@@ -50,7 +50,7 @@ void Jit::dynamic_xchgr16r16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_xchge16r16(DecodedOp* op) {
-    readWriteMem(JitWidth::b16, calculateEaaV2(op), [op, this](RegPtr value) {
+    readWriteMem(JitWidth::b16, calculateEaa(op), [op, this](RegPtr value) {
         RegPtr reg = getReg(op->reg);
         xchgReg(JitWidth::b16, reg, value);
         });
@@ -63,7 +63,7 @@ void Jit::dynamic_xchgr32r32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_xchge32r32(DecodedOp* op) {
-    readWriteMem(JitWidth::b32, calculateEaaV2(op), [op, this](RegPtr value) {
+    readWriteMem(JitWidth::b32, calculateEaa(op), [op, this](RegPtr value) {
         RegPtr reg = getReg(op->reg);
         xchgReg(JitWidth::b32, reg, value);
     });
@@ -77,7 +77,7 @@ void Jit::dynamic_cmpxchgr8r8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_cmpxchge8r8(DecodedOp* op) {
-    call_RI(common_cmpxchge8r8, JitWidth::b32, calculateEaaV2(op), op->reg);
+    call_RI(common_cmpxchge8r8, JitWidth::b32, calculateEaa(op), op->reg);
     currentLazyFlags = nullptr;
     incrementEip(op->len);
 }
@@ -87,7 +87,7 @@ void Jit::dynamic_cmpxchgr16r16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_cmpxchge16r16(DecodedOp* op) {
-    call_RI(common_cmpxchge16r16, JitWidth::b32, calculateEaaV2(op), op->reg);
+    call_RI(common_cmpxchge16r16, JitWidth::b32, calculateEaa(op), op->reg);
     currentLazyFlags = nullptr;
     incrementEip(op->len);
 }
@@ -97,7 +97,7 @@ void Jit::dynamic_cmpxchgr32r32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_cmpxchge32r32(DecodedOp* op) {
-    call_RI(common_cmpxchge32r32, JitWidth::b32, calculateEaaV2(op), op->reg);
+    call_RI(common_cmpxchge32r32, JitWidth::b32, calculateEaa(op), op->reg);
     currentLazyFlags = nullptr;
     incrementEip(op->len);
 }

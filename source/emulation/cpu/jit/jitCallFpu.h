@@ -23,5 +23,5 @@
 #undef FPU_R
 #define FPU_R(name) void Jit::dynamic_##name(DecodedOp* op) {call_I(common_##name, op->reg);incrementEip(op->len);}
 #undef FPU_A
-#define FPU_A(name) void Jit::dynamic_##name(DecodedOp* op) {call_R(common_##name, JitWidth::b32, calculateEaaV2(op));incrementEip(op->len);}
+#define FPU_A(name) void Jit::dynamic_##name(DecodedOp* op) {call_R(common_##name, JitWidth::b32, calculateEaa(op));incrementEip(op->len);}
 #include "../common/common_fpu_def.h"

@@ -279,7 +279,6 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
             return false;
         }
 
-        memset(this->regUsed, 0, sizeof(this->regUsed));
 #ifndef __TEST
 #ifdef _DEBUG
         //callHostFunction(common_log, false, 2, 0, JitCallParamType::CPU, false, (DYN_PTR_SIZE)nextOp, JitCallParamType::CONST_PTR, false);
@@ -1135,15 +1134,12 @@ RegPtr JitCodeGen::getCF() {
 }
 
 RegPtr JitCodeGen::getCondition(JitConditional condition, RegPtr resultReg) {
-    if (!currentLazyFlags) {
-        return callGetCondition(condition, resultReg);
-    }
-    if (currentLazyFlags == FLAGS_NONE) {        
+    if (!currentLazyFlags || currentLazyFlags == FLAGS_NONE) {
         if (!resultReg) {
             resultReg = getTmpReg();
         }
         RegPtr flags = readCPU(DYN_PTR, CPU_OFFSET_OF(lazyFlags), getTmpRegForCallResult());
-        IfEqual(DYN_PTR, flags, (DYN_PTR_SIZE)currentLazyFlags);
+        IfEqual(DYN_PTR, flags, (DYN_PTR_SIZE)FLAGS_NONE);
         readCPU(JitWidth::b32, offsetof(CPU, flags), resultReg);
         switch (condition) {
         case JitConditional::NO:
@@ -1419,10 +1415,10 @@ RegPtr JitCodeGen::callGetCondition(JitConditional condition, RegPtr resultReg) 
 }
 
 void JitCodeGen::IfCondition(JitConditional condition) {
-    //if (!currentLazyFlags || currentLazyFlags == FLAGS_NONE) {
+    if (!currentLazyFlags || currentLazyFlags == FLAGS_NONE) {
         If(JitWidth::b32, getCondition(condition));
         return;
-    //}
+    }
     If(JitWidth::b32, calculateCondition(condition));
 }
 #endif

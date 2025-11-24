@@ -18,14 +18,14 @@
 
 #include "../common/common_other.h"
 void Jit::dynamic_bound16(DecodedOp* op) {
-    RegPtr result = callAndReturn_IR(common_bound16, op->reg, JitWidth::b32, calculateEaaV2(op));
+    RegPtr result = callAndReturn_IR(common_bound16, op->reg, JitWidth::b32, calculateEaa(op));
     IfNot(JitWidth::b32, result);
         blockDone(true);
     EndIf();
     incrementEip(op->len);
 }
 void Jit::dynamic_bound32(DecodedOp* op) {
-    RegPtr result = callAndReturn_IR(common_bound32, op->reg, JitWidth::b32, calculateEaaV2(op));
+    RegPtr result = callAndReturn_IR(common_bound32, op->reg, JitWidth::b32, calculateEaa(op));
     IfNot(JitWidth::b32, result);
         blockDone(true);
     EndIf();
@@ -508,7 +508,7 @@ void Jit::dynamic_callR32(DecodedOp* op) {
 }
 void Jit::dynamic_callE16(DecodedOp* op) {
     {
-        RegPtr newEip = read(JitWidth::b16, calculateEaaV2(op)); // read before push, incase esp is used
+        RegPtr newEip = read(JitWidth::b16, calculateEaa(op)); // read before push, incase esp is used
         RegPtr eip = getEip();
         addValue(JitWidth::b16, eip, op->len);
         push16(eip);
@@ -519,7 +519,7 @@ void Jit::dynamic_callE16(DecodedOp* op) {
 }
 void Jit::dynamic_callE32(DecodedOp* op) {
     {
-        RegPtr newEip = read(JitWidth::b32, calculateEaaV2(op)); // read before push, incase esp is used
+        RegPtr newEip = read(JitWidth::b32, calculateEaa(op)); // read before push, incase esp is used
         RegPtr eip = getEip();
         addValue(JitWidth::b32, eip, op->len);
         push32(eip);
@@ -537,15 +537,15 @@ void Jit::dynamic_jmpR32(DecodedOp* op) {
     blockDoneJump();
 }
 void Jit::dynamic_jmpE16(DecodedOp* op) {
-    mov(JitWidth::b16, getEip(), read(JitWidth::b16, calculateEaaV2(op)));
+    mov(JitWidth::b16, getEip(), read(JitWidth::b16, calculateEaa(op)));
     blockDoneJump();
 }
 void Jit::dynamic_jmpE32(DecodedOp* op) {
-    mov(JitWidth::b32, getEip(), read(JitWidth::b32, calculateEaaV2(op)));
+    mov(JitWidth::b32, getEip(), read(JitWidth::b32, calculateEaa(op)));
     blockDoneJump();
 }
 void Jit::dynamic_callFarE16(DecodedOp* op) {
-    RegPtr address = calculateEaaV2(op);
+    RegPtr address = calculateEaa(op);
     RegPtr offset = read(JitWidth::b16, address, nullptr, nullptr, false, getTmpReg());
     addValue(JitWidth::b32, address, 2);
     RegPtr sel = read(JitWidth::b16, address);
@@ -557,7 +557,7 @@ void Jit::dynamic_callFarE16(DecodedOp* op) {
     blockDone(false);
 }
 void Jit::dynamic_callFarE32(DecodedOp* op) {
-    RegPtr address = calculateEaaV2(op);
+    RegPtr address = calculateEaa(op);
     RegPtr offset = read(JitWidth::b32, address, nullptr, nullptr, false, getTmpReg());
     addValue(JitWidth::b32, address, 4);
     RegPtr sel = read(JitWidth::b16, address);
@@ -569,7 +569,7 @@ void Jit::dynamic_callFarE32(DecodedOp* op) {
     blockDone(false);
 }
 void Jit::dynamic_jmpFarE16(DecodedOp* op) {
-    RegPtr address = calculateEaaV2(op);
+    RegPtr address = calculateEaa(op);
     RegPtr offset = read(JitWidth::b16, address, nullptr, nullptr, false, getTmpReg());
     addValue(JitWidth::b32, address, 2);
     RegPtr sel = read(JitWidth::b16, address);
@@ -581,7 +581,7 @@ void Jit::dynamic_jmpFarE16(DecodedOp* op) {
     blockDone(false);
 }
 void Jit::dynamic_jmpFarE32(DecodedOp* op) {
-    RegPtr address = calculateEaaV2(op);
+    RegPtr address = calculateEaa(op);
     RegPtr offset = read(JitWidth::b32, address, nullptr, nullptr, false, getTmpReg());
     addValue(JitWidth::b32, address, 4);
     RegPtr sel = read(JitWidth::b16, address);
@@ -597,7 +597,7 @@ void Jit::dynamic_larr16r16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_larr16e16(DecodedOp* op) {
-    call_IR(common_larr16e16, op->reg, JitWidth::b32, calculateEaaV2(op));
+    call_IR(common_larr16e16, op->reg, JitWidth::b32, calculateEaa(op));
     incrementEip(op->len);
 }
 void Jit::dynamic_lslr16r16(DecodedOp* op) {
@@ -605,7 +605,7 @@ void Jit::dynamic_lslr16r16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_lslr16e16(DecodedOp* op) {
-    call_IR(common_lslr16e16, op->reg, JitWidth::b32, calculateEaaV2(op));
+    call_IR(common_lslr16e16, op->reg, JitWidth::b32, calculateEaa(op));
     incrementEip(op->len);
 }
 void Jit::dynamic_lslr32r32(DecodedOp* op) {
@@ -613,15 +613,15 @@ void Jit::dynamic_lslr32r32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_lslr32e32(DecodedOp* op) {
-    call_IR(common_lslr32e32, op->reg, JitWidth::b32, calculateEaaV2(op));
+    call_IR(common_lslr32e32, op->reg, JitWidth::b32, calculateEaa(op));
     incrementEip(op->len);
 }
 void Jit::dynamic_verre16(DecodedOp* op) {
-    call_R(common_verre16, JitWidth::b32, calculateEaaV2(op));
+    call_R(common_verre16, JitWidth::b32, calculateEaa(op));
     incrementEip(op->len);
 }
 void Jit::dynamic_verwe16(DecodedOp* op) {
-    call_R(common_verwe16, JitWidth::b32, calculateEaaV2(op));
+    call_R(common_verwe16, JitWidth::b32, calculateEaa(op));
     incrementEip(op->len);
 }
 void Jit::dynamic_xaddr8r8(DecodedOp* op) {
@@ -647,7 +647,7 @@ void Jit::dynamic_bswap32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_cmpxchgg8b(DecodedOp* op) {
-    call_R(common_cmpxchg8b, JitWidth::b32, calculateEaaV2(op));
+    call_R(common_cmpxchg8b, JitWidth::b32, calculateEaa(op));
     incrementEip(op->len);
 }
 void Jit::dynamic_loadSegment16(DecodedOp* op) {
@@ -656,7 +656,7 @@ void Jit::dynamic_loadSegment16(DecodedOp* op) {
     //if (cpu->setSegment(op->imm, selector)) {
     //    cpu->reg[op->reg].u16 = val;
 
-    RegPtr address = calculateEaaV2(op);
+    RegPtr address = calculateEaa(op);
     RegPtr value = read(JitWidth::b16, address, nullptr, nullptr, false, getTmpReg());
     addValue(JitWidth::b32, address, 2);
     RegPtr sel = read(JitWidth::b16, std::move(address), nullptr, nullptr, false, getTmpReg()); // std::move will release address in this function and give it to read, this way read will see there is only 1 reference to address and can re-use it as a tmp register
@@ -670,7 +670,7 @@ void Jit::dynamic_loadSegment16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_loadSegment32(DecodedOp* op) {
-    RegPtr address = calculateEaaV2(op);
+    RegPtr address = calculateEaa(op);
     RegPtr value = read(JitWidth::b32, address, nullptr, nullptr, false, getTmpReg());
     addValue(JitWidth::b32, address, 4);
     RegPtr sel = read(JitWidth::b16, std::move(address), nullptr, nullptr, false, getTmpReg()); // std::move will release address in this function and give it to read, this way read will see there is only 1 reference to address and can re-use it as a tmp register
@@ -685,21 +685,21 @@ void Jit::dynamic_loadSegment32(DecodedOp* op) {
 }
 
 void Jit::dynamic_fxsave(DecodedOp* op) {
-    call_R(common_fxsave, JitWidth::b32, calculateEaaV2(op));
+    call_R(common_fxsave, JitWidth::b32, calculateEaa(op));
     incrementEip(op->len);
 }
 
 void Jit::dynamic_fxrstor(DecodedOp* op) {
-    call_R(common_fxrstor, JitWidth::b32, calculateEaaV2(op));
+    call_R(common_fxrstor, JitWidth::b32, calculateEaa(op));
     incrementEip(op->len);
 }
 
 void Jit::dynamic_xsave(DecodedOp* op) {
-    call_R(common_xsave, JitWidth::b32, calculateEaaV2(op));
+    call_R(common_xsave, JitWidth::b32, calculateEaa(op));
     incrementEip(op->len);
 }
 
 void Jit::dynamic_xrstor(DecodedOp* op) {
-    call_R(common_xrstor, JitWidth::b32, calculateEaaV2(op));
+    call_R(common_xrstor, JitWidth::b32, calculateEaa(op));
     incrementEip(op->len);
 }

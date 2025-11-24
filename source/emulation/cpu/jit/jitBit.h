@@ -19,7 +19,7 @@
 #include "../common/common_bit.h"
 
 RegPtr Jit::calculateEffectiveEaa32(DecodedOp* op) {
-    RegPtr result = calculateEaaV2(op);
+    RegPtr result = calculateEaa(op);
     RegPtr reg = getTmpReg(op->reg);
 
     sarValue(JitWidth::b32, reg, 5);
@@ -29,7 +29,7 @@ RegPtr Jit::calculateEffectiveEaa32(DecodedOp* op) {
 }
 
 RegPtr Jit::calculateEffectiveEaa16(DecodedOp* op) {
-    RegPtr result = calculateEaaV2(op);
+    RegPtr result = calculateEaa(op);
     RegPtr reg = getTmpReg(op->reg);
 
     sarValue(JitWidth::b16, reg, 4);
@@ -100,7 +100,7 @@ void Jit::dynamic_bte16r16(DecodedOp* op) {
 }
 void Jit::dynamic_bte16(DecodedOp* op) {
     btStartFlags(op);
-    IfTest(JitWidth::b32, read(JitWidth::b16, calculateEaaV2(op)), op->imm); {
+    IfTest(JitWidth::b32, read(JitWidth::b16, calculateEaa(op)), op->imm); {
         orCPUFlagsImmV2(CF);
     } StartElse(); {
         andCPUFlagsImmV2(~CF);
@@ -136,7 +136,7 @@ void Jit::dynamic_bte32r32(DecodedOp* op) {
 }
 void Jit::dynamic_bte32(DecodedOp* op) {
     btStartFlags(op);
-    IfTest(JitWidth::b32, read(JitWidth::b32, calculateEaaV2(op)), op->imm); {
+    IfTest(JitWidth::b32, read(JitWidth::b32, calculateEaa(op)), op->imm); {
         orCPUFlagsImmV2(CF);
     } StartElse(); {
         andCPUFlagsImmV2(~CF);
@@ -187,7 +187,7 @@ void Jit::dynamic_btse16r16(DecodedOp* op) {
 }
 void Jit::dynamic_btse16(DecodedOp* op) {
     bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b16, calculateEaaV2(op), [flags, op, this](RegPtr value) {
+    readWriteMem(JitWidth::b16, calculateEaa(op), [flags, op, this](RegPtr value) {
         if (flags) {
             IfTest(JitWidth::b32, value, op->imm); {
                 orCPUFlagsImmV2(CF);
@@ -243,7 +243,7 @@ void Jit::dynamic_btse32r32(DecodedOp* op) {
 }
 void Jit::dynamic_btse32(DecodedOp* op) {
     bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b32, calculateEaaV2(op), [flags, op, this](RegPtr value) {
+    readWriteMem(JitWidth::b32, calculateEaa(op), [flags, op, this](RegPtr value) {
         if (flags) {
             IfTest(JitWidth::b32, value, op->imm); {
                 orCPUFlagsImmV2(CF);
@@ -301,7 +301,7 @@ void Jit::dynamic_btre16r16(DecodedOp* op) {
 }
 void Jit::dynamic_btre16(DecodedOp* op) {
     bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b16, calculateEaaV2(op), [flags, op, this](RegPtr value) {
+    readWriteMem(JitWidth::b16, calculateEaa(op), [flags, op, this](RegPtr value) {
         if (flags) {
             IfTest(JitWidth::b32, value, op->imm); {
                 orCPUFlagsImmV2(CF);
@@ -359,7 +359,7 @@ void Jit::dynamic_btre32r32(DecodedOp* op) {
 }
 void Jit::dynamic_btre32(DecodedOp* op) {
     bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b32, calculateEaaV2(op), [flags, op, this](RegPtr value) {
+    readWriteMem(JitWidth::b32, calculateEaa(op), [flags, op, this](RegPtr value) {
         if (flags) {
             IfTest(JitWidth::b32, value, op->imm); {
                 orCPUFlagsImmV2(CF);
@@ -416,7 +416,7 @@ void Jit::dynamic_btce16r16(DecodedOp* op) {
 }
 void Jit::dynamic_btce16(DecodedOp* op) {
     bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b16, calculateEaaV2(op), [flags, op, this](RegPtr value) {
+    readWriteMem(JitWidth::b16, calculateEaa(op), [flags, op, this](RegPtr value) {
         if (flags) {
             IfTest(JitWidth::b32, value, op->imm); {
                 orCPUFlagsImmV2(CF);
@@ -472,7 +472,7 @@ void Jit::dynamic_btce32r32(DecodedOp* op) {
 }
 void Jit::dynamic_btce32(DecodedOp* op) {
     bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b32, calculateEaaV2(op), [flags, op, this](RegPtr value) {
+    readWriteMem(JitWidth::b32, calculateEaa(op), [flags, op, this](RegPtr value) {
         if (flags) {
             IfTest(JitWidth::b32, value, op->imm); {
                 orCPUFlagsImmV2(CF);
@@ -510,7 +510,7 @@ void Jit::dynamic_bsfr16r16(DecodedOp* op) {
 }
 void Jit::dynamic_bsfr16e16(DecodedOp* op) {
     bool flags = btStartFlags(op);
-    RegPtr src = read(JitWidth::b16, calculateEaaV2(op));
+    RegPtr src = read(JitWidth::b16, calculateEaa(op));
     if (flags) {
         If(JitWidth::b16, src); {
             andCPUFlagsImmV2(~ZF);
@@ -536,7 +536,7 @@ void Jit::dynamic_bsfr32r32(DecodedOp* op) {
 }
 void Jit::dynamic_bsfr32e32(DecodedOp* op) {
     bool flags = btStartFlags(op);
-    RegPtr src = read(JitWidth::b32, calculateEaaV2(op));
+    RegPtr src = read(JitWidth::b32, calculateEaa(op));
     if (flags) {
         If(JitWidth::b32, src); {
             andCPUFlagsImmV2(~ZF);
@@ -562,7 +562,7 @@ void Jit::dynamic_bsrr16r16(DecodedOp* op) {
 }
 void Jit::dynamic_bsrr16e16(DecodedOp* op) {
     bool flags = btStartFlags(op);
-    RegPtr src = read(JitWidth::b16, calculateEaaV2(op));
+    RegPtr src = read(JitWidth::b16, calculateEaa(op));
     if (flags) {
         If(JitWidth::b16, src); {
             andCPUFlagsImmV2(~ZF);
@@ -588,7 +588,7 @@ void Jit::dynamic_bsrr32r32(DecodedOp* op) {
 }
 void Jit::dynamic_bsrr32e32(DecodedOp* op) {
     bool flags = btStartFlags(op);
-    RegPtr src = read(JitWidth::b32, calculateEaaV2(op));
+    RegPtr src = read(JitWidth::b32, calculateEaa(op));
     if (flags) {
         If(JitWidth::b32, src); {
             andCPUFlagsImmV2(~ZF);

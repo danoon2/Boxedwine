@@ -108,8 +108,8 @@ public:
     void imulReg(JitWidth regWidth, RegPtr reg) override;
     void imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2) override;
     void imulRR(JitWidth regWidth, RegPtr dst, RegPtr src) override;
-    void divRegRegWithRemainder2(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) override;
-    void idivRegRegWithRemainder2(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) override;
+    void divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) override;
+    void idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) override;
     void byteSwapReg32(RegPtr reg) override;
     RegPtr compareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition, RegPtr resultReg = nullptr) override;    
     RegPtr compareValue(JitWidth regWidth, RegPtr reg, U32 value, JitEvaluate condition, RegPtr resultReg = nullptr) override;
@@ -525,11 +525,7 @@ protected:
     U32 getIfJumpSize() override;    
     U8* getBuffer() override;
 
-    void IfEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg);
-    void IfNotEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg);    
     void setCC(X86Asm::Reg32 reg, JitEvaluate condition);
-    void evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, X86Asm::Reg32 right, JitWidth regWidth, JitEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg);
-    void evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, U32 rightConst, JitWidth regWidth, JitEvaluate condition, bool doneWithLeftReg);    
 
     void preCommitJIT() override;
     void patch(U8* begin) override;
@@ -1408,7 +1404,7 @@ void JitX86CodeGen::imulReg(JitWidth regWidth, RegPtr reg) {
     }
 }
 
-void JitX86CodeGen::divRegRegWithRemainder2(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) {
+void JitX86CodeGen::divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) {
     if (dest->hardwareReg() != 0) {
         kpanic("JitX86CodeGen::divRegRegWithRemainder dest to be EAX");
     }
@@ -1426,7 +1422,7 @@ void JitX86CodeGen::divRegRegWithRemainder2(JitWidth regWidth, RegPtr dest, RegP
     }
 }
 
-void JitX86CodeGen::idivRegRegWithRemainder2(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) {
+void JitX86CodeGen::idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) {
     if (dest->hardwareReg() != 0) {
         kpanic("JitX86CodeGen::idivRegRegWithRemainder dest to be EAX");
     }
@@ -3361,65 +3357,8 @@ void JitX86CodeGen::setCC(X86Asm::Reg32 reg, JitEvaluate condition) {
     }
 }
 
-void JitX86CodeGen::evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, X86Asm::Reg32 right, JitWidth regWidth, JitEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
-    if (regWidth == JitWidth::b32) {
-        x86.cmp(left, right);
-    } else if (regWidth == JitWidth::b16) {
-        x86.cmp(X86Asm::Reg16(left.reg), X86Asm::Reg16(right.reg));
-    } else if (regWidth == JitWidth::b8) {
-        x86.cmp(X86Asm::Reg8(left.reg), X86Asm::Reg8(right.reg));
-    } else {
-        kpanic_fmt("x32CPU::evaluateToReg reg width %d", regWidth);
-    }
-
-    regUsed[reg.reg] = true;
-    setCC(reg, condition);
-    x86.movzx(reg, X86Asm::Reg8(reg.reg));
-
-    if (doneWithLeftReg) {
-        regUsed[left.reg] = false;
-    }
-    if (doneWithRightReg) {
-        regUsed[right.reg] = false;
-    }
-}
-
-void JitX86CodeGen::evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, U32 rightConst, JitWidth regWidth, JitEvaluate condition, bool doneWithLeftReg) {
-    if (regWidth == JitWidth::b32) {
-        x86.cmp(left, rightConst);
-    } else if (regWidth == JitWidth::b16) {
-        x86.cmp(X86Asm::Reg16(left.reg), (U16)rightConst);
-    } else if (regWidth == JitWidth::b8) {
-        x86.cmp(X86Asm::Reg8(left.reg), (U8)rightConst);
-    } else {
-        kpanic_fmt("x32CPU::evaluateToReg reg width %d", regWidth);
-    }
-
-    regUsed[reg.reg] = true;
-    setCC(reg, condition);
-    x86.movzx(reg, X86Asm::Reg8(reg.reg));
-
-    if (doneWithLeftReg) {
-        regUsed[left.reg] = false;
-    }
-}
-
 void JitX86CodeGen::JumpInBlock(U32 address) {
     x86.jmp(address);
-}
-
-void JitX86CodeGen::IfEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
-    x86.IfEqual(reg, value);
-    if (doneWithReg) {
-        regUsed[reg.reg] = false;
-    }
-}
-
-void JitX86CodeGen::IfNotEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
-    x86.IfNotEqual(reg, value);
-    if (doneWithReg) {
-        regUsed[reg.reg] = false;
-    }
 }
 
 void JitX86CodeGen::StartElse(bool bigJump) {
@@ -3490,7 +3429,7 @@ void JitX86CodeGen::updateHardwareFlags(U32 flags) {
 }
 
 void JitX86CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b64, calculateEaaV2(op), nullptr, [op, this](RegPtr addressReg, RegPtr offsetReg) {
+    JitCodeGen::write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](RegPtr addressReg, RegPtr offsetReg) {
         if (currentOp->getNeededFlagsAfter(PF | SF | AF | CF | OF)) { // The ZF flag is set if the destination operand and EDX:EAX are equal; otherwise it is cleared. The CF, PF, AF, SF, and OF flags are unaffected.
             updateHardwareFlags(PF | SF | AF | CF | OF);
         }
@@ -3512,7 +3451,7 @@ void JitX86CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
     }, true);
 }
 void JitX86CodeGen::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b32, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         RegPtr eax = getReg(0, 0);
         if (eax->hardwareReg() != 0) {
             kpanic("JitX86CodeGen::dynamic_cmpxchge32r32_lock");
@@ -3534,7 +3473,7 @@ void JitX86CodeGen::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
     });
 }
 void JitX86CodeGen::dynamic_cmpxchge16r16_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b16, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         RegPtr eax = getReg(0, 0);
         if (eax->hardwareReg() != 0) {
             kpanic("JitX86CodeGen::dynamic_cmpxchge32r32_lock");
@@ -3556,7 +3495,7 @@ void JitX86CodeGen::dynamic_cmpxchge16r16_lock(DecodedOp* op) {
     });
 }
 void JitX86CodeGen::dynamic_cmpxchge8r8_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b8, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b8, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         RegPtr eax = getReg(0, 0);
         if (eax->hardwareReg() != 0) {
             kpanic("JitX86CodeGen::dynamic_cmpxchge32r32_lock");
@@ -3579,7 +3518,7 @@ void JitX86CodeGen::dynamic_cmpxchge8r8_lock(DecodedOp* op) {
 }
 
 void JitX86CodeGen::dynamic_xchge32r32_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b32, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         RegPtr reg = getReg(op->reg);
         this->x86.xchg(X86Asm::Reg32(reg->hardwareReg()), X86Asm::Reg32(address->hardwareReg()), X86Asm::Reg32(offset->hardwareReg()), 0, 0);
         reg = nullptr;
@@ -3591,7 +3530,7 @@ void JitX86CodeGen::dynamic_xchge32r32_lock(DecodedOp* op) {
 }
 
 void JitX86CodeGen::dynamic_xchge16r16_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b16, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         RegPtr reg = getReg(op->reg);
         this->x86.xchg(X86Asm::Reg16(reg->hardwareReg()), X86Asm::Reg32(address->hardwareReg()), X86Asm::Reg32(offset->hardwareReg()), 0, 0);
         reg = nullptr;
@@ -3603,7 +3542,7 @@ void JitX86CodeGen::dynamic_xchge16r16_lock(DecodedOp* op) {
 }
 
 void JitX86CodeGen::dynamic_xchge8r8_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b8, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b8, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         RegPtr reg = getReg8(op->reg);
         this->x86.xchg(X86Asm::Reg8(get8bitReg(reg)), X86Asm::Reg32(address->hardwareReg()), X86Asm::Reg32(offset->hardwareReg()), 0, 0);
         reg = nullptr;
@@ -3615,7 +3554,7 @@ void JitX86CodeGen::dynamic_xchge8r8_lock(DecodedOp* op) {
 }
 
 void JitX86CodeGen::dynamic_arithE32R32_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address, RegPtr offset)> callback, std::function<void()> fallback, bool writeReg) {
-    JitCodeGen::write(JitWidth::b32, calculateEaaV2(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
         RegPtr reg = getReg(op->reg);
         callback(reg, address, offset);
         reg = nullptr;
@@ -3627,7 +3566,7 @@ void JitX86CodeGen::dynamic_arithE32R32_lock(DecodedOp* op, std::function<void(R
 }
 
 void JitX86CodeGen::dynamic_arithE16R16_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address, RegPtr offset)> callback, std::function<void()> fallback, bool writeReg) {
-    JitCodeGen::write(JitWidth::b16, calculateEaaV2(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
         RegPtr reg = getReg(op->reg);
         callback(reg, address, offset);
         reg = nullptr;
@@ -3638,7 +3577,7 @@ void JitX86CodeGen::dynamic_arithE16R16_lock(DecodedOp* op, std::function<void(R
     });
 }
 void JitX86CodeGen::dynamic_arithE8R8_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address, RegPtr offset)> callback, std::function<void()> fallback, bool writeReg) {
-    JitCodeGen::write(JitWidth::b8, calculateEaaV2(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b8, calculateEaa(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
         RegPtr reg = getReg8(op->reg);
         callback(reg, address, offset);
         reg = nullptr;
@@ -3650,7 +3589,7 @@ void JitX86CodeGen::dynamic_arithE8R8_lock(DecodedOp* op, std::function<void(Reg
 }
 
 void JitX86CodeGen::dynamic_arithE32_lock(DecodedOp* op, std::function<void(RegPtr address, RegPtr offset)> callback, std::function<void()> fallback) {
-    JitCodeGen::write(JitWidth::b32, calculateEaaV2(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
         callback(address, offset);
         updateFlagsIfNecessary();
         incrementEip(op->len);
@@ -3660,7 +3599,7 @@ void JitX86CodeGen::dynamic_arithE32_lock(DecodedOp* op, std::function<void(RegP
 }
 
 void JitX86CodeGen::dynamic_arithE16_lock(DecodedOp* op, std::function<void(RegPtr address, RegPtr offset)> callback, std::function<void()> fallback) {
-    JitCodeGen::write(JitWidth::b16, calculateEaaV2(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
         callback(address, offset);
         updateFlagsIfNecessary();
         incrementEip(op->len);
@@ -3669,7 +3608,7 @@ void JitX86CodeGen::dynamic_arithE16_lock(DecodedOp* op, std::function<void(RegP
     });
 }
 void JitX86CodeGen::dynamic_arithE8_lock(DecodedOp* op, std::function<void(RegPtr address, RegPtr offset)> callback, std::function<void()> fallback) {
-    JitCodeGen::write(JitWidth::b8, calculateEaaV2(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b8, calculateEaa(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
         callback(address, offset);
         updateFlagsIfNecessary();
         incrementEip(op->len);
@@ -3921,7 +3860,7 @@ void JitX86CodeGen::dynamic_nege8_lock(DecodedOp* op) {
 }
 
 void JitX86CodeGen::dynamic_btse32_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b32, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         // imm is the mask, not the bitshift
         U8 imm = std::countr_zero(op->imm);
         this->x86.btsMem32(X86Asm::Reg32(address->hardwareReg()), X86Asm::Reg32(offset->hardwareReg()), 0, 0, (U8)imm);
@@ -3933,7 +3872,7 @@ void JitX86CodeGen::dynamic_btse32_lock(DecodedOp* op) {
 }
 
 void JitX86CodeGen::dynamic_btse16_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b16, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         // imm is the mask, not the bitshift
         U8 imm = std::countr_zero(op->imm);
         this->x86.btsMem16(X86Asm::Reg32(address->hardwareReg()), X86Asm::Reg32(offset->hardwareReg()), 0, 0, (U8)imm);
@@ -3971,7 +3910,7 @@ void JitX86CodeGen::dynamic_btse16r16_lock(DecodedOp* op) {
 }
 
 void JitX86CodeGen::dynamic_btre32_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b32, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         // imm is the mask, not the bitshift
         U8 imm = std::countr_zero(op->imm);
         this->x86.btrMem32(X86Asm::Reg32(address->hardwareReg()), X86Asm::Reg32(offset->hardwareReg()), 0, 0, (U8)imm);
@@ -3982,7 +3921,7 @@ void JitX86CodeGen::dynamic_btre32_lock(DecodedOp* op) {
     });
 }
 void JitX86CodeGen::dynamic_btre16_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b16, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         // imm is the mask, not the bitshift
         U8 imm = std::countr_zero(op->imm);
         this->x86.btrMem16(X86Asm::Reg32(address->hardwareReg()), X86Asm::Reg32(offset->hardwareReg()), 0, 0, (U8)imm);
@@ -4018,7 +3957,7 @@ void JitX86CodeGen::dynamic_btre16r16_lock(DecodedOp* op) {
 }
 
 void JitX86CodeGen::dynamic_btce32_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b32, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         // imm is the mask, not the bitshift
         U8 imm = std::countr_zero(op->imm);
         this->x86.btcMem32(X86Asm::Reg32(address->hardwareReg()), X86Asm::Reg32(offset->hardwareReg()), 0, 0, (U8)imm);
@@ -4029,7 +3968,7 @@ void JitX86CodeGen::dynamic_btce32_lock(DecodedOp* op) {
     });
 }
 void JitX86CodeGen::dynamic_btce16_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b16, calculateEaaV2(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         // imm is the mask, not the bitshift
         U8 imm = std::countr_zero(op->imm);
         this->x86.btcMem16(X86Asm::Reg32(address->hardwareReg()), X86Asm::Reg32(offset->hardwareReg()), 0, 0, (U8)imm);

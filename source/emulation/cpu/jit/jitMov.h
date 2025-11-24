@@ -21,11 +21,11 @@ void Jit::dynamic_movr8r8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_move8r8(DecodedOp* op) {
-    write(JitWidth::b8, calculateEaaV2(op), getReadOnlyReg8(op->reg));
+    write(JitWidth::b8, calculateEaa(op), getReadOnlyReg8(op->reg));
     incrementEip(op->len);
 }
 void Jit::dynamic_movr8e8(DecodedOp* op) {
-    mov(JitWidth::b8, getReg8(op->reg), read(JitWidth::b8, calculateEaaV2(op)));
+    mov(JitWidth::b8, getReg8(op->reg), read(JitWidth::b8, calculateEaa(op)));
     incrementEip(op->len);
 }
 void Jit::dynamic_movr8(DecodedOp* op) {
@@ -33,7 +33,7 @@ void Jit::dynamic_movr8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_move8(DecodedOp* op) {
-    writeValue(JitWidth::b8, calculateEaaV2(op), op->imm);
+    writeValue(JitWidth::b8, calculateEaa(op), op->imm);
     incrementEip(op->len);
 }
 void Jit::dynamic_movr16r16(DecodedOp* op) {
@@ -41,11 +41,11 @@ void Jit::dynamic_movr16r16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_move16r16(DecodedOp* op) {
-    write(JitWidth::b16, calculateEaaV2(op), getReadOnlyReg(op->reg));
+    write(JitWidth::b16, calculateEaa(op), getReadOnlyReg(op->reg));
     incrementEip(op->len);
 }
 void Jit::dynamic_movr16e16(DecodedOp* op) {
-    mov(JitWidth::b16, getReg(op->reg), read(JitWidth::b16, calculateEaaV2(op)));
+    mov(JitWidth::b16, getReg(op->reg), read(JitWidth::b16, calculateEaa(op)));
     incrementEip(op->len);
 }
 void Jit::dynamic_movr16(DecodedOp* op) {
@@ -53,7 +53,7 @@ void Jit::dynamic_movr16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_move16(DecodedOp* op) {
-    writeValue(JitWidth::b16, calculateEaaV2(op), op->imm);
+    writeValue(JitWidth::b16, calculateEaa(op), op->imm);
     incrementEip(op->len);
 }
 void Jit::dynamic_movr32r32(DecodedOp* op) {
@@ -61,11 +61,11 @@ void Jit::dynamic_movr32r32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_move32r32(DecodedOp* op) {
-    write(JitWidth::b32, calculateEaaV2(op), getReadOnlyReg(op->reg));
+    write(JitWidth::b32, calculateEaa(op), getReadOnlyReg(op->reg));
     incrementEip(op->len);
 }
 void Jit::dynamic_movr32e32(DecodedOp* op) {
-    mov(JitWidth::b32, getReg(op->reg, -1, false), read(JitWidth::b32, calculateEaaV2(op)));
+    mov(JitWidth::b32, getReg(op->reg, -1, false), read(JitWidth::b32, calculateEaa(op)));
     incrementEip(op->len);
 }
 void Jit::dynamic_movr32(DecodedOp* op) {
@@ -73,7 +73,7 @@ void Jit::dynamic_movr32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_move32(DecodedOp* op) {
-    writeValue(JitWidth::b32, calculateEaaV2(op), op->imm);
+    writeValue(JitWidth::b32, calculateEaa(op), op->imm);
     incrementEip(op->len);
 }
 void Jit::dynamic_movr16s16(DecodedOp* op) {
@@ -85,12 +85,12 @@ void Jit::dynamic_movr32s16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_move16s16(DecodedOp* op) {
-    write(JitWidth::b16, calculateEaaV2(op), getReadOnlySegValue(op->reg));
+    write(JitWidth::b16, calculateEaa(op), getReadOnlySegValue(op->reg));
     incrementEip(op->len);
 }
 void Jit::dynamic_movs16e16(DecodedOp* op) {
     // the weird getTmpReg is to override the behavior of read, to make it not use getTmpRegForCallResult so that EAX is available to use for callAndReturn
-    RegPtr result = callAndReturn_IR(common_setSegment, op->reg, JitWidth::b16, read(JitWidth::b16, calculateEaaV2(op), nullptr, nullptr, false, getTmpReg()));
+    RegPtr result = callAndReturn_IR(common_setSegment, op->reg, JitWidth::b16, read(JitWidth::b16, calculateEaa(op), nullptr, nullptr, false, getTmpReg()));
     IfNot(JitWidth::b32, result); {
         blockDone(true);
     } EndIf();
@@ -180,7 +180,7 @@ void Jit::dynamic_movGwXzR8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_movGwXzE8(DecodedOp* op) {
-    movzx(JitWidth::b16, getReg(op->reg), JitWidth::b8, read(JitWidth::b8, calculateEaaV2(op)));
+    movzx(JitWidth::b16, getReg(op->reg), JitWidth::b8, read(JitWidth::b8, calculateEaa(op)));
     incrementEip(op->len);
 }
 void Jit::dynamic_movGwSxR8(DecodedOp* op) {
@@ -188,7 +188,7 @@ void Jit::dynamic_movGwSxR8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_movGwSxE8(DecodedOp* op) {
-    movsx(JitWidth::b16, getReg(op->reg), JitWidth::b8, read(JitWidth::b8, calculateEaaV2(op)));
+    movsx(JitWidth::b16, getReg(op->reg), JitWidth::b8, read(JitWidth::b8, calculateEaa(op)));
     incrementEip(op->len);
 }
 void Jit::dynamic_movGdXzR8(DecodedOp* op) {
@@ -196,7 +196,7 @@ void Jit::dynamic_movGdXzR8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_movGdXzE8(DecodedOp* op) {
-    movzx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b8, read(JitWidth::b8, calculateEaaV2(op)));
+    movzx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b8, read(JitWidth::b8, calculateEaa(op)));
     incrementEip(op->len);
 }
 void Jit::dynamic_movGdSxR8(DecodedOp* op) {
@@ -204,7 +204,7 @@ void Jit::dynamic_movGdSxR8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_movGdSxE8(DecodedOp* op) {
-    movsx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b8, read(JitWidth::b8, calculateEaaV2(op)));
+    movsx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b8, read(JitWidth::b8, calculateEaa(op)));
     incrementEip(op->len);
 }
 void Jit::dynamic_movGdXzR16(DecodedOp* op) {
@@ -212,7 +212,7 @@ void Jit::dynamic_movGdXzR16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_movGdXzE16(DecodedOp* op) {
-    movzx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b16, read(JitWidth::b16, calculateEaaV2(op)));
+    movzx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b16, read(JitWidth::b16, calculateEaa(op)));
     incrementEip(op->len);
 }
 void Jit::dynamic_movGdSxR16(DecodedOp* op) {
@@ -220,7 +220,7 @@ void Jit::dynamic_movGdSxR16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_movGdSxE16(DecodedOp* op) {
-    movsx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b16, read(JitWidth::b16, calculateEaaV2(op)));
+    movsx(JitWidth::b32, getReg(op->reg, -1, false), JitWidth::b16, read(JitWidth::b16, calculateEaa(op)));
     incrementEip(op->len);
 }
 void Jit::dynamic_movRdCRx(DecodedOp* op) {
@@ -238,10 +238,10 @@ void Jit::dynamic_movCRxRd(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_leaR16(DecodedOp* op) {
-    mov(JitWidth::b16, getReg(op->reg), calculateEaaV2(op));
+    mov(JitWidth::b16, getReg(op->reg), calculateEaa(op));
     incrementEip(op->len);
 }
 void Jit::dynamic_leaR32(DecodedOp* op) {
-    mov(JitWidth::b32, getReg(op->reg, -1, false), calculateEaaV2(op));
+    mov(JitWidth::b32, getReg(op->reg, -1, false), calculateEaa(op));
     incrementEip(op->len);
 }

@@ -114,11 +114,11 @@ void Jit::dynamic_popEw_reg(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_pushEw_mem(DecodedOp* op) {
-    push16(read(JitWidth::b16, calculateEaaV2(op)));
+    push16(read(JitWidth::b16, calculateEaa(op)));
     incrementEip(op->len);
 }
 void Jit::dynamic_popEw_mem(DecodedOp* op) {
-    write(JitWidth::b16, calculateEaaV2(op, 2), peek16()); // eaa must be calculated after esp is incremented which is why we pass 2 here
+    write(JitWidth::b16, calculateEaa(op, 2), peek16()); // eaa must be calculated after esp is incremented which is why we pass 2 here
 
     IfSmallStack(); {
         addValue(JitWidth::b16, getReg(4), 2);
@@ -136,11 +136,11 @@ void Jit::dynamic_popEd_reg(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_pushEd_mem(DecodedOp* op) {
-    push32(read(JitWidth::b32, calculateEaaV2(op)));
+    push32(read(JitWidth::b32, calculateEaa(op)));
     incrementEip(op->len);
 }
 void Jit::dynamic_popEd_mem(DecodedOp* op) {
-    write(JitWidth::b32, calculateEaaV2(op, 4), peek32()); // eaa must be calculated after esp is incremented which is why we pass 2 here
+    write(JitWidth::b32, calculateEaa(op, 4), peek32()); // eaa must be calculated after esp is incremented which is why we pass 2 here
 
     IfSmallStack();
     addValue(JitWidth::b16, getReg(4), 4);

@@ -50,7 +50,7 @@ U8 JitReg::hardwareReg() {
     return reg;
 }
 
-RegPtr Jit::calculateEaaV2(DecodedOp* op, U32 popEspAmount) {
+RegPtr Jit::calculateEaa(DecodedOp* op, U32 popEspAmount) {
     if (op->ea16) {
         // cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
         RegPtr result = getTmpReg();
@@ -407,7 +407,7 @@ void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const 
     }
 
     if (writeback) {
-        readWriteMem(width, calculateEaaV2(op), [cf, needsToSetFlags, flags, op, width, callback, cfCallback, this](RegPtr value) {
+        readWriteMem(width, calculateEaa(op), [cf, needsToSetFlags, flags, op, width, callback, cfCallback, this](RegPtr value) {
             if (flags && flags->usesDst(needsToSetFlags)) {
                 storeLazyFlagsDest(value);
             }
@@ -422,7 +422,7 @@ void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const 
             }
             });
     } else {
-        RegPtr dest = read(width, calculateEaaV2(op));
+        RegPtr dest = read(width, calculateEaa(op));
 
         if (flags && flags->usesDst(needsToSetFlags)) {
             storeLazyFlagsDest(dest);
@@ -484,7 +484,7 @@ void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const 
     arithSetup(op, needsToSetFlags, cf, flags, addCF);
 
     if (writeback) {
-        readWriteMem(width, calculateEaaV2(op), [needsToSetFlags, flags, cf, op, width, callback, this](RegPtr value) {
+        readWriteMem(width, calculateEaa(op), [needsToSetFlags, flags, cf, op, width, callback, this](RegPtr value) {
             RegPtr src;
 
             if (flags && flags->usesDst(needsToSetFlags)) {
@@ -519,7 +519,7 @@ void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const 
         if (addCF) {
             kpanic("Jit::dynamic_MR wasn't expecting addCF");
         }
-        RegPtr dest = read(width, calculateEaaV2(op));
+        RegPtr dest = read(width, calculateEaa(op));
 
         if (flags && flags->usesDst(needsToSetFlags)) {
             storeLazyFlagsDest(dest);
@@ -548,7 +548,7 @@ void Jit::dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg2 callback, const 
     arithSetup(op, needsToSetFlags, cf, flags, addCF);
 
     RegPtr dest;
-    RegPtr src = read(width, calculateEaaV2(op));
+    RegPtr src = read(width, calculateEaa(op));
 
     if (flags && flags->usesSrc(needsToSetFlags)) {
         storeLazyFlagsSrc(src);
@@ -758,7 +758,7 @@ void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, const Lazy
     arithSetup(op, needsToSetFlags, flags);
 
     if (writeback) {
-        readWriteMem(width, calculateEaaV2(op), [needsToSetFlags, flags, op, width, callback, this](RegPtr value) {
+        readWriteMem(width, calculateEaa(op), [needsToSetFlags, flags, op, width, callback, this](RegPtr value) {
             if (flags && flags->usesDst(needsToSetFlags)) {
                 storeLazyFlagsDest(value);
             }
@@ -771,7 +771,7 @@ void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, const Lazy
             }
             });
     } else {
-        RegPtr dest = read(width, calculateEaaV2(op), nullptr, nullptr, false, tmp);
+        RegPtr dest = read(width, calculateEaa(op), nullptr, nullptr, false, tmp);
         if (flags && flags->usesDst(needsToSetFlags)) {
             storeLazyFlagsDest(dest);
         }
@@ -839,7 +839,7 @@ void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, cons
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
 
     if (!needsToSetFlags) {
-        readWriteMem(width, calculateEaaV2(op), [op, width, callback, this](RegPtr value) {
+        readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
             if (width == JitWidth::b8) {
                 (this->*callback)(width, value, getReadOnlyReg8(1, true, 1));
             } else {
@@ -855,7 +855,7 @@ void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, cons
         }
         andValue(JitWidth::b8, src, 0x1f);
         If(JitWidth::b8, src, true); {
-            readWriteMem(width, calculateEaaV2(op), [needsToSetFlags, flags, src, op, width, callback, this](RegPtr value) {
+            readWriteMem(width, calculateEaa(op), [needsToSetFlags, flags, src, op, width, callback, this](RegPtr value) {
                 storeLazyFlags(flags);
                 if (flags && flags->usesDst(needsToSetFlags)) {
                     storeLazyFlagsDest(value);
@@ -879,7 +879,7 @@ void Jit::dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback,
     arithSetup(op, needsToSetFlags, flags);
 
     if (!needsToSetFlags) {
-        readWriteMem(width, calculateEaaV2(op), [op, width, callback, this](RegPtr value) {
+        readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
             if (width == JitWidth::b8) {
                 (this->*callback)(width, getReg8(op->reg), value);
             } else {
@@ -898,7 +898,7 @@ void Jit::dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback,
             storeLazyFlagsSrc(src);
         }
 
-        readWriteMem(width, calculateEaaV2(op), [needsToSetFlags, flags, src, op, width, callback, this](RegPtr value) {
+        readWriteMem(width, calculateEaa(op), [needsToSetFlags, flags, src, op, width, callback, this](RegPtr value) {
             if (flags && flags->usesDst(needsToSetFlags)) {
                 storeLazyFlagsDest(value);
             }
