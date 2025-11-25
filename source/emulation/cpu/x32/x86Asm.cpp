@@ -4,32 +4,32 @@
 
 #include "x86Asm.h"
 
-X86Asm::Reg8 X86Asm::al = 0;
-X86Asm::Reg8 X86Asm::cl = 1;
-X86Asm::Reg8 X86Asm::dl = 2;
-X86Asm::Reg8 X86Asm::bl = 3;
-X86Asm::Reg8 X86Asm::ah = 4;
-X86Asm::Reg8 X86Asm::ch = 5;
-X86Asm::Reg8 X86Asm::dh = 6;
-X86Asm::Reg8 X86Asm::bh = 7;
+X86Asm::Reg8 X86Asm::al = X86Asm::Reg8::from(0);
+X86Asm::Reg8 X86Asm::cl = X86Asm::Reg8::from(1);
+X86Asm::Reg8 X86Asm::dl = X86Asm::Reg8::from(2);
+X86Asm::Reg8 X86Asm::bl = X86Asm::Reg8::from(3);
+X86Asm::Reg8 X86Asm::ah = X86Asm::Reg8::from(4);
+X86Asm::Reg8 X86Asm::ch = X86Asm::Reg8::from(5);
+X86Asm::Reg8 X86Asm::dh = X86Asm::Reg8::from(6);
+X86Asm::Reg8 X86Asm::bh = X86Asm::Reg8::from(7);
 
-X86Asm::Reg16 X86Asm::ax = 0;
-X86Asm::Reg16 X86Asm::cx = 1;
-X86Asm::Reg16 X86Asm::dx = 2;
-X86Asm::Reg16 X86Asm::bx = 3;
-X86Asm::Reg16 X86Asm::sp = 4;
-X86Asm::Reg16 X86Asm::bp = 5;
-X86Asm::Reg16 X86Asm::si = 6;
-X86Asm::Reg16 X86Asm::di = 7;
+X86Asm::Reg16 X86Asm::ax = X86Asm::Reg16::from(0);
+X86Asm::Reg16 X86Asm::cx = X86Asm::Reg16::from(1);
+X86Asm::Reg16 X86Asm::dx = X86Asm::Reg16::from(2);
+X86Asm::Reg16 X86Asm::bx = X86Asm::Reg16::from(3);
+X86Asm::Reg16 X86Asm::sp = X86Asm::Reg16::from(4);
+X86Asm::Reg16 X86Asm::bp = X86Asm::Reg16::from(5);
+X86Asm::Reg16 X86Asm::si = X86Asm::Reg16::from(6);
+X86Asm::Reg16 X86Asm::di = X86Asm::Reg16::from(7);
 
-X86Asm::Reg32 X86Asm::eax = 0;
-X86Asm::Reg32 X86Asm::ecx = 1;
-X86Asm::Reg32 X86Asm::edx = 2;
-X86Asm::Reg32 X86Asm::ebx = 3;
-X86Asm::Reg32 X86Asm::esp = 4;
-X86Asm::Reg32 X86Asm::ebp = 5;
-X86Asm::Reg32 X86Asm::esi = 6;
-X86Asm::Reg32 X86Asm::edi = 7;
+X86Asm::Reg32 X86Asm::eax = X86Asm::Reg32::from(0);
+X86Asm::Reg32 X86Asm::ecx = X86Asm::Reg32::from(1);
+X86Asm::Reg32 X86Asm::edx = X86Asm::Reg32::from(2);
+X86Asm::Reg32 X86Asm::ebx = X86Asm::Reg32::from(3);
+X86Asm::Reg32 X86Asm::esp = X86Asm::Reg32::from(4);
+X86Asm::Reg32 X86Asm::ebp = X86Asm::Reg32::from(5);
+X86Asm::Reg32 X86Asm::esi = X86Asm::Reg32::from(6);
+X86Asm::Reg32 X86Asm::edi = X86Asm::Reg32::from(7);
 
 bool operator==(const X86Asm::Reg32& lhs, const X86Asm::Reg32& rhs) {
     return lhs.reg == rhs.reg;
@@ -58,24 +58,8 @@ void X86Asm::outd(U32 d) {
     outb((U8)(d >> 24));
 }
 
-void X86Asm::lea(Reg32 dst, Reg32 rm, Reg32 sib, U32 shift, U32 disp) {
-    outb(0x8d);
-
-    if (!disp) {
-        outb(0x04 | (dst.reg) << 3);
-        outb((sib.reg << 3) | shift << 6 | rm.reg);
-    } else {
-        S32 sdisp = (S32)disp;
-        if (sdisp < -128 || sdisp > 127) {
-            outb(0x84 | (dst.reg) << 3);
-            outb((sib.reg << 3) | shift << 6 | rm.reg);
-            outd(disp);
-        } else {
-            outb(0x44 | (dst.reg) << 3);
-            outb((sib.reg << 3) | shift << 6 | rm.reg);
-            outb((U8)disp);
-        }
-    }    
+void X86Asm::lea(Reg32 dst, Mem mem) {
+    mem32(0x8d, dst.reg, mem);   
 }
 
 void X86Asm::lahf() {
@@ -86,512 +70,387 @@ void X86Asm::sahf() {
     outb(0x9e);
 }
 
-void X86Asm::lea(Reg32 dst, Reg32 rm, U32 disp) {
-    outb(0x8d);
-
-    if (!disp) {
-        outb((dst.reg << 3) | rm.reg);
-    } else {
-        S32 sdisp = (S32)disp;
-        if (sdisp < -128 || sdisp > 127) {
-            outb(0x80 | (dst.reg << 3) | rm.reg);
-            outd(disp);
-        } else {
-            outb(0x40 | (dst.reg << 3) | rm.reg);
-            outb((U8)disp);
-        }
-    }
-}
-
 void X86Asm::bswap(Reg32 reg) {
     outb(0x0f);
     outb(0xc8 + reg.reg);
 }
 
-void X86Asm::mem32(U8 inst, Reg32 dst, Reg32 rm, U32 disp) {
-    if (!disp) {
-        outb(inst);
-        outb(0x00 | (dst.reg << 3) | rm.reg);
-    } else {
-        S32 sIMM = (S32)disp;
+void X86Asm::mem32(U8 inst, U8 dst, const Mem& mem) {
+    if (mem.rm.reg != 0xff && mem.sib.reg != 0xff) {
+        if (mem.lsl > 3) {
+            kpanic("X86Asm::mem32 shift can not be greater than 3");
+        }
+        S32 sIMM = (S32)mem.disp;
+        bool small = true;
         if (sIMM < -128 || sIMM > 127) {
-            outb(inst);
-            outb(0x80 | (dst.reg << 3) | rm.reg);
-            outd(disp);
-        } else {
-            outb(inst);
-            outb(0x40 | (dst.reg << 3) | rm.reg);
-            outb(disp);
+            small = false;
         }
-    }
-}
-
-void X86Asm::mem32(U8 inst, Reg32 dst, Reg32 sib, U8 shift, U32 disp) {
-    if (!shift) {
-        mem32(inst, dst, sib, disp);
-    } else {
-        if (shift > 2) {
-            kpanic("X86Asm::mem32 shift can not be greater than 2");
-        }
-        // without rm, there is only one way to encode this
 
         outb(inst);
-        outb(0x04 | (dst.reg << 3));
-        outb(((shift == 1) ? 0x40 : 0x80) | (sib.reg << 3) | 0x05); // 5 is sib with disp and no rm
-        outd(disp);
-    }
-}
-
-void X86Asm::mem32(U8 inst, Reg32 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp) {
-    if (shift > 3) {
-        kpanic("X86Asm::mem32 shift can not be greater than 3");
-    }
-    S32 sIMM = (S32)disp;
-    bool small = true;
-    if (sIMM < -128 || sIMM > 127) {
-        small = false;
-    }
-
-    outb(inst);
-    bool hasDisp = disp != 0;
-    if (!hasDisp && rm.reg == 5) {
-        hasDisp = true;
-    }
-    if (!hasDisp) {
-        outb(0x04 | (dst.reg << 3));
-    } else if (small) {
-        outb(0x44 | (dst.reg << 3));
-    } else {
-        outb(0x84 | (dst.reg << 3));
-    }
-    if (shift == 0) {
-        outb((sib.reg << 3) | rm.reg);
-    } else {
-        outb((shift << 6) | (sib.reg << 3) | rm.reg);
-    } 
-    if (hasDisp) {
-        if (small) {
-            outb(disp);
-        } else {
-            outd(disp);
+        bool hasDisp = mem.disp != 0;
+        if (!hasDisp && mem.rm.reg == 5) {
+            hasDisp = true;
         }
-    }
-}
+        if (!hasDisp) {
+            outb(0x04 | (dst << 3));
+        } else if (small) {
+            outb(0x44 | (dst << 3));
+        } else {
+            outb(0x84 | (dst << 3));
+        }
+        if (mem.lsl == 0) {
+            outb((mem.sib.reg << 3) | mem.rm.reg);
+        } else {
+            outb((mem.lsl << 6) | (mem.sib.reg << 3) | mem.rm.reg);
+        }
+        if (hasDisp) {
+            if (small) {
+                outb(mem.disp);
+            } else {
+                outd(mem.disp);
+            }
+        }
+    } else if (mem.rm.reg != 0xff) {
+        if (!mem.disp) {
+            outb(inst);
+            outb(0x00 | (dst << 3) | mem.rm.reg);
+        } else {
+            S32 sIMM = (S32)mem.disp;
+            if (sIMM < -128 || sIMM > 127) {
+                outb(inst);
+                outb(0x80 | (dst << 3) | mem.rm.reg);
+                outd(mem.disp);
+            } else {
+                outb(inst);
+                outb(0x40 | (dst << 3) | mem.rm.reg);
+                outb(mem.disp);
+            }
+        }
+    } else if (mem.sib.reg != 0xff) {
+        if (mem.lsl) {
+            // without rm, there is only one way to encode this
 
-void X86Asm::mem16(U8 inst, Reg16 dst, Reg32 rm, U32 disp) {
-    mem32(inst, Reg32(dst.reg), rm, disp);
-}
-
-void X86Asm::mem16(U8 inst, Reg16 dst, Reg32 sib, U8 shift, U32 disp) {
-    mem32(inst, Reg32(dst.reg), sib, shift, disp);
-}
-
-void X86Asm::mem16(U8 inst, Reg16 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp) {
-    mem32(inst, Reg32(dst.reg), rm, sib, shift, disp);
-}
-
-void X86Asm::mem8(U8 inst, Reg8 dst, Reg32 rm, U32 disp) {
-    mem32(inst, Reg32(dst.reg), rm, disp);
-}
-
-void X86Asm::mem8(U8 inst, Reg8 dst, Reg32 rm, U8 shift, U32 disp) {
-    mem32(inst, Reg32(dst.reg), rm, shift, disp);
-}
-
-void X86Asm::mem8(U8 inst, Reg8 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp) {
-    mem32(inst, Reg32(dst.reg), rm, sib, shift, disp);
-}
-
-void X86Asm::addMemReg(Reg16 dst, Reg32 rm, U32 disp) {
-    outb(0x66);
-    mem32(0x03, Reg32(dst.reg), rm, disp);
-}
-
-void X86Asm::addMemReg(Reg32 dst, Reg32 rm, U32 disp) {
-    mem32(0x03, dst, rm, disp);
-}
-
-void X86Asm::subMemReg(Reg32 dst, Reg32 rm, U32 disp) {
-    mem32(0x2b, dst, rm, disp);
-}
-
-void X86Asm::addMemReg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    mem32(0x01, reg, rm, sib, lsl, disp);
-}
-
-void X86Asm::addMemReg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    outb(0x66);
-    mem32(0x01, Reg32(reg.reg), rm, sib, lsl, disp);
-}
-
-void X86Asm::addMemReg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    mem32(0x00, Reg32(reg.reg), rm, sib, lsl, disp);
-}
-
-void X86Asm::subMemReg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    mem32(0x29, reg, rm, sib, lsl, disp);
-}
-
-void X86Asm::subMemReg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    outb(0x66);
-    mem32(0x29, Reg32(reg.reg), rm, sib, lsl, disp);
-}
-
-void X86Asm::subMemReg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    mem32(0x28, Reg32(reg.reg), rm, sib, lsl, disp);
-}
-
-void X86Asm::orMemReg(Reg32 reg, Reg32 rm, U32 disp) {
-    mem32(0x09, Reg32(reg.reg), rm, disp);
-}
-
-void X86Asm::orMemReg(Reg16 reg, Reg32 rm, U32 disp) {
-    outb(0x66);
-    mem32(0x09, Reg32(reg.reg), rm, disp);
-}
-
-void X86Asm::addMem16(Reg32 rm, U32 disp, U16 value) {
-    S32 sValue = (S32)value;
-    S32 sDisp = (S32)disp;
-    bool smallDisp = sDisp >= -128 && sDisp <= 127;
-    bool smallValue = sValue >= -128 && sValue <= 127;
-
-    outb(0x66);
-    if (smallValue) {
-        outb(0x83);
+            outb(inst);
+            outb(0x04 | (dst << 3));
+            outb(((mem.lsl == 1) ? 0x40 : 0x80) | (mem.sib.reg << 3) | 0x05); // 5 is sib with disp and no rm
+            outd(mem.disp); // even if 0, there is no other way to encode this
+        } else if (!mem.disp) {
+            outb(inst);
+            outb(0x00 | (dst << 3) | mem.sib.reg);
+        } else {
+            S32 sIMM = (S32)mem.disp;
+            if (sIMM < -128 || sIMM > 127) {
+                outb(inst);
+                outb(0x80 | (dst << 3) | mem.sib.reg);
+                outd(mem.disp);
+            } else {
+                outb(inst);
+                outb(0x40 | (dst << 3) | mem.sib.reg);
+                outb(mem.disp);
+            }
+        }
     } else {
-        outb(0x81);
-    }
+        outb(inst);
+        outb(0x05 | (dst << 3));
+        outd(mem.disp);
+    }    
+}
 
-    if (!disp) {
-        outb(0x00 | rm.reg);
-    } else if (smallDisp) {
-        outb(0x40 | rm.reg);
-        outb((U8)disp);
-    } else {
-        outb(0x80 | rm.reg);
-        outb(disp);
-    }
+void X86Asm::mem16(U8 inst, U8 dst, const Mem& mem) {
+    mem32(inst, dst, mem);
+}
 
-    if (smallValue) {
-        outb((U8)value);
+void X86Asm::mem8(U8 inst, U8 dst, const Mem& mem) {
+    mem32(inst, dst, mem);
+}
+
+void X86Asm::add(const Mem32& mem, Reg32 reg) {
+    mem32(0x01, reg.reg, mem);
+}
+
+void X86Asm::add(const Mem16& mem, Reg16 reg) {
+    outb(0x66);
+    mem16(0x01, reg.reg, mem);
+}
+
+void X86Asm::add(const Mem8& mem, Reg8 reg) {
+    mem8(0x00, reg.reg, mem);
+}
+
+void X86Asm::add(const Mem32& mem, U32 imm) {
+    S32 sIMM = (S32)imm;
+    if (sIMM < -128 || sIMM > 127) {
+        mem32(0x81, 0, mem);
+        outd(imm);
     } else {
-        outw(value);
+        mem32(0x83, 0, mem);
+        outb((U8)imm);
     }
 }
 
-void X86Asm::addMem8(Reg32 rm, U32 disp, U8 value) {
-    S32 sDisp = (S32)disp;
-    bool smallDisp = sDisp >= -128 && sDisp <= 127;
-
-    outb(0x80);
-
-    if (!disp) {
-        outb(0x00 | rm.reg);
-    } else if (smallDisp) {
-        outb(0x40 | rm.reg);
-        outb((U8)disp);
+void X86Asm::add(const Mem16& mem, U16 imm) {
+    S32 sIMM = (S32)imm;
+    outb(0x66);
+    if (sIMM < -128 || sIMM > 127) {
+        mem32(0x81, 0, mem);
+        outw(imm);
     } else {
-        outb(0x80 | rm.reg);
-        outb(disp);
+        mem32(0x83, 0, mem);
+        outb((U8)imm);
     }
+}
 
+void X86Asm::add(const Mem8& mem, U8 imm) {
+    mem32(0x80, 0, mem);
+    outb((U8)imm);
+}
+
+void X86Asm::sub(const Mem32& mem, Reg32 reg) {
+    mem32(0x29, reg.reg, mem);
+}
+
+void X86Asm::sub(const Mem16& mem, Reg16 reg) {
+    outb(0x66);
+    mem16(0x29, reg.reg, mem);
+}
+
+void X86Asm::sub(const Mem8& mem, Reg8 reg) {
+    mem8(0x28, reg.reg, mem);
+}
+
+void X86Asm::sub(const Mem32& mem, U32 imm) {
+    S32 sIMM = (S32)imm;
+    if (sIMM < -128 || sIMM > 127) {
+        mem32(0x81, 5, mem);
+        outd(imm);
+    } else {
+        mem32(0x83, 5, mem);
+        outb((U8)imm);
+    }
+}
+
+void X86Asm::sub(const Mem16& mem, U16 imm) {
+    S32 sIMM = (S32)imm;
+    outb(0x66);
+    if (sIMM < -128 || sIMM > 127) {
+        mem32(0x81, 5, mem);
+        outw(imm);
+    } else {
+        mem32(0x83, 5, mem);
+        outb((U8)imm);
+    }
+}
+
+void X86Asm::sub(const Mem8& mem, U8 imm) {
+    mem32(0x80, 5, mem);
+    outb((U8)imm);
+}
+
+void X86Asm::or_(const Mem32& mem, Reg32 reg) {
+    mem32(0x09, reg.reg, mem);
+}
+
+void X86Asm::or_(const Mem16& mem, Reg16 reg) {
+    outb(0x66);
+    mem16(0x09, reg.reg, mem);
+}
+
+void X86Asm::or_(const Mem8& mem, Reg8 reg) {
+    mem8(0x08, reg.reg, mem);
+}
+
+void X86Asm::cmp(const Mem32& mem, Reg32 reg) {
+    mem32(0x39, reg.reg, mem);
+}
+
+void X86Asm::cmp(const Mem16& mem, Reg16 reg) {
+    outb(0x66);
+    mem16(0x39, reg.reg, mem);
+}
+
+void X86Asm::cmp(const Mem8& mem, Reg8 reg) {
+    mem8(0x38, reg.reg, mem);
+}
+
+void X86Asm::cmp(const Mem32& mem, U32 imm) {
+    S32 sIMM = (S32)imm;
+    if (sIMM < -128 || sIMM > 127) {
+        mem32(0x81, 7, mem);
+        outd(imm);
+    } else {
+        mem32(0x83, 7, mem);
+        outb((U8)imm);
+    }    
+}
+
+void X86Asm::cmp(const Mem16& mem, U16 imm) {
+    outb(0x66);
+    S32 sIMM = (S32)imm;
+    if (sIMM < -128 || sIMM > 127) {
+        mem16(0x81, 7, mem);
+        outw(imm);
+    } else {
+        mem16(0x83, 7, mem);
+        outb((U8)imm);
+    }
+}
+
+void X86Asm::cmp(const Mem8& mem, U8 imm) {
+    mem8(0x80, 7, mem);
+    outb(imm);
+}
+
+void X86Asm::and_(const Mem32& mem, Reg32 reg) {
+    mem32(0x21, reg.reg, mem);
+}
+
+void X86Asm::and_(const Mem16& mem, Reg16 reg) {
+    outb(0x66);
+    mem16(0x21, reg.reg, mem);
+}
+
+void X86Asm::and_(const Mem8& mem, Reg8 reg) {
+    mem8(0x20, reg.reg, mem);
+}
+
+void X86Asm::and_(const Mem32& mem, U32 imm) {
+    S32 sIMM = (S32)imm;
+    if (sIMM < -128 || sIMM > 127) {
+        mem32(0x81, 4, mem);
+        outd(imm);
+    } else {
+        mem32(0x83, 4, mem);
+        outb(imm);
+    }
+}
+
+void X86Asm::not_(const Mem32& mem) {
+    mem32(0xf7, 2, mem);
+}
+
+void X86Asm::not_(const Mem16& mem) {
+    outb(0x66);
+    mem16(0xf7, 2, mem);
+}
+
+void X86Asm::not_(const Mem8& mem) {
+    mem8(0xf6, 2, mem);
+}
+
+void X86Asm::neg(const Mem32& mem) {
+    mem32(0xf7, 3, mem);
+}
+
+void X86Asm::neg(const Mem16& mem) {
+    outb(0x66);
+    mem16(0xf7, 3, mem);
+}
+
+void X86Asm::neg(const Mem8& mem) {
+    mem32(0xf6, 3, mem);
+}
+
+void X86Asm::inc(const Mem32& mem) {
+    mem32(0xff, 0, mem);
+}
+
+void X86Asm::inc(const Mem16& mem) {
+    outb(0x66);
+    mem16(0xff, 0, mem);
+}
+
+void X86Asm::inc(const Mem8& mem) {
+    mem8(0xfe, 0, mem);
+}
+
+void X86Asm::dec(const Mem32& mem) {
+    mem32(0xff, 1, mem);
+}
+
+void X86Asm::dec(const Mem16& mem) {
+    outb(0x66);
+    mem16(0xff, 1, mem);
+}
+
+void X86Asm::dec(const Mem8& mem) {
+    mem8(0xfe, 1, mem);
+}
+
+void X86Asm::bt(const Mem32& mem, U8 value) {
+    outb(0x0f);
+    mem32(0xba, 4, mem);
     outb(value);
 }
 
-void X86Asm::addMem32(Reg32 rm, U32 disp, U32 value) {
-    S32 sValue = (S32)value;
-    S32 sDisp = (S32)disp;
-    bool smallDisp = sDisp >= -128 && sDisp <= 127;
-    bool smallValue = sValue >= -128 && sValue <= 127;
-
-    if (smallValue) {
-        outb(0x83);
-    } else {
-        outb(0x81);
-    }
-
-    if (!disp) {
-        outb(0x00 | rm.reg);
-    } else if (smallDisp) {
-        outb(0x40 | rm.reg);
-        outb((U8)disp);
-    } else {
-        outb(0x80 | rm.reg);
-        outb(disp);
-    }
-
-    if (smallValue) {
-        outb((U8)value);
-    } else {
-        outd(value);
-    }
-}
-
-void X86Asm::addMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U32 value) {
-    S32 sValue = (S32)value;
-    bool smallValue = sValue >= -128 && sValue <= 127;
-
-    mem32(smallValue ? 0x83 : 0x81, 0, rm, sib, lsl, disp);
-    if (smallValue) {
-        outb((U8)value);
-    } else {
-        outd(value);
-    }
-}
-
-void X86Asm::addMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U16 value) {
-    S32 sValue = (S32)value;
-    bool smallValue = sValue >= -128 && sValue <= 127;
-
-    outb(0x66);
-    mem32(smallValue ? 0x83 : 0x81, 0, rm, sib, lsl, disp);
-    if (smallValue) {
-        outb((U8)value);
-    } else {
-        outw(value);
-    }
-}
-
-void X86Asm::addMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
-    mem32(0x80, 0, rm, sib, lsl, disp);
-    outb((U8)value);
-}
-
-void X86Asm::andMem32(Reg32 rm, U32 disp, U32 value) {
-    S32 sValue = (S32)value;
-    bool smallValue = sValue >= -128 && sValue <= 127;
-
-    mem32(smallValue ? 0x83 : 0x81, 4, rm, disp);
-    if (smallValue) {
-        outb((U8)value);
-    } else {
-        outd(value);
-    }
-}
-
-void X86Asm::notMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    mem32(0xf7, 2, rm, sib, lsl, disp);
-}
-
-void X86Asm::notMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    outb(0x66);
-    mem32(0xf7, 2, rm, sib, lsl, disp);
-}
-
-void X86Asm::notMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    mem32(0xf6, 2, rm, sib, lsl, disp);
-}
-
-void X86Asm::negMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    mem32(0xf7, 3, rm, sib, lsl, disp);
-}
-
-void X86Asm::negMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    outb(0x66);
-    mem32(0xf7, 3, rm, sib, lsl, disp);
-}
-
-void X86Asm::negMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    mem32(0xf6, 3, rm, sib, lsl, disp);
-}
-
-void X86Asm::incMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    mem32(0xff, 0, rm, sib, lsl, disp);
-}
-
-void X86Asm::incMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    outb(0x66);
-    mem32(0xff, 0, rm, sib, lsl, disp);
-}
-
-void X86Asm::incMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    mem32(0xfe, 0, rm, sib, lsl, disp);
-}
-
-void X86Asm::decMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    mem32(0xff, 1, rm, sib, lsl, disp);
-}
-
-void X86Asm::decMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    outb(0x66);
-    mem32(0xff, 1, rm, sib, lsl, disp);
-}
-
-void X86Asm::decMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    mem32(0xfe, 1, rm, sib, lsl, disp);
-}
-
-void X86Asm::btMem32(Reg32 rm, U32 disp, U8 value) {
+void X86Asm::bts(const Mem32& mem, U8 value) {
     outb(0x0f);
-    mem32(0xba, 4, rm, disp);
+    mem32(0xba, 5, mem);
     outb(value);
 }
 
-void X86Asm::btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
+void X86Asm::bts(const Mem16& mem, U8 value) {
     outb(0x0f);
-    mem32(0xba, 5, rm, sib, lsl, disp);
+    mem16(0xba, 5, mem);
     outb(value);
 }
 
-void X86Asm::btsMem32(Reg32 rm, U32 disp, U8 value) {
+void X86Asm::bts(const Mem32& mem, Reg32 value) {
     outb(0x0f);
-    mem32(0xba, 5, rm, disp);
+    mem32(0xab, value.reg, mem);
+}
+
+void X86Asm::bts(const Mem16& mem, Reg16 value) {
+    outb(0x66);
+    outb(0x0f);
+    mem16(0xab, value.reg, mem);
+}
+
+void X86Asm::btr(const Mem32& mem, U8 value) {
+    outb(0x0f);
+    mem32(0xba, 6, mem);
     outb(value);
 }
 
-void X86Asm::btsMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
+void X86Asm::btr(const Mem16& mem, U8 value) {
     outb(0x66);
     outb(0x0f);
-    mem32(0xba, 5, rm, sib, lsl, disp);
+    mem16(0xba, 6, mem);
     outb(value);
 }
 
-void X86Asm::btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value) {
+void X86Asm::btr(const Mem32& mem, Reg32 value) {
     outb(0x0f);
-    mem32(0xab, value, rm, sib, lsl, disp);
+    mem32(0xb3, value.reg, mem);
 }
 
-void X86Asm::btsMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value) {
+void X86Asm::btr(const Mem16& mem, Reg16 value) {
     outb(0x66);
     outb(0x0f);
-    mem32(0xab, Reg32(value.reg), rm, sib, lsl, disp);
+    mem16(0xb3, value.reg, mem);
 }
 
-void X86Asm::btrMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
+void X86Asm::btc(const Mem32& mem, U8 value) {
     outb(0x0f);
-    mem32(0xba, 6, rm, sib, lsl, disp);
+    mem32(0xba, 7, mem);
     outb(value);
 }
 
-void X86Asm::btrMem32(Reg32 rm, U32 disp, U8 value) {
+void X86Asm::btc(const Mem16& mem, U8 value) {
+    outb(0x66);
     outb(0x0f);
-    mem32(0xba, 6, rm, disp);
+    mem16(0xba, 7, mem);
     outb(value);
 }
 
-void X86Asm::btrMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
+void X86Asm::btc(const Mem32& mem, Reg32 value) {
+    outb(0x0f);
+    mem32(0xbb, value.reg, mem);
+}
+
+void X86Asm::btc(const Mem16& mem, Reg16 value) {
     outb(0x66);
     outb(0x0f);
-    mem32(0xba, 6, rm, sib, lsl, disp);
-    outb(value);
-}
-
-void X86Asm::btrMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value) {
-    outb(0x0f);
-    mem32(0xb3, value, rm, sib, lsl, disp);
-}
-
-void X86Asm::btrMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value) {
-    outb(0x66);
-    outb(0x0f);
-    mem32(0xb3, Reg32(value.reg), rm, sib, lsl, disp);
-}
-
-void X86Asm::btcMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
-    outb(0x0f);
-    mem32(0xba, 7, rm, sib, lsl, disp);
-    outb(value);
-}
-
-void X86Asm::btcMem32(Reg32 rm, U32 disp, U8 value) {
-    outb(0x0f);
-    mem32(0xba, 7, rm, disp);
-    outb(value);
-}
-
-void X86Asm::btcMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
-    outb(0x66);
-    outb(0x0f);
-    mem32(0xba, 7, rm, sib, lsl, disp);
-    outb(value);
-}
-
-void X86Asm::btcMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value) {
-    outb(0x0f);
-    mem32(0xbb, value, rm, sib, lsl, disp);
-}
-
-void X86Asm::btcMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value) {
-    outb(0x66);
-    outb(0x0f);
-    mem32(0xbb, Reg32(value.reg), rm, sib, lsl, disp);
-}
-
-void X86Asm::subMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U32 value) {
-    S32 sValue = (S32)value;
-    bool smallValue = sValue >= -128 && sValue <= 127;
-
-    mem32(smallValue ? 0x83 : 0x81, 5, rm, sib, lsl, disp);
-    if (smallValue) {
-        outb((U8)value);
-    } else {
-        outd(value);
-    }
-}
-
-void X86Asm::subMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U16 value) {
-    S32 sValue = (S32)value;
-    bool smallValue = sValue >= -128 && sValue <= 127;
-
-    outb(0x66);
-    mem32(smallValue ? 0x83 : 0x81, 5, rm, sib, lsl, disp);
-    if (smallValue) {
-        outb((U8)value);
-    } else {
-        outw(value);
-    }
-}
-
-void X86Asm::subMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
-    mem32(0x80, 5, rm, sib, lsl, disp);
-    outb((U8)value);
-}
-
-void X86Asm::cmpMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U32 value) {
-    S32 sValue = (S32)value;
-    bool smallValue = sValue >= -128 && sValue <= 127;
-
-    mem32(smallValue ? 0x83 : 0x81, 7, rm, sib, lsl, disp);
-    if (smallValue) {
-        outb((U8)value);
-    } else {
-        outd(value);
-    }
-}
-
-void X86Asm::cmpMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U16 value) {
-    S32 sValue = (S32)value;
-    bool smallValue = sValue >= -128 && sValue <= 127;
-
-    outb(0x66);
-    mem32(smallValue ? 0x83 : 0x81, 7, rm, sib, lsl, disp);
-    if (smallValue) {
-        outb((U8)value);
-    } else {
-        outw(value);
-    }
-}
-
-void X86Asm::cmpMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
-    mem32(0x80, 7, rm, sib, lsl, disp);
-    outb((U8)value);
-}
-
-void X86Asm::testMem32(Reg32 rm, U32 disp, U32 value) {
-    mem32(0xf7, 0, rm, disp);
-    outd(value);
-}
-
-void X86Asm::testMem16(Reg32 rm, U32 disp, U16 value) {
-    outb(0x66);
-    mem32(0xf7, 0, rm, disp);
-    outw((U16)value);
-}
-
-void X86Asm::testMem8(Reg32 rm, U32 disp, U8 value) {
-    mem32(0xf6, 0, rm, disp);
-    outb((U8)value);
+    mem16(0xbb, value.reg, mem);
 }
 
 void X86Asm::mov(Reg32 dst, U32 imm) {
@@ -610,100 +469,45 @@ void X86Asm::mov(Reg8 dst, U8 imm) {
     outb(imm);
 }
 
-void X86Asm::readMem(Reg32 dst, Reg32 rm, U32 disp) {
-    mem32(0x8b, dst, rm, disp);
+void X86Asm::mov(Reg32 dst, const Mem32& mem) {
+    mem32(0x8b, dst.reg, mem);
 }
 
-void X86Asm::readMem(Reg32 dst, Reg32 rm, U8 shift, U32 disp) {
-    mem32(0x8b, dst, rm, shift, disp);
-}
-
-void X86Asm::readMem(Reg32 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp) {
-    mem32(0x8b, dst, rm, sib, shift, disp);
-}
-
-void X86Asm::readMem(Reg16 dst, Reg32 rm, U32 disp) {
+void X86Asm::mov(Reg16 dst, const Mem16& mem) {
     outb(0x66);
-    mem16(0x8b, dst, rm, disp);
+    mem16(0x8b, dst.reg, mem);
 }
 
-void X86Asm::readMem(Reg16 dst, Reg32 rm, U8 shift, U32 disp) {
+void X86Asm::mov(Reg8 dst, const Mem8& mem) {
+    mem8(0x8a, dst.reg, mem);
+}
+
+void X86Asm::mov(const Mem32& mem, Reg32 src) {
+    mem32(0x89, src.reg, mem);
+}
+
+void X86Asm::mov(const Mem16& mem, Reg16 src) {
     outb(0x66);
-    mem16(0x8b, dst, rm, shift, disp);
+    mem16(0x89, src.reg, mem);
 }
 
-void X86Asm::readMem(Reg16 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp) {
-    outb(0x66);
-    mem16(0x8b, dst, rm, sib, shift, disp);
+void X86Asm::mov(const Mem8& mem, Reg8 src) {
+    mem8(0x88, src.reg, mem);
 }
 
-void X86Asm::readMem(Reg8 dst, Reg32 rm, U32 disp) {
-    mem8(0x8a, dst, rm, disp);
-}
-
-void X86Asm::readMem(Reg8 dst, Reg32 sib, U8 shift, U32 disp) {
-    mem8(0x8a, dst, sib, shift, disp);
-}
-
-void X86Asm::readMem(Reg8 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp) {
-    mem8(0x8a, dst, rm, sib, shift, disp);
-}
-
-void X86Asm::writeMem(Reg32 rm, U32 disp, Reg32 src) {
-    mem32(0x89, src, rm, disp);
-}
-
-void X86Asm::writeMem(Reg32 rm, U32 disp, Reg16 src) {
-    outb(0x66);
-    mem16(0x89, src, rm, disp);
-}
-
-void X86Asm::writeMem(Reg32 rm, U32 disp, Reg8 src) {
-    mem8(0x88, src, rm, disp);
-}
-
-void X86Asm::writeMem(Reg32 rm, U32 disp, U32 src) {
-    mem32(0xc7, Reg32(0), rm, disp);
+void X86Asm::mov(const Mem32& mem, U32 src) {
+    mem32(0xc7, 0, mem);
     outd(src);
 }
 
-void X86Asm::writeMem(Reg32 rm, U32 disp, U16 src) {
+void X86Asm::mov(const Mem16& mem, U16 src) {
     outb(0x66);
-    mem32(0xc7, Reg32(0), rm, disp);
+    mem32(0xc7, 0, mem);
     outw(src);
 }
 
-void X86Asm::writeMem(Reg32 rm, U32 disp, U8 src) {
-    mem32(0xc6, Reg32(0), rm, disp);
-    outb(src);
-}
-
-void X86Asm::writeMem(Reg32 rm, Reg32 sib, U8 shift, U32 disp, Reg32 src) {
-    mem32(0x89, src, rm, sib, shift, disp);
-}
-
-void X86Asm::writeMem(Reg32 rm, Reg32 sib, U8 shift, U32 disp, Reg16 src) {
-    outb(0x66);
-    mem32(0x89, Reg32(src.reg), rm, sib, shift, disp);
-}
-
-void X86Asm::writeMem(Reg32 rm, Reg32 sib, U8 shift, U32 disp, Reg8 src) {
-    mem32(0x88, Reg32(src.reg), rm, sib, shift, disp);
-}
-
-void X86Asm::writeMem(Reg32 rm, Reg32 sib, U8 shift, U32 disp, U32 src) {
-    mem32(0xc7, Reg32(0), rm, sib, shift, disp);
-    outd(src);
-}
-
-void X86Asm::writeMem(Reg32 rm, Reg32 sib, U8 shift, U32 disp, U16 src) {
-    outb(0x66);
-    mem32(0xc7, Reg32(0), rm, sib, shift, disp);
-    outw(src);
-}
-
-void X86Asm::writeMem(Reg32 rm, Reg32 sib, U8 shift, U32 disp, U8 src) {
-    mem32(0xc6, Reg32(0), rm, sib, shift, disp);
+void X86Asm::mov(const Mem8& mem, U8 src) {
+    mem32(0xc6, 0, mem);
     outb(src);
 }
 
@@ -1960,135 +1764,39 @@ void X86Asm::lock() {
     outb(0xf0);
 }
 
-void X86Asm::cmpxchg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::cmpxchg(const Mem32& mem, Reg32 reg) {
     outb(0xf0);
     outb(0x0f);
-    outb(0xb1);
-
-    if (!disp) {
-        outb(0x04 | (reg.reg << 3));
-        outb((sib.reg << 3) | lsl << 6 | rm.reg);
-    } else {
-        S32 sdisp = (S32)disp;
-        if (sdisp < -128 || sdisp > 127) {
-            outb(0x84 | (reg.reg << 3));
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outd(disp);
-        } else {
-            outb(0x44 | (reg.reg << 3));
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outb((U8)disp);
-        }
-    }
+    mem32(0xb1, reg.reg, mem);
 }
 
-void X86Asm::cmpxchg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::cmpxchg(const Mem16& mem, Reg16 reg) {
     outb(0x66);
     outb(0xf0);
     outb(0x0f);
-    outb(0xb1);
-
-    if (!disp) {
-        outb(0x04 | (reg.reg << 3));
-        outb((sib.reg << 3) | lsl << 6 | rm.reg);
-    } else {
-        S32 sdisp = (S32)disp;
-        if (sdisp < -128 || sdisp > 127) {
-            outb(0x84 | (reg.reg << 3));
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outd(disp);
-        } else {
-            outb(0x44 | (reg.reg << 3));
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outb((U8)disp);
-        }
-    }
+    mem16(0xb1, reg.reg, mem);
 }
 
-void X86Asm::cmpxchg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::cmpxchg(const Mem8& mem, Reg8 reg) {
     outb(0xf0);
     outb(0x0f);
-    outb(0xb0);
-
-    if (!disp) {
-        outb(0x04 | (reg.reg << 3));
-        outb((sib.reg << 3) | lsl << 6 | rm.reg);
-    } else {
-        S32 sdisp = (S32)disp;
-        if (sdisp < -128 || sdisp > 127) {
-            outb(0x84 | (reg.reg << 3));
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outd(disp);
-        } else {
-            outb(0x44 | (reg.reg << 3));
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outb((U8)disp);
-        }
-    }
+    mem8(0xb0, reg.reg, mem);
 }
 
-void X86Asm::xchg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::xchg(Reg32 reg, const Mem32& mem) {
     outb(0xf0);
-    outb(0x87);
-
-    if (!disp) {
-        outb(0x04 | (reg.reg << 3));
-        outb((sib.reg << 3) | lsl << 6 | rm.reg);
-    } else {
-        S32 sdisp = (S32)disp;
-        if (sdisp < -128 || sdisp > 127) {
-            outb(0x84 | (reg.reg << 3));
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outd(disp);
-        } else {
-            outb(0x44 | (reg.reg << 3));
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outb((U8)disp);
-        }
-    }
+    mem32(0x87, reg.reg, mem);
 }
 
-void X86Asm::xchg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::xchg(Reg16 reg, const Mem16& mem) {
     outb(0x66);
     outb(0xf0);
-    outb(0x87);
-
-    if (!disp) {
-        outb(0x04 | (reg.reg << 3));
-        outb((sib.reg << 3) | lsl << 6 | rm.reg);
-    } else {
-        S32 sdisp = (S32)disp;
-        if (sdisp < -128 || sdisp > 127) {
-            outb(0x84 | (reg.reg << 3));
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outd(disp);
-        } else {
-            outb(0x44 | (reg.reg << 3));
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outb((U8)disp);
-        }
-    }
+    mem16(0x87, reg.reg, mem);
 }
 
-void X86Asm::xchg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::xchg(Reg8 reg, const Mem8& mem) {
     outb(0xf0);
-    outb(0x86);
-
-    if (!disp) {
-        outb(0x04 | (reg.reg << 3));
-        outb((sib.reg << 3) | lsl << 6 | rm.reg);
-    } else {
-        S32 sdisp = (S32)disp;
-        if (sdisp < -128 || sdisp > 127) {
-            outb(0x84 | (reg.reg << 3));
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outd(disp);
-        } else {
-            outb(0x44 | (reg.reg << 3));
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outb((U8)disp);
-        }
-    }
+    mem8(0x86, reg.reg, mem);
 }
 
 void X86Asm::xchg(Reg8 reg, Reg8 rm) {
@@ -2107,45 +1815,29 @@ void X86Asm::xchg(Reg32 reg, Reg32 rm) {
     outb(0xC0 | reg.reg | (rm.reg << 3));
 }
 
-void X86Asm::xadd(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::xadd(const Mem32& mem, Reg32 reg) {
     outb(0xf0);
     outb(0x0f);
-    mem32(0xc1, reg, rm, sib, lsl, disp);
+    mem32(0xc1, reg.reg, mem);
 }
 
-void X86Asm::xadd(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::xadd(const Mem16& mem, Reg16 reg) {
     outb(0xf0);
     outb(0x66);
     outb(0x0f);
-    mem16(0xc1, reg, rm, sib, lsl, disp);
+    mem16(0xc1, reg.reg, mem);
 }
 
-void X86Asm::xadd(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::xadd(const Mem8& mem, Reg8 reg) {
     outb(0xf0);
     outb(0x0f);
-    mem8(0xc0, reg, rm, sib, lsl, disp);
+    mem8(0xc0, reg.reg, mem);
 }
 
-void X86Asm::cmpxchg8b(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::cmpxchg8b(const Mem64& mem) {
     outb(0xf0);
     outb(0x0f);
-    outb(0xc7);
-
-    if (!disp) {
-        outb(0x0c);
-        outb((sib.reg << 3) | lsl << 6 | rm.reg);
-    } else {
-        S32 sdisp = (S32)disp;
-        if (sdisp < -128 || sdisp > 127) {
-            outb(0x8c);
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outd(disp);
-        } else {
-            outb(0x4c);
-            outb((sib.reg << 3) | lsl << 6 | rm.reg);
-            outb((U8)disp);
-        }
-    }
+    mem32(0xc7, 0x01, mem);
 }
 
 void X86Asm::ret() {
@@ -2669,16 +2361,16 @@ void X86Asm::movhlps(RegXMM hiDstXMM, RegXMM loSrcXMM) {
     outb(0xC0 | (hiDstXMM.reg << 3) | loSrcXMM.reg);
 }
 
-void X86Asm::movss(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM srcXMM) {
+void X86Asm::movss(const Mem32& mem, RegXMM srcXMM) {
     outb(0xf3);
     outb(0x0f);
-    mem32(0x11, Reg32(srcXMM.reg), rm, sib, lsl, disp);
+    mem32(0x11, srcXMM.reg, mem);
 }
 
-void X86Asm::movss(RegXMM dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::movss(RegXMM dstXMM, const Mem32& mem) {
     outb(0xf3);
     outb(0x0f);
-    mem32(0x10, Reg32(dstXMM.reg), rm, sib, lsl, disp);
+    mem32(0x10, dstXMM.reg, mem);
 }
 
 void X86Asm::movss(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2688,16 +2380,16 @@ void X86Asm::movss(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::movsd(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM srcXMM) {
+void X86Asm::movsd(const Mem64& mem, RegXMM srcXMM) {
     outb(0xf2);
     outb(0x0f);
-    mem32(0x11, Reg32(srcXMM.reg), rm, sib, lsl, disp);
+    mem32(0x11, srcXMM.reg, mem);
 }
 
-void X86Asm::movsd(RegXMM dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::movsd(RegXMM dstXMM, const Mem64& mem) {
     outb(0xf2);
     outb(0x0f);
-    mem32(0x10, Reg32(dstXMM.reg), rm, sib, lsl, disp);
+    mem32(0x10, dstXMM.reg, mem);
 }
 
 void X86Asm::movsd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2707,16 +2399,10 @@ void X86Asm::movsd(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::movsd(RegXMM dstXMM, Reg32 rm, U32 disp) {
-    outb(0xf2);
-    outb(0x0f);
-    mem32(0x10, Reg32(dstXMM.reg), rm, disp);
-}
-
-void X86Asm::movlpd(RegXMM dstXMM, Reg32 rm, U32 disp) {
+void X86Asm::movlpd(RegXMM dstXMM, const Mem64& mem) {
     outb(0x66);
     outb(0x0f);
-    mem32(0x12, Reg32(dstXMM.reg), rm, disp);
+    mem32(0x12, dstXMM.reg, mem);
 }
 
 void X86Asm::cvtss2sd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2747,10 +2433,10 @@ void X86Asm::andpd(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::cvtsi2sd(RegXMM dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::cvtsi2sd(RegXMM dstXMM, const Mem32& mem) {
     outb(0xf2);
     outb(0x0f);
-    mem32(0x2a, Reg32(dstXMM.reg), rm, sib, lsl, disp);
+    mem32(0x2a, dstXMM.reg, mem);
 }
 
 void X86Asm::cvttsd2si(Reg32 dst, RegXMM srcXMM) {
@@ -2916,14 +2602,14 @@ void X86Asm::movd(Reg32 dst, RegMMX src) {
     outb(0xC0 | (src.reg << 3) | dst.reg); // wonder why this is reversed where most instruction put dst at the top and src at the bottom
 }
 
-void X86Asm::movd(Reg32 rm, U32 disp, RegMMX reg) {
+void X86Asm::movd(const Mem32& mem, RegMMX reg) {
     outb(0x0f);
-    mem32(0x7e, Reg32(reg.reg), rm, disp);
+    mem32(0x7e, reg.reg, mem);
 }
 
-void X86Asm::movd(RegMMX reg, Reg32 rm, U32 disp) {
+void X86Asm::movd(RegMMX reg, const Mem32& mem) {
     outb(0x0f);
-    mem32(0x6e, Reg32(reg.reg), rm, disp);
+    mem32(0x6e, reg.reg, mem);
 }
 
 void X86Asm::emms() {
@@ -2931,64 +2617,44 @@ void X86Asm::emms() {
     outb(0x77);
 }
 
-void X86Asm::movaps(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::movaps(RegXMM reg, const Mem128& mem) {
     outb(0x0f);
-    mem32(0x28, Reg32(reg.reg), rm, sib, lsl, disp);
+    mem32(0x28, reg.reg, mem);
 }
 
-void X86Asm::movaps(RegXMM reg, Reg32 rm, U32 disp) {
+void X86Asm::movaps(const Mem128& mem, RegXMM reg) {
     outb(0x0f);
-    mem32(0x28, Reg32(reg.reg), rm, disp);
+    mem32(0x29, reg.reg, mem);
 }
 
-void X86Asm::movaps(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM reg) {
+void X86Asm::movups(RegXMM reg, const Mem128& mem) {
     outb(0x0f);
-    mem32(0x29, Reg32(reg.reg), rm, sib, lsl, disp);
+    mem32(0x10, reg.reg, mem);
 }
 
-void X86Asm::movaps(Reg32 rm, U32 disp, RegXMM reg) {
+void X86Asm::movups(const Mem128& mem, RegXMM reg) {
     outb(0x0f);
-    mem32(0x29, Reg32(reg.reg), rm, disp);
+    mem32(0x11, reg.reg, mem);
 }
 
-void X86Asm::movups(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::movhps(const Mem64& mem, RegXMM reg) {
     outb(0x0f);
-    mem32(0x10, Reg32(reg.reg), rm, sib, lsl, disp);
+    mem32(0x17, reg.reg, mem);
 }
 
-void X86Asm::movups(RegXMM reg, Reg32 rm, U32 disp) {
+void X86Asm::movlps(const Mem64& mem, RegXMM reg) {
     outb(0x0f);
-    mem32(0x10, Reg32(reg.reg), rm, disp);
+    mem32(0x13, reg.reg, mem);
 }
 
-void X86Asm::movups(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM reg) {
+void X86Asm::movhps(RegXMM reg, const Mem64& mem) {
     outb(0x0f);
-    mem32(0x11, Reg32(reg.reg), rm, sib, lsl, disp);
+    mem32(0x16, reg.reg, mem);
 }
 
-void X86Asm::movhps(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM reg) {
+void X86Asm::movlps(RegXMM reg, const Mem64& mem) {
     outb(0x0f);
-    mem32(0x17, Reg32(reg.reg), rm, sib, lsl, disp);
-}
-
-void X86Asm::movlps(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM reg) {
-    outb(0x0f);
-    mem32(0x13, Reg32(reg.reg), rm, sib, lsl, disp);
-}
-
-void X86Asm::movhps(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    outb(0x0f);
-    mem32(0x16, Reg32(reg.reg), rm, sib, lsl, disp);
-}
-
-void X86Asm::movlps(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    outb(0x0f);
-    mem32(0x12, Reg32(reg.reg), rm, sib, lsl, disp);
-}
-
-void X86Asm::movups(Reg32 rm, U32 disp, RegXMM reg) {
-    outb(0x0f);
-    mem32(0x11, Reg32(reg.reg), rm, disp);
+    mem32(0x12, reg.reg, mem);
 }
 
 void X86Asm::movd(RegXMM dst, Reg32 src) {
@@ -3005,28 +2671,28 @@ void X86Asm::movd(Reg32 dst, RegXMM src) {
     outb(0xC0 | (src.reg << 3) | dst.reg); // wonder why this is reversed where most instruction put dst at the top and src at the bottom
 }
 
-void X86Asm::movd(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::movd(const Mem32& mem, RegXMM reg) {
     outb(0x66);
     outb(0x0f);
-    mem32(0x6e, Reg32(reg.reg), rm, sib, lsl, disp);
+    mem32(0x7e, reg.reg, mem);
 }
 
-void X86Asm::movq(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
-    outb(0xf3);
-    outb(0x0f);
-    mem32(0x7e, Reg32(reg.reg), rm, sib, lsl, disp);
-}
-
-void X86Asm::movq(RegXMM reg, Reg32 rm, U32 disp) {
-    outb(0xf3);
-    outb(0x0f);
-    mem32(0x7e, Reg32(reg.reg), rm, disp);
-}
-
-void X86Asm::movq(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM src) {
+void X86Asm::movd(RegXMM reg, const Mem32& mem) {
     outb(0x66);
     outb(0x0f);
-    mem32(0xd6, Reg32(src.reg), rm, sib, lsl, disp);
+    mem32(0x6e, reg.reg, mem);
+}
+
+void X86Asm::movq(RegXMM reg, const Mem64& mem) {
+    outb(0xf3);
+    outb(0x0f);
+    mem32(0x7e, reg.reg, mem);
+}
+
+void X86Asm::movq(const Mem64& mem, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    mem32(0xd6, src.reg, mem);
 }
 
 void X86Asm::movq(RegXMM dst, RegXMM src) {
@@ -3041,18 +2707,6 @@ void X86Asm::movdqu(RegXMM dst, RegXMM src) {
     outb(0x0f);
     outb(0x6f);
     outb(0xC0 | (dst.reg << 3) | src.reg);
-}
-
-void X86Asm::movq(Reg32 rm, U32 disp, RegXMM src) {
-    outb(0x66);
-    outb(0x0f);
-    mem32(0xd6, Reg32(src.reg), rm, disp);
-}
-
-void X86Asm::movd(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM src) {
-    outb(0x66);
-    outb(0x0f);
-    mem32(0x7e, Reg32(src.reg), rm, sib, lsl, disp);
 }
 
 void X86Asm::pxor(RegXMM dst, RegXMM src) {
@@ -3959,9 +3613,9 @@ void X86Asm::movmskpd(Reg32 dst, RegXMM src) {
     outb(0xC0 | (dst.reg << 3) | src.reg);
 }
 
-void X86Asm::clflush(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::clflush(const Mem8& mem) {
     outb(0x0f);
-    mem32(0xae, Reg32(7), rm, sib, lsl, disp);
+    mem32(0xae, 7, mem);
 }
 
 #endif

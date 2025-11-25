@@ -10,21 +10,36 @@ public:
 };
 
 class X86Asm {
-public:
+public:	
 	class Reg8Name {
 	public:
-		Reg8Name(U8 reg) : reg(reg) {}
-		U8 reg;
+		Reg8Name() {}
+		static Reg8Name from(U8 reg) {
+			Reg8Name result;
+			result.reg = reg;
+			return result;
+		}
+		U8 reg = 0xff;
 	};
 	class Reg16Name {
 	public:
-		Reg16Name(U8 reg) : reg(reg) {}
-		U8 reg;
+		Reg16Name() {}
+		static Reg16Name from(U8 reg) {
+			Reg16Name result;
+			result.reg = reg;
+			return result;
+		}
+		U8 reg = 0xff;
 	};
 	class Reg32Name {
 	public:
-		Reg32Name(U8 reg) : reg(reg) {}
-		U8 reg;
+		Reg32Name() {}
+		static Reg32Name from(U8 reg) {
+			Reg32Name result;
+			result.reg = reg;
+			return result;
+		}
+		U8 reg = 0xff;
 	};
 	class RegXMMName {
 	public:
@@ -34,7 +49,7 @@ public:
 			result.reg = reg;
 			return result;
 		}
-		U8 reg;
+		U8 reg = 0xff;
 	private:
 		RegXMMName(U8 reg) {}
 	};
@@ -46,7 +61,7 @@ public:
 			result.reg = reg;
 			return result;
 		}
-		U8 reg;
+		U8 reg = 0xff;
 	private:
 		RegMMXName(U8 reg) {}
 	};
@@ -90,8 +105,60 @@ public:
 	static Reg32 esi;
 	static Reg32 edi;
 
-	void lea(Reg32 dst, Reg32 rm, Reg32 sib, U32 shift, U32 disp);
-	void lea(Reg32 dst, Reg32 rm, U32 disp);
+	class Mem {
+	public:
+		Mem(U32 disp) : lsl(0), disp(disp) {}
+		Mem(Reg32 rm, U32 disp = 0) : rm(rm), lsl(0), disp(disp) {}
+		Mem(Reg32 rm, Reg32 sib, U8 lsl = 0, U32 disp = 0) : rm(rm), sib(sib), lsl(lsl), disp(disp) {}
+		Mem(Reg32 sib, U8 lsl, U32 disp) : sib(sib), lsl(lsl), disp(disp) {}
+
+		Reg32 rm;
+		Reg32 sib;
+		U8 lsl;
+		U32 disp;
+	};
+
+	class Mem128 : public Mem {
+	public:
+		Mem128(U32 disp) : Mem(disp) {}
+		Mem128(Reg32 rm, U32 disp = 0) : Mem(rm, disp) {}
+		Mem128(Reg32 rm, Reg32 sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
+		Mem128(Reg32 sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
+	};
+
+	class Mem64 : public Mem {
+	public:
+		Mem64(U32 disp) : Mem(disp) {}
+		Mem64(Reg32 rm, U32 disp = 0) : Mem(rm, disp) {}
+		Mem64(Reg32 rm, Reg32 sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
+		Mem64(Reg32 sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
+	};
+
+	class Mem32 : public Mem {
+	public:
+		Mem32(U32 disp) : Mem(disp) {}
+		Mem32(Reg32 rm, U32 disp = 0) : Mem(rm, disp) {}
+		Mem32(Reg32 rm, Reg32 sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
+		Mem32(Reg32 sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
+	};
+
+	class Mem16 : public Mem {
+	public:
+		Mem16(U32 disp) : Mem(disp) {}
+		Mem16(Reg32 rm, U32 disp = 0) : Mem(rm, disp) {}
+		Mem16(Reg32 rm, Reg32 sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
+		Mem16(Reg32 sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
+	};
+
+	class Mem8 : public Mem {
+	public:
+		Mem8(U32 disp) : Mem(disp) {}
+		Mem8(Reg32 rm, U32 disp = 0) : Mem(rm, disp) {}
+		Mem8(Reg32 rm, Reg32 sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
+		Mem8(Reg32 sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
+	};
+
+	void lea(Reg32 dst, Mem mem);
 	void lahf();
 	void sahf();
 
@@ -237,6 +304,12 @@ public:
 	void cmp(Reg32 dst, Reg32 src);
 	void cmp(Reg16 dst, Reg16 src);
 	void cmp(Reg8 dst, Reg8 src);
+	void cmp(const Mem32& mem, Reg32 reg);
+	void cmp(const Mem16& mem, Reg16 reg);
+	void cmp(const Mem8& mem, Reg8 reg);
+	void cmp(const Mem32& mem, U32 imm);
+	void cmp(const Mem16& mem, U16 imm);
+	void cmp(const Mem8& mem, U8 imm);
 
 	void bt(Reg32 reg, Reg32 rm);
 	void bt(Reg16 reg, Reg16 rm);
@@ -259,93 +332,72 @@ public:
 	void bsr(Reg32 reg, Reg32 rm);
 	void bsr(Reg16 reg, Reg16 rm);
 
-	void addMemReg(Reg16 reg, Reg32 rm, U32 disp);
-	void addMemReg(Reg32 reg, Reg32 rm, U32 disp);
-	void addMemReg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void addMemReg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void addMemReg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);	
-	void subMemReg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void subMemReg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void subMemReg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void orMemReg(Reg32 reg, Reg32 rm, U32 disp);
-	void orMemReg(Reg16 reg, Reg32 rm, U32 disp);
-	void subMemReg(Reg32 reg, Reg32 rm, U32 disp);
-	void addMem32(Reg32 rm, U32 disp, U32 value);
-	void addMem16(Reg32 rm, U32 disp, U16 value);
-	void addMem8(Reg32 rm, U32 disp, U8 value);
-	void addMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U32 value);
-	void addMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U16 value);
-	void addMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
-	void subMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U32 value);
-	void subMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U16 value);
-	void subMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
-	void cmpMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U32 value);
-	void cmpMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U16 value);
-	void cmpMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
-	void testMem32(Reg32 rm, U32 disp, U32 value);
-	void testMem16(Reg32 rm, U32 disp, U16 value);
-	void testMem8(Reg32 rm, U32 disp, U8 value);
-	void andMem32(Reg32 rm, U32 disp, U32 value);
-	void notMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void notMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void notMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void negMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void negMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void negMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void incMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void incMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void incMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void decMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void decMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void decMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void btMem32(Reg32 rm, U32 disp, U8 value);
-	void btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
-	void btsMem32(Reg32 rm, U32 disp, U8 value);
-	void btsMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
-	void btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value);
-	void btsMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value);
-	void btrMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
-	void btrMem32(Reg32 rm, U32 disp, U8 value);
-	void btrMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
-	void btrMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value);
-	void btrMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value);
-	void btcMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
-	void btcMem32(Reg32 rm, U32 disp, U8 value);
-	void btcMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
-	void btcMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value);
-	void btcMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value);
+	void add(const Mem32& mem, Reg32 reg);
+	void add(const Mem16& mem, Reg16 reg);
+	void add(const Mem8& mem, Reg8 reg);
+	void add(const Mem32& mem, U32 imm);
+	void add(const Mem16& mem, U16 imm);
+	void add(const Mem8& mem, U8 imm);
+	void sub(const Mem32& mem, Reg32 reg);
+	void sub(const Mem16& mem, Reg16 reg);
+	void sub(const Mem8& mem, Reg8 reg);
+	void sub(const Mem32& mem, U32 imm);
+	void sub(const Mem16& mem, U16 imm);
+	void sub(const Mem8& mem, U8 imm);
+	void or_(const Mem32& mem, Reg32 reg);
+	void or_(const Mem16& mem, Reg16 reg);
+	void or_(const Mem8& mem, Reg8 reg);	
+	void test(const Mem32& mem, Reg32 reg);
+	void test(const Mem16& mem, Reg16 reg);
+	void test(const Mem8& mem, Reg8 reg);
+	void and_(const Mem32& mem, Reg32 reg);
+	void and_(const Mem16& mem, Reg16 reg);
+	void and_(const Mem8& mem, Reg8 reg);
+	void and_(const Mem32& mem, U32 value);
+	void not_(const Mem32& mem);
+	void not_(const Mem16& mem);
+	void not_(const Mem8& mem);
+	void neg(const Mem32& mem);
+	void neg(const Mem16& mem);
+	void neg(const Mem8& mem);
+	void inc(const Mem32& mem);
+	void inc(const Mem16& mem);
+	void inc(const Mem8& mem);
+	void dec(const Mem32& mem);
+	void dec(const Mem16& mem);
+	void dec(const Mem8& mem);
+
+	void bt(const Mem32& mem, U8 value);
+	void bts(const Mem32& mem, U8 value);
+	void bts(const Mem16& mem, U8 value);
+	void bts(const Mem32& mem, Reg32 value);
+	void bts(const Mem16& mem, Reg16 value);
+	void btr(const Mem32& mem, U8 value);
+	void btr(const Mem16& mem, U8 value);
+	void btr(const Mem32& mem, Reg32 value);
+	void btr(const Mem16& mem, Reg16 value);
+	void btc(const Mem32& mem, U8 value);
+	void btc(const Mem16& mem, U8 value);
+	void btc(const Mem32& mem, Reg32 value);
+	void btc(const Mem16& mem, Reg16 value);
 
 	void bswap(Reg32 reg);
 
 	void mov(Reg32 dst, U32 imm);
 	void mov(Reg16 dst, U16 imm);
 	void mov(Reg8 dst, U8 imm);
-
-	void readMem(Reg32 dst, Reg32 rm, U32 disp);
-	void readMem(Reg32 dst, Reg32 sib, U8 shift, U32 disp);
-	void readMem(Reg32 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp);
-	void readMem(Reg16 dst, Reg32 rm, U32 disp);
-	void readMem(Reg16 dst, Reg32 sib, U8 shift, U32 disp);
-	void readMem(Reg16 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp);
-	void readMem(Reg8 dst, Reg32 rm, U32 disp);
-	void readMem(Reg8 dst, Reg32 sib, U8 shift, U32 disp);
-	void readMem(Reg8 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp);
-	void writeMem(Reg32 rm, U32 disp, Reg32 src);
-	void writeMem(Reg32 rm, U32 disp, Reg16 src);
-	void writeMem(Reg32 rm, U32 disp, Reg8 src);
-	void writeMem(Reg32 rm, U32 disp, U32 src);
-	void writeMem(Reg32 rm, U32 disp, U16 src);
-	void writeMem(Reg32 rm, U32 disp, U8 src);
-	void writeMem(Reg32 rm, Reg32 sib, U8 shift, U32 disp, Reg32 src);
-	void writeMem(Reg32 rm, Reg32 sib, U8 shift, U32 disp, Reg16 src);
-	void writeMem(Reg32 rm, Reg32 sib, U8 shift, U32 disp, Reg8 src);
-	void writeMem(Reg32 rm, Reg32 sib, U8 shift, U32 disp, U32 src);
-	void writeMem(Reg32 rm, Reg32 sib, U8 shift, U32 disp, U16 src);
-	void writeMem(Reg32 rm, Reg32 sib, U8 shift, U32 disp, U8 src);
-
+	void mov(const Mem32& mem, U32 src);
+	void mov(const Mem16& mem, U16 src);
+	void mov(const Mem8& mem, U8 src);
+	void mov(Reg32 dst, const Mem32& mem);
+	void mov(Reg16 dst, const Mem16& mem);
+	void mov(Reg8 dst, const Mem8& mem);
+	void mov(const Mem32& mem, Reg32 src);
+	void mov(const Mem16& mem, Reg16 src);
+	void mov(const Mem8& mem, Reg8 src);
 	void mov(Reg32 dst, Reg32 src);
 	void mov(Reg16 dst, Reg16 src);
-	void mov(Reg8 dst, Reg8 src);
+	void mov(Reg8 dst, Reg8 src);	
 
 	void movzx(Reg16 dst, Reg8 src);
 	void movzx(Reg32 dst, Reg8 src);
@@ -413,19 +465,19 @@ public:
 	void setnp(Reg8 reg);
 
 	void lock();
-	void cmpxchg8b(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void cmpxchg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void cmpxchg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void cmpxchg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void xchg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void xchg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void xchg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void cmpxchg8b(const Mem64& mem);
+	void cmpxchg(const Mem32& mem, Reg32 reg);
+	void cmpxchg(const Mem16& mem, Reg16 reg);
+	void cmpxchg(const Mem8& mem, Reg8 reg);
+	void xchg(Reg32 reg, const Mem32& mem);
+	void xchg(Reg16 reg, const Mem16& mem);
+	void xchg(Reg8 reg, const Mem8& mem);
 	void xchg(Reg8 reg, Reg8 rm);
 	void xchg(Reg16 reg, Reg16 rm);
 	void xchg(Reg32 reg, Reg32 rm);
-	void xadd(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void xadd(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void xadd(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void xadd(const Mem32& mem, Reg32 reg);
+	void xadd(const Mem16& mem, Reg16 reg);
+	void xadd(const Mem8& mem, Reg8 reg);
 
 	void IfLessThan(Reg32 reg, U32 value, bool bigJump = false);
 	void IfLessThan(Reg16 reg, U16 value, bool bigJump = false);
@@ -472,18 +524,17 @@ public:
 	void movlhps(RegXMM hiDstXMM, RegXMM loSrcXMM);
 	void movhlps(RegXMM hiDstXMM, RegXMM loSrcXMM);
 
-	void movsd(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM srcXMM);
-	void movsd(RegXMM dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp); // 0's out high 64-bit
-	void movsd(RegXMM dstXMM, Reg32 rm, U32 disp); // 0's out high 64-bit
+	void movsd(const Mem64& mem, RegXMM srcXMM);
+	void movsd(RegXMM dstXMM, const Mem64& mem); // 0's out high 64-bit
 	void movsd(RegXMM dstXMM, RegXMM srcXMM); // copies low 64-bit and preserves high 64-bit
-	void movss(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM srcXMM);	
-	void movss(RegXMM dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void movss(const Mem32& mem, RegXMM srcXMM);	
+	void movss(RegXMM dstXMM, const Mem32& mem);
 	void movss(RegXMM dstXMM, RegXMM srcXMM); // copies low 32-bit and preserves high 96-bit
-	void movlpd(RegXMM dstXMM, Reg32 rm, U32 disp);
+	void movlpd(RegXMM dstXMM, const Mem64& mem);
 
 	void cvtss2sd(RegXMM dstXMM, RegXMM srcXMM);
 	void cvtsd2ss(RegXMM dstXMM, RegXMM srcXMM);
-	void cvtsi2sd(RegXMM dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void cvtsi2sd(RegXMM dstXMM, const Mem32& mem);
 	void cvtsi2sd(RegXMM dstXMM, Reg32 reg);
 	void cvttsd2si(Reg32 dst, RegXMM srcXMM);
 	void cvtsd2si(Reg32 dst, RegXMM srcXMM);
@@ -504,31 +555,25 @@ public:
 
 	void movd(RegMMX dst, Reg32 src);
 	void movd(Reg32 dst, RegMMX src);
-	void movd(Reg32 rm, U32 disp, RegMMX reg);
-	void movd(RegMMX reg, Reg32 rm, U32 disp);
+	void movd(const Mem32& mem, RegMMX reg);
+	void movd(RegMMX reg, const Mem32& mem);
 
 	void emms();
-	void movaps(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void movaps(RegXMM reg, Reg32 rm, U32 disp);
-	void movaps(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM reg);
-	void movaps(Reg32 rm, U32 disp, RegXMM reg);
-	void movups(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void movups(RegXMM reg, Reg32 rm, U32 disp);
-	void movups(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM reg);
-	void movups(Reg32 rm, U32 disp, RegXMM reg);
-	void movhps(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM reg);
-	void movhps(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void movlps(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM reg);
-	void movlps(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void movaps(RegXMM reg, const Mem128& mem);
+	void movaps(const Mem128& mem, RegXMM reg);
+	void movups(RegXMM reg, const Mem128& mem);
+	void movups(const Mem128& mem, RegXMM reg);
+	void movhps(const Mem64& mem, RegXMM reg);
+	void movhps(RegXMM reg, const Mem64& mem);
+	void movlps(const Mem64& mem, RegXMM reg);
+	void movlps(RegXMM reg, const Mem64& mem);
 
 	void movd(RegXMM dst, Reg32 src);
 	void movd(Reg32 dst, RegXMM src);
-	void movd(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void movd(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM reg);
-	void movq(RegXMM reg, Reg32 rm, U32 disp);
-	void movq(Reg32 rm, U32 disp, RegXMM reg);
-	void movq(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void movq(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM reg);
+	void movd(RegXMM reg, const Mem32& mem);
+	void movd(const Mem32& mem, RegXMM reg);
+	void movq(RegXMM reg, const Mem64& mem);
+	void movq(const Mem64& mem, RegXMM reg);
 	void movq(RegXMM dst, RegXMM src);
 	void movdqu(RegXMM dst, RegXMM src);
 	void pxor(RegXMM dst, RegXMM src);
@@ -667,7 +712,7 @@ public:
 	void lfence();
 	void pause();
 	void mfence();
-	void clflush(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void clflush(const Mem8& mem);
 	void movmskpd(Reg32 dst, RegXMM src);
 
 	std::vector<U8> buffer;
@@ -679,15 +724,9 @@ private:
 	void outw(U16 w);
 	void outb(U8 b);
 
-	void mem32(U8 inst, Reg32 dst, Reg32 rm, U32 disp);
-	void mem32(U8 inst, Reg32 dst, Reg32 rm, U8 shift, U32 disp);
-	void mem32(U8 inst, Reg32 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp);
-	void mem16(U8 inst, Reg16 dst, Reg32 rm, U32 disp);
-	void mem16(U8 inst, Reg16 dst, Reg32 sib, U8 shift, U32 disp);
-	void mem16(U8 inst, Reg16 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp);
-	void mem8(U8 inst, Reg8 dst, Reg32 rm, U32 disp);
-	void mem8(U8 inst, Reg8 dst, Reg32 sib, U8 shift, U32 disp);
-	void mem8(U8 inst, Reg8 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp);
+	void mem32(U8 inst, U8 dst, const Mem& mem);
+	void mem16(U8 inst, U8 dst, const Mem& mem);
+	void mem8(U8 inst, U8 dst, const Mem& mem);
 
 	void group1(U8 e, U8 math, Reg32 dst, U32 imm);
 	void group1(U8 e, U8 math, Reg16 dst, U16 imm);
