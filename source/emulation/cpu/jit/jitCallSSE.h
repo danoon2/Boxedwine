@@ -19,21 +19,21 @@
 #include "../common/common_sse.h"
 
 #undef SSE_0
-#define SSE_0(name) void Jit::dynamic_##name(DecodedOp* op) {call(common_##name);incrementEip(op->len);}
+#define SSE_0(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
 #undef SSE_RR
-#define SSE_RR(name) void Jit::dynamic_##name(DecodedOp* op) {call_II(common_##name, op->reg, op->rm);incrementEip(op->len);}
+#define SSE_RR(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
 #undef SSE_RR_SETS_FLAGS
-#define SSE_RR_SETS_FLAGS(name) void Jit::dynamic_##name(DecodedOp* op) {currentLazyFlags=FLAGS_NONE;call_II(common_##name, op->reg, op->rm);incrementEip(op->len);}
+#define SSE_RR_SETS_FLAGS(name) void Jit::dynamic_##name(DecodedOp* op) {currentLazyFlags=FLAGS_NONE;emulateSingleOp(getTmpReg());}
 #undef SSE_RE
-#define SSE_RE(name) void Jit::dynamic_##name(DecodedOp* op) {call_IR(common_##name, op->reg, JitWidth::b32, calculateEaa(op));incrementEip(op->len);}
+#define SSE_RE(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
 #undef SSE_RE_SETS_FLAGS
-#define SSE_RE_SETS_FLAGS(name) void Jit::dynamic_##name(DecodedOp* op) {currentLazyFlags=FLAGS_NONE;call_IR(common_##name, op->reg, JitWidth::b32, calculateEaa(op));incrementEip(op->len);}
+#define SSE_RE_SETS_FLAGS(name) void Jit::dynamic_##name(DecodedOp* op) {currentLazyFlags=FLAGS_NONE;emulateSingleOp(getTmpReg());}
 #undef SSE_RR_I8
-#define SSE_RR_I8(name) void Jit::dynamic_##name(DecodedOp* op) {call_III8(common_##name, op->reg, op->rm, op->imm);incrementEip(op->len);}
+#define SSE_RR_I8(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
 #undef SSE_RE_I8
-#define SSE_RE_I8(name) void Jit::dynamic_##name(DecodedOp* op) {call_IRI8(common_##name, op->reg, JitWidth::b32, calculateEaa(op), op->imm);incrementEip(op->len);}
+#define SSE_RE_I8(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
 
 #undef SSE_RR_EDI
-#define SSE_RR_EDI(name) void Jit::dynamic_##name(DecodedOp* op) {RegPtr address = getTmpReg(7); addReg(JitWidth::b32, address, getReadOnlySegAddress(op->base)); call_IIR(common_##name, op->reg, op->rm, JitWidth::b32, address);incrementEip(op->len);}
+#define SSE_RR_EDI(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
 
 #include "../common/common_sse_def.h"

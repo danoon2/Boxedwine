@@ -31,9 +31,15 @@ void JitCodeGen::onTestEnd(DecodedOp* op) {
     writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), (DYN_PTR_SIZE)op);
 }
 
+static DecodedOp lastOp;
+
+void OPCALL onLastOp(CPU* cpu, DecodedOp* op) {
+}
+
 static void initDynamicOps() {
     if (dynamicOpsInitialized)
         return;
+    lastOp.pfn = onLastOp;
     if (offsetof(CPU, eip.u32) > 127)
         kpanic("initDynamicOps wasn't expecting eip offset to be greater than 127");
 
@@ -315,6 +321,9 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         jit = startNewJIT(cpu);
         cpu->thread->process->jumpToNextJIT = jit->createJumpEip();
         delete jit;
+        jit = startNewJIT(cpu);
+        cpu->thread->process->emulateSingleOp = jit->createEmulateSingleOp();
+        delete jit;
     }
 
     // did another thread beat us to JITing this block?
@@ -581,6 +590,45 @@ U8* JitCodeGen::createJumpEip() {
     return result;
 }
 
+void jitRunSingleOp(CPU* cpu) {
+    DecodedOp* op = nullptr;
+    try {
+        op = cpu->getNextOp();
+    } catch (...) {
+        // at this point the previous getNextOp threw an exception and the eip is now pointing to the signal handler
+        op = cpu->getNextOp();
+    }
+
+    if (!op) {
+        kpanic("jitRunSingleOp oops");
+    }
+    try {
+        DecodedOp o = *op;        
+        o.next = &lastOp;
+        o.pfn = NormalCPU::getFunctionForOp(op);
+        o.pfn(cpu, &o);        
+    } catch (...) {
+        // motorhead 3dfx will trigger this when pressing enter to start a new game
+    }
+    cpu->nextOp = cpu->getNextOp();
+}
+
+U8* JitCodeGen::createEmulateSingleOp() {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(JitCallParamType::CPU));
+    callHostFunction(jitRunSingleOp, params, false);    
+    blockExit(false);
+
+    U8* result = createDynamicExecutableMemory();
+    patch(result);
+    return result;
+}
+
+void JitCodeGen::emulateSingleOp(RegPtr tmpReg) {
+    movValue(DYN_PTR, tmpReg, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
+    jmp(tmpReg);
+}
+
 void JitCodeGen::commitJIT(DecodedOp* op) {
     preCommitJIT();
 
@@ -820,19 +868,7 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
         if (failedMemoryOp) {
             failedMemoryOp();
         } else {
-            Jit::CallReturnR address;
-
-            // call read
-            if (width == JitWidth::b32) {
-                address = readd2;
-            } else if (width == JitWidth::b16) {
-                address = readw2;
-            } else if (width == JitWidth::b8) {
-                address = readb2;
-            } else {
-                kpanic_fmt("unknown width in x32CPU::movFromMem %d", width);
-            }
-            callAndReturn_R(address, JitWidth::b32, addressReg, tmp);
+            emulateSingleOp(tmp ? tmp : getTmpReg());
         }
     } EndIf(isBigJump);
     return tmp;
@@ -909,18 +945,7 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
             tmp = nullptr;
             failedMemoryOp();
         } else {
-            Jit::CallRR address;
-
-            if (width == JitWidth::b32) {
-                address = writed2;
-            } else if (width == JitWidth::b16) {
-                address = writew2;
-            } else if (width == JitWidth::b8) {
-                address = writeb2;
-            } else {
-                kpanic_fmt("unknown width in x32CPU::movToMem %d", width);
-            }
-            call_RR(address, JitWidth::b32, addressReg, width, src);
+            emulateSingleOp(tmp ? tmp : getTmpReg());
         }
     } EndIf(isBigJump);
 }
@@ -958,32 +983,17 @@ void JitCodeGen::writeValue(JitWidth width, RegPtr addressReg, U32 imm) {
     }
 
     // test reg, 0x80000000 (mmu[index].canWriteRam)
-    IfTest(JitWidth::b32, tmp, 0x80000000); {
-
-        // bottom 20 bits of mmu contains ram page index
-        andValue(JitWidth::b32, tmp, 0xfffff);
-        read(JitWidth::b32, tmp, tmp, 2, (U32)ramPages);
-
-        andValue(JitWidth::b32, addressReg, K_PAGE_MASK);
-
-        write(width, tmp, addressReg, 0, 0, imm);
-
-    } StartElse(); {
-
-        CallRI address;
-
-        if (width == JitWidth::b32) {
-            address = writed2;
-        } else if (width == JitWidth::b16) {
-            address = writew2;
-        } else if (width == JitWidth::b8) {
-            address = writeb2;
-        } else {
-            kpanic_fmt("unknown width in x32CPU::movToMem %d", width);
-        }
-        call_RI(address, JitWidth::b32, addressReg, imm);
-
+    IfNotTest(JitWidth::b32, tmp, 0x80000000); {
+        emulateSingleOp(getTmpReg());
     } EndIf();
+
+    // bottom 20 bits of mmu contains ram page index
+    andValue(JitWidth::b32, tmp, 0xfffff);
+    read(JitWidth::b32, tmp, tmp, 2, (U32)ramPages);
+
+    andValue(JitWidth::b32, addressReg, K_PAGE_MASK);
+
+    write(width, tmp, addressReg, 0, 0, imm);
 }
 
 void JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint) {
@@ -1021,52 +1031,20 @@ void JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<v
     mov(JitWidth::b32, tmpReg2, tmpReg);
     andValue(JitWidth::b32, tmpReg2, 0x40000000 | 0x80000000);
 
-    IfEqual(JitWidth::b32, tmpReg2, 0x40000000 | 0x80000000); {
-
-        // bottom 20 bits of mmu contains ram page index
-        andValue(JitWidth::b32, tmpReg, 0xfffff);
-        read(JitWidth::b32, tmpReg, tmpReg, 2, (U32)ramPages);
-        andValue(JitWidth::b32, addressReg, K_PAGE_MASK);
-        read(JitWidth::b32, tmpReg2, tmpReg, addressReg, 0, 0);
-
-    } StartElse(); {
-
-        Jit::CallReturnR addressRead;
-        // call read
-        if (width == JitWidth::b32) {
-            addressRead = readd2;
-        } else if (width == JitWidth::b16) {
-            addressRead = readw2;
-        } else if (width == JitWidth::b8) {
-            addressRead = readb2;
-        } else {
-            kpanic("JitCodeGen::readWriteMem");
-        }
-        callAndReturn_R(addressRead, JitWidth::b32, addressReg, tmpReg2);
-        xorReg(JitWidth::b32, tmpReg, tmpReg); // so that the next if statement will also choose calling write
-
+    IfNotEqual(JitWidth::b32, tmpReg2, 0x40000000 | 0x80000000); {
+        emulateSingleOp(getTmpReg());
     } EndIf();
+
+    // bottom 20 bits of mmu contains ram page index
+    andValue(JitWidth::b32, tmpReg, 0xfffff);
+    read(JitWidth::b32, tmpReg, tmpReg, 2, (U32)ramPages);
+    andValue(JitWidth::b32, addressReg, K_PAGE_MASK);
+    read(JitWidth::b32, tmpReg2, tmpReg, addressReg, 0, 0);
 
     prepareWrite(tmpReg2);
 
     // test reg, 0x80000000 (mmu[index].canWriteRam)
-    If(JitWidth::b32, tmpReg); {
-
-        write(JitWidth::b32, tmpReg, addressReg, 0, 0, tmpReg2);
-
-    } StartElse(); {
-        Jit::CallRR address;
-
-        if (width == JitWidth::b32) {
-            address = writed2;
-        } else if (width == JitWidth::b16) {
-            address = writew2;
-        } else if (width == JitWidth::b8) {
-            address = writeb2;
-        }
-        call_RR(address, JitWidth::b32, addressReg, JitWidth::b32, tmpReg2);
-
-    } EndIf();
+    write(JitWidth::b32, tmpReg, addressReg, 0, 0, tmpReg2);
 }
 
 RegPtr JitCodeGen::getFlagDestReadOnly(RegPtr result) {
@@ -1421,4 +1399,13 @@ void JitCodeGen::IfCondition(JitConditional condition) {
     }
     If(JitWidth::b32, calculateCondition(condition));
 }
+
+void JitCodeGen::incReg(JitWidth regWidth, RegPtr reg) {
+    addValue(regWidth, reg, 1);
+}
+
+void JitCodeGen::decReg(JitWidth regWidth, RegPtr reg) {
+    subValue(regWidth, reg, 1);
+}
+
 #endif

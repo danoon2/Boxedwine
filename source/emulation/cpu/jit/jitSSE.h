@@ -58,12 +58,12 @@ public:
 	void opXmmXmm(DecodedOp* op, XmmXmmCallback callback, bool loadDest = true);
 	void opXmmXmmImm(DecodedOp* op, XmmXmmImmCallback callback);
 	void opXmmImm(DecodedOp* op, XmmImmCallback callback);
-	void opXmmE128(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool loadDest = true);
-	void opXmmE128Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback);
-	void opXmmE64(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool loadDest = true);
-	void opXmmE64Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback);
-	void opXmmE32(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback);
-	void opXmmE32Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback);
+	void opXmmE128(DecodedOp* op, XmmXmmCallback callback, bool loadDest = true);
+	void opXmmE128Imm(DecodedOp* op, XmmXmmImmCallback callback);
+	void opXmmE64(DecodedOp* op, XmmXmmCallback callback, bool loadDest = true);
+	void opXmmE64Imm(DecodedOp* op, XmmXmmImmCallback callback);
+	void opXmmE32(DecodedOp* op, XmmXmmCallback callback);
+	void opXmmE32Imm(DecodedOp* op, XmmXmmImmCallback callback);
 
 	virtual void addpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void addssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
@@ -109,50 +109,50 @@ public:
 	virtual void ldmxcsr(RegPtr address) = 0;
 
 	void dynamic_addpsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::addpsXmmXmm); }
-	void dynamic_addpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::addpsXmmXmm, [op, this]() {JitCodeGen::dynamic_addpsE128(op); }); }
+	void dynamic_addpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::addpsXmmXmm); }
 	void dynamic_addssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::addssXmmXmm); }
-	void dynamic_addssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::addssXmmXmm, [op, this]() {JitCodeGen::dynamic_addssE32(op); }); }
+	void dynamic_addssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::addssXmmXmm); }
 	void dynamic_subpsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::subpsXmmXmm); }
-	void dynamic_subpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::subpsXmmXmm, [op, this]() {JitCodeGen::dynamic_subpsE128(op); }); }
+	void dynamic_subpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::subpsXmmXmm); }
 	void dynamic_subssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::subssXmmXmm); }
-	void dynamic_subssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::subssXmmXmm, [op, this]() {JitCodeGen::dynamic_subssE32(op); }); }
+	void dynamic_subssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::subssXmmXmm); }
 	void dynamic_mulpsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::mulpsXmmXmm); }
-	void dynamic_mulpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::mulpsXmmXmm, [op, this]() {JitCodeGen::dynamic_mulpsE128(op); }); }
+	void dynamic_mulpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::mulpsXmmXmm); }
 	void dynamic_mulssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::mulssXmmXmm); }
-	void dynamic_mulssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::mulssXmmXmm, [op, this]() {JitCodeGen::dynamic_mulssE32(op); }); }
+	void dynamic_mulssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::mulssXmmXmm); }
 	void dynamic_divpsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::divpsXmmXmm); }
-	void dynamic_divpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::divpsXmmXmm, [op, this]() {JitCodeGen::dynamic_divpsE128(op); }); }
+	void dynamic_divpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::divpsXmmXmm); }
 	void dynamic_divssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::divssXmmXmm); }
-	void dynamic_divssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::divssXmmXmm, [op, this]() {JitCodeGen::dynamic_divssE32(op); }); }
+	void dynamic_divssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::divssXmmXmm); }
 	void dynamic_rcppsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::rcppsXmmXmm); }
-	void dynamic_rcppsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::rcppsXmmXmm, [op, this]() {JitCodeGen::dynamic_rcppsE128(op); }); }
+	void dynamic_rcppsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::rcppsXmmXmm); }
 	void dynamic_rcpssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::rcpssXmmXmm); }
-	void dynamic_rcpssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::rcpssXmmXmm, [op, this]() {JitCodeGen::dynamic_rcpssE32(op); }); }
+	void dynamic_rcpssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::rcpssXmmXmm); }
 	void dynamic_sqrtpsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::sqrtpsXmmXmm); }
-	void dynamic_sqrtpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::sqrtpsXmmXmm, [op, this]() {JitCodeGen::dynamic_sqrtpsE128(op); }); }
+	void dynamic_sqrtpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::sqrtpsXmmXmm); }
 	void dynamic_sqrtssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::sqrtssXmmXmm); }
-	void dynamic_sqrtssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::sqrtssXmmXmm, [op, this]() {JitCodeGen::dynamic_sqrtssE32(op); }); }
+	void dynamic_sqrtssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::sqrtssXmmXmm); }
 	void dynamic_rsqrtpsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::rsqrtpsXmmXmm); }
-	void dynamic_rsqrtpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::rsqrtpsXmmXmm, [op, this]() {JitCodeGen::dynamic_rsqrtpsE128(op); }); }
+	void dynamic_rsqrtpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::rsqrtpsXmmXmm); }
 	void dynamic_rsqrtssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::rsqrtssXmmXmm); }
-	void dynamic_rsqrtssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::rsqrtssXmmXmm, [op, this]() {JitCodeGen::dynamic_rsqrtssE32(op); }); }
+	void dynamic_rsqrtssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::rsqrtssXmmXmm); }
 	void dynamic_maxpsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::maxpsXmmXmm); }
-	void dynamic_maxpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::maxpsXmmXmm, [op, this]() {JitCodeGen::dynamic_maxpsE128(op); }); }
+	void dynamic_maxpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::maxpsXmmXmm); }
 	void dynamic_maxssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::maxssXmmXmm); }
-	void dynamic_maxssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::maxssXmmXmm, [op, this]() {JitCodeGen::dynamic_maxssE32(op); }); }
+	void dynamic_maxssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::maxssXmmXmm); }
 	void dynamic_minpsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::minpsXmmXmm); }
-	void dynamic_minpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::minpsXmmXmm, [op, this]() {JitCodeGen::dynamic_minpsE128(op); }); }
+	void dynamic_minpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::minpsXmmXmm); }
 	void dynamic_minssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::minssXmmXmm); }
-	void dynamic_minssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::minssXmmXmm, [op, this]() {JitCodeGen::dynamic_minssE32(op); }); }
+	void dynamic_minssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::minssXmmXmm); }
 
 	void dynamic_andnpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::andnpsXmmXmm); }
-	void dynamic_andnpsXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::andnpsXmmXmm, [op, this]() {JitCodeGen::dynamic_andnpsXmmE128(op); }); }
+	void dynamic_andnpsXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::andnpsXmmXmm); }
 	void dynamic_andpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::andpsXmmXmm); }
-	void dynamic_andpsXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::andpsXmmXmm, [op, this]() {JitCodeGen::dynamic_andpsXmmE128(op); }); }
+	void dynamic_andpsXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::andpsXmmXmm); }
 	void dynamic_orpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::orpsXmmXmm); }
-	void dynamic_orpsXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::orpsXmmXmm, [op, this]() {JitCodeGen::dynamic_orpsXmmE128(op); }); }
+	void dynamic_orpsXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::orpsXmmXmm); }
 	void dynamic_xorpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::xorpsXmmXmm); }
-	void dynamic_xorpsXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::xorpsXmmXmm, [op, this]() {JitCodeGen::dynamic_xorpsXmmE128(op); }); }
+	void dynamic_xorpsXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::xorpsXmmXmm); }
 
 	void dynamic_cvtpi2psXmmMmx(DecodedOp* op) override;
 	void dynamic_cvtpi2psXmmE64(DecodedOp* op) override;
@@ -186,11 +186,11 @@ public:
 	void dynamic_movntpsE128Xmm(DecodedOp* op) override { dynamic_movupsE128Xmm(op); }
 
 	void dynamic_shufpsXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &JitSSE::shufpsXmmXmm); }
-	void dynamic_shufpsXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::shufpsXmmXmm, [op, this]() {JitCodeGen::dynamic_shufpsXmmE128(op); }); }
+	void dynamic_shufpsXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::shufpsXmmXmm); }
 	void dynamic_unpckhpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::unpckhpsXmmXmm); }
-	void dynamic_unpckhpsXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::unpckhpsXmmXmm, [op, this]() {JitCodeGen::dynamic_unpckhpsXmmE128(op); }); }
+	void dynamic_unpckhpsXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::unpckhpsXmmXmm); }
 	void dynamic_unpcklpsXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::unpcklpsXmmXmm); }
-	void dynamic_unpcklpsXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::unpcklpsXmmXmm, [op, this]() {JitCodeGen::dynamic_unpcklpsXmmE128(op); }); }
+	void dynamic_unpcklpsXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::unpcklpsXmmXmm); }
 
 	void dynamic_prefetchT0(DecodedOp* op) override {}
 	void dynamic_prefetchT1(DecodedOp* op) override {}
@@ -198,10 +198,10 @@ public:
 	void dynamic_prefetchNTA(DecodedOp* op) override {}
 
 	void dynamic_cmppsXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &JitSSE::cmppsXmmXmm); }
-	void dynamic_cmppsXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::cmppsXmmXmm, [op, this]() {JitCodeGen::dynamic_cmppsXmmE128(op); }); }
+	void dynamic_cmppsXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::cmppsXmmXmm); }
 
 	void dynamic_cmpssXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &JitSSE::cmpssXmmXmm); }
-	void dynamic_cmpssXmmE32(DecodedOp* op) override { opXmmE32Imm(op, &JitSSE::cmpssXmmXmm, [op, this]() {JitCodeGen::dynamic_cmpssXmmE32(op); }); }
+	void dynamic_cmpssXmmE32(DecodedOp* op) override { opXmmE32Imm(op, &JitSSE::cmpssXmmXmm); }
 
 	void dynamic_comissXmmXmm(DecodedOp* op) override;
 	void dynamic_comissXmmE32(DecodedOp* op) override;
@@ -342,83 +342,83 @@ public:
 	virtual void pmovmskbR32Xmm(RegPtr dst, DynXMMReg src) = 0;
 
 	void dynamic_addpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::addpdXmmXmm); }
-	void dynamic_addpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::addpdXmmXmm, [op, this]() {JitCodeGen::dynamic_addpdXmmE128(op); }); }
+	void dynamic_addpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::addpdXmmXmm); }
 	void dynamic_addsdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::addsdXmmXmm); }
-	void dynamic_addsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::addsdXmmXmm, [op, this]() {JitCodeGen::dynamic_addsdXmmE64(op); }); }
+	void dynamic_addsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::addsdXmmXmm); }
 	void dynamic_subpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::subpdXmmXmm); }
-	void dynamic_subpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::subpdXmmXmm, [op, this]() {JitCodeGen::dynamic_subpdXmmE128(op); }); }
+	void dynamic_subpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::subpdXmmXmm); }
 	void dynamic_subsdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::subsdXmmXmm); }
-	void dynamic_subsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::subsdXmmXmm, [op, this]() {JitCodeGen::dynamic_subsdXmmE64(op); }); }
+	void dynamic_subsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::subsdXmmXmm); }
 	void dynamic_mulpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::mulpdXmmXmm); }
-	void dynamic_mulpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::mulpdXmmXmm, [op, this]() {JitCodeGen::dynamic_mulpdXmmE128(op); }); }
+	void dynamic_mulpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::mulpdXmmXmm); }
 	void dynamic_mulsdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::mulsdXmmXmm); }
-	void dynamic_mulsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::mulsdXmmXmm, [op, this]() {JitCodeGen::dynamic_mulsdXmmE64(op); }); }
+	void dynamic_mulsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::mulsdXmmXmm); }
 	void dynamic_divpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::divpdXmmXmm); }
-	void dynamic_divpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::divpdXmmXmm, [op, this]() {JitCodeGen::dynamic_divpdXmmE128(op); }); }
+	void dynamic_divpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::divpdXmmXmm); }
 	void dynamic_divsdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::divsdXmmXmm); }
-	void dynamic_divsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::divsdXmmXmm, [op, this]() {JitCodeGen::dynamic_divsdXmmE64(op); }); }
+	void dynamic_divsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::divsdXmmXmm); }
 	void dynamic_maxpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::maxpdXmmXmm); }
-	void dynamic_maxpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::maxpdXmmXmm, [op, this]() {JitCodeGen::dynamic_maxpdXmmE128(op); }); }
+	void dynamic_maxpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::maxpdXmmXmm); }
 	void dynamic_maxsdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::maxsdXmmXmm); }
-	void dynamic_maxsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::maxsdXmmXmm, [op, this]() {JitCodeGen::dynamic_maxsdXmmE64(op); }); }
+	void dynamic_maxsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::maxsdXmmXmm); }
 	void dynamic_minpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::minpdXmmXmm); }
-	void dynamic_minpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::minpdXmmXmm, [op, this]() {JitCodeGen::dynamic_minpdXmmE128(op); }); }
+	void dynamic_minpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::minpdXmmXmm); }
 	void dynamic_minsdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::minsdXmmXmm); }
-	void dynamic_minsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::minsdXmmXmm, [op, this]() {JitCodeGen::dynamic_minsdXmmE64(op); }); }
+	void dynamic_minsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::minsdXmmXmm); }
 	void dynamic_sqrtpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::sqrtpdXmmXmm); }
-	void dynamic_sqrtpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::sqrtpdXmmXmm, [op, this]() {JitCodeGen::dynamic_sqrtpdXmmE128(op); }); }
+	void dynamic_sqrtpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::sqrtpdXmmXmm); }
 	void dynamic_sqrtsdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::sqrtsdXmmXmm); }
-	void dynamic_sqrtsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::sqrtsdXmmXmm, [op, this]() {JitCodeGen::dynamic_sqrtsdXmmE64(op); }); }
+	void dynamic_sqrtsdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::sqrtsdXmmXmm); }
 	void dynamic_paddbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::paddbXmmXmm); }
-	void dynamic_paddbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::paddbXmmXmm, [op, this]() {JitCodeGen::dynamic_paddbXmmE128(op); }); }
+	void dynamic_paddbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::paddbXmmXmm); }
 	void dynamic_paddwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::paddwXmmXmm); }
-	void dynamic_paddwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::paddwXmmXmm, [op, this]() {JitCodeGen::dynamic_paddwXmmE128(op); }); }
+	void dynamic_paddwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::paddwXmmXmm); }
 	void dynamic_padddXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::padddXmmXmm); }
-	void dynamic_padddXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::padddXmmXmm, [op, this]() {JitCodeGen::dynamic_padddXmmE128(op); }); }
+	void dynamic_padddXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::padddXmmXmm); }
 	void dynamic_paddqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::paddqXmmXmm); }
-	void dynamic_paddqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::paddqXmmXmm, [op, this]() {JitCodeGen::dynamic_paddqXmmE128(op); }); }
+	void dynamic_paddqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::paddqXmmXmm); }
 	void dynamic_paddsbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::paddsbXmmXmm); }
-	void dynamic_paddsbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::paddsbXmmXmm, [op, this]() {JitCodeGen::dynamic_paddsbXmmE128(op); }); }
+	void dynamic_paddsbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::paddsbXmmXmm); }
 	void dynamic_paddswXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::paddswXmmXmm); }
-	void dynamic_paddswXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::paddswXmmXmm, [op, this]() {JitCodeGen::dynamic_paddswXmmE128(op); }); }
+	void dynamic_paddswXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::paddswXmmXmm); }
 	void dynamic_paddusbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::paddusbXmmXmm); }
-	void dynamic_paddusbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::paddusbXmmXmm, [op, this]() {JitCodeGen::dynamic_paddusbXmmE128(op); }); }
+	void dynamic_paddusbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::paddusbXmmXmm); }
 	void dynamic_padduswXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::padduswXmmXmm); }
-	void dynamic_padduswXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::padduswXmmXmm, [op, this]() {JitCodeGen::dynamic_padduswXmmE128(op); }); }
+	void dynamic_padduswXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::padduswXmmXmm); }
 	void dynamic_psubbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psubbXmmXmm); }
-	void dynamic_psubbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubbXmmXmm, [op, this]() {JitCodeGen::dynamic_psubbXmmE128(op); }); }
+	void dynamic_psubbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubbXmmXmm); }
 	void dynamic_psubwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psubwXmmXmm); }
-	void dynamic_psubwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubwXmmXmm, [op, this]() {JitCodeGen::dynamic_psubwXmmE128(op); }); }
+	void dynamic_psubwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubwXmmXmm); }
 	void dynamic_psubdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psubdXmmXmm); }
-	void dynamic_psubdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubdXmmXmm, [op, this]() {JitCodeGen::dynamic_psubdXmmE128(op); }); }
+	void dynamic_psubdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubdXmmXmm); }
 	void dynamic_psubqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psubqXmmXmm); }
-	void dynamic_psubqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubqXmmXmm, [op, this]() {JitCodeGen::dynamic_psubqXmmE128(op); }); }
+	void dynamic_psubqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubqXmmXmm); }
 	void dynamic_psubsbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psubsbXmmXmm); }
-	void dynamic_psubsbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubsbXmmXmm, [op, this]() {JitCodeGen::dynamic_psubsbXmmE128(op); }); }
+	void dynamic_psubsbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubsbXmmXmm); }
 	void dynamic_psubswXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psubswXmmXmm); }
-	void dynamic_psubswXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubswXmmXmm, [op, this]() {JitCodeGen::dynamic_psubswXmmE128(op); }); }
+	void dynamic_psubswXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubswXmmXmm); }
 	void dynamic_psubusbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psubusbXmmXmm); }
-	void dynamic_psubusbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubusbXmmXmm, [op, this]() {JitCodeGen::dynamic_psubusbXmmE128(op); }); }
+	void dynamic_psubusbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubusbXmmXmm); }
 	void dynamic_psubuswXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psubuswXmmXmm); }
-	void dynamic_psubuswXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubuswXmmXmm, [op, this]() {JitCodeGen::dynamic_psubuswXmmE128(op); }); }
+	void dynamic_psubuswXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psubuswXmmXmm); }
 	void dynamic_pmaddwdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pmaddwdXmmXmm); }
-	void dynamic_pmaddwdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmaddwdXmmXmm, [op, this]() {JitCodeGen::dynamic_pmaddwdXmmE128(op); }); }
+	void dynamic_pmaddwdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmaddwdXmmXmm); }
 	void dynamic_pmulhwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pmulhwXmmXmm); }
-	void dynamic_pmulhwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmulhwXmmXmm, [op, this]() {JitCodeGen::dynamic_pmulhwXmmE128(op); }); }
+	void dynamic_pmulhwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmulhwXmmXmm); }
 	void dynamic_pmullwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pmullwXmmXmm); }
-	void dynamic_pmullwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmullwXmmXmm, [op, this]() {JitCodeGen::dynamic_pmullwXmmE128(op); }); }
+	void dynamic_pmullwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmullwXmmXmm); }
 	void dynamic_pmuludqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pmuludqXmmXmm); }
-	void dynamic_pmuludqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmuludqXmmXmm, [op, this]() {JitCodeGen::dynamic_pmuludqXmmE128(op); }); }
+	void dynamic_pmuludqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmuludqXmmXmm); }
 	void dynamic_andnpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::andnpdXmmXmm); }
-	void dynamic_andnpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::andnpdXmmXmm, [op, this]() {JitCodeGen::dynamic_andnpdXmmE128(op); }); }
+	void dynamic_andnpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::andnpdXmmXmm); }
 	void dynamic_andpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::andpdXmmXmm); }
-	void dynamic_andpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::andpdXmmXmm, [op, this]() {JitCodeGen::dynamic_andpdXmmE128(op); }); }
+	void dynamic_andpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::andpdXmmXmm); }
 	void dynamic_pandXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pandXmmXmm); }
-	void dynamic_pandXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pandXmmXmm, [op, this]() {JitCodeGen::dynamic_pandXmmE128(op); }); }
+	void dynamic_pandXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pandXmmXmm); }
 	void dynamic_pandnXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pandnXmmXmm); }
-	void dynamic_pandnXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pandnXmmXmm, [op, this]() {JitCodeGen::dynamic_pandnXmmE128(op); }); }
+	void dynamic_pandnXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pandnXmmXmm); }
 	void dynamic_porXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::porXmmXmm); }
-	void dynamic_porXmmXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::porXmmXmm, [op, this]() {JitCodeGen::dynamic_porXmmXmmE128(op); }); }
+	void dynamic_porXmmXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::porXmmXmm); }
 	void dynamic_pslldqXmm(DecodedOp* op) override { opXmmImm(op, &JitSSE::pslldqXmm); }
 	void dynamic_psllqXmm(DecodedOp* op) override { opXmmImm(op, &JitSSE::psllqXmm); }
 	void dynamic_pslldXmm(DecodedOp* op) override { opXmmImm(op, &JitSSE::pslldXmm); }
@@ -430,56 +430,56 @@ public:
 	void dynamic_psrldXmm(DecodedOp* op) override { opXmmImm(op, &JitSSE::psrldXmm); }
 	void dynamic_psrlwXmm(DecodedOp* op) override { opXmmImm(op, &JitSSE::psrlwXmm); }
 	void dynamic_psllqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psllqXmmXmm); }
-	void dynamic_psllqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psllqXmmXmm, [op, this]() {JitCodeGen::dynamic_psllqXmmE128(op); }); }
+	void dynamic_psllqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psllqXmmXmm); }
 	void dynamic_pslldXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pslldXmmXmm); }
-	void dynamic_pslldXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pslldXmmXmm, [op, this]() {JitCodeGen::dynamic_pslldXmmE128(op); }); }
+	void dynamic_pslldXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pslldXmmXmm); }
 	void dynamic_psllwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psllwXmmXmm); }
-	void dynamic_psllwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psllwXmmXmm, [op, this]() {JitCodeGen::dynamic_psllwXmmE128(op); }); }
+	void dynamic_psllwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psllwXmmXmm); }
 	void dynamic_psradXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psradXmmXmm); }
-	void dynamic_psradXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psradXmmXmm, [op, this]() {JitCodeGen::dynamic_psradXmmE128(op); }); }
+	void dynamic_psradXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psradXmmXmm); }
 	void dynamic_psrawXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psrawXmmXmm); }
-	void dynamic_psrawXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psrawXmmXmm, [op, this]() {JitCodeGen::dynamic_psrawXmmE128(op); }); }
+	void dynamic_psrawXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psrawXmmXmm); }
 	void dynamic_psrlqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psrlqXmmXmm); }
-	void dynamic_psrlqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psrlqXmmXmm, [op, this]() {JitCodeGen::dynamic_psrlqXmmE128(op); }); }
+	void dynamic_psrlqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psrlqXmmXmm); }
 	void dynamic_psrldXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psrldXmmXmm); }
-	void dynamic_psrldXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psrldXmmXmm, [op, this]() {JitCodeGen::dynamic_psrldXmmE128(op); }); }
+	void dynamic_psrldXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psrldXmmXmm); }
 	void dynamic_psrlwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psrlwXmmXmm); }
-	void dynamic_psrlwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psrlwXmmXmm, [op, this]() {JitCodeGen::dynamic_psrlwXmmE128(op); }); }
+	void dynamic_psrlwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psrlwXmmXmm); }
 	void dynamic_pxorXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pxorXmmXmm); }
-	void dynamic_pxorXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pxorXmmXmm, [op, this]() {JitCodeGen::dynamic_pxorXmmE128(op); }); }
+	void dynamic_pxorXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pxorXmmXmm); }
 	void dynamic_orpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::orpdXmmXmm); }
-	void dynamic_orpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::orpdXmmXmm, [op, this]() {JitCodeGen::dynamic_orpdXmmE128(op); }); }
+	void dynamic_orpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::orpdXmmXmm); }
 	void dynamic_xorpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::xorpdXmmXmm); }
-	void dynamic_xorpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::xorpdXmmXmm, [op, this]() {JitCodeGen::dynamic_xorpdXmmE128(op); }); }
+	void dynamic_xorpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::xorpdXmmXmm); }
 	void dynamic_cmppdXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &JitSSE::cmppdXmmXmm); }
-	void dynamic_cmppdXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::cmppdXmmXmm, [op, this]() {JitCodeGen::dynamic_cmppdXmmE128(op); }); }
+	void dynamic_cmppdXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::cmppdXmmXmm); }
 	void dynamic_cmpsdXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &JitSSE::cmpsdXmmXmm); }
-	void dynamic_cmpsdXmmE64(DecodedOp* op) override { opXmmE64Imm(op, &JitSSE::cmpsdXmmXmm, [op, this]() {JitCodeGen::dynamic_cmpsdXmmE64(op); }); }
+	void dynamic_cmpsdXmmE64(DecodedOp* op) override { opXmmE64Imm(op, &JitSSE::cmpsdXmmXmm); }
 	void dynamic_comisdXmmXmm(DecodedOp* op) override;
 	void dynamic_comisdXmmE64(DecodedOp* op) override;
 	void dynamic_ucomisdXmmXmm(DecodedOp* op) override;
 	void dynamic_ucomisdXmmE64(DecodedOp* op) override;
 	void dynamic_pcmpgtbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pcmpgtbXmmXmm); }
-	void dynamic_pcmpgtbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pcmpgtbXmmXmm, [op, this]() {JitCodeGen::dynamic_pcmpgtbXmmE128(op); }); }
+	void dynamic_pcmpgtbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pcmpgtbXmmXmm); }
 	void dynamic_pcmpgtwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pcmpgtwXmmXmm); }
-	void dynamic_pcmpgtwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pcmpgtwXmmXmm, [op, this]() {JitCodeGen::dynamic_pcmpgtwXmmE128(op); }); }
+	void dynamic_pcmpgtwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pcmpgtwXmmXmm); }
 	void dynamic_pcmpgtdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pcmpgtdXmmXmm); }
-	void dynamic_pcmpgtdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pcmpgtdXmmXmm, [op, this]() {JitCodeGen::dynamic_pcmpgtdXmmE128(op); }); }
+	void dynamic_pcmpgtdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pcmpgtdXmmXmm); }
 	void dynamic_pcmpeqbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pcmpeqbXmmXmm); }
-	void dynamic_pcmpeqbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pcmpeqbXmmXmm, [op, this]() {JitCodeGen::dynamic_pcmpeqbXmmE128(op); }); }
+	void dynamic_pcmpeqbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pcmpeqbXmmXmm); }
 	void dynamic_pcmpeqwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pcmpeqwXmmXmm); }
-	void dynamic_pcmpeqwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pcmpeqwXmmXmm, [op, this]() {JitCodeGen::dynamic_pcmpeqwXmmE128(op); }); }
+	void dynamic_pcmpeqwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pcmpeqwXmmXmm); }
 	void dynamic_pcmpeqdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pcmpeqdXmmXmm); }
-	void dynamic_pcmpeqdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pcmpeqdXmmXmm, [op, this]() {JitCodeGen::dynamic_pcmpeqdXmmE128(op); }); }
+	void dynamic_pcmpeqdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pcmpeqdXmmXmm); }
 
 	void dynamic_cvtdq2pdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::cvtdq2pdXmmXmm, false); }
-	void dynamic_cvtdq2pdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvtdq2pdXmmXmm, [op, this]() {JitCodeGen::dynamic_cvtdq2pdXmmE128(op); }, false); }
+	void dynamic_cvtdq2pdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvtdq2pdXmmXmm, false); }
 	void dynamic_cvtdq2psXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::cvtdq2psXmmXmm, false); }
-	void dynamic_cvtdq2psXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvtdq2psXmmXmm, [op, this]() {JitCodeGen::dynamic_cvtdq2psXmmE128(op); }, false); }
+	void dynamic_cvtdq2psXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvtdq2psXmmXmm, false); }
 	void dynamic_cvtpd2dqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::cvtpd2dqXmmXmm, false); } // top bits in dest are zero'd
-	void dynamic_cvtpd2dqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvtpd2dqXmmXmm, [op, this]() {JitCodeGen::dynamic_cvtpd2dqXmmE128(op); }, false); }
+	void dynamic_cvtpd2dqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvtpd2dqXmmXmm, false); }
 	void dynamic_cvtpd2psXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::cvtpd2psXmmXmm, false); } // top bits in dest are zero'd
-	void dynamic_cvtpd2psXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvtpd2psXmmXmm, [op, this]() {JitCodeGen::dynamic_cvtpd2psXmmE128(op); }, false); }
+	void dynamic_cvtpd2psXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvtpd2psXmmXmm, false); }
 	void dynamic_cvtpd2piMmxXmm(DecodedOp* op) override;
 	void dynamic_cvtpd2piMmxE128(DecodedOp* op) override;
 	void dynamic_cvtpi2pdXmmMmx(DecodedOp* op) override;
@@ -494,17 +494,17 @@ public:
 	void dynamic_cvttsd2siR32Xmm(DecodedOp* op) override;
 	void dynamic_cvttsd2siR32E64(DecodedOp* op) override;
 	void dynamic_cvtps2dqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::cvtps2dqXmmXmm, false); }
-	void dynamic_cvtps2dqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvtps2dqXmmXmm, [op, this]() {JitCodeGen::dynamic_cvtpd2psXmmE128(op); }, false); }
+	void dynamic_cvtps2dqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvtps2dqXmmXmm, false); }
 	void dynamic_cvtps2pdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::cvtps2pdXmmXmm, false); }
-	void dynamic_cvtps2pdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::cvtps2pdXmmXmm, [op, this]() {JitCodeGen::dynamic_cvtps2pdXmmE64(op); }, false); }
+	void dynamic_cvtps2pdXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::cvtps2pdXmmXmm, false); }
 	void dynamic_cvtsd2ssXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::cvtsd2ssXmmXmm); }
-	void dynamic_cvtsd2ssXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::cvtsd2ssXmmXmm, [op, this]() {JitCodeGen::dynamic_cvtsd2ssXmmE64(op); }); }
+	void dynamic_cvtsd2ssXmmE64(DecodedOp* op) override { opXmmE64(op, &JitSSE::cvtsd2ssXmmXmm); }
 	void dynamic_cvtss2sdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::cvtss2sdXmmXmm); }
-	void dynamic_cvtss2sdXmmE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::cvtss2sdXmmXmm, [op, this]() {JitCodeGen::dynamic_cvtss2sdXmmE32(op); }); }
+	void dynamic_cvtss2sdXmmE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::cvtss2sdXmmXmm); }
 	void dynamic_cvttpd2dqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::cvttpd2dqXmmXmm); }
-	void dynamic_cvttpd2dqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvttpd2dqXmmXmm, [op, this]() {JitCodeGen::dynamic_cvttpd2dqXmmE128(op); }); }
+	void dynamic_cvttpd2dqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvttpd2dqXmmXmm); }
 	void dynamic_cvttps2dqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::cvttps2dqXmmXmm, false); }
-	void dynamic_cvttps2dqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvttps2dqXmmXmm, [op, this]() {JitCodeGen::dynamic_cvttps2dqXmmE128(op); }, false); }
+	void dynamic_cvttps2dqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::cvttps2dqXmmXmm, false); }
 
 	void dynamic_movqXmmXmm(DecodedOp* op) override;
 	void dynamic_movqE64Xmm(DecodedOp* op) override;
@@ -544,58 +544,58 @@ public:
 
 
 	void dynamic_pshufdXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &JitSSE::pshufdXmmXmm); }
-	void dynamic_pshufdXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::pshufdXmmXmm, [op, this]() {JitCodeGen::dynamic_pshufdXmmE128(op); }); }
+	void dynamic_pshufdXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::pshufdXmmXmm); }
 	void dynamic_pshufhwXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &JitSSE::pshufhwXmmXmm); }
-	void dynamic_pshufhwXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::pshufhwXmmXmm, [op, this]() {JitCodeGen::dynamic_pshufhwXmmE128(op); }); }
+	void dynamic_pshufhwXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::pshufhwXmmXmm); }
 	void dynamic_pshuflwXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &JitSSE::pshuflwXmmXmm); }
-	void dynamic_pshuflwXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::pshuflwXmmXmm, [op, this]() {JitCodeGen::dynamic_pshuflwXmmE128(op); }); }
+	void dynamic_pshuflwXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::pshuflwXmmXmm); }
 
 	void dynamic_shufpdXmmXmm(DecodedOp* op) override { opXmmXmmImm(op, &JitSSE::shufpdXmmXmm); }
-	void dynamic_shufpdXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::shufpdXmmXmm, [op, this]() {JitCodeGen::dynamic_shufpdXmmE128(op); }); }
+	void dynamic_shufpdXmmE128(DecodedOp* op) override { opXmmE128Imm(op, &JitSSE::shufpdXmmXmm); }
 	void dynamic_unpckhpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::unpckhpdXmmXmm); }
-	void dynamic_unpckhpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::unpckhpdXmmXmm, [op, this]() {JitCodeGen::dynamic_unpckhpdXmmE128(op); }); }
+	void dynamic_unpckhpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::unpckhpdXmmXmm); }
 	void dynamic_unpcklpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::unpcklpdXmmXmm); }
 
-	void dynamic_unpcklpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::unpcklpdXmmXmm, [op, this]() {JitCodeGen::dynamic_unpcklpdXmmE128(op); }); }
+	void dynamic_unpcklpdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::unpcklpdXmmXmm); }
 	void dynamic_punpckhbwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::punpckhbwXmmXmm); }
-	void dynamic_punpckhbwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpckhbwXmmXmm, [op, this]() {JitCodeGen::dynamic_punpckhbwXmmE128(op); }); }
+	void dynamic_punpckhbwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpckhbwXmmXmm); }
 	void dynamic_punpckhwdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::punpckhwdXmmXmm); }
-	void dynamic_punpckhwdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpckhwdXmmXmm, [op, this]() {JitCodeGen::dynamic_punpckhwdXmmE128(op); }); }
+	void dynamic_punpckhwdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpckhwdXmmXmm); }
 	void dynamic_punpckhdqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::punpckhdqXmmXmm); }
-	void dynamic_punpckhdqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpckhdqXmmXmm, [op, this]() {JitCodeGen::dynamic_punpckhdqXmmE128(op); }); }
+	void dynamic_punpckhdqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpckhdqXmmXmm); }
 	void dynamic_punpckhqdqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::punpckhqdqXmmXmm); }
-	void dynamic_punpckhqdqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpckhqdqXmmXmm, [op, this]() {JitCodeGen::dynamic_punpckhqdqXmmE128(op); }); }
+	void dynamic_punpckhqdqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpckhqdqXmmXmm); }
 	void dynamic_punpcklbwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::punpcklbwXmmXmm); }
-	void dynamic_punpcklbwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpcklbwXmmXmm, [op, this]() {JitCodeGen::dynamic_punpcklbwXmmE128(op); }); }
+	void dynamic_punpcklbwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpcklbwXmmXmm); }
 	void dynamic_punpcklwdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::punpcklwdXmmXmm); }
-	void dynamic_punpcklwdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpcklwdXmmXmm, [op, this]() {JitCodeGen::dynamic_punpcklwdXmmE128(op); }); }
+	void dynamic_punpcklwdXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpcklwdXmmXmm); }
 	void dynamic_punpckldqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::punpckldqXmmXmm); }
-	void dynamic_punpckldqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpckldqXmmXmm, [op, this]() {JitCodeGen::dynamic_punpckldqXmmE128(op); }); }
+	void dynamic_punpckldqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpckldqXmmXmm); }
 	void dynamic_punpcklqdqXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::punpcklqdqXmmXmm); }
-	void dynamic_punpcklqdqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpcklqdqXmmXmm, [op, this]() {JitCodeGen::dynamic_punpcklqdqXmmE128(op); }); }
+	void dynamic_punpcklqdqXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::punpcklqdqXmmXmm); }
 	void dynamic_packssdwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::packssdwXmmXmm); }
-	void dynamic_packssdwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::packssdwXmmXmm, [op, this]() {JitCodeGen::dynamic_packssdwXmmE128(op); }); }
+	void dynamic_packssdwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::packssdwXmmXmm); }
 	void dynamic_packsswbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::packsswbXmmXmm); }
-	void dynamic_packsswbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::packsswbXmmXmm, [op, this]() {JitCodeGen::dynamic_packsswbXmmE128(op); }); }
+	void dynamic_packsswbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::packsswbXmmXmm); }
 	void dynamic_packuswbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::packuswbXmmXmm); }
-	void dynamic_packuswbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::packuswbXmmXmm, [op, this]() {JitCodeGen::dynamic_packuswbXmmE128(op); }); }
+	void dynamic_packuswbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::packuswbXmmXmm); }
 	void dynamic_pause(DecodedOp* op) override { pause(); incrementEip(op->len); }
 	void dynamic_pavgbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pavgbXmmXmm); }
-	void dynamic_pavgbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pavgbXmmXmm, [op, this]() {JitCodeGen::dynamic_pavgbXmmE128(op); }); }
+	void dynamic_pavgbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pavgbXmmXmm); }
 	void dynamic_pavgwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pavgwXmmXmm); }
-	void dynamic_pavgwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pavgwXmmXmm, [op, this]() {JitCodeGen::dynamic_pavgwXmmE128(op); }); }
+	void dynamic_pavgwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pavgwXmmXmm); }
 	void dynamic_psadbwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::psadbwXmmXmm); }
-	void dynamic_psadbwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psadbwXmmXmm, [op, this]() {JitCodeGen::dynamic_psadbwXmmE128(op); }); }
+	void dynamic_psadbwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::psadbwXmmXmm); }
 	void dynamic_pmaxswXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pmaxswXmmXmm); }
-	void dynamic_pmaxswXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmaxswXmmXmm, [op, this]() {JitCodeGen::dynamic_pmaxswXmmE128(op); }); }
+	void dynamic_pmaxswXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmaxswXmmXmm); }
 	void dynamic_pmaxubXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pmaxubXmmXmm); }
-	void dynamic_pmaxubXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmaxubXmmXmm, [op, this]() {JitCodeGen::dynamic_pmaxubXmmE128(op); }); }
+	void dynamic_pmaxubXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmaxubXmmXmm); }
 	void dynamic_pminswXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pminswXmmXmm); }
-	void dynamic_pminswXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pminswXmmXmm, [op, this]() {JitCodeGen::dynamic_pminswXmmE128(op); }); }
+	void dynamic_pminswXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pminswXmmXmm); }
 	void dynamic_pminubXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pminubXmmXmm); }
-	void dynamic_pminubXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pminubXmmXmm, [op, this]() {JitCodeGen::dynamic_pminubXmmE128(op); }); }
+	void dynamic_pminubXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pminubXmmXmm); }
 	void dynamic_pmulhuwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pmulhuwXmmXmm); }
-	void dynamic_pmulhuwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmulhuwXmmXmm, [op, this]() {JitCodeGen::dynamic_pmulhuwXmmE128(op); }); }
+	void dynamic_pmulhuwXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pmulhuwXmmXmm); }
 	void dynamic_pextrwR32Xmm(DecodedOp* op) override;
 	void dynamic_pextrwE16Xmm(DecodedOp* op) override;
 	void dynamic_pinsrwXmmR32(DecodedOp* op) override;

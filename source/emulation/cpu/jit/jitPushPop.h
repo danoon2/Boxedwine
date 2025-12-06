@@ -154,38 +154,14 @@ void Jit::dynamic_pushSeg16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_popSeg16(DecodedOp* op) {
-    RegPtr result = callAndReturn_IR(common_setSegment, op->reg, JitWidth::b16, peek16(getTmpReg())); // getTmpReg so that peek16 won't use hardware EAX on x86, callAndReturn needs that. :TODO: maybe callAndReturn can be enhanced to allow a param using EAX but that doesn't need it after its used as a param.
-
-    IfNot(JitWidth::b32, result);
-    blockDone(true);
-    EndIf();
-
-    IfSmallStack(); {
-        addValue(JitWidth::b16, getReg(4), 2);
-    } StartElse(); {
-        addValue(JitWidth::b32, getReg(4), 2);
-    } EndIf();
-
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_pushSeg32(DecodedOp* op) {
     push32(getReadOnlySegValue(op->reg));
     incrementEip(op->len);
 }
 void Jit::dynamic_popSeg32(DecodedOp* op) {
-    RegPtr result = callAndReturn_IR(common_setSegment, op->reg, JitWidth::b32, peek32(getTmpReg())); // getTmpReg so that peek16 won't use hardware EAX on x86, callAndReturn needs that. :TODO: maybe callAndReturn can be enhanced to allow a param using EAX but that doesn't need it after its used as a param.
-
-    IfNot(JitWidth::b32, result); {
-        blockDone(true);
-    } EndIf();
-
-    IfSmallStack(); {
-        addValue(JitWidth::b16, getReg(4), 4);
-    } StartElse(); {
-        addValue(JitWidth::b32, getReg(4), 4);
-    } EndIf();
-
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_pushA16(DecodedOp* op) {
     RegPtr esp = getTmpReg(4);
@@ -206,8 +182,6 @@ void Jit::dynamic_pushA16(DecodedOp* op) {
         } StartElse(); {
             subValue(JitWidth::b32, getReg(4), 16);
         }EndIf();
-    }, [this]() {
-        call(common_pushA16);
     });
     incrementEip(op->len);
 }
@@ -230,8 +204,6 @@ void Jit::dynamic_pushA32(DecodedOp* op) {
         } StartElse(); {
             subValue(JitWidth::b32, getReg(4), 32);
         } EndIf();
-    }, [this]() {
-        call(common_pushA32);
     });
     incrementEip(op->len);
 }
@@ -255,8 +227,6 @@ void Jit::dynamic_popA16(DecodedOp* op) {
         } StartElse(); {
             addValue(JitWidth::b32, getReg(4), 16);
         } EndIf();
-    }, [this]() {
-        call(common_popA16);
     });
     incrementEip(op->len);
 }
@@ -280,8 +250,6 @@ void Jit::dynamic_popA32(DecodedOp* op) {
         } StartElse(); {
             addValue(JitWidth::b32, getReg(4), 32);
         } EndIf();
-    }, [this]() {
-        call(common_popA32);
     });
     incrementEip(op->len);
 }

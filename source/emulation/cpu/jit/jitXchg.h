@@ -21,14 +21,12 @@ void Jit::dynamic_xchgr8r8(DecodedOp* op) {
     // this is a weird case where we could write to the same hardware register, like AH and AL would both write to EAX.  When they sync back, the last one would win since writing back 8-bit regs doesn't mask the write back
     bool sameReg = (op->reg + 4 == op->rm) || (op->reg == op->rm + 4);
     if (sameReg) {
-        RegPtr reg = getTmpReg8(op->reg > op->rm ? op->reg : op->rm);
-        RegPtr rm = getTmpReg8(op->reg > op->rm ? op->rm : op->reg);
+        RegPtr reg = getTmpReg(op->reg & 3);
         RegPtr actualReg = getReg(op->reg & 3);
 
         shrValue(JitWidth::b16, reg, 8);
-        shlValue(JitWidth::b16, rm, 8);
-        orReg(JitWidth::b16, reg, rm);
-        mov(JitWidth::b16, actualReg, reg);
+        shlValue(JitWidth::b16, actualReg, 8);
+        orReg(JitWidth::b16, actualReg, reg);
     } else {
         RegPtr reg = getReg8(op->reg);
         RegPtr rm = getReg8(op->rm);
@@ -72,32 +70,26 @@ void Jit::dynamic_xchge32r32(DecodedOp* op) {
 
 // I didn't see Quake 2 or Cinebench trigger these, so for now they are low priority for inlining
 void Jit::dynamic_cmpxchgr8r8(DecodedOp* op) {
-    call_II(common_cmpxchgr8r8, op->reg, op->rm);
-    currentLazyFlags = nullptr;
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
+    currentLazyFlags = FLAGS_CMP8;
 }
 void Jit::dynamic_cmpxchge8r8(DecodedOp* op) {
-    call_RI(common_cmpxchge8r8, JitWidth::b32, calculateEaa(op), op->reg);
-    currentLazyFlags = nullptr;
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
+    currentLazyFlags = FLAGS_CMP8;
 }
 void Jit::dynamic_cmpxchgr16r16(DecodedOp* op) {
-    call_II(common_cmpxchgr16r16, op->reg, op->rm);
-    currentLazyFlags = nullptr;
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
+    currentLazyFlags = FLAGS_CMP16;
 }
 void Jit::dynamic_cmpxchge16r16(DecodedOp* op) {
-    call_RI(common_cmpxchge16r16, JitWidth::b32, calculateEaa(op), op->reg);
-    currentLazyFlags = nullptr;
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
+    currentLazyFlags = FLAGS_CMP16;
 }
 void Jit::dynamic_cmpxchgr32r32(DecodedOp* op) {
-    call_II(common_cmpxchgr32r32, op->reg, op->rm);
-    currentLazyFlags = nullptr;
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
+    currentLazyFlags = FLAGS_CMP32;
 }
 void Jit::dynamic_cmpxchge32r32(DecodedOp* op) {
-    call_RI(common_cmpxchge32r32, JitWidth::b32, calculateEaa(op), op->reg);
-    currentLazyFlags = nullptr;
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
+    currentLazyFlags = FLAGS_CMP32;
 }

@@ -108,7 +108,7 @@ public:
     DynFpuReg reg;
 };
 
-void JitFPU::dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool reverse) {
+void JitFPU::dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool reverse) {
     read(JitWidth::b32, calculateEaa(op), [reverse, op, callback, this](RegPtr address, RegPtr offset) {
         loadFpuReg(XMM_TMP, address, offset, 0, 0, DYN_FPU_32_BIT);
         fpuRegExtend32To64(XMM_TMP, XMM_TMP);
@@ -122,9 +122,7 @@ void JitFPU::dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, std::fu
         }
         syncXmmToCPU(top, reverse ? XMM_TMP : dst.reg, 0);
         incrementEip(op->len);
-    }, [fallback] {
-        fallback();
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FCOM_SINGLE_REAL(DecodedOp* op) {
@@ -136,9 +134,7 @@ void JitFPU::dynamic_FCOM_SINGLE_REAL(DecodedOp* op) {
 
         doFCOM(XMM_TMP, dst.reg, readFPUTag(std::move(top)));
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FCOM_SINGLE_REAL(op);
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FCOM_SINGLE_REAL_Pop(DecodedOp* op) {
@@ -151,9 +147,7 @@ void JitFPU::dynamic_FCOM_SINGLE_REAL_Pop(DecodedOp* op) {
         doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FCOM_SINGLE_REAL_Pop(op);
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FCOMPP(DecodedOp* op) {
@@ -244,7 +238,7 @@ void JitFPU::dynamic_ST0_STj(DecodedOp* op, XmmXmmCallback callback, bool revers
     incrementEip(op->len);
 }
 
-void JitFPU::dynamic_DOUBLE_REAL(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool reverse) {
+void JitFPU::dynamic_DOUBLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool reverse) {
     read(JitWidth::b64, calculateEaa(op), [reverse, op, callback, this](RegPtr address, RegPtr offset) {
         loadFpuReg(XMM_TMP, address, offset, 0, 0);
         RegPtr top = getTopReg();
@@ -257,9 +251,7 @@ void JitFPU::dynamic_DOUBLE_REAL(DecodedOp* op, XmmXmmCallback callback, std::fu
         }
         syncXmmToCPU(top, reverse ? XMM_TMP : dst.reg, 0);
         incrementEip(op->len);
-    }, [fallback] {
-        fallback();
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FCOM_DOUBLE_REAL(DecodedOp* op) {
@@ -270,9 +262,7 @@ void JitFPU::dynamic_FCOM_DOUBLE_REAL(DecodedOp* op) {
 
         doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FCOM_DOUBLE_REAL(op);
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FCOM_DOUBLE_REAL_Pop(DecodedOp* op) {
@@ -284,12 +274,10 @@ void JitFPU::dynamic_FCOM_DOUBLE_REAL_Pop(DecodedOp* op) {
         doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FCOM_DOUBLE_REAL_Pop(op);
-    }, true);
+    }, nullptr, true);
 }
 
-void JitFPU::dynamic_DWORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool reverse) {
+void JitFPU::dynamic_DWORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, bool reverse) {
     read(JitWidth::b32, calculateEaa(op), [reverse, op, callback, this](RegPtr address, RegPtr offset) {
         loadFpuRegFromInt(XMM_TMP, address, offset, 0, 0);
         RegPtr top = getTopReg();
@@ -302,9 +290,7 @@ void JitFPU::dynamic_DWORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, std::
         }
         syncXmmToCPU(top, reverse ? XMM_TMP : dst.reg, 0);
         incrementEip(op->len);
-    }, [fallback] {
-        fallback();
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FICOM_DWORD_INTEGER(DecodedOp* op) {
@@ -315,9 +301,7 @@ void JitFPU::dynamic_FICOM_DWORD_INTEGER(DecodedOp* op) {
 
         doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         incrementEip(op->len);
-    }, [op, this] {
-        JitCodeGen::dynamic_FICOM_DWORD_INTEGER(op);
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FICOM_DWORD_INTEGER_Pop(DecodedOp* op) {
@@ -329,9 +313,7 @@ void JitFPU::dynamic_FICOM_DWORD_INTEGER_Pop(DecodedOp* op) {
         doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, [op, this] {
-        JitCodeGen::dynamic_FICOM_DWORD_INTEGER_Pop(op);
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::loadFpuRegFromShort(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
@@ -341,7 +323,7 @@ void JitFPU::loadFpuRegFromShort(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U
     regToFpuReg(reg, std::move(result));
 }
 
-void JitFPU::dynamic_WORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool reverse) {
+void JitFPU::dynamic_WORD_INTEGER(DecodedOp* op, XmmXmmCallback callback,  bool reverse) {
     read(JitWidth::b16, calculateEaa(op), [reverse, op, callback, this](RegPtr address, RegPtr offset) {
         loadFpuRegFromShort(XMM_TMP, address, offset, 0, 0);
         RegPtr top = getTopReg();
@@ -354,9 +336,7 @@ void JitFPU::dynamic_WORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, std::f
         }
         syncXmmToCPU(top, reverse ? XMM_TMP : dst.reg, 0);
         incrementEip(op->len);
-    }, [fallback] {
-        fallback();
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FICOM_WORD_INTEGER(DecodedOp* op) {
@@ -367,8 +347,6 @@ void JitFPU::dynamic_FICOM_WORD_INTEGER(DecodedOp* op) {
 
         doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         incrementEip(op->len);
-    }, [op, this] {
-        JitCodeGen::dynamic_FICOM_WORD_INTEGER(op);
     });
 }
 
@@ -381,8 +359,6 @@ void JitFPU::dynamic_FICOM_WORD_INTEGER_Pop(DecodedOp* op) {
         doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, [op, this] {
-        JitCodeGen::dynamic_FICOM_WORD_INTEGER_Pop(op);
     });
 }
 
@@ -557,8 +533,6 @@ void JitFPU::dynamic_FLD_SINGLE_REAL(DecodedOp* op) {
         dynamic_FPU_PREP_PUSH(top, true);
         syncXmmToCPU(top, XMM_TMP, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FLD_SINGLE_REAL(op);
     });
 }
 
@@ -569,8 +543,6 @@ void JitFPU::dynamic_FST_SINGLE_REAL(DecodedOp* op) {
         fpuReg64To32(src.reg, src.reg);
         storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_32_BIT);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FST_SINGLE_REAL(op);
     });
 }
 
@@ -582,9 +554,7 @@ void JitFPU::dynamic_FST_SINGLE_REAL_Pop(DecodedOp* op) {
         storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_32_BIT);
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FST_SINGLE_REAL_Pop(op);
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FST_DOUBLE_REAL(DecodedOp* op) {
@@ -593,8 +563,6 @@ void JitFPU::dynamic_FST_DOUBLE_REAL(DecodedOp* op) {
         FPUReg src(this, top, 0);
         storeFpuReg(src.reg, address, offset, 0, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FST_DOUBLE_REAL(op);
     });
 }
 
@@ -605,9 +573,7 @@ void JitFPU::dynamic_FST_DOUBLE_REAL_Pop(DecodedOp* op) {
         storeFpuReg(src.reg, address, offset, 0, 0);
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FST_DOUBLE_REAL_Pop(op);
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FNSTCW(DecodedOp* op) {
@@ -744,8 +710,6 @@ void JitFPU::dynamic_FILD_DWORD_INTEGER(DecodedOp* op) {
         dynamic_FPU_PREP_PUSH(top, true); // will change topReg
         syncXmmToCPUWithIndexReg(top, XMM_TMP);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FILD_DWORD_INTEGER(op);
     });
 }
 
@@ -862,8 +826,6 @@ void JitFPU::dynamic_FNSTSW(DecodedOp* op) {
         orReg(JitWidth::b32, sw, top);
         write(JitWidth::b16, address, offset, 0, 0, sw);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FNSTSW(op);
     });
 }
 
@@ -940,8 +902,6 @@ void JitFPU::dynamic_FISTTP32(DecodedOp* op) {
         write(JitWidth::b32, address, offset, 0, 0, fpuRegToInt32(src.reg, true));
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FISTTP32(op);
     });
 }
 
@@ -962,9 +922,7 @@ void JitFPU::dynamic_FISTTP64(DecodedOp* op) {
             storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_64_BIT);
             dynamic_FPU_POP(top);
             incrementEip(op->len);
-        }, [op, this]() {
-            JitCodeGen::dynamic_FISTTP64(op);
-        }, true);
+        }, nullptr, true);
     } EndIf(true);
 }
 
@@ -978,9 +936,7 @@ void JitFPU::dynamic_FIST_DWORD_INTEGER(DecodedOp* op) {
         write(JitWidth::b32, address, offset, 0, 0, fpuRegToInt32(src.reg, false));
         restoreFPURounding();
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FIST_DWORD_INTEGER(op);
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) {
@@ -994,9 +950,7 @@ void JitFPU::dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) {
         restoreFPURounding();
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FIST_DWORD_INTEGER_Pop(op);
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::doFFREE_STi(DecodedOp* op, bool pop) {
@@ -1021,8 +975,6 @@ void JitFPU::dynamic_FLD_DOUBLE_REAL(DecodedOp* op) {
         dynamic_FPU_PREP_PUSH(top, true);
         syncXmmToCPU(top, XMM_TMP, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FLD_DOUBLE_REAL(op);
     });
 }
 
@@ -1049,8 +1001,6 @@ void JitFPU::dynamic_FILD_WORD_INTEGER(DecodedOp* op) {
         dynamic_FPU_PREP_PUSH(top, true); // will change topReg
         syncXmmToCPUWithIndexReg(top, XMM_TMP);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FILD_WORD_INTEGER(op);
     });
 }
 
@@ -1063,9 +1013,7 @@ void JitFPU::dynamic_FISTTP16(DecodedOp* op) {
         write(JitWidth::b16, address, offset, 0, 0, fpuRegToInt32(src.reg, true));
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FISTTP16(op);
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FIST_WORD_INTEGER(DecodedOp* op) {
@@ -1078,9 +1026,7 @@ void JitFPU::dynamic_FIST_WORD_INTEGER(DecodedOp* op) {
         write(JitWidth::b16, address, offset, 0, 0, fpuRegToInt32(src.reg, false));
         restoreFPURounding();
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FIST_WORD_INTEGER(op);
-    }, true);
+    }, nullptr, true);
 }
 
 void JitFPU::dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op) {
@@ -1094,9 +1040,31 @@ void JitFPU::dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op) {
         restoreFPURounding();
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_FIST_WORD_INTEGER_Pop(op);
-    }, true);
+    }, nullptr, true);
+}
+
+void JitFPU::dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) {
+    RegPtr top = getTopReg();
+
+    // some apps seem to do a memcpy like thing with data pushed in and out
+    // we don't want the loaded 64-bit int to change because of rounding if its writen directly back out
+    // so if its not already cached (64-bit format vs 80-bit), then do the slow way to keep the 64-bit precision
+    // 
+    // see FPU::FLD_I64
+    IfNotRegCached(top, true); {
+        JitCodeGen::dynamic_FISTP_QWORD_INTEGER(op);
+    } StartElse(true); {
+        write(JitWidth::b64, calculateEaa(op), nullptr, [top, op, this](RegPtr address, RegPtr offset) {
+            updateFPURounding();
+
+            FPUReg src(this, top, 0);
+            fpuRegToInt64(src.reg, src.reg, false);
+            storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_64_BIT);
+            restoreFPURounding();
+            dynamic_FPU_POP(top);
+            incrementEip(op->len);
+        }, nullptr, true);
+    } EndIf(true);
 }
 
 #endif

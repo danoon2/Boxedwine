@@ -746,7 +746,7 @@ void Jit::div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
     incrementEip(op->len);
 }
 
-void Jit::div32(DecodedOp* op, RegPtr src, InstDiv callback, std::function<void()> fallback) {
+void Jit::div32(DecodedOp* op, RegPtr src, bool isSigned, InstDiv64 callback) {
     /*
     U64 num = ((U64)EDX << 32) | EAX;
 
@@ -766,27 +766,33 @@ void Jit::div32(DecodedOp* op, RegPtr src, InstDiv callback, std::function<void(
     EAX=quo32;
     return 1;
     */
-    IfNot(JitWidth::b32, src);
+    IfNot(JitWidth::b32, src); {
         call_II(dynamic_prepareException, EXCEPTION_DIVIDE, 0);
         blockExit();
-    EndIf();
+    } EndIf();
 
-    RegPtr remainder = getReadOnlyReg(2, false, 2); // read only because in the fallback scenario, we don't want to write it back
-    // only take the inline path if we are guaranteed it won't overflow
-    If(JitWidth::b32, remainder);
-        fallback();
-    StartElse();
-#ifdef BOXEDWINE_DYNAMIC32
-        RegPtr eax = getTmpRegForCallResult();
-        mov(JitWidth::b32, eax, getReadOnlyReg(0));
-        (this->*callback)(JitWidth::b32, eax, src, remainder);
-        mov(JitWidth::b32, getReg(0, -1, false), eax);
-        mov(JitWidth::b32, getReg(2, -1, false), remainder);
-#else
-        RegPtr eax = getReg(0);
-        (this->*callback)(JitWidth::b32, eax, src, remainder);
-#endif
-    EndIf();
+    RegPtr eax = getTmpReg(0, false, 0);
+    RegPtr edx = getTmpReg(2, false, 2);
+    RegPtr remainder = getTmpReg();
+
+    (this->*callback)(eax, edx, src, remainder);
+
+    if (isSigned) {
+        If(JitWidth::b32, edx); {
+            subValue(JitWidth::b32, edx, 0xffff);
+            If(JitWidth::b32, edx); {
+                call_II(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
+                blockExit();
+            } EndIf();
+        } EndIf();
+    } else {
+        If(JitWidth::b32, edx); {
+            call_II(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
+            blockExit();
+        } EndIf();
+    }
+    mov(JitWidth::b32, getReg(0), eax);
+    mov(JitWidth::b32, getReg(2), remainder);
     incrementEip(op->len);
 }
 
@@ -833,38 +839,20 @@ void Jit::dynamic_idivE16(DecodedOp* op) {
     div16(op, src, true, &Jit::idivRegRegWithRemainder);
 }
 void Jit::dynamic_divR32(DecodedOp* op) {
-    div32(op, getReadOnlyReg(op->reg), &Jit::divRegRegWithRemainder, [op, this]() {
-        RegPtr result = callAndReturn_R(::div32, JitWidth::b32, getReadOnlyReg(op->reg));
-        IfNot(JitWidth::b32, result);
-        blockDone(true);
-        EndIf();
-    });
+    div32(op, getReadOnlyReg(op->reg), false, &Jit::divRegRegWithRemainder32);
 }
 void Jit::dynamic_divE32(DecodedOp* op) {
+    // getTmpReg to help x86 JIT, so that its tmp EAX hardware reg is still available for the div
     RegPtr src = read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, false, getTmpReg());
-    div32(op, src, &Jit::divRegRegWithRemainder, [op, src, this]() {
-        RegPtr result = callAndReturn_R(::div32, JitWidth::b32, src);
-        IfNot(JitWidth::b32, result);
-        blockDone(true);
-        EndIf();
-    });
+    div32(op, src, false, &Jit::divRegRegWithRemainder32);
 }
 void Jit::dynamic_idivR32(DecodedOp* op) {
-    div32(op, getReadOnlyReg(op->reg), &Jit::idivRegRegWithRemainder, [op, this]() {
-        RegPtr result = callAndReturn_RS(::idiv32, JitWidth::b32, getReadOnlyReg(op->reg));
-        IfNot(JitWidth::b32, result);
-        blockDone(true);
-        EndIf();
-    });
+    div32(op, getReadOnlyReg(op->reg), false, &Jit::idivRegRegWithRemainder32);
 }
 void Jit::dynamic_idivE32(DecodedOp* op) {
+    // getTmpReg to help x86 JIT, so that its tmp EAX hardware reg is still available for the div
     RegPtr src = read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, false, getTmpReg());
-    div32(op, src, &Jit::idivRegRegWithRemainder, [op, src, this]() {
-        RegPtr result = callAndReturn_RS(::idiv32, JitWidth::b32, src);
-        IfNot(JitWidth::b32, result);
-        blockDone(true);
-        EndIf();
-    });
+    div32(op, src, false, &Jit::idivRegRegWithRemainder32);
 }
 void Jit::dynamic_dimulcr16r16(DecodedOp* op) {
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
@@ -919,20 +907,20 @@ void Jit::dynamic_dimulcr16e16(DecodedOp* op) {
 void Jit::dynamic_dimulcr32r32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRRI(JitWidth::b32, getReg(op->reg), getReadOnlyReg(op->rm), op->imm);
+        incrementEip(op->len);
     } else {
-        call_RII(common_dimul32, JitWidth::b32, getReadOnlyReg(op->rm), op->imm, op->reg);
+        emulateSingleOp(getTmpReg());
     }
-    currentLazyFlags = FLAGS_NONE;
-    incrementEip(op->len);
+    currentLazyFlags = FLAGS_NONE;    
 }
 void Jit::dynamic_dimulcr32e32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRRI(JitWidth::b32, getReg(op->reg), read(JitWidth::b32, calculateEaa(op)), op->imm);
+        incrementEip(op->len);
     } else {
-        call_RII(common_dimul32, JitWidth::b32, read(JitWidth::b32, calculateEaa(op)), op->imm, op->reg);
+        emulateSingleOp(getTmpReg());
     }
     currentLazyFlags = FLAGS_NONE;
-    incrementEip(op->len);
 }
 void Jit::dynamic_dimulr16r16(DecodedOp* op) {
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
@@ -989,18 +977,18 @@ void Jit::dynamic_dimulr16e16(DecodedOp* op) {
 void Jit::dynamic_dimulr32r32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRR(JitWidth::b32, getReg(op->reg), getReadOnlyReg(op->rm));
+        incrementEip(op->len);
     } else {
-        call_RRI(common_dimul32, JitWidth::b32, getReadOnlyReg(op->rm), JitWidth::b32, getReadOnlyReg(op->reg), op->reg);
+        emulateSingleOp(getTmpReg());
     }
-    currentLazyFlags = FLAGS_NONE;
-    incrementEip(op->len);
+    currentLazyFlags = FLAGS_NONE;    
 }
 void Jit::dynamic_dimulr32e32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRR(JitWidth::b32, getReg(op->reg), read(JitWidth::b32, calculateEaa(op)));
+        incrementEip(op->len);
     } else {
-        call_RRI(common_dimul32, JitWidth::b32, read(JitWidth::b32, calculateEaa(op)), JitWidth::b32, getReadOnlyReg(op->reg), op->reg);
+        emulateSingleOp(getTmpReg());
     }
-    currentLazyFlags = FLAGS_NONE;
-    incrementEip(op->len);
+    currentLazyFlags = FLAGS_NONE;    
 }

@@ -46,7 +46,7 @@ void JitSSE::opXmmImm(DecodedOp* op, XmmImmCallback callback) {
     incrementEip(op->len);
 }
 
-void JitSSE::opXmmE128(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool loadDest) {
+void JitSSE::opXmmE128(DecodedOp* op, XmmXmmCallback callback, bool loadDest) {
     read(JitWidth::b128, calculateEaa(op), [op, callback, loadDest, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpMMX = getTmpXMM(op->reg);
         if (loadDest) {
@@ -56,12 +56,10 @@ void JitSSE::opXmmE128(DecodedOp* op, XmmXmmCallback callback, std::function<voi
         (this->*callback)((DynXMMReg)op->reg, tmpMMX);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [fallback]() {
-        fallback();
     });
 }
 
-void JitSSE::opXmmE64Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback) {
+void JitSSE::opXmmE64Imm(DecodedOp* op, XmmXmmImmCallback callback) {
     read(JitWidth::b64, calculateEaa(op), [op, callback, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpMMX = getTmpXMM(op->reg);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -69,12 +67,10 @@ void JitSSE::opXmmE64Imm(DecodedOp* op, XmmXmmImmCallback callback, std::functio
         (this->*callback)((DynXMMReg)op->reg, tmpMMX, op->imm);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [fallback]() {
-        fallback();
     });
 }
 
-void JitSSE::opXmmE64(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool loadDest) {
+void JitSSE::opXmmE64(DecodedOp* op, XmmXmmCallback callback, bool loadDest) {
     read(JitWidth::b64, calculateEaa(op), [op, callback, loadDest, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpMMX = getTmpXMM(op->reg);
         if (loadDest) {
@@ -84,12 +80,10 @@ void JitSSE::opXmmE64(DecodedOp* op, XmmXmmCallback callback, std::function<void
         (this->*callback)((DynXMMReg)op->reg, tmpMMX);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [fallback]() {
-        fallback();
     });
 }
 
-void JitSSE::opXmmE128Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback) {
+void JitSSE::opXmmE128Imm(DecodedOp* op, XmmXmmImmCallback callback) {
     read(JitWidth::b128, calculateEaa(op), [op, callback, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpMMX = getTmpXMM(op->reg);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -97,12 +91,10 @@ void JitSSE::opXmmE128Imm(DecodedOp* op, XmmXmmImmCallback callback, std::functi
         (this->*callback)((DynXMMReg)op->reg, tmpMMX, op->imm);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [fallback]() {
-        fallback();
     });
 }
 
-void JitSSE::opXmmE32(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback) {
+void JitSSE::opXmmE32(DecodedOp* op, XmmXmmCallback callback) {
     read(JitWidth::b32, calculateEaa(op), [op, callback, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpMMX = getTmpXMM(op->reg);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -110,12 +102,10 @@ void JitSSE::opXmmE32(DecodedOp* op, XmmXmmCallback callback, std::function<void
         (this->*callback)((DynXMMReg)op->reg, tmpMMX);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [fallback]() {
-        fallback();
     });
 }
 
-void JitSSE::opXmmE32Imm(DecodedOp* op, XmmXmmImmCallback callback, std::function<void()> fallback) {
+void JitSSE::opXmmE32Imm(DecodedOp* op, XmmXmmImmCallback callback) {
     read(JitWidth::b32, calculateEaa(op), [op, callback, this](RegPtr address, RegPtr offset) {
         DynXMMReg tmpMMX = getTmpXMM(op->reg);
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
@@ -123,8 +113,6 @@ void JitSSE::opXmmE32Imm(DecodedOp* op, XmmXmmImmCallback callback, std::functio
         (this->*callback)((DynXMMReg)op->reg, tmpMMX, op->imm);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [fallback]() {
-        fallback();
     });
 }
 
@@ -144,8 +132,6 @@ void JitSSE::dynamic_cvtpi2psXmmE64(DecodedOp* op) {
         cvtpi2psXmmMmx((DynXMMReg)op->reg, tmpMMX);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_cvtpi2psXmmE64(op);
     });
 }
 
@@ -163,8 +149,6 @@ void JitSSE::dynamic_cvtps2piMmxE64(DecodedOp* op) {
         cvtps2piMmxXmm((DynMMXReg)op->reg, tmpXMM);
         storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_cvtps2piMmxE64(op);
     });
 }
 
@@ -182,8 +166,6 @@ void JitSSE::dynamic_cvttps2piMmxE64(DecodedOp* op) {
         cvttps2piMmxXmm((DynMMXReg)op->reg, tmpXMM);
         storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_cvttps2piMmxE64(op);
     });
 }
 
@@ -202,8 +184,6 @@ void JitSSE::dynamic_cvtsi2ssXmmE32(DecodedOp* op) {
         cvtsi2ssXmmR32((DynXMMReg)op->reg, reg);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_cvtsi2ssXmmE32(op);
     });
 }
 
@@ -219,8 +199,6 @@ void JitSSE::dynamic_cvtss2siR32E32(DecodedOp* op) {
         loadXMMFromMem32(tmpXMM, address, offset, 0, 0);
         cvtss2siR32Xmm(getReg(op->reg, -1, false), tmpXMM);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_cvtss2siR32E32(op);
     });
 }
 
@@ -236,8 +214,6 @@ void JitSSE::dynamic_cvttss2siR32E32(DecodedOp* op) {
         loadXMMFromMem32(tmpXMM, address, offset, 0, 0);
         cvttss2siR32Xmm(getReg(op->reg, -1, false), tmpXMM);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_cvttss2siR32E32(op);
     });
 }
 
@@ -253,8 +229,6 @@ void JitSSE::dynamic_movupsXmmE128(DecodedOp* op) {
         loadXMMFromMem128(tmpXMM, address, offset, 0, 0);
         storeCpuXMMReg(tmpXMM, op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movupsXmmE128(op);
     });
 }
 
@@ -263,8 +237,6 @@ void JitSSE::dynamic_movupsE128Xmm(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem128(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movupsE128Xmm(op);
     });
 }
 
@@ -274,8 +246,6 @@ void JitSSE::dynamic_movhpsXmmE64(DecodedOp* op) {
         loadHighXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movhpsXmmE64(op);
     });
 }
 
@@ -285,8 +255,6 @@ void JitSSE::dynamic_movlpsXmmE64(DecodedOp* op) {
         loadLowXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movlpsXmmE64(op);
     });
 }
 
@@ -295,8 +263,6 @@ void JitSSE::dynamic_movhpsE64Xmm(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeHighXMMToMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movhpsE64Xmm(op);
     });
 }
 
@@ -305,8 +271,6 @@ void JitSSE::dynamic_movlpsE64Xmm(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movlpsE64Xmm(op);
     });
 }
 
@@ -322,8 +286,6 @@ void JitSSE::dynamic_movssXmmE32(DecodedOp* op) {
         loadXMMFromMem32(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movssXmmE32(op);
     });
 }
 
@@ -332,8 +294,6 @@ void JitSSE::dynamic_movssE32Xmm(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem32(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movlpsE64Xmm(op);
     });
 }
 
@@ -342,8 +302,6 @@ void JitSSE::dynamic_stmxcsr(DecodedOp* op) {
         addReg(JitWidth::b32, address, offset);
         stmxcsr(address);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_stmxcsr(op);
     });
 }
 
@@ -352,8 +310,6 @@ void JitSSE::dynamic_ldmxcsr(DecodedOp* op) {
         addReg(JitWidth::b32, address, offset);
         ldmxcsr(address);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movssXmmE32(op);
     });
 }
 
@@ -378,8 +334,6 @@ void JitSSE::dynamic_comissXmmE32(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         comissXmmXmm(DynXMMReg(op->reg), tmpReg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_comissXmmE32(op);
     });
     currentLazyFlags = FLAGS_NONE;
     storeLazyFlags(FLAGS_NONE);
@@ -401,8 +355,6 @@ void JitSSE::dynamic_ucomissXmmE32(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         ucomissXmmXmm(DynXMMReg(op->reg), tmpReg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_ucomissXmmE32(op);
     });
     currentLazyFlags = FLAGS_NONE;
     storeLazyFlags(FLAGS_NONE);
@@ -424,8 +376,6 @@ void JitSSE::dynamic_comisdXmmE64(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         comisdXmmXmm(DynXMMReg(op->reg), tmpReg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_comisdXmmE64(op);
     });
     currentLazyFlags = FLAGS_NONE;
     storeLazyFlags(FLAGS_NONE);
@@ -447,8 +397,6 @@ void JitSSE::dynamic_ucomisdXmmE64(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         ucomisdXmmXmm(DynXMMReg(op->reg), tmpReg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_ucomisdXmmE64(op);
     });
     currentLazyFlags = FLAGS_NONE;
     storeLazyFlags(FLAGS_NONE);
@@ -468,8 +416,6 @@ void JitSSE::dynamic_cvtpd2piMmxE128(DecodedOp* op) {
         cvtpd2piMmxXmm(DynMMXReg(op->reg), tmpReg);
         storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_cvtpd2piMmxE128(op);
     });
 }
 
@@ -487,8 +433,6 @@ void JitSSE::dynamic_cvtpi2pdXmmE64(DecodedOp* op) {
         cvtpi2pdXmmMmx(DynXMMReg(op->reg), tmpReg);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_cvtpi2pdXmmE64(op);
     });
 }
 
@@ -506,8 +450,6 @@ void JitSSE::dynamic_cvttpd2piMmE128(DecodedOp* op) {
         cvttpd2piMmxXmm(DynMMXReg(op->reg), tmpReg);
         storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_cvttpd2piMmE128(op);
     });
 }
 
@@ -523,8 +465,6 @@ void JitSSE::dynamic_cvtsd2siR32E64(DecodedOp* op) {
         loadXMMFromMem64(tmpReg, address, offset, 0, 0);
         cvtsd2siR32Xmm(getReg(op->reg, -1, false), tmpReg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_cvtsd2siR32E64(op);
     });
 }
 
@@ -543,8 +483,6 @@ void JitSSE::dynamic_cvtsi2sdXmmE32(DecodedOp* op) {
         cvtsi2sdXmmR32(DynXMMReg(op->reg), tmp);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_cvtsi2sdXmmE32(op);
     });
 }
 
@@ -560,8 +498,6 @@ void JitSSE::dynamic_cvttsd2siR32E64(DecodedOp* op) {
         loadXMMFromMem64(tmpReg, address, offset, 0, 0);
         cvttsd2siR32Xmm(getReg(op->reg, -1, false), tmpReg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_cvttsd2siR32E64(op);
     });
 }
 
@@ -576,8 +512,6 @@ void JitSSE::dynamic_movqE64Xmm(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movqE64Xmm(op);
     });
 }
 
@@ -586,8 +520,6 @@ void JitSSE::dynamic_movqXmmE64(DecodedOp* op) {
         loadXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movqXmmE64(op);
     });
 }
 
@@ -596,8 +528,6 @@ void JitSSE::dynamic_movsdXmmE64(DecodedOp* op) {
         loadXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movsdXmmE64(op);
     });
 }
 
@@ -606,8 +536,6 @@ void JitSSE::dynamic_movsdE64Xmm(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movsdE64Xmm(op);
     });
 }
 
@@ -616,8 +544,6 @@ void JitSSE::dynamic_movupdXmmE128(DecodedOp* op) {
         loadXMMFromMem128(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movupdXmmE128(op);
     });
 }
 
@@ -626,8 +552,6 @@ void JitSSE::dynamic_movupdE128Xmm(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem128(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movupdE128Xmm(op);
     });
 }
 
@@ -637,8 +561,6 @@ void JitSSE::dynamic_movhpdXmmE64(DecodedOp* op) {
         loadHighXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movhpdXmmE64(op);
     });
 }
 
@@ -647,8 +569,6 @@ void JitSSE::dynamic_movhpdE64Xmm(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeHighXMMToMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movhpdE64Xmm(op);
     });
 }
 
@@ -658,8 +578,6 @@ void JitSSE::dynamic_movlpdXmmE64(DecodedOp* op) {
         loadLowXMMFromMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movlpdXmmE64(op);
     });
 }
 
@@ -668,8 +586,6 @@ void JitSSE::dynamic_movlpdE64Xmm(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem64(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movlpdE64Xmm(op);
     });
 }
 
@@ -690,8 +606,6 @@ void JitSSE::dynamic_movdXmmE32(DecodedOp* op) {
         loadXMMFromMem32(DynXMMReg(op->reg), address, offset, 0, 0);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movdXmmE32(op);
     });
 }
 
@@ -706,8 +620,6 @@ void JitSSE::dynamic_movdE32Xmm(DecodedOp* op) {
         loadCpuXMMReg(DynXMMReg(op->reg), op->reg);
         storeXMMToMem32(DynXMMReg(op->reg), address, offset, 0, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_movdE32Xmm(op);
     });
 }
 
@@ -739,8 +651,6 @@ void JitSSE::dynamic_maskmovdquE128XmmXmm(DecodedOp* op) {
         addReg(JitWidth::b32, address, offset);
         maskmovdqu(DynXMMReg(op->reg), DynXMMReg(op->rm), address);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_maskmovqEDIMmxMmx(op);
     });
 }
 
@@ -757,8 +667,6 @@ void JitSSE::dynamic_pextrwE16Xmm(DecodedOp* op) {
         pextrwR32Xmm(tmp, (DynXMMReg)op->reg, op->imm);
         write(JitWidth::b16, address, offset, 0, 0, tmp);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_pextrwE16Xmm(op);
     });
 }
 
@@ -777,8 +685,6 @@ void JitSSE::dynamic_pinsrwXmmE16(DecodedOp* op) {
         pinsrwXmmR32((DynXMMReg)op->reg, tmp, op->imm);
         storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_pinsrwXmmE16(op);
     });
 }
 
@@ -792,8 +698,6 @@ void JitSSE::dynamic_clflush(DecodedOp* op) {
     read(JitWidth::b8, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         clflush(address, offset, 0, 0);
         incrementEip(op->len);
-    }, [op, this]() {
-        JitCodeGen::dynamic_clflush(op);
     });
 }
 #endif

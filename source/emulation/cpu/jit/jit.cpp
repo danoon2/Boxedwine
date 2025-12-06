@@ -127,21 +127,13 @@ RegPtr Jit::calculateEaa(DecodedOp* op, U32 popEspAmount) {
 void Jit::dynamic_sidt(DecodedOp* op) {
 }
 
-static void dynamic_onExitSignal(CPU* cpu) {
-    onExitSignal(cpu, NULL);
-}
-
 void Jit::dynamic_callback(DecodedOp* op) {
-    if (op->pfn == onExitSignal) {
-        call(dynamic_onExitSignal);
-    } else {
-        kpanic("x32CPU::x32_callback unhandled callback");
-    }
+    emulateSingleOp(getTmpReg());
 }
 
 void Jit::dynamic_invalid_op(DecodedOp* op) {
     //kpanic_fmt("Invalid instruction %x\n", op->inst);
-    call(common_ud2);
+    emulateSingleOp(getTmpReg());
     blockDone(true);
 }
 
@@ -174,13 +166,6 @@ void Jit::call_I(CallI address, U32 value) {
     callHostFunction(address, params);
 }
 
-void Jit::call_R(CallR address, JitWidth width, RegPtr reg) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    pushParam(params, width, reg);
-    callHostFunction(address, params);
-}
-
 void Jit::call_II(CallII address, U32 value1, U32 value2) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
@@ -189,109 +174,11 @@ void Jit::call_II(CallII address, U32 value1, U32 value2) {
     callHostFunction(address, params);
 }
 
-void Jit::call_II8(CallII8 address, U32 value1, U32 value2) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value1));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value2));
-    callHostFunction(address, params);
-}
-
-void Jit::call_IR(CallIR address, U32 value, JitWidth width, RegPtr reg) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value));
-    pushParam(params, width, reg);
-    callHostFunction(address, params);
-}
-
 void Jit::call_RI(CallRI address, JitWidth width, RegPtr reg, U32 value) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     pushParam(params, width, reg);
     params.push_back(DynParam(JitCallParamType::CONST_32, value));
-    callHostFunction(address, params);
-}
-
-void Jit::call_RR(CallRR address, JitWidth width, RegPtr reg, JitWidth width2, RegPtr reg2) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    pushParam(params, width, reg);
-    pushParam(params, width2, reg2);
-    callHostFunction(address, params);
-}
-
-void Jit::call_III(CallIII address, U32 value1, U32 value2, U32 value3) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value1));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value2));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value3));
-    callHostFunction(address, params);
-}
-
-void Jit::call_III8(CallIII8 address, U32 value1, U32 value2, U32 value3) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value1));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value2));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value3));
-    callHostFunction(address, params);
-}
-
-void Jit::call_IIR(CallIIR address, U32 value1, U32 value2, JitWidth width3, RegPtr reg3) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value1));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value2));
-    pushParam(params, width3, reg3);
-    callHostFunction(address, params);
-}
-
-void Jit::call_IRI8(CallIRI8 address, U32 value1, JitWidth width2, RegPtr reg2, U32 value3) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value1));
-    pushParam(params, width2, reg2);
-    params.push_back(DynParam(JitCallParamType::CONST_32, value3));
-    callHostFunction(address, params);
-}
-
-void Jit::call_RII(CallRII address, JitWidth width1, RegPtr reg1, U32 value2, U32 value3) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    pushParam(params, width1, reg1);
-    params.push_back(DynParam(JitCallParamType::CONST_32, value2));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value3));
-    callHostFunction(address, params);
-}
-
-void Jit::call_RRI(CallRRI address, JitWidth width1, RegPtr reg1, JitWidth width2, RegPtr reg2, U32 value3) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    pushParam(params, width1, reg1);
-    pushParam(params, width2, reg2);
-    params.push_back(DynParam(JitCallParamType::CONST_32, value3));
-    callHostFunction(address, params);
-}
-
-void Jit::call_IIIR(CallIIIR address, U32 value1, U32 value2, U32 value3, JitWidth width, RegPtr reg) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value1));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value2));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value3));
-    pushParam(params, width, reg);
-    callHostFunction(address, params);
-}
-
-void Jit::call_IRRR(CallIIIR address, U32 value1, JitWidth width1, RegPtr reg1, JitWidth width2, RegPtr reg2, JitWidth width3, RegPtr reg3) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value1));
-    pushParam(params, width1, reg1);
-    pushParam(params, width2, reg2);
-    pushParam(params, width3, reg3);
     callHostFunction(address, params);
 }
 
@@ -308,59 +195,6 @@ RegPtr Jit::callAndReturn(CallReturn address, RegPtr resultReg) {
 RegPtr Jit::callAndReturnOp(CallReturnOp address, RegPtr resultReg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
-    if (!resultReg) {
-        resultReg = getTmpRegForCallResult();
-    }
-    callHostFunctionWithResult(resultReg, address, params);
-    return resultReg;
-}
-
-RegPtr Jit::callAndReturn_II(CallReturnII address, U32 value1, U32 value2) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value1));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value2));
-    RegPtr result = getTmpRegForCallResult();
-    callHostFunctionWithResult(result, address, params);
-    return result;
-}
-
-RegPtr Jit::callAndReturn_R(CallReturnR address, JitWidth width, RegPtr reg, RegPtr resultReg) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    pushParam(params, width, reg);
-    if (!resultReg) {
-        resultReg = getTmpRegForCallResult();
-    }
-    callHostFunctionWithResult(resultReg, address, params);
-    return resultReg;
-}
-
-RegPtr Jit::callAndReturn_RS(CallReturnRS address, JitWidth width, RegPtr reg, RegPtr resultReg) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    pushParam(params, width, reg);
-    if (!resultReg) {
-        resultReg = getTmpRegForCallResult();
-    }
-    callHostFunctionWithResult(resultReg, address, params);
-    return resultReg;
-}
-
-RegPtr Jit::callAndReturn_IR(CallReturnIR address, U32 value, JitWidth width, RegPtr reg) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value));
-    pushParam(params, width, reg);
-    RegPtr result = getTmpRegForCallResult();
-    callHostFunctionWithResult(result, address, params);
-    return result;
-}
-
-RegPtr Jit::callAndReturn_I(CallReturnI address, U32 value, RegPtr resultReg) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value));
     if (!resultReg) {
         resultReg = getTmpRegForCallResult();
     }
@@ -397,17 +231,17 @@ void Jit::arithSetup(DecodedOp* op, U32& needsToSetFlags, const LazyFlags* flags
     }
 }
 
-void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const LazyFlags* flags, bool writeback, bool addCF, InstRegReg2 cfCallback) {
-    U32 needsToSetFlags = 0;
-    RegPtr cf;
-    arithSetup(op, needsToSetFlags, cf, flags, addCF);
-
-    if (flags && flags->usesSrc(needsToSetFlags)) {
-        storeLazyFlagsSrc(op->imm);
-    }
-
+void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const LazyFlags* flags, bool writeback, bool addCF, InstRegReg2 cfCallback) {        
     if (writeback) {
-        readWriteMem(width, calculateEaa(op), [cf, needsToSetFlags, flags, op, width, callback, cfCallback, this](RegPtr value) {
+        readWriteMem(width, calculateEaa(op), [addCF, flags, op, width, callback, cfCallback, this](RegPtr value) {
+            U32 needsToSetFlags = 0;
+            RegPtr cf;
+
+            arithSetup(op, needsToSetFlags, cf, flags, addCF); // must check after read/write permission in case emulateSingleOp is called, we can't update things like lazyFlags before this
+            if (flags && flags->usesSrc(needsToSetFlags)) {
+                storeLazyFlagsSrc(op->imm);
+            }
+
             if (flags && flags->usesDst(needsToSetFlags)) {
                 storeLazyFlagsDest(value);
             }
@@ -423,6 +257,13 @@ void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const 
             });
     } else {
         RegPtr dest = read(width, calculateEaa(op));
+        U32 needsToSetFlags = 0;
+        RegPtr cf;
+
+        arithSetup(op, needsToSetFlags, cf, flags, addCF); // must check after read permission in case emulateSingleOp is called, we can't update things like lazyFlags before this
+        if (flags && flags->usesSrc(needsToSetFlags)) {
+            storeLazyFlagsSrc(op->imm);
+        }
 
         if (flags && flags->usesDst(needsToSetFlags)) {
             storeLazyFlagsDest(dest);
@@ -478,14 +319,13 @@ void Jit::dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const 
     incrementEip(op->len);
 }
 
-void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback, bool addCF) {
-    U32 needsToSetFlags = 0;
-    RegPtr cf;
-    arithSetup(op, needsToSetFlags, cf, flags, addCF);
-
+void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback, bool addCF) {       
     if (writeback) {
-        readWriteMem(width, calculateEaa(op), [needsToSetFlags, flags, cf, op, width, callback, this](RegPtr value) {
+        readWriteMem(width, calculateEaa(op), [flags, addCF, op, width, callback, this](RegPtr value) {
             RegPtr src;
+            RegPtr cf;
+            U32 needsToSetFlags = 0;
+            arithSetup(op, needsToSetFlags, cf, flags, addCF); // must check after read/write permission in case emulateSingleOp is called, we can't update things like lazyFlags before this
 
             if (flags && flags->usesDst(needsToSetFlags)) {
                 storeLazyFlagsDest(value);
@@ -521,6 +361,10 @@ void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const 
         }
         RegPtr dest = read(width, calculateEaa(op));
 
+        RegPtr cf;
+        U32 needsToSetFlags = 0;
+        arithSetup(op, needsToSetFlags, cf, flags, addCF); // must check after read permission in case emulateSingleOp is called, we can't update things like lazyFlags before this
+
         if (flags && flags->usesDst(needsToSetFlags)) {
             storeLazyFlagsDest(dest);
         }
@@ -542,13 +386,13 @@ void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const 
     incrementEip(op->len);
 }
 
-void Jit::dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback, bool addCF) {
-    U32 needsToSetFlags = 0;
-    RegPtr cf;
-    arithSetup(op, needsToSetFlags, cf, flags, addCF);
-
+void Jit::dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback, bool addCF) {    
     RegPtr dest;
     RegPtr src = read(width, calculateEaa(op));
+
+    U32 needsToSetFlags = 0;
+    RegPtr cf;
+    arithSetup(op, needsToSetFlags, cf, flags, addCF); // must check after read permission in case emulateSingleOp is called, we can't update things like lazyFlags before this
 
     if (flags && flags->usesSrc(needsToSetFlags)) {
         storeLazyFlagsSrc(src);
@@ -753,12 +597,31 @@ void Jit::dynamic_R(DecodedOp* op, JitWidth width, InstReg2 callback, const Lazy
     incrementEip(op->len);
 }
 
-void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, const LazyFlags* flags, bool writeback, RegPtr tmp) {
-    U32 needsToSetFlags = 0;
-    arithSetup(op, needsToSetFlags, flags);
-
+void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, const LazyFlags* flags, bool writeback, RegPtr tmp) {    
     if (writeback) {
-        readWriteMem(width, calculateEaa(op), [needsToSetFlags, flags, op, width, callback, this](RegPtr value) {
+        // daytona installer can trigger this path with dec and flags needed, this is the hard one for the number of tmp regs required since it will need to preserve cf
+        // 
+        // can't use arithSetup before readWriteMem since it will commit flags (storeLazyFlags), buf if we save arithSetup until after readWriteMem, then we will run out of tmp regs if we need to calculate cf
+        U32 needsToSetFlags = 0;
+        if (flags) {
+            needsToSetFlags = op->needsToSetFlags(cpu);
+        }
+        RegPtr cf;
+        if (needsToSetFlags) {
+            if (flags && !(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF)) {
+                cf = getCF();
+            }
+        }
+        
+        readWriteMem(width, calculateEaa(op), [&cf, needsToSetFlags, flags, op, width, callback, this](RegPtr value) {
+            if (needsToSetFlags) {
+                // don't commit flags until after after read/write permission check in case emulateSingleOp is called
+                if (cf) {
+                    storeLazyFlagsOldCF(std::move(cf));
+                }
+                storeLazyFlags(flags);
+                currentLazyFlags = flags;
+            }
             if (flags && flags->usesDst(needsToSetFlags)) {
                 storeLazyFlagsDest(value);
             }
@@ -772,6 +635,9 @@ void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, const Lazy
             });
     } else {
         RegPtr dest = read(width, calculateEaa(op), nullptr, nullptr, false, tmp);
+        U32 needsToSetFlags = 0;
+        arithSetup(op, needsToSetFlags, flags); // must check after read permission in case emulateSingleOp is called, we can't update things like lazyFlags before this
+
         if (flags && flags->usesDst(needsToSetFlags)) {
             storeLazyFlagsDest(dest);
         }
@@ -875,8 +741,7 @@ void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, cons
 }
 
 void Jit::dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags) {
-    U32 needsToSetFlags = 0;
-    arithSetup(op, needsToSetFlags, flags);
+    U32 needsToSetFlags = op->needsToSetFlags(cpu);    
 
     if (!needsToSetFlags) {
         readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
@@ -892,13 +757,16 @@ void Jit::dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback,
             src = getReg8(op->reg);
         } else {
             src = getReg(op->reg);
-        }
+        }        
 
-        if (flags && flags->usesSrc(needsToSetFlags)) {
-            storeLazyFlagsSrc(src);
-        }
+        readWriteMem(width, calculateEaa(op), [flags, src, op, width, callback, this](RegPtr value) {
+            U32 needsToSetFlags = 0;
 
-        readWriteMem(width, calculateEaa(op), [needsToSetFlags, flags, src, op, width, callback, this](RegPtr value) {
+            arithSetup(op, needsToSetFlags, flags); // must check after read/write permission in case emulateSingleOp is called, we can't update things like lazyFlags before this
+            if (flags && flags->usesSrc(needsToSetFlags)) {
+                storeLazyFlagsSrc(src);
+            }
+
             if (flags && flags->usesDst(needsToSetFlags)) {
                 storeLazyFlagsDest(value);
             }

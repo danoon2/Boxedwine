@@ -99,6 +99,11 @@ public:
     void onTestEnd(DecodedOp* op) override;
     U8* createJumpEip();
     void jumpToEipIfCached();
+    U8* createEmulateSingleOp();
+    void emulateSingleOp(RegPtr tmpReg) override;    
+
+    void incReg(JitWidth regWidth, RegPtr dest) override;
+    void decReg(JitWidth regWidth, RegPtr dest) override;
 protected:
 
     virtual U32 getBufferSize() = 0;

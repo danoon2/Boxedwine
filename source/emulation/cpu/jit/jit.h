@@ -126,6 +126,7 @@ public:
     virtual RegPtr getEip(bool load = true) = 0;
     virtual RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0);
     virtual void jmp(RegPtr reg) = 0;
+    virtual void forceSyncBackIfNotCached(RegPtr reg) = 0;
 
     RegPtr calculateEffectiveEaa16(DecodedOp* op);
     RegPtr calculateEffectiveEaa32(DecodedOp* op);
@@ -174,8 +175,10 @@ public:
     virtual void imulReg(JitWidth regWidth, RegPtr reg) = 0;
     virtual void imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2) = 0;
     virtual void imulRR(JitWidth regWidth, RegPtr dst, RegPtr src) = 0;
+    virtual void divRegRegWithRemainder32(RegPtr destLow, RegPtr destHigh, RegPtr src, RegPtr remainder) = 0; // src should be checked for 0 before calling
     virtual void divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) = 0; // src should be checked for 0 before calling
     virtual void idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) = 0; // src should be checked for 0 before calling
+    virtual void idivRegRegWithRemainder32(RegPtr destLow, RegPtr destHigh, RegPtr src, RegPtr remainder) = 0; // src should be checked for 0 before calling
     virtual void byteSwapReg32(RegPtr reg) = 0;
     virtual RegPtr compareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition, RegPtr resultReg = nullptr) = 0; // will return 0 or 1 in result    
     virtual RegPtr compareValue(JitWidth regWidth, RegPtr reg, U32 value, JitEvaluate condition, RegPtr resultReg = nullptr) = 0; // will return 0 or 1 in result
@@ -272,7 +275,7 @@ public:
     virtual void blockNext1(DecodedOp* op) = 0;
     virtual void blockNext2(DecodedOp* op) = 0;
     virtual void blockDoneJump() = 0;
-    virtual void blockExit() = 0;
+    virtual void blockExit(bool syncCache = true) = 0;
 
     virtual void JumpInBlock(U32 address) = 0;
     virtual void StartElse(bool bigJump = false) = 0;
@@ -294,29 +297,17 @@ public:
         U32 value;
         const RegPtr reg;
     };
-    virtual void callHostFunction(void* address, const std::vector<DynParam>& params) = 0;
+    virtual void callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache = true) = 0;
     virtual void callHostFunctionWithResult(RegPtr result, void* address, const std::vector<DynParam>& params) = 0;
 
+    // :TODO: move to emulateSingleOp so that try/catch works with mem read/write on x64
+    virtual void emulateSingleOp(RegPtr tmpReg) = 0;
+
     using CallReturn = U32(*)(CPU* cpu);
-    RegPtr callAndReturn(CallReturn address, RegPtr resultReg = nullptr);
+    RegPtr callAndReturn(CallReturn address, RegPtr resultReg = nullptr);    
 
     using CallReturnOp = DecodedOp*(*)(CPU* cpu);
     RegPtr callAndReturnOp(CallReturnOp address, RegPtr resultReg = nullptr);
-
-    using CallReturnI = U32(*)(CPU* cpu, U32 value);
-    RegPtr callAndReturn_I(CallReturnI address, U32 value, RegPtr resultReg = nullptr);
-
-    using CallReturnR = U32(*)(CPU* cpu, U32 value);
-    RegPtr callAndReturn_R(CallReturnR address, JitWidth width, RegPtr reg, RegPtr resultReg = nullptr);
-
-    using CallReturnRS = U32(*)(CPU* cpu, S32 value);
-    RegPtr callAndReturn_RS(CallReturnRS address, JitWidth width, RegPtr reg, RegPtr resultReg = nullptr);
-
-    using CallReturnII = U32(*)(CPU* cpu, U32 value1, U32 value2);
-    RegPtr callAndReturn_II(CallReturnII address, U32 value1, U32 value2);
-
-    using CallReturnIR = U32(*)(CPU* cpu, U32 value1, U32 value2);
-    RegPtr callAndReturn_IR(CallReturnIR address, U32 value, JitWidth width, RegPtr reg);
 
     using CallNoArgs = void(*)(CPU* cpu);
     void call(CallNoArgs address);
@@ -324,47 +315,11 @@ public:
     using CallI = void(*)(CPU* cpu, U32 value);
     void call_I(CallI address, U32 value);
 
-    using CallR = void(*)(CPU* cpu, U32 value);
-    void call_R(CallR address, JitWidth width, RegPtr reg);
-
     using CallII = void(*)(CPU* cpu, U32 value1, U32 value2);
     void call_II(CallII address, U32 value1, U32 value2);
 
-    using CallII8 = void(*)(CPU* cpu, U32 value1, U8 value2);
-    void call_II8(CallII8 address, U32 value1, U32 value2);
-
-    using CallIR = void(*)(CPU* cpu, U32 value1, U32 value2);
-    void call_IR(CallIR address, U32 value, JitWidth width, RegPtr reg);
-
     using CallRI = void(*)(CPU* cpu, U32 value1, U32 value2);
     void call_RI(CallRI address, JitWidth width, RegPtr reg, U32 value);
-
-    using CallRR = void(*)(CPU* cpu, U32 value1, U32 value2);
-    void call_RR(CallRR address, JitWidth width, RegPtr reg, JitWidth width2, RegPtr reg2);
-
-    using CallIII = void(*)(CPU* cpu, U32 value1, U32 value2, U32 value3);
-    void call_III(CallIII address, U32 value1, U32 value2, U32 value3);
-
-    using CallIII8 = void(*)(CPU* cpu, U32 value1, U32 value2, U8 value3);
-    void call_III8(CallIII8 address, U32 value1, U32 value2, U32 value3);
-
-    using CallIIR = void(*)(CPU* cpu, U32 value1, U32 value2, U32 value3);
-    void call_IIR(CallIIR address, U32 value1, U32 value2, JitWidth width3, RegPtr reg3);
-
-    using CallIRI8 = void(*)(CPU* cpu, U32 value1, U32 value2, U8 value3);
-    void call_IRI8(CallIRI8 address, U32 value1, JitWidth width2, RegPtr reg2, U32 value3);
-
-    using CallRII = void(*)(CPU* cpu, U32 value1, U32 value2, U32 value3);
-    void call_RII(CallRII address, JitWidth width1, RegPtr reg1, U32 value2, U32 value3);
-
-    using CallRRI = void(*)(CPU* cpu, U32 value1, U32 value2, U32 value3);
-    void call_RRI(CallRRI address, JitWidth width1, RegPtr reg1, JitWidth width2, RegPtr reg2, U32 value3);
-
-    using CallIIIR = void(*)(CPU* cpu, U32 value1, U32 value2, U32 value3, U32 value4);
-    void call_IIIR(CallIIIR address, U32 value1, U32 value2, U32 value3, JitWidth width, RegPtr reg);
-
-    using CallIRRR = void(*)(CPU* cpu, U32 value1, U32 value2, U32 value3, U32 value4);
-    void call_IRRR(CallIRRR address, U32 value1, JitWidth width1, RegPtr reg1, JitWidth width2, RegPtr reg2, JitWidth width3, RegPtr reg3);
 
 #define INIT_CPU(e, f) virtual void dynamic_##f(DecodedOp* op);
 #include "../common/cpu_init.h"
@@ -406,9 +361,10 @@ protected:
     void dynamic_set_R(DecodedOp* op, JitConditional condition);
     void dynamic_set_M(DecodedOp* op, JitConditional condition);
     using InstDiv = void(Jit::*)(JitWidth width, RegPtr dest, RegPtr src, RegPtr remainder);
+    using InstDiv64 = void(Jit::*)(RegPtr destLow, RegPtr destHigh, RegPtr src, RegPtr remainder);    
     void div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
     void div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
-    void div32(DecodedOp* op, RegPtr src, InstDiv callback, std::function<void()> fallback);
+    void div32(DecodedOp* op, RegPtr src, bool isSigned, InstDiv64 c4allback);
 };
 
 #endif

@@ -18,7 +18,6 @@
 
 #include "../normal/normal_strings.h"
 
-// :TODO: what about read/write exception, eax/ecx/esi/edi might be in a temp register and not written back during the exception
 void Jit::movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth) {
     // U32 dBase = cpu->seg[ES].address;
     // U32 sBase = cpu->seg[base].address;
@@ -69,10 +68,18 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     RegPtr edi = getReg(7);
     RegPtr ecx = getReg(1);
 
+    // in case we partically completed the move before moving to a new page that doesn't have permission (code page, on demmand page, etc)
+    auto onFailure = [esi, edi, ecx, this]() {
+        forceSyncBackIfNotCached(esi);
+        forceSyncBackIfNotCached(edi);
+        forceSyncBackIfNotCached(ecx);
+        emulateSingleOp(ecx);
+    };
+
     IfFlagSet(DF, true); {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx, true); {
-            write(valueWidth, edi, read(valueWidth, esi));
+            write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
             subValue(regWidth, esi, size);
             subValue(regWidth, edi, size);
             decReg(regWidth, ecx);
@@ -81,7 +88,7 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     } StartElse(true); {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx, true); {
-            write(valueWidth, edi, read(valueWidth, esi));
+            write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
             addValue(regWidth, esi, size);
             addValue(regWidth, edi, size);
             decReg(regWidth, ecx);
@@ -94,14 +101,14 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
 void Jit::dynamic_movsb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call_I(movsb16r, op->base);
+            emulateSingleOp(getTmpReg());
         } else {
             movs(op->base, JitWidth::b8, 1, JitWidth::b16);
         }
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
-                call_I(movsb32r, op->base);
+                emulateSingleOp(getTmpReg());
             } else {
                 movsr(JitWidth::b8, 1, JitWidth::b32);
             }
@@ -114,14 +121,14 @@ void Jit::dynamic_movsb_op(DecodedOp* op) {
 void Jit::dynamic_movsw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call_I(movsw16r, op->base);
+            emulateSingleOp(getTmpReg());
         } else {
             movs(op->base, JitWidth::b16, 2, JitWidth::b16);
         }
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
-                call_I(movsw32r, op->base);
+                emulateSingleOp(getTmpReg());
             } else {
                 movsr(JitWidth::b16, 2, JitWidth::b32);
             }
@@ -134,14 +141,14 @@ void Jit::dynamic_movsw_op(DecodedOp* op) {
 void Jit::dynamic_movsd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call_I(movsd16r, op->base);
+            emulateSingleOp(getTmpReg());
         } else {
             movs(op->base, JitWidth::b32, 4, JitWidth::b16);
         }
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
-                call_I(movsd32r, op->base);
+                emulateSingleOp(getTmpReg());
             } else {
                 movsr(JitWidth::b32, 4, JitWidth::b32);
             }
@@ -238,13 +245,20 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
     RegPtr edi = getReg(7);
     RegPtr dest = getTmpReg8();
     RegPtr src = getTmpReg8();
+    // :TODO: maybe cache ecx if we have 6 or more temp regs?
+
+    auto onFailure = [esi, edi, src, this]() {
+        forceSyncBackIfNotCached(esi);
+        forceSyncBackIfNotCached(edi);
+        emulateSingleOp(src);
+    };
 
     IfFlagSet(DF, true); {
         If(regWidth, getReadOnlyReg(1), true); {
             U32 label = MarkJumpLocation();
             If(regWidth, getReadOnlyReg(1), true); {
-                read(valueWidth, esi, nullptr, nullptr, false, dest);
-                read(valueWidth, edi, nullptr, nullptr, false, src);                
+                read(valueWidth, esi, nullptr, onFailure, false, dest);
+                read(valueWidth, edi, nullptr, onFailure, false, src);
                 subValue(regWidth, esi, size);
                 subValue(regWidth, edi, size);
                 decReg(regWidth, getReg(1));
@@ -269,8 +283,8 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
         If(regWidth, getReadOnlyReg(1), true); {
             U32 label = MarkJumpLocation();
             If(regWidth, getReadOnlyReg(1), true); {
-                read(valueWidth, esi, nullptr, nullptr, false, dest);
-                read(valueWidth, edi, nullptr, nullptr, false, src);
+                read(valueWidth, esi, nullptr, onFailure, false, dest);
+                read(valueWidth, edi, nullptr, onFailure, false, src);
                 addValue(regWidth, esi, size);
                 addValue(regWidth, edi, size);
                 decReg(regWidth, getReg(1));
@@ -298,7 +312,7 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
 void Jit::dynamic_cmpsb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call_II(cmpsb16r, op->repZero, op->base);
+            emulateSingleOp(getTmpReg());
             currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
         } else {
             cmps(op->base, JitWidth::b8, 1, JitWidth::b16, FLAGS_SUB8);
@@ -307,7 +321,7 @@ void Jit::dynamic_cmpsb_op(DecodedOp* op) {
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
-                call_II(cmpsb32r, op->repZero, op->base);
+                emulateSingleOp(getTmpReg());
                 currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
             } else {
                 cmpsr(JitWidth::b8, 1, JitWidth::b32, op->repZero, FLAGS_SUB8);
@@ -323,7 +337,7 @@ void Jit::dynamic_cmpsb_op(DecodedOp* op) {
 void Jit::dynamic_cmpsw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call_II(cmpsw16r, op->repZero, op->base);
+            emulateSingleOp(getTmpReg());
             currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
         } else {
             cmps(op->base, JitWidth::b16, 2, JitWidth::b16, FLAGS_SUB16);
@@ -332,7 +346,7 @@ void Jit::dynamic_cmpsw_op(DecodedOp* op) {
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
-                call_II(cmpsw32r, op->repZero, op->base);
+                emulateSingleOp(getTmpReg());
                 currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
             } else {
                 cmpsr(JitWidth::b16, 2, JitWidth::b32, op->repZero, FLAGS_SUB16);
@@ -348,7 +362,7 @@ void Jit::dynamic_cmpsw_op(DecodedOp* op) {
 void Jit::dynamic_cmpsd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call_II(cmpsd16r, op->repZero, op->base);
+            emulateSingleOp(getTmpReg());
             currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
         } else {
             cmps(op->base, JitWidth::b32, 4, JitWidth::b16, FLAGS_SUB32);
@@ -357,7 +371,7 @@ void Jit::dynamic_cmpsd_op(DecodedOp* op) {
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
-                call_II(cmpsd32r, op->repZero, op->base);
+                emulateSingleOp(getTmpReg());
                 currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
             } else {
                 cmpsr(JitWidth::b32, 4, JitWidth::b32, op->repZero, FLAGS_SUB32);
@@ -411,10 +425,16 @@ void Jit::stosr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     RegPtr ecx = getReg(1);
     RegPtr al = getReadOnlyReg8(0);
 
+    auto onFailure = [edi, ecx, this]() {
+        forceSyncBackIfNotCached(ecx);
+        forceSyncBackIfNotCached(edi);
+        emulateSingleOp(ecx);
+    };
+
     IfFlagSet(DF, true); {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx, true); {
-            write(valueWidth, edi, al);
+            write(valueWidth, edi, al, nullptr, onFailure);
             subValue(regWidth, edi, size);
             decReg(regWidth, ecx);
             Goto(label);
@@ -422,7 +442,7 @@ void Jit::stosr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     } StartElse(true); {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx, true); {
-            write(valueWidth, edi, al);
+            write(valueWidth, edi, al, nullptr, onFailure);
             addValue(regWidth, edi, size);
             decReg(regWidth, ecx);
             Goto(label);
@@ -434,14 +454,14 @@ void Jit::stosr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
 void Jit::dynamic_stosb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call(stosb16r);
+            emulateSingleOp(getTmpReg());
         } else {
             stos(JitWidth::b8, 1, JitWidth::b16);
         }
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES]) {
-                call(stosb32r);
+                emulateSingleOp(getTmpReg());
             } else {
                 stosr(JitWidth::b8, 1, JitWidth::b32);
             }
@@ -454,14 +474,14 @@ void Jit::dynamic_stosb_op(DecodedOp* op) {
 void Jit::dynamic_stosw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call(stosw16r);
+            emulateSingleOp(getTmpReg());
         } else {
             stos(JitWidth::b16, 2, JitWidth::b16);
         }
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES]) {
-                call(stosw32r);
+                emulateSingleOp(getTmpReg());
             } else {
                 stosr(JitWidth::b16, 2, JitWidth::b32);
             }
@@ -474,14 +494,14 @@ void Jit::dynamic_stosw_op(DecodedOp* op) {
 void Jit::dynamic_stosd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call(stosd16r);
+            emulateSingleOp(getTmpReg());
         } else {
             stos(JitWidth::b32, 4, JitWidth::b16);
         }
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES]) {
-                call(stosd32r);
+                emulateSingleOp(getTmpReg());
             } else {
                 stosr(JitWidth::b32, 4, JitWidth::b32);
             }
@@ -539,10 +559,17 @@ void Jit::lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     RegPtr ecx = getReg(1);
     RegPtr al = getReg8(0);
 
+    auto onFailure = [esi, ecx, al, this]() {
+        forceSyncBackIfNotCached(ecx);
+        forceSyncBackIfNotCached(esi);
+        forceSyncBackIfNotCached(al);
+        emulateSingleOp(ecx);
+    };
+
     IfFlagSet(DF, true); {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx, true); {
-            mov(valueWidth, al, read(valueWidth, esi, nullptr, nullptr, false, getTmpReg8()));
+            mov(valueWidth, al, read(valueWidth, esi, nullptr, onFailure, false, getTmpReg8()));
             subValue(regWidth, esi, size);
             decReg(regWidth, ecx);
             Goto(label);
@@ -550,7 +577,7 @@ void Jit::lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     } StartElse(true); {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx, true); {
-            mov(valueWidth, al, read(valueWidth, esi, nullptr, nullptr, false, getTmpReg8()));
+            mov(valueWidth, al, read(valueWidth, esi, nullptr, onFailure, false, getTmpReg8()));
             addValue(regWidth, esi, size);
             decReg(regWidth, ecx);
             Goto(label);
@@ -562,14 +589,14 @@ void Jit::lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
 void Jit::dynamic_lodsb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call_I(lodsb16r, op->base);
+            emulateSingleOp(getTmpReg());
         } else {
             lods(op->base, JitWidth::b8, 1, JitWidth::b16);
         }
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[op->base]) {
-                call_I(lodsb32r, op->base);
+                emulateSingleOp(getTmpReg());
             } else {
                 lodsr(JitWidth::b8, 1, JitWidth::b32);
             }
@@ -582,14 +609,14 @@ void Jit::dynamic_lodsb_op(DecodedOp* op) {
 void Jit::dynamic_lodsw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call_I(lodsw16r, op->base);
+            emulateSingleOp(getTmpReg());
         } else {
             lods(op->base, JitWidth::b16, 2, JitWidth::b16);
         }
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[op->base]) {
-                call_I(lodsw32r, op->base);
+                emulateSingleOp(getTmpReg());
             } else {
                 lodsr(JitWidth::b16, 2, JitWidth::b32);
             }
@@ -602,14 +629,14 @@ void Jit::dynamic_lodsw_op(DecodedOp* op) {
 void Jit::dynamic_lodsd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call_I(lodsd16r, op->base);
+            emulateSingleOp(getTmpReg());
         } else {
             lods(op->base, JitWidth::b32, 4, JitWidth::b16);
         }
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[op->base]) {
-                call_I(lodsd32r, op->base);
+                emulateSingleOp(getTmpReg());
             } else {
                 lodsr(JitWidth::b32, 4, JitWidth::b32);
             }
@@ -630,7 +657,6 @@ void Jit::scas(JitWidth valueWidth, U32 size, JitWidth regWidth, const LazyFlags
     // cpu->result.u8 = AL - v1;
     // cpu->lazyFlags = FLAGS_SUB8;
     RegPtr edi = getReg(7);
-
     RegPtr src;
     RegPtr dest = getReadOnlyReg8(0);
 
@@ -684,11 +710,17 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
     RegPtr src = getTmpReg8();
     RegPtr ecx = getReg(1);
 
+    auto onFailure = [edi, ecx, this]() {
+        forceSyncBackIfNotCached(ecx);
+        forceSyncBackIfNotCached(edi);
+        emulateSingleOp(ecx);
+    };
+
     IfFlagSet(DF, true); {
         If(regWidth, ecx, true); {
             U32 label = MarkJumpLocation();
             If(regWidth, ecx, true); {
-                read(valueWidth, edi, nullptr, nullptr, false, src);
+                read(valueWidth, edi, nullptr, onFailure, false, src);
                 subValue(regWidth, edi, size);
                 decReg(regWidth, ecx);
 
@@ -712,7 +744,7 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
         If(regWidth, ecx, true); {
             U32 label = MarkJumpLocation();
             If(regWidth, ecx, true); {
-                read(valueWidth, edi, nullptr, nullptr, false, src);
+                read(valueWidth, edi, nullptr, onFailure, false, src);
                 addValue(regWidth, edi, size);
                 decReg(regWidth, ecx);
 
@@ -739,7 +771,7 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
 void Jit::dynamic_scasb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call_I(scasb16r, op->repZero);
+            emulateSingleOp(getTmpReg());
             currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
         } else {
             scas(JitWidth::b8, 1, JitWidth::b16, FLAGS_SUB8);
@@ -748,7 +780,7 @@ void Jit::dynamic_scasb_op(DecodedOp* op) {
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES]) {
-                call_I(scasb32r, op->repZero);
+                emulateSingleOp(getTmpReg());
                 currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
             } else {
                 scasr(JitWidth::b8, 1, JitWidth::b32, op->repZero, FLAGS_SUB8);
@@ -764,7 +796,7 @@ void Jit::dynamic_scasb_op(DecodedOp* op) {
 void Jit::dynamic_scasw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call_I(scasw16r, op->repZero);
+            emulateSingleOp(getTmpReg());
             currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
         } else {
             scas(JitWidth::b16, 2, JitWidth::b16, FLAGS_SUB16);
@@ -773,7 +805,7 @@ void Jit::dynamic_scasw_op(DecodedOp* op) {
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES]) {
-                call_I(scasw32r, op->repZero);
+                emulateSingleOp(getTmpReg());
                 currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
             } else {
                 scasr(JitWidth::b16, 2, JitWidth::b32, op->repZero, FLAGS_SUB16);
@@ -789,7 +821,7 @@ void Jit::dynamic_scasw_op(DecodedOp* op) {
 void Jit::dynamic_scasd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            call_I(scasd16r, op->repZero);
+            emulateSingleOp(getTmpReg());
             currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
         } else {
             scas(JitWidth::b32, 4, JitWidth::b16, FLAGS_SUB32);
@@ -798,7 +830,7 @@ void Jit::dynamic_scasd_op(DecodedOp* op) {
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES]) {
-                call_I(scasd32r, op->repZero);
+                emulateSingleOp(getTmpReg());
                 currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
             } else {
                 scasr(JitWidth::b32, 4, JitWidth::b32, op->repZero, FLAGS_SUB32);

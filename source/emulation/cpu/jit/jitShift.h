@@ -19,434 +19,384 @@
 #include "../normal/normal_shift.h"
 void Jit::dynamic_rol8_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_II(rol8_reg, op->reg, op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_RI(op, JitWidth::b8, &Jit::rolValue, nullptr);
     }
 }
 void Jit::dynamic_rol8_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RI(rol8_mem, JitWidth::b32, calculateEaa(op), op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_MI(op, JitWidth::b8, &Jit::rolValue, nullptr);
     }
 }
 void Jit::dynamic_rol8cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_IR(rol8cl_reg, op->reg, JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_R_Cl(op, JitWidth::b8, &Jit::rolReg, nullptr);
     }
 }
 void Jit::dynamic_rol8cl_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RR(rol8cl_mem, JitWidth::b32, calculateEaa(op), JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_M_Cl(op, JitWidth::b8, &Jit::rolReg, nullptr);
     }
 }
 void Jit::dynamic_rol16_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_II(rol16_reg, op->reg, op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_RI(op, JitWidth::b16, &Jit::rolValue, nullptr);
     }
 }
 void Jit::dynamic_rol16_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RI(rol16_mem, JitWidth::b32, calculateEaa(op), op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_MI(op, JitWidth::b16, &Jit::rolValue, nullptr);
     }
 }
 void Jit::dynamic_rol16cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_IR(rol16cl_reg, op->reg, JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_R_Cl(op, JitWidth::b16, &Jit::rolReg, nullptr);
     }
 }
 void Jit::dynamic_rol16cl_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RR(rol16cl_mem, JitWidth::b32, calculateEaa(op), JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_M_Cl(op, JitWidth::b16, &Jit::rolReg, nullptr);
     }
 }
 void Jit::dynamic_rol32_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_II(rol32_reg, op->reg, op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_RI(op, JitWidth::b32, &Jit::rolValue, nullptr);
     }
 }
 void Jit::dynamic_rol32_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RI(rol32_mem, JitWidth::b32, calculateEaa(op), op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_MI(op, JitWidth::b32, &Jit::rolValue, nullptr);
     }
 }
 void Jit::dynamic_rol32cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_IR(rol32cl_reg, op->reg, JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_R_Cl(op, JitWidth::b32, &Jit::rolReg, nullptr);
     }
 }
 void Jit::dynamic_rol32cl_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RR(rol32cl_mem, JitWidth::b32, calculateEaa(op), JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_M_Cl(op, JitWidth::b32, &Jit::rolReg, nullptr);
     }
 }
 void Jit::dynamic_ror8_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_II(ror8_reg, op->reg, op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_RI(op, JitWidth::b8, &Jit::rorValue, nullptr);
     }
 }
 void Jit::dynamic_ror8_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RI(ror8_mem, JitWidth::b32, calculateEaa(op), op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_MI(op, JitWidth::b8, &Jit::rorValue, nullptr);
     }
 }
 void Jit::dynamic_ror8cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_IR(ror8cl_reg, op->reg, JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_R_Cl(op, JitWidth::b8, &Jit::rorReg, nullptr);
     }
 }
 void Jit::dynamic_ror8cl_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RR(ror8cl_mem, JitWidth::b32, calculateEaa(op), JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_M_Cl(op, JitWidth::b8, &Jit::rorReg, nullptr);
     }
 }
 void Jit::dynamic_ror16_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_II(ror16_reg, op->reg, op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_RI(op, JitWidth::b16, &Jit::rorValue, nullptr);
     }
 }
 void Jit::dynamic_ror16_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RI(ror16_mem, JitWidth::b32, calculateEaa(op), op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_MI(op, JitWidth::b16, &Jit::rorValue, nullptr);
     }
 }
 void Jit::dynamic_ror16cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_IR(ror16cl_reg, op->reg, JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_R_Cl(op, JitWidth::b16, &Jit::rorReg, nullptr);
     }
 }
 void Jit::dynamic_ror16cl_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RR(ror16cl_mem, JitWidth::b32, calculateEaa(op), JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_M_Cl(op, JitWidth::b16, &Jit::rorReg, nullptr);
     }
 }
 void Jit::dynamic_ror32_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_II(ror32_reg, op->reg, op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_RI(op, JitWidth::b32, &Jit::rorValue, nullptr);
     }
 }
 void Jit::dynamic_ror32_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RI(ror32_mem, JitWidth::b32, calculateEaa(op), op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_MI(op, JitWidth::b32, &Jit::rorValue, nullptr);
     }
 }
 void Jit::dynamic_ror32cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_IR(ror32cl_reg, op->reg, JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_R_Cl(op, JitWidth::b32, &Jit::rorReg, nullptr);
     }
 }
 void Jit::dynamic_ror32cl_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RR(ror32cl_mem, JitWidth::b32, calculateEaa(op), JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_M_Cl(op, JitWidth::b32, &Jit::rorReg, nullptr);
     }
 }
 void Jit::dynamic_rcl8_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_II(rcl8_reg, op->reg, op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_RI(op, JitWidth::b8, &Jit::rclValue, nullptr);
     }
 }
 void Jit::dynamic_rcl8_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RI(rcl8_mem, JitWidth::b32, calculateEaa(op), op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_MI(op, JitWidth::b8, &Jit::rclValue, nullptr);
     }
 }
 void Jit::dynamic_rcl8cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_IR(rcl8cl_reg, op->reg, JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_R_Cl(op, JitWidth::b8, &Jit::rclReg, nullptr);
     }
 }
 void Jit::dynamic_rcl8cl_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RR(rcl8cl_mem, JitWidth::b32, calculateEaa(op), JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_M_Cl(op, JitWidth::b8, &Jit::rclReg, nullptr);
     }
 }
 void Jit::dynamic_rcl16_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_II(rcl16_reg, op->reg, op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_RI(op, JitWidth::b16, &Jit::rclValue, nullptr);
     }
 }
 void Jit::dynamic_rcl16_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RI(rcl16_mem, JitWidth::b32, calculateEaa(op), op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_MI(op, JitWidth::b16, &Jit::rclValue, nullptr);
     }
 }
 void Jit::dynamic_rcl16cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_IR(rcl16cl_reg, op->reg, JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_R_Cl(op, JitWidth::b16, &Jit::rclReg, nullptr);
     }
 }
 void Jit::dynamic_rcl16cl_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RR(rcl16cl_mem, JitWidth::b32, calculateEaa(op), JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_M_Cl(op, JitWidth::b16, &Jit::rclReg, nullptr);
     }
 }
 void Jit::dynamic_rcl32_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_II(rcl32_reg, op->reg, op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_RI(op, JitWidth::b32, &Jit::rclValue, nullptr);
     }
 }
 void Jit::dynamic_rcl32_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RI(rcl32_mem, JitWidth::b32, calculateEaa(op), op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_MI(op, JitWidth::b32, &Jit::rclValue, nullptr);
     }
 }
 void Jit::dynamic_rcl32cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_IR(rcl32cl_reg, op->reg, JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_R_Cl(op, JitWidth::b32, &Jit::rclReg, nullptr);
     }
 }
 void Jit::dynamic_rcl32cl_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RR(rcl32cl_mem, JitWidth::b32, calculateEaa(op), JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_M_Cl(op, JitWidth::b32, &Jit::rclReg, nullptr);
     }
 }
 void Jit::dynamic_rcr8_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_II(rcr8_reg, op->reg, op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_RI(op, JitWidth::b8, &Jit::rcrValue, nullptr);
     }
 }
 void Jit::dynamic_rcr8_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RI(rcr8_mem, JitWidth::b32, calculateEaa(op), op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_MI(op, JitWidth::b8, &Jit::rcrValue, nullptr);
     }
-    currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_rcr8cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_IR(rcr8cl_reg, op->reg, JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_R_Cl(op, JitWidth::b8, &Jit::rcrReg, nullptr);
     }
-    currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_rcr8cl_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RR(rcr8cl_mem, JitWidth::b32, calculateEaa(op), JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_M_Cl(op, JitWidth::b8, &Jit::rcrReg, nullptr);
     }
 }
 void Jit::dynamic_rcr16_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_II(rcr16_reg, op->reg, op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_RI(op, JitWidth::b16, &Jit::rcrValue, nullptr);
     }
 }
 void Jit::dynamic_rcr16_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RI(rcr16_mem, JitWidth::b32, calculateEaa(op), op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_MI(op, JitWidth::b16, &Jit::rcrValue, nullptr);
     }
 }
 void Jit::dynamic_rcr16cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_IR(rcr16cl_reg, op->reg, JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_R_Cl(op, JitWidth::b16, &Jit::rcrReg, nullptr);
     }
 }
 void Jit::dynamic_rcr16cl_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RR(rcr16cl_mem, JitWidth::b32, calculateEaa(op), JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_M_Cl(op, JitWidth::b16, &Jit::rcrReg, nullptr);
     }
 }
 void Jit::dynamic_rcr32_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_II(rcr32_reg, op->reg, op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_RI(op, JitWidth::b32, &Jit::rcrValue, nullptr);
     }
 }
 void Jit::dynamic_rcr32_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RI(rcr32_mem, JitWidth::b32, calculateEaa(op), op->imm);
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_MI(op, JitWidth::b32, &Jit::rcrValue, nullptr);
     }
 }
 void Jit::dynamic_rcr32cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_IR(rcr32cl_reg, op->reg, JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_R_Cl(op, JitWidth::b32, &Jit::rcrReg, nullptr);
     }
 }
 void Jit::dynamic_rcr32cl_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        call_RR(rcr32cl_mem, JitWidth::b32, calculateEaa(op), JitWidth::b8, getReadOnlyReg8(1));
+        emulateSingleOp(getTmpReg());
         currentLazyFlags = FLAGS_NONE;
-        incrementEip(op->len);
     } else {
         dynamic_M_Cl(op, JitWidth::b32, &Jit::rcrReg, nullptr);
     }
@@ -602,7 +552,7 @@ void Jit::dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, const L
         if (flags && flags->usesResult(needsToSetFlags)) {
             storeLazyFlagsResult(value);
         }
-        });
+    });
     incrementEip(op->len);
 }
 
@@ -637,13 +587,13 @@ void Jit::dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, const 
                 if (flags && flags->usesResult(needsToSetFlags)) {
                     storeLazyFlagsResult(value);
                 }
-                });
+            });
         } EndIf(true);
         currentLazyFlags = flags;
     } else {
         readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
             (this->*callback)(width, value, getReadOnlyReg(op->reg), getReadOnlyReg(1, true, 1));
-            });
+        });
     }
     incrementEip(op->len);
 }

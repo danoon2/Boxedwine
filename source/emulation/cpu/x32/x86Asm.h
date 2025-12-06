@@ -11,7 +11,18 @@ public:
 
 class X86Asm {
 public:	
-	class Reg8Name {
+	class RegName {
+	public:
+		RegName() {}
+		static RegName from(U8 reg) {
+			RegName result;
+			result.reg = reg;
+			return result;
+		}
+		U8 reg = 0xff;
+	};
+
+	class Reg8Name : public RegName {
 	public:
 		Reg8Name() {}
 		static Reg8Name from(U8 reg) {
@@ -19,9 +30,8 @@ public:
 			result.reg = reg;
 			return result;
 		}
-		U8 reg = 0xff;
 	};
-	class Reg16Name {
+	class Reg16Name : public RegName {
 	public:
 		Reg16Name() {}
 		static Reg16Name from(U8 reg) {
@@ -29,9 +39,8 @@ public:
 			result.reg = reg;
 			return result;
 		}
-		U8 reg = 0xff;
 	};
-	class Reg32Name {
+	class Reg32Name : public RegName {
 	public:
 		Reg32Name() {}
 		static Reg32Name from(U8 reg) {
@@ -39,8 +48,7 @@ public:
 			result.reg = reg;
 			return result;
 		}
-		U8 reg = 0xff;
-	};
+	};	
 	class RegXMMName {
 	public:
 		RegXMMName() {}
@@ -65,9 +73,10 @@ public:
 	private:
 		RegMMXName(U8 reg) {}
 	};
+	typedef RegName Reg;
 	typedef Reg8Name Reg8;
 	typedef Reg16Name Reg16;
-	typedef Reg32Name Reg32;
+	typedef Reg32Name Reg32;	
 	typedef RegXMMName RegXMM;
 	typedef RegMMXName RegMMX;
 
@@ -105,15 +114,45 @@ public:
 	static Reg32 esi;
 	static Reg32 edi;
 
+#ifdef BOXEDWINE_64
+	class Reg64Name : public RegName {
+	public:
+		Reg64Name() {}
+		static Reg64Name from(U8 reg) {
+			Reg64Name result;
+			result.reg = reg;
+			return result;
+		}
+	};
+	typedef Reg64Name Reg64;
+
+	static Reg64 rax;
+	static Reg64 rcx;
+	static Reg64 rdx;
+	static Reg64 rbx;
+	static Reg64 rsp;
+	static Reg64 rbp;
+	static Reg64 rsi;
+	static Reg64 rdi;
+	static Reg64 r8;
+	static Reg64 r9;
+	static Reg64 r10;
+	static Reg64 r11;
+	static Reg64 r12;
+	static Reg64 r13;
+	static Reg64 r14;
+	static Reg64 r15;
+#endif
+
 	class Mem {
 	public:
 		Mem(U32 disp) : lsl(0), disp(disp) {}
-		Mem(Reg32 rm, U32 disp = 0) : rm(rm), lsl(0), disp(disp) {}
-		Mem(Reg32 rm, Reg32 sib, U8 lsl = 0, U32 disp = 0) : rm(rm), sib(sib), lsl(lsl), disp(disp) {}
-		Mem(Reg32 sib, U8 lsl, U32 disp) : sib(sib), lsl(lsl), disp(disp) {}
+		Mem(Reg rm, U32 disp = 0) : rm(rm), lsl(0), disp(disp) {}
+		Mem(Reg rm, Reg sib, U8 lsl = 0, U32 disp = 0) : rm(rm), sib(sib), lsl(lsl), disp(disp) {}
+		Mem(Reg sib, U8 lsl, U32 disp) : sib(sib), lsl(lsl), disp(disp) {}
 
-		Reg32 rm;
-		Reg32 sib;
+		Reg rm;
+		Reg sib;
 		U8 lsl;
 		U32 disp;
 	};
@@ -121,53 +160,53 @@ public:
 	class Mem128 : public Mem {
 	public:
 		Mem128(U32 disp) : Mem(disp) {}
-		Mem128(Reg32 rm, U32 disp = 0) : Mem(rm, disp) {}
-		Mem128(Reg32 rm, Reg32 sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
-		Mem128(Reg32 sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
+		Mem128(Reg rm, U32 disp = 0) : Mem(rm, disp) {}
+		Mem128(Reg rm, Reg sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
+		Mem128(Reg sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
 	};
 
 	class Mem64 : public Mem {
 	public:
 		Mem64(U32 disp) : Mem(disp) {}
-		Mem64(Reg32 rm, U32 disp = 0) : Mem(rm, disp) {}
-		Mem64(Reg32 rm, Reg32 sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
-		Mem64(Reg32 sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
+		Mem64(Reg rm, U32 disp = 0) : Mem(rm, disp) {}
+		Mem64(Reg rm, Reg sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
+		Mem64(Reg sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
 	};
 
 	class Mem32 : public Mem {
 	public:
 		Mem32(U32 disp) : Mem(disp) {}
-		Mem32(Reg32 rm, U32 disp = 0) : Mem(rm, disp) {}
-		Mem32(Reg32 rm, Reg32 sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
-		Mem32(Reg32 sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
+		Mem32(Reg rm, U32 disp = 0) : Mem(rm, disp) {}
+		Mem32(Reg rm, Reg sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
+		Mem32(Reg sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
 	};
 
 	class Mem16 : public Mem {
 	public:
 		Mem16(U32 disp) : Mem(disp) {}
-		Mem16(Reg32 rm, U32 disp = 0) : Mem(rm, disp) {}
-		Mem16(Reg32 rm, Reg32 sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
-		Mem16(Reg32 sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
+		Mem16(Reg rm, U32 disp = 0) : Mem(rm, disp) {}
+		Mem16(Reg rm, Reg sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
+		Mem16(Reg sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
 	};
 
 	class Mem8 : public Mem {
 	public:
 		Mem8(U32 disp) : Mem(disp) {}
-		Mem8(Reg32 rm, U32 disp = 0) : Mem(rm, disp) {}
-		Mem8(Reg32 rm, Reg32 sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
-		Mem8(Reg32 sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
+		Mem8(Reg rm, U32 disp = 0) : Mem(rm, disp) {}
+		Mem8(Reg rm, Reg sib, U8 lsl = 0, U32 disp = 0) : Mem(rm, sib, lsl, disp) {}
+		Mem8(Reg sib, U8 lsl, U32 disp) : Mem(sib, lsl, disp) {}
 	};
 
 	void lea(Reg32 dst, Mem mem);
 	void lahf();
 	void sahf();
-
+	
 	void add(Reg32 dst, U32 imm);
 	void add(Reg16 dst, U16 imm);
 	void add(Reg8 dst, U8 imm);
 	void adc(Reg32 dst, U32 imm);
 	void adc(Reg16 dst, U16 imm);
-	void adc(Reg8 dst, U8 imm);
+	void adc(Reg8 dst, U8 imm);	
 	void sub(Reg32 dst, U32 imm);
 	void sub(Reg16 dst, U16 imm);
 	void sub(Reg8 dst, U8 imm);
@@ -284,23 +323,17 @@ public:
 	void not_(Reg32 dst);
 	void not_(Reg16 dst);
 	void not_(Reg8 dst);
-	void inc(Reg32 dst);
-	void inc(Reg16 dst);
-	void inc(Reg8 dst);
-	void dec(Reg32 dst);
-	void dec(Reg16 dst);
-	void dec(Reg8 dst);
 
 	void test(Reg32 dst, U32 imm);
 	void test(Reg16 dst, U16 imm);
-	void test(Reg8 dst, U8 imm);
+	void test(Reg8 dst, U8 imm);	
 	void test(Reg32 dst, Reg32 src);
 	void test(Reg16 dst, Reg16 src);
 	void test(Reg8 dst, Reg8 src);
-
+	
 	void cmp(Reg32 dst, U32 imm);
 	void cmp(Reg16 dst, U16 imm);
-	void cmp(Reg8 dst, U8 imm);
+	void cmp(Reg8 dst, U8 imm);	
 	void cmp(Reg32 dst, Reg32 src);
 	void cmp(Reg16 dst, Reg16 src);
 	void cmp(Reg8 dst, Reg8 src);
@@ -347,9 +380,6 @@ public:
 	void or_(const Mem32& mem, Reg32 reg);
 	void or_(const Mem16& mem, Reg16 reg);
 	void or_(const Mem8& mem, Reg8 reg);	
-	void test(const Mem32& mem, Reg32 reg);
-	void test(const Mem16& mem, Reg16 reg);
-	void test(const Mem8& mem, Reg8 reg);
 	void and_(const Mem32& mem, Reg32 reg);
 	void and_(const Mem16& mem, Reg16 reg);
 	void and_(const Mem8& mem, Reg8 reg);
@@ -382,19 +412,20 @@ public:
 	void btc(const Mem16& mem, Reg16 value);
 
 	void bswap(Reg32 reg);
-
+	
 	void mov(Reg32 dst, U32 imm);
 	void mov(Reg16 dst, U16 imm);
 	void mov(Reg8 dst, U8 imm);
+	void mov(const Mem64& mem, U64 src);
 	void mov(const Mem32& mem, U32 src);
 	void mov(const Mem16& mem, U16 src);
-	void mov(const Mem8& mem, U8 src);
+	void mov(const Mem8& mem, U8 src);	
 	void mov(Reg32 dst, const Mem32& mem);
 	void mov(Reg16 dst, const Mem16& mem);
-	void mov(Reg8 dst, const Mem8& mem);
+	void mov(Reg8 dst, const Mem8& mem);	
 	void mov(const Mem32& mem, Reg32 src);
 	void mov(const Mem16& mem, Reg16 src);
-	void mov(const Mem8& mem, Reg8 src);
+	void mov(const Mem8& mem, Reg8 src);	
 	void mov(Reg32 dst, Reg32 src);
 	void mov(Reg16 dst, Reg16 src);
 	void mov(Reg8 dst, Reg8 src);	
@@ -406,14 +437,34 @@ public:
 	void movsx(Reg16 dst, Reg8 src);
 	void movsx(Reg32 dst, Reg8 src);
 	void movsx(Reg32 dst, Reg16 src);
-
-	void push(Reg32 reg);
+		
 	void push(U32 imm);
 	void pushFlags();
-	void pop(Reg32 reg);	
+#ifdef BOXEDWINE_64
+	void IfNotZero(Reg64 reg, bool bigJump = false);
+	void IfNotEqual(Reg64 reg, Reg64 reg2, bool bigJump = false);
+	void IfNotEqual(Reg64 reg, U32 value);
+	void IfEqual(Reg64 reg, Reg64 reg2, bool bigJump = false);
+	void IfEqual(Reg64 reg, U32 value);
+	void call(Reg64 reg);
+	void mov(Reg64 dst, Reg64 src);
+	void mov(const Mem64& mem, Reg64 src);
+	void mov(Reg64 dst, const Mem64& mem);
+	void mov(Reg64 dst, U64 imm);
+	void cmp(Reg64 dst, Reg64 src);
+	void cmp(Reg64 dst, U32 imm);
+	void test(Reg64 dst, Reg64 src);
+	void add(Reg64 dst, U32 imm);
+	void sub(Reg64 dst, U32 imm);
+	void push(Reg64 reg);
+	void pop(Reg64 reg);
+#else
+	void push(Reg32 reg);
+	void pop(Reg32 reg);
+#endif	
 	void call(void* address);
 	void ret();
-	void jmp(Reg32 reg);
+	void jmp(Reg reg);
 	void jmp(U32 address);
 	void goto8(U32 amount);
 	void goto32(U32 amount);
@@ -484,22 +535,22 @@ public:
 	void IfLessThan(Reg8 reg, U8 value, bool bigJump = false);
 	void IfLessThan(Reg32 reg1, Reg32 reg2, bool bigJump = false);
 	void IfLessThan(Reg16 reg1, Reg16 reg2, bool bigJump = false);
-	void IfLessThan(Reg8 reg1, Reg8 reg2, bool bigJump = false);
+	void IfLessThan(Reg8 reg1, Reg8 reg2, bool bigJump = false);	
 	void IfEqual(Reg32 reg, U32 value);
 	void IfEqual(Reg16 reg, U16 value);
-	void IfEqual(Reg8 reg, U8 value);
+	void IfEqual(Reg8 reg, U8 value);	
 	void IfEqual(Reg32 reg1, Reg32 reg2, bool bigJump = false);
 	void IfEqual(Reg16 reg1, Reg16 reg2, bool bigJump = false);
-	void IfEqual(Reg8 reg1, Reg8 reg2, bool bigJump = false);
+	void IfEqual(Reg8 reg1, Reg8 reg2, bool bigJump = false);	
 	void IfNotEqual(Reg32 reg, U32 value);
 	void IfNotEqual(Reg16 reg, U16 value);
-	void IfNotEqual(Reg8 reg, U8 value);
+	void IfNotEqual(Reg8 reg, U8 value);	
 	void IfNotEqual(Reg32 reg, Reg32 reg2, bool bigJump = false);
 	void IfNotEqual(Reg16 reg, Reg16 reg2, bool bigJump = false);
 	void IfNotEqual(Reg8 reg, Reg8 reg2, bool bigJump = false);
 	void IfZero(Reg32 reg);
 	void IfZero(Reg16 reg);
-	void IfZero(Reg8 reg);
+	void IfZero(Reg8 reg);	
 	void IfNotZero(Reg32 reg, bool bigJump = false);
 	void IfNotZero(Reg16 reg, bool bigJump = false);
 	void IfNotZero(Reg8 reg, bool bigJump = false);
@@ -517,8 +568,8 @@ public:
 
 	void reset();
 
-	void stmxcsr(Reg32 rm, U32 disp);
-	void ldmxcsr(Reg32 rm, U32 disp);
+	void stmxcsr(const Mem32& mem);
+	void ldmxcsr(const Mem32& mem);
 	void rdtsc();
 
 	void movlhps(RegXMM hiDstXMM, RegXMM loSrcXMM);
@@ -719,12 +770,19 @@ public:
 	std::vector<U32> ifJump;
 	std::vector<U32> patch;
 	std::vector<DynamicJump> jumps;
+
+	void rexBase();
 private:
+	void outq(U64 d);
 	void outd(U32 d);
 	void outw(U16 w);
 	void outb(U8 b);
 
-	void mem32(U8 inst, U8 dst, const Mem& mem);
+	void rex(U8 reg, U8 rm, U8 sib, bool is64);
+	void rex(U8 reg, U8 rm, bool is64);
+	void rex(U8 reg, bool is64);
+
+	void mem32(U8 inst, U8 dst, const Mem& mem, bool is64 = false);
 	void mem16(U8 inst, U8 dst, const Mem& mem);
 	void mem8(U8 inst, U8 dst, const Mem& mem);
 

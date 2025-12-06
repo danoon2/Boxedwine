@@ -18,45 +18,28 @@
 
 #include "../common/common_other.h"
 void Jit::dynamic_bound16(DecodedOp* op) {
-    RegPtr result = callAndReturn_IR(common_bound16, op->reg, JitWidth::b32, calculateEaa(op));
-    IfNot(JitWidth::b32, result);
-        blockDone(true);
-    EndIf();
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_bound32(DecodedOp* op) {
-    RegPtr result = callAndReturn_IR(common_bound32, op->reg, JitWidth::b32, calculateEaa(op));
-    IfNot(JitWidth::b32, result);
-        blockDone(true);
-    EndIf();
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_daa(DecodedOp* op) {
-    call(daa);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_das(DecodedOp* op) {
-    call(das);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_aaa(DecodedOp* op) {
-    call(aaa);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_aas(DecodedOp* op) {
-    call(aas);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_aad(DecodedOp* op) {
-    call_I(aad, op->imm);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_aam(DecodedOp* op) {
-    RegPtr result = callAndReturn_I(aam, op->imm);
-    IfNot(JitWidth::b32, result);
-        blockDone(true);
-    EndIf();
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_nop(DecodedOp* op) {
     // Nop
@@ -83,48 +66,28 @@ void Jit::dynamic_cwq(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_callAp(DecodedOp* op) {
-    RegPtr eip = getTmpEip();
-    addValue(JitWidth::b32, eip, op->len);
-    call_IIIR(common_call, 0, op->imm, op->data.disp, JitWidth::b32, eip);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_callFar(DecodedOp* op) {
-    RegPtr eip = getTmpEip();
-    addValue(JitWidth::b32, eip, op->len);
-    call_IIIR(common_call, 1, op->imm, op->data.disp, JitWidth::b32, eip);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_jmpAp(DecodedOp* op) {
-    RegPtr eip = getTmpEip();
-    addValue(JitWidth::b32, eip, op->len);
-    call_IIIR(common_jmp, 0, op->imm, op->data.disp, JitWidth::b32, eip);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_jmpFar(DecodedOp* op) {
-    RegPtr eip = getTmpEip();
-    addValue(JitWidth::b32, eip, op->len);
-    call_IIIR(common_jmp, 1, op->imm, op->data.disp, JitWidth::b32, eip);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_retf16(DecodedOp* op) {
-    call_II(common_ret, 0, op->imm);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_retf32(DecodedOp* op) {
-    call_II(common_ret, 1, op->imm);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_iret(DecodedOp* op) {
-    RegPtr eip = getTmpEip();
-    addValue(JitWidth::b32, eip, op->len);
-    call_IR(common_iret, 0, JitWidth::b32, eip);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_iret32(DecodedOp* op) {
-    RegPtr eip = getTmpEip();
-    addValue(JitWidth::b32, eip, op->len);
-    call_IR(common_iret, 1, JitWidth::b32, eip);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_sahf(DecodedOp* op) {
     RegPtr flags = getTmpReg();
@@ -164,36 +127,28 @@ void Jit::dynamic_retn32(DecodedOp* op) {
     blockDone(false);
 }
 void Jit::dynamic_invalid(DecodedOp* op) {
-    call(common_ud2);
-    blockDone(true);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_ud2(DecodedOp* op) {
-    call(common_ud2);
-    blockDone(true);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_int80(DecodedOp* op) {
-    call_I(ksyscall, op->len);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_int99(DecodedOp* op) {
-    call(common_int99);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_int9A(DecodedOp* op) {
-    call(common_int9A);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_int9B(DecodedOp* op) {
-    call(common_int9B);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_intIb(DecodedOp* op) {
-    call(common_intIb);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_int3(DecodedOp* op) {
-    call(common_int3);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_xlat(DecodedOp* op) {
     RegPtr address = getTmpReg8(0);
@@ -213,8 +168,7 @@ void Jit::dynamic_xlat(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_hlt(DecodedOp* op) {
-    call(common_hlt);
-    blockDone(true);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_cmc(DecodedOp* op) {
     fillFlags();
@@ -248,19 +202,47 @@ void Jit::dynamic_std(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_rdtsc(DecodedOp* op) {
-    call_I(common_rdtsc, op->imm);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_cpuid(DecodedOp* op) {
-    call(common_cpuid);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_enter16(DecodedOp* op) {
-    call_III(common_enter, 0, op->imm, op->data.disp);
+    if (op->data.disp) {
+        emulateSingleOp(getTmpReg());
+    } else {
+        RegPtr ebp = getReg(5);        
+        // push EBP
+        push16(ebp);
+        RegPtr esp = getReg(4); // if not cached, we don't want to read until after push
+        //EBP = ESP;
+        mov(JitWidth::b16, ebp, esp);
+        // sub esp, bytes
+        IfSmallStack(); {
+            subValue(JitWidth::b16, esp, op->imm);
+        } StartElse(); {
+            subValue(JitWidth::b32, esp, op->imm);
+        } EndIf();
+    }
     incrementEip(op->len);
 }
 void Jit::dynamic_enter32(DecodedOp* op) {
-    call_III(common_enter, 1, op->imm, op->data.disp);
+    if (op->data.disp) {
+        emulateSingleOp(getTmpReg());
+    } else {
+        RegPtr ebp = getReg(5);
+        // push EBP
+        push32(ebp);
+        RegPtr esp = getReg(4); // if not cached, we don't want to read until after push
+        //EBP = ESP;
+        mov(JitWidth::b32, ebp, esp);
+        // sub esp, bytes
+        IfSmallStack(); {
+            subValue(JitWidth::b16, esp, op->imm);
+        } StartElse(); {
+            subValue(JitWidth::b32, esp, op->imm);
+        } EndIf();
+    }
     incrementEip(op->len);
 }
 void Jit::dynamic_leave16(DecodedOp* op) {
@@ -545,84 +527,40 @@ void Jit::dynamic_jmpE32(DecodedOp* op) {
     blockDoneJump();
 }
 void Jit::dynamic_callFarE16(DecodedOp* op) {
-    RegPtr address = calculateEaa(op);
-    RegPtr offset = read(JitWidth::b16, address, nullptr, nullptr, false, getTmpReg());
-    addValue(JitWidth::b32, address, 2);
-    RegPtr sel = read(JitWidth::b16, address);
-    address = nullptr;
-    RegPtr eip = getTmpEip();
-    addValue(JitWidth::b16, eip, op->len);
-
-    call_IRRR(common_call, 0, JitWidth::b16, sel, JitWidth::b16, offset, JitWidth::b16, eip);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_callFarE32(DecodedOp* op) {
-    RegPtr address = calculateEaa(op);
-    RegPtr offset = read(JitWidth::b32, address, nullptr, nullptr, false, getTmpReg());
-    addValue(JitWidth::b32, address, 4);
-    RegPtr sel = read(JitWidth::b16, address);
-    address = nullptr;
-    RegPtr eip = getTmpEip();
-    addValue(JitWidth::b32, eip, op->len);
-
-    call_IRRR(common_call, 1, JitWidth::b16, sel, JitWidth::b32, offset, JitWidth::b32, eip);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_jmpFarE16(DecodedOp* op) {
-    RegPtr address = calculateEaa(op);
-    RegPtr offset = read(JitWidth::b16, address, nullptr, nullptr, false, getTmpReg());
-    addValue(JitWidth::b32, address, 2);
-    RegPtr sel = read(JitWidth::b16, address);
-    address = nullptr;
-    RegPtr eip = getTmpEip();
-    addValue(JitWidth::b16, eip, op->len);
-
-    call_IRRR(common_jmp, 0, JitWidth::b16, sel, JitWidth::b16, offset, JitWidth::b16, eip);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_jmpFarE32(DecodedOp* op) {
-    RegPtr address = calculateEaa(op);
-    RegPtr offset = read(JitWidth::b32, address, nullptr, nullptr, false, getTmpReg());
-    addValue(JitWidth::b32, address, 4);
-    RegPtr sel = read(JitWidth::b16, address);
-    address = nullptr;
-    RegPtr eip = getTmpEip();
-    addValue(JitWidth::b32, eip, op->len);
-
-    call_IRRR(common_jmp, 1, JitWidth::b16, sel, JitWidth::b32, offset, JitWidth::b32, eip);
-    blockDone(false);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_larr16r16(DecodedOp* op) {
-    call_II(common_larr16r16, op->reg, op->rm);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_larr16e16(DecodedOp* op) {
-    call_IR(common_larr16e16, op->reg, JitWidth::b32, calculateEaa(op));
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_lslr16r16(DecodedOp* op) {
-    call_II(common_lslr16r16, op->reg, op->rm);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_lslr16e16(DecodedOp* op) {
-    call_IR(common_lslr16e16, op->reg, JitWidth::b32, calculateEaa(op));
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_lslr32r32(DecodedOp* op) {
-    call_II(common_lslr32r32, op->reg, op->rm);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_lslr32e32(DecodedOp* op) {
-    call_IR(common_lslr32e32, op->reg, JitWidth::b32, calculateEaa(op));
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_verre16(DecodedOp* op) {
-    call_R(common_verre16, JitWidth::b32, calculateEaa(op));
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_verwe16(DecodedOp* op) {
-    call_R(common_verwe16, JitWidth::b32, calculateEaa(op));
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_xaddr8r8(DecodedOp* op) {
     dynamic_RR_WriteBoth(op, JitWidth::b8, & Jit::xaddReg, FLAGS_ADD8);
@@ -647,59 +585,24 @@ void Jit::dynamic_bswap32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_cmpxchgg8b(DecodedOp* op) {
-    call_R(common_cmpxchg8b, JitWidth::b32, calculateEaa(op));
-    incrementEip(op->len);
+    // I haven't seen anything call this so no reason to inline, I imagine only the lock version of this is ever used
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_loadSegment16(DecodedOp* op) {
-    //U16 val = cpu->memory->readw(eaa);
-    //U32 selector = cpu->memory->readw(eaa + 2);
-    //if (cpu->setSegment(op->imm, selector)) {
-    //    cpu->reg[op->reg].u16 = val;
-
-    RegPtr address = calculateEaa(op);
-    RegPtr value = read(JitWidth::b16, address, nullptr, nullptr, false, getTmpReg());
-    addValue(JitWidth::b32, address, 2);
-    RegPtr sel = read(JitWidth::b16, std::move(address), nullptr, nullptr, false, getTmpReg()); // std::move will release address in this function and give it to read, this way read will see there is only 1 reference to address and can re-use it as a tmp register
-
-    RegPtr result = callAndReturn_IR(common_setSegment, op->imm, JitWidth::b16, sel);
-
-    IfNot(JitWidth::b32, result);
-        blockDone(true);
-    EndIf();
-    mov(JitWidth::b16, getReg(op->reg), value);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_loadSegment32(DecodedOp* op) {
-    RegPtr address = calculateEaa(op);
-    RegPtr value = read(JitWidth::b32, address, nullptr, nullptr, false, getTmpReg());
-    addValue(JitWidth::b32, address, 4);
-    RegPtr sel = read(JitWidth::b16, std::move(address), nullptr, nullptr, false, getTmpReg()); // std::move will release address in this function and give it to read, this way read will see there is only 1 reference to address and can re-use it as a tmp register
-
-    RegPtr result = callAndReturn_IR(common_setSegment, op->imm, JitWidth::b16, sel);
-
-    IfNot(JitWidth::b32, result);
-        blockDone(true);
-    EndIf();
-    mov(JitWidth::b32, getReg(op->reg, -1, false), value);
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
-
 void Jit::dynamic_fxsave(DecodedOp* op) {
-    call_R(common_fxsave, JitWidth::b32, calculateEaa(op));
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
-
 void Jit::dynamic_fxrstor(DecodedOp* op) {
-    call_R(common_fxrstor, JitWidth::b32, calculateEaa(op));
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
-
 void Jit::dynamic_xsave(DecodedOp* op) {
-    call_R(common_xsave, JitWidth::b32, calculateEaa(op));
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
-
 void Jit::dynamic_xrstor(DecodedOp* op) {
-    call_R(common_xrstor, JitWidth::b32, calculateEaa(op));
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }

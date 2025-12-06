@@ -278,6 +278,7 @@ public:
 #ifdef BOXEDWINE_DYNAMIC
     OpCallback startJITOp = nullptr;
     void* jumpToNextJIT = nullptr;
+    void* emulateSingleOp = nullptr;
 #endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     bool emulateFPU = false;

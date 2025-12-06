@@ -102,43 +102,43 @@ public:
     void dynamic_FDIVR_STi_ST0_Pop(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuDiv, true, true); }
     void dynamic_FDIV_STi_ST0_Pop(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuDiv, false, true); }
 
-    void dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool reverse = false);
-    void dynamic_DOUBLE_REAL(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool reverse = false);
-    void dynamic_DWORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool reverse = false);
-    void dynamic_WORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool reverse = false);
-    // really seems like c++ is missing a feature since I can's pass a class function pointer then call a certain base implementation of it, something like (this->*DynamicCodeGen::fallback)(op) would have been nice
-    void dynamic_FADD_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuAdd, [op, this]() {JitCodeGen::dynamic_FADD_SINGLE_REAL(op); }); }
-    void dynamic_FMUL_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuMul, [op, this]() {JitCodeGen::dynamic_FMUL_SINGLE_REAL(op); }); }
+    void dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool reverse = false);
+    void dynamic_DOUBLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool reverse = false);
+    void dynamic_DWORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, bool reverse = false);
+    void dynamic_WORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, bool reverse = false);
+
+    void dynamic_FADD_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuAdd); }
+    void dynamic_FMUL_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuMul); }
     void dynamic_FCOM_SINGLE_REAL(DecodedOp* op) override;
     void dynamic_FCOM_SINGLE_REAL_Pop(DecodedOp* op) override;
-    void dynamic_FSUB_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuSub, [op, this]() {JitCodeGen::dynamic_FSUB_SINGLE_REAL(op); }); }
-    void dynamic_FSUBR_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuSub, [op, this]() {JitCodeGen::dynamic_FSUBR_SINGLE_REAL(op); }, true); }
-    void dynamic_FDIV_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuDiv, [op, this]() { JitCodeGen::dynamic_FDIV_SINGLE_REAL(op); }); }
-    void dynamic_FDIVR_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuDiv, [op, this]() { JitCodeGen::dynamic_FDIVR_SINGLE_REAL(op); }, true); }
-    void dynamic_FADD_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuAdd, [op, this]() {JitCodeGen::dynamic_FADD_DOUBLE_REAL(op); }); }
-    void dynamic_FMUL_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuMul, [op, this]() {JitCodeGen::dynamic_FMUL_DOUBLE_REAL(op); }); }
+    void dynamic_FSUB_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuSub); }
+    void dynamic_FSUBR_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuSub, true); }
+    void dynamic_FDIV_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuDiv); }
+    void dynamic_FDIVR_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuDiv, true); }
+    void dynamic_FADD_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuAdd); }
+    void dynamic_FMUL_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuMul); }
     void dynamic_FCOM_DOUBLE_REAL(DecodedOp* op) override;
     void dynamic_FCOM_DOUBLE_REAL_Pop(DecodedOp* op) override;
-    void dynamic_FSUB_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuSub, [op, this]() {JitCodeGen::dynamic_FSUB_DOUBLE_REAL(op); }); }
-    void dynamic_FSUBR_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuSub, [op, this]() {JitCodeGen::dynamic_FSUBR_DOUBLE_REAL(op); }, true); }
-    void dynamic_FDIV_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuDiv, [op, this]() { JitCodeGen::dynamic_FDIV_DOUBLE_REAL(op); }); }
-    void dynamic_FDIVR_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuDiv, [op, this]() { JitCodeGen::dynamic_FDIVR_DOUBLE_REAL(op); }, true); }
-    void dynamic_FIADD_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuAdd, [op, this]() {JitCodeGen::dynamic_FIADD_DWORD_INTEGER(op); }); }
-    void dynamic_FIMUL_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuMul, [op, this]() {JitCodeGen::dynamic_FIMUL_DWORD_INTEGER(op); }); }
+    void dynamic_FSUB_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuSub); }
+    void dynamic_FSUBR_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuSub, true); }
+    void dynamic_FDIV_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuDiv); }
+    void dynamic_FDIVR_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuDiv, true); }
+    void dynamic_FIADD_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuAdd); }
+    void dynamic_FIMUL_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuMul); }
     void dynamic_FICOM_DWORD_INTEGER(DecodedOp* op) override;
     void dynamic_FICOM_DWORD_INTEGER_Pop(DecodedOp* op) override;
-    void dynamic_FISUB_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuSub, [op, this]() {JitCodeGen::dynamic_FISUB_DWORD_INTEGER(op); }); }
-    void dynamic_FISUBR_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuSub, [op, this]() {JitCodeGen::dynamic_FISUBR_DWORD_INTEGER(op); }, true); }
-    void dynamic_FIDIV_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuDiv, [op, this]() { JitCodeGen::dynamic_FIDIV_DWORD_INTEGER(op); }); }
-    void dynamic_FIDIVR_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuDiv, [op, this]() { JitCodeGen::dynamic_FIDIVR_DWORD_INTEGER(op); }, true); }
-    void dynamic_FIADD_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuAdd, [op, this]() {JitCodeGen::dynamic_FIADD_WORD_INTEGER(op); }); }
-    void dynamic_FIMUL_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuMul, [op, this]() {JitCodeGen::dynamic_FIMUL_WORD_INTEGER(op); }); }
+    void dynamic_FISUB_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuSub); }
+    void dynamic_FISUBR_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuSub, true); }
+    void dynamic_FIDIV_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuDiv); }
+    void dynamic_FIDIVR_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuDiv, true); }
+    void dynamic_FIADD_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuAdd); }
+    void dynamic_FIMUL_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuMul); }
     void dynamic_FICOM_WORD_INTEGER(DecodedOp* op) override;
     void dynamic_FICOM_WORD_INTEGER_Pop(DecodedOp* op) override;
-    void dynamic_FISUB_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuSub, [op, this]() {JitCodeGen::dynamic_FISUB_WORD_INTEGER(op); }); }
-    void dynamic_FISUBR_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuSub, [op, this]() {JitCodeGen::dynamic_FISUBR_WORD_INTEGER(op); }, true); }
-    void dynamic_FIDIV_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuDiv, [op, this]() { JitCodeGen::dynamic_FIDIV_WORD_INTEGER(op); }); }
-    void dynamic_FIDIVR_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuDiv, [op, this]() { JitCodeGen::dynamic_FIDIVR_WORD_INTEGER(op); }, true); }
+    void dynamic_FISUB_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuSub); }
+    void dynamic_FISUBR_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuSub, true); }
+    void dynamic_FIDIV_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuDiv); }
+    void dynamic_FIDIVR_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuDiv, true); }
 
     void dynamic_FCMOV_ST0_STj_CF(DecodedOp* op) override;
     void dynamic_FCMOV_ST0_STj_ZF(DecodedOp* op) override;
@@ -202,7 +202,7 @@ public:
     void dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op) override;
     // special handling, will store as 80-bit float
     // void dynamic_FILD_QWORD_INTEGER(DecodedOp* op);
-    // void dynamic_FISTP_QWORD_INTEGER1(DecodedOp* op);
+    void dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) override;
 
 private:
     void loadFpuRegFromShort(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp);

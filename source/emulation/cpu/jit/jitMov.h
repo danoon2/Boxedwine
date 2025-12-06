@@ -89,19 +89,10 @@ void Jit::dynamic_move16s16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_movs16e16(DecodedOp* op) {
-    // the weird getTmpReg is to override the behavior of read, to make it not use getTmpRegForCallResult so that EAX is available to use for callAndReturn
-    RegPtr result = callAndReturn_IR(common_setSegment, op->reg, JitWidth::b16, read(JitWidth::b16, calculateEaa(op), nullptr, nullptr, false, getTmpReg()));
-    IfNot(JitWidth::b32, result); {
-        blockDone(true);
-    } EndIf();
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_movs16r16(DecodedOp* op) {
-    RegPtr result = callAndReturn_IR(common_setSegment, op->rm, JitWidth::b16, getReadOnlyReg(op->reg));
-    IfNot(JitWidth::b32, result); {
-        blockDone(true);
-    } EndIf();
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_movAlOb(DecodedOp* op) {
     RegPtr reg;
@@ -224,18 +215,10 @@ void Jit::dynamic_movGdSxE16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_movRdCRx(DecodedOp* op) {
-    RegPtr result = callAndReturn_II(common_readCrx, op->rm, op->reg);
-    IfNot(JitWidth::b32, result); {
-        blockDone(true);
-    } EndIf();
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_movCRxRd(DecodedOp* op) {
-    RegPtr result = callAndReturn_IR(common_writeCrx, op->rm, JitWidth::b32, getReadOnlyReg(op->reg));
-    IfNot(JitWidth::b32, result); {
-        blockDone(true);
-    } EndIf();
-    incrementEip(op->len);
+    emulateSingleOp(getTmpReg());
 }
 void Jit::dynamic_leaR16(DecodedOp* op) {
     mov(JitWidth::b16, getReg(op->reg), calculateEaa(op));
