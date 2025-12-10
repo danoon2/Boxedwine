@@ -441,10 +441,11 @@ public:
 	void push(U32 imm);
 	void pushFlags();
 #ifdef BOXEDWINE_64
-	void IfNotZero(Reg64 reg, bool bigJump = false);
-	void IfNotEqual(Reg64 reg, Reg64 reg2, bool bigJump = false);
+	void IfZero(Reg64 reg);
+	void IfNotZero(Reg64 reg);
+	void IfNotEqual(Reg64 reg, Reg64 reg2);
 	void IfNotEqual(Reg64 reg, U32 value);
-	void IfEqual(Reg64 reg, Reg64 reg2, bool bigJump = false);
+	void IfEqual(Reg64 reg, Reg64 reg2);
 	void IfEqual(Reg64 reg, U32 value);
 	void call(Reg64 reg);
 	void mov(Reg64 dst, Reg64 src);
@@ -458,11 +459,23 @@ public:
 	void sub(Reg64 dst, U32 imm);
 	void push(Reg64 reg);
 	void pop(Reg64 reg);
+	void div(Reg64 src);
+	void idiv(Reg64 src);
+	void group2(U8 op, Reg64 dst, U8 imm);
+	void shl(Reg64 dst, U8 imm);
+	void shr(Reg64 dst, U8 imm);
+	void shrd(Reg64 dst, Reg64 src, U8 imm);
+	void movsx(Reg64 dst, Reg32 src);
+	void cqo();
+	void shrx(Reg32 dst, Reg32 src);
+	void shlx(Reg32 dst, Reg32 src);
+	void sarx(Reg32 dst, Reg32 src);
 #else
+	std::vector<U32> patch;
+	void call(void* address);
 	void push(Reg32 reg);
 	void pop(Reg32 reg);
-#endif	
-	void call(void* address);
+#endif		
 	void ret();
 	void jmp(Reg reg);
 	void jmp(U32 address);
@@ -530,41 +543,41 @@ public:
 	void xadd(const Mem16& mem, Reg16 reg);
 	void xadd(const Mem8& mem, Reg8 reg);
 
-	void IfLessThan(Reg32 reg, U32 value, bool bigJump = false);
-	void IfLessThan(Reg16 reg, U16 value, bool bigJump = false);
-	void IfLessThan(Reg8 reg, U8 value, bool bigJump = false);
-	void IfLessThan(Reg32 reg1, Reg32 reg2, bool bigJump = false);
-	void IfLessThan(Reg16 reg1, Reg16 reg2, bool bigJump = false);
-	void IfLessThan(Reg8 reg1, Reg8 reg2, bool bigJump = false);	
+	void IfLessThan(Reg32 reg, U32 value);
+	void IfLessThan(Reg16 reg, U16 value);
+	void IfLessThan(Reg8 reg, U8 value);
+	void IfLessThan(Reg32 reg1, Reg32 reg2);
+	void IfLessThan(Reg16 reg1, Reg16 reg2);
+	void IfLessThan(Reg8 reg1, Reg8 reg2);
 	void IfEqual(Reg32 reg, U32 value);
 	void IfEqual(Reg16 reg, U16 value);
 	void IfEqual(Reg8 reg, U8 value);	
-	void IfEqual(Reg32 reg1, Reg32 reg2, bool bigJump = false);
-	void IfEqual(Reg16 reg1, Reg16 reg2, bool bigJump = false);
-	void IfEqual(Reg8 reg1, Reg8 reg2, bool bigJump = false);	
+	void IfEqual(Reg32 reg1, Reg32 reg2);
+	void IfEqual(Reg16 reg1, Reg16 reg2);
+	void IfEqual(Reg8 reg1, Reg8 reg2);
 	void IfNotEqual(Reg32 reg, U32 value);
 	void IfNotEqual(Reg16 reg, U16 value);
 	void IfNotEqual(Reg8 reg, U8 value);	
-	void IfNotEqual(Reg32 reg, Reg32 reg2, bool bigJump = false);
-	void IfNotEqual(Reg16 reg, Reg16 reg2, bool bigJump = false);
-	void IfNotEqual(Reg8 reg, Reg8 reg2, bool bigJump = false);
+	void IfNotEqual(Reg32 reg, Reg32 reg2);
+	void IfNotEqual(Reg16 reg, Reg16 reg2);
+	void IfNotEqual(Reg8 reg, Reg8 reg2);
 	void IfZero(Reg32 reg);
 	void IfZero(Reg16 reg);
 	void IfZero(Reg8 reg);	
-	void IfNotZero(Reg32 reg, bool bigJump = false);
-	void IfNotZero(Reg16 reg, bool bigJump = false);
-	void IfNotZero(Reg8 reg, bool bigJump = false);
-	void IfBitSet(Reg32 reg, U32 mask, bool bigJump = false);
-	void IfBitSet(Reg32 reg, Reg32 mask, bool bigJump = false);
-	void IfNotBitSet(Reg32 reg, U32 mask, bool bigJump = false);
-	void Else(bool bigJump = false);
-	void EndIf(bool bigJump = false);
+	void IfNotZero(Reg32 reg);
+	void IfNotZero(Reg16 reg);
+	void IfNotZero(Reg8 reg);
+	void IfBitSet(Reg32 reg, U32 mask);
+	void IfBitSet(Reg32 reg, Reg32 mask);
+	void IfNotBitSet(Reg32 reg, U32 mask);
+	void Else();
+	void EndIf();
 	void IfPF();
 	void IfCF();
-	void IfZF(bool bigJump = false);
-	void IfSF(bool bigJump = false);
-	void IfOF(bool bigJump = false);
-	void IfNotZF(bool bigJump = false);
+	void IfZF();
+	void IfSF();
+	void IfOF();
+	void IfNotZF();
 
 	void reset();
 
@@ -767,8 +780,7 @@ public:
 	void movmskpd(Reg32 dst, RegXMM src);
 
 	std::vector<U8> buffer;
-	std::vector<U32> ifJump;
-	std::vector<U32> patch;
+	std::vector<U32> ifJump;	
 	std::vector<DynamicJump> jumps;
 
 	void rexBase();
@@ -782,9 +794,9 @@ private:
 	void rex(U8 reg, U8 rm, bool is64);
 	void rex(U8 reg, bool is64);
 
-	void mem32(U8 inst, U8 dst, const Mem& mem, bool is64 = false);
-	void mem16(U8 inst, U8 dst, const Mem& mem);
-	void mem8(U8 inst, U8 dst, const Mem& mem);
+	void mem32(U32 inst, U8 dst, const Mem& mem, bool is64 = false);
+	void mem16(U32 inst, U8 dst, const Mem& mem);
+	void mem8(U32 inst, U8 dst, const Mem& mem);
 
 	void group1(U8 e, U8 math, Reg32 dst, U32 imm);
 	void group1(U8 e, U8 math, Reg16 dst, U16 imm);
@@ -792,7 +804,9 @@ private:
 
 	void group2(U8 op, Reg32 dst, U32 imm);
 	void group2(U8 op, Reg16 dst, U16 imm);
-	void group2(U8 op, Reg8 dst, U8 imm);		
+	void group2(U8 op, Reg8 dst, U8 imm);
+
+	void IfJump(U8 inst);
 };
 
 bool operator==(const X86Asm::Reg32& lhs, const X86Asm::Reg32& rhs);

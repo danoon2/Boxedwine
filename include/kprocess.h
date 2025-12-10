@@ -279,6 +279,8 @@ public:
     OpCallback startJITOp = nullptr;
     void* jumpToNextJIT = nullptr;
     void* emulateSingleOp = nullptr;
+    void* syncToHost = nullptr;
+    void* syncFromHost = nullptr;
 #endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     bool emulateFPU = false;

@@ -70,26 +70,26 @@ void Jit::dynamic_xchge32r32(DecodedOp* op) {
 
 // I didn't see Quake 2 or Cinebench trigger these, so for now they are low priority for inlining
 void Jit::dynamic_cmpxchgr8r8(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
     currentLazyFlags = FLAGS_CMP8;
 }
 void Jit::dynamic_cmpxchge8r8(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
     currentLazyFlags = FLAGS_CMP8;
 }
 void Jit::dynamic_cmpxchgr16r16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
     currentLazyFlags = FLAGS_CMP16;
 }
 void Jit::dynamic_cmpxchge16r16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
     currentLazyFlags = FLAGS_CMP16;
 }
 void Jit::dynamic_cmpxchgr32r32(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
     currentLazyFlags = FLAGS_CMP32;
 }
 void Jit::dynamic_cmpxchge32r32(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
     currentLazyFlags = FLAGS_CMP32;
 }

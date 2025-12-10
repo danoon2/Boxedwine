@@ -19,11 +19,11 @@
 #include "../common/common_mmx.h"
 
 #undef MMX_0
-#define MMX_0(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define MMX_0(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #undef MMX_RR
-#define MMX_RR(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define MMX_RR(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #undef MMX_RE
-#define MMX_RE(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define MMX_RE(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #undef MMX_RI
-#define MMX_RI(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define MMX_RI(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #include "../common/common_mmx_def.h"

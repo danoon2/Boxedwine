@@ -158,7 +158,7 @@ INLINE void safe_strcat(char* dest, const char* src, size_t bufferSize) {
     strcat(dest, src);
 }
 
-#ifdef BOXEDWINE_X64
+#if defined(BOXEDWINE_X64) || defined(BOXEDWINE_JIT_X64)
 bool platformHasBMI2();
 #endif
 

@@ -66,7 +66,7 @@ public:
 
     RegPtr getTopReg();
     RegPtr calculateIndexReg(RegPtr topReg, U32 index);
-    void IfNotRegCached(RegPtr indexReg, bool bigJump = false);
+    void IfNotRegCached(RegPtr indexReg);
     void setRegIsCached(RegPtr indexReg, bool regIsCached);
     void syncXmmToCPU(RegPtr topReg, DynFpuReg xmm, U8 regIndex);
     void syncXmmToCPUWithIndexReg(RegPtr indexReg, DynFpuReg fpuReg);

@@ -23,7 +23,6 @@
 #include "../normal/normalCPU.h"
 #include "jitFlags.h"
 
-extern U8* ramPages[K_NUMBER_OF_PAGES];
 static JitCodeGen::OpFunction dynamicOps[NUMBER_OF_OPS];
 static U32 dynamicOpsInitialized;
 
@@ -298,6 +297,7 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
             this->eipToBufferPos.set(this->currentEip + 1, getBufferSize());
         }
         preOp(nextOp);
+        //movValue(JitWidth::b32, getTmpReg(), this->currentEip);
         (this->*dynamicOps[nextOp->inst])(nextOp);
         this->currentEip += nextOp->len;
         if (getIfJumpSize()) {
@@ -317,12 +317,18 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
     if (!cpu->thread->process->startJITOp) {
         JitCodeGen* jit = startNewJIT(cpu);
         cpu->thread->process->startJITOp = (OpCallback)jit->createStartJITCode();
+        delete jit;            
+        jit = startNewJIT(cpu);
+        cpu->thread->process->syncToHost = jit->createSyncToHost();
         delete jit;
         jit = startNewJIT(cpu);
-        cpu->thread->process->jumpToNextJIT = jit->createJumpEip();
+        cpu->thread->process->syncFromHost = jit->createSyncFromHost();
         delete jit;
         jit = startNewJIT(cpu);
         cpu->thread->process->emulateSingleOp = jit->createEmulateSingleOp();
+        delete jit;
+        jit = startNewJIT(cpu);
+        cpu->thread->process->jumpToNextJIT = jit->createJumpEip();
         delete jit;
     }
 
@@ -360,8 +366,6 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
     op->runCount++;
     op->pfn(cpu, op);
 }
-
-#include "../../softmmu/kmemory_soft.h"
 
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
 
@@ -413,7 +417,7 @@ static DYN_PTR_SIZE getJitFunctionForCurrentOp(CPU* cpu) {
 
 void JitCodeGen::blockDoneJump() {
     jumpToEipIfCached();        
-    RegPtr result = callAndReturn(getJitFunctionForCurrentOp);
+    RegPtr result = callAndReturnPtr(getJitFunctionForCurrentOp);
     IfNot(DYN_PTR, result);
         blockExit();
     EndIf();
@@ -447,7 +451,7 @@ void JitCodeGen::blockNext1(DecodedOp* op) {
     // if (!(*(op->nextJump))) 
     IfNot(DYN_PTR, nextOp);
         // *(op->nextJump) = cpu->getNextOp();
-        mov(DYN_PTR, nextOp, callAndReturn(dynamic_getNextOp));
+        mov(DYN_PTR, nextOp, callAndReturnPtr(dynamic_getNextOp));
         write(DYN_PTR, nextJump, offsetof(DecodedOp, next), nextOp);
     EndIf();
 
@@ -479,7 +483,7 @@ void JitCodeGen::blockNext2(DecodedOp* op) {
 
     IfNot(DYN_PTR, nextReg);
         // op->next = cpu->getNextOp();
-        mov(DYN_PTR, nextReg, callAndReturn(dynamic_getNextOp));
+        mov(DYN_PTR, nextReg, callAndReturnPtr(dynamic_getNextOp));
         // mov [ebx + offsetof(DecodedOp, next)], eax
         write(DYN_PTR, opReg, offsetof(DecodedOp, next), nextReg);
     EndIf();
@@ -555,19 +559,23 @@ void JitCodeGen::jumpToEipIfCached() {
     mov(JitWidth::b32, firstPageIndexReg, pageReg);
     shrValue(JitWidth::b32, firstPageIndexReg, 10);
 
+#ifdef BOXEDWINE_64
+#define CODE_CACHE_LSL 3
+#else
+#define CODE_CACHE_LSL 2
+#endif
     RegPtr tmp = readCPU(DYN_PTR, offsetof(CPU, opCache));
-    read(DYN_PTR, tmp, tmp, firstPageIndexReg, 2, 0); // :TODO: 3 on 64-bit system
-
+    read(DYN_PTR, tmp, tmp, firstPageIndexReg, CODE_CACHE_LSL, 0); // :TODO: 3 on 64-bit system
 
     // tmp contains 2nd level of page op cache
     If(DYN_PTR, tmp);
         // page & 0x3ff
         andValue(JitWidth::b32, pageReg, 0x3ff);
-        read(DYN_PTR, tmp, tmp, pageReg, 2, 0);// :TODO: 3 on 64-bit system
+        read(DYN_PTR, tmp, tmp, pageReg, CODE_CACHE_LSL, 0);// :TODO: 3 on 64-bit system
         // tmp contains page of DecodedOp*
         If(DYN_PTR, tmp);
             andValue(JitWidth::b32, eipReg, K_PAGE_MASK);
-            read(DYN_PTR, tmp, tmp, eipReg, 2, 0); // :TODO: 3 on 64-bit system
+            read(DYN_PTR, tmp, tmp, eipReg, CODE_CACHE_LSL, 0); // :TODO: 3 on 64-bit system
             // tmp contains DecodedOp
             If(DYN_PTR, tmp);
                 read(DYN_PTR, tmp, tmp, 0, offsetof(DecodedOp, pfnJitCode));
@@ -578,6 +586,7 @@ void JitCodeGen::jumpToEipIfCached() {
             EndIf();
         EndIf();
     EndIf();
+#undef CODE_CACHE_LSL
  }
 
 U8* JitCodeGen::createJumpEip() {
@@ -622,11 +631,6 @@ U8* JitCodeGen::createEmulateSingleOp() {
     U8* result = createDynamicExecutableMemory();
     patch(result);
     return result;
-}
-
-void JitCodeGen::emulateSingleOp(RegPtr tmpReg) {
-    movValue(DYN_PTR, tmpReg, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
-    jmp(tmpReg);
 }
 
 void JitCodeGen::commitJIT(DecodedOp* op) {
@@ -795,7 +799,7 @@ static void writeb2(CPU* cpu, U32 address, U32 value) {
     cpu->memory->writeb(address, (U8)value);
 }
 
-RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool isBigJump, RegPtr tmp) {
+RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, RegPtr tmp) {
     if (!tmp) {
         tmp = getTmpRegForCallResult();
     }
@@ -831,18 +835,18 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
 
     mov(JitWidth::b32, tmp, addressReg);
     shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
-    read(JitWidth::b32, tmp, tmp, 2, (U32)getMemData(cpu->memory)->mmu);
+    readMMU(tmp, tmp);
 
     if (width != JitWidth::b8) {
         EndIf();
     }
 
     // test eax, 0x40000000 (mmu[index].canReadRam)
-    IfTest(JitWidth::b32, tmp, 0x40000000, isBigJump); {
+    IfTest(JitWidth::b32, tmp, 0x40000000); {
 
         // bottom 20 bits of mmu contains ram page index
         andValue(JitWidth::b32, tmp, 0xfffff);
-        read(JitWidth::b32, tmp, tmp, 2, (U32)ramPages);
+        readRamPage(tmp, tmp);
 
         RegPtr offsetReg;
 
@@ -863,18 +867,18 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
             read(width, tmp, tmp, offsetReg, 0, 0);
         }
 
-    } StartElse(isBigJump); {
+    } StartElse(); {
 
         if (failedMemoryOp) {
             failedMemoryOp();
         } else {
-            emulateSingleOp(tmp ? tmp : getTmpReg());
+            emulateSingleOp();
         }
-    } EndIf(isBigJump);
+    } EndIf();
     return tmp;
 }
 
-void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool isBigJump) {
+void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp) {
     RegPtr tmp = getTmpReg();
 
     if (width != JitWidth::b8) {
@@ -903,18 +907,18 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
     }
     mov(JitWidth::b32, tmp, addressReg);
     shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
-    read(JitWidth::b32, tmp, tmp, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
+    readMMU(tmp, tmp);
 
     if (width != JitWidth::b8) {
         EndIf();
     }
 
     // test reg, 0x80000000 (mmu[index].canWriteRam)
-    IfTest(JitWidth::b32, tmp, 0x80000000, isBigJump); {
+    IfTest(JitWidth::b32, tmp, 0x80000000); {
 
         // bottom 20 bits of mmu contains ram page index
         andValue(JitWidth::b32, tmp, 0xfffff);
-        read(JitWidth::b32, tmp, tmp, 2, (U32)ramPages);
+        readRamPage(tmp, tmp);
 
         RegPtr offsetReg;
         bool pushedAddress = false;
@@ -939,15 +943,15 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
         if (pushedAddress) {
             popReg(addressReg);
         }
-    } StartElse(isBigJump); {
+    } StartElse(); {
         if (failedMemoryOp) {
             addressReg = nullptr;
             tmp = nullptr;
             failedMemoryOp();
         } else {
-            emulateSingleOp(tmp ? tmp : getTmpReg());
+            emulateSingleOp();
         }
-    } EndIf(isBigJump);
+    } EndIf();
 }
 
 void JitCodeGen::writeValue(JitWidth width, RegPtr addressReg, U32 imm) {
@@ -976,7 +980,7 @@ void JitCodeGen::writeValue(JitWidth width, RegPtr addressReg, U32 imm) {
     }
     mov(JitWidth::b32, tmp, addressReg);
     shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
-    read(JitWidth::b32, tmp, tmp, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
+    readMMU(tmp, tmp);
 
     if (width != JitWidth::b8) {
         EndIf();
@@ -984,12 +988,12 @@ void JitCodeGen::writeValue(JitWidth width, RegPtr addressReg, U32 imm) {
 
     // test reg, 0x80000000 (mmu[index].canWriteRam)
     IfNotTest(JitWidth::b32, tmp, 0x80000000); {
-        emulateSingleOp(getTmpReg());
+        emulateSingleOp();
     } EndIf();
 
     // bottom 20 bits of mmu contains ram page index
     andValue(JitWidth::b32, tmp, 0xfffff);
-    read(JitWidth::b32, tmp, tmp, 2, (U32)ramPages);
+    readRamPage(tmp, tmp);
 
     andValue(JitWidth::b32, addressReg, K_PAGE_MASK);
 
@@ -1020,7 +1024,7 @@ void JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<v
     mov(JitWidth::b32, tmpReg, addressReg);
 
     shrValue(JitWidth::b32, tmpReg, K_PAGE_SHIFT);
-    read(JitWidth::b32, tmpReg, tmpReg, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
+    readMMU(tmpReg, tmpReg);
 
     if (width != JitWidth::b8) {
         EndIf();
@@ -1032,12 +1036,12 @@ void JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<v
     andValue(JitWidth::b32, tmpReg2, 0x40000000 | 0x80000000);
 
     IfNotEqual(JitWidth::b32, tmpReg2, 0x40000000 | 0x80000000); {
-        emulateSingleOp(getTmpReg());
+        emulateSingleOp();
     } EndIf();
 
     // bottom 20 bits of mmu contains ram page index
     andValue(JitWidth::b32, tmpReg, 0xfffff);
-    read(JitWidth::b32, tmpReg, tmpReg, 2, (U32)ramPages);
+    readRamPage(tmpReg, tmpReg);
     andValue(JitWidth::b32, addressReg, K_PAGE_MASK);
     read(JitWidth::b32, tmpReg2, tmpReg, addressReg, 0, 0);
 
@@ -1390,6 +1394,7 @@ RegPtr JitCodeGen::callGetCondition(JitConditional condition, RegPtr resultReg) 
     case JitConditional::NLE: return callAndReturn(common_condition_nle, resultReg);
     // no default, should get compiler error if not all enum cases handled
     }
+    return nullptr;
 }
 
 void JitCodeGen::IfCondition(JitConditional condition) {

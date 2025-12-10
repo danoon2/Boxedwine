@@ -214,7 +214,17 @@ static U8 parity_lookup[256] = {
 void JitCodeGen::genPF(const LazyFlags* flags, RegPtr result) {
     getFlagResultTmp(result);
     movzx(JitWidth::b32, result, JitWidth::b8, result);
-    read(JitWidth::b8, result, result, 0, (U32)parity_lookup);    
+#ifdef BOXEDWINE_64
+    if ((U64)parity_lookup <= 0xffffffffl) {
+        read(JitWidth::b8, result, result, 0, (U32)(U64)parity_lookup);
+    } else {
+        RegPtr tmp = getTmpReg();
+        movValue(JitWidth::b64, tmp, (U64)parity_lookup);
+        read(JitWidth::b8, result, result, tmp, 0, 0);
+    }
+#else
+    read(JitWidth::b8, result, result, 0, (U32)parity_lookup);
+#endif
 }
 
 void JitCodeGen::genCF(const LazyFlags* flags, RegPtr result) {    

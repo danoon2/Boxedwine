@@ -18,28 +18,28 @@
 
 #include "../common/common_other.h"
 void Jit::dynamic_bound16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_bound32(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_daa(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_das(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_aaa(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_aas(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_aad(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_aam(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_nop(DecodedOp* op) {
     // Nop
@@ -66,28 +66,28 @@ void Jit::dynamic_cwq(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_callAp(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_callFar(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_jmpAp(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_jmpFar(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_retf16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_retf32(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_iret(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_iret32(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_sahf(DecodedOp* op) {
     RegPtr flags = getTmpReg();
@@ -127,28 +127,28 @@ void Jit::dynamic_retn32(DecodedOp* op) {
     blockDone(false);
 }
 void Jit::dynamic_invalid(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_ud2(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_int80(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_int99(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_int9A(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_int9B(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_intIb(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_int3(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_xlat(DecodedOp* op) {
     RegPtr address = getTmpReg8(0);
@@ -168,7 +168,7 @@ void Jit::dynamic_xlat(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_hlt(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_cmc(DecodedOp* op) {
     fillFlags();
@@ -202,14 +202,14 @@ void Jit::dynamic_std(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_rdtsc(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_cpuid(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_enter16(DecodedOp* op) {
     if (op->data.disp) {
-        emulateSingleOp(getTmpReg());
+        emulateSingleOp();
     } else {
         RegPtr ebp = getReg(5);        
         // push EBP
@@ -228,7 +228,7 @@ void Jit::dynamic_enter16(DecodedOp* op) {
 }
 void Jit::dynamic_enter32(DecodedOp* op) {
     if (op->data.disp) {
-        emulateSingleOp(getTmpReg());
+        emulateSingleOp();
     } else {
         RegPtr ebp = getReg(5);
         // push EBP
@@ -527,40 +527,40 @@ void Jit::dynamic_jmpE32(DecodedOp* op) {
     blockDoneJump();
 }
 void Jit::dynamic_callFarE16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_callFarE32(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_jmpFarE16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_jmpFarE32(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_larr16r16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_larr16e16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_lslr16r16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_lslr16e16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_lslr32r32(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_lslr32e32(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_verre16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_verwe16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_xaddr8r8(DecodedOp* op) {
     dynamic_RR_WriteBoth(op, JitWidth::b8, & Jit::xaddReg, FLAGS_ADD8);
@@ -586,23 +586,23 @@ void Jit::dynamic_bswap32(DecodedOp* op) {
 }
 void Jit::dynamic_cmpxchgg8b(DecodedOp* op) {
     // I haven't seen anything call this so no reason to inline, I imagine only the lock version of this is ever used
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_loadSegment16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_loadSegment32(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_fxsave(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_fxrstor(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_xsave(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_xrstor(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }

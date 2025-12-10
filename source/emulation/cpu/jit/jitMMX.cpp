@@ -78,7 +78,7 @@ void JitMMX::dynamic_movPqE32(DecodedOp* op) {
         loadMMXFromMem32(DynMMXReg(op->reg), address, offset, 0, 0);
         storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitMMX::dynamic_movR32Pq(DecodedOp* op) {
@@ -116,7 +116,7 @@ void JitMMX::dynamic_movPqE64(DecodedOp* op) {
         loadMMXFromMem64(DynMMXReg(op->reg), address, offset, 0, 0);
         storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitMMX::dynamic_movE64Pq(DecodedOp* op) {
@@ -146,7 +146,7 @@ void JitMMX::opMmxE64(DecodedOp* op, MmxMmxCallback callback) {
         (this->*callback)((DynMMXReg)op->reg, tmpMMX);
         storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitMMX::opMmx(DecodedOp* op, MmxImmCallback callback) {
@@ -176,7 +176,7 @@ void JitMMX::dynamic_pextrwE16Mmx(DecodedOp* op) {
         pextrwRegMmx(tmp, (DynMMXReg)op->reg, op->imm & 3);
         write(JitWidth::b16, address, offset, 0, 0, tmp);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitMMX::dynamic_pinsrwMmxR32(DecodedOp* op) {
@@ -194,7 +194,7 @@ void JitMMX::dynamic_pinsrwMmxE16(DecodedOp* op) {
         pinsrwMmxReg((DynMMXReg)op->reg, tmp, op->imm & 3);
         storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitMMX::dynamic_pshufwMmxMmx(DecodedOp* op) {
@@ -214,7 +214,7 @@ void JitMMX::dynamic_pshufwMmxE64(DecodedOp* op) {
         pshufwMmxMmx((DynMMXReg)op->reg, tmpMMX, op->imm);
         storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitMMX::dynamic_maskmovqEDIMmxMmx(DecodedOp* op) {

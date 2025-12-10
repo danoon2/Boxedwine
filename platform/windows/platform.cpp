@@ -718,7 +718,7 @@ void platformSetThreadDescription(KThread* thread) {
 }
 #endif
 
-#ifdef BOXEDWINE_X64
+#if defined(BOXEDWINE_X64) || defined(BOXEDWINE_JIT_X64)
 bool platformHasBMI2() {
     int regs[4] = {};
 

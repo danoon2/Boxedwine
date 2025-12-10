@@ -19,9 +19,9 @@
 #include "../common/common_fpu.h"
 
 #undef FPU_0
-#define FPU_0(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());;}
+#define FPU_0(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();;}
 #undef FPU_R
-#define FPU_R(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());;}
+#define FPU_R(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();;}
 #undef FPU_A
-#define FPU_A(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());;}
+#define FPU_A(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();;}
 #include "../common/common_fpu_def.h"

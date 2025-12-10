@@ -89,10 +89,10 @@ void Jit::dynamic_move16s16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_movs16e16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_movs16r16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_movAlOb(DecodedOp* op) {
     RegPtr reg;
@@ -215,10 +215,10 @@ void Jit::dynamic_movGdSxE16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_movRdCRx(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_movCRxRd(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_leaR16(DecodedOp* op) {
     mov(JitWidth::b16, getReg(op->reg), calculateEaa(op));

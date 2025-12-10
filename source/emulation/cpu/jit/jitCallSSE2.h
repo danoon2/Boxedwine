@@ -19,23 +19,23 @@
 #include "../common/common_sse2.h"
 
 #undef SSE2_0
-#define SSE2_0(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE2_0(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #undef SSE2_E
-#define SSE2_E(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE2_E(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #undef SSE2_RR
-#define SSE2_RR(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE2_RR(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #undef SSE2_RR_SETS_FLAGS
-#define SSE2_RR_SETS_FLAGS(name) void Jit::dynamic_##name(DecodedOp* op) {currentLazyFlags=FLAGS_NONE;emulateSingleOp(getTmpReg());}
+#define SSE2_RR_SETS_FLAGS(name) void Jit::dynamic_##name(DecodedOp* op) {currentLazyFlags=FLAGS_NONE;emulateSingleOp();}
 #undef SSE2_RE
-#define SSE2_RE(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE2_RE(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #undef SSE2_RE_SETS_FLAGS
-#define SSE2_RE_SETS_FLAGS(name) void Jit::dynamic_##name(DecodedOp* op) {currentLazyFlags=FLAGS_NONE;emulateSingleOp(getTmpReg());}
+#define SSE2_RE_SETS_FLAGS(name) void Jit::dynamic_##name(DecodedOp* op) {currentLazyFlags=FLAGS_NONE;emulateSingleOp();}
 #undef SSE2_RR_I8
-#define SSE2_RR_I8(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE2_RR_I8(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #undef SSE2_RE_I8
-#define SSE2_RE_I8(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE2_RE_I8(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 
 #undef SSE2_RR_EDI
-#define SSE2_RR_EDI(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE2_RR_EDI(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 
 #include "../common/common_sse2_def.h"

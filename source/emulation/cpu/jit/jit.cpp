@@ -128,12 +128,12 @@ void Jit::dynamic_sidt(DecodedOp* op) {
 }
 
 void Jit::dynamic_callback(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 
 void Jit::dynamic_invalid_op(DecodedOp* op) {
     //kpanic_fmt("Invalid instruction %x\n", op->inst);
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
     blockDone(true);
 }
 
@@ -183,6 +183,16 @@ void Jit::call_RI(CallRI address, JitWidth width, RegPtr reg, U32 value) {
 }
 
 RegPtr Jit::callAndReturn(CallReturn address, RegPtr resultReg) {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(JitCallParamType::CPU));
+    if (!resultReg) {
+        resultReg = getTmpRegForCallResult();
+    }
+    callHostFunctionWithResult(resultReg, address, params);
+    return resultReg;
+}
+
+RegPtr Jit::callAndReturnPtr(CallReturnPtr address, RegPtr resultReg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     if (!resultReg) {
@@ -254,7 +264,7 @@ void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const 
             if (flags && flags->usesResult(needsToSetFlags)) {
                 storeLazyFlagsResult(value);
             }
-            });
+        });
     } else {
         RegPtr dest = read(width, calculateEaa(op));
         U32 needsToSetFlags = 0;
@@ -354,7 +364,7 @@ void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const 
             if (flags && flags->usesResult(needsToSetFlags)) {
                 storeLazyFlagsResult(value);
             }
-            });
+        });
     } else {
         if (addCF) {
             kpanic("Jit::dynamic_MR wasn't expecting addCF");
@@ -632,9 +642,9 @@ void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, const Lazy
             if (flags && flags->usesResult(needsToSetFlags)) {
                 storeLazyFlagsResult(value);
             }
-            });
+        });
     } else {
-        RegPtr dest = read(width, calculateEaa(op), nullptr, nullptr, false, tmp);
+        RegPtr dest = read(width, calculateEaa(op), nullptr, nullptr, tmp);
         U32 needsToSetFlags = 0;
         arithSetup(op, needsToSetFlags, flags); // must check after read permission in case emulateSingleOp is called, we can't update things like lazyFlags before this
 
@@ -667,22 +677,10 @@ void Jit::dynamic_R_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, cons
         dest = getReg(op->reg);
     }
 
-    if (!needsToSetFlags) {
-        RegPtr src;
-        if (width == JitWidth::b8) {
-            src = getReadOnlyReg8(1, false, 1);
-        } else {
-            src = getReadOnlyReg(1, false, 1);
-        }
+    RegPtr src = getReadOnlyReg8(1, false, 1);
+    if (!needsToSetFlags) {        
         (this->*callback)(width, dest, src);
     } else {
-        RegPtr src;
-        if (width == JitWidth::b8) {
-            src = getTmpReg8(1, false, 1);
-        } else {
-            src = getTmpReg(1, false, 1);
-        }
-        andValue(JitWidth::b8, src, 0x1f);
         If(JitWidth::b8, src); {
             storeLazyFlags(flags);
             if (flags && flags->usesDst(needsToSetFlags)) {
@@ -711,16 +709,10 @@ void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, cons
             } else {
                 (this->*callback)(width, value, getReadOnlyReg(1, true, 1));
             }
-            });
+        });
     } else {
-        RegPtr src;
-        if (width == JitWidth::b8) {
-            src = getTmpReg8(1, false, 1);
-        } else {
-            src = getTmpReg(1, false, 1);
-        }
-        andValue(JitWidth::b8, src, 0x1f);
-        If(JitWidth::b8, src, true); {
+        RegPtr src = getReadOnlyReg8(1, false, 1);
+        If(JitWidth::b8, src); {
             readWriteMem(width, calculateEaa(op), [needsToSetFlags, flags, src, op, width, callback, this](RegPtr value) {
                 storeLazyFlags(flags);
                 if (flags && flags->usesDst(needsToSetFlags)) {
@@ -733,8 +725,8 @@ void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, cons
                 if (flags && flags->usesResult(needsToSetFlags)) {
                     storeLazyFlagsResult(value);
                 }
-                });
-        } EndIf(true);
+            });
+        } EndIf();
         currentLazyFlags = nullptr;
     }
     incrementEip(op->len);
@@ -750,7 +742,7 @@ void Jit::dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback,
             } else {
                 (this->*callback)(width, getReg(op->reg), value);
             }
-            });
+        });
     } else {
         RegPtr src;
         if (width == JitWidth::b8) {
@@ -774,7 +766,7 @@ void Jit::dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback,
             if (flags && flags->usesResult(needsToSetFlags)) {
                 storeLazyFlagsResult(value);
             }
-            });
+        });
     }
     incrementEip(op->len);
 }
@@ -790,13 +782,11 @@ void Jit::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callba
         // dynamic_xchgr8r8 has the same issue, the API doesn't allow for the write of 2 registers that map to the same emulated register (AL/AH etc)
         if (op->rm == op->reg + 4) {
             src = getReg8(op->reg);
-            dest = std::make_shared<JitReg>(src->hardwareReg(), 0xff);
-            dest->isHigh = true;
+            dest = getTmpReg8(op->rm);
         } else if (op->reg == op->rm + 4) {
+            src = getTmpReg8(op->reg);
             dest = getReg8(op->rm);
-            src = std::make_shared<JitReg>(dest->hardwareReg(), 0xff);
-            src->isHigh = true;
-        } else if (op->reg == op->rm) {
+        }  else if (op->reg == op->rm) {
             src = getReg8(op->reg);
             dest = src;
         } else {
@@ -816,6 +806,17 @@ void Jit::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callba
     (this->*callback)(width, src, dest);
     if (flags && flags->usesResult(needsToSetFlags)) {
         storeLazyFlagsResult(dest);
+    }
+    if (width == JitWidth::b8) {
+        if (op->rm == op->reg + 4) {
+            shlValue(JitWidth::b16, dest, 8);
+            andValue(JitWidth::b16, src, 0xff);
+            orReg(JitWidth::b16, src, dest);
+        } else if (op->reg == op->rm + 4) {
+            shlValue(JitWidth::b16, src, 8);
+            andValue(JitWidth::b16, dest, 0xff);
+            orReg(JitWidth::b16, dest, src);
+        }
     }
     incrementEip(op->len);
 }

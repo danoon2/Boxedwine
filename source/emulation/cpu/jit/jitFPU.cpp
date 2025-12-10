@@ -47,9 +47,9 @@ void JitFPU::dynamic_FPU_PREP_PUSH(RegPtr topReg, bool writeTag) {
     }
 }
 
-void JitFPU::IfNotRegCached(RegPtr indexReg, bool bigJump) {
+void JitFPU::IfNotRegCached(RegPtr indexReg) {
     static_assert(sizeof(cpu->fpu.isRegCached) == 9, "false");
-    IfNotCPU(JitWidth::b8, indexReg, 0, offsetof(CPU, fpu.isRegCached), bigJump);
+    IfNotCPU(JitWidth::b8, indexReg, 0, offsetof(CPU, fpu.isRegCached));
 }
 
 void JitFPU::setRegIsCached(RegPtr indexReg, bool regIsCached) {
@@ -122,7 +122,7 @@ void JitFPU::dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool re
         }
         syncXmmToCPU(top, reverse ? XMM_TMP : dst.reg, 0);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FCOM_SINGLE_REAL(DecodedOp* op) {
@@ -134,7 +134,7 @@ void JitFPU::dynamic_FCOM_SINGLE_REAL(DecodedOp* op) {
 
         doFCOM(XMM_TMP, dst.reg, readFPUTag(std::move(top)));
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FCOM_SINGLE_REAL_Pop(DecodedOp* op) {
@@ -147,7 +147,7 @@ void JitFPU::dynamic_FCOM_SINGLE_REAL_Pop(DecodedOp* op) {
         doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FCOMPP(DecodedOp* op) {
@@ -251,7 +251,7 @@ void JitFPU::dynamic_DOUBLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool re
         }
         syncXmmToCPU(top, reverse ? XMM_TMP : dst.reg, 0);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FCOM_DOUBLE_REAL(DecodedOp* op) {
@@ -262,7 +262,7 @@ void JitFPU::dynamic_FCOM_DOUBLE_REAL(DecodedOp* op) {
 
         doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FCOM_DOUBLE_REAL_Pop(DecodedOp* op) {
@@ -274,7 +274,7 @@ void JitFPU::dynamic_FCOM_DOUBLE_REAL_Pop(DecodedOp* op) {
         doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_DWORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, bool reverse) {
@@ -290,7 +290,7 @@ void JitFPU::dynamic_DWORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, bool 
         }
         syncXmmToCPU(top, reverse ? XMM_TMP : dst.reg, 0);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FICOM_DWORD_INTEGER(DecodedOp* op) {
@@ -301,7 +301,7 @@ void JitFPU::dynamic_FICOM_DWORD_INTEGER(DecodedOp* op) {
 
         doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FICOM_DWORD_INTEGER_Pop(DecodedOp* op) {
@@ -313,7 +313,7 @@ void JitFPU::dynamic_FICOM_DWORD_INTEGER_Pop(DecodedOp* op) {
         doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::loadFpuRegFromShort(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
@@ -336,7 +336,7 @@ void JitFPU::dynamic_WORD_INTEGER(DecodedOp* op, XmmXmmCallback callback,  bool 
         }
         syncXmmToCPU(top, reverse ? XMM_TMP : dst.reg, 0);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FICOM_WORD_INTEGER(DecodedOp* op) {
@@ -554,7 +554,7 @@ void JitFPU::dynamic_FST_SINGLE_REAL_Pop(DecodedOp* op) {
         storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_32_BIT);
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FST_DOUBLE_REAL(DecodedOp* op) {
@@ -573,7 +573,7 @@ void JitFPU::dynamic_FST_DOUBLE_REAL_Pop(DecodedOp* op) {
         storeFpuReg(src.reg, address, offset, 0, 0);
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FNSTCW(DecodedOp* op) {
@@ -913,17 +913,17 @@ void JitFPU::dynamic_FISTTP64(DecodedOp* op) {
     // so if its not already cached (64-bit format vs 80-bit), then do the slow way to keep the 64-bit precision
     // 
     // see FPU::FLD_I64
-    IfNotRegCached(top, true); {
+    IfNotRegCached(top); {
         JitCodeGen::dynamic_FISTTP64(op);
-    } StartElse(true); {
+    } StartElse(); {
         write(JitWidth::b64, calculateEaa(op), nullptr, [top, op, this](RegPtr address, RegPtr offset) {
             FPUReg src(this, top, 0);
             fpuRegToInt64(src.reg, src.reg, true);
             storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_64_BIT);
             dynamic_FPU_POP(top);
             incrementEip(op->len);
-        }, nullptr, true);
-    } EndIf(true);
+        });
+    } EndIf();
 }
 
 void JitFPU::dynamic_FIST_DWORD_INTEGER(DecodedOp* op) {
@@ -936,7 +936,7 @@ void JitFPU::dynamic_FIST_DWORD_INTEGER(DecodedOp* op) {
         write(JitWidth::b32, address, offset, 0, 0, fpuRegToInt32(src.reg, false));
         restoreFPURounding();
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) {
@@ -950,7 +950,7 @@ void JitFPU::dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) {
         restoreFPURounding();
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::doFFREE_STi(DecodedOp* op, bool pop) {
@@ -1013,7 +1013,7 @@ void JitFPU::dynamic_FISTTP16(DecodedOp* op) {
         write(JitWidth::b16, address, offset, 0, 0, fpuRegToInt32(src.reg, true));
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FIST_WORD_INTEGER(DecodedOp* op) {
@@ -1026,7 +1026,7 @@ void JitFPU::dynamic_FIST_WORD_INTEGER(DecodedOp* op) {
         write(JitWidth::b16, address, offset, 0, 0, fpuRegToInt32(src.reg, false));
         restoreFPURounding();
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op) {
@@ -1040,7 +1040,7 @@ void JitFPU::dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op) {
         restoreFPURounding();
         dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, nullptr, true);
+    });
 }
 
 void JitFPU::dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) {
@@ -1051,9 +1051,9 @@ void JitFPU::dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) {
     // so if its not already cached (64-bit format vs 80-bit), then do the slow way to keep the 64-bit precision
     // 
     // see FPU::FLD_I64
-    IfNotRegCached(top, true); {
+    IfNotRegCached(top); {
         JitCodeGen::dynamic_FISTP_QWORD_INTEGER(op);
-    } StartElse(true); {
+    } StartElse(); {
         write(JitWidth::b64, calculateEaa(op), nullptr, [top, op, this](RegPtr address, RegPtr offset) {
             updateFPURounding();
 
@@ -1063,8 +1063,8 @@ void JitFPU::dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) {
             restoreFPURounding();
             dynamic_FPU_POP(top);
             incrementEip(op->len);
-        }, nullptr, true);
-    } EndIf(true);
+        });
+    } EndIf();
 }
 
 #endif

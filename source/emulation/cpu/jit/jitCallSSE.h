@@ -19,21 +19,21 @@
 #include "../common/common_sse.h"
 
 #undef SSE_0
-#define SSE_0(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE_0(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #undef SSE_RR
-#define SSE_RR(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE_RR(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #undef SSE_RR_SETS_FLAGS
-#define SSE_RR_SETS_FLAGS(name) void Jit::dynamic_##name(DecodedOp* op) {currentLazyFlags=FLAGS_NONE;emulateSingleOp(getTmpReg());}
+#define SSE_RR_SETS_FLAGS(name) void Jit::dynamic_##name(DecodedOp* op) {currentLazyFlags=FLAGS_NONE;emulateSingleOp();}
 #undef SSE_RE
-#define SSE_RE(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE_RE(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #undef SSE_RE_SETS_FLAGS
-#define SSE_RE_SETS_FLAGS(name) void Jit::dynamic_##name(DecodedOp* op) {currentLazyFlags=FLAGS_NONE;emulateSingleOp(getTmpReg());}
+#define SSE_RE_SETS_FLAGS(name) void Jit::dynamic_##name(DecodedOp* op) {currentLazyFlags=FLAGS_NONE;emulateSingleOp();}
 #undef SSE_RR_I8
-#define SSE_RR_I8(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE_RR_I8(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 #undef SSE_RE_I8
-#define SSE_RE_I8(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE_RE_I8(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 
 #undef SSE_RR_EDI
-#define SSE_RR_EDI(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp(getTmpReg());}
+#define SSE_RR_EDI(name) void Jit::dynamic_##name(DecodedOp* op) {emulateSingleOp();}
 
 #include "../common/common_sse_def.h"

@@ -94,8 +94,13 @@ private:
 
 using RegPtr = std::shared_ptr<JitReg>;
 
+#ifdef BOXEDWINE_64
+#define DYN_PTR_SIZE U64
+#define DYN_PTR JitWidth::b64
+#else
 #define DYN_PTR_SIZE U32
 #define DYN_PTR JitWidth::b32
+#endif
 // API available to dynamic ops
 class Jit {
 public:
@@ -184,10 +189,9 @@ public:
     virtual RegPtr compareValue(JitWidth regWidth, RegPtr reg, U32 value, JitEvaluate condition, RegPtr resultReg = nullptr) = 0; // will return 0 or 1 in result
 
     virtual void mov(JitWidth regWidth, RegPtr dest, RegPtr src) = 0;
-    virtual void mov8(RegPtr dest, bool isDestHigh, RegPtr src, bool isSrcHigh) = 0;
     virtual void movzx(JitWidth dstWidth, RegPtr dest, JitWidth srcWidth, RegPtr src) = 0;
     virtual void movsx(JitWidth dstWidth, RegPtr dest, JitWidth srcWidth, RegPtr src) = 0;
-    virtual void movValue(JitWidth regWidth, RegPtr dst, U32 imm) = 0;
+    virtual void movValue(JitWidth regWidth, RegPtr dst, DYN_PTR_SIZE imm) = 0;
 
     void push16(RegPtr reg);
     void push32(RegPtr reg);
@@ -213,29 +217,29 @@ public:
     virtual void setFlags(RegPtr flags, U32 mask) = 0;
     virtual RegPtr getCondition(JitConditional condition, RegPtr resultReg = nullptr) = 0; // guaranteed to return 0 or 1
 
-    virtual void If(JitWidth regWidth, RegPtr reg, bool bigJump = false) = 0;
-    virtual void IfTest(JitWidth regWidth, RegPtr reg, RegPtr mask, bool bigJump = false) = 0;
-    virtual void IfTest(JitWidth regWidth, RegPtr reg, U32 mask, bool bigJump = false) = 0;
-    virtual void IfNotTest(JitWidth regWidth, RegPtr reg, U32 mask, bool bigJump = false) = 0;
+    virtual void If(JitWidth regWidth, RegPtr reg) = 0;
+    virtual void IfTest(JitWidth regWidth, RegPtr reg, RegPtr mask) = 0;
+    virtual void IfTest(JitWidth regWidth, RegPtr reg, U32 mask) = 0;
+    virtual void IfNotTest(JitWidth regWidth, RegPtr reg, U32 mask) = 0;
     virtual void IfEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) = 0;
-    virtual void IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool bigJump = false) = 0;
+    virtual void IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) = 0;
     virtual void IfNotEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) = 0;
-    virtual void IfNotEqual(JitWidth regWidth, RegPtr reg, RegPtr reg2, bool bigJump = false) = 0;
-    virtual void IfLessThan2(JitWidth regWidth, RegPtr reg, U32 value, bool bigJump = false) = 0;
-    virtual void IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool bigJump = false) = 0;
+    virtual void IfNotEqual(JitWidth regWidth, RegPtr reg, RegPtr reg2) = 0;
+    virtual void IfLessThan2(JitWidth regWidth, RegPtr reg, U32 value) = 0;
+    virtual void IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2) = 0;
     virtual void IfNot(JitWidth regWidth, RegPtr reg) = 0;
-    virtual void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset, bool bigJump = false) = 0;
+    virtual void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) = 0;
     virtual void IfCondition(JitConditional condition) = 0;
     virtual void IfCompareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition) = 0; // result guaranteed to be 0 or 1
     virtual void JumpIfCondition(JitConditional condition, U32 address) = 0;
     virtual U32 MarkJumpLocation() = 0;
     virtual void Goto(U32 location) = 0;
-    virtual void IfFlagSet(U32 flags, bool bigJump = false) = 0;
-    virtual void IfSmallStack(bool bigJump = false) = 0;
+    virtual void IfFlagSet(U32 flags) = 0;
+    virtual void IfSmallStack() = 0;
 
     virtual void readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) = 0;
-    virtual RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool isBigJump = false, RegPtr tmp = nullptr) = 0;
-    virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool isBigJump = false) = 0;
+    virtual RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr) = 0;
+    virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr) = 0;
     virtual void writeValue(JitWidth width, RegPtr addressReg, U32 imm) = 0;
     
     // I would say that most ops shouldn't use these directly, but pusha/popa needs it
@@ -278,8 +282,8 @@ public:
     virtual void blockExit(bool syncCache = true) = 0;
 
     virtual void JumpInBlock(U32 address) = 0;
-    virtual void StartElse(bool bigJump = false) = 0;
-    virtual void EndIf(bool bigJump = false) = 0;
+    virtual void StartElse() = 0;
+    virtual void EndIf() = 0;
 
     void dynamic_sidt(DecodedOp* op);
     void dynamic_callback(DecodedOp* op);
@@ -293,21 +297,27 @@ public:
         DynParam(JitCallParamType type, U32 value) : type(type), value(value) {}
         DynParam(JitCallParamType type, RegPtr reg) : type(type), value(0), reg(reg) {}
 
+        bool usesReg() const {
+            return type == JitCallParamType::REG_8 || type == JitCallParamType::REG_16 || type == JitCallParamType::REG_32;
+        }
         JitCallParamType type;
-        U32 value;
+        DYN_PTR_SIZE value;
         const RegPtr reg;
     };
     virtual void callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache = true) = 0;
     virtual void callHostFunctionWithResult(RegPtr result, void* address, const std::vector<DynParam>& params) = 0;
 
     // :TODO: move to emulateSingleOp so that try/catch works with mem read/write on x64
-    virtual void emulateSingleOp(RegPtr tmpReg) = 0;
+    virtual void emulateSingleOp() = 0;
 
     using CallReturn = U32(*)(CPU* cpu);
     RegPtr callAndReturn(CallReturn address, RegPtr resultReg = nullptr);    
 
     using CallReturnOp = DecodedOp*(*)(CPU* cpu);
     RegPtr callAndReturnOp(CallReturnOp address, RegPtr resultReg = nullptr);
+
+    using CallReturnPtr = DYN_PTR_SIZE(*)(CPU* cpu);
+    RegPtr callAndReturnPtr(CallReturnPtr address, RegPtr resultReg = nullptr);
 
     using CallNoArgs = void(*)(CPU* cpu);
     void call(CallNoArgs address);

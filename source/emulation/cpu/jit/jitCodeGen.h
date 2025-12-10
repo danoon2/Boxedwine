@@ -41,6 +41,8 @@ public:
     // v2
     virtual void preOp(DecodedOp* op) {}
     virtual void read(JitWidth width, RegPtr dest, RegPtr reg, U8 lsl, U32 disp) = 0;
+    virtual void readRamPage(RegPtr dest, RegPtr index) = 0;
+    virtual void readMMU(RegPtr dest, RegPtr index) = 0;
     virtual void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
     virtual void write(JitWidth width, RegPtr reg, U32 disp, RegPtr src) = 0;
     virtual void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
@@ -50,12 +52,12 @@ public:
     virtual RegPtr readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset) = 0;
     virtual void writeCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr src) = 0;
     virtual void writeCPU(JitWidth width, U32 offset, RegPtr src) = 0;
-    virtual void writeCPUValue(JitWidth width, RegPtr sib, U8 lsl, U32 offset, U32 src) = 0;
-    virtual void writeCPUValue(JitWidth width, U32 offset, U32 src) = 0;
+    virtual void writeCPUValue(JitWidth width, RegPtr sib, U8 lsl, U32 offset, DYN_PTR_SIZE src) = 0;
+    virtual void writeCPUValue(JitWidth width, U32 offset, DYN_PTR_SIZE src) = 0;
 
     void readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) override;
-    RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool isBigJump = false, RegPtr tmp = nullptr) override;
-    void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool isBigJump = false) override;
+    RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr) override;
+    void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr) override;
     void writeValue(JitWidth width, RegPtr addressReg, U32 imm) override;
 
     void genCF(const LazyFlags* flags, RegPtr result); // guaranteed to return 0 or 1
@@ -99,8 +101,7 @@ public:
     void onTestEnd(DecodedOp* op) override;
     U8* createJumpEip();
     void jumpToEipIfCached();
-    U8* createEmulateSingleOp();
-    void emulateSingleOp(RegPtr tmpReg) override;    
+    U8* createEmulateSingleOp();    
 
     void incReg(JitWidth regWidth, RegPtr dest) override;
     void decReg(JitWidth regWidth, RegPtr dest) override;
@@ -109,6 +110,8 @@ protected:
     virtual U32 getBufferSize() = 0;
     virtual U8* getBuffer() = 0;
     virtual U32 getIfJumpSize() = 0;                     
+    virtual U8* createSyncToHost() = 0;
+    virtual U8* createSyncFromHost() = 0;
 
     bool isParamTypeReg(JitCallParamType paramType);
     bool calculateLongestBlock(DecodedOp* op);
@@ -123,7 +126,7 @@ protected:
     virtual void patch(U8* begin) {}
 
     RegPtr callGetCondition(JitConditional condition, RegPtr resultReg = nullptr);
-    RegPtr calculateCondition(JitConditional condition, RegPtr resultReg = nullptr);
+    RegPtr calculateCondition(JitConditional condition, RegPtr resultReg = nullptr);    
 };
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);

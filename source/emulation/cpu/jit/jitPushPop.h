@@ -23,18 +23,18 @@ void Jit::push16(RegPtr reg) {
 
     RegPtr address = getTmpReg(4);
 
-    IfSmallStack(true); {
+    IfSmallStack(); {
         andValue(JitWidth::b32, address, 0xFFFF);
         subValue(JitWidth::b16, address, 2);
         addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
         write(JitWidth::b16, address, reg);
         subValue(JitWidth::b16, getReg(4), 2);
-    } StartElse(true); {
+    } StartElse(); {
         subValue(JitWidth::b32, address, 2);
         addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
         write(JitWidth::b16, address, reg);
         subValue(JitWidth::b32, getReg(4), 2);
-    } EndIf(true);
+    } EndIf();
 }
 
 void Jit::push32(RegPtr reg) {
@@ -46,18 +46,18 @@ void Jit::push32(RegPtr reg) {
     } else {
         RegPtr address = getTmpReg(4);
 
-        IfSmallStack(true); {
+        IfSmallStack(); {
             andValue(JitWidth::b32, address, 0xFFFF);
             subValue(JitWidth::b16, address, 4);
             addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
             write(JitWidth::b32, address, reg);
             subValue(JitWidth::b16, getReg(4), 4);
-        } StartElse(true); {
+        } StartElse(); {
             subValue(JitWidth::b32, address, 4);
             addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
             write(JitWidth::b32, address, reg);
             subValue(JitWidth::b32, getReg(4), 4);
-        } EndIf(true);
+        } EndIf();
     }
 }
 
@@ -66,11 +66,13 @@ RegPtr Jit::pop32(RegPtr reg, U32 amount) {
         reg = getTmpReg();
     }
     mov(JitWidth::b32, reg, peek32());
-    IfSmallStack(); {
-        addValue(JitWidth::b16, getReg(4), amount);
-    } StartElse(); {
-        addValue(JitWidth::b32, getReg(4), amount);
-    } EndIf();
+    if (reg->emulatedReg != 4) {
+        IfSmallStack(); {
+            addValue(JitWidth::b16, getReg(4), amount);
+        } StartElse(); {
+            addValue(JitWidth::b32, getReg(4), amount);
+        } EndIf();
+    }
     return reg;
 }
 
@@ -79,11 +81,13 @@ RegPtr Jit::pop16(RegPtr reg, U32 amount) {
         reg = getTmpReg();
     }
     mov(JitWidth::b16, reg, peek16());
-    IfSmallStack(); {
-        addValue(JitWidth::b16, getReg(4), amount);
-    } StartElse(); {
-        addValue(JitWidth::b32, getReg(4), amount);
-    } EndIf();
+    if (reg->emulatedReg != 4) {
+        IfSmallStack(); {
+            addValue(JitWidth::b16, getReg(4), amount);
+        } StartElse(); {
+            addValue(JitWidth::b32, getReg(4), amount);
+        } EndIf();
+    }
     return reg;
 }
 
@@ -94,7 +98,7 @@ RegPtr Jit::peek16(RegPtr resultReg) {
         andValue(JitWidth::b32, address, 0xFFFF);
     } EndIf();
     addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
-    return read(JitWidth::b16, address, nullptr, nullptr, false, resultReg);
+    return read(JitWidth::b16, address, nullptr, nullptr, resultReg);
 }
 RegPtr Jit::peek32(RegPtr resultReg) {
     RegPtr address = getTmpReg(4);
@@ -103,7 +107,7 @@ RegPtr Jit::peek32(RegPtr resultReg) {
         andValue(JitWidth::b32, address, 0xFFFF);
     } EndIf();
     addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
-    return read(JitWidth::b32, address, nullptr, nullptr, false, resultReg);
+    return read(JitWidth::b32, address, nullptr, nullptr, resultReg);
 }
 void Jit::dynamic_pushEw_reg(DecodedOp* op) {
     push16(getReadOnlyReg(op->reg));
@@ -154,14 +158,14 @@ void Jit::dynamic_pushSeg16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void Jit::dynamic_popSeg16(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_pushSeg32(DecodedOp* op) {
     push32(getReadOnlySegValue(op->reg));
     incrementEip(op->len);
 }
 void Jit::dynamic_popSeg32(DecodedOp* op) {
-    emulateSingleOp(getTmpReg());
+    emulateSingleOp();
 }
 void Jit::dynamic_pushA16(DecodedOp* op) {
     RegPtr esp = getTmpReg(4);
