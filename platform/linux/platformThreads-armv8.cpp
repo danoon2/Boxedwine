@@ -88,7 +88,7 @@ void syncFromException(Armv8btCPU* cpu, ucontext_t* context) {
     }
 #endif
     cpu->flags = (U32)context->CONTEXT_REG(xFLAGS);
-    cpu->lazyFlags = FLAGS_NONE;
+    cpu->lazyFlagType = FLAGS_NONE;
     
 #ifdef __MACH__
     for (int i = 0; i < 8; i++) {

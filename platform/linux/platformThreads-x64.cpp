@@ -142,7 +142,7 @@ void syncFromException(BtCPU* cpu, ucontext_t* context, bool includeFPU) {
     
     cpu->flags = (context->CONTEXT_FLAGS & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
 
-    cpu->lazyFlags = FLAGS_NONE;
+    cpu->lazyFlagType = FLAGS_NONE;
 #if defined(BOXEDWINE_X64) && defined(BOXEDWINE_USE_SSE_FOR_FPU)
     if (cpu->fpu.isMMXInUse) {
         cpu->fpu.SetCW(context->CONTEXT_FCW);
