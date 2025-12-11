@@ -41,26 +41,37 @@
 // 7: 30.9, 31.0, 31.1
 // 0+6: 32.2, 32.3, 32.1
 #define INVALID_REG 0xff
-
+#define NUMBER_OF_TMPS 5
 #ifdef BOXEDWINE_64
-static U8 regCache[] = { 0, 1, 2, 3, 10, 5, 6, 7 };
+
+#if 0
+// this is a tiny bit faster, but there is a bug, ff installer crashes
+// 38.2 vs 37.8 fps for Quake 2
+static U8 regCache[] = { 8, 9, 11, 12, 10, 5, 6, 7 };
+static bool isTmp[] = { true, true, true, true, false, false, false, false, false, false, false, false, false, false, true, false };
+static U8 tmps[] = { 14, 3, 2, 1, 0 };
+// should be a volitile tmp reg
+#define PARAM_CALL_TMP x86.rdx
 #else
-static U8 regCache[] = { 5, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG };
+static U8 regCache[] = { 0, 1, 2, 3, 10, 5, 6, 7 };
+static bool isTmp[] = { false, false, false, false, false, false, false, false, true, true, false, true, true, false, true, false };
+static U8 tmps[] = { 14, 12, 11, 9, 8 };
+// should be a volitile tmp reg
+#define PARAM_CALL_TMP x86.r11
 #endif
-
-#ifdef BOXEDWINE_64
-// r8, r9, r11, r12, r14 will be used for tmp, see findTmpReg
-
-// r13/r15 chosen since they are non volitile
-//#define HOST_MMU x86.r14
 #define HOST_RAM x86.r15
 #define HOST_CPU x86.r13
+#define NUMBER_OF_REGS 16
 #define MEM_PTR X86Asm::Mem64
 #define RN(x) X86Asm::Reg64::from(x)
-#define PARAM_CALL_TMP x86.rax
+static bool isVolitile[] = { true, true, true, false, false, false, false, false, true, true, true, true, false, false, false, false };
 #else
-
+static U8 regCache[] = { 5, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG };
+static bool isVolitile[] = { true, true, true, false, false, false, false, false };
+static bool isTmp[] = { true, true, true, true, false, false, true, false };
+static U8 tmps[] = { 6, 3, 2, 1, 0 };
 #define HOST_CPU x86.edi
+#define NUMBER_OF_REGS 8
 #define MEM_PTR X86Asm::Mem32
 #define RN(x) X86Asm::Reg32::from(x)
 #endif
@@ -151,10 +162,9 @@ public:
     void imulReg(JitWidth regWidth, RegPtr reg) override;
     void imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2) override;
     void imulRR(JitWidth regWidth, RegPtr dst, RegPtr src) override;
-    void divRegRegWithRemainder32(RegPtr destLow, RegPtr destHigh, RegPtr src, RegPtr remainder) override;
-    void divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) override;
-    void idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) override;
-    void idivRegRegWithRemainder32(RegPtr destLow, RegPtr destHigh, RegPtr src, RegPtr remainder) override;
+    void divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) override;
+    void idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) override;
+    void absReg(JitWidth regWidth, RegPtr reg) override;
 
     void byteSwapReg32(RegPtr reg) override;
     RegPtr compareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition, RegPtr resultReg = nullptr) override;    
@@ -190,6 +200,7 @@ public:
     void IfNotEqual(JitWidth regWidth, RegPtr reg, RegPtr reg2) override;
     void IfLessThan2(JitWidth regWidth, RegPtr reg, U32 value) override;
     void IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
+    void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
     void IfNot(JitWidth regWidth, RegPtr reg) override;
     void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) override;    
     void IfFlagSet(U32 flags) override;
@@ -591,6 +602,7 @@ protected:
     void setParams(const std::vector<DynParam>& params);
     U8* createSyncToHost() override;
     U8* createSyncFromHost() override;
+    bool isHintAvailable(S8 hint);
 
     X86Asm x86;
 #ifdef BOXEDWINE_64
@@ -605,35 +617,36 @@ void JitX86CodeGen::preOp(DecodedOp* op) {
 
 void JitX86CodeGen::emulateSingleOp() {
 #ifdef BOXEDWINE_64
-    x86.mov(x86.r8, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
-    x86.jmp(x86.r8);
+    x86.mov(PARAM_CALL_TMP, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
+    x86.jmp(PARAM_CALL_TMP);
 #else
     x86.mov(x86.eax, (U32)cpu->thread->process->emulateSingleOp);
     x86.jmp(x86.eax);
 #endif
 }
 
+bool JitX86CodeGen::isHintAvailable(S8 hint) {
+    return (hint >= 0 && isTmp[hint] && !regUsed2[hint]);
+}
+
 U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint) {        
-#ifdef BOXEDWINE_64
-    if (!regUsed2[8]) {
-        regUsed2[8] = true;
-        return 8;
+#ifdef BOXEDWINE_64    
+    if (isHintAvailable(hint)) {
+        regUsed2[hint] = true;
+        return (U8)hint;
     }
-    if (!regUsed2[9]) {
-        regUsed2[9] = true;
-        return 9;
+    for (int i = 0; i < NUMBER_OF_TMPS; i++) {
+        U8 tmp = tmps[i];
+        if (needs8bitReg && tmp > 3) {
+            continue;
+        }
+        if (!regUsed2[tmp]) {
+            regUsed2[tmp] = true;
+            return tmp;
+        }
     }
-    if (!regUsed2[11]) {
-        regUsed2[11] = true;
-        return 11;
-    }
-    if (!regUsed2[12]) {
-        regUsed2[12] = true;
-        return 12;
-    }
-    if (!regUsed2[14]) {
-        regUsed2[14] = true;
-        return 14;
+    if (needs8bitReg) {
+        return findTmpReg(false, hint);
     }
     kpanic("JitX86CodeGen::getTmpReg ran out of tmp regs");
     return 0xff;
@@ -718,12 +731,9 @@ RegPtr JitX86CodeGen::getTmpReg(U8 reg, bool delayed, S8 hint) {
 }
 
 RegPtr JitX86CodeGen::getTmpRegForCallResult() {
-#ifdef BOXEDWINE_64
-    return getTmpReg();
-#else
     U8 reg;
 
-    if (regUsed2[0]) {
+    if (regUsed2[0] || !isTmp[0]) {
         reg = findTmpReg(true);
     } else {
         reg = 0;
@@ -735,7 +745,6 @@ RegPtr JitX86CodeGen::getTmpRegForCallResult() {
         }
         delete p;
     });
-#endif
 }
 
 RegPtr JitX86CodeGen::getTmpSegAddress(U8 reg) {
@@ -855,8 +864,18 @@ void JitX86CodeGen::forceSyncBackIfNotCached(RegPtr reg) {
 }
 
 RegPtr JitX86CodeGen::getReg(U8 reg, S8 hint, bool load) {
-    if (regCache[reg] != INVALID_REG) {
-        if (hint >= 0 && !regUsed2[hint] && (S8)regCache[reg] != hint) {
+    if (regCache[reg] == INVALID_REG) {
+        RegPtr result = std::shared_ptr<JitReg>(new JitReg(findTmpReg(false, hint), reg), [this](JitReg* p) {
+            x86.mov(X86Asm::Mem32(HOST_CPU, CPU::offsetofReg32(p->emulatedReg)), R32(p->hardwareReg()));
+            regUsed2[p->hardwareReg()] = false;
+            delete p;
+            });
+        if (load) {
+            x86.mov(R32(result->hardwareReg()), X86Asm::Mem32(HOST_CPU, CPU::offsetofReg32(reg)));
+        }
+        return result;
+    } else {
+        if (isHintAvailable(hint)) {
             regUsed2[hint] = true;
             RegPtr result = std::shared_ptr<JitReg>(new JitReg(hint, reg), [reg, this](JitReg* p) {
                 x86.mov(R32(regCache[reg]), R32(p->hardwareReg()));
@@ -874,16 +893,6 @@ RegPtr JitX86CodeGen::getReg(U8 reg, S8 hint, bool load) {
             }
             delete p;
         });
-    } else {
-        RegPtr result = std::shared_ptr<JitReg>(new JitReg(findTmpReg(false, hint), reg), [this](JitReg* p) {
-            x86.mov(X86Asm::Mem32(HOST_CPU, CPU::offsetofReg32(p->emulatedReg)), R32(p->hardwareReg()));
-            regUsed2[p->hardwareReg()] = false;
-            delete p;
-        });
-        if (load) {
-            x86.mov(R32(result->hardwareReg()), X86Asm::Mem32(HOST_CPU, CPU::offsetofReg32(reg)));
-        }
-        return result;
     }
 }
 
@@ -1656,144 +1665,42 @@ void JitX86CodeGen::imulReg(JitWidth regWidth, RegPtr reg) {
     }
 }
 
-void JitX86CodeGen::divRegRegWithRemainder32(RegPtr destLow, RegPtr destHigh, RegPtr src, RegPtr remainder) {    
-#ifdef BOXEDWINE_64
-    x86.push(RN(0));
-    x86.push(RN(2));
-    x86.mov(R64(0), R64(destLow->hardwareReg()));
-    x86.shl(R64(0), 32);
-    x86.shrd(R64(0), R64(destHigh->hardwareReg()), 32);
-    x86.xor_(R32(2), R32(2));  // will clear top bits too
-    x86.div(R64(src->hardwareReg()));
-    x86.mov(R64(remainder->hardwareReg()), R64(2));
-    x86.mov(R64(destLow->hardwareReg()), R64(0));
-    x86.xor_(R32(destHigh->hardwareReg()), R32(destHigh->hardwareReg()));
-    x86.pop(RN(2));
-    x86.pop(RN(0));
-#else
-    if (destLow->hardwareReg() != 0 || destHigh->hardwareReg() != 2 || remainder->hardwareReg() == 2) {
-        kpanic("JitX86CodeGen::divRegRegWithRemainder32");
-    }
-    If(JitWidth::b32, destHigh); {
-        // divide high 32-bit first
-        x86.push(RN(0));
-        x86.mov(x86.eax, x86.edx);
-        x86.xor_(x86.edx, x86.edx);
-        x86.div(R32(src->hardwareReg()));
-        x86.mov(R32(remainder->hardwareReg()), x86.eax); // remainder will hold on to the high 32-bit of the result, caller will turn this into an exception if it has a value
-        x86.pop(RN(0));
-        // divide low 32-bits
-        x86.div(R32(src->hardwareReg())); // first div remainder : eax / src
-        x86.xchg(x86.edx, R32(remainder->hardwareReg()));
-    } StartElse(); {
-        x86.div(R32(src->hardwareReg()));
-        x86.mov(R32(remainder->hardwareReg()), R32(destHigh->hardwareReg()));
-        x86.xor_(R32(destHigh->hardwareReg()), R32(destHigh->hardwareReg()));        
-    } EndIf();
-#endif
-}
-
-void JitX86CodeGen::idivRegRegWithRemainder32(RegPtr destLow, RegPtr destHigh, RegPtr src, RegPtr remainder) {
-#ifdef BOXEDWINE_64
-    x86.push(RN(0));
-    x86.push(RN(2));
-    x86.mov(R64(0), R64(destLow->hardwareReg()));
-    x86.shl(R64(0), 32);
-    x86.shrd(R64(0), R64(destHigh->hardwareReg()), 32);
-    x86.cqo(); // sign extend rax into rdx:rax
-    x86.movsx(R64(src->hardwareReg()), R32(src->hardwareReg()));
-    x86.idiv(R64(src->hardwareReg()));
-    x86.mov(R64(remainder->hardwareReg()), R64(2));
-    x86.mov(R32(destLow->hardwareReg()), R32(0));
-    x86.shr(R64(0), 32);
-    x86.mov(R32(destHigh->hardwareReg()), R32(0));
-    x86.pop(RN(2));
-    x86.pop(RN(0));
-#else
-    if (destLow->hardwareReg() != 0 || destHigh->hardwareReg() != 2 || remainder->hardwareReg() == 2) {
-        kpanic("JitX86CodeGen::idivRegRegWithRemainder32");
-    }
-    IfNot(JitWidth::b32, destHigh); {
-        x86.idiv(R32(src->hardwareReg()));
-        x86.mov(R32(remainder->hardwareReg()), R32(destHigh->hardwareReg()));
-        x86.xor_(R32(destHigh->hardwareReg()), R32(destHigh->hardwareReg()));
-    } StartElse(); {
-        IfEqual(JitWidth::b32, destHigh, 0xffffffff); {
-            x86.idiv(R32(src->hardwareReg()));
-            x86.mov(R32(remainder->hardwareReg()), R32(destHigh->hardwareReg()));
-            x86.xor_(R32(destHigh->hardwareReg()), R32(destHigh->hardwareReg()));            
-        } StartElse(); {
-            emulateSingleOp();
-        } EndIf();
-    } EndIf();
-#endif
-}
-
-void JitX86CodeGen::divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) {
-    if (dest->hardwareReg() != 0) {
-        x86.push(RN(0));
-        x86.mov(R32(0), R32(dest->hardwareReg()));
-    }
-    if (remainder->hardwareReg() != 2) {
-        x86.push(RN(2));
-    }
-    if (regWidth == JitWidth::b16) {
-        x86.xor_(x86.dx, x86.dx); // 16-bit div on x86 makes a 32-bit word from DX and AX, then divides that by the source
-        x86.div(R16(src->hardwareReg()));
-        if (remainder->hardwareReg() != 2) {
-            x86.mov(R16(remainder->hardwareReg()), R16(2));
-        }
+void JitX86CodeGen::absReg(JitWidth regWidth, RegPtr reg) {
+    RegPtr tmp = getTmpReg();
+    x86.mov(R32(tmp->hardwareReg()), R32(reg->hardwareReg()));    
+    if (regWidth == JitWidth::b8) {
+        x86.neg(R8(tmp->hardwareReg()));
+    } else if (regWidth == JitWidth::b16) {
+        x86.neg(R16(tmp->hardwareReg()));
     } else if (regWidth == JitWidth::b32) {
-        x86.xor_(x86.edx, x86.edx); // 32-bit div on x86 makes a 64-bit word from EDX and EAX, then divides that by the source
+        x86.neg(R32(tmp->hardwareReg()));
+    } else {
+        kpanic("JitX86CodeGen::divRegRegWithRemainder");
+    }
+    x86.cmovl(R32(reg->hardwareReg()), R32(tmp->hardwareReg()));
+}
+
+void JitX86CodeGen::divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) {
+    if (regWidth == JitWidth::b8) {
+        x86.div(R8(get8bitReg(src)));
+    } else if (regWidth == JitWidth::b16) {
+        x86.div(R16(src->hardwareReg()));
+    } else if (regWidth == JitWidth::b32) {
         x86.div(R32(src->hardwareReg()));
-        if (remainder->hardwareReg() != 2) {
-            x86.mov(R32(remainder->hardwareReg()), R32(2));
-        }
     } else {
         kpanic("JitX86CodeGen::divRegRegWithRemainder");
     }    
-    if (remainder->hardwareReg() != 2) {
-        x86.pop(RN(2));
-    }
-    if (dest->hardwareReg() != 0) {
-        x86.mov(R32(dest->hardwareReg()), R32(0));
-        x86.pop(RN(0));        
-    }
 }
 
-void JitX86CodeGen::idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) {
-    if (dest->hardwareReg() != 0) {
-        x86.push(RN(0));
-        x86.mov(R32(0), R32(dest->hardwareReg()));
-    }
-    if (remainder->hardwareReg() != 2) {
-        x86.push(RN(2));
-    }
-    if (regWidth == JitWidth::b16) {
-        // sign extend ax into dx, sinc idiv uses dx:ax
-        x86.mov(x86.dx, x86.ax);
-        x86.sar(x86.dx, 15);
+void JitX86CodeGen::idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) {
+    if (regWidth == JitWidth::b8) {
+        x86.idiv(R8(get8bitReg(src)));
+    } else if (regWidth == JitWidth::b16) {
         x86.idiv(R16(src->hardwareReg()));
-        if (remainder->hardwareReg() != 2) {
-            x86.mov(R16(remainder->hardwareReg()), R16(2));
-        }
     } else if (regWidth == JitWidth::b32) {
-        // sign extend eax into edx, sinc idiv uses edx:eax
-        x86.mov(x86.edx, x86.eax);
-        x86.sar(x86.edx, 31);
         x86.idiv(R32(src->hardwareReg()));
-        if (remainder->hardwareReg() != 2) {
-            x86.mov(R32(remainder->hardwareReg()), R32(2));
-        }
     } else {
         kpanic("JitX86CodeGen::idivRegRegWithRemainder");
-    }
-    if (remainder->hardwareReg() != 2) {
-        x86.pop(RN(2));
-    }
-    if (dest->hardwareReg() != 0) {
-        x86.mov(R32(dest->hardwareReg()), R32(0));
-        x86.pop(RN(0));
     }
 }
 
@@ -2140,43 +2047,20 @@ void JitX86CodeGen::setParams(const std::vector<DynParam>& params) {
 }
 
 void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache) {
-    int pushed = 0;
     U32 stackAdjust = 0;
+    std::vector<U8> pushedRegs;
 
-#ifdef BOXEDWINE_64
-    // volitile tmpRegs
-    if (regUsed2[8]) {
-        x86.push(RN(8));
-        pushed++;
+    for (int i = 0; i < NUMBER_OF_REGS; i++) {
+        if (isVolitile[i] && isTmp[i] && regUsed2[i]) {
+            x86.push(RN(i));
+            pushedRegs.push_back(i);
+        }
     }
-    if (regUsed2[9]) {
-        x86.push(RN(9));
-        pushed++;
-    }
-    if (regUsed2[11]) {
-        x86.push(RN(11));
-        pushed++;
-    }
-#else
-    if (regUsed2[x86.eax.reg]) {
-        x86.push(RN(0));
-    }
-    if (regUsed2[x86.ecx.reg]) {
-        x86.push(RN(1));
-    }
-    if (regUsed2[x86.edx.reg]) {
-        x86.push(RN(2));
-    }
-#endif
-#ifdef BOXEDWINE_64
-    x86.mov(x86.r14, (U64)cpu->thread->process->syncToHost);
-    x86.call(x86.r14);
-#else
+
     writeCache();
-#endif
     setParams(params);    
 #ifdef BOXEDWINE_64   
-    if ((pushed % 2) == 0) {
+    if ((pushedRegs.size() % 2) == 0) {
         stackAdjust = 8;
     }
     // part of the x64 windows ABI, shadow store
@@ -2207,84 +2091,29 @@ void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>&
     }
 #endif
     if (restoreCache) {
-#ifdef BOXEDWINE_64
-        x86.mov(x86.r8, (U64)cpu->thread->process->syncFromHost);
-        x86.call(x86.r8);
-#else
         loadCache();
-#endif
     }
-#ifdef BOXEDWINE_64
-    if (regUsed2[11]) {
-        x86.pop(RN(11));
+    for (int i = pushedRegs.size() - 1; i >= 0; i--) {
+        x86.pop(RN(pushedRegs[i]));
     }
-    if (regUsed2[9]) {
-        x86.pop(RN(9));
-    }
-    if (regUsed2[8]) {
-        x86.pop(RN(8));
-    }
-#else
-    if (regUsed2[x86.edx.reg]) {
-        x86.pop(RN(2));
-    }
-    if (regUsed2[x86.ecx.reg]) {
-        x86.pop(RN(1));
-    }
-    if (regUsed2[x86.eax.reg]) {
-        x86.pop(RN(0));
-    }
-#endif
 }
 
 void JitX86CodeGen::callHostFunctionWithResult(RegPtr result, void* address, const std::vector<DynParam>& params) {
-    bool pushed1 = false;
-    bool pushed2 = false;
-    bool pushed3 = false;
-    int pushed = 0;
     U32 stackAdjust = 0; // if 64-bit stack isn't aligned to 16-bytes, things like FPU::F2XM1()
+    std::vector<U8> pushedRegs;
 
-#ifdef BOXEDWINE_64
-    // volitile tmpRegs
-    if (regUsed2[8] && (!result->isLoaded() || result->hardwareReg() != 8)) {
-        x86.push(RN(8));
-        pushed1 = true;
-        pushed++;
+    for (int i = 0; i < NUMBER_OF_REGS; i++) {
+        if (isVolitile[i] && isTmp[i] && regUsed2[i] && result->hardwareReg() != i) {
+            x86.push(RN(i));
+            pushedRegs.push_back(i);
+        }
     }
-    if (regUsed2[9] && (!result->isLoaded() || result->hardwareReg() != 9)) {
-        x86.push(RN(9));
-        pushed2 = true;
-        pushed++;
-    }
-    if (regUsed2[11] && (!result->isLoaded() || result->hardwareReg() != 11)) {
-        x86.push(RN(11));
-        pushed3 = true;
-        pushed++;
-    }
-#else
-    if (regUsed2[x86.eax.reg] && (!result->isLoaded() || result->hardwareReg() != 0)) {
-        x86.push(RN(0));
-        pushed1 = true;
-    }
-    if (regUsed2[x86.ecx.reg] && (!result->isLoaded() || result->hardwareReg() != 1)) {
-        x86.push(RN(1));
-        pushed2 = true;
-    }
-    if (regUsed2[x86.edx.reg] && (!result->isLoaded() || result->hardwareReg() != 2)) {
-        x86.push(RN(2));
-        pushed3 = true;
-    }
-#endif
-#ifdef BOXEDWINE_64
-    x86.mov(x86.r14, (U64)cpu->thread->process->syncToHost);
-    x86.call(x86.r14);
-#else
+
     writeCache();
-#endif
     setParams(params);
     
 #ifdef BOXEDWINE_64
-    if ((pushed % 2) == 0) {
+    if ((pushedRegs.size() % 2) == 0) {
         stackAdjust = 8;
     }
     // part of the x64 windows ABI, shadow store
@@ -2310,36 +2139,12 @@ void JitX86CodeGen::callHostFunctionWithResult(RegPtr result, void* address, con
     if (params.size()) {
         x86.add(x86.esp, sizeof(void*) * params.size());
     }
-#endif
-#ifdef BOXEDWINE_64
-    if (pushed3) {
-        x86.pop(RN(11));
-    }
-    if (pushed2) {
-        x86.pop(RN(9));
-    }    
-    if (pushed1) {
-        x86.pop(RN(8));
-    }
+#endif  
     x86.mov(R32(result->hardwareReg()), x86.eax);
-    RegPtr tmp = getTmpReg();
-    x86.mov(R64(tmp->hardwareReg()), (U64)cpu->thread->process->syncFromHost);
-    x86.call(R64(tmp->hardwareReg()));
-#else
-    if (pushed3) {
-        x86.pop(RN(2));
-    }
-    if (pushed2) {
-        x86.pop(RN(1));
-    }
-    if (result->hardwareReg() != 0) {
-        x86.mov(R32(result->hardwareReg()), x86.eax);
-    }
-    if (pushed1) {
-        x86.pop(RN(0));
+    for (int i = pushedRegs.size() - 1; i >= 0; i--) {
+        x86.pop(RN(pushedRegs[i]));
     }
     loadCache();
-#endif
 }
 
 void JitX86CodeGen::If(JitWidth regWidth, RegPtr reg) {
@@ -2472,6 +2277,19 @@ void JitX86CodeGen::IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
     } else {
         kpanic_fmt("JitX86CodeGen::IfLessThan unexpected width: %d", (U32)regWidth);
     }
+}
+
+void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
+    if (regWidth == JitWidth::b32) {
+        x86.cmp(R32(reg1->hardwareReg()), R32(reg2->hardwareReg()));
+    } else if (regWidth == JitWidth::b16) {
+        x86.cmp(R16(reg1->hardwareReg()), R16(reg2->hardwareReg()));
+    } else if (regWidth == JitWidth::b8) {
+        x86.cmp(R8(get8bitReg(reg1)), R8(get8bitReg(reg2)));
+    } else {
+        kpanic_fmt("JitX86CodeGen::IfGreaterThanOrEqual unexpected width: %d", (U32)regWidth);
+    }
+    x86.jb();
 }
 
 void JitX86CodeGen::IfNot(JitWidth regWidth, RegPtr reg) {
@@ -4038,20 +3856,24 @@ void JitX86CodeGen::updateHardwareFlags(U32 flags) {
         return;
     }
     bool eaxPushed = false;
+    RegPtr reg;
 
 #ifdef BOXEDWINE_64
-    x86.push(RN(0));
-    eaxPushed = true;
-    regUsed2[0] = false;
-    RegPtr reg = getReg(0);
-#else
-    if (!isTmpRegAvailable()) {
+    if (!isTmp[0]) {
         x86.push(RN(0));
         eaxPushed = true;
-        regUsed2[0] = false;
-    }
-    RegPtr reg = getTmpRegForCallResult();
+        reg = getReg(0);
+    } else
 #endif
+    {
+        if (!isTmpRegAvailable()) {
+            x86.push(RN(0));
+            eaxPushed = true;
+            regUsed2[0] = false;
+        }
+        reg = getTmpRegForCallResult();
+    }
+
     x86.mov(R32(reg->hardwareReg()), X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)));
     if (reg->hardwareReg() > 3) {
         kpanic("updateHardwareFlags");
@@ -4076,7 +3898,9 @@ void JitX86CodeGen::updateHardwareFlags(U32 flags) {
     reg = nullptr;
     if (eaxPushed) {
         x86.pop(RN(0));
-        regUsed2[0] = true;
+        if (isTmp[0]) {
+            regUsed2[0] = true;
+        }
     }
 }
 
@@ -4602,12 +4426,12 @@ U8* JitX86CodeGen::createStartJITCode() {
     x86.mov(HOST_CPU, x86.rcx);
 
     // before rdx is clobbered
-    x86.mov(x86.r8, X86Asm::Mem64(x86.rdx, offsetof(DecodedOp, pfnJitCode)));
+    x86.mov(RN(tmps[0]), X86Asm::Mem64(x86.rdx, offsetof(DecodedOp, pfnJitCode)));
 
     loadCache();
 
     // jmp ((DecodedOp*)rdx)->pfn    
-    x86.jmp(x86.r8);
+    x86.jmp(RN(tmps[0]));
 
 #else
     x86.push(x86.ebx);
@@ -4622,8 +4446,8 @@ U8* JitX86CodeGen::createStartJITCode() {
     // :TODO: what about other x86 platforms that use a different calling convention
     // 
     // jmp ((DecodedOp*)edx)->pfn
-    x86.mov(x86.eax, X86Asm::Mem32(x86.edx, offsetof(DecodedOp, pfnJitCode)));
-    x86.jmp(x86.eax);
+    x86.mov(RN(tmps[0]), X86Asm::Mem32(x86.edx, offsetof(DecodedOp, pfnJitCode)));
+    x86.jmp(RN(tmps[0]));
 #endif
     return createDynamicExecutableMemory();
 }

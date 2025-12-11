@@ -313,9 +313,11 @@ public:
 	void imulAl(Reg8 src);
 	void mul(Reg32 src);
 	void div(Reg32 src);
-	void div(Reg16 src);	
+	void div(Reg16 src);
+	void div(Reg8 src);
 	void idiv(Reg32 src);
 	void idiv(Reg16 src);
+	void idiv(Reg8 src);
 
 	void neg(Reg32 dst);
 	void neg(Reg16 dst);
@@ -323,6 +325,8 @@ public:
 	void not_(Reg32 dst);
 	void not_(Reg16 dst);
 	void not_(Reg8 dst);
+
+	void cmovl(Reg32 dst, Reg32 src);
 
 	void test(Reg32 dst, U32 imm);
 	void test(Reg16 dst, U16 imm);

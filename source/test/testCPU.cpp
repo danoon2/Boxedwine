@@ -465,8 +465,8 @@ void EbAlAx(int instruction, int which, struct Data* data, int useAX) {
                 AX = data->var1;
             else
                 AL = data->var1;
-            pushCode8(0x50); // push eax
-            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            pushCode8(0x39);
+            pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
             runTestCPU();
             assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 8, true);            
         }
@@ -503,8 +503,8 @@ void EbAlAx(int instruction, int which, struct Data* data, int useAX) {
             AL = data->var1;
         memory->writed(cpu->seg[DS].address + 200, DEFAULT);
         memory->writeb(cpu->seg[DS].address + 200, data->var2);
-        pushCode8(0x50); // push eax
-        pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+        pushCode8(0x39);
+        pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
         runTestCPU();
         assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 16, true);
 
@@ -547,8 +547,8 @@ void EwAxDx(int instruction, int which, struct Data* data, int useDX) {
             AX = data->var2;
             DX = data->var1;
             reg->u16 = data->constant;
-            pushCode8(0x50); // push eax
-            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            pushCode8(0x39);
+            pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
             runTestCPU();
             assertResult(data, cpu, instruction, AX, DX, 0, 2, 0, 16, true);
         }
@@ -583,8 +583,8 @@ void EwAxDx(int instruction, int which, struct Data* data, int useDX) {
         DX = data->var1;
         memory->writed(cpu->seg[DS].address + 200, DEFAULT);
         memory->writew(cpu->seg[DS].address + 200, data->constant);
-        pushCode8(0x50); // push eax
-        pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+        pushCode8(0x39);
+        pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
         runTestCPU();
         assertResult(data, cpu, instruction, AX, DX, 0, 2, 0, 16, true);
 
@@ -623,8 +623,8 @@ void EdEaxEdx(int instruction, int which, struct Data* data, int useEdx) {
             EAX = data->var2;
             EDX = data->var1;
             reg->u32 = data->constant;
-            pushCode8(0x50); // push eax
-            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            pushCode8(0x39);
+            pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
             runTestCPU();
             assertResult(data, cpu, instruction, EAX, EDX, 0, 2, 0, 32, true);
         }
@@ -655,8 +655,8 @@ void EdEaxEdx(int instruction, int which, struct Data* data, int useEdx) {
         EDX = data->var1;
         memory->writed(cpu->seg[DS].address + 200, DEFAULT);
         memory->writed(cpu->seg[DS].address + 200, data->constant);
-        pushCode8(0x50); // push eax
-        pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+        pushCode8(0x39);
+        pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
         runTestCPU();
         assertResult(data, cpu, instruction, EAX, EDX, 0, 2, 0, 32, true);
 
@@ -733,8 +733,8 @@ void EbIb(int instruction, int which, struct Data* data, bool address32, bool in
                 *e = data->var1;
 
                 if (setsFlags == 0) {
-                    pushCode8(0x50); // push eax
-                    pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                    pushCode8(0x39);
+                    pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 } else if (setsFlags == 2) {
                     // flags will be calculate in JIT
                     U8 reg = 5;
@@ -822,8 +822,8 @@ void EbGb(int instruction, struct Data* data, bool includeLock = false) {
                     *g = data->var2;
 
                     if (setsFlags == 0) {
-                        pushCode8(0x50); // push eax
-                        pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                        pushCode8(0x39);
+                        pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                     } else if (setsFlags == 2) {
                         // flags will be calculate in JIT
                         U8 reg = 5;
@@ -1194,8 +1194,8 @@ void EwIb(int instruction, int which, struct Data* data, bool includeLock = fals
             e = &cpu->reg[E(rm)];
             e->u32 = DEFAULT;
             e->u16 = data->var1;
-            pushCode8(0x50); // push eax
-            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            pushCode8(0x39);
+            pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
             runTestCPU();
             assertResult(data, cpu, instruction, e->u16, 0, E(rm), -1, 0, 16, true);
         }
@@ -1228,8 +1228,8 @@ void EwIb(int instruction, int which, struct Data* data, bool includeLock = fals
             pushCode8(data->var2);
             memory->writed(cpu->seg[DS].address + offset, DEFAULT);
             memory->writew(cpu->seg[DS].address + offset, data->var1);
-            pushCode8(0x50); // push eax
-            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            pushCode8(0x39);
+            pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
             runTestCPU();
             result = memory->readw(cpu->seg[DS].address + offset);
             assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 16, true);            
@@ -1324,8 +1324,8 @@ void EwGw(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = 
                 g->u32 = DEFAULT;
                 e->u16 = data->var1;
                 g->u16 = data->var2;
-                pushCode8(0x50); // push eax
-                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                pushCode8(0x39);
+                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 assertResult(data, cpu, instruction, e->u16, g->u16, E(rm), G(rm), 0, 16, true);                
             }
@@ -1372,8 +1372,8 @@ void EwGw(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = 
                 g = &cpu->reg[G(rm)];
                 g->u32 = DEFAULT;
                 g->u16 = data->var2;
-                pushCode8(0x50); // push eax
-                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                pushCode8(0x39);
+                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 result = memory->readw(cpu->seg[DS].address + offset);
                 assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + offset, 16, true);
@@ -1644,8 +1644,8 @@ void EwGwEffective(int instruction, struct Data* data, bool includeLock = false)
                 g->u32 = DEFAULT;
                 e->u16 = data->var1;
                 g->u16 = data->var2;
-                pushCode8(0x50); // push eax
-                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                pushCode8(0x39);
+                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 assertResult(data, cpu, instruction, e->u16, g->u16, E(rm), G(rm), 0, 16, true);
             }
@@ -1696,8 +1696,8 @@ void EwGwEffective(int instruction, struct Data* data, bool includeLock = false)
                 g = &cpu->reg[G(rm)];
                 g->u32 = DEFAULT;
                 g->u16 = data->var2;
-                pushCode8(0x50); // push eax
-                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                pushCode8(0x39);
+                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 result = memory->readw(cpu->seg[DS].address + addressOffset + offset);
                 assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + addressOffset + offset, 16, true);                
@@ -1742,8 +1742,8 @@ void EdGdEffective(int instruction, struct Data* data, bool includeLock = false)
                 g = &cpu->reg[G(rm)];
                 e->u32 = data->var1;
                 g->u32 = data->var2;
-                pushCode8(0x50); // push eax
-                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                pushCode8(0x39);
+                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 assertResult(data, cpu, instruction, e->u32, g->u32, E(rm), G(rm), 0, 32, true);
             }
@@ -1790,8 +1790,8 @@ void EdGdEffective(int instruction, struct Data* data, bool includeLock = false)
                 memory->writed(cpu->seg[DS].address + addressOffset + offset, data->var1);
                 g = &cpu->reg[G(rm)];
                 g->u32 = data->var2;
-                pushCode8(0x50); // push eax
-                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                pushCode8(0x39);
+                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 result = memory->readd(cpu->seg[DS].address + addressOffset + offset);
                 assertResult(data, cpu, instruction, result, g->u32, G(rm), -1, cpu->seg[DS].address + addressOffset + offset, 32, true);                
@@ -1941,8 +1941,8 @@ void GwEw(int instruction, struct Data* data, bool includeLock = false) {
                 g->u32 = DEFAULT;
                 e->u16 = data->var2;
                 g->u16 = data->var1;
-                pushCode8(0x50); // push eax
-                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                pushCode8(0x39);
+                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 assertResult(data, cpu, instruction, g->u16, e->u16, ew, gw, 0, 16, true);
             }
@@ -1990,8 +1990,8 @@ void GwEw(int instruction, struct Data* data, bool includeLock = false) {
                 g->u32 = DEFAULT;
                 g->u16 = data->var1;
                 
-                pushCode8(0x50); // push eax
-                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                pushCode8(0x39);
+                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
 
                 runTestCPU();
                 result = memory->readw(cpu->seg[DS].address + addressOffset);
@@ -2200,8 +2200,8 @@ void EdIb(int instruction, int which, struct Data* data, bool includeLock = fals
             pushCode8(data->var2);
             e = &cpu->reg[ed];
             e->u32 = data->var1;
-            pushCode8(0x50); // push eax
-            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            pushCode8(0x39);
+            pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
             runTestCPU();
             assertResult(data, cpu, instruction, e->u32, 0, ed, -1, 0, 32, true);
         }
@@ -2234,8 +2234,8 @@ void EdIb(int instruction, int which, struct Data* data, bool includeLock = fals
             pushCode8(data->var2);
             memory->writed(cpu->seg[DS].address + addressOffset, DEFAULT);
             memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
-            pushCode8(0x50); // push eax
-            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            pushCode8(0x39);
+            pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
             runTestCPU();
             result = memory->readd(cpu->seg[DS].address + addressOffset);
             assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + addressOffset, 32, true);
@@ -2336,8 +2336,8 @@ void EdGd(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = 
                 g = &cpu->reg[gd];
                 e->u32 = data->var1;
                 g->u32 = data->var2;
-                pushCode8(0x50); // push eax
-                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                pushCode8(0x39);
+                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 assertResult(data, cpu, instruction, e->u32, g->u32, -1, -1, 0, 0, true);
             }
@@ -2381,8 +2381,8 @@ void EdGd(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = 
                 memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
                 g = &cpu->reg[gd];
                 g->u32 = data->var2;
-                pushCode8(0x50); // push eax
-                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                pushCode8(0x39);
+                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 result = memory->readd(cpu->seg[DS].address + addressOffset);
                 assertResult(data, cpu, instruction, result, g->u32, -1, -1, 0, 0, true);
@@ -2664,8 +2664,8 @@ void GdEd(int instruction, struct Data* data, bool includeLock = false) {
                 g = &cpu->reg[gd];
                 e->u32 = data->var2;
                 g->u32 = data->var1;
-                pushCode8(0x50); // push eax
-                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                pushCode8(0x39);
+                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 assertResult(data, cpu, instruction, g->u32, e->u32, -1, -1, 0, 0, true);
             }
@@ -2708,8 +2708,8 @@ void GdEd(int instruction, struct Data* data, bool includeLock = false) {
                 memory->writed(cpu->seg[DS].address + addressOffset, data->var2);
                 g = &cpu->reg[gd];
                 g->u32 = data->var1;
-                pushCode8(0x50); // push eax
-                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                pushCode8(0x39);
+                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 result = memory->readd(cpu->seg[DS].address + addressOffset);
                 assertResult(data, cpu, instruction, g->u32, result, -1, -1, 0, 0, true);

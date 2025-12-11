@@ -82,9 +82,6 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normalCPU.cpp">
       <Filter>source\emulation\cpu\normal</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x32\x32CPU.cpp">
-      <Filter>source\emulation\cpu\x32</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClCompile>
@@ -899,6 +896,27 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_lock.cpp">
       <Filter>source\emulation\cpu\common</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x32\jitX86CodeGen.cpp">
+      <Filter>source\emulation\cpu\x32</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x32\x86Asm.cpp">
+      <Filter>source\emulation\cpu\x32</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\jit\jit.cpp">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\jit\jitCodeGen.cpp">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\jit\jitFPU.cpp">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\jit\jitMMX.cpp">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\jit\jitSSE.cpp">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -924,9 +942,6 @@
     </Filter>
     <Filter Include="source\emulation\cpu\common">
       <UniqueIdentifier>{a9cff077-2edb-4001-bbe7-d5e5fafda715}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="source\emulation\cpu\dynamic">
-      <UniqueIdentifier>{018d0234-02b9-4b2c-be26-7719da77818e}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\emulation\cpu\normal">
       <UniqueIdentifier>{f44ccfbd-f190-46b4-b65b-8cdf6d0c263b}</UniqueIdentifier>
@@ -1089,6 +1104,9 @@
     </Filter>
     <Filter Include="softfloat\include">
       <UniqueIdentifier>{77891a6b-7af5-4d60-bfd6-c5a6b1f13c95}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\jit">
+      <UniqueIdentifier>{f2325f43-d4dd-4450-9216-d4a64606189e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -1317,60 +1335,6 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\lazyFlags.h">
       <Filter>source\emulation\cpu\common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_arith.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_bit.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_conditions.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_fpu.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_func.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_incdec.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_jump.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_mmx.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_mov.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_other.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_pushpop.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_setcc.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_shift.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_sse.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_sse2.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_strings.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_xchg.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\normal\instructions.h">
       <Filter>source\emulation\cpu\normal</Filter>
     </ClInclude>
@@ -1430,9 +1394,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\normal\normalCPU.h">
       <Filter>source\emulation\cpu\normal</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x32\x32CPU.h">
-      <Filter>source\emulation\cpu\x32</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Asm.h">
       <Filter>source\emulation\cpu\x64</Filter>
@@ -2040,9 +2001,6 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.h">
       <Filter>source\emulation\cpu\armv7</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_generic_base.h">
-      <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\armv8CPU.h">
       <Filter>source\emulation\cpu\armv8</Filter>
     </ClInclude>
@@ -2137,7 +2095,6 @@
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\kmemory.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_memory.h" />
     <ClInclude Include="..\..\..\..\..\source\util\bstring.h" />
     <ClInclude Include="..\..\..\..\..\source\util\concurrentqueue.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.h">
@@ -2391,6 +2348,81 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\platformBoxedwine.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x32\jitX86CodeGen.h">
+      <Filter>source\emulation\cpu\x32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x32\x86Asm.h">
+      <Filter>source\emulation\cpu\x32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jit.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitArith.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitBit.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitCallFpu.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitCallMMX.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitCallSSE.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitCallSSE2.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitCodeGen.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitConditions.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitFlags.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitFPU.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitIncDec.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitJump.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitLock.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitMMX.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitMov.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitOther.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitPushPop.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitSetcc.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitShift.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitSSE.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitStrings.h">
+      <Filter>source\emulation\cpu\jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\jit\jitXchg.h">
+      <Filter>source\emulation\cpu\jit</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

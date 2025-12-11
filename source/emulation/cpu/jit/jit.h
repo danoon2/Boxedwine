@@ -180,13 +180,12 @@ public:
     virtual void imulReg(JitWidth regWidth, RegPtr reg) = 0;
     virtual void imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2) = 0;
     virtual void imulRR(JitWidth regWidth, RegPtr dst, RegPtr src) = 0;
-    virtual void divRegRegWithRemainder32(RegPtr destLow, RegPtr destHigh, RegPtr src, RegPtr remainder) = 0; // src should be checked for 0 before calling
-    virtual void divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) = 0; // src should be checked for 0 before calling
-    virtual void idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr src, RegPtr remainder) = 0; // src should be checked for 0 before calling
-    virtual void idivRegRegWithRemainder32(RegPtr destLow, RegPtr destHigh, RegPtr src, RegPtr remainder) = 0; // src should be checked for 0 before calling
+    virtual void divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) = 0; // src should be checked for 0 before calling
+    virtual void idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) = 0; // src should be checked for 0 before calling
     virtual void byteSwapReg32(RegPtr reg) = 0;
     virtual RegPtr compareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition, RegPtr resultReg = nullptr) = 0; // will return 0 or 1 in result    
     virtual RegPtr compareValue(JitWidth regWidth, RegPtr reg, U32 value, JitEvaluate condition, RegPtr resultReg = nullptr) = 0; // will return 0 or 1 in result
+    virtual void absReg(JitWidth regWidth, RegPtr reg) = 0;
 
     virtual void mov(JitWidth regWidth, RegPtr dest, RegPtr src) = 0;
     virtual void movzx(JitWidth dstWidth, RegPtr dest, JitWidth srcWidth, RegPtr src) = 0;
@@ -227,6 +226,7 @@ public:
     virtual void IfNotEqual(JitWidth regWidth, RegPtr reg, RegPtr reg2) = 0;
     virtual void IfLessThan2(JitWidth regWidth, RegPtr reg, U32 value) = 0;
     virtual void IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2) = 0;
+    virtual void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) = 0;
     virtual void IfNot(JitWidth regWidth, RegPtr reg) = 0;
     virtual void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) = 0;
     virtual void IfCondition(JitConditional condition) = 0;
@@ -370,11 +370,10 @@ protected:
     void dynamic_cmov_M(JitWidth width, DecodedOp* op, JitConditional condition);
     void dynamic_set_R(DecodedOp* op, JitConditional condition);
     void dynamic_set_M(DecodedOp* op, JitConditional condition);
-    using InstDiv = void(Jit::*)(JitWidth width, RegPtr dest, RegPtr src, RegPtr remainder);
-    using InstDiv64 = void(Jit::*)(RegPtr destLow, RegPtr destHigh, RegPtr src, RegPtr remainder);    
+    using InstDiv = void(Jit::*)(JitWidth width, RegPtr destLow, RegPtr destHighAndRemainder, RegPtr src);
     void div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
     void div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
-    void div32(DecodedOp* op, RegPtr src, bool isSigned, InstDiv64 c4allback);
+    void div32(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
 };
 
 #endif

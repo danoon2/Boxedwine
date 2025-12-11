@@ -704,11 +704,7 @@ void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, cons
 
     if (!needsToSetFlags) {
         readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
-            if (width == JitWidth::b8) {
-                (this->*callback)(width, value, getReadOnlyReg8(1, true, 1));
-            } else {
-                (this->*callback)(width, value, getReadOnlyReg(1, true, 1));
-            }
+            (this->*callback)(width, value, getReadOnlyReg8(1, true, 1));
         });
     } else {
         RegPtr src = getReadOnlyReg8(1, false, 1);

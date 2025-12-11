@@ -1383,6 +1383,12 @@ void X86Asm::imul(Reg16 dst, Reg16 src, U16 imm) {
     }
 }
 
+void X86Asm::div(Reg8 src) {
+    rex(src.reg, false);
+    outb(0xf6);
+    outb(0xf0 | (src.reg & 7));
+}
+
 void X86Asm::div(Reg16 src) {    
     outb(0x66);
     rex(src.reg, false);
@@ -1394,6 +1400,12 @@ void X86Asm::div(Reg32 src) {
     rex(src.reg, false);
     outb(0xf7);
     outb(0xf0 | (src.reg & 7));
+}
+
+void X86Asm::idiv(Reg8 src) {
+    rex(src.reg, false);
+    outb(0xf6);
+    outb(0xf8 | (src.reg & 7));
 }
 
 void X86Asm::idiv(Reg16 src) {    
@@ -1445,6 +1457,13 @@ void X86Asm::not_(Reg8 dst) {
     rex(dst.reg, false);
     outb(0xf6);
     outb(0xd0 | (dst.reg & 7));
+}
+
+void X86Asm::cmovl(Reg32 dst, Reg32 src) {
+    rex(dst.reg, src.reg, false);
+    outb(0x0f);
+    outb(0x4c);
+    outb(0xc0 | ((dst.reg & 7) << 3) | (src.reg & 7));
 }
 
 void X86Asm::cmp(Reg32 dst, U32 imm) {
