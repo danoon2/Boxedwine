@@ -413,22 +413,22 @@ void Jit::dynamic_test32_mem(DecodedOp* op) {
     dynamic_MI(op, JitWidth::b32, &Jit::andValue, FLAGS_AND32, false);
 }
 void Jit::dynamic_notr8(DecodedOp* op) {
-    dynamic_R(op, JitWidth::b8, &Jit::notReg2, nullptr);
+    dynamic_R(op, JitWidth::b8, &Jit::notReg2, FLAGS_NULL);
 }
 void Jit::dynamic_note8(DecodedOp* op) {
-    dynamic_M(op, JitWidth::b8, &Jit::notReg2, nullptr);
+    dynamic_M(op, JitWidth::b8, &Jit::notReg2, FLAGS_NULL);
 }
 void Jit::dynamic_notr16(DecodedOp* op) {
-    dynamic_R(op, JitWidth::b16, &Jit::notReg2, nullptr);
+    dynamic_R(op, JitWidth::b16, &Jit::notReg2, FLAGS_NULL);
 }
 void Jit::dynamic_note16(DecodedOp* op) {
-    dynamic_M(op, JitWidth::b16, &Jit::notReg2, nullptr);
+    dynamic_M(op, JitWidth::b16, &Jit::notReg2, FLAGS_NULL);
 }
 void Jit::dynamic_notr32(DecodedOp* op) {
-    dynamic_R(op, JitWidth::b32, &Jit::notReg2, nullptr);
+    dynamic_R(op, JitWidth::b32, &Jit::notReg2, FLAGS_NULL);
 }
 void Jit::dynamic_note32(DecodedOp* op) {
-    dynamic_M(op, JitWidth::b32, &Jit::notReg2, nullptr);
+    dynamic_M(op, JitWidth::b32, &Jit::notReg2, FLAGS_NULL);
 }
 void Jit::dynamic_negr8(DecodedOp* op) {
     dynamic_R(op, JitWidth::b8, &Jit::negReg2, FLAGS_NEG8);
@@ -452,7 +452,7 @@ void Jit::dynamic_nege32(DecodedOp* op) {
 // imul: For the one operand form of the instruction, the CF and OF flags are set when significant bits are carried into the upper half of the result and cleared when the result fits exactly in the lower half of the result.For the two - and three - operand forms of the instruction, the CF and OF flags are set when the result must be truncated to fit in the destination operand size and cleared when the result fits exactly in the destination operand size.The SF, ZF, AF, and PF flags are undefined.
 void Jit::dynamic_mulR8(DecodedOp* op) {
     // AX = AL * src;
-    dynamic_R(op, JitWidth::b8, &Jit::mulReg, nullptr, false);
+    dynamic_R(op, JitWidth::b8, &Jit::mulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
         (FLAGS_NONE);
         If(JitWidth::b8, getReadOnlyReg8(4)); {
@@ -465,7 +465,7 @@ void Jit::dynamic_mulR8(DecodedOp* op) {
 }
 void Jit::dynamic_mulE8(DecodedOp* op) {
     // getTmpReg will register the reg we want the read from memory to use, by default it will be EAX, but mul needs to this to be unused
-    dynamic_M(op, JitWidth::b8, &Jit::mulReg, nullptr, false, getTmpReg8());
+    dynamic_M(op, JitWidth::b8, &Jit::mulReg, FLAGS_NULL, false, getTmpReg8());
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlags(FLAGS_NONE);
         If(JitWidth::b8, getReadOnlyReg8(4)); {
@@ -477,7 +477,7 @@ void Jit::dynamic_mulE8(DecodedOp* op) {
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_imulR8(DecodedOp* op) {
-    dynamic_R(op, JitWidth::b8, &Jit::imulReg, nullptr, false);
+    dynamic_R(op, JitWidth::b8, &Jit::imulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlags(FLAGS_NONE);
         RegPtr ah = getReadOnlyReg8(4);
@@ -494,7 +494,7 @@ void Jit::dynamic_imulR8(DecodedOp* op) {
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_imulE8(DecodedOp* op) {
-    dynamic_M(op, JitWidth::b8, &Jit::imulReg, nullptr, false, getTmpReg8());
+    dynamic_M(op, JitWidth::b8, &Jit::imulReg, FLAGS_NULL, false, getTmpReg8());
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlags(FLAGS_NONE);
         RegPtr ah = getReadOnlyReg8(4);
@@ -511,7 +511,7 @@ void Jit::dynamic_imulE8(DecodedOp* op) {
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_mulR16(DecodedOp* op) {
-    dynamic_R(op, JitWidth::b16, &Jit::mulReg, nullptr, false);
+    dynamic_R(op, JitWidth::b16, &Jit::mulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlags(FLAGS_NONE);
         If(JitWidth::b16, getReadOnlyReg(2)); {
@@ -523,7 +523,7 @@ void Jit::dynamic_mulR16(DecodedOp* op) {
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_mulE16(DecodedOp* op) {
-    dynamic_M(op, JitWidth::b16, &Jit::mulReg, nullptr, false, getTmpReg());
+    dynamic_M(op, JitWidth::b16, &Jit::mulReg, FLAGS_NULL, false, getTmpReg());
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlags(FLAGS_NONE);
         If(JitWidth::b16, getReadOnlyReg(2)); {
@@ -535,7 +535,7 @@ void Jit::dynamic_mulE16(DecodedOp* op) {
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_imulR16(DecodedOp* op) {
-    dynamic_R(op, JitWidth::b16, &Jit::imulReg, nullptr, false);
+    dynamic_R(op, JitWidth::b16, &Jit::imulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlags(FLAGS_NONE);
         RegPtr dx = getReadOnlyReg(2);
@@ -552,7 +552,7 @@ void Jit::dynamic_imulR16(DecodedOp* op) {
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_imulE16(DecodedOp* op) {
-    dynamic_M(op, JitWidth::b16, &Jit::imulReg, nullptr, false, getTmpReg());
+    dynamic_M(op, JitWidth::b16, &Jit::imulReg, FLAGS_NULL, false, getTmpReg());
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlags(FLAGS_NONE);
         RegPtr dx = getReadOnlyReg(2);
@@ -569,7 +569,7 @@ void Jit::dynamic_imulE16(DecodedOp* op) {
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_mulR32(DecodedOp* op) {
-    dynamic_R(op, JitWidth::b32, &Jit::mulReg, nullptr, false);
+    dynamic_R(op, JitWidth::b32, &Jit::mulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlags(FLAGS_NONE);
         If(JitWidth::b32, getReadOnlyReg(2)); {
@@ -581,7 +581,7 @@ void Jit::dynamic_mulR32(DecodedOp* op) {
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_mulE32(DecodedOp* op) {
-    dynamic_M(op, JitWidth::b32, &Jit::mulReg, nullptr, false, getTmpReg());
+    dynamic_M(op, JitWidth::b32, &Jit::mulReg, FLAGS_NULL, false, getTmpReg());
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlags(FLAGS_NONE);
         If(JitWidth::b32, getReadOnlyReg(2)); {
@@ -593,7 +593,7 @@ void Jit::dynamic_mulE32(DecodedOp* op) {
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_imulR32(DecodedOp* op) {
-    dynamic_R(op, JitWidth::b32, &Jit::imulReg, nullptr, false);
+    dynamic_R(op, JitWidth::b32, &Jit::imulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlags(FLAGS_NONE);
         RegPtr edx = getReadOnlyReg(2);
@@ -610,7 +610,7 @@ void Jit::dynamic_imulR32(DecodedOp* op) {
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_imulE32(DecodedOp* op) {
-    dynamic_M(op, JitWidth::b32, &Jit::imulReg, nullptr, false, getTmpReg());
+    dynamic_M(op, JitWidth::b32, &Jit::imulReg, FLAGS_NULL, false, getTmpReg());
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlags(FLAGS_NONE);
         RegPtr edx = getReadOnlyReg(2);

@@ -199,7 +199,7 @@ public:
     RegPtr pop16(RegPtr resultReg = nullptr, U32 amount = 2);
     RegPtr pop32(RegPtr resultReg = nullptr, U32 amount = 4);
 
-    virtual void storeLazyFlags(const LazyFlags* flags) = 0;
+    virtual void storeLazyFlags(LazyFlagType flags) = 0;
     virtual void storeLazyFlagsDest(RegPtr reg) = 0;
     virtual void storeLazyFlagsSrc(RegPtr reg) = 0;
     virtual void storeLazyFlagsSrc(U32 value) = 0;
@@ -246,17 +246,17 @@ public:
     virtual void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
     virtual void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
 
-    void dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback = true, bool addCF = false);
-    void dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags);
-    void dynamic_R_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags);
-    void dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback = true, bool addCF = false);
-    void dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags);
-    void dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags);
-    void dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback = true, bool addCF = false);
-    void dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const LazyFlags* flags, bool writeback = true, bool addCF = false, InstRegReg2 cfCallback = nullptr);
-    void dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const LazyFlags* flags, bool writeback = true, bool addCF = false, InstRegReg2 cfCallback = nullptr);
-    void dynamic_R(DecodedOp* op, JitWidth width, InstReg2 callback, const LazyFlags* flags, bool writeback = true);
-    void dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, const LazyFlags* flags, bool writeback = true, RegPtr tmp = nullptr);
+    void dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
+    void dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags);
+    void dynamic_R_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags);
+    void dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
+    void dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags);
+    void dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags);
+    void dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
+    void dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm2 callback, LazyFlagType flags, bool writeback = true, bool addCF = false, InstRegReg2 cfCallback = nullptr);
+    void dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback, LazyFlagType flags, bool writeback = true, bool addCF = false, InstRegReg2 cfCallback = nullptr);
+    void dynamic_R(DecodedOp* op, JitWidth width, InstReg2 callback, LazyFlagType flags, bool writeback = true);
+    void dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, LazyFlagType flags, bool writeback = true, RegPtr tmp = nullptr);
 
     using OpFunction = void(Jit::*)(DecodedOp* op);
 
@@ -265,7 +265,7 @@ public:
 
     // don't perform logic based on currentLazyFlags, you must check at run time if the lazy flags is currently equal to currentLazyFlags then you can use it.  This is because
     // another instruction could have jumped to the instruction using currentLazyFlags, so it may not be the same lazy flags as the previous instruction that set it.
-    const LazyFlags* currentLazyFlags = nullptr; 
+    LazyFlagType currentLazyFlags = FLAGS_NULL; 
     U32 currentEip = 0;
     DecodedOp* currentOp = nullptr;
 
@@ -349,22 +349,22 @@ protected:
     bool btStartFlags(DecodedOp* op);
     bool bsStartFlags(DecodedOp* op);
     void pushParam(std::vector<DynParam>& params, JitWidth width, RegPtr reg);
-    void dshift(DecodedOp* op, JitWidth width, InstRegRegImm callback, const LazyFlags* flags);
-    void dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, const LazyFlags* flags);
-    void dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, const LazyFlags* flags);
-    void dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, const LazyFlags* flags);
-    void arithSetup(DecodedOp* op, U32& needsToSetFlags, RegPtr& cf, const LazyFlags* flags, bool addCF);
-    void arithSetup(DecodedOp* op, U32& needsToSetFlags, const LazyFlags* flags);
+    void dshift(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flags);
+    void dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flags);
+    void dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFlagType flags);
+    void dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFlagType flags);
+    void arithSetup(DecodedOp* op, U32& needsToSetFlags, RegPtr& cf, LazyFlagType flags, bool addCF);
+    void arithSetup(DecodedOp* op, U32& needsToSetFlags, LazyFlagType flags);
     void movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth);
     void movsr(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void stos(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void stosr(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void lods(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth);
     void lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth);
-    void cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, const LazyFlags* lazyFlags);
-    void cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, const LazyFlags* lazyFlags);
-    void scas(JitWidth valueWidth, U32 size, JitWidth regWidth, const LazyFlags* lazyFlags);
-    void scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, const LazyFlags* lazyFlags);
+    void cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType lazyFlags);
+    void cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, LazyFlagType lazyFlags);
+    void scas(JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType lazyFlags);
+    void scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, LazyFlagType lazyFlags);
     void dynamic_jump(DecodedOp* op, JitConditional condition);
     void dynamic_cmov_R(JitWidth width, DecodedOp* op, JitConditional condition);
     void dynamic_cmov_M(JitWidth width, DecodedOp* op, JitConditional condition);

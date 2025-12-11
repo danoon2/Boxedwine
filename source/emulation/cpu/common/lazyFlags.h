@@ -37,55 +37,60 @@ public:
     U32 width;
 };
 
-extern const LazyFlags* FLAGS_NONE;
-extern const LazyFlags* FLAGS_ADD8;
-extern const LazyFlags* FLAGS_ADD16;
-extern const LazyFlags* FLAGS_ADD32;
-extern const LazyFlags* FLAGS_OR8;
-extern const LazyFlags* FLAGS_OR16;
-extern const LazyFlags* FLAGS_OR32;
-extern const LazyFlags* FLAGS_ADC8;
-extern const LazyFlags* FLAGS_ADC16;
-extern const LazyFlags* FLAGS_ADC32;
-extern const LazyFlags* FLAGS_SBB8;
-extern const LazyFlags* FLAGS_SBB16;
-extern const LazyFlags* FLAGS_SBB32;
-extern const LazyFlags* FLAGS_AND8;
-extern const LazyFlags* FLAGS_AND16;
-extern const LazyFlags* FLAGS_AND32;
-extern const LazyFlags* FLAGS_SUB8;
-extern const LazyFlags* FLAGS_SUB16;
-extern const LazyFlags* FLAGS_SUB32;
-extern const LazyFlags* FLAGS_XOR8;
-extern const LazyFlags* FLAGS_XOR16;
-extern const LazyFlags* FLAGS_XOR32;
-extern const LazyFlags* FLAGS_INC8;
-extern const LazyFlags* FLAGS_INC16;
-extern const LazyFlags* FLAGS_INC32;
-extern const LazyFlags* FLAGS_DEC8;
-extern const LazyFlags* FLAGS_DEC16;
-extern const LazyFlags* FLAGS_DEC32;
-extern const LazyFlags* FLAGS_SHL8;
-extern const LazyFlags* FLAGS_SHL16;
-extern const LazyFlags* FLAGS_SHL32;
-extern const LazyFlags* FLAGS_SHR8;
-extern const LazyFlags* FLAGS_SHR16;
-extern const LazyFlags* FLAGS_SHR32;
-extern const LazyFlags* FLAGS_SAR8;
-extern const LazyFlags* FLAGS_SAR16;
-extern const LazyFlags* FLAGS_SAR32;
-extern const LazyFlags* FLAGS_CMP8;
-extern const LazyFlags* FLAGS_CMP16;
-extern const LazyFlags* FLAGS_CMP32;
-extern const LazyFlags* FLAGS_TEST8;
-extern const LazyFlags* FLAGS_TEST16;
-extern const LazyFlags* FLAGS_TEST32;
-extern const LazyFlags* FLAGS_DSHL16;
-extern const LazyFlags* FLAGS_DSHL32;
-extern const LazyFlags* FLAGS_DSHR16;
-extern const LazyFlags* FLAGS_DSHR32;
-extern const LazyFlags* FLAGS_NEG8;
-extern const LazyFlags* FLAGS_NEG16;
-extern const LazyFlags* FLAGS_NEG32;
+extern const LazyFlags* lazyFlags[51];
+
+enum LazyFlagType : unsigned char {    
+    FLAGS_NONE,
+    FLAGS_ADD8,
+    FLAGS_ADD16,
+    FLAGS_ADD32,
+    FLAGS_OR8,
+    FLAGS_OR16,
+    FLAGS_OR32,
+    FLAGS_ADC8,
+    FLAGS_ADC16,
+    FLAGS_ADC32,
+    FLAGS_SBB8,
+    FLAGS_SBB16,
+    FLAGS_SBB32,
+    FLAGS_AND8,
+    FLAGS_AND16,
+    FLAGS_AND32,
+    FLAGS_SUB8,
+    FLAGS_SUB16,
+    FLAGS_SUB32,
+    FLAGS_XOR8,
+    FLAGS_XOR16,
+    FLAGS_XOR32,
+    FLAGS_INC8,
+    FLAGS_INC16,
+    FLAGS_INC32,
+    FLAGS_DEC8,
+    FLAGS_DEC16,
+    FLAGS_DEC32,
+    FLAGS_SHL8,
+    FLAGS_SHL16,
+    FLAGS_SHL32,
+    FLAGS_SHR8,
+    FLAGS_SHR16,
+    FLAGS_SHR32,
+    FLAGS_SAR8,
+    FLAGS_SAR16,
+    FLAGS_SAR32,
+    FLAGS_CMP8,
+    FLAGS_CMP16,
+    FLAGS_CMP32,
+    FLAGS_TEST8,
+    FLAGS_TEST16,
+    FLAGS_TEST32,
+    FLAGS_DSHL16,
+    FLAGS_DSHL32,
+    FLAGS_DSHR16,
+    FLAGS_DSHR32,
+    FLAGS_NEG8,
+    FLAGS_NEG16,
+    FLAGS_NEG32,
+    FLAGS_NULL
+};
 
 #endif

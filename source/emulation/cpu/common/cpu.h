@@ -227,7 +227,7 @@ public:
     Reg  src;
     Reg  dst;
     Reg  result;
-    LazyFlags const * lazyFlags = nullptr;
+    LazyFlagType lazyFlagType = FLAGS_NONE;
     U32         oldCF = 0;
     FPU         fpu;
     U64		    instructionCount = 0;

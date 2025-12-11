@@ -159,7 +159,7 @@ void Jit::dynamic_movsd_op(DecodedOp* op) {
     incrementEip(op->len);
 }
 
-void Jit::cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, const LazyFlags* lazyFlags) {
+void Jit::cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType lazyFlags) {
     // U32 dBase = cpu->seg[ES].address;
     // U32 sBase = cpu->seg[base].address;
     // S32 inc = cpu->getDirection();
@@ -220,7 +220,7 @@ void Jit::cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, const
     } EndIf();
 }
 
-void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, const LazyFlags* lazyFlags) {
+void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, LazyFlagType lazyFlags) {
     // U32 dBase = cpu->seg[ES].address;
     // U32 sBase = cpu->seg[base].address;
     // S32 inc = cpu->getDirection();
@@ -313,7 +313,7 @@ void Jit::dynamic_cmpsb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             emulateSingleOp();
-            currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+            currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB8 if (e)cx is 0
         } else {
             cmps(op->base, JitWidth::b8, 1, JitWidth::b16, FLAGS_SUB8);
             currentLazyFlags = FLAGS_SUB8;
@@ -322,10 +322,10 @@ void Jit::dynamic_cmpsb_op(DecodedOp* op) {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
                 emulateSingleOp();
-                currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+                currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB8 if (e)cx is 0
             } else {
                 cmpsr(JitWidth::b8, 1, JitWidth::b32, op->repZero, FLAGS_SUB8);
-                currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+                currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB8 if (e)cx is 0
             }
         } else {
             cmps(op->base, JitWidth::b8, 1, JitWidth::b32, FLAGS_SUB8);
@@ -338,7 +338,7 @@ void Jit::dynamic_cmpsw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             emulateSingleOp();
-            currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+            currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB16 if (e)cx is 0
         } else {
             cmps(op->base, JitWidth::b16, 2, JitWidth::b16, FLAGS_SUB16);
             currentLazyFlags = FLAGS_SUB16;
@@ -347,10 +347,10 @@ void Jit::dynamic_cmpsw_op(DecodedOp* op) {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
                 emulateSingleOp();
-                currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+                currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB16 if (e)cx is 0
             } else {
                 cmpsr(JitWidth::b16, 2, JitWidth::b32, op->repZero, FLAGS_SUB16);
-                currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+                currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB16 if (e)cx is 0
             }
         } else {
             cmps(op->base, JitWidth::b16, 2, JitWidth::b32, FLAGS_SUB8);
@@ -363,7 +363,7 @@ void Jit::dynamic_cmpsd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             emulateSingleOp();
-            currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+            currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB32 if (e)cx is 0
         } else {
             cmps(op->base, JitWidth::b32, 4, JitWidth::b16, FLAGS_SUB32);
             currentLazyFlags = FLAGS_SUB32;
@@ -372,10 +372,10 @@ void Jit::dynamic_cmpsd_op(DecodedOp* op) {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
                 emulateSingleOp();
-                currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+                currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB32 if (e)cx is 0
             } else {
                 cmpsr(JitWidth::b32, 4, JitWidth::b32, op->repZero, FLAGS_SUB32);
-                currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+                currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB32 if (e)cx is 0
             }
         } else {
             cmps(op->base, JitWidth::b32, 4, JitWidth::b32, FLAGS_SUB32);
@@ -647,7 +647,7 @@ void Jit::dynamic_lodsd_op(DecodedOp* op) {
     incrementEip(op->len);
 }
 
-void Jit::scas(JitWidth valueWidth, U32 size, JitWidth regWidth, const LazyFlags* lazyFlags) {
+void Jit::scas(JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType lazyFlags) {
     // U32 dBase = cpu->seg[ES].address;
     // S32 inc = cpu->getDirection();
     // U8 v1 = cpu->memory->readb(dBase + EDI);
@@ -688,7 +688,7 @@ void Jit::scas(JitWidth valueWidth, U32 size, JitWidth regWidth, const LazyFlags
     } EndIf();
 }
 
-void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, const LazyFlags* lazyFlags) {
+void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, LazyFlagType lazyFlags) {
     // U32 dBase = cpu->seg[ES].address;
     // S32 inc = cpu->getDirection();
     // U32 count = ECX;
@@ -772,7 +772,7 @@ void Jit::dynamic_scasb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             emulateSingleOp();
-            currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+            currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB8 if (e)cx is 0
         } else {
             scas(JitWidth::b8, 1, JitWidth::b16, FLAGS_SUB8);
             currentLazyFlags = FLAGS_SUB8;
@@ -781,10 +781,10 @@ void Jit::dynamic_scasb_op(DecodedOp* op) {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES]) {
                 emulateSingleOp();
-                currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+                currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB8 if (e)cx is 0
             } else {
                 scasr(JitWidth::b8, 1, JitWidth::b32, op->repZero, FLAGS_SUB8);
-                currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+                currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB8 if (e)cx is 0
             }
         } else {
             scas(JitWidth::b8, 1, JitWidth::b32, FLAGS_SUB8);
@@ -797,7 +797,7 @@ void Jit::dynamic_scasw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             emulateSingleOp();
-            currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+            currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB16 if (e)cx is 0
         } else {
             scas(JitWidth::b16, 2, JitWidth::b16, FLAGS_SUB16);
             currentLazyFlags = FLAGS_SUB16;
@@ -806,10 +806,10 @@ void Jit::dynamic_scasw_op(DecodedOp* op) {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES]) {
                 emulateSingleOp();
-                currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+                currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB16 if (e)cx is 0
             } else {
                 scasr(JitWidth::b16, 2, JitWidth::b32, op->repZero, FLAGS_SUB16);
-                currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+                currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB16 if (e)cx is 0
             }
         } else {
             scas(JitWidth::b16, 2, JitWidth::b32, FLAGS_SUB16);
@@ -822,7 +822,7 @@ void Jit::dynamic_scasd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             emulateSingleOp();
-            currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+            currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB32 if (e)cx is 0
         } else {
             scas(JitWidth::b32, 4, JitWidth::b16, FLAGS_SUB32);
             currentLazyFlags = FLAGS_SUB32;
@@ -831,10 +831,10 @@ void Jit::dynamic_scasd_op(DecodedOp* op) {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES]) {
                 emulateSingleOp();
-                currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+                currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB32 if (e)cx is 0
             } else {
                 scasr(JitWidth::b32, 4, JitWidth::b32, op->repZero, FLAGS_SUB32);
-                currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+                currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB32 if (e)cx is 0
             }
         } else {
             scas(JitWidth::b32, 4, JitWidth::b32, FLAGS_SUB32);

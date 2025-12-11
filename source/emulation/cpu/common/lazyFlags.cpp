@@ -55,7 +55,7 @@ public:
 };
 
 static LazyFlagsNone flagsNone(0);
-const LazyFlags* FLAGS_NONE = &flagsNone;
+static const LazyFlags* flagsNONE = &flagsNone;
 
 class LazyFlagsDefault : public LazyFlags {
 public:
@@ -95,7 +95,7 @@ class LazyFlagsAdd8 : public LazyFlagsDefault8 {
 };
 
 static LazyFlagsAdd8 flagsAdd8;
-const LazyFlags* FLAGS_ADD8 = &flagsAdd8;
+static const LazyFlags* flagsADD8 = &flagsAdd8;
 
 class LazyFlagsAdd16 : public LazyFlagsDefault16 {
     U32 getCF(CPU* cpu) const override {return cpu->result.u16<cpu->dst.u16;}
@@ -108,7 +108,7 @@ class LazyFlagsAdd16 : public LazyFlagsDefault16 {
 };
 
 static LazyFlagsAdd16 flagsAdd16;
-const LazyFlags* FLAGS_ADD16 = &flagsAdd16;
+static const LazyFlags* flagsADD16 = &flagsAdd16;
 
 class LazyFlagsAdd32 : public LazyFlagsDefault32 {
     U32 getCF(CPU* cpu) const override {return cpu->result.u32<cpu->dst.u32;}
@@ -121,7 +121,7 @@ class LazyFlagsAdd32 : public LazyFlagsDefault32 {
 };
 
 static LazyFlagsAdd32 flagsAdd32;
-const LazyFlags* FLAGS_ADD32 = &flagsAdd32;
+static const LazyFlags* flagsADD32 = &flagsAdd32;
 
 U32 get_0(CPU* cpu) {return 0;}
 
@@ -156,22 +156,22 @@ class LazyFlagsZero32 : public LazyFlagsDefault32 {
 };
 
 static LazyFlagsZero8 flags0_8;
-const LazyFlags* FLAGS_OR8 = &flags0_8;
-const LazyFlags* FLAGS_AND8 = &flags0_8;
-const LazyFlags* FLAGS_XOR8 = &flags0_8;
-const LazyFlags* FLAGS_TEST8 = &flags0_8;
+static const LazyFlags* flagsOR8 = &flags0_8;
+static const LazyFlags* flagsAND8 = &flags0_8;
+static const LazyFlags* flagsXOR8 = &flags0_8;
+static const LazyFlags* flagsTEST8 = &flags0_8;
 
 static LazyFlagsZero16 flags0_16;
-const LazyFlags* FLAGS_OR16 = &flags0_16;
-const LazyFlags* FLAGS_AND16 = &flags0_16;
-const LazyFlags* FLAGS_XOR16 = &flags0_16;
-const LazyFlags* FLAGS_TEST16 = &flags0_16;
+static const LazyFlags* flagsOR16 = &flags0_16;
+static const LazyFlags* flagsAND16 = &flags0_16;
+static const LazyFlags* flagsXOR16 = &flags0_16;
+static const LazyFlags* flagsTEST16 = &flags0_16;
 
 static LazyFlagsZero32 flags0_r32;
-const LazyFlags* FLAGS_OR32 = &flags0_r32;
-const LazyFlags* FLAGS_AND32 = &flags0_r32;
-const LazyFlags* FLAGS_XOR32 = &flags0_r32;
-const LazyFlags* FLAGS_TEST32 = &flags0_r32;
+static const LazyFlags* flagsOR32 = &flags0_r32;
+static const LazyFlags* flagsAND32 = &flags0_r32;
+static const LazyFlags* flagsXOR32 = &flags0_r32;
+static const LazyFlags* flagsTEST32 = &flags0_r32;
 
 class LazyFlagsAdc8 : public LazyFlagsAdd8 {
     U32 getCF(CPU* cpu) const override {return (cpu->result.u8 < cpu->dst.u8) || (cpu->oldCF && (cpu->result.u8 == cpu->dst.u8));}
@@ -179,7 +179,7 @@ class LazyFlagsAdc8 : public LazyFlagsAdd8 {
 };
 
 static LazyFlagsAdc8 flagsAdc8;
-const LazyFlags* FLAGS_ADC8 = &flagsAdc8;
+static const LazyFlags* flagsADC8 = &flagsAdc8;
 
 class LazyFlagsAdc16 : public LazyFlagsAdd16 {
     U32 getCF(CPU* cpu) const override {return (cpu->result.u16 < cpu->dst.u16) || (cpu->oldCF && (cpu->result.u16 == cpu->dst.u16));}
@@ -187,7 +187,7 @@ class LazyFlagsAdc16 : public LazyFlagsAdd16 {
 };
 
 static LazyFlagsAdc16 flagsAdc16;
-const LazyFlags* FLAGS_ADC16 = &flagsAdc16;
+static const LazyFlags* flagsADC16 = &flagsAdc16;
 
 class LazyFlagsAdc32 : public LazyFlagsAdd32 {
     U32 getCF(CPU* cpu) const override {return (cpu->result.u32 < cpu->dst.u32) || (cpu->oldCF && (cpu->result.u32 == cpu->dst.u32));}
@@ -195,7 +195,7 @@ class LazyFlagsAdc32 : public LazyFlagsAdd32 {
 };
 
 static LazyFlagsAdc32 flagsAdc32;
-const LazyFlags* FLAGS_ADC32 = &flagsAdc32;
+static const LazyFlags* flagsADC32 = &flagsAdc32;
 
 class LazyFlagsSub8 : public LazyFlagsDefault8 {
     U32 getCF(CPU* cpu) const override {return cpu->dst.u8<cpu->src.u8;}
@@ -208,8 +208,8 @@ class LazyFlagsSub8 : public LazyFlagsDefault8 {
 };
 
 static LazyFlagsSub8 flagsSub8;
-const LazyFlags* FLAGS_SUB8 = &flagsSub8;
-const LazyFlags* FLAGS_CMP8 = &flagsSub8;
+static const LazyFlags* flagsSUB8 = &flagsSub8;
+static const LazyFlags* flagsCMP8 = &flagsSub8;
 
 class LazyFlagsSub16 : public LazyFlagsDefault16 {
     U32 getCF(CPU* cpu) const override {return cpu->dst.u16<cpu->src.u16;}
@@ -222,8 +222,8 @@ class LazyFlagsSub16 : public LazyFlagsDefault16 {
 };
 
 static LazyFlagsSub16 flagsSub16;
-const LazyFlags* FLAGS_SUB16 = &flagsSub16;
-const LazyFlags* FLAGS_CMP16 = &flagsSub16;
+static const LazyFlags* flagsSUB16 = &flagsSub16;
+static const LazyFlags* flagsCMP16 = &flagsSub16;
 
 class LazyFlagsSub32 : public LazyFlagsDefault32 {
     U32 getCF(CPU* cpu) const override {return cpu->dst.u32<cpu->src.u32;}
@@ -236,8 +236,8 @@ class LazyFlagsSub32 : public LazyFlagsDefault32 {
 };
 
 static LazyFlagsSub32 flagsSub32;
-const LazyFlags* FLAGS_SUB32 = &flagsSub32;
-const LazyFlags* FLAGS_CMP32 = &flagsSub32;
+static const LazyFlags* flagsSUB32 = &flagsSub32;
+static const LazyFlags* flagsCMP32 = &flagsSub32;
 
 class LazyFlagsSbb8 : public LazyFlagsSub8 {
     U32 getCF(CPU* cpu) const override { return (cpu->dst.u8 < cpu->result.u8) || (cpu->oldCF && (cpu->src.u8 == 0xff)); }
@@ -246,7 +246,7 @@ class LazyFlagsSbb8 : public LazyFlagsSub8 {
 };
 
 static LazyFlagsSbb8 flagsSbb8;
-const LazyFlags* FLAGS_SBB8 = &flagsSbb8;
+static const LazyFlags* flagsSBB8 = &flagsSbb8;
 
 class LazyFlagsSbb16 : public LazyFlagsSub16 {
     U32 getCF(CPU* cpu) const override { return (cpu->dst.u16 < cpu->result.u16) || (cpu->oldCF && (cpu->src.u16 == 0xffff)); }
@@ -255,7 +255,7 @@ class LazyFlagsSbb16 : public LazyFlagsSub16 {
 };
 
 static LazyFlagsSbb16 flagsSbb16;
-const LazyFlags* FLAGS_SBB16 = &flagsSbb16;
+static const LazyFlags* flagsSBB16 = &flagsSbb16;
 
 class LazyFlagsSbb32 : public LazyFlagsSub32 {
     U32 getCF(CPU* cpu) const override { return (cpu->dst.u32 < cpu->result.u32) || (cpu->oldCF && (cpu->src.u32 == 0xffffffff)); }
@@ -264,7 +264,7 @@ class LazyFlagsSbb32 : public LazyFlagsSub32 {
 };
 
 static LazyFlagsSbb32 flagsSbb32;
-const LazyFlags* FLAGS_SBB32 = &flagsSbb32;
+static const LazyFlags* flagsSBB32 = &flagsSbb32;
 
 class LazyFlagsInc8 : public LazyFlagsDefault8 {
     U32 getCF(CPU* cpu) const override {return cpu->oldCF;}
@@ -277,7 +277,7 @@ class LazyFlagsInc8 : public LazyFlagsDefault8 {
 };
 
 static LazyFlagsInc8 flagsInc8;
-const LazyFlags* FLAGS_INC8 = &flagsInc8;
+static const LazyFlags* flagsINC8 = &flagsInc8;
 
 class LazyFlagsInc16 : public LazyFlagsDefault16 {
     U32 getCF(CPU* cpu) const override {return cpu->oldCF;}
@@ -290,7 +290,7 @@ class LazyFlagsInc16 : public LazyFlagsDefault16 {
 };
 
 static LazyFlagsInc16 flagsInc16;
-const LazyFlags* FLAGS_INC16 = &flagsInc16;
+static const LazyFlags* flagsINC16 = &flagsInc16;
 
 class LazyFlagsInc32 : public LazyFlagsDefault32 {
     U32 getCF(CPU* cpu) const override {return cpu->oldCF;}
@@ -303,7 +303,7 @@ class LazyFlagsInc32 : public LazyFlagsDefault32 {
 };
 
 static LazyFlagsInc32 flagsInc32;
-const LazyFlags* FLAGS_INC32 = &flagsInc32;
+static const LazyFlags* flagsINC32 = &flagsInc32;
 
 class LazyFlagsDec8 : public LazyFlagsDefault8 {
     U32 getCF(CPU* cpu) const override {return cpu->oldCF;}
@@ -316,7 +316,7 @@ class LazyFlagsDec8 : public LazyFlagsDefault8 {
 };
 
 static LazyFlagsDec8 flagsDec8;
-const LazyFlags* FLAGS_DEC8 = &flagsDec8;
+static const LazyFlags* flagsDEC8 = &flagsDec8;
 
 class LazyFlagsDec16 : public LazyFlagsDefault16 {
     U32 getCF(CPU* cpu) const override {return cpu->oldCF;}
@@ -329,7 +329,7 @@ class LazyFlagsDec16 : public LazyFlagsDefault16 {
 };
 
 static LazyFlagsDec16 flagsDec16;
-const LazyFlags* FLAGS_DEC16 = &flagsDec16;
+static const LazyFlags* flagsDEC16 = &flagsDec16;
 
 class LazyFlagsDec32 : public LazyFlagsDefault32 {
     U32 getCF(CPU* cpu) const override {return cpu->oldCF;}
@@ -342,7 +342,7 @@ class LazyFlagsDec32 : public LazyFlagsDefault32 {
 };
 
 static LazyFlagsDec32 flagsDec32;
-const LazyFlags* FLAGS_DEC32 = &flagsDec32;
+static const LazyFlags* flagsDEC32 = &flagsDec32;
 
 class LazyFlagsNeg8 : public LazyFlagsDefault8 {
     U32 getCF(CPU* cpu) const override {return cpu->src.u8!=0;}
@@ -355,7 +355,7 @@ class LazyFlagsNeg8 : public LazyFlagsDefault8 {
 };
 
 static LazyFlagsNeg8 flagsNeg8;
-const LazyFlags* FLAGS_NEG8 = &flagsNeg8;
+static const LazyFlags* flagsNEG8 = &flagsNeg8;
 
 class LazyFlagsNeg16 : public LazyFlagsDefault16 {
     U32 getCF(CPU* cpu) const override {return cpu->src.u16!=0;}
@@ -368,7 +368,7 @@ class LazyFlagsNeg16 : public LazyFlagsDefault16 {
 };
 
 static LazyFlagsNeg16 flagsNeg16;
-const LazyFlags* FLAGS_NEG16 = &flagsNeg16;
+static const LazyFlags* flagsNEG16 = &flagsNeg16;
 
 class LazyFlagsNeg32 : public LazyFlagsDefault32 {
     U32 getCF(CPU* cpu) const override {return cpu->src.u32!=0;}
@@ -381,7 +381,7 @@ class LazyFlagsNeg32 : public LazyFlagsDefault32 {
 };
 
 static LazyFlagsNeg32 flagsNeg32;
-const LazyFlags* FLAGS_NEG32 = &flagsNeg32;
+static const LazyFlags* flagsNEG32 = &flagsNeg32;
 
 class LazyFlagsShl8 : public LazyFlagsDefault8 {
     U32 getCF(CPU* cpu) const override {return ((cpu->dst.u8 << (cpu->src.u8-1)) & 0x80) >> 7;}
@@ -394,7 +394,7 @@ class LazyFlagsShl8 : public LazyFlagsDefault8 {
 };
 
 static LazyFlagsShl8 flagsShl8;
-const LazyFlags* FLAGS_SHL8 = &flagsShl8;
+static const LazyFlags* flagsSHL8 = &flagsShl8;
 
 class LazyFlagsShl16 : public LazyFlagsDefault16 {
     U32 getCF(CPU* cpu) const override {return ((cpu->dst.u16 << (cpu->src.u8-1)) & 0x8000)>>15;}
@@ -407,7 +407,7 @@ class LazyFlagsShl16 : public LazyFlagsDefault16 {
 };
 
 static LazyFlagsShl16 flagsShl16;
-const LazyFlags* FLAGS_SHL16 = &flagsShl16;
+static const LazyFlags* flagsSHL16 = &flagsShl16;
 
 class LazyFlagsShl32 : public LazyFlagsDefault32 {
     U32 getCF(CPU* cpu) const override {return (cpu->dst.u32 >> (32 - cpu->src.u8)) & 1;}
@@ -420,7 +420,7 @@ class LazyFlagsShl32 : public LazyFlagsDefault32 {
 };
 
 static LazyFlagsShl32 flagsShl32;
-const LazyFlags* FLAGS_SHL32 = &flagsShl32;
+static const LazyFlags* flagsSHL32 = &flagsShl32;
 
 class LazyFlagsDshl16 : public LazyFlagsDefault16 {
     U32 getCF(CPU* cpu) const override {return (cpu->dst.u16 >> (16-cpu->src.u8)) & 1;}
@@ -433,7 +433,7 @@ class LazyFlagsDshl16 : public LazyFlagsDefault16 {
 };
 
 static LazyFlagsDshl16 flagsDshl16;
-const LazyFlags* FLAGS_DSHL16 = &flagsDshl16;
+static const LazyFlags* flagsDSHL16 = &flagsDshl16;
 
 class LazyFlagsDshl32 : public LazyFlagsDefault32 {
     U32 getCF(CPU* cpu) const override {return (cpu->dst.u32 >> (32 - cpu->src.u8)) & 1;}
@@ -446,7 +446,7 @@ class LazyFlagsDshl32 : public LazyFlagsDefault32 {
 };
 
 static LazyFlagsDshl32 flagsDshl32;
-const LazyFlags* FLAGS_DSHL32 = &flagsDshl32;
+static const LazyFlags* flagsDSHL32 = &flagsDshl32;
 
 class LazyFlagsDshr16 : public LazyFlagsDefault16 {
     U32 getCF(CPU* cpu) const override {return (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;} // dst is intentionally 32 bit
@@ -459,7 +459,7 @@ class LazyFlagsDshr16 : public LazyFlagsDefault16 {
 };
 
 static LazyFlagsDshr16 flagsDshr16;
-const LazyFlags* FLAGS_DSHR16 = &flagsDshr16;
+static const LazyFlags* flagsDSHR16 = &flagsDshr16;
 
 class LazyFlagsDshr32 : public LazyFlagsDefault32 {
     U32 getCF(CPU* cpu) const override {return (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;}
@@ -472,7 +472,7 @@ class LazyFlagsDshr32 : public LazyFlagsDefault32 {
 };
 
 static LazyFlagsDshr32 flagsDshr32;
-const LazyFlags* FLAGS_DSHR32 = &flagsDshr32;
+static const LazyFlags* flagsDSHR32 = &flagsDshr32;
 
 class LazyFlagsShr8 : public LazyFlagsDefault8 {
     U32 getCF(CPU* cpu) const override {return (cpu->dst.u8 >> (cpu->src.u8 - 1)) & 1;}
@@ -485,7 +485,7 @@ class LazyFlagsShr8 : public LazyFlagsDefault8 {
 };
 
 static LazyFlagsShr8 flagsShr8;
-const LazyFlags* FLAGS_SHR8 = &flagsShr8;
+static const LazyFlags* flagsSHR8 = &flagsShr8;
 
 class LazyFlagsShr16 : public LazyFlagsDefault16 {
     U32 getCF(CPU* cpu) const override {return (cpu->dst.u16 >> (cpu->src.u8 - 1)) & 1;}
@@ -498,7 +498,7 @@ class LazyFlagsShr16 : public LazyFlagsDefault16 {
 };
 
 static LazyFlagsShr16 flagsShr16;
-const LazyFlags* FLAGS_SHR16 = &flagsShr16;
+static const LazyFlags* flagsSHR16 = &flagsShr16;
 
 class LazyFlagsShr32 : public LazyFlagsDefault32 {
     U32 getCF(CPU* cpu) const override {return (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;}
@@ -511,7 +511,7 @@ class LazyFlagsShr32 : public LazyFlagsDefault32 {
 };
 
 static LazyFlagsShr32 flagsShr32;
-const LazyFlags* FLAGS_SHR32 = &flagsShr32;
+static const LazyFlags* flagsSHR32 = &flagsShr32;
 
 class LazyFlagsSar8 : public LazyFlagsDefault8 {
     U32 getCF(CPU* cpu) const override {return (((S8) cpu->dst.u8) >> (cpu->src.u8 - 1)) & 1;}
@@ -524,7 +524,7 @@ class LazyFlagsSar8 : public LazyFlagsDefault8 {
 };
 
 static LazyFlagsSar8 flagsSar8;
-const LazyFlags* FLAGS_SAR8 = &flagsSar8;
+static const LazyFlags* flagsSAR8 = &flagsSar8;
 
 class LazyFlagsSar16 : public LazyFlagsDefault16 {
     U32 getCF(CPU* cpu) const override {return (((S16) cpu->dst.u16) >> (cpu->src.u8 - 1)) & 1;}
@@ -537,7 +537,7 @@ class LazyFlagsSar16 : public LazyFlagsDefault16 {
 };
 
 static LazyFlagsSar16 flagsSar16;
-const LazyFlags* FLAGS_SAR16 = &flagsSar16;
+static const LazyFlags* flagsSAR16 = &flagsSar16;
 
 class LazyFlagsSar32 : public LazyFlagsDefault32 {
     U32 getCF(CPU* cpu) const override {return (((S32) cpu->dst.u32) >> (cpu->src.u8 - 1)) & 1;}
@@ -550,4 +550,58 @@ class LazyFlagsSar32 : public LazyFlagsDefault32 {
 };
 
 static LazyFlagsSar32 flagsSar32;
-const LazyFlags* FLAGS_SAR32 = &flagsSar32;
+static const LazyFlags* flagsSAR32 = &flagsSar32;
+
+const LazyFlags* lazyFlags[] = {
+    flagsNONE,
+    flagsADD8,
+    flagsADD16,
+    flagsADD32,
+    flagsOR8,
+    flagsOR16,
+    flagsOR32,
+    flagsADC8,
+    flagsADC16,
+    flagsADC32,
+    flagsSBB8,
+    flagsSBB16,
+    flagsSBB32,
+    flagsAND8,
+    flagsAND16,
+    flagsAND32,
+    flagsSUB8,
+    flagsSUB16,
+    flagsSUB32,
+    flagsXOR8,
+    flagsXOR16,
+    flagsXOR32,
+    flagsINC8,
+    flagsINC16,
+    flagsINC32,
+    flagsDEC8,
+    flagsDEC16,
+    flagsDEC32,
+    flagsSHL8,
+    flagsSHL16,
+    flagsSHL32,
+    flagsSHR8,
+    flagsSHR16,
+    flagsSHR32,
+    flagsSAR8,
+    flagsSAR16,
+    flagsSAR32,
+    flagsCMP8,
+    flagsCMP16,
+    flagsCMP32,
+    flagsTEST8,
+    flagsTEST16,
+    flagsTEST32,
+    flagsDSHL16,
+    flagsDSHL32,
+    flagsDSHR16,
+    flagsDSHR32,
+    flagsNEG8,
+    flagsNEG16,
+    flagsNEG32,
+    nullptr
+};

@@ -564,7 +564,7 @@ void FPU::FST(int st, int other) {
 }
 
 static void setFlags(CPU* cpu, int newFlags) {
-    cpu->lazyFlags = FLAGS_NONE;
+    cpu->lazyFlagType = FLAGS_NONE;
     cpu->flags &= ~FMASK_TEST;
     cpu->flags |= (newFlags & FMASK_TEST);
 }

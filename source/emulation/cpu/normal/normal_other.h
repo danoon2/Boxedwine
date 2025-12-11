@@ -278,7 +278,7 @@ void OPCALL normal_std(CPU* cpu, DecodedOp* op) {
     cpu->addFlag(DF);
     NEXT();
 }
-#ifdef BOXEDWINE_MSVC
+#if defined(BOXEDWINE_MSVC) && (defined(_M_X64) || defined(_M_IX86))
 #include <intrin.h>
 void OPCALL normal_rdtsc(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
@@ -600,7 +600,7 @@ void OPCALL normal_xaddr8r8(CPU* cpu, DecodedOp* op) {
     cpu->src.u8 = *cpu->reg8[op->reg];
     cpu->dst.u8 = *cpu->reg8[op->rm];
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
-    cpu->lazyFlags = FLAGS_ADD8;
+    cpu->lazyFlagType = FLAGS_ADD8;
     *cpu->reg8[op->reg] = cpu->dst.u8;
     *cpu->reg8[op->rm] = cpu->result.u8;
     NEXT();
@@ -611,7 +611,7 @@ void OPCALL normal_xaddr8e8(CPU* cpu, DecodedOp* op) {
     cpu->src.u8 = *cpu->reg8[op->reg];
     cpu->dst.u8 = cpu->memory->readb(address);
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
-    cpu->lazyFlags = FLAGS_ADD8;
+    cpu->lazyFlagType = FLAGS_ADD8;
     *cpu->reg8[op->reg] = cpu->dst.u8;
     cpu->memory->writeb(address, cpu->result.u8);
     NEXT();
@@ -621,7 +621,7 @@ void OPCALL normal_xaddr16r16(CPU* cpu, DecodedOp* op) {
     cpu->src.u16 = cpu->reg[op->reg].u16;
     cpu->dst.u16 = cpu->reg[op->rm].u16;
     cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
-    cpu->lazyFlags = FLAGS_ADD16;
+    cpu->lazyFlagType = FLAGS_ADD16;
     cpu->reg[op->reg].u16 = cpu->dst.u16;
     cpu->reg[op->rm].u16 = cpu->result.u16;
     NEXT();
@@ -632,7 +632,7 @@ void OPCALL normal_xaddr16e16(CPU* cpu, DecodedOp* op) {
     cpu->src.u16 = cpu->reg[op->reg].u16;
     cpu->dst.u16 = cpu->memory->readw(address);
     cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
-    cpu->lazyFlags = FLAGS_ADD16;
+    cpu->lazyFlagType = FLAGS_ADD16;
     cpu->reg[op->reg].u16 = cpu->dst.u16;
     cpu->memory->writew(address, cpu->result.u16);
     NEXT();
@@ -642,7 +642,7 @@ void OPCALL normal_xaddr32r32(CPU* cpu, DecodedOp* op) {
     cpu->src.u32 = cpu->reg[op->reg].u32;
     cpu->dst.u32 = cpu->reg[op->rm].u32;
     cpu->result.u32 = cpu->dst.u32 + cpu->src.u32;
-    cpu->lazyFlags = FLAGS_ADD32;
+    cpu->lazyFlagType = FLAGS_ADD32;
     cpu->reg[op->reg].u32 = cpu->dst.u32;
     cpu->reg[op->rm].u32 =  cpu->result.u32;
     NEXT();
@@ -653,7 +653,7 @@ void OPCALL normal_xaddr32e32(CPU* cpu, DecodedOp* op) {
     cpu->src.u32 = cpu->reg[op->reg].u32;
     cpu->dst.u32 = cpu->memory->readd(address);
     cpu->result.u32 = cpu->dst.u32 + cpu->src.u32;
-    cpu->lazyFlags = FLAGS_ADD32;
+    cpu->lazyFlagType = FLAGS_ADD32;
     cpu->reg[op->reg].u32 = cpu->dst.u32;
     cpu->memory->writed(address, cpu->result.u32);
     NEXT();

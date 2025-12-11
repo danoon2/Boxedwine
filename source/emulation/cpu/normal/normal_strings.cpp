@@ -155,7 +155,7 @@ void cmpsb16(CPU* cpu, U32 rep_zero, U32 base) {
     cpu->dst.u8 = v2;
     cpu->src.u8 = v1;
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
-    cpu->lazyFlags = FLAGS_SUB8;
+    cpu->lazyFlagType = FLAGS_SUB8;
 }
 void cmpsb16r(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
@@ -177,7 +177,7 @@ void cmpsb16r(CPU* cpu, U32 rep_zero, U32 base) {
         cpu->dst.u8 = v2;
         cpu->src.u8 = v1;
         cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
-        cpu->lazyFlags = FLAGS_SUB8;
+        cpu->lazyFlagType = FLAGS_SUB8;
     }
 }
 void cmpsb32(CPU* cpu, U32 rep_zero, U32 base) {
@@ -192,7 +192,7 @@ void cmpsb32(CPU* cpu, U32 rep_zero, U32 base) {
     cpu->dst.u8 = v2;
     cpu->src.u8 = v1;
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
-    cpu->lazyFlags = FLAGS_SUB8;
+    cpu->lazyFlagType = FLAGS_SUB8;
 }
 void cmpsb32r(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
@@ -213,7 +213,7 @@ void cmpsb32r(CPU* cpu, U32 rep_zero, U32 base) {
         cpu->dst.u8 = v2;
         cpu->src.u8 = v1;
         cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
-        cpu->lazyFlags = FLAGS_SUB8;
+        cpu->lazyFlagType = FLAGS_SUB8;
     }
 }
 void cmpsw16(CPU* cpu, U32 rep_zero, U32 base) {
@@ -228,7 +228,7 @@ void cmpsw16(CPU* cpu, U32 rep_zero, U32 base) {
     cpu->dst.u16 = v2;
     cpu->src.u16 = v1;
     cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
-    cpu->lazyFlags = FLAGS_SUB16;
+    cpu->lazyFlagType = FLAGS_SUB16;
 }
 void cmpsw16r(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
@@ -249,7 +249,7 @@ void cmpsw16r(CPU* cpu, U32 rep_zero, U32 base) {
         cpu->dst.u16 = v2;
         cpu->src.u16 = v1;
         cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
-        cpu->lazyFlags = FLAGS_SUB16;
+        cpu->lazyFlagType = FLAGS_SUB16;
     }
 }
 void cmpsw32(CPU* cpu, U32 rep_zero, U32 base) {
@@ -264,7 +264,7 @@ void cmpsw32(CPU* cpu, U32 rep_zero, U32 base) {
     cpu->dst.u16 = v2;
     cpu->src.u16 = v1;
     cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
-    cpu->lazyFlags = FLAGS_SUB16;
+    cpu->lazyFlagType = FLAGS_SUB16;
 }
 void cmpsw32r(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
@@ -285,7 +285,7 @@ void cmpsw32r(CPU* cpu, U32 rep_zero, U32 base) {
         cpu->dst.u16 = v2;
         cpu->src.u16 = v1;
         cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
-        cpu->lazyFlags = FLAGS_SUB16;
+        cpu->lazyFlagType = FLAGS_SUB16;
     }
 }
 void cmpsd16(CPU* cpu, U32 rep_zero, U32 base) {
@@ -300,7 +300,7 @@ void cmpsd16(CPU* cpu, U32 rep_zero, U32 base) {
     cpu->dst.u32 = v2;
     cpu->src.u32 = v1;
     cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
-    cpu->lazyFlags = FLAGS_SUB32;
+    cpu->lazyFlagType = FLAGS_SUB32;
 }
 void cmpsd16r(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
@@ -321,7 +321,7 @@ void cmpsd16r(CPU* cpu, U32 rep_zero, U32 base) {
         cpu->dst.u32 = v2;
         cpu->src.u32 = v1;
         cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
-        cpu->lazyFlags = FLAGS_SUB32;
+        cpu->lazyFlagType = FLAGS_SUB32;
     }
 }
 void cmpsd32(CPU* cpu, U32 rep_zero, U32 base) {
@@ -336,7 +336,7 @@ void cmpsd32(CPU* cpu, U32 rep_zero, U32 base) {
     cpu->dst.u32 = v2;
     cpu->src.u32 = v1;
     cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
-    cpu->lazyFlags = FLAGS_SUB32;
+    cpu->lazyFlagType = FLAGS_SUB32;
 }
 void cmpsd32r(CPU* cpu, U32 rep_zero, U32 base) {
     U32 dBase = cpu->seg[ES].address;
@@ -357,7 +357,7 @@ void cmpsd32r(CPU* cpu, U32 rep_zero, U32 base) {
         cpu->dst.u32 = v2;
         cpu->src.u32 = v1;
         cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
-        cpu->lazyFlags = FLAGS_SUB32;
+        cpu->lazyFlagType = FLAGS_SUB32;
     }
 }
 void stosb16(CPU* cpu) {
@@ -548,7 +548,7 @@ void scasb16(CPU* cpu, U32 rep_zero) {
     cpu->dst.u8 = AL;
     cpu->src.u8 = v1;
     cpu->result.u8 = AL - v1;
-    cpu->lazyFlags = FLAGS_SUB8;
+    cpu->lazyFlagType = FLAGS_SUB8;
 }
 void scasb16r(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
@@ -565,7 +565,7 @@ void scasb16r(CPU* cpu, U32 rep_zero) {
         cpu->dst.u8 = AL;
         cpu->src.u8 = v1;
         cpu->result.u8 = AL - v1;
-        cpu->lazyFlags = FLAGS_SUB8;
+        cpu->lazyFlagType = FLAGS_SUB8;
     }
 }
 void scasb32(CPU* cpu, U32 rep_zero) {
@@ -576,7 +576,7 @@ void scasb32(CPU* cpu, U32 rep_zero) {
     cpu->dst.u8 = AL;
     cpu->src.u8 = v1;
     cpu->result.u8 = AL - v1;
-    cpu->lazyFlags = FLAGS_SUB8;
+    cpu->lazyFlagType = FLAGS_SUB8;
 }
 void scasb32r(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
@@ -593,7 +593,7 @@ void scasb32r(CPU* cpu, U32 rep_zero) {
         cpu->dst.u8 = AL;
         cpu->src.u8 = v1;
         cpu->result.u8 = AL - v1;
-        cpu->lazyFlags = FLAGS_SUB8;
+        cpu->lazyFlagType = FLAGS_SUB8;
     }
 }
 void scasw16(CPU* cpu, U32 rep_zero) {
@@ -604,7 +604,7 @@ void scasw16(CPU* cpu, U32 rep_zero) {
     cpu->dst.u16 = AX;
     cpu->src.u16 = v1;
     cpu->result.u16 = AX - v1;
-    cpu->lazyFlags = FLAGS_SUB16;
+    cpu->lazyFlagType = FLAGS_SUB16;
 }
 void scasw16r(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
@@ -621,7 +621,7 @@ void scasw16r(CPU* cpu, U32 rep_zero) {
         cpu->dst.u16 = AX;
         cpu->src.u16 = v1;
         cpu->result.u16 = AX - v1;
-        cpu->lazyFlags = FLAGS_SUB16;
+        cpu->lazyFlagType = FLAGS_SUB16;
     }
 }
 void scasw32(CPU* cpu, U32 rep_zero) {
@@ -632,7 +632,7 @@ void scasw32(CPU* cpu, U32 rep_zero) {
     cpu->dst.u16 = AX;
     cpu->src.u16 = v1;
     cpu->result.u16 = AX - v1;
-    cpu->lazyFlags = FLAGS_SUB16;
+    cpu->lazyFlagType = FLAGS_SUB16;
 }
 void scasw32r(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
@@ -649,7 +649,7 @@ void scasw32r(CPU* cpu, U32 rep_zero) {
         cpu->dst.u16 = AX;
         cpu->src.u16 = v1;
         cpu->result.u16 = AX - v1;
-        cpu->lazyFlags = FLAGS_SUB16;
+        cpu->lazyFlagType = FLAGS_SUB16;
     }
 }
 void scasd16(CPU* cpu, U32 rep_zero) {
@@ -660,7 +660,7 @@ void scasd16(CPU* cpu, U32 rep_zero) {
     cpu->dst.u32 = EAX;
     cpu->src.u32 = v1;
     cpu->result.u32 = EAX - v1;
-    cpu->lazyFlags = FLAGS_SUB32;
+    cpu->lazyFlagType = FLAGS_SUB32;
 }
 void scasd16r(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
@@ -677,7 +677,7 @@ void scasd16r(CPU* cpu, U32 rep_zero) {
         cpu->dst.u32 = EAX;
         cpu->src.u32 = v1;
         cpu->result.u32 = EAX - v1;
-        cpu->lazyFlags = FLAGS_SUB32;
+        cpu->lazyFlagType = FLAGS_SUB32;
     }
 }
 void scasd32(CPU* cpu, U32 rep_zero) {
@@ -688,7 +688,7 @@ void scasd32(CPU* cpu, U32 rep_zero) {
     cpu->dst.u32 = EAX;
     cpu->src.u32 = v1;
     cpu->result.u32 = EAX - v1;
-    cpu->lazyFlags = FLAGS_SUB32;
+    cpu->lazyFlagType = FLAGS_SUB32;
 }
 void scasd32r(CPU* cpu, U32 rep_zero) {
     U32 dBase = cpu->seg[ES].address;
@@ -705,6 +705,6 @@ void scasd32r(CPU* cpu, U32 rep_zero) {
         cpu->dst.u32 = EAX;
         cpu->src.u32 = v1;
         cpu->result.u32 = EAX - v1;
-        cpu->lazyFlags = FLAGS_SUB32;
+        cpu->lazyFlagType = FLAGS_SUB32;
     }
 }

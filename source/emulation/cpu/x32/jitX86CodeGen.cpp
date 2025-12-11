@@ -1803,7 +1803,11 @@ void JitX86CodeGen::write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 di
 
 RegPtr JitX86CodeGen::readCPU(JitWidth width, U32 offset, RegPtr reg) {
     if (!reg) {
-        reg = getTmpReg();
+        if (width == JitWidth::b8) {
+            reg = getTmpReg8();
+        } else {
+            reg = getTmpReg();
+        }
     }
     // mov reg, [edi+srcOffset]    
     if (width == JitWidth::b32) {
@@ -1823,7 +1827,12 @@ RegPtr JitX86CodeGen::readCPU(JitWidth width, U32 offset, RegPtr reg) {
 }
 
 RegPtr JitX86CodeGen::readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset) {
-    RegPtr reg = getTmpReg();
+    RegPtr reg;
+    if (width == JitWidth::b8) {
+        reg = getTmpReg8();
+    } else {
+        reg = getTmpReg();
+    }
 
     if (width == JitWidth::b32) {
         x86.mov(R32(reg->hardwareReg()), X86Asm::Mem32(HOST_CPU, R(sib->hardwareReg()), lsl, offset));

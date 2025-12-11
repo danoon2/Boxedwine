@@ -60,9 +60,9 @@ public:
     void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr) override;
     void writeValue(JitWidth width, RegPtr addressReg, U32 imm) override;
 
-    void genCF(const LazyFlags* flags, RegPtr result); // guaranteed to return 0 or 1
-    void genOF(const LazyFlags* flags, RegPtr result); // guaranteed to return 0 or 1
-    void genPF(const LazyFlags* flags, RegPtr result); // guaranteed to return 0 or 1
+    void genCF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
+    void genOF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
+    void genPF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
 
     RegPtr getZF() override;
     RegPtr getCF() override;
@@ -74,7 +74,7 @@ public:
     virtual RegPtr getFlagSrcTmp(RegPtr result = nullptr); // guaranteed to return result in result
     virtual RegPtr getFlagResultTmp(RegPtr result = nullptr); // guaranteed to return result in result
     virtual RegPtr getFlagCF(RegPtr result = nullptr);
-    void storeLazyFlags(const LazyFlags* flags) override;
+    void storeLazyFlags(LazyFlagType flags) override;
     void storeLazyFlagsDest(RegPtr reg) override;
     void storeLazyFlagsSrc(RegPtr reg) override;
     void storeLazyFlagsSrc(U32 value) override;

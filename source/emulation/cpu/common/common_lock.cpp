@@ -74,7 +74,7 @@ void common_cmpxchg8b_lock(CPU* cpu, U32 address) {
     cpu->dst.u32 = EAX;
     cpu->src.u32 = cpu->memory->readd(address);
     cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
-    cpu->lazyFlags = FLAGS_CMP32;
+    cpu->lazyFlagType = FLAGS_CMP32;
     if (EAX == cpu->src.u32) {
         cpu->memory->writed(address, cpu->reg[srcReg].u32);
     } else {
@@ -106,14 +106,14 @@ void common_cmpxchge32r32_lock(CPU* cpu, U32 address, U32 srcReg) {
         cpu->src.u32 = expected;
         cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
     }
-    cpu->lazyFlags = FLAGS_CMP32;
+    cpu->lazyFlagType = FLAGS_CMP32;
 }
 
 /*
    cpu->dst.u16 = AX;
     cpu->src.u16 = cpu->memory->readw(address);
     cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
-    cpu->lazyFlags = FLAGS_CMP16;
+    cpu->lazyFlagType = FLAGS_CMP16;
     if (AX == cpu->src.u16) {
         cpu->memory->writew(address, cpu->reg[srcReg].u16);
     } else {
@@ -144,14 +144,14 @@ void common_cmpxchge16r16_lock(CPU* cpu, U32 address, U32 srcReg) {
         cpu->src.u16 = expected;
         cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
     }
-    cpu->lazyFlags = FLAGS_CMP16;
+    cpu->lazyFlagType = FLAGS_CMP16;
 }
 
 /*
     cpu->dst.u8 = AL;
     cpu->src.u8 = cpu->memory->readb(address);
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
-    cpu->lazyFlags = FLAGS_CMP8;
+    cpu->lazyFlagType = FLAGS_CMP8;
     if (AL == cpu->src.u8) {
         cpu->memory->writeb(address, *cpu->reg8[srcReg]);
     } else {
@@ -170,7 +170,7 @@ void common_cmpxchge8r8_lock(CPU* cpu, U32 address, U32 srcReg) {
     }
     cpu->src.u8 = expected;
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
-    cpu->lazyFlags = FLAGS_CMP8;
+    cpu->lazyFlagType = FLAGS_CMP8;
 }
 
 /*
@@ -230,7 +230,7 @@ void common_xchge8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->src.u32 = cpu->reg[op->reg].u32;
     cpu->dst.u32 = cpu->memory->readd(address);
     cpu->result.u32 = cpu->dst.u32 + cpu->src.u32;
-    cpu->lazyFlags = FLAGS_ADD32;
+    cpu->lazyFlagType = FLAGS_ADD32;
     cpu->reg[op->reg].u32 = cpu->dst.u32;
     cpu->memory->writed(address, cpu->result.u32);
 */
@@ -249,7 +249,7 @@ void common_xaddr32e32_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->result.u32 = cpu->dst.u32 + cpu->src.u32;
     }
     cpu->reg[reg].u32 = cpu->dst.u32;
-    cpu->lazyFlags = FLAGS_ADD32;
+    cpu->lazyFlagType = FLAGS_ADD32;
 }
 
 /*
@@ -257,7 +257,7 @@ void common_xaddr32e32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->src.u16 = cpu->reg[op->reg].u16;
     cpu->dst.u16 = cpu->memory->readw(address);
     cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
-    cpu->lazyFlags = FLAGS_ADD16;
+    cpu->lazyFlagType = FLAGS_ADD16;
     cpu->reg[op->reg].u16 = cpu->dst.u16;
     cpu->memory->writew(address, cpu->result.u16);
 */
@@ -276,7 +276,7 @@ void common_xaddr16e16_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
     }
     cpu->reg[reg].u16 = cpu->dst.u16;
-    cpu->lazyFlags = FLAGS_ADD16;
+    cpu->lazyFlagType = FLAGS_ADD16;
 }
 
 /*
@@ -284,7 +284,7 @@ void common_xaddr16e16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->src.u8 = *cpu->reg8[op->reg];
     cpu->dst.u8 = cpu->memory->readb(address);
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
-    cpu->lazyFlags = FLAGS_ADD8;
+    cpu->lazyFlagType = FLAGS_ADD8;
     *cpu->reg8[op->reg] = cpu->dst.u8;
     cpu->memory->writeb(address, cpu->result.u8);
 */
@@ -295,7 +295,7 @@ void common_xaddr8e8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u8 = mem.fetch_add(*cpu->reg8[reg]);
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
     *cpu->reg8[reg] = cpu->dst.u8;
-    cpu->lazyFlags = FLAGS_ADD8;
+    cpu->lazyFlagType = FLAGS_ADD8;
 }
 
 /*
@@ -303,7 +303,7 @@ void common_xaddr8e8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = cpu->reg[op->reg].u32;
     cpu->result.u32 = cpu->dst.u32 + cpu->src.u32;
-    cpu->lazyFlags = FLAGS_ADD32;
+    cpu->lazyFlagType = FLAGS_ADD32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_adde32r32_lock(CPU* cpu, U32 address, U32 reg) {
@@ -320,7 +320,7 @@ void common_adde32r32_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u32 = mem.fetch_add(cpu->src.u32);
         cpu->result.u32 = cpu->dst.u32 + cpu->src.u32;
     }
-    cpu->lazyFlags = FLAGS_ADD32;
+    cpu->lazyFlagType = FLAGS_ADD32;
 }
 
 /*
@@ -328,7 +328,7 @@ void common_adde32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = cpu->reg[op->reg].u16;
     cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
-    cpu->lazyFlags = FLAGS_ADD16;
+    cpu->lazyFlagType = FLAGS_ADD16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_adde16r16_lock(CPU* cpu, U32 address, U32 reg) {
@@ -345,7 +345,7 @@ void common_adde16r16_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u16 = mem.fetch_add(cpu->src.u16);
         cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
     }
-    cpu->lazyFlags = FLAGS_ADD16;
+    cpu->lazyFlagType = FLAGS_ADD16;
 }
 
 /*
@@ -353,7 +353,7 @@ void common_adde16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = *cpu->reg8[op->reg];
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
-    cpu->lazyFlags = FLAGS_ADD8;
+    cpu->lazyFlagType = FLAGS_ADD8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_adde8r8_lock(CPU* cpu, U32 address, U32 reg) {
@@ -362,7 +362,7 @@ void common_adde8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->src.u8 = *cpu->reg8[reg];
     cpu->dst.u8 = mem.fetch_add(cpu->src.u8);
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
-    cpu->lazyFlags = FLAGS_ADD8;
+    cpu->lazyFlagType = FLAGS_ADD8;
 }
 
 /*
@@ -370,7 +370,7 @@ void common_adde8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = op->imm;
     cpu->result.u32 = cpu->dst.u32 + cpu->src.u32;
-    cpu->lazyFlags = FLAGS_ADD32;
+    cpu->lazyFlagType = FLAGS_ADD32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_add32_mem_lock(CPU* cpu, U32 address, U32 value) {
@@ -387,7 +387,7 @@ void common_add32_mem_lock(CPU* cpu, U32 address, U32 value) {
         cpu->dst.u32 = mem.fetch_add(cpu->src.u32);
         cpu->result.u32 = cpu->dst.u32 + cpu->src.u32;
     }
-    cpu->lazyFlags = FLAGS_ADD32;
+    cpu->lazyFlagType = FLAGS_ADD32;
 }
 
 /*
@@ -395,7 +395,7 @@ void common_add32_mem_lock(CPU* cpu, U32 address, U32 value) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = op->imm;
     cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
-    cpu->lazyFlags = FLAGS_ADD16;
+    cpu->lazyFlagType = FLAGS_ADD16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_add16_mem_lock(CPU* cpu, U32 address, U32 value) {
@@ -412,7 +412,7 @@ void common_add16_mem_lock(CPU* cpu, U32 address, U32 value) {
         cpu->dst.u16 = mem.fetch_add(cpu->src.u16);
         cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
     }
-    cpu->lazyFlags = FLAGS_ADD16;
+    cpu->lazyFlagType = FLAGS_ADD16;
 }
 
 /*
@@ -420,7 +420,7 @@ void common_add16_mem_lock(CPU* cpu, U32 address, U32 value) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = op->imm;
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
-    cpu->lazyFlags = FLAGS_ADD8;
+    cpu->lazyFlagType = FLAGS_ADD8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_add8_mem_lock(CPU* cpu, U32 address, U32 value) {
@@ -429,7 +429,7 @@ void common_add8_mem_lock(CPU* cpu, U32 address, U32 value) {
     cpu->src.u8 = value;
     cpu->dst.u8 = mem.fetch_add(cpu->src.u8);
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
-    cpu->lazyFlags = FLAGS_ADD8;
+    cpu->lazyFlagType = FLAGS_ADD8;
 }
 
 /*
@@ -437,7 +437,7 @@ void common_add8_mem_lock(CPU* cpu, U32 address, U32 value) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = cpu->reg[op->reg].u32;
     cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
-    cpu->lazyFlags = FLAGS_SUB32;
+    cpu->lazyFlagType = FLAGS_SUB32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_sube32r32_lock(CPU* cpu, U32 address, U32 reg) {
@@ -454,7 +454,7 @@ void common_sube32r32_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u32 = mem.fetch_sub(cpu->src.u32);
         cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
     }
-    cpu->lazyFlags = FLAGS_SUB32;
+    cpu->lazyFlagType = FLAGS_SUB32;
 }
 
 /*
@@ -462,7 +462,7 @@ void common_sube32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = cpu->reg[op->reg].u16;
     cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
-    cpu->lazyFlags = FLAGS_SUB16;
+    cpu->lazyFlagType = FLAGS_SUB16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_sube16r16_lock(CPU* cpu, U32 address, U32 reg) {
@@ -479,7 +479,7 @@ void common_sube16r16_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u16 = mem.fetch_sub(cpu->src.u16);
         cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
     }
-    cpu->lazyFlags = FLAGS_SUB16;
+    cpu->lazyFlagType = FLAGS_SUB16;
 }
 
 /*
@@ -487,7 +487,7 @@ void common_sube16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = *cpu->reg8[op->reg];
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
-    cpu->lazyFlags = FLAGS_SUB8;
+    cpu->lazyFlagType = FLAGS_SUB8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_sube8r8_lock(CPU* cpu, U32 address, U32 reg) {
@@ -496,7 +496,7 @@ void common_sube8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->src.u8 = *cpu->reg8[reg];
     cpu->dst.u8 = mem.fetch_sub(cpu->src.u8);
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
-    cpu->lazyFlags = FLAGS_SUB8;
+    cpu->lazyFlagType = FLAGS_SUB8;
 }
 
 /*
@@ -504,7 +504,7 @@ void common_sube8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = op->imm;
     cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
-    cpu->lazyFlags = FLAGS_SUB32;
+    cpu->lazyFlagType = FLAGS_SUB32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_sub32_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -521,7 +521,7 @@ void common_sub32_mem_lock(CPU* cpu, U32 address, U32 imm) {
         cpu->dst.u32 = mem.fetch_sub(cpu->src.u32);
         cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
     }
-    cpu->lazyFlags = FLAGS_SUB32;
+    cpu->lazyFlagType = FLAGS_SUB32;
 }
 
 /*
@@ -529,7 +529,7 @@ void common_sub32_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = op->imm;
     cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
-    cpu->lazyFlags = FLAGS_SUB16;
+    cpu->lazyFlagType = FLAGS_SUB16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_sub16_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -546,7 +546,7 @@ void common_sub16_mem_lock(CPU* cpu, U32 address, U32 imm) {
         cpu->dst.u16 = mem.fetch_sub(cpu->src.u16);
         cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
     }
-    cpu->lazyFlags = FLAGS_SUB16;
+    cpu->lazyFlagType = FLAGS_SUB16;
 }
 
 /*
@@ -554,7 +554,7 @@ void common_sub16_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = op->imm;
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
-    cpu->lazyFlags = FLAGS_SUB8;
+    cpu->lazyFlagType = FLAGS_SUB8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_sub8_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -563,7 +563,7 @@ void common_sub8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->src.u8 = imm;
     cpu->dst.u8 = mem.fetch_sub(cpu->src.u8);
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
-    cpu->lazyFlags = FLAGS_SUB8;
+    cpu->lazyFlagType = FLAGS_SUB8;
 }
 
 /*
@@ -571,7 +571,7 @@ void common_sub8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = cpu->reg[op->reg].u32;
     cpu->result.u32 = cpu->dst.u32 | cpu->src.u32;
-    cpu->lazyFlags = FLAGS_OR32;
+    cpu->lazyFlagType = FLAGS_OR32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_ore32r32_lock(CPU* cpu, U32 address, U32 reg) {
@@ -588,7 +588,7 @@ void common_ore32r32_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u32 = mem.fetch_or(cpu->src.u32);
         cpu->result.u32 = cpu->dst.u32 | cpu->src.u32;
     }
-    cpu->lazyFlags = FLAGS_OR32;
+    cpu->lazyFlagType = FLAGS_OR32;
 }
 
 /*
@@ -596,7 +596,7 @@ void common_ore32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = cpu->reg[op->reg].u16;
     cpu->result.u16 = cpu->dst.u16 | cpu->src.u16;
-    cpu->lazyFlags = FLAGS_OR16;
+    cpu->lazyFlagType = FLAGS_OR16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_ore16r16_lock(CPU* cpu, U32 address, U32 reg) {
@@ -613,7 +613,7 @@ void common_ore16r16_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u16 = mem.fetch_or(cpu->src.u16);
         cpu->result.u16 = cpu->dst.u16 | cpu->src.u16;
     }
-    cpu->lazyFlags = FLAGS_OR16;
+    cpu->lazyFlagType = FLAGS_OR16;
 }
 
 /*
@@ -621,7 +621,7 @@ void common_ore16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = *cpu->reg8[op->reg];
     cpu->result.u8 = cpu->dst.u8 | cpu->src.u8;
-    cpu->lazyFlags = FLAGS_OR8;
+    cpu->lazyFlagType = FLAGS_OR8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_ore8r8_lock(CPU* cpu, U32 address, U32 reg) {
@@ -630,7 +630,7 @@ void common_ore8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->src.u8 = *cpu->reg8[reg];
     cpu->dst.u8 = mem.fetch_or(cpu->src.u8);
     cpu->result.u8 = cpu->dst.u8 | cpu->src.u8;
-    cpu->lazyFlags = FLAGS_OR8;
+    cpu->lazyFlagType = FLAGS_OR8;
 }
 
 /*
@@ -638,7 +638,7 @@ void common_ore8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = op->imm;
     cpu->result.u32 = cpu->dst.u32 | cpu->src.u32;
-    cpu->lazyFlags = FLAGS_OR32;
+    cpu->lazyFlagType = FLAGS_OR32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 
@@ -656,7 +656,7 @@ void common_or32_mem_lock(CPU* cpu, U32 address, U32 imm) {
         cpu->dst.u32 = mem.fetch_or(cpu->src.u32);
         cpu->result.u32 = cpu->dst.u32 | cpu->src.u32;
     }
-    cpu->lazyFlags = FLAGS_OR32;
+    cpu->lazyFlagType = FLAGS_OR32;
 }
 
 /*
@@ -664,7 +664,7 @@ void common_or32_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = op->imm;
     cpu->result.u16 = cpu->dst.u16 | cpu->src.u16;
-    cpu->lazyFlags = FLAGS_OR16;
+    cpu->lazyFlagType = FLAGS_OR16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_or16_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -681,7 +681,7 @@ void common_or16_mem_lock(CPU* cpu, U32 address, U32 imm) {
         cpu->dst.u16 = mem.fetch_or(cpu->src.u16);
         cpu->result.u16 = cpu->dst.u16 | cpu->src.u16;
     }
-    cpu->lazyFlags = FLAGS_OR16;
+    cpu->lazyFlagType = FLAGS_OR16;
 }
 
 /*
@@ -689,7 +689,7 @@ void common_or16_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = op->imm;
     cpu->result.u8 = cpu->dst.u8 | cpu->src.u8;
-    cpu->lazyFlags = FLAGS_OR8;
+    cpu->lazyFlagType = FLAGS_OR8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_or8_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -698,7 +698,7 @@ void common_or8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->src.u8 = imm;
     cpu->dst.u8 = mem.fetch_or(cpu->src.u8);
     cpu->result.u8 = cpu->dst.u8 | cpu->src.u8;
-    cpu->lazyFlags = FLAGS_OR8;
+    cpu->lazyFlagType = FLAGS_OR8;
 }
 
 /*
@@ -706,7 +706,7 @@ void common_or8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = cpu->reg[op->reg].u32;
     cpu->result.u32 = cpu->dst.u32 & cpu->src.u32;
-    cpu->lazyFlags = FLAGS_AND32;
+    cpu->lazyFlagType = FLAGS_AND32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_ande32r32_lock(CPU* cpu, U32 address, U32 reg) {
@@ -723,7 +723,7 @@ void common_ande32r32_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u32 = mem.fetch_and(cpu->src.u32);
         cpu->result.u32 = cpu->dst.u32 & cpu->src.u32;
     }
-    cpu->lazyFlags = FLAGS_AND32;
+    cpu->lazyFlagType = FLAGS_AND32;
 }
 
 /*
@@ -731,7 +731,7 @@ void common_ande32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = cpu->reg[op->reg].u16;
     cpu->result.u16 = cpu->dst.u16 & cpu->src.u16;
-    cpu->lazyFlags = FLAGS_AND16;
+    cpu->lazyFlagType = FLAGS_AND16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_ande16r16_lock(CPU* cpu, U32 address, U32 reg) {
@@ -748,7 +748,7 @@ void common_ande16r16_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u16 = mem.fetch_and(cpu->src.u16);
         cpu->result.u16 = cpu->dst.u16 & cpu->src.u16;
     }
-    cpu->lazyFlags = FLAGS_AND16;
+    cpu->lazyFlagType = FLAGS_AND16;
 }
 
 /*
@@ -756,7 +756,7 @@ void common_ande16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = *cpu->reg8[op->reg];
     cpu->result.u8 = cpu->dst.u8 & cpu->src.u8;
-    cpu->lazyFlags = FLAGS_AND8;
+    cpu->lazyFlagType = FLAGS_AND8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_ande8r8_lock(CPU* cpu, U32 address, U32 reg) {
@@ -765,7 +765,7 @@ void common_ande8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->src.u8 = *cpu->reg8[reg];
     cpu->dst.u8 = mem.fetch_and(cpu->src.u8);
     cpu->result.u8 = cpu->dst.u8 & cpu->src.u8;
-    cpu->lazyFlags = FLAGS_AND8;
+    cpu->lazyFlagType = FLAGS_AND8;
 }
 
 /*
@@ -773,7 +773,7 @@ void common_ande8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = op->imm;
     cpu->result.u32 = cpu->dst.u32 & cpu->src.u32;
-    cpu->lazyFlags = FLAGS_AND32;
+    cpu->lazyFlagType = FLAGS_AND32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 
@@ -791,7 +791,7 @@ void common_and32_mem_lock(CPU* cpu, U32 address, U32 imm) {
         cpu->dst.u32 = mem.fetch_and(cpu->src.u32);
         cpu->result.u32 = cpu->dst.u32 & cpu->src.u32;
     }
-    cpu->lazyFlags = FLAGS_AND32;
+    cpu->lazyFlagType = FLAGS_AND32;
 }
 
 /*
@@ -799,7 +799,7 @@ void common_and32_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = op->imm;
     cpu->result.u16 = cpu->dst.u16 & cpu->src.u16;
-    cpu->lazyFlags = FLAGS_AND16;
+    cpu->lazyFlagType = FLAGS_AND16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_and16_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -816,7 +816,7 @@ void common_and16_mem_lock(CPU* cpu, U32 address, U32 imm) {
         cpu->dst.u16 = mem.fetch_and(cpu->src.u16);
         cpu->result.u16 = cpu->dst.u16 & cpu->src.u16;
     }
-    cpu->lazyFlags = FLAGS_AND16;
+    cpu->lazyFlagType = FLAGS_AND16;
 }
 
 /*
@@ -824,7 +824,7 @@ void common_and16_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = op->imm;
     cpu->result.u8 = cpu->dst.u8 & cpu->src.u8;
-    cpu->lazyFlags = FLAGS_AND8;
+    cpu->lazyFlagType = FLAGS_AND8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_and8_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -833,7 +833,7 @@ void common_and8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->src.u8 = imm;
     cpu->dst.u8 = mem.fetch_and(cpu->src.u8);
     cpu->result.u8 = cpu->dst.u8 & cpu->src.u8;
-    cpu->lazyFlags = FLAGS_AND8;
+    cpu->lazyFlagType = FLAGS_AND8;
 }
 
 /*
@@ -841,7 +841,7 @@ void common_and8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = cpu->reg[op->reg].u32;
     cpu->result.u32 = cpu->dst.u32 ^ cpu->src.u32;
-    cpu->lazyFlags = FLAGS_XOR32;
+    cpu->lazyFlagType = FLAGS_XOR32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_xore32r32_lock(CPU* cpu, U32 address, U32 reg) {
@@ -858,7 +858,7 @@ void common_xore32r32_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u32 = mem.fetch_xor(cpu->src.u32);
         cpu->result.u32 = cpu->dst.u32 ^ cpu->src.u32;
     }
-    cpu->lazyFlags = FLAGS_XOR32;
+    cpu->lazyFlagType = FLAGS_XOR32;
 }
 
 /*
@@ -866,7 +866,7 @@ void common_xore32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = cpu->reg[op->reg].u16;
     cpu->result.u16 = cpu->dst.u16 ^ cpu->src.u16;
-    cpu->lazyFlags = FLAGS_XOR16;
+    cpu->lazyFlagType = FLAGS_XOR16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_xore16r16_lock(CPU* cpu, U32 address, U32 reg) {
@@ -883,7 +883,7 @@ void common_xore16r16_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u16 = mem.fetch_xor(cpu->src.u16);
         cpu->result.u16 = cpu->dst.u16 ^ cpu->src.u16;
     }
-    cpu->lazyFlags = FLAGS_XOR16;
+    cpu->lazyFlagType = FLAGS_XOR16;
 }
 
 /*
@@ -891,7 +891,7 @@ void common_xore16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = *cpu->reg8[op->reg];
     cpu->result.u8 = cpu->dst.u8 ^ cpu->src.u8;
-    cpu->lazyFlags = FLAGS_XOR8;
+    cpu->lazyFlagType = FLAGS_XOR8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_xore8r8_lock(CPU* cpu, U32 address, U32 reg) {
@@ -900,7 +900,7 @@ void common_xore8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->src.u8 = *cpu->reg8[reg];
     cpu->dst.u8 = mem.fetch_xor(cpu->src.u8);
     cpu->result.u8 = cpu->dst.u8 ^ cpu->src.u8;
-    cpu->lazyFlags = FLAGS_XOR8;
+    cpu->lazyFlagType = FLAGS_XOR8;
 }
 
 /*
@@ -908,7 +908,7 @@ void common_xore8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = op->imm;
     cpu->result.u32 = cpu->dst.u32 ^ cpu->src.u32;
-    cpu->lazyFlags = FLAGS_XOR32;
+    cpu->lazyFlagType = FLAGS_XOR32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 
@@ -926,7 +926,7 @@ void common_xor32_mem_lock(CPU* cpu, U32 address, U32 imm) {
         cpu->dst.u32 = mem.fetch_xor(cpu->src.u32);
         cpu->result.u32 = cpu->dst.u32 ^ cpu->src.u32;
     }
-    cpu->lazyFlags = FLAGS_XOR32;
+    cpu->lazyFlagType = FLAGS_XOR32;
 }
 
 /*
@@ -934,7 +934,7 @@ void common_xor32_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = op->imm;
     cpu->result.u16 = cpu->dst.u16 ^ cpu->src.u16;
-    cpu->lazyFlags = FLAGS_XOR16;
+    cpu->lazyFlagType = FLAGS_XOR16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_xor16_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -951,7 +951,7 @@ void common_xor16_mem_lock(CPU* cpu, U32 address, U32 imm) {
         cpu->dst.u16 = mem.fetch_xor(cpu->src.u16);
         cpu->result.u16 = cpu->dst.u16 ^ cpu->src.u16;
     }
-    cpu->lazyFlags = FLAGS_XOR16;
+    cpu->lazyFlagType = FLAGS_XOR16;
 }
 
 /*
@@ -959,7 +959,7 @@ void common_xor16_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = op->imm;
     cpu->result.u8 = cpu->dst.u8 ^ cpu->src.u8;
-    cpu->lazyFlags = FLAGS_XOR8;
+    cpu->lazyFlagType = FLAGS_XOR8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_xor8_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -968,7 +968,7 @@ void common_xor8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->src.u8 = imm;
     cpu->dst.u8 = mem.fetch_xor(cpu->src.u8);
     cpu->result.u8 = cpu->dst.u8 ^ cpu->src.u8;
-    cpu->lazyFlags = FLAGS_XOR8;
+    cpu->lazyFlagType = FLAGS_XOR8;
 }
 
 /*
@@ -977,7 +977,7 @@ void common_xor8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = cpu->reg[op->reg].u32;
     cpu->result.u32 = cpu->dst.u32 + cpu->src.u32 + cpu->oldCF;
-    cpu->lazyFlags = FLAGS_ADC32;
+    cpu->lazyFlagType = FLAGS_ADC32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_adce32r32_lock(CPU* cpu, U32 address, U32 reg) {
@@ -995,7 +995,7 @@ void common_adce32r32_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u32 = mem.fetch_add(cpu->src.u32 + cpu->oldCF);
         cpu->result.u32 = cpu->dst.u32 + cpu->src.u32 + cpu->oldCF;
     }
-    cpu->lazyFlags = FLAGS_ADC32;
+    cpu->lazyFlagType = FLAGS_ADC32;
 }
 
 /*
@@ -1004,7 +1004,7 @@ void common_adce32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = cpu->reg[op->reg].u16;
     cpu->result.u16 = cpu->dst.u16 + cpu->src.u16 + cpu->oldCF;
-    cpu->lazyFlags = FLAGS_ADC16;
+    cpu->lazyFlagType = FLAGS_ADC16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_adce16r16_lock(CPU* cpu, U32 address, U32 reg) {
@@ -1022,7 +1022,7 @@ void common_adce16r16_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u16 = mem.fetch_add(cpu->src.u16 + cpu->oldCF);
         cpu->result.u16 = cpu->dst.u16 + cpu->src.u16 + cpu->oldCF;
     }
-    cpu->lazyFlags = FLAGS_ADC16;
+    cpu->lazyFlagType = FLAGS_ADC16;
 }
 
 /*
@@ -1031,7 +1031,7 @@ void common_adce16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = *cpu->reg8[op->reg];
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8 + cpu->oldCF;
-    cpu->lazyFlags = FLAGS_ADC8;
+    cpu->lazyFlagType = FLAGS_ADC8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_adce8r8_lock(CPU* cpu, U32 address, U32 reg) {
@@ -1041,7 +1041,7 @@ void common_adce8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->src.u8 = *cpu->reg8[reg];
     cpu->dst.u8 = mem.fetch_add(cpu->src.u8 + cpu->oldCF);
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8 + cpu->oldCF;
-    cpu->lazyFlags = FLAGS_ADC8;
+    cpu->lazyFlagType = FLAGS_ADC8;
 }
 
 /*
@@ -1050,7 +1050,7 @@ void common_adce8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = op->imm;
     cpu->result.u32 = cpu->dst.u32 + cpu->src.u32 + cpu->oldCF;
-    cpu->lazyFlags = FLAGS_ADC32;
+    cpu->lazyFlagType = FLAGS_ADC32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 
@@ -1069,7 +1069,7 @@ void common_adc32_mem_lock(CPU* cpu, U32 address, U32 imm) {
         cpu->dst.u32 = mem.fetch_add(cpu->src.u32 + cpu->oldCF);
         cpu->result.u32 = cpu->dst.u32 + cpu->src.u32 + cpu->oldCF;
     }
-    cpu->lazyFlags = FLAGS_ADC32;
+    cpu->lazyFlagType = FLAGS_ADC32;
 }
 
 /*
@@ -1078,7 +1078,7 @@ void common_adc32_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = op->imm;
     cpu->result.u16 = cpu->dst.u16 + cpu->src.u16 + cpu->oldCF;
-    cpu->lazyFlags = FLAGS_ADC16;
+    cpu->lazyFlagType = FLAGS_ADC16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_adc16_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -1096,7 +1096,7 @@ void common_adc16_mem_lock(CPU* cpu, U32 address, U32 imm) {
         cpu->dst.u16 = mem.fetch_add(cpu->src.u16 + cpu->oldCF);
         cpu->result.u16 = cpu->dst.u16 + cpu->src.u16 + cpu->oldCF;
     }
-    cpu->lazyFlags = FLAGS_ADC16;
+    cpu->lazyFlagType = FLAGS_ADC16;
 }
 
 /*
@@ -1105,7 +1105,7 @@ void common_adc16_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = op->imm;
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8 + cpu->oldCF;
-    cpu->lazyFlags = FLAGS_ADC8;
+    cpu->lazyFlagType = FLAGS_ADC8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_adc8_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -1115,7 +1115,7 @@ void common_adc8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->src.u8 = imm;
     cpu->dst.u8 = mem.fetch_add(cpu->src.u8 + cpu->oldCF);
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8 + cpu->oldCF;
-    cpu->lazyFlags = FLAGS_ADC8;
+    cpu->lazyFlagType = FLAGS_ADC8;
 }
 
 /*
@@ -1124,7 +1124,7 @@ void common_adc8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = cpu->reg[op->reg].u32;
     cpu->result.u32 = cpu->dst.u32 - cpu->src.u32 - cpu->oldCF;
-    cpu->lazyFlags = FLAGS_SBB32;
+    cpu->lazyFlagType = FLAGS_SBB32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_sbbe32r32_lock(CPU* cpu, U32 address, U32 reg) {
@@ -1142,7 +1142,7 @@ void common_sbbe32r32_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u32 = mem.fetch_sub(cpu->src.u32 + cpu->oldCF);
         cpu->result.u32 = cpu->dst.u32 - cpu->src.u32 - cpu->oldCF;
     }
-    cpu->lazyFlags = FLAGS_SBB32;
+    cpu->lazyFlagType = FLAGS_SBB32;
 }
 
 /*
@@ -1151,7 +1151,7 @@ void common_sbbe32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = cpu->reg[op->reg].u16;
     cpu->result.u16 = cpu->dst.u16 - cpu->src.u16 - cpu->oldCF;
-    cpu->lazyFlags = FLAGS_SBB16;
+    cpu->lazyFlagType = FLAGS_SBB16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_sbbe16r16_lock(CPU* cpu, U32 address, U32 reg) {
@@ -1169,7 +1169,7 @@ void common_sbbe16r16_lock(CPU* cpu, U32 address, U32 reg) {
         cpu->dst.u16 = mem.fetch_sub(cpu->src.u16 + cpu->oldCF);
         cpu->result.u16 = cpu->dst.u16 - cpu->src.u16 - cpu->oldCF;
     }
-    cpu->lazyFlags = FLAGS_SBB16;
+    cpu->lazyFlagType = FLAGS_SBB16;
 }
 
 /*
@@ -1178,7 +1178,7 @@ void common_sbbe16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = *cpu->reg8[op->reg];
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8 - cpu->oldCF;
-    cpu->lazyFlags = FLAGS_SBB8;
+    cpu->lazyFlagType = FLAGS_SBB8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_sbbe8r8_lock(CPU* cpu, U32 address, U32 reg) {
@@ -1188,7 +1188,7 @@ void common_sbbe8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->src.u8 = *cpu->reg8[reg];
     cpu->dst.u8 = mem.fetch_sub(cpu->src.u8 + cpu->oldCF);
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8 - cpu->oldCF;
-    cpu->lazyFlags = FLAGS_SBB8;
+    cpu->lazyFlagType = FLAGS_SBB8;
 }
 
 /*
@@ -1197,7 +1197,7 @@ void common_sbbe8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->dst.u32 = cpu->memory->readd(eaa);
     cpu->src.u32 = op->imm;
     cpu->result.u32 = cpu->dst.u32 - cpu->src.u32 - cpu->oldCF;
-    cpu->lazyFlags = FLAGS_SBB32;
+    cpu->lazyFlagType = FLAGS_SBB32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 
@@ -1216,7 +1216,7 @@ void common_sbb32_mem_lock(CPU* cpu, U32 address, U32 imm) {
         cpu->dst.u32 = mem.fetch_sub(cpu->src.u32 + cpu->oldCF);
         cpu->result.u32 = cpu->dst.u32 - cpu->src.u32 - cpu->oldCF;
     }
-    cpu->lazyFlags = FLAGS_SBB32;
+    cpu->lazyFlagType = FLAGS_SBB32;
 }
 
 /*
@@ -1225,7 +1225,7 @@ void common_sbb32_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u16 = cpu->memory->readw(eaa);
     cpu->src.u16 = op->imm;
     cpu->result.u16 = cpu->dst.u16 - cpu->src.u16 - cpu->oldCF;
-    cpu->lazyFlags = FLAGS_SBB16;
+    cpu->lazyFlagType = FLAGS_SBB16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_sbb16_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -1243,7 +1243,7 @@ void common_sbb16_mem_lock(CPU* cpu, U32 address, U32 imm) {
         cpu->dst.u16 = mem.fetch_sub(cpu->src.u16 + cpu->oldCF);
         cpu->result.u16 = cpu->dst.u16 - cpu->src.u16 - cpu->oldCF;
     }
-    cpu->lazyFlags = FLAGS_SBB16;
+    cpu->lazyFlagType = FLAGS_SBB16;
 }
 
 /*
@@ -1252,7 +1252,7 @@ void common_sbb16_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->dst.u8 = cpu->memory->readb(eaa);
     cpu->src.u8 = op->imm;
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8 - cpu->oldCF;
-    cpu->lazyFlags = FLAGS_SBB8;
+    cpu->lazyFlagType = FLAGS_SBB8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_sbb8_mem_lock(CPU* cpu, U32 address, U32 imm) {
@@ -1262,7 +1262,7 @@ void common_sbb8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->src.u8 = imm;
     cpu->dst.u8 = mem.fetch_sub(cpu->src.u8 + cpu->oldCF);
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8 - cpu->oldCF;
-    cpu->lazyFlags = FLAGS_SBB8;
+    cpu->lazyFlagType = FLAGS_SBB8;
 }
 
 /*
@@ -1270,7 +1270,7 @@ void common_sbb8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->oldCF=cpu->getCF();
     cpu->dst.u32= cpu->memory->readd(eaa);
     cpu->result.u32=cpu->dst.u32 + 1;
-    cpu->lazyFlags = FLAGS_INC32;
+    cpu->lazyFlagType = FLAGS_INC32;
     cpu->memory->writed(eaa, cpu->result.u32);
 */
 void common_inc32_mem32_lock(CPU* cpu, U32 address) {
@@ -1287,7 +1287,7 @@ void common_inc32_mem32_lock(CPU* cpu, U32 address) {
         cpu->dst.u32 = mem.fetch_add(1);
         cpu->result.u32 = cpu->dst.u32 + 1;
     }
-    cpu->lazyFlags = FLAGS_INC32;
+    cpu->lazyFlagType = FLAGS_INC32;
 }
 
 /*
@@ -1295,7 +1295,7 @@ void common_inc32_mem32_lock(CPU* cpu, U32 address) {
     cpu->oldCF=cpu->getCF();
     cpu->dst.u16= cpu->memory->readw(eaa);
     cpu->result.u16=cpu->dst.u16 + 1;
-    cpu->lazyFlags = FLAGS_INC16;
+    cpu->lazyFlagType = FLAGS_INC16;
     cpu->memory->writew(eaa, cpu->result.u16);
 */
 void common_inc16_mem16_lock(CPU* cpu, U32 address) {
@@ -1312,7 +1312,7 @@ void common_inc16_mem16_lock(CPU* cpu, U32 address) {
         cpu->dst.u16 = mem.fetch_add(1);
         cpu->result.u16 = cpu->dst.u16 + 1;
     }
-    cpu->lazyFlags = FLAGS_INC16;
+    cpu->lazyFlagType = FLAGS_INC16;
 }
 
 /*
@@ -1320,7 +1320,7 @@ void common_inc16_mem16_lock(CPU* cpu, U32 address) {
     cpu->oldCF=cpu->getCF();
     cpu->dst.u8= cpu->memory->readb(eaa);
     cpu->result.u8=cpu->dst.u8 + 1;
-    cpu->lazyFlags = FLAGS_INC8;
+    cpu->lazyFlagType = FLAGS_INC8;
     cpu->memory->writeb(eaa, cpu->result.u8);
 */
 void common_inc8_mem8_lock(CPU* cpu, U32 address) {
@@ -1329,7 +1329,7 @@ void common_inc8_mem8_lock(CPU* cpu, U32 address) {
     cpu->oldCF = cpu->getCF();
     cpu->dst.u8 = mem.fetch_add(1);
     cpu->result.u8 = cpu->dst.u8 + 1;
-    cpu->lazyFlags = FLAGS_INC8;
+    cpu->lazyFlagType = FLAGS_INC8;
 }
 
 /*
@@ -1337,7 +1337,7 @@ void common_inc8_mem8_lock(CPU* cpu, U32 address) {
     cpu->oldCF=cpu->getCF();
     cpu->dst.u32= cpu->memory->readd(eaa);
     cpu->result.u32=cpu->dst.u32 - 1;
-    cpu->lazyFlags = FLAGS_DEC32;
+    cpu->lazyFlagType = FLAGS_DEC32;
     cpu->memory->writed(eaa, cpu->result.u32);
 */
 void common_dec32_mem32_lock(CPU* cpu, U32 address) {
@@ -1354,7 +1354,7 @@ void common_dec32_mem32_lock(CPU* cpu, U32 address) {
         cpu->dst.u32 = mem.fetch_sub(1);
         cpu->result.u32 = cpu->dst.u32 - 1;
     }
-    cpu->lazyFlags = FLAGS_DEC32;
+    cpu->lazyFlagType = FLAGS_DEC32;
 }
 
 /*
@@ -1362,7 +1362,7 @@ void common_dec32_mem32_lock(CPU* cpu, U32 address) {
     cpu->oldCF=cpu->getCF();
     cpu->dst.u16= cpu->memory->readw(eaa);
     cpu->result.u16=cpu->dst.u16 - 1;
-    cpu->lazyFlags = FLAGS_DEC16;
+    cpu->lazyFlagType = FLAGS_DEC16;
     cpu->memory->writew(eaa, cpu->result.u16);
 */
 void common_dec16_mem16_lock(CPU* cpu, U32 address) {
@@ -1380,7 +1380,7 @@ void common_dec16_mem16_lock(CPU* cpu, U32 address) {
         cpu->dst.u16 = mem.fetch_sub(1);
         cpu->result.u16 = cpu->dst.u16 - 1;
     }
-    cpu->lazyFlags = FLAGS_DEC16;
+    cpu->lazyFlagType = FLAGS_DEC16;
 }
 
 /*
@@ -1388,7 +1388,7 @@ void common_dec16_mem16_lock(CPU* cpu, U32 address) {
     cpu->oldCF=cpu->getCF();
     cpu->dst.u8= cpu->memory->readb(eaa);
     cpu->result.u8=cpu->dst.u8 - 1;
-    cpu->lazyFlags = FLAGS_DEC8;
+    cpu->lazyFlagType = FLAGS_DEC8;
     cpu->memory->writeb(eaa, cpu->result.u8);
 */
 void common_dec8_mem8_lock(CPU* cpu, U32 address) {
@@ -1397,7 +1397,7 @@ void common_dec8_mem8_lock(CPU* cpu, U32 address) {
     cpu->oldCF = cpu->getCF();
     cpu->dst.u8 = mem.fetch_sub(1);
     cpu->result.u8 = cpu->dst.u8 - 1;
-    cpu->lazyFlags = FLAGS_DEC8;
+    cpu->lazyFlagType = FLAGS_DEC8;
 }
 
 /*
@@ -1466,7 +1466,7 @@ void common_note8_lock(CPU* cpu, U32 address) {
     cpu->dst.u32 = 0;
     cpu->src.u32 = cpu->memory->readd(eaa);
     cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
-    cpu->lazyFlags = FLAGS_NEG32;
+    cpu->lazyFlagType = FLAGS_NEG32;
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_nege32_lock(CPU* cpu, U32 address) {
@@ -1491,7 +1491,7 @@ void common_nege32_lock(CPU* cpu, U32 address) {
         }
         cpu->result.u16 = cpu->dst.u32 - cpu->src.u32;
     }
-    cpu->lazyFlags = FLAGS_NEG32;
+    cpu->lazyFlagType = FLAGS_NEG32;
 }
 
 /*
@@ -1499,7 +1499,7 @@ void common_nege32_lock(CPU* cpu, U32 address) {
     cpu->dst.u16 = 0;
     cpu->src.u16 = cpu->memory->readw(eaa);
     cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
-    cpu->lazyFlags = FLAGS_NEG16;
+    cpu->lazyFlagType = FLAGS_NEG16;
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_nege16_lock(CPU* cpu, U32 address) {
@@ -1510,7 +1510,7 @@ void common_nege16_lock(CPU* cpu, U32 address) {
 
         cpu->src.u16 = cpu->memory->readw(address);
         cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
-        cpu->lazyFlags = FLAGS_NEG16;
+        cpu->lazyFlagType = FLAGS_NEG16;
         cpu->memory->writew(address, cpu->result.u16);
     } else {
         LockData16* p = (LockData16*)cpu->memory->getRamPtr(address, 2, true);
@@ -1525,7 +1525,7 @@ void common_nege16_lock(CPU* cpu, U32 address) {
         }
         cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
     }
-    cpu->lazyFlags = FLAGS_NEG16;
+    cpu->lazyFlagType = FLAGS_NEG16;
 }
 
 /*
@@ -1533,7 +1533,7 @@ void common_nege16_lock(CPU* cpu, U32 address) {
     cpu->dst.u8 = 0;
     cpu->src.u8 = cpu->memory->readb(eaa);
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
-    cpu->lazyFlags = FLAGS_NEG8;
+    cpu->lazyFlagType = FLAGS_NEG8;
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_nege8_lock(CPU* cpu, U32 address) {
@@ -1549,7 +1549,7 @@ void common_nege8_lock(CPU* cpu, U32 address) {
         }
     }
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
-    cpu->lazyFlags = FLAGS_NEG8;
+    cpu->lazyFlagType = FLAGS_NEG8;
 }
 
 /*

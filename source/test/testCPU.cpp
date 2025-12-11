@@ -176,7 +176,7 @@ void pushCode32(int value) {
 
 void newInstruction(int flags) {
     cseip=CODE_ADDRESS;
-    cpu->lazyFlags = FLAGS_NONE;
+    cpu->lazyFlagType = FLAGS_NONE;
     cpu->setFlags(flags, FMASK_ALL);
     //cpu.blocks.clear();
     EAX=0;

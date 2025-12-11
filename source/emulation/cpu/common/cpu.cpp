@@ -83,7 +83,7 @@ void CPU::reset() {
         this->xmm[i].pi.u64[0] = 0;
         this->xmm[i].pi.u64[1] = 0;
     }
-    this->lazyFlags = nullptr;
+    this->lazyFlagType = FLAGS_NONE;
     this->setIsBig(1);
     this->seg[CS].value = 0xF; // index 1, LDT, rpl=3
     this->seg[SS].value = 0x17; // index 2, LDT, rpl=3
@@ -93,7 +93,6 @@ void CPU::reset() {
     this->cr0 = CR0_PROTECTION | CR0_FPUPRESENT | CR0_PAGING;
     this->flags|=IF;
     this->fpu.FINIT();
-    this->lazyFlags = FLAGS_NONE;
     this->stackNotMask = 0;
     this->stackMask = 0xFFFFFFFF;
     this->nextOp = nullptr;
@@ -673,7 +672,7 @@ void CPU::iret(U32 big, U32 oldeip) {
                 cpu->setFlags(new_flags, FMASK_NORMAL | NT);
             }
             this->setIsBig(0);
-            this->lazyFlags = FLAGS_NONE;
+            this->lazyFlagType = FLAGS_NONE;
             return;
         }
     }
@@ -703,7 +702,7 @@ void CPU::iret(U32 big, U32 oldeip) {
                 U32 n_gs=this->pop32() & 0xffff;
 
                 this->setFlags(n_flags, FMASK_NORMAL | VM);
-                this->lazyFlags = FLAGS_NONE;
+                this->lazyFlagType = FLAGS_NONE;
                 this->cpl = 3;
 
                 this->setSegment(SS, n_ss);
@@ -750,7 +749,7 @@ void CPU::iret(U32 big, U32 oldeip) {
             this->eip.u32 = n_eip;     
             U32 mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
             if (((this->flags & IOPL) >> 12) < this->cpl) mask &= ~IF;
-            this->lazyFlags = FLAGS_NONE;
+            this->lazyFlagType = FLAGS_NONE;
             this->setFlags(n_flags,mask);            
         } else {
             /* Return to outer level */
@@ -786,7 +785,7 @@ void CPU::iret(U32 big, U32 oldeip) {
             U32 mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
             if (((this->flags & IOPL) >> 12) < this->cpl) mask &= ~IF;
             this->setFlags(n_flags, mask);
-            this->lazyFlags = FLAGS_NONE;
+            this->lazyFlagType = FLAGS_NONE;
 
             this->cpl = n_cs_rpl;
             this->eip.u32 = n_eip;
@@ -808,102 +807,107 @@ void CPU::iret(U32 big, U32 oldeip) {
 } 
 
 void CPU::fillFlagsNoCFOF() {
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         int newFlags = this->flags & ~(CF|AF|OF|SF|ZF|PF);
-        
-        if (this->lazyFlags->getAF(this)) newFlags |= AF;
-        if (this->lazyFlags->getZF(this)) newFlags |= ZF;
-        if (this->lazyFlags->getPF(this)) newFlags |= PF;
-        if (this->lazyFlags->getSF(this)) newFlags |= SF;
+        const LazyFlags* lazyFlag = lazyFlags[this->lazyFlagType];
+
+        if (lazyFlag->getAF(this)) newFlags |= AF;
+        if (lazyFlag->getZF(this)) newFlags |= ZF;
+        if (lazyFlag->getPF(this)) newFlags |= PF;
+        if (lazyFlag->getSF(this)) newFlags |= SF;
         this->flags = newFlags;
-        this->lazyFlags = FLAGS_NONE;		 
+        this->lazyFlagType = FLAGS_NONE;
     }
 }
 
 void CPU::fillFlags() {
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         int newFlags = this->flags & ~(CF|AF|OF|SF|ZF|PF);
-             
-        if (this->lazyFlags->getAF(this)) newFlags |= AF;
-        if (this->lazyFlags->getZF(this)) newFlags |= ZF;
-        if (this->lazyFlags->getPF(this)) newFlags |= PF;
-        if (this->lazyFlags->getSF(this)) newFlags |= SF;
-        if (this->lazyFlags->getCF(this)) newFlags |= CF;
-        if (this->lazyFlags->getOF(this)) newFlags |= OF;
+        const LazyFlags* lazyFlag = lazyFlags[this->lazyFlagType];
+
+        if (lazyFlag->getAF(this)) newFlags |= AF;
+        if (lazyFlag->getZF(this)) newFlags |= ZF;
+        if (lazyFlag->getPF(this)) newFlags |= PF;
+        if (lazyFlag->getSF(this)) newFlags |= SF;
+        if (lazyFlag->getCF(this)) newFlags |= CF;
+        if (lazyFlag->getOF(this)) newFlags |= OF;
         this->flags = newFlags;
-        this->lazyFlags = FLAGS_NONE;	
+        this->lazyFlagType = FLAGS_NONE;
     }
 }
 
 void CPU::fillFlagsNoCF() {
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         int newFlags = this->flags & ~(CF|AF|OF|SF|ZF|PF);
-        
-        if (this->lazyFlags->getAF(this)) newFlags |= AF;
-        if (this->lazyFlags->getZF(this)) newFlags |= ZF;
-        if (this->lazyFlags->getPF(this)) newFlags |= PF;
-        if (this->lazyFlags->getSF(this)) newFlags |= SF;
-        if (this->lazyFlags->getOF(this)) newFlags |= OF;
+        const LazyFlags* lazyFlag = lazyFlags[this->lazyFlagType];
+
+        if (lazyFlag->getAF(this)) newFlags |= AF;
+        if (lazyFlag->getZF(this)) newFlags |= ZF;
+        if (lazyFlag->getPF(this)) newFlags |= PF;
+        if (lazyFlag->getSF(this)) newFlags |= SF;
+        if (lazyFlag->getOF(this)) newFlags |= OF;
         this->flags = newFlags;
-        this->lazyFlags = FLAGS_NONE;		 
+        this->lazyFlagType = FLAGS_NONE;
     }
 }
 
 void CPU::fillFlagsNoZF() {
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         int newFlags = this->flags & ~(CF|AF|OF|SF|ZF|PF);
-        
-        if (this->lazyFlags->getAF(this)) newFlags |= AF;
-        if (this->lazyFlags->getCF(this)) newFlags |= CF;
-        if (this->lazyFlags->getPF(this)) newFlags |= PF;
-        if (this->lazyFlags->getSF(this)) newFlags |= SF;
-        if (this->lazyFlags->getOF(this)) newFlags |= OF;
+        const LazyFlags* lazyFlag = lazyFlags[this->lazyFlagType];
+
+        if (lazyFlag->getAF(this)) newFlags |= AF;
+        if (lazyFlag->getCF(this)) newFlags |= CF;
+        if (lazyFlag->getPF(this)) newFlags |= PF;
+        if (lazyFlag->getSF(this)) newFlags |= SF;
+        if (lazyFlag->getOF(this)) newFlags |= OF;
         this->flags = newFlags;
-        this->lazyFlags = FLAGS_NONE;		 
+        this->lazyFlagType = FLAGS_NONE;
     }
 }
 
 void CPU::fillFlagsNoOF() {
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType!=FLAGS_NONE) {
         int newFlags = this->flags & ~(CF|AF|OF|SF|ZF|PF);
-        
-        if (this->lazyFlags->getAF(this)) newFlags |= AF;
-        if (this->lazyFlags->getZF(this)) newFlags |= ZF;
-        if (this->lazyFlags->getPF(this)) newFlags |= PF;
-        if (this->lazyFlags->getSF(this)) newFlags |= SF;
-        if (this->lazyFlags->getCF(this)) newFlags |= CF;
-        this->lazyFlags = FLAGS_NONE;		 
+        const LazyFlags* lazyFlag = lazyFlags[this->lazyFlagType];
+
+        if (lazyFlag->getAF(this)) newFlags |= AF;
+        if (lazyFlag->getZF(this)) newFlags |= ZF;
+        if (lazyFlag->getPF(this)) newFlags |= PF;
+        if (lazyFlag->getSF(this)) newFlags |= SF;
+        if (lazyFlag->getCF(this)) newFlags |= CF;
+        this->lazyFlagType = FLAGS_NONE;
         this->flags = newFlags;
     }
 }
 
 bool CPU::getCF() {
-    return this->lazyFlags->getCF(this) != 0;
+    return lazyFlags[this->lazyFlagType]->getCF(this) != 0;
 }
 
 bool CPU::getSF() {
-    return this->lazyFlags->getSF(this) != 0;
+    return lazyFlags[this->lazyFlagType]->getSF(this) != 0;
 }
 
 bool CPU::getZF() {
-    return this->lazyFlags->getZF(this) != 0;
+    return lazyFlags[this->lazyFlagType]->getZF(this) != 0;
 }
 
 bool CPU::getOF() {
-    return this->lazyFlags->getOF(this) != 0;
+    return lazyFlags[this->lazyFlagType]->getOF(this) != 0;
 }
 
 bool CPU::getAF() {
-    return this->lazyFlags->getAF(this) != 0;
+    return lazyFlags[this->lazyFlagType]->getAF(this) != 0;
 }
 
 bool CPU::getPF() {
-    return this->lazyFlags->getPF(this) != 0;
+    return lazyFlags[this->lazyFlagType]->getPF(this) != 0;
 }
 
 void CPU::setCF(U32 value) {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::setCF");
     }
 #endif
@@ -914,7 +918,7 @@ void CPU::setCF(U32 value) {
 
 void CPU::setOF(U32 value) {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::setOF");
     }
 #endif
@@ -925,7 +929,7 @@ void CPU::setOF(U32 value) {
 
 void CPU::setSF(U32 value) {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::setSF");
     }
 #endif
@@ -936,7 +940,7 @@ void CPU::setSF(U32 value) {
 
 void CPU::setZF(U32 value) {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::setZF");
     }
 #endif
@@ -948,7 +952,7 @@ void CPU::setZF(U32 value) {
 extern U8 parity_lookup[256] ;
 void CPU::setPFonValue(U32 value) {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::setPFonValue");
     }
 #endif
@@ -959,7 +963,7 @@ void CPU::setPFonValue(U32 value) {
 
 void CPU::setFlags(U32 flags, U32 mask) {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::setFlags");
     }
 #endif
@@ -968,7 +972,7 @@ void CPU::setFlags(U32 flags, U32 mask) {
 
 void CPU::addFlag(U32 flags) {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE && (flags & (CF|AF|OF|SF|ZF|PF))) {
+    if (this->lazyFlagType !=FLAGS_NONE && (flags & (CF|AF|OF|SF|ZF|PF))) {
         kpanic("CPU::fillFlags must be called before CPU::addFlag");
     }
 #endif
@@ -977,7 +981,7 @@ void CPU::addFlag(U32 flags) {
 
 void CPU::removeFlag(U32 flags) {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE && (flags & (CF|AF|OF|SF|ZF|PF))) {
+    if (this->lazyFlagType !=FLAGS_NONE && (flags & (CF|AF|OF|SF|ZF|PF))) {
         kpanic("CPU::fillFlags must be called before CPU::removeFlag");
     }
 #endif
@@ -986,7 +990,7 @@ void CPU::removeFlag(U32 flags) {
 
 void CPU::addZF() {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::addZF");
     }
 #endif
@@ -995,7 +999,7 @@ void CPU::addZF() {
 
 void CPU::removeZF() {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::removeZF");
     }
 #endif
@@ -1004,7 +1008,7 @@ void CPU::removeZF() {
 
 void CPU::addCF() {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::addCF");
     }
 #endif
@@ -1013,7 +1017,7 @@ void CPU::addCF() {
 
 void CPU::removeCF() {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::removeCF");
     }
 #endif
@@ -1022,7 +1026,7 @@ void CPU::removeCF() {
 
 void CPU::addAF() {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::addAF");
     }
 #endif
@@ -1031,7 +1035,7 @@ void CPU::addAF() {
 
 void CPU::removeAF() {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::removeAF");
     }
 #endif
@@ -1040,7 +1044,7 @@ void CPU::removeAF() {
 
 void CPU::addOF() {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::addOF");
     }
 #endif
@@ -1049,7 +1053,7 @@ void CPU::addOF() {
 
 void CPU::removeOF() {
 #ifdef _DEBUG
-    if (this->lazyFlags!=FLAGS_NONE) {
+    if (this->lazyFlagType !=FLAGS_NONE) {
         kpanic("CPU::fillFlags must be called before CPU::removeOF");
     }
 #endif
@@ -1115,7 +1119,7 @@ void CPU::clone(CPU* from) {
     this->src = from->src;
     this->dst = from->dst;
     this->result = from->result;
-    this->lazyFlags = from->lazyFlags;
+    this->lazyFlagType = from->lazyFlagType;
     this->oldCF = from->oldCF;
     this->fpu = from->fpu;
     //U64		    instructionCount;
@@ -1378,7 +1382,7 @@ U32 common_setSegment(CPU* cpu, U32 seg, U32 value) {
 }
 
 void common_setFlags(CPU* cpu, U32 flags, U32 mask) {
-    if (cpu->lazyFlags != FLAGS_NONE) {
+    if (cpu->lazyFlagType != FLAGS_NONE) {
         cpu->fillFlags();
     }
     cpu->setFlags(flags, mask);

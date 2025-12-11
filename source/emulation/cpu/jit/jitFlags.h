@@ -16,18 +16,22 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-static JitWidth getWidthOfFlags(const LazyFlags* flags) {
-    if (flags->width == 32)
+static JitWidth getWidthOfFlags(LazyFlagType flags) {
+    U32 width = lazyFlags[flags]->width;
+    if (width == 32) {
         return JitWidth::b32;
-    if (flags->width == 16)
+    }
+    if (width == 16) {
         return JitWidth::b16;
-    if (flags->width == 8)
+    }
+    if (width == 8) {
         return JitWidth::b8;
-    kpanic_fmt("getWidthOfCondition: invalid flag width: %d", flags->width);
+    }
+    kpanic_fmt("getWidthOfCondition: invalid flag width: %d", width);
     return JitWidth::b32;
 }
 
-void JitCodeGen::genOF(const LazyFlags* flags, RegPtr result) {
+void JitCodeGen::genOF(LazyFlagType flags, RegPtr result) {
     if (flags == FLAGS_NONE) {
         readCPU(JitWidth::b32, offsetof(CPU, flags), result);
         shrValue(JitWidth::b32, result, 11);
@@ -211,7 +215,7 @@ static U8 parity_lookup[256] = {
   1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1
 };
 
-void JitCodeGen::genPF(const LazyFlags* flags, RegPtr result) {
+void JitCodeGen::genPF(LazyFlagType flags, RegPtr result) {
     getFlagResultTmp(result);
     movzx(JitWidth::b32, result, JitWidth::b8, result);
 #ifdef BOXEDWINE_64
@@ -227,7 +231,7 @@ void JitCodeGen::genPF(const LazyFlags* flags, RegPtr result) {
 #endif
 }
 
-void JitCodeGen::genCF(const LazyFlags* flags, RegPtr result) {    
+void JitCodeGen::genCF(LazyFlagType flags, RegPtr result) {    
     if (flags == FLAGS_NONE) {
         readCPU(JitWidth::b32, offsetof(CPU, flags), result);
         andValue(JitWidth::b32, result, CF);

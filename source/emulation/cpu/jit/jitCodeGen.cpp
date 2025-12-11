@@ -679,23 +679,27 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
     }
 }
 
-static JitWidth getWidthOfCondition(const LazyFlags* flags) {
-    if (flags->width == 32)
+static JitWidth getWidthOfCondition(LazyFlagType flags) {
+    U32 width = lazyFlags[flags]->width;
+    if (width == 32) {
         return JitWidth::b32;
-    if (flags->width == 16)
+    }
+    if (width == 16) {
         return JitWidth::b16;
-    if (flags->width == 8)
+    }
+    if (width == 8) {
         return JitWidth::b8;
-    kpanic_fmt("getWidthOfCondition: invalid flag width: %d", flags->width);
+    }
+    kpanic_fmt("getWidthOfCondition: invalid flag width: %d", width);
     return JitWidth::b32;
 }
 
 RegPtr JitCodeGen::getZF() {
     RegPtr result = getTmpReg8();
-    RegPtr lazyFlags = readCPU(DYN_PTR, offsetof(CPU, lazyFlags));
+    RegPtr lazyFlags = readCPU(JitWidth::b8, offsetof(CPU, lazyFlagType));
 
-    if (currentLazyFlags && currentLazyFlags != FLAGS_NONE) {
-        IfEqual(DYN_PTR, lazyFlags, (DYN_PTR_SIZE)currentLazyFlags); {
+    if (currentLazyFlags != FLAGS_NULL && currentLazyFlags != FLAGS_NONE) {
+        IfEqual(JitWidth::b8, lazyFlags, currentLazyFlags); {
             readCPU(JitWidth::b32, offsetof(CPU, result.u32), result);
             If(getWidthOfCondition(currentLazyFlags), result); {
                 xorReg(JitWidth::b32, result, result);
@@ -703,14 +707,14 @@ RegPtr JitCodeGen::getZF() {
                 movValue(JitWidth::b32, result, ZF);
             } EndIf();
         } StartElse(); {
-            IfNotEqual(DYN_PTR, lazyFlags, (DYN_PTR_SIZE)FLAGS_NONE); {
+            IfNotEqual(JitWidth::b8, lazyFlags, FLAGS_NONE); {
                 fillFlags();
             } EndIf();
             readCPU(JitWidth::b32, offsetof(CPU, flags), result);
             andValue(JitWidth::b32, result, ZF);
         } EndIf();        
     } else {
-        IfNotEqual(DYN_PTR, lazyFlags, (DYN_PTR_SIZE)FLAGS_NONE); {
+        IfNotEqual(JitWidth::b8, lazyFlags, FLAGS_NONE); {
             fillFlags();
         } EndIf();
         readCPU(JitWidth::b32, offsetof(CPU, flags), result);
@@ -720,15 +724,15 @@ RegPtr JitCodeGen::getZF() {
 }
 
 void JitCodeGen::fillFlags() {
-    RegPtr flags = readCPU(DYN_PTR, CPU_OFFSET_OF(lazyFlags));
-    IfNotEqual(DYN_PTR, flags, (DYN_PTR_SIZE)FLAGS_NONE);
+    RegPtr flags = readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType));
+    IfNotEqual(JitWidth::b8, flags, FLAGS_NONE);
         call(common_fillFlags);
     EndIf();
     currentLazyFlags = FLAGS_NONE;
 }
 
-void JitCodeGen::storeLazyFlags(const LazyFlags* flags) {
-    writeCPUValue(DYN_PTR, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)flags);
+void JitCodeGen::storeLazyFlags(LazyFlagType flags) {
+    writeCPUValue(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), flags);
 }
 
 void JitCodeGen::storeLazyFlagsDest(RegPtr reg) {
@@ -1102,9 +1106,9 @@ RegPtr JitCodeGen::getFlagCF(RegPtr result) {
 }
 
 RegPtr JitCodeGen::getCF() {
-    if (currentLazyFlags) {
-        RegPtr flags = readCPU(DYN_PTR, CPU_OFFSET_OF(lazyFlags), getTmpRegForCallResult());
-        IfEqual(DYN_PTR, flags, (DYN_PTR_SIZE)currentLazyFlags); {
+    if (currentLazyFlags != FLAGS_NULL) {
+        RegPtr flags = readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), getTmpRegForCallResult());
+        IfEqual(JitWidth::b8, flags, currentLazyFlags); {
             genCF(currentLazyFlags, flags);
         } StartElse(); {
             callAndReturn(common_getCF, flags);
@@ -1116,12 +1120,12 @@ RegPtr JitCodeGen::getCF() {
 }
 
 RegPtr JitCodeGen::getCondition(JitConditional condition, RegPtr resultReg) {
-    if (!currentLazyFlags || currentLazyFlags == FLAGS_NONE) {
+    if (currentLazyFlags == FLAGS_NULL || currentLazyFlags == FLAGS_NONE) {
         if (!resultReg) {
             resultReg = getTmpReg();
         }
-        RegPtr flags = readCPU(DYN_PTR, CPU_OFFSET_OF(lazyFlags), getTmpRegForCallResult());
-        IfEqual(DYN_PTR, flags, (DYN_PTR_SIZE)FLAGS_NONE);
+        RegPtr flags = readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), getTmpRegForCallResult());
+        IfEqual(JitWidth::b8, flags, FLAGS_NONE);
         readCPU(JitWidth::b32, offsetof(CPU, flags), resultReg);
         switch (condition) {
         case JitConditional::NO:
@@ -1199,7 +1203,8 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
     if (!resultReg) {
         resultReg = getTmpReg8();
     }
-    IfEqual(DYN_PTR, readCPU(DYN_PTR, CPU_OFFSET_OF(lazyFlags), getTmpRegForCallResult()), (DYN_PTR_SIZE)currentLazyFlags);
+    U32 flagWidth = lazyFlags[currentLazyFlags] ? lazyFlags[currentLazyFlags]->width : 0;
+    IfEqual(JitWidth::b8, readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), getTmpRegForCallResult()), currentLazyFlags);
     switch (condition) {
     case JitConditional::NO:
         genOF(currentLazyFlags, resultReg);
@@ -1265,8 +1270,8 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
     }
     case JitConditional::NS:
         getFlagResultTmp(resultReg);
-        shrValue(getWidthOfFlags(currentLazyFlags), resultReg, currentLazyFlags->width - 1);
-        if (currentLazyFlags->width != 32) {
+        shrValue(getWidthOfFlags(currentLazyFlags), resultReg, flagWidth - 1);
+        if (flagWidth != 32) {
             // result needs to be a 32-bit 0 or 1
             movzx(JitWidth::b32, resultReg, getWidthOfFlags(currentLazyFlags), resultReg);
         }
@@ -1274,8 +1279,8 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         break;
     case JitConditional::S:
         getFlagResultTmp(resultReg);
-        shrValue(getWidthOfFlags(currentLazyFlags), resultReg, currentLazyFlags->width - 1);
-        if (currentLazyFlags->width != 32) {
+        shrValue(getWidthOfFlags(currentLazyFlags), resultReg, flagWidth - 1);
+        if (flagWidth != 32) {
             // result needs to be a 32-bit 0 or 1
             movzx(JitWidth::b32, resultReg, getWidthOfFlags(currentLazyFlags), resultReg);
         }
@@ -1299,7 +1304,7 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
             RegPtr of = getTmpReg8();
             genOF(currentLazyFlags, of);
             getFlagResultTmp(resultReg);
-            shrValue(getWidthOfFlags(currentLazyFlags), resultReg, currentLazyFlags->width - 1); // resultReg will be 1 if SF
+            shrValue(getWidthOfFlags(currentLazyFlags), resultReg, flagWidth - 1); // resultReg will be 1 if SF
             // 8-bit compare, because above shr might not be 32-bit and we only care about the bottom bit anyway
             compareReg(JitWidth::b8, resultReg, of, JitEvaluate::EQUALS, resultReg);
         }
@@ -1316,7 +1321,7 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
             RegPtr of = getTmpReg8();
             genOF(currentLazyFlags, of);
             getFlagResultTmp(resultReg);
-            shrValue(getWidthOfFlags(currentLazyFlags), resultReg, currentLazyFlags->width - 1); // resultReg will be 1 if SF
+            shrValue(getWidthOfFlags(currentLazyFlags), resultReg, flagWidth - 1); // resultReg will be 1 if SF
             // 8-bit compare, because above shr might not be 32-bit and we only care about the bottom bit anyway
             compareReg(JitWidth::b8, resultReg, of, JitEvaluate::NOT_EQUALS, resultReg); // resultReg will be 1 if reg != of
         }
@@ -1333,12 +1338,12 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
             // return (!cpu->getZF() && cpu->getSF()==cpu->getOF()) ? 1 : 0;
             RegPtr of = getTmpReg8();
             getFlagResultTmp(resultReg);
-            if (currentLazyFlags->width != 32) {
+            if (flagWidth != 32) {
                 movzx(JitWidth::b32, resultReg, getWidthOfFlags(currentLazyFlags), resultReg);
             }
             If(getWidthOfFlags(currentLazyFlags), resultReg); { // if 0, then exit if and resultReg is 0
                 genOF(currentLazyFlags, of);
-                shrValue(getWidthOfFlags(currentLazyFlags), resultReg, currentLazyFlags->width - 1); // reg will be 1 if SF
+                shrValue(getWidthOfFlags(currentLazyFlags), resultReg, flagWidth - 1); // reg will be 1 if SF
                 // 8-bit compare, because above sar might not be 32-bit and we only care about the bottom bit anyway
                 compareReg(JitWidth::b8, resultReg, of, JitEvaluate::EQUALS, resultReg); // will be 1 if OF==SF
             } EndIf();
@@ -1358,7 +1363,7 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
             getFlagResultTmp(resultReg);
             If(getWidthOfFlags(currentLazyFlags), resultReg); { // if 0, it will exit the if, the 0 reg will cause a true condition at the end because flip == true
                 genOF(currentLazyFlags, of);
-                shrValue(getWidthOfFlags(currentLazyFlags), resultReg, currentLazyFlags->width - 1); // reg will be 1 if SF                
+                shrValue(getWidthOfFlags(currentLazyFlags), resultReg, flagWidth - 1); // reg will be 1 if SF                
                 // 8-bit compare, because above shr might not be 32-bit and we only care about the bottom bit anyway
                 compareReg(JitWidth::b8, resultReg, of, JitEvaluate::EQUALS, resultReg); // reg will be 0 if SF != OF (which is what we want because of the next xor)
             } EndIf();
@@ -1398,7 +1403,7 @@ RegPtr JitCodeGen::callGetCondition(JitConditional condition, RegPtr resultReg) 
 }
 
 void JitCodeGen::IfCondition(JitConditional condition) {
-    if (!currentLazyFlags || currentLazyFlags == FLAGS_NONE) {
+    if (currentLazyFlags == FLAGS_NULL || currentLazyFlags == FLAGS_NONE) {
         If(JitWidth::b32, getCondition(condition));
         return;
     }

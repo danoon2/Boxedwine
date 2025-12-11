@@ -129,13 +129,13 @@ void OPCALL normal_push32imm(CPU* cpu, DecodedOp* op){
 }
 void OPCALL normal_popf16(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    cpu->lazyFlags = FLAGS_NONE;
+    cpu->lazyFlagType = FLAGS_NONE;
     cpu->setFlags(cpu->pop16(), FMASK_ALL & 0xFFFF);
     NEXT();
 }
 void OPCALL normal_popf32(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    cpu->lazyFlags = FLAGS_NONE;
+    cpu->lazyFlagType = FLAGS_NONE;
     cpu->setFlags(cpu->pop32(), FMASK_ALL);
     NEXT();
 }

@@ -652,7 +652,7 @@ void rcr32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 void shl8_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 var1=*cpu->reg8[reg];
     U8 result = var1 << var2;
-    cpu->lazyFlags = FLAGS_SHL8;
+    cpu->lazyFlagType = FLAGS_SHL8;
     cpu->result.u8 = result;
     cpu->src.u8=var2;
     cpu->dst.u8 = var1;
@@ -661,7 +661,7 @@ void shl8_reg(CPU* cpu, U32 reg, U32 var2) {
 void shl8_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 var1=cpu->memory->readb(eaa);
     U8 result = var1 << var2;
-    cpu->lazyFlags = FLAGS_SHL8;
+    cpu->lazyFlagType = FLAGS_SHL8;
     cpu->result.u8 = result;
     cpu->src.u8=var2;
     cpu->dst.u8 = var1;
@@ -672,7 +672,7 @@ void shl8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         U8 var1 = *cpu->reg8[reg];
         U8 result = var1 << var2;
-        cpu->lazyFlags = FLAGS_SHL8;
+        cpu->lazyFlagType = FLAGS_SHL8;
         cpu->result.u8 = result;
         cpu->src.u8=var2;
         cpu->dst.u8 = var1;
@@ -684,7 +684,7 @@ void shl8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         U8 var1 = cpu->memory->readb(eaa);
         U8 result = var1 << var2;
-        cpu->lazyFlags = FLAGS_SHL8;
+        cpu->lazyFlagType = FLAGS_SHL8;
         cpu->result.u8 = result;
         cpu->src.u8=var2;
         cpu->dst.u8 = var1;
@@ -694,7 +694,7 @@ void shl8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 void shl16_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 var1=cpu->reg[reg].u16;
     U16 result = var1 << var2;
-    cpu->lazyFlags = FLAGS_SHL16;
+    cpu->lazyFlagType = FLAGS_SHL16;
     cpu->result.u16 = result;
     cpu->src.u16=var2;
     cpu->dst.u16 = var1;
@@ -703,7 +703,7 @@ void shl16_reg(CPU* cpu, U32 reg, U32 var2) {
 void shl16_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 var1=cpu->memory->readw(eaa);
     U16 result = var1 << var2;
-    cpu->lazyFlags = FLAGS_SHL16;
+    cpu->lazyFlagType = FLAGS_SHL16;
     cpu->result.u16 = result;
     cpu->src.u16=var2;
     cpu->dst.u16 = var1;
@@ -714,7 +714,7 @@ void shl16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         U16 var1 = cpu->reg[reg].u16;
         U16 result = var1 << var2;
-        cpu->lazyFlags = FLAGS_SHL16;
+        cpu->lazyFlagType = FLAGS_SHL16;
         cpu->result.u16 = result;
         cpu->src.u16=var2;
         cpu->dst.u16 = var1;
@@ -726,7 +726,7 @@ void shl16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         U16 var1 = cpu->memory->readw(eaa);
         U16 result = var1 << var2;
-        cpu->lazyFlags = FLAGS_SHL16;
+        cpu->lazyFlagType = FLAGS_SHL16;
         cpu->result.u16 = result;
         cpu->src.u16=var2;
         cpu->dst.u16 = var1;
@@ -736,7 +736,7 @@ void shl16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 void shl32_reg(CPU* cpu, U32 reg, U32 var2) {
     U32 var1=cpu->reg[reg].u32;
     U32 result = var1 << var2;
-    cpu->lazyFlags = FLAGS_SHL32;
+    cpu->lazyFlagType = FLAGS_SHL32;
     cpu->result.u32 = result;
     cpu->src.u32=var2;
     cpu->dst.u32 = var1;
@@ -745,7 +745,7 @@ void shl32_reg(CPU* cpu, U32 reg, U32 var2) {
 void shl32_mem(CPU* cpu, U32 eaa, U32 var2) {
     U32 var1=cpu->memory->readd(eaa);
     U32 result = var1 << var2;
-    cpu->lazyFlags = FLAGS_SHL32;
+    cpu->lazyFlagType = FLAGS_SHL32;
     cpu->result.u32 = result;
     cpu->src.u32=var2;
     cpu->dst.u32 = var1;
@@ -756,7 +756,7 @@ void shl32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         U32 var1 = cpu->reg[reg].u32;
         U32 result = var1 << var2;
-        cpu->lazyFlags = FLAGS_SHL32;
+        cpu->lazyFlagType = FLAGS_SHL32;
         cpu->result.u32 = result;
         cpu->src.u32=var2;
         cpu->dst.u32 = var1;
@@ -768,7 +768,7 @@ void shl32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         U32 var1 = cpu->memory->readd(eaa);
         U32 result = var1 << var2;
-        cpu->lazyFlags = FLAGS_SHL32;
+        cpu->lazyFlagType = FLAGS_SHL32;
         cpu->result.u32 = result;
         cpu->src.u32=var2;
         cpu->dst.u32 = var1;
@@ -778,7 +778,7 @@ void shl32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 void shr8_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 var1=*cpu->reg8[reg];
     U8 result = var1 >> var2;
-    cpu->lazyFlags = FLAGS_SHR8;
+    cpu->lazyFlagType = FLAGS_SHR8;
     cpu->result.u8 = result;
     cpu->src.u8=var2;
     cpu->dst.u8 = var1;
@@ -787,7 +787,7 @@ void shr8_reg(CPU* cpu, U32 reg, U32 var2) {
 void shr8_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 var1=cpu->memory->readb(eaa);
     U8 result = var1 >> var2;
-    cpu->lazyFlags = FLAGS_SHR8;
+    cpu->lazyFlagType = FLAGS_SHR8;
     cpu->result.u8 = result;
     cpu->src.u8=var2;
     cpu->dst.u8 = var1;
@@ -798,7 +798,7 @@ void shr8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         U8 var1 = *cpu->reg8[reg];
         U8 result = var1 >> var2;
-        cpu->lazyFlags = FLAGS_SHR8;
+        cpu->lazyFlagType = FLAGS_SHR8;
         cpu->result.u8 = result;
         cpu->src.u8=var2;
         cpu->dst.u8 = var1;
@@ -810,7 +810,7 @@ void shr8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         U8 var1 = cpu->memory->readb(eaa);
         U8 result = var1 >> var2;
-        cpu->lazyFlags = FLAGS_SHR8;
+        cpu->lazyFlagType = FLAGS_SHR8;
         cpu->result.u8 = result;
         cpu->src.u8=var2;
         cpu->dst.u8 = var1;
@@ -820,7 +820,7 @@ void shr8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 void shr16_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 var1=cpu->reg[reg].u16;
     U16 result = var1 >> var2;
-    cpu->lazyFlags = FLAGS_SHR16;
+    cpu->lazyFlagType = FLAGS_SHR16;
     cpu->result.u16 = result;
     cpu->src.u16=var2;
     cpu->dst.u16 = var1;
@@ -829,7 +829,7 @@ void shr16_reg(CPU* cpu, U32 reg, U32 var2) {
 void shr16_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 var1=cpu->memory->readw(eaa);
     U16 result = var1 >> var2;
-    cpu->lazyFlags = FLAGS_SHR16;
+    cpu->lazyFlagType = FLAGS_SHR16;
     cpu->result.u16 = result;
     cpu->src.u16=var2;
     cpu->dst.u16 = var1;
@@ -840,7 +840,7 @@ void shr16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         U16 var1 = cpu->reg[reg].u16;
         U16 result = var1 >> var2;
-        cpu->lazyFlags = FLAGS_SHR16;
+        cpu->lazyFlagType = FLAGS_SHR16;
         cpu->result.u16 = result;
         cpu->src.u16=var2;
         cpu->dst.u16 = var1;
@@ -852,7 +852,7 @@ void shr16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         U16 var1 = cpu->memory->readw(eaa);
         U16 result = var1 >> var2;
-        cpu->lazyFlags = FLAGS_SHR16;
+        cpu->lazyFlagType = FLAGS_SHR16;
         cpu->result.u16 = result;
         cpu->src.u16=var2;
         cpu->dst.u16 = var1;
@@ -862,7 +862,7 @@ void shr16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 void shr32_reg(CPU* cpu, U32 reg, U32 var2) {
     U32 var1=cpu->reg[reg].u32;
     U32 result = var1 >> var2;
-    cpu->lazyFlags = FLAGS_SHR32;
+    cpu->lazyFlagType = FLAGS_SHR32;
     cpu->result.u32 = result;
     cpu->src.u32=var2;
     cpu->dst.u32 = var1;
@@ -871,7 +871,7 @@ void shr32_reg(CPU* cpu, U32 reg, U32 var2) {
 void shr32_mem(CPU* cpu, U32 eaa, U32 var2) {
     U32 var1=cpu->memory->readd(eaa);
     U32 result = var1 >> var2;
-    cpu->lazyFlags = FLAGS_SHR32;
+    cpu->lazyFlagType = FLAGS_SHR32;
     cpu->result.u32 = result;
     cpu->src.u32=var2;
     cpu->dst.u32 = var1;
@@ -882,7 +882,7 @@ void shr32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         U32 var1 = cpu->reg[reg].u32;
         U32 result = var1 >> var2;
-        cpu->lazyFlags = FLAGS_SHR32;
+        cpu->lazyFlagType = FLAGS_SHR32;
         cpu->result.u32 = result;
         cpu->src.u32=var2;
         cpu->dst.u32 = var1;
@@ -894,7 +894,7 @@ void shr32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         U32 var1 = cpu->memory->readd(eaa);
         U32 result = var1 >> var2;
-        cpu->lazyFlags = FLAGS_SHR32;
+        cpu->lazyFlagType = FLAGS_SHR32;
         cpu->result.u32 = result;
         cpu->src.u32=var2;
         cpu->dst.u32 = var1;
@@ -904,7 +904,7 @@ void shr32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 void sar8_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 var1=*cpu->reg8[reg];
     U8 result = (S8)var1 >> var2;
-    cpu->lazyFlags = FLAGS_SAR8;
+    cpu->lazyFlagType = FLAGS_SAR8;
     cpu->result.u8 = result;
     cpu->src.u8=var2;
     cpu->dst.u8 = var1;
@@ -913,7 +913,7 @@ void sar8_reg(CPU* cpu, U32 reg, U32 var2) {
 void sar8_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 var1=cpu->memory->readb(eaa);
     U8 result = (S8)var1 >> var2;
-    cpu->lazyFlags = FLAGS_SAR8;
+    cpu->lazyFlagType = FLAGS_SAR8;
     cpu->result.u8 = result;
     cpu->src.u8=var2;
     cpu->dst.u8 = var1;
@@ -924,7 +924,7 @@ void sar8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         U8 var1 = *cpu->reg8[reg];
         U8 result = (S8)var1 >> var2;
-        cpu->lazyFlags = FLAGS_SAR8;
+        cpu->lazyFlagType = FLAGS_SAR8;
         cpu->result.u8 = result;
         cpu->src.u8=var2;
         cpu->dst.u8 = var1;
@@ -936,7 +936,7 @@ void sar8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         U8 var1 = cpu->memory->readb(eaa);
         U8 result = (S8)var1 >> var2;
-        cpu->lazyFlags = FLAGS_SAR8;
+        cpu->lazyFlagType = FLAGS_SAR8;
         cpu->result.u8 = result;
         cpu->src.u8=var2;
         cpu->dst.u8 = var1;
@@ -946,7 +946,7 @@ void sar8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 void sar16_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 var1=cpu->reg[reg].u16;
     U16 result = (S16)var1 >> var2;
-    cpu->lazyFlags = FLAGS_SAR16;
+    cpu->lazyFlagType = FLAGS_SAR16;
     cpu->result.u16 = result;
     cpu->src.u16=var2;
     cpu->dst.u16 = var1;
@@ -955,7 +955,7 @@ void sar16_reg(CPU* cpu, U32 reg, U32 var2) {
 void sar16_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 var1=cpu->memory->readw(eaa);
     U16 result = (S16)var1 >> var2;
-    cpu->lazyFlags = FLAGS_SAR16;
+    cpu->lazyFlagType = FLAGS_SAR16;
     cpu->result.u16 = result;
     cpu->src.u16=var2;
     cpu->dst.u16 = var1;
@@ -966,7 +966,7 @@ void sar16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         U16 var1 = cpu->reg[reg].u16;
         U16 result = (S16)var1 >> var2;
-        cpu->lazyFlags = FLAGS_SAR16;
+        cpu->lazyFlagType = FLAGS_SAR16;
         cpu->result.u16 = result;
         cpu->src.u16=var2;
         cpu->dst.u16 = var1;
@@ -978,7 +978,7 @@ void sar16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         U16 var1 = cpu->memory->readw(eaa);
         U16 result = (S16)var1 >> var2;
-        cpu->lazyFlags = FLAGS_SAR16;
+        cpu->lazyFlagType = FLAGS_SAR16;
         cpu->result.u16 = result;
         cpu->src.u16=var2;
         cpu->dst.u16 = var1;
@@ -988,7 +988,7 @@ void sar16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 void sar32_reg(CPU* cpu, U32 reg, U32 var2) {
     U32 var1=cpu->reg[reg].u32;
     U32 result = (S32)var1 >> var2;
-    cpu->lazyFlags = FLAGS_SAR32;
+    cpu->lazyFlagType = FLAGS_SAR32;
     cpu->result.u32 = result;
     cpu->src.u32=var2;
     cpu->dst.u32 = var1;
@@ -997,7 +997,7 @@ void sar32_reg(CPU* cpu, U32 reg, U32 var2) {
 void sar32_mem(CPU* cpu, U32 eaa, U32 var2) {
     U32 var1=cpu->memory->readd(eaa);
     U32 result = (S32)var1 >> var2;
-    cpu->lazyFlags = FLAGS_SAR32;
+    cpu->lazyFlagType = FLAGS_SAR32;
     cpu->result.u32 = result;
     cpu->src.u32=var2;
     cpu->dst.u32 = var1;
@@ -1008,7 +1008,7 @@ void sar32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         U32 var1 = cpu->reg[reg].u32;
         U32 result = (S32)var1 >> var2;
-        cpu->lazyFlags = FLAGS_SAR32;
+        cpu->lazyFlagType = FLAGS_SAR32;
         cpu->result.u32 = result;
         cpu->src.u32=var2;
         cpu->dst.u32 = var1;
@@ -1020,7 +1020,7 @@ void sar32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         U32 var1 = cpu->memory->readd(eaa);
         U32 result = (S32)var1 >> var2;
-        cpu->lazyFlags = FLAGS_SAR32;
+        cpu->lazyFlagType = FLAGS_SAR32;
         cpu->result.u32 = result;
         cpu->src.u32=var2;
         cpu->dst.u32 = var1;

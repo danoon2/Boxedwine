@@ -146,7 +146,7 @@ void dshlr16r16(CPU* cpu, U32 reg, U32 rm, U32 imm) {
     }
     cpu->result.u16=(U16)(result >> 16);
     cpu->reg[reg].u16 = cpu->result.u16;
-    cpu->lazyFlags=FLAGS_DSHL16;
+    cpu->lazyFlagType=FLAGS_DSHL16;
 }
 
 void dshle16r16(CPU* cpu, U32 reg, U32 address, U32 imm) {
@@ -160,7 +160,7 @@ void dshle16r16(CPU* cpu, U32 reg, U32 address, U32 imm) {
     }
     cpu->result.u16=(U16)(result >> 16);
     cpu->memory->writew(address, cpu->result.u16);
-    cpu->lazyFlags=FLAGS_DSHL16;
+    cpu->lazyFlagType=FLAGS_DSHL16;
 }
 
 void dshlr32r32(CPU* cpu, U32 reg, U32 rm, U32 imm) {
@@ -168,7 +168,7 @@ void dshlr32r32(CPU* cpu, U32 reg, U32 rm, U32 imm) {
     cpu->dst.u32=cpu->reg[reg].u32;
     cpu->result.u32=(cpu->reg[reg].u32 << imm) | (cpu->reg[rm].u32 >> (32-imm));
     cpu->reg[reg].u32 = cpu->result.u32;	
-    cpu->lazyFlags=FLAGS_DSHL32;
+    cpu->lazyFlagType=FLAGS_DSHL32;
 }
 
 void dshle32r32(CPU* cpu, U32 reg, U32 address, U32 imm) {
@@ -176,7 +176,7 @@ void dshle32r32(CPU* cpu, U32 reg, U32 address, U32 imm) {
     cpu->dst.u32= cpu->memory->readd(address);
     cpu->result.u32=(cpu->dst.u32 << imm) | (cpu->reg[reg].u32 >> (32-imm));
     cpu->memory->writed(address, cpu->result.u32);
-    cpu->lazyFlags=FLAGS_DSHL32;
+    cpu->lazyFlagType=FLAGS_DSHL32;
 }
 
 void dshlclr16r16(CPU* cpu, U32 reg, U32 rm) {
@@ -191,7 +191,7 @@ void dshlclr16r16(CPU* cpu, U32 reg, U32 rm) {
         }
         cpu->result.u16=(U16)(result >> 16);
         cpu->reg[reg].u16 = cpu->result.u16;
-        cpu->lazyFlags=FLAGS_DSHL16;
+        cpu->lazyFlagType=FLAGS_DSHL16;
     }
 }
 
@@ -207,7 +207,7 @@ void dshlcle16r16(CPU* cpu, U32 reg, U32 address) {
         }
         cpu->result.u16=(U16)(result >> 16);
         cpu->memory->writew(address, cpu->result.u16);
-        cpu->lazyFlags=FLAGS_DSHL16;
+        cpu->lazyFlagType=FLAGS_DSHL16;
     }
 }
 
@@ -218,7 +218,7 @@ void dshlclr32r32(CPU* cpu, U32 reg, U32 rm) {
         cpu->result.u32=(cpu->dst.u32 << cpu->src.u32);
         cpu->result.u32|=(cpu->reg[rm].u32 >> (32-cpu->src.u32));
         cpu->reg[reg].u32 = cpu->result.u32;	
-        cpu->lazyFlags=FLAGS_DSHL32;
+        cpu->lazyFlagType=FLAGS_DSHL32;
     }
 }
 
@@ -229,7 +229,7 @@ void dshlcle32r32(CPU* cpu, U32 reg, U32 address) {
         cpu->result.u32=(cpu->dst.u32 << cpu->src.u32);
         cpu->result.u32|=(cpu->reg[reg].u32 >> (32-cpu->src.u32));
         cpu->memory->writed(address, cpu->result.u32);
-        cpu->lazyFlags=FLAGS_DSHL32;
+        cpu->lazyFlagType=FLAGS_DSHL32;
     }
 }
 
@@ -243,7 +243,7 @@ void dshrr16r16(CPU* cpu, U32 reg, U32 rm, U32 imm) {
     }
     cpu->result.u16=(U16)result;
     cpu->reg[reg].u16 = cpu->result.u16;
-    cpu->lazyFlags=FLAGS_DSHR16;
+    cpu->lazyFlagType=FLAGS_DSHR16;
 }
 
 void dshre16r16(CPU* cpu, U32 reg, U32 address, U32 imm) {
@@ -256,7 +256,7 @@ void dshre16r16(CPU* cpu, U32 reg, U32 address, U32 imm) {
     }
     cpu->result.u16=(U16)result;
     cpu->memory->writew(address, cpu->result.u16);
-    cpu->lazyFlags=FLAGS_DSHR16;
+    cpu->lazyFlagType=FLAGS_DSHR16;
 }
 
 void dshrr32r32(CPU* cpu, U32 reg, U32 rm, U32 imm) {
@@ -264,7 +264,7 @@ void dshrr32r32(CPU* cpu, U32 reg, U32 rm, U32 imm) {
     cpu->dst.u32=cpu->reg[reg].u32;
     cpu->result.u32=(cpu->reg[reg].u32 >> imm) | (cpu->reg[rm].u32 << (32-imm));
     cpu->reg[reg].u32 = cpu->result.u32;	
-    cpu->lazyFlags=FLAGS_DSHR32;
+    cpu->lazyFlagType=FLAGS_DSHR32;
 }
 
 void dshre32r32(CPU* cpu, U32 reg, U32 address, U32 imm) {
@@ -272,7 +272,7 @@ void dshre32r32(CPU* cpu, U32 reg, U32 address, U32 imm) {
     cpu->dst.u32= cpu->memory->readd(address);
     cpu->result.u32=(cpu->dst.u32 >> imm) | (cpu->reg[reg].u32 << (32-imm));
     cpu->memory->writed(address, cpu->result.u32);
-    cpu->lazyFlags=FLAGS_DSHR32;
+    cpu->lazyFlagType=FLAGS_DSHR32;
 }
 
 void dshrclr16r16(CPU* cpu, U32 reg, U32 rm) {
@@ -286,7 +286,7 @@ void dshrclr16r16(CPU* cpu, U32 reg, U32 rm) {
         }
         cpu->result.u16=(U16)result;
         cpu->reg[reg].u16 = cpu->result.u16;
-        cpu->lazyFlags=FLAGS_DSHR16;
+        cpu->lazyFlagType=FLAGS_DSHR16;
     }
 }
 
@@ -301,7 +301,7 @@ void dshrcle16r16(CPU* cpu, U32 reg, U32 address) {
         }
         cpu->result.u16=(U16)result;
         cpu->memory->writew(address, cpu->result.u16);
-        cpu->lazyFlags=FLAGS_DSHR16;
+        cpu->lazyFlagType=FLAGS_DSHR16;
     }
 }
 
@@ -312,7 +312,7 @@ void dshrclr32r32(CPU* cpu, U32 reg, U32 rm) {
         cpu->result.u32=(cpu->dst.u32 >> cpu->src.u32);
         cpu->result.u32 |= (cpu->reg[rm].u32 << (32-cpu->src.u32));
         cpu->reg[reg].u32 = cpu->result.u32;	
-        cpu->lazyFlags=FLAGS_DSHR32;
+        cpu->lazyFlagType=FLAGS_DSHR32;
     }
 }
 
@@ -323,12 +323,12 @@ void dshrcle32r32(CPU* cpu, U32 reg, U32 address) {
         cpu->result.u32=(cpu->dst.u32 >> cpu->src.u32);
         cpu->result.u32 |= (cpu->reg[reg].u32 << (32-cpu->src.u32));
         cpu->memory->writed(address, cpu->result.u32);
-        cpu->lazyFlags=FLAGS_DSHR32;
+        cpu->lazyFlagType=FLAGS_DSHR32;
     }
 }
 
 void daa(CPU* cpu) {
-    cpu->lazyFlags=FLAGS_NONE;
+    cpu->lazyFlagType=FLAGS_NONE;
     if (((AL & 0x0F)>0x09) || cpu->getAF()) {
         if ((AL > 0x99) || cpu->getCF()) {
             AL+=0x60;
@@ -353,7 +353,7 @@ void daa(CPU* cpu) {
 }
 
 void das(CPU* cpu) {
-    cpu->lazyFlags=FLAGS_NONE;
+    cpu->lazyFlagType=FLAGS_NONE;
     U8 osigned=AL & 0x80;
     if (((AL & 0x0f) > 9) || cpu->getAF()) {
         if ((AL>0x99) || cpu->getCF()) {
@@ -380,7 +380,7 @@ void das(CPU* cpu) {
 }
 
 void aaa(CPU* cpu) {
-    cpu->lazyFlags=FLAGS_NONE;
+    cpu->lazyFlagType=FLAGS_NONE;
     cpu->setSF((AL>=0x7a) && (AL<=0xf9));
     if ((AL & 0xf) > 9) {
         cpu->setOF((AL & 0xf0)==0x70);
@@ -405,7 +405,7 @@ void aaa(CPU* cpu) {
 }
 
 void aas(CPU* cpu) {
-    cpu->lazyFlags=FLAGS_NONE;
+    cpu->lazyFlagType=FLAGS_NONE;
     if ((AL & 0x0f)>9) {
         cpu->setSF(AL>0x85);
         AX -= 0x106;
@@ -432,7 +432,7 @@ void aas(CPU* cpu) {
 void aad(CPU* cpu, U32 value) {
     AL = AH * value + AL;
     AH = 0;
-    cpu->lazyFlags = FLAGS_NONE;
+    cpu->lazyFlagType = FLAGS_NONE;
     cpu->setSF(AL & 0x80);
     cpu->setZF(AL == 0);		
     cpu->setPFonValue(AL);
@@ -445,7 +445,7 @@ U32 aam(CPU* cpu, U32 value) {
     if (value) {
         AH = AL / value;
         AL = AL % value;
-        cpu->lazyFlags = FLAGS_NONE;
+        cpu->lazyFlagType = FLAGS_NONE;
         cpu->setSF(AL & 0x80);
         cpu->setZF(AL == 0);		
         cpu->setPFonValue(AL);

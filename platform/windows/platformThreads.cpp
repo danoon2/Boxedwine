@@ -39,7 +39,7 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep) {
     EDI = (U32)ep->ContextRecord->Rdi;
 
     cpu->flags = (ep->ContextRecord->EFlags & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
-    cpu->lazyFlags = FLAGS_NONE;    
+    cpu->lazyFlagType = FLAGS_NONE;    
 
 #ifdef BOXEDWINE_USE_SSE_FOR_FPU
     if (cpu->fpu.isMMXInUse) {
@@ -225,8 +225,8 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
     ESI = (U32)ep->ContextRecord->X6;
     EDI = (U32)ep->ContextRecord->X7;
 
-    cpu->flags = ep->ContextRecord->X8;
-    cpu->lazyFlags = FLAGS_NONE;
+    cpu->flags = (U32)ep->ContextRecord->X8;
+    cpu->lazyFlagType = FLAGS_NONE;
 
     for (int i = 0; i < 8; i++) {
         cpu->xmm[i].pi.u64[0] = ep->ContextRecord->V[i].Low;
