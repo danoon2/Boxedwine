@@ -1709,6 +1709,17 @@ void X86Asm::test(Reg8 dst, Reg8 src) {
     outb(0xc0 | (dst.reg & 7) | ((src.reg & 7) << 3));
 }
 
+void X86Asm::test(const Mem32& mem, U32 imm) {
+    S32 sIMM = (S32)imm;
+    if (sIMM < -128 || sIMM > 127) {
+        mem32(0xf7, 0, mem);
+        outd(imm);
+    } else {
+        mem32(0xf6, 6, mem);
+        outb((U8)imm);
+    }
+}
+
 void X86Asm::movsx(Reg16 dst, Reg8 src) {    
     outb(0x66);
     rex(dst.reg, src.reg, false);
@@ -2172,21 +2183,6 @@ void X86Asm::IfNotZero(Reg16 reg) {
 void X86Asm::IfNotZero(Reg8 reg) {
     test(reg, reg);
     IfNotZF();
-}
-
-void X86Asm::IfBitSet(Reg32 reg, U32 mask) {
-    test(reg, mask);
-    IfNotZF();
-}
-
-void X86Asm::IfBitSet(Reg32 reg, Reg32 mask) {
-    test(reg, mask);
-    IfNotZF();
-}
-
-void X86Asm::IfNotBitSet(Reg32 reg, U32 mask) {
-    test(reg, mask);
-    IfZF();
 }
 
 void X86Asm::Else() {

@@ -219,6 +219,7 @@ public:
     virtual void If(JitWidth regWidth, RegPtr reg) = 0;
     virtual void IfTest(JitWidth regWidth, RegPtr reg, RegPtr mask) = 0;
     virtual void IfTest(JitWidth regWidth, RegPtr reg, U32 mask) = 0;
+    virtual void IfBitTest(RegPtr reg, U8 bit) = 0;
     virtual void IfNotTest(JitWidth regWidth, RegPtr reg, U32 mask) = 0;
     virtual void IfEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) = 0;
     virtual void IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) = 0;
@@ -234,7 +235,7 @@ public:
     virtual void JumpIfCondition(JitConditional condition, U32 address) = 0;
     virtual U32 MarkJumpLocation() = 0;
     virtual void Goto(U32 location) = 0;
-    virtual void IfFlagSet(U32 flags) = 0;
+    virtual void IfDF() = 0;
     virtual void IfSmallStack() = 0;
 
     virtual void readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) = 0;

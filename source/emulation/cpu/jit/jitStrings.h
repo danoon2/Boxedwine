@@ -54,7 +54,7 @@ void Jit::movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth) {
     } else {
         write(valueWidth, edi, read(valueWidth, esi));
     }
-    IfFlagSet(DF); {
+    IfDF(); {
         subValue(regWidth, esi, size);
         subValue(regWidth, edi, size);
     } StartElse(); {
@@ -76,7 +76,7 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         emulateSingleOp();
     };
 
-    IfFlagSet(DF); {
+    IfDF(); {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx); {
             write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
@@ -211,7 +211,7 @@ void Jit::cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, LazyF
     storeLazyFlagsResult(dest);
     storeLazyFlags(lazyFlags);
 
-    IfFlagSet(DF); {
+    IfDF(); {
         subValue(regWidth, esi, size);
         subValue(regWidth, edi, size);
     } StartElse(); {
@@ -253,7 +253,7 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
         emulateSingleOp();
     };
 
-    IfFlagSet(DF); {
+    IfDF(); {
         If(regWidth, getReadOnlyReg(1)); {
             U32 label = MarkJumpLocation();
             If(regWidth, getReadOnlyReg(1)); {
@@ -404,7 +404,7 @@ void Jit::stos(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     } else {
         write(valueWidth, edi, getReadOnlyReg8(0));
     }
-    IfFlagSet(DF); {
+    IfDF(); {
         subValue(regWidth, edi, size);
     } StartElse(); {
         addValue(regWidth, edi, size);
@@ -431,7 +431,7 @@ void Jit::stosr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         emulateSingleOp();
     };
 
-    IfFlagSet(DF); {
+    IfDF(); {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx); {
             write(valueWidth, edi, al, nullptr, onFailure);
@@ -538,7 +538,7 @@ void Jit::lods(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth) {
     } else {
         mov(valueWidth, al, read(valueWidth, esi, nullptr, nullptr, getTmpReg8()));
     }
-    IfFlagSet(DF); {
+    IfDF(); {
         subValue(regWidth, esi, size);
     } StartElse(); {
         addValue(regWidth, esi, size);
@@ -566,7 +566,7 @@ void Jit::lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         emulateSingleOp();
     };
 
-    IfFlagSet(DF); {
+    IfDF(); {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx); {
             mov(valueWidth, al, read(valueWidth, esi, nullptr, onFailure, getTmpReg8()));
@@ -681,7 +681,7 @@ void Jit::scas(JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType la
     storeLazyFlagsResult(dest);
     storeLazyFlags(lazyFlags);
 
-    IfFlagSet(DF); {
+    IfDF(); {
         subValue(regWidth, edi, size);
     } StartElse(); {
         addValue(regWidth, edi, size);
@@ -716,7 +716,7 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
         emulateSingleOp();
     };
 
-    IfFlagSet(DF); {
+    IfDF(); {
         If(regWidth, ecx); {
             U32 label = MarkJumpLocation();
             If(regWidth, ecx); {

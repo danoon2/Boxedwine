@@ -334,7 +334,8 @@ public:
 	void test(Reg32 dst, Reg32 src);
 	void test(Reg16 dst, Reg16 src);
 	void test(Reg8 dst, Reg8 src);
-	
+	void test(const Mem32& mem, U32 imm);
+
 	void cmp(Reg32 dst, U32 imm);
 	void cmp(Reg16 dst, U16 imm);
 	void cmp(Reg8 dst, U8 imm);	
@@ -571,9 +572,6 @@ public:
 	void IfNotZero(Reg32 reg);
 	void IfNotZero(Reg16 reg);
 	void IfNotZero(Reg8 reg);
-	void IfBitSet(Reg32 reg, U32 mask);
-	void IfBitSet(Reg32 reg, Reg32 mask);
-	void IfNotBitSet(Reg32 reg, U32 mask);
 	void Else();
 	void EndIf();
 	void IfPF();

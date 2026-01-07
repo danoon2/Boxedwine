@@ -846,6 +846,7 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
     }
 
     // test eax, 0x40000000 (mmu[index].canReadRam)
+    // IfBitTest(tmp, 30); { bit test is noticably slower
     IfTest(JitWidth::b32, tmp, 0x40000000); {
 
         // bottom 20 bits of mmu contains ram page index
@@ -918,6 +919,7 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
     }
 
     // test reg, 0x80000000 (mmu[index].canWriteRam)
+    // IfBitTest(tmp, 31); { bit test is noticably slower
     IfTest(JitWidth::b32, tmp, 0x80000000); {
 
         // bottom 20 bits of mmu contains ram page index

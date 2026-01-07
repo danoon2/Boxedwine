@@ -194,6 +194,7 @@ public:
     void IfTest(JitWidth regWidth, RegPtr reg, RegPtr mask) override;
     void IfTest(JitWidth regWidth, RegPtr reg, U32 value) override;
     void IfNotTest(JitWidth regWidth, RegPtr reg, U32 value) override;
+    void IfBitTest(RegPtr reg, U8 bit) override;
     void IfEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) override;
     void IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
     void IfNotEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) override;
@@ -203,7 +204,7 @@ public:
     void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
     void IfNot(JitWidth regWidth, RegPtr reg) override;
     void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) override;    
-    void IfFlagSet(U32 flags) override;
+    void IfDF() override;
     void IfSmallStack() override;
     void JumpIfCondition(JitConditional condition, U32 address) override;
     void IfCompareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition) override;
@@ -2174,26 +2175,34 @@ void JitX86CodeGen::If(JitWidth regWidth, RegPtr reg) {
 
 void JitX86CodeGen::IfTest(JitWidth regWidth, RegPtr reg, RegPtr mask) {
     if (regWidth == JitWidth::b8) {
-        x86.IfBitSet(R32(get8bitReg(reg)), R32(get8bitReg(mask)));
+        x86.test(R32(get8bitReg(reg)), R32(get8bitReg(mask)));
     } else {
-        x86.IfBitSet(R32(reg->hardwareReg()), R32(mask->hardwareReg()));
+        x86.test(R32(reg->hardwareReg()), R32(mask->hardwareReg()));
     }
+    x86.jz();
 }
 
 void JitX86CodeGen::IfTest(JitWidth regWidth, RegPtr reg, U32 value) {
     if (regWidth == JitWidth::b8) {
-        x86.IfBitSet(R32(get8bitReg(reg)), value);
+        x86.test(R32(get8bitReg(reg)), value);
     } else {
-        x86.IfBitSet(R32(reg->hardwareReg()), value);
+        x86.test(R32(reg->hardwareReg()), value);
     }
+    x86.jz();
 }
 
 void JitX86CodeGen::IfNotTest(JitWidth regWidth, RegPtr reg, U32 value) {
     if (regWidth == JitWidth::b8) {
-        x86.IfNotBitSet(R32(get8bitReg(reg)), value);
+        x86.test(R32(get8bitReg(reg)), value);
     } else {
-        x86.IfNotBitSet(R32(reg->hardwareReg()), value);
+        x86.test(R32(reg->hardwareReg()), value);
     }
+    x86.jnz();
+}
+
+void JitX86CodeGen::IfBitTest(RegPtr reg, U8 bit) {
+    x86.bt(R32(reg->hardwareReg()), bit);
+    x86.jnb();
 }
 
 void JitX86CodeGen::IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
@@ -2381,10 +2390,12 @@ void JitX86CodeGen::JumpIfCondition(JitConditional condition, U32 address) {
     EndIf();
 }
 
-void JitX86CodeGen::IfFlagSet(U32 flag) {
-    RegPtr reg = getTmpReg();
-    x86.mov(R32(reg->hardwareReg()), X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)));
-    x86.IfBitSet(R32(reg->hardwareReg()), flag);
+void JitX86CodeGen::IfDF() {
+    x86.test(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), DF);
+    x86.jz();
+
+    //x86.bt(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), 10);
+    //x86.jnb();
 }
 
 void JitX86CodeGen::IfSmallStack() {
@@ -2398,13 +2409,13 @@ U32 JitX86CodeGen::MarkJumpLocation() {
 }
 
 void JitX86CodeGen::Goto(U32 location) {
-    U32 amount = location - (U32)x86.buffer.size() - 1;
+    S32 amount = (S32)location - (U32)x86.buffer.size() - 1;
 
-    if (amount > 127) {
+    if (amount > 127 || amount < -128) {
         amount = location - (U32)x86.buffer.size() - 5;
         x86.goto32(amount);
     } else {
-        x86.goto8(amount);
+        x86.goto8(amount - 1);
     }
 }
 
