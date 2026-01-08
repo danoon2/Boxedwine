@@ -2235,126 +2235,126 @@ void X86Asm::setz(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x94);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setnz(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x95);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setb(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x92);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setnb(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x93);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setbe(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x96);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setnbe(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x97);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setl(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x9c);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setnl(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x9d);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setle(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x9e);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setnle(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x9f);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::seto(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x90);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setno(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x91);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::sets(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x98);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setns(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x99);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setp(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x9a);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::setnp(Reg8 reg) {
     rex(reg.reg, false);
     outb(0x0f);
     outb(0x9b);
-    outb(0xc0 + reg.reg);
+    outb(0xc0 + (reg.reg & 7));
 }
 
 void X86Asm::movlhps(RegXMM hiDstXMM, RegXMM loSrcXMM) {
     rex(hiDstXMM.reg, loSrcXMM.reg, false);
     outb(0x0f);
     outb(0x16);
-    outb(0xC0 | (hiDstXMM.reg << 3) | loSrcXMM.reg);
+    outb(0xC0 | ((hiDstXMM.reg & 7) << 3) | (loSrcXMM.reg & 7));
 }
 
 void X86Asm::movhlps(RegXMM hiDstXMM, RegXMM loSrcXMM) {
     rex(hiDstXMM.reg, loSrcXMM.reg, false);
     outb(0x0f);
     outb(0x12);
-    outb(0xC0 | (hiDstXMM.reg << 3) | loSrcXMM.reg);
+    outb(0xC0 | ((hiDstXMM.reg & 7) << 3) | (loSrcXMM.reg & 7));
 }
 
 void X86Asm::movss(const Mem32& mem, RegXMM srcXMM) {
@@ -2372,7 +2372,7 @@ void X86Asm::movss(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x10);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::movsd(const Mem64& mem, RegXMM srcXMM) {
@@ -2390,7 +2390,7 @@ void X86Asm::movsd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x10);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::movlpd(RegXMM dstXMM, const Mem64& mem) {
@@ -2403,7 +2403,7 @@ void X86Asm::cvtss2sd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x5a);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::cvtsd2ss(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2411,7 +2411,7 @@ void X86Asm::cvtsd2ss(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x5a);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::xorpd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2419,7 +2419,7 @@ void X86Asm::xorpd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x57);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::andpd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2427,7 +2427,7 @@ void X86Asm::andpd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x54);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::cvtsi2sd(RegXMM dstXMM, const Mem32& mem) {
@@ -2440,7 +2440,7 @@ void X86Asm::cvttsd2si(Reg32 dst, RegXMM srcXMM) {
     rex(dst.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x2c);
-    outb(0xC0 | ((dst.reg & 7) << 3) | srcXMM.reg);
+    outb(0xC0 | ((dst.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::cvtsd2si(Reg32 dst, RegXMM srcXMM) {
@@ -2448,7 +2448,7 @@ void X86Asm::cvtsd2si(Reg32 dst, RegXMM srcXMM) {
     rex(dst.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x2d);
-    outb(0xC0 | ((dst.reg & 7) << 3) | srcXMM.reg);
+    outb(0xC0 | ((dst.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::cvtsi2sd(RegXMM dstXMM, Reg32 reg) {
@@ -2456,7 +2456,7 @@ void X86Asm::cvtsi2sd(RegXMM dstXMM, Reg32 reg) {
     rex(dstXMM.reg, reg.reg, false);
     outb(0x0f);
     outb(0x2a);
-    outb(0xC0 | (dstXMM.reg << 3) | (reg.reg & 7));
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (reg.reg & 7));
 }
 
 void X86Asm::cvtdq2pd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2464,7 +2464,7 @@ void X86Asm::cvtdq2pd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0xe6);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::cvtpd2dq(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2472,7 +2472,7 @@ void X86Asm::cvtpd2dq(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0xe6);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::cvttpd2dq(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2480,7 +2480,7 @@ void X86Asm::cvttpd2dq(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0xe6);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::cvtpd2ps(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2488,7 +2488,7 @@ void X86Asm::cvtpd2ps(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x5a);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::addpd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2496,7 +2496,7 @@ void X86Asm::addpd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x58);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::addsd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2504,7 +2504,7 @@ void X86Asm::addsd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x58);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::mulpd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2512,7 +2512,7 @@ void X86Asm::mulpd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x59);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::mulsd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2520,7 +2520,7 @@ void X86Asm::mulsd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x59);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::subpd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2528,7 +2528,7 @@ void X86Asm::subpd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x5c);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::subsd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2536,7 +2536,7 @@ void X86Asm::subsd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x5c);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::sqrtpd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2544,7 +2544,7 @@ void X86Asm::sqrtpd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x51);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::sqrtsd(RegXMM dstXMM, RegXMM srcXMM) {
@@ -2552,7 +2552,7 @@ void X86Asm::sqrtsd(RegXMM dstXMM, RegXMM srcXMM) {
     rex(dstXMM.reg, srcXMM.reg, false);
     outb(0x0f);
     outb(0x51);
-    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (srcXMM.reg & 7));
 }
 
 void X86Asm::ucomisd(RegXMM xmm1, RegXMM xmm2) {
@@ -2560,7 +2560,7 @@ void X86Asm::ucomisd(RegXMM xmm1, RegXMM xmm2) {
     rex(xmm1.reg, xmm2.reg, false);
     outb(0x0f);
     outb(0x2e);
-    outb(0xc0 | xmm2.reg | (xmm1.reg << 3));
+    outb(0xc0 | (xmm2.reg & 7) | ((xmm1.reg & 7) << 3));
 }
 
 void X86Asm::stmxcsr(const Mem32& mem) {
@@ -2601,6 +2601,13 @@ void X86Asm::movd(RegMMX reg, const Mem32& mem) {
 void X86Asm::emms() {
     outb(0x0f);
     outb(0x77);
+}
+
+void X86Asm::movaps(RegXMM dst, RegXMM src) {
+    rex(dst.reg, src.reg, false);
+    outb(0x0f);
+    outb(0x10);
+    outb(0xC0 | ((dst.reg & 7) << 3) | (src.reg & 7));
 }
 
 void X86Asm::movaps(RegXMM reg, const Mem128& mem) {

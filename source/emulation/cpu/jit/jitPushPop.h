@@ -146,11 +146,11 @@ void Jit::dynamic_pushEd_mem(DecodedOp* op) {
 void Jit::dynamic_popEd_mem(DecodedOp* op) {
     write(JitWidth::b32, calculateEaa(op, 4), peek32()); // eaa must be calculated after esp is incremented which is why we pass 2 here
 
-    IfSmallStack();
-    addValue(JitWidth::b16, getReg(4), 4);
-    StartElse();
-    addValue(JitWidth::b32, getReg(4), 4);
-    EndIf();
+    IfSmallStack(); {
+        addValue(JitWidth::b16, getReg(4), 4);
+    } StartElse(); {
+        addValue(JitWidth::b32, getReg(4), 4);
+    } EndIf();
     incrementEip(op->len);
 }
 void Jit::dynamic_pushSeg16(DecodedOp* op) {

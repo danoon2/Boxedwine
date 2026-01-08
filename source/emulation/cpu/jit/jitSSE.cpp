@@ -502,8 +502,9 @@ void JitSSE::dynamic_cvttsd2siR32E64(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_movqXmmXmm(DecodedOp* op) {
-    loadCpuXMMReg64ZeroExtend(DynXMMReg(op->rm), op->rm);
-    storeCpuXMMReg(DynXMMReg(op->rm), op->reg);
+    loadCpuXMMReg(DynXMMReg(op->rm), op->rm);
+    movq(DynXMMReg(op->reg), DynXMMReg(op->rm));
+    storeCpuXMMReg(DynXMMReg(op->reg), op->reg);
     incrementEip(op->len);
 }
 

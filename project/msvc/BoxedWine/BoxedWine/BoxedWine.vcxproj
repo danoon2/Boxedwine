@@ -342,7 +342,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_X64;BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>

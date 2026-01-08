@@ -44,7 +44,6 @@ public:
 	virtual DynXMMReg getTmpXMM(U8 inUse) = 0;
 	virtual void storeCpuXMMReg(DynXMMReg reg, U32 index) = 0;
 	virtual void loadCpuXMMReg(DynXMMReg reg, U32 index) = 0;
-	virtual void loadCpuXMMReg64ZeroExtend(DynXMMReg reg, U32 index) = 0;
 	virtual void loadXMMFromMem128(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
 	virtual void loadXMMFromMem32(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
 	virtual void loadXMMFromMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
@@ -306,6 +305,7 @@ public:
 	virtual void movd(DynXMMReg dst, RegPtr src) = 0;
 	virtual void movdq2q(DynMMXReg dst, DynXMMReg src) = 0;
 	virtual void movq2dq(DynXMMReg dst, DynMMXReg src) = 0;
+	virtual void movq(DynXMMReg dst, DynXMMReg src) = 0;
 
 	virtual void maskmovdqu(DynXMMReg dst, DynXMMReg src, RegPtr address) = 0;
 	virtual void pshufdXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;

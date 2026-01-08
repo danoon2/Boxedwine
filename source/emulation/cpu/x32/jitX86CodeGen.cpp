@@ -121,7 +121,7 @@ public:
     void forceSyncBackIfNotCached(RegPtr reg) override;
 
     RegPtr getEip(bool load = true) override;
-    U8 findTmpReg(bool needs8bitReg, S8 hint = -1);
+    U8 findTmpReg(bool needs8bitReg, S8 hint = -1, bool allowInvalidReturn = false);
     void emulateSingleOp() override;
 
     void addReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
@@ -342,10 +342,9 @@ public:
     void pmuludqMmxMmx(DynMMXReg dst, DynMMXReg src) override;
 
     // SSE    
-    DynXMMReg getTmpXMM(U8 inUse) override { return inUse == 0 ? (DynXMMReg)1 : (DynXMMReg)0; }
+    DynXMMReg getTmpXMM(U8 inUse) override;
     void storeCpuXMMReg(DynXMMReg reg, U32 index) override;
     void loadCpuXMMReg(DynXMMReg reg, U32 index) override;
-    void loadCpuXMMReg64ZeroExtend(DynXMMReg reg, U32 index) override;
     void loadXMMFromMem128(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
     void loadXMMFromMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
     void loadLowXMMFromMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
@@ -493,6 +492,7 @@ public:
     void movd(DynXMMReg dst, RegPtr src) override;
     void movdq2q(DynMMXReg dst, DynXMMReg src) override;
     void movq2dq(DynXMMReg dst, DynMMXReg src) override;
+    void movq(DynXMMReg dst, DynXMMReg src) override;
 
     void maskmovdqu(DynXMMReg dst, DynXMMReg src, RegPtr address) override;
     void pshufdXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) override;
@@ -605,6 +605,11 @@ protected:
     U8* createSyncFromHost() override;
     bool isHintAvailable(S8 hint);
 
+    X86Asm::RegXMM getMMXReg(DynMMXReg reg);
+    X86Asm::RegXMM getFPUReg(DynFpuReg reg);
+    U32 tmpMMXIndex = 0;
+    std::array<U8, 8> tmpMMXMap = {};
+
     X86Asm x86;
 #ifdef BOXEDWINE_64
     X86Asm::Reg64 params[4];
@@ -613,8 +618,44 @@ protected:
 
 void JitX86CodeGen::preOp(DecodedOp* op) {
     regUsed2.fill(false);
+    tmpMMXMap.fill(0xff);
     currentOp = op;
+    tmpMMXIndex = 0;
 }
+
+#ifdef BOXEDWINE_64
+X86Asm::RegXMM JitX86CodeGen::getMMXReg(DynMMXReg reg) {
+    // x64 will cache xmm and use 0-7
+    // getTmpXMM uses 8, 9
+
+    // I think only 2 should be used a time
+    if (tmpMMXMap[reg] == 0xff) {
+        tmpMMXMap[reg] = 10 + tmpMMXIndex++;
+    }
+    return X86Asm::XMM(tmpMMXMap[reg]);
+}
+
+DynXMMReg JitX86CodeGen::getTmpXMM(U8 inUse) {
+    return inUse == 0 ? (DynXMMReg)8 : (DynXMMReg)9;
+}
+
+X86Asm::RegXMM JitX86CodeGen::getFPUReg(DynFpuReg reg) {
+    return X86Asm::XMM(reg + 8);
+}
+
+#else
+X86Asm::RegXMM JitX86CodeGen::getMMXReg(DynMMXReg reg) {
+    return X86Asm::XMM(reg);
+}
+
+DynXMMReg JitX86CodeGen::getTmpXMM(U8 inUse) {
+    return inUse == 0 ? (DynXMMReg)1 : (DynXMMReg)0;
+}
+
+X86Asm::RegXMM JitX86CodeGen::getFPUReg(DynFpuReg reg) {
+    return X86Asm::XMM(reg);
+}
+#endif
 
 void JitX86CodeGen::emulateSingleOp() {
 #ifdef BOXEDWINE_64
@@ -630,7 +671,7 @@ bool JitX86CodeGen::isHintAvailable(S8 hint) {
     return (hint >= 0 && isTmp[hint] && !regUsed2[hint]);
 }
 
-U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint) {        
+U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn) {
 #ifdef BOXEDWINE_64    
     if (isHintAvailable(hint)) {
         regUsed2[hint] = true;
@@ -649,7 +690,9 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint) {
     if (needs8bitReg) {
         return findTmpReg(false, hint);
     }
-    kpanic("JitX86CodeGen::getTmpReg ran out of tmp regs");
+    if (!allowInvalidReturn) {
+        kpanic("JitX86CodeGen::getTmpReg ran out of tmp regs");
+    }
     return 0xff;
 #else
     if (hint >= 0 && !regUsed2[hint]) {
@@ -668,7 +711,7 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint) {
             break;
         }
     }
-    if (tmpReg == 0xff) {
+    if (tmpReg == 0xff && !allowInvalidReturn) {
         kpanic("JitX86CodeGen::getTmpReg ran out of tmp regs");
     }
     return tmpReg;
@@ -838,12 +881,12 @@ void JitX86CodeGen::popReg(RegPtr reg) {
 }
 
 bool JitX86CodeGen::isTmpRegAvailable() {
-    for (int i = 0; i < 4; i++) {
-        if (!regUsed2[i]) {
-            return true;
-        }
+    U8 found = findTmpReg(false, -1, true);
+    if (found == 0xff) {
+        return false;
     }
-    return false;
+    regUsed2[found] = false;
+    return true;
 }
 
 RegPtr JitX86CodeGen::getEip(bool load) {
@@ -2456,7 +2499,14 @@ void JitX86CodeGen::writeCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, Reg
 }
 
 void JitX86CodeGen::storeCpuXMMReg(DynXMMReg reg, U32 index) {
+#ifdef BOXEDWINE_64
+    if (reg == index) {
+        return;
+    }
+    x86.movaps(X86Asm::XMM(index), X86Asm::XMM(reg));
+#else
     x86.movaps(X86Asm::Mem128(HOST_CPU, index * 16 + offsetof(CPU, xmm)), X86Asm::XMM(reg));
+#endif
 }
 
 void JitX86CodeGen::storeXMMToMem128(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
@@ -2476,11 +2526,14 @@ void JitX86CodeGen::storeHighXMMToMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8
 }
 
 void JitX86CodeGen::loadCpuXMMReg(DynXMMReg reg, U32 index) {
+#ifdef BOXEDWINE_64
+    if (reg == index) {
+        return;
+    }
+    x86.movaps(X86Asm::XMM(reg), X86Asm::XMM(index));
+#else
     x86.movaps(X86Asm::XMM(reg), X86Asm::Mem128(HOST_CPU, index * 16 + offsetof(CPU, xmm)));
-}
-
-void JitX86CodeGen::loadCpuXMMReg64ZeroExtend(DynXMMReg reg, U32 index) {
-    x86.movq(X86Asm::XMM(reg), X86Asm::Mem64(HOST_CPU, index * 16 + offsetof(CPU, xmm)));
+#endif
 }
 
 void JitX86CodeGen::loadXMMFromMem128(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
@@ -2576,71 +2629,71 @@ void JitX86CodeGen::minssXmmXmm(DynXMMReg dst, DynXMMReg src) {
 }
 
 void JitX86CodeGen::pavgbMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pavgb(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pavgb(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pavgwMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pavgw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pavgw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psadbwMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psadbw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psadbw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pextrwRegMmx(RegPtr dst, DynMMXReg src, U8 srcIndex) {
-    x86.pextrw(R32(dst->hardwareReg()), X86Asm::XMM(src), srcIndex);
+    x86.pextrw(R32(dst->hardwareReg()), getMMXReg(src), srcIndex);
 }
 
 void JitX86CodeGen::pinsrwMmxReg(DynMMXReg dst, RegPtr src, U8 dstIndex) {
-    x86.pinsrw(X86Asm::XMM(dst), R32(src->hardwareReg()), dstIndex);
+    x86.pinsrw(getMMXReg(dst), R32(src->hardwareReg()), dstIndex);
 }
 
 void JitX86CodeGen::pmaxswMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pmaxsw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pmaxsw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pmaxubMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pmaxub(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pmaxub(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pminswMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pminsw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pminsw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pminubMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pminub(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pminub(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pmovmskbMmxMmx(RegPtr dst, DynMMXReg src) {
-    x86.pmovmskb(R32(dst->hardwareReg()), X86Asm::XMM(src));
+    x86.pmovmskb(R32(dst->hardwareReg()), getMMXReg(src));
 }
 
 void JitX86CodeGen::pmulhuwMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pmulhuw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pmulhuw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pshufwMmxMmx(DynMMXReg dst, DynMMXReg src, U8 order) {
-    x86.pshuflw(X86Asm::XMM(dst), X86Asm::XMM(src), order);
+    x86.pshuflw(getMMXReg(dst), getMMXReg(src), order);
 }
 
 void JitX86CodeGen::maskmovq(DynMMXReg src, DynMMXReg mask, RegPtr destAddress) {
     x86.push(RN(7));
     x86.mov(RN(7), RN(destAddress->hardwareReg()));
     // this works because the top 64-bits of the mask should be 0's since its used for MMX
-    x86.maskmovdqu(X86Asm::XMM(src), X86Asm::XMM(mask));
+    x86.maskmovdqu(getMMXReg(src), getMMXReg(mask));
     x86.pop(RN(7));
 }
 
 void JitX86CodeGen::paddqMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.paddq(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.paddq(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psubqMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psubq(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psubq(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pmuludqMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pmuludq(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pmuludq(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::andnpsXmmXmm(DynXMMReg dst, DynXMMReg src) {
@@ -2662,12 +2715,12 @@ void JitX86CodeGen::xorpsXmmXmm(DynXMMReg dst, DynXMMReg src) {
 void JitX86CodeGen::cvtpi2psXmmMmx(DynXMMReg dst, DynMMXReg src) {
     // cvtpi2ps need to keep top 64-bits of the xmm dst
     DynXMMReg tmp = getTmpXMM(dst);
-    x86.cvtdq2ps(X86Asm::XMM(tmp), X86Asm::XMM(src));
+    x86.cvtdq2ps(X86Asm::XMM(tmp), getMMXReg(src));
     x86.movsd(X86Asm::XMM(dst), X86Asm::XMM(tmp));
 }
 
 void JitX86CodeGen::cvtps2piMmxXmm(DynMMXReg dst, DynXMMReg src) {
-    x86.cvtps2dq(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.cvtps2dq(getMMXReg(dst), X86Asm::XMM(src));
 }
 
 void JitX86CodeGen::cvtsi2ssXmmR32(DynXMMReg dst, RegPtr src) {
@@ -2679,7 +2732,7 @@ void JitX86CodeGen::cvtss2siR32Xmm(RegPtr dst, DynXMMReg src) {
 }
 
 void JitX86CodeGen::cvttps2piMmxXmm(DynMMXReg dst, DynXMMReg src) {
-    x86.cvttps2dq(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.cvttps2dq(getMMXReg(dst), X86Asm::XMM(src));
 }
 
 void JitX86CodeGen::cvttss2siR32Xmm(RegPtr dst, DynXMMReg src) {
@@ -2844,259 +2897,259 @@ void JitX86CodeGen::movmskpsR32Xmm(RegPtr dst, DynXMMReg src) {
 }
 
 void JitX86CodeGen::loadMMXFromReg(DynMMXReg dst, RegPtr src) {
-    x86.movd(X86Asm::XMM(dst), R32(src->hardwareReg()));
+    x86.movd(getMMXReg(dst), R32(src->hardwareReg()));
 }
 
 void JitX86CodeGen::storeCpuMMXReg(DynMMXReg reg, U32 index) {
-    x86.movq(X86Asm::Mem64(HOST_CPU, index * cpu->fpu.sizeofRegInRegsArray() + offsetof(CPU, fpu.regs[0].signif)), X86Asm::XMM(reg));
+    x86.movq(X86Asm::Mem64(HOST_CPU, index * cpu->fpu.sizeofRegInRegsArray() + offsetof(CPU, fpu.regs[0].signif)), getMMXReg(reg));
 }
 
 void JitX86CodeGen::storeMMXToReg(DynMMXReg src, RegPtr dst) {
-    x86.movd(R32(dst->hardwareReg()), X86Asm::XMM(src));
+    x86.movd(R32(dst->hardwareReg()), getMMXReg(src));
 }
 
 void JitX86CodeGen::loadCpuMMXReg(DynMMXReg reg, U32 index) {
-    x86.movq(X86Asm::XMM(reg), X86Asm::Mem64(HOST_CPU, index * cpu->fpu.sizeofRegInRegsArray() + offsetof(CPU, fpu.regs[0].signif)));
+    x86.movq(getMMXReg(reg), X86Asm::Mem64(HOST_CPU, index * cpu->fpu.sizeofRegInRegsArray() + offsetof(CPU, fpu.regs[0].signif)));
 }
 
 void JitX86CodeGen::loadMMXFromMem32(DynMMXReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.movd(X86Asm::XMM(reg), X86Asm::Mem32(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp));
+    x86.movd(getMMXReg(reg), X86Asm::Mem32(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp));
 }
 
 void JitX86CodeGen::loadMMXFromMem64(DynMMXReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.movq(X86Asm::XMM(reg), X86Asm::Mem64(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp));
+    x86.movq(getMMXReg(reg), X86Asm::Mem64(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp));
 }
 
 void JitX86CodeGen::storeMMXToMem32(DynMMXReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.movd(X86Asm::Mem32(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp), X86Asm::XMM(reg));
+    x86.movd(X86Asm::Mem32(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp), getMMXReg(reg));
 }
 
 void JitX86CodeGen::storeMMXToMem64(DynMMXReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.movq(X86Asm::Mem64(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp), X86Asm::XMM(reg));
+    x86.movq(X86Asm::Mem64(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp), getMMXReg(reg));
 }
 
 void JitX86CodeGen::xorMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pxor(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pxor(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::orMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.por(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.por(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::andMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pand(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pand(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::andnMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pandn(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pandn(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psllwMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psllw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psllw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psrlwMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psrlw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psrlw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psrawMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psraw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psraw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psllwMmx(DynMMXReg dst, U32 imm) {
-    x86.psllw(X86Asm::XMM(dst), imm);
+    x86.psllw(getMMXReg(dst), imm);
 }
 
 void JitX86CodeGen::psrlwMmx(DynMMXReg dst, U32 imm) {
-    x86.psrlw(X86Asm::XMM(dst), imm);
+    x86.psrlw(getMMXReg(dst), imm);
 }
 
 void JitX86CodeGen::psrawMmx(DynMMXReg dst, U32 imm) {
-    x86.psraw(X86Asm::XMM(dst), imm);
+    x86.psraw(getMMXReg(dst), imm);
 }
 
 void JitX86CodeGen::pslldMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pslld(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pslld(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psrldMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psrld(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psrld(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psradMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psrad(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psrad(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pslldMmx(DynMMXReg dst, U32 imm) {
-    x86.pslld(X86Asm::XMM(dst), imm);
+    x86.pslld(getMMXReg(dst), imm);
 }
 
 void JitX86CodeGen::psrldMmx(DynMMXReg dst, U32 imm) {
-    x86.psrld(X86Asm::XMM(dst), imm);
+    x86.psrld(getMMXReg(dst), imm);
 }
 
 void JitX86CodeGen::psradMmx(DynMMXReg dst, U32 imm) {
-    x86.psrad(X86Asm::XMM(dst), imm);
+    x86.psrad(getMMXReg(dst), imm);
 }
 
 void JitX86CodeGen::psllqMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psllq(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psllq(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psrlqMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psrlq(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psrlq(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psllqMmx(DynMMXReg dst, U32 imm) {
-    x86.psllq(X86Asm::XMM(dst), imm);
+    x86.psllq(getMMXReg(dst), imm);
 }
 
 void JitX86CodeGen::psrlqMmx(DynMMXReg dst, U32 imm) {
-    x86.psrlq(X86Asm::XMM(dst), imm);
+    x86.psrlq(getMMXReg(dst), imm);
 }
 
 void JitX86CodeGen::paddbMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.paddb(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.paddb(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::paddwMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.paddw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.paddw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::padddMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.paddd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.paddd(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::paddsbMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.paddsb(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.paddsb(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::paddswMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.paddsw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.paddsw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::paddusbMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.paddusb(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.paddusb(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::padduswMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.paddusw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.paddusw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psubbMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psubb(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psubb(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psubwMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psubw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psubw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psubdMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psubd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psubd(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psubsbMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psubsb(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psubsb(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psubswMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psubsw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psubsw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psubusbMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psubusb(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psubusb(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::psubuswMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.psubusw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.psubusw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pmulhwMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pmulhw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pmulhw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pmullwMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pmullw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pmullw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pmaddwdMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pmaddwd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pmaddwd(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pcmpeqbMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pcmpeqb(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pcmpeqb(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pcmpeqwMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pcmpeqw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pcmpeqw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pcmpeqdMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pcmpeqd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pcmpeqd(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pcmpgtbMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pcmpgtb(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pcmpgtb(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pcmpgtwMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pcmpgtw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pcmpgtw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::pcmpgtdMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.pcmpgtd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.pcmpgtd(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::packsswbMmxMmx(DynMMXReg dst, DynMMXReg src) {
     // xmm is twice as big as mm, so we need to adjust a little before the pack
-    x86.movlhps(X86Asm::XMM(dst), X86Asm::XMM(src));
-    x86.packsswb(X86Asm::XMM(dst), X86Asm::XMM(dst));
+    x86.movlhps(getMMXReg(dst), getMMXReg(src));
+    x86.packsswb(getMMXReg(dst), getMMXReg(dst));
 }
 
 void JitX86CodeGen::packssdwMmxMmx(DynMMXReg dst, DynMMXReg src) {
     // xmm is twice as big as mm, so we need to adjust a little before the pack
-    x86.movlhps(X86Asm::XMM(dst), X86Asm::XMM(src));
-    x86.packssdw(X86Asm::XMM(dst), X86Asm::XMM(dst));
+    x86.movlhps(getMMXReg(dst), getMMXReg(src));
+    x86.packssdw(getMMXReg(dst), getMMXReg(dst));
 }
 
 void JitX86CodeGen::packuswbMmxMmx(DynMMXReg dst, DynMMXReg src) {
     // xmm is twice as big as mm, so we need to adjust a little before the pack
-    x86.movlhps(X86Asm::XMM(dst), X86Asm::XMM(src));
-    x86.packuswb(X86Asm::XMM(dst), X86Asm::XMM(dst));
+    x86.movlhps(getMMXReg(dst), getMMXReg(src));
+    x86.packuswb(getMMXReg(dst), getMMXReg(dst));
 }
 
 void JitX86CodeGen::punpckhbwMmxMmx(DynMMXReg dst, DynMMXReg src) {
     // :TODO: maybe move bytes 4-7 to 8-11 instead of 0-7 to 8-15 so that we don't have to do the movhlps to mov them back down?
-    x86.movlhps(X86Asm::XMM(src), X86Asm::XMM(src));
-    x86.movlhps(X86Asm::XMM(dst), X86Asm::XMM(dst));
-    x86.punpckhbw(X86Asm::XMM(dst), X86Asm::XMM(src));
-    x86.movhlps(X86Asm::XMM(dst), X86Asm::XMM(dst));
+    x86.movlhps(getMMXReg(src), getMMXReg(src));
+    x86.movlhps(getMMXReg(dst), getMMXReg(dst));
+    x86.punpckhbw(getMMXReg(dst), getMMXReg(src));
+    x86.movhlps(getMMXReg(dst), getMMXReg(dst));
 }
 
 void JitX86CodeGen::punpckhwdMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.movlhps(X86Asm::XMM(src), X86Asm::XMM(src));
-    x86.movlhps(X86Asm::XMM(dst), X86Asm::XMM(dst));
-    x86.punpckhwd(X86Asm::XMM(dst), X86Asm::XMM(src));
-    x86.movhlps(X86Asm::XMM(dst), X86Asm::XMM(dst));
+    x86.movlhps(getMMXReg(src), getMMXReg(src));
+    x86.movlhps(getMMXReg(dst), getMMXReg(dst));
+    x86.punpckhwd(getMMXReg(dst), getMMXReg(src));
+    x86.movhlps(getMMXReg(dst), getMMXReg(dst));
 }
 
 void JitX86CodeGen::punpckhdqMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.movlhps(X86Asm::XMM(src), X86Asm::XMM(src));
-    x86.movlhps(X86Asm::XMM(dst), X86Asm::XMM(dst));
-    x86.punpckhdq(X86Asm::XMM(dst), X86Asm::XMM(src));
-    x86.movhlps(X86Asm::XMM(dst), X86Asm::XMM(dst));
+    x86.movlhps(getMMXReg(src), getMMXReg(src));
+    x86.movlhps(getMMXReg(dst), getMMXReg(dst));
+    x86.punpckhdq(getMMXReg(dst), getMMXReg(src));
+    x86.movhlps(getMMXReg(dst), getMMXReg(dst));
 }
 
 void JitX86CodeGen::punpcklbwMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.punpcklbw(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.punpcklbw(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::punpcklwdMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.punpcklwd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.punpcklwd(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::punpckldqMmxMmx(DynMMXReg dst, DynMMXReg src) {
-    x86.punpckldq(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.punpckldq(getMMXReg(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::addpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
@@ -3390,11 +3443,11 @@ void JitX86CodeGen::cvtdq2psXmmXmm(DynXMMReg dst, DynXMMReg src) {
 }
 
 void JitX86CodeGen::cvtpd2piMmxXmm(DynMMXReg dst, DynXMMReg src) {
-    x86.cvtpd2dq(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.cvtpd2dq(getMMXReg(dst), X86Asm::XMM(src));
 }
 
 void JitX86CodeGen::cvtpi2pdXmmMmx(DynXMMReg dst, DynMMXReg src) {
-    x86.cvtdq2pd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.cvtdq2pd(X86Asm::XMM(dst), getMMXReg(src));
 }
 
 void JitX86CodeGen::cvtpd2dqXmmXmm(DynXMMReg dst, DynXMMReg src) {
@@ -3406,7 +3459,7 @@ void JitX86CodeGen::cvtpd2psXmmXmm(DynXMMReg dst, DynXMMReg src) {
 }
 
 void JitX86CodeGen::cvttpd2piMmxXmm(DynMMXReg dst, DynXMMReg src) {
-    x86.cvttpd2dq(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.cvttpd2dq(getMMXReg(dst), X86Asm::XMM(src));
 }
 
 void JitX86CodeGen::cvtps2dqXmmXmm(DynXMMReg dst, DynXMMReg src) {
@@ -3466,10 +3519,14 @@ void JitX86CodeGen::movd(DynXMMReg dst, RegPtr src) {
 }
 
 void JitX86CodeGen::movdq2q(DynMMXReg dst, DynXMMReg src) {
-    x86.movq(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.movq(getMMXReg(dst), X86Asm::XMM(src));
 }
 
 void JitX86CodeGen::movq2dq(DynXMMReg dst, DynMMXReg src) {
+    x86.movq(X86Asm::XMM(dst), getMMXReg(src));
+}
+
+void JitX86CodeGen::movq(DynXMMReg dst, DynXMMReg src) {
     x86.movq(X86Asm::XMM(dst), X86Asm::XMM(src));
 }
 
@@ -3629,97 +3686,97 @@ void JitX86CodeGen::restoreFPURounding() {
 };
 
 void JitX86CodeGen::storeCpuFpuReg(DynFpuReg reg, RegPtr index, DynFpuWidth width) {
-    x86.movsd(X86Asm::Mem64(HOST_CPU, R32(index->hardwareReg()), 3, offsetof(CPU, fpu.regCache[0].d)), X86Asm::XMM(reg));
+    x86.movsd(X86Asm::Mem64(HOST_CPU, R32(index->hardwareReg()), 3, offsetof(CPU, fpu.regCache[0].d)), getFPUReg(reg));
 }
 
 void JitX86CodeGen::loadCpuFpuReg(DynFpuReg reg, RegPtr index, DynFpuWidth width) {
-    x86.movsd(X86Asm::XMM(reg), X86Asm::Mem64(HOST_CPU, R32(index->hardwareReg()), 3, offsetof(CPU, fpu.regCache[0].d)));
+    x86.movsd(getFPUReg(reg), X86Asm::Mem64(HOST_CPU, R32(index->hardwareReg()), 3, offsetof(CPU, fpu.regCache[0].d)));
 }
 
 void JitX86CodeGen::loadCpuFpuRegConst(DynFpuReg reg, U32 offset) {
-    x86.movsd(X86Asm::XMM(reg), X86Asm::Mem64(HOST_CPU, offset));
+    x86.movsd(getFPUReg(reg), X86Asm::Mem64(HOST_CPU, offset));
 }
 
 RegPtr JitX86CodeGen::fpuRegToInt32(DynFpuReg fpuRegSrc, bool truncate) {
     RegPtr result = getTmpReg();
     if (truncate) {
-        x86.cvttsd2si(R32(result->hardwareReg()), X86Asm::XMM(fpuRegSrc));
+        x86.cvttsd2si(R32(result->hardwareReg()), getFPUReg(fpuRegSrc));
     } else {
-        x86.cvtsd2si(R32(result->hardwareReg()), X86Asm::XMM(fpuRegSrc));
+        x86.cvtsd2si(R32(result->hardwareReg()), getFPUReg(fpuRegSrc));
     }
     return result;
 }
 
 void JitX86CodeGen::fpuRegToInt64(DynFpuReg regDst, DynFpuReg fpuRegSrc, bool truncate) {
     if (truncate) {
-        x86.cvttpd2dq(X86Asm::XMM(regDst), X86Asm::XMM(fpuRegSrc));
+        x86.cvttpd2dq(getFPUReg(regDst), getFPUReg(fpuRegSrc));
     } else {
-        x86.cvtpd2dq(X86Asm::XMM(regDst), X86Asm::XMM(fpuRegSrc));
+        x86.cvtpd2dq(getFPUReg(regDst), getFPUReg(fpuRegSrc));
     }
 }
 
 void JitX86CodeGen::fpuRegInt64To64(DynFpuReg regDst, DynFpuReg fpuRegSrc) {
-    x86.cvtdq2pd(X86Asm::XMM(regDst), X86Asm::XMM(fpuRegSrc));
+    x86.cvtdq2pd(getFPUReg(regDst), getFPUReg(fpuRegSrc));
 }
 
 void JitX86CodeGen::storeFpuReg(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width) {
     if (width == DYN_FPU_64_BIT) {
-        x86.movsd(X86Asm::Mem64(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp), X86Asm::XMM(reg));
+        x86.movsd(X86Asm::Mem64(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp), getFPUReg(reg));
     } else {
-        x86.movss(X86Asm::Mem32(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp), X86Asm::XMM(reg));
+        x86.movss(X86Asm::Mem32(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp), getFPUReg(reg));
     }
 }
 
 void JitX86CodeGen::loadFpuReg(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width) {
     if (width == DYN_FPU_64_BIT) {
-        x86.movsd(X86Asm::XMM(reg), X86Asm::Mem64(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp));
+        x86.movsd(getFPUReg(reg), X86Asm::Mem64(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp));
     } else {
-        x86.movss(X86Asm::XMM(reg), X86Asm::Mem32(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp));
+        x86.movss(getFPUReg(reg), X86Asm::Mem32(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp));
     }
 }
 
 void JitX86CodeGen::fpuRegExtend32To64(DynFpuReg dst, DynFpuReg src) {
-    x86.cvtss2sd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.cvtss2sd(getFPUReg(dst), getFPUReg(src));
 }
 
 void JitX86CodeGen::fpuReg64To32(DynFpuReg dst, DynFpuReg src) {
-    x86.cvtsd2ss(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.cvtsd2ss(getFPUReg(dst), getFPUReg(src));
 }
 
 void JitX86CodeGen::loadFpuRegFromInt(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.cvtsi2sd(X86Asm::XMM(reg), X86Asm::Mem32(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp));
+    x86.cvtsi2sd(getFPUReg(reg), X86Asm::Mem32(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp));
 }
 
 void JitX86CodeGen::regToFpuReg(DynFpuReg dst, RegPtr src) {
-    x86.cvtsi2sd(X86Asm::XMM(dst), R32(src->hardwareReg()));
+    x86.cvtsi2sd(getFPUReg(dst), R32(src->hardwareReg()));
 }
 
 void JitX86CodeGen::fpuAdd(DynFpuReg dst, DynFpuReg src) {
-    x86.addsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.addsd(getFPUReg(dst), getFPUReg(src));
 }
 
 void JitX86CodeGen::fpuMul(DynFpuReg dst, DynFpuReg src) {
-    x86.mulsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.mulsd(getFPUReg(dst), getFPUReg(src));
 }
 
 void JitX86CodeGen::fpuSub(DynFpuReg dst, DynFpuReg src) {
-    x86.subsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.subsd(getFPUReg(dst), getFPUReg(src));
 }
 
 void JitX86CodeGen::fpuDiv(DynFpuReg dst, DynFpuReg src) {
-    x86.divsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.divsd(getFPUReg(dst), getFPUReg(src));
 }
 
 void JitX86CodeGen::fpuXor(DynFpuReg dst, DynFpuReg src) {
-    x86.xorpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.xorpd(getFPUReg(dst), getFPUReg(src));
 }
 
 void JitX86CodeGen::fpuAnd(DynFpuReg dst, DynFpuReg src) {
-    x86.andpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.andpd(getFPUReg(dst), getFPUReg(src));
 }
 
 void JitX86CodeGen::fpuSqrt(DynFpuReg dst, DynFpuReg src) {
-    x86.sqrtsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    x86.sqrtsd(getFPUReg(dst), getFPUReg(src));
 }
 
 void JitX86CodeGen::fcompare(DynFpuReg fpuReg1, DynFpuReg fpuReg2, RegPtr ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) {
@@ -3727,7 +3784,7 @@ void JitX86CodeGen::fcompare(DynFpuReg fpuReg1, DynFpuReg fpuReg2, RegPtr ordTag
     IfNot(JitWidth::b8, ordTags);
         pfnInvalid();
     StartElse();
-        x86.ucomisd(X86Asm::XMM(fpuReg2), X86Asm::XMM(fpuReg1));
+        x86.ucomisd(getFPUReg(fpuReg2), getFPUReg(fpuReg1));
         x86.IfPF();
             pfnInvalid();
         StartElse();
@@ -3766,7 +3823,11 @@ void writeBlockExitForJIT(U8* buffer) {
             x86.mov(X86Asm::Mem32(HOST_CPU, CPU::offsetofReg32(i)), R32(regCache[i]));
         }
     }
-
+#ifdef BOXEDWINE_64
+    for (int i = 0; i < 8; i++) {
+        x86.movaps(X86Asm::Mem128(HOST_CPU, i * 16 + offsetof(CPU, xmm)), X86Asm::XMM(i));
+    }
+#endif
 #ifdef BOXEDWINE_64
     x86.pop(x86.r15);
     x86.pop(x86.r14);
@@ -4499,6 +4560,11 @@ void JitX86CodeGen::loadCache() {
             x86.mov(R32(regCache[i]), X86Asm::Mem32(HOST_CPU, offsetof(CPU, reg[i].u32)));
         }
     }
+#ifdef BOXEDWINE_64
+    for (int i = 0; i < 8; i++) {
+        x86.movaps(X86Asm::XMM(i), X86Asm::Mem128(HOST_CPU, i * 16 + offsetof(CPU, xmm)));
+    }
+#endif
 }
 
 void JitX86CodeGen::writeCache() {
@@ -4507,6 +4573,11 @@ void JitX86CodeGen::writeCache() {
             x86.mov(X86Asm::Mem32(HOST_CPU, offsetof(CPU, reg[i].u32)), R32(regCache[i]));
         }
     }    
+#ifdef BOXEDWINE_64
+    for (int i = 0; i < 8; i++) {
+        x86.movaps(X86Asm::Mem128(HOST_CPU, i * 16 + offsetof(CPU, xmm)), X86Asm::XMM(i));
+    }
+#endif
 }
 
 U8* JitX86CodeGen::createSyncToHost() {

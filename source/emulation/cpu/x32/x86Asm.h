@@ -625,6 +625,7 @@ public:
 	void movd(RegMMX reg, const Mem32& mem);
 
 	void emms();
+	void movaps(RegXMM dst, RegXMM src);
 	void movaps(RegXMM reg, const Mem128& mem);
 	void movaps(const Mem128& mem, RegXMM reg);
 	void movups(RegXMM reg, const Mem128& mem);
