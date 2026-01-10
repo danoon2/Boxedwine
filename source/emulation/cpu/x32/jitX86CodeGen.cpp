@@ -170,6 +170,7 @@ public:
     void byteSwapReg32(RegPtr reg) override;
     RegPtr compareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition, RegPtr resultReg = nullptr) override;    
     RegPtr compareValue(JitWidth regWidth, RegPtr reg, U32 value, JitEvaluate condition, RegPtr resultReg = nullptr) override;
+    RegPtr testZeroReg(JitWidth regWidth, RegPtr reg, RegPtr result = nullptr) override;
 
     void readRamPage(RegPtr dest, RegPtr index) override;
     void readMMU(RegPtr dest, RegPtr index) override;
@@ -180,7 +181,7 @@ public:
     void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, U32 value) override;
 
     RegPtr readCPU(JitWidth width, U32 offset, RegPtr resultReg = nullptr) override;
-    RegPtr readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset) override;
+    RegPtr readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr resultReg = nullptr) override;
     void writeCPU(JitWidth width, U32 offset, RegPtr src) override;
     void writeCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr src) override;
     void writeCPUValue(JitWidth width, RegPtr sib, U8 lsl, U32 offset, DYN_PTR_SIZE src) override;
@@ -560,6 +561,24 @@ public:
     void dynamic_sub32_mem_lock(DecodedOp* op) override;
     void dynamic_sub16_mem_lock(DecodedOp* op) override;
     void dynamic_sub8_mem_lock(DecodedOp* op) override;
+    void dynamic_ore32r32_lock(DecodedOp* op) override;
+    void dynamic_ore16r16_lock(DecodedOp* op) override;
+    void dynamic_ore8r8_lock(DecodedOp* op) override;
+    void dynamic_or32_mem_lock(DecodedOp* op) override;
+    void dynamic_or16_mem_lock(DecodedOp* op) override;
+    void dynamic_or8_mem_lock(DecodedOp* op) override;
+    void dynamic_ande32r32_lock(DecodedOp* op) override;
+    void dynamic_ande16r16_lock(DecodedOp* op) override;
+    void dynamic_ande8r8_lock(DecodedOp* op) override;
+    void dynamic_and32_mem_lock(DecodedOp* op) override;
+    void dynamic_and16_mem_lock(DecodedOp* op) override;
+    void dynamic_and8_mem_lock(DecodedOp* op) override;
+    void dynamic_xore32r32_lock(DecodedOp* op) override;
+    void dynamic_xore16r16_lock(DecodedOp* op) override;
+    void dynamic_xore8r8_lock(DecodedOp* op) override;
+    void dynamic_xor32_mem_lock(DecodedOp* op) override;
+    void dynamic_xor16_mem_lock(DecodedOp* op) override;
+    void dynamic_xor8_mem_lock(DecodedOp* op) override;
     void dynamic_inc32_mem32_lock(DecodedOp* op) override;
     void dynamic_inc16_mem16_lock(DecodedOp* op) override;
     void dynamic_inc8_mem8_lock(DecodedOp* op) override;
@@ -1570,6 +1589,24 @@ RegPtr JitX86CodeGen::compareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, Ji
     return result;
 }
 
+RegPtr JitX86CodeGen::testZeroReg(JitWidth regWidth, RegPtr reg, RegPtr result) {
+    if (regWidth == JitWidth::b32) {
+        x86.test(R32(reg->hardwareReg()), R32(reg->hardwareReg()));
+    } else if (regWidth == JitWidth::b16) {
+        x86.test(R16(reg->hardwareReg()), R16(reg->hardwareReg()));
+    } else if (regWidth == JitWidth::b8) {
+        x86.test(R8(get8bitReg(reg)), R8(get8bitReg(reg)));
+    } else {
+        kpanic_fmt("JitX86CodeGen::compareReg reg width %d", regWidth);
+    }
+    if (!result) {
+        result = getTmpReg8();
+    }
+    x86.setz(R8(result->hardwareReg()));
+    x86.movzx(R32(result->hardwareReg()), R8(get8bitReg(result)));
+    return result;
+}
+
 RegPtr JitX86CodeGen::compareValue(JitWidth regWidth, RegPtr reg, U32 value, JitEvaluate condition, RegPtr result) {
     if (regWidth == JitWidth::b32) {
         x86.cmp(R32(reg->hardwareReg()), value);
@@ -1867,14 +1904,14 @@ RegPtr JitX86CodeGen::readCPU(JitWidth width, U32 offset, RegPtr reg) {
     return reg;
 }
 
-RegPtr JitX86CodeGen::readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset) {
-    RegPtr reg;
-    if (width == JitWidth::b8) {
-        reg = getTmpReg8();
-    } else {
-        reg = getTmpReg();
+RegPtr JitX86CodeGen::readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr reg) {
+    if (!reg) {
+        if (width == JitWidth::b8) {
+            reg = getTmpReg8();
+        } else {
+            reg = getTmpReg();
+        }
     }
-
     if (width == JitWidth::b32) {
         x86.mov(R32(reg->hardwareReg()), X86Asm::Mem32(HOST_CPU, R(sib->hardwareReg()), lsl, offset));
     } else if (width == JitWidth::b16) {
@@ -4232,7 +4269,114 @@ void JitX86CodeGen::dynamic_sub8_mem_lock(DecodedOp* op) {
         this->x86.sub(X86Asm::Mem8(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), (U8)op->imm);
     });
 }
-
+void JitX86CodeGen::dynamic_ore32r32_lock(DecodedOp* op) {
+    dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.or_(X86Asm::Mem32(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), R32(dest->hardwareReg()));
+    });
+}
+void JitX86CodeGen::dynamic_ore16r16_lock(DecodedOp* op) {
+    dynamic_arithE16R16_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.or_(X86Asm::Mem16(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), R16(dest->hardwareReg()));
+    });
+}
+void JitX86CodeGen::dynamic_ore8r8_lock(DecodedOp* op) {
+    dynamic_arithE8R8_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.or_(X86Asm::Mem8(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), R8(get8bitReg(dest)));
+    });
+}
+void JitX86CodeGen::dynamic_or32_mem_lock(DecodedOp* op) {
+    dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.or_(X86Asm::Mem32(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), op->imm);
+    });
+}
+void JitX86CodeGen::dynamic_or16_mem_lock(DecodedOp* op) {
+    dynamic_arithE16_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.or_(X86Asm::Mem16(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), (U16)op->imm);
+    });
+}
+void JitX86CodeGen::dynamic_or8_mem_lock(DecodedOp* op) {
+    dynamic_arithE8_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.or_(X86Asm::Mem8(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), (U8)op->imm);
+    });
+}
+void JitX86CodeGen::dynamic_ande32r32_lock(DecodedOp* op) {
+    dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.and_(X86Asm::Mem32(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), R32(dest->hardwareReg()));
+    });
+}
+void JitX86CodeGen::dynamic_ande16r16_lock(DecodedOp* op) {
+    dynamic_arithE16R16_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.and_(X86Asm::Mem16(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), R16(dest->hardwareReg()));
+    });
+}
+void JitX86CodeGen::dynamic_ande8r8_lock(DecodedOp* op) {
+    dynamic_arithE8R8_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.and_(X86Asm::Mem8(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), R8(get8bitReg(dest)));
+    });
+}
+void JitX86CodeGen::dynamic_and32_mem_lock(DecodedOp* op) {
+    dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.and_(X86Asm::Mem32(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), op->imm);
+        });
+}
+void JitX86CodeGen::dynamic_and16_mem_lock(DecodedOp* op) {
+    dynamic_arithE16_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.and_(X86Asm::Mem16(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), (U16)op->imm);
+    });
+}
+void JitX86CodeGen::dynamic_and8_mem_lock(DecodedOp* op) {
+    dynamic_arithE8_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.and_(X86Asm::Mem8(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), (U8)op->imm);
+    });
+}
+void JitX86CodeGen::dynamic_xore32r32_lock(DecodedOp* op) {
+    dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.xor_(X86Asm::Mem32(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), R32(dest->hardwareReg()));
+    });
+}
+void JitX86CodeGen::dynamic_xore16r16_lock(DecodedOp* op) {
+    dynamic_arithE16R16_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.xor_(X86Asm::Mem16(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), R16(dest->hardwareReg()));
+    });
+}
+void JitX86CodeGen::dynamic_xore8r8_lock(DecodedOp* op) {
+    dynamic_arithE8R8_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.xor_(X86Asm::Mem8(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), R8(get8bitReg(dest)));
+    });
+}
+void JitX86CodeGen::dynamic_xor32_mem_lock(DecodedOp* op) {
+    dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.xor_(X86Asm::Mem32(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), op->imm);
+    });
+}
+void JitX86CodeGen::dynamic_xor16_mem_lock(DecodedOp* op) {
+    dynamic_arithE16_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.xor_(X86Asm::Mem16(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), (U16)op->imm);
+    });
+}
+void JitX86CodeGen::dynamic_xor8_mem_lock(DecodedOp* op) {
+    dynamic_arithE8_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
+        this->x86.lock();
+        this->x86.xor_(X86Asm::Mem8(R32(addressReg->hardwareReg()), R32(offsetReg->hardwareReg())), (U8)op->imm);
+    });
+}
 void JitX86CodeGen::dynamic_inc32_mem32_lock(DecodedOp* op) {
     dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
         if (op->getNeededFlagsAfter(CF)) {

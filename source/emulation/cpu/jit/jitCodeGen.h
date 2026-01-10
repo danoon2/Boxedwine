@@ -49,20 +49,20 @@ public:
     virtual void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, U32 value) = 0;
 
     virtual RegPtr readCPU(JitWidth width, U32 offset, RegPtr resultReg = nullptr) = 0;
-    virtual RegPtr readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset) = 0;
+    virtual RegPtr readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr resultReg = nullptr) = 0;
     virtual void writeCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr src) = 0;
     virtual void writeCPU(JitWidth width, U32 offset, RegPtr src) = 0;
     virtual void writeCPUValue(JitWidth width, RegPtr sib, U8 lsl, U32 offset, DYN_PTR_SIZE src) = 0;
     virtual void writeCPUValue(JitWidth width, U32 offset, DYN_PTR_SIZE src) = 0;
 
     void readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) override;
-    RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr) override;
-    void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr) override;
+    RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) override;
+    void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) override;
     void writeValue(JitWidth width, RegPtr addressReg, U32 imm) override;
 
     void genCF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
     void genOF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
-    void genPF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
+    void genPF(RegPtr result); // guaranteed to return 0 or 1
 
     RegPtr getZF() override;
     RegPtr getCF() override;

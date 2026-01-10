@@ -189,6 +189,7 @@ public:
     virtual void byteSwapReg32(RegPtr reg) = 0;
     virtual RegPtr compareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition, RegPtr resultReg = nullptr) = 0; // will return 0 or 1 in result    
     virtual RegPtr compareValue(JitWidth regWidth, RegPtr reg, U32 value, JitEvaluate condition, RegPtr resultReg = nullptr) = 0; // will return 0 or 1 in result
+    virtual RegPtr testZeroReg(JitWidth regWidth, RegPtr reg, RegPtr result = nullptr) = 0; // will return 0 or 1 in result
     virtual void absReg(JitWidth regWidth, RegPtr reg) = 0;
 
     virtual void mov(JitWidth regWidth, RegPtr dest, RegPtr src) = 0;
@@ -243,8 +244,8 @@ public:
     virtual void IfSmallStack() = 0;
 
     virtual void readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) = 0;
-    virtual RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr) = 0;
-    virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr) = 0;
+    virtual RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) = 0;
+    virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) = 0;
     virtual void writeValue(JitWidth width, RegPtr addressReg, U32 imm) = 0;
     
     // I would say that most ops shouldn't use these directly, but pusha/popa needs it
@@ -373,6 +374,8 @@ protected:
     void div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
     void div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
     void div32(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
+
+    void nullReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {}
 };
 
 #endif

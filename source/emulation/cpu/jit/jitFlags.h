@@ -114,13 +114,18 @@ void JitCodeGen::genOF(LazyFlagType flags, RegPtr result) {
         xorReg(JitWidth::b32, result, result);
     } else if (flags == FLAGS_INC8) {
         // cpu->result.u8 == 0x80;
-        compareValue(JitWidth::b8, getFlagResultReadOnly(), 0x80, JitEvaluate::EQUALS, result);
+        // compareValue(JitWidth::b8, getFlagResultReadOnly(), 0x80, JitEvaluate::EQUALS, result);
+        shrValue(JitWidth::b8, result, 7);
+        movzx(JitWidth::b32, result, JitWidth::b8, result);
     } else if (flags == FLAGS_INC16) {
         // cpu->result.u16 == 0x8000;
-        compareValue(JitWidth::b16, getFlagResultReadOnly(), 0x8000, JitEvaluate::EQUALS, result);
+        // compareValue(JitWidth::b16, getFlagResultReadOnly(), 0x8000, JitEvaluate::EQUALS, result);
+        shrValue(JitWidth::b16, result, 15);
+        movzx(JitWidth::b32, result, JitWidth::b16, result);
     } else if (flags == FLAGS_INC32) {
         // cpu->result.u32 == 0x80000000;
-        compareValue(JitWidth::b32, getFlagResultReadOnly(), 0x80000000, JitEvaluate::EQUALS, result);
+        // compareValue(JitWidth::b32, getFlagResultReadOnly(), 0x80000000, JitEvaluate::EQUALS, result);
+        shrValue(JitWidth::b32, result, 31);
     } else if (flags == FLAGS_DEC8) {
         // cpu->result.u8 == 0x7f;
         compareValue(JitWidth::b8, getFlagResultReadOnly(), 0x7f, JitEvaluate::EQUALS, result);
@@ -184,51 +189,27 @@ void JitCodeGen::genOF(LazyFlagType flags, RegPtr result) {
         xorReg(JitWidth::b32, result, result);
     } else if (flags == FLAGS_NEG8) {
         // cpu->src.u8 == 0x80;
-        compareValue(JitWidth::b8, getFlagSrcReadOnly(), 0x80, JitEvaluate::EQUALS, result);
+        // compareValue(JitWidth::b8, getFlagSrcReadOnly(), 0x80, JitEvaluate::EQUALS, result);
+        shrValue(JitWidth::b8, result, 7);
+        movzx(JitWidth::b32, result, JitWidth::b8, result);
     } else if (flags == FLAGS_NEG16) {
         // return cpu->src.u16 == 0x8000;
-        compareValue(JitWidth::b16, getFlagSrcReadOnly(), 0x8000, JitEvaluate::EQUALS, result);
+        // compareValue(JitWidth::b16, getFlagSrcReadOnly(), 0x8000, JitEvaluate::EQUALS, result);
+        shrValue(JitWidth::b16, result, 15);
+        movzx(JitWidth::b32, result, JitWidth::b16, result);
     } else if (flags == FLAGS_NEG32) {
         // cpu->src.u32 == 0x80000000;
-        compareValue(JitWidth::b32, getFlagSrcReadOnly(), 0x80000000, JitEvaluate::EQUALS, result);
+        // compareValue(JitWidth::b32, getFlagSrcReadOnly(), 0x80000000, JitEvaluate::EQUALS, result);
+        shrValue(JitWidth::b32, result, 31);
     } else {
         kpanic("genOF unknown flags");
     }
 }
 
-static U8 parity_lookup[256] = {
-  1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-  0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-  0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-  1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-  0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-  1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-  1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-  0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-  0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-  1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-  1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-  0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-  1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-  0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-  0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-  1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1
-};
-
-void JitCodeGen::genPF(LazyFlagType flags, RegPtr result) {
-    getFlagResultTmp(result);
-    movzx(JitWidth::b32, result, JitWidth::b8, result);
-#ifdef BOXEDWINE_64
-    if ((U64)parity_lookup <= 0xffffffffl) {
-        read(JitWidth::b8, result, result, 0, (U32)(U64)parity_lookup);
-    } else {
-        RegPtr tmp = getTmpReg();
-        movValue(JitWidth::b64, tmp, (U64)parity_lookup);
-        read(JitWidth::b8, result, result, tmp, 0, 0);
-    }
-#else
-    read(JitWidth::b8, result, result, 0, (U32)parity_lookup);
-#endif
+void JitCodeGen::genPF(RegPtr result) {
+    xorReg(JitWidth::b32, result, result);
+    readCPU(JitWidth::b8, offsetof(CPU, result.u32), result);
+    readCPU(JitWidth::b8, result, 0, offsetof(CPU, flagParityLookup), result);
 }
 
 void JitCodeGen::genCF(LazyFlagType flags, RegPtr result) {    

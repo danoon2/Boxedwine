@@ -27,12 +27,12 @@ void Jit::push16(RegPtr reg) {
         andValue(JitWidth::b32, address, 0xFFFF);
         subValue(JitWidth::b16, address, 2);
         addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
-        write(JitWidth::b16, address, reg);
+        write(JitWidth::b16, address, reg, nullptr, nullptr, false);
         subValue(JitWidth::b16, getReg(4), 2);
     } StartElse(); {
         subValue(JitWidth::b32, address, 2);
         addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
-        write(JitWidth::b16, address, reg);
+        write(JitWidth::b16, address, reg, nullptr, nullptr, false);
         subValue(JitWidth::b32, getReg(4), 2);
     } EndIf();
 }
@@ -41,7 +41,7 @@ void Jit::push32(RegPtr reg) {
     if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
         RegPtr address = getTmpReg(4);
         subValue(JitWidth::b32, address, 4);
-        write(JitWidth::b32, address, reg);
+        write(JitWidth::b32, address, reg, nullptr, nullptr, false);
         subValue(JitWidth::b32, getReg(4), 4);
     } else {
         RegPtr address = getTmpReg(4);
@@ -50,12 +50,12 @@ void Jit::push32(RegPtr reg) {
             andValue(JitWidth::b32, address, 0xFFFF);
             subValue(JitWidth::b16, address, 4);
             addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
-            write(JitWidth::b32, address, reg);
+            write(JitWidth::b32, address, reg); // don't skip alignment check, firefight installer will crash
             subValue(JitWidth::b16, getReg(4), 4);
         } StartElse(); {
             subValue(JitWidth::b32, address, 4);
             addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
-            write(JitWidth::b32, address, reg);
+            write(JitWidth::b32, address, reg, nullptr, nullptr, false);
             subValue(JitWidth::b32, getReg(4), 4);
         } EndIf();
     }
@@ -67,11 +67,15 @@ RegPtr Jit::pop32(RegPtr reg, U32 amount) {
     }
     mov(JitWidth::b32, reg, peek32());
     if (reg->emulatedReg != 4) {
-        IfSmallStack(); {
-            addValue(JitWidth::b16, getReg(4), amount);
-        } StartElse(); {
+        if (cpu->thread->process->hasSetSeg[SS]) {
+            IfSmallStack(); {
+                addValue(JitWidth::b16, getReg(4), amount);
+            } StartElse(); {
+                addValue(JitWidth::b32, getReg(4), amount);
+            } EndIf();
+        } else {
             addValue(JitWidth::b32, getReg(4), amount);
-        } EndIf();
+        }
     }
     return reg;
 }
@@ -98,16 +102,18 @@ RegPtr Jit::peek16(RegPtr resultReg) {
         andValue(JitWidth::b32, address, 0xFFFF);
     } EndIf();
     addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
-    return read(JitWidth::b16, address, nullptr, nullptr, resultReg);
+    return read(JitWidth::b16, address, nullptr, nullptr, resultReg, false);
 }
 RegPtr Jit::peek32(RegPtr resultReg) {
     RegPtr address = getTmpReg(4);
 
-    IfSmallStack(); {
-        andValue(JitWidth::b32, address, 0xFFFF);
-    } EndIf();
+    if (cpu->thread->process->hasSetSeg[SS]) {
+        IfSmallStack(); {
+            andValue(JitWidth::b32, address, 0xFFFF);
+        } EndIf();
+    }
     addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
-    return read(JitWidth::b32, address, nullptr, nullptr, resultReg);
+    return read(JitWidth::b32, address, nullptr, nullptr, resultReg, cpu->seg[SS].address != 0);
 }
 void Jit::dynamic_pushEw_reg(DecodedOp* op) {
     push16(getReadOnlyReg(op->reg));
@@ -139,11 +145,15 @@ void Jit::dynamic_pushEd_mem(DecodedOp* op) {
 void Jit::dynamic_popEd_mem(DecodedOp* op) {
     write(JitWidth::b32, calculateEaa(op, 4), peek32()); // eaa must be calculated after esp is incremented which is why we pass 2 here
 
-    IfSmallStack(); {
-        addValue(JitWidth::b16, getReg(4), 4);
-    } StartElse(); {
+    if (cpu->thread->process->hasSetSeg[SS]) {
+        IfSmallStack(); {
+            addValue(JitWidth::b16, getReg(4), 4);
+        } StartElse(); {
+            addValue(JitWidth::b32, getReg(4), 4);
+        } EndIf();
+    } else {
         addValue(JitWidth::b32, getReg(4), 4);
-    } EndIf();
+    }
 }
 void Jit::dynamic_pushSeg16(DecodedOp* op) {
     push16(getReadOnlySegValue(op->reg));
@@ -181,9 +191,11 @@ void Jit::dynamic_pushA16(DecodedOp* op) {
 void Jit::dynamic_pushA32(DecodedOp* op) {
     RegPtr esp = getTmpReg(4);
 
-    IfSmallStack(); {
-        andValue(JitWidth::b32, esp, 0xFFFF);
-    }EndIf();
+    if (cpu->thread->process->hasSetSeg[SS]) {
+        IfSmallStack(); {
+            andValue(JitWidth::b32, esp, 0xFFFF);
+        } EndIf();
+    }
     addReg(JitWidth::b32, esp, getReadOnlySegAddress(SS));
     subValue(JitWidth::b32, esp, 32);
 
@@ -192,11 +204,15 @@ void Jit::dynamic_pushA32(DecodedOp* op) {
         for (int i = 0; i < 8; i++) {
             write(JitWidth::b32, address, offset, 0, 4 * i, getReadOnlyReg(7 - i));
         }
-        IfSmallStack(); {
-            subValue(JitWidth::b16, getReg(4), 32);
-        } StartElse(); {
+        if (cpu->thread->process->hasSetSeg[SS]) {
+            IfSmallStack(); {
+                subValue(JitWidth::b16, getReg(4), 32);
+            } StartElse(); {
+                subValue(JitWidth::b32, getReg(4), 32);
+            } EndIf();
+        } else {
             subValue(JitWidth::b32, getReg(4), 32);
-        } EndIf();
+        }
     });
 }
 void Jit::dynamic_popA16(DecodedOp* op) {
@@ -224,9 +240,11 @@ void Jit::dynamic_popA16(DecodedOp* op) {
 void Jit::dynamic_popA32(DecodedOp* op) {
     RegPtr esp = getTmpReg(4);
 
-    IfSmallStack(); {
-        andValue(JitWidth::b32, esp, 0xFFFF);
-    } EndIf();
+    if (cpu->thread->process->hasSetSeg[SS]) {
+        IfSmallStack(); {
+            andValue(JitWidth::b32, esp, 0xFFFF);
+        } EndIf();
+    }
     addReg(JitWidth::b32, esp, getReadOnlySegAddress(SS));
 
     // 8x 4 byte is 256 bits, if we have permission and space on one page to read this, then we only need to do the memory checks once
@@ -236,11 +254,15 @@ void Jit::dynamic_popA32(DecodedOp* op) {
                 read(JitWidth::b32, getReg(7 - i), address, offset, 0, 4 * i);
             }
         }
-        IfSmallStack(); {
-            addValue(JitWidth::b16, getReg(4), 32);
-        } StartElse(); {
+        if (cpu->thread->process->hasSetSeg[SS]) {
+            IfSmallStack(); {
+                addValue(JitWidth::b16, getReg(4), 32);
+            } StartElse(); {
+                addValue(JitWidth::b32, getReg(4), 32);
+            } EndIf();
+        } else {
             addValue(JitWidth::b32, getReg(4), 32);
-        } EndIf();
+        }
     });
 }
 void Jit::dynamic_push16imm(DecodedOp* op) {

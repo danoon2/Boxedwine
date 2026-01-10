@@ -228,11 +228,15 @@ void Jit::dynamic_enter32(DecodedOp* op) {
         //EBP = ESP;
         mov(JitWidth::b32, ebp, esp);
         // sub esp, bytes
-        IfSmallStack(); {
-            subValue(JitWidth::b16, esp, op->imm);
-        } StartElse(); {
+        if (cpu->thread->process->hasSetSeg[SS]) {
+            IfSmallStack(); {
+                subValue(JitWidth::b16, esp, op->imm);
+            } StartElse(); {
+                subValue(JitWidth::b32, esp, op->imm);
+            } EndIf();
+        } else {
             subValue(JitWidth::b32, esp, op->imm);
-        } EndIf();
+        }
     }
 }
 void Jit::dynamic_leave16(DecodedOp* op) {

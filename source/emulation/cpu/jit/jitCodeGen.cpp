@@ -365,7 +365,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
     if (op->runCount == 0) {
 #else
     // done check for long blocks that get broken up, affects f-22/f-16
-    if (op->runCount == JIT_RUN_COUNT && op->inst != Done) {
+    if (op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT)) {
 #endif    
         startNewJIT(cpu, cpu->getEipAddress(), op);
     }
@@ -803,11 +803,11 @@ static void writeb2(CPU* cpu, U32 address, U32 value) {
     cpu->memory->writeb(address, (U8)value);
 }
 
-RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, RegPtr tmp) {
+RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, RegPtr tmp, bool checkAlignment) {
     if (!tmp) {
         tmp = getTmpRegForCallResult();
     }
-    if (width != JitWidth::b8) {
+    if (width != JitWidth::b8 && checkAlignment) {
         // make sure we only use the fast path if the entire read will take place on the same page
         mov(JitWidth::b32, tmp, addressReg);
         andValue(JitWidth::b32, tmp, K_PAGE_MASK);
@@ -841,7 +841,7 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
     shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
     readMMU(tmp, tmp);
 
-    if (width != JitWidth::b8) {
+    if (width != JitWidth::b8 && checkAlignment) {
         EndIf();
     }
 
@@ -883,10 +883,10 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
     return tmp;
 }
 
-void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp) {
+void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment) {
     RegPtr tmp = getTmpReg();
 
-    if (width != JitWidth::b8) {
+    if (width != JitWidth::b8 && checkAlignment) {
         // make sure we only use the fast path if the entire read will take place on the same page
         mov(JitWidth::b32, tmp, addressReg);
         andValue(JitWidth::b32, tmp, K_PAGE_MASK);
@@ -914,7 +914,7 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
     shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
     readMMU(tmp, tmp);
 
-    if (width != JitWidth::b8) {
+    if (width != JitWidth::b8 && checkAlignment) {
         EndIf();
     }
 
@@ -1288,11 +1288,11 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         }
         break;
     case JitConditional::NP:
-        genPF(currentLazyFlags, resultReg);
+        genPF(resultReg);
         xorValue(JitWidth::b32, resultReg, 1);
         break;
     case JitConditional::P:
-        genPF(currentLazyFlags, resultReg);
+        genPF(resultReg);
         break;
     case JitConditional::NL:
         if (currentLazyFlags == FLAGS_SUB8) {
@@ -1363,6 +1363,9 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
             // return (cpu->getZF() || cpu->getSF()!=cpu->getOF()) ? 1 : 0;
             RegPtr of = getTmpReg8();
             getFlagResultTmp(resultReg);
+            if (flagWidth != 32) {
+                movzx(JitWidth::b32, resultReg, getWidthOfFlags(currentLazyFlags), resultReg);
+            }
             If(getWidthOfFlags(currentLazyFlags), resultReg); { // if 0, it will exit the if, the 0 reg will cause a true condition at the end because flip == true
                 genOF(currentLazyFlags, of);
                 shrValue(getWidthOfFlags(currentLazyFlags), resultReg, flagWidth - 1); // reg will be 1 if SF                
@@ -1405,6 +1408,111 @@ RegPtr JitCodeGen::callGetCondition(JitConditional condition, RegPtr resultReg) 
 }
 
 void JitCodeGen::IfCondition(JitConditional condition) {
+    if (condition == JitConditional::Z || condition == JitConditional::NZ) {
+        // hard to measure small difference, but it seems like this gives about a 1% improvement
+        // 
+        // for FLAGS_NONE, result will be 0 and flags will contain ZF
+        // for other flags, result will contain non 0 if lazy result is 0 and flags will be 0
+
+        RegPtr zfMask = readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType));
+        RegPtr result = getTmpReg8();
+        bool needsEndIf = false;
+
+        if (currentLazyFlags != FLAGS_NULL) {
+            if (currentLazyFlags == FLAGS_NONE) {
+                needsEndIf = true;
+                IfEqual(JitWidth::b8, zfMask, currentLazyFlags); {
+                    readCPU(JitWidth::b32, offsetof(CPU, flags), result);
+                    andValue(JitWidth::b32, result, ZF);
+                    xorValue(JitWidth::b32, result, ZF);
+                } StartElse();
+            } else {
+                needsEndIf = true;
+                IfEqual(JitWidth::b8, zfMask, currentLazyFlags); {
+                    if (getWidthOfFlags(currentLazyFlags) != JitWidth::b32) {
+                        xorReg(JitWidth::b32, result, result);
+                    }
+                    readCPU(getWidthOfFlags(currentLazyFlags), CPU_OFFSET_OF(result.u32), result);
+                } StartElse();
+            }
+        }
+        getFlagResultReadOnly(result);
+        RegPtr flags = readCPU(JitWidth::b32, offsetof(CPU, flags));
+        
+        movzx(JitWidth::b32, zfMask, JitWidth::b8, zfMask);
+        readCPU(JitWidth::b32, zfMask, 2, offsetof(CPU, flagZeroMask), zfMask);
+        andReg(JitWidth::b32, result, zfMask); // if using result, we need to mask it to the width of lazyFlagType
+
+        movsx(JitWidth::b32, zfMask, JitWidth::b8, zfMask); // for FLAGS_NONE, zfMask will be 0 else 0xffffffff
+        xorValue(JitWidth::b32, zfMask, 0xffffffff); // for FLAGS_NONE, zfMask will be 0xffffffff else 0
+
+        andValue(JitWidth::b32, flags, ZF); // if ZF, then flags will be set to 0x40
+        xorValue(JitWidth::b32, flags, ZF);
+        andReg(JitWidth::b32, flags, zfMask); // if not FLAGS_NONE, then flags will be 0
+
+        orReg(JitWidth::b32, result, flags);
+
+        if (needsEndIf) {
+            EndIf();
+        }
+        if (condition == JitConditional::NZ) {
+            If(JitWidth::b32, result);
+        } else {
+            IfNot(JitWidth::b32, result);
+        }
+        return;
+    } else if (1 && (condition == JitConditional::S || condition == JitConditional::NS)) {
+        // hard to measure small difference, but it seems like this gives about a 0%-0.5% performance increase
+
+        RegPtr sfMask = readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType));
+        RegPtr result = getTmpReg8();
+        bool needsEndIf = false;
+
+        if (currentLazyFlags != FLAGS_NULL) {
+            if (currentLazyFlags == FLAGS_NONE) {
+                needsEndIf = true;
+                // should almost always be true, so good for branch prediction
+                IfEqual(JitWidth::b8, sfMask, currentLazyFlags); {
+                    readCPU(JitWidth::b32, offsetof(CPU, flags), result);
+                    andValue(JitWidth::b32, result, SF);
+                } StartElse();
+            } else {
+                needsEndIf = true;
+                JitWidth width = getWidthOfFlags(currentLazyFlags);
+                // should almost always be true, so good for branch prediction
+                IfEqual(JitWidth::b8, sfMask, currentLazyFlags); {
+                    readCPU(width, CPU_OFFSET_OF(result.u32), result);
+                    if (width == JitWidth::b32) {
+                        andValue(JitWidth::b32, result, 0x80000000);
+                    } else if (width == JitWidth::b16) {
+                        andValue(JitWidth::b32, result, 0x8000);
+                    } else {
+                        andValue(JitWidth::b32, result, 0x80);
+                    }
+                } StartElse();
+            }
+        }
+        // not so good for branch prediction
+        IfEqual(JitWidth::b8, sfMask, FLAGS_NONE); {
+            readCPU(JitWidth::b32, offsetof(CPU, flags), result);
+            andValue(JitWidth::b32, result, SF);
+        } StartElse(); {
+            readCPU(JitWidth::b32, CPU_OFFSET_OF(result.u32), result);
+            movzx(JitWidth::b32, sfMask, JitWidth::b8, sfMask);
+            readCPU(JitWidth::b32, sfMask, 2, offsetof(CPU, flagSignMask), sfMask);
+            andReg(JitWidth::b32, result, sfMask);
+        } EndIf();
+
+        if (needsEndIf) {
+            EndIf();
+        }
+        if (condition == JitConditional::S) {
+            If(JitWidth::b32, result);
+        } else {
+            IfNot(JitWidth::b32, result);
+        }
+        return;
+    }
     if (currentLazyFlags == FLAGS_NULL || currentLazyFlags == FLAGS_NONE) {
         If(JitWidth::b32, getCondition(condition));
         return;

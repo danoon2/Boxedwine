@@ -313,6 +313,34 @@ void X86Asm::or_(const Mem8& mem, Reg8 reg) {
     mem8(0x08, reg.reg, mem);
 }
 
+void X86Asm::or_(const Mem32& mem, U32 imm) {
+    S32 sIMM = (S32)imm;
+    if (sIMM < -128 || sIMM > 127) {
+        mem32(0x81, 1, mem);
+        outd(imm);
+    } else {
+        mem32(0x83, 1, mem);
+        outb((U8)imm);
+    }
+}
+
+void X86Asm::or_(const Mem16& mem, U16 imm) {
+    S32 sIMM = (S32)imm;
+    outb(0x66);
+    if (sIMM < -128 || sIMM > 127) {
+        mem32(0x81, 1, mem);
+        outw(imm);
+    } else {
+        mem32(0x83, 1, mem);
+        outb((U8)imm);
+    }
+}
+
+void X86Asm::or_(const Mem8& mem, U8 imm) {
+    mem32(0x80, 1, mem);
+    outb((U8)imm);
+}
+
 void X86Asm::cmp(const Mem32& mem, Reg32 reg) {
     mem32(0x39, reg.reg, mem);
 }
@@ -376,6 +404,64 @@ void X86Asm::and_(const Mem32& mem, U32 imm) {
         mem32(0x83, 4, mem);
         outb(imm);
     }
+}
+
+void X86Asm::and_(const Mem16& mem, U16 imm) {
+    S32 sIMM = (S32)imm;
+    outb(0x66);
+    if (sIMM < -128 || sIMM > 127) {
+        mem32(0x81, 4, mem);
+        outw(imm);
+    } else {
+        mem32(0x83, 4, mem);
+        outb((U8)imm);
+    }
+}
+
+void X86Asm::and_(const Mem8& mem, U8 imm) {
+    mem32(0x80, 4, mem);
+    outb((U8)imm);
+}
+
+void X86Asm::xor_(const Mem32& mem, Reg32 reg) {
+    mem32(0x31, reg.reg, mem);
+}
+
+void X86Asm::xor_(const Mem16& mem, Reg16 reg) {
+    outb(0x66);
+    mem16(0x31, reg.reg, mem);
+}
+
+void X86Asm::xor_(const Mem8& mem, Reg8 reg) {
+    mem8(0x30, reg.reg, mem);
+}
+
+void X86Asm::xor_(const Mem32& mem, U32 imm) {
+    S32 sIMM = (S32)imm;
+    if (sIMM < -128 || sIMM > 127) {
+        mem32(0x81, 6, mem);
+        outd(imm);
+    } else {
+        mem32(0x83, 6, mem);
+        outb(imm);
+    }
+}
+
+void X86Asm::xor_(const Mem16& mem, U16 imm) {
+    S32 sIMM = (S32)imm;
+    outb(0x66);
+    if (sIMM < -128 || sIMM > 127) {
+        mem32(0x81, 6, mem);
+        outw(imm);
+    } else {
+        mem32(0x83, 6, mem);
+        outb((U8)imm);
+    }
+}
+
+void X86Asm::xor_(const Mem8& mem, U8 imm) {
+    mem32(0x80, 6, mem);
+    outb((U8)imm);
 }
 
 void X86Asm::not_(const Mem32& mem) {

@@ -377,7 +377,11 @@ void Jit::dynamic_cmp32_mem(DecodedOp* op) {
     dynamic_MI(op, JitWidth::b32, &Jit::subValue, FLAGS_SUB32, false);
 }
 void Jit::dynamic_testr8r8(DecodedOp* op) {
-    dynamic_RR(op, JitWidth::b8, &Jit::andReg, FLAGS_AND8, false);
+    if (op->reg == op->rm) {
+        dynamic_RR(op, JitWidth::b8, &Jit::nullReg, FLAGS_AND8, false);
+    } else {
+        dynamic_RR(op, JitWidth::b8, &Jit::andReg, FLAGS_AND8, false);
+    }
 }
 void Jit::dynamic_teste8r8(DecodedOp* op) {
     dynamic_MR(op, JitWidth::b8, &Jit::andReg, FLAGS_AND8, false);
@@ -389,7 +393,11 @@ void Jit::dynamic_test8_mem(DecodedOp* op) {
     dynamic_MI(op, JitWidth::b8, &Jit::andValue, FLAGS_AND8, false);
 }
 void Jit::dynamic_testr16r16(DecodedOp* op) {
-    dynamic_RR(op, JitWidth::b16, &Jit::andReg, FLAGS_AND16, false);
+    if (op->reg == op->rm) {
+        dynamic_RR(op, JitWidth::b16, &Jit::nullReg, FLAGS_AND16, false);
+    } else {
+        dynamic_RR(op, JitWidth::b16, &Jit::andReg, FLAGS_AND16, false);
+    }
 }
 void Jit::dynamic_teste16r16(DecodedOp* op) {
     dynamic_MR(op, JitWidth::b16, &Jit::andReg, FLAGS_AND16, false);
@@ -401,7 +409,11 @@ void Jit::dynamic_test16_mem(DecodedOp* op) {
     dynamic_MI(op, JitWidth::b16, &Jit::andValue, FLAGS_AND16, false);
 }
 void Jit::dynamic_testr32r32(DecodedOp* op) {
-    dynamic_RR(op, JitWidth::b32, &Jit::andReg, FLAGS_AND32, false);
+    if (op->reg == op->rm) {
+        dynamic_RR(op, JitWidth::b32, &Jit::nullReg, FLAGS_AND32, false);
+    } else {
+        dynamic_RR(op, JitWidth::b32, &Jit::andReg, FLAGS_AND32, false);
+    }
 }
 void Jit::dynamic_teste32r32(DecodedOp* op) {
     dynamic_MR(op, JitWidth::b32, &Jit::andReg, FLAGS_AND32, false);
