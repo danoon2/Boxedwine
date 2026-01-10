@@ -18,18 +18,16 @@
 
 void Jit::dynamic_jump(DecodedOp* op, JitConditional condition) {
     if (canJumpInBlock(op)) {
-        incrementEip(op->len + op->imm);
         JumpIfCondition(condition, currentEip + op->len + op->imm);
-        incrementEip((U32)(-(S32)(op->imm)));
     } else {
-        IfCondition(condition);
-            incrementEip(op->imm + op->len);
+        IfCondition(condition); {
+            writeCurrentEip(op->len + op->imm);
             blockNext1(op);
-        StartElse();
-            incrementEip(op->len);
+        }StartElse(); {
+            writeCurrentEip(op->len);
             blockNext2(op);
-        EndIf();
-    }
+        } EndIf();
+}
 }
 
 void Jit::dynamic_jumpO(DecodedOp* op) {

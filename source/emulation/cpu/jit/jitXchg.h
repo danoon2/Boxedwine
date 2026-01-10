@@ -32,40 +32,34 @@ void Jit::dynamic_xchgr8r8(DecodedOp* op) {
         RegPtr rm = getReg8(op->rm);
         xchgReg(JitWidth::b8, reg, rm);
     }
-    incrementEip(op->len);
 }
 void Jit::dynamic_xchge8r8(DecodedOp* op) {
     readWriteMem(JitWidth::b8, calculateEaa(op), [op, this](RegPtr value) {
         RegPtr reg = getReg8(op->reg);
         xchgReg(JitWidth::b8, reg, value);
     });
-    incrementEip(op->len);
 }
 void Jit::dynamic_xchgr16r16(DecodedOp* op) {
     RegPtr reg = getReg(op->reg);
     RegPtr rm = getReg(op->rm);
     xchgReg(JitWidth::b16, reg, rm);
-    incrementEip(op->len);
 }
 void Jit::dynamic_xchge16r16(DecodedOp* op) {
     readWriteMem(JitWidth::b16, calculateEaa(op), [op, this](RegPtr value) {
         RegPtr reg = getReg(op->reg);
         xchgReg(JitWidth::b16, reg, value);
         });
-    incrementEip(op->len);
 }
 void Jit::dynamic_xchgr32r32(DecodedOp* op) {
     RegPtr reg = getReg(op->reg);
     RegPtr rm = getReg(op->rm);
     xchgReg(JitWidth::b32, reg, rm);
-    incrementEip(op->len);
 }
 void Jit::dynamic_xchge32r32(DecodedOp* op) {
     readWriteMem(JitWidth::b32, calculateEaa(op), [op, this](RegPtr value) {
         RegPtr reg = getReg(op->reg);
         xchgReg(JitWidth::b32, reg, value);
     });
-    incrementEip(op->len);
 }
 
 // I didn't see Quake 2 or Cinebench trigger these, so for now they are low priority for inlining

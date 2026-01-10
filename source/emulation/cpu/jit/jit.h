@@ -124,11 +124,15 @@ public:
     virtual RegPtr getReadOnlySegAddress(U8 reg) = 0;
     virtual RegPtr getTmpSegAddress(U8 reg) = 0;
     virtual RegPtr getReadOnlySegValue(U8 reg) = 0;
-    virtual RegPtr getTmpEip() = 0;
+    virtual RegPtr readEip() = 0;
+    virtual void writeEip(RegPtr eip) = 0;
+    virtual void writeEip(U32 eip) = 0;
+    virtual void writeCurrentEip(U32 addAmount) {
+        writeEip(currentEip - cpu->seg[CS].address + addAmount);
+    }
     virtual bool isTmpRegAvailable() = 0;
     virtual void pushReg(RegPtr reg) = 0;
     virtual void popReg(RegPtr reg) = 0;
-    virtual RegPtr getEip(bool load = true) = 0;
     virtual RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0);
     virtual void jmp(RegPtr reg) = 0;
     virtual void forceSyncBackIfNotCached(RegPtr reg) = 0;
@@ -275,8 +279,6 @@ public:
     virtual void blockCall(DecodedOp* op) = 0;
     virtual void blockDone(bool returnEarly) = 0;
     virtual void blockDoneCall() = 0;
-    virtual void incrementEip(U32 inc) = 0;
-
     virtual void blockNext1(DecodedOp* op) = 0;
     virtual void blockNext2(DecodedOp* op) = 0;
     virtual void blockDoneJump() = 0;
@@ -308,7 +310,6 @@ public:
     virtual void callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache = true) = 0;
     virtual void callHostFunctionWithResult(RegPtr result, void* address, const std::vector<DynParam>& params) = 0;
 
-    // :TODO: move to emulateSingleOp so that try/catch works with mem read/write on x64
     virtual void emulateSingleOp() = 0;
 
     using CallReturn = U32(*)(CPU* cpu);
@@ -325,9 +326,6 @@ public:
 
     using CallI = void(*)(CPU* cpu, U32 value);
     void call_I(CallI address, U32 value);
-
-    using CallII = void(*)(CPU* cpu, U32 value1, U32 value2);
-    void call_II(CallII address, U32 value1, U32 value2);
 
     using CallRI = void(*)(CPU* cpu, U32 value1, U32 value2);
     void call_RI(CallRI address, JitWidth width, RegPtr reg, U32 value);

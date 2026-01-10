@@ -479,7 +479,7 @@ bool KMemory::isCode(void* p) {
 }
 
 #if defined(BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)
-void writeBlockExitForJIT(U8* buffer);
+void writeBlockExitForJIT(U32 eip, U8* buffer);
 bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, bool clearOps) {
     DecodedOp* blockOp = op->blockStart;
     U32 blockLen = blockOp->blockLen;
@@ -503,7 +503,7 @@ bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, b
         if (currentOp && nextOp == currentOp->next && nextOp->pfnJitCode) {
             // this is important if the current jit block modifies itself
             U8* p = (U8*)nextOp->pfnJitCode;
-            writeBlockExitForJIT(p);
+            writeBlockExitForJIT(thread->cpu->eip.u32 + currentOp->len, p);
             result = true;
         }
 #endif

@@ -306,6 +306,11 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
         if (this->currentEip > this->lastOpEip) {
             break;
         } else {
+            if (nextOp->next && nextOp->next->inst == Done) {
+                if (!nextOp->isBranch()) { // f16 needs this
+                    writeCurrentEip(0);
+                }
+            }
             nextOp = nextOp->next;
         }
     }
@@ -350,6 +355,7 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
     if (!compileOps(op)) {
         return;
     }
+    writeCurrentEip(0);
     blockExit();
     commitJIT(op);
 }
@@ -371,12 +377,6 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 
 bool JitCodeGen::isParamTypeReg(JitCallParamType paramType) {
     return paramType == JitCallParamType::REG_8 || paramType == JitCallParamType::REG_16 || paramType == JitCallParamType::REG_32;
-}
-
-void JitCodeGen::incrementEip(U32 inc) {
-    RegPtr reg = readCPU(JitWidth::b32, CPU_OFFSET_OF(eip.u32));
-    addValue(JitWidth::b32, reg, inc);
-    writeCPU(JitWidth::b32, CPU_OFFSET_OF(eip.u32), reg);
 }
 
 void JitCodeGen::blockCall(DecodedOp* op) {
@@ -481,12 +481,12 @@ void JitCodeGen::blockNext2(DecodedOp* op) {
     RegPtr nextReg = getTmpReg();
     read(DYN_PTR, nextReg, opReg, 0, offsetof(DecodedOp, next));
 
-    IfNot(DYN_PTR, nextReg);
+    IfNot(DYN_PTR, nextReg); {
         // op->next = cpu->getNextOp();
         mov(DYN_PTR, nextReg, callAndReturnPtr(dynamic_getNextOp));
         // mov [ebx + offsetof(DecodedOp, next)], eax
         write(DYN_PTR, opReg, offsetof(DecodedOp, next), nextReg);
-    EndIf();
+    } EndIf();
     opReg = nullptr;
 
     // cpu->nextOp = op->next
@@ -495,9 +495,9 @@ void JitCodeGen::blockNext2(DecodedOp* op) {
 #ifdef BOXEDWINE_MULTI_THREADED
     RegPtr jit = getTmpReg();
     read(DYN_PTR, jit, nextReg, 0, offsetof(DecodedOp, pfnJitCode));
-    If(DYN_PTR, jit);
-    jmp(jit);
-    EndIf();
+    If(DYN_PTR, jit); {
+        jmp(jit);
+    } EndIf();
 #endif 
     blockExit();
 }
@@ -547,7 +547,7 @@ void JitCodeGen::jumpToEipIfCached() {
     //     }
     //     return page->ops[offset];
     // }
-    RegPtr eipReg = getTmpEip();
+    RegPtr eipReg = readEip();
     if (cpu->thread->process->hasSetSeg[CS]) {
         addReg(JitWidth::b32, eipReg, getReadOnlySegAddress(CS));
     }

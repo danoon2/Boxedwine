@@ -530,7 +530,6 @@ void Jit::dshift(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlag
     if (flags && flags->usesResult(needsToSetFlags)) {
         storeLazyFlagsResult(dest);
     }
-    incrementEip(op->len);
 }
 
 void Jit::dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flagType) {
@@ -555,7 +554,6 @@ void Jit::dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFla
             storeLazyFlagsResult(value);
         }
     });
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_dshlr16r16(DecodedOp* op) {
@@ -598,7 +596,6 @@ void Jit::dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFl
             (this->*callback)(width, value, getReadOnlyReg(op->reg), getReadOnlyReg(1, true, 1));
         });
     }
-    incrementEip(op->len);
 }
 void Jit::dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFlagType flagType) {
     const LazyFlags* flags = lazyFlags[flagType];
@@ -628,7 +625,6 @@ void Jit::dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFla
     } else {
         (this->*callback)(width, getReg(op->reg), getReadOnlyReg(op->rm), getReadOnlyReg(1, true, 1));
     }
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_dshlclr16r16(DecodedOp* op) {

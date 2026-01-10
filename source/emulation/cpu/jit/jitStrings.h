@@ -116,7 +116,6 @@ void Jit::dynamic_movsb_op(DecodedOp* op) {
             movs(op->base, JitWidth::b8, 1, JitWidth::b32);
         }
     }
-    incrementEip(op->len);
 }
 void Jit::dynamic_movsw_op(DecodedOp* op) {
     if (op->ea16) {
@@ -136,7 +135,6 @@ void Jit::dynamic_movsw_op(DecodedOp* op) {
             movs(op->base, JitWidth::b16, 2, JitWidth::b32);
         }
     }
-    incrementEip(op->len);
 }
 void Jit::dynamic_movsd_op(DecodedOp* op) {
     if (op->ea16) {
@@ -156,7 +154,6 @@ void Jit::dynamic_movsd_op(DecodedOp* op) {
             movs(op->base, JitWidth::b32, 4, JitWidth::b32);
         }
     }
-    incrementEip(op->len);
 }
 
 void Jit::cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType lazyFlags) {
@@ -332,7 +329,6 @@ void Jit::dynamic_cmpsb_op(DecodedOp* op) {
             currentLazyFlags = FLAGS_SUB8;
         }
     }
-    incrementEip(op->len);
 }
 void Jit::dynamic_cmpsw_op(DecodedOp* op) {
     if (op->ea16) {
@@ -357,7 +353,6 @@ void Jit::dynamic_cmpsw_op(DecodedOp* op) {
             currentLazyFlags = FLAGS_SUB16;
         }
     }
-    incrementEip(op->len);
 }
 void Jit::dynamic_cmpsd_op(DecodedOp* op) {
     if (op->ea16) {
@@ -382,7 +377,6 @@ void Jit::dynamic_cmpsd_op(DecodedOp* op) {
             currentLazyFlags = FLAGS_SUB32;
         }
     }
-    incrementEip(op->len);
 }
 
 void Jit::stos(JitWidth valueWidth, U32 size, JitWidth regWidth) {
@@ -469,7 +463,6 @@ void Jit::dynamic_stosb_op(DecodedOp* op) {
             stos(JitWidth::b8, 1, JitWidth::b32);
         }
     }
-    incrementEip(op->len);
 }
 void Jit::dynamic_stosw_op(DecodedOp* op) {
     if (op->ea16) {
@@ -489,7 +482,6 @@ void Jit::dynamic_stosw_op(DecodedOp* op) {
             stos(JitWidth::b16, 2, JitWidth::b32);
         }
     }
-    incrementEip(op->len);
 }
 void Jit::dynamic_stosd_op(DecodedOp* op) {
     if (op->ea16) {
@@ -509,7 +501,6 @@ void Jit::dynamic_stosd_op(DecodedOp* op) {
             stos(JitWidth::b32, 4, JitWidth::b32);
         }
     }
-    incrementEip(op->len);
 }
 
 void Jit::lods(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth) {
@@ -604,7 +595,6 @@ void Jit::dynamic_lodsb_op(DecodedOp* op) {
             lods(op->base, JitWidth::b8, 1, JitWidth::b32);
         }
     }
-    incrementEip(op->len);
 }
 void Jit::dynamic_lodsw_op(DecodedOp* op) {
     if (op->ea16) {
@@ -624,7 +614,6 @@ void Jit::dynamic_lodsw_op(DecodedOp* op) {
             lods(op->base, JitWidth::b16, 2, JitWidth::b32);
         }
     }
-    incrementEip(op->len);
 }
 void Jit::dynamic_lodsd_op(DecodedOp* op) {
     if (op->ea16) {
@@ -644,7 +633,6 @@ void Jit::dynamic_lodsd_op(DecodedOp* op) {
             lods(op->base, JitWidth::b32, 4, JitWidth::b32);
         }
     }
-    incrementEip(op->len);
 }
 
 void Jit::scas(JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType lazyFlags) {
@@ -791,7 +779,6 @@ void Jit::dynamic_scasb_op(DecodedOp* op) {
             currentLazyFlags = FLAGS_SUB8;
         }
     }    
-    incrementEip(op->len);
 }
 void Jit::dynamic_scasw_op(DecodedOp* op) {
     if (op->ea16) {
@@ -816,7 +803,6 @@ void Jit::dynamic_scasw_op(DecodedOp* op) {
             currentLazyFlags = FLAGS_SUB16;
         }
     }
-    incrementEip(op->len);
 }
 void Jit::dynamic_scasd_op(DecodedOp* op) {
     if (op->ea16) {
@@ -841,5 +827,4 @@ void Jit::dynamic_scasd_op(DecodedOp* op) {
             currentLazyFlags = FLAGS_SUB32;
         }
     }
-    incrementEip(op->len);
 }

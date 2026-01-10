@@ -111,15 +111,12 @@ RegPtr Jit::peek32(RegPtr resultReg) {
 }
 void Jit::dynamic_pushEw_reg(DecodedOp* op) {
     push16(getReadOnlyReg(op->reg));
-    incrementEip(op->len);
 }
 void Jit::dynamic_popEw_reg(DecodedOp* op) {
     pop16(getReg(op->reg));
-    incrementEip(op->len);
 }
 void Jit::dynamic_pushEw_mem(DecodedOp* op) {
     push16(read(JitWidth::b16, calculateEaa(op)));
-    incrementEip(op->len);
 }
 void Jit::dynamic_popEw_mem(DecodedOp* op) {
     write(JitWidth::b16, calculateEaa(op, 2), peek16()); // eaa must be calculated after esp is incremented which is why we pass 2 here
@@ -129,19 +126,15 @@ void Jit::dynamic_popEw_mem(DecodedOp* op) {
     } StartElse(); {
         addValue(JitWidth::b32, getReg(4), 2);
     } EndIf();
-    incrementEip(op->len);
 }
 void Jit::dynamic_pushEd_reg(DecodedOp* op) {
     push32(getReadOnlyReg(op->reg));
-    incrementEip(op->len);
 }
 void Jit::dynamic_popEd_reg(DecodedOp* op) {
     pop32(getReg(op->reg));
-    incrementEip(op->len);
 }
 void Jit::dynamic_pushEd_mem(DecodedOp* op) {
     push32(read(JitWidth::b32, calculateEaa(op)));
-    incrementEip(op->len);
 }
 void Jit::dynamic_popEd_mem(DecodedOp* op) {
     write(JitWidth::b32, calculateEaa(op, 4), peek32()); // eaa must be calculated after esp is incremented which is why we pass 2 here
@@ -151,18 +144,15 @@ void Jit::dynamic_popEd_mem(DecodedOp* op) {
     } StartElse(); {
         addValue(JitWidth::b32, getReg(4), 4);
     } EndIf();
-    incrementEip(op->len);
 }
 void Jit::dynamic_pushSeg16(DecodedOp* op) {
     push16(getReadOnlySegValue(op->reg));
-    incrementEip(op->len);
 }
 void Jit::dynamic_popSeg16(DecodedOp* op) {
     emulateSingleOp();
 }
 void Jit::dynamic_pushSeg32(DecodedOp* op) {
     push32(getReadOnlySegValue(op->reg));
-    incrementEip(op->len);
 }
 void Jit::dynamic_popSeg32(DecodedOp* op) {
     emulateSingleOp();
@@ -187,7 +177,6 @@ void Jit::dynamic_pushA16(DecodedOp* op) {
             subValue(JitWidth::b32, getReg(4), 16);
         }EndIf();
     });
-    incrementEip(op->len);
 }
 void Jit::dynamic_pushA32(DecodedOp* op) {
     RegPtr esp = getTmpReg(4);
@@ -209,7 +198,6 @@ void Jit::dynamic_pushA32(DecodedOp* op) {
             subValue(JitWidth::b32, getReg(4), 32);
         } EndIf();
     });
-    incrementEip(op->len);
 }
 void Jit::dynamic_popA16(DecodedOp* op) {
     RegPtr esp = getTmpReg(4);
@@ -232,7 +220,6 @@ void Jit::dynamic_popA16(DecodedOp* op) {
             addValue(JitWidth::b32, getReg(4), 16);
         } EndIf();
     });
-    incrementEip(op->len);
 }
 void Jit::dynamic_popA32(DecodedOp* op) {
     RegPtr esp = getTmpReg(4);
@@ -255,33 +242,26 @@ void Jit::dynamic_popA32(DecodedOp* op) {
             addValue(JitWidth::b32, getReg(4), 32);
         } EndIf();
     });
-    incrementEip(op->len);
 }
 void Jit::dynamic_push16imm(DecodedOp* op) {
     RegPtr reg = getTmpReg();
     movValue(JitWidth::b16, reg, op->imm);
     push16(reg);
-    incrementEip(op->len);
 }
 void Jit::dynamic_push32imm(DecodedOp* op) {
     RegPtr reg = getTmpReg();
     movValue(JitWidth::b32, reg, op->imm);
     push32(reg);
-    incrementEip(op->len);
 }
 void Jit::dynamic_popf16(DecodedOp* op) {
     setFlags(pop16(), FMASK_ALL & 0xFFFF);
-    incrementEip(op->len);
 }
 void Jit::dynamic_popf32(DecodedOp* op) {
     setFlags(pop32(), FMASK_ALL);
-    incrementEip(op->len);
 }
 void Jit::dynamic_pushf16(DecodedOp* op) {
     push16(getReadOnlyFlags());
-    incrementEip(op->len);
 }
 void Jit::dynamic_pushf32(DecodedOp* op) {
     push32(getReadOnlyFlags());
-    incrementEip(op->len);
 }

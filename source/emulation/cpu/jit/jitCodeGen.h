@@ -91,7 +91,6 @@ public:
     void blockCall(DecodedOp* op) override;
     void blockDone(bool returnEarly) override;
     void blockDoneCall() override;
-    void incrementEip(U32 inc) override;
 
     void blockNext1(DecodedOp* op) override;
     void blockNext2(DecodedOp* op) override;
@@ -131,6 +130,6 @@ protected:
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);
 JitCodeGen* startNewJIT(CPU* cpu);
-void writeBlockExitForJIT(U8* buffer);
+void writeBlockExitForJIT(U32 eip, U8* buffer);
 
 #endif

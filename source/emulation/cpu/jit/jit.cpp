@@ -166,14 +166,6 @@ void Jit::call_I(CallI address, U32 value) {
     callHostFunction(address, params);
 }
 
-void Jit::call_II(CallII address, U32 value1, U32 value2) {
-    std::vector<DynParam> params;
-    params.push_back(DynParam(JitCallParamType::CPU));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value1));
-    params.push_back(DynParam(JitCallParamType::CONST_32, value2));
-    callHostFunction(address, params);
-}
-
 void Jit::call_RI(CallRI address, JitWidth width, RegPtr reg, U32 value) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
@@ -292,7 +284,6 @@ void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback, LazyFl
             storeLazyFlagsResult(dest);
         }
     }
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm2 callback, LazyFlagType flagType, bool writeback, bool addCF, InstRegReg2 cfCallback) {
@@ -331,7 +322,6 @@ void Jit::dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm2 callback, LazyFl
     if (flags && flags->usesResult(needsToSetFlags)) {
         storeLazyFlagsResult(dest);
     }
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flagType, bool writeback, bool addCF) {
@@ -399,7 +389,6 @@ void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFl
             storeLazyFlagsResult(dest);
         }
     }
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flagType, bool writeback, bool addCF) {    
@@ -438,7 +427,6 @@ void Jit::dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFl
     if (flags && flags->usesResult(needsToSetFlags)) {
         storeLazyFlagsResult(dest);
     }
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flagType, bool writeback, bool addCF) {
@@ -578,7 +566,6 @@ void Jit::dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFl
             }
         }
     }
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_R(DecodedOp* op, JitWidth width, InstReg2 callback, LazyFlagType flagType, bool writeback) {
@@ -612,7 +599,6 @@ void Jit::dynamic_R(DecodedOp* op, JitWidth width, InstReg2 callback, LazyFlagTy
     if (flags && flags->usesResult(needsToSetFlags)) {
         storeLazyFlagsResult(dest);
     }
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, LazyFlagType flagType, bool writeback, RegPtr tmp) {
@@ -668,7 +654,6 @@ void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, LazyFlagTy
             kpanic("Jit::dynamic_M");
         }
     }
-    incrementEip(op->len);
 }
 
 // SHL/SHR/SAR use this
@@ -705,7 +690,6 @@ void Jit::dynamic_R_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, Lazy
         } EndIf();
         currentLazyFlags = FLAGS_NULL;
     }
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flagType) {
@@ -735,7 +719,6 @@ void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, Lazy
         } EndIf();
         currentLazyFlags = FLAGS_NULL;
     }
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flagType) {
@@ -775,7 +758,6 @@ void Jit::dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback,
             }
         });
     }
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flagType) {
@@ -826,7 +808,6 @@ void Jit::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callba
             orReg(JitWidth::b16, dest, src);
         }
     }
-    incrementEip(op->len);
 }
 
 #endif

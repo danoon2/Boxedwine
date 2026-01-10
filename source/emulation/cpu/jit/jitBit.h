@@ -78,7 +78,6 @@ void Jit::dynamic_btr16r16(DecodedOp* op) {
     } StartElse(); {
         andCPUFlagsImmV2(~CF);
     } EndIf();
-    incrementEip(op->len);
 }
 void Jit::dynamic_btr16(DecodedOp* op) {
     btStartFlags(op);
@@ -87,7 +86,6 @@ void Jit::dynamic_btr16(DecodedOp* op) {
     } StartElse(); {
         andCPUFlagsImmV2(~CF);
     } EndIf();
-    incrementEip(op->len);
 }
 void Jit::dynamic_bte16r16(DecodedOp* op) {
     btStartFlags(op);
@@ -96,7 +94,6 @@ void Jit::dynamic_bte16r16(DecodedOp* op) {
     } StartElse(); {
         andCPUFlagsImmV2(~CF);
     } EndIf();
-    incrementEip(op->len);
 }
 void Jit::dynamic_bte16(DecodedOp* op) {
     btStartFlags(op);
@@ -105,7 +102,6 @@ void Jit::dynamic_bte16(DecodedOp* op) {
     } StartElse(); {
         andCPUFlagsImmV2(~CF);
     } EndIf();
-    incrementEip(op->len);
 }
 void Jit::dynamic_btr32r32(DecodedOp* op) {
     btStartFlags(op);
@@ -114,7 +110,6 @@ void Jit::dynamic_btr32r32(DecodedOp* op) {
     } StartElse(); {
         andCPUFlagsImmV2(~CF);
     } EndIf();
-    incrementEip(op->len);
 }
 void Jit::dynamic_btr32(DecodedOp* op) {
     btStartFlags(op);
@@ -123,7 +118,6 @@ void Jit::dynamic_btr32(DecodedOp* op) {
     } StartElse(); {
         andCPUFlagsImmV2(~CF);
     } EndIf();
-    incrementEip(op->len);
 }
 void Jit::dynamic_bte32r32(DecodedOp* op) {
     btStartFlags(op);
@@ -132,7 +126,6 @@ void Jit::dynamic_bte32r32(DecodedOp* op) {
     } StartElse(); {
         andCPUFlagsImmV2(~CF);
     } EndIf();
-    incrementEip(op->len);
 }
 void Jit::dynamic_bte32(DecodedOp* op) {
     btStartFlags(op);
@@ -141,7 +134,6 @@ void Jit::dynamic_bte32(DecodedOp* op) {
     } StartElse(); {
         andCPUFlagsImmV2(~CF);
     } EndIf();
-    incrementEip(op->len);
 }
 void Jit::dynamic_btsr16r16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -155,7 +147,6 @@ void Jit::dynamic_btsr16r16(DecodedOp* op) {
         } EndIf();
     }
     orReg(JitWidth::b16, reg, mask);
-    incrementEip(op->len);
 }
 void Jit::dynamic_btsr16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -168,7 +159,6 @@ void Jit::dynamic_btsr16(DecodedOp* op) {
         } EndIf();
     }
     orValue(JitWidth::b16, reg, op->imm);
-    incrementEip(op->len);
 }
 void Jit::dynamic_btse16r16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -183,7 +173,6 @@ void Jit::dynamic_btse16r16(DecodedOp* op) {
         }
         orReg(JitWidth::b16, value, mask);
     });
-    incrementEip(op->len);
 }
 void Jit::dynamic_btse16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -197,7 +186,6 @@ void Jit::dynamic_btse16(DecodedOp* op) {
         }
         orValue(JitWidth::b16, value, op->imm);
     });
-    incrementEip(op->len);
 }
 void Jit::dynamic_btsr32r32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -211,7 +199,6 @@ void Jit::dynamic_btsr32r32(DecodedOp* op) {
         } EndIf();
     }
     orReg(JitWidth::b32, reg, mask);
-    incrementEip(op->len);
 }
 void Jit::dynamic_btsr32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -224,7 +211,6 @@ void Jit::dynamic_btsr32(DecodedOp* op) {
         } EndIf();
     }
     orValue(JitWidth::b32, reg, op->imm);
-    incrementEip(op->len);
 }
 void Jit::dynamic_btse32r32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -238,8 +224,7 @@ void Jit::dynamic_btse32r32(DecodedOp* op) {
             } EndIf();
         }
         orReg(JitWidth::b32, value, mask);
-        });
-    incrementEip(op->len);
+    });
 }
 void Jit::dynamic_btse32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -253,7 +238,6 @@ void Jit::dynamic_btse32(DecodedOp* op) {
         }
         orValue(JitWidth::b32, value, op->imm);
     });
-    incrementEip(op->len);
 }
 void Jit::dynamic_btrr16r16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -268,7 +252,6 @@ void Jit::dynamic_btrr16r16(DecodedOp* op) {
     }
     notReg2(JitWidth::b16, mask);
     andReg(JitWidth::b16, reg, mask);
-    incrementEip(op->len);
 }
 void Jit::dynamic_btrr16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -281,7 +264,6 @@ void Jit::dynamic_btrr16(DecodedOp* op) {
         } EndIf();
     }
     andValue(JitWidth::b16, reg, ~op->imm);
-    incrementEip(op->len);
 }
 void Jit::dynamic_btre16r16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -296,8 +278,7 @@ void Jit::dynamic_btre16r16(DecodedOp* op) {
         }
         notReg2(JitWidth::b16, mask);
         andReg(JitWidth::b16, value, mask);
-        });
-    incrementEip(op->len);
+    });
 }
 void Jit::dynamic_btre16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -310,8 +291,7 @@ void Jit::dynamic_btre16(DecodedOp* op) {
             } EndIf();
         }
         andValue(JitWidth::b16, value, ~op->imm);
-        });
-    incrementEip(op->len);
+    });
 }
 void Jit::dynamic_btrr32r32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -326,7 +306,6 @@ void Jit::dynamic_btrr32r32(DecodedOp* op) {
     }
     notReg2(JitWidth::b32, mask);
     andReg(JitWidth::b32, reg, mask);
-    incrementEip(op->len);
 }
 void Jit::dynamic_btrr32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -339,7 +318,6 @@ void Jit::dynamic_btrr32(DecodedOp* op) {
         } EndIf();
     }
     andValue(JitWidth::b32, reg, ~op->imm);
-    incrementEip(op->len);
 }
 void Jit::dynamic_btre32r32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -354,8 +332,7 @@ void Jit::dynamic_btre32r32(DecodedOp* op) {
         }
         notReg2(JitWidth::b32, mask);
         andReg(JitWidth::b32, value, mask);
-        });
-    incrementEip(op->len);
+    });
 }
 void Jit::dynamic_btre32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -368,8 +345,7 @@ void Jit::dynamic_btre32(DecodedOp* op) {
             } EndIf();
         }
         andValue(JitWidth::b32, value, ~op->imm);
-        });
-    incrementEip(op->len);
+    });
 }
 
 void Jit::dynamic_btcr16r16(DecodedOp* op) {
@@ -384,7 +360,6 @@ void Jit::dynamic_btcr16r16(DecodedOp* op) {
         } EndIf();
     }
     xorReg(JitWidth::b16, reg, mask);
-    incrementEip(op->len);
 }
 void Jit::dynamic_btcr16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -397,7 +372,6 @@ void Jit::dynamic_btcr16(DecodedOp* op) {
         } EndIf();
     }
     xorValue(JitWidth::b16, reg, op->imm);
-    incrementEip(op->len);
 }
 void Jit::dynamic_btce16r16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -411,8 +385,7 @@ void Jit::dynamic_btce16r16(DecodedOp* op) {
             } EndIf();
         }
         xorReg(JitWidth::b16, value, mask);
-        });
-    incrementEip(op->len);
+    });
 }
 void Jit::dynamic_btce16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -425,8 +398,7 @@ void Jit::dynamic_btce16(DecodedOp* op) {
             } EndIf();
         }
         xorValue(JitWidth::b16, value, op->imm);
-        });
-    incrementEip(op->len);
+    });
 }
 void Jit::dynamic_btcr32r32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -440,7 +412,6 @@ void Jit::dynamic_btcr32r32(DecodedOp* op) {
         } EndIf();
     }
     xorReg(JitWidth::b32, reg, mask);
-    incrementEip(op->len);
 }
 void Jit::dynamic_btcr32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -453,7 +424,6 @@ void Jit::dynamic_btcr32(DecodedOp* op) {
         } EndIf();
     }
     xorValue(JitWidth::b32, reg, op->imm);
-    incrementEip(op->len);
 }
 void Jit::dynamic_btce32r32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -467,8 +437,7 @@ void Jit::dynamic_btce32r32(DecodedOp* op) {
             } EndIf();
         }
         xorReg(JitWidth::b32, value, mask);
-        });
-    incrementEip(op->len);
+    });
 }
 void Jit::dynamic_btce32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -481,8 +450,7 @@ void Jit::dynamic_btce32(DecodedOp* op) {
             } EndIf();
         }
         xorValue(JitWidth::b32, value, op->imm);
-        });
-    incrementEip(op->len);
+    });
 }
 // bsf/bsr The ZF flag is set to 1 if the source operand is 0; otherwise, the ZF flag is cleared. The CF, OF, SF, AF, and PF flags are undefined.
 bool Jit::bsStartFlags(DecodedOp* op) {
@@ -506,7 +474,6 @@ void Jit::dynamic_bsfr16r16(DecodedOp* op) {
         } EndIf();
     }
     bsfReg(JitWidth::b16, getReg(op->reg), src);
-    incrementEip(op->len);
 }
 void Jit::dynamic_bsfr16e16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -519,7 +486,6 @@ void Jit::dynamic_bsfr16e16(DecodedOp* op) {
         } EndIf();
     }
     bsfReg(JitWidth::b16, getReg(op->reg), src);
-    incrementEip(op->len);
 }
 void Jit::dynamic_bsfr32r32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -532,7 +498,6 @@ void Jit::dynamic_bsfr32r32(DecodedOp* op) {
         } EndIf();
     }
     bsfReg(JitWidth::b32, getReg(op->reg), src);
-    incrementEip(op->len);
 }
 void Jit::dynamic_bsfr32e32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -545,7 +510,6 @@ void Jit::dynamic_bsfr32e32(DecodedOp* op) {
         } EndIf();
     }
     bsfReg(JitWidth::b32, getReg(op->reg), src);
-    incrementEip(op->len);
 }
 void Jit::dynamic_bsrr16r16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -558,7 +522,6 @@ void Jit::dynamic_bsrr16r16(DecodedOp* op) {
         } EndIf();
     }
     bsrReg(JitWidth::b16, getReg(op->reg), src);
-    incrementEip(op->len);
 }
 void Jit::dynamic_bsrr16e16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -571,7 +534,6 @@ void Jit::dynamic_bsrr16e16(DecodedOp* op) {
         } EndIf();
     }
     bsrReg(JitWidth::b16, getReg(op->reg), src);
-    incrementEip(op->len);
 }
 void Jit::dynamic_bsrr32r32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -584,7 +546,6 @@ void Jit::dynamic_bsrr32r32(DecodedOp* op) {
         } EndIf();
     }
     bsrReg(JitWidth::b32, getReg(op->reg), src);
-    incrementEip(op->len);
 }
 void Jit::dynamic_bsrr32e32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -597,5 +558,4 @@ void Jit::dynamic_bsrr32e32(DecodedOp* op) {
         } EndIf();
     }
     bsrReg(JitWidth::b32, getReg(op->reg), src);
-    incrementEip(op->len);
 }

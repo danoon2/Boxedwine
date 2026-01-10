@@ -20,14 +20,12 @@ void Jit::dynamic_set_R(DecodedOp* op, JitConditional condition) {;
     RegPtr reg = getTmpReg8();
     getCondition(condition, reg);
     mov(JitWidth::b8, getReg8(op->reg), reg);
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_set_M(DecodedOp* op, JitConditional condition) {
     RegPtr reg = getTmpReg8();
     getCondition(condition, reg);
     write(JitWidth::b8, calculateEaa(op), reg);
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_setO_reg(DecodedOp* op) {

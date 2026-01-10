@@ -674,7 +674,6 @@ void Jit::div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
     absAh = nullptr;
 
     (this->*callback)(JitWidth::b8, ax, nullptr, src);
-    incrementEip(op->len);
 }
 
 void Jit::div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
@@ -720,7 +719,6 @@ void Jit::div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
     }
     RegPtr ax = getReg(0, 0);
     (this->*callback)(JitWidth::b16, ax, dx, src);
-    incrementEip(op->len);
 }
 
 void Jit::div32(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
@@ -767,7 +765,6 @@ void Jit::div32(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
     }
     RegPtr eax = getReg(0, 0);
     (this->*callback)(JitWidth::b32, eax, edx, src);
-    incrementEip(op->len);
 }
 
 void Jit::dynamic_divR8(DecodedOp* op) {
@@ -843,7 +840,6 @@ void Jit::dynamic_dimulcr16r16(DecodedOp* op) {
         } EndIf();
     }
     currentLazyFlags = FLAGS_NONE;
-    incrementEip(op->len);
 }
 void Jit::dynamic_dimulcr16e16(DecodedOp* op) {
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
@@ -868,12 +864,10 @@ void Jit::dynamic_dimulcr16e16(DecodedOp* op) {
         } EndIf();
     }
     currentLazyFlags = FLAGS_NONE;
-    incrementEip(op->len);
 }
 void Jit::dynamic_dimulcr32r32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRRI(JitWidth::b32, getReg(op->reg), getReadOnlyReg(op->rm), op->imm);
-        incrementEip(op->len);
     } else {
         emulateSingleOp();
     }
@@ -882,7 +876,6 @@ void Jit::dynamic_dimulcr32r32(DecodedOp* op) {
 void Jit::dynamic_dimulcr32e32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRRI(JitWidth::b32, getReg(op->reg), read(JitWidth::b32, calculateEaa(op)), op->imm);
-        incrementEip(op->len);
     } else {
         emulateSingleOp();
     }
@@ -912,7 +905,6 @@ void Jit::dynamic_dimulr16r16(DecodedOp* op) {
         } EndIf();
     }
     currentLazyFlags = FLAGS_NONE;
-    incrementEip(op->len);
 }
 void Jit::dynamic_dimulr16e16(DecodedOp* op) {
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
@@ -938,12 +930,10 @@ void Jit::dynamic_dimulr16e16(DecodedOp* op) {
         } EndIf();
     }
     currentLazyFlags = FLAGS_NONE;
-    incrementEip(op->len);
 }
 void Jit::dynamic_dimulr32r32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRR(JitWidth::b32, getReg(op->reg), getReadOnlyReg(op->rm));
-        incrementEip(op->len);
     } else {
         emulateSingleOp();
     }
@@ -952,7 +942,6 @@ void Jit::dynamic_dimulr32r32(DecodedOp* op) {
 void Jit::dynamic_dimulr32e32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRR(JitWidth::b32, getReg(op->reg), read(JitWidth::b32, calculateEaa(op)));
-        incrementEip(op->len);
     } else {
         emulateSingleOp();
     }

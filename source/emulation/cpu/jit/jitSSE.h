@@ -579,7 +579,7 @@ public:
 	void dynamic_packsswbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::packsswbXmmXmm); }
 	void dynamic_packuswbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::packuswbXmmXmm); }
 	void dynamic_packuswbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::packuswbXmmXmm); }
-	void dynamic_pause(DecodedOp* op) override { pause(); incrementEip(op->len); }
+	void dynamic_pause(DecodedOp* op) override { pause(); }
 	void dynamic_pavgbXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pavgbXmmXmm); }
 	void dynamic_pavgbXmmE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::pavgbXmmXmm); }
 	void dynamic_pavgwXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::pavgwXmmXmm); }
@@ -602,8 +602,8 @@ public:
 	void dynamic_pinsrwXmmE16(DecodedOp* op) override;
 	void dynamic_pmovmskbR32Xmm(DecodedOp* op) override;
 	void dynamic_maskmovdquE128XmmXmm(DecodedOp* op) override;
-	void dynamic_lfence(DecodedOp* op) override { lfence(); incrementEip(op->len); }
-	void dynamic_mfence(DecodedOp* op) override { mfence(); incrementEip(op->len); }
+	void dynamic_lfence(DecodedOp* op) override { lfence(); }
+	void dynamic_mfence(DecodedOp* op) override { mfence(); }
 	void dynamic_clflush(DecodedOp* op) override;
 };
 

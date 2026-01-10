@@ -43,27 +43,22 @@ void Jit::dynamic_aam(DecodedOp* op) {
 }
 void Jit::dynamic_nop(DecodedOp* op) {
     // Nop
-    incrementEip(op->len);
 }
 void Jit::dynamic_done(DecodedOp* op) {
-    incrementEip(op->len);
     blockDone(false);
 }
 void Jit::dynamic_wait(DecodedOp* op) {
     // Wait
-    incrementEip(op->len);
 }
 void Jit::dynamic_cwd(DecodedOp* op) {
     RegPtr dx = getReg(2);
     mov(JitWidth::b16, dx, getReg(0));
     sarValue(JitWidth::b16, dx, 15);
-    incrementEip(op->len);
 }
 void Jit::dynamic_cwq(DecodedOp* op) {
     RegPtr edx = getReg(2);
     mov(JitWidth::b32, edx, getReg(0));
     sarValue(JitWidth::b32, edx, 31);
-    incrementEip(op->len);
 }
 void Jit::dynamic_callAp(DecodedOp* op) {
     emulateSingleOp();
@@ -94,7 +89,6 @@ void Jit::dynamic_sahf(DecodedOp* op) {
     movzx(JitWidth::b32, flags, JitWidth::b8, getReadOnlyReg8(4));
     setFlags(flags, FMASK_ALL & 0xFF);
     currentLazyFlags = FLAGS_NONE;
-    incrementEip(op->len);
 }
 void Jit::dynamic_lahf(DecodedOp* op) {
     RegPtr flags = getReadOnlyFlags();
@@ -102,28 +96,34 @@ void Jit::dynamic_lahf(DecodedOp* op) {
     andValue(JitWidth::b32, flags, SF | ZF | AF | PF | CF);
     orValue(JitWidth::b32, flags, 2);
     mov(JitWidth::b8, getReg8(4), flags);
-    incrementEip(op->len);
 }
 void Jit::dynamic_salc(DecodedOp* op) {
     RegPtr cf = getCF();
     negReg2(JitWidth::b8, cf);
     mov(JitWidth::b8, getReg8(0), cf);
-    incrementEip(op->len);
 }
 void Jit::dynamic_retn16Iw(DecodedOp* op) {
-    pop16(getEip(false), op->imm + 2);
+    RegPtr eip = getTmpReg();
+    pop16(eip, op->imm + 2);
+    writeEip(eip);
     blockDone(false);
 }
 void Jit::dynamic_retn32Iw(DecodedOp* op) {
-    pop32(getEip(false), op->imm + 4);
+    RegPtr eip = getTmpReg();
+    pop32(eip, op->imm + 4);
+    writeEip(eip);
     blockDone(false);
 }
 void Jit::dynamic_retn16(DecodedOp* op) {
-    pop16(getEip(false));
+    RegPtr eip = getTmpReg();
+    pop16(eip);
+    writeEip(eip);
     blockDone(false);
 }
 void Jit::dynamic_retn32(DecodedOp* op) {
-    pop32(getEip(false));
+    RegPtr eip = getTmpReg();
+    pop32(eip);
+    writeEip(eip);
     blockDone(false);
 }
 void Jit::dynamic_invalid(DecodedOp* op) {
@@ -165,7 +165,6 @@ void Jit::dynamic_xlat(DecodedOp* op) {
     }
     addReg(JitWidth::b32, address, getReadOnlySegAddress(op->base));
     mov(JitWidth::b8, getReg8(0), read(JitWidth::b8, address));
-    incrementEip(op->len);
 }
 void Jit::dynamic_hlt(DecodedOp* op) {
     emulateSingleOp();
@@ -173,33 +172,26 @@ void Jit::dynamic_hlt(DecodedOp* op) {
 void Jit::dynamic_cmc(DecodedOp* op) {
     fillFlags();
     xorCPUFlagsImmV2(CF);
-    incrementEip(op->len);
 }
 void Jit::dynamic_clc(DecodedOp* op) {
     fillFlags();
     andCPUFlagsImmV2(~CF);
-    incrementEip(op->len);
 }
 void Jit::dynamic_stc(DecodedOp* op) {
     fillFlags();
     orCPUFlagsImmV2(CF);
-    incrementEip(op->len);
 }
 void Jit::dynamic_cli(DecodedOp* op) {
     andCPUFlagsImmV2(~IF);
-    incrementEip(op->len);
 }
 void Jit::dynamic_sti(DecodedOp* op) {
     orCPUFlagsImmV2(IF);
-    incrementEip(op->len);
 }
 void Jit::dynamic_cld(DecodedOp* op) {
     andCPUFlagsImmV2(~DF);
-    incrementEip(op->len);
 }
 void Jit::dynamic_std(DecodedOp* op) {
     orCPUFlagsImmV2(DF);
-    incrementEip(op->len);
 }
 void Jit::dynamic_rdtsc(DecodedOp* op) {
     emulateSingleOp();
@@ -224,7 +216,6 @@ void Jit::dynamic_enter16(DecodedOp* op) {
             subValue(JitWidth::b32, esp, op->imm);
         } EndIf();
     }
-    incrementEip(op->len);
 }
 void Jit::dynamic_enter32(DecodedOp* op) {
     if (op->data.disp) {
@@ -243,18 +234,15 @@ void Jit::dynamic_enter32(DecodedOp* op) {
             subValue(JitWidth::b32, esp, op->imm);
         } EndIf();
     }
-    incrementEip(op->len);
 }
 void Jit::dynamic_leave16(DecodedOp* op) {
     // ESP and EBP each get loaded more than once, on a platform that doesnt' cache them, like x86, it might be interesting to reduce this
     mov(JitWidth::b16, getReg(4), getReadOnlyReg(5));
     mov(JitWidth::b16, getReg(5), pop16());
-    incrementEip(op->len);
 }
 void Jit::dynamic_leave32(DecodedOp* op) {
     mov(JitWidth::b32, getReg(4, -1, false), getReadOnlyReg(5));
     mov(JitWidth::b32, getReg(5, -1, false), pop32());
-    incrementEip(op->len);
 }
 void Jit::dynamic_loopnz(DecodedOp* op) {
     // CX--;
@@ -276,15 +264,15 @@ void Jit::dynamic_loopnz(DecodedOp* op) {
         movValue(width, reg, 0);
     EndIf();
     If(width, reg);
-        incrementEip(op->len + (S32)((S8)op->imm));
         if (canJumpInBlock(op)) {                
             JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
         } else {
+            writeCurrentEip(op->len + (S32)((S8)op->imm));
             blockNext1(op);
         }
     EndIf();
-    incrementEip(op->len);
     if (!canJumpInBlock(op)) {
+        writeCurrentEip(op->len);
         blockNext2(op);
     }
 }
@@ -308,15 +296,15 @@ void Jit::dynamic_loopz(DecodedOp* op) {
         movValue(width, reg, 0);
     EndIf();
     If(width, reg);
-        incrementEip(op->len + (S32)((S8)op->imm));
         if (canJumpInBlock(op)) {
             JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
         } else {
+            writeCurrentEip(op->len + (S32)((S8)op->imm));
             blockNext1(op);
         }
     EndIf();
-    incrementEip(op->len);
     if (!canJumpInBlock(op)) {
+        writeCurrentEip(op->len);
         blockNext2(op);
     }
 }
@@ -334,15 +322,15 @@ void Jit::dynamic_loop(DecodedOp* op) {
     decReg(width, getReg(1));
 
     If(width, getReadOnlyReg(1));
-        incrementEip(op->len + (S32)((S8)op->imm));
         if (canJumpInBlock(op)) {
             JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
         } else {
+            writeCurrentEip(op->len + (S32)((S8)op->imm));
             blockNext1(op);
         }
     EndIf();
-    incrementEip(op->len);
     if (!canJumpInBlock(op)) {
+        writeCurrentEip(op->len);
         blockNext2(op);
     }
 }
@@ -356,174 +344,166 @@ void Jit::dynamic_jcxz(DecodedOp* op) {
     JitWidth width = op->ea16 ? JitWidth::b16 : JitWidth::b32;
 
     IfNot(width, getReadOnlyReg(1));
-        incrementEip(op->len + op->imm);
         if (canJumpInBlock(op)) {
             JumpInBlock(currentEip + op->len + op->imm);
         } else {
+            writeCurrentEip(op->len + (S32)((S8)op->imm));
             blockNext1(op);
         }
     EndIf();
-    incrementEip(op->len);
     if (!canJumpInBlock(op)) {
+        writeCurrentEip(op->len);
         blockNext2(op);
     }
 }
 void Jit::dynamic_InAlIb(DecodedOp* op) {
     movValue(JitWidth::b8, getReg8(0), 0xff);
-    incrementEip(op->len);
 }
 void Jit::dynamic_InAxIb(DecodedOp* op) {
     movValue(JitWidth::b16, getReg(0), 0xffff);
-    incrementEip(op->len);
 }
 void Jit::dynamic_InEaxIb(DecodedOp* op) {
     movValue(JitWidth::b32, getReg(0), 0xffffffff);
-    incrementEip(op->len);
 }
 void Jit::dynamic_OutIbAl(DecodedOp* op) {
     // do nothing
-    incrementEip(op->len);
 }
 void Jit::dynamic_OutIbAx(DecodedOp* op) {
     // do nothing
-    incrementEip(op->len);
 }
 void Jit::dynamic_OutIbEax(DecodedOp* op) {
     // do nothing
-    incrementEip(op->len);
 }
 void Jit::dynamic_InAlDx(DecodedOp* op) {
     movValue(JitWidth::b8, getReg8(0), 0xff);
-    incrementEip(op->len);
 }
 void Jit::dynamic_InAxDx(DecodedOp* op) {
     movValue(JitWidth::b16, getReg(0), 0xffff);
-    incrementEip(op->len);
 }
 void Jit::dynamic_InEaxDx(DecodedOp* op) {
     movValue(JitWidth::b32, getReg(0), 0xffffffff);
-    incrementEip(op->len);
 }
 void Jit::dynamic_OutDxAl(DecodedOp* op) {
     // do nothing
-    incrementEip(op->len);
 }
 void Jit::dynamic_OutDxAx(DecodedOp* op) {
     // do nothing
-    incrementEip(op->len);
 }
 void Jit::dynamic_OutDxEax(DecodedOp* op) {
     // do nothing
-    incrementEip(op->len);
 }
 void Jit::dynamic_callJw(DecodedOp* op) {
-    RegPtr eip = getTmpEip();
-    addValue(JitWidth::b16, eip, op->len);
-    push16(eip);    
-    incrementEip(op->len+(S32)((S16)op->imm));
+    RegPtr eip = getTmpReg();
+    movValue(JitWidth::b32, eip, this->currentEip - cpu->seg[CS].address + op->len);
+    push16(eip); 
+    writeCurrentEip(op->len + (S32)((S16)op->imm));
     blockCall(op);
 }
 void Jit::dynamic_callJd(DecodedOp* op) {
-    RegPtr eip = getTmpEip();
-    addValue(JitWidth::b32, eip, op->len);
+    RegPtr eip = getTmpReg();
+    movValue(JitWidth::b32, eip, this->currentEip - cpu->seg[CS].address + op->len);
     push32(eip);
-    incrementEip(op->len + (S32)op->imm);
+    writeCurrentEip(op->len + (S32)op->imm);
     blockCall(op);
 }
 void Jit::dynamic_jmp8(DecodedOp* op) {
-    incrementEip(op->len+(S32)((S8)op->imm));
     if (canJumpInBlock(op)) {
         JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
     } else {
+        writeCurrentEip(op->len + (S32)((S8)op->imm));
         blockNext1(op);
     }
 }
 void Jit::dynamic_jmp16(DecodedOp* op) {
-    incrementEip(op->len+(S32)((S16)op->imm));
     if (canJumpInBlock(op)) {
         JumpInBlock(currentEip + op->len + (S32)((S16)op->imm));
     } else {
+        writeCurrentEip(op->len + (S32)((S16)op->imm));
         blockNext1(op);
     }
 }
 void Jit::dynamic_jmp32(DecodedOp* op) {
-    incrementEip(op->len+(S32)op->imm);
     if (canJumpInBlock(op)) {
         JumpInBlock(currentEip + op->len + (S32)op->imm);
     } else {
+        writeCurrentEip(op->len + (S32)op->imm);
         blockNext1(op);
     }
 }
 void Jit::dynamic_callR16(DecodedOp* op) {
-    {
-        RegPtr eip = getEip();
-        addValue(JitWidth::b16, eip, op->len);
+    RegPtr eip = getTmpReg();
+    movValue(JitWidth::b32, eip, this->currentEip - cpu->seg[CS].address + op->len);
         
-        if (op->reg == 4) {            
-            RegPtr reg = getTmpReg(op->reg);
-            push16(eip);
-            mov(JitWidth::b16, eip, reg);
-        } else {
-            push16(eip);
-            mov(JitWidth::b16, eip, getReadOnlyReg(op->reg));
-        }
-        // will write back eip before calling blockDoneCall
+    if (op->reg == 4) {            
+        RegPtr reg = getTmpReg(op->reg);
+        push16(eip);
+        mov(JitWidth::b16, eip, reg);
+    } else {
+        push16(eip);
+        mov(JitWidth::b16, eip, getReadOnlyReg(op->reg));
     }
+    movzx(JitWidth::b32, eip, JitWidth::b16, eip);
+    writeEip(eip);
     blockDoneCall();
 }
 void Jit::dynamic_callR32(DecodedOp* op) {
-    {
-        RegPtr eip = getEip();
-        addValue(JitWidth::b32, eip, op->len);
+    RegPtr eip = getTmpReg();
+    movValue(JitWidth::b32, eip, this->currentEip - cpu->seg[CS].address + op->len);
 
-        if (op->reg == 4) {
-            RegPtr reg = getTmpReg(op->reg);
-            push32(eip);
-            mov(JitWidth::b32, eip, reg);
-        } else {
-            push32(eip);
-            mov(JitWidth::b32, eip, getReadOnlyReg(op->reg));
-        }
-        // will write back eip before calling blockDoneCall
+    if (op->reg == 4) {
+        RegPtr reg = getTmpReg(op->reg);
+        push32(eip);
+        mov(JitWidth::b32, eip, reg);
+    } else {
+        push32(eip);
+        mov(JitWidth::b32, eip, getReadOnlyReg(op->reg));
     }
+    writeEip(eip);
     blockDoneCall();
 }
 void Jit::dynamic_callE16(DecodedOp* op) {
     {
-        RegPtr newEip = read(JitWidth::b16, calculateEaa(op)); // read before push, incase esp is used
-        RegPtr eip = getEip();
-        addValue(JitWidth::b16, eip, op->len);
+        RegPtr newEip = read(JitWidth::b16, calculateEaa(op)); // read before push, in case esp is used
+        RegPtr eip = getTmpReg();
+
+        movValue(JitWidth::b32, eip, this->currentEip + op->len - this->cpu->seg[CS].address);
         push16(eip);
         mov(JitWidth::b16, eip, newEip);
-        // will write back eip before calling blockDoneCall
+        writeEip(newEip);
     }
     blockDoneCall();
 }
 void Jit::dynamic_callE32(DecodedOp* op) {
-    {
-        RegPtr newEip = read(JitWidth::b32, calculateEaa(op)); // read before push, incase esp is used
-        RegPtr eip = getEip();
-        addValue(JitWidth::b32, eip, op->len);
-        push32(eip);
-        mov(JitWidth::b32, eip, newEip);
-        // will write back eip before calling blockDoneCall
-    }
+    RegPtr newEip = read(JitWidth::b32, calculateEaa(op)); // read before push, in case esp is used
+    RegPtr eip = getTmpReg();
+
+    movValue(JitWidth::b32, eip, this->currentEip + op->len - this->cpu->seg[CS].address);
+    push32(eip);
+    writeEip(newEip);
     blockDoneCall();
 }
 void Jit::dynamic_jmpR16(DecodedOp* op) {
-    mov(JitWidth::b16, getEip(), getReadOnlyReg(op->reg));
+    RegPtr eip = getTmpReg();
+    mov(JitWidth::b16, eip, getReadOnlyReg(op->reg));
+    movzx(JitWidth::b32, eip, JitWidth::b16, eip);
+    writeEip(eip);
     blockDoneJump();
 }
 void Jit::dynamic_jmpR32(DecodedOp* op) {
-    mov(JitWidth::b32, getEip(), getReadOnlyReg(op->reg));
+    writeEip(getReadOnlyReg(op->reg));
     blockDoneJump();
 }
 void Jit::dynamic_jmpE16(DecodedOp* op) {
-    mov(JitWidth::b16, getEip(), read(JitWidth::b16, calculateEaa(op)));
+    RegPtr eip = getTmpReg();
+    mov(JitWidth::b16, eip, read(JitWidth::b16, calculateEaa(op)));
+    movzx(JitWidth::b32, eip, JitWidth::b16, eip);
+    writeEip(eip);
     blockDoneJump();
 }
 void Jit::dynamic_jmpE32(DecodedOp* op) {
-    mov(JitWidth::b32, getEip(), read(JitWidth::b32, calculateEaa(op)));
+    RegPtr eip = getTmpReg();
+    mov(JitWidth::b32, eip, read(JitWidth::b32, calculateEaa(op)));
+    writeEip(eip);
     blockDoneJump();
 }
 void Jit::dynamic_callFarE16(DecodedOp* op) {
@@ -582,7 +562,6 @@ void Jit::dynamic_xaddr32e32(DecodedOp* op) {
 }
 void Jit::dynamic_bswap32(DecodedOp* op) {
     byteSwapReg32(getReg(op->reg));
-    incrementEip(op->len);
 }
 void Jit::dynamic_cmpxchgg8b(DecodedOp* op) {
     // I haven't seen anything call this so no reason to inline, I imagine only the lock version of this is ever used
