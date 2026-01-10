@@ -4040,6 +4040,34 @@ void X86Asm::cqo() {
     outb(0x99);
 }
 
+void X86Asm::imul(Reg64 dst, Reg64 src) {
+    rex(dst.reg, src.reg, true);
+    outb(0x0f);
+    outb(0xaf);
+    outb(0xc0 | ((dst.reg & 7) << 3) | (src.reg & 7));
+}
+
+void X86Asm::imul(Reg64 dst, Reg64 src, U32 imm) {
+    rex(dst.reg, src.reg, true);
+    S32 sIMM = (S32)imm;
+    bool small = true;
+    if (sIMM < -128 || sIMM > 127) {
+        small = false;
+    }
+
+    if (small) {
+        outb(0x6b);
+    } else {
+        outb(0x69);
+    }
+    outb(0xc0 | (src.reg & 7) | ((dst.reg & 7) << 3));
+    if (small) {
+        outb((U8)imm);
+    } else {
+        outd(imm);
+    }
+}
+
 #else
 void X86Asm::call(void* address) {
     outb(0xe8);

@@ -161,8 +161,8 @@ public:
     void xaddReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void mulReg(JitWidth regWidth, RegPtr reg) override;
     void imulReg(JitWidth regWidth, RegPtr reg) override;
-    void imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2) override;
-    void imulRR(JitWidth regWidth, RegPtr dst, RegPtr src) override;
+    void imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2, RegPtr overflow = nullptr) override;
+    void imulRR(JitWidth regWidth, RegPtr dst, RegPtr src, RegPtr overflow = nullptr) override;
     void divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) override;
     void idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) override;
     void absReg(JitWidth regWidth, RegPtr reg) override;
@@ -1680,20 +1680,63 @@ void JitX86CodeGen::mulReg(JitWidth regWidth, RegPtr reg) {
     }
 }
 
-void JitX86CodeGen::imulRR(JitWidth regWidth, RegPtr dst, RegPtr src) {
+void JitX86CodeGen::imulRR(JitWidth regWidth, RegPtr dst, RegPtr src, RegPtr overflow) {
     if (regWidth == JitWidth::b32) {
-        x86.imul(R32(dst->hardwareReg()), R32(src->hardwareReg()));
+        if (!overflow) {
+            x86.imul(R32(dst->hardwareReg()), R32(src->hardwareReg()));
+        } else {
+#ifdef BOXEDWINE_64
+            x86.movsx(R64(src->hardwareReg()), R32(src->hardwareReg()));
+            x86.movsx(R64(dst->hardwareReg()), R32(dst->hardwareReg()));
+            x86.imul(R64(dst->hardwareReg()), R64(src->hardwareReg()));
+            x86.mov(R64(overflow->hardwareReg()), R64(dst->hardwareReg()));
+            x86.shr(R64(overflow->hardwareReg()), 32);
+            x86.mov(R32(dst->hardwareReg()), R32(dst->hardwareReg())); // clear out top 32-bits
+            x86.mov(R32(src->hardwareReg()), R32(src->hardwareReg())); // clear out top 32-bits (undo prev sign extend)
+#else
+            if (dst->hardwareReg() != 0 || overflow->hardwareReg() != 2) {
+                kpanic("JitX86CodeGen::imulRRI overflow");
+            }
+            x86.imulEax(R32(src->hardwareReg()));
+#endif
+        }
     } else if (regWidth == JitWidth::b16) {
+        if (overflow) {
+            kpanic("JitX86CodeGen::imulRR overflow");
+        }
         x86.imul(R16(dst->hardwareReg()), R16(src->hardwareReg()));
     } else {
         kpanic("JitX86CodeGen::imulRR");
     }
 }
 
-void JitX86CodeGen::imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2) {
+void JitX86CodeGen::imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2, RegPtr overflow) {    
     if (regWidth == JitWidth::b32) {
-        x86.imul(R32(dst->hardwareReg()), R32(src->hardwareReg()), src2);
+        if (!overflow) {
+            x86.imul(R32(dst->hardwareReg()), R32(src->hardwareReg()), src2);
+        } else {
+#ifdef BOXEDWINE_64
+            x86.movsx(R64(src->hardwareReg()), R32(src->hardwareReg()));
+            x86.movsx(R64(dst->hardwareReg()), R32(dst->hardwareReg()));
+            x86.imul(R64(dst->hardwareReg()), R64(src->hardwareReg()), src2);
+            x86.mov(R64(overflow->hardwareReg()), R64(dst->hardwareReg()));
+            x86.shr(R64(overflow->hardwareReg()), 32);
+            x86.mov(R32(dst->hardwareReg()), R32(dst->hardwareReg())); // clear out top 32-bits
+            x86.mov(R32(src->hardwareReg()), R32(src->hardwareReg())); // clear out top 32-bits (undo prev sign extend)
+#else
+            if (dst->hardwareReg() != 0 || overflow->hardwareReg() != 2) {
+                kpanic("JitX86CodeGen::imulRRI overflow");
+            }
+            x86.mov(x86.eax, R32(src->hardwareReg()));
+            RegPtr tmp = getTmpReg();
+            movValue(JitWidth::b32, tmp, src2);
+            x86.imulEax(R32(tmp->hardwareReg()));
+#endif
+        }
     } else if (regWidth == JitWidth::b16) {
+        if (overflow) {
+            kpanic("JitX86CodeGen::imulRRI overflow");
+        }
         x86.imul(R16(dst->hardwareReg()), R16(src->hardwareReg()), src2);
     } else {
         kpanic("JitX86CodeGen::imulRRI");

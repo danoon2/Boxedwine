@@ -486,6 +486,8 @@ public:
 	void shrx(Reg32 dst, Reg32 src);
 	void shlx(Reg32 dst, Reg32 src);
 	void sarx(Reg32 dst, Reg32 src);
+	void imul(Reg64 dst, Reg64 src);
+	void imul(Reg64 dst, Reg64 src, U32 imm);
 #else
 	std::vector<U32> patch;
 	void call(void* address);

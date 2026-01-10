@@ -182,8 +182,8 @@ public:
     virtual void xaddReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void mulReg(JitWidth regWidth, RegPtr reg) = 0;
     virtual void imulReg(JitWidth regWidth, RegPtr reg) = 0;
-    virtual void imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2) = 0;
-    virtual void imulRR(JitWidth regWidth, RegPtr dst, RegPtr src) = 0;
+    virtual void imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2, RegPtr overflow = nullptr) = 0;
+    virtual void imulRR(JitWidth regWidth, RegPtr dst, RegPtr src, RegPtr overflow = nullptr) = 0;
     virtual void divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) = 0; // src should be checked for 0 before calling
     virtual void idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) = 0; // src should be checked for 0 before calling
     virtual void byteSwapReg32(RegPtr reg) = 0;

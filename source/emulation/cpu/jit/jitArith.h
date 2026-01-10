@@ -466,7 +466,7 @@ void Jit::dynamic_mulR8(DecodedOp* op) {
     // AX = AL * src;
     dynamic_R(op, JitWidth::b8, &Jit::mulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
-        (FLAGS_NONE);
+        storeLazyFlags(FLAGS_NONE);
         If(JitWidth::b8, getReadOnlyReg8(4)); {
             orCPUFlagsImmV2(CF | OF);
         } StartElse(); {
@@ -881,7 +881,19 @@ void Jit::dynamic_dimulcr32r32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRRI(JitWidth::b32, getReg(op->reg), getReadOnlyReg(op->rm), op->imm);
     } else {
-        emulateSingleOp();
+        storeLazyFlags(FLAGS_NONE);
+        RegPtr overflow = getTmpRegWithHint(2);
+        imulRRI(JitWidth::b32, getReg(op->reg, 0, false), getReadOnlyReg(op->rm), op->imm, overflow);
+
+        If(JitWidth::b32, overflow); {
+            IfEqual(JitWidth::b32, overflow, 0xffffffff); {
+                andCPUFlagsImmV2(~(CF | OF));
+            } StartElse(); {
+                orCPUFlagsImmV2(CF | OF);
+            } EndIf();
+        } StartElse(); {
+            andCPUFlagsImmV2(~(CF | OF));
+        } EndIf();
     }
     currentLazyFlags = FLAGS_NONE;    
 }
@@ -889,7 +901,18 @@ void Jit::dynamic_dimulcr32e32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRRI(JitWidth::b32, getReg(op->reg), read(JitWidth::b32, calculateEaa(op)), op->imm);
     } else {
-        emulateSingleOp();
+        RegPtr overflow = getTmpRegWithHint(2);
+        imulRRI(JitWidth::b32, getReg(op->reg, 0, false), read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, getTmpReg()), op->imm, overflow); // getTmpReg call so that x86 eax will be available as tmp
+
+        If(JitWidth::b32, overflow); {
+            IfEqual(JitWidth::b32, overflow, 0xffffffff); {
+                andCPUFlagsImmV2(~(CF | OF));
+            } StartElse(); {
+                orCPUFlagsImmV2(CF | OF);
+            } EndIf();
+        } StartElse(); {
+            andCPUFlagsImmV2(~(CF | OF));
+        } EndIf();
     }
     currentLazyFlags = FLAGS_NONE;
 }
@@ -947,7 +970,18 @@ void Jit::dynamic_dimulr32r32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRR(JitWidth::b32, getReg(op->reg), getReadOnlyReg(op->rm));
     } else {
-        emulateSingleOp();
+        RegPtr overflow = getTmpRegWithHint(2);
+        imulRR(JitWidth::b32, getReg(op->reg, 0), getReadOnlyReg(op->rm), overflow);
+
+        If(JitWidth::b32, overflow); {
+            IfEqual(JitWidth::b32, overflow, 0xffffffff); {
+                andCPUFlagsImmV2(~(CF | OF));
+            } StartElse(); {
+                orCPUFlagsImmV2(CF | OF);
+            } EndIf();
+        } StartElse(); {
+            andCPUFlagsImmV2(~(CF | OF));
+        } EndIf();
     }
     currentLazyFlags = FLAGS_NONE;    
 }
@@ -955,7 +989,18 @@ void Jit::dynamic_dimulr32e32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRR(JitWidth::b32, getReg(op->reg), read(JitWidth::b32, calculateEaa(op)));
     } else {
-        emulateSingleOp();
+        RegPtr overflow = getTmpRegWithHint(2);
+        imulRR(JitWidth::b32, getReg(op->reg, 0), read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, getTmpReg()), overflow);
+
+        If(JitWidth::b32, overflow); {
+            IfEqual(JitWidth::b32, overflow, 0xffffffff); {
+                andCPUFlagsImmV2(~(CF | OF));
+            } StartElse(); {
+                orCPUFlagsImmV2(CF | OF);
+            } EndIf();
+        } StartElse(); {
+            andCPUFlagsImmV2(~(CF | OF));
+        } EndIf();
     }
     currentLazyFlags = FLAGS_NONE;    
 }
