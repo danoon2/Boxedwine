@@ -32,7 +32,7 @@ static JitWidth getWidthOfFlags(LazyFlagType flags) {
 }
 
 void JitCodeGen::genOF(LazyFlagType flags, RegPtr result) {
-    if (flags == FLAGS_NONE) {
+    if (flags == FLAGS_NONE || flags == FLAGS_CFOF) {
         readCPU(JitWidth::b32, offsetof(CPU, flags), result);
         shrValue(JitWidth::b32, result, 11);
         andValue(JitWidth::b32, result, 1);
@@ -213,7 +213,7 @@ void JitCodeGen::genPF(RegPtr result) {
 }
 
 void JitCodeGen::genCF(LazyFlagType flags, RegPtr result) {    
-    if (flags == FLAGS_NONE) {
+    if (flags == FLAGS_NONE || flags == FLAGS_CFOF) {
         readCPU(JitWidth::b32, offsetof(CPU, flags), result);
         andValue(JitWidth::b32, result, CF);
     } else if (flags == FLAGS_ADD8) {

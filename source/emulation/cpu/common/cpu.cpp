@@ -806,17 +806,17 @@ void CPU::iret(U32 big, U32 oldeip) {
     }
 } 
 
-void CPU::fillFlagsNoCFOF() {
-    if (this->lazyFlagType !=FLAGS_NONE) {
-        int newFlags = this->flags & ~(CF|AF|OF|SF|ZF|PF);
-        const LazyFlags* lazyFlag = lazyFlags[this->lazyFlagType];
-
-        if (lazyFlag->getAF(this)) newFlags |= AF;
-        if (lazyFlag->getZF(this)) newFlags |= ZF;
-        if (lazyFlag->getPF(this)) newFlags |= PF;
-        if (lazyFlag->getSF(this)) newFlags |= SF;
-        this->flags = newFlags;
-        this->lazyFlagType = FLAGS_NONE;
+void CPU::lazyFlagsCFOF(bool fillCF) {
+    if (lazyFlagType != FLAGS_CFOF) {
+        if (fillCF) {
+            bool cf = getCF();
+            lazyFlagTypePrev = lazyFlagType;
+            lazyFlagType = FLAGS_CFOF;
+            setCF(cf ? 1 : 0);
+        } else {
+            lazyFlagTypePrev = lazyFlagType;
+            lazyFlagType = FLAGS_CFOF;
+        }
     }
 }
 
@@ -866,21 +866,6 @@ void CPU::fillFlagsNoZF() {
     }
 }
 
-void CPU::fillFlagsNoOF() {
-    if (this->lazyFlagType!=FLAGS_NONE) {
-        int newFlags = this->flags & ~(CF|AF|OF|SF|ZF|PF);
-        const LazyFlags* lazyFlag = lazyFlags[this->lazyFlagType];
-
-        if (lazyFlag->getAF(this)) newFlags |= AF;
-        if (lazyFlag->getZF(this)) newFlags |= ZF;
-        if (lazyFlag->getPF(this)) newFlags |= PF;
-        if (lazyFlag->getSF(this)) newFlags |= SF;
-        if (lazyFlag->getCF(this)) newFlags |= CF;
-        this->lazyFlagType = FLAGS_NONE;
-        this->flags = newFlags;
-    }
-}
-
 bool CPU::getCF() {
     return lazyFlags[this->lazyFlagType]->getCF(this) != 0;
 }
@@ -907,7 +892,7 @@ bool CPU::getPF() {
 
 void CPU::setCF(U32 value) {
 #ifdef _DEBUG
-    if (this->lazyFlagType !=FLAGS_NONE) {
+    if (this->lazyFlagType != FLAGS_NONE && this->lazyFlagType != FLAGS_CFOF) {
         kpanic("CPU::fillFlags must be called before CPU::setCF");
     }
 #endif
@@ -918,7 +903,7 @@ void CPU::setCF(U32 value) {
 
 void CPU::setOF(U32 value) {
 #ifdef _DEBUG
-    if (this->lazyFlagType !=FLAGS_NONE) {
+    if (this->lazyFlagType != FLAGS_NONE && this->lazyFlagType != FLAGS_CFOF) {
         kpanic("CPU::fillFlags must be called before CPU::setOF");
     }
 #endif

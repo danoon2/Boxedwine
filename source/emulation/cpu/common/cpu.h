@@ -228,6 +228,7 @@ public:
     Reg  dst;
     Reg  result;
     LazyFlagType lazyFlagType = FLAGS_NONE;
+    LazyFlagType lazyFlagTypePrev = FLAGS_NONE;
     U32         oldCF = 0;
     FPU         fpu;
     U64		    instructionCount = 0;
@@ -256,8 +257,7 @@ public:
     void setSF(U32 value);
     void setZF(U32 value);
     void setPFonValue(U32 value);
-    void fillFlagsNoCFOF();
-    void fillFlagsNoOF();
+    void lazyFlagsCFOF(bool fillCF = false);
     void fillFlagsNoCF();
     void fillFlagsNoZF();
     void fillFlags();

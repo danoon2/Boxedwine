@@ -675,7 +675,7 @@ void Jit::dynamic_R_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, Lazy
     if (!needsToSetFlags) {        
         (this->*callback)(width, dest, src);
     } else {
-        If(JitWidth::b8, src); {
+        IfTest(JitWidth::b8, src, 0x1f); {
             storeLazyFlags(flagType);
             if (flags && flags->usesDst(needsToSetFlags)) {
                 storeLazyFlagsDest(dest);
@@ -702,7 +702,7 @@ void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, Lazy
         });
     } else {
         RegPtr src = getReadOnlyReg8(1, false, 1);
-        If(JitWidth::b8, src); {
+        IfTest(JitWidth::b8, src, 0x1f); {
             readWriteMem(width, calculateEaa(op), [needsToSetFlags, flagType, flags, src, op, width, callback, this](RegPtr value) {
                 storeLazyFlags(flagType);
                 if (flags && flags->usesDst(needsToSetFlags)) {

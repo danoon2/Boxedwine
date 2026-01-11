@@ -552,6 +552,25 @@ class LazyFlagsSar32 : public LazyFlagsDefault32 {
 static LazyFlagsSar32 flagsSar32;
 static const LazyFlags* flagsSAR32 = &flagsSar32;
 
+class LazyFlagsCFOF : public LazyFlags {
+public:
+    LazyFlagsCFOF() : LazyFlags(0) {}
+    U32 getCF(CPU* cpu) const override { return cpu->flags & CF; }
+    U32 getOF(CPU* cpu) const override { return cpu->flags & OF; }
+
+    U32 getSF(CPU* cpu) const override { return lazyFlags[cpu->lazyFlagTypePrev]->getSF(cpu); }
+    U32 getZF(CPU* cpu) const override { return lazyFlags[cpu->lazyFlagTypePrev]->getZF(cpu); }
+    U32 getAF(CPU* cpu) const override { return lazyFlags[cpu->lazyFlagTypePrev]->getAF(cpu); }
+    U32 getPF(CPU* cpu) const override { return lazyFlags[cpu->lazyFlagTypePrev]->getPF(cpu); }
+
+    bool usesResult(U32 mask) const override { return false; }
+    bool usesSrc(U32 mask) const override { return false; }
+    bool usesDst(U32 mask) const override { return false; }
+    bool usesOldCF(U32 mask) const override { return false; }
+};
+
+static LazyFlagsCFOF flagsCFOF;
+
 const LazyFlags* lazyFlags[] = {
     flagsNONE,
     flagsADD8,
@@ -603,5 +622,6 @@ const LazyFlags* lazyFlags[] = {
     flagsNEG8,
     flagsNEG16,
     flagsNEG32,
+    &flagsCFOF,
     nullptr
 };

@@ -19,16 +19,17 @@
 #include "boxedwine.h"
 void rol8_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 var1=*cpu->reg8[reg];
+    // starting with 186/286, shifts were masked to 0-31
     if (!(var2 & 7)) {
         if (var2 & 0x18) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 1);
             cpu->setOF((var1 & 1) ^ (var1 >> 7));
         }
         return;
     }
     var2 &= 7;
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U8 result = (var1 << var2) | (var1 >> (8 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 7));
@@ -38,14 +39,14 @@ void rol8_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 var1=cpu->memory->readb(eaa);
     if (!(var2 & 7)) {
         if (var2 & 0x18) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 1);
             cpu->setOF((var1 & 1) ^ (var1 >> 7));
         }
         return;
     }
     var2 &= 7;
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U8 result = (var1 << var2) | (var1 >> (8 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 7));
@@ -56,14 +57,14 @@ void rol8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 var1 = *cpu->reg8[reg];
     if (!(var2 & 7)) {
         if (var2 & 0x18) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 1);
             cpu->setOF((var1 & 1) ^ (var1 >> 7));
         }
         return;
     }
     var2 &= 7;    
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U8 result = (var1 << var2) | (var1 >> (8 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 7));
@@ -74,14 +75,14 @@ void rol8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 var1 = cpu->memory->readb(eaa);
     if (!(var2 & 7)) {
         if (var2 & 0x18) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 1);
             cpu->setOF((var1 & 1) ^ (var1 >> 7));
         }
         return;
     }
     var2 &= 7;    
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U8 result = (var1 << var2) | (var1 >> (8 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 7));
@@ -91,14 +92,14 @@ void rol16_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 var1=cpu->reg[reg].u16;
     if (!(var2 & 0xf)) {
         if (var2 & 0x10) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 1);
             cpu->setOF((var1 & 1) ^ (var1 >> 15));
         }
         return;
     }
     var2 &= 0xf;
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U16 result = (var1 << var2) | (var1 >> (16 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 15));
@@ -108,14 +109,14 @@ void rol16_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 var1=cpu->memory->readw(eaa);
     if (!(var2 & 0xf)) {
         if (var2 & 0x10) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 1);
             cpu->setOF((var1 & 1) ^ (var1 >> 15));
         }
         return;
     }
     var2 &= 0xf;
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U16 result = (var1 << var2) | (var1 >> (16 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 15));
@@ -126,14 +127,14 @@ void rol16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 var1 = cpu->reg[reg].u16;
     if (!(var2 & 0xf)) {
         if (var2 & 0x10) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 1);
             cpu->setOF((var1 & 1) ^ (var1 >> 15));
         }
         return;
     }
     var2 &= 15;    
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U16 result = (var1 << var2) | (var1 >> (16 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 15));
@@ -144,14 +145,14 @@ void rol16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 var1 = cpu->memory->readw(eaa);
     if (!(var2 & 0xf)) {
         if (var2 & 0x10) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 1);
             cpu->setOF((var1 & 1) ^ (var1 >> 15));
         }
         return;
     }
     var2 &= 15;    
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U16 result = (var1 << var2) | (var1 >> (16 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 15));
@@ -159,7 +160,7 @@ void rol16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 }
 void rol32_reg(CPU* cpu, U32 reg, U32 var2) {
     U32 var1=cpu->reg[reg].u32;
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U32 result = (var1 << var2) | (var1 >> (32 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 31));
@@ -167,7 +168,7 @@ void rol32_reg(CPU* cpu, U32 reg, U32 var2) {
 }
 void rol32_mem(CPU* cpu, U32 eaa, U32 var2) {
     U32 var1=cpu->memory->readd(eaa);
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U32 result = (var1 << var2) | (var1 >> (32 - var2));
     cpu->setCF(result & 1);
     cpu->setOF((result & 1) ^ (result >> 31));
@@ -177,7 +178,7 @@ void rol32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->reg[reg].u32;
-        cpu->fillFlagsNoCFOF();
+        cpu->lazyFlagsCFOF();
         U32 result = (var1 << var2) | (var1 >> (32 - var2));
         cpu->setCF(result & 1);
         cpu->setOF((result & 1) ^ (result >> 31));
@@ -188,7 +189,7 @@ void rol32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->memory->readd(eaa);
-        cpu->fillFlagsNoCFOF();
+        cpu->lazyFlagsCFOF();
         U32 result = (var1 << var2) | (var1 >> (32 - var2));
         cpu->setCF(result & 1);
         cpu->setOF((result & 1) ^ (result >> 31));
@@ -199,14 +200,14 @@ void ror8_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 var1=*cpu->reg8[reg];
     if (!(var2 & 7)) {
         if (var2 & 0x18) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 0x80);
             cpu->setOF((var1 ^ (var1 << 1)) & 0x80);
         }
         return;
     }
     var2 &= 7;
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U8 result = (var1 >> var2) | (var1 << (8 - var2));
     cpu->setCF(result & 0x80);
     cpu->setOF((result ^ (result<<1)) & 0x80);
@@ -216,14 +217,14 @@ void ror8_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 var1=cpu->memory->readb(eaa);
     if (!(var2 & 7)) {
         if (var2 & 0x18) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 0x80);
             cpu->setOF((var1 ^ (var1 << 1)) & 0x80);
         }
         return;
     }
     var2 &= 7;
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U8 result = (var1 >> var2) | (var1 << (8 - var2));
     cpu->setCF(result & 0x80);
     cpu->setOF((result ^ (result<<1)) & 0x80);
@@ -234,14 +235,14 @@ void ror8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 var1 = *cpu->reg8[reg];
     if (!(var2 & 7)) {
         if (var2 & 0x18) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 0x80);
             cpu->setOF((var1 ^ (var1 << 1)) & 0x80);
         }
         return;
     }
     var2 &= 7;    
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U8 result = (var1 >> var2) | (var1 << (8 - var2));
     cpu->setCF(result & 0x80);
     cpu->setOF((result ^ (result<<1)) & 0x80);
@@ -252,14 +253,14 @@ void ror8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 var1 = cpu->memory->readb(eaa);
     if (!(var2 & 7)) {
         if (var2 & 0x18) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 0x80);
             cpu->setOF((var1 ^ (var1 << 1)) & 0x80);
         }
         return;
     }
     var2 &= 7;    
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U8 result = (var1 >> var2) | (var1 << (8 - var2));
     cpu->setCF(result & 0x80);
     cpu->setOF((result ^ (result<<1)) & 0x80);
@@ -269,14 +270,14 @@ void ror16_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 var1=cpu->reg[reg].u16;
     if (!(var2 & 0xf)) {
         if (var2 & 0x10) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 0x8000);
             cpu->setOF((var1 ^ (var1 << 1)) & 0x8000);
         }
         return;
     }
     var2 &= 0xf;
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U16 result = (var1 >> var2) | (var1 << (16 - var2));
     cpu->setCF(result & 0x8000);
     cpu->setOF((result ^ (result<<1)) & 0x8000);
@@ -286,14 +287,14 @@ void ror16_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 var1=cpu->memory->readw(eaa);
     if (!(var2 & 0xf)) {
         if (var2 & 0x10) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 0x8000);
             cpu->setOF((var1 ^ (var1 << 1)) & 0x8000);
         }
         return;
     }
     var2 &= 0xf;
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U16 result = (var1 >> var2) | (var1 << (16 - var2));
     cpu->setCF(result & 0x8000);
     cpu->setOF((result ^ (result<<1)) & 0x8000);
@@ -304,14 +305,14 @@ void ror16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 var1 = cpu->reg[reg].u16;
     if (!(var2 & 0xf)) {
         if (var2 & 0x10) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 0x8000);
             cpu->setOF((var1 ^ (var1 << 1)) & 0x8000);
         }
         return;
     }
     var2 &= 15;    
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U16 result = (var1 >> var2) | (var1 << (16 - var2));
     cpu->setCF(result & 0x8000);
     cpu->setOF((result ^ (result<<1)) & 0x8000);
@@ -322,14 +323,14 @@ void ror16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 var1 = cpu->memory->readw(eaa);
     if (!(var2 & 0xf)) {
         if (var2 & 0x10) {
-            cpu->fillFlagsNoCFOF();
+            cpu->lazyFlagsCFOF();
             cpu->setCF(var1 & 0x8000);
             cpu->setOF((var1 ^ (var1 << 1)) & 0x8000);
         }
         return;
     }
     var2 &= 15;    
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U32 result = (var1 >> var2) | (var1 << (16 - var2));
     cpu->setCF(result & 0x8000);
     cpu->setOF((result ^ (result<<1)) & 0x8000);
@@ -337,7 +338,7 @@ void ror16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 }
 void ror32_reg(CPU* cpu, U32 reg, U32 var2) {
     U32 var1=cpu->reg[reg].u32;
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U32 result = (var1 >> var2) | (var1 << (32 - var2));
     cpu->setCF(result & 0x80000000);
     cpu->setOF((result ^ (result<<1)) & 0x80000000);
@@ -345,7 +346,7 @@ void ror32_reg(CPU* cpu, U32 reg, U32 var2) {
 }
 void ror32_mem(CPU* cpu, U32 eaa, U32 var2) {
     U32 var1=cpu->memory->readd(eaa);
-    cpu->fillFlagsNoCFOF();
+    cpu->lazyFlagsCFOF();
     U32 result = (var1 >> var2) | (var1 << (32 - var2));
     cpu->setCF(result & 0x80000000);
     cpu->setOF((result ^ (result<<1)) & 0x80000000);
@@ -355,7 +356,7 @@ void ror32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->reg[reg].u32;
-        cpu->fillFlagsNoCFOF();
+        cpu->lazyFlagsCFOF();
         U32 result = (var1 >> var2) | (var1 << (32 - var2));
         cpu->setCF(result & 0x80000000);
         cpu->setOF((result ^ (result<<1)) & 0x80000000);
@@ -366,7 +367,7 @@ void ror32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     var2 &= 0x1f;
     if (var2) {
         U32 var1 = cpu->memory->readd(eaa);
-        cpu->fillFlagsNoCFOF();
+        cpu->lazyFlagsCFOF();
         U32 result = (var1 >> var2) | (var1 << (32 - var2));
         cpu->setCF(result & 0x80000000);
         cpu->setOF((result ^ (result<<1)) & 0x80000000);
@@ -375,7 +376,7 @@ void ror32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 }
 void rcl8_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 var1=*cpu->reg8[reg];
-    cpu->fillFlagsNoOF();
+    cpu->lazyFlagsCFOF(true);
     U8 result = (var1 << var2) | ((cpu->flags & CF) << (var2-1)) | (var1 >> (9-var2));
     cpu->setCF(((var1 >> (8-var2)) & 1));
     cpu->setOF((cpu->flags & CF) ^ (result >> 7));
@@ -383,7 +384,7 @@ void rcl8_reg(CPU* cpu, U32 reg, U32 var2) {
 }
 void rcl8_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 var1=cpu->memory->readb(eaa);
-    cpu->fillFlagsNoOF();
+    cpu->lazyFlagsCFOF(true);
     U8 result = (var1 << var2) | ((cpu->flags & CF) << (var2-1)) | (var1 >> (9-var2));
     cpu->setCF(((var1 >> (8-var2)) & 1));
     cpu->setOF((cpu->flags & CF) ^ (result >> 7));
@@ -394,7 +395,7 @@ void rcl8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         var2=var2 % 9;
         U8 var1 = *cpu->reg8[reg];
-        cpu->fillFlagsNoOF();
+        cpu->lazyFlagsCFOF(true);
         U8 result = (var1 << var2) | ((cpu->flags & CF) << (var2-1)) | (var1 >> (9-var2));
         cpu->setCF(((var1 >> (8-var2)) & 1));
         cpu->setOF((cpu->flags & CF) ^ (result >> 7));
@@ -406,7 +407,7 @@ void rcl8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         var2=var2 % 9;
         U8 var1 = cpu->memory->readb(eaa);
-        cpu->fillFlagsNoOF();
+        cpu->lazyFlagsCFOF(true);
         U8 result = (var1 << var2) | ((cpu->flags & CF) << (var2-1)) | (var1 >> (9-var2));
         cpu->setCF(((var1 >> (8-var2)) & 1));
         cpu->setOF((cpu->flags & CF) ^ (result >> 7));
@@ -415,7 +416,7 @@ void rcl8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 }
 void rcl16_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 var1=cpu->reg[reg].u16;
-    cpu->fillFlagsNoOF();
+    cpu->lazyFlagsCFOF(true);
     U16 result = (var1 << var2) | ((cpu->flags & CF) << (var2-1)) | (var1 >> (17-var2));
     cpu->setCF(((var1 >> (16-var2)) & 1));
     cpu->setOF((cpu->flags & CF) ^ (result >> 15));
@@ -423,7 +424,7 @@ void rcl16_reg(CPU* cpu, U32 reg, U32 var2) {
 }
 void rcl16_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 var1=cpu->memory->readw(eaa);
-    cpu->fillFlagsNoOF();
+    cpu->lazyFlagsCFOF(true);
     U16 result = (var1 << var2) | ((cpu->flags & CF) << (var2-1)) | (var1 >> (17-var2));
     cpu->setCF(((var1 >> (16-var2)) & 1));
     cpu->setOF((cpu->flags & CF) ^ (result >> 15));
@@ -434,7 +435,7 @@ void rcl16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         var2=var2 % 17;
         U16 var1 = cpu->reg[reg].u16;
-        cpu->fillFlagsNoOF();
+        cpu->lazyFlagsCFOF(true);
         U16 result = (var1 << var2) | ((cpu->flags & CF) << (var2-1)) | (var1 >> (17-var2));
         cpu->setCF(((var1 >> (16-var2)) & 1));
         cpu->setOF((cpu->flags & CF) ^ (result >> 15));
@@ -446,7 +447,7 @@ void rcl16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         var2=var2 % 17;
         U16 var1 = cpu->memory->readw(eaa);
-        cpu->fillFlagsNoOF();
+        cpu->lazyFlagsCFOF(true);
         U16 result = (var1 << var2) | ((cpu->flags & CF) << (var2-1)) | (var1 >> (17-var2));
         cpu->setCF(((var1 >> (16-var2)) & 1));
         cpu->setOF((cpu->flags & CF) ^ (result >> 15));
@@ -456,7 +457,7 @@ void rcl16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 void rcl32_reg(CPU* cpu, U32 reg, U32 var2) {
     U32 result = 0;
     U32 var1=cpu->reg[reg].u32;
-    cpu->fillFlagsNoOF();
+    cpu->lazyFlagsCFOF(true);
     if (var2==1) {
         result = (var1 << var2) | (cpu->flags & CF);
     } else {
@@ -469,7 +470,7 @@ void rcl32_reg(CPU* cpu, U32 reg, U32 var2) {
 void rcl32_mem(CPU* cpu, U32 eaa, U32 var2) {
     U32 result = 0;
     U32 var1=cpu->memory->readd(eaa);
-    cpu->fillFlagsNoOF();
+    cpu->lazyFlagsCFOF(true);
     if (var2==1) {
         result = (var1 << var2) | (cpu->flags & CF);
     } else {
@@ -484,7 +485,7 @@ void rcl32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         U32 result = 0;
         U32 var1 = cpu->reg[reg].u32;
-        cpu->fillFlagsNoOF();
+        cpu->lazyFlagsCFOF(true);
         if (var2==1) {
             result = (var1 << var2) | (cpu->flags & CF);
         } else {
@@ -500,7 +501,7 @@ void rcl32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         U32 result = 0;
         U32 var1 = cpu->memory->readd(eaa);
-        cpu->fillFlagsNoOF();
+        cpu->lazyFlagsCFOF(true);
         if (var2==1) {
             result = (var1 << var2) | (cpu->flags & CF);
         } else {
@@ -513,7 +514,7 @@ void rcl32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 }
 void rcr8_reg(CPU* cpu, U32 reg, U32 var2) {
     U8 var1=*cpu->reg8[reg];
-    cpu->fillFlagsNoOF();
+    cpu->lazyFlagsCFOF(true);
     U8 result = (var1 >> var2) | ((cpu->flags & CF) << (8-var2)) | (var1 << (9-var2));
     cpu->setCF((var1 >> (var2 - 1)) & 1);
     cpu->setOF((result ^ (result<<1)) & 0x80);
@@ -521,7 +522,7 @@ void rcr8_reg(CPU* cpu, U32 reg, U32 var2) {
 }
 void rcr8_mem(CPU* cpu, U32 eaa, U32 var2) {
     U8 var1=cpu->memory->readb(eaa);
-    cpu->fillFlagsNoOF();
+    cpu->lazyFlagsCFOF(true);
     U8 result = (var1 >> var2) | ((cpu->flags & CF) << (8-var2)) | (var1 << (9-var2));
     cpu->setCF((var1 >> (var2 - 1)) & 1);
     cpu->setOF((result ^ (result<<1)) & 0x80);
@@ -532,7 +533,7 @@ void rcr8cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         var2=var2 % 9;
         U8 var1 = *cpu->reg8[reg];
-        cpu->fillFlagsNoOF();
+        cpu->lazyFlagsCFOF(true);
         U8 result = (var1 >> var2) | ((cpu->flags & CF) << (8-var2)) | (var1 << (9-var2));
         cpu->setCF((var1 >> (var2 - 1)) & 1);
         cpu->setOF((result ^ (result<<1)) & 0x80);
@@ -544,7 +545,7 @@ void rcr8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         var2=var2 % 9;
         U8 var1 = cpu->memory->readb(eaa);
-        cpu->fillFlagsNoOF();
+        cpu->lazyFlagsCFOF(true);
         U8 result = (var1 >> var2) | ((cpu->flags & CF) << (8-var2)) | (var1 << (9-var2));
         cpu->setCF((var1 >> (var2 - 1)) & 1);
         cpu->setOF((result ^ (result<<1)) & 0x80);
@@ -553,7 +554,7 @@ void rcr8cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 }
 void rcr16_reg(CPU* cpu, U32 reg, U32 var2) {
     U16 var1=cpu->reg[reg].u16;
-    cpu->fillFlagsNoOF();
+    cpu->lazyFlagsCFOF(true);
     U16 result = (var1 >> var2) | ((cpu->flags & CF) << (16-var2)) | (var1 << (17-var2));
     cpu->setCF((var1 >> (var2 - 1)) & 1);
     cpu->setOF((result ^ (result<<1)) & 0x8000);
@@ -561,7 +562,7 @@ void rcr16_reg(CPU* cpu, U32 reg, U32 var2) {
 }
 void rcr16_mem(CPU* cpu, U32 eaa, U32 var2) {
     U16 var1=cpu->memory->readw(eaa);
-    cpu->fillFlagsNoOF();
+    cpu->lazyFlagsCFOF(true);
     U16 result = (var1 >> var2) | ((cpu->flags & CF) << (16-var2)) | (var1 << (17-var2));
     cpu->setCF((var1 >> (var2 - 1)) & 1);
     cpu->setOF((result ^ (result<<1)) & 0x8000);
@@ -572,7 +573,7 @@ void rcr16cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         var2=var2 % 17;
         U16 var1 = cpu->reg[reg].u16;
-        cpu->fillFlagsNoOF();
+        cpu->lazyFlagsCFOF(true);
         U16 result = (var1 >> var2) | ((cpu->flags & CF) << (16-var2)) | (var1 << (17-var2));
         cpu->setCF((var1 >> (var2 - 1)) & 1);
         cpu->setOF((result ^ (result<<1)) & 0x8000);
@@ -584,7 +585,7 @@ void rcr16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         var2=var2 % 17;
         U16 var1 = cpu->memory->readw(eaa);
-        cpu->fillFlagsNoOF();
+        cpu->lazyFlagsCFOF(true);
         U16 result = (var1 >> var2) | ((cpu->flags & CF) << (16-var2)) | (var1 << (17-var2));
         cpu->setCF((var1 >> (var2 - 1)) & 1);
         cpu->setOF((result ^ (result<<1)) & 0x8000);
@@ -594,7 +595,7 @@ void rcr16cl_mem(CPU* cpu, U32 eaa, U32 var2) {
 void rcr32_reg(CPU* cpu, U32 reg, U32 var2) {
     U32 result = 0;
     U32 var1=cpu->reg[reg].u32;
-    cpu->fillFlagsNoOF();
+    cpu->lazyFlagsCFOF(true);
     if (var2==1) {
         result = (var1 >> var2) | ((cpu->flags & CF) << 31);
     } else {
@@ -607,7 +608,7 @@ void rcr32_reg(CPU* cpu, U32 reg, U32 var2) {
 void rcr32_mem(CPU* cpu, U32 eaa, U32 var2) {
     U32 result = 0;
     U32 var1=cpu->memory->readd(eaa);
-    cpu->fillFlagsNoOF();
+    cpu->lazyFlagsCFOF(true);
     if (var2==1) {
         result = (var1 >> var2) | ((cpu->flags & CF) << 31);
     } else {
@@ -622,7 +623,7 @@ void rcr32cl_reg(CPU* cpu, U32 reg, U32 var2) {
     if (var2) {
         U32 result = 0;
         U32 var1 = cpu->reg[reg].u32;        
-        cpu->fillFlagsNoOF();
+        cpu->lazyFlagsCFOF(true);
         if (var2==1) {
             result = (var1 >> var2) | ((cpu->flags & CF) << 31);
         } else {
@@ -638,7 +639,7 @@ void rcr32cl_mem(CPU* cpu, U32 eaa, U32 var2) {
     if (var2) {
         U32 result = 0;
         U32 var1 = cpu->memory->readd(eaa);
-        cpu->fillFlagsNoOF();
+        cpu->lazyFlagsCFOF(true);
         if (var2==1) {
             result = (var1 >> var2) | ((cpu->flags & CF) << 31);
         } else {

@@ -55,7 +55,7 @@ public:
     virtual void writeCPUValue(JitWidth width, RegPtr sib, U8 lsl, U32 offset, DYN_PTR_SIZE src) = 0;
     virtual void writeCPUValue(JitWidth width, U32 offset, DYN_PTR_SIZE src) = 0;
 
-    void readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) override;
+    RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) override;
     RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) override;
     void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) override;
     void writeValue(JitWidth width, RegPtr addressReg, U32 imm) override;
@@ -80,6 +80,7 @@ public:
     void storeLazyFlagsSrc(U32 value) override;
     void storeLazyFlagsResult(RegPtr reg) override;
     void storeLazyFlagsOldCF(RegPtr reg) override;
+    void writeFlags(RegPtr flags) override;
     RegPtr getCondition(JitConditional condition, RegPtr resultReg = nullptr) override; // guaranteed to return 0 or 1
     void IfCondition(JitConditional condition) override;
 

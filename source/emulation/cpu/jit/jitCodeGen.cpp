@@ -732,7 +732,19 @@ void JitCodeGen::fillFlags() {
 }
 
 void JitCodeGen::storeLazyFlags(LazyFlagType flags) {
-    writeCPUValue(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), flags);
+    if (flags == FLAGS_CFOF) {
+        RegPtr lazyFlags = readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType));
+        IfNotEqual(JitWidth::b8, lazyFlags, FLAGS_CFOF); {
+            writeCPUValue(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), flags);
+            writeCPUValue(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), FLAGS_CFOF);
+        } EndIf();
+    } else {
+        writeCPUValue(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), flags);
+    }
+}
+
+void JitCodeGen::writeFlags(RegPtr flags) {
+    writeCPU(JitWidth::b32, CPU_OFFSET_OF(flags), flags);
 }
 
 void JitCodeGen::storeLazyFlagsDest(RegPtr reg) {
@@ -1006,7 +1018,7 @@ void JitCodeGen::writeValue(JitWidth width, RegPtr addressReg, U32 imm) {
     write(width, tmp, addressReg, 0, 0, imm);
 }
 
-void JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint) {
+RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint) {
     U32 firstCheckPos = 0;
 
     if (width != JitWidth::b8) {
@@ -1055,6 +1067,7 @@ void JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<v
 
     // test reg, 0x80000000 (mmu[index].canWriteRam)
     write(JitWidth::b32, tmpReg, addressReg, 0, 0, tmpReg2);
+    return tmpReg2;
 }
 
 RegPtr JitCodeGen::getFlagDestReadOnly(RegPtr result) {

@@ -37,7 +37,7 @@ public:
     U32 width;
 };
 
-extern const LazyFlags* lazyFlags[51];
+extern const LazyFlags* lazyFlags[52];
 
 enum LazyFlagType : unsigned char {    
     FLAGS_NONE,
@@ -90,6 +90,7 @@ enum LazyFlagType : unsigned char {
     FLAGS_NEG8,
     FLAGS_NEG16,
     FLAGS_NEG32,
+    FLAGS_CFOF,
     FLAGS_NULL
 };
 

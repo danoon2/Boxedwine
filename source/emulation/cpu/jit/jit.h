@@ -219,6 +219,7 @@ public:
     virtual void orCPUFlagsImmV2(U32 imm) = 0;    
     virtual RegPtr getReadOnlyFlags() = 0;
     virtual void setFlags(RegPtr flags, U32 mask) = 0;
+    virtual void writeFlags(RegPtr flags) = 0;
     virtual RegPtr getCondition(JitConditional condition, RegPtr resultReg = nullptr) = 0; // guaranteed to return 0 or 1
 
     virtual void If(JitWidth regWidth, RegPtr reg) = 0;
@@ -243,7 +244,7 @@ public:
     virtual void IfDF() = 0;
     virtual void IfSmallStack() = 0;
 
-    virtual void readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) = 0;
+    virtual RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) = 0;
     virtual RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) = 0;
     virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) = 0;
     virtual void writeValue(JitWidth width, RegPtr addressReg, U32 imm) = 0;
@@ -376,6 +377,11 @@ protected:
     void div32(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
 
     void nullReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {}
+
+    void writeRor32Flags(RegPtr reg);
+    void writeRol32Flags(RegPtr reg);
+    void writeRcl32Flags(RegPtr reg, RegPtr cf);
+    void writeRcr32Flags(RegPtr reg, RegPtr cf);
 };
 
 #endif
