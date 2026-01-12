@@ -234,6 +234,7 @@ public:
     virtual void IfLessThan2(JitWidth regWidth, RegPtr reg, U32 value) = 0;
     virtual void IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2) = 0;
     virtual void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) = 0;
+    virtual void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg, U32 value) = 0;
     virtual void IfNot(JitWidth regWidth, RegPtr reg) = 0;
     virtual void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) = 0;
     virtual void IfCondition(JitConditional condition) = 0;

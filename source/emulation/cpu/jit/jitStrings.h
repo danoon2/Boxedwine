@@ -394,9 +394,9 @@ void Jit::stos(JitWidth valueWidth, U32 size, JitWidth regWidth) {
             mov(regWidth, di, edi);
             addReg(JitWidth::b32, writeAddress, di);
         }
-        write(valueWidth, std::move(writeAddress), getReadOnlyReg8(0));
+        write(valueWidth, std::move(writeAddress), valueWidth == JitWidth::b8 ? getReadOnlyReg8(0) : getReadOnlyReg(0));
     } else {
-        write(valueWidth, edi, getReadOnlyReg8(0));
+        write(valueWidth, edi, valueWidth == JitWidth::b8 ? getReadOnlyReg8(0) : getReadOnlyReg(0));
     }
     IfDF(); {
         subValue(regWidth, edi, size);
@@ -417,7 +417,7 @@ void Jit::stosr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     // }
     RegPtr edi = getReg(7);
     RegPtr ecx = getReg(1);
-    RegPtr al = getReadOnlyReg8(0);
+    RegPtr al = valueWidth == JitWidth::b8 ? getReadOnlyReg8(0) : getReadOnlyReg(0);
 
     auto onFailure = [edi, ecx, this]() {
         forceSyncBackIfNotCached(ecx);
@@ -548,7 +548,7 @@ void Jit::lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     // }
     RegPtr esi = getReg(6);
     RegPtr ecx = getReg(1);
-    RegPtr al = getReg8(0);
+    RegPtr al = valueWidth == JitWidth::b8 ? getReg8(0) : getReg(0);
 
     auto onFailure = [esi, ecx, al, this]() {
         forceSyncBackIfNotCached(ecx);
@@ -646,7 +646,7 @@ void Jit::scas(JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType la
     // cpu->lazyFlags = FLAGS_SUB8;
     RegPtr edi = getReg(7);
     RegPtr src;
-    RegPtr dest = getReadOnlyReg8(0);
+    RegPtr dest = valueWidth == JitWidth::b8 ? getReadOnlyReg8(0) : getReadOnlyReg(0);
 
     if (cpu->thread->process->hasSetSeg[ES]) {
         RegPtr destAddress = getTmpSegAddress(ES);
@@ -694,7 +694,7 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
     //     cpu->lazyFlags = FLAGS_SUB8;
     // }
     RegPtr edi = getReg(7);
-    RegPtr dest = getTmpReg8(0); // tmp because result = AL - v1, basstour/opentdd wil fail if AL is written back after math
+    RegPtr dest = valueWidth == JitWidth::b8 ? getTmpReg8(0) : getTmpReg(0); // tmp because result = AL - v1, basstour/opentdd wil fail if AL is written back after math
     RegPtr src = getTmpReg8();
     RegPtr ecx = getReg(1);
 
