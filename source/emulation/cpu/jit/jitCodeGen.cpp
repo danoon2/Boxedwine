@@ -884,7 +884,7 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
     if (customMemoryOp) {
         // regs are not used after this, so give them back
         addressReg = nullptr;
-        customMemoryOp(std::move(tmp), std::move(offsetReg));
+        customMemoryOp(tmp, std::move(offsetReg));
     } else {
         // mov eax, [eax+reg]
         read(width, tmp, tmp, offsetReg, 0, 0);

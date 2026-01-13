@@ -21,110 +21,114 @@
 
 #include "jitFPU.h"
 
-enum DynMMXReg {
-    DYN_MMX_REG_0 = 0,
-    DYN_MMX_REG_1 = 1,
-    DYN_MMX_REG_2 = 2,
-    DYN_MMX_REG_3 = 3,
-    DYN_MMX_REG_4 = 4,
-    DYN_MMX_REG_5 = 5,
-    DYN_MMX_REG_6 = 6,
-    DYN_MMX_REG_7 = 7,
+class MMXRegInternal {
+public:
+    MMXRegInternal(U8 hardwareReg, U8 emulatedReg) : reg(hardwareReg), emulatedReg(emulatedReg) {}
+
+    U8 hardwareReg() { return reg; }
+
+    U8 emulatedReg;
+private:
+    U8 reg;
 };
+
+using MMXRegPtr = std::shared_ptr<MMXRegInternal>;
+
+#define MMX_TMP_INDEX 0xff
 
 // Implementation of JIT that is host instruction independent
 class JitMMX : public JitFPU {
 public:
-    using MmxMmxCallback = void(JitMMX::*)(DynMMXReg dst, DynMMXReg src);
-    using MmxImmCallback = void(JitMMX::*)(DynMMXReg dst, U32 imm);
+    using MmxMmxCallback = void(JitMMX::*)(MMXRegPtr dst, MMXRegPtr src);
+    using MmxImmCallback = void(JitMMX::*)(MMXRegPtr dst, U32 imm);
 
     JitMMX(CPU* cpu) : JitFPU(cpu) {}
 
     void startMMX();
-    virtual void loadMMXFromReg(DynMMXReg mmx, RegPtr reg) = 0;
-    virtual void storeCpuMMXReg(DynMMXReg reg, U32 index) = 0;
-    virtual void storeMMXToReg(DynMMXReg mmx, RegPtr reg) = 0;
-    virtual void loadCpuMMXReg(DynMMXReg reg, U32 index) = 0;
-    virtual void loadMMXFromMem32(DynMMXReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-    virtual void loadMMXFromMem64(DynMMXReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-    virtual void storeMMXToMem32(DynMMXReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-    virtual void storeMMXToMem64(DynMMXReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-    virtual DynMMXReg getTmpMMX(U8 inUse) = 0; // just in case some day I do mmx register caching
-    virtual void xorMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void orMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void andMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void andnMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psllwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psrlwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psrawMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psllwMmx(DynMMXReg dst, U32 imm) = 0;
-    virtual void psrlwMmx(DynMMXReg dst, U32 imm) = 0;
-    virtual void psrawMmx(DynMMXReg dst, U32 imm) = 0;
-    virtual void pslldMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psrldMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psradMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pslldMmx(DynMMXReg dst, U32 imm) = 0;
-    virtual void psrldMmx(DynMMXReg dst, U32 imm) = 0;
-    virtual void psradMmx(DynMMXReg dst, U32 imm) = 0;
-    virtual void psllqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psrlqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psllqMmx(DynMMXReg dst, U32 imm) = 0;
-    virtual void psrlqMmx(DynMMXReg dst, U32 imm) = 0;
+    virtual MMXRegPtr getTmpMMX() = 0;
+    virtual MMXRegPtr loadMMXFromReg(U8 index, RegPtr reg) = 0;
+    virtual void storeCpuMMXReg(MMXRegPtr reg, U32 index) = 0;
+    virtual void storeMMXToReg(MMXRegPtr mmx, RegPtr reg) = 0;
+    virtual MMXRegPtr loadCpuMMXReg(U8 index) = 0;
+    virtual MMXRegPtr loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual MMXRegPtr loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;    
+    virtual void xorMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void orMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void andMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void andnMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psllwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psrlwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psrawMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psllwMmx(MMXRegPtr dst, U32 imm) = 0;
+    virtual void psrlwMmx(MMXRegPtr dst, U32 imm) = 0;
+    virtual void psrawMmx(MMXRegPtr dst, U32 imm) = 0;
+    virtual void pslldMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psrldMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psradMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pslldMmx(MMXRegPtr dst, U32 imm) = 0;
+    virtual void psrldMmx(MMXRegPtr dst, U32 imm) = 0;
+    virtual void psradMmx(MMXRegPtr dst, U32 imm) = 0;
+    virtual void psllqMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psrlqMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psllqMmx(MMXRegPtr dst, U32 imm) = 0;
+    virtual void psrlqMmx(MMXRegPtr dst, U32 imm) = 0;
 
-    virtual void paddbMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void paddwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void padddMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void paddsbMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void paddswMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void paddusbMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void padduswMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
+    virtual void paddbMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void paddwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void padddMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void paddsbMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void paddswMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void paddusbMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void padduswMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
 
-    virtual void psubbMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psubwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psubdMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psubsbMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psubswMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psubusbMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psubuswMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
+    virtual void psubbMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psubwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psubdMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psubsbMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psubswMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psubusbMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psubuswMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
 
-    virtual void pmulhwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pmullwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pmaddwdMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
+    virtual void pmulhwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pmullwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pmaddwdMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
 
-    virtual void pcmpeqbMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pcmpeqwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pcmpeqdMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pcmpgtbMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pcmpgtwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pcmpgtdMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
+    virtual void pcmpeqbMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pcmpeqwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pcmpeqdMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pcmpgtbMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pcmpgtwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pcmpgtdMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
 
-    virtual void packsswbMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void packssdwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void packuswbMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
+    virtual void packsswbMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void packssdwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void packuswbMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
 
-    virtual void punpckhbwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void punpckhwdMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void punpckhdqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void punpcklbwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void punpcklwdMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void punpckldqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
+    virtual void punpckhbwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void punpckhwdMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void punpckhdqMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void punpcklbwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void punpcklwdMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void punpckldqMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
 
-    virtual void pavgbMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pavgwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psadbwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pextrwRegMmx(RegPtr dst, DynMMXReg src, U8 srcIndex) = 0;
-    virtual void pinsrwMmxReg(DynMMXReg dest, RegPtr src, U8 dstIndex) = 0;
-    virtual void pmaxswMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pmaxubMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pminswMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pminubMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pmovmskbMmxMmx(RegPtr dst, DynMMXReg src) = 0;
-    virtual void pmulhuwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pshufwMmxMmx(DynMMXReg dst, DynMMXReg src, U8 mask) = 0;
-    virtual void maskmovq(DynMMXReg src, DynMMXReg mask, RegPtr destAddress) = 0;
-    virtual void paddqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void psubqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pmuludqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
+    virtual void pavgbMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pavgwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psadbwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pextrwRegMmx(RegPtr dst, MMXRegPtr src, U8 srcIndex) = 0;
+    virtual void pinsrwMmxReg(MMXRegPtr dest, RegPtr src, U8 dstIndex) = 0;
+    virtual void pmaxswMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pmaxubMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pminswMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pminubMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pmovmskbMmxMmx(RegPtr dst, MMXRegPtr src) = 0;
+    virtual void pmulhuwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pshufwMmxMmx(MMXRegPtr dst, MMXRegPtr src, U8 mask) = 0;
+    virtual void maskmovq(MMXRegPtr src, MMXRegPtr mask, RegPtr destAddress) = 0;
+    virtual void paddqMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void psubqMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
+    virtual void pmuludqMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
 
     void opMmxMmx(DecodedOp* op, MmxMmxCallback callback);
     void opMmxE64(DecodedOp* op, MmxMmxCallback callback);

@@ -65,36 +65,36 @@ void JitMMX::dynamic_movPqR32(DecodedOp* op) {
     // rmrq->ud.d1 = 0;
     // cpu->fpu.startMMX();
     startMMX();
-    loadMMXFromReg(DynMMXReg(op->reg), getReadOnlyReg(op->rm));
-    storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
+    MMXRegPtr reg = loadMMXFromReg(op->reg, getReadOnlyReg(op->rm));
+    storeCpuMMXReg(reg, op->reg);
 }
 
 void JitMMX::dynamic_movPqE32(DecodedOp* op) {
     read(JitWidth::b32, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         startMMX();
-        loadMMXFromMem32(DynMMXReg(op->reg), address, offset, 0, 0);
-        storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
+        MMXRegPtr reg = loadMMXFromMem32(op->reg, address, offset, 0, 0);
+        storeCpuMMXReg(reg, op->reg);
     });
 }
 
 void JitMMX::dynamic_movR32Pq(DecodedOp* op) {
     // cpu->reg[r1].u32 = cpu->reg_mmx[r2].ud.d0;
-    loadCpuMMXReg(DynMMXReg(op->rm), op->rm);
-    storeMMXToReg(DynMMXReg(op->rm), getReg(op->reg, -1, false));
+    MMXRegPtr reg = loadCpuMMXReg(op->rm);
+    storeMMXToReg(reg, getReg(op->reg, -1, false));
 }
 
 void JitMMX::dynamic_movE32Pq(DecodedOp* op) {
     write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         // writed(address, cpu->reg_mmx[reg].ud.d0);
-        loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
-        storeMMXToMem32(DynMMXReg(op->reg), address, offset, 0, 0);
+        MMXRegPtr reg = loadCpuMMXReg(op->reg);
+        storeMMXToMem32(reg, address, offset, 0, 0);
     });
 }
 
 void JitMMX::dynamic_movPqMmx(DecodedOp* op) {
     // cpu->reg_mmx[r1].q = cpu->reg_mmx[r2].q;
-    loadCpuMMXReg(DynMMXReg(op->rm), op->rm);
-    storeCpuMMXReg(DynMMXReg(op->rm), op->reg);
+    MMXRegPtr reg = loadCpuMMXReg(op->rm);
+    storeCpuMMXReg(reg, op->reg);
 }
 
 void JitMMX::dynamic_movMmxPq(DecodedOp* op) {
@@ -106,8 +106,8 @@ void JitMMX::dynamic_movPqE64(DecodedOp* op) {
     read(JitWidth::b64, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         // cpu->reg_mmx[reg].q = readq(address);
         startMMX();
-        loadMMXFromMem64(DynMMXReg(op->reg), address, offset, 0, 0);
-        storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
+        MMXRegPtr reg = loadMMXFromMem64(op->reg, address, offset, 0, 0);
+        storeCpuMMXReg(reg, op->reg);
     });
 }
 
@@ -115,86 +115,83 @@ void JitMMX::dynamic_movE64Pq(DecodedOp* op) {
     // writeq(address, cpu->reg_mmx[reg].q);
     write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         // writed(address, cpu->reg_mmx[reg].ud.d0);
-        loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
-        storeMMXToMem64(DynMMXReg(op->reg), address, offset, 0, 0);
+        MMXRegPtr reg = loadCpuMMXReg(op->reg);
+        storeMMXToMem64(reg, address, offset, 0, 0);
     });
 }
 
 void JitMMX::opMmxMmx(DecodedOp* op, MmxMmxCallback callback) {
-    loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
-    loadCpuMMXReg(DynMMXReg(op->rm), op->rm);
-    (this->*callback)((DynMMXReg)op->reg, (DynMMXReg)op->rm);
-    storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
+    MMXRegPtr reg = loadCpuMMXReg(op->reg);
+    MMXRegPtr rm = loadCpuMMXReg(op->rm);
+    (this->*callback)(reg, rm);
+    storeCpuMMXReg(reg, op->reg);
 }
 
 void JitMMX::opMmxE64(DecodedOp* op, MmxMmxCallback callback) {
     read(JitWidth::b64, calculateEaa(op), [op, callback, this](RegPtr address, RegPtr offset) {
         // cpu->reg_mmx[reg].q = readq(address);
-        DynMMXReg tmpMMX = getTmpMMX(op->reg);
-        loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
-        loadMMXFromMem64(tmpMMX, address, offset, 0, 0);
-        (this->*callback)((DynMMXReg)op->reg, tmpMMX);
-        storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
+        MMXRegPtr reg = loadCpuMMXReg(op->reg);
+        MMXRegPtr tmpMMX = loadMMXFromMem64(MMX_TMP_INDEX, address, offset, 0, 0);
+        (this->*callback)(reg, tmpMMX);
+        storeCpuMMXReg(reg, op->reg);
     });
 }
 
 void JitMMX::opMmx(DecodedOp* op, MmxImmCallback callback) {
-    loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
-    loadCpuMMXReg(DynMMXReg(op->rm), op->rm);
-    (this->*callback)((DynMMXReg)op->reg, op->imm);
-    storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
+    MMXRegPtr reg = loadCpuMMXReg(op->reg);
+    (this->*callback)(reg, op->imm);
+    storeCpuMMXReg(reg, op->reg);
 }
 
 void JitMMX::dynamic_pmovmskbR32Mmx(DecodedOp* op) {
-    loadCpuMMXReg(DynMMXReg(op->rm), op->rm);
-    pmovmskbMmxMmx(getReg(op->reg, -1, false), (DynMMXReg)op->rm);
+    MMXRegPtr rm = loadCpuMMXReg(op->rm);
+    pmovmskbMmxMmx(getReg(op->reg, -1, false), rm);
 }
 
 void JitMMX::dynamic_pextrwR32Mmx(DecodedOp* op) {
-    loadCpuMMXReg(DynMMXReg(op->rm), op->rm);
-    pextrwRegMmx(getReg(op->reg, -1, false), (DynMMXReg)op->rm, op->imm & 3);
+    MMXRegPtr rm = loadCpuMMXReg(op->rm);
+    pextrwRegMmx(getReg(op->reg, -1, false), rm, op->imm & 3);
 }
 
 void JitMMX::dynamic_pextrwE16Mmx(DecodedOp* op) {
     write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
-        loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
+        MMXRegPtr reg = loadCpuMMXReg(op->reg);
         RegPtr tmp = getTmpReg();
-        pextrwRegMmx(tmp, (DynMMXReg)op->reg, op->imm & 3);
+        pextrwRegMmx(tmp, reg, op->imm & 3);
         write(JitWidth::b16, address, offset, 0, 0, tmp);
     });
 }
 
 void JitMMX::dynamic_pinsrwMmxR32(DecodedOp* op) {
-    loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
-    pinsrwMmxReg((DynMMXReg)op->reg, getReadOnlyReg(op->rm), op->imm & 3);
-    storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
+    MMXRegPtr reg = loadCpuMMXReg(op->reg);
+    pinsrwMmxReg(reg, getReadOnlyReg(op->rm), op->imm & 3);
+    storeCpuMMXReg(reg, op->reg);
 }
 
 void JitMMX::dynamic_pinsrwMmxE16(DecodedOp* op) {
     read(JitWidth::b16, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
-        loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
+        MMXRegPtr reg = loadCpuMMXReg(op->reg);
         RegPtr tmp = getTmpReg();
         read(JitWidth::b16, tmp, address, offset, 0, 0);
-        pinsrwMmxReg((DynMMXReg)op->reg, tmp, op->imm & 3);
-        storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
+        pinsrwMmxReg(reg, tmp, op->imm & 3);
+        storeCpuMMXReg(reg, op->reg);
     });
 }
 
 void JitMMX::dynamic_pshufwMmxMmx(DecodedOp* op) {
-    loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
-    loadCpuMMXReg(DynMMXReg(op->rm), op->rm);
-    pshufwMmxMmx((DynMMXReg)op->reg, (DynMMXReg)op->rm, op->imm);
-    storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
+    MMXRegPtr reg = loadCpuMMXReg(op->reg);
+    MMXRegPtr rm = loadCpuMMXReg(op->rm);
+    pshufwMmxMmx(reg, rm, op->imm);
+    storeCpuMMXReg(reg, op->reg);
 }
 
 void JitMMX::dynamic_pshufwMmxE64(DecodedOp* op) {
     read(JitWidth::b64, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         // cpu->reg_mmx[reg].q = readq(address);
-        DynMMXReg tmpMMX = getTmpMMX(op->reg);
-        loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
-        loadMMXFromMem64(tmpMMX, address, offset, 0, 0);
-        pshufwMmxMmx((DynMMXReg)op->reg, tmpMMX, op->imm);
-        storeCpuMMXReg(DynMMXReg(op->reg), op->reg);
+        MMXRegPtr tmpMMX = loadMMXFromMem64(MMX_TMP_INDEX, address, offset, 0, 0);
+        MMXRegPtr reg = loadCpuMMXReg(op->reg);        
+        pshufwMmxMmx(reg, tmpMMX, op->imm);
+        storeCpuMMXReg(reg, op->reg);
     });
 }
 
@@ -207,10 +204,10 @@ void JitMMX::dynamic_maskmovqEDIMmxMmx(DecodedOp* op) {
         address = getReadOnlyReg(7);
     }
     write(JitWidth::b64, std::move(address), nullptr, [op, this](RegPtr address, RegPtr offset) {
-        loadCpuMMXReg(DynMMXReg(op->reg), op->reg);
-        loadCpuMMXReg(DynMMXReg(op->rm), op->rm);
+        MMXRegPtr reg = loadCpuMMXReg(op->reg);
+        MMXRegPtr rm = loadCpuMMXReg(op->rm);
         addReg(JitWidth::b32, address, offset);
-        maskmovq(DynMMXReg(op->reg), DynMMXReg(op->rm), address);
+        maskmovq(reg, rm, address);
     });
 }
 

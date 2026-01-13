@@ -21,56 +21,63 @@
 
 #include "jitCodeGen.h"
 
-enum DynFpuReg {
-    DYN_FPU_REG_0 = 0,
-    DYN_FPU_REG_1 = 1,
-    DYN_FPU_REG_2 = 2
-};
-
 enum DynFpuWidth {
     DYN_FPU_32_BIT = 0,
     DYN_FPU_64_BIT = 1
 };
 
+class FPURegInternal {
+public:
+    FPURegInternal(U8 hardwareReg) : reg(hardwareReg) {}
+
+    U8 hardwareReg() { return reg; }
+
+private:
+    U8 reg;
+};
+
+using FPURegPtr = std::shared_ptr<FPURegInternal>;
+
 // Implementation of JIT that is host instruction independent
 class JitFPU : public JitCodeGen {
 public:
-    using XmmXmmCallback = void(JitFPU::*)(DynFpuReg dst, DynFpuReg src);
+    using XmmXmmCallback = void(JitFPU::*)(FPURegPtr dst, FPURegPtr src);
 
     JitFPU(CPU* cpu) : JitCodeGen(cpu) {}
+    
+    virtual FPURegPtr getFPUTmp() = 0;
+    virtual void storeCpuFpuReg(FPURegPtr reg, RegPtr index) = 0;
+    virtual void loadCpuFpuReg(FPURegPtr reg, RegPtr index) = 0;
+    virtual void loadCpuFpuRegConst(FPURegPtr reg, U32 offset) = 0;
 
-    virtual void storeCpuFpuReg(DynFpuReg reg, RegPtr index, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
-    virtual void loadCpuFpuReg(DynFpuReg reg, RegPtr index, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
-    virtual void loadCpuFpuRegConst(DynFpuReg reg, U32 offset) = 0;
-
-    virtual void storeFpuReg(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
-    virtual void loadFpuReg(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
-    virtual void loadFpuRegFromInt(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-    virtual void fpuRegExtend32To64(DynFpuReg dst, DynFpuReg src) = 0;
-    virtual void fpuReg64To32(DynFpuReg dst, DynFpuReg src) = 0;
-    virtual RegPtr fpuRegToInt32(DynFpuReg fpuRegSrc, bool truncate) = 0;
-    virtual void fpuRegToInt64(DynFpuReg regDst, DynFpuReg fpuRegSrc, bool truncate) = 0;
-    virtual void fpuRegInt64To64(DynFpuReg regDst, DynFpuReg fpuRegSrc) = 0;
-    virtual void regToFpuReg(DynFpuReg dst, RegPtr src) = 0;
+    virtual void storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
+    virtual void loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
+    virtual void loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void fpuRegExtend32To64(FPURegPtr dst, FPURegPtr src) = 0;
+    virtual void fpuReg64To32(FPURegPtr dst, FPURegPtr src) = 0;
+    virtual RegPtr fpuRegToInt32(FPURegPtr fpuRegSrc, bool truncate) = 0;
+    virtual void fpuRegToInt64(FPURegPtr regDst, FPURegPtr fpuRegSrc, bool truncate) = 0;
+    virtual void fpuRegInt64To64(FPURegPtr regDst, FPURegPtr fpuRegSrc) = 0;
+    virtual void regToFpuReg(FPURegPtr dst, RegPtr src) = 0;
     virtual void updateFPURounding() = 0;
     virtual void restoreFPURounding() = 0;
 
-    virtual void fpuAdd(DynFpuReg dst, DynFpuReg src) = 0;
-    virtual void fpuMul(DynFpuReg dst, DynFpuReg src) = 0;
-    virtual void fpuSub(DynFpuReg dst, DynFpuReg src) = 0;
-    virtual void fpuDiv(DynFpuReg dst, DynFpuReg src) = 0;
-    virtual void fpuXor(DynFpuReg dst, DynFpuReg src) = 0;
-    virtual void fpuAnd(DynFpuReg dst, DynFpuReg src) = 0;
-    virtual void fpuSqrt(DynFpuReg dst, DynFpuReg src) = 0;
-    virtual void fcompare(DynFpuReg fpuReg1, DynFpuReg fpuReg2, RegPtr ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) = 0;
+    virtual void fpuAdd(FPURegPtr dst, FPURegPtr src) = 0;
+    virtual void fpuMul(FPURegPtr dst, FPURegPtr src) = 0;
+    virtual void fpuSub(FPURegPtr dst, FPURegPtr src) = 0;
+    virtual void fpuDiv(FPURegPtr dst, FPURegPtr src) = 0;
+    virtual void fpuXor(FPURegPtr dst, FPURegPtr src) = 0;
+    virtual void fpuAnd(FPURegPtr dst, FPURegPtr src) = 0;
+    virtual void fpuSqrt(FPURegPtr dst, FPURegPtr src) = 0;
+    virtual void fcompare(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) = 0;
 
     RegPtr getTopReg();
     RegPtr calculateIndexReg(RegPtr topReg, U32 index);
     void IfNotRegCached(RegPtr indexReg);
     void setRegIsCached(RegPtr indexReg, bool regIsCached);
-    void syncXmmToCPU(RegPtr topReg, DynFpuReg xmm, U8 regIndex);
-    void syncXmmToCPUWithIndexReg(RegPtr indexReg, DynFpuReg fpuReg);
-    RegPtr syncCPUToXmm(RegPtr topReg, DynFpuReg xmm, U8 regIndex);
+    void syncXmmToCPU(RegPtr topReg, FPURegPtr xmm, U8 regIndex);
+    void syncXmmToCPUWithIndexReg(RegPtr indexReg, FPURegPtr fpuReg);
+    RegPtr syncCPUToXmm(RegPtr topReg, FPURegPtr xmm, U8 regIndex);
     RegPtr readFPUTag(RegPtr indexReg);
     void writeFPUTag(RegPtr indexReg, RegPtr valueReg);
 
@@ -205,10 +212,10 @@ public:
     void dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) override;
 
 private:
-    void loadFpuRegFromShort(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp);
+    void loadFpuRegFromShort(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp);
     void fpuLoadConst(U32 offset);
-    void doFCOM(DynFpuReg fpuReg1, DynFpuReg fpuReg2, RegPtr ordTags);
-    void doFCOMI(DynFpuReg fpuReg1, DynFpuReg fpuReg2, RegPtr ordTags);
+    void doFCOM(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags);
+    void doFCOMI(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags);
     void doFST_STi(DecodedOp* op, bool pop);
     void doFCOM_STi(DecodedOp* op, bool pop);
     void doFCOMI_ST0_STj(DecodedOp* op, bool pop);
