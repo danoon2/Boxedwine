@@ -63,9 +63,9 @@ bool Jit::btStartFlags(DecodedOp* op) {
 }
 
 RegPtr Jit::btMask(U32 bitMask, U32 reg) {
-    RegPtr mask = getTmpReg();
-    movValue(JitWidth::b32, mask, 1);
     RegPtr cl = getTmpReg(reg, false, 1);
+    RegPtr mask = getTmpReg();
+    movValue(JitWidth::b32, mask, 1);    
     andValue(JitWidth::b32, cl, bitMask);
     shlReg(JitWidth::b32, mask, cl);
     return mask;

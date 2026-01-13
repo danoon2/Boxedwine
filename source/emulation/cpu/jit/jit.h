@@ -247,7 +247,9 @@ public:
 
     virtual RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) = 0;
     virtual RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) = 0;
+    virtual RegPtr read(JitWidth width, U32 address) = 0;
     virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) = 0;
+    virtual void write(JitWidth width, U32 address, RegPtr src) = 0;
     virtual void writeValue(JitWidth width, RegPtr addressReg, U32 imm) = 0;
     
     // I would say that most ops shouldn't use these directly, but pusha/popa needs it

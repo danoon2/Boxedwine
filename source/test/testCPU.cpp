@@ -6537,6 +6537,23 @@ void testMovAlOb() {
     EAX = DEFAULT;
     runTestCPU();
     assertTrue(EAX == ((DEFAULT & 0xFFFFFF00) | 0x78));
+
+    // jit takes a different path if there is no segment
+    if (cpu->isBig()) {
+        cpu->seg[DS].address = 0;
+        process->hasSetSeg[DS] = false;
+        U32 address = HEAP_ADDRESS + 0x10123;
+        memory->writed(address, 0x12345678);
+
+        newInstruction(0xa0, 0);
+        pushCode32(address);
+        EAX = DEFAULT;
+        runTestCPU();
+        assertTrue(EAX == ((DEFAULT & 0xFFFFFF00) | 0x78));
+        
+        cpu->seg[DS].address = HEAP_ADDRESS;
+        process->hasSetSeg[DS] = true;
+    }
 }
 
 void testMovAlOb0xa0() {
@@ -6569,6 +6586,33 @@ void testMovEaxOd0x2a1() {
     EAX = DEFAULT;
     runTestCPU();
     assertTrue(EAX == 0x12345678);
+
+    // jit takes a different path if there is no segment
+    if (cpu->big) {
+        cpu->seg[DS].address = 0;
+        process->hasSetSeg[DS] = false;
+        U32 address = HEAP_ADDRESS + 0x10123;
+        memory->writed(address, 0x12345678);
+
+        newInstruction(0xa1, 0);
+        pushCode32(address);
+        EAX = DEFAULT;
+        runTestCPU();
+        assertTrue(EAX == 0x12345678);
+
+        // cross page boundry
+        address = HEAP_ADDRESS + 0x10FFD;
+        memory->writed(address, 0x12345678);
+
+        newInstruction(0xa1, 0);
+        pushCode32(address);
+        EAX = DEFAULT;
+        runTestCPU();
+        assertTrue(EAX == 0x12345678);
+
+        cpu->seg[DS].address = HEAP_ADDRESS;
+        process->hasSetSeg[DS] = true;
+    }
 }
 
 void testMovObAl() {
@@ -6584,6 +6628,22 @@ void testMovObAl() {
     EAX = 0x12345678;
     runTestCPU();
     assertTrue(memory->readd(address) == ((DEFAULT & 0xFFFFFF00) | 0x78));
+
+    // jit takes a different path if there is no segment
+    if (cpu->big) {
+        cpu->seg[DS].address = 0;
+        process->hasSetSeg[DS] = false;
+        memory->writed(address, DEFAULT);
+
+        newInstruction(0xa2, 0);
+        pushCode32(address);
+        EAX = 0x12345678;
+        runTestCPU();
+        assertTrue(memory->readd(address) == ((DEFAULT & 0xFFFFFF00) | 0x78));
+
+        cpu->seg[DS].address = HEAP_ADDRESS;
+        process->hasSetSeg[DS] = true;
+    }
 }
 
 void testMovObAl0xa2() {
@@ -6618,6 +6678,32 @@ void testMovOdEax0x2a3() {
     EAX = 0x12345678;
     runTestCPU();
     assertTrue(memory->readd(address) == 0x12345678);
+
+    // jit takes a different path if there is no segment
+    if (cpu->big) {
+        cpu->seg[DS].address = 0;
+        process->hasSetSeg[DS] = false;
+        memory->writed(address, DEFAULT);
+
+        newInstruction(0xa3, 0);
+        pushCode32(address);
+        EAX = 0x12345678;
+        runTestCPU();
+        assertTrue(memory->readd(address) == 0x12345678);
+
+        // cross page boundry
+        address = HEAP_ADDRESS + 0x10FFD;
+        memory->writed(address, DEFAULT);
+
+        newInstruction(0xa3, 0);
+        pushCode32(address);
+        EAX = 0x12345678;
+        runTestCPU();
+        assertTrue(memory->readd(address) == 0x12345678);
+
+        cpu->seg[DS].address = HEAP_ADDRESS;
+        process->hasSetSeg[DS] = true;
+    }
 }
 
 void testMovsb0x0a4() {

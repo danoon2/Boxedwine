@@ -77,70 +77,58 @@ void Jit::dynamic_movs16r16(DecodedOp* op) {
     emulateSingleOp();
 }
 void Jit::dynamic_movAlOb(DecodedOp* op) {
-    RegPtr reg;
     if (cpu->thread->process->hasSetSeg[op->base]) {
-        reg = getTmpSegAddress(op->base);
+        RegPtr reg = getTmpSegAddress(op->base);
         addValue(JitWidth::b32, reg, op->data.disp);
+        mov(JitWidth::b8, getReg8(0), read(JitWidth::b8, reg));
     } else {
-        reg = getTmpReg();
-        movValue(JitWidth::b32, reg, op->data.disp);
-    }
-    mov(JitWidth::b8, getReg8(0), read(JitWidth::b8, reg));
+        mov(JitWidth::b8, getReg8(0), read(JitWidth::b8, op->data.disp));
+    }    
 }
 void Jit::dynamic_movAxOw(DecodedOp* op) {
-    RegPtr reg;
     if (cpu->thread->process->hasSetSeg[op->base]) {
-        reg = getTmpSegAddress(op->base);
+        RegPtr reg = getTmpSegAddress(op->base);
         addValue(JitWidth::b32, reg, op->data.disp);
+        mov(JitWidth::b16, getReg(0), read(JitWidth::b16, reg));
     } else {
-        reg = getTmpReg();
-        movValue(JitWidth::b32, reg, op->data.disp);
-    }
-    mov(JitWidth::b16, getReg(0), read(JitWidth::b16, reg));
+        mov(JitWidth::b16, getReg(0), read(JitWidth::b16, op->data.disp));
+    }    
 }
 void Jit::dynamic_movEaxOd(DecodedOp* op) {
-    RegPtr reg;
     if (cpu->thread->process->hasSetSeg[op->base]) {
-        reg = getTmpSegAddress(op->base);
+        RegPtr reg = getTmpSegAddress(op->base);
         addValue(JitWidth::b32, reg, op->data.disp);
+        mov(JitWidth::b32, getReg(0, -1, false), read(JitWidth::b32, reg));
     } else {
-        reg = getTmpReg();
-        movValue(JitWidth::b32, reg, op->data.disp);
+        mov(JitWidth::b32, getReg(0, -1, false), read(JitWidth::b32, op->data.disp));
     }
-    mov(JitWidth::b32, getReg(0, -1, false), read(JitWidth::b32, reg));
 }
 void Jit::dynamic_movObAl(DecodedOp* op) {
-    RegPtr reg;
     if (cpu->thread->process->hasSetSeg[op->base]) {
-        reg = getTmpSegAddress(op->base);
+        RegPtr reg = getTmpSegAddress(op->base);
         addValue(JitWidth::b32, reg, op->data.disp);
+        write(JitWidth::b8, reg, getReadOnlyReg8(0));
     } else {
-        reg = getTmpReg();
-        movValue(JitWidth::b32, reg, op->data.disp);
-    }
-    write(JitWidth::b8, reg, getReadOnlyReg8(0));
+        write(JitWidth::b8, op->data.disp, getReadOnlyReg8(0));
+    }    
 }
 void Jit::dynamic_movOwAx(DecodedOp* op) {
-    RegPtr reg;
     if (cpu->thread->process->hasSetSeg[op->base]) {
-        reg = getTmpSegAddress(op->base);
+        RegPtr reg = getTmpSegAddress(op->base);
         addValue(JitWidth::b32, reg, op->data.disp);
+        write(JitWidth::b16, reg, getReadOnlyReg(0));
     } else {
-        reg = getTmpReg();
-        movValue(JitWidth::b32, reg, op->data.disp);
-    }
-    write(JitWidth::b16, reg, getReadOnlyReg(0));
+        write(JitWidth::b16, op->data.disp, getReadOnlyReg(0));
+    }    
 }
 void Jit::dynamic_movOdEax(DecodedOp* op) {
-    RegPtr reg;
     if (cpu->thread->process->hasSetSeg[op->base]) {
-        reg = getTmpSegAddress(op->base);
+        RegPtr reg = getTmpSegAddress(op->base);
         addValue(JitWidth::b32, reg, op->data.disp);
+        write(JitWidth::b32, reg, getReadOnlyReg(0));
     } else {
-        reg = getTmpReg();
-        movValue(JitWidth::b32, reg, op->data.disp);
-    }
-    write(JitWidth::b32, reg, getReadOnlyReg(0));
+        write(JitWidth::b32, op->data.disp, getReadOnlyReg(0));
+    }    
 }
 void Jit::dynamic_movGwXzR8(DecodedOp* op) {
     movzx(JitWidth::b16, getReg(op->reg), JitWidth::b8, getReadOnlyReg8(op->rm));

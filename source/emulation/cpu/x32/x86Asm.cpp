@@ -204,6 +204,10 @@ void X86Asm::mem32(U32 inst, U8 dst, const Mem& mem, bool is64) {
             }
         }
     } else {
+#ifdef BOXEDWINE_64
+        // 32-bit direct access in a 64-bit address space doesn't make sense, so on x64 this is rip relative
+        kpanic("X86Asm::mem32 unsupported");
+#endif
         outb(inst);
         outb(0x05 | ((dst & 7) << 3));
         outd(mem.disp);

@@ -43,6 +43,7 @@ public:
     virtual void read(JitWidth width, RegPtr dest, RegPtr reg, U8 lsl, U32 disp) = 0;
     virtual void readRamPage(RegPtr dest, RegPtr index) = 0;
     virtual void readMMU(RegPtr dest, RegPtr index) = 0;
+    virtual void readMMU(RegPtr dest, U32 index) = 0;
     virtual void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
     virtual void write(JitWidth width, RegPtr reg, U32 disp, RegPtr src) = 0;
     virtual void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
@@ -57,7 +58,9 @@ public:
 
     RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) override;
     RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) override;
+    RegPtr read(JitWidth width, U32 address) override;
     void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) override;
+    void write(JitWidth width, U32 address, RegPtr src) override;
     void writeValue(JitWidth width, RegPtr addressReg, U32 imm) override;
 
     void genCF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1

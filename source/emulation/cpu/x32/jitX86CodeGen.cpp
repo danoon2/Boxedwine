@@ -53,13 +53,14 @@ static U8 tmps[] = { 14, 3, 2, 1, 0 };
 // should be a volitile tmp reg
 #define PARAM_CALL_TMP x86.rdx
 #else
-static U8 regCache[] = { 0, 1, 2, 3, 10, 5, 6, 7 };
+static U8 regCache[] = { 0, 1, 2, 3, 10, 5, 6, INVALID_REG };
 static bool isTmp[] = { false, false, false, false, false, false, false, false, true, true, false, true, true, false, true, false };
 static U8 tmps[] = { 14, 12, 11, 9, 8 };
 // should be a volitile tmp reg
 #define PARAM_CALL_TMP x86.r11
 #endif
 #define HOST_RAM x86.r15
+#define HOST_MMU x86.rdi
 #define HOST_CPU x86.r13
 #define NUMBER_OF_REGS 16
 #define MEM_PTR X86Asm::Mem64
@@ -174,6 +175,7 @@ public:
 
     void readRamPage(RegPtr dest, RegPtr index) override;
     void readMMU(RegPtr dest, RegPtr index) override;
+    void readMMU(RegPtr dest, U32 index) override;
     void read(JitWidth width, RegPtr dest, RegPtr reg, U8 lsl, U32 disp) override;
     void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) override;
     void write(JitWidth width, RegPtr reg, U32 disp, RegPtr src) override;
@@ -1837,13 +1839,17 @@ void JitX86CodeGen::readRamPage(RegPtr dest, RegPtr index) {
 #include "../../softmmu/kmemory_soft.h"
 void JitX86CodeGen::readMMU(RegPtr dest, RegPtr index) {
 #ifdef BOXEDWINE_64
-    //x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32(HOST_MMU, R(index->hardwareReg()), 2, 0));
-    if ((U64)getMemData(KThread::currentThread()->memory)->mmu > 0x7fffffff) {
-        kpanic("JitX86CodeGen::readMMU");
-    }
-    read(JitWidth::b32, dest, index, 2, (U32)(U64)getMemData(KThread::currentThread()->memory)->mmu);
+    x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32(HOST_MMU, R(index->hardwareReg()), 2, 0));
 #else
     read(JitWidth::b32, dest, index, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
+#endif
+}
+
+void JitX86CodeGen::readMMU(RegPtr dest, U32 index) {
+#ifdef BOXEDWINE_64
+    x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32(HOST_MMU, index * 4));
+#else
+    x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32((U32)getMemData(KThread::currentThread()->memory)->mmu + index * 4));
 #endif
 }
 
@@ -4659,7 +4665,7 @@ U8* JitX86CodeGen::createStartJITCode() {
     x86.push(x86.r14);
     x86.push(x86.r15);
 
-    //x86.mov(HOST_MMU, (U64)getMemData(KThread::currentThread()->memory)->mmu);
+    x86.mov(HOST_MMU, (U64)getMemData(KThread::currentThread()->memory)->mmu);
     x86.mov(HOST_RAM, (U64)ramPages);
 
     // on win32 ecx contains cpu
