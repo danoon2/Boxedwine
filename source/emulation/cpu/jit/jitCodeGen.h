@@ -121,12 +121,16 @@ protected:
     void removeJIT(DecodedOp* op, U32 count);
     void jumpEip();
 
+    virtual void nakedCall(RegPtr reg) = 0;
+    virtual void nakedReturn() = 0;
+
     virtual void commitJIT(DecodedOp* op);
     virtual U8* createStartJITCode() = 0;
     virtual bool compileOps(DecodedOp* op);
     virtual void preCommitJIT() {}
     virtual U8* createDynamicExecutableMemory();
     virtual void patch(U8* begin) {}
+    virtual void createHelpers() {}
 
     RegPtr callGetCondition(JitConditional condition, RegPtr resultReg = nullptr);
     RegPtr calculateCondition(JitConditional condition, RegPtr resultReg = nullptr);    

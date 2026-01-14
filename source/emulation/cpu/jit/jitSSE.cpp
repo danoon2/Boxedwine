@@ -646,4 +646,238 @@ void JitSSE::dynamic_clflush(DecodedOp* op) {
         clflush(address, offset, 0, 0);
     });
 }
+
+// BSD 3-Clause License
+// https://github.com/divideconcept/FastTrigo/blob/master/fasttrigo.cpp
+
+/*
+
+#include <math.h>
+const float invtwopi=0.1591549f; // 0x3e22f981
+const float twopi=6.283185f; // 0x40c90fda
+const float threehalfpi=4.7123889f; // 0x4096cbe4
+const float pi=3.141593f; // 0x40490fdc
+const float halfpi=1.570796f; // 0x3fc90fd8
+const float quarterpi=0.7853982f;
+
+float cos_32s(float x)
+{
+    const float c1= 0.99940307f; // 0x3f7fd8e1
+    const float c2=-0.49558072f; // 0xbefdbcc2
+    const float c3= 0.03679168f; // 0x3d16b2df
+    float x2;      // The input argument squared
+    x2=x * x;
+    return (c1 + x2*(c2 + c3 * x2));
+}
+float cos1(float angle){
+    //clamp to the range 0..2pi
+    angle=angle-floorf(angle*invtwopi)*twopi;
+    angle=angle>0.f?angle:-angle;
+
+    if(angle<halfpi) return cos_32s(angle);
+    if(angle<pi) return -cos_32s(pi-angle);
+    if(angle<threehalfpi) return -cos_32s(angle-pi);
+    return cos_32s(twopi-angle);
+}
+
+*/
+
+U8* JitSSE::createJitCosSub() {
+    SSERegPtr xmm0 = getTmpSSE(); // counts on getTmpSSE returning regs in the same order
+    SSERegPtr tmp = getTmpSSE();
+    SSERegPtr tmp2 = getTmpSSE();
+
+    // x2=x * x;
+    mulssXmmXmm(xmm0, xmm0);
+
+    // c3 * x2
+    RegPtr r = getTmpReg();
+    movValue(JitWidth::b32, r, 0x3d16b2df);
+    movd(tmp, r);
+    mulssXmmXmm(tmp, xmm0);
+
+    // c2 + 
+    movValue(JitWidth::b32, r, 0xbefdbcc2);
+    movd(tmp2, r);
+    addssXmmXmm(tmp, tmp2);
+
+    // x2*(
+    mulssXmmXmm(xmm0, tmp);
+
+    // c1 + 
+    movValue(JitWidth::b32, r, 0x3f7fd8e1);
+    movd(tmp, r);
+    addssXmmXmm(xmm0, tmp);
+
+    nakedReturn();
+    U8* result = createDynamicExecutableMemory();
+    patch(result);
+    return result;
+}
+
+U8* JitSSE::createJitCos() {
+    SSERegPtr xmm0 = getTmpSSE(); // counts on getTmpSSE returning regs in the same order
+    SSERegPtr xmm1 = getTmpSSE();
+    SSERegPtr xmm2 = getTmpSSE();
+    SSERegPtr xmm3 = getTmpSSE();
+
+    // angle=angle-floorf(angle*invtwopi)*twopi;
+
+    // angle*invtwopi
+    RegPtr reg = getTmpReg();
+    movValue(JitWidth::b32, reg, 0x3e22f981);
+    movd(xmm2, reg);
+    movq(xmm1, xmm0);
+    mulssXmmXmm(xmm1, xmm2);
+
+    // result contains angle*invtwopi
+    
+    // floorf
+    // if pos then CVTTSS2SI else { neg CVTTSS2SI neg }
+    // __m128 r = _mm_cvtepi32_ps(_mm_cvttps_epi32(f));
+    // r = _mm_sub_ss(r, _mm_and_ps(_mm_cmplt_ss(f, r), kOne));
+    cvttss2siR32Xmm(reg, xmm1);
+    cvtsi2ssXmmR32(xmm2, reg);
+    cmpssXmmXmm(xmm1, xmm2, 1); // 1 == less than
+
+    // tmp is r
+    // tmp2 is result of _mm_cmplt_ss
+    movValue(JitWidth::b32, reg, 0x3f800000); // kOne
+    movd(xmm3, reg);
+    andpsXmmXmm(xmm1, xmm3);
+    subssXmmXmm(xmm2, xmm1);
+
+    // tmp contains floorf(angle*invtwopi)
+    // *twopi
+    movValue(JitWidth::b32, reg, 0x40c90fda); // twopi
+    movd(xmm3, reg);
+    mulssXmmXmm(xmm2, xmm3);
+
+    // angle = angle - 
+    subssXmmXmm(xmm0, xmm2);
+
+    // angle=angle>0.f?angle:-angle;
+    movValue(JitWidth::b32, reg, 0x80000000); // -0.0f
+    movd(xmm2, reg);
+    andnpsXmmXmm(xmm2, xmm0);
+
+    RegPtr cos = getTmpReg();
+    movValue(DYN_PTR, cos, (DYN_PTR_SIZE)cpu->thread->process->jitCosSub);
+
+    // if(angle<halfpi) return cos_32s(angle);
+    movValue(JitWidth::b32, reg, 0x3fc90fd8); // halfpi
+    movd(xmm3, reg);
+    IfSseLessThan(xmm2, xmm3); {
+        movq(xmm0, xmm2);
+        nakedCall(cos);
+        nakedReturn();
+    } EndIf();
+
+    // if (angle < pi) return -cos_32s(pi - angle);
+    movValue(JitWidth::b32, reg, 0x40490fdc); // pi
+    movd(xmm3, reg);
+    IfSseLessThan(xmm2, xmm3); {
+        subpsXmmXmm(xmm3, xmm2);
+        movq(xmm0, xmm3); // cos_32s expects it here
+        nakedCall(cos);
+        // neg result
+        xorpsXmmXmm(xmm3, xmm3);
+        subpsXmmXmm(xmm3, xmm0);
+        movq(xmm0, xmm3);
+        nakedReturn();
+    } EndIf();
+
+    // if (angle < threehalfpi) return -cos_32s(angle - pi);
+    movValue(JitWidth::b32, reg, 0x4096cbe4); // threehalfpi
+    movd(xmm1, reg); // tmp still contains PI so don't overwrite it
+    IfSseLessThan(xmm2, xmm1); {
+        subpsXmmXmm(xmm2, xmm3);
+        movq(xmm0, xmm2);
+        nakedCall(cos);
+        // neg result
+        xorpsXmmXmm(xmm3, xmm3);
+        subpsXmmXmm(xmm3, xmm0);
+        movq(xmm0, xmm3);
+        nakedReturn();
+    } EndIf();
+
+    // return cos_32s(twopi - angle);
+    movValue(JitWidth::b32, reg, 0x40c90fda); // twopi
+    movd(xmm3, reg);
+    subpsXmmXmm(xmm3, xmm2);
+    movq(xmm0, xmm3); // cos_32s expects it here
+    nakedCall(cos);
+    nakedReturn();
+
+    U8* dyn = createDynamicExecutableMemory();
+    patch(dyn);
+    return dyn;
+}
+
+void JitSSE::createHelpers() {
+    JitMMX::createHelpers();
+    JitSSE* jit = (JitSSE*)startNewJIT(cpu);
+    cpu->thread->process->jitCosSub = (OpCallback)jit->createJitCosSub();
+    delete jit;
+    jit = (JitSSE*)startNewJIT(cpu);
+    cpu->thread->process->jitCos = (OpCallback)jit->createJitCos();    
+    delete jit;
+}
+
+void JitSSE::dynamic_FCOS(DecodedOp* op) {
+    if (!cpu->thread->process->jitCos) {
+        JitCodeGen::dynamic_FCOS(op);
+    } else {
+        RegPtr cos = getTmpReg();
+        FPURegPtr result = getFPUTmp();
+        RegPtr top = getTopReg();
+
+        IfNotRegCached(top); {
+            JitCodeGen::dynamic_FCOS(op);
+        } StartElse(); {
+            loadCpuFpuReg(result, top);
+            SSERegPtr sse = std::make_shared<SSERegInternal>(result->hardwareReg(), 0xff);            
+            cvtsd2ssXmmXmm(sse, sse);
+            movValue(DYN_PTR, cos, (DYN_PTR_SIZE)cpu->thread->process->jitCos);
+            top = nullptr;
+            nakedCall(cos); // does not preserver regs
+            top = getTopReg();
+            cvtss2sdXmmXmm(sse, sse);
+            syncXmmToCPU(top, result, 0);
+        } EndIf();
+    }
+}
+
+void JitSSE::dynamic_FSIN(DecodedOp* op) {
+    if (!cpu->thread->process->jitCos) {
+        JitCodeGen::dynamic_FSIN(op);
+    } else {
+        RegPtr cos = getTmpReg();
+        FPURegPtr result = getFPUTmp();
+        RegPtr top = getTopReg();
+
+        IfNotRegCached(top); {
+            JitCodeGen::dynamic_FSIN(op);
+        } StartElse(); {
+            loadCpuFpuReg(result, top);
+            SSERegPtr sse = std::make_shared<SSERegInternal>(result->hardwareReg(), 0xff);
+            cvtsd2ssXmmXmm(sse, sse);
+            {
+                SSERegPtr halfPi = getTmpSSE();
+                RegPtr reg = getTmpReg();
+                movValue(JitWidth::b32, reg, 0x3fc90fd8); // halfpi
+                movd(halfPi, reg);
+                subpsXmmXmm(halfPi, sse);
+                movq(sse, halfPi);
+            }
+            movValue(DYN_PTR, cos, (DYN_PTR_SIZE)cpu->thread->process->jitCos);
+            top = nullptr;
+            nakedCall(cos); // does not preserver regs
+            top = getTopReg();
+            cvtss2sdXmmXmm(sse, sse);
+            syncXmmToCPU(top, result, 0);
+        } EndIf();
+    }
+}
+
 #endif

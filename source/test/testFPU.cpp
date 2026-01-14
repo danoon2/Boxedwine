@@ -32,6 +32,7 @@ extern KMemory* memory;
 #include <math.h>
 const float fPI =         3.14159265f;
 const float squareRoot3 = 1.73205081f;
+const float squareRoot2 = 1.41421356f;
 
 const U32 FLOAT_POSITIVE_INFINITY_BITS = 0x7f800000;
 const U32 FLOAT_NEGATIVE_INFINITY_BITS = 0xff800000;
@@ -1642,6 +1643,228 @@ void doFSCALE_inst(FPU_Float* st0, FPU_Float* st1, FPU_Float* st0Result) {
     }
 }
 
+void assertFloat(float result, float expected) {
+    assertTrue(fabsf(result - expected) < 0.001f);
+}
+
+void doFCOS_inst(FPU_Float* st0, FPU_Float* st0Result) {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    {
+        float f1 = st0->f;
+        struct FPU_Float result;
+
+        __asm {
+            finit;
+            fld f1;
+            fcos;
+            fstp result.f;
+        }
+        if (st0Result->i == FLOAT_QUIET_NAN_BITS) {
+            assertTrue(isnan(result.f));
+        } else {
+            assertFloat(result.f, st0Result->f);
+        }
+    }
+#endif
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    fldf32(st0->f, 1);
+    pushCode8(0xd9);
+    pushCode8(rm(false, 7, 7));
+    writeTopFloat(2);
+    runTestCPU();
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
+    if (st0Result->i == FLOAT_QUIET_NAN_BITS) {
+        assertTrue(isnan(result.f));
+    } else {
+        assertFloat(result.f, st0Result->f);
+    }
+}
+
+void testFCOS() {
+    FPU_Float st0;
+    FPU_Float result;
+
+    st0.f = 0.0f;
+    result.f = 1.0f;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 6;
+    result.f = squareRoot3 / 2;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 4;
+    result.f = squareRoot2 / 2;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 3;
+    result.f = 0.5f;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 2;
+    result.f = 0.0f;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 3 * 2;
+    result.f = -0.5f;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 4 * 3;
+    result.f = -squareRoot2 / 2;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 6 * 5;
+    result.f = -squareRoot3 / 2;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI;
+    result.f = -1.0f;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 6 * 7;
+    result.f = -squareRoot3 / 2;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 4 * 5;
+    result.f = -squareRoot2 / 2;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 3 * 4;
+    result.f = -0.5f;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 2 * 3;
+    result.f = 0.0f;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 3 * 5;
+    result.f = 0.5f;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 4 * 7;
+    result.f = squareRoot2 / 2;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI / 6 * 11;
+    result.f = squareRoot3 / 2;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = fPI * 2;
+    result.f = 1.0f;
+    doFCOS_inst(&st0, &result);
+}
+
+void doFSIN_inst(FPU_Float* st0, FPU_Float* st0Result) {
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    {
+        float f1 = st0->f;
+        struct FPU_Float result;
+
+        __asm {
+            finit;
+            fld f1;
+            fsin;
+            fstp result.f;
+        }
+        if (st0Result->i == FLOAT_QUIET_NAN_BITS) {
+            assertTrue(isnan(result.f));
+        } else {
+            assertFloat(result.f, st0Result->f);
+        }
+    }
+#endif
+    struct FPU_Float result;
+
+    newInstruction(0);
+    fpu_init();
+    fldf32(st0->f, 1);
+    pushCode8(0xd9);
+    pushCode8(rm(false, 7, 6));
+    writeTopFloat(2);
+    runTestCPU();
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
+    if (st0Result->i == FLOAT_QUIET_NAN_BITS) {
+        assertTrue(isnan(result.f));
+    } else {
+        assertFloat(result.f, st0Result->f);
+    }
+}
+
+void testFSIN() {
+    FPU_Float st0;
+    FPU_Float result;
+
+    st0.f = 0.0f;
+    result.f = 0.0f;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 6;
+    result.f = 0.5f;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 4;
+    result.f = squareRoot2 / 2;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 3;
+    result.f = squareRoot3 / 2;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 2;
+    result.f = 1.0f;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 3 * 2;
+    result.f = squareRoot3 / 2;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 4 * 3;
+    result.f = squareRoot2 / 2;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 6 * 5;
+    result.f = 0.5f;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI;
+    result.f = 0.0f;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 6 * 7;
+    result.f = -0.5f;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 4 * 5;
+    result.f = -squareRoot2 / 2;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 3 * 4;
+    result.f = -squareRoot3 / 2;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 2 * 3;
+    result.f = -1.0f;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 3 * 5;
+    result.f = -squareRoot3 / 2;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 4 * 7;
+    result.f = -squareRoot2 / 2;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI / 6 * 11;
+    result.f = -0.5f;
+    doFSIN_inst(&st0, &result);
+
+    st0.f = fPI * 2;
+    result.f = 0.0f;
+    doFSIN_inst(&st0, &result);
+}
+
 #define ROUND_Nearest 0
 #define ROUND_Down 1
 #define ROUND_Up 2
@@ -1952,6 +2175,7 @@ void testFPUD9() {
     testFSQRT();
     testFRNDINT();
     testFSCALE();
+    testFCOS();
 
     // ea
     testFSTFloat();

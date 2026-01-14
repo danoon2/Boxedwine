@@ -335,6 +335,7 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         jit = startNewJIT(cpu);
         cpu->thread->process->jumpToNextJIT = jit->createJumpEip();
         delete jit;
+        createHelpers();
     }
 
     // did another thread beat us to JITing this block?
@@ -608,6 +609,9 @@ void jitRunSingleOp(CPU* cpu) {
         op = cpu->getNextOp();
     }
 
+    if (op->inst != Int80 && op->inst != Int9B) {
+        int ii = 0;
+    }
     if (!op) {
         kpanic("jitRunSingleOp oops");
     }

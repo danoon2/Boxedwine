@@ -175,6 +175,7 @@ public:
     void divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) override;
     void idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) override;
     void absReg(JitWidth regWidth, RegPtr reg) override;
+    void clzReg(JitWidth regWidth, RegPtr result, RegPtr reg) override;
 
     void byteSwapReg32(RegPtr reg) override;
     RegPtr compareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition, RegPtr resultReg = nullptr) override;    
@@ -230,6 +231,8 @@ public:
 
     void callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache = true) override;
     void callHostFunctionWithResult(RegPtr result, void* address, const std::vector<DynParam>& params) override;
+    void nakedCall(RegPtr reg) override;
+    void nakedReturn() override;
 #ifdef BOXEDWINE_64
     void setParam(X86Asm::Reg reg, const DynParam& param);
 #else
@@ -258,6 +261,9 @@ public:
     void fpuRegExtend32To64(FPURegPtr dst, FPURegPtr src) override;
     void fpuReg64To32(FPURegPtr dst, FPURegPtr src) override;
     void regToFpuReg(FPURegPtr dst, RegPtr src) override;
+#ifdef BOXEDWINE_64
+    void regToFpuReg64(FPURegPtr dst, RegPtr src) override;
+#endif
     void updateFPURounding() override;
     void restoreFPURounding() override;
 
@@ -353,6 +359,7 @@ public:
 
     // SSE    
     SSERegPtr getTmpSSE() override;
+    void IfSseLessThan(SSERegPtr src1, SSERegPtr src2) override;
     bool isSseRegCached(U8 reg) override;
     void storeCpuXMMReg(SSERegPtr reg, U32 index) override;
     SSERegPtr loadCpuXMMReg(U8 index) override;
@@ -410,6 +417,9 @@ public:
     void ldmxcsr(RegPtr address) override;
 
     // SSE2
+#ifdef BOXEDWINE_64
+    void cvtsi2sdXmmR64(SSERegPtr dst, RegPtr src) override;
+#endif
     void addpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void addsdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void subpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
@@ -1247,6 +1257,10 @@ void JitX86CodeGen::shrValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         x86.shr(R16(reg->hardwareReg()), (U16)imm);
     } else if (regWidth == JitWidth::b8) {
         x86.shr(R8(get8bitReg(reg)), (U8)imm);
+#ifdef BOXEDWINE_64
+    } else if (regWidth == JitWidth::b64) {
+        x86.shr(R64(get8bitReg(reg)), (U8)imm);
+#endif
     } else {
         kpanic("JitX86CodeGen::shrValue");
     }
@@ -1282,6 +1296,13 @@ void JitX86CodeGen::shlReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
             x86.mov(x86.cl, R8(get8bitReg(rm)));
         }
         x86.shl(R8(get8bitReg(reg)), x86.cl);
+#ifdef BOXEDWINE_64
+    } else if (regWidth == JitWidth::b64) {
+        if (rm->hardwareReg() != 1) {
+            x86.mov(x86.cl, R8(get8bitReg(rm)));
+        }
+        x86.shl(R64(reg->hardwareReg()), x86.cl);
+#endif
     } else {
         kpanic("JitX86CodeGen::shlReg");
     }
@@ -1812,17 +1833,41 @@ void JitX86CodeGen::imulReg(JitWidth regWidth, RegPtr reg) {
 
 void JitX86CodeGen::absReg(JitWidth regWidth, RegPtr reg) {
     RegPtr tmp = getTmpReg();
+#ifdef BOXEDWINE_64
+    x86.mov(R64(tmp->hardwareReg()), R64(reg->hardwareReg()));
+#else
     x86.mov(R32(tmp->hardwareReg()), R32(reg->hardwareReg()));    
+#endif
     if (regWidth == JitWidth::b8) {
-        x86.neg(R8(tmp->hardwareReg()));
+        x86.neg(R8(reg->hardwareReg()));
     } else if (regWidth == JitWidth::b16) {
-        x86.neg(R16(tmp->hardwareReg()));
+        x86.neg(R16(reg->hardwareReg()));
     } else if (regWidth == JitWidth::b32) {
-        x86.neg(R32(tmp->hardwareReg()));
+        x86.neg(R32(reg->hardwareReg()));
+#ifdef BOXEDWINE_64
+    } else if (regWidth == JitWidth::b64) {
+        x86.neg(R64(reg->hardwareReg()));
+        x86.cmovl(R64(reg->hardwareReg()), R64(tmp->hardwareReg()));
+        return;
+#endif
     } else {
         kpanic("JitX86CodeGen::divRegRegWithRemainder");
     }
     x86.cmovl(R32(reg->hardwareReg()), R32(tmp->hardwareReg()));
+}
+
+void JitX86CodeGen::clzReg(JitWidth regWidth, RegPtr result, RegPtr reg) {
+    if (regWidth == JitWidth::b16) {
+        x86.lzcnt(R16(result->hardwareReg()), R16(reg->hardwareReg()));
+    } else if (regWidth == JitWidth::b32) {
+        x86.lzcnt(R32(result->hardwareReg()), R32(reg->hardwareReg()));
+#ifdef BOXEDWINE_64
+    } else if (regWidth == JitWidth::b64) {
+        x86.lzcnt(R64(result->hardwareReg()), R64(reg->hardwareReg()));
+#endif
+    } else {
+        kpanic("JitX86CodeGen::clzReg");
+    }
 }
 
 void JitX86CodeGen::divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) {
@@ -2256,6 +2301,14 @@ void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>&
     }
 }
 
+void JitX86CodeGen::nakedCall(RegPtr reg) {
+    x86.call(RN(reg->hardwareReg()));
+}
+
+void JitX86CodeGen::nakedReturn() {
+    x86.ret();
+}
+
 void JitX86CodeGen::callHostFunctionWithResult(RegPtr result, void* address, const std::vector<DynParam>& params) {
     U32 stackAdjust = 0; // if 64-bit stack isn't aligned to 16-bytes, things like FPU::F2XM1()
     std::vector<U8> pushedRegs;
@@ -2615,6 +2668,11 @@ void JitX86CodeGen::writeCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, Reg
     } else {
         kpanic_fmt("unknown dstWidth in JitX86CodeGen::writeCPU %d", width);
     }
+}
+
+void JitX86CodeGen::IfSseLessThan(SSERegPtr src1, SSERegPtr src2) {
+    x86.ucomiss(X86Asm::XMM(src1->hardwareReg()), X86Asm::XMM(src2->hardwareReg()));
+    x86.IfCF();
 }
 
 void JitX86CodeGen::storeCpuXMMReg(SSERegPtr reg, U32 index) {
@@ -3301,6 +3359,12 @@ void JitX86CodeGen::punpckldqMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
     x86.punpckldq(getMMXReg(dst), getMMXReg(src));
 }
 
+#ifdef BOXEDWINE_64
+void JitX86CodeGen::cvtsi2sdXmmR64(SSERegPtr dst, RegPtr src) {
+    x86.cvtsi2sd(X86Asm::XMM(dst->hardwareReg()), R64(src->hardwareReg()));
+}
+#endif
+
 void JitX86CodeGen::addpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
     x86.addpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
 }
@@ -3900,6 +3964,11 @@ void JitX86CodeGen::regToFpuReg(FPURegPtr dst, RegPtr src) {
     x86.cvtsi2sd(getFPUReg(dst), R32(src->hardwareReg()));
 }
 
+#ifdef BOXEDWINE_64
+void JitX86CodeGen::regToFpuReg64(FPURegPtr dst, RegPtr src) {
+    x86.cvtsi2sd(getFPUReg(dst), R64(src->hardwareReg()));
+}
+#endif
 void JitX86CodeGen::fpuAdd(FPURegPtr dst, FPURegPtr src) {
     x86.addsd(getFPUReg(dst), getFPUReg(src));
 }

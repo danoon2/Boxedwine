@@ -1549,6 +1549,23 @@ void X86Asm::not_(Reg8 dst) {
     outb(0xd0 | (dst.reg & 7));
 }
 
+void X86Asm::lzcnt(Reg32 dst, Reg32 src) {
+    outb(0xf3);
+    rex(dst.reg, src.reg, false);
+    outb(0x0f);
+    outb(0xbd);
+    outb(0xc0 | ((dst.reg & 7) << 3) | (src.reg & 7));
+}
+
+void X86Asm::lzcnt(Reg16 dst, Reg16 src) {
+    outb(0x66);
+    outb(0xf3);
+    rex(dst.reg, src.reg, false);
+    outb(0x0f);
+    outb(0xbd);
+    outb(0xc0 | ((dst.reg & 7) << 3) | (src.reg & 7));
+}
+
 void X86Asm::cmovl(Reg32 dst, Reg32 src) {
     rex(dst.reg, src.reg, false);
     outb(0x0f);
@@ -4072,11 +4089,62 @@ void X86Asm::imul(Reg64 dst, Reg64 src, U32 imm) {
     }
 }
 
+void X86Asm::lzcnt(Reg64 dst, Reg64 src) {
+    outb(0xf3);
+    rex(dst.reg, src.reg, true);    
+    outb(0x0f);
+    outb(0xbd);
+    outb(0xc0 | ((dst.reg & 7) << 3) | (src.reg & 7));
+}
+
+void X86Asm::neg(Reg64 dst) {
+    rex(dst.reg, true);
+    outb(0xf7);
+    outb(0xd8 | (dst.reg & 7));
+}
+
+void X86Asm::shl(Reg64 dst, Reg8 src) {
+    rex(src.reg, dst.reg, true);
+    if (src.reg != 1) {
+        kpanic("X86Asm::shl must use cl");
+    }
+    outb(0xd3);
+    outb(0xe0 | (dst.reg & 7));
+}
+
+void X86Asm::cmovl(Reg64 dst, Reg64 src) {
+    rex(dst.reg, src.reg, true);
+    outb(0x0f);
+    outb(0x4c);
+    outb(0xc0 | ((dst.reg & 7) << 3) | (src.reg & 7));
+}
+
+void X86Asm::cmovnl(Reg64 dst, Reg64 src) {
+    rex(dst.reg, src.reg, true);
+    outb(0x0f);
+    outb(0x4d);
+    outb(0xc0 | ((dst.reg & 7) << 3) | (src.reg & 7));
+}
+
+void X86Asm::cvtsi2sd(RegXMM dstXMM, Reg64 reg) {
+    outb(0xf2);
+    rex(dstXMM.reg, reg.reg, true);
+    outb(0x0f);
+    outb(0x2a);
+    outb(0xC0 | ((dstXMM.reg & 7) << 3) | (reg.reg & 7));
+}
+
 #else
 void X86Asm::call(void* address) {
     outb(0xe8);
     patch.push_back((U32)buffer.size());
     outd((U32)address);
+}
+
+void X86Asm::call(Reg32 reg) {
+    rex(reg.reg, false);
+    outb(0xff);
+    outb(0xd0 + (reg.reg & 7));
 }
 
 void X86Asm::push(Reg32 reg) {

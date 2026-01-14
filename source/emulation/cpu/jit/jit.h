@@ -191,6 +191,7 @@ public:
     virtual RegPtr compareValue(JitWidth regWidth, RegPtr reg, U32 value, JitEvaluate condition, RegPtr resultReg = nullptr) = 0; // will return 0 or 1 in result
     virtual RegPtr testZeroReg(JitWidth regWidth, RegPtr reg, RegPtr result = nullptr) = 0; // will return 0 or 1 in result
     virtual void absReg(JitWidth regWidth, RegPtr reg) = 0;
+    virtual void clzReg(JitWidth regWidth, RegPtr result, RegPtr reg) = 0;
 
     virtual void mov(JitWidth regWidth, RegPtr dest, RegPtr src) = 0;
     virtual void movzx(JitWidth dstWidth, RegPtr dest, JitWidth srcWidth, RegPtr src) = 0;

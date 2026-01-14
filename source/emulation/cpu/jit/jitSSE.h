@@ -217,6 +217,9 @@ public:
 	void dynamic_sfence(DecodedOp* op) override;
 
 	// SSE2
+#ifdef BOXEDWINE_64
+	virtual void cvtsi2sdXmmR64(SSERegPtr dst, RegPtr src) = 0;
+#endif
 	virtual void addpdXmmXmm(SSERegPtr dst, SSERegPtr src) = 0;
 	virtual void addsdXmmXmm(SSERegPtr dst, SSERegPtr src) = 0;
 	virtual void subpdXmmXmm(SSERegPtr dst, SSERegPtr src) = 0;
@@ -610,6 +613,15 @@ public:
 	void dynamic_lfence(DecodedOp* op) override { lfence(); }
 	void dynamic_mfence(DecodedOp* op) override { mfence(); }
 	void dynamic_clflush(DecodedOp* op) override;
+	void dynamic_FCOS(DecodedOp* op) override;
+	void dynamic_FSIN(DecodedOp* op) override;
+
+	virtual void IfSseLessThan(SSERegPtr src1, SSERegPtr src2) = 0;
+
+	void createHelpers() override;
+private:
+	U8* createJitCosSub();
+	U8* createJitCos();
 };
 
 #endif

@@ -325,7 +325,8 @@ public:
 	void not_(Reg32 dst);
 	void not_(Reg16 dst);
 	void not_(Reg8 dst);
-
+	void lzcnt(Reg32 dst, Reg32 src);
+	void lzcnt(Reg16 dst, Reg16 src);
 	void cmovl(Reg32 dst, Reg32 src);
 
 	void test(Reg32 dst, U32 imm);
@@ -488,9 +489,16 @@ public:
 	void sarx(Reg32 dst, Reg32 src);
 	void imul(Reg64 dst, Reg64 src);
 	void imul(Reg64 dst, Reg64 src, U32 imm);
+	void lzcnt(Reg64 dst, Reg64 src);
+	void neg(Reg64 dst);
+	void shl(Reg64 dst, Reg8 src);
+	void cmovl(Reg64 dst, Reg64 src);
+	void cmovnl(Reg64 dst, Reg64 src);
+	void cvtsi2sd(RegXMM dstXMM, Reg64 reg);
 #else
 	std::vector<U32> patch;
 	void call(void* address);
+	void call(Reg32 reg);
 	void push(Reg32 reg);
 	void pop(Reg32 reg);
 #endif		

@@ -281,6 +281,8 @@ public:
     void* emulateSingleOp = nullptr;
     void* syncToHost = nullptr;
     void* syncFromHost = nullptr;
+    void* jitCosSub = nullptr;
+    void* jitCos = nullptr;
 #endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     bool emulateFPU = false;

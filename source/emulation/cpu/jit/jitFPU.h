@@ -59,6 +59,9 @@ public:
     virtual void fpuRegToInt64(FPURegPtr regDst, FPURegPtr fpuRegSrc, bool truncate) = 0;
     virtual void fpuRegInt64To64(FPURegPtr regDst, FPURegPtr fpuRegSrc) = 0;
     virtual void regToFpuReg(FPURegPtr dst, RegPtr src) = 0;
+#ifdef BOXEDWINE_64
+    virtual void regToFpuReg64(FPURegPtr dst, RegPtr src) = 0;
+#endif
     virtual void updateFPURounding() = 0;
     virtual void restoreFPURounding() = 0;
 
@@ -206,10 +209,9 @@ public:
     void dynamic_FILD_WORD_INTEGER(DecodedOp* op) override;
     void dynamic_FISTTP16(DecodedOp* op) override;
     void dynamic_FIST_WORD_INTEGER(DecodedOp* op) override;
-    void dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op) override;
-    // special handling, will store as 80-bit float
-    // void dynamic_FILD_QWORD_INTEGER(DecodedOp* op);
-    void dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) override;
+    void dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op) override;    
+    void dynamic_FILD_QWORD_INTEGER(DecodedOp* op) override;
+    void dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) override;    
 
 private:
     void loadFpuRegFromShort(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp);
@@ -220,6 +222,8 @@ private:
     void doFCOM_STi(DecodedOp* op, bool pop);
     void doFCOMI_ST0_STj(DecodedOp* op, bool pop);
     void doFFREE_STi(DecodedOp* op, bool pop);
+
+    void createCOS32s();
 };
 
 #endif

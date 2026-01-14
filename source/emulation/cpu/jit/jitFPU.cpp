@@ -999,6 +999,72 @@ void JitFPU::dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op) {
     });
 }
 
+/*
+extFloat80_t i64_to_extF80( int64_t a )
+{
+    uint_fast16_t uiZ64;
+    uint_fast64_t absA;
+    bool sign;
+    int_fast8_t shiftDist;
+    union { struct extFloat80M s; extFloat80_t f; } uZ;
+
+    uiZ64 = 0;
+    absA = 0;
+    if ( a ) {
+        sign = (a < 0);
+        absA = sign ? -(uint_fast64_t) a : (uint_fast64_t) a;
+        shiftDist = softfloat_countLeadingZeros64( absA );
+        uiZ64 = packToExtF80UI64( sign, 0x403E - shiftDist );
+        absA <<= shiftDist;
+    }
+    uZ.s.signExp = uiZ64;
+    uZ.s.signif  = absA;
+    return uZ.f;
+
+}
+*/
+void JitFPU::dynamic_FILD_QWORD_INTEGER(DecodedOp* op) {
+#ifndef BOXEDWINE_64
+    JitCodeGen::dynamic_FILD_QWORD_INTEGER(op);
+#else
+    // adds about 1% to Quake 2
+
+    RegPtr absA = read(JitWidth::b64, calculateEaa(op));
+    RegPtr top = getTopReg();
+
+    dynamic_FPU_PREP_PUSH(top, true); // will change topReg
+
+    RegPtr uiZ64 = getTmpReg();
+    xorReg(JitWidth::b32, uiZ64, uiZ64);
+    If(JitWidth::b64, absA); {
+
+        RegPtr signReg = uiZ64;
+        mov(JitWidth::b64, signReg, absA);
+        shrValue(JitWidth::b64, signReg, 63);
+        shlValue(JitWidth::b32, signReg, 15);
+        absReg(JitWidth::b64, absA);
+
+        RegPtr dist = getTmpReg();
+
+        clzReg(JitWidth::b64, dist, absA);
+        shlReg(JitWidth::b64, absA, dist);
+
+        // dist = 0x403e - dist
+        subValue(JitWidth::b32, dist, 0x403e);
+        negReg2(JitWidth::b32, dist);
+
+        orReg(JitWidth::b32, signReg, dist);
+    } EndIf();
+
+    // cpu->fpu.regs[top].signif = absA
+    // cpu->fpu.regs[top].signExp = uiZ64
+    setRegIsCached(top, false);
+    shlValue(JitWidth::b32, top, 4); // fpu reg is 16-bytes
+    writeCPU(JitWidth::b16, top, 0, (U32)(offsetof(CPU, fpu.regs[0].signExp)), uiZ64);
+    writeCPU(JitWidth::b64, top, 0, (U32)(offsetof(CPU, fpu.regs[0].signif)), absA);
+#endif
+}
+
 void JitFPU::dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) {
     RegPtr top = getTopReg();
 
