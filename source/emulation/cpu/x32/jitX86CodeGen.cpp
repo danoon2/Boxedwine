@@ -2715,7 +2715,7 @@ SSERegPtr JitX86CodeGen::getXMM(U8 index, bool load) {
         xmmUsed2[p->hardwareReg()] = false;
         delete p;
     });
-    if (load) {
+    if (load && index != INVALID_REG) {
         x86.movaps(X86Asm::XMM(result->hardwareReg()), X86Asm::Mem128(HOST_CPU, index * 16 + offsetof(CPU, xmm)));
     }
     return result;

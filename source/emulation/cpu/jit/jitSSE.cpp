@@ -120,7 +120,7 @@ void JitSSE::dynamic_cvtpi2psXmmMmx(DecodedOp* op) {
 void JitSSE::dynamic_cvtpi2psXmmE64(DecodedOp* op) {
     read(JitWidth::b64, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {        
         SSERegPtr reg = loadCpuXMMReg(op->reg); // high 64-bit remains untouched so we need to load it
-        MMXRegPtr tmp = loadMMXFromMem64(MMX_TMP_INDEX, address, offset, 0, 0);
+        MMXRegPtr tmp = loadMMXFromMem64(SSE_TMP_INDEX, address, offset, 0, 0);
         cvtpi2psXmmMmx(reg, tmp);
         storeCpuXMMReg(reg, op->reg);
     });
@@ -135,7 +135,7 @@ void JitSSE::dynamic_cvtps2piMmxXmm(DecodedOp* op) {
 
 void JitSSE::dynamic_cvtps2piMmxE64(DecodedOp* op) {
     read(JitWidth::b64, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
-        SSERegPtr tmp = loadXMMFromMem64(MMX_TMP_INDEX, address, offset, 0, 0);
+        SSERegPtr tmp = loadXMMFromMem64(SSE_TMP_INDEX, address, offset, 0, 0);
         MMXRegPtr reg = getTmpMMX();
         cvtps2piMmxXmm(reg, tmp);
         storeCpuMMXReg(reg, op->reg);
@@ -825,7 +825,7 @@ void JitSSE::createHelpers() {
 }
 
 void JitSSE::dynamic_FCOS(DecodedOp* op) {
-    if (!cpu->thread->process->jitCos) {
+    if (1) {
         JitCodeGen::dynamic_FCOS(op);
     } else {
         RegPtr cos = getTmpReg();
@@ -849,7 +849,7 @@ void JitSSE::dynamic_FCOS(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_FSIN(DecodedOp* op) {
-    if (!cpu->thread->process->jitCos) {
+    if (1) {
         JitCodeGen::dynamic_FSIN(op);
     } else {
         RegPtr cos = getTmpReg();
