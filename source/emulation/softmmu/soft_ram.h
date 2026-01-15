@@ -21,8 +21,13 @@
 
 #include "platformBoxedwine.h"
 
+#ifdef BOXEDWINE_64
+#define RAM_TYPE U64
+#else
+#define RAM_TYPE U32
+#endif
 struct RamPage {
-	U32 value = 0;
+	RAM_TYPE value = 0;
 };
 
 RamPage ramPageAlloc();
@@ -37,5 +42,9 @@ bool ramPageIsSystem(RamPage page);
 bool ramPageIsNative(RamPage page);
 
 void shutdownRam();
+
+inline U8* ramPageGet(RamPage page) {
+	return (U8*)(page.value << 12);
+}
 
 #endif

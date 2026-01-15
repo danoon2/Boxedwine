@@ -822,60 +822,12 @@ static void writeb2(CPU* cpu, U32 address, U32 value) {
 RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, RegPtr tmp, bool checkAlignment) {
     if (!tmp) {
         tmp = getTmpRegForCallResult();
-    }
-    if (width != JitWidth::b8 && checkAlignment) {
-        // make sure we only use the fast path if the entire read will take place on the same page
-        mov(JitWidth::b32, tmp, addressReg);
-        andValue(JitWidth::b32, tmp, K_PAGE_MASK);
-
-        if (width == JitWidth::b16) {
-            // if ((address & 0xFFF) < 0xFFF)                    
-            IfLessThan2(JitWidth::b32, tmp, K_PAGE_MASK);
-        } else if (width == JitWidth::b32) {
-            // if ((address & 0xFFF) < 0xFFD)
-            IfLessThan2(JitWidth::b32, tmp, 0xFFD);
-        } else if (width == JitWidth::b64) {
-            // if ((address & 0xFFF) < 0xFF9)
-            IfLessThan2(JitWidth::b32, tmp, 0xFF9);
-        } else if (width == JitWidth::b128) {
-            // if ((address & 0xFFF) < 0xFF1)
-            IfLessThan2(JitWidth::b32, tmp, 0xFF1);
-        } else if (width == JitWidth::b256) {
-            // if ((address & 0xFFF) < 0xFE1)
-            IfLessThan2(JitWidth::b32, tmp, 0xFE1);
-        } else {
-            kpanic_fmt("JitCodeGen::read unknown width %d", (U32)width);
-        }
-    }
-    // int index = address >> 12;
-    // if (Memory::currentMMUReadPtr[index])
-    //     return *(U32*)(&Memory::currentMMUReadPtr[index][address & 0xFFF]);
-    // else
-    //     return readd(address);
+    }    
+    RegPtr offsetReg;
 
     mov(JitWidth::b32, tmp, addressReg);
     shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
     readMMU(tmp, tmp);
-
-    if (width != JitWidth::b8 && checkAlignment) {
-        EndIf();
-    }
-
-    // test eax, 0x40000000 (mmu[index].canReadRam)
-    // IfBitTest(tmp, 30); { bit test is noticably slower
-    IfNotTest(JitWidth::b32, tmp, 0x40000000); {
-        if (failedMemoryOp) {
-            failedMemoryOp();
-        } else {
-            emulateSingleOp();
-        }
-    } EndIf();
-
-    // bottom 20 bits of mmu contains ram page index
-    andValue(JitWidth::b32, tmp, 0xfffff);
-    readRamPage(tmp, tmp);
-
-    RegPtr offsetReg;
 
     if (addressReg.use_count() == 1) {
         offsetReg = addressReg;
@@ -884,6 +836,21 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
         mov(JitWidth::b32, offsetReg, addressReg);
     }
     andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
+
+    if (width != JitWidth::b8 && checkAlignment) {
+        // make sure we only use the fast path if the entire read will take place on the same page
+        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+    }
+    
+    IfNotTest(JitWidth::b32, tmp, 1); {
+        if (failedMemoryOp) {
+            failedMemoryOp();
+        } else {
+            emulateSingleOp();
+        }
+    } EndIf();
+
+    andValue(DYN_PTR, tmp, 0xfffff000);
 
     if (customMemoryOp) {
         // regs are not used after this, so give them back
@@ -916,15 +883,11 @@ RegPtr JitCodeGen::read(JitWidth width, U32 address) {
     
     readMMU(tmp, address >> K_PAGE_SHIFT);
 
-    // test eax, 0x40000000 (mmu[index].canReadRam)
-    // IfBitTest(tmp, 30); { bit test is noticably slower
-    IfNotTest(JitWidth::b32, tmp, 0x40000000); {
+    IfNotTest(JitWidth::b32, tmp, 1); {
         emulateSingleOp();
     } EndIf();
 
-    // bottom 20 bits of mmu contains ram page index
-    andValue(JitWidth::b32, tmp, 0xfffff);
-    readRamPage(tmp, tmp);
+    andValue(DYN_PTR, tmp, 0xfffff000);
 
     read(width, tmp, tmp, 0, address & K_PAGE_MASK);
 
@@ -948,15 +911,11 @@ void JitCodeGen::write(JitWidth width, U32 address, RegPtr src) {
     RegPtr tmp = getTmpReg8();
     readMMU(tmp, address >> K_PAGE_SHIFT);
 
-    // test reg, 0x80000000 (mmu[index].canWriteRam)
-    // IfBitTest(tmp, 31); { bit test is noticably slower
-    IfNotTest(JitWidth::b32, tmp, 0x80000000); {
+    IfNotTest(JitWidth::b32, tmp, 2); {
         emulateSingleOp();
     } EndIf();
 
-    // bottom 20 bits of mmu contains ram page index
-    andValue(JitWidth::b32, tmp, 0xfffff);
-    readRamPage(tmp, tmp);
+    andValue(DYN_PTR, tmp, 0xfffff000);
 
     write(width, tmp, address & K_PAGE_MASK, src);
 }
@@ -964,175 +923,115 @@ void JitCodeGen::write(JitWidth width, U32 address, RegPtr src) {
 void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment) {
     RegPtr tmp = getTmpReg();
 
-    if (width != JitWidth::b8 && checkAlignment) {
-        // make sure we only use the fast path if the entire read will take place on the same page
-        mov(JitWidth::b32, tmp, addressReg);
-        andValue(JitWidth::b32, tmp, K_PAGE_MASK);
+    RegPtr offsetReg;
 
-        if (width == JitWidth::b16) {
-            // if ((address & 0xFFF) < 0xFFF)                    
-            IfLessThan2(JitWidth::b32, tmp, K_PAGE_MASK);
-        } else if (width == JitWidth::b32) {
-            // if ((address & 0xFFF) < 0xFFD)
-            IfLessThan2(JitWidth::b32, tmp, 0xFFD);
-        } else if (width == JitWidth::b64) {
-            // if ((address & 0xFFF) < 0xFF9)
-            IfLessThan2(JitWidth::b32, tmp, 0xFF9);
-        } else if (width == JitWidth::b128) {
-            // if ((address & 0xFFF) < 0xFF1)
-            IfLessThan2(JitWidth::b32, tmp, 0xFF1);
-        } else if (width == JitWidth::b256) {
-            // if ((address & 0xFFF) < 0xFE1)
-            IfLessThan2(JitWidth::b32, tmp, 0xFE1);
-        } else {
-            kpanic_fmt("JitCodeGen::write unknown width %d", (U32)width);
-        }
-    }
     mov(JitWidth::b32, tmp, addressReg);
     shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
     readMMU(tmp, tmp);
 
+    bool pushedAddress = false;
+    if (addressReg.use_count() == 1) {
+        offsetReg = addressReg;
+    } else if (isTmpRegAvailable()) {
+        offsetReg = getTmpReg();
+        mov(JitWidth::b32, offsetReg, addressReg);
+    } else {
+        pushedAddress = true;
+        pushReg(addressReg);
+        offsetReg = addressReg;
+    }
+    andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
+
     if (width != JitWidth::b8 && checkAlignment) {
-        EndIf();
+        // make sure we only use the fast path if the entire read will take place on the same page
+        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
     }
 
-    // test reg, 0x80000000 (mmu[index].canWriteRam)
-    // IfBitTest(tmp, 31); { bit test is noticably slower
-    IfTest(JitWidth::b32, tmp, 0x80000000); {
-
-        // bottom 20 bits of mmu contains ram page index
-        andValue(JitWidth::b32, tmp, 0xfffff);
-        readRamPage(tmp, tmp);
-
-        RegPtr offsetReg;
-        bool pushedAddress = false;
-
-        if (addressReg.use_count() == 1) {
-            offsetReg = addressReg;
-        } else if (isTmpRegAvailable()) {
-            offsetReg = getTmpReg();
-            mov(JitWidth::b32, offsetReg, addressReg);
-        } else {
-            pushedAddress = true;
-            pushReg(addressReg);
-            offsetReg = addressReg;
-        }
-        andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
-
-        if (customMemoryOp) {
-            customMemoryOp(std::move(tmp), std::move(offsetReg));
-        } else {
-            write(width, tmp, offsetReg, 0, 0, src);
-        }
+    IfNotTest(JitWidth::b32, tmp, 2); {
         if (pushedAddress) {
             popReg(addressReg);
         }
-    } StartElse(); {
         if (failedMemoryOp) {
-            addressReg = nullptr;
-            tmp = nullptr;
             failedMemoryOp();
         } else {
             emulateSingleOp();
         }
     } EndIf();
+
+    andValue(DYN_PTR, tmp, 0xfffff000);
+
+    if (customMemoryOp) {
+        customMemoryOp(std::move(tmp), std::move(offsetReg));
+    } else {
+        write(width, tmp, offsetReg, 0, 0, src);
+    }
+    if (pushedAddress) {
+        popReg(addressReg);
+    }
 }
 
 void JitCodeGen::writeValue(JitWidth width, RegPtr addressReg, U32 imm) {
     RegPtr tmp = getTmpReg();
 
-    if (width != JitWidth::b8) {
-        // make sure we only use the fast path if the entire read will take place on the same page
-        mov(JitWidth::b32, tmp, addressReg);
-        andValue(JitWidth::b32, tmp, K_PAGE_MASK);
+    RegPtr offsetReg;
 
-        if (width == JitWidth::b16) {
-            // if ((address & 0xFFF) < 0xFFF)                    
-            IfLessThan2(JitWidth::b32, tmp, K_PAGE_MASK);
-        } else if (width == JitWidth::b32) {
-            // if ((address & 0xFFF) < 0xFFD)
-            IfLessThan2(JitWidth::b32, tmp, 0xFFD);
-        } else if (width == JitWidth::b64) {
-            // if ((address & 0xFFF) < 0xFF9)
-            IfLessThan2(JitWidth::b32, tmp, 0xFF9);
-        } else if (width == JitWidth::b128) {
-            // if ((address & 0xFFF) < 0xFF1)
-            IfLessThan2(JitWidth::b32, tmp, 0xFF1);
-        } else {
-            kpanic_fmt("JitCodeGen::write unknown width %d", (U32)width);
-        }
-    }
     mov(JitWidth::b32, tmp, addressReg);
     shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
     readMMU(tmp, tmp);
 
-    if (width != JitWidth::b8) {
-        EndIf();
+    if (addressReg.use_count() == 1) {
+        offsetReg = addressReg;
+    } else {
+        offsetReg = getTmpReg();
+        mov(JitWidth::b32, offsetReg, addressReg);
     }
-
-    // test reg, 0x80000000 (mmu[index].canWriteRam)
-    IfNotTest(JitWidth::b32, tmp, 0x80000000); {
-        emulateSingleOp();
-    } EndIf();
-
-    // bottom 20 bits of mmu contains ram page index
-    andValue(JitWidth::b32, tmp, 0xfffff);
-    readRamPage(tmp, tmp);
-
-    andValue(JitWidth::b32, addressReg, K_PAGE_MASK);
-
-    write(width, tmp, addressReg, 0, 0, imm);
-}
-
-RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint) {
-    U32 firstCheckPos = 0;
+    andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
 
     if (width != JitWidth::b8) {
         // make sure we only use the fast path if the entire read will take place on the same page
-        RegPtr tmpReg = getTmpReg();
-
-        mov(JitWidth::b32, tmpReg, addressReg);
-        andValue(JitWidth::b32, tmpReg, K_PAGE_MASK);
-
-        if (width == JitWidth::b16) {
-            // if ((address & 0xFFF) < 0xFFF)                    
-            IfLessThan2(JitWidth::b32, tmpReg, K_PAGE_MASK); // :TODO: V2
-        } else if (width == JitWidth::b32) {
-            // if ((address & 0xFFF) < 0xFFD)
-            IfLessThan2(JitWidth::b32, tmpReg, 0xFFD); // :TODO: V2
-        } else {
-            kpanic_fmt("JitCodeGen::readWriteMem unknown width %d", (U32)width);
-        }
+        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
     }
-    RegPtr tmpReg = getTmpRegWithHint(hint);
-    mov(JitWidth::b32, tmpReg, addressReg);
 
-    shrValue(JitWidth::b32, tmpReg, K_PAGE_SHIFT);
-    readMMU(tmpReg, tmpReg);
+    IfNotTest(JitWidth::b32, tmp, 2); {
+        emulateSingleOp();
+    } EndIf();
+
+    andValue(DYN_PTR, tmp, 0xfffff000);
+
+    write(width, tmp, offsetReg, 0, 0, imm);
+}
+
+RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint) {
+    RegPtr offsetReg;
+    RegPtr tmp = getTmpRegWithHint(hint);
+
+    mov(JitWidth::b32, tmp, addressReg);
+    shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
+    readMMU(tmp, tmp);
+
+    offsetReg = addressReg;
+    andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
 
     if (width != JitWidth::b8) {
-        EndIf();
+        // make sure we only use the fast path if the entire read will take place on the same page
+        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
     }
 
     // if read/write
     RegPtr tmpReg2 = getTmpRegForCallResult();
-    mov(JitWidth::b32, tmpReg2, tmpReg);
-    andValue(JitWidth::b32, tmpReg2, 0x40000000 | 0x80000000);
+    mov(JitWidth::b32, tmpReg2, tmp);
+    andValue(JitWidth::b32, tmpReg2, 3);
 
-    IfNotEqual(JitWidth::b32, tmpReg2, 0x40000000 | 0x80000000); {
+    IfNotEqual(JitWidth::b32, tmpReg2, 3); {
         emulateSingleOp();
     } EndIf();
 
-    // bottom 20 bits of mmu contains ram page index
-    andValue(JitWidth::b32, tmpReg, 0xfffff);
-    readRamPage(tmpReg, tmpReg);
-    andValue(JitWidth::b32, addressReg, K_PAGE_MASK);
-    read(JitWidth::b32, tmpReg2, tmpReg, addressReg, 0, 0);
+    andValue(DYN_PTR, tmp, 0xfffff000);
+    read(JitWidth::b32, tmpReg2, tmp, offsetReg, 0, 0);
 
     prepareWrite(tmpReg2);
 
-    // test reg, 0x80000000 (mmu[index].canWriteRam)
-    write(JitWidth::b32, tmpReg, addressReg, 0, 0, tmpReg2);
+    write(JitWidth::b32, tmp, offsetReg, 0, 0, tmpReg2);
     return tmpReg2;
 }
 

@@ -53,7 +53,7 @@ static U8 tmps[] = { 14, 3, 2, 1, 0 };
 // should be a volitile tmp reg
 #define PARAM_CALL_TMP x86.rdx
 #else
-static U8 regCache[] = { 0, 1, 2, 3, 10, 5, 6, INVALID_REG };
+static U8 regCache[] = { 0, 1, 2, 3, 10, 5, 6, 7 };
 static U8 xmmCache[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 static bool isTmp[] = { false, false, false, false, false, false, false, false, true, true, false, true, true, false, true, false };
 static U8 tmps[] = { 14, 12, 11, 9, 8 };
@@ -61,8 +61,7 @@ static U8 XMMtmps[] = { 12, 13, 14, 15 };
 // should be a volitile tmp reg
 #define PARAM_CALL_TMP x86.r11
 #endif
-#define HOST_RAM x86.r15
-#define HOST_MMU x86.rdi
+#define HOST_MMU x86.r15
 #define HOST_CPU x86.r13
 #define NUMBER_OF_REGS 16
 #define NUMBER_OF_XMM_REG 16
@@ -222,6 +221,8 @@ public:
     void IfSmallStack() override;
     void JumpIfCondition(JitConditional condition, U32 address) override;
     void IfCompareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition) override;
+    void clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) override;
+
     U32 MarkJumpLocation() override;
     void Goto(U32 location) override;
     void jmp(RegPtr reg) override;
@@ -1179,6 +1180,10 @@ void JitX86CodeGen::andValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         x86.and_(R16(reg->hardwareReg()), (U16)imm);
     } else if (regWidth == JitWidth::b8) {
         x86.and_(R8(get8bitReg(reg)), (U8)imm);
+#ifdef BOXEDWINE_64
+    }  else if (regWidth == JitWidth::b64) {
+        x86.and_(R64(reg->hardwareReg()), imm);
+#endif
     } else {
         kpanic("JitX86CodeGen::andValue");
     }
@@ -1894,18 +1899,14 @@ void JitX86CodeGen::idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegP
     }
 }
 
-extern U8* ramPages[K_NUMBER_OF_PAGES];
 void JitX86CodeGen::readRamPage(RegPtr dest, RegPtr index) {
-#ifdef BOXEDWINE_64
-    x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32(HOST_RAM, R(index->hardwareReg()), 3, 0));
-#else
-    read(JitWidth::b32, dest, index, 2, (U32)ramPages);
-#endif
+    // :TODO: remove
 }
+
 #include "../../softmmu/kmemory_soft.h"
 void JitX86CodeGen::readMMU(RegPtr dest, RegPtr index) {
 #ifdef BOXEDWINE_64
-    x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32(HOST_MMU, R(index->hardwareReg()), 2, 0));
+    x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32(HOST_MMU, R(index->hardwareReg()), 3, 0));
 #else
     read(JitWidth::b32, dest, index, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
 #endif
@@ -1913,7 +1914,7 @@ void JitX86CodeGen::readMMU(RegPtr dest, RegPtr index) {
 
 void JitX86CodeGen::readMMU(RegPtr dest, U32 index) {
 #ifdef BOXEDWINE_64
-    x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32(HOST_MMU, index * 4));
+    x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32(HOST_MMU, index * 8));
 #else
     x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32((U32)getMemData(KThread::currentThread()->memory)->mmu + index * 4));
 #endif
@@ -2552,6 +2553,24 @@ void JitX86CodeGen::IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) 
         kpanic_fmt("JitX86CodeGen::IfNotCPU unexpected width: %d", (U32)regWidth);
     }
     x86.IfZF();
+}
+
+void JitX86CodeGen::clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) {
+    if (width == JitWidth::b16) {
+        x86.cmp(R32(offset->hardwareReg()), 0xFFF);
+    } else if (width == JitWidth::b32) {
+        x86.cmp(R32(offset->hardwareReg()), 0xFFD);
+    } else if (width == JitWidth::b64) {
+        x86.cmp(R32(offset->hardwareReg()), 0xFF9);
+    } else if (width == JitWidth::b128) {
+        x86.cmp(R32(offset->hardwareReg()), 0xFF1);
+    } else if (width == JitWidth::b256) {
+        x86.cmp(R32(offset->hardwareReg()), 0xFE1);
+    } else {
+        kpanic_fmt("JitX86CodeGen::clearRegIfSpansPage unknown width %d", (U32)width);
+    }
+    // since esp is guaranteed to be aligned, it works to use it as a way to clear the bottom 2 bits
+    x86.cmovnl(R32(reg->hardwareReg()), x86.esp);
 }
 
 void JitX86CodeGen::IfCompareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition) {
@@ -4787,7 +4806,6 @@ U8* JitX86CodeGen::createStartJITCode() {
     x86.push(x86.r15);
 
     x86.mov(HOST_MMU, (U64)getMemData(KThread::currentThread()->memory)->mmu);
-    x86.mov(HOST_RAM, (U64)ramPages);
 
     // on win32 ecx contains cpu
     x86.mov(HOST_CPU, x86.rcx);

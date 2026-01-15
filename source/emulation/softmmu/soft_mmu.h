@@ -22,14 +22,22 @@
 #include "soft_page.h"
 
 class MMU {
-public:
-    U32 ramIndex : 20;
+public:    
+#ifdef BOXEDWINE_64
+    U64 canReadRam : 1;
+    U64 canWriteRam : 1;
+    U64 type : 3;
+    U64 pad : 1;
+    U64 flags : 6;
+    U64 ramIndex : 52;
+#else
+    U32 canReadRam : 1;
+    U32 canWriteRam : 1;
     U32 type : 3;
     U32 pad : 1;    
-    U32 flags : 6;        
-    U32 canReadRam : 1;    
-    U32 canWriteRam : 1;
-
+    U32 flags : 6;            
+    U32 ramIndex : 20;
+#endif
     RamPage getRamPageIndex() {
         if (getPageType() != PageType::File) {
             return (RamPage)ramIndex;

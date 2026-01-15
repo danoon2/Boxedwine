@@ -1573,6 +1573,13 @@ void X86Asm::cmovl(Reg32 dst, Reg32 src) {
     outb(0xc0 | ((dst.reg & 7) << 3) | (src.reg & 7));
 }
 
+void X86Asm::cmovnl(Reg32 dst, Reg32 src) {
+    rex(dst.reg, src.reg, false);
+    outb(0x0f);
+    outb(0x4d);
+    outb(0xc0 | ((dst.reg & 7) << 3) | (src.reg & 7));
+}
+
 void X86Asm::cmp(Reg32 dst, U32 imm) {
     group1(0x3d, 7, dst, imm);
 }
@@ -4132,6 +4139,24 @@ void X86Asm::cvtsi2sd(RegXMM dstXMM, Reg64 reg) {
     outb(0x0f);
     outb(0x2a);
     outb(0xC0 | ((dstXMM.reg & 7) << 3) | (reg.reg & 7));
+}
+
+void X86Asm::and_(Reg64 dst, U32 imm) {
+    rex(dst.reg, true);
+    S32 sIMM = (S32)imm;
+    if (sIMM < -128 || sIMM > 127) {
+        if (dst.reg == 0) {
+            outb(0x25);
+        } else {
+            outb(0x81);
+            outb(0xC0 | (4 << 3) | (dst.reg & 7));
+        }
+        outd(imm);
+    } else {
+        outb(0x83);
+        outb(0xC0 | (4 << 3) | (dst.reg & 7));
+        outb(imm);
+    }
 }
 
 #else

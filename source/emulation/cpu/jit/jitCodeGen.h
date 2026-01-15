@@ -62,6 +62,7 @@ public:
     void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) override;
     void write(JitWidth width, U32 address, RegPtr src) override;
     void writeValue(JitWidth width, RegPtr addressReg, U32 imm) override;
+    virtual void clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) = 0;
 
     void genCF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
     void genOF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1

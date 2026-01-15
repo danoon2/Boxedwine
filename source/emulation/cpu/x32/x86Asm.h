@@ -328,6 +328,7 @@ public:
 	void lzcnt(Reg32 dst, Reg32 src);
 	void lzcnt(Reg16 dst, Reg16 src);
 	void cmovl(Reg32 dst, Reg32 src);
+	void cmovnl(Reg32 dst, Reg32 src);
 
 	void test(Reg32 dst, U32 imm);
 	void test(Reg16 dst, U16 imm);
@@ -495,6 +496,7 @@ public:
 	void cmovl(Reg64 dst, Reg64 src);
 	void cmovnl(Reg64 dst, Reg64 src);
 	void cvtsi2sd(RegXMM dstXMM, Reg64 reg);
+	void and_(Reg64 dst, U32 imm);
 #else
 	std::vector<U32> patch;
 	void call(void* address);

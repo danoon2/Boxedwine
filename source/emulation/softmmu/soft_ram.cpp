@@ -31,30 +31,8 @@ public:
     U16 isSystem : 1;
 };
 
-// not static so that the JIT and BT cores can access it directly
-U8* ramPages[K_NUMBER_OF_PAGES];
-
 static RamInfo refCounts[K_NUMBER_OF_PAGES];
-static std::vector<U32> freeIndexes;
-static U32 highWaterIndex = 1; // if nothing in freeIndex then we pull from here
-
-static U32 allocIndex() {
-    if (freeIndexes.size()) {
-        U32 result = freeIndexes.back();
-        freeIndexes.pop_back();
-        return result;
-    }
-    if (highWaterIndex >= K_NUMBER_OF_PAGES) {
-        kpanic("soft_ram.cpp getFreeIndex: ran out of emulated RAM (4GB)");
-    }
-    U32 result = highWaterIndex;
-    highWaterIndex++;
-    return result;
-}
-
-static void freeIndex(U32 index) {
-    freeIndexes.push_back(index);
-}
+static std::vector<RAM_TYPE> freeIndexes;
 
 // native x64 code instructions sometimes assume proper alignment, so make sure when they align an emulated address, the hardware address is also aligned the same 
 // F-16 demo installer will crash if the page was allocated with just new on x64
@@ -145,29 +123,43 @@ RamPage ramPageAllocNative(U8* native) {
 }
 
 #else
+
+struct alignas(K_PAGE_SIZE) AlignedU8 {
+    U8 data;
+};
+
+std::vector<AlignedU8*> allocatedPages;
+
 RamPage ramPageAlloc() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
-    U32 index = allocIndex();
+    if (freeIndexes.size()) {
+        RamPage found;
+        found.value = freeIndexes.back();
+        freeIndexes.pop_back();
+        refCounts[found.value].refCount = 1;
+        memset((U8*)(found.value << K_PAGE_SHIFT), 0, K_PAGE_SIZE);
+        return found;
+    }    
 
-    if (!ramPages[index]) {
-        ramPages[index] = new U8[K_PAGE_SIZE];
+    AlignedU8* result = new AlignedU8[64]; // need to create a few since an aligned new will over allocate to make the alignment work.
+    allocatedPages.push_back(result);
+    RAM_TYPE index = ((RAM_TYPE)result) >> K_PAGE_SHIFT;
+    for (int i = 1; i < 64; i++) {        
+        freeIndexes.push_back(index + i);
     }
-    memset(ramPages[index], 0, K_PAGE_SIZE);
+    memset(result, 0, K_PAGE_SIZE);
+    RamPage found;
+    found.value = index;
+
     refCounts[index].refCount = 1;
     allocatedRamPages++;
-    RamPage result;
-    result.value = index;
-    return result;
+    return found;
 }
 
 RamPage ramPageAllocNative(U8* native) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
-    U32 index = allocIndex();
+    RAM_TYPE index = ((RAM_TYPE)native) >> K_PAGE_SHIFT;
 
-    if (ramPages[index]) {
-        delete[] ramPages[index];
-    }
-    ramPages[index] = native;
     refCounts[index].refCount = 1;
     refCounts[index].isNative = 1;
     RamPage result;
@@ -176,27 +168,20 @@ RamPage ramPageAllocNative(U8* native) {
 }
 
 void shutdownRam() {
-    for (int i = 0; i < K_NUMBER_OF_PAGES; i++) {
-        if (!refCounts[i].isNative && ramPages[i]) {
-            delete[] ramPages[i];
-        }
-        refCounts[i].refCount = 0;
-        refCounts[i].isNative = 0;
-        refCounts[i].isSystem = 0;
-        ramPages[i] = nullptr;
+    memset(refCounts, 0, sizeof(refCounts));
+    for (AlignedU8* p : allocatedPages) {
+        delete[] p;
     }
+    allocatedPages.clear();
 }
 
 #endif
 
 RamPage ramPageAllocNativeContinuous(U8* native, U32 pageCount) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
-    U32 ramIndex = highWaterIndex;
-
-    highWaterIndex += pageCount;
+    RAM_TYPE ramIndex = ((RAM_TYPE)native) >> K_PAGE_SHIFT;
 
     for (U32 i = 0; i < pageCount; i++) {
-        ramPages[ramIndex + i] = native;
         refCounts[ramIndex + i].refCount = 1;
         refCounts[ramIndex + i].isNative = 1;
         native += K_PAGE_SIZE;
@@ -228,10 +213,6 @@ bool ramPageIsNative(RamPage page) {
     return refCounts[page.value].isNative != 0;
 }
 
-U8* ramPageGet(RamPage page) {
-    return ramPages[page.value];
-}
-
 void ramPageRelease(RamPage page) {
     if (page.value == 0) {
         return;
@@ -239,12 +220,12 @@ void ramPageRelease(RamPage page) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
     refCounts[page.value].refCount--;
     if (refCounts[page.value].refCount == 0) {
-        allocatedRamPages--;
-        freeIndex(page.value);
+        allocatedRamPages--;        
         if (refCounts[page.value].isNative) {
-            ramPages[page.value] = nullptr;
             refCounts[page.value].isNative = 0;
             refCounts[page.value].isSystem = 0;
+        } else {
+            freeIndexes.push_back(page.value);
         }
     }    
 }
