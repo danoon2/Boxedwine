@@ -358,7 +358,9 @@ BString KNativeScreenSDL::clipboardGetText() {
     if (!result) {
         return BString::empty;
     }
-    return BString::copy(result);
+    BString text = BString::copy(result);
+    SDL_free(result);
+    return text;
 }
 
 void KNativeScreenSDL::clipboardSetText(const char* text) {
