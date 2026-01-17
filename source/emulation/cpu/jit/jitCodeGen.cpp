@@ -1105,7 +1105,7 @@ RegPtr JitCodeGen::getCondition(JitConditional condition, RegPtr resultReg) {
             resultReg = getTmpReg();
         }
         RegPtr flags = readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), getTmpRegForCallResult());
-        IfEqual(JitWidth::b8, flags, FLAGS_NONE);
+        IfEqual(JitWidth::b8, std::move(flags), FLAGS_NONE);
         readCPU(JitWidth::b32, offsetof(CPU, flags), resultReg);
         switch (condition) {
         case JitConditional::NO:
@@ -1133,11 +1133,24 @@ RegPtr JitCodeGen::getCondition(JitConditional condition, RegPtr resultReg) {
             andValue(JitWidth::b32, resultReg, 1);
             xorValue(JitWidth::b32, resultReg, 1);
             break;
-        case JitConditional::NBE:
-            callAndReturn(common_condition_nbe, resultReg);
-            break;
+        
         case JitConditional::BE:
-            callAndReturn(common_condition_be, resultReg);
+        case JitConditional::NBE:
+            {
+                RegPtr tmp = getTmpReg();
+                // CF
+                mov(JitWidth::b32, tmp, resultReg);
+                andValue(JitWidth::b32, tmp, 1);
+
+                // ZF
+                shrValue(JitWidth::b32, resultReg, 6);
+                andValue(JitWidth::b32, resultReg, 1);
+
+                orReg(JitWidth::b32, resultReg, tmp);
+                if (condition == JitConditional::NBE) {
+                    xorValue(JitWidth::b32, resultReg, 1);
+                }
+            }
             break;
         case JitConditional::NS:
             shrValue(JitWidth::b32, resultReg, 7);
@@ -1158,16 +1171,50 @@ RegPtr JitCodeGen::getCondition(JitConditional condition, RegPtr resultReg) {
             andValue(JitWidth::b32, resultReg, 1);
             break;
         case JitConditional::NL:
-            callAndReturn(common_condition_nl, resultReg);
-            break;
         case JitConditional::L:
-            callAndReturn(common_condition_l, resultReg);
-            break;
         case JitConditional::NLE:
-            callAndReturn(common_condition_nle, resultReg);
-            break;
         case JitConditional::LE:
-            callAndReturn(common_condition_le, resultReg);
+            {
+                RegPtr tmp = getTmpReg();
+                
+                // OF
+                mov(JitWidth::b32, tmp, resultReg);
+                shrValue(JitWidth::b32, tmp, 11);
+                andValue(JitWidth::b32, tmp, 1);
+
+                // SF
+                shrValue(JitWidth::b32, resultReg, 7);
+                andValue(JitWidth::b32, resultReg, 1);                
+
+                if (condition == JitConditional::NL) {
+                    // SF == OF
+                    xorReg(JitWidth::b32, resultReg, tmp);
+                    xorValue(JitWidth::b32, resultReg, 1);
+                } else if (condition == JitConditional::L) {
+                    xorReg(JitWidth::b32, resultReg, tmp);
+                } else if (condition == JitConditional::NLE) {
+                    xorReg(JitWidth::b32, resultReg, tmp);
+                    xorValue(JitWidth::b32, resultReg, 1);
+                    readCPU(JitWidth::b32, offsetof(CPU, flags), tmp);
+                    // ZF
+                    shrValue(JitWidth::b32, tmp, 6);
+                    andValue(JitWidth::b32, tmp, 1);
+                    // !ZF
+                    xorValue(JitWidth::b32, tmp, 1);
+                    // !ZF && SF == OF
+                    andReg(JitWidth::b32, resultReg, tmp);
+
+                } else if (condition == JitConditional::LE) {
+                    xorReg(JitWidth::b32, resultReg, tmp);
+                    readCPU(JitWidth::b32, offsetof(CPU, flags), tmp);
+                    // ZF
+                    shrValue(JitWidth::b32, tmp, 6);
+                    andValue(JitWidth::b32, tmp, 1);
+
+                    // ZF || SF != OF
+                    orReg(JitWidth::b32, resultReg, tmp);
+                }
+            }
             break;
         // no default, should get compiler error if not all enum cases handled
         }

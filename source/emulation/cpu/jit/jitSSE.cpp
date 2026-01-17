@@ -287,8 +287,6 @@ void JitSSE::dynamic_comissXmmXmm(DecodedOp* op) {
     SSERegPtr reg = loadCpuXMMReg(op->reg);
     SSERegPtr rm = loadCpuXMMReg(op->rm);
     comissXmmXmm(reg, rm);
-    currentLazyFlags = FLAGS_NONE;
-    storeLazyFlags(FLAGS_NONE);
 }
 
 void JitSSE::dynamic_comissXmmE32(DecodedOp* op) {
@@ -297,16 +295,12 @@ void JitSSE::dynamic_comissXmmE32(DecodedOp* op) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
         comissXmmXmm(reg, tmp);
     });
-    currentLazyFlags = FLAGS_NONE;
-    storeLazyFlags(FLAGS_NONE);
 }
 
 void JitSSE::dynamic_ucomissXmmXmm(DecodedOp* op) {
     SSERegPtr reg = loadCpuXMMReg(op->reg);
     SSERegPtr rm = loadCpuXMMReg(op->rm);
     ucomissXmmXmm(reg, rm);
-    currentLazyFlags = FLAGS_NONE;
-    storeLazyFlags(FLAGS_NONE);
 }
 
 void JitSSE::dynamic_ucomissXmmE32(DecodedOp* op) {
@@ -315,16 +309,12 @@ void JitSSE::dynamic_ucomissXmmE32(DecodedOp* op) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
         ucomissXmmXmm(reg, tmp);
     });
-    currentLazyFlags = FLAGS_NONE;
-    storeLazyFlags(FLAGS_NONE);
 }
 
 void JitSSE::dynamic_comisdXmmXmm(DecodedOp* op) {
     SSERegPtr reg = loadCpuXMMReg(op->reg);
     SSERegPtr rm = loadCpuXMMReg(op->rm);
     comisdXmmXmm(reg, rm);
-    currentLazyFlags = FLAGS_NONE;
-    storeLazyFlags(FLAGS_NONE);
 }
 
 void JitSSE::dynamic_comisdXmmE64(DecodedOp* op) {
@@ -333,16 +323,12 @@ void JitSSE::dynamic_comisdXmmE64(DecodedOp* op) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
         comisdXmmXmm(reg, tmp);
     });
-    currentLazyFlags = FLAGS_NONE;
-    storeLazyFlags(FLAGS_NONE);
 }
 
 void JitSSE::dynamic_ucomisdXmmXmm(DecodedOp* op) {
     SSERegPtr reg = loadCpuXMMReg(op->reg);
     SSERegPtr rm = loadCpuXMMReg(op->rm);
     ucomisdXmmXmm(reg, rm);
-    currentLazyFlags = FLAGS_NONE;
-    storeLazyFlags(FLAGS_NONE);
 }
 
 void JitSSE::dynamic_ucomisdXmmE64(DecodedOp* op) {
@@ -351,8 +337,6 @@ void JitSSE::dynamic_ucomisdXmmE64(DecodedOp* op) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
         ucomisdXmmXmm(reg, tmp);
     });
-    currentLazyFlags = FLAGS_NONE;
-    storeLazyFlags(FLAGS_NONE);
 }
 
 void JitSSE::dynamic_cvtpd2piMmxXmm(DecodedOp* op) {

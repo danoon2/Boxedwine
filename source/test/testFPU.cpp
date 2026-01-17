@@ -1687,6 +1687,22 @@ void testFCOS() {
     FPU_Float st0;
     FPU_Float result;
 
+    st0.f = -fPI / 2;
+    result.f = 0.0f;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = -fPI / 3;
+    result.f = 0.5f;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = -fPI / 4;
+    result.f = squareRoot2 / 2;
+    doFCOS_inst(&st0, &result);
+
+    st0.f = -fPI / 6;
+    result.f = squareRoot3 / 2;
+    doFCOS_inst(&st0, &result);
+
     st0.f = 0.0f;
     result.f = 1.0f;
     doFCOS_inst(&st0, &result);

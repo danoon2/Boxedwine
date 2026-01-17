@@ -1566,6 +1566,13 @@ void X86Asm::lzcnt(Reg16 dst, Reg16 src) {
     outb(0xc0 | ((dst.reg & 7) << 3) | (src.reg & 7));
 }
 
+void X86Asm::cmovb(Reg32 dst, Reg32 src) {
+    rex(dst.reg, src.reg, false);
+    outb(0x0f);
+    outb(0x42);
+    outb(0xc0 | ((dst.reg & 7) << 3) | (src.reg & 7));
+}
+
 void X86Asm::cmovl(Reg32 dst, Reg32 src) {
     rex(dst.reg, src.reg, false);
     outb(0x0f);
@@ -2078,20 +2085,20 @@ void X86Asm::xchg(Reg8 reg, const Mem8& mem) {
 void X86Asm::xchg(Reg8 reg, Reg8 rm) {
     rex(rm.reg, reg.reg, false);
     outb(0x86);
-    outb(0xC0 | (reg.reg & 7) | (rm.reg << 3));
+    outb(0xC0 | (reg.reg & 7) | ((rm.reg & 7) << 3));
 }
 
 void X86Asm::xchg(Reg16 reg, Reg16 rm) {    
     outb(0x66);
     rex(rm.reg, reg.reg, false);
     outb(0x87);
-    outb(0xC0 | (reg.reg & 7) | (rm.reg << 3));
+    outb(0xC0 | (reg.reg & 7) | ((rm.reg & 7) << 3));
 }
 
 void X86Asm::xchg(Reg32 reg, Reg32 rm) {
     rex(rm.reg, reg.reg, false);
     outb(0x87);
-    outb(0xC0 | (reg.reg & 7) | (rm.reg << 3));
+    outb(0xC0 | (reg.reg & 7) | ((rm.reg & 7) << 3));
 }
 
 void X86Asm::xadd(const Mem32& mem, Reg32 reg) {
@@ -4158,6 +4165,13 @@ void X86Asm::and_(Reg64 dst, U32 imm) {
         outb(imm);
     }
 }
+
+void X86Asm::xchg(Reg64 reg, Reg64 rm) {
+    rex(rm.reg, reg.reg, true);
+    outb(0x87);
+    outb(0xC0 | (reg.reg & 7) | ((rm.reg & 7) << 3));
+}
+
 
 #else
 void X86Asm::call(void* address) {

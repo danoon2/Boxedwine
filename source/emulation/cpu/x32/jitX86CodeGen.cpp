@@ -3008,75 +3008,65 @@ RegPtr JitX86CodeGen::getReadOnlyFlags() {
 
 void JitX86CodeGen::updateFlagsIfNecessary() {
     U32 neededFlags = currentOp->needsToSetFlags(cpu);
-    if (neededFlags) {
-        currentLazyFlags = FLAGS_NONE;
+    if (neededFlags) {        
+        RegPtr flags = readCPU(JitWidth::b32, offsetof(CPU, flags));
+        RegPtr tmp = getTmpReg8();
+        
         if (neededFlags == CF) {
-            x86.IfCF();
-            x86.bts(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), 0);
-            x86.Else();
-            x86.btr(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), 0);
-            x86.EndIf();
-            storeLazyFlags(FLAGS_NONE);
-            return;
-        }
-        if (neededFlags == ZF) {
-            x86.IfZF();
-            x86.bts(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), 6);
-            x86.Else();
-            x86.btr(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), 6);
-            x86.EndIf();
-            storeLazyFlags(FLAGS_NONE);
-            return;
-        }
-        if (neededFlags == SF) {
-            x86.IfSF();
-            x86.bts(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), 7);
-            x86.Else();
-            x86.btr(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), 7);
-            x86.EndIf();
-            storeLazyFlags(FLAGS_NONE);
-            return;
-        }
-        if (neededFlags == OF) {
-            x86.IfOF();
-            x86.bts(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), 11);
-            x86.Else();
-            x86.btr(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), 11);
-            x86.EndIf();
-            storeLazyFlags(FLAGS_NONE);
-            return;
-        }
-        if (neededFlags == PF) {
-            x86.IfPF();
-            x86.bts(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), 2);
-            x86.Else();
-            x86.btr(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), 2);
-            x86.EndIf();
-            storeLazyFlags(FLAGS_NONE);
-            return;
-        }
-        bool savedEAX = false;
-
-        if (regUsed2[0] || regCache[0] == 0) {
-            x86.push(RN(0));
-            savedEAX = true;
-        }
-        if (neededFlags & OF) {
-            x86.lahf();
-            x86.seto(R8(0));
-            x86.shl(R8(0), 3);
-            x86.xchg(R8(4), R8(0));
+            movValue(JitWidth::b32, tmp, 0); // not xor, we don't want to affect flags
+            x86.setb(R8(tmp->hardwareReg()));
+            andValue(JitWidth::b32, flags, ~CF);
+            orReg(JitWidth::b32, flags, tmp);
+        } else if (neededFlags == ZF) {
+            movValue(JitWidth::b32, tmp, 0); // not xor, we don't want to affect flags
+            x86.setz(R8(tmp->hardwareReg()));
+            shlValue(JitWidth::b32, tmp, 6);
+            andValue(JitWidth::b32, flags, ~ZF);
+            orReg(JitWidth::b32, flags, tmp);
+        } else if (neededFlags == SF) {
+            movValue(JitWidth::b32, tmp, 0); // not xor, we don't want to affect flags
+            x86.sets(R8(tmp->hardwareReg()));
+            shlValue(JitWidth::b32, tmp, 7);
+            andValue(JitWidth::b32, flags, ~SF);
+            orReg(JitWidth::b32, flags, tmp);
+        } else if (neededFlags == OF) {
+            movValue(JitWidth::b32, tmp, 0); // not xor, we don't want to affect flags
+            x86.seto(R8(tmp->hardwareReg()));
+            shlValue(JitWidth::b32, tmp, 11);
+            andValue(JitWidth::b32, flags, ~OF);
+            orReg(JitWidth::b32, flags, tmp);
+        } else if (neededFlags == PF) {
+            movValue(JitWidth::b32, tmp, 0); // not xor, we don't want to affect flags
+            x86.setp(R8(tmp->hardwareReg()));
+            shlValue(JitWidth::b32, tmp, 2);
+            andValue(JitWidth::b32, flags, ~PF);
+            orReg(JitWidth::b32, flags, tmp);
         } else {
-            x86.lahf();
-            x86.shr(R16(0), 8);
+            bool savedEAX = false;
+
+            if (regUsed2[0] || regCache[0] == 0) {
+                x86.xchg(RN(0), RN(tmp->hardwareReg()));
+                savedEAX = true;
+            }
+            if (neededFlags & OF) {
+                x86.lahf();
+                x86.seto(R8(0));
+                x86.shl(R8(0), 3);
+                x86.xchg(R8(4), R8(0));
+            } else {
+                x86.lahf();
+                x86.shr(R16(0), 8);
+            }
+            // mask so we don't clobber DF
+            andValue(JitWidth::b32, flags, ~FMASK_TEST);
+            x86.or_(R16(flags->hardwareReg()), x86.ax);
+            if (savedEAX) {
+                x86.xchg(RN(0), RN(tmp->hardwareReg()));
+            }
         }
-        // mask so we don't clobber DF
-        x86.and_(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), ~FMASK_TEST);
-        x86.or_(X86Asm::Mem16(HOST_CPU, offsetof(CPU, flags)), x86.ax);
-        if (savedEAX) {
-            x86.pop(RN(0));
-        }
+        writeCPU(JitWidth::b32, offsetof(CPU, flags), flags);
         storeLazyFlags(FLAGS_NONE);
+        currentLazyFlags = FLAGS_NONE;
     }
 }
 
@@ -4255,6 +4245,8 @@ void JitX86CodeGen::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
         }
         this->x86.lock();
         this->x86.cmpxchg(X86Asm::Mem32(RN(address->hardwareReg()), RN(offset->hardwareReg())), R32(reg->hardwareReg()));
+        address = nullptr;
+        offset = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -4273,6 +4265,8 @@ void JitX86CodeGen::dynamic_cmpxchge16r16_lock(DecodedOp* op) {
         }
         this->x86.lock();
         this->x86.cmpxchg(X86Asm::Mem16(RN(address->hardwareReg()), RN(offset->hardwareReg())), R16(reg->hardwareReg()));
+        address = nullptr;
+        offset = nullptr;
         updateFlagsIfNecessary();     
     });
 }
@@ -4291,6 +4285,8 @@ void JitX86CodeGen::dynamic_cmpxchge8r8_lock(DecodedOp* op) {
         }
         this->x86.lock();
         this->x86.cmpxchg(X86Asm::Mem8(RN(address->hardwareReg()), RN(offset->hardwareReg())), R8(get8bitReg(reg)));
+        address = nullptr;
+        offset = nullptr;
         updateFlagsIfNecessary();
     });
 }
