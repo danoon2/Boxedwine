@@ -79,7 +79,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -91,7 +91,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -119,7 +119,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -133,7 +133,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -205,7 +205,7 @@
     <LibraryPath>$(VC_LibraryPath_ARM64);$(WindowsSDK_LibraryPath_ARM64)</LibraryPath>
     <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
-    <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
+    <ExternalIncludePath>..\..\..\..\lib\asmjit;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -219,7 +219,7 @@
     <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
     <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
-    <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
+    <ExternalIncludePath>..\..\..\..\lib\asmjit;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -252,7 +252,7 @@
     <LibraryPath>$(VC_LibraryPath_ARM64);$(WindowsSDK_LibraryPath_ARM64)</LibraryPath>
     <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
-    <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
+    <ExternalIncludePath>..\..\..\..\lib\asmjit;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -376,7 +376,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;BOXEDWINE_ARMV8BT;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_SDL;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -445,7 +445,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_ARMV8BT;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_DYNAMIC;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -754,6 +754,82 @@
     <ClInclude Include="..\..\..\..\include\syscpuonline.h" />
     <ClInclude Include="..\..\..\..\include\syscpuscalingmaxfreq.h" />
     <ClInclude Include="..\..\..\..\include\uptime.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64archtraits_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64assembler.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64builder.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64compiler.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64emithelper_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64emitter.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64formatter_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64func_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64globals.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64instapi_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64instdb.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64instdb_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64operand.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\a64rapass_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\armformatter_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\armglobals.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\arm\armutils.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\api-build_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\api-config.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\archcommons.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\archtraits.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\assembler.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\builder.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\builder_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\codebuffer.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\codeholder.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\codewriter_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\compiler.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\compilerdefs.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\constpool.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\cpuinfo.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\emithelper_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\emitter.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\emitterutils_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\environment.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\errorhandler.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\fixup.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\formatter.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\formatter_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\func.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\funcargscontext_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\globals.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\inst.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\instdb_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\jitallocator.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\jitruntime.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\logger.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\misc_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\operand.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\osutils.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\osutils_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\raassignment_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\racfgblock_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\racfgbuilder_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\raconstraints_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\radefs_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\rainst_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\ralocal_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\rapass_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\rareg_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\rastack_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\string.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\target.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\type.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\core\virtmem.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\support\arena.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\support\arenabitset_p.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\support\arenahash.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\support\arenalist.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\support\arenapool.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\support\arenastring.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\support\arenatree.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\support\arenavector.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\support\span.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\support\support.h" />
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\support\support_p.h" />
     <ClInclude Include="..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.h" />
     <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_dx9.h" />
     <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_sdl.h" />
@@ -806,6 +882,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_minmax.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8\jitArmV8CodeGen.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8\llvm_helper.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h" />
@@ -999,6 +1076,202 @@
     <ClInclude Include="..\..\..\..\source\x11\xwindow.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\arm\a64assembler.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\arm\a64builder.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\arm\a64compiler.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\arm\a64emithelper.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\arm\a64formatter.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\arm\a64func.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\arm\a64instapi.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\arm\a64instdb.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\arm\a64operand.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\arm\a64rapass.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\arm\armformatter.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\archtraits.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\assembler.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\builder.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\codeholder.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\codewriter.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\compiler.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\constpool.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\cpuinfo.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\emithelper.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\emitter.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\emitterutils.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\environment.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\errorhandler.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\formatter.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\func.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\funcargscontext.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\globals.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\inst.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\instdb.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\jitallocator.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\jitruntime.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\logger.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\operand.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\osutils.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\ralocal.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\rapass.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\rastack.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\string.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\target.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\type.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\core\virtmem.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\support\arena.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\support\arenabitset.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\support\arenahash.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\support\arenalist.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\support\arenatree.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\support\arenavector.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\support\support.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
@@ -2776,6 +3049,7 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_minmax.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8\jitArmV8CodeGen.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.cpp" />
@@ -2863,8 +3137,8 @@
     <ClCompile Include="..\..\..\..\source\kernel\kunixsocket.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\loader\loader.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\bufferaccess.cpp" />
-    <ClCompile Include="..\..\..\..\source\kernel\proc\cpuinfo.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\meminfo.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\proc\proccpuinfo.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\procstat.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\self.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\uptime.cpp" />

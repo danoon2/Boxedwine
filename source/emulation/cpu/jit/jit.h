@@ -152,6 +152,12 @@ public:
     virtual void subValue(JitWidth regWidth, RegPtr reg, U32 imm) = 0;
     virtual void andReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void andValue(JitWidth regWidth, RegPtr reg, U32 immm) = 0;
+#ifdef BOXEDWINE_64
+    virtual void andValue64(RegPtr reg, U64 immm) = 0;
+#define andValueNative(reg, imm) andValue64(reg, imm);
+#else
+#define andValueNative(reg, imm) andValue(JitWidth::b32, reg, imm);
+#endif
     virtual void xorReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void xorValue(JitWidth regWidth, RegPtr reg, U32 immm) = 0;
     virtual void shrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
@@ -205,7 +211,7 @@ public:
     RegPtr pop16(RegPtr resultReg = nullptr, U32 amount = 2);
     RegPtr pop32(RegPtr resultReg = nullptr, U32 amount = 4);
 
-    virtual void storeLazyFlags(LazyFlagType flags) = 0;
+    virtual void storeLazyFlagType(LazyFlagType flags) = 0;
     virtual void storeLazyFlagsDest(RegPtr reg) = 0;
     virtual void storeLazyFlagsSrc(RegPtr reg) = 0;
     virtual void storeLazyFlagsSrc(U32 value) = 0;
@@ -219,6 +225,7 @@ public:
     virtual void andCPUFlagsImmV2(U32 imm) = 0;
     virtual void orCPUFlagsImmV2(U32 imm) = 0;    
     virtual RegPtr getReadOnlyFlags() = 0;
+    virtual RegPtr getFlagsInTmp(RegPtr reg = nullptr) = 0;
     virtual void setFlags(RegPtr flags, U32 mask) = 0;
     virtual void writeFlags(RegPtr flags) = 0;
     virtual RegPtr getCondition(JitConditional condition, RegPtr resultReg = nullptr) = 0; // guaranteed to return 0 or 1
@@ -226,8 +233,8 @@ public:
     virtual void If(JitWidth regWidth, RegPtr reg) = 0;
     virtual void IfTest(JitWidth regWidth, RegPtr reg, RegPtr mask) = 0;
     virtual void IfTest(JitWidth regWidth, RegPtr reg, U32 mask) = 0;
-    virtual void IfBitTest(RegPtr reg, U8 bit) = 0;
-    virtual void IfNotTest(JitWidth regWidth, RegPtr reg, U32 mask) = 0;
+    virtual void IfNotTestBit(JitWidth regWidth, RegPtr reg, U32 bitPos) = 0;
+    virtual void IfTestBit(JitWidth regWidth, RegPtr reg, U32 bitPos) = 0;
     virtual void IfEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) = 0;
     virtual void IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) = 0;
     virtual void IfNotEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) = 0;
@@ -239,7 +246,6 @@ public:
     virtual void IfNot(JitWidth regWidth, RegPtr reg) = 0;
     virtual void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) = 0;
     virtual void IfCondition(JitConditional condition) = 0;
-    virtual void IfCompareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition) = 0; // result guaranteed to be 0 or 1
     virtual void JumpIfCondition(JitConditional condition, U32 address) = 0;
     virtual U32 MarkJumpLocation() = 0;
     virtual void Goto(U32 location) = 0;
@@ -335,6 +341,8 @@ public:
 
     using CallRI = void(*)(CPU* cpu, U32 value1, U32 value2);
     void call_RI(CallRI address, JitWidth width, RegPtr reg, U32 value);
+
+    #define MAX_NUMBER_OF_CALL_PARAMS 2
 
 #define INIT_CPU(e, f) virtual void dynamic_##f(DecodedOp* op);
 #include "../common/cpu_init.h"

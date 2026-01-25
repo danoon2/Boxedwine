@@ -31,7 +31,7 @@ public:
     U16 isSystem : 1;
 };
 
-static RamInfo refCounts[K_NUMBER_OF_PAGES];
+static std::unordered_map<U64, RamInfo> refCounts;
 static std::vector<RAM_TYPE> freeIndexes;
 
 // native x64 code instructions sometimes assume proper alignment, so make sure when they align an emulated address, the hardware address is also aligned the same 
@@ -168,7 +168,7 @@ RamPage ramPageAllocNative(U8* native) {
 }
 
 void shutdownRam() {
-    memset(refCounts, 0, sizeof(refCounts));
+    refCounts.clear();
     for (AlignedU8* p : allocatedPages) {
         delete[] p;
     }

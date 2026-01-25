@@ -275,6 +275,7 @@ struct Data {
 #define allocDataFlagsWithAF(var1, var2, result, flags, fCF, fOF, fSF, fZF, fAF, hasOF, hasZF, hasSF) { 1, var1, var2, result, 0, flags, 0, fCF, fOF, fZF, fSF, 0, 0, 0, hasOF, fAF, 1, 1, hasZF, hasSF }
 #define allocDataConst(var1, var2, result, constant, constantWidth, flags, fCF, fOF) { 1, var1, var2, result, 0, flags, constant, fCF, fOF, 0, 0, 0, 0, constantWidth, true, 0, 0, 1, 0, 0 }
 #define allocDataConstNoOF(var1, var2, result, constant, constantWidth, flags, fCF) { 1, var1, var2, result, 0, flags, constant, fCF, 0, 0, 0, 0, 0, constantWidth, false, 0, 0, 1, 0, 0 }
+#define allocDataConstNoCFOF(var1, var2, result, constant, constantWidth, flags) { 1, var1, var2, result, 0, flags, constant, 0, 0, 0, 0, 0, 0, constantWidth, false, 0, 0, 0, 0, 0 }
 #define allocDatavar2(var1, var2, resultvar1, resultvar2) { 1, var1, var2, resultvar1, resultvar2, 0, 0, 0, 0, 0, 0, 1, 1, 0, true, 0, 0, 1, 0, 0 }
 #define allocDataConstvar2(var1, var2, result, flags, fCF, fOF, constant, var2Result) { 1, var1, var2, result, var2Result, flags, constant, fCF, fOF, 0, 0, 0, 1, 0, true, 0, 0, 1, 0, 0 }
 #define allocDataConstvar2NoFlags(var1, var2, result, constant, var2Result) { 1, var1, var2, result, var2Result, 0, constant, 0, 0, 0, 0, 0, 1, 0, false, 0, 0, 0, 0, 0 }
@@ -4697,7 +4698,8 @@ static struct Data shld16[] = {
         // make sure 0 shift doesn't change flags
         allocDataConst(0x8080, 0x8000, 0x8080, 0, 8, 0, false, false),
         allocDataConst(0x8080, 0x8000, 0x8080, 0, 8, CF|OF, true, true),
-        //allocDataConstNoOF(0x1234, 0x5678, 0x6785, 20, 8, 0, true), // undefined
+        allocDataConstNoCFOF(0x1234, 0x5678, 0x6785, 20, 8, 0), // cf undefined
+        allocDataConstNoCFOF(0x1234, 0x5678, 0x5678, 16, 8, 0), // cf undefined
         //allocDataConst(0x8080, 0x8000, 0x0001, 17, 8, 0, true, true),
         //allocDataConst(0x4080, 0x4000, 0x8000, 17, 8, 0, false, true),
         //allocDataConst(0x2080, 0x2000, 0x4000, 17, 8, 0, false, false),
@@ -4720,7 +4722,8 @@ static struct Data shrd16[] = {
         allocDataConst(0x0102, 0x0001, 0x8081, 1, 8, 0, false, true),
         allocDataConst(0x0101, 0x0002, 0x0080, 1, 8, 0, true, false),
         allocDataConstNoOF(0x8080, 0x0001, 0x6020, 2, 8, 0, false),
-        //allocDataConstNoOF(0x1234, 0x5678, 0x8567, 20, 8, 0, true, true), // undefined
+        allocDataConstNoCFOF(0x1234, 0x5678, 0x8567, 20, 8, 0), // cf undefined
+        allocDataConstNoCFOF(0x1234, 0x5678, 0x5678, 16, 8, 0), // cf undefined
         //allocDataConstNoOF(0x0101, 0x0001, 0x8000, 17, 8, 0, true),
         //allocDataConstNoOF(0x0102, 0x0002, 0x0001, 17, 8, 0, false),
         endData()

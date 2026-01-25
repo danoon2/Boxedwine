@@ -83,7 +83,7 @@ void Jit::dynamic_rol16cl_mem_op(DecodedOp* op) {
 }
 
 void Jit::writeRol32Flags(RegPtr reg) {
-    RegPtr flags = getReadOnlyFlags();
+    RegPtr flags = getFlagsInTmp();
 
     // cpu->setCF(result & 1);
     RegPtr tmp = getTmpReg();
@@ -107,7 +107,7 @@ void Jit::writeRol32Flags(RegPtr reg) {
     flags = nullptr;
 
     currentLazyFlags = FLAGS_CFOF;
-    storeLazyFlags(FLAGS_CFOF);
+    storeLazyFlagType(FLAGS_CFOF);
 }
 
 void Jit::dynamic_rol32_reg_op(DecodedOp* op) {
@@ -225,7 +225,7 @@ void Jit::dynamic_ror16cl_mem_op(DecodedOp* op) {
 }
 
 void Jit::writeRor32Flags(RegPtr reg) {
-    RegPtr flags = getReadOnlyFlags();
+    RegPtr flags = getFlagsInTmp();
     RegPtr tmp = getTmpReg();
     mov(JitWidth::b32, tmp, reg);
 
@@ -251,7 +251,7 @@ void Jit::writeRor32Flags(RegPtr reg) {
     flags = nullptr;
 
     currentLazyFlags = FLAGS_CFOF;
-    storeLazyFlags(FLAGS_CFOF);
+    storeLazyFlagType(FLAGS_CFOF);
 }
 
 void Jit::dynamic_ror32_reg_op(DecodedOp* op) {
@@ -373,7 +373,7 @@ void Jit::dynamic_rcl16cl_mem_op(DecodedOp* op) {
 }
 
 void Jit::writeRcl32Flags(RegPtr reg, RegPtr cf) {
-    RegPtr flags = getReadOnlyFlags();
+    RegPtr flags = getFlagsInTmp();
 
     // cpu->setCF(((var1 >> (32 - var2)) & 1));
     andValue(JitWidth::b32, flags, ~CF);
@@ -393,7 +393,7 @@ void Jit::writeRcl32Flags(RegPtr reg, RegPtr cf) {
     flags = nullptr;
 
     currentLazyFlags = FLAGS_CFOF;
-    storeLazyFlags(FLAGS_CFOF);
+    storeLazyFlagType(FLAGS_CFOF);
 }
 
 void Jit::dynamic_rcl32_reg_op(DecodedOp* op) {
@@ -540,7 +540,7 @@ void Jit::dynamic_rcr16cl_mem_op(DecodedOp* op) {
 }
 
 void Jit::writeRcr32Flags(RegPtr reg, RegPtr cf) {
-    RegPtr flags = getReadOnlyFlags();
+    RegPtr flags = getFlagsInTmp();
 
     // cpu->setCF((var1 >> (var2 - 1)) & 1);    
     andValue(JitWidth::b32, flags, ~CF);
@@ -561,7 +561,7 @@ void Jit::writeRcr32Flags(RegPtr reg, RegPtr cf) {
     flags = nullptr;
 
     currentLazyFlags = FLAGS_CFOF;
-    storeLazyFlags(FLAGS_CFOF);
+    storeLazyFlagType(FLAGS_CFOF);
 }
 
 void Jit::dynamic_rcr32_reg_op(DecodedOp* op) {
@@ -737,7 +737,7 @@ void Jit::dshift(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlag
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
 
     if (needsToSetFlags) {
-        storeLazyFlags(flagType);
+        storeLazyFlagType(flagType);
         currentLazyFlags = flagType;
         if (flags && flags->usesSrc(needsToSetFlags)) {
             storeLazyFlagsSrc(op->imm);
@@ -758,7 +758,7 @@ void Jit::dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFla
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
 
     if (needsToSetFlags) {
-        storeLazyFlags(flagType);
+        storeLazyFlagType(flagType);
         currentLazyFlags = flagType;
         if (flags && flags->usesSrc(needsToSetFlags)) {
             storeLazyFlagsSrc(op->imm);
@@ -796,7 +796,7 @@ void Jit::dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFl
         RegPtr src = getTmpReg8(1, false, 1);
         andValue(JitWidth::b32, src, 0x1f);
         If(JitWidth::b8, src); {
-            storeLazyFlags(flagType);
+            storeLazyFlagType(flagType);
             if (flags && flags->usesSrc(needsToSetFlags)) {
                 storeLazyFlagsSrc(src);
             }
@@ -829,7 +829,7 @@ void Jit::dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFla
             RegPtr dest = getReg(op->reg);
             RegPtr src2 = op->reg == op->rm ? dest : getReadOnlyReg(op->rm);
 
-            storeLazyFlags(flagType);
+            storeLazyFlagType(flagType);
             if (flags && flags->usesSrc(needsToSetFlags)) {
                 storeLazyFlagsSrc(src);
             }

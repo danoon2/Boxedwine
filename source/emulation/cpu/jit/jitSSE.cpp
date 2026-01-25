@@ -694,9 +694,7 @@ U8* JitSSE::createJitCosSub() {
     addssXmmXmm(xmm0, tmp);
 
     nakedReturn();
-    U8* result = createDynamicExecutableMemory();
-    patch(result);
-    return result;
+    return createDynamicExecutableMemory();
 }
 
 U8* JitSSE::createJitCos() {
@@ -793,9 +791,7 @@ U8* JitSSE::createJitCos() {
     nakedCall(cos);
     nakedReturn();
 
-    U8* dyn = createDynamicExecutableMemory();
-    patch(dyn);
-    return dyn;
+    return createDynamicExecutableMemory();
 }
 
 void JitSSE::createHelpers() {

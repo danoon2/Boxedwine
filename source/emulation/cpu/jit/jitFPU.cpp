@@ -764,7 +764,7 @@ void JitFPU::doFCOMI(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags) {
         // invalid
         orCPUFlagsImmV2(CF | PF | ZF);
     });
-    storeLazyFlags(FLAGS_NONE);
+    storeLazyFlagType(FLAGS_NONE);
     currentLazyFlags = FLAGS_NONE;
 }
 

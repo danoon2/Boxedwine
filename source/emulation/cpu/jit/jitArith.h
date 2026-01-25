@@ -466,7 +466,7 @@ void Jit::dynamic_mulR8(DecodedOp* op) {
     // AX = AL * src;
     dynamic_R(op, JitWidth::b8, &Jit::mulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         If(JitWidth::b8, getReadOnlyReg8(4)); {
             orCPUFlagsImmV2(CF | OF);
         } StartElse(); {
@@ -479,7 +479,7 @@ void Jit::dynamic_mulE8(DecodedOp* op) {
     // getTmpReg will register the reg we want the read from memory to use, by default it will be EAX, but mul needs to this to be unused
     dynamic_M(op, JitWidth::b8, &Jit::mulReg, FLAGS_NULL, false, getTmpReg8());
     if (op->needsToSetFlags(cpu)) {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         If(JitWidth::b8, getReadOnlyReg8(4)); {
             orCPUFlagsImmV2(CF | OF);
         } StartElse(); {
@@ -491,7 +491,7 @@ void Jit::dynamic_mulE8(DecodedOp* op) {
 void Jit::dynamic_imulR8(DecodedOp* op) {
     dynamic_R(op, JitWidth::b8, &Jit::imulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         RegPtr ah = getReadOnlyReg8(4);
         If(JitWidth::b8, ah); {
             IfEqual(JitWidth::b8, ah, 0xff); {
@@ -508,7 +508,7 @@ void Jit::dynamic_imulR8(DecodedOp* op) {
 void Jit::dynamic_imulE8(DecodedOp* op) {
     dynamic_M(op, JitWidth::b8, &Jit::imulReg, FLAGS_NULL, false, getTmpReg8());
     if (op->needsToSetFlags(cpu)) {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         RegPtr ah = getReadOnlyReg8(4);
         If(JitWidth::b8, ah); {
             IfEqual(JitWidth::b8, ah, 0xff); {
@@ -525,7 +525,7 @@ void Jit::dynamic_imulE8(DecodedOp* op) {
 void Jit::dynamic_mulR16(DecodedOp* op) {
     dynamic_R(op, JitWidth::b16, &Jit::mulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         If(JitWidth::b16, getReadOnlyReg(2)); {
             orCPUFlagsImmV2(CF | OF);
         } StartElse(); {
@@ -537,7 +537,7 @@ void Jit::dynamic_mulR16(DecodedOp* op) {
 void Jit::dynamic_mulE16(DecodedOp* op) {
     dynamic_M(op, JitWidth::b16, &Jit::mulReg, FLAGS_NULL, false, getTmpReg());
     if (op->needsToSetFlags(cpu)) {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         If(JitWidth::b16, getReadOnlyReg(2)); {
             orCPUFlagsImmV2(CF | OF);
         } StartElse(); {
@@ -549,7 +549,7 @@ void Jit::dynamic_mulE16(DecodedOp* op) {
 void Jit::dynamic_imulR16(DecodedOp* op) {
     dynamic_R(op, JitWidth::b16, &Jit::imulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         RegPtr dx = getReadOnlyReg(2);
         If(JitWidth::b16, dx); {
             IfEqual(JitWidth::b16, dx, 0xffff); {
@@ -566,7 +566,7 @@ void Jit::dynamic_imulR16(DecodedOp* op) {
 void Jit::dynamic_imulE16(DecodedOp* op) {
     dynamic_M(op, JitWidth::b16, &Jit::imulReg, FLAGS_NULL, false, getTmpReg());
     if (op->needsToSetFlags(cpu)) {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         RegPtr dx = getReadOnlyReg(2);
         If(JitWidth::b16, dx); {
             IfEqual(JitWidth::b16, dx, 0xffff); {
@@ -583,7 +583,7 @@ void Jit::dynamic_imulE16(DecodedOp* op) {
 void Jit::dynamic_mulR32(DecodedOp* op) {
     dynamic_R(op, JitWidth::b32, &Jit::mulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         If(JitWidth::b32, getReadOnlyReg(2)); {
             orCPUFlagsImmV2(CF | OF);
         } StartElse(); {
@@ -595,7 +595,7 @@ void Jit::dynamic_mulR32(DecodedOp* op) {
 void Jit::dynamic_mulE32(DecodedOp* op) {
     dynamic_M(op, JitWidth::b32, &Jit::mulReg, FLAGS_NULL, false, getTmpReg());
     if (op->needsToSetFlags(cpu)) {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         If(JitWidth::b32, getReadOnlyReg(2)); {
             orCPUFlagsImmV2(CF | OF);
         } StartElse(); {
@@ -607,7 +607,7 @@ void Jit::dynamic_mulE32(DecodedOp* op) {
 void Jit::dynamic_imulR32(DecodedOp* op) {
     dynamic_R(op, JitWidth::b32, &Jit::imulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         RegPtr edx = getReadOnlyReg(2);
         If(JitWidth::b32, edx); {
             IfEqual(JitWidth::b32, edx, 0xffffffff); {
@@ -624,7 +624,7 @@ void Jit::dynamic_imulR32(DecodedOp* op) {
 void Jit::dynamic_imulE32(DecodedOp* op) {
     dynamic_M(op, JitWidth::b32, &Jit::imulReg, FLAGS_NULL, false, getTmpReg());
     if (op->needsToSetFlags(cpu)) {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         RegPtr edx = getReadOnlyReg(2);
         If(JitWidth::b32, edx); {
             IfEqual(JitWidth::b32, edx, 0xffffffff); {
@@ -834,7 +834,7 @@ void Jit::dynamic_dimulcr16r16(DecodedOp* op) {
     if (!needsToSetFlags) {
         imulRRI(JitWidth::b16, getReg(op->reg), getReadOnlyReg(op->rm), op->imm);
     } else {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         RegPtr src1 = getTmpReg(op->rm);
         movsx(JitWidth::b32, src1, JitWidth::b16, src1);
         RegPtr result = getTmpReg();
@@ -859,7 +859,7 @@ void Jit::dynamic_dimulcr16e16(DecodedOp* op) {
         imulRRI(JitWidth::b16, getReg(op->reg), read(JitWidth::b16, calculateEaa(op)), op->imm);
     } else {
         RegPtr src1 = read(JitWidth::b16, calculateEaa(op));
-        storeLazyFlags(FLAGS_NONE); // after read in case of exception
+        storeLazyFlagType(FLAGS_NONE); // after read in case of exception
         movsx(JitWidth::b32, src1, JitWidth::b16, src1);
         RegPtr result = getTmpReg();
         imulRRI(JitWidth::b32, result, src1, (S32)((S16)(op->imm)));
@@ -881,7 +881,7 @@ void Jit::dynamic_dimulcr32r32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRRI(JitWidth::b32, getReg(op->reg), getReadOnlyReg(op->rm), op->imm);
     } else {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         RegPtr overflow = getTmpRegWithHint(2);
         imulRRI(JitWidth::b32, getReg(op->reg, 0, false), getReadOnlyReg(op->rm), op->imm, overflow);
 
@@ -921,7 +921,7 @@ void Jit::dynamic_dimulr16r16(DecodedOp* op) {
     if (!needsToSetFlags) {
         imulRR(JitWidth::b16, getReg(op->reg), getReadOnlyReg(op->rm));
     } else {
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         RegPtr src = getTmpReg(op->rm);
         movsx(JitWidth::b32, src, JitWidth::b16, src);
         RegPtr result = getTmpReg(op->reg);
@@ -947,7 +947,7 @@ void Jit::dynamic_dimulr16e16(DecodedOp* op) {
         imulRR(JitWidth::b16, getReg(op->reg), read(JitWidth::b16, calculateEaa(op)));
     } else {
         RegPtr src = read(JitWidth::b16, calculateEaa(op));
-        storeLazyFlags(FLAGS_NONE); // after read in case of exception
+        storeLazyFlagType(FLAGS_NONE); // after read in case of exception
         movsx(JitWidth::b32, src, JitWidth::b16, src);
         RegPtr result = getTmpReg(op->reg);
         movsx(JitWidth::b32, result, JitWidth::b16, result);

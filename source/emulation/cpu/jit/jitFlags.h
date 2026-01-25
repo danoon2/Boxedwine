@@ -33,7 +33,7 @@ static JitWidth getWidthOfFlags(LazyFlagType flags) {
 
 void JitCodeGen::genOF(LazyFlagType flags, RegPtr result) {
     if (flags == FLAGS_NONE || flags == FLAGS_CFOF) {
-        readCPU(JitWidth::b32, offsetof(CPU, flags), result);
+        getFlagsInTmp(result);
         shrValue(JitWidth::b32, result, 11);
         andValue(JitWidth::b32, result, 1);
     } else if (flags == FLAGS_ADD8 || flags == FLAGS_ADC8) {
@@ -207,14 +207,14 @@ void JitCodeGen::genOF(LazyFlagType flags, RegPtr result) {
 }
 
 void JitCodeGen::genPF(RegPtr result) {
-    xorReg(JitWidth::b32, result, result);
-    readCPU(JitWidth::b8, offsetof(CPU, result.u32), result);
+    getFlagResultReadOnly(result);
+    andValue(JitWidth::b32, result, 0xff);
     readCPU(JitWidth::b8, result, 0, offsetof(CPU, flagParityLookup), result);
 }
 
 void JitCodeGen::genCF(LazyFlagType flags, RegPtr result) {    
     if (flags == FLAGS_NONE || flags == FLAGS_CFOF) {
-        readCPU(JitWidth::b32, offsetof(CPU, flags), result);
+        getFlagsInTmp(result);
         andValue(JitWidth::b32, result, CF);
     } else if (flags == FLAGS_ADD8) {
         // cpu->result.u8<cpu->dst.u8;

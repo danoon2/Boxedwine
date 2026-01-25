@@ -76,11 +76,17 @@ void* BNativeHeap::alloc(U32 len) {
 	}
 	if (buckets.contains(index) && buckets[index].size()) {
 		void* result = buckets[index].back();
-		buckets[index].pop_back();
-        Platform::writeCodeToMemory(result, len, [result, len]() {
-            memset(result, 0, len);
-        });
-		return result;
+		U32* pInfo = (U32*)result;
+		pInfo--;
+		if (!delayedFree || *pInfo < KSystem::getMilliesSinceStart() - delayedFree) {
+			buckets[index].pop_back();
+			Platform::writeCodeToMemory(pInfo, len + 4, [index, pInfo, result, len]() {
+				memset(result, 0, len);
+				*pInfo = index;
+			});
+			*(((U32*)result) - 1) = index;
+			return result;
+		}
 	}
 	U8* address = Platform::alloc64kBlock(1, true);
 
@@ -88,8 +94,8 @@ void* BNativeHeap::alloc(U32 len) {
 
 	for (U8* start = address; start < address + BNATIVEHEAD_64K_BLOCK_SIZE; start += size) {
         // on mac, you can't write to mmap'd memory that was allocated for a JIT without unprotecting it
-        Platform::writeCodeToMemory(start, 4, [start, index]() {
-            *((U32*)start) = index;
+        Platform::writeCodeToMemory(start, 4, [start, index, this]() {
+            *((U32*)start) = delayedFree ? 0 : index;
         });
 		buckets[index].push_back(start + 4);
 	}
@@ -106,6 +112,13 @@ void BNativeHeap::free(void* address) {
 		Platform::releaseNativeMemory(rawAddress, index);
 		largeBlocks.remove(rawAddress);
 		return;
-	}	
-	buckets[index].push_back(address);
+	}
+	if (delayedFree) {
+		U32* pTime = (U32*)address;
+		pTime--;
+		Platform::writeCodeToMemory(pTime, 4, [pTime, index]() {
+			*pTime = KSystem::getMilliesSinceStart();
+		});
+	}
+	buckets[index].push_front(address);
 }

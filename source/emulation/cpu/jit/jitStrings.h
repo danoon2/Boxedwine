@@ -206,7 +206,7 @@ void Jit::cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, LazyF
     storeLazyFlagsSrc(src);
     subReg(valueWidth, dest, src);
     storeLazyFlagsResult(dest);
-    storeLazyFlags(lazyFlags);
+    storeLazyFlagType(lazyFlags);
 
     IfDF(); {
         subValue(regWidth, esi, size);
@@ -274,7 +274,7 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
             storeLazyFlagsSrc(src);
             subReg(valueWidth, dest, src);
             storeLazyFlagsResult(dest);
-            storeLazyFlags(lazyFlags);
+            storeLazyFlagType(lazyFlags);
         } EndIf();
     } StartElse(); {
         If(regWidth, getReadOnlyReg(1)); {
@@ -300,7 +300,7 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
             storeLazyFlagsSrc(src);
             subReg(valueWidth, dest, src);
             storeLazyFlagsResult(dest);
-            storeLazyFlags(lazyFlags);
+            storeLazyFlagType(lazyFlags);
         } EndIf();
     }
     EndIf();
@@ -667,7 +667,7 @@ void Jit::scas(JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType la
     storeLazyFlagsSrc(src);
     subReg(valueWidth, dest, src);
     storeLazyFlagsResult(dest);
-    storeLazyFlags(lazyFlags);
+    storeLazyFlagType(lazyFlags);
 
     IfDF(); {
         subValue(regWidth, edi, size);
@@ -726,7 +726,7 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
             storeLazyFlagsSrc(src);
             subReg(valueWidth, dest, src);
             storeLazyFlagsResult(dest);
-            storeLazyFlags(lazyFlags);
+            storeLazyFlagType(lazyFlags);
         } EndIf();
     } StartElse(); {
         If(regWidth, ecx); {
@@ -750,7 +750,7 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
             storeLazyFlagsSrc(src);
             subReg(valueWidth, dest, src);
             storeLazyFlagsResult(dest);
-            storeLazyFlags(lazyFlags);
+            storeLazyFlagType(lazyFlags);
         } EndIf();
     }
     EndIf();

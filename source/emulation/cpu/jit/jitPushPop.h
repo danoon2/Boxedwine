@@ -39,10 +39,12 @@ void Jit::push16(RegPtr reg) {
 
 void Jit::push32(RegPtr reg) {
     if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
-        RegPtr address = getTmpReg(4);
+        RegPtr esp = getReg(4);
+        RegPtr address = getTmpReg();
+        mov(JitWidth::b32, address, esp);
         subValue(JitWidth::b32, address, 4);
         write(JitWidth::b32, address, reg, nullptr, nullptr, false);
-        subValue(JitWidth::b32, getReg(4), 4);
+        subValue(JitWidth::b32, esp, 4);
     } else {
         RegPtr address = getTmpReg(4);
 
@@ -282,8 +284,10 @@ void Jit::dynamic_popf32(DecodedOp* op) {
     setFlags(pop32(), FMASK_ALL);
 }
 void Jit::dynamic_pushf16(DecodedOp* op) {
+    fillFlags();
     push16(getReadOnlyFlags());
 }
 void Jit::dynamic_pushf32(DecodedOp* op) {
+    fillFlags();
     push32(getReadOnlyFlags());
 }

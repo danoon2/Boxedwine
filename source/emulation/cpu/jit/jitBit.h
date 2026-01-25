@@ -55,7 +55,7 @@ bool Jit::btStartFlags(DecodedOp* op) {
             orCPUFlags(zf);
         }
         //if (currentLazyFlags != FLAGS_NONE) {
-            storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
             currentLazyFlags = FLAGS_NONE;
         //}
     }
@@ -453,109 +453,142 @@ void Jit::dynamic_btce32(DecodedOp* op) {
     });
 }
 // bsf/bsr The ZF flag is set to 1 if the source operand is 0; otherwise, the ZF flag is cleared. The CF, OF, SF, AF, and PF flags are undefined.
+// If the content of the source operand is 0, the content of the destination operand is undefined, but on hardware it looks like it just leaves dst untouched.
 bool Jit::bsStartFlags(DecodedOp* op) {
     U32 flagsNeeded = op->needsToSetFlags(cpu);
     if (flagsNeeded) {
         if (currentLazyFlags != FLAGS_NONE) {
-            storeLazyFlags(FLAGS_NONE);
+            storeLazyFlagType(FLAGS_NONE);
             currentLazyFlags = FLAGS_NONE;
         }
     }
     return flagsNeeded != 0;
 }
 void Jit::dynamic_bsfr16r16(DecodedOp* op) {
-    bool flags = btStartFlags(op);
+    bool flags = bsStartFlags(op);
     RegPtr src = getReadOnlyReg(op->rm);
     if (flags) {
         If(JitWidth::b16, src); {
             andCPUFlagsImmV2(~ZF);
+            bsfReg(JitWidth::b16, getReg(op->reg), src);
         } StartElse(); {
-            orCPUFlagsImmV2(ZF);
+            orCPUFlagsImmV2(ZF);            
+        } EndIf();
+    } else {
+        If(JitWidth::b16, src); {
+            bsfReg(JitWidth::b16, getReg(op->reg), src);
         } EndIf();
     }
-    bsfReg(JitWidth::b16, getReg(op->reg), src);
 }
 void Jit::dynamic_bsfr16e16(DecodedOp* op) {
-    bool flags = btStartFlags(op);
+    bool flags = bsStartFlags(op);
     RegPtr src = read(JitWidth::b16, calculateEaa(op));
     if (flags) {
         If(JitWidth::b16, src); {
             andCPUFlagsImmV2(~ZF);
+            bsfReg(JitWidth::b16, getReg(op->reg), src);
         } StartElse(); {
             orCPUFlagsImmV2(ZF);
         } EndIf();
+    } else {
+        If(JitWidth::b16, src); {
+            bsfReg(JitWidth::b16, getReg(op->reg), src);
+        } EndIf();
     }
-    bsfReg(JitWidth::b16, getReg(op->reg), src);
 }
 void Jit::dynamic_bsfr32r32(DecodedOp* op) {
-    bool flags = btStartFlags(op);
+    bool flags = bsStartFlags(op);
     RegPtr src = getReadOnlyReg(op->rm);
     if (flags) {
         If(JitWidth::b32, src); {
             andCPUFlagsImmV2(~ZF);
+            bsfReg(JitWidth::b32, getReg(op->reg), src);
         } StartElse(); {
             orCPUFlagsImmV2(ZF);
         } EndIf();
+    } else {
+        If(JitWidth::b32, src); {
+            bsfReg(JitWidth::b32, getReg(op->reg), src);
+        } EndIf();
     }
-    bsfReg(JitWidth::b32, getReg(op->reg), src);
 }
 void Jit::dynamic_bsfr32e32(DecodedOp* op) {
-    bool flags = btStartFlags(op);
+    bool flags = bsStartFlags(op);
     RegPtr src = read(JitWidth::b32, calculateEaa(op));
     if (flags) {
         If(JitWidth::b32, src); {
             andCPUFlagsImmV2(~ZF);
+            bsfReg(JitWidth::b32, getReg(op->reg), src);
         } StartElse(); {
             orCPUFlagsImmV2(ZF);
         } EndIf();
+    } else {
+        If(JitWidth::b32, src); {
+            bsfReg(JitWidth::b32, getReg(op->reg), src);
+        } EndIf();
     }
-    bsfReg(JitWidth::b32, getReg(op->reg), src);
 }
 void Jit::dynamic_bsrr16r16(DecodedOp* op) {
-    bool flags = btStartFlags(op);
+    bool flags = bsStartFlags(op);
     RegPtr src = getReadOnlyReg(op->rm);
     if (flags) {
         If(JitWidth::b16, src); {
             andCPUFlagsImmV2(~ZF);
+            bsrReg(JitWidth::b16, getReg(op->reg), src);
         } StartElse(); {
             orCPUFlagsImmV2(ZF);
         } EndIf();
+    } else {
+        If(JitWidth::b16, src); {
+            bsrReg(JitWidth::b16, getReg(op->reg), src);
+        } EndIf();
     }
-    bsrReg(JitWidth::b16, getReg(op->reg), src);
 }
 void Jit::dynamic_bsrr16e16(DecodedOp* op) {
-    bool flags = btStartFlags(op);
+    bool flags = bsStartFlags(op);
     RegPtr src = read(JitWidth::b16, calculateEaa(op));
     if (flags) {
         If(JitWidth::b16, src); {
             andCPUFlagsImmV2(~ZF);
+            bsrReg(JitWidth::b16, getReg(op->reg), src);
         } StartElse(); {
             orCPUFlagsImmV2(ZF);
         } EndIf();
+    } else {
+        If(JitWidth::b16, src); {
+            bsrReg(JitWidth::b16, getReg(op->reg), src);
+        } EndIf();
     }
-    bsrReg(JitWidth::b16, getReg(op->reg), src);
 }
 void Jit::dynamic_bsrr32r32(DecodedOp* op) {
-    bool flags = btStartFlags(op);
+    bool flags = bsStartFlags(op);
     RegPtr src = getReadOnlyReg(op->rm);
     if (flags) {
         If(JitWidth::b32, src); {
             andCPUFlagsImmV2(~ZF);
+            bsrReg(JitWidth::b32, getReg(op->reg), src);
         } StartElse(); {
             orCPUFlagsImmV2(ZF);
         } EndIf();
+    } else {
+        If(JitWidth::b32, src); {
+            bsrReg(JitWidth::b32, getReg(op->reg), src);
+        } EndIf();
     }
-    bsrReg(JitWidth::b32, getReg(op->reg), src);
 }
 void Jit::dynamic_bsrr32e32(DecodedOp* op) {
-    bool flags = btStartFlags(op);
+    bool flags = bsStartFlags(op);
     RegPtr src = read(JitWidth::b32, calculateEaa(op));
     if (flags) {
         If(JitWidth::b32, src); {
             andCPUFlagsImmV2(~ZF);
+            bsrReg(JitWidth::b32, getReg(op->reg), src);
         } StartElse(); {
             orCPUFlagsImmV2(ZF);
         } EndIf();
+    } else {
+        If(JitWidth::b32, src); {
+            bsrReg(JitWidth::b32, getReg(op->reg), src);
+        } EndIf();
     }
-    bsrReg(JitWidth::b32, getReg(op->reg), src);
 }

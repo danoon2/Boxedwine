@@ -206,7 +206,6 @@ public:
     void IfTest(JitWidth regWidth, RegPtr reg, RegPtr mask) override;
     void IfTest(JitWidth regWidth, RegPtr reg, U32 value) override;
     void IfNotTest(JitWidth regWidth, RegPtr reg, U32 value) override;
-    void IfBitTest(RegPtr reg, U8 bit) override;
     void IfEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) override;
     void IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
     void IfNotEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) override;
@@ -220,7 +219,6 @@ public:
     void IfDF() override;
     void IfSmallStack() override;
     void JumpIfCondition(JitConditional condition, U32 address) override;
-    void IfCompareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition) override;
     void clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) override;
 
     U32 MarkJumpLocation() override;
@@ -2402,11 +2400,6 @@ void JitX86CodeGen::IfNotTest(JitWidth regWidth, RegPtr reg, U32 value) {
     x86.jnz();
 }
 
-void JitX86CodeGen::IfBitTest(RegPtr reg, U8 bit) {
-    x86.bt(R32(reg->hardwareReg()), bit);
-    x86.jnb();
-}
-
 void JitX86CodeGen::IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
     if (regWidth == JitWidth::b32) {
         x86.IfEqual(R32(reg1->hardwareReg()), R32(reg2->hardwareReg()));
@@ -2571,51 +2564,6 @@ void JitX86CodeGen::clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset,
     }
     // since esp is guaranteed to be aligned, it works to use it as a way to clear the bottom 2 bits
     x86.cmovnl(R32(reg->hardwareReg()), x86.esp);
-}
-
-void JitX86CodeGen::IfCompareReg(JitWidth regWidth, RegPtr reg1, RegPtr reg2, JitEvaluate condition) {
-    if (regWidth == JitWidth::b32) {
-        x86.cmp(R32(reg1->hardwareReg()), R32(reg2->hardwareReg()));
-    } else if (regWidth == JitWidth::b16) {
-        x86.cmp(R16(reg1->hardwareReg()), R16(reg2->hardwareReg()));
-    } else if (regWidth == JitWidth::b8) {
-        x86.cmp(R8(get8bitReg(reg1)), R8(get8bitReg(reg2)));
-    } else {
-        kpanic_fmt("JitX86CodeGen::IfCompareReg unexpected width: %d", (U32)regWidth);
-    }
-    switch (condition) {
-    case JitEvaluate::EQUALS:
-        x86.jnz();
-        break;
-    case JitEvaluate::NOT_EQUALS:
-        x86.jz();
-        break;
-    case JitEvaluate::LESS_THAN_UNSIGNED:
-        x86.jnb();
-        break;
-    case JitEvaluate::LESS_THAN_EQUAL_UNSIGNED:
-        x86.jnbe();
-        break;
-    case JitEvaluate::GREATER_THAN_UNSIGNED:
-        x86.jbe();
-        break;
-    case JitEvaluate::GREATER_THAN_EQUAL_UNSIGNED:
-        x86.jb();
-        break;
-    case JitEvaluate::LESS_THAN_SIGNED:
-        x86.jnl();
-        break;
-    case JitEvaluate::GREATER_THAN_EQUAL_SIGNED:
-        x86.jl();
-        break;
-    case JitEvaluate::LESS_THAN_EQUAL_SIGNED:
-        x86.jnle();
-        break;
-    case JitEvaluate::GREATER_THAN_SIGNED:
-        x86.jle();
-        break;
-    // no default, should get compiler error if not all enum cases handled
-    }
 }
 
 void JitX86CodeGen::JumpIfCondition(JitConditional condition, U32 address) {
@@ -2997,8 +2945,6 @@ void JitX86CodeGen::setFlags(RegPtr flags, U32 mask) {
 }
 
 RegPtr JitX86CodeGen::getReadOnlyFlags() {
-    fillFlags();
-
     RegPtr reg = getTmpReg8(); // lahf will do 8-bit on this
     x86.mov(R32(reg->hardwareReg()), X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)));
     orValue(JitWidth::b32, reg, 2);

@@ -29,8 +29,10 @@ public:
 	void free(void* p);
 	void freeAll();
 	bool containsAddress(void* p);
+
+	U32 delayedFree = 0; // millis before the memory can be recycles
 private:
-	std::unordered_map<U32, std::vector<void*>> buckets;
+	std::unordered_map<U32, std::deque<void*>> buckets;
 	std::vector<void*> blocks;
 	BHashTable<U8*, U32> largeBlocks;
 };

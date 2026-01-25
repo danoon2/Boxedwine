@@ -176,7 +176,7 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
     pfnwglGetCurrentDC = (PFNWGLGETCURRENTDC)GetProcAddress(glModule, "wglGetCurrentDC");
     pfnwglGetCurrentContext = (PFNWGLGETCURRENTCONTEXT)GetProcAddress(glModule, "wglGetCurrentContext");
 
-    HGLRC hrc = pfnwglCreateContext(hdc);
+    HGLRC hrc = pfnwglCreateContext ? pfnwglCreateContext(hdc) : 0;
     if (hrc) {
         HGLRC oldrc = pfnwglGetCurrentContext();
         HDC oldhdc = pfnwglGetCurrentDC();

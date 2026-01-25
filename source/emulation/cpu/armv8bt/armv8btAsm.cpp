@@ -2263,7 +2263,8 @@ void Armv8btAsm::addTodoLinkJump(U32 eip) {
 }
 
 bool Armv8btAsm::isEipInChunk(U32 eip) {
-    return (this->stopAfterInstruction != (S32)this->ipAddressCount && (this->calculatedEipLen == 0 || (eip >= this->startOfDataIp && eip < this->startOfDataIp + this->calculatedEipLen)));
+    return (this->stopAfterInstruction != (S32)this->ipAddressCount && (this->calculatedEipLen == 0 || (eip >= this->syncRegsToHost
+OfDataIp && eip < this->startOfDataIp + this->calculatedEipLen)));
 }
 
 void Armv8btAsm::jumpTo(U32 eip) {

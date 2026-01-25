@@ -91,7 +91,8 @@ void Jit::dynamic_sahf(DecodedOp* op) {
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_lahf(DecodedOp* op) {
-    RegPtr flags = getReadOnlyFlags();
+    fillFlags();
+    RegPtr flags = getFlagsInTmp();
 
     andValue(JitWidth::b32, flags, SF | ZF | AF | PF | CF);
     orValue(JitWidth::b32, flags, 2);
@@ -105,6 +106,7 @@ void Jit::dynamic_salc(DecodedOp* op) {
 void Jit::dynamic_retn16Iw(DecodedOp* op) {
     RegPtr eip = getTmpReg();
     pop16(eip, op->imm + 2);
+    movzx(JitWidth::b32, eip, JitWidth::b16, eip);
     writeEip(eip);
     blockDone(false);
 }
@@ -153,14 +155,12 @@ void Jit::dynamic_int3(DecodedOp* op) {
 void Jit::dynamic_xlat(DecodedOp* op) {
     RegPtr address = getTmpReg8(0);
 
+    movzx(JitWidth::b32, address, JitWidth::b8, address);
     if (op->ea16) {
         // AL = cpu->memory->readb(cpu->seg[op->base].address + (U16)(BX + AL));
-        movzx(JitWidth::b16, address, JitWidth::b8, address);
         addReg(JitWidth::b16, address, getReadOnlyReg(3));
-        movzx(JitWidth::b32, address, JitWidth::b16, address);
     } else {
-        // AL = cpu->memory->readb(cpu->seg[op->base].address + EBX + AL);
-        movzx(JitWidth::b32, address, JitWidth::b8, address);
+        // AL = cpu->memory->readb(cpu->seg[op->base].address + EBX + AL);        
         addReg(JitWidth::b32, address, getReadOnlyReg(3));
     }
     addReg(JitWidth::b32, address, getReadOnlySegAddress(op->base));

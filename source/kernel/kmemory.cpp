@@ -579,8 +579,9 @@ void KMemory::removeCode(KThread* thread, U32 address, U32 len, bool becauseOfWr
         thread->cpu->nextOp = thread->cpu->getNextOp()->next;
     }
 #endif
-#endif
+#else
     data->opCache.remove(address, len, becauseOfWrite);
+#endif
 }
 
 void KMemory::clearPageWriteCounts(U32 pageIndex) {

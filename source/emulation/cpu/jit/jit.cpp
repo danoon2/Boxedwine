@@ -217,7 +217,7 @@ void Jit::arithSetup(DecodedOp* op, U32& needsToSetFlags, RegPtr& cf, LazyFlagTy
         if (flags && flags->usesOldCF(needsToSetFlags)) {
             storeLazyFlagsOldCF(cf);
         }
-        storeLazyFlags(flagType);
+        storeLazyFlagType(flagType);
         currentLazyFlags = flagType;
     }
 }
@@ -231,7 +231,7 @@ void Jit::arithSetup(DecodedOp* op, U32& needsToSetFlags, LazyFlagType flagType)
         if (flags && !(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF)) {
             storeLazyFlagsOldCF(getCF());
         }
-        storeLazyFlags(flagType);
+        storeLazyFlagType(flagType);
         currentLazyFlags = flagType;
     }
 }
@@ -624,7 +624,7 @@ void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, LazyFlagTy
                 if (cf) {
                     storeLazyFlagsOldCF(std::move(cf));
                 }
-                storeLazyFlags(flagType);
+                storeLazyFlagType(flagType);
                 currentLazyFlags = flagType;
             }
             if (flags && flags->usesDst(needsToSetFlags)) {
@@ -676,7 +676,7 @@ void Jit::dynamic_R_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, Lazy
         (this->*callback)(width, dest, src);
     } else {
         IfTest(JitWidth::b8, src, 0x1f); {
-            storeLazyFlags(flagType);
+            storeLazyFlagType(flagType);
             if (flags && flags->usesDst(needsToSetFlags)) {
                 storeLazyFlagsDest(dest);
             }
@@ -704,7 +704,7 @@ void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, Lazy
         RegPtr src = getReadOnlyReg8(1, false, 1);
         IfTest(JitWidth::b8, src, 0x1f); {
             readWriteMem(width, calculateEaa(op), [needsToSetFlags, flagType, flags, src, op, width, callback, this](RegPtr value) {
-                storeLazyFlags(flagType);
+                storeLazyFlagType(flagType);
                 if (flags && flags->usesDst(needsToSetFlags)) {
                     storeLazyFlagsDest(value);
                 }
@@ -772,9 +772,9 @@ void Jit::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callba
         // dynamic_xchgr8r8 has the same issue, the API doesn't allow for the write of 2 registers that map to the same emulated register (AL/AH etc)
         if (op->rm == op->reg + 4) {
             src = getReg8(op->reg);
-            dest = getTmpReg8(op->rm);
+            dest = std::make_shared<JitReg>(op->reg, op->rm, true);
         } else if (op->reg == op->rm + 4) {
-            src = getTmpReg8(op->reg);
+            src = std::make_shared<JitReg>(op->rm, op->reg, true);
             dest = getReg8(op->rm);
         }  else if (op->reg == op->rm) {
             src = getReg8(op->reg);
@@ -796,17 +796,6 @@ void Jit::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callba
     (this->*callback)(width, src, dest);
     if (flags && flags->usesResult(needsToSetFlags)) {
         storeLazyFlagsResult(dest);
-    }
-    if (width == JitWidth::b8) {
-        if (op->rm == op->reg + 4) {
-            shlValue(JitWidth::b16, dest, 8);
-            andValue(JitWidth::b16, src, 0xff);
-            orReg(JitWidth::b16, src, dest);
-        } else if (op->reg == op->rm + 4) {
-            shlValue(JitWidth::b16, src, 8);
-            andValue(JitWidth::b16, dest, 0xff);
-            orReg(JitWidth::b16, dest, src);
-        }
     }
 }
 

@@ -57,6 +57,7 @@ KMemoryData::KMemoryData(KMemory* memory) : memory(memory)
         addCallback(onExitSignal);
     }
     this->allocPages(nullptr, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, K_PROT_READ | K_PROT_EXEC, -1, 0, nullptr, &callbackRam);
+    codeMemory.delayedFree = 1000; // in case another thread is using it right when we free it
 }
 
 KMemoryData::~KMemoryData() {

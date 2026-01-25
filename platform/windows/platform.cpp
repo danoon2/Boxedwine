@@ -256,7 +256,7 @@ void Platform::init() {
 }
 
 void Platform::clearInstructionCache(void* address, U32 len) {
-#ifdef BOXEDWINE_ARMV8BT
+#ifdef _M_ARM64
     FlushInstructionCache(GetCurrentProcess(), address, len);
 #endif
 }

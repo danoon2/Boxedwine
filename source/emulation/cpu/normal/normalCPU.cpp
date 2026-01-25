@@ -21,7 +21,6 @@
 #include "../decoder.h"
 #include "normalCPU.h"
 #include "../../softmmu/soft_code_page.h"
-#include "../x32/jitX86CodeGen.h"
 #include "../armv7/armv7CPU.h"
 #include "../armv8/armv8CPU.h"
 #include "../../../util/ptrpool.h"
@@ -154,6 +153,10 @@ static void initNormalOps() {
     normalOps[Callback] = onExitSignal;
     normalOps[TestEnd] = onTestEnd;
 }
+
+#if defined(BOXEDWINE_DYNAMIC)
+void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op);
+#endif
 
 NormalCPU::NormalCPU(KMemory* memory) : CPU(memory) {   
     initNormalOps();

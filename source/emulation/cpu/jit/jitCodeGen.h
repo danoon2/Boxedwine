@@ -40,7 +40,7 @@ public:
 
     // v2
     virtual void preOp(DecodedOp* op) {}
-    virtual void read(JitWidth width, RegPtr dest, RegPtr reg, U8 lsl, U32 disp) = 0;
+    virtual void read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) = 0;
     virtual void readRamPage(RegPtr dest, RegPtr index) = 0;
     virtual void readMMU(RegPtr dest, RegPtr index) = 0;
     virtual void readMMU(RegPtr dest, U32 index) = 0;
@@ -77,8 +77,11 @@ public:
     virtual RegPtr getFlagDestTmp(RegPtr result = nullptr); // guaranteed to return result in result
     virtual RegPtr getFlagSrcTmp(RegPtr result = nullptr); // guaranteed to return result in result
     virtual RegPtr getFlagResultTmp(RegPtr result = nullptr); // guaranteed to return result in result
+    virtual RegPtr getFlagsInTmp(RegPtr reg = nullptr);
     virtual RegPtr getFlagCF(RegPtr result = nullptr);
-    void storeLazyFlags(LazyFlagType flags) override;
+    virtual RegPtr getLazyFlagType();
+    virtual RegPtr getLazyFlagTypeInTmp();
+    void storeLazyFlagType(LazyFlagType flags) override;
     void storeLazyFlagsDest(RegPtr reg) override;
     void storeLazyFlagsSrc(RegPtr reg) override;
     void storeLazyFlagsSrc(U32 value) override;
@@ -87,6 +90,8 @@ public:
     void writeFlags(RegPtr flags) override;
     RegPtr getCondition(JitConditional condition, RegPtr resultReg = nullptr) override; // guaranteed to return 0 or 1
     void IfCondition(JitConditional condition) override;
+    void IfDF() override;
+    void IfSmallStack() override;
 
     void orCPUFlags(RegPtr reg) override;
     void xorCPUFlagsImmV2(U32 imm) override;
@@ -109,10 +114,13 @@ public:
 
     void incReg(JitWidth regWidth, RegPtr dest) override;
     void decReg(JitWidth regWidth, RegPtr dest) override;
+    void xaddReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
 protected:
 
     virtual U32 getBufferSize() = 0;
-    virtual U8* getBuffer() = 0;
+    virtual U32 markBufferLocation() = 0;
+    virtual U32 getBufferLocation(U32 id) = 0;
+    virtual void copyBuffer(U8* dst, U32 size) = 0;
     virtual U32 getIfJumpSize() = 0;                     
     virtual U8* createSyncToHost() = 0;
     virtual U8* createSyncFromHost() = 0;
