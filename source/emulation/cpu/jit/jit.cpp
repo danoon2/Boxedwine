@@ -771,10 +771,11 @@ void Jit::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callba
     if (width == JitWidth::b8) {
         // dynamic_xchgr8r8 has the same issue, the API doesn't allow for the write of 2 registers that map to the same emulated register (AL/AH etc)
         if (op->rm == op->reg + 4) {
+            // :TODO: what about ARM
             src = getReg8(op->reg);
-            dest = std::make_shared<JitReg>(op->reg, op->rm, true);
+            dest = getTmpReg8(op->rm);
         } else if (op->reg == op->rm + 4) {
-            src = std::make_shared<JitReg>(op->rm, op->reg, true);
+            src = getTmpReg8(op->reg);
             dest = getReg8(op->rm);
         }  else if (op->reg == op->rm) {
             src = getReg8(op->reg);
@@ -796,6 +797,17 @@ void Jit::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callba
     (this->*callback)(width, src, dest);
     if (flags && flags->usesResult(needsToSetFlags)) {
         storeLazyFlagsResult(dest);
+    }
+    if (width == JitWidth::b8) {
+        if (op->rm == op->reg + 4) {
+            shlValue(JitWidth::b16, dest, 8);
+            andValue(JitWidth::b16, src, 0xff);
+            orReg(JitWidth::b16, src, dest);
+        } else if (op->reg == op->rm + 4) {
+            shlValue(JitWidth::b16, src, 8);
+            andValue(JitWidth::b16, dest, 0xff);
+            orReg(JitWidth::b16, dest, src);
+        }
     }
 }
 

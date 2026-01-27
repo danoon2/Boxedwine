@@ -1072,6 +1072,36 @@
     <ClCompile Include="..\..\..\..\source\kernel\proc\proccpuinfo.cpp">
       <Filter>source\kernel\proc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\x86\x86assembler.cpp">
+      <Filter>asmjit\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\x86\x86builder.cpp">
+      <Filter>asmjit\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\x86\x86compiler.cpp">
+      <Filter>asmjit\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\x86\x86emithelper.cpp">
+      <Filter>asmjit\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\x86\x86formatter.cpp">
+      <Filter>asmjit\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\x86\x86func.cpp">
+      <Filter>asmjit\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\x86\x86instapi.cpp">
+      <Filter>asmjit\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\x86\x86instdb.cpp">
+      <Filter>asmjit\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\x86\x86operand.cpp">
+      <Filter>asmjit\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\asmjit\asmjit\x86\x86rapass.cpp">
+      <Filter>asmjit\x86</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -2196,6 +2226,51 @@
     <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\support\support_p.h">
       <Filter>asmjit\support</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86archtraits_p.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86assembler.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86builder.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86compiler.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86emithelper_p.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86emitter.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86formatter_p.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86func_p.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86globals.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86instapi_p.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86instdb.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86instdb_p.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86opcode_p.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86operand.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\asmjit\asmjit\x86\x86rapass_p.h">
+      <Filter>asmjit\x86</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -2341,6 +2416,9 @@
     </Filter>
     <Filter Include="asmjit\support">
       <UniqueIdentifier>{60b95160-c993-45e3-9898-0113b84f5926}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="asmjit\x86">
+      <UniqueIdentifier>{dfd1d3eb-c202-46a8-8ada-783d84cb287d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

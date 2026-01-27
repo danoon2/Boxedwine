@@ -141,6 +141,9 @@ public:
     void subValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
     void andReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void andValue(JitWidth regWidth, RegPtr reg, U32 immm) override;
+#ifdef BOXEDWINE_64
+    void andValue64(RegPtr reg, U64 immm) override;
+#endif
     void xorReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void xorValue(JitWidth regWidth, RegPtr reg, U32 immm) override;
     void shrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
@@ -184,7 +187,7 @@ public:
     void readRamPage(RegPtr dest, RegPtr index) override;
     void readMMU(RegPtr dest, RegPtr index) override;
     void readMMU(RegPtr dest, U32 index) override;
-    void read(JitWidth width, RegPtr dest, RegPtr reg, U8 lsl, U32 disp) override;
+    void read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) override;
     void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) override;
     void write(JitWidth width, RegPtr reg, U32 disp, RegPtr src) override;
     void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) override;
@@ -205,7 +208,8 @@ public:
     void If(JitWidth regWidth, RegPtr reg) override;
     void IfTest(JitWidth regWidth, RegPtr reg, RegPtr mask) override;
     void IfTest(JitWidth regWidth, RegPtr reg, U32 value) override;
-    void IfNotTest(JitWidth regWidth, RegPtr reg, U32 value) override;
+    void IfTestBit(JitWidth regWidth, RegPtr reg, U32 bitPos) override;
+    void IfNotTestBit(JitWidth regWidth, RegPtr reg, U32 bitPos) override;
     void IfEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) override;
     void IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
     void IfNotEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) override;
@@ -627,8 +631,10 @@ protected:
     friend void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);
 
     U32 getBufferSize() override;
-    U32 getIfJumpSize() override;    
-    U8* getBuffer() override;
+    U32 getIfJumpSize() override;
+    U32 getBufferLocation(U32 id) override;
+    U32 markBufferLocation() override;
+    void copyBuffer(U8* dst, U32 size) override;
 
     void setCC(X86Asm::Reg32 reg, JitEvaluate condition);
 
@@ -1170,6 +1176,12 @@ void JitX86CodeGen::andReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
         kpanic("JitX86CodeGen::andReg");
     }
 }
+
+#ifdef BOXEDWINE_64
+void JitX86CodeGen::andValue64(RegPtr reg, U64 imm) {
+    x86.and_(R64(reg->hardwareReg()), imm);
+}
+#endif
 
 void JitX86CodeGen::andValue(JitWidth regWidth, RegPtr reg, U32 imm) {
     if (regWidth == JitWidth::b32) {
@@ -1906,7 +1918,7 @@ void JitX86CodeGen::readMMU(RegPtr dest, RegPtr index) {
 #ifdef BOXEDWINE_64
     x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32(HOST_MMU, R(index->hardwareReg()), 3, 0));
 #else
-    read(JitWidth::b32, dest, index, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
+    x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32(R(index->hardwareReg()), 2, (U32)getMemData(KThread::currentThread()->memory)->mmu));
 #endif
 }
 
@@ -1918,16 +1930,16 @@ void JitX86CodeGen::readMMU(RegPtr dest, U32 index) {
 #endif
 }
 
-void JitX86CodeGen::read(JitWidth width, RegPtr dest, RegPtr reg, U8 lsl, U32 disp) {
+void JitX86CodeGen::read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) {
     if (width == JitWidth::b32) {
-        x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32(R(reg->hardwareReg()), lsl, disp));
+        x86.mov(R32(dest->hardwareReg()), X86Asm::Mem32(R(reg->hardwareReg()), 0, disp));
     } else if (width == JitWidth::b16) {
-        x86.mov(R16(dest->hardwareReg()), X86Asm::Mem16(R(reg->hardwareReg()), lsl, disp));
+        x86.mov(R16(dest->hardwareReg()), X86Asm::Mem16(R(reg->hardwareReg()), 0, disp));
     } else if (width == JitWidth::b8) {
-        x86.mov(R8(get8bitReg(dest)), X86Asm::Mem8(R(reg->hardwareReg()), lsl, disp));
+        x86.mov(R8(get8bitReg(dest)), X86Asm::Mem8(R(reg->hardwareReg()), 0, disp));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        x86.mov(R64(dest->hardwareReg()), X86Asm::Mem64(R(reg->hardwareReg()), lsl, disp));
+        x86.mov(R64(dest->hardwareReg()), X86Asm::Mem64(R(reg->hardwareReg()), disp));
 #endif
     } else {
         kpanic_fmt("JitX86CodeGen::readMem unexpected width: %d", (U32)width);
@@ -2391,11 +2403,20 @@ void JitX86CodeGen::IfTest(JitWidth regWidth, RegPtr reg, U32 value) {
     x86.jz();
 }
 
-void JitX86CodeGen::IfNotTest(JitWidth regWidth, RegPtr reg, U32 value) {
+void JitX86CodeGen::IfTestBit(JitWidth regWidth, RegPtr reg, U32 bitPos) {
     if (regWidth == JitWidth::b8) {
-        x86.test(R32(get8bitReg(reg)), value);
+        x86.test(R32(get8bitReg(reg)), 1 << bitPos);
     } else {
-        x86.test(R32(reg->hardwareReg()), value);
+        x86.test(R32(reg->hardwareReg()), 1 << bitPos);
+    }
+    x86.jz();
+}
+
+void JitX86CodeGen::IfNotTestBit(JitWidth regWidth, RegPtr reg, U32 bitPos) {
+    if (regWidth == JitWidth::b8) {
+        x86.test(R32(get8bitReg(reg)), 1 << bitPos);
+    } else {
+        x86.test(R32(reg->hardwareReg()), 1 << bitPos);
     }
     x86.jnz();
 }
@@ -2939,7 +2960,7 @@ void JitX86CodeGen::setFlags(RegPtr flags, U32 mask) {
         x86.and_(R32(flags->hardwareReg()), mask);
         x86.or_(R32(reg->hardwareReg()), R32(flags->hardwareReg()));
         x86.mov(X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)), R32(reg->hardwareReg()));
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
     }
     currentLazyFlags = FLAGS_NONE;
 }
@@ -3011,7 +3032,7 @@ void JitX86CodeGen::updateFlagsIfNecessary() {
             }
         }
         writeCPU(JitWidth::b32, offsetof(CPU, flags), flags);
-        storeLazyFlags(FLAGS_NONE);
+        storeLazyFlagType(FLAGS_NONE);
         currentLazyFlags = FLAGS_NONE;
     }
 }
@@ -3978,10 +3999,17 @@ U32 JitX86CodeGen::getBufferSize() {
     return (U32)x86.buffer.size();
 }
 
-U8* JitX86CodeGen::getBuffer() {
-    return x86.buffer.data();
+void JitX86CodeGen::copyBuffer(U8* dst, U32 size) {
+    memcpy(dst, x86.buffer.data(), size);
 }
 
+U32 JitX86CodeGen::getBufferLocation(U32 id) {
+    return id;
+}
+
+U32 JitX86CodeGen::markBufferLocation() {
+    return (U32)x86.buffer.size();
+}
 
 U32 JitX86CodeGen::getIfJumpSize() {
     return (U32)x86.ifJump.size();

@@ -4698,8 +4698,8 @@ static struct Data shld16[] = {
         // make sure 0 shift doesn't change flags
         allocDataConst(0x8080, 0x8000, 0x8080, 0, 8, 0, false, false),
         allocDataConst(0x8080, 0x8000, 0x8080, 0, 8, CF|OF, true, true),
-        allocDataConstNoCFOF(0x1234, 0x5678, 0x6785, 20, 8, 0), // cf undefined
-        allocDataConstNoCFOF(0x1234, 0x5678, 0x5678, 16, 8, 0), // cf undefined
+        //allocDataConstNoCFOF(0x1234, 0x5678, 0x6785, 20, 8, 0), // undefined
+        //allocDataConstNoCFOF(0x1234, 0x5678, 0x5678, 16, 8, 0), // undefined
         //allocDataConst(0x8080, 0x8000, 0x0001, 17, 8, 0, true, true),
         //allocDataConst(0x4080, 0x4000, 0x8000, 17, 8, 0, false, true),
         //allocDataConst(0x2080, 0x2000, 0x4000, 17, 8, 0, false, false),
@@ -4722,8 +4722,8 @@ static struct Data shrd16[] = {
         allocDataConst(0x0102, 0x0001, 0x8081, 1, 8, 0, false, true),
         allocDataConst(0x0101, 0x0002, 0x0080, 1, 8, 0, true, false),
         allocDataConstNoOF(0x8080, 0x0001, 0x6020, 2, 8, 0, false),
-        allocDataConstNoCFOF(0x1234, 0x5678, 0x8567, 20, 8, 0), // cf undefined
-        allocDataConstNoCFOF(0x1234, 0x5678, 0x5678, 16, 8, 0), // cf undefined
+        //allocDataConstNoCFOF(0x1234, 0x5678, 0x8567, 20, 8, 0), // undefined
+        //allocDataConstNoCFOF(0x1234, 0x5678, 0x5678, 16, 8, 0), // undefined
         //allocDataConstNoOF(0x0101, 0x0001, 0x8000, 17, 8, 0, true),
         //allocDataConstNoOF(0x0102, 0x0002, 0x0001, 17, 8, 0, false),
         endData()

@@ -730,7 +730,7 @@ RegPtr JitCodeGen::getZF() {
 
 void JitCodeGen::fillFlags() {
     RegPtr flags = getLazyFlagType();
-    IfNot(JitWidth::b32, flags); // FLAGS_NONE = 0
+    If(JitWidth::b32, flags); // FLAGS_NONE = 0
         call(common_fillFlags);
     EndIf();
     currentLazyFlags = FLAGS_NONE;
@@ -1094,11 +1094,15 @@ RegPtr JitCodeGen::getFlagCF(RegPtr result) {
 }
 
 RegPtr JitCodeGen::getLazyFlagType() {
-    return readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), getTmpReg8());
+    RegPtr result = getTmpReg8();
+    xorReg(JitWidth::b32, result, result);
+    return readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), result);
 }
 
 RegPtr JitCodeGen::getLazyFlagTypeInTmp() {
-    return readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), getTmpReg8());
+    RegPtr result = getTmpReg8();
+    xorReg(JitWidth::b32, result, result);
+    return readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagType), result);
 }
 
 RegPtr JitCodeGen::getCF() {
@@ -1459,7 +1463,6 @@ void JitCodeGen::IfCondition(JitConditional condition) {
         RegPtr result = getTmpReg8();
         bool needsEndIf = false;
 
-        /*
         if (currentLazyFlags != FLAGS_NULL) {
             if (currentLazyFlags == FLAGS_NONE) {
                 needsEndIf = true;
@@ -1478,7 +1481,6 @@ void JitCodeGen::IfCondition(JitConditional condition) {
                 } StartElse();
             }
         }
-        */
         getFlagResultReadOnly(result);
         RegPtr flags = getFlagsInTmp();
         
@@ -1537,7 +1539,7 @@ void JitCodeGen::IfCondition(JitConditional condition) {
         }
         // not so good for branch prediction
         IfNot(JitWidth::b32, sfMask); {
-            readCPU(JitWidth::b32, offsetof(CPU, flags), result);
+            getFlagsInTmp(result);
             andValue(JitWidth::b32, result, SF);
         } StartElse(); {
             readCPU(JitWidth::b32, CPU_OFFSET_OF(result.u32), result);
