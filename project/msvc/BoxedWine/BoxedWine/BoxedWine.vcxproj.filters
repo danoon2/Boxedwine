@@ -901,9 +901,6 @@
     <ClCompile Include="..\..\..\..\source\util\bnativeheap.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\x32\x86Asm.cpp">
-      <Filter>source\emulation\cpu\x32</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\cpu\jit\jit.cpp">
       <Filter>source\emulation\cpu\jit</Filter>
     </ClCompile>
@@ -1922,9 +1919,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\bnativeheap.h">
       <Filter>source\util</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\x32\x86Asm.h">
-      <Filter>source\emulation\cpu\x32</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\jit\jit.h">
       <Filter>source\emulation\cpu\jit</Filter>
