@@ -332,8 +332,11 @@ public:
     static U32 offsetofReg8(U32 index);
     static U32 offsetofSegAddress(U32 index);
     static U32 offsetofSegValue(U32 index);
-#endif
 
+#ifdef BOXEDWINE_JIT_ARMV8
+    U64 storedRegs[32];
+#endif
+#endif
     U32 flagZeroMask[52] = {
     0, // FLAGS_NONE,
     0xFF, // FLAGS_ADD8,

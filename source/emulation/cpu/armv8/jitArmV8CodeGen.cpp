@@ -42,12 +42,12 @@ static bool isVolitile[] = { true,  true,  true,  true,  true,  true,  true,  tr
                              false, false, false, false, false, false, false, false };
 
 static bool isTmp[] = { false, false, false, false, false, false, false, false,
-                        false, false, false, false, true, true, false, false,
+                        false, false, false, false, true, true, true, false,
                         false,  false,  false,  false,  false,  true, true, true,
-                        true, true, true, true, false, false, false, false };
+                        true, true, true, false, false, false, false, false };
 
 static U8 regCache[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-static U8 tmps[] = { 21, 22, 23, 24, 25, 26, 27, 12, 13 };
+static U8 tmps[] = { 21, 22, 23, 24, 25, 26, 12, 13, 14 };
 static U8 vtmps[] = { 16, 17, 18, 19, 20, 21 };
 
 #define INVALID_REG 0xff
@@ -82,8 +82,9 @@ asmjit::a64::Gp R32(U8 reg) {
 #define xBranch asmjit::a64::x9 
 #define xMemTmp asmjit::a64::x10
 
-#define xTmp8 12
-#define xTmp9 13
+#define xTmp7 12
+#define xTmp8 13
+#define xTmp9 14
 #define xBranchEip 17
 
 // don't use x18
@@ -100,9 +101,8 @@ asmjit::a64::Gp R32(U8 reg) {
 #define xTmp4 24
 #define xTmp5 25
 #define xTmp6 26
-#define xTmp7 27
-#define xWriteCacheToCPU asmjit::a64::x28
-#define xLoadCacheFromCPU asmjit::a64::x29
+#define xWriteCacheToCPU asmjit::a64::x27
+#define xLoadCacheFromCPU asmjit::a64::x28
     
 #define ZERO_EXTEND 1
 #define SIGN_EXTEND 2
@@ -4901,38 +4901,40 @@ void writeBlockExitForJIT(U32 eip, U8* buffer) {
     code.attach(&compiler);
 
     compiler.blr(xWriteCacheToCPU);
-    compiler.mov(R32(xTmp1), eip);
-    compiler.str(R32(xTmp1), Mem(xCPU, offsetof(CPU, eip.u32)));
-    for (int i = 9; i >= 0; i -= 2) {
-        compiler.ldp(R64(19 + i), R64(20 + i), asmjit::a64::ptr_post(asmjit::a64::sp, 16));
+    compiler.mov(R32(xTmp7), eip);
+    compiler.str(R32(xTmp7), Mem(xCPU, offsetof(CPU, eip.u32)));
+    compiler.mov(R32(xTmp7), xCPU);
+    for (int i = 19; i < 31; i++) {
+        compiler.ldr(R64(i), Mem(R64(xTmp7), offsetof(CPU, storedRegs) + i * 8));
     }
-    compiler.ldp(R64(29), R64(30), asmjit::a64::ptr_post(asmjit::a64::sp, 16));
     compiler.ret(asmjit::a64::x30);
 
     code.flatten();
-    code.copy_flattened_data(buffer, code.code_size());
+    Platform::writeCodeToMemory(buffer, code.code_size(), [&code, buffer]() {
+        code.copy_flattened_data(buffer, code.code_size());
+    });
+    Platform::clearInstructionCache(buffer, code.code_size());
+    
 }
 
 void JitArmV8CodeGen::blockExit(bool syncCache) {
     if (syncCache) {
         compiler.blr(xWriteCacheToCPU);
     }
-    for (int i = 9; i>= 0; i-=2) {
-        compiler.ldp(R64(19 + i), R64(20 + i), asmjit::a64::ptr_post(asmjit::a64::sp, 16));
+    compiler.mov(R64(xTmp7), xCPU);
+    for (int i = 19; i < 31; i++) {
+        compiler.ldr(R64(i), Mem(R64(xTmp7), offsetof(CPU, storedRegs) + i * 8));
     }
-    compiler.ldp(R64(29), R64(30), asmjit::a64::ptr_post(asmjit::a64::sp, 16));
     compiler.ret(asmjit::a64::x30);
     //vReadMemMultiple64(12, 31, 4, true);
     //vReadMemMultiple64(8, 31, 4, true);
 }
 
 U8* JitArmV8CodeGen::createStartJITCode() {
-    compiler.stp(R64(29), R64(30), Mem(asmjit::a64::sp, -16));
-    compiler.mov(R64(29), asmjit::a64::sp); // mov fp, sp
-    compiler.sub(asmjit::a64::sp, asmjit::a64::sp, 16);
-    for (int i = 0; i < 10; i+=2) {
-        compiler.stp(R64(19 + i), R64(20 + i), asmjit::a64::ptr_pre(asmjit::a64::sp, -16));
+    for (int i = 19; i < 31; i++) {
+        compiler.str(R64(i), Mem(R64(0), offsetof(CPU, storedRegs) + i * 8));
     }
+    compiler.mov(R64(29), asmjit::a64::sp); // mov fp, sp
     // only the bottom 64-bits of v8-v15 need to be saved
     //subValue64(31, 31, 32);
     //vWriteMemMultiple64(8, 31, 4, false);
