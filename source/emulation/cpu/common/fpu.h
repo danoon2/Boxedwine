@@ -27,6 +27,11 @@ extern "C" {
 class CPU;
 //#define LOG_FPU
 
+#define ROUND_Nearest 0
+#define ROUND_Down 1
+#define ROUND_Up 2
+#define ROUND_Chop 3
+
 #ifdef LOG_FPU
 #include <inttypes.h>
 extern BWriteFile fpuLogFile;

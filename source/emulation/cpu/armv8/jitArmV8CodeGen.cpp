@@ -107,16 +107,17 @@ asmjit::a64::Gp R32(U8 reg) {
 #define ZERO_EXTEND 1
 #define SIGN_EXTEND 2
 
-class JitArmV8CodeGen : public JitCodeGen, asmjit::ErrorHandler {
+class JitArmV8CodeGen : public JitFPU, asmjit::ErrorHandler {
 public:  
     void handle_error(asmjit::Error err, const char* message, asmjit::BaseEmitter* origin) override {
         kpanic(message);
     }
 
-    JitArmV8CodeGen(CPU* cpu) : JitCodeGen(cpu) {
+    JitArmV8CodeGen(CPU* cpu) : JitFPU(cpu) {
         code.init(rt.environment());
         code.attach(&compiler);
         code.set_error_handler(this);
+        fpuRoundingMode = cpu->fpu.round;
     }
 
     void preOp(DecodedOp* op) override;
@@ -262,18 +263,19 @@ public:
     void EndIf() override;
     void blockExit(bool syncCache = true) override;
 
-    /*
     // FPU
+    void dynamic_FNINIT(DecodedOp* op) override;
+
+    U32 fpuRoundingMode = ROUND_Nearest;
     FPURegPtr getFPUTmp() override;
+    bool shouldContinueCompilingAfterOp(DecodedOp* op) override;
     void storeCpuFpuReg(FPURegPtr reg, RegPtr index) override;
     void loadCpuFpuReg(FPURegPtr reg, RegPtr index) override;
     void loadCpuFpuRegConst(FPURegPtr reg, U32 offset) override;
-    void loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width = DYN_FPU_64_BIT) override;
+    void loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib) override;
+    void storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width = DYN_FPU_64_BIT) override;
     RegPtr fpuRegToInt32(FPURegPtr fpuRegSrc, bool truncate) override;
-    void fpuRegToInt64(FPURegPtr regDst, FPURegPtr fpuRegSrc, bool truncate) override;
-    void fpuRegInt64To64(FPURegPtr regDst, FPURegPtr fpuRegSrc) override;
-    void loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width = DYN_FPU_64_BIT) override;
+    void loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width = DYN_FPU_64_BIT) override;
     void fpuRegExtend32To64(FPURegPtr dst, FPURegPtr src) override;
     void fpuReg64To32(FPURegPtr dst, FPURegPtr src) override;
     void regToFpuReg(FPURegPtr dst, RegPtr src) override;
@@ -282,6 +284,8 @@ public:
 #endif
     void updateFPURounding() override;
     void restoreFPURounding() override;
+    void roundFPUToInt64(FPURegPtr src) override;
+    void storeFPUToInt64(FPURegPtr src, RegPtr address, RegPtr offset, bool truncate) override;
 
     void fpuAdd(FPURegPtr dst, FPURegPtr src) override;
     void fpuMul(FPURegPtr dst, FPURegPtr src) override;
@@ -291,7 +295,7 @@ public:
     void fpuAnd(FPURegPtr dst, FPURegPtr src) override;
     void fpuSqrt(FPURegPtr dst, FPURegPtr src) override;
     void fcompare(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) override;
-
+    /*
     // MMX
     MMXRegPtr getTmpMMX() override;
     MMXRegPtr loadMMXFromReg(U8 index, RegPtr reg) override;
@@ -661,9 +665,12 @@ protected:
     SSERegPtr getXMM(U8 index, bool load);
     void cmp(JitWidth width, RegPtr reg, RegPtr reg2);
     void cmp(JitWidth width, RegPtr reg, DYN_PTR_SIZE value);
+    void IfEqual();
+    void IfGreater();
+    void IfLessThanOrEqual();
+    void If_v();
 
     U8 getMMXReg(MMXRegPtr reg);
-    U8 getFPUReg(FPURegPtr reg);
     RegPtr getReg8InLowByte(RegPtr reg);
     bool isRegHigh(RegPtr reg);
     Mem createMem(RegPtr reg, RegPtr sib, U8 lsl, U32 disp);
@@ -715,10 +722,6 @@ bool JitArmV8CodeGen::isSseRegCached(U8 reg) {
 }
 */
 
-U8 JitArmV8CodeGen::getFPUReg(FPURegPtr reg) {
-    return reg->hardwareReg();
-}
-
 /*
 SSERegPtr JitArmV8CodeGen::getTmpSSE() {
     return std::shared_ptr<SSERegInternal>(new SSERegInternal(findTmpXMM(), 0xff), [this](SSERegInternal* p) {
@@ -739,6 +742,7 @@ MMXRegPtr JitArmV8CodeGen::getTmpMMX() {
         delete p;
     });
 }
+*/
 
 FPURegPtr JitArmV8CodeGen::getFPUTmp() {
     return std::shared_ptr<FPURegInternal>(new FPURegInternal(findTmpXMM()), [this](FPURegInternal* p) {
@@ -746,7 +750,6 @@ FPURegPtr JitArmV8CodeGen::getFPUTmp() {
         delete p;
     });
 }
-*/
 
 void JitArmV8CodeGen::emulateSingleOp() {
     writeCurrentEip(0);
@@ -1164,7 +1167,7 @@ void JitArmV8CodeGen::xorValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 
 void JitArmV8CodeGen::shrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     RegPtr cl = getTmpReg();
-    compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x1f);
+    compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), regWidth == JitWidth::b64 ? 0x3f : 0x1f);
     regReg(regWidth, reg, cl, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm) {
         compiler.lsr(dst, reg, rm);
     }, ZERO_EXTEND);
@@ -1178,7 +1181,7 @@ void JitArmV8CodeGen::shrValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 
 void JitArmV8CodeGen::shlReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     RegPtr cl = getTmpReg();
-    compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x1f);
+    compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), regWidth == JitWidth::b64 ? 0x3f : 0x1f);
     regReg(regWidth, reg, cl, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm) {
         compiler.lsl(dst, reg, rm);
     });
@@ -1192,7 +1195,7 @@ void JitArmV8CodeGen::shlValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 
 void JitArmV8CodeGen::sarReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     RegPtr cl = getTmpReg();
-    compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x1f);
+    compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), regWidth == JitWidth::b64 ? 0x3f : 0x1f);
     regReg(regWidth, reg, cl, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm) {
         compiler.asr(dst, reg, rm);
     }, SIGN_EXTEND);
@@ -1979,8 +1982,8 @@ void JitArmV8CodeGen::absReg(JitWidth regWidth, RegPtr reg) {
     } else if (regWidth == JitWidth::b8) {
         movsx(JitWidth::b32, reg, JitWidth::b8, reg);
     } else if (regWidth == JitWidth::b64) {
-        compiler.add(R64(tmp->hardwareReg()), R64(reg->hardwareReg()), R64(reg->hardwareReg()), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kASR, 64)));
-        compiler.eor(R64(reg->hardwareReg()), R64(tmp->hardwareReg()), R64(reg->hardwareReg()), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kASR, 64)));
+        compiler.add(R64(tmp->hardwareReg()), R64(reg->hardwareReg()), R64(reg->hardwareReg()), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kASR, 63)));
+        compiler.eor(R64(reg->hardwareReg()), R64(tmp->hardwareReg()), R64(reg->hardwareReg()), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kASR, 63)));
         return;
     } else if (regWidth != JitWidth::b32) {
         kpanic("JitArmV8CodeGen::absReg");
@@ -1991,20 +1994,15 @@ void JitArmV8CodeGen::absReg(JitWidth regWidth, RegPtr reg) {
 }
 
 void JitArmV8CodeGen::clzReg(JitWidth regWidth, RegPtr result, RegPtr reg) {
-    kpanic("JitArmV8CodeGen::clzReg");
-    /*
-    if (regWidth == JitWidth::b16) {
-        x86.lzcnt(R16(result->hardwareReg()), R16(reg->hardwareReg()));
-    } else if (regWidth == JitWidth::b32) {
-        x86.lzcnt(R32(result->hardwareReg()), R32(reg->hardwareReg()));
+   if (regWidth == JitWidth::b32) {
+        compiler.clz(R32(result->hardwareReg()), R32(reg->hardwareReg()));
 #ifdef BOXEDWINE_64
     } else if (regWidth == JitWidth::b64) {
-        x86.lzcnt(R64(result->hardwareReg()), R64(reg->hardwareReg()));
+        compiler.clz(R64(result->hardwareReg()), R64(reg->hardwareReg()));
 #endif
     } else {
         kpanic("JitArmV8CodeGen::clzReg");
     }
-    */
 }
 
 void JitArmV8CodeGen::divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegPtr destHighAndRemainder, RegPtr src) {
@@ -2738,19 +2736,8 @@ void JitArmV8CodeGen::IfNot(JitWidth regWidth, RegPtr reg) {
 }
 
 void JitArmV8CodeGen::IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) {
-    kpanic("JitArmV8CodeGen::IfNotCPU");
-    /*
-    if (regWidth == JitWidth::b32) {
-        x86.cmp(X86Asm::Mem32(HOST_CPU, R32(sib->hardwareReg()), lsl, offset), 0);
-    } else if (regWidth == JitWidth::b16) {
-        x86.cmp(X86Asm::Mem16(HOST_CPU, R32(sib->hardwareReg()), lsl, offset), 0);
-    } else if (regWidth == JitWidth::b8) {
-        x86.cmp(X86Asm::Mem8(HOST_CPU, R32(sib->hardwareReg()), lsl, offset), 0);
-    } else {
-        kpanic_fmt("JitArmV8CodeGen::IfNotCPU unexpected width: %d", (U32)regWidth);
-    }
-    x86.IfZF();
-    */
+    RegPtr tmp = readCPU(regWidth, sib, lsl, offset);
+    IfNot(regWidth, tmp);
 }
 
 void JitArmV8CodeGen::clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) {
@@ -4060,147 +4047,205 @@ void JitArmV8CodeGen::pmovmskbR32Xmm(RegPtr dst, SSERegPtr src) {
     x86.pmovmskb(R32(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
 }
 
+*/
+
+asmjit::a64::Vec toVec(FPURegPtr reg) {
+    return asmjit::a64::Vec::make_d(reg->hardwareReg());
+}
+
+asmjit::a64::Vec toVec32(FPURegPtr reg) {
+    return asmjit::a64::Vec::make_s(reg->hardwareReg());
+}
+
+void JitArmV8CodeGen::dynamic_FNINIT(DecodedOp* op) {
+    JitFPU::dynamic_FNINIT(op);
+    fpuRoundingMode = ROUND_Nearest;
+}
+
+bool JitArmV8CodeGen::shouldContinueCompilingAfterOp(DecodedOp* op) {
+    // end a compile chain when an instruction that sets fpu rounding is called, this way it will be set in cpu->fpu.round when we compile what comes after in the next block
+    return op->inst != FLDCW && op->inst != FRSTOR && op->inst != Fxrstor;
+}
+
 void JitArmV8CodeGen::updateFPURounding() {
-    x86.stmxcsr(X86Asm::Mem32(HOST_CPU, offsetof(CPU, sseControlStateTmp)));
-
-    RegPtr sse = readCPU(JitWidth::b32, offsetof(CPU, sseControlStateTmp));
-    RegPtr fpu = readCPU(JitWidth::b32, offsetof(CPU, fpu.round));
-
-    andValue(JitWidth::b32, sse, ~0x6000); // clear rounding
-    shlValue(JitWidth::b32, fpu, 13);
-    orReg(JitWidth::b32, sse, fpu); // set rounding in SSE
-
-    // there is no way to set sse rounding from a register
-    writeCPU(JitWidth::b32, offsetof(CPU, sseControlStateTmp2), sse);
-
-    x86.ldmxcsr(X86Asm::Mem32(HOST_CPU, offsetof(CPU, sseControlStateTmp2)));
 }
 
 void JitArmV8CodeGen::restoreFPURounding() {
-    x86.ldmxcsr(X86Asm::Mem32(HOST_CPU, offsetof(CPU, sseControlStateTmp)));
-};
+}
 
 void JitArmV8CodeGen::storeCpuFpuReg(FPURegPtr reg, RegPtr index) {
-    x86.movsd(X86Asm::Mem64(HOST_CPU, R32(index->hardwareReg()), 3, offsetof(CPU, fpu.regCache[0].d)), getFPUReg(reg));
+    compiler.str(toVec(reg), createMem(regCPU, index->hardwareReg(), 3, offsetof(CPU, fpu.regCache[0].d)));
 }
 
 void JitArmV8CodeGen::loadCpuFpuReg(FPURegPtr reg, RegPtr index) {
-    x86.movsd(getFPUReg(reg), X86Asm::Mem64(HOST_CPU, R32(index->hardwareReg()), 3, offsetof(CPU, fpu.regCache[0].d)));
+    compiler.ldr(toVec(reg), createMem(regCPU, index->hardwareReg(), 3, offsetof(CPU, fpu.regCache[0].d)));
 }
 
 void JitArmV8CodeGen::loadCpuFpuRegConst(FPURegPtr reg, U32 offset) {
-    x86.movsd(getFPUReg(reg), X86Asm::Mem64(HOST_CPU, offset));
+    compiler.ldr(toVec(reg), Mem(xCPU, offset));
 }
 
 RegPtr JitArmV8CodeGen::fpuRegToInt32(FPURegPtr fpuRegSrc, bool truncate) {
     RegPtr result = getTmpReg();
     if (truncate) {
-        x86.cvttsd2si(R32(result->hardwareReg()), getFPUReg(fpuRegSrc));
+        compiler.fcvtzs(R32(result->hardwareReg()), toVec(fpuRegSrc));
     } else {
-        x86.cvtsd2si(R32(result->hardwareReg()), getFPUReg(fpuRegSrc));
+        if (fpuRoundingMode == ROUND_Nearest) {
+            compiler.fcvtns(R32(result->hardwareReg()), toVec(fpuRegSrc));
+        } else if (fpuRoundingMode == ROUND_Down) {
+            compiler.fcvtms(R32(result->hardwareReg()), toVec(fpuRegSrc));
+        } else if (fpuRoundingMode == ROUND_Up) {
+            compiler.fcvtps(R32(result->hardwareReg()), toVec(fpuRegSrc));
+        } else if (fpuRoundingMode == ROUND_Chop) {
+            compiler.fcvtzs(R32(result->hardwareReg()), toVec(fpuRegSrc));
+        }
     }
     return result;
 }
 
-void JitArmV8CodeGen::fpuRegToInt64(FPURegPtr regDst, FPURegPtr fpuRegSrc, bool truncate) {
+void JitArmV8CodeGen::storeFPUToInt64(FPURegPtr src, RegPtr address, RegPtr offset, bool truncate) {
+    RegPtr result = getTmpReg();
     if (truncate) {
-        x86.cvttpd2dq(getFPUReg(regDst), getFPUReg(fpuRegSrc));
+        compiler.fcvtzs(R64(result->hardwareReg()), toVec(src));
     } else {
-        x86.cvtpd2dq(getFPUReg(regDst), getFPUReg(fpuRegSrc));
+        if (fpuRoundingMode == ROUND_Nearest) {
+            compiler.fcvtns(R64(result->hardwareReg()), toVec(src));
+        } else if (fpuRoundingMode == ROUND_Down) {
+            compiler.fcvtms(R64(result->hardwareReg()), toVec(src));
+        } else if (fpuRoundingMode == ROUND_Up) {
+            compiler.fcvtps(R64(result->hardwareReg()), toVec(src));
+        } else if (fpuRoundingMode == ROUND_Chop) {
+            compiler.fcvtzs(R64(result->hardwareReg()), toVec(src));
+        }
+    }
+    write(JitWidth::b64, address, offset, 0, 0, result);
+}
+
+void JitArmV8CodeGen::roundFPUToInt64(FPURegPtr src) {
+    if (fpuRoundingMode == ROUND_Nearest) {
+        compiler.frintn(asmjit::a64::Vec::make_v64(src->hardwareReg()), toVec(src));
+    } else if (fpuRoundingMode == ROUND_Down) {
+        compiler.frintm(asmjit::a64::Vec::make_v64(src->hardwareReg()), toVec(src));
+    } else if (fpuRoundingMode == ROUND_Up) {
+        compiler.frintp(asmjit::a64::Vec::make_v64(src->hardwareReg()), toVec(src));
+    } else if (fpuRoundingMode == ROUND_Chop) {
+        compiler.frintz(asmjit::a64::Vec::make_v64(src->hardwareReg()), toVec(src));
     }
 }
 
-void JitArmV8CodeGen::fpuRegInt64To64(FPURegPtr regDst, FPURegPtr fpuRegSrc) {
-    x86.cvtdq2pd(getFPUReg(regDst), getFPUReg(fpuRegSrc));
-}
-
-void JitArmV8CodeGen::storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width) {
+void JitArmV8CodeGen::storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width) {
     if (width == DYN_FPU_64_BIT) {
-        x86.movsd(X86Asm::Mem64(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), getFPUReg(reg));
+        compiler.str(toVec(reg), Mem(R64(rm->hardwareReg()), R64(sib->hardwareReg())));
     } else {
-        x86.movss(X86Asm::Mem32(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), getFPUReg(reg));
+        compiler.str(toVec32(reg), Mem(R64(rm->hardwareReg()), R64(sib->hardwareReg())));
     }
 }
 
-void JitArmV8CodeGen::loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width) {
+void JitArmV8CodeGen::loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width) {
     if (width == DYN_FPU_64_BIT) {
-        x86.movsd(getFPUReg(reg), X86Asm::Mem64(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
+        compiler.ldr(toVec(reg), Mem(R64(rm->hardwareReg()), R64(sib->hardwareReg())));
     } else {
-        x86.movss(getFPUReg(reg), X86Asm::Mem32(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
+        compiler.ldr(toVec32(reg), Mem(R64(rm->hardwareReg()), R64(sib->hardwareReg())));
     }
 }
 
 void JitArmV8CodeGen::fpuRegExtend32To64(FPURegPtr dst, FPURegPtr src) {
-    x86.cvtss2sd(getFPUReg(dst), getFPUReg(src));
+    compiler.fcvt(toVec(dst), toVec32(src));
 }
 
 void JitArmV8CodeGen::fpuReg64To32(FPURegPtr dst, FPURegPtr src) {
-    x86.cvtsd2ss(getFPUReg(dst), getFPUReg(src));
+    compiler.fcvt(toVec32(dst), toVec(src));
+    //compiler.fcvtn(asmjit::a64::Vec::make_v64_with_element_type(asmjit::a64::VecElementType::kS, dst->hardwareReg()), asmjit::a64::Vec::make_v128_with_element_type(asmjit::a64::VecElementType::kD, src->hardwareReg()));
 }
 
-void JitArmV8CodeGen::loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.cvtsi2sd(getFPUReg(reg), X86Asm::Mem32(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
+void JitArmV8CodeGen::loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib) {
+    RegPtr tmp = getTmpReg();
+    read(JitWidth::b32, tmp, rm, sib, 0, 0);
+    compiler.scvtf(toVec(reg), R32(tmp->hardwareReg())); // convert int64 to double
 }
 
 void JitArmV8CodeGen::regToFpuReg(FPURegPtr dst, RegPtr src) {
-    x86.cvtsi2sd(getFPUReg(dst), R32(src->hardwareReg()));
+    compiler.scvtf(toVec(dst), R32(src->hardwareReg()));
 }
 
 #ifdef BOXEDWINE_64
 void JitArmV8CodeGen::regToFpuReg64(FPURegPtr dst, RegPtr src) {
-    x86.cvtsi2sd(getFPUReg(dst), R64(src->hardwareReg()));
+    compiler.scvtf(toVec(dst), R64(src->hardwareReg()));
 }
 #endif
 void JitArmV8CodeGen::fpuAdd(FPURegPtr dst, FPURegPtr src) {
-    x86.addsd(getFPUReg(dst), getFPUReg(src));
+    compiler.fadd(toVec(dst), toVec(dst), toVec(src));
 }
 
 void JitArmV8CodeGen::fpuMul(FPURegPtr dst, FPURegPtr src) {
-    x86.mulsd(getFPUReg(dst), getFPUReg(src));
+    compiler.fmul(toVec(dst), toVec(dst), toVec(src));
 }
 
 void JitArmV8CodeGen::fpuSub(FPURegPtr dst, FPURegPtr src) {
-    x86.subsd(getFPUReg(dst), getFPUReg(src));
+    compiler.fsub(toVec(dst), toVec(dst), toVec(src));
 }
 
 void JitArmV8CodeGen::fpuDiv(FPURegPtr dst, FPURegPtr src) {
-    x86.divsd(getFPUReg(dst), getFPUReg(src));
+    compiler.fdiv(toVec(dst), toVec(dst), toVec(src));
 }
 
 void JitArmV8CodeGen::fpuXor(FPURegPtr dst, FPURegPtr src) {
-    x86.xorpd(getFPUReg(dst), getFPUReg(src));
+    compiler.eor(toVec(dst), toVec(dst), toVec(src));
 }
 
 void JitArmV8CodeGen::fpuAnd(FPURegPtr dst, FPURegPtr src) {
-    x86.andpd(getFPUReg(dst), getFPUReg(src));
+    compiler.and_(toVec(dst), toVec(dst), toVec(src));
 }
 
 void JitArmV8CodeGen::fpuSqrt(FPURegPtr dst, FPURegPtr src) {
-    x86.sqrtsd(getFPUReg(dst), getFPUReg(src));
+    compiler.fsqrt(toVec(dst), toVec(src));
+}
+
+void JitArmV8CodeGen::IfEqual() {
+    Label label = compiler.new_label();
+    ifLabels.push_back(label);
+    compiler.b_ne(label);
+}
+
+void JitArmV8CodeGen::IfGreater() {
+    Label label = compiler.new_label();
+    ifLabels.push_back(label);
+    compiler.b_mi(label);
+}
+
+void JitArmV8CodeGen::IfLessThanOrEqual() {
+    Label label = compiler.new_label();
+    ifLabels.push_back(label);
+    compiler.b_cs(label);
+}
+
+void JitArmV8CodeGen::If_v() {
+    Label label = compiler.new_label();
+    ifLabels.push_back(label);
+    compiler.b_vc(label);
 }
 
 void JitArmV8CodeGen::fcompare(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) {
     subValue(JitWidth::b8, ordTags, TAG_Empty);
-    IfNot(JitWidth::b8, ordTags);
+    IfNot(JitWidth::b8, ordTags); {
         pfnInvalid();
-    StartElse();
-        x86.ucomisd(getFPUReg(fpuReg2), getFPUReg(fpuReg1));
-        x86.IfPF();
+    } StartElse(); {
+        compiler.fcmp(toVec(fpuReg2), toVec(fpuReg1));
+        If_v(); {
             pfnInvalid();
-        StartElse();
-            x86.IfZF();
+        } StartElse(); {
+            IfEqual(); {
                 pfnEqual();
-            StartElse();
-                x86.IfCF();
+            } StartElse(); {
+                IfLessThanOrEqual(); {
                     pfnLessThan();
-                StartElse();
+                } StartElse(); {
                     pfnGreaterThan();
-                EndIf();
-            EndIf();
-        EndIf();
-    EndIf();
+                } EndIf();
+            } EndIf();
+        } EndIf();
+    } EndIf();
 }
-*/
 
 U32 JitArmV8CodeGen::markBufferLocation() {
     asmjit::Label label = compiler.new_label();

@@ -228,6 +228,9 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             break;
         }
 #endif
+        if (nextOp && !shouldContinueCompilingAfterOp(nextOp)) {
+            break;
+        }
     }
     // find longest block where all direction jumps don't go past the block
     U32 lastFurthestEip = eip;
@@ -310,6 +313,10 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
             kpanic_fmt("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
         }
         if (this->currentEip > this->lastOpEip) {
+            if (!shouldContinueCompilingAfterOp(nextOp)) {
+                writeCurrentEip(0);
+                jumpEip();
+            }
             break;
         } else {
             if (nextOp->next && nextOp->next->inst == Done) {

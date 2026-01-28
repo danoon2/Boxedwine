@@ -109,7 +109,7 @@ public:
 void JitFPU::dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool reverse) {
     read(JitWidth::b32, calculateEaa(op), [reverse, op, callback, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuReg(tmp, address, offset, 0, 0, DYN_FPU_32_BIT);
+        loadFpuReg(tmp, address, offset, DYN_FPU_32_BIT);
         fpuRegExtend32To64(tmp, tmp);
         RegPtr top = getTopReg();
         FPUReg dst(this, top, 0);
@@ -126,7 +126,7 @@ void JitFPU::dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool re
 void JitFPU::dynamic_FCOM_SINGLE_REAL(DecodedOp* op) {
     read(JitWidth::b32, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuReg(tmp, address, offset, 0, 0, DYN_FPU_32_BIT);
+        loadFpuReg(tmp, address, offset, DYN_FPU_32_BIT);
         fpuRegExtend32To64(tmp, tmp);
         RegPtr top = getTopReg();
         FPUReg dst(this, top, 0);
@@ -138,7 +138,7 @@ void JitFPU::dynamic_FCOM_SINGLE_REAL(DecodedOp* op) {
 void JitFPU::dynamic_FCOM_SINGLE_REAL_Pop(DecodedOp* op) {
     read(JitWidth::b32, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuReg(tmp, std::move(address), std::move(offset), 0, 0, DYN_FPU_32_BIT);
+        loadFpuReg(tmp, std::move(address), std::move(offset), DYN_FPU_32_BIT);
         fpuRegExtend32To64(tmp, tmp);
         RegPtr top = getTopReg();
         FPUReg dst(this, top, 0);
@@ -235,7 +235,7 @@ void JitFPU::dynamic_ST0_STj(DecodedOp* op, XmmXmmCallback callback, bool revers
 void JitFPU::dynamic_DOUBLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool reverse) {
     read(JitWidth::b64, calculateEaa(op), [reverse, op, callback, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuReg(tmp, address, offset, 0, 0);
+        loadFpuReg(tmp, address, offset);
         RegPtr top = getTopReg();
         FPUReg dst(this, top, 0);
 
@@ -251,7 +251,7 @@ void JitFPU::dynamic_DOUBLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool re
 void JitFPU::dynamic_FCOM_DOUBLE_REAL(DecodedOp* op) {
     read(JitWidth::b64, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuReg(tmp, std::move(address), std::move(offset), 0, 0);
+        loadFpuReg(tmp, std::move(address), std::move(offset));
         RegPtr top = getTopReg();
         FPUReg dst(this, top, 0);
 
@@ -262,7 +262,7 @@ void JitFPU::dynamic_FCOM_DOUBLE_REAL(DecodedOp* op) {
 void JitFPU::dynamic_FCOM_DOUBLE_REAL_Pop(DecodedOp* op) {
     read(JitWidth::b64, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuReg(tmp, std::move(address), std::move(offset), 0, 0);
+        loadFpuReg(tmp, std::move(address), std::move(offset));
         RegPtr top = getTopReg();
         FPUReg dst(this, top, 0);
 
@@ -274,7 +274,7 @@ void JitFPU::dynamic_FCOM_DOUBLE_REAL_Pop(DecodedOp* op) {
 void JitFPU::dynamic_DWORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, bool reverse) {
     read(JitWidth::b32, calculateEaa(op), [reverse, op, callback, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuRegFromInt(tmp, address, offset, 0, 0);
+        loadFpuRegFromInt(tmp, address, offset);
         RegPtr top = getTopReg();
         FPUReg dst(this, top, 0);
 
@@ -290,7 +290,7 @@ void JitFPU::dynamic_DWORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, bool 
 void JitFPU::dynamic_FICOM_DWORD_INTEGER(DecodedOp* op) {
     read(JitWidth::b32, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuRegFromInt(tmp, std::move(address), std::move(offset), 0, 0);
+        loadFpuRegFromInt(tmp, std::move(address), std::move(offset));
         RegPtr top = getTopReg();
         FPUReg dst(this, top, 0);
 
@@ -301,7 +301,7 @@ void JitFPU::dynamic_FICOM_DWORD_INTEGER(DecodedOp* op) {
 void JitFPU::dynamic_FICOM_DWORD_INTEGER_Pop(DecodedOp* op) {
     read(JitWidth::b32, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuRegFromInt(tmp, std::move(address), std::move(offset), 0, 0);
+        loadFpuRegFromInt(tmp, std::move(address), std::move(offset));
         RegPtr top = getTopReg();
         FPUReg dst(this, top, 0);
 
@@ -310,7 +310,7 @@ void JitFPU::dynamic_FICOM_DWORD_INTEGER_Pop(DecodedOp* op) {
     });
 }
 
-void JitFPU::loadFpuRegFromShort(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+void JitFPU::loadFpuRegFromShort(FPURegPtr reg, RegPtr rm, RegPtr sib) {
     RegPtr result = getTmpReg();
     read(JitWidth::b16, result, rm, sib, 0, 0);
     movsx(JitWidth::b32, result, JitWidth::b16, result);
@@ -320,7 +320,7 @@ void JitFPU::loadFpuRegFromShort(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U
 void JitFPU::dynamic_WORD_INTEGER(DecodedOp* op, XmmXmmCallback callback,  bool reverse) {
     read(JitWidth::b16, calculateEaa(op), [reverse, op, callback, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuRegFromShort(tmp, address, offset, 0, 0);
+        loadFpuRegFromShort(tmp, address, offset);
         RegPtr top = getTopReg();
         FPUReg dst(this, top, 0);
 
@@ -336,7 +336,7 @@ void JitFPU::dynamic_WORD_INTEGER(DecodedOp* op, XmmXmmCallback callback,  bool 
 void JitFPU::dynamic_FICOM_WORD_INTEGER(DecodedOp* op) {
     read(JitWidth::b16, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuRegFromShort(tmp, address, offset, 0, 0);
+        loadFpuRegFromShort(tmp, address, offset);
         RegPtr top = getTopReg();
         FPUReg dst(this, top, 0);
 
@@ -347,7 +347,7 @@ void JitFPU::dynamic_FICOM_WORD_INTEGER(DecodedOp* op) {
 void JitFPU::dynamic_FICOM_WORD_INTEGER_Pop(DecodedOp* op) {
     read(JitWidth::b16, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuRegFromShort(tmp, address, offset, 0, 0);
+        loadFpuRegFromShort(tmp, address, offset);
         RegPtr top = getTopReg();
         FPUReg dst(this, top, 0);
 
@@ -515,7 +515,7 @@ void JitFPU::dynamic_FLD_SINGLE_REAL(DecodedOp* op) {
 
     read(JitWidth::b32, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuReg(tmp, address, offset, 0, 0, DYN_FPU_32_BIT);
+        loadFpuReg(tmp, address, offset, DYN_FPU_32_BIT);
         fpuRegExtend32To64(tmp, tmp);
         RegPtr top = getTopReg();
         dynamic_FPU_PREP_PUSH(top, true);
@@ -528,7 +528,7 @@ void JitFPU::dynamic_FST_SINGLE_REAL(DecodedOp* op) {
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
         fpuReg64To32(src.reg, src.reg);
-        storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_32_BIT);
+        storeFpuReg(src.reg, address, offset, DYN_FPU_32_BIT);
     });
 }
 
@@ -537,7 +537,7 @@ void JitFPU::dynamic_FST_SINGLE_REAL_Pop(DecodedOp* op) {
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
         fpuReg64To32(src.reg, src.reg);
-        storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_32_BIT);
+        storeFpuReg(src.reg, address, offset, DYN_FPU_32_BIT);
         dynamic_FPU_POP(top);
     });
 }
@@ -546,7 +546,7 @@ void JitFPU::dynamic_FST_DOUBLE_REAL(DecodedOp* op) {
     write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
-        storeFpuReg(src.reg, address, offset, 0, 0);
+        storeFpuReg(src.reg, address, offset);
     });
 }
 
@@ -554,7 +554,7 @@ void JitFPU::dynamic_FST_DOUBLE_REAL_Pop(DecodedOp* op) {
     write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
-        storeFpuReg(src.reg, address, offset, 0, 0);
+        storeFpuReg(src.reg, address, offset);
         dynamic_FPU_POP(top);
     });
 }
@@ -581,8 +581,7 @@ void JitFPU::dynamic_FRNDINT(DecodedOp* op) {
     RegPtr top = getTopReg();
     FPUReg src(this, top, 0);
     updateFPURounding();
-    fpuRegToInt64(src.reg, src.reg, false);
-    fpuRegInt64To64(src.reg, src.reg);
+    roundFPUToInt64(src.reg);
     restoreFPURounding();
     syncXmmToCPU(top, src.reg, 0);
 }
@@ -676,7 +675,7 @@ void JitFPU::dynamic_FILD_DWORD_INTEGER(DecodedOp* op) {
         RegPtr top = getTopReg();
         FPURegPtr tmp = getFPUTmp();
 
-        loadFpuRegFromInt(tmp, address, offset, 0, 0);
+        loadFpuRegFromInt(tmp, address, offset);
         dynamic_FPU_PREP_PUSH(top, true); // will change topReg
         syncXmmToCPUWithIndexReg(top, tmp);
     });
@@ -881,8 +880,7 @@ void JitFPU::dynamic_FISTTP64(DecodedOp* op) {
     } StartElse(); {
         write(JitWidth::b64, calculateEaa(op), nullptr, [top, op, this](RegPtr address, RegPtr offset) {
             FPUReg src(this, top, 0);
-            fpuRegToInt64(src.reg, src.reg, true);
-            storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_64_BIT);
+            storeFPUToInt64(src.reg, address, offset, true);
             dynamic_FPU_POP(top);
         });
     } EndIf();
@@ -930,7 +928,7 @@ void JitFPU::dynamic_FFREE_STi(DecodedOp* op) {
 void JitFPU::dynamic_FLD_DOUBLE_REAL(DecodedOp* op) {
     read(JitWidth::b64, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuReg(tmp, address, offset, 0, 0);
+        loadFpuReg(tmp, address, offset);
         RegPtr top = getTopReg();
         dynamic_FPU_PREP_PUSH(top, true);
         syncXmmToCPU(top, tmp, 0);
@@ -956,7 +954,7 @@ void JitFPU::dynamic_FILD_WORD_INTEGER(DecodedOp* op) {
     // cpu->fpu.FLD_I16(value, cpu->fpu.STV(0));
     read(JitWidth::b16, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         FPURegPtr tmp = getFPUTmp();
-        loadFpuRegFromShort(tmp, address, offset, 0, 0);
+        loadFpuRegFromShort(tmp, address, offset);
         RegPtr top = getTopReg();
         dynamic_FPU_PREP_PUSH(top, true); // will change topReg
         syncXmmToCPUWithIndexReg(top, tmp);
@@ -1080,8 +1078,7 @@ void JitFPU::dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) {
             updateFPURounding();
 
             FPUReg src(this, top, 0);
-            fpuRegToInt64(src.reg, src.reg, false);
-            storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_64_BIT);
+            storeFPUToInt64(src.reg, address, offset, false);
             restoreFPURounding();
             dynamic_FPU_POP(top);
         });

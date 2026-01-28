@@ -101,11 +101,6 @@ struct FPU_Float {
     };
 };
 
-#define ROUND_Nearest 0
-#define ROUND_Down 1
-#define ROUND_Up 2
-#define ROUND_Chop 3
-
 #define FPU_GET_TOP(fpu) (((fpu)->sw & 0x3800) >> 11)
 #define FPU_SET_TOP(fpu, val) (fpu)->sw &= ~0x3800; (fpu)->sw |= (val & 7) << 11
 

@@ -312,12 +312,12 @@ public:
     void storeCpuFpuReg(FPURegPtr reg, RegPtr index) override;
     void loadCpuFpuReg(FPURegPtr reg, RegPtr index) override;
     void loadCpuFpuRegConst(FPURegPtr reg, U32 offset) override;
-    void loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width = DYN_FPU_64_BIT) override;
+    void loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib) override;
+    void storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width = DYN_FPU_64_BIT) override;
     RegPtr fpuRegToInt32(FPURegPtr fpuRegSrc, bool truncate) override;
-    void fpuRegToInt64(FPURegPtr regDst, FPURegPtr fpuRegSrc, bool truncate) override;
-    void fpuRegInt64To64(FPURegPtr regDst, FPURegPtr fpuRegSrc) override;
-    void loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width = DYN_FPU_64_BIT) override;
+    void fpuRegToInt64(FPURegPtr regDst, FPURegPtr fpuRegSrc, bool truncate);
+    void fpuRegInt64To64(FPURegPtr regDst, FPURegPtr fpuRegSrc);
+    void loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width = DYN_FPU_64_BIT) override;
     void fpuRegExtend32To64(FPURegPtr dst, FPURegPtr src) override;
     void fpuReg64To32(FPURegPtr dst, FPURegPtr src) override;
     void regToFpuReg(FPURegPtr dst, RegPtr src) override;
@@ -326,6 +326,8 @@ public:
 #endif
     void updateFPURounding() override;
     void restoreFPURounding() override;
+    void roundFPUToInt64(FPURegPtr src) override;
+    void storeFPUToInt64(FPURegPtr src, RegPtr address, RegPtr offset, bool truncate) override;
 
     void fpuAdd(FPURegPtr dst, FPURegPtr src) override;
     void fpuMul(FPURegPtr dst, FPURegPtr src) override;
@@ -4030,6 +4032,16 @@ RegPtr JitX86CodeGen::fpuRegToInt32(FPURegPtr fpuRegSrc, bool truncate) {
     return result;
 }
 
+void JitX86CodeGen::roundFPUToInt64(FPURegPtr src) {
+    fpuRegToInt64(src, src, false);
+    fpuRegInt64To64(src, src);
+}
+
+void JitX86CodeGen::storeFPUToInt64(FPURegPtr src, RegPtr address, RegPtr offset, bool truncate) {
+    fpuRegToInt64(src, src, truncate);
+    storeFpuReg(src, address, offset, DYN_FPU_64_BIT);
+}
+
 void JitX86CodeGen::fpuRegToInt64(FPURegPtr regDst, FPURegPtr fpuRegSrc, bool truncate) {
     if (truncate) {
         compiler.cvttpd2dq(getFPUReg(regDst), getFPUReg(fpuRegSrc));
@@ -4042,19 +4054,19 @@ void JitX86CodeGen::fpuRegInt64To64(FPURegPtr regDst, FPURegPtr fpuRegSrc) {
     compiler.cvtdq2pd(getFPUReg(regDst), getFPUReg(fpuRegSrc));
 }
 
-void JitX86CodeGen::storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width) {
+void JitX86CodeGen::storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width) {
     if (width == DYN_FPU_64_BIT) {
-        compiler.movsd(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), getFPUReg(reg));
+        compiler.movsd(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg())), getFPUReg(reg));
     } else {
-        compiler.movss(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), getFPUReg(reg));
+        compiler.movss(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg())), getFPUReg(reg));
     }
 }
 
-void JitX86CodeGen::loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp, DynFpuWidth width) {
+void JitX86CodeGen::loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width) {
     if (width == DYN_FPU_64_BIT) {
-        compiler.movsd(getFPUReg(reg), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
+        compiler.movsd(getFPUReg(reg), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg())));
     } else {
-        compiler.movss(getFPUReg(reg), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
+        compiler.movss(getFPUReg(reg), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg())));
     }
 }
 
@@ -4066,8 +4078,8 @@ void JitX86CodeGen::fpuReg64To32(FPURegPtr dst, FPURegPtr src) {
     compiler.cvtsd2ss(getFPUReg(dst), getFPUReg(src));
 }
 
-void JitX86CodeGen::loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    compiler.cvtsi2sd(getFPUReg(reg), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
+void JitX86CodeGen::loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib) {
+    compiler.cvtsi2sd(getFPUReg(reg), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg())));
 }
 
 void JitX86CodeGen::regToFpuReg(FPURegPtr dst, RegPtr src) {
