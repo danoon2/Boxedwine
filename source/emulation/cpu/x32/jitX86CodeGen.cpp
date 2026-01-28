@@ -4056,17 +4056,17 @@ void JitX86CodeGen::fpuRegInt64To64(FPURegPtr regDst, FPURegPtr fpuRegSrc) {
 
 void JitX86CodeGen::storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width) {
     if (width == DYN_FPU_64_BIT) {
-        compiler.movsd(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg())), getFPUReg(reg));
+        compiler.movsd(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0), getFPUReg(reg));
     } else {
-        compiler.movss(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg())), getFPUReg(reg));
+        compiler.movss(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0), getFPUReg(reg));
     }
 }
 
 void JitX86CodeGen::loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width) {
     if (width == DYN_FPU_64_BIT) {
-        compiler.movsd(getFPUReg(reg), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg())));
+        compiler.movsd(getFPUReg(reg), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0));
     } else {
-        compiler.movss(getFPUReg(reg), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg())));
+        compiler.movss(getFPUReg(reg), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0));
     }
 }
 
@@ -4079,7 +4079,7 @@ void JitX86CodeGen::fpuReg64To32(FPURegPtr dst, FPURegPtr src) {
 }
 
 void JitX86CodeGen::loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib) {
-    compiler.cvtsi2sd(getFPUReg(reg), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg())));
+    compiler.cvtsi2sd(getFPUReg(reg), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0));
 }
 
 void JitX86CodeGen::regToFpuReg(FPURegPtr dst, RegPtr src) {
