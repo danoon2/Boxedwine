@@ -46,7 +46,7 @@ public:
 
     void startMMX();
     virtual MMXRegPtr getTmpMMX() = 0;
-    virtual MMXRegPtr loadMMXFromReg(U8 index, RegPtr reg) = 0;
+    virtual MMXRegPtr loadMMXFromReg(RegPtr reg) = 0;
     virtual void storeCpuMMXReg(MMXRegPtr reg, U32 index) = 0;
     virtual void storeMMXToReg(MMXRegPtr mmx, RegPtr reg) = 0;
     virtual MMXRegPtr loadCpuMMXReg(U8 index) = 0;

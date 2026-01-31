@@ -3031,6 +3031,7 @@ void Armv8btAsm::vMovFromGeneralReg64(U8 dst, U32 dstIndex, U8 src) {
 }
 
 void Armv8btAsm::vMovToGeneralReg32ZeroExtend(U8 dst, U8 src, U32 srcIndex, VectorWidth width) {    
+    // umov
     write8(dst | (U8)(src << 5));
     write8((U8)(src >> 3) | 0x3c);
     if (width == B16) {

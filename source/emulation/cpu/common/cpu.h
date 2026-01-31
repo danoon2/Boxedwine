@@ -334,7 +334,14 @@ public:
     static U32 offsetofSegValue(U32 index);
 
 #ifdef BOXEDWINE_JIT_ARMV8
+#define SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE 0
+#define SSE_MIN_INT32_MINUS_ONE_AS_DOUBLE 1
+#define SSE_MAX_INT32_PLUS_ONE_AS_FLOAT 2
+#define SSE_MIN_INT32_MINUS_ONE_AS_FLOAT 3
+#define SSE_INT32_BIT_MASK 4
+#define SSE_BYTE8_BIT_MASK 5
     U64 storedRegs[32];
+    SSE sseConstants[6];
 #endif
 #endif
     U32 flagZeroMask[52] = {

@@ -107,13 +107,13 @@ asmjit::a64::Gp R32(U8 reg) {
 #define ZERO_EXTEND 1
 #define SIGN_EXTEND 2
 
-class JitArmV8CodeGen : public JitFPU, asmjit::ErrorHandler {
+class JitArmV8CodeGen : public JitMMX, asmjit::ErrorHandler {
 public:  
     void handle_error(asmjit::Error err, const char* message, asmjit::BaseEmitter* origin) override {
         kpanic(message);
     }
 
-    JitArmV8CodeGen(CPU* cpu) : JitFPU(cpu) {
+    JitArmV8CodeGen(CPU* cpu) : JitMMX(cpu) {
         code.init(rt.environment());
         code.attach(&compiler);
         code.set_error_handler(this);
@@ -295,10 +295,12 @@ public:
     void fpuAnd(FPURegPtr dst, FPURegPtr src) override;
     void fpuSqrt(FPURegPtr dst, FPURegPtr src) override;
     void fcompare(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) override;
-    /*
+   
     // MMX
+    void pshuflwNotOverlappingDstSrc(MMXRegPtr dst, MMXRegPtr src, U8 mask);
     MMXRegPtr getTmpMMX() override;
-    MMXRegPtr loadMMXFromReg(U8 index, RegPtr reg) override;
+    MMXRegPtr loadMMXFromReg(RegPtr reg) override;
+    MMXRegPtr loadMMXConst(U8 index);
     void storeCpuMMXReg(MMXRegPtr reg, U32 index) override;
     void storeMMXToReg(MMXRegPtr mmx, RegPtr reg) override;
     MMXRegPtr loadCpuMMXReg(U8 index) override;
@@ -377,6 +379,7 @@ public:
     void psubqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
     void pmuludqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
 
+    /*
     // SSE    
     SSERegPtr getTmpSSE() override;
     void IfSseLessThan(SSERegPtr src1, SSERegPtr src2) override;
@@ -677,7 +680,7 @@ protected:
     Mem createMem(RegPtr reg, U32 disp);
     Mem createMem(U8 reg, U8 sib, U8 lsl, U32 disp);
     Mem createMem(U8 reg, U32 disp);
-    RegPtr loadConst(U64 value);
+    RegPtr loadConst(U64 value);    
     void modValue32(RegPtr dst, RegPtr src, RegPtr value);
 
     asmjit::JitRuntime rt;
@@ -735,14 +738,12 @@ U8 JitArmV8CodeGen::getMMXReg(MMXRegPtr reg) {
     return reg->hardwareReg();
 }
 
-/*
 MMXRegPtr JitArmV8CodeGen::getTmpMMX() {
     return std::shared_ptr<MMXRegInternal>(new MMXRegInternal(findTmpXMM(), 0xff), [this](MMXRegInternal* p) {
         vUsed[p->hardwareReg()] = false;
         delete p;
     });
 }
-*/
 
 FPURegPtr JitArmV8CodeGen::getFPUTmp() {
     return std::shared_ptr<FPURegInternal>(new FPURegInternal(findTmpXMM()), [this](FPURegInternal* p) {
@@ -2137,6 +2138,12 @@ RegPtr JitArmV8CodeGen::loadConst(U64 value) {
     return reg;
 }
 
+MMXRegPtr JitArmV8CodeGen::loadMMXConst(U8 index) {
+    MMXRegPtr result = getTmpMMX();
+    compiler.ldr(asmjit::a64::Vec::make_v128(result->hardwareReg()), createMem(regCPU, offsetof(CPU, sseConstants) + index * 16));
+    return result;
+}
+
 void JitArmV8CodeGen::read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) {
     if (!isTmp[dest->hardwareReg()]) {
         kpanic("JitArmV8CodeGen::read");
@@ -2977,74 +2984,173 @@ void JitArmV8CodeGen::minssXmmXmm(SSERegPtr dst, SSERegPtr src) {
     x86.minss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
 }
 
+*/
+
+asmjit::a64::Vec toMmxB(MMXRegPtr reg) {
+    return asmjit::a64::Vec::make_b(reg->hardwareReg());
+}
+
+asmjit::a64::Vec toMmxB8(MMXRegPtr reg) {
+    return asmjit::a64::Vec::make_b(reg->hardwareReg()).b8();
+}
+
+asmjit::a64::Vec toMmxB8(MMXRegPtr reg, U8 index) {
+    asmjit::a64::Vec result = asmjit::a64::Vec::make_b(reg->hardwareReg()).b8();
+    result.set_element_index(index);
+    return result;
+}
+
+asmjit::a64::Vec toMmxB16(MMXRegPtr reg) {
+    return asmjit::a64::Vec::make_b(reg->hardwareReg()).b16();
+}
+
+asmjit::a64::Vec toMmxH(MMXRegPtr reg) {
+    return asmjit::a64::Vec::make_h(reg->hardwareReg());
+}
+
+asmjit::a64::Vec toMmxH4(MMXRegPtr reg) {
+    return asmjit::a64::Vec::make_h(reg->hardwareReg()).h4();
+}
+
+asmjit::a64::Vec toMmxH4(MMXRegPtr reg, U8 index) {
+    asmjit::a64::Vec result = asmjit::a64::Vec::make_h(reg->hardwareReg()).h4();
+    result.set_element_index(index);
+    return result;
+}
+
+asmjit::a64::Vec toMmxH8(MMXRegPtr reg) {
+    return asmjit::a64::Vec::make_h(reg->hardwareReg()).h8();
+}
+
+asmjit::a64::Vec toMmxH8(MMXRegPtr reg, U8 index) {
+    asmjit::a64::Vec result = asmjit::a64::Vec::make_h(reg->hardwareReg()).h8();
+    result.set_element_index(index);
+    return result;
+}
+
+asmjit::a64::Vec toMmxS(MMXRegPtr reg) {
+    return asmjit::a64::Vec::make_s(reg->hardwareReg());
+}
+
+asmjit::a64::Vec toMmxS2(MMXRegPtr reg) {
+    return asmjit::a64::Vec::make_s(reg->hardwareReg()).s2();
+}
+
+asmjit::a64::Vec toMmxS2(MMXRegPtr reg, U8 index) {
+    asmjit::a64::Vec result = asmjit::a64::Vec::make_h(reg->hardwareReg()).s2();
+    result.set_element_index(index);
+    return result;
+}
+
+asmjit::a64::Vec toMmxS4(MMXRegPtr reg) {
+    return asmjit::a64::Vec::make_s(reg->hardwareReg()).s4();
+}
+
+asmjit::a64::Vec toMmxS4(MMXRegPtr reg, U8 index) {
+    asmjit::a64::Vec result = asmjit::a64::Vec::make_s(reg->hardwareReg()).s4();
+    result.set_element_index(index);
+    return result;
+}
+
+asmjit::a64::Vec toMmxD1(MMXRegPtr reg) {
+    return asmjit::a64::Vec::make_d(reg->hardwareReg()).d();
+}
+
 void JitArmV8CodeGen::pavgbMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pavgb(getMMXReg(dst), getMMXReg(src));
+    compiler.urhadd(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::pavgwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pavgw(getMMXReg(dst), getMMXReg(src));
+    compiler.urhadd(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::psadbwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psadbw(getMMXReg(dst), getMMXReg(src));
+    compiler.uabd(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
+    compiler.uaddlv(toMmxH(dst), toMmxB8(dst));
 }
 
 void JitArmV8CodeGen::pextrwRegMmx(RegPtr dst, MMXRegPtr src, U8 srcIndex) {
-    x86.pextrw(R32(dst->hardwareReg()), getMMXReg(src), srcIndex);
+    compiler.umov(R32(dst->hardwareReg()), toMmxH4(src, srcIndex));
 }
 
 void JitArmV8CodeGen::pinsrwMmxReg(MMXRegPtr dst, RegPtr src, U8 dstIndex) {
-    x86.pinsrw(getMMXReg(dst), R32(src->hardwareReg()), dstIndex);
+    compiler.ins(toMmxH8(dst, dstIndex & 3), R32(src->hardwareReg()));
 }
 
 void JitArmV8CodeGen::pmaxswMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pmaxsw(getMMXReg(dst), getMMXReg(src));
+    compiler.smax(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::pmaxubMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pmaxub(getMMXReg(dst), getMMXReg(src));
+    compiler.umax(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::pminswMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pminsw(getMMXReg(dst), getMMXReg(src));
+    compiler.smin(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::pminubMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pminub(getMMXReg(dst), getMMXReg(src));
+    compiler.umin(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::pmovmskbMmxMmx(RegPtr dst, MMXRegPtr src) {
-    x86.pmovmskb(R32(dst->hardwareReg()), getMMXReg(src));
+    MMXRegPtr tmp = getTmpMMX();
+    // turn all the bits to 1 if signed
+    compiler.sshr(toMmxB8(tmp), toMmxB8(src), 7);
+    // mask out the bit that should be set, so index 0 will set bit 0, index 1 will set bit 1, etc
+    compiler.and_(toMmxB8(tmp), toMmxB8(tmp), toMmxB8(loadMMXConst(SSE_BYTE8_BIT_MASK)));
+    // add bits 0-7 for indexes 0-7 to end up with the mask
+    compiler.addv(toMmxB(tmp), toMmxB8(tmp));
+
+    compiler.umov(R32(dst->hardwareReg()), toMmxB8(tmp, 0));
 }
 
 void JitArmV8CodeGen::pmulhuwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pmulhuw(getMMXReg(dst), getMMXReg(src));
+    MMXRegPtr tmp = getTmpMMX();
+    compiler.umull(toMmxS2(tmp), toMmxH4(dst), toMmxH4(src));
+    compiler.shrn(toMmxH4(dst), toMmxS2(tmp), 16);
+}
+
+void JitArmV8CodeGen::pshuflwNotOverlappingDstSrc(MMXRegPtr dst, MMXRegPtr src, U8 mask) {
+    compiler.ins(toMmxH8(dst, 0), toMmxH8(src, mask & 3));
+    compiler.ins(toMmxH8(dst, 1), toMmxH8(src, (mask >> 2) & 3));
+    compiler.ins(toMmxH8(dst, 2), toMmxH8(src, (mask >> 4) & 3));
+    compiler.ins(toMmxH8(dst, 3), toMmxH8(src, (mask >> 6) & 3));
 }
 
 void JitArmV8CodeGen::pshufwMmxMmx(MMXRegPtr dst, MMXRegPtr src, U8 order) {
-    x86.pshuflw(getMMXReg(dst), getMMXReg(src), order);
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        MMXRegPtr tmp = getTmpMMX();
+        pshuflwNotOverlappingDstSrc(tmp, src, order);
+        compiler.mov(toMmxD1(dst), toMmxD1(tmp));
+    } else {
+        pshuflwNotOverlappingDstSrc(dst, src, order);
+    }
 }
 
 void JitArmV8CodeGen::maskmovq(MMXRegPtr src, MMXRegPtr mask, RegPtr destAddress) {
-    x86.push(RN(7));
-    x86.mov(RN(7), RN(destAddress->hardwareReg()));
-    // this works because the top 64-bits of the mask should be 0's since its used for MMX
-    x86.maskmovdqu(getMMXReg(src), getMMXReg(mask));
-    x86.pop(RN(7));
+    MMXRegPtr tmp = getTmpMMX();
+    MMXRegPtr tmpMask = getTmpMMX();
+
+    compiler.ldr(toMmxD1(tmp), createMem(destAddress, 0));
+    // spec: The most significant bit in each byte of the mask operand determines whether the corresponding byte in the source operand is written to the corresponding byte location in memory: 0 indicates no write and 1 indicates write.
+    compiler.sshr(toMmxB8(tmpMask), toMmxB8(mask), 7);
+    compiler.bsl(toMmxB8(tmpMask), toMmxB8(src), toMmxB8(tmp)); // if tmpMask[i] == 1 then tmpMask[i] = src[i] else tmpMaskd[i] = tmp[i]
+    compiler.str(toMmxD1(tmpMask), createMem(destAddress, 0));
 }
 
 void JitArmV8CodeGen::paddqMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.paddq(getMMXReg(dst), getMMXReg(src));
+    compiler.add(toMmxD1(dst), toMmxD1(dst), toMmxD1(src));
 }
 
 void JitArmV8CodeGen::psubqMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psubq(getMMXReg(dst), getMMXReg(src));
+    compiler.sub(toMmxD1(dst), toMmxD1(dst), toMmxD1(src));
 }
 
 void JitArmV8CodeGen::pmuludqMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pmuludq(getMMXReg(dst), getMMXReg(src));
+    compiler.umull(toMmxD1(dst), toMmxS2(dst), toMmxS2(src));
 }
-
+/*
 void JitArmV8CodeGen::andnpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
     x86.andnps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
 }
@@ -3264,270 +3370,307 @@ void JitArmV8CodeGen::movmskpsR32Xmm(RegPtr dst, SSERegPtr src) {
     x86.movmskps(R32(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
 }
 
-MMXRegPtr JitArmV8CodeGen::loadMMXFromReg(U8 index, RegPtr src) {
+*/
+
+MMXRegPtr JitArmV8CodeGen::loadMMXFromReg(RegPtr src) {
     MMXRegPtr tmp = getTmpMMX();
-    x86.movd(getMMXReg(tmp), R32(src->hardwareReg()));
+    compiler.fmov(toMmxS(tmp), R32(src->hardwareReg()));
     return tmp;
 }
 
 void JitArmV8CodeGen::storeCpuMMXReg(MMXRegPtr reg, U32 index) {
-    x86.movq(X86Asm::Mem64(HOST_CPU, index * cpu->fpu.sizeofRegInRegsArray() + offsetof(CPU, fpu.regs[0].signif)), getMMXReg(reg));
+    compiler.str(toMmxD1(reg), createMem(regCPU, index * cpu->fpu.sizeofRegInRegsArray() + offsetof(CPU, fpu.regs[0].signif)));
 }
 
 void JitArmV8CodeGen::storeMMXToReg(MMXRegPtr src, RegPtr dst) {
-    x86.movd(R32(dst->hardwareReg()), getMMXReg(src));
+    compiler.umov(R32(dst->hardwareReg()), toMmxS4(src, 0));
 }
 
 MMXRegPtr JitArmV8CodeGen::loadCpuMMXReg(U8 index) {
     MMXRegPtr tmp = getTmpMMX();
-    x86.movq(getMMXReg(tmp), X86Asm::Mem64(HOST_CPU, index * cpu->fpu.sizeofRegInRegsArray() + offsetof(CPU, fpu.regs[0].signif)));
+    compiler.ldr(toMmxD1(tmp), createMem(regCPU, index * cpu->fpu.sizeofRegInRegsArray() + offsetof(CPU, fpu.regs[0].signif)));
     return tmp;
 }
 
 MMXRegPtr JitArmV8CodeGen::loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
     MMXRegPtr tmp = getTmpMMX();
-    x86.movd(getMMXReg(tmp), X86Asm::Mem32(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
+    compiler.ldr(toMmxS2(tmp), createMem(rm, sib, 0, 0));
     return tmp;
 }
 
 MMXRegPtr JitArmV8CodeGen::loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
     MMXRegPtr tmp = getTmpMMX();
-    x86.movq(getMMXReg(tmp), X86Asm::Mem64(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
+    compiler.ldr(toMmxD1(tmp), createMem(rm, sib, 0, 0));
     return tmp;
 }
 
 void JitArmV8CodeGen::storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.movd(X86Asm::Mem32(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), getMMXReg(reg));
+    compiler.str(toMmxS2(reg), createMem(rm, sib, 0, 0));
 }
 
 void JitArmV8CodeGen::storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.movq(X86Asm::Mem64(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), getMMXReg(reg));
+    compiler.str(toMmxD1(reg), createMem(rm, sib, 0, 0));
 }
 
 void JitArmV8CodeGen::xorMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pxor(getMMXReg(dst), getMMXReg(src));
+    compiler.eor(toMmxD1(dst), toMmxD1(dst), toMmxD1(src));
 }
 
 void JitArmV8CodeGen::orMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.por(getMMXReg(dst), getMMXReg(src));
+    compiler.orr(toMmxD1(dst), toMmxD1(dst), toMmxD1(src));
 }
 
 void JitArmV8CodeGen::andMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pand(getMMXReg(dst), getMMXReg(src));
+    compiler.and_(toMmxD1(dst), toMmxD1(dst), toMmxD1(src));
 }
 
 void JitArmV8CodeGen::andnMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pandn(getMMXReg(dst), getMMXReg(src));
+    compiler.bic(toMmxD1(dst), toMmxD1(src), toMmxD1(dst));
 }
 
 void JitArmV8CodeGen::psllwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psllw(getMMXReg(dst), getMMXReg(src));
+    MMXRegPtr tmp = getTmpMMX();
+    compiler.dup(toMmxH4(tmp), toMmxH4(src, 0));
+    compiler.ushl(toMmxH4(dst), toMmxH4(dst), toMmxH4(tmp));
 }
 
 void JitArmV8CodeGen::psrlwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psrlw(getMMXReg(dst), getMMXReg(src));
+    MMXRegPtr tmp = getTmpMMX();
+    // negative values in src means shift right for sshl
+    compiler.dup(toMmxH4(tmp), toMmxH4(src, 0));
+    compiler.neg(toMmxH4(tmp), toMmxH4(tmp));
+    compiler.ushl(toMmxH4(dst), toMmxH4(dst), toMmxH4(tmp));
 }
 
 void JitArmV8CodeGen::psrawMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psraw(getMMXReg(dst), getMMXReg(src));
+    MMXRegPtr tmp = getTmpMMX();
+    // negative values in src means shift right for sshl
+    compiler.dup(toMmxH4(tmp), toMmxH4(src, 0));
+    compiler.neg(toMmxH4(tmp), toMmxH4(tmp));
+    compiler.sshl(toMmxH4(dst), toMmxH4(dst), toMmxH4(tmp));
 }
 
 void JitArmV8CodeGen::psllwMmx(MMXRegPtr dst, U32 imm) {
-    x86.psllw(getMMXReg(dst), imm);
+    compiler.shl(toMmxH4(dst), toMmxH4(dst), imm);
 }
 
 void JitArmV8CodeGen::psrlwMmx(MMXRegPtr dst, U32 imm) {
-    x86.psrlw(getMMXReg(dst), imm);
+    compiler.ushr(toMmxH4(dst), toMmxH4(dst), imm);
 }
 
 void JitArmV8CodeGen::psrawMmx(MMXRegPtr dst, U32 imm) {
-    x86.psraw(getMMXReg(dst), imm);
+    compiler.sshr(toMmxH4(dst), toMmxH4(dst), imm);
 }
 
 void JitArmV8CodeGen::pslldMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pslld(getMMXReg(dst), getMMXReg(src));
+    MMXRegPtr tmp = getTmpMMX();
+    compiler.dup(toMmxS2(tmp), toMmxS2(src, 0));
+    compiler.ushl(toMmxS2(dst), toMmxS2(dst), toMmxS2(tmp));
 }
 
 void JitArmV8CodeGen::psrldMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psrld(getMMXReg(dst), getMMXReg(src));
+    MMXRegPtr tmp = getTmpMMX();
+    // negative values in src means shift right for sshl
+    compiler.dup(toMmxS2(tmp), toMmxS2(src, 0));
+    compiler.neg(toMmxS2(tmp), toMmxS2(tmp));
+    compiler.ushl(toMmxS2(dst), toMmxS2(dst), toMmxS2(tmp));
 }
 
 void JitArmV8CodeGen::psradMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psrad(getMMXReg(dst), getMMXReg(src));
+    MMXRegPtr tmp = getTmpMMX();
+    // negative values in src means shift right for sshl
+    compiler.dup(toMmxS2(tmp), toMmxS2(src, 0));
+    compiler.neg(toMmxS2(tmp), toMmxS2(tmp));
+    compiler.sshl(toMmxS2(dst), toMmxS2(dst), toMmxS2(tmp));
 }
 
 void JitArmV8CodeGen::pslldMmx(MMXRegPtr dst, U32 imm) {
-    x86.pslld(getMMXReg(dst), imm);
+    compiler.shl(toMmxS2(dst), toMmxS2(dst), imm);
 }
 
 void JitArmV8CodeGen::psrldMmx(MMXRegPtr dst, U32 imm) {
-    x86.psrld(getMMXReg(dst), imm);
+    compiler.ushr(toMmxS2(dst), toMmxS2(dst), imm);
 }
 
 void JitArmV8CodeGen::psradMmx(MMXRegPtr dst, U32 imm) {
-    x86.psrad(getMMXReg(dst), imm);
+    compiler.sshr(toMmxS2(dst), toMmxS2(dst), imm);
 }
 
 void JitArmV8CodeGen::psllqMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psllq(getMMXReg(dst), getMMXReg(src));
+    compiler.ushl(toMmxD1(dst), toMmxD1(dst), toMmxD1(src));
 }
 
 void JitArmV8CodeGen::psrlqMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psrlq(getMMXReg(dst), getMMXReg(src));
+    MMXRegPtr tmp = getTmpMMX();
+    // negative values in src means shift right for sshl
+    compiler.neg(toMmxD1(tmp), toMmxD1(src));
+    compiler.ushl(toMmxD1(dst), toMmxD1(dst), toMmxD1(tmp));
 }
 
 void JitArmV8CodeGen::psllqMmx(MMXRegPtr dst, U32 imm) {
-    x86.psllq(getMMXReg(dst), imm);
+    compiler.shl(toMmxD1(dst), toMmxD1(dst), imm);
 }
 
 void JitArmV8CodeGen::psrlqMmx(MMXRegPtr dst, U32 imm) {
-    x86.psrlq(getMMXReg(dst), imm);
+    compiler.ushr(toMmxD1(dst), toMmxD1(dst), imm);
 }
 
 void JitArmV8CodeGen::paddbMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.paddb(getMMXReg(dst), getMMXReg(src));
+    compiler.add(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::paddwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.paddw(getMMXReg(dst), getMMXReg(src));
+    compiler.add(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::padddMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.paddd(getMMXReg(dst), getMMXReg(src));
+    compiler.add(toMmxS2(dst), toMmxS2(dst), toMmxS2(src));
 }
 
 void JitArmV8CodeGen::paddsbMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.paddsb(getMMXReg(dst), getMMXReg(src));
+    compiler.sqadd(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::paddswMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.paddsw(getMMXReg(dst), getMMXReg(src));
+    compiler.sqadd(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::paddusbMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.paddusb(getMMXReg(dst), getMMXReg(src));
+    compiler.uqadd(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::padduswMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.paddusw(getMMXReg(dst), getMMXReg(src));
+    compiler.uqadd(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::psubbMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psubb(getMMXReg(dst), getMMXReg(src));
+    compiler.sub(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::psubwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psubw(getMMXReg(dst), getMMXReg(src));
+    compiler.sub(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::psubdMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psubd(getMMXReg(dst), getMMXReg(src));
+    compiler.sub(toMmxS2(dst), toMmxS2(dst), toMmxS2(src));
 }
 
 void JitArmV8CodeGen::psubsbMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psubsb(getMMXReg(dst), getMMXReg(src));
+    compiler.sqsub(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::psubswMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psubsw(getMMXReg(dst), getMMXReg(src));
+    compiler.sqsub(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::psubusbMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psubusb(getMMXReg(dst), getMMXReg(src));
+    compiler.uqsub(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::psubuswMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.psubusw(getMMXReg(dst), getMMXReg(src));
+    compiler.uqsub(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::pmulhwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pmulhw(getMMXReg(dst), getMMXReg(src));
+    MMXRegPtr tmp = getTmpMMX();
+    compiler.smull(toMmxS2(tmp), toMmxH4(dst), toMmxH4(src));
+    compiler.shrn(toMmxH4(dst), toMmxS2(tmp), 16);
 }
 
 void JitArmV8CodeGen::pmullwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pmullw(getMMXReg(dst), getMMXReg(src));
+    compiler.mul(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::pmaddwdMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pmaddwd(getMMXReg(dst), getMMXReg(src));
+    MMXRegPtr tmp = getTmpMMX();
+
+    compiler.smull(toMmxS4(tmp), toMmxH4(dst), toMmxH4(src));
+    compiler.addp(toMmxS4(dst), toMmxS4(tmp), toMmxS4(tmp));
 }
 
 void JitArmV8CodeGen::pcmpeqbMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pcmpeqb(getMMXReg(dst), getMMXReg(src));
+    compiler.cmeq(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::pcmpeqwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pcmpeqw(getMMXReg(dst), getMMXReg(src));
+    compiler.cmeq(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::pcmpeqdMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pcmpeqd(getMMXReg(dst), getMMXReg(src));
+    compiler.cmeq(toMmxS2(dst), toMmxS2(dst), toMmxS2(src));
 }
 
 void JitArmV8CodeGen::pcmpgtbMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pcmpgtb(getMMXReg(dst), getMMXReg(src));
+    compiler.cmgt(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::pcmpgtwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pcmpgtw(getMMXReg(dst), getMMXReg(src));
+    compiler.cmgt(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::pcmpgtdMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.pcmpgtd(getMMXReg(dst), getMMXReg(src));
+    compiler.cmgt(toMmxS2(dst), toMmxS2(dst), toMmxS2(src));
 }
 
 void JitArmV8CodeGen::packsswbMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    // xmm is twice as big as mm, so we need to adjust a little before the pack
-    x86.movlhps(getMMXReg(dst), getMMXReg(src));
-    x86.packsswb(getMMXReg(dst), getMMXReg(dst));
+    compiler.sqxtn(toMmxB8(dst), toMmxH4(dst));
+    compiler.sqxtn2(toMmxB16(dst), toMmxH4(src));
+    compiler.ins(toMmxS4(dst, 1), toMmxS4(dst, 2));
 }
 
 void JitArmV8CodeGen::packssdwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    // xmm is twice as big as mm, so we need to adjust a little before the pack
-    x86.movlhps(getMMXReg(dst), getMMXReg(src));
-    x86.packssdw(getMMXReg(dst), getMMXReg(dst));
+    compiler.sqxtn(toMmxH4(dst), toMmxS2(dst));
+    compiler.sqxtn2(toMmxH8(dst), toMmxS2(src));
+    compiler.ins(toMmxS4(dst, 1), toMmxS4(dst, 2));
 }
 
 void JitArmV8CodeGen::packuswbMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    // xmm is twice as big as mm, so we need to adjust a little before the pack
-    x86.movlhps(getMMXReg(dst), getMMXReg(src));
-    x86.packuswb(getMMXReg(dst), getMMXReg(dst));
+    compiler.sqxtun(toMmxB8(dst), toMmxH4(dst));
+    compiler.sqxtun2(toMmxB16(dst), toMmxH4(src));
+    compiler.ins(toMmxS4(dst, 1), toMmxS4(dst, 2));
 }
 
 void JitArmV8CodeGen::punpckhbwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    // :TODO: maybe move bytes 4-7 to 8-11 instead of 0-7 to 8-15 so that we don't have to do the movhlps to mov them back down?
-    x86.movlhps(getMMXReg(src), getMMXReg(src));
-    x86.movlhps(getMMXReg(dst), getMMXReg(dst));
-    x86.punpckhbw(getMMXReg(dst), getMMXReg(src));
-    x86.movhlps(getMMXReg(dst), getMMXReg(dst));
+    // dest->ub.b0 = dest->ub.b4;
+    // dest->ub.b1 = src->ub.b4;
+    // dest->ub.b2 = dest->ub.b5;
+    // dest->ub.b3 = src->ub.b5;
+    // dest->ub.b4 = dest->ub.b6;
+    // dest->ub.b5 = src->ub.b6;
+    // dest->ub.b6 = dest->ub.b7;
+    // dest->ub.b7 = src->ub.b7;
+    compiler.zip2(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::punpckhwdMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.movlhps(getMMXReg(src), getMMXReg(src));
-    x86.movlhps(getMMXReg(dst), getMMXReg(dst));
-    x86.punpckhwd(getMMXReg(dst), getMMXReg(src));
-    x86.movhlps(getMMXReg(dst), getMMXReg(dst));
+    compiler.zip2(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::punpckhdqMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.movlhps(getMMXReg(src), getMMXReg(src));
-    x86.movlhps(getMMXReg(dst), getMMXReg(dst));
-    x86.punpckhdq(getMMXReg(dst), getMMXReg(src));
-    x86.movhlps(getMMXReg(dst), getMMXReg(dst));
+    compiler.zip2(toMmxS2(dst), toMmxS2(dst), toMmxS2(src));
 }
 
 void JitArmV8CodeGen::punpcklbwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.punpcklbw(getMMXReg(dst), getMMXReg(src));
+    // dest->ub.b7 = src->ub.b3;
+    // dest->ub.b6 = dest->ub.b3;
+    // dest->ub.b5 = src->ub.b2;
+    // dest->ub.b4 = dest->ub.b2;
+    // dest->ub.b3 = src->ub.b1;
+    // dest->ub.b2 = dest->ub.b1;
+    // dest->ub.b1 = src->ub.b0;
+    // dest->ub.b0 = dest->ub.b0;
+    compiler.zip1(toMmxB8(dst), toMmxB8(dst), toMmxB8(src));
 }
 
 void JitArmV8CodeGen::punpcklwdMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.punpcklwd(getMMXReg(dst), getMMXReg(src));
+    compiler.zip1(toMmxH4(dst), toMmxH4(dst), toMmxH4(src));
 }
 
 void JitArmV8CodeGen::punpckldqMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
-    x86.punpckldq(getMMXReg(dst), getMMXReg(src));
+    compiler.zip1(toMmxS2(dst), toMmxS2(dst), toMmxS2(src));
 }
 
+/*
 #ifdef BOXEDWINE_64
 void JitArmV8CodeGen::cvtsi2sdXmmR64(SSERegPtr dst, RegPtr src) {
     x86.cvtsi2sd(X86Asm::XMM(dst->hardwareReg()), R64(src->hardwareReg()));
@@ -4955,10 +5098,10 @@ void writeBlockExitForJIT(U32 eip, U8* buffer) {
     compiler.ret(asmjit::a64::x30);
 
     code.flatten();
-    Platform::writeCodeToMemory(buffer, code.code_size(), [&code, buffer]() {
+    Platform::writeCodeToMemory(buffer, (U32)code.code_size(), [&code, buffer]() {
         code.copy_flattened_data(buffer, code.code_size());
     });
-    Platform::clearInstructionCache(buffer, code.code_size());
+    Platform::clearInstructionCache(buffer, (U32)code.code_size());
     
 }
 

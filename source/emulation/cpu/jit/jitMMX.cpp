@@ -65,7 +65,7 @@ void JitMMX::dynamic_movPqR32(DecodedOp* op) {
     // rmrq->ud.d1 = 0;
     // cpu->fpu.startMMX();
     startMMX();
-    MMXRegPtr reg = loadMMXFromReg(op->reg, getReadOnlyReg(op->rm));
+    MMXRegPtr reg = loadMMXFromReg(getReadOnlyReg(op->rm));
     storeCpuMMXReg(reg, op->reg);
 }
 
@@ -206,7 +206,7 @@ void JitMMX::dynamic_maskmovqEDIMmxMmx(DecodedOp* op) {
     write(JitWidth::b64, std::move(address), nullptr, [op, this](RegPtr address, RegPtr offset) {
         MMXRegPtr reg = loadCpuMMXReg(op->reg);
         MMXRegPtr rm = loadCpuMMXReg(op->rm);
-        addReg(JitWidth::b32, address, offset);
+        addReg(DYN_PTR, address, offset);
         maskmovq(reg, rm, address);
     });
 }

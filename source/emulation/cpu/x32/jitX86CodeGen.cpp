@@ -340,7 +340,7 @@ public:
 
     // MMX
     MMXRegPtr getTmpMMX() override;
-    MMXRegPtr loadMMXFromReg(U8 index, RegPtr reg) override;
+    MMXRegPtr loadMMXFromReg(RegPtr reg) override;
     void storeCpuMMXReg(MMXRegPtr reg, U32 index) override;
     void storeMMXToReg(MMXRegPtr mmx, RegPtr reg) override;
     MMXRegPtr loadCpuMMXReg(U8 index) override;
@@ -3207,7 +3207,7 @@ void JitX86CodeGen::movmskpsR32Xmm(RegPtr dst, SSERegPtr src) {
     compiler.movmskps(R32(dst->hardwareReg()), XMM(src->hardwareReg()));
 }
 
-MMXRegPtr JitX86CodeGen::loadMMXFromReg(U8 index, RegPtr src) {
+MMXRegPtr JitX86CodeGen::loadMMXFromReg(RegPtr src) {
     MMXRegPtr tmp = getTmpMMX();
     compiler.movd(getMMXReg(tmp), R32(src->hardwareReg()));
     return tmp;
