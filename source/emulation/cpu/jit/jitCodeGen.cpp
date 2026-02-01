@@ -228,9 +228,6 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             break;
         }
 #endif
-        if (nextOp && !shouldContinueCompilingAfterOp(nextOp)) {
-            break;
-        }
     }
     // find longest block where all direction jumps don't go past the block
     U32 lastFurthestEip = eip;
@@ -306,17 +303,28 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
             this->eipToBufferPos.set(this->currentEip + 1, markBufferLocation());
         }
         preOp(nextOp);
-        //movValue(JitWidth::b32, getTmpReg(), this->currentEip);
-        (this->*dynamicOps[nextOp->inst])(nextOp);
+        // enable this if you want to see the current eip while debugging the generated asm
+        // movValue(JitWidth::b32, getTmpReg(), this->currentEip);
+
+        // this is a nice way to figure out what jit instruction is bugged
+        // assuming the normal, non jit code works. If there is a bug in the jit,
+        // we can emulate instructions using the normal core for certain ranges
+        // until we find the jit instruction that is causing the bug
+        // 
+        // this is currently setup to start debugging with SSE emulated
+        // 
+        // 911 = AddpsXmm 
+        // 1282 = ShufpdXmmE128
+        //if (nextOp->inst >= 911 && nextOp->inst <= 1282) {
+         //   emulateSingleOp();
+        //} else {
+            (this->*dynamicOps[nextOp->inst])(nextOp);
+        //}
         this->currentEip += nextOp->len;
         if (getIfJumpSize()) {
             kpanic_fmt("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
         }
         if (this->currentEip > this->lastOpEip) {
-            if (!shouldContinueCompilingAfterOp(nextOp)) {
-                writeCurrentEip(0);
-                jumpEip();
-            }
             break;
         } else {
             if (nextOp->next && nextOp->next->inst == Done) {

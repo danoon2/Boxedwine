@@ -140,7 +140,6 @@ protected:
     virtual U8* createDynamicExecutableMemory();
     virtual void patch(U8* begin) {}
     virtual void createHelpers() {}
-    virtual bool shouldContinueCompilingAfterOp(DecodedOp* op) { return true; }
     RegPtr callGetCondition(JitConditional condition, RegPtr resultReg = nullptr);
     RegPtr calculateCondition(JitConditional condition, RegPtr resultReg = nullptr);
 };

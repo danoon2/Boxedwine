@@ -388,7 +388,7 @@ void CPU::cpuid() {
         case 1:	/* get processor type/family/model/stepping and feature flags */
             EBX=0;			/* Not Supported */
             ECX=0;			/* No features */
-            EDX=0x00000011;	/* FPU+TimeStamp/RDTSC */
+            EDX=1;	        /* FPU */
             if (KSystem::pentiumLevel==2) {
                 EAX=0x633;		/* intel pentium 2 */
             } else if (KSystem::pentiumLevel==3) {
@@ -397,14 +397,16 @@ void CPU::cpuid() {
                 EDX|= (1<<25);    // SSE
             } else if (KSystem::pentiumLevel==4) {
                 EAX=0xF07;		/* Intel Pentium 4 1.4 GHz */
+                EDX|= (1<<19);    // CLFLUSH
                 EDX|= (1<<24);    // FXSAVE, FXRESTOR
                 EDX|= (1<<25);    // SSE
                 EDX|= (1<<26);    // SSE2
             }          
+            EDX|= (1<<4);     /* RDTSC */
             EDX|= (1<<5);     /* MSR */
-            EDX|= (1<<15);    /* support CMOV instructions */
-            EDX|= (1<<13);    /* PTE Global Flag */
             EDX|= (1<<8);     /* CMPXCHG8B instruction */
+            EDX|= (1<<15);    /* support CMOV instructions */
+            EDX|= (1<<13);    /* PTE Global Flag */            
             EDX|= (1<<23);    // MMX
             break;
         case 2: // TLB and cache

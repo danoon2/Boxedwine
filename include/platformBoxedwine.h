@@ -127,7 +127,7 @@ public:
     static BString procStat();
     static U8* reserveNativeMemory64k(U32 count);
     static void commitNativeMemoryPage(void* address);
-
+    static int getL1CacheSize();
 #ifdef BOXEDWINE_MULTI_THREADED
     static void setCpuAffinityForThread(KThread* thread, U32 count);
 #endif

@@ -49,15 +49,15 @@ public:
 	virtual bool isSseRegCached(U8 reg) = 0;
 	virtual void storeCpuXMMReg(SSERegPtr reg, U32 index) = 0;
 	virtual SSERegPtr loadCpuXMMReg(U8 index) = 0;
-	virtual SSERegPtr loadXMMFromMem128(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-	virtual SSERegPtr loadXMMFromMem32(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-	virtual SSERegPtr loadXMMFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-	virtual SSERegPtr loadLowXMMFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-	virtual SSERegPtr loadHighXMMFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-	virtual void storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-	virtual void storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-	virtual void storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
-	virtual void storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+	virtual SSERegPtr loadXMMFromMem128(U8 index, RegPtr rm, RegPtr sib) = 0;
+	virtual SSERegPtr loadXMMFromMem32(U8 index, RegPtr rm, RegPtr sib) = 0;
+	virtual SSERegPtr loadXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) = 0;
+	virtual SSERegPtr loadLowXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) = 0;
+	virtual SSERegPtr loadHighXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) = 0;
+	virtual void storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib) = 0;
+	virtual void storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) = 0;
+	virtual void storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib) = 0;
+	virtual void storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) = 0;
 
 	void opXmmXmm(DecodedOp* op, XmmXmmCallback callback, bool loadDest = true);
 	void opXmmXmmImm(DecodedOp* op, XmmXmmImmCallback callback);
@@ -343,7 +343,7 @@ public:
 	virtual void pmulhuwXmmXmm(SSERegPtr dst, SSERegPtr src) = 0;
 	virtual void lfence() = 0;
 	virtual void mfence() = 0;
-	virtual void clflush(RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+	virtual void clflush(RegPtr address) = 0;
 	virtual void pause() = 0;
 	virtual void pextrwR32Xmm(RegPtr dst, SSERegPtr src, U32 imm) = 0;
 	virtual void pinsrwXmmR32(SSERegPtr dst, RegPtr src, U32 imm) = 0;

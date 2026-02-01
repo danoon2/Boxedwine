@@ -34,7 +34,7 @@
 #define NUMBER_OF_REGS 31
 #define NUMBER_OF_VREGS 32
 #define NUMBER_OF_TMPS 9
-#define NUMBER_OF_VREG_TMPS 6
+#define NUMBER_OF_VREG_TMPS 9
 
 static bool isVolitile[] = { true,  true,  true,  true,  true,  true,  true,  true,
                              true,  true,  true,  true,  true,  true,  true,  true,
@@ -48,7 +48,8 @@ static bool isTmp[] = { false, false, false, false, false, false, false, false,
 
 static U8 regCache[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 static U8 tmps[] = { 21, 22, 23, 24, 25, 26, 12, 13, 14 };
-static U8 vtmps[] = { 16, 17, 18, 19, 20, 21 };
+static U8 vtmps[] = { 16, 17, 18, 19, 20, 21, 22, 23, 24 };
+static U8 vCache[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
 #define INVALID_REG 0xff
 
@@ -56,13 +57,22 @@ typedef asmjit::a64::Mem Mem;
 typedef asmjit::a64::Shift Shift;
 typedef asmjit::a64::ShiftOp ShiftOp;
 typedef asmjit::Label Label;
+typedef asmjit::a64::Vec Vec;
 
 asmjit::a64::Gp R64(U8 reg) {
     return asmjit::a64::gp64(reg);
 }
 
+asmjit::a64::Gp R64(RegPtr reg) {
+    return asmjit::a64::gp64(reg->hardwareReg());
+}
+
 asmjit::a64::Gp R32(U8 reg) {
     return asmjit::a64::gp32(reg);
+}
+
+asmjit::a64::Gp R32(RegPtr reg) {
+    return asmjit::a64::gp32(reg->hardwareReg());
 }
 
 #define xEAX 0
@@ -107,17 +117,18 @@ asmjit::a64::Gp R32(U8 reg) {
 #define ZERO_EXTEND 1
 #define SIGN_EXTEND 2
 
-class JitArmV8CodeGen : public JitMMX, asmjit::ErrorHandler {
+using MakeSSE = Vec(SSERegPtr reg);
+
+class JitArmV8CodeGen : public JitSSE, asmjit::ErrorHandler {
 public:  
     void handle_error(asmjit::Error err, const char* message, asmjit::BaseEmitter* origin) override {
         kpanic(message);
     }
 
-    JitArmV8CodeGen(CPU* cpu) : JitMMX(cpu) {
+    JitArmV8CodeGen(CPU* cpu) : JitSSE(cpu) {
         code.init(rt.environment());
         code.attach(&compiler);
         code.set_error_handler(this);
-        fpuRoundingMode = cpu->fpu.round;
     }
 
     void preOp(DecodedOp* op) override;
@@ -239,8 +250,7 @@ public:
 
     U32 MarkJumpLocation() override;
     void Goto(U32 location) override;
-    void jmp(RegPtr reg) override;
-    void updateFlagsIfNecessary();    
+    void jmp(RegPtr reg) override;  
     RegPtr getReadOnlyFlags() override;
     void storeLazyFlagType(LazyFlagType flags);
     RegPtr getFlagsInTmp(RegPtr reg = nullptr) override;
@@ -264,11 +274,9 @@ public:
     void blockExit(bool syncCache = true) override;
 
     // FPU
-    void dynamic_FNINIT(DecodedOp* op) override;
+    RegPtr fpuRegToInt(FPURegPtr fpuRegSrc, bool truncate, bool is64);
 
-    U32 fpuRoundingMode = ROUND_Nearest;
     FPURegPtr getFPUTmp() override;
-    bool shouldContinueCompilingAfterOp(DecodedOp* op) override;
     void storeCpuFpuReg(FPURegPtr reg, RegPtr index) override;
     void loadCpuFpuReg(FPURegPtr reg, RegPtr index) override;
     void loadCpuFpuRegConst(FPURegPtr reg, U32 offset) override;
@@ -304,10 +312,10 @@ public:
     void storeCpuMMXReg(MMXRegPtr reg, U32 index) override;
     void storeMMXToReg(MMXRegPtr mmx, RegPtr reg) override;
     MMXRegPtr loadCpuMMXReg(U8 index) override;
-    MMXRegPtr loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    MMXRegPtr loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
+    MMXRegPtr loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib) override;
+    MMXRegPtr loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib) override;
+    void storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib) override;
+    void storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib) override;
     void xorMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
     void orMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
     void andMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
@@ -379,22 +387,31 @@ public:
     void psubqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
     void pmuludqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
 
-    /*
     // SSE    
     SSERegPtr getTmpSSE() override;
-    void IfSseLessThan(SSERegPtr src1, SSERegPtr src2) override;
+    SSERegPtr loadSSEConst(U8 index);
+    void IfSseLessThan(SSERegPtr src1, SSERegPtr src2) override;    
     bool isSseRegCached(U8 reg) override;
     void storeCpuXMMReg(SSERegPtr reg, U32 index) override;
     SSERegPtr loadCpuXMMReg(U8 index) override;
-    SSERegPtr loadXMMFromMem128(U8 reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    SSERegPtr loadXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    SSERegPtr loadLowXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    SSERegPtr loadHighXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    SSERegPtr loadXMMFromMem32(U8 reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
+    SSERegPtr loadXMMFromMem128(U8 reg, RegPtr rm, RegPtr sib) override;
+    SSERegPtr loadXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib) override;
+    SSERegPtr loadLowXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib) override;
+    SSERegPtr loadHighXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib) override;
+    SSERegPtr loadXMMFromMem32(U8 reg, RegPtr rm, RegPtr sib) override;
+    void storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib) override;
+    void storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) override;
+    void storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib) override;
+    void storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) override;
+    void fmax(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, MakeSSE vMake);
+    void fmin(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, MakeSSE vMake);
+    void cvtps2pi(SSERegPtr dst, SSERegPtr src, bool truncate);
+    void cvtsd2si(RegPtr dst, SSERegPtr src, bool truncate);
+    void cvtpd2pi(SSERegPtr dst, SSERegPtr src, bool truncate);
+    void sseConvertFloatToInt(Vec dst, Vec src, bool truncate);
+    void sseConvertFloatToInt(RegPtr dst, Vec src, bool truncate);
+    void sseCmp(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, U8 pred, MakeSSE vMake);
+    void comis(SSERegPtr dst, SSERegPtr src, MakeSSE vMake);
 
     void addpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void addssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
@@ -566,15 +583,17 @@ public:
     void pmulhuwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void lfence() override;
     void mfence() override;
-    void clflush(RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
+    void clflush(RegPtr address) override;
     void pause() override;
     void pextrwR32Xmm(RegPtr dst, SSERegPtr src, U32 imm) override;
     void pinsrwXmmR32(SSERegPtr dst, RegPtr src, U32 imm) override;
     void pmovmskbR32Xmm(RegPtr dst, SSERegPtr src) override;
-
+/*
 
     void dynamic_rdtsc(DecodedOp* op) override;
-    void dynamic_arithE32R32_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address, RegPtr offset)> callback, bool writeReg = false);
+    */
+    void dynamic_arithE32R32_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address)> callback, bool writeReg = false);
+    /*
     void dynamic_arithE16R16_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address, RegPtr offset)> callback, bool writeReg = false);
     void dynamic_arithE8R8_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address, RegPtr offset)> callback, bool writeReg = false);
     void dynamic_arithE32_lock(DecodedOp* op, std::function<void(RegPtr address, RegPtr offset)> callback);
@@ -582,13 +601,17 @@ public:
     void dynamic_arithE8_lock(DecodedOp* op, std::function<void(RegPtr address, RegPtr offset)> callback);
 
     void dynamic_cmpxchg8b_lock(DecodedOp* op) override;
+    */
     void dynamic_cmpxchge32r32_lock(DecodedOp* op) override;
+    /*
     void dynamic_cmpxchge16r16_lock(DecodedOp* op) override;
     void dynamic_cmpxchge8r8_lock(DecodedOp* op) override;
     void dynamic_xchge32r32_lock(DecodedOp* op) override;
     void dynamic_xchge16r16_lock(DecodedOp* op) override;
     void dynamic_xchge8r8_lock(DecodedOp* op) override;
+    */
     void dynamic_xaddr32e32_lock(DecodedOp* op) override;
+    /*
     void dynamic_xaddr16e16_lock(DecodedOp* op) override;
     void dynamic_xaddr8e8_lock(DecodedOp* op) override;
     void dynamic_adde32r32_lock(DecodedOp* op) override;
@@ -670,7 +693,7 @@ protected:
     void cmp(JitWidth width, RegPtr reg, DYN_PTR_SIZE value);
     void IfEqual();
     void IfGreater();
-    void IfLessThanOrEqual();
+    void IfLessThan();
     void If_v();
 
     U8 getMMXReg(MMXRegPtr reg);
@@ -683,7 +706,7 @@ protected:
     RegPtr loadConst(U64 value);    
     void modValue32(RegPtr dst, RegPtr src, RegPtr value);
 
-    asmjit::JitRuntime rt;
+    static asmjit::JitRuntime rt;
     asmjit::CodeHolder code;
     asmjit::a64::Assembler compiler;
 
@@ -694,6 +717,8 @@ protected:
     std::vector<Label> ifLabels;
     BHashTable<U32, Label> opLabels;
 };
+
+asmjit::JitRuntime JitArmV8CodeGen::rt;
 
 void JitArmV8CodeGen::preOp(DecodedOp* op) {
     rUsed.fill(false);
@@ -719,20 +744,16 @@ U8 JitArmV8CodeGen::findTmpXMM() {
     return INVALID_REG;
 }
 
-/*
 bool JitArmV8CodeGen::isSseRegCached(U8 reg) {
     return true;
 }
-*/
 
-/*
 SSERegPtr JitArmV8CodeGen::getTmpSSE() {
     return std::shared_ptr<SSERegInternal>(new SSERegInternal(findTmpXMM(), 0xff), [this](SSERegInternal* p) {
         vUsed[p->hardwareReg()] = false;
         delete p;
     });
 }
-*/
 
 U8 JitArmV8CodeGen::getMMXReg(MMXRegPtr reg) {
     return reg->hardwareReg();
@@ -816,9 +837,9 @@ RegPtr JitArmV8CodeGen::getTmpReg(U8 reg, bool delayed, S8 hint) {
             delete p;
         });
         if (regCache[reg] != INVALID_REG) {
-            compiler.mov(R64(result->hardwareReg()), R64(regCache[reg]));
+            compiler.mov(R64(result), R64(regCache[reg]));
         } else {
-            compiler.ldr(R32(result->hardwareReg()), Mem(xCPU, CPU::offsetofReg32(reg)));
+            compiler.ldr(R32(result), Mem(xCPU, CPU::offsetofReg32(reg)));
         }
         return result;
     }
@@ -839,13 +860,13 @@ RegPtr JitArmV8CodeGen::getTmpSegAddress(U8 reg) {
 
 RegPtr JitArmV8CodeGen::getReadOnlySegAddress(U8 reg) {
     RegPtr result = getTmpReg();
-    compiler.ldr(R32(result->hardwareReg()), Mem(xCPU, CPU::offsetofSegAddress(reg)));
+    compiler.ldr(R32(result), Mem(xCPU, CPU::offsetofSegAddress(reg)));
     return result;
 }
 
 RegPtr JitArmV8CodeGen::getReadOnlySegValue(U8 reg) {
     RegPtr result = getTmpReg();
-    compiler.ldr(R32(result->hardwareReg()), Mem(xCPU, CPU::offsetofSegValue(reg)));
+    compiler.ldr(R32(result), Mem(xCPU, CPU::offsetofSegValue(reg)));
     return result;
 }
 
@@ -863,17 +884,17 @@ RegPtr JitArmV8CodeGen::getTmpReg8(U8 reg, bool delayed, S8 hint) {
 
 RegPtr JitArmV8CodeGen::readEip() {
     RegPtr result = getTmpReg();
-    compiler.ldr(R32(result->hardwareReg()), Mem(xCPU, offsetof(CPU, eip.u32)));
+    compiler.ldr(R32(result), Mem(xCPU, offsetof(CPU, eip.u32)));
     return result;
 }
 
 void JitArmV8CodeGen::writeEip(RegPtr reg) {
-    compiler.str(R32(reg->hardwareReg()), Mem(xCPU, offsetof(CPU, eip.u32)));
+    compiler.str(R32(reg), Mem(xCPU, offsetof(CPU, eip.u32)));
 }
 
 void JitArmV8CodeGen::writeEip(U32 eip) {
     RegPtr reg = getTmpReg();
-    compiler.mov(R32(reg->hardwareReg()), eip);
+    compiler.mov(R32(reg), eip);
     writeEip(reg);
 }
 
@@ -896,7 +917,7 @@ bool JitArmV8CodeGen::isTmpRegAvailable() {
 
 void JitArmV8CodeGen::forceSyncBackIfNotCached(RegPtr reg) {
     if (reg->emulatedReg != 0xff && regCache[reg->emulatedReg] == INVALID_REG) {
-        compiler.str(R32(reg->hardwareReg()), Mem(xCPU, CPU::offsetofReg32(reg->emulatedReg)));
+        compiler.str(R32(reg), Mem(xCPU, CPU::offsetofReg32(reg->emulatedReg)));
     }
 }
 
@@ -908,7 +929,7 @@ RegPtr JitArmV8CodeGen::getReg(U8 reg, S8 hint, bool load) {
             delete p;
         });
         if (load) {
-            compiler.ldr(R32(result->hardwareReg()), Mem(xCPU, CPU::offsetofReg32(reg)));
+            compiler.ldr(R32(result), Mem(xCPU, CPU::offsetofReg32(reg)));
         }
         return result;
     } else {
@@ -952,7 +973,7 @@ RegPtr JitArmV8CodeGen::getReg8InLowByte(RegPtr reg) {
         return reg;
     }
     RegPtr tmp = getTmpReg();
-    compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 8, 8);
+    compiler.ubfx(R32(tmp), R32(reg), 8, 8);
     return tmp;
 }
 
@@ -962,23 +983,23 @@ bool JitArmV8CodeGen::isRegHigh(RegPtr reg) {
 
 void JitArmV8CodeGen::reg1(JitWidth regWidth, RegPtr reg, std::function<void(asmjit::a64::Gp dst, asmjit::a64::Gp src)> fn) {
     if (regWidth == JitWidth::b32) {
-        fn(R32(reg->hardwareReg()), R32(reg->hardwareReg()));
+        fn(R32(reg), R32(reg));
     } else if (regWidth == JitWidth::b64) {
-        fn(R64(reg->hardwareReg()), R64(reg->hardwareReg()));
+        fn(R64(reg), R64(reg));
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
-        fn(R32(tmp->hardwareReg()), R32(reg->hardwareReg()));
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+        fn(R32(tmp), R32(reg));
+        compiler.bfxil(R32(reg), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         RegPtr tmp = getTmpReg();
 
         if (!isRegHigh(reg)) {
-            fn(R32(tmp->hardwareReg()), R32(reg->hardwareReg()));
-            compiler.bfi(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 8);
+            fn(R32(tmp), R32(reg));
+            compiler.bfi(R32(reg), R32(tmp), 0, 8);
         } else {
-            compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 8, 8);
-            fn(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()));
-            compiler.bfi(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 8, 8);
+            compiler.ubfx(R32(tmp), R32(reg), 8, 8);
+            fn(R32(tmp), R32(tmp));
+            compiler.bfi(R32(reg), R32(tmp), 8, 8);
         }
     } else {
         kpanic("JitArmV8CodeGen::reg");
@@ -987,44 +1008,44 @@ void JitArmV8CodeGen::reg1(JitWidth regWidth, RegPtr reg, std::function<void(asm
 
 void JitArmV8CodeGen::regReg(JitWidth regWidth, RegPtr reg, RegPtr rm, std::function<void(asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm)> fn, U32 extend) {    
     if (regWidth == JitWidth::b32) {
-        fn(R32(reg->hardwareReg()), R32(reg->hardwareReg()), R32(rm->hardwareReg()));
+        fn(R32(reg), R32(reg), R32(rm));
     } else if (regWidth == JitWidth::b64) {
-        fn(R64(reg->hardwareReg()), R64(reg->hardwareReg()), R64(rm->hardwareReg()));
+        fn(R64(reg), R64(reg), R64(rm));
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
         if (extend == ZERO_EXTEND) {
-            compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 0, 16);
-            fn(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(rm->hardwareReg()));
+            compiler.ubfx(R32(tmp), R32(reg), 0, 16);
+            fn(R32(tmp), R32(tmp), R32(rm));
         } else if (extend == SIGN_EXTEND) {
             movsx(JitWidth::b32, tmp, JitWidth::b16, reg);
-            fn(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(rm->hardwareReg()));
+            fn(R32(tmp), R32(tmp), R32(rm));
         } else {
-            fn(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), R32(rm->hardwareReg()));
+            fn(R32(tmp), R32(reg), R32(rm));
         }
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+        compiler.bfxil(R32(reg), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         rm = getReg8InLowByte(std::move(rm));
         RegPtr tmp = getTmpReg();
 
         if (!isRegHigh(reg)) {
             if (extend == ZERO_EXTEND) {
-                compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 0, 8);
-                fn(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(rm->hardwareReg()));
+                compiler.ubfx(R32(tmp), R32(reg), 0, 8);
+                fn(R32(tmp), R32(tmp), R32(rm));
             } else if (extend == SIGN_EXTEND) {
                 movsx(JitWidth::b32, tmp, JitWidth::b8, reg);
-                fn(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(rm->hardwareReg()));
+                fn(R32(tmp), R32(tmp), R32(rm));
             } else {
-                fn(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), R32(rm->hardwareReg()));
+                fn(R32(tmp), R32(reg), R32(rm));
             }
-            compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 8);
+            compiler.bfxil(R32(reg), R32(tmp), 0, 8);
         } else {
             if (extend == SIGN_EXTEND) {
                 movsx(JitWidth::b32, tmp, JitWidth::b8, reg);
             } else {
-                compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 8, 8);
+                compiler.ubfx(R32(tmp), R32(reg), 8, 8);
             }
-            fn(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(rm->hardwareReg()));
-            compiler.bfi(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 8, 8);
+            fn(R32(tmp), R32(tmp), R32(rm));
+            compiler.bfi(R32(reg), R32(tmp), 8, 8);
         }
     } else {
         kpanic("JitArmV8CodeGen::regReg");
@@ -1033,44 +1054,44 @@ void JitArmV8CodeGen::regReg(JitWidth regWidth, RegPtr reg, RegPtr rm, std::func
 
 void JitArmV8CodeGen::regValue(JitWidth regWidth, RegPtr reg, U32 value, std::function<void(asmjit::a64::Gp dst, asmjit::a64::Gp reg, U32 value)> fn, U32 extend) {
     if (regWidth == JitWidth::b32) {
-        fn(R32(reg->hardwareReg()), R32(reg->hardwareReg()), value);
+        fn(R32(reg), R32(reg), value);
     } else if (regWidth == JitWidth::b64) {
-        fn(R64(reg->hardwareReg()), R64(reg->hardwareReg()), value);
+        fn(R64(reg), R64(reg), value);
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
 
         if (extend == ZERO_EXTEND) {
-            compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 0, 16);
-            fn(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), value);
+            compiler.ubfx(R32(tmp), R32(reg), 0, 16);
+            fn(R32(tmp), R32(tmp), value);
         } else if (extend == SIGN_EXTEND) {
             movsx(JitWidth::b32, tmp, JitWidth::b16, reg);
-            fn(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), value);
+            fn(R32(tmp), R32(tmp), value);
         } else {
-            fn(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), value);
+            fn(R32(tmp), R32(reg), value);
         }
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+        compiler.bfxil(R32(reg), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         RegPtr tmp = getTmpReg();
 
         if (!isRegHigh(reg)) {
             if (extend == ZERO_EXTEND) {
-                compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 0, 8);
-                fn(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), value);
+                compiler.ubfx(R32(tmp), R32(reg), 0, 8);
+                fn(R32(tmp), R32(tmp), value);
             } else if (extend == SIGN_EXTEND) {
                 movsx(JitWidth::b32, tmp, JitWidth::b8, reg);
-                fn(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), value);
+                fn(R32(tmp), R32(tmp), value);
             } else {
-                fn(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), value);
+                fn(R32(tmp), R32(reg), value);
             }
-            compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 8);
+            compiler.bfxil(R32(reg), R32(tmp), 0, 8);
         } else {
             if (extend == SIGN_EXTEND) {
                 movsx(JitWidth::b32, tmp, JitWidth::b8, reg);
             } else {
-                compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 8, 8);
+                compiler.ubfx(R32(tmp), R32(reg), 8, 8);
             }
-            fn(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), value);
-            compiler.bfi(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 8, 8);
+            fn(R32(tmp), R32(tmp), value);
+            compiler.bfi(R32(reg), R32(tmp), 8, 8);
         }
     } else {
         kpanic("JitArmV8CodeGen::addValue");
@@ -1144,10 +1165,10 @@ void JitArmV8CodeGen::andValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 void JitArmV8CodeGen::andValue64(RegPtr reg, U64 imm) {
     if (!asmjit::a64::Utils::is_logical_imm(imm, 64)) {
         RegPtr value = loadConst(imm);
-        compiler.and_(R64(reg->hardwareReg()), R64(reg->hardwareReg()), R64(value->hardwareReg()));
+        compiler.and_(R64(reg), R64(reg), R64(value));
         return;
     }
-    compiler.and_(R64(reg->hardwareReg()), R64(reg->hardwareReg()), imm);
+    compiler.and_(R64(reg), R64(reg), imm);
 }
 
 void JitArmV8CodeGen::xorReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
@@ -1168,7 +1189,7 @@ void JitArmV8CodeGen::xorValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 
 void JitArmV8CodeGen::shrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     RegPtr cl = getTmpReg();
-    compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), regWidth == JitWidth::b64 ? 0x3f : 0x1f);
+    compiler.and_(R32(cl), R32(rm), regWidth == JitWidth::b64 ? 0x3f : 0x1f);
     regReg(regWidth, reg, cl, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm) {
         compiler.lsr(dst, reg, rm);
     }, ZERO_EXTEND);
@@ -1182,7 +1203,7 @@ void JitArmV8CodeGen::shrValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 
 void JitArmV8CodeGen::shlReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     RegPtr cl = getTmpReg();
-    compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), regWidth == JitWidth::b64 ? 0x3f : 0x1f);
+    compiler.and_(R32(cl), R32(rm), regWidth == JitWidth::b64 ? 0x3f : 0x1f);
     regReg(regWidth, reg, cl, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm) {
         compiler.lsl(dst, reg, rm);
     });
@@ -1196,7 +1217,7 @@ void JitArmV8CodeGen::shlValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 
 void JitArmV8CodeGen::sarReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     RegPtr cl = getTmpReg();
-    compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), regWidth == JitWidth::b64 ? 0x3f : 0x1f);
+    compiler.and_(R32(cl), R32(rm), regWidth == JitWidth::b64 ? 0x3f : 0x1f);
     regReg(regWidth, reg, cl, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm) {
         compiler.asr(dst, reg, rm);
     }, SIGN_EXTEND);
@@ -1223,14 +1244,14 @@ void JitArmV8CodeGen::negReg2(JitWidth regWidth, RegPtr reg) {
 void JitArmV8CodeGen::bsfReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     // rm was already checked to not be 0 before getting here
     if (regWidth == JitWidth::b32) {
-        compiler.rbit(R32(reg->hardwareReg()), R32(rm->hardwareReg()));
-        compiler.clz(R32(reg->hardwareReg()), R32(reg->hardwareReg()));
+        compiler.rbit(R32(reg), R32(rm));
+        compiler.clz(R32(reg), R32(reg));
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
         movzx(JitWidth::b32, tmp, JitWidth::b16, rm);
-        compiler.rbit(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()));
-        compiler.clz(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()));
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);        
+        compiler.rbit(R32(tmp), R32(tmp));
+        compiler.clz(R32(tmp), R32(tmp));
+        compiler.bfxil(R32(reg), R32(tmp), 0, 16);        
     } else {
         kpanic("JitArmV8CodeGen::bsfReg");
     }
@@ -1239,16 +1260,16 @@ void JitArmV8CodeGen::bsfReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
 void JitArmV8CodeGen::bsrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     // rm was already checked to not be 0 before getting here
     if (regWidth == JitWidth::b32) {
-        compiler.clz(R32(reg->hardwareReg()), R32(rm->hardwareReg()));
-        compiler.sub(R32(reg->hardwareReg()), R32(reg->hardwareReg()), 31);
-        compiler.neg(R32(reg->hardwareReg()), R32(reg->hardwareReg()));
+        compiler.clz(R32(reg), R32(rm));
+        compiler.sub(R32(reg), R32(reg), 31);
+        compiler.neg(R32(reg), R32(reg));
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
         movzx(JitWidth::b32, tmp, JitWidth::b16, rm);
-        compiler.clz(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()));
-        compiler.sub(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), 31);
-        compiler.neg(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()));
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+        compiler.clz(R32(tmp), R32(tmp));
+        compiler.sub(R32(tmp), R32(tmp), 31);
+        compiler.neg(R32(tmp), R32(tmp));
+        compiler.bfxil(R32(reg), R32(tmp), 0, 16);
     } else {
         kpanic("JitArmV8CodeGen::bsrReg");
     }
@@ -1258,31 +1279,31 @@ void JitArmV8CodeGen::rolReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     RegPtr cl = getTmpReg();    
     if (regWidth == JitWidth::b32) {
         RegPtr tmp = loadConst(32);
-        compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x1f);
-        compiler.sub(R32(cl->hardwareReg()), R32(tmp->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.ror(R32(reg->hardwareReg()), R32(reg->hardwareReg()), R32(cl->hardwareReg()));
+        compiler.and_(R32(cl), R32(rm), 0x1f);
+        compiler.sub(R32(cl), R32(tmp), R32(cl));
+        compiler.ror(R32(reg), R32(reg), R32(cl));
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
         RegPtr tmp2 = loadConst(16);
         RegPtr tmp3 = getTmpReg();
-        compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0xf);
+        compiler.and_(R32(cl), R32(rm), 0xf);
         movzx(JitWidth::b32, tmp3, JitWidth::b16, reg);
-        compiler.lsl(R32(tmp->hardwareReg()), R32(tmp3->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.sub(R32(tmp2->hardwareReg()), R32(tmp2->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsr(R32(tmp2->hardwareReg()), R32(tmp3->hardwareReg()), R32(tmp2->hardwareReg()));
-        compiler.orr(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(tmp2->hardwareReg()));
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+        compiler.lsl(R32(tmp), R32(tmp3), R32(cl));
+        compiler.sub(R32(tmp2), R32(tmp2), R32(cl));
+        compiler.lsr(R32(tmp2), R32(tmp3), R32(tmp2));
+        compiler.orr(R32(tmp), R32(tmp), R32(tmp2));
+        compiler.bfxil(R32(reg), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         RegPtr tmp = getTmpReg();
         RegPtr tmp2 = loadConst(8);
         RegPtr tmp3 = getTmpReg();
-        compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x7);
+        compiler.and_(R32(cl), R32(rm), 0x7);
         movzx(JitWidth::b32, tmp3, JitWidth::b8, reg);
-        compiler.lsl(R32(tmp->hardwareReg()), R32(tmp3->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.sub(R32(tmp2->hardwareReg()), R32(tmp2->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsr(R32(tmp2->hardwareReg()), R32(tmp3->hardwareReg()), R32(tmp2->hardwareReg()));
-        compiler.orr(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(tmp2->hardwareReg()));
-        compiler.bfi(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), reg->isHigh ? 8 : 0, 8);
+        compiler.lsl(R32(tmp), R32(tmp3), R32(cl));
+        compiler.sub(R32(tmp2), R32(tmp2), R32(cl));
+        compiler.lsr(R32(tmp2), R32(tmp3), R32(tmp2));
+        compiler.orr(R32(tmp), R32(tmp), R32(tmp2));
+        compiler.bfi(R32(reg), R32(tmp), reg->isHigh ? 8 : 0, 8);
     } else {
         kpanic("JitArmV8CodeGen::rolReg");
     }
@@ -1294,16 +1315,16 @@ void JitArmV8CodeGen::rolValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         if (imm == 0) {
             return;
         }
-        compiler.ror(R32(reg->hardwareReg()), R32(reg->hardwareReg()), 32-imm);
+        compiler.ror(R32(reg), R32(reg), 32-imm);
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
         imm = imm % 16;
         if (imm == 0) {
             return;
         }
-        compiler.lsl(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm);
-        compiler.bfxil(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 16 - imm, imm);
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+        compiler.lsl(R32(tmp), R32(reg), imm);
+        compiler.bfxil(R32(tmp), R32(reg), 16 - imm, imm);
+        compiler.bfxil(R32(reg), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         imm = imm % 8;
         if (imm == 0) {
@@ -1311,13 +1332,13 @@ void JitArmV8CodeGen::rolValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         }
         RegPtr tmp = getTmpReg();
         if (reg->isHigh) {
-            compiler.lsr(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 8 - imm);
-            compiler.bfxil(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 16 - imm, imm);
-            compiler.bfi(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 8, 8);
+            compiler.lsr(R32(tmp), R32(reg), 8 - imm);
+            compiler.bfxil(R32(tmp), R32(reg), 16 - imm, imm);
+            compiler.bfi(R32(reg), R32(tmp), 8, 8);
         } else {
-            compiler.lsl(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm);
-            compiler.bfxil(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 8 - imm, imm);
-            compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 8);
+            compiler.lsl(R32(tmp), R32(reg), imm);
+            compiler.bfxil(R32(tmp), R32(reg), 8 - imm, imm);
+            compiler.bfxil(R32(reg), R32(tmp), 0, 8);
         }
     } else {
         kpanic("JitArmV8CodeGen::rolValue");
@@ -1327,30 +1348,30 @@ void JitArmV8CodeGen::rolValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 void JitArmV8CodeGen::rorReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     RegPtr cl = getTmpReg();
     if (regWidth == JitWidth::b32) {
-        compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x1f);
-        compiler.ror(R32(reg->hardwareReg()), R32(reg->hardwareReg()), R32(cl->hardwareReg()));
+        compiler.and_(R32(cl), R32(rm), 0x1f);
+        compiler.ror(R32(reg), R32(reg), R32(cl));
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
         RegPtr tmp2 = loadConst(16);
         RegPtr tmp3 = getTmpReg();
-        compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0xf);
+        compiler.and_(R32(cl), R32(rm), 0xf);
         movzx(JitWidth::b32, tmp3, JitWidth::b16, reg);
-        compiler.lsr(R32(tmp->hardwareReg()), R32(tmp3->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.sub(R32(tmp2->hardwareReg()), R32(tmp2->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsl(R32(tmp2->hardwareReg()), R32(tmp3->hardwareReg()), R32(tmp2->hardwareReg()));
-        compiler.orr(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(tmp2->hardwareReg()));
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+        compiler.lsr(R32(tmp), R32(tmp3), R32(cl));
+        compiler.sub(R32(tmp2), R32(tmp2), R32(cl));
+        compiler.lsl(R32(tmp2), R32(tmp3), R32(tmp2));
+        compiler.orr(R32(tmp), R32(tmp), R32(tmp2));
+        compiler.bfxil(R32(reg), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         RegPtr tmp = getTmpReg();
         RegPtr tmp2 = loadConst(8);
         RegPtr tmp3 = getTmpReg();
-        compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x7);
+        compiler.and_(R32(cl), R32(rm), 0x7);
         movzx(JitWidth::b32, tmp3, JitWidth::b8, reg);
-        compiler.lsr(R32(tmp->hardwareReg()), R32(tmp3->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.sub(R32(tmp2->hardwareReg()), R32(tmp2->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsl(R32(tmp2->hardwareReg()), R32(tmp3->hardwareReg()), R32(tmp2->hardwareReg()));
-        compiler.orr(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(tmp2->hardwareReg()));
-        compiler.bfi(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), reg->isHigh ? 8 : 0, 8);
+        compiler.lsr(R32(tmp), R32(tmp3), R32(cl));
+        compiler.sub(R32(tmp2), R32(tmp2), R32(cl));
+        compiler.lsl(R32(tmp2), R32(tmp3), R32(tmp2));
+        compiler.orr(R32(tmp), R32(tmp), R32(tmp2));
+        compiler.bfi(R32(reg), R32(tmp), reg->isHigh ? 8 : 0, 8);
     } else {
         kpanic("JitArmV8CodeGen::rorReg");
     }
@@ -1362,7 +1383,7 @@ void JitArmV8CodeGen::rorValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         if (imm == 0) {
             return;
         }
-        compiler.ror(R32(reg->hardwareReg()), R32(reg->hardwareReg()), imm);
+        compiler.ror(R32(reg), R32(reg), imm);
     }
     else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
@@ -1370,9 +1391,9 @@ void JitArmV8CodeGen::rorValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         if (imm == 0) {
             return;
         }
-        compiler.lsr(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm);
-        compiler.bfi(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 16 - imm, imm);
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+        compiler.lsr(R32(tmp), R32(reg), imm);
+        compiler.bfi(R32(tmp), R32(reg), 16 - imm, imm);
+        compiler.bfxil(R32(reg), R32(tmp), 0, 16);
     }
     else if (regWidth == JitWidth::b8) {
         imm = imm % 8;
@@ -1382,14 +1403,14 @@ void JitArmV8CodeGen::rorValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         RegPtr tmp = getTmpReg();
         if (reg->isHigh) {
             RegPtr low8 = getReg8InLowByte(reg);
-            compiler.lsr(R32(tmp->hardwareReg()), R32(low8->hardwareReg()), imm);
-            compiler.bfi(R32(tmp->hardwareReg()), R32(low8->hardwareReg()), 8 - imm, imm);
-            compiler.bfi(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 8, 8);
+            compiler.lsr(R32(tmp), R32(low8), imm);
+            compiler.bfi(R32(tmp), R32(low8), 8 - imm, imm);
+            compiler.bfi(R32(reg), R32(tmp), 8, 8);
         }
         else {
-            compiler.lsr(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm);
-            compiler.bfi(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 8 - imm, imm);
-            compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 8);
+            compiler.lsr(R32(tmp), R32(reg), imm);
+            compiler.bfi(R32(tmp), R32(reg), 8 - imm, imm);
+            compiler.bfxil(R32(reg), R32(tmp), 0, 8);
         }
     }
     else {
@@ -1399,8 +1420,8 @@ void JitArmV8CodeGen::rorValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 
 void JitArmV8CodeGen::modValue32(RegPtr dst, RegPtr src, RegPtr value) {
     RegPtr tmp = getTmpReg(); // in case dst == src
-    compiler.udiv(R32(tmp->hardwareReg()), R32(src->hardwareReg()), R32(value->hardwareReg()));
-    compiler.msub(R32(dst->hardwareReg()), R32(tmp->hardwareReg()), R32(value->hardwareReg()), R32(src->hardwareReg()));
+    compiler.udiv(R32(tmp), R32(src), R32(value));
+    compiler.msub(R32(dst), R32(tmp), R32(value), R32(src));
 }
 
 void JitArmV8CodeGen::rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
@@ -1412,21 +1433,21 @@ void JitArmV8CodeGen::rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
         RegPtr tmp1 = getTmpReg();
 
         // (var1 << var2)
-        compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x1f);
-        compiler.lsl(R32(tmp1->hardwareReg()), R32(reg->hardwareReg()), R32(cl->hardwareReg()));
+        compiler.and_(R32(cl), R32(rm), 0x1f);
+        compiler.lsl(R32(tmp1), R32(reg), R32(cl));
 
         // (var1 >> (33 - var2))
         RegPtr tmp2 = loadConst(33);
-        compiler.sub(R32(tmp2->hardwareReg()), R32(tmp2->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsr(R64(tmp2->hardwareReg()), R64(reg->hardwareReg()), R64(tmp2->hardwareReg())); // R64 so that we shift in 0's in the case of cl = 1
+        compiler.sub(R32(tmp2), R32(tmp2), R32(cl));
+        compiler.lsr(R64(tmp2), R64(reg), R64(tmp2)); // R64 so that we shift in 0's in the case of cl = 1
         
-        compiler.orr(R32(tmp1->hardwareReg()), R32(tmp2->hardwareReg()), R32(tmp1->hardwareReg()));
+        compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));
 
         // (cf << (var2 - 1))
-        compiler.sub(R32(tmp2->hardwareReg()), R32(cl->hardwareReg()), 1);
-        compiler.lsl(R32(tmp2->hardwareReg()), R32(cf->hardwareReg()), R32(tmp2->hardwareReg()));
+        compiler.sub(R32(tmp2), R32(cl), 1);
+        compiler.lsl(R32(tmp2), R32(cf), R32(tmp2));
         
-        compiler.orr(R32(reg->hardwareReg()), R32(tmp2->hardwareReg()), R32(tmp1->hardwareReg()));        
+        compiler.orr(R32(reg), R32(tmp2), R32(tmp1));        
     } else if (regWidth == JitWidth::b16) {
         RegPtr cl = getTmpReg();
         RegPtr tmp1 = getTmpReg();
@@ -1435,22 +1456,22 @@ void JitArmV8CodeGen::rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
 
         movzx(JitWidth::b32, src, JitWidth::b16, reg);
         // (var1 << var2)
-        compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x1f);
+        compiler.and_(R32(cl), R32(rm), 0x1f);
         modValue32(cl, cl, tmp2);
-        compiler.lsl(R32(tmp1->hardwareReg()), R32(src->hardwareReg()), R32(cl->hardwareReg()));
+        compiler.lsl(R32(tmp1), R32(src), R32(cl));
 
         // (var1 >> (17 - var2))        
-        compiler.sub(R32(tmp2->hardwareReg()), R32(tmp2->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsr(R32(tmp2->hardwareReg()), R32(src->hardwareReg()), R32(tmp2->hardwareReg()));
+        compiler.sub(R32(tmp2), R32(tmp2), R32(cl));
+        compiler.lsr(R32(tmp2), R32(src), R32(tmp2));
 
-        compiler.orr(R32(tmp1->hardwareReg()), R32(tmp2->hardwareReg()), R32(tmp1->hardwareReg()));
+        compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));
 
         // (cf << (var2 - 1))
-        compiler.sub(R32(tmp2->hardwareReg()), R32(cl->hardwareReg()), 1);
-        compiler.lsl(R32(tmp2->hardwareReg()), R32(cf->hardwareReg()), R32(tmp2->hardwareReg()));
+        compiler.sub(R32(tmp2), R32(cl), 1);
+        compiler.lsl(R32(tmp2), R32(cf), R32(tmp2));
 
-        compiler.orr(R32(tmp1->hardwareReg()), R32(tmp2->hardwareReg()), R32(tmp1->hardwareReg()));
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp1->hardwareReg()), 0, 16);
+        compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));
+        compiler.bfxil(R32(reg), R32(tmp1), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         RegPtr cl = getTmpReg();
         RegPtr tmp1 = getTmpReg();
@@ -1459,22 +1480,22 @@ void JitArmV8CodeGen::rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
 
         movzx(JitWidth::b32, src, JitWidth::b8, reg);
         // (var1 << var2)
-        compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x1f);
+        compiler.and_(R32(cl), R32(rm), 0x1f);
         modValue32(cl, cl, tmp2);
-        compiler.lsl(R32(tmp1->hardwareReg()), R32(src->hardwareReg()), R32(cl->hardwareReg()));
+        compiler.lsl(R32(tmp1), R32(src), R32(cl));
 
         // (var1 >> (9 - var2))        
-        compiler.sub(R32(tmp2->hardwareReg()), R32(tmp2->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsr(R32(tmp2->hardwareReg()), R32(src->hardwareReg()), R32(tmp2->hardwareReg()));
+        compiler.sub(R32(tmp2), R32(tmp2), R32(cl));
+        compiler.lsr(R32(tmp2), R32(src), R32(tmp2));
 
-        compiler.orr(R32(tmp1->hardwareReg()), R32(tmp2->hardwareReg()), R32(tmp1->hardwareReg()));
+        compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));
 
         // (cf << (var2 - 1))
-        compiler.sub(R32(tmp2->hardwareReg()), R32(cl->hardwareReg()), 1);
-        compiler.lsl(R32(tmp2->hardwareReg()), R32(cf->hardwareReg()), R32(tmp2->hardwareReg()));
+        compiler.sub(R32(tmp2), R32(cl), 1);
+        compiler.lsl(R32(tmp2), R32(cf), R32(tmp2));
 
-        compiler.orr(R32(tmp1->hardwareReg()), R32(tmp2->hardwareReg()), R32(tmp1->hardwareReg()));
-        compiler.bfi(R32(reg->hardwareReg()), R32(tmp1->hardwareReg()), reg->isHigh ? 8 : 0, 8);
+        compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));
+        compiler.bfi(R32(reg), R32(tmp1), reg->isHigh ? 8 : 0, 8);
     } else {
         kpanic("JitArmV8CodeGen::rclValue");
     }
@@ -1491,13 +1512,13 @@ void JitArmV8CodeGen::rclValue(JitWidth regWidth, RegPtr reg, U32 imm) {
             return;
         }
         if (imm == 1) {
-            compiler.lsl(R32(reg->hardwareReg()), R32(reg->hardwareReg()), imm);
-            compiler.bfi(R32(reg->hardwareReg()), R32(cf->hardwareReg()), imm - 1, 1);
+            compiler.lsl(R32(reg), R32(reg), imm);
+            compiler.bfi(R32(reg), R32(cf), imm - 1, 1);
         } else {
-            compiler.lsl(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm);
-            compiler.bfxil(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 33 - imm, imm - 1);
-            compiler.bfi(R32(tmp->hardwareReg()), R32(cf->hardwareReg()), imm - 1, 1);
-            compiler.mov(R32(reg->hardwareReg()), R32(tmp->hardwareReg()));
+            compiler.lsl(R32(tmp), R32(reg), imm);
+            compiler.bfxil(R32(tmp), R32(reg), 33 - imm, imm - 1);
+            compiler.bfi(R32(tmp), R32(cf), imm - 1, 1);
+            compiler.mov(R32(reg), R32(tmp));
         }
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
@@ -1505,12 +1526,12 @@ void JitArmV8CodeGen::rclValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         if (imm == 0) {
             return;
         }
-        compiler.lsl(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm);
+        compiler.lsl(R32(tmp), R32(reg), imm);
         if (imm != 1) {
-            compiler.bfxil(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 17 - imm, imm - 1);
+            compiler.bfxil(R32(tmp), R32(reg), 17 - imm, imm - 1);
         }
-        compiler.bfi(R32(tmp->hardwareReg()), R32(cf->hardwareReg()), imm - 1, 1);
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+        compiler.bfi(R32(tmp), R32(cf), imm - 1, 1);
+        compiler.bfxil(R32(reg), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         imm = imm % 9;
         if (imm == 0) {
@@ -1518,19 +1539,19 @@ void JitArmV8CodeGen::rclValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         }
         RegPtr tmp = getTmpReg();
         if (reg->isHigh) {
-            compiler.lsr(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 8 - imm);
+            compiler.lsr(R32(tmp), R32(reg), 8 - imm);
             if (imm != 1) {
-                compiler.bfxil(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 17 - imm, imm - 1);
+                compiler.bfxil(R32(tmp), R32(reg), 17 - imm, imm - 1);
             }
-            compiler.bfi(R32(tmp->hardwareReg()), R32(cf->hardwareReg()), imm - 1, 1);
-            compiler.bfi(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 8, 8);
+            compiler.bfi(R32(tmp), R32(cf), imm - 1, 1);
+            compiler.bfi(R32(reg), R32(tmp), 8, 8);
         } else {
-            compiler.lsl(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm);
+            compiler.lsl(R32(tmp), R32(reg), imm);
             if (imm != 1) {
-                compiler.bfxil(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 9 - imm, imm - 1);
+                compiler.bfxil(R32(tmp), R32(reg), 9 - imm, imm - 1);
             }
-            compiler.bfi(R32(tmp->hardwareReg()), R32(cf->hardwareReg()), imm - 1, 1);
-            compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 8);
+            compiler.bfi(R32(tmp), R32(cf), imm - 1, 1);
+            compiler.bfxil(R32(reg), R32(tmp), 0, 8);
         }
     } else {
         kpanic("JitArmV8CodeGen::rclValue");
@@ -1546,22 +1567,22 @@ void JitArmV8CodeGen::rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
         RegPtr tmp1 = getTmpReg();
 
         // (var1 >> var2)
-        compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x1f);
-        compiler.lsr(R32(tmp1->hardwareReg()), R32(reg->hardwareReg()), R32(cl->hardwareReg()));
+        compiler.and_(R32(cl), R32(rm), 0x1f);
+        compiler.lsr(R32(tmp1), R32(reg), R32(cl));
 
         // (var1 << (33 - var2))
         RegPtr tmp2 = loadConst(33);
-        compiler.sub(R32(tmp2->hardwareReg()), R32(tmp2->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsl(R64(tmp2->hardwareReg()), R64(reg->hardwareReg()), R64(tmp2->hardwareReg())); // R64, otherwise in the case of cl = 1, 33 - 1 = 32, which does nothing on a 32-bit shift
+        compiler.sub(R32(tmp2), R32(tmp2), R32(cl));
+        compiler.lsl(R64(tmp2), R64(reg), R64(tmp2)); // R64, otherwise in the case of cl = 1, 33 - 1 = 32, which does nothing on a 32-bit shift
 
-        compiler.orr(R32(tmp1->hardwareReg()), R32(tmp2->hardwareReg()), R32(tmp1->hardwareReg()));
+        compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));
 
         // (cf << (32 - var2))
         RegPtr tmp3 = loadConst(32);
-        compiler.sub(R32(tmp2->hardwareReg()), R32(tmp3->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsl(R32(tmp2->hardwareReg()), R32(cf->hardwareReg()), R32(tmp2->hardwareReg()));
+        compiler.sub(R32(tmp2), R32(tmp3), R32(cl));
+        compiler.lsl(R32(tmp2), R32(cf), R32(tmp2));
 
-        compiler.orr(R32(reg->hardwareReg()), R32(tmp2->hardwareReg()), R32(tmp1->hardwareReg()));
+        compiler.orr(R32(reg), R32(tmp2), R32(tmp1));
     } else if (regWidth == JitWidth::b16) {
         RegPtr cl = getTmpReg();
         RegPtr tmp1 = getTmpReg();
@@ -1570,23 +1591,23 @@ void JitArmV8CodeGen::rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
 
         movzx(JitWidth::b32, src, JitWidth::b16, reg);
         // (var1 >> var2)
-        compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x1f);
+        compiler.and_(R32(cl), R32(rm), 0x1f);
         modValue32(cl, cl, tmp2);
-        compiler.lsr(R32(tmp1->hardwareReg()), R32(src->hardwareReg()), R32(cl->hardwareReg()));
+        compiler.lsr(R32(tmp1), R32(src), R32(cl));
 
         // (var1 << (17 - var2))       
-        compiler.sub(R32(tmp2->hardwareReg()), R32(tmp2->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsl(R32(tmp2->hardwareReg()), R32(src->hardwareReg()), R32(tmp2->hardwareReg()));
+        compiler.sub(R32(tmp2), R32(tmp2), R32(cl));
+        compiler.lsl(R32(tmp2), R32(src), R32(tmp2));
 
-        compiler.orr(R32(tmp1->hardwareReg()), R32(tmp2->hardwareReg()), R32(tmp1->hardwareReg()));
+        compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));
 
         // (cf << (16 - var2))
-        compiler.sub(R32(tmp2->hardwareReg()), R32(cl->hardwareReg()), 16);
-        compiler.neg(R32(tmp2->hardwareReg()), R32(tmp2->hardwareReg())); // instead of load const, saves a tmp reg
-        compiler.lsl(R32(tmp2->hardwareReg()), R32(cf->hardwareReg()), R32(tmp2->hardwareReg()));
+        compiler.sub(R32(tmp2), R32(cl), 16);
+        compiler.neg(R32(tmp2), R32(tmp2)); // instead of load const, saves a tmp reg
+        compiler.lsl(R32(tmp2), R32(cf), R32(tmp2));
 
-        compiler.orr(R32(tmp1->hardwareReg()), R32(tmp2->hardwareReg()), R32(tmp1->hardwareReg()));
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp1->hardwareReg()), 0, 16);
+        compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));
+        compiler.bfxil(R32(reg), R32(tmp1), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         RegPtr cl = getTmpReg();
         RegPtr tmp1 = getTmpReg();
@@ -1595,22 +1616,22 @@ void JitArmV8CodeGen::rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
 
         movzx(JitWidth::b32, src, JitWidth::b8, reg);
         // (var1 >> var2)
-        compiler.and_(R32(cl->hardwareReg()), R32(rm->hardwareReg()), 0x1f);
+        compiler.and_(R32(cl), R32(rm), 0x1f);
         modValue32(cl, cl, tmp2);
-        compiler.lsl(R32(tmp1->hardwareReg()), R32(src->hardwareReg()), R32(cl->hardwareReg()));
+        compiler.lsl(R32(tmp1), R32(src), R32(cl));
 
         // (var1 << (9 - var2))       
-        compiler.sub(R32(tmp2->hardwareReg()), R32(tmp2->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsr(R32(tmp2->hardwareReg()), R32(src->hardwareReg()), R32(tmp2->hardwareReg()));
+        compiler.sub(R32(tmp2), R32(tmp2), R32(cl));
+        compiler.lsr(R32(tmp2), R32(src), R32(tmp2));
 
-        compiler.orr(R32(tmp1->hardwareReg()), R32(tmp2->hardwareReg()), R32(tmp1->hardwareReg()));
+        compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));
 
         // (cf << (8 - var2))
-        compiler.sub(R32(tmp2->hardwareReg()), R32(cl->hardwareReg()), 1);
-        compiler.lsl(R32(tmp2->hardwareReg()), R32(cf->hardwareReg()), R32(tmp2->hardwareReg()));
+        compiler.sub(R32(tmp2), R32(cl), 1);
+        compiler.lsl(R32(tmp2), R32(cf), R32(tmp2));
 
-        compiler.orr(R32(tmp1->hardwareReg()), R32(tmp2->hardwareReg()), R32(tmp1->hardwareReg()));
-        compiler.bfi(R32(reg->hardwareReg()), R32(tmp1->hardwareReg()), reg->isHigh ? 8 : 0, 8);
+        compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));
+        compiler.bfi(R32(reg), R32(tmp1), reg->isHigh ? 8 : 0, 8);
     } else {
         kpanic("JitArmV8CodeGen::rclValue");
     }
@@ -1627,13 +1648,13 @@ void JitArmV8CodeGen::rcrValue(JitWidth regWidth, RegPtr reg, U32 imm) {
             return;
         }
         if (imm == 1) {
-            compiler.lsr(R32(reg->hardwareReg()), R32(reg->hardwareReg()), imm);
-            compiler.bfi(R32(reg->hardwareReg()), R32(cf->hardwareReg()), 32 - imm, 1);
+            compiler.lsr(R32(reg), R32(reg), imm);
+            compiler.bfi(R32(reg), R32(cf), 32 - imm, 1);
         } else {
-            compiler.lsr(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm);
-            compiler.bfi(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 33 - imm, imm - 1);
-            compiler.bfi(R32(tmp->hardwareReg()), R32(cf->hardwareReg()), 32 - imm, 1);
-            compiler.mov(R32(reg->hardwareReg()), R32(tmp->hardwareReg()));
+            compiler.lsr(R32(tmp), R32(reg), imm);
+            compiler.bfi(R32(tmp), R32(reg), 33 - imm, imm - 1);
+            compiler.bfi(R32(tmp), R32(cf), 32 - imm, 1);
+            compiler.mov(R32(reg), R32(tmp));
         }
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
@@ -1641,12 +1662,12 @@ void JitArmV8CodeGen::rcrValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         if (imm == 0) {
             return;
         }
-        compiler.lsr(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm);
+        compiler.lsr(R32(tmp), R32(reg), imm);
         if (imm != 1) {
-            compiler.bfi(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 17 - imm, imm - 1);
+            compiler.bfi(R32(tmp), R32(reg), 17 - imm, imm - 1);
         }
-        compiler.bfi(R32(tmp->hardwareReg()), R32(cf->hardwareReg()), 16 - imm, 1);
-        compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+        compiler.bfi(R32(tmp), R32(cf), 16 - imm, 1);
+        compiler.bfxil(R32(reg), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         imm = imm % 9;
         if (imm == 0) {
@@ -1655,20 +1676,20 @@ void JitArmV8CodeGen::rcrValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         RegPtr tmp = getTmpReg();
         if (reg->isHigh) {            
             if (imm == 1) {
-                compiler.lsr(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 8 + imm);
+                compiler.lsr(R32(tmp), R32(reg), 8 + imm);
             } else {
-                compiler.lsr(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm - 1);
-                compiler.bfxil(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm + 8, 8 - imm);
+                compiler.lsr(R32(tmp), R32(reg), imm - 1);
+                compiler.bfxil(R32(tmp), R32(reg), imm + 8, 8 - imm);
             }
-            compiler.bfi(R32(tmp->hardwareReg()), R32(cf->hardwareReg()), 8 - imm, 1);
-            compiler.bfi(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 8, 8);
+            compiler.bfi(R32(tmp), R32(cf), 8 - imm, 1);
+            compiler.bfi(R32(reg), R32(tmp), 8, 8);
         } else {
-            compiler.lsr(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm);
+            compiler.lsr(R32(tmp), R32(reg), imm);
             if (imm != 1) {
-                compiler.bfi(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 9 - imm, imm - 1);
+                compiler.bfi(R32(tmp), R32(reg), 9 - imm, imm - 1);
             }
-            compiler.bfi(R32(tmp->hardwareReg()), R32(cf->hardwareReg()), 8 - imm, 1);
-            compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 8);
+            compiler.bfi(R32(tmp), R32(cf), 8 - imm, 1);
+            compiler.bfxil(R32(reg), R32(tmp), 0, 8);
         }
     } else {
         kpanic("JitArmV8CodeGen::rcrValue");
@@ -1681,11 +1702,11 @@ void JitArmV8CodeGen::shldReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr c
     if (regWidth == JitWidth::b32) {
         // cl already masked by 0x1f
         // cpu->result.u32=(cpu->reg[reg].u32 << cl) | (cpu->reg[rm].u32 >> (32-cl));        
-        compiler.lsl(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), R32(cl->hardwareReg()));
+        compiler.lsl(R32(tmp), R32(reg), R32(cl));
         RegPtr tmp1 = loadConst(32);
-        compiler.sub(R32(tmp1->hardwareReg()), R32(tmp1->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsr(R32(reg->hardwareReg()), R32(rm->hardwareReg()), R32(tmp1->hardwareReg()));
-        compiler.orr(R32(reg->hardwareReg()), R32(reg->hardwareReg()), R32(tmp->hardwareReg()));
+        compiler.sub(R32(tmp1), R32(tmp1), R32(cl));
+        compiler.lsr(R32(reg), R32(rm), R32(tmp1));
+        compiler.orr(R32(reg), R32(reg), R32(tmp));
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
         RegPtr reg16 = getTmpReg();
@@ -1697,12 +1718,12 @@ void JitArmV8CodeGen::shldReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr c
             subValue(JitWidth::b32, cl, 16);
             mov(JitWidth::b32, reg16, rm16);
         } EndIf();
-        compiler.lsl(R32(tmp->hardwareReg()), R32(reg16->hardwareReg()), R32(cl->hardwareReg()));
+        compiler.lsl(R32(tmp), R32(reg16), R32(cl));
         RegPtr tmp1 = loadConst(16);
-        compiler.sub(R32(tmp1->hardwareReg()), R32(tmp1->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsr(R32(reg16->hardwareReg()), R32(rm16->hardwareReg()), R32(tmp1->hardwareReg()));
-        compiler.orr(R32(reg16->hardwareReg()), R32(reg16->hardwareReg()), R32(tmp->hardwareReg()));
-        compiler.bfxil(R32(reg->hardwareReg()), R32(reg16->hardwareReg()), 0, 16);
+        compiler.sub(R32(tmp1), R32(tmp1), R32(cl));
+        compiler.lsr(R32(reg16), R32(rm16), R32(tmp1));
+        compiler.orr(R32(reg16), R32(reg16), R32(tmp));
+        compiler.bfxil(R32(reg), R32(reg16), 0, 16);
     } else {
         kpanic("JitArmV8CodeGen::shldValue");
     }
@@ -1714,9 +1735,9 @@ void JitArmV8CodeGen::shldValue(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 im
     if (regWidth == JitWidth::b32) {
         // cpu->result.u32=(cpu->reg[reg].u32 << imm) | (cpu->reg[rm].u32 >> (32-imm));
         RegPtr tmp = getTmpReg();
-        compiler.bfi(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm, 32 - imm);
-        compiler.bfxil(R32(tmp->hardwareReg()), R32(rm->hardwareReg()), 32 - imm, imm);
-        compiler.mov(R32(reg->hardwareReg()), R32(tmp->hardwareReg()));
+        compiler.bfi(R32(tmp), R32(reg), imm, 32 - imm);
+        compiler.bfxil(R32(tmp), R32(rm), 32 - imm, imm);
+        compiler.mov(R32(reg), R32(tmp));
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
         if (imm >= 16) {
@@ -1724,9 +1745,9 @@ void JitArmV8CodeGen::shldValue(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 im
             mov(JitWidth::b16, reg, rm);
         }
         if (imm != 0) {
-            compiler.bfi(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm, 16 - imm);
-            compiler.bfxil(R32(tmp->hardwareReg()), R32(rm->hardwareReg()), 16 - imm, imm);
-            compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+            compiler.bfi(R32(tmp), R32(reg), imm, 16 - imm);
+            compiler.bfxil(R32(tmp), R32(rm), 16 - imm, imm);
+            compiler.bfxil(R32(reg), R32(tmp), 0, 16);
         }
     } else {
         kpanic("JitArmV8CodeGen::shldValue");
@@ -1739,11 +1760,11 @@ void JitArmV8CodeGen::shrdReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr c
     if (regWidth == JitWidth::b32) {
         // cl already masked by 0x1f
         // cpu->result.u32 = (cpu->reg[reg].u32 >> cl) | (cpu->reg[rm].u32 << (32 - cl));
-        compiler.lsr(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), R32(cl->hardwareReg()));
+        compiler.lsr(R32(tmp), R32(reg), R32(cl));
         RegPtr tmp1 = loadConst(32);
-        compiler.sub(R32(tmp1->hardwareReg()), R32(tmp1->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsl(R32(reg->hardwareReg()), R32(rm->hardwareReg()), R32(tmp1->hardwareReg()));
-        compiler.orr(R32(reg->hardwareReg()), R32(reg->hardwareReg()), R32(tmp->hardwareReg()));
+        compiler.sub(R32(tmp1), R32(tmp1), R32(cl));
+        compiler.lsl(R32(reg), R32(rm), R32(tmp1));
+        compiler.orr(R32(reg), R32(reg), R32(tmp));
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
         RegPtr reg16 = getTmpReg();
@@ -1755,12 +1776,12 @@ void JitArmV8CodeGen::shrdReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr c
             subValue(JitWidth::b32, cl, 16);
             mov(JitWidth::b32, reg16, rm16);
         } EndIf();
-        compiler.lsr(R32(tmp->hardwareReg()), R32(reg16->hardwareReg()), R32(cl->hardwareReg()));
+        compiler.lsr(R32(tmp), R32(reg16), R32(cl));
         RegPtr tmp1 = loadConst(16);
-        compiler.sub(R32(tmp1->hardwareReg()), R32(tmp1->hardwareReg()), R32(cl->hardwareReg()));
-        compiler.lsl(R32(reg16->hardwareReg()), R32(rm16->hardwareReg()), R32(tmp1->hardwareReg()));
-        compiler.orr(R32(reg16->hardwareReg()), R32(reg16->hardwareReg()), R32(tmp->hardwareReg()));
-        compiler.bfxil(R32(reg->hardwareReg()), R32(reg16->hardwareReg()), 0, 16);
+        compiler.sub(R32(tmp1), R32(tmp1), R32(cl));
+        compiler.lsl(R32(reg16), R32(rm16), R32(tmp1));
+        compiler.orr(R32(reg16), R32(reg16), R32(tmp));
+        compiler.bfxil(R32(reg), R32(reg16), 0, 16);
     } else {
         kpanic("JitArmV8CodeGen::shrdReg");
     }
@@ -1770,9 +1791,9 @@ void JitArmV8CodeGen::shrdValue(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 im
     if (regWidth == JitWidth::b32) {
         // cpu->result.u32 = (cpu->reg[reg].u32 >> imm) | (cpu->reg[rm].u32 << (32 - imm));
         RegPtr tmp = getTmpReg();
-        compiler.lsr(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm);
-        compiler.lsl(R32(reg->hardwareReg()), R32(rm->hardwareReg()), 32 - imm);
-        compiler.orr(R32(reg->hardwareReg()), R32(reg->hardwareReg()), R32(tmp->hardwareReg()));
+        compiler.lsr(R32(tmp), R32(reg), imm);
+        compiler.lsl(R32(reg), R32(rm), 32 - imm);
+        compiler.orr(R32(reg), R32(reg), R32(tmp));
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
         if (imm >= 16) {
@@ -1780,9 +1801,9 @@ void JitArmV8CodeGen::shrdValue(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 im
             mov(JitWidth::b16, reg, rm);
         }
         if (imm != 0) {
-            compiler.lsr(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), imm);
-            compiler.bfi(R32(tmp->hardwareReg()), R32(rm->hardwareReg()), 16 - imm, imm);
-            compiler.bfxil(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+            compiler.lsr(R32(tmp), R32(reg), imm);
+            compiler.bfi(R32(tmp), R32(rm), 16 - imm, imm);
+            compiler.bfxil(R32(reg), R32(tmp), 0, 16);
         }
     } else {
         kpanic("JitArmV8CodeGen::shrdValue");
@@ -1797,7 +1818,7 @@ void JitArmV8CodeGen::xchgReg(JitWidth regWidth, RegPtr dest, RegPtr src) {
 }
 
 void JitArmV8CodeGen::byteSwapReg32(RegPtr reg) {
-    compiler.rev32(R32(reg->hardwareReg()), R32(reg->hardwareReg()));
+    compiler.rev32(R32(reg), R32(reg));
 }
 
 RegPtr JitArmV8CodeGen::compare(JitEvaluate condition, RegPtr result) {
@@ -1806,34 +1827,34 @@ RegPtr JitArmV8CodeGen::compare(JitEvaluate condition, RegPtr result) {
     }
     switch (condition) {
     case JitEvaluate::EQUALS:
-        compiler.csinc(R32(result->hardwareReg()), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kNE);
+        compiler.csinc(R32(result), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kNE);
         break;
     case JitEvaluate::NOT_EQUALS:
-        compiler.csinc(R32(result->hardwareReg()), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kEQ);
+        compiler.csinc(R32(result), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kEQ);
         break;
     case JitEvaluate::GREATER_THAN_UNSIGNED:
-        compiler.csinc(R32(result->hardwareReg()), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kLS);
+        compiler.csinc(R32(result), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kLS);
         break;
     case JitEvaluate::GREATER_THAN_EQUAL_UNSIGNED:
-        compiler.csinc(R32(result->hardwareReg()), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kLO);
+        compiler.csinc(R32(result), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kLO);
         break;
     case JitEvaluate::LESS_THAN_UNSIGNED:
-        compiler.csinc(R32(result->hardwareReg()), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kHS);
+        compiler.csinc(R32(result), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kHS);
         break;
     case JitEvaluate::LESS_THAN_EQUAL_UNSIGNED:
-        compiler.csinc(R32(result->hardwareReg()), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kHI);
+        compiler.csinc(R32(result), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kHI);
         break;
     case JitEvaluate::GREATER_THAN_SIGNED:
-        compiler.csinc(R32(result->hardwareReg()), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kLE);
+        compiler.csinc(R32(result), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kLE);
         break;
     case JitEvaluate::GREATER_THAN_EQUAL_SIGNED:
-        compiler.csinc(R32(result->hardwareReg()), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kLT);
+        compiler.csinc(R32(result), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kLT);
         break;
     case JitEvaluate::LESS_THAN_SIGNED:
-        compiler.csinc(R32(result->hardwareReg()), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kGE);
+        compiler.csinc(R32(result), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kGE);
         break;
     case JitEvaluate::LESS_THAN_EQUAL_SIGNED:
-        compiler.csinc(R32(result->hardwareReg()), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kGT);
+        compiler.csinc(R32(result), asmjit::a64::wzr, asmjit::a64::wzr, asmjit::a64::CondCode::kGT);
         break;
     default:
         kpanic_fmt("JitArmV8CodeGen::compareReg unknown condition %d", condition);
@@ -1855,7 +1876,7 @@ RegPtr JitArmV8CodeGen::testZeroReg(JitWidth regWidth, RegPtr reg, RegPtr result
     kpanic("JitArmV8CodeGen::testZeroReg");
     /*
     if (regWidth == JitWidth::b32) {
-        x86.test(R32(reg->hardwareReg()), R32(reg->hardwareReg()));
+        x86.test(R32(reg), R32(reg));
     } else if (regWidth == JitWidth::b16) {
         x86.test(R16(reg->hardwareReg()), R16(reg->hardwareReg()));
     } else if (regWidth == JitWidth::b8) {
@@ -1867,7 +1888,7 @@ RegPtr JitArmV8CodeGen::testZeroReg(JitWidth regWidth, RegPtr reg, RegPtr result
         result = getTmpReg8();
     }
     x86.setz(R8(result->hardwareReg()));
-    x86.movzx(R32(result->hardwareReg()), R8(get8bitReg(result)));
+    x86.movzx(R32(result), R8(get8bitReg(result)));
     */
     return result;
 }
@@ -1875,26 +1896,26 @@ RegPtr JitArmV8CodeGen::testZeroReg(JitWidth regWidth, RegPtr reg, RegPtr result
 void JitArmV8CodeGen::mulReg(JitWidth regWidth, RegPtr reg) {
     if (regWidth == JitWidth::b32) {
         // EDX:EAX = (U64)EAX * src;
-        compiler.mul(R64(0), R64(0), R64(reg->hardwareReg()));
+        compiler.mul(R64(0), R64(0), R64(reg));
         compiler.ubfx(R64(2), R64(0), 32, 32);
         compiler.mov(R32(0), R32(0)); // clear top 32-bits
     } else if (regWidth == JitWidth::b16) {
         // DX:AX = AX * src;
         RegPtr tmp = getTmpReg();
         RegPtr tmp2 = getTmpReg();
-        compiler.ubfx(R32(tmp->hardwareReg()), R32(0), 0, 16);
-        compiler.ubfx(R32(tmp2->hardwareReg()), R32(reg->hardwareReg()), 0, 16);
-        compiler.mul(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(tmp2->hardwareReg()));
-        compiler.bfxil(R32(2), R32(tmp->hardwareReg()), 16, 16);
-        compiler.bfxil(R32(0), R32(tmp->hardwareReg()), 0, 16);
+        compiler.ubfx(R32(tmp), R32(0), 0, 16);
+        compiler.ubfx(R32(tmp2), R32(reg), 0, 16);
+        compiler.mul(R32(tmp), R32(tmp), R32(tmp2));
+        compiler.bfxil(R32(2), R32(tmp), 16, 16);
+        compiler.bfxil(R32(0), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         // AX = AL * src;
         RegPtr tmp = getTmpReg();
         RegPtr tmp2 = getTmpReg();
-        compiler.ubfx(R32(tmp->hardwareReg()), R32(0), 0, 8);
-        compiler.ubfx(R32(tmp2->hardwareReg()), R32(reg->hardwareReg()), reg->isHigh ? 8 : 0, 8);
-        compiler.mul(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(tmp2->hardwareReg()));
-        compiler.bfxil(R32(0), R32(tmp->hardwareReg()), 0, 16);
+        compiler.ubfx(R32(tmp), R32(0), 0, 8);
+        compiler.ubfx(R32(tmp2), R32(reg), reg->isHigh ? 8 : 0, 8);
+        compiler.mul(R32(tmp), R32(tmp), R32(tmp2));
+        compiler.bfxil(R32(0), R32(tmp), 0, 16);
     } else {
         kpanic("JitArmV8CodeGen::mulReg");
     }
@@ -1902,12 +1923,12 @@ void JitArmV8CodeGen::mulReg(JitWidth regWidth, RegPtr reg) {
 
 void JitArmV8CodeGen::imulRR(JitWidth regWidth, RegPtr dst, RegPtr src, RegPtr overflow) {
     if (regWidth == JitWidth::b32) {
-        compiler.smull(R64(dst->hardwareReg()), R32(dst->hardwareReg()), R32(src->hardwareReg()));
+        compiler.smull(R64(dst), R32(dst), R32(src));
 
         if (overflow) {
-            compiler.lsr(R64(overflow->hardwareReg()), R64(dst->hardwareReg()), 32);
+            compiler.lsr(R64(overflow), R64(dst), 32);
         }
-        compiler.mov(R32(dst->hardwareReg()), R32(dst->hardwareReg())); // clear out top 32-bits
+        compiler.mov(R32(dst), R32(dst)); // clear out top 32-bits
     } else if (regWidth == JitWidth::b16) {
         if (overflow) {
             kpanic("JitArmV8CodeGen::imulRR overflow");
@@ -1917,8 +1938,8 @@ void JitArmV8CodeGen::imulRR(JitWidth regWidth, RegPtr dst, RegPtr src, RegPtr o
 
         movsx(JitWidth::b32, dst16, JitWidth::b16, dst);
         movsx(JitWidth::b32, src16, JitWidth::b16, src);
-        compiler.smull(R64(dst16->hardwareReg()), R32(dst16->hardwareReg()), R32(src16->hardwareReg()));
-        compiler.bfxil(R32(dst->hardwareReg()), R32(dst16->hardwareReg()), 0, 16);
+        compiler.smull(R64(dst16), R32(dst16), R32(src16));
+        compiler.bfxil(R32(dst), R32(dst16), 0, 16);
     } else {
         kpanic("JitArmV8CodeGen::imulRR");
     }
@@ -1928,19 +1949,19 @@ void JitArmV8CodeGen::imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src
     RegPtr value = loadConst(src2);
     if (regWidth == JitWidth::b32) {
         RegPtr value = loadConst(src2);
-        compiler.smull(R64(dst->hardwareReg()), R32(src->hardwareReg()), R32(value->hardwareReg()));
+        compiler.smull(R64(dst), R32(src), R32(value));
         if (overflow) {
-            compiler.ubfx(R64(overflow->hardwareReg()), R64(dst->hardwareReg()), 32, 32);
+            compiler.ubfx(R64(overflow), R64(dst), 32, 32);
         }
     } else if (regWidth == JitWidth::b16) {
         RegPtr value = loadConst((S32)((S16)src2));
         RegPtr src16 = getTmpReg();
         RegPtr dst16 = getTmpReg();
         movsx(JitWidth::b32, src16, JitWidth::b16, src);
-        compiler.smull(R64(dst16->hardwareReg()), R32(src16->hardwareReg()), R32(value->hardwareReg()));
+        compiler.smull(R64(dst16), R32(src16), R32(value));
         mov(JitWidth::b16, dst, dst16);
         if (overflow) {
-            compiler.ubfx(R32(overflow->hardwareReg()), R32(dst16->hardwareReg()), 16, 16);
+            compiler.ubfx(R32(overflow), R32(dst16), 16, 16);
         }
     } else {
         kpanic("JitArmV8CodeGen::imulRRI");
@@ -1950,26 +1971,26 @@ void JitArmV8CodeGen::imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src
 void JitArmV8CodeGen::imulReg(JitWidth regWidth, RegPtr reg) {
     if (regWidth == JitWidth::b32) {
         // EDX:EAX = (S64)EAX * src;
-        compiler.smull(R64(0), R32(0), R32(reg->hardwareReg()));
+        compiler.smull(R64(0), R32(0), R32(reg));
         compiler.ubfx(R64(2), R64(0), 32, 32);
         compiler.mov(R32(0), R32(0)); // clear top 32-bits
     } else if (regWidth == JitWidth::b16) {
         // DX:AX = AX * src;
         RegPtr tmp = getTmpReg();
         RegPtr tmp2 = getTmpReg();
-        compiler.sxth(R32(tmp->hardwareReg()), R32(0));
-        compiler.sxth(R32(tmp2->hardwareReg()), R32(reg->hardwareReg()));
-        compiler.smull(R64(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(tmp2->hardwareReg()));
-        compiler.bfxil(R32(2), R32(tmp->hardwareReg()), 16, 16);
-        compiler.bfxil(R32(0), R32(tmp->hardwareReg()), 0, 16);
+        compiler.sxth(R32(tmp), R32(0));
+        compiler.sxth(R32(tmp2), R32(reg));
+        compiler.smull(R64(tmp), R32(tmp), R32(tmp2));
+        compiler.bfxil(R32(2), R32(tmp), 16, 16);
+        compiler.bfxil(R32(0), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         // AX = AL * src;
         RegPtr tmp = getTmpReg();
         RegPtr tmp2 = getTmpReg();
-        compiler.sxtb(R32(tmp->hardwareReg()), R32(0));
-        compiler.sbfx(R32(tmp2->hardwareReg()), R32(reg->hardwareReg()), reg->isHigh ? 8 : 0, 8);
-        compiler.smull(R64(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(tmp2->hardwareReg()));
-        compiler.bfxil(R32(0), R32(tmp->hardwareReg()), 0, 16);
+        compiler.sxtb(R32(tmp), R32(0));
+        compiler.sbfx(R32(tmp2), R32(reg), reg->isHigh ? 8 : 0, 8);
+        compiler.smull(R64(tmp), R32(tmp), R32(tmp2));
+        compiler.bfxil(R32(0), R32(tmp), 0, 16);
     } else {
         kpanic("JitArmV8CodeGen::imulReg");
     }
@@ -1983,23 +2004,23 @@ void JitArmV8CodeGen::absReg(JitWidth regWidth, RegPtr reg) {
     } else if (regWidth == JitWidth::b8) {
         movsx(JitWidth::b32, reg, JitWidth::b8, reg);
     } else if (regWidth == JitWidth::b64) {
-        compiler.add(R64(tmp->hardwareReg()), R64(reg->hardwareReg()), R64(reg->hardwareReg()), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kASR, 63)));
-        compiler.eor(R64(reg->hardwareReg()), R64(tmp->hardwareReg()), R64(reg->hardwareReg()), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kASR, 63)));
+        compiler.add(R64(tmp), R64(reg), R64(reg), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kASR, 63)));
+        compiler.eor(R64(reg), R64(tmp), R64(reg), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kASR, 63)));
         return;
     } else if (regWidth != JitWidth::b32) {
         kpanic("JitArmV8CodeGen::absReg");
     }
 
-    compiler.add(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), R32(reg->hardwareReg()), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kASR, 31)));
-    compiler.eor(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), R32(reg->hardwareReg()), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kASR, 31)));
+    compiler.add(R32(tmp), R32(reg), R32(reg), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kASR, 31)));
+    compiler.eor(R32(reg), R32(tmp), R32(reg), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kASR, 31)));
 }
 
 void JitArmV8CodeGen::clzReg(JitWidth regWidth, RegPtr result, RegPtr reg) {
    if (regWidth == JitWidth::b32) {
-        compiler.clz(R32(result->hardwareReg()), R32(reg->hardwareReg()));
+        compiler.clz(R32(result), R32(reg));
 #ifdef BOXEDWINE_64
     } else if (regWidth == JitWidth::b64) {
-        compiler.clz(R64(result->hardwareReg()), R64(reg->hardwareReg()));
+        compiler.clz(R64(result), R64(reg));
 #endif
     } else {
         kpanic("JitArmV8CodeGen::clzReg");
@@ -2010,35 +2031,35 @@ void JitArmV8CodeGen::divRegRegWithRemainder(JitWidth regWidth, RegPtr dest, Reg
     if (regWidth == JitWidth::b32) {
         // U64 num = ((U64)EDX << 32) | EAX;
         RegPtr tmp = getTmpReg();
-        compiler.orr(R64(tmp->hardwareReg()), R64(dest->hardwareReg()), R64(destHighAndRemainder->hardwareReg()), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 32)));
-        compiler.udiv(R64(dest->hardwareReg()), R64(tmp->hardwareReg()), R64(src->hardwareReg()));
-        compiler.msub(R64(destHighAndRemainder->hardwareReg()), R64(dest->hardwareReg()), R64(src->hardwareReg()), R64(tmp->hardwareReg()));
-        compiler.mov(R32(dest->hardwareReg()), R32(dest->hardwareReg())); // clear top 32-bits
+        compiler.orr(R64(tmp), R64(dest), R64(destHighAndRemainder), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 32)));
+        compiler.udiv(R64(dest), R64(tmp), R64(src));
+        compiler.msub(R64(destHighAndRemainder), R64(dest), R64(src), R64(tmp));
+        compiler.mov(R32(dest), R32(dest)); // clear top 32-bits
     } else if (regWidth == JitWidth::b16) {
         // U32 num = ((U32)DX << 16) | AX;
         RegPtr tmp = getTmpReg();
         RegPtr result = getTmpReg();
         RegPtr src16 = getTmpReg();
 
-        compiler.ubfx(R32(src16->hardwareReg()), R32(src->hardwareReg()), 0, 16);
-        compiler.ubfx(R32(tmp->hardwareReg()), R32(dest->hardwareReg()), 0, 16);
-        compiler.orr(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(destHighAndRemainder->hardwareReg()), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 16)));
-        compiler.udiv(R32(result->hardwareReg()), R32(tmp->hardwareReg()), R32(src16->hardwareReg()));
-        compiler.bfxil(R32(dest->hardwareReg()), R32(result->hardwareReg()), 0, 16);
-        compiler.msub(R32(tmp->hardwareReg()), R32(result->hardwareReg()), R32(src16->hardwareReg()), R32(tmp->hardwareReg()));
-        compiler.bfxil(R32(destHighAndRemainder->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+        compiler.ubfx(R32(src16), R32(src), 0, 16);
+        compiler.ubfx(R32(tmp), R32(dest), 0, 16);
+        compiler.orr(R32(tmp), R32(tmp), R32(destHighAndRemainder), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 16)));
+        compiler.udiv(R32(result), R32(tmp), R32(src16));
+        compiler.bfxil(R32(dest), R32(result), 0, 16);
+        compiler.msub(R32(tmp), R32(result), R32(src16), R32(tmp));
+        compiler.bfxil(R32(destHighAndRemainder), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         // quo = AX / src;
         RegPtr tmp = getTmpReg();
         RegPtr result = getTmpReg();
         RegPtr src8 = getTmpReg();
 
-        compiler.ubfx(R32(src8->hardwareReg()), R32(src->hardwareReg()), src->isHigh ? 8 : 0, 8);
-        compiler.ubfx(R32(tmp->hardwareReg()), R32(dest->hardwareReg()), 0, 16);
-        compiler.udiv(R32(result->hardwareReg()), R32(tmp->hardwareReg()), R32(src8->hardwareReg()));
-        compiler.bfxil(R32(dest->hardwareReg()), R32(result->hardwareReg()), 0, 8);
-        compiler.msub(R32(tmp->hardwareReg()), R32(result->hardwareReg()), R32(src8->hardwareReg()), R32(tmp->hardwareReg()));
-        compiler.bfi(R32(dest->hardwareReg()), R32(tmp->hardwareReg()), 8, 8);
+        compiler.ubfx(R32(src8), R32(src), src->isHigh ? 8 : 0, 8);
+        compiler.ubfx(R32(tmp), R32(dest), 0, 16);
+        compiler.udiv(R32(result), R32(tmp), R32(src8));
+        compiler.bfxil(R32(dest), R32(result), 0, 8);
+        compiler.msub(R32(tmp), R32(result), R32(src8), R32(tmp));
+        compiler.bfi(R32(dest), R32(tmp), 8, 8);
     } else {
         kpanic("JitArmV8CodeGen::divRegRegWithRemainder");
     }
@@ -2050,36 +2071,36 @@ void JitArmV8CodeGen::idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, Re
         RegPtr tmp = getTmpReg();
         RegPtr src32 = getTmpReg();
 
-        compiler.sbfx(R64(src32->hardwareReg()), R64(src->hardwareReg()), 0, 32);
-        compiler.orr(R64(tmp->hardwareReg()), R64(dest->hardwareReg()), R64(destHighAndRemainder->hardwareReg()), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 32)));
-        compiler.sdiv(R64(dest->hardwareReg()), R64(tmp->hardwareReg()), R64(src32->hardwareReg()));
-        compiler.msub(R64(destHighAndRemainder->hardwareReg()), R64(dest->hardwareReg()), R64(src32->hardwareReg()), R64(tmp->hardwareReg()));
-        compiler.mov(R32(dest->hardwareReg()), R32(dest->hardwareReg())); // clear top 32-bits
+        compiler.sbfx(R64(src32), R64(src), 0, 32);
+        compiler.orr(R64(tmp), R64(dest), R64(destHighAndRemainder), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 32)));
+        compiler.sdiv(R64(dest), R64(tmp), R64(src32));
+        compiler.msub(R64(destHighAndRemainder), R64(dest), R64(src32), R64(tmp));
+        compiler.mov(R32(dest), R32(dest)); // clear top 32-bits
     } else if (regWidth == JitWidth::b16) {
         // S32 num = ((S32)DX << 16) | AX;
         RegPtr tmp = getTmpReg();
         RegPtr result = getTmpReg();
         RegPtr src16 = getTmpReg();
 
-        compiler.sbfx(R32(src16->hardwareReg()), R32(src->hardwareReg()), 0, 16);
-        compiler.ubfx(R32(tmp->hardwareReg()), R32(dest->hardwareReg()), 0, 16);
-        compiler.orr(R32(tmp->hardwareReg()), R32(tmp->hardwareReg()), R32(destHighAndRemainder->hardwareReg()), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 16)));
-        compiler.sdiv(R32(result->hardwareReg()), R32(tmp->hardwareReg()), R32(src16->hardwareReg()));
-        compiler.bfxil(R32(dest->hardwareReg()), R32(result->hardwareReg()), 0, 16);
-        compiler.msub(R32(tmp->hardwareReg()), R32(result->hardwareReg()), R32(src16->hardwareReg()), R32(tmp->hardwareReg()));
-        compiler.bfxil(R32(destHighAndRemainder->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+        compiler.sbfx(R32(src16), R32(src), 0, 16);
+        compiler.ubfx(R32(tmp), R32(dest), 0, 16);
+        compiler.orr(R32(tmp), R32(tmp), R32(destHighAndRemainder), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 16)));
+        compiler.sdiv(R32(result), R32(tmp), R32(src16));
+        compiler.bfxil(R32(dest), R32(result), 0, 16);
+        compiler.msub(R32(tmp), R32(result), R32(src16), R32(tmp));
+        compiler.bfxil(R32(destHighAndRemainder), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         // quo = AX / src;
         RegPtr tmp = getTmpReg();
         RegPtr result = getTmpReg();
         RegPtr src8 = getTmpReg();
 
-        compiler.sbfx(R32(src8->hardwareReg()), R32(src->hardwareReg()), src->isHigh ? 8 : 0, 8);
-        compiler.sbfx(R32(tmp->hardwareReg()), R32(dest->hardwareReg()), 0, 16);
-        compiler.sdiv(R32(result->hardwareReg()), R32(tmp->hardwareReg()), R32(src8->hardwareReg()));
-        compiler.bfxil(R32(dest->hardwareReg()), R32(result->hardwareReg()), 0, 8);
-        compiler.msub(R32(tmp->hardwareReg()), R32(result->hardwareReg()), R32(src8->hardwareReg()), R32(tmp->hardwareReg()));
-        compiler.bfi(R32(dest->hardwareReg()), R32(tmp->hardwareReg()), 8, 8);
+        compiler.sbfx(R32(src8), R32(src), src->isHigh ? 8 : 0, 8);
+        compiler.sbfx(R32(tmp), R32(dest), 0, 16);
+        compiler.sdiv(R32(result), R32(tmp), R32(src8));
+        compiler.bfxil(R32(dest), R32(result), 0, 8);
+        compiler.msub(R32(tmp), R32(result), R32(src8), R32(tmp));
+        compiler.bfi(R32(dest), R32(tmp), 8, 8);
     } else {
         kpanic("JitArmV8CodeGen::idivRegRegWithRemainder");
     }
@@ -2091,11 +2112,11 @@ void JitArmV8CodeGen::readRamPage(RegPtr dest, RegPtr index) {
 
 #include "../../softmmu/kmemory_soft.h"
 void JitArmV8CodeGen::readMMU(RegPtr dest, RegPtr index) {
-    compiler.ldr(R64(dest->hardwareReg()), Mem(xMMU, R64(index->hardwareReg()), Shift(ShiftOp::kLSL, 3)));
+    compiler.ldr(R64(dest), Mem(xMMU, R64(index), Shift(ShiftOp::kLSL, 3)));
 }
 
 void JitArmV8CodeGen::readMMU(RegPtr dest, U32 index) {
-    compiler.ldr(R64(dest->hardwareReg()), createMem(regMMU, index * 8));
+    compiler.ldr(R64(dest), createMem(regMMU, index * 8));
 }
 
 Mem JitArmV8CodeGen::createMem(RegPtr reg, RegPtr sib, U8 lsl, U32 disp) {
@@ -2129,18 +2150,24 @@ Mem JitArmV8CodeGen::createMem(U8 reg, U32 disp) {
         return Mem(R64(reg), disp);
     }
     RegPtr dispReg = loadConst(disp);
-    return Mem(R64(reg), R64(dispReg->hardwareReg()));
+    return Mem(R64(reg), R64(dispReg));
 }
 
 RegPtr JitArmV8CodeGen::loadConst(U64 value) {
     RegPtr reg = getTmpReg();
-    compiler.mov(R64(reg->hardwareReg()), value);
+    compiler.mov(R64(reg), value);
     return reg;
 }
 
 MMXRegPtr JitArmV8CodeGen::loadMMXConst(U8 index) {
     MMXRegPtr result = getTmpMMX();
-    compiler.ldr(asmjit::a64::Vec::make_v128(result->hardwareReg()), createMem(regCPU, offsetof(CPU, sseConstants) + index * 16));
+    compiler.ldr(Vec::make_v128(result->hardwareReg()), createMem(regCPU, offsetof(CPU, sseConstants) + index * 16));
+    return result;
+}
+
+SSERegPtr JitArmV8CodeGen::loadSSEConst(U8 index) {
+    SSERegPtr result = getTmpSSE();
+    compiler.ldr(Vec::make_v128(result->hardwareReg()), createMem(regCPU, offsetof(CPU, sseConstants) + index * 16));
     return result;
 }
 
@@ -2149,20 +2176,20 @@ void JitArmV8CodeGen::read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) {
         kpanic("JitArmV8CodeGen::read");
     }
     if (width == JitWidth::b32) {
-        compiler.ldr(R32(dest->hardwareReg()), createMem(reg, disp));
+        compiler.ldr(R32(dest), createMem(reg, disp));
     } else if (width == JitWidth::b16) {
-        compiler.ldrh(R32(dest->hardwareReg()), createMem(reg, disp));
+        compiler.ldrh(R32(dest), createMem(reg, disp));
     } else if (width == JitWidth::b8) {
         if (!isRegHigh(dest)) {
-            compiler.ldrb(R32(dest->hardwareReg()), createMem(reg, disp));
+            compiler.ldrb(R32(dest), createMem(reg, disp));
         } else {
             RegPtr tmp = getTmpReg();
-            compiler.ldrb(R32(tmp->hardwareReg()), createMem(reg, disp));
-            compiler.bfi(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 8, 8);
+            compiler.ldrb(R32(tmp), createMem(reg, disp));
+            compiler.bfi(R32(reg), R32(tmp), 8, 8);
         }
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.ldr(R64(dest->hardwareReg()), createMem(reg, disp));
+        compiler.ldr(R64(dest), createMem(reg, disp));
 #endif
     } else {
         kpanic_fmt("JitArmV8CodeGen::readMem unexpected width: %d", (U32)width);
@@ -2178,20 +2205,20 @@ void JitArmV8CodeGen::read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, 
         return;
     }
     if (width == JitWidth::b32) {
-        compiler.ldr(R32(dest->hardwareReg()), createMem(reg, sib, lsl, disp));
+        compiler.ldr(R32(dest), createMem(reg, sib, lsl, disp));
     } else if (width == JitWidth::b16) {
-        compiler.ldrh(R32(dest->hardwareReg()), createMem(reg, sib, lsl, disp));
+        compiler.ldrh(R32(dest), createMem(reg, sib, lsl, disp));
     } else if (width == JitWidth::b8) {
         if (!isRegHigh(dest)) {
-            compiler.ldrb(R32(dest->hardwareReg()), createMem(reg, sib, lsl, disp));
+            compiler.ldrb(R32(dest), createMem(reg, sib, lsl, disp));
         } else {
             RegPtr tmp = getTmpReg();
-            compiler.ldrb(R32(tmp->hardwareReg()), createMem(reg, sib, lsl, disp));
-            compiler.bfi(R32(reg->hardwareReg()), R32(tmp->hardwareReg()), 8, 8);
+            compiler.ldrb(R32(tmp), createMem(reg, sib, lsl, disp));
+            compiler.bfi(R32(reg), R32(tmp), 8, 8);
         }
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.ldr(R64(dest->hardwareReg()), createMem(reg, sib, lsl, disp));
+        compiler.ldr(R64(dest), createMem(reg, sib, lsl, disp));
 #endif
     } else {
         kpanic_fmt("JitArmV8CodeGen::readMem unexpected width: %d", (U32)width);
@@ -2200,15 +2227,15 @@ void JitArmV8CodeGen::read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, 
 
 void JitArmV8CodeGen::write(JitWidth width, RegPtr reg, U32 disp, RegPtr src) {
     if(width == JitWidth::b32) {
-        compiler.str(R32(src->hardwareReg()), createMem(reg->hardwareReg(), disp));
+        compiler.str(R32(src), createMem(reg, disp));
     } else if (width == JitWidth::b16) {
-        compiler.strh(R32(src->hardwareReg()), createMem(reg->hardwareReg(), disp));
+        compiler.strh(R32(src), createMem(reg, disp));
     } else if (width == JitWidth::b8) {
-        compiler.strb(R32(getReg8InLowByte(src)->hardwareReg()), createMem(reg->hardwareReg(), disp));
+        compiler.strb(R32(getReg8InLowByte(src)), createMem(reg, disp));
 #ifdef BOXEDWINE_64
     }
     else if (width == JitWidth::b64) {
-        compiler.str(R64(src->hardwareReg()), createMem(reg->hardwareReg(), disp));
+        compiler.str(R64(src), createMem(reg, disp));
 #endif
     } else {
         kpanic_fmt("JitArmV8CodeGen::write unexpected width: %d", (U32)width);
@@ -2218,13 +2245,13 @@ void JitArmV8CodeGen::write(JitWidth width, RegPtr reg, U32 disp, RegPtr src) {
 void JitArmV8CodeGen::write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, U32 value) {
     if (width == JitWidth::b32) {
         RegPtr tmp = loadConst(value);
-        compiler.str(R32(tmp->hardwareReg()), createMem(reg->hardwareReg(), sib->hardwareReg(), lsl, disp));
+        compiler.str(R32(tmp), createMem(reg, sib, lsl, disp));
     } else if (width == JitWidth::b16) {
         RegPtr tmp = loadConst(value & 0xffff);
-        compiler.strh(R32(tmp->hardwareReg()), createMem(reg->hardwareReg(), sib->hardwareReg(), lsl, disp));
+        compiler.strh(R32(tmp), createMem(reg, sib, lsl, disp));
     } else if (width == JitWidth::b8) {
         RegPtr tmp = loadConst(value & 0xff);
-        compiler.strb(R32(tmp->hardwareReg()), createMem(reg->hardwareReg(), sib->hardwareReg(), lsl, disp));
+        compiler.strb(R32(tmp), createMem(reg, sib, lsl, disp));
     } else {
         kpanic_fmt("JitArmV8CodeGen::write unexpected width: %d", (U32)width);
     }
@@ -2232,14 +2259,14 @@ void JitArmV8CodeGen::write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 
 
 void JitArmV8CodeGen::write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) {
     if (width == JitWidth::b32) {
-        compiler.str(R32(src->hardwareReg()), createMem(reg->hardwareReg(), sib->hardwareReg(), lsl, disp));
+        compiler.str(R32(src), createMem(reg, sib, lsl, disp));
     } else if (width == JitWidth::b16) {
-        compiler.strh(R32(src->hardwareReg()), createMem(reg->hardwareReg(), sib->hardwareReg(), lsl, disp));
+        compiler.strh(R32(src), createMem(reg, sib, lsl, disp));
     } else if (width == JitWidth::b8) {
-        compiler.strb(R32(getReg8InLowByte(src)->hardwareReg()), createMem(reg->hardwareReg(), sib->hardwareReg(), lsl, disp));
+        compiler.strb(R32(getReg8InLowByte(src)), createMem(reg, sib, lsl, disp));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.str(R64(src->hardwareReg()), createMem(reg->hardwareReg(), sib->hardwareReg(), lsl, disp));
+        compiler.str(R64(src), createMem(reg, sib, lsl, disp));
 #endif
     } else {
         kpanic_fmt("JitArmV8CodeGen::write unexpected width: %d", (U32)width);
@@ -2255,14 +2282,14 @@ RegPtr JitArmV8CodeGen::readCPU(JitWidth width, U32 offset, RegPtr reg) {
     }
     // mov reg, [edi+srcOffset]    
     if (width == JitWidth::b32) {
-        compiler.ldr(R32(reg->hardwareReg()), Mem(xCPU, offset));
+        compiler.ldr(R32(reg), Mem(xCPU, offset));
     } else if (width == JitWidth::b16) {
-        compiler.ldrh(R32(reg->hardwareReg()), Mem(xCPU, offset));
+        compiler.ldrh(R32(reg), Mem(xCPU, offset));
     } else if (width == JitWidth::b8) {
-        compiler.ldrb(R32(reg->hardwareReg()), Mem(xCPU, offset));
+        compiler.ldrb(R32(reg), Mem(xCPU, offset));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.ldr(R64(reg->hardwareReg()), Mem(xCPU, offset));
+        compiler.ldr(R64(reg), Mem(xCPU, offset));
 #endif
     } else {
         kpanic_fmt("unknown dstWidth in JitArmV8CodeGen::readCPU %d", width);
@@ -2278,14 +2305,14 @@ RegPtr JitArmV8CodeGen::readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, 
         kpanic("JitArmV8CodeGen::readCPU");
     }
     if (width == JitWidth::b32) {
-        compiler.ldr(R32(reg->hardwareReg()), createMem(regCPU, sib->hardwareReg(), lsl, offset));
+        compiler.ldr(R32(reg), createMem(regCPU, sib->hardwareReg(), lsl, offset));
     } else if (width == JitWidth::b16) {
-        compiler.ldrh(R32(reg->hardwareReg()), createMem(regCPU, sib->hardwareReg(), lsl, offset));
+        compiler.ldrh(R32(reg), createMem(regCPU, sib->hardwareReg(), lsl, offset));
     } else if (width == JitWidth::b8) {
-        compiler.ldrb(R32(reg->hardwareReg()), createMem(regCPU, sib->hardwareReg(), lsl, offset));
+        compiler.ldrb(R32(reg), createMem(regCPU, sib->hardwareReg(), lsl, offset));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.ldr(R64(reg->hardwareReg()), createMem(regCPU, sib->hardwareReg(), lsl, offset));
+        compiler.ldr(R64(reg), createMem(regCPU, sib->hardwareReg(), lsl, offset));
 #endif
     } else {
         kpanic_fmt("unknown dstWidth in JitArmV8CodeGen::readCPU %d", width);
@@ -2296,17 +2323,17 @@ RegPtr JitArmV8CodeGen::readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, 
 void JitArmV8CodeGen::writeCPUValue(JitWidth width, RegPtr sib, U8 lsl, U32 offset, DYN_PTR_SIZE src) {
     if (width == JitWidth::b32) {
         RegPtr reg = loadConst(src & 0xffffffff);
-        compiler.str(R32(reg->hardwareReg()), createMem(regCPU, sib->hardwareReg(), lsl, offset));
+        compiler.str(R32(reg), createMem(regCPU, sib->hardwareReg(), lsl, offset));
     } else if (width == JitWidth::b16) {
         RegPtr reg = loadConst(src & 0xffff);
-        compiler.strh(R32(reg->hardwareReg()), createMem(regCPU, sib->hardwareReg(), lsl, offset));
+        compiler.strh(R32(reg), createMem(regCPU, sib->hardwareReg(), lsl, offset));
     } else if (width == JitWidth::b8) {
         RegPtr reg = loadConst(src & 0xff);
-        compiler.strb(R32(reg->hardwareReg()), createMem(regCPU, sib->hardwareReg(), lsl, offset));
+        compiler.strb(R32(reg), createMem(regCPU, sib->hardwareReg(), lsl, offset));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
         RegPtr reg = loadConst(src);
-        compiler.str(R64(reg->hardwareReg()), createMem(regCPU, sib->hardwareReg(), lsl, offset));
+        compiler.str(R64(reg), createMem(regCPU, sib->hardwareReg(), lsl, offset));
 #endif
     } else {
         kpanic_fmt("unknown dstWidth in JitArmV8CodeGen::writeCPU %d", width);
@@ -2316,17 +2343,17 @@ void JitArmV8CodeGen::writeCPUValue(JitWidth width, RegPtr sib, U8 lsl, U32 offs
 void JitArmV8CodeGen::writeCPUValue(JitWidth width, U32 offset, DYN_PTR_SIZE src) {
     if (width == JitWidth::b32) {
         RegPtr reg = loadConst(src & 0xffffffff);
-        compiler.str(R32(reg->hardwareReg()), createMem(regCPU, offset));
+        compiler.str(R32(reg), createMem(regCPU, offset));
     } else if (width == JitWidth::b16) {
         RegPtr reg = loadConst(src & 0xffff);
-        compiler.strh(R32(reg->hardwareReg()), createMem(regCPU, offset));
+        compiler.strh(R32(reg), createMem(regCPU, offset));
     } else if (width == JitWidth::b8) {
         RegPtr reg = loadConst(src & 0xff);
-        compiler.strb(R32(reg->hardwareReg()), createMem(regCPU, offset));
+        compiler.strb(R32(reg), createMem(regCPU, offset));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
         RegPtr reg = loadConst(src);
-        compiler.str(R64(reg->hardwareReg()), createMem(regCPU, offset));
+        compiler.str(R64(reg), createMem(regCPU, offset));
 #endif
     } else {
         kpanic_fmt("unknown dstWidth in JitArmV8CodeGen::writeCPU %d", width);
@@ -2335,24 +2362,24 @@ void JitArmV8CodeGen::writeCPUValue(JitWidth width, U32 offset, DYN_PTR_SIZE src
 
 void JitArmV8CodeGen::mov(JitWidth regWidth, RegPtr dest, RegPtr src) {
     if (regWidth == JitWidth::b32) {
-        compiler.mov(R32(dest->hardwareReg()), R32(src->hardwareReg()));
+        compiler.mov(R32(dest), R32(src));
     } else if (regWidth == JitWidth::b16) {
-        compiler.bfxil(R32(dest->hardwareReg()), R32(src->hardwareReg()), 0, 16);
+        compiler.bfxil(R32(dest), R32(src), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         if (isRegHigh(dest) && isRegHigh(src)) {
             RegPtr tmp = getTmpReg();
             mov(regWidth, tmp, src);
             mov(regWidth, dest, tmp);
         } else if (isRegHigh(dest)) {
-            compiler.bfi(R32(dest->hardwareReg()), R32(src->hardwareReg()), 8, 8);
+            compiler.bfi(R32(dest), R32(src), 8, 8);
         } else if (isRegHigh(src)) {
-            compiler.bfxil(R32(dest->hardwareReg()), R32(src->hardwareReg()), 8, 8);
+            compiler.bfxil(R32(dest), R32(src), 8, 8);
         } else {
-            compiler.bfxil(R32(dest->hardwareReg()), R32(src->hardwareReg()), 0, 8);
+            compiler.bfxil(R32(dest), R32(src), 0, 8);
         }        
 #ifdef BOXEDWINE_64
     } else if (regWidth == JitWidth::b64) {
-        compiler.mov(R64(dest->hardwareReg()), R64(src->hardwareReg()));
+        compiler.mov(R64(dest), R64(src));
 #endif
     } else {
         kpanic_fmt("JitArmV8CodeGen::mov unexpected width: %d", (U32)regWidth);
@@ -2361,14 +2388,14 @@ void JitArmV8CodeGen::mov(JitWidth regWidth, RegPtr dest, RegPtr src) {
 
 void JitArmV8CodeGen::movValue(JitWidth regWidth, RegPtr dst, DYN_PTR_SIZE imm) {
     if (regWidth == JitWidth::b32) {
-        compiler.mov(R32(dst->hardwareReg()), (U32)imm);
+        compiler.mov(R32(dst), (U32)imm);
     } else if (regWidth == JitWidth::b16) {
-        compiler.movk(R32(dst->hardwareReg()), (U16)imm, 0);
+        compiler.movk(R32(dst), (U16)imm, 0);
     } else if (regWidth == JitWidth::b8) {
         mov(regWidth, dst, loadConst(imm));
 #ifdef BOXEDWINE_64
     } else if (regWidth == JitWidth::b64) {
-        compiler.mov(R64(dst->hardwareReg()), imm);
+        compiler.mov(R64(dst), imm);
 #endif
     } else {
         kpanic_fmt("JitArmV8CodeGen::mov unexpected width: %d", (U32)regWidth);
@@ -2378,12 +2405,12 @@ void JitArmV8CodeGen::movValue(JitWidth regWidth, RegPtr dst, DYN_PTR_SIZE imm) 
 void JitArmV8CodeGen::movzx(JitWidth dstWidth, RegPtr dest, JitWidth srcWidth, RegPtr src) {
     if (dstWidth == JitWidth::b32) {
         if (srcWidth == JitWidth::b16) {
-            compiler.ubfx(R32(dest->hardwareReg()), R32(src->hardwareReg()), 0, 16);
+            compiler.ubfx(R32(dest), R32(src), 0, 16);
         } else if (srcWidth == JitWidth::b8) {
             if (isRegHigh(src)) {
-                compiler.ubfx(R32(dest->hardwareReg()), R32(src->hardwareReg()), 8, 8);
+                compiler.ubfx(R32(dest), R32(src), 8, 8);
             } else {
-                compiler.ubfx(R32(dest->hardwareReg()), R32(src->hardwareReg()), 0, 8);
+                compiler.ubfx(R32(dest), R32(src), 0, 8);
             }
             dest->isHigh = false; // for when src == dest
         } else {
@@ -2393,11 +2420,11 @@ void JitArmV8CodeGen::movzx(JitWidth dstWidth, RegPtr dest, JitWidth srcWidth, R
         if (srcWidth == JitWidth::b8) {
             RegPtr tmp = getTmpReg();
             if (isRegHigh(src)) {
-                compiler.ubfx(R32(tmp->hardwareReg()), R32(src->hardwareReg()), 8, 8);
+                compiler.ubfx(R32(tmp), R32(src), 8, 8);
             } else {
-                compiler.ubfx(R32(tmp->hardwareReg()), R32(src->hardwareReg()), 0, 8);
+                compiler.ubfx(R32(tmp), R32(src), 0, 8);
             }
-            compiler.bfxil(R32(dest->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+            compiler.bfxil(R32(dest), R32(tmp), 0, 16);
             dest->isHigh = false; // for when src == dest
         } else {
             kpanic_fmt("unknown width in JitArmV8CodeGen::movzx %d <= %d", dstWidth, srcWidth);
@@ -2410,12 +2437,12 @@ void JitArmV8CodeGen::movzx(JitWidth dstWidth, RegPtr dest, JitWidth srcWidth, R
 void JitArmV8CodeGen::movsx(JitWidth dstWidth, RegPtr dest, JitWidth srcWidth, RegPtr src) {
     if (dstWidth == JitWidth::b32) {
         if (srcWidth == JitWidth::b16) {
-            compiler.sxth(R32(dest->hardwareReg()), R32(src->hardwareReg()));
+            compiler.sxth(R32(dest), R32(src));
         } else if (srcWidth == JitWidth::b8) {
             if (isRegHigh(src)) {
-                compiler.sbfx(R32(dest->hardwareReg()), R32(src->hardwareReg()), 8, 8);
+                compiler.sbfx(R32(dest), R32(src), 8, 8);
             } else {
-                compiler.sxtb(R32(dest->hardwareReg()), R32(src->hardwareReg()));
+                compiler.sxtb(R32(dest), R32(src));
             }
             dest->isHigh = false; // for when src == dest
         } else {
@@ -2425,11 +2452,11 @@ void JitArmV8CodeGen::movsx(JitWidth dstWidth, RegPtr dest, JitWidth srcWidth, R
         if (srcWidth == JitWidth::b8) {
             RegPtr tmp = getTmpReg();
             if (isRegHigh(src)) {
-                compiler.sbfx(R32(tmp->hardwareReg()), R32(src->hardwareReg()), 8, 8);
+                compiler.sbfx(R32(tmp), R32(src), 8, 8);
             } else {
-                compiler.sxtb(R32(tmp->hardwareReg()), R32(src->hardwareReg()));
+                compiler.sxtb(R32(tmp), R32(src));
             }
-            compiler.bfxil(R32(dest->hardwareReg()), R32(tmp->hardwareReg()), 0, 16);
+            compiler.bfxil(R32(dest), R32(tmp), 0, 16);
             dest->isHigh = false; // for when src == dest
         } else {
             kpanic_fmt("unknown width in JitArmV8CodeGen::movsx %d <= %d", dstWidth, srcWidth);
@@ -2442,13 +2469,13 @@ void JitArmV8CodeGen::movsx(JitWidth dstWidth, RegPtr dest, JitWidth srcWidth, R
 void JitArmV8CodeGen::pushParam(const DynParam& param, U32 index) {
     switch (param.type) {
     case JitCallParamType::REG_8:
-        compiler.uxtb(R64(index), R64(param.reg->hardwareReg()));
+        compiler.uxtb(R64(index), R64(param.reg));
         break;
     case JitCallParamType::REG_16:
-        compiler.uxth(R64(index), R64(param.reg->hardwareReg()));
+        compiler.uxth(R64(index), R64(param.reg));
         break;
     case JitCallParamType::REG_32:
-        compiler.mov(R64(index), R64(param.reg->hardwareReg()));
+        compiler.mov(R64(index), R64(param.reg));
         break;
     case JitCallParamType::CPU:
         compiler.mov(R64(index), xCPU);
@@ -2497,7 +2524,7 @@ void JitArmV8CodeGen::callHostFunction(void* address, const std::vector<DynParam
 }
 
 void JitArmV8CodeGen::nakedCall(RegPtr reg) {
-    compiler.blr(R64(reg->hardwareReg()));
+    compiler.blr(R64(reg));
 }
 
 void JitArmV8CodeGen::nakedReturn() {
@@ -2511,7 +2538,7 @@ void JitArmV8CodeGen::callHostFunctionWithResult(RegPtr result, void* address, c
 
     compiler.mov(xBranch, (U64)address);
     compiler.blr(xBranch);
-    compiler.mov(R64(result->hardwareReg()), R64(0));
+    compiler.mov(R64(result), R64(0));
     compiler.blr(xLoadCacheFromCPU);
 }
 
@@ -2520,22 +2547,22 @@ void JitArmV8CodeGen::If(JitWidth regWidth, RegPtr reg) {
     ifLabels.push_back(label);
 
     if (regWidth == JitWidth::b32) {
-        compiler.cbz(R32(reg->hardwareReg()), label);
+        compiler.cbz(R32(reg), label);
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
-        compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 0, 16);
-        compiler.cbz(R32(tmp->hardwareReg()), label);
+        compiler.ubfx(R32(tmp), R32(reg), 0, 16);
+        compiler.cbz(R32(tmp), label);
     } else if (regWidth == JitWidth::b8) {
         RegPtr tmp = getTmpReg();
         if (isRegHigh(reg)) {
-            compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 8, 8);
+            compiler.ubfx(R32(tmp), R32(reg), 8, 8);
         } else {
-            compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 0, 8);
+            compiler.ubfx(R32(tmp), R32(reg), 0, 8);
         }
-        compiler.cbz(R32(tmp->hardwareReg()), label);
+        compiler.cbz(R32(tmp), label);
 #ifdef BOXEDWINE_64
     } else if (regWidth == JitWidth::b64) {
-        compiler.cbz(R64(reg->hardwareReg()), label);
+        compiler.cbz(R64(reg), label);
 #endif
     } else {
         kpanic_fmt("JitArmV8CodeGen::If unexpected width: %d", (U32)regWidth);
@@ -2544,13 +2571,13 @@ void JitArmV8CodeGen::If(JitWidth regWidth, RegPtr reg) {
 
 void JitArmV8CodeGen::IfTest(JitWidth regWidth, RegPtr reg, RegPtr mask) {
     if (regWidth == JitWidth::b32) {
-        compiler.tst(R32(reg->hardwareReg()), R32(mask->hardwareReg()));
+        compiler.tst(R32(reg), R32(mask));
     } else if (regWidth == JitWidth::b16 || regWidth == JitWidth::b8) {
         RegPtr left = getTmpReg();
         RegPtr right = getTmpReg();
         movzx(JitWidth::b32, left, regWidth, reg);
         movzx(JitWidth::b32, right, regWidth, mask);
-        compiler.tst(R32(left->hardwareReg()), R32(right->hardwareReg()));
+        compiler.tst(R32(left), R32(right));
     } else {
         kpanic("JitArmV8CodeGen::IfTest");
     }
@@ -2569,9 +2596,9 @@ void JitArmV8CodeGen::IfTest(JitWidth regWidth, RegPtr reg, U32 value) {
     }
     if (!asmjit::a64::Utils::is_logical_imm(value, 32)) {
         RegPtr imm = loadConst(value);
-        compiler.tst(R32(reg->hardwareReg()), R32(imm->hardwareReg()));
+        compiler.tst(R32(reg), R32(imm));
     } else {
-        compiler.tst(R32(reg->hardwareReg()), value);
+        compiler.tst(R32(reg), value);
     }
     Label label = compiler.new_label();
     ifLabels.push_back(label);
@@ -2588,7 +2615,7 @@ void JitArmV8CodeGen::IfNotTestBit(JitWidth regWidth, RegPtr reg, U32 bitPos) {
     if (bitPos > 63) {
         kpanic("JitArmV8CodeGen::IfNotTest");
     }
-    compiler.tbnz(R32(reg->hardwareReg()), bitPos, label);
+    compiler.tbnz(R32(reg), bitPos, label);
 }
 
 void JitArmV8CodeGen::IfTestBit(JitWidth regWidth, RegPtr reg, U32 bitPos) {
@@ -2601,26 +2628,26 @@ void JitArmV8CodeGen::IfTestBit(JitWidth regWidth, RegPtr reg, U32 bitPos) {
     if (bitPos > 63) {
         kpanic("JitArmV8CodeGen::IfNotTest");
     }
-    compiler.tbz(R32(reg->hardwareReg()), bitPos, label);
+    compiler.tbz(R32(reg), bitPos, label);
 }
 
 void JitArmV8CodeGen::cmp(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
     if (regWidth == JitWidth::b32) {
-        compiler.cmp(R32(reg1->hardwareReg()), R32(reg2->hardwareReg()));
+        compiler.cmp(R32(reg1), R32(reg2));
     }
     else if (regWidth == JitWidth::b16) {
         RegPtr left = getTmpReg();
         RegPtr right = getTmpReg();
         movsx(JitWidth::b32, left, JitWidth::b16, reg1);
         movsx(JitWidth::b32, right, JitWidth::b16, reg2);
-        compiler.cmp(R32(left->hardwareReg()), R32(right->hardwareReg()));
+        compiler.cmp(R32(left), R32(right));
     }
     else if (regWidth == JitWidth::b8) {
         RegPtr left = getTmpReg();
         RegPtr right = getTmpReg();
         movsx(JitWidth::b32, left, JitWidth::b8, reg1);
         movsx(JitWidth::b32, right, JitWidth::b8, reg2);
-        compiler.cmp(R32(left->hardwareReg()), R32(right->hardwareReg()));
+        compiler.cmp(R32(left), R32(right));
     }
     else {
         kpanic_fmt("JitArmV8CodeGen::cmp unexpected width: %d", (U32)regWidth);
@@ -2633,17 +2660,17 @@ void JitArmV8CodeGen::cmp(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) {
         return;
     }
     if (regWidth == JitWidth::b32) {
-        compiler.cmp(R32(reg->hardwareReg()), value);
+        compiler.cmp(R32(reg), value);
     }
     else if (regWidth == JitWidth::b16) {
         RegPtr left = getTmpReg();
         movzx(JitWidth::b32, left, JitWidth::b16, reg);
-        compiler.cmp(R32(left->hardwareReg()), value);
+        compiler.cmp(R32(left), value);
     }
     else if (regWidth == JitWidth::b8) {
         RegPtr left = getTmpReg();
-        compiler.ubfx(R32(left->hardwareReg()), R32(reg->hardwareReg()), reg->isHigh ? 8 : 0, 8);
-        compiler.cmp(R32(left->hardwareReg()), value);
+        compiler.ubfx(R32(left), R32(reg), reg->isHigh ? 8 : 0, 8);
+        compiler.cmp(R32(left), value);
     }
     else {
         kpanic_fmt("JitArmV8CodeGen::IfEqual unexpected width: %d", (U32)regWidth);
@@ -2720,22 +2747,22 @@ void JitArmV8CodeGen::IfNot(JitWidth regWidth, RegPtr reg) {
     ifLabels.push_back(label);
 
     if (regWidth == JitWidth::b32) {
-        compiler.cbnz(R32(reg->hardwareReg()), label);
+        compiler.cbnz(R32(reg), label);
     } else if (regWidth == JitWidth::b16) {
         RegPtr tmp = getTmpReg();
-        compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 0, 16);
-        compiler.cbnz(R32(tmp->hardwareReg()), label);
+        compiler.ubfx(R32(tmp), R32(reg), 0, 16);
+        compiler.cbnz(R32(tmp), label);
     } else if (regWidth == JitWidth::b8) {
         RegPtr tmp = getTmpReg();
         if (isRegHigh(reg)) {
-            compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 8, 8);
+            compiler.ubfx(R32(tmp), R32(reg), 8, 8);
         } else {
-            compiler.ubfx(R32(tmp->hardwareReg()), R32(reg->hardwareReg()), 0, 8);
+            compiler.ubfx(R32(tmp), R32(reg), 0, 8);
         }
-        compiler.cbnz(R32(tmp->hardwareReg()), label);
+        compiler.cbnz(R32(tmp), label);
 #ifdef BOXEDWINE_64
     } else if (regWidth == JitWidth::b64) {
-        compiler.cbnz(R64(reg->hardwareReg()), label);
+        compiler.cbnz(R64(reg), label);
 #endif
     } else {
         kpanic_fmt("JitArmV8CodeGen::If unexpected width: %d", (U32)regWidth);
@@ -2749,22 +2776,22 @@ void JitArmV8CodeGen::IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset
 
 void JitArmV8CodeGen::clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) {
     if (width == JitWidth::b16) {
-        compiler.cmp(R32(offset->hardwareReg()), 0xFFF);
+        compiler.cmp(R32(offset), 0xFFF);
     } else if (width == JitWidth::b32) {
-        compiler.cmp(R32(offset->hardwareReg()), 0xFFD);
+        compiler.cmp(R32(offset), 0xFFD);
     } else if (width == JitWidth::b64) {
-        compiler.cmp(R32(offset->hardwareReg()), 0xFF9);
+        compiler.cmp(R32(offset), 0xFF9);
     } else if (width == JitWidth::b128) {
-        compiler.cmp(R32(offset->hardwareReg()), 0xFF1);
+        compiler.cmp(R32(offset), 0xFF1);
     } else if (width == JitWidth::b256) {
-        compiler.cmp(R32(offset->hardwareReg()), 0xFE1);
+        compiler.cmp(R32(offset), 0xFE1);
     } else {
         kpanic_fmt("JitArmV8CodeGen::clearRegIfSpansPage unknown width %d", (U32)width);
     }
     // :TODO: experiment with cset
     Label label = compiler.new_label();
     compiler.b_lt(label);
-    compiler.mov(R64(reg->hardwareReg()), 0);
+    compiler.mov(R64(reg), 0);
     compiler.bind(label);
 }
 
@@ -2792,19 +2819,19 @@ void JitArmV8CodeGen::Goto(U32 location) {
 }
 
 void JitArmV8CodeGen::jmp(RegPtr reg) {
-    compiler.br(R64(reg->hardwareReg()));
+    compiler.br(R64(reg));
 }
 
 void JitArmV8CodeGen::writeCPU(JitWidth width, U32 offset, RegPtr src) {
     if (width == JitWidth::b32) {
-        compiler.str(R32(src->hardwareReg()), createMem(regCPU, offset));
+        compiler.str(R32(src), createMem(regCPU, offset));
     } else if (width == JitWidth::b16) {
-        compiler.strh(R32(src->hardwareReg()), createMem(regCPU, offset));
+        compiler.strh(R32(src), createMem(regCPU, offset));
     } else if (width == JitWidth::b8) {
-        compiler.strb(R32(getReg8InLowByte(src)->hardwareReg()), createMem(regCPU, offset));
+        compiler.strb(R32(getReg8InLowByte(src)), createMem(regCPU, offset));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.str(R64(src->hardwareReg()), createMem(regCPU, offset));
+        compiler.str(R64(src), createMem(regCPU, offset));
 #endif
     } else {
         kpanic_fmt("unknown dstWidth in JitArmV8CodeGen::writeCPU %d", width);
@@ -2813,23 +2840,407 @@ void JitArmV8CodeGen::writeCPU(JitWidth width, U32 offset, RegPtr src) {
 
 void JitArmV8CodeGen::writeCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr src) {
     if (width == JitWidth::b32) {
-        compiler.str(R32(src->hardwareReg()), createMem(regCPU, sib->hardwareReg(), lsl, offset));
+        compiler.str(R32(src), createMem(regCPU, sib->hardwareReg(), lsl, offset));
     } else if (width == JitWidth::b16) {
-        compiler.strh(R32(src->hardwareReg()), createMem(regCPU, sib->hardwareReg(), lsl, offset));
+        compiler.strh(R32(src), createMem(regCPU, sib->hardwareReg(), lsl, offset));
     } else if (width == JitWidth::b8) {
-        compiler.strb(R32(getReg8InLowByte(src)->hardwareReg()), createMem(regCPU, sib->hardwareReg(), lsl, offset));
+        compiler.strb(R32(getReg8InLowByte(src)), createMem(regCPU, sib->hardwareReg(), lsl, offset));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.str(R64(src->hardwareReg()), createMem(regCPU, sib->hardwareReg(), lsl, offset));
+        compiler.str(R64(src), createMem(regCPU, sib->hardwareReg(), lsl, offset));
 #endif
     } else {
         kpanic_fmt("unknown dstWidth in JitArmV8CodeGen::writeCPU %d", width);
     }
 }
-/*
+
+Vec toSse8(SSERegPtr reg) {
+    return Vec::make_b(reg->hardwareReg());
+}
+
+Vec toSse16(SSERegPtr reg) {
+    return Vec::make_h(reg->hardwareReg());
+}
+
+Vec toSse32(SSERegPtr reg) {
+    return Vec::make_s(reg->hardwareReg());
+}
+
+Vec toSse64(SSERegPtr reg) {
+    return Vec::make_d(reg->hardwareReg());
+}
+
+Vec toSse128(SSERegPtr reg) {
+    return Vec::make_q(reg->hardwareReg());
+}
+
+Vec toSse128(int reg) {
+    return Vec::make_q(reg);
+}
+
+Vec toSseB(SSERegPtr reg) {
+    return Vec::make_b(reg->hardwareReg());
+}
+
+Vec toSseB8(SSERegPtr reg) {
+    return Vec::make_b(reg->hardwareReg()).b8();
+}
+
+Vec toSseB16(SSERegPtr reg) {
+    return Vec::make_b(reg->hardwareReg()).b16();
+}
+
+Vec toSseB16(SSERegPtr reg, U8 index) {
+    Vec result = Vec::make_b(reg->hardwareReg()).b16();
+    result.set_element_index(index);
+    return result;
+}
+
+Vec toSseH4(SSERegPtr reg) {
+    return Vec::make_h(reg->hardwareReg()).h4();
+}
+
+Vec toSseH8(SSERegPtr reg) {
+    return Vec::make_h(reg->hardwareReg()).h8();
+}
+
+Vec toSseH8(SSERegPtr reg, U8 index) {
+    Vec result = Vec::make_h(reg->hardwareReg()).h8();
+    result.set_element_index(index);
+    return result;
+}
+
+Vec toSseS(SSERegPtr reg) {
+    return Vec::make_s(reg->hardwareReg()).s();
+}
+
+Vec toSseS2(SSERegPtr reg) {
+    return Vec::make_s(reg->hardwareReg()).s2();
+}
+
+Vec toSseS4(SSERegPtr reg) {
+    return Vec::make_s(reg->hardwareReg()).s4();
+}
+
+Vec toSseS4(SSERegPtr reg, U8 index) {
+    Vec result = Vec::make_s(reg->hardwareReg()).s4();
+    result.set_element_index(index);
+    return result;
+}
+
+Vec toSseD(SSERegPtr reg) {
+    return Vec::make_d(reg->hardwareReg()).d();
+}
+
+Vec toSseD2(SSERegPtr reg) {
+    return Vec::make_d(reg->hardwareReg()).d2();
+}
+
+Vec toSseD2(U32 reg) {
+    return Vec::make_d(reg).d2();
+}
+
+Vec toSseD2(SSERegPtr reg, U8 index) {
+    Vec result = Vec::make_d(reg->hardwareReg()).d2();
+    result.set_element_index(index);
+    return result;
+}
+
 void JitArmV8CodeGen::IfSseLessThan(SSERegPtr src1, SSERegPtr src2) {
-    x86.ucomiss(X86Asm::XMM(src1->hardwareReg()), X86Asm::XMM(src2->hardwareReg()));
-    x86.IfCF();
+    compiler.fcmp(toSseS(src1), toSseS(src2));
+    IfLessThan();
+}
+
+void JitArmV8CodeGen::fmax(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, MakeSSE vMake) {
+    SSERegPtr vTmpReg = getTmpSSE();
+    SSERegPtr vTmpReg2 = getTmpSSE();    
+
+    if (dst->hardwareReg() != src2->hardwareReg()) {
+        // get the min values
+        compiler.fmaxnm(vMake(vTmpReg), vMake(src1), vMake(src2));
+
+        // see if they are equal (like -0.0f == 0.0f) or 
+        // if they are neither greather than or less than (because NaN was used)
+        // in both those cases, SSE says to use the one on the right
+        compiler.fcmgt(vMake(vTmpReg2), vMake(src1), vMake(src2));
+        compiler.fcmgt(vMake(dst), vMake(src2), vMake(src1));
+        compiler.orr(toSse128(dst), toSse128(dst), toSse128(vTmpReg2));
+
+
+        // if the above comparisons are true, then 1's will be in reg, other wise 0's
+        // when doing this call, the min values will be used as calculated for the 1's
+        // for the 0's, the right side will be used (nan's and equal values)
+        compiler.bsl(toSse128(dst), toSse128(vTmpReg), toSse128(src2));
+    } else {
+        SSERegPtr vTmpReg3 = getTmpSSE();
+        compiler.fmaxnm(vMake(vTmpReg), vMake(src1), vMake(src2));
+        compiler.fcmgt(vMake(vTmpReg2), vMake(src1), vMake(src2));
+        compiler.fcmgt(vMake(vTmpReg3), vMake(src2), vMake(src1));
+        compiler.orr(toSse128(vTmpReg3), toSse128(vTmpReg3), toSse128(vTmpReg2));
+        compiler.bsl(toSse128(vTmpReg3), toSse128(vTmpReg), toSse128(src2));
+        compiler.mov(toSse128(dst), toSse128(vTmpReg3));
+    }
+}
+
+void JitArmV8CodeGen::fmin(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, MakeSSE vMake) {
+    SSERegPtr vTmpReg = getTmpSSE();
+    SSERegPtr vTmpReg2 = getTmpSSE();
+
+    if (dst->hardwareReg() != src2->hardwareReg()) {
+        // get the min values
+        compiler.fminnm(vMake(vTmpReg), vMake(src1), vMake(src2));
+
+        // see if they are equal (like -0.0f == 0.0f) or 
+        // if they are neither greather than or less than (because NaN was used)
+        // in both those cases, SSE says to use the one on the right
+        compiler.fcmgt(vMake(vTmpReg2), vMake(src1), vMake(src2));
+        compiler.fcmgt(vMake(dst), vMake(src2), vMake(src1));
+        compiler.orr(toSse128(dst), toSse128(dst), toSse128(vTmpReg2));
+
+
+        // if the above comparisons are true, then 1's will be in reg, other wise 0's
+        // when doing this call, the min values will be used as calculated for the 1's
+        // for the 0's, the right side will be used (nan's and equal values)
+        compiler.bsl(toSseB16(dst), toSseB16(vTmpReg), toSseB16(src2));
+    } else {
+        SSERegPtr vTmpReg3 = getTmpSSE();
+        compiler.fminnm(vMake(vTmpReg), vMake(src1), vMake(src2));
+        compiler.fcmgt(vMake(vTmpReg2), vMake(src1), vMake(src2));
+        compiler.fcmgt(vMake(vTmpReg3), vMake(src2), vMake(src1));
+        compiler.orr(toSse128(vTmpReg3), toSse128(vTmpReg3), toSse128(vTmpReg2));
+        compiler.bsl(toSseB16(vTmpReg3), toSseB16(vTmpReg), toSseB16(src2));
+        compiler.mov(toSse128(dst), toSse128(vTmpReg3));
+    }
+}
+
+void JitArmV8CodeGen::sseConvertFloatToInt(Vec dst, Vec src, bool truncate) {
+    if (truncate) {
+        compiler.fcvtzs(dst, src);
+    } else {
+        RegPtr round = readCPU(JitWidth::b32, offsetof(CPU, fpu.round));
+        IfNot(JitWidth::b32, round); { // ROUND_Nearest
+            compiler.fcvtns(dst, src);
+        } StartElse(); {
+            IfEqual(JitWidth::b32, round, ROUND_Down); {
+                compiler.fcvtms(dst, src);
+            } StartElse(); {
+                IfEqual(JitWidth::b32, round, ROUND_Up); {
+                    compiler.fcvtps(dst, src);
+                } StartElse(); {
+                    compiler.fcvtzs(dst, src);
+                } EndIf();
+            } EndIf();
+        } EndIf();
+    }
+}
+
+void JitArmV8CodeGen::sseConvertFloatToInt(RegPtr dst, Vec src, bool truncate) {
+    if (truncate) {
+        compiler.fcvtzs(R32(dst), src);
+    } else {
+        U32 roundingMode = (cpu->mxcsr >> 13) & 2;
+        if (roundingMode == ROUND_Nearest) {
+            compiler.fcvtns(R32(dst), src);
+        } else if (roundingMode == ROUND_Down) {
+            compiler.fcvtms(R32(dst), src);
+        } else if (roundingMode == ROUND_Up) {
+            compiler.fcvtps(R32(dst), src);
+        } else if (roundingMode == ROUND_Chop) {
+            compiler.fcvtzs(R32(dst), src);
+        }
+    }
+}
+
+void JitArmV8CodeGen::cvtsd2si(RegPtr dst, SSERegPtr src, bool truncate) {
+    // cpu->reg[r1].u32 = cpu->xmm[rm].pd.f64[0];
+
+    //if (cpu->xmm[rm].pd.f64[0] >= 2147483648.0 || cpu->xmm[rm].pd.f64[0] <= -2147483649.0) {
+    //    cpu->reg[r1].u32 = 0x80000000;
+    //} else {
+    //    cpu->reg[r1].u32 = (int32_t)cpu->xmm[rm].pd.f64[0];
+    //}    
+
+    SSERegPtr vPlusOne = loadSSEConst(SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE);
+    SSERegPtr vMinusOne = loadSSEConst(SSE_MIN_INT32_MINUS_ONE_AS_DOUBLE);
+
+    SSERegPtr vTmpReg1 = getTmpSSE();
+    SSERegPtr vTmpReg2 = getTmpSSE();
+    RegPtr tmpReg = getTmpReg();
+    RegPtr tmpReg2 = getTmpReg();
+
+    // will set lane to all 1's if value is too large or too small to convert
+    compiler.fcmge(toSseD2(vTmpReg1), toSseD2(src), toSseD2(vPlusOne));
+    compiler.fcmge(toSseD2(vTmpReg2), toSseD2(vMinusOne), toSseD2(src));
+    compiler.orr(toSse128(vTmpReg1), toSse128(vTmpReg1), toSse128(vTmpReg2));
+
+    compiler.umov(R32(tmpReg), toSseS4(vTmpReg1, 0));
+
+    // do the convert from double to int32
+    sseConvertFloatToInt(tmpReg2, toSseD(src), truncate);
+
+    // clear out int32 if was too large or too small
+    compiler.bic(R32(tmpReg2), R32(tmpReg2), R32(tmpReg));
+
+    // if the value was too large or too smaller, then tmpReg contains all 1's.  
+    compiler.and_(R32(tmpReg), R32(tmpReg), 0x80000000);
+
+    // will be good value or'd with 0, or bad value (0), or'd with 0x80000000
+    compiler.orr(R32(dst), R32(tmpReg2), R32(tmpReg));
+}
+
+void JitArmV8CodeGen::cvtpd2pi(SSERegPtr dst, SSERegPtr src, bool truncate) {
+    // cpu->reg_mmx[reg].sd.d0 = cpu->xmm[rm].pd.f64[0];
+    // cpu->reg_mmx[reg].sd.d1 = cpu->xmm[rm].pd.f64[1];
+
+    //if (cpu->xmm[rm].pd.f64[0] >= 2147483648.0 || cpu->xmm[rm].pd.f64[0] <= -2147483649.0) {
+    //    cpu->reg_mmx[reg].sd.d0 = 0x80000000;
+    //} else {
+    //    cpu->reg_mmx[reg].sd.d0 = (int32_t)cpu->xmm[rm].pd.f64[0];
+    //}    
+
+    SSERegPtr vPlusOne = loadSSEConst(SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE);
+    SSERegPtr vMinusOne = loadSSEConst(SSE_MIN_INT32_MINUS_ONE_AS_DOUBLE);
+
+    SSERegPtr vTmpReg1 = getTmpSSE();
+    SSERegPtr vTmpReg2 = getTmpSSE();
+
+
+    // will set lane to all 1's if value is too large or too small to convert
+    compiler.fcmge(toSseD2(vTmpReg1), toSseD2(src), toSseD2(vPlusOne));
+    compiler.fcmge(toSseD2(vTmpReg2), toSseD2(vMinusOne), toSseD2(src));
+    compiler.orr(toSse128(vTmpReg1), toSse128(vTmpReg1), toSse128(vTmpReg2));
+
+    sseConvertFloatToInt(toSseD2(vTmpReg2), toSseD2(src), truncate);
+
+    // clear out int64's if was too large or too small
+    compiler.bic(toSse128(vTmpReg2), toSse128(vTmpReg2), toSse128(vTmpReg1));
+
+    // do the convert from int64 to int32
+    compiler.xtn(toSseS2(vTmpReg2), toSseD2(vTmpReg2));
+
+    // if the value was too large or too smaller, then vTmpReg1 contains all 1's.  
+    // Right shift 63, convert 64-bit to 32-bit, left shift by 31 to create 0x80000000
+    compiler.ushr(toSseD2(vTmpReg1), toSseD2(vTmpReg1), 63);
+    compiler.xtn(toSseS2(vTmpReg1), toSseD2(vTmpReg1));
+    compiler.shl(toSseS2(vTmpReg1), toSseS2(vTmpReg1), 31);
+
+    // vTmpReg1 will be 0x80000000 or 0x00000000 depending on if the value was too large or too small
+    // vTmpReg2 will be the actual result or 0x00000000 (if too big or too small)
+    compiler.orr(toSse64(dst), toSse64(vTmpReg2), toSse64(vTmpReg1));
+}
+
+// When converting Double/Float to int32, if the value doesn't fit, SSE convert the value to 0x80000000, but ARM converts it to 0x7FFFFFFF,
+// so we have to spend a lot of effort to correct that
+void JitArmV8CodeGen::cvtps2pi(SSERegPtr dst, SSERegPtr src, bool truncate) {
+    //if (cpu->xmm[rm].pd.f32[0] >= 2147483648.0 || cpu->xmm[rm].pd.f32[0] <= -2147483649.0) {
+    //    cpu->reg_mmx[reg].sd.d0 = 0x80000000;
+    //} else {
+    //    cpu->reg_mmx[reg].sd.d0 = (int32_t)cpu->xmm[rm].pd.f32[0];
+    //} 
+
+    SSERegPtr vPlusOne = loadSSEConst(SSE_MAX_INT32_PLUS_ONE_AS_FLOAT);
+    SSERegPtr vMinusOne = loadSSEConst(SSE_MIN_INT32_MINUS_ONE_AS_FLOAT);
+
+    SSERegPtr vTmpReg1 = getTmpSSE();
+    SSERegPtr vTmpReg2 = getTmpSSE();
+
+    // will set lane to all 1's if value is too large or too small to convert
+    compiler.fcmge(toSseS4(vTmpReg1), toSseS4(src), toSseS4(vPlusOne));
+    compiler.fcmge(toSseS4(vTmpReg2), toSseS4(vMinusOne), toSseS4(src));
+    compiler.orr(toSse128(vTmpReg1), toSse128(vTmpReg1), toSse128(vTmpReg2));
+
+    // do the convert from float to int32
+    sseConvertFloatToInt(toSseS4(vTmpReg2), toSseS4(src), truncate);
+
+    // clear out int32's if was too large or too small
+    compiler.bic(toSse128(vTmpReg2), toSse128(vTmpReg2), toSse128(vTmpReg1));
+
+    // if the value was too large or too smaller, then vTmpReg1 contains all 1's.  
+    // Right shift 31, left shift by 31 to create 0x80000000
+    compiler.ushr(toSseS4(vTmpReg1), toSseS4(vTmpReg1), 31);
+    compiler.shl(toSseS4(vTmpReg1), toSseS4(vTmpReg1), 31);
+
+    // vTmpReg1 will be 0x80000000 or 0x00000000 depending on if the value was too large or too small
+    // vTmpReg2 will be the actual result or 0x00000000 (if too big or too small)
+    compiler.orr(toSse128(dst), toSse128(vTmpReg2), toSse128(vTmpReg1));
+}
+
+void JitArmV8CodeGen::sseCmp(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, U8 pred, MakeSSE vMake) {
+    switch (pred) {
+    case 0: // eq
+        compiler.fcmeq(vMake(dst), vMake(src1), vMake(src2));
+        break;
+    case 1: // lt
+        compiler.fcmgt(vMake(dst), vMake(src2), vMake(src1));
+        break;
+    case 2: // le
+        compiler.fcmge(vMake(dst), vMake(src2), vMake(src1));
+        break;
+    case 3: // unord
+    {
+        SSERegPtr vTmpReg = getTmpSSE();
+        SSERegPtr vTmpReg2 = getTmpSSE();
+        compiler.fcmeq(vMake(vTmpReg), vMake(src1), vMake(src1));
+        compiler.fcmeq(vMake(vTmpReg2), vMake(src2), vMake(src2));
+        compiler.and_(toSse128(vTmpReg), toSse128(vTmpReg2), toSse128(vTmpReg));
+        compiler.not_(toSse128(dst), toSse128(vTmpReg));
+        break;
+    }
+    case 4: // neq
+        compiler.fcmeq(vMake(dst), vMake(src1), vMake(src2));
+        compiler.not_(toSse128(dst), toSse128(dst));
+        break;
+    case 5: // nlt
+        compiler.fcmge(vMake(dst), vMake(src1), vMake(src2));
+        break;
+    case 6: // nle
+        compiler.fcmgt(vMake(dst), vMake(src1), vMake(src2));
+        break;
+    case 7: // ord
+    {
+        SSERegPtr vTmpReg = getTmpSSE();
+        SSERegPtr vTmpReg2 = getTmpSSE();
+        compiler.fcmeq(vMake(vTmpReg), vMake(src1), vMake(src1));
+        compiler.fcmeq(vMake(vTmpReg2), vMake(src2), vMake(src2));
+        compiler.and_(toSse128(dst), toSse128(vTmpReg2), toSse128(vTmpReg));
+        break;
+    }
+    default:
+        kpanic("JitArmV8CodeGen::sseCmp");
+    }
+}
+
+void JitArmV8CodeGen::comis(SSERegPtr dst, SSERegPtr src, MakeSSE vMake) {
+    // cpu->flags &= ~(AF | OF | SF | CF | PF | ZF);
+    // if (isnan(a.f64[0]) || isnan(b.f64[0])) {
+    //     cpu->flags |= CF | ZF | PF;
+    // } else if (a.f64[0] == b.f64[0]) {
+    //     cpu->flags |= ZF;
+    // } else if (a.f64[0] < b.f64[0]) {
+    //     cpu->flags |= CF;
+    // }
+    RegPtr tmpReg = getTmpReg();
+
+    // cpu->flags &= ~(AF | OF | SF | CF | PF | ZF);
+    compiler.movn(R32(tmpReg), AF | OF | SF | CF | PF | ZF);
+    compiler.and_(xFLAGS, xFLAGS, R32(tmpReg));
+    
+    compiler.fcmp(vMake(dst), vMake(src));
+
+    // if (isnan(a.f64[0]) || isnan(b.f64[0])) { cpu->flags |= CF | ZF | PF; }
+    compiler.mov(R32(tmpReg), CF | PF | ZF);
+    compiler.orr(R32(tmpReg), xFLAGS, R32(tmpReg));
+    compiler.csel(xFLAGS, R32(tmpReg), xFLAGS, asmjit::a64::CondCode::kVS);
+
+    // else if (a.f64[0] == b.f64[0]) { cpu->flags |= ZF; }
+    compiler.cset(R32(tmpReg), asmjit::a64::CondCode::kEQ);
+    compiler.orr(xFLAGS, xFLAGS, R32(tmpReg), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 6))); // 6 for ZF
+
+    // else if (a.f64[0] < b.f64[0]) {cpu->flags |= CF; }
+    compiler.cset(R32(tmpReg), asmjit::a64::CondCode::kLT);
+    compiler.orr(xFLAGS, xFLAGS, R32(tmpReg));
+    storeLazyFlagType(FLAGS_NONE);
+    currentLazyFlags = FLAGS_NONE;
 }
 
 void JitArmV8CodeGen::storeCpuXMMReg(SSERegPtr reg, U32 index) {
@@ -2837,27 +3248,29 @@ void JitArmV8CodeGen::storeCpuXMMReg(SSERegPtr reg, U32 index) {
         kpanic("JitArmV8CodeGen::storeCpuXMMReg");
         return;
     }
-    if (xmmCache[index] == INVALID_REG) {
-        x86.movaps(X86Asm::Mem128(HOST_CPU, index * 16 + offsetof(CPU, xmm)), X86Asm::XMM(reg->hardwareReg()));
-    } else if (xmmCache[index] != reg->hardwareReg()) {
-        x86.movaps(X86Asm::XMM(xmmCache[index]), X86Asm::XMM(reg->hardwareReg()));
+    if (vCache[index] == INVALID_REG) {
+        compiler.str(toSse128(reg), createMem(regCPU, index * 16 + offsetof(CPU, xmm)));
+    } else if (vCache[index] != reg->hardwareReg()) {
+        compiler.mov(Vec::make_q(vCache[index]), toSse128(reg));
     }    
 }
 
-void JitArmV8CodeGen::storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.movups(X86Asm::Mem128(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp), X86Asm::XMM(reg->hardwareReg()));
+void JitArmV8CodeGen::storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib) {
+    compiler.str(toSse128(reg), createMem(rm, sib, 0, 0));
 }
 
-void JitArmV8CodeGen::storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.movlps(X86Asm::Mem64(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp), X86Asm::XMM(reg->hardwareReg()));
+void JitArmV8CodeGen::storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) {
+    compiler.str(toSse64(reg), createMem(rm, sib, 0, 0));
 }
 
-void JitArmV8CodeGen::storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.movss(X86Asm::Mem32(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp), X86Asm::XMM(reg->hardwareReg()));
+void JitArmV8CodeGen::storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib) {
+    compiler.str(toSse32(reg), createMem(rm, sib, 0, 0));
 }
 
-void JitArmV8CodeGen::storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.movhps(X86Asm::Mem64(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp), X86Asm::XMM(reg->hardwareReg()));
+void JitArmV8CodeGen::storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) {
+    RegPtr address = getTmpReg();
+    compiler.add(R64(address), R64(rm), R64(sib));
+    compiler.st1(toSseD2(reg, 1), createMem(address, 0));
 }
 
 SSERegPtr JitArmV8CodeGen::getXMM(U8 index, bool load) {
@@ -2865,15 +3278,15 @@ SSERegPtr JitArmV8CodeGen::getXMM(U8 index, bool load) {
         kpanic("JitArmV8CodeGen::getXMM");
         return nullptr;
     }
-    if (index != INVALID_REG && xmmCache[index] != INVALID_REG) {
-        return std::make_shared<SSERegInternal>(xmmCache[index], index);
+    if (index != INVALID_REG && vCache[index] != INVALID_REG) {
+        return std::make_shared<SSERegInternal>(vCache[index], index);
     }
     SSERegPtr result = std::shared_ptr<SSERegInternal>(new SSERegInternal(findTmpXMM(), index), [this](SSERegInternal* p) {
-        xmmUsed2[p->hardwareReg()] = false;
+        vUsed[p->hardwareReg()] = false;
         delete p;
     });
     if (load && index != INVALID_REG) {
-        x86.movaps(X86Asm::XMM(result->hardwareReg()), X86Asm::Mem128(HOST_CPU, index * 16 + offsetof(CPU, xmm)));
+        compiler.ldr(toSse128(result), createMem(regCPU, index * 16 + offsetof(CPU, xmm)));
     }
     return result;
 }
@@ -2882,178 +3295,209 @@ SSERegPtr JitArmV8CodeGen::loadCpuXMMReg(U8 index) {
     return getXMM(index, true);
 }
 
-SSERegPtr JitArmV8CodeGen::loadXMMFromMem128(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+SSERegPtr JitArmV8CodeGen::loadXMMFromMem128(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, false);
-    x86.movups(X86Asm::XMM(reg->hardwareReg()), X86Asm::Mem128(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+    compiler.ldr(toSse128(reg), createMem(rm, sib, 0, 0));
     return reg;
 }
 
-SSERegPtr JitArmV8CodeGen::loadXMMFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    SSERegPtr reg = getXMM(index, true);
-    x86.movq(X86Asm::XMM(reg->hardwareReg()), X86Asm::Mem64(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+SSERegPtr JitArmV8CodeGen::loadXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) {
+    SSERegPtr reg = getXMM(index, false);
+    compiler.ldr(toSse64(reg), createMem(rm, sib, 0, 0));
     return reg;
 }
 
-SSERegPtr JitArmV8CodeGen::loadLowXMMFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+SSERegPtr JitArmV8CodeGen::loadLowXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, true);
-    x86.movlps(X86Asm::XMM(reg->hardwareReg()), X86Asm::Mem64(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+    RegPtr address = getTmpReg();
+    compiler.add(R64(address), R64(rm), R64(sib));
+    compiler.ld1(toSseD2(reg, 0), createMem(address, 0));
     return reg;
 }
 
-SSERegPtr JitArmV8CodeGen::loadHighXMMFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+SSERegPtr JitArmV8CodeGen::loadHighXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, true);
-    x86.movhps(X86Asm::XMM(reg->hardwareReg()), X86Asm::Mem64(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+    RegPtr address = getTmpReg();
+    compiler.add(R64(address), R64(rm), R64(sib));
+    compiler.ld1(toSseD2(reg, 1), createMem(address, 0));
     return reg;
 }
 
-SSERegPtr JitArmV8CodeGen::loadXMMFromMem32(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+SSERegPtr JitArmV8CodeGen::loadXMMFromMem32(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, true);
-    x86.movss(X86Asm::XMM(reg->hardwareReg()), X86Asm::Mem32(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+    compiler.ldr(toSseS(reg), createMem(rm, sib, 0, 0));
     return reg;
 }
 
 void JitArmV8CodeGen::addpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.addps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.fadd(toSseS4(dst), toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::addssXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.addss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // might clear upper bits
+    // compiler.fadd(toSse32(dst), toSse32(dst), toSse32(src));
+
+    SSERegPtr tmp = getTmpSSE();
+    compiler.fadd(toSse32(tmp), toSse32(dst), toSse32(src));
+    compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0));
 }
 
 void JitArmV8CodeGen::subpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.subps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.fsub(toSseS4(dst), toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::subssXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.subss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.fsub(toSse32(tmp), toSse32(dst), toSse32(src));
+    compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0));
 }
 
 void JitArmV8CodeGen::mulpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.mulps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.fmul(toSseS4(dst), toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::mulssXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.mulss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.fmul(toSse32(tmp), toSse32(dst), toSse32(src));
+    compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0));
 }
 
 void JitArmV8CodeGen::divpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.divps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.fdiv(toSseS4(dst), toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::divssXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.divss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.fdiv(toSse32(tmp), toSse32(dst), toSse32(src));
+    compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0));
 }
 
 void JitArmV8CodeGen::rcppsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.rcpps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.frecpe(toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::rcpssXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.rcpss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.frecpe(toSse32(tmp), toSse32(src));
+    compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0));
 }
 
 void JitArmV8CodeGen::sqrtpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.sqrtps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.fsqrt(toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::sqrtssXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.sqrtss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.fsqrt(toSse32(tmp), toSse32(src));
+    compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0));
 }
 
 void JitArmV8CodeGen::rsqrtpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.rsqrtps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.frsqrte(toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::rsqrtssXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.rsqrtss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.frsqrte(toSseS(tmp), toSseS(src));
+    compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0));
 }
 
 void JitArmV8CodeGen::maxpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.maxps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    fmax(dst, dst, src, toSseS4);
 }
 
 void JitArmV8CodeGen::maxssXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.maxss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    fmax(tmp, dst, src, toSseS);
+    compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0));
 }
 
 void JitArmV8CodeGen::minpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.minps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    fmin(dst, dst, src, toSseS4);
 }
 
 void JitArmV8CodeGen::minssXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.minss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    fmin(tmp, dst, src, toSseS);
+    compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0));
 }
 
-*/
-
-asmjit::a64::Vec toMmxB(MMXRegPtr reg) {
-    return asmjit::a64::Vec::make_b(reg->hardwareReg());
+Vec toMmxB(MMXRegPtr reg) {
+    return Vec::make_b(reg->hardwareReg());
 }
 
-asmjit::a64::Vec toMmxB8(MMXRegPtr reg) {
-    return asmjit::a64::Vec::make_b(reg->hardwareReg()).b8();
+Vec toMmxB8(MMXRegPtr reg) {
+    return Vec::make_b(reg->hardwareReg()).b8();
 }
 
-asmjit::a64::Vec toMmxB8(MMXRegPtr reg, U8 index) {
-    asmjit::a64::Vec result = asmjit::a64::Vec::make_b(reg->hardwareReg()).b8();
+Vec toMmxB8(MMXRegPtr reg, U8 index) {
+    Vec result = Vec::make_b(reg->hardwareReg()).b8();
     result.set_element_index(index);
     return result;
 }
 
-asmjit::a64::Vec toMmxB16(MMXRegPtr reg) {
-    return asmjit::a64::Vec::make_b(reg->hardwareReg()).b16();
+Vec toMmxB16(MMXRegPtr reg) {
+    return Vec::make_b(reg->hardwareReg()).b16();
 }
 
-asmjit::a64::Vec toMmxH(MMXRegPtr reg) {
-    return asmjit::a64::Vec::make_h(reg->hardwareReg());
+Vec toMmxH(MMXRegPtr reg) {
+    return Vec::make_h(reg->hardwareReg());
 }
 
-asmjit::a64::Vec toMmxH4(MMXRegPtr reg) {
-    return asmjit::a64::Vec::make_h(reg->hardwareReg()).h4();
+Vec toMmxH4(MMXRegPtr reg) {
+    return Vec::make_h(reg->hardwareReg()).h4();
 }
 
-asmjit::a64::Vec toMmxH4(MMXRegPtr reg, U8 index) {
-    asmjit::a64::Vec result = asmjit::a64::Vec::make_h(reg->hardwareReg()).h4();
+Vec toMmxH4(MMXRegPtr reg, U8 index) {
+    Vec result = Vec::make_h(reg->hardwareReg()).h4();
     result.set_element_index(index);
     return result;
 }
 
-asmjit::a64::Vec toMmxH8(MMXRegPtr reg) {
-    return asmjit::a64::Vec::make_h(reg->hardwareReg()).h8();
+Vec toMmxH8(MMXRegPtr reg) {
+    return Vec::make_h(reg->hardwareReg()).h8();
 }
 
-asmjit::a64::Vec toMmxH8(MMXRegPtr reg, U8 index) {
-    asmjit::a64::Vec result = asmjit::a64::Vec::make_h(reg->hardwareReg()).h8();
+Vec toMmxH8(MMXRegPtr reg, U8 index) {
+    Vec result = Vec::make_h(reg->hardwareReg()).h8();
     result.set_element_index(index);
     return result;
 }
 
-asmjit::a64::Vec toMmxS(MMXRegPtr reg) {
-    return asmjit::a64::Vec::make_s(reg->hardwareReg());
+Vec toMmxS(MMXRegPtr reg) {
+    return Vec::make_s(reg->hardwareReg());
 }
 
-asmjit::a64::Vec toMmxS2(MMXRegPtr reg) {
-    return asmjit::a64::Vec::make_s(reg->hardwareReg()).s2();
+Vec toMmxS2(MMXRegPtr reg) {
+    return Vec::make_s(reg->hardwareReg()).s2();
 }
 
-asmjit::a64::Vec toMmxS2(MMXRegPtr reg, U8 index) {
-    asmjit::a64::Vec result = asmjit::a64::Vec::make_h(reg->hardwareReg()).s2();
+Vec toMmxS2(MMXRegPtr reg, U8 index) {
+    Vec result = Vec::make_h(reg->hardwareReg()).s2();
     result.set_element_index(index);
     return result;
 }
 
-asmjit::a64::Vec toMmxS4(MMXRegPtr reg) {
-    return asmjit::a64::Vec::make_s(reg->hardwareReg()).s4();
+Vec toMmxS4(MMXRegPtr reg) {
+    return Vec::make_s(reg->hardwareReg()).s4();
 }
 
-asmjit::a64::Vec toMmxS4(MMXRegPtr reg, U8 index) {
-    asmjit::a64::Vec result = asmjit::a64::Vec::make_s(reg->hardwareReg()).s4();
+Vec toMmxS4(MMXRegPtr reg, U8 index) {
+    Vec result = Vec::make_s(reg->hardwareReg()).s4();
     result.set_element_index(index);
     return result;
 }
 
-asmjit::a64::Vec toMmxD1(MMXRegPtr reg) {
-    return asmjit::a64::Vec::make_d(reg->hardwareReg()).d();
+Vec toMmxD(MMXRegPtr reg) {
+    return Vec::make_d(reg->hardwareReg());
+}
+
+Vec toMmxD1(MMXRegPtr reg) {
+    return Vec::make_d(reg->hardwareReg()).d();
+}
+
+Vec toMmx64(MMXRegPtr reg) {
+    return Vec::make_d(reg->hardwareReg());
 }
 
 void JitArmV8CodeGen::pavgbMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
@@ -3070,11 +3514,11 @@ void JitArmV8CodeGen::psadbwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
 }
 
 void JitArmV8CodeGen::pextrwRegMmx(RegPtr dst, MMXRegPtr src, U8 srcIndex) {
-    compiler.umov(R32(dst->hardwareReg()), toMmxH4(src, srcIndex));
+    compiler.umov(R32(dst), toMmxH4(src, srcIndex));
 }
 
 void JitArmV8CodeGen::pinsrwMmxReg(MMXRegPtr dst, RegPtr src, U8 dstIndex) {
-    compiler.ins(toMmxH8(dst, dstIndex & 3), R32(src->hardwareReg()));
+    compiler.ins(toMmxH8(dst, dstIndex & 3), R32(src));
 }
 
 void JitArmV8CodeGen::pmaxswMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
@@ -3102,7 +3546,7 @@ void JitArmV8CodeGen::pmovmskbMmxMmx(RegPtr dst, MMXRegPtr src) {
     // add bits 0-7 for indexes 0-7 to end up with the mask
     compiler.addv(toMmxB(tmp), toMmxB8(tmp));
 
-    compiler.umov(R32(dst->hardwareReg()), toMmxB8(tmp, 0));
+    compiler.umov(R32(dst), toMmxB8(tmp, 0));
 }
 
 void JitArmV8CodeGen::pmulhuwMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
@@ -3150,99 +3594,115 @@ void JitArmV8CodeGen::psubqMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
 void JitArmV8CodeGen::pmuludqMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
     compiler.umull(toMmxD1(dst), toMmxS2(dst), toMmxS2(src));
 }
-/*
+
 void JitArmV8CodeGen::andnpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.andnps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.bic(toSse128(dst), toSse128(src), toSse128(dst));
 }
 
 void JitArmV8CodeGen::andpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.andps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.and_(toSse128(dst), toSse128(dst), toSse128(src));
 }
 
 void JitArmV8CodeGen::orpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.orps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.orr(toSse128(dst), toSse128(dst), toSse128(src));
 }
 
 void JitArmV8CodeGen::xorpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.xorps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.eor(toSse128(dst), toSse128(dst), toSse128(src));
 }
 
 void JitArmV8CodeGen::cvtpi2psXmmMmx(SSERegPtr dst, MMXRegPtr src) {
     // cvtpi2ps need to keep top 64-bits of the xmm dst
     SSERegPtr tmp = getTmpSSE();
-    x86.cvtdq2ps(X86Asm::XMM(tmp->hardwareReg()), getMMXReg(src));
-    x86.movsd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(tmp->hardwareReg()));
+    compiler.scvtf(toSseS2(tmp), toMmxS2(src));
+    compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
 }
 
 void JitArmV8CodeGen::cvtps2piMmxXmm(MMXRegPtr dst, SSERegPtr src) {
-    x86.cvtps2dq(getMMXReg(dst), X86Asm::XMM(src->hardwareReg()));
+    cvtps2pi(std::make_shared<SSERegInternal>(dst->hardwareReg(), 0xff), src, false);
 }
 
 void JitArmV8CodeGen::cvtsi2ssXmmR32(SSERegPtr dst, RegPtr src) {
-    x86.cvtsi2ss(X86Asm::XMM(dst->hardwareReg()), R32(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.ins(toSseS4(tmp, 0), R32(src));
+    compiler.scvtf(toSseS(tmp), toSseS(tmp));
+    compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0)); // need to maintain the high 96-bits
 }
 
 void JitArmV8CodeGen::cvtss2siR32Xmm(RegPtr dst, SSERegPtr src) {
-    x86.cvtss2si(R32(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    cvtps2pi(tmp, src, false);
+    compiler.umov(R32(dst), toSseS4(tmp, 0));
 }
 
 void JitArmV8CodeGen::cvttps2piMmxXmm(MMXRegPtr dst, SSERegPtr src) {
-    x86.cvttps2dq(getMMXReg(dst), X86Asm::XMM(src->hardwareReg()));
+    cvtps2pi(std::make_shared<SSERegInternal>(dst->hardwareReg(), 0xff), src, true);
 }
 
 void JitArmV8CodeGen::cvttss2siR32Xmm(RegPtr dst, SSERegPtr src) {
-    x86.cvttss2si(R32(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    cvtps2pi(tmp, src, true);
+    compiler.umov(R32(dst), toSseS4(tmp, 0));
 }
 
 void JitArmV8CodeGen::movhlpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.movhlps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.ins(toSseD2(dst, 0), toSseD2(src, 1));
 }
 
 void JitArmV8CodeGen::movlhpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.movlhps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.ins(toSseD2(dst, 1), toSseD2(src, 0));
 }
 
 void JitArmV8CodeGen::movssXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.movss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.ins(toSseS4(dst, 0), toSseS4(src, 0));
 }
 
-void JitArmV8CodeGen::shufpsXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
-    x86.shufps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()), (U8)imm);
+void JitArmV8CodeGen::shufpsXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    SSERegPtr tmp = getTmpSSE();
+    
+    compiler.ins(toSseS4(tmp, 0), toSseS4(dst, mask & 3));
+    compiler.ins(toSseS4(tmp, 1), toSseS4(dst, (mask >> 2) & 3));
+    compiler.ins(toSseS4(tmp, 2), toSseS4(src, (mask >> 4) & 3));
+    compiler.ins(toSseS4(tmp, 3), toSseS4(src, (mask >> 6) & 3));
+
+    compiler.mov(toSse128(dst), toSse128(tmp));
 }
 
 void JitArmV8CodeGen::cmppsXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
-    x86.cmpps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()), (U8)imm);
+    sseCmp(dst, dst, src, imm, toSseS4);
 }
 
 void JitArmV8CodeGen::cmpssXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
-    x86.cmpss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()), (U8)imm);
+    SSERegPtr tmp = getTmpSSE();
+    sseCmp(tmp, dst, src, imm, toSseS);
+    compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0));
 }
-*/
+
 void JitArmV8CodeGen::setFlags(RegPtr flags, U32 mask) {
     RegPtr maskedFlags = getTmpReg();
     if (asmjit::a64::Utils::is_logical_imm(mask, 32)) {
-        compiler.and_(R32(maskedFlags->hardwareReg()), R32(flags->hardwareReg()), mask);
+        compiler.and_(R32(maskedFlags), R32(flags), mask);
         compiler.and_(xFLAGS, xFLAGS, ~mask);
     } else {
         RegPtr maskReg = loadConst(mask);
-        compiler.and_(R32(maskedFlags->hardwareReg()), R32(flags->hardwareReg()), R32(maskReg->hardwareReg()));
-        compiler.mvn_(R32(maskReg->hardwareReg()), R32(maskReg->hardwareReg()));
-        compiler.and_(xFLAGS, xFLAGS, R32(maskReg->hardwareReg()));
+        compiler.and_(R32(maskedFlags), R32(flags), R32(maskReg));
+        compiler.mvn_(R32(maskReg), R32(maskReg));
+        compiler.and_(xFLAGS, xFLAGS, R32(maskReg));
     } 
-    compiler.orr(xFLAGS, xFLAGS, R32(maskedFlags->hardwareReg()));
+    compiler.orr(xFLAGS, xFLAGS, R32(maskedFlags));
     currentLazyFlags = FLAGS_NONE;
     storeLazyFlagType(FLAGS_NONE);
 }
 
 void JitArmV8CodeGen::writeFlags(RegPtr flags) {
-    compiler.mov(xFLAGS, R32(flags->hardwareReg()));
+    compiler.mov(xFLAGS, R32(flags));
 }
 
 RegPtr JitArmV8CodeGen::getFlagsInTmp(RegPtr tmp) {
     if (!tmp) {
         tmp = getTmpReg();
     }
-    compiler.mov(R32(tmp->hardwareReg()), xFLAGS);
+    compiler.mov(R32(tmp), xFLAGS);
     return tmp;
 }
 
@@ -3264,117 +3724,59 @@ RegPtr JitArmV8CodeGen::getLazyFlagType() {
 
 RegPtr JitArmV8CodeGen::getLazyFlagTypeInTmp() {
     RegPtr reg = getTmpReg();
-    compiler.mov(R32(reg->hardwareReg()), xFlagsType);
+    compiler.mov(R32(reg), xFlagsType);
     return reg;
 }
 
 RegPtr JitArmV8CodeGen::getReadOnlyFlags() {
     return std::make_shared<JitReg>(regFlags, 0xff);
 }
-/*
-void JitArmV8CodeGen::updateFlagsIfNecessary() {
-    U32 neededFlags = currentOp->needsToSetFlags(cpu);
-    if (neededFlags) {        
-        RegPtr flags = readCPU(JitWidth::b32, offsetof(CPU, flags));
-        RegPtr tmp = getTmpReg8();
-        
-        if (neededFlags == CF) {
-            movValue(JitWidth::b32, tmp, 0); // not xor, we don't want to affect flags
-            x86.setb(R8(tmp->hardwareReg()));
-            andValue(JitWidth::b32, flags, ~CF);
-            orReg(JitWidth::b32, flags, tmp);
-        } else if (neededFlags == ZF) {
-            movValue(JitWidth::b32, tmp, 0); // not xor, we don't want to affect flags
-            x86.setz(R8(tmp->hardwareReg()));
-            shlValue(JitWidth::b32, tmp, 6);
-            andValue(JitWidth::b32, flags, ~ZF);
-            orReg(JitWidth::b32, flags, tmp);
-        } else if (neededFlags == SF) {
-            movValue(JitWidth::b32, tmp, 0); // not xor, we don't want to affect flags
-            x86.sets(R8(tmp->hardwareReg()));
-            shlValue(JitWidth::b32, tmp, 7);
-            andValue(JitWidth::b32, flags, ~SF);
-            orReg(JitWidth::b32, flags, tmp);
-        } else if (neededFlags == OF) {
-            movValue(JitWidth::b32, tmp, 0); // not xor, we don't want to affect flags
-            x86.seto(R8(tmp->hardwareReg()));
-            shlValue(JitWidth::b32, tmp, 11);
-            andValue(JitWidth::b32, flags, ~OF);
-            orReg(JitWidth::b32, flags, tmp);
-        } else if (neededFlags == PF) {
-            movValue(JitWidth::b32, tmp, 0); // not xor, we don't want to affect flags
-            x86.setp(R8(tmp->hardwareReg()));
-            shlValue(JitWidth::b32, tmp, 2);
-            andValue(JitWidth::b32, flags, ~PF);
-            orReg(JitWidth::b32, flags, tmp);
-        } else {
-            bool savedEAX = false;
-
-            if (regUsed2[0] || regCache[0] == 0) {
-                x86.xchg(RN(0), RN(tmp->hardwareReg()));
-                savedEAX = true;
-            }
-            if (neededFlags & OF) {
-                x86.lahf();
-                x86.seto(R8(0));
-                x86.shl(R8(0), 3);
-                x86.xchg(R8(4), R8(0));
-            } else {
-                x86.lahf();
-                x86.shr(R16(0), 8);
-            }
-            // mask so we don't clobber DF
-            andValue(JitWidth::b32, flags, ~FMASK_TEST);
-            x86.or_(R16(flags->hardwareReg()), x86.ax);
-            if (savedEAX) {
-                x86.xchg(RN(0), RN(tmp->hardwareReg()));
-            }
-        }
-        writeCPU(JitWidth::b32, offsetof(CPU, flags), flags);
-        storeLazyFlags(FLAGS_NONE);
-        currentLazyFlags = FLAGS_NONE;
-    }
-}
 
 void JitArmV8CodeGen::comissXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.comiss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
-    updateFlagsIfNecessary();
+    comis(dst, src, toSseS);
 }
 
 void JitArmV8CodeGen::ucomissXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.ucomiss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
-    updateFlagsIfNecessary();
+    comis(dst, src, toSseS);
 }
 
 void JitArmV8CodeGen::stmxcsr(RegPtr address) {
-    x86.stmxcsr(X86Asm::Mem32(RN(address->hardwareReg()), 0));
+    RegPtr tmp = getTmpReg();
+    compiler.ldr(R32(tmp), createMem(regCPU, offsetof(CPU, mxcsr)));
+    compiler.str(R32(tmp), createMem(address, 0));
 }
 
 void JitArmV8CodeGen::ldmxcsr(RegPtr address) {
-    x86.ldmxcsr(X86Asm::Mem32(RN(address->hardwareReg()), 0));
+    RegPtr tmp = getTmpReg();
+    compiler.ldr(R32(tmp), createMem(address, 0));
+    compiler.str(R32(tmp), createMem(regCPU, offsetof(CPU, mxcsr)));
 }
 
 void JitArmV8CodeGen::sfence() {
-    x86.sfence();
+    compiler.dmb(asmjit::a64::Predicate::DB::kISH);
 }
 
 void JitArmV8CodeGen::unpckhpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.unpckhps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.zip2(toSseS4(dst), toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::unpcklpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.unpcklps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.zip1(toSseS4(dst), toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::movmskpsR32Xmm(RegPtr dst, SSERegPtr src) {
-    x86.movmskps(R32(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // cpu->reg[reg].u32 = (cpu->xmm[rm].pd.u32[0] >> 31) | ((cpu->xmm[rm].pd.u32[1] >> 31) << 1) | ((cpu->xmm[rm].pd.u32[2] >> 31) << 2) | ((cpu->xmm[rm].pd.u32[3] >> 31) << 3)
+    SSERegPtr vTmpReg = getTmpSSE();
+    SSERegPtr bitMaskReg = loadSSEConst(SSE_INT32_BIT_MASK);
+    compiler.sshr(toSseS4(vTmpReg), toSseS4(src), 31);
+    compiler.and_(toSse128(vTmpReg), toSse128(vTmpReg), toSse128(bitMaskReg));
+    compiler.addv(toSseS(vTmpReg), toSseS4(vTmpReg));
+    compiler.umov(R32(dst), toSseS4(vTmpReg, 0));
 }
-
-*/
 
 MMXRegPtr JitArmV8CodeGen::loadMMXFromReg(RegPtr src) {
     MMXRegPtr tmp = getTmpMMX();
-    compiler.fmov(toMmxS(tmp), R32(src->hardwareReg()));
+    compiler.fmov(toMmxS(tmp), R32(src));
     return tmp;
 }
 
@@ -3383,32 +3785,32 @@ void JitArmV8CodeGen::storeCpuMMXReg(MMXRegPtr reg, U32 index) {
 }
 
 void JitArmV8CodeGen::storeMMXToReg(MMXRegPtr src, RegPtr dst) {
-    compiler.umov(R32(dst->hardwareReg()), toMmxS4(src, 0));
+    compiler.umov(R32(dst), toMmxS4(src, 0));
 }
 
 MMXRegPtr JitArmV8CodeGen::loadCpuMMXReg(U8 index) {
     MMXRegPtr tmp = getTmpMMX();
-    compiler.ldr(toMmxD1(tmp), createMem(regCPU, index * cpu->fpu.sizeofRegInRegsArray() + offsetof(CPU, fpu.regs[0].signif)));
+    compiler.ldr(toMmxD(tmp), createMem(regCPU, index * cpu->fpu.sizeofRegInRegsArray() + offsetof(CPU, fpu.regs[0].signif)));
     return tmp;
 }
 
-MMXRegPtr JitArmV8CodeGen::loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+MMXRegPtr JitArmV8CodeGen::loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib) {
     MMXRegPtr tmp = getTmpMMX();
-    compiler.ldr(toMmxS2(tmp), createMem(rm, sib, 0, 0));
+    compiler.ldr(toMmxS(tmp), createMem(rm, sib, 0, 0));
     return tmp;
 }
 
-MMXRegPtr JitArmV8CodeGen::loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+MMXRegPtr JitArmV8CodeGen::loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib) {
     MMXRegPtr tmp = getTmpMMX();
-    compiler.ldr(toMmxD1(tmp), createMem(rm, sib, 0, 0));
+    compiler.ldr(toMmxD(tmp), createMem(rm, sib, 0, 0));
     return tmp;
 }
 
-void JitArmV8CodeGen::storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+void JitArmV8CodeGen::storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib) {
     compiler.str(toMmxS2(reg), createMem(rm, sib, 0, 0));
 }
 
-void JitArmV8CodeGen::storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+void JitArmV8CodeGen::storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib) {
     compiler.str(toMmxD1(reg), createMem(rm, sib, 0, 0));
 }
 
@@ -3670,544 +4072,768 @@ void JitArmV8CodeGen::punpckldqMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
     compiler.zip1(toMmxS2(dst), toMmxS2(dst), toMmxS2(src));
 }
 
-/*
-#ifdef BOXEDWINE_64
 void JitArmV8CodeGen::cvtsi2sdXmmR64(SSERegPtr dst, RegPtr src) {
-    x86.cvtsi2sd(X86Asm::XMM(dst->hardwareReg()), R64(src->hardwareReg()));
+    SSERegPtr tmpReg = getTmpSSE();
+
+    compiler.ins(toSseS4(tmpReg, 0), R32(src));
+    compiler.sxtl(toSseD2(tmpReg), toSseS2(tmpReg)); // convert S32 to S64
+    compiler.scvtf(toSseD(tmpReg), toSseD(tmpReg)); // convert S64 to Double
+    compiler.mov(toSseD2(dst, 0), toSseD2(tmpReg, 0));
 }
-#endif
 
 void JitArmV8CodeGen::addpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.addpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.fadd(toSseD2(dst), toSseD2(dst), toSseD2(src));
 }
 
 void JitArmV8CodeGen::addsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.addsd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.fadd(toSseD(tmp), toSseD(dst), toSseD(src));
+    compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
 }
 
 void JitArmV8CodeGen::subpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.subpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.fsub(toSseD2(dst), toSseD2(dst), toSseD2(src));
 }
 
 void JitArmV8CodeGen::subsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.subsd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.fsub(toSseD(tmp), toSseD(dst), toSseD(src));
+    compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
 }
 
 void JitArmV8CodeGen::mulpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.mulpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.fmul(toSseD2(dst), toSseD2(dst), toSseD2(src));
 }
 
 void JitArmV8CodeGen::mulsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.mulsd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.fmul(toSseD(tmp), toSseD(dst), toSseD(src));
+    compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
 }
 
 void JitArmV8CodeGen::divpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.divpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.fdiv(toSseD2(dst), toSseD2(dst), toSseD2(src));
 }
 
 void JitArmV8CodeGen::divsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.divsd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.fdiv(toSseD(tmp), toSseD(dst), toSseD(src));
+    compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
 }
 
 void JitArmV8CodeGen::maxpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.maxpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    fmax(dst, dst, src, toSseD2);
 }
 
 void JitArmV8CodeGen::maxsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.maxsd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    fmax(tmp, dst, src, toSseD);
+    compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
 }
 
 void JitArmV8CodeGen::minpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.minpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    fmin(dst, dst, src, toSseD2);
 }
 
 void JitArmV8CodeGen::minsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.minsd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    fmin(tmp, dst, src, toSseD);
+    compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
 }
 
 void JitArmV8CodeGen::paddbXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.paddb(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.add(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::paddwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.paddw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.add(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::padddXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.paddd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.add(toSseS4(dst), toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::paddqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.paddq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.add(toSseD2(dst), toSseD2(dst), toSseD2(src));
 }
 
 void JitArmV8CodeGen::paddsbXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.paddsb(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.sqadd(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::paddswXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.paddsw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.sqadd(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::paddusbXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.paddusb(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.uqadd(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::padduswXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.paddusw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.uqadd(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::psubbXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psubb(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.sub(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::psubwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psubw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.sub(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::psubdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psubd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.sub(toSseS4(dst), toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::psubqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psubq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.sub(toSseD2(dst), toSseD2(dst), toSseD2(src));
 }
 
 void JitArmV8CodeGen::psubsbXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psubsb(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.sqsub(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::psubswXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psubsw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.sqsub(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::psubusbXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psubusb(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.uqsub(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::psubuswXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psubusw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.uqsub(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::pmaddwdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pmaddwd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr vTmpReg1 = getTmpSSE();
+    SSERegPtr vTmpReg2 = getTmpSSE();
+
+    // multiply bottom 4x 16-bit numbers and put them into 4x 32-bit number in vTmpReg1
+    compiler.smull(toSseS4(vTmpReg1), toSseH4(dst), toSseH4(src));
+
+    // multiply top 4x 16-bit numbers and put them into 4x 32-bit number in vTmpReg2
+    compiler.smull2(toSseS4(vTmpReg2), toSseH8(dst), toSseH8(src));
+
+    compiler.addp(toSseS4(dst), toSseS4(vTmpReg1), toSseS4(vTmpReg2));
 }
 
 void JitArmV8CodeGen::pmulhwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pmulhw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr vTmpReg1 = getTmpSSE();
+    SSERegPtr vTmpReg2 = getTmpSSE();
+
+    // high result of H0*H0, H1*H1, H2*H2 and H3*H3 will be in H1, H3, H5, H7
+    compiler.smull(toSseS4(vTmpReg1), toSseH4(dst), toSseH4(src));
+
+    // high result of H4*H4, H5*H5, H6*H6 and H7*H7 will be in H1, H3, H5, H7
+    compiler.smull2(toSseS4(vTmpReg2), toSseH8(dst), toSseH8(src));
+
+    compiler.uzp2(toSseH8(dst), toSseH8(vTmpReg1), toSseH8(vTmpReg2));
 }
 
 void JitArmV8CodeGen::pmullwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pmullw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.mul(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::pmuludqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pmuludq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // cpu->xmm[r1].pi.u64[0] = cpu->xmm[r1].pi.u32[0] * cpu->xmm[r2].pi.u32[0]
+    // cpu->xmm[r1].pi.u64[1] = cpu->xmm[r1].pi.u32[2] * cpu->xmm[r2].pi.u32[2]
+    SSERegPtr vTmpReg1 = getTmpSSE();
+    SSERegPtr vTmpReg2 = getTmpSSE();
+
+    compiler.xtn(toSseS2(vTmpReg1), toSseS2(dst)); // mov index 2 to index 1 so that they are packed
+    compiler.xtn(toSseS2(vTmpReg2), toSseS2(src));
+    compiler.umull(toSseD2(dst), toSseS2(vTmpReg1), toSseS2(vTmpReg2));
 }
 
 void JitArmV8CodeGen::sqrtpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.sqrtpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.fsqrt(toSseD2(dst), toSseD2(src));
 }
 
 void JitArmV8CodeGen::sqrtsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.sqrtsd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.fsqrt(toSse64(tmp), toSse64(src));
+    compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0));
 }
 
 void JitArmV8CodeGen::andnpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.andnpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.bic(toSse128(dst), toSse128(src), toSse128(dst));
 }
 
 void JitArmV8CodeGen::andpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.andpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.and_(toSse128(dst), toSse128(dst), toSse128(src));
 }
 
 void JitArmV8CodeGen::pandXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pand(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.and_(toSse128(dst), toSse128(dst), toSse128(src));
 }
 
 void JitArmV8CodeGen::pandnXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pandn(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.bic(toSse128(dst), toSse128(src), toSse128(dst));
 }
 
 void JitArmV8CodeGen::porXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.por(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.orr(toSse128(dst), toSse128(dst), toSse128(src));
 }
 
+// Shift xmm1 left by imm8 BYTES while shifting in 0s.
 void JitArmV8CodeGen::pslldqXmm(SSERegPtr dst, U32 imm) {
-    x86.pslldq(X86Asm::XMM(dst->hardwareReg()), imm);
+    if (imm > 15) {
+        compiler.movi(toSseD2(dst), 0);
+    } else {
+        SSERegPtr vTmpReg = getTmpSSE();
+        compiler.movi(toSseD2(vTmpReg), 0);
+        compiler.ext(toSseB16(dst), toSseB16(vTmpReg), toSseB16(dst), 16 - imm);
+    }
 }
 
 void JitArmV8CodeGen::psllqXmm(SSERegPtr dst, U32 imm) {
-    x86.psllq(X86Asm::XMM(dst->hardwareReg()), imm);
+    compiler.shl(toSseD2(dst), toSseD2(dst), imm);
 }
 
 void JitArmV8CodeGen::pslldXmm(SSERegPtr dst, U32 imm) {
-    x86.pslld(X86Asm::XMM(dst->hardwareReg()), imm);
+    compiler.shl(toSseS4(dst), toSseS4(dst), imm);
 }
 
 void JitArmV8CodeGen::psllwXmm(SSERegPtr dst, U32 imm) {
-    x86.psllw(X86Asm::XMM(dst->hardwareReg()), imm);
+    compiler.shl(toSseH8(dst), toSseH8(dst), imm);
 }
 
 void JitArmV8CodeGen::psradXmm(SSERegPtr dst, U32 imm) {
-    x86.psrad(X86Asm::XMM(dst->hardwareReg()), imm);
+    compiler.sshr(toSseS4(dst), toSseS4(dst), imm);
 }
 
 void JitArmV8CodeGen::psrawXmm(SSERegPtr dst, U32 imm) {
-    x86.psraw(X86Asm::XMM(dst->hardwareReg()), imm);
+    compiler.sshr(toSseH8(dst), toSseH8(dst), imm);
 }
 
 void JitArmV8CodeGen::psrldqXmm(SSERegPtr dst, U32 imm) {
-    x86.psrldq(X86Asm::XMM(dst->hardwareReg()), imm);
+    if (imm > 15) {
+        compiler.movi(toSseD2(dst), 0);
+    } else {
+        SSERegPtr vTmpReg = getTmpSSE();
+        compiler.movi(toSseD2(vTmpReg), 0);
+        compiler.ext(toSseB16(dst), toSseB16(dst), toSseB16(vTmpReg), imm);
+    }
 }
 
 void JitArmV8CodeGen::psrlqXmm(SSERegPtr dst, U32 imm) {
-    x86.psrlq(X86Asm::XMM(dst->hardwareReg()), imm);
+    compiler.ushr(toSseD2(dst), toSseD2(dst), imm);
 }
 
 void JitArmV8CodeGen::psrldXmm(SSERegPtr dst, U32 imm) {
-    x86.psrld(X86Asm::XMM(dst->hardwareReg()), imm);
+    compiler.ushr(toSseS4(dst), toSseS4(dst), imm);
 }
 
 void JitArmV8CodeGen::psrlwXmm(SSERegPtr dst, U32 imm) {
-    x86.psrlw(X86Asm::XMM(dst->hardwareReg()), imm);
+    compiler.ushr(toSseH8(dst), toSseH8(dst), imm);
 }
 
 void JitArmV8CodeGen::psllqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psllq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.dup(toSseD2(tmp), toSseD2(src, 0));
+    compiler.ushl(toSseD2(dst), toSseD2(dst), toSseD2(tmp));
 }
 
 void JitArmV8CodeGen::pslldXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pslld(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.dup(toSseS4(tmp), toSseS4(src, 0));
+    compiler.ushl(toSseS4(dst), toSseS4(dst), toSseS4(tmp));
 }
 
 void JitArmV8CodeGen::psllwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psllw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = getTmpSSE();
+    compiler.dup(toSseH8(tmp), toSseH8(src, 0));
+    compiler.ushl(toSseH8(dst), toSseH8(dst), toSseH8(tmp));
 }
 
 void JitArmV8CodeGen::psradXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psrad(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // negative values in src means shift right for sshl
+    SSERegPtr tmp = getTmpSSE();
+    compiler.dup(toSseS4(tmp), toSseS4(src, 0));
+    compiler.neg(toSseS4(tmp), toSseS4(tmp));
+    compiler.sshl(toSseS4(dst), toSseS4(dst), toSseS4(tmp));
 }
 
 void JitArmV8CodeGen::psrawXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psraw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // negative values in src means shift right for sshl
+    SSERegPtr tmp = getTmpSSE();
+    compiler.dup(toSseH8(tmp), toSseH8(src, 0));
+    compiler.neg(toSseH8(tmp), toSseH8(tmp));
+    compiler.sshl(toSseH8(dst), toSseH8(dst), toSseH8(tmp));
 }
 
 void JitArmV8CodeGen::psrlqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psrlq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // negative values in src means shift right for ushl
+    SSERegPtr tmp = getTmpSSE();
+    compiler.dup(toSseD2(tmp), toSseD2(src, 0));
+    compiler.neg(toSseD2(tmp), toSseD2(tmp));
+    compiler.ushl(toSseD2(dst), toSseD2(dst), toSseD2(tmp));
 }
 
 void JitArmV8CodeGen::psrldXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psrld(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // negative values in src means shift right for ushl
+    SSERegPtr tmp = getTmpSSE();
+    compiler.dup(toSseS4(tmp), toSseS4(src, 0));
+    compiler.neg(toSseS4(tmp), toSseS4(tmp));
+    compiler.ushl(toSseS4(dst), toSseS4(dst), toSseS4(tmp));
 }
 
 void JitArmV8CodeGen::psrlwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psrlw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // negative values in src means shift right for ushl
+    SSERegPtr tmp = getTmpSSE();
+    compiler.dup(toSseH8(tmp), toSseH8(src, 0));
+    compiler.neg(toSseH8(tmp), toSseH8(tmp));
+    compiler.ushl(toSseH8(dst), toSseH8(dst), toSseH8(tmp));
 }
 
 void JitArmV8CodeGen::pxorXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pxor(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.eor(toSse128(dst), toSse128(dst), toSse128(src));
 }
 
 void JitArmV8CodeGen::orpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.orpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.orr(toSse128(dst), toSse128(dst), toSse128(src));
 }
 
 void JitArmV8CodeGen::xorpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.xorpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.eor(toSse128(dst), toSse128(dst), toSse128(src));
 }
 
 void JitArmV8CodeGen::cmppdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
-    x86.cmppd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()), (U8)imm);
+    sseCmp(dst, dst, src, imm, toSseD2);
 }
 
 void JitArmV8CodeGen::cmpsdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
-    x86.cmpsd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()), (U8)imm);
+    SSERegPtr tmp = getTmpSSE();
+    sseCmp(tmp, dst, src, imm, toSseD);
+    compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0));
 }
 
 void JitArmV8CodeGen::comisdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.comisd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
-    updateFlagsIfNecessary();
+    comis(dst, src, toSseD);
 }
 
 void JitArmV8CodeGen::ucomisdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.ucomisd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
-    updateFlagsIfNecessary();
+    comis(dst, src, toSseD);
 }
 
 void JitArmV8CodeGen::pcmpgtbXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pcmpgtb(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.cmgt(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::pcmpgtwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pcmpgtw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.cmgt(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::pcmpgtdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pcmpgtd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.cmgt(toSseS4(dst), toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::pcmpeqbXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pcmpeqb(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.cmeq(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::pcmpeqwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pcmpeqw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.cmeq(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::pcmpeqdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pcmpeqd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.cmeq(toSseS4(dst), toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::cvtdq2pdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.cvtdq2pd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // cpu->xmm[reg].pd.f64[0] = (double)cpu->xmm[rm].pi.i32[0];
+    // cpu->xmm[reg].pd.f64[1] = (double)cpu->xmm[rm].pi.i32[1];
+    compiler.sxtl(toSseD2(dst), toSseS2(src)); // convert 32-bit to 64-bit integer
+    compiler.scvtf(toSseD2(dst), toSseD2(dst)); // convert 64-bit integer to Double
 }
 
 void JitArmV8CodeGen::cvtdq2psXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.cvtdq2ps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // cpu->xmm[reg].ps.f32[0] = (float)cpu->xmm[rm].pi.i32[0];
+    // cpu->xmm[reg].ps.f32[1] = (float)cpu->xmm[rm].pi.i32[1];
+    // cpu->xmm[reg].ps.f32[2] = (float)cpu->xmm[rm].pi.i32[2];
+    // cpu->xmm[reg].ps.f32[3] = (float)cpu->xmm[rm].pi.i32[3];
+    compiler.scvtf(toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::cvtpd2piMmxXmm(MMXRegPtr dst, SSERegPtr src) {
-    x86.cvtpd2dq(getMMXReg(dst), X86Asm::XMM(src->hardwareReg()));
+    cvtpd2pi(std::make_shared<SSERegInternal>(dst->hardwareReg(), 0xff), src, false);
 }
 
 void JitArmV8CodeGen::cvtpi2pdXmmMmx(SSERegPtr dst, MMXRegPtr src) {
-    x86.cvtdq2pd(X86Asm::XMM(dst->hardwareReg()), getMMXReg(src));
+    // cpu->xmm[reg].pd.f64[0] = cpu->reg_mmx[reg].sd.d0;
+    // cpu->xmm[reg].pd.f64[1] = cpu->reg_mmx[reg].sd.d1;   
+    
+    compiler.sxtl(toSseD2(dst), toMmxS2(src));
+    compiler.scvtf(toSseD2(dst), toSseD2(dst));
 }
 
 void JitArmV8CodeGen::cvtpd2dqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.cvtpd2dq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    cvtpd2pi(dst, src, false);
 }
 
 void JitArmV8CodeGen::cvtpd2psXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.cvtpd2ps(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // cpu->xmm[reg].ps.f32[0] = (float)cpu->xmm[rm].pd.f64[0];
+    // cpu->xmm[reg].ps.f32[1] = (float)cpu->xmm[rm].pd.f64[1];
+    // cpu->xmm[reg].pi.u32[2] = 0
+    // cpu->xmm[reg].pi.u32[3] = 0
+    compiler.fcvtn(toSseS2(dst), toSseD2(src)); // :TODO: what about rounding
 }
 
 void JitArmV8CodeGen::cvttpd2piMmxXmm(MMXRegPtr dst, SSERegPtr src) {
-    x86.cvttpd2dq(getMMXReg(dst), X86Asm::XMM(src->hardwareReg()));
+    cvtpd2pi(std::make_shared<SSERegInternal>(dst->hardwareReg(), 0xff), src, true);
 }
 
 void JitArmV8CodeGen::cvtps2dqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.cvtps2dq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    cvtps2pi(dst, src, false);
 }
 
 void JitArmV8CodeGen::cvtps2pdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.cvtps2pd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.fcvtl(toSseD2(dst), toSseS2(src));
 }
 
 void JitArmV8CodeGen::cvtsd2siR32Xmm(RegPtr dst, SSERegPtr src) {
-    x86.cvtsd2si(R32(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    cvtsd2si(dst, src, false);
 }
 
 void JitArmV8CodeGen::cvtsd2ssXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.cvtsd2ss(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmpReg = getTmpSSE();
+    compiler.fcvtn(toSseS2(tmpReg), toSseD2(src));
+    compiler.ins(toSseS4(dst, 0), toSseS4(tmpReg, 0));
 }
 
 void JitArmV8CodeGen::cvtsi2sdXmmR32(SSERegPtr dst, RegPtr src) {
-    x86.cvtsi2sd(X86Asm::XMM(dst->hardwareReg()), R32(src->hardwareReg()));
+    // cpu->xmm[reg].pd.f64[0] = cpu->reg[rm].u32;
+    SSERegPtr tmpReg = getTmpSSE();
+    compiler.ins(toSseS4(tmpReg, 0), R32(src));
+    compiler.sxtl(toSseD2(tmpReg), toSseS2(tmpReg));
+    compiler.scvtf(toSseD(tmpReg), toSseD(tmpReg));
+    compiler.ins(toSseD2(dst, 0), toSseD2(tmpReg, 0));
 }
 
 void JitArmV8CodeGen::cvtss2sdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.cvtss2sd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // cpu->xmm[reg].pd.f64[0] = (float)cpu->xmm[rm].ps.f32[0];
+    SSERegPtr tmpReg = getTmpSSE(); 
+    compiler.fcvt(toSseD(tmpReg), toSseS(src));
+    compiler.ins(toSseD2(dst, 0), toSseD2(tmpReg, 0));
 }
 
 void JitArmV8CodeGen::cvttpd2dqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.cvttpd2dq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // cpu->xmm[reg].pi.s32[0] = (S32)cpu->xmm[rm].pd.f64[0];
+    // cpu->xmm[reg].pi.s32[1] = (S32)cpu->xmm[rm].pd.f64[1];
+    // cpu->xmm[reg].pi.u32[2] = 0
+    // cpu->xmm[reg].pi.u32[3] = 0
+    cvtpd2pi(dst, src, true);
 }
 
 void JitArmV8CodeGen::cvttps2dqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.cvttps2dq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    cvtps2pi(dst, src, true);
 }
 
 void JitArmV8CodeGen::cvttsd2siR32Xmm(RegPtr dst, SSERegPtr src) {
-    x86.cvttsd2si(R32(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    cvtsd2si(dst, src, true);
 }
 
 void JitArmV8CodeGen::movsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.movsd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.ins(toSseD2(dst, 0), toSseD2(src, 0));
 }
 
 void JitArmV8CodeGen::movupdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.movdqu(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.mov(toSseD2(dst), toSseD2(src));
 }
 
 void JitArmV8CodeGen::movmskpd(RegPtr dst, SSERegPtr src) {
-    x86.movmskpd(R32(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // cpu->reg[reg].u32 = (cpu->xmm[rm].pd.u64[0] >> 63) | ((cpu->xmm[rm].pd.u64[1] >> 63) << 1)
+    SSERegPtr vTmpReg = getTmpSSE();
+    RegPtr tmpReg = getTmpReg();
+
+    compiler.ushr(toSseD2(vTmpReg), toSseD2(src), 63);
+    compiler.umov(R32(dst), toSseS4(vTmpReg, 0));
+    compiler.umov(R32(tmpReg), toSseS4(vTmpReg, 2));
+    compiler.lsl(R32(tmpReg), R32(tmpReg), 1);
+    compiler.orr(R32(dst), R32(dst), R32(tmpReg));
 }
 
 void JitArmV8CodeGen::movd(RegPtr dst, SSERegPtr src) {
-    x86.movd(R32(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.umov(R32(dst), toSseS4(src, 0));
 }
 
 void JitArmV8CodeGen::movd(SSERegPtr dst, RegPtr src) {
-    x86.movd(X86Asm::XMM(dst->hardwareReg()), R32(src->hardwareReg()));
+    // couldn't see a way to do this in 1 instruction, "mov s0, w0" is not valid
+    compiler.ins(toSseS4(dst, 0), R32(src));
+    compiler.mov(toSseS(dst), toSseS4(dst, 0));
 }
 
 void JitArmV8CodeGen::movdq2q(MMXRegPtr dst, SSERegPtr src) {
-    x86.movq(getMMXReg(dst), X86Asm::XMM(src->hardwareReg()));
+    compiler.mov(toMmxD(dst), toSseD2(src, 0));
 }
 
 void JitArmV8CodeGen::movq2dq(SSERegPtr dst, MMXRegPtr src) {
-    x86.movq(X86Asm::XMM(dst->hardwareReg()), getMMXReg(src));
+    compiler.mov(toSseD(dst), toMmxD1(src));
 }
 
 void JitArmV8CodeGen::movq(SSERegPtr dst, SSERegPtr src) {
-    x86.movq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // cpu->xmm[reg].pi.u64[0] = cpu->xmm[rm].pi.u64[0];
+    // cpu->xmm[reg].pi.u64[1] = 0;
+    compiler.mov(toSseD(dst), toSseD2(src, 0));
 }
 
 void JitArmV8CodeGen::maskmovdqu(SSERegPtr src, SSERegPtr mask, RegPtr address) {
-    x86.push(RN(7));
-    x86.mov(RN(7), RN(address->hardwareReg()));
-    x86.maskmovdqu(X86Asm::XMM(src->hardwareReg()), X86Asm::XMM(mask->hardwareReg()));
-    x86.pop(RN(7));
+    // maskmovdqu xmm1, xmm2
+    // this will mov xmm1[i] to DS:EDI[i] if (xmm2[i] & 80)
+    SSERegPtr vTmpReg = getTmpSSE();
+    SSERegPtr vTmpRegMask = getTmpSSE();
+
+    compiler.ldr(toSse128(vTmpReg), Mem(R64(address)));
+    compiler.sshr(toSseB16(vTmpRegMask), toSseB16(mask), 7);
+    compiler.bsl(toSseB16(vTmpRegMask), toSseB16(src), toSseB16(vTmpReg));
+    compiler.str(toSse128(vTmpRegMask), Mem(R64(address)));
 }
 
-void JitArmV8CodeGen::pshufdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
-    x86.pshufd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()), imm);
+void JitArmV8CodeGen::pshufdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    SSERegPtr tmp = dst;
+
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        tmp = getTmpSSE();
+    }
+    compiler.ins(toSseS4(tmp, 0), toSseS4(src, mask & 3));
+    compiler.ins(toSseS4(tmp, 1), toSseS4(src, (mask >> 2) & 3));
+    compiler.ins(toSseS4(tmp, 2), toSseS4(src, (mask >> 4) & 3));
+    compiler.ins(toSseS4(tmp, 3), toSseS4(src, (mask >> 6) & 3));
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        compiler.mov(toSse128(dst), toSse128(tmp));
+    }
 }
 
-void JitArmV8CodeGen::pshufhwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
-    x86.pshufhw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()), imm);
+// from spec: The low quadword of the source operand is copied to the low quadword of the destination operand, for each 128-bit lane.
+void JitArmV8CodeGen::pshufhwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    SSERegPtr tmp = dst;
+
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        tmp = getTmpSSE();
+    }
+    compiler.ins(toSseH8(tmp, 4), toSseH8(src, 4 + (mask & 3)));
+    compiler.ins(toSseH8(tmp, 5), toSseH8(src, 4 + ((mask >> 2) & 3)));
+    compiler.ins(toSseH8(tmp, 6), toSseH8(src, 4 + ((mask >> 4) & 3)));
+    compiler.ins(toSseH8(tmp, 7), toSseH8(src, 4 + ((mask >> 6) & 3)));
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        compiler.ins(toSseD2(dst, 1), toSseD2(tmp, 1));
+    } else {
+        compiler.ins(toSseD2(dst, 0), toSseD2(src, 0));
+    }
 }
 
-void JitArmV8CodeGen::pshuflwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
-    x86.pshuflw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()), imm);
+// from spec: The high quadword of the source operand is copied to the high quadword of the destination operand
+void JitArmV8CodeGen::pshuflwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    SSERegPtr tmp = dst;
+
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        tmp = getTmpSSE();
+    }
+    compiler.ins(toSseH8(tmp, 0), toSseH8(src, (mask & 3)));
+    compiler.ins(toSseH8(tmp, 1), toSseH8(src, (mask >> 2) & 3));
+    compiler.ins(toSseH8(tmp, 2), toSseH8(src, (mask >> 4) & 3));
+    compiler.ins(toSseH8(tmp, 3), toSseH8(src, (mask >> 6) & 3));
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0));
+    } else {
+        compiler.ins(toSseD2(dst, 1), toSseD2(src, 1));
+    }
 }
 
-void JitArmV8CodeGen::shufpdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
-    x86.shufpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()), imm);
+void JitArmV8CodeGen::shufpdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    // r.f64[0] = ((imm8 & 1) == 0) ? a.f64[0] : a.f64[1];
+    // r.f64[1] = ((imm8 & 2) == 0) ? b.f64[0] : b.f64[1];
+    SSERegPtr tmp = dst;
+
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        tmp = getTmpSSE();
+    }
+    compiler.ins(toSseD2(tmp, 0), toSseD2(dst, mask & 1));
+    compiler.ins(toSseD2(tmp, 1), toSseD2(src, (mask >> 1) & 1));
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        compiler.mov(toSse128(dst), toSse128(tmp));
+    }
 }
 
 void JitArmV8CodeGen::unpckhpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.unpckhpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.zip2(toSseD2(dst), toSseD2(dst), toSseD2(src));
 }
 
 void JitArmV8CodeGen::unpcklpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.unpcklpd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // cpu->xmm[reg].pd.u64[0] = cpu->xmm[reg].pd.u64[0];
+    // cpu->xmm[reg].pd.u64[1] = cpu->xmm[rm].pd.u64[0];
+    compiler.ins(toSseD2(dst, 1), toSseD2(src, 0));
 }
 
 void JitArmV8CodeGen::punpckhbwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.punpckhbw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.zip2(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::punpckhwdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.punpckhwd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.zip2(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::punpckhdqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.punpckhdq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.zip2(toSseS4(dst), toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::punpckhqdqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.punpckhqdq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.zip2(toSseD2(dst), toSseD2(dst), toSseD2(src));
 }
 
 void JitArmV8CodeGen::punpcklbwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.punpcklbw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.zip1(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::punpcklwdXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.punpcklwd(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.zip1(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::punpckldqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.punpckldq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.zip1(toSseS4(dst), toSseS4(dst), toSseS4(src));
 }
 
 void JitArmV8CodeGen::punpcklqdqXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.punpcklqdq(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.zip1(toSseD2(dst), toSseD2(dst), toSseD2(src));
 }
 
 void JitArmV8CodeGen::packssdwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.packssdw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = dst;
+
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        tmp = getTmpSSE();
+    }
+    compiler.sqxtn(toSseH4(tmp), toSseS4(dst));
+    compiler.sqxtn2(toSseH8(tmp), toSseS4(src));
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        compiler.mov(toSse128(dst), toSse128(tmp));
+    }
 }
 
 void JitArmV8CodeGen::packsswbXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.packsswb(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = dst;
+
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        tmp = getTmpSSE();
+    }
+    compiler.sqxtn(toSseB8(tmp), toSseH8(dst));
+    compiler.sqxtn2(toSseB16(tmp), toSseH8(src));
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        compiler.mov(toSse128(dst), toSse128(tmp));
+    }
 }
 
 void JitArmV8CodeGen::packuswbXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.packuswb(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr tmp = dst;
+
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        tmp = getTmpSSE();
+    }
+    compiler.sqxtun(toSseB8(tmp), toSseH8(dst));
+    compiler.sqxtun2(toSseB16(tmp), toSseH8(src));
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        compiler.mov(toSse128(dst), toSse128(tmp));
+    }
 }
 
 void JitArmV8CodeGen::pavgbXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pavgb(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.urhadd(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::pavgwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pavgw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.urhadd(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::psadbwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.psadbw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.uabd(toSseB16(dst), toSseB16(dst), toSseB16(src));
+    compiler.uaddlp(toSseH8(dst), toSseB16(dst));
+    compiler.uaddlp(toSseS4(dst), toSseH8(dst));
+    compiler.uaddlp(toSseD2(dst), toSseS4(dst));
 }
 
 void JitArmV8CodeGen::pmaxswXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pmaxsw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.smax(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::pmaxubXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pmaxub(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.umax(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::pminswXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pminsw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.smin(toSseH8(dst), toSseH8(dst), toSseH8(src));
 }
 
 void JitArmV8CodeGen::pminubXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pminub(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    compiler.umin(toSseB16(dst), toSseB16(dst), toSseB16(src));
 }
 
 void JitArmV8CodeGen::pmulhuwXmmXmm(SSERegPtr dst, SSERegPtr src) {
-    x86.pmulhuw(X86Asm::XMM(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    SSERegPtr vTmpReg1 = getTmpSSE();
+    SSERegPtr vTmpReg2 = getTmpSSE();
+    // high result of H0*H0, H1*H1, H2*H2 and H3*H3 will be in H1, H3, H5, H7
+    compiler.umull(toSseS4(vTmpReg1), toSseH4(dst), toSseH4(src));
+    // high result of H4*H4, H5*H5, H6*H6 and H7*H7 will be in H1, H3, H5, H7
+    compiler.umull2(toSseS4(vTmpReg2), toSseH8(dst), toSseH8(src));
+    compiler.uzp2(toSseH8(dst), toSseH8(vTmpReg1), toSseH8(vTmpReg2));
 }
 
 void JitArmV8CodeGen::lfence() {
-    x86.lfence();
+    // :TODO: is a full barrier necessary (dmb ishld)
+    compiler.dmb(asmjit::a64::Predicate::DB::kISH);
 }
 
 void JitArmV8CodeGen::mfence() {
-    x86.mfence();
+    compiler.dmb(asmjit::a64::Predicate::DB::kISH);
 }
 
-void JitArmV8CodeGen::clflush(RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    x86.clflush(X86Asm::Mem8(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp));
+void JitArmV8CodeGen::clflush(RegPtr address) {  
+    // might need some work on this
+    compiler.dc(asmjit::a64::Predicate::DC::kCVAC, R64(address));
 }
 
 void JitArmV8CodeGen::pause() {
-    x86.pause();
+    compiler.yield();
 }
 
 void JitArmV8CodeGen::pextrwR32Xmm(RegPtr dst, SSERegPtr src, U32 imm) {
-    x86.pextrw(R32(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()), (U8)imm);
+    compiler.umov(R32(dst), toSseH8(src, imm & 7));
 }
 
 void JitArmV8CodeGen::pinsrwXmmR32(SSERegPtr dst, RegPtr src, U32 imm) {
-    x86.pinsrw(X86Asm::XMM(dst->hardwareReg()), R32(src->hardwareReg()), (U8)imm);
+    compiler.ins(toSseH8(dst, imm & 7), R32(src));
 }
 
 void JitArmV8CodeGen::pmovmskbR32Xmm(RegPtr dst, SSERegPtr src) {
-    x86.pmovmskb(R32(dst->hardwareReg()), X86Asm::XMM(src->hardwareReg()));
+    // for all 16 bytes set a bit in a mask if it is signed
+    SSERegPtr vTmpReg = getTmpSSE();
+
+    SSERegPtr bitMaskReg = loadSSEConst(SSE_BYTE8_BIT_MASK);
+    // turn all the bits to 1 if signed
+    compiler.sshr(toSseB16(vTmpReg), toSseB16(src), 7);
+    // mask out the bit that should be set, so index 0 will set bit 0, index 1 will set bit 1, etc
+    compiler.and_(toSseB16(vTmpReg), toSseB16(vTmpReg), toSseB16(bitMaskReg));
+
+    SSERegPtr vTmpReg2 = getTmpSSE();
+    compiler.dup(toSseD2(vTmpReg2), toSseD2(vTmpReg, 1));
+
+    compiler.addv(toSseB(vTmpReg), toSseB8(vTmpReg));
+    compiler.addv(toSseB(vTmpReg2), toSseB8(vTmpReg2));
+    
+    RegPtr tmpReg = getTmpReg();
+    RegPtr tmpReg2 = getTmpReg();
+
+    compiler.umov(R32(tmpReg), toSseB16(vTmpReg, 0));
+    compiler.umov(R32(tmpReg2), toSseB16(vTmpReg2, 0));
+    compiler.add(R32(dst), R32(tmpReg), R32(tmpReg2), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 8)));
 }
 
-*/
-
-asmjit::a64::Vec toVec(FPURegPtr reg) {
-    return asmjit::a64::Vec::make_d(reg->hardwareReg());
+Vec toVec(FPURegPtr reg) {
+    return Vec::make_d(reg->hardwareReg());
 }
 
-asmjit::a64::Vec toVec32(FPURegPtr reg) {
-    return asmjit::a64::Vec::make_s(reg->hardwareReg());
-}
-
-void JitArmV8CodeGen::dynamic_FNINIT(DecodedOp* op) {
-    JitFPU::dynamic_FNINIT(op);
-    fpuRoundingMode = ROUND_Nearest;
-}
-
-bool JitArmV8CodeGen::shouldContinueCompilingAfterOp(DecodedOp* op) {
-    // end a compile chain when an instruction that sets fpu rounding is called, this way it will be set in cpu->fpu.round when we compile what comes after in the next block
-    return op->inst != FLDCW && op->inst != FRSTOR && op->inst != Fxrstor;
+Vec toVec32(FPURegPtr reg) {
+    return Vec::make_s(reg->hardwareReg());
 }
 
 void JitArmV8CodeGen::updateFPURounding() {
@@ -4229,66 +4855,74 @@ void JitArmV8CodeGen::loadCpuFpuRegConst(FPURegPtr reg, U32 offset) {
 }
 
 RegPtr JitArmV8CodeGen::fpuRegToInt32(FPURegPtr fpuRegSrc, bool truncate) {
+    return fpuRegToInt(fpuRegSrc, truncate, false);
+}
+
+RegPtr JitArmV8CodeGen::fpuRegToInt(FPURegPtr fpuRegSrc, bool truncate, bool is64) {
     RegPtr result = getTmpReg();
-    if (truncate) {
-        compiler.fcvtzs(R32(result->hardwareReg()), toVec(fpuRegSrc));
+    asmjit::a64::Gp resultReg;
+
+    if (is64) {
+        resultReg = R64(result);
     } else {
-        if (fpuRoundingMode == ROUND_Nearest) {
-            compiler.fcvtns(R32(result->hardwareReg()), toVec(fpuRegSrc));
-        } else if (fpuRoundingMode == ROUND_Down) {
-            compiler.fcvtms(R32(result->hardwareReg()), toVec(fpuRegSrc));
-        } else if (fpuRoundingMode == ROUND_Up) {
-            compiler.fcvtps(R32(result->hardwareReg()), toVec(fpuRegSrc));
-        } else if (fpuRoundingMode == ROUND_Chop) {
-            compiler.fcvtzs(R32(result->hardwareReg()), toVec(fpuRegSrc));
-        }
+        resultReg = R32(result);
+    }
+    if (truncate) {
+        compiler.fcvtzs(resultReg, toVec(fpuRegSrc));
+    } else {
+        RegPtr round = readCPU(JitWidth::b32, offsetof(CPU, fpu.round));
+        IfNot(JitWidth::b32, round); { // ROUND_Nearest
+            compiler.fcvtns(resultReg, toVec(fpuRegSrc));
+        } StartElse(); {
+            IfEqual(JitWidth::b32, round, ROUND_Down); {
+                compiler.fcvtms(resultReg, toVec(fpuRegSrc));
+            } StartElse(); {
+                IfEqual(JitWidth::b32, round, ROUND_Up); {
+                    compiler.fcvtps(resultReg, toVec(fpuRegSrc));
+                } StartElse(); {
+                    compiler.fcvtzs(resultReg, toVec(fpuRegSrc));
+                } EndIf();
+            } EndIf();
+        } EndIf();
     }
     return result;
 }
 
 void JitArmV8CodeGen::storeFPUToInt64(FPURegPtr src, RegPtr address, RegPtr offset, bool truncate) {
-    RegPtr result = getTmpReg();
-    if (truncate) {
-        compiler.fcvtzs(R64(result->hardwareReg()), toVec(src));
-    } else {
-        if (fpuRoundingMode == ROUND_Nearest) {
-            compiler.fcvtns(R64(result->hardwareReg()), toVec(src));
-        } else if (fpuRoundingMode == ROUND_Down) {
-            compiler.fcvtms(R64(result->hardwareReg()), toVec(src));
-        } else if (fpuRoundingMode == ROUND_Up) {
-            compiler.fcvtps(R64(result->hardwareReg()), toVec(src));
-        } else if (fpuRoundingMode == ROUND_Chop) {
-            compiler.fcvtzs(R64(result->hardwareReg()), toVec(src));
-        }
-    }
+    RegPtr result = fpuRegToInt(src, truncate, true);
     write(JitWidth::b64, address, offset, 0, 0, result);
 }
 
 void JitArmV8CodeGen::roundFPUToInt64(FPURegPtr src) {
-    if (fpuRoundingMode == ROUND_Nearest) {
-        compiler.frintn(asmjit::a64::Vec::make_v64(src->hardwareReg()), toVec(src));
-    } else if (fpuRoundingMode == ROUND_Down) {
-        compiler.frintm(asmjit::a64::Vec::make_v64(src->hardwareReg()), toVec(src));
-    } else if (fpuRoundingMode == ROUND_Up) {
-        compiler.frintp(asmjit::a64::Vec::make_v64(src->hardwareReg()), toVec(src));
-    } else if (fpuRoundingMode == ROUND_Chop) {
-        compiler.frintz(asmjit::a64::Vec::make_v64(src->hardwareReg()), toVec(src));
-    }
+    RegPtr round = readCPU(JitWidth::b32, offsetof(CPU, fpu.round));
+    IfNot(JitWidth::b32, round); { // ROUND_Nearest
+        compiler.frintn(Vec::make_v64(src->hardwareReg()), toVec(src));
+    } StartElse(); {
+        IfEqual(JitWidth::b32, round, ROUND_Down); {
+            compiler.frintm(Vec::make_v64(src->hardwareReg()), toVec(src));
+        } StartElse(); {
+            IfEqual(JitWidth::b32, round, ROUND_Up); {
+                compiler.frintp(Vec::make_v64(src->hardwareReg()), toVec(src));
+            } StartElse(); {
+                compiler.frintz(Vec::make_v64(src->hardwareReg()), toVec(src));
+            } EndIf();
+        } EndIf();
+    } EndIf();
 }
 
 void JitArmV8CodeGen::storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width) {
     if (width == DYN_FPU_64_BIT) {
-        compiler.str(toVec(reg), Mem(R64(rm->hardwareReg()), R64(sib->hardwareReg())));
+        compiler.str(toVec(reg), Mem(R64(rm), R64(sib)));
     } else {
-        compiler.str(toVec32(reg), Mem(R64(rm->hardwareReg()), R64(sib->hardwareReg())));
+        compiler.str(toVec32(reg), Mem(R64(rm), R64(sib)));
     }
 }
 
 void JitArmV8CodeGen::loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width) {
     if (width == DYN_FPU_64_BIT) {
-        compiler.ldr(toVec(reg), Mem(R64(rm->hardwareReg()), R64(sib->hardwareReg())));
+        compiler.ldr(toVec(reg), Mem(R64(rm), R64(sib)));
     } else {
-        compiler.ldr(toVec32(reg), Mem(R64(rm->hardwareReg()), R64(sib->hardwareReg())));
+        compiler.ldr(toVec32(reg), Mem(R64(rm), R64(sib)));
     }
 }
 
@@ -4298,22 +4932,22 @@ void JitArmV8CodeGen::fpuRegExtend32To64(FPURegPtr dst, FPURegPtr src) {
 
 void JitArmV8CodeGen::fpuReg64To32(FPURegPtr dst, FPURegPtr src) {
     compiler.fcvt(toVec32(dst), toVec(src));
-    //compiler.fcvtn(asmjit::a64::Vec::make_v64_with_element_type(asmjit::a64::VecElementType::kS, dst->hardwareReg()), asmjit::a64::Vec::make_v128_with_element_type(asmjit::a64::VecElementType::kD, src->hardwareReg()));
+    //compiler.fcvtn(Vec::make_v64_with_element_type(VecElementType::kS, dst->hardwareReg()), Vec::make_v128_with_element_type(VecElementType::kD, src->hardwareReg()));
 }
 
 void JitArmV8CodeGen::loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib) {
     RegPtr tmp = getTmpReg();
     read(JitWidth::b32, tmp, rm, sib, 0, 0);
-    compiler.scvtf(toVec(reg), R32(tmp->hardwareReg())); // convert int64 to double
+    compiler.scvtf(toVec(reg), R32(tmp)); // convert int64 to double
 }
 
 void JitArmV8CodeGen::regToFpuReg(FPURegPtr dst, RegPtr src) {
-    compiler.scvtf(toVec(dst), R32(src->hardwareReg()));
+    compiler.scvtf(toVec(dst), R32(src));
 }
 
 #ifdef BOXEDWINE_64
 void JitArmV8CodeGen::regToFpuReg64(FPURegPtr dst, RegPtr src) {
-    compiler.scvtf(toVec(dst), R64(src->hardwareReg()));
+    compiler.scvtf(toVec(dst), R64(src));
 }
 #endif
 void JitArmV8CodeGen::fpuAdd(FPURegPtr dst, FPURegPtr src) {
@@ -4356,7 +4990,7 @@ void JitArmV8CodeGen::IfGreater() {
     compiler.b_mi(label);
 }
 
-void JitArmV8CodeGen::IfLessThanOrEqual() {
+void JitArmV8CodeGen::IfLessThan() {
     Label label = compiler.new_label();
     ifLabels.push_back(label);
     compiler.b_cs(label);
@@ -4380,7 +5014,7 @@ void JitArmV8CodeGen::fcompare(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordT
             IfEqual(); {
                 pfnEqual();
             } StartElse(); {
-                IfLessThanOrEqual(); {
+                IfLessThan(); {
                     pfnLessThan();
                 } StartElse(); {
                     pfnGreaterThan();
@@ -4469,7 +5103,7 @@ void JitArmV8CodeGen::updateHardwareFlags(U32 flags) {
         reg = getTmpRegForCallResult();
     }
 
-    x86.mov(R32(reg->hardwareReg()), X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)));
+    x86.mov(R32(reg), X86Asm::Mem32(HOST_CPU, offsetof(CPU, flags)));
     if (reg->hardwareReg() > 3) {
         kpanic("updateHardwareFlags");
     }
@@ -4483,12 +5117,12 @@ void JitArmV8CodeGen::updateHardwareFlags(U32 flags) {
         }
         x86.sahf();
     } else {
-        x86.xchg(R32(reg->hardwareReg()), x86.eax);
+        x86.xchg(R32(reg), x86.eax);
         if (flags & OF) {
             x86.add(x86.al, 127); // (will restore OF)
         }
         x86.sahf();
-        x86.xchg(R32(reg->hardwareReg()), x86.eax);
+        x86.xchg(R32(reg), x86.eax);
     }
     reg = nullptr;
     if (eaxPushed) {
@@ -4520,26 +5154,47 @@ void JitArmV8CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
         updateFlagsIfNecessary();
     });
 }
+*/
 void JitArmV8CodeGen::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
     JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
-        RegPtr eax = getReg(0, 0);
-        if (eax->hardwareReg() != 0) {
-            kpanic("JitArmV8CodeGen::dynamic_cmpxchge32r32_lock");
-        }
-        RegPtr reg;
+        U32 needsToSetFlags = 0;
+        const LazyFlags* flags = lazyFlags[FLAGS_CMP32];
 
-        if (op->reg == 0) {
-            reg = eax;
-        } else {
-            reg = getReadOnlyReg(op->reg);
+        arithSetup(op, needsToSetFlags, FLAGS_CMP32);
+
+        Label label = compiler.new_label();
+        RegPtr tmp = getTmpReg();
+        RegPtr tmp2 = getTmpReg();
+        RegPtr reg = getReg(op->reg);
+        RegPtr eax = getReg(0);
+
+        if (flags && flags->usesDst(needsToSetFlags)) {
+            storeLazyFlagsDest(eax);
         }
-        this->x86.lock();
-        this->x86.cmpxchg(X86Asm::Mem32(RN(address->hardwareReg()), RN(offset->hardwareReg())), R32(reg->hardwareReg()));
-        address = nullptr;
-        offset = nullptr;
-        updateFlagsIfNecessary();
+        compiler.add(R64(address), R64(address), R64(offset));
+        compiler.bind(label);
+        compiler.ldaxr(R32(tmp), Mem(R64(address)));
+        IfEqual(JitWidth::b32, eax, tmp); {
+            compiler.stlxr(R32(tmp2), R32(reg), Mem(R64(address)));
+            compiler.cbnz(R32(tmp2), label);
+            compiler.sub(R32(tmp2), R32(xEAX), R32(tmp));
+        } StartElse(); {
+            compiler.sub(R32(tmp2), R32(xEAX), R32(tmp));
+            compiler.mov(R32(eax), R32(tmp));
+        } EndIf();        
+        
+        compiler.dmb(asmjit::a64::Predicate::DB::kISH);
+
+        if (flags && flags->usesSrc(needsToSetFlags)) {
+            storeLazyFlagsSrc(tmp);
+        }
+        
+        if (flags && flags->usesResult(needsToSetFlags)) {
+            storeLazyFlagsResult(tmp2);
+        }
     });
 }
+/*
 void JitArmV8CodeGen::dynamic_cmpxchge16r16_lock(DecodedOp* op) {
     JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         RegPtr eax = getReg(0, 0);
@@ -4585,7 +5240,7 @@ void JitArmV8CodeGen::dynamic_xchge32r32_lock(DecodedOp* op) {
     JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         RegPtr reg = getReg(op->reg);
         this->x86.lock();
-        this->x86.xchg(R32(reg->hardwareReg()), X86Asm::Mem32(RN(address->hardwareReg()), RN(offset->hardwareReg())));
+        this->x86.xchg(R32(reg), X86Asm::Mem32(RN(address->hardwareReg()), RN(offset->hardwareReg())));
     });
 }
 
@@ -4604,8 +5259,8 @@ void JitArmV8CodeGen::dynamic_xchge8r8_lock(DecodedOp* op) {
         this->x86.xchg(R8(get8bitReg(reg)), X86Asm::Mem8(R32(address->hardwareReg()), R32(offset->hardwareReg())));        
     });
 }
-
-void JitArmV8CodeGen::dynamic_arithE32R32_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address, RegPtr offset)> callback, bool writeReg) {
+*/
+void JitArmV8CodeGen::dynamic_arithE32R32_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address)> callback, bool writeReg) {
     JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [writeReg, op, callback, this](RegPtr address, RegPtr offset) {
         RegPtr reg;
         
@@ -4614,11 +5269,11 @@ void JitArmV8CodeGen::dynamic_arithE32R32_lock(DecodedOp* op, std::function<void
         } else {
             reg = getReadOnlyReg(op->reg);
         }
-        callback(reg, address, offset);        
-        updateFlagsIfNecessary();
+        compiler.add(R64(address), R64(address), R64(offset));
+        callback(reg, address);        
     });
 }
-
+/*
 void JitArmV8CodeGen::dynamic_arithE16R16_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address, RegPtr offset)> callback, bool writeReg) {
     JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [writeReg, op, callback, this](RegPtr address, RegPtr offset) {
         RegPtr reg;
@@ -4665,14 +5320,38 @@ void JitArmV8CodeGen::dynamic_arithE8_lock(DecodedOp* op, std::function<void(Reg
         updateFlagsIfNecessary();
     });
 }
-
+*/
 void JitArmV8CodeGen::dynamic_xaddr32e32_lock(DecodedOp* op) {
-    dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.xadd(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest->hardwareReg()));
+    dynamic_arithE32R32_lock(op, [op, this](RegPtr reg, RegPtr addressReg) {
+        U32 needsToSetFlags = 0;        
+        const LazyFlags* flags = lazyFlags[FLAGS_ADD32];
+
+        arithSetup(op, needsToSetFlags, FLAGS_ADD32);        
+
+        Label label = compiler.new_label();
+        RegPtr tmp = getTmpReg();
+        RegPtr tmp2 = getTmpReg();
+        RegPtr tmp3 = getTmpReg();
+        
+        compiler.bind(label);
+        compiler.ldaxr(R32(tmp), Mem(R64(addressReg)));
+        compiler.add(R32(tmp2), R32(reg), R32(tmp));
+        compiler.stlxr(R32(tmp3), R32(tmp2), Mem(R64(addressReg)));
+        compiler.cbnz(R32(tmp3), label);        
+
+        if (flags && flags->usesSrc(needsToSetFlags)) {
+            storeLazyFlagsSrc(reg);
+        }
+        if (flags && flags->usesDst(needsToSetFlags)) {
+            storeLazyFlagsDest(tmp);
+        }
+        if (flags && flags->usesResult(needsToSetFlags)) {
+            storeLazyFlagsResult(tmp2);
+        }
+        compiler.mov(R32(reg), R32(tmp));
     }, true);
 }
-
+/*
 void JitArmV8CodeGen::dynamic_xaddr16e16_lock(DecodedOp* op) {
     dynamic_arithE16R16_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
         this->x86.lock();
@@ -4689,7 +5368,7 @@ void JitArmV8CodeGen::dynamic_xaddr8e8_lock(DecodedOp* op) {
 void JitArmV8CodeGen::dynamic_adde32r32_lock(DecodedOp* op) {
     dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
         this->x86.lock();
-        this->x86.add(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest->hardwareReg()));
+        this->x86.add(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest));
     });
 }
 void JitArmV8CodeGen::dynamic_adde16r16_lock(DecodedOp* op) {
@@ -4726,7 +5405,7 @@ void JitArmV8CodeGen::dynamic_add8_mem_lock(DecodedOp* op) {
 void JitArmV8CodeGen::dynamic_sube32r32_lock(DecodedOp* op) {
     dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
         this->x86.lock();
-        this->x86.sub(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest->hardwareReg()));
+        this->x86.sub(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest));
     });
 }
 void JitArmV8CodeGen::dynamic_sube16r16_lock(DecodedOp* op) {
@@ -4762,7 +5441,7 @@ void JitArmV8CodeGen::dynamic_sub8_mem_lock(DecodedOp* op) {
 void JitArmV8CodeGen::dynamic_ore32r32_lock(DecodedOp* op) {
     dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
         this->x86.lock();
-        this->x86.or_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest->hardwareReg()));
+        this->x86.or_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest));
     });
 }
 void JitArmV8CodeGen::dynamic_ore16r16_lock(DecodedOp* op) {
@@ -4798,7 +5477,7 @@ void JitArmV8CodeGen::dynamic_or8_mem_lock(DecodedOp* op) {
 void JitArmV8CodeGen::dynamic_ande32r32_lock(DecodedOp* op) {
     dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
         this->x86.lock();
-        this->x86.and_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest->hardwareReg()));
+        this->x86.and_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest));
     });
 }
 void JitArmV8CodeGen::dynamic_ande16r16_lock(DecodedOp* op) {
@@ -4834,7 +5513,7 @@ void JitArmV8CodeGen::dynamic_and8_mem_lock(DecodedOp* op) {
 void JitArmV8CodeGen::dynamic_xore32r32_lock(DecodedOp* op) {
     dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
         this->x86.lock();
-        this->x86.xor_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest->hardwareReg()));
+        this->x86.xor_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest));
     });
 }
 void JitArmV8CodeGen::dynamic_xore16r16_lock(DecodedOp* op) {
@@ -4989,7 +5668,7 @@ void JitArmV8CodeGen::dynamic_btse32r32_lock(DecodedOp* op) {
         RegPtr reg = getTmpReg(op->reg);
         andValue(JitWidth::b32, reg, 0x1f);
         this->x86.lock();
-        this->x86.bts(X86Asm::Mem32(RN(address->hardwareReg()), RN(offset->hardwareReg())), R32(reg->hardwareReg()));
+        this->x86.bts(X86Asm::Mem32(RN(address->hardwareReg()), RN(offset->hardwareReg())), R32(reg));
         updateFlagsIfNecessary();
     });
 }
@@ -5027,7 +5706,7 @@ void JitArmV8CodeGen::dynamic_btre32r32_lock(DecodedOp* op) {
         RegPtr reg = getTmpReg(op->reg);
         andValue(JitWidth::b32, reg, 0x1f);
         this->x86.lock();
-        this->x86.btr(X86Asm::Mem32(RN(address->hardwareReg()), RN(offset->hardwareReg())), R32(reg->hardwareReg()));
+        this->x86.btr(X86Asm::Mem32(RN(address->hardwareReg()), RN(offset->hardwareReg())), R32(reg));
         updateFlagsIfNecessary();
     });
 }
@@ -5065,7 +5744,7 @@ void JitArmV8CodeGen::dynamic_btce32r32_lock(DecodedOp* op) {
         RegPtr reg = getTmpReg(op->reg);
         andValue(JitWidth::b32, reg, 0x1f);
         this->x86.lock();
-        this->x86.btc(X86Asm::Mem32(RN(address->hardwareReg()), RN(offset->hardwareReg())), R32(reg->hardwareReg()));
+        this->x86.btc(X86Asm::Mem32(RN(address->hardwareReg()), RN(offset->hardwareReg())), R32(reg));
         updateFlagsIfNecessary();
     });
 }
@@ -5095,6 +5774,9 @@ void writeBlockExitForJIT(U32 eip, U8* buffer) {
     for (int i = 19; i < 31; i++) {
         compiler.ldr(R64(i), Mem(R64(xTmp7), offsetof(CPU, storedRegs) + i * 8));
     }
+    compiler.add(R64(xTmp7), xCPU, offsetof(CPU, xmm[0]));
+    compiler.st1(toSseD2(0), toSseD2(1), toSseD2(2), toSseD2(3), Mem(R64(xTmp7), 64).post());
+    compiler.st1(toSseD2(4), toSseD2(5), toSseD2(6), toSseD2(7), Mem(R64(xTmp7)));
     compiler.ret(asmjit::a64::x30);
 
     code.flatten();
@@ -5114,8 +5796,6 @@ void JitArmV8CodeGen::blockExit(bool syncCache) {
         compiler.ldr(R64(i), Mem(R64(xTmp7), offsetof(CPU, storedRegs) + i * 8));
     }
     compiler.ret(asmjit::a64::x30);
-    //vReadMemMultiple64(12, 31, 4, true);
-    //vReadMemMultiple64(8, 31, 4, true);
 }
 
 U8* JitArmV8CodeGen::createStartJITCode() {
@@ -5158,9 +5838,9 @@ void JitArmV8CodeGen::loadCacheFromCPU() {
     compiler.orr(xFLAGS, xFLAGS, 2);
     compiler.ldrb(xFlagsType, createMem(regCPU, offsetof(CPU, lazyFlagType)));
 
-    // addValue64(addressReg, xCPU, (U32)(offsetof(CPU, xmm[0])));
-    // vWriteMemMultiple128(xXMM0, addressReg, 4, true);
-    // vWriteMemMultiple128(xXMM4, addressReg, 4, false);
+    compiler.add(xMemTmp, xCPU, offsetof(CPU, xmm[0]));
+    compiler.ld1(toSseD2(0), toSseD2(1), toSseD2(2), toSseD2(3), Mem(xMemTmp, 64).post());
+    compiler.ld1(toSseD2(4), toSseD2(5), toSseD2(6), toSseD2(7), Mem(xMemTmp));
 }
 
 void JitArmV8CodeGen::writeCacheToCPU() {
@@ -5172,10 +5852,9 @@ void JitArmV8CodeGen::writeCacheToCPU() {
     compiler.str(xFLAGS, createMem(regCPU, offsetof(CPU, flags)));
     compiler.strb(xFlagsType, createMem(regCPU, offsetof(CPU, lazyFlagType)));
 
-    //U8 addressReg = getTmpReg();
-    //addValue64(addressReg, xCPU, (U32)(offsetof(CPU, xmm[0])));
-    //vReadMemMultiple128(xXMM0, addressReg, 4, true);
-    //vReadMemMultiple128(xXMM4, addressReg, 4, false);
+    compiler.add(xMemTmp, xCPU, offsetof(CPU, xmm[0]));
+    compiler.st1(toSseD2(0), toSseD2(1), toSseD2(2), toSseD2(3), Mem(xMemTmp, 64).post());
+    compiler.st1(toSseD2(4), toSseD2(5), toSseD2(6), toSseD2(7), Mem(xMemTmp));
 }
 
 U8* JitArmV8CodeGen::createSyncToHost() {

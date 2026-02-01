@@ -344,10 +344,10 @@ public:
     void storeCpuMMXReg(MMXRegPtr reg, U32 index) override;
     void storeMMXToReg(MMXRegPtr mmx, RegPtr reg) override;
     MMXRegPtr loadCpuMMXReg(U8 index) override;
-    MMXRegPtr loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    MMXRegPtr loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
+    MMXRegPtr loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib) override;
+    MMXRegPtr loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib) override;
+    void storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib) override;
+    void storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib) override;
     void xorMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
     void orMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
     void andMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
@@ -425,15 +425,15 @@ public:
     bool isSseRegCached(U8 reg) override;
     void storeCpuXMMReg(SSERegPtr reg, U32 index) override;
     SSERegPtr loadCpuXMMReg(U8 index) override;
-    SSERegPtr loadXMMFromMem128(U8 reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    SSERegPtr loadXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    SSERegPtr loadLowXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    SSERegPtr loadHighXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    SSERegPtr loadXMMFromMem32(U8 reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
-    void storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
+    SSERegPtr loadXMMFromMem128(U8 reg, RegPtr rm, RegPtr sib) override;
+    SSERegPtr loadXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib) override;
+    SSERegPtr loadLowXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib) override;
+    SSERegPtr loadHighXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib) override;
+    SSERegPtr loadXMMFromMem32(U8 reg, RegPtr rm, RegPtr sib) override;
+    void storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib) override;
+    void storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) override;
+    void storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib) override;
+    void storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) override;
 
     void addpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void addssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
@@ -605,7 +605,7 @@ public:
     void pmulhuwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void lfence() override;
     void mfence() override;
-    void clflush(RegPtr rm, RegPtr sib, U8 lsl, U32 disp) override;
+    void clflush(RegPtr address) override;
     void pause() override;
     void pextrwR32Xmm(RegPtr dst, SSERegPtr src, U32 imm) override;
     void pinsrwXmmR32(SSERegPtr dst, RegPtr src, U32 imm) override;
@@ -2811,20 +2811,20 @@ void JitX86CodeGen::storeCpuXMMReg(SSERegPtr reg, U32 index) {
     }    
 }
 
-void JitX86CodeGen::storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    compiler.movups(Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp), XMM(reg->hardwareReg()));
+void JitX86CodeGen::storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib) {
+    compiler.movups(Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0), XMM(reg->hardwareReg()));
 }
 
-void JitX86CodeGen::storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    compiler.movlps(Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp), XMM(reg->hardwareReg()));
+void JitX86CodeGen::storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) {
+    compiler.movlps(Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0), XMM(reg->hardwareReg()));
 }
 
-void JitX86CodeGen::storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    compiler.movss(Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp), XMM(reg->hardwareReg()));
+void JitX86CodeGen::storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib) {
+    compiler.movss(Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0), XMM(reg->hardwareReg()));
 }
 
-void JitX86CodeGen::storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    compiler.movhps(Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp), XMM(reg->hardwareReg()));
+void JitX86CodeGen::storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) {
+    compiler.movhps(Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0), XMM(reg->hardwareReg()));
 }
 
 SSERegPtr JitX86CodeGen::getXMM(U8 index, bool load) {
@@ -2849,33 +2849,33 @@ SSERegPtr JitX86CodeGen::loadCpuXMMReg(U8 index) {
     return getXMM(index, true);
 }
 
-SSERegPtr JitX86CodeGen::loadXMMFromMem128(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+SSERegPtr JitX86CodeGen::loadXMMFromMem128(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, false);
-    compiler.movups(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+    compiler.movups(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0));
     return reg;
 }
 
-SSERegPtr JitX86CodeGen::loadXMMFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+SSERegPtr JitX86CodeGen::loadXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, true);
-    compiler.movq(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+    compiler.movq(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0));
     return reg;
 }
 
-SSERegPtr JitX86CodeGen::loadLowXMMFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+SSERegPtr JitX86CodeGen::loadLowXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, true);
-    compiler.movlps(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+    compiler.movlps(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0));
     return reg;
 }
 
-SSERegPtr JitX86CodeGen::loadHighXMMFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+SSERegPtr JitX86CodeGen::loadHighXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, true);
-    compiler.movhps(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+    compiler.movhps(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0));
     return reg;
 }
 
-SSERegPtr JitX86CodeGen::loadXMMFromMem32(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+SSERegPtr JitX86CodeGen::loadXMMFromMem32(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, true);
-    compiler.movss(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+    compiler.movss(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0));
     return reg;
 }
 
@@ -3227,24 +3227,24 @@ MMXRegPtr JitX86CodeGen::loadCpuMMXReg(U8 index) {
     return tmp;
 }
 
-MMXRegPtr JitX86CodeGen::loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+MMXRegPtr JitX86CodeGen::loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib) {
     MMXRegPtr tmp = getTmpMMX();
-    compiler.movd(getMMXReg(tmp), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
+    compiler.movd(getMMXReg(tmp), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0));
     return tmp;
 }
 
-MMXRegPtr JitX86CodeGen::loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+MMXRegPtr JitX86CodeGen::loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib) {
     MMXRegPtr tmp = getTmpMMX();
-    compiler.movq(getMMXReg(tmp), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
+    compiler.movq(getMMXReg(tmp), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0));
     return tmp;
 }
 
-void JitX86CodeGen::storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    compiler.movd(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), getMMXReg(reg));
+void JitX86CodeGen::storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib) {
+    compiler.movd(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0), getMMXReg(reg));
 }
 
-void JitX86CodeGen::storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    compiler.movq(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), getMMXReg(reg));
+void JitX86CodeGen::storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib) {
+    compiler.movq(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0), getMMXReg(reg));
 }
 
 void JitX86CodeGen::xorMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
@@ -3970,8 +3970,8 @@ void JitX86CodeGen::mfence() {
     compiler.mfence();
 }
 
-void JitX86CodeGen::clflush(RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
-    compiler.clflush(Mem(R32(rm->hardwareReg()), R32(sib->hardwareReg()), lsl, disp));
+void JitX86CodeGen::clflush(RegPtr address) {
+    compiler.clflush(RN(address->hardwareReg()));
 }
 
 void JitX86CodeGen::pause() {

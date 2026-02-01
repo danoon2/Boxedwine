@@ -215,6 +215,7 @@ public:
 
     U32 sseControlStateTmp = 0;
     U32 sseControlStateTmp2 = 0;
+    U32 mxcsr = 0x1F80; // sse control register
 
 #if defined(BOXEDWINE_BINARY_TRANSLATOR) && defined(BOXEDWINE_X64)
 
