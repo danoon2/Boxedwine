@@ -1175,6 +1175,10 @@ void JitX86CodeGen::addReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
         compiler.add(R16(reg->hardwareReg()), R16(rm->hardwareReg()));
     } else if (regWidth == JitWidth::b8) {
         compiler.add(R8(get8bitReg(reg)), R8(get8bitReg(rm)));
+#ifdef BOXEDWINE_64
+    } else if (regWidth == JitWidth::b64) {
+        compiler.add(R64(reg->hardwareReg()), R64(rm->hardwareReg()));
+#endif
     } else {
         kpanic("JitX86CodeGen::addReg");
     }
@@ -3971,7 +3975,7 @@ void JitX86CodeGen::mfence() {
 }
 
 void JitX86CodeGen::clflush(RegPtr address) {
-    compiler.clflush(RN(address->hardwareReg()));
+    compiler.clflush(Mem(address->hardwareReg()));
 }
 
 void JitX86CodeGen::pause() {
