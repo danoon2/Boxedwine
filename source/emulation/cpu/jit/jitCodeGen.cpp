@@ -39,15 +39,10 @@ static void initDynamicOps() {
     if (dynamicOpsInitialized)
         return;
     lastOp.pfn = onLastOp;
-    if (offsetof(CPU, eip.u32) > 127)
-        kpanic("initDynamicOps wasn't expecting eip offset to be greater than 127");
-
-    if (offsetof(CPU, reg[8].u32) > 127)
-        kpanic("initDynamicOps wasn't expecting reg[8] offset to be greater than 127");
-
-    if (offsetof(CPU, seg[6].address) > 127)
-        kpanic("initDynamicOps wasn't expecting reg[8] offset to be greater than 127");
-
+    static_assert(offsetof(CPU, eip.u32) <= 127, "Jit needs eip to be in the first 127 bytes of the CPU");
+    static_assert(offsetof(CPU, reg[8].u32) <= 127, "Jit needs reg to be in the first 127 bytes of the CPU");
+    static_assert(offsetof(CPU, seg[6].address) <= 127, "Jit needs seg to be in the first 127 bytes of the CPU");
+    
     dynamicOpsInitialized = 1;
     for (int i = 0; i < InstructionCount; i++) {
         dynamicOps[i] = &Jit::dynamic_invalid_op;
@@ -142,6 +137,8 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
                 // opentdd needs this when creating a new game, I'm not sure why data.cpu->memory->getDecodedOp(eip + nextOp->len) will find an op but its not correct, might be another bug 
                 break;
             }
+            // These next 4 look aheads, nextOp->next =
+            // They don't improve performance on Quake 2, but do make a significant improvement for Cinebench, 10-20%
             if (!nextOp->next) {
                 // don't call cpu->getOp since that will decode and we are not sure the next byte is a valid instruction.
                 // we can call memory->getDecodedOp to see if this instruction has already been decoded, in that case we know its valid.
@@ -308,7 +305,7 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
 
         // this is a nice way to figure out what jit instruction is bugged
         // assuming the normal, non jit code works. If there is a bug in the jit,
-        // we can emulate instructions using the normal core for certain ranges
+        // we can emulate instructions using the normal core for certain ranges of instructions
         // until we find the jit instruction that is causing the bug
         // 
         // this is currently setup to start debugging with SSE emulated
@@ -369,7 +366,6 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
     this->startingEip = address;
 
     initDynamicOps();
-    DecodedOp* nextOp = op;
 
     if (!calculateLongestBlock(op)) {
         return;
@@ -591,17 +587,17 @@ void JitCodeGen::jumpToEipIfCached() {
 #define CODE_CACHE_LSL 2
 #endif
     RegPtr tmp = readCPU(DYN_PTR, offsetof(CPU, opCache));
-    read(DYN_PTR, tmp, tmp, firstPageIndexReg, CODE_CACHE_LSL, 0); // :TODO: 3 on 64-bit system
+    readHost(DYN_PTR, tmp, tmp, firstPageIndexReg, CODE_CACHE_LSL, 0); // :TODO: 3 on 64-bit system
 
     // tmp contains 2nd level of page op cache
     If(DYN_PTR, tmp);
         // page & 0x3ff
         andValue(JitWidth::b32, pageReg, 0x3ff);
-        read(DYN_PTR, tmp, tmp, pageReg, CODE_CACHE_LSL, 0);// :TODO: 3 on 64-bit system
+        readHost(DYN_PTR, tmp, tmp, pageReg, CODE_CACHE_LSL, 0);// :TODO: 3 on 64-bit system
         // tmp contains page of DecodedOp*
         If(DYN_PTR, tmp);
             andValue(JitWidth::b32, eipReg, K_PAGE_MASK);
-            read(DYN_PTR, tmp, tmp, eipReg, CODE_CACHE_LSL, 0); // :TODO: 3 on 64-bit system
+            readHost(DYN_PTR, tmp, tmp, eipReg, CODE_CACHE_LSL, 0); // :TODO: 3 on 64-bit system
             // tmp contains DecodedOp
             If(DYN_PTR, tmp);
                 read(DYN_PTR, tmp, tmp, offsetof(DecodedOp, pfnJitCode));
@@ -632,9 +628,6 @@ void jitRunSingleOp(CPU* cpu) {
         op = cpu->getNextOp();
     }
 
-    if (op->inst != Int80 && op->inst != Int9B) {
-        int ii = 0;
-    }
     if (!op) {
         kpanic("jitRunSingleOp oops");
     }
@@ -652,7 +645,7 @@ void jitRunSingleOp(CPU* cpu) {
 U8* JitCodeGen::createEmulateSingleOp() {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
-    callHostFunction(jitRunSingleOp, params, false);    
+    callHostFunction((void*)jitRunSingleOp, params, false);    
     blockExit(false);
 
     return createDynamicExecutableMemory();
@@ -811,30 +804,6 @@ void JitCodeGen::orCPUFlags(RegPtr flags) {
     writeFlags(reg);
 }
 
-static U32 readd2(CPU* cpu, U32 address) {
-    return cpu->memory->readd(address);
-}
-
-static U32 readw2(CPU* cpu, U32 address) {
-    return cpu->memory->readw(address);
-}
-
-static U32 readb2(CPU* cpu, U32 address) {
-    return cpu->memory->readb(address);
-}
-
-static void writed2(CPU* cpu, U32 address, U32 value) {
-    cpu->memory->writed(address, value);
-}
-
-static void writew2(CPU* cpu, U32 address, U32 value) {
-    cpu->memory->writew(address, (U16)value);
-}
-
-static void writeb2(CPU* cpu, U32 address, U32 value) {
-    cpu->memory->writeb(address, (U8)value);
-}
-
 RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, RegPtr tmp, bool checkAlignment) {
     if (!tmp) {
         tmp = getTmpRegForCallResult();
@@ -874,7 +843,7 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
         customMemoryOp(tmp, std::move(offsetReg));
     } else {
         // mov eax, [eax+reg]
-        read(width, tmp, tmp, offsetReg, 0, 0);
+        readHost(width, tmp, tmp, offsetReg, 0, 0);
     }
 
     return tmp;
@@ -979,7 +948,7 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
     if (customMemoryOp) {
         customMemoryOp(std::move(tmp), std::move(offsetReg));
     } else {
-        write(width, tmp, offsetReg, 0, 0, src);
+        writeHost(width, tmp, offsetReg, 0, 0, src);
     }
     if (pushedAddress) {
         popReg(addressReg);
@@ -1043,11 +1012,11 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
     } EndIf();
 
     andValueNative(tmp, ~0xfff);
-    read(JitWidth::b32, tmpReg2, tmp, offsetReg, 0, 0);
+    readHost(JitWidth::b32, tmpReg2, tmp, offsetReg, 0, 0);
 
     prepareWrite(tmpReg2);
 
-    write(JitWidth::b32, tmp, offsetReg, 0, 0, tmpReg2);
+    writeHost(JitWidth::b32, tmp, offsetReg, 0, 0, tmpReg2);
     return tmpReg2;
 }
 

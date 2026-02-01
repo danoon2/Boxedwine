@@ -167,7 +167,7 @@ void JitSSE::dynamic_cvtsi2ssXmmR32(DecodedOp* op) {
 void JitSSE::dynamic_cvtsi2ssXmmE32(DecodedOp* op) {
     read(JitWidth::b32, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         RegPtr reg = getTmpReg();
-        read(JitWidth::b32, reg, address, offset, 0, 0);
+        readHost(JitWidth::b32, reg, address, offset, 0, 0);
         SSERegPtr sse = loadCpuXMMReg(op->reg); // must load since top 96 bits are unchanged
         cvtsi2ssXmmR32(sse, reg);
         storeCpuXMMReg(sse, op->reg);
@@ -418,7 +418,7 @@ void JitSSE::dynamic_cvtsi2sdXmmR32(DecodedOp* op) {
 void JitSSE::dynamic_cvtsi2sdXmmE32(DecodedOp* op) {
     read(JitWidth::b32, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         RegPtr tmp = getTmpReg();
-        read(JitWidth::b32, tmp, address, offset, 0, 0);
+        readHost(JitWidth::b32, tmp, address, offset, 0, 0);
         SSERegPtr reg = loadCpuXMMReg(op->reg); // top bits are unchanged
         cvtsi2sdXmmR32(reg, tmp);
         storeCpuXMMReg(reg, op->reg);
@@ -600,7 +600,7 @@ void JitSSE::dynamic_pextrwE16Xmm(DecodedOp* op) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
         RegPtr tmp = getTmpReg();
         pextrwR32Xmm(tmp, reg, op->imm);
-        write(JitWidth::b16, address, offset, 0, 0, tmp);
+        writeHost(JitWidth::b16, address, offset, 0, 0, tmp);
     });
 }
 
@@ -614,7 +614,7 @@ void JitSSE::dynamic_pinsrwXmmE16(DecodedOp* op) {
     read(JitWidth::b16, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
         RegPtr tmp = getTmpReg();
-        read(JitWidth::b16, tmp, address, offset, 0, 0);
+        readHost(JitWidth::b16, tmp, address, offset, 0, 0);
         pinsrwXmmR32(reg, tmp, op->imm);
         storeCpuXMMReg(reg, op->reg);
     });
@@ -798,10 +798,10 @@ U8* JitSSE::createJitCos() {
 void JitSSE::createHelpers() {
     JitMMX::createHelpers();
     JitSSE* jit = (JitSSE*)startNewJIT(cpu);
-    cpu->thread->process->jitCosSub = (OpCallback)jit->createJitCosSub();
+    cpu->thread->process->jitCosSub = (void*)jit->createJitCosSub();
     delete jit;
     jit = (JitSSE*)startNewJIT(cpu);
-    cpu->thread->process->jitCos = (OpCallback)jit->createJitCos();    
+    cpu->thread->process->jitCos = (void*)jit->createJitCos();
     delete jit;
 }
 

@@ -149,7 +149,6 @@ DecodedOp* DecodedOpCache::getPreviousOpAndRemoveIfOverlapping(U32 address) {
 	if (previousOp) {
 		// does previousOp span into address, if so then remove it
 		if (previousOpAddress + previousOp->len > address) {
-			DecodedOp* op = previousPageCache->ops[previousOpAddress & K_PAGE_MASK];
 			previousPageCache->ops[previousOpAddress & K_PAGE_MASK] = nullptr;			
 			pendingDeallocs[KThread::currentThread()->id].push_back(previousOp);
 			activeOps--;
@@ -345,7 +344,7 @@ void DecodedOpCache::clearPageWriteCounts(U32 pageIndex) {
 	U32 firstIndex = GET_FIRST_INDEX_FROM_PAGE(pageIndex);
 	U32 secondIndex = GET_SECOND_INDEX_FROM_PAGE(pageIndex);
 	U8** first = writeCounts[firstIndex];
-	U8* result = nullptr;
+
 	if (first && first[secondIndex]) {
 		memset(first[secondIndex], 0, sizeof(K_PAGE_SIZE));
 	}

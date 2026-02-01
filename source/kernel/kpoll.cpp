@@ -64,7 +64,7 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
 
             data = firstData;
             for (U32 i = 0; i < count; i++) {
-                KFileDescriptor* fd;
+                KFileDescriptor* fd = nullptr;
                 
                 if (data->fd >= 0) {
                     fd = thread->process->getFileDescriptor_nolock(data->fd);

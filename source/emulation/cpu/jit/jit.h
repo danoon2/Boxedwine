@@ -260,8 +260,8 @@ public:
     virtual void writeValue(JitWidth width, RegPtr addressReg, U32 imm) = 0;
     
     // I would say that most ops shouldn't use these directly, but pusha/popa needs it
-    virtual void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
-    virtual void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void writeHost(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
+    virtual void readHost(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
 
     void dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
     void dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags);

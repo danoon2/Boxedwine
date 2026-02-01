@@ -513,7 +513,7 @@ bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, b
     if (clearOps) {
         data->opCache.remove(address, blockLen, becauseOfWrite);
     }
-    void* pMem = blockOp->pfnJitCode;
+    void* pMem = (void*)blockOp->pfnJitCode;
     blockOp->pfnJitCode = nullptr;
     data->codeMemory.free(pMem);
     return true;

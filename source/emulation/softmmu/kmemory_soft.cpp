@@ -58,6 +58,7 @@ KMemoryData::KMemoryData(KMemory* memory) : memory(memory)
     }
     this->allocPages(nullptr, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, K_PROT_READ | K_PROT_EXEC, -1, 0, nullptr, &callbackRam);
     codeMemory.delayedFree = 1000; // in case another thread is using it right when we free it
+    codeMemory.isCodeMemory = true;
 }
 
 KMemoryData::~KMemoryData() {
@@ -71,8 +72,8 @@ bool KMemoryData::isPageValid(U32 page) {
 }
 
 void KMemoryData::onPageChanged(U32 index) {
-    Page* page = this->mmu[index].getPage();
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
+    Page* page = this->mmu[index].getPage();
     U8* readPtr = page->getRamPtr(&mmu[index], index, false);
     if (mmu[index].canReadRam) {
         this->mmuReadPtrAdjusted[index] = readPtr - (index << K_PAGE_SHIFT);

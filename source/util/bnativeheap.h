@@ -31,6 +31,7 @@ public:
 	bool containsAddress(void* p);
 
 	U32 delayedFree = 0; // millis before the memory can be recycles
+    bool isCodeMemory = false;
 private:
 	std::unordered_map<U32, std::deque<void*>> buckets;
 	std::vector<void*> blocks;

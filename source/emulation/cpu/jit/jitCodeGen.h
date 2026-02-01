@@ -25,6 +25,7 @@
 class JitCodeGen : public Jit {
 public:    
     JitCodeGen(CPU* cpu) : Jit(cpu) {}
+    virtual ~JitCodeGen() {}
     DecodedOp* firstOp = nullptr;
 
     BHashTable<U32, U32> eipToBufferPos;    
@@ -38,15 +39,14 @@ public:
         return currentEip < lastOpEip && currentEip + op->len + op->imm <= lastOpEip && currentEip + op->len + op->imm >= startingEip;
     }
 
-    // v2
     virtual void preOp(DecodedOp* op) {}
     virtual void read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) = 0;
     virtual void readRamPage(RegPtr dest, RegPtr index) = 0;
     virtual void readMMU(RegPtr dest, RegPtr index) = 0;
     virtual void readMMU(RegPtr dest, U32 index) = 0;
-    virtual void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
+    //virtual void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
     virtual void write(JitWidth width, RegPtr reg, U32 disp, RegPtr src) = 0;
-    virtual void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
+    //virtual void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
     virtual void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, U32 value) = 0;
 
     virtual RegPtr readCPU(JitWidth width, U32 offset, RegPtr resultReg = nullptr) = 0;
@@ -77,7 +77,7 @@ public:
     virtual RegPtr getFlagDestTmp(RegPtr result = nullptr); // guaranteed to return result in result
     virtual RegPtr getFlagSrcTmp(RegPtr result = nullptr); // guaranteed to return result in result
     virtual RegPtr getFlagResultTmp(RegPtr result = nullptr); // guaranteed to return result in result
-    virtual RegPtr getFlagsInTmp(RegPtr reg = nullptr);
+    virtual RegPtr getFlagsInTmp(RegPtr reg = nullptr) override;
     virtual RegPtr getFlagCF(RegPtr result = nullptr);
     virtual RegPtr getLazyFlagType();
     virtual RegPtr getLazyFlagTypeInTmp();

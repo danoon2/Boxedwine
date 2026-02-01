@@ -328,7 +328,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
 #endif
 #endif
 
-#ifdef BOXEDWINE_X64
+#if defined (BOXEDWINE_X64) || defined(BOXEDWINE_JIT_X64)
 #include <cpuid.h>
 bool platformHasBMI2() {
     int regs[4];

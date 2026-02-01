@@ -67,10 +67,14 @@ void* BNativeHeap::alloc(U32 len) {
 	if (size >= BNATIVEHEAD_64K_BLOCK_SIZE) {
 		U32 count = (len + 4 + BNATIVEHEAD_64K_BLOCK_SIZE - 1) / BNATIVEHEAD_64K_BLOCK_SIZE;
 		
-		U8* result = Platform::alloc64kBlock(count, true);
-        Platform::writeCodeToMemory(result, 4, [result, count]() {
+		U8* result = Platform::alloc64kBlock(count, isCodeMemory);
+        if (isCodeMemory) {
+            Platform::writeCodeToMemory(result, 4, [result, count]() {
+                *((U32*)result) = count * BNATIVEHEAD_64K_BLOCK_SIZE;
+            });
+        } else {
             *((U32*)result) = count * BNATIVEHEAD_64K_BLOCK_SIZE;
-        });
+        }
 		largeBlocks.set(result, count * BNATIVEHEAD_64K_BLOCK_SIZE);
 		return result + 4;
 	}
@@ -80,23 +84,39 @@ void* BNativeHeap::alloc(U32 len) {
 		pInfo--;
 		if (!delayedFree || *pInfo < KSystem::getMilliesSinceStart() - delayedFree) {
 			buckets[index].pop_back();
-			Platform::writeCodeToMemory(pInfo, len + 4, [index, pInfo, result, len]() {
-				memset(result, 0, len);
-				*pInfo = index;
-			});
-			*(((U32*)result) - 1) = index;
+            if (isCodeMemory) {
+                Platform::writeCodeToMemory(pInfo, len + 4, [index, pInfo, result, len]() {
+                    memset(result, 0, len);
+                    *pInfo = index;
+                });
+            } else {
+                memset(result, 0, len);
+                *pInfo = index;
+            }
+            U32* address = ((U32*)result) - 1;
+            if (isCodeMemory) {
+                Platform::writeCodeToMemory(address, 4, [address, index, this]() {
+                    *address = index;
+                });
+            } else {
+                *address = index;
+            }
 			return result;
 		}
 	}
-	U8* address = Platform::alloc64kBlock(1, true);
+	U8* address = Platform::alloc64kBlock(1, isCodeMemory);
 
 	blocks.push_back(address);
 
 	for (U8* start = address; start < address + BNATIVEHEAD_64K_BLOCK_SIZE; start += size) {
         // on mac, you can't write to mmap'd memory that was allocated for a JIT without unprotecting it
-        Platform::writeCodeToMemory(start, 4, [start, index, this]() {
+        if (isCodeMemory) {
+            Platform::writeCodeToMemory(start, 4, [start, index, this]() {
+                *((U32*)start) = delayedFree ? 0 : index;
+            });
+        } else {
             *((U32*)start) = delayedFree ? 0 : index;
-        });
+        }
 		buckets[index].push_back(start + 4);
 	}
 	return alloc(len);
@@ -116,9 +136,13 @@ void BNativeHeap::free(void* address) {
 	if (delayedFree) {
 		U32* pTime = (U32*)address;
 		pTime--;
-		Platform::writeCodeToMemory(pTime, 4, [pTime, index]() {
-			*pTime = KSystem::getMilliesSinceStart();
-		});
+        if (isCodeMemory) {
+            Platform::writeCodeToMemory(pTime, 4, [pTime, index]() {
+                *pTime = KSystem::getMilliesSinceStart();
+            });
+        } else {
+            *pTime = KSystem::getMilliesSinceStart();
+        }
 	}
 	buckets[index].push_front(address);
 }

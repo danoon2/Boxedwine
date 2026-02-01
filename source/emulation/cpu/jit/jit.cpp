@@ -156,14 +156,14 @@ void Jit::pushParam(std::vector<DynParam>& params, JitWidth width, RegPtr reg) {
 void Jit::call(CallNoArgs address) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
-    callHostFunction(address, params);
+    callHostFunction((void*)address, params);
 }
 
 void Jit::call_I(CallI address, U32 value) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value));
-    callHostFunction(address, params);
+    callHostFunction((void*)address, params);
 }
 
 void Jit::call_RI(CallRI address, JitWidth width, RegPtr reg, U32 value) {
@@ -171,7 +171,7 @@ void Jit::call_RI(CallRI address, JitWidth width, RegPtr reg, U32 value) {
     params.push_back(DynParam(JitCallParamType::CPU));
     pushParam(params, width, reg);
     params.push_back(DynParam(JitCallParamType::CONST_32, value));
-    callHostFunction(address, params);
+    callHostFunction((void*)address, params);
 }
 
 RegPtr Jit::callAndReturn(CallReturn address, RegPtr resultReg) {
@@ -180,7 +180,7 @@ RegPtr Jit::callAndReturn(CallReturn address, RegPtr resultReg) {
     if (!resultReg) {
         resultReg = getTmpRegForCallResult();
     }
-    callHostFunctionWithResult(resultReg, address, params);
+    callHostFunctionWithResult(resultReg, (void*)address, params);
     return resultReg;
 }
 
@@ -190,7 +190,7 @@ RegPtr Jit::callAndReturnPtr(CallReturnPtr address, RegPtr resultReg) {
     if (!resultReg) {
         resultReg = getTmpRegForCallResult();
     }
-    callHostFunctionWithResult(resultReg, address, params);
+    callHostFunctionWithResult(resultReg, (void*)address, params);
     return resultReg;
 }
 
@@ -200,7 +200,7 @@ RegPtr Jit::callAndReturnOp(CallReturnOp address, RegPtr resultReg) {
     if (!resultReg) {
         resultReg = getTmpRegForCallResult();
     }
-    callHostFunctionWithResult(resultReg, address, params);
+    callHostFunctionWithResult(resultReg, (void*)address, params);
     return resultReg;
 }
 

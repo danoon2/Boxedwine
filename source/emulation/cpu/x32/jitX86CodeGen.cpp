@@ -245,9 +245,9 @@ public:
     void readMMU(RegPtr dest, RegPtr index) override;
     void readMMU(RegPtr dest, U32 index) override;
     void read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) override;
-    void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) override;
+    void readHost(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) override;
     void write(JitWidth width, RegPtr reg, U32 disp, RegPtr src) override;
-    void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) override;
+    void writeHost(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) override;
     void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, U32 value) override;
 
     RegPtr readCPU(JitWidth width, U32 offset, RegPtr resultReg = nullptr) override;
@@ -2025,7 +2025,7 @@ void JitX86CodeGen::read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) {
     }
 }
 
-void JitX86CodeGen::read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) {
+void JitX86CodeGen::readHost(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) {
     if (width == JitWidth::b32) {
         compiler.mov(R32(dest->hardwareReg()), Mem(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
     } else if (width == JitWidth::b16) {
@@ -2069,7 +2069,7 @@ void JitX86CodeGen::write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 di
     }
 }
 
-void JitX86CodeGen::write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) {
+void JitX86CodeGen::writeHost(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) {
     if (width == JitWidth::b32) {
         compiler.mov(Mem(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp), R32(src->hardwareReg()));
     } else if (width == JitWidth::b16) {

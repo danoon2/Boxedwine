@@ -639,11 +639,6 @@ void Jit::dynamic_imulE32(DecodedOp* op) {
     currentLazyFlags = FLAGS_NONE;
 }
 
-static void dynamic_prepareException(CPU* cpu, U32 code, U32 error) {
-    common_prepareException(cpu, code, error);
-    cpu->nextOp = cpu->getNextOp();
-}
-
 void Jit::div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
     /*
     if (src == 0) {

@@ -48,7 +48,7 @@ static bool isTmp[] = { false, false, false, false, false, false, false, false,
 
 static U8 regCache[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 static U8 tmps[] = { 21, 22, 23, 24, 25, 26, 12, 13, 14 };
-static U8 vtmps[] = { 16, 17, 18, 19, 20, 21, 22, 23, 24 };
+static U8 vtmps[] = { 16, 17, 18, 19, 20, 21, 22, 23, 24 }; // 8-15 are callee saved, so don't use them
 static U8 vCache[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
 #define INVALID_REG 0xff
@@ -213,9 +213,9 @@ public:
     void readMMU(RegPtr dest, RegPtr index) override;
     void readMMU(RegPtr dest, U32 index) override;
     void read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) override;
-    void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) override;
+    void readHost(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) override;
     void write(JitWidth width, RegPtr reg, U32 disp, RegPtr src) override;
-    void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) override;
+    void writeHost(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) override;
     void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, U32 value) override;
 
     RegPtr readCPU(JitWidth width, U32 offset, RegPtr resultReg = nullptr) override;
@@ -252,7 +252,7 @@ public:
     void Goto(U32 location) override;
     void jmp(RegPtr reg) override;  
     RegPtr getReadOnlyFlags() override;
-    void storeLazyFlagType(LazyFlagType flags);
+    void storeLazyFlagType(LazyFlagType flags) override;
     RegPtr getFlagsInTmp(RegPtr reg = nullptr) override;
     void setFlags(RegPtr flags, U32 mask) override;
     RegPtr getLazyFlagType() override;
@@ -2196,11 +2196,11 @@ void JitArmV8CodeGen::read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) {
     }
 }
 
-void JitArmV8CodeGen::read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) {
+void JitArmV8CodeGen::readHost(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) {
     // arm zero extends reads
-    if (!isTmp[dest->hardwareReg()] && width == JitWidth::b8 || width == JitWidth::b16) {
+    if (!isTmp[dest->hardwareReg()] && (width == JitWidth::b8 || width == JitWidth::b16)) {
         RegPtr tmp = getTmpReg();
-        read(JitWidth::b32, tmp, reg, sib, lsl, disp);
+        readHost(JitWidth::b32, tmp, reg, sib, lsl, disp);
         mov(width, dest, tmp);
         return;
     }
@@ -2257,7 +2257,7 @@ void JitArmV8CodeGen::write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 
     }
 }
 
-void JitArmV8CodeGen::write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) {
+void JitArmV8CodeGen::writeHost(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) {
     if (width == JitWidth::b32) {
         compiler.str(R32(src), createMem(reg, sib, lsl, disp));
     } else if (width == JitWidth::b16) {
@@ -4890,7 +4890,7 @@ RegPtr JitArmV8CodeGen::fpuRegToInt(FPURegPtr fpuRegSrc, bool truncate, bool is6
 
 void JitArmV8CodeGen::storeFPUToInt64(FPURegPtr src, RegPtr address, RegPtr offset, bool truncate) {
     RegPtr result = fpuRegToInt(src, truncate, true);
-    write(JitWidth::b64, address, offset, 0, 0, result);
+    writeHost(JitWidth::b64, address, offset, 0, 0, result);
 }
 
 void JitArmV8CodeGen::roundFPUToInt64(FPURegPtr src) {
@@ -4937,7 +4937,7 @@ void JitArmV8CodeGen::fpuReg64To32(FPURegPtr dst, FPURegPtr src) {
 
 void JitArmV8CodeGen::loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib) {
     RegPtr tmp = getTmpReg();
-    read(JitWidth::b32, tmp, rm, sib, 0, 0);
+    readHost(JitWidth::b32, tmp, rm, sib, 0, 0);
     compiler.scvtf(toVec(reg), R32(tmp)); // convert int64 to double
 }
 
@@ -5831,7 +5831,7 @@ void JitArmV8CodeGen::patch(U8* begin) {
 void JitArmV8CodeGen::loadCacheFromCPU() {
     for (int i = 0; i < 8; i++) {
         if (regCache[i] != INVALID_REG) {
-            compiler.ldr(R32(regCache[i]), Mem(xCPU, offsetof(CPU, reg[i].u32)));
+            compiler.ldr(R32(regCache[i]), Mem(xCPU, (U32)offsetof(CPU, reg[i].u32)));
         }
     }
     compiler.ldr(xFLAGS, createMem(regCPU, offsetof(CPU, flags)));
@@ -5846,7 +5846,7 @@ void JitArmV8CodeGen::loadCacheFromCPU() {
 void JitArmV8CodeGen::writeCacheToCPU() {
     for (int i = 0; i < 8; i++) {
         if (regCache[i] != INVALID_REG) {
-            compiler.str(R32(regCache[i]), Mem(xCPU, offsetof(CPU, reg[i].u32)));
+            compiler.str(R32(regCache[i]), Mem(xCPU, (U32)offsetof(CPU, reg[i].u32)));
         }
     }
     compiler.str(xFLAGS, createMem(regCPU, offsetof(CPU, flags)));

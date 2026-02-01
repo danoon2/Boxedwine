@@ -75,7 +75,7 @@ void FilePage::onDemmand(MMU* mmu, U32 pageIndex) {
     if (mmu->getPageType() != PageType::File) {
         return;
     }
-    MappedFilePtr mappedFile = thread->process->getMappedFile(mmu->ramIndex);
+    MappedFilePtr mappedFile = thread->process->getMappedFile((U32)mmu->ramIndex);
     U32 address = pageIndex << K_PAGE_SHIFT;
     U32 mappedOffset = (address - mappedFile->address) & 0xfffff000;
     U64 fileOffset = mappedOffset + mappedFile->offset;

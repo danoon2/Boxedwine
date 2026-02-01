@@ -381,10 +381,6 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
         // operations performed by other threads on the same futex word.
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
 
-        if (f->address != ramAddress || f->thread != this) {
-            int ii = 0;
-        }
-
         U32 currentValue = memory->readd(addr);
         if (currentValue != value) {
             //klog_fmt("   %x/%x futux addr=%x op=%x val=%x ram=%x NEW VALUE 2nd try %x", id, process->id, addr, op, value, (U32)ramAddress, currentValue);
@@ -449,7 +445,6 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
                 bool waiting = system_futex[i].waiting; // there is a small gap when waiting on a futex between creating the futex and getting the lock for this to be false
                 if (processCheck && addressCheck && !system_futex[i].wake && maskCheck) {
                     if (!waiting) {
-                        int ii = 0;
                         continue;
                     }
                     system_futex[i].wake = true;
@@ -690,11 +685,6 @@ void KThread::exitRobustList()
     if (pending.address) {
         handleFutexDeath(pending.address + futex_offset, pip, HANDLE_DEATH_PENDING);
     }
-}
-
-static U8 fetchByte(void* data, U32* eip) {
-    KMemory* memory = (KMemory*)data;
-    return memory->readb((*eip)++);
 }
 
 void KThread::signalTrap(U32 code) {
