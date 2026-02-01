@@ -342,6 +342,7 @@ public:
 #define SSE_INT32_BIT_MASK 4
 #define SSE_BYTE8_BIT_MASK 5
     U64 storedRegs[32];
+    SSE storedNeonRegs[32];
     SSE sseConstants[6];
 #endif
 #endif

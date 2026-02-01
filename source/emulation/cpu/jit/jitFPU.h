@@ -184,7 +184,8 @@ public:
     void dynamic_FNSTCW(DecodedOp* op) override;
     void dynamic_FLDCW(DecodedOp* op) override;
     void dynamic_FRNDINT(DecodedOp* op) override;
-
+    void dynamic_FLDENV(DecodedOp* op) override;
+    void dynamic_FNSTENV(DecodedOp* op) override;
     void dynamic_FUCOMPP(DecodedOp* op) override;
     void dynamic_FNCLEX(DecodedOp* op) override;
     void dynamic_FNINIT(DecodedOp* op) override;

@@ -144,7 +144,7 @@ public:
     RegPtr calculateMask16(DecodedOp* op);
     RegPtr calculateMask32(DecodedOp* op);
 
-    virtual void addReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
+    virtual void addReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;    
     virtual void addValue(JitWidth regWidth, RegPtr reg, U32 imm) = 0;
     virtual void orReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void orValue(JitWidth regWidth, RegPtr reg, U32 imm) = 0;
@@ -152,6 +152,7 @@ public:
     virtual void subValue(JitWidth regWidth, RegPtr reg, U32 imm) = 0;
     virtual void andReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void andValue(JitWidth regWidth, RegPtr reg, U32 immm) = 0;
+    virtual void andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) = 0;
 #ifdef BOXEDWINE_64
     virtual void andValue64(RegPtr reg, U64 immm) = 0;
 #define andValueNative(reg, imm) andValue64(reg, imm);

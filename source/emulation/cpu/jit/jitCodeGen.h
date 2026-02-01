@@ -64,6 +64,8 @@ public:
     void writeValue(JitWidth width, RegPtr addressReg, U32 imm) override;
     virtual void clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) = 0;
 
+    void andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) override;
+
     void genCF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
     void genOF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
     void genPF(RegPtr result); // guaranteed to return 0 or 1

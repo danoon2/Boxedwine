@@ -1575,4 +1575,9 @@ void JitCodeGen::IfSmallStack() {
     If(JitWidth::b32, reg);
 }
 
+void JitCodeGen::andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
+    mov(regWidth, dst, reg);
+    andValue(regWidth, dst, value);
+}
+
 #endif

@@ -574,6 +574,144 @@ void JitFPU::dynamic_FLDCW(DecodedOp* op) {
     writeCPU(JitWidth::b32, offsetof(CPU, fpu.round), cw);
 }
 
+void JitFPU::dynamic_FLDENV(DecodedOp* op) {
+    RegPtr tmp = getTmpReg8();
+    RegPtr addressReg = calculateEaa(op);
+    RegPtr tag;
+    
+    if (!cpu->isBig()) {
+        xorReg(JitWidth::b32, tmp, tmp);
+        read(JitWidth::b16, addressReg, nullptr, nullptr, tmp);
+        addValue(JitWidth::b32, addressReg, 2);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.cw), tmp);
+        shrValue(JitWidth::b32, tmp, 10);
+        andValue(JitWidth::b32, tmp, 3);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.round), tmp);
+
+        // sw
+        read(JitWidth::b16, addressReg, nullptr, nullptr, tmp);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.sw), tmp);
+        addValue(JitWidth::b32, addressReg, 2);
+        shrValue(JitWidth::b32, tmp, 11);
+        andValue(JitWidth::b32, tmp, 7);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.top), tmp);
+
+        // tag
+        tag = read(JitWidth::b16, addressReg, nullptr, nullptr);
+        addValue(JitWidth::b32, addressReg, 2);
+
+        for (int i = 0; i < 4; i++) {
+            addValue(JitWidth::b32, addressReg, 2);
+            read(JitWidth::b16, addressReg, nullptr, nullptr, tmp);
+            writeCPU(JitWidth::b16, offsetof(CPU, fpu.envData) + sizeof(U32) * i, tmp);            
+        }
+    } else {
+        read(JitWidth::b32, addressReg, nullptr, nullptr, tmp);
+        addValue(JitWidth::b32, addressReg, 4);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.cw), tmp);
+        shrValue(JitWidth::b32, tmp, 10);
+        andValue(JitWidth::b32, tmp, 3);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.round), tmp);
+
+        // sw
+        read(JitWidth::b32, addressReg, nullptr, nullptr, tmp);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.sw), tmp);
+        addValue(JitWidth::b32, addressReg, 4);
+        shrValue(JitWidth::b32, tmp, 11);
+        andValue(JitWidth::b32, tmp, 7);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.top), tmp);
+
+        // tag
+        tag = read(JitWidth::b32, addressReg, nullptr, nullptr);
+        addValue(JitWidth::b32, addressReg, 4);
+
+        for (int i = 0; i < 4; i++) {
+            addValue(JitWidth::b32, addressReg, 4);
+            read(JitWidth::b32, addressReg, nullptr, nullptr, tmp);
+            writeCPU(JitWidth::b32, offsetof(CPU, fpu.envData) + sizeof(U32) * i, tmp);
+        }
+    }
+
+    for (int i = 0; i < 8; i++) {
+        if (i != 0) {
+            shrValue(JitWidth::b32, tag, 2);
+        }
+        andValueWithDest(JitWidth::b32, tmp, tag, 3);
+        writeCPU(JitWidth::b8, offsetof(CPU, fpu.tags[i]), tmp);
+    }
+}
+
+void JitFPU::dynamic_FNSTENV(DecodedOp* op) {
+    RegPtr tmp = getTmpReg8();
+    RegPtr sw = readCPU(JitWidth::b32, offsetof(CPU, fpu.sw));
+
+    readCPU(JitWidth::b32, offsetof(CPU, fpu.top), tmp);
+    shlValue(JitWidth::b32, tmp, 11);
+    andValue(JitWidth::b32, sw, ~0x3800);
+    orReg(JitWidth::b32, sw, tmp);
+    
+    RegPtr addressReg = calculateEaa(op);
+    
+    if (!cpu->isBig()) {
+        // cw
+        readCPU(JitWidth::b32, offsetof(CPU, fpu.cw), tmp);
+        write(JitWidth::b16, addressReg, tmp);
+        addValue(JitWidth::b32, addressReg, 2);
+
+        // sw
+        write(JitWidth::b16, addressReg, sw);
+        addValue(JitWidth::b32, addressReg, 2);
+
+        // tag
+        xorReg(JitWidth::b32, sw, sw);
+        for (int i = 0; i < 8; i++) {
+            readCPU(JitWidth::b8, offsetof(CPU, fpu.tags[i]), tmp);
+            IfEqual(JitWidth::b8, tmp, 3); {
+                orValue(JitWidth::b32, sw, 3 << i);
+            } EndIf();
+        }
+        write(JitWidth::b16, addressReg, sw);
+
+        // instruction pointer
+        // op code
+        // data pointer
+        // data pointer selector
+        for (int i = 0; i < 4; i++) {
+            addValue(JitWidth::b32, addressReg, 2);
+            writeValue(JitWidth::b16, addressReg, 0);
+        }
+    } else {
+        // cw
+        readCPU(JitWidth::b32, offsetof(CPU, fpu.cw), tmp);
+        write(JitWidth::b32, addressReg, tmp);
+        addValue(JitWidth::b32, addressReg, 4);
+
+        // sw
+        write(JitWidth::b32, addressReg, sw);
+        addValue(JitWidth::b32, addressReg, 4);
+
+        // tag
+        xorReg(JitWidth::b32, sw, sw);
+        for (int i = 0; i < 8; i++) {
+            readCPU(JitWidth::b8, offsetof(CPU, fpu.tags[i]), tmp);
+            IfEqual(JitWidth::b8, tmp, 3); {
+                orValue(JitWidth::b32, sw, 3 << i);
+            } EndIf();
+        }
+        write(JitWidth::b16, addressReg, sw);
+
+        // instruction pointer
+        // op code
+        // data pointer
+        // data pointer selector
+        for (int i = 0; i < 4; i++) {
+            addValue(JitWidth::b32, addressReg, 4);
+            writeValue(JitWidth::b32, addressReg, 0);
+        }
+    }
+
+}
+
 // motorhead uses this
 void JitFPU::dynamic_FRNDINT(DecodedOp* op) {
     // double value = this->regCache[this->top].d;

@@ -149,7 +149,8 @@ U8 FPU::GetAbridgedTag(CPU* cpu) {
 void FPU::SetTag(U32 tag) {
     int i;
     for (i = 0; i < 8; i++) {
-        this->tags[i] = tag;
+        this->tags[i] = (tag & 3);
+        tag >>= 2;
     }
 }
 

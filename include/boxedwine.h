@@ -54,7 +54,9 @@
 #define BOXEDWINE_OPENGL
 #endif
 
+#ifndef ASMJIT_STATIC
 #define ASMJIT_STATIC
+#endif
 
 #ifdef BOXEDWINE_MAC_JIT
 #include "TargetConditionals.h"
