@@ -325,9 +325,6 @@ pipeline {
                         label "macArmv8"
                     }
                     steps {
-                        script { 
-                            gitCheckout() 
-                        }
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
                                 curl -z automation4.zip http://boxedwine.org/v2/1/automation4.zip --output automation4.zip
