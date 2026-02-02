@@ -36,9 +36,9 @@
 #include "jitXchg.h"
 #include "jitBit.h"
 #include "jitOther.h"
-#include "jitCallMmx.h"
-#include "jitCallSse.h"
-#include "jitCallSse2.h"
+#include "jitCallMMX.h"
+#include "jitCallSSE.h"
+#include "jitCallSSE2.h"
 #include "jitCallFPU.h"
 #include "jitLock.h"
 
