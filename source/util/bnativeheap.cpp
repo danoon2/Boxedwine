@@ -95,7 +95,7 @@ void* BNativeHeap::alloc(U32 len) {
             }
             U32* address = ((U32*)result) - 1;
             if (isCodeMemory) {
-                Platform::writeCodeToMemory(address, 4, [address, index, this]() {
+                Platform::writeCodeToMemory(address, 4, [address, index]() {
                     *address = index;
                 });
             } else {
@@ -137,7 +137,7 @@ void BNativeHeap::free(void* address) {
 		U32* pTime = (U32*)address;
 		pTime--;
         if (isCodeMemory) {
-            Platform::writeCodeToMemory(pTime, 4, [pTime, index]() {
+            Platform::writeCodeToMemory(pTime, 4, [pTime]() {
                 *pTime = KSystem::getMilliesSinceStart();
             });
         } else {

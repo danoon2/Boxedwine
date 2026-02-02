@@ -52,8 +52,6 @@ pipeline {
                                 make clean
                                 make test || exit
                                 ./Build/Test/boxedwine || exit
-                                make testMultiThreaded || exit
-                                ./Build/TestMultiThreaded/boxedwine
                             '''
                         }
                     }
@@ -84,8 +82,8 @@ pipeline {
                         dir("project/linux") {
                             sh '''#!/bin/bash
                                 make clean
-                                make testMultiThreaded || exit
-                                ./Build/TestMultiThreaded/boxedwine
+                                make test || exit
+                                ./Build/Test/boxedwine || exit
                             '''
                         }
                     }
@@ -164,32 +162,22 @@ pipeline {
                         }
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                rm Build/MultiThreaded/boxedwine
                                 rm Build/Release/boxedwine
                                 rm Build/Deploy/Linux64/boxedwine
                                 make clean
                                 make release
-                                make multiThreaded
                                 mkdir -p Build/Deploy/Linux64
-                                mkdir -p Build/Deploy/Linux
-                                if [ ! -f "Build/MultiThreaded/boxedwine" ] 
-                                then
-                                    echo "Build/MultiThreaded/boxedwine DOES NOT exists."
-                                    exit 999
-                                fi
                                 if [ ! -f "Build/Release/boxedwine" ] 
                                 then
                                     echo "Build/Release/boxedwine DOES NOT exists."
                                     exit 999
                                 fi
-                                cp Build/MultiThreaded/boxedwine Build/Deploy/Linux64/
-                                cp Build/Release/boxedwine Build/Deploy/Linux/
+                                cp Build/Release/boxedwine Build/Deploy/Linux64/
                             '''
                         }
                         
                         dir("project/linux/Build") {
                             stash includes: 'Deploy/Linux64/boxedwine', name: 'linux64'
-                            stash includes: 'Deploy/Linux/boxedwine', name: 'linux'
                         }
                     }
                 }
@@ -242,13 +230,13 @@ pipeline {
                                 rm Deploy/LinuxArm64/boxedwine                                
                                 mkdir -p Deploy/LinuxArm64
                                 make clean
-                                make multiThreaded
-                                if [ ! -f "Build/MultiThreaded/boxedwine" ] 
+                                make release
+                                if [ ! -f "Build/Release/boxedwine" ] 
                                 then
-                                    echo "Build/MultiThreaded/boxedwine DOES NOT exists."
+                                    echo "Build/Release/boxedwine DOES NOT exists."
                                     exit 999
                                 fi
-                                mv Build/MultiThreaded/boxedwine Deploy/LinuxArm64/
+                                mv Build/Release/boxedwine Deploy/LinuxArm64/
                             '''
                         }
                         dir("project/linux") {
@@ -324,12 +312,6 @@ pipeline {
                         }
                         dir("project/linux/automation") {
                             unstash "linux64"
-                            unstash "linux"
-                            retry(3) {
-                                sh '''
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/boxedwine\" -nosound -novideo
-                                '''
-                            }
                             retry(3) {
                                 sh '''
                                     java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo

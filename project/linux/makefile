@@ -1,42 +1,28 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test jit testJit multiThreaded testMultiThreaded
+.PHONY: default all clean release test 
 
-default all: multiThreaded
+default all: release
 
 uname_m := $(shell uname -m)
 uname_n := $(shell uname -n)
 $(info uname -m is $(uname_m))
 ifeq ($(uname_m), armv7l)
-JIT_FLAGS := -DBOXEDWINE_DYNAMIC_ARMV7 -DBOXEDWINE_DYNAMIC
 export GCC_EXTRA_FLAGS := -fno-tree-vectorize
 else ifeq ($(uname_m), aarch64)
-BT_FLAGS := -O0 -DBOXEDWINE_64 -DBOXEDWINE_BINARY_TRANSLATOR -DBOXEDWINE_ARMV8BT -DBOXEDWINE_MULTI_THREADED -DSIMDE_NO_NEON -DSIMDE_SSE2_NO_NEON
-RELEASE_FLAGS := -DBOXEDWINE_64
+BOXED_FLAGS := -DASMJIT_NO_X86 -DASMJIT_STATIC -DBOXEDWINE_64 -DBOXEDWINE_DYNAMIC -BOXEDWINE_JIT_ARMV8 -DSIMDE_NO_NEON -DSIMDE_SSE2_NO_NEON
 else ifeq ($(uname_m), i386)
-JIT_FLAGS := -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC
+BOXED_FLAGS := -DASMJIT_NO_AARCH64 -DASMJIT_STATIC -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC
 else ifeq ($(uname_m), i686)
-JIT_FLAGS := -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC
+BOXED_FLAGS := -DASMJIT_NO_AARCH64 -DASMJIT_STATIC -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC
 else ifeq ($(uname_m), x86_64)
-BT_FLAGS := -DBOXEDWINE_64 -DBOXEDWINE_BINARY_TRANSLATOR -DBOXEDWINE_X64 -DBOXEDWINE_MULTI_THREADED
-RELEASE_FLAGS := -DBOXEDWINE_64
+BOXED_FLAGS := -DASMJIT_NO_AARCH64 -DASMJIT_STATIC -DBOXEDWINE_64 -DBOXEDWINE_DYNAMIC -BOXEDWINE_JIT_X64
 endif
 
-ifeq ($(uname_n), raspberrypi)
-BT_FLAGS += -DBOXEDWINE_SMALL_VIRTUAL_MEMORY
-endif
-jit: export BUILD_DIR := Build/Jit
-jit: export EXTRA_CPP_FLAGS := $(JIT_FLAGS)
-testJit: export BUILD_DIR := Build/TestJit
-testJit: export EXTRA_CPP_FLAGS := $(JIT_FLAGS) -D__TEST
 release: export BUILD_DIR := Build/Release
-release: export EXTRA_CPP_FLAGS := $(RELEASE_FLAGS)
+release: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS)
 test:   export BUILD_DIR := Build/Test
-test: export EXTRA_CPP_FLAGS := -D__TEST
-multiThreaded: export EXTRA_CPP_FLAGS := $(BT_FLAGS)
-multiThreaded: export BUILD_DIR := Build/MultiThreaded
-testMultiThreaded: export EXTRA_CPP_FLAGS := $(BT_FLAGS) -D__TEST
-testMultiThreaded: export BUILD_DIR := Build/TestMultiThreaded
+test: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -D__TEST
 
 cpus  := $(shell grep -c ^processor /proc/cpuinfo)
 ifeq ($(cpus), 0)
@@ -47,7 +33,7 @@ cpus := $(shell echo $$(($(cpus)-1)))
 export MAKEFLAGS := -j $(cpus)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
-jit release test testJit multiThreaded testMultiThreaded:
+release test:
 	@$(MAKE)
 
 clean:
@@ -59,6 +45,7 @@ TARGET_EXEC ?= boxedwine
 PROJDIR := $(realpath $(CURDIR)/../..)
 TEST_BUILD_DIR ?= ./build/build_test
 $(info MAKEFLAGS $(MAKE_FLAGS))
+SOURCES = $(shell find $(PROJDIR)/lib/asmjit -type f -name '*.cpp')
 SOURCES = $(shell find $(PROJDIR)/source -type f -name '*.cpp')
 SOURCES += $(wildcard $(PROJDIR)/platform/linux/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
@@ -93,10 +80,6 @@ TEST_SOURCES += $(wildcard $(PROJDIR)/source/x11/*.cpp)
 
 ifeq ($(BUILD_DIR), Build/Test)
 SRCS := $(TEST_SOURCES)
-else ifeq ($(BUILD_DIR), Build/TestJit)
-SRCS := $(TEST_SOURCES)
-else ifeq ($(BUILD_DIR), Build/TestMultiThreaded)
-SRCS := $(TEST_SOURCES)
 else
 SRCS := $(SOURCES)
 endif
@@ -107,12 +90,12 @@ ALL := $(OBJS)
 ALL += $(SOFT_OBJS)
 DEPS := $(ALL:.o=.d)
 
-$(OBJS): INCLUDES := -I../../include -I../../lib/glew/include -I../../lib/imgui -I../../lib/simde -I../../lib/pugixml/src
+$(OBJS): INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/glew/include -I../../lib/imgui -I../../lib/simde -I../../lib/pugixml/src
 $(SOFT_OBJS): INCLUDES := -I../../lib/softfloat/source/include -I../../lib/softfloat/source -I../../lib/softfloat/source/8086-SSE
 
 SDL_CFLAGS = $(shell sdl2-config --cflags)
 SDL_LIBS = $(shell sdl2-config --libs)
-CPPFLAGS ?= -std=c++20 -O2 $(GCC_EXTRA_FLAGS) -Werror=switch -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS) $(EXTRA_CPP_FLAGS)
+CPPFLAGS ?= -std=c++20 -O2 $(GCC_EXTRA_FLAGS) -Werror=switch -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS)
 CFLAGS ?= -O2 $(INCLUDES)
 LDFLAGS = -L./linux_build/lib -lcurl -lssl -lcrypto -lpthread -lm -lz -lminizip -lGL -lstdc++ -lstdc++fs $(SDL_LIBS)
 
