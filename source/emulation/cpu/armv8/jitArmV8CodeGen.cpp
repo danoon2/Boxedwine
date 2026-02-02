@@ -5826,7 +5826,7 @@ void JitArmV8CodeGen::patch(U8* begin) {
 void JitArmV8CodeGen::loadCacheFromCPU() {
     for (int i = 0; i < 8; i++) {
         if (regCache[i] != INVALID_REG) {
-            compiler.ldr(R32(regCache[i]), Mem(xCPU, (U32)offsetof(CPU, reg[i].u32)));
+            compiler.ldr(R32(regCache[i]), Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
         }
     }
     compiler.ldr(xFLAGS, createMem(regCPU, offsetof(CPU, flags)));
@@ -5841,7 +5841,7 @@ void JitArmV8CodeGen::loadCacheFromCPU() {
 void JitArmV8CodeGen::writeCacheToCPU() {
     for (int i = 0; i < 8; i++) {
         if (regCache[i] != INVALID_REG) {
-            compiler.str(R32(regCache[i]), Mem(xCPU, (U32)offsetof(CPU, reg[i].u32)));
+            compiler.str(R32(regCache[i]), Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
         }
     }
     compiler.str(xFLAGS, createMem(regCPU, offsetof(CPU, flags)));
