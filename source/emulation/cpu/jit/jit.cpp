@@ -39,7 +39,7 @@
 #include "jitCallMMX.h"
 #include "jitCallSSE.h"
 #include "jitCallSSE2.h"
-#include "jitCallFPU.h"
+#include "jitCallFpu.h"
 #include "jitLock.h"
 
 U8 JitReg::hardwareReg() {
