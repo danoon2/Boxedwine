@@ -637,7 +637,7 @@ void JitFPU::dynamic_FLDENV(DecodedOp* op) {
             shrValue(JitWidth::b32, tag, 2);
         }
         andValueWithDest(JitWidth::b32, tmp, tag, 3);
-        writeCPU(JitWidth::b8, offsetof(CPU, fpu.tags[i]), tmp);
+        writeCPU(JitWidth::b8, offsetof(CPU, fpu.tags[0]) + i, tmp);
     }
 }
 
@@ -665,7 +665,7 @@ void JitFPU::dynamic_FNSTENV(DecodedOp* op) {
         // tag
         xorReg(JitWidth::b32, sw, sw);
         for (int i = 0; i < 8; i++) {
-            readCPU(JitWidth::b8, offsetof(CPU, fpu.tags[i]), tmp);
+            readCPU(JitWidth::b8, offsetof(CPU, fpu.tags[0]) + i, tmp);
             IfEqual(JitWidth::b8, tmp, 3); {
                 orValue(JitWidth::b32, sw, 3 << i);
             } EndIf();
@@ -693,7 +693,7 @@ void JitFPU::dynamic_FNSTENV(DecodedOp* op) {
         // tag
         xorReg(JitWidth::b32, sw, sw);
         for (int i = 0; i < 8; i++) {
-            readCPU(JitWidth::b8, offsetof(CPU, fpu.tags[i]), tmp);
+            readCPU(JitWidth::b8, offsetof(CPU, fpu.tags[0]) + i, tmp);
             IfEqual(JitWidth::b8, tmp, 3); {
                 orValue(JitWidth::b32, sw, 3 << i);
             } EndIf();
