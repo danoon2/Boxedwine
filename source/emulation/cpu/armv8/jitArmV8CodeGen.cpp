@@ -209,7 +209,6 @@ public:
     RegPtr compare(JitEvaluate condition, RegPtr result);
     RegPtr testZeroReg(JitWidth regWidth, RegPtr reg, RegPtr result = nullptr) override;
 
-    void readRamPage(RegPtr dest, RegPtr index) override;
     void readMMU(RegPtr dest, RegPtr index) override;
     void readMMU(RegPtr dest, U32 index) override;
     void read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) override;
@@ -2104,10 +2103,6 @@ void JitArmV8CodeGen::idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, Re
     } else {
         kpanic("JitArmV8CodeGen::idivRegRegWithRemainder");
     }
-}
-
-void JitArmV8CodeGen::readRamPage(RegPtr dest, RegPtr index) {
-    // :TODO: remove
 }
 
 #include "../../softmmu/kmemory_soft.h"

@@ -10,13 +10,13 @@ $(info uname -m is $(uname_m))
 ifeq ($(uname_m), armv7l)
 export GCC_EXTRA_FLAGS := -fno-tree-vectorize
 else ifeq ($(uname_m), aarch64)
-BOXED_FLAGS := -DASMJIT_NO_X86 -DASMJIT_STATIC -DBOXEDWINE_64 -DBOXEDWINE_DYNAMIC -BOXEDWINE_JIT_ARMV8 -DSIMDE_NO_NEON -DSIMDE_SSE2_NO_NEON
+BOXED_FLAGS := -DASMJIT_NO_X86 -DASMJIT_STATIC -DBOXEDWINE_64 -DBOXEDWINE_DYNAMIC -DBOXEDWINE_JIT_ARMV8 -DSIMDE_NO_NEON -DSIMDE_SSE2_NO_NEON -DBOXEDWINE_MULTI_THREADED
 else ifeq ($(uname_m), i386)
-BOXED_FLAGS := -DASMJIT_NO_AARCH64 -DASMJIT_STATIC -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC
+BOXED_FLAGS := -DASMJIT_NO_AARCH64 -DASMJIT_STATIC -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC -DBOXEDWINE_MULTI_THREADED
 else ifeq ($(uname_m), i686)
-BOXED_FLAGS := -DASMJIT_NO_AARCH64 -DASMJIT_STATIC -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC
+BOXED_FLAGS := -DASMJIT_NO_AARCH64 -DASMJIT_STATIC -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC -DBOXEDWINE_MULTI_THREADED
 else ifeq ($(uname_m), x86_64)
-BOXED_FLAGS := -DASMJIT_NO_AARCH64 -DASMJIT_STATIC -DBOXEDWINE_64 -DBOXEDWINE_DYNAMIC -BOXEDWINE_JIT_X64
+BOXED_FLAGS := -DASMJIT_NO_AARCH64 -DASMJIT_STATIC -DBOXEDWINE_64 -DBOXEDWINE_DYNAMIC -DBOXEDWINE_JIT_X64 -DBOXEDWINE_MULTI_THREADED
 endif
 
 release: export BUILD_DIR := Build/Release
@@ -45,8 +45,8 @@ TARGET_EXEC ?= boxedwine
 PROJDIR := $(realpath $(CURDIR)/../..)
 TEST_BUILD_DIR ?= ./build/build_test
 $(info MAKEFLAGS $(MAKE_FLAGS))
-SOURCES = $(shell find $(PROJDIR)/lib/asmjit -type f -name '*.cpp')
-SOURCES = $(shell find $(PROJDIR)/source -type f -name '*.cpp')
+SOURCES = $(shell find $(PROJDIR)/lib/asmjit/asmjit -type f -name '*.cpp')
+SOURCES += $(shell find $(PROJDIR)/source -type f -name '*.cpp')
 SOURCES += $(wildcard $(PROJDIR)/platform/linux/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/lib/pugixml/src/*.cpp)
@@ -63,7 +63,8 @@ SOURCES += $(PROJDIR)/lib/tiny-process/process_unix.cpp
 SOFT_SOURCES = $(wildcard $(PROJDIR)/lib/softfloat/source/*.c)
 SOFT_SOURCES += $(wildcard $(PROJDIR)/lib/softfloat/source/8086-SSE/*.c)
 
-TEST_SOURCES = $(wildcard $(PROJDIR)/source/test/*.cpp)
+TEST_SOURCES = $(shell find $(PROJDIR)/lib/asmjit/asmjit -type f -name '*.cpp')
+TEST_SOURCES += $(wildcard $(PROJDIR)/source/test/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/sdl/**/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)

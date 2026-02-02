@@ -5545,7 +5545,7 @@ DecodeReg decodeMovEbxId(MovR32I32, 3, 32);                       // MOV EBX,Id
 DecodeReg decodeMovEspId(MovR32I32, 4, 32);                       // MOV ESP,Id
 DecodeReg decodeMovEbpId(MovR32I32, 5, 32);                       // MOV EBP,Id
 DecodeReg decodeMovEsiId(MovR32I32, 6, 32);                       // MOV ESI,Id
-DecodeReg decodeMovEdiId(MovR32I32, 7, 32);                       // MOV eEDI,Id
+DecodeReg decodeMovEdiId(MovR32I32, 7, 32);                       // MOV EDI,Id
 
 DecodeRM decodeMovEbIb(MovR8I8, MovE8I8, 8);         // MOV EB,IB
 DecodeRM decodeMovEwIw(MovR16I16, MovE16I16, 16);   // MOV EW,IW

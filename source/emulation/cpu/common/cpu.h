@@ -345,6 +345,9 @@ public:
     SSE storedNeonRegs[32];
     SSE sseConstants[6];
 #endif
+#ifdef BOXEDWINE_JIT_X64
+    U64 storedRegs[16];
+#endif
 #endif
     U32 flagZeroMask[52] = {
     0, // FLAGS_NONE,

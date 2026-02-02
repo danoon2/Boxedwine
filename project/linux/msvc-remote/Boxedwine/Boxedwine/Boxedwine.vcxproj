@@ -160,6 +160,68 @@
     </ProjectPublicIncludePath>
   </PropertyGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64assembler.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64builder.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64compiler.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64emithelper.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64formatter.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64func.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64instapi.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64instdb.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64operand.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64rapass.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\arm\armformatter.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\archtraits.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\assembler.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\builder.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\codeholder.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\codewriter.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\compiler.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\constpool.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\cpuinfo.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\emithelper.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\emitter.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\emitterutils.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\environment.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\errorhandler.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\formatter.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\func.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\funcargscontext.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\globals.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\inst.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\instdb.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\jitallocator.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\jitruntime.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\logger.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\operand.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\osutils.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\ralocal.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\rapass.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\rastack.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\string.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\target.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\type.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\core\virtmem.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\support\arena.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\support\arenabitset.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\support\arenahash.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\support\arenalist.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\support\arenatree.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\support\arenavector.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\support\support.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\ujit\unicompiler_a64.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\ujit\unicompiler_x86.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\ujit\vecconsttable.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86assembler.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86builder.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86compiler.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86emithelper.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86formatter.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86func.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86instapi.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86instdb.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86operand.cpp" />
+    <ClCompile Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86rapass.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\glew\src\glew.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_opengl2.cpp" />
@@ -1179,7 +1241,6 @@
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativethread.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\kvulkanSDL.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\sdlcallback.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.cpp" />
@@ -1193,7 +1254,7 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_minmax.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\armv8CPU.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\jitArmV8CodeGen.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btData.cpp" />
@@ -1223,7 +1284,6 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normal_strings.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\srcgen.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x32\jitX86CodeGen.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x32\x86Asm.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.cpp" />
@@ -1281,8 +1341,8 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\kunixsocket.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\loader\loader.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\bufferaccess.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\kernel\proc\cpuinfo.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\meminfo.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\proc\proccpuinfo.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\procstat.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\self.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\uptime.cpp" />
@@ -1553,7 +1613,6 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\..\..\include\boxedwine.h" />
     <ClInclude Include="..\..\..\..\..\include\bufferaccess.h" />
-    <ClInclude Include="..\..\..\..\..\include\cpuinfo.h" />
     <ClInclude Include="..\..\..\..\..\include\crc.h" />
     <ClInclude Include="..\..\..\..\..\include\devdsp.h" />
     <ClInclude Include="..\..\..\..\..\include\devfb.h" />
@@ -1605,6 +1664,7 @@
     <ClInclude Include="..\..\..\..\..\include\platformOpenGL.h" />
     <ClInclude Include="..\..\..\..\..\include\platformtypes.h" />
     <ClInclude Include="..\..\..\..\..\include\player.h" />
+    <ClInclude Include="..\..\..\..\..\include\proccpuinfo.h" />
     <ClInclude Include="..\..\..\..\..\include\procselfexe.h" />
     <ClInclude Include="..\..\..\..\..\include\procstat.h" />
     <ClInclude Include="..\..\..\..\..\include\recorder.h" />
@@ -1614,6 +1674,112 @@
     <ClInclude Include="..\..\..\..\..\include\syscpuscalingcurfreq.h" />
     <ClInclude Include="..\..\..\..\..\include\syscpuscalingmaxfreq.h" />
     <ClInclude Include="..\..\..\..\..\include\uptime.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\a64.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64archtraits_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64assembler.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64builder.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64compiler.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64emithelper_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64emitter.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64formatter_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64func_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64globals.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64instapi_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64instdb.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64instdb_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64operand.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\a64rapass_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\armformatter_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\armglobals.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\arm\armutils.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\asmjit-scope-begin.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\asmjit-scope-end.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\asmjit.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\api-build_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\api-config.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\archcommons.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\archtraits.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\assembler.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\builder.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\builder_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\codebuffer.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\codeholder.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\codewriter_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\compiler.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\compilerdefs.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\constpool.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\cpuinfo.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\emithelper_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\emitter.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\emitterutils_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\environment.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\errorhandler.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\fixup.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\formatter.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\formatter_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\func.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\funcargscontext_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\globals.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\inst.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\instdb_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\jitallocator.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\jitruntime.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\logger.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\misc_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\operand.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\osutils.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\osutils_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\raassignment_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\racfgblock_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\racfgbuilder_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\raconstraints_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\radefs_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\rainst_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\ralocal_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\rapass_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\rareg_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\rastack_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\string.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\target.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\type.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\core\virtmem.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\host.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\support\arena.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\support\arenabitset_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\support\arenahash.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\support\arenalist.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\support\arenapool.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\support\arenastring.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\support\arenatree.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\support\arenavector.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\support\span.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\support\support.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\support\support_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\ujit.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\ujit\ujitbase.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\ujit\unicompiler.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\ujit\unicompiler_utils_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\ujit\unicondition.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\ujit\uniop.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\ujit\vecconsttable.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86archtraits_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86assembler.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86builder.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86compiler.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86emithelper_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86emitter.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86formatter_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86func_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86globals.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86instapi_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86instdb.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86instdb_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86opcode_p.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86operand.h" />
+    <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\x86\x86rapass_p.h" />
     <ClInclude Include="..\..\..\..\..\lib\glew\include\GL\glew.h" />
     <ClInclude Include="..\..\..\..\..\lib\glew\include\GL\glxew.h" />
     <ClInclude Include="..\..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.h" />
@@ -1753,7 +1919,6 @@
     <ClInclude Include="..\..\..\..\..\platform\sdl\knativescreenSDL.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\kvulkanSDL.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\sdlcallback.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.h" />
@@ -1767,7 +1932,7 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_minmax.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\armv8CPU.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\jitArmV8CodeGen.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h" />
@@ -1850,7 +2015,6 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\strings.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\strings_op.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x32\jitX86CodeGen.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x32\x86Asm.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Asm.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.h" />
@@ -2156,14 +2320,17 @@
     <None Include="..\..\..\..\..\lib\sdl2\include\SDL_config.h.cmake" />
     <None Include="..\..\..\..\..\lib\sdl2\include\SDL_config.h.in" />
   </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\..\..\..\..\lib\asmjit\asmjit\asmjit.natvis" />
+  </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC;ASMJIT_STATIC;BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalIncludeDirectories>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../../../lib/asmjit/asmjit;../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -2171,13 +2338,13 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC;ASMJIT_STATIC;BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../../../lib/asmjit/asmjit;../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -2185,12 +2352,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC;ASMJIT_STATIC;BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalIncludeDirectories>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../../../lib/asmjit/asmjit;../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -2198,13 +2365,13 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;BOXEDWINE_SMALL_VIRTUAL_MEMORY;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;SIMDE_NO_NEON;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC;ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_OPENGL_SDL;BOXEDWINE_SMALL_VIRTUAL_MEMORY;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;SIMDE_NO_NEON;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <UndefinePreprocessorDefinitions>BOXEDWINE_64BIT_MMU</UndefinePreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../../../lib/asmjit;../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -2212,13 +2379,13 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;SIMDE_NO_NEON;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NEON;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC;ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;SIMDE_NO_NEON;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NEON;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV8;BOXEDWINE_DYNAMIC</UndefinePreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../../../lib/asmjit;../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -2226,7 +2393,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;BOXEDWINE_OPENGL_IMGUI_V2;SIMDE_NO_NEON;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC;ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;BOXEDWINE_OPENGL_IMGUI_V2;SIMDE_NO_NEON;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -2234,7 +2401,7 @@
       <Optimization>Full</Optimization>
       <OmitFramePointers>true</OmitFramePointers>
       <UndefinePreprocessorDefinitions>BOXEDWINE_SMALL_VIRTUAL_MEMORY;BOXEDWINE_64BIT_MMU</UndefinePreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../../../lib/asmjit;../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -2242,12 +2409,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalIncludeDirectories>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../../../lib/asmjit;../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -2255,12 +2422,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;__TEST;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;ASMJIT_NO_AARCH64;ASMJIT_STATIC;__TEST;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalIncludeDirectories>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../../../lib/asmjit;../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -2268,12 +2435,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_RECORDER;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;BOXEDWINE_64;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG;BOXEDWINE_OPENGL_IMGUI_V2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_RECORDER;BOXEDWINE_POSIX;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG;BOXEDWINE_OPENGL_IMGUI_V2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalIncludeDirectories>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../../../lib/asmjit;../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -2281,12 +2448,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalIncludeDirectories>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../../../lib/asmjit;../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -2294,12 +2461,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|x86'">
     <ClCompile>
-      <PreprocessorDefinitions>__TEST;BOXEDWINE_MULTI_THREADED;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;ASMJIT_NO_AARCH64;ASMJIT_STATIC;__TEST;BOXEDWINE_MULTI_THREADED;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalIncludeDirectories>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../../../lib/asmjit;../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -2307,12 +2474,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalIncludeDirectories>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../../../lib/asmjit;../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>

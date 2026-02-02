@@ -41,7 +41,6 @@ public:
 
     virtual void preOp(DecodedOp* op) {}
     virtual void read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) = 0;
-    virtual void readRamPage(RegPtr dest, RegPtr index) = 0;
     virtual void readMMU(RegPtr dest, RegPtr index) = 0;
     virtual void readMMU(RegPtr dest, U32 index) = 0;
     //virtual void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;

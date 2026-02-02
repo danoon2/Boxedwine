@@ -23,7 +23,7 @@
 
 class SSERegInternal {
 public:
-	SSERegInternal(U8 hardwareReg, U8 emulatedReg) : reg(hardwareReg), emulatedReg(emulatedReg) {}
+	SSERegInternal(U8 hardwareReg, U8 emulatedReg) : emulatedReg(emulatedReg), reg(hardwareReg) {}
 
 	U8 hardwareReg() { return reg; }
 

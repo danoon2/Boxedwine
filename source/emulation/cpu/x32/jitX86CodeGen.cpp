@@ -73,7 +73,15 @@ static U8 XMMtmps[] = { 12, 13, 14, 15 };
 #define NUMBER_OF_XMM_REG 16
 #define NUMBER_OF_XMM_TMPS 4
 #define RN(x) R64(x)
+
+#ifdef _WIN32
+// RBX, RBP, RSP, RDI, RSI, R12, R13, R14, and R15 are non volitile
 static bool isVolitile[] = { true, true, true, false, false, false, false, false, true, true, true, true, false, false, false, false };
+#else
+// RBX, RBP, RSP, and R12–R15 are non volitile
+static bool isVolitile[] = { true, true, true, false, false, false, true, true, true, true, true, true, false, false, false, false };
+#endif
+
 #else
 static U8 regCache[] = { 5, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG };
 static U8 xmmCache[] = { INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG };
@@ -130,10 +138,6 @@ asmjit::x86::Gp R8(U8 reg) {
     }    
 #endif
     return asmjit::x86::gp8_lo(reg);
-}
-
-asmjit::x86::Gp R(U8 reg) {
-    return R32(reg);
 }
 
 asmjit::x86::Vec XMM(U8 reg) {
@@ -241,7 +245,6 @@ public:
     RegPtr compareValue(JitWidth regWidth, RegPtr reg, U32 value, JitEvaluate condition, RegPtr resultReg = nullptr) override;
     RegPtr testZeroReg(JitWidth regWidth, RegPtr reg, RegPtr result = nullptr) override;
 
-    void readRamPage(RegPtr dest, RegPtr index) override;
     void readMMU(RegPtr dest, RegPtr index) override;
     void readMMU(RegPtr dest, U32 index) override;
     void read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) override;
@@ -1988,22 +1991,18 @@ void JitX86CodeGen::idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegP
     }
 }
 
-void JitX86CodeGen::readRamPage(RegPtr dest, RegPtr index) {
-    // :TODO: remove
-}
-
 #include "../../softmmu/kmemory_soft.h"
 void JitX86CodeGen::readMMU(RegPtr dest, RegPtr index) {
 #ifdef BOXEDWINE_64
-    compiler.mov(R32(dest->hardwareReg()), Mem(HOST_MMU, R(index->hardwareReg()), 3, 0));
+    compiler.mov(R64(dest->hardwareReg()), Mem(HOST_MMU, RN(index->hardwareReg()), 3, 0));
 #else
-    compiler.mov(R32(dest->hardwareReg()), Mem((U32)getMemData(KThread::currentThread()->memory)->mmu, R(index->hardwareReg()), 2));
+    compiler.mov(R32(dest->hardwareReg()), Mem((U32)getMemData(KThread::currentThread()->memory)->mmu, RN(index->hardwareReg()), 2));
 #endif
 }
 
 void JitX86CodeGen::readMMU(RegPtr dest, U32 index) {
 #ifdef BOXEDWINE_64
-    compiler.mov(R32(dest->hardwareReg()), Mem(HOST_MMU, index * 8));
+    compiler.mov(R64(dest->hardwareReg()), Mem(HOST_MMU, index * 8));
 #else
     compiler.mov(R32(dest->hardwareReg()), Mem((U32)getMemData(KThread::currentThread()->memory)->mmu + index * 4));
 #endif
@@ -2011,14 +2010,14 @@ void JitX86CodeGen::readMMU(RegPtr dest, U32 index) {
 
 void JitX86CodeGen::read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) {
     if (width == JitWidth::b32) {
-        compiler.mov(R32(dest->hardwareReg()), Mem(R(reg->hardwareReg()), disp));
+        compiler.mov(R32(dest->hardwareReg()), Mem(RN(reg->hardwareReg()), disp));
     } else if (width == JitWidth::b16) {
-        compiler.mov(R16(dest->hardwareReg()), Mem(R(reg->hardwareReg()), disp));
+        compiler.mov(R16(dest->hardwareReg()), Mem(RN(reg->hardwareReg()), disp));
     } else if (width == JitWidth::b8) {
-        compiler.mov(R8(get8bitReg(dest)), Mem(R(reg->hardwareReg()), disp));
+        compiler.mov(R8(get8bitReg(dest)), Mem(RN(reg->hardwareReg()), disp));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.mov(R64(dest->hardwareReg()), Mem(R(reg->hardwareReg()), disp));
+        compiler.mov(R64(dest->hardwareReg()), Mem(RN(reg->hardwareReg()), disp));
 #endif
     } else {
         kpanic_fmt("JitX86CodeGen::readMem unexpected width: %d", (U32)width);
@@ -2027,14 +2026,14 @@ void JitX86CodeGen::read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) {
 
 void JitX86CodeGen::readHost(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) {
     if (width == JitWidth::b32) {
-        compiler.mov(R32(dest->hardwareReg()), Mem(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+        compiler.mov(R32(dest->hardwareReg()), Mem(RN(reg->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
     } else if (width == JitWidth::b16) {
-        compiler.mov(R16(dest->hardwareReg()), Mem(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+        compiler.mov(R16(dest->hardwareReg()), Mem(RN(reg->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
     } else if (width == JitWidth::b8) {
-        compiler.mov(R8(get8bitReg(dest)), Mem(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+        compiler.mov(R8(get8bitReg(dest)), Mem(RN(reg->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.mov(R64(dest->hardwareReg()), Mem(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp));
+        compiler.mov(R64(dest->hardwareReg()), Mem(RN(reg->hardwareReg()), RN(sib->hardwareReg()), lsl, disp));
 #endif
     } else {
         kpanic_fmt("JitX86CodeGen::readMem unexpected width: %d", (U32)width);
@@ -2043,14 +2042,14 @@ void JitX86CodeGen::readHost(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib
 
 void JitX86CodeGen::write(JitWidth width, RegPtr reg, U32 disp, RegPtr src) {
     if (width == JitWidth::b32) {
-        compiler.mov(Mem(R(reg->hardwareReg()), disp), R32(src->hardwareReg()));
+        compiler.mov(Mem(RN(reg->hardwareReg()), disp), R32(src->hardwareReg()));
     } else if (width == JitWidth::b16) {
-        compiler.mov(Mem(R(reg->hardwareReg()), disp), R16(src->hardwareReg()));
+        compiler.mov(Mem(RN(reg->hardwareReg()), disp), R16(src->hardwareReg()));
     } else if (width == JitWidth::b8) {
-        compiler.mov(Mem(R(reg->hardwareReg()), disp), R8(get8bitReg(src)));
+        compiler.mov(Mem(RN(reg->hardwareReg()), disp), R8(get8bitReg(src)));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.mov(Mem(R(reg->hardwareReg()), disp), R64(src->hardwareReg()));
+        compiler.mov(Mem(RN(reg->hardwareReg()), disp), R64(src->hardwareReg()));
 #endif
     } else {
         kpanic_fmt("JitX86CodeGen::write unexpected width: %d", (U32)width);
@@ -2059,11 +2058,11 @@ void JitX86CodeGen::write(JitWidth width, RegPtr reg, U32 disp, RegPtr src) {
 
 void JitX86CodeGen::write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, U32 value) {
     if (width == JitWidth::b32) {
-        compiler.mov(Mem32(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp), (U32)value);
+        compiler.mov(Mem32(RN(reg->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), (U32)value);
     } else if (width == JitWidth::b16) {
-        compiler.mov(Mem16(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp), (U16)value);
+        compiler.mov(Mem16(RN(reg->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), (U16)value);
     } else if (width == JitWidth::b8) {
-        compiler.mov(Mem8(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp), (U8)value);
+        compiler.mov(Mem8(RN(reg->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), (U8)value);
     } else {
         kpanic_fmt("JitX86CodeGen::write unexpected width: %d", (U32)width);
     }
@@ -2071,14 +2070,14 @@ void JitX86CodeGen::write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 di
 
 void JitX86CodeGen::writeHost(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) {
     if (width == JitWidth::b32) {
-        compiler.mov(Mem(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp), R32(src->hardwareReg()));
+        compiler.mov(Mem(RN(reg->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), R32(src->hardwareReg()));
     } else if (width == JitWidth::b16) {
-        compiler.mov(Mem(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp), R16(src->hardwareReg()));
+        compiler.mov(Mem(RN(reg->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), R16(src->hardwareReg()));
     } else if (width == JitWidth::b8) {
-        compiler.mov(Mem(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp), R8(get8bitReg(src)));
+        compiler.mov(Mem(RN(reg->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), R8(get8bitReg(src)));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.mov(Mem(R(reg->hardwareReg()), R(sib->hardwareReg()), lsl, disp), R64(src->hardwareReg()));
+        compiler.mov(Mem(RN(reg->hardwareReg()), RN(sib->hardwareReg()), lsl, disp), R64(src->hardwareReg()));
 #endif
     } else {
         kpanic_fmt("JitX86CodeGen::write unexpected width: %d", (U32)width);
@@ -2119,14 +2118,14 @@ RegPtr JitX86CodeGen::readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, Re
         }
     }
     if (width == JitWidth::b32) {
-        compiler.mov(R32(reg->hardwareReg()), Mem(HOST_CPU, R(sib->hardwareReg()), lsl, offset));
+        compiler.mov(R32(reg->hardwareReg()), Mem(HOST_CPU, RN(sib->hardwareReg()), lsl, offset));
     } else if (width == JitWidth::b16) {
-        compiler.mov(R16(reg->hardwareReg()), Mem(HOST_CPU, R(sib->hardwareReg()), lsl, offset));
+        compiler.mov(R16(reg->hardwareReg()), Mem(HOST_CPU, RN(sib->hardwareReg()), lsl, offset));
     } else if (width == JitWidth::b8) {
-        compiler.mov(R8(get8bitReg(reg)), Mem(HOST_CPU, R(sib->hardwareReg()), lsl, offset));
+        compiler.mov(R8(get8bitReg(reg)), Mem(HOST_CPU, RN(sib->hardwareReg()), lsl, offset));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.mov(R64(reg->hardwareReg()), Mem(HOST_CPU, R(sib->hardwareReg()), lsl, offset));
+        compiler.mov(R64(reg->hardwareReg()), Mem(HOST_CPU, RN(sib->hardwareReg()), lsl, offset));
 #endif
     } else {
         kpanic_fmt("unknown dstWidth in JitX86CodeGen::readCPU %d", width);
@@ -2136,13 +2135,13 @@ RegPtr JitX86CodeGen::readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, Re
 
 void JitX86CodeGen::writeCPUValue(JitWidth width, RegPtr sib, U8 lsl, U32 offset, DYN_PTR_SIZE src) {
     if (width == JitWidth::b32) {
-        compiler.mov(Mem32(HOST_CPU, R32(sib->hardwareReg()), lsl, offset), (U32)src);
+        compiler.mov(Mem32(HOST_CPU, RN(sib->hardwareReg()), lsl, offset), (U32)src);
     } else if (width == JitWidth::b16) {
-        compiler.mov(Mem16(HOST_CPU, R32(sib->hardwareReg()), lsl, offset), (U16)src);
+        compiler.mov(Mem16(HOST_CPU, RN(sib->hardwareReg()), lsl, offset), (U16)src);
     } else if (width == JitWidth::b8) {
-        compiler.mov(Mem8(HOST_CPU, R32(sib->hardwareReg()), lsl, offset), (U8)src);
+        compiler.mov(Mem8(HOST_CPU, RN(sib->hardwareReg()), lsl, offset), (U8)src);
     } else if (width == JitWidth::b64) {
-        compiler.mov(Mem64(HOST_CPU, R(sib->hardwareReg()), lsl, offset), src);
+        compiler.mov(Mem64(HOST_CPU, RN(sib->hardwareReg()), lsl, offset), src);
     } else {
         kpanic_fmt("unknown dstWidth in JitX86CodeGen::writeCPUValue %d", width);
     }
@@ -2156,7 +2155,9 @@ void JitX86CodeGen::writeCPUValue(JitWidth width, U32 offset, DYN_PTR_SIZE src) 
     } else if (width == JitWidth::b8) {
         compiler.mov(Mem8(HOST_CPU, offset), (U8)src);
     } else if (width == JitWidth::b64) {
-        compiler.mov(Mem64(HOST_CPU, offset), (U64)src);
+        RegPtr tmp = getTmpReg();
+        compiler.mov(R64(tmp->hardwareReg()), src);
+        compiler.mov(Mem64(HOST_CPU, offset), R64(tmp->hardwareReg()));
     } else {
         kpanic_fmt("unknown dstWidth in JitX86CodeGen::writeCPUValue %d", width);
     }
@@ -2312,7 +2313,7 @@ void JitX86CodeGen::setParams(const std::vector<DynParam>& params) {
     bool pushedReg[16] = { 0 };
     std::vector<asmjit::x86::Gp> needToPush;
 
-    for (int i = 0; i < 4 && i < params.size(); i++) {
+    for (int i = 0; i < 4 && i < (int)params.size(); i++) {
         if (params[i].usesReg() && clobberedReg[params[i].reg->hardwareReg()]) {
             needToPush.push_back(R64(params[i].reg->hardwareReg()));
             pushedReg[i] = true;
@@ -2325,7 +2326,7 @@ void JitX86CodeGen::setParams(const std::vector<DynParam>& params) {
         }
     }
 
-    for (int i = 0; i < 4 && i < params.size(); i++) {
+    for (int i = 0; i < 4 && i < (int)params.size(); i++) {
         if (params[i].usesReg() && pushedReg[i]) {
             compiler.pop(R64(this->params[i].id()));
         } else {
@@ -2353,7 +2354,7 @@ void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>&
     writeCache();
     setParams(params);    
 #ifdef BOXEDWINE_64   
-    if ((pushedRegs.size() % 2) == 0) {
+    if ((pushedRegs.size() % 2) == 1) {
         stackAdjust = 8;
     }
     // part of the x64 windows ABI, shadow store
@@ -2361,7 +2362,7 @@ void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>&
     compiler.sub(asmjit::x86::rsp, 32 + stackAdjust);
 #else
     if (stackAdjust) {
-        compiler.sub(asmjit::x86::rsp, stackAdjust);
+        compiler.push(PARAM_CALL_TMP);
     }
 #endif
     compiler.mov(PARAM_CALL_TMP, (U64)address);
@@ -2370,7 +2371,7 @@ void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>&
     compiler.add(asmjit::x86::rsp, 32 + stackAdjust);
 #else
     if (stackAdjust) {
-        compiler.add(asmjit::x86::rsp, stackAdjust);
+        compiler.pop(PARAM_CALL_TMP);
     }
 #endif
     if (params.size() > 4) {
@@ -2414,7 +2415,7 @@ void JitX86CodeGen::callHostFunctionWithResult(RegPtr result, void* address, con
     setParams(params);
     
 #ifdef BOXEDWINE_64
-    if ((pushedRegs.size() % 2) == 0) {
+    if ((pushedRegs.size() % 2) == 1) {
         stackAdjust = 8;
     }
     // part of the x64 windows ABI, shadow store
@@ -2422,7 +2423,7 @@ void JitX86CodeGen::callHostFunctionWithResult(RegPtr result, void* address, con
     compiler.sub(asmjit::x86::rsp, 32 + stackAdjust);
 #else
     if (stackAdjust) {
-        compiler.sub(asmjit::x86::rsp, stackAdjust);
+        compiler.push(PARAM_CALL_TMP);
     }
 #endif
     compiler.mov(PARAM_CALL_TMP, (U64)address);
@@ -2431,7 +2432,7 @@ void JitX86CodeGen::callHostFunctionWithResult(RegPtr result, void* address, con
     compiler.add(asmjit::x86::rsp, 32 + stackAdjust);
 #else
     if (stackAdjust) {
-        compiler.add(asmjit::x86::rsp, stackAdjust);
+        compiler.pop(PARAM_CALL_TMP);
     }
 #endif
 #else
@@ -2441,7 +2442,7 @@ void JitX86CodeGen::callHostFunctionWithResult(RegPtr result, void* address, con
         compiler.add(regEsp, sizeof(void*) * params.size());
     } 
 #endif  
-    compiler.mov(R32(result->hardwareReg()), regEax);
+    compiler.mov(RN(result->hardwareReg()), RN(0));
     for (int i = (int)pushedRegs.size() - 1; i >= 0; i--) {
         compiler.pop(RN(pushedRegs[i]));
     }
@@ -2690,11 +2691,11 @@ void JitX86CodeGen::IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) 
     ifLabels.push_back(label);
 
     if (regWidth == JitWidth::b32) {
-        compiler.cmp(Mem32(HOST_CPU, R(sib->hardwareReg()), lsl, offset), 0);
+        compiler.cmp(Mem32(HOST_CPU, RN(sib->hardwareReg()), lsl, offset), 0);
     } else if (regWidth == JitWidth::b16) {
-        compiler.cmp(Mem16(HOST_CPU, R(sib->hardwareReg()), lsl, offset), 0);
+        compiler.cmp(Mem16(HOST_CPU, RN(sib->hardwareReg()), lsl, offset), 0);
     } else if (regWidth == JitWidth::b8) {
-        compiler.cmp(Mem8(HOST_CPU, R(sib->hardwareReg()), lsl, offset), 0);
+        compiler.cmp(Mem8(HOST_CPU, RN(sib->hardwareReg()), lsl, offset), 0);
     } else {
         kpanic_fmt("JitX86CodeGen::IfNotCPU unexpected width: %d", (U32)regWidth);
     }
@@ -2716,7 +2717,7 @@ void JitX86CodeGen::clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset,
         kpanic_fmt("JitX86CodeGen::clearRegIfSpansPage unknown width %d", (U32)width);
     }
     // since esp is guaranteed to be aligned, it works to use it as a way to clear the bottom 2 bits
-    compiler.cmovnl(R32(reg->hardwareReg()), regEsp);
+    compiler.cmovnl(RN(reg->hardwareReg()), regEsp);
 }
 
 void JitX86CodeGen::JumpIfCondition(JitConditional condition, U32 address) {
@@ -2760,7 +2761,7 @@ void JitX86CodeGen::Goto(U32 location) {
 }
 
 void JitX86CodeGen::jmp(RegPtr reg) {
-    compiler.jmp(R(reg->hardwareReg()));
+    compiler.jmp(RN(reg->hardwareReg()));
 }
 
 void JitX86CodeGen::writeCPU(JitWidth width, U32 offset, RegPtr src) {
@@ -2781,14 +2782,14 @@ void JitX86CodeGen::writeCPU(JitWidth width, U32 offset, RegPtr src) {
 
 void JitX86CodeGen::writeCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr src) {
     if (width == JitWidth::b32) {
-        compiler.mov(Mem(HOST_CPU, R(sib->hardwareReg()), lsl, offset), R32(src->hardwareReg()));
+        compiler.mov(Mem(HOST_CPU, RN(sib->hardwareReg()), lsl, offset), R32(src->hardwareReg()));
     } else if (width == JitWidth::b16) {
-        compiler.mov(Mem(HOST_CPU, R(sib->hardwareReg()), lsl, offset), R16(src->hardwareReg()));
+        compiler.mov(Mem(HOST_CPU, RN(sib->hardwareReg()), lsl, offset), R16(src->hardwareReg()));
     } else if (width == JitWidth::b8) {
-        compiler.mov(Mem(HOST_CPU, R(sib->hardwareReg()), lsl, offset), R8(get8bitReg(src)));
+        compiler.mov(Mem(HOST_CPU, RN(sib->hardwareReg()), lsl, offset), R8(get8bitReg(src)));
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        compiler.mov(Mem(HOST_CPU, R(sib->hardwareReg()), lsl, offset), R64(src->hardwareReg()));
+        compiler.mov(Mem(HOST_CPU, RN(sib->hardwareReg()), lsl, offset), R64(src->hardwareReg()));
 #endif
     } else {
         kpanic_fmt("unknown dstWidth in JitX86CodeGen::writeCPU %d", width);
@@ -2816,19 +2817,19 @@ void JitX86CodeGen::storeCpuXMMReg(SSERegPtr reg, U32 index) {
 }
 
 void JitX86CodeGen::storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib) {
-    compiler.movups(Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0), XMM(reg->hardwareReg()));
+    compiler.movups(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0), XMM(reg->hardwareReg()));
 }
 
 void JitX86CodeGen::storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) {
-    compiler.movlps(Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0), XMM(reg->hardwareReg()));
+    compiler.movlps(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0), XMM(reg->hardwareReg()));
 }
 
 void JitX86CodeGen::storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib) {
-    compiler.movss(Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0), XMM(reg->hardwareReg()));
+    compiler.movss(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0), XMM(reg->hardwareReg()));
 }
 
 void JitX86CodeGen::storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) {
-    compiler.movhps(Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0), XMM(reg->hardwareReg()));
+    compiler.movhps(Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0), XMM(reg->hardwareReg()));
 }
 
 SSERegPtr JitX86CodeGen::getXMM(U8 index, bool load) {
@@ -2855,31 +2856,31 @@ SSERegPtr JitX86CodeGen::loadCpuXMMReg(U8 index) {
 
 SSERegPtr JitX86CodeGen::loadXMMFromMem128(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, false);
-    compiler.movups(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0));
+    compiler.movups(XMM(reg->hardwareReg()), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0));
     return reg;
 }
 
 SSERegPtr JitX86CodeGen::loadXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, true);
-    compiler.movq(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0));
+    compiler.movq(XMM(reg->hardwareReg()), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0));
     return reg;
 }
 
 SSERegPtr JitX86CodeGen::loadLowXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, true);
-    compiler.movlps(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0));
+    compiler.movlps(XMM(reg->hardwareReg()), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0));
     return reg;
 }
 
 SSERegPtr JitX86CodeGen::loadHighXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, true);
-    compiler.movhps(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0));
+    compiler.movhps(XMM(reg->hardwareReg()), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0));
     return reg;
 }
 
 SSERegPtr JitX86CodeGen::loadXMMFromMem32(U8 index, RegPtr rm, RegPtr sib) {
     SSERegPtr reg = getXMM(index, true);
-    compiler.movss(XMM(reg->hardwareReg()), Mem(R(rm->hardwareReg()), R(sib->hardwareReg()), 0, 0));
+    compiler.movss(XMM(reg->hardwareReg()), Mem(RN(rm->hardwareReg()), RN(sib->hardwareReg()), 0, 0));
     return reg;
 }
 
@@ -4232,14 +4233,12 @@ void JitX86CodeGen::blockExit(bool syncCache) {
         writeCache();
     }
 #ifdef BOXEDWINE_64
-    compiler.pop(asmjit::x86::r15);
-    compiler.pop(asmjit::x86::r14);
-    compiler.pop(asmjit::x86::r13);
-    compiler.pop(asmjit::x86::r12);
-    compiler.pop(asmjit::x86::rdi);
-    compiler.pop(asmjit::x86::rsi);
-    compiler.pop(asmjit::x86::rbp);
-    compiler.pop(asmjit::x86::rbx);
+    compiler.mov(R64(0), HOST_CPU);
+    for (int i = 0; i < NUMBER_OF_REGS; i++) {
+        if (!isVolitile[i]) {
+            compiler.mov(R64(i), Mem(R64(0), offsetof(CPU, storedRegs[0]) + sizeof(U64) * i));
+        }
+    }
 #else
     compiler.pop(regEbp);
     compiler.pop(regEsi);
@@ -4469,7 +4468,7 @@ void JitX86CodeGen::dynamic_xchge16r16_lock(DecodedOp* op) {
 void JitX86CodeGen::dynamic_xchge8r8_lock(DecodedOp* op) {
     JitCodeGen::write(JitWidth::b8, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         RegPtr reg = getReg8(op->reg);
-        this->compiler.xchg(R8(get8bitReg(reg)), Mem(R32(address->hardwareReg()), R32(offset->hardwareReg()), 0, 0));        
+        this->compiler.xchg(R8(get8bitReg(reg)), Mem(RN(address->hardwareReg()), RN(offset->hardwareReg()), 0, 0));        
     });
 }
 
@@ -4948,24 +4947,21 @@ void JitX86CodeGen::dynamic_btce16r16_lock(DecodedOp* op) {
 
 U8* JitX86CodeGen::createStartJITCode() {
 #ifdef BOXEDWINE_64
-    // Integer arguments are passed in registers RCX, RDX, R8, and R9
-    // The x64 ABI considers registers RBX, RBP, RDI, RSI, RSP, R12, R13, R14, R15, and XMM6 - XMM15 nonvolatile
-    compiler.push(asmjit::x86::rbx);
-    compiler.push(asmjit::x86::rbp);
-    compiler.push(asmjit::x86::rsi);
-    compiler.push(asmjit::x86::rdi);
-    compiler.push(asmjit::x86::r12);
-    compiler.push(asmjit::x86::r13);
-    compiler.push(asmjit::x86::r14);
-    compiler.push(asmjit::x86::r15);
-
+    for (int i = 0; i < NUMBER_OF_REGS; i++) {
+        if (!isVolitile[i]) {
+            compiler.mov(Mem(params[0], offsetof(CPU, storedRegs[0]) + sizeof(U64) * i), R64(i));
+        }
+    }
+    RegPtr tmpReg = getTmpReg();
+    compiler.mov(R64(tmpReg->hardwareReg()), R64(4));
+    compiler.and_(R64(tmpReg->hardwareReg()), 0xf);
+    If(JitWidth::b32, tmpReg); {
+        compiler.push(asmjit::x86::rax);
+    } EndIf();    
     compiler.mov(HOST_MMU, (U64)getMemData(KThread::currentThread()->memory)->mmu);
-
-    // on win32 ecx contains cpu
-    compiler.mov(HOST_CPU, asmjit::x86::rcx);
-
-    // before rdx is clobbered
-    compiler.mov(RN(tmps[0]), Mem(asmjit::x86::rdx, offsetof(DecodedOp, pfnJitCode)));
+    
+    compiler.mov(HOST_CPU, params[0]);
+    compiler.mov(RN(tmps[0]), Mem(params[1], offsetof(DecodedOp, pfnJitCode)));
 
     loadCache();
 
@@ -5002,7 +4998,7 @@ void JitX86CodeGen::patch(U8* begin) {
 void JitX86CodeGen::loadCache() {
     for (int i = 0; i < 8; i++) {
         if (regCache[i] != INVALID_REG) {
-            compiler.mov(R32(regCache[i]), Mem(HOST_CPU, offsetof(CPU, reg[i].u32)));
+            compiler.mov(R32(regCache[i]), Mem(HOST_CPU, offsetof(CPU, reg[0].u32) + sizeof(U32) * i));
         }
     }
     for (int i = 0; i < 8; i++) {
@@ -5015,7 +5011,7 @@ void JitX86CodeGen::loadCache() {
 void JitX86CodeGen::writeCache() {
     for (int i = 0; i < 8; i++) {
         if (regCache[i] != INVALID_REG) {
-            compiler.mov(Mem(HOST_CPU, offsetof(CPU, reg[i].u32)), R32(regCache[i]));
+            compiler.mov(Mem(HOST_CPU, offsetof(CPU, reg[0].u32) + sizeof(U32) * i), R32(regCache[i]));
         }
     }    
     for (int i = 0; i < 8; i++) {
