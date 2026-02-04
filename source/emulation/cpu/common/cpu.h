@@ -231,7 +231,9 @@ public:
     LazyFlagType lazyFlagType = FLAGS_NONE;
     LazyFlagType lazyFlagTypePrev = FLAGS_NONE;
     U32         oldCF = 0;
+#if defined(BOXEDWINE_JIT_ARMV8)
     U64 storedRegs[12];
+#endif
     FPU         fpu;
     U64		    instructionCount = 0;
     U32         blockInstructionCount = 0;
