@@ -93,6 +93,7 @@ public:
     void writeFlags(RegPtr flags) override;
     RegPtr getCondition(JitConditional condition, RegPtr resultReg = nullptr) override; // guaranteed to return 0 or 1
     void IfCondition(JitConditional condition) override;
+    void preIfCondition(JitConditional condition, bool& negative, RegPtr& reg);
     void IfDF() override;
     void IfSmallStack() override;
 

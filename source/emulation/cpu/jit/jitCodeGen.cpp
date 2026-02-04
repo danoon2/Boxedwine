@@ -1429,6 +1429,17 @@ RegPtr JitCodeGen::callGetCondition(JitConditional condition, RegPtr resultReg) 
 }
 
 void JitCodeGen::IfCondition(JitConditional condition) {
+    bool negative = false;
+    RegPtr reg;
+    preIfCondition(condition, negative, reg);
+    if (negative) {
+        IfNot(JitWidth::b32, reg); 
+    } else {
+        If(JitWidth::b32, reg);
+    }
+}
+
+void JitCodeGen::preIfCondition(JitConditional condition, bool& negative, RegPtr& reg) {
     if (condition == JitConditional::Z || condition == JitConditional::NZ) {
         // hard to measure small difference, but it seems like this gives about a 1% improvement
         // 
@@ -1477,9 +1488,10 @@ void JitCodeGen::IfCondition(JitConditional condition) {
             EndIf();
         }
         if (condition == JitConditional::NZ) {
-            If(JitWidth::b32, result);
+            reg = result;
         } else {
-            IfNot(JitWidth::b32, result);
+            reg = result;
+            negative = true;
         }
         return;
     } else if (1 && (condition == JitConditional::S || condition == JitConditional::NS)) {
@@ -1528,17 +1540,18 @@ void JitCodeGen::IfCondition(JitConditional condition) {
             EndIf();
         }
         if (condition == JitConditional::S) {
-            If(JitWidth::b32, result);
+            reg = result;
         } else {
-            IfNot(JitWidth::b32, result);
+            reg = result;
+            negative = true;            
         }
         return;
     }
     if (currentLazyFlags == FLAGS_NULL || currentLazyFlags == FLAGS_NONE) {
-        If(JitWidth::b32, getCondition(condition));
+        reg = getCondition(condition);
         return;
     }
-    If(JitWidth::b32, calculateCondition(condition));
+    reg = calculateCondition(condition);
 }
 
 // cpu->reg[op->rm] = cpu->reg[op->rm] + cpu->reg[op->reg]

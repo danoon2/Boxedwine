@@ -2840,16 +2840,23 @@ void JitArmV8CodeGen::clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offse
     //compiler.bind(label);
 }
 
-void JitArmV8CodeGen::JumpIfCondition(JitConditional condition, U32 address) {
-    IfCondition(condition);
+void JitArmV8CodeGen::JumpIfCondition(JitConditional condition, U32 address) {    
     Label label;
+
+    bool negative = false;
+    RegPtr reg;
+
+    preIfCondition(condition, negative, reg);
 
     if (!opLabels.get(address, label)) {
         label = compiler.new_label();
-        opLabels.set(address, label);
+        opLabels.set(address, label);    
+    }   
+    if (negative) {
+        compiler.cbz(R32(reg), label);
+    } else {
+        compiler.cbnz(R32(reg), label);
     }
-    compiler.b(label);
-    EndIf();
 }
 
 U32 JitArmV8CodeGen::MarkJumpLocation() {
