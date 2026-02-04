@@ -88,14 +88,12 @@ void Jit::writeRol32Flags(RegPtr reg) {
     // cpu->setCF(result & 1);
     RegPtr tmp = getTmpReg();
     andValue(JitWidth::b32, flags, ~CF);
-    mov(JitWidth::b32, tmp, reg);
-    andValue(JitWidth::b32, tmp, CF);
+    andValueWithDest(JitWidth::b32, tmp, reg, CF);
     orReg(JitWidth::b32, flags, tmp);
 
     // cpu->setOF((result & 1) ^ (result >> 31));
     RegPtr tmp2 = getTmpReg();
-    mov(JitWidth::b32, tmp2, reg);
-    shrValue(JitWidth::b32, tmp2, 31);
+    shrValueWithDest(JitWidth::b32, tmp2, reg, 31);
     xorReg(JitWidth::b32, tmp, tmp2);
     shlValue(JitWidth::b32, tmp, 11);
     andValue(JitWidth::b32, flags, ~OF);
@@ -381,8 +379,7 @@ void Jit::writeRcl32Flags(RegPtr reg, RegPtr cf) {
 
     // cpu->setOF((cpu->flags & CF) ^ (result >> 31));
     RegPtr tmp = getTmpReg();
-    mov(JitWidth::b32, tmp, reg);
-    shrValue(JitWidth::b32, tmp, 31);
+    shrValueWithDest(JitWidth::b32, tmp, reg, 31);
     xorReg(JitWidth::b32, tmp, cf);
     shlValue(JitWidth::b32, tmp, 11);
     andValue(JitWidth::b32, flags, ~OF);
@@ -403,8 +400,7 @@ void Jit::dynamic_rcl32_reg_op(DecodedOp* op) {
         RegPtr cf = getTmpReg();
 
         // cpu->setCF(((var1 >> (32 - var2)) & 1));
-        mov(JitWidth::b32, cf, reg);
-        shrValue(JitWidth::b32, cf, 32 - op->imm);
+        shrValueWithDest(JitWidth::b32, cf, reg, 32 - op->imm);
         andValue(JitWidth::b32, cf, 1);
 
         rclValue(JitWidth::b32, reg, op->imm);
@@ -571,8 +567,7 @@ void Jit::dynamic_rcr32_reg_op(DecodedOp* op) {
         RegPtr cf = getTmpReg();
 
         // cpu->setCF((var1 >> (var2 - 1)) & 1);
-        mov(JitWidth::b32, cf, reg);
-        shrValue(JitWidth::b32, cf, op->imm - 1);
+        shrValueWithDest(JitWidth::b32, cf, reg, op->imm - 1);
         andValue(JitWidth::b32, cf, 1);
 
         rcrValue(JitWidth::b32, reg, op->imm);

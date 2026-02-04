@@ -1175,8 +1175,7 @@ void JitFPU::dynamic_FILD_QWORD_INTEGER(DecodedOp* op) {
     If(JitWidth::b64, absA); {
 
         RegPtr signReg = uiZ64;
-        mov(JitWidth::b64, signReg, absA);
-        shrValue(JitWidth::b64, signReg, 63);
+        shrValueWithDest(JitWidth::b64, signReg, absA, 63);
         shlValue(JitWidth::b32, signReg, 15);
         absReg(JitWidth::b64, absA);
 

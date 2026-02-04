@@ -153,22 +153,19 @@ void JitCodeGen::genOF(LazyFlagType flags, RegPtr result) {
         // if ((cpu->src.u8&0x1f)==1) return (cpu->dst.u8 >= 0x80); else return 0;
 
         // undefined if src & 0x1f != 1, since its undefined, I don't see a reason to return 0 for that case
-        getFlagSrcReadOnly(result);
-        movzx(JitWidth::b32, result, JitWidth::b8, result);
+        movzx(JitWidth::b32, result, JitWidth::b8, getFlagSrcReadOnly(result));
         sarValue(JitWidth::b32, result, 7);        
     } else if (flags == FLAGS_SHR16) {
         // if ((cpu->src.u8&0x1f)==1) return (cpu->dst.u16 >= 0x8000); else return 0;
         
         // undefined if src & 0x1f != 1, since its undefined, I don't see a reason to return 0 for that case
-        getFlagSrcReadOnly(result);
-        movzx(JitWidth::b32, result, JitWidth::b16, result);
+        movzx(JitWidth::b32, result, JitWidth::b16, getFlagSrcReadOnly(result));
         sarValue(JitWidth::b32, result, 15);
     } else if (flags == FLAGS_SHR32) {
         // if ((cpu->src.u8&0x1f)==1) return (cpu->dst.u32 >= 0x80000000); else return 0;
         
         // undefined if src & 0x1f != 1, since its undefined, I don't see a reason to return 0 for that case
-        getFlagSrcReadOnly(result);
-        sarValue(JitWidth::b32, result, 31);
+        sarValueWithDest(JitWidth::b32, result, getFlagSrcReadOnly(result), 31);
     } else if (flags == FLAGS_SAR8) {
         // 0
         xorReg(JitWidth::b32, result, result);
@@ -207,8 +204,7 @@ void JitCodeGen::genOF(LazyFlagType flags, RegPtr result) {
 }
 
 void JitCodeGen::genPF(RegPtr result) {
-    getFlagResultReadOnly(result);
-    andValue(JitWidth::b32, result, 0xff);
+    andValueWithDest(JitWidth::b32, result, getFlagResultReadOnly(result), 0xff);
     readCPU(JitWidth::b8, result, 0, offsetof(CPU, flagParityLookup), result);
 }
 

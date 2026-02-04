@@ -64,6 +64,8 @@ public:
     virtual void clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) = 0;
 
     void andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) override;
+    void shrValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) override;
+    void sarValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 immm) override;
 
     void genCF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
     void genOF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1

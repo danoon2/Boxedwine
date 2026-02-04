@@ -199,6 +199,9 @@ public:
     Reg reg[9];
     Seg seg[7];    
     U32 flags = 0;
+    Reg  src;
+    Reg  dst;
+    Reg  result;
     Reg eip;
     U8* reg8[9];
     ALIGN(SSE xmm[8], 16);
@@ -224,13 +227,11 @@ public:
     U64 memcheckw[K_PAGE_SIZE];
     U64 memcheckqq[K_PAGE_SIZE];    
 #endif
-
-    Reg  src;
-    Reg  dst;
-    Reg  result;
+    
     LazyFlagType lazyFlagType = FLAGS_NONE;
     LazyFlagType lazyFlagTypePrev = FLAGS_NONE;
     U32         oldCF = 0;
+    U64 storedRegs[12];
     FPU         fpu;
     U64		    instructionCount = 0;
     U32         blockInstructionCount = 0;
@@ -240,7 +241,7 @@ public:
     U32 stackNotMask = 0;
     U32 stackMask = 0;
     U32 fpuDirtyFlags = 0;
-    DecodedOp*** opCache = nullptr;
+    DecodedOp*** opCache = nullptr;    
 
     KThread* thread = nullptr;
     KMemory* memory = nullptr;
@@ -340,8 +341,7 @@ public:
 #define SSE_MAX_INT32_PLUS_ONE_AS_FLOAT 2
 #define SSE_MIN_INT32_MINUS_ONE_AS_FLOAT 3
 #define SSE_INT32_BIT_MASK 4
-#define SSE_BYTE8_BIT_MASK 5
-    U64 storedRegs[32];
+#define SSE_BYTE8_BIT_MASK 5    
     SSE storedNeonRegs[32];
     SSE sseConstants[6];
 #endif

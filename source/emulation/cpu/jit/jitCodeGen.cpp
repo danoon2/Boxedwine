@@ -345,11 +345,11 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         cpu->thread->process->syncFromHost = jit->createSyncFromHost();
         delete jit;
         jit = startNewJIT(cpu);
-        cpu->thread->process->startJITOp = (OpCallback)jit->createStartJITCode();
-        delete jit;            
-        jit = startNewJIT(cpu);
         cpu->thread->process->emulateSingleOp = jit->createEmulateSingleOp();
         delete jit;
+        jit = startNewJIT(cpu);
+        cpu->thread->process->startJITOp = (OpCallback)jit->createStartJITCode();
+        delete jit;                    
         jit = startNewJIT(cpu);
         cpu->thread->process->jumpToNextJIT = jit->createJumpEip();
         delete jit;
@@ -574,12 +574,10 @@ void JitCodeGen::jumpToEipIfCached() {
         addReg(JitWidth::b32, eipReg, getReadOnlySegAddress(CS));
     }
     RegPtr pageReg = getTmpReg();
-    mov(JitWidth::b32, pageReg, eipReg);
-    shrValue(JitWidth::b32, pageReg, K_PAGE_SHIFT);
+    shrValueWithDest(JitWidth::b32, pageReg, eipReg, K_PAGE_SHIFT);
 
     RegPtr firstPageIndexReg = getTmpReg();
-    mov(JitWidth::b32, firstPageIndexReg, pageReg);
-    shrValue(JitWidth::b32, firstPageIndexReg, 10);
+    shrValueWithDest(JitWidth::b32, firstPageIndexReg, pageReg, 10);
 
 #ifdef BOXEDWINE_64
 #define CODE_CACHE_LSL 3
@@ -717,7 +715,7 @@ RegPtr JitCodeGen::getZF() {
 
     if (currentLazyFlags != FLAGS_NULL && currentLazyFlags != FLAGS_NONE) {
         IfEqual(JitWidth::b32, lazyFlags, currentLazyFlags); {
-            readCPU(JitWidth::b32, offsetof(CPU, result.u32), result);
+            getFlagResultTmp(result);
             If(getWidthOfCondition(currentLazyFlags), result); {
                 xorReg(JitWidth::b32, result, result);
             } StartElse(); {
@@ -810,17 +808,16 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
     }    
     RegPtr offsetReg;
 
-    mov(JitWidth::b32, tmp, addressReg);
-    shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
     readMMU(tmp, tmp);
 
     if (addressReg.use_count() == 1) {
         offsetReg = addressReg;
+        andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
     } else {
         offsetReg = getTmpReg();
-        mov(JitWidth::b32, offsetReg, addressReg);
-    }
-    andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
+        andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
+    }    
 
     if (width != JitWidth::b8 && checkAlignment) {
         // make sure we only use the fast path if the entire read will take place on the same page
@@ -910,22 +907,22 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
 
     RegPtr offsetReg;
 
-    mov(JitWidth::b32, tmp, addressReg);
-    shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
     readMMU(tmp, tmp);
 
     bool pushedAddress = false;
     if (addressReg.use_count() == 1) {
         offsetReg = addressReg;
+        andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
     } else if (isTmpRegAvailable()) {
         offsetReg = getTmpReg();
-        mov(JitWidth::b32, offsetReg, addressReg);
+        andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
     } else {
         pushedAddress = true;
         pushReg(addressReg);
         offsetReg = addressReg;
-    }
-    andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
+        andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
+    }    
 
     if (width != JitWidth::b8 && checkAlignment) {
         // make sure we only use the fast path if the entire read will take place on the same page
@@ -960,17 +957,16 @@ void JitCodeGen::writeValue(JitWidth width, RegPtr addressReg, U32 imm) {
 
     RegPtr offsetReg;
 
-    mov(JitWidth::b32, tmp, addressReg);
-    shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
     readMMU(tmp, tmp);
 
     if (addressReg.use_count() == 1) {
         offsetReg = addressReg;
+        andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
     } else {
         offsetReg = getTmpReg();
-        mov(JitWidth::b32, offsetReg, addressReg);
-    }
-    andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
+        andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
+    }    
 
     if (width != JitWidth::b8) {
         // make sure we only use the fast path if the entire read will take place on the same page
@@ -990,8 +986,7 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
     RegPtr offsetReg;
     RegPtr tmp = getTmpRegWithHint(hint);
 
-    mov(JitWidth::b32, tmp, addressReg);
-    shrValue(JitWidth::b32, tmp, K_PAGE_SHIFT);
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
     readMMU(tmp, tmp);
 
     offsetReg = addressReg;
@@ -1004,8 +999,7 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
 
     // if read/write
     RegPtr tmpReg2 = getTmpRegForCallResult();
-    mov(JitWidth::b32, tmpReg2, tmp);
-    andValue(JitWidth::b32, tmpReg2, 3);
+    andValueWithDest(JitWidth::b32, tmpReg2, tmp, 3);
 
     IfNotEqual(JitWidth::b32, tmpReg2, 3); {
         emulateSingleOp();
@@ -1143,8 +1137,7 @@ RegPtr JitCodeGen::getCondition(JitConditional condition, RegPtr resultReg) {
             {
                 RegPtr tmp = getTmpReg();
                 // CF
-                mov(JitWidth::b32, tmp, resultReg);
-                andValue(JitWidth::b32, tmp, 1);
+                andValueWithDest(JitWidth::b32, tmp, resultReg, 1);
 
                 // ZF
                 shrValue(JitWidth::b32, resultReg, 6);
@@ -1182,8 +1175,7 @@ RegPtr JitCodeGen::getCondition(JitConditional condition, RegPtr resultReg) {
                 RegPtr tmp = getTmpReg();
                 
                 // OF
-                mov(JitWidth::b32, tmp, resultReg);
-                shrValue(JitWidth::b32, tmp, 11);
+                shrValueWithDest(JitWidth::b32, tmp, resultReg, 11);
                 andValue(JitWidth::b32, tmp, 1);
 
                 // SF
@@ -1260,10 +1252,10 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         genCF(currentLazyFlags, resultReg);
         break;
     case JitConditional::Z:
-        compareValue(getWidthOfFlags(currentLazyFlags), getFlagResultReadOnly(resultReg), 0, JitEvaluate::EQUALS, resultReg);
+        compareValue(getWidthOfFlags(currentLazyFlags), getFlagResultTmp(resultReg), 0, JitEvaluate::EQUALS, resultReg);
         break;
     case JitConditional::NZ:
-        compareValue(getWidthOfFlags(currentLazyFlags), getFlagResultReadOnly(resultReg), 0, JitEvaluate::NOT_EQUALS, resultReg);
+        compareValue(getWidthOfFlags(currentLazyFlags), getFlagResultTmp(resultReg), 0, JitEvaluate::NOT_EQUALS, resultReg);
         break;
     case JitConditional::NBE:
         if (currentLazyFlags == FLAGS_SUB8) {
@@ -1274,7 +1266,7 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
             compareReg(JitWidth::b32, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::GREATER_THAN_UNSIGNED, resultReg);
         } else {
             // return (!cpu->getZF() && !cpu->getCF()) ? 1 : 0;
-            If(getWidthOfFlags(currentLazyFlags), getFlagResultReadOnly(resultReg)); { // if, so that we can skip genCF
+            If(getWidthOfFlags(currentLazyFlags), getFlagResultTmp(resultReg)); { // if, so that we can skip genCF
                 genCF(currentLazyFlags, resultReg);
                 xorValue(JitWidth::b32, resultReg, 1);
             } StartElse(); {
@@ -1291,7 +1283,7 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
             compareReg(JitWidth::b32, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::LESS_THAN_EQUAL_UNSIGNED, resultReg);
         } else {
             // return (cpu->getZF() || cpu->getCF()) ? 1 : 0;
-            IfNot(getWidthOfFlags(currentLazyFlags), getFlagResultReadOnly(resultReg)); { // if, so that we can skip genCF
+            IfNot(getWidthOfFlags(currentLazyFlags), getFlagResultTmp(resultReg)); { // if, so that we can skip genCF
                 movValue(JitWidth::b32, resultReg, 1);
             } StartElse(); {
                 genCF(currentLazyFlags, resultReg);
@@ -1457,15 +1449,15 @@ void JitCodeGen::IfCondition(JitConditional condition) {
                 } StartElse();
             } else {
                 needsEndIf = true;
-                IfEqual(JitWidth::b32, zfMask, currentLazyFlags); {
+                IfEqual(JitWidth::b32, zfMask, currentLazyFlags); {                    
+                    getFlagResultTmp(result);
                     if (getWidthOfFlags(currentLazyFlags) != JitWidth::b32) {
-                        xorReg(JitWidth::b32, result, result);
+                        movzx(JitWidth::b32, result, getWidthOfFlags(currentLazyFlags), result);
                     }
-                    readCPU(getWidthOfFlags(currentLazyFlags), CPU_OFFSET_OF(result.u32), result);
                 } StartElse();
             }
         }
-        getFlagResultReadOnly(result);
+        getFlagResultTmp(result);
         RegPtr flags = getFlagsInTmp();
         
         movzx(JitWidth::b32, zfMask, JitWidth::b8, zfMask);
@@ -1510,7 +1502,7 @@ void JitCodeGen::IfCondition(JitConditional condition) {
                 JitWidth width = getWidthOfFlags(currentLazyFlags);
                 // should almost always be true, so good for branch prediction
                 IfEqual(JitWidth::b32, sfMask, currentLazyFlags); {
-                    getFlagResultReadOnly(result);
+                    getFlagResultTmp(result);
                     if (width == JitWidth::b32) {
                         andValue(JitWidth::b32, result, 0x80000000);
                     } else if (width == JitWidth::b16) {
@@ -1526,7 +1518,7 @@ void JitCodeGen::IfCondition(JitConditional condition) {
             getFlagsInTmp(result);
             andValue(JitWidth::b32, result, SF);
         } StartElse(); {
-            readCPU(JitWidth::b32, CPU_OFFSET_OF(result.u32), result);
+            getFlagResultTmp(result);
             movzx(JitWidth::b32, sfMask, JitWidth::b8, sfMask);
             readCPU(JitWidth::b32, sfMask, 2, offsetof(CPU, flagSignMask), sfMask);
             andReg(JitWidth::b32, result, sfMask);
@@ -1578,6 +1570,16 @@ void JitCodeGen::IfSmallStack() {
 void JitCodeGen::andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
     mov(regWidth, dst, reg);
     andValue(regWidth, dst, value);
+}
+
+void JitCodeGen::shrValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
+    mov(regWidth, dst, reg);
+    shrValue(regWidth, dst, value);
+}
+
+void JitCodeGen::sarValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
+    mov(regWidth, dst, reg);
+    sarValue(regWidth, dst, value);
 }
 
 #endif

@@ -163,10 +163,12 @@ public:
     virtual void xorValue(JitWidth regWidth, RegPtr reg, U32 immm) = 0;
     virtual void shrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void shrValue(JitWidth regWidth, RegPtr reg, U32 immm) = 0;
+    virtual void shrValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) = 0;
     virtual void shlReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void shlValue(JitWidth regWidth, RegPtr reg, U32 immm) = 0;
     virtual void sarReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void sarValue(JitWidth regWidth, RegPtr reg, U32 immm) = 0;
+    virtual void sarValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 immm) = 0;
     virtual void notReg2(JitWidth regWidth, RegPtr reg) = 0;
     virtual void negReg2(JitWidth regWidth, RegPtr reg) = 0;
     virtual void bsfReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;

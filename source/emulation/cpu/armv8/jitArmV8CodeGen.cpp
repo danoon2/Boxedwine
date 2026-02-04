@@ -43,11 +43,11 @@ static bool isVolitile[] = { true,  true,  true,  true,  true,  true,  true,  tr
 
 static bool isTmp[] = { false, false, false, false, false, false, false, false,
                         false, false, false, false, true, true, true, false,
-                        false,  false,  false,  false,  false,  true, true, true,
-                        true, true, true, false, false, false, false, false };
+                        false,  true,  false,  false,  false,  true, true, true,
+                        true, true, false, false, false, false, false, false };
 
 static U8 regCache[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-static U8 tmps[] = { 21, 22, 23, 24, 25, 26, 12, 13, 14 };
+static U8 tmps[] = { 21, 22, 23, 24, 25, 17, 12, 13, 14 };
 static U8 vtmps[] = { 16, 17, 18, 19, 20, 21, 22, 23, 24 }; // 8-15 are callee saved, so don't use them
 static U8 vCache[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
@@ -85,17 +85,24 @@ asmjit::a64::Gp R32(RegPtr reg) {
 #define xEDI 7
 #define xFLAGS asmjit::a64::w8
 #define regFlags 8
-#define xFlagsType asmjit::a64::w11
-#define regFlagsType 11
 
 // x9 to x15 caller saved
 #define xBranch asmjit::a64::x9 
-#define xMemTmp asmjit::a64::x10
+#define xDst asmjit::a64::w10
+#define regDst 10
+
+#define xFlagsType asmjit::a64::w11
+#define regFlagsType 11
 
 #define xTmp7 12
 #define xTmp8 13
-#define xTmp9 14
-#define xBranchEip 17
+#define xTmp9 asmjit::a64::x14
+#define regTmp9 14
+#define xResult asmjit::a64::w15
+#define regResult 15
+#define xSrc asmjit::a64::w16
+#define regSrc 16
+#define xTmp6 17
 
 // don't use x18
 
@@ -110,10 +117,12 @@ asmjit::a64::Gp R32(RegPtr reg) {
 #define xTmp3 23
 #define xTmp4 24
 #define xTmp5 25
-#define xTmp6 26
+// this improves code density since every emulated read/write needs to compile this address, so instead of 3-4 mov/movk's, it's just a direct br xEmulateSingleOp
+// but I diddn't really notice this improving performance
+#define xEmulateSingleOp asmjit::a64::x26
 #define xWriteCacheToCPU asmjit::a64::x27
 #define xLoadCacheFromCPU asmjit::a64::x28
-    
+
 #define ZERO_EXTEND 1
 #define SIGN_EXTEND 2
 
@@ -169,14 +178,17 @@ public:
     void andReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void andValue(JitWidth regWidth, RegPtr reg, U32 immm) override;
     void andValue64(RegPtr reg, U64 immm) override;
+    void andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value);
     void xorReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void xorValue(JitWidth regWidth, RegPtr reg, U32 immm) override;
     void shrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
-    void shrValue(JitWidth regWidth, RegPtr reg, U32 immm) override;    
+    void shrValue(JitWidth regWidth, RegPtr reg, U32 immm) override;
+    void shrValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) override;
     void shlReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void shlValue(JitWidth regWidth, RegPtr reg, U32 immm) override;
     void sarReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void sarValue(JitWidth regWidth, RegPtr reg, U32 immm) override;
+    void sarValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 immm) override;
     void notReg2(JitWidth regWidth, RegPtr reg) override;
     void negReg2(JitWidth regWidth, RegPtr reg) override;
     void bsfReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
@@ -252,6 +264,16 @@ public:
     void jmp(RegPtr reg) override;  
     RegPtr getReadOnlyFlags() override;
     void storeLazyFlagType(LazyFlagType flags) override;
+    void storeLazyFlagsResult(RegPtr reg) override;
+    void storeLazyFlagsDest(RegPtr reg) override;
+    void storeLazyFlagsSrc(RegPtr reg) override;
+    void storeLazyFlagsSrc(U32 value) override;
+    RegPtr getFlagDestReadOnly(RegPtr result = nullptr) override; // passed in result might be returned, but not guaranteed, its available just to help minimize use of temp registers    
+    RegPtr getFlagDestTmp(RegPtr result = nullptr) override; // guaranteed to return result in result
+    RegPtr getFlagSrcReadOnly(RegPtr result = nullptr) override; // passed in result might be returned, but not guaranteed, its available just to help minimize use of temp registers
+    RegPtr getFlagSrcTmp(RegPtr result = nullptr) override; // guaranteed to return result in result
+    RegPtr getFlagResultReadOnly(RegPtr result = nullptr) override; // passed in result might be returned, but not guaranteed, its available just to help minimize use of temp registers
+    RegPtr getFlagResultTmp(RegPtr result = nullptr) override; // guaranteed to return result in result
     RegPtr getFlagsInTmp(RegPtr reg = nullptr) override;
     void setFlags(RegPtr flags, U32 mask) override;
     RegPtr getLazyFlagType() override;
@@ -775,8 +797,8 @@ FPURegPtr JitArmV8CodeGen::getFPUTmp() {
 void JitArmV8CodeGen::emulateSingleOp() {
     writeCurrentEip(0);
 
-    compiler.mov(xBranch, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
-    compiler.br(xBranch); // we won't return to here
+    //compiler.mov(xBranch, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
+    compiler.br(xEmulateSingleOp); // we won't return to here
 }
 
 U8 JitArmV8CodeGen::findTmpReg(bool allowInvalidReturn) {
@@ -1151,6 +1173,14 @@ void JitArmV8CodeGen::andReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     });
 }
 
+void JitArmV8CodeGen::andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
+    if (regWidth != JitWidth::b32 || !asmjit::a64::Utils::is_logical_imm(value, 32)) {
+        JitCodeGen::andValueWithDest(regWidth, dst, reg, value);
+        return;
+    }
+    compiler.and_(R32(dst), R32(reg), value);
+}
+
 void JitArmV8CodeGen::andValue(JitWidth regWidth, RegPtr reg, U32 imm) {
     if (!asmjit::a64::Utils::is_logical_imm(imm, 32)) {
         andReg(regWidth, reg, loadConst(imm));
@@ -1194,6 +1224,14 @@ void JitArmV8CodeGen::shrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     }, ZERO_EXTEND);
 }
 
+void JitArmV8CodeGen::shrValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
+    if (regWidth != JitWidth::b32) {
+        JitCodeGen::shrValueWithDest(regWidth, dst, reg, value);
+        return;
+    }
+    compiler.lsr(R32(dst), R32(reg), value);
+}
+
 void JitArmV8CodeGen::shrValue(JitWidth regWidth, RegPtr reg, U32 imm) {
     regValue(regWidth, reg, imm, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, U32 value) {
         compiler.lsr(dst, reg, value);
@@ -1220,6 +1258,14 @@ void JitArmV8CodeGen::sarReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     regReg(regWidth, reg, cl, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm) {
         compiler.asr(dst, reg, rm);
     }, SIGN_EXTEND);
+}
+
+void JitArmV8CodeGen::sarValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
+    if (regWidth != JitWidth::b32) {
+        JitCodeGen::sarValueWithDest(regWidth, dst, reg, value);
+        return;
+    }
+    compiler.asr(R32(dst), R32(reg), value);
 }
 
 void JitArmV8CodeGen::sarValue(JitWidth regWidth, RegPtr reg, U32 imm) {
@@ -2121,15 +2167,17 @@ Mem JitArmV8CodeGen::createMem(RegPtr reg, RegPtr sib, U8 lsl, U32 disp) {
 Mem JitArmV8CodeGen::createMem(U8 reg, U8 sib, U8 lsl, U32 disp) {
     if (lsl) {
         if (disp) {
-            compiler.add(xMemTmp, R64(reg), disp);
-            return Mem(xMemTmp, R64(sib), Shift(ShiftOp::kLSL, lsl));
+            RegPtr tmp = getTmpReg();
+            compiler.add(R64(tmp), R64(reg), disp);
+            return Mem(R64(tmp), R64(sib), Shift(ShiftOp::kLSL, lsl));
         } else {
             return Mem(R64(reg), R64(sib), Shift(ShiftOp::kLSL, lsl));
         }
     } else {
         if (disp) {
-            compiler.add(xMemTmp, R64(sib), disp);
-            return Mem(R64(reg), xMemTmp);
+            RegPtr tmp = getTmpReg();
+            compiler.add(R64(tmp), R64(sib), disp);
+            return Mem(R64(reg), R64(tmp));
         } else {
             return Mem(R64(reg), R64(sib));
         }
@@ -2783,11 +2831,13 @@ void JitArmV8CodeGen::clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offse
     } else {
         kpanic_fmt("JitArmV8CodeGen::clearRegIfSpansPage unknown width %d", (U32)width);
     }
-    // :TODO: experiment with cset
-    Label label = compiler.new_label();
-    compiler.b_lt(label);
-    compiler.mov(R64(reg), 0);
-    compiler.bind(label);
+
+    compiler.csel(R64(reg), R64(reg), asmjit::a64::xzr, asmjit::a64::CondCode::kLT);
+    // csel improved Quake 2 from 47fps to 50fps on snapdragon x
+    //Label label = compiler.new_label();
+    //compiler.b_lt(label);
+    //compiler.mov(R64(reg), 0);
+    //compiler.bind(label);
 }
 
 void JitArmV8CodeGen::JumpIfCondition(JitConditional condition, U32 address) {
@@ -3701,6 +3751,42 @@ RegPtr JitArmV8CodeGen::getFlagsInTmp(RegPtr tmp) {
     return tmp;
 }
 
+RegPtr JitArmV8CodeGen::getFlagDestReadOnly(RegPtr result) {
+    return std::make_shared<JitReg>(regDst, 0xff);
+}
+
+RegPtr JitArmV8CodeGen::getFlagDestTmp(RegPtr result) {
+    if (!result) {
+        result = getTmpReg();
+    }
+    compiler.mov(R32(result), xDst);
+    return result;
+}
+
+RegPtr JitArmV8CodeGen::getFlagSrcReadOnly(RegPtr result) {
+    return std::make_shared<JitReg>(regSrc, 0xff);
+}
+
+RegPtr JitArmV8CodeGen::getFlagSrcTmp(RegPtr result) {
+    if (!result) {
+        result = getTmpReg();
+    }
+    compiler.mov(R32(result), xSrc);
+    return result;
+}
+
+RegPtr JitArmV8CodeGen::getFlagResultReadOnly(RegPtr result) {
+    return std::make_shared<JitReg>(regResult, 0xff);
+}
+
+RegPtr JitArmV8CodeGen::getFlagResultTmp(RegPtr result) {
+    if (!result) {
+        result = getTmpReg();
+    }
+    compiler.mov(R32(result), xResult);
+    return result;
+}
+
 void JitArmV8CodeGen::storeLazyFlagType(LazyFlagType flags) {
     if (flags == FLAGS_CFOF) {
         RegPtr lazyFlags = getLazyFlagType();
@@ -3712,6 +3798,35 @@ void JitArmV8CodeGen::storeLazyFlagType(LazyFlagType flags) {
         compiler.mov(xFlagsType, flags);
     }
 }
+
+void JitArmV8CodeGen::storeLazyFlagsResult(RegPtr reg) {
+    if (reg->isHigh) {
+        compiler.ubfx(xResult, R32(reg), 8, 8);
+    } else {
+        compiler.mov(xResult, R32(reg));
+    }
+}
+
+void JitArmV8CodeGen::storeLazyFlagsDest(RegPtr reg) {
+    if (reg->isHigh) {
+        compiler.ubfx(xDst, R32(reg), 8, 8);
+    } else {
+        compiler.mov(xDst, R32(reg));
+    }
+}
+
+void JitArmV8CodeGen::storeLazyFlagsSrc(RegPtr reg) {
+    if (reg->isHigh) {
+        compiler.ubfx(xSrc, R32(reg), 8, 8);
+    } else {
+        compiler.mov(xSrc, R32(reg));
+    }
+}
+
+void JitArmV8CodeGen::storeLazyFlagsSrc(U32 value) {
+    compiler.mov(xSrc, value);
+}
+
 
 RegPtr JitArmV8CodeGen::getLazyFlagType() {
     return std::make_shared<JitReg>(regFlagsType, 0xff);
@@ -5766,8 +5881,8 @@ void writeBlockExitForJIT(U32 eip, U8* buffer) {
     compiler.mov(R32(xTmp7), eip);
     compiler.str(R32(xTmp7), Mem(xCPU, offsetof(CPU, eip.u32)));
     compiler.mov(R32(xTmp7), xCPU);
-    for (int i = 19; i < 31; i++) {
-        compiler.ldr(R64(i), Mem(R64(xTmp7), offsetof(CPU, storedRegs) + i * 8));
+    for (int i = 19; i < 31; i+=2) {
+        compiler.ldp(R64(i), R64(i + 1), Mem(R64(xTmp7), offsetof(CPU, storedRegs) + (i - 19) * 8));
     }
     compiler.add(R64(xTmp7), xCPU, offsetof(CPU, xmm[0]));
     compiler.st1(toSseD2(0), toSseD2(1), toSseD2(2), toSseD2(3), Mem(R64(xTmp7), 64).post());
@@ -5787,15 +5902,15 @@ void JitArmV8CodeGen::blockExit(bool syncCache) {
         compiler.blr(xWriteCacheToCPU);
     }
     compiler.mov(R64(xTmp7), xCPU);
-    for (int i = 19; i < 31; i++) {
-        compiler.ldr(R64(i), Mem(R64(xTmp7), offsetof(CPU, storedRegs) + i * 8));
+    for (int i = 19; i < 31; i+=2) {
+        compiler.ldp(R64(i), R64(i + 1), Mem(R64(xTmp7), offsetof(CPU, storedRegs) + (i - 19) * 8));
     }
     compiler.ret(asmjit::a64::x30);
 }
 
 U8* JitArmV8CodeGen::createStartJITCode() {
-    for (int i = 19; i < 31; i++) {
-        compiler.str(R64(i), Mem(R64(0), offsetof(CPU, storedRegs) + i * 8));
+    for (int i = 19; i < 31; i+=2) {
+        compiler.stp(R64(i), R64(i+1), Mem(R64(0), offsetof(CPU, storedRegs) + (i - 19) * 8));
     }
     compiler.mov(R64(29), asmjit::a64::sp); // mov fp, sp
     // only the bottom 64-bits of v8-v15 need to be saved
@@ -5809,6 +5924,7 @@ U8* JitArmV8CodeGen::createStartJITCode() {
     compiler.mov(xMMU, (U64)&getMemData(KThread::currentThread()->memory)->mmu);
     compiler.mov(xLoadCacheFromCPU, (U64)KThread::currentThread()->process->syncToHost);
     compiler.mov(xWriteCacheToCPU, (U64)KThread::currentThread()->process->syncFromHost);
+    compiler.mov(xEmulateSingleOp, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
     loadCacheFromCPU();
     compiler.br(xBranch);
 
@@ -5824,32 +5940,47 @@ void JitArmV8CodeGen::patch(U8* begin) {
 }
 
 void JitArmV8CodeGen::loadCacheFromCPU() {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; i+=2) {
         if (regCache[i] != INVALID_REG) {
-            compiler.ldr(R32(regCache[i]), Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
+            if (regCache[i + 1] == INVALID_REG) {
+                kpanic("JitArmV8CodeGen::loadCacheFromCPU");
+            }
+            compiler.ldp(R32(regCache[i]), R32(regCache[i + 1]), Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
         }
     }
-    compiler.ldr(xFLAGS, createMem(regCPU, offsetof(CPU, flags)));
+    static_assert(offsetof(CPU, flags) + 4 == offsetof(CPU, src));
+    compiler.ldp(xFLAGS, xSrc, createMem(regCPU, offsetof(CPU, flags)));
+    
+    static_assert(offsetof(CPU, dst) + 4 == offsetof(CPU, result));
+    compiler.ldp(xDst, xResult, createMem(regCPU, offsetof(CPU, dst)));
+    
     compiler.orr(xFLAGS, xFLAGS, 2);
     compiler.ldrb(xFlagsType, createMem(regCPU, offsetof(CPU, lazyFlagType)));
 
-    compiler.add(xMemTmp, xCPU, offsetof(CPU, xmm[0]));
-    compiler.ld1(toSseD2(0), toSseD2(1), toSseD2(2), toSseD2(3), Mem(xMemTmp, 64).post());
-    compiler.ld1(toSseD2(4), toSseD2(5), toSseD2(6), toSseD2(7), Mem(xMemTmp));
+    compiler.add(xTmp9, xCPU, offsetof(CPU, xmm[0]));
+    compiler.ld1(toSseD2(0), toSseD2(1), toSseD2(2), toSseD2(3), Mem(xTmp9, 64).post());
+    compiler.ld1(toSseD2(4), toSseD2(5), toSseD2(6), toSseD2(7), Mem(xTmp9));
 }
 
 void JitArmV8CodeGen::writeCacheToCPU() {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; i+=2) {
         if (regCache[i] != INVALID_REG) {
-            compiler.str(R32(regCache[i]), Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
+            if (regCache[i + 1] == INVALID_REG) {
+                kpanic("JitArmV8CodeGen::writeCacheToCPU");
+            }
+            compiler.stp(R32(regCache[i]), R32(regCache[i+1]), Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
         }
     }
-    compiler.str(xFLAGS, createMem(regCPU, offsetof(CPU, flags)));
+    static_assert(offsetof(CPU, flags) + 4 == offsetof(CPU, src));
+    compiler.stp(xFLAGS, xSrc, createMem(regCPU, offsetof(CPU, flags)));
+
+    static_assert(offsetof(CPU, dst) + 4 == offsetof(CPU, result));
+    compiler.stp(xDst, xResult, createMem(regCPU, offsetof(CPU, dst)));
     compiler.strb(xFlagsType, createMem(regCPU, offsetof(CPU, lazyFlagType)));
 
-    compiler.add(xMemTmp, xCPU, offsetof(CPU, xmm[0]));
-    compiler.st1(toSseD2(0), toSseD2(1), toSseD2(2), toSseD2(3), Mem(xMemTmp, 64).post());
-    compiler.st1(toSseD2(4), toSseD2(5), toSseD2(6), toSseD2(7), Mem(xMemTmp));
+    compiler.add(xTmp9, xCPU, offsetof(CPU, xmm[0]));
+    compiler.st1(toSseD2(0), toSseD2(1), toSseD2(2), toSseD2(3), Mem(xTmp9, 64).post());
+    compiler.st1(toSseD2(4), toSseD2(5), toSseD2(6), toSseD2(7), Mem(xTmp9));
 }
 
 U8* JitArmV8CodeGen::createSyncToHost() {
