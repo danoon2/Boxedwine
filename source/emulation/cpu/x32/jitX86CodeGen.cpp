@@ -288,6 +288,7 @@ public:
     U32 MarkJumpLocation() override;
     void Goto(U32 location) override;
     void jmp(RegPtr reg) override;
+    void jmp(DYN_PTR_SIZE address) override;
     void updateFlagsIfNecessary();    
     RegPtr getReadOnlyFlags() override;
     void setFlags(RegPtr flags, U32 mask) override;
@@ -301,6 +302,8 @@ public:
 #else
     void pushParam(const DynParam& param);
 #endif
+    void callLoadCache();
+    void callWriteCache();
 
     std::array<bool, NUMBER_OF_REGS> regUsed{ 0 };
     std::array<bool, NUMBER_OF_XMM_REG> xmmUsed{ 0 };
@@ -795,13 +798,7 @@ FPURegPtr JitX86CodeGen::getFPUTmp() {
 
 void JitX86CodeGen::emulateSingleOp() {
     writeCurrentEip(0);
-#ifdef BOXEDWINE_64
-    compiler.mov(PARAM_CALL_TMP, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
-    compiler.jmp(PARAM_CALL_TMP);
-#else
-    compiler.mov(regEax, (U32)cpu->thread->process->emulateSingleOp);
-    compiler.jmp(regEax);
-#endif
+    compiler.jmp((DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
 }
 
 bool JitX86CodeGen::isHintAvailable(S8 hint) {
@@ -2340,6 +2337,14 @@ void JitX86CodeGen::setParams(const std::vector<DynParam>& params) {
 #endif
 }
 
+void JitX86CodeGen::callLoadCache() {
+    compiler.call((DYN_PTR_SIZE)cpu->thread->process->syncFromHost);
+}
+
+void JitX86CodeGen::callWriteCache() {
+    compiler.call((DYN_PTR_SIZE)cpu->thread->process->syncToHost);
+}
+
 void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache) {
     U32 stackAdjust = 0;
     std::vector<U8> pushedRegs;
@@ -2350,8 +2355,7 @@ void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>&
             pushedRegs.push_back(i);
         }
     }
-
-    writeCache();
+    callWriteCache();
     setParams(params);    
 #ifdef BOXEDWINE_64   
     if ((pushedRegs.size() % 2) == 1) {
@@ -2385,7 +2389,7 @@ void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>&
     }
 #endif
     if (restoreCache) {
-        loadCache();
+        callLoadCache();
     }
     for (int i = (int)pushedRegs.size() - 1; i >= 0; i--) {
         compiler.pop(RN(pushedRegs[i]));
@@ -2411,7 +2415,7 @@ void JitX86CodeGen::callHostFunctionWithResult(RegPtr result, void* address, con
         }
     }
 
-    writeCache();
+    callWriteCache();
     setParams(params);
     
 #ifdef BOXEDWINE_64
@@ -2446,7 +2450,7 @@ void JitX86CodeGen::callHostFunctionWithResult(RegPtr result, void* address, con
     for (int i = (int)pushedRegs.size() - 1; i >= 0; i--) {
         compiler.pop(RN(pushedRegs[i]));
     }
-    loadCache();
+    callLoadCache();
 }
 
 void JitX86CodeGen::If(JitWidth regWidth, RegPtr reg) {
@@ -2722,14 +2726,22 @@ void JitX86CodeGen::clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset,
 
 void JitX86CodeGen::JumpIfCondition(JitConditional condition, U32 address) {
     Label label;
+
+    bool negative = false;
+    RegPtr reg;
+
+    preIfCondition(condition, negative, reg);
+
     if (!opLabels.get(address, label)) {
         label = compiler.new_label();
         opLabels.set(address, label);
     }
-
-    IfCondition(condition);
-        compiler.jmp(label);
-    EndIf();
+    compiler.test(R32(reg->hardwareReg()), R32(reg->hardwareReg()));
+    if (negative) {
+        compiler.jz(label);
+    } else {
+        compiler.jnz(label);
+    }
 }
 
 void JitX86CodeGen::IfDF() {
@@ -2758,6 +2770,10 @@ U32 JitX86CodeGen::MarkJumpLocation() {
 
 void JitX86CodeGen::Goto(U32 location) {
     compiler.jmp(labels[location - 1]);
+}
+
+void JitX86CodeGen::jmp(DYN_PTR_SIZE address) {
+    compiler.jmp(address);
 }
 
 void JitX86CodeGen::jmp(RegPtr reg) {
@@ -4375,7 +4391,7 @@ void JitX86CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
         if (currentOp->getNeededFlagsAfter(PF | SF | AF | CF | OF)) { // The ZF flag is set if the destination operand and EDX:EAX are equal; otherwise it is cleared. The CF, PF, AF, SF, and OF flags are unaffected.
             updateHardwareFlags(PF | SF | AF | CF | OF);
         }
-        writeCache();
+        callWriteCache();
         this->compiler.mov(RN(5), RN(addressReg->hardwareReg()));
         this->compiler.mov(RN(6), RN(offsetReg->hardwareReg()));
         for (int i = 0; i < 4; i++) {
@@ -4386,7 +4402,7 @@ void JitX86CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
         for (int i = 0; i < 4; i++) {
             compiler.mov(Mem(HOST_CPU, CPU::offsetofReg32(i)), R32(i));
         }
-        loadCache();
+        callLoadCache();
         updateFlagsIfNecessary();
     });
 }

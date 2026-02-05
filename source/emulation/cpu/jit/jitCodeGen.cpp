@@ -414,9 +414,7 @@ void JitCodeGen::blockDone(bool returnEarly) {
 }
 
 void JitCodeGen::jumpEip() {
-    RegPtr target = getTmpReg();
-    movValue(DYN_PTR, target, (DYN_PTR_SIZE)cpu->thread->process->jumpToNextJIT);
-    jmp(target);
+    jmp((DYN_PTR_SIZE)cpu->thread->process->jumpToNextJIT);
 }
 
 static DYN_PTR_SIZE getJitFunctionForCurrentOp(CPU* cpu) {
@@ -585,17 +583,17 @@ void JitCodeGen::jumpToEipIfCached() {
 #define CODE_CACHE_LSL 2
 #endif
     RegPtr tmp = readCPU(DYN_PTR, offsetof(CPU, opCache));
-    readHost(DYN_PTR, tmp, tmp, firstPageIndexReg, CODE_CACHE_LSL, 0); // :TODO: 3 on 64-bit system
+    readHost(DYN_PTR, tmp, tmp, firstPageIndexReg, CODE_CACHE_LSL, 0);
 
     // tmp contains 2nd level of page op cache
     If(DYN_PTR, tmp);
         // page & 0x3ff
         andValue(JitWidth::b32, pageReg, 0x3ff);
-        readHost(DYN_PTR, tmp, tmp, pageReg, CODE_CACHE_LSL, 0);// :TODO: 3 on 64-bit system
+        readHost(DYN_PTR, tmp, tmp, pageReg, CODE_CACHE_LSL, 0);
         // tmp contains page of DecodedOp*
         If(DYN_PTR, tmp);
             andValue(JitWidth::b32, eipReg, K_PAGE_MASK);
-            readHost(DYN_PTR, tmp, tmp, eipReg, CODE_CACHE_LSL, 0); // :TODO: 3 on 64-bit system
+            readHost(DYN_PTR, tmp, tmp, eipReg, CODE_CACHE_LSL, 0);
             // tmp contains DecodedOp
             If(DYN_PTR, tmp);
                 read(DYN_PTR, tmp, tmp, offsetof(DecodedOp, pfnJitCode));

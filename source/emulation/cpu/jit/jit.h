@@ -135,6 +135,7 @@ public:
     virtual void popReg(RegPtr reg) = 0;
     virtual RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0);
     virtual void jmp(RegPtr reg) = 0;
+    virtual void jmp(DYN_PTR_SIZE address) = 0;
     virtual void forceSyncBackIfNotCached(RegPtr reg) = 0;
 
     RegPtr calculateEffectiveEaa16(DecodedOp* op);
