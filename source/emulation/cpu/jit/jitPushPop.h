@@ -41,8 +41,7 @@ void Jit::push32(RegPtr reg) {
     if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
         RegPtr esp = getReg(4);
         RegPtr address = getTmpReg();
-        mov(JitWidth::b32, address, esp);
-        subValue(JitWidth::b32, address, 4);
+        subValueWithDest(JitWidth::b32, address, esp, 4);
         write(JitWidth::b32, address, reg, nullptr, nullptr, false);
         subValue(JitWidth::b32, esp, 4);
     } else {

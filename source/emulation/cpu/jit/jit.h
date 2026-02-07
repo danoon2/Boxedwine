@@ -147,10 +147,12 @@ public:
 
     virtual void addReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;    
     virtual void addValue(JitWidth regWidth, RegPtr reg, U32 imm) = 0;
+    virtual void addValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) = 0;
     virtual void orReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void orValue(JitWidth regWidth, RegPtr reg, U32 imm) = 0;
     virtual void subReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void subValue(JitWidth regWidth, RegPtr reg, U32 imm) = 0;
+    virtual void subValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) = 0;
     virtual void andReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void andValue(JitWidth regWidth, RegPtr reg, U32 immm) = 0;
     virtual void andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) = 0;

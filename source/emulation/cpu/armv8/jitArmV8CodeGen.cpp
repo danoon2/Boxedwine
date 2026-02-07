@@ -164,6 +164,7 @@ public:
     
     U8 findTmpReg(bool allowInvalidReturn = false);
     void emulateSingleOp() override;
+    RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0) override;
 
     void direct_cmp(JitWidth width, RegPtr left, RegPtr right) override;
     void direct_cmp(JitWidth width, RegPtr left, U32 right) override;
@@ -181,10 +182,12 @@ public:
 
     void addReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void addValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
+    void addValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) override;
     void orReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void orValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
     void subReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void subValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
+    void subValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) override;
     void andReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void andValue(JitWidth regWidth, RegPtr reg, U32 immm) override;
     void andValue64(RegPtr reg, U64 immm) override;
@@ -1149,6 +1152,14 @@ void JitArmV8CodeGen::addValue(JitWidth regWidth, RegPtr reg, U32 imm) {
     });
 }
 
+void JitArmV8CodeGen::addValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
+    if (regWidth != JitWidth::b32 || !asmjit::a64::Utils::is_add_sub_imm(value)) {
+        JitCodeGen::addValueWithDest(regWidth, dst, reg, value);
+        return;
+    }
+    compiler.add(R32(dst), R32(reg), value);
+}
+
 void JitArmV8CodeGen::orReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     regReg(regWidth, reg, rm, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm) {
         compiler.orr(dst, reg, rm);
@@ -1179,6 +1190,14 @@ void JitArmV8CodeGen::subValue(JitWidth regWidth, RegPtr reg, U32 imm) {
     regValue(regWidth, reg, imm, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, U32 value) {
         compiler.sub(dst, reg, value);
     });
+}
+
+void JitArmV8CodeGen::subValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
+    if (regWidth != JitWidth::b32 || !asmjit::a64::Utils::is_add_sub_imm(value)) {
+        JitCodeGen::subValueWithDest(regWidth, dst, reg, value);
+        return;
+    }
+    compiler.sub(R32(dst), R32(reg), value);
 }
 
 void JitArmV8CodeGen::andReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
@@ -2695,15 +2714,25 @@ void JitArmV8CodeGen::cmp(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
     else if (regWidth == JitWidth::b16) {
         RegPtr left = getTmpReg();
         RegPtr right = getTmpReg();
-        movsx(JitWidth::b32, left, JitWidth::b16, reg1);
-        movsx(JitWidth::b32, right, JitWidth::b16, reg2);
+        compiler.lsl(R32(left), R32(reg1), 16);
+        compiler.lsl(R32(right), R32(reg2), 16);
         compiler.cmp(R32(left), R32(right));
     }
     else if (regWidth == JitWidth::b8) {
         RegPtr left = getTmpReg();
         RegPtr right = getTmpReg();
-        movsx(JitWidth::b32, left, JitWidth::b8, reg1);
-        movsx(JitWidth::b32, right, JitWidth::b8, reg2);
+        if (reg1->isHigh) {
+            compiler.lsr(R32(left), R32(reg1), 8);
+            compiler.lsl(R32(left), R32(left), 24);
+        } else {
+            compiler.lsl(R32(left), R32(reg1), 24);
+        }
+        if (reg2->isHigh) {
+            compiler.lsr(R32(right), R32(reg2), 8);
+            compiler.lsl(R32(right), R32(right), 24);
+        } else {
+            compiler.lsl(R32(right), R32(reg2), 24);
+        }
         compiler.cmp(R32(left), R32(right));
     }
     else {
@@ -2718,19 +2747,8 @@ void JitArmV8CodeGen::cmp(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) {
     }
     if (regWidth == JitWidth::b32) {
         compiler.cmp(R32(reg), value);
-    }
-    else if (regWidth == JitWidth::b16) {
-        RegPtr left = getTmpReg();
-        movzx(JitWidth::b32, left, JitWidth::b16, reg);
-        compiler.cmp(R32(left), value);
-    }
-    else if (regWidth == JitWidth::b8) {
-        RegPtr left = getTmpReg();
-        compiler.ubfx(R32(left), R32(reg), reg->isHigh ? 8 : 0, 8);
-        compiler.cmp(R32(left), value);
-    }
-    else {
-        kpanic_fmt("JitArmV8CodeGen::IfEqual unexpected width: %d", (U32)regWidth);
+    } else {
+        cmp(regWidth, reg, loadConst(value));
     }
 }
 
@@ -2826,6 +2844,109 @@ void JitArmV8CodeGen::IfNot(JitWidth regWidth, RegPtr reg) {
     }
 }
 
+RegPtr JitArmV8CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
+    if (op->ea16) {
+        return JitCodeGen::calculateEaa(op, popEspAmount);
+    } else {
+        // [r1 + r2 << 2] will be 1 instruction instead of 3 (mov, shl, add) in JitCodeGen::calculateEaa 
+        RegPtr result;
+        U32 disp = op->data.disp;
+        RegPtr base;
+
+        if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
+            base = getReadOnlySegAddress(op->base);
+        }
+        if (popEspAmount && op->rm == 4 && op->sibIndex == 4) {
+            disp += popEspAmount * 2;
+        } else if (popEspAmount && (op->rm == 4 || op->sibIndex == 4)) {
+            disp += popEspAmount;
+        }
+
+        if (op->sibIndex != 8) {
+            if (op->sibScale) {
+                result = getTmpReg();
+                if (op->rm != 8) {                    
+                    compiler.add(R32(result), R32(getReadOnlyReg(op->rm)), R32(getReadOnlyReg(op->sibIndex)), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, op->sibScale)));
+                    if (disp) {
+                        addValue(JitWidth::b32, result, disp);
+                    }
+                } else if (disp) {
+                    if (!asmjit::a64::Utils::is_add_sub_imm(disp)) {
+                        compiler.add(R32(result), R32(loadConst(disp)), R32(getReadOnlyReg(op->sibIndex)), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, op->sibScale)));
+                    } else {
+                        compiler.lsl(R32(result), R32(getReadOnlyReg(op->sibIndex)), op->sibScale);
+                        compiler.add(R32(result), R32(result), disp);                                
+                    }
+                } else if (base) {
+                    compiler.add(R32(result), R32(base), R32(getReadOnlyReg(op->sibIndex)), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, op->sibScale)));
+                    base = nullptr;
+                } else {
+                    compiler.lsl(R32(result), R32(getReadOnlyReg(op->sibIndex)), op->sibScale);
+                }
+            } else {
+                if (op->rm != 8) {
+                    result = getTmpReg();
+                    compiler.add(R32(result), R32(getReadOnlyReg(op->rm)), R32(getReadOnlyReg(op->sibIndex)));
+                    if (disp) {
+                        addValue(JitWidth::b32, result, disp);
+                    }
+                } else if (disp) {
+                    result = getTmpReg();
+                    if (!asmjit::a64::Utils::is_add_sub_imm(disp)) {
+                        compiler.add(R32(result), R32(getReadOnlyReg(op->sibIndex)), R32(loadConst(disp)));
+                    } else {
+                        compiler.add(R32(result), R32(getReadOnlyReg(op->sibIndex)), disp);
+                    }
+                } else if (base) {
+                    result = getTmpReg();
+                    compiler.add(R32(result), R32(getReadOnlyReg(op->sibIndex)), R32(base));
+                    base = nullptr;
+                } else {
+                    result = getTmpReg(op->sibIndex);
+                }
+            }
+        } else if (op->rm != 8) {            
+            if (!disp) {
+                if (base) {
+                    result = getTmpReg();
+                    compiler.add(R32(result), R32(getReadOnlyReg(op->rm)), R32(base));
+                    base = nullptr;
+                } else {
+                    result = getTmpReg(op->rm);
+                }
+            } else {
+                result = getTmpReg();
+                if (!asmjit::a64::Utils::is_add_sub_imm(disp)) {
+                    compiler.add(R32(result), R32(getReadOnlyReg(op->rm)), R32(loadConst(disp)));
+                } else {
+                    compiler.add(R32(result), R32(getReadOnlyReg(op->rm)), disp);
+                }
+            }
+        } else if (disp) {
+            result = getTmpReg();
+            if (base) {
+                if (!asmjit::a64::Utils::is_add_sub_imm(disp)) {
+                    compiler.add(R32(result), R32(base), R32(loadConst(disp)));
+                } else {
+                    compiler.add(R32(result), R32(base), disp);
+                }
+                base = nullptr;
+            } else {
+                movValue(JitWidth::b32, result, disp);
+            }
+        } else {
+            result = getTmpReg();
+            xorReg(JitWidth::b32, result, result);
+        }
+
+        // seg[6] is always 0
+        if (base) {
+            addReg(JitWidth::b32, result, base);
+        }
+        return result;
+    }
+}
+
 void JitArmV8CodeGen::IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) {
     RegPtr tmp = readCPU(regWidth, sib, lsl, offset);
     IfNot(regWidth, tmp);
@@ -2889,7 +3010,8 @@ void JitArmV8CodeGen::jmp(RegPtr reg) {
 }
 
 void JitArmV8CodeGen::jmp(DYN_PTR_SIZE address) {
-    compiler.b(address);
+    compiler.mov(xTmp9, address);
+    compiler.br(xTmp9);
 }
 
 void JitArmV8CodeGen::writeCPU(JitWidth width, U32 offset, RegPtr src) {
@@ -5955,19 +6077,62 @@ void JitArmV8CodeGen::direct_cmov(JitWidth width, JitConditional condition, RegP
     if (width == JitWidth::b32) {
         compiler.csel(R32(dst), R32(src), R32(dst), getCondCode(condition));
     } else if (width == JitWidth::b16) {
-        kpanic("JitArmV8CodeGen::direct_cmov");
+        RegPtr tmpReg = getTmpReg();
+
+        compiler.csel(R32(tmpReg), R32(src), R32(dst), getCondCode(condition));
+        mov(JitWidth::b16, dst, tmpReg);
     }
 }
 
 void JitArmV8CodeGen::direct_setcc(JitConditional condition, RegPtr dst) {
     RegPtr result = getTmpReg();
     compiler.mov(R32(result->hardwareReg()), 1);
-    compiler.csel(R32(result), R32(result), asmjit::a64::xzr, getCondCode(condition));
-    compiler.bfxil(R32(dst), R32(result), 0, 8);
+    compiler.csel(R32(result), R32(result), asmjit::a64::wzr, getCondCode(condition));
+    compiler.bfi(R32(dst), R32(result), dst->isHigh ? 8 : 0, 8);
 }
 
 bool JitArmV8CodeGen::directDoesAffectFlags(DecodedOp* op) {
-    return true;
+    // memory instructions call clearMMUPermissionIfSpansPage which calls cmp, 8-bit read/write don't call it
+    switch (op->inst) {
+    case MovR8R8:
+    case MovE8R8:
+    case MovR8E8:
+    case MovR8I8:
+    case MovE8I8:
+    case MovR16R16:
+    //case MovE16R16:
+    //case MovR16E16:
+    case MovR16I16:
+    //case MovE16I16:
+    case MovR32R32:
+    //case MovE32R32:
+    //case MovR32E32:
+    case MovR32I32:
+    //case MovE32I32:
+    case MovAlOb:
+    //case MovAxOw:
+    //case MovEaxOd:
+    case MovObAl:
+    //case MovOwAx:
+    //case MovOdEax:
+    case MovGwXzR8:
+    //case MovGwXzE8:
+    case MovGwSxR8:
+    //case MovGwSxE8:
+    case MovGdXzR8:
+    //case MovGdXzE8:
+    case MovGdSxR8:
+    //case MovGdSxE8:
+    case MovGdXzR16:
+    //case MovGdXzE16:
+    case MovGdSxR16:
+    //case MovGdSxE16:
+    case LeaR16:
+    case LeaR32:
+        return false;
+    default:
+        return true;
+    }
 }
 
 void writeBlockExitForJIT(U32 eip, U8* buffer) {
@@ -6012,10 +6177,13 @@ U8* JitArmV8CodeGen::createBlockExit(bool syncRegs) {
 
 void JitArmV8CodeGen::blockExit(bool syncCache) {
     if (syncCache) {
-        compiler.b((DYN_PTR_SIZE)cpu->thread->process->blockExit);
-    } else {
-        compiler.b((DYN_PTR_SIZE)cpu->thread->process->blockExitNoSync);
+        compiler.blr(xWriteCacheToCPU);
     }
+    compiler.mov(R64(xTmp7), xCPU);
+    for (int i = 19; i < 31; i += 2) {
+        compiler.ldp(R64(i), R64(i + 1), Mem(R64(xTmp7), offsetof(CPU, storedRegs) + (i - 19) * 8));
+    }
+    compiler.ret(asmjit::a64::x30);
 }
 
 U8* JitArmV8CodeGen::createStartJITCode() {

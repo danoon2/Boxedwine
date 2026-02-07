@@ -82,6 +82,8 @@ public:
     void andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) override;
     void shrValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) override;
     void sarValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 immm) override;
+    void subValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) override;
+    void addValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) override;
 
     void genCF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
     void genOF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1

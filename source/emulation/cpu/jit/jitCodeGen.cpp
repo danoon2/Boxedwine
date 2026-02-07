@@ -1923,6 +1923,16 @@ void JitCodeGen::andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32
     andValue(regWidth, dst, value);
 }
 
+void JitCodeGen::addValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
+    mov(regWidth, dst, reg);
+    addValue(regWidth, dst, value);
+}
+
+void JitCodeGen::subValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
+    mov(regWidth, dst, reg);
+    subValue(regWidth, dst, value);
+}
+
 void JitCodeGen::shrValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
     mov(regWidth, dst, reg);
     shrValue(regWidth, dst, value);

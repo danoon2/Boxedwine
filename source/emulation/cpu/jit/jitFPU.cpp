@@ -23,8 +23,7 @@
 
 RegPtr JitFPU::calculateIndexReg(RegPtr topReg, U32 index) {
     RegPtr result = getTmpReg();
-    mov(JitWidth::b32, result, topReg);
-    addValue(JitWidth::b32, result, index);
+    addValueWithDest(JitWidth::b32, result, topReg, index);
     andValue(JitWidth::b32, result, 7);
     return result;
 }
