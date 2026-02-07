@@ -28,6 +28,7 @@ public:
     virtual ~JitCodeGen() {}
     DecodedOp* firstOp = nullptr;
 
+    const U32 SKIPPED_OP = 0xffffffff;
     BHashTable<U32, U32> eipToBufferPos;    
     U32 startingEip = 0;
     U32 lastOpEip = 0;
@@ -39,7 +40,22 @@ public:
         return currentEip < lastOpEip && currentEip + op->len + op->imm <= lastOpEip && currentEip + op->len + op->imm >= startingEip;
     }
 
+    bool canJumpInBlock(U32 opEip, DecodedOp* op) override {
+        return opEip < lastOpEip && opEip + op->len + op->imm <= lastOpEip && opEip + op->len + op->imm >= startingEip;
+    }
+
+    void preCompile(DecodedOp* op, bool skippedOp = false) override;
+    void compile(DecodedOp* op) override;
+    void postCompile(DecodedOp* op) override;
+    void tryDirect(DecodedOp* op, std::function<void()> cmpCallback, std::function<void()> fallback) override;
+    virtual bool supportsDirectCondition(JitConditional condition) { return true; }
+
+    JitConditional getJumpConditionFromOp(DecodedOp* op);
+    JitConditional getCmovConditionFromOp(DecodedOp* op);
+    JitConditional getSetConditionFromOp(DecodedOp* op);
+
     virtual void preOp(DecodedOp* op) {}
+    virtual void onBlockPreCommit(DecodedOp* op) {}
     virtual void read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) = 0;
     virtual void readMMU(RegPtr dest, RegPtr index) = 0;
     virtual void readMMU(RegPtr dest, U32 index) = 0;
@@ -128,6 +144,7 @@ protected:
     virtual U32 getIfJumpSize() = 0;                     
     virtual U8* createSyncToHost() = 0;
     virtual U8* createSyncFromHost() = 0;
+    virtual U8* createBlockExit(bool syncRegs) = 0;
 
     bool isParamTypeReg(JitCallParamType paramType);
     bool calculateLongestBlock(DecodedOp* op);
@@ -141,7 +158,7 @@ protected:
     virtual U8* createStartJITCode() = 0;
     virtual bool compileOps(DecodedOp* op);
     virtual void preCommitJIT() {}
-    virtual U8* createDynamicExecutableMemory();
+    virtual U8* createDynamicExecutableMemory(U32* pSize = nullptr);
     virtual void patch(U8* begin) {}
     virtual void createHelpers() {}
     RegPtr callGetCondition(JitConditional condition, RegPtr resultReg = nullptr);

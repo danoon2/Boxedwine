@@ -226,17 +226,18 @@ void InstallView::setWindowsVersionDefault() {
 
     if (fileSystem) {
         windowsVersionControl->setRowHidden(!fileSystem->hasWine());
-    }
-    if (fileSystem->hasWine()) {
-        U32 minor = fileSystem->wineMinorVersion;
-        U32 major = fileSystem->wineMajorVersion;
 
-        if (major < 2 || (major == 2 && minor < 2)) {
-            windowsVersionControl->setSelectionStringValue(B("Windows XP"));
-        } else if (major > 8 || (major == 8 && minor > 0)) {
-            windowsVersionControl->setSelectionStringValue(B("Windows 10"));
-        } else {
-            windowsVersionControl->setSelectionStringValue(B("Windows 7"));
+        if (fileSystem->hasWine()) {
+            U32 minor = fileSystem->wineMinorVersion;
+            U32 major = fileSystem->wineMajorVersion;
+
+            if (major < 2 || (major == 2 && minor < 2)) {
+                windowsVersionControl->setSelectionStringValue(B("Windows XP"));
+            } else if (major > 8 || (major == 8 && minor > 0)) {
+                windowsVersionControl->setSelectionStringValue(B("Windows 10"));
+            } else {
+                windowsVersionControl->setSelectionStringValue(B("Windows 7"));
+            }
         }
     }
 }

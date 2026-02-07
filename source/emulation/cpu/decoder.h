@@ -1545,6 +1545,9 @@ class DecodedOp;
 
 typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 
+#define JUMP_TARGET 1
+#define JUMP_TARGET_ASSUMED_FALSE 2
+
 // direct jump does not read memory, so will never use disp (used by mem, enter)
 union DecodedData {
     DecodedOp** nextJump;
@@ -1572,6 +1575,9 @@ public:
     bool isDirectBranch();
     bool isDirectBranchWithNext();
     bool isDirectJumpBranch();
+    bool isJumpCC();
+    bool isCMovCC();
+    bool isSetCC();
     bool isDirectJump();
     bool isIndirectJump();
     bool isCall();
@@ -1619,12 +1625,14 @@ public:
 
 #ifdef BOXEDWINE_DYNAMIC
     U8 runCount;
+    U8 jumpTargetFlags;
+    U16 pad3;
 #endif
 
-#if defined (BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)
-    DecodedOp* blockStart;
+#if defined (BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)    
     U16 blockOpCount;
     U16 blockLen; // emulated code length of the block
+    DecodedOp* blockStart;
 #endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     U8 exceptionCount; // if this instruction writes to a code page a lot which causes an exception, we can track it and use a slightly slower path without throwing an exception

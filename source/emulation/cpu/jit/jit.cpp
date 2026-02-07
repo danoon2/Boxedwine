@@ -90,6 +90,13 @@ RegPtr Jit::calculateEaa(DecodedOp* op, U32 popEspAmount) {
         return result;
     } else {
         RegPtr result;
+        U32 disp = op->data.disp;
+
+        if (popEspAmount && op->rm == 4 && op->sibIndex == 4) {
+            disp += popEspAmount * 2;
+        } else if (popEspAmount && (op->rm == 4 || op->sibIndex == 4)) {
+            disp += popEspAmount;
+        }
 
         if (op->sibIndex != 8) {
             result = getTmpReg(op->sibIndex);
@@ -100,17 +107,17 @@ RegPtr Jit::calculateEaa(DecodedOp* op, U32 popEspAmount) {
             if (op->rm != 8) {
                 addReg(JitWidth::b32, result, getReadOnlyReg(op->rm));
             }
-            if (op->data.disp) {
-                addValue(JitWidth::b32, result, op->data.disp);
+            if (disp) {
+                addValue(JitWidth::b32, result, disp);
             }
         } else if (op->rm != 8) {
             result = getTmpReg(op->rm);
-            if (op->data.disp) {
-                addValue(JitWidth::b32, result, op->data.disp);
+            if (disp) {
+                addValue(JitWidth::b32, result, disp);
             }
-        } else if (op->data.disp) {
+        } else if (disp) {
             result = getTmpReg();
-            movValue(JitWidth::b32, result, op->data.disp);
+            movValue(JitWidth::b32, result, disp);
         } else {
             result = getTmpReg();
             xorReg(JitWidth::b32, result, result);

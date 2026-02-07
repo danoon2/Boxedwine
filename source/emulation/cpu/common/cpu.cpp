@@ -1223,8 +1223,8 @@ U8 CPU::fetchByte(U32* eip) {
     return this->memory->readb((*eip)++);
 }
 
-DecodedOp* CPU::getNextOp(U32 flags) {
-    return getOp(getEipAddress(), flags);
+DecodedOp* CPU::getNextOp(U32 jumpTargetFlags) {
+    return getOp(getEipAddress(), jumpTargetFlags);
 }
 
 #ifdef BOXEDWINE_DYNAMIC

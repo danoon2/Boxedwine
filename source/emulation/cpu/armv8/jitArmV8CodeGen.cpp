@@ -142,7 +142,7 @@ public:
 
     void preOp(DecodedOp* op) override;
     RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) override;
-    RegPtr getReg8(U8 reg) override;
+    RegPtr getReg8(U8 reg, bool load = true) override;
     RegPtr getReadOnlyReg(U8 reg, bool delayed = false, S8 hint = -1) override;
     RegPtr getReadOnlyReg8(U8 reg, bool delayed = false, S8 hint = -1) override;
     RegPtr getTmpReg() override;
@@ -164,6 +164,16 @@ public:
     
     U8 findTmpReg(bool allowInvalidReturn = false);
     void emulateSingleOp() override;
+
+    void direct_cmp(JitWidth width, RegPtr left, RegPtr right) override;
+    void direct_cmp(JitWidth width, RegPtr left, U32 right) override;
+    void direct_jump(JitConditional condition, U32 address) override;
+    void direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) override;
+    void direct_setcc(JitConditional condition, RegPtr dst) override;
+    bool directDoesAffectFlags(DecodedOp* op) override;
+    void onBlockPreCommit(DecodedOp* op) override;
+    asmjit::a64::CondCode getCondCode(JitConditional condition);
+    bool supportsDirectCondition(JitConditional condition) override;
 
     void regReg(JitWidth regWidth, RegPtr reg, RegPtr rm, std::function<void(asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm)> fn, U32 extend = 0);
     void reg1(JitWidth regWidth, RegPtr reg, std::function<void(asmjit::a64::Gp dst, asmjit::a64::Gp src)> fn);
@@ -261,7 +271,8 @@ public:
 
     U32 MarkJumpLocation() override;
     void Goto(U32 location) override;
-    void jmp(RegPtr reg) override;  
+    void jmp(RegPtr reg) override;
+    void jmp(DYN_PTR_SIZE address) override;
     RegPtr getReadOnlyFlags() override;
     void storeLazyFlagType(LazyFlagType flags) override;
     void storeLazyFlagsResult(RegPtr reg) override;
@@ -702,6 +713,7 @@ protected:
     void preCommitJIT() override;
     void patch(U8* begin) override;
     U8* createStartJITCode() override;
+    U8* createBlockExit(bool syncRegs) override;
 
     void loadCacheFromCPU();
     void writeCacheToCPU();
@@ -737,6 +749,7 @@ protected:
 
     std::vector<Label> ifLabels;
     BHashTable<U32, Label> opLabels;
+    BHashTable<U32, Label> pendingLabels;
 };
 
 asmjit::JitRuntime JitArmV8CodeGen::rt;
@@ -751,6 +764,7 @@ void JitArmV8CodeGen::preOp(DecodedOp* op) {
         opLabels.set(currentEip, label);
     }
     compiler.bind(label);
+    pendingLabels.remove(currentEip);
 }
 
 U8 JitArmV8CodeGen::findTmpXMM() {
@@ -958,7 +972,7 @@ RegPtr JitArmV8CodeGen::getReg(U8 reg, S8 hint, bool load) {
     }
 }
 
-RegPtr JitArmV8CodeGen::getReg8(U8 reg) {
+RegPtr JitArmV8CodeGen::getReg8(U8 reg, bool load) {
     U8 hardwareReg = reg;
     if (hardwareReg >= 4) {
         hardwareReg -= 4;
@@ -2872,6 +2886,10 @@ void JitArmV8CodeGen::Goto(U32 location) {
 
 void JitArmV8CodeGen::jmp(RegPtr reg) {
     compiler.br(R64(reg));
+}
+
+void JitArmV8CodeGen::jmp(DYN_PTR_SIZE address) {
+    compiler.b(address);
 }
 
 void JitArmV8CodeGen::writeCPU(JitWidth width, U32 offset, RegPtr src) {
@@ -5876,6 +5894,82 @@ void JitArmV8CodeGen::dynamic_btce16r16_lock(DecodedOp* op) {
 }
 */
 
+void JitArmV8CodeGen::direct_cmp(JitWidth width, RegPtr left, RegPtr right) {
+    cmp(width, left, right);
+}
+
+void JitArmV8CodeGen::direct_cmp(JitWidth width, RegPtr left, U32 right) {
+    cmp(width, left, right);
+}
+
+void JitArmV8CodeGen::onBlockPreCommit(DecodedOp* op) {
+    if (pendingLabels.size()) {
+        kpanic("JitX86CodeGen::onBlockPreCommit");
+    }
+}
+
+bool JitArmV8CodeGen::supportsDirectCondition(JitConditional condition) {
+    if (condition == JitConditional::P || condition == JitConditional::NP) {
+        return false;
+    }
+    return true;
+}
+
+asmjit::a64::CondCode JitArmV8CodeGen::getCondCode(JitConditional condition) {
+    switch (condition) {
+    case JitConditional::O: return asmjit::a64::CondCode::kVS;
+    case JitConditional::NO: return asmjit::a64::CondCode::kVC;
+    case JitConditional::B: return asmjit::a64::CondCode::kLO;
+    case JitConditional::NB: return asmjit::a64::CondCode::kHS;
+    case JitConditional::Z: return asmjit::a64::CondCode::kEQ;
+    case JitConditional::NZ: return asmjit::a64::CondCode::kNE;
+    case JitConditional::BE: return asmjit::a64::CondCode::kLS;
+    case JitConditional::NBE: return asmjit::a64::CondCode::kHI;
+    case JitConditional::S: return asmjit::a64::CondCode::kMI;
+    case JitConditional::NS: return asmjit::a64::CondCode::kPL;
+    //case JitConditional::P: return asmjit::a64::CondCode::kP;
+    //case JitConditional::NP: return asmjit::a64::CondCode::kNP;
+    case JitConditional::L: return asmjit::a64::CondCode::kLT;
+    case JitConditional::NL: return asmjit::a64::CondCode::kGE;
+    case JitConditional::LE: return asmjit::a64::CondCode::kLE;
+    case JitConditional::NLE: return asmjit::a64::CondCode::kGT;
+    default:
+        kpanic("JitArmV8CodeGen::getCondCode");
+        return asmjit::a64::CondCode::kVS;
+    }
+}
+
+void JitArmV8CodeGen::direct_jump(JitConditional condition, U32 address) {
+    Label label;
+
+    if (!opLabels.get(address, label)) {
+        label = compiler.new_label();
+        opLabels.set(address, label);
+        pendingLabels.set(address, label);
+    }
+
+    compiler.b(getCondCode(condition), label);
+}
+
+void JitArmV8CodeGen::direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) {
+    if (width == JitWidth::b32) {
+        compiler.csel(R32(dst), R32(src), R32(dst), getCondCode(condition));
+    } else if (width == JitWidth::b16) {
+        kpanic("JitArmV8CodeGen::direct_cmov");
+    }
+}
+
+void JitArmV8CodeGen::direct_setcc(JitConditional condition, RegPtr dst) {
+    RegPtr result = getTmpReg();
+    compiler.mov(R32(result->hardwareReg()), 1);
+    compiler.csel(R32(result), R32(result), asmjit::a64::xzr, getCondCode(condition));
+    compiler.bfxil(R32(dst), R32(result), 0, 8);
+}
+
+bool JitArmV8CodeGen::directDoesAffectFlags(DecodedOp* op) {
+    return true;
+}
+
 void writeBlockExitForJIT(U32 eip, U8* buffer) {
     asmjit::JitRuntime rt;
     asmjit::CodeHolder code;
@@ -5904,8 +5998,8 @@ void writeBlockExitForJIT(U32 eip, U8* buffer) {
     
 }
 
-void JitArmV8CodeGen::blockExit(bool syncCache) {
-    if (syncCache) {
+U8* JitArmV8CodeGen::createBlockExit(bool syncRegs) {
+    if (syncRegs) {
         compiler.blr(xWriteCacheToCPU);
     }
     compiler.mov(R64(xTmp7), xCPU);
@@ -5913,6 +6007,15 @@ void JitArmV8CodeGen::blockExit(bool syncCache) {
         compiler.ldp(R64(i), R64(i + 1), Mem(R64(xTmp7), offsetof(CPU, storedRegs) + (i - 19) * 8));
     }
     compiler.ret(asmjit::a64::x30);
+    return createDynamicExecutableMemory();
+}
+
+void JitArmV8CodeGen::blockExit(bool syncCache) {
+    if (syncCache) {
+        compiler.b((DYN_PTR_SIZE)cpu->thread->process->blockExit);
+    } else {
+        compiler.b((DYN_PTR_SIZE)cpu->thread->process->blockExitNoSync);
+    }
 }
 
 U8* JitArmV8CodeGen::createStartJITCode() {

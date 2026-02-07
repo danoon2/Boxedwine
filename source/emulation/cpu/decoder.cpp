@@ -6229,6 +6229,7 @@ void DecodedOp::reset() {
 #endif
 #ifdef BOXEDWINE_DYNAMIC
     this->runCount = 0;
+    this->jumpTargetFlags = 0;
 #endif
 #if defined(BOXEDWINE_DYNAMIC) || defined(BOXEDWINE_BINARY_TRANSLATOR)
     this->pfnJitCode = nullptr;
@@ -6274,6 +6275,18 @@ bool DecodedOp::isBranch() {
 
 bool DecodedOp::isDirectBranch() {
     return (instructionInfo[inst].branch & DECODE_BRANCH_1) != 0;
+}
+
+bool DecodedOp::isJumpCC() {
+    return inst >= JumpO && inst <= JumpNLE;
+}
+
+bool DecodedOp::isCMovCC() {
+    return inst >= CmovO_R16R16 && inst <= CmovNLE_R32E32;
+}
+
+bool DecodedOp::isSetCC() {
+    return inst >= SetO_R8 && inst <= SetNLE_E8;
 }
 
 bool DecodedOp::isDirectJumpBranch() {

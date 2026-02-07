@@ -331,50 +331,113 @@ void Jit::dynamic_xor32_reg(DecodedOp* op) {
 void Jit::dynamic_xor32_mem(DecodedOp* op) {
     dynamic_MI(op, JitWidth::b32, &Jit::xorValue, FLAGS_XOR32);
 }
+
 void Jit::dynamic_cmpr8r8(DecodedOp* op) {
-    dynamic_RR(op, JitWidth::b8, &Jit::subReg, FLAGS_SUB8, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b8, getReadOnlyReg8(op->reg), getReadOnlyReg8(op->rm));
+    }, [op, this]() {
+        dynamic_RR(op, JitWidth::b8, &Jit::subReg, FLAGS_SUB8, false);
+    });
 }
 void Jit::dynamic_cmpe8r8(DecodedOp* op) {
-    dynamic_MR(op, JitWidth::b8, &Jit::subReg, FLAGS_SUB8, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b8, read(JitWidth::b8, calculateEaa(op)), getReadOnlyReg8(op->reg));
+    }, [op, this]() {
+        dynamic_MR(op, JitWidth::b8, &Jit::subReg, FLAGS_SUB8, false);
+    });
 }
 void Jit::dynamic_cmpr8e8(DecodedOp* op) {
-    dynamic_RM(op, JitWidth::b8, &Jit::subReg, FLAGS_SUB8, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b8, getReadOnlyReg8(op->reg), read(JitWidth::b8, calculateEaa(op)));
+    }, [op, this]() {
+        dynamic_RM(op, JitWidth::b8, &Jit::subReg, FLAGS_SUB8, false);
+    });
 }
 void Jit::dynamic_cmp8_reg(DecodedOp* op) {
-    dynamic_RI(op, JitWidth::b8, &Jit::subValue, FLAGS_SUB8, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b8, getReadOnlyReg8(op->reg), op->imm);
+    }, [op, this]() {
+        dynamic_RI(op, JitWidth::b8, &Jit::subValue, FLAGS_SUB8, false);
+    });
 }
 void Jit::dynamic_cmp8_mem(DecodedOp* op) {
-    dynamic_MI(op, JitWidth::b8, &Jit::subValue, FLAGS_SUB8, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b8, read(JitWidth::b8, calculateEaa(op)), op->imm);
+    }, [op, this]() {
+        dynamic_MI(op, JitWidth::b8, &Jit::subValue, FLAGS_SUB8, false);
+    });
 }
+
 void Jit::dynamic_cmpr16r16(DecodedOp* op) {
-    dynamic_RR(op, JitWidth::b16, &Jit::subReg, FLAGS_SUB16, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b16, getReadOnlyReg(op->reg), getReadOnlyReg(op->rm));
+    }, [op, this]() {
+        dynamic_RR(op, JitWidth::b16, &Jit::subReg, FLAGS_SUB16, false);
+    });
 }
 void Jit::dynamic_cmpe16r16(DecodedOp* op) {
-    dynamic_MR(op, JitWidth::b16, &Jit::subReg, FLAGS_SUB16, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b16, read(JitWidth::b16, calculateEaa(op)), getReadOnlyReg(op->reg));
+    }, [op, this]() {
+        dynamic_MR(op, JitWidth::b16, &Jit::subReg, FLAGS_SUB16, false);
+    });
 }
 void Jit::dynamic_cmpr16e16(DecodedOp* op) {
-    dynamic_RM(op, JitWidth::b16, &Jit::subReg, FLAGS_SUB16, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b16, getReadOnlyReg(op->reg), read(JitWidth::b16, calculateEaa(op)));
+    }, [op, this]() {
+        dynamic_RM(op, JitWidth::b16, &Jit::subReg, FLAGS_SUB16, false);
+    });
 }
 void Jit::dynamic_cmp16_reg(DecodedOp* op) {
-    dynamic_RI(op, JitWidth::b16, &Jit::subValue, FLAGS_SUB16, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b16, getReadOnlyReg(op->reg), op->imm);
+    }, [op, this]() {
+        dynamic_RI(op, JitWidth::b16, &Jit::subValue, FLAGS_SUB16, false);
+    });
 }
 void Jit::dynamic_cmp16_mem(DecodedOp* op) {
-    dynamic_MI(op, JitWidth::b16, &Jit::subValue, FLAGS_SUB16, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b16, read(JitWidth::b16, calculateEaa(op)), op->imm);
+    }, [op, this]() {
+        dynamic_MI(op, JitWidth::b16, &Jit::subValue, FLAGS_SUB16, false);
+    });
 }
 void Jit::dynamic_cmpr32r32(DecodedOp* op) {
-    dynamic_RR(op, JitWidth::b32, &Jit::subReg, FLAGS_SUB32, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b32, getReadOnlyReg(op->reg), getReadOnlyReg(op->rm));
+    }, [op, this]() {
+        dynamic_RR(op, JitWidth::b32, &Jit::subReg, FLAGS_SUB32, false);
+    });
 }
 void Jit::dynamic_cmpe32r32(DecodedOp* op) {
-    dynamic_MR(op, JitWidth::b32, &Jit::subReg, FLAGS_SUB32, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b32, read(JitWidth::b32, calculateEaa(op)), getReadOnlyReg(op->reg));
+    }, [op, this]() {
+        dynamic_MR(op, JitWidth::b32, &Jit::subReg, FLAGS_SUB32, false);
+    });  
 }
 void Jit::dynamic_cmpr32e32(DecodedOp* op) {
-    dynamic_RM(op, JitWidth::b32, &Jit::subReg, FLAGS_SUB32, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b32, getReadOnlyReg(op->reg), read(JitWidth::b32, calculateEaa(op)));
+    }, [op, this]() {
+        dynamic_RM(op, JitWidth::b32, &Jit::subReg, FLAGS_SUB32, false);
+    });  
 }
+
 void Jit::dynamic_cmp32_reg(DecodedOp* op) {
-    dynamic_RI(op, JitWidth::b32, &Jit::subValue, FLAGS_SUB32, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b32, getReadOnlyReg(op->reg), op->imm);
+    }, [op, this]() {
+        dynamic_RI(op, JitWidth::b32, &Jit::subValue, FLAGS_SUB32, false);
+    });
 }
 void Jit::dynamic_cmp32_mem(DecodedOp* op) {
-    dynamic_MI(op, JitWidth::b32, &Jit::subValue, FLAGS_SUB32, false);
+    tryDirect(op, [op, this]() {
+        direct_cmp(JitWidth::b32, read(JitWidth::b32, calculateEaa(op)), op->imm);
+    }, [op, this]() {
+        dynamic_MI(op, JitWidth::b32, &Jit::subValue, FLAGS_SUB32, false);
+    });  
 }
 void Jit::dynamic_testr8r8(DecodedOp* op) {
     if (op->reg == op->rm) {

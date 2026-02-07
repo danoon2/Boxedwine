@@ -51,20 +51,13 @@
 #else
 #define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next);
 #define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
-#define NEXT_DONE_CALL() cpu->nextOp = cpu->getNextOp(0);
+#define NEXT_DONE_JUMP_OR_CALL() cpu->nextOp = cpu->getNextOp(JUMP_TARGET);
 
 // if jmp back, then return so that we don't blow the stack
 #define NEXT_BRANCH1()                                      \
     cpu->eip.u32+=op->len;                                  \
     if (!(*(op->data.nextJump))) {                          \
-        *(op->data.nextJump) = cpu->getNextOp();            \
-    }                                                       \
-    cpu->nextOp = *(op->data.nextJump);
-
-#define NEXT_BRANCH1_CALL()                                      \
-    cpu->eip.u32+=op->len;                                  \
-    if (!(*(op->data.nextJump))) {                          \
-        *(op->data.nextJump) = cpu->getNextOp(0);            \
+        *(op->data.nextJump) = cpu->getNextOp(JUMP_TARGET);            \
     }                                                       \
     cpu->nextOp = *(op->data.nextJump);
 
@@ -183,7 +176,7 @@ DecodedOp* NormalCPU::decodeOneOp(U32 eip) {
     return result;
 }
 
-DecodedOp* NormalCPU::getOp(U32 startIp, U32 flags) {
+DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
     if (!this->thread->process) // exit was called, don't need to pre-cache the next block
         return nullptr;
 
@@ -217,7 +210,12 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 flags) {
             this->thread->memory->addCode_nolock(startIp, eipLen, op, opCount);            
         }
     }
-    op->flags |= flags;
+#ifdef BOXEDWINE_DYNAMIC
+    op->jumpTargetFlags |= jumpTargetFlags;
+    if (jumpTargetFlags && (op->jumpTargetFlags & JUMP_TARGET_ASSUMED_FALSE)) {
+        kpanic("JUMP_TARGET_ASSUMED_FALSE");
+    }
+#endif
     return op;
 }
 

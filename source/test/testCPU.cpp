@@ -3299,8 +3299,9 @@ void PopEd() {
     Reg* reg;
 
     for (i=0;i<8;i++) {
-        if (i==4)
+        if (i == 4) {
             continue;
+        }
         newInstruction(0x8f, 0);
         pushCode8(i|0xC0);
         reg = &cpu->reg[i];
@@ -3332,6 +3333,22 @@ void PopEd() {
     assertTrue(memory->readd(cpu->seg[DS].address + 200) == 0x56781234);
     assertTrue(memory->readd(cpu->seg[SS].address + ESP)==0xAAAAAAAA);
     assertTrue(memory->readd(cpu->seg[SS].address + ESP - 8)==0xBBBBBBBB);
+
+    // pop [esp + 4]
+    newInstruction(0x8f, 0);
+    pushCode8(0x44);
+    pushCode8(0x24);
+    pushCode8(4);
+
+    ESP -= 12;
+    memory->writed(cpu->seg[SS].address + ESP, 0x56781234);
+    memory->writed(cpu->seg[SS].address + ESP + 4, DEFAULT);
+    memory->writed(cpu->seg[SS].address + ESP + 8, DEFAULT);
+    runTestCPU();
+
+    assertTrue(ESP == 4088);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP) == DEFAULT);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP + 4) == 0x56781234);
 }
 
 void push16(int instruction) {
@@ -5518,6 +5535,15 @@ void testJO(U8 instruction) {
     testJ(instruction, AF, false);
     testJ(instruction, ZF, false);
     testJ(instruction, SF, false);
+
+    testJumpCmp(instruction, 0, 0, false);
+    testJumpCmp(instruction, 1, 0, false);
+
+    if (cpu->big) {
+        testJumpCmp(instruction, 0x80000000, 0x10000000, true);
+    } else {
+        testJumpCmp(instruction, 0x8000, 0x1000, true);
+    }
 }
 
 void testNJO(U8 instruction) {
@@ -5527,6 +5553,14 @@ void testNJO(U8 instruction) {
     testJ(instruction, AF, true);
     testJ(instruction, ZF, true);
     testJ(instruction, SF, true);
+
+    testJumpCmp(instruction, 0, 0, true);
+    testJumpCmp(instruction, 1, 0, true);
+    if (cpu->big) {
+        testJumpCmp(instruction, 0x80000000, 0x10000000, false);
+    } else {
+        testJumpCmp(instruction, 0x8000, 0x1000, false);
+    }
 }
 
 void testJO0x70() {
@@ -9226,7 +9260,7 @@ void testBswap3cf() {
 }
 
 void doTestCmov(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTriggersFlag, U32 cmpValueThatDoesNotTriggerFlag) {
-    for (U32 setFlags = 0; setFlags < 2; setFlags++) {
+    for (U32 setFlags = 0; setFlags < 3; setFlags++) {
         for (U32 useFlags = 0; useFlags < 2; useFlags++) {
             for (U32 ed = 0; ed < 8; ed++) {
                 for (U32 gd = 0; gd < 8; gd++) {
@@ -9237,7 +9271,7 @@ void doTestCmov(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrig
                         continue;
                     U8 rm = ed | (gd << 3) | 0xC0;
 
-                    if (setFlags) {
+                    if (setFlags == 1) {
                         newInstructionWithRM(instruction, rm, useFlags ? flags : 0);
                     } else {
                         // cmp ed, 0
@@ -9250,6 +9284,13 @@ void doTestCmov(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrig
                         pushCode8(0x0F);
                         pushCode8(instruction & 0xFF);
                         pushCode8(rm);
+                        if (setFlags == 2) {
+                            // this will generate flags so the above code can optimize cmp/cmov combination since the cmp flags aren't used later
+                            // cmp eax, 0
+                            pushCode8(0x83);
+                            pushCode8(0xf8);
+                            pushCode8(0);
+                        }
                     }
                     e = &cpu->reg[ed];
                     g = &cpu->reg[gd];
@@ -9305,6 +9346,13 @@ void doTestCmov(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrig
                     pushCode32(200);
                 } else {
                     pushCode16(200);
+                }
+                if (setFlags == 2) {
+                    // this will generate flags so the above code can optimize cmp/cmov combination since the cmp flags aren't used later
+                    // cmp eax, 0
+                    pushCode8(0x83);
+                    pushCode8(0xf8);
+                    pushCode8(0);
                 }
                 memory->writed(cpu->seg[DS].address + 200, 0x11112222);
                 g = &cpu->reg[gd];
@@ -9559,14 +9607,14 @@ void doTestSet(U32 instruction, U32 value1, U32 value2, bool isSet) {
 }
 
 void doTestSet(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTriggersFlag, U32 cmpValueThatDoesNotTriggerFlag) {
-    for (U32 setFlags = 0; setFlags < 2; setFlags++) {
+    for (U32 setFlags = 0; setFlags < 3; setFlags++) {
         for (U32 useFlags = 0; useFlags < 2; useFlags++) {
             for (U32 ed = 0; ed < 8; ed++) {
                 Reg* e;
 
                 U8 rm = ed | 0xC0;
 
-                if (setFlags) {
+                if (setFlags == 1) {
                     newInstructionWithRM(instruction, rm, useFlags ? flags : 0);
                 } else {
                     // cmp ed, 0
@@ -9579,6 +9627,14 @@ void doTestSet(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrigg
                     pushCode8(0x0F);
                     pushCode8(instruction & 0xFF);
                     pushCode8(rm);
+
+                    if (setFlags == 2) {
+                        // this will generate flags so the above code can optimize cmp/set combination since the cmp flags aren't used later
+                        // cmp eax, 0
+                        pushCode8(0x83);
+                        pushCode8(0xf8);
+                        pushCode8(0);
+                    }
                 }
                 e = &cpu->reg[ed % 4];
                 e->u32 = 0x11112222;
@@ -9610,7 +9666,7 @@ void doTestSet(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrigg
             } else {
                 rm += 6;
             }
-            if (setFlags) {
+            if (setFlags == 1) {
                 newInstructionWithRM(instruction, rm, useFlags ? flags : 0);
             } else {
                 // cmp [200], 0
@@ -9627,12 +9683,19 @@ void doTestSet(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrigg
                 }
                 pushCode8(0x0F);
                 pushCode8(instruction & 0xFF);
-                pushCode8(rm);
+                pushCode8(rm);                
             }
             if (cpu->big) {
                 pushCode32(200);
             } else {
                 pushCode16(200);
+            }
+            if (setFlags == 2) {
+                // this will generate flags so the above code can optimize cmp/set combination since the cmp flags aren't used later
+                // cmp eax, 0
+                pushCode8(0x83);
+                pushCode8(0xf8);
+                pushCode8(0);
             }
             memory->writed(cpu->seg[DS].address + 200, 0x11112222);
             runTestCPU();

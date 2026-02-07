@@ -140,6 +140,19 @@ asmjit::x86::Gp R8(U8 reg) {
     return asmjit::x86::gp8_lo(reg);
 }
 
+asmjit::x86::Gp R(JitWidth width, U8 reg) {
+    if (width == JitWidth::b32) {
+        return R32(reg);
+    } else if (width == JitWidth::b16) {
+        return R16(reg);
+    } else if (width == JitWidth::b8) {
+        return R8(reg);
+    } else {
+        kpanic("jitX86CodeGen::R");
+        return R8(reg);
+    }
+}
+
 asmjit::x86::Vec XMM(U8 reg) {
     return asmjit::x86::xmm(reg);
 }
@@ -171,7 +184,7 @@ public:
 
     void preOp(DecodedOp* op) override;
     RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) override;
-    RegPtr getReg8(U8 reg) override;
+    RegPtr getReg8(U8 reg, bool load = true) override;
     RegPtr getReadOnlyReg(U8 reg, bool delayed = false, S8 hint = -1) override;
     RegPtr getReadOnlyReg8(U8 reg, bool delayed = false, S8 hint = -1) override;
     RegPtr getTmpReg() override;
@@ -312,6 +325,17 @@ public:
     void StartElse() override;
     void EndIf() override;
     void blockExit(bool syncCache = true) override;
+
+    void direct_cmp(JitWidth width, RegPtr left, RegPtr right) override;
+    void direct_cmp(JitWidth width, RegPtr left, U32 right) override;
+    void direct_jump(JitConditional condition, U32 address) override;
+    void direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) override;
+    void direct_setcc(JitConditional condition, RegPtr dst) override;
+
+    asmjit::x86::CondCode getCondCode(JitConditional condition);
+
+    bool directDoesAffectFlags(DecodedOp* op) override;
+    RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0) override;
 
     // FPU
     FPURegPtr getFPUTmp() override;
@@ -700,6 +724,7 @@ protected:
     U32 getBufferLocation(U32 id) override;
     U32 markBufferLocation() override;
     void copyBuffer(U8* dst, U32 size) override;
+    void onBlockPreCommit(DecodedOp* op) override;
 
     void setCC(asmjit::x86::Gp reg, JitEvaluate condition);
 
@@ -712,6 +737,7 @@ protected:
     void setParams(const std::vector<DynParam>& params);
     U8* createSyncToHost() override;
     U8* createSyncFromHost() override;
+    U8* createBlockExit(bool syncRegs) override;
     bool isHintAvailable(S8 hint);
     U8 findTmpXMM();
     SSERegPtr getXMM(U8 index, bool load);
@@ -733,6 +759,7 @@ protected:
     std::vector<Label> labels;
     std::vector<Label> ifLabels;
     BHashTable<U32, Label> opLabels;
+    BHashTable<U32, Label> pendingLabels;
 };
 
 void JitX86CodeGen::preOp(DecodedOp* op) {
@@ -745,6 +772,7 @@ void JitX86CodeGen::preOp(DecodedOp* op) {
         opLabels.set(currentEip, label);
     }
     compiler.bind(label);
+    pendingLabels.remove(currentEip);
 }
 
 U8 JitX86CodeGen::findTmpXMM() {
@@ -1070,7 +1098,7 @@ RegPtr JitX86CodeGen::getReg(U8 reg, S8 hint, bool load) {
     }
 }
 
-RegPtr JitX86CodeGen::getReg8(U8 reg) {
+RegPtr JitX86CodeGen::getReg8(U8 reg, bool load) {
     bool isHigh = reg > 3;
     if (isHigh) {
         reg -= 4;
@@ -1094,16 +1122,18 @@ RegPtr JitX86CodeGen::getReg8(U8 reg) {
                 regUsed[p->hardwareReg()] = false;
             }
             delete p;
-            });
-        if (regCache[reg] != INVALID_REG) {
-            if (result->hardwareReg() > 3 || regCache[reg] > 3) {
-                compiler.mov(R32(result->hardwareReg()), R32(regCache[reg]));
-                compiler.shr(R16(result->hardwareReg()), 8);
+        });
+        if (load) {
+            if (regCache[reg] != INVALID_REG) {
+                if (result->hardwareReg() > 3 || regCache[reg] > 3) {
+                    compiler.mov(R32(result->hardwareReg()), R32(regCache[reg]));
+                    compiler.shr(R16(result->hardwareReg()), 8);
+                } else {
+                    compiler.mov(R8(result->hardwareReg()), R8(regCache[reg] + 4));
+                }
             } else {
-                compiler.mov(R8(result->hardwareReg()), R8(regCache[reg] + 4));
+                compiler.mov(R8(result->hardwareReg()), Mem(HOST_CPU, CPU::offsetofReg32(reg) + 1));
             }
-        } else {
-            compiler.mov(R8(result->hardwareReg()), Mem(HOST_CPU, CPU::offsetofReg32(reg) + 1));
         }
         return result;
 #endif
@@ -4201,6 +4231,12 @@ U32 JitX86CodeGen::markBufferLocation() {
     return (U32)labels.size() - 1;
 }
 
+void JitX86CodeGen::onBlockPreCommit(DecodedOp* op) {
+    if (pendingLabels.size()) {
+        kpanic("JitX86CodeGen::onBlockPreCommit");
+    }
+}
+
 U32 JitX86CodeGen::getIfJumpSize() {
     return (U32)ifLabels.size();
 }
@@ -4244,8 +4280,8 @@ void writeBlockExitForJIT(U32 eip, U8* buffer) {
     code.copy_flattened_data(buffer, code.code_size());
 }
 
-void JitX86CodeGen::blockExit(bool syncCache) {
-    if (syncCache) {
+U8* JitX86CodeGen::createBlockExit(bool syncRegs) {
+    if (syncRegs) {
         writeCache();
     }
 #ifdef BOXEDWINE_64
@@ -4262,6 +4298,15 @@ void JitX86CodeGen::blockExit(bool syncCache) {
     compiler.pop(regEbx);
 #endif
     compiler.ret();
+    return createDynamicExecutableMemory();
+}
+
+void JitX86CodeGen::blockExit(bool syncCache) {
+    if (syncCache) {
+        compiler.jmp((DYN_PTR_SIZE)cpu->thread->process->blockExit);
+    } else {
+        compiler.jmp((DYN_PTR_SIZE)cpu->thread->process->blockExitNoSync);
+    }
 }
 
 void JitX86CodeGen::setCC(asmjit::x86::Gp reg, JitEvaluate condition) {
@@ -4959,6 +5004,253 @@ void JitX86CodeGen::dynamic_btce16r16_lock(DecodedOp* op) {
         this->compiler.btc(Mem(RN(address->hardwareReg()), RN(offset->hardwareReg()), 0, 0), R16(reg->hardwareReg()));
         updateFlagsIfNecessary();
     });
+}
+
+RegPtr JitX86CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {    
+    if (op->ea16) {        
+        // cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
+        RegPtr result = getTmpReg();        
+        U32 disp = op->data.disp;
+        RegPtr rm;
+        RegPtr sibIndex;
+
+        if (popEspAmount && op->rm == 4) {
+            disp += popEspAmount;
+        }
+        if (popEspAmount && op->sibIndex == 4) {
+            disp += popEspAmount;
+        }
+
+        if (op->rm != 8 && op->sibIndex == op->rm) {
+            rm = getReadOnlyReg(op->rm);
+            sibIndex = rm;
+        } else {
+            if (op->rm != 8) {
+                rm = getReadOnlyReg(op->rm);
+            }
+            if (op->sibIndex != 8) {
+                sibIndex = getReadOnlyReg(op->sibIndex);
+            }
+        }
+        if (op->base < 6) {            
+            RegPtr seg = getReadOnlySegAddress(op->base);
+
+            if (op->rm != 8 && op->sibIndex != 8) {
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(sibIndex->hardwareReg()), R32(rm->hardwareReg()), 0, disp));
+                compiler.and_(R32(result->hardwareReg()), 0xffff);
+            } else if (op->rm != 8) {
+                if (disp) {
+                    compiler.lea(R32(result->hardwareReg()), Mem(R32(rm->hardwareReg()), disp));
+                    compiler.and_(R32(result->hardwareReg()), 0xffff);
+                } else {
+                    compiler.mov(R32(result->hardwareReg()), 0);
+                    compiler.mov(R16(result->hardwareReg()), R16(rm->hardwareReg()));
+                }
+            } else if (op->sibIndex != 8) {
+                if (disp) {
+                    compiler.lea(R32(result->hardwareReg()), Mem(R32(sibIndex->hardwareReg()), disp));
+                    compiler.and_(R32(result->hardwareReg()), 0xffff);
+                } else {
+                    compiler.mov(R32(result->hardwareReg()), 0);
+                    compiler.mov(R16(result->hardwareReg()), R16(sibIndex->hardwareReg()));
+                }
+            } else if (disp) {
+                compiler.mov(R16(result->hardwareReg()), disp);
+            }            
+            compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), R32(result->hardwareReg()), 0, 0));
+        } else {
+            if (op->rm != 8 && op->sibIndex != 8) {
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(rm->hardwareReg()), R32(sibIndex->hardwareReg()), 0, disp));
+                compiler.and_(R32(result->hardwareReg()), 0xffff);
+            } else if (op->rm != 8) {
+                if (disp) {
+                    compiler.lea(R32(result->hardwareReg()), Mem(R32(rm->hardwareReg()), disp));
+                    compiler.and_(R32(result->hardwareReg()), 0xffff);
+                } else {
+                    compiler.mov(R32(result->hardwareReg()), 0);
+                    compiler.mov(R16(result->hardwareReg()), R16(rm->hardwareReg()));
+                }
+            } else if (op->sibIndex != 8) {
+                if (disp) {
+                    compiler.lea(R32(result->hardwareReg()), Mem(R32(sibIndex->hardwareReg()), disp));
+                    compiler.and_(R32(result->hardwareReg()), 0xffff);
+                } else {
+                    compiler.mov(R32(result->hardwareReg()), 0);
+                    compiler.mov(R16(result->hardwareReg()), R16(sibIndex->hardwareReg()));
+                }
+            } else {
+                compiler.mov(R32(result->hardwareReg()), 0);
+                compiler.mov(R16(result->hardwareReg()), disp);
+            }
+        }
+
+        return result;
+    } else {
+        RegPtr result = getTmpReg();
+        U32 disp = op->data.disp;
+
+        if (popEspAmount && op->rm == 4) {
+            disp += popEspAmount;
+        } 
+        if (popEspAmount && op->sibIndex == 4) {
+            disp += (popEspAmount << op->sibIndex);
+        }
+
+        // seg[6] is always 0
+        RegPtr rm;
+        RegPtr sibIndex;
+
+        if (op->rm != 8 && op->sibIndex == op->rm) {
+            rm = getReadOnlyReg(op->rm);
+            sibIndex = rm;
+        } else {
+            if (op->rm != 8) {
+                rm = getReadOnlyReg(op->rm);
+            }
+            if (op->sibIndex != 8) {
+                sibIndex = getReadOnlyReg(op->sibIndex);
+            }
+        }
+        if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
+            RegPtr seg = getReadOnlySegAddress(op->base);
+
+            if (op->rm != 8 && op->sibIndex != 8) {
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), R32(rm->hardwareReg()), 0, 0));
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(result->hardwareReg()), R32(sibIndex->hardwareReg()), op->sibScale, disp));
+            } else if (op->rm != 8) {
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), R32(rm->hardwareReg()), 0, disp));
+            } else if (op->sibIndex != 8) {
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), R32(sibIndex->hardwareReg()), op->sibScale, disp));
+            } else {
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), disp));
+            }
+        } else {
+            if (op->rm != 8 && op->sibIndex != 8) {
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(rm->hardwareReg()), R32(sibIndex->hardwareReg()), op->sibScale, disp));
+            } else if (op->rm != 8) {
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(rm->hardwareReg()), disp));
+            } else if (op->sibIndex != 8) {
+                compiler.mov(R32(result->hardwareReg()), 0);
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(result->hardwareReg()), R32(sibIndex->hardwareReg()), op->sibScale, disp));
+            } else {
+                compiler.mov(R32(result->hardwareReg()), disp);
+            }
+        }        
+        return result;
+    }
+}
+
+bool JitX86CodeGen::directDoesAffectFlags(DecodedOp* op) {
+    //read/write does things like address >> K_PAGE_SHIFT which will affect flags, perhaps we can make special versions of read/write for x86 if needed
+    switch (op->inst) {
+    case MovR8R8:
+    //case MovE8R8:
+    //case MovR8E8:
+    case MovR8I8:
+    //case MovE8I8:
+    case MovR16R16:
+    //case MovE16R16:
+    //case MovR16E16:
+    case MovR16I16:
+    //case MovE16I16:
+    case MovR32R32:
+    //case MovE32R32:
+    //case MovR32E32:
+    case MovR32I32:
+    //case MovE32I32:
+    //case MovAlOb:
+    //case MovAxOw:
+    //case MovEaxOd:
+    //case MovObAl:
+    //case MovOwAx:
+    //case MovOdEax:
+    case MovGwXzR8:
+    //case MovGwXzE8:
+    case MovGwSxR8:
+    //case MovGwSxE8:
+    case MovGdXzR8:
+    //case MovGdXzE8:
+    case MovGdSxR8:
+    //case MovGdSxE8:
+    case MovGdXzR16:
+    //case MovGdXzE16:
+    case MovGdSxR16:
+    //case MovGdSxE16:
+    case LeaR16:
+    case LeaR32:
+        return false;
+    default:
+        return true;
+    }
+}
+
+asmjit::x86::CondCode JitX86CodeGen::getCondCode(JitConditional condition) {
+    switch (condition) {
+    case JitConditional::O: return asmjit::x86::CondCode::kO;
+    case JitConditional::NO: return asmjit::x86::CondCode::kNO;
+    case JitConditional::B: return asmjit::x86::CondCode::kB;
+    case JitConditional::NB: return asmjit::x86::CondCode::kNB;
+    case JitConditional::Z: return asmjit::x86::CondCode::kZ;
+    case JitConditional::NZ: return asmjit::x86::CondCode::kNZ;
+    case JitConditional::BE: return asmjit::x86::CondCode::kBE;
+    case JitConditional::NBE: return asmjit::x86::CondCode::kNBE;
+    case JitConditional::S: return asmjit::x86::CondCode::kS;
+    case JitConditional::NS: return asmjit::x86::CondCode::kNS;
+    case JitConditional::P: return asmjit::x86::CondCode::kP;
+    case JitConditional::NP: return asmjit::x86::CondCode::kNP;
+    case JitConditional::L: return asmjit::x86::CondCode::kL;
+    case JitConditional::NL: return asmjit::x86::CondCode::kNL;
+    case JitConditional::LE: return asmjit::x86::CondCode::kLE;
+    case JitConditional::NLE: return asmjit::x86::CondCode::kNLE;
+    default:
+        kpanic("JitX86CodeGen::getCondCode");
+        return asmjit::x86::CondCode::kO;
+    }
+}
+
+void JitX86CodeGen::direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) {
+    compiler.cmov(getCondCode(condition), R(width, dst->hardwareReg()), R(width, src->hardwareReg()));
+}
+
+void JitX86CodeGen::direct_setcc(JitConditional condition, RegPtr dst) {
+    compiler.set(getCondCode(condition), R8(dst->hardwareReg() + (dst->isHigh ? 4 : 0)));
+}
+
+void JitX86CodeGen::direct_jump(JitConditional condition, U32 address) {
+    Label label;
+
+    if (!opLabels.get(address, label)) {
+        label = compiler.new_label();
+        opLabels.set(address, label);
+        pendingLabels.set(address, label);
+    }
+
+    compiler.j(getCondCode(condition), label);
+}
+
+void JitX86CodeGen::direct_cmp(JitWidth width, RegPtr left, RegPtr right) {
+    if (width == JitWidth::b32) {
+        compiler.cmp(R32(left->hardwareReg()), R32(right->hardwareReg()));
+    } else if (width == JitWidth::b16) {
+        compiler.cmp(R16(left->hardwareReg()), R16(right->hardwareReg()));
+    } else if (width == JitWidth::b8) {
+        compiler.cmp(R8(left->hardwareReg()), R8(right->hardwareReg()));
+    } else {
+        kpanic("JitX86CodeGen::direct_cmp");
+    }
+
+}
+
+void JitX86CodeGen::direct_cmp(JitWidth width, RegPtr left, U32 right) {
+    if (width == JitWidth::b32) {
+        compiler.cmp(R32(left->hardwareReg()), right);
+    } else if (width == JitWidth::b16) {
+        compiler.cmp(R16(left->hardwareReg()), right);
+    } else if (width == JitWidth::b8) {
+        compiler.cmp(R8(left->hardwareReg()), right);
+    } else {
+        kpanic("JitX86CodeGen::direct_cmp");
+    }
 }
 
 U8* JitX86CodeGen::createStartJITCode() {

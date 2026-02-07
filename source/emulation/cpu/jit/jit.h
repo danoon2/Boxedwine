@@ -112,7 +112,7 @@ public:
     using InstReg2 = void(Jit::*)(JitWidth regWidth, RegPtr reg);
 
     virtual RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) = 0; // for cached regs, they will be used directly, for unchached regs, it will be read from the cpu and written back when done
-    virtual RegPtr getReg8(U8 reg) = 0;
+    virtual RegPtr getReg8(U8 reg, bool load = true) = 0;
     virtual RegPtr getReadOnlyReg(U8 reg, bool delayed = false, S8 hint = -1) = 0; // for cached regs, they will be used directly, for unchached regs, it will be read from the cpu but NOT written back when done
     virtual RegPtr getReadOnlyReg8(U8 reg, bool delayed = false, S8 hint = -1) = 0;
     virtual RegPtr getTmpReg() = 0;
@@ -289,8 +289,10 @@ public:
     LazyFlagType currentLazyFlags = FLAGS_NULL; 
     U32 currentEip = 0;
     DecodedOp* currentOp = nullptr;
+    DecodedOp* skipToOp = nullptr;
 
     virtual bool canJumpInBlock(DecodedOp* op) = 0;
+    virtual bool canJumpInBlock(U32 opEip, DecodedOp* op) = 0;
 
     virtual void blockCall(DecodedOp* op) = 0;
     virtual void blockDone(bool returnEarly) = 0;
@@ -360,6 +362,17 @@ public:
 #undef INIT_CPU_LOCK
 #endif
 #undef INIT_CPU
+
+    virtual void direct_cmp(JitWidth width, RegPtr left, RegPtr right) = 0;
+    virtual void direct_cmp(JitWidth width, RegPtr left, U32 right) = 0;
+    virtual void direct_jump(JitConditional condition, U32 address) = 0;
+    virtual void direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) = 0;    
+    virtual void direct_setcc(JitConditional condition, RegPtr dst) = 0;
+    virtual void tryDirect(DecodedOp* op, std::function<void()> cmpCallback, std::function<void()> fallback) = 0;
+    virtual void preCompile(DecodedOp* op, bool skippedOp = false) = 0;
+    virtual void compile(DecodedOp* op) = 0;
+    virtual void postCompile(DecodedOp* op) = 0;
+    virtual bool directDoesAffectFlags(DecodedOp* op) = 0;
 
 protected:
     RegPtr btMask(U32 bitMask, U32 reg);

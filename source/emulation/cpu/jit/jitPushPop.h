@@ -145,7 +145,7 @@ void Jit::dynamic_pushEd_mem(DecodedOp* op) {
     push32(read(JitWidth::b32, calculateEaa(op)));
 }
 void Jit::dynamic_popEd_mem(DecodedOp* op) {
-    write(JitWidth::b32, calculateEaa(op, 4), peek32()); // eaa must be calculated after esp is incremented which is why we pass 2 here
+    write(JitWidth::b32, calculateEaa(op, 4), peek32()); // eaa must be calculated after esp is incremented which is why we pass 4 here
 
     if (cpu->thread->process->hasSetSeg[SS]) {
         IfSmallStack(); {

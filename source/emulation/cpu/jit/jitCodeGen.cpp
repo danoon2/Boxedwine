@@ -254,6 +254,36 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
         // an op we just looked at might be going to a place between lastFurthestEip and data.lastOpEip which is not valid since it is now passed the end of the block
         lastFurthestEip = lastEip;
     }
+
+    BHashTable<U32, DecodedOp*> ops;
+
+    nextOp = op;
+    eip = this->startingEip;
+    while (nextOp && eip < this->lastOpEip) {
+        ops.set(eip, nextOp);
+        eip += nextOp->len;
+        nextOp = nextOp->next;
+    }
+
+    nextOp = op;
+    eip = this->startingEip;
+    while (nextOp && eip < this->lastOpEip) {
+        if (nextOp->isDirectBranch()) {
+            // MW3 preview will jump to this jnz, which means the cmp/jnz pair should not be optimized as direct, see Jit::dynamic_cmpr32r32
+            // without this check, MW3 will have weird drawing/camera
+            // 4d7d1e Cmp EBX, ESI
+            // 4d7d20 JNZ 7 -> 4d7d29
+            // ...
+            // 4d7d3e JLE ffffffe0 -> 4d7d20
+            U32 target = eip + nextOp->len + nextOp->imm;
+            DecodedOp* targetOp = nullptr;
+            if (ops.get(target, targetOp)) {
+                targetOp->jumpTargetFlags |= JUMP_TARGET;
+            }
+        }
+        eip += nextOp->len;
+        nextOp = nextOp->next;
+    }
     return true;
 }
 
@@ -277,6 +307,301 @@ void JitCodeGen::removeJIT(DecodedOp* op, U32 count) {
     }
 }
 
+JitConditional JitCodeGen::getJumpConditionFromOp(DecodedOp* op) {
+    switch (op->inst) {
+    case JumpO: return JitConditional::O;
+    case JumpNO: return JitConditional::NO;
+    case JumpB: return JitConditional::B;
+    case JumpNB: return JitConditional::NB;
+    case JumpZ: return JitConditional::Z;
+    case JumpNZ: return JitConditional::NZ;
+    case JumpBE: return JitConditional::BE;
+    case JumpNBE: return JitConditional::NBE;
+    case JumpS: return JitConditional::S;
+    case JumpNS: return JitConditional::NS;
+    case JumpP: return JitConditional::P;
+    case JumpNP: return JitConditional::NP;
+    case JumpL: return JitConditional::L;
+    case JumpNL: return JitConditional::NL;
+    case JumpLE: return JitConditional::LE;
+    case JumpNLE: return JitConditional::NLE;
+    default:
+        kpanic("JitCodeGen::getJumpConditionFromOp");
+    }
+    return JitConditional::O;
+}
+
+JitConditional JitCodeGen::getCmovConditionFromOp(DecodedOp* op) {
+    switch (op->inst) {
+    case CmovO_R16R16: 
+    case CmovO_R16E16:
+        return JitConditional::O;
+    case CmovNO_R16R16:
+    case CmovNO_R16E16:
+        return JitConditional::NO;
+    case CmovB_R16R16:
+    case CmovB_R16E16:
+        return JitConditional::B;
+    case CmovNB_R16R16:
+    case CmovNB_R16E16:
+        return JitConditional::NB;
+    case CmovZ_R16R16:
+    case CmovZ_R16E16:
+        return JitConditional::Z;
+    case CmovNZ_R16R16:
+    case CmovNZ_R16E16:
+        return JitConditional::NZ;
+    case CmovBE_R16R16:
+    case CmovBE_R16E16:
+        return JitConditional::BE;
+    case CmovNBE_R16R16:
+    case CmovNBE_R16E16:
+        return JitConditional::NBE;
+    case CmovS_R16R16:
+    case CmovS_R16E16:
+        return JitConditional::S;
+    case CmovNS_R16R16:
+    case CmovNS_R16E16:
+        return JitConditional::NS;
+    case CmovP_R16R16:
+    case CmovP_R16E16:
+        return JitConditional::P;
+    case CmovNP_R16R16:
+    case CmovNP_R16E16:
+        return JitConditional::NP;
+    case CmovL_R16R16:
+    case CmovL_R16E16:
+        return JitConditional::L;
+    case CmovNL_R16R16:
+    case CmovNL_R16E16:
+        return JitConditional::NL;
+    case CmovLE_R16R16:
+    case CmovLE_R16E16:
+        return JitConditional::LE;
+    case CmovNLE_R16R16:
+    case CmovNLE_R16E16:
+        return JitConditional::NLE;
+
+    case CmovO_R32R32:
+    case CmovO_R32E32:
+        return JitConditional::O;
+    case CmovNO_R32R32:
+    case CmovNO_R32E32:
+        return JitConditional::NO;
+    case CmovB_R32R32:
+    case CmovB_R32E32:
+        return JitConditional::B;
+    case CmovNB_R32R32:
+    case CmovNB_R32E32:
+        return JitConditional::NB;
+    case CmovZ_R32R32:
+    case CmovZ_R32E32:
+        return JitConditional::Z;
+    case CmovNZ_R32R32:
+    case CmovNZ_R32E32:
+        return JitConditional::NZ;
+    case CmovBE_R32R32:
+    case CmovBE_R32E32:
+        return JitConditional::BE;
+    case CmovNBE_R32R32:
+    case CmovNBE_R32E32:
+        return JitConditional::NBE;
+    case CmovS_R32R32:
+    case CmovS_R32E32:
+        return JitConditional::S;
+    case CmovNS_R32R32:
+    case CmovNS_R32E32:
+        return JitConditional::NS;
+    case CmovP_R32R32:
+    case CmovP_R32E32:
+        return JitConditional::P;
+    case CmovNP_R32R32:
+    case CmovNP_R32E32:
+        return JitConditional::NP;
+    case CmovL_R32R32:
+    case CmovL_R32E32:
+        return JitConditional::L;
+    case CmovNL_R32R32:
+    case CmovNL_R32E32:
+        return JitConditional::NL;
+    case CmovLE_R32R32:
+    case CmovLE_R32E32:
+        return JitConditional::LE;
+    case CmovNLE_R32R32:
+    case CmovNLE_R32E32:
+        return JitConditional::NLE;
+    default:
+        kpanic("JitCodeGen::getCmovConditionFromOp");
+    }
+    return JitConditional::O;
+}
+
+JitConditional JitCodeGen::getSetConditionFromOp(DecodedOp* op) {
+    switch (op->inst) {
+    case SetO_R8:
+    case SetO_E8:
+        return JitConditional::O;
+    case SetNO_R8:
+    case SetNO_E8:
+        return JitConditional::NO;
+    case SetB_R8:
+    case SetB_E8:
+        return JitConditional::B;
+    case SetNB_R8:
+    case SetNB_E8:
+        return JitConditional::NB;
+    case SetZ_R8:
+    case SetZ_E8:
+        return JitConditional::Z;
+    case SetNZ_R8:
+    case SetNZ_E8:
+        return JitConditional::NZ;
+    case SetBE_R8:
+    case SetBE_E8:
+        return JitConditional::BE;
+    case SetNBE_R8:
+    case SetNBE_E8:
+        return JitConditional::NBE;
+    case SetS_R8:
+    case SetS_E8:
+        return JitConditional::S;
+    case SetNS_R8:
+    case SetNS_E8:
+        return JitConditional::NS;
+    case SetP_R8:
+    case SetP_E8:
+        return JitConditional::P;
+    case SetNP_R8:
+    case SetNP_E8:
+        return JitConditional::NP;
+    case SetL_R8:
+    case SetL_E8:
+        return JitConditional::L;
+    case SetNL_R8:
+    case SetNL_E8:
+        return JitConditional::NL;
+    case SetLE_R8:
+    case SetLE_E8:
+        return JitConditional::LE;
+    case SetNLE_R8:
+    case SetNLE_E8:
+        return JitConditional::NLE;    
+    default:
+        kpanic("JitCodeGen::getSetConditionFromOp");
+    }
+    return JitConditional::O;
+}
+
+enum class DirectType {
+    None,
+    Jump,
+    CMov,
+    SetCC
+};
+static int countcc;
+void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> cmpCallback, std::function<void()> fallback) {
+    DecodedOp* nextOp = op->next;
+    U32 skipped = 0;
+    DirectType directType = DirectType::None;
+    JitConditional cond = JitConditional::O;
+
+    for (int i = 0; i < 8 && nextOp; i++) {
+        if (nextOp->jumpTargetFlags & JUMP_TARGET) {
+            break;
+        }
+        if (nextOp->isJumpCC()) {
+            cond = getJumpConditionFromOp(nextOp);
+            directType = DirectType::Jump;
+            break;
+        }
+        if (nextOp->isCMovCC() && instructionInfo[nextOp->inst].readMemWidth == 0) {
+            cond = getCmovConditionFromOp(nextOp);
+            directType = DirectType::CMov;
+            break;
+        }
+        if (nextOp->isSetCC() && instructionInfo[nextOp->inst].writeMemWidth == 0) {
+            cond = getSetConditionFromOp(nextOp);
+            directType = DirectType::SetCC;
+            break;
+        }
+        if (instructionInfo[nextOp->inst].flagsSets) {
+            break;
+        }
+        if (directDoesAffectFlags(nextOp)) {
+            break;
+        }
+        skipped++;
+        nextOp = nextOp->next;
+    }
+    if (directType != DirectType::None && !nextOp->getNeededFlagsAfter(FMASK_TEST) && supportsDirectCondition(cond)) {
+        DecodedOp* nextOp = op->next;
+        U32 opEip = currentEip + op->len;
+
+        for (U32 i = 0; i < skipped; i++) {
+            opEip += nextOp->len;
+            nextOp = nextOp->next;
+        }
+        if (directType == DirectType::Jump && !canJumpInBlock(opEip, nextOp)) {
+            fallback();
+            return;
+        }
+        cmpCallback();
+        postCompile(op);
+
+        nextOp = op->next;
+        for (U32 i = 0; i < skipped; i++) {
+            preCompile(nextOp, true);
+            compile(nextOp);
+            postCompile(nextOp);
+            nextOp = nextOp->next;
+        }
+        preCompile(nextOp, true);
+        switch (directType) {
+            case DirectType::Jump:
+                direct_jump(cond, opEip + nextOp->len + nextOp->imm);
+                break;
+            case DirectType::CMov:
+            {
+                JitWidth width = nextOp->inst >= CmovO_R32R32 ? JitWidth::b32 : JitWidth::b16;
+                direct_cmov(width, cond, getReg(nextOp->reg), instructionInfo[nextOp->inst].readMemWidth ? read(width, calculateEaa(nextOp)) : getReg(nextOp->rm));
+                break;
+            }
+            case DirectType::SetCC:
+                if (instructionInfo[nextOp->inst].readMemWidth) {
+                    kpanic("JitCodeGen::tryDirect set cc mem");
+                } else {
+                    direct_setcc(cond, getReg8(nextOp->reg, false));
+                }
+                break;
+        }
+        skipToOp = nextOp;
+    } else {
+        fallback();
+    }
+}
+
+void JitCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
+    this->emulatedLen += op->len;
+    this->blockOpCount++;
+    this->eipToBufferPos.set(this->currentEip, skippedOp ? SKIPPED_OP : markBufferLocation());
+    if (op->lock) {
+        // so that intra block jumps that try to skip a lock will find the lock version of the op anyway
+        this->eipToBufferPos.set(this->currentEip + 1, skippedOp ? SKIPPED_OP : markBufferLocation());
+    }
+    preOp(op);
+}
+
+void JitCodeGen::compile(DecodedOp* op) {
+    (this->*dynamicOps[op->inst])(op);
+}
+
+void JitCodeGen::postCompile(DecodedOp* op) {
+    this->currentEip += op->len;
+    if (getIfJumpSize()) {
+        kpanic_fmt("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
+    }
+}
+
 bool JitCodeGen::compileOps(DecodedOp* op) {
     DecodedOp* nextOp = op;
     this->emulatedLen = 0;
@@ -292,14 +617,7 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
         //callHostFunction(common_log, false, 2, 0, JitCallParamType::CPU, false, (DYN_PTR_SIZE)nextOp, JitCallParamType::CONST_PTR, false);
 #endif
 #endif
-        this->emulatedLen += nextOp->len;
-        this->blockOpCount++;
-        this->eipToBufferPos.set(this->currentEip, markBufferLocation());
-        if (nextOp->lock) {
-            // so that intra block jumps that try to skip a lock will find the lock version of the op anyway
-            this->eipToBufferPos.set(this->currentEip + 1, markBufferLocation());
-        }
-        preOp(nextOp);
+        preCompile(nextOp);
         // enable this if you want to see the current eip while debugging the generated asm
         // movValue(JitWidth::b32, getTmpReg(), this->currentEip);
 
@@ -315,12 +633,14 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
         //if (nextOp->inst >= 911 && nextOp->inst <= 1282) {
          //   emulateSingleOp();
         //} else {
-            (this->*dynamicOps[nextOp->inst])(nextOp);
+            compile(nextOp);
         //}
-        this->currentEip += nextOp->len;
-        if (getIfJumpSize()) {
-            kpanic_fmt("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
+        
+        if (skipToOp) {
+            nextOp = skipToOp;
+            skipToOp = nullptr;
         }
+        postCompile(nextOp);
         if (this->currentEip > this->lastOpEip) {
             break;
         } else {
@@ -345,6 +665,12 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         cpu->thread->process->syncFromHost = jit->createSyncFromHost();
         delete jit;
         jit = startNewJIT(cpu);
+        cpu->thread->process->blockExit = jit->createBlockExit(true);
+        delete jit;
+        jit = startNewJIT(cpu);
+        cpu->thread->process->blockExitNoSync = jit->createBlockExit(false);
+        delete jit;
+        jit = startNewJIT(cpu);
         cpu->thread->process->emulateSingleOp = jit->createEmulateSingleOp();
         delete jit;
         jit = startNewJIT(cpu);
@@ -352,7 +678,7 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         delete jit;                    
         jit = startNewJIT(cpu);
         cpu->thread->process->jumpToNextJIT = jit->createJumpEip();
-        delete jit;
+        delete jit;        
         createHelpers();
     }
 
@@ -375,6 +701,7 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
     }
     writeCurrentEip(0);
     blockExit();
+    onBlockPreCommit(op);
     commitJIT(op);
 }
 
@@ -542,8 +869,11 @@ U32 readb(U32 address) {
     return KThread::currentThread()->memory->readb(address);
 }
 
-U8* JitCodeGen::createDynamicExecutableMemory() {
+U8* JitCodeGen::createDynamicExecutableMemory(U32* pSize) {
     U32 size = getBufferSize();
+    if (pSize) {
+        *pSize = size;
+    }
     U8* begin = (U8*)cpu->memory->allocCodeMemory(size);
 
     Platform::writeCodeToMemory(begin, size, [begin, size, this]() {
@@ -653,14 +983,16 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
     if (!blockOpCount) {
         return;
     }
-
-    U8* begin = createDynamicExecutableMemory();
+    U32 size = 0;
+    U8* begin = createDynamicExecutableMemory(&size);
 
     removeJIT(op, blockOpCount);
     op->blockLen = emulatedLen;
     op->blockOpCount = blockOpCount;
 #ifdef _DEBUG
-    //logBlock(cpu, startingEip, op, op->blockLen);
+    if (0) {
+        logBlock(cpu, startingEip, op, op->blockLen);
+    }
 #endif 
     U32 address = startingEip;
     DecodedOp* nextOp = op;
@@ -671,8 +1003,12 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
     totalBlocks++;
     static int totalOps;
     totalOps += blockOpCount;
+    static int totalEmulatedLen;
+    totalEmulatedLen += emulatedLen;
+    static int totalCompiledLen;
+    totalCompiledLen += size;
     if ((totalBlocks % 1000) == 0) {
-        klog_fmt("Compiled Blocks: %d, ave block size: %d ops", totalBlocks, totalOps / totalBlocks);
+        klog_fmt("Compiled Blocks: %d, ave block size: %d ops.  ops = %d, elen = %d, clen = %d", totalBlocks, totalOps / totalBlocks, totalOps, totalEmulatedLen, totalCompiledLen);
     }
 #endif
     for (U32 i = 0; i < blockOpCount; i++) {
@@ -681,9 +1017,13 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
         if (!eipToBufferPos.get(address, bufferIndex)) {
             kpanic("x32CPU commitJIT 2");
         }
-        bufferIndex = getBufferLocation(bufferIndex);
-        nextOp->pfnJitCode = (OpCallback)(begin + bufferIndex);
-        nextOp->pfn = cpu->thread->process->startJITOp;
+        if (bufferIndex == SKIPPED_OP) {
+            nextOp->jumpTargetFlags |= JUMP_TARGET_ASSUMED_FALSE;
+        } else {
+            bufferIndex = getBufferLocation(bufferIndex);
+            nextOp->pfnJitCode = (OpCallback)(begin + bufferIndex);
+            nextOp->pfn = cpu->thread->process->startJITOp;
+        }
         nextOp->flags |= OP_FLAG_JIT;
         nextOp->blockStart = op;
         address += nextOp->len;

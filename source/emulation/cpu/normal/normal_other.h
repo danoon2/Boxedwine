@@ -450,13 +450,13 @@ void OPCALL normal_callJw(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->push16(cpu->eip.u32 + op->len);
     cpu->eip.u32 += (S16)op->imm;
-    NEXT_BRANCH1_CALL();
+    NEXT_BRANCH1();
 }
 void OPCALL normal_callJd(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->push32(cpu->eip.u32 + op->len);
     cpu->eip.u32 += (S32)op->imm;
-    NEXT_BRANCH1_CALL();
+    NEXT_BRANCH1();
 }
 void OPCALL normal_jmp8(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
@@ -478,50 +478,50 @@ void OPCALL normal_callR16(CPU* cpu, DecodedOp* op) {
     U16 dest = cpu->reg[op->reg].u16;
     cpu->push16(cpu->eip.u32+op->len);
     cpu->eip.u32 = dest;
-    NEXT_DONE_CALL();
+    NEXT_DONE_JUMP_OR_CALL();
 }
 void OPCALL normal_callR32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 dest = cpu->reg[op->reg].u32;
     cpu->push32(cpu->eip.u32+op->len);
     cpu->eip.u32 = dest;
-    NEXT_DONE_CALL();
+    NEXT_DONE_JUMP_OR_CALL();
 }
 void OPCALL normal_callE16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 neweip = cpu->memory->readw(eaa(cpu, op));
     cpu->push16(cpu->eip.u32+op->len);
     cpu->eip.u32 = neweip;
-    NEXT_DONE_CALL();
+    NEXT_DONE_JUMP_OR_CALL();
 }
 void OPCALL normal_callE32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 neweip = cpu->memory->readd(eaa(cpu, op));
     cpu->push32(cpu->eip.u32+op->len);
     cpu->eip.u32 = neweip;
-    NEXT_DONE_CALL();
+    NEXT_DONE_JUMP_OR_CALL();
 }
 void OPCALL normal_jmpR16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->eip.u32 = cpu->reg[op->reg].u16;
-    NEXT_DONE();
+    NEXT_DONE_JUMP_OR_CALL();
 }
 void OPCALL normal_jmpR32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->eip.u32 = cpu->reg[op->reg].u32;
-    NEXT_DONE();
+    NEXT_DONE_JUMP_OR_CALL();
 }
 void OPCALL normal_jmpE16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 neweip = cpu->memory->readw(eaa(cpu, op));
     cpu->eip.u32 = neweip;
-    NEXT_DONE();
+    NEXT_DONE_JUMP_OR_CALL();
 }
 void OPCALL normal_jmpE32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 neweip = cpu->memory->readd(eaa(cpu, op));
     cpu->eip.u32 = neweip;
-    NEXT_DONE();
+    NEXT_DONE_JUMP_OR_CALL();
 }
 void OPCALL normal_callFarE16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);

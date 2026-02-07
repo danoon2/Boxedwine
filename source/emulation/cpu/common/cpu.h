@@ -318,7 +318,7 @@ public:
     bool isBig() {return this->big!=0;}
     virtual void setIsBig(U32 value);
 
-    DecodedOp* getNextOp(U32 flags = 0);
+    DecodedOp* getNextOp(U32 jumpTargetFlags = 0);
 
     // from DecodeBlockCallback
     U8 fetchByte(U32* eip) override;
