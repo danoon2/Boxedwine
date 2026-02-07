@@ -5213,7 +5213,11 @@ void JitX86CodeGen::direct_cmov(JitWidth width, JitConditional condition, RegPtr
 }
 
 void JitX86CodeGen::direct_setcc(JitConditional condition, RegPtr dst) {
+#ifdef BOXEDWINE_64
+    compiler.set(getCondCode(condition), R8(dst->hardwareReg()));
+#else
     compiler.set(getCondCode(condition), R8(dst->hardwareReg() + (dst->isHigh ? 4 : 0)));
+#endif
 }
 
 void JitX86CodeGen::direct_jump(JitConditional condition, U32 address) {
