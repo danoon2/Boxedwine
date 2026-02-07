@@ -573,6 +573,9 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> cmpCallback, std
                     direct_setcc(cond, getReg8(nextOp->reg, false));
                 }
                 break;
+            case DirectType::None:
+                kpanic("JitCodeGen::tryDirect should not get here");
+                break;
         }
         skipToOp = nextOp;
     } else {
