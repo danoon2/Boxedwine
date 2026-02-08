@@ -2969,7 +2969,7 @@ void push16Reg(int instruction, Reg* reg) {
 
 void Pushf(int instruction) {
     newInstruction(instruction, 0);
-    cpu->flags = FMASK_TEST;
+    cpu->flags = FMASK_TEST|2;
     ESP-=2;
     memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
     memory->writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
@@ -3002,7 +3002,7 @@ void push32Reg(int instruction, Reg* reg) {
 
 void Pushfd(int instruction) {
     newInstruction(instruction, 0);
-    cpu->flags = FMASK_TEST;
+    cpu->flags = FMASK_TEST | 2;
     ESP-=4;
     memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
     memory->writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
@@ -3020,7 +3020,7 @@ void Pushfd(int instruction) {
     ESP = ESP | 0x10000; 
     cpu->stackMask = 0x0000ffff;
     cpu->stackNotMask = 0xffff0000;
-    cpu->flags = FMASK_TEST;
+    cpu->flags = FMASK_TEST | 2;
     SP -= 4;
     memory->writed(cpu->seg[SS].address + SP, 0xAAAAAAAA);
     memory->writed(cpu->seg[SS].address + SP - 4, 0xCCCCCCCC);

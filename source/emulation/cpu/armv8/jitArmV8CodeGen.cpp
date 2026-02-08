@@ -161,7 +161,8 @@ public:
     void popReg(RegPtr reg) override;
     bool isTmpRegAvailable() override;    
     void forceSyncBackIfNotCached(RegPtr reg) override;
-    
+    RegPtr getConditionCalculationReg(U32 index) override;
+
     U8 findTmpReg(bool allowInvalidReturn = false);
     void emulateSingleOp() override;
     RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0) override;
@@ -210,10 +211,10 @@ public:
     void rolValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
     void rorReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void rorValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
-    void rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
-    void rclValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
-    void rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
-    void rcrValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
+    void rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf) override;
+    void rclValue(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf) override;
+    void rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf) override;
+    void rcrValue(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf) override;
     void shldReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl) override;
     void shldValue(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 imm) override;
     void shrdReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl) override;
@@ -276,7 +277,7 @@ public:
     void Goto(U32 location) override;
     void jmp(RegPtr reg) override;
     void jmp(DYN_PTR_SIZE address) override;
-    RegPtr getReadOnlyFlags() override;
+    RegPtr getReadOnlyFlags(RegPtr tmp = nullptr) override;
     void storeLazyFlagType(LazyFlagType flags) override;
     void storeLazyFlagsResult(RegPtr reg) override;
     void storeLazyFlagsDest(RegPtr reg) override;
@@ -830,6 +831,31 @@ U8 JitArmV8CodeGen::findTmpReg(bool allowInvalidReturn) {
         kpanic("JitArmV8CodeGen::getTmpReg ran out of tmp regs");
     }
     return 0xff;
+}
+
+RegPtr JitArmV8CodeGen::getConditionCalculationReg(U32 index) {
+    if (index == 0) {
+        U8 tmp = tmps[NUMBER_OF_TMPS - 1];
+        if (regUsed[tmp]) {
+            kpanic("JitX86CodeGen::JitArmV8CodeGen 0");
+        }
+        return getTmpRegWithHint(tmp);
+    } else if (index == 1) {
+        U8 tmp = tmps[NUMBER_OF_TMPS - 2];
+        if (regUsed[tmp]) {
+            kpanic("JitX86CodeGen::JitArmV8CodeGen 1");
+        }
+        return getTmpRegWithHint(tmp);
+    } else if (index == 2) {
+        U8 tmp = tmps[NUMBER_OF_TMPS - 3];
+        if (regUsed[tmp]) {
+            kpanic("JitX86CodeGen::JitArmV8CodeGen 2");
+        }
+        return getTmpRegWithHint(tmp);
+    } else {
+        kpanic("JitX86CodeGen::JitArmV8CodeGen");
+        return nullptr;
+    }
 }
 
 RegPtr JitArmV8CodeGen::getTmpReg() {
@@ -1502,9 +1528,7 @@ void JitArmV8CodeGen::modValue32(RegPtr dst, RegPtr src, RegPtr value) {
     compiler.msub(R32(dst), R32(tmp), R32(value), R32(src));
 }
 
-void JitArmV8CodeGen::rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
-    RegPtr cf = getCF();
-
+void JitArmV8CodeGen::rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf) {
     // result = (var1 << var2) | (cf << (var2 - 1)) | (var1 >> (33 - var2));
     if (regWidth == JitWidth::b32) {        
         RegPtr cl = getTmpReg();
@@ -1579,9 +1603,7 @@ void JitArmV8CodeGen::rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     }
 }
 
-void JitArmV8CodeGen::rclValue(JitWidth regWidth, RegPtr reg, U32 imm) {
-    RegPtr cf = getCF();
-
+void JitArmV8CodeGen::rclValue(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf) {
     // result = (var1 << var2) | ((cpu->flags & CF) << (var2 - 1)) | (var1 >> (9 - var2));
     if (regWidth == JitWidth::b32) {
         RegPtr tmp = getTmpReg();
@@ -1636,9 +1658,7 @@ void JitArmV8CodeGen::rclValue(JitWidth regWidth, RegPtr reg, U32 imm) {
     }
 }
 
-void JitArmV8CodeGen::rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
-    RegPtr cf = getCF();
-
+void JitArmV8CodeGen::rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf) {
     // result = (var1 >> var2) | (cf << (32 - var2)) | (var1 << (33 - var2));
     if (regWidth == JitWidth::b32) {
         RegPtr cl = getTmpReg();
@@ -1715,9 +1735,7 @@ void JitArmV8CodeGen::rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     }
 }
 
-void JitArmV8CodeGen::rcrValue(JitWidth regWidth, RegPtr reg, U32 imm) {
-    RegPtr cf = getCF();
-
+void JitArmV8CodeGen::rcrValue(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf) {
     // result = (var1 << var2) | ((cpu->flags & CF) << (var2 - 1)) | (var1 >> (9 - var2));
     if (regWidth == JitWidth::b32) {
         RegPtr tmp = getTmpReg();
@@ -3985,7 +4003,7 @@ RegPtr JitArmV8CodeGen::getLazyFlagTypeInTmp() {
     return reg;
 }
 
-RegPtr JitArmV8CodeGen::getReadOnlyFlags() {
+RegPtr JitArmV8CodeGen::getReadOnlyFlags(RegPtr tmp) {
     return std::make_shared<JitReg>(regFlags, 0xff);
 }
 
@@ -5417,7 +5435,7 @@ void JitArmV8CodeGen::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
         U32 needsToSetFlags = 0;
         const LazyFlags* flags = lazyFlags[FLAGS_CMP32];
 
-        arithSetup(op, needsToSetFlags, FLAGS_CMP32);
+        arithSetup(op, needsToSetFlags, FLAGS_CMP32, nullptr);
 
         Label label = compiler.new_label();
         RegPtr tmp = getTmpReg();
@@ -5583,7 +5601,7 @@ void JitArmV8CodeGen::dynamic_xaddr32e32_lock(DecodedOp* op) {
         U32 needsToSetFlags = 0;        
         const LazyFlags* flags = lazyFlags[FLAGS_ADD32];
 
-        arithSetup(op, needsToSetFlags, FLAGS_ADD32);        
+        arithSetup(op, needsToSetFlags, FLAGS_ADD32, nullptr);        
 
         Label label = compiler.new_label();
         RegPtr tmp = getTmpReg();

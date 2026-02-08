@@ -155,6 +155,7 @@ NormalCPU::NormalCPU(KMemory* memory) : CPU(memory) {
     initNormalOps();
 #ifdef BOXEDWINE_DYNAMIC
     this->firstOp = firstDynamicOp;
+    memcpy(this->calculateCF, memory->process->calculateCF, sizeof(calculateCF));
 #else
     this->firstOp = nullptr;
 #endif

@@ -337,6 +337,7 @@ public:
     static U32 offsetofSegAddress(U32 index);
     static U32 offsetofSegValue(U32 index);
 
+    void* calculateCF[FLAGS_NULL] = {};
 #ifdef BOXEDWINE_JIT_ARMV8
 #define SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE 0
 #define SSE_MIN_INT32_MINUS_ONE_AS_DOUBLE 1
@@ -348,7 +349,7 @@ public:
     SSE sseConstants[6];
 #endif
 #ifdef BOXEDWINE_JIT_X64
-    U64 storedRegs[16];
+    U64 storedRegs[16];    
 #endif
 #endif
     U32 flagZeroMask[52] = {

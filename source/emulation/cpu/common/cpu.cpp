@@ -136,6 +136,9 @@ void CPU::reset() {
 #ifdef BOXEDWINE_MULTI_THREADED
     this->tmpLockAddress = 0;
 #endif
+#ifdef BOXEDWINE_DYNAMIC
+    memset(calculateCF, 0, sizeof(calculateCF));
+#endif
 }
 
 void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {

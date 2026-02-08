@@ -97,9 +97,11 @@ using RegPtr = std::shared_ptr<JitReg>;
 #ifdef BOXEDWINE_64
 #define DYN_PTR_SIZE U64
 #define DYN_PTR JitWidth::b64
+#define DYN_PTR_LSL 3
 #else
 #define DYN_PTR_SIZE U32
 #define DYN_PTR JitWidth::b32
+#define DYN_PTR_LSL 2
 #endif
 // API available to dynamic ops
 class Jit {
@@ -107,9 +109,11 @@ public:
     // v3
     using InstRegRegImm = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 imm);
     using InstRegRegCl = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl);
-    using InstRegReg2 = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm);
-    using InstRegImm2 = void(Jit::*)(JitWidth regWidth, RegPtr reg, U32 imm);
-    using InstReg2 = void(Jit::*)(JitWidth regWidth, RegPtr reg);
+    using InstRegReg = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm);
+    using InstRegRegCF = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl);
+    using InstRegImm = void(Jit::*)(JitWidth regWidth, RegPtr reg, U32 imm);
+    using InstRegImmCF = void(Jit::*)(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf);
+    using InstReg = void(Jit::*)(JitWidth regWidth, RegPtr reg);
 
     virtual RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) = 0; // for cached regs, they will be used directly, for unchached regs, it will be read from the cpu and written back when done
     virtual RegPtr getReg8(U8 reg, bool load = true) = 0;
@@ -180,10 +184,10 @@ public:
     virtual void rolValue(JitWidth regWidth, RegPtr reg, U32 imm) = 0;
     virtual void rorReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void rorValue(JitWidth regWidth, RegPtr reg, U32 imm) = 0;
-    virtual void rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
-    virtual void rclValue(JitWidth regWidth, RegPtr reg, U32 imm) = 0;
-    virtual void rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
-    virtual void rcrValue(JitWidth regWidth, RegPtr reg, U32 imm) = 0;
+    virtual void rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf) = 0;
+    virtual void rclValue(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf) = 0;
+    virtual void rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf) = 0;
+    virtual void rcrValue(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf) = 0;
     virtual void shrdReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl) = 0;
     virtual void shrdValue(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 imm) = 0;
     virtual void shldReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl) = 0;
@@ -230,7 +234,7 @@ public:
     virtual void xorCPUFlagsImmV2(U32 imm) = 0;
     virtual void andCPUFlagsImmV2(U32 imm) = 0;
     virtual void orCPUFlagsImmV2(U32 imm) = 0;    
-    virtual RegPtr getReadOnlyFlags() = 0;
+    virtual RegPtr getReadOnlyFlags(RegPtr tmp = nullptr) = 0; // not guaranteed to return tmp
     virtual RegPtr getFlagsInTmp(RegPtr reg = nullptr) = 0;
     virtual void setFlags(RegPtr flags, U32 mask) = 0;
     virtual void writeFlags(RegPtr flags) = 0;
@@ -269,17 +273,17 @@ public:
     virtual void writeHost(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
     virtual void readHost(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
 
-    void dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
-    void dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags);
-    void dynamic_R_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags);
-    void dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
-    void dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags);
-    void dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags);
-    void dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg2 callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
-    void dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm2 callback, LazyFlagType flags, bool writeback = true, bool addCF = false, InstRegReg2 cfCallback = nullptr);
-    void dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback, LazyFlagType flags, bool writeback = true, bool addCF = false, InstRegReg2 cfCallback = nullptr);
-    void dynamic_R(DecodedOp* op, JitWidth width, InstReg2 callback, LazyFlagType flags, bool writeback = true);
-    void dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, LazyFlagType flags, bool writeback = true, RegPtr tmp = nullptr);
+    void dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
+    void dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags);
+    void dynamic_R_Cl(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, InstRegRegCF callbackWithCF = nullptr);
+    void dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
+    void dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags);
+    void dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, InstRegRegCF callbackWithCF = nullptr);
+    void dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
+    void dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFlagType flags, bool writeback = true, bool addCF = false, InstRegReg cfCallback = nullptr, InstRegImmCF callbackWithCF = nullptr);
+    void dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFlagType flags, bool writeback = true, bool addCF = false, InstRegReg cfCallback = nullptr, InstRegImmCF callbackWithCF = nullptr);
+    void dynamic_R(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagType flags, bool writeback = true);
+    void dynamic_M(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagType flags, bool writeback = true, RegPtr tmp = nullptr);
 
     using OpFunction = void(Jit::*)(DecodedOp* op);
 
@@ -385,8 +389,7 @@ protected:
     void dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flags);
     void dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFlagType flags);
     void dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFlagType flags);
-    void arithSetup(DecodedOp* op, U32& needsToSetFlags, RegPtr& cf, LazyFlagType flags, bool addCF);
-    void arithSetup(DecodedOp* op, U32& needsToSetFlags, LazyFlagType flags);
+    void arithSetup(DecodedOp* op, U32& needsToSetFlags, LazyFlagType flags, RegPtr cf);
     void movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth);
     void movsr(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void stos(JitWidth valueWidth, U32 size, JitWidth regWidth);

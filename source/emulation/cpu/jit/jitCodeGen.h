@@ -110,6 +110,7 @@ public:
     void storeLazyFlagsOldCF(RegPtr reg) override;
     void writeFlags(RegPtr flags) override;
     RegPtr getCondition(JitConditional condition, RegPtr resultReg = nullptr) override; // guaranteed to return 0 or 1
+    virtual RegPtr getConditionCalculationReg(U32 index = 0) = 0;
     void IfCondition(JitConditional condition) override;
     void preIfCondition(JitConditional condition, bool& negative, RegPtr& reg);
     void IfDF() override;
@@ -133,6 +134,8 @@ public:
     U8* createJumpEip();
     void jumpToEipIfCached();
     U8* createEmulateSingleOp();    
+    U8* createCalculationCF(LazyFlagType lazyFlagType);
+    void getCF(LazyFlagType lazyFlagType, RegPtr result);
 
     void incReg(JitWidth regWidth, RegPtr dest) override;
     void decReg(JitWidth regWidth, RegPtr dest) override;

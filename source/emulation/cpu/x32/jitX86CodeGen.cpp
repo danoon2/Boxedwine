@@ -87,7 +87,7 @@ static U8 regCache[] = { 5, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, 
 static U8 xmmCache[] = { INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG };
 static bool isVolitile[] = { true, true, true, false, false, false, false, false };
 static bool isTmp[] = { true, true, true, true, false, false, true, false };
-static U8 tmps[] = { 6, 3, 2, 1, 0 };
+static U8 tmps[] = { 6, 3, 2, 1, 0 }; // if changed, sync up with getConditionCalculationReg
 static U8 XMMtmps[] = { 4, 5, 6, 7 };
 #define HOST_CPU asmjit::x86::edi
 #define NUMBER_OF_REGS 8
@@ -197,6 +197,8 @@ public:
     RegPtr getTmpSegAddress(U8 reg) override;
     RegPtr getReadOnlySegValue(U8 reg) override;
     RegPtr readEip() override;
+    RegPtr getConditionCalculationReg(U32 index) override;
+
     void writeEip(RegPtr eip) override;
     void writeEip(U32 eip) override;
     void pushReg(RegPtr reg) override;
@@ -234,10 +236,10 @@ public:
     void rolValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
     void rorReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void rorValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
-    void rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
-    void rclValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
-    void rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
-    void rcrValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
+    void rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf) override;
+    void rclValue(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf) override;
+    void rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf) override;
+    void rcrValue(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf) override;
     void shldReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl) override;
     void shldValue(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 imm) override;
     void shrdReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl) override;
@@ -303,7 +305,7 @@ public:
     void jmp(RegPtr reg) override;
     void jmp(DYN_PTR_SIZE address) override;
     void updateFlagsIfNecessary();    
-    RegPtr getReadOnlyFlags() override;
+    RegPtr getReadOnlyFlags(RegPtr tmp = nullptr) override;
     void setFlags(RegPtr flags, U32 mask) override;
 
     void callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache = true) override;
@@ -877,6 +879,55 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn
         kpanic("JitX86CodeGen::getTmpReg ran out of tmp regs");
     }
     return tmpReg;
+#endif
+}
+
+RegPtr JitX86CodeGen::getConditionCalculationReg(U32 index) {
+#ifdef BOXEDWINE_64
+    if (index == 0) {
+        U8 tmp = tmps[NUMBER_OF_TMPS - 1];
+        if (regUsed[tmp]) {
+            kpanic("JitX86CodeGen::getConditionCalculationReg 0");
+        }
+        return getTmpRegWithHint(tmp);
+    } else if (index == 1) {
+        U8 tmp = tmps[NUMBER_OF_TMPS - 2];
+        if (regUsed[tmp]) {
+            kpanic("JitX86CodeGen::getConditionCalculationReg 1");
+        }
+        return getTmpRegWithHint(tmp);
+    } else if (index == 2) {
+        U8 tmp = tmps[NUMBER_OF_TMPS - 3];
+        if (regUsed[tmp]) {
+            kpanic("JitX86CodeGen::getConditionCalculationReg 2");
+        }
+        return getTmpRegWithHint(tmp);
+    } else {
+        kpanic("JitX86CodeGen::getConditionCalculationReg");
+        return nullptr;
+    }
+#else
+    if (index == 0) {
+        if (regUsed[0]) {
+            kpanic("JitX86CodeGen::getConditionCalculationReg 0");
+        }
+        return getTmpRegWithHint(0);
+    }
+    if (index == 1) {
+        if (regUsed[2]) {
+            kpanic("JitX86CodeGen::getConditionCalculationReg 1");
+        }
+        return getTmpRegWithHint(2);
+    }
+    if (index == 2) {
+        if (regUsed[1]) {
+            kpanic("JitX86CodeGen::getConditionCalculationReg 2");
+        }
+        return getTmpRegWithHint(1);
+    }
+
+    kpanic("JitX86CodeGen::getConditionCalculationReg");
+    return nullptr;
 #endif
 }
 
@@ -1590,9 +1641,9 @@ void JitX86CodeGen::rorValue(JitWidth regWidth, RegPtr reg, U32 imm) {
     }
 }
 
-void JitX86CodeGen::rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
+void JitX86CodeGen::rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf) {
     // shr will move the bottom bit into the carry flag
-    compiler.shr(R32(getCF()->hardwareReg()), 1);
+    compiler.shr(R32(cf->hardwareReg()), 1);
 
     if (regWidth == JitWidth::b32) {
         compiler.rcl(R32(reg->hardwareReg()), R32(rm->hardwareReg()));
@@ -1605,9 +1656,9 @@ void JitX86CodeGen::rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     }
 }
 
-void JitX86CodeGen::rclValue(JitWidth regWidth, RegPtr reg, U32 imm) {
+void JitX86CodeGen::rclValue(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf) {
     // shr will move the bottom bit into the carry flag
-    compiler.shr(R32(getCF()->hardwareReg()), 1);
+    compiler.shr(R32(cf->hardwareReg()), 1);
 
     if (regWidth == JitWidth::b32) {
         compiler.rcl(R32(reg->hardwareReg()), imm);
@@ -1620,9 +1671,9 @@ void JitX86CodeGen::rclValue(JitWidth regWidth, RegPtr reg, U32 imm) {
     }
 }
 
-void JitX86CodeGen::rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
+void JitX86CodeGen::rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf) {
     // shr will move the bottom bit into the carry flag
-    compiler.shr(R32(getCF()->hardwareReg()), 1);
+    compiler.shr(R32(cf->hardwareReg()), 1);
 
     if (regWidth == JitWidth::b32) {
         compiler.rcr(R32(reg->hardwareReg()), R32(rm->hardwareReg()));
@@ -1635,9 +1686,9 @@ void JitX86CodeGen::rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     }
 }
 
-void JitX86CodeGen::rcrValue(JitWidth regWidth, RegPtr reg, U32 imm) {
+void JitX86CodeGen::rcrValue(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf) {
     // shr will move the bottom bit into the carry flag
-    compiler.shr(R32(getCF()->hardwareReg()), 1);
+    compiler.shr(R32(cf->hardwareReg()), 1);
 
     if (regWidth == JitWidth::b32) {
         compiler.rcr(R32(reg->hardwareReg()), imm);
@@ -3152,12 +3203,14 @@ void JitX86CodeGen::setFlags(RegPtr flags, U32 mask) {
     currentLazyFlags = FLAGS_NONE;
 }
 
-RegPtr JitX86CodeGen::getReadOnlyFlags() {
-    RegPtr reg = getTmpReg8(); // lahf will do 8-bit on this
-    compiler.mov(R32(reg->hardwareReg()), Mem(HOST_CPU, offsetof(CPU, flags)));
-    orValue(JitWidth::b32, reg, 2);
-    andValue(JitWidth::b32, reg, 0xFCFFFF);
-    return reg;
+RegPtr JitX86CodeGen::getReadOnlyFlags(RegPtr tmp) {
+    if (!tmp) {
+        tmp = getTmpReg8(); // lahf will do 8-bit on this
+    }
+    compiler.mov(R32(tmp->hardwareReg()), Mem(HOST_CPU, offsetof(CPU, flags)));
+    //orValue(JitWidth::b32, tmp, 2);
+    //andValue(JitWidth::b32, tmp, 0xFCFFFF);
+    return tmp;
 }
 
 void JitX86CodeGen::updateFlagsIfNecessary() {

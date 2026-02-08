@@ -163,7 +163,7 @@ public:
 private:
     friend KMemoryData* getMemData(KMemory* memory);
     friend KMemoryData;
-    friend class BtCPU;
+    friend class NormalCPU;
 
     KMemoryData* data;    
     KProcess* process;

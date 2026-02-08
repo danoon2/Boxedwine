@@ -285,6 +285,7 @@ public:
     void* blockExitNoSync = nullptr;
     void* jitCosSub = nullptr;
     void* jitCos = nullptr;
+    void* calculateCF[FLAGS_NULL] = {};
 #endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     bool emulateFPU = false;
