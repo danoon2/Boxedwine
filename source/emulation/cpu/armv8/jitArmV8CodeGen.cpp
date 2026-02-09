@@ -1599,7 +1599,7 @@ void JitArmV8CodeGen::rclReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf
         compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));
         compiler.bfi(R32(reg), R32(tmp1), reg->isHigh ? 8 : 0, 8);
     } else {
-        kpanic("JitArmV8CodeGen::rclValue");
+        kpanic("JitArmV8CodeGen::rclReg");
     }
 }
 
@@ -2371,7 +2371,7 @@ RegPtr JitArmV8CodeGen::readCPU(JitWidth width, U32 offset, RegPtr reg) {
     if (!reg) {
         reg = getTmpReg();
     }
-    if (!isTmp[reg->hardwareReg()]) {
+    if (reg->hardwareReg() < 8) {
         kpanic("JitArmV8CodeGen::readCPU");
     }
     // mov reg, [edi+srcOffset]    
@@ -2395,7 +2395,7 @@ RegPtr JitArmV8CodeGen::readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, 
     if (!reg) {
         reg = getTmpReg();
     }
-    if (!isTmp[reg->hardwareReg()]) {
+    if (reg->hardwareReg() < 8) {
         kpanic("JitArmV8CodeGen::readCPU");
     }
     if (width == JitWidth::b32) {

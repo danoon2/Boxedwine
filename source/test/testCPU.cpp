@@ -826,6 +826,12 @@ void EbGb(int instruction, struct Data* data, bool includeLock = false) {
                         pushCode8(0x39);
                         pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                     } else if (setsFlags == 2) {
+                        if (eb != 0 && gb != 0) {
+                            // good test for JitCodeGen::getCF
+                            pushCode8(0x0f); // setc al
+                            pushCode8(0x92);
+                            pushCode8(0xc0);
+                        }
                         // flags will be calculate in JIT
                         U8 reg = 5;
                         if (eb == 5 || gb == 5) {
@@ -840,6 +846,9 @@ void EbGb(int instruction, struct Data* data, bool includeLock = false) {
                     }
                     runTestCPU();
                     assertResult(data, cpu, instruction, *e, *g, E8(rm), G8(rm), 0, 8, setsFlags == 0);
+                    if (setsFlags == 2 && eb != 0 && gb != 0) {
+                        assertTrue(cpu->getCF() == (cpu->reg[0].u32 & CF));
+                    }
                 }
             }
         }
@@ -1295,40 +1304,55 @@ void EwGw(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = 
         int gw;
         int rm;
 
-        for (ew = 0; ew < 8; ew++) {
-            for (gw = 0; gw < 8; gw++) {
-                Reg* e;
-                Reg* g;
+        for (int setsFlags = 0; setsFlags < 3; setsFlags++) {
+            for (ew = 0; ew < 8; ew++) {
+                for (gw = 0; gw < 8; gw++) {
+                    Reg* e;
+                    Reg* g;
 
-                if (ew == gw)
-                    continue;
-                rm = ew | (gw << 3) | 0xC0;
-                newInstructionWithRM(instruction, rm, data->flags, prefix);
-                pushConstant(data);
-                e = &cpu->reg[E(rm)];
-                g = &cpu->reg[G(rm)];
-                e->u32 = DEFAULT;
-                g->u32 = DEFAULT;
-                e->u16 = data->var1;
-                g->u16 = data->var2;
-                runTestCPU();
-                assertResult(data, cpu, instruction, e->u16, g->u16, E(rm), G(rm), 0, 16);
+                    if (ew == gw)
+                        continue;
+                    rm = ew | (gw << 3) | 0xC0;
+                    newInstructionWithRM(instruction, rm, data->flags, prefix);
+                    pushConstant(data);
+                    e = &cpu->reg[E(rm)];
+                    g = &cpu->reg[G(rm)];
+                    e->u32 = DEFAULT;
+                    g->u32 = DEFAULT;
+                    e->u16 = data->var1;
+                    g->u16 = data->var2;
 
-                if (ew == 4 || gw == 4) {
-                    continue;
+                    if (setsFlags == 0) {
+                        pushCode8(0x39);
+                        pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                    } else if (setsFlags == 2) {
+                        if (ew != 0 && gw != 0) {
+                            // good test for JitCodeGen::getCF
+                            pushCode8(0x0f); // setc al
+                            pushCode8(0x92);
+                            pushCode8(0xc0);
+                        }
+                        // flags will be calculate in JIT
+                        U8 reg = 5;
+                        if (ew == 5 || gw == 5) {
+                            if (ew == 6 || gw == 6) {
+                                reg = 7;
+                            } else {
+                                reg = 6;
+                            }
+                        }
+                        if (ew == 4 || gw == 4) {
+                            continue;
+                        }
+                        pushCode8(0x9c); // push flags
+                        pushCode8(0x58 + reg); // pop reg
+                    }
+                    runTestCPU();
+                    assertResult(data, cpu, instruction, e->u16, g->u16, E(rm), G(rm), 0, 16, setsFlags == 0);
+                    if (setsFlags == 2 && ew != 0 && gw != 0) {
+                        assertTrue(cpu->getCF() == (cpu->reg[0].u32 & CF));
+                    }
                 }
-                newInstructionWithRM(instruction, rm, data->flags, prefix);
-                pushConstant(data);
-                e = &cpu->reg[E(rm)];
-                g = &cpu->reg[G(rm)];
-                e->u32 = DEFAULT;
-                g->u32 = DEFAULT;
-                e->u16 = data->var1;
-                g->u16 = data->var2;
-                pushCode8(0x39);
-                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
-                runTestCPU();
-                assertResult(data, cpu, instruction, e->u16, g->u16, E(rm), G(rm), 0, 16, true);                
             }
         }
 
@@ -2311,36 +2335,50 @@ void EdGd(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = 
         int gd;
         int rm;
 
-        for (ed = 0; ed < 8; ed++) {
-            for (gd = 0; gd < 8; gd++) {
-                Reg* e;
-                Reg* g;
+        for (int setsFlags = 0; setsFlags < 3; setsFlags++) {
+            for (ed = 0; ed < 8; ed++) {
+                for (gd = 0; gd < 8; gd++) {
+                    Reg* e;
+                    Reg* g;
 
-                if (ed == gd)
-                    continue;
-                rm = ed | (gd << 3) | 0xC0;
-                newInstructionWithRM(instruction, rm, data->flags, prefix);
-                pushConstant(data);
-                e = &cpu->reg[ed];
-                g = &cpu->reg[gd];
-                e->u32 = data->var1;
-                g->u32 = data->var2;
-                runTestCPU();
-                assertResult(data, cpu, instruction, e->u32, g->u32, -1, -1, 0, 0);
-                
-                if (ed == 4 || gd == 4) {
-                    continue;
+                    if (ed == gd)
+                        continue;
+                    rm = ed | (gd << 3) | 0xC0;
+                    newInstructionWithRM(instruction, rm, data->flags, prefix);
+                    pushConstant(data);
+                    e = &cpu->reg[ed];
+                    g = &cpu->reg[gd];
+                    e->u32 = data->var1;
+                    g->u32 = data->var2;
+                    runTestCPU();
+                    assertResult(data, cpu, instruction, e->u32, g->u32, -1, -1, 0, 0);
+
+                    if (setsFlags == 0) {
+                        pushCode8(0x39);
+                        pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                    } else if (setsFlags == 2) {
+                        if (ed != 0 && gd != 0) {
+                            // good test for JitCodeGen::getCF
+                            pushCode8(0x0f); // setc al
+                            pushCode8(0x92);
+                            pushCode8(0xc0);
+                        }
+                        // flags will be calculate in JIT
+                        U8 reg = 5;
+                        if (ed == 5 || gd == 5) {
+                            if (ed == 6 || gd == 6) {
+                                reg = 7;
+                            } else {
+                                reg = 6;
+                            }
+                        }
+                        if (ed == 4 || gd == 4) {
+                            continue;
+                        }
+                        pushCode8(0x9c); // push flags
+                        pushCode8(0x58 + reg); // pop reg
+                    }
                 }
-                newInstructionWithRM(instruction, rm, data->flags, prefix);
-                pushConstant(data);
-                e = &cpu->reg[ed];
-                g = &cpu->reg[gd];
-                e->u32 = data->var1;
-                g->u32 = data->var2;
-                pushCode8(0x39);
-                pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
-                runTestCPU();
-                assertResult(data, cpu, instruction, e->u32, g->u32, -1, -1, 0, 0, true);
             }
         }
 
