@@ -88,6 +88,8 @@ asmjit::a64::Gp R32(RegPtr reg) {
 
 // x9 to x15 caller saved
 #define xBranch asmjit::a64::x9 
+#define wBranch asmjit::a64::w9 
+#define regBranch 9
 #define xDst asmjit::a64::w10
 #define regDst 10
 
@@ -122,6 +124,9 @@ asmjit::a64::Gp R32(RegPtr reg) {
 #define xEmulateSingleOp asmjit::a64::x26
 #define xWriteCacheToCPU asmjit::a64::x27
 #define xLoadCacheFromCPU asmjit::a64::x28
+#define xScratch asmjit::a64::x29
+#define wScratch asmjit::a64::w29
+#define regScratch 29
 
 #define ZERO_EXTEND 1
 #define SIGN_EXTEND 2
@@ -820,6 +825,9 @@ void JitArmV8CodeGen::emulateSingleOp() {
 }
 
 U8 JitArmV8CodeGen::findTmpReg(bool allowInvalidReturn) {
+    if (disableTmps) {
+        kpanic("JitArmV8CodeGen::findTmpReg disableTmps");
+    }
     for (int i = 0; i < NUMBER_OF_TMPS; i++) {
         U8 tmp = tmps[i];
         if (!regUsed[tmp]) {
@@ -834,28 +842,32 @@ U8 JitArmV8CodeGen::findTmpReg(bool allowInvalidReturn) {
 }
 
 RegPtr JitArmV8CodeGen::getConditionCalculationReg(U32 index) {
+    U8 tmp = 0xff;
     if (index == 0) {
-        U8 tmp = tmps[NUMBER_OF_TMPS - 1];
+        tmp = tmps[NUMBER_OF_TMPS - 1];
         if (regUsed[tmp]) {
             kpanic("JitX86CodeGen::JitArmV8CodeGen 0");
-        }
-        return getTmpRegWithHint(tmp);
+        }        
     } else if (index == 1) {
-        U8 tmp = tmps[NUMBER_OF_TMPS - 2];
+        tmp = tmps[NUMBER_OF_TMPS - 2];
         if (regUsed[tmp]) {
             kpanic("JitX86CodeGen::JitArmV8CodeGen 1");
         }
-        return getTmpRegWithHint(tmp);
     } else if (index == 2) {
-        U8 tmp = tmps[NUMBER_OF_TMPS - 3];
+        tmp = tmps[NUMBER_OF_TMPS - 3];
         if (regUsed[tmp]) {
             kpanic("JitX86CodeGen::JitArmV8CodeGen 2");
         }
-        return getTmpRegWithHint(tmp);
     } else {
         kpanic("JitX86CodeGen::JitArmV8CodeGen");
         return nullptr;
     }
+    return std::shared_ptr<JitReg>(new JitReg(tmp, 0xff), [this](JitReg* p) {
+        if (p->isLoaded()) {
+            regUsed[p->hardwareReg()] = false;
+        }
+        delete p;
+    });
 }
 
 RegPtr JitArmV8CodeGen::getTmpReg() {
@@ -1076,7 +1088,7 @@ void JitArmV8CodeGen::regReg(JitWidth regWidth, RegPtr reg, RegPtr rm, std::func
     } else if (regWidth == JitWidth::b64) {
         fn(R64(reg), R64(reg), R64(rm));
     } else if (regWidth == JitWidth::b16) {
-        RegPtr tmp = getTmpReg();
+        RegPtr tmp = std::make_shared<JitReg>(regScratch, 0xff); // make this safe for internal functions by not using gettmp
         if (extend == ZERO_EXTEND) {
             compiler.ubfx(R32(tmp), R32(reg), 0, 16);
             fn(R32(tmp), R32(tmp), R32(rm));
@@ -1089,7 +1101,7 @@ void JitArmV8CodeGen::regReg(JitWidth regWidth, RegPtr reg, RegPtr rm, std::func
         compiler.bfxil(R32(reg), R32(tmp), 0, 16);
     } else if (regWidth == JitWidth::b8) {
         rm = getReg8InLowByte(std::move(rm));
-        RegPtr tmp = getTmpReg();
+        RegPtr tmp = std::make_shared<JitReg>(regScratch, 0xff); // make this safe for internal functions by not using gettmp
 
         if (!isRegHigh(reg)) {
             if (extend == ZERO_EXTEND) {
@@ -1276,7 +1288,7 @@ void JitArmV8CodeGen::xorValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 }
 
 void JitArmV8CodeGen::shrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
-    RegPtr cl = getTmpReg();
+    RegPtr cl = std::make_shared<JitReg>(regBranch, 0xff); // make this safe for internal functions by not using gettmp
     compiler.and_(R32(cl), R32(rm), regWidth == JitWidth::b64 ? 0x3f : 0x1f);
     regReg(regWidth, reg, cl, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm) {
         compiler.lsr(dst, reg, rm);
@@ -1298,7 +1310,7 @@ void JitArmV8CodeGen::shrValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 }
 
 void JitArmV8CodeGen::shlReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
-    RegPtr cl = getTmpReg();
+    RegPtr cl = std::make_shared<JitReg>(regBranch, 0xff); // make this safe for internal functions by not using gettmp
     compiler.and_(R32(cl), R32(rm), regWidth == JitWidth::b64 ? 0x3f : 0x1f);
     regReg(regWidth, reg, cl, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm) {
         compiler.lsl(dst, reg, rm);
@@ -1312,7 +1324,7 @@ void JitArmV8CodeGen::shlValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 }
 
 void JitArmV8CodeGen::sarReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
-    RegPtr cl = getTmpReg();
+    RegPtr cl = std::make_shared<JitReg>(regBranch, 0xff); // make this safe for internal functions by not using gettmp
     compiler.and_(R32(cl), R32(rm), regWidth == JitWidth::b64 ? 0x3f : 0x1f);
     regReg(regWidth, reg, cl, [this](asmjit::a64::Gp dst, asmjit::a64::Gp reg, asmjit::a64::Gp rm) {
         compiler.asr(dst, reg, rm);
@@ -2728,32 +2740,29 @@ void JitArmV8CodeGen::IfTestBit(JitWidth regWidth, RegPtr reg, U32 bitPos) {
 void JitArmV8CodeGen::cmp(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
     if (regWidth == JitWidth::b32) {
         compiler.cmp(R32(reg1), R32(reg2));
-    }
-    else if (regWidth == JitWidth::b16) {
-        RegPtr left = getTmpReg();
-        RegPtr right = getTmpReg();
-        compiler.lsl(R32(left), R32(reg1), 16);
-        compiler.lsl(R32(right), R32(reg2), 16);
-        compiler.cmp(R32(left), R32(right));
-    }
-    else if (regWidth == JitWidth::b8) {
-        RegPtr left = getTmpReg();
-        RegPtr right = getTmpReg();
+    } else if (regWidth == JitWidth::b16) {
+        // JitCodeGen::getCF requires not getting a new tmp reg
+        // xBranch should be safe to clobber
+        compiler.lsl(wBranch, R32(reg1), 16);
+        compiler.lsl(wScratch, R32(reg2), 16);
+        compiler.cmp(wBranch, wScratch);
+    } else if (regWidth == JitWidth::b8) {
+        // JitCodeGen::getCF requires not getting a new tmp reg
+        // xBranch should be safe to clobber
         if (reg1->isHigh) {
-            compiler.lsr(R32(left), R32(reg1), 8);
-            compiler.lsl(R32(left), R32(left), 24);
+            compiler.lsr(wBranch, R32(reg1), 8);
+            compiler.lsl(wBranch, wBranch, 24);
         } else {
-            compiler.lsl(R32(left), R32(reg1), 24);
+            compiler.lsl(wBranch, R32(reg1), 24);
         }
         if (reg2->isHigh) {
-            compiler.lsr(R32(right), R32(reg2), 8);
-            compiler.lsl(R32(right), R32(right), 24);
+            compiler.lsr(wScratch, R32(reg2), 8);
+            compiler.lsl(wScratch, wScratch, 24);
         } else {
-            compiler.lsl(R32(right), R32(reg2), 24);
+            compiler.lsl(wScratch, R32(reg2), 24);
         }
-        compiler.cmp(R32(left), R32(right));
-    }
-    else {
+        compiler.cmp(wBranch, wScratch);
+    } else {
         kpanic_fmt("JitArmV8CodeGen::cmp unexpected width: %d", (U32)regWidth);
     }
 }
@@ -2765,6 +2774,17 @@ void JitArmV8CodeGen::cmp(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) {
     }
     if (regWidth == JitWidth::b32) {
         compiler.cmp(R32(reg), value);
+    } else if (value == 0 && regWidth == JitWidth::b16) {
+        compiler.lsl(wBranch, R32(reg), 16);
+        compiler.cmp(wBranch, 0);
+    } else if (value == 0 && regWidth == JitWidth::b8) {
+        if (reg->isHigh) {
+            compiler.lsr(wBranch, R32(reg), 8);
+            compiler.lsl(wBranch, wBranch, 24);
+        } else {
+            compiler.lsl(wBranch, R32(reg), 24);
+        }
+        compiler.cmp(wBranch, 0);
     } else {
         cmp(regWidth, reg, loadConst(value));
     }

@@ -685,6 +685,7 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         createHelpers();
         for (U32 i = 0; i < FLAGS_NULL; i++) {
             jit = startNewJIT(cpu);
+            jit->disableTmps = true; // the functions created should not call getTmp since the caller won't know what tmps are in use
             cpu->thread->process->calculateCF[i] = jit->createCalculationCF((LazyFlagType)i);
             delete jit;
         }
@@ -1493,21 +1494,27 @@ void JitCodeGen::getCF(LazyFlagType flags, RegPtr result) {
         // (cpu->dst.u8 < cpu->result.u8) || (cpu->oldCF && (cpu->src.u8==0xff));
         compareReg(JitWidth::b8, getFlagDestReadOnly(getConditionCalculationReg(1)), getFlagResultReadOnly(getConditionCalculationReg(2)), JitEvaluate::LESS_THAN_UNSIGNED, result);
         RegPtr tmp = getConditionCalculationReg(1);
-        compareValue(JitWidth::b8, getFlagSrcReadOnly(tmp), 0xff, JitEvaluate::EQUALS, tmp);
+        RegPtr tmp2 = getConditionCalculationReg(2);
+        movValue(JitWidth::b32, tmp2, 0xff);
+        compareReg(JitWidth::b8, getFlagSrcReadOnly(tmp), tmp2, JitEvaluate::EQUALS, tmp);
         andReg(JitWidth::b32, tmp, getFlagCF(getConditionCalculationReg(2)));
         orReg(JitWidth::b32, result, tmp);
     } else if (flags == FLAGS_SBB16) {
         // (cpu->dst.u16 < cpu->result.u16) || (cpu->oldCF && (cpu->src.u16==0xffff));
         compareReg(JitWidth::b16, getFlagDestReadOnly(getConditionCalculationReg(1)), getFlagResultReadOnly(getConditionCalculationReg(2)), JitEvaluate::LESS_THAN_UNSIGNED, result);
         RegPtr tmp = getConditionCalculationReg(1);
-        compareValue(JitWidth::b16, getFlagSrcReadOnly(getConditionCalculationReg(2)), 0xffff, JitEvaluate::EQUALS, tmp);
+        RegPtr tmp2 = getConditionCalculationReg(2);
+        movValue(JitWidth::b32, tmp2, 0xffff);
+        compareReg(JitWidth::b16, getFlagSrcReadOnly(getConditionCalculationReg(2)), tmp2, JitEvaluate::EQUALS, tmp);
         andReg(JitWidth::b32, tmp, getFlagCF(getConditionCalculationReg(2)));
         orReg(JitWidth::b32, result, tmp);
     } else if (flags == FLAGS_SBB32) {
         // (cpu->dst.u32 < cpu->result.u32) || (cpu->oldCF && (cpu->src.u32==0xffffffff));
         compareReg(JitWidth::b32, getFlagDestReadOnly(getConditionCalculationReg(1)), getFlagResultReadOnly(getConditionCalculationReg(2)), JitEvaluate::LESS_THAN_UNSIGNED, result);
         RegPtr tmp = getConditionCalculationReg(1);
-        compareValue(JitWidth::b32, getFlagSrcReadOnly(getConditionCalculationReg(2)), 0xffffffff, JitEvaluate::EQUALS, tmp);
+        RegPtr tmp2 = getConditionCalculationReg(2);
+        movValue(JitWidth::b32, tmp2, 0xffff);
+        compareReg(JitWidth::b32, getFlagSrcReadOnly(getConditionCalculationReg(2)), tmp2, JitEvaluate::EQUALS, tmp);
         andReg(JitWidth::b32, tmp, getFlagCF(getConditionCalculationReg(2)));
         orReg(JitWidth::b32, result, tmp);
     } else if (flags == FLAGS_AND8) {

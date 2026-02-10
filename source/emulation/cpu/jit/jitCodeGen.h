@@ -168,6 +168,8 @@ protected:
     virtual void createHelpers() {}
     RegPtr callGetCondition(JitConditional condition, RegPtr resultReg = nullptr);
     RegPtr calculateCondition(JitConditional condition, RegPtr resultReg = nullptr);
+
+    bool disableTmps = false;
 };
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);

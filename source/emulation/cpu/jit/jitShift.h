@@ -439,8 +439,7 @@ void Jit::dynamic_rcl32cl_reg_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
         RegPtr oldCF = getCF(); // jit code expects certain tmp regs to be available, so do this first
         RegPtr src = getReadOnlyReg8(1, false, 1);
-        IfTest(JitWidth::b8, src, 0x1f); {
-            // op->imm already masked            
+        IfTest(JitWidth::b8, src, 0x1f); {         
             RegPtr reg = getReg(op->reg);
             RegPtr cf = getTmpReg();
 
@@ -592,7 +591,6 @@ void Jit::dynamic_rcr32cl_reg_op(DecodedOp* op) {
         RegPtr oldCF = getCF(); // jit code expects certain tmp regs to be available, so do this first
         RegPtr src = getReadOnlyReg8(1, false, 1);
         IfTest(JitWidth::b8, src, 0x1f); {
-            // op->imm already masked 
             RegPtr reg = getReg(op->reg);
             RegPtr cf = getTmpReg();
 
