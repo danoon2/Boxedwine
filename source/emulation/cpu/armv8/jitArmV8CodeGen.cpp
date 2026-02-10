@@ -862,6 +862,7 @@ RegPtr JitArmV8CodeGen::getConditionCalculationReg(U32 index) {
         kpanic("JitX86CodeGen::JitArmV8CodeGen");
         return nullptr;
     }
+    regUsed[tmp] = true;
     return std::shared_ptr<JitReg>(new JitReg(tmp, 0xff), [this](JitReg* p) {
         if (p->isLoaded()) {
             regUsed[p->hardwareReg()] = false;

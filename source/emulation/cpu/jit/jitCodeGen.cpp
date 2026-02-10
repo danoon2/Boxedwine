@@ -1497,7 +1497,7 @@ void JitCodeGen::getCF(LazyFlagType flags, RegPtr result) {
         RegPtr tmp2 = getConditionCalculationReg(2);
         movValue(JitWidth::b32, tmp2, 0xff);
         compareReg(JitWidth::b8, getFlagSrcReadOnly(tmp), tmp2, JitEvaluate::EQUALS, tmp);
-        andReg(JitWidth::b32, tmp, getFlagCF(getConditionCalculationReg(2)));
+        andReg(JitWidth::b32, tmp, getFlagCF(tmp2));
         orReg(JitWidth::b32, result, tmp);
     } else if (flags == FLAGS_SBB16) {
         // (cpu->dst.u16 < cpu->result.u16) || (cpu->oldCF && (cpu->src.u16==0xffff));
@@ -1505,8 +1505,8 @@ void JitCodeGen::getCF(LazyFlagType flags, RegPtr result) {
         RegPtr tmp = getConditionCalculationReg(1);
         RegPtr tmp2 = getConditionCalculationReg(2);
         movValue(JitWidth::b32, tmp2, 0xffff);
-        compareReg(JitWidth::b16, getFlagSrcReadOnly(getConditionCalculationReg(2)), tmp2, JitEvaluate::EQUALS, tmp);
-        andReg(JitWidth::b32, tmp, getFlagCF(getConditionCalculationReg(2)));
+        compareReg(JitWidth::b16, getFlagSrcReadOnly(tmp), tmp2, JitEvaluate::EQUALS, tmp);
+        andReg(JitWidth::b32, tmp, getFlagCF(tmp2));
         orReg(JitWidth::b32, result, tmp);
     } else if (flags == FLAGS_SBB32) {
         // (cpu->dst.u32 < cpu->result.u32) || (cpu->oldCF && (cpu->src.u32==0xffffffff));
@@ -1514,8 +1514,8 @@ void JitCodeGen::getCF(LazyFlagType flags, RegPtr result) {
         RegPtr tmp = getConditionCalculationReg(1);
         RegPtr tmp2 = getConditionCalculationReg(2);
         movValue(JitWidth::b32, tmp2, 0xffff);
-        compareReg(JitWidth::b32, getFlagSrcReadOnly(getConditionCalculationReg(2)), tmp2, JitEvaluate::EQUALS, tmp);
-        andReg(JitWidth::b32, tmp, getFlagCF(getConditionCalculationReg(2)));
+        compareReg(JitWidth::b32, getFlagSrcReadOnly(tmp), tmp2, JitEvaluate::EQUALS, tmp);
+        andReg(JitWidth::b32, tmp, getFlagCF(tmp2));
         orReg(JitWidth::b32, result, tmp);
     } else if (flags == FLAGS_AND8) {
         // 0

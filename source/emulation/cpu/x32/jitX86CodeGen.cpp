@@ -883,52 +883,55 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn
 }
 
 RegPtr JitX86CodeGen::getConditionCalculationReg(U32 index) {
+    U8 tmp = 0xff;
 #ifdef BOXEDWINE_64
     if (index == 0) {
-        U8 tmp = tmps[NUMBER_OF_TMPS - 1];
+        tmp = tmps[NUMBER_OF_TMPS - 1];
         if (regUsed[tmp]) {
             kpanic("JitX86CodeGen::getConditionCalculationReg 0");
         }
-        return getTmpRegWithHint(tmp);
     } else if (index == 1) {
-        U8 tmp = tmps[NUMBER_OF_TMPS - 2];
+        tmp = tmps[NUMBER_OF_TMPS - 2];
         if (regUsed[tmp]) {
             kpanic("JitX86CodeGen::getConditionCalculationReg 1");
         }
-        return getTmpRegWithHint(tmp);
     } else if (index == 2) {
-        U8 tmp = tmps[NUMBER_OF_TMPS - 3];
+        tmp = tmps[NUMBER_OF_TMPS - 3];
         if (regUsed[tmp]) {
             kpanic("JitX86CodeGen::getConditionCalculationReg 2");
         }
-        return getTmpRegWithHint(tmp);
     } else {
         kpanic("JitX86CodeGen::getConditionCalculationReg");
         return nullptr;
     }
 #else
     if (index == 0) {
+        tmp = 0;
         if (regUsed[0]) {
             kpanic("JitX86CodeGen::getConditionCalculationReg 0");
         }
-        return getTmpRegWithHint(0);
-    }
-    if (index == 1) {
+    } else if (index == 1) {
+        tmp = 2;
         if (regUsed[2]) {
             kpanic("JitX86CodeGen::getConditionCalculationReg 1");
         }
-        return getTmpRegWithHint(2);
-    }
-    if (index == 2) {
+    } else if (index == 2) {
+        tmp = 1;
         if (regUsed[1]) {
             kpanic("JitX86CodeGen::getConditionCalculationReg 2");
         }
-        return getTmpRegWithHint(1);
+    } else {
+        kpanic("JitX86CodeGen::getConditionCalculationReg");
+        return nullptr;
     }
-
-    kpanic("JitX86CodeGen::getConditionCalculationReg");
-    return nullptr;
 #endif
+    regUsed[tmp] = true;
+    return std::shared_ptr<JitReg>(new JitReg(tmp, 0xff), [this](JitReg* p) {
+        if (p->isLoaded()) {
+            regUsed[p->hardwareReg()] = false;
+        }
+        delete p;
+    });
 }
 
 RegPtr JitX86CodeGen::getTmpReg() {
