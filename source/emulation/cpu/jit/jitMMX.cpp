@@ -158,7 +158,7 @@ void JitMMX::dynamic_pextrwE16Mmx(DecodedOp* op) {
         MMXRegPtr reg = loadCpuMMXReg(op->reg);
         RegPtr tmp = getTmpReg();
         pextrwRegMmx(tmp, reg, op->imm & 3);
-        writeHost(JitWidth::b16, address, offset, 0, 0, tmp);
+        writeHost(JitWidth::b16, createMemPtr(address, offset, 0, 0), tmp);
     });
 }
 
@@ -172,7 +172,7 @@ void JitMMX::dynamic_pinsrwMmxE16(DecodedOp* op) {
     read(JitWidth::b16, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         MMXRegPtr reg = loadCpuMMXReg(op->reg);
         RegPtr tmp = getTmpReg();
-        readHost(JitWidth::b16, tmp, address, offset, 0, 0);
+        readHost(JitWidth::b16, createMemPtr(address, offset, 0, 0), tmp);
         pinsrwMmxReg(reg, tmp, op->imm & 3);
         storeCpuMMXReg(reg, op->reg);
     });

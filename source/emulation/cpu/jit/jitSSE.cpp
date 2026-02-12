@@ -167,7 +167,7 @@ void JitSSE::dynamic_cvtsi2ssXmmR32(DecodedOp* op) {
 void JitSSE::dynamic_cvtsi2ssXmmE32(DecodedOp* op) {
     read(JitWidth::b32, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         RegPtr reg = getTmpReg();
-        readHost(JitWidth::b32, reg, address, offset, 0, 0);
+        readHost(JitWidth::b32, createMemPtr(address, offset, 0, 0), reg);
         SSERegPtr sse = loadCpuXMMReg(op->reg); // must load since top 96 bits are unchanged
         cvtsi2ssXmmR32(sse, reg);
         storeCpuXMMReg(sse, op->reg);
@@ -418,7 +418,7 @@ void JitSSE::dynamic_cvtsi2sdXmmR32(DecodedOp* op) {
 void JitSSE::dynamic_cvtsi2sdXmmE32(DecodedOp* op) {
     read(JitWidth::b32, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         RegPtr tmp = getTmpReg();
-        readHost(JitWidth::b32, tmp, address, offset, 0, 0);
+        readHost(JitWidth::b32, createMemPtr(address, offset, 0, 0), tmp);
         SSERegPtr reg = loadCpuXMMReg(op->reg); // top bits are unchanged
         cvtsi2sdXmmR32(reg, tmp);
         storeCpuXMMReg(reg, op->reg);
@@ -600,7 +600,7 @@ void JitSSE::dynamic_pextrwE16Xmm(DecodedOp* op) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
         RegPtr tmp = getTmpReg();
         pextrwR32Xmm(tmp, reg, op->imm);
-        writeHost(JitWidth::b16, address, offset, 0, 0, tmp);
+        writeHost(JitWidth::b16, createMemPtr(address, offset, 0, 0), tmp);
     });
 }
 
@@ -614,7 +614,7 @@ void JitSSE::dynamic_pinsrwXmmE16(DecodedOp* op) {
     read(JitWidth::b16, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
         RegPtr tmp = getTmpReg();
-        readHost(JitWidth::b16, tmp, address, offset, 0, 0);
+        readHost(JitWidth::b16, createMemPtr(address, offset, 0, 0), tmp);
         pinsrwXmmR32(reg, tmp, op->imm);
         storeCpuXMMReg(reg, op->reg);
     });

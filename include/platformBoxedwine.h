@@ -171,6 +171,11 @@ void PlayMsg(U8* msg);
 void PlaySysex(U8 * sysex,U32 len);
 #endif
 
+#if defined(BOXEDWINE_JIT_ARMV8) && defined(BOXEDWINE_MSVC)
+U64 get_ID_AA64ISAR0_EL1();
+U64 get_ID_AA64ISAR1_EL1();
+#endif
+
 #define VECTOR_CONTAINS(v, o) (std::find(v.begin(), v.end(), o) != v.end())
 #define VECTOR_REMOVE(v, o) v.erase(std::remove(v.begin(), v.end(), o), v.end())
 #define VECTOR_TO_ARRAY_ON_STACK(v, t, r) r = (t*)alloca(v.size()*sizeof(t)); std::copy(v.begin(), v.end(), r)

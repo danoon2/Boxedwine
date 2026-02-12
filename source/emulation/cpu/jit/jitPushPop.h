@@ -180,7 +180,7 @@ void Jit::dynamic_pushA16(DecodedOp* op) {
     // 8x 2 byte pushes is 128 bits, if we have permission and space on one page to write this, then we only need to do the memory checks once
     write(JitWidth::b128, esp, nullptr, [this](RegPtr address, RegPtr offset) {
         for (int i = 0; i < 8; i++) {
-            writeHost(JitWidth::b16, address, offset, 0, 2 * i, getReadOnlyReg(7 - i));
+            write(JitWidth::b16, createMemPtr(address, offset, 0, 2 * i, false), getReadOnlyReg(7 - i));
         }
         IfSmallStack(); {
             subValue(JitWidth::b16, getReg(4), 16);
@@ -203,7 +203,7 @@ void Jit::dynamic_pushA32(DecodedOp* op) {
     // 8x 4 byte pushes is 256 bits, if we have permission and space on one page to write this, then we only need to do the memory checks once
     write(JitWidth::b256, esp, nullptr, [this](RegPtr address, RegPtr offset) {
         for (int i = 0; i < 8; i++) {
-            writeHost(JitWidth::b32, address, offset, 0, 4 * i, getReadOnlyReg(7 - i));
+            write(JitWidth::b32, createMemPtr(address, offset, 0, 4 * i, false), getReadOnlyReg(7 - i));
         }
         if (cpu->thread->process->hasSetSeg[SS]) {
             IfSmallStack(); {
@@ -228,7 +228,7 @@ void Jit::dynamic_popA16(DecodedOp* op) {
     read(JitWidth::b128, esp, [this](RegPtr address, RegPtr offset) {
         for (int i = 0; i < 8; i++) {
             if (i != 3) {
-                readHost(JitWidth::b16, getReg(7 - i), address, offset, 0, 2 * i);
+                read(JitWidth::b16, createMemPtr(address, offset, 0, 2 * i, false), getReg(7 - i));
             }
         }
         IfSmallStack(); {
@@ -252,7 +252,7 @@ void Jit::dynamic_popA32(DecodedOp* op) {
     read(JitWidth::b256, esp, [this](RegPtr address, RegPtr offset) {
         for (int i = 0; i < 8; i++) {
             if (i != 3) {
-                readHost(JitWidth::b32, getReg(7 - i), address, offset, 0, 4 * i);
+                read(JitWidth::b32, createMemPtr(address, offset, 0, 4 * i, false), getReg(7 - i));
             }
         }
         if (cpu->thread->process->hasSetSeg[SS]) {

@@ -103,6 +103,23 @@ using RegPtr = std::shared_ptr<JitReg>;
 #define DYN_PTR JitWidth::b32
 #define DYN_PTR_LSL 2
 #endif
+
+class JitMem {
+public:
+    JitMem(U32 address) : offset(address) {}
+    JitMem(RegPtr rm, U32 offset = 0, bool emulatedAddress = true) : rm(rm), offset(offset), emulatedAddress(emulatedAddress) {}
+    JitMem(RegPtr rm, RegPtr sib, U32 lsl, U32 offset, bool emulatedAddress = true) : rm(rm), sib(sib), lsl(lsl), offset(offset), emulatedAddress(emulatedAddress) {}
+
+    RegPtr rm;
+    RegPtr sib;
+    U32 lsl = 0;
+    U32 offset = 0;
+    bool emulatedAddress = true;
+};
+
+using MemPtr = std::shared_ptr<JitMem>;
+#define createMemPtr std::make_shared<JitMem>
+
 // API available to dynamic ops
 class Jit {
 public:
@@ -150,6 +167,7 @@ public:
     RegPtr calculateMask32(DecodedOp* op);
 
     virtual void addReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;    
+    virtual void addRegWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, RegPtr rm) = 0;
     virtual void addValue(JitWidth regWidth, RegPtr reg, U32 imm) = 0;
     virtual void addValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) = 0;
     virtual void orReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
@@ -173,6 +191,7 @@ public:
     virtual void shrValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) = 0;
     virtual void shlReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void shlValue(JitWidth regWidth, RegPtr reg, U32 immm) = 0;
+    virtual void shlValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) = 0;
     virtual void sarReg(JitWidth regWidth, RegPtr reg, RegPtr rm) = 0;
     virtual void sarValue(JitWidth regWidth, RegPtr reg, U32 immm) = 0;
     virtual void sarValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 immm) = 0;
@@ -227,7 +246,7 @@ public:
     virtual void storeLazyFlagsSrc(U32 value) = 0;
     virtual void storeLazyFlagsResult(RegPtr reg) = 0;
     virtual void storeLazyFlagsOldCF(RegPtr reg) = 0;
-    virtual void fillFlags() = 0;
+    virtual void fillFlags(U32 flags = PF | SF | AF | CF | OF | ZF) = 0;
     virtual RegPtr getZF() = 0;
     virtual RegPtr getCF() = 0;
     virtual void orCPUFlags(RegPtr reg) = 0;
@@ -262,16 +281,15 @@ public:
     virtual void IfDF() = 0;
     virtual void IfSmallStack() = 0;
 
+    // these will check that the memory is valid and doesn't span a page then allow the caller to override what happens when everything is good by providing a callback, 
+    // the callback will contain the host memory address
     virtual RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) = 0;
     virtual RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) = 0;
-    virtual RegPtr read(JitWidth width, U32 address) = 0;
     virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) = 0;
-    virtual void write(JitWidth width, U32 address, RegPtr src) = 0;
-    virtual void writeValue(JitWidth width, RegPtr addressReg, U32 imm) = 0;
-    
-    // I would say that most ops shouldn't use these directly, but pusha/popa needs it
-    virtual void writeHost(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
-    virtual void readHost(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
+
+    virtual RegPtr read(JitWidth width, MemPtr mem, RegPtr result = nullptr) = 0;
+    virtual void write(JitWidth width, MemPtr mem, RegPtr src) = 0;
+    virtual void write(JitWidth width, MemPtr mem, U32 imm) = 0;
 
     void dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
     void dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags);

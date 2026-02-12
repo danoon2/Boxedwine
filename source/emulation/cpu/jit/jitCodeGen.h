@@ -56,13 +56,8 @@ public:
 
     virtual void preOp(DecodedOp* op) {}
     virtual void onBlockPreCommit(DecodedOp* op) {}
-    virtual void read(JitWidth width, RegPtr dest, RegPtr reg, U32 disp) = 0;
     virtual void readMMU(RegPtr dest, RegPtr index) = 0;
     virtual void readMMU(RegPtr dest, U32 index) = 0;
-    //virtual void read(JitWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
-    virtual void write(JitWidth width, RegPtr reg, U32 disp, RegPtr src) = 0;
-    //virtual void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
-    virtual void write(JitWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, U32 value) = 0;
 
     virtual RegPtr readCPU(JitWidth width, U32 offset, RegPtr resultReg = nullptr) = 0;
     virtual RegPtr readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr resultReg = nullptr) = 0;
@@ -73,13 +68,22 @@ public:
 
     RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) override;
     RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) override;
-    RegPtr read(JitWidth width, U32 address) override;
     void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) override;
-    void write(JitWidth width, U32 address, RegPtr src) override;
-    void writeValue(JitWidth width, RegPtr addressReg, U32 imm) override;
+
+    RegPtr read(JitWidth width, MemPtr mem, RegPtr result = nullptr) override;
+    void write(JitWidth width, MemPtr, RegPtr src) override;
+    void write(JitWidth width, MemPtr, U32 imm) override;
+
+    virtual void readHost(JitWidth width, MemPtr mem, RegPtr result, bool emlulatedMemory = true) = 0;
+    virtual void writeHost(JitWidth width, MemPtr mem, RegPtr src, bool emlulatedMemory = true) = 0;
+    virtual void writeHost(JitWidth width, MemPtr mem, U32 imm, bool emlulatedMemory = true) = 0;
+    virtual RegPtr calculateAddress(MemPtr mem, JitWidth width = JitWidth::b32);
+
     virtual void clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) = 0;
 
+    void addRegWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, RegPtr rm) override;
     void andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) override;
+    void shlValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) override;
     void shrValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) override;
     void sarValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 immm) override;
     void subValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) override;
@@ -91,7 +95,7 @@ public:
 
     RegPtr getZF() override;
     RegPtr getCF() override;
-    void fillFlags() override;
+    void fillFlags(U32 flags = PF | SF | AF | CF | OF | ZF) override;
     virtual RegPtr getFlagDestReadOnly(RegPtr result = nullptr); // passed in result might be returned, but not guaranteed, its available just to help minimize use of temp registers
     virtual RegPtr getFlagSrcReadOnly(RegPtr result = nullptr); // passed in result might be returned, but not guaranteed, its available just to help minimize use of temp registers
     virtual RegPtr getFlagResultReadOnly(RegPtr result = nullptr); // passed in result might be returned, but not guaranteed, its available just to help minimize use of temp registers

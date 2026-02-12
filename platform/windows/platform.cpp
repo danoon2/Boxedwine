@@ -729,3 +729,18 @@ bool platformHasBMI2() {
     return false;
 }
 #endif
+
+#ifdef BOXEDWINE_JIT_ARMV8
+U64 get_ID_AA64ISAR0_EL1() {
+    U64 result = 0;
+    DWORD size = 8;
+    RegGetValue(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", "CP 4030", RRF_RT_REG_QWORD, nullptr, &result, &size);
+    return result;
+}
+U64 get_ID_AA64ISAR1_EL1() {
+    U64 result = 0;
+    DWORD size = 8;
+    RegGetValue(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", "CP 4031", RRF_RT_REG_QWORD, nullptr, &result, &size);
+    return result;
+}
+#endif

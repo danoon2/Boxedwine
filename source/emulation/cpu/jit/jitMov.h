@@ -29,7 +29,7 @@ void Jit::dynamic_movr8(DecodedOp* op) {
     movValue(JitWidth::b8, getReg8(op->reg), op->imm);
 }
 void Jit::dynamic_move8(DecodedOp* op) {
-    writeValue(JitWidth::b8, calculateEaa(op), op->imm);
+    write(JitWidth::b8, createMemPtr(calculateEaa(op)), op->imm);
 }
 void Jit::dynamic_movr16r16(DecodedOp* op) {
     mov(JitWidth::b16, getReg(op->reg), getReadOnlyReg(op->rm));
@@ -44,7 +44,7 @@ void Jit::dynamic_movr16(DecodedOp* op) {
     movValue(JitWidth::b16, getReg(op->reg), op->imm);
 }
 void Jit::dynamic_move16(DecodedOp* op) {
-    writeValue(JitWidth::b16, calculateEaa(op), op->imm);
+    write(JitWidth::b16, createMemPtr(calculateEaa(op)), op->imm);
 }
 void Jit::dynamic_movr32r32(DecodedOp* op) {
     mov(JitWidth::b32, getReg(op->reg, -1, false), getReadOnlyReg(op->rm));
@@ -59,7 +59,7 @@ void Jit::dynamic_movr32(DecodedOp* op) {
     movValue(JitWidth::b32, getReg(op->reg, -1, false), op->imm);
 }
 void Jit::dynamic_move32(DecodedOp* op) {
-    writeValue(JitWidth::b32, calculateEaa(op), op->imm);
+    write(JitWidth::b32, createMemPtr(calculateEaa(op)), op->imm);
 }
 void Jit::dynamic_movr16s16(DecodedOp* op) {
     mov(JitWidth::b16, getReg(op->reg), getReadOnlySegValue(op->rm));
@@ -82,7 +82,7 @@ void Jit::dynamic_movAlOb(DecodedOp* op) {
         addValue(JitWidth::b32, reg, op->data.disp);
         mov(JitWidth::b8, getReg8(0), read(JitWidth::b8, reg));
     } else {
-        mov(JitWidth::b8, getReg8(0), read(JitWidth::b8, op->data.disp));
+        mov(JitWidth::b8, getReg8(0), read(JitWidth::b8, createMemPtr(op->data.disp)));
     }    
 }
 void Jit::dynamic_movAxOw(DecodedOp* op) {
@@ -91,7 +91,7 @@ void Jit::dynamic_movAxOw(DecodedOp* op) {
         addValue(JitWidth::b32, reg, op->data.disp);
         mov(JitWidth::b16, getReg(0), read(JitWidth::b16, reg));
     } else {
-        mov(JitWidth::b16, getReg(0), read(JitWidth::b16, op->data.disp));
+        mov(JitWidth::b16, getReg(0), read(JitWidth::b16, createMemPtr(op->data.disp)));
     }    
 }
 void Jit::dynamic_movEaxOd(DecodedOp* op) {
@@ -100,7 +100,7 @@ void Jit::dynamic_movEaxOd(DecodedOp* op) {
         addValue(JitWidth::b32, reg, op->data.disp);
         mov(JitWidth::b32, getReg(0, -1, false), read(JitWidth::b32, reg));
     } else {
-        mov(JitWidth::b32, getReg(0, -1, false), read(JitWidth::b32, op->data.disp));
+        mov(JitWidth::b32, getReg(0, -1, false), read(JitWidth::b32, createMemPtr(op->data.disp)));
     }
 }
 void Jit::dynamic_movObAl(DecodedOp* op) {
@@ -109,7 +109,7 @@ void Jit::dynamic_movObAl(DecodedOp* op) {
         addValue(JitWidth::b32, reg, op->data.disp);
         write(JitWidth::b8, reg, getReadOnlyReg8(0));
     } else {
-        write(JitWidth::b8, op->data.disp, getReadOnlyReg8(0));
+        write(JitWidth::b8, createMemPtr(op->data.disp), getReadOnlyReg8(0));
     }    
 }
 void Jit::dynamic_movOwAx(DecodedOp* op) {
@@ -118,7 +118,7 @@ void Jit::dynamic_movOwAx(DecodedOp* op) {
         addValue(JitWidth::b32, reg, op->data.disp);
         write(JitWidth::b16, reg, getReadOnlyReg(0));
     } else {
-        write(JitWidth::b16, op->data.disp, getReadOnlyReg(0));
+        write(JitWidth::b16, createMemPtr(op->data.disp), getReadOnlyReg(0));
     }    
 }
 void Jit::dynamic_movOdEax(DecodedOp* op) {
@@ -127,7 +127,7 @@ void Jit::dynamic_movOdEax(DecodedOp* op) {
         addValue(JitWidth::b32, reg, op->data.disp);
         write(JitWidth::b32, reg, getReadOnlyReg(0));
     } else {
-        write(JitWidth::b32, op->data.disp, getReadOnlyReg(0));
+        write(JitWidth::b32, createMemPtr(op->data.disp), getReadOnlyReg(0));
     }    
 }
 void Jit::dynamic_movGwXzR8(DecodedOp* op) {

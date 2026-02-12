@@ -804,17 +804,17 @@ void JitCodeGen::blockNext1(DecodedOp* op) {
     // ebx = op->nextJump
     // mov ebx, [edx + offsetof(DecodedOp, nextJump)]
     RegPtr nextJump = getTmpReg();
-    read(DYN_PTR, nextJump, opReg, offsetof(DecodedOp, data.nextJump));
+    readHost(DYN_PTR, createMemPtr(opReg, (U32)offsetof(DecodedOp, data.nextJump)), nextJump, false);
     opReg = nullptr;
 
     // eax = *(op->nextJump)
     RegPtr nextOp = getTmpReg();
-    read(DYN_PTR, nextOp, nextJump, 0);
+    readHost(DYN_PTR, createMemPtr(nextJump, 0), nextOp, false);
     // if (!(*(op->nextJump))) 
     IfNot(DYN_PTR, nextOp);
         // *(op->nextJump) = cpu->getNextOp();
         mov(DYN_PTR, nextOp, callAndReturnPtr(dynamic_getNextOp));
-        write(DYN_PTR, nextJump, offsetof(DecodedOp, next), nextOp);
+        writeHost(DYN_PTR, createMemPtr(nextJump, (U32)offsetof(DecodedOp, next)), nextOp, false);
     EndIf();
 
     // cpu->nextOp = *(op->nextJump);
@@ -822,7 +822,7 @@ void JitCodeGen::blockNext1(DecodedOp* op) {
 
 #ifdef BOXEDWINE_MULTI_THREADED
     RegPtr jit = getTmpReg();
-    read(DYN_PTR, jit, nextOp, offsetof(DecodedOp, pfnJitCode));
+    readHost(DYN_PTR, createMemPtr(nextOp, (U32)offsetof(DecodedOp, pfnJitCode)), jit, false);
     If(DYN_PTR, jit);
         jmp(jit);
     EndIf();
@@ -841,13 +841,13 @@ void JitCodeGen::blockNext2(DecodedOp* op) {
 
     // mov eax, [ebx + offsetof(DecodedOp, next)]
     RegPtr nextReg = getTmpReg();
-    read(DYN_PTR, nextReg, opReg, offsetof(DecodedOp, next));
+    readHost(DYN_PTR, createMemPtr(opReg, (U32)offsetof(DecodedOp, next)), nextReg, false);
 
     IfNot(DYN_PTR, nextReg); {
         // op->next = cpu->getNextOp();
         mov(DYN_PTR, nextReg, callAndReturnPtr(dynamic_getNextOp));
         // mov [ebx + offsetof(DecodedOp, next)], eax
-        write(DYN_PTR, opReg, offsetof(DecodedOp, next), nextReg);
+        writeHost(DYN_PTR, createMemPtr(opReg, (U32)offsetof(DecodedOp, next)), nextReg, false);
     } EndIf();
     opReg = nullptr;
 
@@ -856,7 +856,7 @@ void JitCodeGen::blockNext2(DecodedOp* op) {
 
 #ifdef BOXEDWINE_MULTI_THREADED
     RegPtr jit = getTmpReg();
-    read(DYN_PTR, jit, nextReg, offsetof(DecodedOp, pfnJitCode));
+    readHost(DYN_PTR, createMemPtr(nextReg, (U32)offsetof(DecodedOp, pfnJitCode)), jit, false);
     If(DYN_PTR, jit); {
         jmp(jit);
     } EndIf();
@@ -927,20 +927,20 @@ void JitCodeGen::jumpToEipIfCached() {
     shrValueWithDest(JitWidth::b32, firstPageIndexReg, pageReg, 10);
 
     RegPtr tmp = readCPU(DYN_PTR, offsetof(CPU, opCache));
-    readHost(DYN_PTR, tmp, tmp, firstPageIndexReg, DYN_PTR_LSL, 0);
+    readHost(DYN_PTR, createMemPtr(tmp, firstPageIndexReg, DYN_PTR_LSL, 0), tmp, false);
 
     // tmp contains 2nd level of page op cache
     If(DYN_PTR, tmp);
         // page & 0x3ff
         andValue(JitWidth::b32, pageReg, 0x3ff);
-        readHost(DYN_PTR, tmp, tmp, pageReg, DYN_PTR_LSL, 0);
+        readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
         // tmp contains page of DecodedOp*
         If(DYN_PTR, tmp);
             andValue(JitWidth::b32, eipReg, K_PAGE_MASK);
-            readHost(DYN_PTR, tmp, tmp, eipReg, DYN_PTR_LSL, 0);
+            readHost(DYN_PTR, createMemPtr(tmp, eipReg, DYN_PTR_LSL, 0), tmp, false);
             // tmp contains DecodedOp
             If(DYN_PTR, tmp);
-                read(DYN_PTR, tmp, tmp, offsetof(DecodedOp, pfnJitCode));
+                readHost(DYN_PTR, createMemPtr(tmp, (U32)offsetof(DecodedOp, pfnJitCode)), tmp, false);
                 // tmp contains pfnJitCode
                 If(DYN_PTR, tmp);
                     jmp(tmp);
@@ -1086,7 +1086,7 @@ RegPtr JitCodeGen::getZF() {
     return result;
 }
 
-void JitCodeGen::fillFlags() {
+void JitCodeGen::fillFlags(U32 flagsToFill) {
     RegPtr flags = getLazyFlagType();
     If(JitWidth::b32, flags); // FLAGS_NONE = 0
         call(common_fillFlags);
@@ -1192,43 +1192,102 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
         customMemoryOp(tmp, std::move(offsetReg));
     } else {
         // mov eax, [eax+reg]
-        readHost(width, tmp, tmp, offsetReg, 0, 0);
+        readHost(width, createMemPtr(tmp, offsetReg, 0, 0), tmp);
     }
 
     return tmp;
 }
 
-RegPtr JitCodeGen::read(JitWidth width, U32 address) {
-    RegPtr tmp = getTmpReg8();
+RegPtr JitCodeGen::calculateAddress(MemPtr mem, JitWidth width) {
+    RegPtr tmp = getTmpReg();
+    if (mem->sib && mem->lsl) {
+        shlValueWithDest(width, tmp, mem->sib, mem->lsl);
+        if (mem->rm) {
+            addReg(width, tmp, mem->rm);
+        }
+        if (mem->offset) {
+            addValue(width, tmp, mem->offset);
+        }
+    } else if (mem->sib) {
+        if (mem->rm) {
+            if (mem->offset) {
+                addValueWithDest(width, tmp, mem->sib, mem->offset);
+                addReg(width, tmp, mem->rm);
+            } else {
+                addRegWithDest(width, tmp, mem->rm, mem->sib);
+            }
+        } else if (mem->offset) {
+            addValueWithDest(width, tmp, mem->sib, mem->offset);
+        } else {
+            return mem->sib;
+        }
+    } else if (mem->rm) {
+        if (mem->offset) {
+            addValueWithDest(width, tmp, mem->rm, mem->offset);
+        } else {
+            return mem->rm;
+        }
+    } else {
+        movValue(width, tmp, mem->offset);
+    }
+    return tmp;
+}
+
+RegPtr JitCodeGen::read(JitWidth width, MemPtr mem, RegPtr result) {
+    if (!mem->emulatedAddress) {
+        if (!result) {
+            result = getTmpReg8();
+        }
+        readHost(width, mem, result);
+        return result;
+    }
+
+    if (mem->rm || mem->sib) {
+        return read(width, calculateAddress(mem));
+    }
+
+    if (!result) {
+        result = getTmpReg8();
+    }
+    U32 address = mem->offset;
 
     if (width == JitWidth::b16) {
         if ((address & 0xFFF) == 0xFFF) {
             emulateSingleOp();
-            return tmp;
+            return result;
         }
     } else if (width == JitWidth::b32) {
         if ((address & 0xFFF) >= 0xFFD) {
             emulateSingleOp();
-            return tmp;
+            return result;
         }
     } else if (width != JitWidth::b8) {
         kpanic_fmt("JitCodeGen::read unknown width %d", (U32)width);
     }
     
-    readMMU(tmp, address >> K_PAGE_SHIFT);
+    readMMU(result, address >> K_PAGE_SHIFT);
 
-    IfNotTestBit(JitWidth::b32, tmp, 0); {
+    IfNotTestBit(JitWidth::b32, result, 0); {
         emulateSingleOp();
     } EndIf();
 
-    andValueNative(tmp, ~0xfff);
+    andValueNative(result, ~0xfff);
 
-    read(width, tmp, tmp,  address & K_PAGE_MASK);
+    readHost(width, std::make_shared<JitMem>(result,  address & K_PAGE_MASK), result);
 
-    return tmp;
+    return result;
 }
 
-void JitCodeGen::write(JitWidth width, U32 address, RegPtr src) {
+void JitCodeGen::write(JitWidth width, MemPtr mem, RegPtr src) {
+    if (!mem->emulatedAddress) {
+        writeHost(width, mem, src);
+        return;
+    }
+    if (mem->rm || mem->sib) {
+        write(width, calculateAddress(mem), src);
+        return;
+    }
+    U32 address = mem->offset;
     if (width == JitWidth::b16) {
         if ((address & 0xFFF) == 0xFFF) {
             emulateSingleOp();
@@ -1251,7 +1310,7 @@ void JitCodeGen::write(JitWidth width, U32 address, RegPtr src) {
 
     andValueNative(tmp, ~0xfff);
 
-    write(width, tmp, address & K_PAGE_MASK, src);
+    writeHost(width, std::make_shared<JitMem>(tmp, address & K_PAGE_MASK), src);
 }
 
 void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment) {
@@ -1297,41 +1356,63 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
     if (customMemoryOp) {
         customMemoryOp(std::move(tmp), std::move(offsetReg));
     } else {
-        writeHost(width, tmp, offsetReg, 0, 0, src);
+        writeHost(width, createMemPtr(tmp, offsetReg, 0, 0), src);
     }
     if (pushedAddress) {
         popReg(addressReg);
     }
 }
 
-void JitCodeGen::writeValue(JitWidth width, RegPtr addressReg, U32 imm) {
+void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
+    if (!mem->emulatedAddress) {
+        writeHost(width, mem, imm);
+        return;
+    }
+    RegPtr addressReg = calculateAddress(mem);
     RegPtr tmp = getTmpReg();
 
-    RegPtr offsetReg;
+    if (mem->rm || mem->sib) {             
+        RegPtr offsetReg;
 
-    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
-    readMMU(tmp, tmp);
+        shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+        readMMU(tmp, tmp);
 
-    if (addressReg.use_count() == 1) {
         offsetReg = addressReg;
         andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
+ 
+        if (width != JitWidth::b8) {
+            // make sure we only use the fast path if the entire read will take place on the same page
+            clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        }
+
+        IfNotTestBit(JitWidth::b32, tmp, 1); {
+            emulateSingleOp();
+        } EndIf();
+
+        andValueNative(tmp, ~0xfff);
+        writeHost(width, createMemPtr(tmp, offsetReg, 0, 0), imm);
     } else {
-        offsetReg = getTmpReg();
-        andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
-    }    
+        U32 address = mem->offset;
 
-    if (width != JitWidth::b8) {
-        // make sure we only use the fast path if the entire read will take place on the same page
-        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+        readMMU(tmp, tmp);
+
+        RegPtr offsetReg = addressReg;
+        andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
+
+        if (width != JitWidth::b8) {
+            // make sure we only use the fast path if the entire read will take place on the same page
+            clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        }
+
+        IfNotTestBit(JitWidth::b32, tmp, 1); {
+            emulateSingleOp();
+        } EndIf();
+
+        andValueNative(tmp, ~0xfff);
+
+        write(width, tmp, offsetReg, 0, 0, imm);
     }
-
-    IfNotTestBit(JitWidth::b32, tmp, 1); {
-        emulateSingleOp();
-    } EndIf();
-
-    andValueNative(tmp, ~0xfff);
-
-    write(width, tmp, offsetReg, 0, 0, imm);
 }
 
 RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint) {
@@ -1358,11 +1439,11 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
     } EndIf();
 
     andValueNative(tmp, ~0xfff);
-    readHost(JitWidth::b32, tmpReg2, tmp, offsetReg, 0, 0);
+    readHost(JitWidth::b32, createMemPtr(tmp, offsetReg, 0, 0), tmpReg2);
 
     prepareWrite(tmpReg2);
 
-    writeHost(JitWidth::b32, tmp, offsetReg, 0, 0, tmpReg2);
+    writeHost(JitWidth::b32, createMemPtr(tmp, offsetReg, 0, 0), tmpReg2);
     return tmpReg2;
 }
 
@@ -2151,6 +2232,13 @@ void JitCodeGen::IfSmallStack() {
     If(JitWidth::b32, reg);
 }
 
+void JitCodeGen::addRegWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, RegPtr rm) {
+    if (dst->hardwareReg() != reg->hardwareReg()) {
+        mov(regWidth, dst, reg);
+    }
+    addReg(regWidth, dst, rm);
+}
+
 void JitCodeGen::andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
     if (dst->hardwareReg() != reg->hardwareReg()) {
         mov(regWidth, dst, reg);
@@ -2170,6 +2258,13 @@ void JitCodeGen::subValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32
         mov(regWidth, dst, reg);
     }
     subValue(regWidth, dst, value);
+}
+
+void JitCodeGen::shlValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
+    if (dst->hardwareReg() != reg->hardwareReg()) {
+        mov(regWidth, dst, reg);
+    }
+    shlValue(regWidth, dst, value);
 }
 
 void JitCodeGen::shrValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {

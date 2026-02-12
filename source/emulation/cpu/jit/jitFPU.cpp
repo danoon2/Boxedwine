@@ -311,7 +311,7 @@ void JitFPU::dynamic_FICOM_DWORD_INTEGER_Pop(DecodedOp* op) {
 
 void JitFPU::loadFpuRegFromShort(FPURegPtr reg, RegPtr rm, RegPtr sib) {
     RegPtr result = getTmpReg();
-    readHost(JitWidth::b16, result, rm, sib, 0, 0);
+    read(JitWidth::b16, createMemPtr(rm, sib, 0, 0), result);
     movsx(JitWidth::b32, result, JitWidth::b16, result);
     regToFpuReg(reg, std::move(result));
 }
@@ -677,7 +677,7 @@ void JitFPU::dynamic_FNSTENV(DecodedOp* op) {
         // data pointer selector
         for (int i = 0; i < 4; i++) {
             addValue(JitWidth::b32, addressReg, 2);
-            writeValue(JitWidth::b16, addressReg, 0);
+            write(JitWidth::b16, createMemPtr(addressReg), 0);
         }
     } else {
         // cw
@@ -705,7 +705,7 @@ void JitFPU::dynamic_FNSTENV(DecodedOp* op) {
         // data pointer selector
         for (int i = 0; i < 4; i++) {
             addValue(JitWidth::b32, addressReg, 4);
-            writeValue(JitWidth::b32, addressReg, 0);
+            write(JitWidth::b32, createMemPtr(addressReg), 0);
         }
     }
 
@@ -928,7 +928,7 @@ void JitFPU::dynamic_FNSTSW(DecodedOp* op) {
         andValue(JitWidth::b32, sw, ~0x3800);
         shlValue(JitWidth::b32, top, 11);
         orReg(JitWidth::b32, sw, top);
-        writeHost(JitWidth::b16, address, offset, 0, 0, sw);
+        writeHost(JitWidth::b16, createMemPtr(address, offset, 0, 0), sw);
     });
 }
 
@@ -999,7 +999,7 @@ void JitFPU::dynamic_FISTTP32(DecodedOp* op) {
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
 
-        writeHost(JitWidth::b32, address, offset, 0, 0, fpuRegToInt32(src.reg, true));
+        writeHost(JitWidth::b32, createMemPtr(address, offset, 0, 0), fpuRegToInt32(src.reg, true));
         dynamic_FPU_POP(top);
     });
 }
@@ -1030,7 +1030,7 @@ void JitFPU::dynamic_FIST_DWORD_INTEGER(DecodedOp* op) {
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
 
-        writeHost(JitWidth::b32, address, offset, 0, 0, fpuRegToInt32(src.reg, false));
+        writeHost(JitWidth::b32, createMemPtr(address, offset, 0, 0), fpuRegToInt32(src.reg, false));
         restoreFPURounding();
     });
 }
@@ -1042,7 +1042,7 @@ void JitFPU::dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) {
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
 
-        writeHost(JitWidth::b32, address, offset, 0, 0, fpuRegToInt32(src.reg, false));
+        writeHost(JitWidth::b32, createMemPtr(address, offset, 0, 0), fpuRegToInt32(src.reg, false));
         restoreFPURounding();
         dynamic_FPU_POP(top);
     });
@@ -1104,7 +1104,7 @@ void JitFPU::dynamic_FISTTP16(DecodedOp* op) {
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
 
-        writeHost(JitWidth::b16, address, offset, 0, 0, fpuRegToInt32(src.reg, true));
+        writeHost(JitWidth::b16, createMemPtr(address, offset, 0, 0), fpuRegToInt32(src.reg, true));
         dynamic_FPU_POP(top);
     });
 }
@@ -1116,7 +1116,7 @@ void JitFPU::dynamic_FIST_WORD_INTEGER(DecodedOp* op) {
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
 
-        writeHost(JitWidth::b16, address, offset, 0, 0, fpuRegToInt32(src.reg, false));
+        writeHost(JitWidth::b16, createMemPtr(address, offset, 0, 0), fpuRegToInt32(src.reg, false));
         restoreFPURounding();
     });
 }
@@ -1128,7 +1128,7 @@ void JitFPU::dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op) {
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
 
-        writeHost(JitWidth::b16, address, offset, 0, 0, fpuRegToInt32(src.reg, false));
+        writeHost(JitWidth::b16, createMemPtr(address, offset, 0, 0), fpuRegToInt32(src.reg, false));
         restoreFPURounding();
         dynamic_FPU_POP(top);
     });

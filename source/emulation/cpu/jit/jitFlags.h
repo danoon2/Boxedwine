@@ -284,13 +284,13 @@ void JitCodeGen::genCF(LazyFlagType flags, RegPtr result) {
     } else if (flags == FLAGS_AND32) {
         // 0
         xorReg(JitWidth::b32, result, result);
-    } else if (flags == FLAGS_SUB8) {
+    } else if (flags == FLAGS_SUB8 || flags == FLAGS_CMP8) {
         // cpu->dst.u8<cpu->src.u8;
         compareReg(JitWidth::b8, getFlagDestReadOnly(result), getFlagSrcReadOnly(), JitEvaluate::LESS_THAN_UNSIGNED, result);
-    } else if (flags == FLAGS_SUB16) {
+    } else if (flags == FLAGS_SUB16 || flags == FLAGS_CMP16) {
         // cpu->dst.u16<cpu->src.u16;
         compareReg(JitWidth::b16, getFlagDestReadOnly(result), getFlagSrcReadOnly(), JitEvaluate::LESS_THAN_UNSIGNED, result);
-    } else if (flags == FLAGS_SUB32) {
+    } else if (flags == FLAGS_SUB32 || flags == FLAGS_CMP32) {
         // cpu->dst.u32<cpu->src.u32;
         compareReg(JitWidth::b32, getFlagDestReadOnly(result), getFlagSrcReadOnly(), JitEvaluate::LESS_THAN_UNSIGNED, result);
     } else if (flags == FLAGS_XOR8) {
