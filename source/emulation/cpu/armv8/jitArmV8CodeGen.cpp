@@ -41,7 +41,7 @@ enum class TSOMode {
     Hardware
 };
 
-TSOMode tsoMode = TSOMode::Automatic;
+TSOMode tsoMode = TSOMode::None;
 
 #define NUMBER_OF_REGS 31
 #define NUMBER_OF_VREGS 32
