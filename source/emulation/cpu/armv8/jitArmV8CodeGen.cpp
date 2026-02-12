@@ -41,7 +41,7 @@ enum class TSOMode {
     Hardware
 };
 
-TSOMode tsoMode = TSOMode::None;
+TSOMode tsoMode = TSOMode::Automatic;
 
 #define NUMBER_OF_REGS 31
 #define NUMBER_OF_VREGS 32
@@ -2362,7 +2362,7 @@ void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool eml
     // arm zero extends reads
     if (!isTmp[dest->hardwareReg()] && (width == JitWidth::b8 || width == JitWidth::b16)) {
         RegPtr tmp = getTmpReg();
-        readHost(JitWidth::b32, mem, tmp);
+        readHost(width, mem, tmp);
         mov(width, dest, tmp);
         return;
     }
