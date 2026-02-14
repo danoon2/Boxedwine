@@ -330,8 +330,8 @@ public:
 
     U32 MarkJumpLocation() override;
     void Goto(U32 location) override;
-    void jmp(RegPtr reg) override;
-    void jmp(DYN_PTR_SIZE address) override;
+    void jmpHost(RegPtr reg) override;
+    void jmpHost(DYN_PTR_SIZE address) override;
     RegPtr getReadOnlyFlags(RegPtr tmp = nullptr) override;
     void storeLazyFlagType(LazyFlagType flags) override;
     void storeLazyFlagsResult(RegPtr reg) override;
@@ -3153,11 +3153,11 @@ void JitArmV8CodeGen::Goto(U32 location) {
     compiler.b(labels[location - 1]);
 }
 
-void JitArmV8CodeGen::jmp(RegPtr reg) {
+void JitArmV8CodeGen::jmpHost(RegPtr reg) {
     compiler.br(R64(reg));
 }
 
-void JitArmV8CodeGen::jmp(DYN_PTR_SIZE address) {
+void JitArmV8CodeGen::jmpHost(DYN_PTR_SIZE address) {
     compiler.mov(xTmp9, address);
     compiler.br(xTmp9);
 }
