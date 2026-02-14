@@ -141,7 +141,6 @@ void Jit::dynamic_callback(DecodedOp* op) {
 void Jit::dynamic_invalid_op(DecodedOp* op) {
     //kpanic_fmt("Invalid instruction %x\n", op->inst);
     emulateSingleOp();
-    blockDone(true);
 }
 
 void Jit::dynamic_onTestEnd(DecodedOp* op) {

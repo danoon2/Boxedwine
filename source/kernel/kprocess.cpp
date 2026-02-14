@@ -171,7 +171,6 @@ void KProcess::onExec(KThread* thread) {
 #endif
 #ifdef BOXEDWINE_DYNAMIC
     startJITOp = nullptr;
-    jumpToNextJIT = nullptr;
     emulateSingleOp = nullptr;
     syncToHost = nullptr;
     syncFromHost = nullptr;

@@ -230,6 +230,9 @@ void NormalCPU::run() {
         this->blockInstructionCount += nextOp->blockOpCount;
 #endif
     }
+    if (!nextOp && !thread->terminating) {
+        nextOp = getNextOp();
+    }
 #else
     nextOp->pfn(this, nextOp);
 #endif

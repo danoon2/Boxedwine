@@ -21,11 +21,9 @@ void Jit::dynamic_jump(DecodedOp* op, JitConditional condition) {
         JumpIfCondition(condition, currentEip + op->len + op->imm);
     } else {
         IfCondition(condition); {
-            writeCurrentEip(op->len + op->imm);
-            blockNext1(op);
+            blockNext1(currentEip + op->len + op->imm, op);
         }StartElse(); {
-            writeCurrentEip(op->len);
-            blockNext2(op);
+            blockNext2(currentEip + op->len, op);
         } EndIf();
 }
 }

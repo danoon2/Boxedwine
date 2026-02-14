@@ -277,7 +277,6 @@ public:
     U32 numberOfExtensions = 0;
 #ifdef BOXEDWINE_DYNAMIC
     OpCallback startJITOp = nullptr;
-    void* jumpToNextJIT = nullptr;
     void* emulateSingleOp = nullptr;
     void* syncToHost = nullptr;
     void* syncFromHost = nullptr;

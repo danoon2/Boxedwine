@@ -27,7 +27,9 @@ static JitCodeGen::OpFunction dynamicOps[NUMBER_OF_OPS];
 static U32 dynamicOpsInitialized;
 
 void JitCodeGen::onTestEnd(DecodedOp* op) {
+    writeCurrentEip(0);    
     writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), (DYN_PTR_SIZE)op);
+    blockExit();
 }
 
 static DecodedOp lastOp;
@@ -651,6 +653,10 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
                 if (!nextOp->isBranch()) { // f16 needs this
                     writeCurrentEip(0);
                 }
+                RegPtr eip = getTmpReg();
+                movValue(JitWidth::b32, eip, currentEip - cpu->seg[CS].address);
+                jumpEip(eip);
+                break;
             }
             nextOp = nextOp->next;
         }
@@ -679,9 +685,6 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         jit = startNewJIT(cpu);
         cpu->thread->process->startJITOp = (OpCallback)jit->createStartJITCode();
         delete jit;                    
-        jit = startNewJIT(cpu);
-        cpu->thread->process->jumpToNextJIT = jit->createJumpEip();
-        delete jit;
         createHelpers();
         for (U32 i = 0; i < FLAGS_NULL; i++) {
             jit = startNewJIT(cpu);
@@ -711,10 +714,8 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         return;
     }
     if (!compileOps(op)) {
-        return;
-    }
-    writeCurrentEip(0);
-    blockExit();
+        return;    
+    }    
     onBlockPreCommit(op);
     commitJIT(op);
 }
@@ -743,26 +744,6 @@ bool JitCodeGen::isParamTypeReg(JitCallParamType paramType) {
     return paramType == JitCallParamType::REG_8 || paramType == JitCallParamType::REG_16 || paramType == JitCallParamType::REG_32;
 }
 
-void JitCodeGen::blockCall(DecodedOp* op) {
-    blockNext1(op);
-    if (lastOpEip > currentEip) {
-        blockExit();
-    }
-}
-
-void JitCodeGen::blockDoneCall() {
-    blockDone(false);
-}
-
-void JitCodeGen::blockDone(bool returnEarly) {
-    // cpu->nextOp = cpu->nextOp();
-    jumpEip();
-}
-
-void JitCodeGen::jumpEip() {
-    jmp((DYN_PTR_SIZE)cpu->thread->process->jumpToNextJIT);
-}
-
 static DYN_PTR_SIZE getJitFunctionForCurrentOp(CPU* cpu) {
     DecodedOp* op = cpu->memory->getDecodedOp(cpu->getEipAddress());
     if (!op) {
@@ -777,13 +758,13 @@ static DYN_PTR_SIZE getJitFunctionForCurrentOp(CPU* cpu) {
     return (DYN_PTR_SIZE)op->pfnJitCode;
 }
 
-void JitCodeGen::blockDoneJump() {
-    jumpToEipIfCached();        
-    RegPtr result = callAndReturnPtr(getJitFunctionForCurrentOp);
-    IfNot(DYN_PTR, result);
-        blockExit();
-    EndIf();
-    jmp(result);
+void JitCodeGen::jumpEip(RegPtr reg) {
+    RegPtr tmp = getTmpReg();
+    mov(JitWidth::b32, tmp, reg);
+    jumpToEipIfCached(tmp); // jumpToEipIfCached can modify the passed in reg
+    writeEip(reg);
+    writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+    blockExit();
 }
 
 static DYN_PTR_SIZE dynamic_getNextOp(CPU* cpu) {
@@ -794,73 +775,63 @@ static DYN_PTR_SIZE dynamic_getNextOp(CPU* cpu) {
 }
 
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
-void JitCodeGen::blockNext1(DecodedOp* op) {
+void JitCodeGen::blockNext1(U32 eip, DecodedOp* op) {
     // if (!(*(op->nextJump))) {
     //     *(op->nextJump) = cpu->getNextOp();
     // }
     // cpu->nextOp = *(op->nextJump);
-    RegPtr opReg = getTmpReg();
-    movValue(DYN_PTR, opReg, (DYN_PTR_SIZE)op);
-    // ebx = op->nextJump
-    // mov ebx, [edx + offsetof(DecodedOp, nextJump)]
-    RegPtr nextJump = getTmpReg();
-    readHost(DYN_PTR, createMemPtr(opReg, (U32)offsetof(DecodedOp, data.nextJump)), nextJump, false);
-    opReg = nullptr;
+    if (op->data.nextJump) { // don't code for it if it hasn't happened, this gives about a 1% performance boost by keeping the code more compact
+        RegPtr opReg = getTmpReg();
+        movValue(DYN_PTR, opReg, (DYN_PTR_SIZE)op);
+        // ebx = op->nextJump
+        // mov ebx, [edx + offsetof(DecodedOp, nextJump)]
+        RegPtr nextJump = getTmpReg();
+        readHost(DYN_PTR, createMemPtr(opReg, (U32)offsetof(DecodedOp, data.nextJump)), nextJump, false);
+        opReg = nullptr;
 
-    // eax = *(op->nextJump)
-    RegPtr nextOp = getTmpReg();
-    readHost(DYN_PTR, createMemPtr(nextJump, 0), nextOp, false);
-    // if (!(*(op->nextJump))) 
-    IfNot(DYN_PTR, nextOp);
-        // *(op->nextJump) = cpu->getNextOp();
-        mov(DYN_PTR, nextOp, callAndReturnPtr(dynamic_getNextOp));
-        writeHost(DYN_PTR, createMemPtr(nextJump, (U32)offsetof(DecodedOp, next)), nextOp, false);
-    EndIf();
+        // eax = *(op->nextJump)
+        RegPtr nextOp = getTmpReg();
+        readHost(DYN_PTR, createMemPtr(nextJump, 0), nextOp, false);
+        // if (!(*(op->nextJump))) 
+        If(DYN_PTR, nextOp); {
+            RegPtr jit = getTmpReg();
+            readHost(DYN_PTR, createMemPtr(nextOp, (U32)offsetof(DecodedOp, pfnJitCode)), jit, false);
+            If(DYN_PTR, jit); {
+                jmpHost(jit);
+            } EndIf();
+        } EndIf();
+    }
 
-    // cpu->nextOp = *(op->nextJump);
-    writeCPU(DYN_PTR, offsetof(CPU, nextOp), nextOp);
-
-#ifdef BOXEDWINE_MULTI_THREADED
-    RegPtr jit = getTmpReg();
-    readHost(DYN_PTR, createMemPtr(nextOp, (U32)offsetof(DecodedOp, pfnJitCode)), jit, false);
-    If(DYN_PTR, jit);
-        jmp(jit);
-    EndIf();
-#endif
+    writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+    writeEip(eip - cpu->seg[CS].address);
     blockExit();
 }
 
-void JitCodeGen::blockNext2(DecodedOp* op) {
+void JitCodeGen::blockNext2(U32 eip, DecodedOp* op) {
     // if (!op->next) { 
     //     op->next = cpu->getNextOp(); 
     // }
     // cpu->nextOp = op->next;
 
-    RegPtr opReg = getTmpReg();
-    movValue(DYN_PTR, opReg, (DYN_PTR_SIZE)op);
+    if (op->next) {
+        RegPtr opReg = getTmpReg();
+        movValue(DYN_PTR, opReg, (DYN_PTR_SIZE)op);
 
-    // mov eax, [ebx + offsetof(DecodedOp, next)]
-    RegPtr nextReg = getTmpReg();
-    readHost(DYN_PTR, createMemPtr(opReg, (U32)offsetof(DecodedOp, next)), nextReg, false);
+        // mov eax, [ebx + offsetof(DecodedOp, next)]
+        RegPtr nextReg = getTmpReg();
+        readHost(DYN_PTR, createMemPtr(opReg, (U32)offsetof(DecodedOp, next)), nextReg, false);
 
-    IfNot(DYN_PTR, nextReg); {
-        // op->next = cpu->getNextOp();
-        mov(DYN_PTR, nextReg, callAndReturnPtr(dynamic_getNextOp));
-        // mov [ebx + offsetof(DecodedOp, next)], eax
-        writeHost(DYN_PTR, createMemPtr(opReg, (U32)offsetof(DecodedOp, next)), nextReg, false);
-    } EndIf();
-    opReg = nullptr;
+        If(DYN_PTR, nextReg); {
+            RegPtr jit = getTmpReg();
+            readHost(DYN_PTR, createMemPtr(nextReg, (U32)offsetof(DecodedOp, pfnJitCode)), jit, false);
+            If(DYN_PTR, jit); {
+                jmpHost(jit);
+            } EndIf();
+        } EndIf();
+    }    
 
-    // cpu->nextOp = op->next
-    writeCPU(DYN_PTR, offsetof(CPU, nextOp), nextReg);
-
-#ifdef BOXEDWINE_MULTI_THREADED
-    RegPtr jit = getTmpReg();
-    readHost(DYN_PTR, createMemPtr(nextReg, (U32)offsetof(DecodedOp, pfnJitCode)), jit, false);
-    If(DYN_PTR, jit); {
-        jmp(jit);
-    } EndIf();
-#endif 
+    writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+    writeEip(eip - cpu->seg[CS].address);
     blockExit();
 }
 
@@ -904,7 +875,7 @@ U8* JitCodeGen::createDynamicExecutableMemory(U32* pSize) {
     return begin;
 }
 
-void JitCodeGen::jumpToEipIfCached() {
+void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
     // U32 pageIndex = address >> K_PAGE_SHIFT;
     // DecodedOpPageCache* page = getPageCache(pageIndex, false);
     // if (page) {
@@ -916,7 +887,9 @@ void JitCodeGen::jumpToEipIfCached() {
     //     }
     //     return page->ops[offset];
     // }
-    RegPtr eipReg = readEip();
+    if (!eipReg) {
+        eipReg = readEip();
+    }
     if (cpu->thread->process->hasSetSeg[CS]) {
         addReg(JitWidth::b32, eipReg, getReadOnlySegAddress(CS));
     }
@@ -929,34 +902,22 @@ void JitCodeGen::jumpToEipIfCached() {
     RegPtr tmp = readCPU(DYN_PTR, offsetof(CPU, opCache));
     readHost(DYN_PTR, createMemPtr(tmp, firstPageIndexReg, DYN_PTR_LSL, 0), tmp, false);
 
-    // tmp contains 2nd level of page op cache
-    If(DYN_PTR, tmp);
-        // page & 0x3ff
-        andValue(JitWidth::b32, pageReg, 0x3ff);
+    // page & 0x3ff
+    andValue(JitWidth::b32, pageReg, 0x3ff);
+    readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
+    // tmp contains page of DecodedOp*
+    If(DYN_PTR, tmp); {
+        andValueWithDest(JitWidth::b32, pageReg, eipReg, K_PAGE_MASK);
         readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
-        // tmp contains page of DecodedOp*
-        If(DYN_PTR, tmp);
-            andValue(JitWidth::b32, eipReg, K_PAGE_MASK);
-            readHost(DYN_PTR, createMemPtr(tmp, eipReg, DYN_PTR_LSL, 0), tmp, false);
-            // tmp contains DecodedOp
-            If(DYN_PTR, tmp);
-                readHost(DYN_PTR, createMemPtr(tmp, (U32)offsetof(DecodedOp, pfnJitCode)), tmp, false);
-                // tmp contains pfnJitCode
-                If(DYN_PTR, tmp);
-                    jmp(tmp);
-                EndIf();
-            EndIf();
-        EndIf();
-    EndIf();
-#undef CODE_CACHE_LSL
- }
-
-U8* JitCodeGen::createJumpEip() {
-    jumpToEipIfCached();
-    writeCPU(DYN_PTR, offsetof(CPU, nextOp), callAndReturnOp(common_getNextOp));
-    blockExit();
-
-    return createDynamicExecutableMemory();
+        // tmp contains DecodedOp
+        If(DYN_PTR, tmp); {
+            readHost(DYN_PTR, createMemPtr(tmp, (U32)offsetof(DecodedOp, pfnJitCode)), tmp, false);
+            // tmp contains pfnJitCode
+            If(DYN_PTR, tmp); {
+                jmpHost(tmp);
+            } EndIf();
+        } EndIf();
+    } EndIf();
 }
 
 void jitRunSingleOp(CPU* cpu) {

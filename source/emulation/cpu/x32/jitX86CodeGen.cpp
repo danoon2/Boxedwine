@@ -345,8 +345,8 @@ public:
 
     U32 MarkJumpLocation() override;
     void Goto(U32 location) override;
-    void jmp(RegPtr reg) override;
-    void jmp(DYN_PTR_SIZE address) override;
+    void jmpHost(RegPtr reg) override;
+    void jmpHost(DYN_PTR_SIZE address) override;
     void updateFlagsIfNecessary();    
     RegPtr getReadOnlyFlags(RegPtr tmp = nullptr) override;
     void setFlags(RegPtr flags, U32 mask) override;
@@ -2870,11 +2870,11 @@ void JitX86CodeGen::Goto(U32 location) {
     compiler.jmp(labels[location - 1]);
 }
 
-void JitX86CodeGen::jmp(DYN_PTR_SIZE address) {
+void JitX86CodeGen::jmpHost(DYN_PTR_SIZE address) {
     compiler.jmp(address);
 }
 
-void JitX86CodeGen::jmp(RegPtr reg) {
+void JitX86CodeGen::jmpHost(RegPtr reg) {
     compiler.jmp(RN(reg));
 }
 

@@ -28,7 +28,10 @@ KUnixSocketObject::KUnixSocketObject(U32 domain, U32 type, U32 protocol) : KSock
 {
 }
 
-KUnixSocketObject::~KUnixSocketObject() {    
+KUnixSocketObject::~KUnixSocketObject() {
+    while (!msgs.empty()) {
+        this->msgs.pop();
+    }
     if (this->node) {
         std::shared_ptr<FsNode> parent = this->node->getParent().lock();
         if (parent) {

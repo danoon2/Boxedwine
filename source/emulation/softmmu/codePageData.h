@@ -60,6 +60,7 @@ private:
 	DecodedOp* getPreviousOp(U32 address, U32* foundAddress, DecodedOpPageCache** foundPage);
 	DecodedOpPageCache* getPageCache(U32 pageIndex, bool create);
 	DecodedOpPageCache** pageData[0x400];
+	DecodedOpPageCache* emptyPageCacheLevel1[0x400];
 	U8* getWriteCounts(U32 pageIndex, bool create);
 	U8** writeCounts[0x400];
 	void clearPendingDeallocs(U32 threadId);

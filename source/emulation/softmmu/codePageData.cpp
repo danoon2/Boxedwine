@@ -44,7 +44,10 @@ DecodedOpPageCache::~DecodedOpPageCache() {
 }
 
 DecodedOpCache::DecodedOpCache() {
-	memset(pageData, 0, sizeof(pageData));
+	memset(emptyPageCacheLevel1, 0, sizeof(emptyPageCacheLevel1));
+	for (int i = 0; i < 0x400; i++) {
+		pageData[i] = emptyPageCacheLevel1;
+	}
 	memset(writeCounts, 0, sizeof(writeCounts));
 }
 
@@ -223,12 +226,12 @@ void DecodedOpCache::remove(U32 address, U32 len, bool becauseOfWrite) {
 
 void DecodedOpCache::removeAll() {
 	for (U32 firstIndex = 0; firstIndex < FIRST_INDEX_SIZE; firstIndex++) {
-		if (pageData[firstIndex]) {
+		if (pageData[firstIndex] != emptyPageCacheLevel1) {
 			for (U32 secondIndex = 0; secondIndex < SECOND_INDEX_SIZE; secondIndex++) {
 				delete pageData[firstIndex][secondIndex];
 			}
 			delete[] pageData[firstIndex];
-			pageData[firstIndex] = nullptr;
+			pageData[firstIndex] = emptyPageCacheLevel1;
 		}
 		if (writeCounts[firstIndex]) {
 			for (U32 secondIndex = 0; secondIndex < SECOND_INDEX_SIZE; secondIndex++) {
@@ -315,24 +318,19 @@ bool DecodedOpCache::isAddressDynamic(U32 address, U32 len) {
 DecodedOpPageCache* DecodedOpCache::getPageCache(U32 pageIndex, bool create) {
 	U32 firstIndex = GET_FIRST_INDEX_FROM_PAGE(pageIndex);
 	U32 secondIndex = GET_SECOND_INDEX_FROM_PAGE(pageIndex);
-	DecodedOpPageCache** first = pageData[firstIndex];
-	DecodedOpPageCache* result = nullptr;
-	if (first) {
-		result = first[secondIndex];
-	}
+	DecodedOpPageCache* result = pageData[firstIndex][secondIndex];
+
 	if (!result && create) {
 		BOXEDWINE_CRITICAL_SECTION;
-		if (!first) {
-			first = pageData[firstIndex];
-		}
-		if (first) {
-			result = first[secondIndex];
-		}
-		if (!first) {
-			pageData[firstIndex] = new DecodedOpPageCache * [SECOND_INDEX_SIZE];
-			memset(pageData[firstIndex], 0, sizeof(DecodedOpPageCache*) * SECOND_INDEX_SIZE);
+			
+		if (!result) {
+			result = pageData[firstIndex][secondIndex];
 		}
 		if (!result) {
+			if (pageData[firstIndex] == emptyPageCacheLevel1) {
+				pageData[firstIndex] = new DecodedOpPageCache*[SECOND_INDEX_SIZE];
+				memset(pageData[firstIndex], 0, sizeof(DecodedOpPageCache*) * SECOND_INDEX_SIZE);
+			}
 			result = new DecodedOpPageCache();
 			pageData[firstIndex][secondIndex] = result;
 		}

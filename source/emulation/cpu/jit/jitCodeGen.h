@@ -125,18 +125,13 @@ public:
     void andCPUFlagsImmV2(U32 imm) override;
     void orCPUFlagsImmV2(U32 imm) override;
 
-    void blockCall(DecodedOp* op) override;
-    void blockDone(bool returnEarly) override;
-    void blockDoneCall() override;
+    void blockNext1(U32 eip, DecodedOp* op) override;
+    void blockNext2(U32 eip, DecodedOp* op) override;
+    void jumpEip(RegPtr reg) override;
 
-    void blockNext1(DecodedOp* op) override;
-    void blockNext2(DecodedOp* op) override;
-    void blockDoneJump() override;
-    
     void doJIT(U32 address, DecodedOp* op);
     void onTestEnd(DecodedOp* op) override;
-    U8* createJumpEip();
-    void jumpToEipIfCached();
+    void jumpToEipIfCached(RegPtr eip);
     U8* createEmulateSingleOp();    
     U8* createCalculationCF(LazyFlagType lazyFlagType);
     void getCF(LazyFlagType lazyFlagType, RegPtr result);
@@ -158,7 +153,6 @@ protected:
     bool isParamTypeReg(JitCallParamType paramType);
     bool calculateLongestBlock(DecodedOp* op);
     void removeJIT(DecodedOp* op, U32 count);
-    void jumpEip();
 
     virtual void nakedCall(RegPtr reg) = 0;
     virtual void nakedReturn() = 0;

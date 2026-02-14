@@ -155,8 +155,8 @@ public:
     virtual void pushReg(RegPtr reg) = 0;
     virtual void popReg(RegPtr reg) = 0;
     virtual RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0);
-    virtual void jmp(RegPtr reg) = 0;
-    virtual void jmp(DYN_PTR_SIZE address) = 0;
+    virtual void jmpHost(RegPtr reg) = 0;
+    virtual void jmpHost(DYN_PTR_SIZE address) = 0;
     virtual void forceSyncBackIfNotCached(RegPtr reg) = 0;
 
     RegPtr calculateEffectiveEaa16(DecodedOp* op);
@@ -318,13 +318,10 @@ public:
     virtual bool canJumpInBlock(DecodedOp* op) = 0;
     virtual bool canJumpInBlock(U32 opEip, DecodedOp* op) = 0;
 
-    virtual void blockCall(DecodedOp* op) = 0;
-    virtual void blockDone(bool returnEarly) = 0;
-    virtual void blockDoneCall() = 0;
-    virtual void blockNext1(DecodedOp* op) = 0;
-    virtual void blockNext2(DecodedOp* op) = 0;
-    virtual void blockDoneJump() = 0;
+    virtual void blockNext1(U32 eip, DecodedOp* op) = 0;
+    virtual void blockNext2(U32 eip, DecodedOp* op) = 0;
     virtual void blockExit(bool syncCache = true) = 0;
+    virtual void jumpEip(RegPtr reg) = 0;
 
     virtual void JumpInBlock(U32 address) = 0;
     virtual void StartElse() = 0;
