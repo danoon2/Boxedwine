@@ -480,7 +480,10 @@ void Jit::dynamic_jmpE16(DecodedOp* op) {
     jumpEip(eip);
 }
 void Jit::dynamic_jmpE32(DecodedOp* op) {
-    jumpEip(read(JitWidth::b32, calculateEaa(op)));
+    RegPtr eaa = calculateEaa(op);
+    RegPtr eip = read(JitWidth::b32, eaa);
+    eaa = nullptr;
+    jumpEip(eip);
 }
 void Jit::dynamic_callFarE16(DecodedOp* op) {
     emulateSingleOp();
