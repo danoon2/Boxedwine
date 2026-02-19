@@ -501,7 +501,7 @@ enum class DirectType {
     SetCC
 };
 static int countcc;
-void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> cmpCallback, std::function<void()> fallback) {
+void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback) {
     DecodedOp* nextOp = op->next;
     U32 skipped = 0;
     DirectType directType = DirectType::None;
@@ -547,7 +547,7 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> cmpCallback, std
             fallback();
             return;
         }
-        cmpCallback();
+        callback();
         postCompile(op);
 
         nextOp = op->next;
@@ -833,30 +833,6 @@ void JitCodeGen::blockNext2(U32 eip, DecodedOp* op) {
     writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
     writeEip(eip - cpu->seg[CS].address);
     blockExit();
-}
-
-void writed(U32 address, U32 value) {
-    KThread::currentThread()->memory->writed(address, value);
-}
-
-void writew(U32 address, U16 value) {
-    KThread::currentThread()->memory->writew(address, value);
-}
-
-void writeb(U32 address, U8 value) {
-    KThread::currentThread()->memory->writeb(address, value);
-}
-
-U32 readd(U32 address) {
-    return KThread::currentThread()->memory->readd(address);
-}
-
-U32 readw(U32 address) {
-    return KThread::currentThread()->memory->readw(address);
-}
-
-U32 readb(U32 address) {
-    return KThread::currentThread()->memory->readb(address);
 }
 
 U8* JitCodeGen::createDynamicExecutableMemory(U32* pSize) {

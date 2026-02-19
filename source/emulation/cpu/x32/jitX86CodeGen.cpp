@@ -373,6 +373,8 @@ public:
 
     void direct_cmp(JitWidth width, RegPtr left, RegPtr right) override;
     void direct_cmp(JitWidth width, RegPtr left, U32 right) override;
+    void direct_test(JitWidth width, RegPtr left, RegPtr right) override;
+    void direct_test(JitWidth width, RegPtr left, U32 right) override;
     void direct_jump(JitConditional condition, U32 address) override;
     void direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) override;
     void direct_setcc(JitConditional condition, RegPtr dst) override;
@@ -5324,6 +5326,31 @@ void JitX86CodeGen::direct_cmp(JitWidth width, RegPtr left, U32 right) {
         compiler.cmp(R8(left), right);
     } else {
         kpanic("JitX86CodeGen::direct_cmp");
+    }
+}
+
+void JitX86CodeGen::direct_test(JitWidth width, RegPtr left, RegPtr right) {
+    if (width == JitWidth::b32) {
+        compiler.test(R32(left), R32(right));
+    } else if (width == JitWidth::b16) {
+        compiler.test(R16(left), R16(right));
+    } else if (width == JitWidth::b8) {
+        compiler.test(R8(left), R8(right));
+    } else {
+        kpanic("JitX86CodeGen::direct_test");
+    }
+
+}
+
+void JitX86CodeGen::direct_test(JitWidth width, RegPtr left, U32 right) {
+    if (width == JitWidth::b32) {
+        compiler.test(R32(left), right);
+    } else if (width == JitWidth::b16) {
+        compiler.test(R16(left), right);
+    } else if (width == JitWidth::b8) {
+        compiler.test(R8(left), right);
+    } else {
+        kpanic("JitX86CodeGen::direct_test");
     }
 }
 

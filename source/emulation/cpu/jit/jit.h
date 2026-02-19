@@ -386,10 +386,12 @@ public:
 
     virtual void direct_cmp(JitWidth width, RegPtr left, RegPtr right) = 0;
     virtual void direct_cmp(JitWidth width, RegPtr left, U32 right) = 0;
+    virtual void direct_test(JitWidth width, RegPtr left, RegPtr right) = 0;
+    virtual void direct_test(JitWidth width, RegPtr left, U32 right) = 0;
     virtual void direct_jump(JitConditional condition, U32 address) = 0;
     virtual void direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) = 0;    
     virtual void direct_setcc(JitConditional condition, RegPtr dst) = 0;
-    virtual void tryDirect(DecodedOp* op, std::function<void()> cmpCallback, std::function<void()> fallback) = 0;
+    virtual void tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback) = 0;
     virtual void preCompile(DecodedOp* op, bool skippedOp = false) = 0;
     virtual void compile(DecodedOp* op) = 0;
     virtual void postCompile(DecodedOp* op) = 0;

@@ -47,7 +47,7 @@ public:
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void compile(DecodedOp* op) override;
     void postCompile(DecodedOp* op) override;
-    void tryDirect(DecodedOp* op, std::function<void()> cmpCallback, std::function<void()> fallback) override;
+    void tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback) override;
     virtual bool supportsDirectCondition(JitConditional condition) { return true; }
 
     JitConditional getJumpConditionFromOp(DecodedOp* op);
