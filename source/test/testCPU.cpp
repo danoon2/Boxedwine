@@ -93,9 +93,9 @@ void setup() {
         KThread* thread = process->createThread();
         cpu = thread->cpu;
         KThread::setCurrentThread(thread);
-        process->memory->mmap(thread, ((STACK_ADDRESS >> K_PAGE_SHIFT)-PAGES_PER_SEG) << K_PAGE_SHIFT, PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_WRITE | K_PROT_READ|K_PROT_READ, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+        process->memory->mmap(thread, ((STACK_ADDRESS >> K_PAGE_SHIFT) - PAGES_PER_SEG) << K_PAGE_SHIFT, PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_WRITE | K_PROT_READ | K_PROT_READ, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
         process->memory->mmap(thread, CODE_ADDRESS, PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_WRITE | K_PROT_READ | K_PROT_READ | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
-        
+
         memory->mmap(thread, HEAP_ADDRESS, PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
 
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -103,7 +103,7 @@ void setup() {
 #endif
     }
 
-    for (int i=0;i<6;i++) {
+    for (int i = 0; i < 6; i++) {
         cpu->seg[i].address = 0;
         cpu->seg[i].value = 0;
     }
@@ -140,7 +140,7 @@ void setup() {
     cpu->seg[CS].value = CODE_SEG;
     cpu->seg[DS].address = HEAP_ADDRESS;
     cpu->seg[DS].value = HEAP_SEG;
-    cpu->seg[SS].address = STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG;
+    cpu->seg[SS].address = STACK_ADDRESS - K_PAGE_SIZE * PAGES_PER_SEG;
     cpu->seg[SS].value = STACK_SEG;
     cpu->seg[ES].address = 0;
     cpu->seg[ES].value = 0;
@@ -152,11 +152,11 @@ void setup() {
     cpu->thread->process->hasSetSeg[DS] = true;
     cpu->thread->process->hasSetSeg[SS] = true;
 
-    memory->memset(CODE_ADDRESS, 0, K_PAGE_SIZE*PAGES_PER_SEG);
-    memory->memset(STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG, 0, K_PAGE_SIZE*PAGES_PER_SEG);
-    memory->memset(HEAP_ADDRESS, 0, K_PAGE_SIZE*PAGES_PER_SEG);
+    memory->memset(CODE_ADDRESS, 0, K_PAGE_SIZE * PAGES_PER_SEG);
+    memory->memset(STACK_ADDRESS - K_PAGE_SIZE * PAGES_PER_SEG, 0, K_PAGE_SIZE * PAGES_PER_SEG);
+    memory->memset(HEAP_ADDRESS, 0, K_PAGE_SIZE * PAGES_PER_SEG);
 
-    ESP=4096;
+    ESP = 4096;
 }
 
 void pushCode8(int value) {
@@ -166,32 +166,32 @@ void pushCode8(int value) {
 
 void pushCode16(int value) {
     memory->writew(cseip, value);
-    cseip+=2;
+    cseip += 2;
 }
 
 void pushCode32(int value) {
     memory->writed(cseip, value);
-    cseip+=4;
+    cseip += 4;
 }
 
 void newInstruction(int flags) {
-    cseip=CODE_ADDRESS;
+    cseip = CODE_ADDRESS;
     cpu->lazyFlagType = FLAGS_NONE;
     cpu->setFlags(flags, FMASK_ALL);
     //cpu.blocks.clear();
-    EAX=0;
-    ECX=0;
-    EDX=0;
-    EBP=0;
-    ESP=4096;
-    EBP=0;
-    ESI=0;
-    EDI=0;
-    cpu->eip.u32=0;
+    EAX = 0;
+    ECX = 0;
+    EDX = 0;
+    EBP = 0;
+    ESP = 4096;
+    EBP = 0;
+    ESI = 0;
+    EDI = 0;
+    cpu->eip.u32 = 0;
     memory->clearOpCache();
 }
 
-void newInstruction(int instruction, int flags, U8 prefix = 0, U8 prefix2 = 0) {    
+void newInstruction(int instruction, int flags, U8 prefix = 0, U8 prefix2 = 0) {
     newInstruction(flags);
     if (prefix) {
         pushCode8(prefix);
@@ -250,7 +250,7 @@ struct Data {
     U32 result;
     U32 resultvar2;
     U32 flags;
-    U32 constant;    
+    U32 constant;
     int fCF;
     int fOF;
     int fZF;
@@ -282,17 +282,17 @@ struct Data {
 #define allocDataNoFlags(var1, var2, result) {1, var1, var2, result, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false, 0, 0, 0, 0, 0}
 
 void pushConstant(struct Data* data) {
-    if (data->constantWidth==8) {
+    if (data->constantWidth == 8) {
         pushCode8(data->constant);
-    } else if (data->constantWidth==16) {
+    } else if (data->constantWidth == 16) {
         pushCode16(data->constant);
-    } else if (data->constantWidth==32) {
+    } else if (data->constantWidth == 32) {
         pushCode32(data->constant);
     }
 }
 
-void assertResult(struct Data* data, CPU* cpu, int instruction, U32 resultvar1, U32 resultvar2, int r1, int r2, U32 address, int bits, bool ignoreFlags=false) {
-    if (data->useResultvar2 && data->resultvar2!=resultvar2) {
+void assertResult(struct Data* data, CPU* cpu, int instruction, U32 resultvar1, U32 resultvar2, int r1, int r2, U32 address, int bits, bool ignoreFlags = false) {
+    if (data->useResultvar2 && data->resultvar2 != resultvar2) {
         failed("instruction: %d var2: %d != %d", instruction, resultvar2, data->resultvar2);
     }
     if (!data->dontUseResultAndCheckSFZF && data->result != resultvar1) {
@@ -328,27 +328,27 @@ void assertResult(struct Data* data, CPU* cpu, int instruction, U32 resultvar1, 
             }
         }
     }
-    if (bits==8 || bits==16) {
-        if (r1>=0) {
+    if (bits == 8 || bits == 16) {
+        if (r1 >= 0) {
             if ((cpu->reg[r1].u32 & 0xFFFF0000) != (DEFAULT & 0xFFFF0000)) {
                 failed("instruction: %d reg overwrite %d", instruction, r1);
             }
         }
-        if (r2>=0) {
+        if (r2 >= 0) {
             if ((cpu->reg[r2].u32 & 0xFFFF0000) != (DEFAULT & 0xFFFF0000)) {
                 failed("instruction: %d reg overwrite %d", instruction, r2);
             }
         }
     }
     if (bits == 8) {
-        if (address!=0) {
+        if (address != 0) {
             if ((memory->readd(address) & 0xFFFFFF00) != (DEFAULT & 0xFFFFFF00)) {
                 failed("instruction: %d memory overwrite %d", instruction, address);
             }
         }
     }
-    if (bits==16) {
-        if (address!=0) {
+    if (bits == 16) {
+        if (address != 0) {
             if ((memory->readd(address) & 0xFFFF0000) != (DEFAULT & 0xFFFF0000)) {
                 failed("instruction: %d memory overwrite %d", instruction, address);
             }
@@ -358,7 +358,7 @@ void assertResult(struct Data* data, CPU* cpu, int instruction, U32 resultvar1, 
 #define E8(rm) (E(rm) % 4)
 #define G8(rm) (G(rm) % 4)
 
-void Eb(int instruction, int which, struct Data* data, bool includeLock = false) {	
+void Eb(int instruction, int which, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int eb;
         int rm;
@@ -374,15 +374,15 @@ void Eb(int instruction, int which, struct Data* data, bool includeLock = false)
             *reg = (U8)data->var1;
             runTestCPU();
             assertResult(data, cpu, instruction, *reg, 0, E8(rm), -1, 0, 8);
-            
+
             newInstructionWithRM(instruction, rm, data->flags);
-            
+
             // this will generate flags so the above code can ignore flag generation
             // cmp eax, 0
             pushCode8(0x83);
             pushCode8(0xf8);
             pushCode8(0);
-            
+
             reg = cpu->reg8[E(rm)];
             cpu->reg[E8(rm)].u32 = DEFAULT;
             *reg = (U8)data->var1;
@@ -439,15 +439,15 @@ void EbAlAx(int instruction, int which, struct Data* data, int useAX) {
         int eb;
         int rm;
 
-        for (eb = 0; eb < 8; eb++) {            
+        for (eb = 0; eb < 8; eb++) {
             U8* reg;
 
-            if (eb==0 || eb==4)
+            if (eb == 0 || eb == 4)
                 continue;
 
             rm = eb | (which << 3) | 0xC0;
-            reg = cpu->reg8[E(rm)];			
-            newInstructionWithRM(instruction, rm, data->flags);			
+            reg = cpu->reg8[E(rm)];
+            newInstructionWithRM(instruction, rm, data->flags);
             cpu->reg[E8(rm)].u32 = DEFAULT;
             EAX = DEFAULT;
             *reg = (U8)data->var2;
@@ -469,7 +469,7 @@ void EbAlAx(int instruction, int which, struct Data* data, int useAX) {
             pushCode8(0x39);
             pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
             runTestCPU();
-            assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 8, true);            
+            assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 8, true);
         }
 
         rm = (which << 3);
@@ -521,9 +521,9 @@ void EwAxDx(int instruction, int which, struct Data* data, int useDX) {
         for (ew = 0; ew < 8; ew++) {
             Reg* reg;
 
-            if (ew==0)
+            if (ew == 0)
                 continue;
-            if (useDX && ew==2)
+            if (useDX && ew == 2)
                 continue;
             rm = ew | (which << 3) | 0xC0;
             newInstructionWithRM(instruction, rm, data->flags);
@@ -533,7 +533,7 @@ void EwAxDx(int instruction, int which, struct Data* data, int useDX) {
             reg->u32 = DEFAULT;
             AX = data->var2;
             DX = data->var1;
-            reg->u16=data->constant;
+            reg->u16 = data->constant;
             runTestCPU();
             assertResult(data, cpu, instruction, AX, DX, 0, 2, 0, 16);
 
@@ -601,9 +601,9 @@ void EdEaxEdx(int instruction, int which, struct Data* data, int useEdx) {
         for (ed = 0; ed < 8; ed++) {
             Reg* reg;
 
-            if (ed==0)
+            if (ed == 0)
                 continue;
-            if (useEdx && ed==2)
+            if (useEdx && ed == 2)
                 continue;
             rm = ed | (which << 3) | 0xC0;
             newInstructionWithRM(instruction, rm, data->flags);
@@ -614,7 +614,7 @@ void EdEaxEdx(int instruction, int which, struct Data* data, int useEdx) {
             reg->u32 = data->constant;
             runTestCPU();
             assertResult(data, cpu, instruction, EAX, EDX, 0, 2, 0, 32);
-            
+
             if (ed == 4) {
                 continue;
             }
@@ -640,8 +640,8 @@ void EdEaxEdx(int instruction, int which, struct Data* data, int useEdx) {
             pushCode32(200);
         else
             pushCode16(200);
-        EAX=data->var2;
-        EDX=data->var1;
+        EAX = data->var2;
+        EDX = data->var1;
         memory->writed(cpu->seg[DS].address + 200, DEFAULT);
         memory->writed(cpu->seg[DS].address + 200, data->constant);
         runTestCPU();
@@ -688,7 +688,7 @@ void EbCl(int instruction, int which, struct Data* data) {
                     useFlags();  // for dynamic core, this will result in a different code path because the flags won't be needed
                 }
                 runTestCPU();
-                assertResult(data, cpu, instruction, *reg, 0, E8(rm), -1, 0, 8, i==1);
+                assertResult(data, cpu, instruction, *reg, 0, E8(rm), -1, 0, 8, i == 1);
             }
 
             rm = (which << 3);
@@ -710,7 +710,7 @@ void EbCl(int instruction, int which, struct Data* data) {
             }
             runTestCPU();
             result = memory->readb(cpu->seg[DS].address + 200);
-            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8, i==1);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8, i == 1);
             data++;
         }
     }
@@ -740,7 +740,7 @@ void EbIb(int instruction, int which, struct Data* data, bool address32, bool in
                     // flags will be calculate in JIT
                     U8 reg = 5;
                     if (eb == 5) {
-                       reg = 6;
+                        reg = 6;
                     }
                     pushCode8(0x9c); // push flags
                     pushCode8(0x58 + reg); // pop reg
@@ -791,7 +791,7 @@ void EbRegIb(int instruction, U8* e, int rm, struct Data* data) {
         newInstruction(instruction, 0);
         pushCode8(data->var2);
         cpu->reg[E8(rm)].u32 = DEFAULT;
-        *e=data->var1;
+        *e = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, *e, 0, E8(rm), -1, 0, 8);
         data++;
@@ -940,8 +940,8 @@ void GbEb(int instruction, struct Data* data) {
                 g = cpu->reg8[G(rm)];
                 cpu->reg[E8(rm)].u32 = DEFAULT;
                 cpu->reg[G8(rm)].u32 = DEFAULT;
-                *e=data->var2;
-                *g=data->var1;
+                *e = data->var2;
+                *g = data->var1;
                 runTestCPU();
                 assertResult(data, cpu, instruction, *g, *e, E8(rm), G8(rm), 0, 8);
             }
@@ -965,7 +965,7 @@ void GbEb(int instruction, struct Data* data) {
             memory->writeb(cpu->seg[DS].address + 200, data->var2);
             g = cpu->reg8[G(rm)];
             cpu->reg[G8(rm)].u32 = DEFAULT;
-            *g=data->var1;
+            *g = data->var1;
             runTestCPU();
             assertResult(data, cpu, instruction, *g, memory->readb(cpu->seg[DS].address + 200), G8(rm), -1, cpu->seg[DS].address + 200, 8);
         }
@@ -987,21 +987,21 @@ void Ew(int instruction, int which, struct Data* data, bool includeLock = false)
             newInstructionWithRM(instruction, rm, data->flags);
             reg = &cpu->reg[E(rm)];
             reg->u32 = DEFAULT;
-            reg->u16=data->var1;
+            reg->u16 = data->var1;
             runTestCPU();
             assertResult(data, cpu, instruction, reg->u16, 0, E(rm), -1, 0, 16);
-            
+
             newInstructionWithRM(instruction, rm, data->flags);
-            
+
             // this will generate flags so the above code can ignore flag generation
             // cmp eax, 0
             pushCode8(0x83);
             pushCode8(0xf8);
             pushCode8(0);
-            
+
             reg = &cpu->reg[E(rm)];
             reg->u32 = DEFAULT;
-            reg->u16=data->var1;
+            reg->u16 = data->var1;
             runTestCPU();
             assertResult(data, cpu, instruction, reg->u16, 0, E(rm), -1, 0, 16, true);
         }
@@ -1074,7 +1074,7 @@ void EwCl(int instruction, int which, struct Data* data) {
                     useFlags();  // for dynamic core, this will result in a different code path because the flags won't be needed
                 }
                 runTestCPU();
-                assertResult(data, cpu, instruction, reg->u16, 0, E(rm), -1, 0, 16, i==1);
+                assertResult(data, cpu, instruction, reg->u16, 0, E(rm), -1, 0, 16, i == 1);
             }
 
             rm = (which << 3);
@@ -1096,7 +1096,7 @@ void EwCl(int instruction, int which, struct Data* data) {
             }
             runTestCPU();
             result = memory->readw(cpu->seg[DS].address + 200);
-            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16, i==1);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16, i == 1);
             data++;
         }
         data = start;
@@ -1242,7 +1242,7 @@ void EwIb(int instruction, int which, struct Data* data, bool includeLock = fals
             pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
             runTestCPU();
             result = memory->readw(cpu->seg[DS].address + offset);
-            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 16, true);            
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 16, true);
 
             if (!includeLock) {
                 break;
@@ -1266,7 +1266,7 @@ void EwIw(int instruction, int which, struct Data* data, bool includeLock = fals
             pushCode16(data->var2);
             e = &cpu->reg[E(rm)];
             e->u32 = DEFAULT;
-            e->u16=data->var1;
+            e->u16 = data->var1;
             runTestCPU();
             assertResult(data, cpu, instruction, e->u16, 0, E(rm), -1, 0, 16);
         }
@@ -1417,12 +1417,12 @@ void GbEw(int instruction, struct Data* data) {
         int gw;
         int rm;
 
-        for (ew = 0; ew < 8; ew++) {            
+        for (ew = 0; ew < 8; ew++) {
             for (gw = 0; gw < 8; gw++) {
                 Reg* e;
                 Reg* g;
                 U8* g8;
-                
+
                 if (gw == 4) {
                     continue; // x64 doesn't code for the valid test
                 }
@@ -1433,7 +1433,7 @@ void GbEw(int instruction, struct Data* data) {
                 e = &cpu->reg[G(rm)];
                 g = &cpu->reg[E(rm)];
                 g8 = cpu->reg8[E(rm)];
-                
+
                 e->u32 = DEFAULT;
                 g->u32 = DEFAULT;
                 e->u16 = data->var1;
@@ -1480,7 +1480,7 @@ void GbEd(int instruction, struct Data* data) {
                 Reg* e;
                 Reg* g;
                 U8* g8;
-                
+
                 if (gw == 4) {
                     continue; // x64 doesn't code for the valid test
                 }
@@ -1490,7 +1490,7 @@ void GbEd(int instruction, struct Data* data) {
                 e = &cpu->reg[G(rm)];
                 g = &cpu->reg[E(rm)];
                 g8 = cpu->reg8[E(rm)];
-                
+
                 g->u32 = DEFAULT;
                 e->u32 = data->var1;
                 *g8 = data->var2;
@@ -1534,13 +1534,13 @@ void GwEd(int instruction, struct Data* data) {
             for (gw = 0; gw < 8; gw++) {
                 Reg* e;
                 Reg* g;
-                
+
                 rm = ew | (gw << 3) | 0xC0;
                 newInstructionWithRM(instruction, rm, data->flags);
                 pushConstant(data);
                 e = &cpu->reg[G(rm)];
                 g = &cpu->reg[E(rm)];
-                
+
                 g->u32 = DEFAULT;
                 e->u32 = data->var1;
                 g->u16 = data->var2;
@@ -1585,12 +1585,12 @@ void EwGwCl(int instruction, struct Data* data) {
                 Reg* e;
                 Reg* g;
 
-                if (ew == gw || ew==1 || gw==1)
+                if (ew == gw || ew == 1 || gw == 1)
                     continue;
                 rm = ew | (gw << 3) | 0xC0;
                 newInstructionWithRM(instruction, rm, data->flags);
-                ECX=DEFAULT;
-                CL=data->constant;
+                ECX = DEFAULT;
+                CL = data->constant;
                 e = &cpu->reg[E(rm)];
                 g = &cpu->reg[G(rm)];
                 e->u32 = DEFAULT;
@@ -1606,7 +1606,7 @@ void EwGwCl(int instruction, struct Data* data) {
             Reg* g;
             U32 result;
 
-            if (gw==1)
+            if (gw == 1)
                 continue;
             rm = (gw << 3);
             if (cpu->big)
@@ -1618,8 +1618,8 @@ void EwGwCl(int instruction, struct Data* data) {
                 pushCode32(200);
             else
                 pushCode16(200);
-            ECX=DEFAULT;
-            CL=data->constant;
+            ECX = DEFAULT;
+            CL = data->constant;
             memory->writed(cpu->seg[DS].address + 200, DEFAULT);
             memory->writew(cpu->seg[DS].address + 200, data->var1);
             g = &cpu->reg[G(rm)];
@@ -1725,7 +1725,7 @@ void EwGwEffective(int instruction, struct Data* data, bool includeLock = false)
                 pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 result = memory->readw(cpu->seg[DS].address + addressOffset + offset);
-                assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + addressOffset + offset, 16, true);                
+                assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + addressOffset + offset, 16, true);
             }
             if (!includeLock) {
                 break;
@@ -1819,7 +1819,7 @@ void EdGdEffective(int instruction, struct Data* data, bool includeLock = false)
                 pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
                 runTestCPU();
                 result = memory->readd(cpu->seg[DS].address + addressOffset + offset);
-                assertResult(data, cpu, instruction, result, g->u32, G(rm), -1, cpu->seg[DS].address + addressOffset + offset, 32, true);                
+                assertResult(data, cpu, instruction, result, g->u32, G(rm), -1, cpu->seg[DS].address + addressOffset + offset, 32, true);
             }
             if (!includeLock) {
                 break;
@@ -1950,11 +1950,11 @@ void GwEw(int instruction, struct Data* data, bool includeLock = false) {
                 g = &cpu->reg[gw];
                 e->u32 = DEFAULT;
                 g->u32 = DEFAULT;
-                e->u16=data->var2;
-                g->u16=data->var1;
+                e->u16 = data->var2;
+                g->u16 = data->var1;
                 runTestCPU();
                 assertResult(data, cpu, instruction, g->u16, e->u16, ew, gw, 0, 16);
-                
+
                 if (gw == 4 || ew == 4) {
                     continue;
                 }
@@ -2014,7 +2014,7 @@ void GwEw(int instruction, struct Data* data, bool includeLock = false) {
                 g = &cpu->reg[gw];
                 g->u32 = DEFAULT;
                 g->u16 = data->var1;
-                
+
                 pushCode8(0x39);
                 pushCode8(0xc0); // cmp eax, eax: this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
 
@@ -2045,15 +2045,15 @@ void Ed(int instruction, int which, struct Data* data, bool includeLock = false)
             reg->u32 = data->var1;
             runTestCPU();
             assertResult(data, cpu, instruction, reg->u32, 0, ed, -1, 0, 32);
-            
+
             newInstructionWithRM(instruction, rm, data->flags);
-            
+
             // this will generate flags so the above code can ignore flag generation
             // cmp eax, 0
             pushCode8(0x83);
             pushCode8(0xf8);
             pushCode8(0);
-            
+
             reg = &cpu->reg[ed];
             reg->u32 = data->var1;
             runTestCPU();
@@ -2125,7 +2125,7 @@ void EdCl(int instruction, int which, struct Data* data) {
                     useFlags(); // for dynamic core, this will result in a different code path because the flags won't be needed
                 }
                 runTestCPU();
-                assertResult(data, cpu, instruction, reg->u32, 0, ed, -1, 0, 32, i==1);
+                assertResult(data, cpu, instruction, reg->u32, 0, ed, -1, 0, 32, i == 1);
             }
 
             rm = (which << 3);
@@ -2264,7 +2264,7 @@ void EdIb(int instruction, int which, struct Data* data, bool includeLock = fals
             runTestCPU();
             result = memory->readd(cpu->seg[DS].address + addressOffset);
             assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + addressOffset, 32, true);
-            
+
             if (!includeLock) {
                 break;
             }
@@ -2277,7 +2277,7 @@ void EdRegId(int instruction, Reg* e, int ed, struct Data* data) {
     while (data->valid) {
         newInstruction(instruction, 0);
         pushCode32(data->var2);
-        e->u32=data->var1;
+        e->u32 = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, e->u32, 0, ed, -1, 0, 32);
         data++;
@@ -2319,7 +2319,7 @@ void EdId(int instruction, int which, struct Data* data, bool includeLock = fals
             memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
             runTestCPU();
             result = memory->readd(cpu->seg[DS].address + addressOffset);
-            assertResult(data, cpu, instruction, result, 0, -1, -1, 0, 0);            
+            assertResult(data, cpu, instruction, result, 0, -1, -1, 0, 0);
 
             if (!includeLock) {
                 break;
@@ -2627,7 +2627,7 @@ void EdGdCl(int instruction, struct Data* data) {
                 Reg* e;
                 Reg* g;
 
-                if (ed == gd || ed==1 || gd==1)
+                if (ed == gd || ed == 1 || gd == 1)
                     continue;
                 rm = ed | (gd << 3) | 0xC0;
                 newInstructionWithRM(instruction, rm, data->flags);
@@ -2646,7 +2646,7 @@ void EdGdCl(int instruction, struct Data* data) {
             Reg* g;
             U32 result;
 
-            if (gd==1)
+            if (gd == 1)
                 continue;
             rm = (gd << 3);
             if (cpu->big)
@@ -2769,21 +2769,21 @@ void AlIb(int instruction, struct Data* data) {
         AL = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, AL, 0, 0, -1, 0, 8);
-        
+
         newInstruction(instruction, data->flags);
         pushCode8(data->var2);
-        
+
         // this will generate flags so the above code can ignore flag generation
         // cmp eax, 0
         pushCode8(0x83);
         pushCode8(0xf8);
         pushCode8(0);
-        
+
         EAX = DEFAULT;
         AL = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, AL, 0, 0, -1, 0, 8, true);
-        
+
         data++;
     }
 }
@@ -2796,21 +2796,21 @@ void AxIw(int instruction, struct Data* data) {
         AX = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 16);
-        
+
         newInstruction(instruction, data->flags);
         pushCode16(data->var2);
-        
+
         // this will generate flags so the above code can ignore flag generation
         // cmp eax, 0
         pushCode8(0x83);
         pushCode8(0xf8);
         pushCode8(0);
-        
+
         EAX = DEFAULT;
         AX = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 16, true);
-        
+
         data++;
     }
 }
@@ -2823,21 +2823,21 @@ void EaxId(int instruction, struct Data* data) {
         EAX = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, EAX, 0, -1, -1, 0, 0);
-       
+
         // this will ignore flags, might take a different path
         newInstruction(instruction, data->flags);
         pushCode32(data->var2);
-        
+
         // this will generate flags so the above code can ignore flag generation
         // cmp eax, 0
         pushCode8(0x83);
         pushCode8(0xf8);
         pushCode8(0);
-        
+
         EAX = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, EAX, 0, -1, -1, 0, 0, true);
-        
+
         data++;
     }
 }
@@ -2850,15 +2850,15 @@ void EwReg(int instruction, int ew, struct Data* data) {
         reg->u16 = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, reg->u16, 0, ew, -1, 0, 16);
-        
+
         newInstruction(instruction, data->flags);
-        
+
         // this will generate flags so the above code can ignore flag generation
         // cmp eax, 0
         pushCode8(0x83);
         pushCode8(0xf8);
         pushCode8(0);
-        
+
         reg->u32 = DEFAULT;
         reg->u16 = data->var1;
         runTestCPU();
@@ -2877,20 +2877,20 @@ void EbReg(int instruction, int eb, struct Data* data) {
         *e = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, reg->u8, 0, eb, -1, 0, 8);
-        
+
         newInstruction(instruction, data->flags);
-        
+
         // this will generate flags so the above code can ignore flag generation
         // cmp eax, 0
         pushCode8(0x83);
         pushCode8(0xf8);
         pushCode8(0);
-        
+
         reg->u32 = DEFAULT;
         *e = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, reg->u8, 0, eb, -1, 0, 8, true);
-        
+
         data++;
     }
 }
@@ -2900,12 +2900,12 @@ void LeaGw() {
     int rm;
     Reg* reg;
 
-    for (i=0;i<8;i++) {
-        if (i==6) {
+    for (i = 0; i < 8; i++) {
+        if (i == 6) {
             continue;
         }
         newInstruction(0x8d, 0);
-        rm = i<<3 | 0x44;
+        rm = i << 3 | 0x44;
         pushCode8(rm);
         pushCode8(8);
         reg = &cpu->reg[i];
@@ -2913,8 +2913,8 @@ void LeaGw() {
         ESI = DEFAULT;
         SI = 0xABCD;
         runTestCPU();
-        assertTrue(reg->u16==(0xABCD+8));
-        assertTrue((reg->u32 & 0xFFFF0000)==(DEFAULT & 0xFFFF0000));
+        assertTrue(reg->u16 == (0xABCD + 8));
+        assertTrue((reg->u32 & 0xFFFF0000) == (DEFAULT & 0xFFFF0000));
     }
 }
 
@@ -2923,18 +2923,18 @@ void LeaGd() {
     int rm;
     Reg* reg;
 
-    for (i=0;i<8;i++) {
-        if (i==3) {
+    for (i = 0; i < 8; i++) {
+        if (i == 3) {
             continue;
         }
         newInstruction(0x8d, 0);
-        rm = i<<3 | 0x43;
+        rm = i << 3 | 0x43;
         pushCode8(rm);
         pushCode8(8);
         reg = &cpu->reg[i];
-        EBX=0xABCD1234;
+        EBX = 0xABCD1234;
         runTestCPU();
-        assertTrue(reg->u32==(0xABCD1234+8));
+        assertTrue(reg->u32 == (0xABCD1234 + 8));
     }
 }
 
@@ -2945,19 +2945,19 @@ void EdReg(int instruction, int ed, struct Data* data) {
         reg->u32 = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, reg->u32, 0, -1, -1, 0, 0);
-        
+
         newInstruction(instruction, data->flags);
-        
+
         // this will generate flags so the above code can ignore flag generation
         // cmp eax, 0
         pushCode8(0x83);
         pushCode8(0xf8);
         pushCode8(0);
-        
+
         reg->u32 = data->var1;
         runTestCPU();
         assertResult(data, cpu, instruction, reg->u32, 0, -1, -1, 0, 0, true);
-        
+
         data++;
     }
 }
@@ -2989,73 +2989,73 @@ void Reg32Reg32(int instruction, struct Data* data, Reg* r1, Reg* r2) {
 void push16Reg(int instruction, Reg* reg) {
     newInstruction(instruction, 0);
     U32 value = 0xDDDD1234;
-    ESP-=2;
-    if (reg==&cpu->reg[4]) {
+    ESP -= 2;
+    if (reg == &cpu->reg[4]) {
         value = reg->u16;
     } else {
         reg->u32 = value;
-    }    
-    memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    memory->writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
-    memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
+    }
+    memory->writew(cpu->seg[SS].address + ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address + ESP - 2, 0xCCCC);
+    memory->writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
     runTestCPU();
-    assertTrue(ESP==4092);
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP)==(U16)value);
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
+    assertTrue(ESP == 4092);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP) == (U16)value);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP + 2) == 0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP - 2) == 0xBBBB);
 }
 
 void Pushf(int instruction) {
     newInstruction(instruction, 0);
-    cpu->flags = FMASK_TEST|2;
-    ESP-=2;
-    memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    memory->writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
-    memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
+    cpu->flags = FMASK_TEST | 2;
+    ESP -= 2;
+    memory->writew(cpu->seg[SS].address + ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address + ESP - 2, 0xCCCC);
+    memory->writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
     runTestCPU();
-    assertTrue(ESP==4092);
-    assertTrue((memory->readw(cpu->seg[SS].address+ESP) & (FMASK_TEST|2))==(FMASK_TEST|2)); // bit 1 is always set
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
+    assertTrue(ESP == 4092);
+    assertTrue((memory->readw(cpu->seg[SS].address + ESP) & (FMASK_TEST | 2)) == (FMASK_TEST | 2)); // bit 1 is always set
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP + 2) == 0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP - 2) == 0xBBBB);
 }
 
 void push32Reg(int instruction, Reg* reg) {
     newInstruction(instruction, 0);
     U32 value = 0x56781234;
-    ESP-=4;
-    if (reg==&cpu->reg[4]) {
+    ESP -= 4;
+    if (reg == &cpu->reg[4]) {
         value = reg->u32;
     } else {
         reg->u32 = value;
     }
-    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    memory->writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
-    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+    memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address + ESP - 4, 0xCCCCCCCC);
+    memory->writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
     runTestCPU();
-    assertTrue(ESP==4088);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP)==value);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
+    assertTrue(ESP == 4088);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP) == value);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP + 4) == 0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP - 4) == 0xBBBBBBBB);
 }
 
 void Pushfd(int instruction) {
     newInstruction(instruction, 0);
     cpu->flags = FMASK_TEST | 2;
-    ESP-=4;
-    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    memory->writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
-    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+    ESP -= 4;
+    memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address + ESP - 4, 0xCCCCCCCC);
+    memory->writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
     runTestCPU();
-    assertTrue(ESP==4088);
-    assertTrue((memory->readd(cpu->seg[SS].address+ESP) & (FMASK_TEST|2))==(FMASK_TEST | 2)); // bit 1 is always set
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
+    assertTrue(ESP == 4088);
+    assertTrue((memory->readd(cpu->seg[SS].address + ESP) & (FMASK_TEST | 2)) == (FMASK_TEST | 2)); // bit 1 is always set
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP + 4) == 0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP - 4) == 0xBBBBBBBB);
 
     // winevdm depends on this working
     setup(); // reset to clean state    
     newInstruction(instruction, 0);
     // if ESP is used instead of SP, it needs to point to valid memory otherwise the binary translator check memory will fail and the entire instruction will just be emulated
-    ESP = ESP | 0x10000; 
+    ESP = ESP | 0x10000;
     cpu->stackMask = 0x0000ffff;
     cpu->stackNotMask = 0xffff0000;
     cpu->flags = FMASK_TEST | 2;
@@ -3073,95 +3073,95 @@ void Pushfd(int instruction) {
 
 void Pop16(int instruction, Reg* reg) {
     newInstruction(instruction, 0);
-    SP-=2;
-    reg->u32=0xDDDDDDDD;
-    memory->writew(cpu->seg[SS].address+SP, 0xAAAA);
-    memory->writew(cpu->seg[SS].address+SP-2, 0x1234);
-    memory->writew(cpu->seg[SS].address+SP-4, 0xBBBB);
-    SP-=2;
+    SP -= 2;
+    reg->u32 = 0xDDDDDDDD;
+    memory->writew(cpu->seg[SS].address + SP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address + SP - 2, 0x1234);
+    memory->writew(cpu->seg[SS].address + SP - 4, 0xBBBB);
+    SP -= 2;
     runTestCPU();
-    assertTrue(SP==4094);
+    assertTrue(SP == 4094);
     assertTrue(reg->u32 == 0xDDDD1234);
-    assertTrue(memory->readw(cpu->seg[SS].address+SP)==0xAAAA);
-    assertTrue(memory->readw(cpu->seg[SS].address+SP-4)==0xBBBB);
+    assertTrue(memory->readw(cpu->seg[SS].address + SP) == 0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address + SP - 4) == 0xBBBB);
 }
 
 void Pop16_SP(int instruction, Reg* reg) {
     newInstruction(instruction, 0);
-    SP-=2;
-    U16 value = SP-2;
-    cpu->stackMask=0xffff;
-    cpu->stackNotMask=0xffff0000;
-    cpu->thread->process->hasSetSeg[SS]=true;
-    reg->h16=0xDDDD;
-    memory->writew(cpu->seg[SS].address+SP, 0xAAAA);
-    memory->writew(cpu->seg[SS].address+SP-2, value);
-    memory->writew(cpu->seg[SS].address+SP-4, 0xBBBB);
-    SP-=2;
+    SP -= 2;
+    U16 value = SP - 2;
+    cpu->stackMask = 0xffff;
+    cpu->stackNotMask = 0xffff0000;
+    cpu->thread->process->hasSetSeg[SS] = true;
+    reg->h16 = 0xDDDD;
+    memory->writew(cpu->seg[SS].address + SP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address + SP - 2, value);
+    memory->writew(cpu->seg[SS].address + SP - 4, 0xBBBB);
+    SP -= 2;
     runTestCPU();
-    assertTrue(SP==4092);
+    assertTrue(SP == 4092);
     assertTrue(reg->u32 == ((U32)(0xDDDD << 16) | value));
-    assertTrue(memory->readw(cpu->seg[SS].address+4094)==0xAAAA);
-    assertTrue(memory->readw(cpu->seg[SS].address+4090)==0xBBBB);
-    cpu->stackMask=0xffffffff;
-    cpu->stackNotMask=0;
+    assertTrue(memory->readw(cpu->seg[SS].address + 4094) == 0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address + 4090) == 0xBBBB);
+    cpu->stackMask = 0xffffffff;
+    cpu->stackNotMask = 0;
 }
 
 void Popf(int instruction) {
     newInstruction(instruction, 0);
-    ESP-=2;
-    cpu->flags=0;
-    memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    memory->writew(cpu->seg[SS].address+ESP-2, FMASK_TEST);
-    memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
-    ESP-=2;
+    ESP -= 2;
+    cpu->flags = 0;
+    memory->writew(cpu->seg[SS].address + ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address + ESP - 2, FMASK_TEST);
+    memory->writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
+    ESP -= 2;
     runTestCPU();
-    assertTrue(ESP==4094);
+    assertTrue(ESP == 4094);
     assertTrue((cpu->flags & (FMASK_TEST | 2)) == (FMASK_TEST | 2));
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP)==0xAAAA);
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP-4)==0xBBBB);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP) == 0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP - 4) == 0xBBBB);
 }
 
 void Pop32(int instruction, Reg* reg) {
     newInstruction(instruction, 0);
-    ESP-=4;
-    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    memory->writed(cpu->seg[SS].address+ESP-4, 0x56781234);
-    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
-    ESP-=4;
+    ESP -= 4;
+    memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address + ESP - 4, 0x56781234);
+    memory->writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
+    ESP -= 4;
     runTestCPU();
-    assertTrue(ESP==4092);
+    assertTrue(ESP == 4092);
     assertTrue(reg->u32 == 0x56781234);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP)==0xAAAAAAAA);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP-8)==0xBBBBBBBB);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP) == 0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP - 8) == 0xBBBBBBBB);
 }
 
 void Pop32_SP(int instruction, Reg* reg) {
     newInstruction(instruction, 0);
-    ESP-=4;
-    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    memory->writed(cpu->seg[SS].address+ESP-4, ESP-4);
-    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
-    ESP-=4;
+    ESP -= 4;
+    memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address + ESP - 4, ESP - 4);
+    memory->writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
+    ESP -= 4;
     runTestCPU();
-    assertTrue(ESP==4088);
-    assertTrue(memory->readd(cpu->seg[SS].address+4092)==0xAAAAAAAA);
-    assertTrue(memory->readd(cpu->seg[SS].address+4084)==0xBBBBBBBB);
+    assertTrue(ESP == 4088);
+    assertTrue(memory->readd(cpu->seg[SS].address + 4092) == 0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address + 4084) == 0xBBBBBBBB);
 }
 
 void Popfd(int instruction) {
     newInstruction(instruction, 0);
-    ESP-=4;
-    cpu->flags=0;
-    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    memory->writed(cpu->seg[SS].address+ESP-4, FMASK_TEST);
-    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
-    ESP-=4;
+    ESP -= 4;
+    cpu->flags = 0;
+    memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address + ESP - 4, FMASK_TEST);
+    memory->writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
+    ESP -= 4;
     runTestCPU();
-    assertTrue(ESP==4092);
-    assertTrue((cpu->flags & (FMASK_TEST|2)) == (FMASK_TEST | 2));
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP)==0xAAAAAAAA);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP-8)==0xBBBBBBBB);
+    assertTrue(ESP == 4092);
+    assertTrue((cpu->flags & (FMASK_TEST | 2)) == (FMASK_TEST | 2));
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP) == 0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP - 8) == 0xBBBBBBBB);
 }
 
 void flags(int instruction, struct Data* data, Reg* reg) {
@@ -3245,7 +3245,7 @@ void MovSwEw() {
         if (sw == DS) {
             cpu->seg[ES].value = cpu->seg[DS].value;
             cpu->seg[ES].address = cpu->seg[DS].address;
-            newInstruction(0);            
+            newInstruction(0);
             pushCode8(0x26);
             pushCode8(0x8e);
             pushCode8(rm);
@@ -3256,12 +3256,12 @@ void MovSwEw() {
             pushCode32(200);
         else
             pushCode16(200);
-                
+
         cpu->seg[sw].value = 0;
         cpu->seg[sw].address = 0;
 
         memory->writed(HEAP_ADDRESS, 0xAAAA1112);
-        memory->writed(HEAP_ADDRESS+200, 0xAAAA0107);
+        memory->writed(HEAP_ADDRESS + 200, 0xAAAA0107);
 
         // read seg:[0] into AX to verify that segment can be used    
         switch (sw) {
@@ -3295,23 +3295,23 @@ void PopEw() {
     int i;
     Reg* reg;
 
-    for (i=0;i<8;i++) {
-        if (i==4)
+    for (i = 0; i < 8; i++) {
+        if (i == 4)
             continue;
         newInstruction(0x8f, 0);
-        pushCode8(i|0xC0);
+        pushCode8(i | 0xC0);
         reg = &cpu->reg[i];
-        ESP-=2;
-        reg->u32=0xDDDDDDDD;
-        memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
-        memory->writew(cpu->seg[SS].address+ESP-2, 0x1234);
-        memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
-        ESP-=2;
+        ESP -= 2;
+        reg->u32 = 0xDDDDDDDD;
+        memory->writew(cpu->seg[SS].address + ESP, 0xAAAA);
+        memory->writew(cpu->seg[SS].address + ESP - 2, 0x1234);
+        memory->writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
+        ESP -= 2;
         runTestCPU();
-        assertTrue(ESP==4094);
+        assertTrue(ESP == 4094);
         assertTrue(reg->u32 == 0xDDDD1234);
-        assertTrue(memory->readw(cpu->seg[SS].address+ESP)==0xAAAA);
-        assertTrue(memory->readw(cpu->seg[SS].address+ESP-4)==0xBBBB);
+        assertTrue(memory->readw(cpu->seg[SS].address + ESP) == 0xAAAA);
+        assertTrue(memory->readw(cpu->seg[SS].address + ESP - 4) == 0xBBBB);
     }
 
     newInstruction(0x8f, 0);
@@ -3319,40 +3319,40 @@ void PopEw() {
     pushCode16(200);
     memory->writed(cpu->seg[DS].address + 200, DEFAULT);
 
-    ESP-=2;
-    memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    memory->writew(cpu->seg[SS].address+ESP-2, 0x1234);
-    memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
-    ESP-=2;
+    ESP -= 2;
+    memory->writew(cpu->seg[SS].address + ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address + ESP - 2, 0x1234);
+    memory->writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
+    ESP -= 2;
     runTestCPU();
 
-    assertTrue(ESP==4094);
+    assertTrue(ESP == 4094);
     assertTrue(memory->readd(cpu->seg[DS].address + 200) == ((DEFAULT & 0xFFFF0000) | 0x1234));
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP)==0xAAAA);
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP-4)==0xBBBB);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP) == 0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP - 4) == 0xBBBB);
 }
 
 void PopEd() {
     int i;
     Reg* reg;
 
-    for (i=0;i<8;i++) {
+    for (i = 0; i < 8; i++) {
         if (i == 4) {
             continue;
         }
         newInstruction(0x8f, 0);
-        pushCode8(i|0xC0);
+        pushCode8(i | 0xC0);
         reg = &cpu->reg[i];
-        ESP-=4;
-        memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-        memory->writed(cpu->seg[SS].address+ESP-4, 0x56781234);
-        memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
-        ESP-=4;
+        ESP -= 4;
+        memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
+        memory->writed(cpu->seg[SS].address + ESP - 4, 0x56781234);
+        memory->writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
+        ESP -= 4;
         runTestCPU();
-        assertTrue(ESP==4092);
+        assertTrue(ESP == 4092);
         assertTrue(reg->u32 == 0x56781234);
-        assertTrue(memory->readd(cpu->seg[SS].address+ESP)==0xAAAAAAAA);
-        assertTrue(memory->readd(cpu->seg[SS].address+ESP-8)==0xBBBBBBBB);
+        assertTrue(memory->readd(cpu->seg[SS].address + ESP) == 0xAAAAAAAA);
+        assertTrue(memory->readd(cpu->seg[SS].address + ESP - 8) == 0xBBBBBBBB);
     }
 
     newInstruction(0x8f, 0);
@@ -3360,17 +3360,17 @@ void PopEd() {
     pushCode32(200);
     memory->writed(cpu->seg[DS].address + 200, DEFAULT);
 
-    ESP-=4;
+    ESP -= 4;
     memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
     memory->writed(cpu->seg[SS].address + ESP - 4, 0x56781234);
     memory->writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
-    ESP-=4;
+    ESP -= 4;
     runTestCPU();
 
-    assertTrue(ESP==4092);
+    assertTrue(ESP == 4092);
     assertTrue(memory->readd(cpu->seg[DS].address + 200) == 0x56781234);
-    assertTrue(memory->readd(cpu->seg[SS].address + ESP)==0xAAAAAAAA);
-    assertTrue(memory->readd(cpu->seg[SS].address + ESP - 8)==0xBBBBBBBB);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP) == 0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP - 8) == 0xBBBBBBBB);
 
     // pop [esp + 4]
     newInstruction(0x8f, 0);
@@ -3392,58 +3392,58 @@ void PopEd() {
 void push16(int instruction) {
     newInstruction(instruction, 0);
     pushCode16(0x1234);
-    ESP-=2;
-    memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    memory->writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
-    memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
+    ESP -= 2;
+    memory->writew(cpu->seg[SS].address + ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address + ESP - 2, 0xCCCC);
+    memory->writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
     runTestCPU();
-    assertTrue(ESP==4092);
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP)==0x1234);
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
+    assertTrue(ESP == 4092);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP) == 0x1234);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP + 2) == 0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP - 2) == 0xBBBB);
 }
 
 void push32(int instruction) {
     newInstruction(instruction, 0);
     pushCode32(0x56781234);
-    ESP-=4;
-    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    memory->writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
-    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+    ESP -= 4;
+    memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address + ESP - 4, 0xCCCCCCCC);
+    memory->writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
     runTestCPU();
-    assertTrue(ESP==4088);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP)==0x56781234);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
+    assertTrue(ESP == 4088);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP) == 0x56781234);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP + 4) == 0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP - 4) == 0xBBBBBBBB);
 }
 
 void push16s8(int instruction) {
     newInstruction(instruction, 0);
     pushCode8(0xFC); // -4
-    ESP-=2;
-    memory->writew(cpu->seg[SS].address+ESP, 0xAAAA);
-    memory->writew(cpu->seg[SS].address+ESP-2, 0xCCCC);
-    memory->writew(cpu->seg[SS].address+ESP-4, 0xBBBB);
+    ESP -= 2;
+    memory->writew(cpu->seg[SS].address + ESP, 0xAAAA);
+    memory->writew(cpu->seg[SS].address + ESP - 2, 0xCCCC);
+    memory->writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
     runTestCPU();
-    assertTrue(ESP==4092);
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP)==0xFFFC);
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP+2)==0xAAAA);
-    assertTrue(memory->readw(cpu->seg[SS].address+ESP-2)==0xBBBB);
+    assertTrue(ESP == 4092);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP) == 0xFFFC);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP + 2) == 0xAAAA);
+    assertTrue(memory->readw(cpu->seg[SS].address + ESP - 2) == 0xBBBB);
 }
 
 void push32s8(int instruction) {
     newInstruction(instruction, 0);
     pushCode8(0xFC); // -4
-    ESP-=4;
-    memory->writed(cpu->seg[SS].address+ESP, 0xAAAAAAAA);
-    memory->writed(cpu->seg[SS].address+ESP-4, 0xCCCCCCCC);
-    memory->writed(cpu->seg[SS].address+ESP-8, 0xBBBBBBBB);
+    ESP -= 4;
+    memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address + ESP - 4, 0xCCCCCCCC);
+    memory->writed(cpu->seg[SS].address + ESP - 8, 0xBBBBBBBB);
     runTestCPU();
-    assertTrue(ESP==4088);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP)==0xFFFFFFFC);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
-    assertTrue(memory->readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
-}        
+    assertTrue(ESP == 4088);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP) == 0xFFFFFFFC);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP + 4) == 0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address + ESP - 4) == 0xBBBBBBBB);
+}
 
 #define false 0
 #define true 1
@@ -3601,7 +3601,7 @@ static struct Data sbbd[] = {
         allocData(0, 0xFFFFFFFF, 0, CF, true, false),
         allocData(0, 0, 0xFFFFFFFF, CF, true, false),
         allocData(0x80000000, 0x10000000, 0x6FFFFFFF, CF, false, true),
-        allocData(0, 0x7FFFFFFF, 0x80000000, CF, true, false), 
+        allocData(0, 0x7FFFFFFF, 0x80000000, CF, true, false),
         endData()
 };
 
@@ -3638,7 +3638,7 @@ static struct Data andd[] = {
 static struct Data daa[] = {
     allocDataFlagsWithAF(0x00, 0, 0x00, 0, 0, 0, 0, true, false, false, true, true),
     allocDataFlagsWithAF(0x80, 0, 0x80, 0, 0, 0, true, 0, false, false, true, true),
-    allocDataFlagsWithAF(0x03, 0, 0x09, AF|ZF|SF, 0, 0, 0, 0, true, false, true, true), // ZF and SF should be cleared
+    allocDataFlagsWithAF(0x03, 0, 0x09, AF | ZF | SF, 0, 0, 0, 0, true, false, true, true), // ZF and SF should be cleared
     allocDataFlagsWithAF(0x06, 0, 0x0C, AF, 0, 0, 0, 0, true, false, true, true),
     allocDataFlagsWithAF(0x07, 0, 0x0D, AF, 0, 0, 0, 0, true, false, true, true),
     allocDataFlagsWithAF(0x59, 0, 0x5F, AF, 0, 0, 0, 0, true, false, true, true),
@@ -3649,8 +3649,8 @@ static struct Data daa[] = {
     allocDataFlagsWithAF(0x06, 0, 0x06, 0, 0, 0, 0, 0, 0, false, true, true),
     allocDataFlagsWithAF(0x03, 0, 0x63, CF, true, 0, 0, 0, 0, false, true, true),
     allocDataFlagsWithAF(0x06, 0, 0x66, CF, true, 0, 0, 0, 0, false, true, true),
-    allocDataFlagsWithAF(0x03, 0, 0x69, CF|AF, true, 0, 0, 0, true, false, true, true),
-    allocDataFlagsWithAF(0x06, 0, 0x6C, CF|AF, true, 0, 0, 0, true, false, true, true),    
+    allocDataFlagsWithAF(0x03, 0, 0x69, CF | AF, true, 0, 0, 0, true, false, true, true),
+    allocDataFlagsWithAF(0x06, 0, 0x6C, CF | AF, true, 0, 0, 0, true, false, true, true),
     endData()
 };
 
@@ -3666,7 +3666,7 @@ static struct Data das[] = {
     allocDataFlagsWithAF(0x06, 0, 0x06, 0, 0, 0, 0, 0, 0, false, true, true),
     allocDataFlagsWithAF(0x03, 0, 0xA3, CF, true, 0, true, 0 ,0, false, true, true),
     allocDataFlagsWithAF(0x06, 0, 0xA6, CF, true, 0, true, 0, 0, false, true, true),
-    allocDataFlagsWithAF(0x03, 0, 0x9D, CF|AF, true, 0, true, 0, true, false, true, true),
+    allocDataFlagsWithAF(0x03, 0, 0x9D, CF | AF, true, 0, true, 0, true, false, true, true),
     endData()
 };
 
@@ -3899,7 +3899,7 @@ static struct Data decd[] = {
 static struct Data imulw[] = {
         allocDataConst(0, 2, 4, 2, 16, 0, false, false),
         allocDataConst(0, 0xFFFE, 0xFFFC, 2, 16, 0, false, false), // -2 * 2 = -4
-        allocDataConst(0, 0xFFFE, 4, 0xFFFE, 16, CF|OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
+        allocDataConst(0, 0xFFFE, 4, 0xFFFE, 16, CF | OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 300, 0x5F90, 300, 16, 0, true, true), // 300 x 300 = 0x15F90
         allocDataConst(0, (U32)(-300), 0xA070, 300, 16, 0, true, true),
         endData()
@@ -3917,7 +3917,7 @@ static struct Data dimulw[] = {
 static struct Data imuld[] = {
         allocDataConst(0, 2, 4, 2, 32, 0, false, false),
         allocDataConst(0, 0xFFFFFFFE, 0xFFFFFFFC, 2, 32, 0, false, false), // -2 * 2 = -4
-        allocDataConst(0, 0xFFFFFFFE, 4, 0xFFFFFFFE, 32, CF|OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
+        allocDataConst(0, 0xFFFFFFFE, 4, 0xFFFFFFFE, 32, CF | OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 300000, 0xF08EB000, 400000, 32, 0, true, true), // = 1BF08EB000
         allocDataConst(0, (U32)(-300000), 0x0F715000, 400000, 32, 0, true, true),
         endData()
@@ -3935,7 +3935,7 @@ static struct Data dimuld[] = {
 static struct Data imulw_s8[] = {
         allocDataConst(0, 2, 4, 2, 8, 0, false, false),
         allocDataConst(0, 0xFFFE, 0xFFFC, 2, 8, 0, false, false), // -2 * 2 = -4
-        allocDataConst(0, 0xFFFE, 4, 0xFE, 8, CF|OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
+        allocDataConst(0, 0xFFFE, 4, 0xFE, 8, CF | OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 3000, 0xD048, 127, 8, 0, true, true), // 3000 x 127 = 0x5D048
         allocDataConst(0, (U32)(-3000), 0x2FB8, 127, 8, 0, true, true),
         endData()
@@ -3944,7 +3944,7 @@ static struct Data imulw_s8[] = {
 static struct Data imuld_s8[] = {
         allocDataConst(0, 2, 4, 2, 8, 0, false, false),
         allocDataConst(0, 0xFFFFFFFE, 0xFFFFFFFC, 2, 8, 0, false, false), // -2 * 2 = -4
-        allocDataConst(0, 0xFFFFFFFE, 4, 0xFE, 8, CF|OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
+        allocDataConst(0, 0xFFFFFFFE, 4, 0xFE, 8, CF | OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 300000000, 0xDEEFDD00, 127, 8, 0, true, true), // = 8DEEFDD00
         allocDataConst(0, (U32)(-300000000), 0x21102300, 127, 8, 0, true, true),
         endData()
@@ -4423,7 +4423,7 @@ static struct Data rcrd_1[] = {
         allocData(0x00000001, 1, 0x00000000, 0, true, false),
         allocData(0x00000000, 1, 0x80000000, CF, false, true),
         endData()
-    };
+};
 
 static struct Data shld[] = {
         allocData(0x40404040, 1, 0x80808080, 0, false, true),
@@ -4745,14 +4745,14 @@ static struct Data bsrd[] = {
 };
 
 static struct Data shld16[] = {
-        allocDataConstNoOF(0x1234, 0x5678, 0x2345, 4, 8, 0, true),        
+        allocDataConstNoOF(0x1234, 0x5678, 0x2345, 4, 8, 0, true),
         allocDataConst(0x8080, 0x8000, 0x0101, 1, 8, 0, true, true),
         allocDataConst(0x4080, 0x8000, 0x8101, 1, 8, 0, false, true),
         allocDataConst(0x2080, 0x8000, 0x4101, 1, 8, 0, false, false),
         allocDataConstNoOF(0x4080, 0x8000, 0x0202, 2, 8, 0, true),
         // make sure 0 shift doesn't change flags
         allocDataConst(0x8080, 0x8000, 0x8080, 0, 8, 0, false, false),
-        allocDataConst(0x8080, 0x8000, 0x8080, 0, 8, CF|OF, true, true),
+        allocDataConst(0x8080, 0x8000, 0x8080, 0, 8, CF | OF, true, true),
         //allocDataConstNoCFOF(0x1234, 0x5678, 0x6785, 20, 8, 0), // undefined
         //allocDataConstNoCFOF(0x1234, 0x5678, 0x5678, 16, 8, 0), // undefined
         //allocDataConst(0x8080, 0x8000, 0x0001, 17, 8, 0, true, true),
@@ -5117,197 +5117,197 @@ static struct Data movSignExtend16to32[] = {
 #define STR_TEST(esiStr, editStr, startECX, OP, checkEndFlags, endCF, endZF, newECX)
 #endif
 
-void testAdd0x000() {cpu->big = false;EbGb(0x00, addb, true);}
-void testAdd0x200() {cpu->big = true;EbGb(0x00, addb, true);X86_TEST(add, addb, al, cl)}
-void testAdd0x001() {cpu->big = false;EwGw(0x01, addw, 0, true);X86_TEST(add, addw, ax, cx)}
-void testAdd0x201() {cpu->big = true;EdGd(0x01, addd, 0, true);X86_TEST(add, addd, eax, ecx)}
-void testAdd0x002() {cpu->big = false;GbEb(0x02, addb);}
-void testAdd0x202() {cpu->big = true;GbEb(0x02, addb);}
-void testAdd0x003() {cpu->big = false;GwEw(0x03, addw);}
-void testAdd0x203() {cpu->big = true;GdEd(0x03, addd);}
-void testAdd0x004() {cpu->big = false;AlIb(0x04, addb);}
-void testAdd0x204() {cpu->big = true;AlIb(0x04, addb);}
-void testAdd0x005() {cpu->big = false;AxIw(0x05, addw);}
-void testAdd0x205() {cpu->big = true;EaxId(0x05, addd);}
+void testAdd0x000() { cpu->big = false; EbGb(0x00, addb, true); }
+void testAdd0x200() { cpu->big = true; EbGb(0x00, addb, true); X86_TEST(add, addb, al, cl) }
+void testAdd0x001() { cpu->big = false; EwGw(0x01, addw, 0, true); X86_TEST(add, addw, ax, cx) }
+void testAdd0x201() { cpu->big = true; EdGd(0x01, addd, 0, true); X86_TEST(add, addd, eax, ecx) }
+void testAdd0x002() { cpu->big = false; GbEb(0x02, addb); }
+void testAdd0x202() { cpu->big = true; GbEb(0x02, addb); }
+void testAdd0x003() { cpu->big = false; GwEw(0x03, addw); }
+void testAdd0x203() { cpu->big = true; GdEd(0x03, addd); }
+void testAdd0x004() { cpu->big = false; AlIb(0x04, addb); }
+void testAdd0x204() { cpu->big = true; AlIb(0x04, addb); }
+void testAdd0x005() { cpu->big = false; AxIw(0x05, addw); }
+void testAdd0x205() { cpu->big = true; EaxId(0x05, addd); }
 
-void testOr0x008() {cpu->big = false;EbGb(0x08, orb, true);}
-void testOr0x208() {cpu->big = true;EbGb(0x08, orb, true);X86_TEST(or, orb, al, cl)}
-void testOr0x009() {cpu->big = false;EwGw(0x09, orw, 0, true);X86_TEST(or, orw, ax, cx)}
-void testOr0x209() {cpu->big = true;EdGd(0x09, ord, 0, true);X86_TEST(or, ord, eax, ecx)}
-void testOr0x00a() {cpu->big = false;GbEb(0x0a, orb);}
-void testOr0x20a() {cpu->big = true;GbEb(0x0a, orb);}
-void testOr0x00b() {cpu->big = false;GwEw(0x0b, orw);}
-void testOr0x20b() {cpu->big = true;GdEd(0x0b, ord);}
-void testOr0x00c() {cpu->big = false;AlIb(0x0c, orb);}
-void testOr0x20c() {cpu->big = true;AlIb(0x0c, orb);}
-void testOr0x00d() {cpu->big = false;AxIw(0x0d, orw);}
-void testOr0x20d() {cpu->big = true;EaxId(0x0d, ord);}
+void testOr0x008() { cpu->big = false; EbGb(0x08, orb, true); }
+void testOr0x208() { cpu->big = true; EbGb(0x08, orb, true); X86_TEST(or , orb, al, cl) }
+void testOr0x009() { cpu->big = false; EwGw(0x09, orw, 0, true); X86_TEST(or , orw, ax, cx) }
+void testOr0x209() { cpu->big = true; EdGd(0x09, ord, 0, true); X86_TEST(or , ord, eax, ecx) }
+void testOr0x00a() { cpu->big = false; GbEb(0x0a, orb); }
+void testOr0x20a() { cpu->big = true; GbEb(0x0a, orb); }
+void testOr0x00b() { cpu->big = false; GwEw(0x0b, orw); }
+void testOr0x20b() { cpu->big = true; GdEd(0x0b, ord); }
+void testOr0x00c() { cpu->big = false; AlIb(0x0c, orb); }
+void testOr0x20c() { cpu->big = true; AlIb(0x0c, orb); }
+void testOr0x00d() { cpu->big = false; AxIw(0x0d, orw); }
+void testOr0x20d() { cpu->big = true; EaxId(0x0d, ord); }
 
 // :TODO: add test for adc for doing add then adc to make sure CF carries over correctly for dynamic cores
-void testAdc0x010() {cpu->big = false;EbGb(0x10, adcb, true);}
-void testAdc0x210() {cpu->big = true;EbGb(0x10, addb, true);X86_TEST(adc, adcb, al, cl)}
-void testAdc0x011() {cpu->big = false;EwGw(0x11, adcw, 0, true);X86_TEST(adc, adcw, ax, cx)}
-void testAdc0x211() {cpu->big = true;EdGd(0x11, adcd, 0, true);X86_TEST(adc, adcd, eax, ecx)}
-void testAdc0x012() {cpu->big = false;GbEb(0x12, adcb);}
-void testAdc0x212() {cpu->big = true;GbEb(0x12, adcb);}
-void testAdc0x013() {cpu->big = false;GwEw(0x13, adcw);}
-void testAdc0x213() {cpu->big = true;GdEd(0x13, adcd);}
-void testAdc0x014() {cpu->big = false;AlIb(0x14, adcb);}
-void testAdc0x214() {cpu->big = true;AlIb(0x14, adcb);}
-void testAdc0x015() {cpu->big = false;AxIw(0x15, adcw);}
-void testAdc0x215() {cpu->big = true;EaxId(0x15, adcd);}
+void testAdc0x010() { cpu->big = false; EbGb(0x10, adcb, true); }
+void testAdc0x210() { cpu->big = true; EbGb(0x10, addb, true); X86_TEST(adc, adcb, al, cl) }
+void testAdc0x011() { cpu->big = false; EwGw(0x11, adcw, 0, true); X86_TEST(adc, adcw, ax, cx) }
+void testAdc0x211() { cpu->big = true; EdGd(0x11, adcd, 0, true); X86_TEST(adc, adcd, eax, ecx) }
+void testAdc0x012() { cpu->big = false; GbEb(0x12, adcb); }
+void testAdc0x212() { cpu->big = true; GbEb(0x12, adcb); }
+void testAdc0x013() { cpu->big = false; GwEw(0x13, adcw); }
+void testAdc0x213() { cpu->big = true; GdEd(0x13, adcd); }
+void testAdc0x014() { cpu->big = false; AlIb(0x14, adcb); }
+void testAdc0x214() { cpu->big = true; AlIb(0x14, adcb); }
+void testAdc0x015() { cpu->big = false; AxIw(0x15, adcw); }
+void testAdc0x215() { cpu->big = true; EaxId(0x15, adcd); }
 
-void testSbb0x018() {cpu->big = false;EbGb(0x18, sbbb, true);}
-void testSbb0x218() {cpu->big = true;EbGb(0x18, sbbb, true);X86_TEST(sbb, sbbb, al, cl)}
-void testSbb0x019() {cpu->big = false;EwGw(0x19, sbbw, 0, true);X86_TEST(sbb, sbbw, ax, cx)}
-void testSbb0x219() {cpu->big = true;EdGd(0x19, sbbd, 0, true);X86_TEST(sbb, sbbd, eax, ecx)}
-void testSbb0x01a() {cpu->big = false;GbEb(0x1a, sbbb);}
-void testSbb0x21a() {cpu->big = true;GbEb(0x1a, sbbb);}
-void testSbb0x01b() {cpu->big = false;GwEw(0x1b, sbbw);}
-void testSbb0x21b() {cpu->big = true;GdEd(0x1b, sbbd);}
-void testSbb0x01c() {cpu->big = false;AlIb(0x1c, sbbb);}
-void testSbb0x21c() {cpu->big = true;AlIb(0x1c, sbbb);}
-void testSbb0x01d() {cpu->big = false;AxIw(0x1d, sbbw);}
-void testSbb0x21d() {cpu->big = true;EaxId(0x1d, sbbd);}
+void testSbb0x018() { cpu->big = false; EbGb(0x18, sbbb, true); }
+void testSbb0x218() { cpu->big = true; EbGb(0x18, sbbb, true); X86_TEST(sbb, sbbb, al, cl) }
+void testSbb0x019() { cpu->big = false; EwGw(0x19, sbbw, 0, true); X86_TEST(sbb, sbbw, ax, cx) }
+void testSbb0x219() { cpu->big = true; EdGd(0x19, sbbd, 0, true); X86_TEST(sbb, sbbd, eax, ecx) }
+void testSbb0x01a() { cpu->big = false; GbEb(0x1a, sbbb); }
+void testSbb0x21a() { cpu->big = true; GbEb(0x1a, sbbb); }
+void testSbb0x01b() { cpu->big = false; GwEw(0x1b, sbbw); }
+void testSbb0x21b() { cpu->big = true; GdEd(0x1b, sbbd); }
+void testSbb0x01c() { cpu->big = false; AlIb(0x1c, sbbb); }
+void testSbb0x21c() { cpu->big = true; AlIb(0x1c, sbbb); }
+void testSbb0x01d() { cpu->big = false; AxIw(0x1d, sbbw); }
+void testSbb0x21d() { cpu->big = true; EaxId(0x1d, sbbd); }
 
-void testAnd0x020() {cpu->big = false;EbGb(0x20, andb, true);}
-void testAnd0x220() {cpu->big = true;EbGb(0x20, andb, true);X86_TEST(and, andb, al, cl)}
-void testAnd0x021() {cpu->big = false;EwGw(0x21, andw, 0, true);X86_TEST(and, andw, ax, cx)}
-void testAnd0x221() {cpu->big = true;EdGd(0x21, andd, 0, true);X86_TEST(and, andd, eax, ecx)}
-void testAnd0x022() {cpu->big = false;GbEb(0x22, andb);}
-void testAnd0x222() {cpu->big = true;GbEb(0x22, andb);}
-void testAnd0x023() {cpu->big = false;GwEw(0x23, andw);}
-void testAnd0x223() {cpu->big = true;GdEd(0x23, andd);}
-void testAnd0x024() {cpu->big = false;AlIb(0x24, andb);}
-void testAnd0x224() {cpu->big = true;AlIb(0x24, andb);}
-void testAnd0x025() {cpu->big = false;AxIw(0x25, andw);}
-void testAnd0x225() {cpu->big = true;EaxId(0x25, andd);}
+void testAnd0x020() { cpu->big = false; EbGb(0x20, andb, true); }
+void testAnd0x220() { cpu->big = true; EbGb(0x20, andb, true); X86_TEST(and, andb, al, cl) }
+void testAnd0x021() { cpu->big = false; EwGw(0x21, andw, 0, true); X86_TEST(and, andw, ax, cx) }
+void testAnd0x221() { cpu->big = true; EdGd(0x21, andd, 0, true); X86_TEST(and, andd, eax, ecx) }
+void testAnd0x022() { cpu->big = false; GbEb(0x22, andb); }
+void testAnd0x222() { cpu->big = true; GbEb(0x22, andb); }
+void testAnd0x023() { cpu->big = false; GwEw(0x23, andw); }
+void testAnd0x223() { cpu->big = true; GdEd(0x23, andd); }
+void testAnd0x024() { cpu->big = false; AlIb(0x24, andb); }
+void testAnd0x224() { cpu->big = true; AlIb(0x24, andb); }
+void testAnd0x025() { cpu->big = false; AxIw(0x25, andw); }
+void testAnd0x225() { cpu->big = true; EaxId(0x25, andd); }
 
-void testDaa0x027() {cpu->big = false;EbReg(0x27, 0, daa);}
-void testDaa0x227() {cpu->big = true;EbReg(0x27, 0, daa);}
+void testDaa0x027() { cpu->big = false; EbReg(0x27, 0, daa); }
+void testDaa0x227() { cpu->big = true; EbReg(0x27, 0, daa); }
 
-void testSub0x028() {cpu->big = false;EbGb(0x28, subb, true);}
-void testSub0x228() {cpu->big = true;EbGb(0x28, subb, true);X86_TEST(sub, subb, al, cl)}
-void testSub0x029() {cpu->big = false;EwGw(0x29, subw, 0, true);X86_TEST(sub, subw, ax, cx)}
-void testSub0x229() {cpu->big = true;EdGd(0x29, subd, 0, true);X86_TEST(sub, subd, eax, ecx)}
-void testSub0x02a() {cpu->big = false;GbEb(0x2a, subb);}
-void testSub0x22a() {cpu->big = true;GbEb(0x2a, subb);}
-void testSub0x02b() {cpu->big = false;GwEw(0x2b, subw);}
-void testSub0x22b() {cpu->big = true;GdEd(0x2b, subd);}
-void testSub0x02c() {cpu->big = false;AlIb(0x2c, subb);}
-void testSub0x22c() {cpu->big = true;AlIb(0x2c, subb);}
-void testSub0x02d() {cpu->big = false;AxIw(0x2d, subw);}
-void testSub0x22d() {cpu->big = true;EaxId(0x2d, subd);}
+void testSub0x028() { cpu->big = false; EbGb(0x28, subb, true); }
+void testSub0x228() { cpu->big = true; EbGb(0x28, subb, true); X86_TEST(sub, subb, al, cl) }
+void testSub0x029() { cpu->big = false; EwGw(0x29, subw, 0, true); X86_TEST(sub, subw, ax, cx) }
+void testSub0x229() { cpu->big = true; EdGd(0x29, subd, 0, true); X86_TEST(sub, subd, eax, ecx) }
+void testSub0x02a() { cpu->big = false; GbEb(0x2a, subb); }
+void testSub0x22a() { cpu->big = true; GbEb(0x2a, subb); }
+void testSub0x02b() { cpu->big = false; GwEw(0x2b, subw); }
+void testSub0x22b() { cpu->big = true; GdEd(0x2b, subd); }
+void testSub0x02c() { cpu->big = false; AlIb(0x2c, subb); }
+void testSub0x22c() { cpu->big = true; AlIb(0x2c, subb); }
+void testSub0x02d() { cpu->big = false; AxIw(0x2d, subw); }
+void testSub0x22d() { cpu->big = true; EaxId(0x2d, subd); }
 
-void testDas0x02f() {cpu->big = false;EbReg(0x2f, 0, das);}
-void testDas0x22f() {cpu->big = true;EbReg(0x2f, 0, das);}
+void testDas0x02f() { cpu->big = false; EbReg(0x2f, 0, das); }
+void testDas0x22f() { cpu->big = true; EbReg(0x2f, 0, das); }
 
-void testXor0x030() {cpu->big = false;EbGb(0x30, xorb, true);}
-void testXor0x230() {cpu->big = true;EbGb(0x30, xorb, true);X86_TEST(xor, xorb, al, cl)}
-void testXor0x031() {cpu->big = false;EwGw(0x31, xorw, 0, true);X86_TEST(xor, xorw, ax, cx)}
-void testXor0x231() {cpu->big = true;EdGd(0x31, xord, 0, true);X86_TEST(xor, xord, eax, ecx)}
-void testXor0x032() {cpu->big = false;GbEb(0x32, xorb);}
-void testXor0x232() {cpu->big = true;GbEb(0x32, xorb);}
-void testXor0x033() {cpu->big = false;GwEw(0x33, xorw);}
-void testXor0x233() {cpu->big = true;GdEd(0x33, xord);}
-void testXor0x034() {cpu->big = false;AlIb(0x34, xorb);}
-void testXor0x234() {cpu->big = true;AlIb(0x34, xorb);}
-void testXor0x035() {cpu->big = false;AxIw(0x35, xorw);}
-void testXor0x235() {cpu->big = true;EaxId(0x35, xord);}
+void testXor0x030() { cpu->big = false; EbGb(0x30, xorb, true); }
+void testXor0x230() { cpu->big = true; EbGb(0x30, xorb, true); X86_TEST(xor, xorb, al, cl) }
+void testXor0x031() { cpu->big = false; EwGw(0x31, xorw, 0, true); X86_TEST(xor, xorw, ax, cx) }
+void testXor0x231() { cpu->big = true; EdGd(0x31, xord, 0, true); X86_TEST(xor, xord, eax, ecx) }
+void testXor0x032() { cpu->big = false; GbEb(0x32, xorb); }
+void testXor0x232() { cpu->big = true; GbEb(0x32, xorb); }
+void testXor0x033() { cpu->big = false; GwEw(0x33, xorw); }
+void testXor0x233() { cpu->big = true; GdEd(0x33, xord); }
+void testXor0x034() { cpu->big = false; AlIb(0x34, xorb); }
+void testXor0x234() { cpu->big = true; AlIb(0x34, xorb); }
+void testXor0x035() { cpu->big = false; AxIw(0x35, xorw); }
+void testXor0x235() { cpu->big = true; EaxId(0x35, xord); }
 
-void testAaa0x037() {cpu->big = false;EwReg(0x37, 0, aaa);}
-void testAaa0x237() {cpu->big = true;EwReg(0x37, 0, aaa);}
+void testAaa0x037() { cpu->big = false; EwReg(0x37, 0, aaa); }
+void testAaa0x237() { cpu->big = true; EwReg(0x37, 0, aaa); }
 
-void testCmp0x038() {cpu->big = false;EbGb(0x38, cmpb);}
-void testCmp0x238() {cpu->big = true;EbGb(0x38, cmpb);X86_TEST(cmp, cmpb, al, cl)}
-void testCmp0x039() {cpu->big = false;EwGw(0x39, cmpw);X86_TEST(cmp, cmpw, ax, cx)}
-void testCmp0x239() {cpu->big = true;EdGd(0x39, cmpd);X86_TEST(cmp, cmpd, eax, ecx)}
-void testCmp0x03a() {cpu->big = false;GbEb(0x3a, cmpb);}
-void testCmp0x23a() {cpu->big = true;GbEb(0x3a, cmpb);}
-void testCmp0x03b() {cpu->big = false;GwEw(0x3b, cmpw);}
-void testCmp0x23b() {cpu->big = true;GdEd(0x3b, cmpd);}
-void testCmp0x03c() {cpu->big = false;AlIb(0x3c, cmpb);}
-void testCmp0x23c() {cpu->big = true;AlIb(0x3c, cmpb);}
-void testCmp0x03d() {cpu->big = false;AxIw(0x3d, cmpw);}
-void testCmp0x23d() {cpu->big = true;EaxId(0x3d, cmpd);}
+void testCmp0x038() { cpu->big = false; EbGb(0x38, cmpb); }
+void testCmp0x238() { cpu->big = true; EbGb(0x38, cmpb); X86_TEST(cmp, cmpb, al, cl) }
+void testCmp0x039() { cpu->big = false; EwGw(0x39, cmpw); X86_TEST(cmp, cmpw, ax, cx) }
+void testCmp0x239() { cpu->big = true; EdGd(0x39, cmpd); X86_TEST(cmp, cmpd, eax, ecx) }
+void testCmp0x03a() { cpu->big = false; GbEb(0x3a, cmpb); }
+void testCmp0x23a() { cpu->big = true; GbEb(0x3a, cmpb); }
+void testCmp0x03b() { cpu->big = false; GwEw(0x3b, cmpw); }
+void testCmp0x23b() { cpu->big = true; GdEd(0x3b, cmpd); }
+void testCmp0x03c() { cpu->big = false; AlIb(0x3c, cmpb); }
+void testCmp0x23c() { cpu->big = true; AlIb(0x3c, cmpb); }
+void testCmp0x03d() { cpu->big = false; AxIw(0x3d, cmpw); }
+void testCmp0x23d() { cpu->big = true; EaxId(0x3d, cmpd); }
 
-void testAas0x03f() {cpu->big = false;EwReg(0x3f, 0, aas);}
-void testAas0x23f() {cpu->big = true;EwReg(0x3f, 0, aas);}
+void testAas0x03f() { cpu->big = false; EwReg(0x3f, 0, aas); }
+void testAas0x23f() { cpu->big = true; EwReg(0x3f, 0, aas); }
 
 // :TODO: test when flags come from the previous instruction
-void testIncAx0x040() {cpu->big = false;EwReg(0x40, 0, incw);X86_TEST1(inc, incw, ax)}
-void testIncEax0x240() {cpu->big = true;EdReg(0x40, 0, incd);X86_TEST1(inc, incd, eax)}
-void testIncCx0x041() {cpu->big = false;EwReg(0x41, 1, incw);}
-void testIncEcx0x241() {cpu->big = true;EdReg(0x41, 1, incd);}
-void testIncDx0x042() {cpu->big = false;EwReg(0x42, 2, incw);}
-void testIncEdx0x242() {cpu->big = true;EdReg(0x42, 2, incd);}
-void testIncBx0x043() {cpu->big = false;EwReg(0x43, 3, incw);}
-void testIncEbx0x243() {cpu->big = true;EdReg(0x43, 3, incd);}
-void testIncSp0x044() {cpu->big = false;EwReg(0x44, 4, incw);}
-void testIncEsp0x244() {cpu->big = true;EdReg(0x44, 4, incd);}
-void testIncBp0x045() {cpu->big = false;EwReg(0x45, 5, incw);}
-void testIncEbp0x245() {cpu->big = true;EdReg(0x45, 5, incd);}
-void testIncSi0x046() {cpu->big = false;EwReg(0x46, 6, incw);}
-void testIncEsi0x246() {cpu->big = true;EdReg(0x46, 6, incd);}
-void testIncDi0x047() {cpu->big = false;EwReg(0x47, 7, incw);}
-void testIncEdi0x247() {cpu->big = true;EdReg(0x47, 7, incd);}
+void testIncAx0x040() { cpu->big = false; EwReg(0x40, 0, incw); X86_TEST1(inc, incw, ax) }
+void testIncEax0x240() { cpu->big = true; EdReg(0x40, 0, incd); X86_TEST1(inc, incd, eax) }
+void testIncCx0x041() { cpu->big = false; EwReg(0x41, 1, incw); }
+void testIncEcx0x241() { cpu->big = true; EdReg(0x41, 1, incd); }
+void testIncDx0x042() { cpu->big = false; EwReg(0x42, 2, incw); }
+void testIncEdx0x242() { cpu->big = true; EdReg(0x42, 2, incd); }
+void testIncBx0x043() { cpu->big = false; EwReg(0x43, 3, incw); }
+void testIncEbx0x243() { cpu->big = true; EdReg(0x43, 3, incd); }
+void testIncSp0x044() { cpu->big = false; EwReg(0x44, 4, incw); }
+void testIncEsp0x244() { cpu->big = true; EdReg(0x44, 4, incd); }
+void testIncBp0x045() { cpu->big = false; EwReg(0x45, 5, incw); }
+void testIncEbp0x245() { cpu->big = true; EdReg(0x45, 5, incd); }
+void testIncSi0x046() { cpu->big = false; EwReg(0x46, 6, incw); }
+void testIncEsi0x246() { cpu->big = true; EdReg(0x46, 6, incd); }
+void testIncDi0x047() { cpu->big = false; EwReg(0x47, 7, incw); }
+void testIncEdi0x247() { cpu->big = true; EdReg(0x47, 7, incd); }
 
-void testDecAx0x048() {cpu->big = false;EwReg(0x48, 0, decw);X86_TEST1(dec, decw, ax)}
-void testDecEax0x248() {cpu->big = true;EdReg(0x48, 0, decd);X86_TEST1(dec, decd, eax)}
-void testDecCx0x049() {cpu->big = false;EwReg(0x49, 1, decw);}
-void testDecEcx0x249() {cpu->big = true;EdReg(0x49, 1, decd);}
-void testDecDx0x04a() {cpu->big = false;EwReg(0x4a, 2, decw);}
-void testDecEdx0x24a() {cpu->big = true;EdReg(0x4a, 2, decd);}
-void testDecBx0x04b() {cpu->big = false;EwReg(0x4b, 3, decw);}
-void testDecEbx0x24b() {cpu->big = true;EdReg(0x4b, 3, decd);}
-void testDecSp0x04c() {cpu->big = false;EwReg(0x4c, 4, decw);}
-void testDecEsp0x24c() {cpu->big = true;EdReg(0x4c, 4, decd);}
-void testDecBp0x04d() {cpu->big = false;EwReg(0x4d, 5, decw);}
-void testDecEbp0x24d() {cpu->big = true;EdReg(0x4d, 5, decd);}
-void testDecSi0x04e() {cpu->big = false;EwReg(0x4e, 6, decw);}
-void testDecEsi0x24e() {cpu->big = true;EdReg(0x4e, 6, decd);}
-void testDecDi0x04f() {cpu->big = false;EwReg(0x4f, 7, decw);}
-void testDecEdi0x24f() {cpu->big = true;EdReg(0x4f, 7, decd);}
+void testDecAx0x048() { cpu->big = false; EwReg(0x48, 0, decw); X86_TEST1(dec, decw, ax) }
+void testDecEax0x248() { cpu->big = true; EdReg(0x48, 0, decd); X86_TEST1(dec, decd, eax) }
+void testDecCx0x049() { cpu->big = false; EwReg(0x49, 1, decw); }
+void testDecEcx0x249() { cpu->big = true; EdReg(0x49, 1, decd); }
+void testDecDx0x04a() { cpu->big = false; EwReg(0x4a, 2, decw); }
+void testDecEdx0x24a() { cpu->big = true; EdReg(0x4a, 2, decd); }
+void testDecBx0x04b() { cpu->big = false; EwReg(0x4b, 3, decw); }
+void testDecEbx0x24b() { cpu->big = true; EdReg(0x4b, 3, decd); }
+void testDecSp0x04c() { cpu->big = false; EwReg(0x4c, 4, decw); }
+void testDecEsp0x24c() { cpu->big = true; EdReg(0x4c, 4, decd); }
+void testDecBp0x04d() { cpu->big = false; EwReg(0x4d, 5, decw); }
+void testDecEbp0x24d() { cpu->big = true; EdReg(0x4d, 5, decd); }
+void testDecSi0x04e() { cpu->big = false; EwReg(0x4e, 6, decw); }
+void testDecEsi0x24e() { cpu->big = true; EdReg(0x4e, 6, decd); }
+void testDecDi0x04f() { cpu->big = false; EwReg(0x4f, 7, decw); }
+void testDecEdi0x24f() { cpu->big = true; EdReg(0x4f, 7, decd); }
 
-void testPushAx0x050() {cpu->big = false;push16Reg(0x50, &cpu->reg[0]);}
-void testPushEax0x250() {cpu->big = true;push32Reg(0x50, &cpu->reg[0]);}
-void testPushCx0x051() {cpu->big = false;push16Reg(0x51, &cpu->reg[1]);}
-void testPushEcx0x251() {cpu->big = true;push32Reg(0x51, &cpu->reg[1]);}
-void testPushDx0x052() {cpu->big = false;push16Reg(0x52, &cpu->reg[2]);}
-void testPushEdx0x252() {cpu->big = true;push32Reg(0x52, &cpu->reg[2]);}
-void testPushBx0x053() {cpu->big = false;push16Reg(0x53, &cpu->reg[3]);}
-void testPushEbx0x253() {cpu->big = true;push32Reg(0x53, &cpu->reg[3]);}
-void testPushSp0x054() {cpu->big = false;push16Reg(0x54, &cpu->reg[4]);}
-void testPushEsp0x254() {cpu->big = true;push32Reg(0x54, &cpu->reg[4]);}
-void testPushBp0x055() {cpu->big = false;push16Reg(0x55, &cpu->reg[5]);}
-void testPushEbp0x255() {cpu->big = true;push32Reg(0x55, &cpu->reg[5]);}
-void testPushSi0x056() {cpu->big = false;push16Reg(0x56, &cpu->reg[6]);}
-void testPushEsi0x256() {cpu->big = true;push32Reg(0x56, &cpu->reg[6]);}
-void testPushDi0x057() {cpu->big = false;push16Reg(0x57, &cpu->reg[7]);}
-void testPushEdi0x257() {cpu->big = true;push32Reg(0x57, &cpu->reg[7]);}
+void testPushAx0x050() { cpu->big = false; push16Reg(0x50, &cpu->reg[0]); }
+void testPushEax0x250() { cpu->big = true; push32Reg(0x50, &cpu->reg[0]); }
+void testPushCx0x051() { cpu->big = false; push16Reg(0x51, &cpu->reg[1]); }
+void testPushEcx0x251() { cpu->big = true; push32Reg(0x51, &cpu->reg[1]); }
+void testPushDx0x052() { cpu->big = false; push16Reg(0x52, &cpu->reg[2]); }
+void testPushEdx0x252() { cpu->big = true; push32Reg(0x52, &cpu->reg[2]); }
+void testPushBx0x053() { cpu->big = false; push16Reg(0x53, &cpu->reg[3]); }
+void testPushEbx0x253() { cpu->big = true; push32Reg(0x53, &cpu->reg[3]); }
+void testPushSp0x054() { cpu->big = false; push16Reg(0x54, &cpu->reg[4]); }
+void testPushEsp0x254() { cpu->big = true; push32Reg(0x54, &cpu->reg[4]); }
+void testPushBp0x055() { cpu->big = false; push16Reg(0x55, &cpu->reg[5]); }
+void testPushEbp0x255() { cpu->big = true; push32Reg(0x55, &cpu->reg[5]); }
+void testPushSi0x056() { cpu->big = false; push16Reg(0x56, &cpu->reg[6]); }
+void testPushEsi0x256() { cpu->big = true; push32Reg(0x56, &cpu->reg[6]); }
+void testPushDi0x057() { cpu->big = false; push16Reg(0x57, &cpu->reg[7]); }
+void testPushEdi0x257() { cpu->big = true; push32Reg(0x57, &cpu->reg[7]); }
 
-void testPopAx0x058() {cpu->big = false;Pop16(0x58, &cpu->reg[0]);}
-void testPopEax0x258() {cpu->big = true;Pop32(0x58, &cpu->reg[0]);}
-void testPopCx0x059() {cpu->big = false;Pop16(0x59, &cpu->reg[1]);}
-void testPopEcx0x259() {cpu->big = true;Pop32(0x59, &cpu->reg[1]);}
-void testPopDx0x05a() {cpu->big = false;Pop16(0x5a, &cpu->reg[2]);}
-void testPopEdx0x25a() {cpu->big = true;Pop32(0x5a, &cpu->reg[2]);}
-void testPopBx0x05b() {cpu->big = false;Pop16(0x5b, &cpu->reg[3]);}
-void testPopEbx0x25b() {cpu->big = true;Pop32(0x5b, &cpu->reg[3]);}
-void testPopSp0x05c() {cpu->big = false;Pop16_SP(0x5c, &cpu->reg[4]);}
-void testPopEsp0x25c() {cpu->big = true;Pop32_SP(0x5c, &cpu->reg[4]);}
-void testPopBp0x05d() {cpu->big = false;Pop16(0x5d, &cpu->reg[5]);}
-void testPopEbp0x25d() {cpu->big = true;Pop32(0x5d, &cpu->reg[5]);}
-void testPopSi0x05e() {cpu->big = false;Pop16(0x5e, &cpu->reg[6]);}
-void testPopEsi0x25e() {cpu->big = true;Pop32(0x5e, &cpu->reg[6]);}
-void testPopDi0x05f() {cpu->big = false;Pop16(0x5f, &cpu->reg[7]);}
-void testPopEdi0x25f() {cpu->big = true;Pop32(0x5f, &cpu->reg[7]);}
+void testPopAx0x058() { cpu->big = false; Pop16(0x58, &cpu->reg[0]); }
+void testPopEax0x258() { cpu->big = true; Pop32(0x58, &cpu->reg[0]); }
+void testPopCx0x059() { cpu->big = false; Pop16(0x59, &cpu->reg[1]); }
+void testPopEcx0x259() { cpu->big = true; Pop32(0x59, &cpu->reg[1]); }
+void testPopDx0x05a() { cpu->big = false; Pop16(0x5a, &cpu->reg[2]); }
+void testPopEdx0x25a() { cpu->big = true; Pop32(0x5a, &cpu->reg[2]); }
+void testPopBx0x05b() { cpu->big = false; Pop16(0x5b, &cpu->reg[3]); }
+void testPopEbx0x25b() { cpu->big = true; Pop32(0x5b, &cpu->reg[3]); }
+void testPopSp0x05c() { cpu->big = false; Pop16_SP(0x5c, &cpu->reg[4]); }
+void testPopEsp0x25c() { cpu->big = true; Pop32_SP(0x5c, &cpu->reg[4]); }
+void testPopBp0x05d() { cpu->big = false; Pop16(0x5d, &cpu->reg[5]); }
+void testPopEbp0x25d() { cpu->big = true; Pop32(0x5d, &cpu->reg[5]); }
+void testPopSi0x05e() { cpu->big = false; Pop16(0x5e, &cpu->reg[6]); }
+void testPopEsi0x25e() { cpu->big = true; Pop32(0x5e, &cpu->reg[6]); }
+void testPopDi0x05f() { cpu->big = false; Pop16(0x5f, &cpu->reg[7]); }
+void testPopEdi0x25f() { cpu->big = true; Pop32(0x5f, &cpu->reg[7]); }
 
 void testPushA16() {
     cpu->big = false;
 
     newInstruction(0x60, 0);
-    memory->memset(cpu->seg[SS].address + ESP-16, 0, 16);
+    memory->memset(cpu->seg[SS].address + ESP - 16, 0, 16);
 
     EAX = 0xFFFF1111;
     ECX = 0xFFFF2222;
@@ -5388,7 +5388,7 @@ void testPopA16() {
     assertTrue(EBP == 0xBBBB6666);
     assertTrue(ESI == 0xAAAA7777);
     assertTrue(EDI == 0x99998888);
-    assertTrue(SP == (esp & 0xFFFF));    
+    assertTrue(SP == (esp & 0xFFFF));
 }
 
 void testPopA32() {
@@ -5401,7 +5401,7 @@ void testPopA32() {
     memory->writed(cpu->seg[SS].address + ESP + 4, 0xAAAA7777);
     memory->writed(cpu->seg[SS].address + ESP + 8, 0xBBBB6666);
     memory->writed(cpu->seg[SS].address + ESP + 12, 0xDEADBEEF);
-    memory->writed(cpu->seg[SS].address + ESP + 16, 0xCCCC5555);    
+    memory->writed(cpu->seg[SS].address + ESP + 16, 0xCCCC5555);
     memory->writed(cpu->seg[SS].address + ESP + 20, 0xDDDD3333);
     memory->writed(cpu->seg[SS].address + ESP + 24, 0xEEEE2222);
     memory->writed(cpu->seg[SS].address + ESP + 28, 0xFFFF1111);
@@ -5475,37 +5475,37 @@ void testBound0x262() {
     }
 }
 
-void testPush0x068() {cpu->big = false;push16(0x68);}
-void testPush0x268() {cpu->big = true;push32(0x68);}
+void testPush0x068() { cpu->big = false; push16(0x68); }
+void testPush0x268() { cpu->big = true; push32(0x68); }
 
-void testIMul0x069() {cpu->big = false;GwEw(0x69, imulw);X86_TEST2C(imul, &imulw[0], ax, cx, 2) X86_TEST2C(imul, &imulw[1], ax, cx, 2) X86_TEST2C(imul, &imulw[2], ax, cx, 0xFFFE) X86_TEST2C(imul, &imulw[3], ax, cx, 300) X86_TEST2C(imul, &imulw[4], ax, cx, 300)}
-void testIMul0x269() {cpu->big = true;GdEd(0x69, imuld);X86_TEST2C(imul, &imuld[0], eax, ecx, 2) X86_TEST2C(imul, &imuld[1], eax, ecx, 2) X86_TEST2C(imul, &imuld[2], eax, ecx, 0xFFFFFFFE) X86_TEST2C(imul, &imuld[3], eax, ecx, 400000) X86_TEST2C(imul, &imuld[4], eax, ecx, 400000)}
+void testIMul0x069() { cpu->big = false; GwEw(0x69, imulw); X86_TEST2C(imul, &imulw[0], ax, cx, 2) X86_TEST2C(imul, &imulw[1], ax, cx, 2) X86_TEST2C(imul, &imulw[2], ax, cx, 0xFFFE) X86_TEST2C(imul, &imulw[3], ax, cx, 300) X86_TEST2C(imul, &imulw[4], ax, cx, 300) }
+void testIMul0x269() { cpu->big = true; GdEd(0x69, imuld); X86_TEST2C(imul, &imuld[0], eax, ecx, 2) X86_TEST2C(imul, &imuld[1], eax, ecx, 2) X86_TEST2C(imul, &imuld[2], eax, ecx, 0xFFFFFFFE) X86_TEST2C(imul, &imuld[3], eax, ecx, 400000) X86_TEST2C(imul, &imuld[4], eax, ecx, 400000) }
 
-void testImulw0x1af() { 
-    cpu->big = false; 
+void testImulw0x1af() {
+    cpu->big = false;
     GwEw(0x1af, dimulw);
     X86_TEST(imul, &dimulw[0], ax, cx)
-    X86_TEST(imul, &dimulw[1], ax, cx)
-    X86_TEST(imul, &dimulw[2], ax, cx)
-    X86_TEST(imul, &dimulw[3], ax, cx)
-    X86_TEST(imul, &dimulw[4], ax, cx)
+        X86_TEST(imul, &dimulw[1], ax, cx)
+        X86_TEST(imul, &dimulw[2], ax, cx)
+        X86_TEST(imul, &dimulw[3], ax, cx)
+        X86_TEST(imul, &dimulw[4], ax, cx)
 }
 
 void testImuld0x3af() {
     cpu->big = true;
     GdEd(0x3af, dimuld);
     X86_TEST(imul, &dimuld[0], eax, ecx)
-    X86_TEST(imul, &dimuld[1], eax, ecx)
-    X86_TEST(imul, &dimuld[2], eax, ecx)
-    X86_TEST(imul, &dimuld[3], eax, ecx)
-    X86_TEST(imul, &dimuld[4], eax, ecx)
+        X86_TEST(imul, &dimuld[1], eax, ecx)
+        X86_TEST(imul, &dimuld[2], eax, ecx)
+        X86_TEST(imul, &dimuld[3], eax, ecx)
+        X86_TEST(imul, &dimuld[4], eax, ecx)
 }
 
-void testPush0x06a() {cpu->big = false;push16s8(0x6a);}
-void testPush0x26a() {cpu->big = true;push32s8(0x6a);}
+void testPush0x06a() { cpu->big = false; push16s8(0x6a); }
+void testPush0x26a() { cpu->big = true; push32s8(0x6a); }
 
-void testIMul0x06b() {cpu->big = false;GwEw(0x6b, imulw_s8);}
-void testIMul0x26b() {cpu->big = true;GdEd(0x6b, imuld_s8);}
+void testIMul0x06b() { cpu->big = false; GwEw(0x6b, imulw_s8); }
+void testIMul0x26b() { cpu->big = true; GdEd(0x6b, imuld_s8); }
 
 void testJ(U8 instruction, U32 flags, bool jumped) {
     EAX = 0;
@@ -5537,8 +5537,7 @@ void testJumpCmp(U8 instruction, U32 value1, U32 value2, bool jumped) {
     ECX = value1;
     if (cpu->big) {
         pushCode32(value2);
-    }
-    else {
+    } else {
         pushCode16(value2);
     }
 
@@ -5560,8 +5559,7 @@ void testJumpCmp(U8 instruction, U32 value1, U32 value2, bool jumped) {
 
     if (jumped) {
         assertTrue(AL == 3);
-    }
-    else {
+    } else {
         assertTrue(AL == 5);
     }
 }
@@ -5735,7 +5733,7 @@ void testJBE(U8 instruction) {
     testJ(instruction, ZF | OF, true);
     testJ(instruction, OF, false);
     testJ(instruction, PF, false);
-    testJ(instruction, AF, false);    
+    testJ(instruction, AF, false);
     testJ(instruction, SF, false);
 
     // if below or equal (CF=1 or ZF=1)
@@ -5880,8 +5878,8 @@ void testJL(U8 instruction) {
     testJ(instruction, SF, true);
     testJ(instruction, OF, true);
 
-    testJ(instruction, SF|OF, false);
-    testJ(instruction, CF, false);    
+    testJ(instruction, SF | OF, false);
+    testJ(instruction, CF, false);
     testJ(instruction, PF, false);
     testJ(instruction, AF, false);
     testJ(instruction, ZF, false);
@@ -5906,13 +5904,13 @@ void testJL(U8 instruction) {
 
 // SF == OF
 void testJNL(U8 instruction) {
-    testJ(instruction, SF|OF, true);
-    testJ(instruction, ZF|PF|AF|CF, true);
+    testJ(instruction, SF | OF, true);
+    testJ(instruction, ZF | PF | AF | CF, true);
 
-    testJ(instruction, SF|PF, false);
-    testJ(instruction, SF|CF, false);
-    testJ(instruction, SF|AF, false);
-    testJ(instruction, SF|ZF, false);
+    testJ(instruction, SF | PF, false);
+    testJ(instruction, SF | CF, false);
+    testJ(instruction, SF | AF, false);
+    testJ(instruction, SF | ZF, false);
 
     testJ(instruction, OF | PF, false);
     testJ(instruction, OF | CF, false);
@@ -5952,13 +5950,13 @@ void testJLE(U8 instruction) {
     testJ(instruction, SF, true);
     testJ(instruction, OF, true);
     testJ(instruction, ZF, true);
-    testJ(instruction, ZF|SF, true);
-    testJ(instruction, ZF|OF, true);
+    testJ(instruction, ZF | SF, true);
+    testJ(instruction, ZF | OF, true);
 
     testJ(instruction, SF | OF, false);
     testJ(instruction, CF, false);
     testJ(instruction, PF, false);
-    testJ(instruction, AF, false);    
+    testJ(instruction, AF, false);
 
     testJ(instruction, SF | PF, true);
     testJ(instruction, SF | CF, true);
@@ -6000,7 +5998,7 @@ void testJNLE(U8 instruction) {
     testJumpCmp(instruction, 1, 0xffffffff, true);
     testJumpCmp(instruction, 0xffffffff, 1, false);
     testJumpCmp(instruction, 0xffffffff, 0xffffffff, false);
-   
+
 }
 
 void testJLE0x7e() {
@@ -6119,57 +6117,243 @@ void testGrp10x283() {
     EdIx(0x83, 7, cmpd);
 }
 
-void testTest0x084() {cpu->big = false;EbGb(0x84, testb);}
-void testTest0x284() {cpu->big = true;EbGb(0x84, testb); X86_TEST(test, testb, al, cl)}
-void testTest0x085() {cpu->big = false;EwGw(0x85, testw); X86_TEST(test, testw, ax, cx)}
-void testTest0x285() {cpu->big = true;EdGd(0x85, testd); X86_TEST(test, testd, eax, ecx)}
+void testJumpTest(U8 instruction, U32 value1, U32 value2, bool jumped) {
+    // test edx, ecx
+    newInstructionWithRM(0x85, 0xca, 0);
+    EAX = 0;
+    EDX = value1;
+    ECX = value2;
 
-void testXchg0x086() {cpu->big = false;EbGb(0x86, xchgb);}
-void testXchg0x286() {cpu->big = true;EbGb(0x86, xchgb);}
-void testXchg0x087() {cpu->big = false;EwGw(0x87, xchgw);}
-void testXchg0x287() {cpu->big = true;EdGd(0x87, xchgd);}
+    if (instruction > 0xFF) {
+        pushCode8(0x0F);
+    }
+    pushCode8(instruction & 0xFF);
+    pushCode8(2); // jmp over next add
 
-void testMovEbGb0x088() {cpu->big = false;EbGb(0x88, movb);}
-void testMovEbGb0x288() {cpu->big = true;EbGb(0x88, movb);}
-void testMovEwGw0x089() {cpu->big = false;EwGw(0x89, movw);}
-void testMovEdGd0x289() {cpu->big = true;EdGd(0x89, movd);}
+    // add al, 0x2
+    pushCode8(0x04);
+    pushCode8(0x02);
 
-void testMovEbGb0x08a() {cpu->big = false;GbEb(0x8a, movb);}
-void testMovEbGb0x28a() {cpu->big = true;GbEb(0x8a, movb);}
-void testMovEwGw0x08b() {cpu->big = false;GwEw(0x8b, movw);}
-void testMovEdGd0x28b() {cpu->big = true;GdEd(0x8b, movd);}
+    // add al, 0x3
+    pushCode8(0x04);
+    pushCode8(0x03);
 
-void testMovEwSw0x08c() {cpu->big = false;EwSw(0x8c, movw);}
-void testMovEwSw0x28c() {cpu->big = true;EdSw(0x8c, movw);}
+    runTestCPU();
 
-void testLeaGw0x08d() {cpu->big = false;LeaGw();}
-void testLeaGd0x28d() {cpu->big = true;LeaGd();}
+    if (jumped) {
+        assertTrue(AL == 3);
+    } else {
+        assertTrue(AL == 5);
+    }
 
-void testMovSwEw0x08e() {cpu->big = false;MovSwEw();}
-void testMovSwEw0x28e() {cpu->big = true;MovSwEw();}
+    // test edx, value2
+    newInstructionWithRM(0xf7, 0xc2, 0);
+    pushCode32(value2);
+    EAX = 0;
+    EDX = value1;
 
-void testPopEw0x08f() {cpu->big = false;PopEw();}
-void testPopEd0x28f() {cpu->big = true;PopEd();}
+    if (instruction > 0xFF) {
+        pushCode8(0x0F);
+    }
+    pushCode8(instruction & 0xFF);
+    pushCode8(2); // jmp over next add
 
-void testXchgCxAx0x091() {cpu->big = false;Reg16Reg16(0x91, xchgw, &cpu->reg[0], &cpu->reg[1]);}
-void testXchgEcxEax0x291() {cpu->big = true;Reg32Reg32(0x91, xchgd, &cpu->reg[0], &cpu->reg[1]);}
-void testXchgDxAx0x092() {cpu->big = false;Reg16Reg16(0x92, xchgw, &cpu->reg[0], &cpu->reg[2]);}
-void testXchgEdxEax0x292() {cpu->big = true;Reg32Reg32(0x92, xchgd, &cpu->reg[0], &cpu->reg[2]);}
-void testXchgBxAx0x093() {cpu->big = false;Reg16Reg16(0x93, xchgw, &cpu->reg[0], &cpu->reg[3]);}
-void testXchgEbxEax0x293() {cpu->big = true;Reg32Reg32(0x93, xchgd, &cpu->reg[0], &cpu->reg[3]);}
-void testXchgSpAx0x094() {cpu->big = false;Reg16Reg16(0x94, xchgw, &cpu->reg[0], &cpu->reg[4]);}
-void testXchgEspEax0x294() {cpu->big = true;Reg32Reg32(0x94, xchgd, &cpu->reg[0], &cpu->reg[4]);}
-void testXchgBpAx0x095() {cpu->big = false;Reg16Reg16(0x95, xchgw, &cpu->reg[0], &cpu->reg[5]);}
-void testXchgEbpEax0x295() {cpu->big = true;Reg32Reg32(0x95, xchgd, &cpu->reg[0], &cpu->reg[5]);}
-void testXchgSiAx0x096() {cpu->big = false;Reg16Reg16(0x96, xchgw, &cpu->reg[0], &cpu->reg[6]);}
-void testXchgEsiEax0x296() {cpu->big = true;Reg32Reg32(0x96, xchgd, &cpu->reg[0], &cpu->reg[6]);}
-void testXchgDiAx0x097() {cpu->big = false;Reg16Reg16(0x97, xchgw, &cpu->reg[0], &cpu->reg[7]);}
-void testXchgEdiEax0x297() {cpu->big = true;Reg32Reg32(0x97, xchgd, &cpu->reg[0], &cpu->reg[7]);}
+    // add al, 0x2
+    pushCode8(0x04);
+    pushCode8(0x02);
 
-void testCbw0x098() {cpu->big = false;EwReg(0x98, 0, cbw); X86_TEST0(cbw, cbw)}
-void testCwde0x298() {cpu->big = true;EdReg(0x98, 0, cwde); X86_TEST0(cwde, cwde)}
-void testCwd0x099() {cpu->big = false;Reg16Reg16(0x99, cwd, &cpu->reg[0], &cpu->reg[2]);}
-void testCdq0x299() {cpu->big = true;Reg32Reg32(0x99, cdq, &cpu->reg[0], &cpu->reg[2]);}
+    // add al, 0x3
+    pushCode8(0x04);
+    pushCode8(0x03);
+
+    runTestCPU();
+
+    if (jumped) {
+        assertTrue(AL == 3);
+    } else {
+        assertTrue(AL == 5);
+    }
+}
+
+void testTest0x084() { cpu->big = false; EbGb(0x84, testb); }
+void testTest0x284() { cpu->big = true; EbGb(0x84, testb); X86_TEST(test, testb, al, cl) }
+void testTest0x085() { cpu->big = false; EwGw(0x85, testw); X86_TEST(test, testw, ax, cx) }
+void testTest0x285() {
+    cpu->big = true;
+    EdGd(0x85, testd);
+    X86_TEST(test, testd, eax, ecx);
+
+    // OF should always be 0
+    testJumpTest(0x70, 0, 0, false); // jo
+    testJumpTest(0x70, 1, 1, false); // jo
+    testJumpTest(0x70, 0xffffffff, 0xffffffff, false); // jo
+
+    testJumpTest(0x71, 0, 0, true); // jno
+    testJumpTest(0x71, 1, 1, true); // jno
+    testJumpTest(0x71, 0xffffffff, 0xffffffff, true); // jno
+
+    // CF should always be 0
+    testJumpTest(0x72, 0, 0, false); // jb
+    testJumpTest(0x72, 1, 1, false); // jb
+    testJumpTest(0x72, 0xffffffff, 0xffffffff, false); // jo
+
+    testJumpTest(0x73, 0, 0, true); // jnb
+    testJumpTest(0x73, 1, 1, true); // jnb
+    testJumpTest(0x73, 0xffffffff, 0xffffffff, true); // jnb
+
+    // ZF depends on result
+    testJumpTest(0x74, 0, 0, true); // jz
+    testJumpTest(0x74, 0, 1, true); // jz
+    testJumpTest(0x74, 1, 0, true); // jz
+    testJumpTest(0x74, 1, 1, false); // jz
+    testJumpTest(0x74, 0xffffffff, 0, true); // jz
+    testJumpTest(0x74, 0, 0xffffffff, true); // jz
+    testJumpTest(0x74, 1, 0xffffffff, false); // jz
+    testJumpTest(0x74, 0xffffffff, 0xffffffff, false); // jz
+
+    testJumpTest(0x75, 0, 0, false); // jnz
+    testJumpTest(0x75, 0, 1, false); // jnz
+    testJumpTest(0x75, 1, 0, false); // jnz
+    testJumpTest(0x75, 1, 1, true); // jnz
+    testJumpTest(0x75, 0xffffffff, 0, false); // jnz
+    testJumpTest(0x75, 0, 0xffffffff, false); // jnz
+    testJumpTest(0x75, 1, 0xffffffff, true); // jnz
+    testJumpTest(0x75, 0xffffffff, 0xffffffff, true); // jnz
+
+    // CF || ZF
+    testJumpTest(0x76, 0, 0, true); // jbe
+    testJumpTest(0x76, 0, 1, true); // jbe
+    testJumpTest(0x76, 1, 0, true); // jbe
+    testJumpTest(0x76, 1, 1, false); // jbe
+    testJumpTest(0x76, 0xffffffff, 0, true); // jbe
+    testJumpTest(0x76, 0, 0xffffffff, true); // jbe
+    testJumpTest(0x76, 1, 0xffffffff, false); // jbe
+    testJumpTest(0x76, 0xffffffff, 0xffffffff, false); // jbe
+
+    testJumpTest(0x77, 0, 0, false); // jnbe
+    testJumpTest(0x77, 0, 1, false); // jnbe
+    testJumpTest(0x77, 1, 0, false); // jnbe
+    testJumpTest(0x77, 1, 1, true); // jnbe
+    testJumpTest(0x77, 0xffffffff, 0, false); // jnbe
+    testJumpTest(0x77, 0, 0xffffffff, false); // jnbe
+    testJumpTest(0x77, 1, 0xffffffff, true); // jnbe
+    testJumpTest(0x77, 0xffffffff, 0xffffffff, true); // jnbe
+
+    // SF depends on result
+    testJumpTest(0x78, 0, 0, false); // js
+    testJumpTest(0x78, 0x80000000, 0, false); // js
+    testJumpTest(0x78, 0, 0x80000000, false); // js
+    testJumpTest(0x78, 0x80000000, 0x7fffffff, false); // js
+    testJumpTest(0x78, 0x7fffffff, 0x80000000, false); // js
+    testJumpTest(0x78, 0x80000000, 0x80000000, true); // js
+    testJumpTest(0x78, 0x80000000, 0xffffffff, true); // js
+    testJumpTest(0x78, 0xffffffff, 0x80000000, true); // js
+
+    testJumpTest(0x79, 0, 0, true); // jns
+    testJumpTest(0x79, 0x80000000, 0, true); // jns
+    testJumpTest(0x79, 0, 0x80000000, true); // jns
+    testJumpTest(0x79, 0x80000000, 0x7fffffff, true); // jns
+    testJumpTest(0x79, 0x7fffffff, 0x80000000, true); // jns
+    testJumpTest(0x79, 0x80000000, 0x80000000, false); // jns
+    testJumpTest(0x79, 0x80000000, 0xffffffff, false); // jns
+    testJumpTest(0x79, 0xffffffff, 0x80000000, false); // jns
+
+    // PF depends on result
+    testJumpTest(0x7a, 0, 0, true); // jp
+    testJumpTest(0x7a, 0x80000000, 0x80000000, true); // jp
+    testJumpTest(0x7a, 1, 1, false); // jp
+
+    testJumpTest(0x7b, 0, 0, false); // jnp
+    testJumpTest(0x7b, 0x80000000, 0x80000000, false); // jnp
+    testJumpTest(0x7b, 1, 1, true); // jnp
+
+    // SF != OF (since OF is always 0, this will be true as SF)
+    testJumpTest(0x7c, 0, 0, false); // jl
+    testJumpTest(0x7c, 0x80000000, 0, false); // jl
+    testJumpTest(0x7c, 0, 0x80000000, false); // jl
+    testJumpTest(0x7c, 0x80000000, 0x7fffffff, false); // jl
+    testJumpTest(0x7c, 0x7fffffff, 0x80000000, false); // jl
+    testJumpTest(0x7c, 0x80000000, 0x80000000, true); // jl
+    testJumpTest(0x7c, 0x80000000, 0xffffffff, true); // jl
+    testJumpTest(0x7c, 0xffffffff, 0x80000000, true); // jl
+
+    testJumpTest(0x7d, 0, 0, true); // jnl
+    testJumpTest(0x7d, 0x80000000, 0, true); // jnl
+    testJumpTest(0x7d, 0, 0x80000000, true); // jnl
+    testJumpTest(0x7d, 0x80000000, 0x7fffffff, true); // jnl
+    testJumpTest(0x7d, 0x7fffffff, 0x80000000, true); // jnl
+    testJumpTest(0x7d, 0x80000000, 0x80000000, false); // jnl
+    testJumpTest(0x7d, 0x80000000, 0xffffffff, false); // jnl
+    testJumpTest(0x7d, 0xffffffff, 0x80000000, false); // jnl
+
+    // ZF || SF != OF
+    testJumpTest(0x7e, 0, 0, true); // jle
+    testJumpTest(0x7e, 0x80000000, 0, true); // jle
+    testJumpTest(0x7e, 0, 0x80000000, true); // jle
+    testJumpTest(0x7e, 0x80000000, 0x7fffffff, true); // jle
+    testJumpTest(0x7e, 0x7fffffff, 0x80000000, true); // jle
+    testJumpTest(0x7e, 0x80000000, 0x80000000, true); // jle
+    testJumpTest(0x7e, 0x80000000, 0xffffffff, true); // jle
+    testJumpTest(0x7e, 0xffffffff, 0x80000000, true); // jle
+    testJumpTest(0x7e, 0xff, 1, false); // jle
+
+    testJumpTest(0x7f, 0, 0, false); // jnle
+    testJumpTest(0x7f, 0x80000000, 0, false); // jnle
+    testJumpTest(0x7f, 0, 0x80000000, false); // jnle
+    testJumpTest(0x7f, 0x80000000, 0x7fffffff, false); // jnle
+    testJumpTest(0x7f, 0x7fffffff, 0x80000000, false); // jnle
+    testJumpTest(0x7f, 0x80000000, 0x80000000, false); // jnle
+    testJumpTest(0x7f, 0x80000000, 0xffffffff, false); // jnle
+    testJumpTest(0x7f, 0xffffffff, 0x80000000, false); // jnle
+    testJumpTest(0x7f, 0xff, 1, true); // jnle
+}
+
+void testXchg0x086() { cpu->big = false; EbGb(0x86, xchgb); }
+void testXchg0x286() { cpu->big = true; EbGb(0x86, xchgb); }
+void testXchg0x087() { cpu->big = false; EwGw(0x87, xchgw); }
+void testXchg0x287() { cpu->big = true; EdGd(0x87, xchgd); }
+
+void testMovEbGb0x088() { cpu->big = false; EbGb(0x88, movb); }
+void testMovEbGb0x288() { cpu->big = true; EbGb(0x88, movb); }
+void testMovEwGw0x089() { cpu->big = false; EwGw(0x89, movw); }
+void testMovEdGd0x289() { cpu->big = true; EdGd(0x89, movd); }
+
+void testMovEbGb0x08a() { cpu->big = false; GbEb(0x8a, movb); }
+void testMovEbGb0x28a() { cpu->big = true; GbEb(0x8a, movb); }
+void testMovEwGw0x08b() { cpu->big = false; GwEw(0x8b, movw); }
+void testMovEdGd0x28b() { cpu->big = true; GdEd(0x8b, movd); }
+
+void testMovEwSw0x08c() { cpu->big = false; EwSw(0x8c, movw); }
+void testMovEwSw0x28c() { cpu->big = true; EdSw(0x8c, movw); }
+
+void testLeaGw0x08d() { cpu->big = false; LeaGw(); }
+void testLeaGd0x28d() { cpu->big = true; LeaGd(); }
+
+void testMovSwEw0x08e() { cpu->big = false; MovSwEw(); }
+void testMovSwEw0x28e() { cpu->big = true; MovSwEw(); }
+
+void testPopEw0x08f() { cpu->big = false; PopEw(); }
+void testPopEd0x28f() { cpu->big = true; PopEd(); }
+
+void testXchgCxAx0x091() { cpu->big = false; Reg16Reg16(0x91, xchgw, &cpu->reg[0], &cpu->reg[1]); }
+void testXchgEcxEax0x291() { cpu->big = true; Reg32Reg32(0x91, xchgd, &cpu->reg[0], &cpu->reg[1]); }
+void testXchgDxAx0x092() { cpu->big = false; Reg16Reg16(0x92, xchgw, &cpu->reg[0], &cpu->reg[2]); }
+void testXchgEdxEax0x292() { cpu->big = true; Reg32Reg32(0x92, xchgd, &cpu->reg[0], &cpu->reg[2]); }
+void testXchgBxAx0x093() { cpu->big = false; Reg16Reg16(0x93, xchgw, &cpu->reg[0], &cpu->reg[3]); }
+void testXchgEbxEax0x293() { cpu->big = true; Reg32Reg32(0x93, xchgd, &cpu->reg[0], &cpu->reg[3]); }
+void testXchgSpAx0x094() { cpu->big = false; Reg16Reg16(0x94, xchgw, &cpu->reg[0], &cpu->reg[4]); }
+void testXchgEspEax0x294() { cpu->big = true; Reg32Reg32(0x94, xchgd, &cpu->reg[0], &cpu->reg[4]); }
+void testXchgBpAx0x095() { cpu->big = false; Reg16Reg16(0x95, xchgw, &cpu->reg[0], &cpu->reg[5]); }
+void testXchgEbpEax0x295() { cpu->big = true; Reg32Reg32(0x95, xchgd, &cpu->reg[0], &cpu->reg[5]); }
+void testXchgSiAx0x096() { cpu->big = false; Reg16Reg16(0x96, xchgw, &cpu->reg[0], &cpu->reg[6]); }
+void testXchgEsiEax0x296() { cpu->big = true; Reg32Reg32(0x96, xchgd, &cpu->reg[0], &cpu->reg[6]); }
+void testXchgDiAx0x097() { cpu->big = false; Reg16Reg16(0x97, xchgw, &cpu->reg[0], &cpu->reg[7]); }
+void testXchgEdiEax0x297() { cpu->big = true; Reg32Reg32(0x97, xchgd, &cpu->reg[0], &cpu->reg[7]); }
+
+void testCbw0x098() { cpu->big = false; EwReg(0x98, 0, cbw); X86_TEST0(cbw, cbw) }
+void testCwde0x298() { cpu->big = true; EdReg(0x98, 0, cwde); X86_TEST0(cwde, cwde) }
+void testCwd0x099() { cpu->big = false; Reg16Reg16(0x99, cwd, &cpu->reg[0], &cpu->reg[2]); }
+void testCdq0x299() { cpu->big = true; Reg32Reg32(0x99, cdq, &cpu->reg[0], &cpu->reg[2]); }
 
 void testCallFar0x09a() {
     cpu->big = false;
@@ -6195,8 +6379,8 @@ void testCallFar0x09a() {
     runTestCPU();
 
     assertTrue(AX == 0x10);
-    assertTrue(memory->readw(cpu->seg[SS].address + esp-2) == CODE_SEG);
-    assertTrue(memory->readw(cpu->seg[SS].address + esp-4) == 5);
+    assertTrue(memory->readw(cpu->seg[SS].address + esp - 2) == CODE_SEG);
+    assertTrue(memory->readw(cpu->seg[SS].address + esp - 4) == 5);
     assertTrue(SP == 4092);
     assertTrue(cpu->big == false);
 
@@ -6279,17 +6463,17 @@ void testCallFar0x29a() {
     assertTrue(cpu->big == true);
 }
 
-void testPushf0x09c() {cpu->big = false;Pushf(0x9c);}
-void testPushf0x29c() {cpu->big = true;Pushfd(0x9c);}
-void testPopf0x09d() {cpu->big = false;Popf(0x9d);}
-void testPopf0x29d() {cpu->big = true;Popfd(0x9d);}
+void testPushf0x09c() { cpu->big = false; Pushf(0x9c); }
+void testPushf0x29c() { cpu->big = true; Pushfd(0x9c); }
+void testPopf0x09d() { cpu->big = false; Popf(0x9d); }
+void testPopf0x29d() { cpu->big = true; Popfd(0x9d); }
 
-void testSahf0x09e() {cpu->big = false;flags(0x9e, sahf, &cpu->reg[0]);}
-void testSahf0x29e() {cpu->big = true;flags(0x9e, sahf, &cpu->reg[0]);}
-void testLahf0x09f() {cpu->big = false;flags(0x9f, lahf, &cpu->reg[0]);}
-void testLahf0x29f() {cpu->big = true;flags(0x9f, lahf, &cpu->reg[0]);}
+void testSahf0x09e() { cpu->big = false; flags(0x9e, sahf, &cpu->reg[0]); }
+void testSahf0x29e() { cpu->big = true; flags(0x9e, sahf, &cpu->reg[0]); }
+void testLahf0x09f() { cpu->big = false; flags(0x9f, lahf, &cpu->reg[0]); }
+void testLahf0x29f() { cpu->big = true; flags(0x9f, lahf, &cpu->reg[0]); }
 
-void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32 str1Len, const char* str2, U32 str2Len, U32 startESI,U32 startEDI, U32 startECX, U32 endESI, U32 endEDI, U32 endECX, bool checkEndFlags, bool endCF, bool endZF, U32 esAddress, U32 eax=0) {
+void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32 str1Len, const char* str2, U32 str2Len, U32 startESI, U32 startEDI, U32 startECX, U32 endESI, U32 endEDI, U32 endECX, bool checkEndFlags, bool endCF, bool endZF, U32 esAddress, U32 eax = 0) {
     memory->writeb(CODE_ADDRESS, 0);
     if (prefix) {
         newInstruction(prefix, startFlags);
@@ -6323,15 +6507,15 @@ void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32
 
     if (startFlags & DF) {
         U32 offset = 0;
-        if (width==2)
+        if (width == 2)
             offset = 1;
-        else if (width==4)
+        else if (width == 4)
             offset = 3;
-        for (U32 i=0;i<str1Len;i++) {
-            memory->writeb(cpu->seg[DS].address + (cpu->big ? ESI : SI) -i + offset, str1[i]);
+        for (U32 i = 0; i < str1Len; i++) {
+            memory->writeb(cpu->seg[DS].address + (cpu->big ? ESI : SI) - i + offset, str1[i]);
         }
-        for (U32 i=0;i<str2Len;i++) {
-            memory->writeb(cpu->seg[ES].address + (cpu->big ? EDI : DI) -i + offset, str2[i]);
+        for (U32 i = 0; i < str2Len; i++) {
+            memory->writeb(cpu->seg[ES].address + (cpu->big ? EDI : DI) - i + offset, str2[i]);
         }
     } else {
         if (str1)
@@ -6341,21 +6525,21 @@ void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32
     }
 
     runTestCPU();
-    assertTrue(EDI==endEDI);
-    assertTrue(ESI==endESI);    
-    assertTrue(ECX==endECX);
+    assertTrue(EDI == endEDI);
+    assertTrue(ESI == endESI);
+    assertTrue(ECX == endECX);
     if (checkEndFlags) {
-        bool hasCF=cpu->getCF()!=0;
-        assertTrue(endCF==hasCF);
+        bool hasCF = cpu->getCF() != 0;
+        assertTrue(endCF == hasCF);
 
-        bool hasZF=cpu->getZF()!=0;
-        assertTrue(endZF==hasZF);
+        bool hasZF = cpu->getZF() != 0;
+        assertTrue(endZF == hasZF);
     }
     cpu->seg[ES].address = 0;
     cpu->thread->process->hasSetSeg[ES] = false;
     if (savedDS) {
         cpu->seg[DS].address = savedDS;
-        cpu->thread->process->hasSetSeg[DS] = true;        
+        cpu->thread->process->hasSetSeg[DS] = true;
     }
 }
 
@@ -6363,48 +6547,48 @@ void testCmpsb0x0a6() {
     cpu->big = false;
 
     // SI > DI (DF)
-    strTest(1, 0, 0xa6, DF, "1", 1, "0", 1, 0x12340010, 0x12340020, 0, 0x1234000F, 0x1234001F, 0, true, false, false, HEAP_ADDRESS+256);
+    strTest(1, 0, 0xa6, DF, "1", 1, "0", 1, 0x12340010, 0x12340020, 0, 0x1234000F, 0x1234001F, 0, true, false, false, HEAP_ADDRESS + 256);
 
     // SI > DI
-    strTest(1, 0, 0xa6, 0, "1", 1, "0", 1, 0x12340010, 0x12340020, 0, 0x12340011, 0x12340021, 0, true, false, false, HEAP_ADDRESS+256);
+    strTest(1, 0, 0xa6, 0, "1", 1, "0", 1, 0x12340010, 0x12340020, 0, 0x12340011, 0x12340021, 0, true, false, false, HEAP_ADDRESS + 256);
 
     // SI < DI
-    strTest(1, 0, 0xa6, 0, "0", 1, "1", 1, 0x12340010, 0x12340020, 0, 0x12340011, 0x12340021, 0, true, true, false, HEAP_ADDRESS+256);
+    strTest(1, 0, 0xa6, 0, "0", 1, "1", 1, 0x12340010, 0x12340020, 0, 0x12340011, 0x12340021, 0, true, true, false, HEAP_ADDRESS + 256);
 
     // SI == DI
     // this will test 16-bit wrapping
-    strTest(1, 0, 0xa6, 0, "1", 1, "1", 1, 0x12340010, 0x1234FFFF, 0, 0x12340011, 0x12340000, 0, true, false, true, HEAP_ADDRESS-0x10000+200);
+    strTest(1, 0, 0xa6, 0, "1", 1, "1", 1, 0x12340010, 0x1234FFFF, 0, 0x12340011, 0x12340000, 0, true, false, true, HEAP_ADDRESS - 0x10000 + 200);
 
     // repz
-    strTest(1, 0xf3, 0xa6, 0, "abcd", 4, "abce", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340004, 0x12340004, 0x1234000C, true, true, false, HEAP_ADDRESS+256);
+    strTest(1, 0xf3, 0xa6, 0, "abcd", 4, "abce", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340004, 0x12340004, 0x1234000C, true, true, false, HEAP_ADDRESS + 256);
     strTest(1, 0xf3, 0xa6, 0, "abcd", 4, "abcd", 4, 0x12340000, 0x12340000, 0x12340004, 0x12340004, 0x12340004, 0x12340000, true, false, true, HEAP_ADDRESS + 256);
 
     // repnz
-    strTest(1, 0xf2, 0xa6, 0, "abcd", 4, "123d", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340004, 0x12340004, 0x1234000C, true, false, true, HEAP_ADDRESS+256);
+    strTest(1, 0xf2, 0xa6, 0, "abcd", 4, "123d", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340004, 0x12340004, 0x1234000C, true, false, true, HEAP_ADDRESS + 256);
 
     // repnz (DF)
-    strTest(1, 0xf2, 0xa6, DF, "abcd", 4, "123d", 4, 0x12340020, 0x12340010, 0x12340010, 0x1234001C, 0x1234000C, 0x1234000C, true, false, true, HEAP_ADDRESS+256);    
+    strTest(1, 0xf2, 0xa6, DF, "abcd", 4, "123d", 4, 0x12340020, 0x12340010, 0x12340010, 0x1234001C, 0x1234000C, 0x1234000C, true, false, true, HEAP_ADDRESS + 256);
 
     // ecx 0 (maintain flags)
-    strTest(1, 0xf2, 0xa6, SF|ZF, "abcd", 4, "123d", 4, 0x12340000, 0x12340000, 0x12340000, 0x12340000, 0x12340000, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
-    assertTrue((cpu->flags & FMASK_TEST) == (SF|ZF));
+    strTest(1, 0xf2, 0xa6, SF | ZF, "abcd", 4, "123d", 4, 0x12340000, 0x12340000, 0x12340000, 0x12340000, 0x12340000, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue((cpu->flags & FMASK_TEST) == (SF | ZF));
 }
 
 void testCmpsb0x2a6() {
     cpu->big = true;
-    
+
     // ESI > EDI
     STR_TEST("1", "0", 0, cmpsb, true, false, false, 0);
-    strTest(1, 0, 0xa6, 0, "1", 1, "0", 1, 0, 1, 0, 1, 2, 0, true, false, false, HEAP_ADDRESS+256);
+    strTest(1, 0, 0xa6, 0, "1", 1, "0", 1, 0, 1, 0, 1, 2, 0, true, false, false, HEAP_ADDRESS + 256);
 
 
     // ESI < EDI
     STR_TEST("0", "1", 0, cmpsb, true, true, false, 0);
-    strTest(1, 0, 0xa6, 0, "0", 1, "1", 1, 0, 1, 0, 1, 2, 0, true, true, false, HEAP_ADDRESS+256);
+    strTest(1, 0, 0xa6, 0, "0", 1, "1", 1, 0, 1, 0, 1, 2, 0, true, true, false, HEAP_ADDRESS + 256);
 
     // ESI == EDI
     STR_TEST("1", "1", 0, cmpsb, true, false, true, 0);
-    strTest(1, 0, 0xa6, 0, "1", 1, "1", 1, 0, 1, 0, 1, 2, 0, true, false, true, HEAP_ADDRESS+256);
+    strTest(1, 0, 0xa6, 0, "1", 1, "1", 1, 0, 1, 0, 1, 2, 0, true, false, true, HEAP_ADDRESS + 256);
 
     // repz
     STR_TEST("abcd", "abce", 10, repz cmpsb, true, true, false, 6);
@@ -6420,27 +6604,27 @@ void testCmpsw0x0a7() {
     cpu->big = false;
 
     // SI > DI (DF)
-    strTest(2, 0, 0xa7, DF, "21", 2, "11", 2, 0x12340010, 0x12340020, 0, 0x1234000E, 0x1234001E, 0, true, false, false, HEAP_ADDRESS+256);
+    strTest(2, 0, 0xa7, DF, "21", 2, "11", 2, 0x12340010, 0x12340020, 0, 0x1234000E, 0x1234001E, 0, true, false, false, HEAP_ADDRESS + 256);
 
     // SI > DI
-    strTest(2, 0, 0xa7, 0, "12", 2, "11", 2, 0x12340010, 0x12340020, 0, 0x12340012, 0x12340022, 0, true, false, false, HEAP_ADDRESS+256);
+    strTest(2, 0, 0xa7, 0, "12", 2, "11", 2, 0x12340010, 0x12340020, 0, 0x12340012, 0x12340022, 0, true, false, false, HEAP_ADDRESS + 256);
 
     // SI < DI
-    strTest(2, 0, 0xa7, 0, "11", 2, "12", 2, 0x12340010, 0x12340020, 0, 0x12340012, 0x12340022, 0, true, true, false, HEAP_ADDRESS+256);
+    strTest(2, 0, 0xa7, 0, "11", 2, "12", 2, 0x12340010, 0x12340020, 0, 0x12340012, 0x12340022, 0, true, true, false, HEAP_ADDRESS + 256);
 
     // SI == DI
     // this will test 16-bit wrapping
-    strTest(2, 0, 0xa7, 0, "11", 2, "11", 2, 0x12340010, 0x1234FFFE, 0, 0x12340012, 0x12340000, 0, true, false, true, HEAP_ADDRESS-0x10000+200);
+    strTest(2, 0, 0xa7, 0, "11", 2, "11", 2, 0x12340010, 0x1234FFFE, 0, 0x12340012, 0x12340000, 0, true, false, true, HEAP_ADDRESS - 0x10000 + 200);
 
     // repz
-    strTest(2, 0xf3, 0xa7, 0, "abcdefgh", 8, "abcdefgi", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340008, 0x12340008, 0x1234000C, true, true, false, HEAP_ADDRESS+256);
+    strTest(2, 0xf3, 0xa7, 0, "abcdefgh", 8, "abcdefgi", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340008, 0x12340008, 0x1234000C, true, true, false, HEAP_ADDRESS + 256);
     strTest(2, 0xf3, 0xa7, 0, "abcdefgh", 8, "abcdefgh", 8, 0x12340000, 0x12340000, 0x12340004, 0x12340008, 0x12340008, 0x12340000, true, false, true, HEAP_ADDRESS + 256);
 
     // repnz
-    strTest(2, 0xf2, 0xa7, 0, "abcdefgh", 8, "123456gh", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340008, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS+256);
+    strTest(2, 0xf2, 0xa7, 0, "abcdefgh", 8, "123456gh", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340008, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS + 256);
 
     // repnz (DF)
-    strTest(2, 0xf2, 0xa7, DF, "abcdefgh", 8, "123456gh", 8, 0x12340020, 0x12340010, 0x12340010, 0x12340018, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS+256);    
+    strTest(2, 0xf2, 0xa7, DF, "abcdefgh", 8, "123456gh", 8, 0x12340020, 0x12340010, 0x12340010, 0x12340018, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS + 256);
 }
 
 void testCmpsd0x2a7() {
@@ -6450,27 +6634,27 @@ void testCmpsd0x2a7() {
 
     // ESI > EDI (DF)
     // since this is reversed, the biggest part of the number is the first byte
-    strTest(4, 0, 0xa7, DF, "4321", 4, "1999", 4, 0x00000010, 0x00000020, 0, 0x0000000C, 0x0000001C, 0, true, false, false, HEAP_ADDRESS+256);
+    strTest(4, 0, 0xa7, DF, "4321", 4, "1999", 4, 0x00000010, 0x00000020, 0, 0x0000000C, 0x0000001C, 0, true, false, false, HEAP_ADDRESS + 256);
 
     // ESI > EDI
-    strTest(4, 0, 0xa7, 0, "2222", 4, "4321", 4, 0x00000010, 0x00000020, 0, 0x00000014, 0x00000024, 0, true, false, false, HEAP_ADDRESS+256);
+    strTest(4, 0, 0xa7, 0, "2222", 4, "4321", 4, 0x00000010, 0x00000020, 0, 0x00000014, 0x00000024, 0, true, false, false, HEAP_ADDRESS + 256);
 
     // ESI < EDI
-    strTest(4, 0, 0xa7, 0, "4321", 4, "2222", 4, 0x00000010, 0x00000020, 0, 0x00000014, 0x00000024, 0, true, true, false, HEAP_ADDRESS+256);
+    strTest(4, 0, 0xa7, 0, "4321", 4, "2222", 4, 0x00000010, 0x00000020, 0, 0x00000014, 0x00000024, 0, true, true, false, HEAP_ADDRESS + 256);
 
     // SI == DI
-    strTest(4, 0, 0xa7, 0, "1234", 4, "1234", 4, 0x00000010, 0x00000020, 0, 0x00000014, 0x00000024, 0, true, false, true, HEAP_ADDRESS+256);
+    strTest(4, 0, 0xa7, 0, "1234", 4, "1234", 4, 0x00000010, 0x00000020, 0, 0x00000014, 0x00000024, 0, true, false, true, HEAP_ADDRESS + 256);
 
     // repz
     STR_TEST("abcdefghijklmnop", "abcdefghijklmnoq", 10, repz cmpsd, true, true, false, 6);
-    strTest(4, 0xf3, 0xa7, 0, "abcdefghijklmnop", 16, "abcdefghijklmnoq", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000020, 0x00000030, 0x0000000C, true, true, false, HEAP_ADDRESS+256);
+    strTest(4, 0xf3, 0xa7, 0, "abcdefghijklmnop", 16, "abcdefghijklmnoq", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000020, 0x00000030, 0x0000000C, true, true, false, HEAP_ADDRESS + 256);
     strTest(4, 0xf3, 0xa7, 0, "abcdefghijklmnop", 16, "abcdefghijklmnop", 16, 0x00000010, 0x00000020, 0x0000004, 0x00000020, 0x00000030, 0x00000000, true, false, true, HEAP_ADDRESS + 256);
 
     // repnz
-    strTest(4, 0xf2, 0xa7, 0, "abcdefghijklmnop", 16, "123456781234mnop", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000020, 0x00000030, 0x0000000C, true, false, true, HEAP_ADDRESS+256);
+    strTest(4, 0xf2, 0xa7, 0, "abcdefghijklmnop", 16, "123456781234mnop", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000020, 0x00000030, 0x0000000C, true, false, true, HEAP_ADDRESS + 256);
 
     // repz (DF)
-    strTest(4, 0xf3, 0xa7, DF, "abcdefghijklmnop", 16, "abcdefghijklmnoq", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000000, 0x00000010, 0x0000000C, true, true, false, HEAP_ADDRESS+256);    
+    strTest(4, 0xf3, 0xa7, DF, "abcdefghijklmnop", 16, "abcdefghijklmnoq", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000000, 0x00000010, 0x0000000C, true, true, false, HEAP_ADDRESS + 256);
 }
 
 void testTestAlIb0xa8() {
@@ -6520,7 +6704,7 @@ void testScasb0x0ae() {
     strTest(1, 0xf2, 0xae, DF, NULL, 0, "123d", 4, 0x12340020, 0x12340010, 0x12340010, 0x12340020, 0x1234000C, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12345664);
 
     // ecx 0 (maintain flags)
-    strTest(1, 0xf2, 0xae, SF|ZF, NULL, 0, "123d", 4, 0x12340020, 0x12340010, 0x12340000, 0x12340020, 0x12340010, 0x12340000, false, false, false, HEAP_ADDRESS + 256, 0x12345664);
+    strTest(1, 0xf2, 0xae, SF | ZF, NULL, 0, "123d", 4, 0x12340020, 0x12340010, 0x12340000, 0x12340020, 0x12340010, 0x12340000, false, false, false, HEAP_ADDRESS + 256, 0x12345664);
     assertTrue((cpu->flags & FMASK_TEST) == (SF | ZF));
 }
 
@@ -6601,8 +6785,8 @@ void testScasd0x2af() {
 }
 
 void testMovAlOb() {
-    memory->writed(HEAP_ADDRESS+(cpu->big?0x10123:0x0123), 0x12345678);
-    
+    memory->writed(HEAP_ADDRESS + (cpu->big ? 0x10123 : 0x0123), 0x12345678);
+
     newInstruction(0xa0, 0);
     if (cpu->big) {
         pushCode32(0x10123);
@@ -6625,7 +6809,7 @@ void testMovAlOb() {
         EAX = DEFAULT;
         runTestCPU();
         assertTrue(EAX == ((DEFAULT & 0xFFFFFF00) | 0x78));
-        
+
         cpu->seg[DS].address = HEAP_ADDRESS;
         process->hasSetSeg[DS] = true;
     }
@@ -6643,8 +6827,8 @@ void testMovAlOb0x2a0() {
 
 void testMovAxOw0xa1() {
     cpu->big = false;
-    memory->writed(HEAP_ADDRESS+0x0123, 0x12345678);
-    
+    memory->writed(HEAP_ADDRESS + 0x0123, 0x12345678);
+
     newInstruction(0xa1, 0);
     pushCode16(0x0123);
     EAX = DEFAULT;
@@ -6654,8 +6838,8 @@ void testMovAxOw0xa1() {
 
 void testMovEaxOd0x2a1() {
     cpu->big = true;
-    memory->writed(HEAP_ADDRESS+0x10123, 0x12345678);
-    
+    memory->writed(HEAP_ADDRESS + 0x10123, 0x12345678);
+
     newInstruction(0xa1, 0);
     pushCode32(0x10123);
     EAX = DEFAULT;
@@ -6691,9 +6875,9 @@ void testMovEaxOd0x2a1() {
 }
 
 void testMovObAl() {
-    U32 address = HEAP_ADDRESS+(cpu->big?0x10123:0x0123);
+    U32 address = HEAP_ADDRESS + (cpu->big ? 0x10123 : 0x0123);
     memory->writed(address, DEFAULT);
-    
+
     newInstruction(0xa2, 0);
     if (cpu->big) {
         pushCode32(0x10123);
@@ -6733,9 +6917,9 @@ void testMovObAl0x2a2() {
 
 void testMovOwAx0xa3() {
     cpu->big = false;
-    U32 address = HEAP_ADDRESS+0x0123;
+    U32 address = HEAP_ADDRESS + 0x0123;
     memory->writed(address, DEFAULT);
-    
+
     newInstruction(0xa3, 0);
     pushCode16(0x0123);
     EAX = 0x12345678;
@@ -6745,9 +6929,9 @@ void testMovOwAx0xa3() {
 
 void testMovOdEax0x2a3() {
     cpu->big = true;
-    U32 address = HEAP_ADDRESS+0x10123;
+    U32 address = HEAP_ADDRESS + 0x10123;
     memory->writed(address, DEFAULT);
-    
+
     newInstruction(0xa3, 0);
     pushCode32(0x10123);
     EAX = 0x12345678;
@@ -6839,7 +7023,7 @@ void testMovsb0x2a4() {
     assertTrue((cpu->flags & DF) == 0);
 
     // repnz (DF)
-    strTest(1, 0xf2, 0xa4, PF|DF, "abcd", 4, "0000", 4, 0x40020, 0x40010, 4, 0x4001C, 0x4000C, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    strTest(1, 0xf2, 0xa4, PF | DF, "abcd", 4, "0000", 4, 0x40020, 0x40010, 4, 0x4001C, 0x4000C, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
     assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x61626364);
     assertTrue((cpu->flags & FMASK_TEST) == PF);
     assertTrue((cpu->flags & DF) != 0);
@@ -7121,124 +7305,124 @@ void testLodsd0x2ad() {
 
 // :TODO: 0xa0 - 0xaf
 
-void testMovAlIb0x0b0() {cpu->big = false;EbRegIb(0xb0, cpu->reg8[0], 0, movb);}
-void testMovAlIb0x2b0() {cpu->big = true;EbRegIb(0xb0, cpu->reg8[0], 0, movb);}
-void testMovClIb0x0b1() {cpu->big = false;EbRegIb(0xb1, cpu->reg8[1], 1, movb);}
-void testMovClIb0x2b1() {cpu->big = true;EbRegIb(0xb1, cpu->reg8[1], 1, movb);}
-void testMovDlIb0x0b2() {cpu->big = false;EbRegIb(0xb2, cpu->reg8[2], 2, movb);}
-void testMovDlIb0x2b2() {cpu->big = true;EbRegIb(0xb2, cpu->reg8[2], 2, movb);}
-void testMovBlIb0x0b3() {cpu->big = false;EbRegIb(0xb3, cpu->reg8[3], 3, movb);}
-void testMovBlIb0x2b3() {cpu->big = true;EbRegIb(0xb3, cpu->reg8[3], 3, movb);}
-void testMovAhIb0x0b4() {cpu->big = false;EbRegIb(0xb4, cpu->reg8[4], 4, movb);}
-void testMovAhIb0x2b4() {cpu->big = true;EbRegIb(0xb4, cpu->reg8[4], 4, movb);}
-void testMovChIb0x0b5() {cpu->big = false;EbRegIb(0xb5, cpu->reg8[5], 5, movb);}
-void testMovChIb0x2b5() {cpu->big = true;EbRegIb(0xb5, cpu->reg8[5], 5, movb);}
-void testMovDhIb0x0b6() {cpu->big = false;EbRegIb(0xb6, cpu->reg8[6], 6, movb);}
-void testMovDhIb0x2b6() {cpu->big = true;EbRegIb(0xb6, cpu->reg8[6], 6, movb);}
-void testMovBhIb0x0b7() {cpu->big = false;EbRegIb(0xb7, cpu->reg8[7], 7, movb);}
-void testMovBhIb0x2b7() {cpu->big = true;EbRegIb(0xb7, cpu->reg8[7], 7, movb);}
-void testMovAxIw0x0b8() {cpu->big = false;EwRegIw(0xb8, &cpu->reg[0], 0, movw);}
-void testMovEaxId0x2b8() {cpu->big = true;EdRegId(0xb8, &cpu->reg[0], 0, movd);}
-void testMovCxIw0x0b9() {cpu->big = false;EwRegIw(0xb9, &cpu->reg[1], 1, movw);}
-void testMovEcxId0x2b9() {cpu->big = true;EdRegId(0xb9, &cpu->reg[1], 1, movd);}
-void testMovDxIw0x0ba() {cpu->big = false;EwRegIw(0xba, &cpu->reg[2], 2, movw);}
-void testMovEdxId0x2ba() {cpu->big = true;EdRegId(0xba, &cpu->reg[2], 2, movd);}
-void testMovBxIw0x0bb() {cpu->big = false;EwRegIw(0xbb, &cpu->reg[3], 3, movw);}
-void testMovEbxId0x2bb() {cpu->big = true;EdRegId(0xbb, &cpu->reg[3], 3, movd);}
-void testMovSpIw0x0bc() {cpu->big = false;EwRegIw(0xbc, &cpu->reg[4], 4, movw);}
-void testMovEspId0x2bc() {cpu->big = true;EdRegId(0xbc, &cpu->reg[4], 4, movd);}
-void testMovBpIw0x0bd() {cpu->big = false;EwRegIw(0xbd, &cpu->reg[5], 5, movw);}
-void testMovEbpId0x2bd() {cpu->big = true;EdRegId(0xbd, &cpu->reg[5], 5, movd);}
-void testMovSiIw0x0be() {cpu->big = false;EwRegIw(0xbe, &cpu->reg[6], 6, movw);}
-void testMovEsiId0x2be() {cpu->big = true;EdRegId(0xbe, &cpu->reg[6], 6, movd);}
-void testMovDiIw0x0bf() {cpu->big = false;EwRegIw(0xbf, &cpu->reg[7], 7, movw);}
-void testMovEdiId0x2bf() {cpu->big = true;EdRegId(0xbf, &cpu->reg[7], 7, movd);}
+void testMovAlIb0x0b0() { cpu->big = false; EbRegIb(0xb0, cpu->reg8[0], 0, movb); }
+void testMovAlIb0x2b0() { cpu->big = true; EbRegIb(0xb0, cpu->reg8[0], 0, movb); }
+void testMovClIb0x0b1() { cpu->big = false; EbRegIb(0xb1, cpu->reg8[1], 1, movb); }
+void testMovClIb0x2b1() { cpu->big = true; EbRegIb(0xb1, cpu->reg8[1], 1, movb); }
+void testMovDlIb0x0b2() { cpu->big = false; EbRegIb(0xb2, cpu->reg8[2], 2, movb); }
+void testMovDlIb0x2b2() { cpu->big = true; EbRegIb(0xb2, cpu->reg8[2], 2, movb); }
+void testMovBlIb0x0b3() { cpu->big = false; EbRegIb(0xb3, cpu->reg8[3], 3, movb); }
+void testMovBlIb0x2b3() { cpu->big = true; EbRegIb(0xb3, cpu->reg8[3], 3, movb); }
+void testMovAhIb0x0b4() { cpu->big = false; EbRegIb(0xb4, cpu->reg8[4], 4, movb); }
+void testMovAhIb0x2b4() { cpu->big = true; EbRegIb(0xb4, cpu->reg8[4], 4, movb); }
+void testMovChIb0x0b5() { cpu->big = false; EbRegIb(0xb5, cpu->reg8[5], 5, movb); }
+void testMovChIb0x2b5() { cpu->big = true; EbRegIb(0xb5, cpu->reg8[5], 5, movb); }
+void testMovDhIb0x0b6() { cpu->big = false; EbRegIb(0xb6, cpu->reg8[6], 6, movb); }
+void testMovDhIb0x2b6() { cpu->big = true; EbRegIb(0xb6, cpu->reg8[6], 6, movb); }
+void testMovBhIb0x0b7() { cpu->big = false; EbRegIb(0xb7, cpu->reg8[7], 7, movb); }
+void testMovBhIb0x2b7() { cpu->big = true; EbRegIb(0xb7, cpu->reg8[7], 7, movb); }
+void testMovAxIw0x0b8() { cpu->big = false; EwRegIw(0xb8, &cpu->reg[0], 0, movw); }
+void testMovEaxId0x2b8() { cpu->big = true; EdRegId(0xb8, &cpu->reg[0], 0, movd); }
+void testMovCxIw0x0b9() { cpu->big = false; EwRegIw(0xb9, &cpu->reg[1], 1, movw); }
+void testMovEcxId0x2b9() { cpu->big = true; EdRegId(0xb9, &cpu->reg[1], 1, movd); }
+void testMovDxIw0x0ba() { cpu->big = false; EwRegIw(0xba, &cpu->reg[2], 2, movw); }
+void testMovEdxId0x2ba() { cpu->big = true; EdRegId(0xba, &cpu->reg[2], 2, movd); }
+void testMovBxIw0x0bb() { cpu->big = false; EwRegIw(0xbb, &cpu->reg[3], 3, movw); }
+void testMovEbxId0x2bb() { cpu->big = true; EdRegId(0xbb, &cpu->reg[3], 3, movd); }
+void testMovSpIw0x0bc() { cpu->big = false; EwRegIw(0xbc, &cpu->reg[4], 4, movw); }
+void testMovEspId0x2bc() { cpu->big = true; EdRegId(0xbc, &cpu->reg[4], 4, movd); }
+void testMovBpIw0x0bd() { cpu->big = false; EwRegIw(0xbd, &cpu->reg[5], 5, movw); }
+void testMovEbpId0x2bd() { cpu->big = true; EdRegId(0xbd, &cpu->reg[5], 5, movd); }
+void testMovSiIw0x0be() { cpu->big = false; EwRegIw(0xbe, &cpu->reg[6], 6, movw); }
+void testMovEsiId0x2be() { cpu->big = true; EdRegId(0xbe, &cpu->reg[6], 6, movd); }
+void testMovDiIw0x0bf() { cpu->big = false; EwRegIw(0xbf, &cpu->reg[7], 7, movw); }
+void testMovEdiId0x2bf() { cpu->big = true; EdRegId(0xbf, &cpu->reg[7], 7, movd); }
 
 void testGrp20x0c0() {
     cpu->big = false;
     EbIb(0xC0, 0, rolb);
-    X86_TEST1C(rol, &rolb[0], al, 1) 
-    X86_TEST1C(rol, &rolb[1], al, 1) 
-    X86_TEST1C(rol, &rolb[2], al, 1) 
-    X86_TEST1C(rol, &rolb[3], al, 4) 
-    X86_TEST1C(rol, &rolb[4], al, 12) 
-    X86_TEST1C(rol, &rolb[5], al, 0) 
-    X86_TEST1C(rol, &rolb[6], al, 8)
-    X86_TEST1C(rol, &rolb[7], al, 8)
-    X86_TEST1C(rol, &rolb[8], al, 9)
-    X86_TEST1C(rol, &rolb[9], al, 32)
+    X86_TEST1C(rol, &rolb[0], al, 1)
+        X86_TEST1C(rol, &rolb[1], al, 1)
+        X86_TEST1C(rol, &rolb[2], al, 1)
+        X86_TEST1C(rol, &rolb[3], al, 4)
+        X86_TEST1C(rol, &rolb[4], al, 12)
+        X86_TEST1C(rol, &rolb[5], al, 0)
+        X86_TEST1C(rol, &rolb[6], al, 8)
+        X86_TEST1C(rol, &rolb[7], al, 8)
+        X86_TEST1C(rol, &rolb[8], al, 9)
+        X86_TEST1C(rol, &rolb[9], al, 32)
 
-    EbIb(0xC0, 1, rorb);
-    X86_TEST1C(ror, &rorb[0], al, 1) 
-    X86_TEST1C(ror, &rorb[1], al, 1) 
-    X86_TEST1C(ror, &rorb[2], al, 1) 
-    X86_TEST1C(ror, &rorb[3], al, 4) 
-    X86_TEST1C(ror, &rorb[4], al, 12) 
-    X86_TEST1C(ror, &rorb[5], al, 0) 
-    X86_TEST1C(ror, &rorb[6], al, 8)
-    X86_TEST1C(ror, &rorb[7], al, 8)
-    X86_TEST1C(ror, &rorb[8], al, 9)
-    X86_TEST1C(ror, &rorb[9], al, 32)
+        EbIb(0xC0, 1, rorb);
+    X86_TEST1C(ror, &rorb[0], al, 1)
+        X86_TEST1C(ror, &rorb[1], al, 1)
+        X86_TEST1C(ror, &rorb[2], al, 1)
+        X86_TEST1C(ror, &rorb[3], al, 4)
+        X86_TEST1C(ror, &rorb[4], al, 12)
+        X86_TEST1C(ror, &rorb[5], al, 0)
+        X86_TEST1C(ror, &rorb[6], al, 8)
+        X86_TEST1C(ror, &rorb[7], al, 8)
+        X86_TEST1C(ror, &rorb[8], al, 9)
+        X86_TEST1C(ror, &rorb[9], al, 32)
 
-    EbIb(0xC0, 2, rclb);
-    X86_TEST1C(rcl, &rclb[0], al, 1) 
-    X86_TEST1C(rcl, &rclb[1], al, 1) 
-    X86_TEST1C(rcl, &rclb[2], al, 1) 
-    X86_TEST1C(rcl, &rclb[3], al, 5) 
-    X86_TEST1C(rcl, &rclb[4], al, 14) 
-    X86_TEST1C(rcl, &rclb[5], al, 0) 
-    X86_TEST1C(rcl, &rclb[6], al, 9)
-    X86_TEST1C(rcl, &rclb[7], al, 9)
-    X86_TEST1C(rcl, &rclb[8], al, 10)
-    X86_TEST1C(rcl, &rclb[9], al, 32)
-    X86_TEST1C(rcl, &rclb[10], al, 1)
-    X86_TEST1C(rcl, &rclb[11], al, 2)
+        EbIb(0xC0, 2, rclb);
+    X86_TEST1C(rcl, &rclb[0], al, 1)
+        X86_TEST1C(rcl, &rclb[1], al, 1)
+        X86_TEST1C(rcl, &rclb[2], al, 1)
+        X86_TEST1C(rcl, &rclb[3], al, 5)
+        X86_TEST1C(rcl, &rclb[4], al, 14)
+        X86_TEST1C(rcl, &rclb[5], al, 0)
+        X86_TEST1C(rcl, &rclb[6], al, 9)
+        X86_TEST1C(rcl, &rclb[7], al, 9)
+        X86_TEST1C(rcl, &rclb[8], al, 10)
+        X86_TEST1C(rcl, &rclb[9], al, 32)
+        X86_TEST1C(rcl, &rclb[10], al, 1)
+        X86_TEST1C(rcl, &rclb[11], al, 2)
 
-    EbIb(0xC0, 3, rcrb);
-    X86_TEST1C(rcr, &rcrb[0], al, 1) 
-    X86_TEST1C(rcr, &rcrb[1], al, 1) 
-    X86_TEST1C(rcr, &rcrb[2], al, 1) 
-    X86_TEST1C(rcr, &rcrb[3], al, 5) 
-    X86_TEST1C(rcr, &rcrb[4], al, 14) 
-    X86_TEST1C(rcr, &rcrb[5], al, 0) 
-    X86_TEST1C(rcr, &rcrb[6], al, 9)
-    X86_TEST1C(rcr, &rcrb[7], al, 9)
-    X86_TEST1C(rcr, &rcrb[8], al, 10)
-    X86_TEST1C(rcr, &rcrb[9], al, 32)
-    X86_TEST1C(rcr, &rcrb[10], al, 1)
-    X86_TEST1C(rcr, &rcrb[11], al, 2)
+        EbIb(0xC0, 3, rcrb);
+    X86_TEST1C(rcr, &rcrb[0], al, 1)
+        X86_TEST1C(rcr, &rcrb[1], al, 1)
+        X86_TEST1C(rcr, &rcrb[2], al, 1)
+        X86_TEST1C(rcr, &rcrb[3], al, 5)
+        X86_TEST1C(rcr, &rcrb[4], al, 14)
+        X86_TEST1C(rcr, &rcrb[5], al, 0)
+        X86_TEST1C(rcr, &rcrb[6], al, 9)
+        X86_TEST1C(rcr, &rcrb[7], al, 9)
+        X86_TEST1C(rcr, &rcrb[8], al, 10)
+        X86_TEST1C(rcr, &rcrb[9], al, 32)
+        X86_TEST1C(rcr, &rcrb[10], al, 1)
+        X86_TEST1C(rcr, &rcrb[11], al, 2)
 
-    EbIb(0xC0, 4, shlb);
-    X86_TEST1C(shl, &shlb[0], al, 1) 
-    X86_TEST1C(shl, &shlb[1], al, 1) 
-    X86_TEST1C(shl, &shlb[2], al, 1) 
-    X86_TEST1C(shl, &shlb[3], al, 4) 
-    X86_TEST1C(shl, &shlb[4], al, 12) 
-    X86_TEST1C(shl, &shlb[5], al, 0) 
-    X86_TEST1C(shl, &shlb[6], al, 32)
+        EbIb(0xC0, 4, shlb);
+    X86_TEST1C(shl, &shlb[0], al, 1)
+        X86_TEST1C(shl, &shlb[1], al, 1)
+        X86_TEST1C(shl, &shlb[2], al, 1)
+        X86_TEST1C(shl, &shlb[3], al, 4)
+        X86_TEST1C(shl, &shlb[4], al, 12)
+        X86_TEST1C(shl, &shlb[5], al, 0)
+        X86_TEST1C(shl, &shlb[6], al, 32)
 
-    EbIb(0xC0, 5, shrb);
-    X86_TEST1C(shr, &shrb[0], al, 1) 
-    X86_TEST1C(shr, &shrb[1], al, 1) 
-    X86_TEST1C(shr, &shrb[2], al, 1) 
-    X86_TEST1C(shr, &shrb[3], al, 1) 
-    X86_TEST1C(shr, &shrb[4], al, 4) 
-    X86_TEST1C(shr, &shrb[5], al, 12) 
-    X86_TEST1C(shr, &shrb[6], al, 0)
-    X86_TEST1C(shr, &shrb[7], al, 32)
+        EbIb(0xC0, 5, shrb);
+    X86_TEST1C(shr, &shrb[0], al, 1)
+        X86_TEST1C(shr, &shrb[1], al, 1)
+        X86_TEST1C(shr, &shrb[2], al, 1)
+        X86_TEST1C(shr, &shrb[3], al, 1)
+        X86_TEST1C(shr, &shrb[4], al, 4)
+        X86_TEST1C(shr, &shrb[5], al, 12)
+        X86_TEST1C(shr, &shrb[6], al, 0)
+        X86_TEST1C(shr, &shrb[7], al, 32)
 
-    EbIb(0xC0, 6, shlb);
+        EbIb(0xC0, 6, shlb);
 
     EbIb(0xC0, 7, sarb);
-    X86_TEST1C(sar, &sarb[0], al, 1) 
-    X86_TEST1C(sar, &sarb[1], al, 1) 
-    X86_TEST1C(sar, &sarb[2], al, 1) 
-    X86_TEST1C(sar, &sarb[3], al, 7) 
-    X86_TEST1C(sar, &sarb[4], al, 1) 
-    X86_TEST1C(sar, &sarb[5], al, 4) 
-    X86_TEST1C(sar, &sarb[6], al, 12)
-    X86_TEST1C(sar, &sarb[7], al, 0)
-    X86_TEST1C(sar, &sarb[8], al, 32)
+    X86_TEST1C(sar, &sarb[0], al, 1)
+        X86_TEST1C(sar, &sarb[1], al, 1)
+        X86_TEST1C(sar, &sarb[2], al, 1)
+        X86_TEST1C(sar, &sarb[3], al, 7)
+        X86_TEST1C(sar, &sarb[4], al, 1)
+        X86_TEST1C(sar, &sarb[5], al, 4)
+        X86_TEST1C(sar, &sarb[6], al, 12)
+        X86_TEST1C(sar, &sarb[7], al, 0)
+        X86_TEST1C(sar, &sarb[8], al, 32)
 }
 
 void testGrp20x2c0() {
@@ -7293,8 +7477,8 @@ void testRetn16Iw0x0c2() {
     ESP -= 16; // simulates params pass on the stack to the function
 
     ESP -= 2;
-    memory->writew(cpu->seg[SS].address + SP, 0x128);    
-    
+    memory->writew(cpu->seg[SS].address + SP, 0x128);
+
     runTestCPU();
     assertTrue(ESP == esp);
     assertTrue(EAX == 0x12340000);
@@ -7369,7 +7553,7 @@ void testSegment16(U8 instruction, U32 seg, U16 selector) {
         if (cpu->big)
             rm += 5;
         else
-            rm += 6;        
+            rm += 6;
         setup();
         newInstructionWithRM(instruction, rm, 0);
         if (cpu->big)
@@ -7426,10 +7610,10 @@ void testLds0x2c5() {
     testSegment32(0xc5, DS, CODE_SEG);
 }
 
-void testMovEbIb0x0c6() {cpu->big = false;EbIb(0xc6, 0, movb);}
-void testMovEbIb0x2c6() {cpu->big = true;EbIb(0xc6, 0, movb);}
-void testMovEwIw0x0c7() {cpu->big = false;EwIw(0xc7, 0, movw);}
-void testMovEdId0x2c7() {cpu->big = true;EdId(0xc7, 0, movd);}
+void testMovEbIb0x0c6() { cpu->big = false; EbIb(0xc6, 0, movb); }
+void testMovEbIb0x2c6() { cpu->big = true; EbIb(0xc6, 0, movb); }
+void testMovEwIw0x0c7() { cpu->big = false; EwIw(0xc7, 0, movw); }
+void testMovEdId0x2c7() { cpu->big = true; EdId(0xc7, 0, movd); }
 
 void testEnter0x0c8() {
     cpu->big = false;
@@ -7441,7 +7625,7 @@ void testEnter0x0c8() {
     EBP = 0xabcd1234;
     runTestCPU();
     assertTrue(EBP == 0xabcd0fee);
-    assertTrue(ESP == 0xdee);    
+    assertTrue(ESP == 0xdee);
 }
 
 void testEnter0x2c8() {
@@ -7485,7 +7669,7 @@ void testLeave0x2c9() {
 
     U32 esp = ESP;
     SP -= 4;
-    memory->writed(cpu->seg[SS].address + ESP, 0x12345678);    
+    memory->writed(cpu->seg[SS].address + ESP, 0x12345678);
     EBP = ESP;
     ESP = 0xdeadbeef;
     runTestCPU();
@@ -7502,7 +7686,7 @@ void testIRet0x2cf() {
     ESP -= 12;
     memory->writed(cpu->seg[SS].address + ESP, 0x128);
     memory->writed(cpu->seg[SS].address + ESP + 4, CODE_SEG_16);
-    memory->writed(cpu->seg[SS].address + ESP + 8, CF|OF|ZF);
+    memory->writed(cpu->seg[SS].address + ESP + 8, CF | OF | ZF);
 
     pushCode8(0xcd);
     pushCode8(0xcd);
@@ -7619,19 +7803,19 @@ void testGrp20x2d3() {
     EdCl(0xD3, 7, sard);
 }
 
-void testAam0x0d4() {cpu->big = false;EwRegIb(0xd4, 0, aam);X86_TEST0(aam, aam)}
-void testAam0x2d4() {cpu->big = true;EwRegIb(0xd4, 0, aam);}
+void testAam0x0d4() { cpu->big = false; EwRegIb(0xd4, 0, aam); X86_TEST0(aam, aam) }
+void testAam0x2d4() { cpu->big = true; EwRegIb(0xd4, 0, aam); }
 
-void testAad0x0d5() {cpu->big = false;EwRegIb(0xd5, 0, aad);X86_TEST0(aad, aad)}
-void testAad0x2d5() {cpu->big = true;EwRegIb(0xd5, 0, aad);}
+void testAad0x0d5() { cpu->big = false; EwRegIb(0xd5, 0, aad); X86_TEST0(aad, aad) }
+void testAad0x2d5() { cpu->big = true; EwRegIb(0xd5, 0, aad); }
 
-void testSalc0x0d6() {cpu->big=false; EbReg(0xd6, 0, salc);}
-void testSalc0x2d6() {cpu->big=true; EbReg(0xd6, 0, salc);}
+void testSalc0x0d6() { cpu->big = false; EbReg(0xd6, 0, salc); }
+void testSalc0x2d6() { cpu->big = true; EbReg(0xd6, 0, salc); }
 
 void testXlat0x0d7() {
     U32 result;
 
-    cpu->big=false;
+    cpu->big = false;
     newInstruction(0xd7, 0);
     EBX = DEFAULT;
     EAX = DEFAULT;
@@ -7639,31 +7823,31 @@ void testXlat0x0d7() {
     memory->writed(cpu->seg[DS].address + 2004, DEFAULT);
     memory->writed(cpu->seg[DS].address + 2008, DEFAULT);
     BX = 2000;
-    AL=4;
+    AL = 4;
     memory->writeb(cpu->seg[DS].address + 2004, 0x08);
     runTestCPU();
     result = DEFAULT;
-    result&=~0xFF;
-    result+=8;
+    result &= ~0xFF;
+    result += 8;
     assertTrue(EAX == result);
 }
 
 void testXlat0x2d7() {
     U32 result;
 
-    cpu->big=true;
+    cpu->big = true;
     newInstruction(0xd7, 0);
     EAX = DEFAULT;
     memory->writed(cpu->seg[DS].address + 2000, DEFAULT);
     memory->writed(cpu->seg[DS].address + 2004, DEFAULT);
     memory->writed(cpu->seg[DS].address + 2008, DEFAULT);
-    EBX=2000;
-    AL=4;
+    EBX = 2000;
+    AL = 4;
     memory->writeb(cpu->seg[DS].address + 2004, 0x08);
     runTestCPU();
     result = DEFAULT;
-    result&=~0xFF;
-    result+=8;
+    result &= ~0xFF;
+    result += 8;
     assertTrue(EAX == result);
 }
 
@@ -7674,7 +7858,7 @@ void doLoopZ(U32 instruction, bool big, bool neg) {
             for (int zeroCX = 0; zeroCX < 2; zeroCX++) {
                 if (setFlags) {
                     newInstruction(instruction, useFlags ? ZF : 0);
-                } else {                    
+                } else {
                     // cmp (e)ax, 0
                     newInstructionWithRM(0x83, 0xf8, 0);
                     pushCode8(0);
@@ -7951,8 +8135,8 @@ void testJmpJd0x2e9() {
     assertTrue(ESP == 4096); // shouldn't have touched it
 }
 
-void testCmc0x0f5() {cpu->big=false;EbReg(0xf5, 0, cmc);}
-void testCmc0x2f5() {cpu->big=true;EbReg(0xf5, 0, cmc);}
+void testCmc0x0f5() { cpu->big = false; EbReg(0xf5, 0, cmc); }
+void testCmc0x2f5() { cpu->big = true; EbReg(0xf5, 0, cmc); }
 
 void testGrp30x0f6() {
     cpu->big = false;
@@ -8002,19 +8186,19 @@ void testGrp30x2f7() {
     EdEaxEdx(0xf7, 7, idivEax, true);
 }
 
-void testClc0x0f8() {cpu->big=false;EbReg(0xf8, 0, clc);}
-void testClc0x2f8() {cpu->big=true;EbReg(0xf8, 0, clc);}
-void testStc0x0f8() {cpu->big=false;EbReg(0xf9, 0, stc);}
-void testStc0x2f8() {cpu->big=true;EbReg(0xf9, 0, stc);}
+void testClc0x0f8() { cpu->big = false; EbReg(0xf8, 0, clc); }
+void testClc0x2f8() { cpu->big = true; EbReg(0xf8, 0, clc); }
+void testStc0x0f8() { cpu->big = false; EbReg(0xf9, 0, stc); }
+void testStc0x2f8() { cpu->big = true; EbReg(0xf9, 0, stc); }
 
 void testGrp40x0fe() {
-    cpu->big=false;
+    cpu->big = false;
     Eb(0xfe, 0, incb, true);
     Eb(0xfe, 1, decb, true);
 }
 
 void testGrp40x2fe() {
-    cpu->big=true;
+    cpu->big = true;
     Eb(0xfe, 0, incb, true);
     Eb(0xfe, 1, decb, true);
 }
@@ -8029,7 +8213,7 @@ void testPushE16() {
             value = cpu->reg[i].u32;
         } else {
             cpu->reg[i].u32 = value;
-        }        
+        }
         memory->writew(cpu->seg[SS].address + ESP, 0xAAAA);
         memory->writew(cpu->seg[SS].address + ESP - 2, 0xCCCC);
         memory->writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
@@ -8051,7 +8235,7 @@ void testPushE16() {
     ESP -= 2;
     U16 value = 0x1234;
     memory->writew(cpu->seg[DS].address + 200, value);
-    
+
     memory->writew(cpu->seg[SS].address + ESP, 0xAAAA);
     memory->writew(cpu->seg[SS].address + ESP - 2, 0xCCCC);
     memory->writew(cpu->seg[SS].address + ESP - 4, 0xBBBB);
@@ -8070,8 +8254,7 @@ void testPushE32() {
         ESP -= 4;
         if (i == 4) {
             value = cpu->reg[i].u32;
-        }
-        else {
+        } else {
             cpu->reg[i].u32 = value;
         }
         memory->writed(cpu->seg[SS].address + ESP, 0xAAAAAAAA);
@@ -8119,7 +8302,7 @@ void testCallE16() {
         // call
         pushCode8(0xff);
         pushCode8(rm);
-        
+
         for (int i = 0; i < 0x100; i++) {
             pushCode8(0xcd);
         }
@@ -8147,7 +8330,7 @@ void testCallE16() {
     else
         rm += 6;
     newInstructionWithRM(0xff, rm, 0);
-    pushCode16(200);  
+    pushCode16(200);
 
     for (int i = 0; i < 0x100; i++) {
         pushCode8(0xcd);
@@ -8196,8 +8379,7 @@ void testCallE32() {
         if (i == 4) {
             assertTrue(memory->readd(cpu->seg[SS].address + 0x100) == 0x2); // eip after calljw
             assertTrue(ESP == 0x100);
-        }
-        else {
+        } else {
             assertTrue(memory->readw(cpu->seg[SS].address + 4092) == 0x2); // eip after calljw
             assertTrue(SP == 4092);
         }
@@ -8328,8 +8510,7 @@ void testJmpE16() {
         assertTrue(AX == 0x103);
         if (i == 4) {
             assertTrue(SP == 0x102);
-        }
-        else {
+        } else {
             assertTrue(SP == 4096);
         }
     }
@@ -8387,8 +8568,7 @@ void testJmpE32() {
         assertTrue(EAX == 0x105);
         if (i == 4) {
             assertTrue(ESP == 0x104);
-        }
-        else {
+        } else {
             assertTrue(SP == 4096);
         }
     }
@@ -8484,7 +8664,7 @@ void testJmpFarE32() {
 }
 
 void testGrp50x0ff() {
-    cpu->big=false;
+    cpu->big = false;
     Ew(0xff, 0, incw, true);
     Ew(0xff, 1, decw, true);
     testCallE16(); // 2
@@ -8495,7 +8675,7 @@ void testGrp50x0ff() {
 }
 
 void testGrp50x2ff() {
-    cpu->big=true;
+    cpu->big = true;
     Ed(0xff, 0, incd, true);
     Ed(0xff, 1, decd, true);
     testCallE32(); // 2
@@ -8506,13 +8686,13 @@ void testGrp50x2ff() {
 }
 
 void testBt0x1a3() {
-    cpu->big=false;
+    cpu->big = false;
     EwGwEffective(0x1a3, btw);
     X86_TEST(bt, btw, ax, cx);
 }
 
 void testBt0x3a3() {
-    cpu->big=true;
+    cpu->big = true;
     EdGdEffective(0x3a3, btd);
     X86_TEST(bt, btd, eax, ecx);
 }
@@ -8578,12 +8758,12 @@ void testGroup80x3ba() {
 }
 
 void testShld0x1a4() {
-    cpu->big=false;
+    cpu->big = false;
     EwGw(0x1a4, shld16);
 }
 
 void testShld0x3a4() {
-    cpu->big=true;
+    cpu->big = true;
     EdGd(0x1a4, shld32);
     X86_TEST2C(shld, &shld32[0], eax, ecx, 12);
     X86_TEST2C(shld, &shld32[1], eax, ecx, 1);
@@ -8594,27 +8774,27 @@ void testShld0x3a4() {
 }
 
 void testShld0x1a5() {
-    cpu->big=false;
+    cpu->big = false;
     EwGwCl(0x1a5, shld16);
 }
 
 void testShld0x3a5() {
-    cpu->big=true;
+    cpu->big = true;
     EdGdCl(0x1a5, shld32);
 }
 
 void testBts0x1ab() {
-    cpu->big=false;
+    cpu->big = false;
     EwGwEffective(0x1ab, btsw, true);
 }
 
 void testBts0x3ab() {
-    cpu->big=true;
+    cpu->big = true;
     EdGdEffective(0x1ab, btsd, true);
 }
 
 void testShrd0x1ac() {
-    cpu->big=false;
+    cpu->big = false;
     EwGw(0x1ac, shrd16);
 
     X86_TEST2C(shrd, &shrd16[0], ax, cx, 4);
@@ -8627,17 +8807,17 @@ void testShrd0x1ac() {
 }
 
 void testShrd0x3ac() {
-    cpu->big=true;
+    cpu->big = true;
     EdGd(0x1ac, shrd32);
 }
 
 void testShrd0x1ad() {
-    cpu->big=false;
+    cpu->big = false;
     EwGwCl(0x1ad, shrd16);
 }
 
 void testShrd0x3ad() {
-    cpu->big=true;
+    cpu->big = true;
     EdGdCl(0x1ad, shrd32);
 }
 
@@ -8648,7 +8828,7 @@ int valid;
     U32 result;
     U32 resultvar2;
     U32 flags;
-    U32 constant;    
+    U32 constant;
     int fCF;
     int fOF;
     int fZF;
@@ -8664,7 +8844,7 @@ int valid;
     U32 hasSF;
     */
 
-// :TODO: this should test larger numbers for 16-bit and 32-bit versions
+    // :TODO: this should test larger numbers for 16-bit and 32-bit versions
 static struct Data cmpxchgd[] = {
     // 1, D, S, D(result), EAX(result), flags, EAX, CF, OF, ZF, SF, 0, 1, 0, 1, 0, 0, 1, 1, 1
       {1, 1, 2, 2        , 1          , 0    , 1  ,  0,  0,  1,  0, 0, 1, 0, 1, 0, 0, 1, 1, 1},
@@ -8777,12 +8957,12 @@ void testCmpXchg0x1b1() {
 }
 
 void testCmpXchg0x3b1() {
-    cpu->big=true;
+    cpu->big = true;
     EdGdEax(0x3b1, cmpxchgd, true);
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
-    {  
+    {
         struct Data* data = cmpxchgd;
-        U32 flagMask = CF|OF|ZF|PF|SF|AF;
+        U32 flagMask = CF | OF | ZF | PF | SF | AF;
 
         while (data->valid) {
             U32 result;
@@ -8796,32 +8976,32 @@ void testCmpXchg0x3b1() {
                 mov ebx, flags;
 
                 push ebx
-                popf
+                    popf
 
-                cmpxchg ecx, edx
-                mov result, ecx
-                mov result2, eax
+                    cmpxchg ecx, edx
+                    mov result, ecx
+                    mov result2, eax
 
-                pushf
-                pop ebx
-                mov flags, ebx
+                    pushf
+                    pop ebx
+                    mov flags, ebx
             }
             assertTrue(result2 == data->resultvar2);
             if (!data->dontUseResultAndCheckSFZF)
                 assertTrue(result == data->result);
             if (data->dontUseResultAndCheckSFZF || data->hasSF)
-                assertTrue((flags & SF)!=0 == data->fSF!=0);
+                assertTrue((flags & SF) != 0 == data->fSF != 0);
             if (data->dontUseResultAndCheckSFZF || data->hasZF)
-                assertTrue((flags & ZF)!=0 == data->fZF!=0);
+                assertTrue((flags & ZF) != 0 == data->fZF != 0);
             if (data->hasCF)
-                assertTrue((flags & CF)!=0 == data->fCF!=0);
+                assertTrue((flags & CF) != 0 == data->fCF != 0);
             if (data->hasOF)
-                assertTrue((flags & OF)!=0 == data->fOF!=0);
+                assertTrue((flags & OF) != 0 == data->fOF != 0);
             if (data->hasAF)
-                assertTrue((flags & AF)!=0 == data->fAF!=0);
+                assertTrue((flags & AF) != 0 == data->fAF != 0);
             data++;
         }
-    } 
+    }
 #endif
 }
 
@@ -8942,7 +9122,7 @@ void testCmpXchg8b0x3c7() {
             }
         }
     }
-}
+    }
 
 void testXaddb0x1c0() {
     cpu->big = false;
@@ -8967,35 +9147,35 @@ void testXaddd0x3c1() {
 
 void testPushSeg16(int inst, U8 seg) {
     U16 prevStack = cpu->reg[4].u16;
-    memory->writew(cpu->seg[SS].address+cpu->reg[4].u16-2, 0x2222);
+    memory->writew(cpu->seg[SS].address + cpu->reg[4].u16 - 2, 0x2222);
     cpu->seg[seg].value = 0x107;
     cpu->big = 0;
     newInstruction(inst, 0);
     runTestCPU();
-    if (cpu->reg[4].u16!=prevStack-2) {
+    if (cpu->reg[4].u16 != prevStack - 2) {
         failed("stack wasn't decremented by 2");
     }
-    if (memory->readw(cpu->seg[SS].address+cpu->reg[4].u16)!=0x107) {
+    if (memory->readw(cpu->seg[SS].address + cpu->reg[4].u16) != 0x107) {
         failed("seg value was not found");
     }
 }
 
 void testPopSeg16(int inst, U8 seg) {
     struct user_desc* ldt = cpu->thread->process->getLDT(0x20);
-    ldt->entry_number=0x20;
+    ldt->entry_number = 0x20;
     ldt->base_addr = HEAP_ADDRESS;
     ldt->seg_32bit = 1;
     ldt->seg_not_present = 0;
 
     newInstruction(inst, 0);
-    cpu->reg[4].u32-=2;
+    cpu->reg[4].u32 -= 2;
     U32 prevStack = cpu->reg[4].u32;
-    memory->writed(cpu->seg[SS].address+cpu->reg[4].u16, 0x107);
+    memory->writed(cpu->seg[SS].address + cpu->reg[4].u16, 0x107);
     cpu->seg[seg].value = 0;
     if (seg != SS) {
         cpu->seg[seg].address = 0;
     }
-    cpu->big = 0;    
+    cpu->big = 0;
 
     bool checkReadValueIntoAX = false;
     // read seg:[0] into AX to verify that segment can be used    
@@ -9016,10 +9196,10 @@ void testPopSeg16(int inst, U8 seg) {
         process->hasSetSeg[seg] = true;
     }
     runTestCPU();
-    if (cpu->reg[4].u16!=prevStack+2) {
+    if (cpu->reg[4].u16 != prevStack + 2) {
         failed("stack wasn't incremented by 2");
     }
-    if (cpu->seg[seg].value!=0x107) {
+    if (cpu->seg[seg].value != 0x107) {
         failed("seg value was not set");
     }
     if (cpu->seg[seg].address != HEAP_ADDRESS) {
@@ -9032,35 +9212,35 @@ void testPopSeg16(int inst, U8 seg) {
 
 void testPushSeg32(int inst, U8 seg) {
     U32 prevStack = cpu->reg[4].u32;
-    memory->writed(cpu->seg[SS].address+cpu->reg[4].u32-4, 0x22222222);
+    memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 - 4, 0x22222222);
     cpu->seg[seg].value = 0x107;
     cpu->big = 1;
     newInstruction(inst, 0);
     runTestCPU();
-    if (cpu->reg[4].u32!=prevStack-4) {
+    if (cpu->reg[4].u32 != prevStack - 4) {
         failed("stack wasn't decremented by 4");
     }
-    if (memory->readd(cpu->seg[SS].address+cpu->reg[4].u32)!=0x107) {
+    if (memory->readd(cpu->seg[SS].address + cpu->reg[4].u32) != 0x107) {
         failed("seg value was not found");
     }
 }
 
 void testPopSeg32(int inst, U8 seg) {
     struct user_desc* ldt = cpu->thread->process->getLDT(0x20);
-    ldt->entry_number=0x20;
+    ldt->entry_number = 0x20;
     ldt->base_addr = HEAP_ADDRESS;
     ldt->seg_32bit = 1;
     ldt->seg_not_present = 0;
 
     newInstruction(inst, 0);
-    cpu->reg[4].u32-=4;
+    cpu->reg[4].u32 -= 4;
     U32 prevStack = cpu->reg[4].u32;
-    memory->writed(cpu->seg[SS].address+cpu->reg[4].u32, 0x107);
+    memory->writed(cpu->seg[SS].address + cpu->reg[4].u32, 0x107);
     cpu->seg[seg].value = 0;
     if (seg != SS) {
         cpu->seg[seg].address = 0;
     }
-    cpu->big = 1;    
+    cpu->big = 1;
 
     bool checkReadValueIntoEAX = false;
     // read seg:[0] into EAX to verify that segment can be used    
@@ -9080,10 +9260,10 @@ void testPopSeg32(int inst, U8 seg) {
     }
 
     runTestCPU();
-    if (cpu->reg[4].u32!=prevStack+4) {
+    if (cpu->reg[4].u32 != prevStack + 4) {
         failed("stack wasn't incremented by 4");
     }
-    if (cpu->seg[seg].value!=0x107) {
+    if (cpu->seg[seg].value != 0x107) {
         failed("seg value was not set");
     }
     if (checkReadValueIntoEAX && cpu->reg[0].u32 != 0x11122233) {
@@ -9149,14 +9329,14 @@ void testPopDs0x21f() {
 
 void testSeg(int inst, U8 seg) {
     U32 address = HEAP_ADDRESS;
-    U32 offset = 3*1024;
-    if (seg==CS) {
+    U32 offset = 3 * 1024;
+    if (seg == CS) {
         address = CODE_ADDRESS;
     } else {
-        cpu->seg[seg].address = HEAP_ADDRESS+512;
+        cpu->seg[seg].address = HEAP_ADDRESS + 512;
     }
     EAX = 0;
-    memory->writeb(cpu->seg[seg].address+offset, 0xbf);
+    memory->writeb(cpu->seg[seg].address + offset, 0xbf);
     newInstruction(inst, 0);
     pushCode8(0xa1);
     if (cpu->big) {
@@ -9165,7 +9345,7 @@ void testSeg(int inst, U8 seg) {
         pushCode16(offset);
     }
     runTestCPU();
-    if (EAX!=0xbf) {
+    if (EAX != 0xbf) {
         failed("seg prefix failed");
     }
 }
@@ -9251,7 +9431,7 @@ void testAddressPrefix0x267() {
 }
 
 void doTestBswap(U8 reg) {
-    newInstruction(0x3c8+reg, 0);
+    newInstruction(0x3c8 + reg, 0);
     cpu->reg[reg].u32 = 0x12345678;
     runTestCPU();
     assertTrue(cpu->reg[reg].u32 == 0x78563412);
@@ -9354,7 +9534,7 @@ void doTestCmov(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrig
             }
             for (U32 gd = 0; gd < 8; gd++) {
                 Reg* g;
-                
+
                 U8 rm = (gd << 3);
                 if (cpu->big) {
                     rm += 5;
@@ -9365,7 +9545,7 @@ void doTestCmov(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrig
                     newInstructionWithRM(instruction, rm, useFlags ? flags : 0);
                 } else {
                     // cmp [200], 0
-                    newInstructionWithRM(0x81, 0x38 | (cpu->big?5:6), 0);
+                    newInstructionWithRM(0x81, 0x38 | (cpu->big ? 5 : 6), 0);
                     if (cpu->big) {
                         pushCode32(200);
                     } else {
@@ -9411,7 +9591,7 @@ void doTestCmov(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrig
                 } else {
                     assertTrue(g->u32 == 0x33334444);
                 }
-            }            
+            }
         }
     }
     runTestCPU();
@@ -9552,7 +9732,7 @@ void testCmovNP0x34b() {
 void testCmovL0x14c() {
     cpu->big = 0;
     // signed less than
-    doTestCmov(0x14c, false, SF, 0x2223, 0x2222); 
+    doTestCmov(0x14c, false, SF, 0x2223, 0x2222);
     doTestCmov(0x14c, false, OF, 0x7fff, 0xffff);
 }
 
@@ -9613,14 +9793,13 @@ void doTestSet(U32 instruction, U32 value1, U32 value2, bool isSet) {
         newInstructionWithRM(0x81, 0xf8 | (ed % 4), 0);
         if (cpu->big) {
             pushCode32(value2);
-        }
-        else {
+        } else {
             pushCode16(value2);
         }
         pushCode8(0x0F);
         pushCode8(instruction & 0xFF);
         pushCode8(rm);
-        
+
         e = &cpu->reg[ed % 4];
         e->u32 = value1;
         runTestCPU();
@@ -9628,16 +9807,13 @@ void doTestSet(U32 instruction, U32 value1, U32 value2, bool isSet) {
         if (isSet) {
             if (ed > 3) {
                 assertTrue(e->u32 == ((value1 & 0xffff00ff) | 0x00000100));
-            }
-            else {
+            } else {
                 assertTrue(e->u32 == ((value1 & 0xffffff00) | 0x00000001));
             }
-        }
-        else {
+        } else {
             if (ed > 3) {
                 assertTrue(e->u32 == (value1 & 0xffff00ff));
-            }
-            else {
+            } else {
                 assertTrue(e->u32 == (value1 & 0xffffff00));
             }
         }
@@ -9721,7 +9897,7 @@ void doTestSet(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrigg
                 }
                 pushCode8(0x0F);
                 pushCode8(instruction & 0xFF);
-                pushCode8(rm);                
+                pushCode8(rm);
             }
             if (cpu->big) {
                 pushCode32(200);
@@ -9960,12 +10136,12 @@ void run(void (*functionPtr)(), const char* name) {
 // 10 	[DS:EAS + disp32]  [DS:ECX + disp32]  [SS:EDX + disp32]  [DS:EBX + disp32]  SIB1   [SS:EBP + disp32]   [DS:ESI + disp32]   [DS:EDI + disp32]
 void initMem32();
 void runLeaGd(int rm, int hasSib, U32 sib, int hasDisp8, int hasDisp32, S32 disp, U32 result, U32 seg) {
-    Reg* reg = &cpu->reg[G(rm)];    
+    Reg* reg = &cpu->reg[G(rm)];
     U32 originalValue = reg->u32;
 
     // lea Gw
-    cseip=CODE_ADDRESS;
-    cpu->eip.u32=0;   
+    cseip = CODE_ADDRESS;
+    cpu->eip.u32 = 0;
     pushCode8(0x8d);
 
     pushCode8(rm);
@@ -9976,14 +10152,14 @@ void runLeaGd(int rm, int hasSib, U32 sib, int hasDisp8, int hasDisp32, S32 disp
     if (hasDisp32)
         pushCode32(disp);
     runTestCPU();
-    assertTrue(reg->u32==result);
+    assertTrue(reg->u32 == result);
 
     reg->u32 = originalValue;
     // MOV Gd,Ed
-    memory->writed(cpu->seg[seg].address+result, 0x35792468);
+    memory->writed(cpu->seg[seg].address + result, 0x35792468);
 
-    cseip=CODE_ADDRESS;
-    cpu->eip.u32=0;   
+    cseip = CODE_ADDRESS;
+    cpu->eip.u32 = 0;
     pushCode8(0x8b);
 
     pushCode8(rm);
@@ -9998,9 +10174,9 @@ void runLeaGd(int rm, int hasSib, U32 sib, int hasDisp8, int hasDisp32, S32 disp
 }
 
 void initMem32() {
-    memory->memset(CODE_ADDRESS, 0, K_PAGE_SIZE*PAGES_PER_SEG);
-    memory->memset(STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG, 0, K_PAGE_SIZE*PAGES_PER_SEG);
-    memory->memset(HEAP_ADDRESS, 0, K_PAGE_SIZE*PAGES_PER_SEG);
+    memory->memset(CODE_ADDRESS, 0, K_PAGE_SIZE * PAGES_PER_SEG);
+    memory->memset(STACK_ADDRESS - K_PAGE_SIZE * PAGES_PER_SEG, 0, K_PAGE_SIZE * PAGES_PER_SEG);
+    memory->memset(HEAP_ADDRESS, 0, K_PAGE_SIZE * PAGES_PER_SEG);
 
     cpu->big = true;
     EAX = 0x12345678;
@@ -10018,355 +10194,355 @@ void test32BitMemoryAccess() {
 
     // Mod 00
         // [DS:EAX]
-        initMem32(); EAX = 0;       runLeaGd(0, 0, 0, 0, 0, 0, 0, DS);
-        initMem32(); EAX = 0x10000; runLeaGd(1<<3, 0, 0, 0, 0, 0, 0x10000, DS);
+    initMem32(); EAX = 0;       runLeaGd(0, 0, 0, 0, 0, 0, 0, DS);
+    initMem32(); EAX = 0x10000; runLeaGd(1 << 3, 0, 0, 0, 0, 0, 0x10000, DS);
 
-        // [DS:ECX]
-        initMem32(); ECX = 0;       runLeaGd(0|1, 0, 0, 0, 0, 0, 0, DS);
-        initMem32(); ECX = 0x10000; runLeaGd(1<<3|1, 0, 0, 0, 0, 0, 0x10000, DS);
+    // [DS:ECX]
+    initMem32(); ECX = 0;       runLeaGd(0 | 1, 0, 0, 0, 0, 0, 0, DS);
+    initMem32(); ECX = 0x10000; runLeaGd(1 << 3 | 1, 0, 0, 0, 0, 0, 0x10000, DS);
 
-        // [DS:EDX]
-        initMem32(); EDX = 0;       runLeaGd(0|2, 0, 0, 0, 0, 0, 0, DS);
-        initMem32(); EDX = 0x10000; runLeaGd(1<<3|2, 0, 0, 0, 0, 0, 0x10000, DS);
+    // [DS:EDX]
+    initMem32(); EDX = 0;       runLeaGd(0 | 2, 0, 0, 0, 0, 0, 0, DS);
+    initMem32(); EDX = 0x10000; runLeaGd(1 << 3 | 2, 0, 0, 0, 0, 0, 0x10000, DS);
 
-        // [DS:EBX]
-        initMem32(); EBX = 0;       runLeaGd(0|3, 0, 0, 0, 0, 0, 0, DS);
-        initMem32(); EBX = 0x10000; runLeaGd(1<<3|3, 0, 0, 0, 0, 0, 0x10000, DS);
+    // [DS:EBX]
+    initMem32(); EBX = 0;       runLeaGd(0 | 3, 0, 0, 0, 0, 0, 0, DS);
+    initMem32(); EBX = 0x10000; runLeaGd(1 << 3 | 3, 0, 0, 0, 0, 0, 0x10000, DS);
 
-        // SIB0
-        // [DS:reg1+reg2<<0]
-        for (reg1=0;reg1<8;reg1++) {
-            for (reg2=0;reg2<8;reg2++) {
-                U32 seg = DS;
-                if (reg1 == 4) {
-                    seg = SS;
-                }
-                if (reg1==5) { // reg1==5 means reg1 is replaced with disp32
-                    if (reg2==4) { // reg2==4 means reg2 is not used
-                        initMem32(); runLeaGd(0|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0, seg);
-                        initMem32(); runLeaGd(1<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0x10000, 0x10000, seg);
+    // SIB0
+    // [DS:reg1+reg2<<0]
+    for (reg1 = 0; reg1 < 8; reg1++) {
+        for (reg2 = 0; reg2 < 8; reg2++) {
+            U32 seg = DS;
+            if (reg1 == 4) {
+                seg = SS;
+            }
+            if (reg1 == 5) { // reg1==5 means reg1 is replaced with disp32
+                if (reg2 == 4) { // reg2==4 means reg2 is not used
+                    initMem32(); runLeaGd(0 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0, seg);
+                    initMem32(); runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0x10000, 0x10000, seg);
 
-                        // shift should have no effect
-                        initMem32(); runLeaGd(1<<3|4, 1, (reg2<<3)|reg1|1<<6, 0, 1, 0x10000, 0x10000, seg);
-                        initMem32(); runLeaGd(1<<3|4, 1, (reg2<<3)|reg1|2<<6, 0, 1, 0x10000, 0x10000, seg);
-                        initMem32(); runLeaGd(1<<3|4, 1, (reg2<<3)|reg1|3<<6, 0, 1, 0x10000, 0x10000, seg);
-                    } else {
-                        initMem32(); cpu->reg[reg2].u32 = 0;          runLeaGd(0|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0, seg);
-                        initMem32(); cpu->reg[reg2].u32 = 0x10000;    runLeaGd(1<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg2].u32 = 0;          runLeaGd(2<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0x10000, 0x10000, seg);
-                        initMem32(); cpu->reg[reg2].u32 = 0x1000;     runLeaGd(3<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0x0F000, 0x10000, seg);
-                        initMem32(); cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(4<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0x11000, 0x0F000, seg);
-                        initMem32(); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(4<<3|4, 1, (reg2<<3)|reg1, 0, 1, -(0x2000), 0x0F000, seg);
-
-                        initMem32(); cpu->reg[reg2].u32 = 0;          runLeaGd(0|4, 1, (reg2<<3)|reg1|1<<6, 0, 1, 0, 0, seg);
-                        initMem32(); cpu->reg[reg2].u32 = 0x08000;    runLeaGd(1<<3|4, 1, (reg2<<3)|reg1|1<<6, 0, 1, 0, 0x10000, seg);
-
-                        initMem32(); cpu->reg[reg2].u32 = 0;          runLeaGd(0|4, 1, (reg2<<3)|reg1|2<<6, 0, 1, 0, 0, seg);
-                        initMem32(); cpu->reg[reg2].u32 = 0x04000;    runLeaGd(1<<3|4, 1, (reg2<<3)|reg1|2<<6, 0, 1, 0, 0x10000, seg);
-
-                        initMem32(); cpu->reg[reg2].u32 = 0;          runLeaGd(0|4, 1, (reg2<<3)|reg1|3<<6, 0, 1, 0, 0, seg);
-                        initMem32(); cpu->reg[reg2].u32 = 0x02000;    runLeaGd(1<<3|4, 1, (reg2<<3)|reg1|3<<6, 0, 1, 0, 0x10000, seg);
-                    }
+                    // shift should have no effect
+                    initMem32(); runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 1, 0x10000, 0x10000, seg);
+                    initMem32(); runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 1, 0x10000, 0x10000, seg);
+                    initMem32(); runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 1, 0x10000, 0x10000, seg);
                 } else {
-                    if (reg2==4) { // reg2==4 means reg2 is not used
-                        initMem32(); cpu->reg[reg1].u32 = 0;       runLeaGd(0|4, 1, (reg2<<3)|reg1, 0, 0, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000; runLeaGd(1<<3|4, 1, (reg2<<3)|reg1, 0, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg2].u32 = 0;          runLeaGd(0 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0, seg);
+                    initMem32(); cpu->reg[reg2].u32 = 0x10000;    runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg2].u32 = 0;          runLeaGd(2 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0x10000, 0x10000, seg);
+                    initMem32(); cpu->reg[reg2].u32 = 0x1000;     runLeaGd(3 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0x0F000, 0x10000, seg);
+                    initMem32(); cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(4 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0x11000, 0x0F000, seg);
+                    initMem32(); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(4 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, -(0x2000), 0x0F000, seg);
 
-                        // shifts should have no affect
-                        initMem32(); cpu->reg[reg1].u32 = 0;       runLeaGd(0|4, 1, (reg2<<3)|reg1|1<<6, 0, 0, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000; runLeaGd(1<<3|4, 1, (reg2<<3)|reg1|1<<6, 0, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg2].u32 = 0;          runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 1, 0, 0, seg);
+                    initMem32(); cpu->reg[reg2].u32 = 0x08000;    runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 1, 0, 0x10000, seg);
 
-                        initMem32(); cpu->reg[reg1].u32 = 0;       runLeaGd(0|4, 1, (reg2<<3)|reg1|2<<6, 0, 0, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000; runLeaGd(1<<3|4, 1, (reg2<<3)|reg1|2<<6, 0, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg2].u32 = 0;          runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 1, 0, 0, seg);
+                    initMem32(); cpu->reg[reg2].u32 = 0x04000;    runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 1, 0, 0x10000, seg);
 
-                        initMem32(); cpu->reg[reg1].u32 = 0;       runLeaGd(0|4, 1, (reg2<<3)|reg1|3<<6, 0, 0, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000; runLeaGd(1<<3|4, 1, (reg2<<3)|reg1|33<<6, 0, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg2].u32 = 0;          runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 1, 0, 0, seg);
+                    initMem32(); cpu->reg[reg2].u32 = 0x02000;    runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 1, 0, 0x10000, seg);
+                }
+            } else {
+                if (reg2 == 4) { // reg2==4 means reg2 is not used
+                    initMem32(); cpu->reg[reg1].u32 = 0;       runLeaGd(0 | 4, 1, (reg2 << 3) | reg1, 0, 0, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000; runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 0, 0, 0x10000, seg);
+
+                    // shifts should have no affect
+                    initMem32(); cpu->reg[reg1].u32 = 0;       runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 0, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000; runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 0, 0, 0x10000, seg);
+
+                    initMem32(); cpu->reg[reg1].u32 = 0;       runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 0, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000; runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 0, 0, 0x10000, seg);
+
+                    initMem32(); cpu->reg[reg1].u32 = 0;       runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 0, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000; runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1 | 33 << 6, 0, 0, 0, 0x10000, seg);
+                } else {
+                    if (reg1 == reg2) {
+                        initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0 | 4, 1, (reg2 << 3) | reg1, 0, 0, 0, 0, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0 | 4, 1, (reg2 << 3) | reg1, 0, 0, 0, 0x10000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x80008000; runLeaGd(0 | 4, 1, (reg2 << 3) | reg1, 0, 0, 0, 0x10000, seg);
+
+                        initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 0, 0, 0, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x4000; runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 0, 0, 0x0C000, seg);
+
+                        initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 0, 0, 0, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x2000; runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 0, 0, 0x0A000, seg);
+
+                        initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 0, 0, 0, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x1000; runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 0, 0, 0x09000, seg);
                     } else {
-                        if (reg1==reg2) {
-                            initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0|4, 1, (reg2<<3)|reg1, 0, 0, 0, 0, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0|4, 1, (reg2<<3)|reg1, 0, 0, 0, 0x10000, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x80008000; runLeaGd(0|4, 1, (reg2<<3)|reg1, 0, 0, 0, 0x10000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0 | 4, 1, (reg2 << 3) | reg1, 0, 0, 0, 0, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 0, 0, 0x10000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(2 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 0, 0, 0x10000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x0F000;   cpu->reg[reg2].u32 = 0x1000;     runLeaGd(3 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 0, 0, 0x10000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(4 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 0, 0, 0x0F000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(4 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 0, 0, 0x0F000, seg);
 
-                            initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0|4, 1, (reg2<<3)|reg1|1<<6, 0, 0, 0, 0, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x4000; runLeaGd(0|4, 1, (reg2<<3)|reg1|1<<6, 0, 0, 0, 0x0C000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 0, 0, 0, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(2 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 0, 0, 0x10000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x08000;    runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 0, 0, 0x10000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x80000000; runLeaGd(2 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 0, 0, 0x10000, seg);
 
-                            initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0|4, 1, (reg2<<3)|reg1|2<<6, 0, 0, 0, 0, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x2000; runLeaGd(0|4, 1, (reg2<<3)|reg1|2<<6, 0, 0, 0, 0x0A000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 0, 0, 0, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(2 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 0, 0, 0x10000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x04000;    runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 0, 0, 0x10000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x40000000; runLeaGd(2 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 0, 0, 0x10000, seg);
 
-                            initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0|4, 1, (reg2<<3)|reg1|3<<6, 0, 0, 0, 0, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x1000; runLeaGd(0|4, 1, (reg2<<3)|reg1|3<<6, 0, 0, 0, 0x09000, seg);
-                        } else {
-                            initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0|4, 1, (reg2<<3)|reg1, 0, 0, 0, 0, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(1<<3|4, 1, (reg2<<3)|reg1, 0, 0, 0, 0x10000, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(2<<3|4, 1, (reg2<<3)|reg1, 0, 0, 0, 0x10000, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x0F000;   cpu->reg[reg2].u32 = 0x1000;     runLeaGd(3<<3|4, 1, (reg2<<3)|reg1, 0, 0, 0, 0x10000, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(4<<3|4, 1, (reg2<<3)|reg1, 0, 0, 0, 0x0F000, seg);
-                            initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(4<<3|4, 1, (reg2<<3)|reg1, 0, 0, 0, 0x0F000, seg);
-
-                            initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0|4, 1, (reg2<<3)|reg1|1<<6, 0, 0, 0, 0, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(2<<3|4, 1, (reg2<<3)|reg1|1<<6, 0, 0, 0, 0x10000, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x08000;    runLeaGd(1<<3|4, 1, (reg2<<3)|reg1|1<<6, 0, 0, 0, 0x10000, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x80000000; runLeaGd(2<<3|4, 1, (reg2<<3)|reg1|1<<6, 0, 0, 0, 0x10000, seg);
-
-                            initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0|4, 1, (reg2<<3)|reg1|2<<6, 0, 0, 0, 0, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(2<<3|4, 1, (reg2<<3)|reg1|2<<6, 0, 0, 0, 0x10000, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x04000;    runLeaGd(1<<3|4, 1, (reg2<<3)|reg1|2<<6, 0, 0, 0, 0x10000, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x40000000; runLeaGd(2<<3|4, 1, (reg2<<3)|reg1|2<<6, 0, 0, 0, 0x10000, seg);
-
-                            initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0|4, 1, (reg2<<3)|reg1|3<<6, 0, 0, 0, 0, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(2<<3|4, 1, (reg2<<3)|reg1|3<<6, 0, 0, 0, 0x10000, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x02000;    runLeaGd(1<<3|4, 1, (reg2<<3)|reg1|3<<6, 0, 0, 0, 0x10000, seg);
-                            initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x20000000; runLeaGd(2<<3|4, 1, (reg2<<3)|reg1|3<<6, 0, 0, 0, 0x10000, seg);
-                        }
+                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 0, 0, 0, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(2 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 0, 0, 0x10000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x02000;    runLeaGd(1 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 0, 0, 0x10000, seg);
+                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x20000000; runLeaGd(2 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 0, 0, 0x10000, seg);
                     }
                 }
             }
         }
+    }
 
-        // [DS:disp32]
-        initMem32(); runLeaGd(0|5, 0, 0, 0, true, 0, 0, DS);
-        initMem32(); runLeaGd(1<<3|5, 0, 0, 0, true, 0x10000, 0x10000, DS);
+    // [DS:disp32]
+    initMem32(); runLeaGd(0 | 5, 0, 0, 0, true, 0, 0, DS);
+    initMem32(); runLeaGd(1 << 3 | 5, 0, 0, 0, true, 0x10000, 0x10000, DS);
 
-        // [DS:ESI]
-        initMem32(); ESI = 0;       runLeaGd(0|6, 0, 0, 0, 0, 0, 0, DS);
-        initMem32(); ESI = 0x10000; runLeaGd(1<<3|6, 0, 0, 0, 0, 0, 0x10000, DS);
+    // [DS:ESI]
+    initMem32(); ESI = 0;       runLeaGd(0 | 6, 0, 0, 0, 0, 0, 0, DS);
+    initMem32(); ESI = 0x10000; runLeaGd(1 << 3 | 6, 0, 0, 0, 0, 0, 0x10000, DS);
 
-        // [DS:EDI]
-        initMem32(); EDI = 0;       runLeaGd(0|7, 0, 0, 0, 0, 0, 0, DS);
-        initMem32(); EDI = 0x10000; runLeaGd(1<<3|7, 0, 0, 0, 0, 0, 0x10000, DS);
+    // [DS:EDI]
+    initMem32(); EDI = 0;       runLeaGd(0 | 7, 0, 0, 0, 0, 0, 0, DS);
+    initMem32(); EDI = 0x10000; runLeaGd(1 << 3 | 7, 0, 0, 0, 0, 0, 0x10000, DS);
 
     // Mod 01
         // [DS:EAX+disp8]
-        initMem32(); EAX = 0;       runLeaGd(0x40|0, 0, 0, 1, 0, 0, 0, DS);
-        initMem32(); EAX = 0x10000; runLeaGd(0x40|1<<3, 0, 0, 1, 0, 0, 0x10000, DS);
-        initMem32(); EAX = 0x0FFF0; runLeaGd(0x40|1<<3, 0, 0, 1, 0, 0x10, 0x10000, DS);
-        initMem32(); EAX = 0x10010; runLeaGd(0x40|1<<3, 0, 0, 1, 0, -0x10, 0x10000, DS);
+    initMem32(); EAX = 0;       runLeaGd(0x40 | 0, 0, 0, 1, 0, 0, 0, DS);
+    initMem32(); EAX = 0x10000; runLeaGd(0x40 | 1 << 3, 0, 0, 1, 0, 0, 0x10000, DS);
+    initMem32(); EAX = 0x0FFF0; runLeaGd(0x40 | 1 << 3, 0, 0, 1, 0, 0x10, 0x10000, DS);
+    initMem32(); EAX = 0x10010; runLeaGd(0x40 | 1 << 3, 0, 0, 1, 0, -0x10, 0x10000, DS);
 
-        // [DS:ECX+disp8]
-        initMem32(); ECX = 0;       runLeaGd(0x40|0|1, 0, 0, 1, 0, 0, 0, DS);
-        initMem32(); ECX = 0x10000; runLeaGd(0x40|1<<3|1, 0, 0, 1, 0, 0, 0x10000, DS);
-        initMem32(); ECX = 0x0FFF0; runLeaGd(0x40|1<<3|1, 0, 0, 1, 0, 0x10, 0x10000, DS);
-        initMem32(); ECX = 0x10010; runLeaGd(0x40|1<<3|1, 0, 0, 1, 0, -0x10, 0x10000, DS);
+    // [DS:ECX+disp8]
+    initMem32(); ECX = 0;       runLeaGd(0x40 | 0 | 1, 0, 0, 1, 0, 0, 0, DS);
+    initMem32(); ECX = 0x10000; runLeaGd(0x40 | 1 << 3 | 1, 0, 0, 1, 0, 0, 0x10000, DS);
+    initMem32(); ECX = 0x0FFF0; runLeaGd(0x40 | 1 << 3 | 1, 0, 0, 1, 0, 0x10, 0x10000, DS);
+    initMem32(); ECX = 0x10010; runLeaGd(0x40 | 1 << 3 | 1, 0, 0, 1, 0, -0x10, 0x10000, DS);
 
-        // [DS:EDX+disp8]
-        initMem32(); EDX = 0;       runLeaGd(0x40|0|2, 0, 0, 1, 0, 0, 0, DS);
-        initMem32(); EDX = 0x10000; runLeaGd(0x40|1<<3|2, 0, 0, 1, 0, 0, 0x10000, DS);
-        initMem32(); EDX = 0x0FFF0; runLeaGd(0x40|1<<3|2, 0, 0, 1, 0, 0x10, 0x10000, DS);
-        initMem32(); EDX = 0x10010; runLeaGd(0x40|1<<3|2, 0, 0, 1, 0, -0x10, 0x10000, DS);
+    // [DS:EDX+disp8]
+    initMem32(); EDX = 0;       runLeaGd(0x40 | 0 | 2, 0, 0, 1, 0, 0, 0, DS);
+    initMem32(); EDX = 0x10000; runLeaGd(0x40 | 1 << 3 | 2, 0, 0, 1, 0, 0, 0x10000, DS);
+    initMem32(); EDX = 0x0FFF0; runLeaGd(0x40 | 1 << 3 | 2, 0, 0, 1, 0, 0x10, 0x10000, DS);
+    initMem32(); EDX = 0x10010; runLeaGd(0x40 | 1 << 3 | 2, 0, 0, 1, 0, -0x10, 0x10000, DS);
 
-        // [DS:EBX+disp8]
-        initMem32(); EBX = 0;       runLeaGd(0x40|0|3, 0, 0, 1, 0, 0, 0, DS);
-        initMem32(); EBX = 0x10000; runLeaGd(0x40|1<<3|3, 0, 0, 1, 0, 0, 0x10000, DS);
-        initMem32(); EBX = 0x0FFF0; runLeaGd(0x40|1<<3|3, 0, 0, 1, 0, 0x10, 0x10000, DS);
-        initMem32(); EBX = 0x10010; runLeaGd(0x40|1<<3|3, 0, 0, 1, 0, -0x10, 0x10000, DS);
+    // [DS:EBX+disp8]
+    initMem32(); EBX = 0;       runLeaGd(0x40 | 0 | 3, 0, 0, 1, 0, 0, 0, DS);
+    initMem32(); EBX = 0x10000; runLeaGd(0x40 | 1 << 3 | 3, 0, 0, 1, 0, 0, 0x10000, DS);
+    initMem32(); EBX = 0x0FFF0; runLeaGd(0x40 | 1 << 3 | 3, 0, 0, 1, 0, 0x10, 0x10000, DS);
+    initMem32(); EBX = 0x10010; runLeaGd(0x40 | 1 << 3 | 3, 0, 0, 1, 0, -0x10, 0x10000, DS);
 
-        // SIB1
-        // [DS:reg1+reg2<<0+disp8]
-        for (reg1=0;reg1<8;reg1++) {
-            for (reg2=0;reg2<8;reg2++) {
-                U32 seg = DS;
-                if (reg1 == 4 || reg1==5) {
-                    seg = SS;
-                }
-                if (reg2==4) { // reg2==4 means reg2 is not used
-                    initMem32(); cpu->reg[reg1].u32 = 0;       runLeaGd(0x40|0|4, 1, (reg2<<3)|reg1, 1, 0, 0, 0, seg);
-                    initMem32(); cpu->reg[reg1].u32 = 0x10000; runLeaGd(0x40|1<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0, 0x10000, seg);
-                    initMem32(); cpu->reg[reg1].u32 = 0x0FFF0; runLeaGd(0x40|2<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0x10, 0x10000, seg);
-                    initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x40|3<<3|4, 1, (reg2<<3)|reg1, 1, 0, -0x10, 0x10000, seg);
+    // SIB1
+    // [DS:reg1+reg2<<0+disp8]
+    for (reg1 = 0; reg1 < 8; reg1++) {
+        for (reg2 = 0; reg2 < 8; reg2++) {
+            U32 seg = DS;
+            if (reg1 == 4 || reg1 == 5) {
+                seg = SS;
+            }
+            if (reg2 == 4) { // reg2==4 means reg2 is not used
+                initMem32(); cpu->reg[reg1].u32 = 0;       runLeaGd(0x40 | 0 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0, 0, seg);
+                initMem32(); cpu->reg[reg1].u32 = 0x10000; runLeaGd(0x40 | 1 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0, 0x10000, seg);
+                initMem32(); cpu->reg[reg1].u32 = 0x0FFF0; runLeaGd(0x40 | 2 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0x10, 0x10000, seg);
+                initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x40 | 3 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, -0x10, 0x10000, seg);
 
-                    // shift should have no effect
-                    initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x40|3<<3|4, 1, (reg2<<3)|reg1|1<<6, 1, 0, -0x10, 0x10000, seg);
-                    initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x40|3<<3|4, 1, (reg2<<3)|reg1|2<<6, 1, 0, -0x10, 0x10000, seg);
-                    initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x40|3<<3|4, 1, (reg2<<3)|reg1|3<<6, 1, 0, -0x10, 0x10000, seg);
+                // shift should have no effect
+                initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x40 | 3 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 1, 0, -0x10, 0x10000, seg);
+                initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x40 | 3 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 1, 0, -0x10, 0x10000, seg);
+                initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x40 | 3 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 1, 0, -0x10, 0x10000, seg);
+            } else {
+                if (reg1 == reg2) {
+                    initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x40 | 0 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0x40 | 1 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0x40 | 2 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, -0x10, 0xFFF0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0x40 | 3 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0x10, 0x10010, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x80008000; runLeaGd(0x40 | 4 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0, 0x10000, seg);
+
+                    initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x40 | 0 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 1, 0, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x4000; runLeaGd(0x40 | 3 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 1, 0, 0x10, 0x0C010, seg);
+
+                    initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x40 | 0 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 1, 0, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x2000; runLeaGd(0x40 | 3 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 1, 0, 0x10, 0x0A010, seg);
+
+                    initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x40 | 0 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 1, 0, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x1000; runLeaGd(0x40 | 3 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 1, 0, 0x10, 0x09010, seg);
                 } else {
-                    if (reg1==reg2) {
-                        initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x40|0|4, 1, (reg2<<3)|reg1, 1, 0, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0x40|1<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0x40|2<<3|4, 1, (reg2<<3)|reg1, 1, 0, -0x10, 0xFFF0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0x40|3<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0x10, 0x10010, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x80008000; runLeaGd(0x40|4<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x40 | 0 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(0x40 | 1 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(0x40 | 1 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, -0x10, 0xFFF0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(0x40 | 1 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0x40, 0x10040, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x40 | 2 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x40 | 2 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, -0x40, 0xFFC0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x40 | 2 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0x20, 0x10020, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x0F000;   cpu->reg[reg2].u32 = 0x1000;     runLeaGd(0x40 | 3 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(0x40 | 4 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0, 0x0F000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(0x40 | 4 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, -0x30, 0x0EFD0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(0x40 | 4 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0x70, 0x0F070, seg);
+                    initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(0x40 | 5 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0, 0x0F000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(0x40 | 5 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, -0x10, 0x0EFF0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(0x40 | 5 << 3 | 4, 1, (reg2 << 3) | reg1, 1, 0, 0x50, 0x0F050, seg);
 
-                        initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x40|0|4, 1, (reg2<<3)|reg1|1<<6, 1, 0, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x4000; runLeaGd(0x40|3<<3|4, 1, (reg2<<3)|reg1|1<<6, 1, 0, 0x10, 0x0C010, seg);
-
-                        initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x40|0|4, 1, (reg2<<3)|reg1|2<<6, 1, 0, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x2000; runLeaGd(0x40|3<<3|4, 1, (reg2<<3)|reg1|2<<6, 1, 0, 0x10, 0x0A010, seg);
-
-                        initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x40|0|4, 1, (reg2<<3)|reg1|3<<6, 1, 0, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x1000; runLeaGd(0x40|3<<3|4, 1, (reg2<<3)|reg1|3<<6, 1, 0, 0x10, 0x09010, seg);
-                    } else {
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x40|0|4, 1, (reg2<<3)|reg1, 1, 0, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(0x40|1<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(0x40|1<<3|4, 1, (reg2<<3)|reg1, 1, 0, -0x10, 0xFFF0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(0x40|1<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0x40, 0x10040, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x40|2<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x40|2<<3|4, 1, (reg2<<3)|reg1, 1, 0, -0x40, 0xFFC0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x40|2<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0x20, 0x10020, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x0F000;   cpu->reg[reg2].u32 = 0x1000;     runLeaGd(0x40|3<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(0x40|4<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0, 0x0F000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(0x40|4<<3|4, 1, (reg2<<3)|reg1, 1, 0, -0x30, 0x0EFD0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(0x40|4<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0x70, 0x0F070, seg);
-                        initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(0x40|5<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0, 0x0F000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(0x40|5<<3|4, 1, (reg2<<3)|reg1, 1, 0, -0x10, 0x0EFF0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(0x40|5<<3|4, 1, (reg2<<3)|reg1, 1, 0, 0x50, 0x0F050, seg);
-
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x40|0|4, 1, (reg2<<3)|reg1|1<<6, 1, 0, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x08000;    runLeaGd(0x40|1<<3|4, 1, (reg2<<3)|reg1|1<<6, 1, 0, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x40|2<<3|4, 1, (reg2<<3)|reg1|1<<6, 1, 0, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x80000000; runLeaGd(0x40|2<<3|4, 1, (reg2<<3)|reg1|1<<6, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x40 | 0 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 1, 0, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x08000;    runLeaGd(0x40 | 1 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x40 | 2 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x80000000; runLeaGd(0x40 | 2 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 1, 0, 0, 0x10000, seg);
 
 
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x40|0|4, 1, (reg2<<3)|reg1|2<<6, 1, 0, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x04000;    runLeaGd(0x40|1<<3|4, 1, (reg2<<3)|reg1|2<<6, 1, 0, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x40|2<<3|4, 1, (reg2<<3)|reg1|2<<6, 1, 0, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x40000000; runLeaGd(0x40|2<<3|4, 1, (reg2<<3)|reg1|2<<6, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x40 | 0 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 1, 0, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x04000;    runLeaGd(0x40 | 1 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x40 | 2 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x40000000; runLeaGd(0x40 | 2 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 1, 0, 0, 0x10000, seg);
 
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x40|0|4, 1, (reg2<<3)|reg1|3<<6, 1, 0, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x02000;    runLeaGd(0x40|1<<3|4, 1, (reg2<<3)|reg1|3<<6, 1, 0, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x40|2<<3|4, 1, (reg2<<3)|reg1|3<<6, 1, 0, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x20000000; runLeaGd(0x40|2<<3|4, 1, (reg2<<3)|reg1|3<<6, 1, 0, 0, 0x10000, seg);
-                    }
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x40 | 0 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 1, 0, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x02000;    runLeaGd(0x40 | 1 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x40 | 2 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 1, 0, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x20000000; runLeaGd(0x40 | 2 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 1, 0, 0, 0x10000, seg);
                 }
             }
         }
+    }
 
-        // [SS:EBP+disp8]
-        initMem32(); EBP = 0;       runLeaGd(0x40|0|5, 0, 0, 1, 0, 0, 0, SS);
-        initMem32(); EBP = 0x10000; runLeaGd(0x40|1<<3|5, 0, 0, 1, 0, 0, 0x10000, SS);
-        initMem32(); EBP = 0x0FFF0; runLeaGd(0x40|1<<3|5, 0, 0, 1, 0, 0x10, 0x10000, SS);
-        initMem32(); EBP = 0x10010; runLeaGd(0x40|1<<3|5, 0, 0, 1, 0, -0x10, 0x10000, SS);
+    // [SS:EBP+disp8]
+    initMem32(); EBP = 0;       runLeaGd(0x40 | 0 | 5, 0, 0, 1, 0, 0, 0, SS);
+    initMem32(); EBP = 0x10000; runLeaGd(0x40 | 1 << 3 | 5, 0, 0, 1, 0, 0, 0x10000, SS);
+    initMem32(); EBP = 0x0FFF0; runLeaGd(0x40 | 1 << 3 | 5, 0, 0, 1, 0, 0x10, 0x10000, SS);
+    initMem32(); EBP = 0x10010; runLeaGd(0x40 | 1 << 3 | 5, 0, 0, 1, 0, -0x10, 0x10000, SS);
 
-        // [DS:ESI+disp8]
-        initMem32(); ESI = 0;       runLeaGd(0x40|0|6, 0, 0, 1, 0, 0, 0, DS);
-        initMem32(); ESI = 0x10000; runLeaGd(0x40|1<<3|6, 0, 0, 1, 0, 0, 0x10000, DS);
-        initMem32(); ESI = 0x0FFF0; runLeaGd(0x40|1<<3|6, 0, 0, 1, 0, 0x10, 0x10000, DS);
-        initMem32(); ESI = 0x10010; runLeaGd(0x40|1<<3|6, 0, 0, 1, 0, -0x10, 0x10000, DS);
+    // [DS:ESI+disp8]
+    initMem32(); ESI = 0;       runLeaGd(0x40 | 0 | 6, 0, 0, 1, 0, 0, 0, DS);
+    initMem32(); ESI = 0x10000; runLeaGd(0x40 | 1 << 3 | 6, 0, 0, 1, 0, 0, 0x10000, DS);
+    initMem32(); ESI = 0x0FFF0; runLeaGd(0x40 | 1 << 3 | 6, 0, 0, 1, 0, 0x10, 0x10000, DS);
+    initMem32(); ESI = 0x10010; runLeaGd(0x40 | 1 << 3 | 6, 0, 0, 1, 0, -0x10, 0x10000, DS);
 
-        // [DS:EDI+disp8]
-        initMem32(); EDI = 0;       runLeaGd(0x40|0|7, 0, 0, 1, 0, 0, 0, DS);
-        initMem32(); EDI = 0x10000; runLeaGd(0x40|1<<3|7, 0, 0, 1, 0, 0, 0x10000, DS);
-        initMem32(); EDI = 0x0FFF0; runLeaGd(0x40|1<<3|7, 0, 0, 1, 0, 0x10, 0x10000, DS);
-        initMem32(); EDI = 0x10010; runLeaGd(0x40|1<<3|7, 0, 0, 1, 0, -0x10, 0x10000, DS);
+    // [DS:EDI+disp8]
+    initMem32(); EDI = 0;       runLeaGd(0x40 | 0 | 7, 0, 0, 1, 0, 0, 0, DS);
+    initMem32(); EDI = 0x10000; runLeaGd(0x40 | 1 << 3 | 7, 0, 0, 1, 0, 0, 0x10000, DS);
+    initMem32(); EDI = 0x0FFF0; runLeaGd(0x40 | 1 << 3 | 7, 0, 0, 1, 0, 0x10, 0x10000, DS);
+    initMem32(); EDI = 0x10010; runLeaGd(0x40 | 1 << 3 | 7, 0, 0, 1, 0, -0x10, 0x10000, DS);
 
     // Mod 02
         // [DS:EAX+disp32]
-        initMem32(); EAX = 0;       runLeaGd(0x80|0, 0, 0, 0, 1, 0, 0, DS);
-        initMem32(); EAX = 0x10000; runLeaGd(0x80|1<<3, 0, 0, 0, 1, 0, 0x10000, DS);
-        initMem32(); EAX = 0x0FFF0; runLeaGd(0x80|1<<3, 0, 0, 0, 1, 0x10, 0x10000, DS);
-        initMem32(); EAX = 0x10010; runLeaGd(0x80|1<<3, 0, 0, 0, 1, -0x10, 0x10000, DS);
-        initMem32(); EAX = -0x10; runLeaGd(0x80|1<<3, 0, 0, 0, 1, 0x10010, 0x10000, DS);
+    initMem32(); EAX = 0;       runLeaGd(0x80 | 0, 0, 0, 0, 1, 0, 0, DS);
+    initMem32(); EAX = 0x10000; runLeaGd(0x80 | 1 << 3, 0, 0, 0, 1, 0, 0x10000, DS);
+    initMem32(); EAX = 0x0FFF0; runLeaGd(0x80 | 1 << 3, 0, 0, 0, 1, 0x10, 0x10000, DS);
+    initMem32(); EAX = 0x10010; runLeaGd(0x80 | 1 << 3, 0, 0, 0, 1, -0x10, 0x10000, DS);
+    initMem32(); EAX = -0x10; runLeaGd(0x80 | 1 << 3, 0, 0, 0, 1, 0x10010, 0x10000, DS);
 
-        // [DS:ECX+disp32]
-        initMem32(); ECX = 0;       runLeaGd(0x80|0|1, 0, 0, 0, 1, 0, 0, DS);
-        initMem32(); ECX = 0x10000; runLeaGd(0x80|1<<3|1, 0, 0, 0, 1, 0, 0x10000, DS);
-        initMem32(); ECX = 0x0FFF0; runLeaGd(0x80|1<<3|1, 0, 0, 0, 1, 0x10, 0x10000, DS);
-        initMem32(); ECX = 0x10010; runLeaGd(0x80|1<<3|1, 0, 0, 0, 1, -0x10, 0x10000, DS);
-        initMem32(); ECX = -0x10; runLeaGd(0x80|1<<3|1, 0, 0, 0, 1, 0x10010, 0x10000, DS);
+    // [DS:ECX+disp32]
+    initMem32(); ECX = 0;       runLeaGd(0x80 | 0 | 1, 0, 0, 0, 1, 0, 0, DS);
+    initMem32(); ECX = 0x10000; runLeaGd(0x80 | 1 << 3 | 1, 0, 0, 0, 1, 0, 0x10000, DS);
+    initMem32(); ECX = 0x0FFF0; runLeaGd(0x80 | 1 << 3 | 1, 0, 0, 0, 1, 0x10, 0x10000, DS);
+    initMem32(); ECX = 0x10010; runLeaGd(0x80 | 1 << 3 | 1, 0, 0, 0, 1, -0x10, 0x10000, DS);
+    initMem32(); ECX = -0x10; runLeaGd(0x80 | 1 << 3 | 1, 0, 0, 0, 1, 0x10010, 0x10000, DS);
 
-        // [DS:EDX+disp32]
-        initMem32(); EDX = 0;       runLeaGd(0x80|0|2, 0, 0, 0, 1, 0, 0, DS);
-        initMem32(); EDX = 0x10000; runLeaGd(0x80|1<<3|2, 0, 0, 0, 1, 0, 0x10000, DS);
-        initMem32(); EDX = 0x0FFF0; runLeaGd(0x80|1<<3|2, 0, 0, 0, 1, 0x10, 0x10000, DS);
-        initMem32(); EDX = 0x10010; runLeaGd(0x80|1<<3|2, 0, 0, 0, 1, -0x10, 0x10000, DS);
-        initMem32(); EDX = -0x10; runLeaGd(0x80|1<<3|2, 0, 0, 0, 1, 0x10010, 0x10000, DS);
+    // [DS:EDX+disp32]
+    initMem32(); EDX = 0;       runLeaGd(0x80 | 0 | 2, 0, 0, 0, 1, 0, 0, DS);
+    initMem32(); EDX = 0x10000; runLeaGd(0x80 | 1 << 3 | 2, 0, 0, 0, 1, 0, 0x10000, DS);
+    initMem32(); EDX = 0x0FFF0; runLeaGd(0x80 | 1 << 3 | 2, 0, 0, 0, 1, 0x10, 0x10000, DS);
+    initMem32(); EDX = 0x10010; runLeaGd(0x80 | 1 << 3 | 2, 0, 0, 0, 1, -0x10, 0x10000, DS);
+    initMem32(); EDX = -0x10; runLeaGd(0x80 | 1 << 3 | 2, 0, 0, 0, 1, 0x10010, 0x10000, DS);
 
-        // [DS:EBX+disp32]
-        initMem32(); EBX = 0;       runLeaGd(0x80|0|3, 0, 0, 0, 1, 0, 0, DS);
-        initMem32(); EBX = 0x10000; runLeaGd(0x80|1<<3|3, 0, 0, 0, 1, 0, 0x10000, DS);
-        initMem32(); EBX = 0x0FFF0; runLeaGd(0x80|1<<3|3, 0, 0, 0, 1, 0x10, 0x10000, DS);
-        initMem32(); EBX = 0x10010; runLeaGd(0x80|1<<3|3, 0, 0, 0, 1, -0x10, 0x10000, DS);
-        initMem32(); EBX = -0x10; runLeaGd(0x80|1<<3|3, 0, 0, 0, 1, 0x10010, 0x10000, DS);
+    // [DS:EBX+disp32]
+    initMem32(); EBX = 0;       runLeaGd(0x80 | 0 | 3, 0, 0, 0, 1, 0, 0, DS);
+    initMem32(); EBX = 0x10000; runLeaGd(0x80 | 1 << 3 | 3, 0, 0, 0, 1, 0, 0x10000, DS);
+    initMem32(); EBX = 0x0FFF0; runLeaGd(0x80 | 1 << 3 | 3, 0, 0, 0, 1, 0x10, 0x10000, DS);
+    initMem32(); EBX = 0x10010; runLeaGd(0x80 | 1 << 3 | 3, 0, 0, 0, 1, -0x10, 0x10000, DS);
+    initMem32(); EBX = -0x10; runLeaGd(0x80 | 1 << 3 | 3, 0, 0, 0, 1, 0x10010, 0x10000, DS);
 
-        // SIB1
-        // [DS:reg1+reg2<<0+disp32]
-        for (reg1=0;reg1<8;reg1++) {
-            for (reg2=0;reg2<8;reg2++) {
-                U32 seg = DS;
-                if (reg1 == 4 || reg1==5) {
-                    seg = SS;
-                }
-                if (reg2==4) { // reg2==4 means reg2 is not used
-                    initMem32(); cpu->reg[reg1].u32 = 0;       runLeaGd(0x80|0|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0, seg);
-                    initMem32(); cpu->reg[reg1].u32 = 0x10000; runLeaGd(0x80|1<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0x10000, seg);
-                    initMem32(); cpu->reg[reg1].u32 = 0x0FFF0; runLeaGd(0x80|2<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0x10, 0x10000, seg);
-                    initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x80|3<<3|4, 1, (reg2<<3)|reg1, 0, 1, -0x10, 0x10000, seg);
+    // SIB1
+    // [DS:reg1+reg2<<0+disp32]
+    for (reg1 = 0; reg1 < 8; reg1++) {
+        for (reg2 = 0; reg2 < 8; reg2++) {
+            U32 seg = DS;
+            if (reg1 == 4 || reg1 == 5) {
+                seg = SS;
+            }
+            if (reg2 == 4) { // reg2==4 means reg2 is not used
+                initMem32(); cpu->reg[reg1].u32 = 0;       runLeaGd(0x80 | 0 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0, seg);
+                initMem32(); cpu->reg[reg1].u32 = 0x10000; runLeaGd(0x80 | 1 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0x10000, seg);
+                initMem32(); cpu->reg[reg1].u32 = 0x0FFF0; runLeaGd(0x80 | 2 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0x10, 0x10000, seg);
+                initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x80 | 3 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, -0x10, 0x10000, seg);
 
-                    // shift should have no effect
-                    initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x80|3<<3|4, 1, (reg2<<3)|reg1|1<<6, 0, 1, -0x10, 0x10000, seg);
-                    initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x80|3<<3|4, 1, (reg2<<3)|reg1|2<<6, 0, 1, -0x10, 0x10000, seg);
-                    initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x80|3<<3|4, 1, (reg2<<3)|reg1|3<<6, 0, 1, -0x10, 0x10000, seg);
+                // shift should have no effect
+                initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x80 | 3 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 1, -0x10, 0x10000, seg);
+                initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x80 | 3 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 1, -0x10, 0x10000, seg);
+                initMem32(); cpu->reg[reg1].u32 = 0x10010; runLeaGd(0x80 | 3 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 1, -0x10, 0x10000, seg);
+            } else {
+                if (reg1 == reg2) {
+                    initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x80 | 0 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0x80 | 1 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0x80 | 2 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, -0x10, 0xFFF0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0x80 | 3 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0x10, 0x10010, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x80008000; runLeaGd(0x80 | 4 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0x10000, seg);
+
+                    initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x80 | 0 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 1, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x4000; runLeaGd(0x80 | 3 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 1, 0x10, 0x0C010, seg);
+
+                    initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x80 | 0 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 1, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x2000; runLeaGd(0x80 | 3 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 1, 0x10, 0x0A010, seg);
+
+                    initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x80 | 0 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 1, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x1000; runLeaGd(0x80 | 3 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 1, 0x10, 0x09010, seg);
                 } else {
-                    if (reg1==reg2) {
-                        initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x80|0|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0x80|1<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0x80|2<<3|4, 1, (reg2<<3)|reg1, 0, 1, -0x10, 0xFFF0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x8000; runLeaGd(0x80|3<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0x10, 0x10010, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x80008000; runLeaGd(0x80|4<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x80 | 0 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(0x80 | 1 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(0x80 | 1 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, -0x10, 0xFFF0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(0x80 | 1 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0x40, 0x10040, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x80 | 2 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x80 | 2 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, -0x40, 0xFFC0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x80 | 2 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0x20, 0x10020, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x0F000;   cpu->reg[reg2].u32 = 0x1000;     runLeaGd(0x80 | 3 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(0x80 | 4 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0x0F000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(0x80 | 4 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, -0x30, 0x0EFD0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(0x80 | 4 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0x70, 0x0F070, seg);
+                    initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(0x80 | 5 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0, 0x0F000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(0x80 | 5 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, -0x10, 0x0EFF0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(0x80 | 5 << 3 | 4, 1, (reg2 << 3) | reg1, 0, 1, 0x50, 0x0F050, seg);
 
-                        initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x80|0|4, 1, (reg2<<3)|reg1|1<<6, 0, 1, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x4000; runLeaGd(0x80|3<<3|4, 1, (reg2<<3)|reg1|1<<6, 0, 1, 0x10, 0x0C010, seg);
-
-                        initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x80|0|4, 1, (reg2<<3)|reg1|2<<6, 0, 1, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x2000; runLeaGd(0x80|3<<3|4, 1, (reg2<<3)|reg1|2<<6, 0, 1, 0x10, 0x0A010, seg);
-
-                        initMem32(); cpu->reg[reg1].u32 = 0;      runLeaGd(0x80|0|4, 1, (reg2<<3)|reg1|3<<6, 0, 1, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x1000; runLeaGd(0x80|3<<3|4, 1, (reg2<<3)|reg1|3<<6, 0, 1, 0x10, 0x09010, seg);
-                    } else {
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x80|0|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(0x80|1<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(0x80|1<<3|4, 1, (reg2<<3)|reg1, 0, 1, -0x10, 0xFFF0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x10000;    runLeaGd(0x80|1<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0x40, 0x10040, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x80|2<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x80|2<<3|4, 1, (reg2<<3)|reg1, 0, 1, -0x40, 0xFFC0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x80|2<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0x20, 0x10020, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x0F000;   cpu->reg[reg2].u32 = 0x1000;     runLeaGd(0x80|3<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(0x80|4<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0x0F000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(0x80|4<<3|4, 1, (reg2<<3)|reg1, 0, 1, -0x30, 0x0EFD0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x11000;   cpu->reg[reg2].u32 = -(0x2000);  runLeaGd(0x80|4<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0x70, 0x0F070, seg);
-                        initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(0x80|5<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0, 0x0F000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(0x80|5<<3|4, 1, (reg2<<3)|reg1, 0, 1, -0x10, 0x0EFF0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = -(0x2000); cpu->reg[reg2].u32 = 0x11000;  runLeaGd(0x80|5<<3|4, 1, (reg2<<3)|reg1, 0, 1, 0x50, 0x0F050, seg);
-
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x80|0|4, 1, (reg2<<3)|reg1|1<<6, 0, 1, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x08000;    runLeaGd(0x80|1<<3|4, 1, (reg2<<3)|reg1|1<<6, 0, 1, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x80|2<<3|4, 1, (reg2<<3)|reg1|1<<6, 0, 1, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x80000000; runLeaGd(0x80|2<<3|4, 1, (reg2<<3)|reg1|1<<6, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x80 | 0 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 1, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x08000;    runLeaGd(0x80 | 1 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x80 | 2 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x80000000; runLeaGd(0x80 | 2 << 3 | 4, 1, (reg2 << 3) | reg1 | 1 << 6, 0, 1, 0, 0x10000, seg);
 
 
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x80|0|4, 1, (reg2<<3)|reg1|2<<6, 0, 1, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x04000;    runLeaGd(0x80|1<<3|4, 1, (reg2<<3)|reg1|2<<6, 0, 1, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x80|2<<3|4, 1, (reg2<<3)|reg1|2<<6, 0, 1, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x40000000; runLeaGd(0x80|2<<3|4, 1, (reg2<<3)|reg1|2<<6, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x80 | 0 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 1, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x04000;    runLeaGd(0x80 | 1 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x80 | 2 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x40000000; runLeaGd(0x80 | 2 << 3 | 4, 1, (reg2 << 3) | reg1 | 2 << 6, 0, 1, 0, 0x10000, seg);
 
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x80|0|4, 1, (reg2<<3)|reg1|3<<6, 0, 1, 0, 0, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x02000;    runLeaGd(0x80|1<<3|4, 1, (reg2<<3)|reg1|3<<6, 0, 1, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x80|2<<3|4, 1, (reg2<<3)|reg1|3<<6, 0, 1, 0, 0x10000, seg);
-                        initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x20000000; runLeaGd(0x80|2<<3|4, 1, (reg2<<3)|reg1|3<<6, 0, 1, 0, 0x10000, seg);
-                    }
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0;          runLeaGd(0x80 | 0 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 1, 0, 0, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0;         cpu->reg[reg2].u32 = 0x02000;    runLeaGd(0x80 | 1 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0;          runLeaGd(0x80 | 2 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 1, 0, 0x10000, seg);
+                    initMem32(); cpu->reg[reg1].u32 = 0x10000;   cpu->reg[reg2].u32 = 0x20000000; runLeaGd(0x80 | 2 << 3 | 4, 1, (reg2 << 3) | reg1 | 3 << 6, 0, 1, 0, 0x10000, seg);
                 }
             }
         }
+    }
 
-        // [SS:EBP+disp32]
-        initMem32(); EBP = 0;       runLeaGd(0x80|0|5, 0, 0, 0, 1, 0, 0, SS);
-        initMem32(); EBP = 0x10000; runLeaGd(0x80|1<<3|5, 0, 0, 0, 1, 0, 0x10000, SS);
-        initMem32(); EBP = 0x0FFF0; runLeaGd(0x80|1<<3|5, 0, 0, 0, 1, 0x10, 0x10000, SS);
-        initMem32(); EBP = 0x10010; runLeaGd(0x80|1<<3|5, 0, 0, 0, 1, -0x10, 0x10000, SS);
-        initMem32(); EBP = -0x10; runLeaGd(0x80|1<<3|5, 0, 0, 0, 1, 0x10010, 0x10000, SS);
+    // [SS:EBP+disp32]
+    initMem32(); EBP = 0;       runLeaGd(0x80 | 0 | 5, 0, 0, 0, 1, 0, 0, SS);
+    initMem32(); EBP = 0x10000; runLeaGd(0x80 | 1 << 3 | 5, 0, 0, 0, 1, 0, 0x10000, SS);
+    initMem32(); EBP = 0x0FFF0; runLeaGd(0x80 | 1 << 3 | 5, 0, 0, 0, 1, 0x10, 0x10000, SS);
+    initMem32(); EBP = 0x10010; runLeaGd(0x80 | 1 << 3 | 5, 0, 0, 0, 1, -0x10, 0x10000, SS);
+    initMem32(); EBP = -0x10; runLeaGd(0x80 | 1 << 3 | 5, 0, 0, 0, 1, 0x10010, 0x10000, SS);
 
-        // [DS:ESI+disp32]
-        initMem32(); ESI = 0;       runLeaGd(0x80|0|6, 0, 0, 0, 1, 0, 0, DS);
-        initMem32(); ESI = 0x10000; runLeaGd(0x80|1<<3|6, 0, 0, 0, 1, 0, 0x10000, DS);
-        initMem32(); ESI = 0x0FFF0; runLeaGd(0x80|1<<3|6, 0, 0, 0, 1, 0x10, 0x10000, DS);
-        initMem32(); ESI = 0x10010; runLeaGd(0x80|1<<3|6, 0, 0, 0, 1, -0x10, 0x10000, DS);
-        initMem32(); ESI = -0x10; runLeaGd(0x80|1<<3|6, 0, 0, 0, 1, 0x10010, 0x10000, DS);
+    // [DS:ESI+disp32]
+    initMem32(); ESI = 0;       runLeaGd(0x80 | 0 | 6, 0, 0, 0, 1, 0, 0, DS);
+    initMem32(); ESI = 0x10000; runLeaGd(0x80 | 1 << 3 | 6, 0, 0, 0, 1, 0, 0x10000, DS);
+    initMem32(); ESI = 0x0FFF0; runLeaGd(0x80 | 1 << 3 | 6, 0, 0, 0, 1, 0x10, 0x10000, DS);
+    initMem32(); ESI = 0x10010; runLeaGd(0x80 | 1 << 3 | 6, 0, 0, 0, 1, -0x10, 0x10000, DS);
+    initMem32(); ESI = -0x10; runLeaGd(0x80 | 1 << 3 | 6, 0, 0, 0, 1, 0x10010, 0x10000, DS);
 
-        // [DS:EDI+disp32]
-        initMem32(); EDI = 0;       runLeaGd(0x80|0|7, 0, 0, 0, 1, 0, 0, DS);
-        initMem32(); EDI = 0x10000; runLeaGd(0x80|1<<3|7, 0, 0, 0, 1, 0, 0x10000, DS);
-        initMem32(); EDI = 0x0FFF0; runLeaGd(0x80|1<<3|7, 0, 0, 0, 1, 0x10, 0x10000, DS);
-        initMem32(); EDI = 0x10010; runLeaGd(0x80|1<<3|7, 0, 0, 0, 1, -0x10, 0x10000, DS);
-        initMem32(); EDI = -0x10; runLeaGd(0x80|1<<3|7, 0, 0, 0, 1, 0x10010, 0x10000, DS);
+    // [DS:EDI+disp32]
+    initMem32(); EDI = 0;       runLeaGd(0x80 | 0 | 7, 0, 0, 0, 1, 0, 0, DS);
+    initMem32(); EDI = 0x10000; runLeaGd(0x80 | 1 << 3 | 7, 0, 0, 0, 1, 0, 0x10000, DS);
+    initMem32(); EDI = 0x0FFF0; runLeaGd(0x80 | 1 << 3 | 7, 0, 0, 0, 1, 0x10, 0x10000, DS);
+    initMem32(); EDI = 0x10010; runLeaGd(0x80 | 1 << 3 | 7, 0, 0, 0, 1, -0x10, 0x10000, DS);
+    initMem32(); EDI = -0x10; runLeaGd(0x80 | 1 << 3 | 7, 0, 0, 0, 1, 0x10010, 0x10000, DS);
 }
 
 // disp8 is signed, it doesn't matter if disp16 is signed or not because of 16-bit rollover
@@ -10376,13 +10552,13 @@ void test32BitMemoryAccess() {
 // 10 	[DS:BX + SI + disp16]  [DS:BX + DI + disp16]  [SS:BP + SI + disp16]  [SS:BP + DI + disp16]  [DS:SI + disp16]   [DS:DI + disp16]   [SS:BP + disp16]   [DS:BX + disp16]
 
 void runLeaGw(int rm, int hasDisp8, int hasDisp16, U32 d, U16 result, U32 seg) {
-    Reg* reg = &cpu->reg[G(rm)];    
+    Reg* reg = &cpu->reg[G(rm)];
     U16 originalValue = reg->u16;
     S16 disp = (S16)d;
 
     // lea Gw
-    cseip=CODE_ADDRESS;
-    cpu->eip.u32=0;   
+    cseip = CODE_ADDRESS;
+    cpu->eip.u32 = 0;
     pushCode8(0x8d);
 
     pushCode8(rm);
@@ -10391,14 +10567,14 @@ void runLeaGw(int rm, int hasDisp8, int hasDisp16, U32 d, U16 result, U32 seg) {
     if (hasDisp16)
         pushCode16(disp);
     runTestCPU();
-    assertTrue(reg->u16==result);
+    assertTrue(reg->u16 == result);
 
     reg->u16 = originalValue;
     // MOV Gw,Ew
-    memory->writew(cpu->seg[seg].address+result, 0x3579);
+    memory->writew(cpu->seg[seg].address + result, 0x3579);
 
-    cseip=CODE_ADDRESS;
-    cpu->eip.u32=0;   
+    cseip = CODE_ADDRESS;
+    cpu->eip.u32 = 0;
     pushCode8(0x8b);
 
     pushCode8(rm);
@@ -10411,9 +10587,9 @@ void runLeaGw(int rm, int hasDisp8, int hasDisp16, U32 d, U16 result, U32 seg) {
 }
 
 void initMem16() {
-    memory->memset(CODE_ADDRESS, 0, K_PAGE_SIZE*PAGES_PER_SEG);
-    memory->memset(STACK_ADDRESS-K_PAGE_SIZE*PAGES_PER_SEG, 0, K_PAGE_SIZE*PAGES_PER_SEG);
-    memory->memset(HEAP_ADDRESS, 0, K_PAGE_SIZE*PAGES_PER_SEG);
+    memory->memset(CODE_ADDRESS, 0, K_PAGE_SIZE * PAGES_PER_SEG);
+    memory->memset(STACK_ADDRESS - K_PAGE_SIZE * PAGES_PER_SEG, 0, K_PAGE_SIZE * PAGES_PER_SEG);
+    memory->memset(HEAP_ADDRESS, 0, K_PAGE_SIZE * PAGES_PER_SEG);
 
     cpu->big = false;
     EAX = 0x12345678;
@@ -10429,230 +10605,230 @@ void initMem16() {
 void test16BitMemoryAccess() {
     // Mod 00
         // [DS:BX + SI]
-        initMem16(); BX = 0;      SI = 0;      runLeaGw(0, 0, 0, 0, 0, DS);
-        initMem16(); BX = 1;      SI = 0;      runLeaGw(1<<3, 0, 0, 0, 1, DS);
-        initMem16(); BX = 0;      SI = 1;      runLeaGw(2<<3, 0, 0, 0, 1, DS);
-        initMem16(); BX = 0xFFFE; SI = 0;      runLeaGw(3<<3, 0, 0, 0, 0xFFFE, DS);
-        initMem16(); BX = 0;      SI = 0xFFFE; runLeaGw(4<<3, 0, 0, 0, 0xFFFE, DS);
-        initMem16(); BX = 0xFFFE; SI = 2;      runLeaGw(5<<3, 0, 0, 0, 0, DS);
-        initMem16(); BX = 2;      SI = 0xFFFE; runLeaGw(6<<3, 0, 0, 0, 0, DS);
-        initMem16(); BX = 0xFFFE; SI = 0xFFFE; runLeaGw(7<<3, 0, 0, 0, 0xFFFC, DS);
+    initMem16(); BX = 0;      SI = 0;      runLeaGw(0, 0, 0, 0, 0, DS);
+    initMem16(); BX = 1;      SI = 0;      runLeaGw(1 << 3, 0, 0, 0, 1, DS);
+    initMem16(); BX = 0;      SI = 1;      runLeaGw(2 << 3, 0, 0, 0, 1, DS);
+    initMem16(); BX = 0xFFFE; SI = 0;      runLeaGw(3 << 3, 0, 0, 0, 0xFFFE, DS);
+    initMem16(); BX = 0;      SI = 0xFFFE; runLeaGw(4 << 3, 0, 0, 0, 0xFFFE, DS);
+    initMem16(); BX = 0xFFFE; SI = 2;      runLeaGw(5 << 3, 0, 0, 0, 0, DS);
+    initMem16(); BX = 2;      SI = 0xFFFE; runLeaGw(6 << 3, 0, 0, 0, 0, DS);
+    initMem16(); BX = 0xFFFE; SI = 0xFFFE; runLeaGw(7 << 3, 0, 0, 0, 0xFFFC, DS);
 
-        // [DS:BX + DI]
-        initMem16(); BX = 0;      DI = 0;      runLeaGw(0<<3|1, 0, 0, 0, 0, DS);
-        initMem16(); BX = 2;      DI = 0;      runLeaGw(1<<3|1, 0, 0, 0, 2, DS);
-        initMem16(); BX = 0;      DI = 2;      runLeaGw(2<<3|1, 0, 0, 0, 2, DS);
-        initMem16(); BX = 0xFFFE; DI = 0;      runLeaGw(3<<3|1, 0, 0, 0, 0xFFFE, DS);
-        initMem16(); BX = 0;      DI = 0xFFFE; runLeaGw(4<<3|1, 0, 0, 0, 0xFFFE, DS);
-        initMem16(); BX = 0xFFFE; DI = 2;      runLeaGw(5<<3|1, 0, 0, 0, 0, DS);
-        initMem16(); BX = 2;      DI = 0xFFFE; runLeaGw(6<<3|1, 0, 0, 0, 0, DS);
-        initMem16(); BX = 0xFFFE; DI = 0xFFFE; runLeaGw(7<<3|1, 0, 0, 0, 0xFFFC, DS);
+    // [DS:BX + DI]
+    initMem16(); BX = 0;      DI = 0;      runLeaGw(0 << 3 | 1, 0, 0, 0, 0, DS);
+    initMem16(); BX = 2;      DI = 0;      runLeaGw(1 << 3 | 1, 0, 0, 0, 2, DS);
+    initMem16(); BX = 0;      DI = 2;      runLeaGw(2 << 3 | 1, 0, 0, 0, 2, DS);
+    initMem16(); BX = 0xFFFE; DI = 0;      runLeaGw(3 << 3 | 1, 0, 0, 0, 0xFFFE, DS);
+    initMem16(); BX = 0;      DI = 0xFFFE; runLeaGw(4 << 3 | 1, 0, 0, 0, 0xFFFE, DS);
+    initMem16(); BX = 0xFFFE; DI = 2;      runLeaGw(5 << 3 | 1, 0, 0, 0, 0, DS);
+    initMem16(); BX = 2;      DI = 0xFFFE; runLeaGw(6 << 3 | 1, 0, 0, 0, 0, DS);
+    initMem16(); BX = 0xFFFE; DI = 0xFFFE; runLeaGw(7 << 3 | 1, 0, 0, 0, 0xFFFC, DS);
 
-        // [SS:BP + SI]  
-        initMem16(); BP = 0;      SI = 0;      runLeaGw(0<<3|2, 0, 0, 0, 0, SS);
-        initMem16(); BP = 2;      SI = 0;      runLeaGw(1<<3|2, 0, 0, 0, 2, SS);
-        initMem16(); BP = 0;      SI = 2;      runLeaGw(2<<3|2, 0, 0, 0, 2, SS);
-        initMem16(); BP = 0xFFFE; SI = 0;      runLeaGw(3<<3|2, 0, 0, 0, 0xFFFE, SS);
-        initMem16(); BP = 0;      SI = 0xFFFE; runLeaGw(4<<3|2, 0, 0, 0, 0xFFFE, SS);
-        initMem16(); BP = 0xFFFE; SI = 2;      runLeaGw(5<<3|2, 0, 0, 0, 0, SS);
-        initMem16(); BP = 2;      SI = 0xFFFE; runLeaGw(6<<3|2, 0, 0, 0, 0, SS);
-        initMem16(); BP = 0xFFFE; SI = 0xFFFE; runLeaGw(7<<3|2, 0, 0, 0, 0xFFFC, SS);
+    // [SS:BP + SI]  
+    initMem16(); BP = 0;      SI = 0;      runLeaGw(0 << 3 | 2, 0, 0, 0, 0, SS);
+    initMem16(); BP = 2;      SI = 0;      runLeaGw(1 << 3 | 2, 0, 0, 0, 2, SS);
+    initMem16(); BP = 0;      SI = 2;      runLeaGw(2 << 3 | 2, 0, 0, 0, 2, SS);
+    initMem16(); BP = 0xFFFE; SI = 0;      runLeaGw(3 << 3 | 2, 0, 0, 0, 0xFFFE, SS);
+    initMem16(); BP = 0;      SI = 0xFFFE; runLeaGw(4 << 3 | 2, 0, 0, 0, 0xFFFE, SS);
+    initMem16(); BP = 0xFFFE; SI = 2;      runLeaGw(5 << 3 | 2, 0, 0, 0, 0, SS);
+    initMem16(); BP = 2;      SI = 0xFFFE; runLeaGw(6 << 3 | 2, 0, 0, 0, 0, SS);
+    initMem16(); BP = 0xFFFE; SI = 0xFFFE; runLeaGw(7 << 3 | 2, 0, 0, 0, 0xFFFC, SS);
 
-        // [SS:BP + DI]
-        initMem16(); BP = 0;      DI = 0;      runLeaGw(0<<3|3, 0, 0, 0, 0, SS);
-        initMem16(); BP = 2;      DI = 0;      runLeaGw(1<<3|3, 0, 0, 0, 2, SS);
-        initMem16(); BP = 0;      DI = 2;      runLeaGw(2<<3|3, 0, 0, 0, 2, SS);
-        initMem16(); BP = 0xFFFE; DI = 0;      runLeaGw(3<<3|3, 0, 0, 0, 0xFFFE, SS);
-        initMem16(); BP = 0;      DI = 0xFFFE; runLeaGw(4<<3|3, 0, 0, 0, 0xFFFE, SS);
-        initMem16(); BP = 0xFFFE; DI = 2;      runLeaGw(5<<3|3, 0, 0, 0, 0, SS);
-        initMem16(); BP = 2;      DI = 0xFFFE; runLeaGw(6<<3|3, 0, 0, 0, 0, SS);
-        initMem16(); BP = 0xFFFE; DI = 0xFFFE; runLeaGw(7<<3|3, 0, 0, 0, 0xFFFC, SS);
+    // [SS:BP + DI]
+    initMem16(); BP = 0;      DI = 0;      runLeaGw(0 << 3 | 3, 0, 0, 0, 0, SS);
+    initMem16(); BP = 2;      DI = 0;      runLeaGw(1 << 3 | 3, 0, 0, 0, 2, SS);
+    initMem16(); BP = 0;      DI = 2;      runLeaGw(2 << 3 | 3, 0, 0, 0, 2, SS);
+    initMem16(); BP = 0xFFFE; DI = 0;      runLeaGw(3 << 3 | 3, 0, 0, 0, 0xFFFE, SS);
+    initMem16(); BP = 0;      DI = 0xFFFE; runLeaGw(4 << 3 | 3, 0, 0, 0, 0xFFFE, SS);
+    initMem16(); BP = 0xFFFE; DI = 2;      runLeaGw(5 << 3 | 3, 0, 0, 0, 0, SS);
+    initMem16(); BP = 2;      DI = 0xFFFE; runLeaGw(6 << 3 | 3, 0, 0, 0, 0, SS);
+    initMem16(); BP = 0xFFFE; DI = 0xFFFE; runLeaGw(7 << 3 | 3, 0, 0, 0, 0xFFFC, SS);
 
-        // [DS:SI]  
-        initMem16(); SI = 0;      runLeaGw(0<<3|4, 0, 0, 0, 0, DS);
-        initMem16(); SI = 2;      runLeaGw(1<<3|4, 0, 0, 0, 2, DS);
-        initMem16(); SI = 0x2468; runLeaGw(2<<3|4, 0, 0, 0, 0x2468, DS);
-        initMem16(); SI = 0xFFFE; runLeaGw(3<<3|4, 0, 0, 0, 0xFFFE, DS);
+    // [DS:SI]  
+    initMem16(); SI = 0;      runLeaGw(0 << 3 | 4, 0, 0, 0, 0, DS);
+    initMem16(); SI = 2;      runLeaGw(1 << 3 | 4, 0, 0, 0, 2, DS);
+    initMem16(); SI = 0x2468; runLeaGw(2 << 3 | 4, 0, 0, 0, 0x2468, DS);
+    initMem16(); SI = 0xFFFE; runLeaGw(3 << 3 | 4, 0, 0, 0, 0xFFFE, DS);
 
-        // [DS:DI]  
-        initMem16(); DI = 0;      runLeaGw(0<<3|5, 0, 0, 0, 0, DS);
-        initMem16(); DI = 2;      runLeaGw(1<<3|5, 0, 0, 0, 2, DS);
-        initMem16(); DI = 0x2468; runLeaGw(2<<3|5, 0, 0, 0, 0x2468, DS);
-        initMem16(); DI = 0xFFFE; runLeaGw(3<<3|5, 0, 0, 0, 0xFFFE, DS);
+    // [DS:DI]  
+    initMem16(); DI = 0;      runLeaGw(0 << 3 | 5, 0, 0, 0, 0, DS);
+    initMem16(); DI = 2;      runLeaGw(1 << 3 | 5, 0, 0, 0, 2, DS);
+    initMem16(); DI = 0x2468; runLeaGw(2 << 3 | 5, 0, 0, 0, 0x2468, DS);
+    initMem16(); DI = 0xFFFE; runLeaGw(3 << 3 | 5, 0, 0, 0, 0xFFFE, DS);
 
-        // [DS:disp16]
-        initMem16(); runLeaGw(0<<3|6, 0, true, 0, 0, DS);
-        initMem16(); runLeaGw(1<<3|6, 0, true, 2, 2, DS);
-        initMem16(); runLeaGw(2<<3|6, 0, true, 0x2468, 0x2468, DS);
-        initMem16(); runLeaGw(3<<3|6, 0, true, 0xFFFE, 0xFFFE, DS);
+    // [DS:disp16]
+    initMem16(); runLeaGw(0 << 3 | 6, 0, true, 0, 0, DS);
+    initMem16(); runLeaGw(1 << 3 | 6, 0, true, 2, 2, DS);
+    initMem16(); runLeaGw(2 << 3 | 6, 0, true, 0x2468, 0x2468, DS);
+    initMem16(); runLeaGw(3 << 3 | 6, 0, true, 0xFFFE, 0xFFFE, DS);
 
-        // [DS:BX]
-        initMem16(); BX = 0;      runLeaGw(0<<3|7, 0, 0, 0, 0, DS);
-        initMem16(); BX = 2;      runLeaGw(1<<3|7, 0, 0, 0, 2, DS);
-        initMem16(); BX = 0x2468; runLeaGw(2<<3|7, 0, 0, 0, 0x2468, DS);
-        initMem16(); BX = 0xFFFE; runLeaGw(3<<3|7, 0, 0, 0, 0xFFFE, DS);
+    // [DS:BX]
+    initMem16(); BX = 0;      runLeaGw(0 << 3 | 7, 0, 0, 0, 0, DS);
+    initMem16(); BX = 2;      runLeaGw(1 << 3 | 7, 0, 0, 0, 2, DS);
+    initMem16(); BX = 0x2468; runLeaGw(2 << 3 | 7, 0, 0, 0, 0x2468, DS);
+    initMem16(); BX = 0xFFFE; runLeaGw(3 << 3 | 7, 0, 0, 0, 0xFFFE, DS);
 
     // Mod 01
         // [DS:BX + SI + disp8]
-        initMem16(); BX = 0;      SI = 0;      runLeaGw(0|0x40, true, 0, 0, 0, DS);
-        initMem16(); BX = 2;      SI = 0;      runLeaGw(1<<3|0x40, true, 0, 2, 4, DS);
-        initMem16(); BX = 2;      SI = 2;      runLeaGw(2<<3|0x40, true, 0, 2, 6, DS);
-        initMem16(); BX = 0;      SI = 0;      runLeaGw(3<<3|0x40, true, 0, 0xFE, 0xFFFE, DS);
-        initMem16(); BX = 0;      SI = 0xFFFE; runLeaGw(4<<3|0x40, true, 0, 0xFE, 0xFFFC, DS);
-        initMem16(); BX = 0xFFFC; SI = 2;      runLeaGw(5<<3|0x40, true, 0, 2, 0, DS);
-        initMem16(); BX = 2;      SI = 0xFFFE; runLeaGw(6<<3|0x40, true, 0, 2, 2, DS);
-        initMem16(); BX = 0xFFFE; SI = 0xFFFE; runLeaGw(7<<3|0x40, true, 0, 0xFE, 0xFFFA, DS);
+    initMem16(); BX = 0;      SI = 0;      runLeaGw(0 | 0x40, true, 0, 0, 0, DS);
+    initMem16(); BX = 2;      SI = 0;      runLeaGw(1 << 3 | 0x40, true, 0, 2, 4, DS);
+    initMem16(); BX = 2;      SI = 2;      runLeaGw(2 << 3 | 0x40, true, 0, 2, 6, DS);
+    initMem16(); BX = 0;      SI = 0;      runLeaGw(3 << 3 | 0x40, true, 0, 0xFE, 0xFFFE, DS);
+    initMem16(); BX = 0;      SI = 0xFFFE; runLeaGw(4 << 3 | 0x40, true, 0, 0xFE, 0xFFFC, DS);
+    initMem16(); BX = 0xFFFC; SI = 2;      runLeaGw(5 << 3 | 0x40, true, 0, 2, 0, DS);
+    initMem16(); BX = 2;      SI = 0xFFFE; runLeaGw(6 << 3 | 0x40, true, 0, 2, 2, DS);
+    initMem16(); BX = 0xFFFE; SI = 0xFFFE; runLeaGw(7 << 3 | 0x40, true, 0, 0xFE, 0xFFFA, DS);
 
-        // [DS:BX + DI + disp8]
-        initMem16(); BX = 0;      DI = 0;      runLeaGw(0|0x41, true, 0, 0, 0, DS);
-        initMem16(); BX = 2;      DI = 0;      runLeaGw(1<<3|0x41, true, 0, 2, 4, DS);
-        initMem16(); BX = 2;      DI = 2;      runLeaGw(2<<3|0x41, true, 0, 2, 6, DS);
-        initMem16(); BX = 0;      DI = 0;      runLeaGw(3<<3|0x41, true, 0, 0xFE, 0xFFFE, DS);
-        initMem16(); BX = 0;      DI = 0xFFFE; runLeaGw(4<<3|0x41, true, 0, 0xFE, 0xFFFC, DS);
-        initMem16(); BX = 0xFFFC; DI = 2;      runLeaGw(5<<3|0x41, true, 0, 2, 0, DS);
-        initMem16(); BX = 2;      DI = 0xFFFE; runLeaGw(6<<3|0x41, true, 0, 2, 2, DS);
-        initMem16(); BX = 0xFFFE; DI = 0xFFFE; runLeaGw(7<<3|0x41, true, 0, 0xFE, 0xFFFA, DS);
+    // [DS:BX + DI + disp8]
+    initMem16(); BX = 0;      DI = 0;      runLeaGw(0 | 0x41, true, 0, 0, 0, DS);
+    initMem16(); BX = 2;      DI = 0;      runLeaGw(1 << 3 | 0x41, true, 0, 2, 4, DS);
+    initMem16(); BX = 2;      DI = 2;      runLeaGw(2 << 3 | 0x41, true, 0, 2, 6, DS);
+    initMem16(); BX = 0;      DI = 0;      runLeaGw(3 << 3 | 0x41, true, 0, 0xFE, 0xFFFE, DS);
+    initMem16(); BX = 0;      DI = 0xFFFE; runLeaGw(4 << 3 | 0x41, true, 0, 0xFE, 0xFFFC, DS);
+    initMem16(); BX = 0xFFFC; DI = 2;      runLeaGw(5 << 3 | 0x41, true, 0, 2, 0, DS);
+    initMem16(); BX = 2;      DI = 0xFFFE; runLeaGw(6 << 3 | 0x41, true, 0, 2, 2, DS);
+    initMem16(); BX = 0xFFFE; DI = 0xFFFE; runLeaGw(7 << 3 | 0x41, true, 0, 0xFE, 0xFFFA, DS);
 
-        // [SS:BP + SI + disp8]
-        initMem16(); BP = 0;      SI = 0;      runLeaGw(0|0x42, true, 0, 0, 0, SS);
-        initMem16(); BP = 2;      SI = 0;      runLeaGw(1<<3|0x42, true, 0, 2, 4, SS);
-        initMem16(); BP = 2;      SI = 2;      runLeaGw(2<<3|0x42, true, 0, 2, 6, SS);
-        initMem16(); BP = 0;      SI = 0;      runLeaGw(3<<3|0x42, true, 0, 0xFE, 0xFFFE, SS);
-        initMem16(); BP = 0;      SI = 0xFFFE; runLeaGw(4<<3|0x42, true, 0, 0xFE, 0xFFFC, SS);
-        initMem16(); BP = 0xFFFC; SI = 2;      runLeaGw(5<<3|0x42, true, 0, 2, 0, SS);
-        initMem16(); BP = 2;      SI = 0xFFFE; runLeaGw(6<<3|0x42, true, 0, 2, 2, SS);
-        initMem16(); BP = 0xFFFE; SI = 0xFFFE; runLeaGw(7<<3|0x42, true, 0, 0xFE, 0xFFFA, SS);
+    // [SS:BP + SI + disp8]
+    initMem16(); BP = 0;      SI = 0;      runLeaGw(0 | 0x42, true, 0, 0, 0, SS);
+    initMem16(); BP = 2;      SI = 0;      runLeaGw(1 << 3 | 0x42, true, 0, 2, 4, SS);
+    initMem16(); BP = 2;      SI = 2;      runLeaGw(2 << 3 | 0x42, true, 0, 2, 6, SS);
+    initMem16(); BP = 0;      SI = 0;      runLeaGw(3 << 3 | 0x42, true, 0, 0xFE, 0xFFFE, SS);
+    initMem16(); BP = 0;      SI = 0xFFFE; runLeaGw(4 << 3 | 0x42, true, 0, 0xFE, 0xFFFC, SS);
+    initMem16(); BP = 0xFFFC; SI = 2;      runLeaGw(5 << 3 | 0x42, true, 0, 2, 0, SS);
+    initMem16(); BP = 2;      SI = 0xFFFE; runLeaGw(6 << 3 | 0x42, true, 0, 2, 2, SS);
+    initMem16(); BP = 0xFFFE; SI = 0xFFFE; runLeaGw(7 << 3 | 0x42, true, 0, 0xFE, 0xFFFA, SS);
 
-        // [SS:BP + DI + disp8]
-        initMem16(); BP = 0;      DI = 0;      runLeaGw(0|0x43, true, 0, 0, 0, SS);
-        initMem16(); BP = 2;      DI = 0;      runLeaGw(1<<3|0x43, true, 0, 2, 4, SS);
-        initMem16(); BP = 2;      DI = 2;      runLeaGw(2<<3|0x43, true, 0, 2, 6, SS);
-        initMem16(); BP = 0;      DI = 0;      runLeaGw(3<<3|0x43, true, 0, 0xFE, 0xFFFE, SS);
-        initMem16(); BP = 0;      DI = 0xFFFE; runLeaGw(4<<3|0x43, true, 0, 0xFE, 0xFFFC, SS);
-        initMem16(); BP = 0xFFFC; DI = 2;      runLeaGw(5<<3|0x43, true, 0, 2, 0, SS);
-        initMem16(); BP = 2;      DI = 0xFFFE; runLeaGw(6<<3|0x43, true, 0, 2, 2, SS);
-        initMem16(); BP = 0xFFFE; DI = 0xFFFE; runLeaGw(7<<3|0x43, true, 0, 0xFE, 0xFFFA, SS);
+    // [SS:BP + DI + disp8]
+    initMem16(); BP = 0;      DI = 0;      runLeaGw(0 | 0x43, true, 0, 0, 0, SS);
+    initMem16(); BP = 2;      DI = 0;      runLeaGw(1 << 3 | 0x43, true, 0, 2, 4, SS);
+    initMem16(); BP = 2;      DI = 2;      runLeaGw(2 << 3 | 0x43, true, 0, 2, 6, SS);
+    initMem16(); BP = 0;      DI = 0;      runLeaGw(3 << 3 | 0x43, true, 0, 0xFE, 0xFFFE, SS);
+    initMem16(); BP = 0;      DI = 0xFFFE; runLeaGw(4 << 3 | 0x43, true, 0, 0xFE, 0xFFFC, SS);
+    initMem16(); BP = 0xFFFC; DI = 2;      runLeaGw(5 << 3 | 0x43, true, 0, 2, 0, SS);
+    initMem16(); BP = 2;      DI = 0xFFFE; runLeaGw(6 << 3 | 0x43, true, 0, 2, 2, SS);
+    initMem16(); BP = 0xFFFE; DI = 0xFFFE; runLeaGw(7 << 3 | 0x43, true, 0, 0xFE, 0xFFFA, SS);
 
-        // [DS:SI + disp8]
-        initMem16(); SI = 0;      runLeaGw(0|0x44, true, 0, 0, 0, DS);
-        initMem16(); SI = 0;      runLeaGw(1<<3|0x44, true, 0, 2, 2, DS);
-        initMem16(); SI = 2;      runLeaGw(2<<3|0x44, true, 0, 0, 2, DS);
-        initMem16(); SI = 0;      runLeaGw(3<<3|0x44, true, 0, 0xFE, 0xFFFE, DS);
-        initMem16(); SI = 0xFFFE; runLeaGw(4<<3|0x44, true, 0, 0, 0xFFFE, DS);
-        initMem16(); SI = 2;      runLeaGw(5<<3|0x44, true, 0, 0xFE, 0, DS);
-        initMem16(); SI = 0xFFFE; runLeaGw(6<<3|0x44, true, 0, 2, 0, DS);
-        initMem16(); SI = 0xFFFE; runLeaGw(7<<3|0x44, true, 0, 0xFE, 0xFFFC, DS);
+    // [DS:SI + disp8]
+    initMem16(); SI = 0;      runLeaGw(0 | 0x44, true, 0, 0, 0, DS);
+    initMem16(); SI = 0;      runLeaGw(1 << 3 | 0x44, true, 0, 2, 2, DS);
+    initMem16(); SI = 2;      runLeaGw(2 << 3 | 0x44, true, 0, 0, 2, DS);
+    initMem16(); SI = 0;      runLeaGw(3 << 3 | 0x44, true, 0, 0xFE, 0xFFFE, DS);
+    initMem16(); SI = 0xFFFE; runLeaGw(4 << 3 | 0x44, true, 0, 0, 0xFFFE, DS);
+    initMem16(); SI = 2;      runLeaGw(5 << 3 | 0x44, true, 0, 0xFE, 0, DS);
+    initMem16(); SI = 0xFFFE; runLeaGw(6 << 3 | 0x44, true, 0, 2, 0, DS);
+    initMem16(); SI = 0xFFFE; runLeaGw(7 << 3 | 0x44, true, 0, 0xFE, 0xFFFC, DS);
 
-        // [DS:DI + disp8]
-        initMem16(); DI = 0;      runLeaGw(0|0x45, true, 0, 0, 0, DS);
-        initMem16(); DI = 0;      runLeaGw(1<<3|0x45, true, 0, 2, 2, DS);
-        initMem16(); DI = 2;      runLeaGw(2<<3|0x45, true, 0, 0, 2, DS);
-        initMem16(); DI = 0;      runLeaGw(3<<3|0x45, true, 0, 0xFE, 0xFFFE, DS);
-        initMem16(); DI = 0xFFFE; runLeaGw(4<<3|0x45, true, 0, 0, 0xFFFE, DS);
-        initMem16(); DI = 2;      runLeaGw(5<<3|0x45, true, 0, 0xFE, 0, DS);
-        initMem16(); DI = 0xFFFE; runLeaGw(6<<3|0x45, true, 0, 2, 0, DS);
-        initMem16(); DI = 0xFFFE; runLeaGw(7<<3|0x45, true, 0, 0xFE, 0xFFFC, DS);
+    // [DS:DI + disp8]
+    initMem16(); DI = 0;      runLeaGw(0 | 0x45, true, 0, 0, 0, DS);
+    initMem16(); DI = 0;      runLeaGw(1 << 3 | 0x45, true, 0, 2, 2, DS);
+    initMem16(); DI = 2;      runLeaGw(2 << 3 | 0x45, true, 0, 0, 2, DS);
+    initMem16(); DI = 0;      runLeaGw(3 << 3 | 0x45, true, 0, 0xFE, 0xFFFE, DS);
+    initMem16(); DI = 0xFFFE; runLeaGw(4 << 3 | 0x45, true, 0, 0, 0xFFFE, DS);
+    initMem16(); DI = 2;      runLeaGw(5 << 3 | 0x45, true, 0, 0xFE, 0, DS);
+    initMem16(); DI = 0xFFFE; runLeaGw(6 << 3 | 0x45, true, 0, 2, 0, DS);
+    initMem16(); DI = 0xFFFE; runLeaGw(7 << 3 | 0x45, true, 0, 0xFE, 0xFFFC, DS);
 
-        // [SS:BP + disp8]
-        initMem16(); BP = 0;      runLeaGw(0|0x46, true, 0, 0, 0, SS);
-        initMem16(); BP = 0;      runLeaGw(1<<3|0x46, true, 0, 2, 2, SS);
-        initMem16(); BP = 2;      runLeaGw(2<<3|0x46, true, 0, 0, 2, SS);
-        initMem16(); BP = 0;      runLeaGw(3<<3|0x46, true, 0, 0xFE, 0xFFFE, SS);
-        initMem16(); BP = 0xFFFE; runLeaGw(4<<3|0x46, true, 0, 0, 0xFFFE, SS);
-        initMem16(); BP = 2;      runLeaGw(5<<3|0x46, true, 0, 0xFE, 0, SS);
-        initMem16(); BP = 0xFFFE; runLeaGw(6<<3|0x46, true, 0, 2, 0, SS);
-        initMem16(); BP = 0xFFFE; runLeaGw(7<<3|0x46, true, 0, 0xFE, 0xFFFC, SS);
+    // [SS:BP + disp8]
+    initMem16(); BP = 0;      runLeaGw(0 | 0x46, true, 0, 0, 0, SS);
+    initMem16(); BP = 0;      runLeaGw(1 << 3 | 0x46, true, 0, 2, 2, SS);
+    initMem16(); BP = 2;      runLeaGw(2 << 3 | 0x46, true, 0, 0, 2, SS);
+    initMem16(); BP = 0;      runLeaGw(3 << 3 | 0x46, true, 0, 0xFE, 0xFFFE, SS);
+    initMem16(); BP = 0xFFFE; runLeaGw(4 << 3 | 0x46, true, 0, 0, 0xFFFE, SS);
+    initMem16(); BP = 2;      runLeaGw(5 << 3 | 0x46, true, 0, 0xFE, 0, SS);
+    initMem16(); BP = 0xFFFE; runLeaGw(6 << 3 | 0x46, true, 0, 2, 0, SS);
+    initMem16(); BP = 0xFFFE; runLeaGw(7 << 3 | 0x46, true, 0, 0xFE, 0xFFFC, SS);
 
-        // [DS:BX + disp8]
-        initMem16(); BX = 0;      runLeaGw(0|0x47, true, 0, 0, 0, DS);
-        initMem16(); BX = 0;      runLeaGw(1<<3|0x47, true, 0, 2, 2, DS);
-        initMem16(); BX = 2;      runLeaGw(2<<3|0x47, true, 0, 0, 2, DS);
-        initMem16(); BX = 0;      runLeaGw(3<<3|0x47, true, 0, 0xFE, 0xFFFE, DS);
-        initMem16(); BX = 0xFFFE; runLeaGw(4<<3|0x47, true, 0, 0, 0xFFFE, DS);
-        initMem16(); BX = 2;      runLeaGw(5<<3|0x47, true, 0, 0xFE, 0, DS);
-        initMem16(); BX = 0xFFFE; runLeaGw(6<<3|0x47, true, 0, 2, 0, DS);
-        initMem16(); BX = 0xFFFE; runLeaGw(7<<3|0x47, true, 0, 0xFE, 0xFFFC, DS);
+    // [DS:BX + disp8]
+    initMem16(); BX = 0;      runLeaGw(0 | 0x47, true, 0, 0, 0, DS);
+    initMem16(); BX = 0;      runLeaGw(1 << 3 | 0x47, true, 0, 2, 2, DS);
+    initMem16(); BX = 2;      runLeaGw(2 << 3 | 0x47, true, 0, 0, 2, DS);
+    initMem16(); BX = 0;      runLeaGw(3 << 3 | 0x47, true, 0, 0xFE, 0xFFFE, DS);
+    initMem16(); BX = 0xFFFE; runLeaGw(4 << 3 | 0x47, true, 0, 0, 0xFFFE, DS);
+    initMem16(); BX = 2;      runLeaGw(5 << 3 | 0x47, true, 0, 0xFE, 0, DS);
+    initMem16(); BX = 0xFFFE; runLeaGw(6 << 3 | 0x47, true, 0, 2, 0, DS);
+    initMem16(); BX = 0xFFFE; runLeaGw(7 << 3 | 0x47, true, 0, 0xFE, 0xFFFC, DS);
 
     // Mod 02
         // [DS:BX + SI + disp16]
-        initMem16(); BX = 0;      SI = 0;      runLeaGw(0|0x80, 0, true, 0, 0, DS);
-        initMem16(); BX = 2;      SI = 0;      runLeaGw(1<<3|0x80, 0, true, 2, 4, DS);
-        initMem16(); BX = 2;      SI = 2;      runLeaGw(2<<3|0x80, 0, true, 2, 6, DS);
-        initMem16(); BX = 0;      SI = 0;      runLeaGw(3<<3|0x80, 0, true, 0xFE, 0xFE, DS);
-        initMem16(); BX = 0;      SI = 0xFFFE; runLeaGw(4<<3|0x80, 0, true, 0xFFFE, 0xFFFC, DS);
-        initMem16(); BX = 0xFFFC; SI = 2;      runLeaGw(5<<3|0x80, 0, true, 2, 0, DS);
-        initMem16(); BX = 2;      SI = 0xFFFE; runLeaGw(6<<3|0x80, 0, true, 2, 2, DS);
-        initMem16(); BX = 0xFFFE; SI = 0xFFFE; runLeaGw(7<<3|0x80, 0, true, 0xFFFE, 0xFFFA, DS);
+    initMem16(); BX = 0;      SI = 0;      runLeaGw(0 | 0x80, 0, true, 0, 0, DS);
+    initMem16(); BX = 2;      SI = 0;      runLeaGw(1 << 3 | 0x80, 0, true, 2, 4, DS);
+    initMem16(); BX = 2;      SI = 2;      runLeaGw(2 << 3 | 0x80, 0, true, 2, 6, DS);
+    initMem16(); BX = 0;      SI = 0;      runLeaGw(3 << 3 | 0x80, 0, true, 0xFE, 0xFE, DS);
+    initMem16(); BX = 0;      SI = 0xFFFE; runLeaGw(4 << 3 | 0x80, 0, true, 0xFFFE, 0xFFFC, DS);
+    initMem16(); BX = 0xFFFC; SI = 2;      runLeaGw(5 << 3 | 0x80, 0, true, 2, 0, DS);
+    initMem16(); BX = 2;      SI = 0xFFFE; runLeaGw(6 << 3 | 0x80, 0, true, 2, 2, DS);
+    initMem16(); BX = 0xFFFE; SI = 0xFFFE; runLeaGw(7 << 3 | 0x80, 0, true, 0xFFFE, 0xFFFA, DS);
 
-        // [DS:BX + DI + disp16]
-        initMem16(); BX = 0;      DI = 0;      runLeaGw(0|0x81, 0, true, 0, 0, DS);
-        initMem16(); BX = 2;      DI = 0;      runLeaGw(1<<3|0x81, 0, true, 2, 4, DS);
-        initMem16(); BX = 2;      DI = 2;      runLeaGw(2<<3|0x81, 0, true, 2, 6, DS);
-        initMem16(); BX = 0;      DI = 0;      runLeaGw(3<<3|0x81, 0, true, 0xFE, 0xFE, DS);
-        initMem16(); BX = 0;      DI = 0xFFFE; runLeaGw(4<<3|0x81, 0, true, 0xFFFE, 0xFFFC, DS);
-        initMem16(); BX = 0xFFFC; DI = 2;      runLeaGw(5<<3|0x81, 0, true, 2, 0, DS);
-        initMem16(); BX = 2;      DI = 0xFFFE; runLeaGw(6<<3|0x81, 0, true, 2, 2, DS);
-        initMem16(); BX = 0xFFFE; DI = 0xFFFE; runLeaGw(7<<3|0x81, 0, true, 0xFFFE, 0xFFFA, DS);
+    // [DS:BX + DI + disp16]
+    initMem16(); BX = 0;      DI = 0;      runLeaGw(0 | 0x81, 0, true, 0, 0, DS);
+    initMem16(); BX = 2;      DI = 0;      runLeaGw(1 << 3 | 0x81, 0, true, 2, 4, DS);
+    initMem16(); BX = 2;      DI = 2;      runLeaGw(2 << 3 | 0x81, 0, true, 2, 6, DS);
+    initMem16(); BX = 0;      DI = 0;      runLeaGw(3 << 3 | 0x81, 0, true, 0xFE, 0xFE, DS);
+    initMem16(); BX = 0;      DI = 0xFFFE; runLeaGw(4 << 3 | 0x81, 0, true, 0xFFFE, 0xFFFC, DS);
+    initMem16(); BX = 0xFFFC; DI = 2;      runLeaGw(5 << 3 | 0x81, 0, true, 2, 0, DS);
+    initMem16(); BX = 2;      DI = 0xFFFE; runLeaGw(6 << 3 | 0x81, 0, true, 2, 2, DS);
+    initMem16(); BX = 0xFFFE; DI = 0xFFFE; runLeaGw(7 << 3 | 0x81, 0, true, 0xFFFE, 0xFFFA, DS);
 
-        // [SS:BP + SI + disp16]
-        initMem16(); BP = 0;      SI = 0;      runLeaGw(0|0x82, 0, true, 0, 0, SS);
-        initMem16(); BP = 2;      SI = 0;      runLeaGw(1<<3|0x82, 0, true, 2, 4, SS);
-        initMem16(); BP = 2;      SI = 2;      runLeaGw(2<<3|0x82, 0, true, 2, 6, SS);
-        initMem16(); BP = 0;      SI = 0;      runLeaGw(3<<3|0x82, 0, true, 0xFE, 0xFE, SS);
-        initMem16(); BP = 0;      SI = 0xFFFE; runLeaGw(4<<3|0x82, 0, true, 0xFFFE, 0xFFFC, SS);
-        initMem16(); BP = 0xFFFC; SI = 2;      runLeaGw(5<<3|0x82, 0, true, 2, 0, SS);
-        initMem16(); BP = 2;      SI = 0xFFFE; runLeaGw(6<<3|0x82, 0, true, 2, 2, SS);
-        initMem16(); BP = 0xFFFE; SI = 0xFFFE; runLeaGw(7<<3|0x82, 0, true, 0xFFFE, 0xFFFA, SS);
+    // [SS:BP + SI + disp16]
+    initMem16(); BP = 0;      SI = 0;      runLeaGw(0 | 0x82, 0, true, 0, 0, SS);
+    initMem16(); BP = 2;      SI = 0;      runLeaGw(1 << 3 | 0x82, 0, true, 2, 4, SS);
+    initMem16(); BP = 2;      SI = 2;      runLeaGw(2 << 3 | 0x82, 0, true, 2, 6, SS);
+    initMem16(); BP = 0;      SI = 0;      runLeaGw(3 << 3 | 0x82, 0, true, 0xFE, 0xFE, SS);
+    initMem16(); BP = 0;      SI = 0xFFFE; runLeaGw(4 << 3 | 0x82, 0, true, 0xFFFE, 0xFFFC, SS);
+    initMem16(); BP = 0xFFFC; SI = 2;      runLeaGw(5 << 3 | 0x82, 0, true, 2, 0, SS);
+    initMem16(); BP = 2;      SI = 0xFFFE; runLeaGw(6 << 3 | 0x82, 0, true, 2, 2, SS);
+    initMem16(); BP = 0xFFFE; SI = 0xFFFE; runLeaGw(7 << 3 | 0x82, 0, true, 0xFFFE, 0xFFFA, SS);
 
-        // [SS:BP + DI + disp16]
-        initMem16(); BP = 0;      DI = 0;      runLeaGw(0|0x83, 0, true, 0, 0, SS);
-        initMem16(); BP = 2;      DI = 0;      runLeaGw(1<<3|0x83, 0, true, 2, 4, SS);
-        initMem16(); BP = 2;      DI = 2;      runLeaGw(2<<3|0x83, 0, true, 2, 6, SS);
-        initMem16(); BP = 0;      DI = 0;      runLeaGw(3<<3|0x83, 0, true, 0xFE, 0xFE, SS);
-        initMem16(); BP = 0;      DI = 0xFFFE; runLeaGw(4<<3|0x83, 0, true, 0xFFFE, 0xFFFC, SS);
-        initMem16(); BP = 0xFFFC; DI = 2;      runLeaGw(5<<3|0x83, 0, true, 2, 0, SS);
-        initMem16(); BP = 2;      DI = 0xFFFE; runLeaGw(6<<3|0x83, 0, true, 2, 2, SS);
-        initMem16(); BP = 0xFFFE; DI = 0xFFFE; runLeaGw(7<<3|0x83, 0, true, 0xFFFE, 0xFFFA, SS);
+    // [SS:BP + DI + disp16]
+    initMem16(); BP = 0;      DI = 0;      runLeaGw(0 | 0x83, 0, true, 0, 0, SS);
+    initMem16(); BP = 2;      DI = 0;      runLeaGw(1 << 3 | 0x83, 0, true, 2, 4, SS);
+    initMem16(); BP = 2;      DI = 2;      runLeaGw(2 << 3 | 0x83, 0, true, 2, 6, SS);
+    initMem16(); BP = 0;      DI = 0;      runLeaGw(3 << 3 | 0x83, 0, true, 0xFE, 0xFE, SS);
+    initMem16(); BP = 0;      DI = 0xFFFE; runLeaGw(4 << 3 | 0x83, 0, true, 0xFFFE, 0xFFFC, SS);
+    initMem16(); BP = 0xFFFC; DI = 2;      runLeaGw(5 << 3 | 0x83, 0, true, 2, 0, SS);
+    initMem16(); BP = 2;      DI = 0xFFFE; runLeaGw(6 << 3 | 0x83, 0, true, 2, 2, SS);
+    initMem16(); BP = 0xFFFE; DI = 0xFFFE; runLeaGw(7 << 3 | 0x83, 0, true, 0xFFFE, 0xFFFA, SS);
 
-        // [DS:SI + disp16]
-        initMem16(); SI = 0;      runLeaGw(0|0x84, 0, true, 0, 0, DS);
-        initMem16(); SI = 0;      runLeaGw(1<<3|0x84, 0, true, 2, 2, DS);
-        initMem16(); SI = 2;      runLeaGw(2<<3|0x84, 0, true, 0, 2, DS);
-        initMem16(); SI = 0;      runLeaGw(3<<3|0x84, 0, true, 0xFE, 0xFE, DS);
-        initMem16(); SI = 0xFFFE; runLeaGw(4<<3|0x84, 0, true, 0, 0xFFFE, DS);
-        initMem16(); SI = 2;      runLeaGw(5<<3|0x84, 0, true, 0xFFFE, 0, DS);
-        initMem16(); SI = 0xFFFE; runLeaGw(6<<3|0x84, 0, true, 2, 0, DS);
-        initMem16(); SI = 0xFFFE; runLeaGw(7<<3|0x84, 0, true, 0xFFFE, 0xFFFC, DS);
+    // [DS:SI + disp16]
+    initMem16(); SI = 0;      runLeaGw(0 | 0x84, 0, true, 0, 0, DS);
+    initMem16(); SI = 0;      runLeaGw(1 << 3 | 0x84, 0, true, 2, 2, DS);
+    initMem16(); SI = 2;      runLeaGw(2 << 3 | 0x84, 0, true, 0, 2, DS);
+    initMem16(); SI = 0;      runLeaGw(3 << 3 | 0x84, 0, true, 0xFE, 0xFE, DS);
+    initMem16(); SI = 0xFFFE; runLeaGw(4 << 3 | 0x84, 0, true, 0, 0xFFFE, DS);
+    initMem16(); SI = 2;      runLeaGw(5 << 3 | 0x84, 0, true, 0xFFFE, 0, DS);
+    initMem16(); SI = 0xFFFE; runLeaGw(6 << 3 | 0x84, 0, true, 2, 0, DS);
+    initMem16(); SI = 0xFFFE; runLeaGw(7 << 3 | 0x84, 0, true, 0xFFFE, 0xFFFC, DS);
 
-        // [DS:DI + disp16]
-        initMem16(); DI = 0;      runLeaGw(0|0x85, 0, true, 0, 0, DS);
-        initMem16(); DI = 0;      runLeaGw(1<<3|0x85, 0, true, 2, 2, DS);
-        initMem16(); DI = 2;      runLeaGw(2<<3|0x85, 0, true, 0, 2, DS);
-        initMem16(); DI = 0;      runLeaGw(3<<3|0x85, 0, true, 0xFE, 0xFE, DS);
-        initMem16(); DI = 0xFFFE; runLeaGw(4<<3|0x85, 0, true, 0, 0xFFFE, DS);
-        initMem16(); DI = 2;      runLeaGw(5<<3|0x85, 0, true, 0xFFFE, 0, DS);
-        initMem16(); DI = 0xFFFE; runLeaGw(6<<3|0x85, 0, true, 2, 0, DS);
-        initMem16(); DI = 0xFFFE; runLeaGw(7<<3|0x85, 0, true, 0xFFFE, 0xFFFC, DS);
+    // [DS:DI + disp16]
+    initMem16(); DI = 0;      runLeaGw(0 | 0x85, 0, true, 0, 0, DS);
+    initMem16(); DI = 0;      runLeaGw(1 << 3 | 0x85, 0, true, 2, 2, DS);
+    initMem16(); DI = 2;      runLeaGw(2 << 3 | 0x85, 0, true, 0, 2, DS);
+    initMem16(); DI = 0;      runLeaGw(3 << 3 | 0x85, 0, true, 0xFE, 0xFE, DS);
+    initMem16(); DI = 0xFFFE; runLeaGw(4 << 3 | 0x85, 0, true, 0, 0xFFFE, DS);
+    initMem16(); DI = 2;      runLeaGw(5 << 3 | 0x85, 0, true, 0xFFFE, 0, DS);
+    initMem16(); DI = 0xFFFE; runLeaGw(6 << 3 | 0x85, 0, true, 2, 0, DS);
+    initMem16(); DI = 0xFFFE; runLeaGw(7 << 3 | 0x85, 0, true, 0xFFFE, 0xFFFC, DS);
 
-        // [SS:BP + disp16]
-        initMem16(); BP = 0;      runLeaGw(0|0x86, 0, true, 0, 0, SS);
-        initMem16(); BP = 0;      runLeaGw(1<<3|0x86, 0, true, 2, 2, SS);
-        initMem16(); BP = 2;      runLeaGw(2<<3|0x86, 0, true, 0, 2, SS);
-        initMem16(); BP = 0;      runLeaGw(3<<3|0x86, 0, true, 0xFE, 0xFE, SS);
-        initMem16(); BP = 0xFFFE; runLeaGw(4<<3|0x86, 0, true, 0, 0xFFFE, SS);
-        initMem16(); BP = 2;      runLeaGw(5<<3|0x86, 0, true, 0xFFFE, 0, SS);
-        initMem16(); BP = 0xFFFE; runLeaGw(6<<3|0x86, 0, true, 2, 0, SS);
-        initMem16(); BP = 0xFFFE; runLeaGw(7<<3|0x86, 0, true, 0xFFFE, 0xFFFC, SS);
+    // [SS:BP + disp16]
+    initMem16(); BP = 0;      runLeaGw(0 | 0x86, 0, true, 0, 0, SS);
+    initMem16(); BP = 0;      runLeaGw(1 << 3 | 0x86, 0, true, 2, 2, SS);
+    initMem16(); BP = 2;      runLeaGw(2 << 3 | 0x86, 0, true, 0, 2, SS);
+    initMem16(); BP = 0;      runLeaGw(3 << 3 | 0x86, 0, true, 0xFE, 0xFE, SS);
+    initMem16(); BP = 0xFFFE; runLeaGw(4 << 3 | 0x86, 0, true, 0, 0xFFFE, SS);
+    initMem16(); BP = 2;      runLeaGw(5 << 3 | 0x86, 0, true, 0xFFFE, 0, SS);
+    initMem16(); BP = 0xFFFE; runLeaGw(6 << 3 | 0x86, 0, true, 2, 0, SS);
+    initMem16(); BP = 0xFFFE; runLeaGw(7 << 3 | 0x86, 0, true, 0xFFFE, 0xFFFC, SS);
 
-        // [DS:BX + disp16]
-        initMem16(); BX = 0;      runLeaGw(0|0x87, 0, true, 0, 0, DS);
-        initMem16(); BX = 0;      runLeaGw(1<<3|0x87, 0, true, 2, 2, DS);
-        initMem16(); BX = 2;      runLeaGw(2<<3|0x87, 0, true, 0, 2, DS);
-        initMem16(); BX = 0;      runLeaGw(3<<3|0x87, 0, true, 0xFE, 0xFE, DS);
-        initMem16(); BX = 0xFFFE; runLeaGw(4<<3|0x87, 0, true, 0, 0xFFFE, DS);
-        initMem16(); BX = 2;      runLeaGw(5<<3|0x87, 0, true, 0xFFFE, 0, DS);
-        initMem16(); BX = 0xFFFE; runLeaGw(6<<3|0x87, 0, true, 2, 0, DS);
-        initMem16(); BX = 0xFFFE; runLeaGw(7<<3|0x87, 0, true, 0xFFFE, 0xFFFC, DS);
+    // [DS:BX + disp16]
+    initMem16(); BX = 0;      runLeaGw(0 | 0x87, 0, true, 0, 0, DS);
+    initMem16(); BX = 0;      runLeaGw(1 << 3 | 0x87, 0, true, 2, 2, DS);
+    initMem16(); BX = 2;      runLeaGw(2 << 3 | 0x87, 0, true, 0, 2, DS);
+    initMem16(); BX = 0;      runLeaGw(3 << 3 | 0x87, 0, true, 0xFE, 0xFE, DS);
+    initMem16(); BX = 0xFFFE; runLeaGw(4 << 3 | 0x87, 0, true, 0, 0xFFFE, DS);
+    initMem16(); BX = 2;      runLeaGw(5 << 3 | 0x87, 0, true, 0xFFFE, 0, DS);
+    initMem16(); BX = 0xFFFE; runLeaGw(6 << 3 | 0x87, 0, true, 2, 0, DS);
+    initMem16(); BX = 0xFFFE; runLeaGw(7 << 3 | 0x87, 0, true, 0xFFFE, 0xFFFC, DS);
 }
 
 void testSelfModifying() {
@@ -10671,7 +10847,7 @@ void testSelfModifying() {
     // jnz (2 bytes)
     pushCode8(0x75);
     pushCode8(0xb);
-    
+
     // inc ecx (1 byte)
     pushCode8(0x41);
 
@@ -10703,7 +10879,7 @@ void testSelfModifyingMovsb() {
 
     // code to copy
     // sub eax, 0x05
-    memory->writeb(CODE_ADDRESS+512, 0x83);
+    memory->writeb(CODE_ADDRESS + 512, 0x83);
     memory->writeb(CODE_ADDRESS + 513, 0xe8);
     memory->writeb(CODE_ADDRESS + 514, 0x05);
 
@@ -10825,7 +11001,7 @@ void testSelfModifyingFront() {
     pushCode8(0x3);
 
     // inc ecx (1 byte)
-    pushCode8(0x41);    
+    pushCode8(0x41);
 
     // jmp (2 bytes)
     pushCode8(0xeb);
@@ -10896,7 +11072,7 @@ void testLockedInc(U32 address) {
     // inc memory
     newInstructionWithRM(0xff, 5, 0, 0xf0);
     pushCode32(address);
-    
+
     // loop
     pushCode8(0xe2);
     pushCode8((U8)(S8)(-9)); // jump amount if ecx is not 0
@@ -11055,69 +11231,69 @@ int runCpuTests() {
     run(testSegDs0x23e, "Seg DS 23e");
     run(testAas0x03f, "AAS 03f");
     run(testAas0x23f, "AAS 23f");
-    run(testIncAx0x040,  "Inc AX  040");
+    run(testIncAx0x040, "Inc AX  040");
     run(testIncEax0x240, "Inc EAX 240");
-    run(testIncCx0x041,  "Inc CX  041");
+    run(testIncCx0x041, "Inc CX  041");
     run(testIncEcx0x241, "Inc ECX 241");
-    run(testIncDx0x042,  "Inc DX  042");
+    run(testIncDx0x042, "Inc DX  042");
     run(testIncEdx0x242, "Inc EDX 242");
-    run(testIncBx0x043,  "Inc BX  043");
+    run(testIncBx0x043, "Inc BX  043");
     run(testIncEbx0x243, "Inc EBX 243");
-    run(testIncSp0x044,  "Inc SP  044");
+    run(testIncSp0x044, "Inc SP  044");
     run(testIncEsp0x244, "Inc ESP 244");
-    run(testIncBp0x045,  "Inc BP  045");
+    run(testIncBp0x045, "Inc BP  045");
     run(testIncEbp0x245, "Inc EBP 245");
-    run(testIncSi0x046,  "Inc SI  046");
+    run(testIncSi0x046, "Inc SI  046");
     run(testIncEsi0x246, "Inc ESI 246");
-    run(testIncDi0x047,  "Inc DI  047");
+    run(testIncDi0x047, "Inc DI  047");
     run(testIncEdi0x247, "Inc EDI 247");
-    run(testDecAx0x048,  "Dec AX  048");
+    run(testDecAx0x048, "Dec AX  048");
     run(testDecEax0x248, "Dec EAX 248");
-    run(testDecCx0x049,  "Dec CX  049");
+    run(testDecCx0x049, "Dec CX  049");
     run(testDecEcx0x249, "Dec ECX 249");
-    run(testDecDx0x04a,  "Dec DX  04a");
+    run(testDecDx0x04a, "Dec DX  04a");
     run(testDecEdx0x24a, "Dec EDX 24a");
-    run(testDecBx0x04b,  "Dec BX  04b");
+    run(testDecBx0x04b, "Dec BX  04b");
     run(testDecEbx0x24b, "Dec EBX 24b");
-    run(testDecSp0x04c,  "Dec SP  04c");
+    run(testDecSp0x04c, "Dec SP  04c");
     run(testDecEsp0x24c, "Dec ESP 24c");
-    run(testDecBp0x04d,  "Dec BP  04d");
+    run(testDecBp0x04d, "Dec BP  04d");
     run(testDecEbp0x24d, "Dec EBP 24d");
-    run(testDecSi0x04e,  "Dec SI  04e");
+    run(testDecSi0x04e, "Dec SI  04e");
     run(testDecEsi0x24e, "Dec ESI 24e");
-    run(testDecDi0x04f,  "Dec DI  04f");
+    run(testDecDi0x04f, "Dec DI  04f");
     run(testDecEdi0x24f, "Dec EDI 24f");
-    run(testPushAx0x050,  "Push Ax  050");
+    run(testPushAx0x050, "Push Ax  050");
     run(testPushEax0x250, "Push Eax 250");
-    run(testPushCx0x051,  "Push Cx  051");
+    run(testPushCx0x051, "Push Cx  051");
     run(testPushEcx0x251, "Push Ecx 251");
-    run(testPushDx0x052,  "Push Dx  052");
+    run(testPushDx0x052, "Push Dx  052");
     run(testPushEdx0x252, "Push Edx 252");
-    run(testPushBx0x053,  "Push Bx  053");
+    run(testPushBx0x053, "Push Bx  053");
     run(testPushEbx0x253, "Push Ebx 253");
-    run(testPushSp0x054,  "Push Sp  054");
+    run(testPushSp0x054, "Push Sp  054");
     run(testPushEsp0x254, "Push Esp 254");
-    run(testPushBp0x055,  "Push Bp  055");
+    run(testPushBp0x055, "Push Bp  055");
     run(testPushEbp0x255, "Push Ebp 255");
-    run(testPushSi0x056,  "Push Si  056");
+    run(testPushSi0x056, "Push Si  056");
     run(testPushEsi0x256, "Push Esi 256");
-    run(testPushDi0x057,  "Push Di  057");
+    run(testPushDi0x057, "Push Di  057");
     run(testPushEdi0x257, "Push Edi 257");
-    run(testPopAx0x058,  "Pop Ax  058");
+    run(testPopAx0x058, "Pop Ax  058");
     run(testPopEax0x258, "Pop Eax 258");
-    run(testPopCx0x059,  "Pop Cx  059");
+    run(testPopCx0x059, "Pop Cx  059");
     run(testPopEcx0x259, "Pop Ecx 259");
-    run(testPopDx0x05a,  "Pop Dx  05a");
+    run(testPopDx0x05a, "Pop Dx  05a");
     run(testPopEdx0x25a, "Pop Edx 25a");
-    run(testPopBx0x05b,  "Pop Bx  05b");
+    run(testPopBx0x05b, "Pop Bx  05b");
     run(testPopEbx0x25b, "Pop Ebx 25b");
-    run(testPopSp0x05c,  "Pop Sp  05c");
+    run(testPopSp0x05c, "Pop Sp  05c");
     run(testPopEsp0x25c, "Pop Esp 25c");
-    run(testPopBp0x05d,  "Pop Bp  05d");
+    run(testPopBp0x05d, "Pop Bp  05d");
     run(testPopEbp0x25d, "Pop Ebp 25d");
-    run(testPopSi0x05e,  "Pop Si  05e");
+    run(testPopSi0x05e, "Pop Si  05e");
     run(testPopEsi0x25e, "Pop Esi 25e");
-    run(testPopDi0x05f,  "Pop Di  05f");
+    run(testPopDi0x05f, "Pop Di  05f");
     run(testPopEdi0x25f, "Pop Edi 25f");
 
     run(testPushA16, "PushA 060");
@@ -11134,7 +11310,7 @@ int runCpuTests() {
     run(testOpSizePrefix0x066, "Operand size prefix 066");
     run(testOpSizePrefix0x266, "Operand size prefix 266");
     run(testAddressPrefix0x067, "Address prefix 067");
-    run(testAddressPrefix0x267, "Address prefix 267");    
+    run(testAddressPrefix0x267, "Address prefix 267");
 
     run(testPush0x068, "Push 068");
     run(testPush0x268, "Push 268");
@@ -11156,7 +11332,7 @@ int runCpuTests() {
     run(testJO0x70, "JO 070");
     run(testJO0x270, "JO 270");
     run(testJNO0x71, "JNO 071");
-    run(testJNO0x271, "JNO 271");    
+    run(testJNO0x271, "JNO 271");
     run(testJB0x72, "JB 072");
     run(testJB0x272, "JB 272");
     run(testJNB0x73, "JNB 073");
@@ -11199,7 +11375,7 @@ int runCpuTests() {
     run(testTest0x284, "Test 284");
     run(testTest0x085, "Test 085");
     run(testTest0x285, "Test 285");
-    
+
     run(testXchg0x086, "Xchg 086");
     run(testXchg0x286, "Xchg 286");
     run(testXchg0x087, "Xchg 087");
@@ -11229,21 +11405,21 @@ int runCpuTests() {
 
     // Pause 290 (SSE2)
 
-    run(testXchgCxAx0x091,   "Xchg 091");
+    run(testXchgCxAx0x091, "Xchg 091");
     run(testXchgEcxEax0x291, "Xchg 291");
-    run(testXchgDxAx0x092,   "Xchg 092");
+    run(testXchgDxAx0x092, "Xchg 092");
     run(testXchgEdxEax0x292, "Xchg 292");
-    run(testXchgBxAx0x093,   "Xchg 093");
+    run(testXchgBxAx0x093, "Xchg 093");
     run(testXchgEbxEax0x293, "Xchg 293");
-    run(testXchgSpAx0x094,   "Xchg 094");
+    run(testXchgSpAx0x094, "Xchg 094");
     run(testXchgEspEax0x294, "Xchg 294");
-    run(testXchgBpAx0x095,   "Xchg 095");
+    run(testXchgBpAx0x095, "Xchg 095");
     run(testXchgEbpEax0x295, "Xchg 295");
-    run(testXchgSiAx0x096,   "Xchg 096");
+    run(testXchgSiAx0x096, "Xchg 096");
     run(testXchgEsiEax0x296, "Xchg 296");
-    run(testXchgDiAx0x097,   "Xchg 097");
+    run(testXchgDiAx0x097, "Xchg 097");
     run(testXchgEdiEax0x297, "Xchg 297");
-    
+
     run(testCbw0x098, "Cbw  098");
     run(testCwde0x298, "Cwde 298");
     run(testCwd0x099, "Cwd  099");
@@ -11278,12 +11454,12 @@ int runCpuTests() {
     run(testCmpsb0x2a6, "Cmpsb 2a6");
     run(testCmpsw0x0a7, "Cmpsw 0a7");
     run(testCmpsd0x2a7, "Cmpsd 2a7");
-    
+
     run(testTestAlIb0xa8, "TestAlIb 0a8");
     run(testTestAlIb0x2a8, "TestAlIb 2a8");
     run(testTestAxIw0xa9, "TestAxIw 0a9");
     run(testTestEaxId0x2a9, "TestEaxId 2a9");
-    
+
     run(testStosb0x0aa, "Stosb 0aa");
     run(testStosb0x2aa, "Stosb 2aa");
     run(testStosw0x0ab, "Stosw 0ab");
@@ -11336,7 +11512,7 @@ int runCpuTests() {
     run(testGrp20x2c0, "Grp2 2c0");
     run(testGrp20x0c1, "Grp2 0c1");
     run(testGrp20x2c1, "Grp2 2c1");
-    
+
     run(testRetn16Iw0x0c2, "Retn 0c2");
     run(testRetn32Iw0x2c2, "Retn 2c2");
     run(testRetn160x0c3, "Retn 0c3");
@@ -11351,7 +11527,7 @@ int runCpuTests() {
     run(testMovEbIb0x2c6, "Mov 2c6");
     run(testMovEwIw0x0c7, "Mov 0c7");
     run(testMovEdId0x2c7, "Mov 2c7");
-    
+
     run(testEnter0x0c8, "Enter 0c8");
     run(testEnter0x2c8, "Enter 2c8");
 
@@ -11386,7 +11562,7 @@ int runCpuTests() {
     run(testFPU0x0d8, "FPU 0d8");
     run(testFPU0x2d8, "FPU 2d8");
     run(testFPU0x0d9, "FPU 0d9");
-    run(testFPU0x2d9, "FPU 2d9");    
+    run(testFPU0x2d9, "FPU 2d9");
     run(testFPU0x0da, "FPU 0da");
     run(testFPU0x2da, "FPU 2da");
     run(testFPU0x0dd, "FPU 0dd");
@@ -11410,7 +11586,7 @@ int runCpuTests() {
 
     run(testCmc0x0f5, "Cmc 0f5");
     run(testCmc0x2f5, "Cmc 2f5");
-    
+
     run(testGrp30x0f6, "Grp3 0f6");
     run(testGrp30x2f6, "Grp3 2f6");
     run(testGrp30x0f7, "Grp3 0f7");
@@ -11425,7 +11601,7 @@ int runCpuTests() {
     run(testGrp40x2fe, "Grp4 2fe");
     run(testGrp50x0ff, "Grp5 0ff");
     run(testGrp50x2ff, "Grp5 2ff");
-    
+
     run(testSse2MovUps110, "MOVUPD 110 (sse2)");
     run(testSseMovUps310, "MOVUPS 310 (sse1)");
     run(testSse2MovSd310, "MOVSD F2 310 (sse2)");
@@ -11591,7 +11767,7 @@ int runCpuTests() {
     run(testSse2Punpckhdq16a, "PUNPCKHDQ 16A (sse2)");
     run(testMmxPunpckhdq, "PUNPCKHDQ 36a (mmx)");
     run(testSse2Packssdw16b, "PACKSSDW 16B (sse2)");
-    run(testMmxPackssdw, "PACKSSDW 36b (mmx)");            
+    run(testMmxPackssdw, "PACKSSDW 36b (mmx)");
     run(testSse2Punpcklqdq16c, "PUNPCKLQDQ 16C (sse2)");
     run(testMmxMovdToMmx, "MOVD 36e (mmx)");
     run(testSse2Punpckhqdq16d, "PUNPCKHQDQ 16D (sse2)");
@@ -11620,7 +11796,7 @@ int runCpuTests() {
     run(testMmxPsrlqImm8, "PSRLQ 373/2 (mmx)");
     run(testSse2Psrldq173, "PSRLDQ 173/3 (sse2)");
     run(testSse2Psllq173, "PSLLQ 173/6 (sse2)");
-    run(testMmxPsllqImm8, "PSLLQ 373/6 (mmx)");    
+    run(testMmxPsllqImm8, "PSLLQ 373/6 (mmx)");
     run(testSse2Pslldq173, "PSLLDQ 173/7 (sse2)");
     run(testSse2Pcmpeqb174, "PCMPEQB 174 (sse2)");
     run(testMmxPcmpeqb, "PCMPEQB 374 (mmx)");
@@ -11693,14 +11869,14 @@ int runCpuTests() {
     run(testCmpXchg0x3b0, "CMPXCHG 3b0");
     run(testCmpXchg0x1b1, "CMPXCHG 1b1");
     run(testCmpXchg0x3b1, "CMPXCHG 3b1");
-    
+
     run(testBtr0x1b3, "BTR 1b3");
     run(testBtr0x3b3, "BTR 3b3");
 
     run(testMovGwXz80x1b6, "MovGwXz8 1b6");
     run(testMovGdXz80x3b6, "MovGdXz8 3b6");
-    run(testMovGdXz160x3b7, "MovGdXz16 3b7");        
-    
+    run(testMovGdXz160x3b7, "MovGdXz16 3b7");
+
     run(testGroup80x1ba, "GROUP 8 1ba");
     run(testGroup80x3ba, "GROUP 8 3ba");
     run(testBtc0x1bb, "BTC 1bb");
@@ -11737,12 +11913,12 @@ int runCpuTests() {
     //run(testBswap3cc, "BSWAP ESP 3CC");
     run(testBswap3cd, "BSWAP EBP 3CD");
     run(testBswap3ce, "BSWAP ESI 3CE");
-    run(testBswap3cf, "BSWAP EDI 3CF");    
+    run(testBswap3cf, "BSWAP EDI 3CF");
 
     run(testSse2Psrlw1d1, "PSRLW 1D1 (sse2)");
-    run(testMmxPsrlw, "PSRLW 3D1 (mmx)");    
+    run(testMmxPsrlw, "PSRLW 3D1 (mmx)");
     run(testSse2Psrld1d2, "PSRLD 1D2 (sse2)");
-    run(testMmxPsrld, "PSRLD 3D2 (mmx)");    
+    run(testMmxPsrld, "PSRLD 3D2 (mmx)");
     run(testSse2Psrlq1d3, "PSRLQ 1D3 (sse2)");
     run(testMmxPsrlq, "PSRLQ 3D3 (mmx)");
     run(testSse2Paddq1d4, "PADDQ 1D4 (sse2)");
@@ -11774,7 +11950,7 @@ int runCpuTests() {
     run(testSse2Pavgb1e0, "PAVGB 1E0 (sse2)");
     run(testPavgb3e0, "PAVGB 3E0 (sse1)");
     run(testSse2Psraw1e1, "PSRAW 1E1 (sse2)");
-    run(testMmxPsraw, "PSRAW 3E1 (mmx)");    
+    run(testMmxPsraw, "PSRAW 3E1 (mmx)");
     run(testSse2Psrad1e2, "PSRAD 1E2 (sse2)");
     run(testMmxPsrad, "PSRAD 3E2 (mmx)");
     run(testSse2Pavgw1e3, "PAVGW 1E3 (sse2)");
@@ -11793,7 +11969,7 @@ int runCpuTests() {
     run(testSse2Psubsb1e8, "PSUBSB 1E8 (sse2)");
     run(testMmxPsubsb, "PSUBSB 3e8 (mmx)");
     run(testSse2Psubsw1e9, "PSUBSW 1E9 (sse2)");
-    run(testMmxPsubsw, "PSUBSW 3e9 (mmx)"); 
+    run(testMmxPsubsw, "PSUBSW 3e9 (mmx)");
     run(testSse2Pminsw1ea, "PMINSW 1EA (sse2)");
     run(testPminsw3ea, "PMINSW 3EA (sse1)");
     run(testSse2Por1eb, "POR 1EB (sse2)");
@@ -11810,7 +11986,7 @@ int runCpuTests() {
     run(testSse2Psllw1f1, "PSLLW 1F1 (sse2)");
     run(testMmxPsllw, "PSLLW 3f1 (mmx)");
     run(testSse2Pslld1f2, "PSLLD 1F2 (sse2)");
-    run(testMmxPslld, "PSLLD 3f2 (mmx)");    
+    run(testMmxPslld, "PSLLD 3f2 (mmx)");
     run(testSse2Psllq1f3, "PSLLQ 1F3 (sse2)");
     run(testMmxPsllq, "PSLLQ 3f3 (mmx)");
     run(testSse2Pmuludq1f4, "PMULUDQ 1F4 (sse2)");
@@ -11826,7 +12002,7 @@ int runCpuTests() {
     run(testSse2Psubw1f9, "PSUBW 1F9 (sse2)");
     run(testMmxPsubw, "PSUBW 3f9 (mmx)");
     run(testSse2Psubd1fa, "PSUBD 1FA (sse2)");
-    run(testMmxPsubd, "PSUBD 3fa (mmx)");                
+    run(testMmxPsubd, "PSUBD 3fa (mmx)");
     run(testSse2Psubq1fb, "PSUBQ 1FB (sse2)");
     run(testSse2Psubq3fb, "PSUBQ 3FB (sse2)");
     run(testSse2Paddb1fc, "PADDB 1FC (sse2)");
@@ -11834,11 +12010,11 @@ int runCpuTests() {
     run(testSse2Paddw1fd, "PADDW 1FD (sse2)");
     run(testMmxPaddw, "PADDW 3fd (mmx)");
     run(testSse2Paddd1fe, "PADDD 1FE (sse2)");
-    run(testMmxPaddd, "PADDD 3fe (mmx)");                                  
-            
+    run(testMmxPaddd, "PADDD 3fe (mmx)");
+
     run(testSelfModifying, "Self Modifiying Code");
     run(testSelfModifyingMovsb, "Self Modifiying Code using movsb");
-    run(testSelfModifyingFront, "Self Modifying Code Same Block(Previous)");    
+    run(testSelfModifyingFront, "Self Modifying Code Same Block(Previous)");
     run(testSelfModifyingBack, "Self Modifying Code Same Block(Next)");
 #ifdef BOXEDWINE_MULTI_THREADED
     run(testLockedInc, "Multi-threaded locked inc");

@@ -222,6 +222,8 @@ public:
 
     void direct_cmp(JitWidth width, RegPtr left, RegPtr right) override;
     void direct_cmp(JitWidth width, RegPtr left, U32 right) override;
+    void direct_test(JitWidth width, RegPtr left, RegPtr right) override;
+    void direct_test(JitWidth width, RegPtr left, U32 right) override;
     void direct_jump(JitConditional condition, U32 address) override;
     void direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) override;
     void direct_setcc(JitConditional condition, RegPtr dst) override;
@@ -805,6 +807,7 @@ protected:
     std::vector<Label> ifLabels;
     BHashTable<U32, Label> opLabels;
     BHashTable<U32, Label> pendingLabels;
+    bool cfInverted = false;
 };
 
 asmjit::JitRuntime JitArmV8CodeGen::rt;
@@ -6151,11 +6154,89 @@ void JitArmV8CodeGen::dynamic_btce16r16_lock(DecodedOp* op) {
 */
 
 void JitArmV8CodeGen::direct_cmp(JitWidth width, RegPtr left, RegPtr right) {
+    cfInverted = true;
     cmp(width, left, right);
 }
 
 void JitArmV8CodeGen::direct_cmp(JitWidth width, RegPtr left, U32 right) {
+    cfInverted = true;
     cmp(width, left, right);
+}
+
+void JitArmV8CodeGen::direct_test(JitWidth width, RegPtr left, RegPtr right) {
+    cfInverted = false;
+
+    // The OF and CF flags are set to 0. The SF, ZF, and PF flags are set according to the result(see the “Operation” section above).The state of the AF flag is undefined.
+    if (width == JitWidth::b32) {        
+        // sets Z if the result is zero and N if the highest bit is set, while C and V are cleared.
+        compiler.ands(asmjit::a64::wzr, R32(left), R32(right));
+    } else if (width == JitWidth::b16) {
+        compiler.lsl(wBranch, R32(left), 16);
+        compiler.lsl(wScratch, R32(right), 16);
+        compiler.ands(asmjit::a64::wzr, wBranch, wScratch);
+    } else if (width == JitWidth::b8) {
+        if (left->isHigh) {
+            compiler.lsr(wBranch, R32(left), 8);
+            compiler.lsl(wBranch, wBranch, 24);
+        } else {
+            compiler.lsl(wBranch, R32(left), 24);
+        }
+        if (right->isHigh) {
+            compiler.lsr(wScratch, R32(right), 8);
+            compiler.lsl(wScratch, wScratch, 24);
+        } else {
+            compiler.lsl(wScratch, R32(right), 24);
+        }
+        compiler.ands(asmjit::a64::wzr, wBranch, wScratch);
+    } else {
+        kpanic("JitX86CodeGen::direct_test");
+    }
+}
+
+void JitArmV8CodeGen::direct_test(JitWidth width, RegPtr left, U32 right) {
+    U32 rightShifted = right;
+
+    cfInverted = false;
+    if (width == JitWidth::b16) {
+        rightShifted <<= 16;
+    } else if (width == JitWidth::b8) {
+        rightShifted <<= 24;
+    }
+
+    if (!asmjit::a64::Utils::is_logical_imm(rightShifted, 32)) {
+        direct_test(width, left, loadConst(right));
+        return;
+    }
+    // x86: The OF and CF flags are set to 0. The SF, ZF, and PF flags are set according to the result.The state of the AF flag is undefined.
+    if (width == JitWidth::b32) {
+        // armv8: sets Z if the result is zero and N if the highest bit is set, while C and V are cleared.
+        compiler.ands(asmjit::a64::wzr, R32(left), right);
+    } else if (width == JitWidth::b16) {
+        if (right & 0x8000) {
+            compiler.lsl(wBranch, R32(left), 16);
+            compiler.ands(asmjit::a64::wzr, wBranch, rightShifted);
+        } else {
+            compiler.ands(asmjit::a64::wzr, R32(left), right & 0xffff);
+        }
+    } else if (width == JitWidth::b8) {
+        if (right & 0x80) {
+            if (left->isHigh) {
+                compiler.lsr(wBranch, R32(left), 8);
+                compiler.lsl(wBranch, wBranch, 24);
+            } else {
+                compiler.lsl(wBranch, R32(left), 24);
+            }
+            compiler.ands(asmjit::a64::wzr, wBranch, rightShifted);
+        } else {
+            if (left->isHigh) {
+                compiler.ands(asmjit::a64::wzr, R32(left), (right & 0xff) << 8);
+            } else {
+                compiler.ands(asmjit::a64::wzr, R32(left), right & 0xff);
+            }
+        }
+    } else {
+        kpanic("JitX86CodeGen::direct_test");
+    }
 }
 
 void JitArmV8CodeGen::onBlockPreCommit(DecodedOp* op) {
@@ -6175,12 +6256,20 @@ asmjit::a64::CondCode JitArmV8CodeGen::getCondCode(JitConditional condition) {
     switch (condition) {
     case JitConditional::O: return asmjit::a64::CondCode::kVS;
     case JitConditional::NO: return asmjit::a64::CondCode::kVC;
-    case JitConditional::B: return asmjit::a64::CondCode::kLO;
-    case JitConditional::NB: return asmjit::a64::CondCode::kHS;
+    case JitConditional::B: return cfInverted ? asmjit::a64::CondCode::kLO : asmjit::a64::CondCode::kHS;
+    case JitConditional::NB: return cfInverted ? asmjit::a64::CondCode::kHS : asmjit::a64::CondCode::kLO;
     case JitConditional::Z: return asmjit::a64::CondCode::kEQ;
     case JitConditional::NZ: return asmjit::a64::CondCode::kNE;
-    case JitConditional::BE: return asmjit::a64::CondCode::kLS;
-    case JitConditional::NBE: return asmjit::a64::CondCode::kHI;
+    case JitConditional::BE: 
+        if (!cfInverted) {
+            compiler.cfinv();
+        }
+        return asmjit::a64::CondCode::kLS;
+    case JitConditional::NBE: 
+        if (!cfInverted) {
+            compiler.cfinv();
+        }
+        return asmjit::a64::CondCode::kHI;
     case JitConditional::S: return asmjit::a64::CondCode::kMI;
     case JitConditional::NS: return asmjit::a64::CondCode::kPL;
     //case JitConditional::P: return asmjit::a64::CondCode::kP;

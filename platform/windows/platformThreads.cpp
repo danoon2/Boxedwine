@@ -38,7 +38,9 @@ extern U8 xmmCache[8];
 
 void syncToException(struct _EXCEPTION_POINTERS* ep) {
     CPU* cpu = KThread::currentThread()->cpu;
-#ifdef BOXEDWINE_64
+#ifdef _M_ARM64
+    kpanic("syncToException not implemented");
+#elif defined(BOXEDWINE_64)
     for (U32 i = 0; i < 8; i++) {
         if (regCache[i] != 0xFF) {
             switch (regCache[i]) {
@@ -123,7 +125,9 @@ void syncToException(struct _EXCEPTION_POINTERS* ep) {
 
 void syncFromException(struct _EXCEPTION_POINTERS* ep) {
     CPU* cpu = KThread::currentThread()->cpu;
-#ifdef BOXEDWINE_64
+#ifdef _M_ARM64
+    kpanic("syncFromException not implemented");
+#elif defined(BOXEDWINE_64)
     for (U32 i = 0; i < 8; i++) {
         if (regCache[i] != 0xFF) {
             switch (regCache[i]) {
@@ -207,6 +211,9 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep) {
 }
 LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
     //BOXEDWINE_CRITICAL_SECTION;
+#ifdef _M_ARM64
+    kpanic("seh_filter not implemented");
+#elif defined(BOXEDWINE_64)
     if (ep->ContextRecord->EFlags & AC) {
         // the comment on the next line was for the x64 binary translator, I'm not sure if it still applies to the JIT
         // :TODO: not sure what causes this, seen it in winroids
@@ -310,6 +317,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         klog("Instruction cache miss?");
         return EXCEPTION_CONTINUE_EXECUTION;
     }
+#endif
     return EXCEPTION_CONTINUE_SEARCH;
 }
 #endif

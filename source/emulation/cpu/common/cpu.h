@@ -202,17 +202,7 @@ public:
     U32 tmpReg;
 #endif
     U8* reg8[9];
-    ALIGN(SSE xmm[8], 16);
-
-    U64 fAbs = 0x7fffffffffffffffl;
-    U64 fNeg = 0x8000000000000000l;
-    U64 fZero = 0l;
-    U64 fOne = 0x3FF0000000000000l;
-    U64 fL2T = 0x400A934F0979A371;
-    U64 fL2E = 0x3FF71547652B82FE;
-    U64 fPi = 0x400921FB54442D18;
-    U64 fLG2 = 0x3FD34413509F79FF;
-    U64 fLN2 = 0x3FE62E42FEFA39EF;
+    ALIGN(SSE xmm[8], 16);    
 
     U32 sseControlStateTmp = 0;
     U32 sseControlStateTmp2 = 0;
@@ -242,6 +232,16 @@ public:
     U32 stackMask = 0;
     U32 fpuDirtyFlags = 0;
     DecodedOp*** opCache = nullptr;    
+
+    U64 fAbs = 0x7fffffffffffffffl;
+    U64 fNeg = 0x8000000000000000l;
+    U64 fZero = 0l;
+    U64 fOne = 0x3FF0000000000000l;
+    U64 fL2T = 0x400A934F0979A371;
+    U64 fL2E = 0x3FF71547652B82FE;
+    U64 fPi = 0x400921FB54442D18;
+    U64 fLG2 = 0x3FD34413509F79FF;
+    U64 fLN2 = 0x3FE62E42FEFA39EF;
 
     KThread* thread = nullptr;
     KMemory* memory = nullptr;

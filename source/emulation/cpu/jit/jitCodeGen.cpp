@@ -511,6 +511,7 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
             directType = DirectType::Jump;
             break;
         }
+        /*
         if (nextOp->isCMovCC() && instructionInfo[nextOp->inst].readMemWidth == 0) {
             cond = getCmovConditionFromOp(nextOp);
             directType = DirectType::CMov;
@@ -521,6 +522,7 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
             directType = DirectType::SetCC;
             break;
         }
+        */
         if (instructionInfo[nextOp->inst].flagsSets) {
             break;
         }
@@ -726,7 +728,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
     }
 #ifdef _DEBUG
     if (op->pfnJitCode && cpu->calculateCF[0] == nullptr) {
-        kpanic("firstDynamicOp");
+        //kpanic("firstDynamicOp");
     }
 #endif
     op->runCount++;
