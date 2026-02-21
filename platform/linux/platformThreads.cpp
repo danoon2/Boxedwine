@@ -18,13 +18,9 @@
 
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
 
-#include "../../source/emulation/cpu/binaryTranslation/btCpu.h"
 #include <signal.h>
-#include <pthread.h>
-
-std::atomic<int> platformThreadCount;
 
 void platformHandler(int sig, siginfo_t* info, void* vcontext);
 
@@ -34,7 +30,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext);
 #include <mach/mach_port.h>
 #endif
 
-void initHandlers() {
+void platformInitExceptionHandling() {
     static bool initializedHandler = false;
     if (!initializedHandler) {
         struct sigaction sa;
@@ -56,48 +52,10 @@ void initHandlers() {
         // in the debug out put window, (lldb) enter the above 2 commands in order to run while debugging on Mac
 
         // set a break point on this line then enter the above commands.
-        
+
         task_set_exception_ports(mach_task_self(), EXC_MASK_BAD_ACCESS | EXC_MASK_BAD_INSTRUCTION, MACH_PORT_NULL, EXCEPTION_DEFAULT, 0);
 #endif
     }
-}
-
-#ifdef __TEST
-void initThreadForTesting() {
-    initHandlers();
-}
-#endif
-
-void* platformThreadProc(void* param) {
-    initHandlers(); // needed to BOXEDWINE_4K_PAGE_SIZE and handling sigbus because someone loaded the AC (alignment check) flag
-    KThread* thread = (KThread*)param;
-    BtCPU* cpu = (BtCPU*)thread->cpu;
-    cpu->startThread();
-    return 0;
-}
-
-void joinThread(KThread* thread) {
-    pthread_join((pthread_t)thread->cpu->nativeHandle, nullptr);
-}
-
-void scheduleThread(KThread* thread) {
-    BtCPU* cpu = (BtCPU*)thread->cpu;
-    pthread_t threadId;
-    platformThreadCount++; // need to increment before returning, otherwise if this is 0 the code will assume Wine exited
-#ifdef __MACH__
-    pthread_attr_t qosAttribute;
-    pthread_attr_init(&qosAttribute);
-    pthread_attr_set_qos_class_np(&qosAttribute, QOS_CLASS_USER_INTERACTIVE, 0);
-    pthread_create(&threadId, &qosAttribute, platformThreadProc, thread);
-#else
-    pthread_create(&threadId, 0, platformThreadProc, thread);
-#endif
-    cpu->nativeHandle = (U64)(size_t)threadId;
-}
-
-void ATOMIC_WRITE64(U64* pTarget, U64 value) {
-    __sync_synchronize();
-    __sync_lock_test_and_set((volatile S64 *)pTarget, (S64)value);
 }
 
 #endif

@@ -82,18 +82,6 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normalCPU.cpp">
       <Filter>source\emulation\cpu\normal</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp">
-      <Filter>source\emulation\cpu\x64</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp">
-      <Filter>source\emulation\cpu\x64</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.cpp">
-      <Filter>source\emulation\cpu\x64</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.cpp">
-      <Filter>source\emulation\cpu\x64</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\decoder.cpp">
       <Filter>source\emulation\cpu</Filter>
     </ClCompile>
@@ -451,45 +439,6 @@
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads-armv8.cpp">
       <Filter>platform</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btData.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_bits.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_fpu.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_mmx.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_shift.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_convert.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_minmax.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\platform\sdl\kdspaudio.cpp">
       <Filter>sdlPlatform</Filter>
     </ClCompile>
@@ -510,12 +459,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\lib\tiny-process\process_unix.cpp">
       <Filter>lib\process</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.cpp">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btData.cpp">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\util\bstring.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp">
@@ -649,9 +592,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\util\ring_buffer.cpp">
       <Filter>source\util</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.cpp">
-      <Filter>source\emulation\cpu\x64</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\vulkan\vk_host_marshal.cpp">
       <Filter>source\vulkan</Filter>
@@ -1129,9 +1069,6 @@
     <Filter Include="source\emulation\cpu\x32">
       <UniqueIdentifier>{aa2c0d3b-d1a5-4e24-b1fa-031113f4a0ea}</UniqueIdentifier>
     </Filter>
-    <Filter Include="source\emulation\cpu\x64">
-      <UniqueIdentifier>{5832265c-21a2-4a93-b821-469c62aa602b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="source\io">
       <UniqueIdentifier>{64026dc7-a858-4c52-b513-1cd5754c9533}</UniqueIdentifier>
     </Filter>
@@ -1242,12 +1179,6 @@
     </Filter>
     <Filter Include="source\emulation\cpu\armv8">
       <UniqueIdentifier>{a52fdd3d-8b52-48cf-a36a-268ccb39be69}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="source\emulation\cpu\binaryTranslation">
-      <UniqueIdentifier>{b32fd766-2acb-4145-a3d1-4cf997c48774}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="source\emulation\cpu\armv8bt">
-      <UniqueIdentifier>{966a1d27-d191-4bf3-9883-edb6b851d9e5}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\vulkan">
       <UniqueIdentifier>{4bf872fb-766a-43e0-b55e-8e10fc3803fb}</UniqueIdentifier>
@@ -1589,18 +1520,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\normal\normalCPU.h">
       <Filter>source\emulation\cpu\normal</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Asm.h">
-      <Filter>source\emulation\cpu\x64</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.h">
-      <Filter>source\emulation\cpu\x64</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.h">
-      <Filter>source\emulation\cpu\x64</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.h">
-      <Filter>source\emulation\cpu\x64</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\decoder.h">
       <Filter>source\emulation\cpu</Filter>
@@ -2196,9 +2115,6 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.h">
       <Filter>source\emulation\cpu\armv8</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\ui\controls\helpView.h">
       <Filter>source\ui\control</Filter>
     </ClInclude>
@@ -2226,45 +2142,6 @@
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-math.h">
       <Filter>lib\simde\simde</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btData.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_bits.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_fpu.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_mmx.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_shift.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_convert.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_minmax.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\platform\sdl\knativeaudiosdl.h">
       <Filter>sdlPlatform</Filter>
     </ClInclude>
@@ -2279,9 +2156,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\lib\tiny-process\process.hpp">
       <Filter>lib\process</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\kmemory.h" />
     <ClInclude Include="..\..\..\..\..\source\util\bstring.h" />
@@ -2429,9 +2303,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\ring_buffer.tcc.h">
       <Filter>source\util</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.h">
-      <Filter>source\emulation\cpu\x64</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\vulkan\vk_host.h">
       <Filter>source\vulkan</Filter>

@@ -22,8 +22,12 @@
 #if defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
 
 std::atomic<int> platformThreadCount = 0;
+void platformInitExceptionHandling();
 
 static void platformThread(CPU* cpu) {
+#if BOXEDWINE_HOST_EXCEPTIONS
+    platformInitExceptionHandling();
+#endif
     KThread::setCurrentThread(cpu->thread);
     KProcessPtr process = KSystem::getProcess(cpu->thread->process->id);
 
@@ -75,20 +79,16 @@ void joinThread(KThread* thread) {
 #endif
 
 void platformSetThreadDescription(KThread* thread);
-void platformInitExceptionHandling();
 
 void scheduleThread(KThread* thread) {
     platformThreadCount++;
     CPU* cpu = thread->cpu;
-#if BOXEDWINE_HOST_EXCEPTIONS
-    platformInitExceptionHandling();
-#endif
 #ifdef __TEST
     cpu->nativeHandle = (U64)new std::thread(platformThread, cpu);
 #else
     std::thread cppThread = std::thread(platformThread, cpu);
     cpu->nativeHandle = (U64)cppThread.native_handle();
-#ifdef _DEBUG
+#if defined(_DEBUG) && defined(BOXEDWINE_MSVC)
     platformSetThreadDescription(thread);
 #endif
     cppThread.detach();

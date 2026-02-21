@@ -278,6 +278,9 @@ public:
 #ifdef BOXEDWINE_DYNAMIC
     OpCallback startJITOp = nullptr;
     void* emulateSingleOp = nullptr;
+#ifdef BOXEDWINE_POSIX
+    void* signalHandler = nullptr;
+#endif
     void* syncToHost = nullptr;
     void* syncFromHost = nullptr;
     void* blockExit = nullptr;

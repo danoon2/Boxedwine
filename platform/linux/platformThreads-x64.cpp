@@ -18,12 +18,9 @@
 
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_X64
+#if defined(BOXEDWINE_JIT_X64) && defined(BOXEDWINE_HOST_EXCEPTIONS)
 
-#include "ksignal.h"
-#include "../../source/emulation/cpu/x64/x64CPU.h"
 #include "../../source/emulation/softmmu/kmemory_soft.h"
-#include "../../source/emulation/cpu/normal/normalCPU.h"
 
 #ifdef __MACH__
 #define __USE_GNU
@@ -129,36 +126,27 @@ union CAST_FPU {
 #endif
 #include <ucontext.h>
 
-void syncFromException(BtCPU* cpu, ucontext_t* context, bool includeFPU) {
-    EAX = (U32)context->CONTEXT_RAX;
-    ECX = (U32)context->CONTEXT_RCX;
-    EDX = (U32)context->CONTEXT_RDX;
-    EBX = (U32)context->CONTEXT_RBX;
-    ESP = (U32)context->CONTEXT_R11;
-    EBP = (U32)context->CONTEXT_RBP;
-    ESI = (U32)context->CONTEXT_RSI;
-    EDI = (U32)context->CONTEXT_RDI;
-    //cpu->flags = (U32)context->CONTEXT_FLAGS;
-    
-    cpu->flags = (context->CONTEXT_FLAGS & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
+extern U8 regCache[8];
+extern U8 xmmCache[8];
 
-    cpu->lazyFlagType = FLAGS_NONE;
-#if defined(BOXEDWINE_X64) && defined(BOXEDWINE_USE_SSE_FOR_FPU)
-    if (cpu->fpu.isMMXInUse) {
-        cpu->fpu.SetCW(context->CONTEXT_FCW);
-        cpu->fpu.SetSW(context->CONTEXT_FSW);
-        cpu->fpu.SetTagFromAbridged(context->CONTEXT_FTW);
-
-        cpu->fpu.regs[0].signif = *CONTEXT_FPU_REG_0_LOW(context);
-        cpu->fpu.regs[1].signif = *CONTEXT_FPU_REG_1_LOW(context);
-        cpu->fpu.regs[2].signif = *CONTEXT_FPU_REG_2_LOW(context);
-        cpu->fpu.regs[3].signif = *CONTEXT_FPU_REG_3_LOW(context);
-        cpu->fpu.regs[4].signif = *CONTEXT_FPU_REG_4_LOW(context);
-        cpu->fpu.regs[5].signif = *CONTEXT_FPU_REG_5_LOW(context);
-        cpu->fpu.regs[6].signif = *CONTEXT_FPU_REG_6_LOW(context);
-        cpu->fpu.regs[7].signif = *CONTEXT_FPU_REG_7_LOW(context);
+void syncFromException(CPU* cpu, ucontext_t* context) {
+#ifdef BOXEDWINE_64
+    for (U32 i = 0; i < 8; i++) {
+        if (regCache[i] != 0xFF) {
+            switch (regCache[i]) {
+            case 0: cpu->reg[i].u32 = (U32)context->CONTEXT_RAX; break;
+            case 1: cpu->reg[i].u32 = (U32)context->CONTEXT_RCX; break;
+            case 2: cpu->reg[i].u32 = (U32)context->CONTEXT_RDX; break;
+            case 3: cpu->reg[i].u32 = (U32)context->CONTEXT_RBX; break;
+            case 10: cpu->reg[i].u32 = (U32)context->CONTEXT_R10; break;
+            case 5: cpu->reg[i].u32 = (U32)context->CONTEXT_RBP; break;
+            case 6: cpu->reg[i].u32 = (U32)context->CONTEXT_RSI; break;
+            case 7: cpu->reg[i].u32 = (U32)context->CONTEXT_RDI; break;
+            default:
+                kpanic("Linux x64 syncFromException");
+            }
+        }
     }
-
     memcpy(&cpu->xmm[0], &context->CONTEXT_XMM0, 16);
     memcpy(&cpu->xmm[1], &context->CONTEXT_XMM1, 16);
     memcpy(&cpu->xmm[2], &context->CONTEXT_XMM2, 16);
@@ -167,14 +155,49 @@ void syncFromException(BtCPU* cpu, ucontext_t* context, bool includeFPU) {
     memcpy(&cpu->xmm[5], &context->CONTEXT_XMM5, 16);
     memcpy(&cpu->xmm[6], &context->CONTEXT_XMM6, 16);
     memcpy(&cpu->xmm[7], &context->CONTEXT_XMM7, 16);
-#endif
+
+    for (U32 i = 0; i < 8; i++) {
+        if (xmmCache[i] != 0xFF) {
+            switch (xmmCache[i]) {
+            case 0:
+                memcpy(&cpu->xmm[i], &context->CONTEXT_XMM0, 16);
+                break;
+            case 1:
+                memcpy(&cpu->xmm[i], &context->CONTEXT_XMM1, 16);
+                break;
+            case 2:
+                memcpy(&cpu->xmm[i], &context->CONTEXT_XMM2, 16);
+                break;
+            case 3:
+                memcpy(&cpu->xmm[i], &context->CONTEXT_XMM3, 16);
+                break;
+            case 4:
+                memcpy(&cpu->xmm[i], &context->CONTEXT_XMM4, 16);
+                break;
+            case 5:
+                memcpy(&cpu->xmm[i], &context->CONTEXT_XMM5, 16);
+                break;
+            case 6:
+                memcpy(&cpu->xmm[i], &context->CONTEXT_XMM6, 16);
+                break;
+            case 7:
+                memcpy(&cpu->xmm[i], &context->CONTEXT_XMM7, 16);
+                break;
+            default:
+                kpanic("Linux x64 syncFromException xmm");
+            }
+        }
+    }
+#else
+#error Linux x86 does not support BOXEDWINE_HOST_EXCEPTIONS
+#endif    
 }
 
 class InException {
 public:
-    InException(BtCPU* cpu) : cpu(cpu) { this->cpu->inException = true; }
+    InException(CPU* cpu) : cpu(cpu) { this->cpu->inException = true; }
     ~InException() { this->cpu->inException = false; }
-    BtCPU* cpu;
+    CPU* cpu;
 };
 
 U32 exceptionCount;
@@ -197,79 +220,45 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     if (!currentThread) {
         return;
     }    
-    BtCPU* cpu = (BtCPU*)currentThread->cpu;
-    if (cpu != (BtCPU*)context->CONTEXT_R13) {
+    CPU* cpu = (CPU*)currentThread->cpu;
+    if (cpu != (CPU*)context->CONTEXT_R13) {
         return;
     }
-    x64CPU* x64Cpu = (x64CPU*)cpu;
 
-    syncFromException(cpu, context, true);
+    syncFromException(cpu, context);
 
     cpu->exceptionReadAddress = (((ucontext_t*)context)->CONTEXT_ERR & 2) == 0;
     cpu->exceptionAddress = (U64)info->si_addr;
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
-    x64Cpu->exceptionIp = context->CONTEXT_RIP;
+    cpu->exceptionIp = context->CONTEXT_RIP;
 
-    context->CONTEXT_RIP = (U64)cpu->thread->process->runSignalAddress;
+    context->CONTEXT_RIP = (U64)cpu->thread->process->signalHandler;
 }
 
-int getFPUCode(int code) {
-    switch (code) {
-    case FPE_INTDIV: return K_FPE_INTDIV;
-    case FPE_INTOVF: return K_FPE_INTOVF;
-    case FPE_FLTDIV: return K_FPE_FLTDIV;
-    case FPE_FLTOVF: return K_FPE_FLTOVF;
-    case FPE_FLTUND: return K_FPE_FLTUND;
-    case FPE_FLTRES: return K_FPE_FLTRES;
-    case FPE_FLTINV: return K_FPE_FLTINV;
-    default: klog_fmt("getFPUCode unhandled code %d", code); return 0;
-    }
-}
-
-extern bool writesFlags[InstructionCount];
-
-void signalHandler() {
-    BOXEDWINE_CRITICAL_SECTION;
-    KThread* currentThread = KThread::currentThread();
-    x64CPU* cpu = (x64CPU*)currentThread->cpu;
-    U64 fpu[8];
-
-    U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
+void signalHandler(CPU* cpu) {
+    void* result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
     if (result) {
         cpu->returnHostAddress = result;
         return;
     }
     InException e(cpu);
-    if (cpu->exceptionSigNo == SIGFPE) {
-        int code = getFPUCode(cpu->exceptionSigCode);
-        cpu->returnHostAddress = cpu->handleFpuException(code);
-        return;
-    }
+
     if (cpu->exceptionSigNo == SIGSEGV || cpu->exceptionSigNo == SIGBUS) {
-        DecodedOp* op;
-        
-        try {
-            op = cpu->getNextOp();
-        } catch (...) {
-            op = cpu->getNextOp();
+        U32 eip = 0;
+        DecodedOp* op = getMemData(cpu->memory)->findOpFromJitAddress((void*)cpu->exceptionIp, eip);
+        if (!op) {
+            klog("probably about to crash, could not find emulation instruction that caused exception");
+            cpu->returnHostAddress = cpu->thread->process->blockExitNoSync;
+        } else {
+            cpu->eip.u32 = eip;
+            void* result = cpu->handleAccessException(op);
+            if (cpu->nextOp->pfnJitCode) {
+                cpu->returnHostAddress = cpu->nextOp->pfnJitCode;
+            } else {
+                cpu->returnHostAddress = result;
+            }
         }
-        if (writesFlags[op->inst]) {
-            cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
-        }
-#ifndef BOXEDWINE_USE_SSE_FOR_FPU
-        cpu->loadFxState(op->inst);        
-#endif
-        bool saveFxState = true;
-        cpu->returnHostAddress = cpu->handleAccessException(op);
-        cpu->fillFlags();        
-        cpu->updateX64Flags();
-#ifndef BOXEDWINE_USE_SSE_FOR_FPU
-        if (saveFxState) {
-            cpu->fpuDirtyFlags = 1;
-            cpu->saveToFxState(op->inst);
-        }
-#endif
         return;
     }
     kpanic_fmt("unhandled exception %d", cpu->exceptionSigNo);

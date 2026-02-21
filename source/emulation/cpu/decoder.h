@@ -1606,7 +1606,7 @@ public:
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     void* pfnJitCode;
 #elif defined(BOXEDWINE_DYNAMIC)
-    OpCallback pfnJitCode;
+    void* pfnJitCode;
 #endif
     U32 imm;
 

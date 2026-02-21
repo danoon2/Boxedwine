@@ -350,7 +350,7 @@ public:
     RegPtr getLazyFlagTypeInTmp() override;
     void writeFlags(RegPtr flags) override;
 
-    void callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache = true) override;
+    void callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache = true, bool saveCache = true) override;
     void callHostFunctionWithResult(RegPtr result, void* address, const std::vector<DynParam>& params) override;
     void nakedCall(RegPtr reg) override;
     void nakedReturn() override;
@@ -2719,9 +2719,10 @@ void JitArmV8CodeGen::setParams(const std::vector<DynParam>& params) {
     }
 }
 
-void JitArmV8CodeGen::callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache) {
-    compiler.blr(xWriteCacheToCPU);
-
+void JitArmV8CodeGen::callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache, bool saveCache) {
+    if (saveCache) {
+        compiler.blr(xWriteCacheToCPU);
+    }
     setParams(params);    
 
     compiler.mov(xBranch, (U64)address);

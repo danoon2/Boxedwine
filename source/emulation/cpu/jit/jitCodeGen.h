@@ -153,7 +153,9 @@ protected:
     virtual U8* createSyncToHost() = 0;
     virtual U8* createSyncFromHost() = 0;
     virtual U8* createBlockExit(bool syncRegs) = 0;
-
+#ifdef BOXEDWINE_POSIX
+    virtual U8* createSignalHandler();
+#endif
     bool isParamTypeReg(JitCallParamType paramType);
     bool calculateLongestBlock(DecodedOp* op);
     void removeJIT(DecodedOp* op, U32 count);

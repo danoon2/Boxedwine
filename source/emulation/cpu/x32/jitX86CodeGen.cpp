@@ -352,7 +352,7 @@ public:
     RegPtr getReadOnlyFlags(RegPtr tmp = nullptr) override;
     void setFlags(RegPtr flags, U32 mask) override;
 
-    void callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache = true) override;
+    void callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache = true, bool saveCache = true) override;
     void callHostFunctionWithResult(RegPtr result, void* address, const std::vector<DynParam>& params) override;
     void nakedCall(RegPtr reg) override;
     void nakedReturn() override;
@@ -2465,7 +2465,7 @@ void JitX86CodeGen::callWriteCache() {
     compiler.call((DYN_PTR_SIZE)cpu->thread->process->syncToHost);
 }
 
-void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache) {
+void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache, bool saveCache) {
     U32 stackAdjust = 0;
     std::vector<U8> pushedRegs;
 
@@ -2475,7 +2475,9 @@ void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>&
             pushedRegs.push_back(i);
         }
     }
-    callWriteCache();
+    if (saveCache) {
+        callWriteCache();
+    }
     setParams(params);    
 #ifdef BOXEDWINE_64   
     if ((pushedRegs.size() % 2) == 1) {

@@ -681,7 +681,12 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         delete jit;
         jit = startNewJIT(cpu);
         cpu->thread->process->startJITOp = (OpCallback)jit->createStartJITCode();
-        delete jit;                    
+        delete jit;
+#ifdef BOXEDWINE_POSIX
+        jit = startNewJIT(cpu);
+        cpu->thread->process->signalHandler = jit->createSignalHandler();
+        delete jit;
+#endif
         createHelpers();
         for (U32 i = 0; i < FLAGS_NULL; i++) {
             jit = startNewJIT(cpu);
@@ -897,6 +902,19 @@ void jitRunSingleOp(CPU* cpu) {
     cpu->runNextSingleOp();
 }
 
+#ifdef BOXEDWINE_POSIX
+void signalHandler(CPU* cpu);
+
+U8* JitCodeGen::createSignalHandler() {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(JitCallParamType::CPU));
+    callHostFunction((void*)signalHandler, params, false, false);
+    blockExit(false);
+
+    return createDynamicExecutableMemory();
+}
+#endif
+
 U8* JitCodeGen::createEmulateSingleOp() {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
@@ -953,7 +971,7 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
             nextOp->jumpTargetFlags |= JUMP_TARGET_ASSUMED_FALSE;
         } else {
             bufferIndex = getBufferLocation(bufferIndex);
-            nextOp->pfnJitCode = (OpCallback)(begin + bufferIndex);
+            nextOp->pfnJitCode = begin + bufferIndex;
             nextOp->pfn = cpu->thread->process->startJITOp;
             if (lastJitOp) {
                 lastJitOp->jitLen = (U8*)nextOp->pfnJitCode - (U8*)lastJitOp->pfnJitCode;

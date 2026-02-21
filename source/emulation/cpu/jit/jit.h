@@ -347,7 +347,7 @@ public:
         DYN_PTR_SIZE value;
         const RegPtr reg;
     };
-    virtual void callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache = true) = 0;
+    virtual void callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache = true, bool saveCache = true) = 0;
     virtual void callHostFunctionWithResult(RegPtr result, void* address, const std::vector<DynParam>& params) = 0;
 
     virtual void emulateSingleOp() = 0;

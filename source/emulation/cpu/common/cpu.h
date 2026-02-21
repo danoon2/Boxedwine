@@ -331,6 +331,15 @@ public:
 
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
     bool inException = false;
+
+    // for linux/mac
+    U64 exceptionAddress = 0;
+    bool exceptionReadAddress = false;
+    void* returnHostAddress = 0; // after returning from the signalHandler, this will contain the host address we should jump to
+    int exceptionSigNo = 0;
+    int exceptionSigCode = 0;
+    U64 exceptionIp = 0;
+
     void* handleAccessException(DecodedOp* op);
     void* startException(U32 address, bool readAddress);
 

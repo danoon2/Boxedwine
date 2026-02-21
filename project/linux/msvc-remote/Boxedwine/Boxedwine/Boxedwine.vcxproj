@@ -1241,23 +1241,8 @@
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativethread.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\kvulkanSDL.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\sdlcallback.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btData.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_bits.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_fpu.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_mmx.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_shift.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_convert.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_minmax.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\jitArmV8CodeGen.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btData.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_arith.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_bit.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_fpu.cpp" />
@@ -1284,11 +1269,6 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normal_strings.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\srcgen.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x32\jitX86CodeGen.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\codePageData.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_code_page.cpp" />
@@ -1919,23 +1899,8 @@
     <ClInclude Include="..\..\..\..\..\platform\sdl\knativescreenSDL.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\kvulkanSDL.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\sdlcallback.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btData.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_bits.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_fpu.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_mmx.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_shift.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_convert.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_minmax.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\jitArmV8CodeGen.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_arith.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_bit.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_fpu.h" />
@@ -2015,11 +1980,6 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\strings.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\strings_op.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x32\jitX86CodeGen.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Asm.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\codePageData.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_code_page.h" />
@@ -2409,7 +2369,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_HOST_EXCEPTIONS;BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -2422,7 +2382,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;ASMJIT_NO_AARCH64;ASMJIT_STATIC;__TEST;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_HOST_EXCEPTIONS;BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;ASMJIT_NO_AARCH64;ASMJIT_STATIC;__TEST;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -2435,7 +2395,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_RECORDER;BOXEDWINE_POSIX;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG;BOXEDWINE_OPENGL_IMGUI_V2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_HOST_EXCEPTIONS;BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_RECORDER;BOXEDWINE_POSIX;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG;BOXEDWINE_OPENGL_IMGUI_V2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
