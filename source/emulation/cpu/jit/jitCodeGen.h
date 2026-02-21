@@ -92,6 +92,7 @@ public:
     void genCF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
     void genOF(LazyFlagType flags, RegPtr result); // guaranteed to return 0 or 1
     void genPF(RegPtr result); // guaranteed to return 0 or 1
+    JitWidth getWidthOfFlags(LazyFlagType flags);
 
     RegPtr getZF() override;
     RegPtr getCF() override;
@@ -135,6 +136,9 @@ public:
     U8* createEmulateSingleOp();    
     U8* createCalculationCF(LazyFlagType lazyFlagType);
     void getCF(LazyFlagType lazyFlagType, RegPtr result);
+    RegPtr getStringRegEcx() override;
+    RegPtr getStringRegEsi() override;
+    RegPtr getStringRegEdi() override;
 
     void incReg(JitWidth regWidth, RegPtr dest) override;
     void decReg(JitWidth regWidth, RegPtr dest) override;

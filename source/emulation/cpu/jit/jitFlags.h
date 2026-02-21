@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-static JitWidth getWidthOfFlags(LazyFlagType flags) {
+JitWidth JitCodeGen::getWidthOfFlags(LazyFlagType flags) {
     U32 width = lazyFlags[flags]->width;
     if (width == 32) {
         return JitWidth::b32;
@@ -26,6 +26,10 @@ static JitWidth getWidthOfFlags(LazyFlagType flags) {
     }
     if (width == 8) {
         return JitWidth::b8;
+    }
+    if (flags == FLAGS_CFOF) {
+        emulateSingleOp();
+        return JitWidth::b32;
     }
     kpanic_fmt("getWidthOfCondition: invalid flag width: %d", width);
     return JitWidth::b32;

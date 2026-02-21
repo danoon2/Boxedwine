@@ -182,11 +182,6 @@ union SSE {
     simde__m128i pi;
 };
 
-#define OP_FLAG_END_OF_LONG_CHAIN 1
-#define OP_FLAG_JIT 2
-#define OP_FLAG_NO_JIT 4
-#define OP_FLAG_EMULATED_OP 8
-
 #define JIT_RUN_COUNT 50
 
 class CPU: public DecodeBlockCallback {
@@ -203,6 +198,9 @@ public:
     Reg  dst;
     Reg  result;
     Reg eip;
+#ifdef BOXEDWINE_DYNAMIC
+    U32 tmpReg;
+#endif
     U8* reg8[9];
     ALIGN(SSE xmm[8], 16);
 
@@ -324,10 +322,18 @@ public:
     U8 fetchByte(U32* eip) override;
     bool shouldContinue(U32 eip) override;
     DecodedOp** getOpLocation(U32 eip) override;        
+    void runNextSingleOp();
 
 #ifdef BOXEDWINE_MULTI_THREADED
     U64 nativeHandle = 0;
     U32 tmpLockAddress = 0;
+#endif
+
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    bool inException = false;
+    void* handleAccessException(DecodedOp* op);
+    void* startException(U32 address, bool readAddress);
+
 #endif
 
 #ifdef BOXEDWINE_DYNAMIC

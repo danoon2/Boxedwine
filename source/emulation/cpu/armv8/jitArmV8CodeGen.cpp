@@ -212,8 +212,6 @@ public:
     RegPtr readEip() override;
     void writeEip(RegPtr eip) override;
     void writeEip(U32 eip) override;
-    void pushReg(RegPtr reg) override;
-    void popReg(RegPtr reg) override;
     bool isTmpRegAvailable() override;    
     void forceSyncBackIfNotCached(RegPtr reg) override;
     RegPtr getConditionCalculationReg(U32 index) override;
@@ -1021,14 +1019,6 @@ void JitArmV8CodeGen::writeEip(U32 eip) {
     RegPtr reg = getTmpReg();
     compiler.mov(R32(reg), eip);
     writeEip(reg);
-}
-
-void JitArmV8CodeGen::pushReg(RegPtr reg) {
-    kpanic("JitArmV8CodeGen::pushReg");
-}
-
-void JitArmV8CodeGen::popReg(RegPtr reg) {
-    kpanic("JitArmV8CodeGen::popReg");
 }
 
 bool JitArmV8CodeGen::isTmpRegAvailable() {

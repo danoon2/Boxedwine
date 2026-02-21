@@ -39,7 +39,7 @@ void internal_kpanic(BString msg) {
     }
     fwrite(msg.c_str(), 1, msg.length(), stderr);
     fflush(stderr);
-#ifdef BOXEDWINE_MSVC
+#if defined(BOXEDWINE_MSVC) && defined(_DEBUG)
     OutputDebugStringA(msg.c_str());
 #endif
     if (KSystem::videoOption == VIDEO_NORMAL) {
@@ -71,7 +71,7 @@ void internal_log(BString msg, FILE* f) {
     }
     fwrite(msg.c_str(), 1, msg.length(), f);
     fflush(f);
-#ifdef BOXEDWINE_MSVC
+#if defined(BOXEDWINE_MSVC) && defined(_DEBUG)
     OutputDebugStringA(msg.c_str());
 #endif
 }

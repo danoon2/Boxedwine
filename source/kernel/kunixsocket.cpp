@@ -28,10 +28,7 @@ KUnixSocketObject::KUnixSocketObject(U32 domain, U32 type, U32 protocol) : KSock
 {
 }
 
-KUnixSocketObject::~KUnixSocketObject() {
-    while (!msgs.empty()) {
-        this->msgs.pop();
-    }
+KUnixSocketObject::~KUnixSocketObject() {    
     if (this->node) {
         std::shared_ptr<FsNode> parent = this->node->getParent().lock();
         if (parent) {
@@ -75,6 +72,9 @@ KUnixSocketObject::~KUnixSocketObject() {
                 BOXEDWINE_CONDITION_SIGNAL_ALL(s->lockCond);
             }
         }
+        while (!msgs.empty()) {
+            this->msgs.pop();
+        }
         BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
     }
 }
@@ -111,9 +111,7 @@ bool KUnixSocketObject::isOpen() {
     if (this->listening) {
         return true;
     }
-    // connection.expired is not thread safe and we can't add a CS on lockCond here, it will dead lock, hopefully this works better
-    std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
-    return con != nullptr;
+    return connected && (!outClosed || !inClosed);
 }
 
 bool KUnixSocketObject::isReadReady() {
@@ -468,7 +466,7 @@ U32 KUnixSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, U3
     this->destAddress.family = memory->readw(address);
     memory->memcpy(this->destAddress.data, address + 2, len - 2);
     if (this->type==K_SOCK_DGRAM) {
-        this->connected = 1;		
+        this->connected = true;
         return 0;
     } else if (this->type==K_SOCK_STREAM) {
         if (this->destAddress.data[0]==0) {
@@ -490,7 +488,7 @@ U32 KUnixSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, U3
             }     
             std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
             if (con) {
-                this->connected = 1;
+                this->connected = true;
                 return 0;
             }     
             con = nullptr; // don't hold a strong reference to this, if we are blocking then it would prevent the con object from being destroyed when its process is closed
@@ -512,7 +510,7 @@ U32 KUnixSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, U3
                     if (this->connection.expired()) {
                         return -K_ECONNREFUSED;
                     }
-                    this->connected = 1;
+                    this->connected = true;
                     return 0;
                 } else {
                     return -K_EINPROGRESS;
@@ -549,7 +547,7 @@ U32 KUnixSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, U3
                 if (this->connection.expired()) {
                     return -K_ECONNREFUSED;
                 }
-                this->connected = 1;
+                this->connected = true;
                 return 0;
             }
         } else {

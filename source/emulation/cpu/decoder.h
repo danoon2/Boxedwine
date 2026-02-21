@@ -1527,6 +1527,9 @@ enum Instruction {
 #define INST_MMX_WRITE 1
 #define INST_MMX_READ 2
 
+#define MAX_OP_EXCEPTION_COUNT 0xff
+#define MAX_OP_COUNT_PER_BLOCK 1000
+
 class InstructionInfo {
 public:    
     U32  branch;
@@ -1547,6 +1550,13 @@ typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 
 #define JUMP_TARGET 1
 #define JUMP_TARGET_ASSUMED_FALSE 2
+
+#define OP_FLAG_END_OF_LONG_CHAIN 1
+#define OP_FLAG_JIT 2
+#define OP_FLAG_NO_JIT 4
+#define OP_FLAG_EMULATED_OP 8
+
+#define OP_FLAG2_WRITE_SAVED_ADDRESS 1
 
 // direct jump does not read memory, so will never use disp (used by mem, enter)
 union DecodedData {
@@ -1609,9 +1619,14 @@ public:
 #else
     U16 inst;
 #endif
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    U8 reg : 4;
+    U8 rm : 4;
+    U8 exceptionCount;
+#else
     U8 reg;
     U8 rm;
-
+#endif
     U8 base: 4;
     U8 sibIndex: 4;
     U8 sibScale: 4;
@@ -1626,7 +1641,8 @@ public:
 #ifdef BOXEDWINE_DYNAMIC
     U8 runCount;
     U8 jumpTargetFlags;
-    U16 pad3;
+    U16 flags2: 1;
+    U16 jitLen: 15;
 #endif
 
 #if defined (BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)    

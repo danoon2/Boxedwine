@@ -22,6 +22,7 @@
 #include "jitCodeGen.h"
 #include "../normal/normalCPU.h"
 #include "jitFlags.h"
+#include "../../softmmu/kmemory_soft.h"
 
 static JitCodeGen::OpFunction dynamicOps[NUMBER_OF_OPS];
 static U32 dynamicOpsInitialized;
@@ -32,15 +33,9 @@ void JitCodeGen::onTestEnd(DecodedOp* op) {
     blockExit();
 }
 
-static DecodedOp lastOp;
-
-void OPCALL onLastOp(CPU* cpu, DecodedOp* op) {
-}
-
 static void initDynamicOps() {
     if (dynamicOpsInitialized)
-        return;
-    lastOp.pfn = onLastOp;
+        return;    
     static_assert(offsetof(CPU, eip.u32) <= 127, "Jit needs eip to be in the first 127 bytes of the CPU");
     static_assert(offsetof(CPU, reg[8].u32) <= 127, "Jit needs reg to be in the first 127 bytes of the CPU");
     static_assert(offsetof(CPU, seg[6].address) <= 127, "Jit needs seg to be in the first 127 bytes of the CPU");
@@ -897,26 +892,7 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
 }
 
 void jitRunSingleOp(CPU* cpu) {
-    DecodedOp* op = nullptr;
-    try {
-        op = cpu->getNextOp();
-    } catch (...) {
-        // at this point the previous getNextOp threw an exception and the eip is now pointing to the signal handler
-        op = cpu->getNextOp();
-    }
-
-    if (!op) {
-        kpanic("jitRunSingleOp oops");
-    }
-    try {
-        DecodedOp o = *op;        
-        o.next = &lastOp;
-        o.pfn = NormalCPU::getFunctionForOp(op);
-        o.pfn(cpu, &o);        
-    } catch (...) {
-        // motorhead 3dfx will trigger this when pressing enter to start a new game
-    }
-    cpu->nextOp = cpu->getNextOp();
+    cpu->runNextSingleOp();
 }
 
 U8* JitCodeGen::createEmulateSingleOp() {
@@ -938,6 +914,7 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
     U8* begin = createDynamicExecutableMemory(&size);
 
     removeJIT(op, blockOpCount);
+    getMemData(cpu->memory)->jitCache[begin] = JitData(op, startingEip - cpu->seg[CS].address);
     op->blockLen = emulatedLen;
     op->blockOpCount = blockOpCount;
 #ifdef _DEBUG
@@ -962,6 +939,8 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
         klog_fmt("Compiled Blocks: %d, ave block size: %d ops.  ops = %d, elen = %d, clen = %d", totalBlocks, totalOps / totalBlocks, totalOps, totalEmulatedLen, totalCompiledLen);
     }
 #endif
+    DecodedOp* lastJitOp = nullptr;
+
     for (U32 i = 0; i < blockOpCount; i++) {
         U32 bufferIndex = 0;
 
@@ -974,12 +953,19 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
             bufferIndex = getBufferLocation(bufferIndex);
             nextOp->pfnJitCode = (OpCallback)(begin + bufferIndex);
             nextOp->pfn = cpu->thread->process->startJITOp;
+            if (lastJitOp) {
+                lastJitOp->jitLen = (U8*)nextOp->pfnJitCode - (U8*)lastJitOp->pfnJitCode;
+            }
+            lastJitOp = nextOp;
         }
         nextOp->flags |= OP_FLAG_JIT;
         nextOp->blockStart = op;
         address += nextOp->len;
         last = nextOp;
         nextOp = nextOp->next;
+    }
+    if (lastJitOp && !lastJitOp->jitLen) {
+        lastJitOp->jitLen = size - ((U8*)lastJitOp->pfnJitCode - (U8*)begin);
     }
 }
 
@@ -1109,6 +1095,12 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
     }    
 
     if (width != JitWidth::b8 && checkAlignment) {
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT)
+#endif
         // make sure we only use the fast path if the entire read will take place on the same page
         clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
     }
@@ -1267,19 +1259,26 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
         andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
     } else {
         pushedAddress = true;
-        pushReg(addressReg);
+        currentOp->flags2 |= OP_FLAG2_WRITE_SAVED_ADDRESS;
+        writeCPU(JitWidth::b32, offsetof(CPU, tmpReg), addressReg);
         offsetReg = addressReg;
         andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
     }    
 
     if (width != JitWidth::b8 && checkAlignment) {
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT)
+#endif
         // make sure we only use the fast path if the entire read will take place on the same page
         clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
     }
 
     IfNotTestBit(JitWidth::b32, tmp, 1); {
         if (pushedAddress) {
-            popReg(addressReg);
+            readCPU(JitWidth::b32, offsetof(CPU, tmpReg), addressReg);
         }
         if (failedMemoryOp) {
             failedMemoryOp();
@@ -1296,7 +1295,7 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
         writeHost(width, createMemPtr(tmp, offsetReg, 0, 0), src);
     }
     if (pushedAddress) {
-        popReg(addressReg);
+        readCPU(JitWidth::b32, offsetof(CPU, tmpReg), addressReg);
     }
 }
 
@@ -1318,6 +1317,12 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
         andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
  
         if (width != JitWidth::b8) {
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+#ifdef _DEBUG
+            writeCurrentEip(0);
+#endif
+            if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT)
+#endif
             // make sure we only use the fast path if the entire read will take place on the same page
             clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
         }
@@ -1338,6 +1343,12 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
         andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
 
         if (width != JitWidth::b8) {
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+#ifdef _DEBUG
+            writeCurrentEip(0);
+#endif
+            if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT)
+#endif
             // make sure we only use the fast path if the entire read will take place on the same page
             clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
         }
@@ -1363,6 +1374,12 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
     andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
 
     if (width != JitWidth::b8) {
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT)
+#endif
         // make sure we only use the fast path if the entire read will take place on the same page
         clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
     }
@@ -1376,11 +1393,11 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
     } EndIf();
 
     andValueNative(tmp, ~0xfff);
-    readHost(JitWidth::b32, createMemPtr(tmp, offsetReg, 0, 0), tmpReg2);
+    readHost(width, createMemPtr(tmp, offsetReg, 0, 0), tmpReg2);
 
     prepareWrite(tmpReg2);
 
-    writeHost(JitWidth::b32, createMemPtr(tmp, offsetReg, 0, 0), tmpReg2);
+    writeHost(width, createMemPtr(tmp, offsetReg, 0, 0), tmpReg2);
     return tmpReg2;
 }
 
@@ -1458,6 +1475,18 @@ U8* JitCodeGen::createCalculationCF(LazyFlagType flags) {
     getCF(flags, result);
     nakedReturn();
     return createDynamicExecutableMemory();
+}
+
+RegPtr JitCodeGen::getStringRegEcx() {
+    return getReg(1, 1);
+}
+
+RegPtr JitCodeGen::getStringRegEsi() {
+    return getReg(6, 6);
+}
+
+RegPtr JitCodeGen::getStringRegEdi() {
+    return getReg(7, 2);
 }
 
 void JitCodeGen::getCF(LazyFlagType flags, RegPtr result) {

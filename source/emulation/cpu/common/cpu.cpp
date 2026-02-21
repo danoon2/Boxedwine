@@ -1230,6 +1230,70 @@ DecodedOp* CPU::getNextOp(U32 jumpTargetFlags) {
     return getOp(getEipAddress(), jumpTargetFlags);
 }
 
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+void* CPU::startException(U32 address, bool readAddress) {
+    if (this->thread->terminating) {
+        return this->thread->process->blockExitNoSync;
+    }
+    if (this->inException) {
+        this->thread->seg_mapper(address, readAddress, !readAddress, false);
+        this->nextOp = getNextOp();
+    }
+    return 0;
+}
+
+void* CPU::handleAccessException(DecodedOp* op) {
+    if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+        op->exceptionCount++;
+    } else if (op->blockStart) {
+        U32 eipDistance = 0;
+        DecodedOp* nextOp = op->blockStart;
+        U32 count = 1;
+
+        while (nextOp && nextOp != op && count < MAX_OP_COUNT_PER_BLOCK) {
+            eipDistance += nextOp->len;
+            nextOp = nextOp->next;
+            count++;
+        }
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
+        if (nextOp == op) {
+            memory->removeCodeBlock(this->eip.u32 - eipDistance, op->blockStart, false, false);
+        }
+    }
+    runNextSingleOp();
+    return this->thread->process->blockExitNoSync;
+}
+#endif
+
+static DecodedOp lastOp;
+
+void OPCALL onLastOp(CPU* cpu, DecodedOp* op) {
+}
+
+void CPU::runNextSingleOp() {
+    DecodedOp* op = nullptr;
+    try {
+        op = getNextOp();
+    } catch (...) {
+        // at this point the previous getNextOp threw an exception and the eip is now pointing to the signal handler
+        op = getNextOp();
+    }
+
+    if (!op) {
+        kpanic("jitRunSingleOp oops");
+    }
+    try {
+        DecodedOp o = *op;
+        lastOp.pfn = onLastOp;
+        o.next = &lastOp;
+        o.pfn = NormalCPU::getFunctionForOp(op);
+        o.pfn(this, &o);
+    } catch (...) {
+        // motorhead 3dfx will trigger this when pressing enter to start a new game
+    }
+    this->nextOp = getNextOp();
+}
+
 #ifdef BOXEDWINE_DYNAMIC
 U32 CPU::offsetofReg32(U32 index) {
     switch (index) {

@@ -6230,6 +6230,8 @@ void DecodedOp::reset() {
 #ifdef BOXEDWINE_DYNAMIC
     this->runCount = 0;
     this->jumpTargetFlags = 0;
+    this->flags2 = 0;
+    this->jitLen = 0;
 #endif
 #if defined(BOXEDWINE_DYNAMIC) || defined(BOXEDWINE_BINARY_TRANSLATOR)
     this->pfnJitCode = nullptr;
@@ -6238,6 +6240,9 @@ void DecodedOp::reset() {
     blockLen = 0;
 #endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
+    exceptionCount = 0;
+#endif
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
     exceptionCount = 0;
 #endif
 }
@@ -6502,7 +6507,7 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
         }
 #ifndef BOXEDWINE_BINARY_TRANSLATOR
         // the normal core needs this so that we don't blow the stack while calling the next op
-        if (opCount > 1000) {
+        if (opCount > MAX_OP_COUNT_PER_BLOCK) {
             // c3 and openttd can trigger this
             op->flags |= OP_FLAG_END_OF_LONG_CHAIN;
             op->next = DecodedOp::allocDone();

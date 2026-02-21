@@ -128,7 +128,11 @@ struct alignas(K_PAGE_SIZE) AlignedU8 {
     U8 data;
 };
 
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+std::vector<U8*> allocatedPages;
+#else
 std::vector<AlignedU8*> allocatedPages;
+#endif
 
 RamPage ramPageAlloc() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
@@ -140,13 +144,32 @@ RamPage ramPageAlloc() {
         memset((U8*)(found.value << K_PAGE_SHIFT), 0, K_PAGE_SIZE);
         return found;
     }    
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+    U8* result = (U8*)Platform::reserveNativeMemory64k(8);
+    allocatedPages.push_back(result);
 
+    U8* pages = result;
+    U32 count = (8 * 16 / 2) - 1; // -1 so that there is an uncommitted page at the end
+    for (U32 i = 0; i < count; i++) {
+        pages += K_PAGE_SIZE; // keep uncommitted page between each committed so that if a read/write crosses a page boundry it will generate an exception
+        Platform::commitNativeMemoryPage(pages);
+        if (i == 0) {
+            result = pages;
+        } else {
+            RAM_TYPE index = ((RAM_TYPE)pages) >> K_PAGE_SHIFT;
+            freeIndexes.push_back(index);
+        }
+        pages += K_PAGE_SIZE;
+    }
+    RAM_TYPE index = ((RAM_TYPE)result) >> K_PAGE_SHIFT;
+#else
     AlignedU8* result = new AlignedU8[64]; // need to create a few since an aligned new will over allocate to make the alignment work.
     allocatedPages.push_back(result);
     RAM_TYPE index = ((RAM_TYPE)result) >> K_PAGE_SHIFT;
     for (int i = 1; i < 64; i++) {        
         freeIndexes.push_back(index + i);
     }
+#endif
     memset(result, 0, K_PAGE_SIZE);
     RamPage found;
     found.value = index;
@@ -160,6 +183,9 @@ RamPage ramPageAllocNative(U8* native) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
     RAM_TYPE index = ((RAM_TYPE)native) >> K_PAGE_SHIFT;
 
+    if (((U64)native) & 0xfff) {
+        kpanic("ramPageAllocNative must be aligned to a page");
+    }
     refCounts[index].refCount = 1;
     refCounts[index].isNative = 1;
     RamPage result;
@@ -168,11 +194,14 @@ RamPage ramPageAllocNative(U8* native) {
 }
 
 void shutdownRam() {
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+#else
     refCounts.clear();
     for (AlignedU8* p : allocatedPages) {
         delete[] p;
     }
     allocatedPages.clear();
+#endif
 }
 
 #endif

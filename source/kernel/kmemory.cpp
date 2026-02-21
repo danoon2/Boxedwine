@@ -513,6 +513,7 @@ bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, b
     if (clearOps) {
         data->opCache.remove(address, blockLen, becauseOfWrite);
     }
+    data->jitCache.erase(blockOp->pfnJitCode);
     void* pMem = (void*)blockOp->pfnJitCode;
     blockOp->pfnJitCode = nullptr;
     data->codeMemory.free(pMem);
@@ -736,6 +737,12 @@ void KMemory::unmapNativeMemory(U32 address, U32 size) {
 
 U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
     U32 result = 0;
+    U32 offset = (U32)(((RAM_TYPE)hostAddress) & 0xFFF);
+    // ramPageAllocNative expect host address to be aligned to a page
+    if (offset) {
+        size += offset;
+        hostAddress = (U8*)hostAddress - offset;
+    }
     U32 pageCount = (size + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (!data->reserveAddress(ADDRESS_PROCESS_MMAP_START, pageCount + 2, &result, false, true, PAGE_MAPPED)) {
@@ -750,7 +757,7 @@ U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
         data->onPageChanged(result + i);
         ramPageRelease(ramPage); // setPage retains
     }
-    return result << K_PAGE_SHIFT;
+    return (result << K_PAGE_SHIFT) + offset;
 }
 
 U32 KMemory::ensureContinuousNative_unsafe(U32 page, U32 pageCount) {

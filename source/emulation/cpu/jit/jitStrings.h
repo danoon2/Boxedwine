@@ -25,8 +25,8 @@ void Jit::movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth) {
     // cpu->memory->writew(dBase + DI, cpu->memory->readw(sBase + SI));
     // DI += inc;
     // SI += inc;
-    RegPtr esi = getReg(6);
-    RegPtr edi = getReg(7);
+    RegPtr esi = getStringRegEsi();
+    RegPtr edi = getStringRegEdi();
 
     if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[base]) {
         RegPtr readAddress = getTmpSegAddress(base);
@@ -63,10 +63,10 @@ void Jit::movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth) {
     } EndIf();
 }
 
-void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
-    RegPtr esi = getReg(6);
-    RegPtr edi = getReg(7);
-    RegPtr ecx = getReg(1);
+void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {    
+    RegPtr esi = getStringRegEsi();
+    RegPtr edi = getStringRegEdi();
+    RegPtr ecx = getStringRegEcx();
 
     // in case we partically completed the move before moving to a new page that doesn't have permission (code page, on demmand page, etc)
     auto onFailure = [esi, edi, ecx, this]() {
@@ -168,8 +168,8 @@ void Jit::cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, LazyF
     // cpu->src.u8 = v1;
     // cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
     // cpu->lazyFlags = FLAGS_SUB8;
-    RegPtr esi = getReg(6);
-    RegPtr edi = getReg(7);
+    RegPtr esi = getStringRegEsi();
+    RegPtr edi = getStringRegEdi();
 
     RegPtr src;
     RegPtr dest;
@@ -217,7 +217,7 @@ void Jit::cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, LazyF
     } EndIf();
 }
 
-void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, LazyFlagType lazyFlags) {
+void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, LazyFlagType lazyFlags) {    
     // U32 dBase = cpu->seg[ES].address;
     // U32 sBase = cpu->seg[base].address;
     // S32 inc = cpu->getDirection();
@@ -238,8 +238,8 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
     //     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
     //     cpu->lazyFlags = FLAGS_SUB8;
     // }
-    RegPtr esi = getReg(6);
-    RegPtr edi = getReg(7);
+    RegPtr esi = getStringRegEsi();
+    RegPtr edi = getStringRegEdi();
     RegPtr dest = getTmpReg8();
     RegPtr src = getTmpReg8();
     // :TODO: maybe cache ecx if we have 6 or more temp regs?
@@ -382,7 +382,7 @@ void Jit::dynamic_cmpsd_op(DecodedOp* op) {
 void Jit::stos(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     // cpu->memory->writeb(cpu->seg[ES].address + EDI, AL);
     // EDI += cpu->getDirection();    
-    RegPtr edi = getReg(7);
+    RegPtr edi = getStringRegEdi();
 
     if (cpu->thread->process->hasSetSeg[ES]) {
         RegPtr writeAddress = getTmpSegAddress(ES);
@@ -415,8 +415,8 @@ void Jit::stosr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     //     EDI += inc;
     //     ECX--;
     // }
-    RegPtr edi = getReg(7);
-    RegPtr ecx = getReg(1);
+    RegPtr edi = getStringRegEdi();
+    RegPtr ecx = getStringRegEcx();
     RegPtr al = valueWidth == JitWidth::b8 ? getReadOnlyReg8(0) : getReadOnlyReg(0);
 
     auto onFailure = [edi, ecx, this]() {
@@ -506,7 +506,7 @@ void Jit::dynamic_stosd_op(DecodedOp* op) {
 void Jit::lods(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth) {
     // AL = cpu->memory->readb(cpu->seg[base].address+ESI);
     // ESI += cpu->getDirection();
-    RegPtr esi = getReg(6);
+    RegPtr esi = getStringRegEsi();
     RegPtr al;
 
     if (valueWidth == JitWidth::b8) {
@@ -546,8 +546,8 @@ void Jit::lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     //     ESI += inc;
     //     ECX--;
     // }
-    RegPtr esi = getReg(6);
-    RegPtr ecx = getReg(1);
+    RegPtr esi = getStringRegEsi();
+    RegPtr ecx = getStringRegEcx();
     RegPtr al = valueWidth == JitWidth::b8 ? getReg8(0) : getReg(0);
 
     auto onFailure = [esi, ecx, al, this]() {
@@ -644,7 +644,7 @@ void Jit::scas(JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType la
     // cpu->src.u8 = v1;
     // cpu->result.u8 = AL - v1;
     // cpu->lazyFlags = FLAGS_SUB8;
-    RegPtr edi = getReg(7);
+    RegPtr edi = getStringRegEdi();
     RegPtr src;
     RegPtr dest = valueWidth == JitWidth::b8 ? getReadOnlyReg8(0) : getReadOnlyReg(0);
 
@@ -693,10 +693,10 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
     //     cpu->result.u8 = AL - v1;
     //     cpu->lazyFlags = FLAGS_SUB8;
     // }
-    RegPtr edi = getReg(7);
+    RegPtr edi = getStringRegEdi();
+    RegPtr ecx = getStringRegEcx();
     RegPtr dest = valueWidth == JitWidth::b8 ? getTmpReg8(0) : getTmpReg(0); // tmp because result = AL - v1, basstour/opentdd wil fail if AL is written back after math
-    RegPtr src = getTmpReg8();
-    RegPtr ecx = getReg(1);
+    RegPtr src = getTmpReg8();    
 
     auto onFailure = [edi, ecx, this]() {
         forceSyncBackIfNotCached(ecx);

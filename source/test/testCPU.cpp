@@ -10919,7 +10919,11 @@ void testLockedInc() {
     testLockedInc(0xc9); // aligned 1
 }
 #endif
+void platformInitExceptionHandling();
 int runCpuTests() {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    platformInitExceptionHandling();
+#endif
     printf("Please wait, these first 2 tests can take a while\n");
     run(test32BitMemoryAccess, "32-bit Memory Access");
     run(test16BitMemoryAccess, "16-bit Memory Access");

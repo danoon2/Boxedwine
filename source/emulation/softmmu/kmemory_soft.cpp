@@ -258,3 +258,24 @@ CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
     }
     return codePage;
 }
+
+DecodedOp* KMemoryData::findOpFromJitAddress(void* jitAddress, U32& eipOfOp) {
+    auto it = jitCache.lower_bound(jitAddress);
+    if (it == jitCache.end()) {
+        it = std::prev(it);
+    } else if (it != jitCache.begin()) {
+        it = std::prev(it);
+    }
+    DecodedOp* nextOp = it->second.op;
+    eipOfOp = it->second.eip;
+    DecodedOp* op = nullptr;
+    while (nextOp && nextOp->next) {
+        if (jitAddress >= nextOp->pfnJitCode && jitAddress < (U8*)nextOp->pfnJitCode + nextOp->jitLen) {
+            op = nextOp;
+            break;
+        }
+        eipOfOp += nextOp->len;
+        nextOp = nextOp->next;
+    }
+    return op;
+}

@@ -20,10 +20,19 @@
 #define __KMEMORY_SOFT_H__
 
 class CodePage;
+class DecodedOp;
 
 #include "codePageData.h"
 #include "soft_mmu.h"
 #include "../../source/util/bnativeheap.h"
+
+class JitData {
+public:
+    JitData() : op(nullptr), eip(0) {}
+    JitData(DecodedOp* op, U32 eip) : op(op), eip(eip) {}
+    DecodedOp* op;
+    U32 eip;
+};
 
 class KMemoryData {
 public:
@@ -63,6 +72,9 @@ public:
 
     DecodedOpCache opCache;
     BNativeHeap codeMemory;
+
+    DecodedOp* findOpFromJitAddress(void* jitAddress, U32& eipOfOp);
+    std::map<void*, JitData> jitCache;
 };
 
 KMemoryData* getMemData(KMemory* memory);

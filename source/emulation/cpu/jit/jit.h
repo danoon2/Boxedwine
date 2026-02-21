@@ -132,6 +132,9 @@ public:
     using InstRegImmCF = void(Jit::*)(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf);
     using InstReg = void(Jit::*)(JitWidth regWidth, RegPtr reg);
 
+    virtual RegPtr getStringRegEcx() = 0;
+    virtual RegPtr getStringRegEsi() = 0;
+    virtual RegPtr getStringRegEdi() = 0;
     virtual RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) = 0; // for cached regs, they will be used directly, for unchached regs, it will be read from the cpu and written back when done
     virtual RegPtr getReg8(U8 reg, bool load = true) = 0;
     virtual RegPtr getReadOnlyReg(U8 reg, bool delayed = false, S8 hint = -1) = 0; // for cached regs, they will be used directly, for unchached regs, it will be read from the cpu but NOT written back when done
@@ -152,8 +155,6 @@ public:
         writeEip(currentEip - cpu->seg[CS].address + addAmount);
     }
     virtual bool isTmpRegAvailable() = 0;
-    virtual void pushReg(RegPtr reg) = 0;
-    virtual void popReg(RegPtr reg) = 0;
     virtual RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0);
     virtual void jmpHost(RegPtr reg) = 0;
     virtual void jmpHost(DYN_PTR_SIZE address) = 0;

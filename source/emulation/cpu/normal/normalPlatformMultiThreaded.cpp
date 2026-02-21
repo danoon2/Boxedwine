@@ -75,9 +75,14 @@ void joinThread(KThread* thread) {
 #endif
 
 void platformSetThreadDescription(KThread* thread);
+void platformInitExceptionHandling();
+
 void scheduleThread(KThread* thread) {
     platformThreadCount++;
     CPU* cpu = thread->cpu;
+#if BOXEDWINE_HOST_EXCEPTIONS
+    platformInitExceptionHandling();
+#endif
 #ifdef __TEST
     cpu->nativeHandle = (U64)new std::thread(platformThread, cpu);
 #else

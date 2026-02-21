@@ -59,8 +59,8 @@ static U8 tmps[] = { 14, 3, 2, 1, 0 };
 // should be a volitile tmp reg
 #define PARAM_CALL_TMP compiler.rdx
 #else
-static U8 regCache[] = { 0, 1, 2, 3, 10, 5, 6, 7 };
-static U8 xmmCache[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+U8 regCache[] = { 0, 1, 2, 3, 10, 5, 6, 7 };
+U8 xmmCache[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 static bool isTmp[] = { false, false, false, false, false, false, false, false, true, true, false, true, true, false, true, false };
 static U8 tmps[] = { 14, 12, 11, 9, 8 };
 static U8 XMMtmps[] = { 12, 13, 14, 15 };
@@ -83,8 +83,8 @@ static bool isVolitile[] = { true, true, true, false, false, false, true, true, 
 #endif
 
 #else
-static U8 regCache[] = { 5, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG };
-static U8 xmmCache[] = { INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG };
+U8 regCache[] = { 5, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG };
+U8 xmmCache[] = { INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG };
 static bool isVolitile[] = { true, true, true, false, false, false, false, false };
 static bool isTmp[] = { true, true, true, true, false, false, true, false };
 static U8 tmps[] = { 6, 3, 2, 1, 0 }; // if changed, sync up with getConditionCalculationReg
@@ -242,11 +242,12 @@ public:
     RegPtr getReadOnlySegValue(U8 reg) override;
     RegPtr readEip() override;
     RegPtr getConditionCalculationReg(U32 index) override;
+    RegPtr getStringRegEcx() override;
+    RegPtr getStringRegEsi() override;
+    RegPtr getStringRegEdi() override;
 
     void writeEip(RegPtr eip) override;
     void writeEip(U32 eip) override;
-    void pushReg(RegPtr reg) override;
-    void popReg(RegPtr reg) override;
     bool isTmpRegAvailable() override;    
     void forceSyncBackIfNotCached(RegPtr reg) override;
     
@@ -1141,14 +1142,6 @@ void JitX86CodeGen::writeEip(U32 eip) {
     compiler.mov(Mem32(HOST_CPU, offsetof(CPU, eip.u32)), eip);
 }
 
-void JitX86CodeGen::pushReg(RegPtr reg) {
-    compiler.push(RN(reg));
-}
-
-void JitX86CodeGen::popReg(RegPtr reg) {
-    compiler.pop(RN(reg));
-}
-
 bool JitX86CodeGen::isTmpRegAvailable() {
     U8 found = findTmpReg(false, -1, true);
     if (found == 0xff) {
@@ -1162,6 +1155,33 @@ void JitX86CodeGen::forceSyncBackIfNotCached(RegPtr reg) {
     if (reg->emulatedReg != 0xff && regCache[reg->emulatedReg] == INVALID_REG) {
         compiler.mov(Mem(HOST_CPU, CPU::offsetofReg32(reg->emulatedReg)), R32(reg));
     }
+}
+
+RegPtr JitX86CodeGen::getStringRegEcx() {
+#ifndef BOXEDWINE_64
+    if (regUsed[1]) {
+        kpanic("");
+    }
+#endif
+    return getReg(1, 1);
+}
+
+RegPtr JitX86CodeGen::getStringRegEsi() {
+#ifndef BOXEDWINE_64
+    if (regUsed[6]) {
+        kpanic("");
+    }
+#endif
+    return getReg(6, 6);
+}
+
+RegPtr JitX86CodeGen::getStringRegEdi() {
+#ifndef BOXEDWINE_64
+    if (regUsed[2]) {
+        kpanic("");
+    }
+#endif
+    return getReg(7, 2);
 }
 
 RegPtr JitX86CodeGen::getReg(U8 reg, S8 hint, bool load) {
@@ -5078,10 +5098,10 @@ void JitX86CodeGen::dynamic_btce16r16_lock(DecodedOp* op) {
     });
 }
 
-RegPtr JitX86CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {    
-    if (op->ea16) {        
+RegPtr JitX86CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
+    if (op->ea16) {
         // cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
-        RegPtr result = getTmpReg();        
+        RegPtr result = getTmpReg();
         U32 disp = op->data.disp;
         RegPtr rm;
         RegPtr sibIndex;
@@ -5092,6 +5112,7 @@ RegPtr JitX86CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
         if (popEspAmount && op->sibIndex == 4) {
             disp += popEspAmount;
         }
+        disp &= 0xffff;
 
         if (op->rm != 8 && op->sibIndex == op->rm) {
             rm = getReadOnlyReg(op->rm);
@@ -5104,55 +5125,61 @@ RegPtr JitX86CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
                 sibIndex = getReadOnlyReg(op->sibIndex);
             }
         }
-        if (op->base < 6) {            
+        if (op->base < 6) {
             RegPtr seg = getReadOnlySegAddress(op->base);
 
             if (op->rm != 8 && op->sibIndex != 8) {
-                compiler.lea(R32(result), Mem(R32(sibIndex), R32(rm), 0, disp));
-                compiler.and_(R32(result), 0xffff);
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(sibIndex->hardwareReg()), R32(rm->hardwareReg()), 0, disp));
+                compiler.and_(R32(result->hardwareReg()), 0xffff);
             } else if (op->rm != 8) {
                 if (disp) {
-                    compiler.lea(R32(result), Mem(R32(rm), disp));
-                    compiler.and_(R32(result), 0xffff);
+                    compiler.lea(R32(result->hardwareReg()), Mem(R32(rm->hardwareReg()), disp));
+                    compiler.and_(R32(result->hardwareReg()), 0xffff);
                 } else {
-                    compiler.mov(R32(result), 0);
-                    compiler.mov(R16(result), R16(rm));
+                    compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), R32(rm->hardwareReg()), 0, 0));
+                    return result;
                 }
             } else if (op->sibIndex != 8) {
                 if (disp) {
-                    compiler.lea(R32(result), Mem(R32(sibIndex), disp));
-                    compiler.and_(R32(result), 0xffff);
+                    compiler.lea(R32(result->hardwareReg()), Mem(R32(sibIndex->hardwareReg()), disp));
+                    compiler.and_(R32(result->hardwareReg()), 0xffff);
                 } else {
-                    compiler.mov(R32(result), 0);
-                    compiler.mov(R16(result), R16(sibIndex));
+                    compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), R32(sibIndex->hardwareReg()), 0, 0));
+                    return result;
                 }
             } else if (disp) {
-                compiler.mov(R16(result), disp);
-            }            
-            compiler.lea(R32(result), Mem(R32(seg), R32(result), 0, 0));
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), disp));
+                return result;
+            } else {
+                compiler.mov(R32(result->hardwareReg()), R32(seg->hardwareReg()));
+                return result;
+            }
+            compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), R32(result->hardwareReg()), 0, 0));
         } else {
             if (op->rm != 8 && op->sibIndex != 8) {
-                compiler.lea(R32(result), Mem(R32(rm), R32(sibIndex), 0, disp));
-                compiler.and_(R32(result), 0xffff);
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(rm->hardwareReg()), R32(sibIndex->hardwareReg()), 0, disp));
+                compiler.and_(R32(result->hardwareReg()), 0xffff);
             } else if (op->rm != 8) {
                 if (disp) {
-                    compiler.lea(R32(result), Mem(R32(rm), disp));
-                    compiler.and_(R32(result), 0xffff);
+                    compiler.lea(R32(result->hardwareReg()), Mem(R32(rm->hardwareReg()), disp));
+                    compiler.and_(R32(result->hardwareReg()), 0xffff);
                 } else {
-                    compiler.mov(R32(result), 0);
-                    compiler.mov(R16(result), R16(rm));
+                    compiler.mov(R32(result->hardwareReg()), 0);
+                    compiler.mov(R16(result->hardwareReg()), R16(rm->hardwareReg()));
                 }
             } else if (op->sibIndex != 8) {
                 if (disp) {
-                    compiler.lea(R32(result), Mem(R32(sibIndex), disp));
-                    compiler.and_(R32(result), 0xffff);
+                    compiler.lea(R32(result->hardwareReg()), Mem(R32(sibIndex->hardwareReg()), disp));
+                    compiler.and_(R32(result->hardwareReg()), 0xffff);
                 } else {
-                    compiler.mov(R32(result), 0);
-                    compiler.mov(R16(result), R16(sibIndex));
+                    compiler.mov(R32(result->hardwareReg()), 0);
+                    compiler.mov(R16(result->hardwareReg()), R16(sibIndex->hardwareReg()));
                 }
             } else {
-                compiler.mov(R32(result), 0);
-                compiler.mov(R16(result), disp);
+                compiler.mov(R32(result->hardwareReg()), 0);
+                if (disp) {
+                    compiler.mov(R16(result->hardwareReg()), disp);
+                }
             }
         }
 
@@ -5163,7 +5190,7 @@ RegPtr JitX86CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
 
         if (popEspAmount && op->rm == 4) {
             disp += popEspAmount;
-        } 
+        }
         if (popEspAmount && op->sibIndex == 4) {
             disp += (popEspAmount << op->sibIndex);
         }
@@ -5187,27 +5214,27 @@ RegPtr JitX86CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
             RegPtr seg = getReadOnlySegAddress(op->base);
 
             if (op->rm != 8 && op->sibIndex != 8) {
-                compiler.lea(R32(result), Mem(R32(seg), R32(rm), 0, 0));
-                compiler.lea(R32(result), Mem(R32(result), R32(sibIndex), op->sibScale, disp));
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), R32(rm->hardwareReg()), 0, 0));
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(result->hardwareReg()), R32(sibIndex->hardwareReg()), op->sibScale, disp));
             } else if (op->rm != 8) {
-                compiler.lea(R32(result), Mem(R32(seg), R32(rm), 0, disp));
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), R32(rm->hardwareReg()), 0, disp));
             } else if (op->sibIndex != 8) {
-                compiler.lea(R32(result), Mem(R32(seg), R32(sibIndex), op->sibScale, disp));
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), R32(sibIndex->hardwareReg()), op->sibScale, disp));
             } else {
-                compiler.lea(R32(result), Mem(R32(seg), disp));
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), disp));
             }
         } else {
             if (op->rm != 8 && op->sibIndex != 8) {
-                compiler.lea(R32(result), Mem(R32(rm), R32(sibIndex), op->sibScale, disp));
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(rm->hardwareReg()), R32(sibIndex->hardwareReg()), op->sibScale, disp));
             } else if (op->rm != 8) {
-                compiler.lea(R32(result), Mem(R32(rm), disp));
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(rm->hardwareReg()), disp));
             } else if (op->sibIndex != 8) {
-                compiler.mov(R32(result), 0);
-                compiler.lea(R32(result), Mem(R32(result), R32(sibIndex), op->sibScale, disp));
+                compiler.mov(R32(result->hardwareReg()), 0);
+                compiler.lea(R32(result->hardwareReg()), Mem(R32(result->hardwareReg()), R32(sibIndex->hardwareReg()), op->sibScale, disp));
             } else {
-                compiler.mov(R32(result), disp);
+                compiler.mov(R32(result->hardwareReg()), disp);
             }
-        }        
+        }
         return result;
     }
 }
