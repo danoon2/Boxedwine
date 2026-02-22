@@ -258,7 +258,7 @@ CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
     }
     return codePage;
 }
-
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
 DecodedOp* KMemoryData::findOpFromJitAddress(void* jitAddress, U32& eipOfOp) {
     auto it = jitCache.lower_bound(jitAddress);
     if (it == jitCache.end()) {
@@ -279,3 +279,4 @@ DecodedOp* KMemoryData::findOpFromJitAddress(void* jitAddress, U32& eipOfOp) {
     }
     return op;
 }
+#endif

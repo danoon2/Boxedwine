@@ -73,8 +73,10 @@ public:
     DecodedOpCache opCache;
     BNativeHeap codeMemory;
 
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
     DecodedOp* findOpFromJitAddress(void* jitAddress, U32& eipOfOp);
     std::map<void*, JitData> jitCache;
+#endif
 };
 
 KMemoryData* getMemData(KMemory* memory);
