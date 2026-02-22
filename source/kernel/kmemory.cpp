@@ -513,7 +513,9 @@ bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, b
     if (clearOps) {
         data->opCache.remove(address, blockLen, becauseOfWrite);
     }
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
     data->jitCache.erase(blockOp->pfnJitCode);
+#endif
     void* pMem = (void*)blockOp->pfnJitCode;
     blockOp->pfnJitCode = nullptr;
     data->codeMemory.free(pMem);

@@ -934,7 +934,9 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
     U8* begin = createDynamicExecutableMemory(&size);
 
     removeJIT(op, blockOpCount);
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
     getMemData(cpu->memory)->jitCache[begin] = JitData(op, startingEip - cpu->seg[CS].address);
+#endif
     op->blockLen = emulatedLen;
     op->blockOpCount = blockOpCount;
 #ifdef _DEBUG
