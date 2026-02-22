@@ -153,7 +153,7 @@ protected:
     virtual U8* createSyncToHost() = 0;
     virtual U8* createSyncFromHost() = 0;
     virtual U8* createBlockExit(bool syncRegs) = 0;
-#ifdef BOXEDWINE_POSIX
+#if defined(BOXEDWINE_POSIX) && defined(BOXEDWINE_HOST_EXCEPTIONS)
     virtual U8* createSignalHandler();
 #endif
     bool isParamTypeReg(JitCallParamType paramType);

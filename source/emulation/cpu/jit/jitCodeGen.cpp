@@ -682,7 +682,7 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         jit = startNewJIT(cpu);
         cpu->thread->process->startJITOp = (OpCallback)jit->createStartJITCode();
         delete jit;
-#ifdef BOXEDWINE_POSIX
+#if defined(BOXEDWINE_POSIX) && defined(BOXEDWINE_HOST_EXCEPTIONS)
         jit = startNewJIT(cpu);
         cpu->thread->process->signalHandler = jit->createSignalHandler();
         delete jit;
@@ -902,7 +902,7 @@ void jitRunSingleOp(CPU* cpu) {
     cpu->runNextSingleOp();
 }
 
-#ifdef BOXEDWINE_POSIX
+#if defined(BOXEDWINE_POSIX) && defined(BOXEDWINE_HOST_EXCEPTIONS)
 void signalHandler(CPU* cpu);
 
 U8* JitCodeGen::createSignalHandler() {
