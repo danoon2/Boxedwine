@@ -245,13 +245,14 @@ void signalHandler(CPU* cpu) {
     InException e(cpu);
 
     if (cpu->exceptionSigNo == SIGSEGV || cpu->exceptionSigNo == SIGBUS) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex); // jitCache needs this
         U32 eip = 0;
-        DecodedOp* op = getMemData(cpu->memory)->findOpFromJitAddress((void*)cpu->exceptionIp, eip);
-        if (!op) {
+        if (!getMemData(cpu->memory)->findOpFromJitAddress((U8*)cpu->exceptionIp, eip)) {
             klog("probably about to crash, could not find emulation instruction that caused exception");
             cpu->returnHostAddress = cpu->thread->process->blockExitNoSync;
         } else {
             cpu->eip.u32 = eip;
+            DecodedOp* op = cpu->getNextOp();
             void* result = cpu->handleAccessException(op);
             if (cpu->nextOp->pfnJitCode) {
                 cpu->returnHostAddress = cpu->nextOp->pfnJitCode;

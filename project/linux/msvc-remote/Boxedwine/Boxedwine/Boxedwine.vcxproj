@@ -2375,7 +2375,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_HOST_EXCEPTIONS;BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_JIT_X64;BOXEDWINE_JIT;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MEM_CACHE;BOXEDWINE_HOST_EXCEPTIONS;BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_JIT_X64;BOXEDWINE_JIT;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -2388,7 +2388,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_HOST_EXCEPTIONS;BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_JIT_X64;BOXEDWINE_JIT;ASMJIT_NO_AARCH64;ASMJIT_STATIC;__TEST;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MEM_CACHE;BOXEDWINE_HOST_EXCEPTIONS;BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_JIT_X64;BOXEDWINE_JIT;ASMJIT_NO_AARCH64;ASMJIT_STATIC;__TEST;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -2401,7 +2401,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_HOST_EXCEPTIONS;BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_JIT_X64;BOXEDWINE_JIT;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_RECORDER;BOXEDWINE_POSIX;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG;BOXEDWINE_OPENGL_IMGUI_V2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MEM_CACHE;BOXEDWINE_HOST_EXCEPTIONS;BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_JIT_X64;BOXEDWINE_JIT;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_RECORDER;BOXEDWINE_POSIX;BOXEDWINE_64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG;BOXEDWINE_OPENGL_IMGUI_V2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
