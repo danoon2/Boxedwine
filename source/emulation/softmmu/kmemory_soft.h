@@ -59,17 +59,6 @@ public:
 
     CodePage* getOrCreateCodePage(U32 address);
 
-    // you need to add the full emulated address to the page to get the host page instead of just an offset
-    // this will speed things up in the binary translator
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    U8* mmuReadPtrAdjusted[K_NUMBER_OF_PAGES];
-    U8* mmuWritePtrAdjusted[K_NUMBER_OF_PAGES];
-#ifdef BOXEDWINE_4K_PAGE_SIZE
-    U8* mmuReadPtr[K_NUMBER_OF_PAGES];
-    U8* mmuWritePtr[K_NUMBER_OF_PAGES];
-#endif
-#endif  
-
     DecodedOpCache opCache;
     BNativeHeap codeMemory;
 

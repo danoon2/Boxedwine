@@ -34,96 +34,6 @@ public:
 static std::unordered_map<U64, RamInfo> refCounts;
 static std::vector<RAM_TYPE> freeIndexes;
 
-// native x64 code instructions sometimes assume proper alignment, so make sure when they align an emulated address, the hardware address is also aligned the same 
-// F-16 demo installer will crash if the page was allocated with just new on x64
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-
-void shutdownRam() {
-    highWaterIndex = 1;
-    freeIndexes.clear();
-    for (U32 i = 0; i < K_NUMBER_OF_PAGES; i++) {
-        if (refCounts[i].isNative) {
-            ramPages[i] = nullptr;
-        }
-        refCounts[i].isNative = 0;
-        refCounts[i].isSystem = 0;
-        refCounts[i].refCount = 0;
-    }
-}
-
-std::vector<U8*> pendingFreePages;
-
-RamPage ramPageAlloc() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
-    U32 index = allocIndex();
-
-    if (!ramPages[index] && pendingFreePages.size()) {
-        ramPages[index] = pendingFreePages.back();
-        pendingFreePages.pop_back();
-    }
-#ifdef BOXEDWINE_4K_PAGE_SIZE
-    if (!ramPages[index]) {
-        U8* pages = (U8*)Platform::reserveNativeMemory64k(8);
-        U32 count = (8 * 16 / 2) - 1; // -1 so that there is an uncommitted page at the end
-        for (U32 i = 0; i < count; i++) {
-            pages += K_PAGE_SIZE; // keep uncommitted page between each committed so that if a read/write crosses a page boundry it will generate an exception
-            Platform::commitNativeMemoryPage(pages);
-            if (i == 0) {
-                ramPages[index] = pages;
-            } else {
-                pendingFreePages.push_back(pages);
-            }
-            pages += K_PAGE_SIZE;
-        }
-    }
-#else
-    if (!ramPages[index]) {
-        U8* pages = (U8*)Platform::alloc64kBlock(1);
-        for (int i = 0; i < 16; i++) {
-            if (i == 0) {
-                ramPages[index] = pages;
-            } else {
-                pendingFreePages.push_back(pages);
-            }
-            pages += K_PAGE_SIZE;
-        }
-    }
-#endif
-    memset(ramPages[index], 0, K_PAGE_SIZE);
-    refCounts[index].refCount = 1;
-    allocatedRamPages++;
-    RamPage result;
-    result.value = index;
-    return result;
-}
-
-RamPage ramPageAllocNative(U8* native) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
-    bool found = false;
-    U32 foundIndex = 0;
-
-    for (U32 i = 0; i < freeIndexes.size(); i++) {
-        U32 index = freeIndexes.at(i);
-        if (!ramPages[index]) {
-            found = true;
-            foundIndex = index;
-            freeIndexes.erase(freeIndexes.begin() + i);
-            break;
-        }
-    }
-    if (!found) {
-        foundIndex = highWaterIndex++;
-    }
-    ramPages[foundIndex] = native;
-    refCounts[foundIndex].refCount = 1;
-    refCounts[foundIndex].isNative = 1;
-    RamPage result;
-    result.value = foundIndex;
-    return result;
-}
-
-#else
-
 struct alignas(K_PAGE_SIZE) AlignedU8 {
     U8 data;
 };
@@ -203,8 +113,6 @@ void shutdownRam() {
     allocatedPages.clear();
 #endif
 }
-
-#endif
 
 RamPage ramPageAllocNativeContinuous(U8* native, U32 pageCount) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);

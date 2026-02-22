@@ -691,11 +691,7 @@ void KThread::signalTrap(U32 code) {
     KSigAction* action = &this->process->sigActions[K_SIGTRAP];
     if (action->handlerAndSigAction == K_SIG_DFL) {
         DecodedOp* op = cpu->getNextOp();
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s: (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->originalOp);
-#else
         kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->inst);
-#endif
     }
     memset(this->process->sigActions[K_SIGTRAP].sigInfo, 0, sizeof(this->process->sigActions[K_SIGTRAP].sigInfo));
     this->process->sigActions[K_SIGTRAP].sigInfo[0] = K_SIGTRAP;
@@ -708,11 +704,7 @@ void KThread::signalIllegalInstruction(int code) {
     KSigAction* action = &this->process->sigActions[K_SIGILL];
     if (action->handlerAndSigAction == K_SIG_DFL) {
         DecodedOp* op = cpu->getNextOp();
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s: (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->originalOp);
-#else
         kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->inst);
-#endif
     }
     memset(this->process->sigActions[K_SIGILL].sigInfo, 0, sizeof(this->process->sigActions[K_SIGILL].sigInfo));
     this->process->sigActions[K_SIGILL].sigInfo[0] = K_SIGILL;
@@ -1132,9 +1124,8 @@ void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
         BOXEDWINE_CONDITION_SIGNAL_ALL(cpu->thread->waitingForSignalToEndCond);
     }
 
-#ifndef BOXEDWINE_BINARY_TRANSLATOR
     cpu->nextOp = cpu->getNextOp();
-#endif
+
     /*
     if (action->flags & K_SA_RESTORER) {
         push32(&thread->cpu, thread->cpu->eip.u32);

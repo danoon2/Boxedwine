@@ -17,7 +17,7 @@
  */
 
 #include "boxedwine.h"
-#if defined(BOXEDWINE_DYNAMIC32) || defined(BOXEDWINE_JIT_X64)
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
 
 #include "jitX86CodeGen.h"
 #include "../jit/jitSSE.h"

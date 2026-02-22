@@ -19,7 +19,7 @@
 #ifndef __KMEMORY_H__
 #define __KMEMORY_H__
 
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
 class DynamicMemory;
 #endif
 
@@ -147,7 +147,7 @@ public:
 
     void addCode_nolock(U32 address, U32 len, DecodedOp* op, U32 opCount);
     void removeCode(KThread* thread, U32 address, U32 len, bool becauseOfWrite);
-#if defined(BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)
+#if defined(BOXEDWINE_JIT)
     bool removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, bool clearOps); // returns true if currently executing block is removed
 #endif
     bool isAddressDynamic(U32 address, U32 len);

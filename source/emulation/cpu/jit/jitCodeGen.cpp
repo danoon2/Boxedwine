@@ -18,7 +18,7 @@
 
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
 #include "jitCodeGen.h"
 #include "../normal/normalCPU.h"
 #include "jitFlags.h"

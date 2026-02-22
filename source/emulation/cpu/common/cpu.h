@@ -198,7 +198,7 @@ public:
     Reg  dst;
     Reg  result;
     Reg eip;
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
     U32 tmpReg;
 #endif
     U8* reg8[9];
@@ -207,14 +207,6 @@ public:
     U32 sseControlStateTmp = 0;
     U32 sseControlStateTmp2 = 0;
     U32 mxcsr = 0x1F80; // sse control register
-
-#if defined(BOXEDWINE_BINARY_TRANSLATOR) && defined(BOXEDWINE_X64)
-
-    U64 memcheckq[K_PAGE_SIZE];
-    U64 memcheckd[K_PAGE_SIZE];
-    U64 memcheckw[K_PAGE_SIZE];
-    U64 memcheckqq[K_PAGE_SIZE];    
-#endif
     
     LazyFlagType lazyFlagType = FLAGS_NONE;
     LazyFlagType lazyFlagTypePrev = FLAGS_NONE;
@@ -345,7 +337,7 @@ public:
 
 #endif
 
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
     static U32 offsetofReg32(U32 index);
     static U32 offsetofReg16(U32 index);
     static U32 offsetofReg8(U32 index);

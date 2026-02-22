@@ -8,8 +8,5 @@ libcurl4-openssl-dev
 
 On other platforms, you need to make sure you have gcc version 8 or higher.
 
-To build on 64-bit systems all you have to do is type in the project/linux directory
+To build all you have to do is type in the project/linux directory
 make
-
-On 32-bit systems, you need to type
-make jit

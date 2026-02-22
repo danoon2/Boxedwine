@@ -41,16 +41,7 @@ KMemoryData* getMemData(KMemory* memory) {
     return memory->data;
 }
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-KMemoryData::KMemoryData(KMemory* memory) : memory(memory), mmuReadPtrAdjusted{ 0 }, mmuWritePtrAdjusted{ 0 }
-#ifdef BOXEDWINE_4K_PAGE_SIZE
-, mmuReadPtr{ 0 }
-, mmuWritePtr{ 0 }
-#endif
-#else
-KMemoryData::KMemoryData(KMemory* memory) : memory(memory)
-#endif
-{
+KMemoryData::KMemoryData(KMemory* memory) : memory(memory) {
     ::memset(mmu, 0, sizeof(mmu));
     if(!callbackRam.value) {
         callbackRam = ramPageAlloc();
@@ -72,34 +63,6 @@ bool KMemoryData::isPageValid(U32 page) {
 }
 
 void KMemoryData::onPageChanged(U32 index) {
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    Page* page = this->mmu[index].getPage();
-    U8* readPtr = page->getRamPtr(&mmu[index], index, false);
-    if (mmu[index].canReadRam) {
-        this->mmuReadPtrAdjusted[index] = readPtr - (index << K_PAGE_SHIFT);
-#ifdef BOXEDWINE_4K_PAGE_SIZE
-        this->mmuReadPtr[index] = readPtr;
-#endif
-    } else {
-        this->mmuReadPtrAdjusted[index] = nullptr;
-#ifdef BOXEDWINE_4K_PAGE_SIZE
-        this->mmuReadPtr[index] = nullptr;
-#endif
-    }
-
-    U8* writePtr = page->getRamPtr(&mmu[index], index, true);
-    if (mmu[index].canWriteRam) {
-        this->mmuWritePtrAdjusted[index] = writePtr - (index << K_PAGE_SHIFT);
-#ifdef BOXEDWINE_4K_PAGE_SIZE
-        this->mmuWritePtr[index] = writePtr;
-#endif
-    } else {
-        this->mmuWritePtrAdjusted[index] = nullptr;
-#ifdef BOXEDWINE_4K_PAGE_SIZE
-        this->mmuWritePtr[index] = nullptr;
-#endif
-    }
-#endif
 }
 
 void KMemoryData::addCallback(OpCallback func) {

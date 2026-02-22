@@ -22,7 +22,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../emulation/cpu/binaryTranslation/btCpu.h"
 #include "knativethread.h"
 
 #if defined(BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
@@ -84,9 +83,6 @@ void tearDown() {
 
 void setup() {
     if (!memory) {
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-        //KSystem::useLargeAddressSpace = false;
-#endif
         process = KProcess::create();
         memory = KMemory::create(process.get());
         process->memory = memory;
@@ -223,24 +219,11 @@ void useFlags() {
 void runTestCPU() {
     pushCode8(0xcd);
     pushCode8(0x97); // will cause TestEnd specific return code to be inserted
-
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-#ifdef BOXEDWINE_X64
-    process->emulateFPU = !cpu->isBig();
-#endif
-    ((BtCPU*)cpu)->translateEip(cpu->eip.u32);
-    cpu->run();
-#else    
+  
     cpu->nextOp = cpu->getNextOp();
     do {
         cpu->run();
     } while (cpu->nextOp->inst != TestEnd);
-
-#endif    
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    BtCPU* c = (BtCPU*)cpu;
-    c->postTestRun();
-#endif
 }
 
 struct Data {
@@ -11042,17 +11025,8 @@ void testSelfModifyingBack() {
 
 #ifdef BOXEDWINE_MULTI_THREADED
 void setupForThread() {
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-#ifdef BOXEDWINE_X64
-    process->emulateFPU = !cpu->isBig();
-#endif
-    pushCode8(0xcd);
-    pushCode8(0x97); // will cause TEST specific return code to be inserted
-    ((BtCPU*)cpu)->translateEip(cpu->eip.u32);
-#else
     pushCode8(0xcd); // for multi-thread test
     pushCode8(0x97);
-#endif
 }
 
 KThread* doLockedIncThread(U32 numberOfIterationsPerThread) {

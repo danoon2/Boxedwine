@@ -18,7 +18,7 @@
 
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
 #include "jit.h"
 
 #include "../normal/instructions.h"

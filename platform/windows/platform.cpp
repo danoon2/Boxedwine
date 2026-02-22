@@ -20,7 +20,6 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include "pixelformat.h"
-#include "../source/emulation/cpu/binaryTranslation/btCpu.h"
 #include <VersionHelpers.h>
 #include <Shlwapi.h>
 #include <winternl.h>
@@ -718,7 +717,7 @@ void platformSetThreadDescription(KThread* thread) {
 }
 #endif
 
-#if defined(BOXEDWINE_X64) || defined(BOXEDWINE_JIT_X64)
+#if defined(BOXEDWINE_JIT_X64)
 bool platformHasBMI2() {
     int regs[4] = {};
 

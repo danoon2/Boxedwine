@@ -155,21 +155,8 @@ void KProcess::onExec(KThread* thread) {
     this->hasSetSeg[FS] = true;
     this->hasSetStackMask = false;
 
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
     startJITOp = nullptr;
-#endif
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    returnToLoopAddress = nullptr;
-    reTranslateChunkAddress = nullptr;
-    syncToHostAddress = nullptr;
-    syncFromHostAddress = nullptr;
-    doSingleOpAddress = nullptr;
-    jmpAndTranslateIfNecessary = nullptr;
-#ifdef BOXEDWINE_POSIX
-    runSignalAddress = nullptr;
-#endif
-#endif
-#ifdef BOXEDWINE_DYNAMIC
     startJITOp = nullptr;
     emulateSingleOp = nullptr;
     syncToHost = nullptr;
@@ -203,11 +190,9 @@ void KProcess::cleanupProcess() {
     this->privateShm.clear();
     this->mappedFiles.clear();
     // will be handled when thread exits, we don't want to delete current memory associated with execution
-#ifndef BOXEDWINE_BINARY_TRANSLATOR    
     if (memory) {
         memory->cleanup();
     }
-#endif
     XServer* server = XServer::getServer(true);
     if (server) {
         server->processExit(id);
@@ -805,9 +790,6 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
             this->hasSetSeg[i] = true;
             this->hasSetStackMask = true;
         }
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-        this->emulateFPU = true;
-#endif
     }
 
     if (!ElfLoader::loadProgram(thread, openNode, &thread->cpu->eip.u32)) {

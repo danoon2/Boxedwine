@@ -1603,17 +1603,13 @@ public:
     // location and if the op there gets updated, we won't have to try to figure out all the jumps to it that need to be updated
     DecodedData data;
     OpCallback pfn;  
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    void* pfnJitCode;
-#elif defined(BOXEDWINE_DYNAMIC)
+#ifdef BOXEDWINE_JIT
     void* pfnJitCode;
 #endif
     U32 imm;
 
-#if defined (_DEBUG) || defined(BOXEDWINE_BINARY_TRANSLATOR)
-    U32 eip;
-#endif
 #ifdef _DEBUG
+    U32 eip;
     Instruction inst;
     Instruction lastInst;    
 #else
@@ -1638,23 +1634,16 @@ public:
     U8 ea16: 1;
     U8 flags : 4;
 
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
     U8 runCount;
     U8 jumpTargetFlags;
     U16 flags2: 1;
     U16 jitLen: 15;
-#endif
-
-#if defined (BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)    
     U16 blockOpCount;
     U16 blockLen; // emulated code length of the block
     DecodedOp* blockStart;
 #endif
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    U8 exceptionCount; // if this instruction writes to a code page a lot which causes an exception, we can track it and use a slightly slower path without throwing an exception
-    U8 pad;
-#endif
-#if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
+#ifdef _DEBUG
     U16 originalOp;
 #endif
     void reset();

@@ -4,13 +4,11 @@
 #include "bufferaccess.h"
 #include "kstat.h"
 #include "../../softmmu/kmemory_soft.h"
-
-#ifndef BOXEDWINE_BINARY_TRANSLATOR
 #include "../normal/normalCPU.h"
+
 CPU* CPU::allocCPU(KMemory* memory) {
     return new NormalCPU(memory);
 }
-#endif
 
 U32 CPU_CHECK_COND(CPU* cpu, U32 cond, const char* msg, int exc, int sel) {
     if (cond) {
@@ -74,24 +72,6 @@ CPU::CPU(KMemory* memory) : memory(memory) {
     sseConstants[SSE_BYTE8_BIT_MASK].ps.u8[15] = 128;
 #define u8 byte[0]
 #endif
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-#if defined(BOXEDWINE_X64)
-    memset(memcheckqq, 0xff, sizeof(memcheckqq));
-    for (int i = 0; i < 15; i++) {
-        memcheckqq[K_PAGE_SIZE - 1 - i] = 0;
-    }
-    memset(memcheckq, 0xff, sizeof(memcheckq));
-    for (int i = 0; i < 7; i++) {
-        memcheckq[K_PAGE_SIZE - 1 - i] = 0;
-    }
-    memset(memcheckd, 0xff, sizeof(memcheckd));
-    for (int i = 0; i < 3; i++) {
-        memcheckd[K_PAGE_SIZE - 1 - i] = 0;
-    }
-    memset(memcheckw, 0xff, sizeof(memcheckw));
-    memcheckw[K_PAGE_SIZE - 1] = 0;
-#endif
-#endif
 }
 
 void CPU::setSeg(U32 index, U32 address, U32 value) {
@@ -136,7 +116,7 @@ void CPU::reset() {
 #ifdef BOXEDWINE_MULTI_THREADED
     this->tmpLockAddress = 0;
 #endif
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
     memset(calculateCF, 0, sizeof(calculateCF));
 #endif
 }
@@ -1294,7 +1274,7 @@ void CPU::runNextSingleOp() {
     this->nextOp = getNextOp();
 }
 
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
 U32 CPU::offsetofReg32(U32 index) {
     switch (index) {
     case 0: return offsetof(CPU, reg[0].u32);

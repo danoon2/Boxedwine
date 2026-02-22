@@ -320,12 +320,7 @@ bool KMemory::canRead(U32 address, U32 len) {
 
 void KMemory::execvReset(bool cloneVM) {
     if (!cloneVM) {
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-        deleteOnNextLoop = data;
-        data = new KMemoryData(this);
-#else
         data->execvReset();
-#endif
     } else {
         // data no longer shared with parent
         data = new KMemoryData(this);
@@ -478,7 +473,7 @@ bool KMemory::isCode(void* p) {
     return data->codeMemory.containsAddress(p);
 }
 
-#if defined(BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)
+#if defined(BOXEDWINE_JIT)
 void writeBlockExitForJIT(U32 eip, U8* buffer);
 bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, bool clearOps) {
     DecodedOp* blockOp = op->blockStart;
@@ -497,7 +492,7 @@ bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, b
         nextOp->blockOpCount = 0;
         nextOp->blockLen = 0;
         // dynamic will clear this in DecodedOpCache::removeJITCode, but it needs it to be set until then
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
         nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
         nextOp->flags &= ~OP_FLAG_JIT;
         if (currentOp && nextOp == currentOp->next && nextOp->pfnJitCode) {
@@ -530,13 +525,10 @@ public:
     bool result = false;
 };
 
-#if defined(BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)
+#if defined(BOXEDWINE_JIT)
 static void opCallback(U32 address, DecodedOp* op, void* p) {
     OpCallbackData* callbackData = (OpCallbackData*)p;
     if (op->blockStart) {
-#ifdef BOXEDWINE_BINARY_TRANSLATOR     
-        U32 blockAddress = op->blockStart->eip;
-#else
         // Normal and JIT cpu's don't need to track eip on an op except for this case, but I don't think it's really worth increasing
         // the size of DecodedOp just for this
         DecodedOp* nextOp = op->blockStart;
@@ -546,42 +538,23 @@ static void opCallback(U32 address, DecodedOp* op, void* p) {
             nextOp = nextOp->next;
         }
         U32 blockAddress = address - len;
-#endif
         if (callbackData->memory->removeCodeBlock(blockAddress, op->blockStart, callbackData->becauseOfWrite, true)) {
             callbackData->result = true;
         }
     }
 }
 #endif
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-static void opCallbackCheck(U32 address, DecodedOp* op, void* p) {
-    if (!(op->flags & OP_FLAG_EMULATED_OP)) {
-        *((bool*)p) = true;
-    }
-}
-#endif
 void KMemory::removeCode(KThread* thread, U32 address, U32 len, bool becauseOfWrite) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex)
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-        if (becauseOfWrite) {
-            bool foundOp = false;
-            data->opCache.iterateOps(address, len, opCallbackCheck, &foundOp);
-            if (!foundOp) {
-                return;
-            }
-        }
-#endif
-#if defined(BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)
+#if defined(BOXEDWINE_JIT)
     OpCallbackData callbackData;
     callbackData.memory = this;
     callbackData.becauseOfWrite = becauseOfWrite;
     data->opCache.iterateOps(address, len, opCallback, &callbackData);
     data->opCache.remove(address, len, becauseOfWrite);
-#ifdef BOXEDWINE_DYNAMIC
     if (thread && callbackData.result) {
         thread->cpu->nextOp = thread->cpu->getNextOp()->next;
     }
-#endif
 #else
     data->opCache.remove(address, len, becauseOfWrite);
 #endif
@@ -812,7 +785,7 @@ NativeContinuousMemory::~NativeContinuousMemory() {
 }
 
 U64 KMemory::readq(U32 address) {
-#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
+#if !defined(UNALIGNED_MEMORY)
     if ((address & 0xFFF) < 0xFF9) {
         int index = address >> 12;
         MMU& mmu = data->mmu[index];
@@ -827,10 +800,11 @@ U64 KMemory::readq(U32 address) {
 U32 KMemory::readd(U32 address) {
     if ((address & 0xFFF) < 0xFFD) {
         int index = address >> 12;
-#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
+#if !defined(UNALIGNED_MEMORY)
         MMU& mmu = data->mmu[index];
-        if (mmu.canReadRam)
+        if (mmu.canReadRam) {
             return *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
+        }
 #endif
         return data->mmu[index].getPage()->readd(&data->mmu[index], address);
     } else {
@@ -841,10 +815,11 @@ U32 KMemory::readd(U32 address) {
 U16 KMemory::readw(U32 address) {
     if ((address & 0xFFF) < 0xFFF) {
         int index = address >> 12;
-#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
+#if !defined(UNALIGNED_MEMORY)
         MMU& mmu = data->mmu[index];
-        if (mmu.canReadRam)
+        if (mmu.canReadRam) {
             return *(U16*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
+        }
 #endif
         return data->mmu[index].getPage()->readw(&data->mmu[index], address);
     }
@@ -853,16 +828,15 @@ U16 KMemory::readw(U32 address) {
 
 U8 KMemory::readb(U32 address) {
     int index = address >> 12;
-#if !defined(BOXEDWINE_BINARY_TRANSLATOR)
     MMU& mmu = data->mmu[index];
-    if (mmu.canReadRam)
+    if (mmu.canReadRam) {
         return ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF];
-#endif
+    }
     return data->mmu[index].getPage()->readb(&data->mmu[index], address);
 }
 
 void KMemory::writeq(U32 address, U64 value) {
-#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
+#if !defined(UNALIGNED_MEMORY)
     if ((address & 0xFFF) < 0xFF9) {
         int index = address >> 12;
         MMU& mmu = data->mmu[index];
@@ -878,7 +852,7 @@ void KMemory::writeq(U32 address, U64 value) {
 void KMemory::writed(U32 address, U32 value) {
     if ((address & 0xFFF) < 0xFFD) {
         int index = address >> 12;
-#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
+#if !defined(UNALIGNED_MEMORY)
         MMU& mmu = data->mmu[index];
         if (mmu.canWriteRam)
             *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
@@ -896,7 +870,7 @@ void KMemory::writed(U32 address, U32 value) {
 void KMemory::writew(U32 address, U16 value) {
     if ((address & 0xFFF) < 0xFFF) {
         int index = address >> 12;
-#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
+#if !defined(UNALIGNED_MEMORY)
         MMU& mmu = data->mmu[index];
         if (mmu.canWriteRam)
             *(U16*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
@@ -911,13 +885,12 @@ void KMemory::writew(U32 address, U16 value) {
 
 void KMemory::writeb(U32 address, U8 value) {
     int index = address >> 12;
-#if !defined(BOXEDWINE_BINARY_TRANSLATOR)
     MMU& mmu = data->mmu[index];
-    if (mmu.canWriteRam)
+    if (mmu.canWriteRam) {
         ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF] = value;
-    else
-#endif
+    } else {
         data->mmu[index].getPage()->writeb(&data->mmu[index], address, value);
+    }
 }
 
 U8* KMemory::getRamPtr(U32 address, U32 len, bool write, bool futex) {

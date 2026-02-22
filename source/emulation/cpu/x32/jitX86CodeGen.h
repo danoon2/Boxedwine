@@ -19,7 +19,7 @@
 #ifndef __JIT_X86_CODE_GEN_H__
 #define __JIT_X86_CODE_GEN_H__
 
-#if defined(BOXEDWINE_DYNAMIC32) || defined(BOXEDWINE_JIT_X64)
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op);
 #endif
 

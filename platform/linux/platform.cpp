@@ -24,9 +24,6 @@
 #include <sys/socket.h>
 #include <SDL.h>
 #include <sys/mman.h>
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-#include "../../source/emulation/cpu/binaryTranslation/btCpu.h"
-#endif
 #include "pixelformat.h"
 #include UNISTD
 
@@ -328,7 +325,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
 #endif
 #endif
 
-#if defined (BOXEDWINE_X64) || defined(BOXEDWINE_JIT_X64)
+#if defined(BOXEDWINE_64) && defined(BOXEDWINE_JIT_X64)
 #include <cpuid.h>
 bool platformHasBMI2() {
     int regs[4];

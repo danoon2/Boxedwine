@@ -275,7 +275,7 @@ public:
     std::vector<U32> glStringsiExtensionsOffset;
     U32 glxStringExtensions = 0;
     U32 numberOfExtensions = 0;
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
     OpCallback startJITOp = nullptr;
     void* emulateSingleOp = nullptr;
 #ifdef BOXEDWINE_POSIX
@@ -288,18 +288,6 @@ public:
     void* jitCosSub = nullptr;
     void* jitCos = nullptr;
     void* calculateCF[FLAGS_NULL] = {};
-#endif
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    bool emulateFPU = false;
-    void* reTranslateChunkAddress = nullptr; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
-    void* syncToHostAddress = nullptr;
-    void* syncFromHostAddress = nullptr;
-    void* doSingleOpAddress = nullptr;
-    void* returnToLoopAddress = nullptr; // will be called after a syscall if x64CPU.exitToStartThreadLoop is set to true.  This return will cause the program to return to x64CPU::run()
-    void* jmpAndTranslateIfNecessary = nullptr;
-#ifdef BOXEDWINE_POSIX
-    void* runSignalAddress = nullptr;
-#endif
 #endif
 #ifdef BOXEDWINE_MULTI_THREADED    
     BOXEDWINE_MUTEX normalBlockMutex;

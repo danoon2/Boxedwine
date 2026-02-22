@@ -18,7 +18,7 @@
 
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
 #include "jitMMX.h"
 
 void start_mmx(CPU* cpu) {

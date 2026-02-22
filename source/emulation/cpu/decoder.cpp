@@ -3625,10 +3625,9 @@ public:
     void decode(DecodeData* data, DecodedOp* op) const override {
         DecodeRM::decode(data, op);
         op->imm &= this->mask;
-#ifndef BOXEDWINE_X64
-        if (op->imm==0)
+        if (op->imm == 0) {
             op->inst = Nop;
-#endif
+        }
     }
 private:
     U32 mask;
@@ -4139,10 +4138,9 @@ public:
         } else {
             fetchImm(data, op);            
             op->imm&=0x1f;
-#ifndef BOXEDWINE_X64
-            if (op->imm==0)
+            if (op->imm == 0) {
                 op->inst = Nop;
-#endif
+            }
             switch (G(rm)) {
                 case 2: op->imm = op->imm % 9; break;
                 case 3: op->imm = op->imm % 9; break;
@@ -4177,10 +4175,9 @@ public:
         } else {
             fetchImm(data, op);
             op->imm&=0x1f;
-#ifndef BOXEDWINE_X64
-            if (op->imm==0)
+            if (op->imm == 0) {
                 op->inst = Nop;
-#endif
+            }
             switch (G(rm)) {
                 case 2: op->imm = op->imm % 17; break;
                 case 3: op->imm = op->imm % 17; break;
@@ -4215,10 +4212,9 @@ public:
         } else {
             fetchImm(data, op);
             op->imm&=0x1f;
-#ifndef BOXEDWINE_X64
-            if (op->imm==0)
+            if (op->imm == 0) {
                 op->inst = Nop;
-#endif
+            }
         }
     }
 private:
@@ -6227,20 +6223,15 @@ void DecodedOp::reset() {
 #ifdef _DEBUG
     this->eip = 0;
 #endif
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
     this->runCount = 0;
     this->jumpTargetFlags = 0;
     this->flags2 = 0;
     this->jitLen = 0;
-#endif
-#if defined(BOXEDWINE_DYNAMIC) || defined(BOXEDWINE_BINARY_TRANSLATOR)
     this->pfnJitCode = nullptr;
     blockStart = nullptr;
     blockOpCount = 0;
     blockLen = 0;
-#endif
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    exceptionCount = 0;
 #endif
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
     exceptionCount = 0;
@@ -6451,7 +6442,7 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
             d.opCode = 0;
             d.ea16 = 1;
         }
-#if defined (_DEBUG) || defined (BOXEDWINE_BINARY_TRANSLATOR)
+#if defined (_DEBUG)
         op->eip = d.eip;
 #endif
         d.inst = d.opCode + d.fetch8();
@@ -6474,7 +6465,7 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
         op->lastInst = op->inst;
 #endif
         if (op->inst == Invalid) {
-#if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
+#if defined _DEBUG
             op->originalOp = d.inst;
 #endif
             break;
@@ -6489,7 +6480,7 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
             break;
         }
 #endif
-#if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
+#if defined _DEBUG
         op->originalOp = d.inst;
 #endif        
         if (instructionInfo[op->inst].branch & DECODE_BRANCH_1) {
@@ -6505,7 +6496,7 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
         if (((instructionInfo[op->inst].branch & DECODE_BRANCH_NO_CACHE) || op->inst == CallJd || op->inst == CallJw) && d.eip > furtherestDirectJump) {
             break;
         }
-#ifndef BOXEDWINE_BINARY_TRANSLATOR
+
         // the normal core needs this so that we don't blow the stack while calling the next op
         if (opCount > MAX_OP_COUNT_PER_BLOCK) {
             // c3 and openttd can trigger this
@@ -6513,7 +6504,7 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
             op->next = DecodedOp::allocDone();
             break;
         }
-#endif
+
         if ((instructionInfo[op->inst].branch & DECODE_BRANCH_1)) {
             break;
         }

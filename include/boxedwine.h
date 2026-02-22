@@ -44,12 +44,6 @@
 #include "../platform/mac/atomic_ref.h"
 #endif
 
-#ifdef BOXEDWINE_X64
-#define BOXEDWINE_4K_PAGE_SIZE
-// with BOXEDWINE_USE_SSE_FOR_FPU enabled, quake 2 was about 8% slower, mdk perf was about 3% slower
-#define BOXEDWINE_USE_SSE_FOR_FPU1
-#endif
-
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES) || defined(BOXEDWINE_OPENGL_OSMESA)
 #define BOXEDWINE_OPENGL
 #endif
@@ -61,7 +55,7 @@
 #ifdef BOXEDWINE_MAC_JIT
 #include "TargetConditionals.h"
 #if TARGET_CPU_ARM64
-#define BOXEDWINE_DYNAMIC
+#define BOXEDWINE_JIT
 #define BOXEDWINE_JIT_ARMV8
 #define ASMJIT_NO_X86
 #define BOXEDWINE_MULTI_THREADED
@@ -70,7 +64,7 @@
 #define BOXEDWINE_OPENGL_OSMESA
 #else
 #undef BOXEDWINE_MAC_JIT
-#define BOXEDWINE_DYNAMIC
+#define BOXEDWINE_JIT
 #define BOXEDWINE_JIT_X64
 #define ASMJIT_NO_AARCH64
 #define BOXEDWINE_MULTI_THREADED

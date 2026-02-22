@@ -41,14 +41,6 @@
 #endif
 #endif
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-#define NEXT() cpu->eip.u32+=op->len
-#define NEXT_DONE() 
-#define NEXT_BRANCH1() cpu->eip.u32+=op->len
-#define NEXT_BRANCH2() cpu->eip.u32+=op->len
-#define NEXT_DONE_CALL()
-#define NEXT_BRANCH1_CALL() cpu->eip.u32+=op->len
-#else
 #define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next);
 #define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
 #define NEXT_DONE_JUMP_OR_CALL() cpu->nextOp = cpu->getNextOp(JUMP_TARGET);
@@ -62,7 +54,6 @@
     cpu->nextOp = *(op->data.nextJump);
 
 #define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!op->next) {op->next = cpu->getNextOp(); } cpu->nextOp = op->next;
-#endif
 
 #include "instructions.h"
 #include "normal_arith.h"
@@ -147,13 +138,13 @@ static void initNormalOps() {
     normalOps[TestEnd] = onTestEnd;
 }
 
-#if defined(BOXEDWINE_DYNAMIC)
+#if defined(BOXEDWINE_JIT)
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op);
 #endif
 
 NormalCPU::NormalCPU(KMemory* memory) : CPU(memory) {   
     initNormalOps();
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
     this->firstOp = firstDynamicOp;
     memcpy(this->calculateCF, memory->process->calculateCF, sizeof(calculateCF));
 #else
@@ -201,7 +192,7 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
                 }
                 if (memory->isAddressDynamic(address, nextOp->len)) {
                     nextOp->flags |= OP_FLAG_NO_JIT;
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
                     nextOp->runCount = JIT_RUN_COUNT + 1;
 #endif
                 }
@@ -211,7 +202,7 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
             this->thread->memory->addCode_nolock(startIp, eipLen, op, opCount);            
         }
     }
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
     op->jumpTargetFlags |= jumpTargetFlags;
     if (jumpTargetFlags && (op->jumpTargetFlags & JUMP_TARGET_ASSUMED_FALSE)) {
         kpanic("JUMP_TARGET_ASSUMED_FALSE");
@@ -221,7 +212,7 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
 }
 
 void NormalCPU::run() {
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
     if (nextOp->runCount <= JIT_RUN_COUNT) {
         firstOp(this, nextOp);
     } else {

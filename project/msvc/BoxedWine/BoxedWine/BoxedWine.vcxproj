@@ -274,7 +274,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_IMGUI_DX9;BOXEDWINE_VULKAN;BOXEDWINE_MULTI_THREADED;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_JIT_X86;BOXEDWINE_JIT;BOXEDWINE_IMGUI_DX9;BOXEDWINE_VULKAN;BOXEDWINE_MULTI_THREADED;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -309,7 +309,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_HOST_EXCEPTIONS;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_MULTI_THREADED;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_ZLIB;__TEST;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;_NO_DEBUG_HEAP=0;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_MULTI_THREADED;BOXEDWINE_JIT_X86;BOXEDWINE_JIT;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_ZLIB;__TEST;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;_NO_DEBUG_HEAP=0;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -342,7 +342,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_HOST_EXCEPTIONS;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_HOST_EXCEPTIONS;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_JIT_X64;BOXEDWINE_JIT;BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -376,7 +376,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_SDL;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_JIT;BOXEDWINE_OPENGL_SDL;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -385,7 +385,8 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <UndefinePreprocessorDefinitions>BOXEDWINE_64BIT_MMU</UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DisableAnalyzeExternal>true</DisableAnalyzeExternal>
@@ -411,7 +412,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_HOST_EXCEPTIONS;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_HOST_EXCEPTIONS;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_JIT_X64;BOXEDWINE_JIT;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -445,7 +446,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_DYNAMIC;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_JIT;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -482,7 +483,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_HOST_EXCEPTIONS;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_MULTI_THREADED;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_MULTI_THREADED;BOXEDWINE_JIT_X86;BOXEDWINE_JIT;BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
@@ -553,7 +554,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_HOST_EXCEPTIONS;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_JIT_X64;BOXEDWINE_DYNAMIC;BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_4K_PAGE_SIZE;BOXEDWINE_HOST_EXCEPTIONS;ASMJIT_NO_AARCH64;ASMJIT_STATIC;BOXEDWINE_JIT_X64;BOXEDWINE_JIT;BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
@@ -589,7 +590,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_SDL;BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;WIN32;_NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_JIT;BOXEDWINE_OPENGL_SDL;BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;WIN32;_NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
@@ -884,23 +885,8 @@
     <ClInclude Include="..\..\..\..\platform\sdl\knativeinputSDL.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\kvulkanSDL.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\sdlcallback.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btData.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_bits.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_fpu.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_mmx.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_shift.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_convert.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_minmax.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8\jitArmV8CodeGen.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8\llvm_helper.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_arith.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_bit.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_fpu.h" />
@@ -968,11 +954,6 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings_op.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_xchg.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x32\jitX86CodeGen.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Asm.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Data.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Ops.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\codePageData.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\kmemory_soft.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_code_page.h" />
@@ -3228,23 +3209,8 @@
     <ClCompile Include="..\..\..\..\platform\windows\platformOpenGL.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platformThreads.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\winmidi.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btData.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_bits.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_fpu.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_mmx.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_shift.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_convert.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_minmax.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8\jitArmV8CodeGen.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_arith.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_bit.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_fpu.cpp" />
@@ -3271,11 +3237,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\srcgen.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x32\jitX86CodeGen.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Data.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Ops.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\codePageData.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_code_page.cpp" />

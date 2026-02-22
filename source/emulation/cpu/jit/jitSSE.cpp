@@ -18,7 +18,7 @@
 
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
 #include "jitSSE.h"
 
 void JitSSE::opXmmXmm(DecodedOp* op, XmmXmmCallback callback, bool loadDest) {

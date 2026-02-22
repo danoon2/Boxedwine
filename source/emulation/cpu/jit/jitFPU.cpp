@@ -18,7 +18,7 @@
 
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DYNAMIC
+#ifdef BOXEDWINE_JIT
 #include "jitFPU.h"
 
 RegPtr JitFPU::calculateIndexReg(RegPtr topReg, U32 index) {

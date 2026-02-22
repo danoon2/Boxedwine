@@ -19,7 +19,7 @@
 #include "boxedwine.h"
 #include "knativesystem.h"
 
-#if defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
+#if defined(BOXEDWINE_MULTI_THREADED)
 
 std::atomic<int> platformThreadCount = 0;
 void platformInitExceptionHandling();
