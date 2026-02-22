@@ -58,7 +58,7 @@ bool BNativeHeap::containsAddress(void* p) {
 	return false;
 }
 
-void* BNativeHeap::alloc(U32 len) {
+void* BNativeHeap::alloc(U32 len, U32* blockSize) {
 	U32 index = powerOf2(len + 4);
 	if (index < 4) {
 		index = 4;
@@ -76,6 +76,9 @@ void* BNativeHeap::alloc(U32 len) {
             *((U32*)result) = count * BNATIVEHEAD_64K_BLOCK_SIZE;
         }
 		largeBlocks.set(result, count * BNATIVEHEAD_64K_BLOCK_SIZE);
+		if (blockSize) {
+			*blockSize = BNATIVEHEAD_64K_BLOCK_SIZE * count - 4;
+		}
 		return result + 4;
 	}
 	if (buckets.contains(index) && buckets[index].size()) {
@@ -101,6 +104,9 @@ void* BNativeHeap::alloc(U32 len) {
             } else {
                 *address = index;
             }
+			if (blockSize) {
+				*blockSize = size - 4;
+			}
 			return result;
 		}
 	}
@@ -119,7 +125,7 @@ void* BNativeHeap::alloc(U32 len) {
         }
 		buckets[index].push_back(start + 4);
 	}
-	return alloc(len);
+	return alloc(len, blockSize);
 }
 
 void BNativeHeap::free(void* address) {

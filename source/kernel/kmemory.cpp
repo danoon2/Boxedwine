@@ -465,7 +465,18 @@ void KMemory::clearOpCache() {
 
 void* KMemory::allocCodeMemory(U32 len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex)
-    return data->codeMemory.alloc(len);
+    U32 blockSize = 0;
+    void* result = data->codeMemory.alloc(len, &blockSize);
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    // don't erase when jit block was deleted, the memory free has a delay before it can be re-used, during that delay we need to keep this info in case there was another thread running the code
+    auto startIt = data->jitAddressToEip.upper_bound((U8*)result);
+    auto endIt = data->jitAddressToEip.lower_bound((U8*)result + blockSize);
+    auto it = startIt;
+    while (it != endIt) {
+        it = data->jitAddressToEip.erase(it);
+    }
+#endif
+    return result;
 }
 
 bool KMemory::isCode(void* p) {
@@ -508,9 +519,6 @@ bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, b
     if (clearOps) {
         data->opCache.remove(address, blockLen, becauseOfWrite);
     }
-#ifdef BOXEDWINE_HOST_EXCEPTIONS
-    data->jitCache.erase(blockOp->pfnJitCode);
-#endif
     void* pMem = (void*)blockOp->pfnJitCode;
     blockOp->pfnJitCode = nullptr;
     data->codeMemory.free(pMem);

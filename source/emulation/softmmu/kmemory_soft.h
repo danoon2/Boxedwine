@@ -28,9 +28,9 @@ class DecodedOp;
 
 class JitData {
 public:
-    JitData() : op(nullptr), eip(0) {}
-    JitData(DecodedOp* op, U32 eip) : op(op), eip(eip) {}
-    DecodedOp* op;
+    JitData() : len(0), eip(0) {}
+    JitData(U32 len, U32 eip) : len(len), eip(eip) {}
+    U32 len;
     U32 eip;
 };
 
@@ -56,15 +56,21 @@ public:
     KMemory* memory;
 
     MMU mmu[K_NUMBER_OF_PAGES];
-
+#ifdef BOXEDWINE_MEM_CACHE
+#ifndef BOXEDWINE_HOST_EXCEPTIONS
+#error BOXEDWINE_MEM_CACHE requires BOXEDWINE_HOST_EXCEPTIONS
+#endif
+    U8* readCache[K_NUMBER_OF_PAGES];
+    U8* writeCache[K_NUMBER_OF_PAGES];
+#endif
     CodePage* getOrCreateCodePage(U32 address);
 
     DecodedOpCache opCache;
     BNativeHeap codeMemory;
 
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-    DecodedOp* findOpFromJitAddress(void* jitAddress, U32& eipOfOp);
-    std::map<void*, JitData> jitCache;
+    bool findOpFromJitAddress(U8* jitAddress, U32& eipOfOp);
+    std::map<U8*, JitData> jitAddressToEip;
 #endif
 };
 

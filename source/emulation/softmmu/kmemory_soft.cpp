@@ -43,6 +43,10 @@ KMemoryData* getMemData(KMemory* memory) {
 
 KMemoryData::KMemoryData(KMemory* memory) : memory(memory) {
     ::memset(mmu, 0, sizeof(mmu));
+#ifdef BOXEDWINE_MEM_CACHE
+    ::memset(readCache, 0, sizeof(readCache));
+    ::memset(writeCache, 0, sizeof(writeCache));
+#endif
     if(!callbackRam.value) {
         callbackRam = ramPageAlloc();
         addCallback(onExitSignal);
@@ -63,6 +67,18 @@ bool KMemoryData::isPageValid(U32 page) {
 }
 
 void KMemoryData::onPageChanged(U32 index) {
+#ifdef BOXEDWINE_MEM_CACHE
+    if (mmu[index].canReadRam) {
+        readCache[index] = (U8*)((mmu[index].ramIndex << K_PAGE_SHIFT) - (index << K_PAGE_SHIFT));
+    } else {
+        readCache[index] = (U8*)((U8*)0 - (index << K_PAGE_SHIFT));
+    }
+    if (mmu[index].canWriteRam) {
+        writeCache[index] = (U8*)((mmu[index].ramIndex << K_PAGE_SHIFT) - (index << K_PAGE_SHIFT));
+    } else {
+        writeCache[index] = (U8*)((U8*)0 - (index << K_PAGE_SHIFT));
+    }
+#endif
 }
 
 void KMemoryData::addCallback(OpCallback func) {
@@ -222,24 +238,18 @@ CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
     return codePage;
 }
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-DecodedOp* KMemoryData::findOpFromJitAddress(void* jitAddress, U32& eipOfOp) {
-    auto it = jitCache.lower_bound(jitAddress);
-    if (it == jitCache.end()) {
+bool KMemoryData::findOpFromJitAddress(U8* jitAddress, U32& eipOfOp) {
+    auto it = jitAddressToEip.lower_bound(jitAddress);
+    if (it == jitAddressToEip.end()) {
         it = std::prev(it);
-    } else if (it != jitCache.begin()) {
+    } else if (it != jitAddressToEip.begin()) {
         it = std::prev(it);
     }
-    DecodedOp* nextOp = it->second.op;
-    eipOfOp = it->second.eip;
-    DecodedOp* op = nullptr;
-    while (nextOp && nextOp->next) {
-        if (jitAddress >= nextOp->pfnJitCode && jitAddress < (U8*)nextOp->pfnJitCode + nextOp->jitLen) {
-            op = nextOp;
-            break;
-        }
-        eipOfOp += nextOp->len;
-        nextOp = nextOp->next;
+
+    if (jitAddress >= it->first && jitAddress < it->first + it->second.len) {
+        eipOfOp = it->second.eip;
+        return true;
     }
-    return op;
+    return false;
 }
 #endif

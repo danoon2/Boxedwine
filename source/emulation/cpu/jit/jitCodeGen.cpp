@@ -934,9 +934,6 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
     U8* begin = createDynamicExecutableMemory(&size);
 
     removeJIT(op, blockOpCount);
-#ifdef BOXEDWINE_HOST_EXCEPTIONS
-    getMemData(cpu->memory)->jitCache[begin] = JitData(op, startingEip - cpu->seg[CS].address);
-#endif
     op->blockLen = emulatedLen;
     op->blockOpCount = blockOpCount;
 #ifdef _DEBUG
@@ -962,6 +959,7 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
     }
 #endif
     DecodedOp* lastJitOp = nullptr;
+    U32 lastJitEip = 0;
 
     for (U32 i = 0; i < blockOpCount; i++) {
         U32 bufferIndex = 0;
@@ -977,7 +975,11 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
             nextOp->pfn = cpu->thread->process->startJITOp;
             if (lastJitOp) {
                 lastJitOp->jitLen = (U8*)nextOp->pfnJitCode - (U8*)lastJitOp->pfnJitCode;
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+                getMemData(cpu->memory)->jitAddressToEip[(U8*)lastJitOp->pfnJitCode] = JitData(lastJitOp->jitLen, lastJitEip - cpu->seg[CS].address);
+#endif
             }
+            lastJitEip = address;
             lastJitOp = nextOp;
         }
         nextOp->flags |= OP_FLAG_JIT;
@@ -988,6 +990,9 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
     }
     if (lastJitOp && !lastJitOp->jitLen) {
         lastJitOp->jitLen = size - ((U8*)lastJitOp->pfnJitCode - (U8*)begin);
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        getMemData(cpu->memory)->jitAddressToEip[(U8*)lastJitOp->pfnJitCode] = JitData(lastJitOp->jitLen, lastJitEip - cpu->seg[CS].address);
+#endif
     }
 }
 
@@ -1100,6 +1105,11 @@ void JitCodeGen::orCPUFlags(RegPtr flags) {
 }
 
 RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, RegPtr tmp, bool checkAlignment) {
+#ifdef BOXEDWINE_MEM_CACHE
+    if (!customMemoryOp && !failedMemoryOp && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+        return readMemCache(width, addressReg, tmp);
+    }
+#endif
     if (!tmp) {
         tmp = getTmpReg8();
     }    
@@ -1194,9 +1204,13 @@ RegPtr JitCodeGen::read(JitWidth width, MemPtr mem, RegPtr result) {
     }
 
     if (mem->rm || mem->sib) {
-        return read(width, calculateAddress(mem));
+        return read(width, calculateAddress(mem), nullptr, nullptr, result);
     }
-
+#ifdef BOXEDWINE_MEM_CACHE
+    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+        return readMemCache(width, mem->offset, result);
+    }
+#endif
     if (!result) {
         result = getTmpReg8();
     }
@@ -1238,6 +1252,12 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, RegPtr src) {
         write(width, calculateAddress(mem), src);
         return;
     }
+#ifdef BOXEDWINE_MEM_CACHE
+    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+        writeMemCache(width, mem->offset, src);
+        return;
+    }
+#endif
     U32 address = mem->offset;
     if (width == JitWidth::b16) {
         if ((address & 0xFFF) == 0xFFF) {
@@ -1265,6 +1285,12 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, RegPtr src) {
 }
 
 void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment) {
+#ifdef BOXEDWINE_MEM_CACHE
+    if (!customMemoryOp && !failedMemoryOp && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+        writeMemCache(width, addressReg, src);
+        return;
+    }
+#endif
     RegPtr tmp = getTmpReg();
 
     RegPtr offsetReg;
@@ -1326,10 +1352,17 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
         writeHost(width, mem, imm);
         return;
     }
+#ifdef BOXEDWINE_MEM_CACHE
+    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && (mem->rm || mem->sib)) {
+        writeMemCache(width, calculateAddress(mem), imm);
+        return;
+    }
+#endif
+
     RegPtr addressReg = calculateAddress(mem);
     RegPtr tmp = getTmpReg();
 
-    if (mem->rm || mem->sib) {             
+    if (mem->rm || mem->sib) {
         RegPtr offsetReg;
 
         shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
@@ -1356,6 +1389,12 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
         andValueNative(tmp, ~0xfff);
         writeHost(width, createMemPtr(tmp, offsetReg, 0, 0), imm);
     } else {
+#ifdef BOXEDWINE_MEM_CACHE
+        if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+            writeMemCache(width, mem->offset, imm);
+            return;
+        }
+#endif
         U32 address = mem->offset;
 
         shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
@@ -1386,8 +1425,14 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
 }
 
 RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint) {
-    RegPtr offsetReg;
     RegPtr tmp = getTmpRegWithHint(hint);
+
+#ifdef BOXEDWINE_MEM_CACHE
+    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+        return readWriteMemCache(width, addressReg, prepareWrite, tmp);
+    }
+#endif
+    RegPtr offsetReg;    
 
     shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
     readMMU(tmp, tmp);

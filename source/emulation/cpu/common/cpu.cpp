@@ -1222,7 +1222,7 @@ void* CPU::startException(U32 address, bool readAddress) {
     return 0;
 }
 
-void* CPU::handleAccessException(DecodedOp* op) {
+void* CPU::handleAccessException(DecodedOp* op) {    
     if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
         op->exceptionCount++;
     } else if (op->blockStart) {
@@ -1234,8 +1234,7 @@ void* CPU::handleAccessException(DecodedOp* op) {
             eipDistance += nextOp->len;
             nextOp = nextOp->next;
             count++;
-        }
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
+        }        
         if (nextOp == op) {
             memory->removeCodeBlock(this->eip.u32 - eipDistance, op->blockStart, false, false);
         }

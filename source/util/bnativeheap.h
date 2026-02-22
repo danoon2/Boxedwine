@@ -25,7 +25,7 @@ public:
 		freeAll();
 	}
 
-	void* alloc(U32 len);
+	void* alloc(U32 len, U32* blockSize = nullptr);
 	void free(void* p);
 	void freeAll();
 	bool containsAddress(void* p);

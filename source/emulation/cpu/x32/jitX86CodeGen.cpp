@@ -246,6 +246,16 @@ public:
     RegPtr getStringRegEsi() override;
     RegPtr getStringRegEdi() override;
 
+#ifdef BOXEDWINE_MEM_CACHE
+    void writeMemCache(JitWidth width, RegPtr addressReg, RegPtr src) override;
+    void writeMemCache(JitWidth width, RegPtr addressReg, U32 value) override;
+    void writeMemCache(JitWidth width, U32 mem, RegPtr src) override;
+    void writeMemCache(JitWidth width, U32 mem, U32 imm) override;
+    RegPtr readMemCache(JitWidth width, RegPtr addressReg, RegPtr tmp = nullptr) override;
+    RegPtr readMemCache(JitWidth width, U32 mem, RegPtr result = nullptr) override;
+    RegPtr readWriteMemCache(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, RegPtr tmp) override;
+#endif
+
     void writeEip(RegPtr eip) override;
     void writeEip(U32 eip) override;
     bool isTmpRegAvailable() override;    
@@ -1128,6 +1138,83 @@ RegPtr JitX86CodeGen::getTmpReg8(U8 reg, bool delayed, S8 hint) {
     return result;
 }
 
+#ifdef BOXEDWINE_MEM_CACHE
+RegPtr JitX86CodeGen::readWriteMemCache(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, RegPtr tmp) {
+    RegPtr value = getTmpRegForCallResult();
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+    compiler.mov(R64(tmp), Mem(HOST_MMU, RN(tmp), 3, K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
+    MemPtr mem = createMemPtr(tmp, addressReg, 0, 0);
+
+    readHost(width, mem, value);
+    prepareWrite(value);
+    writeHost(width, mem, value);
+    return value;
+}
+
+void JitX86CodeGen::writeMemCache(JitWidth width, RegPtr addressReg, RegPtr src) {
+#ifdef _DEBUG
+    writeCurrentEip(0);
+#endif
+    RegPtr tmp = getTmpReg();
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+    compiler.mov(R64(tmp), Mem(HOST_MMU, RN(tmp), 3, K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
+    writeHost(width, createMemPtr(tmp, addressReg, 0, 0), src);
+}
+
+void JitX86CodeGen::writeMemCache(JitWidth width, RegPtr addressReg, U32 src) {
+#ifdef _DEBUG
+    writeCurrentEip(0);
+#endif
+    RegPtr tmp = getTmpReg();
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+    compiler.mov(R64(tmp), Mem(HOST_MMU, RN(tmp), 3, K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
+    writeHost(width, createMemPtr(tmp, addressReg, 0, 0), src);
+}
+
+void JitX86CodeGen::writeMemCache(JitWidth width, U32 mem, RegPtr src) {
+#ifdef _DEBUG
+    writeCurrentEip(0);
+#endif
+    RegPtr tmp = getTmpReg();
+    compiler.mov(R64(tmp), Mem(HOST_MMU, (mem >> K_PAGE_SHIFT) * sizeof(void*) + K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
+    writeHost(width, createMemPtr(tmp, mem), src);
+}
+
+void JitX86CodeGen::writeMemCache(JitWidth width, U32 mem, U32 imm) {
+#ifdef _DEBUG
+    writeCurrentEip(0);
+#endif
+    RegPtr tmp = getTmpReg();
+    compiler.mov(R64(tmp), Mem(HOST_MMU, (mem >> K_PAGE_SHIFT) * sizeof(void*) + K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
+    writeHost(width, createMemPtr(tmp, mem), imm);
+}
+
+RegPtr JitX86CodeGen::readMemCache(JitWidth width, RegPtr addressReg, RegPtr tmp) {
+    if (!tmp) {
+        tmp = getTmpReg8();
+    }
+#ifdef _DEBUG
+    writeCurrentEip(0);
+#endif
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+    compiler.mov(R64(tmp), Mem(HOST_MMU, RN(tmp), 3, K_NUMBER_OF_PAGES * sizeof(void*)));
+    readHost(width, createMemPtr(tmp, addressReg, 0, 0), tmp);
+    return tmp;
+}
+
+RegPtr JitX86CodeGen::readMemCache(JitWidth width, U32 mem, RegPtr result) {
+    if (!result) {
+        result = getTmpReg8();
+    }
+#ifdef _DEBUG
+    writeCurrentEip(0);
+#endif
+    compiler.mov(R64(result), Mem(HOST_MMU, (mem >> K_PAGE_SHIFT) * sizeof(void*) + K_NUMBER_OF_PAGES * sizeof(void*)));
+    readHost(width, createMemPtr(result, mem), result);
+    return result;
+}
+#endif
+
 RegPtr JitX86CodeGen::readEip() {
     RegPtr result = getTmpReg();
     compiler.mov(R32(result), Mem(HOST_CPU, offsetof(CPU, eip.u32)));    
@@ -1294,7 +1381,7 @@ RegPtr JitX86CodeGen::getReadOnlyReg(U8 reg, bool delayed, S8 hint) {
 }
 
 RegPtr JitX86CodeGen::getReadOnlyReg8(U8 reg, bool delayed, S8 hint) {
-    if (hint >= 0 && hint < 4 && regCache[reg] != INVALID_REG && regCache[reg] < 4) {
+    if (regCache[reg] != INVALID_REG && regCache[reg] < 4) {
         return std::shared_ptr<JitReg>(new JitReg(regCache[reg], reg), [this](JitReg* p) {
             if (p->isLoaded()) {
                 regUsed[p->hardwareReg()] = false;

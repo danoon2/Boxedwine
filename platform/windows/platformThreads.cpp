@@ -257,21 +257,19 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
     InException inException(cpu);
 
     if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION || ep->ExceptionRecord->ExceptionCode == EXCEPTION_DATATYPE_MISALIGNMENT) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex); // jitCache needs this
         U32 eip = 0;
-        DecodedOp* op = getMemData(cpu->memory)->findOpFromJitAddress((void*)ep->ContextRecord->REG_IP, eip);
-        if (!op) {
+        if (!getMemData(cpu->memory)->findOpFromJitAddress((U8*)ep->ContextRecord->REG_IP, eip)) {
+            // race condition, someone removed this jit code while we were using it.
             return EXCEPTION_CONTINUE_SEARCH;
         }        
 #ifdef _DEBUG
         if (eip != cpu->eip.u32) {
-            kpanic_fmt("%x/%x %s", cpu->eip.u32, eip, op->name());
-        }
-        DecodedOp* op1 = cpu->getNextOp();
-        if (op1 != op) {
-            kpanic_fmt("%x/%x %s/%s", cpu->eip.u32, eip, op1->name(), op->name());
-        }
+            kpanic_fmt("%x/%x", cpu->eip.u32, eip);
+        }        
 #endif
         cpu->eip.u32 = eip;
+        DecodedOp* op = cpu->getNextOp();
 #ifndef BOXEDWINE_64
         if (op->inst == Movsd || op->inst == Movsw || op->inst == Movsb) {
             cpu->reg[6].u32 = ep->ContextRecord->Esi;
