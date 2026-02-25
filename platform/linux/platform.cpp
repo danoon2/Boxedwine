@@ -338,6 +338,11 @@ bool platformHasBMI2() {
 }
 #endif
 
+#ifdef __EMSCRIPTEN__
+bool enableHardwareTSO() {
+    return false;
+}
+#else
 #include <linux/prctl.h>
 #include <sys/mman.h>
 #include <sys/user.h>
@@ -372,3 +377,4 @@ bool enableHardwareTSO() {
     }
     return false;
 }
+#endif
