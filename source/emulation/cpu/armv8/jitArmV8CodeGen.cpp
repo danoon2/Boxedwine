@@ -695,7 +695,7 @@ public:
     void pmovmskbR32Xmm(RegPtr dst, SSERegPtr src) override;
 
     void dynamic_rdtsc(DecodedOp* op) override;
-    void dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlagType flagsType, std::function<void(RegPtr src, RegPtr dst, RegPtr address)> atomicCallback, std::function<void(RegPtr result, RegPtr dstMem, RegPtr srcReg)> callback, bool writebackReg = false, bool addCF = false, bool immSrc = false);
+    void dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlagType flagsType, std::function<void(RegPtr src, RegPtr dst, RegPtr address)> atomicCallback, std::function<void(RegPtr result, RegPtr dstMem, RegPtr srcReg)> callback, bool writebackReg = false, bool addCF = false, bool immSrc = false, bool hasSrc = true);
     void dynamic_arith_value_lock(JitWidth width, DecodedOp* op, U32 value, LazyFlagType flagsType, std::function<void(RegPtr src, RegPtr dst, RegPtr address)> atomicCallback, std::function<void(RegPtr result, RegPtr dst, U32 src)> callback);
 
     /*
@@ -707,6 +707,7 @@ public:
 */
     void ldaxr(JitWidth width, asmjit::a64::Gp reg, Mem mem);
     void stlxr(JitWidth width, asmjit::a64::Gp cond, asmjit::a64::Gp reg, Mem mem);
+    void casal(JitWidth width, asmjit::a64::Gp src, asmjit::a64::Gp dst, Mem mem);
 
     void dynamic_cmpxchg8b_lock(DecodedOp* op) override;
     void dynamic_cmpxchg_lock(JitWidth width, DecodedOp* op);
@@ -5848,6 +5849,22 @@ void JitArmV8CodeGen::stlxr(JitWidth width, asmjit::a64::Gp cond, asmjit::a64::G
     }
 }
 
+void JitArmV8CodeGen::casal(JitWidth width, asmjit::a64::Gp src, asmjit::a64::Gp dst, Mem mem) {
+    switch (width) {
+    case JitWidth::b8:
+        compiler.casalb(src, dst, mem);
+        break;
+    case JitWidth::b16:
+        compiler.casalh(src, dst, mem);
+        break;
+    case JitWidth::b32:
+        compiler.casal(src, dst, mem);
+        break;
+    default:
+        kpanic("JitArmV8CodeGen::casal");
+    }
+}
+
 void JitArmV8CodeGen::dynamic_xchge32r32_lock(DecodedOp* op) {
     JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         compiler.add(R64(address), R64(address), R64(offset));
@@ -5919,18 +5936,22 @@ void JitArmV8CodeGen::dynamic_xchge8r8_lock(DecodedOp* op) {
     });
 }
 
-void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlagType flagsType, std::function<void(RegPtr src, RegPtr dst, RegPtr address)> atomicCallback, std::function<void(RegPtr result, RegPtr dstMem, RegPtr srcReg)> callback, bool writebackReg, bool addCF, bool immSrc) {
-    JitCodeGen::write(width, calculateEaa(op), nullptr, [immSrc, addCF, atomicCallback, writebackReg, width, flagsType, op, callback, this](RegPtr address, RegPtr offset) {
+void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlagType flagsType, std::function<void(RegPtr src, RegPtr dst, RegPtr address)> atomicCallback, std::function<void(RegPtr result, RegPtr dstMem, RegPtr srcReg)> callback, bool writebackReg, bool addCF, bool immSrc, bool hasSrc) {
+    JitCodeGen::write(width, calculateEaa(op), nullptr, [hasSrc, immSrc, addCF, atomicCallback, writebackReg, width, flagsType, op, callback, this](RegPtr address, RegPtr offset) {
         compiler.add(R64(address), R64(address), R64(offset));
         U32 needsToSetFlags = 0;
         const LazyFlags* flags = lazyFlags[flagsType];
         bool direct = width == JitWidth::b32 && !(flags && (flags->usesResult(needsToSetFlags) || flags->usesDst(needsToSetFlags)));
-        RegPtr reg = immSrc ? loadConst(op->imm) : direct ? getReg(width, op->reg) : getReadOnlyRegInLower(width, op->reg);
+        RegPtr reg;
+        
+        if (hasSrc) {
+            reg = immSrc ? loadConst(op->imm) : direct ? getReg(width, op->reg) : getReadOnlyRegInLower(width, op->reg);
+        }
         RegPtr cf = addCF ? getCF() : nullptr;
 
         arithSetup(op, needsToSetFlags, flagsType, cf);
 
-        if (flags && flags->usesSrc(needsToSetFlags)) {
+        if (hasSrc && flags && flags->usesSrc(needsToSetFlags)) {
             storeLazyFlagsSrc(reg);
         }
 
@@ -5954,6 +5975,24 @@ void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlag
             } else {
                 atomicCallback(reg, reg, address);
             }
+        } else if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
+            Label label = compiler.new_label();
+            RegPtr cond = getTmpReg();
+            RegPtr prvMemSrc = getTmpReg();
+
+            readHost(width, createMemPtr(address, 0), dst, false);
+            
+            compiler.bind(label);
+            
+            compiler.mov(R32(prvMemSrc), R32(dst));
+            callback(result, dst, reg);
+            casal(width, R32(dst), R32(result), Mem(R64(address)));
+            compiler.sub(R32(cond), R32(dst), R32(prvMemSrc));
+            compiler.cbnz(R32(cond), label);
+            dst = prvMemSrc;
+            if (writebackReg) {
+                kpanic("JitArmV8CodeGen::dynamic_arith_lock");
+            }
         } else {
             Label label = compiler.new_label();
             RegPtr cond = getTmpReg();
@@ -5970,7 +6009,10 @@ void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlag
                 mov(width, reg, dst);
             }
         }
-        if (flags && flags->usesDst(needsToSetFlags)) {
+        // this is a bit backwards to neg flags, perhaps, should switch to using dst instead of src for neg flags
+        if (!hasSrc && flags && flags->usesSrc(needsToSetFlags)) {
+            storeLazyFlagsSrc(dst);
+        } else if (flags && flags->usesDst(needsToSetFlags)) {
             storeLazyFlagsDest(dst);
         }
         if (flags && flags->usesResult(needsToSetFlags)) {
@@ -6595,21 +6637,21 @@ void JitArmV8CodeGen::dynamic_note8_lock(DecodedOp* op) {
 void JitArmV8CodeGen::dynamic_nege32_lock(DecodedOp* op) {
     dynamic_arith_lock(JitWidth::b32, op, FLAGS_NEG32, nullptr, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
         compiler.neg(R32(result), R32(dstMem));
-    });
+    }, false, false, false, false);
 }
 
 void JitArmV8CodeGen::dynamic_nege16_lock(DecodedOp* op) {
     dynamic_arith_lock(JitWidth::b16, op, FLAGS_NEG16, nullptr, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
         compiler.sxth(R32(result), R32(dstMem));
         compiler.neg(R32(result), R32(result));
-    });
+    }, false, false, false, false);
 }
 
 void JitArmV8CodeGen::dynamic_nege8_lock(DecodedOp* op) {
-    dynamic_arith_lock(JitWidth::b16, op, FLAGS_NEG8, nullptr, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+    dynamic_arith_lock(JitWidth::b8, op, FLAGS_NEG8, nullptr, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
         compiler.sxtb(R32(result), R32(dstMem));
         compiler.neg(R32(result), R32(result));
-    });
+    }, false, false, false, false);
 }
 /*
 void JitArmV8CodeGen::dynamic_btse32_lock(DecodedOp* op) {
