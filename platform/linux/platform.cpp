@@ -337,3 +337,38 @@ bool platformHasBMI2() {
     return false;
 }
 #endif
+
+#include <linux/prctl.h>
+#include <sys/mman.h>
+#include <sys/user.h>
+#include <sys/prctl.h>
+
+#ifndef PR_GET_MEM_MODEL
+#define PR_GET_MEM_MODEL 0x6d4d444c
+#endif
+#ifndef PR_SET_MEM_MODEL
+#define PR_SET_MEM_MODEL 0x4d4d444c
+#endif
+#ifndef PR_SET_MEM_MODEL_DEFAULT
+#define PR_SET_MEM_MODEL_DEFAULT 0
+#endif
+#ifndef PR_SET_MEM_MODEL_TSO
+#define PR_SET_MEM_MODEL_TSO 1
+#endif
+
+bool enableHardwareTSO() {
+    int value = prctl(PR_GET_MEM_MODEL, 0, 0, 0, 0);
+    if (value == -1) {
+        return false;
+    }
+
+    if (value == PR_SET_MEM_MODEL_DEFAULT) {
+        value = prctl(PR_SET_MEM_MODEL, PR_SET_MEM_MODEL_TSO, 0, 0, 0);
+        if (value == 0) {
+            return true;
+        }
+    } else if (value == PR_SET_MEM_MODEL_TSO) {
+        return true;
+    }
+    return false;
+}

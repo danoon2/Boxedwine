@@ -41,7 +41,7 @@ enum class TSOMode {
     Hardware
 };
 
-TSOMode tsoMode = TSOMode::None;
+static TSOMode tsoMode = TSOMode::None;
 
 #define NUMBER_OF_REGS 31
 #define NUMBER_OF_VREGS 32
@@ -155,6 +155,8 @@ asmjit::a64::Gp R32(RegPtr reg) {
 
 using MakeSSE = Vec(SSERegPtr reg);
 
+bool enableHardwareTSO();
+
 class JitArmV8CodeGen : public JitSSE, asmjit::ErrorHandler {
 public:  
     void handle_error(asmjit::Error err, const char* message, asmjit::BaseEmitter* origin) override {
@@ -162,10 +164,10 @@ public:
     }
 
     JitArmV8CodeGen(CPU* cpu) : JitSSE(cpu) {
-#ifdef BOXEDWINE_MSVC
         static bool initialized = false;
         if (!initialized) {
             initialized = true;
+#ifdef BOXEDWINE_MSVC
             U64 features = get_ID_AA64ISAR0_EL1();
             U64 atomicLevel = ((int64_t)(features << (60 - 20)) >> 60);
             if (atomicLevel >= 1) {
@@ -183,13 +185,18 @@ public:
             if (atomicLevel >= 3) {
                 rt._cpu_features.add(asmjit::CpuFeatures::ARM::kLRCPC3);
             }
-        }
 #endif
-        if (tsoMode == TSOMode::Automatic) {
-            if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLRCPC2)) {
-                tsoMode = TSOMode::FEAT_LRCPC2;
-            } else {
-                tsoMode = TSOMode::None;
+#ifdef __linux__
+            if (enableHardwareTSO()) {
+                tsoMode == TSOMode::Hardware;
+            } else
+#endif
+            if (tsoMode == TSOMode::Automatic) {
+                if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLRCPC2)) {
+                    tsoMode = TSOMode::FEAT_LRCPC2;
+                } else {
+                    tsoMode = TSOMode::None;
+                }
             }
         }
         code.init(rt.environment());
@@ -5962,6 +5969,7 @@ void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlag
             reg = getTmpIfNotTmp(reg);
             addReg(width, reg, cf);
         }
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (atomicCallback && rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
             if (width != JitWidth::b32 || (flags && (flags->usesResult(needsToSetFlags) || flags->usesDst(needsToSetFlags)))) {
                 atomicCallback(reg, dst, address);
@@ -5975,7 +5983,9 @@ void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlag
             } else {
                 atomicCallback(reg, reg, address);
             }
-        } else if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
+        } else 
+#endif
+        if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
             Label label = compiler.new_label();
             RegPtr cond = getTmpReg();
             RegPtr prvMemSrc = getTmpReg();
@@ -5991,7 +6001,8 @@ void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlag
             compiler.cbnz(R32(cond), label);
             dst = prvMemSrc;
             if (writebackReg) {
-                kpanic("JitArmV8CodeGen::dynamic_arith_lock");
+                reg = getReg(width, op->reg);
+                mov(width, reg, dst);
             }
         } else {
             Label label = compiler.new_label();
@@ -6037,6 +6048,7 @@ void JitArmV8CodeGen::dynamic_arith_value_lock(JitWidth width, DecodedOp* op, U3
         RegPtr dst = getTmpReg();
         RegPtr result = getTmpReg();
         
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
             RegPtr reg = loadConst(value);
             if (width != JitWidth::b32 || (flags && (flags->usesResult(needsToSetFlags) || flags->usesDst(needsToSetFlags)))) {
@@ -6047,6 +6059,23 @@ void JitArmV8CodeGen::dynamic_arith_value_lock(JitWidth width, DecodedOp* op, U3
             } else {
                 atomicCallback(reg, reg, address);
             }
+        } else 
+#endif
+        if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
+            Label label = compiler.new_label();
+            RegPtr cond = getTmpReg();
+            RegPtr prvMemSrc = getTmpReg();
+
+            readHost(width, createMemPtr(address, 0), dst, false);
+
+            compiler.bind(label);
+
+            compiler.mov(R32(prvMemSrc), R32(dst));
+            callback(result, dst, value);
+            casal(width, R32(dst), R32(result), Mem(R64(address)));
+            compiler.sub(R32(cond), R32(dst), R32(prvMemSrc));
+            compiler.cbnz(R32(cond), label);
+            dst = prvMemSrc;
         } else {
             Label label = compiler.new_label();
             RegPtr cond = getTmpReg();
