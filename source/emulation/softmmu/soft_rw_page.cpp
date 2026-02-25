@@ -137,7 +137,7 @@ U8* RWPage::internalGetRamPtr(MMU* mmu, U32 address, bool write) {
             U32 pageIndex = address >> K_PAGE_SHIFT;
             mmu->setPage(memory, pageIndex, PageType::Ram, ram);
             ramPageRelease(ram);
-            getMemData(memory)->onPageChanged(address >> K_PAGE_SHIFT);
+            getMemData(memory)->onPageChanged(pageIndex);
         }
     }
     return ramPageGet((RamPage)mmu->ramIndex);

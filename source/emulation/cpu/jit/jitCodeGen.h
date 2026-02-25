@@ -176,9 +176,7 @@ protected:
     virtual void commitJIT(DecodedOp* op);
     virtual U8* createStartJITCode() = 0;
     virtual bool compileOps(DecodedOp* op);
-    virtual void preCommitJIT() {}
     virtual U8* createDynamicExecutableMemory(U32* pSize = nullptr);
-    virtual void patch(U8* begin) {}
     virtual void createHelpers() {}
     RegPtr callGetCondition(JitConditional condition, RegPtr resultReg = nullptr);
     RegPtr calculateCondition(JitConditional condition, RegPtr resultReg = nullptr);

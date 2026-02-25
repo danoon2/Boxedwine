@@ -589,7 +589,18 @@ U32 Platform::getPageAllocationGranularity() {
 }
 
 U32 Platform::getPagePermissionGranularity() {
-    return 1;
+    static U32 granularity;
+
+    if (!granularity) {
+        SYSTEM_INFO sSysInfo;
+
+        GetSystemInfo(&sSysInfo);
+        if ((sSysInfo.dwAllocationGranularity & K_PAGE_SIZE) != 0) {
+            kpanic_fmt("Unexpected host permission granularity size: %d", sSysInfo.dwAllocationGranularity);
+        }
+        granularity = sSysInfo.dwPageSize;
+    }
+    return granularity / K_PAGE_SIZE;
 }
 
 U32 Platform::allocateNativeMemory(U64 address) {

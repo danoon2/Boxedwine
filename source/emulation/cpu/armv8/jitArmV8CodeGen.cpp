@@ -58,10 +58,10 @@ static bool isTmp[] = { false, false, false, false, false, false, false, false,
                         false,  true,  false,  false,  false,  true, true, true,
                         true, true, false, false, false, false, false, false };
 
-static U8 regCache[] = { 0, 3, 1, 2, 4, 5, 6, 7 };
+U8 regCache[] = { 0, 3, 1, 2, 4, 5, 6, 7 };
 static U8 tmps[] = { 21, 22, 23, 24, 25, 17, 12, 13, 14 };
 static U8 vtmps[] = { 16, 17, 18, 19, 20, 21, 22, 23, 24 }; // 8-15 are callee saved, so don't use them
-static U8 vCache[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+U8 xmmCache[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
 #define INVALID_REG 0xff
 
@@ -87,6 +87,8 @@ asmjit::a64::Gp R32(RegPtr reg) {
     return asmjit::a64::gp32(reg->hardwareReg());
 }
 
+// if these mappings change, make sure to checkout platformThreads.cpp / syncFromException
+// 
 // cmpxchg8b / caspal requires eax/edx and ebx/ecx to be next to each other
 #define xEAX asmjit::a64::x0
 #define wEAX asmjit::a64::w0
@@ -196,6 +198,8 @@ public:
     }
 
     void preOp(DecodedOp* op) override;
+    RegPtr getReadOnlyRegInLower(JitWidth width, U8 reg);
+    RegPtr getReg(JitWidth width, U8 reg);
     RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) override;
     RegPtr getReg8(U8 reg, bool load = true) override;
     RegPtr getReadOnlyReg(U8 reg, bool delayed = false, S8 hint = -1) override;
@@ -210,12 +214,22 @@ public:
     RegPtr getTmpSegAddress(U8 reg) override;
     RegPtr getReadOnlySegValue(U8 reg) override;
     RegPtr readEip() override;
+    RegPtr getTmpIfNotTmp(RegPtr reg);
     void writeEip(RegPtr eip) override;
     void writeEip(U32 eip) override;
     bool isTmpRegAvailable() override;    
     void forceSyncBackIfNotCached(RegPtr reg) override;
     RegPtr getConditionCalculationReg(U32 index) override;
 
+#ifdef BOXEDWINE_MEM_CACHE
+    void writeMemCache(JitWidth width, RegPtr addressReg, RegPtr src) override;
+    void writeMemCache(JitWidth width, RegPtr addressReg, U32 value) override;
+    void writeMemCache(JitWidth width, U32 mem, RegPtr src) override;
+    void writeMemCache(JitWidth width, U32 mem, U32 imm) override;
+    RegPtr readMemCache(JitWidth width, RegPtr addressReg, RegPtr tmp = nullptr) override;
+    RegPtr readMemCache(JitWidth width, U32 mem, RegPtr result = nullptr) override;
+    RegPtr readWriteMemCache(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, RegPtr tmp) override;
+#endif
     U8 findTmpReg(bool allowInvalidReturn = false);
     void emulateSingleOp() override;
     RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0) override;
@@ -681,7 +695,9 @@ public:
     void pmovmskbR32Xmm(RegPtr dst, SSERegPtr src) override;
 
     void dynamic_rdtsc(DecodedOp* op) override;
-    void dynamic_arithE32R32_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address)> callback, bool writeReg = false);
+    void dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlagType flagsType, std::function<void(RegPtr src, RegPtr dst, RegPtr address)> atomicCallback, std::function<void(RegPtr result, RegPtr dstMem, RegPtr srcReg)> callback, bool writebackReg = false, bool addCF = false, bool immSrc = false);
+    void dynamic_arith_value_lock(JitWidth width, DecodedOp* op, U32 value, LazyFlagType flagsType, std::function<void(RegPtr src, RegPtr dst, RegPtr address)> atomicCallback, std::function<void(RegPtr result, RegPtr dst, U32 src)> callback);
+
     /*
     void dynamic_arithE16R16_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address, RegPtr offset)> callback, bool writeReg = false);
     void dynamic_arithE8R8_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address, RegPtr offset)> callback, bool writeReg = false);
@@ -689,17 +705,18 @@ public:
     void dynamic_arithE16_lock(DecodedOp* op, std::function<void(RegPtr address, RegPtr offset)> callback);
     void dynamic_arithE8_lock(DecodedOp* op, std::function<void(RegPtr address, RegPtr offset)> callback);
 */
+    void ldaxr(JitWidth width, asmjit::a64::Gp reg, Mem mem);
+    void stlxr(JitWidth width, asmjit::a64::Gp cond, asmjit::a64::Gp reg, Mem mem);
+
     void dynamic_cmpxchg8b_lock(DecodedOp* op) override;
+    void dynamic_cmpxchg_lock(JitWidth width, DecodedOp* op);
     void dynamic_cmpxchge32r32_lock(DecodedOp* op) override;
-    /*
     void dynamic_cmpxchge16r16_lock(DecodedOp* op) override;
     void dynamic_cmpxchge8r8_lock(DecodedOp* op) override;
     void dynamic_xchge32r32_lock(DecodedOp* op) override;
     void dynamic_xchge16r16_lock(DecodedOp* op) override;
     void dynamic_xchge8r8_lock(DecodedOp* op) override;
-    */
     void dynamic_xaddr32e32_lock(DecodedOp* op) override;
-    /*
     void dynamic_xaddr16e16_lock(DecodedOp* op) override;
     void dynamic_xaddr8e8_lock(DecodedOp* op) override;
     void dynamic_adde32r32_lock(DecodedOp* op) override;
@@ -708,12 +725,24 @@ public:
     void dynamic_add32_mem_lock(DecodedOp* op) override;
     void dynamic_add16_mem_lock(DecodedOp* op) override;
     void dynamic_add8_mem_lock(DecodedOp* op) override;
+    void dynamic_adce32r32_lock(DecodedOp* op) override;
+    void dynamic_adce16r16_lock(DecodedOp* op) override;
+    void dynamic_adce8r8_lock(DecodedOp* op) override;
+    void dynamic_adc32_mem_lock(DecodedOp* op) override;
+    void dynamic_adc16_mem_lock(DecodedOp* op) override;
+    void dynamic_adc8_mem_lock(DecodedOp* op) override;
     void dynamic_sube32r32_lock(DecodedOp* op) override;
     void dynamic_sube16r16_lock(DecodedOp* op) override;
     void dynamic_sube8r8_lock(DecodedOp* op) override;
     void dynamic_sub32_mem_lock(DecodedOp* op) override;
     void dynamic_sub16_mem_lock(DecodedOp* op) override;
     void dynamic_sub8_mem_lock(DecodedOp* op) override;
+    void dynamic_sbbe32r32_lock(DecodedOp* op) override;
+    void dynamic_sbbe16r16_lock(DecodedOp* op) override;
+    void dynamic_sbbe8r8_lock(DecodedOp* op) override;
+    void dynamic_sbb32_mem_lock(DecodedOp* op) override;
+    void dynamic_sbb16_mem_lock(DecodedOp* op) override;
+    void dynamic_sbb8_mem_lock(DecodedOp* op) override;
     void dynamic_ore32r32_lock(DecodedOp* op) override;
     void dynamic_ore16r16_lock(DecodedOp* op) override;
     void dynamic_ore8r8_lock(DecodedOp* op) override;
@@ -744,6 +773,7 @@ public:
     void dynamic_nege32_lock(DecodedOp* op) override;
     void dynamic_nege16_lock(DecodedOp* op) override;
     void dynamic_nege8_lock(DecodedOp* op) override;
+    /*
     void dynamic_btse32_lock(DecodedOp* op) override;
     void dynamic_btse16_lock(DecodedOp* op) override;
     void dynamic_btse32r32_lock(DecodedOp* op) override;
@@ -766,8 +796,6 @@ protected:
     U32 getIfJumpSize() override;    
     void copyBuffer(U8* dst, U32 size) override;
 
-    void preCommitJIT() override;
-    void patch(U8* begin) override;
     U8* createStartJITCode() override;
     U8* createBlockExit(bool syncRegs) override;
 
@@ -1008,6 +1036,127 @@ RegPtr JitArmV8CodeGen::getTmpReg8(U8 reg, bool delayed, S8 hint) {
     return getTmpReg(reg, delayed, hint);
 }
 
+#ifdef BOXEDWINE_MEM_CACHE
+RegPtr JitArmV8CodeGen::readWriteMemCache(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, RegPtr tmp) {
+#ifdef _DEBUG
+    writeCurrentEip(0);
+#endif
+    RegPtr value = getTmpRegForCallResult();
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+    compiler.ldr(R64(tmp), createMem(regMMU, tmp->hardwareReg(), 3, K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
+    if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+        RegPtr offsetReg = getTmpReg();
+        compiler.and_(R32(offsetReg), R32(addressReg), 0xfff);
+        compiler.add(R64(tmp), R64(tmp), R64(addressReg));
+        addressReg = nullptr;
+        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        
+        MemPtr mem = createMemPtr(tmp, 0);
+        readHost(width, mem, value);
+        prepareWrite(value);
+        writeHost(width, mem, value);
+    } else {
+        MemPtr mem = createMemPtr(tmp, addressReg, 0, 0);
+        readHost(width, mem, value);
+        prepareWrite(value);
+        writeHost(width, mem, value);
+    }    
+
+    
+    return value;
+}
+
+void JitArmV8CodeGen::writeMemCache(JitWidth width, RegPtr addressReg, RegPtr src) {
+#ifdef _DEBUG
+    writeCurrentEip(1);
+#endif
+    RegPtr tmp = getTmpReg();
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+    compiler.ldr(R64(tmp), createMem(regMMU, tmp->hardwareReg(), 3, K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
+
+    if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+        RegPtr offsetReg = getTmpReg();
+        compiler.and_(R32(offsetReg), R32(addressReg), K_PAGE_MASK);
+        compiler.add(R64(tmp), R64(tmp), R64(addressReg));        
+        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        writeHost(width, createMemPtr(tmp, 0), src);
+    } else {
+        writeHost(width, createMemPtr(tmp, addressReg, 0, 0), src);
+    }
+}
+
+void JitArmV8CodeGen::writeMemCache(JitWidth width, RegPtr addressReg, U32 src) {
+#ifdef _DEBUG
+    writeCurrentEip(0);
+#endif
+    RegPtr tmp = getTmpReg();
+
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+    compiler.ldr(R64(tmp), createMem(regMMU, tmp->hardwareReg(), 3, K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
+
+    if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+        RegPtr offsetReg = getTmpReg();
+        compiler.and_(R32(offsetReg), R32(addressReg), 0xfff);
+        compiler.add(R64(tmp), R64(tmp), R64(addressReg));
+        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        writeHost(width, createMemPtr(tmp, 0), src);
+    } else {
+        writeHost(width, createMemPtr(tmp, addressReg, 0, 0), src);
+    }
+}
+
+void JitArmV8CodeGen::writeMemCache(JitWidth width, U32 mem, RegPtr src) {
+#ifdef _DEBUG
+    writeCurrentEip(0);
+#endif
+    RegPtr tmp = getTmpReg();
+    compiler.ldr(R64(tmp), createMem(regMMU, (mem >> K_PAGE_SHIFT) * sizeof(void*) + K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
+    writeHost(width, createMemPtr(tmp, mem), src);
+}
+
+void JitArmV8CodeGen::writeMemCache(JitWidth width, U32 mem, U32 imm) {
+#ifdef _DEBUG
+    writeCurrentEip(0);
+#endif
+    RegPtr tmp = getTmpReg();
+    compiler.ldr(R64(tmp), createMem(regMMU, (mem >> K_PAGE_SHIFT) * sizeof(void*) + K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
+    writeHost(width, createMemPtr(tmp, mem), imm);
+}
+
+RegPtr JitArmV8CodeGen::readMemCache(JitWidth width, RegPtr addressReg, RegPtr tmp) {
+    if (!tmp) {
+        tmp = getTmpReg8();
+    }
+#ifdef _DEBUG
+    writeCurrentEip(0);
+#endif
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+    compiler.ldr(R64(tmp), createMem(regMMU, tmp->hardwareReg(), 3, K_NUMBER_OF_PAGES * sizeof(void*)));
+    if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+        RegPtr offsetReg = getTmpReg();
+        compiler.and_(R32(offsetReg), R32(addressReg), 0xfff);
+        compiler.add(R64(tmp), R64(tmp), R64(addressReg));
+        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        readHost(width, createMemPtr(tmp, 0), tmp);
+    } else {
+        readHost(width, createMemPtr(tmp, addressReg, 0, 0), tmp);
+    }
+    return tmp;
+}
+
+RegPtr JitArmV8CodeGen::readMemCache(JitWidth width, U32 mem, RegPtr result) {
+    if (!result) {
+        result = getTmpReg8();
+    }
+#ifdef _DEBUG
+    writeCurrentEip(0);
+#endif
+    compiler.ldr(R64(result), createMem(regMMU, (mem >> K_PAGE_SHIFT) * sizeof(void*) + K_NUMBER_OF_PAGES * sizeof(void*)));
+    readHost(width, createMemPtr(result, mem), result);
+    return result;
+}
+#endif
+
 RegPtr JitArmV8CodeGen::readEip() {
     RegPtr result = getTmpReg();
     compiler.ldr(R32(result), Mem(xCPU, offsetof(CPU, eip.u32)));
@@ -1039,6 +1188,14 @@ void JitArmV8CodeGen::forceSyncBackIfNotCached(RegPtr reg) {
     }
 }
 
+RegPtr JitArmV8CodeGen::getReadOnlyRegInLower(JitWidth width, U8 reg) {
+    return width == JitWidth::b8 ? getReg8InLowByte(getReadOnlyReg8(reg)) : getReadOnlyReg(reg);
+}
+
+RegPtr JitArmV8CodeGen::getReg(JitWidth width, U8 reg) {
+    return width == JitWidth::b8 ? getReg8(reg) : getReg(reg);
+}
+
 RegPtr JitArmV8CodeGen::getReg(U8 reg, S8 hint, bool load) {
     if (regCache[reg] == INVALID_REG) {
         RegPtr result = std::shared_ptr<JitReg>(new JitReg(findTmpReg(), reg), [this](JitReg* p) {
@@ -1065,6 +1222,15 @@ RegPtr JitArmV8CodeGen::getReg8(U8 reg, bool load) {
         return result;
     }
     return getReg(reg);
+}
+
+RegPtr JitArmV8CodeGen::getTmpIfNotTmp(RegPtr reg) {
+    if (reg->emulatedReg != 0xff) {
+        RegPtr result = getTmpReg();
+        mov(JitWidth::b32, result, reg);
+        return result;
+    }
+    return reg;
 }
 
 RegPtr JitArmV8CodeGen::getReadOnlyReg(U8 reg, bool delayed, S8 hint) {
@@ -2305,7 +2471,11 @@ Mem JitArmV8CodeGen::createMem(U8 reg, U8 sib, U8 lsl, U32 disp) {
     if (lsl) {
         if (disp) {
             RegPtr tmp = getTmpReg();
-            compiler.add(R64(tmp), R64(reg), disp);
+            if (asmjit::a64::Utils::is_add_sub_imm(disp)) {
+                compiler.add(R64(tmp), R64(reg), disp);
+            } else {
+                compiler.add(R64(tmp), R64(reg), R64(loadConst(disp)));
+            }
             return Mem(R64(tmp), R64(sib), Shift(ShiftOp::kLSL, lsl));
         } else {
             return Mem(R64(reg), R64(sib), Shift(ShiftOp::kLSL, lsl));
@@ -2313,7 +2483,11 @@ Mem JitArmV8CodeGen::createMem(U8 reg, U8 sib, U8 lsl, U32 disp) {
     } else {
         if (disp) {
             RegPtr tmp = getTmpReg();
-            compiler.add(R64(tmp), R64(sib), disp);
+            if (asmjit::a64::Utils::is_add_sub_imm(disp)) {
+                compiler.add(R64(tmp), R64(sib), disp);
+            } else {
+                compiler.add(R64(tmp), R64(sib), R64(loadConst(disp)));
+            }
             return Mem(R64(reg), R64(tmp));
         } else {
             return Mem(R64(reg), R64(sib));
@@ -2615,6 +2789,8 @@ void JitArmV8CodeGen::movzx(JitWidth dstWidth, RegPtr dest, JitWidth srcWidth, R
     if (dstWidth == JitWidth::b32) {
         if (srcWidth == JitWidth::b16) {
             compiler.ubfx(R32(dest), R32(src), 0, 16);
+        } else if (srcWidth == JitWidth::b32) {
+            compiler.mov(R32(dest), R32(src));
         } else if (srcWidth == JitWidth::b8) {
             if (isRegHigh(src)) {
                 compiler.ubfx(R32(dest), R32(src), 8, 8);
@@ -2844,6 +3020,8 @@ void JitArmV8CodeGen::IfTestBit(JitWidth regWidth, RegPtr reg, U32 bitPos) {
 void JitArmV8CodeGen::cmp(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
     if (regWidth == JitWidth::b32) {
         compiler.cmp(R32(reg1), R32(reg2));
+    } else if (regWidth == JitWidth::b64) {
+        compiler.cmp(R64(reg1), R64(reg2));
     } else if (regWidth == JitWidth::b16) {
         // JitCodeGen::getCF requires not getting a new tmp reg
         // xBranch should be safe to clobber
@@ -3582,10 +3760,10 @@ void JitArmV8CodeGen::storeCpuXMMReg(SSERegPtr reg, U32 index) {
         kpanic("JitArmV8CodeGen::storeCpuXMMReg");
         return;
     }
-    if (vCache[index] == INVALID_REG) {
+    if (xmmCache[index] == INVALID_REG) {
         compiler.str(toSse128(reg), createMem(regCPU, index * 16 + offsetof(CPU, xmm)));
-    } else if (vCache[index] != reg->hardwareReg()) {
-        compiler.mov(Vec::make_q(vCache[index]), toSse128(reg));
+    } else if (xmmCache[index] != reg->hardwareReg()) {
+        compiler.mov(Vec::make_q(xmmCache[index]), toSse128(reg));
     }    
 }
 
@@ -3612,8 +3790,8 @@ SSERegPtr JitArmV8CodeGen::getXMM(U8 index, bool load) {
         kpanic("JitArmV8CodeGen::getXMM");
         return nullptr;
     }
-    if (index != INVALID_REG && vCache[index] != INVALID_REG) {
-        return std::make_shared<SSERegInternal>(vCache[index], index);
+    if (index != INVALID_REG && xmmCache[index] != INVALID_REG) {
+        return std::make_shared<SSERegInternal>(xmmCache[index], index);
     }
     SSERegPtr result = std::shared_ptr<SSERegInternal>(new SSERegInternal(findTmpXMM(), index), [this](SSERegInternal* p) {
         vUsed[p->hardwareReg()] = false;
@@ -5537,135 +5715,313 @@ void JitArmV8CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
     });
 }
 
-void JitArmV8CodeGen::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+void JitArmV8CodeGen::dynamic_cmpxchg_lock(JitWidth width, DecodedOp* op) {
+    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [width, op, this](RegPtr address, RegPtr offset) {
         U32 needsToSetFlags = 0;
-        const LazyFlags* flags = lazyFlags[FLAGS_CMP32];
+        LazyFlagType flagType;
+        
+        if (width == JitWidth::b32) {
+            flagType = FLAGS_CMP32;
+        } else if (width == JitWidth::b16) {
+            flagType = FLAGS_CMP16;
+        } else if (width == JitWidth::b8) {
+            flagType = FLAGS_CMP8;
+        } else {
+            kpanic("JitArmV8CodeGen::dynamic_cmpxchg_lock");
+        }
+        const LazyFlags* flags = lazyFlags[flagType];
 
-        arithSetup(op, needsToSetFlags, FLAGS_CMP32, nullptr);
-
-        Label label = compiler.new_label();
+        arithSetup(op, needsToSetFlags, flagType, nullptr);
+        
         RegPtr tmp = getTmpReg();
         RegPtr tmp2 = getTmpReg();
-        RegPtr reg = getReg(op->reg);
+        RegPtr reg = getReadOnlyRegInLower(width, op->reg);
         RegPtr eax = getReg(0);
+
 
         if (flags && flags->usesDst(needsToSetFlags)) {
             storeLazyFlagsDest(eax);
         }
         compiler.add(R64(address), R64(address), R64(offset));
-        if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLRCPC)) {
-            if (flags && (flags->usesSrc(needsToSetFlags) || flags->usesResult(needsToSetFlags))) {
-                compiler.mov(R32(tmp), wEAX);
-                compiler.casal(R32(tmp), R32(reg), Mem(R64(address)));
-                if (flags && flags->usesResult(needsToSetFlags)) {
-                    compiler.sub(R32(tmp2), wEAX, R32(tmp));
-                }
-                compiler.mov(wEAX, R32(tmp));
-            } else {
-                compiler.casal(wEAX, R32(reg), Mem(R64(address)));
+
+        RegPtr tmpEax = eax;
+        bool needToCopyEaxBack = false;
+        if (width != JitWidth::b32 || (flags && (flags->usesSrc(needsToSetFlags) || flags->usesResult(needsToSetFlags)))) {
+            tmpEax = getTmpReg();
+            movzx(JitWidth::b32, tmpEax, width, eax);
+            needToCopyEaxBack = true;
+        }
+
+        if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
+            if (width == JitWidth::b32) {
+                compiler.casal(R32(tmpEax), R32(reg), Mem(R64(address)));
+            } else if (width == JitWidth::b16) {
+                compiler.casalh(R32(tmpEax), R32(reg), Mem(R64(address)));
+            } else if (width == JitWidth::b8) {
+                compiler.casalb(R32(tmpEax), R32(reg), Mem(R64(address)));
+            }
+            if (flags && flags->usesSrc(needsToSetFlags)) {
+                storeLazyFlagsSrc(tmpEax);
+            }
+            if (flags && flags->usesResult(needsToSetFlags)) {
+                compiler.sub(R32(tmp2), wEAX, R32(tmpEax));
+                storeLazyFlagsResult(tmp2);
+            }
+            if (needToCopyEaxBack) {
+                mov(width, eax, tmpEax);
             }
         } else {
+            Label label = compiler.new_label();
             compiler.bind(label);
-            compiler.ldaxr(R32(tmp), Mem(R64(address)));
-            IfEqual(JitWidth::b32, eax, tmp); {
-                compiler.stlxr(R32(tmp2), R32(reg), Mem(R64(address)));
+            if (width == JitWidth::b32) {
+                compiler.ldaxr(R32(tmp), Mem(R64(address)));
+            } else if (width == JitWidth::b16) {
+                compiler.ldaxrh(R32(tmp), Mem(R64(address)));
+            } else if (width == JitWidth::b8) {
+                compiler.ldaxrb(R32(tmp), Mem(R64(address)));
+            }
+            IfEqual(JitWidth::b32, tmpEax, tmp); {
+                if (width == JitWidth::b32) {
+                    compiler.stlxr(R32(tmp2), R32(reg), Mem(R64(address)));
+                } else if (width == JitWidth::b16) {
+                    compiler.stlxrh(R32(tmp2), R32(reg), Mem(R64(address)));
+                } else if (width == JitWidth::b8) {
+                    compiler.stlxrb(R32(tmp2), R32(reg), Mem(R64(address)));
+                }              
                 compiler.cbnz(R32(tmp2), label);
             } StartElse(); {
                 compiler.clrex(15);
-                compiler.mov(wEAX, R32(tmp));
+                mov(width, eax, tmp);
             } EndIf();
-
-            if (flags && flags->usesResult(needsToSetFlags)) {
-                compiler.sub(R32(tmp2), wEAX, R32(tmp));
+            if (flags && flags->usesSrc(needsToSetFlags)) {
+                storeLazyFlagsSrc(eax);
             }
-        }
-        if (flags && flags->usesSrc(needsToSetFlags)) {
-            storeLazyFlagsSrc(tmp);
-        }
-        
-        if (flags && flags->usesResult(needsToSetFlags)) {
-            storeLazyFlagsResult(tmp2);
-        }
+            if (flags && flags->usesResult(needsToSetFlags)) {
+                compiler.sub(R32(tmp2), R32(tmpEax), wEAX);
+                storeLazyFlagsResult(tmp2);
+            }
+        }                                
     });
 }
-/*
+
+void JitArmV8CodeGen::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
+    dynamic_cmpxchg_lock(JitWidth::b32, op);
+}
+
 void JitArmV8CodeGen::dynamic_cmpxchge16r16_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
-        RegPtr eax = getReg(0, 0);
-        if (eax->hardwareReg() != 0) {
-            kpanic("JitArmV8CodeGen::dynamic_cmpxchge32r32_lock");
-        }
-        RegPtr reg;
-
-        if (op->reg == 0) {
-            reg = eax;
-        } else {
-            reg = getReadOnlyReg(op->reg);
-        }
-        this->x86.lock();
-        this->x86.cmpxchg(X86Asm::Mem16(RN(address->hardwareReg()), RN(offset->hardwareReg())), R16(reg->hardwareReg()));
-        address = nullptr;
-        offset = nullptr;
-        updateFlagsIfNecessary();     
-    });
+    dynamic_cmpxchg_lock(JitWidth::b16, op);
 }
-void JitArmV8CodeGen::dynamic_cmpxchge8r8_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b8, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
-        RegPtr eax = getReg(0, 0);
-        if (eax->hardwareReg() != 0) {
-            kpanic("JitArmV8CodeGen::dynamic_cmpxchge32r32_lock");
-        }
-        RegPtr reg;
 
-        if (op->reg == 0) {
-            reg = eax;
-        } else {
-            reg = getReadOnlyReg8(op->reg);
-        }
-        this->x86.lock();
-        this->x86.cmpxchg(X86Asm::Mem8(RN(address->hardwareReg()), RN(offset->hardwareReg())), R8(get8bitReg(reg)));
-        address = nullptr;
-        offset = nullptr;
-        updateFlagsIfNecessary();
-    });
+void JitArmV8CodeGen::dynamic_cmpxchge8r8_lock(DecodedOp* op) {
+    dynamic_cmpxchg_lock(JitWidth::b8, op);
+}
+
+void JitArmV8CodeGen::ldaxr(JitWidth width, asmjit::a64::Gp reg, Mem mem) {
+    switch (width) {
+    case JitWidth::b8:
+        compiler.ldaxrb(reg, mem);
+        break;
+    case JitWidth::b16:
+        compiler.ldaxrh(reg, mem);
+        break;
+    case JitWidth::b32:
+        compiler.ldaxr(reg, mem);
+        break;
+    default:
+        kpanic("JitArmV8CodeGen::ldaxr");
+    }
+}
+
+void JitArmV8CodeGen::stlxr(JitWidth width, asmjit::a64::Gp cond, asmjit::a64::Gp reg, Mem mem) {
+    switch (width) {
+    case JitWidth::b8:
+        compiler.stlxrb(cond, reg, mem);
+        break;
+    case JitWidth::b16:
+        compiler.stlxrh(cond, reg, mem);
+        break;
+    case JitWidth::b32:
+        compiler.stlxr(cond, reg, mem);
+        break;
+    default:
+        kpanic("JitArmV8CodeGen::stlxr");
+    }
 }
 
 void JitArmV8CodeGen::dynamic_xchge32r32_lock(DecodedOp* op) {
     JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
-        RegPtr reg = getReg(op->reg);
-        this->x86.lock();
-        this->x86.xchg(R32(reg), X86Asm::Mem32(RN(address->hardwareReg()), RN(offset->hardwareReg())));
+        compiler.add(R64(address), R64(address), R64(offset));
+        if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {            
+            RegPtr reg = getReg(op->reg);
+            compiler.swpal(R32(reg), R32(reg), Mem(R64(address)));
+        } else {
+            RegPtr tmp = getTmpReg(op->reg);
+            RegPtr reg = getReg(op->reg);
+            RegPtr cond = getTmpReg();
+            Label label = compiler.new_label();
+
+            compiler.bind(label);            
+
+            compiler.ldaxr(R32(reg), Mem(R64(address)));
+            compiler.stlxr(R32(cond), R32(tmp), Mem(R64(address)));
+            compiler.cbnz(R32(cond), label);
+        }
     });
 }
 
 void JitArmV8CodeGen::dynamic_xchge16r16_lock(DecodedOp* op) {
     JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
-        RegPtr reg = getReg(op->reg);
-        this->x86.lock();
-        this->x86.xchg(R16(reg->hardwareReg()), X86Asm::Mem16(RN(address->hardwareReg()), RN(offset->hardwareReg())));
+        compiler.add(R64(address), R64(address), R64(offset));
+        if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {            
+            RegPtr tmp = getTmpReg(op->reg);
+            RegPtr reg = getReg(op->reg);
+            compiler.swpalh(R32(tmp), R32(tmp), Mem(R64(address))); // will zero extend, which is why its a tmp
+            mov(JitWidth::b16, reg, tmp);
+        } else {
+            RegPtr reg = getReg(op->reg);
+            RegPtr cond = getTmpReg();
+            RegPtr src = getTmpReg();
+            Label label = compiler.new_label();
+
+            compiler.bind(label);
+
+            compiler.ldaxrh(R32(src), Mem(R64(address)));
+            compiler.stlxrh(R32(cond), R32(reg), Mem(R64(address)));
+            compiler.cbnz(R32(cond), label);
+            mov(JitWidth::b16, reg, src);
+        }
     });
 }
 
 void JitArmV8CodeGen::dynamic_xchge8r8_lock(DecodedOp* op) {
     JitCodeGen::write(JitWidth::b8, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
-        RegPtr reg = getReg8(op->reg);
-        this->x86.lock();
-        this->x86.xchg(R8(get8bitReg(reg)), X86Asm::Mem8(R32(address->hardwareReg()), R32(offset->hardwareReg())));        
+        compiler.add(R64(address), R64(address), R64(offset));
+        if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {            
+            RegPtr reg = getReg8(op->reg);
+            RegPtr reg8 = getTmpIfNotTmp(getReg8InLowByte(reg));
+
+            compiler.swpalb(R32(reg8), R32(reg8), Mem(R64(address)));
+            mov(JitWidth::b8, reg, reg8);
+        } else {
+            RegPtr reg = getReg8(op->reg);
+            RegPtr reg8 = getTmpIfNotTmp(getReg8InLowByte(reg));
+            RegPtr cond = getTmpReg();
+            RegPtr src = getTmpReg();
+            Label label = compiler.new_label();
+
+            compiler.bind(label);
+
+            compiler.ldaxrb(R32(src), Mem(R64(address)));
+            compiler.stlxrb(R32(cond), R32(reg8), Mem(R64(address)));
+            compiler.cbnz(R32(cond), label);
+            mov(JitWidth::b8, reg, src);
+        }
     });
 }
-*/
-void JitArmV8CodeGen::dynamic_arithE32R32_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address)> callback, bool writeReg) {
-    JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [writeReg, op, callback, this](RegPtr address, RegPtr offset) {
-        RegPtr reg;
-        
-        if (writeReg) {
-            reg = getReg(op->reg);
-        } else {
-            reg = getReadOnlyReg(op->reg);
-        }
+
+void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlagType flagsType, std::function<void(RegPtr src, RegPtr dst, RegPtr address)> atomicCallback, std::function<void(RegPtr result, RegPtr dstMem, RegPtr srcReg)> callback, bool writebackReg, bool addCF, bool immSrc) {
+    JitCodeGen::write(width, calculateEaa(op), nullptr, [immSrc, addCF, atomicCallback, writebackReg, width, flagsType, op, callback, this](RegPtr address, RegPtr offset) {
         compiler.add(R64(address), R64(address), R64(offset));
-        callback(reg, address);        
+        U32 needsToSetFlags = 0;
+        const LazyFlags* flags = lazyFlags[flagsType];
+        bool direct = width == JitWidth::b32 && !(flags && (flags->usesResult(needsToSetFlags) || flags->usesDst(needsToSetFlags)));
+        RegPtr reg = immSrc ? loadConst(op->imm) : direct ? getReg(width, op->reg) : getReadOnlyRegInLower(width, op->reg);
+        RegPtr cf = addCF ? getCF() : nullptr;
+
+        arithSetup(op, needsToSetFlags, flagsType, cf);
+
+        if (flags && flags->usesSrc(needsToSetFlags)) {
+            storeLazyFlagsSrc(reg);
+        }
+
+        RegPtr dst = getTmpReg();
+        RegPtr result = getTmpReg();
+
+        if (addCF) {
+            reg = getTmpIfNotTmp(reg);
+            addReg(width, reg, cf);
+        }
+        if (atomicCallback && rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
+            if (width != JitWidth::b32 || (flags && (flags->usesResult(needsToSetFlags) || flags->usesDst(needsToSetFlags)))) {
+                atomicCallback(reg, dst, address);
+                if (flags && flags->usesResult(needsToSetFlags)) {
+                    callback(result, dst, reg);
+                }
+                if (writebackReg) {
+                    reg = getReg(width, op->reg);
+                    mov(width, reg, dst);
+                }
+            } else {
+                atomicCallback(reg, reg, address);
+            }
+        } else {
+            Label label = compiler.new_label();
+            RegPtr cond = getTmpReg();
+
+            compiler.add(R32(address), R32(address), R32(offset));
+            compiler.bind(label);
+            ldaxr(width, R32(dst), Mem(R64(address)));
+            callback(result, dst, reg);
+            stlxr(width, R32(cond), R32(result), Mem(R64(address)));
+            compiler.cbnz(R32(cond), label);
+
+            if (writebackReg) {
+                reg = width == JitWidth::b8 ? getReg8(op->reg) : getReg(op->reg);
+                mov(width, reg, dst);
+            }
+        }
+        if (flags && flags->usesDst(needsToSetFlags)) {
+            storeLazyFlagsDest(dst);
+        }
+        if (flags && flags->usesResult(needsToSetFlags)) {
+            storeLazyFlagsResult(result);
+        }
+    });
+}
+
+void JitArmV8CodeGen::dynamic_arith_value_lock(JitWidth width, DecodedOp* op, U32 value, LazyFlagType flagsType, std::function<void(RegPtr src, RegPtr dst, RegPtr address)> atomicCallback, std::function<void(RegPtr result, RegPtr dst, U32 src)> callback) {
+    JitCodeGen::write(width, calculateEaa(op), nullptr, [value, atomicCallback, width, flagsType, op, callback, this](RegPtr address, RegPtr offset) {
+        compiler.add(R64(address), R64(address), R64(offset));
+        U32 needsToSetFlags = 0;
+        const LazyFlags* flags = lazyFlags[flagsType];
+        bool direct = width == JitWidth::b32 && !(flags && (flags->usesResult(needsToSetFlags) || flags->usesDst(needsToSetFlags)));
+
+        arithSetup(op, needsToSetFlags, flagsType, nullptr);
+
+        if (flags && flags->usesSrc(needsToSetFlags)) {
+            storeLazyFlagsSrc(value);
+        }
+
+        RegPtr dst = getTmpReg();
+        RegPtr result = getTmpReg();
+        
+        if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
+            RegPtr reg = loadConst(value);
+            if (width != JitWidth::b32 || (flags && (flags->usesResult(needsToSetFlags) || flags->usesDst(needsToSetFlags)))) {
+                atomicCallback(reg, dst, address);
+                if (flags && flags->usesResult(needsToSetFlags)) {
+                    callback(result, dst, value);
+                }
+            } else {
+                atomicCallback(reg, reg, address);
+            }
+        } else {
+            Label label = compiler.new_label();
+            RegPtr cond = getTmpReg();
+
+            compiler.add(R32(address), R32(address), R32(offset));
+            compiler.bind(label);
+            ldaxr(width, R32(dst), Mem(R64(address)));
+            callback(result, dst, value);
+            stlxr(width, R32(cond), R32(result), Mem(R64(address)));
+            compiler.cbnz(R32(cond), label);
+        }
+        if (flags && flags->usesDst(needsToSetFlags)) {
+            storeLazyFlagsDest(dst);
+        }
+        if (flags && flags->usesResult(needsToSetFlags)) {
+            storeLazyFlagsResult(result);
+        }
     });
 }
 /*
@@ -5716,328 +6072,546 @@ void JitArmV8CodeGen::dynamic_arithE8_lock(DecodedOp* op, std::function<void(Reg
     });
 }
 */
+
 void JitArmV8CodeGen::dynamic_xaddr32e32_lock(DecodedOp* op) {
-    dynamic_arithE32R32_lock(op, [op, this](RegPtr reg, RegPtr addressReg) {
-        U32 needsToSetFlags = 0;        
-        const LazyFlags* flags = lazyFlags[FLAGS_ADD32];
-
-        arithSetup(op, needsToSetFlags, FLAGS_ADD32, nullptr);        
-
-        Label label = compiler.new_label();
-        RegPtr tmp = getTmpReg();
-        RegPtr tmp2 = getTmpReg();
-        RegPtr tmp3 = getTmpReg();
-        
-        compiler.bind(label);
-        compiler.ldaxr(R32(tmp), Mem(R64(addressReg)));
-        compiler.add(R32(tmp2), R32(reg), R32(tmp));
-        compiler.stlxr(R32(tmp3), R32(tmp2), Mem(R64(addressReg)));
-        compiler.cbnz(R32(tmp3), label);        
-
-        if (flags && flags->usesSrc(needsToSetFlags)) {
-            storeLazyFlagsSrc(reg);
-        }
-        if (flags && flags->usesDst(needsToSetFlags)) {
-            storeLazyFlagsDest(tmp);
-        }
-        if (flags && flags->usesResult(needsToSetFlags)) {
-            storeLazyFlagsResult(tmp2);
-        }
-        compiler.mov(R32(reg), R32(tmp));
+    dynamic_arith_lock(JitWidth::b32, op, FLAGS_ADD32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.add(R32(result), R32(dstMem), R32(srcReg));
     }, true);
 }
-/*
 void JitArmV8CodeGen::dynamic_xaddr16e16_lock(DecodedOp* op) {
-    dynamic_arithE16R16_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.xadd(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R16(dest->hardwareReg()));
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_ADD16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalh(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.add(R32(result), R32(dstMem), R32(srcReg));
     }, true);
 }
 void JitArmV8CodeGen::dynamic_xaddr8e8_lock(DecodedOp* op) {
-    dynamic_arithE8R8_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.xadd(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R8(get8bitReg(dest)));
+    dynamic_arith_lock(JitWidth::b8, op, FLAGS_ADD8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalb(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.add(R32(result), R32(dstMem), R32(srcReg));
     }, true);
 }
-
 void JitArmV8CodeGen::dynamic_adde32r32_lock(DecodedOp* op) {
-    dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.add(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest));
+    dynamic_arith_lock(JitWidth::b32, op, FLAGS_ADD32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.add(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_adde16r16_lock(DecodedOp* op) {
-    dynamic_arithE16R16_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.add(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R16(dest->hardwareReg()));
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_ADD16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalh(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.add(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_adde8r8_lock(DecodedOp* op) {
-    dynamic_arithE8R8_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.add(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R8(get8bitReg(dest)));
-    });
-}
-void JitArmV8CodeGen::dynamic_add32_mem_lock(DecodedOp* op) {
-    dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.add(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), op->imm);
-    });
-}
-void JitArmV8CodeGen::dynamic_add16_mem_lock(DecodedOp* op) {
-    dynamic_arithE16_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.add(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), (U16)op->imm);
-    });
-}
-void JitArmV8CodeGen::dynamic_add8_mem_lock(DecodedOp* op) {
-    dynamic_arithE8_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.add(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), op->imm);
+    dynamic_arith_lock(JitWidth::b8, op, FLAGS_ADD8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalb(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.add(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 
+void JitArmV8CodeGen::dynamic_add32_mem_lock(DecodedOp* op) {
+    dynamic_arith_value_lock(JitWidth::b32, op, op->imm, FLAGS_ADD32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_add_sub_imm(src)) {
+            compiler.add(R32(result), R32(dstMem), src);
+        } else {
+            compiler.add(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
+    });
+}
+void JitArmV8CodeGen::dynamic_add16_mem_lock(DecodedOp* op) {
+    dynamic_arith_value_lock(JitWidth::b16, op, op->imm, FLAGS_ADD16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalh(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_add_sub_imm(src)) {
+            compiler.add(R32(result), R32(dstMem), src);
+        } else {
+            compiler.add(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
+    });
+}
+void JitArmV8CodeGen::dynamic_add8_mem_lock(DecodedOp* op) {
+    dynamic_arith_value_lock(JitWidth::b8, op, op->imm, FLAGS_ADD8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalb(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_add_sub_imm(src)) {
+            compiler.add(R32(result), R32(dstMem), src);
+        } else {
+            compiler.add(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
+    });
+}
+void JitArmV8CodeGen::dynamic_adce32r32_lock(DecodedOp* op) {
+    dynamic_arith_lock(JitWidth::b32, op, FLAGS_ADC32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.add(R32(result), R32(dstMem), R32(srcReg));
+    }, false, true);
+}
+void JitArmV8CodeGen::dynamic_adce16r16_lock(DecodedOp* op) {
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_ADC16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalh(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.add(R32(result), R32(dstMem), R32(srcReg));
+    }, false, true);
+}
+void JitArmV8CodeGen::dynamic_adce8r8_lock(DecodedOp* op) {
+    dynamic_arith_lock(JitWidth::b8, op, FLAGS_ADC8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalb(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.add(R32(result), R32(dstMem), R32(srcReg));
+    }, false, true);
+}
+
+void JitArmV8CodeGen::dynamic_adc32_mem_lock(DecodedOp* op) {
+    dynamic_arith_lock(JitWidth::b32, op, FLAGS_ADC32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.add(R32(result), R32(dstMem), R32(srcReg));
+    }, false, true, true);
+}
+void JitArmV8CodeGen::dynamic_adc16_mem_lock(DecodedOp* op) {
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_ADC16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalh(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.add(R32(result), R32(dstMem), R32(srcReg));
+    }, false, true, true);
+}
+void JitArmV8CodeGen::dynamic_adc8_mem_lock(DecodedOp* op) {
+    dynamic_arith_lock(JitWidth::b8, op, FLAGS_ADC8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalb(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.add(R32(result), R32(dstMem), R32(srcReg));
+    }, false, true, true);
+}
 void JitArmV8CodeGen::dynamic_sube32r32_lock(DecodedOp* op) {
-    dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.sub(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest));
+    dynamic_arith_lock(JitWidth::b32, op, FLAGS_SUB32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        if (src->hardwareReg() != dst->hardwareReg()) {
+            RegPtr tmp = getTmpReg();
+            compiler.neg(R32(tmp), R32(src));
+            src = tmp;
+        } else {
+            src = getTmpIfNotTmp(src);
+            compiler.neg(R32(src), R32(src));
+        }                
+        compiler.ldaddal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.sub(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_sube16r16_lock(DecodedOp* op) {
-    dynamic_arithE16R16_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.sub(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R16(dest->hardwareReg()));
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_SUB16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        RegPtr tmp = getTmpReg();
+        movsx(JitWidth::b32, tmp, JitWidth::b16, src);
+        compiler.neg(R32(tmp), R32(tmp));
+        compiler.ldaddalh(R32(tmp), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.sub(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_sube8r8_lock(DecodedOp* op) {
-    dynamic_arithE8R8_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.sub(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R8(get8bitReg(dest)));
+    dynamic_arith_lock(JitWidth::b8, op, FLAGS_SUB8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        RegPtr tmp = getTmpReg();
+        movsx(JitWidth::b32, tmp, JitWidth::b8, src);
+        compiler.neg(R32(tmp), R32(tmp));
+        compiler.ldaddalb(R32(tmp), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.sub(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_sub32_mem_lock(DecodedOp* op) {
-    dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.sub(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), op->imm);
+    dynamic_arith_value_lock(JitWidth::b32, op, op->imm, FLAGS_SUB32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        if (src->hardwareReg() != dst->hardwareReg()) {
+            RegPtr tmp = getTmpReg();
+            compiler.neg(R32(tmp), R32(src));
+            src = tmp;
+        } else {
+            src = getTmpIfNotTmp(src);
+            compiler.neg(R32(src), R32(src));
+        }
+        compiler.ldaddal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_add_sub_imm(src)) {
+            compiler.sub(R32(result), R32(dstMem), src);
+        } else {
+            compiler.sub(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
     });
 }
 void JitArmV8CodeGen::dynamic_sub16_mem_lock(DecodedOp* op) {
-    dynamic_arithE16_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.sub(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), (U16)op->imm);
+    dynamic_arith_value_lock(JitWidth::b16, op, op->imm, FLAGS_SUB16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        RegPtr tmp = getTmpReg();
+        movsx(JitWidth::b32, tmp, JitWidth::b16, src);
+        compiler.neg(R32(tmp), R32(tmp));
+        compiler.ldaddalh(R32(tmp), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_add_sub_imm(src)) {
+            compiler.sub(R32(result), R32(dstMem), src);
+        } else {
+            compiler.sub(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
     });
 }
 void JitArmV8CodeGen::dynamic_sub8_mem_lock(DecodedOp* op) {
-    dynamic_arithE8_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.sub(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), (U8)op->imm);
+    dynamic_arith_value_lock(JitWidth::b8, op, op->imm, FLAGS_SUB8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        RegPtr tmp = getTmpReg();
+        movsx(JitWidth::b32, tmp, JitWidth::b8, src);
+        compiler.neg(R32(tmp), R32(tmp));
+        compiler.ldaddalb(R32(tmp), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_add_sub_imm(src)) {
+            compiler.sub(R32(result), R32(dstMem), src);
+        } else {
+            compiler.sub(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
     });
 }
+void JitArmV8CodeGen::dynamic_sbbe32r32_lock(DecodedOp* op) {
+    dynamic_arith_lock(JitWidth::b32, op, FLAGS_SBB32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        if (src->hardwareReg() != dst->hardwareReg()) {
+            RegPtr tmp = getTmpReg();
+            compiler.neg(R32(tmp), R32(src));
+            src = tmp;
+        } else {
+            src = getTmpIfNotTmp(src);
+            compiler.neg(R32(src), R32(src));
+        }
+        compiler.ldaddal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.sub(R32(result), R32(dstMem), R32(srcReg));
+    }, false, true);
+}
+void JitArmV8CodeGen::dynamic_sbbe16r16_lock(DecodedOp* op) {
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_SBB16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        RegPtr tmp = getTmpReg();
+        movsx(JitWidth::b32, tmp, JitWidth::b16, src);
+        compiler.neg(R32(tmp), R32(tmp));
+        compiler.ldaddalh(R32(tmp), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.sub(R32(result), R32(dstMem), R32(srcReg));
+    }, false, true);
+}
+void JitArmV8CodeGen::dynamic_sbbe8r8_lock(DecodedOp* op) {
+    dynamic_arith_lock(JitWidth::b8, op, FLAGS_SBB8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        RegPtr tmp = getTmpReg();
+        movsx(JitWidth::b32, tmp, JitWidth::b8, src);
+        compiler.neg(R32(tmp), R32(tmp));
+        compiler.ldaddalb(R32(tmp), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.sub(R32(result), R32(dstMem), R32(srcReg));
+    }, false, true);
+}
+void JitArmV8CodeGen::dynamic_sbb32_mem_lock(DecodedOp* op) {
+    dynamic_arith_lock(JitWidth::b32, op, FLAGS_SBB32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        if (src->hardwareReg() != dst->hardwareReg()) {
+            RegPtr tmp = getTmpReg();
+            compiler.neg(R32(tmp), R32(src));
+            src = tmp;
+        } else {
+            src = getTmpIfNotTmp(src);
+            compiler.neg(R32(src), R32(src));
+        }
+        compiler.ldaddal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.sub(R32(result), R32(dstMem), R32(srcReg));
+    }, false, true, true);
+}
+void JitArmV8CodeGen::dynamic_sbb16_mem_lock(DecodedOp* op) {
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_SBB16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        RegPtr tmp = getTmpReg();
+        movsx(JitWidth::b32, tmp, JitWidth::b16, src);
+        compiler.neg(R32(tmp), R32(tmp));
+        compiler.ldaddalh(R32(tmp), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.sub(R32(result), R32(dstMem), R32(srcReg));
+    }, false, true, true);
+}
+void JitArmV8CodeGen::dynamic_sbb8_mem_lock(DecodedOp* op) {
+    dynamic_arith_lock(JitWidth::b8, op, FLAGS_SBB8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        RegPtr tmp = getTmpReg();
+        movsx(JitWidth::b32, tmp, JitWidth::b8, src);
+        compiler.neg(R32(tmp), R32(tmp));
+        compiler.ldaddalb(R32(tmp), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.sub(R32(result), R32(dstMem), R32(srcReg));
+    }, false, true, true);
+}
 void JitArmV8CodeGen::dynamic_ore32r32_lock(DecodedOp* op) {
-    dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.or_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest));
+    dynamic_arith_lock(JitWidth::b32, op, FLAGS_OR32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldsetal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.orr(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_ore16r16_lock(DecodedOp* op) {
-    dynamic_arithE16R16_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.or_(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R16(dest->hardwareReg()));
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_OR16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldsetalh(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.orr(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_ore8r8_lock(DecodedOp* op) {
-    dynamic_arithE8R8_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.or_(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R8(get8bitReg(dest)));
+    dynamic_arith_lock(JitWidth::b8, op, FLAGS_OR8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldsetalb(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.orr(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_or32_mem_lock(DecodedOp* op) {
-    dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.or_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), op->imm);
+    dynamic_arith_value_lock(JitWidth::b32, op, op->imm, FLAGS_OR32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldsetal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_logical_imm(src, 32)) {
+            compiler.orr(R32(result), R32(dstMem), src);
+        } else {
+            compiler.orr(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
     });
 }
 void JitArmV8CodeGen::dynamic_or16_mem_lock(DecodedOp* op) {
-    dynamic_arithE16_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.or_(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), (U16)op->imm);
+    dynamic_arith_value_lock(JitWidth::b16, op, op->imm, FLAGS_OR16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldsetalh(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_logical_imm(src, 32)) {
+            compiler.orr(R32(result), R32(dstMem), src);
+        } else {
+            compiler.orr(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
     });
 }
 void JitArmV8CodeGen::dynamic_or8_mem_lock(DecodedOp* op) {
-    dynamic_arithE8_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.or_(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), (U8)op->imm);
+    dynamic_arith_value_lock(JitWidth::b8, op, op->imm, FLAGS_OR8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldsetalb(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_logical_imm(src, 32)) {
+            compiler.orr(R32(result), R32(dstMem), src);
+        } else {
+            compiler.orr(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
     });
 }
 void JitArmV8CodeGen::dynamic_ande32r32_lock(DecodedOp* op) {
-    dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.and_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest));
+    dynamic_arith_lock(JitWidth::b32, op, FLAGS_AND32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        if (src->hardwareReg() != dst->hardwareReg()) {
+            RegPtr tmp = getTmpReg();
+            compiler.mvn_(R32(tmp), R32(src));
+            src = tmp;
+        } else {
+            src = getTmpIfNotTmp(src);
+            compiler.mvn_(R32(src), R32(src));
+        }
+        compiler.ldclral(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.and_(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_ande16r16_lock(DecodedOp* op) {
-    dynamic_arithE16R16_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.and_(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R16(dest->hardwareReg()));
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_AND16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        RegPtr tmp = getTmpReg();
+        compiler.mvn_(R32(tmp), R32(src));
+        compiler.ldclralh(R32(tmp), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.and_(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_ande8r8_lock(DecodedOp* op) {
-    dynamic_arithE8R8_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.and_(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R8(get8bitReg(dest)));
+    dynamic_arith_lock(JitWidth::b8, op, FLAGS_AND8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        RegPtr tmp = getTmpReg();
+        compiler.mvn_(R32(tmp), R32(src));
+        compiler.ldclralb(R32(tmp), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.and_(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_and32_mem_lock(DecodedOp* op) {
-    dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.and_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), op->imm);
-        });
+    dynamic_arith_value_lock(JitWidth::b32, op, op->imm, FLAGS_AND32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        if (src->hardwareReg() != dst->hardwareReg()) {
+            RegPtr tmp = getTmpReg();
+            compiler.mvn_(R32(tmp), R32(src));
+            src = tmp;
+        } else {
+            src = getTmpIfNotTmp(src);
+            compiler.mvn_(R32(src), R32(src));
+        }
+        compiler.ldclral(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_logical_imm(src, 32)) {
+            compiler.and_(R32(result), R32(dstMem), src);
+        } else {
+            compiler.and_(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
+    });
 }
 void JitArmV8CodeGen::dynamic_and16_mem_lock(DecodedOp* op) {
-    dynamic_arithE16_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.and_(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), (U16)op->imm);
+    dynamic_arith_value_lock(JitWidth::b16, op, op->imm, FLAGS_AND16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        RegPtr tmp = getTmpReg();
+        compiler.mvn_(R32(tmp), R32(src));
+        compiler.ldclralh(R32(tmp), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_logical_imm(src, 32)) {
+            compiler.and_(R32(result), R32(dstMem), src);
+        } else {
+            compiler.and_(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
     });
 }
 void JitArmV8CodeGen::dynamic_and8_mem_lock(DecodedOp* op) {
-    dynamic_arithE8_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.and_(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), (U8)op->imm);
+    dynamic_arith_value_lock(JitWidth::b8, op, op->imm, FLAGS_AND8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        RegPtr tmp = getTmpReg();
+        compiler.mvn_(R32(tmp), R32(src));
+        compiler.ldclralb(R32(tmp), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_logical_imm(src, 32)) {
+            compiler.and_(R32(result), R32(dstMem), src);
+        } else {
+            compiler.and_(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
     });
 }
 void JitArmV8CodeGen::dynamic_xore32r32_lock(DecodedOp* op) {
-    dynamic_arithE32R32_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.xor_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R32(dest));
+    dynamic_arith_lock(JitWidth::b32, op, FLAGS_XOR32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldeoral(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.eor(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_xore16r16_lock(DecodedOp* op) {
-    dynamic_arithE16R16_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.xor_(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R16(dest->hardwareReg()));
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_XOR16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldeoralh(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.eor(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_xore8r8_lock(DecodedOp* op) {
-    dynamic_arithE8R8_lock(op, [this](RegPtr dest, RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.xor_(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), R8(get8bitReg(dest)));
+    dynamic_arith_lock(JitWidth::b8, op, FLAGS_XOR8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldeoralb(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.eor(R32(result), R32(dstMem), R32(srcReg));
     });
 }
 void JitArmV8CodeGen::dynamic_xor32_mem_lock(DecodedOp* op) {
-    dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.xor_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), op->imm);
+    dynamic_arith_value_lock(JitWidth::b32, op, op->imm, FLAGS_XOR32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldeoral(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_logical_imm(src, 32)) {
+            compiler.eor(R32(result), R32(dstMem), src);
+        } else {
+            compiler.eor(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
     });
 }
 void JitArmV8CodeGen::dynamic_xor16_mem_lock(DecodedOp* op) {
-    dynamic_arithE16_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.xor_(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), (U16)op->imm);
+    dynamic_arith_value_lock(JitWidth::b16, op, op->imm, FLAGS_XOR16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldeoralh(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_logical_imm(src, 32)) {
+            compiler.eor(R32(result), R32(dstMem), src);
+        } else {
+            compiler.eor(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
     });
 }
 void JitArmV8CodeGen::dynamic_xor8_mem_lock(DecodedOp* op) {
-    dynamic_arithE8_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.xor_(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())), (U8)op->imm);
+    dynamic_arith_value_lock(JitWidth::b8, op, op->imm, FLAGS_XOR8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldeoralb(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        if (asmjit::a64::Utils::is_logical_imm(src, 32)) {
+            compiler.eor(R32(result), R32(dstMem), src);
+        } else {
+            compiler.eor(R32(result), R32(dstMem), R32(loadConst(src)));
+        }
     });
 }
+
 void JitArmV8CodeGen::dynamic_inc32_mem32_lock(DecodedOp* op) {
-    dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        if (op->getNeededFlagsAfter(CF)) {
-            updateHardwareFlags(CF);
-        }
-        this->x86.lock();
-        this->x86.inc(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())));
+    dynamic_arith_value_lock(JitWidth::b32, op, 1, FLAGS_INC32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        compiler.add(R32(result), R32(dstMem), src);
     });
 }
 void JitArmV8CodeGen::dynamic_inc16_mem16_lock(DecodedOp* op) {
-    dynamic_arithE16_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        if (currentOp->getNeededFlagsAfter(CF)) {
-            updateHardwareFlags(CF);
-        }
-        this->x86.lock();
-        this->x86.inc(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())));
+    dynamic_arith_value_lock(JitWidth::b16, op, 1, FLAGS_INC16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalh(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        compiler.add(R32(result), R32(dstMem), src);
     });
 }
 void JitArmV8CodeGen::dynamic_inc8_mem8_lock(DecodedOp* op) {
-    dynamic_arithE8_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        if (currentOp->getNeededFlagsAfter(CF)) {
-            updateHardwareFlags(CF);
-        }
-        this->x86.lock();
-        this->x86.inc(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())));
+    dynamic_arith_value_lock(JitWidth::b8, op, 1, FLAGS_INC8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalb(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        compiler.add(R32(result), R32(dstMem), src);
     });
 }
 void JitArmV8CodeGen::dynamic_dec32_mem32_lock(DecodedOp* op) {
-    dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        if (currentOp->getNeededFlagsAfter(CF)) {
-            updateHardwareFlags(CF);
-        }
-        this->x86.lock();
-        this->x86.dec(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())));
+    dynamic_arith_value_lock(JitWidth::b32, op, -1, FLAGS_DEC32, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddal(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        compiler.sub(R32(result), R32(dstMem), 1);
     });
 }
 void JitArmV8CodeGen::dynamic_dec16_mem16_lock(DecodedOp* op) {
-    dynamic_arithE16_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        if (currentOp->getNeededFlagsAfter(CF)) {
-            updateHardwareFlags(CF);
-        }
-        this->x86.lock();
-        this->x86.dec(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())));
+    dynamic_arith_value_lock(JitWidth::b16, op, -1, FLAGS_DEC16, [this](RegPtr src, RegPtr dst, RegPtr address) {
+        compiler.ldaddalh(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        compiler.sub(R32(result), R32(dstMem), 1);
     });
 }
 void JitArmV8CodeGen::dynamic_dec8_mem8_lock(DecodedOp* op) {
-    dynamic_arithE8_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        if (currentOp->getNeededFlagsAfter(CF)) {
-            updateHardwareFlags(CF);
-        }
-        this->x86.lock();
-        this->x86.dec(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())));
+    dynamic_arith_value_lock(JitWidth::b8, op, -1, FLAGS_DEC8, [this](RegPtr src, RegPtr dst, RegPtr address) {
+    compiler.ldaddalb(R32(src), R32(dst), Mem(R64(address)));
+    }, [this](RegPtr result, RegPtr dstMem, U32 src) {
+        compiler.sub(R32(result), R32(dstMem), 1);
     });
 }
 
 void JitArmV8CodeGen::dynamic_note32_lock(DecodedOp* op) {
-    dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.not_(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())));
+    dynamic_arith_lock(JitWidth::b32, op, FLAGS_NULL, nullptr, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.mvn_(R32(result), R32(dstMem));
     });
 }
 
 void JitArmV8CodeGen::dynamic_note16_lock(DecodedOp* op) {
-    dynamic_arithE16_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.not_(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())));
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_NULL, nullptr, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.mvn_(R32(result), R32(dstMem));
     });
 }
 
 void JitArmV8CodeGen::dynamic_note8_lock(DecodedOp* op) {
-    dynamic_arithE8_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.not_(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())));
+    dynamic_arith_lock(JitWidth::b8, op, FLAGS_NULL, nullptr, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.mvn_(R32(result), R32(dstMem));
     });
 }
 
 void JitArmV8CodeGen::dynamic_nege32_lock(DecodedOp* op) {
-    dynamic_arithE32_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.neg(X86Asm::Mem32(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())));
+    dynamic_arith_lock(JitWidth::b32, op, FLAGS_NEG32, nullptr, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.neg(R32(result), R32(dstMem));
     });
 }
 
 void JitArmV8CodeGen::dynamic_nege16_lock(DecodedOp* op) {
-    dynamic_arithE16_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.neg(X86Asm::Mem16(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())));
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_NEG16, nullptr, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.sxth(R32(result), R32(dstMem));
+        compiler.neg(R32(result), R32(result));
     });
 }
 
 void JitArmV8CodeGen::dynamic_nege8_lock(DecodedOp* op) {
-    dynamic_arithE8_lock(op, [op, this](RegPtr addressReg, RegPtr offsetReg) {
-        this->x86.lock();
-        this->x86.neg(X86Asm::Mem8(RN(addressReg->hardwareReg()), RN(offsetReg->hardwareReg())));
+    dynamic_arith_lock(JitWidth::b16, op, FLAGS_NEG8, nullptr, [this](RegPtr result, RegPtr dstMem, RegPtr srcReg) {
+        compiler.sxtb(R32(result), R32(dstMem));
+        compiler.neg(R32(result), R32(result));
     });
 }
-
+/*
 void JitArmV8CodeGen::dynamic_btse32_lock(DecodedOp* op) {
     JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
         // imm is the mask, not the bitshift
@@ -6415,15 +6989,13 @@ U8* JitArmV8CodeGen::createStartJITCode() {
         compiler.stp(R64(i), R64(i+1), Mem(xEAX, offsetof(CPU, storedRegs) + (i - 19) * 8));
     }
     compiler.mov(R64(29), asmjit::a64::sp); // mov fp, sp
-    // only the bottom 64-bits of v8-v15 need to be saved
-    //subValue64(31, 31, 32);
-    //vWriteMemMultiple64(8, 31, 4, false);
-    //subValue64(31, 31, 32);
-    //vWriteMemMultiple64(12, 31, 4, false);
-
     compiler.mov(xCPU, R64(0));
     compiler.ldr(xBranch, Mem(R64(1), offsetof(DecodedOp, pfnJitCode)));
     compiler.mov(xMMU, (U64)&getMemData(KThread::currentThread()->memory)->mmu);
+#ifdef BOXEDWINE_MEM_CACHE
+    static_assert(offsetof(KMemoryData, mmu) + sizeof(void*) * K_NUMBER_OF_PAGES == offsetof(KMemoryData, readCache));
+    static_assert(offsetof(KMemoryData, mmu) + sizeof(void*) * K_NUMBER_OF_PAGES * 2 == offsetof(KMemoryData, writeCache));
+#endif
     compiler.mov(xLoadCacheFromCPU, (U64)KThread::currentThread()->process->syncToHost);
     compiler.mov(xWriteCacheToCPU, (U64)KThread::currentThread()->process->syncFromHost);
     compiler.mov(xEmulateSingleOp, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
@@ -6431,14 +7003,6 @@ U8* JitArmV8CodeGen::createStartJITCode() {
     compiler.br(xBranch);
 
     return createDynamicExecutableMemory();
-}
-
-void JitArmV8CodeGen::preCommitJIT() {
-
-}
-
-void JitArmV8CodeGen::patch(U8* begin) {
-
 }
 
 void JitArmV8CodeGen::loadCacheFromCPU() {

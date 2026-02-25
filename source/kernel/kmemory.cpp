@@ -472,6 +472,7 @@ void* KMemory::allocCodeMemory(U32 len) {
     auto startIt = data->jitAddressToEip.upper_bound((U8*)result);
     auto endIt = data->jitAddressToEip.lower_bound((U8*)result + blockSize);
     auto it = startIt;
+
     while (it != endIt) {
         it = data->jitAddressToEip.erase(it);
     }
@@ -485,6 +486,25 @@ bool KMemory::isCode(void* p) {
 }
 
 #if defined(BOXEDWINE_JIT)
+void KMemory::clearJit(DecodedOp* op) {
+    DecodedOp* nextOp = op->blockStart;
+    U32 blockOpCount = nextOp->blockOpCount;
+    void* start = nextOp->pfnJitCode;
+
+    for (U32 i = 0; i < blockOpCount; i++) {
+        nextOp->flags &= ~OP_FLAG_JIT;
+        nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
+        nextOp->pfnJitCode = nullptr;
+        nextOp->jitLen = 0;
+        nextOp->blockStart = nullptr;
+        nextOp->blockOpCount = 0;
+        nextOp->blockLen = 0;
+        nextOp->runCount = 0;
+        nextOp = nextOp->next;
+    }
+    data->codeMemory.free(start);
+}
+
 void writeBlockExitForJIT(U32 eip, U8* buffer);
 bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, bool clearOps) {
     DecodedOp* blockOp = op->blockStart;
@@ -502,10 +522,11 @@ bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, b
         nextOp->blockStart = nullptr;
         nextOp->blockOpCount = 0;
         nextOp->blockLen = 0;
-        // dynamic will clear this in DecodedOpCache::removeJITCode, but it needs it to be set until then
-#ifdef BOXEDWINE_JIT
+        nextOp->runCount = 0;
         nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
         nextOp->flags &= ~OP_FLAG_JIT;
+        // dynamic will clear this in DecodedOpCache::removeJITCode, but it needs it to be set until then
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_HOST_EXCEPTIONS)                
         if (currentOp && nextOp == currentOp->next && nextOp->pfnJitCode) {
             // this is important if the current jit block modifies itself
             U8* p = (U8*)nextOp->pfnJitCode;

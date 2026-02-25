@@ -846,7 +846,6 @@ U8* JitCodeGen::createDynamicExecutableMemory(U32* pSize) {
 
     Platform::writeCodeToMemory(begin, size, [begin, size, this]() {
         copyBuffer(begin, size);
-        patch(begin);
     });
     Platform::clearInstructionCache(begin, size);
 
@@ -925,8 +924,6 @@ U8* JitCodeGen::createEmulateSingleOp() {
 }
 
 void JitCodeGen::commitJIT(DecodedOp* op) {
-    preCommitJIT();
-
     if (!blockOpCount) {
         return;
     }
@@ -1127,14 +1124,20 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
     }    
 
     if (width != JitWidth::b8 && checkAlignment) {
-#ifdef BOXEDWINE_4K_PAGE_SIZE
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        if (KSystem::canJitUse4KPage) {
 #ifdef _DEBUG
-        writeCurrentEip(0);
+            writeCurrentEip(0);
 #endif
-        if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT)
+            if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT) {
+                clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+            }
+        } else
 #endif
-        // make sure we only use the fast path if the entire read will take place on the same page
-        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        {
+            // make sure we only use the fast path if the entire read will take place on the same page
+            clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        }
     }
     
     IfNotTestBit(JitWidth::b32, tmp, 0); {
@@ -1207,9 +1210,12 @@ RegPtr JitCodeGen::read(JitWidth width, MemPtr mem, RegPtr result) {
         return read(width, calculateAddress(mem), nullptr, nullptr, result);
     }
 #ifdef BOXEDWINE_MEM_CACHE
-    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && (KSystem::canJitUse4KPage || width == JitWidth::b8 || (width == JitWidth::b16 && (mem->offset & 0xFFF) < 0xFFF) || (width == JitWidth::b32 && (mem->offset & 0xFFF) < 0xFFD))) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
         return readMemCache(width, mem->offset, result);
-    }
+    }        
 #endif
     if (!result) {
         result = getTmpReg8();
@@ -1253,11 +1259,31 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, RegPtr src) {
         return;
     }
 #ifdef BOXEDWINE_MEM_CACHE
-    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+    if (KSystem::canJitUse4KPage) {
+        if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+            writeMemCache(width, mem->offset, src);
+            return;
+        }
+    } else {
+        if (width == JitWidth::b8 || (width == JitWidth::b16 && (mem->offset & 0xFFF) < 0xFFF) || (width == JitWidth::b32 && (mem->offset & 0xFFF) < 0xFFD)) {
+            if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+                writeMemCache(width, mem->offset, src);
+                return;
+            }
+        }
+    }
+#endif
+
+#ifdef BOXEDWINE_MEM_CACHE
+    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && (KSystem::canJitUse4KPage || width == JitWidth::b8 || (width == JitWidth::b16 && (mem->offset & 0xFFF) < 0xFFF) || (width == JitWidth::b32 && (mem->offset & 0xFFF) < 0xFFD))) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
         writeMemCache(width, mem->offset, src);
         return;
     }
 #endif
+
     U32 address = mem->offset;
     if (width == JitWidth::b16) {
         if ((address & 0xFFF) == 0xFFF) {
@@ -1279,9 +1305,8 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, RegPtr src) {
         emulateSingleOp();
     } EndIf();
 
-    andValueNative(tmp, ~0xfff);
-
-    writeHost(width, std::make_shared<JitMem>(tmp, address & K_PAGE_MASK), src);
+    andValueNative(tmp, ~0xfff);    
+    writeHost(width, createMemPtr(tmp, address & K_PAGE_MASK), src);
 }
 
 void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment) {
@@ -1314,14 +1339,21 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
     }    
 
     if (width != JitWidth::b8 && checkAlignment) {
-#ifdef BOXEDWINE_4K_PAGE_SIZE
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        if (KSystem::canJitUse4KPage) {
 #ifdef _DEBUG
-        writeCurrentEip(0);
+            writeCurrentEip(0);
 #endif
-        if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT)
+            if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT) {
+                clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+            }
+
+        } else 
 #endif
-        // make sure we only use the fast path if the entire read will take place on the same page
-        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        {
+            // make sure we only use the fast path if the entire read will take place on the same page
+            clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        }
     }
 
     IfNotTestBit(JitWidth::b32, tmp, 1); {
@@ -1372,14 +1404,20 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
         andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
  
         if (width != JitWidth::b8) {
-#ifdef BOXEDWINE_4K_PAGE_SIZE
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+            if (KSystem::canJitUse4KPage) {
 #ifdef _DEBUG
-            writeCurrentEip(0);
+                writeCurrentEip(0);
 #endif
-            if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT)
+                if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT) {
+                    clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+                }
+            } else 
 #endif
-            // make sure we only use the fast path if the entire read will take place on the same page
-            clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+            {
+                // make sure we only use the fast path if the entire read will take place on the same page
+                clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+            }
         }
 
         IfNotTestBit(JitWidth::b32, tmp, 1); {
@@ -1390,7 +1428,10 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
         writeHost(width, createMemPtr(tmp, offsetReg, 0, 0), imm);
     } else {
 #ifdef BOXEDWINE_MEM_CACHE
-        if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+        if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && (KSystem::canJitUse4KPage || width == JitWidth::b8 || (width == JitWidth::b16 && (mem->offset & 0xFFF) < 0xFFF) || (width == JitWidth::b32 && (mem->offset & 0xFFF) < 0xFFD))) {
+#ifdef _DEBUG
+            writeCurrentEip(0);
+#endif
             writeMemCache(width, mem->offset, imm);
             return;
         }
@@ -1404,14 +1445,20 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
         andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
 
         if (width != JitWidth::b8) {
-#ifdef BOXEDWINE_4K_PAGE_SIZE
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+            if (KSystem::canJitUse4KPage) {
 #ifdef _DEBUG
-            writeCurrentEip(0);
+                writeCurrentEip(0);
 #endif
-            if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT)
+                if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT) {
+                    clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+                }
+            } else 
 #endif
-            // make sure we only use the fast path if the entire read will take place on the same page
-            clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+            {
+                // make sure we only use the fast path if the entire read will take place on the same page
+                clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+            }
         }
 
         IfNotTestBit(JitWidth::b32, tmp, 1); {
@@ -1429,7 +1476,7 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
 
 #ifdef BOXEDWINE_MEM_CACHE
     if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
-        return readWriteMemCache(width, addressReg, prepareWrite, tmp);
+        return readWriteMemCache(width, std::move(addressReg), prepareWrite, tmp);
     }
 #endif
     RegPtr offsetReg;    
@@ -1441,14 +1488,20 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
     andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
 
     if (width != JitWidth::b8) {
-#ifdef BOXEDWINE_4K_PAGE_SIZE
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        if (KSystem::canJitUse4KPage) {
 #ifdef _DEBUG
-        writeCurrentEip(0);
+            writeCurrentEip(0);
 #endif
-        if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT)
+            if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT) {
+                clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+            }
+        } else 
 #endif
-        // make sure we only use the fast path if the entire read will take place on the same page
-        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        {
+            // make sure we only use the fast path if the entire read will take place on the same page
+            clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
+        }
     }
 
     // if read/write

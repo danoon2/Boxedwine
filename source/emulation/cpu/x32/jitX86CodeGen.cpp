@@ -786,8 +786,6 @@ protected:
 
     void setCC(asmjit::x86::Gp reg, JitEvaluate condition);
 
-    void preCommitJIT() override;
-    void patch(U8* begin) override;
     U8* createStartJITCode() override;
 
     void loadCache();
@@ -5510,14 +5508,6 @@ U8* JitX86CodeGen::createStartJITCode() {
     compiler.jmp(RN(tmps[0]));
 #endif
     return createDynamicExecutableMemory();
-}
-
-void JitX86CodeGen::preCommitJIT() {
-
-}
-
-void JitX86CodeGen::patch(U8* begin) {
-
 }
 
 void JitX86CodeGen::loadCache() {

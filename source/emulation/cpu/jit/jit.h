@@ -51,9 +51,6 @@ enum class JitCallParamType {
     CONST_16,
     CONST_32,
     CONST_PTR,
-    CPU_REG_8,
-    CPU_REG_16,
-    CPU_REG_32,
     CPU,
 };
 

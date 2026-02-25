@@ -149,6 +149,7 @@ public:
     void removeCode(KThread* thread, U32 address, U32 len, bool becauseOfWrite);
 #if defined(BOXEDWINE_JIT)
     bool removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, bool clearOps); // returns true if currently executing block is removed
+    void clearJit(DecodedOp* op);
 #endif
     bool isAddressDynamic(U32 address, U32 len);
     void threadCleanup(U32 threadId);

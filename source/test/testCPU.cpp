@@ -83,6 +83,8 @@ void tearDown() {
 
 void setup() {
     if (!memory) {
+        KSystem::startMicroCounter();
+        KSystem::init();
         process = KProcess::create();
         memory = KMemory::create(process.get());
         process->memory = memory;

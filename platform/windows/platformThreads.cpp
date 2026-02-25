@@ -38,7 +38,34 @@ extern U8 xmmCache[8];
 void syncToException(struct _EXCEPTION_POINTERS* ep) {
     CPU* cpu = KThread::currentThread()->cpu;
 #ifdef _M_ARM64
-    kpanic("syncToException not implemented");
+    for (U32 i = 0; i < 8; i++) {
+        if (regCache[i] != 0xFF) {
+            switch (regCache[i]) {
+            case 0: ep->ContextRecord->X0 = cpu->reg[i].u32; break;
+            case 1: ep->ContextRecord->X1 = cpu->reg[i].u32; break;
+            case 2: ep->ContextRecord->X2 = cpu->reg[i].u32; break;
+            case 3: ep->ContextRecord->X3 = cpu->reg[i].u32; break;
+            case 4: ep->ContextRecord->X4 = cpu->reg[i].u32; break;
+            case 5: ep->ContextRecord->X5 = cpu->reg[i].u32; break;
+            case 6: ep->ContextRecord->X6 = cpu->reg[i].u32; break;
+            case 7: ep->ContextRecord->X7 = cpu->reg[i].u32; break;
+            default:
+                kpanic("Windows ARM64 syncToException");
+            }
+        }
+    }
+    for (U32 i = 0; i < 8; i++) {
+        if (xmmCache[i] != 0xFF) {
+            ep->ContextRecord->V[xmmCache[i]].Low = cpu->xmm[i].pi.u64[0];
+            ep->ContextRecord->V[xmmCache[i]].High = cpu->xmm[i].pi.u64[1];
+        }
+    }
+    ep->ContextRecord->X8 = cpu->flags;
+    ep->ContextRecord->X16 = cpu->src.u32;
+    ep->ContextRecord->X10 = cpu->dst.u32;
+    ep->ContextRecord->X15 = cpu->result.u32;
+    ep->ContextRecord->X11 = cpu->lazyFlagType;
+
 #elif defined(BOXEDWINE_64)
     for (U32 i = 0; i < 8; i++) {
         if (regCache[i] != 0xFF) {
@@ -125,7 +152,34 @@ void syncToException(struct _EXCEPTION_POINTERS* ep) {
 void syncFromException(struct _EXCEPTION_POINTERS* ep) {
     CPU* cpu = KThread::currentThread()->cpu;
 #ifdef _M_ARM64
-    kpanic("syncFromException not implemented");
+    for (U32 i = 0; i < 8; i++) {
+        if (regCache[i] != 0xFF) {
+            switch (regCache[i]) {
+            case 0: cpu->reg[i].u32 = (U32)ep->ContextRecord->X0; break;
+            case 1: cpu->reg[i].u32 = (U32)ep->ContextRecord->X1; break;
+            case 2: cpu->reg[i].u32 = (U32)ep->ContextRecord->X2; break;
+            case 3: cpu->reg[i].u32 = (U32)ep->ContextRecord->X3; break;
+            case 4: cpu->reg[i].u32 = (U32)ep->ContextRecord->X4; break;
+            case 5: cpu->reg[i].u32 = (U32)ep->ContextRecord->X5; break;
+            case 6: cpu->reg[i].u32 = (U32)ep->ContextRecord->X6; break;
+            case 7: cpu->reg[i].u32 = (U32)ep->ContextRecord->X7; break;
+            default:
+                kpanic("Windows ARM64 syncFromException");
+            }
+        }
+    }
+    for (U32 i = 0; i < 8; i++) {
+        if (xmmCache[i] != 0xFF) {
+            cpu->xmm[i].pi.u64[0] = ep->ContextRecord->V[xmmCache[i]].Low;
+            cpu->xmm[i].pi.u64[1] = ep->ContextRecord->V[xmmCache[i]].High;            
+        }
+    }
+    cpu->flags = (U32)ep->ContextRecord->X8;
+    cpu->src.u32 = (U32)ep->ContextRecord->X16;
+    cpu->dst.u32 = (U32)ep->ContextRecord->X10;
+    cpu->result.u32 = (U32)ep->ContextRecord->X15;
+    cpu->lazyFlagType = (LazyFlagType)ep->ContextRecord->X11;
+
 #elif defined(BOXEDWINE_64)
     for (U32 i = 0; i < 8; i++) {
         if (regCache[i] != 0xFF) {
@@ -208,25 +262,11 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep) {
     }
 #endif    
 }
-LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
-    //BOXEDWINE_CRITICAL_SECTION;
-#ifdef _M_ARM64
-    kpanic("seh_filter not implemented");
-#elif defined(BOXEDWINE_64)
-    if (ep->ContextRecord->EFlags & AC) {
-        // the comment on the next line was for the x64 binary translator, I'm not sure if it still applies to the JIT
-        // :TODO: not sure what causes this, seen it in winroids
-        ep->ContextRecord->EFlags &= ~AC;
-        return EXCEPTION_CONTINUE_EXECUTION;
-    }
-    KThread* currentThread = KThread::currentThread();
-    if (!currentThread) {
-        return EXCEPTION_CONTINUE_SEARCH;
-    }
-    CPU* cpu = currentThread->cpu;
+
 #ifdef _M_ARM64
 #define CPU_REG X19
 #define REG_IP Pc
+#define SET_REG_IP(r) Pc = (U64)r
 #elif defined(BOXEDWINE_64)
 #define CPU_REG R13
 #define REG_IP Rip
@@ -236,6 +276,21 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
 #define REG_IP Eip
 #define SET_REG_IP(r) Eip = (U32)r
 #endif
+
+LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
+#ifndef _M_ARM64
+    if (ep->ContextRecord->EFlags & AC) {
+        // the comment on the next line was for the x64 binary translator, I'm not sure if it still applies to the JIT
+        // :TODO: not sure what causes this, seen it in winroids
+        ep->ContextRecord->EFlags &= ~AC;
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+#endif
+    KThread* currentThread = KThread::currentThread();
+    if (!currentThread) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+    CPU* cpu = currentThread->cpu;
     if (cpu != (CPU*)ep->ContextRecord->CPU_REG) {
         return EXCEPTION_CONTINUE_SEARCH;
     }
@@ -260,12 +315,11 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex); // jitCache needs this
         U32 eip = 0;
         if (!getMemData(cpu->memory)->findOpFromJitAddress((U8*)ep->ContextRecord->REG_IP, eip)) {
-            // race condition, someone removed this jit code while we were using it.
             return EXCEPTION_CONTINUE_SEARCH;
         }        
 #ifdef _DEBUG
         if (eip != cpu->eip.u32) {
-            kpanic_fmt("%x/%x", cpu->eip.u32, eip);
+           // kpanic_fmt("%x/%x", cpu->eip.u32, eip);
         }        
 #endif
         cpu->eip.u32 = eip;
@@ -314,7 +368,6 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         klog("Instruction cache miss?");
         return EXCEPTION_CONTINUE_EXECUTION;
     }
-#endif
     return EXCEPTION_CONTINUE_SEARCH;
 }
 #endif

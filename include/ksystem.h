@@ -106,6 +106,8 @@ public:
     static bool forceRelativeMouse;
     static bool cacheReads;
     static bool useF64;
+    static U32 pageSize;
+    static bool canJitUse4KPage;
 
     static void init();
 	static void destroy();

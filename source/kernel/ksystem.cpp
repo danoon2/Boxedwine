@@ -64,6 +64,8 @@ bool KSystem::disableHideCursor = false;
 bool KSystem::forceRelativeMouse = false;
 bool KSystem::cacheReads = false;
 BString KSystem::showWindowTimestamp;
+U32 KSystem::pageSize = 4096;
+bool KSystem::canJitUse4KPage = false;
 
 #if defined(BOXEDWINE_X64) && !defined(BOXEDWINE_USE_SSE_FOR_FPU)
 bool KSystem::useF64 = false;
@@ -85,6 +87,10 @@ void KSystem::init() {
     KSystem::startTimeSystemTime = Platform::getSystemTimeAsMicroSeconds();
     KSystem::killTime = 0;
     KSystem::killTime2 = 0;
+    KSystem::pageSize = Platform::getPagePermissionGranularity() * K_PAGE_SIZE;
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    KSystem::canJitUse4KPage = Platform::getPagePermissionGranularity() == 1 && sizeof(void*) > 4; // don't use 4k jit optimization for 32-bit since it will run out of address space easily
+#endif
 }
 
 void stopNativeSocketsThread();
