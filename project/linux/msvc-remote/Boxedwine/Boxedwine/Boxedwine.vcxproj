@@ -2328,7 +2328,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_JIT;BOXEDWINE_OPENGL_SDL;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;SIMDE_NO_NEON;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MEM_CACHE;BOXEDWINE_HOST_EXCEPTIONS;ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_JIT;BOXEDWINE_OPENGL_SDL;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;SIMDE_NO_NEON;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -2343,7 +2343,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_JIT;BOXEDWINE_MULTI_THREADED;SIMDE_NO_NEON;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NEON;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MEM_CACHE;BOXEDWINE_HOST_EXCEPTIONS;ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_JIT;BOXEDWINE_MULTI_THREADED;SIMDE_NO_NEON;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NEON;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -2358,7 +2358,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_JIT;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;BOXEDWINE_OPENGL_IMGUI_V2;SIMDE_NO_NEON;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MEM_CACHE;BOXEDWINE_HOST_EXCEPTIONS;ASMJIT_NO_X86;ASMJIT_STATIC;BOXEDWINE_JIT_ARMV8;BOXEDWINE_JIT;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;BOXEDWINE_OPENGL_IMGUI_V2;SIMDE_NO_NEON;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>

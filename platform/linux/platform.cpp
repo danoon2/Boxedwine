@@ -338,7 +338,7 @@ bool platformHasBMI2() {
 }
 #endif
 
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) || !defined(__linux__)
 bool enableHardwareTSO() {
     return false;
 }

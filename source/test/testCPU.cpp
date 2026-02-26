@@ -2367,7 +2367,7 @@ void EdGd(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = 
             }
         }
 
-        for (int lock = 0; lock < 2; lock++) {
+        for (int lock = 0; lock < 3; lock++) {
             for (gd = 0; gd < 8; gd++) {
                 Reg* g;
                 U32 result;

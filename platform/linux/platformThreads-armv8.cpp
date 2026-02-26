@@ -18,10 +18,8 @@
 
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_ARMV8BT
+#if defined(BOXEDWINE_JIT_ARMV8) && defined(BOXEDWINE_HOST_EXCEPTIONS)
 #include "ksignal.h"
-#include "../../source/emulation/cpu/armv8bt/armv8btCPU.h"
-#include "../../source/emulation/cpu/armv8bt/armv8btAsm.h"
 #include "../../source/emulation/softmmu/kmemory_soft.h"
 #include "../../source/emulation/cpu/normal/normalCPU.h"
 #ifdef __MACH__
@@ -71,53 +69,42 @@ struct fpsimd_context* getSimdContext(mcontext_t* mc) {
 }
 #endif
 
+extern U8 regCache[8];
+extern U8 xmmCache[8];
 
-void syncFromException(Armv8btCPU* cpu, ucontext_t* context) {
-    EAX = (U32)context->CONTEXT_REG(xEAX);
-    ECX = (U32)context->CONTEXT_REG(xECX);
-    EDX = (U32)context->CONTEXT_REG(xEDX);
-    EBX = (U32)context->CONTEXT_REG(xEBX);
-    ESP = (U32)context->CONTEXT_REG(xESP);
-    EBP = (U32)context->CONTEXT_REG(xEBP);
-    ESI = (U32)context->CONTEXT_REG(xESI);
-    EDI = (U32)context->CONTEXT_REG(xEDI);
-
-#ifdef _DEBUG
-    for (int i = 0; i < 32; i++) {
-        cpu->exceptionRegs[i] = context->CONTEXT_REG(i);
+void syncFromException(CPU* cpu, ucontext_t* context) {
+    for (int i = 0; i < 8; i++) {
+        cpu->reg[i].u32 = (U32)context->CONTEXT_REG(regCache[i]);
     }
-#endif
-    cpu->flags = (U32)context->CONTEXT_REG(xFLAGS);
-    cpu->lazyFlagType = FLAGS_NONE;
-    
+
+    cpu->flags = (U32)context->CONTEXT_REG(8);
+    cpu->lazyFlagType = (LazyFlagType)context->CONTEXT_REG(11);
+    cpu->src.u32 = (U32)context->CONTEXT_REG(16);
+    cpu->dst.u32 = (U32)context->CONTEXT_REG(10);
+    cpu->result.u32 = (U32)context->CONTEXT_REG(15);
+
 #ifdef __MACH__
     for (int i = 0; i < 8; i++) {
-        memcpy(&cpu->xmm[i], &context->uc_mcontext->__ns.__v[xXMM0 + i], 16);
-        if (cpu->fpu.isMMXInUse) {
-            cpu->fpu.regs[i].signif = (U64)context->uc_mcontext->__ns.__v[vMMX0 + i];
-        }
+        memcpy(&cpu->xmm[i], &context->uc_mcontext->__ns.__v[xmmCache[i]], 16);
     }
 #else
     struct fpsimd_context* fc = getSimdContext(&context->uc_mcontext);
 
     for (int i = 0; i < 8; i++) {
-        memcpy(&cpu->xmm[i], &fc->vregs[xXMM0 + i], 16);
-        if (cpu->fpu.isMMXInUse) {
-            cpu->fpu.regs[i].signif = (U64)fc->vregs[vMMX0 + i];
-        }
+        memcpy(&cpu->xmm[i], &fc->vregs[xmmCache[i]], 16);
     }
 #endif
 }
 
 class InException {
 public:
-    InException(BtCPU* cpu) : cpu(cpu) { this->cpu->inException = true; }
+    InException(CPU* cpu) : cpu(cpu) { this->cpu->inException = true; }
     ~InException() { this->cpu->inException = false; }
-    BtCPU* cpu;
+    CPU* cpu;
 };
 
 U32 exceptionCount;
-/*
+
 #ifdef __MACH__
 
 #ifndef ESR_ELx_WNR
@@ -131,7 +118,6 @@ static bool Aarch64GetESR(ucontext_t *ucontext, bool* isWrite) {
     return true;
 }
 #else
-
 static bool Aarch64GetESR(ucontext_t *ucontext, bool* isWrite) {
     U8 *aux = ucontext->uc_mcontext.__reserved;
     while (true) {
@@ -148,7 +134,6 @@ static bool Aarch64GetESR(ucontext_t *ucontext, bool* isWrite) {
     return false;
 }
 #endif
-*/
 
 // this will quickly store the info then exit to signalHandler() to perform the logic there
 void platformHandler(int sig, siginfo_t* info, void* vcontext) {
@@ -159,70 +144,51 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     }
     ucontext_t* context = (ucontext_t*)vcontext;
 
-    BtCPU* cpu = (BtCPU*)currentThread->cpu;
-    if (cpu != (BtCPU*)context->CONTEXT_REG(xCPU)) {
+    CPU* cpu = (CPU*)currentThread->cpu;
+    if (cpu != (CPU*)context->CONTEXT_REG(19)) {
         return;
     }
-    if (cpu->exitToStartThreadLoop) {
-        context->CONTEXT_PC = (U64)cpu->returnToLoopAddress;
-        return;
+
+    syncFromException(cpu, context);
+
+    bool isWrite = false;
+    if (Aarch64GetESR((ucontext_t*)context, &isWrite)) {
+        cpu->exceptionReadAddress = !isWrite;
+    } else {
+        cpu->exceptionReadAddress = true;
     }
-    Armv8btCPU* armCpu = (Armv8btCPU*)cpu;
-
-    syncFromException(armCpu, context);
-
-    cpu->exceptionReadAddress = true;
-    
     cpu->exceptionAddress = (U64)info->si_addr;
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
-    armCpu->exceptionIp = context->CONTEXT_PC;
+    cpu->exceptionIp = context->CONTEXT_PC;
 
-    if (armCpu->exceptionIp == 0) {
-        kpanic("oops jumps to 0");
-    }
-
-    context->CONTEXT_PC = (U64)cpu->thread->process->runSignalAddress;
+    context->CONTEXT_PC = (U64)cpu->thread->process->signalHandler;
 }
 
-int getFPUCode(int code) {
-    switch (code) {
-    case FPE_INTDIV: return K_FPE_INTDIV;
-    case FPE_INTOVF: return K_FPE_INTOVF;
-    case FPE_FLTDIV: return K_FPE_FLTDIV;
-    case FPE_FLTOVF: return K_FPE_FLTOVF;
-    case FPE_FLTUND: return K_FPE_FLTUND;
-    case FPE_FLTRES: return K_FPE_FLTRES;
-    case FPE_FLTINV: return K_FPE_FLTINV;
-    default: klog_fmt("getFPUCode unhandled code %d", code); return 0;
-    }
-}
-
-void signalHandler() {
-    BOXEDWINE_CRITICAL_SECTION;
-    KThread* currentThread = KThread::currentThread();
-    Armv8btCPU* cpu = (Armv8btCPU*)currentThread->cpu;
-
-    U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
+void signalHandler(CPU* cpu) {
+    void* result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
     if (result) {
         cpu->returnHostAddress = result;
         return;
     }
     InException e(cpu);
-    if (cpu->exceptionSigNo == SIGFPE) {
-        int code = getFPUCode(cpu->exceptionSigCode);
-        cpu->returnHostAddress = cpu->handleFpuException(code);
-        return;
-    }
+
     if (cpu->exceptionSigNo == SIGSEGV || cpu->exceptionSigNo == SIGBUS) {
-        DecodedOp* op;
-        try {
-            op = cpu->getNextOp();
-        } catch (...) {
-            op = cpu->getNextOp();
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex); // jitCache needs this
+        U32 eip = 0;
+        if (!getMemData(cpu->memory)->findOpFromJitAddress((U8*)cpu->exceptionIp, eip)) {
+            klog("probably about to crash, could not find emulation instruction that caused exception");
+            cpu->returnHostAddress = cpu->thread->process->blockExitNoSync;
+        } else {
+            cpu->eip.u32 = eip;
+            DecodedOp* op = cpu->getNextOp();
+            void* result = cpu->handleAccessException(op);
+            if (cpu->nextOp->pfnJitCode) {
+                cpu->returnHostAddress = cpu->nextOp->pfnJitCode;
+            } else {
+                cpu->returnHostAddress = result;
+            }
         }
-        cpu->returnHostAddress = cpu->handleAccessException(op);
-        cpu->fillFlags();
         return;
     }
     kpanic_fmt("unhandled exception %d", cpu->exceptionSigNo);

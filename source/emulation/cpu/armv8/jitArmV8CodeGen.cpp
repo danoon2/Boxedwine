@@ -41,7 +41,7 @@ enum class TSOMode {
     Hardware
 };
 
-static TSOMode tsoMode = TSOMode::None;
+static TSOMode tsoMode = TSOMode::Automatic;
 
 #define NUMBER_OF_REGS 31
 #define NUMBER_OF_VREGS 32
@@ -186,12 +186,12 @@ public:
                 rt._cpu_features.add(asmjit::CpuFeatures::ARM::kLRCPC3);
             }
 #endif
-#ifdef __linux__
-            if (enableHardwareTSO()) {
-                tsoMode == TSOMode::Hardware;
-            } else
-#endif
             if (tsoMode == TSOMode::Automatic) {
+#ifdef __linux__
+                if (enableHardwareTSO()) {
+                    tsoMode == TSOMode::Hardware;
+                } else
+#endif
                 if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLRCPC2)) {
                     tsoMode = TSOMode::FEAT_LRCPC2;
                 } else {
@@ -5709,7 +5709,7 @@ void JitArmV8CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
             compiler.ccmp(wEDX, R32(tmp2), 15, asmjit::a64::CondCode::kEQ); // if prev cmp was equal, then cmp edx,tmp2, else set flags                
 
             IfEqual(); {
-                compiler.stlxp(R32(tmp3), R32(tmp1), R32(tmp2), Mem(R64(addressReg)));
+                compiler.stlxp(R32(tmp3), wEBX, wECX, Mem(R64(addressReg)));
                 compiler.cbnz(R32(tmp3), label);
                 if (neededFlags) {
                     compiler.orr(xFLAGS, xFLAGS, ZF);
@@ -6008,7 +6008,6 @@ void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlag
             Label label = compiler.new_label();
             RegPtr cond = getTmpReg();
 
-            compiler.add(R32(address), R32(address), R32(offset));
             compiler.bind(label);
             ldaxr(width, R32(dst), Mem(R64(address)));
             callback(result, dst, reg);
@@ -6080,7 +6079,6 @@ void JitArmV8CodeGen::dynamic_arith_value_lock(JitWidth width, DecodedOp* op, U3
             Label label = compiler.new_label();
             RegPtr cond = getTmpReg();
 
-            compiler.add(R32(address), R32(address), R32(offset));
             compiler.bind(label);
             ldaxr(width, R32(dst), Mem(R64(address)));
             callback(result, dst, value);
