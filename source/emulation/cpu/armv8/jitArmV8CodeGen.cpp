@@ -5847,7 +5847,7 @@ void JitArmV8CodeGen::dynamic_xchge8r8_lock(DecodedOp* op) {
 
 void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlagType flagsType, std::function<void(RegPtr src, RegPtr dst, RegPtr address)> atomicCallback, std::function<void(RegPtr result, RegPtr dstMem, RegPtr srcReg)> callback, bool writebackReg, bool addCF, bool immSrc, bool hasSrc) {
     JitCodeGen::write(width, calculateEaa(op), nullptr, [hasSrc, immSrc, addCF, atomicCallback, writebackReg, width, flagsType, op, callback, this](MemPtr mem) {
-        RegPtr address = calculateAddress(mem);        
+        RegPtr address = calculateAddress(std::move(mem));        
         U32 needsToSetFlags = op->needsToSetFlags(cpu);
         const LazyFlags* flags = lazyFlags[flagsType];
         bool direct = width == JitWidth::b32 && !(flags && (flags->usesResult(needsToSetFlags) || flags->usesDst(needsToSetFlags)));
