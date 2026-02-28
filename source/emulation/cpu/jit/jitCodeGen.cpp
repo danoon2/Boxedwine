@@ -491,7 +491,7 @@ enum class DirectType {
     CMov,
     SetCC
 };
-static int countcc;
+
 void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback) {
     DecodedOp* nextOp = op->next;
     U32 skipped = 0;

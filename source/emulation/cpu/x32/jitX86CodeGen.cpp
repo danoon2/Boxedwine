@@ -3175,11 +3175,10 @@ void JitX86CodeGen::pshufwMmxMmx(MMXRegPtr dst, MMXRegPtr src, U8 order) {
 }
 
 void JitX86CodeGen::maskmovq(MMXRegPtr src, MMXRegPtr mask, MemPtr destAddress) {
-    static U32 tmp7;
-
     currentOp->flags2 |= OP_FLAG2_SAVED_TMP_REG;
 #ifndef BOXEDWINE_64
-    compiler.mov(Mem((U64)&tmp7), RN(7));    
+    static U32 tmp7;
+    compiler.mov(Mem((U64)&tmp7), RN(7));
 #endif
     compiler.mov(Mem(HOST_CPU, offsetof(CPU, tmpReg)), RN(7));
     compiler.mov(RN(7), RN(calculateAddress(destAddress)));

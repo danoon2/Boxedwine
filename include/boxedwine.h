@@ -54,6 +54,8 @@
 
 #ifdef BOXEDWINE_MAC_JIT
 #include "TargetConditionals.h"
+#define BOXEDWINE_HOST_EXCEPTIONS
+#define BOXEDWINE_MEM_CACHE
 #if TARGET_CPU_ARM64
 #define BOXEDWINE_JIT
 #define BOXEDWINE_JIT_ARMV8

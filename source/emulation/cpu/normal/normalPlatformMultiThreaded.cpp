@@ -25,7 +25,7 @@ std::atomic<int> platformThreadCount = 0;
 void platformInitExceptionHandling();
 
 static void platformThread(CPU* cpu) {
-#if BOXEDWINE_HOST_EXCEPTIONS
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
     platformInitExceptionHandling();
 #endif
     KThread::setCurrentThread(cpu->thread);

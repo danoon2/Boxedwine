@@ -1443,5 +1443,5 @@ void common_mfence(CPU* cpu) {
 }
 
 void common_clflush(CPU* cpu, U32 address) {
-    int ii = 0;
+
 }

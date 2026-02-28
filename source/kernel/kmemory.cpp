@@ -511,8 +511,6 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     U32 blockOpCount = blockOp->blockOpCount;
     DecodedOp* nextOp = blockOp;
     KThread* thread = KThread::currentThread();
-    DecodedOp* currentOp = thread->memory->getDecodedOp(thread->cpu->getEipAddress());
-    bool result = false;
     void* pMem = (void*)blockOp->pfnJitCode;
 
     for (U32 i = 0; i < blockOpCount; i++) {

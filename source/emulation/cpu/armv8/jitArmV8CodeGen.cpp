@@ -260,7 +260,7 @@ public:
     void andReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void andValue(JitWidth regWidth, RegPtr reg, U32 immm) override;
     void andValue64(RegPtr reg, U64 immm) override;
-    void andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value);
+    void andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) override;
     void xorReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void xorValue(JitWidth regWidth, RegPtr reg, U32 immm) override;
     void shrReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
@@ -2454,43 +2454,55 @@ void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool eml
         return;
     }
     if (width == JitWidth::b32) {
-        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.ldapr(R32(dest), createMemR(reg, sib, lsl, disp));
             RegPtr addressReg = calculateAddress(mem);
             U32 op = 0xB8BFC000 | dest->hardwareReg() | (addressReg->hardwareReg() << 5);
             compiler.embed_int32(op);
-        } else {
+        } else
+#endif
+        {
             compiler.ldr(R32(dest), createMem(mem));
         }
     } else if (width == JitWidth::b16) {
-        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.ldaprh(R32(dest), createMemR(reg, sib, lsl, disp));
             RegPtr addressReg = calculateAddress(mem);
             U32 op = 0x78BFC000 | dest->hardwareReg() | (addressReg->hardwareReg() << 5);
             compiler.embed_int32(op);
-        } else {
+        } else
+#endif
+        {
             compiler.ldrh(R32(dest), createMem(mem));
         }
     } else if (width == JitWidth::b8) {
         if (isRegHigh(dest)) {
             kpanic("JitArmV8CodeGen::readHost unexpected dest");
         }
-        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.ldaprb(R32(dest), createMemR(reg, sib, lsl, disp));
             RegPtr addressReg = calculateAddress(mem);
             U32 op = 0x38BFC000 | dest->hardwareReg() | (addressReg->hardwareReg() << 5);
             compiler.embed_int32(op);
-        } else {
+        } else
+#endif
+        {
             compiler.ldrb(R32(dest), createMem(mem));
         }
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
-        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.ldapr(R64(dest), createMemR(reg, sib, lsl, disp));
             RegPtr addressReg = calculateAddress(mem);
             U32 op = 0xF8BFC000 | dest->hardwareReg() | (addressReg->hardwareReg() << 5);
             compiler.embed_int32(op);
-        } else {
+        } else
+#endif
+        {
             compiler.ldr(R64(dest), createMem(mem));
         }
 #endif
@@ -2507,7 +2519,8 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
         compiler.dmb(asmjit::a64::Predicate::DB::kISH);
     }
     if(width == JitWidth::b32) {
-        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.stlur(R32(dest), createMem9(reg, disp));
             U32 imm = 0;
             if (mem->offset && (S32)mem->offset >= -256 && (S32)mem->offset <= 255) {
@@ -2518,11 +2531,14 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
             RegPtr addressReg = calculateAddress(mem);
             U32 op = 0x99000000 | src->hardwareReg() | (addressReg->hardwareReg() << 5) | (imm << 12);
             compiler.embed_int32(op);
-        } else {
+        } else
+#endif
+        {
             compiler.str(R32(src), createMem(mem));
         }
     } else if (width == JitWidth::b16) {
-        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.stlurh(R32(dest), createMem9(reg, disp));
             U32 imm = 0;
             if (mem->offset && (S32)mem->offset >= -256 && (S32)mem->offset <= 255) {
@@ -2532,11 +2548,14 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
             RegPtr addressReg = calculateAddress(mem);
             U32 op = 0x59000000 | src->hardwareReg() | (addressReg->hardwareReg() << 5) | (imm << 12);
             compiler.embed_int32(op);
-        } else {
+        } else
+#endif
+        {
             compiler.strh(R32(src), createMem(mem));
         }
     } else if (width == JitWidth::b8) {
-        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.stlurb(R32(dest), createMem9(reg, disp));
             U32 imm = 0;
             if (mem->offset && (S32)mem->offset >= -256 && (S32)mem->offset <= 255) {
@@ -2547,13 +2566,16 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
             RegPtr src8 = getReg8InLowByte(src);
             U32 op = 0x19000000 | src8->hardwareReg() | (addressReg->hardwareReg() << 5) | (imm << 12);
             compiler.embed_int32(op);
-        } else {
+        } else
+#endif
+        {
             compiler.strb(R32(getReg8InLowByte(src)), createMem(mem));
         }
 #ifdef BOXEDWINE_64
     }
     else if (width == JitWidth::b64) {
-        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.stlur(R32(dest), createMem9(reg, disp));
             U32 imm = 0;
             if (mem->offset && (S32)mem->offset >= -256 && (S32)mem->offset <= 255) {
@@ -2563,7 +2585,9 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
             RegPtr addressReg = calculateAddress(mem);
             U32 op = 0xD9000000 | src->hardwareReg() | (addressReg->hardwareReg() << 5) | (imm << 12);
             compiler.embed_int32(op);
-        } else {
+        } else
+#endif
+        {
             compiler.str(R64(src), createMem(mem));
         }
 #endif
@@ -5647,6 +5671,7 @@ void JitArmV8CodeGen::dynamic_cmpxchg_lock(JitWidth width, DecodedOp* op) {
             flagType = FLAGS_CMP8;
         } else {
             kpanic("JitArmV8CodeGen::dynamic_cmpxchg_lock");
+            flagType = FLAGS_NONE;
         }
                 
         RegPtr tmp = getTmpReg();
@@ -5932,7 +5957,6 @@ void JitArmV8CodeGen::dynamic_arith_value_lock(JitWidth width, DecodedOp* op, U3
         RegPtr address = calculateAddress(mem);
         const LazyFlags* flags = lazyFlags[flagsType];        
         JitFlags flagData(this, cpu, op, flagsType, value, nullptr);
-        bool direct = width == JitWidth::b32 && !(flags && (flags->usesResult(flagData.needsToSetFlags) || flags->usesDst(flagData.needsToSetFlags)));
 
         RegPtr dst = getTmpReg();
         RegPtr result = getTmpReg();
