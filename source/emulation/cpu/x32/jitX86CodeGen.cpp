@@ -5481,4 +5481,10 @@ void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {
     data.doJIT(address, op);
 }
 
+void clearJitBlock(void* p, U32 len) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    ::memset(p, 0xcd, len);
+#endif
+}
+
 #endif

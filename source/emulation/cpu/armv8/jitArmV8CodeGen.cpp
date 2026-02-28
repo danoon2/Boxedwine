@@ -7013,4 +7013,10 @@ void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {
     data.doJIT(address, op);
 }
 
+void clearJitBlock(void* p, U32 len) {
+    //Platform::writeCodeToMemory(p, len, [p, len]() {
+    //    ::memset(p, 0, len);
+    //});
+}
+
 #endif

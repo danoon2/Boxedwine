@@ -243,6 +243,10 @@ bool KMemoryData::findOpFromJitAddress(U8* jitAddress, U32& eipOfOp) {
     if (it == jitAddressToEip.end()) {
         it = std::prev(it);
     } else if (it != jitAddressToEip.begin()) {
+        if (it->first == jitAddress) {
+            eipOfOp = it->second.eip;
+            return true;
+        }
         it = std::prev(it);
     }
 

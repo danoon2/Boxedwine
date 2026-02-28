@@ -505,6 +505,8 @@ void KMemory::clearJit(DecodedOp* op) {
     data->codeMemory.free(start);
 }
 
+void clearJitBlock(void* p, U32 len);
+
 void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     DecodedOp* blockOp = op->blockStart;
     U32 blockLen = blockOp->blockLen;
@@ -531,6 +533,7 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         data->opCache.remove(address, blockLen, false);
     }        
     if (pMem) {
+        clearJitBlock(pMem, blockLen);
         data->codeMemory.free(pMem);
     }
 }
