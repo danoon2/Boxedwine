@@ -3175,11 +3175,19 @@ void JitX86CodeGen::pshufwMmxMmx(MMXRegPtr dst, MMXRegPtr src, U8 order) {
 }
 
 void JitX86CodeGen::maskmovq(MMXRegPtr src, MMXRegPtr mask, MemPtr destAddress) {
+    static U32 tmp7;
+
     currentOp->flags2 |= OP_FLAG2_SAVED_TMP_REG;
+#ifndef BOXEDWINE_64
+    compiler.mov(Mem((U64)&tmp7), RN(7));    
+#endif
     compiler.mov(Mem(HOST_CPU, offsetof(CPU, tmpReg)), RN(7));
     compiler.mov(RN(7), RN(calculateAddress(destAddress)));
     // this works because the top 64-bits of the mask should be 0's since its used for MMX
     compiler.maskmovdqu(getMMXReg(src), getMMXReg(mask));
+#ifndef BOXEDWINE_64
+    compiler.mov(RN(7), Mem((U64)&tmp7));
+#endif
     compiler.mov(RN(7), Mem(HOST_CPU, offsetof(CPU, tmpReg)));
 }
 
@@ -4034,10 +4042,18 @@ void JitX86CodeGen::movq(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitX86CodeGen::maskmovdqu(SSERegPtr src, SSERegPtr mask, MemPtr address) {
+    static U32 tmp7;
+
     currentOp->flags2 |= OP_FLAG2_SAVED_TMP_REG;
+#ifndef BOXEDWINE_64
+    compiler.mov(Mem((U64)&tmp7), RN(7));
+#endif
     compiler.mov(Mem(HOST_CPU, offsetof(CPU, tmpReg)), RN(7));
     compiler.mov(RN(7), RN(calculateAddress(address)));
     compiler.maskmovdqu(XMM(src->hardwareReg()), XMM(mask->hardwareReg()));
+#ifndef BOXEDWINE_64
+    compiler.mov(RN(7), Mem((U64)&tmp7));
+#endif
     compiler.mov(RN(7), Mem(HOST_CPU, offsetof(CPU, tmpReg)));
 }
 

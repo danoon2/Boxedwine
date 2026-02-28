@@ -1374,9 +1374,6 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
         offsetReg = getTmpReg();
         andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
     } else {
-        if (addressReg->emulatedReg != 0xff) {
-            kpanic("JitCodeGen::write"); // how would we communicate to the exception handler
-        }
         pushedAddress = true;
         currentOp->flags2 |= OP_FLAG2_SAVED_TMP_REG;
         writeCPU(JitWidth::b32, offsetof(CPU, tmpReg), addressReg);
