@@ -147,15 +147,10 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             if (!nextOp->next && nextOp->isCall() && furthestJump > eip) {
                 nextOp->next = this->cpu->getOp(eip + nextOp->len, 0);
             }
-            /*
-            * With this code enabled, need for speed 2 demo will fail to load, right as it should start the EA logo
-            * I'm not sure why, this seems like it would be safe, since there is a jump that lands here, it should
-            * be valid
-            * 
-            * With this code disabled, I didn't notice a performance hit to Quake 2, but the average number of ops fell
-            * from 33 to 22 when launching an app.  Maybe those extra ops were never use anyway?
-            * */
             if (!nextOp->next && jumpTo.contains(eip + nextOp->len)) {
+                // this gives a 30% improvement to cinebench, but makes F-16 unstable.  I wonder if something is wrong with this line of code
+                // or if by creating a larger block it increases the chance that self modifying code will hit it and there is someting wrong
+                // with how I handle self modifying code
                 nextOp->next = this->cpu->getOp(eip + nextOp->len, 0);
             }
             
@@ -287,6 +282,7 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
 static DecodedOp* removeJITBlock(DecodedOp* op) {
     for (int i = 0; i < op->blockOpCount; i++) {
         op->pfnJitCode = nullptr;
+        op->jitLen = 0;
         op->pfn = NormalCPU::getFunctionForOp(op);
         op->blockStart = nullptr;
         op->blockLen = 0;
@@ -671,10 +667,7 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         cpu->thread->process->syncFromHost = jit->createSyncFromHost();
         delete jit;
         jit = startNewJIT(cpu);
-        cpu->thread->process->blockExit = jit->createBlockExit(true);
-        delete jit;
-        jit = startNewJIT(cpu);
-        cpu->thread->process->blockExitNoSync = jit->createBlockExit(false);
+        cpu->thread->process->blockExit = jit->createBlockExit();
         delete jit;
         jit = startNewJIT(cpu);
         cpu->thread->process->emulateSingleOp = jit->createEmulateSingleOp();
@@ -726,7 +719,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 #ifdef __TEST
     if (op->runCount == 0) {
 #else
-    // done check for long blocks that get broken up, affects f-22/f-16
+    // done check is for long blocks that get broken up, affects f-22/f-16
     if (op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT)) {
 #endif    
         startNewJIT(cpu, cpu->getEipAddress(), op);
@@ -907,8 +900,8 @@ void signalHandler(CPU* cpu);
 U8* JitCodeGen::createSignalHandler() {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
-    callHostFunction((void*)signalHandler, params, false, false);
-    blockExit(false);
+    callHostFunction((void*)signalHandler, params, true, false);
+    blockExit();
 
     return createDynamicExecutableMemory();
 }
@@ -917,8 +910,8 @@ U8* JitCodeGen::createSignalHandler() {
 U8* JitCodeGen::createEmulateSingleOp() {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
-    callHostFunction((void*)jitRunSingleOp, params, false);    
-    blockExit(false);
+    callHostFunction((void*)jitRunSingleOp, params);    
+    blockExit();
 
     return createDynamicExecutableMemory();
 }
@@ -969,6 +962,7 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
         } else {
             bufferIndex = getBufferLocation(bufferIndex);
             nextOp->pfnJitCode = begin + bufferIndex;
+            nextOp->jitLen = 0;
             nextOp->pfn = cpu->thread->process->startJITOp;
             if (lastJitOp) {
                 lastJitOp->jitLen = (U8*)nextOp->pfnJitCode - (U8*)lastJitOp->pfnJitCode;
@@ -1101,15 +1095,41 @@ void JitCodeGen::orCPUFlags(RegPtr flags) {
     writeFlags(reg);
 }
 
-RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, RegPtr tmp, bool checkAlignment) {
-#ifdef BOXEDWINE_MEM_CACHE
-    if (!customMemoryOp && !failedMemoryOp && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
-        return readMemCache(width, addressReg, tmp);
-    }
-#endif
+RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, RegPtr tmp, bool checkAlignment) {
     if (!tmp) {
         tmp = getTmpReg8();
-    }    
+    }
+
+#ifdef BOXEDWINE_MEM_CACHE
+    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+
+        readMMU(tmp, tmp, K_NUMBER_OF_PAGES * sizeof(void*));
+
+        if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+            RegPtr offsetReg = getTmpReg();
+
+            andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
+            addReg(DYN_PTR, tmp, addressReg);
+            clearIfSpansPage(width, offsetReg, tmp);
+            if (customMemoryOp) {
+                customMemoryOp(createMemPtr(tmp));
+            } else {
+                readHost(width, createMemPtr(tmp), tmp);
+            }
+        } else {
+            if (customMemoryOp) {
+                customMemoryOp(createMemPtr(tmp, addressReg));
+            } else {
+                readHost(width, createMemPtr(tmp, addressReg), tmp);
+            }
+        }
+        return tmp;
+    }
+#endif 
     RegPtr offsetReg;
 
     shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
@@ -1153,48 +1173,61 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Re
     if (customMemoryOp) {
         // regs are not used after this, so give them back
         addressReg = nullptr;
-        customMemoryOp(tmp, std::move(offsetReg));
+        customMemoryOp(createMemPtr(tmp, offsetReg));
     } else {
         // mov eax, [eax+reg]
-        readHost(width, createMemPtr(tmp, offsetReg, 0, 0), tmp);
+        readHost(width, createMemPtr(tmp, offsetReg), tmp);
     }
 
     return tmp;
 }
 
-RegPtr JitCodeGen::calculateAddress(MemPtr mem, JitWidth width) {
+RegPtr JitCodeGen::calculateAddress(MemPtr mem) {
     RegPtr tmp = getTmpReg();
     if (mem->sib && mem->lsl) {
-        shlValueWithDest(width, tmp, mem->sib, mem->lsl);
+        shlValueWithDest(DYN_PTR, tmp, mem->sib, mem->lsl);
         if (mem->rm) {
-            addReg(width, tmp, mem->rm);
+            addReg(DYN_PTR, tmp, mem->rm);
         }
         if (mem->offset) {
-            addValue(width, tmp, mem->offset);
+            addValue(DYN_PTR, tmp, mem->offset);
         }
     } else if (mem->sib) {
         if (mem->rm) {
             if (mem->offset) {
-                addValueWithDest(width, tmp, mem->sib, mem->offset);
-                addReg(width, tmp, mem->rm);
+                addValueWithDest(DYN_PTR, tmp, mem->sib, mem->offset);
+                addReg(DYN_PTR, tmp, mem->rm);
             } else {
-                addRegWithDest(width, tmp, mem->rm, mem->sib);
+                addRegWithDest(DYN_PTR, tmp, mem->rm, mem->sib);
             }
         } else if (mem->offset) {
-            addValueWithDest(width, tmp, mem->sib, mem->offset);
+            addValueWithDest(DYN_PTR, tmp, mem->sib, mem->offset);
         } else {
             return mem->sib;
         }
     } else if (mem->rm) {
         if (mem->offset) {
-            addValueWithDest(width, tmp, mem->rm, mem->offset);
+            addValueWithDest(DYN_PTR, tmp, mem->rm, mem->offset);
         } else {
             return mem->rm;
         }
     } else {
-        movValue(width, tmp, mem->offset);
+        movValue(DYN_PTR, tmp, mem->offset);
     }
     return tmp;
+}
+
+static bool doesSpanPage(JitWidth width, U32 offset) {
+    if (width == JitWidth::b8) {
+        return false;
+    } else if (width == JitWidth::b16) {
+        return (offset & 0xFFF) == 0xFFF;
+    } else if (width == JitWidth::b32) {
+        return (offset & 0xFFF) >= 0xFFD;
+    } else {
+        kpanic("doesSpanPage");
+        return true;
+    }
 }
 
 RegPtr JitCodeGen::read(JitWidth width, MemPtr mem, RegPtr result) {
@@ -1209,17 +1242,19 @@ RegPtr JitCodeGen::read(JitWidth width, MemPtr mem, RegPtr result) {
     if (mem->rm || mem->sib) {
         return read(width, calculateAddress(mem), nullptr, nullptr, result);
     }
-#ifdef BOXEDWINE_MEM_CACHE
-    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && (KSystem::canJitUse4KPage || width == JitWidth::b8 || (width == JitWidth::b16 && (mem->offset & 0xFFF) < 0xFFF) || (width == JitWidth::b32 && (mem->offset & 0xFFF) < 0xFFD))) {
-#ifdef _DEBUG
-        writeCurrentEip(0);
-#endif
-        return readMemCache(width, mem->offset, result);
-    }        
-#endif
     if (!result) {
         result = getTmpReg8();
     }
+#ifdef BOXEDWINE_MEM_CACHE
+    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && (KSystem::canJitUse4KPage || !doesSpanPage(width, mem->offset))) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        readMMU(result, K_NUMBER_OF_PAGES + (mem->offset >> K_PAGE_SHIFT));
+        readHost(width, createMemPtr(result, mem->offset), result);
+        return result;
+    }
+#endif 
     U32 address = mem->offset;
 
     if (width == JitWidth::b16) {
@@ -1258,28 +1293,14 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, RegPtr src) {
         write(width, calculateAddress(mem), src);
         return;
     }
+    RegPtr tmp = getTmpReg8();
 #ifdef BOXEDWINE_MEM_CACHE
-    if (KSystem::canJitUse4KPage) {
-        if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
-            writeMemCache(width, mem->offset, src);
-            return;
-        }
-    } else {
-        if (width == JitWidth::b8 || (width == JitWidth::b16 && (mem->offset & 0xFFF) < 0xFFF) || (width == JitWidth::b32 && (mem->offset & 0xFFF) < 0xFFD)) {
-            if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
-                writeMemCache(width, mem->offset, src);
-                return;
-            }
-        }
-    }
-#endif
-
-#ifdef BOXEDWINE_MEM_CACHE
-    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && (KSystem::canJitUse4KPage || width == JitWidth::b8 || (width == JitWidth::b16 && (mem->offset & 0xFFF) < 0xFFF) || (width == JitWidth::b32 && (mem->offset & 0xFFF) < 0xFFD))) {
+    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && (KSystem::canJitUse4KPage || !doesSpanPage(width, mem->offset))) {
 #ifdef _DEBUG
         writeCurrentEip(0);
 #endif
-        writeMemCache(width, mem->offset, src);
+        readMMU(tmp, K_NUMBER_OF_PAGES * 2 + (mem->offset >> K_PAGE_SHIFT));
+        writeHost(width, createMemPtr(tmp, mem->offset), src);
         return;
     }
 #endif
@@ -1297,8 +1318,7 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, RegPtr src) {
         }
     } else if (width != JitWidth::b8) {
         kpanic_fmt("JitCodeGen::write unknown width %d", (U32)width);
-    }
-    RegPtr tmp = getTmpReg8();
+    }    
     readMMU(tmp, address >> K_PAGE_SHIFT);
 
     IfNotTestBit(JitWidth::b32, tmp, 1); {
@@ -1309,18 +1329,41 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, RegPtr src) {
     writeHost(width, createMemPtr(tmp, address & K_PAGE_MASK), src);
 }
 
-void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment) {
+void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment) {
+    RegPtr tmp = getTmpReg();
+
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
 #ifdef BOXEDWINE_MEM_CACHE
-    if (!customMemoryOp && !failedMemoryOp && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
-        writeMemCache(width, addressReg, src);
+    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif        
+        readMMU(tmp, tmp, K_NUMBER_OF_PAGES * sizeof(void*) * 2);
+
+        if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+            RegPtr offsetReg = getTmpReg();
+
+            addReg(DYN_PTR, tmp, addressReg);
+            andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
+            clearIfSpansPage(width, std::move(offsetReg), tmp);
+            if (customMemoryOp) {
+                customMemoryOp(createMemPtr(tmp));
+            } else {
+                writeHost(width, createMemPtr(tmp), src);
+            }
+        } else {
+            if (customMemoryOp) {
+                customMemoryOp(createMemPtr(tmp, addressReg));
+            } else {
+                writeHost(width, createMemPtr(tmp, addressReg), src);
+            }
+        }
         return;
     }
-#endif
-    RegPtr tmp = getTmpReg();
+#endif    
 
     RegPtr offsetReg;
 
-    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
     readMMU(tmp, tmp);
 
     bool pushedAddress = false;
@@ -1331,8 +1374,11 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
         offsetReg = getTmpReg();
         andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
     } else {
+        if (addressReg->emulatedReg != 0xff) {
+            kpanic("JitCodeGen::write"); // how would we communicate to the exception handler
+        }
         pushedAddress = true;
-        currentOp->flags2 |= OP_FLAG2_WRITE_SAVED_ADDRESS;
+        currentOp->flags2 |= OP_FLAG2_SAVED_TMP_REG;
         writeCPU(JitWidth::b32, offsetof(CPU, tmpReg), addressReg);
         offsetReg = addressReg;
         andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
@@ -1369,10 +1415,11 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
 
     andValueNative(tmp, ~0xfff);
 
+    MemPtr mem = createMemPtr(std::move(tmp), std::move(offsetReg));
     if (customMemoryOp) {
-        customMemoryOp(std::move(tmp), std::move(offsetReg));
+        customMemoryOp(std::move(mem));
     } else {
-        writeHost(width, createMemPtr(tmp, offsetReg, 0, 0), src);
+        writeHost(width, std::move(mem), src);
     }
     if (pushedAddress) {
         readCPU(JitWidth::b32, offsetof(CPU, tmpReg), addressReg);
@@ -1385,90 +1432,62 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
         return;
     }
 #ifdef BOXEDWINE_MEM_CACHE
-    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && (mem->rm || mem->sib)) {
-        writeMemCache(width, calculateAddress(mem), imm);
+    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+        RegPtr tmp = getTmpReg();
+        RegPtr addressReg = calculateAddress(mem);
+
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+        readMMU(tmp, tmp, K_NUMBER_OF_PAGES * sizeof(void*) * 2);
+        if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+            RegPtr offsetReg = getTmpReg();
+
+            addReg(DYN_PTR, tmp, addressReg);
+            andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
+            clearIfSpansPage(width, std::move(offsetReg), tmp);
+            writeHost(width, createMemPtr(tmp), imm);
+        } else {
+            writeHost(width, createMemPtr(tmp, addressReg), imm);
+        }
         return;
     }
 #endif
 
     RegPtr addressReg = calculateAddress(mem);
     RegPtr tmp = getTmpReg();
+    RegPtr offsetReg;
 
-    if (mem->rm || mem->sib) {
-        RegPtr offsetReg;
+    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
+    readMMU(tmp, tmp);
 
-        shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
-        readMMU(tmp, tmp);
-
-        offsetReg = addressReg;
-        andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
+    offsetReg = addressReg;
+    andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
  
-        if (width != JitWidth::b8) {
+    if (width != JitWidth::b8) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-            if (KSystem::canJitUse4KPage) {
-#ifdef _DEBUG
-                writeCurrentEip(0);
-#endif
-                if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT) {
-                    clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
-                }
-            } else 
-#endif
-            {
-                // make sure we only use the fast path if the entire read will take place on the same page
-                clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
-            }
-        }
-
-        IfNotTestBit(JitWidth::b32, tmp, 1); {
-            emulateSingleOp();
-        } EndIf();
-
-        andValueNative(tmp, ~0xfff);
-        writeHost(width, createMemPtr(tmp, offsetReg, 0, 0), imm);
-    } else {
-#ifdef BOXEDWINE_MEM_CACHE
-        if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && (KSystem::canJitUse4KPage || width == JitWidth::b8 || (width == JitWidth::b16 && (mem->offset & 0xFFF) < 0xFFF) || (width == JitWidth::b32 && (mem->offset & 0xFFF) < 0xFFD))) {
+        if (KSystem::canJitUse4KPage) {
 #ifdef _DEBUG
             writeCurrentEip(0);
 #endif
-            writeMemCache(width, mem->offset, imm);
-            return;
-        }
-#endif
-        U32 address = mem->offset;
-
-        shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
-        readMMU(tmp, tmp);
-
-        RegPtr offsetReg = addressReg;
-        andValue(JitWidth::b32, offsetReg, K_PAGE_MASK);
-
-        if (width != JitWidth::b8) {
-#ifdef BOXEDWINE_HOST_EXCEPTIONS
-            if (KSystem::canJitUse4KPage) {
-#ifdef _DEBUG
-                writeCurrentEip(0);
-#endif
-                if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT) {
-                    clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
-                }
-            } else 
-#endif
-            {
-                // make sure we only use the fast path if the entire read will take place on the same page
+            if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT) {
                 clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
             }
+        } else 
+#endif
+        {
+            // make sure we only use the fast path if the entire read will take place on the same page
+            clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
         }
-
-        IfNotTestBit(JitWidth::b32, tmp, 1); {
-            emulateSingleOp();
-        } EndIf();
-
-        andValueNative(tmp, ~0xfff);
-
-        write(width, tmp, offsetReg, 0, 0, imm);
     }
+
+    IfNotTestBit(JitWidth::b32, tmp, 1); {
+        emulateSingleOp();
+    } EndIf();
+
+    andValueNative(tmp, ~0xfff);
+    writeHost(width, createMemPtr(tmp, offsetReg, 0, 0), imm);
 }
 
 RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint) {
@@ -1476,7 +1495,29 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
 
 #ifdef BOXEDWINE_MEM_CACHE
     if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
-        return readWriteMemCache(width, std::move(addressReg), prepareWrite, tmp);
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);       
+        readMMU(tmp, tmp, K_NUMBER_OF_PAGES * sizeof(void*) * 2);
+        if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+            RegPtr offsetReg = getTmpReg();
+
+            addReg(DYN_PTR, tmp, addressReg);
+            andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
+            clearIfSpansPage(width, offsetReg, tmp);
+            readHost(width, createMemPtr(tmp), offsetReg);
+            prepareWrite(offsetReg);
+            writeHost(width, createMemPtr(tmp), offsetReg);
+            return offsetReg;
+        } else {
+            RegPtr value = getTmpReg();
+
+            readHost(width, createMemPtr(tmp, addressReg), value);
+            prepareWrite(value);
+            writeHost(width, createMemPtr(tmp, addressReg), value);
+            return value;
+        }        
     }
 #endif
     RegPtr offsetReg;    

@@ -50,10 +50,10 @@ public:
     virtual void storeCpuMMXReg(MMXRegPtr reg, U32 index) = 0;
     virtual void storeMMXToReg(MMXRegPtr mmx, RegPtr reg) = 0;
     virtual MMXRegPtr loadCpuMMXReg(U8 index) = 0;
-    virtual MMXRegPtr loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib) = 0;
-    virtual MMXRegPtr loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib) = 0;
-    virtual void storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib) = 0;
-    virtual void storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib) = 0;    
+    virtual MMXRegPtr loadMMXFromMem32(U8 index, MemPtr address) = 0;
+    virtual MMXRegPtr loadMMXFromMem64(U8 index, MemPtr address) = 0;
+    virtual void storeMMXToMem32(MMXRegPtr reg, MemPtr address) = 0;
+    virtual void storeMMXToMem64(MMXRegPtr reg, MemPtr address) = 0;
     virtual void xorMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
     virtual void orMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
     virtual void andMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
@@ -125,7 +125,7 @@ public:
     virtual void pmovmskbMmxMmx(RegPtr dst, MMXRegPtr src) = 0;
     virtual void pmulhuwMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
     virtual void pshufwMmxMmx(MMXRegPtr dst, MMXRegPtr src, U8 mask) = 0;
-    virtual void maskmovq(MMXRegPtr src, MMXRegPtr mask, RegPtr destAddress) = 0;
+    virtual void maskmovq(MMXRegPtr src, MMXRegPtr mask, MemPtr destAddress) = 0;
     virtual void paddqMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
     virtual void psubqMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;
     virtual void pmuludqMmxMmx(MMXRegPtr dst, MMXRegPtr src) = 0;

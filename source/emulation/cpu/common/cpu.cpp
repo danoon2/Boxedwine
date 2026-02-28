@@ -1213,7 +1213,7 @@ DecodedOp* CPU::getNextOp(U32 jumpTargetFlags) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
 void* CPU::startException(U32 address, bool readAddress) {
     if (this->thread->terminating) {
-        return this->thread->process->blockExitNoSync;
+        return this->thread->process->blockExit;
     }
     if (this->inException) {
         this->thread->seg_mapper(address, readAddress, !readAddress, false);
@@ -1236,11 +1236,11 @@ void* CPU::handleAccessException(DecodedOp* op) {
             count++;
         }        
         if (nextOp == op) {
-            memory->removeCodeBlock(this->eip.u32 - eipDistance, op->blockStart, false, false);
+            memory->removeCodeBlock(this->eip.u32 - eipDistance, op->blockStart, false);
         }
     }
     runNextSingleOp();
-    return this->thread->process->blockExitNoSync;
+    return this->thread->process->blockExit;
 }
 #endif
 

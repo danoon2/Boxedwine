@@ -178,9 +178,11 @@ void Jit::dynamic_pushA16(DecodedOp* op) {
     subValue(JitWidth::b32, esp, 16);
 
     // 8x 2 byte pushes is 128 bits, if we have permission and space on one page to write this, then we only need to do the memory checks once
-    write(JitWidth::b128, esp, nullptr, [this](RegPtr address, RegPtr offset) {
+    write(JitWidth::b128, esp, nullptr, [this](MemPtr address) {
         for (int i = 0; i < 8; i++) {
-            write(JitWidth::b16, createMemPtr(address, offset, 0, 2 * i, false), getReadOnlyReg(7 - i));
+            address->offset = 2 * i;
+            address->emulatedAddress = false;
+            write(JitWidth::b16, address, getReadOnlyReg(7 - i));
         }
         IfSmallStack(); {
             subValue(JitWidth::b16, getReg(4), 16);
@@ -201,9 +203,11 @@ void Jit::dynamic_pushA32(DecodedOp* op) {
     subValue(JitWidth::b32, esp, 32);
 
     // 8x 4 byte pushes is 256 bits, if we have permission and space on one page to write this, then we only need to do the memory checks once
-    write(JitWidth::b256, esp, nullptr, [this](RegPtr address, RegPtr offset) {
+    write(JitWidth::b256, esp, nullptr, [this](MemPtr address) {
         for (int i = 0; i < 8; i++) {
-            write(JitWidth::b32, createMemPtr(address, offset, 0, 4 * i, false), getReadOnlyReg(7 - i));
+            address->offset = 4 * i;
+            address->emulatedAddress = false;
+            write(JitWidth::b32, address, getReadOnlyReg(7 - i));
         }
         if (cpu->thread->process->hasSetSeg[SS]) {
             IfSmallStack(); {
@@ -225,10 +229,12 @@ void Jit::dynamic_popA16(DecodedOp* op) {
     addReg(JitWidth::b32, esp, getReadOnlySegAddress(SS));
 
     // 8x 2 byte is 128 bits, if we have permission and space on one page to read this, then we only need to do the memory checks once
-    read(JitWidth::b128, esp, [this](RegPtr address, RegPtr offset) {
+    read(JitWidth::b128, esp, [this](MemPtr address) {
         for (int i = 0; i < 8; i++) {
             if (i != 3) {
-                read(JitWidth::b16, createMemPtr(address, offset, 0, 2 * i, false), getReg(7 - i));
+                address->offset = 2 * i;
+                address->emulatedAddress = false;
+                read(JitWidth::b16, address, getReg(7 - i));
             }
         }
         IfSmallStack(); {
@@ -249,10 +255,12 @@ void Jit::dynamic_popA32(DecodedOp* op) {
     addReg(JitWidth::b32, esp, getReadOnlySegAddress(SS));
 
     // 8x 4 byte is 256 bits, if we have permission and space on one page to read this, then we only need to do the memory checks once
-    read(JitWidth::b256, esp, [this](RegPtr address, RegPtr offset) {
+    read(JitWidth::b256, esp, [this](MemPtr address) {
         for (int i = 0; i < 8; i++) {
             if (i != 3) {
-                read(JitWidth::b32, createMemPtr(address, offset, 0, 4 * i, false), getReg(7 - i));
+                address->offset = 4 * i;
+                address->emulatedAddress = false;
+                read(JitWidth::b32, address, getReg(7 - i));
             }
         }
         if (cpu->thread->process->hasSetSeg[SS]) {

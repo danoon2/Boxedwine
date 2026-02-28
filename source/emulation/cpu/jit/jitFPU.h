@@ -50,9 +50,9 @@ public:
     virtual void loadCpuFpuReg(FPURegPtr reg, RegPtr index) = 0;
     virtual void loadCpuFpuRegConst(FPURegPtr reg, U32 offset) = 0;
 
-    virtual void storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
-    virtual void loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
-    virtual void loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib) = 0;
+    virtual void storeFpuReg(FPURegPtr reg, MemPtr address, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
+    virtual void loadFpuReg(FPURegPtr reg, MemPtr address, DynFpuWidth width = DYN_FPU_64_BIT) = 0;
+    virtual void loadFpuRegFromInt(FPURegPtr reg, MemPtr address) = 0;
     virtual void fpuRegExtend32To64(FPURegPtr dst, FPURegPtr src) = 0;
     virtual void fpuReg64To32(FPURegPtr dst, FPURegPtr src) = 0;
     virtual RegPtr fpuRegToInt32(FPURegPtr fpuRegSrc, bool truncate) = 0;
@@ -63,7 +63,7 @@ public:
     virtual void updateFPURounding() = 0;
     virtual void restoreFPURounding() = 0;
     virtual void roundFPUToInt64(FPURegPtr src) = 0;
-    virtual void storeFPUToInt64(FPURegPtr src, RegPtr address, RegPtr offset, bool truncate) = 0;
+    virtual void storeFPUToInt64(FPURegPtr src, MemPtr address, bool truncate) = 0;
 
     virtual void fpuAdd(FPURegPtr dst, FPURegPtr src) = 0;
     virtual void fpuMul(FPURegPtr dst, FPURegPtr src) = 0;
@@ -215,7 +215,7 @@ public:
     void dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) override;    
 
 private:
-    void loadFpuRegFromShort(FPURegPtr reg, RegPtr rm, RegPtr sib);
+    void loadFpuRegFromShort(FPURegPtr reg, MemPtr address);
     void fpuLoadConst(U32 offset);
     void doFCOM(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags);
     void doFCOMI(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags);

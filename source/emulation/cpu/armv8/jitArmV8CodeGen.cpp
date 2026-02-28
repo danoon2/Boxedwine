@@ -228,15 +228,6 @@ public:
     void forceSyncBackIfNotCached(RegPtr reg) override;
     RegPtr getConditionCalculationReg(U32 index) override;
 
-#ifdef BOXEDWINE_MEM_CACHE
-    void writeMemCache(JitWidth width, RegPtr addressReg, RegPtr src) override;
-    void writeMemCache(JitWidth width, RegPtr addressReg, U32 value) override;
-    void writeMemCache(JitWidth width, U32 mem, RegPtr src) override;
-    void writeMemCache(JitWidth width, U32 mem, U32 imm) override;
-    RegPtr readMemCache(JitWidth width, RegPtr addressReg, RegPtr tmp = nullptr) override;
-    RegPtr readMemCache(JitWidth width, U32 mem, RegPtr result = nullptr) override;
-    RegPtr readWriteMemCache(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, RegPtr tmp) override;
-#endif
     U8 findTmpReg(bool allowInvalidReturn = false);
     void emulateSingleOp() override;
     RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0) override;
@@ -313,11 +304,11 @@ public:
     RegPtr compare(JitEvaluate condition, RegPtr result);
     RegPtr testZeroReg(JitWidth regWidth, RegPtr reg, RegPtr result = nullptr) override;
 
-    void readMMU(RegPtr dest, RegPtr index) override;
+    void readMMU(RegPtr dest, RegPtr index, U32 offset) override;
     void readMMU(RegPtr dest, U32 index) override;
-    virtual void readHost(JitWidth width, MemPtr mem, RegPtr result, bool emlulatedMemory = true) override;
-    virtual void writeHost(JitWidth width, MemPtr mem, RegPtr src, bool emlulatedMemory = true) override;
-    virtual void writeHost(JitWidth width, MemPtr mem, U32 imm, bool emlulatedMemory = true) override;
+    virtual void readHost(JitWidth width, MemPtr address, RegPtr result, bool emlulatedMemory = true) override;
+    virtual void writeHost(JitWidth width, MemPtr address, RegPtr src, bool emlulatedMemory = true) override;
+    virtual void writeHost(JitWidth width, MemPtr address, U32 imm, bool emlulatedMemory = true) override;
 
     RegPtr readCPU(JitWidth width, U32 offset, RegPtr resultReg = nullptr) override;
     RegPtr readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr resultReg = nullptr) override;
@@ -348,6 +339,7 @@ public:
     void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) override;    
     void JumpIfCondition(JitConditional condition, U32 address) override;
     void clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) override;
+    void clearIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) override;
 
     U32 MarkJumpLocation() override;
     void Goto(U32 location) override;
@@ -383,7 +375,7 @@ public:
     void JumpInBlock(U32 address) override;
     void StartElse() override;
     void EndIf() override;
-    void blockExit(bool syncCache = true) override;
+    void blockExit() override;
 
     // FPU
     RegPtr fpuRegToInt(FPURegPtr fpuRegSrc, bool truncate, bool is64);
@@ -392,10 +384,10 @@ public:
     void storeCpuFpuReg(FPURegPtr reg, RegPtr index) override;
     void loadCpuFpuReg(FPURegPtr reg, RegPtr index) override;
     void loadCpuFpuRegConst(FPURegPtr reg, U32 offset) override;
-    void loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib) override;
-    void storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width = DYN_FPU_64_BIT) override;
+    void loadFpuRegFromInt(FPURegPtr reg, MemPtr address) override;
+    void storeFpuReg(FPURegPtr reg, MemPtr address, DynFpuWidth width = DYN_FPU_64_BIT) override;
     RegPtr fpuRegToInt32(FPURegPtr fpuRegSrc, bool truncate) override;
-    void loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width = DYN_FPU_64_BIT) override;
+    void loadFpuReg(FPURegPtr reg, MemPtr address, DynFpuWidth width = DYN_FPU_64_BIT) override;
     void fpuRegExtend32To64(FPURegPtr dst, FPURegPtr src) override;
     void fpuReg64To32(FPURegPtr dst, FPURegPtr src) override;
     void regToFpuReg(FPURegPtr dst, RegPtr src) override;
@@ -405,7 +397,7 @@ public:
     void updateFPURounding() override;
     void restoreFPURounding() override;
     void roundFPUToInt64(FPURegPtr src) override;
-    void storeFPUToInt64(FPURegPtr src, RegPtr address, RegPtr offset, bool truncate) override;
+    void storeFPUToInt64(FPURegPtr src, MemPtr address, bool truncate) override;
 
     void fpuAdd(FPURegPtr dst, FPURegPtr src) override;
     void fpuMul(FPURegPtr dst, FPURegPtr src) override;
@@ -424,10 +416,10 @@ public:
     void storeCpuMMXReg(MMXRegPtr reg, U32 index) override;
     void storeMMXToReg(MMXRegPtr mmx, RegPtr reg) override;
     MMXRegPtr loadCpuMMXReg(U8 index) override;
-    MMXRegPtr loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib) override;
-    MMXRegPtr loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib) override;
-    void storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib) override;
-    void storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib) override;
+    MMXRegPtr loadMMXFromMem32(U8 index, MemPtr address) override;
+    MMXRegPtr loadMMXFromMem64(U8 index, MemPtr address) override;
+    void storeMMXToMem32(MMXRegPtr reg, MemPtr address) override;
+    void storeMMXToMem64(MMXRegPtr reg, MemPtr address) override;
     void xorMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
     void orMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
     void andMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
@@ -493,7 +485,7 @@ public:
     void pmovmskbMmxMmx(RegPtr dst, MMXRegPtr src) override;
     void pmulhuwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
     void pshufwMmxMmx(MMXRegPtr dst, MMXRegPtr src, U8 mask) override;
-    void maskmovq(MMXRegPtr src, MMXRegPtr mask, RegPtr destAddress) override;
+    void maskmovq(MMXRegPtr src, MMXRegPtr mask, MemPtr destAddress) override;
 
     void paddqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
     void psubqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
@@ -506,15 +498,15 @@ public:
     bool isSseRegCached(U8 reg) override;
     void storeCpuXMMReg(SSERegPtr reg, U32 index) override;
     SSERegPtr loadCpuXMMReg(U8 index) override;
-    SSERegPtr loadXMMFromMem128(U8 reg, RegPtr rm, RegPtr sib) override;
-    SSERegPtr loadXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib) override;
-    SSERegPtr loadLowXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib) override;
-    SSERegPtr loadHighXMMFromMem64(U8 reg, RegPtr rm, RegPtr sib) override;
-    SSERegPtr loadXMMFromMem32(U8 reg, RegPtr rm, RegPtr sib) override;
-    void storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib) override;
-    void storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) override;
-    void storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib) override;
-    void storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) override;
+    SSERegPtr loadXMMFromMem128(U8 reg, MemPtr address) override;
+    SSERegPtr loadXMMFromMem64(U8 reg, MemPtr address) override;
+    SSERegPtr loadLowXMMFromMem64(U8 reg, MemPtr address) override;
+    SSERegPtr loadHighXMMFromMem64(U8 reg, MemPtr address) override;
+    SSERegPtr loadXMMFromMem32(U8 reg, MemPtr address) override;
+    void storeXMMToMem128(SSERegPtr reg, MemPtr address) override;
+    void storeXMMToMem64(SSERegPtr reg, MemPtr address) override;
+    void storeXMMToMem32(SSERegPtr reg, MemPtr address) override;
+    void storeHighXMMToMem64(SSERegPtr reg, MemPtr address) override;
     void fmax(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, MakeSSE vMake);
     void fmin(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, MakeSSE vMake);
     void cvtps2pi(SSERegPtr dst, SSERegPtr src, bool truncate);
@@ -565,8 +557,8 @@ public:
     void comissXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void ucomissXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void sfence() override;
-    void stmxcsr(RegPtr address) override;
-    void ldmxcsr(RegPtr address) override;
+    void stmxcsr(MemPtr address) override;
+    void ldmxcsr(MemPtr address) override;
 
     // SSE2
 #ifdef BOXEDWINE_64
@@ -667,7 +659,7 @@ public:
     void movq2dq(SSERegPtr dst, MMXRegPtr src) override;
     void movq(SSERegPtr dst, SSERegPtr src) override;
 
-    void maskmovdqu(SSERegPtr dst, SSERegPtr src, RegPtr address) override;
+    void maskmovdqu(SSERegPtr dst, SSERegPtr src, MemPtr address) override;
     void pshufdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
     void pshufhwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
     void pshuflwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
@@ -695,7 +687,7 @@ public:
     void pmulhuwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void lfence() override;
     void mfence() override;
-    void clflush(RegPtr address) override;
+    void clflush(MemPtr address) override;
     void pause() override;
     void pextrwR32Xmm(RegPtr dst, SSERegPtr src, U32 imm) override;
     void pinsrwXmmR32(SSERegPtr dst, RegPtr src, U32 imm) override;
@@ -805,7 +797,7 @@ protected:
     void copyBuffer(U8* dst, U32 size) override;
 
     U8* createStartJITCode() override;
-    U8* createBlockExit(bool syncRegs) override;
+    U8* createBlockExit() override;
 
     void loadCacheFromCPU();
     void writeCacheToCPU();
@@ -824,7 +816,8 @@ protected:
     U8 getMMXReg(MMXRegPtr reg);
     RegPtr getReg8InLowByte(RegPtr reg);
     bool isRegHigh(RegPtr reg);
-    Mem createMem(MemPtr mem);
+    Mem createMem(MemPtr address);
+    Mem createMem1(MemPtr address);
     Mem createMem(RegPtr reg, RegPtr sib, U8 lsl, U32 disp);
     Mem createMem(RegPtr reg, U32 disp);
     Mem createMem(U8 reg, U8 sib, U8 lsl, U32 disp);
@@ -1043,127 +1036,6 @@ RegPtr JitArmV8CodeGen::getTmpReg8(U8 reg, bool delayed, S8 hint) {
     }
     return getTmpReg(reg, delayed, hint);
 }
-
-#ifdef BOXEDWINE_MEM_CACHE
-RegPtr JitArmV8CodeGen::readWriteMemCache(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, RegPtr tmp) {
-#ifdef _DEBUG
-    writeCurrentEip(0);
-#endif
-    RegPtr value = getTmpRegForCallResult();
-    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
-    compiler.ldr(R64(tmp), createMem(regMMU, tmp->hardwareReg(), 3, K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
-    if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
-        RegPtr offsetReg = getTmpReg();
-        compiler.and_(R32(offsetReg), R32(addressReg), 0xfff);
-        compiler.add(R64(tmp), R64(tmp), R64(addressReg));
-        addressReg = nullptr;
-        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
-        
-        MemPtr mem = createMemPtr(tmp, 0);
-        readHost(width, mem, value);
-        prepareWrite(value);
-        writeHost(width, mem, value);
-    } else {
-        MemPtr mem = createMemPtr(tmp, addressReg, 0, 0);
-        readHost(width, mem, value);
-        prepareWrite(value);
-        writeHost(width, mem, value);
-    }    
-
-    
-    return value;
-}
-
-void JitArmV8CodeGen::writeMemCache(JitWidth width, RegPtr addressReg, RegPtr src) {
-#ifdef _DEBUG
-    writeCurrentEip(1);
-#endif
-    RegPtr tmp = getTmpReg();
-    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
-    compiler.ldr(R64(tmp), createMem(regMMU, tmp->hardwareReg(), 3, K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
-
-    if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
-        RegPtr offsetReg = getTmpReg();
-        compiler.and_(R32(offsetReg), R32(addressReg), K_PAGE_MASK);
-        compiler.add(R64(tmp), R64(tmp), R64(addressReg));        
-        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
-        writeHost(width, createMemPtr(tmp, 0), src);
-    } else {
-        writeHost(width, createMemPtr(tmp, addressReg, 0, 0), src);
-    }
-}
-
-void JitArmV8CodeGen::writeMemCache(JitWidth width, RegPtr addressReg, U32 src) {
-#ifdef _DEBUG
-    writeCurrentEip(0);
-#endif
-    RegPtr tmp = getTmpReg();
-
-    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
-    compiler.ldr(R64(tmp), createMem(regMMU, tmp->hardwareReg(), 3, K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
-
-    if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
-        RegPtr offsetReg = getTmpReg();
-        compiler.and_(R32(offsetReg), R32(addressReg), 0xfff);
-        compiler.add(R64(tmp), R64(tmp), R64(addressReg));
-        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
-        writeHost(width, createMemPtr(tmp, 0), src);
-    } else {
-        writeHost(width, createMemPtr(tmp, addressReg, 0, 0), src);
-    }
-}
-
-void JitArmV8CodeGen::writeMemCache(JitWidth width, U32 mem, RegPtr src) {
-#ifdef _DEBUG
-    writeCurrentEip(0);
-#endif
-    RegPtr tmp = getTmpReg();
-    compiler.ldr(R64(tmp), createMem(regMMU, (mem >> K_PAGE_SHIFT) * sizeof(void*) + K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
-    writeHost(width, createMemPtr(tmp, mem), src);
-}
-
-void JitArmV8CodeGen::writeMemCache(JitWidth width, U32 mem, U32 imm) {
-#ifdef _DEBUG
-    writeCurrentEip(0);
-#endif
-    RegPtr tmp = getTmpReg();
-    compiler.ldr(R64(tmp), createMem(regMMU, (mem >> K_PAGE_SHIFT) * sizeof(void*) + K_NUMBER_OF_PAGES * 2 * sizeof(void*)));
-    writeHost(width, createMemPtr(tmp, mem), imm);
-}
-
-RegPtr JitArmV8CodeGen::readMemCache(JitWidth width, RegPtr addressReg, RegPtr tmp) {
-    if (!tmp) {
-        tmp = getTmpReg8();
-    }
-#ifdef _DEBUG
-    writeCurrentEip(0);
-#endif
-    shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
-    compiler.ldr(R64(tmp), createMem(regMMU, tmp->hardwareReg(), 3, K_NUMBER_OF_PAGES * sizeof(void*)));
-    if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
-        RegPtr offsetReg = getTmpReg();
-        compiler.and_(R32(offsetReg), R32(addressReg), 0xfff);
-        compiler.add(R64(tmp), R64(tmp), R64(addressReg));
-        clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
-        readHost(width, createMemPtr(tmp, 0), tmp);
-    } else {
-        readHost(width, createMemPtr(tmp, addressReg, 0, 0), tmp);
-    }
-    return tmp;
-}
-
-RegPtr JitArmV8CodeGen::readMemCache(JitWidth width, U32 mem, RegPtr result) {
-    if (!result) {
-        result = getTmpReg8();
-    }
-#ifdef _DEBUG
-    writeCurrentEip(0);
-#endif
-    compiler.ldr(R64(result), createMem(regMMU, (mem >> K_PAGE_SHIFT) * sizeof(void*) + K_NUMBER_OF_PAGES * sizeof(void*)));
-    readHost(width, createMemPtr(result, mem), result);
-    return result;
-}
-#endif
 
 RegPtr JitArmV8CodeGen::readEip() {
     RegPtr result = getTmpReg();
@@ -2456,8 +2328,8 @@ void JitArmV8CodeGen::idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, Re
 }
 
 #include "../../softmmu/kmemory_soft.h"
-void JitArmV8CodeGen::readMMU(RegPtr dest, RegPtr index) {
-    compiler.ldr(R64(dest), Mem(xMMU, R64(index), Shift(ShiftOp::kLSL, 3)));
+void JitArmV8CodeGen::readMMU(RegPtr dest, RegPtr index, U32 offset) {
+    compiler.ldr(R64(dest), createMem(regMMU, index->hardwareReg(), 3, offset));
 }
 
 void JitArmV8CodeGen::readMMU(RegPtr dest, U32 index) {
@@ -2469,6 +2341,46 @@ Mem JitArmV8CodeGen::createMem(MemPtr mem) {
         return createMem(mem->rm, mem->sib, mem->lsl, mem->offset);
     }
     return createMem(mem->rm, mem->offset);
+}
+
+Mem JitArmV8CodeGen::createMem1(MemPtr mem) {
+    if (mem->sib) {
+        if (mem->rm) {
+            if (mem->offset) {
+                RegPtr tmp = getTmpReg();
+                compiler.add(R64(tmp), R64(mem->rm), R64(mem->sib));
+                if (asmjit::a64::Utils::is_add_sub_imm(mem->offset)) {
+                    compiler.add(R64(tmp), R64(tmp), mem->offset);
+                } else {
+                    compiler.add(R64(tmp), R64(tmp), R64(loadConst(mem->offset)));
+                }
+                return createMem(tmp, 0);
+            } else {
+                RegPtr tmp = getTmpReg();
+                compiler.add(R64(tmp), R64(mem->rm), R64(mem->sib));
+                return createMem(tmp, 0);
+            }
+        } else if (mem->offset) {
+            RegPtr tmp = getTmpReg();
+            if (asmjit::a64::Utils::is_add_sub_imm(mem->offset)) {
+                compiler.add(R64(tmp), R64(mem->sib), mem->offset);
+            } else {
+                compiler.add(R64(tmp), R64(mem->sib), R64(loadConst(mem->offset)));
+            }
+            return createMem(tmp, 0);
+        }
+        return createMem(mem->sib, 0);
+    }
+    if (mem->offset) {
+        RegPtr tmp = getTmpReg();
+        if (asmjit::a64::Utils::is_add_sub_imm(mem->offset)) {
+            compiler.add(R64(tmp), R64(mem->rm), mem->offset);
+        } else {
+            compiler.add(R64(tmp), R64(mem->rm), R64(loadConst(mem->offset)));
+        }
+        return createMem(tmp, 0);
+    }
+    return createMem(mem->rm, 0);
 }
 
 Mem JitArmV8CodeGen::createMem(RegPtr reg, RegPtr sib, U8 lsl, U32 disp) {
@@ -2544,7 +2456,7 @@ void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool eml
     if (width == JitWidth::b32) {
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2) {
             // compiler.ldapr(R32(dest), createMemR(reg, sib, lsl, disp));
-            RegPtr addressReg = calculateAddress(mem, JitWidth::b64);
+            RegPtr addressReg = calculateAddress(mem);
             U32 op = 0xB8BFC000 | dest->hardwareReg() | (addressReg->hardwareReg() << 5);
             compiler.embed_int32(op);
         } else {
@@ -2553,7 +2465,7 @@ void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool eml
     } else if (width == JitWidth::b16) {
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2) {
             // compiler.ldaprh(R32(dest), createMemR(reg, sib, lsl, disp));
-            RegPtr addressReg = calculateAddress(mem, JitWidth::b64);
+            RegPtr addressReg = calculateAddress(mem);
             U32 op = 0x78BFC000 | dest->hardwareReg() | (addressReg->hardwareReg() << 5);
             compiler.embed_int32(op);
         } else {
@@ -2565,7 +2477,7 @@ void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool eml
         }
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2) {
             // compiler.ldaprb(R32(dest), createMemR(reg, sib, lsl, disp));
-            RegPtr addressReg = calculateAddress(mem, JitWidth::b64);
+            RegPtr addressReg = calculateAddress(mem);
             U32 op = 0x38BFC000 | dest->hardwareReg() | (addressReg->hardwareReg() << 5);
             compiler.embed_int32(op);
         } else {
@@ -2575,7 +2487,7 @@ void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool eml
     } else if (width == JitWidth::b64) {
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2) {
             // compiler.ldapr(R64(dest), createMemR(reg, sib, lsl, disp));
-            RegPtr addressReg = calculateAddress(mem, JitWidth::b64);
+            RegPtr addressReg = calculateAddress(mem);
             U32 op = 0xF8BFC000 | dest->hardwareReg() | (addressReg->hardwareReg() << 5);
             compiler.embed_int32(op);
         } else {
@@ -2603,7 +2515,7 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
                 imm = mem->offset & 0x1ff;
                 mem->offset = 0;
             }
-            RegPtr addressReg = calculateAddress(mem, JitWidth::b64);
+            RegPtr addressReg = calculateAddress(mem);
             U32 op = 0x99000000 | src->hardwareReg() | (addressReg->hardwareReg() << 5) | (imm << 12);
             compiler.embed_int32(op);
         } else {
@@ -2617,7 +2529,7 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
                 imm = mem->offset & 0x1ff;
                 mem->offset = 0;
             }
-            RegPtr addressReg = calculateAddress(mem, JitWidth::b64);
+            RegPtr addressReg = calculateAddress(mem);
             U32 op = 0x59000000 | src->hardwareReg() | (addressReg->hardwareReg() << 5) | (imm << 12);
             compiler.embed_int32(op);
         } else {
@@ -2631,7 +2543,7 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
                 imm = mem->offset & 0x1ff;
                 mem->offset = 0;
             }
-            RegPtr addressReg = calculateAddress(mem, JitWidth::b64);
+            RegPtr addressReg = calculateAddress(mem);
             RegPtr src8 = getReg8InLowByte(src);
             U32 op = 0x19000000 | src8->hardwareReg() | (addressReg->hardwareReg() << 5) | (imm << 12);
             compiler.embed_int32(op);
@@ -2648,7 +2560,7 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
                 imm = mem->offset & 0x1ff;
                 mem->offset = 0;
             }
-            RegPtr addressReg = calculateAddress(mem, JitWidth::b64);
+            RegPtr addressReg = calculateAddress(mem);
             U32 op = 0xD9000000 | src->hardwareReg() | (addressReg->hardwareReg() << 5) | (imm << 12);
             compiler.embed_int32(op);
         } else {
@@ -2660,8 +2572,8 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
     }
 }
 
-void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, U32 value, bool emlulatedMemory) {
-    writeHost(width, mem, loadConst(value), emlulatedMemory);
+void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr address, U32 value, bool emlulatedMemory) {
+    writeHost(width, address, loadConst(value), emlulatedMemory);
 }
 
 RegPtr JitArmV8CodeGen::readCPU(JitWidth width, U32 offset, RegPtr reg) {
@@ -3303,6 +3215,10 @@ void JitArmV8CodeGen::clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offse
     //compiler.bind(label);
 }
 
+void JitArmV8CodeGen::clearIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) {
+    clearMMUPermissionIfSpansPage(width, offset, reg);
+}
+
 void JitArmV8CodeGen::JumpIfCondition(JitConditional condition, U32 address) {    
     Label label;
 
@@ -3775,22 +3691,20 @@ void JitArmV8CodeGen::storeCpuXMMReg(SSERegPtr reg, U32 index) {
     }    
 }
 
-void JitArmV8CodeGen::storeXMMToMem128(SSERegPtr reg, RegPtr rm, RegPtr sib) {
-    compiler.str(toSse128(reg), createMem(rm, sib, 0, 0));
+void JitArmV8CodeGen::storeXMMToMem128(SSERegPtr reg, MemPtr address) {
+    compiler.str(toSse128(reg), createMem(address));
 }
 
-void JitArmV8CodeGen::storeXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) {
-    compiler.str(toSse64(reg), createMem(rm, sib, 0, 0));
+void JitArmV8CodeGen::storeXMMToMem64(SSERegPtr reg, MemPtr address) {
+    compiler.str(toSse64(reg), createMem(address));
 }
 
-void JitArmV8CodeGen::storeXMMToMem32(SSERegPtr reg, RegPtr rm, RegPtr sib) {
-    compiler.str(toSse32(reg), createMem(rm, sib, 0, 0));
+void JitArmV8CodeGen::storeXMMToMem32(SSERegPtr reg, MemPtr address) {
+    compiler.str(toSse32(reg), createMem(address));
 }
 
-void JitArmV8CodeGen::storeHighXMMToMem64(SSERegPtr reg, RegPtr rm, RegPtr sib) {
-    RegPtr address = getTmpReg();
-    compiler.add(R64(address), R64(rm), R64(sib));
-    compiler.st1(toSseD2(reg, 1), createMem(address, 0));
+void JitArmV8CodeGen::storeHighXMMToMem64(SSERegPtr reg, MemPtr address) {
+    compiler.st1(toSseD2(reg, 1), createMem1(address));
 }
 
 SSERegPtr JitArmV8CodeGen::getXMM(U8 index, bool load) {
@@ -3815,37 +3729,33 @@ SSERegPtr JitArmV8CodeGen::loadCpuXMMReg(U8 index) {
     return getXMM(index, true);
 }
 
-SSERegPtr JitArmV8CodeGen::loadXMMFromMem128(U8 index, RegPtr rm, RegPtr sib) {
+SSERegPtr JitArmV8CodeGen::loadXMMFromMem128(U8 index, MemPtr address) {
     SSERegPtr reg = getXMM(index, false);
-    compiler.ldr(toSse128(reg), createMem(rm, sib, 0, 0));
+    compiler.ldr(toSse128(reg), createMem(address));
     return reg;
 }
 
-SSERegPtr JitArmV8CodeGen::loadXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) {
+SSERegPtr JitArmV8CodeGen::loadXMMFromMem64(U8 index, MemPtr address) {
     SSERegPtr reg = getXMM(index, false);
-    compiler.ldr(toSse64(reg), createMem(rm, sib, 0, 0));
+    compiler.ldr(toSse64(reg), createMem(address));
     return reg;
 }
 
-SSERegPtr JitArmV8CodeGen::loadLowXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) {
+SSERegPtr JitArmV8CodeGen::loadLowXMMFromMem64(U8 index, MemPtr address) {
     SSERegPtr reg = getXMM(index, true);
-    RegPtr address = getTmpReg();
-    compiler.add(R64(address), R64(rm), R64(sib));
-    compiler.ld1(toSseD2(reg, 0), createMem(address, 0));
+    compiler.ld1(toSseD2(reg, 0), createMem1(address));
     return reg;
 }
 
-SSERegPtr JitArmV8CodeGen::loadHighXMMFromMem64(U8 index, RegPtr rm, RegPtr sib) {
+SSERegPtr JitArmV8CodeGen::loadHighXMMFromMem64(U8 index, MemPtr address) {
     SSERegPtr reg = getXMM(index, true);
-    RegPtr address = getTmpReg();
-    compiler.add(R64(address), R64(rm), R64(sib));
-    compiler.ld1(toSseD2(reg, 1), createMem(address, 0));
+    compiler.ld1(toSseD2(reg, 1), createMem1(address));
     return reg;
 }
 
-SSERegPtr JitArmV8CodeGen::loadXMMFromMem32(U8 index, RegPtr rm, RegPtr sib) {
+SSERegPtr JitArmV8CodeGen::loadXMMFromMem32(U8 index, MemPtr address) {
     SSERegPtr reg = getXMM(index, true);
-    compiler.ldr(toSseS(reg), createMem(rm, sib, 0, 0));
+    compiler.ldr(toSseS(reg), createMem(address));
     return reg;
 }
 
@@ -4092,15 +4002,15 @@ void JitArmV8CodeGen::pshufwMmxMmx(MMXRegPtr dst, MMXRegPtr src, U8 order) {
     }
 }
 
-void JitArmV8CodeGen::maskmovq(MMXRegPtr src, MMXRegPtr mask, RegPtr destAddress) {
+void JitArmV8CodeGen::maskmovq(MMXRegPtr src, MMXRegPtr mask, MemPtr destAddress) {
     MMXRegPtr tmp = getTmpMMX();
     MMXRegPtr tmpMask = getTmpMMX();
 
-    compiler.ldr(toMmxD1(tmp), createMem(destAddress, 0));
+    compiler.ldr(toMmxD1(tmp), createMem(destAddress));
     // spec: The most significant bit in each byte of the mask operand determines whether the corresponding byte in the source operand is written to the corresponding byte location in memory: 0 indicates no write and 1 indicates write.
     compiler.sshr(toMmxB8(tmpMask), toMmxB8(mask), 7);
     compiler.bsl(toMmxB8(tmpMask), toMmxB8(src), toMmxB8(tmp)); // if tmpMask[i] == 1 then tmpMask[i] = src[i] else tmpMaskd[i] = tmp[i]
-    compiler.str(toMmxD1(tmpMask), createMem(destAddress, 0));
+    compiler.str(toMmxD1(tmpMask), createMem(destAddress));
 }
 
 void JitArmV8CodeGen::paddqMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
@@ -4325,15 +4235,15 @@ void JitArmV8CodeGen::ucomissXmmXmm(SSERegPtr dst, SSERegPtr src) {
     comis(dst, src, toSseS);
 }
 
-void JitArmV8CodeGen::stmxcsr(RegPtr address) {
+void JitArmV8CodeGen::stmxcsr(MemPtr address) {
     RegPtr tmp = getTmpReg();
     compiler.ldr(R32(tmp), createMem(regCPU, offsetof(CPU, mxcsr)));
-    compiler.str(R32(tmp), createMem(address, 0));
+    compiler.str(R32(tmp), createMem(address));
 }
 
-void JitArmV8CodeGen::ldmxcsr(RegPtr address) {
+void JitArmV8CodeGen::ldmxcsr(MemPtr address) {
     RegPtr tmp = getTmpReg();
-    compiler.ldr(R32(tmp), createMem(address, 0));
+    compiler.ldr(R32(tmp), createMem(address));
     compiler.str(R32(tmp), createMem(regCPU, offsetof(CPU, mxcsr)));
 }
 
@@ -4379,24 +4289,24 @@ MMXRegPtr JitArmV8CodeGen::loadCpuMMXReg(U8 index) {
     return tmp;
 }
 
-MMXRegPtr JitArmV8CodeGen::loadMMXFromMem32(U8 index, RegPtr rm, RegPtr sib) {
+MMXRegPtr JitArmV8CodeGen::loadMMXFromMem32(U8 index, MemPtr address) {
     MMXRegPtr tmp = getTmpMMX();
-    compiler.ldr(toMmxS(tmp), createMem(rm, sib, 0, 0));
+    compiler.ldr(toMmxS(tmp), createMem(address));
     return tmp;
 }
 
-MMXRegPtr JitArmV8CodeGen::loadMMXFromMem64(U8 index, RegPtr rm, RegPtr sib) {
+MMXRegPtr JitArmV8CodeGen::loadMMXFromMem64(U8 index, MemPtr address) {
     MMXRegPtr tmp = getTmpMMX();
-    compiler.ldr(toMmxD(tmp), createMem(rm, sib, 0, 0));
+    compiler.ldr(toMmxD(tmp), createMem(address));
     return tmp;
 }
 
-void JitArmV8CodeGen::storeMMXToMem32(MMXRegPtr reg, RegPtr rm, RegPtr sib) {
-    compiler.str(toMmxS2(reg), createMem(rm, sib, 0, 0));
+void JitArmV8CodeGen::storeMMXToMem32(MMXRegPtr reg, MemPtr address) {
+    compiler.str(toMmxS2(reg), createMem(address));
 }
 
-void JitArmV8CodeGen::storeMMXToMem64(MMXRegPtr reg, RegPtr rm, RegPtr sib) {
-    compiler.str(toMmxD1(reg), createMem(rm, sib, 0, 0));
+void JitArmV8CodeGen::storeMMXToMem64(MMXRegPtr reg, MemPtr address) {
+    compiler.str(toMmxD1(reg), createMem(address));
 }
 
 void JitArmV8CodeGen::xorMmxMmx(MMXRegPtr dst, MMXRegPtr src) {
@@ -5163,16 +5073,17 @@ void JitArmV8CodeGen::movq(SSERegPtr dst, SSERegPtr src) {
     compiler.mov(toSseD(dst), toSseD2(src, 0));
 }
 
-void JitArmV8CodeGen::maskmovdqu(SSERegPtr src, SSERegPtr mask, RegPtr address) {
+void JitArmV8CodeGen::maskmovdqu(SSERegPtr src, SSERegPtr mask, MemPtr address) {
     // maskmovdqu xmm1, xmm2
     // this will mov xmm1[i] to DS:EDI[i] if (xmm2[i] & 80)
     SSERegPtr vTmpReg = getTmpSSE();
     SSERegPtr vTmpRegMask = getTmpSSE();
 
-    compiler.ldr(toSse128(vTmpReg), Mem(R64(address)));
+    Mem mem = createMem(address);
+    compiler.ldr(toSse128(vTmpReg), mem);
     compiler.sshr(toSseB16(vTmpRegMask), toSseB16(mask), 7);
     compiler.bsl(toSseB16(vTmpRegMask), toSseB16(src), toSseB16(vTmpReg));
-    compiler.str(toSse128(vTmpRegMask), Mem(R64(address)));
+    compiler.str(toSse128(vTmpRegMask), mem);
 }
 
 void JitArmV8CodeGen::pshufdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
@@ -5372,9 +5283,9 @@ void JitArmV8CodeGen::mfence() {
     compiler.dmb(asmjit::a64::Predicate::DB::kISH);
 }
 
-void JitArmV8CodeGen::clflush(RegPtr address) {  
+void JitArmV8CodeGen::clflush(MemPtr address) {
     // might need some work on this
-    compiler.dc(asmjit::a64::Predicate::DC::kCVAC, R64(address));
+    compiler.dc(asmjit::a64::Predicate::DC::kCVAC, R64(calculateAddress(address)));
 }
 
 void JitArmV8CodeGen::pause() {
@@ -5473,9 +5384,9 @@ RegPtr JitArmV8CodeGen::fpuRegToInt(FPURegPtr fpuRegSrc, bool truncate, bool is6
     return result;
 }
 
-void JitArmV8CodeGen::storeFPUToInt64(FPURegPtr src, RegPtr address, RegPtr offset, bool truncate) {
+void JitArmV8CodeGen::storeFPUToInt64(FPURegPtr src, MemPtr address, bool truncate) {
     RegPtr result = fpuRegToInt(src, truncate, true);
-    writeHost(JitWidth::b64, createMemPtr(address, offset, 0, 0), result);
+    writeHost(JitWidth::b64, address, result);
 }
 
 void JitArmV8CodeGen::roundFPUToInt64(FPURegPtr src) {
@@ -5495,19 +5406,19 @@ void JitArmV8CodeGen::roundFPUToInt64(FPURegPtr src) {
     } EndIf();
 }
 
-void JitArmV8CodeGen::storeFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width) {
+void JitArmV8CodeGen::storeFpuReg(FPURegPtr reg, MemPtr address, DynFpuWidth width) {
     if (width == DYN_FPU_64_BIT) {
-        compiler.str(toVec(reg), Mem(R64(rm), R64(sib)));
+        compiler.str(toVec(reg), createMem(address));
     } else {
-        compiler.str(toVec32(reg), Mem(R64(rm), R64(sib)));
+        compiler.str(toVec32(reg), createMem(address));
     }
 }
 
-void JitArmV8CodeGen::loadFpuReg(FPURegPtr reg, RegPtr rm, RegPtr sib, DynFpuWidth width) {
+void JitArmV8CodeGen::loadFpuReg(FPURegPtr reg, MemPtr address, DynFpuWidth width) {
     if (width == DYN_FPU_64_BIT) {
-        compiler.ldr(toVec(reg), Mem(R64(rm), R64(sib)));
+        compiler.ldr(toVec(reg), createMem(address));
     } else {
-        compiler.ldr(toVec32(reg), Mem(R64(rm), R64(sib)));
+        compiler.ldr(toVec32(reg), createMem(address));
     }
 }
 
@@ -5520,9 +5431,9 @@ void JitArmV8CodeGen::fpuReg64To32(FPURegPtr dst, FPURegPtr src) {
     //compiler.fcvtn(Vec::make_v64_with_element_type(VecElementType::kS, dst->hardwareReg()), Vec::make_v128_with_element_type(VecElementType::kD, src->hardwareReg()));
 }
 
-void JitArmV8CodeGen::loadFpuRegFromInt(FPURegPtr reg, RegPtr rm, RegPtr sib) {
+void JitArmV8CodeGen::loadFpuRegFromInt(FPURegPtr reg, MemPtr address) {
     RegPtr tmp = getTmpReg();
-    readHost(JitWidth::b32, createMemPtr(rm, sib, 0, 0), tmp);
+    readHost(JitWidth::b32, address, tmp);
     compiler.scvtf(toVec(reg), R32(tmp)); // convert int64 to double
 }
 
@@ -5663,13 +5574,14 @@ void JitArmV8CodeGen::dynamic_rdtsc(DecodedOp* op) {
 }
 
 void JitArmV8CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](RegPtr addressReg, RegPtr offsetReg) {
+    JitCodeGen::write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](MemPtr address) {
         U32 neededFlags = currentOp->needsToSetFlags(cpu) & ZF;
         if (neededFlags && currentOp->getNeededFlagsAfter(PF | SF | AF | CF | OF)) { // The ZF flag is set if the destination operand and EDX:EAX are equal; otherwise it is cleared. The CF, PF, AF, SF, and OF flags are unaffected.
             fillFlags();
         }
-        compiler.add(R64(addressReg), R64(addressReg), R64(offsetReg));
-        compiler.and_(R32(offsetReg), R32(offsetReg), 7);
+        RegPtr addressReg = calculateAddress(address);
+        RegPtr offsetReg = getTmpReg();
+        compiler.and_(R64(offsetReg), R64(addressReg), 7);
         If(JitWidth::b32, offsetReg); {
             emulateSingleOp();
         } EndIf();
@@ -5724,8 +5636,7 @@ void JitArmV8CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
 }
 
 void JitArmV8CodeGen::dynamic_cmpxchg_lock(JitWidth width, DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [width, op, this](RegPtr address, RegPtr offset) {
-        U32 needsToSetFlags = 0;
+    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [width, op, this](MemPtr mem) {
         LazyFlagType flagType;
         
         if (width == JitWidth::b32) {
@@ -5737,24 +5648,21 @@ void JitArmV8CodeGen::dynamic_cmpxchg_lock(JitWidth width, DecodedOp* op) {
         } else {
             kpanic("JitArmV8CodeGen::dynamic_cmpxchg_lock");
         }
-        const LazyFlags* flags = lazyFlags[flagType];
-
-        arithSetup(op, needsToSetFlags, flagType, nullptr);
-        
+                
         RegPtr tmp = getTmpReg();
         RegPtr tmp2 = getTmpReg();
         RegPtr reg = getReadOnlyRegInLower(width, op->reg);
         RegPtr eax = getReg(0);
 
 
-        if (flags && flags->usesDst(needsToSetFlags)) {
-            storeLazyFlagsDest(eax);
-        }
-        compiler.add(R64(address), R64(address), R64(offset));
+        RegPtr address = calculateAddress(mem);
 
         RegPtr tmpEax = eax;
-        bool needToCopyEaxBack = false;
-        if (width != JitWidth::b32 || (flags && (flags->usesSrc(needsToSetFlags) || flags->usesResult(needsToSetFlags)))) {
+        bool needToCopyEaxBack = false;        
+        JitFlags jitFlags(this, cpu, op, flagType, eax, nullptr, false);
+        jitFlags.copyDest(eax);
+
+        if (width != JitWidth::b32 || (jitFlags.flags && (jitFlags.flags->usesSrc(jitFlags.needsToSetFlags) || jitFlags.flags->usesResult(jitFlags.needsToSetFlags)))) {
             tmpEax = getTmpReg();
             movzx(JitWidth::b32, tmpEax, width, eax);
             needToCopyEaxBack = true;
@@ -5768,16 +5676,12 @@ void JitArmV8CodeGen::dynamic_cmpxchg_lock(JitWidth width, DecodedOp* op) {
             } else if (width == JitWidth::b8) {
                 compiler.casalb(R32(tmpEax), R32(reg), Mem(R64(address)));
             }
-            if (flags && flags->usesSrc(needsToSetFlags)) {
-                storeLazyFlagsSrc(tmpEax);
-            }
-            if (flags && flags->usesResult(needsToSetFlags)) {
+            if (jitFlags.flags && jitFlags.flags->usesResult(jitFlags.needsToSetFlags)) {
                 compiler.sub(R32(tmp2), wEAX, R32(tmpEax));
-                storeLazyFlagsResult(tmp2);
             }
             if (needToCopyEaxBack) {
                 mov(width, eax, tmpEax);
-            }
+            }            
         } else {
             Label label = compiler.new_label();
             compiler.bind(label);
@@ -5801,14 +5705,12 @@ void JitArmV8CodeGen::dynamic_cmpxchg_lock(JitWidth width, DecodedOp* op) {
                 compiler.clrex(15);
                 mov(width, eax, tmp);
             } EndIf();
-            if (flags && flags->usesSrc(needsToSetFlags)) {
-                storeLazyFlagsSrc(eax);
-            }
-            if (flags && flags->usesResult(needsToSetFlags)) {
+            if (jitFlags.flags && jitFlags.flags->usesResult(jitFlags.needsToSetFlags)) {
                 compiler.sub(R32(tmp2), R32(tmpEax), wEAX);
                 storeLazyFlagsResult(tmp2);
-            }
-        }                                
+            }            
+        }
+        jitFlags.commit(tmp2);
     });
 }
 
@@ -5873,8 +5775,8 @@ void JitArmV8CodeGen::casal(JitWidth width, asmjit::a64::Gp src, asmjit::a64::Gp
 }
 
 void JitArmV8CodeGen::dynamic_xchge32r32_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
-        compiler.add(R64(address), R64(address), R64(offset));
+    JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](MemPtr mem) {
+        RegPtr address = calculateAddress(mem);
         if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {            
             RegPtr reg = getReg(op->reg);
             compiler.swpal(R32(reg), R32(reg), Mem(R64(address)));
@@ -5894,8 +5796,8 @@ void JitArmV8CodeGen::dynamic_xchge32r32_lock(DecodedOp* op) {
 }
 
 void JitArmV8CodeGen::dynamic_xchge16r16_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
-        compiler.add(R64(address), R64(address), R64(offset));
+    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](MemPtr mem) {
+        RegPtr address = calculateAddress(mem);
         if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {            
             RegPtr tmp = getTmpReg(op->reg);
             RegPtr reg = getReg(op->reg);
@@ -5918,8 +5820,8 @@ void JitArmV8CodeGen::dynamic_xchge16r16_lock(DecodedOp* op) {
 }
 
 void JitArmV8CodeGen::dynamic_xchge8r8_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b8, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
-        compiler.add(R64(address), R64(address), R64(offset));
+    JitCodeGen::write(JitWidth::b8, calculateEaa(op), nullptr, [op, this](MemPtr mem) {
+        RegPtr address = calculateAddress(mem);
         if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {            
             RegPtr reg = getReg8(op->reg);
             RegPtr reg8 = getTmpIfNotTmp(getReg8InLowByte(reg));
@@ -5944,9 +5846,9 @@ void JitArmV8CodeGen::dynamic_xchge8r8_lock(DecodedOp* op) {
 }
 
 void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlagType flagsType, std::function<void(RegPtr src, RegPtr dst, RegPtr address)> atomicCallback, std::function<void(RegPtr result, RegPtr dstMem, RegPtr srcReg)> callback, bool writebackReg, bool addCF, bool immSrc, bool hasSrc) {
-    JitCodeGen::write(width, calculateEaa(op), nullptr, [hasSrc, immSrc, addCF, atomicCallback, writebackReg, width, flagsType, op, callback, this](RegPtr address, RegPtr offset) {
-        compiler.add(R64(address), R64(address), R64(offset));
-        U32 needsToSetFlags = 0;
+    JitCodeGen::write(width, calculateEaa(op), nullptr, [hasSrc, immSrc, addCF, atomicCallback, writebackReg, width, flagsType, op, callback, this](MemPtr mem) {
+        RegPtr address = calculateAddress(mem);        
+        U32 needsToSetFlags = op->needsToSetFlags(cpu);
         const LazyFlags* flags = lazyFlags[flagsType];
         bool direct = width == JitWidth::b32 && !(flags && (flags->usesResult(needsToSetFlags) || flags->usesDst(needsToSetFlags)));
         RegPtr reg;
@@ -5954,18 +5856,16 @@ void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlag
         if (hasSrc) {
             reg = immSrc ? loadConst(op->imm) : direct ? getReg(width, op->reg) : getReadOnlyRegInLower(width, op->reg);
         }
-        RegPtr cf = addCF ? getCF() : nullptr;
-
-        arithSetup(op, needsToSetFlags, flagsType, cf);
-
-        if (hasSrc && flags && flags->usesSrc(needsToSetFlags)) {
-            storeLazyFlagsSrc(reg);
-        }
+        JitFlags flagData(this, cpu, op, flagsType, reg, nullptr, writebackReg || (addCF && reg->emulatedReg == 0xff));
+        RegPtr cf = flagData.oldCF;
 
         RegPtr dst = getTmpReg();
         RegPtr result = getTmpReg();
 
         if (addCF) {
+            if (!cf) {
+                cf = getCF();
+            }
             reg = getTmpIfNotTmp(reg);
             addReg(width, reg, cf);
         }
@@ -6019,30 +5919,20 @@ void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlag
                 mov(width, reg, dst);
             }
         }
-        // this is a bit backwards to neg flags, perhaps, should switch to using dst instead of src for neg flags
+        flagData.commit(result, dst);
+        // this is a bit backwards for neg flags, perhaps should switch to using dst instead of src for neg flags
         if (!hasSrc && flags && flags->usesSrc(needsToSetFlags)) {
             storeLazyFlagsSrc(dst);
-        } else if (flags && flags->usesDst(needsToSetFlags)) {
-            storeLazyFlagsDest(dst);
-        }
-        if (flags && flags->usesResult(needsToSetFlags)) {
-            storeLazyFlagsResult(result);
         }
     });
 }
 
 void JitArmV8CodeGen::dynamic_arith_value_lock(JitWidth width, DecodedOp* op, U32 value, LazyFlagType flagsType, std::function<void(RegPtr src, RegPtr dst, RegPtr address)> atomicCallback, std::function<void(RegPtr result, RegPtr dst, U32 src)> callback) {
-    JitCodeGen::write(width, calculateEaa(op), nullptr, [value, atomicCallback, width, flagsType, op, callback, this](RegPtr address, RegPtr offset) {
-        compiler.add(R64(address), R64(address), R64(offset));
-        U32 needsToSetFlags = 0;
-        const LazyFlags* flags = lazyFlags[flagsType];
-        bool direct = width == JitWidth::b32 && !(flags && (flags->usesResult(needsToSetFlags) || flags->usesDst(needsToSetFlags)));
-
-        arithSetup(op, needsToSetFlags, flagsType, nullptr);
-
-        if (flags && flags->usesSrc(needsToSetFlags)) {
-            storeLazyFlagsSrc(value);
-        }
+    JitCodeGen::write(width, calculateEaa(op), nullptr, [value, atomicCallback, width, flagsType, op, callback, this](MemPtr mem) {
+        RegPtr address = calculateAddress(mem);
+        const LazyFlags* flags = lazyFlags[flagsType];        
+        JitFlags flagData(this, cpu, op, flagsType, value, nullptr);
+        bool direct = width == JitWidth::b32 && !(flags && (flags->usesResult(flagData.needsToSetFlags) || flags->usesDst(flagData.needsToSetFlags)));
 
         RegPtr dst = getTmpReg();
         RegPtr result = getTmpReg();
@@ -6050,9 +5940,9 @@ void JitArmV8CodeGen::dynamic_arith_value_lock(JitWidth width, DecodedOp* op, U3
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
             RegPtr reg = loadConst(value);
-            if (width != JitWidth::b32 || (flags && (flags->usesResult(needsToSetFlags) || flags->usesDst(needsToSetFlags)))) {
+            if (width != JitWidth::b32 || (flags && (flags->usesResult(flagData.needsToSetFlags) || flags->usesDst(flagData.needsToSetFlags)))) {
                 atomicCallback(reg, dst, address);
-                if (flags && flags->usesResult(needsToSetFlags)) {
+                if (flags && flags->usesResult(flagData.needsToSetFlags)) {
                     callback(result, dst, value);
                 }
             } else {
@@ -6085,12 +5975,7 @@ void JitArmV8CodeGen::dynamic_arith_value_lock(JitWidth width, DecodedOp* op, U3
             stlxr(width, R32(cond), R32(result), Mem(R64(address)));
             compiler.cbnz(R32(cond), label);
         }
-        if (flags && flags->usesDst(needsToSetFlags)) {
-            storeLazyFlagsDest(dst);
-        }
-        if (flags && flags->usesResult(needsToSetFlags)) {
-            storeLazyFlagsResult(result);
-        }
+        flagData.commit(result, dst);
     });
 }
 /*
@@ -7002,55 +6887,20 @@ bool JitArmV8CodeGen::directDoesAffectFlags(DecodedOp* op) {
     }
 }
 
-void writeBlockExitForJIT(U32 eip, U8* buffer) {
-    asmjit::JitRuntime rt;
-    asmjit::CodeHolder code;
-    asmjit::a64::Assembler compiler;
-
-    code.init(rt.environment());
-    code.attach(&compiler);
-
+U8* JitArmV8CodeGen::createBlockExit() {
     compiler.blr(xWriteCacheToCPU);
-    compiler.mov(wTmp7, eip);
-    compiler.str(wTmp7, Mem(xCPU, offsetof(CPU, eip.u32)));
-    compiler.mov(wTmp7, xCPU);
-    for (int i = 19; i < 31; i+=2) {
-        compiler.ldp(R64(i), R64(i + 1), Mem(xTmp7, offsetof(CPU, storedRegs) + (i - 19) * 8));
-    }
-    compiler.add(xTmp7, xCPU, offsetof(CPU, xmm[0]));
-    compiler.st1(toSseD2(0), toSseD2(1), toSseD2(2), toSseD2(3), Mem(xTmp7, 64).post());
-    compiler.st1(toSseD2(4), toSseD2(5), toSseD2(6), toSseD2(7), Mem(xTmp7));
-    compiler.ret(asmjit::a64::x30);
 
-    code.flatten();
-    Platform::writeCodeToMemory(buffer, (U32)code.code_size(), [&code, buffer]() {
-        code.copy_flattened_data(buffer, code.code_size());
-    });
-    Platform::clearInstructionCache(buffer, (U32)code.code_size());
-    
-}
-
-U8* JitArmV8CodeGen::createBlockExit(bool syncRegs) {
-    if (syncRegs) {
-        compiler.blr(xWriteCacheToCPU);
-    }
     compiler.mov(xTmp7, xCPU);
-    for (int i = 19; i < 31; i+=2) {
+    for (int i = 19; i < 31; i += 2) {
         compiler.ldp(R64(i), R64(i + 1), Mem(xTmp7, offsetof(CPU, storedRegs) + (i - 19) * 8));
     }
     compiler.ret(asmjit::a64::x30);
     return createDynamicExecutableMemory();
 }
 
-void JitArmV8CodeGen::blockExit(bool syncCache) {
-    if (syncCache) {
-        compiler.blr(xWriteCacheToCPU);
-    }
-    compiler.mov(xTmp7, xCPU);
-    for (int i = 19; i < 31; i += 2) {
-        compiler.ldp(R64(i), R64(i + 1), Mem(xTmp7, offsetof(CPU, storedRegs) + (i - 19) * 8));
-    }
-    compiler.ret(asmjit::a64::x30);
+void JitArmV8CodeGen::blockExit() {
+    compiler.mov(xBranch, cpu->thread->process->blockExit);
+    compiler.br(xBranch);
 }
 
 U8* JitArmV8CodeGen::createStartJITCode() {
@@ -7069,8 +6919,8 @@ U8* JitArmV8CodeGen::createStartJITCode() {
     compiler.mov(xWriteCacheToCPU, (U64)KThread::currentThread()->process->syncFromHost);
     compiler.mov(xEmulateSingleOp, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
     loadCacheFromCPU();
-    compiler.br(xBranch);
-
+    compiler.blr(xBranch);
+    
     return createDynamicExecutableMemory();
 }
 

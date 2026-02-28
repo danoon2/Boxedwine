@@ -56,7 +56,7 @@ public:
 
     virtual void preOp(DecodedOp* op) {}
     virtual void onBlockPreCommit(DecodedOp* op) {}
-    virtual void readMMU(RegPtr dest, RegPtr index) = 0;
+    virtual void readMMU(RegPtr dest, RegPtr index, U32 offset = 0) = 0;
     virtual void readMMU(RegPtr dest, U32 index) = 0;
 
     virtual RegPtr readCPU(JitWidth width, U32 offset, RegPtr resultReg = nullptr) = 0;
@@ -67,29 +67,20 @@ public:
     virtual void writeCPUValue(JitWidth width, U32 offset, DYN_PTR_SIZE src) = 0;
 
     RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) override;
-    RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) override;
-    void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) override;
+    RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) override;
+    void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) override;
 
-    RegPtr read(JitWidth width, MemPtr mem, RegPtr result = nullptr) override;
-    void write(JitWidth width, MemPtr mem, RegPtr src) override;
-    void write(JitWidth width, MemPtr mem, U32 imm) override;
+    RegPtr read(JitWidth width, MemPtr address, RegPtr result = nullptr) override;
+    void write(JitWidth width, MemPtr address, RegPtr src) override;
+    void write(JitWidth width, MemPtr address, U32 imm) override;
 
-#ifdef BOXEDWINE_MEM_CACHE
-    virtual void writeMemCache(JitWidth width, RegPtr addressReg, RegPtr src) = 0;
-    virtual void writeMemCache(JitWidth width, RegPtr addressReg, U32 value) = 0;
-    virtual void writeMemCache(JitWidth width, U32 mem, RegPtr src) = 0;
-    virtual void writeMemCache(JitWidth width, U32 mem, U32 imm) = 0;
-    virtual RegPtr readMemCache(JitWidth width, RegPtr addressReg, RegPtr tmp = nullptr) = 0;
-    virtual RegPtr readMemCache(JitWidth width, U32 mem, RegPtr result = nullptr) = 0;    
-    virtual RegPtr readWriteMemCache(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, RegPtr tmp) = 0;
-#endif
-
-    virtual void readHost(JitWidth width, MemPtr mem, RegPtr result, bool emlulatedMemory = true) = 0;
-    virtual void writeHost(JitWidth width, MemPtr mem, RegPtr src, bool emlulatedMemory = true) = 0;
-    virtual void writeHost(JitWidth width, MemPtr mem, U32 imm, bool emlulatedMemory = true) = 0;
-    virtual RegPtr calculateAddress(MemPtr mem, JitWidth width = JitWidth::b32);
+    virtual void readHost(JitWidth width, MemPtr address, RegPtr result, bool emlulatedMemory = true) = 0;
+    virtual void writeHost(JitWidth width, MemPtr address, RegPtr src, bool emlulatedMemory = true) = 0;
+    virtual void writeHost(JitWidth width, MemPtr address, U32 imm, bool emlulatedMemory = true) = 0;
+    virtual RegPtr calculateAddress(MemPtr address);
 
     virtual void clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) = 0;
+    virtual void clearIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) = 0;
 
     void addRegWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, RegPtr rm) override;
     void andValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) override;
@@ -162,7 +153,7 @@ protected:
     virtual U32 getIfJumpSize() = 0;                     
     virtual U8* createSyncToHost() = 0;
     virtual U8* createSyncFromHost() = 0;
-    virtual U8* createBlockExit(bool syncRegs) = 0;
+    virtual U8* createBlockExit() = 0;
 #if defined(BOXEDWINE_POSIX) && defined(BOXEDWINE_HOST_EXCEPTIONS)
     virtual U8* createSignalHandler();
 #endif
@@ -186,6 +177,5 @@ protected:
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);
 JitCodeGen* startNewJIT(CPU* cpu);
-void writeBlockExitForJIT(U32 eip, U8* buffer);
 
 #endif

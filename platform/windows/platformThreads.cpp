@@ -301,6 +301,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
     }
 
     syncFromException(ep);
+    //klog_fmt("exception at %llx(%d)", ep->ExceptionRecord->ExceptionInformation[1], (U32)ep->ExceptionRecord->ExceptionInformation[0]);
     bool readException = ep->ExceptionRecord->ExceptionInformation[0] == 0;
     void* result = cpu->startException((U32)ep->ExceptionRecord->ExceptionInformation[1], readException);
     if (result) {
@@ -319,7 +320,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         }        
 #ifdef _DEBUG
         if (eip != cpu->eip.u32) {
-           // kpanic_fmt("%x/%x", cpu->eip.u32, eip);
+            kpanic_fmt("%x/%x", cpu->eip.u32, eip);
         }        
 #endif
         cpu->eip.u32 = eip;

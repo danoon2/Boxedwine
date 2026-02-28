@@ -178,7 +178,7 @@ void signalHandler(CPU* cpu) {
         U32 eip = 0;
         if (!getMemData(cpu->memory)->findOpFromJitAddress((U8*)cpu->exceptionIp, eip)) {
             klog("probably about to crash, could not find emulation instruction that caused exception");
-            cpu->returnHostAddress = cpu->thread->process->blockExitNoSync;
+            cpu->returnHostAddress = cpu->thread->process->blockExit;
         } else {
             cpu->eip.u32 = eip;
             DecodedOp* op = cpu->getNextOp();

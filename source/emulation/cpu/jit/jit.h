@@ -105,7 +105,7 @@ class JitMem {
 public:
     JitMem(U32 address) : offset(address) {}
     JitMem(RegPtr rm, U32 offset = 0, bool emulatedAddress = true) : rm(rm), offset(offset), emulatedAddress(emulatedAddress) {}
-    JitMem(RegPtr rm, RegPtr sib, U32 lsl, U32 offset, bool emulatedAddress = true) : rm(rm), sib(sib), lsl(lsl), offset(offset), emulatedAddress(emulatedAddress) {}
+    JitMem(RegPtr rm, RegPtr sib, U32 lsl = 0, U32 offset = 0, bool emulatedAddress = true) : rm(rm), sib(sib), lsl(lsl), offset(offset), emulatedAddress(emulatedAddress) {}
 
     RegPtr rm;
     RegPtr sib;
@@ -124,7 +124,7 @@ public:
     using InstRegRegImm = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 imm);
     using InstRegRegCl = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl);
     using InstRegReg = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm);
-    using InstRegRegCF = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl);
+    using InstRegRegCF = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf);
     using InstRegImm = void(Jit::*)(JitWidth regWidth, RegPtr reg, U32 imm);
     using InstRegImmCF = void(Jit::*)(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf);
     using InstReg = void(Jit::*)(JitWidth regWidth, RegPtr reg);
@@ -282,12 +282,12 @@ public:
     // these will check that the memory is valid and doesn't span a page then allow the caller to override what happens when everything is good by providing a callback, 
     // the callback will contain the host memory address
     virtual RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) = 0;
-    virtual RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) = 0;
-    virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) = 0;
+    virtual RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) = 0;
+    virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) = 0;
 
-    virtual RegPtr read(JitWidth width, MemPtr mem, RegPtr result = nullptr) = 0;
-    virtual void write(JitWidth width, MemPtr mem, RegPtr src) = 0;
-    virtual void write(JitWidth width, MemPtr mem, U32 imm) = 0;
+    virtual RegPtr read(JitWidth width, MemPtr address, RegPtr result = nullptr) = 0;
+    virtual void write(JitWidth width, MemPtr address, RegPtr src) = 0;
+    virtual void write(JitWidth width, MemPtr address, U32 imm) = 0;
 
     void dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
     void dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags);
@@ -318,7 +318,7 @@ public:
 
     virtual void blockNext1(U32 eip, DecodedOp* op) = 0;
     virtual void blockNext2(U32 eip, DecodedOp* op) = 0;
-    virtual void blockExit(bool syncCache = true) = 0;
+    virtual void blockExit() = 0;
     virtual void jumpEip(RegPtr reg) = 0;
 
     virtual void JumpInBlock(U32 address) = 0;
@@ -433,4 +433,26 @@ protected:
     void writeRcr32Flags(RegPtr reg, RegPtr cf);
 };
 
+class JitFlags {
+private:
+    void init(Jit* jit, CPU* cpu, DecodedOp* op, LazyFlagType flagsType, RegPtr cf);
+
+public:
+    JitFlags(Jit* jit, CPU* cpu, DecodedOp* op, LazyFlagType flagsType, RegPtr src, RegPtr cf, bool copySrc = false);
+    JitFlags(Jit* jit, CPU* cpu, DecodedOp* op, LazyFlagType flagsType, U32 src, RegPtr cf);
+
+    void commit(RegPtr result, RegPtr dst = nullptr);
+    void copyDest(RegPtr dst);
+
+    Jit* jit;
+    RegPtr src;
+    RegPtr dst;
+    U32 srcValue = 0;
+    RegPtr oldCF;
+    bool shouldStoreOldCF;
+    const LazyFlags* flags;
+    U32 needsToSetFlags = 0;
+    LazyFlagType flagsType;
+    bool dstInCpuTmp = false;
+};
 #endif

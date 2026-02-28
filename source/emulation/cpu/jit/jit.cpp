@@ -617,8 +617,6 @@ void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagTyp
     const LazyFlags* flags = lazyFlags[flagType];
     if (writeback) {
         // daytona installer can trigger this path with dec and flags needed, this is the hard one for the number of tmp regs required since it will need to preserve cf
-        // 
-        // can't use arithSetup before readWriteMem since it will commit flags (storeLazyFlags), buf if we save arithSetup until after readWriteMem, then we will run out of tmp regs if we need to calculate cf
         U32 needsToSetFlags = 0;
         if (flags) {
             needsToSetFlags = op->needsToSetFlags(cpu);
@@ -845,6 +843,78 @@ void Jit::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg callbac
             andValue(JitWidth::b16, dest, 0xff);
             orReg(JitWidth::b16, dest, src);
         }
+    }
+}
+
+void JitFlags::init(Jit* jit, CPU* cpu, DecodedOp* op, LazyFlagType flagsType, RegPtr cf) {
+    flags = lazyFlags[flagsType];
+    if (flags) {
+        needsToSetFlags = op->needsToSetFlags(cpu);
+    }
+    if (needsToSetFlags) {
+        if ((flags && flags->usesOldCF(needsToSetFlags)) || (!(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF))) {
+            if (cf) {
+                oldCF = cf;
+            } else {
+                oldCF = jit->getCF();
+            }
+        }
+    }
+}
+
+JitFlags::JitFlags(Jit* jit, CPU* cpu, DecodedOp* op, LazyFlagType flagsType, RegPtr src, RegPtr cf, bool copySrc) {
+    init(jit, cpu, op, flagsType, cf);
+    if (flags && flags->usesSrc(needsToSetFlags)) {
+        if (copySrc) {
+            this->src = jit->getTmpReg();
+            jit->mov(JitWidth::b32, this->src, src);
+        } else {
+            this->src = src;
+        }
+    }
+    this->flagsType = flagsType;
+    this->jit = jit;
+}
+
+JitFlags::JitFlags(Jit* jit, CPU* cpu, DecodedOp* op, LazyFlagType flagsType, U32 src, RegPtr cf) {
+    init(jit, cpu, op, flagsType, cf);
+    srcValue = src;
+    this->flagsType = flagsType;
+    this->jit = jit;
+}
+
+void JitFlags::commit(RegPtr result, RegPtr dst) {
+    if (flags) {
+        jit->storeLazyFlagType(flagsType);
+        jit->currentLazyFlags = flagsType;
+
+        if (oldCF && flags->usesOldCF(needsToSetFlags)) {
+            jit->storeLazyFlagsOldCF(oldCF);
+        }
+        if (flags->usesSrc(needsToSetFlags)) {
+            if (src) {
+                jit->storeLazyFlagsSrc(src);
+            } else {
+                jit->storeLazyFlagsSrc(srcValue);
+            }
+        }
+        src = nullptr;
+        if (flags->usesDst(needsToSetFlags)) {
+            if (!dst) {
+                dst = this->dst;
+            }
+            jit->storeLazyFlagsDest(dst);
+        }
+        if (flags->usesResult(needsToSetFlags)) {
+            jit->storeLazyFlagsResult(result);
+        }
+    }
+}
+
+void JitFlags::copyDest(RegPtr dst) {
+    if (flags && flags->usesDst(needsToSetFlags)) {
+        this->dst = jit->getTmpReg();
+        jit->mov(JitWidth::b32, this->dst, dst);
     }
 }
 

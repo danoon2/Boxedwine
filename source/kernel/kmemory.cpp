@@ -505,8 +505,7 @@ void KMemory::clearJit(DecodedOp* op) {
     data->codeMemory.free(start);
 }
 
-void writeBlockExitForJIT(U32 eip, U8* buffer);
-bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, bool clearOps) {
+void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     DecodedOp* blockOp = op->blockStart;
     U32 blockLen = blockOp->blockLen;
     U32 blockOpCount = blockOp->blockOpCount;
@@ -514,6 +513,7 @@ bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, b
     KThread* thread = KThread::currentThread();
     DecodedOp* currentOp = thread->memory->getDecodedOp(thread->cpu->getEipAddress());
     bool result = false;
+    void* pMem = (void*)blockOp->pfnJitCode;
 
     for (U32 i = 0; i < blockOpCount; i++) {
         if (nextOp->blockStart != blockOp && nextOp->inst != Done) {
@@ -525,38 +525,22 @@ bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, b
         nextOp->runCount = 0;
         nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
         nextOp->flags &= ~OP_FLAG_JIT;
-        // dynamic will clear this in DecodedOpCache::removeJITCode, but it needs it to be set until then
-#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_HOST_EXCEPTIONS)                
-        if (currentOp && nextOp == currentOp->next && nextOp->pfnJitCode) {
-            // this is important if the current jit block modifies itself
-            U8* p = (U8*)nextOp->pfnJitCode;
-            writeBlockExitForJIT(thread->cpu->eip.u32 + currentOp->len, p);
-            result = true;
-        }
-#endif
         nextOp->pfnJitCode = nullptr;
+        nextOp->jitLen = 0;
         nextOp = nextOp->next;
     }
     if (clearOps) {
-        data->opCache.remove(address, blockLen, becauseOfWrite);
+        data->opCache.remove(address, blockLen, false);
+    }        
+    if (pMem) {
+        data->codeMemory.free(pMem);
     }
-    void* pMem = (void*)blockOp->pfnJitCode;
-    blockOp->pfnJitCode = nullptr;
-    data->codeMemory.free(pMem);
-    return true;
 }
 #endif
 
-class OpCallbackData {
-public:
-    KMemory* memory = nullptr;
-    bool becauseOfWrite = false;
-    bool result = false;
-};
-
 #if defined(BOXEDWINE_JIT)
 static void opCallback(U32 address, DecodedOp* op, void* p) {
-    OpCallbackData* callbackData = (OpCallbackData*)p;
+    KMemory* memory = (KMemory*)p;
     if (op->blockStart) {
         // Normal and JIT cpu's don't need to track eip on an op except for this case, but I don't think it's really worth increasing
         // the size of DecodedOp just for this
@@ -567,23 +551,15 @@ static void opCallback(U32 address, DecodedOp* op, void* p) {
             nextOp = nextOp->next;
         }
         U32 blockAddress = address - len;
-        if (callbackData->memory->removeCodeBlock(blockAddress, op->blockStart, callbackData->becauseOfWrite, true)) {
-            callbackData->result = true;
-        }
+        memory->removeCodeBlock(blockAddress, op->blockStart, true);
     }
 }
 #endif
 void KMemory::removeCode(KThread* thread, U32 address, U32 len, bool becauseOfWrite) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex)
 #if defined(BOXEDWINE_JIT)
-    OpCallbackData callbackData;
-    callbackData.memory = this;
-    callbackData.becauseOfWrite = becauseOfWrite;
-    data->opCache.iterateOps(address, len, opCallback, &callbackData);
+    data->opCache.iterateOps(address, len, opCallback, this);
     data->opCache.remove(address, len, becauseOfWrite);
-    if (thread && callbackData.result) {
-        thread->cpu->nextOp = thread->cpu->getNextOp()->next;
-    }
 #else
     data->opCache.remove(address, len, becauseOfWrite);
 #endif

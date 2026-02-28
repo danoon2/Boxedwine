@@ -284,7 +284,6 @@ public:
     void* syncToHost = nullptr;
     void* syncFromHost = nullptr;
     void* blockExit = nullptr;
-    void* blockExitNoSync = nullptr;
     void* jitCosSub = nullptr;
     void* jitCos = nullptr;
     void* calculateCF[FLAGS_NULL] = {};

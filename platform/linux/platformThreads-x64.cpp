@@ -249,10 +249,15 @@ void signalHandler(CPU* cpu) {
         U32 eip = 0;
         if (!getMemData(cpu->memory)->findOpFromJitAddress((U8*)cpu->exceptionIp, eip)) {
             klog("probably about to crash, could not find emulation instruction that caused exception");
-            cpu->returnHostAddress = cpu->thread->process->blockExitNoSync;
-        } else {
+            cpu->returnHostAddress = cpu->thread->process->blockExit;
+        } else {            
             cpu->eip.u32 = eip;
             DecodedOp* op = cpu->getNextOp();
+            if (op->flags2 & OP_FLAG2_SAVED_TMP_REG) {
+                if (op->inst == MaskmovqEDIMmxMmx || op->inst == MaskmovdquE128XmmXmm) {
+                    cpu->reg[7].u32 = cpu->tmpReg;
+                }
+            }
             void* result = cpu->handleAccessException(op);
             if (cpu->nextOp->pfnJitCode) {
                 cpu->returnHostAddress = cpu->nextOp->pfnJitCode;
