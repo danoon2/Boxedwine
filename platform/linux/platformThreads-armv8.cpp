@@ -173,7 +173,7 @@ void signalHandler(CPU* cpu) {
     }
     InException e(cpu);
 
-    if (cpu->exceptionSigNo == SIGSEGV || cpu->exceptionSigNo == SIGBUS) {
+    if (cpu->exceptionSigNo == SIGSEGV || cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGILL) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex); // jitCache needs this
         U32 eip = 0;
         if (!getMemData(cpu->memory)->findOpFromJitAddress((U8*)cpu->exceptionIp, eip)) {

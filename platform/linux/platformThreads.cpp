@@ -39,7 +39,7 @@ void platformInitExceptionHandling() {
         struct sigaction oldsa;
         sigaction(SIGBUS, &sa, &oldsa);
         sigaction(SIGSEGV, &sa, &oldsa);
-        //sigaction(SIGILL, &sa, &oldsa);
+        sigaction(SIGILL, &sa, &oldsa);
         sigaction(SIGFPE, &sa, &oldsa);
         //for (int i = 0x91; i <= 0x96; i++) {
         //    sigaction(i, &sa, &oldsa);
