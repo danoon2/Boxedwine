@@ -2162,6 +2162,7 @@ Mem JitX86CodeGen::createMem(JitWidth width, MemPtr mem) {
     if (!mem->rm) {
         kpanic("JitX86CodeGen::createMem rm");
     }
+#ifdef BOXEDWINE_64
     U32 disp = mem->offset;
     if (disp > 0x7fffff) {
         RegPtr tmp = getTmpReg();
@@ -2200,6 +2201,7 @@ Mem JitX86CodeGen::createMem(JitWidth width, MemPtr mem) {
         }
         kpanic_fmt("JitX86CodeGen::createMem unexpected width: %d", (U32)width);
     }
+#endif
     if (width == JitWidth::b32) {
         if (mem->sib) {
             return Mem32(RN(mem->rm), RN(mem->sib), mem->lsl, mem->offset);
