@@ -2162,6 +2162,44 @@ Mem JitX86CodeGen::createMem(JitWidth width, MemPtr mem) {
     if (!mem->rm) {
         kpanic("JitX86CodeGen::createMem rm");
     }
+    U32 disp = mem->offset;
+    if (disp > 0x7fffff) {
+        RegPtr tmp = getTmpReg();
+        movValue(JitWidth::b32, tmp, disp);
+        addReg(JitWidth::b64, tmp, mem->rm);
+
+        if (width == JitWidth::b32) {            
+            if (mem->sib) {
+                return Mem32(RN(tmp), RN(mem->sib), mem->lsl, 0);
+            }
+            return Mem32(RN(tmp));
+        }
+        if (width == JitWidth::b16) {
+            if (mem->sib) {
+                return Mem16(RN(tmp), RN(mem->sib), mem->lsl, 0);
+            }
+            return Mem16(RN(tmp));
+        }
+        if (width == JitWidth::b8) {
+            if (mem->sib) {
+                return Mem8(RN(tmp), RN(mem->sib), mem->lsl, 0);
+            }
+            return Mem8(RN(tmp));
+        }
+        if (width == JitWidth::b64) {
+            if (mem->sib) {
+                return Mem64(RN(tmp), RN(mem->sib), mem->lsl, 0);
+            }
+            return Mem64(RN(tmp));
+        }
+        if (width == JitWidth::b128) {
+            if (mem->sib) {                
+                return Mem128(RN(tmp), RN(mem->sib), mem->lsl, 0);
+            }
+            return Mem128(RN(tmp));
+        }
+        kpanic_fmt("JitX86CodeGen::createMem unexpected width: %d", (U32)width);
+    }
     if (width == JitWidth::b32) {
         if (mem->sib) {
             return Mem32(RN(mem->rm), RN(mem->sib), mem->lsl, mem->offset);

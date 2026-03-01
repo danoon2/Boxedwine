@@ -1279,7 +1279,7 @@ RegPtr JitCodeGen::read(JitWidth width, MemPtr mem, RegPtr result) {
 
     andValueNative(result, ~0xfff);
 
-    readHost(width, std::make_shared<JitMem>(result,  address & K_PAGE_MASK), result);
+    readHost(width, createMemPtr(result,  address & K_PAGE_MASK), result);
 
     return result;
 }
