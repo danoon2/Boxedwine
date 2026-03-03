@@ -52,7 +52,19 @@ KMemoryData::KMemoryData(KMemory* memory) : memory(memory) {
         addCallback(onExitSignal);
     }
     this->allocPages(nullptr, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, K_PROT_READ | K_PROT_EXEC, -1, 0, nullptr, &callbackRam);
-    codeMemory.delayedFree = 1000; // in case another thread is using it right when we free it
+    // in case another thread is using it right when we free it
+    codeMemory.delayedFree = 1000; // 10s
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    codeMemory.delayedFreeCallback = [this](void* p, U32 len) {
+        auto startIt = this->jitAddressToEip.upper_bound((U8*)p);
+        auto endIt = this->jitAddressToEip.lower_bound((U8*)p + len);
+        auto it = startIt;
+
+        while (it != endIt) {
+            it = this->jitAddressToEip.erase(it);
+        }
+    };
+#endif
     codeMemory.isCodeMemory = true;
 }
 

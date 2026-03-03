@@ -117,6 +117,7 @@ void Jit::dynamic_retn32Iw(DecodedOp* op) {
 void Jit::dynamic_retn16(DecodedOp* op) {
     RegPtr eip = getTmpReg();
     pop16(eip);
+    movzx(JitWidth::b32, eip, JitWidth::b16, eip);
     jumpEip(eip);
 }
 void Jit::dynamic_retn32(DecodedOp* op) {
@@ -453,6 +454,7 @@ void Jit::dynamic_callE16(DecodedOp* op) {
     movValue(JitWidth::b32, eip, this->currentEip + op->len - this->cpu->seg[CS].address);
     push16(eip);
     eip = nullptr;
+    movzx(JitWidth::b32, newEip, JitWidth::b16, newEip);
     jumpEip(newEip);
 }
 void Jit::dynamic_callE32(DecodedOp* op) {

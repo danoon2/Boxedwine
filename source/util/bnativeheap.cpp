@@ -41,6 +41,10 @@ void BNativeHeap::freeAll() {
 		Platform::releaseNativeMemory(it.key, it.value);
 	}
 	largeBlocks.clear();
+	for (auto& it : delayedFreeLargeBlocks) {
+		Platform::releaseNativeMemory(it.key, *((U32*)it.key));
+	}
+	delayedFreeLargeBlocks.clear();	
 }
 
 bool BNativeHeap::containsAddress(void* p) {
@@ -55,6 +59,11 @@ bool BNativeHeap::containsAddress(void* p) {
 			return true;
 		}
 	}
+	for (auto& it : delayedFreeLargeBlocks) {
+		if (p >= it.key && p < it.key + *(U32*)it.key) {
+			return true;
+		}
+	}
 	return false;
 }
 
@@ -64,6 +73,19 @@ void* BNativeHeap::alloc(U32 len, U32* blockSize) {
 		index = 4;
 	}
 	U32 size = 1 << index;
+	for (auto it = delayedFreeLargeBlocks.begin(); it != delayedFreeLargeBlocks.end();) {
+		if (it->value < KSystem::getMilliesSinceStart() - delayedFree) {
+			if (delayedFreeCallback) {
+				delayedFreeCallback(it->key, *((U32*)it->key));
+			}
+			Platform::releaseNativeMemory(it->key, *((U32*)it->key));
+			delayedFreeLargeBlocks.remove(it->key);
+			it = delayedFreeLargeBlocks.begin();
+		}
+		if (it != delayedFreeLargeBlocks.end()) {
+			it++;
+		}
+	}
 	if (size >= BNATIVEHEAD_64K_BLOCK_SIZE) {
 		U32 count = (len + 4 + BNATIVEHEAD_64K_BLOCK_SIZE - 1) / BNATIVEHEAD_64K_BLOCK_SIZE;
 		
@@ -85,7 +107,13 @@ void* BNativeHeap::alloc(U32 len, U32* blockSize) {
 		void* result = buckets[index].back();
 		U32* pInfo = (U32*)result;
 		pInfo--;
-		if (!delayedFree || *pInfo < KSystem::getMilliesSinceStart() - delayedFree) {
+		bool isDelayedFree = *pInfo < KSystem::getMilliesSinceStart() - delayedFree;
+
+		if (!delayedFree || isDelayedFree) {
+			if (isDelayedFree && delayedFreeCallback) {
+				delayedFreeCallback(pInfo, len + 4);
+			}
+
 			buckets[index].pop_back();
             if (isCodeMemory) {
                 Platform::writeCodeToMemory(pInfo, len + 4, [index, pInfo, result, len]() {
@@ -135,7 +163,11 @@ void BNativeHeap::free(void* address) {
 	U32 index = *(((U32*)address) - 1);
 	if (index >= BNATIVEHEAD_64K_BLOCK_SIZE) {
 		U8* rawAddress = ((U8*)address) - 4;
-		Platform::releaseNativeMemory(rawAddress, index);
+		if (delayedFree) {
+			delayedFreeLargeBlocks.set(rawAddress, KSystem::getMilliesSinceStart());
+		} else {
+			Platform::releaseNativeMemory(rawAddress, index);
+		}
 		largeBlocks.remove(rawAddress);
 		return;
 	}

@@ -465,19 +465,7 @@ void KMemory::clearOpCache() {
 
 void* KMemory::allocCodeMemory(U32 len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex)
-    U32 blockSize = 0;
-    void* result = data->codeMemory.alloc(len, &blockSize);
-#ifdef BOXEDWINE_HOST_EXCEPTIONS
-    // don't erase when jit block was deleted, the memory free has a delay before it can be re-used, during that delay we need to keep this info in case there was another thread running the code
-    auto startIt = data->jitAddressToEip.upper_bound((U8*)result);
-    auto endIt = data->jitAddressToEip.lower_bound((U8*)result + blockSize);
-    auto it = startIt;
-
-    while (it != endIt) {
-        it = data->jitAddressToEip.erase(it);
-    }
-#endif
-    return result;
+    return data->codeMemory.alloc(len);
 }
 
 bool KMemory::isCode(void* p) {
@@ -505,7 +493,7 @@ void KMemory::clearJit(DecodedOp* op) {
     data->codeMemory.free(start);
 }
 
-void clearJitBlock(void* p, U32 len);
+void clearJitBlock(const std::vector<void*>& jitOps);
 
 void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     DecodedOp* blockOp = op->blockStart;
@@ -513,8 +501,11 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     U32 blockOpCount = blockOp->blockOpCount;
     DecodedOp* nextOp = blockOp;
     KThread* thread = KThread::currentThread();
+    DecodedOp* currentOp = thread->memory->getDecodedOp(thread->cpu->getEipAddress());
     void* pMem = (void*)blockOp->pfnJitCode;
+    U32 jitLen = 0;
 
+    std::vector<void*> jitOps;
     for (U32 i = 0; i < blockOpCount; i++) {
         if (nextOp->blockStart != blockOp && nextOp->inst != Done) {
             kpanic("KMemory::removeCodeBlock nextOp->blockStart");
@@ -525,17 +516,26 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         nextOp->runCount = 0;
         nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
         nextOp->flags &= ~OP_FLAG_JIT;
+        if (nextOp->pfnJitCode) {
+            jitOps.push_back(nextOp->pfnJitCode);            
+        }
+        jitLen += nextOp->jitLen;
         nextOp->pfnJitCode = nullptr;
         nextOp->jitLen = 0;
         nextOp = nextOp->next;
+    }
+    if (jitOps.size()) {
+        clearJitBlock(jitOps);
     }
     if (clearOps) {
         data->opCache.remove(address, blockLen, false);
     }        
     if (pMem) {
-        clearJitBlock(pMem, blockLen);
         data->codeMemory.free(pMem);
     }
+#ifdef _DEBUG1
+    klog_fmt("removed active code block eip = %x - %x host %llx - %llx", thread->cpu->getEipAddress(), thread->cpu->getEipAddress() + blockLen, (U64)pMem, (U64)pMem + jitLen);
+#endif
 }
 #endif
 

@@ -7013,9 +7013,14 @@ void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {
     data.doJIT(address, op);
 }
 
-void clearJitBlock(void* p, U32 len) {
-    Platform::writeCodeToMemory(p, len, [p, len]() {
-        ::memset(p, 0, len);
+void clearJitBlock(const std::vector<void*>& jitOps) {
+    U8* start = (U8*)jitOps[0];
+    U8* end = (U8*)jitOps[jitOps.size() - 1];
+    U32 len = end - start + 4;
+    Platform::writeCodeToMemory(start, len, [&jitOps]() {
+        for (void* p : jitOps) {
+            ::memset(p, 0, 4);
+        }
     });
 }
 

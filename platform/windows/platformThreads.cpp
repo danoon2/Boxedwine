@@ -312,15 +312,15 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
 
     InException inException(cpu);
 
-    if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION || ep->ExceptionRecord->ExceptionCode == EXCEPTION_DATATYPE_MISALIGNMENT) {
+    if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION || ep->ExceptionRecord->ExceptionCode == EXCEPTION_DATATYPE_MISALIGNMENT || ep->ExceptionRecord->ExceptionCode == STATUS_ILLEGAL_INSTRUCTION) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex); // jitCache needs this
         U32 eip = 0;
         if (!getMemData(cpu->memory)->findOpFromJitAddress((U8*)ep->ContextRecord->REG_IP, eip)) {
             return EXCEPTION_CONTINUE_SEARCH;
         }        
 #ifdef _DEBUG
-        if (eip != cpu->eip.u32) {
-            kpanic_fmt("%x/%x", cpu->eip.u32, eip);
+        if (ep->ExceptionRecord->ExceptionCode != STATUS_ILLEGAL_INSTRUCTION && eip != cpu->eip.u32) {
+            klog_fmt("%x/%x", cpu->eip.u32, eip);
         }        
 #endif
         cpu->eip.u32 = eip;
@@ -363,10 +363,6 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
             ep->ContextRecord->SET_REG_IP(result);
         }
         syncToException(ep);
-        return EXCEPTION_CONTINUE_EXECUTION;
-    } else if (ep->ExceptionRecord->ExceptionCode == STATUS_ILLEGAL_INSTRUCTION) {
-        // this is weird, so far I have only seen it on the first instruction of a block, which is an instruction that shouldn't fail, maybe the clearCache wasn't done in time and another thread starting using it?
-        klog("Instruction cache miss?");
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     return EXCEPTION_CONTINUE_SEARCH;

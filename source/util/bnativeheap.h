@@ -32,10 +32,12 @@ public:
 
 	U32 delayedFree = 0; // millis before the memory can be recycles
     bool isCodeMemory = false;
+	std::function<void(void*, U32)> delayedFreeCallback;
 private:
 	std::unordered_map<U32, std::deque<void*>> buckets;
 	std::vector<void*> blocks;
 	BHashTable<U8*, U32> largeBlocks;
+	BHashTable<U8*, U32> delayedFreeLargeBlocks;
 };
 
 #endif
