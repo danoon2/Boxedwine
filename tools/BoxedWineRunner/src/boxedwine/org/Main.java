@@ -39,6 +39,7 @@ public class Main {
     static String boxedWineExe = "boxedwine";
     static Vector<String> extraCommands = new Vector<>();
     static boolean verbose = false;
+    static String perfName = "Performance";
     static boolean atleastOneFailed = false;
 
     static class Results {
@@ -108,7 +109,13 @@ public class Main {
         StreamGobbler streamGobbler = new StreamGobbler(process.getInputStream(), name);
         streamGobbler.run();
         try {
-            results.exitCode = process.waitFor();
+            if (!process.waitFor(30, TimeUnit.MINUTES)) {
+                System.out.println("Killing "+parts[1]);
+                process.destroyForcibly();
+                results.exitCode = 1; // 111 is the valid return code
+            } else {
+                results.exitCode = process.exitValue();
+            }
             results.scriptFinished = streamGobbler.scriptFinished;
             results.output = streamGobbler.lines;
         } catch (InterruptedException e) {
@@ -126,7 +133,7 @@ public class Main {
             }
         }
         if (!file.delete()) {
-            throw new IOException("Failed to delete " + file);
+            file.deleteOnExit();
         }
     }
 
@@ -176,14 +183,99 @@ public class Main {
                 return;
             }
         }
+        String parseFile = null;
+        String parseKey = null;
+
         if (playLines.length>0) {
             if (playLines.length<2) {
                 throw new IOException(path+File.separator+"Play.txt needs to have 2 lines");
+            }
+            if (playLines[0].startsWith("PARSE_FILE=")) {
+                parseFile = playLines[0].substring(11);
+                String[] tmp = new String[playLines.length - 1];
+                for (int i=0;i<playLines.length - 1;i++) {
+                    tmp[i] = playLines[1+i];
+                }
+                playLines = tmp;
+            }
+            if (playLines[0].startsWith("PARSE_KEY=")) {
+                parseKey = playLines[0].substring(10);
+                String[] tmp = new String[playLines.length - 1];
+                for (int i=0;i<playLines.length - 1;i++) {
+                    tmp[i] = playLines[1+i];
+                }
+                playLines = tmp;
             }
             runBoxedWine(name, path, "play", playLines, results);
         }
         results.timeToComplete = (int)((System.currentTimeMillis()-startTime)/1000);
         if (results.exitCode==111) {
+            if (parseFile != null && parseKey != null) {
+                try {
+                    File file = new File(path+File.separator+"root"+parseFile);
+                    System.out.println("Looking in " + file.getPath());
+
+                    String[] parseLines = null;
+
+                    if (file.isFile() && file.exists()) {
+                        System.out.println("Using " + file.getPath());
+                        parseLines = getLines(file.getAbsolutePath());
+                    }
+                    if (file.isDirectory() && file.exists()) {
+                        System.out.println("Searching directory");
+                        for (File sub : file.listFiles()) {
+                            if (sub.isFile()) {
+                                System.out.println("Using " + sub.getPath());
+                                parseLines = getLines(sub.getAbsolutePath());
+                                break;
+                            }
+                        }
+                    }
+
+                    if (parseFile == null) {
+                        System.out.println("Did not find any lines");
+                        results.exitCode = 1;
+                    } else {
+                        boolean foundKey = false;
+                        for (String line : parseLines) {
+                            if (line.startsWith(parseKey)) {
+                                System.out.println("Found key: "+line);
+                                foundKey = true;
+                                String value = line.substring(parseKey.length());
+                                String originalValue = value;
+                                if (value.contains(".")) {
+                                     double d = Double.parseDouble(value) * 10000;
+                                     int i=(int)d;
+                                     value = String.valueOf(i);
+                                }
+                                String header = "platform,value";
+                                String platform = "Platform";
+                                String testName = perfName;
+
+                                if (testName.contains("-")) {
+                                    platform = testName.substring(testName.indexOf('-')+1);
+                                    testName = testName.substring(0, testName.indexOf('-'));
+                                }
+                                String json = "{\n" +
+                                        "    \"name\": \""+perfName+"\",\n" +
+                                        "    \"value\": "+originalValue+"\n}";
+                                Files.write(Paths.get(path + File.separator + "perf-" + perfName + ".json"), json.getBytes());
+                                String csv = perfName + "\n" + originalValue;
+                                Path csvPath = Paths.get(path + File.separator + "perf-" + perfName + ".csv");
+                                Files.write(csvPath, csv.getBytes());
+                                System.out.println("Wrote " + csvPath.toString());
+                            }
+                        }
+                        if (!foundKey) {
+                            System.out.println("Did not find key");
+                            results.exitCode = 1;
+                        }
+                    }
+                } catch (Exception e) {
+                    results.exitCode = 1;
+                    System.out.println(e.getMessage());
+                }
+            }
             deleteDir(rootPath);
         }
     }
@@ -228,6 +320,10 @@ public class Main {
         for (;index<args.length;index++) {
             if (args[index].equals("-v")) {
                 verbose = true;
+                continue;
+            } else if (args[index].equals("-name")) {
+                perfName = args[index + 1];
+                index++;
                 continue;
             } else {
                 break;
