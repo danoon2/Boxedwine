@@ -470,11 +470,11 @@ pipeline {
                         def csvWin64 = readCSV file: 'perfScripts/cinebench/cinebench/perf-Cinebench-Win64.csv'
                         def csvWin32 = readCSV file: 'perfScripts/cinebench/cinebench/perf-Cinebench-Win32.csv'
                         def csvLinuxArm64 = readCSV file: 'perfScripts/cinebench/cinebench/perf-Cinebench-Linux-Arm64.csv'
-                        def csvLinux64 = readCSV file: 'perfScripts/cinebench/cinebench/perf-Cinebench-Linux-x64.csv'
                         def csvMac = readCSV file: 'perfScripts/cinebench/cinebench/perf-Cinebench-MacOSX.csv'
+                        def csvLinux64 = readCSV file: 'perfScripts/cinebench/cinebench/perf-Cinebench-Linux-x64.csv'
 
                         def records = [['Win32', 'Win64', 'WinArm64', 'Linux64', 'LinuxArm64', 'Mac'], [csvWin32[1][0], csvWin64[1][0], csvWinArm64[1][0], csvLinux64[1][0], csvLinuxArm64[1][0], csvMac[1][0]]]
-                        writeCSV file: 'cinebench.csv', records: records, format: CSVFormat.DEFAULT                        
+                        writeCSV file: 'cinebench.csv', records: records
                     }
                 }
                 plot csvFileName: 'plot.csv', csvSeries: [[displayTableFlag: false, exclusionValues: '', file: 'automation/cinebench.csv', inclusionFlag: 'OFF', url: '']], group: 'Performance', style: 'line', title: 'Cinebench 11.5'
