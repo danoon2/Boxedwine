@@ -6943,8 +6943,10 @@ U8* JitArmV8CodeGen::createStartJITCode() {
     compiler.mov(xWriteCacheToCPU, (U64)KThread::currentThread()->process->syncFromHost);
     compiler.mov(xEmulateSingleOp, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
     loadCacheFromCPU();
-    compiler.blr(xBranch);
-    
+    If(JitWidth::b64, std::make_shared<JitReg>(regBranch, 0xff)); {
+        compiler.blr(xBranch);
+    } EndIf();
+    blockExit();
     return createDynamicExecutableMemory();
 }
 

@@ -5431,12 +5431,14 @@ U8* JitX86CodeGen::createStartJITCode() {
     compiler.mov(HOST_MMU, (U64)getMemData(KThread::currentThread()->memory)->mmu);
     
     compiler.mov(HOST_CPU, params[0]);
-    compiler.mov(RN(tmps[0]), Mem(params[1], offsetof(DecodedOp, pfnJitCode)));
+    compiler.mov(RN(tmpReg), Mem(params[1], offsetof(DecodedOp, pfnJitCode)));
 
     loadCache();
 
     // jmp ((DecodedOp*)rdx)->pfn    
-    compiler.call(RN(tmps[0]));
+    If(DYN_PTR, tmpReg); {
+        compiler.call(RN(tmpReg));
+    }; EndIf();
 
 #else
     compiler.push(regEbx);
@@ -5451,8 +5453,11 @@ U8* JitX86CodeGen::createStartJITCode() {
     // :TODO: what about other x86 platforms that use a different calling convention
     // 
     // jmp ((DecodedOp*)edx)->pfn
-    compiler.mov(RN(tmps[0]), Mem(regEdx, offsetof(DecodedOp, pfnJitCode)));
-    compiler.call(RN(tmps[0]));
+    RegPtr tmpReg = getTmpReg();
+    compiler.mov(RN(tmpReg), Mem(regEdx, offsetof(DecodedOp, pfnJitCode)));
+    If(DYN_PTR, tmpReg); {
+        compiler.call(RN(tmpReg));
+    } EndIf();
 #endif
 
     writeCache();
