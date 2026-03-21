@@ -921,14 +921,22 @@ BString GlobalSettings::createUniqueContainerPath(BString name) {
     }
 }
 
-bool GlobalSettings::isAlternativeOpenGlDownloaded() {
-    BString location = alternativeOpenGlLocation();
+bool GlobalSettings::isAlternativeOpenGlDownloaded(U32 type) {
+    BString location = alternativeOpenGlLocation(type);
     return location.length()!=0 && Fs::doesNativePathExist(location);
 }
 
-BString GlobalSettings::alternativeOpenGlLocation() {
+BString GlobalSettings::alternativeOpenGlLocation(U32 type) {
     BString path = getAlternativeOpenGlFolder().stringByApppendingPath(KSystem::getArchitecture());
     if (KSystem::isWindows()) {
+        if (KSystem::getArchitecture() == "Armv8") {
+            path += "_v2\\";
+            if (type == OPENGL_TYPE_ON_D3D12) {
+                path += "d3d12\\";
+            } else {
+                path += "llvm\\";
+            }
+        }
         return path.stringByApppendingPath("opengl32.dll");
     }
     return BString::empty;
@@ -937,7 +945,11 @@ BString GlobalSettings::alternativeOpenGlLocation() {
 BString GlobalSettings::alternativeOpenGlUrl() {    
     if (KSystem::isWindows()) {
         BString path;
-        path = "http://boxedwine.org/v2/OpenGL/mesa_25.0.0_";
+        if (KSystem::getArchitecture() == "Armv8") {
+            path = "http://boxedwine.org/v2/OpenGL/mesa_26.0.3_";
+        } else {
+            path = "http://boxedwine.org/v2/OpenGL/mesa_25.0.0_";
+        }
         path.append(KSystem::getPlatform());
         path.append("_");
         path.append(KSystem::getArchitecture());
@@ -958,7 +970,7 @@ void GlobalSettings::setOpenGlTypeOnStartupArgs(U32 type) {
 #endif
 #ifdef BOXEDWINE_MSVC
     if (type != OPENGL_TYPE_NATIVE) {
-        GlobalSettings::startUpArgs.openGlLib = GlobalSettings::alternativeOpenGlLocation();
+        GlobalSettings::startUpArgs.openGlLib = GlobalSettings::alternativeOpenGlLocation(type);
         if (type == OPENGL_TYPE_LLVM_PIPE) {
             putenv("GALLIUM_DRIVER=llvmpipe");
         } else if (type == OPENGL_TYPE_ON_D3D12) {
@@ -977,7 +989,7 @@ U32 GlobalSettings::alternativeOpenGlDownloadSizeMB() {
         } else if (KSystem::getArchitecture() == "x64") {
             return 41;
         } else if (KSystem::getArchitecture() == "Armv8") {
-            return 16;
+            return 20;
         }
     }
     return 0;

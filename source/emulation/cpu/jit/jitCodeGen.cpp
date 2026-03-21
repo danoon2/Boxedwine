@@ -739,20 +739,6 @@ bool JitCodeGen::isParamTypeReg(JitCallParamType paramType) {
     return paramType == JitCallParamType::REG_8 || paramType == JitCallParamType::REG_16 || paramType == JitCallParamType::REG_32;
 }
 
-static DYN_PTR_SIZE getJitFunctionForCurrentOp(CPU* cpu) {
-    DecodedOp* op = cpu->memory->getDecodedOp(cpu->getEipAddress());
-    if (!op) {
-        op = cpu->getNextOp();
-    }
-    cpu->nextOp = op;
-    // runCount could be > JIT_RUN_COUNT with no jit code if it contains an instruction we don't support
-    if (!op->pfnJitCode && op->runCount <= JIT_RUN_COUNT) {
-        startNewJIT(cpu, cpu->getEipAddress(), op);
-        op->runCount = JIT_RUN_COUNT + 1;
-    }
-    return (DYN_PTR_SIZE)op->pfnJitCode;
-}
-
 void JitCodeGen::jumpEip(RegPtr reg) {
     RegPtr tmp = getTmpReg();
     mov(JitWidth::b32, tmp, reg);

@@ -112,8 +112,8 @@ RegPtr Jit::peek32(RegPtr resultReg) {
         IfSmallStack(); {
             andValue(JitWidth::b32, address, 0xFFFF);
         } EndIf();
-    }
-    addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
+        addReg(JitWidth::b32, address, getReadOnlySegAddress(SS));
+    }    
     return read(JitWidth::b32, address, nullptr, nullptr, resultReg, cpu->seg[SS].address != 0);
 }
 void Jit::dynamic_pushEw_reg(DecodedOp* op) {

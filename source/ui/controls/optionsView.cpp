@@ -162,12 +162,14 @@ void OptionsView::createGeneralTab() {
         if (KSystem::getArchitecture() == "x64") { // keep in sync with containersView.cpp
             glOptions.push_back(ComboboxItem(B("OpenGL on D3D12"), OPENGL_TYPE_ON_D3D12));
             glOptions.push_back(ComboboxItem(B("OpenGL on Vulkan - Zink"), OPENGL_TYPE_ON_VULKAN));
+        } else if (KSystem::getArchitecture() == "Armv8") {
+            glOptions.push_back(ComboboxItem(B("OpenGL on D3D12"), OPENGL_TYPE_ON_D3D12));
         }
         openGlControl = section->addComboboxRow(Msg::OPTIONSVIEW_DEFAULT_OPENGL_LABEL, Msg::OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions, GlobalSettings::defaultOpenGL);
         openGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
         openGlControl->setSelectionIntValue(GlobalSettings::defaultOpenGL);
         openGlControl->onChange = [this]() {
-            if (this->openGlControl->getSelectionIntValue() != OPENGL_TYPE_NATIVE && !GlobalSettings::isAlternativeOpenGlDownloaded()) {
+            if (this->openGlControl->getSelectionIntValue() != OPENGL_TYPE_NATIVE && !GlobalSettings::isAlternativeOpenGlDownloaded(this->openGlControl->getSelectionIntValue())) {
                 GlobalSettings::downloadOpenGL([this](bool sucess) {
                     if (sucess) {
                         GlobalSettings::defaultOpenGL = this->openGlControl->getSelectionIntValue();

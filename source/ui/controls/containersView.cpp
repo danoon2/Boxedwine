@@ -426,11 +426,13 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         if (KSystem::getArchitecture() == "x64") { // keep in sync with optionsView.cpp
             glOptions.push_back(ComboboxItem(B("OpenGL on D3D12"), OPENGL_TYPE_ON_D3D12));
             glOptions.push_back(ComboboxItem(B("OpenGL on Vulkan - Zink"), OPENGL_TYPE_ON_VULKAN));
+        } else if (KSystem::getArchitecture() == "Armv8") {
+            glOptions.push_back(ComboboxItem(B("OpenGL on D3D12"), OPENGL_TYPE_ON_D3D12));
         }
         appOpenGlControl = appSection->addComboboxRow(Msg::OPTIONSVIEW_DEFAULT_OPENGL_LABEL, Msg::OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions);
         appOpenGlControl->onChange = [this]() {
             U32 selection = this->appOpenGlControl->getSelectionIntValue();
-            if (selection != OPENGL_TYPE_NATIVE && selection != OPENGL_TYPE_DEFAULT && !GlobalSettings::isAlternativeOpenGlDownloaded()) {
+            if (selection != OPENGL_TYPE_NATIVE && selection != OPENGL_TYPE_DEFAULT && !GlobalSettings::isAlternativeOpenGlDownloaded(selection)) {
                 GlobalSettings::downloadOpenGL([this](bool sucess) {
                     if (sucess) {
                         this->currentAppChanged = true;

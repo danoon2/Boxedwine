@@ -170,8 +170,8 @@ public:
     static int getPreviousScreenX() { return GlobalSettings::lastScreenX; }
     static int getPreviousScreenY() { return GlobalSettings::lastScreenY; }
     static bool isAutomationEnabled() {return GlobalSettings::enabledAutomation;}
-    static bool isAlternativeOpenGlDownloaded();
-    static BString alternativeOpenGlLocation();
+    static bool isAlternativeOpenGlDownloaded(U32 type);
+    static BString alternativeOpenGlLocation(U32 type);
     static BString alternativeOpenGlUrl();
     static U32 alternativeOpenGlDownloadSizeMB();
     static bool cacheReads() { return GlobalSettings::enabledCachedReadFiles; }

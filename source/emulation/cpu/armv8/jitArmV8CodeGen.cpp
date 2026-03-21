@@ -5896,17 +5896,13 @@ void JitArmV8CodeGen::dynamic_arith_lock(JitWidth width, DecodedOp* op, LazyFlag
         }
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (atomicCallback && rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
-            if (width != JitWidth::b32 || (flags && (flags->usesResult(needsToSetFlags) || flags->usesDst(needsToSetFlags)))) {
-                atomicCallback(reg, dst, address);
-                if (flags && flags->usesResult(needsToSetFlags)) {
-                    callback(result, dst, reg);
-                }
-                if (writebackReg) {
-                    reg = getReg(width, op->reg);
-                    mov(width, reg, dst);
-                }
-            } else {
-                atomicCallback(reg, reg, address);
+            atomicCallback(reg, dst, address);
+            if (flags && flags->usesResult(needsToSetFlags)) {
+                callback(result, dst, reg);
+            }
+            if (writebackReg) {
+                reg = getReg(width, op->reg);
+                mov(width, reg, dst);
             }
         } else 
 #endif
@@ -5964,13 +5960,9 @@ void JitArmV8CodeGen::dynamic_arith_value_lock(JitWidth width, DecodedOp* op, U3
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
             RegPtr reg = loadConst(value);
-            if (width != JitWidth::b32 || (flags && (flags->usesResult(flagData.needsToSetFlags) || flags->usesDst(flagData.needsToSetFlags)))) {
-                atomicCallback(reg, dst, address);
-                if (flags && flags->usesResult(flagData.needsToSetFlags)) {
-                    callback(result, dst, value);
-                }
-            } else {
-                atomicCallback(reg, reg, address);
+            atomicCallback(reg, dst, address);
+            if (flags && flags->usesResult(flagData.needsToSetFlags)) {
+                callback(result, dst, value);
             }
         } else 
 #endif
@@ -6002,55 +5994,6 @@ void JitArmV8CodeGen::dynamic_arith_value_lock(JitWidth width, DecodedOp* op, U3
         flagData.commit(result, dst);
     });
 }
-/*
-void JitArmV8CodeGen::dynamic_arithE16R16_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address, RegPtr offset)> callback, bool writeReg) {
-    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [writeReg, op, callback, this](RegPtr address, RegPtr offset) {
-        RegPtr reg;
-
-        if (writeReg) {
-            reg = getReg(op->reg);
-        } else {
-            reg = getReadOnlyReg(op->reg);
-        }
-        callback(reg, address, offset);        
-        updateFlagsIfNecessary();
-    });
-}
-void JitArmV8CodeGen::dynamic_arithE8R8_lock(DecodedOp* op, std::function<void(RegPtr dest, RegPtr address, RegPtr offset)> callback, bool writeReg) {
-    JitCodeGen::write(JitWidth::b8, calculateEaa(op), nullptr, [writeReg, op, callback, this](RegPtr address, RegPtr offset) {
-        RegPtr reg;
-
-        if (writeReg) {
-            reg = getReg8(op->reg);
-        } else {
-            reg = getReadOnlyReg8(op->reg);
-        }
-        callback(reg, address, offset);        
-        updateFlagsIfNecessary();
-    });
-}
-
-void JitArmV8CodeGen::dynamic_arithE32_lock(DecodedOp* op, std::function<void(RegPtr address, RegPtr offset)> callback) {
-    JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
-        callback(address, offset);
-        updateFlagsIfNecessary();
-    });
-}
-
-void JitArmV8CodeGen::dynamic_arithE16_lock(DecodedOp* op, std::function<void(RegPtr address, RegPtr offset)> callback) {
-    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
-        callback(address, offset);
-        updateFlagsIfNecessary();
-    });
-}
-void JitArmV8CodeGen::dynamic_arithE8_lock(DecodedOp* op, std::function<void(RegPtr address, RegPtr offset)> callback) {
-    JitCodeGen::write(JitWidth::b8, calculateEaa(op), nullptr, [op, callback, this](RegPtr address, RegPtr offset) {
-        callback(address, offset);
-        updateFlagsIfNecessary();
-    });
-}
-*/
-
 void JitArmV8CodeGen::dynamic_xaddr32e32_lock(DecodedOp* op) {
     dynamic_arith_lock(JitWidth::b32, op, FLAGS_ADD32, [this](RegPtr src, RegPtr dst, RegPtr address) {
         compiler.ldaddal(R32(src), R32(dst), Mem(R64(address)));
