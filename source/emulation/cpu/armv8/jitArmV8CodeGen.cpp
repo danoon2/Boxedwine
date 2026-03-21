@@ -2174,6 +2174,7 @@ void JitArmV8CodeGen::imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src
         if (overflow) {
             compiler.ubfx(R64(overflow), R64(dst), 32, 32);
         }
+        compiler.mov(R32(dst), R32(dst)); // clear out top 32-bits
     } else if (regWidth == JitWidth::b16) {
         RegPtr value = loadConst((S32)((S16)src2));
         RegPtr src16 = getTmpReg();
@@ -2449,7 +2450,7 @@ void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool eml
     // arm zero extends reads
     if (!isTmp[dest->hardwareReg()] && (width == JitWidth::b8 || width == JitWidth::b16)) {
         RegPtr tmp = getTmpReg();
-        readHost(width, mem, tmp);
+        readHost(width, mem, tmp, emlulatedMemory);
         mov(width, dest, tmp);
         return;
     }
@@ -6894,12 +6895,9 @@ U8* JitArmV8CodeGen::createStartJITCode() {
 }
 
 void JitArmV8CodeGen::loadCacheFromCPU() {
-    for (int i = 0; i < 8; i+=2) {
+    for (int i = 0; i < 8; i++) {
         if (regCache[i] != INVALID_REG) {
-            if (regCache[i + 1] == INVALID_REG) {
-                kpanic("JitArmV8CodeGen::loadCacheFromCPU");
-            }
-            compiler.ldp(R32(regCache[i]), R32(regCache[i + 1]), Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
+            compiler.ldr(R32(regCache[i]), Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
         }
     }
     static_assert(offsetof(CPU, flags) + 4 == offsetof(CPU, src));
@@ -6917,12 +6915,9 @@ void JitArmV8CodeGen::loadCacheFromCPU() {
 }
 
 void JitArmV8CodeGen::writeCacheToCPU() {
-    for (int i = 0; i < 8; i+=2) {
+    for (int i = 0; i < 8; i++) {
         if (regCache[i] != INVALID_REG) {
-            if (regCache[i + 1] == INVALID_REG) {
-                kpanic("JitArmV8CodeGen::writeCacheToCPU");
-            }
-            compiler.stp(R32(regCache[i]), R32(regCache[i+1]), Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
+            compiler.str(R32(regCache[i]), Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
         }
     }
     static_assert(offsetof(CPU, flags) + 4 == offsetof(CPU, src));
