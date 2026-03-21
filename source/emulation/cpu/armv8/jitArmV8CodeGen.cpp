@@ -4327,7 +4327,7 @@ MMXRegPtr JitArmV8CodeGen::loadMMXFromMem64(U8 index, MemPtr address) {
 }
 
 void JitArmV8CodeGen::storeMMXToMem32(MMXRegPtr reg, MemPtr address) {
-    compiler.str(toMmxS2(reg), createMem(address));
+    compiler.str(toMmxS(reg), createMem(address));
 }
 
 void JitArmV8CodeGen::storeMMXToMem64(MMXRegPtr reg, MemPtr address) {
