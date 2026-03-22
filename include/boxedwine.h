@@ -19,8 +19,8 @@
 #ifndef __BOXEDWINE_H__
 #define __BOXEDWINE_H__
 
-#define BOXEDWINE_VERSION_STR "25R2"
-#define BOXEDWINE_VERSION_DISPLAY "25.1.0 (alpha 1)"
+#define BOXEDWINE_VERSION_STR "26R1"
+#define BOXEDWINE_VERSION_DISPLAY "26.0.0"
 
 #include <vector>
 #include <memory>

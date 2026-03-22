@@ -11,6 +11,9 @@ Boxedwine is open source and released under the terms of the GNU General Public 
 - Can run multiple versions of Wine, from 3.1 to 10.0
 - Apps and games using OpenGL, Direct3D and Vulkan are supported
 
+## New Version 26R1
+- 50% Faster for all platforms except WASM.  Uses 20% less memory for 64-bit builds.
+
 ## TODOs
 
 - Emscripten/Web Boxedwine is still slow, need to implement a JIT.  Multi-threaded build also studders with sound.
@@ -35,24 +38,27 @@ Boxedwine is open source and released under the terms of the GNU General Public 
 
 ### Cinebench 11.5 (Multi Core)
 
-- **6.41** Windows 11 i7-14700 x64 Boxedwine
-- **3.31** Mac OSX Mac Mini M4 Arm64 Boxedwine
-- **1.41** Asahi Linux Mac Mini M1 Arm64 Boxedwine
-- **1.16** Windows 11 i7-14700 x86 Boxedwine
+- **10.02** Windows 11 i7-14700 x64
+- **4.71** Mac OSX Mac Mini M4 Arm64
+- **4.14** Windows 11 Snapdragon X - X126100 Arm64
+- **3.90** Windows 11 i7-14700 x86
+- **2.67** Asahi Linux Mac Mini M1 Arm64
 
 ### Cinebench 11.5 (Single Core)
 
-- **0.48** Windows 11 i7-14700 x64 Boxedwine
-- **0.59** Mac OSX Mac Mini M4 Arm64 Boxedwine
-- **0.26** Asahi Linux Mac Mini M1 Arm64 Boxedwine
-- **0.08** Windows 11 i7-14700 x86 Boxedwine
+- **1.01** Windows 11 i7-14700 x64 Boxedwine
+- **0.84** Mac OSX Mac Mini M4 Arm64 Boxedwine
+- **0.66** Windows 11 Snapdragon X - X126100 Arm64
+- **0.50** Asahi Linux Mac Mini M1 Arm64 Boxedwine
+- **0.42** Windows 11 i7-14700 x86 Boxedwine
 
 ### Quake 2 +timedemo 1 +map demo1.dm2
 
-- **76.7 fps** Windows 11 i7-14700 x64 Boxedwine
-- **58.4 fps** Mac OSX Mac Mini M4 Arm64 Boxedwine
-- **44.0 fps** Asahi Linux Mac Mini M1 Arm64 Boxedwine
-- **29.5 fps** Windows 11 i7-14700 x86 Boxedwine
+- **72.7 fps** Windows 11 i7-14700 x64 Boxedwine
+- **88.9 fps** Mac OSX Mac Mini M4 Arm64 Boxedwine
+- **65.7 fps** Asahi Linux Mac Mini M1 Arm64 Boxedwine
+- **57.4 fps** Windows 11 i7-14700 x86 Boxedwine
+- **57.3** Windows 11 Snapdragon X - X126100 Arm64
 
 ## Documentation
 
