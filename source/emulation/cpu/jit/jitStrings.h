@@ -646,7 +646,7 @@ void Jit::scas(JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType la
     // cpu->lazyFlags = FLAGS_SUB8;
     RegPtr edi = getStringRegEdi();
     RegPtr src;
-    RegPtr dest = valueWidth == JitWidth::b8 ? getReadOnlyReg8(0) : getReadOnlyReg(0);
+    RegPtr dest = valueWidth == JitWidth::b8 ? getTmpReg8(0) : getTmpReg(0);
 
     if (cpu->thread->process->hasSetSeg[ES]) {
         RegPtr destAddress = getTmpSegAddress(ES);

@@ -6458,7 +6458,7 @@ void testSahf0x29e() { cpu->big = true; flags(0x9e, sahf, &cpu->reg[0]); }
 void testLahf0x09f() { cpu->big = false; flags(0x9f, lahf, &cpu->reg[0]); }
 void testLahf0x29f() { cpu->big = true; flags(0x9f, lahf, &cpu->reg[0]); }
 
-void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32 str1Len, const char* str2, U32 str2Len, U32 startESI, U32 startEDI, U32 startECX, U32 endESI, U32 endEDI, U32 endECX, bool checkEndFlags, bool endCF, bool endZF, U32 esAddress, U32 eax = 0) {
+void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32 str1Len, const char* str2, U32 str2Len, U32 startESI, U32 startEDI, U32 startECX, U32 endESI, U32 endEDI, U32 endECX, bool checkEndFlags, bool endCF, bool endZF, U32 esAddress, U32 eax = 0, bool checkThatEaxDoesntChange = false) {
     memory->writeb(CODE_ADDRESS, 0);
     if (prefix) {
         newInstruction(prefix, startFlags);
@@ -6513,6 +6513,9 @@ void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32
     assertTrue(EDI == endEDI);
     assertTrue(ESI == endESI);
     assertTrue(ECX == endECX);
+    if (checkThatEaxDoesntChange) {
+        assertTrue(EAX == eax);
+    }
     if (checkEndFlags) {
         bool hasCF = cpu->getCF() != 0;
         assertTrue(endCF == hasCF);
@@ -6666,30 +6669,30 @@ void testScasb0x0ae() {
     cpu->big = false;
 
     // SI > DI (DF)
-    strTest(1, 0, 0xae, DF, NULL, 0, "0", 1, 0x12340010, 0x12340020, 0, 0x12340010, 0x1234001F, 0, true, false, false, HEAP_ADDRESS + 256, 0x12345631);
+    strTest(1, 0, 0xae, DF, NULL, 0, "0", 1, 0x12340010, 0x12340020, 0, 0x12340010, 0x1234001F, 0, true, false, false, HEAP_ADDRESS + 256, 0x12345631, true);
 
     // SI > DI
-    strTest(1, 0, 0xae, 0, NULL, 0, "0", 1, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340021, 0, true, false, false, HEAP_ADDRESS + 256, 0x12345631);
+    strTest(1, 0, 0xae, 0, NULL, 0, "0", 1, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340021, 0, true, false, false, HEAP_ADDRESS + 256, 0x12345631, true);
 
     // SI < DI
-    strTest(1, 0, 0xae, 0, NULL, 0, "1", 1, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340021, 0, true, true, false, HEAP_ADDRESS + 256, 0x12345630);
+    strTest(1, 0, 0xae, 0, NULL, 0, "1", 1, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340021, 0, true, true, false, HEAP_ADDRESS + 256, 0x12345630, true);
 
     // SI == DI
     // this will test 16-bit wrapping
-    strTest(1, 0, 0xae, 0, NULL, 0, "1", 1, 0x12340010, 0x1234FFFF, 0, 0x12340010, 0x12340000, 0, true, false, true, HEAP_ADDRESS - 0x10000 + 200, 0x12345631);
+    strTest(1, 0, 0xae, 0, NULL, 0, "1", 1, 0x12340010, 0x1234FFFF, 0, 0x12340010, 0x12340000, 0, true, false, true, HEAP_ADDRESS - 0x10000 + 200, 0x12345631, true);
 
     // repz
-    strTest(1, 0xf3, 0xae, 0, NULL, 0, "ddde", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340000, 0x12340004, 0x1234000C, true, true, false, HEAP_ADDRESS + 256, 0x12345664);
-    strTest(1, 0xf3, 0xae, 0, NULL, 0, "dddd", 4, 0x12340000, 0x12340000, 0x12340004, 0x12340000, 0x12340004, 0x12340000, true, false, true, HEAP_ADDRESS + 256, 0x12345664);
+    strTest(1, 0xf3, 0xae, 0, NULL, 0, "ddde", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340000, 0x12340004, 0x1234000C, true, true, false, HEAP_ADDRESS + 256, 0x12345664, true);
+    strTest(1, 0xf3, 0xae, 0, NULL, 0, "dddd", 4, 0x12340000, 0x12340000, 0x12340004, 0x12340000, 0x12340004, 0x12340000, true, false, true, HEAP_ADDRESS + 256, 0x12345664, true);
 
     // repnz
-    strTest(1, 0xf2, 0xae, 0, NULL, 0, "123d", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340000, 0x12340004, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12345664);
+    strTest(1, 0xf2, 0xae, 0, NULL, 0, "123d", 4, 0x12340000, 0x12340000, 0x12340010, 0x12340000, 0x12340004, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12345664, true);
 
     // repnz (DF)
-    strTest(1, 0xf2, 0xae, DF, NULL, 0, "123d", 4, 0x12340020, 0x12340010, 0x12340010, 0x12340020, 0x1234000C, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12345664);
+    strTest(1, 0xf2, 0xae, DF, NULL, 0, "123d", 4, 0x12340020, 0x12340010, 0x12340010, 0x12340020, 0x1234000C, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12345664, true);
 
     // ecx 0 (maintain flags)
-    strTest(1, 0xf2, 0xae, SF | ZF, NULL, 0, "123d", 4, 0x12340020, 0x12340010, 0x12340000, 0x12340020, 0x12340010, 0x12340000, false, false, false, HEAP_ADDRESS + 256, 0x12345664);
+    strTest(1, 0xf2, 0xae, SF | ZF, NULL, 0, "123d", 4, 0x12340020, 0x12340010, 0x12340000, 0x12340020, 0x12340010, 0x12340000, false, false, false, HEAP_ADDRESS + 256, 0x12345664, true);
     assertTrue((cpu->flags & FMASK_TEST) == (SF | ZF));
 }
 
@@ -6697,17 +6700,17 @@ void testScasb0x2ae() {
     cpu->big = true;
 
     // ESI > EDI
-    strTest(1, 0, 0xae, 0, NULL, 0, "0", 1, 0, 1, 0, 0, 2, 0, true, false, false, HEAP_ADDRESS + 256, 0x12345631);
+    strTest(1, 0, 0xae, 0, NULL, 0, "0", 1, 0, 1, 0, 0, 2, 0, true, false, false, HEAP_ADDRESS + 256, 0x12345631, true);
 
     // ESI < EDI
-    strTest(1, 0, 0xae, 0, NULL, 0, "1", 1, 0, 1, 0, 0, 2, 0, true, true, false, HEAP_ADDRESS + 256, 0x12345630);
+    strTest(1, 0, 0xae, 0, NULL, 0, "1", 1, 0, 1, 0, 0, 2, 0, true, true, false, HEAP_ADDRESS + 256, 0x12345630, true);
 
     // ESI == EDI
-    strTest(1, 0, 0xae, 0, NULL, 0, "1", 1, 0, 1, 0, 0, 2, 0, true, false, true, HEAP_ADDRESS + 256, 0x12345631);
+    strTest(1, 0, 0xae, 0, NULL, 0, "1", 1, 0, 1, 0, 0, 2, 0, true, false, true, HEAP_ADDRESS + 256, 0x12345631, true);
 
     // repz
-    strTest(1, 0xf3, 0xae, 0, NULL, 0, "ddde", 4, 0, 256, 256, 0, 260, 252, true, true, false, HEAP_ADDRESS, 0x12345664);
-    strTest(1, 0xf3, 0xae, 0, NULL, 0, "dddd", 4, 0, 256, 4, 0, 260, 0, true, false, true, HEAP_ADDRESS, 0x12345664);
+    strTest(1, 0xf3, 0xae, 0, NULL, 0, "ddde", 4, 0, 256, 256, 0, 260, 252, true, true, false, HEAP_ADDRESS, 0x12345664, true);
+    strTest(1, 0xf3, 0xae, 0, NULL, 0, "dddd", 4, 0, 256, 4, 0, 260, 0, true, false, true, HEAP_ADDRESS, 0x12345664, true);
 
     // repnz
     strTest(1, 0xf2, 0xae, 0, NULL, 0, "abcd", 4, 0, 256, 256, 0, 260, 252, true, false, true, HEAP_ADDRESS, 0x12345664);
@@ -6717,27 +6720,27 @@ void testScasw0x0af() {
     cpu->big = false;
 
     // SI > DI (DF)
-    strTest(2, 0, 0xaf, DF, NULL, 0, "11", 2, 0x12340010, 0x12340020, 0, 0x12340010, 0x1234001E, 0, true, false, false, HEAP_ADDRESS + 256, 0x12343231);
+    strTest(2, 0, 0xaf, DF, NULL, 0, "11", 2, 0x12340010, 0x12340020, 0, 0x12340010, 0x1234001E, 0, true, false, false, HEAP_ADDRESS + 256, 0x12343231, true);
 
     // SI > DI
-    strTest(2, 0, 0xaf, 0, NULL, 0, "11", 2, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340022, 0, true, false, false, HEAP_ADDRESS + 256, 0x12343132);
+    strTest(2, 0, 0xaf, 0, NULL, 0, "11", 2, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340022, 0, true, false, false, HEAP_ADDRESS + 256, 0x12343132, true);
 
     // SI < DI
-    strTest(2, 0, 0xaf, 0, NULL, 0, "12", 2, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340022, 0, true, true, false, HEAP_ADDRESS + 256, 0x12343131);
+    strTest(2, 0, 0xaf, 0, NULL, 0, "12", 2, 0x12340010, 0x12340020, 0, 0x12340010, 0x12340022, 0, true, true, false, HEAP_ADDRESS + 256, 0x12343131, true);
 
     // SI == DI
     // this will test 16-bit wrapping
-    strTest(2, 0, 0xaf, 0, NULL, 0, "11", 2, 0x12340010, 0x1234FFFE, 0, 0x12340010, 0x12340000, 0, true, false, true, HEAP_ADDRESS - 0x10000 + 200, 0x12343131);
+    strTest(2, 0, 0xaf, 0, NULL, 0, "11", 2, 0x12340010, 0x1234FFFE, 0, 0x12340010, 0x12340000, 0, true, false, true, HEAP_ADDRESS - 0x10000 + 200, 0x12343131, true);
 
     // repz
-    strTest(2, 0xf3, 0xaf, 0, NULL, 0, "abababac", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340000, 0x12340008, 0x1234000C, true, true, false, HEAP_ADDRESS + 256, 0x12346261);
-    strTest(2, 0xf3, 0xaf, 0, NULL, 0, "abababab", 8, 0x12340000, 0x12340000, 0x12340004, 0x12340000, 0x12340008, 0x12340000, true, false, true, HEAP_ADDRESS + 256, 0x12346261);
+    strTest(2, 0xf3, 0xaf, 0, NULL, 0, "abababac", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340000, 0x12340008, 0x1234000C, true, true, false, HEAP_ADDRESS + 256, 0x12346261, true);
+    strTest(2, 0xf3, 0xaf, 0, NULL, 0, "abababab", 8, 0x12340000, 0x12340000, 0x12340004, 0x12340000, 0x12340008, 0x12340000, true, false, true, HEAP_ADDRESS + 256, 0x12346261, true);
 
     // repnz
-    strTest(2, 0xf2, 0xaf, 0, NULL, 0, "adadadab", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340000, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12346261);
+    strTest(2, 0xf2, 0xaf, 0, NULL, 0, "adadadab", 8, 0x12340000, 0x12340000, 0x12340010, 0x12340000, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12346261, true);
 
     // repnz (DF)
-    strTest(2, 0xf2, 0xaf, DF, NULL, 0, "adadadab", 8, 0x12340020, 0x12340010, 0x12340010, 0x12340020, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12346162);
+    strTest(2, 0xf2, 0xaf, DF, NULL, 0, "adadadab", 8, 0x12340020, 0x12340010, 0x12340010, 0x12340020, 0x12340008, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12346162, true);
 }
 
 void testScasd0x2af() {
@@ -6747,26 +6750,26 @@ void testScasd0x2af() {
 
     // ESI > EDI (DF)
     // since this is reversed, the biggest part of the number is the first byte
-    strTest(4, 0, 0xaf, DF, NULL, 0, "1999", 4, 0x00000010, 0x00000020, 0, 0x00000010, 0x0000001C, 0, true, false, false, HEAP_ADDRESS + 256, 0x34333231);
+    strTest(4, 0, 0xaf, DF, NULL, 0, "1999", 4, 0x00000010, 0x00000020, 0, 0x00000010, 0x0000001C, 0, true, false, false, HEAP_ADDRESS + 256, 0x34333231, true);
 
     // ESI > EDI
-    strTest(4, 0, 0xaf, 0, NULL, 0, "4321", 4, 0x00000010, 0x00000020, 0, 0x00000010, 0x00000024, 0, true, false, false, HEAP_ADDRESS + 256, 0x32323232);
+    strTest(4, 0, 0xaf, 0, NULL, 0, "4321", 4, 0x00000010, 0x00000020, 0, 0x00000010, 0x00000024, 0, true, false, false, HEAP_ADDRESS + 256, 0x32323232, true);
 
     // ESI < EDI
-    strTest(4, 0, 0xaf, 0, NULL, 0, "2222", 4, 0x00000010, 0x00000020, 0, 0x00000010, 0x00000024, 0, true, true, false, HEAP_ADDRESS + 256, 0x31323334);
+    strTest(4, 0, 0xaf, 0, NULL, 0, "2222", 4, 0x00000010, 0x00000020, 0, 0x00000010, 0x00000024, 0, true, true, false, HEAP_ADDRESS + 256, 0x31323334, true);
 
     // SI == DI
-    strTest(4, 0, 0xaf, 0, NULL, 0, "1234", 4, 0x00000010, 0x00000020, 0, 0x00000010, 0x00000024, 0, true, false, true, HEAP_ADDRESS + 256, 0x34333231);
+    strTest(4, 0, 0xaf, 0, NULL, 0, "1234", 4, 0x00000010, 0x00000020, 0, 0x00000010, 0x00000024, 0, true, false, true, HEAP_ADDRESS + 256, 0x34333231, true);
 
     // repz
-    strTest(4, 0xf3, 0xaf, 0, NULL, 0, "1234123412341235", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000010, 0x00000030, 0x0000000C, true, true, false, HEAP_ADDRESS + 256, 0x34333231);
-    strTest(4, 0xf3, 0xaf, 0, NULL, 0, "1234123412341234", 16, 0x00000010, 0x00000020, 0x0000004, 0x00000010, 0x00000030, 0x00000000, true, false, true, HEAP_ADDRESS + 256, 0x34333231);
+    strTest(4, 0xf3, 0xaf, 0, NULL, 0, "1234123412341235", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000010, 0x00000030, 0x0000000C, true, true, false, HEAP_ADDRESS + 256, 0x34333231, true);
+    strTest(4, 0xf3, 0xaf, 0, NULL, 0, "1234123412341234", 16, 0x00000010, 0x00000020, 0x0000004, 0x00000010, 0x00000030, 0x00000000, true, false, true, HEAP_ADDRESS + 256, 0x34333231, true);
 
     // repnz
-    strTest(4, 0xf2, 0xaf, 0, NULL, 0, "1235000032151234", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000010, 0x00000030, 0x0000000C, true, false, true, HEAP_ADDRESS + 256, 0x34333231);
+    strTest(4, 0xf2, 0xaf, 0, NULL, 0, "1235000032151234", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000010, 0x00000030, 0x0000000C, true, false, true, HEAP_ADDRESS + 256, 0x34333231, true);
 
     // repz (DF)
-    strTest(4, 0xf3, 0xaf, DF, NULL, 0, "1234123412341235", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000010, 0x00000010, 0x0000000C, true, true, false, HEAP_ADDRESS + 256, 0x31323334);
+    strTest(4, 0xf3, 0xaf, DF, NULL, 0, "1234123412341235", 16, 0x00000010, 0x00000020, 0x00000010, 0x00000010, 0x00000010, 0x0000000C, true, true, false, HEAP_ADDRESS + 256, 0x31323334, true);
 }
 
 void testMovAlOb() {
