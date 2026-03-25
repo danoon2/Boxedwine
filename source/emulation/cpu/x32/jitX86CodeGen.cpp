@@ -3414,6 +3414,7 @@ void JitX86CodeGen::stmxcsr(MemPtr address) {
 
 void JitX86CodeGen::ldmxcsr(MemPtr address) {
     compiler.ldmxcsr(Mem(RN(calculateAddress(address)), 0));
+    compiler.stmxcsr(Mem(HOST_CPU, offsetof(CPU, mxcsr)));
 }
 
 void JitX86CodeGen::sfence() {
@@ -4225,9 +4226,7 @@ void JitX86CodeGen::pmovmskbR32Xmm(RegPtr dst, SSERegPtr src) {
 }
 
 void JitX86CodeGen::updateFPURounding() {
-    compiler.stmxcsr(Mem(HOST_CPU, offsetof(CPU, sseControlStateTmp)));
-
-    RegPtr sse = readCPU(JitWidth::b32, offsetof(CPU, sseControlStateTmp));
+    RegPtr sse = readCPU(JitWidth::b32, offsetof(CPU, mxcsr));
     RegPtr fpu = readCPU(JitWidth::b32, offsetof(CPU, fpu.round));
 
     andValue(JitWidth::b32, sse, ~0x6000); // clear rounding
@@ -4235,13 +4234,13 @@ void JitX86CodeGen::updateFPURounding() {
     orReg(JitWidth::b32, sse, fpu); // set rounding in SSE
 
     // there is no way to set sse rounding from a register
-    writeCPU(JitWidth::b32, offsetof(CPU, sseControlStateTmp2), sse);
+    writeCPU(JitWidth::b32, offsetof(CPU, sseControlStateTmp), sse);
 
-    compiler.ldmxcsr(Mem(HOST_CPU, offsetof(CPU, sseControlStateTmp2)));
+    compiler.ldmxcsr(Mem(HOST_CPU, offsetof(CPU, sseControlStateTmp)));
 }
 
 void JitX86CodeGen::restoreFPURounding() {
-    compiler.ldmxcsr(Mem(HOST_CPU, offsetof(CPU, sseControlStateTmp)));
+    compiler.ldmxcsr(Mem(HOST_CPU, offsetof(CPU, mxcsr)));
 };
 
 void JitX86CodeGen::storeCpuFpuReg(FPURegPtr reg, RegPtr index) {
@@ -5490,6 +5489,7 @@ void JitX86CodeGen::loadCache() {
             compiler.movaps(XMM(xmmCache[i]), Mem(HOST_CPU, i * 16 + offsetof(CPU, xmm)));
         }
     }
+    compiler.ldmxcsr(Mem(HOST_CPU, offsetof(CPU, mxcsr)));
 }
 
 void JitX86CodeGen::writeCache() {
