@@ -1222,7 +1222,7 @@ void* CPU::startException(U32 address, bool readAddress) {
     return 0;
 }
 
-void* CPU::handleAccessException(DecodedOp* op) {    
+void* CPU::handleAccessException(DecodedOp* op) {
     if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
         op->exceptionCount++;
     } else if (op->blockStart) {

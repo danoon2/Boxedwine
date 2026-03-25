@@ -1030,8 +1030,10 @@ void JitFPU::dynamic_FIST_DWORD_INTEGER(DecodedOp* op) {
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
 
-        writeHost(JitWidth::b32, address, fpuRegToInt32(src.reg, false));
-        restoreFPURounding();
+        RegPtr reg = fpuRegToInt32(src.reg, false);
+        restoreFPURounding(); // restore before the write in case it has an exception
+
+        writeHost(JitWidth::b32, address, reg);
     });
 }
 
@@ -1042,8 +1044,10 @@ void JitFPU::dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) {
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
 
-        writeHost(JitWidth::b32, address, fpuRegToInt32(src.reg, false));
-        restoreFPURounding();
+        RegPtr reg = fpuRegToInt32(src.reg, false);
+        restoreFPURounding(); // restore before the write in case it has an exception
+
+        writeHost(JitWidth::b32, address, reg);        
         dynamic_FPU_POP(top);
     });
 }
@@ -1115,9 +1119,10 @@ void JitFPU::dynamic_FIST_WORD_INTEGER(DecodedOp* op) {
 
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
+        RegPtr reg = fpuRegToInt32(src.reg, false); 
 
-        writeHost(JitWidth::b16, address, fpuRegToInt32(src.reg, false));
-        restoreFPURounding();
+        restoreFPURounding(); // restore before the write in case it has an exception
+        writeHost(JitWidth::b16, address, reg);        
     });
 }
 
@@ -1127,9 +1132,10 @@ void JitFPU::dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op) {
 
         RegPtr top = getTopReg();
         FPUReg src(this, top, 0);
+        RegPtr reg = fpuRegToInt32(src.reg, false);
 
-        writeHost(JitWidth::b16, address, fpuRegToInt32(src.reg, false));
-        restoreFPURounding();
+        restoreFPURounding(); // restore before the write in case it has an exception
+        writeHost(JitWidth::b16, address, reg);
         dynamic_FPU_POP(top);
     });
 }
@@ -1200,6 +1206,8 @@ void JitFPU::dynamic_FILD_QWORD_INTEGER(DecodedOp* op) {
 }
 
 void JitFPU::dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) {
+    JitCodeGen::dynamic_FISTP_QWORD_INTEGER(op);
+    /*
     RegPtr top = getTopReg();
 
     // some apps seem to do a memcpy like thing with data pushed in and out
@@ -1219,6 +1227,7 @@ void JitFPU::dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) {
             dynamic_FPU_POP(top);
         });
     } EndIf();
+    */
 }
 
 #endif

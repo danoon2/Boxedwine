@@ -205,7 +205,6 @@ public:
     ALIGN(SSE xmm[8], 16);    
 
     U32 sseControlStateTmp = 0;
-    U32 sseControlStateTmp2 = 0;
     U32 mxcsr = 0x1F80; // sse control register
     
     LazyFlagType lazyFlagType = FLAGS_NONE;
