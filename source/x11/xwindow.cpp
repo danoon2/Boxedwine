@@ -736,6 +736,8 @@ int XWindow::unmapWindow() {
 	if (!isMapped) {
 		return Success;
 	}
+	bool isShown = isThisAndAncestorsMapped();
+
 	isMapped = false;	
 	setWmState(WithdrawnState, 0);
 	if (parent) {
@@ -790,7 +792,7 @@ int XWindow::unmapWindow() {
 			exposeNofity(data, 0, 0, parent->width(), parent->height(), 0);
 			});
 	}
-	if (isThisAndAncestorsMapped()) {
+	if (isShown) {
 		KNativeSystem::showWindow(shared_from_this(), false);
 	}
 	return Success;

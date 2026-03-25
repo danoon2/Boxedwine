@@ -202,6 +202,22 @@ static void x11_ReparentWindow(CPU* cpu) {
     XWindowPtr w = server->getWindow(ARG2);
     XWindowPtr parent = server->getWindow(ARG3);
 
+    if (server->trace) {
+        BString log;
+        DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+
+        log.append(data->displayId, 16);
+        log += " ReparentWindow";
+        log += " window=";
+        log.append(ARG2, 16);
+        log += " parent=";
+        log.append(ARG3, 16);
+        log += " x=";
+        log.append(ARG4);
+        log += " y=";
+        log.append(ARG5);
+        klog(log.c_str());
+    }
     if (!w) {
         EAX = BadWindow;
         return;
@@ -2176,6 +2192,27 @@ static void x11_SetWMHints(CPU* cpu) {
     EAX = Success;
 }
 
+// XWMHints* XGetWMHints(Display* display, Window w)
+static void x11_GetWMHints(CPU* cpu) {
+    KMemory* memory = cpu->memory;
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XWindowPtr w = server->getWindow(ARG2);
+
+    if (!w) {
+        EAX = BadWindow;
+        return;
+    }
+    XPropertyPtr prop = w->getProperty(XA_WM_HINTS);
+    if (!prop || prop->length != sizeof(XWMHints)) {
+        EAX = 0;
+        return;
+    }
+    U32 value = thread->process->alloc(thread, sizeof(XWMHints));
+    memory->memcpy(value, prop->value, sizeof(XWMHints));
+    EAX = value;
+}
+
 // XWMHints* XAllocWMHints()
 static void x11_AllocWMHints(CPU* cpu) {
     KThread* thread = KThread::currentThread();
@@ -2246,6 +2283,33 @@ static void x11_SetWMNormalHints(CPU* cpu) {
     U32 value = thread->process->alloc(thread, sizeof(XSizeHints));
     memory->memcpy(value, ARG3, sizeof(XSizeHints));
     w->setProperty(XA_WM_NORMAL_HINTS, XA_CARDINAL, 32, sizeof(XSizeHints), value, true);
+    EAX = Success;
+}
+
+// Status XGetWMNormalHints(Display* display, Window w, XSizeHints* hints_return, long* supplied_return)
+static void x11_GetWMNormalHints(CPU* cpu) {
+    KMemory* memory = cpu->memory;
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XWindowPtr w = server->getWindow(ARG2);
+
+    if (!w) {
+        EAX = BadWindow;
+        return;
+    }
+    if (!ARG3) {
+        EAX = BadValue;
+        return;
+    }
+    XPropertyPtr prop = w->getProperty(XA_WM_NORMAL_HINTS);
+    if (!prop || prop->length != sizeof(XSizeHints)) {
+        EAX = 0;
+        return;
+    }
+    memory->memcpy(ARG3, prop->value, sizeof(XSizeHints));
+    if (ARG4) {
+        memory->writed(ARG4, sizeof(XSizeHints));
+    }
     EAX = Success;
 }
 
@@ -3179,6 +3243,8 @@ void x11_init() {
     int9BCallback[X11_CURSOR_LIBRARY_LOAD_CURSOR] = x11_CursorLibraryLoadCursor;
 
     int9BCallback[X11_PUT_BACK_EVENT] = x11_PutBackEvent;
+    int9BCallback[X11_GET_WM_NORMAL_HINTS] = x11_GetWMNormalHints;
+    int9BCallback[X11_GET_WM_HINTS] = x11_GetWMHints;
 }
 
 void callX11(CPU* cpu, U32 index) {
