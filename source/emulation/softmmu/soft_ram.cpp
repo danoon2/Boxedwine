@@ -51,6 +51,7 @@ RamPage ramPageAlloc() {
         freeIndexes.pop_back();
         refCounts[found.value].refCount = 1;
         memset((U8*)(found.value << K_PAGE_SHIFT), 0, K_PAGE_SIZE);
+        allocatedRamPages++;
         return found;
     }    
     if (KSystem::canJitUse4KPage) {
@@ -68,6 +69,7 @@ RamPage ramPageAlloc() {
             } else {
                 RAM_TYPE index = ((RAM_TYPE)pages) >> K_PAGE_SHIFT;
                 freeIndexes.push_back(index);
+                allocatedRamPages++;
             }
             pages += K_PAGE_SIZE;
         }
@@ -85,6 +87,7 @@ RamPage ramPageAlloc() {
         allocatedPages.push_back(result);
         RAM_TYPE index = ((RAM_TYPE)result) >> K_PAGE_SHIFT;
         for (int i = 1; i < 64; i++) {
+            allocatedRamPages++;
             freeIndexes.push_back(index + i);
         }
 
@@ -127,6 +130,7 @@ void shutdownRam() {
         allocatedPages.clear();
     }
     freeIndexes.clear();
+    allocatedRamPages = 0;
 }
 
 RamPage ramPageAllocNativeContinuous(U8* native, U32 pageCount) {
@@ -171,12 +175,12 @@ void ramPageRelease(RamPage page) {
     }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
     refCounts[page.value].refCount--;
-    if (refCounts[page.value].refCount == 0) {
-        allocatedRamPages--;        
+    if (refCounts[page.value].refCount == 0) {               
         if (refCounts[page.value].isNative) {
             refCounts[page.value].isNative = 0;
             refCounts[page.value].isSystem = 0;
         } else {
+            allocatedRamPages--;
             freeIndexes.push_back(page.value);
         }
     }    
