@@ -2497,12 +2497,129 @@ void doFISTTP64(U64 data) {
     assertTrue(memory->readq(HEAP_ADDRESS + 8) == data);
 }
 
+void doFISTTP64(double data, U64 result) {
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    {
+        struct FSaveState state;
+        U64 actualResult;
+
+        __asm {
+            finit;
+            fld data;
+            fisttp actualResult;
+            fsave[state];
+        }
+        assertTrue(state.fsw == 0);
+        assertTrue(actualResult == result);
+    }
+#endif
+    newInstruction(0);
+    fpu_init();
+    fld64(data, 0);
+    pushCode8(0xdd);
+    pushCode8(rm(true, 1, cpu->big ? 5 : 6));
+    if (cpu->big) {
+        pushCode32(4 * 2);
+    } else {
+        pushCode16(4 * 2);
+    }
+    runTestCPU();
+    assertTrue(cpu->fpu.GetTop() == 0);
+    assertTrue(cpu->fpu.GetTag(cpu, 7) == TAG_Empty);
+    assertTrue(memory->readq(HEAP_ADDRESS + 8) == result);
+}
+
 void testFISTTP64() {
     doFISTTP64(0);
     doFISTTP64(0x123456789abcdef0l);
     doFISTTP64(0x723456789abcdef0l);
     doFISTTP64(0x0000000800000000l); // gog installer uses this and it exposed a bug where only the bottom 32-bits where checked for a 0 case
     doFISTTP64((U64)(S64)-2);
+
+    if (cpu->isBig()) {
+        doFISTTP64(123456789.4, 123456789);
+        doFISTTP64(123456789.6, 123456789);
+        doFISTTP64(-123456789.4, -123456789);
+    }
+}
+
+void doFISTP64(U64 data) {
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    {
+        struct FSaveState state;
+        U64 result = 0;
+
+        __asm {
+            finit;
+            fild data;
+            fisttp result;
+            fsave[state];
+        }
+        assertTrue(state.fsw == 0);
+        assertTrue(result == data);
+    }
+#endif
+    newInstruction(0);
+    fpu_init();
+    fild64(data, 0);
+    pushCode8(0xdf);
+    pushCode8(rm(true, 7, cpu->big ? 5 : 6));
+    if (cpu->big) {
+        pushCode32(4 * 2);
+    } else {
+        pushCode16(4 * 2);
+    }
+    runTestCPU();
+    assertTrue(cpu->fpu.GetTop() == 0);
+    assertTrue(cpu->fpu.GetTag(cpu, 7) == TAG_Empty);
+    assertTrue(memory->readq(HEAP_ADDRESS + 8) == data);
+}
+
+void doFISTP64(double data, U64 result, U32 rounding) {
+    newInstruction(0);
+    fpu_init();
+    setRounding(rounding, 0);     
+    fld64(data, 4);
+    pushCode8(0xdf);
+    pushCode8(rm(true, 7, cpu->big ? 5 : 6));
+    if (cpu->big) {
+        pushCode32(4 * 2);
+    } else {
+        pushCode16(4 * 2);
+    }
+    runTestCPU();
+    assertTrue(cpu->fpu.GetTop() == 0);
+    assertTrue(cpu->fpu.GetTag(cpu, 7) == TAG_Empty);
+    U64 value = memory->readq(HEAP_ADDRESS + 8);
+    assertTrue(value == result);
+}
+
+void testFISTP_QWORD_INTEGER() {
+    doFISTP64(0);
+    doFISTP64(0x123456789abcdef0l);
+    doFISTP64(0x723456789abcdef0l);
+    doFISTP64(0x0000000800000000l);
+    doFISTP64((U64)(S64)-2);
+    doFISTP64(0x41d26580b499999a); // 1234567890.4
+
+    if (cpu->isBig()) {
+        doFISTP64(123456789.4, 123456789, ROUND_Nearest);
+        doFISTP64(123456789.4, 123456789, ROUND_Down);
+        doFISTP64(123456789.4, 123456790, ROUND_Up);
+        doFISTP64(123456789.4, 123456789, ROUND_Chop);
+
+        doFISTP64(123456789.6, 123456790, ROUND_Nearest);
+        doFISTP64(123456789.6, 123456789, ROUND_Down);
+        doFISTP64(123456789.6, 123456790, ROUND_Up);
+        doFISTP64(123456789.6, 123456789, ROUND_Chop);
+
+        doFISTP64(-123456789.4, -123456789, ROUND_Nearest);
+        doFISTP64(-123456789.4, -123456790, ROUND_Down);
+        doFISTP64(-123456789.4, -123456789, ROUND_Up);
+        doFISTP64(-123456789.4, -123456789, ROUND_Chop);
+    }
 }
 
 void doFST_DOUBLE_REAL_f64(double data, bool pop) {
@@ -2756,6 +2873,9 @@ void testFPUDF() {
 
     // 5 FILD
     testFILD();
+
+    //7
+    testFISTP_QWORD_INTEGER();
 }
 
 

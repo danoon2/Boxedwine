@@ -1206,8 +1206,6 @@ void JitFPU::dynamic_FILD_QWORD_INTEGER(DecodedOp* op) {
 }
 
 void JitFPU::dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) {
-    JitCodeGen::dynamic_FISTP_QWORD_INTEGER(op);
-    /*
     RegPtr top = getTopReg();
 
     // some apps seem to do a memcpy like thing with data pushed in and out
@@ -1218,16 +1216,12 @@ void JitFPU::dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) {
     IfNotRegCached(top); {
         JitCodeGen::dynamic_FISTP_QWORD_INTEGER(op);
     } StartElse(); {
-        write(JitWidth::b64, calculateEaa(op), nullptr, [top, op, this](MemPtr address) {
-            updateFPURounding();
-
+        write(JitWidth::b64, calculateEaa(op), nullptr, [top, op, this](MemPtr address) {            
             FPUReg src(this, top, 0);
-            storeFPUToInt64(src.reg, address, false);
-            restoreFPURounding();
+            storeFPUToInt64(src.reg, address, false);            
             dynamic_FPU_POP(top);
         });
     } EndIf();
-    */
 }
 
 #endif

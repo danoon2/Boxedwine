@@ -418,6 +418,10 @@ public:
     void fpuSqrt(FPURegPtr dst, FPURegPtr src) override;
     void fcompare(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) override;
 
+    void dynamic_FRNDINT(DecodedOp* op) override;
+    void dynamic_FISTTP64(DecodedOp* op) override;
+    void dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) override;
+
     // MMX
     MMXRegPtr getTmpMMX() override;
     MMXRegPtr loadMMXFromReg(RegPtr reg) override;
@@ -4271,20 +4275,110 @@ void JitX86CodeGen::roundFPUToInt64(FPURegPtr src) {
 }
 
 void JitX86CodeGen::storeFPUToInt64(FPURegPtr src, MemPtr address, bool truncate) {
+    if (!truncate) {
+        updateFPURounding();
+    }
     fpuRegToInt64(src, src, truncate);
+    if (!truncate) {
+        restoreFPURounding();
+    }
     storeFpuReg(src, address, DYN_FPU_64_BIT);
 }
 
+static void dynamic_cache_top_float(CPU* cpu) {
+    cpu->fpu.getF64(cpu->fpu.STV(0));
+}
+
+void JitX86CodeGen::dynamic_FRNDINT(DecodedOp* op) {
+    /* Need to get a machine that has this so that I can test it before putting it in
+    if (rt.cpu_features().has(asmjit::CpuFeatures::X86::kAVX512_DQ)) {
+        JitFPU::dynamic_FRNDINT(op);
+        return;
+    }
+    */
+    RegPtr top = getTopReg();
+
+    compiler.fninit();
+    compiler.fldcw(Mem(HOST_CPU, offsetof(CPU, fpu.cw)));
+    IfNotRegCached(top); {
+        call(dynamic_cache_top_float);
+    } EndIf();
+    compiler.fld(Mem64(HOST_CPU, R32(top), 3, offsetof(CPU, fpu.regCache[0].d)));
+    compiler.frndint();
+    compiler.fst(Mem64(HOST_CPU, R32(top), 3, offsetof(CPU, fpu.regCache[0].d)));    
+}
+
+void JitX86CodeGen::dynamic_FISTTP64(DecodedOp* op) {
+    /* Need to get a machine that has this so that I can test it before putting it in
+    if (rt.cpu_features().has(asmjit::CpuFeatures::X86::kAVX512_DQ)) {
+        JitFPU::dynamic_FISTTP64(op);
+        return;
+    }
+    */
+    RegPtr top = getTopReg();
+
+    // some apps seem to do a memcpy like thing with data pushed in and out
+    // we don't want the loaded 64-bit int to change because of rounding if its writen directly back out
+    // so if its not already cached (64-bit format vs 80-bit), then do the slow way to keep the 64-bit precision
+    // 
+    // see FPU::FLD_I64
+    IfNotRegCached(top); {
+        JitCodeGen::dynamic_FISTTP64(op);
+    } StartElse(); {
+        write(JitWidth::b64, calculateEaa(op), nullptr, [top, op, this](MemPtr address) {
+            compiler.fninit();
+            compiler.fld(Mem64(HOST_CPU, R32(top), 3, offsetof(CPU, fpu.regCache[0].d)));
+            compiler.fisttp(createMem(JitWidth::b64, address));
+            dynamic_FPU_POP(top);
+        });
+    } EndIf();
+}
+
+void JitX86CodeGen::dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) {
+    /* Need to get a machine that has this so that I can test it before putting it in
+    if (rt.cpu_features().has(asmjit::CpuFeatures::X86::kAVX512_DQ)) {
+        JitFPU::dynamic_FISTP_QWORD_INTEGER(op);
+        return;
+    }
+    */
+    RegPtr top = getTopReg();
+
+    // some apps seem to do a memcpy like thing with data pushed in and out
+    // we don't want the loaded 64-bit int to change because of rounding if its writen directly back out
+    // so if its not already cached (64-bit format vs 80-bit), then do the slow way to keep the 64-bit precision
+    // 
+    // see FPU::FLD_I64
+    IfNotRegCached(top); {
+        JitCodeGen::dynamic_FISTP_QWORD_INTEGER(op);
+    } StartElse(); {
+        write(JitWidth::b64, calculateEaa(op), nullptr, [top, op, this](MemPtr address) {
+            compiler.fninit();
+            compiler.fldcw(Mem(HOST_CPU, offsetof(CPU, fpu.cw)));
+            compiler.fld(Mem64(HOST_CPU, R32(top), 3, offsetof(CPU, fpu.regCache[0].d)));
+            compiler.fistp(createMem(JitWidth::b64, address));
+            dynamic_FPU_POP(top);
+        });
+    } EndIf();
+}
+
 void JitX86CodeGen::fpuRegToInt64(FPURegPtr regDst, FPURegPtr fpuRegSrc, bool truncate) {
-    if (truncate) {
-        compiler.cvttpd2dq(getFPUReg(regDst), getFPUReg(fpuRegSrc));
+    if (rt.cpu_features().has(asmjit::CpuFeatures::X86::kAVX512_DQ)) {
+        if (truncate) {
+            compiler.vcvttpd2qq(getFPUReg(regDst), getFPUReg(fpuRegSrc));
+        } else {
+            compiler.vcvtpd2dq(getFPUReg(regDst), getFPUReg(fpuRegSrc));
+        }
     } else {
-        compiler.cvtpd2dq(getFPUReg(regDst), getFPUReg(fpuRegSrc));
+        kpanic("JitX86CodeGen::fpuRegToInt64");
     }
 }
 
 void JitX86CodeGen::fpuRegInt64To64(FPURegPtr regDst, FPURegPtr fpuRegSrc) {
-    compiler.cvtdq2pd(getFPUReg(regDst), getFPUReg(fpuRegSrc));
+    if (rt.cpu_features().has(asmjit::CpuFeatures::X86::kAVX512_DQ)) {
+        compiler.vcvtqq2pd(getFPUReg(regDst), getFPUReg(fpuRegSrc));
+    } else {
+        kpanic("JitX86CodeGen::fpuRegInt64To64");
+    }
 }
 
 void JitX86CodeGen::storeFpuReg(FPURegPtr reg, MemPtr address, DynFpuWidth width) {

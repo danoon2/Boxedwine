@@ -187,6 +187,7 @@ void newInstruction(int flags) {
     EDI = 0;
     cpu->eip.u32 = 0;
     memory->clearOpCache();
+    cpu->mxcsr = 0x1F80;
 }
 
 void newInstruction(int instruction, int flags, U8 prefix = 0, U8 prefix2 = 0) {
