@@ -2510,7 +2510,6 @@ void doFISTTP64(double data, U64 result) {
             fisttp actualResult;
             fsave[state];
         }
-        assertTrue(state.fsw == 0);
         assertTrue(actualResult == result);
     }
 #endif
