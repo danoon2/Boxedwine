@@ -229,7 +229,7 @@ U32 KProcess::getThreadCount() {
 
 void KProcess::deleteThread(KThread* thread) {
     thread->cleanup();  
-    if (this->threads.size() == 0) {
+    if (this->getThreadCount() == 0) {
         cleanupProcess();
         delete this->memory; // this might call KThread::currentThread, so don't delete thread before this
         this->memory = nullptr; 
@@ -435,11 +435,13 @@ U32 KProcess::getNextFileDescriptorHandle(int after) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     U32 i=after;
 
-    while (1) {
-		if (!this->fds[i])
+    for (;i< MAX_NUMBER_OF_FILES;i++) {
+        if (!this->fds[i]) {
             return i;
-        i++;
+        }
     }
+    kpanic_fmt("KProcess::getNextFileDescriptorHandle %s ran out of file handles", name.c_str());
+    return -1;
 }
 
 KFileDescriptorPtr KProcess::allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle) {    
@@ -542,6 +544,10 @@ void KProcess::initStdio() {
 }
 
 KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BString>& argValues, const std::vector<BString>& envValues, int userId, int groupId, int effectiveUserId, int effectiveGroupId) {
+    if (argValues.size() == 0) {
+        kwarn("No command specified");
+        return nullptr;
+	}
     std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, argValues[0], true);
 
     if (!node) {
@@ -1099,6 +1105,9 @@ U32 KProcess::sendFile(U32 outFd, U32 inFd, U32 offset, U32 count) {
     U64 pos = 0;
 
     if (offset) {
+        if (!memory->canRead(offset, 8)) {
+            return -K_EFAULT;
+		}
         pos = fdIn->kobject->getPos();
         fdIn->kobject->seek(memory->readq(offset));
     } 
@@ -1729,7 +1738,7 @@ S64 KProcess::llseek(FD fildes, S64 offset, U32 whence) {
     return fd->kobject->seek(pos);
 }
 
-U32 writeRecord(KMemory* memory, U32 dirp, U32 len, U32 count, U32 pos, bool is64, const char* name, U32 id, U32 type) {
+S32 writeRecord(KMemory* memory, U32 dirp, U32 len, U32 count, U32 pos, bool is64, const char* name, U32 id, U32 type) {
     U32 recordLen = 0;
 
     if (is64) {
@@ -1740,6 +1749,9 @@ U32 writeRecord(KMemory* memory, U32 dirp, U32 len, U32 count, U32 pos, bool is6
                 return -K_EINVAL;
             return 0;
         }
+        if (!memory->canWrite(dirp, recordLen)) {
+            return -K_EFAULT;
+		}
         memory->writeq(dirp, id);
         memory->writeq(dirp + 8, pos);
         memory->writew(dirp + 16, recordLen);
@@ -1752,6 +1764,9 @@ U32 writeRecord(KMemory* memory, U32 dirp, U32 len, U32 count, U32 pos, bool is6
             if (len==0)
                 return -K_EINVAL;
             return 0;
+        }
+        if (!memory->canWrite(dirp, recordLen)) {
+            return -K_EFAULT;
         }
         memory->writed(dirp, id);
         memory->writed(dirp + 4, pos);
@@ -1784,7 +1799,7 @@ U32 KProcess::getdents(FD fildes, U32 dirp, U32 count, bool is64) {
     for (U32 i=(U32)openNode->getFilePointer();i<entries;i++) {
         BString name;
         std::shared_ptr<FsNode> entry = openNode->getDirectoryEntry(i, name);
-        U32 recordLen = writeRecord(memory, dirp, len, count, i + 2, is64, name.c_str(), entry->id, entry->getType(true));
+        S32 recordLen = writeRecord(memory, dirp, len, count, i + 2, is64, name.c_str(), entry->id, entry->getType(true));
         if (recordLen>0) {
             dirp+=recordLen;
             len+=recordLen;
@@ -1792,7 +1807,7 @@ U32 KProcess::getdents(FD fildes, U32 dirp, U32 count, bool is64) {
         } else if (recordLen == 0) {
             return len;
         } else {
-            return recordLen;
+            return (U32)recordLen;
         }
     }
     return len;
@@ -1848,11 +1863,11 @@ U32 KProcess::prctl(U32 option, U32 arg2) {
     } else {
         kwarn_fmt("prctl not implemented for option: %d", option);
     }
-    return -1;
+    return -K_EINVAL;
 }
 
 U32 KProcess::sigaction(U32 sig, U32 act, U32 oact, U32 sigsetSize) {
-    if (sig == K_SIGKILL || sig == K_SIGSTOP || sig>MAX_SIG_ACTIONS || sig>=MAX_SIG_ACTIONS) {
+    if (sig == K_SIGKILL || sig == K_SIGSTOP || sig>=MAX_SIG_ACTIONS) {
         return -K_EINVAL;
     }
     if (oact!=0) {
@@ -1970,7 +1985,7 @@ U32 KProcess::fstat64(FD handle, U32 buf) {
 }
 
 U32 KProcess::mincore(U32 address, U32 length, U32 vec) {
-    U32 pages = (length+K_PAGE_SIZE+1)/K_PAGE_SIZE;
+    U32 pages = (length + K_PAGE_SIZE - 1) / K_PAGE_SIZE;
     U32 page = address >> K_PAGE_SHIFT;
 
     for (U32 i=0;i<pages;i++) {
@@ -2126,6 +2141,9 @@ U32 KProcess::epollcreate(U32 size, U32 flags) {
 
 U32 KProcess::epollctl(FD epfd, U32 op, FD fd, U32 address) {
     KFileDescriptorPtr epollFD = this->getFileDescriptor(epfd);
+    if (!epollFD) {
+        return -K_EBADF;
+    }
     if (fd==epfd || epollFD->kobject->type != KTYPE_EPOLL) {
         return -K_EINVAL;
     }
@@ -2767,12 +2785,15 @@ U32 KProcess::signal(U32 signal) {
 }
 
 void KProcess::signalFd(KThread* thread, U32 signal) {
+    if (!signal) {
+        return;
+	}
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     for (auto& n : this->fds) {
         KFileDescriptorPtr fd = n.value;
         if (fd->kobject->type == KTYPE_SIGNAL) {
             std::shared_ptr<KSignal> p = std::dynamic_pointer_cast<KSignal>(fd->kobject);
-            if ((p->mask & signal) && (!thread || thread->waitingCond == p->lockCond)) {
+            if ((p->mask & (1ULL << (signal - 1))) && (!thread || thread->waitingCond == p->lockCond)) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(p->lockCond);
                 p->sigAction = this->sigActions[signal];
                 p->signalingPid = this->id;

@@ -131,6 +131,7 @@ bool FsFileNode::remove() {
             }
         });
         result = true;
+        delete[] tmpPos;
     }
     if (result) {
         this->removeNodeFromParent();
@@ -255,7 +256,7 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     } else
 #endif
     f = ::open(this->nativePath.c_str(), openFlags, 0666);	
-    if (!f || f==0xFFFFFFFF) {
+    if (f==0xFFFFFFFF) {
 #ifdef BOXEDWINE_ZLIB
         if (this->zipNode && (flags & K_O_ACCMODE)==K_O_RDONLY)
             return this->zipNode->open(shared_from_this(), flags);

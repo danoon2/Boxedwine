@@ -106,6 +106,11 @@ public:
     JitMem(U32 address) : offset(address) {}
     JitMem(RegPtr rm, U32 offset = 0, bool emulatedAddress = true) : rm(rm), offset(offset), emulatedAddress(emulatedAddress) {}
     JitMem(RegPtr rm, RegPtr sib, U32 lsl = 0, U32 offset = 0, bool emulatedAddress = true) : rm(rm), sib(sib), lsl(lsl), offset(offset), emulatedAddress(emulatedAddress) {}
+	JitMem(const JitMem& mem) : rm(mem.rm), sib(mem.sib), lsl(mem.lsl), offset(mem.offset), emulatedAddress(mem.emulatedAddress) {}
+
+    std::shared_ptr<JitMem> copy() {
+        return std::make_shared<JitMem>(*this);
+	}
 
     RegPtr rm;
     RegPtr sib;

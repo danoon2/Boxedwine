@@ -964,6 +964,9 @@ U32 KNativeSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, 
         BOXEDWINE_CONDITION_UNLOCK(this->writingCond);
     }
 #endif
+    if (len > sizeof(buffer)) {
+        return -K_EINVAL;
+	}
     memory->memcpy(buffer, address, len);
 
     U16 family = memory->readw(address);
@@ -1198,7 +1201,7 @@ U32 KNativeSocketObject::setsockopt(KThread* thread, const KFileDescriptorPtr& f
                 if (len != 4)
                     kpanic("KNativeSocketObject::setsockopt SO_SNDBUF expecting len of 4");
                 this->sendLen = memory->readd(value);
-                ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_SNDBUF, (const char*)&this->recvLen, 4);
+                ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_SNDBUF, (const char*)&this->sendLen, 4);
                 break;
             case K_SO_SNDTIMEO:            
                 if (len != 8) {
@@ -1364,7 +1367,7 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, const KFileDescriptorPtr& f
 #else
             struct timeval v;
             len = sizeof(struct timeval);
-            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&v, &len);
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_SNDTIMEO, (char*)&v, &len);
 
             U32 sec = (U32)v.tv_sec;
             U32 usec = (U32)v.tv_usec;

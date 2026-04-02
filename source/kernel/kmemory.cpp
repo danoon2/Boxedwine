@@ -74,7 +74,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
     U32 pageCount = (len + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
     KFileDescriptorPtr fd;
 
-    if (0xFFFFFFFF - addr < len) {
+    if (0xFFFFFFFF - addr < len || len == 0) {
         return -K_EINVAL;
     }
     if ((shared && priv) || (!shared && !priv)) {
@@ -224,7 +224,7 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
     if (oldsize == 0) {
         kpanic("mremap not implemented for oldsize==0");
     }
-    U32 oldPageCount = oldsize >> K_PAGE_SHIFT;
+    U32 oldPageCount = (oldsize + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
     U32 oldPageStart = oldaddress >> K_PAGE_SHIFT;
     U32 pageFlags = getPageFlags(oldPageStart);
 
@@ -334,13 +334,24 @@ void KMemory::memcpy(U32 address, const void* p, U32 len) {
         ::memcpy(ram, ptr, len);
         ptr += len;
         return true;
-        });
+    });
 }
 
 void KMemory::memcpy(U32 dest, U32 src, U32 len) {
-    for (U32 i = 0; i < len; i++, src++, dest++) {
-        writeb(dest, readb(src));
-    }
+    if (dest + len < dest || src + len < src) {
+        kpanic("integer overflow in memcpy");
+	}
+	if (dest < src) {
+        for (U32 i = 0; i < len; i++, src++, dest++) {
+            writeb(dest, readb(src));
+        }
+    } else {
+        dest += len - 1;
+        src += len - 1;
+        for (U32 i = 0; i < len; i++, src--, dest--) {
+            writeb(dest, readb(src));
+        }
+	}
 }
 
 void KMemory::memcpy(void* p, U32 address, U32 len) {
@@ -350,7 +361,7 @@ void KMemory::memcpy(void* p, U32 address, U32 len) {
         ::memcpy(ptr, ram, len);
         ptr += len;
         return true;
-        });
+    });
 }
 
 void KMemory::strcpy(U32 address, const char* str) {
@@ -372,7 +383,7 @@ void KMemory::memset(U32 address, char value, U32 len) {
     performOnMemory(address, len, false, [value] (U8* ram, U32 len) {
         ::memset(ram, value, len);
         return true;
-        });
+    });
 }
 
 int KMemory::memcmp(U32 address, const void* p, U32 len) {
@@ -383,7 +394,7 @@ int KMemory::memcmp(U32 address, const void* p, U32 len) {
         result = ::memcmp(ptr, ram, len);
         ptr += len;
         return result == 0;
-        });
+    });
 
     return result;
 }
@@ -432,6 +443,9 @@ BString KMemory::readStringW(U32 address) {
 }
 
 void KMemory::iteratePages(U32 address, U32 len, std::function<bool(U32 page)> callback) {
+    if (len == 0) {
+        return;
+    }
     U32 startPage = address >> K_PAGE_SHIFT;
     U32 stopPage = (address + len - 1) >> K_PAGE_SHIFT;
     for (U32 i = 0; i <= (stopPage - startPage); i++) {
@@ -713,6 +727,7 @@ U8* KMemory::lockReadWriteMemory(U32 address, U32 len) {
 }
 
 void KMemory::unmapNativeMemory(U32 address, U32 size) {
+	// -K_PAGE_SIZE and + 2 * K_PAGE_SIZE are necessary to handle the guard pages that are added on either side of the mapped memory
     unmap(address - K_PAGE_SIZE, size + 2 * K_PAGE_SIZE);
 }
 

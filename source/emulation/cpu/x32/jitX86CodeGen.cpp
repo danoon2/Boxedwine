@@ -832,7 +832,7 @@ U8 JitX86CodeGen::findTmpXMM() {
         }
     }
     kpanic("JitX86CodeGen::findTmpXMM");
-    return 0xff;
+    return INVALID_REG;
 }
 
 bool JitX86CodeGen::isSseRegCached(U8 reg) {
@@ -848,7 +848,7 @@ Vec JitX86CodeGen::getFPUReg(FPURegPtr reg) {
 }
 
 SSERegPtr JitX86CodeGen::getTmpSSE() {
-    return std::shared_ptr<SSERegInternal>(new SSERegInternal(findTmpXMM(), 0xff), [this](SSERegInternal* p) {
+    return std::shared_ptr<SSERegInternal>(new SSERegInternal(findTmpXMM(), INVALID_REG), [this](SSERegInternal* p) {
         xmmUsed[p->hardwareReg()] = false;
         delete p;
     });
@@ -859,7 +859,7 @@ Vec JitX86CodeGen::getMMXReg(MMXRegPtr reg) {
 }
 
 MMXRegPtr JitX86CodeGen::getTmpMMX() {
-    return std::shared_ptr<MMXRegInternal>(new MMXRegInternal(findTmpXMM(), 0xff), [this](MMXRegInternal* p) {
+    return std::shared_ptr<MMXRegInternal>(new MMXRegInternal(findTmpXMM(), INVALID_REG), [this](MMXRegInternal* p) {
         xmmUsed[p->hardwareReg()] = false;
         delete p;
     });
@@ -903,13 +903,13 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn
     if (!allowInvalidReturn) {
         kpanic("JitX86CodeGen::getTmpReg ran out of tmp regs");
     }
-    return 0xff;
+    return INVALID_REG;
 #else
     if (hint >= 0 && !regUsed[hint]) {
         regUsed[hint] = true;
         return (U8)hint;
     }
-    U8 tmpReg = 0xff;
+    U8 tmpReg = INVALID_REG;
     if (!needs8bitReg && !regUsed[6]) {
         regUsed[6] = true;
         return 6;
@@ -921,7 +921,7 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn
             break;
         }
     }
-    if (tmpReg == 0xff && !allowInvalidReturn) {
+    if (tmpReg == INVALID_REG && !allowInvalidReturn) {
         kpanic("JitX86CodeGen::getTmpReg ran out of tmp regs");
     }
     return tmpReg;
@@ -929,7 +929,7 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn
 }
 
 RegPtr JitX86CodeGen::getConditionCalculationReg(U32 index) {
-    U8 tmp = 0xff;
+    U8 tmp = INVALID_REG;
 #ifdef BOXEDWINE_64
     if (index == 0) {
         tmp = tmps[NUMBER_OF_TMPS - 1];
@@ -972,7 +972,7 @@ RegPtr JitX86CodeGen::getConditionCalculationReg(U32 index) {
     }
 #endif
     regUsed[tmp] = true;
-    return std::shared_ptr<JitReg>(new JitReg(tmp, 0xff), [this](JitReg* p) {
+    return std::shared_ptr<JitReg>(new JitReg(tmp, INVALID_REG), [this](JitReg* p) {
         if (p->isLoaded()) {
             regUsed[p->hardwareReg()] = false;
         }
@@ -985,7 +985,7 @@ RegPtr JitX86CodeGen::getTmpReg() {
 }
 
 RegPtr JitX86CodeGen::getTmpRegWithHint(S8 hint) {
-    return std::shared_ptr<JitReg>(new JitReg(findTmpReg(false, hint), 0xff), [this](JitReg* p) {
+    return std::shared_ptr<JitReg>(new JitReg(findTmpReg(false, hint), INVALID_REG), [this](JitReg* p) {
         if (p->isLoaded()) {
             regUsed[p->hardwareReg()] = false;
         }
@@ -994,7 +994,7 @@ RegPtr JitX86CodeGen::getTmpRegWithHint(S8 hint) {
 }
 
 RegPtr JitX86CodeGen::getTmpReg8() {
-    return std::shared_ptr<JitReg>(new JitReg(findTmpReg(true), 0xff), [this](JitReg* p) {
+    return std::shared_ptr<JitReg>(new JitReg(findTmpReg(true), INVALID_REG), [this](JitReg* p) {
         if (p->isLoaded()) {
             regUsed[p->hardwareReg()] = false;
         }
@@ -1014,14 +1014,14 @@ RegPtr JitX86CodeGen::getTmpReg(U8 reg, bool delayed, S8 hint) {
             return hardwareReg;
         };
 
-        return std::shared_ptr<JitReg>(new JitReg(0xff, 0xff, getTmp), [this](JitReg* p) {
+        return std::shared_ptr<JitReg>(new JitReg(INVALID_REG, INVALID_REG, getTmp), [this](JitReg* p) {
             if (p->isLoaded()) {
                 regUsed[p->hardwareReg()] = false;
             }
             delete p;
         });
     } else {
-        RegPtr result = std::shared_ptr<JitReg>(new JitReg(findTmpReg(false, hint), 0xff), [this](JitReg* p) {
+        RegPtr result = std::shared_ptr<JitReg>(new JitReg(findTmpReg(false, hint), INVALID_REG), [this](JitReg* p) {
             if (p->isLoaded()) {
                 regUsed[p->hardwareReg()] = false;
             }
@@ -1045,7 +1045,7 @@ RegPtr JitX86CodeGen::getTmpRegForCallResult() {
         reg = 0;
         regUsed[0] = true;
     }
-    return std::shared_ptr<JitReg>(new JitReg(reg, 0xff), [this](JitReg* p) {
+    return std::shared_ptr<JitReg>(new JitReg(reg, INVALID_REG), [this](JitReg* p) {
         if (p->isLoaded()) {
             regUsed[p->hardwareReg()] = false;
         }
@@ -1097,14 +1097,14 @@ RegPtr JitX86CodeGen::getTmpReg8(U8 reg, bool delayed, S8 hint) {
             return hardwareReg;
         };
 
-        result = std::shared_ptr<JitReg>(new JitReg(0xff, 0xff, false, getTmp), [this](JitReg* p) {
+        result = std::shared_ptr<JitReg>(new JitReg(INVALID_REG, INVALID_REG, false, getTmp), [this](JitReg* p) {
             if (p->isLoaded()) {
                 regUsed[p->hardwareReg()] = false;
             }
             delete p;
         });
     } else {
-        result = std::shared_ptr<JitReg>(new JitReg(findTmpReg(true, hint), 0xff, false), [this](JitReg* p) {
+        result = std::shared_ptr<JitReg>(new JitReg(findTmpReg(true, hint), INVALID_REG, false), [this](JitReg* p) {
             if (p->isLoaded()) {
                 regUsed[p->hardwareReg()] = false;
             }
@@ -1144,7 +1144,7 @@ void JitX86CodeGen::writeEip(U32 eip) {
 
 bool JitX86CodeGen::isTmpRegAvailable() {
     U8 found = findTmpReg(false, -1, true);
-    if (found == 0xff) {
+    if (found == INVALID_REG) {
         return false;
     }
     regUsed[found] = false;
@@ -1152,7 +1152,7 @@ bool JitX86CodeGen::isTmpRegAvailable() {
 }
 
 void JitX86CodeGen::forceSyncBackIfNotCached(RegPtr reg) {
-    if (reg->emulatedReg != 0xff && regCache[reg->emulatedReg] == INVALID_REG) {
+    if (reg->emulatedReg != INVALID_REG && regCache[reg->emulatedReg] == INVALID_REG) {
         compiler.mov(Mem(HOST_CPU, CPU::offsetofReg32(reg->emulatedReg)), R32(reg));
     }
 }

@@ -20,9 +20,6 @@
 
 #include "kscheduler.h"
 #include "ksignal.h"
-#include "kscheduler.h"
-#include "ksignal.h"
-#include <string.h>
 #include "../io/fsfilenode.h"
 #include "bufferaccess.h"
 #include "kstat.h"
@@ -145,11 +142,19 @@ struct user_desc* KThread::getLDT(U32 index) {
 
 void KThread::setTLS(struct user_desc* desc) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(tlsMutex);
-    this->tls[desc->entry_number-TLS_ENTRY_START_INDEX] = *desc;   
+    U32 index = desc->entry_number - TLS_ENTRY_START_INDEX;
+    if (index >= 0 && index < TLS_ENTRIES) {
+        this->tls[index] = *desc;
+    } else {
+        kpanic("KThread::setTLS");
+    }
 }
 
 bool KThread::readyForSignal(U32 signal) {
-    return (((U64)1 << (signal - 1)) & ~(this->inSignal ? this->inSigMask : this->sigMask)) != 0;
+    if (signal == 0) {
+        return false;
+    }
+    return ((1ULL << (signal - 1)) & ~(this->inSignal ? this->inSigMask : this->sigMask)) != 0;
 }
 
 U32 KThread::signal(U32 signal, bool wait) {
@@ -157,7 +162,7 @@ U32 KThread::signal(U32 signal, bool wait) {
         return 0;
     }
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->sigWaitCond);
-    if (this->sigWaitMask & signal) {
+    if (this->sigWaitMask & (1ULL << (signal - 1))) {
         this->foundWaitSignal = signal;
         BOXEDWINE_CONDITION_SIGNAL(this->sigWaitCond);        
         return 0;
@@ -194,7 +199,7 @@ U32 KThread::signal(U32 signal, bool wait) {
                 }
                 if (!handled) {
                     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
-                    this->pendingSignals |= ((U64)1 << (signal - 1));
+                    this->pendingSignals |= (1ULL << (signal - 1));
                 }
             }
             if (wait && !this->terminating) {
@@ -216,7 +221,7 @@ U32 KThread::signal(U32 signal, bool wait) {
         }        
     } else {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
-        this->pendingSignals |= ((U64)1 << (signal-1));
+        this->pendingSignals |= (1ULL << (signal-1));
         this->process->signalFd(this, signal);
     }
     return 0;
@@ -729,25 +734,25 @@ bool KThread::runSignals() {
     // for now I will add this hack
     //
     // hopefully it won't have any bad side effects and cause other bugs
-    if ((todoThread & ((U64)1 << (K_SIGQUIT-1))) && (mask & ((U64)1 << (K_SIGIO-1)))) {
-        todoThread &= ~((U64)1 << (K_SIGQUIT-1)); // don't process SIGKILL now
+    if ((todoThread & (1ULL << (K_SIGQUIT-1))) && (mask & (1ULL << (K_SIGIO-1)))) {
+        todoThread &= ~(1ULL << (K_SIGQUIT-1)); // don't process SIGKILL now
     }
     if (todoProcess!=0 || todoThread!=0) {
         U32 i;
 
-        for (i=0;i<32;i++) {
-            if ((todoProcess & ((U64)1 << i))!=0) {
+        for (i=0;i<64;i++) {
+            if ((todoProcess & (1ULL << i))!=0) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->process->pendingSignalsMutex);
-                if ((this->process->pendingSignals & ((U64)1 << i))!=0 || i + 1 == K_SIGKILL) { // SIGKILL can't be ignored
-                    this->process->pendingSignals &= ~(1 << i);
+                if ((this->process->pendingSignals & (1ULL << i))!=0 || i + 1 == K_SIGKILL) { // SIGKILL can't be ignored
+                    this->process->pendingSignals &= ~(1ULL << i);
                     this->runSignal(i+1, -1, 0);
                     return true;
                 }
             }
-            if ((todoThread & ((U64)1 << i))!=0) {
+            if ((todoThread & (1ULL << i))!=0) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
-                if ((this->pendingSignals & ((U64)1 << i))!=0 || i+1 == K_SIGKILL) { // SIGKILL can't be ignored
-                    this->pendingSignals &= ~(1 << i);
+                if ((this->pendingSignals & (1ULL << i))!=0 || i+1 == K_SIGKILL) { // SIGKILL can't be ignored
+                    this->pendingSignals &= ~(1ULL << i);
                     this->runSignal(i+1, -1, 0);
                     return true;
                 }
@@ -1165,7 +1170,7 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         if (action->flags & K_SA_RESETHAND) {
             action->handlerAndSigAction=K_SIG_DFL;
         } else if (!(action->flags & K_SA_NODEFER)) {
-            this->inSigMask|= (U64)1 << (signal-1);
+            this->inSigMask|= 1ULL << (signal-1);
         }	
 #ifndef BOXEDWINE_MULTI_THREADED
         if (this->waitingCond) {

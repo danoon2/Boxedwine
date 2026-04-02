@@ -75,7 +75,7 @@ KMemoryData::~KMemoryData() {
 }
 
 bool KMemoryData::isPageValid(U32 page) {
-    return getPage(page) == invalidPage;
+    return getPage(page) != invalidPage;
 }
 
 void KMemoryData::onPageChanged(U32 index) {
@@ -251,6 +251,9 @@ CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
 }
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
 bool KMemoryData::findOpFromJitAddress(U8* jitAddress, U32& eipOfOp) {
+    if (jitAddressToEip.empty()) {
+        return false;
+	}
     auto it = jitAddressToEip.lower_bound(jitAddress);
     if (it == jitAddressToEip.end()) {
         it = std::prev(it);

@@ -290,7 +290,7 @@ bool Fs::isNativeDirectoryEmpty(const BString& path) {
         result = false;
         return 1; // don't need to continue;
     });
-    return false;
+    return result;
 }
 
 U64 Fs::getNativeFileSize(const BString& path) {
@@ -386,7 +386,7 @@ void Fs::splitPath(const BString& path, std::vector<BString>& parts) {
 
 U32 Fs::readNativeFile(const BString& nativePath, U8* buffer, U32 bufferLen) {
     int f = ::open(nativePath.c_str(), O_RDONLY | O_BINARY);
-    if (f>0) {
+    if (f>=0) {
         U32 result = (U32)::read(f, buffer, bufferLen);
         ::close(f);
         return result;

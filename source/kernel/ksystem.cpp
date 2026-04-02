@@ -805,8 +805,8 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
             break;
         case 7: // RLIMIT_NOFILE
             if (oldlimit!=0) {
-                memory->writeq(oldlimit, 16*1024); // some apps might iterate all the possible file handles, so don't make this too big
-                memory->writeq(oldlimit + 8, 16*1024);
+                memory->writeq(oldlimit, MAX_NUMBER_OF_FILES); // some apps might iterate all the possible file handles, so don't make this too big
+                memory->writeq(oldlimit + 8, MAX_NUMBER_OF_FILES);
             }
 #ifdef _DEBUG
             if (newlimit!=0) {

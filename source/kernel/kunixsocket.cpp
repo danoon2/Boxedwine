@@ -295,9 +295,7 @@ U32 KUnixSocketObject::readNative(U8* buffer, U32 len) {
         len = (U32)this->recvBuffer.size_used();
     }
     this->recvBuffer.get(buffer, len);
-    if (con) {
-        BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
-    }
+    BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
     //printf("    readNative: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->recvBuffer, (int)this->recvBuffer.size(), (int)this->recvBuffer.capacity(), len);
     return len;
 }
@@ -459,8 +457,11 @@ U32 KUnixSocketObject::bind(KThread* thread, const KFileDescriptorPtr& fd, U32 a
 U32 KUnixSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len) {
     KMemory* memory = thread->memory;
 
+    if (len < 2) {
+        return -K_EINVAL;
+	}
     this->pid = thread->process->id;
-    if (len-2>sizeof(this->destAddress.data)) {
+    if (len>sizeof(this->destAddress.data)+2) {
         kpanic("Socket address is too big");
     }
     this->destAddress.family = memory->readw(address);
@@ -799,7 +800,7 @@ U32 KUnixSocketObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd, U3
         if (cmsg.cmsg_level != K_SOL_SOCKET) {
             kpanic_fmt("KUnixSocketObject::sendmsg control level %d not implemented", cmsg.cmsg_level);
         } else if (cmsg.cmsg_type != K_SCM_RIGHTS) {
-            kpanic_fmt("KUnixSocketObject::sendmsg control type %d not implemented", cmsg.cmsg_level);
+            kpanic_fmt("KUnixSocketObject::sendmsg control type %d not implemented", cmsg.cmsg_type);
         } else if ((cmsg.cmsg_len & 3) != 0) {
             kpanic_fmt("KUnixSocketObject::sendmsg control len %d not implemented", cmsg.cmsg_len);
         }

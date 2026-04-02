@@ -65,6 +65,7 @@ bool FsZip::init(BString zipPath, BString mount) {
         this->zipfile = unzOpen(zipPath.c_str());
         if (!this->zipfile) {
             klog_fmt("Could not load zip file: %s", zipPath.c_str());
+            return false;
         }
 
         if (unzGetGlobalInfo( this->zipfile, &global_info ) != UNZ_OK) {

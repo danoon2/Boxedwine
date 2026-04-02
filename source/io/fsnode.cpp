@@ -89,6 +89,7 @@ void FsNode::loadChildren() {
                     tmp[result]=0;
                     if (result==0) {
                         kwarn_fmt("Could not read link file from filesystem: %s", localPath.c_str());
+                        continue;
                     }
                     localPath = localPath.substr(0, localPath.length()-5);
                     Fs::addFileNode(localPath, BString::copy((const char*)tmp), remotePath, n.isDirectory, shared_from_this());

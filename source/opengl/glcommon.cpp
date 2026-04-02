@@ -871,11 +871,12 @@ void gl_common_XQueryExtensionsString(CPU* cpu) {
     KThread* thread = cpu->thread;
     if (thread->process->glxStringExtensions) {
         EAX = thread->process->glxStringExtensions;
+    } else {
+        const char* s = "GLX_ARB_multisample GLX_SGIX_fbconfig GLX_ARB_create_context GLX_ARB_create_context_profile WGL_ARB_create_context_profile GLX_ARB_create_context_no_error";
+        thread->process->glxStringExtensions = thread->process->alloc(thread, (U32)strlen(s) + 1);
+        thread->memory->memcpy(thread->process->glxStringExtensions, s, (U32)strlen(s) + 1);
+        EAX = thread->process->glxStringExtensions;
     }
-    const char* s = "GLX_ARB_multisample GLX_SGIX_fbconfig GLX_ARB_create_context GLX_ARB_create_context_profile WGL_ARB_create_context_profile GLX_ARB_create_context_no_error";
-    thread->process->glxStringExtensions = thread->process->alloc(thread, (U32)strlen(s) + 1);
-    thread->memory->memcpy(thread->process->glxStringExtensions, s, (U32)strlen(s) + 1);
-    EAX = thread->process->glxStringExtensions;
 }
 
 // const char* glXQueryServerString(Display* dpy, int screen, int name)
