@@ -164,9 +164,8 @@ public:
     }
 
     JitArmV8CodeGen(CPU* cpu) : JitSSE(cpu) {
-        static bool initialized = false;
-        if (!initialized) {
-            initialized = true;
+        static std::once_flag s_initFlag;
+        std::call_once(s_initFlag, [&]() {
 #ifdef BOXEDWINE_MSVC
             U64 features = get_ID_AA64ISAR0_EL1();
             U64 atomicLevel = ((int64_t)(features << (60 - 20)) >> 60);
@@ -189,7 +188,7 @@ public:
             if (tsoMode == TSOMode::Automatic) {
 #ifdef __linux__
                 if (enableHardwareTSO()) {
-                    tsoMode == TSOMode::Hardware;
+                    tsoMode = TSOMode::Hardware;
                 } else
 #endif
                 if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLRCPC2)) {
@@ -198,7 +197,7 @@ public:
                     tsoMode = TSOMode::None;
                 }
             }
-        }
+        });
         code.init(rt.environment());
         code.attach(&compiler);
         code.set_error_handler(this);
@@ -2523,13 +2522,15 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.stlur(R32(dest), createMem9(reg, disp));
+			MemPtr memCopy = mem->copy();
             U32 imm = 0;
-            if (mem->offset && (S32)mem->offset >= -256 && (S32)mem->offset <= 255) {
+
+            if (memCopy->offset && (S32)memCopy->offset >= -256 && (S32)memCopy->offset <= 255) {
                 // Quake 2 hits this path
-                imm = mem->offset & 0x1ff;
-                mem->offset = 0;
+                imm = memCopy->offset & 0x1ff;
+                memCopy->offset = 0;
             }
-            RegPtr addressReg = calculateAddress(mem);
+            RegPtr addressReg = calculateAddress(memCopy);
             U32 op = 0x99000000 | src->hardwareReg() | (addressReg->hardwareReg() << 5) | (imm << 12);
             compiler.embed_int32(op);
         } else
@@ -2541,12 +2542,14 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.stlurh(R32(dest), createMem9(reg, disp));
+            MemPtr memCopy = mem->copy();
             U32 imm = 0;
-            if (mem->offset && (S32)mem->offset >= -256 && (S32)mem->offset <= 255) {
-                imm = mem->offset & 0x1ff;
-                mem->offset = 0;
+
+            if (memCopy->offset && (S32)memCopy->offset >= -256 && (S32)memCopy->offset <= 255) {
+                imm = memCopy->offset & 0x1ff;
+                memCopy->offset = 0;
             }
-            RegPtr addressReg = calculateAddress(mem);
+            RegPtr addressReg = calculateAddress(memCopy);
             U32 op = 0x59000000 | src->hardwareReg() | (addressReg->hardwareReg() << 5) | (imm << 12);
             compiler.embed_int32(op);
         } else
@@ -2558,12 +2561,14 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.stlurb(R32(dest), createMem9(reg, disp));
+            MemPtr memCopy = mem->copy();
             U32 imm = 0;
-            if (mem->offset && (S32)mem->offset >= -256 && (S32)mem->offset <= 255) {
-                imm = mem->offset & 0x1ff;
-                mem->offset = 0;
+
+            if (memCopy->offset && (S32)memCopy->offset >= -256 && (S32)memCopy->offset <= 255) {
+                imm = memCopy->offset & 0x1ff;
+                memCopy->offset = 0;
             }
-            RegPtr addressReg = calculateAddress(mem);
+            RegPtr addressReg = calculateAddress(memCopy);
             RegPtr src8 = getReg8InLowByte(src);
             U32 op = 0x19000000 | src8->hardwareReg() | (addressReg->hardwareReg() << 5) | (imm << 12);
             compiler.embed_int32(op);
@@ -2578,12 +2583,14 @@ void JitArmV8CodeGen::writeHost(JitWidth width, MemPtr mem, RegPtr src, bool eml
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.stlur(R32(dest), createMem9(reg, disp));
+            MemPtr memCopy = mem->copy();
             U32 imm = 0;
-            if (mem->offset && (S32)mem->offset >= -256 && (S32)mem->offset <= 255) {
-                imm = mem->offset & 0x1ff;
-                mem->offset = 0;
+
+            if (memCopy->offset && (S32)memCopy->offset >= -256 && (S32)memCopy->offset <= 255) {
+                imm = memCopy->offset & 0x1ff;
+                memCopy->offset = 0;
             }
-            RegPtr addressReg = calculateAddress(mem);
+            RegPtr addressReg = calculateAddress(memCopy);
             U32 op = 0xD9000000 | src->hardwareReg() | (addressReg->hardwareReg() << 5) | (imm << 12);
             compiler.embed_int32(op);
         } else
@@ -3499,7 +3506,7 @@ void JitArmV8CodeGen::sseConvertFloatToInt(RegPtr dst, Vec src, bool truncate) {
     if (truncate) {
         compiler.fcvtzs(R32(dst), src);
     } else {
-        U32 roundingMode = (cpu->mxcsr >> 13) & 2;
+        U32 roundingMode = (cpu->mxcsr >> 13) & 3;
         if (roundingMode == ROUND_Nearest) {
             compiler.fcvtns(R32(dst), src);
         } else if (roundingMode == ROUND_Down) {
