@@ -396,9 +396,7 @@ void XServer::draw(bool drawNow) {
 			}
 			return true;
 			}, true);		
-		if (childWasDrawn) {
-			screen->present();
-		}
+		screen->present();
 	});	
 }
 
@@ -645,7 +643,8 @@ U32 XServer::openDisplay(KThread* thread) {
 	X11_WRITED(Display, displayAddress, max_keycode, max_keycode);
 
 	DisplayDataPtr data = std::make_shared<DisplayData>();
-	data->displayAddress = displayAddress;	
+	data->displayAddress = displayAddress;
+	data->pCurrentRequest = (U32*)memory->getRamPtr(displayAddress + offsetof(Display, request), 4, true);
 
 	U32 screenAddress = createScreen(thread, displayAddress);
 	X11_WRITED(Display, displayAddress, screens, screenAddress);

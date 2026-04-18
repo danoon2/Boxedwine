@@ -1,0 +1,16 @@
+diff --git a/libs/faudio/src/FAudio_platform_win32.c b/libs/faudio/src/FAudio_platform_win32.c
+index c45b4a2f4f2..829901d19fd 100644
+--- a/libs/faudio/src/FAudio_platform_win32.c
++++ b/libs/faudio/src/FAudio_platform_win32.c
+@@ -189,7 +189,10 @@ static DWORD WINAPI FAudio_AudioClientThread(void *user)
+ 	hr = IAudioClient_Stop(args->client);
+ 	FAudio_assert(!FAILED(hr) && "Failed to stop IAudioClient!");
+ 
+-	IAudioRenderClient_Release(render_client);
++	// prevents crash in opentdd on Mac Armv8 during shutdown
++	if (render_client) {
++		IAudioRenderClient_Release(render_client);
++	}
+ 	FAudio_free(args);
+ 	return 0;
+ }

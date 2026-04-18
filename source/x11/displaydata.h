@@ -63,13 +63,14 @@ public:
 	U32 getInput2Mask(U32 window);
 	int setInput2Mask(U32 window, U32 mask);
 
-	U32 getNextEventSerial();	
+	U32 getNextEventSerial();
 	
 	int getContextData(U32 context, U32 contextType, U32& ptr);
 	int setContextData(U32 context, U32 contextType, U32 ptr);
 	int deleteContextData(U32 context, U32 contextType);
 
 	U32 displayAddress;
+	U32* pCurrentRequest;
 	U32 displayId;
 	U32 root;
 	U32 clientFd;
@@ -86,8 +87,6 @@ public:
 	bool isLocked = false;
 
 private:	
-	std::atomic_int nextEventSerial;
-
 #ifdef BOXEDWINE_MULTI_THREADED
 	BOXEDWINE_MUTEX eventMutex;
 #else

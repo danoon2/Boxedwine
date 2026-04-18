@@ -225,7 +225,7 @@ U32 KSystem::clock_gettime64(KThread* thread, U32 clock_id, U32 tp) {
         memory->writeq(tp, m / 1000000l);
         memory->writed(tp + 8, (U32)(m % 1000000l) * 1000);
     }
-    else if (clock_id == 1 || clock_id == 2 || clock_id == 4 || clock_id == 6) { // CLOCK_MONOTONIC_RAW, CLOCK_PROCESS_CPUTIME_ID , CLOCK_MONOTONIC_COARSE
+    else if (clock_id == 1 || clock_id == 2 || clock_id == 4 || clock_id == 6 || clock_id == 7) { // CLOCK_MONOTONIC_RAW, CLOCK_PROCESS_CPUTIME_ID , CLOCK_MONOTONIC_COARSE, CLOCK_BOOTTIME
         U64 diff = KSystem::getMicroCounter();
         memory->writeq(tp, diff / 1000000l);
         memory->writed(tp + 8, (U32)(diff % 1000000l) * 1000);
@@ -822,6 +822,17 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
 #ifdef _DEBUG
             if (newlimit!=0) {
                 klog_fmt("prlimit64 RLIMIT_AS set=%d ignored", (U32)memory->readq(newlimit));
+            }
+#endif
+            break;
+        case 13: // RLIMIT_NICE	
+            if (oldlimit != 0) {
+                memory->writeq(oldlimit, -20);
+                memory->writeq(oldlimit + 8, 20);
+            }
+#ifdef _DEBUG
+            if (newlimit != 0) {
+                klog_fmt("prlimit64 RLIMIT_NICE set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
