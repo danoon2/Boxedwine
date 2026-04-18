@@ -96,9 +96,9 @@ pipeline {
                         script { 
                             gitCheckout() 
                         }
-                        bat "msbuild" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=win32"
+                        bat "msbuild \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=win32"
                         bat "project\\msvc\\BoxedWine\\Test\\BoxedWine.exe"
-                        bat "msbuild" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=x64"
+                        bat "msbuild \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=x64"
                         bat "project\\msvc\\BoxedWine\\x64\\Test\\BoxedWine.exe"
                     }
                 }
@@ -110,7 +110,7 @@ pipeline {
                         script { 
                             gitCheckout() 
                         }
-                        bat "msbuild" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=ARM64"
+                        bat "msbuild \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=ARM64"
                         bat "project\\msvc\\BoxedWine\\ARM64\\Test\\BoxedWine.exe"
                     }
                 }  
@@ -258,8 +258,8 @@ pipeline {
                             IF NOT EXIST "project\\msvc\\Deploy\\Win32" mkdir "project\\msvc\\Deploy\\Win32"
                             if NOT EXIST "project\\msvc\\Deploy\\Win64" mkdir "project\\msvc\\Deploy\\Win64"
                         '''
-                        bat "msbuild" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=win32"
-                        bat "msbuild" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=x64"
+                        bat "msbuild \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=win32"
+                        bat "msbuild \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=x64"
                         bat '''
                             move project\\msvc\\Boxedwine\\Release\\Boxedwine.exe project\\msvc\\Deploy\\Win32\\
                             copy project\\msvc\\Deploy\\Win32\\Boxedwine.exe project\\msvc\\Deploy\\Win32\\Boxedwine_console.exe
@@ -285,7 +285,7 @@ pipeline {
                             IF EXIST "project\\msvc\\Boxedwine\\ARM64\\Release\\Boxedwine.exe" DEL "project\\msvc\\Boxedwine\\ARM64\\Release\\Boxedwine.exe"
                             if NOT EXIST "project\\msvc\\Deploy\\WinARM64" mkdir "project\\msvc\\Deploy\\WinARM64"
                         '''
-                        bat "msbuild" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=ARM64"
+                        bat "msbuild \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=ARM64"
                         bat '''
                             move project\\msvc\\Boxedwine\\ARM64\\Release\\Boxedwine.exe project\\msvc\\Deploy\\WinARM64\\
                         '''
