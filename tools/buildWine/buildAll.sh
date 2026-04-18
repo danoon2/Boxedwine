@@ -13,7 +13,7 @@ fi
 
 if [ ! -f TinyCore15WineBase.zip ]
 then
-  wget https://boxedwine.org/v2/2/TinyCore15WineBase.zip
+  wget https://boxedwine.org/v2/5/TinyCore15WineBase.zip
 fi
 
 if [ -d tmp_install ]
@@ -29,6 +29,7 @@ do_build()
   shift
   BVERSION=$1
   shift
+  echo "$VERSION $BVERSION"
   if [ ! -f ../Wine-$VERSION.zip ]
   then
     git reset --hard
@@ -40,8 +41,12 @@ do_build()
     then
       if ((BVERSION >= 9030))
       then
-        echo "Need patch"
-        exit
+        if ((BVERSION < 10090))
+        then
+          echo "git cherry-pick 6fee37c2b6eb486ae60d6af4dd6e45549be0b624 --no-commit" >> ../tmp_install/build.txt
+          git cherry-pick 6fee37c2b6eb486ae60d6af4dd6e45549be0b624 --no-commit
+          #exit
+        fi
       else
         echo "git revert -n a6e969560b02ca776f987319db37e6550a1ec" >> ../tmp_install/build.txt
         git revert -n a6e969560b02ca776f987319db37e6550a1ec
@@ -49,14 +54,31 @@ do_build()
     fi
     if ((BVERSION >= 9130))
     then
-      echo "git revert -n 54ca1ab607d3ff22a1f57a9561430f64c75f0916" >> ../tmp_install/build.txt
-      git revert -n 54ca1ab607d3ff22a1f57a9561430f64c75f0916
+      if ((BVERSION < 10000))
+      then
+        echo "git revert -n 54ca1ab607d3ff22a1f57a9561430f64c75f0916" >> ../tmp_install/build.txt
+        git revert -n 54ca1ab607d3ff22a1f57a9561430f64c75f0916
+      fi
     fi
+#    if ((BVERSION >= 6060))
+#    then
+#      if ((BVERSION <= 6060))
+#      then
+#        echo "git apply ../patches/wine6.6.16bit.patch" >> ../tmp_install/build.txt
+#        git apply ../patches/wine6.6.16bit.patch
+#      elif ((BVERSION <= 6190))
+#      then
+#        echo "git cherry-pick 5a8f7d1f745d3fb8fd48d577103ac5068d3c1746 --no-commit" >> ../tmp_install/build.txt
+#        git cherry-pick 5a8f7d1f745d3fb8fd48d577103ac5068d3c1746 --no-commit
+#      fi
+#    fi
     if ((BVERSION >= 6230))
     then
      echo "git apply ../patches/fixSetupApiFromCrashingDuringDllDetach.patch" >> ../tmp_install/build.txt
      git apply ../patches/fixSetupApiFromCrashingDuringDllDetach.patch
     fi
+    echo "git apply ../patches/FAudio_opentdd_mac_crash.patch" >> ../tmp_install/build.txt
+    git apply ../patches/FAudio_opentdd_mac_crash.patch
     while [[ $1 != "" ]]; do
       if [[ $1 == "patch" ]]
       then
@@ -109,23 +131,12 @@ do_build()
     else
       git apply ../patches/auto_refresh/auto_refresh3.patch
     fi
-    if ((BVERSION >= 8000))
+    if ((BVERSION < 6000))
     then
-      rm -rf dlls/winealsa.drv/*
-      cp -r dlls/winecoreaudio.drv/* dlls/winealsa.drv/
-      cp -r ../../coreaudio/* dlls/winealsa.drv/
-      sed -i '/.*COREAUDIO_LIBS.*/ s/$/ -lm \$\(PTHREAD_LIBS\)/' dlls/winealsa.drv/Makefile.in
-      sed -i 's/winecoreaudio/winealsa/g' dlls/winealsa.drv/Makefile.in
-      echo "#include \"$(pwd)/dlls/winealsa.drv/CoreAudio/CoreAudio.c\"" > dlls/winealsa.drv/libkern/OSAtomic.h
-      echo "#include \"$(pwd)/dlls/winealsa.drv/CoreAudio/CoreAudio.h\"" > dlls/winealsa.drv/CoreMIDI/CoreMIDI.h  
-      mv dlls/winealsa.drv/winecoreaudio.drv.spec dlls/winealsa.drv/winealsa.drv.spec
-    else
-      rm -rf dlls/winealsa.drv/*
-      cp -r ../../wineboxedaudio.drv/*.* dlls/winealsa.drv/
+      EXTRA+="-fcommon "
     fi
-
     set -x
-    ./configure LDFLAGS="-s" CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --without-udev --without-usb --without-xshape --without-xshm --without-ldap --prefix=/opt/wine --disable-tests $EXTRA_ARGS
+    ./configure LDFLAGS="-s" CFLAGS="-DNDEBUG -O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --without-udev --without-usb --without-xshape --without-xshm --without-alsa --prefix=/opt/wine --disable-tests $EXTRA_ARGS
     make -j$(getconf _NPROCESSORS_ONLN)
     #todo find another way to achieve what I want without using sudo
     sudo rm -rf /opt/wine
@@ -161,12 +172,10 @@ do_build()
         rm opt/wine/lib/libwine.so.1
         printf "libwine.so.1.0" > opt/wine/lib/libwine.so.link
         printf "libwine.so.1.0" > opt/wine/lib/libwine.so.1.link
-        mv opt/wine/lib/wine/winealsa.drv.so opt/wine/lib/wine/winealsa.drv.dsp.so
     fi
     printf "$VERSION" > wineVersion.txt
     printf "Wine $VERSION" > name.txt
     #printf "debian10.zip" > depends.txt
-    cp ../changes.txt changes.txt
     cp ../version.txt version.txt
     
     if [[ $REVERTS != "" ]]
@@ -177,7 +186,7 @@ do_build()
     then
       echo "Patched: $PATCHES" >> build.txt
     fi
-    echo './configure LDFLAGS="-s" CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --without-udev --without-usb --without-xshape --without-xshm --without-ldap --prefix=/opt/wine --disable-tests $EXTRA_ARGS' >> build.txt
+    echo './configure LDFLAGS="-s" CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --without-udev --without-usb --without-xshape --without-xshm --without-ldap --without-alsa --prefix=/opt/wine --disable-tests $EXTRA_ARGS' >> build.txt
     echo "make " >> build.txt
     cp ../TinyCore15WineBase.zip ../Wine-$VERSION.zip
     zip -ur ../Wine-$VERSION.zip *
@@ -226,12 +235,14 @@ then
 #    do_build 4.1 4010 patch ddraw_waitvblank.patch
 #    do_build 3.1 3010 patch ddraw_waitvblank.patch
   else
-     do_build 9.0 9000 patch setupapidelay.patch
-     do_build 8.0 8000
-     do_build 7.0 7000 patch ddraw_waitvblank.patch
-     do_build 6.0 6000 patch ddraw_waitvblank.patch
+     do_build 11.0 11000
+     do_build 10.0 10000
+#     do_build 9.0 9000 patch setupapidelay.patch
+#     do_build 8.0 8000
+#     do_build 7.0 7000 patch ddraw_waitvblank.patch
+#     do_build 6.0 6000 patch ddraw_waitvblank.patch
 #     do_build 5.0 5000 patch ddraw_waitvblank.patch patch wine5-lz.patch revert f2e5b8070776268912e1886d4516d7ddec6969fc
-#     do_build 4.1 4010 patch ddraw_waitvblank.patch
+     do_build 4.1 4010 patch ddraw_waitvblank.patch
 #     do_build 3.1 3010 patch ddraw_waitvblank.patch
   fi
 else

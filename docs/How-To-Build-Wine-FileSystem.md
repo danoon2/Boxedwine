@@ -1,6 +1,6 @@
 These instructions will allow you to build your own version of Wine that can be used by Boxedwine.  I doubt very many people will every need to do this, but if you need a specific patch included in a particular version of Wine to run a particular game/app, then this is a good place to start.
 
-1. Install Debian 11 (32-bit). This can be in a Virtual Machine, like VMWare or on a real machine.
+1. Install Debian 11 (32-bit). This can be in a Virtual Machine, like VMWare or on a real machine.  Debian 12 does work, but some games like Deadlock will fail to launch.  This probably a bug with a syscall implementation.
 > * Just to build faster, make sure you give it a couple of cpu in the VM
 2. Make sure your user has sudo access. On Debian 11 you can do that by:
 > * Hit Alt-Ctrl-F1 and login as root
