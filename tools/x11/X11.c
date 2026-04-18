@@ -625,6 +625,14 @@ int XSetWMHints(Display* display, Window w, XWMHints* wm_hints) {
 	CALL_3_R(X11_SET_WM_HINTS, display, w, wm_hints);
 }
 
+XWMHints* XGetWMHints(Display* display, Window w) {
+	CALL_2_R(X11_GET_WM_HINTS, display, w);
+}
+
+Status XGetWMNormalHints(Display* display, Window w, XSizeHints* hints_return, long* supplied_return) {
+	CALL_4_R(X11_GET_WM_NORMAL_HINTS, display, w, hints_return, supplied_return);
+}
+
 XSizeHints* XAllocSizeHints() {
 	CALL_0_R(X11_ALLOC_SIZE_HINTS);
 }

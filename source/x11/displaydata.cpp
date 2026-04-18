@@ -147,7 +147,8 @@ int DisplayData::setInput2Mask(U32 window, U32 mask) {
 }
 
 U32 DisplayData::getNextEventSerial() {
-	return ++nextEventSerial;
+	(*pCurrentRequest)++;
+	return *pCurrentRequest;
 }
 
 int DisplayData::getContextData(U32 context, U32 contextType, U32& ptr) {

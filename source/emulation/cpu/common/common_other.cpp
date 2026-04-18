@@ -133,7 +133,7 @@ void common_fxsave(CPU* cpu, U32 address) {
     cpu->memory->writed(address + 16, 0); // f dp
     cpu->memory->writew(address + 20, 0); // f ds
     cpu->memory->writew(address + 22, 0); // reserved
-    cpu->memory->writed(address + 24, 0x1F80); // mxcsr
+    cpu->memory->writed(address + 24, cpu->mxcsr); // mxcsr
     cpu->memory->writed(address + 28, 0xFFFF); // mxcsr mask
 
     for (int i=0;i<8;i++) {
@@ -150,6 +150,7 @@ void common_fxrstor(CPU* cpu, U32 address) {
     cpu->fpu.SetCW(cpu->memory->readw(address));
     cpu->fpu.SetSW(cpu->memory->readw(address+2));
     cpu->fpu.SetTagFromAbridged(cpu->memory->readb(address+4));
+    cpu->mxcsr = cpu->memory->readd(address + 24);
     for (int i=0;i<8;i++) {
         U32 index = (i - cpu->fpu.GetTop()) & 7;
         cpu->fpu.LD80(i, cpu->memory->readq(address + 32 + index * 16), cpu->memory->readw(address + 40 + index * 16));

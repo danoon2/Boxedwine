@@ -1,8 +1,10 @@
+All tests used Wine 10 unless otherwise noted.
+
 x64/Win64 Windows 11 on Intel i7-14700 (28 core)
 
 ||25R1|26R1
 |---|---|---|
-|Quake 2 800x600 Software|79fps 1083MB|73fps 809MB
+|Quake 2 800x600 Software|79fps 1083MB|73fps 809MB (99fps with Wine 11)
 |Cinebench 11.5 CPU Test|6.15 1796MB|10.02 1403MB (63% faster)
 
 x86/Win32 Windows 11 on Intel i7-14700 (28 core)
