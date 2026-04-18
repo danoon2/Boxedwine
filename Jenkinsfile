@@ -96,9 +96,9 @@ pipeline {
                         script { 
                             gitCheckout() 
                         }
-                        bat "msbuild \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=win32"
+                        bat "\"C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\MSBuild\\Current\\Bin\\msbuild\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=win32"
                         bat "project\\msvc\\BoxedWine\\Test\\BoxedWine.exe"
-                        bat "msbuild \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=x64"
+                        bat "\"C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\MSBuild\\Current\\Bin\\msbuild\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=x64"
                         bat "project\\msvc\\BoxedWine\\x64\\Test\\BoxedWine.exe"
                     }
                 }
@@ -258,8 +258,8 @@ pipeline {
                             IF NOT EXIST "project\\msvc\\Deploy\\Win32" mkdir "project\\msvc\\Deploy\\Win32"
                             if NOT EXIST "project\\msvc\\Deploy\\Win64" mkdir "project\\msvc\\Deploy\\Win64"
                         '''
-                        bat "msbuild \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=win32"
-                        bat "msbuild \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=x64"
+                        bat "\"C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\MSBuild\\Current\\Bin\\msbuild\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=win32"
+                        bat "\"C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\MSBuild\\Current\\Bin\\msbuild\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=x64"
                         bat '''
                             move project\\msvc\\Boxedwine\\Release\\Boxedwine.exe project\\msvc\\Deploy\\Win32\\
                             copy project\\msvc\\Deploy\\Win32\\Boxedwine.exe project\\msvc\\Deploy\\Win32\\Boxedwine_console.exe
