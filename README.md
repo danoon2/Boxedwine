@@ -13,7 +13,9 @@ Boxedwine is open source and released under the terms of the GNU General Public 
 
 ## New Version 26R1
 - 50% Faster for all platforms except WASM.  Uses 20% less memory for 64-bit builds.
-
+- Added Wine 11 suport
+- Added OpenGL on top of D3D12 for Windows ARM64 build
+- 
 ## TODOs
 
 - Emscripten/Web Boxedwine is still slow, need to implement a JIT.  Multi-threaded build also studders with sound.
@@ -32,7 +34,7 @@ Boxedwine is open source and released under the terms of the GNU General Public 
 - Windows 64-bit x86/Arm64
 
 
-## Performance Test
+## Performance Test with Wine 10
 
 ![This is an image](cinebench.jpg)
 
