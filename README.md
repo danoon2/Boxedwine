@@ -8,7 +8,7 @@ Boxedwine is open source and released under the terms of the GNU General Public 
 
 - Runs 16/32-bit Windows programs
 - Works on Windows, MacOSX, Linux, and Web
-- Can run multiple versions of Wine, from 3.1 to 10.0
+- Can run multiple versions of Wine, from 3.1 to 11.0
 - Apps and games using OpenGL, Direct3D and Vulkan are supported
 
 ## New Version 26R1
