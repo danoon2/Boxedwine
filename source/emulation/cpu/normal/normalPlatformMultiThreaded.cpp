@@ -124,7 +124,6 @@ void terminateOtherThread(const KProcessPtr& process, U32 threadId) {
 
 void terminateCurrentThread(KThread* thread) {
     thread->terminating = true;
-    throw 3;
 }
 
 void unscheduleThread(KThread* thread) {
