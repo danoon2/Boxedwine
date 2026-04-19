@@ -161,7 +161,7 @@ pipeline {
                             ''' 
                         }
                         dir("project/emscripten") {
-                            stash includes: 'Deploy/Web/*', name: 'web'                            
+                            stash includes: 'Deploy/Web/**', name: 'web'                            
                         }
                     }
                 } 
