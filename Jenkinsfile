@@ -138,13 +138,26 @@ pipeline {
                                     echo "boxedwine.wasm DOES NOT exists."
                                     exit 999
                                 fi
-                                mkdir -p Deploy/Web
-                                cp Build/MultiThreaded/boxedwine.html Deploy/Web
-                                cp boxedwine.css Deploy/Web
-                                cp boxedwine-shell.js Deploy/Web
-                                cp Build/MultiThreaded/boxedwine.js Deploy/Web
-                                cp Build/MultiThreaded/boxedwine.wasm Deploy/Web
-                                cp /var/www/buildfiles/* Deploy/Web
+                                mkdir -p Deploy/Web/MultiThreaded
+                                cp Build/MultiThreaded/boxedwine.html Deploy/Web/MultiThreaded
+                                cp boxedwine.css Deploy/Web/MultiThreaded
+                                cp boxedwine-shell.js Deploy/Web/MultiThreaded
+                                cp Build/MultiThreaded/boxedwine.js Deploy/Web/MultiThreaded
+                                cp Build/MultiThreaded/boxedwine.wasm Deploy/Web/MultiThreaded
+                                cp /var/www/buildfiles/* Deploy/Web/MultiThreaded
+                                make release
+                                if [ ! -f "Build/Release/boxedwine.wasm" ] 
+                                then
+                                    echo "boxedwine.wasm DOES NOT exists."
+                                    exit 999
+                                fi
+                                mkdir -p Deploy/Web/SingleThreaded
+                                cp Build/MultiThreaded/boxedwine.html Deploy/Web/SingleThreaded
+                                cp boxedwine.css Deploy/Web/SingleThreaded
+                                cp boxedwine-shell.js Deploy/Web/SingleThreaded
+                                cp Build/SingleThreaded/boxedwine.js Deploy/Web/SingleThreaded
+                                cp Build/SingleThreaded/boxedwine.wasm Deploy/Web/SingleThreaded
+                                cp /var/www/buildfiles/* Deploy/Web/SingleThreaded
                             ''' 
                         }
                         dir("project/emscripten") {
