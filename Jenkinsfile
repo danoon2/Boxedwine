@@ -152,11 +152,11 @@ pipeline {
                                     exit 999
                                 fi
                                 mkdir -p Deploy/Web/SingleThreaded
-                                cp Build/MultiThreaded/boxedwine.html Deploy/Web/SingleThreaded
+                                cp Build/Release/boxedwine.html Deploy/Web/SingleThreaded
                                 cp boxedwine.css Deploy/Web/SingleThreaded
                                 cp boxedwine-shell.js Deploy/Web/SingleThreaded
-                                cp Build/SingleThreaded/boxedwine.js Deploy/Web/SingleThreaded
-                                cp Build/SingleThreaded/boxedwine.wasm Deploy/Web/SingleThreaded
+                                cp Build/Release/boxedwine.js Deploy/Web/SingleThreaded
+                                cp Build/Release/boxedwine.wasm Deploy/Web/SingleThreaded
                                 cp /var/www/buildfiles/* Deploy/Web/SingleThreaded
                             ''' 
                         }
