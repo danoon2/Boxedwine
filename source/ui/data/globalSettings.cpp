@@ -523,8 +523,17 @@ void GlobalSettings::loadFileLists() {
             BString exe = BString::copy(demo.child("ShortcutExe").text().as_string());
             BString installExe = BString::copy(demo.child("InstallExe").text().as_string());
             BString help = BString::copy(demo.child("Help").text().as_string());
-            BString options = BString::copy(demo.child("Options").text().as_string());
-            BString installOptions = BString::copy(demo.child("InstallOptions").text().as_string());
+            BString platformKeyOptions = "Options_" + KSystem::getPlatform();
+            BString options = BString::copy(demo.child(platformKeyOptions.c_str()).text().as_string());
+            BString platformKeyInstallOptions = "InstallOptions_" + KSystem::getPlatform();
+            BString installOptions = BString::copy(demo.child(platformKeyInstallOptions.c_str()).text().as_string());
+            
+            if (options.length() == 0) {
+                options = BString::copy(demo.child("Options").text().as_string());
+            }
+            if (installOptions.length() == 0) {
+                installOptions = BString::copy(demo.child("InstallOptions").text().as_string());
+			}
             std::vector<BString> args;
 
             help = help.replace("\\n", "\n");
@@ -661,7 +670,7 @@ void GlobalSettings::updateFileList(BString fileLocation) {
                     if (demo->iconPath.length()) {
                         int pos = demo->iconPath.lastIndexOf('/');
                         if (pos == -1) {
-                            return; // :TODO: error msg?
+                            continue; // :TODO: error msg?
                         }
                         if (!Fs::doesNativePathExist(GlobalSettings::getDemoFolder())) {
                             Fs::makeNativeDirs(GlobalSettings::getDemoFolder());
