@@ -34,10 +34,27 @@
 #define lseek64 lseek
 #endif
 
+// Tail-call dispatch support.
+// PRESERVE_NONE: callee saves no registers, enabling zero-cost tail dispatch.
+// MUSTTAIL: forces the compiler to emit a tail call (jump) rather than call+return.
+#if defined(__clang__) && __has_attribute(preserve_none)
+#define PRESERVE_NONE __attribute__((preserve_none))
+#else
+#define PRESERVE_NONE
+#endif
+
+#if defined(__clang__) && __has_cpp_attribute(clang::musttail)
+#define MUSTTAIL [[clang::musttail]]
+#elif defined(__GNUC__) && __has_cpp_attribute(gnu::musttail)
+#define MUSTTAIL [[gnu::musttail]]
+#else
+#define MUSTTAIL
+#endif
+
 #ifdef BOXEDWINE_MSVC
 #include <codeanalysis\warnings.h>
-#pragma warning(disable:26451) 
-#pragma warning(disable:6297) 
+#pragma warning(disable:26451)
+#pragma warning(disable:6297)
 #define PLATFORM_STAT_STRUCT struct _stat32i64
 #define PLATFORM_STAT _stat32i64
 #define OPCALL __fastcall
@@ -68,7 +85,15 @@ char* platform_strcasestr(const char* s1, const char* s2);
 #endif
 #define PLATFORM_STAT_STRUCT struct stat
 #define PLATFORM_STAT stat
+// On non-JIT builds (WASM/normal CPU only), apply preserve_none to all opcode
+// handlers so the full tail-call chain uses a zero-overhead calling convention.
+// On JIT builds the JIT-generated startJITOp trampoline is also stored as an
+// OpCallback, so we leave the calling convention unchanged there.
+#ifndef BOXEDWINE_JIT
+#define OPCALL PRESERVE_NONE
+#else
 #define OPCALL
+#endif
 #define platform_getcwd getcwd
 #define UNISTD <unistd.h>
 #define UTIME <utime.h>

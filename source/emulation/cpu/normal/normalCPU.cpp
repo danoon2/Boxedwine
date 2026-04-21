@@ -41,7 +41,7 @@
 #endif
 #endif
 
-#define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next);
+#define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return op->next->pfn(cpu, op->next);
 #define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
 #define NEXT_DONE_JUMP_OR_CALL() cpu->nextOp = cpu->getNextOp(JUMP_TARGET);
 
