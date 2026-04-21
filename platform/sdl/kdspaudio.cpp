@@ -41,14 +41,14 @@ public:
 		this->want.channels = 1;
 		this->want.freq = 11025;
 #ifdef __EMSCRIPTEN__
-		this->want.samples = 8192; //Must be pow of 2
+		this->want.samples = 4096; //Must be pow of 2
 #else
 		this->want.samples = 5512;
 #endif
 		this->got.channels = 1;
 		this->got.freq = 11025;
 #ifdef __EMSCRIPTEN__
-		this->got.samples = 8192; //Must be pow of 2
+		this->got.samples = 4096; //Must be pow of 2
 #else
 		this->got.samples = 5512;
 #endif

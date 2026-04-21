@@ -6,6 +6,7 @@
         let DEFAULT_AUTO_RUN = true;
         let DEFAULT_LOAD_DESKTOP = false;
         let DEFAULT_SOUND_ENABLED = true;
+        let DEFAULT_DISABLE_HIDE_CURSOR = false;
         let DEFAULT_APP_DIRECTORY = "/home/username/.wine/dosdevices/c:/files";
         let DEFAULT_BPP = 32;
         let DEFAULT_FRAME_SKIP = "0";
@@ -42,6 +43,7 @@
             Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
             Config.isSoundEnabled = getSound();
+            Config.disableHideCursor = getDisableHideCursor();
             Config.bpp = getBitsPerPixel();
 			Config.cpu = getCPU();
 			Config.envProp = getEnvProp();
@@ -240,6 +242,22 @@
             console.log("setting sound to: "+soundEnabled);
             return soundEnabled;
         }
+
+        function getDisableHideCursor() {
+            var disableHideCursor = getParameter("disableHideCursor");
+            if (!allowParameterOverride()) {
+                disableHideCursor = DEFAULT_DISABLE_HIDE_CURSOR;
+            } else if (disableHideCursor == "true") {
+                disableHideCursor = true;
+                console.log("setting disableHideCursor to: " + disableHideCursor);
+            } else if (disableHideCursor == "false") {
+                disableHideCursor = false;
+            } else {
+                disableHideCursor = DEFAULT_DISABLE_HIDE_CURSOR;
+            }            
+            return disableHideCursor;
+        }
+
         function getExecutable() {
             var prog =  getParameter("p");
             if(!allowParameterOverride() || prog===""){
@@ -587,6 +605,9 @@
             
             if(!Config.isSoundEnabled){
                 params.push("-nosound");
+            }
+            if (Config.disableHideCursor) {
+                params.push("-disableHideCursor");
             }
             if(Config.bpp != DEFAULT_BPP){
                 params.push("-bpp");
