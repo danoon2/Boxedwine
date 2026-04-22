@@ -161,8 +161,6 @@ public:
     void shrdValue(JitWidth w, RegPtr reg, RegPtr rm, U32 imm) override;
     void shldReg(JitWidth w, RegPtr reg, RegPtr rm, RegPtr cl) override;
     void shldValue(JitWidth w, RegPtr reg, RegPtr rm, U32 imm) override;
-    void incReg(JitWidth w, RegPtr dest) override;
-    void decReg(JitWidth w, RegPtr dest) override;
     void xchgReg(JitWidth w, RegPtr dest, RegPtr src) override;
     void xaddReg(JitWidth w, RegPtr reg, RegPtr rm) override;
     void mulReg(JitWidth w, RegPtr reg) override;

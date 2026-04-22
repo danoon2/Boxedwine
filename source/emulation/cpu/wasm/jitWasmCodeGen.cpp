@@ -860,10 +860,11 @@ void JitWasmCodeGen::fillFlags(U32 flags) {
     m_emitter.emitCall(m_helperSyncToHostIdx);
 }
 RegPtr JitWasmCodeGen::getZF() {
-    return readCPU(JitWidth::b32, (U32)offsetof(CPU, zf));
+    // Delegate to JitCodeGen which reads ZF from lazy flags / cpu->flags
+    return JitCodeGen::getZF();
 }
 RegPtr JitWasmCodeGen::getCF() {
-    return readCPU(JitWidth::b32, (U32)offsetof(CPU, oldCF));
+    return JitCodeGen::getCF();
 }
 void JitWasmCodeGen::orCPUFlags(RegPtr reg) {
     auto cur = readCPU(JitWidth::b32, (U32)offsetof(CPU, flags));
@@ -1016,7 +1017,7 @@ void JitWasmCodeGen::IfDF() {
     // Check the direction flag (DF) in cpu->flags
     auto cur = getReadOnlyFlags();
     m_emitter.emitLocalGet(cur->hardwareReg());
-    m_emitter.emitI32Const(DF_MASK);
+    m_emitter.emitI32Const(DF);
     m_emitter.emitOp(WASM_I32_AND);
     m_emitter.emitIf();
 }
@@ -1154,6 +1155,12 @@ U32  JitWasmCodeGen::getBufferLocation(U32 id)   { return id < m_patchLocations.
 void JitWasmCodeGen::copyBuffer(U8* dst, U32 sz) { /* WASM binary managed separately */ }
 U32  JitWasmCodeGen::getIfJumpSize()             { return 4; } // placeholder
 
+// MarkJumpLocation / Goto: used by JitCodeGen for intra-block branch patching.
+// WASM uses structural control flow so binary patching isn't needed; these are
+// no-ops that satisfy the interface.
+U32  JitWasmCodeGen::MarkJumpLocation() { return markBufferLocation(); }
+void JitWasmCodeGen::Goto(U32 location) { /* structural control flow — no binary patch needed */ }
+
 // ---------------------------------------------------------------------------
 // Module instantiation hooks
 // ---------------------------------------------------------------------------
@@ -1226,6 +1233,19 @@ void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {
     JitCodeGen* jit = startNewJIT(cpu);
     jit->doJIT(address, op);
     delete jit;
+}
+
+// ---------------------------------------------------------------------------
+// clearJitBlock: called by kmemory when evicting JIT blocks.
+// For WASM, release the compiled function from wasmTable.
+// ---------------------------------------------------------------------------
+void clearJitBlock(const std::vector<void*>& jitOps) {
+    for (void* p : jitOps) {
+        if (p) {
+            int tableIdx = (int)(uintptr_t)p;
+            boxedwine_wasm_free_block(tableIdx);
+        }
+    }
 }
 
 #endif // BOXEDWINE_WASM_JIT

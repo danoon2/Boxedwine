@@ -213,9 +213,11 @@ public:
     // Produce the complete WASM binary (magic + version + all sections).
     std::vector<U8> finalize();
 
-private:
+public:
     static void appendULEB128(std::vector<U8>& buf, U64 val);
     static void appendSLEB128(std::vector<U8>& buf, S64 val);
+
+private:
     static void appendStr(std::vector<U8>& buf, const char* s);
     static void appendSection(std::vector<U8>& result, WasmSection id,
                                const std::vector<U8>& content);

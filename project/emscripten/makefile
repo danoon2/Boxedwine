@@ -52,14 +52,16 @@ $(info MAKEFLAGS $(MAKE_FLAGS))
 
 SOURCES += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/source/sdl/emscripten/*.cpp)
-# WASM JIT backend (only compiled when BOXEDWINE_WASM_JIT is defined)
-ifneq (,$(findstring BOXEDWINE_WASM_JIT,$(EXTRA_CPP_FLAGS)))
-SOURCES += $(wildcard $(PROJDIR)/source/emulation/cpu/wasm/*.cpp)
-SOURCES += $(wildcard $(PROJDIR)/source/emulation/cpu/jit/*.cpp)
-endif
 SOURCES += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/platform/linux/*.cpp)
-SOURCES += $(shell find $(PROJDIR)/source/emulation -type f -name '*.cpp')
+# For the WASM JIT build, exclude the native JIT backends (x32, armv8) which
+# each define their own startNewJIT() that would clash with the wasm/ backend.
+# For normal builds, exclude the wasm/ directory to avoid empty compilation units.
+ifneq (,$(findstring BOXEDWINE_WASM_JIT,$(EXTRA_CPP_FLAGS)))
+SOURCES += $(shell find $(PROJDIR)/source/emulation -type f -name '*.cpp' | grep -v '/x32/' | grep -v '/armv8/')
+else
+SOURCES += $(shell find $(PROJDIR)/source/emulation -type f -name '*.cpp' | grep -v '/wasm/')
+endif
 SOURCES += $(wildcard $(PROJDIR)/source/io/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/source/kernel/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/source/kernel/**/*.cpp)
