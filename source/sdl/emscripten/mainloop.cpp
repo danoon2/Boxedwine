@@ -92,7 +92,7 @@ bool isMainthread() {
 }
 
 void mainloop() {
-    U32 startTime = KNativeSystem::getTicks();
+    U64 startTime = KSystem::getMicroCounter();
     U32 t;
     U32 count=0;
     BString mipsTitle;
@@ -115,7 +115,12 @@ void mainloop() {
         if (!ran) {
             break;
         }
-        if ((KNativeSystem::getTicks()-startTime)>250 || KNativeSystem::getScreen()->presentedSinceLastCheck()) {
+        U64 diff = KSystem::getMicroCounter() - startTime;
+
+        if (diff>10000 || KNativeSystem::getScreen()->presentedSinceLastCheck()) {
+            if (diff > 100000) {
+                klog_fmt("ran main loop in %dms", (U32)diff / 1000);
+            }
             break;
         }
     };

@@ -41,14 +41,14 @@ public:
 		this->want.channels = 1;
 		this->want.freq = 11025;
 #ifdef __EMSCRIPTEN__
-		this->want.samples = 8192; //Must be pow of 2
+		this->want.samples = 4096; //Must be pow of 2
 #else
 		this->want.samples = 5512;
 #endif
 		this->got.channels = 1;
 		this->got.freq = 11025;
 #ifdef __EMSCRIPTEN__
-		this->got.samples = 8192; //Must be pow of 2
+		this->got.samples = 4096; //Must be pow of 2
 #else
 		this->got.samples = 5512;
 #endif
@@ -119,7 +119,6 @@ public:
 	bool open = false;
 	std::deque<U8> audioBuffer;
 	bool closeWhenDone = false;
-	BOXEDWINE_MUTEX mutex;
 };
 
 // not really a voice, currently they are not mixed
@@ -131,7 +130,6 @@ void audioCallback(void* userdata, U8* stream, S32 len) {
 		return;
 	}
 	std::shared_ptr<KDspAudioSdl> data = voices.front();
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(data->mutex);
 	if (data->closeWhenDone && data->audioBuffer.size()==0 && (data->cvtBufPos == 0 || data->cvtBufPos >= data->cvt.len_cvt)) {
 		data->closeAudioFromAudioThread();
 		memset(stream, sdlSilence, len);
@@ -254,11 +252,12 @@ void KDspAudioSdl::closeAudio() {
 	if (this->open) {
 		bool needClose = true;
 		{
-			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->mutex);
+			SDL_LockAudio();
 			if (audioBuffer.size() || (this->cvtBufPos != 0 && this->cvtBufPos < this->cvt.len_cvt)) {
 				closeWhenDone = true;
 				needClose = false;
 			}
+			SDL_UnlockAudio();
 		}
 		if (needClose) {
 			closeSdlAudio();
@@ -307,7 +306,7 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		timeSinceLastWrite = KSystem::getMilliesSinceStart();
 		return len;
 	}
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->mutex);
+	SDL_LockAudio();
 	if (this->audioBuffer.size() > delay) {
 		SDL_UnlockAudio();
 		return -K_EWOULDBLOCK;
@@ -315,6 +314,7 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 	U32 blockSize = bytesPerSampleWant() * want.channels;
 	len = std::min(len, ((delay - (U32)this->audioBuffer.size()) & ~(blockSize - 1)));
 	audioBuffer.insert(this->audioBuffer.end(), data, data + len);
+	SDL_UnlockAudio();
 	return len;	
 }
 
