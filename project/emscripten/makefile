@@ -15,6 +15,17 @@ multiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -pthread
 multiThreaded: export BUILD_DIR := Build/MultiThreaded
 multiThreaded: export SHELL_FILE := shell.html
 multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32
+# WASM JIT build: compiles each basic block to a standalone WASM module that
+# is instantiated at runtime (inspired by the QEMU wasm64 TCG backend).
+# Key flags:
+#   BOXEDWINE_WASM_JIT  – enables the new wasm/ JIT backend
+#   BOXEDWINE_JIT       – pulled in automatically by boxedwine.h
+#   -sALLOW_TABLE_GROWTH – allows addFunction() to grow the wasmTable
+#   -sALLOW_MEMORY_GROWTH – compiled blocks can allocate their own memory
+jit: export BUILD_DIR := Build/Jit
+jit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
+jit: export SHELL_FILE := shell.html
+jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH
 
 cpus := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
 make_jobs := $(shell n='$(cpus)'; expr "$$n" : '^[0-9][0-9]*$$' >/dev/null && [ "$$n" -gt 2 ] && expr "$$n" - 1)
@@ -25,6 +36,7 @@ $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
 jit release test testJit multiThreaded testMultiThreaded:
 	@$(MAKE)
+
 
 clean:
 	$(RM) -r Build
@@ -40,6 +52,11 @@ $(info MAKEFLAGS $(MAKE_FLAGS))
 
 SOURCES += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/source/sdl/emscripten/*.cpp)
+# WASM JIT backend (only compiled when BOXEDWINE_WASM_JIT is defined)
+ifneq (,$(findstring BOXEDWINE_WASM_JIT,$(EXTRA_CPP_FLAGS)))
+SOURCES += $(wildcard $(PROJDIR)/source/emulation/cpu/wasm/*.cpp)
+SOURCES += $(wildcard $(PROJDIR)/source/emulation/cpu/jit/*.cpp)
+endif
 SOURCES += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/platform/linux/*.cpp)
 SOURCES += $(shell find $(PROJDIR)/source/emulation -type f -name '*.cpp')
