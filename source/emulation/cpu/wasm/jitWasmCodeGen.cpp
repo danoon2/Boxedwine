@@ -23,6 +23,7 @@
 #include "jitWasmCodeGen.h"
 #include "../jit/jitCodeGen.h"
 #include "../common/cpu.h"
+#include "../normal/normalCPU.h"
 #include "../../softmmu/soft_code_page.h"
 
 #include <emscripten.h>
@@ -1450,7 +1451,17 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     );
 
     if (tableIdx < 0) {
-        // Instantiation failed — leave pfn as-is (normal CPU handles it).
+        // Instantiation failed — fall back to the normal CPU interpreter
+        // for every op in the block. Without this, op->pfn stays as
+        // firstDynamicOp, which would recompile-then-call-self every time
+        // the op runs → infinite loop.
+        DecodedOp* cur = op;
+        while (cur) {
+            cur->pfn = NormalCPU::getFunctionForOp(cur);
+            cur->pfnJitCode = nullptr;
+            if (cur->next == nullptr) break;
+            cur = cur->next;
+        }
         return;
     }
 
