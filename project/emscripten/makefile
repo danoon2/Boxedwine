@@ -25,13 +25,13 @@ multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32
 jit: export BUILD_DIR := Build/Jit
 jit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
 jit: export SHELL_FILE := shell.html
-jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH
+jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
 # Like the test target but with the WASM JIT enabled, so the CPU test suite
 # exercises JIT-compiled blocks instead of the normal interpreter.
 testJit: export BUILD_DIR := Build/TestJit
 testJit: export EXTRA_CPP_FLAGS := -D__TEST -DBOXEDWINE_WASM_JIT
 testJit: export SHELL_FILE := shelltest.html
-testJit: export EXTRA_LD_FLAGS := --emrun -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH
+testJit: export EXTRA_LD_FLAGS := --emrun -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction
 
 cpus := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
 make_jobs := $(shell n='$(cpus)'; expr "$$n" : '^[0-9][0-9]*$$' >/dev/null && [ "$$n" -gt 2 ] && expr "$$n" - 1)
@@ -108,6 +108,28 @@ TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
 
 ifeq ($(BUILD_DIR), Build/Test)
 SRCS := $(TEST_SOURCES)
+else ifeq ($(BUILD_DIR), Build/TestJit)
+# TestJit: use the test sources but swap in the WASM JIT emulation sources
+# (exclude x32/armv8 backends which have their own startNewJIT definitions).
+TESTJIT_EMULATION := $(shell find $(PROJDIR)/source/emulation -type f -name '*.cpp' | grep -v '/x32/' | grep -v '/armv8/')
+SRCS := $(wildcard $(PROJDIR)/source/test/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/sdl/emscripten/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/platform/linux/*.cpp)
+SRCS += $(TESTJIT_EMULATION)
+SRCS += $(wildcard $(PROJDIR)/source/io/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/kernel/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/kernel/**/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/util/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/opengl/sdl/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/opengl/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/vulkan/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/x11/*.cpp)
+SRCS += $(PROJDIR)/lib/zlib/contrib/minizip/ioapi.c
+SRCS += $(PROJDIR)/lib/zlib/contrib/minizip/mztools.c
+SRCS += $(PROJDIR)/lib/zlib/contrib/minizip/unzip.c
+SRCS += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
 else
 SRCS := $(SOURCES)
 endif

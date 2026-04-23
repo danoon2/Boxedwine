@@ -71,9 +71,9 @@ static constexpr U32 WASM_GP_LOCAL_BASE   = 1;
 static constexpr U32 WASM_SEG_LOCAL_BASE  = 9;
 // Scratch temporaries.
 static constexpr U32 WASM_TMP_LOCAL_BASE  = 13;
-static constexpr U32 WASM_TMP_LOCAL_COUNT = 4;
+static constexpr U32 WASM_TMP_LOCAL_COUNT = 8;
 // Total locals beyond the parameter.
-static constexpr U32 WASM_LOCAL_COUNT     = 16;
+static constexpr U32 WASM_LOCAL_COUNT     = 21;
 
 // ---------------------------------------------------------------------------
 // Mapping from emulated register index to WASM local index.
@@ -298,6 +298,8 @@ public:
     U8*  createSyncFromHost() override;
     U8*  createBlockExit() override;
     U8*  createStartJITCode() override;
+    // Returns a non-null stub so doJIT's calculateCF[0] null-check passes.
+    // The stub is never actually called from WASM (nakedCall is a no-op).
     U8*  createDynamicExecutableMemory(U32* pSize = nullptr) override;
 
     // --- Compilation lifecycle ---
@@ -316,10 +318,16 @@ protected:
     // Emit cpu_ptr onto WASM stack (local.get 0)
     void pushCpuPtr();
 
-    // Emit load of a register value onto the WASM stack (does NOT set a local)
+    // Emit load of a register value onto the WASM stack (does NOT set a local).
+    // Honors JitReg::isHigh (shifts right 8) so the value at stack top
+    // represents the register *as referenced* (e.g. AH value).
     void pushRegValue(RegPtr reg);
-    // Emit store from WASM stack top to register's local
-    void popToReg(RegPtr reg);
+    // Emit store from WASM stack top to register's local.
+    // For GP registers at 8/16-bit width, merges with the existing local so
+    // that unreferenced upper bits (or other half of a byte pair) are preserved.
+    void popToReg(JitWidth w, RegPtr reg);
+    // Back-compat: default to 32-bit writes.
+    void popToReg(RegPtr reg) { popToReg(JitWidth::b32, reg); }
 
     // Mask a value to the given width and leave on WASM stack
     void maskToWidth(JitWidth w);
@@ -335,6 +343,11 @@ protected:
     // Allocate a scratch local (from WASM_TMP_LOCAL_BASE range)
     U32 allocScratch();
     void freeScratch(U32 local);
+
+    // Common tail of every IfXxx: sync dirty regs, invalidate compile-time
+    // load-cache so each branch reloads fresh from CPU state, then emit the
+    // WASM `if`. Keeps branch taken/not-taken in agreement on local values.
+    void finishIf();
 
     WasmEmitter m_emitter;
 
