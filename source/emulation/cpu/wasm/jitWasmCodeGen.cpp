@@ -144,6 +144,36 @@ static void wasmHelper_computeZF(CPU* cpu) {
     cpu->tmpReg = cpu->getZF() ? 1 : 0;
 }
 
+// Materialize all lazy flags into cpu->flags; reset lazyFlagType to FLAGS_NONE.
+void common_fillFlags(CPU* cpu);
+static void wasmHelper_fillFlags(CPU* cpu) {
+    common_fillFlags(cpu);
+}
+
+// One helper per JitConditional: evaluates the condition against cpu state
+// (honoring lazy flags via cpu->getXF()) and stashes 0/1 in cpu->tmpReg.
+// Separate helpers avoid any need for an input parameter — using
+// cpu->src.u32 would clobber live lazy-flag state.
+#define WASM_COND_HELPER(NAME, EXPR)                                           \
+    static void wasmHelper_cond_##NAME(CPU* cpu) { cpu->tmpReg = (EXPR) ? 1 : 0; }
+WASM_COND_HELPER(O,   cpu->getOF())
+WASM_COND_HELPER(NO,  !cpu->getOF())
+WASM_COND_HELPER(B,   cpu->getCF())
+WASM_COND_HELPER(NB,  !cpu->getCF())
+WASM_COND_HELPER(Z,   cpu->getZF())
+WASM_COND_HELPER(NZ,  !cpu->getZF())
+WASM_COND_HELPER(BE,  cpu->getCF() || cpu->getZF())
+WASM_COND_HELPER(NBE, !cpu->getCF() && !cpu->getZF())
+WASM_COND_HELPER(S,   cpu->getSF())
+WASM_COND_HELPER(NS,  !cpu->getSF())
+WASM_COND_HELPER(P,   cpu->getPF())
+WASM_COND_HELPER(NP,  !cpu->getPF())
+WASM_COND_HELPER(L,   (cpu->getSF() ? 1 : 0) != (cpu->getOF() ? 1 : 0))
+WASM_COND_HELPER(NL,  (cpu->getSF() ? 1 : 0) == (cpu->getOF() ? 1 : 0))
+WASM_COND_HELPER(LE,  cpu->getZF() || ((cpu->getSF() ? 1 : 0) != (cpu->getOF() ? 1 : 0)))
+WASM_COND_HELPER(NLE, !cpu->getZF() && ((cpu->getSF() ? 1 : 0) == (cpu->getOF() ? 1 : 0)))
+#undef WASM_COND_HELPER
+
 // ---------------------------------------------------------------------------
 // Helper table: array of C++ function pointers exported to WASM modules.
 // Order must match WasmHelperIdx below.
@@ -160,6 +190,24 @@ static const void* g_wasmHelperTable[] = {
     (void*)wasmHelper_emulateSingleOp,
     (void*)wasmHelper_computeCF,
     (void*)wasmHelper_computeZF,
+    (void*)wasmHelper_fillFlags,
+    // 16 condition helpers — index order MUST match JitConditional enum.
+    (void*)wasmHelper_cond_O,
+    (void*)wasmHelper_cond_NO,
+    (void*)wasmHelper_cond_B,
+    (void*)wasmHelper_cond_NB,
+    (void*)wasmHelper_cond_Z,
+    (void*)wasmHelper_cond_NZ,
+    (void*)wasmHelper_cond_BE,
+    (void*)wasmHelper_cond_NBE,
+    (void*)wasmHelper_cond_S,
+    (void*)wasmHelper_cond_NS,
+    (void*)wasmHelper_cond_P,
+    (void*)wasmHelper_cond_NP,
+    (void*)wasmHelper_cond_L,
+    (void*)wasmHelper_cond_NL,
+    (void*)wasmHelper_cond_LE,
+    (void*)wasmHelper_cond_NLE,
 };
 static constexpr int WASM_HELPER_COUNT = (int)(sizeof(g_wasmHelperTable) / sizeof(g_wasmHelperTable[0]));
 
@@ -175,6 +223,8 @@ enum WasmHelperIdx {
     HELPER_EMULATE_SINGLE_OP = 8,
     HELPER_COMPUTE_CF        = 9,
     HELPER_COMPUTE_ZF        = 10,
+    HELPER_FILL_FLAGS        = 11,
+    HELPER_COND_BASE         = 12, // add JitConditional index to this
 };
 
 // ---------------------------------------------------------------------------
@@ -958,10 +1008,12 @@ void JitWasmCodeGen::storeLazyFlagsOldCF(RegPtr reg) {
     writeCPU(JitWidth::b32, (U32)offsetof(CPU, oldCF), reg);
 }
 void JitWasmCodeGen::fillFlags(U32 flags) {
-    // Store placeholder; actual flag computation is via helpers
+    // Materialize lazy flags: call common_fillFlags(cpu).
     syncDirtyRegsToHost();
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(m_helperSyncToHostIdx);
+    m_emitter.emitCall(HELPER_FILL_FLAGS);
+    m_gpLoaded.fill(false);
+    currentLazyFlags = FLAGS_NONE;
 }
 RegPtr JitWasmCodeGen::getZF() {
     // Sync dirty GP regs so helper sees correct CPU state, then call
@@ -1030,7 +1082,21 @@ void JitWasmCodeGen::writeFlags(RegPtr flags) {
     writeCPU(JitWidth::b32, (U32)offsetof(CPU, flags), flags);
 }
 RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
-    return getConditionCalculationReg(0); // base class handles most of this
+    // Per-condition helper stashes 0/1 in cpu->tmpReg. Done this way (rather
+    // than one helper taking a condition parameter) because our helper
+    // import signature is (i32)->() — a condition arg would have to go
+    // through a CPU scratch field, and every candidate (src.u32, dst.u32,
+    // etc.) is already reserved for lazy-flag state.
+    syncDirtyRegsToHost();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_COND_BASE + (U32)cond);
+
+    if (!res) res = getTmpReg();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, tmpReg));
+    m_emitter.emitLocalSet(res->hardwareReg());
+    m_gpLoaded.fill(false);
+    return res;
 }
 RegPtr JitWasmCodeGen::getConditionCalculationReg(U32 index) {
     return readCPU(JitWidth::b32, (U32)offsetof(CPU, flags));
@@ -1040,39 +1106,44 @@ RegPtr JitWasmCodeGen::getConditionCalculationReg(U32 index) {
 // Control flow (If/Else/End/Goto)
 // ---------------------------------------------------------------------------
 void JitWasmCodeGen::finishIf() {
-    // Emit the WASM `if`. We can't inject register sync here: the condition
-    // value is already on the WASM value stack, and emitting stores before
-    // `if` would move it below intermediate pushes and violate the spec's
-    // "condition at top-of-stack" invariant used by some validators.
-    // Instead, we eagerly load segments/GP regs at function entry so every
-    // branch sees valid locals without needing per-branch sync.
     m_emitter.emitIf();
 }
 
+void JitWasmCodeGen::branchBoundary() {
+    syncDirtyRegsToHost();
+    m_gpLoaded.fill(false);
+    m_segLoaded.fill(false);
+}
+
 void JitWasmCodeGen::If(JitWidth w, RegPtr reg) {
+    branchBoundary();
     pushRegValue(reg);
     maskToWidth(w);
     finishIf();
 }
 void JitWasmCodeGen::IfNot(JitWidth w, RegPtr reg) {
+    branchBoundary();
     pushRegValue(reg);
     maskToWidth(w);
     m_emitter.emitOp(WASM_I32_EQZ);
     finishIf();
 }
 void JitWasmCodeGen::IfTest(JitWidth w, RegPtr reg, RegPtr mask) {
+    branchBoundary();
     pushRegValue(reg);
     pushRegValue(mask);
     m_emitter.emitOp(WASM_I32_AND);
     finishIf();
 }
 void JitWasmCodeGen::IfTest(JitWidth w, RegPtr reg, U32 mask) {
+    branchBoundary();
     pushRegValue(reg);
     m_emitter.emitI32Const((S32)mask);
     m_emitter.emitOp(WASM_I32_AND);
     finishIf();
 }
 void JitWasmCodeGen::IfNotTestBit(JitWidth w, RegPtr reg, U32 bitPos) {
+    branchBoundary();
     pushRegValue(reg);
     m_emitter.emitI32Const((S32)(1u << bitPos));
     m_emitter.emitOp(WASM_I32_AND);
@@ -1080,50 +1151,59 @@ void JitWasmCodeGen::IfNotTestBit(JitWidth w, RegPtr reg, U32 bitPos) {
     finishIf();
 }
 void JitWasmCodeGen::IfTestBit(JitWidth w, RegPtr reg, U32 bitPos) {
+    branchBoundary();
     pushRegValue(reg);
     m_emitter.emitI32Const((S32)(1u << bitPos));
     m_emitter.emitOp(WASM_I32_AND);
     finishIf();
 }
 void JitWasmCodeGen::IfEqual(JitWidth w, RegPtr reg, DYN_PTR_SIZE value) {
+    branchBoundary();
     pushRegValue(reg);
     m_emitter.emitI32Const((S32)value);
     m_emitter.emitOp(WASM_I32_EQ);
     finishIf();
 }
 void JitWasmCodeGen::IfEqual(JitWidth w, RegPtr r1, RegPtr r2) {
+    branchBoundary();
     pushRegValue(r1); pushRegValue(r2);
     m_emitter.emitOp(WASM_I32_EQ);
     finishIf();
 }
 void JitWasmCodeGen::IfNotEqual(JitWidth w, RegPtr reg, DYN_PTR_SIZE value) {
+    branchBoundary();
     pushRegValue(reg);
     m_emitter.emitI32Const((S32)value);
     m_emitter.emitOp(WASM_I32_NE);
     finishIf();
 }
 void JitWasmCodeGen::IfNotEqual(JitWidth w, RegPtr reg, RegPtr r2) {
+    branchBoundary();
     pushRegValue(reg); pushRegValue(r2);
     m_emitter.emitOp(WASM_I32_NE);
     finishIf();
 }
 void JitWasmCodeGen::IfLessThan2(JitWidth w, RegPtr reg, U32 value) {
+    branchBoundary();
     pushRegValue(reg);
     m_emitter.emitI32Const((S32)value);
     m_emitter.emitOp(WASM_I32_LT_U);
     finishIf();
 }
 void JitWasmCodeGen::IfLessThan2(JitWidth w, RegPtr r1, RegPtr r2) {
+    branchBoundary();
     pushRegValue(r1); pushRegValue(r2);
     m_emitter.emitOp(WASM_I32_LT_U);
     finishIf();
 }
 void JitWasmCodeGen::IfGreaterThanOrEqual(JitWidth w, RegPtr r1, RegPtr r2) {
+    branchBoundary();
     pushRegValue(r1); pushRegValue(r2);
     m_emitter.emitOp(WASM_I32_GE_U);
     finishIf();
 }
 void JitWasmCodeGen::IfGreaterThanOrEqual(JitWidth w, RegPtr reg, U32 value) {
+    branchBoundary();
     pushRegValue(reg);
     m_emitter.emitI32Const((S32)value);
     m_emitter.emitOp(WASM_I32_GE_U);
@@ -1131,8 +1211,12 @@ void JitWasmCodeGen::IfGreaterThanOrEqual(JitWidth w, RegPtr reg, U32 value) {
 }
 void JitWasmCodeGen::IfNotCPU(JitWidth w, RegPtr sib, U8 lsl, U32 offset) {
     // read from CPU struct and If-not
+    branchBoundary();
     auto tmp = readCPU(w, sib, lsl, offset);
-    IfNot(w, tmp);
+    pushRegValue(tmp);
+    maskToWidth(w);
+    m_emitter.emitOp(WASM_I32_EQZ);
+    finishIf();
     freeScratch(tmp->hardwareReg());
 }
 void JitWasmCodeGen::IfCondition(JitConditional cond) {
@@ -1141,13 +1225,17 @@ void JitWasmCodeGen::IfCondition(JitConditional cond) {
     If(JitWidth::b32, r);
 }
 void JitWasmCodeGen::JumpIfCondition(JitConditional cond, U32 address) {
-    // Used for direct conditional jumps in compiled blocks — emit as if/br
+    // This is called when canJumpInBlock() is true — i.e. the target EIP is
+    // inside the current JIT block. Native backends emit a direct branch;
+    // we don't have intra-block structural jumps, so treat it as a block
+    // exit that writes the jump target into cpu->eip.
     IfCondition(cond);
+    writeEip(address);
     blockExit();
     EndIf();
 }
 void JitWasmCodeGen::IfDF() {
-    // Check the direction flag (DF) in cpu->flags
+    branchBoundary();
     auto cur = getReadOnlyFlags();
     m_emitter.emitLocalGet(cur->hardwareReg());
     m_emitter.emitI32Const(DF);
@@ -1155,26 +1243,33 @@ void JitWasmCodeGen::IfDF() {
     finishIf();
 }
 void JitWasmCodeGen::IfSmallStack() {
-    // FIXME: this approximates small-stack mode by checking ESP < 0x10000.
-    // The correct check would read cpu->stackNotMask, but the lazy
-    // load-cache in this backend breaks when segment/GP locals are assigned
-    // inside one branch of an if/else pair — since the true branch of
-    // Push/Pop16 uses `getReadOnlySegAddress(SS)`, the else branch would
-    // read an uninitialized local at runtime. Tests start with ESP=4096 so
-    // they always take the small-stack path where SS is loaded; games that
-    // set stackNotMask explicitly will hit the correct path too once
-    // per-branch cache invalidation is implemented.
-    loadGPReg(4);
-    m_emitter.emitLocalGet(wasmLocalForGPReg(4));
-    m_emitter.emitI32Const(0x10000);
-    m_emitter.emitOp(WASM_I32_LT_U);
+    // Small-stack mode is indicated by a non-zero cpu->stackNotMask. Loaded
+    // inline rather than via readCPU()+If(reg) so branchBoundary runs once.
+    branchBoundary();
+    U32 scratch = allocScratch();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, stackNotMask));
+    m_emitter.emitLocalSet(scratch);
+    m_emitter.emitLocalGet(scratch);
     finishIf();
+    freeScratch(scratch);
 }
-void JitWasmCodeGen::StartElse() { m_emitter.emitElse(); }
-void JitWasmCodeGen::EndIf()     { m_emitter.emitEnd(); }
+void JitWasmCodeGen::StartElse() {
+    branchBoundary();
+    m_emitter.emitElse();
+}
+void JitWasmCodeGen::EndIf() {
+    branchBoundary();
+    m_emitter.emitEnd();
+}
 void JitWasmCodeGen::JumpInBlock(U32 address) {
-    // Direct intra-block jump — not yet supported in first impl; fall back
-    blockExit();
+    // No native intra-block branching: set EIP and exit. fetchNextOp picks
+    // back up at the target op in the next dispatcher round.
+    writeEip(address);
+    syncDirtyRegsToHost();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(m_helperGetNextOpIdx);
+    m_emitter.emitReturn();
 }
 void JitWasmCodeGen::blockExit() {
     syncDirtyRegsToHost();

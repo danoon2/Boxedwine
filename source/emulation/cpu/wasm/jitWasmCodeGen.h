@@ -344,10 +344,15 @@ protected:
     U32 allocScratch();
     void freeScratch(U32 local);
 
-    // Common tail of every IfXxx: sync dirty regs, invalidate compile-time
-    // load-cache so each branch reloads fresh from CPU state, then emit the
-    // WASM `if`. Keeps branch taken/not-taken in agreement on local values.
+    // Common tail of every IfXxx: emit the WASM `if`. The condition is
+    // already on the value stack.
     void finishIf();
+
+    // Called at the start of each IfXxx and at StartElse/EndIf: flush any
+    // dirty GP regs to the CPU struct and invalidate the compile-time
+    // load-cache. This keeps the two branches in sync: neither can assume a
+    // local was populated by a load emitted in the other.
+    void branchBoundary();
 
     WasmEmitter m_emitter;
 
