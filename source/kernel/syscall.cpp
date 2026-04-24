@@ -397,7 +397,7 @@ static U32 syscall_getppid(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_getpgrp(CPU* cpu, U32 eipCount) {	
-    U32 result = cpu->thread->process->groupId;;
+    U32 result = cpu->thread->process->groupId;
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "getpgrp: result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1085,7 +1085,7 @@ static U32 syscall_getresuid32(CPU* cpu, U32 eipCount) {
     if (ARG1)
         cpu->memory->writed(ARG1, cpu->thread->process->userId);
     if (ARG2)
-        cpu->memory->writed(ARG2, cpu->thread->process->userId);
+        cpu->memory->writed(ARG2, cpu->thread->process->effectiveUserId);
     if (ARG3)
         cpu->memory->writed(ARG3, cpu->thread->process->userId);
     U32 result = 0;
@@ -1209,7 +1209,7 @@ static U32 syscall_getxattr(CPU* cpu, U32 eipCount) {
                 result = -K_ENODATA;
             } else if ((U32)attr.length() < ARG4) {
                 cpu->memory->strcpy(ARG3, attr.c_str());
-                result = 0;
+                result = attr.length();
             } else {
                 result = -K_ERANGE;
             }
@@ -1233,7 +1233,7 @@ static U32 syscall_lgetxattr(CPU* cpu, U32 eipCount) {
                 result = -K_ENODATA;
             } else if ((U32)attr.length() < ARG4) {
                 cpu->memory->strcpy(ARG3, attr.c_str());
-                result = 0;
+                result = attr.length();
             } else {
                 result = -K_ERANGE;
             }
@@ -1260,7 +1260,7 @@ static U32 syscall_fgetxattr(CPU* cpu, U32 eipCount) {
                 result = -K_ENODATA;
             } else if ((U32)attr.length() < ARG4) {
                 cpu->memory->strcpy(ARG3, attr.c_str());
-                result = 0;
+                result = attr.length();
             } else {
                 result = -K_ERANGE;
             }
@@ -1526,10 +1526,10 @@ static U32 syscall_symlinkat(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_readlinkat(CPU* cpu, U32 eipCount) {
-    if (!cpu->memory->canRead(ARG1 >> K_PAGE_SHIFT)) {
+    if (!cpu->memory->canRead(ARG2 >> K_PAGE_SHIFT)) {
         return -K_EFAULT;
     }
-    BString pathname = cpu->memory->readString(ARG1);    
+    BString pathname = cpu->memory->readString(ARG2);    
     SYS_LOG1(SYSCALL_FILE, cpu, "readlinkat: dirfd=%d pathname=%X(%s) ", ARG1, ARG2, pathname.c_str());
     U32 result = cpu->thread->process->readlinkat(ARG1, pathname, ARG3, ARG4);
     if (syscallMask) {
