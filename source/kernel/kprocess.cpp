@@ -2499,10 +2499,18 @@ U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags, bool time64
 
     if (times) {
         if (time64) {
+            /*
+            struct __timespec64
+            {
+                __time64_t tv_sec;         // Seconds
+                __int32_t tv_nsec;         // Nanoseconds
+                __int32_t : 32;            // Padding
+            };
+            */
             lastAccessTime = memory->readq(times);
             lastAccessTimeNano = memory->readd(times + 8);
-            lastModifiedTime = memory->readq(times + 12);
-            lastModifiedTimeNano = memory->readd(times + 20);
+            lastModifiedTime = memory->readq(times + 16);
+            lastModifiedTimeNano = memory->readd(times + 24);
         } else {
             lastAccessTime = memory->readd(times);
             lastAccessTimeNano = memory->readd(times + 4);
