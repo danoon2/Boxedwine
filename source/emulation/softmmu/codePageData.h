@@ -46,6 +46,10 @@ public:
 	DecodedOp* getPreviousOpAndRemoveIfOverlapping(U32 address);
 	void remove(U32 address, U32 len, bool becauseOfWrite);
 	void iterateOps(U32 address, U32 len, OpCacheCallback callback, void* pData);
+	// Walk every cached DecodedOp and append any non-null pfnJitCode value
+	// into `out`. Used to hand JIT block pointers to clearJitBlock when the
+	// cache is about to be wiped.
+	void collectAllJitBlocks(std::vector<void*>& out);
 	void add(DecodedOp* op, U32 address, U32 opCount);
 	bool isAddressDynamic(U32 address, U32 len);
 	void clearPageWriteCounts(U32 pageIndex);

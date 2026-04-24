@@ -994,16 +994,22 @@ void JitWasmCodeGen::storeLazyFlagType(LazyFlagType flags) {
     writeCPUValue(JitWidth::b8, (U32)offsetof(CPU, lazyFlagType), (DYN_PTR_SIZE)flags);
 }
 void JitWasmCodeGen::storeLazyFlagsDest(RegPtr reg) {
-    writeCPU(JitWidth::b32, (U32)offsetof(CPU, dst.u32), reg);
+    // isHigh regs point at the high byte of reg[0..3]; pushRegValue already
+    // shifts right 8 for them, so a b8 store at dst.u32's low byte is
+    // correct (the lazy-flag code reads dst.u8). Non-high regs go in as b32.
+    writeCPU(reg->isHigh ? JitWidth::b8 : JitWidth::b32,
+             (U32)offsetof(CPU, dst.u32), reg);
 }
 void JitWasmCodeGen::storeLazyFlagsSrc(RegPtr reg) {
-    writeCPU(JitWidth::b32, (U32)offsetof(CPU, src.u32), reg);
+    writeCPU(reg->isHigh ? JitWidth::b8 : JitWidth::b32,
+             (U32)offsetof(CPU, src.u32), reg);
 }
 void JitWasmCodeGen::storeLazyFlagsSrc(U32 value) {
     writeCPUValue(JitWidth::b32, (U32)offsetof(CPU, src.u32), value);
 }
 void JitWasmCodeGen::storeLazyFlagsResult(RegPtr reg) {
-    writeCPU(JitWidth::b32, (U32)offsetof(CPU, result.u32), reg);
+    writeCPU(reg->isHigh ? JitWidth::b8 : JitWidth::b32,
+             (U32)offsetof(CPU, result.u32), reg);
 }
 void JitWasmCodeGen::storeLazyFlagsOldCF(RegPtr reg) {
     writeCPU(JitWidth::b32, (U32)offsetof(CPU, oldCF), reg);
@@ -1226,12 +1232,13 @@ void JitWasmCodeGen::IfCondition(JitConditional cond) {
     If(JitWidth::b32, r);
 }
 void JitWasmCodeGen::JumpIfCondition(JitConditional cond, U32 address) {
-    // This is called when canJumpInBlock() is true — i.e. the target EIP is
-    // inside the current JIT block. Native backends emit a direct branch;
-    // we don't have intra-block structural jumps, so treat it as a block
-    // exit that writes the jump target into cpu->eip.
+    // Called when canJumpInBlock() is true. Native backends do a direct
+    // branch inside the generated code; we don't have structural
+    // intra-block jumps, so treat it as a block exit to the target. The
+    // `address` parameter is the *linear* EIP (CS.address + offset), but
+    // cpu->eip.u32 stores only the offset relative to CS — subtract here.
     IfCondition(cond);
-    writeEip(address);
+    writeEip(address - cpu->seg[CS].address);
     blockExit();
     EndIf();
 }
@@ -1264,9 +1271,10 @@ void JitWasmCodeGen::EndIf() {
     m_emitter.emitEnd();
 }
 void JitWasmCodeGen::JumpInBlock(U32 address) {
-    // No native intra-block branching: set EIP and exit. fetchNextOp picks
-    // back up at the target op in the next dispatcher round.
-    writeEip(address);
+    // No native intra-block branching: set EIP (offset within CS, so strip
+    // the CS base) and exit. fetchNextOp picks back up at the target op
+    // in the next dispatcher round.
+    writeEip(address - cpu->seg[CS].address);
     syncDirtyRegsToHost();
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(m_helperGetNextOpIdx);

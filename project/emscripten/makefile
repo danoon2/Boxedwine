@@ -31,7 +31,7 @@ jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sEXPOR
 testJit: export BUILD_DIR := Build/TestJit
 testJit: export EXTRA_CPP_FLAGS := -D__TEST -DBOXEDWINE_WASM_JIT
 testJit: export SHELL_FILE := shelltest.html
-testJit: export EXTRA_LD_FLAGS := --emrun -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction
+testJit: export EXTRA_LD_FLAGS := --emrun -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction
 
 cpus := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
 make_jobs := $(shell n='$(cpus)'; expr "$$n" : '^[0-9][0-9]*$$' >/dev/null && [ "$$n" -gt 2 ] && expr "$$n" - 1)

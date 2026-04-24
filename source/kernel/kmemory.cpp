@@ -475,7 +475,22 @@ void KMemory::threadCleanup(U32 threadId) {
     }
 }
 
+#if defined(BOXEDWINE_JIT)
+extern void clearJitBlock(const std::vector<void*>& jitOps);
+#endif
+
 void KMemory::clearOpCache() {
+#if defined(BOXEDWINE_JIT)
+    // Collect JIT block pointers before the op cache frees the DecodedOps,
+    // then hand them to clearJitBlock so the backend can release resources
+    // (e.g. wasmTable entries for the WASM JIT). Without this, every
+    // __TEST-mode newInstruction() call leaks one compiled module.
+    std::vector<void*> jitOps;
+    data->opCache.collectAllJitBlocks(jitOps);
+    if (!jitOps.empty()) {
+        clearJitBlock(jitOps);
+    }
+#endif
     data->opCache.clear();
 }
 
