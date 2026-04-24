@@ -201,6 +201,13 @@ public:
 #ifdef BOXEDWINE_JIT
     U32 tmpReg;
 #endif
+#ifdef BOXEDWINE_WASM_JIT
+    // Scratch fields used only by the WASM JIT to pass
+    // address/value to its per-width memory helpers without trampling
+    // lazy-flag state in src.u32/dst.u32.
+    U32 memHelperAddr = 0;
+    U32 memHelperValue = 0;
+#endif
     U8* reg8[9];
     ALIGN(SSE xmm[8], 16);    
 

@@ -284,9 +284,160 @@ public:
     void direct_jump(JitConditional cond, U32 address) override;
     void direct_cmov(JitWidth w, JitConditional cond, RegPtr dst, RegPtr src) override;
     void direct_setcc(JitConditional cond, RegPtr dst) override;
-    void tryDirect(DecodedOp* op, std::function<void()> callback,
-                   std::function<void()> fallback) override;
     bool directDoesAffectFlags(DecodedOp* op) override;
+
+    // Shift/rotate family: WASM's i32.shl/shr/rotl truncate behavior doesn't
+    // match x86 byte/word semantics for CF/OF, and the base dynamic_RI lazy-
+    // flag path here is fragile. Route every shift/rotate through the normal
+    // CPU via emulateSingleOp. Perf hit is acceptable for the WASM target.
+    void dynamic_rol8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rol8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rol8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rol8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rol16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rol16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rol16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rol16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rol32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rol32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rol32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rol32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_ror8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_ror8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_ror8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_ror8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_ror16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_ror16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_ror16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_ror16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_ror32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_ror32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_ror32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_ror32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcr8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcr8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcr8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcr8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcr16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcr16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcr16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcr16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcr32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcr32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcr32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcr32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shl8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shl8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shl8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shl8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shl16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shl16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shl16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shl16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shl32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shl32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shl32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shl32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shr8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shr8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shr8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shr8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shr16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shr16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shr16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shr16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shr32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shr32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shr32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_shr32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_sar8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_sar8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_sar8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_sar8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_sar16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_sar16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_sar16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_sar16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_sar32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_sar32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_sar32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_sar32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshlr16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshle16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshlr32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshle32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshlclr16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshlcle16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshlclr32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshlcle32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshrr16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshre16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshrr32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshre32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshrclr16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshrcle16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshrclr32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshrcle32r32(DecodedOp* op) override { emulateSingleOp(); }
+
+    // LoopNZ/LoopZ: the base class codegen stashes the decremented CX into a
+    // scratch, conditionally zeroes it on ZF, then branches if non-zero.
+    // That reuse of a scratch across two IF/EndIf blocks trips the current
+    // WASM emission in tests. Override with explicit nested-condition flow.
+    void dynamic_loopnz(DecodedOp* op) override;
+    void dynamic_loopz(DecodedOp* op) override;
+
+    // IMul/PopA: the multi-precision arithmetic (signed mul + overflow flag)
+    // and the multi-word pop sequences don't have simple WASM primitives.
+    // Route through the normal CPU.
+    void dynamic_imulR8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_imulE8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_imulR16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_imulE16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_imulR32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_imulE32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dimulcr16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dimulcr16e16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dimulcr32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dimulcr32e32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dimulr16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dimulr16e16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dimulr32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dimulr32e32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_popA16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_popA32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_pushA16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_pushA32(DecodedOp* op) override { emulateSingleOp(); }
+
+    // String ops: the inline codegen works for 16-bit but 32-bit variants
+    // (ea16=false) fail tests. Defer to the normal CPU interpreter which
+    // handles all the seg/rep permutations correctly.
+    void dynamic_movsb_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_movsw_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_movsd_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpsb_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpsw_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpsd_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_stosb_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_stosw_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_stosd_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_lodsb_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_lodsw_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_lodsd_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_scasb_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_scasw_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_scasd_op(DecodedOp* op) override { emulateSingleOp(); }
 
     // --- Code management ---
     U32  getBufferSize() override;
@@ -347,6 +498,15 @@ protected:
     // Common tail of every IfXxx: emit the WASM `if`. The condition is
     // already on the value stack.
     void finishIf();
+
+    // Store a GP/scratch RegPtr into a CPU struct field (used to stage
+    // mem-helper args — address/value — without touching lazy-flag state).
+    void storeMemHelperField(U32 offset, RegPtr reg);
+
+    // Flatten a MemPtr (base + index*scale + disp) into a single 32-bit
+    // virtual-address scratch reg. Used by the emulated-memory read/write
+    // overloads; the result feeds the MMU helper call.
+    RegPtr memPtrToAddressReg(MemPtr address);
 
     // Called at the start of each IfXxx and at StartElse/EndIf: flush any
     // dirty GP regs to the CPU struct and invalidate the compile-time

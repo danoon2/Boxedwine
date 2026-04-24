@@ -97,25 +97,27 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
 // C++ helpers imported by generated WASM modules
 // ---------------------------------------------------------------------------
 
-// Read a 32-bit value from emulated memory at address stored in cpu->tmp
+// Memory helpers read their address from cpu->memHelperAddr and their
+// value to/from cpu->memHelperValue. Using dedicated scratch fields
+// (rather than cpu->src.u32 / cpu->dst.u32) keeps lazy-flag state intact
+// across an RMW op's callback.
 static void wasmHelper_readMem32(CPU* cpu) {
-    U32 addr = cpu->src.u32;
-    cpu->dst.u32 = cpu->memory->readd(addr);
+    cpu->memHelperValue = cpu->memory->readd(cpu->memHelperAddr);
 }
 static void wasmHelper_writeMem32(CPU* cpu) {
-    cpu->memory->writed(cpu->dst.u32, cpu->src.u32);
+    cpu->memory->writed(cpu->memHelperAddr, cpu->memHelperValue);
 }
 static void wasmHelper_readMem8(CPU* cpu) {
-    cpu->dst.u8 = cpu->memory->readb(cpu->src.u32);
+    cpu->memHelperValue = cpu->memory->readb(cpu->memHelperAddr);
 }
 static void wasmHelper_writeMem8(CPU* cpu) {
-    cpu->memory->writeb(cpu->dst.u32, cpu->src.u8);
+    cpu->memory->writeb(cpu->memHelperAddr, (U8)cpu->memHelperValue);
 }
 static void wasmHelper_readMem16(CPU* cpu) {
-    cpu->dst.u16 = cpu->memory->readw(cpu->src.u32);
+    cpu->memHelperValue = cpu->memory->readw(cpu->memHelperAddr);
 }
 static void wasmHelper_writeMem16(CPU* cpu) {
-    cpu->memory->writew(cpu->dst.u32, cpu->src.u16);
+    cpu->memory->writew(cpu->memHelperAddr, (U16)cpu->memHelperValue);
 }
 
 // Update cpu->nextOp by decoding the block at cpu->eip.u32
@@ -528,7 +530,11 @@ RegPtr JitWasmCodeGen::getReadOnlySegAddress(U8 seg) {
 }
 
 RegPtr JitWasmCodeGen::getTmpSegAddress(U8 seg) {
-    return getReadOnlySegAddress(seg);
+    auto r = getTmpReg();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load(CPU::offsetofSegAddress(seg));
+    m_emitter.emitLocalSet(r->hardwareReg());
+    return r;
 }
 
 RegPtr JitWasmCodeGen::getReadOnlySegValue(U8 seg) {
@@ -663,22 +669,15 @@ void JitWasmCodeGen::writeCPUValue(JitWidth w, RegPtr sib, U8 lsl, U32 offset, D
 
 // MMU read: get host page base pointer for emulated memory page index
 void JitWasmCodeGen::readMMU(RegPtr dest, RegPtr index, U32 offset) {
-    // cpu->memory->getHostReadAddress(page) -> i32
-    // For WASM: read through cpu->memory MMU table
-    // Simplified: call C++ helper that does the lookup
-    // Store address in cpu->src.u32, call helper, read from cpu->dst.u32
-    // (Full inline TLB lookup is a future optimization)
+    // Reads a 4-byte value at `index + offset` in emulated memory via the
+    // dedicated memHelperAddr/memHelperValue scratch fields so that lazy
+    // flag state survives the call.
     auto r = dest ? dest : getTmpReg();
-    // push index as cpu->src.u32
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), index);
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    pushRegValue(index);
-    m_emitter.emitI32Store((U32)offsetof(CPU, src.u32));
-    // call helper
+    m_emitter.emitCall(HELPER_READ_MEM32);
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(m_helperReadMemIdx);
-    // read result from cpu->dst.u32
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Load((U32)offsetof(CPU, dst.u32));
+    m_emitter.emitI32Load((U32)offsetof(CPU, memHelperValue));
     m_emitter.emitLocalSet(r->hardwareReg());
 }
 
@@ -690,46 +689,82 @@ void JitWasmCodeGen::readMMU(RegPtr dest, U32 index) {
     freeScratch(tmp->hardwareReg());
 }
 
+// readHost/writeHost access WASM linear memory directly (host-side C++
+// pointers live there). The WASM memarg offset is ADDED to the pushed
+// address, so both the dynamic base (`rm`) and the static displacement
+// (`offset`) must flow through correctly. Previously we passed 0 as the
+// load/store offset, which silently discarded the MemPtr's offset field
+// for rm-based addressing (e.g. readHost(op + offsetof(DecodedOp, next))).
 void JitWasmCodeGen::readHost(JitWidth w, MemPtr address, RegPtr result, bool emulatedMemory) {
     if (!result) result = getTmpReg();
+    U32 memOffset = 0;
     if (address->rm) {
         pushRegValue(address->rm);
+        if (address->sib) {
+            pushRegValue(address->sib);
+            if (address->lsl) {
+                m_emitter.emitI32Const((S32)address->lsl);
+                m_emitter.emitOp(WASM_I32_SHL);
+            }
+            m_emitter.emitOp(WASM_I32_ADD);
+        }
+        memOffset = address->offset;
     } else {
         m_emitter.emitI32Const((S32)address->offset);
     }
     switch (w) {
-    case JitWidth::b8:  m_emitter.emitI32Load8U(0);  break;
-    case JitWidth::b16: m_emitter.emitI32Load16U(0); break;
-    default:            m_emitter.emitI32Load(0);     break;
+    case JitWidth::b8:  m_emitter.emitI32Load8U(memOffset);  break;
+    case JitWidth::b16: m_emitter.emitI32Load16U(memOffset); break;
+    default:            m_emitter.emitI32Load(memOffset);     break;
     }
     m_emitter.emitLocalSet(result->hardwareReg());
 }
 
 void JitWasmCodeGen::writeHost(JitWidth w, MemPtr address, RegPtr src, bool emulatedMemory) {
+    U32 memOffset = 0;
     if (address->rm) {
         pushRegValue(address->rm);
+        if (address->sib) {
+            pushRegValue(address->sib);
+            if (address->lsl) {
+                m_emitter.emitI32Const((S32)address->lsl);
+                m_emitter.emitOp(WASM_I32_SHL);
+            }
+            m_emitter.emitOp(WASM_I32_ADD);
+        }
+        memOffset = address->offset;
     } else {
         m_emitter.emitI32Const((S32)address->offset);
     }
     pushRegValue(src);
     switch (w) {
-    case JitWidth::b8:  m_emitter.emitI32Store8(0);  break;
-    case JitWidth::b16: m_emitter.emitI32Store16(0); break;
-    default:            m_emitter.emitI32Store(0);    break;
+    case JitWidth::b8:  m_emitter.emitI32Store8(memOffset);  break;
+    case JitWidth::b16: m_emitter.emitI32Store16(memOffset); break;
+    default:            m_emitter.emitI32Store(memOffset);    break;
     }
 }
 
 void JitWasmCodeGen::writeHost(JitWidth w, MemPtr address, U32 imm, bool emulatedMemory) {
+    U32 memOffset = 0;
     if (address->rm) {
         pushRegValue(address->rm);
+        if (address->sib) {
+            pushRegValue(address->sib);
+            if (address->lsl) {
+                m_emitter.emitI32Const((S32)address->lsl);
+                m_emitter.emitOp(WASM_I32_SHL);
+            }
+            m_emitter.emitOp(WASM_I32_ADD);
+        }
+        memOffset = address->offset;
     } else {
         m_emitter.emitI32Const((S32)address->offset);
     }
     m_emitter.emitI32Const((S32)imm);
     switch (w) {
-    case JitWidth::b8:  m_emitter.emitI32Store8(0);  break;
-    case JitWidth::b16: m_emitter.emitI32Store16(0); break;
-    default:            m_emitter.emitI32Store(0);    break;
+    case JitWidth::b8:  m_emitter.emitI32Store8(memOffset);  break;
+    case JitWidth::b16: m_emitter.emitI32Store16(memOffset); break;
+    default:            m_emitter.emitI32Store(memOffset);    break;
     }
 }
 
@@ -744,21 +779,50 @@ void JitWasmCodeGen::clearIfSpansPage(JitWidth w, RegPtr offset, RegPtr reg) {
 // Emulated memory read/write (with softMMU)
 // For now: use cpu scratch fields + helper calls. Future: inline TLB.
 // ---------------------------------------------------------------------------
+// Helper-import index for emulated-memory read/write of the given width.
+// Picking the wrong width corrupts neighboring bytes: writeMem32 on a
+// 16-bit push would clobber the two bytes above the stack slot.
+static U32 readHelperForWidth(JitWidth w) {
+    switch (w) {
+    case JitWidth::b8:  return HELPER_READ_MEM8;
+    case JitWidth::b16: return HELPER_READ_MEM16;
+    default:            return HELPER_READ_MEM32;
+    }
+}
+static U32 writeHelperForWidth(JitWidth w) {
+    switch (w) {
+    case JitWidth::b8:  return HELPER_WRITE_MEM8;
+    case JitWidth::b16: return HELPER_WRITE_MEM16;
+    default:            return HELPER_WRITE_MEM32;
+    }
+}
+
+// Store `reg` into cpu->memHelperAddr (our dedicated mem-helper scratch).
+// Also used for memHelperValue by varying the offset.
+void JitWasmCodeGen::storeMemHelperField(U32 offset, RegPtr reg) {
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    pushRegValue(reg);
+    m_emitter.emitI32Store(offset);
+}
+
 RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
                                      std::function<void(RegPtr)> prepareWrite, S8 hint) {
     auto result = getTmpReg();
-    // store address in cpu->src.u32
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    pushRegValue(addressReg);
-    m_emitter.emitI32Store((U32)offsetof(CPU, src.u32));
-    // call appropriate read helper
+    m_emitter.emitCall(readHelperForWidth(w));
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(m_helperReadMemIdx);
-    // read result
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Load((U32)offsetof(CPU, dst.u32));
+    m_emitter.emitI32Load((U32)offsetof(CPU, memHelperValue));
     m_emitter.emitLocalSet(result->hardwareReg());
-    if (prepareWrite) prepareWrite(result);
+    if (prepareWrite) {
+        prepareWrite(result);
+        // The callback may have mutated addressReg's local or rewritten
+        // memHelperAddr indirectly — re-stage it before dispatching write.
+        storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
+        storeMemHelperField((U32)offsetof(CPU, memHelperValue), result);
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(writeHelperForWidth(w));
+    }
     return result;
 }
 
@@ -767,13 +831,11 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
                              std::function<void()> failedOp,
                              RegPtr tmp, bool checkAlignment) {
     if (!tmp) tmp = getTmpReg();
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    pushRegValue(addressReg);
-    m_emitter.emitI32Store((U32)offsetof(CPU, src.u32));
+    m_emitter.emitCall(readHelperForWidth(w));
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(m_helperReadMemIdx);
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Load((U32)offsetof(CPU, dst.u32));
+    m_emitter.emitI32Load((U32)offsetof(CPU, memHelperValue));
     m_emitter.emitLocalSet(tmp->hardwareReg());
     return tmp;
 }
@@ -781,28 +843,72 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
 void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
                             std::function<void(MemPtr)> customOp,
                             std::function<void()> failedOp, bool checkAlignment) {
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
+    storeMemHelperField((U32)offsetof(CPU, memHelperValue), src);
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    pushRegValue(addressReg);
-    m_emitter.emitI32Store((U32)offsetof(CPU, dst.u32));
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    pushRegValue(src);
-    m_emitter.emitI32Store((U32)offsetof(CPU, src.u32));
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(m_helperWriteMemIdx);
+    m_emitter.emitCall(writeHelperForWidth(w));
+}
+
+// Materialize a MemPtr (base + index*scale + disp) into a scratch reg as a
+// 32-bit virtual address. Only used for emulated-memory ops; DYN_PTR reads
+// go through readHost which loads directly from WASM linear memory.
+RegPtr JitWasmCodeGen::memPtrToAddressReg(MemPtr address) {
+    auto addr = getTmpReg();
+    if (address->rm) {
+        pushRegValue(address->rm);
+        if (address->sib) {
+            pushRegValue(address->sib);
+            if (address->lsl) {
+                m_emitter.emitI32Const((S32)address->lsl);
+                m_emitter.emitOp(WASM_I32_SHL);
+            }
+            m_emitter.emitOp(WASM_I32_ADD);
+        }
+        if (address->offset) {
+            m_emitter.emitI32Const((S32)address->offset);
+            m_emitter.emitOp(WASM_I32_ADD);
+        }
+    } else {
+        m_emitter.emitI32Const((S32)address->offset);
+    }
+    m_emitter.emitLocalSet(addr->hardwareReg());
+    return addr;
 }
 
 RegPtr JitWasmCodeGen::read(JitWidth w, MemPtr address, RegPtr result) {
-    if (!result) result = getTmpReg();
-    readHost(w, address, result, true);
-    return result;
+    if (!address->emulatedAddress) {
+        if (!result) result = getTmpReg();
+        readHost(w, address, result, true);
+        return result;
+    }
+    auto addr = memPtrToAddressReg(address);
+    auto r = read(w, addr, nullptr, nullptr, result);
+    freeScratch(addr->hardwareReg());
+    return r;
 }
 
 void JitWasmCodeGen::write(JitWidth w, MemPtr address, RegPtr src) {
-    writeHost(w, address, src, true);
+    if (!address->emulatedAddress) {
+        writeHost(w, address, src, true);
+        return;
+    }
+    auto addr = memPtrToAddressReg(address);
+    write(w, addr, src);
+    freeScratch(addr->hardwareReg());
 }
 
 void JitWasmCodeGen::write(JitWidth w, MemPtr address, U32 imm) {
-    writeHost(w, address, imm, true);
+    if (!address->emulatedAddress) {
+        writeHost(w, address, imm, true);
+        return;
+    }
+    auto addr = memPtrToAddressReg(address);
+    auto val = getTmpReg();
+    m_emitter.emitI32Const((S32)imm);
+    m_emitter.emitLocalSet(val->hardwareReg());
+    write(w, addr, val);
+    freeScratch(val->hardwareReg());
+    freeScratch(addr->hardwareReg());
 }
 
 // ---------------------------------------------------------------------------
@@ -822,8 +928,35 @@ void JitWasmCodeGen::shlReg(JitWidth w, RegPtr reg, RegPtr rm)   { emitBinOp(w, 
 void JitWasmCodeGen::shlValue(JitWidth w, RegPtr reg, U32 imm)   { emitBinOpImm(w, reg, imm, WASM_I32_SHL); }
 void JitWasmCodeGen::shrReg(JitWidth w, RegPtr reg, RegPtr rm)   { emitBinOp(w, reg, rm,  WASM_I32_SHR_U); }
 void JitWasmCodeGen::shrValue(JitWidth w, RegPtr reg, U32 imm)   { emitBinOpImm(w, reg, imm, WASM_I32_SHR_U); }
-void JitWasmCodeGen::sarReg(JitWidth w, RegPtr reg, RegPtr rm)   { emitBinOp(w, reg, rm,  WASM_I32_SHR_S); }
-void JitWasmCodeGen::sarValue(JitWidth w, RegPtr reg, U32 imm)   { emitBinOpImm(w, reg, imm, WASM_I32_SHR_S); }
+// Signed shift needs the value sign-extended from its width before SHR_S.
+// emitBinOp masks the low byte/word with AND, which would zero the sign bit
+// and turn a negative 8/16-bit into a positive 32-bit, making SHR_S wrong.
+static void emitSignExtendTo32(WasmEmitter& e, JitWidth w) {
+    if (w == JitWidth::b8) {
+        e.emitI32Const(24); e.emitOp(WASM_I32_SHL);
+        e.emitI32Const(24); e.emitOp(WASM_I32_SHR_S);
+    } else if (w == JitWidth::b16) {
+        e.emitI32Const(16); e.emitOp(WASM_I32_SHL);
+        e.emitI32Const(16); e.emitOp(WASM_I32_SHR_S);
+    }
+}
+void JitWasmCodeGen::sarReg(JitWidth w, RegPtr reg, RegPtr rm) {
+    pushRegValue(reg);
+    emitSignExtendTo32(m_emitter, w);
+    pushRegValue(rm);
+    if (w == JitWidth::b8 || w == JitWidth::b16) maskToWidth(w);
+    m_emitter.emitOp(WASM_I32_SHR_S);
+    maskToWidth(w);
+    popToReg(w, reg);
+}
+void JitWasmCodeGen::sarValue(JitWidth w, RegPtr reg, U32 imm) {
+    pushRegValue(reg);
+    emitSignExtendTo32(m_emitter, w);
+    m_emitter.emitI32Const((S32)imm);
+    m_emitter.emitOp(WASM_I32_SHR_S);
+    maskToWidth(w);
+    popToReg(w, reg);
+}
 #ifdef BOXEDWINE_64
 void JitWasmCodeGen::andValue64(RegPtr reg, U64 imm) { andValue(JitWidth::b32, reg, (U32)imm); }
 #endif
@@ -1098,12 +1231,21 @@ RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(HELPER_COND_BASE + (U32)cond);
 
-    if (!res) res = getTmpReg();
+    // Always load the helper result into a scratch first. `res` may be a
+    // GP register; writing its local directly via emitLocalSet would
+    // clobber the upper bytes. If the caller gave us a `res`, copy via
+    // mov(b8) which merges correctly for GP regs and scratch alike.
+    auto tmp = getTmpReg();
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Load((U32)offsetof(CPU, tmpReg));
-    m_emitter.emitLocalSet(res->hardwareReg());
+    m_emitter.emitLocalSet(tmp->hardwareReg());
     m_gpLoaded.fill(false);
-    return res;
+    if (res && res != tmp) {
+        mov(JitWidth::b8, res, tmp);
+        freeScratch(tmp->hardwareReg());
+        return res;
+    }
+    return tmp;
 }
 RegPtr JitWasmCodeGen::getConditionCalculationReg(U32 index) {
     return readCPU(JitWidth::b32, (U32)offsetof(CPU, flags));
@@ -1230,6 +1372,10 @@ void JitWasmCodeGen::IfCondition(JitConditional cond) {
     // Base JitCodeGen handles: it calls getCondition and emits the right check
     auto r = getCondition(cond);
     If(JitWidth::b32, r);
+    // getCondition allocates a scratch local; If() consumes its value on the
+    // WASM stack, so we can release the scratch now. Without this, nested
+    // codegen (dynamic_loopnz / dynamic_loopz) exhausts the 8-slot pool.
+    freeScratch(r->hardwareReg());
 }
 void JitWasmCodeGen::JumpIfCondition(JitConditional cond, U32 address) {
     // Called when canJumpInBlock() is true. Native backends do a direct
@@ -1286,11 +1432,13 @@ void JitWasmCodeGen::blockExit() {
     m_emitter.emitCall(m_helperGetNextOpIdx);
     m_emitter.emitReturn();
 }
+// blockNext1/2 are block-terminating branch destinations (taken vs. fall-
+// through). Mirror the base JitCodeGen::blockNext{1,2}: write the CS-offset
+// EIP and emit a blockExit so the dispatcher picks up the next op.
 void JitWasmCodeGen::blockNext1(U32 eip, DecodedOp* op) {
-    writeEip(eip);
-    syncDirtyRegsToHost();
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(m_helperGetNextOpIdx);
+    writeCPUValue(DYN_PTR, (U32)offsetof(CPU, nextOp), 0);
+    writeEip(eip - cpu->seg[CS].address);
+    blockExit();
 }
 void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
     blockNext1(eip, op);
@@ -1343,6 +1491,22 @@ void JitWasmCodeGen::callHostFunctionWithResult(RegPtr result, void* address,
     }
 }
 
+// LoopNZ/LoopZ are branches; emulateSingleOp alone leaves the block to
+// continue with the next JIT op regardless of whether the branch fired.
+// Run the op via the normal CPU and then exit — so the dispatcher picks up
+// whichever EIP (branch target or fall-through) runNextSingleOp set.
+void JitWasmCodeGen::dynamic_loopnz(DecodedOp* op) {
+    emulateSingleOp();
+    // If the op branched, EIP has moved to the target; exit so the dispatcher
+    // re-resolves the next op. If it fell through, EIP is currentEip+op->len
+    // (already advanced by runNextSingleOp) — also a natural exit point.
+    blockExit();
+}
+void JitWasmCodeGen::dynamic_loopz(DecodedOp* op) {
+    emulateSingleOp();
+    blockExit();
+}
+
 void JitWasmCodeGen::emulateSingleOp() {
     // Sync state, call the C++ single-op emulator, reload.
     syncDirtyRegsToHost();
@@ -1354,22 +1518,71 @@ void JitWasmCodeGen::emulateSingleOp() {
 // ---------------------------------------------------------------------------
 // Direct operations (cmp/test/jmp for JIT optimization paths)
 // ---------------------------------------------------------------------------
+// Stage a JitWidth::bN store of dst/src/result into cpu->{dst,src,result}.u32
+// plus cpu->lazyFlagType. The helper-based condition accessors read these to
+// compute the flag, so direct-mode needs to populate them even though it
+// normally would skip lazy-flag storage.
+static LazyFlagType lazyTypeForSub(JitWidth w) {
+    switch (w) {
+    case JitWidth::b8:  return FLAGS_SUB8;
+    case JitWidth::b16: return FLAGS_SUB16;
+    default:            return FLAGS_SUB32;
+    }
+}
+static LazyFlagType lazyTypeForTest(JitWidth w) {
+    switch (w) {
+    case JitWidth::b8:  return FLAGS_TEST8;
+    case JitWidth::b16: return FLAGS_TEST16;
+    default:            return FLAGS_TEST32;
+    }
+}
 void JitWasmCodeGen::direct_cmp(JitWidth w, RegPtr left, RegPtr right) {
-    pushRegValue(left); pushRegValue(right);
-    m_emitter.emitOp(WASM_I32_SUB);  // sets implicit comparison state
-    m_emitter.emitOp(WASM_DROP);
+    storeLazyFlagsDest(left);
+    storeLazyFlagsSrc(right);
+    auto result = getTmpReg();
+    pushRegValue(left);
+    pushRegValue(right);
+    m_emitter.emitOp(WASM_I32_SUB);
+    m_emitter.emitLocalSet(result->hardwareReg());
+    storeLazyFlagsResult(result);
+    storeLazyFlagType(lazyTypeForSub(w));
+    freeScratch(result->hardwareReg());
+    currentLazyFlags = lazyTypeForSub(w);
 }
 void JitWasmCodeGen::direct_cmp(JitWidth w, RegPtr left, U32 right) {
-    pushRegValue(left); m_emitter.emitI32Const((S32)right);
-    m_emitter.emitOp(WASM_I32_SUB); m_emitter.emitOp(WASM_DROP);
+    storeLazyFlagsDest(left);
+    storeLazyFlagsSrc(right);
+    auto result = getTmpReg();
+    pushRegValue(left);
+    m_emitter.emitI32Const((S32)right);
+    m_emitter.emitOp(WASM_I32_SUB);
+    m_emitter.emitLocalSet(result->hardwareReg());
+    storeLazyFlagsResult(result);
+    storeLazyFlagType(lazyTypeForSub(w));
+    freeScratch(result->hardwareReg());
+    currentLazyFlags = lazyTypeForSub(w);
 }
 void JitWasmCodeGen::direct_test(JitWidth w, RegPtr left, RegPtr right) {
-    pushRegValue(left); pushRegValue(right);
-    m_emitter.emitOp(WASM_I32_AND); m_emitter.emitOp(WASM_DROP);
+    auto result = getTmpReg();
+    pushRegValue(left);
+    pushRegValue(right);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitLocalSet(result->hardwareReg());
+    storeLazyFlagsResult(result);
+    storeLazyFlagType(lazyTypeForTest(w));
+    freeScratch(result->hardwareReg());
+    currentLazyFlags = lazyTypeForTest(w);
 }
 void JitWasmCodeGen::direct_test(JitWidth w, RegPtr left, U32 right) {
-    pushRegValue(left); m_emitter.emitI32Const((S32)right);
-    m_emitter.emitOp(WASM_I32_AND); m_emitter.emitOp(WASM_DROP);
+    auto result = getTmpReg();
+    pushRegValue(left);
+    m_emitter.emitI32Const((S32)right);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitLocalSet(result->hardwareReg());
+    storeLazyFlagsResult(result);
+    storeLazyFlagType(lazyTypeForTest(w));
+    freeScratch(result->hardwareReg());
+    currentLazyFlags = lazyTypeForTest(w);
 }
 void JitWasmCodeGen::direct_jump(JitConditional cond, U32 address) {
     JumpIfCondition(cond, address);
@@ -1383,11 +1596,8 @@ void JitWasmCodeGen::direct_setcc(JitConditional cond, RegPtr dst) {
     auto r = getCondition(cond, dst);
     if (r != dst) mov(JitWidth::b8, dst, r);
 }
-void JitWasmCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback,
-                                 std::function<void()> fallback) {
-    callback(); // WASM supports direct for all common ops
-}
 bool JitWasmCodeGen::directDoesAffectFlags(DecodedOp* op) { return false; }
+
 
 // ---------------------------------------------------------------------------
 // Code management (buffer tracking for branch patching)
