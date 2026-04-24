@@ -142,7 +142,7 @@ struct user_desc* KThread::getLDT(U32 index) {
 
 void KThread::setTLS(struct user_desc* desc) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(tlsMutex);
-    U32 index = desc->entry_number - TLS_ENTRY_START_INDEX;
+    S32 index = (S32)desc->entry_number - TLS_ENTRY_START_INDEX;
     if (index >= 0 && index < TLS_ENTRIES) {
         this->tls[index] = *desc;
     } else {
@@ -367,13 +367,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
 
         f = getFutex(this, ramAddress);
 
-        if (!f) {
-            U32 currentValue = memory->readd(addr);
-            if (currentValue != value) {
-                //klog_fmt("   %x/%x futux addr=%x op=%x val=%x ram=%x NEW VALUE %x", id, process->id, addr, op, value, (U32)ramAddress, currentValue);
-                return -K_EWOULDBLOCK;
-            }
-
+        if (!f) {            
             f = allocFutex(this, ramAddress, expireTime);
             if (cmd == FUTEX_WAIT_BITSET) {
                 f->mask = val3;
@@ -567,7 +561,7 @@ retry:
         // extern int futex_wake(u32 __user * uaddr, unsigned int flags, int nr_wake, u32 bitset);
         // is the flag FLAGS_SHARED?
         // futex_wake(uaddr, 1, 1, FUTEX_BITSET_MATCH_ANY);
-        futex(uaddr, FUTEX_WAIT, 1, 0, 0, 0, false);
+        futex(uaddr, FUTEX_WAKE, 1, 0, 0, 0, false);
         return 0;
     }
 
@@ -603,7 +597,7 @@ retry:
      */
     if (!pi && (uval & K_FUTEX_WAITERS)) {
         // futex_wake(uaddr, 1, 1, FUTEX_BITSET_MATCH_ANY);
-        futex(uaddr, FUTEX_WAIT, 1, 0, 0, 0, false);
+        futex(uaddr, FUTEX_WAKE, 1, 0, 0, 0, false);
     }        
 
     return 0;
@@ -657,7 +651,7 @@ void KThread::exitRobustList()
         return;
 
     next_entry.address = 0;	/* avoid warning with gcc */
-    while (entry.address != head.next) {
+    while (entry.address != head.address) {
         /*
          * Fetch the next entry in the list before calling
          * handle_futex_death:
@@ -981,7 +975,7 @@ void writeToContext(KThread* thread, U32 stack, U32 context, bool altStack, U32 
     memory->writed(context+0x4C, cpu->isBig()?cpu->eip.u32:cpu->eip.u16);
     memory->writed(context+0x50, cpu->seg[CS].value);
     memory->writed(context+0x54, cpu->flags);
-    memory->writed(context+0x58, 0); // REG_UESP
+    memory->writed(context+0x58, stack); // REG_UESP
     memory->writed(context+0x5C, cpu->seg[SS].value);
     memory->writed(context+0x60, 0); // sigset_t uc_sigmask;
     memory->writed(context+0x64, 0); // cr2

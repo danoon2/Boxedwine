@@ -718,7 +718,7 @@ U32 XServer::getInputModifiers() {
 		result |= Button8Mask;
 	}
 	if (modifiers & NATIVE_BUTTON_5_MASK) {
-		result |= Button8Mask;
+		result |= Button5Mask;
 	}
 	if (modifiers & NATIVE_SHIFT_MASK) {
 		result |= ShiftMask;

@@ -157,12 +157,13 @@ void KProcess::onExec(KThread* thread) {
 
 #ifdef BOXEDWINE_JIT
     startJITOp = nullptr;
-    startJITOp = nullptr;
     emulateSingleOp = nullptr;
     syncToHost = nullptr;
     syncFromHost = nullptr;
     jitCosSub = nullptr;
     jitCos = nullptr;
+	blockExit = nullptr;
+    memset(calculateCF, 0, sizeof(calculateCF));
 #endif
 #ifdef BOXEDWINE_VULKAN
     vulkanFreePtrAddress = 0;
@@ -209,12 +210,11 @@ KThread* KProcess::createThread() {
 
 void KProcess::removeThread(KThread* thread) {
     {
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadRemovedCondition);
-        BOXEDWINE_CONDITION_SIGNAL(threadRemovedCondition);
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+        this->threads.remove(thread->id);
     }
-
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
-    this->threads.remove(thread->id);
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadRemovedCondition);
+    BOXEDWINE_CONDITION_SIGNAL(threadRemovedCondition);    
 }
 
 KThread* KProcess::getThreadById(U32 tid) {
@@ -445,16 +445,17 @@ U32 KProcess::getNextFileDescriptorHandle(int after) {
 }
 
 KFileDescriptorPtr KProcess::allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle) {    
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
+
     if (handle<0) {
         handle = this->getNextFileDescriptorHandle(afterHandle);
     }
     KFileDescriptorPtr result = std::make_shared<KFileDescriptor>(shared_from_this(), kobject, accessFlags, descriptorFlags, handle);
-
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
+    
     this->fds.set(handle, result);
     Fs::addDynamicLinkFile(fdNode->path+"/"+BString::valueOf(handle), k_mdev(0, 0), fdNode, false, [kobject] {
         return kobject->selfFd();
-        });
+    });
     return result;
 }
 
@@ -1113,6 +1114,8 @@ U32 KProcess::sendFile(U32 outFd, U32 inFd, U32 offset, U32 count) {
     } 
     
     U8 buffer[1024];
+    U32 result = 0;
+
     while (count) {
         U32 todo = count;
         if (todo > 1024) {
@@ -1122,6 +1125,7 @@ U32 KProcess::sendFile(U32 outFd, U32 inFd, U32 offset, U32 count) {
         if ((S32)read > 0) {
             fdOut->kobject->writeNative(buffer, read);
             count -= read;
+            result += read;
         } else if (read == 0) {
             break;
         } else {
@@ -1132,7 +1136,7 @@ U32 KProcess::sendFile(U32 outFd, U32 inFd, U32 offset, U32 count) {
         memory->writeq(offset, fdIn->kobject->getPos());
         fdIn->kobject->seek(pos);
     }
-    return 0;
+    return result;
 }
 
 U32 KProcess::write(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen) {
@@ -1236,6 +1240,14 @@ U32 KProcess::getrusuage(KThread* thread, U32 who, U32 usage) {
         kernelMicroSeconds = (U32)(thread->kernelTime % 1000000l);
     }
 
+    if (userMicroSeconds >= 1000000) {
+        userSeconds += userMicroSeconds / 1000000;
+        userMicroSeconds = userMicroSeconds % 1000000;
+	}
+    if (kernelMicroSeconds >= 1000000) {
+        kernelSeconds += kernelMicroSeconds / 1000000;
+        kernelMicroSeconds = kernelMicroSeconds % 1000000;
+    }
     // user time
     memory->writed(usage, userSeconds);
     memory->writed(usage + 4, userMicroSeconds);
@@ -1402,10 +1414,10 @@ U32 KProcess::setitimer(U32 which, U32 newValue, U32 oldValue) {
         kpanic_fmt("setitimer which=%d not supported", which);
     }
     if (oldValue) {
-        U32 remaining = this->timer.millies - KSystem::getMilliesSinceStart();
+        U32 remaining = this->timer.millies ? this->timer.millies - KSystem::getMilliesSinceStart() : 0;
 
         memory->writed(oldValue, this->timer.resetMillies / 1000);
-        memory->writed(oldValue, (this->timer.resetMillies % 1000) * 1000);
+        memory->writed(oldValue + 4, (this->timer.resetMillies % 1000) * 1000);
         memory->writed(oldValue + 8, remaining / 1000);
         memory->writed(oldValue + 12, (remaining % 1000) * 1000);
     }
@@ -1574,10 +1586,15 @@ U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 t
             newThread->clear_child_tid = ctid;
         }
         if ((flags & K_CLONE_PARENT_SETTID)!=0) {
+            // CLONE_PARENT_SETTID(since Linux 2.5.49)
+            // Store the child thread ID at the location pointed to by
+            // parent_tid(clone()) or cl_args.parent_tid(clone3()) in
+            // the parent's memory.  (In Linux 2.5.32-2.5.48 there was a
+            // flag CLONE_SETTID that did this.)  The store operation
+            // completes before the clone call returns control to user
+            // space.
             if (ptid) {                
                 memory->writed(ptid, newThread->id);
-                ChangeThread c(newThread); // so that writed will go to the new memory space
-                newThread->memory->writed(ptid, newThread->id);
             }
         }
         if (child_stack!=0) {
@@ -1635,7 +1652,6 @@ U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 t
         kpanic_fmt("sys_clone does not implement flags: %X", flags);
         return 0;
     }
-    return -K_ENOSYS;
 }
 
 void KProcess::killAllThreads(KThread* exceptThisThread) {
@@ -2483,9 +2499,9 @@ U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags, bool time64
 
     if (times) {
         if (time64) {
-            lastAccessTime = memory->readd(times);
+            lastAccessTime = memory->readq(times);
             lastAccessTimeNano = memory->readd(times + 8);
-            lastModifiedTime = memory->readd(times + 12);
+            lastModifiedTime = memory->readq(times + 12);
             lastModifiedTimeNano = memory->readd(times + 20);
         } else {
             lastAccessTime = memory->readd(times);
