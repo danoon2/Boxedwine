@@ -398,6 +398,7 @@ public:
     void dynamic_loopnz(DecodedOp* op) override;
     void dynamic_loopz(DecodedOp* op) override;
 
+
     // Branch ops with imm-relative targets: the base codegen for these calls
     // blockNext1 / JumpInBlock with the linear target, but the WASM JIT
     // doesn't track runtime EIP per op so the resulting target was wrong
@@ -408,6 +409,22 @@ public:
     void dynamic_callJd(DecodedOp* op) override;
     void dynamic_jmp16(DecodedOp* op) override;
     void dynamic_jmp32(DecodedOp* op) override;
+
+    // XADD / CMPXCHG: lazy-flag plumbing in dynamic_RM_WriteM and friends
+    // doesn't round-trip cleanly to WASM for these. Defer to normal CPU.
+    void dynamic_xaddr8r8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_xaddr8e8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_xaddr16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_xaddr16e16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_xaddr32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_xaddr32e32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchgr8r8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchge8r8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchgr16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchge16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchgr32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchge32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchgg8b(DecodedOp* op) override { emulateSingleOp(); }
 
     // IMul/PopA: the multi-precision arithmetic (signed mul + overflow flag)
     // and the multi-word pop sequences don't have simple WASM primitives.
