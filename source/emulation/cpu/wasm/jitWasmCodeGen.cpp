@@ -1493,16 +1493,38 @@ void JitWasmCodeGen::callHostFunctionWithResult(RegPtr result, void* address,
 
 // LoopNZ/LoopZ are branches; emulateSingleOp alone leaves the block to
 // continue with the next JIT op regardless of whether the branch fired.
-// Run the op via the normal CPU and then exit — so the dispatcher picks up
-// whichever EIP (branch target or fall-through) runNextSingleOp set.
+// Set the runtime EIP to this op's offset before emulating — runNextSingleOp
+// decodes from cpu->eip.u32, which the JIT block doesn't keep in sync with
+// the compile-time current op (only updates at block exit). After the helper
+// runs, EIP is at either the branch target or the fall-through; blockExit
+// returns so the dispatcher resolves the next op fresh.
 void JitWasmCodeGen::dynamic_loopnz(DecodedOp* op) {
+    writeEip(this->currentEip - cpu->seg[CS].address);
     emulateSingleOp();
-    // If the op branched, EIP has moved to the target; exit so the dispatcher
-    // re-resolves the next op. If it fell through, EIP is currentEip+op->len
-    // (already advanced by runNextSingleOp) — also a natural exit point.
     blockExit();
 }
 void JitWasmCodeGen::dynamic_loopz(DecodedOp* op) {
+    writeEip(this->currentEip - cpu->seg[CS].address);
+    emulateSingleOp();
+    blockExit();
+}
+void JitWasmCodeGen::dynamic_callJw(DecodedOp* op) {
+    writeEip(this->currentEip - cpu->seg[CS].address);
+    emulateSingleOp();
+    blockExit();
+}
+void JitWasmCodeGen::dynamic_callJd(DecodedOp* op) {
+    writeEip(this->currentEip - cpu->seg[CS].address);
+    emulateSingleOp();
+    blockExit();
+}
+void JitWasmCodeGen::dynamic_jmp16(DecodedOp* op) {
+    writeEip(this->currentEip - cpu->seg[CS].address);
+    emulateSingleOp();
+    blockExit();
+}
+void JitWasmCodeGen::dynamic_jmp32(DecodedOp* op) {
+    writeEip(this->currentEip - cpu->seg[CS].address);
     emulateSingleOp();
     blockExit();
 }

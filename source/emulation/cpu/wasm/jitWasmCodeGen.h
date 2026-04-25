@@ -398,6 +398,17 @@ public:
     void dynamic_loopnz(DecodedOp* op) override;
     void dynamic_loopz(DecodedOp* op) override;
 
+    // Branch ops with imm-relative targets: the base codegen for these calls
+    // blockNext1 / JumpInBlock with the linear target, but the WASM JIT
+    // doesn't track runtime EIP per op so the resulting target was wrong
+    // when the test pads with 0x123 bytes of 0xcd between the call and the
+    // destination. Set EIP to this op's offset, then route through the
+    // normal CPU (which advances EIP correctly), then exit.
+    void dynamic_callJw(DecodedOp* op) override;
+    void dynamic_callJd(DecodedOp* op) override;
+    void dynamic_jmp16(DecodedOp* op) override;
+    void dynamic_jmp32(DecodedOp* op) override;
+
     // IMul/PopA: the multi-precision arithmetic (signed mul + overflow flag)
     // and the multi-word pop sequences don't have simple WASM primitives.
     // Route through the normal CPU.
