@@ -1491,43 +1491,6 @@ void JitWasmCodeGen::callHostFunctionWithResult(RegPtr result, void* address,
     }
 }
 
-// LoopNZ/LoopZ are branches; emulateSingleOp alone leaves the block to
-// continue with the next JIT op regardless of whether the branch fired.
-// Set the runtime EIP to this op's offset before emulating — runNextSingleOp
-// decodes from cpu->eip.u32, which the JIT block doesn't keep in sync with
-// the compile-time current op (only updates at block exit). After the helper
-// runs, EIP is at either the branch target or the fall-through; blockExit
-// returns so the dispatcher resolves the next op fresh.
-void JitWasmCodeGen::dynamic_loopnz(DecodedOp* op) {
-    writeEip(this->currentEip - cpu->seg[CS].address);
-    emulateSingleOp();
-    blockExit();
-}
-void JitWasmCodeGen::dynamic_loopz(DecodedOp* op) {
-    writeEip(this->currentEip - cpu->seg[CS].address);
-    emulateSingleOp();
-    blockExit();
-}
-void JitWasmCodeGen::dynamic_callJw(DecodedOp* op) {
-    writeEip(this->currentEip - cpu->seg[CS].address);
-    emulateSingleOp();
-    blockExit();
-}
-void JitWasmCodeGen::dynamic_callJd(DecodedOp* op) {
-    writeEip(this->currentEip - cpu->seg[CS].address);
-    emulateSingleOp();
-    blockExit();
-}
-void JitWasmCodeGen::dynamic_jmp16(DecodedOp* op) {
-    writeEip(this->currentEip - cpu->seg[CS].address);
-    emulateSingleOp();
-    blockExit();
-}
-void JitWasmCodeGen::dynamic_jmp32(DecodedOp* op) {
-    writeEip(this->currentEip - cpu->seg[CS].address);
-    emulateSingleOp();
-    blockExit();
-}
 
 void JitWasmCodeGen::emulateSingleOp() {
     // Sync state, call the C++ single-op emulator, reload.
@@ -1630,7 +1593,12 @@ U32  JitWasmCodeGen::getBufferSize()             { return (U32)m_patchBuffer.siz
 U32  JitWasmCodeGen::markBufferLocation()        { U32 id = (U32)m_patchLocations.size(); m_patchLocations.push_back((U32)m_patchBuffer.size()); return id; }
 U32  JitWasmCodeGen::getBufferLocation(U32 id)   { return id < m_patchLocations.size() ? m_patchLocations[id] : 0; }
 void JitWasmCodeGen::copyBuffer(U8* dst, U32 sz) { /* WASM binary managed separately */ }
-U32  JitWasmCodeGen::getIfJumpSize()             { return 4; } // placeholder
+// Base postCompile checks getIfJumpSize() == 0 to verify all `If`s emitted
+// during the op had matching `EndIf`s (in native JITs the size of pending
+// branch fixups is non-zero while an If is open). WASM uses structural
+// control flow (`if … end`) where the validator catches mismatches itself,
+// so we always report 0 here.
+U32  JitWasmCodeGen::getIfJumpSize()             { return 0; }
 
 // MarkJumpLocation / Goto: used by JitCodeGen for intra-block branch patching.
 // WASM uses structural control flow so binary patching isn't needed; these are
@@ -1663,8 +1631,10 @@ U8* JitWasmCodeGen::createStartJITCode() {
 // Compilation lifecycle
 // ---------------------------------------------------------------------------
 void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
-    // Reset per-instruction scratch state
+    // Reset per-instruction scratch state, then run base bookkeeping (block
+    // op count, eip→buffer-pos map, preOp hook).
     m_scratchInUse.fill(false);
+    JitCodeGen::preCompile(op, skippedOp);
 }
 
 void JitWasmCodeGen::compile(DecodedOp* op) {
@@ -1672,7 +1642,11 @@ void JitWasmCodeGen::compile(DecodedOp* op) {
 }
 
 void JitWasmCodeGen::postCompile(DecodedOp* op) {
-    // Nothing to do per-instruction beyond what compile() did
+    // Critical: base class advances currentEip by op->len. Without delegating,
+    // every branch op compiled later in the block computes its target from a
+    // stale block-start currentEip, not the op's own position. That made
+    // CallJw with imm=0x123 land at start+0x123 instead of start+0x126.
+    JitCodeGen::postCompile(op);
 }
 
 void JitWasmCodeGen::commitJIT(DecodedOp* op) {

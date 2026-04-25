@@ -391,41 +391,6 @@ public:
     void dynamic_dshrclr32r32(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_dshrcle32r32(DecodedOp* op) override { emulateSingleOp(); }
 
-    // LoopNZ/LoopZ: the base class codegen stashes the decremented CX into a
-    // scratch, conditionally zeroes it on ZF, then branches if non-zero.
-    // That reuse of a scratch across two IF/EndIf blocks trips the current
-    // WASM emission in tests. Override with explicit nested-condition flow.
-    void dynamic_loopnz(DecodedOp* op) override;
-    void dynamic_loopz(DecodedOp* op) override;
-
-
-    // Branch ops with imm-relative targets: the base codegen for these calls
-    // blockNext1 / JumpInBlock with the linear target, but the WASM JIT
-    // doesn't track runtime EIP per op so the resulting target was wrong
-    // when the test pads with 0x123 bytes of 0xcd between the call and the
-    // destination. Set EIP to this op's offset, then route through the
-    // normal CPU (which advances EIP correctly), then exit.
-    void dynamic_callJw(DecodedOp* op) override;
-    void dynamic_callJd(DecodedOp* op) override;
-    void dynamic_jmp16(DecodedOp* op) override;
-    void dynamic_jmp32(DecodedOp* op) override;
-
-    // XADD / CMPXCHG: lazy-flag plumbing in dynamic_RM_WriteM and friends
-    // doesn't round-trip cleanly to WASM for these. Defer to normal CPU.
-    void dynamic_xaddr8r8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_xaddr8e8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_xaddr16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_xaddr16e16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_xaddr32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_xaddr32e32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchgr8r8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchge8r8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchgr16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchge16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchgr32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchge32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchgg8b(DecodedOp* op) override { emulateSingleOp(); }
-
     // IMul/PopA: the multi-precision arithmetic (signed mul + overflow flag)
     // and the multi-word pop sequences don't have simple WASM primitives.
     // Route through the normal CPU.
@@ -448,6 +413,22 @@ public:
     void dynamic_pushA16(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_pushA32(DecodedOp* op) override { emulateSingleOp(); }
 
+    // XADD / CMPXCHG: lazy-flag plumbing in dynamic_RM_WriteM and friends
+    // doesn't round-trip cleanly to WASM for these. Defer to normal CPU.
+    void dynamic_xaddr8r8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_xaddr8e8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_xaddr16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_xaddr16e16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_xaddr32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_xaddr32e32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchgr8r8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchge8r8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchgr16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchge16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchgr32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchge32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_cmpxchgg8b(DecodedOp* op) override { emulateSingleOp(); }
+
     // String ops: the inline codegen works for 16-bit but 32-bit variants
     // (ea16=false) fail tests. Defer to the normal CPU interpreter which
     // handles all the seg/rep permutations correctly.
@@ -466,6 +447,12 @@ public:
     void dynamic_scasb_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_scasw_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_scasd_op(DecodedOp* op) override { emulateSingleOp(); }
+
+
+
+
+
+
 
     // --- Code management ---
     U32  getBufferSize() override;
