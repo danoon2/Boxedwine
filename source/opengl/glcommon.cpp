@@ -509,7 +509,9 @@ void glcommon_glGetPointerv(CPU* cpu) {
     case GL_NORMAL_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glNormalPointer.ptr); break;
     case GL_TEXTURE_COORD_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glTexCoordPointer.ptr); break;
     case GL_VERTEX_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glVertextPointer.ptr); break;
-    default: cpu->memory->writed(cpu->memory->readd(ARG2), 0);
+    default: 
+		klog_fmt("glGetPointerv unknown pname: %d", ARG1);
+        cpu->memory->writed(cpu->memory->readd(ARG2), 0);
     }
 }
 

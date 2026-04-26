@@ -831,6 +831,22 @@ U32 getMap2Count(GLenum target) {
 GLint glcommon_glGetPixelMap_size(GLenum map) {
     GLint len = 0;
 
+    switch (map)
+    {
+    case GL_PIXEL_MAP_I_TO_I: map = GL_PIXEL_MAP_I_TO_I_SIZE; break;
+    case GL_PIXEL_MAP_S_TO_S: map = GL_PIXEL_MAP_S_TO_S_SIZE; break;
+    case GL_PIXEL_MAP_I_TO_R: map = GL_PIXEL_MAP_I_TO_R_SIZE; break;
+    case GL_PIXEL_MAP_I_TO_G: map = GL_PIXEL_MAP_I_TO_G_SIZE; break;
+    case GL_PIXEL_MAP_I_TO_B: map = GL_PIXEL_MAP_I_TO_B_SIZE; break;
+    case GL_PIXEL_MAP_I_TO_A: map = GL_PIXEL_MAP_I_TO_A_SIZE; break;
+    case GL_PIXEL_MAP_R_TO_R: map = GL_PIXEL_MAP_R_TO_R_SIZE; break;
+    case GL_PIXEL_MAP_G_TO_G: map = GL_PIXEL_MAP_G_TO_G_SIZE; break;
+    case GL_PIXEL_MAP_B_TO_B: map = GL_PIXEL_MAP_B_TO_B_SIZE; break;
+    case GL_PIXEL_MAP_A_TO_A: map = GL_PIXEL_MAP_A_TO_A_SIZE; break;
+    default:
+		klog_fmt("unknown map in glcommon_glGetPixelMap_size: 0x%x", map);
+        break;
+    }
     GL_FUNC(pglGetIntegerv)(map, &len);
     return len;
 }
