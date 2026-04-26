@@ -104,6 +104,10 @@ static void x11_CreateWindow(CPU* cpu) {
     XServer* server = XServer::getServer();
     DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
     XWindowPtr parent = server->getWindow(ARG2);
+    if (!parent) {
+        EAX = BadWindow;
+        return;
+    }
     U32 x = ARG3;
     U32 y = ARG4;
     U32 width = ARG5;
@@ -1593,6 +1597,10 @@ static void x11_GetImage(CPU* cpu) {
     KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
     XDrawablePtr d = server->getDrawable(ARG2);
+    if (!d) {
+        EAX = BadDrawable;
+        return;
+    }
     VisualPtr visual = d->getVisual();
 
     EAX = d->getImage(thread, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, visual->red_mask, visual->green_mask, visual->blue_mask);

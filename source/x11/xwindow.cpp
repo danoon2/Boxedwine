@@ -931,7 +931,7 @@ void XWindow::configureNotify() {
 	if (parent) {
 		XServer::getServer()->iterateEventMask(parent->id, StructureNotifyMask, [this, above](const DisplayDataPtr& data) {
 			XEvent event = {};
-			event.type = ConfigureNotify;
+			event.type = SubstructureNotifyMask;
 			event.xconfigure.event = parent->id;
 			event.xconfigure.window = id;
 			event.xconfigure.x = left;
