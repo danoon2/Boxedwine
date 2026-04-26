@@ -83,6 +83,11 @@ U32 idiv16(CPU* cpu, S16 src) {
         cpu->prepareException(EXCEPTION_DIVIDE, 0);
         return 0;
     }
+    if (src == -1 && num == INT32_MIN) {
+        cpu->prepareException(EXCEPTION_DIVIDE, 1);
+        return 0;
+    }
+
     S32 quo=num/src;
     S16 rem=(S16)(num % src);
     S16 quo16s=(S16)quo;
@@ -120,6 +125,10 @@ U32 idiv32(CPU* cpu, S32 src) {
 
     if (src==0) {
         cpu->prepareException(EXCEPTION_DIVIDE, 0);
+        return 0;
+    }
+    if (src == -1 && num == INT64_MIN) {
+        cpu->prepareException(EXCEPTION_DIVIDE, 1);
         return 0;
     }
 

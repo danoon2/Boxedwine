@@ -340,7 +340,7 @@ void FPU::FBLD(U8 data[], int store_to) {
     S64 value = 0;
 
     // 18 digits
-    for (U32 i = 9; i >= 0; i--) {
+    for (S32 i = 9; i >= 0; i--) {
         U8 v = data[i];
         if (i == 9) {
             v &= 0xf;
@@ -750,7 +750,7 @@ void FPU::FPREM(bool truncate) {
         FPU_SET_C0(this, (q & 4) ? 1 : 0);
     } else {
         // C2 := 1;
-        FPU_SET_C2(this, 0);
+        FPU_SET_C2(this, 1);
         // N: = An implementation - dependent number between 32 and 63;
         S32 n = 58;
         // QQ: = Integer(TruncateTowardZero((ST(0) / ST(1)) / 2 ^ (D - N)));

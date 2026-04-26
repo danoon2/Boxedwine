@@ -20,7 +20,7 @@
 void common_dimul16(CPU* cpu, U32 arg1, U32 arg2, U32 regResult) {
     S32 res=(S16)arg1 * (S32)((S16)arg2);
     cpu->lazyFlagType = FLAGS_NONE;
-    if ((res >= -32767) && (res <= 32767)) {
+    if ((res >= INT16_MIN) && (res <= INT16_MAX)) {
         cpu->removeFlag(CF|OF);
     } else {
         cpu->addFlag(CF|OF);
@@ -30,7 +30,7 @@ void common_dimul16(CPU* cpu, U32 arg1, U32 arg2, U32 regResult) {
 void common_dimul32(CPU* cpu, U32 arg1, U32 arg2, U32 regResult) {
     S64 res=(S32)(arg1) * (S64)((S32)arg2);
     cpu->lazyFlagType = FLAGS_NONE;
-    if (res>=-2147483647l && res<=2147483647l) {
+    if (res >= INT32_MIN && res <= INT32_MAX) {
         cpu->removeFlag(CF|OF);
     } else {
         cpu->addFlag(CF|OF);
@@ -40,7 +40,7 @@ void common_dimul32(CPU* cpu, U32 arg1, U32 arg2, U32 regResult) {
 void common_imul8(CPU* cpu, U8 src) {
     cpu->lazyFlagType = FLAGS_NONE;
     AX = (S16)((S8)AL) * (S8)(src);
-    if ((S16)AX<-128 || (S16)AX>127) {
+    if ((S16)AX < INT8_MIN || (S16)AX > INT8_MAX) {
         cpu->flags|=CF|OF;
     } else {
         cpu->flags&=~(CF|OF);
@@ -60,7 +60,7 @@ void common_imul16(CPU* cpu, U16 src) {
     cpu->lazyFlagType = FLAGS_NONE;
     AX = (U16)result;
     DX = (U16)(result >> 16);
-    if (result>32767 || result<-32768) {
+    if (result > INT16_MAX || result < INT16_MIN) {
         cpu->flags|=CF|OF;
     } else {
         cpu->flags&=~(CF|OF);
@@ -82,7 +82,7 @@ void common_imul32(CPU* cpu, U32 src) {
     cpu->lazyFlagType = FLAGS_NONE;
     EAX = (U32)result;
     EDX = (U32)(result >> 32);
-    if (result>0x7fffffffl || result<-0x7fffffffl) {
+    if (result > INT32_MAX || result < INT32_MIN) {
         cpu->flags|=CF|OF;
     } else {
         cpu->flags&=~(CF|OF);

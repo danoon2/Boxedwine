@@ -197,7 +197,7 @@ void common_psrawMmx(CPU* cpu, U32 r1, U32 r2) {
     U8 shift = 0;
 
     if (cpu->fpu.getMMX(r2)->q > 15) {
-        shift = 16;
+        shift = 15;
     } else {
         shift = cpu->fpu.getMMX(r2)->ub.b0;
     }
@@ -214,7 +214,7 @@ void common_psrawE64(CPU* cpu, U32 reg, U32 address) {
     src.q = cpu->memory->readq(address);
 
     if (src.q > 15) {
-        src.q = 16;
+        src.q = 15;
     }
 	dest->sw.w0 >>= src.ub.b0;
 	dest->sw.w1 >>= src.ub.b0;
@@ -225,6 +225,10 @@ void common_psrawE64(CPU* cpu, U32 reg, U32 address) {
 void common_psllw(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
+    if (imm > 15) { 
+        dest->q = 0; 
+        return; 
+    }
     dest->uw.w0 <<= imm;
 	dest->uw.w1 <<= imm;
 	dest->uw.w2 <<= imm;
@@ -234,6 +238,9 @@ void common_psllw(CPU* cpu, U32 reg, U8 imm) {
 void common_psraw(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
+    if (imm > 15) {
+        imm = 15;
+    }
     dest->sw.w0 >>= imm;
 	dest->sw.w1 >>= imm;
 	dest->sw.w2 >>= imm;
@@ -243,6 +250,9 @@ void common_psraw(CPU* cpu, U32 reg, U8 imm) {
 void common_psrlw(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
+    if (imm > 15) {
+        imm = 15;
+    }
     dest->uw.w0 >>= imm;
 	dest->uw.w1 >>= imm;
 	dest->uw.w2 >>= imm;
@@ -306,7 +316,7 @@ void common_psradMmx(CPU* cpu, U32 r1, U32 r2) {
     U8 shift = 0;
 
     if (cpu->fpu.getMMX(r2)->q > 31) {
-        shift = 32;
+        shift = 31;
     } else {
         shift = cpu->fpu.getMMX(r2)->ub.b0;
     }
@@ -321,7 +331,7 @@ void common_psradE64(CPU* cpu, U32 reg, U32 address) {
     src.q = cpu->memory->readq(address);
 
     if (src.q > 31) {
-        src.q = 32;
+        src.q = 31;
     }
 	dest->sd.d0 >>= src.ub.b0;
 	dest->sd.d1 >>= src.ub.b0;	
@@ -330,6 +340,10 @@ void common_psradE64(CPU* cpu, U32 reg, U32 address) {
 void common_pslld(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
+    if (imm > 31) {
+        dest->q = 0;
+        return;
+    }
     dest->ud.d0 <<= imm;
 	dest->ud.d1 <<= imm;
 }
@@ -337,6 +351,9 @@ void common_pslld(CPU* cpu, U32 reg, U8 imm) {
 void common_psrad(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
+    if (imm > 31) {
+        imm = 31;
+    }
     dest->sd.d0 >>= imm;
 	dest->sd.d1 >>= imm;
 }
@@ -344,6 +361,9 @@ void common_psrad(CPU* cpu, U32 reg, U8 imm) {
 void common_psrld(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
+    if (imm > 31) {
+        imm = 31;
+    }
     dest->ud.d0 >>= imm;
 	dest->ud.d1 >>= imm;
 }
@@ -397,11 +417,21 @@ void common_psrlqE64(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_psllq(CPU* cpu, U32 reg, U8 imm) {   
-    cpu->fpu.getMMX(reg)->q <<= imm;
+    MMX_reg* dest = cpu->fpu.getMMX(reg);
+    if (imm > 63) {
+        dest->q = 0;
+    } else {
+        dest->q <<= imm;
+    }
 }
 
 void common_psrlq(CPU* cpu, U32 reg, U8 imm) {
-    cpu->fpu.getMMX(reg)->q >>= imm;
+    MMX_reg* dest = cpu->fpu.getMMX(reg);
+    if (imm > 63) {
+        dest->q = 0;
+    } else {
+        dest->q >>= imm;
+    }
 }
 
 /* Math */
@@ -986,15 +1016,17 @@ void common_pcmpgtdE64(CPU* cpu, U32 reg, U32 address) {
 void common_packsswbMmx(CPU* cpu, U32 r1, U32 r2) {
     MMX_reg* dest=cpu->fpu.getMMX(r1);
     MMX_reg* src=cpu->fpu.getMMX(r2);
-    
-    dest->sb.b0 = SaturateWordSToByteS(dest->sw.w0);
-	dest->sb.b1 = SaturateWordSToByteS(dest->sw.w1);
-	dest->sb.b2 = SaturateWordSToByteS(dest->sw.w2);
-	dest->sb.b3 = SaturateWordSToByteS(dest->sw.w3);
-	dest->sb.b4 = SaturateWordSToByteS(src->sw.w0);
-	dest->sb.b5 = SaturateWordSToByteS(src->sw.w1);
-	dest->sb.b6 = SaturateWordSToByteS(src->sw.w2);
-	dest->sb.b7 = SaturateWordSToByteS(src->sw.w3);
+    MMX_reg tmp; // nessary if r1 == r2
+
+    tmp.sb.b0 = SaturateWordSToByteS(dest->sw.w0);
+    tmp.sb.b1 = SaturateWordSToByteS(dest->sw.w1);
+    tmp.sb.b2 = SaturateWordSToByteS(dest->sw.w2);
+    tmp.sb.b3 = SaturateWordSToByteS(dest->sw.w3);
+    tmp.sb.b4 = SaturateWordSToByteS(src->sw.w0);
+    tmp.sb.b5 = SaturateWordSToByteS(src->sw.w1);
+    tmp.sb.b6 = SaturateWordSToByteS(src->sw.w2);
+    tmp.sb.b7 = SaturateWordSToByteS(src->sw.w3);
+	dest->q = tmp.q;
 }
 
 void common_packsswbE64(CPU* cpu, U32 reg, U32 address) {
@@ -1016,11 +1048,13 @@ void common_packsswbE64(CPU* cpu, U32 reg, U32 address) {
 void common_packssdwMmx(CPU* cpu, U32 r1, U32 r2) {
     MMX_reg* dest=cpu->fpu.getMMX(r1);
     MMX_reg* src=cpu->fpu.getMMX(r2);
-    
-    dest->sw.w0 = SaturateDwordSToWordS(dest->sd.d0);
-	dest->sw.w1 = SaturateDwordSToWordS(dest->sd.d1);
-	dest->sw.w2 = SaturateDwordSToWordS(src->sd.d0);
-	dest->sw.w3 = SaturateDwordSToWordS(src->sd.d1);
+    MMX_reg tmp; // nessary if r1 == r2
+
+    tmp.sw.w0 = SaturateDwordSToWordS(dest->sd.d0);
+    tmp.sw.w1 = SaturateDwordSToWordS(dest->sd.d1);
+    tmp.sw.w2 = SaturateDwordSToWordS(src->sd.d0);
+    tmp.sw.w3 = SaturateDwordSToWordS(src->sd.d1);
+    dest->q = tmp.q;
 }
 
 void common_packssdwE64(CPU* cpu, U32 reg, U32 address) {
@@ -1038,15 +1072,17 @@ void common_packssdwE64(CPU* cpu, U32 reg, U32 address) {
 void common_packuswbMmx(CPU* cpu, U32 r1, U32 r2) {
     MMX_reg* dest=cpu->fpu.getMMX(r1);
     MMX_reg* src=cpu->fpu.getMMX(r2);
-    
-    dest->ub.b0 = SaturateWordSToByteU(dest->sw.w0);
-	dest->ub.b1 = SaturateWordSToByteU(dest->sw.w1);
-	dest->ub.b2 = SaturateWordSToByteU(dest->sw.w2);
-	dest->ub.b3 = SaturateWordSToByteU(dest->sw.w3);
-	dest->ub.b4 = SaturateWordSToByteU(src->sw.w0);
-	dest->ub.b5 = SaturateWordSToByteU(src->sw.w1);
-	dest->ub.b6 = SaturateWordSToByteU(src->sw.w2);
-	dest->ub.b7 = SaturateWordSToByteU(src->sw.w3);
+    MMX_reg tmp; // nessary if r1 == r2
+
+    tmp.ub.b0 = SaturateWordSToByteU(dest->sw.w0);
+    tmp.ub.b1 = SaturateWordSToByteU(dest->sw.w1);
+    tmp.ub.b2 = SaturateWordSToByteU(dest->sw.w2);
+    tmp.ub.b3 = SaturateWordSToByteU(dest->sw.w3);
+    tmp.ub.b4 = SaturateWordSToByteU(src->sw.w0);
+    tmp.ub.b5 = SaturateWordSToByteU(src->sw.w1);
+    tmp.ub.b6 = SaturateWordSToByteU(src->sw.w2);
+    tmp.ub.b7 = SaturateWordSToByteU(src->sw.w3);
+	dest->q = tmp.q;
 }
 
 void common_packuswbE64(CPU* cpu, U32 reg, U32 address) {
