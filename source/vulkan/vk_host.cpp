@@ -12575,6 +12575,2544 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             return nullptr;
     }
 }
+void vulkanDeleteNextPtr(const void* p) {
+    if (!p) return;
+    VkBaseOutStructure* pNext = (VkBaseOutStructure*)p;
+    if (pNext->pNext) vulkanDeleteNextPtr(pNext->pNext);
+    switch (pNext->sType) {
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT:
+            delete (VkPipelineRasterizationProvokingVertexStateCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR:
+            delete (VkAccelerationStructureBuildSizesInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROPERTIES_FEATURES_EXT:
+            delete (VkPhysicalDevicePipelinePropertiesFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT:
+            delete (VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GEOMETRY_NV:
+            delete (VkGeometryNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO:
+            delete (VkPhysicalDeviceExternalImageFormatInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES:
+            delete (VkPhysicalDeviceIndexTypeUint8Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT:
+            delete (VkSwapchainPresentFenceInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2:
+            delete (VkSparseImageMemoryRequirements2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_DENSITY_MAP_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR:
+            delete (VkSwapchainCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_NV:
+            delete (VkPhysicalDeviceMemoryDecompressionPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_BEGIN_INFO_ARM:
+            delete (VkRenderPassStripeBeginInfoARM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES:
+            delete (VkPhysicalDeviceShaderSubgroupRotateFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DISPLAY_PROPERTIES_2_KHR:
+            delete (VkDisplayProperties2KHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_INDIRECT_BUFFER_INFO_NV:
+            delete (VkComputePipelineIndirectBufferInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT:
+            delete (VkDebugMarkerObjectTagInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_VALIDATION_FEATURES_NV:
+            delete (VkPhysicalDeviceRayTracingValidationFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLER_CUBIC_WEIGHTS_CREATE_INFO_QCOM:
+            delete (VkSamplerCubicWeightsCreateInfoQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO:
+            delete (VkQueryPoolCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO:
+            delete (VkRenderPassBeginInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES:
+            delete (VkPhysicalDeviceMaintenance4Properties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SHADING_RATE_IMAGE_STATE_CREATE_INFO_NV:
+            delete (VkPipelineViewportShadingRateImageStateCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_FORMAT_QUANTIZATION_MAP_PROPERTIES_KHR:
+            delete (VkVideoFormatQuantizationMapPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_QUALITY_LEVEL_PROPERTIES_KHR:
+            delete (VkVideoEncodeAV1QualityLevelPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO:
+            delete (VkDeviceGroupCommandBufferBeginInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2:
+            delete (VkSubresourceLayout2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR:
+            delete (VkPhysicalDeviceFragmentShadingRateFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO:
+            delete (VkPhysicalDeviceExternalBufferInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3:
+            delete (VkFormatProperties3*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2:
+            delete (VkFormatProperties2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RENDER_PASS_STRIPED_FEATURES_ARM:
+            delete (VkPhysicalDeviceRenderPassStripedFeaturesARM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES:
+            delete (VkPhysicalDeviceVariablePointersFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV:
+            delete (VkGeometryAABBNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT:
+            delete (VkShaderModuleIdentifierEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES:
+            delete (VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_INFO_EXT:
+            delete (VkRenderingFragmentDensityMapAttachmentInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_EXT:
+            delete (VkIndirectCommandsLayoutCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT:
+            delete (VkValidationCacheCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_SESSION_CREATE_INFO_KHR:
+            delete (VkVideoEncodeAV1SessionCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES:
+            delete (VkPhysicalDeviceMaintenance5Properties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PICTURE_INFO_KHR:
+            delete (VkVideoDecodeH265PictureInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_SHADING_PROPERTIES_HUAWEI:
+            delete (VkPhysicalDeviceSubpassShadingPropertiesHUAWEI*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PERFORMANCE_STREAM_MARKER_INFO_INTEL:
+            delete (VkPerformanceStreamMarkerInfoINTEL*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT:
+            delete (VkDebugMarkerObjectNameInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS:
+            delete (VkDeviceImageMemoryRequirements*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO:
+            delete (VkCommandBufferInheritanceRenderingInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO:
+            delete (VkDeviceGroupDeviceCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_CREATION_CONTROL_EXT:
+            delete (VkRenderPassCreationControlEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_PROPERTIES:
+            delete (VkPhysicalDeviceMaintenance6Properties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO:
+            delete (VkPipelineRenderingCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR:
+            delete (VkRayTracingPipelineCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_OPAQUE_CAPTURE_ADDRESS_CREATE_INFO:
+            delete (VkBufferOpaqueCaptureAddressCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2:
+            delete (VkImageSubresource2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO:
+            delete (VkPipelineVertexInputStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV:
+            delete (VkPhysicalDeviceMeshShaderPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_ADD_INFO_KHR:
+            delete (VkVideoEncodeH264SessionParametersAddInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO:
+            delete (VkPipelineDepthStencilStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO:
+            delete (VkDeviceQueueCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR:
+            delete (VkAccelerationStructureGeometryInstancesDataKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DISPLAY_PLANE_CAPABILITIES_2_KHR:
+            delete (VkDisplayPlaneCapabilities2KHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR:
+            delete (VkAccelerationStructureCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINEAR_COLOR_ATTACHMENT_FEATURES_NV:
+            delete (VkPhysicalDeviceLinearColorAttachmentFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES:
+            delete (VkPhysicalDeviceFloatControlsProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_OUT_OF_BAND_QUEUE_TYPE_INFO_NV:
+            delete (VkOutOfBandQueueTypeInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT:
+            delete (VkValidationFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_CAPABILITIES_KHR:
+            delete (VkVideoDecodeAV1CapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR:
+            delete (VkVideoEncodeH264ProfileInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2:
+            delete (VkImageMemoryRequirementsInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DESCRIPTOR_DATA_CREATE_INFO_EXT:
+            delete (VkOpaqueCaptureDescriptorDataCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_IMAGE_TO_IMAGE_INFO:
+            delete (VkCopyImageToImageInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES:
+            delete (VkPhysicalDeviceDynamicRenderingLocalReadFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV:
+            delete (VkAccelerationStructureMemoryRequirementsInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_OPTICAL_FLOW_SESSION_CREATE_PRIVATE_DATA_INFO_NV:
+            delete (VkOpticalFlowSessionCreatePrivateDataInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV:
+            delete (VkRayTracingShaderGroupCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT:
+            delete (VkDebugReportCallbackCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_FEATURES_NV:
+            delete (VkPhysicalDeviceCooperativeMatrix2FeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT:
+            delete (VkSwapchainPresentModesCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SUBPASS_FRAGMENT_DENSITY_MAP_OFFSET_END_INFO_QCOM:
+            delete (VkSubpassFragmentDensityMapOffsetEndInfoQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceConservativeRasterizationPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES:
+            delete (VkPhysicalDeviceToolProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2:
+            delete (VkImageSparseMemoryRequirementsInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET:
+            delete (VkWriteDescriptorSet*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES:
+            delete (VkPhysicalDeviceTimelineSemaphoreProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PER_STAGE_DESCRIPTOR_SET_FEATURES_NV:
+            delete (VkPhysicalDevicePerStageDescriptorSetFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO:
+            delete (VkRenderPassCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_QUALITY_LEVEL_PROPERTIES_KHR:
+            delete (VkVideoEncodeH265QualityLevelPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_ENUMS_PROPERTIES_NV:
+            delete (VkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RENDER_PASS_STRIPED_PROPERTIES_ARM:
+            delete (VkPhysicalDeviceRenderPassStripedPropertiesARM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV:
+            delete (VkAccelerationStructureCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV:
+            delete (VkDedicatedAllocationImageCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_CONTROL_FEATURES_EXT:
+            delete (VkPhysicalDeviceDepthClampControlFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT:
+            delete (VkSwapchainPresentModeInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_BARRIER:
+            delete (VkMemoryBarrier*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_FRAME_BOUNDARY_EXT:
+            delete (VkFrameBoundaryEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO:
+            delete (VkBindImagePlaneMemoryInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO:
+            delete (VkPipelineShaderStageRequiredSubgroupSizeCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT:
+            delete (VkPhysicalDeviceColorWriteEnableFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO:
+            delete (VkCommandBufferSubmitInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO:
+            delete (VkPushConstantsInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_PIPELINE_EXT:
+            delete (VkWriteIndirectExecutionSetPipelineEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT:
+            delete (VkPhysicalDeviceRobustness2FeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_MICROMAP_INFO_EXT:
+            delete (VkCopyMemoryToMicromapInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PROFILE_INFO_KHR:
+            delete (VkVideoDecodeH264ProfileInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT:
+            delete (VkPipelineRasterizationStateStreamCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT:
+            delete (VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVES_GENERATED_QUERY_FEATURES_EXT:
+            delete (VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ANTI_LAG_FEATURES_AMD:
+            delete (VkPhysicalDeviceAntiLagFeaturesAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV:
+            delete (VkPipelineCoverageModulationStateCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_LATENCY_CREATE_INFO_NV:
+            delete (VkSwapchainLatencyCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT:
+            delete (VkDebugMarkerMarkerInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_BUFFER_EMBEDDED_SAMPLERS_INFO_EXT:
+            delete (VkBindDescriptorBufferEmbeddedSamplersInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO:
+            delete (VkPushDescriptorSetInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES:
+            delete (VkPhysicalDeviceProtectedMemoryFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2:
+            delete (VkPhysicalDeviceMemoryProperties2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT:
+            delete (VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceDescriptorBufferPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES:
+            delete (VkPhysicalDeviceMultiviewFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_DPB_SLOT_INFO_KHR:
+            delete (VkVideoEncodeH265DpbSlotInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_PROFILE_INFO_KHR:
+            delete (VkVideoProfileInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_CAPABILITIES_KHR:
+            delete (VkVideoCapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_AMD:
+            delete (VkAttachmentSampleCountInfoAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
+            delete (VkBufferCaptureDescriptorDataInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXCLUSIVE_SCISSOR_FEATURES_NV:
+            delete (VkPhysicalDeviceExclusiveScissorFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT:
+            delete (VkVertexInputAttributeDescription2EXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO:
+            delete (VkDescriptorSetAllocateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_CREATE_INFO_KHR:
+            delete (VkPipelineCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_PROPERTIES_NV:
+            delete (VkPhysicalDeviceShaderSMBuiltinsPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUBIC_WEIGHTS_FEATURES_QCOM:
+            delete (VkPhysicalDeviceCubicWeightsFeaturesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO:
+            delete (VkImageCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_PICTURE_RESOURCE_INFO_KHR:
+            delete (VkVideoPictureResourceInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
+            delete (VkPhysicalDevicePCIBusInfoPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_PROPERTIES_KHR:
+            delete (VkPipelineExecutablePropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO:
+            delete (VkDeviceGroupRenderPassBeginInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACQUIRE_PROFILING_LOCK_INFO_KHR:
+            delete (VkAcquireProfilingLockInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET:
+            delete (VkCopyDescriptorSet*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CLUSTER_CULLING_SHADER_PROPERTIES_HUAWEI:
+            delete (VkPhysicalDeviceClusterCullingShaderPropertiesHUAWEI*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_LAYER_INFO_KHR:
+            delete (VkVideoEncodeRateControlLayerInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR:
+            delete (VkPhysicalDeviceAccelerationStructurePropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_NV:
+            delete (VkPhysicalDeviceCooperativeMatrixPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO:
+            delete (VkSamplerReductionModeCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLER_BLOCK_MATCH_WINDOW_CREATE_INFO_QCOM:
+            delete (VkSamplerBlockMatchWindowCreateInfoQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT:
+            delete (VkDescriptorSetVariableDescriptorCountLayoutSupport*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR:
+            delete (VkCopyMemoryToAccelerationStructureInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PERFORMANCE_CONFIGURATION_ACQUIRE_INFO_INTEL:
+            delete (VkPerformanceConfigurationAcquireInfoINTEL*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER:
+            delete (VkImageMemoryBarrier*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO:
+            delete (VkExternalMemoryBufferCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_TOKEN_NV:
+            delete (VkIndirectCommandsLayoutTokenNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_2_NV:
+            delete (VkQueueFamilyCheckpointProperties2NV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMMAND_BUFFER_INHERITANCE_FEATURES_NV:
+            delete (VkPhysicalDeviceCommandBufferInheritanceFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV:
+            delete (VkBindAccelerationStructureMemoryInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_QUALITY_LEVEL_PROPERTIES_KHR:
+            delete (VkVideoEncodeH264QualityLevelPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT:
+            delete (VkPhysicalDevice4444FormatsFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_CU_LAUNCH_INFO_NVX:
+            delete (VkCuLaunchInfoNVX*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR:
+            delete (VkPresentRegionsKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT:
+            delete (VkShaderCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT:
+            delete (VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_CONTROL_EXT:
+            delete (VkImageCompressionControlEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_OPTICAL_FLOW_SESSION_CREATE_INFO_NV:
+            delete (VkOpticalFlowSessionCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO:
+            delete (VkExportSemaphoreCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_GET_INFO_KHR:
+            delete (VkVideoEncodeH265SessionParametersGetInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_DPB_SLOT_INFO_KHR:
+            delete (VkVideoEncodeAV1DpbSlotInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_INFO_KHR:
+            delete (VkVideoEncodeQuantizationMapInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES:
+            delete (VkPhysicalDeviceTextureCompressionASTCHDRFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO:
+            delete (VkPipelineRasterizationStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2:
+            delete (VkImageMemoryBarrier2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_SESSION_PARAMETERS_CREATE_INFO_KHR:
+            delete (VkVideoEncodeQuantizationMapSessionParametersCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_KHR:
+            delete (VkPhysicalDeviceCooperativeMatrixPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_COUNTER_CREATE_INFO_EXT:
+            delete (VkSwapchainCounterCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_PROPERTIES_FEATURES_QCOM:
+            delete (VkPhysicalDeviceTilePropertiesFeaturesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TILE_IMAGE_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceShaderTileImagePropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_SAMPLE_WEIGHT_CREATE_INFO_QCOM:
+            delete (VkImageViewSampleWeightCreateInfoQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT:
+            delete (VkMultisamplePropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_RATE_CONTROL_INFO_KHR:
+            delete (VkVideoEncodeAV1RateControlInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_PROPERTIES_QCOM:
+            delete (VkPhysicalDeviceImageProcessing2PropertiesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT:
+            delete (VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2:
+            delete (VkBufferImageCopy2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT:
+            delete (VkMemoryPriorityAllocateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SUBPASS_RESOLVE_PERFORMANCE_QUERY_EXT:
+            delete (VkSubpassResolvePerformanceQueryEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO:
+            delete (VkCommandBufferBeginInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES:
+            delete (VkPhysicalDeviceShaderDrawParametersFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES:
+            delete (VkPhysicalDeviceMultiviewProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_DRIVER_PROPERTIES_MSFT:
+            delete (VkPhysicalDeviceLayeredDriverPropertiesMSFT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT:
+            delete (VkPhysicalDeviceDepthClipControlFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT:
+            delete (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV:
+            delete (VkPipelineRepresentativeFragmentTestStateCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_LIBRARY_GROUP_HANDLES_FEATURES_EXT:
+            delete (VkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES:
+            delete (VkPhysicalDeviceSamplerFilterMinmaxProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_BARRIER_FEATURES_NV:
+            delete (VkPhysicalDevicePresentBarrierFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_CAPABILITIES_KHR:
+            delete (VkVideoEncodeH264CapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_BARRIER_CREATE_INFO_NV:
+            delete (VkSwapchainPresentBarrierCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2:
+            delete (VkImageFormatProperties2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT:
+            delete (VkPhysicalDeviceDescriptorBufferFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPTICAL_FLOW_FEATURES_NV:
+            delete (VkPhysicalDeviceOpticalFlowFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT:
+            delete (VkPhysicalDeviceCustomBorderColorFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_DPB_SLOT_INFO_KHR:
+            delete (VkVideoDecodeAV1DpbSlotInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_NV:
+            delete (VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO:
+            delete (VkImageViewUsageCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_SWAPCHAIN_FEATURES_EXT:
+            delete (VkPhysicalDeviceImageCompressionControlSwapchainFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_VIEWPORTS_FEATURES_QCOM:
+            delete (VkPhysicalDeviceMultiviewPerViewViewportsFeaturesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO:
+            delete (VkDescriptorSetVariableDescriptorCountAllocateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MOTION_INFO_NV:
+            delete (VkAccelerationStructureMotionInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_BINARY_CREATE_INFO_KHR:
+            delete (VkPipelineBinaryCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceSampleLocationsPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT:
+            delete (VkPhysicalDeviceMeshShaderFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_COPY_2:
+            delete (VkBufferCopy2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV:
+            delete (VkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT:
+            delete (VkPhysicalDeviceNestedCommandBufferFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO:
+            delete (VkDescriptorPoolCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO:
+            delete (VkImageStencilUsageCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_VIEWPORT_SCISSOR_INFO_NV:
+            delete (VkCommandBufferInheritanceViewportScissorInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BLIT_IMAGE_CUBIC_WEIGHTS_INFO_QCOM:
+            delete (VkBlitImageCubicWeightsInfoQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT:
+            delete (VkDebugUtilsObjectTagInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_FEATURES_EXT:
+            delete (VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_STATISTIC_KHR:
+            delete (VkPipelineExecutableStatisticKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR:
+            delete (VkPhysicalDevicePresentWaitFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR:
+            delete (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT:
+            delete (VkSurfaceCapabilities2EXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PRESENT_ID_KHR:
+            delete (VkPresentIdKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_INLINE_QUERY_INFO_KHR:
+            delete (VkVideoInlineQueryInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT:
+            delete (VkMemoryHostPointerPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_BARRIER_2:
+            delete (VkMemoryBarrier2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES:
+            delete (VkPhysicalDeviceShaderIntegerDotProductFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_CUDA_MODULE_CREATE_INFO_NV:
+            delete (VkCudaModuleCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR:
+            delete (VkPhysicalDevicePresentIdFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR:
+            delete (VkVideoEncodeQualityLevelInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ALIGNMENT_CONTROL_PROPERTIES_MESA:
+            delete (VkPhysicalDeviceImageAlignmentControlPropertiesMESA*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR:
+            delete (VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR:
+            delete (VkVideoReferenceSlotInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_NALU_SLICE_SEGMENT_INFO_KHR:
+            delete (VkVideoEncodeH265NaluSliceSegmentInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_BUILTINS_PROPERTIES_ARM:
+            delete (VkPhysicalDeviceShaderCoreBuiltinsPropertiesARM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV:
+            delete (VkPipelineViewportExclusiveScissorStateCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BORDER_COLOR_SWIZZLE_FEATURES_EXT:
+            delete (VkPhysicalDeviceBorderColorSwizzleFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_CAPABILITIES_KHR:
+            delete (VkVideoDecodeH264CapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SUBPASS_SHADING_PIPELINE_CREATE_INFO_HUAWEI:
+            delete (VkSubpassShadingPipelineCreateInfoHUAWEI*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDER_PASS_TRANSFORM_INFO_QCOM:
+            delete (VkCommandBufferInheritanceRenderPassTransformInfoQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO:
+            delete (VkCommandPoolCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_BINARY_INFO_KHR:
+            delete (VkPipelineBinaryInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR:
+            delete (VkPhysicalDeviceFragmentShadingRateKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO:
+            delete (VkGraphicsPipelineCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO:
+            delete (VkMemoryDedicatedAllocateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT:
+            delete (VkAttachmentReferenceStencilLayout*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR:
+            delete (VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT:
+            delete (VkRenderPassSampleLocationsBeginInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO:
+            delete (VkExternalMemoryImageCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT:
+            delete (VkPipelineSampleLocationsStateCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RGBA10X6_FORMATS_FEATURES_EXT:
+            delete (VkPhysicalDeviceRGBA10X6FormatsFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT:
+            delete (VkCommandBufferInheritanceConditionalRenderingInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_INFO_KHR:
+            delete (VkVideoEncodeRateControlInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX:
+            delete (VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV:
+            delete (VkExportMemoryAllocateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT:
+            delete (VkPipelineRasterizationConservativeStateCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_FEATURES_EXT:
+            delete (VkPhysicalDeviceMapMemoryPlacedFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_FEATURES_NV:
+            delete (VkPhysicalDeviceShadingRateImageFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DIAGNOSTICS_CONFIG_FEATURES_NV:
+            delete (VkPhysicalDeviceDiagnosticsConfigFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2:
+            delete (VkQueueFamilyProperties2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES:
+            delete (VkPhysicalDeviceImagelessFramebufferFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_INFO_KHR:
+            delete (VkVideoDecodeInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT:
+            delete (VkVertexInputBindingDescription2EXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR:
+            delete (VkCopyAccelerationStructureInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT:
+            delete (VkDebugUtilsObjectNameInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceFragmentDensityMap2PropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MOTION_BLUR_FEATURES_NV:
+            delete (VkPhysicalDeviceRayTracingMotionBlurFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT:
+            delete (VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES:
+            delete (VkPhysicalDeviceScalarBlockLayoutFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDERING_INPUT_ATTACHMENT_INDEX_INFO:
+            delete (VkRenderingInputAttachmentIndexInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT:
+            delete (VkSurfacePresentModeEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO:
+            delete (VkMemoryOpaqueCaptureAddressAllocateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_ASTC_DECODE_MODE_EXT:
+            delete (VkImageViewASTCDecodeModeEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_NV:
+            delete (VkPhysicalDeviceCooperativeMatrixFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO:
+            delete (VkDeviceQueueGlobalPriorityCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceDeviceGeneratedCommandsPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_BLIT_2:
+            delete (VkImageBlit2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_NV:
+            delete (VkPhysicalDeviceMemoryDecompressionFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO:
+            delete (VkPipelineDynamicStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PROTECTED_SUBMIT_INFO:
+            delete (VkProtectedSubmitInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_BINARY_KEY_KHR:
+            delete (VkPipelineBinaryKeyKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_MEMORY_STATUS:
+            delete (VkBindMemoryStatus*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GRAPHICS_SHADER_GROUP_CREATE_INFO_NV:
+            delete (VkGraphicsShaderGroupCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PROFILE_INFO_KHR:
+            delete (VkVideoEncodeAV1ProfileInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_CODING_CONTROL_INFO_KHR:
+            delete (VkVideoCodingControlInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_CAPABILITIES_KHR:
+            delete (VkVideoEncodeAV1CapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_SESSION_PARAMETERS_CREATE_INFO_KHR:
+            delete (VkVideoDecodeH264SessionParametersCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_TO_COLOR_STATE_CREATE_INFO_NV:
+            delete (VkPipelineCoverageToColorStateCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_FORMAT_INFO_KHR:
+            delete (VkPhysicalDeviceVideoFormatInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO:
+            delete (VkRenderPassMultiviewCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_PROPERTIES_QCOM:
+            delete (VkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT:
+            delete (VkPipelineViewportDepthClipControlCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO:
+            delete (VkDescriptorSetLayoutBindingFlagsCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE:
+            delete (VkSubpassDescriptionDepthStencilResolve*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MULTIVIEW_PER_VIEW_RENDER_AREAS_RENDER_PASS_BEGIN_INFO_QCOM:
+            delete (VkMultiviewPerViewRenderAreasRenderPassBeginInfoQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_FEATURES_KHR:
+            delete (VkPhysicalDevicePipelineBinaryFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_CU_MODULE_TEXTURING_MODE_CREATE_INFO_NVX:
+            delete (VkCuModuleTexturingModeCreateInfoNVX*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCHEDULING_CONTROLS_FEATURES_ARM:
+            delete (VkPhysicalDeviceSchedulingControlsFeaturesARM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO:
+            delete (VkDevicePrivateDataCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES:
+            delete (VkPhysicalDeviceMaintenance6Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV:
+            delete (VkPhysicalDeviceCornerSampledImageFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES:
+            delete (VkPhysicalDeviceDepthStencilResolveProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO:
+            delete (VkBufferCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES:
+            delete (VkExternalFenceProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INHERITED_VIEWPORT_SCISSOR_FEATURES_NV:
+            delete (VkPhysicalDeviceInheritedViewportScissorFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
+            delete (VkImageCaptureDescriptorDataInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_FORMAT_PROPERTIES_KHR:
+            delete (VkVideoFormatPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CLUSTER_CULLING_SHADER_VRS_FEATURES_HUAWEI:
+            delete (VkPhysicalDeviceClusterCullingShaderVrsFeaturesHUAWEI*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MICROMAP_VERSION_INFO_EXT:
+            delete (VkMicromapVersionInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_HOST_MAPPING_INFO_VALVE:
+            delete (VkDescriptorSetLayoutHostMappingInfoVALVE*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_PROPERTIES_NV:
+            delete (VkPhysicalDeviceShadingRateImagePropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceNestedCommandBufferPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_BUILTINS_FEATURES_ARM:
+            delete (VkPhysicalDeviceShaderCoreBuiltinsFeaturesARM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUDA_KERNEL_LAUNCH_FEATURES_NV:
+            delete (VkPhysicalDeviceCudaKernelLaunchFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_UPDATE_INFO_KHR:
+            delete (VkVideoSessionParametersUpdateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_LOCATION_INFO:
+            delete (VkRenderingAttachmentLocationInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_COMPUTE_FEATURES_NV:
+            delete (VkPhysicalDeviceDeviceGeneratedCommandsComputeFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_PROPERTIES_EXT:
+            delete (VkImageCompressionPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_CREATE_INFO_KHR:
+            delete (VkVideoEncodeH265SessionCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES:
+            delete (VkPhysicalDevicePipelineRobustnessProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_MAP_INFO:
+            delete (VkMemoryMapInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_VERTEX_ATTRIBUTES_FEATURES_EXT:
+            delete (VkPhysicalDeviceLegacyVertexAttributesFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_SESSION_PARAMETERS_CREATE_INFO_KHR:
+            delete (VkVideoEncodeAV1SessionParametersCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES:
+            delete (VkPhysicalDevicePushDescriptorProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO:
+            delete (VkSemaphoreSubmitInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_POSITION_FETCH_FEATURES_KHR:
+            delete (VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_VERSION_INFO_KHR:
+            delete (VkAccelerationStructureVersionInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DISPLAY_PLANE_INFO_2_KHR:
+            delete (VkDisplayPlaneInfo2KHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_SUBPASS_FEEDBACK_CREATE_INFO_EXT:
+            delete (VkRenderPassSubpassFeedbackCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_SESSION_PARAMETERS_ADD_INFO_KHR:
+            delete (VkVideoDecodeH265SessionParametersAddInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT:
+            delete (VkDebugUtilsMessengerCallbackDataEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS:
+            delete (VkMemoryDedicatedRequirements*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES:
+            delete (VkPhysicalDeviceVulkan14Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES:
+            delete (VkPhysicalDeviceHostQueryResetFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLER_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
+            delete (VkSamplerCaptureDescriptorDataInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_NV:
+            delete (VkExternalMemoryImageCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TILE_IMAGE_FEATURES_EXT:
+            delete (VkPhysicalDeviceShaderTileImageFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES:
+            delete (VkPhysicalDeviceImageRobustnessFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DISPLAY_PLANE_PROPERTIES_2_KHR:
+            delete (VkDisplayPlaneProperties2KHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO:
+            delete (VkBindBufferMemoryInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT:
+            delete (VkImageViewMinLodCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OPAQUE_CAPTURE_ADDRESS_INFO:
+            delete (VkDeviceMemoryOpaqueCaptureAddressInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_APPLICATION_INFO:
+            delete (VkApplicationInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceRobustness2PropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT:
+            delete (VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT:
+            delete (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_TRANSFORM_BEGIN_INFO_QCOM:
+            delete (VkRenderPassTransformBeginInfoQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO:
+            delete (VkPipelineMultisampleStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO:
+            delete (VkPipelineCreationFeedbackCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_QUEUE_SHADER_CORE_CONTROL_CREATE_INFO_ARM:
+            delete (VkDeviceQueueShaderCoreControlCreateInfoARM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_QUERY_POOL_PERFORMANCE_CREATE_INFO_KHR:
+            delete (VkQueryPoolPerformanceCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT:
+            delete (VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES:
+            delete (VkPhysicalDeviceDriverProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_COLOR_WRITE_CREATE_INFO_EXT:
+            delete (VkPipelineColorWriteCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2:
+            delete (VkRenderPassCreateInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES:
+            delete (VkExternalBufferProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT:
+            delete (VkSamplerCustomBorderColorCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2:
+            delete (VkMemoryRequirements2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT:
+            delete (VkDescriptorAddressInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES:
+            delete (VkPhysicalDeviceShaderIntegerDotProductProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_BINARY_DATA_INFO_KHR:
+            delete (VkPipelineBinaryDataInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_ROBUSTNESS_FEATURES_EXT:
+            delete (VkPhysicalDeviceVertexAttributeRobustnessFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT:
+            delete (VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT:
+            delete (VkDescriptorGetInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES:
+            delete (VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_FEEDBACK_INFO_KHR:
+            delete (VkVideoEncodeH264SessionParametersFeedbackInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES:
+            delete (VkPhysicalDeviceVertexAttributeDivisorFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO:
+            delete (VkRenderPassInputAttachmentAspectCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT:
+            delete (VkPhysicalDeviceMultiDrawFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT:
+            delete (VkBufferDeviceAddressCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2:
+            delete (VkPhysicalDeviceProperties2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SET_DESCRIPTOR_BUFFER_OFFSETS_INFO_EXT:
+            delete (VkSetDescriptorBufferOffsetsInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SUBRESOURCE_HOST_MEMCPY_SIZE:
+            delete (VkSubresourceHostMemcpySize*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_QUANTIZATION_MAP_CAPABILITIES_KHR:
+            delete (VkVideoEncodeH264QuantizationMapCapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_SHADER_INFO_EXT:
+            delete (VkIndirectExecutionSetShaderInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES:
+            delete (VkQueueFamilyGlobalPriorityProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT:
+            delete (VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DISPLAY_MODE_PROPERTIES_2_KHR:
+            delete (VkDisplayModeProperties2KHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES:
+            delete (VkPhysicalDeviceSubgroupSizeControlProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_CONTROL_FEATURES_EXT:
+            delete (VkPhysicalDeviceDepthBiasControlFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_FAULT_COUNTS_EXT:
+            delete (VkDeviceFaultCountsEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_SLICED_CREATE_INFO_EXT:
+            delete (VkImageViewSlicedCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO:
+            delete (VkPipelineVertexInputDivisorStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_KHR:
+            delete (VkPerformanceCounterKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT:
+            delete (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT:
+            delete (VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PICTURE_INFO_KHR:
+            delete (VkVideoDecodeAV1PictureInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES:
+            delete (VkPhysicalDevicePointClippingProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2:
+            delete (VkImageResolve2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR:
+            delete (VkVideoBeginCodingInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT:
+            delete (VkMutableDescriptorTypeCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT:
+            delete (VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_QUERY_POOL_VIDEO_ENCODE_FEEDBACK_CREATE_INFO_KHR:
+            delete (VkQueryPoolVideoEncodeFeedbackCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_FEATURES_NV:
+            delete (VkPhysicalDeviceShaderSMBuiltinsFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO:
+            delete (VkImageFormatListCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV:
+            delete (VkDedicatedAllocationMemoryAllocateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT:
+            delete (VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES:
+            delete (VkPhysicalDevice16BitStorageFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SUBMIT_INFO:
+            delete (VkSubmitInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_FORMAT_AV1_QUANTIZATION_MAP_PROPERTIES_KHR:
+            delete (VkVideoFormatAV1QuantizationMapPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_SESSION_PARAMETERS_CREATE_INFO_KHR:
+            delete (VkVideoDecodeAV1SessionParametersCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_FEATURES_EXT:
+            delete (VkPhysicalDeviceImageCompressionControlFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR:
+            delete (VkVideoDecodeH264DpbSlotInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_EXT:
+            delete (VkGeneratedCommandsInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT:
+            delete (VkDebugUtilsMessengerCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2:
+            delete (VkSubpassDependency2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2:
+            delete (VkCopyImageToBufferInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD:
+            delete (VkTextureLODGatherFormatPropertiesAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_FORMAT_H265_QUANTIZATION_MAP_PROPERTIES_KHR:
+            delete (VkVideoFormatH265QuantizationMapPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RELAXED_LINE_RASTERIZATION_FEATURES_IMG:
+            delete (VkPhysicalDeviceRelaxedLineRasterizationFeaturesIMG*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_EVENT_INFO_EXT:
+            delete (VkDeviceEventInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_ZERO_ONE_FEATURES_EXT:
+            delete (VkPhysicalDeviceDepthClampZeroOneFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV:
+            delete (VkPhysicalDeviceRawAccessChainsFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_AV1_FEATURES_KHR:
+            delete (VkPhysicalDeviceVideoEncodeAV1FeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT:
+            delete (VkRenderPassFragmentDensityMapCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DISPLAY_EVENT_INFO_EXT:
+            delete (VkDisplayEventInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT:
+            delete (VkShaderModuleValidationCacheCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_INFO_KHR:
+            delete (VkPipelineInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO:
+            delete (VkSubpassBeginInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_EXT:
+            delete (VkGeneratedCommandsMemoryRequirementsInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_ENUM_STATE_CREATE_INFO_NV:
+            delete (VkPipelineFragmentShadingRateEnumStateCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_GET_INFO_KHR:
+            delete (VkVideoEncodeH264SessionParametersGetInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV:
+            delete (VkCheckpointDataNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2:
+            delete (VkAttachmentDescription2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_COPY_2:
+            delete (VkImageCopy2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceFragmentDensityMapPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT:
+            delete (VkPhysicalDeviceFragmentDensityMapFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_PROPERTIES_KHR:
+            delete (VkVideoEncodeQualityLevelPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES:
+            delete (VkPhysicalDeviceShaderAtomicInt64Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER:
+            delete (VkBufferMemoryBarrier*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV:
+            delete (VkSetLatencyMarkerInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT:
+            delete (VkPhysicalDeviceConditionalRenderingFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT:
+            delete (VkPhysicalDeviceDepthClipEnableFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT:
+            delete (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO:
+            delete (VkBufferDeviceAddressInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_FOOTPRINT_FEATURES_NV:
+            delete (VkPhysicalDeviceShaderImageFootprintFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR:
+            delete (VkVideoEncodeH265RateControlInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT:
+            delete (VkLayerSettingsCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT:
+            delete (VkSampleLocationsInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAME_BOUNDARY_FEATURES_EXT:
+            delete (VkPhysicalDeviceFrameBoundaryFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES:
+            delete (VkPhysicalDeviceMaintenance5Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DISPLAY_PRESENT_INFO_KHR:
+            delete (VkDisplayPresentInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR:
+            delete (VkAccelerationStructureGeometryKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR:
+            delete (VkVideoSessionCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT:
+            delete (VkPipelineRasterizationDepthClipStateCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR:
+            delete (VkAccelerationStructureGeometryAabbsDataKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_ARM:
+            delete (VkPhysicalDeviceShaderCorePropertiesARM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PRIVATE_DATA_SLOT_CREATE_INFO:
+            delete (VkPrivateDataSlotCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DISPLAY_SURFACE_STEREO_CREATE_INFO_NV:
+            delete (VkDisplaySurfaceStereoCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_OPTICAL_FLOW_EXECUTE_INFO_NV:
+            delete (VkOpticalFlowExecuteInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV:
+            delete (VkPhysicalDeviceMeshShaderFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR:
+            delete (VkPhysicalDeviceRayTracingPipelineFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_CU_FUNCTION_CREATE_INFO_NVX:
+            delete (VkCuFunctionCreateInfoNVX*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT:
+            delete (VkSurfacePresentModeCompatibilityEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_FEATURES_NV:
+            delete (VkPhysicalDeviceRayTracingInvocationReorderFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO:
+            delete (VkBufferViewCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR:
+            delete (VkCooperativeMatrixPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO:
+            delete (VkSamplerYcbcrConversionInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_SHADING_FEATURES_HUAWEI:
+            delete (VkPhysicalDeviceSubpassShadingFeaturesHUAWEI*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT:
+            delete (VkDeviceFaultInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NV:
+            delete (VkIndirectCommandsLayoutCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_INFO_EXT:
+            delete (VkMultisampledRenderToSingleSampledInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES:
+            delete (VkPhysicalDeviceSynchronization2Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO:
+            delete (VkBindDescriptorSetsInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT:
+            delete (VkPhysicalDeviceYcbcrImageArraysFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES:
+            delete (VkPhysicalDeviceVulkan13Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES:
+            delete (VkPhysicalDeviceProtectedMemoryProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO:
+            delete (VkSemaphoreTypeCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_PROPERTIES_NV:
+            delete (VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceMeshShaderPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES:
+            delete (VkPhysicalDevice8BitStorageFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV:
+            delete (VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO:
+            delete (VkPipelineRasterizationLineStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_FEATURES_QCOM:
+            delete (VkPhysicalDeviceImageProcessing2FeaturesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_NV:
+            delete (VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MICROMAP_CREATE_INFO_EXT:
+            delete (VkMicromapCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_PROPERTIES_KHR:
+            delete (VkPhysicalDevicePerformanceQueryPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SUBPASS_END_INFO:
+            delete (VkSubpassEndInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_KHR:
+            delete (VkPerformanceCounterDescriptionKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_LAYER_INFO_KHR:
+            delete (VkVideoEncodeH265RateControlLayerInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_FEATURES_NV:
+            delete (VkPhysicalDeviceCopyMemoryIndirectFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO:
+            delete (VkPipelineLayoutCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MULTIVIEW_PER_VIEW_ATTRIBUTES_INFO_NVX:
+            delete (VkMultiviewPerViewAttributesInfoNVX*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COVERAGE_REDUCTION_MODE_FEATURES_NV:
+            delete (VkPhysicalDeviceCoverageReductionModeFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_SESSION_PARAMETERS_CREATE_INFO_KHR:
+            delete (VkVideoDecodeH265SessionParametersCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES:
+            delete (VkPhysicalDeviceInlineUniformBlockProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES:
+            delete (VkPhysicalDeviceDescriptorIndexingProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUBIC_CLAMP_FEATURES_QCOM:
+            delete (VkPhysicalDeviceCubicClampFeaturesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES:
+            delete (VkPhysicalDeviceHostImageCopyProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO:
+            delete (VkInstanceCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR:
+            delete (VkPhysicalDeviceVideoEncodeQualityLevelInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_SHADER_INFO_EXT:
+            delete (VkGeneratedCommandsShaderInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO:
+            delete (VkDeviceCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INVOCATION_MASK_FEATURES_HUAWEI:
+            delete (VkPhysicalDeviceInvocationMaskFeaturesHUAWEI*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ANTI_LAG_PRESENTATION_INFO_AMD:
+            delete (VkAntiLagPresentationInfoAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO:
+            delete (VkBindBufferMemoryDeviceGroupInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceExternalMemoryHostPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2:
+            delete (VkAttachmentReference2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_HOST_IMAGE_LAYOUT_TRANSITION_INFO:
+            delete (VkHostImageLayoutTransitionInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_END_CODING_INFO_KHR:
+            delete (VkVideoEndCodingInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_DPB_SLOT_INFO_KHR:
+            delete (VkVideoEncodeH264DpbSlotInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_CUDA_LAUNCH_INFO_NV:
+            delete (VkCudaLaunchInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_PROPERTIES_NV:
+            delete (VkPhysicalDeviceRayTracingInvocationReorderPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT:
+            delete (VkPipelineShaderStageModuleIdentifierCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD:
+            delete (VkDeviceMemoryOverallocationCreateInfoAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_INFO_ARM:
+            delete (VkRenderPassStripeInfoARM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PICTURE_INFO_KHR:
+            delete (VkVideoEncodeH264PictureInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_FILTER_CUBIC_IMAGE_VIEW_IMAGE_FORMAT_PROPERTIES_EXT:
+            delete (VkFilterCubicImageViewImageFormatPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_ADVANCED_STATE_CREATE_INFO_EXT:
+            delete (VkPipelineColorBlendAdvancedStateCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_PROFILE_INFO_KHR:
+            delete (VkVideoEncodeH265ProfileInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceShaderObjectPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_CREATION_FEEDBACK_CREATE_INFO_EXT:
+            delete (VkRenderPassCreationFeedbackCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES:
+            delete (VkPhysicalDeviceDynamicRenderingFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR:
+            delete (VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR:
+            delete (VkPhysicalDeviceCooperativeMatrixFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_CAPABILITIES_KHR:
+            delete (VkVideoEncodeH265CapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS:
+            delete (VkDeviceBufferMemoryRequirements*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV:
+            delete (VkLatencySleepModeInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_COMMAND_TRANSFORM_INFO_QCOM:
+            delete (VkCopyCommandTransformInfoQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO:
+            delete (VkPipelineTessellationStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV:
+            delete (VkLatencySubmissionPresentIdNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO:
+            delete (VkDeviceGroupSubmitInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EARLY_AND_LATE_FRAGMENT_TESTS_FEATURES_AMD:
+            delete (VkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_SHADER_LAYOUT_INFO_EXT:
+            delete (VkIndirectExecutionSetShaderLayoutInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO:
+            delete (VkSamplerYcbcrConversionCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_HDR_VIVID_DYNAMIC_METADATA_HUAWEI:
+            delete (VkHdrVividDynamicMetadataHUAWEI*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_FEEDBACK_INFO_KHR:
+            delete (VkVideoEncodeH265SessionParametersFeedbackInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_LAYER_INFO_KHR:
+            delete (VkVideoEncodeH264RateControlLayerInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV:
+            delete (VkPipelineViewportSwizzleStateCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_REPLICATED_COMPOSITES_FEATURES_EXT:
+            delete (VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_DYNAMIC_STATE_FEATURES_EXT:
+            delete (VkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_BINARY_HANDLES_INFO_KHR:
+            delete (VkPipelineBinaryHandlesInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceMultiDrawPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_2_AMD:
+            delete (VkPhysicalDeviceShaderCoreProperties2AMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
+            delete (VkImageViewCaptureDescriptorDataInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GET_LATENCY_MARKER_INFO_NV:
+            delete (VkGetLatencyMarkerInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO:
+            delete (VkRenderPassAttachmentBeginInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR:
+            delete (VkPhysicalDeviceSurfaceInfo2KHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD:
+            delete (VkPhysicalDeviceShaderCorePropertiesAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_EXT:
+            delete (VkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_USAGE_INFO_KHR:
+            delete (VkVideoEncodeUsageInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_TO_MEMORY_INFO_KHR:
+            delete (VkCopyAccelerationStructureToMemoryInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INTERNAL_REPRESENTATION_KHR:
+            delete (VkPipelineExecutableInternalRepresentationKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_QUERY_LOW_LATENCY_SUPPORT_NV:
+            delete (VkQueryLowLatencySupportNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_EXT:
+            delete (VkReleaseSwapchainImagesInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SUBMIT_INFO_2:
+            delete (VkSubmitInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PICTURE_INFO_KHR:
+            delete (VkVideoDecodeH264PictureInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_QUANTIZATION_MAP_CAPABILITIES_KHR:
+            delete (VkVideoEncodeH265QuantizationMapCapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR:
+            delete (VkVideoDecodeH265ProfileInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_TOKEN_EXT:
+            delete (VkIndirectCommandsLayoutTokenEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DISPLAY_POWER_INFO_EXT:
+            delete (VkDisplayPowerInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_CAPABILITIES_KHR:
+            delete (VkVideoDecodeH265CapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_MERGE_FEEDBACK_FEATURES_EXT:
+            delete (VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_ADDRESS_PROPERTIES_NVX:
+            delete (VkImageViewAddressPropertiesNVX*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_VERTEX_ATTRIBUTES_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceLegacyVertexAttributesPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_CU_MODULE_CREATE_INFO_NVX:
+            delete (VkCuModuleCreateInfoNVX*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO:
+            delete (VkExportMemoryAllocateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV:
+            delete (VkGeometryTrianglesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL:
+            delete (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO:
+            delete (VkBufferUsageFlags2CreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO:
+            delete (VkDescriptorPoolInlineUniformBlockCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEPTH_BIAS_INFO_EXT:
+            delete (VkDepthBiasInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR:
+            delete (VkPhysicalDeviceShaderClockFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_CREATE_INFO_KHR:
+            delete (VkVideoEncodeH264SessionCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO:
+            delete (VkPipelineCacheCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_FEATURES_QCOM:
+            delete (VkPhysicalDeviceImageProcessingFeaturesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2:
+            delete (VkResolveImageInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_TILE_PROPERTIES_QCOM:
+            delete (VkTilePropertiesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_SHADER_GROUPS_CREATE_INFO_NV:
+            delete (VkGraphicsPipelineShaderGroupsCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEPENDENCY_INFO:
+            delete (VkDependencyInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ALIGNMENT_CONTROL_FEATURES_MESA:
+            delete (VkPhysicalDeviceImageAlignmentControlFeaturesMESA*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PRESENT_INFO_KHR:
+            delete (VkPresentInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_GOP_REMAINING_FRAME_INFO_KHR:
+            delete (VkVideoEncodeAV1GopRemainingFrameInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHR:
+            delete (VkImageSwapchainCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO:
+            delete (VkSamplerCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_PUSH_DESCRIPTOR_BUFFER_HANDLE_EXT:
+            delete (VkDescriptorBufferBindingPushDescriptorBufferHandleEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_PROPERTIES_KHR:
+            delete (VkPhysicalDevicePipelineBinaryPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_MAP_PLACED_INFO_EXT:
+            delete (VkMemoryMapPlacedInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES:
+            delete (VkPhysicalDevicePipelineRobustnessFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT:
+            delete (VkPhysicalDeviceShaderObjectFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROTECTED_ACCESS_FEATURES:
+            delete (VkPhysicalDevicePipelineProtectedAccessFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO:
+            delete (VkFramebufferAttachmentsCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_HDR_METADATA_EXT:
+            delete (VkHdrMetadataEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_SESSION_PARAMETERS_ADD_INFO_KHR:
+            delete (VkVideoDecodeH264SessionParametersAddInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR:
+            delete (VkAccelerationStructureGeometryTrianglesDataKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO:
+            delete (VkImagePlaneMemoryRequirementsInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES:
+            delete (VkPhysicalDeviceMaintenance4Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO:
+            delete (VkSemaphoreSignalInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_1_FEATURES_KHR:
+            delete (VkPhysicalDeviceVideoMaintenance1FeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_NV:
+            delete (VkRayTracingPipelineCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MICROMAP_BUILD_INFO_EXT:
+            delete (VkMicromapBuildInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR:
+            delete (VkPhysicalDeviceRayTracingPipelinePropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_EXT:
+            delete (VkSwapchainPresentScalingCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO:
+            delete (VkRenderingAttachmentInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV:
+            delete (VkQueueFamilyCheckpointPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDERING_INFO:
+            delete (VkRenderingInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT:
+            delete (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT:
+            delete (VkPhysicalDeviceShaderAtomicFloatFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_PARAMETERS_FEEDBACK_INFO_KHR:
+            delete (VkVideoEncodeSessionParametersFeedbackInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT:
+            delete (VkPhysicalDeviceProvokingVertexFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PICTURE_INFO_KHR:
+            delete (VkVideoEncodeAV1PictureInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_FEATURES_EXT:
+            delete (VkPhysicalDeviceOpacityMicromapFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_CREATE_INFO_KHR:
+            delete (VkVideoEncodeH264SessionParametersCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DISPLAY_MODE_STEREO_PROPERTIES_NV:
+            delete (VkDisplayModeStereoPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCHEDULING_CONTROLS_PROPERTIES_ARM:
+            delete (VkPhysicalDeviceSchedulingControlsPropertiesARM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_CREATE_INFO_EXT:
+            delete (VkIndirectExecutionSetCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_BARRIER_NV:
+            delete (VkSurfaceCapabilitiesPresentBarrierNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO:
+            delete (VkMemoryUnmapInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_CREATE_INFO_KHR:
+            delete (VkVideoSessionParametersCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES:
+            delete (VkPhysicalDeviceVulkan12Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR:
+            delete (VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT:
+            delete (VkPhysicalDeviceBufferDeviceAddressFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2:
+            delete (VkPhysicalDeviceFeatures2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES:
+            delete (VkPhysicalDeviceVulkan11Properties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MAINTENANCE_1_FEATURES_KHR:
+            delete (VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_W_SCALING_STATE_CREATE_INFO_NV:
+            delete (VkPipelineViewportWScalingStateCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES:
+            delete (VkPhysicalDeviceShaderFloatControls2Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR:
+            delete (VkBindImageMemorySwapchainInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDERING_AREA_INFO:
+            delete (VkRenderingAreaInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_FEATURES_QCOM:
+            delete (VkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MICROMAP_BUILD_SIZES_INFO_EXT:
+            delete (VkMicromapBuildSizesInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PERFORMANCE_OVERRIDE_INFO_INTEL:
+            delete (VkPerformanceOverrideInfoINTEL*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_EXT:
+            delete (VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV:
+            delete (VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUDA_KERNEL_LAUNCH_PROPERTIES_NV:
+            delete (VkPhysicalDeviceCudaKernelLaunchPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR:
+            delete (VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUANTIZATION_MAP_FEATURES_KHR:
+            delete (VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEPTH_BIAS_REPRESENTATION_INFO_EXT:
+            delete (VkDepthBiasRepresentationInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_PROPERTIES_IDENTIFIER_EXT:
+            delete (VkPipelinePropertiesIdentifierEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO:
+            delete (VkPipelineInputAssemblyStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_SUBMIT_INFO_ARM:
+            delete (VkRenderPassStripeSubmitInfoARM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO:
+            delete (VkSemaphoreWaitInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT:
+            delete (VkDescriptorSetLayoutSupport*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_ADD_INFO_KHR:
+            delete (VkVideoEncodeH265SessionParametersAddInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceMapMemoryPlacedPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2:
+            delete (VkCopyImageInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES:
+            delete (VkPhysicalDeviceVertexAttributeDivisorProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2:
+            delete (VkBufferMemoryBarrier2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_SESSION_MEMORY_REQUIREMENTS_KHR:
+            delete (VkVideoSessionMemoryRequirementsKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_KHR:
+            delete (VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_GOP_REMAINING_FRAME_INFO_KHR:
+            delete (VkVideoEncodeH265GopRemainingFrameInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO:
+            delete (VkFramebufferCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES:
+            delete (VkPhysicalDeviceVulkan12Properties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV:
+            delete (VkDeviceDiagnosticsConfigCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_MICROMAP_INFO_EXT:
+            delete (VkCopyMicromapInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_BINDING_REFERENCE_VALVE:
+            delete (VkDescriptorSetBindingReferenceVALVE*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR:
+            delete (VkPhysicalDeviceRayQueryFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT:
+            delete (VkGraphicsPipelineLibraryCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY:
+            delete (VkHostImageCopyDevicePerformanceQuery*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_FEATURES_EXT:
+            delete (VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR:
+            delete (VkPhysicalDeviceFragmentShadingRatePropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_MOTION_TRIANGLES_DATA_NV:
+            delete (VkAccelerationStructureGeometryMotionTrianglesDataNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_CAPABILITIES_KHR:
+            delete (VkVideoEncodeQuantizationMapCapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_FEATURES_NV:
+            delete (VkPhysicalDeviceExtendedSparseAddressSpaceFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR:
+            delete (VkSurfaceFormat2KHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_PROPERTIES_QCOM:
+            delete (VkPhysicalDeviceImageProcessingPropertiesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR:
+            delete (VkPhysicalDeviceShaderQuadControlFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV:
+            delete (VkCooperativeMatrixPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO:
+            delete (VkComputePipelineCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_REDUCTION_STATE_CREATE_INFO_NV:
+            delete (VkPipelineCoverageReductionStateCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES:
+            delete (VkPhysicalDeviceGroupProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_OPTICAL_FLOW_IMAGE_FORMAT_PROPERTIES_NV:
+            delete (VkOpticalFlowImageFormatPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD:
+            delete (VkPipelineRasterizationStateRasterizationOrderAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_CHECKPOINT_DATA_2_NV:
+            delete (VkCheckpointData2NV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO:
+            delete (VkMemoryAllocateFlagsInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES:
+            delete (VkPhysicalDeviceVulkan13Properties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES:
+            delete (VkExternalImageFormatProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO:
+            delete (VkPipelineColorBlendStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_PROPERTIES_KHR:
+            delete (VkPhysicalDeviceComputeShaderDerivativesPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO:
+            delete (VkTimelineSemaphoreSubmitInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES:
+            delete (VkPhysicalDevicePipelineCreationCacheControlFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES:
+            delete (VkPhysicalDeviceSamplerYcbcrConversionFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_LATENCY_TIMINGS_FRAME_REPORT_NV:
+            delete (VkLatencyTimingsFrameReportNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_SLICED_VIEW_OF_3D_FEATURES_EXT:
+            delete (VkPhysicalDeviceImageSlicedViewOf3DFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_PIPELINE_BINARY_INTERNAL_CACHE_CONTROL_KHR:
+            delete (VkDevicePipelineBinaryInternalCacheControlKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR:
+            delete (VkAccelerationStructureBuildGeometryInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_PIPELINE_INFO_EXT:
+            delete (VkGeneratedCommandsPipelineInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR:
+            delete (VkPipelineFragmentShadingRateStateCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ANTI_LAG_DATA_AMD:
+            delete (VkAntiLagDataAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT:
+            delete (VkPhysicalDeviceASTCDecodeFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES:
+            delete (VkPhysicalDeviceVulkan14Properties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT:
+            delete (VkConditionalRenderingBeginInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2:
+            delete (VkBlitImageInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES:
+            delete (VkPhysicalDeviceShaderExpectAssumeFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES:
+            delete (VkPhysicalDeviceDescriptorIndexingFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES:
+            delete (VkPhysicalDeviceIDProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_SET_HOST_MAPPING_FEATURES_VALVE:
+            delete (VkPhysicalDeviceDescriptorSetHostMappingFeaturesVALVE*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RELEASE_CAPTURED_PIPELINE_DATA_INFO_KHR:
+            delete (VkReleaseCapturedPipelineDataInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceTransformFeedbackPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_QUERY_POOL_PERFORMANCE_QUERY_CREATE_INFO_INTEL:
+            delete (VkQueryPoolPerformanceQueryCreateInfoINTEL*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceShaderModuleIdentifierPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES:
+            delete (VkPhysicalDeviceTexelBufferAlignmentProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO:
+            delete (VkPipelineRobustnessCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_SHADER_EXT:
+            delete (VkWriteIndirectExecutionSetShaderEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_TRIANGLES_OPACITY_MICROMAP_EXT:
+            delete (VkAccelerationStructureTrianglesOpacityMicromapEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_SWAPCHAIN_CREATE_INFO_KHR:
+            delete (VkDeviceGroupSwapchainCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO:
+            delete (VkSemaphoreCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2:
+            delete (VkPhysicalDeviceSparseImageFormatInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT16_VECTOR_FEATURES_NV:
+            delete (VkPhysicalDeviceShaderAtomicFloat16VectorFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES:
+            delete (VkPhysicalDeviceSubgroupProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO:
+            delete (VkMemoryAllocateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR:
+            delete (VkSurfaceCapabilities2KHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES:
+            delete (VkPhysicalDeviceShaderFloat16Int8Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_GOP_REMAINING_FRAME_INFO_KHR:
+            delete (VkVideoEncodeH264GopRemainingFrameInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_USAGE_INFO_KHR:
+            delete (VkVideoDecodeUsageInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_FLEXIBLE_DIMENSIONS_PROPERTIES_NV:
+            delete (VkCooperativeMatrixFlexibleDimensionsPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO:
+            delete (VkCommandBufferAllocateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_NV:
+            delete (VkGeneratedCommandsInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO:
+            delete (VkPhysicalDeviceExternalFenceInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT:
+            delete (VkPhysicalDeviceMemoryPriorityFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_ACQUIRE_UNMODIFIED_EXT:
+            delete (VkExternalMemoryAcquireUnmodifiedEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT:
+            delete (VkDebugUtilsLabelEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE:
+            delete (VkMappedMemoryRange*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO:
+            delete (VkCommandBufferInheritanceInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_QUANTIZATION_MAP_CAPABILITIES_KHR:
+            delete (VkVideoEncodeAV1QuantizationMapCapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT:
+            delete (VkImportMemoryHostPointerInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_WITH_TEMPLATE_INFO:
+            delete (VkPushDescriptorSetWithTemplateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD:
+            delete (VkPhysicalDeviceCoherentMemoryFeaturesAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2:
+            delete (VkCopyBufferInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV:
+            delete (VkDedicatedAllocationBufferCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR:
+            delete (VkPipelineLibraryCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO:
+            delete (VkShaderModuleCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_PROPERTIES_NV:
+            delete (VkPhysicalDeviceCopyMemoryIndirectPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_OPTICAL_FLOW_IMAGE_FORMAT_INFO_NV:
+            delete (VkOpticalFlowImageFormatInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR:
+            delete (VkVideoProfileListInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_CUDA_FUNCTION_CREATE_INFO_NV:
+            delete (VkCudaFunctionCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLER_BORDER_COLOR_COMPONENT_MAPPING_CREATE_INFO_EXT:
+            delete (VkSamplerBorderColorComponentMappingCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR:
+            delete (VkPhysicalDevicePerformanceQueryFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INFO_KHR:
+            delete (VkPipelineExecutableInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR:
+            delete (VkVideoEncodeH264RateControlInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_PROPERTIES_NV:
+            delete (VkPhysicalDeviceCooperativeMatrix2PropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_LATENCY_SURFACE_CAPABILITIES_NV:
+            delete (VkLatencySurfaceCapabilitiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
+            delete (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES:
+            delete (VkSamplerYcbcrConversionImageFormatProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_QUERY_RESULT_STATUS_PROPERTIES_KHR:
+            delete (VkQueueFamilyQueryResultStatusPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES:
+            delete (VkPhysicalDevicePrivateDataFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT:
+            delete (VkDescriptorBufferBindingInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT:
+            delete (VkPipelineDiscardRectangleStateCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO:
+            delete (VkBindSparseInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT:
+            delete (VkPhysicalDeviceTransformFeedbackFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES:
+            delete (VkPhysicalDeviceInlineUniformBlockFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_DPB_SLOT_INFO_KHR:
+            delete (VkVideoDecodeH265DpbSlotInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO:
+            delete (VkDescriptorSetLayoutCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO:
+            delete (VkDescriptorUpdateTemplateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX:
+            delete (VkImageViewHandleInfoNVX*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_PIPELINE_INFO_EXT:
+            delete (VkIndirectExecutionSetPipelineInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT:
+            delete (VkAttachmentDescriptionStencilLayout*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_ENUMS_FEATURES_NV:
+            delete (VkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR:
+            delete (VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR:
+            delete (VkPhysicalDeviceAccelerationStructureFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK:
+            delete (VkWriteDescriptorSetInlineUniformBlock*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_IMAGE_SUBRESOURCE_INFO:
+            delete (VkDeviceImageSubresourceInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES:
+            delete (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT:
+            delete (VkValidationFlagsEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_ADDRESS_BINDING_CALLBACK_DATA_EXT:
+            delete (VkDeviceAddressBindingCallbackDataEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO:
+            delete (VkBindImageMemoryInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_NV:
+            delete (VkWriteDescriptorSetAccelerationStructureNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES:
+            delete (VkExternalSemaphoreProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_VIDEO_PROPERTIES_KHR:
+            delete (VkQueueFamilyVideoPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_EXT:
+            delete (VkSurfacePresentScalingCapabilitiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES:
+            delete (VkPhysicalDeviceShaderTerminateInvocationFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT:
+            delete (VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR:
+            delete (VkRayTracingPipelineInterfaceCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPTICAL_FLOW_PROPERTIES_NV:
+            delete (VkPhysicalDeviceOpticalFlowPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceProvokingVertexPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO:
+            delete (VkPipelineViewportStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_CAPABILITIES_KHR:
+            delete (VkDeviceGroupPresentCapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT:
+            delete (VkPhysicalDeviceImageViewImageFormatInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV:
+            delete (VkPhysicalDeviceRayTracingPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES:
+            delete (VkPhysicalDeviceSubgroupSizeControlFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_VIDEO_SESSION_MEMORY_INFO_KHR:
+            delete (VkBindVideoSessionMemoryInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES:
+            delete (VkPhysicalDeviceVulkan11Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES:
+            delete (VkPhysicalDeviceVulkanMemoryModelFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2:
+            delete (VkSubpassDescription2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES:
+            delete (VkPhysicalDeviceLineRasterizationFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ADDRESS_BINDING_REPORT_FEATURES_EXT:
+            delete (VkPhysicalDeviceAddressBindingReportFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_CAPABILITIES_KHR:
+            delete (VkVideoDecodeCapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceExtendedDynamicState3PropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR:
+            delete (VkWriteDescriptorSetAccelerationStructureKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2:
+            delete (VkDeviceQueueInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PERFORMANCE_MARKER_INFO_INTEL:
+            delete (VkPerformanceMarkerInfoINTEL*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO:
+            delete (VkPipelineTessellationDomainOriginStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR:
+            delete (VkVideoDecodeAV1ProfileInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES:
+            delete (VkPhysicalDeviceGlobalPriorityQueryFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV:
+            delete (VkAccelerationStructureInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2:
+            delete (VkSparseImageFormatProperties2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_FENCE_CREATE_INFO:
+            delete (VkFenceCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT:
+            delete (VkPhysicalDeviceFaultFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_YCBCR_DEGAMMA_CREATE_INFO_QCOM:
+            delete (VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2:
+            delete (VkCopyBufferToImageInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HDR_VIVID_FEATURES_HUAWEI:
+            delete (VkPhysicalDeviceHdrVividFeaturesHUAWEI*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR:
+            delete (VkCalibratedTimestampInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_FEATURES_EXT:
+            delete (VkPhysicalDeviceFragmentDensityMap2FeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES:
+            delete (VkPhysicalDeviceTimelineSemaphoreFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO:
+            delete (VkBindImageMemoryDeviceGroupInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_PARAMETERS_GET_INFO_KHR:
+            delete (VkVideoEncodeSessionParametersGetInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_ALIGNMENT_CONTROL_CREATE_INFO_MESA:
+            delete (VkImageAlignmentControlCreateInfoMESA*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_DITHERING_FEATURES_EXT:
+            delete (VkPhysicalDeviceLegacyDitheringFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_NV:
+            delete (VkGeneratedCommandsMemoryRequirementsInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV:
+            delete (VkLatencySleepInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES:
+            delete (VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR:
+            delete (VkAcquireNextImageInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES:
+            delete (VkPhysicalDeviceUniformBufferStandardLayoutFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_MICROMAP_TO_MEMORY_INFO_EXT:
+            delete (VkCopyMicromapToMemoryInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_RENDER_AREAS_FEATURES_QCOM:
+            delete (VkPhysicalDeviceMultiviewPerViewRenderAreasFeaturesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO:
+            delete (VkPipelineCreateFlags2CreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_CAPABILITIES_KHR:
+            delete (VkVideoEncodeCapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHR:
+            delete (VkDeviceGroupPresentInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceCustomBorderColorPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_MIN_LOD_FEATURES_EXT:
+            delete (VkPhysicalDeviceImageViewMinLodFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_COARSE_SAMPLE_ORDER_STATE_CREATE_INFO_NV:
+            delete (VkPipelineViewportCoarseSampleOrderStateCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_MIXED_SAMPLES_COMBINATION_NV:
+            delete (VkFramebufferMixedSamplesCombinationNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_INFO_KHR:
+            delete (VkVideoEncodeInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES:
+            delete (VkPhysicalDeviceBufferDeviceAddressFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO:
+            delete (VkPhysicalDeviceExternalSemaphoreInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR:
+            delete (VkRayTracingShaderGroupCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
+            delete (VkAccelerationStructureCaptureDescriptorDataInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CLUSTER_CULLING_SHADER_FEATURES_HUAWEI:
+            delete (VkPhysicalDeviceClusterCullingShaderFeaturesHUAWEI*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENT_IMAGE_INFO:
+            delete (VkFramebufferAttachmentImageInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2:
+            delete (VkBufferMemoryRequirementsInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES:
+            delete (VkPhysicalDeviceHostImageCopyFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_CREATE_INFO_KHR:
+            delete (VkVideoEncodeH265SessionParametersCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_NALU_SLICE_INFO_KHR:
+            delete (VkVideoEncodeH264NaluSliceInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_INITIALIZE_PERFORMANCE_API_INFO_INTEL:
+            delete (VkInitializePerformanceApiInfoINTEL*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PERFORMANCE_QUERY_SUBMIT_INFO_KHR:
+            delete (VkPerformanceQuerySubmitInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2:
+            delete (VkPhysicalDeviceImageFormatInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLAMP_CONTROL_CREATE_INFO_EXT:
+            delete (VkPipelineViewportDepthClampControlCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO:
+            delete (VkExportFenceCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD:
+            delete (VkPipelineCompilerControlCreateInfoAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceDiscardRectanglePropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO:
+            delete (VkImageViewCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO:
+            delete (VkPipelineShaderStageCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_DEGAMMA_FEATURES_QCOM:
+            delete (VkPhysicalDeviceYcbcrDegammaFeaturesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO:
+            delete (VkDeviceGroupBindSparseInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR:
+            delete (VkFragmentShadingRateAttachmentInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_RATE_CONTROL_LAYER_INFO_KHR:
+            delete (VkVideoEncodeAV1RateControlLayerInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES:
+            delete (VkPhysicalDeviceLineRasterizationProperties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceOpacityMicromapPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES:
+            delete (VkPhysicalDeviceMaintenance3Properties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR:
+            delete (VkAccelerationStructureDeviceAddressInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_INDIRECT_DEVICE_ADDRESS_INFO_NV:
+            delete (VkPipelineIndirectDeviceAddressInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_PICTURE_INFO_KHR:
+            delete (VkVideoEncodeH265PictureInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EVENT_CREATE_INFO:
+            delete (VkEventCreateInfo*)pNext;
+            break;
+       default:
+            kpanic_fmt("vulkanGetNextPtr not implemented for %d", pNext->sType);
+    }
+}
 void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* p) {
     if (address == 0) {
         return;

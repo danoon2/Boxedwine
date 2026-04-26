@@ -1402,8 +1402,7 @@ void XWindow::buttonNotify(const DisplayDataPtr& data, U32 button, S32 x, S32 y,
 	event.xbutton.y_root = y;
 	event.xbutton.state = XServer::getServer()->getInputModifiers();
 	event.xbutton.button = button;
-	event.xbutton.same_screen = True;
-	data->putEvent(event);
+	event.xbutton.same_screen = True;	
 
 	// The state member is set to indicate the logical state of the pointer buttons and modifier keys just prior to the event
 	if (pressed) {
@@ -1411,6 +1410,7 @@ void XWindow::buttonNotify(const DisplayDataPtr& data, U32 button, S32 x, S32 y,
 	} else {
 		event.xbutton.state |= ((Button1Mask) << (button - 1));
 	}
+	data->putEvent(event);
 	if (XServer::getServer()->trace) {
 		BString log;
 		log.append(data->displayId, 16);

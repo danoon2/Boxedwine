@@ -154,8 +154,6 @@
 typedef U32 XPointer;
 struct _XPrivate;
 
-typedef U32 XID;
-
 typedef U32 XExtDataPtrAddress; // struct _XExtData*
 typedef U32 XCharPtrAddress; // char*
 typedef U32 XPrivatePtrAddress; // struct _XPrivate*

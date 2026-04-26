@@ -420,7 +420,11 @@ static void x11_GetInputFocus(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
-    memory->writed(ARG2, server->inputFocus->id);
+    if (server->inputFocus) {
+        memory->writed(ARG2, server->inputFocus->id);
+	} else {
+        memory->writed(ARG2, None);
+	}
     memory->writed(ARG3, server->inputFocusRevertTo);
     EAX = Success;
     if (server->trace) {
@@ -1355,7 +1359,7 @@ static void x11_StoreColor(CPU* cpu) {
     }
     U32 colorAddress = ARG3;
     U32 index = memory->readd(colorAddress);
-    if (colorAddress < MAX_COLORMAP_SIZE) {
+    if (index >= MAX_COLORMAP_SIZE) {
         EAX = BadValue;
         return;
     }
