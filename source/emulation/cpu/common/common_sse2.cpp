@@ -679,7 +679,6 @@ void common_cmpsdXmmXmm(CPU* cpu, U32 r1, U32 r2, U8 imm) {
 void common_cmpsdXmmE64(CPU* cpu, U32 reg, U32 address, U8 imm) {
     simde__m128d value;
     value.u64[0] = cpu->memory->readq(address);
-    value.u64[1] = cpu->memory->readq(address+8);
     int which = imm & 7;
     switch (which) {
     case 0: cpu->xmm[reg].pd = simde_mm_cmpeq_sd(cpu->xmm[reg].pd, value); break;
@@ -893,7 +892,6 @@ void common_cvtsd2siR32Xmm(CPU* cpu, U32 r1, U32 r2) {
 void common_cvtsd2siR32E64(CPU* cpu, U32 reg, U32 address) {
     simde__m128d value;
     value.u64[0] = cpu->memory->readq(address);
-    //value.u64[1] = cpu->memory->readq(address+8);
     cpu->reg[reg].u32 = simde_mm_cvtsd_si32(value);
 }
 
@@ -904,7 +902,6 @@ void common_cvtsd2ssXmmXmm(CPU* cpu, U32 r1, U32 r2) {
 void common_cvtsd2ssXmmE64(CPU* cpu, U32 reg, U32 address) {
     simde__m128d value;
     value.u64[0] = cpu->memory->readq(address);
-    //value.u64[1] = cpu->memory->readq(address+8);
     cpu->xmm[reg].ps = simde_mm_cvtsd_ss(cpu->xmm[reg].ps, value);
 }
 
@@ -968,7 +965,6 @@ void common_cvttsd2siR32Xmm(CPU* cpu, U32 r1, U32 r2) {
 void common_cvttsd2siR32E64(CPU* cpu, U32 reg, U32 address) {
     simde__m128d value;
     value.u64[0] = cpu->memory->readq(address);
-    value.u64[1] = cpu->memory->readq(address+8);
     cpu->reg[reg].u32 = simde_mm_cvttsd_si32(value);
 }
 
@@ -1353,7 +1349,7 @@ void common_psadbwXmmE128(CPU* cpu, U32 reg, U32 address) {
     simde__m128i value;
     value.u64[0] = cpu->memory->readq(address);
     value.u64[1] = cpu->memory->readq(address+8);
-    cpu->xmm[reg].pi = simde_mm_sad_epu8(cpu->xmm[reg].pi, value);
+      cpu->xmm[reg].pi = simde_mm_sad_epu8(cpu->xmm[reg].pi, value);
 }
 
 void common_pextrwR32Xmm(CPU* cpu, U32 r1, U32 r2, U8 imm) {
@@ -1361,10 +1357,7 @@ void common_pextrwR32Xmm(CPU* cpu, U32 r1, U32 r2, U8 imm) {
 }
 
 void common_pextrwE16Xmm(CPU* cpu, U32 reg, U32 address, U8 imm) {
-    simde__m128i value;
-    value.u64[0] = cpu->memory->readq(address);
-    value.u64[1] = cpu->memory->readq(address+8);
-    cpu->reg[reg].u32 = simde_mm_extract_epi16(value, imm);
+    cpu->memory->writew(address, (U16)simde_mm_extract_epi16(cpu->xmm[reg].pi, imm));
 }
 
 void common_pinsrwXmmR32(CPU* cpu, U32 r1, U32 r2, U8 imm) {

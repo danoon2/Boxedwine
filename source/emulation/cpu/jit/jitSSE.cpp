@@ -429,7 +429,7 @@ void JitSSE::dynamic_cvttsd2siR32Xmm(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_cvttsd2siR32E64(DecodedOp* op) {
-    read(JitWidth::b32, calculateEaa(op), [op, this](MemPtr address) {
+    read(JitWidth::b64, calculateEaa(op), [op, this](MemPtr address) {
         SSERegPtr tmp = loadXMMFromMem64(SSE_TMP_INDEX, address);
         cvttsd2siR32Xmm(getReg(op->reg, -1, false), tmp);
     });

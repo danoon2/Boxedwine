@@ -19,7 +19,8 @@
 #include "boxedwine.h"
 
 U32 common_bound16(CPU* cpu, U32 reg, U32 address){
-    if (cpu->reg[reg].u16<cpu->memory->readw(address) || cpu->reg[reg].u16>cpu->memory->readw(address+2)) {
+	S16 value = cpu->reg[reg].u16;
+    if (value < (S16)cpu->memory->readw(address) || value > (S16)cpu->memory->readw(address+2)) {
         cpu->prepareException(EXCEPTION_BOUND, 0);
         return 0;
     } else { 
@@ -27,7 +28,8 @@ U32 common_bound16(CPU* cpu, U32 reg, U32 address){
     }
 }
 U32 common_bound32(CPU* cpu, U32 reg, U32 address){
-    if (cpu->reg[reg].u32<cpu->memory->readd(address) || cpu->reg[reg].u32>cpu->memory->readd(address+4)) {
+	S32 value = cpu->reg[reg].u32;
+    if (value < (S32)cpu->memory->readd(address) || value > (S32)cpu->memory->readd(address+4)) {
         cpu->prepareException(EXCEPTION_BOUND, 0);
         return 0;
     } else { 
@@ -137,7 +139,7 @@ void common_fxsave(CPU* cpu, U32 address) {
     cpu->memory->writed(address + 28, 0xFFFF); // mxcsr mask
 
     for (int i=0;i<8;i++) {
-        U32 index = (i - cpu->fpu.GetTop()) & 7;
+        U32 index = (cpu->fpu.GetTop() - i) & 7;
         cpu->fpu.ST80(cpu, address+32+index*16, i);
     }
     for (int i=0;i<8;i++) {
@@ -152,7 +154,7 @@ void common_fxrstor(CPU* cpu, U32 address) {
     cpu->fpu.SetTagFromAbridged(cpu->memory->readb(address+4));
     cpu->mxcsr = cpu->memory->readd(address + 24);
     for (int i=0;i<8;i++) {
-        U32 index = (i - cpu->fpu.GetTop()) & 7;
+        U32 index = (cpu->fpu.GetTop() - i) & 7;
         cpu->fpu.LD80(i, cpu->memory->readq(address + 32 + index * 16), cpu->memory->readw(address + 40 + index * 16));
     }
     for (int i=0;i<8;i++) {

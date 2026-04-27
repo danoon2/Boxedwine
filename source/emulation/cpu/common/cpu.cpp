@@ -244,7 +244,7 @@ void CPU::prepareException(int code, int error) {
         process->sigActions[K_SIGFPE].sigInfo[3] = this->eip.u32; // address
         process->sigActions[K_SIGFPE].sigInfo[4] = 0; // trap #, TRAP_x86_DIVIDE
         this->thread->runSignal(K_SIGFPE, 0, error);
-    } else if (code==EXCEPTION_DIVIDE && error == 1 && (process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL)) {
+    } else if (code==EXCEPTION_DIVIDE && error == 1 && (process->sigActions[K_SIGFPE].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGFPE].handlerAndSigAction!=K_SIG_DFL)) {
         process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGFPE;
         process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
         process->sigActions[K_SIGSEGV].sigInfo[2] = K_FPE_INTOVF;
