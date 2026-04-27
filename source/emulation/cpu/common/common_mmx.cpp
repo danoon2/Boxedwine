@@ -239,8 +239,7 @@ void common_psraw(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
     if (imm > 15) {
-        dest->q = 0;
-        return;
+        imm = 15;
     }
     dest->sw.w0 >>= imm;
 	dest->sw.w1 >>= imm;
@@ -252,7 +251,8 @@ void common_psrlw(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
     if (imm > 15) {
-        imm = 15;
+        dest->q = 0;
+        return;
     }
     dest->uw.w0 >>= imm;
 	dest->uw.w1 >>= imm;
