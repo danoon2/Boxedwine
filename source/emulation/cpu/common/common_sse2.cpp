@@ -1349,7 +1349,7 @@ void common_psadbwXmmE128(CPU* cpu, U32 reg, U32 address) {
     simde__m128i value;
     value.u64[0] = cpu->memory->readq(address);
     value.u64[1] = cpu->memory->readq(address+8);
-      cpu->xmm[reg].pi = simde_mm_sad_epu8(cpu->xmm[reg].pi, value);
+    cpu->xmm[reg].pi = simde_mm_sad_epu8(cpu->xmm[reg].pi, value);
 }
 
 void common_pextrwR32Xmm(CPU* cpu, U32 r1, U32 r2, U8 imm) {
