@@ -498,11 +498,13 @@ U32 CPU::lar(U32 selector, U32 ar) {
 
 U32 CPU::lsl(U32 selector, U32 limit) {
     this->fillFlags();
-    if (selector == 0 || selector>=LDT_ENTRIES) {
+    U32 selectorIndex = selector >> 3;
+
+    if (selectorIndex == 0 || selectorIndex >= LDT_ENTRIES) {
         this->removeZF();
         return limit;
     }    
-    struct user_desc* ldt = this->thread->getLDT(selector >> 3);
+    struct user_desc* ldt = this->thread->getLDT(selectorIndex);
     if (!ldt) {
         this->removeZF();
         return limit;
