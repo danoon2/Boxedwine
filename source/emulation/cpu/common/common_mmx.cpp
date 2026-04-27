@@ -239,7 +239,8 @@ void common_psraw(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
     if (imm > 15) {
-        imm = 15;
+        dest->q = 0;
+        return;
     }
     dest->sw.w0 >>= imm;
 	dest->sw.w1 >>= imm;
@@ -362,7 +363,8 @@ void common_psrld(CPU* cpu, U32 reg, U8 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
     if (imm > 31) {
-        imm = 31;
+        dest->q = 0;
+        return;
     }
     dest->ud.d0 >>= imm;
 	dest->ud.d1 >>= imm;
@@ -1016,7 +1018,7 @@ void common_pcmpgtdE64(CPU* cpu, U32 reg, U32 address) {
 void common_packsswbMmx(CPU* cpu, U32 r1, U32 r2) {
     MMX_reg* dest=cpu->fpu.getMMX(r1);
     MMX_reg* src=cpu->fpu.getMMX(r2);
-    MMX_reg tmp; // nessary if r1 == r2
+    MMX_reg tmp; // necessary if r1 == r2
 
     tmp.sb.b0 = SaturateWordSToByteS(dest->sw.w0);
     tmp.sb.b1 = SaturateWordSToByteS(dest->sw.w1);
@@ -1048,7 +1050,7 @@ void common_packsswbE64(CPU* cpu, U32 reg, U32 address) {
 void common_packssdwMmx(CPU* cpu, U32 r1, U32 r2) {
     MMX_reg* dest=cpu->fpu.getMMX(r1);
     MMX_reg* src=cpu->fpu.getMMX(r2);
-    MMX_reg tmp; // nessary if r1 == r2
+    MMX_reg tmp; // necessary if r1 == r2
 
     tmp.sw.w0 = SaturateDwordSToWordS(dest->sd.d0);
     tmp.sw.w1 = SaturateDwordSToWordS(dest->sd.d1);
@@ -1072,7 +1074,7 @@ void common_packssdwE64(CPU* cpu, U32 reg, U32 address) {
 void common_packuswbMmx(CPU* cpu, U32 r1, U32 r2) {
     MMX_reg* dest=cpu->fpu.getMMX(r1);
     MMX_reg* src=cpu->fpu.getMMX(r2);
-    MMX_reg tmp; // nessary if r1 == r2
+    MMX_reg tmp; // necessary if r1 == r2
 
     tmp.ub.b0 = SaturateWordSToByteU(dest->sw.w0);
     tmp.ub.b1 = SaturateWordSToByteU(dest->sw.w1);
