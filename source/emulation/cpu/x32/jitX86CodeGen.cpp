@@ -509,7 +509,7 @@ public:
     bool isSseRegCached(U8 reg) override;
     void storeCpuXMMReg(SSERegPtr reg, U32 index) override;
     SSERegPtr loadCpuXMMReg(U8 index) override;
-    SSERegPtr loadXMMFromMem128(U8 reg, MemPtr address) override;
+    SSERegPtr loadXMMFromMem128(U8 reg, MemPtr address, SSERegPtr result = nullptr) override;
     SSERegPtr loadXMMFromMem64(U8 reg, MemPtr address) override;
     SSERegPtr loadLowXMMFromMem64(U8 reg, MemPtr address) override;
     SSERegPtr loadHighXMMFromMem64(U8 reg, MemPtr address) override;
@@ -3068,8 +3068,10 @@ SSERegPtr JitX86CodeGen::loadCpuXMMReg(U8 index) {
     return getXMM(index, true);
 }
 
-SSERegPtr JitX86CodeGen::loadXMMFromMem128(U8 index, MemPtr address) {
-    SSERegPtr reg = getXMM(index, false);
+SSERegPtr JitX86CodeGen::loadXMMFromMem128(U8 index, MemPtr address, SSERegPtr reg) {
+    if (!reg) {
+        reg = getXMM(index, false);
+    }
     compiler.movups(XMM(reg->hardwareReg()), createMem(JitWidth::b128, address));
     return reg;
 }

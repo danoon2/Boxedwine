@@ -411,7 +411,7 @@ protected:
     void dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFlagType flags);
     void arithSetup(DecodedOp* op, U32& needsToSetFlags, LazyFlagType flags, RegPtr cf);
     void movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth);
-    void movsr(JitWidth valueWidth, U32 size, JitWidth regWidth);
+    virtual void movsr(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void stos(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void stosr(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void lods(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth);

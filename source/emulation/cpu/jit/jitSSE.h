@@ -49,7 +49,7 @@ public:
 	virtual bool isSseRegCached(U8 reg) = 0;
 	virtual void storeCpuXMMReg(SSERegPtr reg, U32 index) = 0;
 	virtual SSERegPtr loadCpuXMMReg(U8 index) = 0;
-	virtual SSERegPtr loadXMMFromMem128(U8 index, MemPtr address) = 0;
+	virtual SSERegPtr loadXMMFromMem128(U8 index, MemPtr address, SSERegPtr result = nullptr) = 0;
 	virtual SSERegPtr loadXMMFromMem32(U8 index, MemPtr address) = 0;
 	virtual SSERegPtr loadXMMFromMem64(U8 index, MemPtr address) = 0;
 	virtual SSERegPtr loadLowXMMFromMem64(U8 index, MemPtr address) = 0;
@@ -619,6 +619,7 @@ public:
 	virtual void IfSseLessThan(SSERegPtr src1, SSERegPtr src2) = 0;
 
 	void createHelpers() override;
+	void movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) override;
 private:
 	U8* createJitCosSub();
 	U8* createJitCos();

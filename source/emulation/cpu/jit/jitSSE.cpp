@@ -857,4 +857,94 @@ void JitSSE::dynamic_FSIN(DecodedOp* op) {
     }
 }
 
+void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
+#ifndef BOXEDWINE_641
+    // 32-bit build, even with sse, can't handle this pass because it will run out of tmp registers.  8 registers on x86 just isn't enough.
+	Jit::movsr(valueWidth, size, regWidth);
+#else
+	// will use 128-bit sse instructions to do the copying in 16 byte chunks
+    //
+	// might be interesting to try 256-bit chunks with YMM registers on AVX capable x64 CPUs, but Arm64 doesn't support 256-bit wide registers so it would require a separate code path for that.
+    RegPtr esi = getStringRegEsi();
+    RegPtr edi = getStringRegEdi();
+    RegPtr ecx = getStringRegEcx();
+
+    auto onFailure = [esi, edi, ecx, this]() {
+        forceSyncBackIfNotCached(esi);
+        forceSyncBackIfNotCached(edi);
+        forceSyncBackIfNotCached(ecx);
+        emulateSingleOp();
+    };
+
+    SSERegPtr sseReg = getTmpSSE();
+	U32 bytesPerIter = 16;
+    U32 mask;
+
+    if (valueWidth == JitWidth::b32) {
+        mask = 3;
+    } else if (valueWidth == JitWidth::b16) {
+        mask = 7;
+    } else {
+        mask = 15;
+    }
+
+    IfDF(); {
+        // Backward direction (DF=1)
+        U32 label1 = MarkJumpLocation();
+        IfTest(regWidth, ecx, mask); {
+            write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
+            subValue(regWidth, esi, size);
+            subValue(regWidth, edi, size);
+            decReg(regWidth, ecx);
+            Goto(label1);
+        } EndIf();
+
+        U32 label = MarkJumpLocation();
+        If(regWidth, ecx); {
+            RegPtr addr = getTmpReg();
+
+            subValueWithDest(regWidth, addr, esi, bytesPerIter - size);
+            read(JitWidth::b128, addr, [sseReg, this](MemPtr address) {                
+                loadXMMFromMem128(-1, address, sseReg);
+            }, onFailure);
+
+            subValueWithDest(regWidth, addr, edi, bytesPerIter - size);
+            write(JitWidth::b128, addr, nullptr, [sseReg, this](MemPtr address) {
+                storeXMMToMem128(sseReg, address);
+            }, onFailure);
+
+            subValue(regWidth, esi, bytesPerIter);
+            subValue(regWidth, edi, bytesPerIter);
+            subValue(regWidth, ecx, bytesPerIter / size);
+            Goto(label);
+        } EndIf();
+    } StartElse(); {
+        // Forward direction (DF=0)
+        U32 label1 = MarkJumpLocation();
+        IfTest(regWidth, ecx, mask); {
+            write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
+            addValue(regWidth, esi, size);
+            addValue(regWidth, edi, size);
+            decReg(regWidth, ecx);
+            Goto(label1);
+        } EndIf();
+
+        U32 label = MarkJumpLocation();
+        If(regWidth, ecx); {
+            read(JitWidth::b128, esi, [sseReg, this](MemPtr address) {
+                loadXMMFromMem128(-1, address, sseReg);
+            }, onFailure);
+
+            write(JitWidth::b128, edi, nullptr, [sseReg, this](MemPtr address) {
+                storeXMMToMem128(sseReg, address);
+            }, onFailure);
+
+            addValue(regWidth, esi, bytesPerIter);
+            addValue(regWidth, edi, bytesPerIter);
+            subValue(regWidth, ecx, bytesPerIter / size);
+            Goto(label);
+        } EndIf();
+    } EndIf();
+#endif
+}
 #endif

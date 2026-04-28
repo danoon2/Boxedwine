@@ -63,12 +63,13 @@ void Jit::movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth) {
     } EndIf();
 }
 
-void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {    
+void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     RegPtr esi = getStringRegEsi();
     RegPtr edi = getStringRegEdi();
     RegPtr ecx = getStringRegEcx();
 
-    // in case we partically completed the move before moving to a new page that doesn't have permission (code page, on demmand page, etc)
+    // in case we partially completed the move before moving to a new page
+    // that doesn't have permission (code page, on demand page, etc)
     auto onFailure = [esi, edi, ecx, this]() {
         forceSyncBackIfNotCached(esi);
         forceSyncBackIfNotCached(edi);
@@ -76,6 +77,7 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         emulateSingleOp();
     };
 
+#ifndef BOXEDWINE_64
     IfDF(); {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx); {
@@ -96,6 +98,74 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         } EndIf();
     }
     EndIf();
+#else
+    // will use 64-bit reg instructions to do the copying in 8 byte chunks
+    RegPtr tmp0 = getTmpReg();
+
+    U32 mask;
+
+    if (valueWidth == JitWidth::b32) {
+        mask = 1;
+    } else if (valueWidth == JitWidth::b16) {
+        mask = 3;
+    } else {
+        mask = 7;
+    }
+    
+    IfDF(); {
+        // ?? Backward direction (DF=1) ??????????????????????????
+        // ESI/EDI point to the LAST element.  Pre-loop: if ECX
+        // is odd, copy the highest single dword so the main loop
+        // only processes aligned pairs.
+        U32 label1 = MarkJumpLocation();
+        IfTest(regWidth, ecx, mask); {
+            write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
+            subValue(regWidth, esi, size);
+            subValue(regWidth, edi, size);
+            decReg(regWidth, ecx);
+            Goto(label1);
+        } EndIf();
+        
+        // Main loop: reads [ESI-4, ESI+3] via base = ESI-4
+        U32 label = MarkJumpLocation();
+        If(regWidth, ecx); {
+            RegPtr addr = getTmpReg();
+
+            subValueWithDest(regWidth, addr, esi, 8 - size);
+            read(JitWidth::b64, addr, nullptr, onFailure, tmp0, true);
+
+            subValueWithDest(regWidth, addr, edi, 8 - size);
+            write(JitWidth::b64, addr, tmp0, nullptr, onFailure, true);
+
+            subValue(regWidth, esi, 8);
+            subValue(regWidth, edi, 8);
+            subValue(regWidth, ecx, 8 / size);
+            Goto(label);
+        } EndIf();
+    } StartElse(); {
+        // Forward direction (DF=0)
+        // ESI/EDI point to the FIRST element.  Same pre-loop odd
+        // check, then the main loop reads [ESI, ESI+7].
+        U32 label1 = MarkJumpLocation();
+        IfTest(regWidth, ecx, mask); {
+            write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
+            addValue(regWidth, esi, size);
+            addValue(regWidth, edi, size);
+            decReg(regWidth, ecx);
+            Goto(label1);
+        } EndIf();
+
+        U32 label = MarkJumpLocation();
+        If(regWidth, ecx); {
+            read(JitWidth::b64, esi, nullptr, onFailure, tmp0, true);
+            write(JitWidth::b64, edi, tmp0, nullptr, onFailure, true);
+            addValue(regWidth, esi, 8);
+            addValue(regWidth, edi, 8);
+            subValue(regWidth, ecx, 8 / size);
+            Goto(label);
+        } EndIf();
+    } EndIf();
+#endif
 }
 
 void Jit::dynamic_movsb_op(DecodedOp* op) {
@@ -244,7 +314,7 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
     RegPtr src = getTmpReg8();
     // :TODO: maybe cache ecx if we have 6 or more temp regs?
 
-    auto onFailure = [esi, edi, src, this]() {
+    auto onFailure = [esi, edi, this]() {
         forceSyncBackIfNotCached(esi);
         forceSyncBackIfNotCached(edi);
         emulateSingleOp();
@@ -349,7 +419,7 @@ void Jit::dynamic_cmpsw_op(DecodedOp* op) {
                 currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB16 if (e)cx is 0
             }
         } else {
-            cmps(op->base, JitWidth::b16, 2, JitWidth::b32, FLAGS_SUB8);
+            cmps(op->base, JitWidth::b16, 2, JitWidth::b32, FLAGS_SUB16);
             currentLazyFlags = FLAGS_SUB16;
         }
     }
