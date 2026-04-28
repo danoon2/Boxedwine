@@ -858,7 +858,7 @@ void JitSSE::dynamic_FSIN(DecodedOp* op) {
 }
 
 void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
-#ifndef BOXEDWINE_641
+#ifndef BOXEDWINE_64
     // 32-bit build, even with sse, can't handle this pass because it will run out of tmp registers.  8 registers on x86 just isn't enough.
 	Jit::movsr(valueWidth, size, regWidth);
 #else
@@ -888,6 +888,23 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         mask = 15;
     }
 
+    // RAM pages are allocated with an uncommitted host page between each committed page (see
+    // soft_ram.cpp), so a 16-byte access that crosses a 4K guest-page boundary will fault on
+    // the host.  At the top of each bulk iteration we check whether the upcoming read or write
+    // would span a page; if so we fall back to a single-element copy and re-enter the
+    // alignment loop, which keeps ECX aligned for the next bulk attempt.
+    auto pageSpansBulkAccess = [this, regWidth, bytesPerIter](RegPtr accumulator, RegPtr scratch, RegPtr addressReg) {
+        // accumulator |= ((addressReg + 15) ^ addressReg) -- bit K_PAGE_SHIFT is set iff the
+        // [addressReg, addressReg+15] range crosses a 4K boundary.
+        mov(regWidth, scratch, addressReg);
+        addValue(regWidth, scratch, bytesPerIter - 1);
+        xorReg(regWidth, scratch, addressReg);
+        if (accumulator->hardwareReg() == scratch->hardwareReg()) {
+            return;
+        }
+        orReg(regWidth, accumulator, scratch);
+    };
+
     IfDF(); {
         // Backward direction (DF=1)
         U32 label1 = MarkJumpLocation();
@@ -902,14 +919,32 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx); {
             RegPtr addr = getTmpReg();
+            RegPtr addrOut = getTmpReg();
+            RegPtr span = getTmpReg();            
 
             subValueWithDest(regWidth, addr, esi, bytesPerIter - size);
-            read(JitWidth::b128, addr, [sseReg, this](MemPtr address) {                
+            subValueWithDest(regWidth, addrOut, edi, bytesPerIter - size);
+
+            pageSpansBulkAccess(span, span, addr);
+            {
+                RegPtr scratch = getTmpReg();
+                pageSpansBulkAccess(span, scratch, addrOut);
+            }
+            IfTest(regWidth, span, K_PAGE_SIZE); {
+                // 16-byte access would straddle a 4K page boundary.  Copy a single element
+                // and let the alignment loop re-align ECX before retrying the bulk path.
+                write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
+                subValue(regWidth, esi, size);
+                subValue(regWidth, edi, size);
+                decReg(regWidth, ecx);
+                Goto(label1);
+            } EndIf();
+
+            read(JitWidth::b128, addr, [sseReg, this](MemPtr address) {
                 loadXMMFromMem128(-1, address, sseReg);
             }, onFailure);
 
-            subValueWithDest(regWidth, addr, edi, bytesPerIter - size);
-            write(JitWidth::b128, addr, nullptr, [sseReg, this](MemPtr address) {
+            write(JitWidth::b128, addrOut, nullptr, [sseReg, this](MemPtr address) {
                 storeXMMToMem128(sseReg, address);
             }, onFailure);
 
@@ -931,6 +966,20 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
 
         U32 label = MarkJumpLocation();
         If(regWidth, ecx); {
+            RegPtr span = getTmpReg();
+            RegPtr scratch = getTmpReg();
+
+            pageSpansBulkAccess(span, span, esi);
+            pageSpansBulkAccess(span, scratch, edi);
+
+            IfTest(regWidth, span, K_PAGE_SIZE); {
+                write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
+                addValue(regWidth, esi, size);
+                addValue(regWidth, edi, size);
+                decReg(regWidth, ecx);
+                Goto(label1);
+            } EndIf();
+
             read(JitWidth::b128, esi, [sseReg, this](MemPtr address) {
                 loadXMMFromMem128(-1, address, sseReg);
             }, onFailure);
