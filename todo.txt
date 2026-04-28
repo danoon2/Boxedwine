@@ -1,0 +1,2 @@
+error msg if don't have permission to read/write root folder
+linux netsurf

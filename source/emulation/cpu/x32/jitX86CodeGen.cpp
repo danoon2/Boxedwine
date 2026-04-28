@@ -334,10 +334,12 @@ public:
     void IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
     void IfNotEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) override;
     void IfNotEqual(JitWidth regWidth, RegPtr reg, RegPtr reg2) override;
-    void IfLessThan2(JitWidth regWidth, RegPtr reg, U32 value) override;
-    void IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
-    void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
-    void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, U32) override;
+    void IfLessThan(JitWidth regWidth, RegPtr reg, U32 value, bool isSigned) override;
+    void IfLessThan(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) override;
+    void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) override;
+    void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, U32 value, bool isSigned) override;
+    void IfGreaterThan(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) override;
+    void IfGreaterThan(JitWidth regWidth, RegPtr reg1, U32 value, bool isSigned) override;
     void IfNot(JitWidth regWidth, RegPtr reg) override;
     void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) override;    
     void IfDF() override;
@@ -2043,6 +2045,9 @@ void JitX86CodeGen::imulReg(JitWidth regWidth, RegPtr reg) {
         if (regUsed[0] || regUsed[2]) {
             kpanic("JitX86CodeGen::imulReg 32");
         }
+#ifdef BOXEDWINE_64
+        compiler.imul(R32(reg));
+#else
         RegPtr eax = getReg(0);
         RegPtr edx = getReg(2);
         regUsed[2] = true;
@@ -2053,11 +2058,15 @@ void JitX86CodeGen::imulReg(JitWidth regWidth, RegPtr reg) {
         compiler.mov(R32(edx), regEdx);
         regUsed[2] = false;
         regUsed[0] = false;
+#endif
     } else if (regWidth == JitWidth::b16) {
         // DX:AX = (S32)((S16)AX) * (S16)src;
         if (regUsed[0] || regUsed[2]) {
             kpanic("JitX86CodeGen::imulReg 16");
         }
+#ifdef BOXEDWINE_64
+        compiler.imul(R16(reg));
+#else
         RegPtr eax = getReg(0);
         RegPtr edx = getReg(2);
         regUsed[2] = true;
@@ -2068,6 +2077,7 @@ void JitX86CodeGen::imulReg(JitWidth regWidth, RegPtr reg) {
         compiler.mov(R16(edx), regDx);
         regUsed[2] = false;
         regUsed[0] = false;
+#endif
     } else if (regWidth == JitWidth::b8) {
         // AX = (S16)((S8)AL) * (S8)(src);
         if (regUsed[0]) {
@@ -2778,7 +2788,7 @@ void JitX86CodeGen::IfNotEqual(JitWidth regWidth, RegPtr reg, RegPtr reg2) {
     compiler.jz(label);
 }
 
-void JitX86CodeGen::IfLessThan2(JitWidth regWidth, RegPtr reg, U32 value) {
+void JitX86CodeGen::IfLessThan(JitWidth regWidth, RegPtr reg, U32 value, bool isSigned) {
     Label label = compiler.new_label();
     ifLabels.push_back(label);
 
@@ -2791,10 +2801,14 @@ void JitX86CodeGen::IfLessThan2(JitWidth regWidth, RegPtr reg, U32 value) {
     } else {
         kpanic_fmt("JitX86CodeGen::IfLessThan unexpected width: %d", (U32)regWidth);
     }
-    compiler.jnb(label);
+    if (isSigned) {
+        compiler.jnl(label);
+    } else {
+        compiler.jnb(label);
+    }
 }
 
-void JitX86CodeGen::IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
+void JitX86CodeGen::IfLessThan(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) {
     Label label = compiler.new_label();
     ifLabels.push_back(label);
 
@@ -2807,10 +2821,14 @@ void JitX86CodeGen::IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
     } else {
         kpanic_fmt("JitX86CodeGen::IfLessThan unexpected width: %d", (U32)regWidth);
     }
-    compiler.jnb(label);
+    if (isSigned) {
+        compiler.jnl(label);
+    } else {
+        compiler.jnb(label);
+    }
 }
 
-void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
+void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) {
     Label label = compiler.new_label();
     ifLabels.push_back(label);
 
@@ -2823,10 +2841,14 @@ void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr 
     } else {
         kpanic_fmt("JitX86CodeGen::IfGreaterThanOrEqual unexpected width: %d", (U32)regWidth);
     }
-    compiler.jb(label);
+    if (isSigned) {
+        compiler.jl(label);
+    } else {
+        compiler.jb(label);
+    }
 }
 
-void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, U32 value) {
+void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, U32 value, bool isSigned) {
     Label label = compiler.new_label();
     ifLabels.push_back(label);
 
@@ -2839,9 +2861,52 @@ void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, U32 val
     } else {
         kpanic_fmt("JitX86CodeGen::IfGreaterThanOrEqual unexpected width: %d", (U32)regWidth);
     }
-    compiler.jb(label);
+    if (isSigned) {
+        compiler.jl(label);
+    } else {
+        compiler.jb(label);
+	}    
 }
 
+void JitX86CodeGen::IfGreaterThan(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) {
+    Label label = compiler.new_label();
+    ifLabels.push_back(label);
+
+    if (regWidth == JitWidth::b32) {
+        compiler.cmp(R32(reg1), R32(reg2));
+    } else if (regWidth == JitWidth::b16) {
+        compiler.cmp(R16(reg1), R16(reg2));
+    } else if (regWidth == JitWidth::b8) {
+        compiler.cmp(R8(get8bitReg(reg1)), R8(get8bitReg(reg2)));
+    } else {
+        kpanic_fmt("JitX86CodeGen::IfGreaterThan unexpected width: %d", (U32)regWidth);
+    }
+    if (isSigned) {
+        compiler.jle(label);
+    } else {
+        compiler.jbe(label);
+    }
+}
+
+void JitX86CodeGen::IfGreaterThan(JitWidth regWidth, RegPtr reg1, U32 value, bool isSigned) {
+    Label label = compiler.new_label();
+    ifLabels.push_back(label);
+
+    if (regWidth == JitWidth::b32) {
+        compiler.cmp(R32(reg1), value);
+    } else if (regWidth == JitWidth::b16) {
+        compiler.cmp(R16(reg1), (U16)value);
+    } else if (regWidth == JitWidth::b8) {
+        compiler.cmp(R8(get8bitReg(reg1)), (U8)value);
+    } else {
+        kpanic_fmt("JitX86CodeGen::IfGreaterThan unexpected width: %d", (U32)regWidth);
+    }
+    if (isSigned) {
+        compiler.jle(label);
+    } else {
+        compiler.jbe(label);
+    }
+}
 
 void JitX86CodeGen::IfNot(JitWidth regWidth, RegPtr reg) {
     Label label = compiler.new_label();

@@ -697,7 +697,7 @@ void JitFPU::dynamic_FNSTENV(DecodedOp* op) {
                 orValue(JitWidth::b32, sw, 3 << i);
             } EndIf();
         }
-        write(JitWidth::b16, addressReg, sw);
+        write(JitWidth::b32, addressReg, sw);
 
         // instruction pointer
         // op code

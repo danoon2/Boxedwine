@@ -603,15 +603,15 @@ void Jit::dynamic_imulR8(DecodedOp* op) {
     dynamic_R(op, JitWidth::b8, &Jit::imulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlagType(FLAGS_NONE);
-        RegPtr ah = getReadOnlyReg8(4);
-        If(JitWidth::b8, ah); {
-            IfEqual(JitWidth::b8, ah, 0xff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
+        RegPtr ax = getReadOnlyReg8(0);
+        IfLessThan(JitWidth::b16, ax, INT8_MIN, true); {
+            orCPUFlagsImmV2(CF | OF);
         } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
+            IfGreaterThan(JitWidth::b16, ax, INT8_MAX, true); {
+                orCPUFlagsImmV2(CF | OF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~(CF | OF));
+            } EndIf();
         } EndIf();
     }
     currentLazyFlags = FLAGS_NONE;
@@ -620,15 +620,16 @@ void Jit::dynamic_imulE8(DecodedOp* op) {
     dynamic_M(op, JitWidth::b8, &Jit::imulReg, FLAGS_NULL, false, getTmpReg8());
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlagType(FLAGS_NONE);
-        RegPtr ah = getReadOnlyReg8(4);
-        If(JitWidth::b8, ah); {
-            IfEqual(JitWidth::b8, ah, 0xff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
+
+        RegPtr ax = getReadOnlyReg8(0);
+        IfLessThan(JitWidth::b16, ax, INT8_MIN, true); {
+            orCPUFlagsImmV2(CF | OF);
         } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
+            IfGreaterThan(JitWidth::b16, ax, INT8_MAX, true); {
+                orCPUFlagsImmV2(CF | OF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~(CF | OF));
+            } EndIf();
         } EndIf();
     }
     currentLazyFlags = FLAGS_NONE;
@@ -657,37 +658,42 @@ void Jit::dynamic_mulE16(DecodedOp* op) {
     }
     currentLazyFlags = FLAGS_NONE;
 }
+
+// Set CF/OF if `upper` is not the sign-extension of `lower`'s sign bit.
+void Jit::setImulOverflowFlags(JitWidth width, RegPtr lower, RegPtr upper, U32 signMask, U32 allOnes) {
+    RegPtr signBit = getTmpReg();
+    mov(width, signBit, lower);
+    andValue(width, signBit, signMask);
+
+    If(width, signBit); {
+        IfEqual(width, upper, allOnes); {
+            andCPUFlagsImmV2(~(CF | OF));
+        } StartElse(); {
+            orCPUFlagsImmV2(CF | OF);
+        } EndIf();
+    } StartElse(); {
+        If(width, upper); {
+            orCPUFlagsImmV2(CF | OF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~(CF | OF));
+        } EndIf();
+    } EndIf();
+}
+
 void Jit::dynamic_imulR16(DecodedOp* op) {
     dynamic_R(op, JitWidth::b16, &Jit::imulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlagType(FLAGS_NONE);
-        RegPtr dx = getReadOnlyReg(2);
-        If(JitWidth::b16, dx); {
-            IfEqual(JitWidth::b16, dx, 0xffff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
-        } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
-        } EndIf();
+        setImulOverflowFlags(JitWidth::b16, getReadOnlyReg(0), getReadOnlyReg(2), 0x8000, 0xffff);
     }
     currentLazyFlags = FLAGS_NONE;
 }
+
 void Jit::dynamic_imulE16(DecodedOp* op) {
     dynamic_M(op, JitWidth::b16, &Jit::imulReg, FLAGS_NULL, false, getTmpReg());
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlagType(FLAGS_NONE);
-        RegPtr dx = getReadOnlyReg(2);
-        If(JitWidth::b16, dx); {
-            IfEqual(JitWidth::b16, dx, 0xffff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
-        } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
-        } EndIf();
+        setImulOverflowFlags(JitWidth::b16, getReadOnlyReg(0), getReadOnlyReg(2), 0x8000, 0xffff);
     }
     currentLazyFlags = FLAGS_NONE;
 }
@@ -719,16 +725,7 @@ void Jit::dynamic_imulR32(DecodedOp* op) {
     dynamic_R(op, JitWidth::b32, &Jit::imulReg, FLAGS_NULL, false);
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlagType(FLAGS_NONE);
-        RegPtr edx = getReadOnlyReg(2);
-        If(JitWidth::b32, edx); {
-            IfEqual(JitWidth::b32, edx, 0xffffffff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
-        } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
-        } EndIf();
+        setImulOverflowFlags(JitWidth::b32, getReadOnlyReg(0), getReadOnlyReg(2), 0x80000000, 0xffffffff);
     }
     currentLazyFlags = FLAGS_NONE;
 }
@@ -736,16 +733,7 @@ void Jit::dynamic_imulE32(DecodedOp* op) {
     dynamic_M(op, JitWidth::b32, &Jit::imulReg, FLAGS_NULL, false, getTmpReg());
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlagType(FLAGS_NONE);
-        RegPtr edx = getReadOnlyReg(2);
-        If(JitWidth::b32, edx); {
-            IfEqual(JitWidth::b32, edx, 0xffffffff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
-        } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
-        } EndIf();
+        setImulOverflowFlags(JitWidth::b32, getReadOnlyReg(0), getReadOnlyReg(2), 0x80000000, 0xffffffff);
     }
     currentLazyFlags = FLAGS_NONE;
 }
@@ -781,11 +769,11 @@ void Jit::div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
         absReg(JitWidth::b8, absAh);
         absReg(JitWidth::b8, absSrc);
 
-        IfGreaterThanOrEqual(JitWidth::b8, absAh, absSrc); {
+        IfGreaterThanOrEqual(JitWidth::b8, absAh, absSrc, false); {
             emulateSingleOp();
         } EndIf();
     } else {
-        IfGreaterThanOrEqual(JitWidth::b8, absAh, src); {
+        IfGreaterThanOrEqual(JitWidth::b8, absAh, src, isSigned); {
             emulateSingleOp();
         } EndIf();
     }
@@ -827,11 +815,11 @@ void Jit::div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
         absReg(JitWidth::b16, absDx);
         absReg(JitWidth::b16, absSrc);
 
-        IfGreaterThanOrEqual(JitWidth::b16, absDx, absSrc); {
+        IfGreaterThanOrEqual(JitWidth::b16, absDx, absSrc, false); {
             emulateSingleOp();
         } EndIf();
     } else {
-        IfGreaterThanOrEqual(JitWidth::b16, dx, src); {
+        IfGreaterThanOrEqual(JitWidth::b16, dx, src, isSigned); {
             emulateSingleOp();
         } EndIf();
     }
@@ -873,11 +861,11 @@ void Jit::div32(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
         absReg(JitWidth::b32, absEdx);
         absReg(JitWidth::b32, absSrc);
 
-        IfGreaterThanOrEqual(JitWidth::b32, absEdx, absSrc); {
+        IfGreaterThanOrEqual(JitWidth::b32, absEdx, absSrc, false); {
             emulateSingleOp();
         } EndIf();
     } else {
-        IfGreaterThanOrEqual(JitWidth::b32, edx, src); {
+        IfGreaterThanOrEqual(JitWidth::b32, edx, src, isSigned); {
             emulateSingleOp();
         } EndIf();
     }
@@ -945,17 +933,11 @@ void Jit::dynamic_dimulcr16r16(DecodedOp* op) {
         movsx(JitWidth::b32, src1, JitWidth::b16, src1);
         RegPtr result = getTmpReg();
         imulRRI(JitWidth::b32, result, src1, (S32)((S16)(op->imm)));
+        
         mov(JitWidth::b16, getReg(op->reg), result);
         shrValue(JitWidth::b32, result, 16);
-        If(JitWidth::b32, result); {
-            IfEqual(JitWidth::b32, result, 0xffff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
-        } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
-        } EndIf();
+
+        setImulOverflowFlags(JitWidth::b16, getReg(op->reg), result, 0x8000, 0xffff);
     }
     currentLazyFlags = FLAGS_NONE;
 }
@@ -969,17 +951,11 @@ void Jit::dynamic_dimulcr16e16(DecodedOp* op) {
         movsx(JitWidth::b32, src1, JitWidth::b16, src1);
         RegPtr result = getTmpReg();
         imulRRI(JitWidth::b32, result, src1, (S32)((S16)(op->imm)));
+
         mov(JitWidth::b16, getReg(op->reg), result);
         shrValue(JitWidth::b32, result, 16);
-        If(JitWidth::b32, result); {
-            IfEqual(JitWidth::b32, result, 0xffff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
-        } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
-        } EndIf();
+
+        setImulOverflowFlags(JitWidth::b16, getReg(op->reg), result, 0x8000, 0xffff);
     }
     currentLazyFlags = FLAGS_NONE;
 }
@@ -991,15 +967,7 @@ void Jit::dynamic_dimulcr32r32(DecodedOp* op) {
         RegPtr overflow = getTmpRegWithHint(2);
         imulRRI(JitWidth::b32, getReg(op->reg, 0, false), getReadOnlyReg(op->rm), op->imm, overflow);
 
-        If(JitWidth::b32, overflow); {
-            IfEqual(JitWidth::b32, overflow, 0xffffffff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
-        } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
-        } EndIf();
+        setImulOverflowFlags(JitWidth::b32, getReg(op->reg), overflow, 0x80000000, 0xffffffff);
     }
     currentLazyFlags = FLAGS_NONE;    
 }
@@ -1010,15 +978,7 @@ void Jit::dynamic_dimulcr32e32(DecodedOp* op) {
         RegPtr overflow = getTmpRegWithHint(2);
         imulRRI(JitWidth::b32, getReg(op->reg, 0, false), read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, getTmpReg()), op->imm, overflow); // getTmpReg call so that x86 eax will be available as tmp
 
-        If(JitWidth::b32, overflow); {
-            IfEqual(JitWidth::b32, overflow, 0xffffffff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
-        } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
-        } EndIf();
+        setImulOverflowFlags(JitWidth::b32, getReg(op->reg), overflow, 0x80000000, 0xffffffff);
     }
     currentLazyFlags = FLAGS_NONE;
 }
@@ -1033,17 +993,11 @@ void Jit::dynamic_dimulr16r16(DecodedOp* op) {
         RegPtr result = getTmpReg(op->reg);
         movsx(JitWidth::b32, result, JitWidth::b16, result);
         imulRR(JitWidth::b32, result, src);
+
         mov(JitWidth::b16, getReg(op->reg), result);
         shrValue(JitWidth::b32, result, 16);
-        If(JitWidth::b32, result); {
-            IfEqual(JitWidth::b32, result, 0xffff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
-        } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
-        } EndIf();
+
+        setImulOverflowFlags(JitWidth::b16, getReg(op->reg), result, 0x8000, 0xffff);
     }
     currentLazyFlags = FLAGS_NONE;
 }
@@ -1058,17 +1012,11 @@ void Jit::dynamic_dimulr16e16(DecodedOp* op) {
         RegPtr result = getTmpReg(op->reg);
         movsx(JitWidth::b32, result, JitWidth::b16, result);
         imulRR(JitWidth::b32, result, src);
+
         mov(JitWidth::b16, getReg(op->reg), result);
         shrValue(JitWidth::b32, result, 16);
-        If(JitWidth::b32, result); {
-            IfEqual(JitWidth::b32, result, 0xffff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
-        } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
-        } EndIf();
+
+        setImulOverflowFlags(JitWidth::b16, getReg(op->reg), result, 0x8000, 0xffff);
     }
     currentLazyFlags = FLAGS_NONE;
 }
@@ -1079,15 +1027,7 @@ void Jit::dynamic_dimulr32r32(DecodedOp* op) {
         RegPtr overflow = getTmpRegWithHint(2);
         imulRR(JitWidth::b32, getReg(op->reg, 0), getReadOnlyReg(op->rm), overflow);
 
-        If(JitWidth::b32, overflow); {
-            IfEqual(JitWidth::b32, overflow, 0xffffffff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
-        } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
-        } EndIf();
+        setImulOverflowFlags(JitWidth::b32, getReg(op->reg), overflow, 0x80000000, 0xffffffff);
     }
     currentLazyFlags = FLAGS_NONE;    
 }
@@ -1098,15 +1038,7 @@ void Jit::dynamic_dimulr32e32(DecodedOp* op) {
         RegPtr overflow = getTmpRegWithHint(2);
         imulRR(JitWidth::b32, getReg(op->reg, 0), read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, getTmpReg()), overflow);
 
-        If(JitWidth::b32, overflow); {
-            IfEqual(JitWidth::b32, overflow, 0xffffffff); {
-                andCPUFlagsImmV2(~(CF | OF));
-            } StartElse(); {
-                orCPUFlagsImmV2(CF | OF);
-            } EndIf();
-        } StartElse(); {
-            andCPUFlagsImmV2(~(CF | OF));
-        } EndIf();
+        setImulOverflowFlags(JitWidth::b32, getReg(op->reg), overflow, 0x80000000, 0xffffffff);
     }
     currentLazyFlags = FLAGS_NONE;    
 }
