@@ -1936,7 +1936,7 @@ void JitArmV8CodeGen::shldReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr c
 
         movzx(JitWidth::b32, reg16, JitWidth::b16, reg);
         movzx(JitWidth::b32, rm16, JitWidth::b16, rm);
-        IfGreaterThanOrEqual(JitWidth::b32, cl, 0x10); {
+        IfGreaterThanOrEqual(JitWidth::b32, cl, 0x10, false); {
             subValue(JitWidth::b32, cl, 16);
             mov(JitWidth::b32, reg16, rm16);
         } EndIf();
@@ -1994,7 +1994,7 @@ void JitArmV8CodeGen::shrdReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr c
 
         movzx(JitWidth::b32, reg16, JitWidth::b16, reg);
         movzx(JitWidth::b32, rm16, JitWidth::b16, rm);
-        IfGreaterThanOrEqual(JitWidth::b32, cl, 0x10); {
+        IfGreaterThanOrEqual(JitWidth::b32, cl, 0x10, false); {
             subValue(JitWidth::b32, cl, 16);
             mov(JitWidth::b32, reg16, rm16);
         } EndIf();

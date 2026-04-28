@@ -751,13 +751,6 @@ void JitCodeGen::jumpEip(RegPtr reg) {
     blockExit();
 }
 
-static DYN_PTR_SIZE dynamic_getNextOp(CPU* cpu) {
-    if (cpu->thread->terminating) {
-        return 0;
-    }
-    return (DYN_PTR_SIZE)cpu->getNextOp();
-}
-
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
 void JitCodeGen::blockNext1(U32 eip, DecodedOp* op) {
     // if (!(*(op->nextJump))) {
