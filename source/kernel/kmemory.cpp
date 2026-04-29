@@ -83,7 +83,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
         return -K_EINVAL;
     }
 
-    if (!(flags & K_MAP_ANONYMOUS)) {
+    if (!(flags & K_MAP_ANONYMOUS) && fildes >= 0) {
         fd = this->process->getFileDescriptor(fildes);
         if (!fd) {
             return -K_EBADF;
