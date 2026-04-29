@@ -78,12 +78,19 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 
     switch (request & 0xFFFF) {
     case 0x5000: // SNDCTL_DSP_RESET
+        this->audio->closeAudio();
+        this->freq = 8000;
+        this->channels = 1;
+        this->format = AFMT_U8;
         return 0;
     case 0x5002:  // SNDCTL_DSP_SPEED 
         if (len!=4) {
             kpanic("SNDCTL_DSP_SPEED was expecting a len of 4");
         }
 		this->freq = memory->readd(IOCTL_ARG1);
+        if (freq != this->freq) {
+            this->audio->closeAudio();
+        }
 		if (write)
             memory->writed(IOCTL_ARG1, this->freq);
         return 0;
@@ -173,7 +180,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         klog("DevDsp::ioctl was not expecting SNDCTL_DSP_SETFRAGMENT");
         return 0;
     case 0x500B: // SNDCTL_DSP_GETFMTS
-        memory->writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE | AFMT_FLOAT);
+        memory->writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_LE | AFMT_U16_BE | AFMT_FLOAT);
         return 0;
 
 		//typedef struct audio_buf_info {
@@ -275,7 +282,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->strcpy(p, ""); p+=64; // oss_longname_t song_name;	/* Song name (if given) */
             memory->strcpy(p, ""); p+=16; // oss_label_t label;		/* Device label (if given) */
             memory->writed(p, -1); p+=4; // int latency;			/* In usecs, -1=unknown */
-            memory->strcpy(p, "dsp"); p+=16; // oss_devnode_t devnode;	/* Device special file name (absolute path) */
+            memory->strcpy(p, "/dev/dsp"); p+=16; // oss_devnode_t devnode;	/* Device special file name (absolute path) */
             memory->writed(p, 0); p+=4; // int next_play_engine;		/* Read the documentation for more info */
             memory->writed(p, 0); // int next_rec_engine;		/* Read the documentation for more info */
             return 0;

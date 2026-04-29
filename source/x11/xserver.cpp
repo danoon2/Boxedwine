@@ -715,10 +715,10 @@ U32 XServer::getInputModifiers() {
 		result |= Button3Mask;
 	}
 	if (modifiers & NATIVE_BUTTON_4_MASK) {
-		result |= Button8Mask;
+		result |= Button4Mask;
 	}
 	if (modifiers & NATIVE_BUTTON_5_MASK) {
-		result |= Button8Mask;
+		result |= Button5Mask;
 	}
 	if (modifiers & NATIVE_SHIFT_MASK) {
 		result |= ShiftMask;
@@ -802,7 +802,7 @@ void XServer::pointerMovedChildToParent(const XWindowPtr& from, const XWindowPtr
 
 	// iterate from child to parent (not including child/parent)
 	XWindowPtr betweenWindow = from->getParent();
-	while (betweenWindow && betweenWindow->id != from->id) {
+	while (betweenWindow && betweenWindow->id != to->id) {
 		XServer::getServer()->iterateEventMask(betweenWindow->id, EnterWindowMask, [=](const DisplayDataPtr& data) {
 			betweenWindow->crossingNotify(data, true, x, y, mode, NotifyVirtual);
 			});
@@ -1176,7 +1176,7 @@ void XServer::initVisuals() {
 
 		U32 rMask = ((1 << pf->cRedBits) - 1) << pf->cRedShift;
 		U32 gMask = ((1 << pf->cGreenBits) - 1) << pf->cGreenShift;
-		U32 bMask = ((1 << pf->cGreenBits) - 1) << pf->cBlueShift;
+		U32 bMask = ((1 << pf->cBlueBits) - 1) << pf->cBlueShift;
 		U32 depth = pf->cColorBits;
 
 		// try to match a real format with a default

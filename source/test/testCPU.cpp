@@ -3882,12 +3882,13 @@ static struct Data decd[] = {
         endData()
 };
 
-static struct Data imulw[] = {
+static struct Data imulw[] = {        
         allocDataConst(0, 2, 4, 2, 16, 0, false, false),
         allocDataConst(0, 0xFFFE, 0xFFFC, 2, 16, 0, false, false), // -2 * 2 = -4
         allocDataConst(0, 0xFFFE, 4, 0xFFFE, 16, CF | OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 300, 0x5F90, 300, 16, 0, true, true), // 300 x 300 = 0x15F90
-        allocDataConst(0, (U32)(-300), 0xA070, 300, 16, 0, true, true),
+        allocDataConst(0, (U32)(-300), 0xA070, 300, 16, 0, true, true),        
+        allocDataConst(0, 0x4000, 0x8000, 2, 16, 0, true, true),
         endData()
 };
 
@@ -3897,6 +3898,7 @@ static struct Data dimulw[] = {
         allocData(0xFFFE, 0xFFFE, 4, CF | OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocData(300, 300, 0x5F90, 0, true, true), // 300 x 300 = 0x15F90
         allocData(300, (U32)(-300), 0xA070, 0, true, true),
+        allocData(0x4000, 2, 0x8000, 0, true, true),
         endData()
 };
 
@@ -3906,6 +3908,7 @@ static struct Data imuld[] = {
         allocDataConst(0, 0xFFFFFFFE, 4, 0xFFFFFFFE, 32, CF | OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 300000, 0xF08EB000, 400000, 32, 0, true, true), // = 1BF08EB000
         allocDataConst(0, (U32)(-300000), 0x0F715000, 400000, 32, 0, true, true),
+        allocDataConst(0, 0x40000000, 0x80000000, 2, 32, 0, true, true),
         endData()
 };
 
@@ -3915,6 +3918,7 @@ static struct Data dimuld[] = {
         allocData(0xFFFFFFFE, 0xFFFFFFFE, 4, CF | OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocData(400000, 300000, 0xF08EB000, 0, true, true), // = 1BF08EB000
         allocData(400000, (U32)(-300000), 0x0F715000, 0, true, true),
+        allocData(0x40000000, 2, 0x80000000, 0, true, true),
         endData()
 };
 
@@ -3924,6 +3928,7 @@ static struct Data imulw_s8[] = {
         allocDataConst(0, 0xFFFE, 4, 0xFE, 8, CF | OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 3000, 0xD048, 127, 8, 0, true, true), // 3000 x 127 = 0x5D048
         allocDataConst(0, (U32)(-3000), 0x2FB8, 127, 8, 0, true, true),
+        allocDataConst(0, 0x4000, 0x8000, 2, 8, 0, true, true),
         endData()
 };
 
@@ -3933,6 +3938,7 @@ static struct Data imuld_s8[] = {
         allocDataConst(0, 0xFFFFFFFE, 4, 0xFE, 8, CF | OF, false, false), // -2 * -2 = 4 (also, make sure it clears the flags)
         allocDataConst(0, 300000000, 0xDEEFDD00, 127, 8, 0, true, true), // = 8DEEFDD00
         allocDataConst(0, (U32)(-300000000), 0x21102300, 127, 8, 0, true, true),
+        allocDataConst(0, 0x40000000, 0x80000000, 2, 8, 0, true, true),
         endData()
 };
 
@@ -4552,6 +4558,7 @@ static struct Data imulAl[] = {
         allocData(0xFA, 2, 0xFFF4, 0, false, false), // -6 x 2 = -12
         allocData(0xFA, 0x9C, 600, 0, true, true), // -6 x -100 = 600
         allocData(0, 0xFF, 0, 0, false, false),
+        allocData(0x40, 2, 0x80, 0, true, true),
         endData()
 };
 
@@ -4560,6 +4567,7 @@ static struct Data imulAx[] = {
         allocDataConstvar2(0, 0xFFFA, 0xFFF4, 0, false, false, 2, 0xFFFF), // -6 x 2 = -12
         allocDataConstvar2(0, ((S16)-600) & 0xFFFF, 0x5780, 0, true, true, 30000, 0xFEED), // -600 x 30000 = -18000000
         allocDataConstvar2(0, 0xFFFA, 600, 0, false, false, 0xFF9C, 0), // -6 x -100 = 600
+        allocDataConstvar2(0, 0x4000, 0x8000, 0, true, true, 2, 0),
         endData()
 };
 
@@ -4567,6 +4575,7 @@ static struct Data imulEax[] = {
         allocDataConstvar2(0, 2, 4, 0, false, false, 2, 0),
         allocDataConstvar2(0, 0xFFFFFFFA, 0xFFFFFFF4, 0, false, false, 2, 0xFFFFFFFF), // -6 x 2 = -12
         allocDataConstvar2(0, (U32)(-60000), 0x1729f800, 0, true, true, 3000000, 0xFFFFFFD6), // -60000 x 3000000 = -180000000000
+        allocDataConstvar2(0, 0x40000000, 0x80000000, 0, true, true, 2, 0),
         endData()
 };
 
@@ -5464,27 +5473,29 @@ void testBound0x262() {
 void testPush0x068() { cpu->big = false; push16(0x68); }
 void testPush0x268() { cpu->big = true; push32(0x68); }
 
-void testIMul0x069() { cpu->big = false; GwEw(0x69, imulw); X86_TEST2C(imul, &imulw[0], ax, cx, 2) X86_TEST2C(imul, &imulw[1], ax, cx, 2) X86_TEST2C(imul, &imulw[2], ax, cx, 0xFFFE) X86_TEST2C(imul, &imulw[3], ax, cx, 300) X86_TEST2C(imul, &imulw[4], ax, cx, 300) }
-void testIMul0x269() { cpu->big = true; GdEd(0x69, imuld); X86_TEST2C(imul, &imuld[0], eax, ecx, 2) X86_TEST2C(imul, &imuld[1], eax, ecx, 2) X86_TEST2C(imul, &imuld[2], eax, ecx, 0xFFFFFFFE) X86_TEST2C(imul, &imuld[3], eax, ecx, 400000) X86_TEST2C(imul, &imuld[4], eax, ecx, 400000) }
+void testIMul0x069() { cpu->big = false; GwEw(0x69, imulw); X86_TEST2C(imul, &imulw[0], ax, cx, 2) X86_TEST2C(imul, &imulw[1], ax, cx, 2) X86_TEST2C(imul, &imulw[2], ax, cx, 0xFFFE) X86_TEST2C(imul, &imulw[3], ax, cx, 300) X86_TEST2C(imul, &imulw[4], ax, cx, 300) X86_TEST2C(imul, &imulw[5], ax, cx, 2) }
+void testIMul0x269() { cpu->big = true; GdEd(0x69, imuld); X86_TEST2C(imul, &imuld[0], eax, ecx, 2) X86_TEST2C(imul, &imuld[1], eax, ecx, 2) X86_TEST2C(imul, &imuld[2], eax, ecx, 0xFFFFFFFE) X86_TEST2C(imul, &imuld[3], eax, ecx, 400000) X86_TEST2C(imul, &imuld[4], eax, ecx, 400000) X86_TEST2C(imul, &imuld[5], eax, ecx, 2) }
 
 void testImulw0x1af() {
     cpu->big = false;
     GwEw(0x1af, dimulw);
     X86_TEST(imul, &dimulw[0], ax, cx)
-        X86_TEST(imul, &dimulw[1], ax, cx)
-        X86_TEST(imul, &dimulw[2], ax, cx)
-        X86_TEST(imul, &dimulw[3], ax, cx)
-        X86_TEST(imul, &dimulw[4], ax, cx)
+    X86_TEST(imul, &dimulw[1], ax, cx)
+    X86_TEST(imul, &dimulw[2], ax, cx)
+    X86_TEST(imul, &dimulw[3], ax, cx)
+    X86_TEST(imul, &dimulw[4], ax, cx)
+    X86_TEST(imul, &dimulw[5], ax, cx)
 }
 
 void testImuld0x3af() {
     cpu->big = true;
     GdEd(0x3af, dimuld);
     X86_TEST(imul, &dimuld[0], eax, ecx)
-        X86_TEST(imul, &dimuld[1], eax, ecx)
-        X86_TEST(imul, &dimuld[2], eax, ecx)
-        X86_TEST(imul, &dimuld[3], eax, ecx)
-        X86_TEST(imul, &dimuld[4], eax, ecx)
+    X86_TEST(imul, &dimuld[1], eax, ecx)
+    X86_TEST(imul, &dimuld[2], eax, ecx)
+    X86_TEST(imul, &dimuld[3], eax, ecx)
+    X86_TEST(imul, &dimuld[4], eax, ecx)
+    X86_TEST(imul, &dimuld[5], eax, ecx)
 }
 
 void testPush0x06a() { cpu->big = false; push16s8(0x6a); }

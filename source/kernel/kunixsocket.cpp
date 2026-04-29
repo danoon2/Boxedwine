@@ -63,14 +63,21 @@ KUnixSocketObject::~KUnixSocketObject() {
         this->connecting.reset();
     }
     {
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
-        for (auto& weakSocket : this->pendingConnections) {
-            std::shared_ptr<KUnixSocketObject> s = weakSocket.lock();
-            if (s) {
-                s->connecting.reset();
-                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(s->lockCond);
-                BOXEDWINE_CONDITION_SIGNAL_ALL(s->lockCond);
+		std::vector< std::shared_ptr<KUnixSocketObject> > pendingConnections;
+
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
+            for (auto& weakSocket : this->pendingConnections) {
+                std::shared_ptr<KUnixSocketObject> s = weakSocket.lock();
+                if (s) {
+                    s->connecting.reset();
+                    pendingConnections.push_back(s);
+                }
             }
+        }
+        for (auto& s : pendingConnections) {
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(s->lockCond);
+            BOXEDWINE_CONDITION_SIGNAL_ALL(s->lockCond);
         }
         while (!msgs.empty()) {
             this->msgs.pop();
@@ -228,7 +235,11 @@ U32 KUnixSocketObject::writeNative(U8* buffer, U32 len) {
     }
     std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
     if (this->outClosed || !con) {
-        return writePipeClosed(KThread::currentThread(), false);
+		KThread* thread = KThread::currentThread();
+        if (thread) {
+            return writePipeClosed(thread, false);
+        }
+        return -K_EPIPE;
     }
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond); 
@@ -370,6 +381,7 @@ U32 KUnixSocketObject::read(KThread* thread, U32 buffer, U32 len, U32 flags) {
             return true;
             });
     }
+    con = this->connection.lock();
     if (con) {
         BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
     }
@@ -443,6 +455,9 @@ U32 KUnixSocketObject::bind(KThread* thread, const KFileDescriptorPtr& fd, U32 a
             return -K_EADDRINUSE;
         }        
         BString fullpath = Fs::getFullPath(thread->process->currentDirectory, name);
+        this->destAddress.family = family;
+        strncpy(this->destAddress.data, fullpath.c_str(), sizeof(this->destAddress.data));
+		this->destAddress.data[sizeof(this->destAddress.data) - 1] = 0;
         std::shared_ptr<FsNode> parentNode = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(fullpath), true);
         std::shared_ptr<UnixSocketNode> socketNode = std::make_shared<UnixSocketNode>(0, 2, fullpath, parentNode);
         parentNode->addChild(socketNode);
@@ -468,7 +483,7 @@ U32 KUnixSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, U3
     memory->memcpy(this->destAddress.data, address + 2, len - 2);
     if (this->type==K_SOCK_DGRAM) {
         this->connected = true;
-        return 0;
+        return -K_EISCONN;
     } else if (this->type==K_SOCK_STREAM) {
         if (this->destAddress.data[0]==0) {
             // :TODO: why
@@ -596,7 +611,9 @@ U32 KUnixSocketObject::accept(KThread* thread, const KFileDescriptorPtr& fd, U32
         pendingConnection = this->pendingConnections.front().lock();
         this->pendingConnections.pop_front();
     }
-    
+    if (pendingConnection == nullptr) {
+        return -K_ECONNABORTED;
+	}
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(pendingConnection->lockCond);
     std::shared_ptr<KUnixSocketObject> resultSocket = std::make_shared<KUnixSocketObject>(domain, type, protocol);
@@ -662,25 +679,35 @@ U32 KUnixSocketObject::shutdown(KThread* thread, const KFileDescriptorPtr& fd, U
         return -K_ENOTCONN;
     }
     if (how == K_SHUT_RD) {
-        this->inClosed=true;
-        con->outClosed=true;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
+            this->inClosed = true;
+            BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
+        }
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond);
+        con->outClosed = true;
         BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
     } else if (how == K_SHUT_WR) {
-        this->outClosed=true;
-        con->inClosed=true;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
+            this->outClosed = true;
+            BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
+        }
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond);
+        con->inClosed = true;
         BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
     } else if (how == K_SHUT_RDWR) {
-        this->outClosed=true;
-        this->inClosed=true;
-        con->outClosed=true;
-        con->inClosed=true;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
+            this->outClosed = true;
+            this->inClosed = true;
+            BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
+        }
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond);
+        con->outClosed = true;
+        con->inClosed = true;
         BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
     }
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
-    BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
     return 0;
 }
 
@@ -775,7 +802,7 @@ U32 KUnixSocketObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd, U3
 
     if (!con) {
         if (this->type == K_SOCK_STREAM) {
-            return K_ENOTCONN;
+            return -K_ENOTCONN;
         }
         kpanic_fmt("KUnixSocketObject::sendmsg not implemented for type: %d", this->type);
         return 0;
@@ -893,7 +920,7 @@ U32 KUnixSocketObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd, U3
             writeCMsgHdr(thread, hdr.msg_control + i * 16, 16, K_SOL_SOCKET, K_SCM_RIGHTS);
             memory->writed(hdr.msg_control + i * 16 + 12, recvFd->handle);
         }
-        memory->writed(address + 20, i * 20);
+		memory->writed(address + 20, i * 16); // msg_controllen
     }
     U32 pos = 0;
     for (U32 i=0;i<hdr.msg_iovlen;i++) {

@@ -34,7 +34,7 @@ RegPtr Jit::calculateEffectiveEaa16(DecodedOp* op) {
 
     sarValue(JitWidth::b16, reg, 4);
     shlValue(JitWidth::b16, reg, 1);
-    movzx(JitWidth::b32, reg, JitWidth::b16, reg);
+    movsx(JitWidth::b32, reg, JitWidth::b16, reg);
     addReg(JitWidth::b32, result, reg);
     return result;
 }

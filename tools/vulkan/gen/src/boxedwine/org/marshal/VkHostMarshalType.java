@@ -22,6 +22,7 @@ public class VkHostMarshalType {
         boolean isArray = false;
         String name;
         boolean deleteItems = false;
+        boolean deletedItemsAreArrays = false;
         String itemCount;
         boolean unlock = false;
         boolean isVoid = false;
@@ -118,7 +119,11 @@ public class VkHostMarshalType {
                 out.append("** ");
                 out.append(param.name);
                 out.append(" = new ");
-                paramData.add(new MarshalParamData("s."+param.name, true));
+                MarshalParamData paramDataItem = new MarshalParamData("s."+param.name, true);
+                paramDataItem.deleteItems = true;
+                paramDataItem.deletedItemsAreArrays = true;
+                paramDataItem.itemCount = "s."+parts[0];
+                paramData.add(paramDataItem);
                 out.append(param.paramType.name);
                 out.append("*[s->");
                 out.append(parts[0]);
@@ -137,7 +142,6 @@ public class VkHostMarshalType {
                 out.append("            ");
                 out.append(param.name);
                 out.append("[i] = new ");
-                paramData.add(new MarshalParamData("s."+param.name, true));
                 out.append(param.paramType.name);
                 out.append("[size];\n");
                 out.append("            ");
@@ -173,7 +177,7 @@ public class VkHostMarshalType {
         out.append("* ");
         out.append(param.name);
         out.append(" = new ");
-        paramData.add(new MarshalParamData("s."+param.name, false));
+        paramData.add(new MarshalParamData("s."+param.name, true));
         out.append(param.paramType.name);
         out.append("[");
         out.append(getParamLen(param));
@@ -625,6 +629,9 @@ public class VkHostMarshalType {
         }
         int offset = 0;
         for (VkParam param : t.members) {
+            if (param.name.equals("ppEnabledLayerNames")) {
+                int ii=0;
+            }
             int alignment = param.getAlignment();
             if ((offset % alignment) != 0) {
                 out.append("    address+=");
@@ -1093,23 +1100,28 @@ public class VkHostMarshalType {
                 out.append("        for (U32 i = 0; i < ");
                 out.append(data.itemCount);
                 out.append("; i++) {\n");
-                out.append("            delete ");
+                out.append("            delete");
+                if (data.deletedItemsAreArrays) {
+                    out.append("[]");
+                }
+                out.append(" ");
                 out.append(data.name);
                 out.append("[i];\n        }\n    }\n");
             }
-            out.append("    delete");
-            if (data.isArray) {
-                out.append("[]");
-            }
-            out.append(" ");
-            if (data.isVoid) {
-                out.append("(char*)");
-            }
             if (data.name.equals("s.pNext")) {
-                out.append("(VkBaseOutStructure*)");
+                out.append("    vulkanDeleteNextPtr(s.pNext);\n");
+            } else {
+                out.append("    delete");
+                if (data.isArray) {
+                    out.append("[]");
+                }
+                out.append(" ");
+                if (data.isVoid) {
+                    out.append("(char*)");
+                }
+                out.append(data.name);
+                out.append(";\n");
             }
-            out.append(data.name);
-            out.append(";\n");
             alreadyAdded.add(data.name);
         }
         if (t.name.equals("VkIndirectExecutionSetCreateInfoEXT")) {

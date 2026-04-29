@@ -200,6 +200,7 @@ public class VkHost {
         out.append("class BoxedVulkanInfo;\n");
         out.append("class MarshalCallbackData;\n");
         out.append("VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);\n");
+        out.append("void vulkanDeleteNextPtr(const void* pNext);\n");
         out.append("U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);\n");
         out.append("void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* pNext);\n");
         out.append("void* getVulkanPtr(KMemory* memory, U32 address);\n");
@@ -386,6 +387,26 @@ public class VkHost {
         part2.append("       default:\n");
         part2.append("            kpanic_fmt(\"vulkanGetNextPtr not implemented for %d\", type);\n");
         part2.append("            return nullptr;\n");
+        part2.append("    }\n");
+        part2.append("}\n");
+
+        part2.append("void vulkanDeleteNextPtr(const void* p) {\n");
+        part2.append("    if (!p) return;\n");
+        part2.append("    VkBaseOutStructure* pNext = (VkBaseOutStructure*)p;\n");
+        part2.append("    if (pNext->pNext) vulkanDeleteNextPtr(pNext->pNext);\n");
+        part2.append("    switch (pNext->sType) {\n");
+        for (String key : structTypes.keySet()) {
+            part2.append("        case ");
+            part2.append(key);
+            part2.append(":\n");
+            part2.append("            ");
+            part2.append("delete (");
+            part2.append(structTypes.get(key));
+            part2.append("*)pNext;\n");
+            part2.append("            break;\n");
+        }
+        part2.append("       default:\n");
+        part2.append("            kpanic_fmt(\"vulkanGetNextPtr not implemented for %d\", pNext->sType);\n");
         part2.append("    }\n");
         part2.append("}\n");
 

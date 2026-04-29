@@ -11,6 +11,7 @@ class MarshalVkImageCreateInfo;
 class BoxedVulkanInfo;
 class MarshalCallbackData;
 VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);
+void vulkanDeleteNextPtr(const void* pNext);
 U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);
 void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* pNext);
 void* getVulkanPtr(KMemory* memory, U32 address);

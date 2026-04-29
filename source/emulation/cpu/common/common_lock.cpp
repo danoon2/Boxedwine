@@ -1453,7 +1453,7 @@ void common_note8_lock(CPU* cpu, U32 address) {
     std::atomic_ref<U8> mem(p->data);
 
     while (true) {
-        U8 oldValue = cpu->memory->readd(address);
+        U8 oldValue = cpu->memory->readb(address);
 
         if (mem.compare_exchange_weak(oldValue, ~oldValue)) {
             break;
@@ -1489,7 +1489,7 @@ void common_nege32_lock(CPU* cpu, U32 address) {
                 break;
             }
         }
-        cpu->result.u16 = cpu->dst.u32 - cpu->src.u32;
+        cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
     }
     cpu->lazyFlagType = FLAGS_NEG32;
 }

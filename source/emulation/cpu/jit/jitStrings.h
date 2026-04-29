@@ -244,7 +244,7 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
     RegPtr src = getTmpReg8();
     // :TODO: maybe cache ecx if we have 6 or more temp regs?
 
-    auto onFailure = [esi, edi, src, this]() {
+    auto onFailure = [esi, edi, this]() {
         forceSyncBackIfNotCached(esi);
         forceSyncBackIfNotCached(edi);
         emulateSingleOp();
@@ -349,7 +349,7 @@ void Jit::dynamic_cmpsw_op(DecodedOp* op) {
                 currentLazyFlags = FLAGS_NULL; // not set to FLAGS_SUB16 if (e)cx is 0
             }
         } else {
-            cmps(op->base, JitWidth::b16, 2, JitWidth::b32, FLAGS_SUB8);
+            cmps(op->base, JitWidth::b16, 2, JitWidth::b32, FLAGS_SUB16);
             currentLazyFlags = FLAGS_SUB16;
         }
     }

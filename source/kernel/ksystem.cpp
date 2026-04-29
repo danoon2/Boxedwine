@@ -882,7 +882,8 @@ void KSystem::internalEraseProcess(U32 id) {
 
 void KSystem::eraseProcess(U32 id) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
-    KSystem::internalEraseProcess(id);    
+    KSystem::internalEraseProcess(id);
+    KSystem::wakeThreadsWaitingOnProcessStateChanged();
 }
 
 std::shared_ptr<FsNode> KSystem::addProcess(U32 id, const KProcessPtr& process) {
@@ -1060,7 +1061,7 @@ bool KSystem::isWindows() {
 }
 
 bool KSystem::isMac() {
-#if defined(_WIN32)
+#if defined(__MACH__)
     return true;
 #else
     return false;
@@ -1068,7 +1069,7 @@ bool KSystem::isMac() {
 }
 
 bool KSystem::isLinux() {
-#if defined(_WIN32)
+#if defined(__linux__)
     return true;
 #else
     return false;

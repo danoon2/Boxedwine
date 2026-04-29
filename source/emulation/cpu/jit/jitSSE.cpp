@@ -151,7 +151,7 @@ void JitSSE::dynamic_cvttps2piMmxXmm(DecodedOp* op) {
 
 void JitSSE::dynamic_cvttps2piMmxE64(DecodedOp* op) {
     read(JitWidth::b64, calculateEaa(op), [op, this](MemPtr address) {
-        SSERegPtr tmp = loadXMMFromMem64(MMX_TMP_INDEX, address);
+        SSERegPtr tmp = loadXMMFromMem64(SSE_TMP_INDEX, address);
         MMXRegPtr reg = getTmpMMX();
         cvttps2piMmxXmm(reg, tmp);
         storeCpuMMXReg(reg, op->reg);
@@ -181,7 +181,7 @@ void JitSSE::dynamic_cvtss2siR32Xmm(DecodedOp* op) {
 
 void JitSSE::dynamic_cvtss2siR32E32(DecodedOp* op) {
     read(JitWidth::b32, calculateEaa(op), [op, this](MemPtr address) {
-        SSERegPtr tmp = loadXMMFromMem32(MMX_TMP_INDEX, address);
+        SSERegPtr tmp = loadXMMFromMem32(SSE_TMP_INDEX, address);
         cvtss2siR32Xmm(getReg(op->reg, -1, false), tmp);
     });
 }
@@ -193,7 +193,7 @@ void JitSSE::dynamic_cvttss2siR32Xmm(DecodedOp* op) {
 
 void JitSSE::dynamic_cvttss2siR32E32(DecodedOp* op) {
     read(JitWidth::b32, calculateEaa(op), [op, this](MemPtr address) {
-        SSERegPtr tmp = loadXMMFromMem32(MMX_TMP_INDEX, address);
+        SSERegPtr tmp = loadXMMFromMem32(SSE_TMP_INDEX, address);
         cvttss2siR32Xmm(getReg(op->reg, -1, false), tmp);
     });
 }
@@ -232,14 +232,14 @@ void JitSSE::dynamic_movlpsXmmE64(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_movhpsE64Xmm(DecodedOp* op) {
-    write(JitWidth::b128, calculateEaa(op), nullptr, [op, this](MemPtr address) {
+    write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](MemPtr address) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
         storeHighXMMToMem64(reg, address);
     });
 }
 
 void JitSSE::dynamic_movlpsE64Xmm(DecodedOp* op) {
-    write(JitWidth::b128, calculateEaa(op), nullptr, [op, this](MemPtr address) {
+    write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](MemPtr address) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
         storeXMMToMem64(reg, address);
     });
@@ -367,7 +367,7 @@ void JitSSE::dynamic_cvtpi2pdXmmMmx(DecodedOp* op) {
 
 void JitSSE::dynamic_cvtpi2pdXmmE64(DecodedOp* op) {
     read(JitWidth::b128, calculateEaa(op), [op, this](MemPtr address) {
-        MMXRegPtr tmp = loadMMXFromMem64(MMX_TMP_INDEX, address);
+        MMXRegPtr tmp = loadMMXFromMem64(SSE_TMP_INDEX, address);
         SSERegPtr reg;
         if (isSseRegCached(op->reg)) {
             reg = loadCpuXMMReg(op->reg);
@@ -429,7 +429,7 @@ void JitSSE::dynamic_cvttsd2siR32Xmm(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_cvttsd2siR32E64(DecodedOp* op) {
-    read(JitWidth::b32, calculateEaa(op), [op, this](MemPtr address) {
+    read(JitWidth::b64, calculateEaa(op), [op, this](MemPtr address) {
         SSERegPtr tmp = loadXMMFromMem64(SSE_TMP_INDEX, address);
         cvttsd2siR32Xmm(getReg(op->reg, -1, false), tmp);
     });
@@ -547,7 +547,7 @@ void JitSSE::dynamic_movdR32Xmm(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_movdE32Xmm(DecodedOp* op) {
-    read(JitWidth::b32, calculateEaa(op), [op, this](MemPtr address) {
+    write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](MemPtr address) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
         storeXMMToMem32(reg, address);
     });
@@ -593,7 +593,7 @@ void JitSSE::dynamic_pextrwR32Xmm(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_pextrwE16Xmm(DecodedOp* op) {
-    write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](MemPtr address) {
+    write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](MemPtr address) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
         RegPtr tmp = getTmpReg();
         pextrwR32Xmm(tmp, reg, op->imm);
@@ -603,7 +603,7 @@ void JitSSE::dynamic_pextrwE16Xmm(DecodedOp* op) {
 
 void JitSSE::dynamic_pinsrwXmmR32(DecodedOp* op) {
     SSERegPtr reg = loadCpuXMMReg(op->reg);
-    pinsrwXmmR32(reg, getReadOnlyReg(op->rm), op->imm);;
+    pinsrwXmmR32(reg, getReadOnlyReg(op->rm), op->imm);
     storeCpuXMMReg(reg, op->reg);
 }
 

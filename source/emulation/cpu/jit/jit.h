@@ -271,10 +271,12 @@ public:
     virtual void IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) = 0;
     virtual void IfNotEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) = 0;
     virtual void IfNotEqual(JitWidth regWidth, RegPtr reg, RegPtr reg2) = 0;
-    virtual void IfLessThan2(JitWidth regWidth, RegPtr reg, U32 value) = 0;
-    virtual void IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2) = 0;
-    virtual void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) = 0;
-    virtual void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg, U32 value) = 0;
+    virtual void IfLessThan(JitWidth regWidth, RegPtr reg, U32 value, bool isSigned) = 0;
+    virtual void IfLessThan(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) = 0;
+    virtual void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) = 0;
+    virtual void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg, U32 value, bool isSigned) = 0;
+    virtual void IfGreaterThan(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) = 0;
+    virtual void IfGreaterThan(JitWidth regWidth, RegPtr reg1, U32 value, bool isSigned) = 0;
     virtual void IfNot(JitWidth regWidth, RegPtr reg) = 0;
     virtual void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) = 0;
     virtual void IfCondition(JitConditional condition) = 0;
@@ -436,6 +438,8 @@ protected:
     void writeRol32Flags(RegPtr reg);
     void writeRcl32Flags(RegPtr reg, RegPtr cf);
     void writeRcr32Flags(RegPtr reg, RegPtr cf);
+
+    void setImulOverflowFlags(JitWidth width, RegPtr lower, RegPtr upper, U32 signMask, U32 allOnes);
 };
 
 class JitFlags {

@@ -280,7 +280,9 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
 }
 
 static DecodedOp* removeJITBlock(DecodedOp* op) {
-    for (int i = 0; i < op->blockOpCount; i++) {
+	U32 count = op->blockOpCount;
+
+    for (int i = 0; i < count; i++) {
         op->pfnJitCode = nullptr;
         op->jitLen = 0;
         op->pfn = NormalCPU::getFunctionForOp(op);
@@ -297,6 +299,7 @@ void JitCodeGen::removeJIT(DecodedOp* op, U32 count) {
         if (op->blockStart) {
             removeJITBlock(op->blockStart);
         }
+        op = op->next;
     }
 }
 
@@ -659,6 +662,12 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
 
 void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
+    // did another thread beat us to JITing this block?
+    if (op->flags & OP_FLAG_JIT) {
+        // this will get triggered a few times, especially during shutdown
+        // I have see this in firefight installer at the end and opentdd start up
+        return;
+    }
     if (!cpu->thread->process->startJITOp) {
         JitCodeGen* jit = startNewJIT(cpu);
         cpu->thread->process->syncToHost = jit->createSyncToHost();
@@ -693,13 +702,7 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
             kpanic("JitCodeGen::doJIT");
         }
         memcpy(cpu->calculateCF, cpu->thread->process->calculateCF, sizeof(cpu->thread->process->calculateCF));
-    }
-    // did another thread beat us to JITing this block?
-    if (op->flags & OP_FLAG_JIT) {
-        // this will get triggered a few times, especially during shutdown
-        // I have see this in firefight installer at the end and opentdd start up
-        return;
-    }
+    }    
     this->currentEip = address;
     this->startingEip = address;
 
@@ -746,13 +749,6 @@ void JitCodeGen::jumpEip(RegPtr reg) {
     writeEip(reg);
     writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
     blockExit();
-}
-
-static DYN_PTR_SIZE dynamic_getNextOp(CPU* cpu) {
-    if (cpu->thread->terminating) {
-        return 0;
-    }
-    return (DYN_PTR_SIZE)cpu->getNextOp();
 }
 
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
@@ -973,21 +969,6 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
     }
 }
 
-static JitWidth getWidthOfCondition(LazyFlagType flags) {
-    U32 width = lazyFlags[flags]->width;
-    if (width == 32) {
-        return JitWidth::b32;
-    }
-    if (width == 16) {
-        return JitWidth::b16;
-    }
-    if (width == 8) {
-        return JitWidth::b8;
-    }
-    kpanic_fmt("getWidthOfCondition: invalid flag width: %d", width);
-    return JitWidth::b32;
-}
-
 RegPtr JitCodeGen::getZF() {
     RegPtr result = getTmpReg8();
     RegPtr lazyFlags = getLazyFlagType();
@@ -995,7 +976,7 @@ RegPtr JitCodeGen::getZF() {
     if (currentLazyFlags != FLAGS_NULL && currentLazyFlags != FLAGS_NONE) {
         IfEqual(JitWidth::b32, lazyFlags, currentLazyFlags); {
             getFlagResultTmp(result);
-            If(getWidthOfCondition(currentLazyFlags), result); {
+            If(getWidthOfFlags(currentLazyFlags), result); {
                 xorReg(JitWidth::b32, result, result);
             } StartElse(); {
                 movValue(JitWidth::b32, result, ZF);
@@ -1704,7 +1685,7 @@ void JitCodeGen::getCF(LazyFlagType flags, RegPtr result) {
         compareReg(JitWidth::b32, getFlagDestReadOnly(getConditionCalculationReg(1)), getFlagResultReadOnly(getConditionCalculationReg(2)), JitEvaluate::LESS_THAN_UNSIGNED, result);
         RegPtr tmp = getConditionCalculationReg(1);
         RegPtr tmp2 = getConditionCalculationReg(2);
-        movValue(JitWidth::b32, tmp2, 0xffff);
+        movValue(JitWidth::b32, tmp2, 0xffffffff);
         compareReg(JitWidth::b32, getFlagSrcReadOnly(tmp), tmp2, JitEvaluate::EQUALS, tmp);
         andReg(JitWidth::b32, tmp, getFlagCF(tmp2));
         orReg(JitWidth::b32, result, tmp);
@@ -1838,13 +1819,13 @@ void JitCodeGen::getCF(LazyFlagType flags, RegPtr result) {
 
 RegPtr JitCodeGen::getCF() {
     RegPtr tmpReg = getConditionCalculationReg();
+    RegPtr flagsType = getLazyFlagType();
 
     // make sure these tmps are not in use by checking if they are available
     {
         getConditionCalculationReg(1);
         getConditionCalculationReg(2);
-    }
-    RegPtr flagsType = getLazyFlagType();
+    }    
 
     if (currentLazyFlags != FLAGS_NULL) {
         IfEqual(JitWidth::b32, flagsType, currentLazyFlags); {
@@ -2218,7 +2199,7 @@ void JitCodeGen::preIfCondition(JitConditional condition, bool& negative, RegPtr
                 IfEqual(JitWidth::b32, zfMask, currentLazyFlags); {
                     getFlagsInTmp(result);
                     andValue(JitWidth::b32, result, ZF);
-                    xorValue(JitWidth::b32, result, ZF);
+                    xorValue(JitWidth::b32, result, ZF); // toggle: non-zero if ZF=0, zero if ZF=1
                 } StartElse();
             } else {
                 needsEndIf = true;

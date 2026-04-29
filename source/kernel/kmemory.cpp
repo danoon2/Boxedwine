@@ -198,12 +198,12 @@ U32 KMemory::mprotect(KThread* thread, U32 address, U32 len, U32 prot) {
     if (exec)
         permissions |= PAGE_EXEC;
 
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     for (U32 i = pageStart; i < pageStart + pageCount; i++) {
         if (!isPageMapped(i)) {
             return -K_ENOMEM;
         }
-    }
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    }    
     for (U32 i = pageStart; i < pageStart + pageCount; i++) {
         this->data->protectPage(thread, i, permissions);
     }
@@ -764,7 +764,7 @@ U32 KMemory::ensureContinuousNative_unsafe(U32 page, U32 pageCount) {
 
     // :TODO: what if ram == null
 
-    for (U32 i = 1; i < chunks * 8; i++) {
+    for (U32 i = 1; i < chunks * 16; i++) {
         U8* pageRam = getRamPtr((page + i) << K_PAGE_SHIFT, K_PAGE_SIZE, false);
         if (ram != pageRam - K_PAGE_SIZE * i) {
             isContinuous = false;

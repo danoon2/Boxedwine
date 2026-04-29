@@ -244,13 +244,13 @@ void CPU::prepareException(int code, int error) {
         process->sigActions[K_SIGFPE].sigInfo[3] = this->eip.u32; // address
         process->sigActions[K_SIGFPE].sigInfo[4] = 0; // trap #, TRAP_x86_DIVIDE
         this->thread->runSignal(K_SIGFPE, 0, error);
-    } else if (code==EXCEPTION_DIVIDE && error == 1 && (process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL)) {
-        process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGFPE;
-        process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
-        process->sigActions[K_SIGSEGV].sigInfo[2] = K_FPE_INTOVF;
-        process->sigActions[K_SIGSEGV].sigInfo[3] = this->eip.u32; // address
-        process->sigActions[K_SIGSEGV].sigInfo[4] = 4; // trap #, TRAP_x86_OFLOW
-        this->thread->runSignal(K_SIGSEGV, 4, error);
+    } else if (code==EXCEPTION_DIVIDE && error == 1 && (process->sigActions[K_SIGFPE].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGFPE].handlerAndSigAction!=K_SIG_DFL)) {
+        process->sigActions[K_SIGFPE].sigInfo[0] = K_SIGFPE;
+        process->sigActions[K_SIGFPE].sigInfo[1] = 0;
+        process->sigActions[K_SIGFPE].sigInfo[2] = K_FPE_INTOVF;
+        process->sigActions[K_SIGFPE].sigInfo[3] = this->eip.u32; // address
+        process->sigActions[K_SIGFPE].sigInfo[4] = 4; // trap #, TRAP_x86_OFLOW
+        this->thread->runSignal(K_SIGFPE, 4, error);
     } else if (code==EXCEPTION_NP &&  (process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL)) {
         process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
         process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
@@ -478,11 +478,13 @@ void CPU::enter(U32 big, U32 bytes, U32 level) {
 
 U32 CPU::lar(U32 selector, U32 ar) {
     this->fillFlags();
-    if (selector == 0 || selector>=LDT_ENTRIES) {
+	U32 selectorIndex = selector >> 3;
+
+    if (selectorIndex == 0 || selectorIndex >= LDT_ENTRIES) {
         this->flags &=~ZF;
         return ar;
     }    
-    struct user_desc* ldt = this->thread->getLDT(selector >> 3);
+    struct user_desc* ldt = this->thread->getLDT(selectorIndex);
     this->flags |= ZF;
     ar = 0;
     if (!ldt->seg_not_present)
@@ -496,11 +498,13 @@ U32 CPU::lar(U32 selector, U32 ar) {
 
 U32 CPU::lsl(U32 selector, U32 limit) {
     this->fillFlags();
-    if (selector == 0 || selector>=LDT_ENTRIES) {
+    U32 selectorIndex = selector >> 3;
+
+    if (selectorIndex == 0 || selectorIndex >= LDT_ENTRIES) {
         this->removeZF();
         return limit;
     }    
-    struct user_desc* ldt = this->thread->getLDT(selector >> 3);
+    struct user_desc* ldt = this->thread->getLDT(selectorIndex);
     if (!ldt) {
         this->removeZF();
         return limit;
@@ -628,7 +632,7 @@ void CPU::ret(U32 big, U32 bytes) {
                 return;
             
             if (ssIndex>=LDT_ENTRIES) {
-                CPU_CHECK_COND(this, 0, "RET:SS beyond limits", EXCEPTION_GP,selector & 0xfffc);
+                CPU_CHECK_COND(this, 0, "RET:SS beyond limits", EXCEPTION_GP, n_ss & 0xfffc);
                 return;
             }
             struct user_desc* ssLdt = this->thread->getLDT(ssIndex);

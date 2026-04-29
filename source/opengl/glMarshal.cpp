@@ -195,6 +195,7 @@ U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsiz
     GLint alignment = 1;
     GLint pixels_per_row = 0;
     GLint skipImages = 0;
+    GLint imageHeight = 0;
 
     if (read) {
         GL_FUNC(pglGetIntegerv)(GL_UNPACK_ROW_LENGTH, &pixels_per_row);
@@ -203,6 +204,7 @@ U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsiz
         GL_FUNC(pglGetIntegerv)(GL_UNPACK_ALIGNMENT, &alignment);
         if (dimensions == 3) {
             GL_FUNC(pglGetIntegerv)(GL_UNPACK_SKIP_IMAGES, &skipImages);
+            GL_FUNC(pglGetIntegerv)(GL_UNPACK_IMAGE_HEIGHT, &imageHeight);
         }
     } else {
         GL_FUNC(pglGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
@@ -211,6 +213,7 @@ U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsiz
         GL_FUNC(pglGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
         if (dimensions == 3) {
             GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
+            GL_FUNC(pglGetIntegerv)(GL_PACK_IMAGE_HEIGHT, &imageHeight);
         }
     }
     if (!pixels_per_row)
@@ -219,9 +222,11 @@ U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsiz
         bytes_per_comp = 1;
         bytes_per_row = (pixels_per_row + 7) / 8;
     } else {
-        int bytes_per_pixel;
-
-        bytes_per_pixel = get_bytes_per_pixel(format, type);
+        int bytes_per_pixel = get_bytes_per_pixel(format, type);
+        if (bytes_per_pixel <= 0) {
+            kpanic_fmt("getPixelsLen unsupported format/type combination: format=0x%x type=0x%x", format, type);
+            return 0;
+        }
         bytes_per_row = pixels_per_row * bytes_per_pixel;
     }
     remainder = bytes_per_row % alignment;
@@ -231,7 +236,7 @@ U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsiz
     switch (type) {
     case GL_UNSIGNED_BYTE_3_3_2:
     case GL_UNSIGNED_BYTE_2_3_3_REV:
-    case GL_UNSIGNED_BYTE: 
+    case GL_UNSIGNED_BYTE:
         bytes_per_comp = 1;
         break;
     case GL_BYTE:
@@ -247,6 +252,7 @@ U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsiz
     case GL_UNSIGNED_SHORT_5_5_5_1:
     case GL_UNSIGNED_SHORT_1_5_5_5_REV:
     case GL_UNSIGNED_SHORT:
+    case GL_HALF_FLOAT_ARB:
         bytes_per_comp = 2;
         break;
     case GL_SHORT:
@@ -254,9 +260,6 @@ U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsiz
         isSigned = 1;
         break;
     case GL_UNSIGNED_INT_24_8:
-        bytes_per_comp = 3;
-        isSigned = 1;
-        break;
     case GL_UNSIGNED_INT_8_8_8_8:
     case GL_UNSIGNED_INT_8_8_8_8_REV:
     case GL_UNSIGNED_INT_10_10_10_2:
@@ -274,7 +277,10 @@ U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsiz
     default:
         kpanic_fmt("glcommongl.c getPixelsLen uknown type: %d", type);
     }
-    return bytes_per_row * (height + skipRows) * (depth + skipImages);
+
+    U32 rowsPerImage = (imageHeight > 0) ? (U32)imageHeight : (U32)height;
+    U32 priorImages = (U32)skipImages + (depth > 0 ? (U32)depth - 1 : 0);
+    return (U32)bytes_per_row * (priorImages * rowsPerImage + (U32)skipRows + (U32)height);
 }
 
 const GLvoid* marshalPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 pixels, U32 len) {
@@ -291,12 +297,6 @@ const GLvoid* marshalPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 pixe
             return marshalArray<GLshort>(cpu, pixels, len / 2);
         } else {
             return marshalArray<GLushort>(cpu, pixels, len / 2);
-        }
-    } else if (bytes_per_comp == 3) {
-        if (isSigned) {
-            return marshalArray<GLbyte>(cpu, pixels, len);
-        } else {
-            return marshalArray<GLubyte>(cpu, pixels, len);
         }
     } else if (bytes_per_comp == 4) {
         if (isSigned) {
@@ -315,16 +315,7 @@ const GLvoid* marshalPixels(CPU* cpu, U32 dimensions, GLsizei width, GLsizei hei
     }
     int bytes_per_comp = 0;
     int isSigned = 0;
-    GLint w = width;
-    GLint h = height;
-    GLint alignment = 0;
-    GL_FUNC(pglGetIntegerv)(GL_UNPACK_ALIGNMENT, &alignment);
-
-    if (alignment) {
-        h = (h + alignment - 1) / alignment * alignment; // I don't see any specs on this, but it will crash if I don't do this
-        w = (w + alignment - 1) / alignment * alignment;
-    }
-    U32 len = getPixelsLen(true, dimensions, w, h, depth, format, type, bytes_per_comp, isSigned);
+    U32 len = getPixelsLen(true, dimensions, width, height, depth, format, type, bytes_per_comp, isSigned);
     return marshalPixels(cpu, bytes_per_comp, isSigned, pixels, len);
 }
 
@@ -564,7 +555,7 @@ const GLvoid* marshalGetConvolutionFilter(CPU* cpu, U32 target, U32 format, U32 
         return (GLubyte*)(uintptr_t)image;
     if (ext_glGetConvolutionParameteriv) {
         ext_glGetConvolutionParameteriv(target, GL_CONVOLUTION_WIDTH, &width);
-        ext_glGetConvolutionParameteriv(target, GL_CONVOLUTION_WIDTH, &height);
+        ext_glGetConvolutionParameteriv(target, GL_CONVOLUTION_HEIGHT, &height);
     }
     return marshalType(cpu, type, components_in_format(format)*width*height, image);
 }

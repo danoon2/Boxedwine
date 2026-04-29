@@ -710,8 +710,7 @@ void common_cmpssXmmXmm(CPU* cpu, U32 r1, U32 r2, U8 imm) {
 
 void common_cmpssXmmE32(CPU* cpu, U32 reg, U32 address, U8 imm) {
     simde__m128 value;
-    value.u64[0] = cpu->memory->readq(address);
-    value.u64[1] = cpu->memory->readq(address+8);
+    value.u32[0] = cpu->memory->readd(address);
     int which = imm & 7;
     switch (which) {
     case 0: cpu->xmm[reg].ps = simde_mm_cmpeq_ss(cpu->xmm[reg].ps, value); break;

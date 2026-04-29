@@ -84,7 +84,7 @@ void OPCALL normal_sidt(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);    
     U32 eaa = eaa(cpu, op);
     cpu->memory->writew(eaa, 1023); // limit
-    cpu->memory->writed(eaa, 0); // base
+    cpu->memory->writed(eaa + 2, 0); // base
 #ifdef _DEBUG
     klog("sidt not implemented");
 #endif

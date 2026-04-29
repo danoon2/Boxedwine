@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void Jit::dynamic_set_R(DecodedOp* op, JitConditional condition) {;
+void Jit::dynamic_set_R(DecodedOp* op, JitConditional condition) {
     RegPtr reg;
     if (condition == JitConditional::B) {
         reg = getCF();

@@ -209,7 +209,7 @@ GLAPI GLint APIENTRY glRenderMode( GLenum mode ) {
 }
 
 GLAPI GLenum APIENTRY glGetError( void ) {
-	CALL_0(GetError);
+	CALL_0_R(GetError);
 }
 
 GLAPI const GLubyte* APIENTRY glGetString( GLenum name ) {
@@ -427,7 +427,7 @@ GLAPI void APIENTRY glVertex2iv( const GLint *v ) {
 }
 
 GLAPI void APIENTRY glVertex2sv( const GLshort *v ) {
-	CALL_0(Vertex2sv);
+	CALL_1(Vertex2sv, P(v));
 }
 
 GLAPI void APIENTRY glVertex3dv( const GLdouble *v ) {
@@ -655,7 +655,7 @@ GLAPI void APIENTRY glColor4iv( const GLint *v ) {
 }
 
 GLAPI void APIENTRY glColor4sv( const GLshort *v ) {
-	CALL_0(Color4sv);
+	CALL_1(Color4sv, P(v));
 }
 
 GLAPI void APIENTRY glColor4ubv( const GLubyte *v ) {
