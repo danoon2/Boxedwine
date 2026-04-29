@@ -1262,11 +1262,13 @@ void CPU::runNextSingleOp() {
         kpanic("jitRunSingleOp oops");
     }
     try {
+#ifdef BOXEDWINE_JIT
         if (op->flags2 & OP_FLAG2_TRACED_STUB) {
             op->flags2 &= ~OP_FLAG2_TRACED_STUB;
             op->runCount = 1; // so that tracing won't stub it out again
             memory->removeCodeBlock(this->eip.u32, op, false);
         }
+#endif
         DecodedOp o = *op;
         lastOp.pfn = onLastOp;
         o.next = &lastOp;
