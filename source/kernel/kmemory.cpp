@@ -66,12 +66,14 @@ U32 KMemory::mlock(U32 addr, U32 len) {
 
 U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off, bool remap) {
     bool shared = (flags & K_MAP_SHARED) != 0;
-    bool priv = (flags & K_MAP_PRIVATE) != 0;
-    bool read = (prot & K_PROT_READ) != 0;
+    bool priv = (flags & K_MAP_PRIVATE) != 0;    
     bool write = (prot & K_PROT_WRITE) != 0;
+    // from https://man7.org/linux/man-pages/man2/mprotect.2.html
+    // On some hardware architectures(e.g., i386), PROT_WRITE implies PROT_READ.
+    bool read = (prot & K_PROT_READ) != 0 || write;
     bool exec = (prot & K_PROT_EXEC) != 0;
     U32 pageStart = addr >> K_PAGE_SHIFT;
-    U32 pageCount = (len + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
+	U32 pageCount = (U32)(((U64)len + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT); // U64 to avoid overflow
     KFileDescriptorPtr fd;
 
     if (0xFFFFFFFF - addr < len || len == 0) {
@@ -81,7 +83,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
         return -K_EINVAL;
     }
 
-    if (!(flags & K_MAP_ANONYMOUS) && fildes >= 0) {
+    if (!(flags & K_MAP_ANONYMOUS)) {
         fd = this->process->getFileDescriptor(fildes);
         if (!fd) {
             return -K_EBADF;
@@ -92,7 +94,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
         if (len == 0 || (off & 0xFFF) != 0) {
             return -K_EINVAL;
         }
-        if ((!fd->canRead() && read) || (!priv && (!fd->canWrite() && write))) {
+        if (!fd->canRead() || (!priv && (!fd->canWrite() && write))) {
             return -K_EACCES;
         }
     }

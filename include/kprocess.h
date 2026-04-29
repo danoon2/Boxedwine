@@ -19,7 +19,8 @@
 #ifndef __KPROCESS_H__
 #define __KPROCESS_H__
 
-#define ADDRESS_PROCESS_MMAP_START		     0xD0000
+ // Not all Linux kenerals have the same layout, but this is a common one that seems to be used by many, other option is 0x80000
+#define ADDRESS_PROCESS_MMAP_START		     0xC0000
 #define ADDRESS_PROCESS_LOADER			     0xF0000
 #define ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS 0xF8000000
 

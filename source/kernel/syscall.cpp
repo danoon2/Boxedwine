@@ -969,7 +969,7 @@ static U32 syscall_ugetrlimit(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_mmap2(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_MEMORY, cpu, "mmap2: address=%.8X len=0x%X(%d) prot=%X flags=%X fd=%d offset=%d", ARG1, ARG2, ARG2, ARG3, ARG4, ARG5, ARG6);
-    U32 result = cpu->memory->mmap(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6*4096l);
+    U32 result = cpu->memory->mmap(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, ((U64)ARG6)*4096l);
     SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
