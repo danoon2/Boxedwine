@@ -18,6 +18,15 @@
 
 void OPCALL normal_movsb_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+#ifdef BOXEDWINE_JIT
+    op->STR_COUNT++;
+    op->STR_TOTAL += ECX;
+    if (cpu->flags & DF) {
+        op->DF1 = 1;
+    } else {
+        op->DF0 = 1;
+    }
+#endif
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             movsb16r(cpu, op->base);
@@ -35,6 +44,15 @@ void OPCALL normal_movsb_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_movsw_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+#ifdef BOXEDWINE_JIT
+    op->STR_COUNT++;
+    op->STR_TOTAL += ECX;
+    if (cpu->flags & DF) {
+        op->DF1 = 1;
+    } else {
+        op->DF0 = 1;
+    }
+#endif
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             movsw16r(cpu, op->base);
@@ -52,6 +70,16 @@ void OPCALL normal_movsw_op(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_movsd_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+#ifdef BOXEDWINE_JIT
+    op->STR_COUNT++;
+    op->STR_TOTAL += ECX;
+    if (cpu->flags & DF) {
+        op->DF1 = 1;
+    } else {
+        op->DF0 = 1;
+    }
+#endif
+
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             movsd16r(cpu, op->base);
@@ -59,7 +87,7 @@ void OPCALL normal_movsd_op(CPU* cpu, DecodedOp* op) {
             movsd16(cpu, op->base);
         }
     } else { 
-        if (op->repZero || op->repNotZero) {
+        if (op->repZero || op->repNotZero) {            
             movsd32r(cpu, op->base);
         } else { 
             movsd32(cpu, op->base);

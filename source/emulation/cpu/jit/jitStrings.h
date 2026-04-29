@@ -63,7 +63,13 @@ void Jit::movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth) {
     } EndIf();
 }
 
+// Note that this is only used when there are no segments involved
 void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
+    if (currentOp->runCount == 0) {
+        currentOp->flags2 |= OP_FLAG2_TRACED_STUB;
+        emulateSingleOp(); // since this was never run, just stub it out so that we save jit code cache since its a lot of code
+        return;
+    }
     RegPtr esi = getStringRegEsi();
     RegPtr edi = getStringRegEdi();
     RegPtr ecx = getStringRegEcx();
@@ -77,8 +83,16 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         emulateSingleOp();
     };
 
-#ifndef BOXEDWINE_64
-    IfDF(); {
+#ifdef BOXEDWINE_64
+    if (currentOp->STR_COUNT > 10 && currentOp->STR_TOTAL / currentOp->STR_COUNT < 8) {
+#endif
+    bool doDF1 = currentOp->DF1 || (currentOp->DF1 == 0 && currentOp->DF0 == 0);
+    bool doDF0 = currentOp->DF0 || (currentOp->DF1 == 0 && currentOp->DF0 == 0);
+
+    if (doDF0 && doDF1) {
+        IfDF();
+    }
+    if (doDF1) {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx); {
             write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
@@ -87,7 +101,11 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
             decReg(regWidth, ecx);
             Goto(label);
         } EndIf();
-    } StartElse(); {
+    }
+    if (doDF1 && doDF0) {
+        StartElse();
+    }
+    if (doDF0) {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx); {
             write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
@@ -97,9 +115,15 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
             Goto(label);
         } EndIf();
     }
-    EndIf();
-#else
+    if (doDF1 && doDF0) {
+        EndIf();
+    }
+#ifdef BOXEDWINE_64    
+    return;
+    }
+
     // will use 64-bit reg instructions to do the copying in 8 byte chunks
+    U32 bytesPerIter = 8;
     RegPtr tmp0 = getTmpReg();
 
     U32 mask;
@@ -111,60 +135,105 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     } else {
         mask = 7;
     }
-    
-    IfDF(); {
-        // ?? Backward direction (DF=1) ??????????????????????????
+
+    auto copyOneForward = [this, valueWidth, regWidth, size, esi, edi, ecx, onFailure]() {
+        write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
+        addValue(regWidth, esi, size);
+        addValue(regWidth, edi, size);
+        decReg(regWidth, ecx);
+    };
+
+    auto copyOneBackward = [this, valueWidth, regWidth, size, esi, edi, ecx, onFailure]() {
+        write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
+        subValue(regWidth, esi, size);
+        subValue(regWidth, edi, size);
+        decReg(regWidth, ecx);
+    };
+
+    bool doDF1 = currentOp->DF1 || (currentOp->DF1 == 0 && currentOp->DF0 == 0);
+    bool doDF0 = currentOp->DF0 || (currentOp->DF1 == 0 && currentOp->DF0 == 0);
+
+    if (doDF0 && doDF1) {
+        IfDF();
+    }
+    if (doDF1) {
+        // Backward direction (DF=1)
         // ESI/EDI point to the LAST element.  Pre-loop: if ECX
         // is odd, copy the highest single dword so the main loop
         // only processes aligned pairs.
+
+        RegPtr delta = getTmpReg();
+        mov(regWidth, delta, esi);
+        subReg(regWidth, delta, edi);
+        IfLessThan2(regWidth, delta, bytesPerIter); {
+            U32 label = MarkJumpLocation();
+            If(regWidth, delta); {
+                copyOneBackward();
+                Goto(label);
+            } EndIf();
+        } EndIf();
+
         U32 label1 = MarkJumpLocation();
         IfTest(regWidth, ecx, mask); {
-            write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
-            subValue(regWidth, esi, size);
-            subValue(regWidth, edi, size);
-            decReg(regWidth, ecx);
+            copyOneBackward();
             Goto(label1);
         } EndIf();
-        
+
         // Main loop: reads [ESI-4, ESI+3] via base = ESI-4
         U32 label = MarkJumpLocation();
         If(regWidth, ecx); {
-            RegPtr addr = getTmpReg();
+            RegPtr addr = getTmpReg();            
 
-            subValueWithDest(regWidth, addr, esi, 8 - size);
+            subValueWithDest(regWidth, addr, esi, bytesPerIter - size);
             read(JitWidth::b64, addr, nullptr, onFailure, tmp0, true);
 
-            subValueWithDest(regWidth, addr, edi, 8 - size);
+            subValueWithDest(regWidth, addr, edi, bytesPerIter - size);
             write(JitWidth::b64, addr, tmp0, nullptr, onFailure, true);
 
-            subValue(regWidth, esi, 8);
-            subValue(regWidth, edi, 8);
-            subValue(regWidth, ecx, 8 / size);
+            subValue(regWidth, esi, bytesPerIter);
+            subValue(regWidth, edi, bytesPerIter);
+            subValue(regWidth, ecx, bytesPerIter / size);
             Goto(label);
         } EndIf();
-    } StartElse(); {
+    }
+    if (doDF1 && doDF0) {
+        StartElse();
+    }
+    if (doDF0) {
         // Forward direction (DF=0)
         // ESI/EDI point to the FIRST element.  Same pre-loop odd
         // check, then the main loop reads [ESI, ESI+7].
+
+        RegPtr delta = getTmpReg();
+        mov(regWidth, delta, edi);
+        subReg(regWidth, delta, esi);
+        IfLessThan2(regWidth, delta, bytesPerIter); {
+            U32 label = MarkJumpLocation();
+            If(regWidth, delta); {
+                copyOneForward();
+                Goto(label);
+            } EndIf();
+        } EndIf();
+
         U32 label1 = MarkJumpLocation();
         IfTest(regWidth, ecx, mask); {
-            write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
-            addValue(regWidth, esi, size);
-            addValue(regWidth, edi, size);
-            decReg(regWidth, ecx);
+            copyOneForward();
             Goto(label1);
         } EndIf();
 
         U32 label = MarkJumpLocation();
-        If(regWidth, ecx); {
+        If(regWidth, ecx); {            
             read(JitWidth::b64, esi, nullptr, onFailure, tmp0, true);
             write(JitWidth::b64, edi, tmp0, nullptr, onFailure, true);
-            addValue(regWidth, esi, 8);
-            addValue(regWidth, edi, 8);
-            subValue(regWidth, ecx, 8 / size);
+            addValue(regWidth, esi, bytesPerIter);
+            addValue(regWidth, edi, bytesPerIter);
+            subValue(regWidth, ecx, bytesPerIter / size);
             Goto(label);
         } EndIf();
-    } EndIf();
+    }
+    if (doDF1 && doDF0) {
+        EndIf();
+    }
 #endif
 }
 

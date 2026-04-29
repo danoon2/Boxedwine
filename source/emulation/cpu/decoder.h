@@ -1548,15 +1548,15 @@ class DecodedOp;
 
 typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 
-#define JUMP_TARGET 1
-#define JUMP_TARGET_ASSUMED_FALSE 2
-
 #define OP_FLAG_END_OF_LONG_CHAIN 1
 #define OP_FLAG_JIT 2
 #define OP_FLAG_NO_JIT 4
 #define OP_FLAG_EMULATED_OP 8
 
 #define OP_FLAG2_SAVED_TMP_REG 1
+#define OP_FLAG2_TRACED_STUB 2
+#define OP_FLAG2_JUMP_TARGET 4
+#define OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE 8
 
 // direct jump does not read memory, so will never use disp (used by mem, enter)
 union DecodedData {
@@ -1635,10 +1635,14 @@ public:
     U8 flags : 4;
 
 #ifdef BOXEDWINE_JIT
+#define DF0 sibScale
+#define DF1 sibIndex
+#define STR_COUNT imm
+#define STR_TOTAL data.disp
+
     U8 runCount;
-    U8 jumpTargetFlags;
-    U16 flags2: 1;
-    U16 jitLen: 15;
+    U8 flags2;
+    U16 jitLen;
     U16 blockOpCount;
     U16 blockLen; // emulated code length of the block
     DecodedOp* blockStart;

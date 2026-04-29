@@ -270,7 +270,7 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             U32 target = eip + nextOp->len + nextOp->imm;
             DecodedOp* targetOp = nullptr;
             if (ops.get(target, targetOp)) {
-                targetOp->jumpTargetFlags |= JUMP_TARGET;
+                targetOp->flags2 |= OP_FLAG2_JUMP_TARGET;
             }
         }
         eip += nextOp->len;
@@ -499,7 +499,7 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
     JitConditional cond = JitConditional::O;
 
     for (int i = 0; i < 8 && nextOp; i++) {
-        if (nextOp->jumpTargetFlags & JUMP_TARGET) {
+        if (nextOp->flags2 & OP_FLAG2_JUMP_TARGET) {
             break;
         }
         if (nextOp->isJumpCC()) {
@@ -944,7 +944,7 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
             kpanic("x32CPU commitJIT 2");
         }
         if (bufferIndex == SKIPPED_OP) {
-            nextOp->jumpTargetFlags |= JUMP_TARGET_ASSUMED_FALSE;
+            nextOp->flags2 |= OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE;
         } else {
             bufferIndex = getBufferLocation(bufferIndex);
             nextOp->pfnJitCode = begin + bufferIndex;
