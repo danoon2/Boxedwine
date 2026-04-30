@@ -270,7 +270,7 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             U32 target = eip + nextOp->len + nextOp->imm;
             DecodedOp* targetOp = nullptr;
             if (ops.get(target, targetOp)) {
-                targetOp->jumpTargetFlags |= JUMP_TARGET;
+                targetOp->flags2 |= OP_FLAG2_JUMP_TARGET;
             }
         }
         eip += nextOp->len;
@@ -502,7 +502,7 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
     JitConditional cond = JitConditional::O;
 
     for (int i = 0; i < 8 && nextOp; i++) {
-        if (nextOp->jumpTargetFlags & JUMP_TARGET) {
+        if (nextOp->flags2 & OP_FLAG2_JUMP_TARGET) {
             break;
         }
         if (nextOp->isJumpCC()) {
@@ -940,14 +940,14 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
             kpanic("x32CPU commitJIT 2");
         }
         if (bufferIndex == SKIPPED_OP) {
-            nextOp->jumpTargetFlags |= JUMP_TARGET_ASSUMED_FALSE;
+            nextOp->flags2 |= OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE;
         } else {
             bufferIndex = getBufferLocation(bufferIndex);
             nextOp->pfnJitCode = begin + bufferIndex;
             nextOp->jitLen = 0;
             nextOp->pfn = cpu->thread->process->startJITOp;
             if (lastJitOp) {
-                lastJitOp->jitLen = (U8*)nextOp->pfnJitCode - (U8*)lastJitOp->pfnJitCode;
+                lastJitOp->jitLen = static_cast<U16>((U8*)nextOp->pfnJitCode - (U8*)lastJitOp->pfnJitCode);
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
                 getMemData(cpu->memory)->jitAddressToEip[(U8*)lastJitOp->pfnJitCode] = JitData(lastJitOp->jitLen, lastJitEip - cpu->seg[CS].address);
 #endif
@@ -962,7 +962,7 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
         nextOp = nextOp->next;
     }
     if (lastJitOp && !lastJitOp->jitLen) {
-        lastJitOp->jitLen = size - ((U8*)lastJitOp->pfnJitCode - (U8*)begin);
+        lastJitOp->jitLen = (U16)(size - static_cast<U32>((U8*)lastJitOp->pfnJitCode - (U8*)begin));
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         getMemData(cpu->memory)->jitAddressToEip[(U8*)lastJitOp->pfnJitCode] = JitData(lastJitOp->jitLen, lastJitEip - cpu->seg[CS].address);
 #endif

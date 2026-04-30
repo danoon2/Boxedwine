@@ -604,10 +604,10 @@ void Jit::dynamic_imulR8(DecodedOp* op) {
     if (op->needsToSetFlags(cpu)) {
         storeLazyFlagType(FLAGS_NONE);
         RegPtr ax = getReadOnlyReg8(0);
-        IfLessThan(JitWidth::b16, ax, INT8_MIN, true); {
+        IfLessThan(JitWidth::b16, ComparisonType::Signed, ax, INT8_MIN); {
             orCPUFlagsImmV2(CF | OF);
         } StartElse(); {
-            IfGreaterThan(JitWidth::b16, ax, INT8_MAX, true); {
+            IfGreaterThan(JitWidth::b16, ComparisonType::Signed, ax, INT8_MAX); {
                 orCPUFlagsImmV2(CF | OF);
             } StartElse(); {
                 andCPUFlagsImmV2(~(CF | OF));
@@ -622,10 +622,10 @@ void Jit::dynamic_imulE8(DecodedOp* op) {
         storeLazyFlagType(FLAGS_NONE);
 
         RegPtr ax = getReadOnlyReg8(0);
-        IfLessThan(JitWidth::b16, ax, INT8_MIN, true); {
+        IfLessThan(JitWidth::b16, ComparisonType::Signed, ax, INT8_MIN); {
             orCPUFlagsImmV2(CF | OF);
         } StartElse(); {
-            IfGreaterThan(JitWidth::b16, ax, INT8_MAX, true); {
+            IfGreaterThan(JitWidth::b16, ComparisonType::Signed, ax, INT8_MAX); {
                 orCPUFlagsImmV2(CF | OF);
             } StartElse(); {
                 andCPUFlagsImmV2(~(CF | OF));
@@ -768,12 +768,11 @@ void Jit::div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
         mov(JitWidth::b8, absSrc, src);
         absReg(JitWidth::b8, absAh);
         absReg(JitWidth::b8, absSrc);
-
-        IfGreaterThanOrEqual(JitWidth::b8, absAh, absSrc, false); {
+        IfGreaterThanOrEqual(JitWidth::b8, ComparisonType::Unsigned, absAh, absSrc); {
             emulateSingleOp();
         } EndIf();
     } else {
-        IfGreaterThanOrEqual(JitWidth::b8, absAh, src, isSigned); {
+        IfGreaterThanOrEqual(JitWidth::b8, ComparisonType::Unsigned, absAh, src); {
             emulateSingleOp();
         } EndIf();
     }
@@ -815,11 +814,11 @@ void Jit::div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
         absReg(JitWidth::b16, absDx);
         absReg(JitWidth::b16, absSrc);
 
-        IfGreaterThanOrEqual(JitWidth::b16, absDx, absSrc, false); {
+        IfGreaterThanOrEqual(JitWidth::b16, ComparisonType::Unsigned, absDx, absSrc); {
             emulateSingleOp();
         } EndIf();
     } else {
-        IfGreaterThanOrEqual(JitWidth::b16, dx, src, isSigned); {
+        IfGreaterThanOrEqual(JitWidth::b16, ComparisonType::Unsigned, dx, src); {
             emulateSingleOp();
         } EndIf();
     }
@@ -861,11 +860,11 @@ void Jit::div32(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
         absReg(JitWidth::b32, absEdx);
         absReg(JitWidth::b32, absSrc);
 
-        IfGreaterThanOrEqual(JitWidth::b32, absEdx, absSrc, false); {
+        IfGreaterThanOrEqual(JitWidth::b32, ComparisonType::Unsigned, absEdx, absSrc); {
             emulateSingleOp();
         } EndIf();
     } else {
-        IfGreaterThanOrEqual(JitWidth::b32, edx, src, isSigned); {
+        IfGreaterThanOrEqual(JitWidth::b32, ComparisonType::Unsigned, edx, src); {
             emulateSingleOp();
         } EndIf();
     }

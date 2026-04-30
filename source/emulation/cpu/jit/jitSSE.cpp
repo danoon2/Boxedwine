@@ -857,4 +857,158 @@ void JitSSE::dynamic_FSIN(DecodedOp* op) {
     }
 }
 
+// Note that this is only used when there are no segments involved
+void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
+    if (currentOp->runCount == 0) {
+        currentOp->flags2 |= OP_FLAG2_TRACED_STUB;
+        emulateSingleOp(); // since this was never run, just stub it out so that we save jit code cache since its a lot of code
+        return;
+    }
+#ifndef BOXEDWINE_64
+    // 32-bit build, even with sse, can't handle this pass because it will run out of tmp registers.  8 registers on x86 just isn't enough.
+    Jit::movsr(valueWidth, size, regWidth);
+#else
+    if (currentOp->STR_COUNT > 10 && currentOp->STR_TOTAL / currentOp->STR_COUNT < 16) {
+        // for small copies just do it the simple way, no need to optimize with sse
+        Jit::movsr(valueWidth, size, regWidth);
+        return;
+	}
+    // will use 128-bit sse instructions to do the copying in 16 byte chunks
+    //
+    // might be interesting to try 256-bit chunks with YMM registers on AVX capable x64 CPUs, but Arm64 doesn't support 256-bit wide registers so it would require a separate code path for that.
+    RegPtr esi = getStringRegEsi();
+    RegPtr edi = getStringRegEdi();
+    RegPtr ecx = getStringRegEcx();
+
+    auto onFailure = [esi, edi, ecx, this]() {
+        forceSyncBackIfNotCached(esi);
+        forceSyncBackIfNotCached(edi);
+        forceSyncBackIfNotCached(ecx);
+        emulateSingleOp();
+    };
+
+    SSERegPtr sseReg = getTmpSSE();
+    U32 bytesPerIter = 16;
+    U32 mask;
+
+    if (valueWidth == JitWidth::b32) {
+        mask = 3;
+    } else if (valueWidth == JitWidth::b16) {
+        mask = 7;
+    } else {
+        mask = 15;
+    }
+
+    auto copyOneForward = [this, valueWidth, regWidth, size, esi, edi, ecx, onFailure]() {
+        write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
+        addValue(regWidth, esi, size);
+        addValue(regWidth, edi, size);
+        decReg(regWidth, ecx);
+    };
+
+    auto copyOneBackward = [this, valueWidth, regWidth, size, esi, edi, ecx, onFailure]() {
+        write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
+        subValue(regWidth, esi, size);
+        subValue(regWidth, edi, size);
+        decReg(regWidth, ecx);
+    };
+
+    bool doDF1 = currentOp->DF1 || (currentOp->DF1 == 0 && currentOp->DF0 == 0);
+    bool doDF0 = currentOp->DF0 || (currentOp->DF1 == 0 && currentOp->DF0 == 0);
+    
+    if (doDF0 && doDF1) {
+        IfDF();
+    }
+    if (doDF1) {        
+        RegPtr delta = getTmpReg();
+        mov(regWidth, delta, esi);
+        subReg(regWidth, delta, edi);
+        IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
+            If(regWidth, delta); {
+                // Overlapping backward copies with EDI below ESI must observe each
+                // element's previous write before reading the next lower source.
+                U32 label = MarkJumpLocation();
+                If(regWidth, ecx); {
+                    copyOneBackward();
+                    Goto(label);
+                } EndIf();
+            } EndIf();
+        } EndIf();
+
+        // Backward direction (DF=1)
+        U32 label1 = MarkJumpLocation();
+        IfTest(regWidth, ecx, mask); {
+            copyOneBackward();
+            Goto(label1);
+        } EndIf();
+
+        U32 label = MarkJumpLocation();
+        If(regWidth, ecx); {
+            RegPtr addr = getTmpReg();
+            RegPtr addrOut = getTmpReg();
+
+            subValueWithDest(regWidth, addr, esi, bytesPerIter - size);
+            subValueWithDest(regWidth, addrOut, edi, bytesPerIter - size);
+
+            read(JitWidth::b128, addr, [sseReg, this](MemPtr address) {
+                loadXMMFromMem128(-1, address, sseReg);
+            }, onFailure);
+
+            write(JitWidth::b128, addrOut, nullptr, [sseReg, this](MemPtr address) {
+                storeXMMToMem128(sseReg, address);
+            }, onFailure);
+
+            subValue(regWidth, esi, bytesPerIter);
+            subValue(regWidth, edi, bytesPerIter);
+            subValue(regWidth, ecx, bytesPerIter / size);
+            Goto(label);
+        } EndIf();
+    }
+    if (doDF1 && doDF0) {
+        StartElse();
+    }
+    if (doDF0) {
+        RegPtr delta = getTmpReg();
+        mov(regWidth, delta, edi);
+        subReg(regWidth, delta, esi);
+        IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
+            If(regWidth, delta); {
+                // Overlapping forward copies with EDI above ESI must read source
+                // elements after earlier writes have happened.
+                U32 label = MarkJumpLocation();
+                If(regWidth, ecx); {
+                    copyOneForward();
+                    Goto(label);
+                } EndIf();
+            } EndIf();
+        } EndIf();
+
+        // Forward direction (DF=0)
+        U32 label1 = MarkJumpLocation();
+        IfTest(regWidth, ecx, mask); {
+            copyOneForward();
+            Goto(label1);
+        } EndIf();
+
+        U32 label = MarkJumpLocation();
+        If(regWidth, ecx); {
+            read(JitWidth::b128, esi, [sseReg, this](MemPtr address) {
+                loadXMMFromMem128(-1, address, sseReg);
+            }, onFailure);
+
+            write(JitWidth::b128, edi, nullptr, [sseReg, this](MemPtr address) {
+                storeXMMToMem128(sseReg, address);
+            }, onFailure);
+
+            addValue(regWidth, esi, bytesPerIter);
+            addValue(regWidth, edi, bytesPerIter);
+            subValue(regWidth, ecx, bytesPerIter / size);
+            Goto(label);
+        } EndIf();
+    } 
+    if (doDF1 && doDF0) {
+        EndIf();
+    }
+#endif
+}
 #endif

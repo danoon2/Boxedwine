@@ -125,6 +125,10 @@ using MemPtr = std::shared_ptr<JitMem>;
 // API available to dynamic ops
 class Jit {
 public:
+    enum class ComparisonType {
+        Signed,
+        Unsigned
+    };
     // v3
     using InstRegRegImm = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 imm);
     using InstRegRegCl = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl);
@@ -271,12 +275,12 @@ public:
     virtual void IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) = 0;
     virtual void IfNotEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) = 0;
     virtual void IfNotEqual(JitWidth regWidth, RegPtr reg, RegPtr reg2) = 0;
-    virtual void IfLessThan(JitWidth regWidth, RegPtr reg, U32 value, bool isSigned) = 0;
-    virtual void IfLessThan(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) = 0;
-    virtual void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) = 0;
-    virtual void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg, U32 value, bool isSigned) = 0;
-    virtual void IfGreaterThan(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) = 0;
-    virtual void IfGreaterThan(JitWidth regWidth, RegPtr reg1, U32 value, bool isSigned) = 0;
+    virtual void IfLessThan(JitWidth regWidth, ComparisonType type, RegPtr reg, U32 value) = 0;
+    virtual void IfLessThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) = 0;
+    virtual void IfGreaterThanOrEqual(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) = 0;
+    virtual void IfGreaterThanOrEqual(JitWidth regWidth, ComparisonType type, RegPtr reg, U32 value) = 0;
+    virtual void IfGreaterThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) = 0;
+    virtual void IfGreaterThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, U32 value) = 0;
     virtual void IfNot(JitWidth regWidth, RegPtr reg) = 0;
     virtual void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) = 0;
     virtual void IfCondition(JitConditional condition) = 0;
@@ -413,7 +417,7 @@ protected:
     void dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFlagType flags);
     void arithSetup(DecodedOp* op, U32& needsToSetFlags, LazyFlagType flags, RegPtr cf);
     void movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth);
-    void movsr(JitWidth valueWidth, U32 size, JitWidth regWidth);
+    virtual void movsr(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void stos(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void stosr(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void lods(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth);

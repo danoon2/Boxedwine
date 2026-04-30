@@ -527,7 +527,9 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         nextOp->blockStart = nullptr;
         nextOp->blockOpCount = 0;
         nextOp->blockLen = 0;
-        nextOp->runCount = 0;
+        if (nextOp->runCount) {
+            nextOp->runCount = 1; // so that tracing won't stub it out again
+        }
         nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
         nextOp->flags &= ~OP_FLAG_JIT;
         if (nextOp->pfnJitCode) {

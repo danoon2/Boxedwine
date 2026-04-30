@@ -330,12 +330,12 @@ public:
     void IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
     void IfNotEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) override;
     void IfNotEqual(JitWidth regWidth, RegPtr reg, RegPtr reg2) override;
-    void IfLessThan(JitWidth regWidth, RegPtr reg, U32 value, bool isSigned) override;
-    void IfLessThan(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) override;
-    void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) override;
-    void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, U32 value, bool isSigned) override;
-    void IfGreaterThan(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) override;
-    void IfGreaterThan(JitWidth regWidth, RegPtr reg1, U32 value, bool isSigned) override;
+    void IfLessThan(JitWidth regWidth, ComparisonType type, RegPtr reg, U32 value) override;
+    void IfLessThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) override;
+    void IfGreaterThanOrEqual(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) override;
+    void IfGreaterThanOrEqual(JitWidth regWidth, ComparisonType type, RegPtr reg1, U32) override;
+    void IfGreaterThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) override;
+    void IfGreaterThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, U32 value) override;
     void IfNot(JitWidth regWidth, RegPtr reg) override;
     void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) override;    
     void JumpIfCondition(JitConditional condition, U32 address) override;
@@ -499,7 +499,7 @@ public:
     bool isSseRegCached(U8 reg) override;
     void storeCpuXMMReg(SSERegPtr reg, U32 index) override;
     SSERegPtr loadCpuXMMReg(U8 index) override;
-    SSERegPtr loadXMMFromMem128(U8 reg, MemPtr address) override;
+    SSERegPtr loadXMMFromMem128(U8 reg, MemPtr address, SSERegPtr result = nullptr) override;
     SSERegPtr loadXMMFromMem64(U8 reg, MemPtr address) override;
     SSERegPtr loadLowXMMFromMem64(U8 reg, MemPtr address) override;
     SSERegPtr loadHighXMMFromMem64(U8 reg, MemPtr address) override;
@@ -1936,7 +1936,7 @@ void JitArmV8CodeGen::shldReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr c
 
         movzx(JitWidth::b32, reg16, JitWidth::b16, reg);
         movzx(JitWidth::b32, rm16, JitWidth::b16, rm);
-        IfGreaterThanOrEqual(JitWidth::b32, cl, 0x10, false); {
+        IfGreaterThanOrEqual(JitWidth::b32, ComparisonType::Unsigned, cl, 0x10); {
             subValue(JitWidth::b32, cl, 16);
             mov(JitWidth::b32, reg16, rm16);
         } EndIf();
@@ -1994,7 +1994,7 @@ void JitArmV8CodeGen::shrdReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr c
 
         movzx(JitWidth::b32, reg16, JitWidth::b16, reg);
         movzx(JitWidth::b32, rm16, JitWidth::b16, rm);
-        IfGreaterThanOrEqual(JitWidth::b32, cl, 0x10, false); {
+        IfGreaterThanOrEqual(JitWidth::b32, ComparisonType::Unsigned, cl, 0x10); {
             subValue(JitWidth::b32, cl, 16);
             mov(JitWidth::b32, reg16, rm16);
         } EndIf();
@@ -3058,72 +3058,73 @@ void JitArmV8CodeGen::IfNotEqual(JitWidth regWidth, RegPtr reg, RegPtr reg2) {
     compiler.b_eq(label);
 }
 
-void JitArmV8CodeGen::IfLessThan(JitWidth regWidth, RegPtr reg, U32 value, bool isSigned) {
+void JitArmV8CodeGen::IfLessThan(JitWidth regWidth, ComparisonType type, RegPtr reg, U32 value) {
     cmp(regWidth, reg, value);
 
     Label label = compiler.new_label();
     ifLabels.push_back(label);
-    if (isSigned) {
+    if (type == ComparisonType::Signed) {
         compiler.b_ge(label);
     } else {
         compiler.b_hs(label);
     }
 }
 
-void JitArmV8CodeGen::IfLessThan(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) {
+void JitArmV8CodeGen::IfLessThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) {
     cmp(regWidth, reg1, reg2);
 
     Label label = compiler.new_label();
     ifLabels.push_back(label);
-    if (isSigned) {
+    if (type == ComparisonType::Signed) {
         compiler.b_ge(label);
     } else {
         compiler.b_hs(label);
     }
 }
 
-void JitArmV8CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) {
+void JitArmV8CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) {
     cmp(regWidth, reg1, reg2);
 
     Label label = compiler.new_label();
     ifLabels.push_back(label);
-    if (isSigned) {
+    compiler.b_lt(label);
+    if (type == ComparisonType::Signed) {
         compiler.b_lt(label);
     } else {
         compiler.b_lo(label);
     }
 }
 
-void JitArmV8CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, U32 value, bool isSigned) {
+void JitArmV8CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, ComparisonType type, RegPtr reg1, U32 value) {
     cmp(regWidth, reg1, value);
 
     Label label = compiler.new_label();
     ifLabels.push_back(label);
-    if (isSigned) {
+    if (type == ComparisonType::Signed) {
         compiler.b_lt(label);
     } else {
         compiler.b_lo(label);
     }
 }
 
-void JitArmV8CodeGen::IfGreaterThan(JitWidth regWidth, RegPtr reg1, RegPtr reg2, bool isSigned) {
+void JitArmV8CodeGen::IfGreaterThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) {
     cmp(regWidth, reg1, reg2);
 
     Label label = compiler.new_label();
     ifLabels.push_back(label);
-    if (isSigned) {
+    if (type == ComparisonType::Signed) {
         compiler.b_le(label);
     } else {
         compiler.b_ls(label);
     }
 }
 
-void JitArmV8CodeGen::IfGreaterThan(JitWidth regWidth, RegPtr reg1, U32 value, bool isSigned) {
+void JitArmV8CodeGen::IfGreaterThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, U32 value) {
     cmp(regWidth, reg1, value);
 
     Label label = compiler.new_label();
     ifLabels.push_back(label);
-    if (isSigned) {
+    if (type == ComparisonType::Signed) {
         compiler.b_le(label);
     } else {
         compiler.b_ls(label);
@@ -3802,8 +3803,10 @@ SSERegPtr JitArmV8CodeGen::loadCpuXMMReg(U8 index) {
     return getXMM(index, true);
 }
 
-SSERegPtr JitArmV8CodeGen::loadXMMFromMem128(U8 index, MemPtr address) {
-    SSERegPtr reg = getXMM(index, false);
+SSERegPtr JitArmV8CodeGen::loadXMMFromMem128(U8 index, MemPtr address, SSERegPtr reg) {
+    if (!reg) {
+        reg = getXMM(index, false);
+    }
     compiler.ldr(toSse128(reg), createMem(address));
     return reg;
 }
@@ -7004,7 +7007,7 @@ void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {
 void clearJitBlock(const std::vector<void*>& jitOps) {
     U8* start = (U8*)jitOps[0];
     U8* end = (U8*)jitOps[jitOps.size() - 1];
-    U32 len = end - start + 4;
+    U32 len = static_cast<U32>(end - start) + 4;
     Platform::writeCodeToMemory(start, len, [&jitOps]() {
         for (void* p : jitOps) {
             ::memset(p, 0, 4);

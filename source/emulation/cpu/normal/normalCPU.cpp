@@ -43,13 +43,13 @@
 
 #define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next);
 #define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
-#define NEXT_DONE_JUMP_OR_CALL() cpu->nextOp = cpu->getNextOp(JUMP_TARGET);
+#define NEXT_DONE_JUMP_OR_CALL() cpu->nextOp = cpu->getNextOp(OP_FLAG2_JUMP_TARGET);
 
 // if jmp back, then return so that we don't blow the stack
 #define NEXT_BRANCH1()                                      \
     cpu->eip.u32+=op->len;                                  \
     if (!(*(op->data.nextJump))) {                          \
-        *(op->data.nextJump) = cpu->getNextOp(JUMP_TARGET);            \
+        *(op->data.nextJump) = cpu->getNextOp(OP_FLAG2_JUMP_TARGET);            \
     }                                                       \
     cpu->nextOp = *(op->data.nextJump);
 
@@ -203,8 +203,8 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
         }
     }
 #ifdef BOXEDWINE_JIT
-    op->jumpTargetFlags |= jumpTargetFlags;
-    if (jumpTargetFlags && (op->jumpTargetFlags & JUMP_TARGET_ASSUMED_FALSE)) {
+    op->flags2 |= jumpTargetFlags;
+    if (jumpTargetFlags && (op->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE)) {
         kpanic("JUMP_TARGET_ASSUMED_FALSE");
     }
 #endif
