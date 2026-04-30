@@ -35,6 +35,7 @@ JitWidth JitCodeGen::getWidthOfFlags(LazyFlagType flags) {
     return JitWidth::b32;
 }
 
+// must return 0 or 1
 void JitCodeGen::genOF(LazyFlagType flags, RegPtr result) {
     if (flags == FLAGS_NONE || flags == FLAGS_CFOF) {
         getFlagsInTmp(result);
@@ -118,18 +119,13 @@ void JitCodeGen::genOF(LazyFlagType flags, RegPtr result) {
         xorReg(JitWidth::b32, result, result);
     } else if (flags == FLAGS_INC8) {
         // cpu->result.u8 == 0x80;
-        // compareValue(JitWidth::b8, getFlagResultReadOnly(), 0x80, JitEvaluate::EQUALS, result);
-        shrValue(JitWidth::b8, result, 7);
-        movzx(JitWidth::b32, result, JitWidth::b8, result);
+        compareValue(JitWidth::b8, getFlagResultReadOnly(), 0x80, JitEvaluate::EQUALS, result);
     } else if (flags == FLAGS_INC16) {
         // cpu->result.u16 == 0x8000;
-        // compareValue(JitWidth::b16, getFlagResultReadOnly(), 0x8000, JitEvaluate::EQUALS, result);
-        shrValue(JitWidth::b16, result, 15);
-        movzx(JitWidth::b32, result, JitWidth::b16, result);
+        compareValue(JitWidth::b16, getFlagResultReadOnly(), 0x8000, JitEvaluate::EQUALS, result);
     } else if (flags == FLAGS_INC32) {
         // cpu->result.u32 == 0x80000000;
-        // compareValue(JitWidth::b32, getFlagResultReadOnly(), 0x80000000, JitEvaluate::EQUALS, result);
-        shrValue(JitWidth::b32, result, 31);
+        compareValue(JitWidth::b32, getFlagResultReadOnly(), 0x80000000, JitEvaluate::EQUALS, result);
     } else if (flags == FLAGS_DEC8) {
         // cpu->result.u8 == 0x7f;
         compareValue(JitWidth::b8, getFlagResultReadOnly(), 0x7f, JitEvaluate::EQUALS, result);
@@ -157,19 +153,19 @@ void JitCodeGen::genOF(LazyFlagType flags, RegPtr result) {
         // if ((cpu->src.u8&0x1f)==1) return (cpu->dst.u8 >= 0x80); else return 0;
 
         // undefined if src & 0x1f != 1, since its undefined, I don't see a reason to return 0 for that case
-        movzx(JitWidth::b32, result, JitWidth::b8, getFlagSrcReadOnly(result));
-        sarValue(JitWidth::b32, result, 7);        
+        movzx(JitWidth::b32, result, JitWidth::b8, getFlagDestReadOnly(result));
+        shrValue(JitWidth::b32, result, 7);        
     } else if (flags == FLAGS_SHR16) {
         // if ((cpu->src.u8&0x1f)==1) return (cpu->dst.u16 >= 0x8000); else return 0;
         
         // undefined if src & 0x1f != 1, since its undefined, I don't see a reason to return 0 for that case
-        movzx(JitWidth::b32, result, JitWidth::b16, getFlagSrcReadOnly(result));
-        sarValue(JitWidth::b32, result, 15);
+        movzx(JitWidth::b32, result, JitWidth::b16, getFlagDestReadOnly(result));
+        shrValue(JitWidth::b32, result, 15);
     } else if (flags == FLAGS_SHR32) {
         // if ((cpu->src.u8&0x1f)==1) return (cpu->dst.u32 >= 0x80000000); else return 0;
         
         // undefined if src & 0x1f != 1, since its undefined, I don't see a reason to return 0 for that case
-        sarValueWithDest(JitWidth::b32, result, getFlagSrcReadOnly(result), 31);
+        shrValueWithDest(JitWidth::b32, result, getFlagDestReadOnly(result), 31);
     } else if (flags == FLAGS_SAR8) {
         // 0
         xorReg(JitWidth::b32, result, result);
@@ -190,18 +186,13 @@ void JitCodeGen::genOF(LazyFlagType flags, RegPtr result) {
         xorReg(JitWidth::b32, result, result);
     } else if (flags == FLAGS_NEG8) {
         // cpu->src.u8 == 0x80;
-        // compareValue(JitWidth::b8, getFlagSrcReadOnly(), 0x80, JitEvaluate::EQUALS, result);
-        shrValue(JitWidth::b8, result, 7);
-        movzx(JitWidth::b32, result, JitWidth::b8, result);
+        compareValue(JitWidth::b8, getFlagSrcReadOnly(), 0x80, JitEvaluate::EQUALS, result);
     } else if (flags == FLAGS_NEG16) {
         // return cpu->src.u16 == 0x8000;
-        // compareValue(JitWidth::b16, getFlagSrcReadOnly(), 0x8000, JitEvaluate::EQUALS, result);
-        shrValue(JitWidth::b16, result, 15);
-        movzx(JitWidth::b32, result, JitWidth::b16, result);
+        compareValue(JitWidth::b16, getFlagSrcReadOnly(), 0x8000, JitEvaluate::EQUALS, result);
     } else if (flags == FLAGS_NEG32) {
         // cpu->src.u32 == 0x80000000;
-        // compareValue(JitWidth::b32, getFlagSrcReadOnly(), 0x80000000, JitEvaluate::EQUALS, result);
-        shrValue(JitWidth::b32, result, 31);
+        compareValue(JitWidth::b32, getFlagSrcReadOnly(), 0x80000000, JitEvaluate::EQUALS, result);
     } else {
         kpanic("genOF unknown flags");
     }

@@ -5163,7 +5163,35 @@ void testSbb0x21b() { cpu->big = true; GdEd(0x1b, sbbd); }
 void testSbb0x01c() { cpu->big = false; AlIb(0x1c, sbbb); }
 void testSbb0x21c() { cpu->big = true; AlIb(0x1c, sbbb); }
 void testSbb0x01d() { cpu->big = false; AxIw(0x1d, sbbw); }
-void testSbb0x21d() { cpu->big = true; EaxId(0x1d, sbbd); }
+void testSbb0x21d() { 
+    cpu->big = true; 
+    EaxId(0x1d, sbbd);
+
+	// the jit takes a different path with flags which is why we need the double sbb here to make sure CF is set from the first sbb and then correctly used in the second sbb
+    cpu->big = true;
+    newInstruction(0);
+
+    pushCode8(0xf9);       // stc
+    pushCode8(0x19);       // sbb eax, ecx
+    pushCode8(0xc8);
+    pushCode8(0x19);       // sbb edx, edx
+    pushCode8(0xd2);
+    pushCode8(0xcd);
+    pushCode8(0x97);
+
+    EAX = 0;
+    ECX = 0xffffffff;
+    EDX = 0;
+    cpu->eip.u32 = 0;
+    cpu->lazyFlagType = FLAGS_NONE;
+    cpu->setFlags(0, FMASK_ALL);
+
+    runTestCPU();
+
+    assertTrue(EAX == 0);
+    assertTrue(EDX == 0xffffffff);
+    assertTrue(cpu->getCF());
+}
 
 void testAnd0x020() { cpu->big = false; EbGb(0x20, andb, true); }
 void testAnd0x220() { cpu->big = true; EbGb(0x20, andb, true); X86_TEST(and, andb, al, cl) }
