@@ -165,7 +165,7 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         RegPtr delta = getTmpReg();
         mov(regWidth, delta, esi);
         subReg(regWidth, delta, edi);
-        IfLessThan2(regWidth, delta, bytesPerIter); {
+        IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
             U32 label = MarkJumpLocation();
             If(regWidth, delta); {
                 copyOneBackward();
@@ -207,7 +207,7 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         RegPtr delta = getTmpReg();
         mov(regWidth, delta, edi);
         subReg(regWidth, delta, esi);
-        IfLessThan2(regWidth, delta, bytesPerIter); {
+        IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
             U32 label = MarkJumpLocation();
             If(regWidth, delta); {
                 copyOneForward();

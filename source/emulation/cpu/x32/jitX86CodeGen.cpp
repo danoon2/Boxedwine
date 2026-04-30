@@ -334,10 +334,10 @@ public:
     void IfEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
     void IfNotEqual(JitWidth regWidth, RegPtr reg, DYN_PTR_SIZE value) override;
     void IfNotEqual(JitWidth regWidth, RegPtr reg, RegPtr reg2) override;
-    void IfLessThan2(JitWidth regWidth, RegPtr reg, U32 value) override;
-    void IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
-    void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) override;
-    void IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, U32) override;
+    void IfLessThan(JitWidth regWidth, ComparisonType type, RegPtr reg, U32 value) override;
+    void IfLessThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) override;
+    void IfGreaterThanOrEqual(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) override;
+    void IfGreaterThanOrEqual(JitWidth regWidth, ComparisonType type, RegPtr reg1, U32) override;
     void IfNot(JitWidth regWidth, RegPtr reg) override;
     void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) override;    
     void IfDF() override;
@@ -2778,7 +2778,7 @@ void JitX86CodeGen::IfNotEqual(JitWidth regWidth, RegPtr reg, RegPtr reg2) {
     compiler.jz(label);
 }
 
-void JitX86CodeGen::IfLessThan2(JitWidth regWidth, RegPtr reg, U32 value) {
+void JitX86CodeGen::IfLessThan(JitWidth regWidth, ComparisonType type, RegPtr reg, U32 value) {
     Label label = compiler.new_label();
     ifLabels.push_back(label);
 
@@ -2791,10 +2791,14 @@ void JitX86CodeGen::IfLessThan2(JitWidth regWidth, RegPtr reg, U32 value) {
     } else {
         kpanic_fmt("JitX86CodeGen::IfLessThan unexpected width: %d", (U32)regWidth);
     }
-    compiler.jnb(label);
+    if (type == ComparisonType::Signed) {
+        compiler.jnl(label);
+    } else {
+        compiler.jnb(label);
+    }
 }
 
-void JitX86CodeGen::IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
+void JitX86CodeGen::IfLessThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) {
     Label label = compiler.new_label();
     ifLabels.push_back(label);
 
@@ -2807,10 +2811,14 @@ void JitX86CodeGen::IfLessThan2(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
     } else {
         kpanic_fmt("JitX86CodeGen::IfLessThan unexpected width: %d", (U32)regWidth);
     }
-    compiler.jnb(label);
+    if (type == ComparisonType::Signed) {
+        compiler.jnl(label);
+    } else {
+        compiler.jnb(label);
+    }
 }
 
-void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr reg2) {
+void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, ComparisonType type, RegPtr reg1, RegPtr reg2) {
     Label label = compiler.new_label();
     ifLabels.push_back(label);
 
@@ -2823,10 +2831,14 @@ void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, RegPtr 
     } else {
         kpanic_fmt("JitX86CodeGen::IfGreaterThanOrEqual unexpected width: %d", (U32)regWidth);
     }
-    compiler.jb(label);
+    if (type == ComparisonType::Signed) {
+        compiler.jl(label);
+    } else {
+        compiler.jb(label);
+    }
 }
 
-void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, U32 value) {
+void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, ComparisonType type, RegPtr reg1, U32 value) {
     Label label = compiler.new_label();
     ifLabels.push_back(label);
 
@@ -2839,7 +2851,11 @@ void JitX86CodeGen::IfGreaterThanOrEqual(JitWidth regWidth, RegPtr reg1, U32 val
     } else {
         kpanic_fmt("JitX86CodeGen::IfGreaterThanOrEqual unexpected width: %d", (U32)regWidth);
     }
-    compiler.jb(label);
+    if (type == ComparisonType::Signed) {
+        compiler.jl(label);
+    } else {
+        compiler.jb(label);
+    }
 }
 
 

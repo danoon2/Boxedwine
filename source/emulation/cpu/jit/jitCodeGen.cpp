@@ -951,7 +951,7 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
             nextOp->jitLen = 0;
             nextOp->pfn = cpu->thread->process->startJITOp;
             if (lastJitOp) {
-                lastJitOp->jitLen = (U8*)nextOp->pfnJitCode - (U8*)lastJitOp->pfnJitCode;
+                lastJitOp->jitLen = static_cast<U16>((U8*)nextOp->pfnJitCode - (U8*)lastJitOp->pfnJitCode);
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
                 getMemData(cpu->memory)->jitAddressToEip[(U8*)lastJitOp->pfnJitCode] = JitData(lastJitOp->jitLen, lastJitEip - cpu->seg[CS].address);
 #endif
@@ -966,7 +966,7 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
         nextOp = nextOp->next;
     }
     if (lastJitOp && !lastJitOp->jitLen) {
-        lastJitOp->jitLen = size - ((U8*)lastJitOp->pfnJitCode - (U8*)begin);
+        lastJitOp->jitLen = (U16)(size - static_cast<U32>((U8*)lastJitOp->pfnJitCode - (U8*)begin));
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         getMemData(cpu->memory)->jitAddressToEip[(U8*)lastJitOp->pfnJitCode] = JitData(lastJitOp->jitLen, lastJitEip - cpu->seg[CS].address);
 #endif
