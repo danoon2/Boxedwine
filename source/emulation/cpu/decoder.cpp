@@ -6416,6 +6416,7 @@ static void translateToLockInstruction(DecodedOp* op) {
 DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen, U32 maxOpCount) {
     DecodeData d;
     DecodedOp* op = DecodedOp::alloc();
+    DecodedOp* prev = nullptr;
     DecodedOp* result = op;
     U32 furtherestDirectJump = 0;
     U32 startOfOp = 0;
@@ -6427,6 +6428,9 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
     decodedLen = 0;
     opCount = 0;
 
+    if (!callback->isValidExecutableAddress(d.eip)) {
+        return nullptr;
+    }
     while (1) {
         startOfOp = d.eip;
 
@@ -6450,6 +6454,15 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
         }
         else {
             decoder[d.inst]->decode(&d, op);
+            if (!callback->isValidExecutableAddress(d.eip)) {
+				// last instruction went into a page that is not executable, stop decoding this block
+                if (!prev) {
+                    return nullptr;
+                }
+                prev->next->dealloc();
+				prev->next = nullptr;
+                break;
+            }
             // per x86 spec, this has an implicit lock
             if (op->inst == XchgE8R8 || op->inst == XchgE16R16 || op->inst == XchgE32R32) {
                 op->lock = true;

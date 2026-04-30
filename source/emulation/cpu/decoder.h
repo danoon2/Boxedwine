@@ -1659,7 +1659,7 @@ public:
     virtual bool shouldContinue(U32 eip) = 0;
     virtual DecodedOp** getOpLocation(U32 eip) = 0;
     virtual DecodedOp* getOp(U32 eip, U32 flags) = 0;
-    virtual bool isValidReadAddress(U32 address) = 0;
+    virtual bool isValidExecutableAddress(U32 address) = 0;
 };
 
 DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen, U32 maxOpCount = 0xFFFFFFFF);

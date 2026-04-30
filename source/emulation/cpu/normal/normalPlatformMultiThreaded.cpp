@@ -32,7 +32,13 @@ static void platformThread(CPU* cpu) {
     KProcessPtr process = KSystem::getProcess(cpu->thread->process->id);
 
     cpu->nextOp = cpu->getNextOp();
-
+    if (!cpu->nextOp) {
+        cpu->thread->seg_mapper(cpu->getEipAddress(), true, false, false);
+        cpu->nextOp = cpu->getNextOp();
+        if (!cpu->nextOp) {
+			kpanic_fmt("Failed to get first op for thread %d of process %d at address %x", cpu->thread->id, process->id, cpu->getEipAddress());
+		}
+    }
     while (true) {
         try {
             cpu->run();

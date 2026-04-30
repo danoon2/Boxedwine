@@ -1257,6 +1257,10 @@ void CPU::runNextSingleOp() {
     DecodedOp* op = nullptr;
     try {
         op = getNextOp();
+        if (!op) {
+            this->thread->seg_mapper(getEipAddress(), true, false, false);
+            this->nextOp = getNextOp();
+        }
     } catch (...) {
         // at this point the previous getNextOp threw an exception and the eip is now pointing to the signal handler
         op = getNextOp();

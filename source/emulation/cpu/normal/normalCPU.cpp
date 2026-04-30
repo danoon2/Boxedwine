@@ -156,16 +156,8 @@ OpCallback NormalCPU::getFunctionForOp(DecodedOp* op) {
     return normalOps[op->inst];
 }
 
-bool NormalCPU::isValidReadAddress(U32 address) {
-    return memory->canRead(address >> K_PAGE_SHIFT);
-}
-
-DecodedOp* NormalCPU::decodeOneOp(U32 eip) {
-    U32 opCount = 0;
-    U32 eipLen;
-    DecodedOp* result = decodeBlock(this, eip, this->isBig(), opCount, eipLen);
-    result->pfn = getFunctionForOp(result);
-    return result;
+bool NormalCPU::isValidExecutableAddress(U32 address) {
+    return (memory->getPageFlags(address >> K_PAGE_SHIFT) & PAGE_EXEC) != 0;
 }
 
 DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
@@ -183,7 +175,9 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
             U32 address = startIp;
 
             op = decodeBlock(this, startIp, this->isBig(), opCount, eipLen);
-
+            if (!op) {
+                return nullptr;
+            }
             DecodedOp* nextOp = op;
 
             while (nextOp) {
@@ -223,6 +217,13 @@ void NormalCPU::run() {
     }
     if (!nextOp && !thread->terminating) {
         nextOp = getNextOp();
+        if (!nextOp) {
+            thread->seg_mapper(getEipAddress(), true, false, false);
+            nextOp = getNextOp();
+            if (!nextOp) {
+                kpanic_fmt("Failed to get op for thread %d of process %d at address %x", thread->id, thread->process->id, getEipAddress());
+            }
+        }
     }
 #else
     nextOp->pfn(this, nextOp);

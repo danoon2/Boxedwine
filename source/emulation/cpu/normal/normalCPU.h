@@ -29,10 +29,8 @@ public:
     void run() override;
     DecodedOp* getOp(U32 eip, U32 flags) override;
 
-    DecodedOp* decodeOneOp(U32 eip);
-
     // helper for decoder
-    bool isValidReadAddress(U32 address) override;
+    bool isValidExecutableAddress(U32 address) override;
 
     static OpCallback getFunctionForOp(DecodedOp* op);
 
