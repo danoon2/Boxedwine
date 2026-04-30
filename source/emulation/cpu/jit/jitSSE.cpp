@@ -923,7 +923,7 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         RegPtr delta = getTmpReg();
         mov(regWidth, delta, esi);
         subReg(regWidth, delta, edi);
-        IfLessThan2(regWidth, delta, bytesPerIter); {
+        IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
             If(regWidth, delta); {
                 // Overlapping backward copies with EDI below ESI must observe each
                 // element's previous write before reading the next lower source.
@@ -971,7 +971,7 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         RegPtr delta = getTmpReg();
         mov(regWidth, delta, edi);
         subReg(regWidth, delta, esi);
-        IfLessThan2(regWidth, delta, bytesPerIter); {
+        IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
             If(regWidth, delta); {
                 // Overlapping forward copies with EDI above ESI must read source
                 // elements after earlier writes have happened.
