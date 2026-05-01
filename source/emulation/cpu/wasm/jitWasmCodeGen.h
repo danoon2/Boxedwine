@@ -50,6 +50,45 @@
  * as the static offset.  Helper C++ functions are imported via the function
  * table for operations that are impractical to inline (memory read/write,
  * complex flags, etc.).
+ *
+ * Ops still routed through emulateSingleOp
+ * ----------------------------------------
+ * The dynamic_* overrides further down hand certain instructions to the
+ * normal CPU interpreter via emulateSingleOp() instead of inlining them.
+ * Each fallback exists for a specific reason; if you remove one,
+ * understand which constraint it papered over before doing so.
+ *
+ *   rol/ror b8 + b16            i32.rotl/rotr rotate within the full
+ *                               32-bit word; narrowing produces wrong
+ *                               results (e.g. ROL b8 0x80,1 → 0x00
+ *                               instead of 0x01).
+ *
+ *   movs/cmps/stos/lods/scas    Base-class rep'd variants use Goto for
+ *   (movsb/w/d, cmpsb/w/d,      a backward branch; Goto is a no-op
+ *    stosb/w/d, lodsb/w/d,      under WASM (no arbitrary backward
+ *    scasb/w/d)                 branches), so the loop would execute
+ *                               exactly once.
+ *
+ *   rcl/rcr (all widths)        Need lazy CF chaining across the
+ *   shrd/shld                   carry-fold; no native WASM equivalent
+ *                               and the helper-based codegen the base
+ *                               class uses doesn't synthesize it.
+ *
+ *   mul/imul (R8/E8/...)        Lazy CF/OF for "did the result fit in
+ *   div/idiv                    the low half"; div also needs the #DE
+ *                               trap on zero. Routed through emulator
+ *                               which already has the precise
+ *                               semantics.
+ *   bsf/bsr
+ *
+ *   xadd, cmpxchg, cmpxchg8b    Atomic + lock-prefix semantics; we'd
+ *                               need to coordinate with the lock
+ *                               runtime in common_lock.cpp.
+ *
+ *   pushA / popA                Eight sequential pushes/pops; no
+ *                               base-class codegen and the manual
+ *                               version would need stack-overflow
+ *                               handling for each one.
  */
 
 #ifndef __JIT_WASM_CODE_GEN_H__
