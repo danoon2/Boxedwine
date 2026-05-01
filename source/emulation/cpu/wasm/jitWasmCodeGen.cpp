@@ -120,6 +120,33 @@ static void wasmHelper_writeMem16(CPU* cpu) {
     cpu->memory->writew(cpu->memHelperAddr, (U16)cpu->memHelperValue);
 }
 
+// Same as the regular write helpers but additionally check whether the
+// active JIT block's pfnJitCode got cleared by removeCodeBlock — meaning
+// the write landed on the bytes we're currently executing. Used by
+// `write(address, src)` in the inline JIT path; the JIT then emits a
+// post-call check that exits the block on bailout. (We don't put this
+// check on every write because push/pop go through `write` in
+// `push16`/`push32` which is wrapped in IfSmallStack — adding the if/end
+// check inside that nested control flow broke Xchg tests.)
+static inline void checkActiveBlockAfterWrite(CPU* cpu) {
+    DecodedOp* active = cpu->wasmJitActiveBlock;
+    if (active && active->pfnJitCode == nullptr) {
+        cpu->wasmJitBailout = 1;
+    }
+}
+static void wasmHelper_writeMem32_check(CPU* cpu) {
+    cpu->memory->writed(cpu->memHelperAddr, cpu->memHelperValue);
+    checkActiveBlockAfterWrite(cpu);
+}
+static void wasmHelper_writeMem16_check(CPU* cpu) {
+    cpu->memory->writew(cpu->memHelperAddr, (U16)cpu->memHelperValue);
+    checkActiveBlockAfterWrite(cpu);
+}
+static void wasmHelper_writeMem8_check(CPU* cpu) {
+    cpu->memory->writeb(cpu->memHelperAddr, (U8)cpu->memHelperValue);
+    checkActiveBlockAfterWrite(cpu);
+}
+
 // Update cpu->nextOp by decoding the block at cpu->eip.u32
 static void wasmHelper_fetchNextOp(CPU* cpu) {
     if (!cpu->thread->terminating) {
@@ -129,6 +156,14 @@ static void wasmHelper_fetchNextOp(CPU* cpu) {
 
 // Sync CPU lazy flags — flags are maintained in cpu->flags directly by WASM code
 static void wasmHelper_syncFlags(CPU* cpu) {}
+
+// Called at the top of every JIT block: capture which block is running so
+// write helpers can detect when a write hit our own bytes (cleared
+// pfnJitCode by removeCodeBlock). Also clear any leftover bailout flag.
+static void wasmHelper_blockEnter(CPU* cpu) {
+    cpu->wasmJitActiveBlock = cpu->nextOp;
+    cpu->wasmJitBailout = 0;
+}
 
 // Fall back to the normal CPU interpreter for one instruction (used for
 // operations the WASM JIT doesn't inline, e.g. FPU/SSE/complex shifts).
@@ -211,6 +246,10 @@ static const void* g_wasmHelperTable[] = {
     (void*)wasmHelper_cond_NL,
     (void*)wasmHelper_cond_LE,
     (void*)wasmHelper_cond_NLE,
+    (void*)wasmHelper_blockEnter,
+    (void*)wasmHelper_writeMem8_check,
+    (void*)wasmHelper_writeMem16_check,
+    (void*)wasmHelper_writeMem32_check,
 };
 static constexpr int WASM_HELPER_COUNT = (int)(sizeof(g_wasmHelperTable) / sizeof(g_wasmHelperTable[0]));
 
@@ -228,6 +267,10 @@ enum WasmHelperIdx {
     HELPER_COMPUTE_ZF        = 10,
     HELPER_FILL_FLAGS        = 11,
     HELPER_COND_BASE         = 12, // add JitConditional index to this
+    HELPER_BLOCK_ENTER       = 28, // 12 + 16 condition helpers
+    HELPER_WRITE_MEM8_CHECK  = 29,
+    HELPER_WRITE_MEM16_CHECK = 30,
+    HELPER_WRITE_MEM32_CHECK = 31,
 };
 
 // ---------------------------------------------------------------------------
@@ -271,6 +314,12 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitCodeGen(cpu) {
         { 4, WasmType::I32 },  // segment addresses (locals 9-12)
         { 8, WasmType::I32 },  // scratch temporaries (locals 13-20)
     });
+
+    // Self-modifying-code arming: capture cpu->wasmJitActiveBlock so the
+    // checking write helpers can detect when removeCodeBlock cleared our
+    // own pfnJitCode mid-flight. Also clears the leftover bailout flag.
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_BLOCK_ENTER);
 
     m_gpLoaded.fill(false);
     m_gpDirty.fill(false);
@@ -797,6 +846,46 @@ static U32 writeHelperForWidth(JitWidth w) {
     }
 }
 
+// Index of the bailout-checking write helper for a given width. The
+// inline-RMW path (readWriteMem) and direct-write path (write) end with a
+// helper call followed by an `if (cpu->wasmJitBailout) blockExit()` check
+// — only when the write potentially lands on the active block's code page.
+static U32 writeCheckHelperForWidth(JitWidth w) {
+    switch (w) {
+    case JitWidth::b8:  return HELPER_WRITE_MEM8_CHECK;
+    case JitWidth::b16: return HELPER_WRITE_MEM16_CHECK;
+    default:            return HELPER_WRITE_MEM32_CHECK;
+    }
+}
+
+// Self-modifying-code bailout check: emitted after every JIT-inline mem
+// write. If the write hit the active block's bytes, the helper set
+// cpu->wasmJitBailout. We exit by writing the *next* op's offset to
+// cpu->eip and calling blockExit so the dispatcher resumes there with a
+// fresh decode.
+//
+// The if-body's blockExit() runs syncDirtyRegsToHost which compile-time-
+// clears m_gpDirty[]; that's wrong for the no-bailout path where the
+// body didn't run. Save/restore the tracker around the emit.
+void JitWasmCodeGen::emitBailoutCheck() {
+    auto savedGpDirty   = m_gpDirty;
+    auto savedGpLoaded  = m_gpLoaded;
+    auto savedSegLoaded = m_segLoaded;
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, wasmJitBailout));
+    m_emitter.emitIf();
+    // currentEip is the *current* op's start (postCompile bumps it after
+    // compile returns), so add op->len = lastCompiledOpLen to land at the
+    // next op so the dispatcher resumes there.
+    writeEip(this->currentEip + this->lastCompiledOpLen
+             - cpu->seg[CS].address);
+    blockExit();
+    m_emitter.emitEnd();
+    m_gpDirty   = savedGpDirty;
+    m_gpLoaded  = savedGpLoaded;
+    m_segLoaded = savedSegLoaded;
+}
+
 // Store `reg` into cpu->memHelperAddr (our dedicated mem-helper scratch).
 // Also used for memHelperValue by varying the offset.
 void JitWasmCodeGen::storeMemHelperField(U32 offset, RegPtr reg) {
@@ -821,7 +910,10 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
         storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
         storeMemHelperField((U32)offsetof(CPU, memHelperValue), result);
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitCall(writeHelperForWidth(w));
+        // Use the bailout-checking write so self-modifying code that hits
+        // the active block's bytes can be detected; emit the check.
+        m_emitter.emitCall(writeCheckHelperForWidth(w));
+        emitBailoutCheck();
     }
     return result;
 }
@@ -846,7 +938,13 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
     storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
     storeMemHelperField((U32)offsetof(CPU, memHelperValue), src);
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(writeHelperForWidth(w));
+    // Inline JIT writes (mov-to-mem etc.) use the bailout-checking helper
+    // so a same-block self-modify can exit before stale compiled bytes run.
+    // push16/push32 take a *different* path (via the addressed-write
+    // overload calling this same write — see push16's IfSmallStack), so
+    // they too get the bailout safety, just inside their if/else nesting.
+    m_emitter.emitCall(writeCheckHelperForWidth(w));
+    emitBailoutCheck();
 }
 
 // Materialize a MemPtr (base + index*scale + disp) into a scratch reg as a
@@ -1647,8 +1745,10 @@ U8* JitWasmCodeGen::createStartJITCode() {
 // ---------------------------------------------------------------------------
 void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     // Reset per-instruction scratch state, then run base bookkeeping (block
-    // op count, eip→buffer-pos map, preOp hook).
+    // op count, eip→buffer-pos map, preOp hook). Stash op->len for
+    // emitBailoutCheck — it needs the post-write next-op EIP.
     m_scratchInUse.fill(false);
+    lastCompiledOpLen = op->len;
     JitCodeGen::preCompile(op, skippedOp);
 }
 
@@ -1700,6 +1800,8 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     // picks them up for cleanup; they also get OP_FLAG_JIT so doJIT skips
     // recompiling. Only the first op's pfn points at startJITOp — control
     // never re-enters the middle of a WASM block.
+    op->blockLen     = this->emulatedLen;
+    op->blockOpCount = this->blockOpCount;
     DecodedOp* cur = op;
     while (cur) {
         cur->pfnJitCode = (void*)(uintptr_t)(U32)tableIdx;

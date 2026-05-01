@@ -564,6 +564,14 @@ protected:
     // local was populated by a load emitted in the other.
     void branchBoundary();
 
+    // Self-modifying-code bailout check, emitted after a JIT-inline memory
+    // write. If the write invalidated the active block (cpu->wasmJitBailout
+    // set by the checking write helper), set cpu->eip to the next op and
+    // exit so the dispatcher re-decodes. Uses lastCompiledOpLen captured
+    // by preCompile.
+    void emitBailoutCheck();
+    U32 lastCompiledOpLen = 0;
+
     WasmEmitter m_emitter;
 
     // Type indices pre-registered for common helper signatures
