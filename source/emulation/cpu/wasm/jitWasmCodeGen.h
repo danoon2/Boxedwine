@@ -298,10 +298,10 @@ public:
     void dynamic_rol16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_rol16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_rol16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rol32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rol32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rol32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rol32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    // rol32/ror32 — base class emits native i32.rotl/rotr (32-bit rotate
+    // is correct on full-width values). b8/b16 forms still emulate
+    // because i32.rotl rotates within 32 bits and produces wrong results
+    // when narrowed.
     void dynamic_ror8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_ror8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_ror8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
@@ -310,10 +310,6 @@ public:
     void dynamic_ror16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_ror16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_ror16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_ror32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_ror32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_ror32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_ror32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_rcl8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_rcl8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_rcl8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
@@ -346,34 +342,11 @@ public:
     void dynamic_shl16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_shl16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_shl16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shl32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shl32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shl32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shl32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shr8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shr8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shr8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shr8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shr16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shr16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shr16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shr16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shr32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shr32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shr32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shr32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_sar8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_sar8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_sar8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_sar8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_sar16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_sar16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_sar16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_sar16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_sar32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_sar32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_sar32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_sar32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    // shl/shr/sar (all widths, imm + cl) — base-class codegen emits
+    // native i32.shl/shr_u/shr_s with lazy-flag plumbing. WASM's shifts
+    // implicitly mask count to 5 bits (matches x86 b32); b8/b16 forms
+    // rely on emitBinOp's post-op maskToWidth, and sar additionally
+    // sign-extends to 32 before i32.shr_s.
     void dynamic_dshlr16r16(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_dshle16r16(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_dshlr32r32(DecodedOp* op) override { emulateSingleOp(); }
@@ -464,9 +437,10 @@ public:
     void dynamic_cmpxchge32r32(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_cmpxchgg8b(DecodedOp* op) override { emulateSingleOp(); }
 
-    // String ops: the inline codegen works for 16-bit but 32-bit variants
-    // (ea16=false) fail tests. Defer to the normal CPU interpreter which
-    // handles all the seg/rep permutations correctly.
+    // String ops: defer to the normal CPU interpreter. Base-class
+    // codegen reaches movsr/cmpsr which use Goto for a backward loop;
+    // Goto is a no-op under WASM (no arbitrary backward branch), so the
+    // rep'd 32-bit variants would execute exactly once and fail.
     void dynamic_movsb_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_movsw_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_movsd_op(DecodedOp* op) override { emulateSingleOp(); }
