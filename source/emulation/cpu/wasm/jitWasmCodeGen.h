@@ -482,9 +482,6 @@ public:
     // codegen reaches movsr/cmpsr which use Goto for a backward loop;
     // Goto is a no-op under WASM (no arbitrary backward branch), so the
     // rep'd 32-bit variants would execute exactly once and fail.
-    void dynamic_cmpsb_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpsw_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpsd_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_stosb_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_stosw_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_stosd_op(DecodedOp* op) override { emulateSingleOp(); }
