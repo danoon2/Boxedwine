@@ -287,6 +287,14 @@ public:
     virtual void JumpIfCondition(JitConditional condition, U32 address) = 0;
     virtual U32 MarkJumpLocation() = 0;
     virtual void Goto(U32 location) = 0;
+    // Structured-loop helpers. Default impls forward to MarkJumpLocation
+    // / no-op so x86/ARM behavior is unchanged. The WASM JIT overrides
+    // these to wrap the body in a real `loop` ... `end` pair (WASM has
+    // no arbitrary backward branch; only structural control flow). Use
+    // these instead of MarkJumpLocation/Goto for any loop the WASM JIT
+    // also needs to inline.
+    virtual U32 LoopBegin() { return MarkJumpLocation(); }
+    virtual void LoopEnd() {}
     virtual void IfDF() = 0;
     virtual void IfSmallStack() = 0;
 
