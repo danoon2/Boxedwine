@@ -413,6 +413,41 @@ public:
     void dynamic_pushA16(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_pushA32(DecodedOp* op) override { emulateSingleOp(); }
 
+    // MUL/DIV/IDIV/BSF/BSR/RCL/RCR/SHLD/SHRD: the JIT helpers (`mulReg`,
+    // `divRegRegWithRemainder`, `bsfReg`, `rclReg`, `shldReg`, `absReg`, …)
+    // are stubbed as `emulateSingleOp` here, which only works at the *op*
+    // level. Inline use of those helpers — e.g. `Jit::div8` calls absReg+
+    // absReg+callback within one op — would dispatch the entire instruction
+    // multiple times via runNextSingleOp, corrupting state. Bypass the
+    // helper-based codegen by overriding the whole op to emulateSingleOp.
+    void dynamic_mulR8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_mulE8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_mulR16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_mulE16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_mulR32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_mulE32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_divR8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_divE8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_idivR8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_idivE8(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_divR16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_divE16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_idivR16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_idivE16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_divR32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_divE32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_idivR32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_idivE32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_bsfr16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_bsfr16e16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_bsfr32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_bsfr32e32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_bsrr16r16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_bsrr16e16(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_bsrr32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_bsrr32e32(DecodedOp* op) override { emulateSingleOp(); }
+    // (RCL/RCR/SHLD/SHRD ops already overridden in the shift/rotate block above.)
+
     // XADD / CMPXCHG: lazy-flag plumbing in dynamic_RM_WriteM and friends
     // doesn't round-trip cleanly to WASM for these. Defer to normal CPU.
     void dynamic_xaddr8r8(DecodedOp* op) override { emulateSingleOp(); }

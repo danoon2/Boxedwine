@@ -1493,7 +1493,22 @@ void JitWasmCodeGen::callHostFunctionWithResult(RegPtr result, void* address,
 
 
 void JitWasmCodeGen::emulateSingleOp() {
-    // Sync state, call the C++ single-op emulator, reload.
+    // Sync state, point cpu->eip.u32 at this op's offset (only when we may
+    // be in a mixed JIT/emulate block — for pure-emulate blocks each
+    // helper's NEXT() advances eip naturally and no writeEip is needed),
+    // call runNextSingleOp, reload.
+    //
+    // Mixed blocks (an inline JIT op followed by emulateSingleOp) need this:
+    // the JIT op doesn't update cpu->eip, so the helper would re-decode at
+    // the previous emulated op's eip and run the wrong instruction.
+    //
+    // We can't easily know at compile time whether an inline op preceded
+    // this one (the previous op may have used emulateSingleOp), so emit
+    // writeEip when the current op is *not* the first op in the block.
+    // When it's the first op, cpu->eip was set by the dispatcher.
+    if (this->currentEip != this->startingEip) {
+        writeEip(this->currentEip - cpu->seg[CS].address);
+    }
     syncDirtyRegsToHost();
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(m_helperEmulateSingleOpIdx);
