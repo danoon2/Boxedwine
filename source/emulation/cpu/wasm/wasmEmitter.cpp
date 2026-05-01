@@ -122,6 +122,7 @@ void WasmEmitter::addExport(const char* name, U32 funcIdx) {
 void WasmEmitter::beginFunction(const std::vector<std::pair<U32, WasmType>>& locals) {
     m_currentBody.clear();
     m_inFunction = true;
+    m_ctrlDepth = 0;
     // Encode locals declaration
     appendULEB128(m_currentBody, (U64)locals.size());
     for (auto& lp : locals) {
@@ -233,17 +234,27 @@ void WasmEmitter::emitCallIndirect(U32 typeIdx, U32 tableIdx) {
 void WasmEmitter::emitIf(WasmType blockType) {
     m_currentBody.push_back(WASM_IF);
     m_currentBody.push_back((U8)blockType);
+    ++m_ctrlDepth;
 }
 void WasmEmitter::emitElse() { m_currentBody.push_back(WASM_ELSE); }
 void WasmEmitter::emitBlock(WasmType blockType) {
     m_currentBody.push_back(WASM_BLOCK);
     m_currentBody.push_back((U8)blockType);
+    ++m_ctrlDepth;
 }
 void WasmEmitter::emitLoop(WasmType blockType) {
     m_currentBody.push_back(WASM_LOOP);
     m_currentBody.push_back((U8)blockType);
+    ++m_ctrlDepth;
 }
-void WasmEmitter::emitEnd()          { m_currentBody.push_back(WASM_END); }
+void WasmEmitter::emitEnd() {
+    m_currentBody.push_back(WASM_END);
+    if (m_ctrlDepth > 0) {
+        --m_ctrlDepth;
+    }
+    // The trailing `end` that closes the function body itself runs with
+    // depth already 0; the underflow guard above covers that case.
+}
 void WasmEmitter::emitBr(U32 depth)  {
     m_currentBody.push_back(WASM_BR);
     appendULEB128(m_currentBody, depth);

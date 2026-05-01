@@ -262,6 +262,8 @@ public:
     void JumpIfCondition(JitConditional cond, U32 address) override;
     U32  MarkJumpLocation() override;
     void Goto(U32 location) override;
+    U32  LoopBegin() override;
+    void LoopEnd() override;
     void IfDF() override;
     void IfSmallStack() override;
     void StartElse() override;

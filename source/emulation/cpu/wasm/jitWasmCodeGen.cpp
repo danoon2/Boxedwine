@@ -1713,11 +1713,49 @@ void JitWasmCodeGen::copyBuffer(U8* dst, U32 sz) { /* WASM binary managed separa
 // so we always report 0 here.
 U32  JitWasmCodeGen::getIfJumpSize()             { return 0; }
 
-// MarkJumpLocation / Goto: used by JitCodeGen for intra-block branch patching.
-// WASM uses structural control flow so binary patching isn't needed; these are
-// no-ops that satisfy the interface.
-U32  JitWasmCodeGen::MarkJumpLocation() { return markBufferLocation(); }
-void JitWasmCodeGen::Goto(U32 location) { /* structural control flow — no binary patch needed */ }
+// MarkJumpLocation / Goto: used by JitCodeGen for intra-block branch patching
+// in the x86/ARM backends. WASM uses structural control flow, so for
+// MarkJumpLocation/Goto specifically there is no patching to do — the loops
+// that actually need backward branches use LoopBegin/Goto/LoopEnd instead
+// (see the override of those below). Goto remains generic: it dispatches on
+// whether `location` is a real loop token (encoded by LoopBegin) or a
+// MarkJumpLocation buffer offset (in which case nothing to do).
+//
+// To distinguish, LoopBegin returns a token tagged with the high bit set
+// (kLoopTokenTag); MarkJumpLocation's buffer-offset return value never sets
+// it because compiled bodies are far smaller than 2 GiB.
+static constexpr U32 kLoopTokenTag = 0x80000000u;
+
+U32 JitWasmCodeGen::MarkJumpLocation() { return markBufferLocation(); }
+
+void JitWasmCodeGen::Goto(U32 location) {
+    if ((location & kLoopTokenTag) == 0) {
+        // MarkJumpLocation token — x86/ARM patching path; nothing to do.
+        return;
+    }
+    U32 loopDepth = location & ~kLoopTokenTag;
+    U32 currentDepth = m_emitter.currentCtrlDepth();
+    // The loop frame sits `currentDepth - loopDepth` levels above the
+    // current innermost frame. `br N` targets that frame's label, which
+    // for a `loop` is the *top* of the loop — i.e., a backward branch.
+    branchBoundary();
+    m_emitter.emitBr(currentDepth - loopDepth);
+}
+
+U32 JitWasmCodeGen::LoopBegin() {
+    // Emit `loop` and capture the depth right after it's pushed. The
+    // returned token encodes the loop frame's depth so Goto can compute
+    // a relative `br` argument from wherever it's called inside the body.
+    branchBoundary();
+    m_emitter.emitLoop();
+    U32 depth = m_emitter.currentCtrlDepth();
+    return kLoopTokenTag | depth;
+}
+
+void JitWasmCodeGen::LoopEnd() {
+    branchBoundary();
+    m_emitter.emitEnd();
+}
 
 // ---------------------------------------------------------------------------
 // Module instantiation hooks

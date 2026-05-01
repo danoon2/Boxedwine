@@ -203,6 +203,13 @@ public:
     void emitEnd();
     void emitBr(U32 depth);
     void emitBrIf(U32 depth);
+
+    // Number of currently-open structural blocks (if/block/loop). Used by
+    // the JIT codegen to compute the relative depth argument for `br` in
+    // LoopBegin/Goto. Counts each emitIf/emitBlock/emitLoop as +1 and
+    // each emitEnd as -1 (emitElse does not change depth — `else` stays
+    // inside the same `if` frame).
+    U32 currentCtrlDepth() const { return m_ctrlDepth; }
     void emitDrop();
     void emitReturn();
     void emitUnreachable();
@@ -239,6 +246,7 @@ private:
 
     std::vector<U8>  m_currentBody;      // being built by begin/endFunction
     bool             m_inFunction = false;
+    U32              m_ctrlDepth = 0;    // open structural blocks (if/block/loop)
 };
 
 #endif // BOXEDWINE_WASM_JIT
