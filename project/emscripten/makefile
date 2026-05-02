@@ -18,14 +18,17 @@ multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32
 # WASM JIT build: compiles each basic block to a standalone WASM module that
 # is instantiated at runtime (inspired by the QEMU wasm64 TCG backend).
 # Key flags:
-#   BOXEDWINE_WASM_JIT  – enables the new wasm/ JIT backend
-#   BOXEDWINE_JIT       – pulled in automatically by boxedwine.h
-#   -sALLOW_TABLE_GROWTH – allows addFunction() to grow the wasmTable
-#   -sALLOW_MEMORY_GROWTH – compiled blocks can allocate their own memory
+#   BOXEDWINE_WASM_JIT       – enables the new wasm/ JIT backend
+#   BOXEDWINE_JIT            – pulled in automatically by boxedwine.h
+#   -sALLOW_TABLE_GROWTH     – allows addFunction() to grow the wasmTable
+#   -sALLOW_MEMORY_GROWTH    – compiled blocks can allocate their own memory
+#   -sMAXIMUM_MEMORY=3 GiB   – long sessions accumulate many compiled
+#                              blocks; without an explicit max,
+#                              ALLOW_MEMORY_GROWTH caps near 2 GiB.
 jit: export BUILD_DIR := Build/Jit
 jit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
 jit: export SHELL_FILE := shell.html
-jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
+jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
 # Like the test target but with the WASM JIT enabled, so the CPU test suite
 # exercises JIT-compiled blocks instead of the normal interpreter.
 testJit: export BUILD_DIR := Build/TestJit
