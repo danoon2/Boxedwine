@@ -51,6 +51,34 @@
  * table for operations that are impractical to inline (memory read/write,
  * complex flags, etc.).
  *
+ * Inline TLB (emulated memory)
+ * ----------------------------
+ * For plain emulated reads and writes, JitWasmCodeGen::read and ::write
+ * inline a TLB fast path before the helper call:
+ *
+ *   entry = wasm{Read,Write}PageBase[addr >> 12]
+ *   if (entry == 0 || (addr & 0xfff) > 0x1000 - width) {
+ *       slow: existing helper-based load/store
+ *   } else {
+ *       i32.load{8u,16u,_}  (entry + (addr & K_PAGE_MASK))   // read
+ *       i32.store{8,16,_}   (entry + (addr & K_PAGE_MASK), value)  // write
+ *   }
+ *
+ * The boundary check is omitted for b8 (every byte is in some page).
+ * The arrays live in KMemoryData (BOXEDWINE_WASM_JIT-gated, ~8 MB total);
+ * each entry is the 32-bit linear-memory offset of the page's RAM start,
+ * or 0 if the page can't be directly accessed (CodePage, on-demand,
+ * permission-denied). They're populated in onPageChanged alongside the
+ * existing readCache/writeCache.
+ *
+ * SMC bailout is preserved by construction: CodePage::canWriteRam is
+ * false, so wasmWritePageBase[CodePage] == 0, so writes that could land
+ * on the active block always slow-path through the bailout-checking
+ * helper.
+ *
+ * The RMW path (readWriteMem) is NOT TLB-fast-pathed — see the comment
+ * in jitWasmCodeGen.cpp above readWriteMem for why.
+ *
  * Ops still routed through emulateSingleOp
  * ----------------------------------------
  * The dynamic_* overrides further down hand certain instructions to the

@@ -833,7 +833,19 @@ void JitWasmCodeGen::clearIfSpansPage(JitWidth w, RegPtr offset, RegPtr reg) {
 
 // ---------------------------------------------------------------------------
 // Emulated memory read/write (with softMMU)
-// For now: use cpu scratch fields + helper calls. Future: inline TLB.
+//
+// Plain reads and writes use an inline TLB fast path: load
+// `wasmReadPageBase[addr>>12]` (or wasmWritePageBase for writes),
+// branch on zero or width-aware boundary cross to the existing helper
+// call, otherwise direct i32.load/store from `entry + (addr & MASK)`.
+// CodePages have wasmWritePageBase==0 so writes that could hit JIT'd
+// code always slow-path through the bailout-checking helper.
+//
+// The RMW path (readWriteMem, used by add/and/or/xchg/bts/btr/btc and
+// shift-of-memory ops) still routes through the helpers — the
+// scratch-pool budget for callbacks like btMask + nested IfTest is
+// too tight to add an inline if/else without spilling into
+// allocScratch's silent slot-0 fallback.
 // ---------------------------------------------------------------------------
 // Helper-import index for emulated-memory read/write of the given width.
 // Picking the wrong width corrupts neighboring bytes: writeMem32 on a
