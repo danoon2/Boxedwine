@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test multiThreaded jit testJit
+.PHONY: default all clean release test multiThreaded jit testJit multiThreadedJit
 
 default all: release
 
@@ -35,6 +35,18 @@ testJit: export BUILD_DIR := Build/TestJit
 testJit: export EXTRA_CPP_FLAGS := -D__TEST -DBOXEDWINE_WASM_JIT
 testJit: export SHELL_FILE := shelltest.html
 testJit: export EXTRA_LD_FLAGS := --emrun -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction
+# Multi-threaded WASM JIT: combines the multiThreaded and jit flag sets.
+# Within a single emulated process, JIT compilation is serialized via
+# memory->mutex, and the inline-TLB arrays are mutated under the same
+# mutex (reads from the JIT fast path are unsynchronized U32 loads — same
+# hazard the existing BOXEDWINE_MEM_CACHE arrays already accept).
+# Cross-process concurrent compilation could in principle race on
+# wasmTable.grow()/addFunction(); rare on the emscripten target since
+# typically only one Wine process runs.
+multiThreadedJit: export BUILD_DIR := Build/MultiThreadedJit
+multiThreadedJit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_WASM_JIT -pthread
+multiThreadedJit: export SHELL_FILE := shell.html
+multiThreadedJit: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32 -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
 
 cpus := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
 make_jobs := $(shell n='$(cpus)'; expr "$$n" : '^[0-9][0-9]*$$' >/dev/null && [ "$$n" -gt 2 ] && expr "$$n" - 1)
@@ -43,7 +55,7 @@ ifneq ($(make_jobs),)
 export MAKEFLAGS := -j $(make_jobs)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
-jit release test testJit multiThreaded testMultiThreaded:
+jit release test testJit multiThreaded multiThreadedJit testMultiThreaded:
 	@$(MAKE)
 
 
