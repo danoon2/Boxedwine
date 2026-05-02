@@ -63,6 +63,18 @@ public:
     U8* readCache[K_NUMBER_OF_PAGES];
     U8* writeCache[K_NUMBER_OF_PAGES];
 #endif
+#ifdef BOXEDWINE_WASM_JIT
+    // Inline TLB for the WASM JIT. Each entry is a 32-bit linear-memory
+    // offset to the start of the page's RAM, or 0 if direct access is
+    // not allowed (CodePage, RO/no-perm, on-demand-not-allocated). The
+    // JIT codegen reads `wasmReadPageBase[addr>>12]`; on a non-zero
+    // entry it does `i32.load{8_u,16_u,_}` from `entry + addr` and
+    // skips the helper. Populated in onPageChanged() exactly the same
+    // way as readCache/writeCache above, but always with a 0 sentinel
+    // for no-access (no SIGSEGV trick — WASM can't catch it).
+    U32 wasmReadPageBase[K_NUMBER_OF_PAGES];
+    U32 wasmWritePageBase[K_NUMBER_OF_PAGES];
+#endif
     CodePage* getOrCreateCodePage(U32 address);
 
     DecodedOpCache opCache;

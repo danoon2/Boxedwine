@@ -215,6 +215,14 @@ public:
     // after each write so we exit before stale compiled bytes run.
     DecodedOp* wasmJitActiveBlock = nullptr;
     U32 wasmJitBailout = 0;
+    // Inline TLB fast-path: cached pointers to the per-page host-base
+    // arrays in KMemoryData. Set up by wasmHelper_blockEnter so the JIT
+    // codegen can do `wasmReadPageBaseArray[page] -> entry; if (entry)
+    // direct-load`, skipping the full helper round-trip on cache hits.
+    // Encoded as `(U32)(uintptr_t)wasmReadPageBase`/`wasmWritePageBase`
+    // (32-bit linear-memory offsets under emcc).
+    U32 wasmReadPageBaseArray  = 0;
+    U32 wasmWritePageBaseArray = 0;
 #endif
     U8* reg8[9];
     ALIGN(SSE xmm[8], 16);    

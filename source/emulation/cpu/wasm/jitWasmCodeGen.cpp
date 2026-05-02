@@ -25,6 +25,7 @@
 #include "../common/cpu.h"
 #include "../normal/normalCPU.h"
 #include "../../softmmu/soft_code_page.h"
+#include "../../softmmu/kmemory_soft.h"
 
 #include <emscripten.h>
 #include <emscripten/em_js.h>
@@ -159,10 +160,16 @@ static void wasmHelper_syncFlags(CPU* cpu) {}
 
 // Called at the top of every JIT block: capture which block is running so
 // write helpers can detect when a write hit our own bytes (cleared
-// pfnJitCode by removeCodeBlock). Also clear any leftover bailout flag.
+// pfnJitCode by removeCodeBlock), clear the leftover bailout flag, and
+// refresh the inline-TLB array pointers so the JIT codegen can walk
+// `wasmReadPageBase[addr>>12]` for direct host-pointer access without
+// re-resolving cpu->memory->data each block.
 static void wasmHelper_blockEnter(CPU* cpu) {
     cpu->wasmJitActiveBlock = cpu->nextOp;
     cpu->wasmJitBailout = 0;
+    KMemoryData* d = getMemData(cpu->memory);
+    cpu->wasmReadPageBaseArray  = (U32)(uintptr_t)d->wasmReadPageBase;
+    cpu->wasmWritePageBaseArray = (U32)(uintptr_t)d->wasmWritePageBase;
 }
 
 // Fall back to the normal CPU interpreter for one instruction (used for
