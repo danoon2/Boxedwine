@@ -1023,19 +1023,94 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
     return tmp;
 }
 
+// Inline TLB fast path for emulated writes. Mirrors read():
+//
+//   entry = wasmWritePageBase[addr >> 12]
+//   if (entry == 0 || (addr & 0xfff) > 0x1000 - width) {
+//       slow: bailout-checking helper + emitBailoutCheck()
+//   } else {
+//       i32.store{8,16,}(entry + (addr & K_PAGE_MASK), src)
+//   }
+//
+// Crucially, CodePage::canWriteRam returns false, so
+// wasmWritePageBase[CodePage] == 0 → all writes to JIT'd code take the
+// slow path, which preserves the SMC bailout. Plain RWPage writes can
+// take the fast path because they can't be on an active block.
 void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
                             std::function<void(MemPtr)> customOp,
                             std::function<void()> failedOp, bool checkAlignment) {
-    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
-    storeMemHelperField((U32)offsetof(CPU, memHelperValue), src);
+    if (customOp) {
+        // Legacy path: customOp expects a MemPtr; slow-path only.
+        storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
+        storeMemHelperField((U32)offsetof(CPU, memHelperValue), src);
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(writeCheckHelperForWidth(w));
+        emitBailoutCheck();
+        return;
+    }
+
+    U32 entryLocal = allocScratch();
+    auto savedGpDirty   = m_gpDirty;
+    auto savedGpLoaded  = m_gpLoaded;
+    auto savedSegLoaded = m_segLoaded;
+
+    // missCondition = (entry == 0) [|| boundary]
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    // Inline JIT writes (mov-to-mem etc.) use the bailout-checking helper
-    // so a same-block self-modify can exit before stale compiled bytes run.
-    // push16/push32 take a *different* path (via the addressed-write
-    // overload calling this same write — see push16's IfSmallStack), so
-    // they too get the bailout safety, just inside their if/else nesting.
-    m_emitter.emitCall(writeCheckHelperForWidth(w));
-    emitBailoutCheck();
+    m_emitter.emitI32Load((U32)offsetof(CPU, wasmWritePageBaseArray));
+    pushRegValue(addressReg);
+    m_emitter.emitI32Const(K_PAGE_SHIFT);
+    m_emitter.emitOp(WASM_I32_SHR_U);
+    m_emitter.emitI32Const(2);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Load(0);
+    m_emitter.emitLocalTee(entryLocal);
+    m_emitter.emitOp(WASM_I32_EQZ);
+
+    if (w != JitWidth::b8) {
+        U32 widthBytes = (w == JitWidth::b16) ? 2 : 4;
+        pushRegValue(addressReg);
+        m_emitter.emitI32Const(K_PAGE_MASK);
+        m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitI32Const((S32)(K_PAGE_SIZE - widthBytes));
+        m_emitter.emitOp(WASM_I32_GT_U);
+        m_emitter.emitOp(WASM_I32_OR);
+    }
+
+    m_emitter.emitIf();
+    {
+        // Slow path: bailout-checking helper. Writes to CodePages, RO
+        // pages, on-demand pages, and cross-page accesses all land here.
+        storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
+        storeMemHelperField((U32)offsetof(CPU, memHelperValue), src);
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(writeCheckHelperForWidth(w));
+        emitBailoutCheck();
+    }
+    m_emitter.emitElse();
+    {
+        // Fast path: i32.store{8,16,}(entry + (addr & K_PAGE_MASK), src)
+        // No bailout check needed: by construction, fast-pathed writes
+        // can't land on the active block (which lives on a CodePage,
+        // and CodePage::canWriteRam() == false → wasmWritePageBase == 0).
+        m_emitter.emitLocalGet(entryLocal);
+        pushRegValue(addressReg);
+        m_emitter.emitI32Const(K_PAGE_MASK);
+        m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitOp(WASM_I32_ADD);
+        pushRegValue(src);
+        switch (w) {
+        case JitWidth::b8:  m_emitter.emitI32Store8(0);  break;
+        case JitWidth::b16: m_emitter.emitI32Store16(0); break;
+        default:            m_emitter.emitI32Store(0, 0); break;
+        }
+    }
+    m_emitter.emitEnd();
+
+    m_gpDirty   = savedGpDirty;
+    m_gpLoaded  = savedGpLoaded;
+    m_segLoaded = savedSegLoaded;
+    freeScratch(entryLocal);
 }
 
 // Materialize a MemPtr (base + index*scale + disp) into a scratch reg as a
