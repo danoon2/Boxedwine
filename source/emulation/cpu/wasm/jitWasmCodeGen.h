@@ -63,12 +63,6 @@
  *                               results (e.g. ROL b8 0x80,1 → 0x00
  *                               instead of 0x01).
  *
- *   movs/cmps/stos/lods/scas    Base-class rep'd variants use Goto for
- *   (movsb/w/d, cmpsb/w/d,      a backward branch; Goto is a no-op
- *    stosb/w/d, lodsb/w/d,      under WASM (no arbitrary backward
- *    scasb/w/d)                 branches), so the loop would execute
- *                               exactly once.
- *
  *   rcl/rcr (all widths)        Need lazy CF chaining across the
  *   shrd/shld                   carry-fold; no native WASM equivalent
  *                               and the helper-based codegen the base
