@@ -925,17 +925,101 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
     return result;
 }
 
+// Inline TLB fast path for emulated reads. Compiles down to (in pseudo-WASM):
+//
+//   entry = wasmReadPageBase[addr >> 12]
+//   if (entry == 0 || (addr & 0xfff) > 0x1000 - width) {
+//       // slow: existing helper
+//       memHelperAddr = addr; call read_helper(cpu); tmp = memHelperValue;
+//   } else {
+//       tmp = i32.load{8u,16u,_}(entry + addr)
+//   }
+//
+// The boundary check is omitted for b8 (every byte is in some page).
+// Save/restore the dirty/loaded trackers around the if since only one
+// arm runs and `if`/`end` is treated as a branch boundary structurally
+// even though neither branch invalidates the JIT register file.
 RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
                              std::function<void(MemPtr)> customOp,
                              std::function<void()> failedOp,
                              RegPtr tmp, bool checkAlignment) {
     if (!tmp) tmp = getTmpReg();
-    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
+    if (customOp) {
+        // Legacy path: customOp expects a MemPtr it can manipulate; the
+        // fast path can't supply one, so always slow-path here.
+        storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(readHelperForWidth(w));
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Load((U32)offsetof(CPU, memHelperValue));
+        m_emitter.emitLocalSet(tmp->hardwareReg());
+        return tmp;
+    }
+
+    U32 entryLocal = allocScratch();
+    auto savedGpDirty   = m_gpDirty;
+    auto savedGpLoaded  = m_gpLoaded;
+    auto savedSegLoaded = m_segLoaded;
+
+    // Push: missCondition (entry == 0 [|| boundary])
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(readHelperForWidth(w));
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Load((U32)offsetof(CPU, memHelperValue));
-    m_emitter.emitLocalSet(tmp->hardwareReg());
+    m_emitter.emitI32Load((U32)offsetof(CPU, wasmReadPageBaseArray));
+    pushRegValue(addressReg);
+    m_emitter.emitI32Const(K_PAGE_SHIFT);
+    m_emitter.emitOp(WASM_I32_SHR_U);
+    m_emitter.emitI32Const(2);                  // sizeof(U32)
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Load(0);                   // entry = wasmReadPageBase[page]
+    m_emitter.emitLocalTee(entryLocal);
+    m_emitter.emitOp(WASM_I32_EQZ);
+
+    if (w != JitWidth::b8) {
+        U32 widthBytes = (w == JitWidth::b16) ? 2 : 4;
+        pushRegValue(addressReg);
+        m_emitter.emitI32Const(K_PAGE_MASK);
+        m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitI32Const((S32)(K_PAGE_SIZE - widthBytes));
+        m_emitter.emitOp(WASM_I32_GT_U);
+        m_emitter.emitOp(WASM_I32_OR);
+    }
+
+    m_emitter.emitIf();
+    {
+        // Slow path: existing helper-based load.
+        storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(readHelperForWidth(w));
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Load((U32)offsetof(CPU, memHelperValue));
+        m_emitter.emitLocalSet(tmp->hardwareReg());
+    }
+    m_emitter.emitElse();
+    {
+        // Fast path: tmp = i32.load{8u,16u,_}(entry + (addr & K_PAGE_MASK))
+        // entry holds the raw host base of the page; mask the address to
+        // get the in-page offset before adding (we don't use the
+        // (host_base - virt_page_base) trick the host-exception readCache
+        // does because under WASM the no-access sentinel can't be a low
+        // address that traps).
+        m_emitter.emitLocalGet(entryLocal);
+        pushRegValue(addressReg);
+        m_emitter.emitI32Const(K_PAGE_MASK);
+        m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitOp(WASM_I32_ADD);
+        switch (w) {
+        case JitWidth::b8:  m_emitter.emitI32Load8U(0);  break;
+        case JitWidth::b16: m_emitter.emitI32Load16U(0); break;
+        default:            m_emitter.emitI32Load(0, 0); break; // align=0 (unaligned-safe)
+        }
+        m_emitter.emitLocalSet(tmp->hardwareReg());
+    }
+    m_emitter.emitEnd();
+
+    m_gpDirty   = savedGpDirty;
+    m_gpLoaded  = savedGpLoaded;
+    m_segLoaded = savedSegLoaded;
+    freeScratch(entryLocal);
     return tmp;
 }
 
