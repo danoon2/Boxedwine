@@ -478,13 +478,9 @@ public:
     void dynamic_cmpxchge32r32(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_cmpxchgg8b(DecodedOp* op) override { emulateSingleOp(); }
 
-    // String ops: defer to the normal CPU interpreter. Base-class
-    // codegen reaches movsr/cmpsr which use Goto for a backward loop;
-    // Goto is a no-op under WASM (no arbitrary backward branch), so the
-    // rep'd 32-bit variants would execute exactly once and fail.
-    void dynamic_scasb_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_scasw_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_scasd_op(DecodedOp* op) override { emulateSingleOp(); }
+    // String ops (movs/cmps/stos/lods/scas, all widths) now use the
+    // base-class native codegen; the rep'd loops route through
+    // LoopBegin/LoopEnd which emit a structural WASM `loop`/`end` pair.
 
 
 
