@@ -175,6 +175,7 @@ void DecodedOpCache::clear() {
 	pendingDeallocs.clear();
 }
 
+#ifdef BOXEDWINE_JIT
 void DecodedOpCache::collectAllJitBlocks(std::vector<void*>& out) {
 	for (U32 firstIndex = 0; firstIndex < FIRST_INDEX_SIZE; firstIndex++) {
 		if (pageData[firstIndex] == emptyPageCacheLevel1) continue;
@@ -190,6 +191,7 @@ void DecodedOpCache::collectAllJitBlocks(std::vector<void*>& out) {
 		}
 	}
 }
+#endif
 
 void DecodedOpCache::clearPendingDeallocs(U32 threadId) {
 	if (pendingDeallocs.count(threadId)) {
