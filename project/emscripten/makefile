@@ -68,6 +68,7 @@ SOFT_SOURCES = $(wildcard $(PROJDIR)/lib/softfloat/source/*.c)
 SOFT_SOURCES += $(wildcard $(PROJDIR)/lib/softfloat/source/8086-SSE/*.c)
 
 TEST_SOURCES = $(wildcard $(PROJDIR)/source/test/*.cpp)
+TEST_SOURCES = $(wildcard $(PROJDIR)/source/test/**/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/sdl/emscripten/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
