@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release releasePerf test multiThreaded jit testJit multiThreadedJit
+.PHONY: default all clean release releasePerf test multiThreaded jit jitPerf testJit multiThreadedJit
 
 default all: release
 
@@ -34,6 +34,12 @@ jit: export BUILD_DIR := Build/Jit
 jit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
 jit: export SHELL_FILE := shell.html
 jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
+# Like jit but also copies the web-app support files into the build folder
+# so the directory is self-contained for deployment or local testing.
+jitPerf: export BUILD_DIR := Build/JitPerf
+jitPerf: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
+jitPerf: export SHELL_FILE := shell.html
+jitPerf: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
 # Like the test target but with the WASM JIT enabled, so the CPU test suite
 # exercises JIT-compiled blocks instead of the normal interpreter.
 testJit: export BUILD_DIR := Build/TestJit
@@ -66,6 +72,10 @@ jit release test testJit multiThreaded multiThreadedJit testMultiThreaded:
 releasePerf:
 	@$(MAKE)
 	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip Build/ReleasePerf/
+
+jitPerf:
+	@$(MAKE)
+	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip Build/JitPerf/
 
 clean:
 	$(RM) -r Build
