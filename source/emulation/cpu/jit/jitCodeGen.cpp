@@ -25,7 +25,7 @@
 #include "../../softmmu/kmemory_soft.h"
 
 static JitCodeGen::OpFunction dynamicOps[NUMBER_OF_OPS];
-static U32 dynamicOpsInitialized;
+static std::once_flag dynamicOpsInitFlag;
 
 void JitCodeGen::onTestEnd(DecodedOp* op) {
     writeCurrentEip(0);    
@@ -34,13 +34,11 @@ void JitCodeGen::onTestEnd(DecodedOp* op) {
 }
 
 static void initDynamicOps() {
-    if (dynamicOpsInitialized)
-        return;    
+    std::call_once(dynamicOpsInitFlag, []() {
     static_assert(offsetof(CPU, eip.u32) <= 127, "Jit needs eip to be in the first 127 bytes of the CPU");
     static_assert(offsetof(CPU, reg[8].u32) <= 127, "Jit needs reg to be in the first 127 bytes of the CPU");
     static_assert(offsetof(CPU, seg[6].address) <= 127, "Jit needs seg to be in the first 127 bytes of the CPU");
-    
-    dynamicOpsInitialized = 1;
+
     for (int i = 0; i < InstructionCount; i++) {
         dynamicOps[i] = &Jit::dynamic_invalid_op;
     }
@@ -78,6 +76,7 @@ static void initDynamicOps() {
     dynamicOps[INVLPG] = 0;
     dynamicOps[Callback] = &Jit::dynamic_callback;
     dynamicOps[TestEnd] = &JitCodeGen::dynamic_onTestEnd;
+    });
 }
 
 #ifdef _DEBUG
@@ -282,7 +281,7 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
 static DecodedOp* removeJITBlock(DecodedOp* op) {
 	U32 count = op->blockOpCount;
 
-    for (int i = 0; i < count; i++) {
+    for (U32 i = 0; i < count; i++) {
         op->pfnJitCode = nullptr;
         op->jitLen = 0;
         op->pfn = NormalCPU::getFunctionForOp(op);
@@ -2300,6 +2299,10 @@ void JitCodeGen::preIfCondition(JitConditional condition, bool& negative, RegPtr
 // cpu->reg[op->rm] = cpu->reg[op->rm] + cpu->reg[op->reg]
 // cpu->reg[op->reg] = cpu->reg[op->rm]
 void JitCodeGen::xaddReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
+    if (reg->hardwareReg() == rm->hardwareReg()) {
+        addReg(regWidth, rm, reg);
+        return;
+    }
     RegPtr tmp = getTmpReg();
     mov(regWidth, tmp, rm);
     addReg(regWidth, rm, reg);

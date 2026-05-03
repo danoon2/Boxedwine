@@ -442,18 +442,21 @@ void Jit::dynamic_rcl32cl_reg_op(DecodedOp* op) {
         IfTest(JitWidth::b8, src, 0x1f); {         
             RegPtr reg = getReg(op->reg);
             RegPtr cf = getTmpReg();
+            RegPtr count = getTmpReg();
 
             // cpu->setCF(((var1 >> (32 - var2)) & 1));            
-            mov(JitWidth::b32, cf, reg);            
+            mov(JitWidth::b32, cf, reg);
+            mov(JitWidth::b32, count, src);
+            andValue(JitWidth::b32, count, 0x1f);
 
             rclReg(JitWidth::b32, reg, src, oldCF);
             oldCF = nullptr;
-            andValue(JitWidth::b32, src, 0x1f);
             RegPtr tmp = getTmpReg();
             movValue(JitWidth::b32, tmp, 32);
-            subReg(JitWidth::b32, tmp, src);
+            subReg(JitWidth::b32, tmp, count);
             shrReg(JitWidth::b32, cf, tmp);
             tmp = nullptr;
+            count = nullptr;
             andValue(JitWidth::b32, cf, 1);
 
             writeRcl32Flags(reg, cf);
@@ -593,15 +596,18 @@ void Jit::dynamic_rcr32cl_reg_op(DecodedOp* op) {
         IfTest(JitWidth::b8, src, 0x1f); {
             RegPtr reg = getReg(op->reg);
             RegPtr cf = getTmpReg();
+            RegPtr count = getTmpReg();
 
             // cpu->setCF((var1 >> (var2 - 1)) & 1);
             mov(JitWidth::b32, cf, reg);
+            mov(JitWidth::b32, count, src);
+            andValue(JitWidth::b32, count, 0x1f);
             rcrReg(JitWidth::b32, reg, src, oldCF);
             oldCF = nullptr;
 
-            andValue(JitWidth::b32, src, 0x1f);
-            subValue(JitWidth::b32, src, 1);
-            shrReg(JitWidth::b32, cf, src);
+            subValue(JitWidth::b32, count, 1);
+            shrReg(JitWidth::b32, cf, count);
+            count = nullptr;
             andValue(JitWidth::b32, cf, 1);
 
             writeRcr32Flags(reg, cf);
@@ -791,8 +797,15 @@ void Jit::dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFl
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
 
     if (needsToSetFlags) {
-        RegPtr src = getTmpReg8(1, false, 1);
-        andValue(JitWidth::b32, src, 0x1f);
+        RegPtr src;
+
+        if (!doesShiftNeedToMask()) {
+            src = getReg(1);
+        } else {
+            src = getTmpReg8(1, false, 1);
+
+            andValue(JitWidth::b32, src, 0x1f);
+        }
         If(JitWidth::b8, src); {
             storeLazyFlagType(flagType);
             if (flags && flags->usesSrc(needsToSetFlags)) {
@@ -820,9 +833,16 @@ void Jit::dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFla
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
 
     if (needsToSetFlags) {
-        RegPtr src = getTmpReg8(1, false, 1);
+        RegPtr src;
 
-        andValue(JitWidth::b32, src, 0x1f);
+        if (!doesShiftNeedToMask()) {
+            src = getReg(1);
+        } else {
+            src = getTmpReg8(1, false, 1);
+
+            andValue(JitWidth::b32, src, 0x1f);
+        }
+        
         If(JitWidth::b8, src); {
             RegPtr dest = getReg(op->reg);
             RegPtr src2 = op->reg == op->rm ? dest : getReadOnlyReg(op->rm);

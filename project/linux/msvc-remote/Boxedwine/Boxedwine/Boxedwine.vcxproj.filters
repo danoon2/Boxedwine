@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\..\..\..\..\platform\linux\platform.cpp">
@@ -283,17 +283,17 @@
     <ClCompile Include="..\..\..\..\..\source\sdl\startupArgs.cpp">
       <Filter>source\sdl</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\test\testCPU.cpp">
-      <Filter>source\test</Filter>
+    <ClCompile Include="..\..\..\..\..\source\testOld\testCPU.cpp">
+      <Filter>source\test\cpu</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\test\testMMX.cpp">
-      <Filter>source\test</Filter>
+    <ClCompile Include="..\..\..\..\..\source\testOld\testMMX.cpp">
+      <Filter>source\test\cpu</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\test\testSSE.cpp">
-      <Filter>source\test</Filter>
+    <ClCompile Include="..\..\..\..\..\source\testOld\testSSE.cpp">
+      <Filter>source\test\cpu</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\test\testSSE2.cpp">
-      <Filter>source\test</Filter>
+    <ClCompile Include="..\..\..\..\..\source\testOld\testSSE2.cpp">
+      <Filter>source\test\cpu</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\ui\controls\appbar.cpp">
       <Filter>source\ui\control</Filter>
@@ -812,8 +812,8 @@
     <ClCompile Include="..\..\..\..\..\lib\softfloat\source\s_mul64To128.c">
       <Filter>softfloat</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\test\testFPU.cpp">
-      <Filter>source\test</Filter>
+    <ClCompile Include="..\..\..\..\..\source\testOld\testFPU.cpp">
+      <Filter>source\test\cpu</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\codePageData.cpp">
       <Filter>source\emulation\softmmu</Filter>
@@ -1102,7 +1102,7 @@
     <Filter Include="source\sdl\singleThreaded">
       <UniqueIdentifier>{043a71c5-3a80-4dc7-8599-4611e8f81381}</UniqueIdentifier>
     </Filter>
-    <Filter Include="source\test">
+    <Filter Include="source\test\cpu">
       <UniqueIdentifier>{60e8cbdd-c22b-4508-a4b0-015b1f54493f}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\ui">
@@ -1641,17 +1641,17 @@
     <ClInclude Include="..\..\..\..\..\source\sdl\startupArgs.h">
       <Filter>source\sdl</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\test\testCPU.h">
-      <Filter>source\test</Filter>
+    <ClInclude Include="..\..\..\..\..\source\testOld\testCPU.h">
+      <Filter>source\test\cpu</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\test\testMMX.h">
-      <Filter>source\test</Filter>
+    <ClInclude Include="..\..\..\..\..\source\testOld\testMMX.h">
+      <Filter>source\test\cpu</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\test\testSSE.h">
-      <Filter>source\test</Filter>
+    <ClInclude Include="..\..\..\..\..\source\testOld\testSSE.h">
+      <Filter>source\test\cpu</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\test\testSSE2.h">
-      <Filter>source\test</Filter>
+    <ClInclude Include="..\..\..\..\..\source\testOld\testSSE2.h">
+      <Filter>source\test\cpu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\ui\controls\appbar.h">
       <Filter>source\ui\control</Filter>
@@ -2385,8 +2385,8 @@
     <ClInclude Include="..\..\..\..\..\lib\softfloat\source\8086-SSE\specialize.h">
       <Filter>softfloat\8086-SSE</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\test\testFPU.h">
-      <Filter>source\test</Filter>
+    <ClInclude Include="..\..\..\..\..\source\testOld\testFPU.h">
+      <Filter>source\test\cpu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\codePageData.h">
       <Filter>source\emulation\softmmu</Filter>

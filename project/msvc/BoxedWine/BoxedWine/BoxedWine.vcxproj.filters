@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\..\..\..\source\emulation\cpu\decoder.cpp">
@@ -184,9 +184,6 @@
     <ClCompile Include="..\..\..\..\source\util\log.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\test\testCPU.cpp">
-      <Filter>source\test</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.c">
       <Filter>minizip</Filter>
     </ClCompile>
@@ -277,14 +274,113 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_sse2.cpp">
       <Filter>source\emulation\cpu\common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\test\testMMX.cpp">
+    <ClCompile Include="..\..\..\..\source\test\testMain.cpp">
       <Filter>source\test</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\test\testSSE.cpp">
-      <Filter>source\test</Filter>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testAdc.cpp">
+      <Filter>source\test\cpu</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\test\testSSE2.cpp">
-      <Filter>source\test</Filter>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testAdd.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testAnd.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testBCD.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testBit.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testCMov.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testCallRet.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testCmp.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testCPU.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testFPU.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testIncDec.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testJmp.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testLoadSeg.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testLoop.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testMisc.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testMov.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testMulDiv.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testNegNot.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testMMX.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testOr.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testPushPop.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testPushPopSeg.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testSbb.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testSegPrefix.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testSet.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testShift.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testSSE.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testString.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testSub.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testTest.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testX86Binary.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testX86Util.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testXchg.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\cpu\testXor.cpp">
+      <Filter>source\test\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\mmu\testSelfModifying.cpp">
+      <Filter>source\test\mmu</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\kernel\sys\cpuonline.cpp">
       <Filter>source\kernel\sys</Filter>
@@ -825,9 +921,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\softfloat\source\s_mul64To128.c">
       <Filter>softfloat</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\test\testFPU.cpp">
-      <Filter>source\test</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\codePageData.cpp">
       <Filter>source\emulation\softmmu</Filter>
@@ -1377,17 +1470,113 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_sse2.h">
       <Filter>source\emulation\cpu\normal</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\test\testCPU.h">
-      <Filter>source\test</Filter>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testAdc.h">
+      <Filter>source\test\cpu</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\test\testMMX.h">
-      <Filter>source\test</Filter>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testAdd.h">
+      <Filter>source\test\cpu</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\test\testSSE.h">
-      <Filter>source\test</Filter>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testAsmJit.h">
+      <Filter>source\test\cpu</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\test\testSSE2.h">
-      <Filter>source\test</Filter>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testAnd.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testBCD.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testBit.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testCMov.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testCallRet.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testCmp.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testCPU.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testFPU.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testIncDec.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testJmp.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testLoadSeg.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testLoop.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testMisc.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testMov.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testMulDiv.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testNegNot.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testMMX.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testOr.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testPushPop.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testPushPopSeg.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testSbb.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testSegPrefix.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testSet.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testShift.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testSSE.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testString.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testSub.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testTest.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testX86Binary.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testX86Util.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testXchg.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\cpu\testXor.h">
+      <Filter>source\test\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\mmu\testSelfModifying.h">
+      <Filter>source\test\mmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\syscpuonline.h">
       <Filter>include</Filter>
@@ -1763,9 +1952,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\lib\softfloat\source\include\platform.h">
       <Filter>softfloat\include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\test\testFPU.h">
-      <Filter>source\test</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\codePageData.h">
       <Filter>source\emulation\softmmu</Filter>
@@ -2181,7 +2367,13 @@
       <UniqueIdentifier>{90c464bf-108e-4f85-88e5-fa61083787c5}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\test">
+      <UniqueIdentifier>{49a28c26-9cbd-4f73-95ef-5ca1ccf76907}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\test\cpu">
       <UniqueIdentifier>{22aaa7cb-e4a1-49e8-9844-58102a85f567}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\test\mmu">
+      <UniqueIdentifier>{3d1446d3-e214-497b-92ba-b7cc4ae1148e}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\util">
       <UniqueIdentifier>{61d9f8bc-45fb-4306-81d6-fcd7fe308745}</UniqueIdentifier>

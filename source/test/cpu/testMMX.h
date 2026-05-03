@@ -1,0 +1,34 @@
+/*
+ *  Copyright (C) 2012-2026  The BoxedWine Team
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ */
+
+#ifndef __TEST_MMX_H__
+#define __TEST_MMX_H__
+
+void testMmxMovd_0x36e_0x37e();
+void testMmxMovq_0x36f_0x37f();
+void testMmxPadd_0x3fc_0x3fd_0x3fe();
+void testMmxLogic_0x3db_0x3df_0x3eb_0x3ef();
+void testMmxUnpackPackCompare_0x360_0x361_0x362_0x363_0x364_0x365_0x366_0x367_0x368_0x369_0x36a_0x36b_0x374_0x375_0x376();
+void testMmxShiftImm_0x371_0x372_0x373();
+void testMmxShiftReg_0x3d1_0x3d2_0x3d3_0x3e1_0x3e2_0x3f1_0x3f2_0x3f3();
+void testMmxSaturatingArithmetic_0x3d8_0x3d9_0x3dc_0x3dd_0x3e8_0x3e9_0x3ec_0x3ed();
+void testMmxMultiplySubtract_0x3d4_0x3d5_0x3e5_0x3f5_0x3f8_0x3f9_0x3fa();
+void testMmxPmovmskb_0x3d7();
+void testMmxPminub_0x3da();
+void testMmxPmaxub_0x3de();
+void testMmxPavgb_0x3e0();
+void testMmxPavgw_0x3e3();
+void testMmxPmulhuw_0x3e4();
+void testMmxMovntq_0x3e7();
+void testMmxPminsw_0x3ea();
+void testMmxPmaxsw_0x3ee();
+void testMmxPsadbw_0x3f6();
+void testMmxMaskmovq_0x3f7();
+
+#endif

@@ -77,15 +77,18 @@ static U8 XMMtmps[] = { 12, 13, 14, 15 };
 #ifdef _WIN32
 // RBX, RBP, RSP, RDI, RSI, R12, R13, R14, and R15 are non volitile
 static bool isVolitile[] = { true, true, true, false, false, false, false, false, true, true, true, true, false, false, false, false };
+static bool isSseVolitile[] = { true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false };
 #else
 // RBX, RBP, RSP, and R12–R15 are non volitile
 static bool isVolitile[] = { true, true, true, false, false, false, true, true, true, true, true, true, false, false, false, false };
+static bool isSseVolitile[] = { true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false };
 #endif
 
 #else
 U8 regCache[] = { 5, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG };
 U8 xmmCache[] = { INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG, INVALID_REG };
 static bool isVolitile[] = { true, true, true, false, false, false, false, false };
+static bool isSseVolitile[] = { true, true, true, true, true, true, true, true };
 static bool isTmp[] = { true, true, true, true, false, false, true, false };
 static U8 tmps[] = { 6, 3, 2, 1, 0 }; // if changed, sync up with getConditionCalculationReg
 static U8 XMMtmps[] = { 4, 5, 6, 7 };
@@ -802,6 +805,14 @@ protected:
     void IfPF();
     void IfCF();
     void IfZF();
+
+    bool doesShiftNeedToMask() override { 
+#ifdef BOXEDWINE_64
+        return false; 
+#else
+        return true;
+#endif
+    }
 #ifdef BOXEDWINE_64
     asmjit::x86::Gp params[4];
 #endif
@@ -1776,26 +1787,23 @@ void JitX86CodeGen::rcrValue(JitWidth regWidth, RegPtr reg, U32 imm, RegPtr cf) 
 }
 
 void JitX86CodeGen::shldReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl) {
-    if (rm->hardwareReg() != 1) {
+    if (cl->hardwareReg() != 1) {
         compiler.push(RN(1));
-    }
-    if (reg->hardwareReg() == 1 || rm->hardwareReg() == 1) {
-        kpanic("JitX86CodeGen::shldReg cl");
+        // if rm is ecx, then we would overwrite it when
+        // if reg is ecx, then we would overwrite the result when we pop ecx
+        if (reg->hardwareReg() == 1 || rm->hardwareReg() == 1) {
+            kpanic("JitX86CodeGen::shldReg cl");
+        }
+        compiler.mov(regEcx, R32(cl));
     }
     if (regWidth == JitWidth::b32) {
-        if (rm->hardwareReg() != 1) {
-            compiler.mov(regEcx, R32(cl));
-        }
         compiler.shld(R32(reg), R32(rm), regEcx);
     } else if (regWidth == JitWidth::b16) {
-        if (rm->hardwareReg() != 1) {
-            compiler.mov(regCx, R16(cl));
-        }
         compiler.shld(R16(reg), R16(rm), regCx);
     } else {
         kpanic("JitX86CodeGen::shldReg");
     }
-    if (rm->hardwareReg() != 1) {
+    if (cl->hardwareReg() != 1) {
         compiler.pop(RN(1));
     }
 }
@@ -1813,26 +1821,25 @@ void JitX86CodeGen::shldValue(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 imm)
 }
 
 void JitX86CodeGen::shrdReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl) {
-    if (rm->hardwareReg() != 1) {
+    bool countAlreadyInEcx = cl->hardwareReg() == 1 || reg->hardwareReg() == 1 || rm->hardwareReg() == 1;
+
+    if (!countAlreadyInEcx) {
         compiler.push(RN(1));
     }
-    if (reg->hardwareReg() == 1 || rm->hardwareReg() == 1) {
-        kpanic("JitX86CodeGen::shrdReg cl");
-    }
     if (regWidth == JitWidth::b32) {
-        if (rm->hardwareReg() != 1) {
+        if (!countAlreadyInEcx) {
             compiler.mov(regEcx, R32(cl));
         }
         compiler.shrd(R32(reg), R32(rm), regEcx);
     } else if (regWidth == JitWidth::b16) {
-        if (rm->hardwareReg() != 1) {
+        if (!countAlreadyInEcx) {
             compiler.mov(regCx, R16(cl));
         }
         compiler.shrd(R16(reg), R16(rm), regCx);
     } else {
         kpanic("JitX86CodeGen::shrdReg");
     }
-    if (rm->hardwareReg() != 1) {
+    if (!countAlreadyInEcx) {
         compiler.pop(RN(1));
     }
 }
@@ -1920,6 +1927,10 @@ RegPtr JitX86CodeGen::compareValue(JitWidth regWidth, RegPtr reg, U32 value, Jit
 }
 
 void JitX86CodeGen::xaddReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
+    if (reg->hardwareReg() == rm->hardwareReg()) {
+        addReg(regWidth, rm, reg);
+        return;
+    }
     if (regWidth == JitWidth::b32) {
         compiler.xadd(R32(rm), R32(reg));
     } else if (regWidth == JitWidth::b16) {
@@ -5576,6 +5587,15 @@ void JitX86CodeGen::direct_test(JitWidth width, RegPtr left, U32 right) {
 }
 
 U8* JitX86CodeGen::createStartJITCode() {
+    for (int i = 0; i < NUMBER_OF_XMM_REG; i++) {
+        if (!isSseVolitile[i]) {
+#ifdef BOXEDWINE_64
+            compiler.movups(Mem(params[0], offsetof(CPU, storedXMMRegs[0]) + sizeof(SSE) * i), XMM(i));
+#else
+            compiler.movups(Mem(regEcx, offsetof(CPU, storedXMMRegs[0]) + sizeof(SSE) * i), XMM(i));
+#endif
+        }
+    }
 #ifdef BOXEDWINE_64
     for (int i = 0; i < NUMBER_OF_REGS; i++) {
         if (!isVolitile[i]) {
@@ -5622,6 +5642,11 @@ U8* JitX86CodeGen::createStartJITCode() {
 
     writeCache();
 
+    for (int i = 0; i < NUMBER_OF_XMM_REG; i++) {
+        if (!isSseVolitile[i]) {
+            compiler.movups(XMM(i), Mem(HOST_CPU, offsetof(CPU, storedXMMRegs[0]) + sizeof(SSE) * i));
+        }
+    }
 #ifdef BOXEDWINE_64
     compiler.mov(R64(0), HOST_CPU);
     for (int i = 0; i < NUMBER_OF_REGS; i++) {

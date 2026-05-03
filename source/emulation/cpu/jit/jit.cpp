@@ -820,8 +820,13 @@ void Jit::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg callbac
             dest = getReg8(op->rm);
         }
     } else {
-        src = getReg(op->reg);
-        dest = getReg(op->rm);
+        if (op->reg == op->rm) {
+            src = getReg(op->reg);
+            dest = src;
+        } else {
+            src = getReg(op->reg);
+            dest = getReg(op->rm);
+        }
     }
     if (flags && flags->usesSrc(needsToSetFlags)) {
         storeLazyFlagsSrc(src);

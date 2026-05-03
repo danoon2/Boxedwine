@@ -228,14 +228,18 @@ void DecodedOpCache::removeAll() {
 	for (U32 firstIndex = 0; firstIndex < FIRST_INDEX_SIZE; firstIndex++) {
 		if (pageData[firstIndex] != emptyPageCacheLevel1) {
 			for (U32 secondIndex = 0; secondIndex < SECOND_INDEX_SIZE; secondIndex++) {
-				delete pageData[firstIndex][secondIndex];
+				if (pageData[firstIndex][secondIndex]) {
+					delete pageData[firstIndex][secondIndex];
+				}
 			}
 			delete[] pageData[firstIndex];
 			pageData[firstIndex] = emptyPageCacheLevel1;
 		}
 		if (writeCounts[firstIndex]) {
 			for (U32 secondIndex = 0; secondIndex < SECOND_INDEX_SIZE; secondIndex++) {
-				delete writeCounts[firstIndex][secondIndex];
+				if (writeCounts[firstIndex][secondIndex]) {
+					delete writeCounts[firstIndex][secondIndex];
+				}
 			}
 			delete[] writeCounts[firstIndex];
 			writeCounts[firstIndex] = nullptr;

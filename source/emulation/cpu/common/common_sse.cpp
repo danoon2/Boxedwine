@@ -20,6 +20,56 @@
 #include "common_sse.h"
 #include <math.h>
 
+static U32 commonSseRoundToI32(double value, U32 mxcsr, bool truncate) {
+    if (!isfinite(value)) {
+        return 0x80000000;
+    }
+
+    double rounded;
+    if (truncate) {
+        rounded = value < 0 ? ceil(value) : floor(value);
+    } else {
+        switch ((mxcsr >> 13) & 3) {
+        case ROUND_Nearest: {
+            double floorValue = floor(value);
+            double fraction = value - floorValue;
+            if (fraction > 0.5) {
+                rounded = floorValue + 1.0;
+            } else if (fraction < 0.5) {
+                rounded = floorValue;
+            } else {
+                rounded = (((S64)floorValue) & 1) ? floorValue + 1.0 : floorValue;
+            }
+            break;
+        }
+        case ROUND_Down:
+            rounded = floor(value);
+            break;
+        case ROUND_Up:
+            rounded = ceil(value);
+            break;
+        case ROUND_Chop:
+        default:
+            rounded = value < 0 ? ceil(value) : floor(value);
+            break;
+        }
+    }
+
+    if (rounded < -2147483648.0 || rounded > 2147483647.0) {
+        return 0x80000000;
+    }
+    return (U32)(S32)rounded;
+}
+
+static U32 commonSseRoundF32ToI32(U32 value, U32 mxcsr, bool truncate) {
+    union {
+        U32 i;
+        float f;
+    } f;
+    f.i = value;
+    return commonSseRoundToI32((double)f.f, mxcsr, truncate);
+}
+
 void common_addpsXmm(CPU* cpu, U32 r1, U32 r2) {
     cpu->xmm[r1].ps = simde_mm_add_ps(cpu->xmm[r1].ps, cpu->xmm[r2].ps);
 }
@@ -457,14 +507,13 @@ void common_cvtpi2psXmmE64(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_cvtps2piMmxXmm(CPU* cpu, U32 r1, U32 r2) {
-    cpu->fpu.getMMX(r1)->q = simde_mm_cvtps_pi32(cpu->xmm[r2].ps).u64[0];
+    cpu->fpu.getMMX(r1)->q = ((U64)commonSseRoundF32ToI32(cpu->xmm[r2].ps.u32[1], cpu->mxcsr, false) << 32) | commonSseRoundF32ToI32(cpu->xmm[r2].ps.u32[0], cpu->mxcsr, false);
     cpu->fpu.startMMX();
 }
 
 void common_cvtps2piMmxE64(CPU* cpu, U32 reg, U32 address) {
-    simde__m128 value;
-    value.u64[0] = cpu->memory->readq(address);
-    cpu->fpu.getMMX(reg)->q = simde_mm_cvtps_pi32(value).u64[0];
+    U64 value = cpu->memory->readq(address);
+    cpu->fpu.getMMX(reg)->q = ((U64)commonSseRoundF32ToI32((U32)(value >> 32), cpu->mxcsr, false) << 32) | commonSseRoundF32ToI32((U32)value, cpu->mxcsr, false);
     cpu->fpu.startMMX();
 }
 
@@ -477,13 +526,11 @@ void common_cvtsi2ssXmmE32(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_cvtss2siR32Xmm(CPU* cpu, U32 r1, U32 r2) {
-    cpu->reg[r1].u32 = (U32)simde_mm_cvtss_si32(cpu->xmm[r2].ps);
+    cpu->reg[r1].u32 = commonSseRoundF32ToI32(cpu->xmm[r2].ps.u32[0], cpu->mxcsr, false);
 }
 
 void common_cvtss2siR32E32(CPU* cpu, U32 reg, U32 address) {
-    simde__m128 value;
-    value.u32[0] = cpu->memory->readd(address);
-    cpu->reg[reg].u32 = (U32)simde_mm_cvtss_si32(value);
+    cpu->reg[reg].u32 = commonSseRoundF32ToI32(cpu->memory->readd(address), cpu->mxcsr, false);
 }
 
 void common_cvttps2piMmxXmm(CPU* cpu, U32 r1, U32 r2) {

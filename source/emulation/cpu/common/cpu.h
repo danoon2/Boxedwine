@@ -356,6 +356,9 @@ public:
 #endif
 #ifdef BOXEDWINE_JIT_X64
     U64 storedRegs[16];    
+    SSE storedXMMRegs[16];
+#elif defined (BOXEDWINE_JIT_X86)
+    SSE storedXMMRegs[8];
 #endif
 #endif
     U32 flagZeroMask[52] = {

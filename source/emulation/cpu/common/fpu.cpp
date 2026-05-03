@@ -670,7 +670,12 @@ void FPU::FUCOM(CPU* cpu, int st, int other) {
 void FPU::FRNDINT() {
     if (isRegCached[this->top]) {
         double value = this->regCache[this->top].d;
-        this->regCache[this->top].d = (double)(S64)FROUND(value);
+        double rounded = FROUND(value);
+        if (rounded == 0.0 && signbit(value)) {
+            this->regCache[this->top].d = -0.0;
+        } else {
+            this->regCache[this->top].d = (double)(S64)rounded;
+        }
     } else {
         this->regs[this->top] = extF80_roundToInt(this->regs[this->top], getSoftRounding(), getSoftExact());
     }
@@ -1229,7 +1234,11 @@ void FPU::FXTRACT() {
 
 void FPU::FCHS() {
     if (isRegCached[top]) {
-        regCache[top].d = -1.0 * regCache[top].d;
+        if (regCache[top].d == 0.0) {
+            regCache[top].d = 0.0;
+        } else {
+            regCache[top].d = -1.0 * regCache[top].d;
+        }
     } else {
         regs[top].signExp ^= 0x8000;
     }
@@ -1415,3 +1424,4 @@ double& FPU::getF64(U32 reg) {
 U32 FPU::sizeofRegInRegsArray() {
     return (U32)(offsetof(FPU, regs[1])) - (U32)(offsetof(FPU, regs[0])); // weird offset calculation to take into account padding
 }
+

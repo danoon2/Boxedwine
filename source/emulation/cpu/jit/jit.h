@@ -149,7 +149,7 @@ public:
     virtual RegPtr getTmpReg8() = 0; // on x86 JIT, only EAX,ECX,EDX and EBX are capable of 8-bit operations, so this call allows asking for a tmp reg that is capable of 8-bit
     virtual RegPtr getTmpRegWithHint(S8 hint) = 0;
     virtual RegPtr getTmpRegForCallResult() = 0; // just a hint to try and get the same reg used for a call result in order to prevent an extra mov
-    virtual RegPtr getTmpReg(U8 reg, bool delayed = false, S8 hint = -1) = 0; // a reg that doesn't represent an emulated reg, but come pre-loaded with the emulated reg's current value
+    virtual RegPtr getTmpReg(U8 reg, bool delayed = false, S8 hint = -1) = 0; // returns a tmp register pre-loaded with the emulated reg's current value
     virtual RegPtr getTmpReg8(U8 reg, bool delayed = false, S8 hint = -1) = 0;
     virtual RegPtr getReadOnlySegAddress(U8 reg) = 0;
     virtual RegPtr getTmpSegAddress(U8 reg) = 0;
@@ -444,6 +444,8 @@ protected:
     void writeRcr32Flags(RegPtr reg, RegPtr cf);
 
     void setImulOverflowFlags(JitWidth width, RegPtr lower, RegPtr upper, U32 signMask, U32 allOnes);
+
+    virtual bool doesShiftNeedToMask() { return true; }
 };
 
 class JitFlags {
