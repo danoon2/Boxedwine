@@ -1,12 +1,17 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test multiThreaded jit testJit multiThreadedJit
+.PHONY: default all clean release releasePerf test multiThreaded jit testJit multiThreadedJit
 
 default all: release
 
 release: export BUILD_DIR := Build/Release
 release: export EXTRA_CPP_FLAGS := $(RELEASE_FLAGS)
 release: export SHELL_FILE := shell.html
+# Like release but also copies the web-app support files into the build folder
+# so the directory is self-contained for deployment or local testing.
+releasePerf: export BUILD_DIR := Build/ReleasePerf
+releasePerf: export EXTRA_CPP_FLAGS := $(RELEASE_FLAGS)
+releasePerf: export SHELL_FILE := shell.html
 test: export BUILD_DIR := Build/Test
 test: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC
 test: export SHELL_FILE := shelltest.html
@@ -58,6 +63,9 @@ endif
 jit release test testJit multiThreaded multiThreadedJit testMultiThreaded:
 	@$(MAKE)
 
+releasePerf:
+	@$(MAKE)
+	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip Build/ReleasePerf/
 
 clean:
 	$(RM) -r Build
