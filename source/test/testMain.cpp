@@ -666,14 +666,36 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
         runCount = requestedCount;
     }
 
-    printf("Running %zu Test tests", runCount);
+#ifdef __EMSCRIPTEN__
+    if (workerCount != 1) {
+        workerCount = 1;
+    }
+#else
+    if (!workerCount) {
+        workerCount = std::thread::hardware_concurrency();
+    }
+#endif
+    if (!workerCount) {
+        workerCount = 1;
+    }
+    if (workerCount > entryCount) {
+        workerCount = (U32)entryCount;
+    }
+    
+    printf("Running %zu Test tests with %d threads", runCount, workerCount);
     if (startEntry || runCount != entryCount) {
         printf(" starting at %zu", startEntry);
     }
     printf("\n");
     fflush(stdout);
+    
+    KSystem::startMicroCounter();
+    KSystem::init();
+    KSystem::videoOption = VIDEO_NO_WINDOW;
+    U32 startTime = KSystem::getMilliesSinceStart();
     testRunParallel(TEST_ENTRIES + startEntry, runCount, workerCount);
-    printf("%d tests FAILED\n", totalFails);
+    U32 stopTime = KSystem::getMilliesSinceStart();
+    printf("%d tests FAILED in %ds\n", totalFails, (stopTime - startTime) / 1000);
     return totalFails != 0;
 }
 

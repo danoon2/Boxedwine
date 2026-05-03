@@ -26,20 +26,11 @@ namespace {
 
 constexpr U32 TEST_PAGES_PER_SEG = 32;
 
-std::once_flag testSystemInit;
 std::mutex testContextCreateMutex;
 std::unique_ptr<TestContext> serialContext;
 std::vector<std::unique_ptr<TestContext>> parallelContexts;
 thread_local TestContext* currentContext = nullptr;
 thread_local bool runningParallelTest = false;
-
-void initSystemOnce() {
-    if (KSystem::getProcessCount() == 0) {
-        KSystem::startMicroCounter();
-        KSystem::init();
-        KSystem::videoOption = VIDEO_NO_WINDOW;
-    }
-}
 
 void setupSegments(TestContext& context) {
     CPU* cpu = context.cpu;
@@ -106,8 +97,6 @@ void resetMemory(TestContext& context) {
 }
 
 void createContext(TestContext& context) {
-    std::call_once(testSystemInit, initSystemOnce);
-
     context.process = KProcess::create();
     context.memory = KMemory::create(context.process.get());
     context.process->memory = context.memory;
@@ -230,21 +219,6 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
         return;
     }
 
-#ifdef __EMSCRIPTEN__
-    if (workerCount != 1) {
-        workerCount = 1;
-    }
-#else
-    if (!workerCount) {
-        workerCount = std::thread::hardware_concurrency();
-    }
-#endif
-    if (!workerCount) {
-        workerCount = 1;
-    }
-    if (workerCount > entryCount) {
-        workerCount = (U32)entryCount;
-    }
     ensureParallelContexts(workerCount);
 
     std::atomic<size_t> nextEntry(0);
