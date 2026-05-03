@@ -30,6 +30,14 @@
 #include <emscripten.h>
 #include <emscripten/em_js.h>
 
+#ifdef BOXEDWINE_MULTI_THREADED
+// Serializes addFunction()/removeFunction() calls across worker threads.
+// Under Emscripten pthreads the wasmTable is shared; wasmTable.grow() (called
+// internally by addFunction) is not thread-safe across workers. This mutex is
+// backed by Atomics on SharedArrayBuffer so it synchronizes cross-worker.
+static BOXEDWINE_MUTEX g_wasmJitTableMutex;
+#endif
+
 // ---------------------------------------------------------------------------
 // JS interop: compile and instantiate a WASM module synchronously.
 //
@@ -1988,6 +1996,10 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     if (m_wasmBinary.empty()) return;
 
     // Pass the helper function table to the JS instantiator.
+    // Under multiThreadedJit, serialize wasmTable mutations across workers.
+#ifdef BOXEDWINE_MULTI_THREADED
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(g_wasmJitTableMutex);
+#endif
     int tableIdx = boxedwine_wasm_instantiate(
         m_wasmBinary.data(),
         (int)m_wasmBinary.size(),
@@ -2057,6 +2069,9 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
         if (!p) continue;
         int tableIdx = (int)(uintptr_t)p;
         if (seen.insert(tableIdx).second) {
+#ifdef BOXEDWINE_MULTI_THREADED
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(g_wasmJitTableMutex);
+#endif
             boxedwine_wasm_free_block(tableIdx);
         }
     }
