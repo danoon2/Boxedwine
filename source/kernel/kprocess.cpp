@@ -127,8 +127,6 @@ void KProcess::onExec(KThread* thread) {
     }
     this->threads.clear();
     this->threads.set(thread->id, thread);
-
-    this->initStdio();
     
     for (int i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i].seg_not_present = 1;
@@ -864,8 +862,7 @@ void KProcess::signalCHLD(U32 code, U32 childPid, U32 sendingUID, S32 exitCode) 
     this->sigActions[K_SIGCHLD].sigInfo[3] = childPid;
     this->sigActions[K_SIGCHLD].sigInfo[4] = sendingUID;
     this->sigActions[K_SIGCHLD].sigInfo[5] = exitCode;
-    // not sure why this causes crashes
-    //signalProcess(K_SIGCHLD);
+    signalProcess(K_SIGCHLD);
 }
 
 void KProcess::signalALRM() {
@@ -1644,7 +1641,7 @@ U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 t
         newThread->cpu->eip.u32 = newThread->cpu->peek32(0);
         //klog("starting %d/%d", newThread->process->id, newThread->id);
         scheduleThread(newThread);
-        return this->id;
+        return newThread->id;
     } else {
         kpanic_fmt("sys_clone does not implement flags: %X", flags);
         return 0;
@@ -2120,9 +2117,14 @@ U32 KProcess::set_thread_area(KThread* thread, U32 info) {
     struct user_desc desc;    
 
     memory->memcpy((U8*)&desc, info, sizeof(struct user_desc));
+    bool emptyDesc = desc.read_exec_only && desc.seg_not_present;
+
     if (desc.entry_number==(U32)(-1)) {
         U32 i;
 
+        if (emptyDesc) {
+            return -K_EINVAL;
+        }
         for (i=0;i<TLS_ENTRIES;i++) {
             if (this->usedTLS[i]==0) {
                 desc.entry_number=i+TLS_ENTRY_START_INDEX;
@@ -2135,14 +2137,15 @@ U32 KProcess::set_thread_area(KThread* thread, U32 info) {
         }
         memory->memcpy(info, (U8*)&desc, sizeof(struct user_desc));
     }
-    if (desc.base_addr!=0) {
-        if (desc.entry_number<TLS_ENTRY_START_INDEX || desc.entry_number>=TLS_ENTRIES+TLS_ENTRY_START_INDEX) {
-            return -K_ESRCH;
-        }
-        this->usedTLS[desc.entry_number-TLS_ENTRY_START_INDEX]=1;
-
-        thread->setTLS(&desc);
+    if (desc.entry_number<TLS_ENTRY_START_INDEX || desc.entry_number>=TLS_ENTRIES+TLS_ENTRY_START_INDEX) {
+        return -K_ESRCH;
     }
+    if (emptyDesc) {
+        this->usedTLS[desc.entry_number-TLS_ENTRY_START_INDEX]=0;
+    } else {
+        this->usedTLS[desc.entry_number-TLS_ENTRY_START_INDEX]=1;
+    }
+    thread->setTLS(&desc);
     return 0;
 }
 

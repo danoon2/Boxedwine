@@ -382,6 +382,9 @@
     <ClCompile Include="..\..\..\..\source\test\mmu\testSelfModifying.cpp">
       <Filter>source\test\mmu</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\process\testWaitPid.cpp">
+      <Filter>source\test\process</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\kernel\sys\cpuonline.cpp">
       <Filter>source\kernel\sys</Filter>
     </ClCompile>
@@ -2374,6 +2377,9 @@
     </Filter>
     <Filter Include="source\test\mmu">
       <UniqueIdentifier>{3d1446d3-e214-497b-92ba-b7cc4ae1148e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\test\process">
+      <UniqueIdentifier>{d461c471-20dc-4bd1-bf70-e7e737db1d91}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\util">
       <UniqueIdentifier>{61d9f8bc-45fb-4306-81d6-fcd7fe308745}</UniqueIdentifier>

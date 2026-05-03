@@ -3851,6 +3851,7 @@
     <ClCompile Include="..\..\..\..\source\test\cpu\testXchg.cpp" />
     <ClCompile Include="..\..\..\..\source\test\cpu\testXor.cpp" />
     <ClCompile Include="..\..\..\..\source\test\mmu\testSelfModifying.cpp" />
+    <ClCompile Include="..\..\..\..\source\test\process\testWaitPid.cpp" />
     <ClCompile Include="..\..\..\..\source\ui\controls\appbar.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">Use</PrecompiledHeader>

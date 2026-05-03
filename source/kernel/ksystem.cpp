@@ -362,36 +362,39 @@ U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
     KProcessPtr process;
     U32 result = 0;
     KMemory* memory = thread->memory;
+    U32 parentId = thread->process->id;
+    U32 parentGroupId = thread->process->groupId;
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
 
     while (!process) {
+        bool hasChild = false;
+
         if (pid>0) {
             process = KSystem::processes[pid];		
-            if (!process) {
+            if (!process || process->parentId != parentId) {
                 return -K_ECHILD;
-            }	
+            }
+            hasChild = true;
             if (!process->isStopped() && !process->isTerminated()) {
                 process = 0;			
             }
         } else {
-            if (pid==0)
-                pid = thread->process->groupId;
             for (auto& n : KSystem::processes) {
                 KProcessPtr p = n.value;
-                if (p && (p->isStopped() || p->isTerminated())) {
-                    if (pid == -1) {
-                        if (p->parentId == thread->process->id) {
-                            process = p;
-                            break;
-                        }
-                    } else {
-                        if (p->groupId == (U32)(-pid)) {
-                            process = p;
-                            break;
-                        }
+                if (!p || p->parentId != parentId) {
+                    continue;
+                }
+                if (pid == -1 || (pid == 0 && p->groupId == parentGroupId) || (pid < -1 && p->groupId == (U32)(-pid))) {
+                    hasChild = true;
+                    if (p->isStopped() || p->isTerminated()) {
+                        process = p;
+                        break;
                     }
                 }
+            }
+            if (!hasChild) {
+                return -K_ECHILD;
             }
         }
         if (!process) {
