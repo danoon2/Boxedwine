@@ -8,7 +8,7 @@ release: export BUILD_DIR := Build/Release
 release: export EXTRA_CPP_FLAGS := $(RELEASE_FLAGS)
 release: export SHELL_FILE := shell.html
 test: export BUILD_DIR := Build/Test
-test: export EXTRA_CPP_FLAGS := -D__TEST
+test: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC
 test: export SHELL_FILE := shelltest.html
 test: export EXTRA_LD_FLAGS := --emrun
 multiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -pthread
@@ -67,8 +67,8 @@ SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
 SOFT_SOURCES = $(wildcard $(PROJDIR)/lib/softfloat/source/*.c)
 SOFT_SOURCES += $(wildcard $(PROJDIR)/lib/softfloat/source/8086-SSE/*.c)
 
-TEST_SOURCES = $(wildcard $(PROJDIR)/source/test/*.cpp)
-TEST_SOURCES = $(wildcard $(PROJDIR)/source/test/**/*.cpp)
+TEST_SOURCES = $(shell find $(PROJDIR)/lib/asmjit/asmjit -type f -name '*.cpp')
+TEST_SOURCES += $(wildcard $(PROJDIR)/source/test/**/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/sdl/emscripten/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
@@ -99,7 +99,7 @@ ALL := $(OBJS)
 ALL += $(SOFT_OBJS)
 DEPS := $(ALL:.o=.d)
 
-$(OBJS): INCLUDES := -I../../include -I../../lib/simde
+$(OBJS): INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/simde
 $(SOFT_OBJS): INCLUDES := -I../../lib/softfloat/source/include -I../../lib/softfloat/source -I../../lib/softfloat/source/8086-SSE
 
 CXXFLAGS ?= -std=c++20
