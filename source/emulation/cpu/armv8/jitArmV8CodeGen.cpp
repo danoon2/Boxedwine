@@ -5674,7 +5674,7 @@ void JitArmV8CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
                 compiler.mov(wTmp8, wEDX);
                 compiler.caspal(wTmp7, wTmp8, wEBX, wECX, Mem(R64(addressReg)));
                 compiler.cmp(wEAX, wTmp7);
-                compiler.ccmp(wEDX, wTmp8, 15, asmjit::a64::CondCode::kEQ); // if prev cmp was equal, then cmp edx,tmp2, else set flags                
+                compiler.ccmp(wEDX, wTmp8, 0, asmjit::a64::CondCode::kEQ); // if EAX matched, compare EDX; otherwise force Z clear
                 compiler.cset(R32(tmp), asmjit::a64::CondCode::kEQ); // eq means z flag is set
                 compiler.bfi(xFLAGS, R32(tmp), 6, 1);
                 compiler.mov(wEAX, wTmp7);
@@ -5694,7 +5694,7 @@ void JitArmV8CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
             compiler.bind(label);
             compiler.ldaxp(R32(tmp1), R32(tmp2), Mem(R64(addressReg)));
             compiler.cmp(wEAX, R32(tmp1));
-            compiler.ccmp(wEDX, R32(tmp2), 15, asmjit::a64::CondCode::kEQ); // if prev cmp was equal, then cmp edx,tmp2, else set flags                
+            compiler.ccmp(wEDX, R32(tmp2), 0, asmjit::a64::CondCode::kEQ); // if EAX matched, compare EDX; otherwise force Z clear
 
             IfEqual(); {
                 compiler.stlxp(R32(tmp3), wEBX, wECX, Mem(R64(addressReg)));
