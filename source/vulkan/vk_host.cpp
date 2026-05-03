@@ -15,7 +15,7 @@ BoxedVulkanInfo* getInfoFromHandle(KMemory* memory, U32 address);
 void freeVulkanPtr(KMemory* memory, U32 p);
 void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size);
 void unregisterVkMemoryAllocation(VkDeviceMemory memory);
-U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize len);
+U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize offset, VkDeviceSize len);
 void unmapVkMemory(VkDeviceMemory memory);
 
 #define ARG1 cpu->peek32(1)
@@ -1321,7 +1321,7 @@ void vk_MapMemory(CPU* cpu) {
     void *pData = NULL;
     EAX = (U32)pBoxedInfo->pvkMapMemory(device, memory, offset, size, flags, &pData);
     if (EAX == 0) {
-        cpu->memory->writed(ARG6, mapVkMemory(memory, pData, size));
+        cpu->memory->writed(ARG6, mapVkMemory(memory, pData, offset, size));
     }
 }
 void vk_UnmapMemory(CPU* cpu) {
@@ -8062,7 +8062,7 @@ void vk_MapMemory2(CPU* cpu) {
     void *pData = NULL;
     EAX = (U32)pBoxedInfo->pvkMapMemory2(device, pMemoryMapInfo, &pData);
     if (EAX == 0) {
-        cpu->memory->writed(ARG3, mapVkMemory(pMemoryMapInfo->memory, pData, pMemoryMapInfo->size));
+        cpu->memory->writed(ARG3, mapVkMemory(pMemoryMapInfo->memory, pData, pMemoryMapInfo->offset, pMemoryMapInfo->size));
     }
 }
 // return type: VkResult(4 bytes)
@@ -8074,7 +8074,7 @@ void vk_MapMemory2KHR(CPU* cpu) {
     void *pData = NULL;
     EAX = (U32)pBoxedInfo->pvkMapMemory2KHR(device, pMemoryMapInfo, &pData);
     if (EAX == 0) {
-        cpu->memory->writed(ARG3, mapVkMemory(pMemoryMapInfo->memory, pData, pMemoryMapInfo->size));
+        cpu->memory->writed(ARG3, mapVkMemory(pMemoryMapInfo->memory, pData, pMemoryMapInfo->offset, pMemoryMapInfo->size));
     }
 }
 // return type: VkResult(4 bytes)
@@ -8084,6 +8084,9 @@ void vk_UnmapMemory2(CPU* cpu) {
     MarshalVkMemoryUnmapInfo local_pMemoryUnmapInfo(pBoxedInfo, cpu->memory, ARG2);
     VkMemoryUnmapInfo* pMemoryUnmapInfo = &local_pMemoryUnmapInfo.s;
     EAX = (U32)pBoxedInfo->pvkUnmapMemory2(device, pMemoryUnmapInfo);
+    if (EAX == 0) {
+        unmapVkMemory(pMemoryUnmapInfo->memory);
+    }
 }
 // return type: VkResult(4 bytes)
 void vk_UnmapMemory2KHR(CPU* cpu) {
@@ -8092,6 +8095,9 @@ void vk_UnmapMemory2KHR(CPU* cpu) {
     MarshalVkMemoryUnmapInfo local_pMemoryUnmapInfo(pBoxedInfo, cpu->memory, ARG2);
     VkMemoryUnmapInfo* pMemoryUnmapInfo = &local_pMemoryUnmapInfo.s;
     EAX = (U32)pBoxedInfo->pvkUnmapMemory2KHR(device, pMemoryUnmapInfo);
+    if (EAX == 0) {
+        unmapVkMemory(pMemoryUnmapInfo->memory);
+    }
 }
 // return type: VkResult(4 bytes)
 void vk_CreateShadersEXT(CPU* cpu) {

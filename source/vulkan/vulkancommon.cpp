@@ -175,7 +175,7 @@ void unregisterVkMemoryAllocation(VkDeviceMemory memory) {
     }
 }
 
-U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize len) {
+U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize offset, VkDeviceSize len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
     std::shared_ptr<VMemory> m = getVMemory(memory);
     if (!m) {
@@ -184,8 +184,14 @@ U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize len) {
     if (m->mappedAddress) {
         kpanic("Wasn't expecting mapVkMemory to be called twice on the same memory");
     }
-    if ((S32)len == -1) {
-        len = m->size;
+    if (offset > m->size) {
+        kpanic("mapVkMemory offset exceeds allocation size");
+    }
+    if (len == VK_WHOLE_SIZE) {
+        len = m->size - offset;
+    }
+    if (len > m->size - offset) {
+        kpanic("mapVkMemory range exceeds allocation size");
     }
     m->mappedLen = len;
     m->mappedAddress = KThread::currentThread()->memory->mapNativeMemory(pData, (U32)len);
@@ -324,7 +330,7 @@ void vk_EnumerateInstanceExtensionProperties(CPU* cpu) {
     U32 len = 0;
     char* pLayerName = nullptr;
     if (ARG1) {
-        len = cpu->memory->strlen(ARG1);
+        len = cpu->memory->strlen(ARG1) + 1;
         pLayerName = new char[len];
         cpu->memory->memcpy(pLayerName, ARG1, (U32)len * sizeof(char));
     }
