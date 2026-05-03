@@ -230,9 +230,15 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
         return;
     }
 
+#ifdef __EMSCRIPTEN__
+    if (workerCount != 1) {
+        workerCount = 1;
+    }
+#else
     if (!workerCount) {
         workerCount = std::thread::hardware_concurrency();
     }
+#endif
     if (!workerCount) {
         workerCount = 1;
     }
@@ -243,6 +249,41 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
 
     std::atomic<size_t> nextEntry(0);
     std::mutex printMutex;
+
+    auto runEntry = [&](U32 contextIndex, size_t entryIndex) {
+        bindParallelContext(contextIndex);
+        TestContext& context = *currentContext;
+        runningParallelTest = true;
+
+        context.failed = false;
+        context.failures.clear();
+        entries[entryIndex].function();
+        {
+            std::lock_guard<std::mutex> lock(printMutex);
+            printf("%s", entries[entryIndex].name);
+            printf(" ... ");
+            if (context.failed) {
+                printf("FAILED\n");
+                for (const std::string& failure : context.failures) {
+                    printf("  %s\n", failure.c_str());
+                }
+                failed("%s", entries[entryIndex].name);
+            } else {
+                printf("OK\n");
+            }
+            fflush(stdout);
+        }
+    };
+
+    if (workerCount == 1) {
+        for (size_t i = 0; i < entryCount; ++i) {
+            runEntry(0, i);
+        }
+        runningParallelTest = false;
+        currentContext = nullptr;
+        return;
+    }
+
     std::vector<std::thread> workers;
 
     for (U32 i = 0; i < workerCount; ++i) {
@@ -250,33 +291,12 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
             platformInitExceptionHandling();
 #endif
-            bindParallelContext(i);
-            TestContext& context = *currentContext;
-            runningParallelTest = true;
             while (true) {
                 size_t entryIndex = nextEntry.fetch_add(1);
                 if (entryIndex >= entryCount) {
                     break;
                 }
-
-                context.failed = false;
-                context.failures.clear();
-                entries[entryIndex].function();
-                {
-                    std::lock_guard<std::mutex> lock(printMutex);
-                    printf("%s", entries[entryIndex].name);
-                    printf(" ... ");
-                    if (context.failed) {
-                        printf("FAILED\n");
-                        for (const std::string& failure : context.failures) {
-                            printf("  %s\n", failure.c_str());
-                        }
-                        failed("%s", entries[entryIndex].name);
-                    } else {
-                        printf("OK\n");
-                    }
-                    fflush(stdout);
-                }
+                runEntry(i, entryIndex);
             }
             runningParallelTest = false;
             currentContext = nullptr;

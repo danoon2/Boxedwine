@@ -644,7 +644,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testSelfModifyingMovsb, "Test Self Modifying Code using movsb"},
     {testSelfModifyingFront, "Test Self Modifying Code Same Block(Previous)"},
     {testSelfModifyingBack, "Test Self Modifying Code Same Block(Next)"},
+#ifdef BOXEDWINE_MULTI_THREADED
     {testLockedInc, "Test Multi-threaded locked inc"},
+#endif
 };
 
 } // namespace
