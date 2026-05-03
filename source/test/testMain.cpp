@@ -51,6 +51,8 @@
 #include "cpu/testXor.h"
 #include "mmu/testSelfModifying.h"
 
+void testWaitPid();
+
 namespace {
 
 int totalFails = 0;
@@ -647,6 +649,7 @@ const TestEntry TEST_ENTRIES[] = {
 #ifdef BOXEDWINE_MULTI_THREADED
     {testLockedInc, "Test Multi-threaded locked inc"},
 #endif
+    {testWaitPid, "Test waitpid child selection"},
 };
 
 } // namespace
