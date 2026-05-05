@@ -15,7 +15,7 @@
 
 namespace {
 
-constexpr U32 WNOHANG = 1;
+constexpr U32 K_WNOHANG = 1;
 constexpr U32 STATUS_ADDRESS = TEST_HEAP_ADDRESS;
 
 KProcessPtr createWaitChild(const KProcessPtr& parent, U32 groupId, bool terminated, U32 exitCode = 0) {
@@ -52,14 +52,14 @@ void testWaitPid() {
     KProcessPtr nonChild = KProcess::create();
     nonChild->parentId = parent->id + 0x1000;
     nonChild->terminated = true;
-    expectWaitResult("waitpid(pid) rejects non-child", KSystem::waitpid(thread, nonChild->id, 0, WNOHANG), (U32)-K_ECHILD);
+    expectWaitResult("waitpid(pid) rejects non-child", KSystem::waitpid(thread, nonChild->id, 0, K_WNOHANG), (U32)-K_ECHILD);
     if (!KSystem::getProcess(nonChild->id)) {
         testFail("waitpid(pid) reaped a non-child process");
     }
     eraseIfPresent(nonChild->id);
 
     KProcessPtr runningChild = createWaitChild(parent, parent->groupId, false);
-    expectWaitResult("waitpid(pid, WNOHANG) reports running child", KSystem::waitpid(thread, runningChild->id, 0, WNOHANG), 0);
+    expectWaitResult("waitpid(pid, K_WNOHANG) reports running child", KSystem::waitpid(thread, runningChild->id, 0, K_WNOHANG), 0);
     eraseIfPresent(runningChild->id);
 
     KProcessPtr exitedChild = createWaitChild(parent, parent->groupId, true, 7);
@@ -72,15 +72,15 @@ void testWaitPid() {
     }
 
     KProcessPtr otherGroupChild = createWaitChild(parent, parent->groupId + 1, true, 3);
-    expectWaitResult("waitpid(0) ignores child in another process group", KSystem::waitpid(thread, 0, 0, WNOHANG), (U32)-K_ECHILD);
+    expectWaitResult("waitpid(0) ignores child in another process group", KSystem::waitpid(thread, 0, 0, K_WNOHANG), (U32)-K_ECHILD);
     eraseIfPresent(otherGroupChild->id);
 
     U32 targetGroupId = parent->groupId + 2;
     KProcessPtr groupChild = createWaitChild(parent, targetGroupId, true, 4);
-    expectWaitResult("waitpid(-pgid) reaps matching child group", KSystem::waitpid(thread, -(S32)targetGroupId, 0, WNOHANG), groupChild->id);
+    expectWaitResult("waitpid(-pgid) reaps matching child group", KSystem::waitpid(thread, -(S32)targetGroupId, 0, K_WNOHANG), groupChild->id);
 
     KProcessPtr anyChild = createWaitChild(parent, parent->groupId + 3, true, 5);
-    expectWaitResult("waitpid(-1) reaps any child", KSystem::waitpid(thread, -1, 0, WNOHANG), anyChild->id);
+    expectWaitResult("waitpid(-1) reaps any child", KSystem::waitpid(thread, -1, 0, K_WNOHANG), anyChild->id);
 
     parent->groupId = oldGroupId;
 }
