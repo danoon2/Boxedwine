@@ -487,6 +487,11 @@ void beginShift(U32 flags) {
     cpu->big = true;
 }
 
+void emitCmpEaxEax() {
+    pushCode8(0x39);
+    pushCode8(0xc0);
+}
+
 void initRegs(U32* regs) {
     for (int i = 0; i < 8; ++i) {
         regs[i] = REG_GUARD | (0x100 + i);
@@ -547,6 +552,151 @@ void runRegisterCase(ShiftOp op, int width, CountMode mode, int dstReg, const Sh
     runTestCPU();
     verifyRegisters(cpu, expectedRegs, caseName);
     verifyFlags(expected, caseName);
+}
+
+void runRegisterNoFlagCase(ShiftOp op, int width, int dstReg, const ShiftCase& data, const char* name) {
+    char caseName[180];
+    snprintf(caseName, sizeof(caseName), "%s %s reg no-flags reg=%d value=%x count=%u", name, opName(op), dstReg, data.value, data.count);
+    U32 regs[8];
+    initRegs(regs);
+    regs[R_CX] = data.count;
+    applyRegValue(regs, dstReg, width, data.value);
+
+    U32 actualInput = width == 8
+        ? ((dstReg >= 4 ? (regs[physicalReg8(dstReg)] >> 8) : regs[physicalReg8(dstReg)]) & 0xff)
+        : (regs[dstReg] & widthMask(width));
+    ShiftExpected expected = expectedShift(op, width, actualInput, (U8)(regs[R_CX] & 0xff), data.initialFlags);
+
+    U32 expectedRegs[8];
+    for (int i = 0; i < 8; ++i) {
+        expectedRegs[i] = regs[i];
+    }
+    applyRegValue(expectedRegs, dstReg, width, expected.result);
+
+    beginShift(data.initialFlags);
+    emitShift(op, regForWidth(dstReg, width), COUNT_CL, data.count);
+    emitCmpEaxEax();
+    writeRegsLocal(regs);
+    runTestCPU();
+    verifyRegisters(cpu, expectedRegs, caseName);
+    if ((actualFlags(cpu) & SHIFT_FLAG_MASK) != (PF | ZF)) {
+        failed("%s overwritten flags", caseName);
+    }
+}
+
+void runRegisterNoFlagCases(int width, const char* name) {
+    static const ShiftCase cases[] = {
+        {0x12345678, 4, CF | PF | ZF | SF | OF},
+        {0x87654321, 12, 0}
+    };
+    static const int byteRegs[] = {0, 1, 4, 5};
+    static const int wordDwordRegs[] = {R_AX, R_CX};
+    const int* regs = width == 8 ? byteRegs : wordDwordRegs;
+    size_t regCount = width == 8 ? caseCount(byteRegs) : caseCount(wordDwordRegs);
+
+    for (size_t opIndex = 0; opIndex < caseCount(SHIFT_OPS); ++opIndex) {
+        for (size_t regIndex = 0; regIndex < regCount; ++regIndex) {
+            for (size_t caseIndex = 0; caseIndex < caseCount(cases); ++caseIndex) {
+                runRegisterNoFlagCase(SHIFT_OPS[opIndex], width, regs[regIndex], cases[caseIndex], name);
+            }
+        }
+    }
+}
+
+U32 linearForBase(int base, U32 offset);
+void prepareMem(U32 address, U32 value, int width);
+void verifyMem(U32 address, U32 expected, int width, const char* name);
+
+void runRotateCarryImmediateRegisterNoFlagCase(ShiftOp op, int width, CountMode mode, int dstReg, const ShiftCase& data, const char* name) {
+    char caseName[180];
+    snprintf(caseName, sizeof(caseName), "%s %s reg imm no-flags reg=%d value=%x count=%u", name, opName(op), dstReg, data.value, data.count);
+    U32 regs[8];
+    initRegs(regs);
+    applyRegValue(regs, dstReg, width, data.value);
+
+    U8 count = mode == COUNT_ONE ? 1 : data.count;
+    U32 actualInput = width == 8
+        ? ((dstReg >= 4 ? (regs[physicalReg8(dstReg)] >> 8) : regs[physicalReg8(dstReg)]) & 0xff)
+        : (regs[dstReg] & widthMask(width));
+    ShiftExpected expected = expectedShift(op, width, actualInput, count, data.initialFlags);
+
+    U32 expectedRegs[8];
+    for (int i = 0; i < 8; ++i) {
+        expectedRegs[i] = regs[i];
+    }
+    applyRegValue(expectedRegs, dstReg, width, expected.result);
+
+    beginShift(data.initialFlags);
+    emitShift(op, regForWidth(dstReg, width), mode, data.count);
+    emitCmpEaxEax();
+    writeRegsLocal(regs);
+    runTestCPU();
+    verifyRegisters(cpu, expectedRegs, caseName);
+    if ((actualFlags(cpu) & SHIFT_FLAG_MASK) != (PF | ZF)) {
+        failed("%s overwritten flags", caseName);
+    }
+}
+
+void runRotateCarryImmediateMemoryNoFlagCase(ShiftOp op, int width, CountMode mode, const ShiftCase& data, const char* name) {
+    char caseName[180];
+    snprintf(caseName, sizeof(caseName), "%s %s mem imm no-flags value=%x count=%u", name, opName(op), data.value, data.count);
+    U32 regs[8];
+    initRegs(regs);
+
+    U32 offset = MEM_BASE + 0x7000 + (U32)op * 0x100 + (U32)mode * 0x20 + (U32)width;
+    int base = R_BX;
+    regs[base] = offset - 0x30;
+    asmjit::x86::Mem mem = memPtr(reg32(base), 0x30, width);
+    U32 linear = linearForBase(base, offset);
+    U8 count = mode == COUNT_ONE ? 1 : data.count;
+    ShiftExpected expected = expectedShift(op, width, data.value, count, data.initialFlags);
+
+    beginShift(data.initialFlags);
+    emitShift(op, mem, mode, data.count);
+    emitCmpEaxEax();
+    writeRegsLocal(regs);
+    prepareMem(linear, data.value, width);
+    runTestCPU();
+    verifyMem(linear, expected.result, width, caseName);
+    verifyRegisters(cpu, regs, caseName);
+    if ((actualFlags(cpu) & SHIFT_FLAG_MASK) != (PF | ZF)) {
+        failed("%s overwritten flags", caseName);
+    }
+}
+
+void runRotateCarryImmediateNoFlagCases(int width, CountMode mode, const char* name) {
+    static const ShiftCase cases[] = {
+        {0x12345678, 1, CF | PF | ZF | SF | OF},
+        {0x87654321, 4, 0}
+    };
+    static const ShiftCase byteModuloCases[] = {
+        {0x000000a5, 9, CF | PF | ZF | SF | OF},
+        {0x0000005a, 18, 0}
+    };
+    static const ShiftCase wordModuloCases[] = {
+        {0x0000a55a, 17, CF | PF | ZF | SF | OF},
+        {0x00005aa5, 34, 0}
+    };
+    static const ShiftOp ops[] = {SHIFT_RCL, SHIFT_RCR};
+    int dstReg = width == 8 ? 4 : R_AX;
+
+    for (size_t opIndex = 0; opIndex < caseCount(ops); ++opIndex) {
+        for (size_t caseIndex = 0; caseIndex < caseCount(cases); ++caseIndex) {
+            runRotateCarryImmediateRegisterNoFlagCase(ops[opIndex], width, mode, dstReg, cases[caseIndex], name);
+            runRotateCarryImmediateMemoryNoFlagCase(ops[opIndex], width, mode, cases[caseIndex], name);
+        }
+        if (mode == COUNT_IMM && width == 8) {
+            for (size_t caseIndex = 0; caseIndex < caseCount(byteModuloCases); ++caseIndex) {
+                runRotateCarryImmediateRegisterNoFlagCase(ops[opIndex], width, mode, dstReg, byteModuloCases[caseIndex], name);
+                runRotateCarryImmediateMemoryNoFlagCase(ops[opIndex], width, mode, byteModuloCases[caseIndex], name);
+            }
+        } else if (mode == COUNT_IMM && width == 16) {
+            for (size_t caseIndex = 0; caseIndex < caseCount(wordModuloCases); ++caseIndex) {
+                runRotateCarryImmediateRegisterNoFlagCase(ops[opIndex], width, mode, dstReg, wordModuloCases[caseIndex], name);
+                runRotateCarryImmediateMemoryNoFlagCase(ops[opIndex], width, mode, wordModuloCases[caseIndex], name);
+            }
+        }
+    }
 }
 
 U32 linearForBase(int base, U32 offset) {
@@ -616,6 +766,48 @@ void runMemoryCase(ShiftOp op, int width, CountMode mode, const ShiftCase& data,
     }
 }
 
+void runMemoryNoFlagCase(ShiftOp op, int width, const ShiftCase& data, const char* name) {
+    char caseName[160];
+    snprintf(caseName, sizeof(caseName), "%s %s mem no-flags value=%x count=%u", name, opName(op), data.value, data.count);
+    U32 regs[8];
+    initRegs(regs);
+    regs[R_CX] = data.count;
+
+    U32 offset = MEM_BASE + 0x5000 + (U32)op * 0x100 + (U32)width;
+    int base = R_BX;
+    int index = R_SI;
+    regs[base] = offset - 0x40;
+    regs[index] = 0x10;
+    asmjit::x86::Mem mem = memPtr(reg32(base), reg32(index), 1, 0x20, width);
+    U32 linear = linearForBase(base, offset);
+    ShiftExpected expected = expectedShift(op, width, data.value, data.count, data.initialFlags);
+
+    beginShift(data.initialFlags);
+    emitShift(op, mem, COUNT_CL, data.count);
+    emitCmpEaxEax();
+    writeRegsLocal(regs);
+    prepareMem(linear, data.value, width);
+    runTestCPU();
+    verifyMem(linear, expected.result, width, caseName);
+    verifyRegisters(cpu, regs, caseName);
+    if ((actualFlags(cpu) & SHIFT_FLAG_MASK) != (PF | ZF)) {
+        failed("%s overwritten flags", caseName);
+    }
+}
+
+void runMemoryNoFlagCases(int width, const char* name) {
+    static const ShiftCase cases[] = {
+        {0x12345678, 4, CF | PF | ZF | SF | OF},
+        {0x87654321, 12, 0}
+    };
+
+    for (size_t opIndex = 0; opIndex < caseCount(SHIFT_OPS); ++opIndex) {
+        for (size_t caseIndex = 0; caseIndex < caseCount(cases); ++caseIndex) {
+            runMemoryNoFlagCase(SHIFT_OPS[opIndex], width, cases[caseIndex], name);
+        }
+    }
+}
+
 void runShiftWidth(CountMode mode, int width, const char* name) {
     for (size_t opIndex = 0; opIndex < caseCount(SHIFT_OPS); ++opIndex) {
         ShiftOp op = SHIFT_OPS[opIndex];
@@ -629,6 +821,12 @@ void runShiftWidth(CountMode mode, int width, const char* name) {
             }
             runMemoryCase(op, width, mode, data, name);
         }
+    }
+    if (mode == COUNT_CL) {
+        runRegisterNoFlagCases(width, name);
+        runMemoryNoFlagCases(width, name);
+    } else {
+        runRotateCarryImmediateNoFlagCases(width, mode, name);
     }
 }
 

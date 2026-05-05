@@ -322,6 +322,27 @@ void runXaddRegisterCases(int width, const TestBinaryCase* cases, size_t count, 
     }
 }
 
+void runXaddByteRegisterAliasCases(const char* name) {
+    static const TestBinaryCase cases[] = {
+        {0x56, 0x78, 0},
+        {0x7f, 0x01, 0},
+        {0x80, 0x80, 0},
+        {0xff, 0x01, 0}
+    };
+    static const int regPairs[][2] = {
+        {4, 0}, // ah, al
+        {0, 4}, // al, ah
+        {5, 1}, // ch, cl
+        {1, 5} // cl, ch
+    };
+
+    for (size_t i = 0; i < caseCount(cases); ++i) {
+        for (size_t pair = 0; pair < caseCount(regPairs); ++pair) {
+            runXaddRegisterCase(8, regPairs[pair][0], regPairs[pair][1], cases[i], XADD_FLAGS_CHECKED, name);
+        }
+    }
+}
+
 void runPreparedXaddMemoryCase(int srcReg, int width, U32 linearAddress, const TestBinaryCase& data, XaddFlagMode flagMode, const char* name) {
     U32 expectedRegs[8];
     U32 actualSrc = getRegValue(cpu, srcReg, width);
@@ -426,6 +447,9 @@ void runXaddMemoryCases(int width, const TestBinaryCase* cases, size_t count, co
 }
 
 void runXaddCases(int width, const TestBinaryCase* cases, size_t count, const char* name) {
+    if (width == 8) {
+        runXaddByteRegisterAliasCases(name);
+    }
     runXaddRegisterCases(width, cases, count, name);
     runXaddMemoryCases(width, cases, count, name);
 }

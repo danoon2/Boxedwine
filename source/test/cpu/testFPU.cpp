@@ -253,6 +253,10 @@ U16 readI16(U32 offset) {
     return memory->readw(addressOf(offset));
 }
 
+U32 readI32(U32 offset) {
+    return memory->readd(addressOf(offset));
+}
+
 U64 readI64(U32 offset) {
     return memory->readq(addressOf(offset));
 }
@@ -572,6 +576,75 @@ void runD9Constant(bool big, U8 sub, float expected, const char* name) {
     assertFloatCloseExpected(readF32(OUT), 0, name);
 }
 
+void runD9Control(bool big, const char* name) {
+    constexpr U32 CW_IN = MEM_BASE + 0x2a0;
+    constexpr U32 CW_OUT = MEM_BASE + 0x2a4;
+
+    begin(big);
+    fninit();
+    pushCode8(0xd9);
+    pushCode8(0xd0); // FNOP
+    pushCode8(0xd9);
+    emitMemModRM(7, CW_OUT, big); // FNSTCW
+    writeI16(CW_IN, 0x0f7f);
+    pushCode8(0xd9);
+    emitMemModRM(5, CW_IN, big); // FLDCW
+
+    runTestCPU();
+    if (readI16(CW_OUT) != 0x037f || (cpu->fpu.CW() & 0xffff) != 0x0f7f || cpu->fpu.round != 3) {
+        failed("%s control word", name);
+    }
+}
+
+void runD9StackControl(bool big, const char* name) {
+    begin(big);
+    fninit();
+    pushCode8(0xd9);
+    pushCode8(0xf6); // FDECSTP
+    pushCode8(0xd9);
+    pushCode8(0xf7); // FINCSTP
+
+    runTestCPU();
+    if (cpu->fpu.GetTop() != 0) {
+        failed("%s stack control", name);
+    }
+}
+
+void runD9FldSt0(bool big, const char* name) {
+    constexpr U32 OUT = MEM_BASE + 0x2a8;
+
+    begin(big);
+    writeExpected32(0, bitsOf(5.0f));
+    fninit();
+    writeF32(MEM_BASE, 5.0f);
+    fldF32(MEM_BASE, big);
+    pushCode8(0xd9);
+    pushCode8(0xc0); // FLD ST(0)
+    fstTopF32(OUT, big);
+
+    runTestCPU();
+    assertFloatCloseExpected(readF32(OUT), 0, name);
+    if (cpu->fpu.GetTop() != 6) {
+        failed("%s stack", name);
+    }
+}
+
+void runFTST(bool big, float value, U32 expectedStatus, const char* name) {
+    begin(big);
+    writeExpected32(0, expectedStatus);
+    fninit();
+    writeF32(MEM_BASE, value);
+    fldF32(MEM_BASE, big);
+    pushCode8(0xd9);
+    pushCode8(0xe4);
+    fnstswAx();
+
+    runTestCPU();
+    if ((cpu->reg[0].u16 & STATUS_MASK) != readExpected32(0)) {
+        failed("%s ftst status", name);
+    }
+}
+
 void runD9RoundSqrtScale(bool big, const char* name) {
     constexpr U32 OUT0 = MEM_BASE + 0x260;
     constexpr U32 OUT1 = MEM_BASE + 0x264;
@@ -676,6 +749,25 @@ void runFpuCmov(bool big, U8 group, U32 flags, const char* name) {
     assertFloatCloseExpected(readF32(OUT), 0, name);
 }
 
+void runFpuCmovOpcode(bool big, U8 opcode, U8 group, U32 flags, const char* name) {
+    constexpr U32 OUT = MEM_BASE + 0x304;
+
+    begin(big);
+    writeExpected32(0, bitsOf(2.0f));
+    cpu->setFlags(flags, FMASK_ALL);
+    fninit();
+    writeF32(MEM_BASE, 2.0f);
+    writeF32(MEM_BASE + 4, 3.0f);
+    fldF32(MEM_BASE, big);
+    fldF32(MEM_BASE + 4, big);
+    pushCode8(opcode);
+    pushCode8(modRM(false, group, 1));
+    fstTopF32(OUT, big);
+
+    runTestCPU();
+    assertFloatCloseExpected(readF32(OUT), 0, name);
+}
+
 void runFUCOMPP(bool big, float left, float right, U32 expectedStatus, const char* name) {
     constexpr U32 OUT = MEM_BASE + 0x320;
 
@@ -745,6 +837,148 @@ void runDAIntegerCompare(bool big, bool pop, U32 left, S32 right, U32 expectedSt
     }
 }
 
+void runDCDoubleArith(bool big, U8 group, double left, double right, double expected, const char* name) {
+    constexpr U32 SRC = MEM_BASE + 0x380;
+    constexpr U32 OUT = MEM_BASE + 0x388;
+
+    begin(big);
+    writeExpected64(0, bitsOf(expected));
+    fninit();
+    writeF64(MEM_BASE, left);
+    writeF64(SRC, right);
+    fldF64(MEM_BASE, big);
+    pushCode8(0xdc);
+    emitMemModRM(group, SRC, big);
+    fstF64(OUT, false, big);
+
+    runTestCPU();
+    assertDoubleCloseExpected(readF64(OUT), 0, name);
+    if (cpu->fpu.GetTop() != 7) {
+        failed("%s double arithmetic stack", name);
+    }
+}
+
+void runDCDoubleCompare(bool big, bool pop, double left, double right, U32 expectedStatus, const char* name) {
+    constexpr U32 SRC = MEM_BASE + 0x390;
+
+    begin(big);
+    writeExpected32(0, expectedStatus);
+    fninit();
+    writeF64(MEM_BASE, left);
+    writeF64(SRC, right);
+    fldF64(MEM_BASE, big);
+    pushCode8(0xdc);
+    emitMemModRM(pop ? 3 : 2, SRC, big);
+    fnstswAx();
+
+    runTestCPU();
+    if ((cpu->reg[0].u16 & STATUS_MASK) != readExpected32(0) || cpu->fpu.GetTop() != (pop ? 0 : 7)) {
+        failed("%s double compare state", name);
+    }
+}
+
+void runDCRegisterArith(bool big, U8 group, double left, double right, double expected, const char* name) {
+    constexpr U32 OUT = MEM_BASE + 0x3a0;
+
+    begin(big);
+    writeExpected64(0, bitsOf(expected));
+    fninit();
+    writeF64(MEM_BASE, right);
+    writeF64(MEM_BASE + 8, left);
+    fldF64(MEM_BASE, big);
+    fldF64(MEM_BASE + 8, big);
+    pushCode8(0xdc);
+    pushCode8(modRM(false, group, 1));
+    pushCode8(0xd9);
+    pushCode8(0xc9); // FXCH ST(1)
+    fstF64(OUT, false, big);
+
+    runTestCPU();
+    assertDoubleCloseExpected(readF64(OUT), 0, name);
+    if (cpu->fpu.GetTop() != 6) {
+        failed("%s register arithmetic stack", name);
+    }
+}
+
+void runDERegisterArith(bool big, U8 group, double left, double right, double expected, const char* name) {
+    constexpr U32 OUT = MEM_BASE + 0x3b0;
+
+    begin(big);
+    writeExpected64(0, bitsOf(expected));
+    fninit();
+    writeF64(MEM_BASE, right);
+    writeF64(MEM_BASE + 8, left);
+    fldF64(MEM_BASE, big);
+    fldF64(MEM_BASE + 8, big);
+    pushCode8(0xde);
+    pushCode8(modRM(false, group, 1));
+    fstF64(OUT, false, big);
+
+    runTestCPU();
+    assertDoubleCloseExpected(readF64(OUT), 0, name);
+    if (cpu->fpu.GetTop() != 7) {
+        failed("%s register arithmetic pop stack", name);
+    }
+}
+
+void runDEWordArith(bool big, U8 group, S16 integerValue, U32 expectedBits, const char* name) {
+    constexpr U32 SRC = MEM_BASE + 0x3c0;
+    constexpr U32 OUT = MEM_BASE + 0x3c4;
+
+    begin(big);
+    writeExpected32(0, expectedBits);
+    fninit();
+    writeF32(MEM_BASE, 10.0f);
+    writeI16(SRC, integerValue);
+    fldF32(MEM_BASE, big);
+    pushCode8(0xde);
+    emitMemModRM(group, SRC, big);
+    fstTopF32(OUT, big);
+
+    runTestCPU();
+    assertFloatCloseExpected(readF32(OUT), 0, name);
+    if (cpu->fpu.GetTop() != 7) {
+        failed("%s word integer arithmetic stack", name);
+    }
+}
+
+void runDEWordCompare(bool big, bool pop, U32 left, S16 right, U32 expectedStatus, const char* name) {
+    constexpr U32 SRC = MEM_BASE + 0x3d0;
+
+    begin(big);
+    writeExpected32(0, expectedStatus);
+    fninit();
+    writeF32Bits(MEM_BASE, left);
+    writeI16(SRC, right);
+    fldF32(MEM_BASE, big);
+    pushCode8(0xde);
+    emitMemModRM(pop ? 3 : 2, SRC, big);
+    fnstswAx();
+
+    runTestCPU();
+    if ((cpu->reg[0].u16 & STATUS_MASK) != readExpected32(0) || cpu->fpu.GetTop() != (pop ? 0 : 7)) {
+        failed("%s word integer compare state", name);
+    }
+}
+
+void runDERegisterComparePop(bool big, const char* name) {
+    begin(big);
+    writeExpected32(0, FPU_EQUAL);
+    fninit();
+    writeF32(MEM_BASE, 2.0f);
+    writeF32(MEM_BASE + 4, 2.0f);
+    fldF32(MEM_BASE, big);
+    fldF32(MEM_BASE + 4, big);
+    pushCode8(0xde);
+    pushCode8(modRM(false, 2, 1)); // FCOMP ST(1)
+    fnstswAx();
+
+    runTestCPU();
+    if ((cpu->reg[0].u16 & STATUS_MASK) != readExpected32(0) || cpu->fpu.GetTop() != 7) {
+        failed("%s register compare pop state", name);
+    }
+}
+
 void runDDDoubleStore(bool big, bool pop, double value, const char* name) {
     constexpr U32 OUT = MEM_BASE + 0x400;
     U64 expectedBits = bitsOf(value);
@@ -781,6 +1015,148 @@ void runFISTTP64(bool big, double value, U64 expected, const char* name) {
     }
 }
 
+U32 packedTags(const U8 tags[8]) {
+    U32 result = 0;
+    for (int i = 0; i < 8; ++i) {
+        result |= (tags[i] & 3) << (i * 2);
+    }
+    return result;
+}
+
+void writeEnvValue(U32 base, int index, bool big, U32 value) {
+    if (big) {
+        memory->writed(addressOf(base + index * 4), value);
+    } else {
+        memory->writew(addressOf(base + index * 2), (U16)value);
+    }
+}
+
+U32 readEnvValue(U32 base, int index, bool big) {
+    if (big) {
+        return memory->readd(addressOf(base + index * 4));
+    }
+    return memory->readw(addressOf(base + index * 2));
+}
+
+void emitD9MemoryGroup(U8 group, U32 offset, bool big) {
+    pushCode8(0xd9);
+    emitMemModRM(group, offset, big);
+}
+
+void runFPUEnvironmentLoad(bool big, const char* name) {
+    constexpr U32 ENV = MEM_BASE + 0x580;
+    const U32 expectedCw = 0x0b7f;
+    const U32 expectedSw = 0x2800 | FPU_LESS;
+    const U8 tags[8] = {TAG_Empty, TAG_Valid, TAG_Zero, TAG_Special, TAG_Empty, TAG_Valid, TAG_Empty, TAG_Zero};
+    const U32 expectedTag = packedTags(tags);
+    const U32 envData[4] = {0x1234, 0x5678, 0x9abc, 0xdef0};
+
+    begin(big);
+    writeEnvValue(ENV, 0, big, expectedCw);
+    writeEnvValue(ENV, 1, big, expectedSw);
+    writeEnvValue(ENV, 2, big, expectedTag);
+    for (int i = 0; i < 4; ++i) {
+        writeEnvValue(ENV, 3 + i, big, envData[i]);
+    }
+    emitD9MemoryGroup(4, ENV, big); // FLDENV
+
+    runTestCPU();
+    if ((cpu->fpu.CW() & 0xffff) != expectedCw ||
+            (cpu->fpu.sw & 0xffff) != expectedSw ||
+            cpu->fpu.GetTop() != 5) {
+        failed("%s fldenv control/status", name);
+    }
+    for (int i = 0; i < 8; ++i) {
+        if (cpu->fpu.tags[i] != tags[i]) {
+            failed("%s fldenv tags", name);
+        }
+    }
+    for (int i = 0; i < 4; ++i) {
+        if ((cpu->fpu.envData[i] & 0xffff) != envData[i]) {
+            failed("%s fldenv data", name);
+        }
+    }
+}
+
+void runFPUEnvironmentStore(bool big, const char* name) {
+    constexpr U32 ENV = MEM_BASE + 0x5c0;
+
+    begin(big);
+    fninit();
+    writeF32(MEM_BASE, 1.25f);
+    writeF32(MEM_BASE + 4, 2.5f);
+    fldF32(MEM_BASE, big);
+    fldF32(MEM_BASE + 4, big);
+    emitD9MemoryGroup(6, ENV, big); // FNSTENV
+
+    runTestCPU();
+    U32 actualCw = readEnvValue(ENV, 0, big) & 0xffff;
+    U32 actualSw = readEnvValue(ENV, 1, big);
+    if (actualCw != 0x037f || ((actualSw >> 11) & 7) != 6) {
+        failed("%s fnstenv header cw=%x sw=%x", name, actualCw, actualSw);
+    }
+    for (int i = 3; i < 7; ++i) {
+        if (readEnvValue(ENV, i, big) != 0) {
+            failed("%s fnstenv data", name);
+        }
+    }
+}
+
+void runFNSTSWMemory(bool big, float left, float right, U32 expectedStatus, const char* name) {
+    constexpr U32 OUT = MEM_BASE + 0x600;
+
+    begin(big);
+    writeExpected32(0, expectedStatus);
+    fninit();
+    writeF32(MEM_BASE, left);
+    writeF32(MEM_BASE + 4, right);
+    fldF32(MEM_BASE + 4, big);
+    fldF32(MEM_BASE, big);
+    pushCode8(0xd8);
+    pushCode8(0xd1); // FCOM ST(1)
+    pushCode8(0xdd);
+    emitMemModRM(7, OUT, big); // FNSTSW m16
+
+    runTestCPU();
+    U32 actualStatus = memory->readw(addressOf(OUT)) & STATUS_MASK;
+    if (actualStatus != readExpected32(0)) {
+        failed("%s fnstsw memory expected=%x actual=%x", name, readExpected32(0), actualStatus);
+    }
+}
+
+U32 expectedFCOMIFlags(float left, float right) {
+    if (std::isnan(left) || std::isnan(right)) {
+        return CF | PF | ZF;
+    }
+    if (left == right) {
+        return ZF;
+    }
+    return left < right ? CF : 0;
+}
+
+void runFCOMI(bool big, U8 opcode, U8 group, bool pop, float left, float right, const char* name) {
+    begin(big);
+    writeExpected32(0, expectedFCOMIFlags(left, right));
+    cpu->setFlags(CF | PF | AF | ZF | SF | OF, FMASK_ALL);
+    fninit();
+    writeF32(MEM_BASE, left);
+    writeF32(MEM_BASE + 4, right);
+    fldF32(MEM_BASE + 4, big);
+    fldF32(MEM_BASE, big);
+    pushCode8(opcode);
+    pushCode8((U8)(0xc0 | (group << 3) | 1));
+
+    runTestCPU();
+    cpu->fillFlags();
+    U32 actualFlags = cpu->flags & FMASK_TEST;
+    if (actualFlags != readExpected32(0)) {
+        failed("%s fcomi flags expected=%x actual=%x", name, readExpected32(0), actualFlags);
+    }
+    if (cpu->fpu.GetTop() != (pop ? 7 : 6)) {
+        failed("%s fcomi stack", name);
+    }
+}
+
 void runFILD16(bool big, S16 value, const char* name) {
     constexpr U32 OUT = MEM_BASE + 0x500;
 
@@ -795,6 +1171,24 @@ void runFILD16(bool big, S16 value, const char* name) {
     assertFloatCloseExpected(readF32(OUT), 0, name);
     if (cpu->fpu.GetTop() != 7) {
         failed("%s fild16 stack", name);
+    }
+}
+
+void runFILD32(bool big, S32 value, const char* name) {
+    constexpr U32 OUT = MEM_BASE + 0x620;
+
+    begin(big);
+    writeExpected32(0, bitsOf((float)value));
+    fninit();
+    writeI32(MEM_BASE, value);
+    pushCode8(0xdb);
+    emitMemModRM(0, MEM_BASE, big);
+    fstTopF32(OUT, big);
+
+    runTestCPU();
+    assertFloatCloseExpected(readF32(OUT), 0, name);
+    if (cpu->fpu.GetTop() != 7) {
+        failed("%s fild32 stack", name);
     }
 }
 
@@ -816,6 +1210,52 @@ void runFILD64(bool big, S64 value, const char* name) {
     cpu->fpu.ST80(cpu->fpu.STV(0), &low, &high);
     if (low != readExpected64(0) || (U16)high != (U16)readExpected32(1) || cpu->fpu.GetTop() != 7) {
         failed("%s fild64 value", name);
+    }
+}
+
+void runFIST32(bool big, U8 group, float value, U32 expected, bool pop, const char* name) {
+    constexpr U32 OUT = MEM_BASE + 0x640;
+
+    begin(big);
+    writeExpected32(0, expected);
+    fninit();
+    writeF32(MEM_BASE, value);
+    fldF32(MEM_BASE, big);
+    pushCode8(0xdb);
+    emitMemModRM(group, OUT, big);
+
+    runTestCPU();
+    if (readI32(OUT) != readExpected32(0) || cpu->fpu.GetTop() != (pop ? 0 : 7)) {
+        failed("%s fist32 result", name);
+    }
+}
+
+void runFISTTP32(bool big, double value, U32 expected, const char* name) {
+    constexpr U32 OUT = MEM_BASE + 0x660;
+
+    begin(big);
+    writeExpected32(0, expected);
+    fninit();
+    writeF64(MEM_BASE, value);
+    fldF64(MEM_BASE, big);
+    pushCode8(0xdb);
+    emitMemModRM(1, OUT, big);
+
+    runTestCPU();
+    if (readI32(OUT) != readExpected32(0) || cpu->fpu.GetTop() != 0 || cpu->fpu.GetTag(cpu, 7) != TAG_Empty) {
+        failed("%s fisttp32 result", name);
+    }
+}
+
+void runFNCLEX(bool big, const char* name) {
+    begin(big);
+    cpu->fpu.sw = 0xffff;
+    pushCode8(0xdb);
+    pushCode8(0xe2);
+
+    runTestCPU();
+    if ((cpu->fpu.sw & 0xffff) != 0x7f00) {
+        failed("%s status word", name);
     }
 }
 
@@ -853,6 +1293,61 @@ void runFISTP64(bool big, S64 value, const char* name) {
     }
 }
 
+void runDDRegisterOps(bool big, const char* name) {
+    constexpr U32 OUT = MEM_BASE + 0x680;
+
+    begin(big);
+    writeExpected32(0, bitsOf(2.0f));
+    fninit();
+    writeF32(MEM_BASE, 4.0f);
+    writeF32(MEM_BASE + 4, 2.0f);
+    fldF32(MEM_BASE, big);
+    fldF32(MEM_BASE + 4, big);
+    pushCode8(0xdd);
+    pushCode8(0xd1); // FST ST(1)
+    pushCode8(0xdd);
+    pushCode8(0xe1); // FUCOM ST(1)
+    pushCode8(0xdd);
+    pushCode8(0xe9); // FUCOMP ST(1)
+    fstTopF32(OUT, big);
+
+    runTestCPU();
+    assertFloatCloseExpected(readF32(OUT), 0, name);
+    if (cpu->fpu.GetTop() != 7) {
+        failed("%s register operation stack", name);
+    }
+}
+
+void runFFREE(bool big, const char* name) {
+    begin(big);
+    fninit();
+    writeF32(MEM_BASE, 1.0f);
+    writeF32(MEM_BASE + 4, 2.0f);
+    fldF32(MEM_BASE, big);
+    fldF32(MEM_BASE + 4, big);
+    pushCode8(0xdd);
+    pushCode8(0xc1); // FFREE ST(1)
+
+    runTestCPU();
+    if (cpu->fpu.tags[(cpu->fpu.GetTop() + 1) & 7] != TAG_Empty) {
+        failed("%s tag", name);
+    }
+}
+
+void runFFREEP(bool big, const char* name) {
+    begin(big);
+    fninit();
+    writeF32(MEM_BASE, 1.0f);
+    fldF32(MEM_BASE, big);
+    pushCode8(0xdf);
+    pushCode8(0xc0); // FFREEP ST(0)
+
+    runTestCPU();
+    if (cpu->fpu.GetTop() != 0 || cpu->fpu.GetTag(cpu, 7) != TAG_Empty) {
+        failed("%s pop state", name);
+    }
+}
+
 void runD8(bool big) {
     for (size_t i = 0; i < sizeof(F32_CASES) / sizeof(F32_CASES[0]); ++i) {
         const F32ArithCase& data = F32_CASES[i];
@@ -883,6 +1378,12 @@ void runD9(bool big) {
         runFSTFloatBits(big, true, FST_CASES[i], "fstp m32fp d9");
     }
     runD9StackOps(big, "fpu stack d9");
+    runD9Control(big, "fpu control d9");
+    runD9StackControl(big, "fpu stack control d9");
+    runD9FldSt0(big, "fld st0 d9");
+    runFTST(big, 0.0f, FPU_EQUAL, "ftst d9");
+    runFTST(big, -2.0f, FPU_LESS, "ftst d9");
+    runFTST(big, 3.0f, FPU_GREATER, "ftst d9");
     for (size_t i = 0; i < sizeof(FCHS_CASES) / sizeof(FCHS_CASES[0]); ++i) {
         runD9UnaryBits(big, 0, FCHS_CASES[i].input, FCHS_CASES[i].expected, "fchs d9");
     }
@@ -890,8 +1391,14 @@ void runD9(bool big) {
         runD9UnaryBits(big, 1, FABS_CASES[i].input, FABS_CASES[i].expected, "fabs d9");
     }
     runD9Constant(big, 0, 1.0f, "fld1 d9");
+    runD9Constant(big, 1, 3.3219280948873623f, "fldl2t d9");
+    runD9Constant(big, 2, 1.4426950408889634f, "fldl2e d9");
     runD9Constant(big, 3, 3.14159265f, "fldpi d9");
+    runD9Constant(big, 4, 0.3010299956639812f, "fldlg2 d9");
+    runD9Constant(big, 5, 0.6931471805599453f, "fldln2 d9");
     runD9Constant(big, 6, 0.0f, "fldz d9");
+    runFPUEnvironmentLoad(big, "fldenv d9");
+    runFPUEnvironmentStore(big, "fnstenv d9");
     runD9RoundSqrtScale(big, "sqrt round scale d9");
     runFSQRTBits(big, 0x40800000, 0x40000000, "fsqrt d9");
     runFSQRTBits(big, 0x41800000, 0x40800000, "fsqrt d9");
@@ -914,6 +1421,10 @@ void runDA(bool big) {
     runFpuCmov(big, 1, ZF, "fcmove da");
     runFpuCmov(big, 2, CF | ZF, "fcmovbe da");
     runFpuCmov(big, 3, PF, "fcmovu da");
+    runFpuCmovOpcode(big, 0xdb, 0, 0, "fcmovnb db");
+    runFpuCmovOpcode(big, 0xdb, 1, 0, "fcmovne db");
+    runFpuCmovOpcode(big, 0xdb, 2, 0, "fcmovnbe db");
+    runFpuCmovOpcode(big, 0xdb, 3, 0, "fcmovnu db");
     runFUCOMPP(big, 2.0f, 2.0f, FPU_EQUAL, "fucompp da");
     runFUCOMPP(big, 2.0f, 1.0f, FPU_LESS, "fucompp da");
     runFUCOMPP(big, 2.0f, 3.0f, FPU_GREATER, "fucompp da");
@@ -936,6 +1447,40 @@ void runDA(bool big) {
     runDAIntegerCompare(big, true, 0x3f800000, 20000, FPU_LESS, "ficomp m32int da");
 }
 
+void runDB(bool big) {
+    runFILD32(big, 0, "fild m32int db");
+    runFILD32(big, 123456, "fild m32int db");
+    runFILD32(big, -234567, "fild m32int db");
+    runFIST32(big, 2, 12345.0f, 12345, false, "fist m32int db");
+    runFIST32(big, 2, -12345.0f, (U32)(S32)-12345, false, "fist m32int db");
+    runFIST32(big, 3, 98765.0f, 98765, true, "fistp m32int db");
+    runFIST32(big, 3, -98765.0f, (U32)(S32)-98765, true, "fistp m32int db");
+    runFISTTP32(big, 12345.9, 12345, "fisttp m32int db");
+    runFISTTP32(big, -12345.9, (U32)(S32)-12345, "fisttp m32int db");
+    runFCOMI(big, 0xdb, 5, false, 2.0f, 2.0f, "fucomi db");
+    runFCOMI(big, 0xdb, 5, false, 2.0f, 3.0f, "fucomi db");
+    runFCOMI(big, 0xdb, 6, false, 3.0f, 2.0f, "fcomi db");
+    runFCOMI(big, 0xdb, 6, false, floatFromBits(F32_QNAN), 2.0f, "fcomi db unordered");
+    runFNCLEX(big, "fnclex db");
+}
+
+void runDC(bool big) {
+    runDCDoubleArith(big, 0, 10.0, 2.0, 12.0, "fadd m64fp dc");
+    runDCDoubleArith(big, 1, 10.0, 2.0, 20.0, "fmul m64fp dc");
+    runDCDoubleArith(big, 4, 10.0, 2.0, 8.0, "fsub m64fp dc");
+    runDCDoubleArith(big, 5, 10.0, 2.0, -8.0, "fsubr m64fp dc");
+    runDCDoubleArith(big, 6, 10.0, 2.0, 5.0, "fdiv m64fp dc");
+    runDCDoubleArith(big, 7, 10.0, 2.0, 0.2, "fdivr m64fp dc");
+    runDCDoubleCompare(big, false, 2.0, 2.0, FPU_EQUAL, "fcom m64fp dc");
+    runDCDoubleCompare(big, true, 2.0, 3.0, FPU_LESS, "fcomp m64fp dc");
+    runDCRegisterArith(big, 0, 10.0, 2.0, 12.0, "fadd sti,st0 dc");
+    runDCRegisterArith(big, 1, 10.0, 2.0, 20.0, "fmul sti,st0 dc");
+    runDCRegisterArith(big, 4, 10.0, 2.0, 8.0, "fsubr sti,st0 dc");
+    runDCRegisterArith(big, 5, 10.0, 2.0, -8.0, "fsub sti,st0 dc");
+    runDCRegisterArith(big, 6, 10.0, 2.0, 5.0, "fdivr sti,st0 dc");
+    runDCRegisterArith(big, 7, 10.0, 2.0, 0.2, "fdiv sti,st0 dc");
+}
+
 void runDD(bool big) {
     runDDDoubleStore(big, false, 123456.5, "fst m64fp dd");
     runDDDoubleStore(big, true, -123456.5, "fstp m64fp dd");
@@ -947,6 +1492,29 @@ void runDD(bool big) {
     runFISTTP64(big, -123456789.4, (U64)(S64)-123456789, "fisttp m64int dd");
     runFISTTP64(big, 0.0, 0, "fisttp m64int dd");
     runFISTTP64(big, -0.0, 0, "fisttp m64int dd");
+    runFNSTSWMemory(big, 2.0f, 2.0f, FPU_EQUAL, "fnstsw m16 dd");
+    runFNSTSWMemory(big, 2.0f, 3.0f, FPU_LESS, "fnstsw m16 dd");
+    runFNSTSWMemory(big, floatFromBits(F32_QNAN), 3.0f, FPU_UNORDERED, "fnstsw m16 dd unordered");
+    runDDRegisterOps(big, "fpu register ops dd");
+    runFFREE(big, "ffree dd");
+}
+
+void runDE(bool big) {
+    runDEWordArith(big, 0, 2, 0x41400000, "fiadd m16int de");
+    runDEWordArith(big, 1, 3, 0x41f00000, "fimul m16int de");
+    runDEWordArith(big, 4, 7, 0x40400000, "fisub m16int de");
+    runDEWordArith(big, 5, 7, 0xc0400000, "fisubr m16int de");
+    runDEWordArith(big, 6, 2, 0x40a00000, "fidiv m16int de");
+    runDEWordArith(big, 7, 20, 0x40000000, "fidivr m16int de");
+    runDEWordCompare(big, false, 0x40000000, 2, FPU_EQUAL, "ficom m16int de");
+    runDEWordCompare(big, true, 0x3f800000, 2, FPU_LESS, "ficomp m16int de");
+    runDERegisterComparePop(big, "fcomp sti de");
+    runDERegisterArith(big, 0, 10.0, 2.0, 12.0, "faddp de");
+    runDERegisterArith(big, 1, 10.0, 2.0, 20.0, "fmulp de");
+    runDERegisterArith(big, 4, 10.0, 2.0, 8.0, "fsubrp de");
+    runDERegisterArith(big, 5, 10.0, 2.0, -8.0, "fsubp de");
+    runDERegisterArith(big, 6, 10.0, 2.0, 5.0, "fdivrp de");
+    runDERegisterArith(big, 7, 10.0, 2.0, 0.2, "fdivp de");
 }
 
 void runDF(bool big) {
@@ -969,6 +1537,11 @@ void runDF(bool big) {
     runFISTP64(big, 1, "fistp m64int df");
     runFISTP64(big, 0x123456789abcdef0ll, "fistp m64int df");
     runFISTP64(big, -2, "fistp m64int df");
+    runFCOMI(big, 0xdf, 5, true, 2.0f, 2.0f, "fucomip df");
+    runFCOMI(big, 0xdf, 5, true, 2.0f, 3.0f, "fucomip df");
+    runFCOMI(big, 0xdf, 6, true, 3.0f, 2.0f, "fcomip df");
+    runFCOMI(big, 0xdf, 6, true, floatFromBits(F32_QNAN), 2.0f, "fcomip df unordered");
+    runFFREEP(big, "ffreep df");
 }
 
 }
@@ -979,8 +1552,14 @@ void testFpuD9_0x0d9() { runD9(false); }
 void testFpuD9_0x2d9() { runD9(true); }
 void testFpuDA_0x0da() { runDA(false); }
 void testFpuDA_0x2da() { runDA(true); }
+void testFpuDB_0x0db() { runDB(false); }
+void testFpuDB_0x2db() { runDB(true); }
+void testFpuDC_0x0dc() { runDC(false); }
+void testFpuDC_0x2dc() { runDC(true); }
 void testFpuDD_0x0dd() { runDD(false); }
 void testFpuDD_0x2dd() { runDD(true); }
+void testFpuDE_0x0de() { runDE(false); }
+void testFpuDE_0x2de() { runDE(true); }
 void testFpuDF_0x0df() { runDF(false); }
 void testFpuDF_0x2df() { runDF(true); }
 

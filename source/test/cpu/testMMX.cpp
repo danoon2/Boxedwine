@@ -148,6 +148,11 @@ void emitMmxRegMem(U8 opcode, int dst, U32 address) {
     emitDirectAddressModRM(dst, address);
 }
 
+void emitMmxRegMemImm(U8 opcode, int dst, U32 address, U8 imm) {
+    emitMmxRegMem(opcode, dst, address);
+    pushCode8(imm);
+}
+
 void emitMmxMemReg(U8 opcode, int src, U32 address) {
     pushCode8(0x0f);
     pushCode8(opcode);
@@ -282,6 +287,35 @@ void runPmovmskbCase(U64 srcValue, U32 expected, const char* name) {
     }
 }
 
+void runPextrwMemoryCase(U64 srcValue, U8 imm, U16 expected, const char* name) {
+    for (int src = 0; src < 8; ++src) {
+        initMmx();
+        cpu->fpu.getMMX(src)->q = srcValue;
+        memory->writew(TEST_HEAP_ADDRESS + MEM_DST, 0xcdcd);
+        memory->writew(TEST_HEAP_ADDRESS + MEM_DST + 2, 0x7777);
+        pushCode8(0x0f);
+        pushCode8(0xc5);
+        emitDirectAddressModRM(src, MEM_DST);
+        pushCode8(imm);
+        runTestCPU();
+        if (memory->readw(TEST_HEAP_ADDRESS + MEM_DST) != expected ||
+                memory->readw(TEST_HEAP_ADDRESS + MEM_DST + 2) != 0x7777) {
+            failed("%s mem", name);
+        }
+        verifyOnlyMmxChanged(src, srcValue, name);
+    }
+}
+
+void runPshufwMemoryCase(U64 srcValue, U8 imm, U64 expected, const char* name) {
+    for (int dst = 0; dst < 8; ++dst) {
+        initMmx();
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, srcValue);
+        emitMmxRegMemImm(0x70, dst, MEM_SRC, imm);
+        runTestCPU();
+        verifyOnlyMmxChanged(dst, expected, name);
+    }
+}
+
 void runMovntqCase() {
     for (int src = 0; src < 8; ++src) {
         initMmx();
@@ -364,6 +398,15 @@ void testMmxMovd_0x36e_0x37e() {
                 memory->readd(TEST_HEAP_ADDRESS + MEM_DST + 4) != (U32)(MEM_GUARD >> 32)) {
             failed("mmx movd to mem");
         }
+    }
+
+    initMmx();
+    emitMovdMmxFromMem(0, MEM_SRC);
+    pushCode8(0x0f);
+    pushCode8(0x77);
+    runTestCPU();
+    if (cpu->fpu.isMMXInUse) {
+        failed("mmx emms state");
     }
 }
 
@@ -520,6 +563,7 @@ void testMmxMultiplySubtract_0x3d4_0x3d5_0x3e5_0x3f5_0x3f8_0x3f9_0x3fa() {
 
 void testMmxPmovmskb_0x3d7() {
     runPmovmskbCase(0x1122804455667788ULL, 0x21, "mmx pmovmskb");
+    runPextrwMemoryCase(0x1111222233334444ULL, 6, 0x2222, "mmx pextrw");
 }
 
 void testMmxPminub_0x3da() {
@@ -545,6 +589,7 @@ void testMmxPavgw_0x3e3() {
 void testMmxPmulhuw_0x3e4() {
     const MmxBinaryCase c[] = {{0xe4, 0x1122804455660001ULL, 0x2212ffff77fe3112ULL, 0x0247804328070000ULL, "mmx pmulhuw"}};
     runMmxBinaryCases(c, 1);
+    runPshufwMemoryCase(0x1111222233334444ULL, 0x1b, 0x4444333322221111ULL, "mmx pshufw mem");
 }
 
 void testMmxMovntq_0x3e7() {

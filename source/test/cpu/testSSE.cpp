@@ -607,6 +607,26 @@ void runPextrwXmm(U64 srcLow, U64 srcHigh, U8 imm, U32 expected, const char* nam
     }
 }
 
+void runPextrwXmmMemory(U64 srcLow, U64 srcHigh, U8 imm, U16 expected, const char* name) {
+    for (int src = 0; src < 8; ++src) {
+        initSseMmx();
+        setXmm(src, srcLow, srcHigh);
+        memory->writew(TEST_HEAP_ADDRESS + MEM_DST, 0xcdcd);
+        memory->writew(TEST_HEAP_ADDRESS + MEM_DST + 2, 0x7777);
+        pushCode8(0x66);
+        pushCode8(0x0f);
+        pushCode8(0xc5);
+        emitDirectAddressModRM(src, MEM_DST);
+        pushCode8(imm);
+        runTestCPU();
+        if (memory->readw(TEST_HEAP_ADDRESS + MEM_DST) != expected ||
+                memory->readw(TEST_HEAP_ADDRESS + MEM_DST + 2) != 0x7777) {
+            failed("%s mem", name);
+        }
+        verifyOnlyXmmChanged(src, srcLow, srcHigh, name);
+    }
+}
+
 void runPextrwMmx(U64 srcValue, U8 imm, U32 expected, const char* name) {
     for (int dst = 0; dst < 8; ++dst) {
         for (int src = 0; src < 8; ++src) {
@@ -763,6 +783,91 @@ void testSseMmx64Op(U8 prefix1, U8 prefix2, U8 opcode, U64 dstLow, U64 dstHigh, 
             runTestCPU();
             verifyOnlyXmmChanged(dst, memExpectedLow, memExpectedHigh, name);
         }
+    }
+}
+
+void verifyXmm(int reg, U64 low, U64 high, const char* name) {
+    if (cpu->xmm[reg].pi.u64[0] != low || cpu->xmm[reg].pi.u64[1] != high) {
+        failed("%s xmm%d", name, reg);
+    }
+}
+
+void runCachedCvtpi2pdMmx(const char* name) {
+    U64 first = ((U64)(U32)(S32)-2 << 32) | 3;
+    U64 second = ((U64)(U32)(S32)-4 << 32) | 5;
+    initSseMmx();
+    cpu->fpu.getMMX(1)->q = first;
+    cpu->fpu.getMMX(2)->q = second;
+    emitMmxRegReg(0x66, 0x2a, 0, 1);
+    emitMmxRegReg(0x66, 0x2a, 0, 2);
+    runTestCPU();
+    verifyXmm(0, bitsFromDouble(5.0), bitsFromDouble(-4.0), name);
+    if (cpu->fpu.getMMX(1)->q != first || cpu->fpu.getMMX(2)->q != second) {
+        failed("%s mmx unchanged", name);
+    }
+}
+
+void runCachedCvtpi2pdMem(const char* name) {
+    U64 first = ((U64)(U32)(S32)-6 << 32) | 7;
+    U64 second = ((U64)(U32)(S32)-8 << 32) | 9;
+    initSseMmx();
+    memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, first);
+    memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC + 8, second);
+    emitSseRegMem(0x66, 0x2a, 0, MEM_SRC);
+    emitSseRegMem(0x66, 0x2a, 0, MEM_SRC + 8);
+    runTestCPU();
+    verifyXmm(0, bitsFromDouble(9.0), bitsFromDouble(-8.0), name);
+}
+
+void runCachedMovdXmmR32(const char* name) {
+    initSseMmx();
+    cpu->reg[0].u32 = 0x11112222;
+    cpu->reg[1].u32 = 0x33334444;
+    emitSseRegReg(0x66, 0x6e, 0, 0);
+    emitSseRegReg(0x66, 0x6e, 0, 1);
+    runTestCPU();
+    verifyOnlyXmmChanged(0, 0x0000000033334444ULL, 0, name);
+}
+
+void runCachedMovqXmmXmm(const char* name) {
+    initSseMmx();
+    setXmm(1, 0x1111222233334444ULL, 0x5555666677778888ULL);
+    setXmm(2, 0x9999aaaabbbbccccULL, 0xddddeeeeffff0000ULL);
+    emitSseRegReg(0xf3, 0x7e, 0, 1);
+    emitSseRegReg(0xf3, 0x7e, 0, 2);
+    runTestCPU();
+    verifyXmm(0, 0x9999aaaabbbbccccULL, 0, name);
+    verifyXmm(1, 0x1111222233334444ULL, 0x5555666677778888ULL, name);
+    verifyXmm(2, 0x9999aaaabbbbccccULL, 0xddddeeeeffff0000ULL, name);
+}
+
+void runCachedMovq2dq(const char* name) {
+    initSseMmx();
+    cpu->fpu.getMMX(1)->q = 0x1111222233334444ULL;
+    cpu->fpu.getMMX(2)->q = 0x9999aaaabbbbccccULL;
+    emitMmxRegReg(0xf3, 0xd6, 0, 1);
+    emitMmxRegReg(0xf3, 0xd6, 0, 2);
+    runTestCPU();
+    verifyXmm(0, 0x9999aaaabbbbccccULL, 0, name);
+    if (cpu->fpu.getMMX(1)->q != 0x1111222233334444ULL || cpu->fpu.getMMX(2)->q != 0x9999aaaabbbbccccULL) {
+        failed("%s mmx unchanged", name);
+    }
+}
+
+void runSegmentedMaskmovdqu(const char* name) {
+    initSse();
+    cpu->seg[DS].address = TEST_HEAP_ADDRESS;
+    cpu->seg[DS].value = TEST_HEAP_SEG;
+    cpu->thread->process->hasSetSeg[DS] = true;
+    setXmm(0, 0x1122334455667788ULL, 0x99aabbccddeeff00ULL);
+    setXmm(1, 0x8000800080008000ULL, 0x0080808000008080ULL);
+    cpu->reg[7].u32 = MEM_DST;
+    writeXmmMem(MEM_DST, 0x9999999999999999ULL, 0x9999999999999999ULL);
+    emitSseRegReg(0x66, 0xf7, 0, 1);
+    runTestCPU();
+    if (memory->readq(TEST_HEAP_ADDRESS + MEM_DST) != 0x1199339955997799ULL ||
+            memory->readq(TEST_HEAP_ADDRESS + MEM_DST + 8) != 0x99aabbcc9999ff00ULL) {
+        failed("%s mem", name);
     }
 }
 
@@ -994,6 +1099,43 @@ void testSseMovntps_0x32b() {
         }
         verifyOnlyXmmChanged(src, XMM_SRC_LOW, XMM_SRC_HIGH, "sse movntps xmm unchanged");
     }
+
+    initSse();
+    cpu->mxcsr = 0x1f80;
+    memory->writed(TEST_HEAP_ADDRESS + MEM_DST, 0xcdcdcdcd);
+    pushCode8(0x0f);
+    pushCode8(0xae);
+    emitDirectAddressModRM(3, MEM_DST);
+    runTestCPU();
+    if (memory->readd(TEST_HEAP_ADDRESS + MEM_DST) != 0x1f80) {
+        failed("sse stmxcsr");
+    }
+
+    initSse();
+    memory->writed(TEST_HEAP_ADDRESS + MEM_SRC, 0x3f80);
+    pushCode8(0x0f);
+    pushCode8(0xae);
+    emitDirectAddressModRM(2, MEM_SRC);
+    runTestCPU();
+    if (cpu->mxcsr != 0x3f80) {
+        failed("sse ldmxcsr");
+    }
+
+    initSse();
+    memory->writeb(TEST_HEAP_ADDRESS + MEM_SRC, 0x5a);
+    pushCode8(0x0f);
+    pushCode8(0xae);
+    emitDirectAddressModRM(7, MEM_SRC);
+    runTestCPU();
+    if (memory->readb(TEST_HEAP_ADDRESS + MEM_SRC) != 0x5a) {
+        failed("sse clflush");
+    }
+
+    initSse();
+    pushCode8(0x0f);
+    pushCode8(0xae);
+    pushCode8(0xf8);
+    runTestCPU();
 }
 
 void testSseConvert_0x32a_0x32c_0x32d() {
@@ -1139,6 +1281,7 @@ void testSseInsertExtractShuffle_0x1c4_0x3c4_0x1c5_0x3c5_0x3c6() {
     runPinsrwXmm(0x1111222233334444ULL, 0x5555666677778888ULL, 0x11229900, 5, 0x1111222233334444ULL, 0x5555666699008888ULL, "sse2 pinsrw xmm");
     runPinsrwMmx(0x1111222233334444ULL, 0x5555, 2, 0x1111555533334444ULL, "sse pinsrw mmx");
     runPextrwXmm(0x1111222233334444ULL, 0x5555666677778888ULL, 2, 0x2222, "sse2 pextrw xmm");
+    runPextrwXmmMemory(0x1111222233334444ULL, 0x5555666677778888ULL, 6, 0x6666, "sse2 pextrw xmm");
     runPextrwMmx(0x1111222233334444ULL, 2, 0x2222, "sse pextrw mmx");
     testSse128ImmOp(0, 0, 0xc6, 0x1e, 0x2222222211111111ULL, 0x4444444433333333ULL, 0x6666666655555555ULL, 0x8888888877777777ULL, 0x4444444433333333ULL, 0x5555555566666666ULL, "sse shufps");
     testSse128ImmOp(0, 0, 0xc6, (U8)(1 | (1 << 4) | (3 << 6)), 0x2222222211111111ULL, 0x4444444433333333ULL, 0x6666666655555555ULL, 0x8888888866666666ULL, 0x1111111122222222ULL, 0x8888888866666666ULL, "sse shufps mixed");
@@ -1215,6 +1358,8 @@ void testSse2Shift_0x171_0x172_0x173_0x1d1_0x1d2_0x1d3_0x1e1_0x1e2_0x1f1_0x1f2_0
 void testSse2Convert_0x12a_0x32a_0x12c_0x32c_0x12d_0x32d_0x15a_0x35a_0x15b_0x35b_0x1e6_0x3e6() {
     U64 i64Mixed = ((U64)(U32)(S32)-5000 << 32) | 5000;
     testSseMmx64Op(0, 0x66, 0x2a, XMM_SRC_LOW, XMM_SRC_HIGH, i64Mixed, bitsFromDouble(5000.0), bitsFromDouble(-5000.0), 0, 0, "sse2 cvtpi2pd");
+    runCachedCvtpi2pdMmx("sse2 cvtpi2pd cached mmx");
+    runCachedCvtpi2pdMem("sse2 cvtpi2pd cached mem");
     testSseReg32Op(0, 0xf2, 0x2a, XMM_SRC_LOW, XMM_SRC_HIGH, (U32)(S32)-5000, bitsFromDouble(-5000.0), XMM_SRC_HIGH, "sse2 cvtsi2sd neg");
     testSseReg32Op(0, 0xf2, 0x2a, XMM_SRC_LOW, XMM_SRC_HIGH, 0x7fffffff, bitsFromDouble((double)0x7fffffff), XMM_SRC_HIGH, "sse2 cvtsi2sd intmax");
     testSseReg32Op(0, 0xf2, 0x2a, XMM_SRC_LOW, XMM_SRC_HIGH, 0x80000000, bitsFromDouble((double)(S32)0x80000000), XMM_SRC_HIGH, "sse2 cvtsi2sd intmin");
@@ -1283,9 +1428,24 @@ void testSse2CompareFlags_0x12e_0x12f() {
                     }
                     verifyXmmMove(dst, cases[i].lhs, 0x3333333344444444ULL, src, cases[i].rhs, 0x5555555566666666ULL, cases[i].name);
                 }
+
+                initSse();
+                setXmm(dst, cases[i].lhs, 0x3333333344444444ULL);
+                memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, cases[i].rhs);
+                memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC + 8, 0x5555555566666666ULL);
+                cpu->flags = SSE_FLAG_MASK | DF;
+                emitSseRegMem(0x66, (U8)opcode, dst, MEM_SRC);
+                runTestCPU();
+                if (((TestX86::actualFlags(cpu, true) ^ cases[i].flags) & (SSE_FLAG_MASK | DF)) != 0) {
+                    failed("%s sse2 compare mem", cases[i].name);
+                }
+                verifyOnlyXmmChanged(dst, cases[i].lhs, 0x3333333344444444ULL, cases[i].name);
             }
         }
     }
+
+    testSse128ImmOp(0, 0xf2, 0xc2, 1, bitsFromDouble(1.0), 0x3333333344444444ULL, bitsFromDouble(2.0), 0x5555555566666666ULL, 0xffffffffffffffffULL, 0x3333333344444444ULL, "sse2 cmpltsd");
+    testSse128ImmOp(0, 0xf2, 0xc2, 3, 0x7ff8000000000000ULL, 0x3333333344444444ULL, bitsFromDouble(2.0), 0x5555555566666666ULL, 0xffffffffffffffffULL, 0x3333333344444444ULL, "sse2 cmpunordsd");
 }
 
 void testSse2Arithmetic_0x151_0x351_0x154_0x155_0x156_0x157_0x158_0x358_0x159_0x359_0x15c_0x35c_0x15d_0x35d_0x15e_0x35e_0x15f_0x35f() {
@@ -1322,6 +1482,9 @@ void testSse2Transfers_0x16e_0x17e_0x37e_0x1d6_0x3d6_0x3c3_0x1e7_0x1f7() {
     testSse128ROp(0, 0x66, 0xd6, 0x1111111122222222ULL, 0x3333333344444444ULL, 0x5555555566666666ULL, 0x7777777788888888ULL, 0x5555555566666666ULL, 0, 0x5555555566666666ULL, 0x3333333344444444ULL, "sse2 movq e64,xmm");
     testSseMmx64ROp(0, 0xf2, 0xd6, 0x1111111122222222ULL, 0x3333333344444444ULL, 0x5555555566666666ULL, 0x3333333344444444ULL, 0xffffffffffffffffULL, "sse2 movdq2q");
     testSseMmx64Op(0, 0xf3, 0xd6, 0x1111111122222222ULL, 0x3333333344444444ULL, 0x5555555566666666ULL, 0x5555555566666666ULL, 0, 0xffffffffffffffffULL, 0xffffffffffffffffULL, "sse2 movq2dq");
+    runCachedMovdXmmR32("sse2 movd xmm,r32 cached");
+    runCachedMovqXmmXmm("sse2 movq xmm,xmm cached");
+    runCachedMovq2dq("sse2 movq2dq cached");
     for (int reg = 0; reg < 8; ++reg) {
         initSseMmx();
         cpu->reg[reg].u32 = 0x12348765;
@@ -1356,6 +1519,7 @@ void testSse2Transfers_0x16e_0x17e_0x37e_0x1d6_0x3d6_0x3c3_0x1e7_0x1f7() {
             }
         }
     }
+    runSegmentedMaskmovdqu("sse2 maskmovdqu segmented");
 }
 
 void testSse2PackedArithmetic_0x1d4_0x1d5_0x1d7_0x1d8_0x1d9_0x1da_0x1db_0x1dc_0x1dd_0x1de_0x1df_0x1e0_0x1e3_0x1e4_0x1e5_0x1e8_0x1e9_0x1ea_0x1eb_0x1ec_0x1ed_0x1ee_0x1ef_0x1f4_0x1f5_0x1f6_0x1f8_0x1f9_0x1fa_0x1fb_0x1fc_0x1fd_0x1fe() {

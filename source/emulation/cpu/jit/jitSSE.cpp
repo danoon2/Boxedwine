@@ -859,7 +859,11 @@ void JitSSE::dynamic_FSIN(DecodedOp* op) {
 
 // Note that this is only used when there are no segments involved
 void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
-    if (currentOp->runCount == 0) {
+    bool stubFirstRun = currentOp->runCount == 0;
+#ifdef __TEST
+    stubFirstRun = false;
+#endif
+    if (stubFirstRun) {
         currentOp->flags2 |= OP_FLAG2_TRACED_STUB;
         emulateSingleOp(); // since this was never run, just stub it out so that we save jit code cache since its a lot of code
         return;

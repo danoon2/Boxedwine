@@ -5773,7 +5773,7 @@ DecodeRMr decodePcmpeqb(PcmpeqbMmx, PcmpeqbE64);
 DecodeRMr decodePcmpeqw(PcmpeqwMmx, PcmpeqwE64);
 DecodeRMr decodePcmpeqd(PcmpeqdMmx, PcmpeqdE64);
 DecodeInst decodeEmms(Emms);
-DecodeSSE2r decodeMovQqPq(MovPqMmx, MovE64Pq, Invalid, Invalid, MovdquXmmXmm, MovdquE128Xmm);
+DecodeSSE2r decodeMovQqPq(MovMmxPq, MovE64Pq, Invalid, Invalid, MovdquXmmXmm, MovdquE128Xmm);
 DecodeRMr decodePsrlw(PsrlwMmx, PsrlwE64);
 DecodeRMr decodePsrld(PsrldMmx, PsrldE64);
 DecodeRMr decodePsrlq(PsrlqMmx, PsrlqE64);

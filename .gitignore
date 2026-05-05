@@ -38,3 +38,6 @@ tools/BoxedwineRunner/out/
 lib/mac
 .vs/
 .github/
+project/mac-xcode/Boxedwine/DerivedDataCoverage
+*.xcresult
+*.profraw

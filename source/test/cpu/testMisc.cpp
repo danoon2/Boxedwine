@@ -474,7 +474,13 @@ void emitXlat() {
     pushGeneratedCode(code);
 }
 
-void emitLea(U8 modrm, bool hasSib, U8 sib, bool hasDisp8, bool hasDisp16, bool hasDisp32, S32 disp) {
+void emitLea(U8 modrm, bool hasSib, U8 sib, bool hasDisp8, bool hasDisp16, bool hasDisp32, S32 disp, bool operandPrefix = false, bool addressPrefix = false) {
+    if (operandPrefix) {
+        pushCode8(0x66);
+    }
+    if (addressPrefix) {
+        pushCode8(0x67);
+    }
     pushCode8(0x8d);
     pushCode8(modrm);
     if (hasSib) {
@@ -947,7 +953,7 @@ void initLea32Regs(U32* regs) {
     regs[R_DI] = 0x00700000;
 }
 
-void runLea16Case(const Lea16Case& data, int dstReg, const char* name) {
+void runLea16AddressCase(const Lea16Case& data, int dstReg, int operandWidth, bool big, bool operandPrefix, bool addressPrefix, const char* name) {
     char caseName[96];
     U32 regs[8];
     U32 expectedRegs[8];
@@ -958,10 +964,14 @@ void runLea16Case(const Lea16Case& data, int dstReg, const char* name) {
     for (int i = 0; i < 8; ++i) {
         expectedRegs[i] = regs[i];
     }
-    expectedRegs[dstReg] = (expectedRegs[dstReg] & 0xffff0000) | (data.expected & 0xffff);
+    if (operandWidth == 16) {
+        expectedRegs[dstReg] = (expectedRegs[dstReg] & 0xffff0000) | (data.expected & 0xffff);
+    } else {
+        expectedRegs[dstReg] = data.expected & 0xffff;
+    }
 
-    beginInstruction(false);
-    emitLea(data.modrmBase | (dstReg << 3), false, 0, data.hasDisp8, data.hasDisp16, false, data.disp);
+    beginInstruction(big);
+    emitLea(data.modrmBase | (dstReg << 3), false, 0, data.hasDisp8, data.hasDisp16, false, data.disp, operandPrefix, addressPrefix);
     writeRegs(cpu, regs);
     verifyLinearMemoryUnchanged(linear, caseName);
 
@@ -971,7 +981,7 @@ void runLea16Case(const Lea16Case& data, int dstReg, const char* name) {
     verifyFlagsUnchanged(caseName);
 }
 
-void runLea32Case(const Lea32Case& data, int dstReg, const char* name) {
+void runLea32AddressCase(const Lea32Case& data, int dstReg, int operandWidth, bool big, bool operandPrefix, bool addressPrefix, const char* name) {
     char caseName[96];
     U32 regs[8];
     U32 expectedRegs[8];
@@ -982,10 +992,14 @@ void runLea32Case(const Lea32Case& data, int dstReg, const char* name) {
     for (int i = 0; i < 8; ++i) {
         expectedRegs[i] = regs[i];
     }
-    expectedRegs[dstReg] = data.expected;
+    if (operandWidth == 16) {
+        expectedRegs[dstReg] = (expectedRegs[dstReg] & 0xffff0000) | (data.expected & 0xffff);
+    } else {
+        expectedRegs[dstReg] = data.expected;
+    }
 
-    beginInstruction(true);
-    emitLea(data.rm | (dstReg << 3), data.hasSib, data.sib, data.hasDisp8, false, data.hasDisp32, data.disp);
+    beginInstruction(big);
+    emitLea(data.rm | (dstReg << 3), data.hasSib, data.sib, data.hasDisp8, false, data.hasDisp32, data.disp, operandPrefix, addressPrefix);
     writeRegs(cpu, regs);
     verifyLinearMemoryUnchanged(linear, caseName);
 
@@ -995,20 +1009,32 @@ void runLea32Case(const Lea32Case& data, int dstReg, const char* name) {
     verifyFlagsUnchanged(caseName);
 }
 
-void runLea16Cases(const char* name) {
+void runLea16AddressCases(int operandWidth, bool big, bool operandPrefix, bool addressPrefix, const char* name) {
     for (size_t i = 0; i < caseCount(LEA16_CASES); ++i) {
         for (int dstReg = 0; dstReg < 8; ++dstReg) {
-            runLea16Case(LEA16_CASES[i], dstReg, name);
+            runLea16AddressCase(LEA16_CASES[i], dstReg, operandWidth, big, operandPrefix, addressPrefix, name);
         }
     }
 }
 
-void runLea32Cases(const char* name) {
+void runLea32AddressCases(int operandWidth, bool big, bool operandPrefix, bool addressPrefix, const char* name) {
     for (size_t i = 0; i < caseCount(LEA32_CASES); ++i) {
         for (int dstReg = 0; dstReg < 8; ++dstReg) {
-            runLea32Case(LEA32_CASES[i], dstReg, name);
+            runLea32AddressCase(LEA32_CASES[i], dstReg, operandWidth, big, operandPrefix, addressPrefix, name);
         }
     }
+}
+
+void runLea16Cases(const char* name) {
+    runLea16AddressCases(16, false, false, false, name);
+    runLea32AddressCases(16, true, true, false, "lea r16,m32 668d");
+    runLea32AddressCases(16, false, false, true, "lea r16,m32 678d");
+}
+
+void runLea32Cases(const char* name) {
+    runLea32AddressCases(32, true, false, false, name);
+    runLea16AddressCases(32, false, true, false, "lea r32,m16 668d");
+    runLea16AddressCases(32, true, false, true, "lea r32,m16 678d");
 }
 
 U16 effectiveAddress16(int rm, const U32* regs, S32 disp, bool directAddress) {
