@@ -848,11 +848,11 @@ public class VkHostMarshalType {
             size += " * sizeof(";
             size += param.paramType.name;
             size += ")";
-            out.append("        memory->memcpy((");
+            out.append("        memory->memcpy(paramAddress, (");
             out.append(param.paramType.name);
             out.append("*)s->");
             out.append(param.name);
-            out.append(", paramAddress, ");
+            out.append(", ");
             out.append(size);
             out.append(");\n");
         } else {
@@ -1241,6 +1241,12 @@ public class VkHostMarshalType {
     static VkHostMarshalInUnion inUnion = new VkHostMarshalInUnion();
     static vkHostMarshalNotImplemented notImplemented = new vkHostMarshalNotImplemented();
     static VkUpdateDescriptorSetWithTemplateMarshal updateDescriptorSetWithTemplateMarshal = new VkUpdateDescriptorSetWithTemplateMarshal();
+    static VkHostMarshalInStructure unmapMemory2 = new VkHostMarshalInStructure() {
+        public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+            super.after(data, fn, out, param);
+            out.append("    if (EAX == 0) {\n        unmapVkMemory(pMemoryUnmapInfo->memory);\n    }\n");
+        }
+    };
     private static HashSet<String> simpleTypes;
 
     static {
@@ -1271,6 +1277,9 @@ public class VkHostMarshalType {
         }
         if ((function.name.equals("vkMapMemory2") || function.name.equals("vkMapMemory2KHR")) && param.name.contains("pData")) {
             return new VkHostMarshalMapMemory2();
+        }
+        if ((function.name.equals("vkUnmapMemory2") || function.name.equals("vkUnmapMemory2KHR")) && param.name.equals("pMemoryUnmapInfo")) {
+            return unmapMemory2;
         }
         if (param.paramType.getCategory().equals("struct")) {
             if (param.isConst) {

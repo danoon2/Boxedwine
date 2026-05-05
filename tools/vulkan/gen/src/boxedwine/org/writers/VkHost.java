@@ -274,7 +274,7 @@ public class VkHost {
         out.append("void freeVulkanPtr(KMemory* memory, U32 p);\n");
         out.append("void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size);\n");
         out.append("void unregisterVkMemoryAllocation(VkDeviceMemory memory);\n");
-        out.append("U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize len);\n");
+        out.append("U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize offset, VkDeviceSize len);\n");
         out.append("void unmapVkMemory(VkDeviceMemory memory);\n\n");
         for (int i=0;i<26;i++) {
             out.append("#define ARG");
