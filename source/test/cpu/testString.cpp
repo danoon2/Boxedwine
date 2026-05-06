@@ -402,6 +402,79 @@ void verifyOverlapBytes(const U8* expected, size_t count, const char* name) {
     }
 }
 
+void runHotMovsCase(int width, bool address32, U32 count, bool backward, const char* name) {
+    newInstruction(backward ? DF : 0);
+    cpu->big = address32 ? 1 : 0;
+    Seg savedDs = cpu->seg[DS];
+    Seg savedEs = cpu->seg[ES];
+    bool savedHasDs = cpu->thread->process->hasSetSeg[DS];
+    bool savedHasEs = cpu->thread->process->hasSetSeg[ES];
+    if (address32) {
+        cpu->seg[DS].address = 0;
+        cpu->seg[DS].value = 0;
+        cpu->seg[ES].address = 0;
+        cpu->seg[ES].value = 0;
+        cpu->thread->process->hasSetSeg[DS] = false;
+        cpu->thread->process->hasSetSeg[ES] = false;
+    } else {
+        cpu->seg[ES].address = TEST_HEAP_ADDRESS;
+        cpu->seg[ES].value = TEST_HEAP_SEG;
+        cpu->thread->process->hasSetSeg[ES] = true;
+    }
+
+    U32 startOffset = backward ? (count - 1) * width : 0;
+    U32 srcBase = address32 ? TEST_HEAP_ADDRESS + SRC_BASE : SRC_BASE;
+    U32 dstBase = address32 ? TEST_HEAP_ADDRESS + DST_BASE : DST_BASE;
+    U32 srcStart = srcBase + startOffset;
+    U32 dstStart = dstBase + startOffset;
+    size_t dataSize = count * width;
+    U8 initialSrc[256];
+    U8 initialDst[256];
+    U8 expectedDst[256];
+    if (dataSize > sizeof(initialSrc)) {
+        failed("%s hot data size", name);
+        cpu->seg[DS] = savedDs;
+        cpu->seg[ES] = savedEs;
+        cpu->thread->process->hasSetSeg[DS] = savedHasDs;
+        cpu->thread->process->hasSetSeg[ES] = savedHasEs;
+        return;
+    }
+    for (size_t i = 0; i < dataSize; ++i) {
+        initialSrc[i] = (U8)(0x20 + ((i * 13 + 7) & 0x7f));
+        initialDst[i] = (U8)(0x90 + ((i * 13 + 7) & 0x3f));
+    }
+    copyBytes(expectedDst, initialSrc, dataSize);
+    emitCode(STRING_MOVS, width, PREFIX_REPE);
+
+    for (int pass = 0; pass < 2; ++pass) {
+        cpu->eip.u32 = 0;
+        cpu->big = address32 ? 1 : 0;
+        cpu->setFlags(backward ? DF : 0, FMASK_ALL);
+        cpu->reg[R_SI].u32 = srcStart;
+        cpu->reg[R_DI].u32 = dstStart;
+        cpu->reg[R_CX].u32 = count;
+        writeBytes(TEST_HEAP_ADDRESS + SRC_BASE, initialSrc, dataSize);
+        writeBytes(TEST_HEAP_ADDRESS + DST_BASE, initialDst, dataSize);
+        runTestCPU();
+    }
+
+    verifyBytes(TEST_HEAP_ADDRESS + SRC_BASE, initialSrc, dataSize, name);
+    verifyBytes(TEST_HEAP_ADDRESS + DST_BASE, expectedDst, dataSize, name);
+    S32 totalDelta = backward ? -(S32)(count * width) : (S32)(count * width);
+    if (cpu->reg[R_CX].u32 != 0 ||
+            cpu->reg[R_SI].u32 != updateIndex(srcStart, totalDelta, address32) ||
+            cpu->reg[R_DI].u32 != updateIndex(dstStart, totalDelta, address32)) {
+        failed("%s hot registers", name);
+    }
+    if ((actualFlags(cpu, true) & FLAG_MASK) != (backward ? DF : 0)) {
+        failed("%s hot flags", name);
+    }
+    cpu->seg[DS] = savedDs;
+    cpu->seg[ES] = savedEs;
+    cpu->thread->process->hasSetSeg[DS] = savedHasDs;
+    cpu->thread->process->hasSetSeg[ES] = savedHasEs;
+}
+
 void simulateOverlapMovs(U8* expected, int width, bool address32, U32 count, bool backward, U32& esi, U32& edi, U32& ecx) {
     S32 delta = backward ? -width : width;
     U32 remaining = countValue(ecx, address32);
@@ -460,6 +533,11 @@ void runOverlapMovsCases(int width, bool address32) {
         runOverlapMovsCase(width, address32, counts[i], false, "string move overlap forward");
         runOverlapMovsCase(width, address32, counts[i], true, "string move overlap backward");
     }
+}
+
+void runHotMovsCases(int width, bool address32) {
+    runHotMovsCase(width, address32, 48, false, "string move hot forward");
+    runHotMovsCase(width, address32, 48, true, "string move hot backward");
 }
 
 void initPageBytes(U8* values, size_t count, U8 seed) {
@@ -660,24 +738,28 @@ size_t caseCount(const T(&)[N]) {
 void testMovsb_0x0a4() {
     runStringCases(STRING_MOVS, 1, false, MOVE_CASES, caseCount(MOVE_CASES));
     runOverlapMovsCases(1, false);
+    runHotMovsCases(1, false);
     runPageBoundaryCases(STRING_MOVS, 1, false);
 }
 
 void testMovsb_0x2a4() {
     runStringCases(STRING_MOVS, 1, true, MOVE_CASES, caseCount(MOVE_CASES));
     runOverlapMovsCases(1, true);
+    runHotMovsCases(1, true);
     runPageBoundaryCases(STRING_MOVS, 1, true);
 }
 
 void testMovsw_0x0a5() {
     runStringCases(STRING_MOVS, 2, false, MOVE_CASES, caseCount(MOVE_CASES));
     runOverlapMovsCases(2, false);
+    runHotMovsCases(2, false);
     runPageBoundaryCases(STRING_MOVS, 2, false);
 }
 
 void testMovsd_0x2a5() {
     runStringCases(STRING_MOVS, 4, true, MOVE_CASES, caseCount(MOVE_CASES));
     runOverlapMovsCases(4, true);
+    runHotMovsCases(4, true);
     runPageBoundaryCases(STRING_MOVS, 4, true);
 }
 

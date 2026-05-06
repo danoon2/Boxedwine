@@ -600,9 +600,9 @@ void JitFPU::dynamic_FLDENV(DecodedOp* op) {
         addValue(JitWidth::b32, addressReg, 2);
 
         for (int i = 0; i < 4; i++) {
-            addValue(JitWidth::b32, addressReg, 2);
             read(JitWidth::b16, addressReg, nullptr, nullptr, tmp);
-            writeCPU(JitWidth::b16, offsetof(CPU, fpu.envData) + sizeof(U32) * i, tmp);            
+            writeCPU(JitWidth::b16, offsetof(CPU, fpu.envData) + sizeof(U32) * i, tmp);
+            addValue(JitWidth::b32, addressReg, 2);
         }
     } else {
         read(JitWidth::b32, addressReg, nullptr, nullptr, tmp);
@@ -625,9 +625,9 @@ void JitFPU::dynamic_FLDENV(DecodedOp* op) {
         addValue(JitWidth::b32, addressReg, 4);
 
         for (int i = 0; i < 4; i++) {
-            addValue(JitWidth::b32, addressReg, 4);
             read(JitWidth::b32, addressReg, nullptr, nullptr, tmp);
             writeCPU(JitWidth::b32, offsetof(CPU, fpu.envData) + sizeof(U32) * i, tmp);
+            addValue(JitWidth::b32, addressReg, 4);
         }
     }
 
@@ -666,18 +666,20 @@ void JitFPU::dynamic_FNSTENV(DecodedOp* op) {
         for (int i = 0; i < 8; i++) {
             readCPU(JitWidth::b8, offsetof(CPU, fpu.tags[0]) + i, tmp);
             IfEqual(JitWidth::b8, tmp, 3); {
-                orValue(JitWidth::b32, sw, 3 << i);
+                orValue(JitWidth::b32, sw, 3 << (i * 2));
             } EndIf();
         }
         write(JitWidth::b16, addressReg, sw);
+        addValue(JitWidth::b32, addressReg, 2);
 
         // instruction pointer
         // op code
         // data pointer
         // data pointer selector
         for (int i = 0; i < 4; i++) {
+            readCPU(JitWidth::b32, offsetof(CPU, fpu.envData) + sizeof(U32) * i, tmp);
+            write(JitWidth::b16, addressReg, tmp);
             addValue(JitWidth::b32, addressReg, 2);
-            write(JitWidth::b16, createMemPtr(addressReg), 0);
         }
     } else {
         // cw
@@ -694,18 +696,20 @@ void JitFPU::dynamic_FNSTENV(DecodedOp* op) {
         for (int i = 0; i < 8; i++) {
             readCPU(JitWidth::b8, offsetof(CPU, fpu.tags[0]) + i, tmp);
             IfEqual(JitWidth::b8, tmp, 3); {
-                orValue(JitWidth::b32, sw, 3 << i);
+                orValue(JitWidth::b32, sw, 3 << (i * 2));
             } EndIf();
         }
         write(JitWidth::b32, addressReg, sw);
+        addValue(JitWidth::b32, addressReg, 4);
 
         // instruction pointer
         // op code
         // data pointer
         // data pointer selector
         for (int i = 0; i < 4; i++) {
+            readCPU(JitWidth::b32, offsetof(CPU, fpu.envData) + sizeof(U32) * i, tmp);
+            write(JitWidth::b32, addressReg, tmp);
             addValue(JitWidth::b32, addressReg, 4);
-            write(JitWidth::b32, createMemPtr(addressReg), 0);
         }
     }
 
@@ -965,6 +969,10 @@ void JitFPU::dynamic_FNINIT(DecodedOp* op) {
     writeCPUValue(JitWidth::b8, offsetof(CPU, fpu.isMMXInUse), 0);
     writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.isRegCached), 0);
     writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.isRegCached) + 4, 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.envData[0]), 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.envData[1]), 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.envData[2]), 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.envData[3]), 0);
 
     writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.tags[0]), TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));
     writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.tags[0]) + 4, TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));

@@ -806,11 +806,12 @@ void Jit::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg callbac
     if (width == JitWidth::b8) {
         // dynamic_xchgr8r8 has the same issue, the API doesn't allow for the write of 2 registers that map to the same emulated register (AL/AH etc)
         if (op->rm == op->reg + 4) {
-            // :TODO: what about ARM
             src = getReg8(op->reg);
-            dest = getTmpReg8(op->rm);
+            dest = getTmpReg8();
+            mov(JitWidth::b8, dest, getReadOnlyReg8(op->rm));
         } else if (op->reg == op->rm + 4) {
-            src = getTmpReg8(op->reg);
+            src = getTmpReg8();
+            mov(JitWidth::b8, src, getReadOnlyReg8(op->reg));
             dest = getReg8(op->rm);
         }  else if (op->reg == op->rm) {
             src = getReg8(op->reg);

@@ -517,8 +517,14 @@ const TestEntry TEST_ENTRIES[] = {
     {testFpuD9_0x2d9, "Test FPU D9 2d9"},
     {testFpuDA_0x0da, "Test FPU DA 0da"},
     {testFpuDA_0x2da, "Test FPU DA 2da"},
+    {testFpuDB_0x0db, "Test FPU DB 0db"},
+    {testFpuDB_0x2db, "Test FPU DB 2db"},
+    {testFpuDC_0x0dc, "Test FPU DC 0dc"},
+    {testFpuDC_0x2dc, "Test FPU DC 2dc"},
     {testFpuDD_0x0dd, "Test FPU DD 0dd"},
     {testFpuDD_0x2dd, "Test FPU DD 2dd"},
+    {testFpuDE_0x0de, "Test FPU DE 0de"},
+    {testFpuDE_0x2de, "Test FPU DE 2de"},
     {testFpuDF_0x0df, "Test FPU DF 0df"},
     {testFpuDF_0x2df, "Test FPU DF 2df"},
     {testLoopnz_0x0e0, "Test LoopNZ 0e0"},
@@ -715,6 +721,15 @@ extern "C" {
 }
 
 int runCpuTestsMac(void) {
+    const char* start = getenv("BOXEDWINE_TEST_START");
+    const char* count = getenv("BOXEDWINE_TEST_COUNT");
+    const char* threads = getenv("BOXEDWINE_TEST_THREADS");
+    if (start || count || threads) {
+        return runTestTests(
+            start ? (size_t)strtoul(start, nullptr, 0) : 0,
+            count ? (size_t)strtoul(count, nullptr, 0) : 0,
+            threads ? (U32)strtoul(threads, nullptr, 0) : 0);
+    }
     return runTestTests();
 }
 #else

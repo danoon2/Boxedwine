@@ -524,8 +524,7 @@ void Jit::dynamic_verwe16(DecodedOp* op) {
     emulateSingleOp();
 }
 void Jit::dynamic_xaddr8r8(DecodedOp* op) {
-    // the RegPtr struggles with this and since this instruction seems to be rare without the lock, I'm just not going to worry about it
-    emulateSingleOp();
+    dynamic_RR_WriteBoth(op, JitWidth::b8, &Jit::xaddReg, FLAGS_ADD8);
 }
 void Jit::dynamic_xaddr8e8(DecodedOp* op) {
     dynamic_RM_WriteM(op, JitWidth::b8, &Jit::xaddReg, FLAGS_ADD8);

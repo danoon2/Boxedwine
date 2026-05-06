@@ -1842,16 +1842,17 @@ void JitArmV8CodeGen::rcrReg(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cf
         // (var1 >> var2)
         compiler.and_(R32(cl), R32(rm), 0x1f);
         modValue32(cl, cl, tmp2);
-        compiler.lsl(R32(tmp1), R32(src), R32(cl));
+        compiler.lsr(R32(tmp1), R32(src), R32(cl));
 
         // (var1 << (9 - var2))       
         compiler.sub(R32(tmp2), R32(tmp2), R32(cl));
-        compiler.lsr(R32(tmp2), R32(src), R32(tmp2));
+        compiler.lsl(R32(tmp2), R32(src), R32(tmp2));
 
         compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));
 
         // (cf << (8 - var2))
-        compiler.sub(R32(tmp2), R32(cl), 1);
+        compiler.sub(R32(tmp2), R32(cl), 8);
+        compiler.neg(R32(tmp2), R32(tmp2));
         compiler.lsl(R32(tmp2), R32(cf), R32(tmp2));
 
         compiler.orr(R32(tmp1), R32(tmp2), R32(tmp1));

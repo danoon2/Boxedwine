@@ -593,12 +593,10 @@ void JitSSE::dynamic_pextrwR32Xmm(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_pextrwE16Xmm(DecodedOp* op) {
-    write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](MemPtr address) {
-        SSERegPtr reg = loadCpuXMMReg(op->reg);
-        RegPtr tmp = getTmpReg();
-        pextrwR32Xmm(tmp, reg, op->imm);
-        writeHost(JitWidth::b16, address, tmp);
-    });
+    SSERegPtr reg = loadCpuXMMReg(op->reg);
+    RegPtr tmp = getTmpReg();
+    pextrwR32Xmm(tmp, reg, op->imm);
+    write(JitWidth::b16, calculateEaa(op), tmp);
 }
 
 void JitSSE::dynamic_pinsrwXmmR32(DecodedOp* op) {
@@ -859,7 +857,11 @@ void JitSSE::dynamic_FSIN(DecodedOp* op) {
 
 // Note that this is only used when there are no segments involved
 void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
-    if (currentOp->runCount == 0) {
+    bool stubFirstRun = currentOp->runCount == 0;
+#ifdef __TEST
+    stubFirstRun = false;
+#endif
+    if (stubFirstRun) {
         currentOp->flags2 |= OP_FLAG2_TRACED_STUB;
         emulateSingleOp(); // since this was never run, just stub it out so that we save jit code cache since its a lot of code
         return;
