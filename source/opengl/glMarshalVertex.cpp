@@ -29,13 +29,30 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
         return 0;
     }
 
-    if (p->ptr) {        
-        U32 datasize = count * (p->stride?p->stride:getDataSize(p->type));
+    if (p->ptr) {
+        U32 elementSize = p->stride ? p->stride : p->size * getDataSize(p->type);
+        U32 datasize = count * elementSize;
         U32 available = K_PAGE_SIZE - (p->ptr & K_PAGE_MASK);
 
+        if (!datasize) {
+            U8* ramPtr = cpu->memory->getRamPtr(p->ptr, 1, false);
+            p->marshal_size = 0;
+            if (ramPtr != p->marshal || p->lastMarshalledPtr != p->ptr) {
+                p->marshal = ramPtr;
+                p->lastMarshalledPtr = p->ptr;
+                return 1;
+            }
+            return 0;
+        }
+
         if (p->marshal_size < datasize || p->lastMarshalledPtr != p->ptr) {
-            U32 pageCount = 1 + ((datasize - available + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT);
-            p->marshal_size = cpu->memory->ensureContinuousNative_unsafe(p->ptr >> K_PAGE_SHIFT, pageCount);
+            U32 pageCount = 1;
+            if (datasize > available) {
+                pageCount += (datasize - available + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
+            }
+            U32 continuousSize = cpu->memory->ensureContinuousNative_unsafe(p->ptr >> K_PAGE_SHIFT, pageCount);
+            U32 pageOffset = p->ptr & K_PAGE_MASK;
+            p->marshal_size = continuousSize > pageOffset ? continuousSize - pageOffset : 0;
             U8* ramPtr = cpu->memory->getRamPtr(p->ptr, 1, false);
             if (ramPtr != p->marshal) {
                 p->marshal = ramPtr;
@@ -50,15 +67,34 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
     return 0;
 }
 
+static void clearInterleavedArrayReplay(CPU* cpu) {
+    cpu->thread->glInterleavedArray.refreshEachCall = 0;
+}
+
 void updateVertexPointers(CPU* cpu, U32 count) {
     if (cpu->thread->glVertextPointer.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glVertextPointer, count))
-            GL_FUNC(pglVertexPointer)(cpu->thread->glVertextPointer.size, cpu->thread->glVertextPointer.type, cpu->thread->glVertextPointer.stride, cpu->thread->glVertextPointer.marshal);
+        if (updateVertexPointer(cpu, &cpu->thread->glVertextPointer, count)) {
+            if (cpu->thread->glVertextPointer.isVertexAttrib && ext_glVertexAttribPointer) {
+                GL_FUNC(ext_glVertexAttribPointer)(0, cpu->thread->glVertextPointer.size, cpu->thread->glVertextPointer.type, cpu->thread->glVertextPointer.normalized ? GL_TRUE : GL_FALSE, cpu->thread->glVertextPointer.stride, cpu->thread->glVertextPointer.marshal);
+            } else {
+                GL_FUNC(pglVertexPointer)(cpu->thread->glVertextPointer.size, cpu->thread->glVertextPointer.type, cpu->thread->glVertextPointer.stride, cpu->thread->glVertextPointer.marshal);
+            }
+        }
+    }
+    if (cpu->thread->glInterleavedArray.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->glInterleavedArray, count))
+            GL_FUNC(pglInterleavedArrays)(cpu->thread->glInterleavedArray.type, cpu->thread->glInterleavedArray.stride, cpu->thread->glInterleavedArray.marshal);
     }
     for (auto& vp : cpu->thread->glVertextPointersByIndex) {
         if (vp.value->refreshEachCall) {
             if (updateVertexPointer(cpu, vp.value.get(), count))
                 GL_FUNC(ext_glVertexAttribPointer)(vp.key, vp.value->size, vp.value->type, vp.value->normalized ? GL_TRUE : GL_FALSE, vp.value->stride, vp.value->marshal);
+        }
+    }
+    for (auto& vp : cpu->thread->glVertexAttribPointerNVByIndex) {
+        if (vp.value->refreshEachCall) {
+            if (updateVertexPointer(cpu, vp.value.get(), count) && ext_glVertexAttribPointerNV)
+                ext_glVertexAttribPointerNV(vp.key, vp.value->size, vp.value->type, vp.value->stride, vp.value->marshal);
         }
     }
 
@@ -80,6 +116,13 @@ void updateVertexPointers(CPU* cpu, U32 count) {
         if (updateVertexPointer(cpu, &cpu->thread->glFogPointerEXT, count)) {
             if (ext_glFogCoordPointerEXT)
                 ext_glFogCoordPointerEXT(cpu->thread->glFogPointerEXT.type, cpu->thread->glFogPointerEXT.stride, cpu->thread->glFogPointerEXT.marshal);
+        }
+    }
+
+    if (cpu->thread->glTangentPointerEXT.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->glTangentPointerEXT, count)) {
+            if (ext_glTangentPointerEXT)
+                ext_glTangentPointerEXT(cpu->thread->glTangentPointerEXT.type, cpu->thread->glTangentPointerEXT.stride, cpu->thread->glTangentPointerEXT.marshal);
         }
     }
 
@@ -118,14 +161,270 @@ void updateVertexPointers(CPU* cpu, U32 count) {
         if (updateVertexPointer(cpu, &cpu->thread->glTexCoordPointer, count))
             GL_FUNC(pglTexCoordPointer)(cpu->thread->glTexCoordPointer.size, cpu->thread->glTexCoordPointer.type, cpu->thread->glTexCoordPointer.stride, cpu->thread->glTexCoordPointer.marshal);
     }
-    
+
+#ifndef DISABLE_GL_EXTENSIONS
+    for (auto& vp : cpu->thread->glMultiTexCoordPointerEXTByTexunit) {
+        if (vp.value->refreshEachCall) {
+            if (updateVertexPointer(cpu, vp.value.get(), count) && ext_glMultiTexCoordPointerEXT)
+                ext_glMultiTexCoordPointerEXT(vp.key, vp.value->size, vp.value->type, vp.value->stride, vp.value->marshal);
+        }
+    }
+
+    for (auto& vp : cpu->thread->glMultiTexCoordPointerSGISByTarget) {
+        if (vp.value->refreshEachCall) {
+            if (updateVertexPointer(cpu, vp.value.get(), count) && ext_glMultiTexCoordPointerSGIS)
+                ext_glMultiTexCoordPointerSGIS(vp.key, vp.value->size, vp.value->type, vp.value->stride, vp.value->marshal);
+        }
+    }
+
+    for (auto& vp : cpu->thread->glVariantPointerEXTById) {
+        if (vp.value->refreshEachCall) {
+            if (updateVertexPointer(cpu, vp.value.get(), count) && ext_glVariantPointerEXT)
+                ext_glVariantPointerEXT(vp.key, vp.value->type, vp.value->stride, vp.value->marshal);
+        }
+    }
+
+    if (cpu->thread->glMatrixIndexPointerARB.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->glMatrixIndexPointerARB, count)) {
+            if (ext_glMatrixIndexPointerARB)
+                ext_glMatrixIndexPointerARB(cpu->thread->glMatrixIndexPointerARB.size, cpu->thread->glMatrixIndexPointerARB.type, cpu->thread->glMatrixIndexPointerARB.stride, cpu->thread->glMatrixIndexPointerARB.marshal);
+        }
+    }
+
+    if (cpu->thread->glVertexWeightPointerEXT.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->glVertexWeightPointerEXT, count)) {
+            if (ext_glVertexWeightPointerEXT)
+                ext_glVertexWeightPointerEXT(cpu->thread->glVertexWeightPointerEXT.size, cpu->thread->glVertexWeightPointerEXT.type, cpu->thread->glVertexWeightPointerEXT.stride, cpu->thread->glVertexWeightPointerEXT.marshal);
+        }
+    }
+
+    if (cpu->thread->glWeightPointerARB.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->glWeightPointerARB, count)) {
+            if (ext_glWeightPointerARB)
+                ext_glWeightPointerARB(cpu->thread->glWeightPointerARB.size, cpu->thread->glWeightPointerARB.type, cpu->thread->glWeightPointerARB.stride, cpu->thread->glWeightPointerARB.marshal);
+        }
+    }
+#endif
+
     if (cpu->thread->glEdgeFlagPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->glEdgeFlagPointer, count))
             GL_FUNC(pglEdgeFlagPointer)(cpu->thread->glEdgeFlagPointer.stride, cpu->thread->glEdgeFlagPointer.marshal);
     }
 }
 
-GLvoid* marshalVetextPointer(CPU* cpu, GLuint index, GLboolean normalized, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+static U32 getArrayElementAddress(const OpenGLVetexPointer* p, GLint i) {
+    U32 elementSize = p->stride ? p->stride : p->size * getDataSize(p->type);
+    return p->ptr + (U32)i * elementSize;
+}
+
+static bool usesGuestArray(const OpenGLVetexPointer& p) {
+    return p.enabled && p.ptr && !p.isArrayBuffer;
+}
+
+static bool usesHostArray(const OpenGLVetexPointer& p) {
+    return p.enabled && p.isArrayBuffer;
+}
+
+static void emitVertexArrayElement(CPU* cpu, OpenGLVetexPointer* p, GLint i) {
+    U32 address = getArrayElementAddress(p, i);
+    switch (p->type) {
+    case GL_SHORT: {
+        const GLshort* v = marshalArray<GLshort>(cpu, address, p->size);
+        if (p->size == 2) GL_FUNC(pglVertex2sv)(v);
+        else if (p->size == 3) GL_FUNC(pglVertex3sv)(v);
+        else GL_FUNC(pglVertex4sv)(v);
+        break;
+    }
+    case GL_INT: {
+        const GLint* v = marshalArray<GLint>(cpu, address, p->size);
+        if (p->size == 2) GL_FUNC(pglVertex2iv)(v);
+        else if (p->size == 3) GL_FUNC(pglVertex3iv)(v);
+        else GL_FUNC(pglVertex4iv)(v);
+        break;
+    }
+    case GL_FLOAT: {
+        const GLfloat* v = marshalArray<GLfloat>(cpu, address, p->size);
+        if (p->size == 2) GL_FUNC(pglVertex2fv)(v);
+        else if (p->size == 3) GL_FUNC(pglVertex3fv)(v);
+        else GL_FUNC(pglVertex4fv)(v);
+        break;
+    }
+    case GL_DOUBLE: {
+        const GLdouble* v = marshalArray<GLdouble>(cpu, address, p->size);
+        if (p->size == 2) GL_FUNC(pglVertex2dv)(v);
+        else if (p->size == 3) GL_FUNC(pglVertex3dv)(v);
+        else GL_FUNC(pglVertex4dv)(v);
+        break;
+    }
+    default:
+        GL_FUNC(pglArrayElement)(i);
+        break;
+    }
+}
+
+static void emitNormalArrayElement(CPU* cpu, OpenGLVetexPointer* p, GLint i) {
+    U32 address = getArrayElementAddress(p, i);
+    switch (p->type) {
+    case GL_BYTE: GL_FUNC(pglNormal3bv)(marshalArray<GLbyte>(cpu, address, 3)); break;
+    case GL_SHORT: GL_FUNC(pglNormal3sv)(marshalArray<GLshort>(cpu, address, 3)); break;
+    case GL_INT: GL_FUNC(pglNormal3iv)(marshalArray<GLint>(cpu, address, 3)); break;
+    case GL_FLOAT: GL_FUNC(pglNormal3fv)(marshalArray<GLfloat>(cpu, address, 3)); break;
+    case GL_DOUBLE: GL_FUNC(pglNormal3dv)(marshalArray<GLdouble>(cpu, address, 3)); break;
+    default: break;
+    }
+}
+
+static void emitColorArrayElement(CPU* cpu, OpenGLVetexPointer* p, GLint i) {
+    U32 address = getArrayElementAddress(p, i);
+    switch (p->type) {
+    case GL_BYTE:
+        if (p->size == 3) GL_FUNC(pglColor3bv)(marshalArray<GLbyte>(cpu, address, 3));
+        else GL_FUNC(pglColor4bv)(marshalArray<GLbyte>(cpu, address, 4));
+        break;
+    case GL_UNSIGNED_BYTE:
+        if (p->size == 3) GL_FUNC(pglColor3ubv)(marshalArray<GLubyte>(cpu, address, 3));
+        else GL_FUNC(pglColor4ubv)(marshalArray<GLubyte>(cpu, address, 4));
+        break;
+    case GL_SHORT:
+        if (p->size == 3) GL_FUNC(pglColor3sv)(marshalArray<GLshort>(cpu, address, 3));
+        else GL_FUNC(pglColor4sv)(marshalArray<GLshort>(cpu, address, 4));
+        break;
+    case GL_UNSIGNED_SHORT:
+        if (p->size == 3) GL_FUNC(pglColor3usv)(marshalArray<GLushort>(cpu, address, 3));
+        else GL_FUNC(pglColor4usv)(marshalArray<GLushort>(cpu, address, 4));
+        break;
+    case GL_INT:
+        if (p->size == 3) GL_FUNC(pglColor3iv)(marshalArray<GLint>(cpu, address, 3));
+        else GL_FUNC(pglColor4iv)(marshalArray<GLint>(cpu, address, 4));
+        break;
+    case GL_UNSIGNED_INT:
+        if (p->size == 3) GL_FUNC(pglColor3uiv)(marshalArray<GLuint>(cpu, address, 3));
+        else GL_FUNC(pglColor4uiv)(marshalArray<GLuint>(cpu, address, 4));
+        break;
+    case GL_FLOAT:
+        if (p->size == 3) GL_FUNC(pglColor3fv)(marshalArray<GLfloat>(cpu, address, 3));
+        else GL_FUNC(pglColor4fv)(marshalArray<GLfloat>(cpu, address, 4));
+        break;
+    case GL_DOUBLE:
+        if (p->size == 3) GL_FUNC(pglColor3dv)(marshalArray<GLdouble>(cpu, address, 3));
+        else GL_FUNC(pglColor4dv)(marshalArray<GLdouble>(cpu, address, 4));
+        break;
+    default:
+        break;
+    }
+}
+
+static void emitIndexArrayElement(CPU* cpu, OpenGLVetexPointer* p, GLint i) {
+    U32 address = getArrayElementAddress(p, i);
+    switch (p->type) {
+    case GL_UNSIGNED_BYTE: GL_FUNC(pglIndexubv)(marshalArray<GLubyte>(cpu, address, 1)); break;
+    case GL_SHORT: GL_FUNC(pglIndexsv)(marshalArray<GLshort>(cpu, address, 1)); break;
+    case GL_INT: GL_FUNC(pglIndexiv)(marshalArray<GLint>(cpu, address, 1)); break;
+    case GL_FLOAT: GL_FUNC(pglIndexfv)(marshalArray<GLfloat>(cpu, address, 1)); break;
+    case GL_DOUBLE: GL_FUNC(pglIndexdv)(marshalArray<GLdouble>(cpu, address, 1)); break;
+    default: break;
+    }
+}
+
+static void emitTexCoordArrayElement(CPU* cpu, OpenGLVetexPointer* p, GLint i) {
+    U32 address = getArrayElementAddress(p, i);
+    switch (p->type) {
+    case GL_SHORT: {
+        const GLshort* v = marshalArray<GLshort>(cpu, address, p->size);
+        if (p->size == 1) GL_FUNC(pglTexCoord1sv)(v);
+        else if (p->size == 2) GL_FUNC(pglTexCoord2sv)(v);
+        else if (p->size == 3) GL_FUNC(pglTexCoord3sv)(v);
+        else GL_FUNC(pglTexCoord4sv)(v);
+        break;
+    }
+    case GL_INT: {
+        const GLint* v = marshalArray<GLint>(cpu, address, p->size);
+        if (p->size == 1) GL_FUNC(pglTexCoord1iv)(v);
+        else if (p->size == 2) GL_FUNC(pglTexCoord2iv)(v);
+        else if (p->size == 3) GL_FUNC(pglTexCoord3iv)(v);
+        else GL_FUNC(pglTexCoord4iv)(v);
+        break;
+    }
+    case GL_FLOAT: {
+        const GLfloat* v = marshalArray<GLfloat>(cpu, address, p->size);
+        if (p->size == 1) GL_FUNC(pglTexCoord1fv)(v);
+        else if (p->size == 2) GL_FUNC(pglTexCoord2fv)(v);
+        else if (p->size == 3) GL_FUNC(pglTexCoord3fv)(v);
+        else GL_FUNC(pglTexCoord4fv)(v);
+        break;
+    }
+    case GL_DOUBLE: {
+        const GLdouble* v = marshalArray<GLdouble>(cpu, address, p->size);
+        if (p->size == 1) GL_FUNC(pglTexCoord1dv)(v);
+        else if (p->size == 2) GL_FUNC(pglTexCoord2dv)(v);
+        else if (p->size == 3) GL_FUNC(pglTexCoord3dv)(v);
+        else GL_FUNC(pglTexCoord4dv)(v);
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+static void emitEdgeFlagArrayElement(CPU* cpu, OpenGLVetexPointer* p, GLint i) {
+    GLboolean flag = cpu->memory->readb(getArrayElementAddress(p, i)) ? GL_TRUE : GL_FALSE;
+    GL_FUNC(pglEdgeFlagv)(&flag);
+}
+
+void marshalArrayElement(CPU* cpu, GLint i) {
+    if (i < 0) {
+        GL_FUNC(pglArrayElement)(i);
+        return;
+    }
+
+    KThread* thread = cpu->thread;
+    bool hostArray = usesHostArray(thread->glVertextPointer) ||
+        usesHostArray(thread->glNormalPointer) ||
+        usesHostArray(thread->glColorPointer) ||
+        usesHostArray(thread->glIndexPointer) ||
+        usesHostArray(thread->glTexCoordPointer) ||
+        usesHostArray(thread->glEdgeFlagPointer);
+    if (hostArray) {
+        GL_FUNC(pglArrayElement)(i);
+        return;
+    }
+
+    bool guestArray = usesGuestArray(thread->glVertextPointer) ||
+        usesGuestArray(thread->glNormalPointer) ||
+        usesGuestArray(thread->glColorPointer) ||
+        usesGuestArray(thread->glIndexPointer) ||
+        usesGuestArray(thread->glTexCoordPointer) ||
+        usesGuestArray(thread->glEdgeFlagPointer);
+    if (!guestArray) {
+        GL_FUNC(pglArrayElement)(i);
+        return;
+    }
+
+    if (usesGuestArray(thread->glColorPointer))
+        emitColorArrayElement(cpu, &thread->glColorPointer, i);
+    if (usesGuestArray(thread->glIndexPointer))
+        emitIndexArrayElement(cpu, &thread->glIndexPointer, i);
+    if (usesGuestArray(thread->glNormalPointer))
+        emitNormalArrayElement(cpu, &thread->glNormalPointer, i);
+    if (usesGuestArray(thread->glTexCoordPointer))
+        emitTexCoordArrayElement(cpu, &thread->glTexCoordPointer, i);
+    if (usesGuestArray(thread->glEdgeFlagPointer))
+        emitEdgeFlagArrayElement(cpu, &thread->glEdgeFlagPointer, i);
+    if (usesGuestArray(thread->glVertextPointer))
+        emitVertexArrayElement(cpu, &thread->glVertextPointer, i);
+}
+
+static OpenGLVetexPointer* getVertexAttribPointerNV(CPU* cpu, GLuint index) {
+    OpenGLVetexPointerPtr found = cpu->thread->glVertexAttribPointerNVByIndex.get(index);
+    if (!found) {
+        found = std::make_shared<OpenGLVetexPointer>();
+        cpu->thread->glVertexAttribPointerNVByIndex.set(index, found);
+    }
+    return found.get();
+}
+
+GLvoid* marshalVetextPointer(CPU* cpu, GLuint index, GLboolean normalized, GLint size, GLenum type, GLsizei stride, U32 ptr, bool isVertexAttrib) {
+    clearInterleavedArrayReplay(cpu);
     cpu->thread->glVertextPointer.isArrayBuffer = ARRAY_BUFFER();
     if (cpu->thread->glVertextPointer.isArrayBuffer) {        
         cpu->thread->glVertextPointer.refreshEachCall = 0;
@@ -150,12 +449,59 @@ GLvoid* marshalVetextPointer(CPU* cpu, GLuint index, GLboolean normalized, GLint
         p->ptr = ptr;
         p->refreshEachCall = 1;
         p->normalized = normalized != GL_FALSE;
+        p->isVertexAttrib = isVertexAttrib;
         updateVertexPointer(cpu, p, 0);
         return ptr ? p->marshal : 0;
     }
 }
 
+GLvoid* marshalVertexAttribPointerNV(CPU* cpu, GLuint index, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+    OpenGLVetexPointer* p = getVertexAttribPointerNV(cpu, index);
+
+    p->isArrayBuffer = ARRAY_BUFFER();
+    if (p->isArrayBuffer) {
+        p->refreshEachCall = 0;
+        return (GLvoid*)(uintptr_t)ptr;
+    } else {
+        p->size = size;
+        p->type = type;
+        p->stride = stride;
+        p->ptr = ptr;
+        p->refreshEachCall = 1;
+        updateVertexPointer(cpu, p, 0);
+        return ptr ? p->marshal : 0;
+    }
+}
+
+U32 marshalBackVertexAttribPointer(CPU* cpu, GLuint index, GLvoid* ptr, bool nv) {
+    if (!ptr) {
+        return 0;
+    }
+
+    OpenGLVetexPointer* p = nullptr;
+    if (nv) {
+        OpenGLVetexPointerPtr found = cpu->thread->glVertexAttribPointerNVByIndex.get(index);
+        p = found.get();
+    } else if (index == 0) {
+        p = &cpu->thread->glVertextPointer;
+    } else {
+        OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(index);
+        p = found.get();
+    }
+
+    if (p) {
+        if (p->isArrayBuffer) {
+            return (U32)(uintptr_t)ptr;
+        }
+        if (p->marshal == ptr) {
+            return p->ptr;
+        }
+    }
+    return (U32)(uintptr_t)ptr;
+}
+
 GLvoid* marshalNormalPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
+    clearInterleavedArrayReplay(cpu);
     cpu->thread->glNormalPointer.isArrayBuffer = ARRAY_BUFFER();
     if (cpu->thread->glNormalPointer.isArrayBuffer) {
         cpu->thread->glNormalPointer.refreshEachCall = 0;
@@ -172,6 +518,7 @@ GLvoid* marshalNormalPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
 }
 
 GLvoid* marshalFogPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
+    clearInterleavedArrayReplay(cpu);
     cpu->thread->glFogPointer.isArrayBuffer = ARRAY_BUFFER();
     if (cpu->thread->glFogPointer.isArrayBuffer) {
         cpu->thread->glFogPointer.refreshEachCall = 0;
@@ -188,8 +535,9 @@ GLvoid* marshalFogPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
 }
 
 GLvoid* marshalFogPointerEXT(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
+    clearInterleavedArrayReplay(cpu);
     cpu->thread->glFogPointerEXT.isArrayBuffer = ARRAY_BUFFER();
-    if (cpu->thread->glFogPointerEXT.isArrayBuffer) {     
+    if (cpu->thread->glFogPointerEXT.isArrayBuffer) {
         cpu->thread->glFogPointerEXT.refreshEachCall = 0;
         return (GLvoid*)(uintptr_t)ptr;
     } else {
@@ -203,7 +551,25 @@ GLvoid* marshalFogPointerEXT(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
     }
 }
 
+GLvoid* marshalTangentPointerEXT(CPU* cpu, GLenum type, GLsizei stride, U32 ptr) {
+    clearInterleavedArrayReplay(cpu);
+    cpu->thread->glTangentPointerEXT.isArrayBuffer = ARRAY_BUFFER();
+    if (cpu->thread->glTangentPointerEXT.isArrayBuffer) {
+        cpu->thread->glTangentPointerEXT.refreshEachCall = 0;
+        return (GLvoid*)(uintptr_t)ptr;
+    } else {
+        cpu->thread->glTangentPointerEXT.size = 3;
+        cpu->thread->glTangentPointerEXT.type = type;
+        cpu->thread->glTangentPointerEXT.stride = stride;
+        cpu->thread->glTangentPointerEXT.ptr = ptr;
+        cpu->thread->glTangentPointerEXT.refreshEachCall = 1;
+        updateVertexPointer(cpu, &cpu->thread->glTangentPointerEXT, 0);
+        return ptr ? cpu->thread->glTangentPointerEXT.marshal : 0;
+    }
+}
+
 GLvoid* marshalColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+    clearInterleavedArrayReplay(cpu);
     cpu->thread->glColorPointer.isArrayBuffer = ARRAY_BUFFER();
     if (cpu->thread->glColorPointer.isArrayBuffer) {
         cpu->thread->glColorPointer.refreshEachCall = 0;
@@ -220,6 +586,7 @@ GLvoid* marshalColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U
 }
 
 GLvoid* marshalSecondaryColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+    clearInterleavedArrayReplay(cpu);
     cpu->thread->glSecondaryColorPointer.isArrayBuffer = ARRAY_BUFFER();
     if (cpu->thread->glSecondaryColorPointer.isArrayBuffer) {
         cpu->thread->glSecondaryColorPointer.refreshEachCall = 0;
@@ -236,6 +603,7 @@ GLvoid* marshalSecondaryColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei 
 }
 
 GLvoid* marshalSecondaryColorPointerEXT(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+    clearInterleavedArrayReplay(cpu);
     cpu->thread->glSecondaryColorPointerEXT.isArrayBuffer = ARRAY_BUFFER();
     if (cpu->thread->glSecondaryColorPointerEXT.isArrayBuffer) {
         cpu->thread->glSecondaryColorPointerEXT.refreshEachCall = 0;
@@ -252,6 +620,7 @@ GLvoid* marshalSecondaryColorPointerEXT(CPU* cpu, GLint size, GLenum type, GLsiz
 }
 
 GLvoid* marshalIndexPointer(CPU* cpu,  GLenum type, GLsizei stride, U32 ptr) {
+    clearInterleavedArrayReplay(cpu);
     cpu->thread->glIndexPointer.isArrayBuffer = ARRAY_BUFFER();
     if (cpu->thread->glIndexPointer.isArrayBuffer) {
         cpu->thread->glIndexPointer.refreshEachCall = 0;
@@ -268,6 +637,7 @@ GLvoid* marshalIndexPointer(CPU* cpu,  GLenum type, GLsizei stride, U32 ptr) {
 }
 
 GLvoid* marshalTexCoordPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+    clearInterleavedArrayReplay(cpu);
     cpu->thread->glTexCoordPointer.isArrayBuffer = ARRAY_BUFFER();
     if (cpu->thread->glTexCoordPointer.isArrayBuffer) {
         cpu->thread->glTexCoordPointer.refreshEachCall = 0;
@@ -281,6 +651,40 @@ GLvoid* marshalTexCoordPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride
         updateVertexPointer(cpu, &cpu->thread->glTexCoordPointer, 0);
         return ptr ? cpu->thread->glTexCoordPointer.marshal : 0;
     }
+}
+
+static OpenGLVetexPointer* getClientPointerByKey(BHashTable<U32, OpenGLVetexPointerPtr>& pointers, U32 key) {
+    OpenGLVetexPointerPtr found = pointers.get(key);
+    if (!found) {
+        found = std::make_shared<OpenGLVetexPointer>();
+        pointers.set(key, found);
+    }
+    return found.get();
+}
+
+static GLvoid* marshalClientPointer(CPU* cpu, OpenGLVetexPointer* p, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+    clearInterleavedArrayReplay(cpu);
+    p->isArrayBuffer = ARRAY_BUFFER();
+    if (p->isArrayBuffer) {
+        p->refreshEachCall = 0;
+        return (GLvoid*)(uintptr_t)ptr;
+    } else {
+        p->size = size;
+        p->type = type;
+        p->stride = stride;
+        p->ptr = ptr;
+        p->refreshEachCall = 1;
+        updateVertexPointer(cpu, p, 0);
+        return ptr ? p->marshal : 0;
+    }
+}
+
+GLvoid* marshalMultiTexCoordPointerEXT(CPU* cpu, GLenum texunit, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+    return marshalClientPointer(cpu, getClientPointerByKey(cpu->thread->glMultiTexCoordPointerEXTByTexunit, texunit), size, type, stride, ptr);
+}
+
+GLvoid* marshalMultiTexCoordPointerSGIS(CPU* cpu, GLenum target, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+    return marshalClientPointer(cpu, getClientPointerByKey(cpu->thread->glMultiTexCoordPointerSGISByTarget, target), size, type, stride, ptr);
 }
 
 GLvoid* marshalEdgeFlagPointer(CPU* cpu, GLsizei stride, U32 ptr) {
@@ -313,6 +717,62 @@ const GLboolean* marshalEdgeFlagPointerEXT(CPU* cpu, GLsizei stride, GLsizei cou
         cpu->thread->glEdgeFlagPointerEXT.count = count;
         updateVertexPointer(cpu, &cpu->thread->glEdgeFlagPointerEXT, 0);
         return ptr ? cpu->thread->glEdgeFlagPointerEXT.marshal : 0;
+    }
+}
+
+static GLvoid* marshalElementPointer(CPU* cpu, OpenGLVetexPointer* p, GLenum type, U32 ptr) {
+    p->isArrayBuffer = ELEMENT_ARRAY_BUFFER();
+    if (p->isArrayBuffer) {
+        p->refreshEachCall = 0;
+        return (GLvoid*)(uintptr_t)ptr;
+    } else {
+        p->size = 1;
+        p->type = type;
+        p->stride = 0;
+        p->ptr = ptr;
+        p->refreshEachCall = 1;
+        updateVertexPointer(cpu, p, 0);
+        return ptr ? p->marshal : 0;
+    }
+}
+
+GLvoid* marshalElementPointerAPPLE(CPU* cpu, GLenum type, U32 ptr) {
+    return marshalElementPointer(cpu, &cpu->thread->glElementPointerAPPLE, type, ptr);
+}
+
+GLvoid* marshalElementPointerATI(CPU* cpu, GLenum type, U32 ptr) {
+    return marshalElementPointer(cpu, &cpu->thread->glElementPointerATI, type, ptr);
+}
+
+GLvoid* marshalVariantPointerEXT(CPU* cpu, GLuint id, GLenum type, GLuint stride, U32 ptr) {
+    return marshalClientPointer(cpu, getClientPointerByKey(cpu->thread->glVariantPointerEXTById, id), 1, type, stride, ptr);
+}
+
+GLvoid* marshalMatrixIndexPointerARB(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+    return marshalClientPointer(cpu, &cpu->thread->glMatrixIndexPointerARB, size, type, stride, ptr);
+}
+
+GLvoid* marshalVertexWeightPointerEXT(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+    return marshalClientPointer(cpu, &cpu->thread->glVertexWeightPointerEXT, size, type, stride, ptr);
+}
+
+GLvoid* marshalWeightPointerARB(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+    return marshalClientPointer(cpu, &cpu->thread->glWeightPointerARB, size, type, stride, ptr);
+}
+
+void updateElementPointerAPPLE(CPU* cpu, U32 count) {
+    if (cpu->thread->glElementPointerAPPLE.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->glElementPointerAPPLE, count) && ext_glElementPointerAPPLE) {
+            ext_glElementPointerAPPLE(cpu->thread->glElementPointerAPPLE.type, cpu->thread->glElementPointerAPPLE.marshal);
+        }
+    }
+}
+
+void updateElementPointerATI(CPU* cpu, U32 count) {
+    if (cpu->thread->glElementPointerATI.refreshEachCall) {
+        if (updateVertexPointer(cpu, &cpu->thread->glElementPointerATI, count) && ext_glElementPointerATI) {
+            ext_glElementPointerATI(cpu->thread->glElementPointerATI.type, cpu->thread->glElementPointerATI.marshal);
+        }
     }
 }
 

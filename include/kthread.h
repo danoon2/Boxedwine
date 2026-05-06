@@ -36,8 +36,10 @@ public:
     U32 lastMarshalledPtr = 0;
     U32 marshal_size = 0;
     U32 refreshEachCall = 0;
+    bool enabled = false;
     bool normalized = false;
     bool isArrayBuffer = false;
+    bool isVertexAttrib = false;
 };
 typedef std::shared_ptr<OpenGLVetexPointer> OpenGLVetexPointerPtr;
 
@@ -147,16 +149,26 @@ public:
     bool log = false; // syscalls
     OpenGLVetexPointer glVertextPointer; // 0 index
     BHashTable<U32, OpenGLVetexPointerPtr> glVertextPointersByIndex; // indexes greater than 0
+    BHashTable<U32, OpenGLVetexPointerPtr> glVertexAttribPointerNVByIndex;
     OpenGLVetexPointer glNormalPointer;
     OpenGLVetexPointer glFogPointer;
     OpenGLVetexPointer glFogPointerEXT;
+    OpenGLVetexPointer glTangentPointerEXT;
     OpenGLVetexPointer glColorPointer;
     OpenGLVetexPointer glSecondaryColorPointer;
     OpenGLVetexPointer glSecondaryColorPointerEXT;
     OpenGLVetexPointer glIndexPointer;
     OpenGLVetexPointer glTexCoordPointer;
+    BHashTable<U32, OpenGLVetexPointerPtr> glMultiTexCoordPointerEXTByTexunit;
+    BHashTable<U32, OpenGLVetexPointerPtr> glMultiTexCoordPointerSGISByTarget;
     OpenGLVetexPointer glEdgeFlagPointer;
     OpenGLVetexPointer glEdgeFlagPointerEXT;
+    OpenGLVetexPointer glElementPointerAPPLE;
+    OpenGLVetexPointer glElementPointerATI;
+    BHashTable<U32, OpenGLVetexPointerPtr> glVariantPointerEXTById;
+    OpenGLVetexPointer glMatrixIndexPointerARB;
+    OpenGLVetexPointer glVertexWeightPointerEXT;
+    OpenGLVetexPointer glWeightPointerARB;
     OpenGLVetexPointer glInterleavedArray;
     U32 marshalIndex = 0;
 

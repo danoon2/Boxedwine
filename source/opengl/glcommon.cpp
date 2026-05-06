@@ -36,6 +36,10 @@
 
 #include "glMarshal.h"
 
+#ifndef GL_TEXTURE_DEPTH
+#define GL_TEXTURE_DEPTH 0x8071
+#endif
+
 static BString glExt;
 
 float fARG(CPU* cpu, U32 arg) {
@@ -162,20 +166,28 @@ void glcommon_glDisableClientState(CPU* cpu) {
     GL_FUNC(pglDisableClientState)(cap);
     if (cap == GL_COLOR_ARRAY) {
         cpu->thread->glColorPointer.refreshEachCall = 0;
+        cpu->thread->glColorPointer.enabled = false;
     } else if (cap == GL_EDGE_FLAG_ARRAY) {
         cpu->thread->glEdgeFlagPointer.refreshEachCall = 0;
+        cpu->thread->glEdgeFlagPointer.enabled = false;
     } else if (cap == GL_FOG_COORD_ARRAY) {
         cpu->thread->glFogPointer.refreshEachCall = 0;
+        cpu->thread->glFogPointer.enabled = false;
     } else if (cap == GL_INDEX_ARRAY) {
         cpu->thread->glIndexPointer.refreshEachCall = 0;
+        cpu->thread->glIndexPointer.enabled = false;
     } else if (cap == GL_NORMAL_ARRAY) {
         cpu->thread->glNormalPointer.refreshEachCall = 0;
+        cpu->thread->glNormalPointer.enabled = false;
     } else if (cap == GL_SECONDARY_COLOR_ARRAY) {
         cpu->thread->glSecondaryColorPointer.refreshEachCall = 0;
+        cpu->thread->glSecondaryColorPointer.enabled = false;
     } else if (cap == GL_TEXTURE_COORD_ARRAY) {
         cpu->thread->glTexCoordPointer.refreshEachCall = 0;
+        cpu->thread->glTexCoordPointer.enabled = false;
     } else if (cap == GL_VERTEX_ARRAY) {
         cpu->thread->glVertextPointer.refreshEachCall = 0;
+        cpu->thread->glVertextPointer.enabled = false;
     }
 }
 
@@ -184,27 +196,35 @@ void glcommon_glEnableClientState(CPU* cpu) {
     GL_FUNC(pglEnableClientState)(cap);
     if (cap == GL_COLOR_ARRAY) {
         cpu->thread->glColorPointer.refreshEachCall = 1;
+        cpu->thread->glColorPointer.enabled = true;
     }
     else if (cap == GL_EDGE_FLAG_ARRAY) {
         cpu->thread->glEdgeFlagPointer.refreshEachCall = 1;
+        cpu->thread->glEdgeFlagPointer.enabled = true;
     }
     else if (cap == GL_FOG_COORD_ARRAY) {
         cpu->thread->glFogPointer.refreshEachCall = 1;
+        cpu->thread->glFogPointer.enabled = true;
     }
     else if (cap == GL_INDEX_ARRAY) {
         cpu->thread->glIndexPointer.refreshEachCall = 1;
+        cpu->thread->glIndexPointer.enabled = true;
     }
     else if (cap == GL_NORMAL_ARRAY) {
         cpu->thread->glNormalPointer.refreshEachCall = 1;
+        cpu->thread->glNormalPointer.enabled = true;
     }
     else if (cap == GL_SECONDARY_COLOR_ARRAY) {
         cpu->thread->glSecondaryColorPointer.refreshEachCall = 1;
+        cpu->thread->glSecondaryColorPointer.enabled = true;
     }
     else if (cap == GL_TEXTURE_COORD_ARRAY) {
         cpu->thread->glTexCoordPointer.refreshEachCall = 1;
+        cpu->thread->glTexCoordPointer.enabled = true;
     }
     else if (cap == GL_VERTEX_ARRAY) {
         cpu->thread->glVertextPointer.refreshEachCall = 1;
+        cpu->thread->glVertextPointer.enabled = true;
     }
 }
 
@@ -248,7 +268,12 @@ void glcommon_glDrawElements(CPU* cpu) {
         updateVertexPointers(cpu, lastIndex+1);
         GL_LOG("glDrawElements mode=%x count=%d type=%x lastIndex=%d", mode, count, type, lastIndex);
     }    
-    GL_FUNC(pglDrawElements)(mode, count, type, p);    
+    GL_FUNC(pglDrawElements)(mode, count, type, p);
+}
+
+void glcommon_glArrayElement(CPU* cpu) {
+    marshalArrayElement(cpu, ARG1);
+    GL_LOG("glArrayElement GLint i=%d", ARG1);
 }
 
 void printOpenGLInfo() {
@@ -344,18 +369,52 @@ void glcommon_glGetString(CPU* cpu) {
     }
 }
 
+static bool is3DTextureImageTarget(GLenum target) {
+    switch (target) {
+    case GL_TEXTURE_3D:
+        return true;
+#ifdef GL_TEXTURE_2D_ARRAY
+    case GL_TEXTURE_2D_ARRAY:
+        return true;
+#endif
+#if defined(GL_TEXTURE_2D_ARRAY_EXT) && (!defined(GL_TEXTURE_2D_ARRAY) || GL_TEXTURE_2D_ARRAY_EXT != GL_TEXTURE_2D_ARRAY)
+    case GL_TEXTURE_2D_ARRAY_EXT:
+        return true;
+#endif
+#ifdef GL_TEXTURE_CUBE_MAP_ARRAY
+    case GL_TEXTURE_CUBE_MAP_ARRAY:
+        return true;
+#endif
+#if defined(GL_TEXTURE_CUBE_MAP_ARRAY_ARB) && (!defined(GL_TEXTURE_CUBE_MAP_ARRAY) || GL_TEXTURE_CUBE_MAP_ARRAY_ARB != GL_TEXTURE_CUBE_MAP_ARRAY)
+    case GL_TEXTURE_CUBE_MAP_ARRAY_ARB:
+        return true;
+#endif
+    default:
+        return false;
+    }
+}
+
 // GLAPI void APIENTRY glGetTexImage( GLenum target, GLint level, GLenum format, GLenum type, GLvoid *pixels ) {
 void glcommon_glGetTexImage(CPU* cpu) {
     GLenum target = ARG1;
     GLint level = ARG2;
     GLsizei width=0;
-    GLsizei height=0;
+    GLsizei height=1;
+    GLsizei depth=1;
     GLenum format = ARG3;
     GLenum type = ARG4;
+    U32 dimensions = 1;
 
     GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_WIDTH, &width);
-    GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_HEIGHT, &height);
-    MarshalReadWritePackedPixels pixels(cpu, 2, width, height, 1, format, type, ARG5);
+    if (target != GL_TEXTURE_1D) {
+        dimensions = 2;
+        GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_HEIGHT, &height);
+    }
+    if (is3DTextureImageTarget(target)) {
+        dimensions = 3;
+        GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_DEPTH, &depth);
+    }
+    MarshalReadWritePackedPixels pixels(cpu, dimensions, width, height, depth, format, type, ARG5);
     GL_FUNC(pglGetTexImage)(target, level, format, type, pixels.getPtr());
 }
 
@@ -372,7 +431,11 @@ U32 isMap2(GLenum target) {
     case GL_MAP2_TEXTURE_COORD_4:
         return 1;
     }
-    return 2;
+    return 0;
+}
+
+static U32 getMapComponentCount(GLenum target) {
+    return isMap2(target) ? getMap2Count(target) : getMap1Count(target);
 }
 
 // GLAPI void APIENTRY glGetMapdv( GLenum target, GLenum query, GLdouble *v ) {
@@ -393,6 +456,7 @@ void glcommon_glGetMapdv(CPU* cpu) {
         } else {
             count = order[0];
         }
+        count *= getMapComponentCount(target);
         MarshalReadWrite<GLdouble> buffer(cpu, ARG3, count);
         GL_FUNC(pglGetMapdv)(target, query, buffer.getPtr());
         break;
@@ -429,6 +493,7 @@ void glcommon_glGetMapfv(CPU* cpu) {
         } else {
             count = order[0];
         }
+        count *= getMapComponentCount(target);
         MarshalReadWrite<GLfloat> buffer(cpu, ARG3, count);
         GL_FUNC(pglGetMapfv)(target, query, buffer.getPtr());
         break;
@@ -465,6 +530,7 @@ void glcommon_glGetMapiv(CPU* cpu) {
         } else {
             count = order[0];
         }
+        count *= getMapComponentCount(target);
         MarshalReadWrite<GLint> buffer(cpu, ARG3, count);
         GL_FUNC(pglGetMapiv)(target, query, buffer.getPtr());
         break;
@@ -503,15 +569,15 @@ void glcommon_glTexSubImage2D(CPU* cpu) {
 void glcommon_glGetPointerv(CPU* cpu) {
     GL_LOG("glGetPointerv GLenum pname=%d, GLvoid **params=%.08x", ARG1, ARG2);
     switch (ARG1) {
-    case GL_COLOR_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glColorPointer.ptr); break;
-    case GL_EDGE_FLAG_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glEdgeFlagPointer.ptr); break;
-    case GL_INDEX_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glIndexPointer.ptr); break;
-    case GL_NORMAL_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glNormalPointer.ptr); break;
-    case GL_TEXTURE_COORD_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glTexCoordPointer.ptr); break;
-    case GL_VERTEX_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glVertextPointer.ptr); break;
+    case GL_COLOR_ARRAY_POINTER: cpu->memory->writed(ARG2, cpu->thread->glColorPointer.ptr); break;
+    case GL_EDGE_FLAG_ARRAY_POINTER: cpu->memory->writed(ARG2, cpu->thread->glEdgeFlagPointer.ptr); break;
+    case GL_INDEX_ARRAY_POINTER: cpu->memory->writed(ARG2, cpu->thread->glIndexPointer.ptr); break;
+    case GL_NORMAL_ARRAY_POINTER: cpu->memory->writed(ARG2, cpu->thread->glNormalPointer.ptr); break;
+    case GL_TEXTURE_COORD_ARRAY_POINTER: cpu->memory->writed(ARG2, cpu->thread->glTexCoordPointer.ptr); break;
+    case GL_VERTEX_ARRAY_POINTER: cpu->memory->writed(ARG2, cpu->thread->glVertextPointer.ptr); break;
     default: 
 		klog_fmt("glGetPointerv unknown pname: %d", ARG1);
-        cpu->memory->writed(cpu->memory->readd(ARG2), 0);
+        cpu->memory->writed(ARG2, 0);
     }
 }
 

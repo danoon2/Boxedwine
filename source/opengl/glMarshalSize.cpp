@@ -283,6 +283,7 @@ int getSize(GLenum pname) {
       case GL_TEXTURE_BINDING_1D:
       case GL_TEXTURE_BINDING_2D:
       case GL_TEXTURE_BINDING_3D:
+      case GL_IMAGE_BINDING_NAME:
 #ifdef GL_TEXTURE_BINDING_1D_ARRAY_EXT
       case GL_TEXTURE_BINDING_1D_ARRAY_EXT:
 #endif
@@ -487,6 +488,10 @@ int getSize(GLenum pname) {
       case GL_STENCIL_BACK_PASS_DEPTH_PASS:
       case GL_FRAMEBUFFER_BINDING_EXT:
       case GL_RENDERBUFFER_BINDING_EXT:
+      case GL_VERTEX_BINDING_BUFFER:
+      case GL_VERTEX_BINDING_OFFSET:
+      case GL_VERTEX_BINDING_STRIDE:
+      case GL_VERTEX_BINDING_DIVISOR:
       case GL_MAX_COLOR_ATTACHMENTS_EXT:
       case GL_MAX_RENDERBUFFER_SIZE_EXT:
 #ifdef GL_READ_FRAMEBUFFER_BINDING_EXT
@@ -526,10 +531,25 @@ int getSize(GLenum pname) {
 #endif
       case 0x854d: // GL_MAX_GENERAL_COMBINERS_NV
       case 0x9126: // GL_CONTEXT_PROFILE_MASK
+      case 0x87fe: // GL_NUM_PROGRAM_BINARY_FORMATS
+      case 0x8919: // GL_SAMPLER_BINDING
+      case 0x8c8b: // GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS
+      case 0x8c8f: // GL_TRANSFORM_FEEDBACK_BUFFER_BINDING
+      case 0x8c84: // GL_TRANSFORM_FEEDBACK_BUFFER_START
+      case 0x8c85: // GL_TRANSFORM_FEEDBACK_BUFFER_SIZE
+      case 0x90d3: // GL_SHADER_STORAGE_BUFFER_BINDING
+      case 0x90d4: // GL_SHADER_STORAGE_BUFFER_START
+      case 0x90d5: // GL_SHADER_STORAGE_BUFFER_SIZE
+      case 0x90dd: // GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS
+      case 0x90df: // GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT
+      case 0x92c1: // GL_ATOMIC_COUNTER_BUFFER_BINDING
+      case 0x92c2: // GL_ATOMIC_COUNTER_BUFFER_START
+      case 0x92c3: // GL_ATOMIC_COUNTER_BUFFER_SIZE
       case 0x90bc: // GL_MIN_MAP_BUFFER_ALIGNMENT
       case 0x8a28: // GL_UNIFORM_BUFFER_BINDING
       case 0x8a29: // GL_UNIFORM_BUFFER_START
       case 0x8a2a: // GL_UNIFORM_BUFFER_SIZE
+      case 0x8a34: // GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT
       case 0x8a2b: // GL_MAX_VERTEX_UNIFORM_BLOCKS
       case 0x8a2c: // GL_MAX_GEOMETRY_UNIFORM_BLOCKS
       case 0x8a2d: // GL_MAX_FRAGMENT_UNIFORM_BLOCKS
@@ -867,7 +887,6 @@ U32 getMarshalParamCount(GLenum pname) {
     case GL_TEXTURE_SWIZZLE_B:
     case GL_TEXTURE_SWIZZLE_G:
     case GL_TEXTURE_SWIZZLE_R:
-    case GL_TEXTURE_SWIZZLE_RGBA:
     case GL_TEXTURE_WRAP_R:
     case GL_TEXTURE_WRAP_S:
     case GL_TEXTURE_WRAP_T:
@@ -881,9 +900,17 @@ U32 getMarshalParamCount(GLenum pname) {
     case GL_VERTEX_ATTRIB_ARRAY_LONG:
     case GL_VERTEX_ATTRIB_ARRAY_DIVISOR:
     case GL_VERTEX_ATTRIB_RELATIVE_OFFSET:
+    case GL_VERTEX_ATTRIB_BINDING:
+    case GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING:
+    case GL_VERTEX_BINDING_BUFFER:
+    case GL_VERTEX_BINDING_OFFSET:
+    case GL_VERTEX_BINDING_STRIDE:
+    case GL_VERTEX_BINDING_DIVISOR:
 
         return 1;
+    case GL_TEXTURE_SWIZZLE_RGBA:
     case GL_TEXTURE_BORDER_COLOR:
+    case GL_CURRENT_VERTEX_ATTRIB:
         return 4;
     default:
         kpanic_fmt("unknown pname in getMarshalParamCount: 0x%x", pname);
@@ -953,15 +980,13 @@ U32 marshalGetColorTableWidthSGI(U32 target) {
 
 U32 marshalGetCompressedImageSize(GLenum target, GLint level) {
     GLint i=0;
-    if (ext_glGetTextureLevelParameteriv)
-        ext_glGetTextureLevelParameteriv(target, level, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &i);
+    GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &i);
     return i;
 }
 
 U32 marshalGetCompressedImageSizeARB(GLenum target, GLint level) {
     GLint i=0;
-    if (ext_glGetTextureLevelParameteriv)
-        ext_glGetTextureLevelParameteriv(target, level, GL_TEXTURE_COMPRESSED_IMAGE_SIZE_ARB, &i);
+    GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_COMPRESSED_IMAGE_SIZE_ARB, &i);
     return i;
 }
 
@@ -1032,6 +1057,254 @@ GLsizei marshalHistogramWidth(GLenum target) {
         ext_glGetHistogramParameteriv(target, GL_HISTOGRAM_WIDTH, &result);
     }
     return result;
+}
+
+#ifndef GL_ACTIVE_UNIFORMS
+#define GL_ACTIVE_UNIFORMS 0x8B86
+#endif
+#ifndef GL_ACTIVE_UNIFORM_MAX_LENGTH
+#define GL_ACTIVE_UNIFORM_MAX_LENGTH 0x8B87
+#endif
+#ifndef GL_OBJECT_ACTIVE_UNIFORMS_ARB
+#define GL_OBJECT_ACTIVE_UNIFORMS_ARB 0x8B86
+#endif
+#ifndef GL_OBJECT_ACTIVE_UNIFORM_MAX_LENGTH_ARB
+#define GL_OBJECT_ACTIVE_UNIFORM_MAX_LENGTH_ARB 0x8B87
+#endif
+#ifndef GL_UNSIGNED_INT_VEC2
+#define GL_UNSIGNED_INT_VEC2 0x8DC6
+#endif
+#ifndef GL_UNSIGNED_INT_VEC3
+#define GL_UNSIGNED_INT_VEC3 0x8DC7
+#endif
+#ifndef GL_UNSIGNED_INT_VEC4
+#define GL_UNSIGNED_INT_VEC4 0x8DC8
+#endif
+#ifndef GL_FLOAT_MAT2x3
+#define GL_FLOAT_MAT2x3 0x8B65
+#endif
+#ifndef GL_FLOAT_MAT2x4
+#define GL_FLOAT_MAT2x4 0x8B66
+#endif
+#ifndef GL_FLOAT_MAT3x2
+#define GL_FLOAT_MAT3x2 0x8B67
+#endif
+#ifndef GL_FLOAT_MAT3x4
+#define GL_FLOAT_MAT3x4 0x8B68
+#endif
+#ifndef GL_FLOAT_MAT4x2
+#define GL_FLOAT_MAT4x2 0x8B69
+#endif
+#ifndef GL_FLOAT_MAT4x3
+#define GL_FLOAT_MAT4x3 0x8B6A
+#endif
+#ifndef GL_DOUBLE_MAT2
+#define GL_DOUBLE_MAT2 0x8F46
+#endif
+#ifndef GL_DOUBLE_MAT3
+#define GL_DOUBLE_MAT3 0x8F47
+#endif
+#ifndef GL_DOUBLE_MAT4
+#define GL_DOUBLE_MAT4 0x8F48
+#endif
+#ifndef GL_DOUBLE_MAT2x3
+#define GL_DOUBLE_MAT2x3 0x8F49
+#endif
+#ifndef GL_DOUBLE_MAT2x4
+#define GL_DOUBLE_MAT2x4 0x8F4A
+#endif
+#ifndef GL_DOUBLE_MAT3x2
+#define GL_DOUBLE_MAT3x2 0x8F4B
+#endif
+#ifndef GL_DOUBLE_MAT3x4
+#define GL_DOUBLE_MAT3x4 0x8F4C
+#endif
+#ifndef GL_DOUBLE_MAT4x2
+#define GL_DOUBLE_MAT4x2 0x8F4D
+#endif
+#ifndef GL_DOUBLE_MAT4x3
+#define GL_DOUBLE_MAT4x3 0x8F4E
+#endif
+#ifndef GL_INT64_ARB
+#define GL_INT64_ARB 0x140E
+#endif
+#ifndef GL_UNSIGNED_INT64_ARB
+#define GL_UNSIGNED_INT64_ARB 0x140F
+#endif
+#ifndef GL_INT64_VEC2_ARB
+#define GL_INT64_VEC2_ARB 0x8FE9
+#endif
+#ifndef GL_INT64_VEC3_ARB
+#define GL_INT64_VEC3_ARB 0x8FEA
+#endif
+#ifndef GL_INT64_VEC4_ARB
+#define GL_INT64_VEC4_ARB 0x8FEB
+#endif
+#ifndef GL_UNSIGNED_INT64_VEC2_ARB
+#define GL_UNSIGNED_INT64_VEC2_ARB 0x8FF5
+#endif
+#ifndef GL_UNSIGNED_INT64_VEC3_ARB
+#define GL_UNSIGNED_INT64_VEC3_ARB 0x8FF6
+#endif
+#ifndef GL_UNSIGNED_INT64_VEC4_ARB
+#define GL_UNSIGNED_INT64_VEC4_ARB 0x8FF7
+#endif
+
+static U32 marshalUniformComponentCount(GLenum type) {
+    switch (type) {
+    case GL_FLOAT:
+    case GL_INT:
+    case GL_UNSIGNED_INT:
+    case GL_BOOL:
+    case GL_INT64_ARB:
+    case GL_UNSIGNED_INT64_ARB:
+        return 1;
+    case GL_FLOAT_VEC2:
+    case GL_INT_VEC2:
+    case GL_UNSIGNED_INT_VEC2:
+    case GL_BOOL_VEC2:
+    case GL_INT64_VEC2_ARB:
+    case GL_UNSIGNED_INT64_VEC2_ARB:
+        return 2;
+    case GL_FLOAT_VEC3:
+    case GL_INT_VEC3:
+    case GL_UNSIGNED_INT_VEC3:
+    case GL_BOOL_VEC3:
+    case GL_INT64_VEC3_ARB:
+    case GL_UNSIGNED_INT64_VEC3_ARB:
+        return 3;
+    case GL_FLOAT_VEC4:
+    case GL_INT_VEC4:
+    case GL_UNSIGNED_INT_VEC4:
+    case GL_BOOL_VEC4:
+    case GL_INT64_VEC4_ARB:
+    case GL_UNSIGNED_INT64_VEC4_ARB:
+    case GL_FLOAT_MAT2:
+    case GL_DOUBLE_MAT2:
+        return 4;
+    case GL_FLOAT_MAT2x3:
+    case GL_FLOAT_MAT3x2:
+    case GL_DOUBLE_MAT2x3:
+    case GL_DOUBLE_MAT3x2:
+        return 6;
+    case GL_FLOAT_MAT2x4:
+    case GL_FLOAT_MAT4x2:
+    case GL_DOUBLE_MAT2x4:
+    case GL_DOUBLE_MAT4x2:
+        return 8;
+    case GL_FLOAT_MAT3:
+    case GL_DOUBLE_MAT3:
+        return 9;
+    case GL_FLOAT_MAT3x4:
+    case GL_FLOAT_MAT4x3:
+    case GL_DOUBLE_MAT3x4:
+    case GL_DOUBLE_MAT4x3:
+        return 12;
+    case GL_FLOAT_MAT4:
+    case GL_DOUBLE_MAT4:
+        return 16;
+    default:
+        return 1;
+    }
+}
+
+static U32 marshalUniformCountFromActive(GLint queryLocation, GLint activeLocation, GLint activeSize, GLenum type) {
+    if (activeLocation >= 0 && queryLocation >= activeLocation && queryLocation < activeLocation + activeSize) {
+        return marshalUniformComponentCount(type);
+    }
+    return 0;
+}
+
+static U32 marshalGetUniformElementCountCore(GLuint program, GLint location) {
+    if (!ext_glGetProgramiv || !ext_glGetActiveUniform || !ext_glGetUniformLocation || location < 0) {
+        return 1;
+    }
+
+    GLint count = 0;
+    GLint maxNameLen = 0;
+    ext_glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &count);
+    ext_glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxNameLen);
+    if (count <= 0 || maxNameLen <= 0) {
+        return 1;
+    }
+
+    std::vector<GLchar> name(maxNameLen + 1);
+    for (GLint i = 0; i < count; i++) {
+        GLsizei length = 0;
+        GLint size = 0;
+        GLenum type = 0;
+        ext_glGetActiveUniform(program, i, (GLsizei)name.size(), &length, &size, &type, name.data());
+        if (length <= 0 || size <= 0) {
+            continue;
+        }
+        name[length] = 0;
+
+        GLint activeLocation = ext_glGetUniformLocation(program, name.data());
+        U32 result = marshalUniformCountFromActive(location, activeLocation, size, type);
+        if (result) {
+            return result;
+        }
+
+        if (length > 3 && name[length - 3] == '[' && name[length - 2] == '0' && name[length - 1] == ']') {
+            name[length - 3] = 0;
+            activeLocation = ext_glGetUniformLocation(program, name.data());
+            result = marshalUniformCountFromActive(location, activeLocation, size, type);
+            if (result) {
+                return result;
+            }
+        }
+    }
+    return 1;
+}
+
+static U32 marshalGetUniformElementCountARBInternal(GLhandleARB program, GLint location) {
+    if (!ext_glGetObjectParameterivARB || !ext_glGetActiveUniformARB || !ext_glGetUniformLocationARB || location < 0) {
+        return 1;
+    }
+
+    GLint count = 0;
+    GLint maxNameLen = 0;
+    ext_glGetObjectParameterivARB(program, GL_OBJECT_ACTIVE_UNIFORMS_ARB, &count);
+    ext_glGetObjectParameterivARB(program, GL_OBJECT_ACTIVE_UNIFORM_MAX_LENGTH_ARB, &maxNameLen);
+    if (count <= 0 || maxNameLen <= 0) {
+        return 1;
+    }
+
+    std::vector<GLcharARB> name(maxNameLen + 1);
+    for (GLint i = 0; i < count; i++) {
+        GLsizei length = 0;
+        GLint size = 0;
+        GLenum type = 0;
+        ext_glGetActiveUniformARB(program, i, (GLsizei)name.size(), &length, &size, &type, name.data());
+        if (length <= 0 || size <= 0) {
+            continue;
+        }
+        name[length] = 0;
+
+        GLint activeLocation = ext_glGetUniformLocationARB(program, name.data());
+        U32 result = marshalUniformCountFromActive(location, activeLocation, size, type);
+        if (result) {
+            return result;
+        }
+
+        if (length > 3 && name[length - 3] == '[' && name[length - 2] == '0' && name[length - 1] == ']') {
+            name[length - 3] = 0;
+            activeLocation = ext_glGetUniformLocationARB(program, name.data());
+            result = marshalUniformCountFromActive(location, activeLocation, size, type);
+            if (result) {
+                return result;
+            }
+        }
+    }
+    return 1;
+}
+
+U32 marshalGetUniformElementCount(GLuint program, GLint location) {
+    return marshalGetUniformElementCountCore(program, location);
+}
+
+U32 marshalGetUniformElementCountARB(GLhandleARB program, GLint location) {
+    return marshalGetUniformElementCountARBInternal(program, location);
 }
 
 #endif
