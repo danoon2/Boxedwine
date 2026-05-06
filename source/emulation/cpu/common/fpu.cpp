@@ -210,6 +210,7 @@ void FPU::FINIT() {
     this->tags[6] = TAG_Empty;
     this->tags[7] = TAG_Empty;
     this->isMMXInUse = false;
+    memset(this->envData, 0, sizeof(this->envData));
     memset(isRegCached, 0, sizeof(isRegCached));
 }
 

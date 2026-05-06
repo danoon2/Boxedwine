@@ -670,13 +670,15 @@ void JitFPU::dynamic_FNSTENV(DecodedOp* op) {
             } EndIf();
         }
         write(JitWidth::b16, addressReg, sw);
+        addValue(JitWidth::b32, addressReg, 2);
 
         // instruction pointer
         // op code
         // data pointer
         // data pointer selector
         for (int i = 0; i < 4; i++) {
-            write(JitWidth::b16, createMemPtr(addressReg), 0);
+            readCPU(JitWidth::b32, offsetof(CPU, fpu.envData) + sizeof(U32) * i, tmp);
+            write(JitWidth::b16, addressReg, tmp);
             addValue(JitWidth::b32, addressReg, 2);
         }
     } else {
@@ -698,13 +700,15 @@ void JitFPU::dynamic_FNSTENV(DecodedOp* op) {
             } EndIf();
         }
         write(JitWidth::b32, addressReg, sw);
+        addValue(JitWidth::b32, addressReg, 4);
 
         // instruction pointer
         // op code
         // data pointer
         // data pointer selector
         for (int i = 0; i < 4; i++) {
-            write(JitWidth::b32, createMemPtr(addressReg), 0);
+            readCPU(JitWidth::b32, offsetof(CPU, fpu.envData) + sizeof(U32) * i, tmp);
+            write(JitWidth::b32, addressReg, tmp);
             addValue(JitWidth::b32, addressReg, 4);
         }
     }
@@ -965,6 +969,10 @@ void JitFPU::dynamic_FNINIT(DecodedOp* op) {
     writeCPUValue(JitWidth::b8, offsetof(CPU, fpu.isMMXInUse), 0);
     writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.isRegCached), 0);
     writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.isRegCached) + 4, 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.envData[0]), 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.envData[1]), 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.envData[2]), 0);
+    writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.envData[3]), 0);
 
     writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.tags[0]), TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));
     writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.tags[0]) + 4, TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));

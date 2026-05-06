@@ -5341,16 +5341,16 @@ RegPtr JitX86CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
                     compiler.lea(R32(result->hardwareReg()), Mem(R32(rm->hardwareReg()), disp));
                     compiler.and_(R32(result->hardwareReg()), 0xffff);
                 } else {
-                    compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), R32(rm->hardwareReg()), 0, 0));
-                    return result;
+                    compiler.mov(R32(result->hardwareReg()), 0);
+                    compiler.mov(R16(result->hardwareReg()), R16(rm->hardwareReg()));
                 }
             } else if (op->sibIndex != 8) {
                 if (disp) {
                     compiler.lea(R32(result->hardwareReg()), Mem(R32(sibIndex->hardwareReg()), disp));
                     compiler.and_(R32(result->hardwareReg()), 0xffff);
                 } else {
-                    compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), R32(sibIndex->hardwareReg()), 0, 0));
-                    return result;
+                    compiler.mov(R32(result->hardwareReg()), 0);
+                    compiler.mov(R16(result->hardwareReg()), R16(sibIndex->hardwareReg()));
                 }
             } else if (disp) {
                 compiler.lea(R32(result->hardwareReg()), Mem(R32(seg->hardwareReg()), disp));

@@ -316,26 +316,26 @@ void common_psadbwMmxE64(CPU* cpu, U32 reg, U32 address) {
 void common_pextrwR32Mmx(CPU* cpu, U32 r1, U32 r2, U8 imm) {
     simde__m64 m = {};
     m.u64[0] = cpu->fpu.getMMX(r2)->q;
-    cpu->reg[r1].u32 = simde_mm_extract_pi16(m, imm);
+    cpu->reg[r1].u32 = simde_mm_extract_pi16(m, imm & 3);
 }
 
 void common_pextrwE16Mmx(CPU* cpu, U32 reg, U32 address, U8 imm) {
     simde__m64 m = {};
     m.u64[0] = cpu->fpu.getMMX(reg)->q;
-    cpu->memory->writew(address, (U16)simde_mm_extract_pi16(m, imm));
+    cpu->memory->writew(address, (U16)simde_mm_extract_pi16(m, imm & 3));
 }
 
 void common_pinsrwMmxR32(CPU* cpu, U32 r1, U32 r2, U8 imm) {
     simde__m64 m = {};
     m.u64[0] = cpu->fpu.getMMX(r1)->q;
-    m = simde_mm_insert_pi16(m, cpu->reg[r2].u16, imm);
+    m = simde_mm_insert_pi16(m, cpu->reg[r2].u16, imm & 3);
     cpu->fpu.getMMX(r1)->q = m.u64[0];
 }
 
 void common_pinsrwMmxE16(CPU* cpu, U32 reg, U32 address, U8 imm) {
     simde__m64 m = {};
     m.u64[0] = cpu->fpu.getMMX(reg)->q;
-    m = simde_mm_insert_pi16(m, cpu->memory->readw(address), imm);
+    m = simde_mm_insert_pi16(m, cpu->memory->readw(address), imm & 3);
     cpu->fpu.getMMX(reg)->q = m.u64[0];
 }
 

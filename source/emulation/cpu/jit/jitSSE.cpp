@@ -593,12 +593,10 @@ void JitSSE::dynamic_pextrwR32Xmm(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_pextrwE16Xmm(DecodedOp* op) {
-    write(JitWidth::b16, calculateEaa(op), nullptr, [op, this](MemPtr address) {
-        SSERegPtr reg = loadCpuXMMReg(op->reg);
-        RegPtr tmp = getTmpReg();
-        pextrwR32Xmm(tmp, reg, op->imm);
-        writeHost(JitWidth::b16, address, tmp);
-    });
+    SSERegPtr reg = loadCpuXMMReg(op->reg);
+    RegPtr tmp = getTmpReg();
+    pextrwR32Xmm(tmp, reg, op->imm);
+    write(JitWidth::b16, calculateEaa(op), tmp);
 }
 
 void JitSSE::dynamic_pinsrwXmmR32(DecodedOp* op) {
