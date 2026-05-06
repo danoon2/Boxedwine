@@ -35,6 +35,8 @@
 #define GL_FUNC(name) name
 #endif
 
+U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
+
 // index 0 is the gl call number
 #define ARG1 cpu->peek32(1)
 #define ARG2 cpu->peek32(2)

@@ -1,0 +1,11417 @@
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <GL/gl.h>
+
+#include <cmath>
+#include <cstdio>
+#include <cstdint>
+#include <cstring>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+
+#ifndef GL_VERTEX_SHADER
+#define GL_VERTEX_SHADER 0x8B31
+#endif
+#ifndef GL_FRAGMENT_SHADER
+#define GL_FRAGMENT_SHADER 0x8B30
+#endif
+#ifndef GL_COMPILE_STATUS
+#define GL_COMPILE_STATUS 0x8B81
+#endif
+#ifndef GL_LINK_STATUS
+#define GL_LINK_STATUS 0x8B82
+#endif
+#ifndef GL_INFO_LOG_LENGTH
+#define GL_INFO_LOG_LENGTH 0x8B84
+#endif
+#ifndef GL_ARRAY_BUFFER
+#define GL_ARRAY_BUFFER 0x8892
+#endif
+#ifndef GL_ELEMENT_ARRAY_BUFFER
+#define GL_ELEMENT_ARRAY_BUFFER 0x8893
+#endif
+#ifndef GL_DRAW_INDIRECT_BUFFER
+#define GL_DRAW_INDIRECT_BUFFER 0x8F3F
+#endif
+#ifndef GL_STATIC_DRAW
+#define GL_STATIC_DRAW 0x88E4
+#endif
+#ifndef GL_STREAM_READ
+#define GL_STREAM_READ 0x88E1
+#endif
+#ifndef GL_DYNAMIC_DRAW
+#define GL_DYNAMIC_DRAW 0x88E8
+#endif
+#ifndef GL_UNIFORM_BUFFER
+#define GL_UNIFORM_BUFFER 0x8A11
+#endif
+#ifndef GL_UNIFORM_BUFFER_BINDING
+#define GL_UNIFORM_BUFFER_BINDING 0x8A28
+#endif
+#ifndef GL_UNIFORM_BUFFER_START
+#define GL_UNIFORM_BUFFER_START 0x8A29
+#endif
+#ifndef GL_UNIFORM_BUFFER_SIZE
+#define GL_UNIFORM_BUFFER_SIZE 0x8A2A
+#endif
+#ifndef GL_SHADER_STORAGE_BUFFER
+#define GL_SHADER_STORAGE_BUFFER 0x90D2
+#endif
+#ifndef GL_SHADER_STORAGE_BUFFER_BINDING
+#define GL_SHADER_STORAGE_BUFFER_BINDING 0x90D3
+#endif
+#ifndef GL_SHADER_STORAGE_BUFFER_START
+#define GL_SHADER_STORAGE_BUFFER_START 0x90D4
+#endif
+#ifndef GL_SHADER_STORAGE_BUFFER_SIZE
+#define GL_SHADER_STORAGE_BUFFER_SIZE 0x90D5
+#endif
+#ifndef GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS
+#define GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS 0x90DD
+#endif
+#ifndef GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT
+#define GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT 0x90DF
+#endif
+#ifndef GL_ATOMIC_COUNTER_BUFFER
+#define GL_ATOMIC_COUNTER_BUFFER 0x92C0
+#endif
+#ifndef GL_ATOMIC_COUNTER_BUFFER_BINDING
+#define GL_ATOMIC_COUNTER_BUFFER_BINDING 0x92C1
+#endif
+#ifndef GL_ATOMIC_COUNTER_BUFFER_START
+#define GL_ATOMIC_COUNTER_BUFFER_START 0x92C2
+#endif
+#ifndef GL_ATOMIC_COUNTER_BUFFER_SIZE
+#define GL_ATOMIC_COUNTER_BUFFER_SIZE 0x92C3
+#endif
+#ifndef GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS
+#define GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS 0x92DC
+#endif
+#ifndef GL_WRITE_ONLY
+#define GL_WRITE_ONLY 0x88B9
+#endif
+#ifndef GL_MAP_WRITE_BIT
+#define GL_MAP_WRITE_BIT 0x0002
+#endif
+#ifndef GL_MAP_INVALIDATE_RANGE_BIT
+#define GL_MAP_INVALIDATE_RANGE_BIT 0x0004
+#endif
+#ifndef GL_COLOR_SUM
+#define GL_COLOR_SUM 0x8458
+#endif
+#ifndef GL_SECONDARY_COLOR_ARRAY
+#define GL_SECONDARY_COLOR_ARRAY 0x845E
+#endif
+#ifndef GL_FOG_COORD_ARRAY
+#define GL_FOG_COORD_ARRAY 0x8457
+#endif
+#ifndef GL_EDGE_FLAG_ARRAY
+#define GL_EDGE_FLAG_ARRAY 0x8079
+#endif
+#ifndef GL_FOG_COORDINATE_SOURCE
+#define GL_FOG_COORDINATE_SOURCE 0x8450
+#endif
+#ifndef GL_FOG_COORDINATE
+#define GL_FOG_COORDINATE 0x8451
+#endif
+#ifndef GL_FRAGMENT_DEPTH
+#define GL_FRAGMENT_DEPTH 0x8452
+#endif
+#ifndef GL_LIGHT_MODEL_COLOR_CONTROL
+#define GL_LIGHT_MODEL_COLOR_CONTROL 0x81F8
+#endif
+#ifndef GL_SINGLE_COLOR
+#define GL_SINGLE_COLOR 0x81F9
+#endif
+#ifndef GL_SEPARATE_SPECULAR_COLOR
+#define GL_SEPARATE_SPECULAR_COLOR 0x81FA
+#endif
+#ifndef GL_INTERLEAVED_ATTRIBS
+#define GL_INTERLEAVED_ATTRIBS 0x8C8C
+#endif
+#ifndef GL_TRANSFORM_FEEDBACK_VARYINGS
+#define GL_TRANSFORM_FEEDBACK_VARYINGS 0x8C83
+#endif
+#ifndef GL_TRANSFORM_FEEDBACK
+#define GL_TRANSFORM_FEEDBACK 0x8E22
+#endif
+#ifndef GL_TRANSFORM_FEEDBACK_BUFFER
+#define GL_TRANSFORM_FEEDBACK_BUFFER 0x8C8E
+#endif
+#ifndef GL_TRANSFORM_FEEDBACK_BINDING
+#define GL_TRANSFORM_FEEDBACK_BINDING 0x8E25
+#endif
+#ifndef GL_TRANSFORM_FEEDBACK_ACTIVE
+#define GL_TRANSFORM_FEEDBACK_ACTIVE 0x8E24
+#endif
+#ifndef GL_TRANSFORM_FEEDBACK_PAUSED
+#define GL_TRANSFORM_FEEDBACK_PAUSED 0x8E23
+#endif
+#ifndef GL_TRANSFORM_FEEDBACK_BUFFER_BINDING
+#define GL_TRANSFORM_FEEDBACK_BUFFER_BINDING 0x8C8F
+#endif
+#ifndef GL_TRANSFORM_FEEDBACK_BUFFER_START
+#define GL_TRANSFORM_FEEDBACK_BUFFER_START 0x8C84
+#endif
+#ifndef GL_TRANSFORM_FEEDBACK_BUFFER_SIZE
+#define GL_TRANSFORM_FEEDBACK_BUFFER_SIZE 0x8C85
+#endif
+#ifndef GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS
+#define GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS 0x8C8B
+#endif
+#ifndef GL_DYNAMIC_COPY
+#define GL_DYNAMIC_COPY 0x88EA
+#endif
+#ifndef GL_RASTERIZER_DISCARD
+#define GL_RASTERIZER_DISCARD 0x8C89
+#endif
+#ifndef GL_INVALID_INDEX
+#define GL_INVALID_INDEX 0xFFFFFFFFu
+#endif
+#ifndef GL_TEXTURE_2D
+#define GL_TEXTURE_2D 0x0DE1
+#endif
+#ifndef GL_TEXTURE0
+#define GL_TEXTURE0 0x84C0
+#endif
+#ifndef GL_TEXTURE1
+#define GL_TEXTURE1 0x84C1
+#endif
+#ifndef GL_TEXTURE0_SGIS
+#define GL_TEXTURE0_SGIS 0x83C7
+#endif
+#ifndef GL_TEXTURE1_SGIS
+#define GL_TEXTURE1_SGIS 0x83C8
+#endif
+#ifndef GL_CLIENT_ACTIVE_TEXTURE
+#define GL_CLIENT_ACTIVE_TEXTURE 0x84E1
+#endif
+#ifndef GL_MAX_TEXTURE_UNITS
+#define GL_MAX_TEXTURE_UNITS 0x84E2
+#endif
+#ifndef GL_TEXTURE_1D
+#define GL_TEXTURE_1D 0x0DE0
+#endif
+#ifndef GL_TEXTURE_3D
+#define GL_TEXTURE_3D 0x806F
+#endif
+#ifndef GL_TEXTURE_2D_ARRAY
+#define GL_TEXTURE_2D_ARRAY 0x8C1A
+#endif
+#ifndef GL_CLAMP_TO_EDGE
+#define GL_CLAMP_TO_EDGE 0x812F
+#endif
+#ifndef GL_COMPRESSED_RGBA
+#define GL_COMPRESSED_RGBA 0x84EE
+#endif
+#ifndef GL_TEXTURE_COMPRESSED
+#define GL_TEXTURE_COMPRESSED 0x86A1
+#endif
+#ifndef GL_TEXTURE_COMPRESSED_IMAGE_SIZE
+#define GL_TEXTURE_COMPRESSED_IMAGE_SIZE 0x86A0
+#endif
+#ifndef GL_PIXEL_PACK_BUFFER
+#define GL_PIXEL_PACK_BUFFER 0x88EB
+#endif
+#ifndef GL_PIXEL_UNPACK_BUFFER
+#define GL_PIXEL_UNPACK_BUFFER 0x88EC
+#endif
+#ifndef GL_TEXTURE_WRAP_R
+#define GL_TEXTURE_WRAP_R 0x8072
+#endif
+#ifndef GL_FRAMEBUFFER
+#define GL_FRAMEBUFFER 0x8D40
+#endif
+#ifndef GL_RENDERBUFFER
+#define GL_RENDERBUFFER 0x8D41
+#endif
+#ifndef GL_COLOR_ATTACHMENT0
+#define GL_COLOR_ATTACHMENT0 0x8CE0
+#endif
+#ifndef GL_FRAMEBUFFER_COMPLETE
+#define GL_FRAMEBUFFER_COMPLETE 0x8CD5
+#endif
+#ifndef GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE
+#define GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE 0x8CD0
+#endif
+#ifndef GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME
+#define GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME 0x8CD1
+#endif
+#ifndef GL_RENDERBUFFER_WIDTH
+#define GL_RENDERBUFFER_WIDTH 0x8D42
+#endif
+#ifndef GL_RENDERBUFFER_HEIGHT
+#define GL_RENDERBUFFER_HEIGHT 0x8D43
+#endif
+#ifndef GL_RENDERBUFFER_INTERNAL_FORMAT
+#define GL_RENDERBUFFER_INTERNAL_FORMAT 0x8D44
+#endif
+#ifndef GL_UNPACK_ROW_LENGTH
+#define GL_UNPACK_ROW_LENGTH 0x0CF2
+#endif
+#ifndef GL_UNPACK_SKIP_ROWS
+#define GL_UNPACK_SKIP_ROWS 0x0CF3
+#endif
+#ifndef GL_UNPACK_SKIP_PIXELS
+#define GL_UNPACK_SKIP_PIXELS 0x0CF4
+#endif
+#ifndef GL_PACK_ROW_LENGTH
+#define GL_PACK_ROW_LENGTH 0x0D02
+#endif
+#ifndef GL_PACK_SKIP_ROWS
+#define GL_PACK_SKIP_ROWS 0x0D03
+#endif
+#ifndef GL_PACK_SKIP_PIXELS
+#define GL_PACK_SKIP_PIXELS 0x0D04
+#endif
+#ifndef GL_TEXTURE_INTERNAL_FORMAT
+#define GL_TEXTURE_INTERNAL_FORMAT 0x1003
+#endif
+#ifndef GL_RGBA8
+#define GL_RGBA8 0x8058
+#endif
+#ifndef GL_IMAGE_BINDING_NAME
+#define GL_IMAGE_BINDING_NAME 0x8F3A
+#endif
+#ifndef GL_ACTIVE_UNIFORMS
+#define GL_ACTIVE_UNIFORMS 0x8B86
+#endif
+#ifndef GL_ACTIVE_ATTRIBUTES
+#define GL_ACTIVE_ATTRIBUTES 0x8B89
+#endif
+#ifndef GL_FLOAT_VEC2
+#define GL_FLOAT_VEC2 0x8B50
+#endif
+#ifndef GL_FLOAT_VEC4
+#define GL_FLOAT_VEC4 0x8B52
+#endif
+#ifndef GL_TEXTURE
+#define GL_TEXTURE 0x1702
+#endif
+#ifndef GL_UNIFORM
+#define GL_UNIFORM 0x92E1
+#endif
+#ifndef GL_NAME_LENGTH
+#define GL_NAME_LENGTH 0x92F9
+#endif
+#ifndef GL_TYPE
+#define GL_TYPE 0x92FA
+#endif
+#ifndef GL_ARRAY_SIZE
+#define GL_ARRAY_SIZE 0x92FB
+#endif
+#ifndef GL_SHADER_INCLUDE_ARB
+#define GL_SHADER_INCLUDE_ARB 0x8DAE
+#endif
+#ifndef GL_NAMED_STRING_LENGTH_ARB
+#define GL_NAMED_STRING_LENGTH_ARB 0x8DE9
+#endif
+#ifndef GL_VALIDATE_STATUS
+#define GL_VALIDATE_STATUS 0x8B83
+#endif
+#ifndef GL_DEBUG_SOURCE_APPLICATION
+#define GL_DEBUG_SOURCE_APPLICATION 0x824A
+#endif
+#ifndef GL_DEBUG_OUTPUT
+#define GL_DEBUG_OUTPUT 0x92E0
+#endif
+#ifndef GL_DEBUG_TYPE_MARKER
+#define GL_DEBUG_TYPE_MARKER 0x8268
+#endif
+#ifndef GL_DEBUG_SEVERITY_NOTIFICATION
+#define GL_DEBUG_SEVERITY_NOTIFICATION 0x826B
+#endif
+#ifndef GL_DONT_CARE
+#define GL_DONT_CARE 0x1100
+#endif
+#ifndef GL_SAMPLES_PASSED
+#define GL_SAMPLES_PASSED 0x8914
+#endif
+#ifndef GL_CURRENT_QUERY
+#define GL_CURRENT_QUERY 0x8865
+#endif
+#ifndef GL_QUERY_COUNTER_BITS
+#define GL_QUERY_COUNTER_BITS 0x8864
+#endif
+#ifndef GL_QUERY_RESULT
+#define GL_QUERY_RESULT 0x8866
+#endif
+#ifndef GL_QUERY_RESULT_AVAILABLE
+#define GL_QUERY_RESULT_AVAILABLE 0x8867
+#endif
+#ifndef GL_TIMESTAMP
+#define GL_TIMESTAMP 0x8E28
+#endif
+#ifndef GL_QUERY_BUFFER
+#define GL_QUERY_BUFFER 0x9192
+#endif
+#ifndef GL_SYNC_GPU_COMMANDS_COMPLETE
+#define GL_SYNC_GPU_COMMANDS_COMPLETE 0x9117
+#endif
+#ifndef GL_SYNC_STATUS
+#define GL_SYNC_STATUS 0x9114
+#endif
+#ifndef GL_SYNC_CONDITION
+#define GL_SYNC_CONDITION 0x9113
+#endif
+#ifndef GL_SYNC_FLAGS
+#define GL_SYNC_FLAGS 0x9115
+#endif
+#ifndef GL_OBJECT_TYPE
+#define GL_OBJECT_TYPE 0x9112
+#endif
+#ifndef GL_SYNC_FENCE
+#define GL_SYNC_FENCE 0x9116
+#endif
+#ifndef GL_SIGNALED
+#define GL_SIGNALED 0x9119
+#endif
+#ifndef GL_ALREADY_SIGNALED
+#define GL_ALREADY_SIGNALED 0x911A
+#endif
+#ifndef GL_CONDITION_SATISFIED
+#define GL_CONDITION_SATISFIED 0x911C
+#endif
+#ifndef GL_WAIT_FAILED
+#define GL_WAIT_FAILED 0x911D
+#endif
+#ifndef GL_SYNC_FLUSH_COMMANDS_BIT
+#define GL_SYNC_FLUSH_COMMANDS_BIT 0x00000001
+#endif
+#ifndef GL_SAMPLER_BINDING
+#define GL_SAMPLER_BINDING 0x8919
+#endif
+#ifndef GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS
+#define GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS 0x8B4D
+#endif
+#ifndef GL_ACTIVE_UNIFORM_BLOCKS
+#define GL_ACTIVE_UNIFORM_BLOCKS 0x8A36
+#endif
+#ifndef GL_UNIFORM_TYPE
+#define GL_UNIFORM_TYPE 0x8A37
+#endif
+#ifndef GL_UNIFORM_SIZE
+#define GL_UNIFORM_SIZE 0x8A38
+#endif
+#ifndef GL_UNIFORM_NAME_LENGTH
+#define GL_UNIFORM_NAME_LENGTH 0x8A39
+#endif
+#ifndef GL_UNIFORM_BLOCK_INDEX
+#define GL_UNIFORM_BLOCK_INDEX 0x8A3A
+#endif
+#ifndef GL_UNIFORM_BLOCK_BINDING
+#define GL_UNIFORM_BLOCK_BINDING 0x8A3F
+#endif
+#ifndef GL_UNIFORM_BLOCK_DATA_SIZE
+#define GL_UNIFORM_BLOCK_DATA_SIZE 0x8A40
+#endif
+#ifndef GL_UNIFORM_BLOCK_NAME_LENGTH
+#define GL_UNIFORM_BLOCK_NAME_LENGTH 0x8A41
+#endif
+#ifndef GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS
+#define GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS 0x8A42
+#endif
+#ifndef GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES
+#define GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES 0x8A43
+#endif
+#ifndef GL_FLOAT
+#define GL_FLOAT 0x1406
+#endif
+#ifndef GL_VERTEX_ATTRIB_ARRAY_ENABLED
+#define GL_VERTEX_ATTRIB_ARRAY_ENABLED 0x8622
+#endif
+#ifndef GL_VERTEX_ATTRIB_ARRAY_SIZE
+#define GL_VERTEX_ATTRIB_ARRAY_SIZE 0x8623
+#endif
+#ifndef GL_VERTEX_ATTRIB_ARRAY_STRIDE
+#define GL_VERTEX_ATTRIB_ARRAY_STRIDE 0x8624
+#endif
+#ifndef GL_VERTEX_ATTRIB_ARRAY_TYPE
+#define GL_VERTEX_ATTRIB_ARRAY_TYPE 0x8625
+#endif
+#ifndef GL_CURRENT_VERTEX_ATTRIB
+#define GL_CURRENT_VERTEX_ATTRIB 0x8626
+#endif
+#ifndef GL_VERTEX_ATTRIB_ARRAY_POINTER
+#define GL_VERTEX_ATTRIB_ARRAY_POINTER 0x8645
+#endif
+#ifndef GL_VERTEX_ATTRIB_ARRAY_NORMALIZED
+#define GL_VERTEX_ATTRIB_ARRAY_NORMALIZED 0x886A
+#endif
+#ifndef GL_VERTEX_ATTRIB_BINDING
+#define GL_VERTEX_ATTRIB_BINDING 0x82D4
+#endif
+#ifndef GL_VERTEX_ATTRIB_RELATIVE_OFFSET
+#define GL_VERTEX_ATTRIB_RELATIVE_OFFSET 0x82D5
+#endif
+#ifndef GL_VERTEX_BINDING_BUFFER
+#define GL_VERTEX_BINDING_BUFFER 0x8F4F
+#endif
+#ifndef GL_VERTEX_BINDING_OFFSET
+#define GL_VERTEX_BINDING_OFFSET 0x82D7
+#endif
+#ifndef GL_VERTEX_BINDING_STRIDE
+#define GL_VERTEX_BINDING_STRIDE 0x82D8
+#endif
+#ifndef GL_VERTEX_BINDING_DIVISOR
+#define GL_VERTEX_BINDING_DIVISOR 0x82D6
+#endif
+#ifndef GL_NUM_PROGRAM_BINARY_FORMATS
+#define GL_NUM_PROGRAM_BINARY_FORMATS 0x87FE
+#endif
+#ifndef GL_PROGRAM_BINARY_LENGTH
+#define GL_PROGRAM_BINARY_LENGTH 0x8741
+#endif
+#ifndef GL_PROGRAM_BINARY_RETRIEVABLE_HINT
+#define GL_PROGRAM_BINARY_RETRIEVABLE_HINT 0x8257
+#endif
+
+using GLchar = char;
+using GLintptr = ptrdiff_t;
+using GLsizeiptr = ptrdiff_t;
+using GLint64 = long long;
+using GLuint64 = unsigned long long;
+using GLsync = struct __GLsync*;
+
+using PFNGLCREATESHADERPROC = GLuint(APIENTRY*)(GLenum);
+using PFNGLSHADERSOURCEPROC = void(APIENTRY*)(GLuint, GLsizei, const GLchar* const*, const GLint*);
+using PFNGLCOMPILESHADERPROC = void(APIENTRY*)(GLuint);
+using PFNGLGETSHADERIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
+using PFNGLGETSHADERINFOLOGPROC = void(APIENTRY*)(GLuint, GLsizei, GLsizei*, GLchar*);
+using PFNGLGETSHADERSOURCEPROC = void(APIENTRY*)(GLuint, GLsizei, GLsizei*, GLchar*);
+using PFNGLCREATEPROGRAMPROC = GLuint(APIENTRY*)();
+using PFNGLATTACHSHADERPROC = void(APIENTRY*)(GLuint, GLuint);
+using PFNGLLINKPROGRAMPROC = void(APIENTRY*)(GLuint);
+using PFNGLGETPROGRAMIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
+using PFNGLGETPROGRAMINFOLOGPROC = void(APIENTRY*)(GLuint, GLsizei, GLsizei*, GLchar*);
+using PFNGLGETPROGRAMRESOURCEINDEXPROC = GLuint(APIENTRY*)(GLuint, GLenum, const GLchar*);
+using PFNGLGETPROGRAMRESOURCENAMEPROC = void(APIENTRY*)(GLuint, GLenum, GLuint, GLsizei, GLsizei*, GLchar*);
+using PFNGLGETPROGRAMRESOURCEIVPROC = void(APIENTRY*)(GLuint, GLenum, GLuint, GLsizei, const GLenum*, GLsizei, GLsizei*, GLint*);
+using PFNGLGENPROGRAMPIPELINESPROC = void(APIENTRY*)(GLsizei, GLuint*);
+using PFNGLDELETEPROGRAMPIPELINESPROC = void(APIENTRY*)(GLsizei, const GLuint*);
+using PFNGLBINDPROGRAMPIPELINEPROC = void(APIENTRY*)(GLuint);
+using PFNGLISPROGRAMPIPELINEPROC = GLboolean(APIENTRY*)(GLuint);
+using PFNGLVALIDATEPROGRAMPIPELINEPROC = void(APIENTRY*)(GLuint);
+using PFNGLGETPROGRAMPIPELINEIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
+using PFNGLGETPROGRAMPIPELINEINFOLOGPROC = void(APIENTRY*)(GLuint, GLsizei, GLsizei*, GLchar*);
+using PFNGLDEBUGMESSAGECONTROLPROC = void(APIENTRY*)(GLenum, GLenum, GLenum, GLsizei, const GLuint*, GLboolean);
+using PFNGLDEBUGMESSAGEINSERTPROC = void(APIENTRY*)(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar*);
+using PFNGLGETDEBUGMESSAGELOGPROC = GLuint(APIENTRY*)(GLuint, GLsizei, GLenum*, GLenum*, GLuint*, GLenum*, GLsizei*, GLchar*);
+using PFNGLGENQUERIESPROC = void(APIENTRY*)(GLsizei, GLuint*);
+using PFNGLDELETEQUERIESPROC = void(APIENTRY*)(GLsizei, const GLuint*);
+using PFNGLBEGINQUERYPROC = void(APIENTRY*)(GLenum, GLuint);
+using PFNGLENDQUERYPROC = void(APIENTRY*)(GLenum);
+using PFNGLGETQUERYIVPROC = void(APIENTRY*)(GLenum, GLenum, GLint*);
+using PFNGLGETQUERYOBJECTIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
+using PFNGLGETQUERYOBJECTUIVPROC = void(APIENTRY*)(GLuint, GLenum, GLuint*);
+using PFNGLGETQUERYOBJECTI64VPROC = void(APIENTRY*)(GLuint, GLenum, GLint64*);
+using PFNGLGETQUERYOBJECTUI64VPROC = void(APIENTRY*)(GLuint, GLenum, GLuint64*);
+using PFNGLCREATEQUERIESPROC = void(APIENTRY*)(GLenum, GLsizei, GLuint*);
+using PFNGLQUERYCOUNTERPROC = void(APIENTRY*)(GLuint, GLenum);
+using PFNGLGETQUERYBUFFEROBJECTIVPROC = void(APIENTRY*)(GLuint, GLuint, GLenum, GLintptr);
+using PFNGLGETQUERYBUFFEROBJECTUIVPROC = void(APIENTRY*)(GLuint, GLuint, GLenum, GLintptr);
+using PFNGLGETQUERYBUFFEROBJECTI64VPROC = void(APIENTRY*)(GLuint, GLuint, GLenum, GLintptr);
+using PFNGLGETQUERYBUFFEROBJECTUI64VPROC = void(APIENTRY*)(GLuint, GLuint, GLenum, GLintptr);
+using PFNGLFENCESYNCPROC = GLsync(APIENTRY*)(GLenum, GLbitfield);
+using PFNGLISSYNCPROC = GLboolean(APIENTRY*)(GLsync);
+using PFNGLCLIENTWAITSYNCPROC = GLenum(APIENTRY*)(GLsync, GLbitfield, GLuint64);
+using PFNGLWAITSYNCPROC = void(APIENTRY*)(GLsync, GLbitfield, GLuint64);
+using PFNGLGETSYNCIVPROC = void(APIENTRY*)(GLsync, GLenum, GLsizei, GLsizei*, GLint*);
+using PFNGLDELETESYNCPROC = void(APIENTRY*)(GLsync);
+using PFNGLGENSAMPLERSPROC = void(APIENTRY*)(GLsizei, GLuint*);
+using PFNGLDELETESAMPLERSPROC = void(APIENTRY*)(GLsizei, const GLuint*);
+using PFNGLISSAMPLERPROC = GLboolean(APIENTRY*)(GLuint);
+using PFNGLBINDSAMPLERPROC = void(APIENTRY*)(GLuint, GLuint);
+using PFNGLBINDSAMPLERSPROC = void(APIENTRY*)(GLuint, GLsizei, const GLuint*);
+using PFNGLSAMPLERPARAMETERFVPROC = void(APIENTRY*)(GLuint, GLenum, const GLfloat*);
+using PFNGLSAMPLERPARAMETERIVPROC = void(APIENTRY*)(GLuint, GLenum, const GLint*);
+using PFNGLSAMPLERPARAMETERIIVPROC = void(APIENTRY*)(GLuint, GLenum, const GLint*);
+using PFNGLSAMPLERPARAMETERIUIVPROC = void(APIENTRY*)(GLuint, GLenum, const GLuint*);
+using PFNGLGETSAMPLERPARAMETERFVPROC = void(APIENTRY*)(GLuint, GLenum, GLfloat*);
+using PFNGLGETSAMPLERPARAMETERIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
+using PFNGLGETSAMPLERPARAMETERIIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
+using PFNGLGETSAMPLERPARAMETERIUIVPROC = void(APIENTRY*)(GLuint, GLenum, GLuint*);
+using PFNGLGETUNIFORMBLOCKINDEXPROC = GLuint(APIENTRY*)(GLuint, const GLchar*);
+using PFNGLGETACTIVEUNIFORMBLOCKIVPROC = void(APIENTRY*)(GLuint, GLuint, GLenum, GLint*);
+using PFNGLGETACTIVEUNIFORMBLOCKNAMEPROC = void(APIENTRY*)(GLuint, GLuint, GLsizei, GLsizei*, GLchar*);
+using PFNGLGETACTIVEUNIFORMSIVPROC = void(APIENTRY*)(GLuint, GLsizei, const GLuint*, GLenum, GLint*);
+using PFNGLUNIFORMBLOCKBINDINGPROC = void(APIENTRY*)(GLuint, GLuint, GLuint);
+using PFNGLBINDBUFFERSBASEPROC = void(APIENTRY*)(GLenum, GLuint, GLsizei, const GLuint*);
+using PFNGLBINDBUFFERSRANGEPROC = void(APIENTRY*)(GLenum, GLuint, GLsizei, const GLuint*, const GLintptr*, const GLsizeiptr*);
+using PFNGLVERTEXATTRIBPOINTERPROC = void(APIENTRY*)(GLuint, GLint, GLenum, GLboolean, GLsizei, const void*);
+using PFNGLENABLEVERTEXATTRIBARRAYPROC = void(APIENTRY*)(GLuint);
+using PFNGLDISABLEVERTEXATTRIBARRAYPROC = void(APIENTRY*)(GLuint);
+using PFNGLVERTEXATTRIB4FVPROC = void(APIENTRY*)(GLuint, const GLfloat*);
+using PFNGLGETVERTEXATTRIBIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
+using PFNGLGETVERTEXATTRIBFVPROC = void(APIENTRY*)(GLuint, GLenum, GLfloat*);
+using PFNGLGETVERTEXATTRIBDVPROC = void(APIENTRY*)(GLuint, GLenum, GLdouble*);
+using PFNGLGETVERTEXATTRIBPOINTERVPROC = void(APIENTRY*)(GLuint, GLenum, void**);
+using PFNGLSECONDARYCOLORPOINTERPROC = void(APIENTRY*)(GLint, GLenum, GLsizei, const void*);
+using PFNGLFOGCOORDPOINTERPROC = void(APIENTRY*)(GLenum, GLsizei, const void*);
+using PFNGLVERTEXPOINTEREXTPROC = void(APIENTRY*)(GLint, GLenum, GLsizei, GLsizei, const void*);
+using PFNGLCOLORPOINTEREXTPROC = void(APIENTRY*)(GLint, GLenum, GLsizei, GLsizei, const void*);
+using PFNGLTEXCOORDPOINTEREXTPROC = void(APIENTRY*)(GLint, GLenum, GLsizei, GLsizei, const void*);
+using PFNGLNORMALPOINTEREXTPROC = void(APIENTRY*)(GLenum, GLsizei, GLsizei, const void*);
+using PFNGLEDGEFLAGPOINTEREXTPROC = void(APIENTRY*)(GLsizei, GLsizei, const GLboolean*);
+using PFNGLACTIVETEXTUREPROC = void(APIENTRY*)(GLenum);
+using PFNGLCLIENTACTIVETEXTUREPROC = void(APIENTRY*)(GLenum);
+using PFNGLMULTITEXCOORDPOINTEREXTPROC = void(APIENTRY*)(GLenum, GLint, GLenum, GLsizei, const void*);
+using PFNGLMULTITEXCOORDPOINTERSGISPROC = void(APIENTRY*)(GLenum, GLint, GLenum, GLsizei, void*);
+using PFNGLGENVERTEXARRAYSPROC = void(APIENTRY*)(GLsizei, GLuint*);
+using PFNGLCREATEVERTEXARRAYSPROC = void(APIENTRY*)(GLsizei, GLuint*);
+using PFNGLDELETEVERTEXARRAYSPROC = void(APIENTRY*)(GLsizei, const GLuint*);
+using PFNGLBINDVERTEXARRAYPROC = void(APIENTRY*)(GLuint);
+using PFNGLISVERTEXARRAYPROC = GLboolean(APIENTRY*)(GLuint);
+using PFNGLVERTEXARRAYVERTEXBUFFERSPROC = void(APIENTRY*)(GLuint, GLuint, GLsizei, const GLuint*, const GLintptr*, const GLsizei*);
+using PFNGLVERTEXARRAYATTRIBFORMATPROC = void(APIENTRY*)(GLuint, GLuint, GLint, GLenum, GLboolean, GLuint);
+using PFNGLVERTEXARRAYATTRIBBINDINGPROC = void(APIENTRY*)(GLuint, GLuint, GLuint);
+using PFNGLENABLEVERTEXARRAYATTRIBPROC = void(APIENTRY*)(GLuint, GLuint);
+using PFNGLGETVERTEXARRAYIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
+using PFNGLGETVERTEXARRAYINDEXEDIVPROC = void(APIENTRY*)(GLuint, GLuint, GLenum, GLint*);
+using PFNGLGETVERTEXARRAYINDEXED64IVPROC = void(APIENTRY*)(GLuint, GLuint, GLenum, GLint64*);
+using PFNGLBINDVERTEXBUFFERSPROC = void(APIENTRY*)(GLuint, GLsizei, const GLuint*, const GLintptr*, const GLsizei*);
+using PFNGLGETINTEGERI_VPROC = void(APIENTRY*)(GLenum, GLuint, GLint*);
+using PFNGLGETINTEGER64I_VPROC = void(APIENTRY*)(GLenum, GLuint, GLint64*);
+using PFNGLPROGRAMPARAMETERIPROC = void(APIENTRY*)(GLuint, GLenum, GLint);
+using PFNGLGETPROGRAMBINARYPROC = void(APIENTRY*)(GLuint, GLsizei, GLsizei*, GLenum*, void*);
+using PFNGLPROGRAMBINARYPROC = void(APIENTRY*)(GLuint, GLenum, const void*, GLsizei);
+using PFNGLNAMEDSTRINGARBPROC = void(APIENTRY*)(GLenum, GLint, const GLchar*, GLint, const GLchar*);
+using PFNGLGETNAMEDSTRINGARBPROC = void(APIENTRY*)(GLint, const GLchar*, GLsizei, GLint*, GLchar*);
+using PFNGLGETNAMEDSTRINGIVARBPROC = void(APIENTRY*)(GLint, const GLchar*, GLenum, GLint*);
+using PFNGLISNAMEDSTRINGARBPROC = GLboolean(APIENTRY*)(GLint, const GLchar*);
+using PFNGLDELETENAMEDSTRINGARBPROC = void(APIENTRY*)(GLint, const GLchar*);
+using PFNGLUSEPROGRAMPROC = void(APIENTRY*)(GLuint);
+using PFNGLGETUNIFORMLOCATIONPROC = GLint(APIENTRY*)(GLuint, const GLchar*);
+using PFNGLGETACTIVEUNIFORMPROC = void(APIENTRY*)(GLuint, GLuint, GLsizei, GLsizei*, GLint*, GLenum*, GLchar*);
+using PFNGLGETACTIVEATTRIBPROC = void(APIENTRY*)(GLuint, GLuint, GLsizei, GLsizei*, GLint*, GLenum*, GLchar*);
+using PFNGLGETACTIVEUNIFORMNAMEPROC = void(APIENTRY*)(GLuint, GLuint, GLsizei, GLsizei*, GLchar*);
+using PFNGLUNIFORM1FPROC = void(APIENTRY*)(GLint, GLfloat);
+using PFNGLUNIFORM4FVPROC = void(APIENTRY*)(GLint, GLsizei, const GLfloat*);
+using PFNGLUNIFORMMATRIX2FVPROC = void(APIENTRY*)(GLint, GLsizei, GLboolean, const GLfloat*);
+using PFNGLUNIFORMMATRIX3FVPROC = void(APIENTRY*)(GLint, GLsizei, GLboolean, const GLfloat*);
+using PFNGLUNIFORMMATRIX4FVPROC = void(APIENTRY*)(GLint, GLsizei, GLboolean, const GLfloat*);
+using PFNGLUNIFORM1IPROC = void(APIENTRY*)(GLint, GLint);
+using PFNGLGETUNIFORMFVPROC = void(APIENTRY*)(GLuint, GLint, GLfloat*);
+using PFNGLGETUNIFORMIVPROC = void(APIENTRY*)(GLuint, GLint, GLint*);
+using PFNGLDELETESHADERPROC = void(APIENTRY*)(GLuint);
+using PFNGLDELETEPROGRAMPROC = void(APIENTRY*)(GLuint);
+using PFNGLGENBUFFERSPROC = void(APIENTRY*)(GLsizei, GLuint*);
+using PFNGLBINDBUFFERPROC = void(APIENTRY*)(GLenum, GLuint);
+using PFNGLBUFFERDATAPROC = void(APIENTRY*)(GLenum, GLsizeiptr, const void*, GLenum);
+using PFNGLBUFFERSUBDATAPROC = void(APIENTRY*)(GLenum, GLintptr, GLsizeiptr, const void*);
+using PFNGLGETBUFFERSUBDATAPROC = void(APIENTRY*)(GLenum, GLintptr, GLsizeiptr, void*);
+using PFNGLNAMEDBUFFERDATAPROC = void(APIENTRY*)(GLuint, GLsizeiptr, const void*, GLenum);
+using PFNGLNAMEDBUFFERSUBDATAPROC = void(APIENTRY*)(GLuint, GLintptr, GLsizeiptr, const void*);
+using PFNGLGETNAMEDBUFFERSUBDATAPROC = void(APIENTRY*)(GLuint, GLintptr, GLsizeiptr, void*);
+using PFNGLMAPBUFFERPROC = void* (APIENTRY*)(GLenum, GLenum);
+using PFNGLMAPBUFFERRANGEPROC = void* (APIENTRY*)(GLenum, GLintptr, GLsizeiptr, GLbitfield);
+using PFNGLUNMAPBUFFERPROC = GLboolean(APIENTRY*)(GLenum);
+using PFNGLCLEARBUFFERDATAPROC = void(APIENTRY*)(GLenum, GLenum, GLenum, GLenum, const void*);
+using PFNGLCLEARBUFFERSUBDATAPROC = void(APIENTRY*)(GLenum, GLenum, GLintptr, GLsizeiptr, GLenum, GLenum, const void*);
+using PFNGLDELETEBUFFERSPROC = void(APIENTRY*)(GLsizei, const GLuint*);
+using PFNGLMULTIDRAWARRAYSPROC = void(APIENTRY*)(GLenum, const GLint*, const GLsizei*, GLsizei);
+using PFNGLMULTIDRAWELEMENTSPROC = void(APIENTRY*)(GLenum, const GLsizei*, GLenum, const void* const*, GLsizei);
+using PFNGLMULTIDRAWELEMENTSBASEVERTEXPROC = void(APIENTRY*)(GLenum, const GLsizei*, GLenum, const void* const*, GLsizei, const GLint*);
+using PFNGLDRAWRANGEELEMENTSPROC = void(APIENTRY*)(GLenum, GLuint, GLuint, GLsizei, GLenum, const void*);
+using PFNGLDRAWELEMENTSBASEVERTEXPROC = void(APIENTRY*)(GLenum, GLsizei, GLenum, const void*, GLint);
+using PFNGLDRAWRANGEELEMENTSBASEVERTEXPROC = void(APIENTRY*)(GLenum, GLuint, GLuint, GLsizei, GLenum, const void*, GLint);
+using PFNGLDRAWARRAYSINSTANCEDPROC = void(APIENTRY*)(GLenum, GLint, GLsizei, GLsizei);
+using PFNGLDRAWARRAYSINSTANCEDBASEINSTANCEPROC = void(APIENTRY*)(GLenum, GLint, GLsizei, GLsizei, GLuint);
+using PFNGLDRAWARRAYSINSTANCEDARBPROC = void(APIENTRY*)(GLenum, GLint, GLsizei, GLsizei);
+using PFNGLDRAWARRAYSINSTANCEDEXTPROC = void(APIENTRY*)(GLenum, GLint, GLsizei, GLsizei);
+using PFNGLDRAWELEMENTSINSTANCEDPROC = void(APIENTRY*)(GLenum, GLsizei, GLenum, const void*, GLsizei);
+using PFNGLDRAWELEMENTSINSTANCEDARBPROC = void(APIENTRY*)(GLenum, GLsizei, GLenum, const void*, GLsizei);
+using PFNGLDRAWELEMENTSINSTANCEDEXTPROC = void(APIENTRY*)(GLenum, GLsizei, GLenum, const void*, GLsizei);
+using PFNGLDRAWELEMENTSINSTANCEDBASEINSTANCEPROC = void(APIENTRY*)(GLenum, GLsizei, GLenum, const void*, GLsizei, GLuint);
+using PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXPROC = void(APIENTRY*)(GLenum, GLsizei, GLenum, const void*, GLsizei, GLint);
+using PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXBASEINSTANCEPROC = void(APIENTRY*)(GLenum, GLsizei, GLenum, const void*, GLsizei, GLint, GLuint);
+using PFNGLDRAWARRAYSINDIRECTPROC = void(APIENTRY*)(GLenum, const void*);
+using PFNGLDRAWELEMENTSINDIRECTPROC = void(APIENTRY*)(GLenum, GLenum, const void*);
+using PFNGLMULTIDRAWARRAYSINDIRECTPROC = void(APIENTRY*)(GLenum, const void*, GLsizei, GLsizei);
+using PFNGLMULTIDRAWELEMENTSINDIRECTPROC = void(APIENTRY*)(GLenum, GLenum, const void*, GLsizei, GLsizei);
+using PFNGLCREATESHADERPROGRAMVPROC = GLuint(APIENTRY*)(GLenum, GLsizei, const GLchar* const*);
+using PFNGLGETUNIFORMINDICESPROC = void(APIENTRY*)(GLuint, GLsizei, const GLchar* const*, GLuint*);
+using PFNGLBINDATTRIBLOCATIONPROC = void(APIENTRY*)(GLuint, GLuint, const GLchar*);
+using PFNGLTRANSFORMFEEDBACKVARYINGSPROC = void(APIENTRY*)(GLuint, GLsizei, const GLchar* const*, GLenum);
+using PFNGLGETTRANSFORMFEEDBACKVARYINGPROC = void(APIENTRY*)(GLuint, GLuint, GLsizei, GLsizei*, GLsizei*, GLenum*, GLchar*);
+using PFNGLGENTRANSFORMFEEDBACKSPROC = void(APIENTRY*)(GLsizei, GLuint*);
+using PFNGLDELETETRANSFORMFEEDBACKSPROC = void(APIENTRY*)(GLsizei, const GLuint*);
+using PFNGLBINDTRANSFORMFEEDBACKPROC = void(APIENTRY*)(GLenum, GLuint);
+using PFNGLISTRANSFORMFEEDBACKPROC = GLboolean(APIENTRY*)(GLuint);
+using PFNGLBINDBUFFERBASEPROC = void(APIENTRY*)(GLenum, GLuint, GLuint);
+using PFNGLBINDBUFFERRANGEPROC = void(APIENTRY*)(GLenum, GLuint, GLuint, GLintptr, GLsizeiptr);
+using PFNGLBEGINTRANSFORMFEEDBACKPROC = void(APIENTRY*)(GLenum);
+using PFNGLENDTRANSFORMFEEDBACKPROC = void(APIENTRY*)();
+using PFNGLPAUSETRANSFORMFEEDBACKPROC = void(APIENTRY*)();
+using PFNGLRESUMETRANSFORMFEEDBACKPROC = void(APIENTRY*)();
+using PFNGLGETTRANSFORMFEEDBACKIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
+using PFNGLGETTRANSFORMFEEDBACKI_VPROC = void(APIENTRY*)(GLuint, GLenum, GLuint, GLint*);
+using PFNGLGETTRANSFORMFEEDBACKI64_VPROC = void(APIENTRY*)(GLuint, GLenum, GLuint, GLint64*);
+using PFNGLTEXIMAGE3DPROC = void(APIENTRY*)(GLenum, GLint, GLint, GLsizei, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*);
+using PFNGLTEXIMAGE3DEXTPROC = void(APIENTRY*)(GLenum, GLint, GLenum, GLsizei, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*);
+using PFNGLTEXTUREIMAGE1DEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLint, GLenum, GLsizei, GLint, GLenum, GLenum, const void*);
+using PFNGLMULTITEXIMAGE1DEXTPROC = void(APIENTRY*)(GLenum, GLenum, GLint, GLenum, GLsizei, GLint, GLenum, GLenum, const void*);
+using PFNGLTEXTUREIMAGE2DEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLint, GLenum, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*);
+using PFNGLMULTITEXIMAGE2DEXTPROC = void(APIENTRY*)(GLenum, GLenum, GLint, GLenum, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*);
+using PFNGLMULTITEXIMAGE3DEXTPROC = void(APIENTRY*)(GLenum, GLenum, GLint, GLenum, GLsizei, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*);
+using PFNGLTEXTUREIMAGE3DEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLint, GLenum, GLsizei, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*);
+using PFNGLTEXSUBIMAGE3DPROC = void(APIENTRY*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, const void*);
+using PFNGLTEXSUBIMAGE3DEXTPROC = void(APIENTRY*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, const void*);
+using PFNGLCOMPRESSEDTEXTURESUBIMAGE1DPROC = void(APIENTRY*)(GLuint, GLint, GLint, GLsizei, GLenum, GLsizei, const void*);
+using PFNGLCOMPRESSEDTEXTURESUBIMAGE2DPROC = void(APIENTRY*)(GLuint, GLint, GLint, GLint, GLsizei, GLsizei, GLenum, GLsizei, const void*);
+using PFNGLCOMPRESSEDTEXTURESUBIMAGE3DPROC = void(APIENTRY*)(GLuint, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLsizei, const void*);
+using PFNGLGETCOMPRESSEDTEXIMAGEPROC = void(APIENTRY*)(GLenum, GLint, void*);
+using PFNGLGETTEXTUREIMAGEPROC = void(APIENTRY*)(GLuint, GLint, GLenum, GLenum, GLsizei, void*);
+using PFNGLGETTEXTUREIMAGEEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLint, GLenum, GLenum, void*);
+using PFNGLGETTEXTURESUBIMAGEPROC = void(APIENTRY*)(GLuint, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, GLsizei, void*);
+using PFNGLTEXTURESUBIMAGE2DPROC = void(APIENTRY*)(GLuint, GLint, GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, const void*);
+using PFNGLTEXTURESUBIMAGE2DEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLint, GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, const void*);
+using PFNGLTEXTURESUBIMAGE3DPROC = void(APIENTRY*)(GLuint, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, const void*);
+using PFNGLTEXTURESUBIMAGE3DEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, const void*);
+using PFNGLGETCOMPRESSEDTEXTUREIMAGEPROC = void(APIENTRY*)(GLuint, GLint, GLsizei, void*);
+using PFNGLGETCOMPRESSEDTEXTUREIMAGEEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLint, void*);
+using PFNGLGETCOMPRESSEDTEXTURESUBIMAGEPROC = void(APIENTRY*)(GLuint, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLsizei, void*);
+using PFNGLCOPYTEXTURESUBIMAGE2DPROC = void(APIENTRY*)(GLuint, GLint, GLint, GLint, GLint, GLint, GLsizei, GLsizei);
+using PFNGLCOPYTEXTURESUBIMAGE2DEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLint, GLint, GLint, GLint, GLint, GLsizei, GLsizei);
+using PFNGLCLEARTEXIMAGEPROC = void(APIENTRY*)(GLuint, GLint, GLenum, GLenum, const void*);
+using PFNGLCLEARTEXSUBIMAGEPROC = void(APIENTRY*)(GLuint, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, const void*);
+using PFNGLOBJECTLABELPROC = void(APIENTRY*)(GLenum, GLuint, GLsizei, const GLchar*);
+using PFNGLGETOBJECTLABELPROC = void(APIENTRY*)(GLenum, GLuint, GLsizei, GLsizei*, GLchar*);
+using PFNGLGETTEXTUREPARAMETERFVPROC = void(APIENTRY*)(GLuint, GLenum, GLfloat*);
+using PFNGLGETTEXTUREPARAMETERIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
+using PFNGLGETTEXTUREPARAMETERFVEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLenum, GLfloat*);
+using PFNGLGETTEXTUREPARAMETERIVEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLenum, GLint*);
+using PFNGLGETTEXTURELEVELPARAMETERFVPROC = void(APIENTRY*)(GLuint, GLint, GLenum, GLfloat*);
+using PFNGLGETTEXTURELEVELPARAMETERIVPROC = void(APIENTRY*)(GLuint, GLint, GLenum, GLint*);
+using PFNGLGETTEXTURELEVELPARAMETERFVEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLint, GLenum, GLfloat*);
+using PFNGLGETTEXTURELEVELPARAMETERIVEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLint, GLenum, GLint*);
+using PFNGLREADNPIXELSPROC = void(APIENTRY*)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, GLsizei, void*);
+using PFNGLCREATETEXTURESPROC = void(APIENTRY*)(GLenum, GLsizei, GLuint*);
+using PFNGLBINDTEXTURESPROC = void(APIENTRY*)(GLuint, GLsizei, const GLuint*);
+using PFNGLBINDIMAGETEXTURESPROC = void(APIENTRY*)(GLuint, GLsizei, const GLuint*);
+using PFNGLTEXTURESTORAGE2DPROC = void(APIENTRY*)(GLuint, GLsizei, GLenum, GLsizei, GLsizei);
+using PFNGLGENFRAMEBUFFERSPROC = void(APIENTRY*)(GLsizei, GLuint*);
+using PFNGLBINDFRAMEBUFFERPROC = void(APIENTRY*)(GLenum, GLuint);
+using PFNGLFRAMEBUFFERTEXTURE2DPROC = void(APIENTRY*)(GLenum, GLenum, GLenum, GLuint, GLint);
+using PFNGLCHECKFRAMEBUFFERSTATUSPROC = GLenum(APIENTRY*)(GLenum);
+using PFNGLDELETEFRAMEBUFFERSPROC = void(APIENTRY*)(GLsizei, const GLuint*);
+using PFNGLCREATEFRAMEBUFFERSPROC = void(APIENTRY*)(GLsizei, GLuint*);
+using PFNGLCREATERENDERBUFFERSPROC = void(APIENTRY*)(GLsizei, GLuint*);
+using PFNGLGENRENDERBUFFERSPROC = void(APIENTRY*)(GLsizei, GLuint*);
+using PFNGLDELETERENDERBUFFERSPROC = void(APIENTRY*)(GLsizei, const GLuint*);
+using PFNGLBINDRENDERBUFFERPROC = void(APIENTRY*)(GLenum, GLuint);
+using PFNGLISRENDERBUFFERPROC = GLboolean(APIENTRY*)(GLuint);
+using PFNGLNAMEDRENDERBUFFERSTORAGEPROC = void(APIENTRY*)(GLuint, GLenum, GLsizei, GLsizei);
+using PFNGLGETNAMEDRENDERBUFFERPARAMETERIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
+using PFNGLGETRENDERBUFFERPARAMETERIVPROC = void(APIENTRY*)(GLenum, GLenum, GLint*);
+using PFNGLNAMEDFRAMEBUFFERRENDERBUFFERPROC = void(APIENTRY*)(GLuint, GLenum, GLenum, GLuint);
+using PFNGLCHECKNAMEDFRAMEBUFFERSTATUSPROC = GLenum(APIENTRY*)(GLuint, GLenum);
+using PFNGLGETNAMEDFRAMEBUFFERATTACHMENTPARAMETERIVPROC = void(APIENTRY*)(GLuint, GLenum, GLenum, GLint*);
+using PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC = void(APIENTRY*)(GLenum, GLenum, GLenum, GLint*);
+
+struct GLFns {
+    PFNGLCREATESHADERPROC CreateShader = nullptr;
+    PFNGLSHADERSOURCEPROC ShaderSource = nullptr;
+    PFNGLCOMPILESHADERPROC CompileShader = nullptr;
+    PFNGLGETSHADERIVPROC GetShaderiv = nullptr;
+    PFNGLGETSHADERINFOLOGPROC GetShaderInfoLog = nullptr;
+    PFNGLGETSHADERSOURCEPROC GetShaderSource = nullptr;
+    PFNGLCREATEPROGRAMPROC CreateProgram = nullptr;
+    PFNGLATTACHSHADERPROC AttachShader = nullptr;
+    PFNGLLINKPROGRAMPROC LinkProgram = nullptr;
+    PFNGLGETPROGRAMIVPROC GetProgramiv = nullptr;
+    PFNGLGETPROGRAMINFOLOGPROC GetProgramInfoLog = nullptr;
+    PFNGLGETPROGRAMRESOURCEINDEXPROC GetProgramResourceIndex = nullptr;
+    PFNGLGETPROGRAMRESOURCENAMEPROC GetProgramResourceName = nullptr;
+    PFNGLGETPROGRAMRESOURCEIVPROC GetProgramResourceiv = nullptr;
+    PFNGLGENPROGRAMPIPELINESPROC GenProgramPipelines = nullptr;
+    PFNGLDELETEPROGRAMPIPELINESPROC DeleteProgramPipelines = nullptr;
+    PFNGLBINDPROGRAMPIPELINEPROC BindProgramPipeline = nullptr;
+    PFNGLISPROGRAMPIPELINEPROC IsProgramPipeline = nullptr;
+    PFNGLVALIDATEPROGRAMPIPELINEPROC ValidateProgramPipeline = nullptr;
+    PFNGLGETPROGRAMPIPELINEIVPROC GetProgramPipelineiv = nullptr;
+    PFNGLGETPROGRAMPIPELINEINFOLOGPROC GetProgramPipelineInfoLog = nullptr;
+    PFNGLDEBUGMESSAGECONTROLPROC DebugMessageControl = nullptr;
+    PFNGLDEBUGMESSAGEINSERTPROC DebugMessageInsert = nullptr;
+    PFNGLGETDEBUGMESSAGELOGPROC GetDebugMessageLog = nullptr;
+    PFNGLGENQUERIESPROC GenQueries = nullptr;
+    PFNGLDELETEQUERIESPROC DeleteQueries = nullptr;
+    PFNGLBEGINQUERYPROC BeginQuery = nullptr;
+    PFNGLENDQUERYPROC EndQuery = nullptr;
+    PFNGLGETQUERYIVPROC GetQueryiv = nullptr;
+    PFNGLGETQUERYOBJECTIVPROC GetQueryObjectiv = nullptr;
+    PFNGLGETQUERYOBJECTUIVPROC GetQueryObjectuiv = nullptr;
+    PFNGLGETQUERYOBJECTI64VPROC GetQueryObjecti64v = nullptr;
+    PFNGLGETQUERYOBJECTUI64VPROC GetQueryObjectui64v = nullptr;
+    PFNGLCREATEQUERIESPROC CreateQueries = nullptr;
+    PFNGLQUERYCOUNTERPROC QueryCounter = nullptr;
+    PFNGLGETQUERYBUFFEROBJECTIVPROC GetQueryBufferObjectiv = nullptr;
+    PFNGLGETQUERYBUFFEROBJECTUIVPROC GetQueryBufferObjectuiv = nullptr;
+    PFNGLGETQUERYBUFFEROBJECTI64VPROC GetQueryBufferObjecti64v = nullptr;
+    PFNGLGETQUERYBUFFEROBJECTUI64VPROC GetQueryBufferObjectui64v = nullptr;
+    PFNGLFENCESYNCPROC FenceSync = nullptr;
+    PFNGLISSYNCPROC IsSync = nullptr;
+    PFNGLCLIENTWAITSYNCPROC ClientWaitSync = nullptr;
+    PFNGLWAITSYNCPROC WaitSync = nullptr;
+    PFNGLGETSYNCIVPROC GetSynciv = nullptr;
+    PFNGLDELETESYNCPROC DeleteSync = nullptr;
+    PFNGLGENSAMPLERSPROC GenSamplers = nullptr;
+    PFNGLDELETESAMPLERSPROC DeleteSamplers = nullptr;
+    PFNGLISSAMPLERPROC IsSampler = nullptr;
+    PFNGLBINDSAMPLERPROC BindSampler = nullptr;
+    PFNGLBINDSAMPLERSPROC BindSamplers = nullptr;
+    PFNGLSAMPLERPARAMETERFVPROC SamplerParameterfv = nullptr;
+    PFNGLSAMPLERPARAMETERIVPROC SamplerParameteriv = nullptr;
+    PFNGLSAMPLERPARAMETERIIVPROC SamplerParameterIiv = nullptr;
+    PFNGLSAMPLERPARAMETERIUIVPROC SamplerParameterIuiv = nullptr;
+    PFNGLGETSAMPLERPARAMETERFVPROC GetSamplerParameterfv = nullptr;
+    PFNGLGETSAMPLERPARAMETERIVPROC GetSamplerParameteriv = nullptr;
+    PFNGLGETSAMPLERPARAMETERIIVPROC GetSamplerParameterIiv = nullptr;
+    PFNGLGETSAMPLERPARAMETERIUIVPROC GetSamplerParameterIuiv = nullptr;
+    PFNGLGETUNIFORMBLOCKINDEXPROC GetUniformBlockIndex = nullptr;
+    PFNGLGETACTIVEUNIFORMBLOCKIVPROC GetActiveUniformBlockiv = nullptr;
+    PFNGLGETACTIVEUNIFORMBLOCKNAMEPROC GetActiveUniformBlockName = nullptr;
+    PFNGLGETACTIVEUNIFORMSIVPROC GetActiveUniformsiv = nullptr;
+    PFNGLUNIFORMBLOCKBINDINGPROC UniformBlockBinding = nullptr;
+    PFNGLBINDBUFFERSBASEPROC BindBuffersBase = nullptr;
+    PFNGLBINDBUFFERSRANGEPROC BindBuffersRange = nullptr;
+    PFNGLVERTEXATTRIBPOINTERPROC VertexAttribPointer = nullptr;
+    PFNGLENABLEVERTEXATTRIBARRAYPROC EnableVertexAttribArray = nullptr;
+    PFNGLDISABLEVERTEXATTRIBARRAYPROC DisableVertexAttribArray = nullptr;
+    PFNGLVERTEXATTRIB4FVPROC VertexAttrib4fv = nullptr;
+    PFNGLGETVERTEXATTRIBIVPROC GetVertexAttribiv = nullptr;
+    PFNGLGETVERTEXATTRIBFVPROC GetVertexAttribfv = nullptr;
+    PFNGLGETVERTEXATTRIBDVPROC GetVertexAttribdv = nullptr;
+    PFNGLGETVERTEXATTRIBPOINTERVPROC GetVertexAttribPointerv = nullptr;
+    PFNGLSECONDARYCOLORPOINTERPROC SecondaryColorPointer = nullptr;
+    PFNGLSECONDARYCOLORPOINTERPROC SecondaryColorPointerEXT = nullptr;
+    PFNGLFOGCOORDPOINTERPROC FogCoordPointer = nullptr;
+    PFNGLFOGCOORDPOINTERPROC FogCoordPointerEXT = nullptr;
+    PFNGLVERTEXPOINTEREXTPROC VertexPointerEXT = nullptr;
+    PFNGLCOLORPOINTEREXTPROC ColorPointerEXT = nullptr;
+    PFNGLTEXCOORDPOINTEREXTPROC TexCoordPointerEXT = nullptr;
+    PFNGLNORMALPOINTEREXTPROC NormalPointerEXT = nullptr;
+    PFNGLEDGEFLAGPOINTEREXTPROC EdgeFlagPointerEXT = nullptr;
+    PFNGLACTIVETEXTUREPROC ActiveTexture = nullptr;
+    PFNGLCLIENTACTIVETEXTUREPROC ClientActiveTexture = nullptr;
+    PFNGLMULTITEXCOORDPOINTEREXTPROC MultiTexCoordPointerEXT = nullptr;
+    PFNGLMULTITEXCOORDPOINTERSGISPROC MultiTexCoordPointerSGIS = nullptr;
+    PFNGLGENVERTEXARRAYSPROC GenVertexArrays = nullptr;
+    PFNGLCREATEVERTEXARRAYSPROC CreateVertexArrays = nullptr;
+    PFNGLDELETEVERTEXARRAYSPROC DeleteVertexArrays = nullptr;
+    PFNGLBINDVERTEXARRAYPROC BindVertexArray = nullptr;
+    PFNGLISVERTEXARRAYPROC IsVertexArray = nullptr;
+    PFNGLVERTEXARRAYVERTEXBUFFERSPROC VertexArrayVertexBuffers = nullptr;
+    PFNGLVERTEXARRAYATTRIBFORMATPROC VertexArrayAttribFormat = nullptr;
+    PFNGLVERTEXARRAYATTRIBBINDINGPROC VertexArrayAttribBinding = nullptr;
+    PFNGLENABLEVERTEXARRAYATTRIBPROC EnableVertexArrayAttrib = nullptr;
+    PFNGLGETVERTEXARRAYIVPROC GetVertexArrayiv = nullptr;
+    PFNGLGETVERTEXARRAYINDEXEDIVPROC GetVertexArrayIndexediv = nullptr;
+    PFNGLGETVERTEXARRAYINDEXED64IVPROC GetVertexArrayIndexed64iv = nullptr;
+    PFNGLBINDVERTEXBUFFERSPROC BindVertexBuffers = nullptr;
+    PFNGLGETINTEGERI_VPROC GetIntegeri_v = nullptr;
+    PFNGLGETINTEGER64I_VPROC GetInteger64i_v = nullptr;
+    PFNGLPROGRAMPARAMETERIPROC ProgramParameteri = nullptr;
+    PFNGLGETPROGRAMBINARYPROC GetProgramBinary = nullptr;
+    PFNGLPROGRAMBINARYPROC ProgramBinary = nullptr;
+    PFNGLNAMEDSTRINGARBPROC NamedStringARB = nullptr;
+    PFNGLGETNAMEDSTRINGARBPROC GetNamedStringARB = nullptr;
+    PFNGLGETNAMEDSTRINGIVARBPROC GetNamedStringivARB = nullptr;
+    PFNGLISNAMEDSTRINGARBPROC IsNamedStringARB = nullptr;
+    PFNGLDELETENAMEDSTRINGARBPROC DeleteNamedStringARB = nullptr;
+    PFNGLUSEPROGRAMPROC UseProgram = nullptr;
+    PFNGLGETUNIFORMLOCATIONPROC GetUniformLocation = nullptr;
+    PFNGLGETACTIVEUNIFORMPROC GetActiveUniform = nullptr;
+    PFNGLGETACTIVEATTRIBPROC GetActiveAttrib = nullptr;
+    PFNGLGETACTIVEUNIFORMNAMEPROC GetActiveUniformName = nullptr;
+    PFNGLUNIFORM1FPROC Uniform1f = nullptr;
+    PFNGLUNIFORM4FVPROC Uniform4fv = nullptr;
+    PFNGLUNIFORMMATRIX2FVPROC UniformMatrix2fv = nullptr;
+    PFNGLUNIFORMMATRIX3FVPROC UniformMatrix3fv = nullptr;
+    PFNGLUNIFORMMATRIX4FVPROC UniformMatrix4fv = nullptr;
+    PFNGLUNIFORM1IPROC Uniform1i = nullptr;
+    PFNGLGETUNIFORMFVPROC GetUniformfv = nullptr;
+    PFNGLGETUNIFORMIVPROC GetUniformiv = nullptr;
+    PFNGLDELETESHADERPROC DeleteShader = nullptr;
+    PFNGLDELETEPROGRAMPROC DeleteProgram = nullptr;
+    PFNGLGENBUFFERSPROC GenBuffers = nullptr;
+    PFNGLBINDBUFFERPROC BindBuffer = nullptr;
+    PFNGLBUFFERDATAPROC BufferData = nullptr;
+    PFNGLBUFFERSUBDATAPROC BufferSubData = nullptr;
+    PFNGLGETBUFFERSUBDATAPROC GetBufferSubData = nullptr;
+    PFNGLNAMEDBUFFERDATAPROC NamedBufferData = nullptr;
+    PFNGLNAMEDBUFFERDATAPROC NamedBufferDataEXT = nullptr;
+    PFNGLNAMEDBUFFERSUBDATAPROC NamedBufferSubData = nullptr;
+    PFNGLNAMEDBUFFERSUBDATAPROC NamedBufferSubDataEXT = nullptr;
+    PFNGLGETNAMEDBUFFERSUBDATAPROC GetNamedBufferSubData = nullptr;
+    PFNGLGETNAMEDBUFFERSUBDATAPROC GetNamedBufferSubDataEXT = nullptr;
+    PFNGLMAPBUFFERPROC MapBuffer = nullptr;
+    PFNGLMAPBUFFERRANGEPROC MapBufferRange = nullptr;
+    PFNGLUNMAPBUFFERPROC UnmapBuffer = nullptr;
+    PFNGLCLEARBUFFERDATAPROC ClearBufferData = nullptr;
+    PFNGLCLEARBUFFERSUBDATAPROC ClearBufferSubData = nullptr;
+    PFNGLDELETEBUFFERSPROC DeleteBuffers = nullptr;
+    PFNGLMULTIDRAWARRAYSPROC MultiDrawArrays = nullptr;
+    PFNGLMULTIDRAWELEMENTSPROC MultiDrawElements = nullptr;
+    PFNGLMULTIDRAWELEMENTSBASEVERTEXPROC MultiDrawElementsBaseVertex = nullptr;
+    PFNGLDRAWRANGEELEMENTSPROC DrawRangeElements = nullptr;
+    PFNGLDRAWRANGEELEMENTSPROC DrawRangeElementsEXT = nullptr;
+    PFNGLDRAWELEMENTSBASEVERTEXPROC DrawElementsBaseVertex = nullptr;
+    PFNGLDRAWRANGEELEMENTSBASEVERTEXPROC DrawRangeElementsBaseVertex = nullptr;
+    PFNGLDRAWARRAYSINSTANCEDPROC DrawArraysInstanced = nullptr;
+    PFNGLDRAWARRAYSINSTANCEDBASEINSTANCEPROC DrawArraysInstancedBaseInstance = nullptr;
+    PFNGLDRAWARRAYSINSTANCEDARBPROC DrawArraysInstancedARB = nullptr;
+    PFNGLDRAWARRAYSINSTANCEDEXTPROC DrawArraysInstancedEXT = nullptr;
+    PFNGLDRAWELEMENTSINSTANCEDPROC DrawElementsInstanced = nullptr;
+    PFNGLDRAWELEMENTSINSTANCEDARBPROC DrawElementsInstancedARB = nullptr;
+    PFNGLDRAWELEMENTSINSTANCEDEXTPROC DrawElementsInstancedEXT = nullptr;
+    PFNGLDRAWELEMENTSINSTANCEDBASEINSTANCEPROC DrawElementsInstancedBaseInstance = nullptr;
+    PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXPROC DrawElementsInstancedBaseVertex = nullptr;
+    PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXBASEINSTANCEPROC DrawElementsInstancedBaseVertexBaseInstance = nullptr;
+    PFNGLDRAWARRAYSINDIRECTPROC DrawArraysIndirect = nullptr;
+    PFNGLDRAWELEMENTSINDIRECTPROC DrawElementsIndirect = nullptr;
+    PFNGLMULTIDRAWARRAYSINDIRECTPROC MultiDrawArraysIndirect = nullptr;
+    PFNGLMULTIDRAWELEMENTSINDIRECTPROC MultiDrawElementsIndirect = nullptr;
+    PFNGLCREATESHADERPROGRAMVPROC CreateShaderProgramv = nullptr;
+    PFNGLGETUNIFORMINDICESPROC GetUniformIndices = nullptr;
+    PFNGLBINDATTRIBLOCATIONPROC BindAttribLocation = nullptr;
+    PFNGLTRANSFORMFEEDBACKVARYINGSPROC TransformFeedbackVaryings = nullptr;
+    PFNGLGETTRANSFORMFEEDBACKVARYINGPROC GetTransformFeedbackVarying = nullptr;
+    PFNGLGENTRANSFORMFEEDBACKSPROC GenTransformFeedbacks = nullptr;
+    PFNGLDELETETRANSFORMFEEDBACKSPROC DeleteTransformFeedbacks = nullptr;
+    PFNGLBINDTRANSFORMFEEDBACKPROC BindTransformFeedback = nullptr;
+    PFNGLISTRANSFORMFEEDBACKPROC IsTransformFeedback = nullptr;
+    PFNGLBINDBUFFERBASEPROC BindBufferBase = nullptr;
+    PFNGLBINDBUFFERRANGEPROC BindBufferRange = nullptr;
+    PFNGLBEGINTRANSFORMFEEDBACKPROC BeginTransformFeedback = nullptr;
+    PFNGLENDTRANSFORMFEEDBACKPROC EndTransformFeedback = nullptr;
+    PFNGLPAUSETRANSFORMFEEDBACKPROC PauseTransformFeedback = nullptr;
+    PFNGLRESUMETRANSFORMFEEDBACKPROC ResumeTransformFeedback = nullptr;
+    PFNGLGETTRANSFORMFEEDBACKIVPROC GetTransformFeedbackiv = nullptr;
+    PFNGLGETTRANSFORMFEEDBACKI_VPROC GetTransformFeedbacki_v = nullptr;
+    PFNGLGETTRANSFORMFEEDBACKI64_VPROC GetTransformFeedbacki64_v = nullptr;
+    PFNGLTEXIMAGE3DPROC TexImage3D = nullptr;
+    PFNGLTEXIMAGE3DEXTPROC TexImage3DEXT = nullptr;
+    PFNGLTEXTUREIMAGE1DEXTPROC TextureImage1DEXT = nullptr;
+    PFNGLMULTITEXIMAGE1DEXTPROC MultiTexImage1DEXT = nullptr;
+    PFNGLTEXTUREIMAGE2DEXTPROC TextureImage2DEXT = nullptr;
+    PFNGLMULTITEXIMAGE2DEXTPROC MultiTexImage2DEXT = nullptr;
+    PFNGLMULTITEXIMAGE3DEXTPROC MultiTexImage3DEXT = nullptr;
+    PFNGLTEXTUREIMAGE3DEXTPROC TextureImage3DEXT = nullptr;
+    PFNGLTEXSUBIMAGE3DPROC TexSubImage3D = nullptr;
+    PFNGLTEXSUBIMAGE3DEXTPROC TexSubImage3DEXT = nullptr;
+    PFNGLCOMPRESSEDTEXTURESUBIMAGE1DPROC CompressedTextureSubImage1D = nullptr;
+    PFNGLCOMPRESSEDTEXTURESUBIMAGE2DPROC CompressedTextureSubImage2D = nullptr;
+    PFNGLCOMPRESSEDTEXTURESUBIMAGE3DPROC CompressedTextureSubImage3D = nullptr;
+    PFNGLGETCOMPRESSEDTEXIMAGEPROC GetCompressedTexImage = nullptr;
+    PFNGLGETTEXTUREIMAGEPROC GetTextureImage = nullptr;
+    PFNGLGETTEXTUREIMAGEEXTPROC GetTextureImageEXT = nullptr;
+    PFNGLGETTEXTURESUBIMAGEPROC GetTextureSubImage = nullptr;
+    PFNGLTEXTURESUBIMAGE2DPROC TextureSubImage2D = nullptr;
+    PFNGLTEXTURESUBIMAGE2DEXTPROC TextureSubImage2DEXT = nullptr;
+    PFNGLTEXTURESUBIMAGE3DPROC TextureSubImage3D = nullptr;
+    PFNGLTEXTURESUBIMAGE3DEXTPROC TextureSubImage3DEXT = nullptr;
+    PFNGLGETCOMPRESSEDTEXTUREIMAGEPROC GetCompressedTextureImage = nullptr;
+    PFNGLGETCOMPRESSEDTEXTUREIMAGEEXTPROC GetCompressedTextureImageEXT = nullptr;
+    PFNGLGETCOMPRESSEDTEXTURESUBIMAGEPROC GetCompressedTextureSubImage = nullptr;
+    PFNGLCOPYTEXTURESUBIMAGE2DPROC CopyTextureSubImage2D = nullptr;
+    PFNGLCOPYTEXTURESUBIMAGE2DEXTPROC CopyTextureSubImage2DEXT = nullptr;
+    PFNGLCLEARTEXIMAGEPROC ClearTexImage = nullptr;
+    PFNGLCLEARTEXSUBIMAGEPROC ClearTexSubImage = nullptr;
+    PFNGLOBJECTLABELPROC ObjectLabel = nullptr;
+    PFNGLGETOBJECTLABELPROC GetObjectLabel = nullptr;
+    PFNGLGETTEXTUREPARAMETERFVPROC GetTextureParameterfv = nullptr;
+    PFNGLGETTEXTUREPARAMETERIVPROC GetTextureParameteriv = nullptr;
+    PFNGLGETTEXTUREPARAMETERFVEXTPROC GetTextureParameterfvEXT = nullptr;
+    PFNGLGETTEXTUREPARAMETERIVEXTPROC GetTextureParameterivEXT = nullptr;
+    PFNGLGETTEXTURELEVELPARAMETERFVPROC GetTextureLevelParameterfv = nullptr;
+    PFNGLGETTEXTURELEVELPARAMETERIVPROC GetTextureLevelParameteriv = nullptr;
+    PFNGLGETTEXTURELEVELPARAMETERFVEXTPROC GetTextureLevelParameterfvEXT = nullptr;
+    PFNGLGETTEXTURELEVELPARAMETERIVEXTPROC GetTextureLevelParameterivEXT = nullptr;
+    PFNGLREADNPIXELSPROC ReadnPixels = nullptr;
+    PFNGLCREATETEXTURESPROC CreateTextures = nullptr;
+    PFNGLBINDTEXTURESPROC BindTextures = nullptr;
+    PFNGLBINDIMAGETEXTURESPROC BindImageTextures = nullptr;
+    PFNGLTEXTURESTORAGE2DPROC TextureStorage2D = nullptr;
+    PFNGLGENFRAMEBUFFERSPROC GenFramebuffers = nullptr;
+    PFNGLBINDFRAMEBUFFERPROC BindFramebuffer = nullptr;
+    PFNGLFRAMEBUFFERTEXTURE2DPROC FramebufferTexture2D = nullptr;
+    PFNGLCHECKFRAMEBUFFERSTATUSPROC CheckFramebufferStatus = nullptr;
+    PFNGLDELETEFRAMEBUFFERSPROC DeleteFramebuffers = nullptr;
+    PFNGLCREATEFRAMEBUFFERSPROC CreateFramebuffers = nullptr;
+    PFNGLCREATERENDERBUFFERSPROC CreateRenderbuffers = nullptr;
+    PFNGLGENRENDERBUFFERSPROC GenRenderbuffers = nullptr;
+    PFNGLDELETERENDERBUFFERSPROC DeleteRenderbuffers = nullptr;
+    PFNGLBINDRENDERBUFFERPROC BindRenderbuffer = nullptr;
+    PFNGLISRENDERBUFFERPROC IsRenderbuffer = nullptr;
+    PFNGLNAMEDRENDERBUFFERSTORAGEPROC NamedRenderbufferStorage = nullptr;
+    PFNGLGETNAMEDRENDERBUFFERPARAMETERIVPROC GetNamedRenderbufferParameteriv = nullptr;
+    PFNGLGETRENDERBUFFERPARAMETERIVPROC GetRenderbufferParameteriv = nullptr;
+    PFNGLNAMEDFRAMEBUFFERRENDERBUFFERPROC NamedFramebufferRenderbuffer = nullptr;
+    PFNGLCHECKNAMEDFRAMEBUFFERSTATUSPROC CheckNamedFramebufferStatus = nullptr;
+    PFNGLGETNAMEDFRAMEBUFFERATTACHMENTPARAMETERIVPROC GetNamedFramebufferAttachmentParameteriv = nullptr;
+    PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC GetFramebufferAttachmentParameteriv = nullptr;
+} glx;
+
+struct TestContext {
+    HWND hwnd = nullptr;
+    HDC dc = nullptr;
+    HGLRC rc = nullptr;
+    std::ofstream log;
+    bool quiet = false;
+    int passed = 0;
+    int failed = 0;
+    int skipped = 0;
+
+    void write(const std::string& s) {
+        if (!quiet) {
+            std::string line = s + "\r\n";
+            DWORD written = 0;
+            WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), line.data(), (DWORD)line.size(), &written, nullptr);
+        }
+        if (log.is_open()) {
+            log << s << "\n";
+        }
+    }
+};
+
+struct TestResult {
+    enum Status { Pass, Fail, Skip } status;
+    std::string message;
+};
+
+struct TestCase {
+    const char* name;
+    TestResult(*fn)(TestContext&);
+};
+
+static std::string lastWin32Error() {
+    DWORD err = GetLastError();
+    if (!err) {
+        return {};
+    }
+    char* text = nullptr;
+    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        nullptr, err, 0, (LPSTR)&text, 0, nullptr);
+    std::string result = text ? text : "unknown error";
+    if (text) {
+        LocalFree(text);
+    }
+    return result;
+}
+
+static void* getGLProc(const char* name) {
+    void* p = (void*)wglGetProcAddress(name);
+    if (p && p != (void*)1 && p != (void*)2 && p != (void*)3 && p != (void*)-1) {
+        return p;
+    }
+    static HMODULE opengl = LoadLibraryA("opengl32.dll");
+    return opengl ? (void*)GetProcAddress(opengl, name) : nullptr;
+}
+
+template <typename T>
+static void load(T& fn, const char* name) {
+    fn = reinterpret_cast<T>(getGLProc(name));
+}
+
+static bool loadGLFunctions() {
+    load(glx.CreateShader, "glCreateShader");
+    load(glx.ShaderSource, "glShaderSource");
+    load(glx.CompileShader, "glCompileShader");
+    load(glx.GetShaderiv, "glGetShaderiv");
+    load(glx.GetShaderInfoLog, "glGetShaderInfoLog");
+    load(glx.GetShaderSource, "glGetShaderSource");
+    load(glx.CreateProgram, "glCreateProgram");
+    load(glx.AttachShader, "glAttachShader");
+    load(glx.LinkProgram, "glLinkProgram");
+    load(glx.GetProgramiv, "glGetProgramiv");
+    load(glx.GetProgramInfoLog, "glGetProgramInfoLog");
+    load(glx.GetProgramResourceIndex, "glGetProgramResourceIndex");
+    load(glx.GetProgramResourceName, "glGetProgramResourceName");
+    load(glx.GetProgramResourceiv, "glGetProgramResourceiv");
+    load(glx.GenProgramPipelines, "glGenProgramPipelines");
+    load(glx.DeleteProgramPipelines, "glDeleteProgramPipelines");
+    load(glx.BindProgramPipeline, "glBindProgramPipeline");
+    load(glx.IsProgramPipeline, "glIsProgramPipeline");
+    load(glx.ValidateProgramPipeline, "glValidateProgramPipeline");
+    load(glx.GetProgramPipelineiv, "glGetProgramPipelineiv");
+    load(glx.GetProgramPipelineInfoLog, "glGetProgramPipelineInfoLog");
+    load(glx.DebugMessageControl, "glDebugMessageControl");
+    load(glx.DebugMessageInsert, "glDebugMessageInsert");
+    load(glx.GetDebugMessageLog, "glGetDebugMessageLog");
+    load(glx.GenQueries, "glGenQueries");
+    load(glx.DeleteQueries, "glDeleteQueries");
+    load(glx.BeginQuery, "glBeginQuery");
+    load(glx.EndQuery, "glEndQuery");
+    load(glx.GetQueryiv, "glGetQueryiv");
+    load(glx.GetQueryObjectiv, "glGetQueryObjectiv");
+    load(glx.GetQueryObjectuiv, "glGetQueryObjectuiv");
+    load(glx.GetQueryObjecti64v, "glGetQueryObjecti64v");
+    load(glx.GetQueryObjectui64v, "glGetQueryObjectui64v");
+    load(glx.CreateQueries, "glCreateQueries");
+    load(glx.QueryCounter, "glQueryCounter");
+    load(glx.GetQueryBufferObjectiv, "glGetQueryBufferObjectiv");
+    load(glx.GetQueryBufferObjectuiv, "glGetQueryBufferObjectuiv");
+    load(glx.GetQueryBufferObjecti64v, "glGetQueryBufferObjecti64v");
+    load(glx.GetQueryBufferObjectui64v, "glGetQueryBufferObjectui64v");
+    load(glx.FenceSync, "glFenceSync");
+    load(glx.IsSync, "glIsSync");
+    load(glx.ClientWaitSync, "glClientWaitSync");
+    load(glx.WaitSync, "glWaitSync");
+    load(glx.GetSynciv, "glGetSynciv");
+    load(glx.DeleteSync, "glDeleteSync");
+    load(glx.GenSamplers, "glGenSamplers");
+    load(glx.DeleteSamplers, "glDeleteSamplers");
+    load(glx.IsSampler, "glIsSampler");
+    load(glx.BindSampler, "glBindSampler");
+    load(glx.BindSamplers, "glBindSamplers");
+    load(glx.SamplerParameterfv, "glSamplerParameterfv");
+    load(glx.SamplerParameteriv, "glSamplerParameteriv");
+    load(glx.SamplerParameterIiv, "glSamplerParameterIiv");
+    load(glx.SamplerParameterIuiv, "glSamplerParameterIuiv");
+    load(glx.GetSamplerParameterfv, "glGetSamplerParameterfv");
+    load(glx.GetSamplerParameteriv, "glGetSamplerParameteriv");
+    load(glx.GetSamplerParameterIiv, "glGetSamplerParameterIiv");
+    load(glx.GetSamplerParameterIuiv, "glGetSamplerParameterIuiv");
+    load(glx.GetUniformBlockIndex, "glGetUniformBlockIndex");
+    load(glx.GetActiveUniformBlockiv, "glGetActiveUniformBlockiv");
+    load(glx.GetActiveUniformBlockName, "glGetActiveUniformBlockName");
+    load(glx.GetActiveUniformsiv, "glGetActiveUniformsiv");
+    load(glx.UniformBlockBinding, "glUniformBlockBinding");
+    load(glx.BindBuffersBase, "glBindBuffersBase");
+    load(glx.BindBuffersRange, "glBindBuffersRange");
+    load(glx.VertexAttribPointer, "glVertexAttribPointer");
+    load(glx.EnableVertexAttribArray, "glEnableVertexAttribArray");
+    load(glx.DisableVertexAttribArray, "glDisableVertexAttribArray");
+    load(glx.VertexAttrib4fv, "glVertexAttrib4fv");
+    load(glx.GetVertexAttribiv, "glGetVertexAttribiv");
+    load(glx.GetVertexAttribfv, "glGetVertexAttribfv");
+    load(glx.GetVertexAttribdv, "glGetVertexAttribdv");
+    load(glx.GetVertexAttribPointerv, "glGetVertexAttribPointerv");
+    load(glx.SecondaryColorPointer, "glSecondaryColorPointer");
+    load(glx.SecondaryColorPointerEXT, "glSecondaryColorPointerEXT");
+    load(glx.FogCoordPointer, "glFogCoordPointer");
+    load(glx.FogCoordPointerEXT, "glFogCoordPointerEXT");
+    load(glx.VertexPointerEXT, "glVertexPointerEXT");
+    load(glx.ColorPointerEXT, "glColorPointerEXT");
+    load(glx.TexCoordPointerEXT, "glTexCoordPointerEXT");
+    load(glx.NormalPointerEXT, "glNormalPointerEXT");
+    load(glx.EdgeFlagPointerEXT, "glEdgeFlagPointerEXT");
+    load(glx.ActiveTexture, "glActiveTexture");
+    load(glx.ClientActiveTexture, "glClientActiveTexture");
+    load(glx.MultiTexCoordPointerEXT, "glMultiTexCoordPointerEXT");
+    load(glx.MultiTexCoordPointerSGIS, "glMultiTexCoordPointerSGIS");
+    load(glx.GenVertexArrays, "glGenVertexArrays");
+    load(glx.CreateVertexArrays, "glCreateVertexArrays");
+    load(glx.DeleteVertexArrays, "glDeleteVertexArrays");
+    load(glx.BindVertexArray, "glBindVertexArray");
+    load(glx.IsVertexArray, "glIsVertexArray");
+    load(glx.VertexArrayVertexBuffers, "glVertexArrayVertexBuffers");
+    load(glx.VertexArrayAttribFormat, "glVertexArrayAttribFormat");
+    load(glx.VertexArrayAttribBinding, "glVertexArrayAttribBinding");
+    load(glx.EnableVertexArrayAttrib, "glEnableVertexArrayAttrib");
+    load(glx.GetVertexArrayiv, "glGetVertexArrayiv");
+    load(glx.GetVertexArrayIndexediv, "glGetVertexArrayIndexediv");
+    load(glx.GetVertexArrayIndexed64iv, "glGetVertexArrayIndexed64iv");
+    load(glx.BindVertexBuffers, "glBindVertexBuffers");
+    load(glx.GetIntegeri_v, "glGetIntegeri_v");
+    load(glx.GetInteger64i_v, "glGetInteger64i_v");
+    load(glx.ProgramParameteri, "glProgramParameteri");
+    load(glx.GetProgramBinary, "glGetProgramBinary");
+    load(glx.ProgramBinary, "glProgramBinary");
+    load(glx.NamedStringARB, "glNamedStringARB");
+    load(glx.GetNamedStringARB, "glGetNamedStringARB");
+    load(glx.GetNamedStringivARB, "glGetNamedStringivARB");
+    load(glx.IsNamedStringARB, "glIsNamedStringARB");
+    load(glx.DeleteNamedStringARB, "glDeleteNamedStringARB");
+    load(glx.UseProgram, "glUseProgram");
+    load(glx.GetUniformLocation, "glGetUniformLocation");
+    load(glx.GetActiveUniform, "glGetActiveUniform");
+    load(glx.GetActiveAttrib, "glGetActiveAttrib");
+    load(glx.GetActiveUniformName, "glGetActiveUniformName");
+    load(glx.Uniform1f, "glUniform1f");
+    load(glx.Uniform4fv, "glUniform4fv");
+    load(glx.UniformMatrix2fv, "glUniformMatrix2fv");
+    load(glx.UniformMatrix3fv, "glUniformMatrix3fv");
+    load(glx.UniformMatrix4fv, "glUniformMatrix4fv");
+    load(glx.Uniform1i, "glUniform1i");
+    load(glx.GetUniformfv, "glGetUniformfv");
+    load(glx.GetUniformiv, "glGetUniformiv");
+    load(glx.DeleteShader, "glDeleteShader");
+    load(glx.DeleteProgram, "glDeleteProgram");
+    load(glx.GenBuffers, "glGenBuffers");
+    load(glx.BindBuffer, "glBindBuffer");
+    load(glx.BufferData, "glBufferData");
+    load(glx.BufferSubData, "glBufferSubData");
+    load(glx.GetBufferSubData, "glGetBufferSubData");
+    load(glx.NamedBufferData, "glNamedBufferData");
+    load(glx.NamedBufferDataEXT, "glNamedBufferDataEXT");
+    load(glx.NamedBufferSubData, "glNamedBufferSubData");
+    load(glx.NamedBufferSubDataEXT, "glNamedBufferSubDataEXT");
+    load(glx.GetNamedBufferSubData, "glGetNamedBufferSubData");
+    load(glx.GetNamedBufferSubDataEXT, "glGetNamedBufferSubDataEXT");
+    load(glx.MapBuffer, "glMapBuffer");
+    load(glx.MapBufferRange, "glMapBufferRange");
+    load(glx.UnmapBuffer, "glUnmapBuffer");
+    load(glx.ClearBufferData, "glClearBufferData");
+    load(glx.ClearBufferSubData, "glClearBufferSubData");
+    load(glx.DeleteBuffers, "glDeleteBuffers");
+    load(glx.MultiDrawArrays, "glMultiDrawArrays");
+    load(glx.MultiDrawElements, "glMultiDrawElements");
+    load(glx.MultiDrawElementsBaseVertex, "glMultiDrawElementsBaseVertex");
+    load(glx.DrawRangeElements, "glDrawRangeElements");
+    load(glx.DrawRangeElementsEXT, "glDrawRangeElementsEXT");
+    load(glx.DrawElementsBaseVertex, "glDrawElementsBaseVertex");
+    load(glx.DrawRangeElementsBaseVertex, "glDrawRangeElementsBaseVertex");
+    load(glx.DrawArraysInstanced, "glDrawArraysInstanced");
+    load(glx.DrawArraysInstancedBaseInstance, "glDrawArraysInstancedBaseInstance");
+    load(glx.DrawArraysInstancedARB, "glDrawArraysInstancedARB");
+    load(glx.DrawArraysInstancedEXT, "glDrawArraysInstancedEXT");
+    load(glx.DrawElementsInstanced, "glDrawElementsInstanced");
+    load(glx.DrawElementsInstancedARB, "glDrawElementsInstancedARB");
+    load(glx.DrawElementsInstancedEXT, "glDrawElementsInstancedEXT");
+    load(glx.DrawElementsInstancedBaseInstance, "glDrawElementsInstancedBaseInstance");
+    load(glx.DrawElementsInstancedBaseVertex, "glDrawElementsInstancedBaseVertex");
+    load(glx.DrawElementsInstancedBaseVertexBaseInstance, "glDrawElementsInstancedBaseVertexBaseInstance");
+    load(glx.DrawArraysIndirect, "glDrawArraysIndirect");
+    load(glx.DrawElementsIndirect, "glDrawElementsIndirect");
+    load(glx.MultiDrawArraysIndirect, "glMultiDrawArraysIndirect");
+    load(glx.MultiDrawElementsIndirect, "glMultiDrawElementsIndirect");
+    load(glx.CreateShaderProgramv, "glCreateShaderProgramv");
+    load(glx.GetUniformIndices, "glGetUniformIndices");
+    load(glx.BindAttribLocation, "glBindAttribLocation");
+    load(glx.TransformFeedbackVaryings, "glTransformFeedbackVaryings");
+    load(glx.GetTransformFeedbackVarying, "glGetTransformFeedbackVarying");
+    load(glx.GenTransformFeedbacks, "glGenTransformFeedbacks");
+    load(glx.DeleteTransformFeedbacks, "glDeleteTransformFeedbacks");
+    load(glx.BindTransformFeedback, "glBindTransformFeedback");
+    load(glx.IsTransformFeedback, "glIsTransformFeedback");
+    load(glx.BindBufferBase, "glBindBufferBase");
+    load(glx.BindBufferRange, "glBindBufferRange");
+    load(glx.BeginTransformFeedback, "glBeginTransformFeedback");
+    load(glx.EndTransformFeedback, "glEndTransformFeedback");
+    load(glx.PauseTransformFeedback, "glPauseTransformFeedback");
+    load(glx.ResumeTransformFeedback, "glResumeTransformFeedback");
+    load(glx.GetTransformFeedbackiv, "glGetTransformFeedbackiv");
+    load(glx.GetTransformFeedbacki_v, "glGetTransformFeedbacki_v");
+    load(glx.GetTransformFeedbacki64_v, "glGetTransformFeedbacki64_v");
+    load(glx.TexImage3D, "glTexImage3D");
+    load(glx.TexImage3DEXT, "glTexImage3DEXT");
+    load(glx.TextureImage1DEXT, "glTextureImage1DEXT");
+    load(glx.MultiTexImage1DEXT, "glMultiTexImage1DEXT");
+    load(glx.TextureImage2DEXT, "glTextureImage2DEXT");
+    load(glx.MultiTexImage2DEXT, "glMultiTexImage2DEXT");
+    load(glx.MultiTexImage3DEXT, "glMultiTexImage3DEXT");
+    load(glx.TextureImage3DEXT, "glTextureImage3DEXT");
+    load(glx.TexSubImage3D, "glTexSubImage3D");
+    load(glx.TexSubImage3DEXT, "glTexSubImage3DEXT");
+    load(glx.CompressedTextureSubImage1D, "glCompressedTextureSubImage1D");
+    load(glx.CompressedTextureSubImage2D, "glCompressedTextureSubImage2D");
+    load(glx.CompressedTextureSubImage3D, "glCompressedTextureSubImage3D");
+    load(glx.GetCompressedTexImage, "glGetCompressedTexImage");
+    load(glx.GetTextureImage, "glGetTextureImage");
+    load(glx.GetTextureImageEXT, "glGetTextureImageEXT");
+    load(glx.GetTextureSubImage, "glGetTextureSubImage");
+    load(glx.TextureSubImage2D, "glTextureSubImage2D");
+    load(glx.TextureSubImage2DEXT, "glTextureSubImage2DEXT");
+    load(glx.TextureSubImage3D, "glTextureSubImage3D");
+    load(glx.TextureSubImage3DEXT, "glTextureSubImage3DEXT");
+    load(glx.GetCompressedTextureImage, "glGetCompressedTextureImage");
+    load(glx.GetCompressedTextureImageEXT, "glGetCompressedTextureImageEXT");
+    load(glx.GetCompressedTextureSubImage, "glGetCompressedTextureSubImage");
+    load(glx.CopyTextureSubImage2D, "glCopyTextureSubImage2D");
+    load(glx.CopyTextureSubImage2DEXT, "glCopyTextureSubImage2DEXT");
+    load(glx.ClearTexImage, "glClearTexImage");
+    load(glx.ClearTexSubImage, "glClearTexSubImage");
+    load(glx.ObjectLabel, "glObjectLabel");
+    load(glx.GetObjectLabel, "glGetObjectLabel");
+    load(glx.GetTextureParameterfv, "glGetTextureParameterfv");
+    load(glx.GetTextureParameteriv, "glGetTextureParameteriv");
+    load(glx.GetTextureParameterfvEXT, "glGetTextureParameterfvEXT");
+    load(glx.GetTextureParameterivEXT, "glGetTextureParameterivEXT");
+    load(glx.GetTextureLevelParameterfv, "glGetTextureLevelParameterfv");
+    load(glx.GetTextureLevelParameteriv, "glGetTextureLevelParameteriv");
+    load(glx.GetTextureLevelParameterfvEXT, "glGetTextureLevelParameterfvEXT");
+    load(glx.GetTextureLevelParameterivEXT, "glGetTextureLevelParameterivEXT");
+    load(glx.ReadnPixels, "glReadnPixels");
+    load(glx.CreateTextures, "glCreateTextures");
+    load(glx.BindTextures, "glBindTextures");
+    load(glx.BindImageTextures, "glBindImageTextures");
+    load(glx.TextureStorage2D, "glTextureStorage2D");
+    load(glx.GenFramebuffers, "glGenFramebuffers");
+    load(glx.BindFramebuffer, "glBindFramebuffer");
+    load(glx.FramebufferTexture2D, "glFramebufferTexture2D");
+    load(glx.CheckFramebufferStatus, "glCheckFramebufferStatus");
+    load(glx.DeleteFramebuffers, "glDeleteFramebuffers");
+    load(glx.CreateFramebuffers, "glCreateFramebuffers");
+    load(glx.CreateRenderbuffers, "glCreateRenderbuffers");
+    load(glx.GenRenderbuffers, "glGenRenderbuffers");
+    load(glx.DeleteRenderbuffers, "glDeleteRenderbuffers");
+    load(glx.BindRenderbuffer, "glBindRenderbuffer");
+    load(glx.IsRenderbuffer, "glIsRenderbuffer");
+    load(glx.NamedRenderbufferStorage, "glNamedRenderbufferStorage");
+    load(glx.GetNamedRenderbufferParameteriv, "glGetNamedRenderbufferParameteriv");
+    load(glx.GetRenderbufferParameteriv, "glGetRenderbufferParameteriv");
+    load(glx.NamedFramebufferRenderbuffer, "glNamedFramebufferRenderbuffer");
+    load(glx.CheckNamedFramebufferStatus, "glCheckNamedFramebufferStatus");
+    load(glx.GetNamedFramebufferAttachmentParameteriv, "glGetNamedFramebufferAttachmentParameteriv");
+    load(glx.GetFramebufferAttachmentParameteriv, "glGetFramebufferAttachmentParameteriv");
+
+    return glx.CreateShader && glx.ShaderSource && glx.CompileShader && glx.GetShaderiv &&
+        glx.CreateProgram && glx.AttachShader && glx.LinkProgram && glx.GetProgramiv &&
+        glx.UseProgram && glx.GetUniformLocation && glx.GetUniformfv && glx.GetUniformiv;
+}
+
+static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+    if (msg == WM_CLOSE || msg == WM_DESTROY) {
+        PostQuitMessage(0);
+        return 0;
+    }
+    return DefWindowProcA(hwnd, msg, wparam, lparam);
+}
+
+static bool createContext(TestContext& ctx) {
+    WNDCLASSA wc = {};
+    wc.lpfnWndProc = wndProc;
+    wc.hInstance = GetModuleHandleA(nullptr);
+    wc.lpszClassName = "BoxedWineOpenGLMarshalTestWindow";
+    if (!RegisterClassA(&wc) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
+        ctx.write("RegisterClassA failed: " + lastWin32Error());
+        return false;
+    }
+
+    ctx.hwnd = CreateWindowExA(0, wc.lpszClassName, "OpenGL Marshal Test",
+        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 320, 240,
+        nullptr, nullptr, wc.hInstance, nullptr);
+    if (!ctx.hwnd) {
+        ctx.write("CreateWindowExA failed: " + lastWin32Error());
+        return false;
+    }
+
+    ctx.dc = GetDC(ctx.hwnd);
+    PIXELFORMATDESCRIPTOR pfd = {};
+    pfd.nSize = sizeof(pfd);
+    pfd.nVersion = 1;
+    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cColorBits = 24;
+    pfd.cDepthBits = 24;
+    pfd.iLayerType = PFD_MAIN_PLANE;
+    int pf = ChoosePixelFormat(ctx.dc, &pfd);
+    if (!pf || !SetPixelFormat(ctx.dc, pf, &pfd)) {
+        ctx.write("Pixel format setup failed: " + lastWin32Error());
+        return false;
+    }
+
+    ctx.rc = wglCreateContext(ctx.dc);
+    if (!ctx.rc || !wglMakeCurrent(ctx.dc, ctx.rc)) {
+        ctx.write("WGL context creation failed: " + lastWin32Error());
+        return false;
+    }
+    return true;
+}
+
+static void destroyContext(TestContext& ctx) {
+    if (ctx.rc) {
+        wglMakeCurrent(nullptr, nullptr);
+        wglDeleteContext(ctx.rc);
+    }
+    if (ctx.dc && ctx.hwnd) {
+        ReleaseDC(ctx.hwnd, ctx.dc);
+    }
+    if (ctx.hwnd) {
+        DestroyWindow(ctx.hwnd);
+    }
+}
+
+static std::string shaderLog(GLuint shader) {
+    if (!glx.GetShaderiv || !glx.GetShaderInfoLog) {
+        return {};
+    }
+    GLint len = 0;
+    glx.GetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
+    std::string log(len > 1 ? len : 1, '\0');
+    GLsizei written = 0;
+    glx.GetShaderInfoLog(shader, (GLsizei)log.size(), &written, &log[0]);
+    log.resize(written);
+    return log;
+}
+
+static std::string programLog(GLuint program) {
+    if (!glx.GetProgramiv || !glx.GetProgramInfoLog) {
+        return {};
+    }
+    GLint len = 0;
+    glx.GetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
+    std::string log(len > 1 ? len : 1, '\0');
+    GLsizei written = 0;
+    glx.GetProgramInfoLog(program, (GLsizei)log.size(), &written, &log[0]);
+    log.resize(written);
+    return log;
+}
+
+static GLuint compileShader(GLenum type, const std::vector<const char*>& parts, const std::vector<GLint>* lengths, std::string& error) {
+    GLuint shader = glx.CreateShader(type);
+    glx.ShaderSource(shader, (GLsizei)parts.size(), parts.data(), lengths ? lengths->data() : nullptr);
+    glx.CompileShader(shader);
+    GLint ok = 0;
+    glx.GetShaderiv(shader, GL_COMPILE_STATUS, &ok);
+    if (!ok) {
+        error = shaderLog(shader);
+        glx.DeleteShader(shader);
+        return 0;
+    }
+    return shader;
+}
+
+static GLuint makeProgram(std::string& error) {
+    std::vector<const char*> vsParts = {
+        "#version 120\n",
+        "attribute vec2 a_pos;\n",
+        "uniform float u_scalar;\n",
+        "uniform vec4 u_vec;\n",
+        "uniform mat4 u_mat;\n",
+        "uniform int u_int;\n",
+        "varying vec4 v_color;\n",
+        "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); v_color = u_vec + vec4(u_scalar) + u_mat[0] + vec4(float(u_int)); }\n"
+    };
+    std::vector<const char*> fsParts = {
+        "#version 120\n",
+        "varying vec4 v_color;\n",
+        "void main(){ gl_FragColor = v_color; }\n"
+    };
+
+    GLuint vs = compileShader(GL_VERTEX_SHADER, vsParts, nullptr, error);
+    if (!vs) {
+        return 0;
+    }
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsParts, nullptr, error);
+    if (!fs) {
+        glx.DeleteShader(vs);
+        return 0;
+    }
+
+    GLuint program = glx.CreateProgram();
+    glx.AttachShader(program, vs);
+    glx.AttachShader(program, fs);
+    glx.LinkProgram(program);
+    glx.DeleteShader(vs);
+    glx.DeleteShader(fs);
+
+    GLint ok = 0;
+    glx.GetProgramiv(program, GL_LINK_STATUS, &ok);
+    if (!ok) {
+        error = programLog(program);
+        glx.DeleteProgram(program);
+        return 0;
+    }
+    return program;
+}
+
+static bool nearlyEqual(float a, float b) {
+    return std::fabs(a - b) < 0.0001f;
+}
+
+static bool nearlyEqual(double a, double b) {
+    return std::fabs(a - b) < 0.0001;
+}
+
+static bool pixelMapUintMatches(GLuint actual, GLuint expected) {
+    return actual == expected || actual == (GLuint)(0u - expected);
+}
+
+static TestResult pass(const std::string& message = {}) {
+    return { TestResult::Pass, message };
+}
+
+static TestResult fail(const std::string& message) {
+    return { TestResult::Fail, message };
+}
+
+static TestResult skip(const std::string& message) {
+    return { TestResult::Skip, message };
+}
+
+static TestResult testShaderStringArrays(TestContext&) {
+    if (!glx.CreateShaderProgramv && !glx.GetUniformIndices && !glx.TransformFeedbackVaryings) {
+        return skip("optional string-array entry points are unavailable");
+    }
+
+    if (glx.CreateShaderProgramv) {
+        const char* parts[] = {
+            "#version 120\n",
+            "uniform float u_value;\n",
+            "void main(){ gl_FragColor = vec4(u_value, 0.0, 0.0, 1.0); }\n"
+        };
+        GLuint p = glx.CreateShaderProgramv(GL_FRAGMENT_SHADER, 3, parts);
+        if (p) {
+            glx.DeleteProgram(p);
+        } else {
+            return fail("glCreateShaderProgramv returned 0");
+        }
+    }
+
+    std::string error;
+    GLuint program = makeProgram(error);
+    if (!program) {
+        return fail("program build failed: " + error);
+    }
+
+    if (glx.GetUniformIndices) {
+        const char* names[] = { "u_scalar", "u_vec" };
+        GLuint indices[] = { GL_INVALID_INDEX, GL_INVALID_INDEX };
+        glx.GetUniformIndices(program, 2, names, indices);
+        if (indices[0] == GL_INVALID_INDEX || indices[1] == GL_INVALID_INDEX) {
+            glx.DeleteProgram(program);
+            return fail("glGetUniformIndices did not find expected uniforms");
+        }
+    }
+
+    if (glx.TransformFeedbackVaryings) {
+        const char* varyings[] = { "v_color" };
+        glx.TransformFeedbackVaryings(program, 1, varyings, GL_INTERLEAVED_ATTRIBS);
+        GLenum err = glGetError();
+        if (err != GL_NO_ERROR) {
+            glx.DeleteProgram(program);
+            return fail("glTransformFeedbackVaryings produced GL error " + std::to_string(err));
+        }
+    }
+
+    glx.DeleteProgram(program);
+    return pass("string-array APIs completed");
+}
+
+struct PageString {
+    void* base = nullptr;
+    char* text = nullptr;
+    GLint length = 0;
+
+    ~PageString() {
+        if (base) {
+            VirtualFree(base, 0, MEM_RELEASE);
+        }
+    }
+
+    bool init(const char* s, size_t offsetBeforePageEnd) {
+        SYSTEM_INFO si = {};
+        GetSystemInfo(&si);
+        size_t page = si.dwPageSize;
+        size_t bytes = page * 2;
+        base = VirtualAlloc(nullptr, bytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+        if (!base) {
+            return false;
+        }
+        length = (GLint)std::strlen(s);
+        char* start = (char*)base + page - offsetBeforePageEnd;
+        std::memcpy(start, s, length + 1);
+        text = start;
+        return true;
+    }
+};
+
+struct PageBytes {
+    void* base = nullptr;
+    unsigned char* data = nullptr;
+    size_t size = 0;
+
+    ~PageBytes() {
+        if (base) {
+            VirtualFree(base, 0, MEM_RELEASE);
+        }
+    }
+
+    bool init(size_t byteCount, size_t offsetBeforePageEnd) {
+        SYSTEM_INFO si = {};
+        GetSystemInfo(&si);
+        size_t page = si.dwPageSize;
+        size_t bytes = page * 2 + byteCount;
+        base = VirtualAlloc(nullptr, bytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+        if (!base) {
+            return false;
+        }
+        data = (unsigned char*)base + page - offsetBeforePageEnd;
+        size = byteCount;
+        std::memset(data, 0, size);
+        return true;
+    }
+};
+
+static TestResult testShaderPageBoundaryStrings(TestContext&) {
+    const char* middle =
+        "attribute vec2 a_pos;\n"
+        "uniform vec4 u_page_boundary_value;\n"
+        "varying vec4 v_color;\n";
+    PageString crossing;
+    if (!crossing.init(middle, 24)) {
+        return skip("VirtualAlloc failed for page-boundary string");
+    }
+
+    std::vector<const char*> parts = {
+        "#version 120\n",
+        crossing.text,
+        "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); v_color = u_page_boundary_value; }\n"
+    };
+    std::vector<GLint> lengths = {
+        -1,
+        crossing.length,
+        -1
+    };
+
+    std::string error;
+    GLuint shader = compileShader(GL_VERTEX_SHADER, parts, &lengths, error);
+    if (!shader) {
+        return fail("page-boundary shader string failed to compile: " + error);
+    }
+    glx.DeleteShader(shader);
+    return pass("page-boundary shader string compiled");
+}
+
+static TestResult testShaderInfoLogPageBoundary(TestContext&) {
+    if (!glx.CreateShader || !glx.ShaderSource || !glx.CompileShader ||
+        !glx.GetShaderiv || !glx.GetShaderInfoLog || !glx.DeleteShader) {
+        return skip("shader info log entry points are unavailable");
+    }
+
+    PageBytes lengthBytes;
+    PageBytes logBytes;
+    if (!lengthBytes.init(sizeof(GLsizei), 2) || !logBytes.init(512, 17)) {
+        return skip("VirtualAlloc failed for shader info log buffers");
+    }
+
+    const char* source = "#version 120\nvoid main(){ gl_Position = vec4(1.0) }\n";
+    GLuint shader = glx.CreateShader(GL_VERTEX_SHADER);
+    glx.ShaderSource(shader, 1, &source, nullptr);
+    glx.CompileShader(shader);
+
+    GLint ok = 1;
+    glx.GetShaderiv(shader, GL_COMPILE_STATUS, &ok);
+    GLsizei* written = (GLsizei*)lengthBytes.data;
+    *written = -1;
+    glx.GetShaderInfoLog(shader, (GLsizei)logBytes.size, written, (GLchar*)logBytes.data);
+    GLenum err = glGetError();
+    glx.DeleteShader(shader);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glGetShaderInfoLog produced GL error " + std::to_string(err));
+    }
+    if (ok) {
+        return fail("intentionally invalid shader compiled successfully");
+    }
+    if (*written <= 0 || *written >= (GLsizei)logBytes.size || logBytes.data[*written] != '\0') {
+        return fail("glGetShaderInfoLog did not fill the page-boundary log buffer correctly");
+    }
+    return pass("page-boundary shader info log copied back");
+}
+
+static TestResult testProgramInfoLogPageBoundary(TestContext&) {
+    if (!glx.CreateShader || !glx.ShaderSource || !glx.CompileShader || !glx.CreateProgram ||
+        !glx.AttachShader || !glx.LinkProgram || !glx.GetProgramiv || !glx.GetProgramInfoLog ||
+        !glx.DeleteShader || !glx.DeleteProgram) {
+        return skip("program info log entry points are unavailable");
+    }
+
+    PageBytes lengthBytes;
+    PageBytes logBytes;
+    if (!lengthBytes.init(sizeof(GLsizei), 3) || !logBytes.init(512, 19)) {
+        return skip("VirtualAlloc failed for program info log buffers");
+    }
+
+    std::string error;
+    std::vector<const char*> vsParts = {
+        "#version 120\n",
+        "varying vec4 v_bad;\n",
+        "void main(){ gl_Position = vec4(0.0); v_bad = vec4(1.0); }\n"
+    };
+    std::vector<const char*> fsParts = {
+        "#version 120\n",
+        "varying vec3 v_bad;\n",
+        "void main(){ gl_FragColor = vec4(v_bad, 1.0); }\n"
+    };
+    GLuint vs = compileShader(GL_VERTEX_SHADER, vsParts, nullptr, error);
+    if (!vs) {
+        return fail("program log vertex shader failed to compile: " + error);
+    }
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsParts, nullptr, error);
+    if (!fs) {
+        glx.DeleteShader(vs);
+        return fail("program log fragment shader failed to compile: " + error);
+    }
+
+    GLuint program = glx.CreateProgram();
+    glx.AttachShader(program, vs);
+    glx.AttachShader(program, fs);
+    glx.LinkProgram(program);
+
+    GLint ok = 1;
+    glx.GetProgramiv(program, GL_LINK_STATUS, &ok);
+    GLsizei* written = (GLsizei*)lengthBytes.data;
+    *written = -1;
+    glx.GetProgramInfoLog(program, (GLsizei)logBytes.size, written, (GLchar*)logBytes.data);
+    GLenum err = glGetError();
+    glx.DeleteProgram(program);
+    glx.DeleteShader(vs);
+    glx.DeleteShader(fs);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glGetProgramInfoLog produced GL error " + std::to_string(err));
+    }
+    if (ok) {
+        return fail("intentionally invalid program linked successfully");
+    }
+    if (*written <= 0 || *written >= (GLsizei)logBytes.size || logBytes.data[*written] != '\0') {
+        return fail("glGetProgramInfoLog did not fill the page-boundary log buffer correctly");
+    }
+    return pass("page-boundary program info log copied back");
+}
+
+static TestResult testActiveUniformAttribPageBoundary(TestContext&) {
+    if (!glx.GetActiveUniform || !glx.GetActiveAttrib || !glx.GetProgramiv) {
+        return skip("active uniform/attrib entry points are unavailable");
+    }
+
+    PageBytes uniformNameBytes;
+    PageBytes attribNameBytes;
+    PageBytes uniformLengthBytes;
+    PageBytes attribLengthBytes;
+    PageBytes uniformSizeBytes;
+    PageBytes attribSizeBytes;
+    PageBytes uniformTypeBytes;
+    PageBytes attribTypeBytes;
+    if (!uniformNameBytes.init(64, 11) || !attribNameBytes.init(64, 13) ||
+        !uniformLengthBytes.init(sizeof(GLsizei), 2) || !attribLengthBytes.init(sizeof(GLsizei), 3) ||
+        !uniformSizeBytes.init(sizeof(GLint), 4) || !attribSizeBytes.init(sizeof(GLint), 5) ||
+        !uniformTypeBytes.init(sizeof(GLenum), 6) || !attribTypeBytes.init(sizeof(GLenum), 7)) {
+        return skip("VirtualAlloc failed for active uniform/attrib buffers");
+    }
+
+    std::string error;
+    GLuint program = makeProgram(error);
+    if (!program) {
+        return fail("program build failed: " + error);
+    }
+
+    GLint uniformCount = 0;
+    GLint attribCount = 0;
+    glx.GetProgramiv(program, GL_ACTIVE_UNIFORMS, &uniformCount);
+    glx.GetProgramiv(program, GL_ACTIVE_ATTRIBUTES, &attribCount);
+    if (uniformCount <= 0 || attribCount <= 0) {
+        glx.DeleteProgram(program);
+        return fail("program did not report active uniforms/attributes");
+    }
+
+    bool sawUniform = false;
+    for (GLuint i = 0; i < (GLuint)uniformCount && !sawUniform; ++i) {
+        std::memset(uniformNameBytes.data, 0, uniformNameBytes.size);
+        GLsizei* length = (GLsizei*)uniformLengthBytes.data;
+        GLint* size = (GLint*)uniformSizeBytes.data;
+        GLenum* type = (GLenum*)uniformTypeBytes.data;
+        *length = -1;
+        *size = -1;
+        *type = 0;
+        glx.GetActiveUniform(program, i, (GLsizei)uniformNameBytes.size, length, size, type, (GLchar*)uniformNameBytes.data);
+        if (*length > 0 && std::strcmp((const char*)uniformNameBytes.data, "u_vec") == 0) {
+            sawUniform = (*size == 1 && *type == GL_FLOAT_VEC4);
+        }
+    }
+
+    bool sawAttrib = false;
+    for (GLuint i = 0; i < (GLuint)attribCount && !sawAttrib; ++i) {
+        std::memset(attribNameBytes.data, 0, attribNameBytes.size);
+        GLsizei* length = (GLsizei*)attribLengthBytes.data;
+        GLint* size = (GLint*)attribSizeBytes.data;
+        GLenum* type = (GLenum*)attribTypeBytes.data;
+        *length = -1;
+        *size = -1;
+        *type = 0;
+        glx.GetActiveAttrib(program, i, (GLsizei)attribNameBytes.size, length, size, type, (GLchar*)attribNameBytes.data);
+        if (*length > 0 && std::strcmp((const char*)attribNameBytes.data, "a_pos") == 0) {
+            sawAttrib = (*size == 1 && *type == GL_FLOAT_VEC2);
+        }
+    }
+
+    GLenum err = glGetError();
+    glx.DeleteProgram(program);
+
+    if (err != GL_NO_ERROR) {
+        return fail("active uniform/attrib queries produced GL error " + std::to_string(err));
+    }
+    if (!sawUniform) {
+        return fail("glGetActiveUniform did not copy back the expected page-boundary name/type");
+    }
+    if (!sawAttrib) {
+        return fail("glGetActiveAttrib did not copy back the expected page-boundary name/type");
+    }
+    return pass("page-boundary active uniform/attrib queries matched");
+}
+
+static TestResult testShaderSourceGetterPageBoundary(TestContext&) {
+    if (!glx.CreateShader || !glx.ShaderSource || !glx.GetShaderSource || !glx.DeleteShader) {
+        return skip("shader source getter entry points are unavailable");
+    }
+
+    PageBytes lengthBytes;
+    PageBytes sourceBytes;
+    if (!lengthBytes.init(sizeof(GLsizei), 2) || !sourceBytes.init(256, 23)) {
+        return skip("VirtualAlloc failed for shader source getter buffers");
+    }
+
+    const char* source =
+        "#version 120\n"
+        "uniform vec4 u_source_value;\n"
+        "void main(){ gl_Position = u_source_value; }\n";
+    GLint sourceLength = (GLint)std::strlen(source);
+    GLuint shader = glx.CreateShader(GL_VERTEX_SHADER);
+    glx.ShaderSource(shader, 1, &source, &sourceLength);
+
+    GLsizei* written = (GLsizei*)lengthBytes.data;
+    *written = -1;
+    glx.GetShaderSource(shader, (GLsizei)sourceBytes.size, written, (GLchar*)sourceBytes.data);
+    GLenum err = glGetError();
+    glx.DeleteShader(shader);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glGetShaderSource produced GL error " + std::to_string(err));
+    }
+    if (*written != sourceLength || sourceBytes.data[*written] != '\0') {
+        return fail("glGetShaderSource did not report/copy the expected source length");
+    }
+    if (std::strcmp((const char*)sourceBytes.data, source) != 0) {
+        return fail("glGetShaderSource source text did not match");
+    }
+    return pass("page-boundary shader source copied back");
+}
+
+static TestResult testActiveUniformNamePageBoundary(TestContext&) {
+    if (!glx.GetActiveUniformName || !glx.GetUniformIndices) {
+        return skip("active uniform name entry points are unavailable");
+    }
+
+    PageBytes lengthBytes;
+    PageBytes nameBytes;
+    if (!lengthBytes.init(sizeof(GLsizei), 3) || !nameBytes.init(64, 13)) {
+        return skip("VirtualAlloc failed for active uniform name buffers");
+    }
+
+    std::string error;
+    GLuint program = makeProgram(error);
+    if (!program) {
+        return fail("program build failed: " + error);
+    }
+
+    const char* uniformName = "u_vec";
+    GLuint uniformIndex = GL_INVALID_INDEX;
+    glx.GetUniformIndices(program, 1, &uniformName, &uniformIndex);
+    if (uniformIndex == GL_INVALID_INDEX) {
+        glx.DeleteProgram(program);
+        return fail("glGetUniformIndices did not find u_vec");
+    }
+
+    GLsizei* written = (GLsizei*)lengthBytes.data;
+    *written = -1;
+    glx.GetActiveUniformName(program, uniformIndex, (GLsizei)nameBytes.size, written, (GLchar*)nameBytes.data);
+    GLenum err = glGetError();
+    glx.DeleteProgram(program);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glGetActiveUniformName produced GL error " + std::to_string(err));
+    }
+    if (*written != (GLsizei)std::strlen(uniformName) ||
+        std::strcmp((const char*)nameBytes.data, uniformName) != 0) {
+        return fail("glGetActiveUniformName did not copy back u_vec");
+    }
+    return pass("page-boundary active uniform name copied back");
+}
+
+static TestResult testTransformFeedbackVaryingPageBoundary(TestContext&) {
+    if (!glx.TransformFeedbackVaryings || !glx.GetTransformFeedbackVarying) {
+        return skip("transform feedback varying entry points are unavailable");
+    }
+
+    PageBytes lengthBytes;
+    PageBytes sizeBytes;
+    PageBytes typeBytes;
+    PageBytes nameBytes;
+    if (!lengthBytes.init(sizeof(GLsizei), 2) || !sizeBytes.init(sizeof(GLsizei), 3) ||
+        !typeBytes.init(sizeof(GLenum), 4) || !nameBytes.init(64, 15)) {
+        return skip("VirtualAlloc failed for transform feedback varying buffers");
+    }
+
+    std::string error;
+    std::vector<const char*> vsParts = {
+        "#version 120\n",
+        "attribute vec2 a_pos;\n",
+        "varying vec4 v_color;\n",
+        "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); v_color = vec4(0.25, 0.5, 0.75, 1.0); }\n"
+    };
+    std::vector<const char*> fsParts = {
+        "#version 120\n",
+        "varying vec4 v_color;\n",
+        "void main(){ gl_FragColor = v_color; }\n"
+    };
+    GLuint vs = compileShader(GL_VERTEX_SHADER, vsParts, nullptr, error);
+    if (!vs) {
+        return fail("transform feedback vertex shader failed to compile: " + error);
+    }
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsParts, nullptr, error);
+    if (!fs) {
+        glx.DeleteShader(vs);
+        return fail("transform feedback fragment shader failed to compile: " + error);
+    }
+
+    const char* varying = "v_color";
+    GLuint program = glx.CreateProgram();
+    glx.AttachShader(program, vs);
+    glx.AttachShader(program, fs);
+    glx.TransformFeedbackVaryings(program, 1, &varying, GL_INTERLEAVED_ATTRIBS);
+    glx.LinkProgram(program);
+    glx.DeleteShader(vs);
+    glx.DeleteShader(fs);
+
+    GLint linked = 0;
+    glx.GetProgramiv(program, GL_LINK_STATUS, &linked);
+    if (!linked) {
+        error = programLog(program);
+        glx.DeleteProgram(program);
+        return fail("transform feedback program failed to link: " + error);
+    }
+
+    GLsizei* length = (GLsizei*)lengthBytes.data;
+    GLsizei* size = (GLsizei*)sizeBytes.data;
+    GLenum* type = (GLenum*)typeBytes.data;
+    *length = -1;
+    *size = -1;
+    *type = 0;
+    glx.GetTransformFeedbackVarying(program, 0, (GLsizei)nameBytes.size, length, size, type, (GLchar*)nameBytes.data);
+    GLenum err = glGetError();
+    glx.DeleteProgram(program);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glGetTransformFeedbackVarying produced GL error " + std::to_string(err));
+    }
+    if (*length != (GLsizei)std::strlen(varying) ||
+        *size != 1 || *type != GL_FLOAT_VEC4 ||
+        std::strcmp((const char*)nameBytes.data, varying) != 0) {
+        return fail("glGetTransformFeedbackVarying did not copy back the expected varying");
+    }
+    return pass("page-boundary transform feedback varying copied back");
+}
+
+static TestResult testTransformFeedbackObjectPageBoundary(TestContext&) {
+    if (!glx.TransformFeedbackVaryings || !glx.BindAttribLocation ||
+        !glx.GenTransformFeedbacks || !glx.DeleteTransformFeedbacks ||
+        !glx.BindTransformFeedback || !glx.IsTransformFeedback ||
+        !glx.BindBufferRange || !glx.BeginTransformFeedback || !glx.EndTransformFeedback ||
+        !glx.PauseTransformFeedback || !glx.ResumeTransformFeedback ||
+        !glx.GetTransformFeedbackiv || !glx.GetTransformFeedbacki_v || !glx.GetTransformFeedbacki64_v ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.GetBufferSubData ||
+        !glx.DeleteBuffers || !glx.VertexAttribPointer || !glx.EnableVertexAttribArray ||
+        !glx.DisableVertexAttribArray || !glx.UseProgram) {
+        return skip("transform feedback object entry points are unavailable");
+    }
+
+    PageBytes xfbBytes;
+    PageBytes activeBytes;
+    PageBytes pausedBytes;
+    PageBytes bindingBytes;
+    PageBytes startBytes;
+    PageBytes sizeBytes;
+    if (!xfbBytes.init(sizeof(GLuint), 3) || !activeBytes.init(sizeof(GLint), 2) ||
+        !pausedBytes.init(sizeof(GLint), 3) || !bindingBytes.init(sizeof(GLint), 5) ||
+        !startBytes.init(sizeof(GLint64), 7) || !sizeBytes.init(sizeof(GLint64), 11)) {
+        return skip("VirtualAlloc failed for transform feedback object buffers");
+    }
+
+    std::string error;
+    std::vector<const char*> vsParts = {
+        "#version 120\n",
+        "attribute vec2 a_pos;\n",
+        "varying vec4 tf_value;\n",
+        "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); tf_value = vec4(a_pos, 0.5, 1.0); }\n"
+    };
+    std::vector<const char*> fsParts = {
+        "#version 120\n",
+        "void main(){ gl_FragColor = vec4(1.0); }\n"
+    };
+    GLuint vs = compileShader(GL_VERTEX_SHADER, vsParts, nullptr, error);
+    if (!vs) {
+        return fail("transform feedback object vertex shader failed to compile: " + error);
+    }
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsParts, nullptr, error);
+    if (!fs) {
+        glx.DeleteShader(vs);
+        return fail("transform feedback object fragment shader failed to compile: " + error);
+    }
+
+    const char* varying = "tf_value";
+    GLuint program = glx.CreateProgram();
+    glx.AttachShader(program, vs);
+    glx.AttachShader(program, fs);
+    glx.BindAttribLocation(program, 0, "a_pos");
+    glx.TransformFeedbackVaryings(program, 1, &varying, GL_INTERLEAVED_ATTRIBS);
+    glx.LinkProgram(program);
+    glx.DeleteShader(vs);
+    glx.DeleteShader(fs);
+
+    GLint linked = 0;
+    glx.GetProgramiv(program, GL_LINK_STATUS, &linked);
+    if (!linked) {
+        error = programLog(program);
+        glx.DeleteProgram(program);
+        return fail("transform feedback object program failed to link: " + error);
+    }
+
+    GLuint* xfb = (GLuint*)xfbBytes.data;
+    *xfb = 0;
+    glx.GenTransformFeedbacks(1, xfb);
+    if (*xfb == 0) {
+        glx.DeleteProgram(program);
+        return fail("glGenTransformFeedbacks did not copy back an object name");
+    }
+
+    GLuint buffer = 0;
+    glx.GenBuffers(1, &buffer);
+    const GLintptr captureOffset = 16;
+    const GLsizeiptr captureSize = 3 * 4 * (GLsizeiptr)sizeof(GLfloat);
+    std::vector<unsigned char> storage((size_t)(captureOffset + captureSize), 0);
+    glx.BindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, buffer);
+    glx.BufferData(GL_TRANSFORM_FEEDBACK_BUFFER, (GLsizeiptr)storage.size(), storage.data(), GL_STATIC_DRAW);
+    glx.BindTransformFeedback(GL_TRANSFORM_FEEDBACK, *xfb);
+    glx.BindBufferRange(GL_TRANSFORM_FEEDBACK_BUFFER, 0, buffer, captureOffset, captureSize);
+
+    if (glx.IsTransformFeedback(*xfb) != GL_TRUE) {
+        glx.BindTransformFeedback(GL_TRANSFORM_FEEDBACK, 0);
+        glx.DeleteBuffers(1, &buffer);
+        glx.DeleteTransformFeedbacks(1, xfb);
+        glx.DeleteProgram(program);
+        return fail("glIsTransformFeedback did not recognize the bound object");
+    }
+
+    *(GLint*)activeBytes.data = -1;
+    *(GLint*)pausedBytes.data = -1;
+    *(GLint*)bindingBytes.data = -1;
+    *(GLint64*)startBytes.data = -1;
+    *(GLint64*)sizeBytes.data = -1;
+    glx.GetTransformFeedbackiv(*xfb, GL_TRANSFORM_FEEDBACK_ACTIVE, (GLint*)activeBytes.data);
+    glx.GetTransformFeedbackiv(*xfb, GL_TRANSFORM_FEEDBACK_PAUSED, (GLint*)pausedBytes.data);
+    glx.GetTransformFeedbacki_v(*xfb, GL_TRANSFORM_FEEDBACK_BUFFER_BINDING, 0, (GLint*)bindingBytes.data);
+    glx.GetTransformFeedbacki64_v(*xfb, GL_TRANSFORM_FEEDBACK_BUFFER_START, 0, (GLint64*)startBytes.data);
+    glx.GetTransformFeedbacki64_v(*xfb, GL_TRANSFORM_FEEDBACK_BUFFER_SIZE, 0, (GLint64*)sizeBytes.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindTransformFeedback(GL_TRANSFORM_FEEDBACK, 0);
+        glx.DeleteBuffers(1, &buffer);
+        glx.DeleteTransformFeedbacks(1, xfb);
+        glx.DeleteProgram(program);
+        return fail("transform feedback object query produced GL error " + std::to_string(err));
+    }
+    if (*(GLint*)activeBytes.data != GL_FALSE || *(GLint*)pausedBytes.data != GL_FALSE ||
+        *(GLint*)bindingBytes.data != (GLint)buffer ||
+        *(GLint64*)startBytes.data != captureOffset || *(GLint64*)sizeBytes.data != captureSize) {
+        glx.BindTransformFeedback(GL_TRANSFORM_FEEDBACK, 0);
+        glx.DeleteBuffers(1, &buffer);
+        glx.DeleteTransformFeedbacks(1, xfb);
+        glx.DeleteProgram(program);
+        return fail("transform feedback object query values were not copied back correctly");
+    }
+
+    const GLfloat vertices[] = {
+        -0.5f, -0.5f,
+         0.5f, -0.5f,
+         0.0f,  0.5f
+    };
+    glx.UseProgram(program);
+    glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, vertices);
+    glx.EnableVertexAttribArray(0);
+    glEnable(GL_RASTERIZER_DISCARD);
+    glx.BeginTransformFeedback(GL_TRIANGLES);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glx.PauseTransformFeedback();
+    glx.GetTransformFeedbackiv(*xfb, GL_TRANSFORM_FEEDBACK_PAUSED, (GLint*)pausedBytes.data);
+    glx.ResumeTransformFeedback();
+    glx.EndTransformFeedback();
+    glDisable(GL_RASTERIZER_DISCARD);
+    glx.DisableVertexAttribArray(0);
+    glx.UseProgram(0);
+
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindTransformFeedback(GL_TRANSFORM_FEEDBACK, 0);
+        glx.DeleteBuffers(1, &buffer);
+        glx.DeleteTransformFeedbacks(1, xfb);
+        glx.DeleteProgram(program);
+        return fail("transform feedback capture produced GL error " + std::to_string(err));
+    }
+    if (*(GLint*)pausedBytes.data != GL_TRUE) {
+        glx.BindTransformFeedback(GL_TRANSFORM_FEEDBACK, 0);
+        glx.DeleteBuffers(1, &buffer);
+        glx.DeleteTransformFeedbacks(1, xfb);
+        glx.DeleteProgram(program);
+        return fail("glPauseTransformFeedback state was not copied back");
+    }
+
+    std::vector<GLfloat> captured(12, 0.0f);
+    glx.BindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, buffer);
+    glx.GetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, captureOffset, captureSize, captured.data());
+    glx.BindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, 0);
+    glx.BindTransformFeedback(GL_TRANSFORM_FEEDBACK, 0);
+    glx.DeleteBuffers(1, &buffer);
+    glx.DeleteTransformFeedbacks(1, xfb);
+    glx.DeleteProgram(program);
+
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("transform feedback readback produced GL error " + std::to_string(err));
+    }
+
+    const GLfloat expected[] = {
+        -0.5f, -0.5f, 0.5f, 1.0f,
+         0.5f, -0.5f, 0.5f, 1.0f,
+         0.0f,  0.5f, 0.5f, 1.0f
+    };
+    for (size_t i = 0; i < captured.size(); ++i) {
+        if (!nearlyEqual(captured[i], expected[i])) {
+            return fail("transform feedback captured values did not match");
+        }
+    }
+
+    return pass("transform feedback object queries and capture matched");
+}
+
+static TestResult testProgramResourceNamePageBoundary(TestContext&) {
+    if (!glx.GetProgramResourceIndex || !glx.GetProgramResourceName) {
+        return skip("program resource name entry points are unavailable");
+    }
+
+    PageBytes lengthBytes;
+    PageBytes nameBytes;
+    if (!lengthBytes.init(sizeof(GLsizei), 2) || !nameBytes.init(64, 17)) {
+        return skip("VirtualAlloc failed for program resource name buffers");
+    }
+
+    std::string error;
+    GLuint program = makeProgram(error);
+    if (!program) {
+        return fail("program build failed: " + error);
+    }
+
+    const char* uniformName = "u_vec";
+    GLuint resourceIndex = glx.GetProgramResourceIndex(program, GL_UNIFORM, uniformName);
+    if (resourceIndex == GL_INVALID_INDEX) {
+        glx.DeleteProgram(program);
+        return fail("glGetProgramResourceIndex did not find u_vec");
+    }
+
+    GLsizei* written = (GLsizei*)lengthBytes.data;
+    *written = -1;
+    glx.GetProgramResourceName(program, GL_UNIFORM, resourceIndex, (GLsizei)nameBytes.size, written, (GLchar*)nameBytes.data);
+    GLenum err = glGetError();
+    glx.DeleteProgram(program);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glGetProgramResourceName produced GL error " + std::to_string(err));
+    }
+    if (*written != (GLsizei)std::strlen(uniformName) ||
+        std::strcmp((const char*)nameBytes.data, uniformName) != 0) {
+        return fail("glGetProgramResourceName did not copy back u_vec");
+    }
+    return pass("page-boundary program resource name copied back");
+}
+
+static TestResult testProgramResourceivPageBoundary(TestContext&) {
+    if (!glx.GetProgramResourceIndex || !glx.GetProgramResourceiv) {
+        return skip("program resource iv entry points are unavailable");
+    }
+
+    PageBytes propsBytes;
+    PageBytes lengthBytes;
+    PageBytes paramsBytes;
+    if (!propsBytes.init(3 * sizeof(GLenum), 5) ||
+        !lengthBytes.init(sizeof(GLsizei), 2) ||
+        !paramsBytes.init(3 * sizeof(GLint), 7)) {
+        return skip("VirtualAlloc failed for program resource iv buffers");
+    }
+
+    GLenum* props = (GLenum*)propsBytes.data;
+    props[0] = GL_NAME_LENGTH;
+    props[1] = GL_TYPE;
+    props[2] = GL_ARRAY_SIZE;
+
+    std::string error;
+    GLuint program = makeProgram(error);
+    if (!program) {
+        return fail("program build failed: " + error);
+    }
+
+    const char* uniformName = "u_vec";
+    GLuint resourceIndex = glx.GetProgramResourceIndex(program, GL_UNIFORM, uniformName);
+    if (resourceIndex == GL_INVALID_INDEX) {
+        glx.DeleteProgram(program);
+        return fail("glGetProgramResourceIndex did not find u_vec");
+    }
+
+    GLsizei* written = (GLsizei*)lengthBytes.data;
+    GLint* params = (GLint*)paramsBytes.data;
+    *written = -1;
+    params[0] = params[1] = params[2] = -1;
+    glx.GetProgramResourceiv(program, GL_UNIFORM, resourceIndex, 3, props, 3, written, params);
+    GLenum err = glGetError();
+    glx.DeleteProgram(program);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glGetProgramResourceiv produced GL error " + std::to_string(err));
+    }
+    if (*written != 3) {
+        return fail("glGetProgramResourceiv did not report three output values");
+    }
+    if (params[0] != (GLint)std::strlen(uniformName) + 1 ||
+        params[1] != GL_FLOAT_VEC4 ||
+        params[2] != 1) {
+        return fail("glGetProgramResourceiv values did not match u_vec");
+    }
+    return pass("page-boundary program resource properties copied back");
+}
+
+static TestResult testObjectLabelPageBoundary(TestContext&) {
+    if (!glx.ObjectLabel || !glx.GetObjectLabel) {
+        return skip("object label entry points are unavailable");
+    }
+
+    PageString label;
+    PageBytes lengthBytes;
+    PageBytes readbackBytes;
+    if (!label.init("boxedwine-page-boundary-texture-label", 19) ||
+        !lengthBytes.init(sizeof(GLsizei), 3) ||
+        !readbackBytes.init(128, 21)) {
+        return skip("VirtualAlloc failed for object label buffers");
+    }
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glx.ObjectLabel(GL_TEXTURE, tex, label.length, label.text);
+
+    GLsizei* written = (GLsizei*)lengthBytes.data;
+    *written = -1;
+    glx.GetObjectLabel(GL_TEXTURE, tex, (GLsizei)readbackBytes.size, written, (GLchar*)readbackBytes.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("object label APIs produced GL error " + std::to_string(err));
+    }
+    if (*written != label.length ||
+        std::strcmp((const char*)readbackBytes.data, label.text) != 0) {
+        return fail("glGetObjectLabel did not copy back the texture label");
+    }
+    return pass("page-boundary object label copied back");
+}
+
+static TestResult testNamedStringARBPageBoundary(TestContext&) {
+    if (!glx.NamedStringARB || !glx.GetNamedStringARB || !glx.GetNamedStringivARB ||
+        !glx.IsNamedStringARB || !glx.DeleteNamedStringARB) {
+        return skip("ARB named string entry points are unavailable");
+    }
+
+    PageString name;
+    PageBytes inputBytes;
+    PageBytes lengthBytes;
+    PageBytes queryLengthBytes;
+    PageBytes outputBytes;
+    if (!name.init("/boxedwine/page-boundary-include.glsl", 25) ||
+        !inputBytes.init(10, 6) ||
+        !lengthBytes.init(sizeof(GLint), 2) ||
+        !queryLengthBytes.init(sizeof(GLint), 3) ||
+        !outputBytes.init(32, 11)) {
+        return skip("VirtualAlloc failed for named string buffers");
+    }
+
+    const unsigned char sourceText[10] = {
+        'a', 'l', 'p', 'h', 'a', '-', 'b', 'e', 't', 'a'
+    };
+    std::memcpy(inputBytes.data, sourceText, sizeof(sourceText));
+
+    glx.NamedStringARB(GL_SHADER_INCLUDE_ARB, name.length, name.text,
+        (GLint)sizeof(sourceText), (const GLchar*)inputBytes.data);
+    GLboolean exists = glx.IsNamedStringARB(name.length, name.text);
+    glx.GetNamedStringivARB(name.length, name.text, GL_NAMED_STRING_LENGTH_ARB, (GLint*)queryLengthBytes.data);
+
+    GLint* written = (GLint*)lengthBytes.data;
+    *written = -1;
+    glx.GetNamedStringARB(name.length, name.text, (GLsizei)outputBytes.size, written, (GLchar*)outputBytes.data);
+    GLenum err = glGetError();
+    glx.DeleteNamedStringARB(name.length, name.text);
+
+    if (err != GL_NO_ERROR) {
+        return fail("ARB named string APIs produced GL error " + std::to_string(err));
+    }
+    if (!exists) {
+        return fail("glIsNamedStringARB did not find the created string");
+    }
+    GLint queriedLength = *(GLint*)queryLengthBytes.data;
+    if ((queriedLength != (GLint)sizeof(sourceText) && queriedLength != (GLint)sizeof(sourceText) + 1) ||
+        *written != (GLint)sizeof(sourceText)) {
+        return fail("named string length query did not match");
+    }
+    if (std::memcmp(outputBytes.data, sourceText, sizeof(sourceText)) != 0) {
+        return fail("glGetNamedStringARB output did not match");
+    }
+    return pass("page-boundary ARB named string round-trip matched");
+}
+
+static TestResult testProgramPipelinePageBoundary(TestContext&) {
+    if (!glx.GenProgramPipelines || !glx.DeleteProgramPipelines || !glx.BindProgramPipeline ||
+        !glx.IsProgramPipeline || !glx.ValidateProgramPipeline || !glx.GetProgramPipelineiv ||
+        !glx.GetProgramPipelineInfoLog) {
+        return skip("program pipeline entry points are unavailable");
+    }
+
+    PageBytes pipelineBytes;
+    PageBytes validateBytes;
+    PageBytes logLengthBytes;
+    PageBytes logBytes;
+    if (!pipelineBytes.init(2 * sizeof(GLuint), 4) ||
+        !validateBytes.init(sizeof(GLint), 2) ||
+        !logLengthBytes.init(sizeof(GLsizei), 3) ||
+        !logBytes.init(256, 29)) {
+        return skip("VirtualAlloc failed for program pipeline buffers");
+    }
+
+    GLuint* pipelines = (GLuint*)pipelineBytes.data;
+    glx.GenProgramPipelines(2, pipelines);
+    if (!pipelines[0] || !pipelines[1]) {
+        return fail("glGenProgramPipelines did not fill the page-boundary array");
+    }
+
+    glx.BindProgramPipeline(pipelines[0]);
+    GLboolean exists = glx.IsProgramPipeline(pipelines[0]);
+    glx.ValidateProgramPipeline(pipelines[0]);
+    glx.GetProgramPipelineiv(pipelines[0], GL_VALIDATE_STATUS, (GLint*)validateBytes.data);
+    glx.GetProgramPipelineiv(pipelines[0], GL_INFO_LOG_LENGTH, (GLint*)logLengthBytes.data);
+
+    GLsizei* written = (GLsizei*)logLengthBytes.data;
+    *written = -1;
+    glx.GetProgramPipelineInfoLog(pipelines[0], (GLsizei)logBytes.size, written, (GLchar*)logBytes.data);
+    GLenum err = glGetError();
+    glx.BindProgramPipeline(0);
+    glx.DeleteProgramPipelines(2, pipelines);
+
+    if (err != GL_NO_ERROR) {
+        return fail("program pipeline APIs produced GL error " + std::to_string(err));
+    }
+    if (!exists) {
+        return fail("glIsProgramPipeline did not recognize a bound pipeline");
+    }
+    if (*written < 0 || *written >= (GLsizei)logBytes.size) {
+        return fail("glGetProgramPipelineInfoLog returned an invalid length");
+    }
+    return pass("page-boundary program pipeline queries copied back");
+}
+
+static TestResult testDebugMessageLogPageBoundary(TestContext&) {
+    if (!glx.DebugMessageControl || !glx.DebugMessageInsert || !glx.GetDebugMessageLog) {
+        return skip("debug message log entry points are unavailable");
+    }
+
+    PageBytes messageBytes;
+    PageBytes sourcesBytes;
+    PageBytes typesBytes;
+    PageBytes idsBytes;
+    PageBytes severitiesBytes;
+    PageBytes lengthsBytes;
+    PageBytes logBytes;
+    if (!messageBytes.init(24, 8) ||
+        !sourcesBytes.init(4 * sizeof(GLenum), 2) ||
+        !typesBytes.init(4 * sizeof(GLenum), 3) ||
+        !idsBytes.init(4 * sizeof(GLuint), 4) ||
+        !severitiesBytes.init(4 * sizeof(GLenum), 5) ||
+        !lengthsBytes.init(4 * sizeof(GLsizei), 6) ||
+        !logBytes.init(256, 19)) {
+        return skip("VirtualAlloc failed for debug message log buffers");
+    }
+
+    const char* message = "boxedwine-debug-message";
+    const GLsizei messageLength = (GLsizei)std::strlen(message);
+    std::memcpy(messageBytes.data, message, messageLength);
+
+    GLenum drainSources[8] = {};
+    GLenum drainTypes[8] = {};
+    GLuint drainIds[8] = {};
+    GLenum drainSeverities[8] = {};
+    GLsizei drainLengths[8] = {};
+    char drainLog[512] = {};
+    glx.GetDebugMessageLog(8, sizeof(drainLog), drainSources, drainTypes, drainIds, drainSeverities, drainLengths, drainLog);
+
+    glEnable(GL_DEBUG_OUTPUT);
+    glx.DebugMessageControl(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_MARKER,
+        GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_TRUE);
+    const GLuint expectedId = 0xB0A;
+    glx.DebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_MARKER, expectedId,
+        GL_DEBUG_SEVERITY_NOTIFICATION, messageLength, (const GLchar*)messageBytes.data);
+    GLuint count = glx.GetDebugMessageLog(4, (GLsizei)logBytes.size,
+        (GLenum*)sourcesBytes.data, (GLenum*)typesBytes.data, (GLuint*)idsBytes.data,
+        (GLenum*)severitiesBytes.data, (GLsizei*)lengthsBytes.data, (GLchar*)logBytes.data);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("debug message log APIs produced GL error " + std::to_string(err));
+    }
+    if (count == 0) {
+        return fail("glGetDebugMessageLog did not return the inserted message");
+    }
+
+    GLenum* sources = (GLenum*)sourcesBytes.data;
+    GLenum* types = (GLenum*)typesBytes.data;
+    GLuint* ids = (GLuint*)idsBytes.data;
+    GLenum* severities = (GLenum*)severitiesBytes.data;
+    GLsizei* lengths = (GLsizei*)lengthsBytes.data;
+    size_t offset = 0;
+    for (GLuint i = 0; i < count && i < 4; ++i) {
+        if (ids[i] == expectedId) {
+            if (sources[i] != GL_DEBUG_SOURCE_APPLICATION ||
+                types[i] != GL_DEBUG_TYPE_MARKER ||
+                severities[i] != GL_DEBUG_SEVERITY_NOTIFICATION) {
+                return fail("debug message metadata did not match");
+            }
+            if (lengths[i] < messageLength ||
+                offset + (size_t)lengths[i] > logBytes.size ||
+                std::memcmp(logBytes.data + offset, message, messageLength) != 0) {
+                return fail("debug message text did not match");
+            }
+            return pass("page-boundary debug message log copied back");
+        }
+        offset += (size_t)lengths[i];
+    }
+    return fail("glGetDebugMessageLog did not return the expected message ID");
+}
+
+static TestResult testQueryObjectPageBoundary(TestContext&) {
+    if (!glx.GenQueries || !glx.DeleteQueries || !glx.BeginQuery || !glx.EndQuery ||
+        !glx.GetQueryiv || !glx.GetQueryObjectiv || !glx.GetQueryObjectuiv ||
+        !glx.GetQueryObjecti64v || !glx.GetQueryObjectui64v) {
+        return skip("query object functions are not available");
+    }
+
+    PageBytes queryBytes;
+    PageBytes counterBitsBytes;
+    PageBytes currentQueryBytes;
+    PageBytes availableBytes;
+    PageBytes signedResultBytes;
+    PageBytes unsignedResultBytes;
+    PageBytes signed64ResultBytes;
+    PageBytes unsigned64ResultBytes;
+    if (!queryBytes.init(sizeof(GLuint), 3) ||
+        !counterBitsBytes.init(sizeof(GLint), 2) ||
+        !currentQueryBytes.init(sizeof(GLint), 2) ||
+        !availableBytes.init(sizeof(GLint), 2) ||
+        !signedResultBytes.init(sizeof(GLint), 2) ||
+        !unsignedResultBytes.init(sizeof(GLuint), 2) ||
+        !signed64ResultBytes.init(sizeof(GLint64), 4) ||
+        !unsigned64ResultBytes.init(sizeof(GLuint64), 4)) {
+        return skip("VirtualAlloc failed for query object buffers");
+    }
+
+    GLuint* query = reinterpret_cast<GLuint*>(queryBytes.data);
+    GLint* counterBits = reinterpret_cast<GLint*>(counterBitsBytes.data);
+    GLint* currentQuery = reinterpret_cast<GLint*>(currentQueryBytes.data);
+    GLint* available = reinterpret_cast<GLint*>(availableBytes.data);
+    GLint* signedResult = reinterpret_cast<GLint*>(signedResultBytes.data);
+    GLuint* unsignedResult = reinterpret_cast<GLuint*>(unsignedResultBytes.data);
+    GLint64* signed64Result = reinterpret_cast<GLint64*>(signed64ResultBytes.data);
+    GLuint64* unsigned64Result = reinterpret_cast<GLuint64*>(unsigned64ResultBytes.data);
+
+    *query = 0;
+    *counterBits = -1;
+    *currentQuery = -1;
+    *available = 0;
+    *signedResult = -1;
+    *unsignedResult = 0;
+    *signed64Result = -1;
+    *unsigned64Result = 0;
+
+    glx.GenQueries(1, query);
+    if (*query == 0) {
+        return fail("glGenQueries did not fill the page-boundary query id");
+    }
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_SCISSOR_TEST);
+    glViewport(0, 0, 32, 32);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glx.GetQueryiv(GL_SAMPLES_PASSED, GL_QUERY_COUNTER_BITS, counterBits);
+    glx.BeginQuery(GL_SAMPLES_PASSED, *query);
+    glx.GetQueryiv(GL_SAMPLES_PASSED, GL_CURRENT_QUERY, currentQuery);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glBegin(GL_TRIANGLES);
+    glVertex2f(-0.8f, -0.8f);
+    glVertex2f(0.8f, -0.8f);
+    glVertex2f(0.0f, 0.8f);
+    glEnd();
+    glx.EndQuery(GL_SAMPLES_PASSED);
+    glFinish();
+
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.DeleteQueries(1, query);
+        return fail("query object setup produced GL error " + std::to_string(err));
+    }
+
+    if (*counterBits < 1) {
+        glx.DeleteQueries(1, query);
+        return fail("glGetQueryiv did not copy back query counter bits");
+    }
+    if ((GLuint)*currentQuery != *query) {
+        glx.DeleteQueries(1, query);
+        return fail("glGetQueryiv did not copy back the current query id");
+    }
+
+    glx.GetQueryObjectiv(*query, GL_QUERY_RESULT_AVAILABLE, available);
+    glx.GetQueryObjectiv(*query, GL_QUERY_RESULT, signedResult);
+    glx.GetQueryObjectuiv(*query, GL_QUERY_RESULT, unsignedResult);
+    glx.GetQueryObjecti64v(*query, GL_QUERY_RESULT, signed64Result);
+    glx.GetQueryObjectui64v(*query, GL_QUERY_RESULT, unsigned64Result);
+    err = glGetError();
+    glx.DeleteQueries(1, query);
+    if (err != GL_NO_ERROR) {
+        return fail("query object result getters produced GL error " + std::to_string(err));
+    }
+
+    if (*available != GL_TRUE) {
+        return fail("glGetQueryObjectiv did not report an available result");
+    }
+    if (*signedResult <= 0 || *unsignedResult == 0 || *signed64Result <= 0 || *unsigned64Result == 0) {
+        return fail("query object result getters did not copy back positive sample counts");
+    }
+    if ((GLuint64)*signedResult != *unsignedResult ||
+        (GLuint64)*signed64Result != *unsigned64Result ||
+        *unsigned64Result != (GLuint64)*unsignedResult) {
+        return fail("query object result getter values disagreed");
+    }
+
+    return pass("page-boundary query object results copied back");
+}
+
+static TestResult testQueryBufferObjectPageBoundary(TestContext&) {
+    if (!glx.CreateQueries || !glx.DeleteQueries || !glx.QueryCounter ||
+        !glx.GetQueryBufferObjectiv || !glx.GetQueryBufferObjectuiv ||
+        !glx.GetQueryBufferObjecti64v || !glx.GetQueryBufferObjectui64v ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData ||
+        !glx.GetNamedBufferSubData || !glx.DeleteBuffers) {
+        return skip("query buffer object entry points are unavailable");
+    }
+
+    PageBytes queryBytes;
+    PageBytes readbackBytes;
+    if (!queryBytes.init(sizeof(GLuint), 3) || !readbackBytes.init(48, 5)) {
+        return skip("VirtualAlloc failed for query buffer object buffers");
+    }
+
+    GLuint* query = (GLuint*)queryBytes.data;
+    *query = 0;
+    glx.CreateQueries(GL_TIMESTAMP, 1, query);
+    if (*query == 0) {
+        return fail("glCreateQueries did not copy back the query id");
+    }
+
+    GLuint buffer = 0;
+    const unsigned char sentinel = 0xCD;
+    std::vector<unsigned char> storage(48, sentinel);
+    glx.GenBuffers(1, &buffer);
+    glx.BindBuffer(GL_QUERY_BUFFER, buffer);
+    glx.BufferData(GL_QUERY_BUFFER, (GLsizeiptr)storage.size(), storage.data(), GL_STATIC_DRAW);
+    glx.BindBuffer(GL_QUERY_BUFFER, 0);
+
+    glx.QueryCounter(*query, GL_TIMESTAMP);
+    glFinish();
+    glx.GetQueryBufferObjectiv(*query, buffer, GL_QUERY_RESULT, 4);
+    glx.GetQueryBufferObjectuiv(*query, buffer, GL_QUERY_RESULT, 12);
+    glx.GetQueryBufferObjecti64v(*query, buffer, GL_QUERY_RESULT, 24);
+    glx.GetQueryBufferObjectui64v(*query, buffer, GL_QUERY_RESULT, 32);
+    glx.GetNamedBufferSubData(buffer, 0, (GLsizeiptr)readbackBytes.size, readbackBytes.data);
+    GLenum err = glGetError();
+
+    glx.DeleteBuffers(1, &buffer);
+    glx.DeleteQueries(1, query);
+
+    if (err != GL_NO_ERROR) {
+        return fail("query buffer object readback produced GL error " + std::to_string(err));
+    }
+
+    for (int i = 0; i < 4; ++i) {
+        if (readbackBytes.data[i] != sentinel) {
+            return fail("query buffer object write touched bytes before GLint offset");
+        }
+    }
+    for (int i = 16; i < 24; ++i) {
+        if (readbackBytes.data[i] != sentinel) {
+            return fail("query buffer object write touched bytes between 32-bit and 64-bit offsets");
+        }
+    }
+    for (int i = 40; i < 48; ++i) {
+        if (readbackBytes.data[i] != sentinel) {
+            return fail("query buffer object write touched bytes after GLuint64 offset");
+        }
+    }
+
+    GLint signed32 = 0;
+    GLuint unsigned32 = 0;
+    GLint64 signed64 = 0;
+    GLuint64 unsigned64 = 0;
+    std::memcpy(&signed32, readbackBytes.data + 4, sizeof(signed32));
+    std::memcpy(&unsigned32, readbackBytes.data + 12, sizeof(unsigned32));
+    std::memcpy(&signed64, readbackBytes.data + 24, sizeof(signed64));
+    std::memcpy(&unsigned64, readbackBytes.data + 32, sizeof(unsigned64));
+    if (signed32 == (GLint)0xCDCDCDCD || unsigned32 == 0xCDCDCDCDu ||
+        signed64 == (GLint64)0xCDCDCDCDCDCDCDCDll || unsigned64 == 0xCDCDCDCDCDCDCDCDull) {
+        return fail("query buffer object result offsets were not written");
+    }
+
+    return pass("page-boundary query buffer object offsets copied back");
+}
+
+static TestResult testSyncObjectPageBoundary(TestContext&) {
+    if (!glx.FenceSync || !glx.IsSync || !glx.ClientWaitSync || !glx.WaitSync ||
+        !glx.GetSynciv || !glx.DeleteSync) {
+        return skip("sync object functions are not available");
+    }
+
+    PageBytes lengthBytes;
+    PageBytes typeBytes;
+    PageBytes conditionBytes;
+    PageBytes flagsBytes;
+    PageBytes statusBytes;
+    if (!lengthBytes.init(sizeof(GLsizei), 2) ||
+        !typeBytes.init(sizeof(GLint), 2) ||
+        !conditionBytes.init(sizeof(GLint), 2) ||
+        !flagsBytes.init(sizeof(GLint), 2) ||
+        !statusBytes.init(sizeof(GLint), 2)) {
+        return skip("VirtualAlloc failed for sync object buffers");
+    }
+
+    GLsizei* length = reinterpret_cast<GLsizei*>(lengthBytes.data);
+    GLint* type = reinterpret_cast<GLint*>(typeBytes.data);
+    GLint* condition = reinterpret_cast<GLint*>(conditionBytes.data);
+    GLint* flags = reinterpret_cast<GLint*>(flagsBytes.data);
+    GLint* status = reinterpret_cast<GLint*>(statusBytes.data);
+    *length = -1;
+    *type = 0;
+    *condition = 0;
+    *flags = -1;
+    *status = 0;
+
+    glClear(GL_COLOR_BUFFER_BIT);
+    GLsync sync = glx.FenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    if (!sync) {
+        return fail("glFenceSync returned null");
+    }
+    if (!glx.IsSync(sync)) {
+        glx.DeleteSync(sync);
+        return fail("glIsSync did not recognize the fence");
+    }
+
+    glx.GetSynciv(sync, GL_OBJECT_TYPE, 1, length, type);
+    if (*length != 1 || *type != GL_SYNC_FENCE) {
+        glx.DeleteSync(sync);
+        return fail("glGetSynciv did not copy back GL_OBJECT_TYPE");
+    }
+
+    *length = -1;
+    glx.GetSynciv(sync, GL_SYNC_CONDITION, 1, length, condition);
+    if (*length != 1 || *condition != GL_SYNC_GPU_COMMANDS_COMPLETE) {
+        glx.DeleteSync(sync);
+        return fail("glGetSynciv did not copy back GL_SYNC_CONDITION");
+    }
+
+    *length = -1;
+    glx.GetSynciv(sync, GL_SYNC_FLAGS, 1, length, flags);
+    if (*length != 1 || *flags != 0) {
+        glx.DeleteSync(sync);
+        return fail("glGetSynciv did not copy back GL_SYNC_FLAGS");
+    }
+
+    GLenum waitResult = glx.ClientWaitSync(sync, GL_SYNC_FLUSH_COMMANDS_BIT, 1000000000ull);
+    if (waitResult == GL_WAIT_FAILED) {
+        glx.DeleteSync(sync);
+        return fail("glClientWaitSync reported GL_WAIT_FAILED");
+    }
+    if (waitResult != GL_ALREADY_SIGNALED && waitResult != GL_CONDITION_SATISFIED) {
+        glx.DeleteSync(sync);
+        return fail("glClientWaitSync did not complete the fence");
+    }
+
+    glx.WaitSync(sync, 0, ~0ull);
+
+    *length = -1;
+    glx.GetSynciv(sync, GL_SYNC_STATUS, 1, length, status);
+    GLenum err = glGetError();
+    glx.DeleteSync(sync);
+    if (err != GL_NO_ERROR) {
+        return fail("sync object APIs produced GL error " + std::to_string(err));
+    }
+    if (*length != 1 || *status != GL_SIGNALED) {
+        return fail("glGetSynciv did not copy back GL_SIGNALED status");
+    }
+
+    return pass("page-boundary sync object queries copied back");
+}
+
+static TestResult testSamplerObjectPageBoundary(TestContext&) {
+    if (!glx.GenSamplers || !glx.DeleteSamplers || !glx.IsSampler ||
+        !glx.SamplerParameterfv || !glx.SamplerParameteriv ||
+        !glx.SamplerParameterIiv || !glx.SamplerParameterIuiv ||
+        !glx.GetSamplerParameterfv || !glx.GetSamplerParameteriv ||
+        !glx.GetSamplerParameterIiv || !glx.GetSamplerParameterIuiv) {
+        return skip("sampler object functions are not available");
+    }
+
+    PageBytes samplerBytes;
+    PageBytes bindBytes;
+    PageBytes floatBorderBytes;
+    PageBytes intBorderBytes;
+    PageBytes uintBorderBytes;
+    PageBytes minFilterBytes;
+    PageBytes outFloatBorderBytes;
+    PageBytes outIntBorderBytes;
+    PageBytes outUintBorderBytes;
+    PageBytes outMinFilterBytes;
+    if (!samplerBytes.init(3 * sizeof(GLuint), 5) ||
+        !bindBytes.init(2 * sizeof(GLuint), 4) ||
+        !floatBorderBytes.init(4 * sizeof(GLfloat), 7) ||
+        !intBorderBytes.init(4 * sizeof(GLint), 9) ||
+        !uintBorderBytes.init(4 * sizeof(GLuint), 11) ||
+        !minFilterBytes.init(sizeof(GLint), 2) ||
+        !outFloatBorderBytes.init(4 * sizeof(GLfloat), 13) ||
+        !outIntBorderBytes.init(4 * sizeof(GLint), 15) ||
+        !outUintBorderBytes.init(4 * sizeof(GLuint), 17) ||
+        !outMinFilterBytes.init(sizeof(GLint), 3)) {
+        return skip("VirtualAlloc failed for sampler object buffers");
+    }
+
+    GLuint* samplers = reinterpret_cast<GLuint*>(samplerBytes.data);
+    glx.GenSamplers(3, samplers);
+    if (!samplers[0] || !samplers[1] || !samplers[2]) {
+        return fail("glGenSamplers did not fill the page-boundary sampler array");
+    }
+
+    const GLfloat floatBorder[4] = { 0.125f, 0.25f, 0.5f, 1.0f };
+    const GLint intBorder[4] = { 7, 11, 13, 17 };
+    const GLuint uintBorder[4] = { 19, 23, 29, 31 };
+    const GLint minFilter = GL_NEAREST;
+    std::memcpy(floatBorderBytes.data, floatBorder, sizeof(floatBorder));
+    std::memcpy(intBorderBytes.data, intBorder, sizeof(intBorder));
+    std::memcpy(uintBorderBytes.data, uintBorder, sizeof(uintBorder));
+    std::memcpy(minFilterBytes.data, &minFilter, sizeof(minFilter));
+
+    glx.SamplerParameterfv(samplers[0], GL_TEXTURE_BORDER_COLOR, (const GLfloat*)floatBorderBytes.data);
+    glx.SamplerParameteriv(samplers[0], GL_TEXTURE_MIN_FILTER, (const GLint*)minFilterBytes.data);
+    glx.SamplerParameterIiv(samplers[1], GL_TEXTURE_BORDER_COLOR, (const GLint*)intBorderBytes.data);
+    glx.SamplerParameterIuiv(samplers[2], GL_TEXTURE_BORDER_COLOR, (const GLuint*)uintBorderBytes.data);
+    glx.GetSamplerParameterfv(samplers[0], GL_TEXTURE_BORDER_COLOR, (GLfloat*)outFloatBorderBytes.data);
+    glx.GetSamplerParameteriv(samplers[0], GL_TEXTURE_MIN_FILTER, (GLint*)outMinFilterBytes.data);
+    glx.GetSamplerParameterIiv(samplers[1], GL_TEXTURE_BORDER_COLOR, (GLint*)outIntBorderBytes.data);
+    glx.GetSamplerParameterIuiv(samplers[2], GL_TEXTURE_BORDER_COLOR, (GLuint*)outUintBorderBytes.data);
+
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.DeleteSamplers(3, samplers);
+        return fail("sampler parameter APIs produced GL error " + std::to_string(err));
+    }
+
+    if (!glx.IsSampler(samplers[0]) || !glx.IsSampler(samplers[1]) || !glx.IsSampler(samplers[2])) {
+        glx.DeleteSamplers(3, samplers);
+        return fail("glIsSampler did not recognize generated sampler objects");
+    }
+
+    const GLfloat* outFloatBorder = (const GLfloat*)outFloatBorderBytes.data;
+    const GLint* outIntBorder = (const GLint*)outIntBorderBytes.data;
+    const GLuint* outUintBorder = (const GLuint*)outUintBorderBytes.data;
+    for (int i = 0; i < 4; ++i) {
+        if (!nearlyEqual(outFloatBorder[i], floatBorder[i])) {
+            glx.DeleteSamplers(3, samplers);
+            return fail("glGetSamplerParameterfv border color mismatch");
+        }
+        if (outIntBorder[i] != intBorder[i]) {
+            glx.DeleteSamplers(3, samplers);
+            return fail("glGetSamplerParameterIiv border color mismatch");
+        }
+        if (outUintBorder[i] != uintBorder[i]) {
+            glx.DeleteSamplers(3, samplers);
+            return fail("glGetSamplerParameterIuiv border color mismatch");
+        }
+    }
+    if (*(const GLint*)outMinFilterBytes.data != minFilter) {
+        glx.DeleteSamplers(3, samplers);
+        return fail("glGetSamplerParameteriv min filter mismatch");
+    }
+
+    if (glx.BindSampler) {
+        glx.BindSampler(0, samplers[0]);
+        GLint bound = 0;
+        glGetIntegerv(GL_SAMPLER_BINDING, &bound);
+        glx.BindSampler(0, 0);
+        if ((GLuint)bound != samplers[0]) {
+            glx.DeleteSamplers(3, samplers);
+            return fail("glBindSampler did not bind the expected sampler");
+        }
+    }
+    if (glx.BindSamplers) {
+        GLuint* bindSamplers = reinterpret_cast<GLuint*>(bindBytes.data);
+        bindSamplers[0] = samplers[1];
+        bindSamplers[1] = samplers[2];
+        glx.BindSamplers(0, 2, bindSamplers);
+        GLint bound = 0;
+        glGetIntegerv(GL_SAMPLER_BINDING, &bound);
+        glx.BindSamplers(0, 2, nullptr);
+        if ((GLuint)bound != samplers[1]) {
+            glx.DeleteSamplers(3, samplers);
+            return fail("glBindSamplers did not bind the expected sampler array");
+        }
+    }
+
+    glx.DeleteSamplers(3, samplers);
+    return pass("page-boundary sampler object parameters copied back");
+}
+
+static TestResult testBindSamplersPageBoundary(TestContext&) {
+    if (!glx.GenSamplers || !glx.DeleteSamplers || !glx.BindSamplers ||
+        !glx.GetIntegeri_v) {
+        return skip("sampler multi-bind functions are not available");
+    }
+
+    GLint maxUnits = 0;
+    glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxUnits);
+    if (maxUnits < 4) {
+        return skip("not enough texture units for sampler multi-bind test");
+    }
+
+    PageBytes samplerBytes;
+    PageBytes queryBytes;
+    if (!samplerBytes.init(3 * sizeof(GLuint), 7) || !queryBytes.init(sizeof(GLint), 3)) {
+        return skip("VirtualAlloc failed for bind sampler buffers");
+    }
+
+    GLuint* samplers = reinterpret_cast<GLuint*>(samplerBytes.data);
+    samplers[0] = samplers[1] = samplers[2] = 0;
+    glx.GenSamplers(3, samplers);
+    if (!samplers[0] || !samplers[1] || !samplers[2]) {
+        glx.DeleteSamplers(3, samplers);
+        return fail("glGenSamplers did not fill bind sampler names");
+    }
+
+    glx.BindSamplers(1, 3, samplers);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindSamplers(1, 3, nullptr);
+        glx.DeleteSamplers(3, samplers);
+        return fail("glBindSamplers produced GL error " + std::to_string(err));
+    }
+
+    for (GLuint i = 0; i < 3; ++i) {
+        *reinterpret_cast<GLint*>(queryBytes.data) = -1;
+        glx.GetIntegeri_v(GL_SAMPLER_BINDING, 1 + i, reinterpret_cast<GLint*>(queryBytes.data));
+        if (*reinterpret_cast<GLint*>(queryBytes.data) != static_cast<GLint>(samplers[i])) {
+            glx.BindSamplers(1, 3, nullptr);
+            glx.DeleteSamplers(3, samplers);
+            return fail("glBindSamplers binding was not copied correctly");
+        }
+    }
+
+    glx.BindSamplers(1, 3, nullptr);
+    for (GLuint i = 0; i < 3; ++i) {
+        *reinterpret_cast<GLint*>(queryBytes.data) = -1;
+        glx.GetIntegeri_v(GL_SAMPLER_BINDING, 1 + i, reinterpret_cast<GLint*>(queryBytes.data));
+        if (*reinterpret_cast<GLint*>(queryBytes.data) != 0) {
+            glx.DeleteSamplers(3, samplers);
+            return fail("glBindSamplers null array did not unbind sampler unit");
+        }
+    }
+
+    glx.DeleteSamplers(3, samplers);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("bind samplers cleanup produced GL error " + std::to_string(err));
+    }
+
+    return pass("page-boundary glBindSamplers state copied back");
+}
+
+static TestResult testUniformBlockPageBoundary(TestContext&) {
+    if (!glx.GetUniformBlockIndex || !glx.GetActiveUniformBlockiv ||
+        !glx.GetActiveUniformBlockName || !glx.GetUniformIndices ||
+        !glx.GetActiveUniformsiv || !glx.UniformBlockBinding) {
+        return skip("uniform block query functions are not available");
+    }
+
+    const char* vs =
+        "#version 140\n"
+        "in vec2 a_pos;\n"
+        "layout(std140) uniform BlockData { vec4 blockColor; float blockScale; };\n"
+        "out vec4 v_color;\n"
+        "void main(){ gl_Position = vec4(a_pos * blockScale, 0.0, 1.0); v_color = blockColor; }\n";
+    const char* fs =
+        "#version 140\n"
+        "in vec4 v_color;\n"
+        "out vec4 frag;\n"
+        "void main(){ frag = v_color; }\n";
+
+    std::string error;
+    GLuint vertex = compileShader(GL_VERTEX_SHADER, { vs }, nullptr, error);
+    if (!vertex) {
+        return fail("uniform block vertex shader failed: " + error);
+    }
+    GLuint fragment = compileShader(GL_FRAGMENT_SHADER, { fs }, nullptr, error);
+    if (!fragment) {
+        glx.DeleteShader(vertex);
+        return fail("uniform block fragment shader failed: " + error);
+    }
+
+    GLuint program = glx.CreateProgram();
+    glx.AttachShader(program, vertex);
+    glx.AttachShader(program, fragment);
+    glx.LinkProgram(program);
+    glx.DeleteShader(vertex);
+    glx.DeleteShader(fragment);
+
+    GLint linked = 0;
+    glx.GetProgramiv(program, GL_LINK_STATUS, &linked);
+    if (!linked) {
+        error = programLog(program);
+        glx.DeleteProgram(program);
+        return fail("uniform block program link failed: " + error);
+    }
+
+    PageString blockName;
+    PageString colorName;
+    PageString scaleName;
+    PageBytes uniformNameArrayBytes;
+    PageBytes uniformIndicesBytes;
+    PageBytes blockLengthBytes;
+    PageBytes blockNameBytes;
+    PageBytes blockActiveCountBytes;
+    PageBytes blockActiveIndicesBytes;
+    PageBytes blockDataSizeBytes;
+    PageBytes blockBindingBytes;
+    PageBytes uniformBlockIndexBytes;
+    PageBytes uniformNameLengthBytes;
+    PageBytes uniformTypeBytes;
+    PageBytes uniformSizeBytes;
+    if (!blockName.init("BlockData", 6) ||
+        !colorName.init("blockColor", 7) ||
+        !scaleName.init("blockScale", 7) ||
+        !uniformNameArrayBytes.init(2 * sizeof(const GLchar*), sizeof(const GLchar*)) ||
+        !uniformIndicesBytes.init(2 * sizeof(GLuint), 4) ||
+        !blockLengthBytes.init(sizeof(GLsizei), 2) ||
+        !blockNameBytes.init(64, 17) ||
+        !blockActiveCountBytes.init(sizeof(GLint), 2) ||
+        !blockActiveIndicesBytes.init(2 * sizeof(GLint), 4) ||
+        !blockDataSizeBytes.init(sizeof(GLint), 2) ||
+        !blockBindingBytes.init(sizeof(GLint), 2) ||
+        !uniformBlockIndexBytes.init(2 * sizeof(GLint), 4) ||
+        !uniformNameLengthBytes.init(2 * sizeof(GLint), 4) ||
+        !uniformTypeBytes.init(2 * sizeof(GLint), 4) ||
+        !uniformSizeBytes.init(2 * sizeof(GLint), 4)) {
+        glx.DeleteProgram(program);
+        return skip("VirtualAlloc failed for uniform block buffers");
+    }
+
+    const GLchar** uniformNames = reinterpret_cast<const GLchar**>(uniformNameArrayBytes.data);
+    uniformNames[0] = colorName.text;
+    uniformNames[1] = scaleName.text;
+
+    GLuint blockIndex = glx.GetUniformBlockIndex(program, blockName.text);
+    if (blockIndex == GL_INVALID_INDEX) {
+        glx.DeleteProgram(program);
+        return fail("glGetUniformBlockIndex did not find BlockData");
+    }
+
+    glx.UniformBlockBinding(program, blockIndex, 3);
+    glx.GetActiveUniformBlockiv(program, blockIndex, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, (GLint*)blockActiveCountBytes.data);
+    glx.GetActiveUniformBlockiv(program, blockIndex, GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES, (GLint*)blockActiveIndicesBytes.data);
+    glx.GetActiveUniformBlockiv(program, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, (GLint*)blockDataSizeBytes.data);
+    glx.GetActiveUniformBlockiv(program, blockIndex, GL_UNIFORM_BLOCK_BINDING, (GLint*)blockBindingBytes.data);
+    glx.GetActiveUniformBlockName(program, blockIndex, (GLsizei)blockNameBytes.size,
+        (GLsizei*)blockLengthBytes.data, (GLchar*)blockNameBytes.data);
+
+    GLuint* uniformIndices = reinterpret_cast<GLuint*>(uniformIndicesBytes.data);
+    uniformIndices[0] = GL_INVALID_INDEX;
+    uniformIndices[1] = GL_INVALID_INDEX;
+    glx.GetUniformIndices(program, 2, uniformNames, uniformIndices);
+    glx.GetActiveUniformsiv(program, 2, uniformIndices, GL_UNIFORM_BLOCK_INDEX, (GLint*)uniformBlockIndexBytes.data);
+    glx.GetActiveUniformsiv(program, 2, uniformIndices, GL_UNIFORM_NAME_LENGTH, (GLint*)uniformNameLengthBytes.data);
+    glx.GetActiveUniformsiv(program, 2, uniformIndices, GL_UNIFORM_TYPE, (GLint*)uniformTypeBytes.data);
+    glx.GetActiveUniformsiv(program, 2, uniformIndices, GL_UNIFORM_SIZE, (GLint*)uniformSizeBytes.data);
+    GLenum err = glGetError();
+    glx.DeleteProgram(program);
+    if (err != GL_NO_ERROR) {
+        return fail("uniform block query APIs produced GL error " + std::to_string(err));
+    }
+
+    if (*(GLint*)blockActiveCountBytes.data != 2) {
+        return fail("glGetActiveUniformBlockiv active uniform count mismatch");
+    }
+    if (*(GLint*)blockDataSizeBytes.data <= 0 || *(GLint*)blockBindingBytes.data != 3) {
+        return fail("glGetActiveUniformBlockiv scalar outputs did not copy back");
+    }
+    if (*(GLsizei*)blockLengthBytes.data != blockName.length ||
+        std::strcmp((const char*)blockNameBytes.data, "BlockData") != 0) {
+        return fail("glGetActiveUniformBlockName did not copy back the block name");
+    }
+    if (uniformIndices[0] == GL_INVALID_INDEX || uniformIndices[1] == GL_INVALID_INDEX) {
+        return fail("glGetUniformIndices did not copy back uniform indices");
+    }
+
+    const GLint* activeIndices = reinterpret_cast<const GLint*>(blockActiveIndicesBytes.data);
+    bool foundColor = activeIndices[0] == (GLint)uniformIndices[0] || activeIndices[1] == (GLint)uniformIndices[0];
+    bool foundScale = activeIndices[0] == (GLint)uniformIndices[1] || activeIndices[1] == (GLint)uniformIndices[1];
+    if (!foundColor || !foundScale) {
+        return fail("active uniform index array did not include expected uniforms");
+    }
+
+    const GLint* blockIndices = reinterpret_cast<const GLint*>(uniformBlockIndexBytes.data);
+    const GLint* nameLengths = reinterpret_cast<const GLint*>(uniformNameLengthBytes.data);
+    const GLint* types = reinterpret_cast<const GLint*>(uniformTypeBytes.data);
+    const GLint* sizes = reinterpret_cast<const GLint*>(uniformSizeBytes.data);
+    if (blockIndices[0] != (GLint)blockIndex || blockIndices[1] != (GLint)blockIndex) {
+        return fail("glGetActiveUniformsiv block index outputs did not match");
+    }
+    if (nameLengths[0] <= colorName.length || nameLengths[1] <= scaleName.length) {
+        return fail("glGetActiveUniformsiv name lengths were not copied back");
+    }
+    if (types[0] != GL_FLOAT_VEC4 || types[1] != GL_FLOAT || sizes[0] != 1 || sizes[1] != 1) {
+        return fail("glGetActiveUniformsiv type or size outputs did not match");
+    }
+
+    return pass("page-boundary uniform block queries copied back");
+}
+
+static TestResult testVertexAttribPointerPageBoundary(TestContext&) {
+    if (!glx.VertexAttribPointer || !glx.EnableVertexAttribArray || !glx.DisableVertexAttribArray ||
+        !glx.VertexAttrib4fv || !glx.GetVertexAttribiv || !glx.GetVertexAttribfv ||
+        !glx.GetVertexAttribdv || !glx.GetVertexAttribPointerv) {
+        return skip("vertex attrib query functions are not available");
+    }
+
+    PageBytes vertices;
+    PageBytes pointerBytes;
+    PageBytes sizeBytes;
+    PageBytes strideBytes;
+    PageBytes typeBytes;
+    PageBytes normalizedBytes;
+    PageBytes enabledBytes;
+    PageBytes currentInputBytes;
+    PageBytes currentFloatBytes;
+    PageBytes currentDoubleBytes;
+    if (!vertices.init(3 * 4 * sizeof(GLfloat), 12) ||
+        !pointerBytes.init(sizeof(void*), sizeof(void*) - 1) ||
+        !sizeBytes.init(sizeof(GLint), 2) ||
+        !strideBytes.init(sizeof(GLint), 2) ||
+        !typeBytes.init(sizeof(GLint), 2) ||
+        !normalizedBytes.init(sizeof(GLint), 2) ||
+        !enabledBytes.init(sizeof(GLint), 2) ||
+        !currentInputBytes.init(4 * sizeof(GLfloat), 7) ||
+        !currentFloatBytes.init(4 * sizeof(GLfloat), 11) ||
+        !currentDoubleBytes.init(4 * sizeof(GLdouble), 13)) {
+        return skip("VirtualAlloc failed for vertex attrib buffers");
+    }
+
+    GLfloat* v = reinterpret_cast<GLfloat*>(vertices.data);
+    const GLfloat vertexData[12] = {
+        -0.8f, -0.8f, 11.0f, 12.0f,
+         0.8f, -0.8f, 13.0f, 14.0f,
+         0.0f,  0.8f, 15.0f, 16.0f
+    };
+    std::memcpy(v, vertexData, sizeof(vertexData));
+
+    const GLfloat currentValue[4] = { 0.125f, 0.25f, 0.5f, 1.0f };
+    std::memcpy(currentInputBytes.data, currentValue, sizeof(currentValue));
+
+    if (glx.BindBuffer) {
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+    void** pointerOut = reinterpret_cast<void**>(pointerBytes.data);
+    *pointerOut = nullptr;
+    glx.VertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), vertices.data);
+    glx.EnableVertexAttribArray(1);
+    glx.GetVertexAttribPointerv(1, GL_VERTEX_ATTRIB_ARRAY_POINTER, pointerOut);
+    glx.GetVertexAttribiv(1, GL_VERTEX_ATTRIB_ARRAY_SIZE, (GLint*)sizeBytes.data);
+    glx.GetVertexAttribiv(1, GL_VERTEX_ATTRIB_ARRAY_STRIDE, (GLint*)strideBytes.data);
+    glx.GetVertexAttribiv(1, GL_VERTEX_ATTRIB_ARRAY_TYPE, (GLint*)typeBytes.data);
+    glx.GetVertexAttribiv(1, GL_VERTEX_ATTRIB_ARRAY_NORMALIZED, (GLint*)normalizedBytes.data);
+    glx.GetVertexAttribiv(1, GL_VERTEX_ATTRIB_ARRAY_ENABLED, (GLint*)enabledBytes.data);
+    glx.DisableVertexAttribArray(1);
+
+    glx.VertexAttrib4fv(2, (const GLfloat*)currentInputBytes.data);
+    glx.GetVertexAttribfv(2, GL_CURRENT_VERTEX_ATTRIB, (GLfloat*)currentFloatBytes.data);
+    glx.GetVertexAttribdv(2, GL_CURRENT_VERTEX_ATTRIB, (GLdouble*)currentDoubleBytes.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("vertex attrib APIs produced GL error " + std::to_string(err));
+    }
+
+    if (*pointerOut != vertices.data) {
+        return fail("glGetVertexAttribPointerv did not copy back the original client pointer");
+    }
+    if (*(GLint*)sizeBytes.data != 2 ||
+        *(GLint*)strideBytes.data != 4 * (GLint)sizeof(GLfloat) ||
+        *(GLint*)typeBytes.data != GL_FLOAT ||
+        *(GLint*)normalizedBytes.data != GL_FALSE ||
+        *(GLint*)enabledBytes.data != GL_TRUE) {
+        return fail("glGetVertexAttribiv did not copy back expected array state");
+    }
+
+    const GLfloat* outFloat = reinterpret_cast<const GLfloat*>(currentFloatBytes.data);
+    const GLdouble* outDouble = reinterpret_cast<const GLdouble*>(currentDoubleBytes.data);
+    for (int i = 0; i < 4; ++i) {
+        if (!nearlyEqual(outFloat[i], currentValue[i]) ||
+            !nearlyEqual(outDouble[i], (GLdouble)currentValue[i])) {
+            return fail("glGetVertexAttrib current value outputs did not match");
+        }
+    }
+
+    return pass("page-boundary vertex attrib pointer queries copied back");
+}
+
+static GLuint makeVertexAttribRenderProgram(std::string& error) {
+    std::vector<const char*> vsParts = {
+        "#version 120\n",
+        "attribute vec2 a_pos;\n",
+        "attribute vec4 a_color;\n",
+        "varying vec4 v_color;\n",
+        "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); v_color = a_color; }\n"
+    };
+    std::vector<const char*> fsParts = {
+        "#version 120\n",
+        "varying vec4 v_color;\n",
+        "void main(){ gl_FragColor = v_color; }\n"
+    };
+
+    GLuint vs = compileShader(GL_VERTEX_SHADER, vsParts, nullptr, error);
+    if (!vs) {
+        return 0;
+    }
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsParts, nullptr, error);
+    if (!fs) {
+        glx.DeleteShader(vs);
+        return 0;
+    }
+
+    GLuint program = glx.CreateProgram();
+    glx.AttachShader(program, vs);
+    glx.AttachShader(program, fs);
+    glx.BindAttribLocation(program, 0, "a_pos");
+    glx.BindAttribLocation(program, 1, "a_color");
+    glx.LinkProgram(program);
+    glx.DeleteShader(vs);
+    glx.DeleteShader(fs);
+
+    GLint ok = 0;
+    glx.GetProgramiv(program, GL_LINK_STATUS, &ok);
+    if (!ok) {
+        error = programLog(program);
+        glx.DeleteProgram(program);
+        return 0;
+    }
+    return program;
+}
+
+static TestResult testVertexAttribClientArrayRenderPageBoundary(TestContext&) {
+    if (!glx.VertexAttribPointer || !glx.EnableVertexAttribArray || !glx.DisableVertexAttribArray ||
+        !glx.UseProgram || !glx.BindAttribLocation) {
+        return skip("generic vertex attrib render entry points are unavailable");
+    }
+
+    std::string error;
+    GLuint program = makeVertexAttribRenderProgram(error);
+    if (!program) {
+        return fail("vertex attrib render program failed to build: " + error);
+    }
+
+    PageBytes positions;
+    PageBytes colors;
+    if (!positions.init(3 * 3 * sizeof(GLfloat), 8) ||
+        !colors.init(3 * 5 * sizeof(GLfloat), 16)) {
+        glx.DeleteProgram(program);
+        return skip("VirtualAlloc failed for vertex attrib render buffers");
+    }
+
+    const GLfloat positionData[9] = {
+        -0.8f, -0.8f, 101.0f,
+         0.8f, -0.8f, 102.0f,
+         0.0f,  0.8f, 103.0f
+    };
+    const GLfloat colorData[15] = {
+        0.0f, 1.0f, 0.0f, 1.0f, 201.0f,
+        0.0f, 1.0f, 0.0f, 1.0f, 202.0f,
+        0.0f, 1.0f, 0.0f, 1.0f, 203.0f
+    };
+    std::memcpy(positions.data, positionData, sizeof(positionData));
+    std::memcpy(colors.data, colorData, sizeof(colorData));
+
+    if (glx.BindBuffer) {
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glx.UseProgram(program);
+    glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), positions.data);
+    glx.VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), colors.data);
+    glx.EnableVertexAttribArray(0);
+    glx.EnableVertexAttribArray(1);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glx.DisableVertexAttribArray(1);
+    glx.DisableVertexAttribArray(0);
+    glx.UseProgram(0);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    glx.DeleteProgram(program);
+
+    if (err != GL_NO_ERROR) {
+        return fail("generic vertex attrib client-array render produced GL error " + std::to_string(err));
+    }
+    if (px[0] > 80 || px[1] < 180 || px[2] > 80) {
+        return fail("generic vertex attrib client-array render pixel check failed");
+    }
+    return pass("page-boundary generic vertex attrib client arrays rendered expected pixel");
+}
+
+static TestResult testVertexArrayObjectPageBoundary(TestContext&) {
+    if (!glx.GenVertexArrays || !glx.CreateVertexArrays || !glx.DeleteVertexArrays ||
+        !glx.BindVertexArray || !glx.IsVertexArray || !glx.VertexArrayVertexBuffers ||
+        !glx.VertexArrayAttribFormat || !glx.VertexArrayAttribBinding ||
+        !glx.EnableVertexArrayAttrib || !glx.GetVertexArrayIndexediv ||
+        !glx.GetVertexArrayIndexed64iv || !glx.GenBuffers || !glx.BindBuffer ||
+        !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("vertex array object entry points are unavailable");
+    }
+
+    PageBytes genVaoBytes;
+    PageBytes createVaoBytes;
+    PageBytes bufferBytes;
+    PageBytes offsetBytes;
+    PageBytes strideBytes;
+    PageBytes intBytes;
+    PageBytes int64Bytes;
+    if (!genVaoBytes.init(sizeof(GLuint), 3) || !createVaoBytes.init(sizeof(GLuint), 5) ||
+        !bufferBytes.init(3 * sizeof(GLuint), 7) || !offsetBytes.init(3 * sizeof(GLintptr), 11) ||
+        !strideBytes.init(3 * sizeof(GLsizei), 13) || !intBytes.init(sizeof(GLint), 2) ||
+        !int64Bytes.init(sizeof(GLint64), 3)) {
+        return skip("VirtualAlloc failed for vertex array object buffers");
+    }
+
+    GLuint* genVao = (GLuint*)genVaoBytes.data;
+    *genVao = 0;
+    glx.GenVertexArrays(1, genVao);
+    if (*genVao == 0) {
+        return fail("glGenVertexArrays did not copy back an object name");
+    }
+    glx.BindVertexArray(*genVao);
+    if (glx.IsVertexArray(*genVao) != GL_TRUE) {
+        glx.BindVertexArray(0);
+        glx.DeleteVertexArrays(1, genVao);
+        return fail("glIsVertexArray did not recognize the bound generated object");
+    }
+    glx.BindVertexArray(0);
+    glx.DeleteVertexArrays(1, genVao);
+
+    GLuint* vao = (GLuint*)createVaoBytes.data;
+    *vao = 0;
+    glx.CreateVertexArrays(1, vao);
+    if (*vao == 0 || glx.IsVertexArray(*vao) != GL_TRUE) {
+        if (*vao) {
+            glx.DeleteVertexArrays(1, vao);
+        }
+        return fail("glCreateVertexArrays did not create a recognized object");
+    }
+
+    GLuint buffers[3] = {};
+    glx.GenBuffers(3, buffers);
+    for (int i = 0; i < 3; ++i) {
+        unsigned char data[96] = {};
+        glx.BindBuffer(GL_ARRAY_BUFFER, buffers[i]);
+        glx.BufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
+    }
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+
+    GLuint* marshalledBuffers = (GLuint*)bufferBytes.data;
+    GLintptr* marshalledOffsets = (GLintptr*)offsetBytes.data;
+    GLsizei* marshalledStrides = (GLsizei*)strideBytes.data;
+    for (int i = 0; i < 3; ++i) {
+        marshalledBuffers[i] = buffers[i];
+        marshalledOffsets[i] = 16 + i * 16;
+        marshalledStrides[i] = 20 + i * 4;
+    }
+
+    glx.VertexArrayVertexBuffers(*vao, 1, 3, marshalledBuffers, marshalledOffsets, marshalledStrides);
+    glx.VertexArrayAttribFormat(*vao, 5, 3, GL_FLOAT, GL_FALSE, 4);
+    glx.VertexArrayAttribBinding(*vao, 5, 3);
+    glx.EnableVertexArrayAttrib(*vao, 5);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.DeleteBuffers(3, buffers);
+        glx.DeleteVertexArrays(1, vao);
+        return fail("vertex array setup produced GL error " + std::to_string(err));
+    }
+
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)intBytes.data = -1;
+        glx.GetVertexArrayIndexediv(*vao, 1 + i, GL_VERTEX_BINDING_BUFFER, (GLint*)intBytes.data);
+        if (*(GLint*)intBytes.data != (GLint)buffers[i]) {
+            glx.DeleteBuffers(3, buffers);
+            glx.DeleteVertexArrays(1, vao);
+            return fail("glVertexArrayVertexBuffers buffer binding was not copied correctly");
+        }
+
+        *(GLint64*)int64Bytes.data = -1;
+        glx.GetVertexArrayIndexed64iv(*vao, 1 + i, GL_VERTEX_BINDING_OFFSET, (GLint64*)int64Bytes.data);
+        if (*(GLint64*)int64Bytes.data != marshalledOffsets[i]) {
+            glx.DeleteBuffers(3, buffers);
+            glx.DeleteVertexArrays(1, vao);
+            return fail("glVertexArrayVertexBuffers offset was not copied correctly");
+        }
+
+        *(GLint*)intBytes.data = -1;
+        glx.GetVertexArrayIndexediv(*vao, 1 + i, GL_VERTEX_BINDING_STRIDE, (GLint*)intBytes.data);
+        if (*(GLint*)intBytes.data != marshalledStrides[i]) {
+            glx.DeleteBuffers(3, buffers);
+            glx.DeleteVertexArrays(1, vao);
+            return fail("glVertexArrayVertexBuffers stride was not copied correctly");
+        }
+    }
+
+    *(GLint*)intBytes.data = -1;
+    glx.GetVertexArrayIndexediv(*vao, 5, GL_VERTEX_ATTRIB_RELATIVE_OFFSET, (GLint*)intBytes.data);
+    if (*(GLint*)intBytes.data != 4) {
+        glx.DeleteBuffers(3, buffers);
+        glx.DeleteVertexArrays(1, vao);
+        return fail("glVertexArrayAttribFormat relative offset was not copied back");
+    }
+
+    *(GLint*)intBytes.data = -1;
+    glx.GetVertexArrayIndexediv(*vao, 5, GL_VERTEX_ATTRIB_ARRAY_ENABLED, (GLint*)intBytes.data);
+    if (*(GLint*)intBytes.data != GL_TRUE) {
+        glx.DeleteBuffers(3, buffers);
+        glx.DeleteVertexArrays(1, vao);
+        return fail("glEnableVertexArrayAttrib state was not copied back");
+    }
+
+    err = glGetError();
+    glx.DeleteBuffers(3, buffers);
+    glx.DeleteVertexArrays(1, vao);
+    if (err != GL_NO_ERROR) {
+        return fail("vertex array queries produced GL error " + std::to_string(err));
+    }
+
+    return pass("page-boundary vertex array object queries copied back");
+}
+
+static TestResult testBindVertexBuffersPageBoundary(TestContext&) {
+    if (!glx.GenVertexArrays || !glx.DeleteVertexArrays || !glx.BindVertexArray ||
+        !glx.BindVertexBuffers || !glx.GetIntegeri_v || !glx.GetInteger64i_v ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("bind vertex buffers entry points are unavailable");
+    }
+
+    PageBytes bufferBytes;
+    PageBytes offsetBytes;
+    PageBytes strideBytes;
+    PageBytes intBytes;
+    PageBytes int64Bytes;
+    if (!bufferBytes.init(3 * sizeof(GLuint), 7) ||
+        !offsetBytes.init(3 * sizeof(GLintptr), 11) ||
+        !strideBytes.init(3 * sizeof(GLsizei), 13) ||
+        !intBytes.init(sizeof(GLint), 2) ||
+        !int64Bytes.init(sizeof(GLint64), 3)) {
+        return skip("VirtualAlloc failed for bind vertex buffers buffers");
+    }
+
+    GLuint vao = 0;
+    GLuint buffers[3] = {};
+    glx.GenVertexArrays(1, &vao);
+    glx.GenBuffers(3, buffers);
+    glx.BindVertexArray(vao);
+    for (int i = 0; i < 3; ++i) {
+        unsigned char data[128] = {};
+        glx.BindBuffer(GL_ARRAY_BUFFER, buffers[i]);
+        glx.BufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
+    }
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+
+    GLuint* marshalledBuffers = (GLuint*)bufferBytes.data;
+    GLintptr* marshalledOffsets = (GLintptr*)offsetBytes.data;
+    GLsizei* marshalledStrides = (GLsizei*)strideBytes.data;
+    for (int i = 0; i < 3; ++i) {
+        marshalledBuffers[i] = buffers[i];
+        marshalledOffsets[i] = 12 + i * 20;
+        marshalledStrides[i] = 24 + i * 8;
+    }
+
+    glx.BindVertexBuffers(2, 3, marshalledBuffers, marshalledOffsets, marshalledStrides);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindVertexArray(0);
+        glx.DeleteBuffers(3, buffers);
+        glx.DeleteVertexArrays(1, &vao);
+        return fail("glBindVertexBuffers produced GL error " + std::to_string(err));
+    }
+
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)intBytes.data = -1;
+        glx.GetIntegeri_v(GL_VERTEX_BINDING_BUFFER, 2 + i, (GLint*)intBytes.data);
+        if (*(GLint*)intBytes.data != (GLint)buffers[i]) {
+            glx.BindVertexArray(0);
+            glx.DeleteBuffers(3, buffers);
+            glx.DeleteVertexArrays(1, &vao);
+            return fail("glBindVertexBuffers buffer binding was not copied correctly");
+        }
+
+        *(GLint64*)int64Bytes.data = -1;
+        glx.GetInteger64i_v(GL_VERTEX_BINDING_OFFSET, 2 + i, (GLint64*)int64Bytes.data);
+        if (*(GLint64*)int64Bytes.data != marshalledOffsets[i]) {
+            glx.BindVertexArray(0);
+            glx.DeleteBuffers(3, buffers);
+            glx.DeleteVertexArrays(1, &vao);
+            return fail("glBindVertexBuffers offset was not copied correctly");
+        }
+
+        *(GLint*)intBytes.data = -1;
+        glx.GetIntegeri_v(GL_VERTEX_BINDING_STRIDE, 2 + i, (GLint*)intBytes.data);
+        if (*(GLint*)intBytes.data != marshalledStrides[i]) {
+            glx.BindVertexArray(0);
+            glx.DeleteBuffers(3, buffers);
+            glx.DeleteVertexArrays(1, &vao);
+            return fail("glBindVertexBuffers stride was not copied correctly");
+        }
+    }
+
+    glx.BindVertexArray(0);
+    glx.DeleteBuffers(3, buffers);
+    glx.DeleteVertexArrays(1, &vao);
+
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("bind vertex buffers cleanup produced GL error " + std::to_string(err));
+    }
+
+    return pass("page-boundary glBindVertexBuffers state copied back");
+}
+
+static TestResult testBindBuffersRangePageBoundary(TestContext&) {
+    if (!glx.BindBuffersBase || !glx.BindBuffersRange || !glx.GetIntegeri_v || !glx.GetInteger64i_v ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("bind buffers range entry points are unavailable");
+    }
+
+    PageBytes bufferBytes;
+    PageBytes offsetBytes;
+    PageBytes sizeBytes;
+    PageBytes intBytes;
+    PageBytes int64Bytes;
+    if (!bufferBytes.init(3 * sizeof(GLuint), 7) ||
+        !offsetBytes.init(3 * sizeof(GLintptr), 11) ||
+        !sizeBytes.init(3 * sizeof(GLsizeiptr), 13) ||
+        !intBytes.init(sizeof(GLint), 2) ||
+        !int64Bytes.init(sizeof(GLint64), 3)) {
+        return skip("VirtualAlloc failed for bind buffers range buffers");
+    }
+
+    GLint alignment = 1;
+    glGetIntegerv(0x8A34 /* GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT */, &alignment);
+    if (alignment < 1) {
+        alignment = 1;
+    }
+
+    GLuint buffers[3] = {};
+    glx.GenBuffers(3, buffers);
+    GLuint* marshalledBuffers = (GLuint*)bufferBytes.data;
+    GLintptr* marshalledOffsets = (GLintptr*)offsetBytes.data;
+    GLsizeiptr* marshalledSizes = (GLsizeiptr*)sizeBytes.data;
+    for (int i = 0; i < 3; ++i) {
+        marshalledBuffers[i] = buffers[i];
+        marshalledOffsets[i] = (GLintptr)alignment * (i + 1);
+        marshalledSizes[i] = 64 + i * 16;
+        glx.BindBuffer(GL_UNIFORM_BUFFER, buffers[i]);
+        glx.BufferData(GL_UNIFORM_BUFFER, marshalledOffsets[i] + marshalledSizes[i], nullptr, GL_DYNAMIC_DRAW);
+    }
+    glx.BindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    glx.BindBuffersRange(GL_UNIFORM_BUFFER, 1, 3, marshalledBuffers, marshalledOffsets, marshalledSizes);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindBuffersRange(GL_UNIFORM_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+        glx.DeleteBuffers(3, buffers);
+        return fail("glBindBuffersRange produced GL error " + std::to_string(err));
+    }
+
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)intBytes.data = -1;
+        glx.GetIntegeri_v(GL_UNIFORM_BUFFER_BINDING, 1 + i, (GLint*)intBytes.data);
+        if (*(GLint*)intBytes.data != (GLint)buffers[i]) {
+            glx.BindBuffersRange(GL_UNIFORM_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("glBindBuffersRange buffer binding was not copied correctly");
+        }
+
+        *(GLint64*)int64Bytes.data = -1;
+        glx.GetInteger64i_v(GL_UNIFORM_BUFFER_START, 1 + i, (GLint64*)int64Bytes.data);
+        if (*(GLint64*)int64Bytes.data != marshalledOffsets[i]) {
+            glx.BindBuffersRange(GL_UNIFORM_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("glBindBuffersRange offset was not copied correctly");
+        }
+
+        *(GLint64*)int64Bytes.data = -1;
+        glx.GetInteger64i_v(GL_UNIFORM_BUFFER_SIZE, 1 + i, (GLint64*)int64Bytes.data);
+        if (*(GLint64*)int64Bytes.data != marshalledSizes[i]) {
+            glx.BindBuffersRange(GL_UNIFORM_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("glBindBuffersRange size was not copied correctly");
+        }
+    }
+
+    glx.BindBuffersBase(GL_UNIFORM_BUFFER, 1, 3, marshalledBuffers);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindBuffersRange(GL_UNIFORM_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+        glx.DeleteBuffers(3, buffers);
+        return fail("glBindBuffersBase produced GL error " + std::to_string(err));
+    }
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)intBytes.data = -1;
+        glx.GetIntegeri_v(GL_UNIFORM_BUFFER_BINDING, 1 + i, (GLint*)intBytes.data);
+        if (*(GLint*)intBytes.data != (GLint)buffers[i]) {
+            glx.BindBuffersRange(GL_UNIFORM_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("glBindBuffersBase buffer binding was not copied correctly");
+        }
+    }
+
+    glx.BindBuffersRange(GL_UNIFORM_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+    glx.DeleteBuffers(3, buffers);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("bind buffers range cleanup produced GL error " + std::to_string(err));
+    }
+
+    return pass("page-boundary glBindBuffersRange/Base state copied back");
+}
+
+static TestResult testBindTransformFeedbackBuffersRangePageBoundary(TestContext&) {
+    if (!glx.BindBuffersBase || !glx.BindBuffersRange || !glx.GetIntegeri_v || !glx.GetInteger64i_v ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("transform feedback multi-bind entry points are unavailable");
+    }
+
+    PageBytes bufferBytes;
+    PageBytes offsetBytes;
+    PageBytes sizeBytes;
+    PageBytes intBytes;
+    PageBytes int64Bytes;
+    if (!bufferBytes.init(3 * sizeof(GLuint), 7) ||
+        !offsetBytes.init(3 * sizeof(GLintptr), 11) ||
+        !sizeBytes.init(3 * sizeof(GLsizeiptr), 13) ||
+        !intBytes.init(sizeof(GLint), 2) ||
+        !int64Bytes.init(sizeof(GLint64), 3)) {
+        return skip("VirtualAlloc failed for transform feedback bind buffers");
+    }
+
+    GLint maxBindings = 0;
+    glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS, &maxBindings);
+    if (maxBindings < 4) {
+        return skip("not enough transform feedback bindings for multi-bind test");
+    }
+
+    GLuint buffers[3] = {};
+    glx.GenBuffers(3, buffers);
+    GLuint* marshalledBuffers = (GLuint*)bufferBytes.data;
+    GLintptr* marshalledOffsets = (GLintptr*)offsetBytes.data;
+    GLsizeiptr* marshalledSizes = (GLsizeiptr*)sizeBytes.data;
+    for (int i = 0; i < 3; ++i) {
+        marshalledBuffers[i] = buffers[i];
+        marshalledOffsets[i] = 16 + i * 32;
+        marshalledSizes[i] = 64 + i * 16;
+        glx.BindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, buffers[i]);
+        glx.BufferData(GL_TRANSFORM_FEEDBACK_BUFFER, marshalledOffsets[i] + marshalledSizes[i], nullptr, GL_DYNAMIC_COPY);
+    }
+    glx.BindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, 0);
+
+    glx.BindBuffersRange(GL_TRANSFORM_FEEDBACK_BUFFER, 1, 3, marshalledBuffers, marshalledOffsets, marshalledSizes);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindBuffersRange(GL_TRANSFORM_FEEDBACK_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+        glx.DeleteBuffers(3, buffers);
+        return fail("transform feedback glBindBuffersRange produced GL error " + std::to_string(err));
+    }
+
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)intBytes.data = -1;
+        glx.GetIntegeri_v(GL_TRANSFORM_FEEDBACK_BUFFER_BINDING, 1 + i, (GLint*)intBytes.data);
+        if (*(GLint*)intBytes.data != (GLint)buffers[i]) {
+            glx.BindBuffersRange(GL_TRANSFORM_FEEDBACK_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("transform feedback glBindBuffersRange buffer binding was not copied correctly");
+        }
+
+        *(GLint64*)int64Bytes.data = -1;
+        glx.GetInteger64i_v(GL_TRANSFORM_FEEDBACK_BUFFER_START, 1 + i, (GLint64*)int64Bytes.data);
+        if (*(GLint64*)int64Bytes.data != marshalledOffsets[i]) {
+            glx.BindBuffersRange(GL_TRANSFORM_FEEDBACK_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("transform feedback glBindBuffersRange offset was not copied correctly");
+        }
+
+        *(GLint64*)int64Bytes.data = -1;
+        glx.GetInteger64i_v(GL_TRANSFORM_FEEDBACK_BUFFER_SIZE, 1 + i, (GLint64*)int64Bytes.data);
+        if (*(GLint64*)int64Bytes.data != marshalledSizes[i]) {
+            glx.BindBuffersRange(GL_TRANSFORM_FEEDBACK_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("transform feedback glBindBuffersRange size was not copied correctly");
+        }
+    }
+
+    glx.BindBuffersBase(GL_TRANSFORM_FEEDBACK_BUFFER, 1, 3, marshalledBuffers);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindBuffersRange(GL_TRANSFORM_FEEDBACK_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+        glx.DeleteBuffers(3, buffers);
+        return fail("transform feedback glBindBuffersBase produced GL error " + std::to_string(err));
+    }
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)intBytes.data = -1;
+        glx.GetIntegeri_v(GL_TRANSFORM_FEEDBACK_BUFFER_BINDING, 1 + i, (GLint*)intBytes.data);
+        if (*(GLint*)intBytes.data != (GLint)buffers[i]) {
+            glx.BindBuffersRange(GL_TRANSFORM_FEEDBACK_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("transform feedback glBindBuffersBase buffer binding was not copied correctly");
+        }
+    }
+
+    glx.BindBuffersRange(GL_TRANSFORM_FEEDBACK_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+    glx.DeleteBuffers(3, buffers);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("transform feedback bind buffers cleanup produced GL error " + std::to_string(err));
+    }
+
+    return pass("page-boundary transform feedback glBindBuffersRange/Base state copied back");
+}
+
+static TestResult testBindShaderStorageBuffersRangePageBoundary(TestContext&) {
+    if (!glx.BindBuffersBase || !glx.BindBuffersRange || !glx.GetIntegeri_v || !glx.GetInteger64i_v ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("shader storage multi-bind entry points are unavailable");
+    }
+
+    GLint maxBindings = 0;
+    glGetIntegerv(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS, &maxBindings);
+    if (maxBindings < 4) {
+        return skip("not enough shader storage buffer bindings for multi-bind test");
+    }
+
+    PageBytes bufferBytes;
+    PageBytes offsetBytes;
+    PageBytes sizeBytes;
+    PageBytes intBytes;
+    PageBytes int64Bytes;
+    if (!bufferBytes.init(3 * sizeof(GLuint), 7) ||
+        !offsetBytes.init(3 * sizeof(GLintptr), 11) ||
+        !sizeBytes.init(3 * sizeof(GLsizeiptr), 13) ||
+        !intBytes.init(sizeof(GLint), 2) ||
+        !int64Bytes.init(sizeof(GLint64), 3)) {
+        return skip("VirtualAlloc failed for shader storage bind buffers");
+    }
+
+    GLint alignment = 1;
+    glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &alignment);
+    if (alignment < 1) {
+        alignment = 1;
+    }
+
+    GLuint buffers[3] = {};
+    glx.GenBuffers(3, buffers);
+    GLuint* marshalledBuffers = (GLuint*)bufferBytes.data;
+    GLintptr* marshalledOffsets = (GLintptr*)offsetBytes.data;
+    GLsizeiptr* marshalledSizes = (GLsizeiptr*)sizeBytes.data;
+    for (int i = 0; i < 3; ++i) {
+        marshalledBuffers[i] = buffers[i];
+        marshalledOffsets[i] = (GLintptr)alignment * (i + 1);
+        marshalledSizes[i] = 96 + i * 32;
+        glx.BindBuffer(GL_SHADER_STORAGE_BUFFER, buffers[i]);
+        glx.BufferData(GL_SHADER_STORAGE_BUFFER, marshalledOffsets[i] + marshalledSizes[i], nullptr, GL_DYNAMIC_COPY);
+    }
+    glx.BindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    glx.BindBuffersRange(GL_SHADER_STORAGE_BUFFER, 1, 3, marshalledBuffers, marshalledOffsets, marshalledSizes);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindBuffersRange(GL_SHADER_STORAGE_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+        glx.DeleteBuffers(3, buffers);
+        return fail("shader storage glBindBuffersRange produced GL error " + std::to_string(err));
+    }
+
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)intBytes.data = -1;
+        glx.GetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 1 + i, (GLint*)intBytes.data);
+        if (*(GLint*)intBytes.data != (GLint)buffers[i]) {
+            glx.BindBuffersRange(GL_SHADER_STORAGE_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("shader storage glBindBuffersRange buffer binding was not copied correctly");
+        }
+
+        *(GLint64*)int64Bytes.data = -1;
+        glx.GetInteger64i_v(GL_SHADER_STORAGE_BUFFER_START, 1 + i, (GLint64*)int64Bytes.data);
+        if (*(GLint64*)int64Bytes.data != marshalledOffsets[i]) {
+            glx.BindBuffersRange(GL_SHADER_STORAGE_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("shader storage glBindBuffersRange offset was not copied correctly");
+        }
+
+        *(GLint64*)int64Bytes.data = -1;
+        glx.GetInteger64i_v(GL_SHADER_STORAGE_BUFFER_SIZE, 1 + i, (GLint64*)int64Bytes.data);
+        if (*(GLint64*)int64Bytes.data != marshalledSizes[i]) {
+            glx.BindBuffersRange(GL_SHADER_STORAGE_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("shader storage glBindBuffersRange size was not copied correctly");
+        }
+    }
+
+    glx.BindBuffersBase(GL_SHADER_STORAGE_BUFFER, 1, 3, marshalledBuffers);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindBuffersRange(GL_SHADER_STORAGE_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+        glx.DeleteBuffers(3, buffers);
+        return fail("shader storage glBindBuffersBase produced GL error " + std::to_string(err));
+    }
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)intBytes.data = -1;
+        glx.GetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 1 + i, (GLint*)intBytes.data);
+        if (*(GLint*)intBytes.data != (GLint)buffers[i]) {
+            glx.BindBuffersRange(GL_SHADER_STORAGE_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("shader storage glBindBuffersBase buffer binding was not copied correctly");
+        }
+    }
+
+    glx.BindBuffersRange(GL_SHADER_STORAGE_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+    glx.DeleteBuffers(3, buffers);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("shader storage bind buffers cleanup produced GL error " + std::to_string(err));
+    }
+
+    return pass("page-boundary shader storage glBindBuffersRange/Base state copied back");
+}
+
+static TestResult testBindAtomicCounterBuffersRangePageBoundary(TestContext&) {
+    if (!glx.BindBuffersBase || !glx.BindBuffersRange || !glx.GetIntegeri_v || !glx.GetInteger64i_v ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("atomic counter multi-bind entry points are unavailable");
+    }
+
+    GLint maxBindings = 0;
+    glGetIntegerv(GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS, &maxBindings);
+    if (maxBindings < 4) {
+        return skip("not enough atomic counter buffer bindings for multi-bind test");
+    }
+
+    PageBytes bufferBytes;
+    PageBytes offsetBytes;
+    PageBytes sizeBytes;
+    PageBytes intBytes;
+    PageBytes int64Bytes;
+    if (!bufferBytes.init(3 * sizeof(GLuint), 7) ||
+        !offsetBytes.init(3 * sizeof(GLintptr), 11) ||
+        !sizeBytes.init(3 * sizeof(GLsizeiptr), 13) ||
+        !intBytes.init(sizeof(GLint), 2) ||
+        !int64Bytes.init(sizeof(GLint64), 3)) {
+        return skip("VirtualAlloc failed for atomic counter bind buffers");
+    }
+
+    GLuint buffers[3] = {};
+    glx.GenBuffers(3, buffers);
+    GLuint* marshalledBuffers = (GLuint*)bufferBytes.data;
+    GLintptr* marshalledOffsets = (GLintptr*)offsetBytes.data;
+    GLsizeiptr* marshalledSizes = (GLsizeiptr*)sizeBytes.data;
+    for (int i = 0; i < 3; ++i) {
+        marshalledBuffers[i] = buffers[i];
+        marshalledOffsets[i] = 16 + i * 16;
+        marshalledSizes[i] = 32 + i * 16;
+        glx.BindBuffer(GL_ATOMIC_COUNTER_BUFFER, buffers[i]);
+        glx.BufferData(GL_ATOMIC_COUNTER_BUFFER, marshalledOffsets[i] + marshalledSizes[i], nullptr, GL_DYNAMIC_DRAW);
+    }
+    glx.BindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
+
+    glx.BindBuffersRange(GL_ATOMIC_COUNTER_BUFFER, 1, 3, marshalledBuffers, marshalledOffsets, marshalledSizes);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindBuffersRange(GL_ATOMIC_COUNTER_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+        glx.DeleteBuffers(3, buffers);
+        return fail("atomic counter glBindBuffersRange produced GL error " + std::to_string(err));
+    }
+
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)intBytes.data = -1;
+        glx.GetIntegeri_v(GL_ATOMIC_COUNTER_BUFFER_BINDING, 1 + i, (GLint*)intBytes.data);
+        if (*(GLint*)intBytes.data != (GLint)buffers[i]) {
+            glx.BindBuffersRange(GL_ATOMIC_COUNTER_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("atomic counter glBindBuffersRange buffer binding was not copied correctly");
+        }
+
+        *(GLint64*)int64Bytes.data = -1;
+        glx.GetInteger64i_v(GL_ATOMIC_COUNTER_BUFFER_START, 1 + i, (GLint64*)int64Bytes.data);
+        if (*(GLint64*)int64Bytes.data != marshalledOffsets[i]) {
+            glx.BindBuffersRange(GL_ATOMIC_COUNTER_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("atomic counter glBindBuffersRange offset was not copied correctly");
+        }
+
+        *(GLint64*)int64Bytes.data = -1;
+        glx.GetInteger64i_v(GL_ATOMIC_COUNTER_BUFFER_SIZE, 1 + i, (GLint64*)int64Bytes.data);
+        if (*(GLint64*)int64Bytes.data != marshalledSizes[i]) {
+            glx.BindBuffersRange(GL_ATOMIC_COUNTER_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("atomic counter glBindBuffersRange size was not copied correctly");
+        }
+    }
+
+    glx.BindBuffersBase(GL_ATOMIC_COUNTER_BUFFER, 1, 3, marshalledBuffers);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindBuffersRange(GL_ATOMIC_COUNTER_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+        glx.DeleteBuffers(3, buffers);
+        return fail("atomic counter glBindBuffersBase produced GL error " + std::to_string(err));
+    }
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)intBytes.data = -1;
+        glx.GetIntegeri_v(GL_ATOMIC_COUNTER_BUFFER_BINDING, 1 + i, (GLint*)intBytes.data);
+        if (*(GLint*)intBytes.data != (GLint)buffers[i]) {
+            glx.BindBuffersRange(GL_ATOMIC_COUNTER_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+            glx.DeleteBuffers(3, buffers);
+            return fail("atomic counter glBindBuffersBase buffer binding was not copied correctly");
+        }
+    }
+
+    glx.BindBuffersRange(GL_ATOMIC_COUNTER_BUFFER, 1, 3, nullptr, nullptr, nullptr);
+    glx.DeleteBuffers(3, buffers);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("atomic counter bind buffers cleanup produced GL error " + std::to_string(err));
+    }
+
+    return pass("page-boundary atomic counter glBindBuffersRange/Base state copied back");
+}
+
+static TestResult testProgramBinaryPageBoundary(TestContext&) {
+    if (!glx.ProgramParameteri || !glx.GetProgramBinary || !glx.ProgramBinary) {
+        return skip("program binary functions are not available");
+    }
+
+    GLint formatCount = 0;
+    glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS, &formatCount);
+    if (formatCount <= 0) {
+        return skip("driver reports no program binary formats");
+    }
+
+    const char* vs =
+        "#version 120\n"
+        "attribute vec2 a_pos;\n"
+        "varying vec4 v_color;\n"
+        "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); v_color = vec4(0.25, 0.5, 0.75, 1.0); }\n";
+    const char* fs =
+        "#version 120\n"
+        "varying vec4 v_color;\n"
+        "void main(){ gl_FragColor = v_color; }\n";
+
+    std::string error;
+    GLuint vertex = compileShader(GL_VERTEX_SHADER, { vs }, nullptr, error);
+    if (!vertex) {
+        return fail("program binary vertex shader failed: " + error);
+    }
+    GLuint fragment = compileShader(GL_FRAGMENT_SHADER, { fs }, nullptr, error);
+    if (!fragment) {
+        glx.DeleteShader(vertex);
+        return fail("program binary fragment shader failed: " + error);
+    }
+
+    GLuint program = glx.CreateProgram();
+    glx.ProgramParameteri(program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+    glx.AttachShader(program, vertex);
+    glx.AttachShader(program, fragment);
+    glx.LinkProgram(program);
+    glx.DeleteShader(vertex);
+    glx.DeleteShader(fragment);
+
+    GLint linked = 0;
+    glx.GetProgramiv(program, GL_LINK_STATUS, &linked);
+    if (!linked) {
+        error = programLog(program);
+        glx.DeleteProgram(program);
+        return fail("program binary source program link failed: " + error);
+    }
+
+    GLint binaryLength = 0;
+    glx.GetProgramiv(program, GL_PROGRAM_BINARY_LENGTH, &binaryLength);
+    if (binaryLength <= 0) {
+        glx.DeleteProgram(program);
+        return skip("driver did not expose a retrievable program binary");
+    }
+
+    PageBytes lengthBytes;
+    PageBytes formatBytes;
+    PageBytes binaryBytes;
+    if (!lengthBytes.init(sizeof(GLsizei), 2) ||
+        !formatBytes.init(sizeof(GLenum), 3) ||
+        !binaryBytes.init((size_t)binaryLength, 29)) {
+        glx.DeleteProgram(program);
+        return skip("VirtualAlloc failed for program binary buffers");
+    }
+
+    GLsizei* written = reinterpret_cast<GLsizei*>(lengthBytes.data);
+    GLenum* format = reinterpret_cast<GLenum*>(formatBytes.data);
+    *written = -1;
+    *format = 0;
+    glx.GetProgramBinary(program, binaryLength, written, format, binaryBytes.data);
+    GLenum err = glGetError();
+    glx.DeleteProgram(program);
+    if (err != GL_NO_ERROR) {
+        return fail("glGetProgramBinary produced GL error " + std::to_string(err));
+    }
+    if (*written <= 0 || *written > binaryLength || *format == 0) {
+        return fail("glGetProgramBinary did not copy back a valid binary");
+    }
+
+    GLuint restored = glx.CreateProgram();
+    glx.ProgramBinary(restored, *format, binaryBytes.data, *written);
+    glx.GetProgramiv(restored, GL_LINK_STATUS, &linked);
+    err = glGetError();
+    glx.DeleteProgram(restored);
+    if (err != GL_NO_ERROR) {
+        return fail("glProgramBinary produced GL error " + std::to_string(err));
+    }
+    if (!linked) {
+        return fail("program loaded from binary did not link");
+    }
+
+    return pass("page-boundary program binary round-trip matched");
+}
+
+static TestResult testUniformGetters(TestContext&) {
+    if (!glx.Uniform1f || !glx.Uniform4fv || !glx.UniformMatrix4fv || !glx.Uniform1i) {
+        return skip("uniform setter entry points are unavailable");
+    }
+
+    std::string error;
+    GLuint program = makeProgram(error);
+    if (!program) {
+        return fail("program build failed: " + error);
+    }
+    glx.UseProgram(program);
+
+    GLint scalarLoc = glx.GetUniformLocation(program, "u_scalar");
+    GLint vecLoc = glx.GetUniformLocation(program, "u_vec");
+    GLint matLoc = glx.GetUniformLocation(program, "u_mat");
+    GLint intLoc = glx.GetUniformLocation(program, "u_int");
+    if (scalarLoc < 0 || vecLoc < 0 || matLoc < 0 || intLoc < 0) {
+        glx.DeleteProgram(program);
+        return fail("one or more expected uniforms were optimized out");
+    }
+
+    GLfloat vec[4] = { 1.0f, 2.0f, 3.0f, 4.0f };
+    GLfloat mat[16] = {
+        10.0f, 11.0f, 12.0f, 13.0f,
+        20.0f, 21.0f, 22.0f, 23.0f,
+        30.0f, 31.0f, 32.0f, 33.0f,
+        40.0f, 41.0f, 42.0f, 43.0f
+    };
+    glx.Uniform1f(scalarLoc, 7.5f);
+    glx.Uniform4fv(vecLoc, 1, vec);
+    glx.UniformMatrix4fv(matLoc, 1, GL_FALSE, mat);
+    glx.Uniform1i(intLoc, 17);
+
+    GLfloat outScalar[1] = {};
+    GLfloat outVec[4] = {};
+    GLfloat outMat[16] = {};
+    GLint outInt[1] = {};
+    glx.GetUniformfv(program, scalarLoc, outScalar);
+    glx.GetUniformfv(program, vecLoc, outVec);
+    glx.GetUniformfv(program, matLoc, outMat);
+    glx.GetUniformiv(program, intLoc, outInt);
+
+    glx.DeleteProgram(program);
+    if (!nearlyEqual(outScalar[0], 7.5f)) {
+        return fail("scalar uniform mismatch");
+    }
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outVec[i], vec[i])) {
+            return fail("vec4 uniform mismatch");
+        }
+    }
+    for (int i = 0; i < 16; i++) {
+        if (!nearlyEqual(outMat[i], mat[i])) {
+            return fail("mat4 uniform mismatch at element " + std::to_string(i));
+        }
+    }
+    if (outInt[0] != 17) {
+        return fail("int uniform mismatch");
+    }
+    return pass("uniform getter values matched");
+}
+
+static GLuint makeUniformArrayProgram(std::string& error) {
+    std::vector<const char*> vsParts = {
+        "#version 120\n",
+        "attribute vec2 a_pos;\n",
+        "uniform vec4 u_arr[2];\n",
+        "varying vec4 v_color;\n",
+        "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); v_color = u_arr[0] + u_arr[1]; }\n"
+    };
+    std::vector<const char*> fsParts = {
+        "#version 120\n",
+        "varying vec4 v_color;\n",
+        "void main(){ gl_FragColor = v_color; }\n"
+    };
+
+    GLuint vs = compileShader(GL_VERTEX_SHADER, vsParts, nullptr, error);
+    if (!vs) {
+        return 0;
+    }
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsParts, nullptr, error);
+    if (!fs) {
+        glx.DeleteShader(vs);
+        return 0;
+    }
+
+    GLuint program = glx.CreateProgram();
+    glx.AttachShader(program, vs);
+    glx.AttachShader(program, fs);
+    glx.LinkProgram(program);
+    glx.DeleteShader(vs);
+    glx.DeleteShader(fs);
+
+    GLint ok = 0;
+    glx.GetProgramiv(program, GL_LINK_STATUS, &ok);
+    if (!ok) {
+        error = programLog(program);
+        glx.DeleteProgram(program);
+        return 0;
+    }
+    return program;
+}
+
+static TestResult testUniformArrayGetters(TestContext&) {
+    if (!glx.Uniform4fv) {
+        return skip("glUniform4fv is unavailable");
+    }
+
+    std::string error;
+    GLuint program = makeUniformArrayProgram(error);
+    if (!program) {
+        return fail("uniform array program build failed: " + error);
+    }
+    glx.UseProgram(program);
+
+    GLint loc0 = glx.GetUniformLocation(program, "u_arr[0]");
+    GLint loc1 = glx.GetUniformLocation(program, "u_arr[1]");
+    if (loc0 < 0 || loc1 < 0) {
+        glx.DeleteProgram(program);
+        return fail("uniform array locations were not available");
+    }
+
+    GLfloat values[8] = {
+        1.0f, 2.0f, 3.0f, 4.0f,
+        5.0f, 6.0f, 7.0f, 8.0f
+    };
+    glx.Uniform4fv(loc0, 2, values);
+
+    GLfloat out0[4] = {};
+    GLfloat out1[4] = {};
+    glx.GetUniformfv(program, loc0, out0);
+    glx.GetUniformfv(program, loc1, out1);
+    glx.DeleteProgram(program);
+
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(out0[i], values[i])) {
+            return fail("u_arr[0] mismatch at element " + std::to_string(i));
+        }
+        if (!nearlyEqual(out1[i], values[i + 4])) {
+            return fail("u_arr[1] mismatch at element " + std::to_string(i));
+        }
+    }
+    return pass("uniform array elements matched");
+}
+
+static GLuint makeUniformMatrixShapeProgram(std::string& error) {
+    std::vector<const char*> vsParts = {
+        "#version 120\n",
+        "attribute vec2 a_pos;\n",
+        "uniform mat2 u_m2;\n",
+        "uniform mat3 u_m3;\n",
+        "varying vec4 v_color;\n",
+        "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); v_color = vec4(u_m2[0][0], u_m2[1][1], u_m3[2][2], 1.0); }\n"
+    };
+    std::vector<const char*> fsParts = {
+        "#version 120\n",
+        "varying vec4 v_color;\n",
+        "void main(){ gl_FragColor = v_color; }\n"
+    };
+
+    GLuint vs = compileShader(GL_VERTEX_SHADER, vsParts, nullptr, error);
+    if (!vs) {
+        return 0;
+    }
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsParts, nullptr, error);
+    if (!fs) {
+        glx.DeleteShader(vs);
+        return 0;
+    }
+
+    GLuint program = glx.CreateProgram();
+    glx.AttachShader(program, vs);
+    glx.AttachShader(program, fs);
+    glx.LinkProgram(program);
+    glx.DeleteShader(vs);
+    glx.DeleteShader(fs);
+
+    GLint ok = 0;
+    glx.GetProgramiv(program, GL_LINK_STATUS, &ok);
+    if (!ok) {
+        error = programLog(program);
+        glx.DeleteProgram(program);
+        return 0;
+    }
+    return program;
+}
+
+static TestResult testUniformMatrixShapeGetters(TestContext&) {
+    if (!glx.UniformMatrix2fv || !glx.UniformMatrix3fv) {
+        return skip("mat2/mat3 uniform setter entry points are unavailable");
+    }
+
+    std::string error;
+    GLuint program = makeUniformMatrixShapeProgram(error);
+    if (!program) {
+        return fail("uniform matrix shape program build failed: " + error);
+    }
+    glx.UseProgram(program);
+
+    GLint m2Loc = glx.GetUniformLocation(program, "u_m2");
+    GLint m3Loc = glx.GetUniformLocation(program, "u_m3");
+    if (m2Loc < 0 || m3Loc < 0) {
+        glx.DeleteProgram(program);
+        return fail("matrix uniforms were not available");
+    }
+
+    GLfloat m2[4] = {
+        1.0f, 2.0f,
+        3.0f, 4.0f
+    };
+    GLfloat m3[9] = {
+        10.0f, 11.0f, 12.0f,
+        20.0f, 21.0f, 22.0f,
+        30.0f, 31.0f, 32.0f
+    };
+    GLfloat out2[4] = {};
+    GLfloat out3[9] = {};
+    glx.UniformMatrix2fv(m2Loc, 1, GL_FALSE, m2);
+    glx.UniformMatrix3fv(m3Loc, 1, GL_FALSE, m3);
+    glx.GetUniformfv(program, m2Loc, out2);
+    glx.GetUniformfv(program, m3Loc, out3);
+    glx.DeleteProgram(program);
+
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(out2[i], m2[i])) {
+            return fail("mat2 uniform mismatch at element " + std::to_string(i));
+        }
+    }
+    for (int i = 0; i < 9; i++) {
+        if (!nearlyEqual(out3[i], m3[i])) {
+            return fail("mat3 uniform mismatch at element " + std::to_string(i));
+        }
+    }
+    return pass("mat2 and mat3 uniform getter values matched");
+}
+
+static bool rgbaEquals(const unsigned char* p, unsigned char r, unsigned char g, unsigned char b, unsigned char a = 255) {
+    return p[0] == r && p[1] == g && p[2] == b && p[3] == a;
+}
+
+static bool rgbaEquals(const unsigned char* p, const unsigned char* expected) {
+    return rgbaEquals(p, expected[0], expected[1], expected[2], expected[3]);
+}
+
+static TestResult testTexturePageBoundaryUploadReadback(TestContext&) {
+    PageBytes upload;
+    PageBytes readback;
+    if (!upload.init(16, 8) || !readback.init(16, 12)) {
+        return skip("VirtualAlloc failed for page-boundary texture buffers");
+    }
+
+    const unsigned char pixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        0, 0, 255, 255,
+        255, 255, 255, 255
+    };
+    std::memcpy(upload.data, pixels, sizeof(pixels));
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    glDeleteTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (err != GL_NO_ERROR) {
+        return fail("texture upload/readback produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(readback.data, pixels, sizeof(pixels)) != 0) {
+        return fail("texture upload/readback bytes did not match");
+    }
+    return pass("page-boundary texture upload/readback matched");
+}
+
+static TestResult testTextureSubImagePageBoundary(TestContext&) {
+    PageBytes subimage;
+    PageBytes readback;
+    if (!subimage.init(4, 2) || !readback.init(16, 10)) {
+        return skip("VirtualAlloc failed for page-boundary texture subimage buffers");
+    }
+
+    subimage.data[0] = 9;
+    subimage.data[1] = 200;
+    subimage.data[2] = 30;
+    subimage.data[3] = 255;
+
+    unsigned char zero[16] = {};
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 1, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, subimage.data);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    glDeleteTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (err != GL_NO_ERROR) {
+        return fail("texture subimage produced GL error " + std::to_string(err));
+    }
+    if (!rgbaEquals(readback.data + 4, 9, 200, 30)) {
+        return fail("texture subimage target pixel did not match");
+    }
+    return pass("page-boundary texture subimage matched");
+}
+
+static TestResult testTextureSubImage2DPBOOffset(TestContext&) {
+    if (!glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("PBO upload buffer entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(3 * 2 * 4, 19)) {
+        return skip("VirtualAlloc failed for 2D texture PBO subimage readback buffer");
+    }
+
+    const unsigned char zero[3 * 2 * 4] = {};
+    const unsigned char subPixels[2 * 4] = {
+        31, 62, 93, 255,
+        124, 155, 186, 255
+    };
+    const GLsizeiptr pboOffset = 40;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(subPixels) + 12, 0xC3);
+    std::memcpy(pboData.data() + pboOffset, subPixels, sizeof(subPixels));
+
+    GLuint pbo = 0;
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 1, 1, 2, 1, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("2D texture PBO subimage produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("2D texture PBO subimage readback produced GL error " + std::to_string(readErr));
+    }
+    if (!rgbaEquals(readback.data, 0, 0, 0, 0) ||
+        !rgbaEquals(readback.data + 4, 0, 0, 0, 0) ||
+        !rgbaEquals(readback.data + 8, 0, 0, 0, 0) ||
+        !rgbaEquals(readback.data + 12, 0, 0, 0, 0) ||
+        !rgbaEquals(readback.data + 16, subPixels) ||
+        !rgbaEquals(readback.data + 20, subPixels + 4)) {
+        return fail("2D texture PBO offset subimage pixels did not match");
+    }
+    return pass("PBO offset 2D texture subimage matched");
+}
+
+static TestResult testTextureImage2DEXTPBOOffset(TestContext&) {
+    if (!glx.TextureImage2DEXT || !glx.GenBuffers || !glx.BindBuffer ||
+        !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("EXT DSA 2D texture/PBO entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(2 * 2 * 4, 24)) {
+        return skip("VirtualAlloc failed for EXT DSA 2D PBO image readback buffer");
+    }
+
+    const unsigned char pixels[2 * 2 * 4] = {
+        211, 23, 71, 255,
+        43, 191, 97, 255,
+        89, 109, 229, 255,
+        157, 61, 139, 255
+    };
+
+    const GLsizeiptr pboOffset = 52;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(pixels) + 8, 0xE3);
+    std::memcpy(pboData.data() + pboOffset, pixels, sizeof(pixels));
+
+    GLuint tex = 0;
+    GLuint pbo = 0;
+    glGenTextures(1, &tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glx.TextureImage2DEXT(tex, GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("EXT DSA 2D PBO image upload produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("EXT DSA 2D PBO image readback produced GL error " + std::to_string(readErr));
+    }
+    if (std::memcmp(readback.data, pixels, sizeof(pixels)) != 0) {
+        return fail("EXT DSA 2D PBO offset image bytes did not match");
+    }
+    return pass("PBO offset EXT DSA 2D texture image upload matched");
+}
+
+static TestResult testMultiTexImage2DEXTPBOOffset(TestContext&) {
+    if (!glx.ActiveTexture || !glx.MultiTexImage2DEXT || !glx.GenBuffers || !glx.BindBuffer ||
+        !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("EXT multi-texture 2D texture/PBO entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(2 * 2 * 4, 25)) {
+        return skip("VirtualAlloc failed for EXT multi-texture 2D PBO image readback buffer");
+    }
+
+    const unsigned char pixels[2 * 2 * 4] = {
+        29, 173, 211, 255,
+        241, 53, 83, 255,
+        101, 217, 47, 255,
+        151, 97, 197, 255
+    };
+
+    const GLsizeiptr pboOffset = 60;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(pixels) + 8, 0xF4);
+    std::memcpy(pboData.data() + pboOffset, pixels, sizeof(pixels));
+
+    GLuint tex = 0;
+    GLuint pbo = 0;
+    glGenTextures(1, &tex);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glx.MultiTexImage2DEXT(GL_TEXTURE0, GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("EXT multi-texture 2D PBO image upload produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("EXT multi-texture 2D PBO image readback produced GL error " + std::to_string(readErr));
+    }
+    if (std::memcmp(readback.data, pixels, sizeof(pixels)) != 0) {
+        return fail("EXT multi-texture 2D PBO offset image bytes did not match");
+    }
+    return pass("PBO offset EXT multi-texture 2D texture image upload matched");
+}
+
+static TestResult testDSATextureSubImage2DPageBoundary(TestContext&) {
+    if (!glx.TextureSubImage2D) {
+        return skip("glTextureSubImage2D is unavailable");
+    }
+
+    PageBytes subimage;
+    PageBytes readback;
+    if (!subimage.init(4, 3) || !readback.init(16, 12)) {
+        return skip("VirtualAlloc failed for DSA texture subimage buffers");
+    }
+    subimage.data[0] = 77;
+    subimage.data[1] = 88;
+    subimage.data[2] = 199;
+    subimage.data[3] = 255;
+
+    unsigned char zero[16] = {};
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.TextureSubImage2D(tex, 0, 0, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, subimage.data);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("DSA texture subimage produced GL error " + std::to_string(err));
+    }
+    if (!rgbaEquals(readback.data + 8, 77, 88, 199)) {
+        return fail("DSA texture subimage target pixel did not match");
+    }
+    return pass("page-boundary DSA texture subimage matched");
+}
+
+static TestResult testEXTTextureSubImage2DPageBoundary(TestContext&) {
+    if (!glx.TextureSubImage2DEXT) {
+        return skip("glTextureSubImage2DEXT is unavailable");
+    }
+
+    PageBytes subimage;
+    PageBytes readback;
+    if (!subimage.init(4, 2) || !readback.init(16, 10)) {
+        return skip("VirtualAlloc failed for EXT texture subimage buffers");
+    }
+    subimage.data[0] = 111;
+    subimage.data[1] = 33;
+    subimage.data[2] = 144;
+    subimage.data[3] = 255;
+
+    unsigned char zero[16] = {};
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.TextureSubImage2DEXT(tex, GL_TEXTURE_2D, 0, 1, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, subimage.data);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("EXT texture subimage produced GL error " + std::to_string(err));
+    }
+    if (!rgbaEquals(readback.data + 12, 111, 33, 144)) {
+        return fail("EXT texture subimage target pixel did not match");
+    }
+    return pass("page-boundary EXT texture subimage matched");
+}
+
+static TestResult testTexture1DPageBoundaryReadback(TestContext&) {
+    PageBytes upload;
+    PageBytes readback;
+    if (!upload.init(4 * 4, 9) || !readback.init(4 * 4, 11)) {
+        return skip("VirtualAlloc failed for page-boundary 1D texture buffers");
+    }
+
+    const unsigned char pixels[16] = {
+        5, 15, 25, 255,
+        35, 45, 55, 255,
+        65, 75, 85, 255,
+        95, 105, 115, 255
+    };
+    std::memcpy(upload.data, pixels, sizeof(pixels));
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_1D, tex);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+    glGetTexImage(GL_TEXTURE_1D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_1D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("1D texture readback produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(readback.data, pixels, sizeof(pixels)) != 0) {
+        return fail("1D texture readback bytes did not match");
+    }
+    return pass("page-boundary 1D texture readback matched");
+}
+
+static TestResult testTextureSubImage1DPageBoundary(TestContext&) {
+    PageBytes subimage;
+    PageBytes readback;
+    if (!subimage.init(2 * 4, 5) || !readback.init(6 * 4, 17)) {
+        return skip("VirtualAlloc failed for 1D texture subimage buffers");
+    }
+
+    const unsigned char subPixels[8] = {
+        21, 42, 63, 255,
+        84, 105, 126, 255
+    };
+    std::memcpy(subimage.data, subPixels, sizeof(subPixels));
+
+    unsigned char zero[6 * 4] = {};
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_1D, tex);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 6, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
+    glTexSubImage1D(GL_TEXTURE_1D, 0, 1, 2, GL_RGBA, GL_UNSIGNED_BYTE, subimage.data);
+    glGetTexImage(GL_TEXTURE_1D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        glBindTexture(GL_TEXTURE_1D, 0);
+        glDeleteTextures(1, &tex);
+        return fail("1D texture subimage produced GL error " + std::to_string(err));
+    }
+    if (!rgbaEquals(readback.data + 4, subPixels) ||
+        !rgbaEquals(readback.data + 8, subPixels + 4)) {
+        glBindTexture(GL_TEXTURE_1D, 0);
+        glDeleteTextures(1, &tex);
+        return fail("1D texture page-boundary subimage pixels did not match");
+    }
+
+    if (glx.GenBuffers && glx.BindBuffer && glx.BufferData && glx.DeleteBuffers) {
+        const GLsizeiptr pboOffset = 48;
+        std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(subPixels) + 8, 0xA5);
+        const unsigned char pboPixels[8] = {
+            132, 17, 33, 255,
+            44, 155, 66, 255
+        };
+        std::memcpy(pboData.data() + pboOffset, pboPixels, sizeof(pboPixels));
+
+        GLuint pbo = 0;
+        glx.GenBuffers(1, &pbo);
+        glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+        glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+        glTexSubImage1D(GL_TEXTURE_1D, 0, 3, 2, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+        err = glGetError();
+        glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        glGetTexImage(GL_TEXTURE_1D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+        GLenum readErr = glGetError();
+        glx.DeleteBuffers(1, &pbo);
+
+        if (err != GL_NO_ERROR) {
+            glBindTexture(GL_TEXTURE_1D, 0);
+            glDeleteTextures(1, &tex);
+            return fail("1D texture PBO subimage produced GL error " + std::to_string(err));
+        }
+        if (readErr != GL_NO_ERROR) {
+            glBindTexture(GL_TEXTURE_1D, 0);
+            glDeleteTextures(1, &tex);
+            return fail("1D texture PBO subimage readback produced GL error " + std::to_string(readErr));
+        }
+        if (!rgbaEquals(readback.data + 12, pboPixels) ||
+            !rgbaEquals(readback.data + 16, pboPixels + 4)) {
+            glBindTexture(GL_TEXTURE_1D, 0);
+            glDeleteTextures(1, &tex);
+            return fail("1D texture PBO offset subimage pixels did not match");
+        }
+    }
+
+    glBindTexture(GL_TEXTURE_1D, 0);
+    glDeleteTextures(1, &tex);
+    return pass("page-boundary and PBO 1D texture subimages matched");
+}
+
+static TestResult testTextureImage1DEXTPBOOffset(TestContext&) {
+    if (!glx.TextureImage1DEXT || !glx.GenBuffers || !glx.BindBuffer ||
+        !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("EXT DSA 1D texture/PBO entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(4 * 4, 26)) {
+        return skip("VirtualAlloc failed for EXT DSA 1D PBO image readback buffer");
+    }
+
+    const unsigned char pixels[4 * 4] = {
+        239, 41, 101, 255,
+        67, 199, 149, 255,
+        113, 79, 223, 255,
+        181, 137, 31, 255
+    };
+
+    const GLsizeiptr pboOffset = 44;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(pixels) + 8, 0xA6);
+    std::memcpy(pboData.data() + pboOffset, pixels, sizeof(pixels));
+
+    GLuint tex = 0;
+    GLuint pbo = 0;
+    glGenTextures(1, &tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glx.TextureImage1DEXT(tex, GL_TEXTURE_1D, 0, GL_RGBA, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glBindTexture(GL_TEXTURE_1D, tex);
+    glGetTexImage(GL_TEXTURE_1D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_1D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("EXT DSA 1D PBO image upload produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("EXT DSA 1D PBO image readback produced GL error " + std::to_string(readErr));
+    }
+    if (std::memcmp(readback.data, pixels, sizeof(pixels)) != 0) {
+        return fail("EXT DSA 1D PBO offset image bytes did not match");
+    }
+    return pass("PBO offset EXT DSA 1D texture image upload matched");
+}
+
+static TestResult testMultiTexImage1DEXTPBOOffset(TestContext&) {
+    if (!glx.ActiveTexture || !glx.MultiTexImage1DEXT || !glx.GenBuffers || !glx.BindBuffer ||
+        !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("EXT multi-texture 1D texture/PBO entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(4 * 4, 27)) {
+        return skip("VirtualAlloc failed for EXT multi-texture 1D PBO image readback buffer");
+    }
+
+    const unsigned char pixels[4 * 4] = {
+        17, 211, 59, 255,
+        83, 37, 193, 255,
+        149, 229, 107, 255,
+        221, 127, 43, 255
+    };
+
+    const GLsizeiptr pboOffset = 56;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(pixels) + 8, 0xB7);
+    std::memcpy(pboData.data() + pboOffset, pixels, sizeof(pixels));
+
+    GLuint tex = 0;
+    GLuint pbo = 0;
+    glGenTextures(1, &tex);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_1D, tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glx.MultiTexImage1DEXT(GL_TEXTURE0, GL_TEXTURE_1D, 0, GL_RGBA, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glGetTexImage(GL_TEXTURE_1D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_1D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("EXT multi-texture 1D PBO image upload produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("EXT multi-texture 1D PBO image readback produced GL error " + std::to_string(readErr));
+    }
+    if (std::memcmp(readback.data, pixels, sizeof(pixels)) != 0) {
+        return fail("EXT multi-texture 1D PBO offset image bytes did not match");
+    }
+    return pass("PBO offset EXT multi-texture 1D texture image upload matched");
+}
+
+static TestResult testTexture3DPageBoundary(TestContext&) {
+    if (!glx.TexImage3D || !glx.TexSubImage3D) {
+        return skip("3D texture entry points are unavailable");
+    }
+
+    PageBytes upload;
+    PageBytes subimage;
+    PageBytes readback;
+    if (!upload.init(2 * 2 * 2 * 4, 20) ||
+        !subimage.init(4, 3) ||
+        !readback.init(2 * 2 * 2 * 4, 24)) {
+        return skip("VirtualAlloc failed for page-boundary 3D texture buffers");
+    }
+
+    for (int i = 0; i < 8; i++) {
+        upload.data[i * 4 + 0] = (unsigned char)(10 + i * 20);
+        upload.data[i * 4 + 1] = (unsigned char)(200 - i * 13);
+        upload.data[i * 4 + 2] = (unsigned char)(30 + i * 7);
+        upload.data[i * 4 + 3] = 255;
+    }
+    subimage.data[0] = 123;
+    subimage.data[1] = 45;
+    subimage.data[2] = 67;
+    subimage.data[3] = 255;
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.TexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, 2, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+    glGetTexImage(GL_TEXTURE_3D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    if (err == GL_NO_ERROR && std::memcmp(readback.data, upload.data, upload.size) != 0) {
+        err = 0xFFFFFFFFu;
+    }
+
+    glx.TexSubImage3D(GL_TEXTURE_3D, 0, 1, 1, 1, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, subimage.data);
+    glGetTexImage(GL_TEXTURE_3D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum subErr = glGetError();
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err == 0xFFFFFFFFu) {
+        return fail("3D texture upload/readback bytes did not match");
+    }
+    if (err != GL_NO_ERROR) {
+        return fail("3D texture upload/readback produced GL error " + std::to_string(err));
+    }
+    if (subErr != GL_NO_ERROR) {
+        return fail("3D texture subimage produced GL error " + std::to_string(subErr));
+    }
+    const size_t targetOffset = ((1 * 2 + 1) * 2 + 1) * 4;
+    if (!rgbaEquals(readback.data + targetOffset, 123, 45, 67)) {
+        return fail("3D texture subimage target pixel did not match");
+    }
+    return pass("page-boundary 3D texture upload/subimage/readback matched");
+}
+
+static TestResult testTextureImage3DPBOOffset(TestContext&) {
+    if (!glx.TexImage3D || !glx.GenBuffers || !glx.BindBuffer ||
+        !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("3D texture/PBO entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(2 * 2 * 2 * 4, 18)) {
+        return skip("VirtualAlloc failed for 3D texture PBO image readback buffer");
+    }
+
+    unsigned char pixels[2 * 2 * 2 * 4] = {};
+    for (int i = 0; i < 8; i++) {
+        pixels[i * 4 + 0] = (unsigned char)(11 + i * 23);
+        pixels[i * 4 + 1] = (unsigned char)(210 - i * 17);
+        pixels[i * 4 + 2] = (unsigned char)(39 + i * 13);
+        pixels[i * 4 + 3] = 255;
+    }
+
+    const GLsizeiptr pboOffset = 72;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(pixels) + 8, 0xA9);
+    std::memcpy(pboData.data() + pboOffset, pixels, sizeof(pixels));
+
+    GLuint tex = 0;
+    GLuint pbo = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glx.TexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, 2, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glGetTexImage(GL_TEXTURE_3D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("3D texture PBO image upload produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("3D texture PBO image readback produced GL error " + std::to_string(readErr));
+    }
+    if (std::memcmp(readback.data, pixels, sizeof(pixels)) != 0) {
+        return fail("3D texture PBO offset image bytes did not match");
+    }
+    return pass("PBO offset 3D texture image upload matched");
+}
+
+static TestResult testEXTTextureImage3DPBOOffset(TestContext&) {
+    if (!glx.TexImage3DEXT || !glx.GenBuffers || !glx.BindBuffer ||
+        !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("EXT 3D texture/PBO entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(2 * 2 * 2 * 4, 20)) {
+        return skip("VirtualAlloc failed for EXT 3D texture PBO image readback buffer");
+    }
+
+    unsigned char pixels[2 * 2 * 2 * 4] = {};
+    for (int i = 0; i < 8; i++) {
+        pixels[i * 4 + 0] = (unsigned char)(201 - i * 19);
+        pixels[i * 4 + 1] = (unsigned char)(31 + i * 21);
+        pixels[i * 4 + 2] = (unsigned char)(90 + i * 11);
+        pixels[i * 4 + 3] = 255;
+    }
+
+    const GLsizeiptr pboOffset = 76;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(pixels) + 8, 0xB4);
+    std::memcpy(pboData.data() + pboOffset, pixels, sizeof(pixels));
+
+    GLuint tex = 0;
+    GLuint pbo = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glx.TexImage3DEXT(GL_TEXTURE_3D, 0, GL_RGBA, 2, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glGetTexImage(GL_TEXTURE_3D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("EXT 3D texture PBO image upload produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("EXT 3D texture PBO image readback produced GL error " + std::to_string(readErr));
+    }
+    if (std::memcmp(readback.data, pixels, sizeof(pixels)) != 0) {
+        return fail("EXT 3D texture PBO offset image bytes did not match");
+    }
+    return pass("PBO offset EXT 3D texture image upload matched");
+}
+
+static TestResult testMultiTexImage3DEXTPBOOffset(TestContext&) {
+    if (!glx.ActiveTexture || !glx.MultiTexImage3DEXT || !glx.GenBuffers || !glx.BindBuffer ||
+        !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("EXT multi-texture 3D texture/PBO entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(2 * 2 * 2 * 4, 22)) {
+        return skip("VirtualAlloc failed for EXT multi-texture 3D PBO image readback buffer");
+    }
+
+    unsigned char pixels[2 * 2 * 2 * 4] = {};
+    for (int i = 0; i < 8; i++) {
+        pixels[i * 4 + 0] = (unsigned char)(17 + i * 27);
+        pixels[i * 4 + 1] = (unsigned char)(197 - i * 15);
+        pixels[i * 4 + 2] = (unsigned char)(63 + i * 19);
+        pixels[i * 4 + 3] = 255;
+    }
+
+    const GLsizeiptr pboOffset = 84;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(pixels) + 8, 0xC1);
+    std::memcpy(pboData.data() + pboOffset, pixels, sizeof(pixels));
+
+    GLuint tex = 0;
+    GLuint pbo = 0;
+    glGenTextures(1, &tex);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glx.MultiTexImage3DEXT(GL_TEXTURE0, GL_TEXTURE_3D, 0, GL_RGBA, 2, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glGetTexImage(GL_TEXTURE_3D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("EXT multi-texture 3D PBO image upload produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("EXT multi-texture 3D PBO image readback produced GL error " + std::to_string(readErr));
+    }
+    if (std::memcmp(readback.data, pixels, sizeof(pixels)) != 0) {
+        return fail("EXT multi-texture 3D PBO offset image bytes did not match");
+    }
+    return pass("PBO offset EXT multi-texture 3D texture image upload matched");
+}
+
+static TestResult testTextureImage3DEXTPBOOffset(TestContext&) {
+    if (!glx.TextureImage3DEXT || !glx.GenBuffers || !glx.BindBuffer ||
+        !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("EXT DSA 3D texture/PBO entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(2 * 2 * 2 * 4, 23)) {
+        return skip("VirtualAlloc failed for EXT DSA 3D PBO image readback buffer");
+    }
+
+    unsigned char pixels[2 * 2 * 2 * 4] = {};
+    for (int i = 0; i < 8; i++) {
+        pixels[i * 4 + 0] = (unsigned char)(229 - i * 22);
+        pixels[i * 4 + 1] = (unsigned char)(13 + i * 29);
+        pixels[i * 4 + 2] = (unsigned char)(41 + i * 17);
+        pixels[i * 4 + 3] = 255;
+    }
+
+    const GLsizeiptr pboOffset = 92;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(pixels) + 8, 0xD2);
+    std::memcpy(pboData.data() + pboOffset, pixels, sizeof(pixels));
+
+    GLuint tex = 0;
+    GLuint pbo = 0;
+    glGenTextures(1, &tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glx.TextureImage3DEXT(tex, GL_TEXTURE_3D, 0, GL_RGBA, 2, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glGetTexImage(GL_TEXTURE_3D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("EXT DSA 3D PBO image upload produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("EXT DSA 3D PBO image readback produced GL error " + std::to_string(readErr));
+    }
+    if (std::memcmp(readback.data, pixels, sizeof(pixels)) != 0) {
+        return fail("EXT DSA 3D PBO offset image bytes did not match");
+    }
+    return pass("PBO offset EXT DSA 3D texture image upload matched");
+}
+
+static TestResult testTextureSubImage3DPBOOffset(TestContext&) {
+    if (!glx.TexImage3D || !glx.TexSubImage3D ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("3D texture/PBO entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(2 * 2 * 2 * 4, 21)) {
+        return skip("VirtualAlloc failed for 3D texture PBO subimage readback buffer");
+    }
+
+    const unsigned char zero[2 * 2 * 2 * 4] = {};
+    const unsigned char subPixel[4] = { 201, 77, 19, 255 };
+    const GLsizeiptr pboOffset = 56;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(subPixel) + 8, 0x6B);
+    std::memcpy(pboData.data() + pboOffset, subPixel, sizeof(subPixel));
+
+    GLuint tex = 0;
+    GLuint pbo = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.TexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, 2, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glx.TexSubImage3D(GL_TEXTURE_3D, 0, 1, 0, 1, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glGetTexImage(GL_TEXTURE_3D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("3D texture PBO subimage produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("3D texture PBO subimage readback produced GL error " + std::to_string(readErr));
+    }
+    const size_t targetOffset = ((1 * 2 + 0) * 2 + 1) * 4;
+    for (size_t i = 0; i < readback.size; i += 4) {
+        if (i == targetOffset) {
+            if (!rgbaEquals(readback.data + i, subPixel)) {
+                return fail("3D texture PBO offset subimage target pixel did not match");
+            }
+        } else if (!rgbaEquals(readback.data + i, 0, 0, 0, 0)) {
+            return fail("3D texture PBO offset subimage changed an unexpected pixel");
+        }
+    }
+    return pass("PBO offset 3D texture subimage matched");
+}
+
+static TestResult testEXTTextureSubImage3DPBOOffset(TestContext&) {
+    if (!glx.TexImage3D || !glx.TexSubImage3DEXT ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("EXT 3D texture/PBO entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(2 * 2 * 2 * 4, 23)) {
+        return skip("VirtualAlloc failed for EXT 3D texture PBO subimage readback buffer");
+    }
+
+    const unsigned char zero[2 * 2 * 2 * 4] = {};
+    const unsigned char subPixel[4] = { 39, 211, 85, 255 };
+    const GLsizeiptr pboOffset = 60;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(subPixel) + 8, 0x4D);
+    std::memcpy(pboData.data() + pboOffset, subPixel, sizeof(subPixel));
+
+    GLuint tex = 0;
+    GLuint pbo = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.TexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, 2, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glx.TexSubImage3DEXT(GL_TEXTURE_3D, 0, 0, 1, 1, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glGetTexImage(GL_TEXTURE_3D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("EXT 3D texture PBO subimage produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("EXT 3D texture PBO subimage readback produced GL error " + std::to_string(readErr));
+    }
+    const size_t targetOffset = ((1 * 2 + 1) * 2 + 0) * 4;
+    for (size_t i = 0; i < readback.size; i += 4) {
+        if (i == targetOffset) {
+            if (!rgbaEquals(readback.data + i, subPixel)) {
+                return fail("EXT 3D texture PBO offset subimage target pixel did not match");
+            }
+        } else if (!rgbaEquals(readback.data + i, 0, 0, 0, 0)) {
+            return fail("EXT 3D texture PBO offset subimage changed an unexpected pixel");
+        }
+    }
+    return pass("PBO offset EXT 3D texture subimage matched");
+}
+
+static TestResult testDSATextureSubImage3DPBOOffset(TestContext&) {
+    if (!glx.TexImage3D || !glx.TextureSubImage3D ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("DSA 3D texture/PBO entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(2 * 2 * 2 * 4, 25)) {
+        return skip("VirtualAlloc failed for DSA 3D texture PBO subimage readback buffer");
+    }
+
+    const unsigned char zero[2 * 2 * 2 * 4] = {};
+    const unsigned char subPixel[4] = { 15, 91, 233, 255 };
+    const GLsizeiptr pboOffset = 64;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(subPixel) + 8, 0x37);
+    std::memcpy(pboData.data() + pboOffset, subPixel, sizeof(subPixel));
+
+    GLuint tex = 0;
+    GLuint pbo = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.TexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, 2, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glx.TextureSubImage3D(tex, 0, 1, 1, 0, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glGetTexImage(GL_TEXTURE_3D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("DSA 3D texture PBO subimage produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("DSA 3D texture PBO subimage readback produced GL error " + std::to_string(readErr));
+    }
+    const size_t targetOffset = ((0 * 2 + 1) * 2 + 1) * 4;
+    for (size_t i = 0; i < readback.size; i += 4) {
+        if (i == targetOffset) {
+            if (!rgbaEquals(readback.data + i, subPixel)) {
+                return fail("DSA 3D texture PBO offset subimage target pixel did not match");
+            }
+        } else if (!rgbaEquals(readback.data + i, 0, 0, 0, 0)) {
+            return fail("DSA 3D texture PBO offset subimage changed an unexpected pixel");
+        }
+    }
+    return pass("PBO offset DSA 3D texture subimage matched");
+}
+
+static TestResult testEXTTextureDSASubImage3DPBOOffset(TestContext&) {
+    if (!glx.TexImage3D || !glx.TextureSubImage3DEXT ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("EXT DSA 3D texture/PBO entry points are unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(2 * 2 * 2 * 4, 27)) {
+        return skip("VirtualAlloc failed for EXT DSA 3D texture PBO subimage readback buffer");
+    }
+
+    const unsigned char zero[2 * 2 * 2 * 4] = {};
+    const unsigned char subPixel[4] = { 222, 41, 169, 255 };
+    const GLsizeiptr pboOffset = 68;
+    std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(subPixel) + 8, 0x93);
+    std::memcpy(pboData.data() + pboOffset, subPixel, sizeof(subPixel));
+
+    GLuint tex = 0;
+    GLuint pbo = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.TexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, 2, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    glx.TextureSubImage3DEXT(tex, GL_TEXTURE_3D, 0, 0, 0, 1, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glGetTexImage(GL_TEXTURE_3D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum readErr = glGetError();
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("EXT DSA 3D texture PBO subimage produced GL error " + std::to_string(uploadErr));
+    }
+    if (readErr != GL_NO_ERROR) {
+        return fail("EXT DSA 3D texture PBO subimage readback produced GL error " + std::to_string(readErr));
+    }
+    const size_t targetOffset = ((1 * 2 + 0) * 2 + 0) * 4;
+    for (size_t i = 0; i < readback.size; i += 4) {
+        if (i == targetOffset) {
+            if (!rgbaEquals(readback.data + i, subPixel)) {
+                return fail("EXT DSA 3D texture PBO offset subimage target pixel did not match");
+            }
+        } else if (!rgbaEquals(readback.data + i, 0, 0, 0, 0)) {
+            return fail("EXT DSA 3D texture PBO offset subimage changed an unexpected pixel");
+        }
+    }
+    return pass("PBO offset EXT DSA 3D texture subimage matched");
+}
+
+static TestResult testTexture2DArrayPageBoundaryReadback(TestContext&) {
+    if (!glx.TexImage3D) {
+        return skip("array texture entry points are unavailable");
+    }
+
+    PageBytes upload;
+    PageBytes readback;
+    if (!upload.init(2 * 2 * 2 * 4, 19) || !readback.init(2 * 2 * 2 * 4, 23)) {
+        return skip("VirtualAlloc failed for page-boundary array texture buffers");
+    }
+
+    for (int i = 0; i < 8; i++) {
+        upload.data[i * 4 + 0] = (unsigned char)(17 + i * 11);
+        upload.data[i * 4 + 1] = (unsigned char)(33 + i * 9);
+        upload.data[i * 4 + 2] = (unsigned char)(210 - i * 8);
+        upload.data[i * 4 + 3] = 255;
+    }
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.TexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, 2, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+    glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("2D array texture readback produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(readback.data, upload.data, upload.size) != 0) {
+        return fail("2D array texture readback bytes did not match");
+    }
+    return pass("page-boundary 2D array texture readback matched");
+}
+
+static TestResult testCompressedTextureReadback(TestContext&) {
+    if (!glx.GetCompressedTexImage) {
+        return skip("glGetCompressedTexImage is unavailable");
+    }
+
+    PageBytes upload;
+    if (!upload.init(4 * 4 * 4, 29)) {
+        return skip("VirtualAlloc failed for compressed texture upload buffer");
+    }
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            unsigned char* p = upload.data + (y * 4 + x) * 4;
+            p[0] = (unsigned char)(x * 40);
+            p[1] = (unsigned char)(y * 50);
+            p[2] = (unsigned char)(120 + x * 7 + y * 5);
+            p[3] = 255;
+        }
+    }
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+
+    GLint compressed = 0;
+    GLint imageSize = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED, &compressed);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &imageSize);
+    GLenum setupErr = glGetError();
+    if (setupErr != GL_NO_ERROR) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        return fail("compressed texture setup produced GL error " + std::to_string(setupErr));
+    }
+    if (!compressed || imageSize <= 0) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        return skip("driver did not store GL_COMPRESSED_RGBA as compressed data");
+    }
+
+    PageBytes compressedBytes;
+    if (!compressedBytes.init((size_t)imageSize, 17)) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        return skip("VirtualAlloc failed for compressed texture readback buffer");
+    }
+    std::memset(compressedBytes.data, 0xCD, compressedBytes.size);
+    glx.GetCompressedTexImage(GL_TEXTURE_2D, 0, compressedBytes.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("compressed texture readback produced GL error " + std::to_string(err));
+    }
+    bool changed = false;
+    for (size_t i = 0; i < compressedBytes.size; i++) {
+        if (compressedBytes.data[i] != 0xCD) {
+            changed = true;
+            break;
+        }
+    }
+    if (!changed) {
+        return fail("compressed texture readback buffer was not written");
+    }
+    return pass("page-boundary compressed texture readback completed");
+}
+
+static TestResult testDSAGetTextureImagePageBoundary(TestContext&) {
+    if (!glx.GetTextureImage) {
+        return skip("glGetTextureImage is unavailable");
+    }
+
+    PageBytes upload;
+    PageBytes readback;
+    if (!upload.init(2 * 2 * 4, 14) || !readback.init(2 * 2 * 4, 13)) {
+        return skip("VirtualAlloc failed for DSA texture readback buffers");
+    }
+
+    const unsigned char pixels[16] = {
+        201, 1, 2, 255,
+        3, 202, 4, 255,
+        5, 6, 203, 255,
+        204, 205, 7, 255
+    };
+    std::memcpy(upload.data, pixels, sizeof(pixels));
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.GetTextureImage(tex, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLsizei)readback.size, readback.data);
+    GLenum err = glGetError();
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("DSA texture readback produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(readback.data, pixels, sizeof(pixels)) != 0) {
+        return fail("DSA texture readback bytes did not match");
+    }
+    return pass("page-boundary DSA texture readback matched");
+}
+
+static TestResult testEXTGetTextureImageArrayReadback(TestContext&) {
+    if (!glx.GetTextureImageEXT || !glx.TexImage3D) {
+        return skip("glGetTextureImageEXT or array texture entry points are unavailable");
+    }
+
+    PageBytes upload;
+    PageBytes readback;
+    if (!upload.init(2 * 2 * 2 * 4, 21) || !readback.init(2 * 2 * 2 * 4, 25)) {
+        return skip("VirtualAlloc failed for EXT texture image buffers");
+    }
+
+    for (int i = 0; i < 8; i++) {
+        upload.data[i * 4 + 0] = (unsigned char)(8 + i * 17);
+        upload.data[i * 4 + 1] = (unsigned char)(150 - i * 5);
+        upload.data[i * 4 + 2] = (unsigned char)(44 + i * 13);
+        upload.data[i * 4 + 3] = 255;
+    }
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.TexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, 2, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    glx.GetTextureImageEXT(tex, GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("EXT array texture readback produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(readback.data, upload.data, upload.size) != 0) {
+        return fail("EXT array texture readback bytes did not match");
+    }
+    return pass("page-boundary EXT array texture readback matched");
+}
+
+static bool makeCompressedTexture2D(PageBytes& upload, GLuint& tex, GLint& imageSize, std::string& error) {
+    if (!upload.init(4 * 4 * 4, 27)) {
+        error = "VirtualAlloc failed for compressed texture upload buffer";
+        return false;
+    }
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            unsigned char* p = upload.data + (y * 4 + x) * 4;
+            p[0] = (unsigned char)(25 + x * 35);
+            p[1] = (unsigned char)(15 + y * 45);
+            p[2] = (unsigned char)(200 - x * 9 - y * 11);
+            p[3] = 255;
+        }
+    }
+
+    tex = 0;
+    imageSize = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+    GLint compressed = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED, &compressed);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &imageSize);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        error = "compressed texture setup produced GL error " + std::to_string(err);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        tex = 0;
+        return false;
+    }
+    if (!compressed || imageSize <= 0) {
+        error = "driver did not store GL_COMPRESSED_RGBA as compressed data";
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        tex = 0;
+        return false;
+    }
+    return true;
+}
+
+static TestResult testDSACompressedTextureImagePageBoundary(TestContext&) {
+    if (!glx.GetCompressedTextureImage) {
+        return skip("glGetCompressedTextureImage is unavailable");
+    }
+
+    PageBytes upload;
+    GLuint tex = 0;
+    GLint imageSize = 0;
+    std::string error;
+    if (!makeCompressedTexture2D(upload, tex, imageSize, error)) {
+        return error.find("driver did not") == 0 ? skip(error) : fail(error);
+    }
+
+    PageBytes readback;
+    if (!readback.init((size_t)imageSize, 18)) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        return skip("VirtualAlloc failed for DSA compressed texture buffer");
+    }
+    std::memset(readback.data, 0xCD, readback.size);
+    glx.GetCompressedTextureImage(tex, 0, imageSize, readback.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("DSA compressed texture readback produced GL error " + std::to_string(err));
+    }
+    bool changed = false;
+    for (size_t i = 0; i < readback.size; i++) {
+        if (readback.data[i] != 0xCD) {
+            changed = true;
+            break;
+        }
+    }
+    if (!changed) {
+        return fail("DSA compressed texture readback buffer was not written");
+    }
+    return pass("page-boundary DSA compressed texture readback completed");
+}
+
+static TestResult testEXTCompressedTextureImagePageBoundary(TestContext&) {
+    if (!glx.GetCompressedTextureImageEXT) {
+        return skip("glGetCompressedTextureImageEXT is unavailable");
+    }
+
+    PageBytes upload;
+    GLuint tex = 0;
+    GLint imageSize = 0;
+    std::string error;
+    if (!makeCompressedTexture2D(upload, tex, imageSize, error)) {
+        return error.find("driver did not") == 0 ? skip(error) : fail(error);
+    }
+
+    PageBytes readback;
+    if (!readback.init((size_t)imageSize, 20)) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        return skip("VirtualAlloc failed for EXT compressed texture buffer");
+    }
+    std::memset(readback.data, 0xCD, readback.size);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.GetCompressedTextureImageEXT(tex, GL_TEXTURE_2D, 0, readback.data);
+    GLenum err = glGetError();
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("EXT compressed texture readback produced GL error " + std::to_string(err));
+    }
+    bool changed = false;
+    for (size_t i = 0; i < readback.size; i++) {
+        if (readback.data[i] != 0xCD) {
+            changed = true;
+            break;
+        }
+    }
+    if (!changed) {
+        return fail("EXT compressed texture readback buffer was not written");
+    }
+    return pass("page-boundary EXT compressed texture readback completed");
+}
+
+static TestResult testGetTextureSubImagePageBoundary(TestContext&) {
+    if (!glx.GetTextureSubImage) {
+        return skip("glGetTextureSubImage is unavailable");
+    }
+
+    PageBytes upload;
+    PageBytes readback;
+    if (!upload.init(4 * 4 * 4, 19) || !readback.init(2 * 2 * 4, 7)) {
+        return skip("VirtualAlloc failed for texture subimage readback buffers");
+    }
+
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            unsigned char* p = upload.data + (y * 4 + x) * 4;
+            p[0] = (unsigned char)(10 + x * 23 + y * 3);
+            p[1] = (unsigned char)(40 + y * 31 + x * 5);
+            p[2] = (unsigned char)(220 - x * 11 - y * 13);
+            p[3] = 255;
+        }
+    }
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_PACK_SKIP_PIXELS, 0);
+    glPixelStorei(GL_PACK_SKIP_ROWS, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.GetTextureSubImage(tex, 0, 1, 1, 0, 2, 2, 1, GL_RGBA, GL_UNSIGNED_BYTE, (GLsizei)readback.size, readback.data);
+    GLenum err = glGetError();
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glGetTextureSubImage produced GL error " + std::to_string(err));
+    }
+    for (int y = 0; y < 2; y++) {
+        for (int x = 0; x < 2; x++) {
+            const unsigned char* expected = upload.data + ((y + 1) * 4 + (x + 1)) * 4;
+            const unsigned char* actual = readback.data + (y * 2 + x) * 4;
+            if (!rgbaEquals(actual, expected[0], expected[1], expected[2], expected[3])) {
+                return fail("glGetTextureSubImage bytes did not match at subimage pixel " + std::to_string(y * 2 + x));
+            }
+        }
+    }
+    return pass("page-boundary glGetTextureSubImage readback matched");
+}
+
+static TestResult testGetCompressedTextureSubImagePageBoundary(TestContext&) {
+    if (!glx.GetCompressedTextureSubImage) {
+        return skip("glGetCompressedTextureSubImage is unavailable");
+    }
+
+    PageBytes upload;
+    GLuint tex = 0;
+    GLint imageSize = 0;
+    std::string error;
+    if (!makeCompressedTexture2D(upload, tex, imageSize, error)) {
+        return error.find("driver did not") == 0 ? skip(error) : fail(error);
+    }
+
+    PageBytes readback;
+    if (!readback.init((size_t)imageSize, 15)) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        return skip("VirtualAlloc failed for compressed texture subimage buffer");
+    }
+    std::memset(readback.data, 0xCD, readback.size);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.GetCompressedTextureSubImage(tex, 0, 0, 0, 0, 4, 4, 1, imageSize, readback.data);
+    GLenum err = glGetError();
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glGetCompressedTextureSubImage produced GL error " + std::to_string(err));
+    }
+    bool changed = false;
+    for (size_t i = 0; i < readback.size; i++) {
+        if (readback.data[i] != 0xCD) {
+            changed = true;
+            break;
+        }
+    }
+    if (!changed) {
+        return fail("glGetCompressedTextureSubImage buffer was not written");
+    }
+    return pass("page-boundary compressed texture subimage readback completed");
+}
+
+static bool makeCompressedTexture1D(PageBytes& upload, GLuint& tex, GLint& imageSize, std::string& error) {
+    if (!upload.init(4 * 4, 11)) {
+        error = "VirtualAlloc failed for compressed 1D texture upload buffer";
+        return false;
+    }
+    for (int x = 0; x < 4; x++) {
+        unsigned char* p = upload.data + x * 4;
+        p[0] = (unsigned char)(60 + x * 20);
+        p[1] = (unsigned char)(30 + x * 25);
+        p[2] = (unsigned char)(180 - x * 10);
+        p[3] = 255;
+    }
+
+    tex = 0;
+    imageSize = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_1D, tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_COMPRESSED_RGBA, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+    GLint compressed = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_1D, 0, GL_TEXTURE_COMPRESSED, &compressed);
+    glGetTexLevelParameteriv(GL_TEXTURE_1D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &imageSize);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        error = "compressed 1D texture setup produced GL error " + std::to_string(err);
+        glBindTexture(GL_TEXTURE_1D, 0);
+        glDeleteTextures(1, &tex);
+        tex = 0;
+        return false;
+    }
+    if (!compressed || imageSize <= 0) {
+        error = "driver did not store 1D GL_COMPRESSED_RGBA as compressed data";
+        glBindTexture(GL_TEXTURE_1D, 0);
+        glDeleteTextures(1, &tex);
+        tex = 0;
+        return false;
+    }
+    return true;
+}
+
+static TestResult testCompressedTextureSubImage1DPBOOffset(TestContext&) {
+    if (!glx.CompressedTextureSubImage1D || !glx.GetCompressedTexImage ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("compressed DSA/PBO entry points are unavailable");
+    }
+
+    PageBytes upload;
+    GLuint tex = 0;
+    GLint imageSize = 0;
+    std::string error;
+    if (!makeCompressedTexture1D(upload, tex, imageSize, error)) {
+        return error.find("driver did not") == 0 ? skip(error) : fail(error);
+    }
+
+    PageBytes compressedBytes;
+    PageBytes readbackBytes;
+    if (!compressedBytes.init((size_t)imageSize, 17) ||
+        !readbackBytes.init((size_t)imageSize, 19)) {
+        glBindTexture(GL_TEXTURE_1D, 0);
+        glDeleteTextures(1, &tex);
+        return skip("VirtualAlloc failed for compressed 1D texture buffers");
+    }
+    glx.GetCompressedTexImage(GL_TEXTURE_1D, 0, compressedBytes.data);
+
+    GLuint targetTex = 0;
+    glGenTextures(1, &targetTex);
+    glBindTexture(GL_TEXTURE_1D, targetTex);
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_COMPRESSED_RGBA, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+
+    const GLsizeiptr pboOffset = 64;
+    std::vector<unsigned char> pboData((size_t)pboOffset + (size_t)imageSize + 16, 0x7B);
+    std::memcpy(pboData.data() + pboOffset, compressedBytes.data, (size_t)imageSize);
+
+    GLuint pbo = 0;
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    GLint compressedFormat = 0;
+    glBindTexture(GL_TEXTURE_1D, tex);
+    glGetTexLevelParameteriv(GL_TEXTURE_1D, 0, GL_TEXTURE_INTERNAL_FORMAT, &compressedFormat);
+    glx.CompressedTextureSubImage1D(targetTex, 0, 0, 4, (GLenum)compressedFormat, imageSize, (const void*)pboOffset);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+    glBindTexture(GL_TEXTURE_1D, targetTex);
+    glx.GetCompressedTexImage(GL_TEXTURE_1D, 0, readbackBytes.data);
+    GLenum err = glGetError();
+
+    glx.DeleteBuffers(1, &pbo);
+    glBindTexture(GL_TEXTURE_1D, 0);
+    glDeleteTextures(1, &targetTex);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glCompressedTextureSubImage1D PBO path produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(readbackBytes.data, compressedBytes.data, (size_t)imageSize) != 0) {
+        return fail("glCompressedTextureSubImage1D PBO offset data did not round-trip");
+    }
+
+    return pass("compressed DSA 1D PBO offset upload round-tripped");
+}
+
+static TestResult testCompressedTextureSubImage2DPBOOffset(TestContext&) {
+    if (!glx.CompressedTextureSubImage2D || !glx.GetCompressedTexImage ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("compressed DSA/PBO entry points are unavailable");
+    }
+
+    PageBytes upload;
+    GLuint tex = 0;
+    GLint imageSize = 0;
+    std::string error;
+    if (!makeCompressedTexture2D(upload, tex, imageSize, error)) {
+        return error.find("driver did not") == 0 ? skip(error) : fail(error);
+    }
+
+    PageBytes compressedBytes;
+    PageBytes readbackBytes;
+    if (!compressedBytes.init((size_t)imageSize, 21) ||
+        !readbackBytes.init((size_t)imageSize, 23)) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        return skip("VirtualAlloc failed for compressed 2D texture buffers");
+    }
+    glx.GetCompressedTexImage(GL_TEXTURE_2D, 0, compressedBytes.data);
+
+    GLuint targetTex = 0;
+    glGenTextures(1, &targetTex);
+    glBindTexture(GL_TEXTURE_2D, targetTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+
+    const GLsizeiptr pboOffset = 64;
+    std::vector<unsigned char> pboData((size_t)pboOffset + (size_t)imageSize + 16, 0x5A);
+    std::memcpy(pboData.data() + pboOffset, compressedBytes.data, (size_t)imageSize);
+
+    GLuint pbo = 0;
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
+    GLint compressedFormat = 0;
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &compressedFormat);
+    glx.CompressedTextureSubImage2D(targetTex, 0, 0, 0, 4, 4, (GLenum)compressedFormat, imageSize, (const void*)pboOffset);
+    GLenum uploadErr = glGetError();
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+    glBindTexture(GL_TEXTURE_2D, targetTex);
+    glx.GetCompressedTexImage(GL_TEXTURE_2D, 0, readbackBytes.data);
+    GLenum err = glGetError();
+
+    glx.DeleteBuffers(1, &pbo);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &targetTex);
+    glDeleteTextures(1, &tex);
+
+    if (uploadErr == GL_INVALID_OPERATION) {
+        return skip("driver rejected glCompressedTextureSubImage2D PBO upload for internalFormat " +
+            std::to_string(compressedFormat) + " imageSize " + std::to_string(imageSize));
+    }
+    if (uploadErr != GL_NO_ERROR) {
+        return fail("glCompressedTextureSubImage2D PBO upload produced GL error " + std::to_string(uploadErr) +
+            " internalFormat " + std::to_string(compressedFormat) +
+            " imageSize " + std::to_string(imageSize));
+    }
+    if (err != GL_NO_ERROR) {
+        return fail("glCompressedTextureSubImage2D PBO path produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(readbackBytes.data, compressedBytes.data, (size_t)imageSize) != 0) {
+        return fail("glCompressedTextureSubImage2D PBO offset data did not round-trip");
+    }
+
+    return pass("compressed DSA 2D PBO offset upload round-tripped");
+}
+
+static TestResult runCopyTextureSubImage2DCase(bool ext) {
+    auto copyTextureSubImage2D = ext ? nullptr : glx.CopyTextureSubImage2D;
+    auto copyTextureSubImage2DEXT = ext ? glx.CopyTextureSubImage2DEXT : nullptr;
+    const char* label = ext ? "EXT glCopyTextureSubImage2D" : "glCopyTextureSubImage2D";
+    if ((ext && !copyTextureSubImage2DEXT) || (!ext && !copyTextureSubImage2D)) {
+        return skip(std::string(label) + " is unavailable");
+    }
+    if (!glx.BindFramebuffer) {
+        return skip("glBindFramebuffer is unavailable");
+    }
+
+    PageBytes readback;
+    if (!readback.init(4 * 4 * 4, 22)) {
+        return skip("VirtualAlloc failed for copy texture readback buffer");
+    }
+
+    unsigned char zero[4 * 4 * 4] = {};
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, zero);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glViewport(0, 0, 16, 16);
+    glClearColor(0.25f, 0.5f, 0.75f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    if (ext) {
+        copyTextureSubImage2DEXT(tex, GL_TEXTURE_2D, 0, 1, 1, 0, 0, 2, 2);
+    } else {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        copyTextureSubImage2D(tex, 0, 1, 1, 0, 0, 2, 2);
+        glBindTexture(GL_TEXTURE_2D, tex);
+    }
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail(std::string(label) + " produced GL error " + std::to_string(err));
+    }
+    const unsigned char* copied = readback.data + (1 * 4 + 1) * 4;
+    if (copied[0] < 50 || copied[0] > 80 ||
+        copied[1] < 110 || copied[1] > 150 ||
+        copied[2] < 175 || copied[2] > 210 ||
+        copied[3] < 240) {
+        return fail(std::string(label) + " copied pixel did not match clear color");
+    }
+    return pass(std::string(label) + " copied framebuffer pixels into texture");
+}
+
+static TestResult testCopyTextureSubImage2D(TestContext&) {
+    return runCopyTextureSubImage2DCase(false);
+}
+
+static TestResult testEXTCopyTextureSubImage2D(TestContext&) {
+    return runCopyTextureSubImage2DCase(true);
+}
+
+static TestResult testClearTexImagePageBoundary(TestContext&) {
+    if (!glx.ClearTexImage) {
+        return skip("glClearTexImage is unavailable");
+    }
+
+    PageBytes clearValue;
+    PageBytes readback;
+    if (!clearValue.init(4, 2) || !readback.init(16, 7)) {
+        return skip("VirtualAlloc failed for clear texture image buffers");
+    }
+    const unsigned char expected[4] = { 30, 210, 80, 255 };
+    std::memcpy(clearValue.data, expected, sizeof(expected));
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glx.ClearTexImage(tex, 0, GL_RGBA, GL_UNSIGNED_BYTE, clearValue.data);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glClearTexImage produced GL error " + std::to_string(err));
+    }
+    for (int i = 0; i < 4; ++i) {
+        if (!rgbaEquals(readback.data + i * 4, expected)) {
+            return fail("glClearTexImage readback did not match clear color");
+        }
+    }
+    return pass("page-boundary glClearTexImage value matched");
+}
+
+static TestResult testClearTexSubImagePageBoundary(TestContext&) {
+    if (!glx.ClearTexSubImage) {
+        return skip("glClearTexSubImage is unavailable");
+    }
+
+    PageBytes clearValue;
+    PageBytes readback;
+    if (!clearValue.init(4, 3) || !readback.init(16, 9)) {
+        return skip("VirtualAlloc failed for clear texture subimage buffers");
+    }
+    const unsigned char expected[4] = { 240, 40, 120, 255 };
+    std::memcpy(clearValue.data, expected, sizeof(expected));
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    unsigned char zeros[16] = {};
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, zeros);
+    glx.ClearTexSubImage(tex, 0, 1, 0, 0, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, clearValue.data);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glClearTexSubImage produced GL error " + std::to_string(err));
+    }
+    if (!rgbaEquals(readback.data + 4, expected)) {
+        return fail("glClearTexSubImage did not update the selected pixel");
+    }
+    unsigned char zero[4] = {};
+    if (!rgbaEquals(readback.data, zero) ||
+        !rgbaEquals(readback.data + 8, zero) ||
+        !rgbaEquals(readback.data + 12, zero)) {
+        return fail("glClearTexSubImage changed pixels outside the selected region");
+    }
+    return pass("page-boundary glClearTexSubImage value matched");
+}
+
+static bool makeParameterTexture(GLuint& tex) {
+    unsigned char pixels[4 * 4 * 4] = {};
+    const GLfloat borderColor[4] = { 0.125f, 0.25f, 0.5f, 1.0f };
+
+    tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    return glGetError() == GL_NO_ERROR;
+}
+
+static TestResult testTextureParameterGetters(TestContext&) {
+    PageBytes borderBytes;
+    PageBytes filterBytes;
+    if (!borderBytes.init(4 * sizeof(GLfloat), 5) || !filterBytes.init(sizeof(GLint), 2)) {
+        return skip("VirtualAlloc failed for texture parameter getter buffers");
+    }
+
+    GLuint tex = 0;
+    if (!makeParameterTexture(tex)) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        return fail("texture parameter setup produced GL error");
+    }
+
+    GLfloat* border = (GLfloat*)borderBytes.data;
+    GLint* filter = (GLint*)filterBytes.data;
+    glGetTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border);
+    glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("texture parameter getters produced GL error " + std::to_string(err));
+    }
+    if (!nearlyEqual(border[0], 0.125f) || !nearlyEqual(border[1], 0.25f) ||
+        !nearlyEqual(border[2], 0.5f) || !nearlyEqual(border[3], 1.0f)) {
+        return fail("texture border color getter values did not match");
+    }
+    if (*filter != GL_NEAREST) {
+        return fail("texture min filter getter value did not match");
+    }
+    return pass("page-boundary texture parameter getters matched");
+}
+
+static TestResult testTextureParameterVectorInputs(TestContext&) {
+    PageBytes borderBytes;
+    PageBytes priorityBytes;
+    PageBytes wrapBytes;
+    PageBytes outBorderBytes;
+    PageBytes outPriorityBytes;
+    PageBytes outWrapBytes;
+    if (!borderBytes.init(4 * sizeof(GLfloat), 3) ||
+        !priorityBytes.init(sizeof(GLfloat), 5) ||
+        !wrapBytes.init(sizeof(GLint), 7) ||
+        !outBorderBytes.init(4 * sizeof(GLfloat), 11) ||
+        !outPriorityBytes.init(sizeof(GLfloat), 13) ||
+        !outWrapBytes.init(sizeof(GLint), 17)) {
+        return skip("VirtualAlloc failed for texture parameter vector input buffers");
+    }
+
+    const GLfloat borderColor[4] = { 0.2f, 0.4f, 0.6f, 0.8f };
+    const GLfloat priority = 0.625f;
+    const GLint wrap = GL_CLAMP_TO_EDGE;
+    std::memcpy(borderBytes.data, borderColor, sizeof(borderColor));
+    std::memcpy(priorityBytes.data, &priority, sizeof(priority));
+    std::memcpy(wrapBytes.data, &wrap, sizeof(wrap));
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (const GLfloat*)borderBytes.data);
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_PRIORITY, (const GLfloat*)priorityBytes.data);
+    glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (const GLint*)wrapBytes.data);
+    glGetTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (GLfloat*)outBorderBytes.data);
+    glGetTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_PRIORITY, (GLfloat*)outPriorityBytes.data);
+    glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (GLint*)outWrapBytes.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("texture parameter vector inputs produced GL error " + std::to_string(err));
+    }
+    const GLfloat* outBorder = (const GLfloat*)outBorderBytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outBorder[i], borderColor[i])) {
+            return fail("glTexParameterfv page-boundary border color input did not match getter output");
+        }
+    }
+    if (!nearlyEqual(*(const GLfloat*)outPriorityBytes.data, priority)) {
+        return fail("glTexParameterfv page-boundary priority input did not match getter output");
+    }
+    if (*(const GLint*)outWrapBytes.data != wrap) {
+        return fail("glTexParameteriv page-boundary wrap input did not match getter output");
+    }
+
+    return pass("page-boundary texture parameter vector inputs matched state getters");
+}
+
+static TestResult runDSATextureParameterGetterCase(bool ext) {
+    auto getParameterfv = ext ? nullptr : glx.GetTextureParameterfv;
+    auto getParameteriv = ext ? nullptr : glx.GetTextureParameteriv;
+    auto getParameterfvEXT = ext ? glx.GetTextureParameterfvEXT : nullptr;
+    auto getParameterivEXT = ext ? glx.GetTextureParameterivEXT : nullptr;
+    const char* label = ext ? "EXT texture parameter getters" : "DSA texture parameter getters";
+    if ((ext && (!getParameterfvEXT || !getParameterivEXT)) ||
+        (!ext && (!getParameterfv || !getParameteriv))) {
+        return skip(std::string(label) + " are unavailable");
+    }
+
+    PageBytes borderBytes;
+    PageBytes filterBytes;
+    if (!borderBytes.init(4 * sizeof(GLfloat), 6) || !filterBytes.init(sizeof(GLint), 3)) {
+        return skip("VirtualAlloc failed for DSA texture parameter buffers");
+    }
+
+    GLuint tex = 0;
+    if (!makeParameterTexture(tex)) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        return fail(std::string(label) + " setup produced GL error");
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    GLfloat* border = (GLfloat*)borderBytes.data;
+    GLint* filter = (GLint*)filterBytes.data;
+    if (ext) {
+        getParameterfvEXT(tex, GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border);
+        getParameterivEXT(tex, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    } else {
+        getParameterfv(tex, GL_TEXTURE_BORDER_COLOR, border);
+        getParameteriv(tex, GL_TEXTURE_MIN_FILTER, filter);
+    }
+    GLenum err = glGetError();
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail(std::string(label) + " produced GL error " + std::to_string(err));
+    }
+    if (!nearlyEqual(border[0], 0.125f) || !nearlyEqual(border[1], 0.25f) ||
+        !nearlyEqual(border[2], 0.5f) || !nearlyEqual(border[3], 1.0f)) {
+        return fail(std::string(label) + " border color values did not match");
+    }
+    if (*filter != GL_NEAREST) {
+        return fail(std::string(label) + " min filter value did not match");
+    }
+    return pass(std::string("page-boundary ") + label + " matched");
+}
+
+static TestResult testDSATextureParameterGetters(TestContext&) {
+    return runDSATextureParameterGetterCase(false);
+}
+
+static TestResult testEXTTextureParameterGetters(TestContext&) {
+    return runDSATextureParameterGetterCase(true);
+}
+
+static TestResult testTextureLevelParameterGetters(TestContext&) {
+    PageBytes widthBytes;
+    PageBytes heightBytes;
+    PageBytes internalFormatBytes;
+    if (!widthBytes.init(sizeof(GLint), 2) ||
+        !heightBytes.init(sizeof(GLfloat), 3) ||
+        !internalFormatBytes.init(sizeof(GLint), 2)) {
+        return skip("VirtualAlloc failed for texture level parameter buffers");
+    }
+
+    GLuint tex = 0;
+    if (!makeParameterTexture(tex)) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        return fail("texture level parameter setup produced GL error");
+    }
+
+    GLint* width = (GLint*)widthBytes.data;
+    GLfloat* height = (GLfloat*)heightBytes.data;
+    GLint* internalFormat = (GLint*)internalFormatBytes.data;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, width);
+    glGetTexLevelParameterfv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, height);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, internalFormat);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("texture level parameter getters produced GL error " + std::to_string(err));
+    }
+    if (*width != 4 || !nearlyEqual(*height, 4.0f) || *internalFormat != GL_RGBA8) {
+        return fail("texture level parameter values did not match");
+    }
+    return pass("page-boundary texture level parameter getters matched");
+}
+
+static TestResult runDSATextureLevelParameterGetterCase(bool ext) {
+    auto getLevelParameterfv = ext ? nullptr : glx.GetTextureLevelParameterfv;
+    auto getLevelParameteriv = ext ? nullptr : glx.GetTextureLevelParameteriv;
+    auto getLevelParameterfvEXT = ext ? glx.GetTextureLevelParameterfvEXT : nullptr;
+    auto getLevelParameterivEXT = ext ? glx.GetTextureLevelParameterivEXT : nullptr;
+    const char* label = ext ? "EXT texture level parameter getters" : "DSA texture level parameter getters";
+    if ((ext && (!getLevelParameterfvEXT || !getLevelParameterivEXT)) ||
+        (!ext && (!getLevelParameterfv || !getLevelParameteriv))) {
+        return skip(std::string(label) + " are unavailable");
+    }
+
+    PageBytes widthBytes;
+    PageBytes heightBytes;
+    PageBytes internalFormatBytes;
+    if (!widthBytes.init(sizeof(GLint), 2) ||
+        !heightBytes.init(sizeof(GLfloat), 3) ||
+        !internalFormatBytes.init(sizeof(GLint), 2)) {
+        return skip("VirtualAlloc failed for DSA texture level parameter buffers");
+    }
+
+    GLuint tex = 0;
+    if (!makeParameterTexture(tex)) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        return fail(std::string(label) + " setup produced GL error");
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    GLint* width = (GLint*)widthBytes.data;
+    GLfloat* height = (GLfloat*)heightBytes.data;
+    GLint* internalFormat = (GLint*)internalFormatBytes.data;
+    if (ext) {
+        getLevelParameterivEXT(tex, GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, width);
+        getLevelParameterfvEXT(tex, GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, height);
+        getLevelParameterivEXT(tex, GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, internalFormat);
+    } else {
+        getLevelParameteriv(tex, 0, GL_TEXTURE_WIDTH, width);
+        getLevelParameterfv(tex, 0, GL_TEXTURE_HEIGHT, height);
+        getLevelParameteriv(tex, 0, GL_TEXTURE_INTERNAL_FORMAT, internalFormat);
+    }
+    GLenum err = glGetError();
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail(std::string(label) + " produced GL error " + std::to_string(err));
+    }
+    if (*width != 4 || !nearlyEqual(*height, 4.0f) || *internalFormat != GL_RGBA8) {
+        return fail(std::string(label) + " values did not match");
+    }
+    return pass(std::string("page-boundary ") + label + " matched");
+}
+
+static TestResult testDSATextureLevelParameterGetters(TestContext&) {
+    return runDSATextureLevelParameterGetterCase(false);
+}
+
+static TestResult testEXTTextureLevelParameterGetters(TestContext&) {
+    return runDSATextureLevelParameterGetterCase(true);
+}
+
+static TestResult testTexEnvGetters(TestContext&) {
+    PageBytes colorBytes;
+    PageBytes modeBytes;
+    if (!colorBytes.init(4 * sizeof(GLfloat), 5) || !modeBytes.init(sizeof(GLint), 2)) {
+        return skip("VirtualAlloc failed for texture environment getter buffers");
+    }
+
+    const GLfloat color[4] = { 0.2f, 0.4f, 0.6f, 0.8f };
+    glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, color);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+    GLfloat* outColor = (GLfloat*)colorBytes.data;
+    GLint* outMode = (GLint*)modeBytes.data;
+    glGetTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, outColor);
+    glGetTexEnviv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, outMode);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("texture environment getters produced GL error " + std::to_string(err));
+    }
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outColor[i], color[i])) {
+            return fail("texture environment color getter mismatch at element " + std::to_string(i));
+        }
+    }
+    if (*outMode != GL_MODULATE) {
+        return fail("texture environment mode getter did not match");
+    }
+    return pass("page-boundary texture environment getters matched");
+}
+
+static TestResult testTexGenGetters(TestContext&) {
+    PageBytes planeFloatBytes;
+    PageBytes planeDoubleBytes;
+    PageBytes modeBytes;
+    if (!planeFloatBytes.init(4 * sizeof(GLfloat), 6) ||
+        !planeDoubleBytes.init(4 * sizeof(GLdouble), 9) ||
+        !modeBytes.init(sizeof(GLint), 2)) {
+        return skip("VirtualAlloc failed for texgen getter buffers");
+    }
+
+    const GLfloat floatPlane[4] = { 1.0f, 2.0f, 3.0f, 4.0f };
+    const GLdouble doublePlane[4] = { 5.0, 6.0, 7.0, 8.0 };
+    glTexGenfv(GL_S, GL_OBJECT_PLANE, floatPlane);
+    glTexGendv(GL_T, GL_OBJECT_PLANE, doublePlane);
+    glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
+
+    GLfloat* outFloatPlane = (GLfloat*)planeFloatBytes.data;
+    GLdouble* outDoublePlane = (GLdouble*)planeDoubleBytes.data;
+    GLint* outMode = (GLint*)modeBytes.data;
+    glGetTexGenfv(GL_S, GL_OBJECT_PLANE, outFloatPlane);
+    glGetTexGendv(GL_T, GL_OBJECT_PLANE, outDoublePlane);
+    glGetTexGeniv(GL_S, GL_TEXTURE_GEN_MODE, outMode);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("texgen getters produced GL error " + std::to_string(err));
+    }
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outFloatPlane[i], floatPlane[i])) {
+            return fail("texgen float plane mismatch at element " + std::to_string(i));
+        }
+        if (!nearlyEqual(outDoublePlane[i], doublePlane[i])) {
+            return fail("texgen double plane mismatch at element " + std::to_string(i));
+        }
+    }
+    if (*outMode != GL_OBJECT_LINEAR) {
+        return fail("texgen mode getter did not match");
+    }
+    return pass("page-boundary texgen getters matched");
+}
+
+static TestResult testTexEnvTexGenVectorInputs(TestContext&) {
+    PageBytes envColorBytes;
+    PageBytes envModeBytes;
+    PageBytes genPlaneFBytes;
+    PageBytes genPlaneDBytes;
+    PageBytes genModeBytes;
+    PageBytes outFloat4Bytes;
+    PageBytes outDouble4Bytes;
+    PageBytes outIntBytes;
+    if (!envColorBytes.init(4 * sizeof(GLfloat), 3) ||
+        !envModeBytes.init(sizeof(GLint), 5) ||
+        !genPlaneFBytes.init(4 * sizeof(GLfloat), 7) ||
+        !genPlaneDBytes.init(4 * sizeof(GLdouble), 11) ||
+        !genModeBytes.init(sizeof(GLint), 13) ||
+        !outFloat4Bytes.init(4 * sizeof(GLfloat), 17) ||
+        !outDouble4Bytes.init(4 * sizeof(GLdouble), 19) ||
+        !outIntBytes.init(sizeof(GLint), 23)) {
+        return skip("VirtualAlloc failed for texenv/texgen vector input buffers");
+    }
+
+    const GLfloat envColor[4] = { 0.15f, 0.35f, 0.55f, 0.75f };
+    const GLint envMode = GL_BLEND;
+    const GLfloat genPlaneF[4] = { 1.25f, 2.5f, 3.75f, 5.0f };
+    const GLdouble genPlaneD[4] = { -1.0, -2.0, -3.0, -4.0 };
+    const GLint genMode = GL_OBJECT_LINEAR;
+    std::memcpy(envColorBytes.data, envColor, sizeof(envColor));
+    std::memcpy(envModeBytes.data, &envMode, sizeof(envMode));
+    std::memcpy(genPlaneFBytes.data, genPlaneF, sizeof(genPlaneF));
+    std::memcpy(genPlaneDBytes.data, genPlaneD, sizeof(genPlaneD));
+    std::memcpy(genModeBytes.data, &genMode, sizeof(genMode));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+
+    glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, (const GLfloat*)envColorBytes.data);
+    glGetTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, (GLfloat*)outFloat4Bytes.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glTexEnvfv vector input produced GL error " + std::to_string(err));
+    }
+    const GLfloat* outFloat4 = (const GLfloat*)outFloat4Bytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outFloat4[i], envColor[i])) {
+            return fail("glTexEnvfv page-boundary color input did not match getter output");
+        }
+    }
+
+    glTexEnviv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, (const GLint*)envModeBytes.data);
+    glGetTexEnviv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, (GLint*)outIntBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glTexEnviv vector input produced GL error " + std::to_string(err));
+    }
+    if (*(const GLint*)outIntBytes.data != envMode) {
+        return fail("glTexEnviv page-boundary mode input did not match getter output");
+    }
+
+    glTexGenfv(GL_S, GL_OBJECT_PLANE, (const GLfloat*)genPlaneFBytes.data);
+    glGetTexGenfv(GL_S, GL_OBJECT_PLANE, (GLfloat*)outFloat4Bytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glTexGenfv vector input produced GL error " + std::to_string(err));
+    }
+    outFloat4 = (const GLfloat*)outFloat4Bytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outFloat4[i], genPlaneF[i])) {
+            return fail("glTexGenfv page-boundary plane input did not match getter output");
+        }
+    }
+
+    glTexGendv(GL_T, GL_OBJECT_PLANE, (const GLdouble*)genPlaneDBytes.data);
+    glGetTexGendv(GL_T, GL_OBJECT_PLANE, (GLdouble*)outDouble4Bytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glTexGendv vector input produced GL error " + std::to_string(err));
+    }
+    const GLdouble* outDouble4 = (const GLdouble*)outDouble4Bytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outDouble4[i], genPlaneD[i])) {
+            return fail("glTexGendv page-boundary plane input did not match getter output");
+        }
+    }
+
+    glTexGeniv(GL_R, GL_TEXTURE_GEN_MODE, (const GLint*)genModeBytes.data);
+    glGetTexGeniv(GL_R, GL_TEXTURE_GEN_MODE, (GLint*)outIntBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glTexGeniv vector input produced GL error " + std::to_string(err));
+    }
+    if (*(const GLint*)outIntBytes.data != genMode) {
+        return fail("glTexGeniv page-boundary mode input did not match getter output");
+    }
+
+    return pass("page-boundary texenv/texgen vector inputs matched state getters");
+}
+
+static TestResult testLightMaterialGetters(TestContext&) {
+    PageBytes lightBytes;
+    PageBytes materialColorBytes;
+    PageBytes materialScalarBytes;
+    if (!lightBytes.init(4 * sizeof(GLfloat), 6) ||
+        !materialColorBytes.init(4 * sizeof(GLfloat), 7) ||
+        !materialScalarBytes.init(sizeof(GLfloat), 2)) {
+        return skip("VirtualAlloc failed for light/material getter buffers");
+    }
+
+    const GLfloat lightPosition[4] = { 1.0f, 2.0f, 3.0f, 0.0f };
+    const GLfloat materialAmbient[4] = { 0.3f, 0.4f, 0.5f, 1.0f };
+    const GLfloat materialShininess = 32.0f;
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+    glMaterialfv(GL_FRONT, GL_AMBIENT, materialAmbient);
+    glMaterialf(GL_FRONT, GL_SHININESS, materialShininess);
+
+    GLfloat* outLight = (GLfloat*)lightBytes.data;
+    GLfloat* outMaterialColor = (GLfloat*)materialColorBytes.data;
+    GLfloat* outMaterialScalar = (GLfloat*)materialScalarBytes.data;
+    glGetLightfv(GL_LIGHT0, GL_POSITION, outLight);
+    glGetMaterialfv(GL_FRONT, GL_AMBIENT, outMaterialColor);
+    glGetMaterialfv(GL_FRONT, GL_SHININESS, outMaterialScalar);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("light/material getters produced GL error " + std::to_string(err));
+    }
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outLight[i], lightPosition[i])) {
+            return fail("light position getter mismatch at element " + std::to_string(i));
+        }
+        if (!nearlyEqual(outMaterialColor[i], materialAmbient[i])) {
+            return fail("material ambient getter mismatch at element " + std::to_string(i));
+        }
+    }
+    if (!nearlyEqual(*outMaterialScalar, materialShininess)) {
+        return fail("material shininess getter did not match");
+    }
+    return pass("page-boundary light/material getters matched");
+}
+
+static TestResult testLightMaterialVectorInputs(TestContext&) {
+    PageBytes lightDiffuseBytes;
+    PageBytes lightSpotDirectionBytes;
+    PageBytes lightModelAmbientBytes;
+    PageBytes lightModelTwoSideBytes;
+    PageBytes materialSpecularBytes;
+    PageBytes materialShininessBytes;
+    PageBytes outFloat4Bytes;
+    PageBytes outFloat3Bytes;
+    PageBytes outIntBytes;
+    if (!lightDiffuseBytes.init(4 * sizeof(GLfloat), 3) ||
+        !lightSpotDirectionBytes.init(3 * sizeof(GLint), 5) ||
+        !lightModelAmbientBytes.init(4 * sizeof(GLfloat), 7) ||
+        !lightModelTwoSideBytes.init(sizeof(GLint), 11) ||
+        !materialSpecularBytes.init(4 * sizeof(GLfloat), 13) ||
+        !materialShininessBytes.init(sizeof(GLint), 17) ||
+        !outFloat4Bytes.init(4 * sizeof(GLfloat), 19) ||
+        !outFloat3Bytes.init(3 * sizeof(GLfloat), 23) ||
+        !outIntBytes.init(sizeof(GLint), 29)) {
+        return skip("VirtualAlloc failed for light/material vector input buffers");
+    }
+
+    const GLfloat lightDiffuse[4] = { 0.2f, 0.4f, 0.6f, 1.0f };
+    const GLint lightSpotDirection[3] = { 1, 2, -3 };
+    const GLfloat lightModelAmbient[4] = { 0.05f, 0.10f, 0.15f, 1.0f };
+    const GLint lightModelTwoSide = GL_TRUE;
+    const GLfloat materialSpecular[4] = { 0.7f, 0.6f, 0.5f, 1.0f };
+    const GLint materialShininess = 24;
+    std::memcpy(lightDiffuseBytes.data, lightDiffuse, sizeof(lightDiffuse));
+    std::memcpy(lightSpotDirectionBytes.data, lightSpotDirection, sizeof(lightSpotDirection));
+    std::memcpy(lightModelAmbientBytes.data, lightModelAmbient, sizeof(lightModelAmbient));
+    std::memcpy(lightModelTwoSideBytes.data, &lightModelTwoSide, sizeof(lightModelTwoSide));
+    std::memcpy(materialSpecularBytes.data, materialSpecular, sizeof(materialSpecular));
+    std::memcpy(materialShininessBytes.data, &materialShininess, sizeof(materialShininess));
+
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, (const GLfloat*)lightDiffuseBytes.data);
+    glGetLightfv(GL_LIGHT0, GL_DIFFUSE, (GLfloat*)outFloat4Bytes.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glLightfv vector input produced GL error " + std::to_string(err));
+    }
+    const GLfloat* outFloat4 = (const GLfloat*)outFloat4Bytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outFloat4[i], lightDiffuse[i])) {
+            return fail("glLightfv page-boundary diffuse input did not match getter output");
+        }
+    }
+
+    glLightiv(GL_LIGHT0, GL_SPOT_DIRECTION, (const GLint*)lightSpotDirectionBytes.data);
+    glGetLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, (GLfloat*)outFloat3Bytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glLightiv vector input produced GL error " + std::to_string(err));
+    }
+    const GLfloat* outFloat3 = (const GLfloat*)outFloat3Bytes.data;
+    for (int i = 0; i < 3; i++) {
+        if (!nearlyEqual(outFloat3[i], (GLfloat)lightSpotDirection[i])) {
+            return fail("glLightiv page-boundary spot direction input did not match getter output");
+        }
+    }
+
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, (const GLfloat*)lightModelAmbientBytes.data);
+    glGetFloatv(GL_LIGHT_MODEL_AMBIENT, (GLfloat*)outFloat4Bytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glLightModelfv vector input produced GL error " + std::to_string(err));
+    }
+    outFloat4 = (const GLfloat*)outFloat4Bytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outFloat4[i], lightModelAmbient[i])) {
+            return fail("glLightModelfv page-boundary ambient input did not match getter output");
+        }
+    }
+
+    glLightModeliv(GL_LIGHT_MODEL_TWO_SIDE, (const GLint*)lightModelTwoSideBytes.data);
+    glGetIntegerv(GL_LIGHT_MODEL_TWO_SIDE, (GLint*)outIntBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glLightModeliv vector input produced GL error " + std::to_string(err));
+    }
+    if (*(const GLint*)outIntBytes.data != GL_TRUE) {
+        return fail("glLightModeliv page-boundary two-side input did not match getter output");
+    }
+
+    glMaterialfv(GL_FRONT, GL_SPECULAR, (const GLfloat*)materialSpecularBytes.data);
+    glGetMaterialfv(GL_FRONT, GL_SPECULAR, (GLfloat*)outFloat4Bytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glMaterialfv vector input produced GL error " + std::to_string(err));
+    }
+    outFloat4 = (const GLfloat*)outFloat4Bytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outFloat4[i], materialSpecular[i])) {
+            return fail("glMaterialfv page-boundary specular input did not match getter output");
+        }
+    }
+
+    glMaterialiv(GL_FRONT, GL_SHININESS, (const GLint*)materialShininessBytes.data);
+    glGetMaterialiv(GL_FRONT, GL_SHININESS, (GLint*)outIntBytes.data);
+    err = glGetError();
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE);
+    if (err != GL_NO_ERROR) {
+        return fail("glMaterialiv vector input produced GL error " + std::to_string(err));
+    }
+    if (*(const GLint*)outIntBytes.data != materialShininess) {
+        return fail("glMaterialiv page-boundary shininess input did not match getter output");
+    }
+
+    return pass("page-boundary light/material vector inputs matched state getters");
+}
+
+static TestResult testPixelMapGetters(TestContext&) {
+    const GLfloat floatValues[4] = { 0.0f, 0.25f, 0.5f, 1.0f };
+    const GLuint uintValues[4] = { 7, 11, 13, 17 };
+    const GLushort ushortValues[4] = { 3, 5, 9, 15 };
+
+    PageBytes floatBytes;
+    PageBytes uintBytes;
+    PageBytes ushortBytes;
+    if (!floatBytes.init(4 * sizeof(GLfloat), 5) ||
+        !uintBytes.init(4 * sizeof(GLuint), 6) ||
+        !ushortBytes.init(4 * sizeof(GLushort), 3)) {
+        return skip("VirtualAlloc failed for pixel map getter buffers");
+    }
+
+    glPixelMapfv(GL_PIXEL_MAP_I_TO_R, 4, floatValues);
+    glPixelMapuiv(GL_PIXEL_MAP_I_TO_I, 4, uintValues);
+    glPixelMapusv(GL_PIXEL_MAP_S_TO_S, 4, ushortValues);
+
+    GLfloat* outFloat = (GLfloat*)floatBytes.data;
+    GLuint* outUint = (GLuint*)uintBytes.data;
+    GLushort* outUshort = (GLushort*)ushortBytes.data;
+    glGetPixelMapfv(GL_PIXEL_MAP_I_TO_R, outFloat);
+    glGetPixelMapuiv(GL_PIXEL_MAP_I_TO_I, outUint);
+    glGetPixelMapusv(GL_PIXEL_MAP_S_TO_S, outUshort);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("pixel map getters produced GL error " + std::to_string(err));
+    }
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outFloat[i], floatValues[i])) {
+            return fail("float pixel map getter mismatch at element " + std::to_string(i));
+        }
+        if (!pixelMapUintMatches(outUint[i], uintValues[i])) {
+            return fail("uint pixel map getter mismatch at element " + std::to_string(i) +
+                ": expected " + std::to_string(uintValues[i]) +
+                " got " + std::to_string(outUint[i]));
+        }
+        if (outUshort[i] != ushortValues[i]) {
+            return fail("ushort pixel map getter mismatch at element " + std::to_string(i) +
+                ": expected " + std::to_string(ushortValues[i]) +
+                " got " + std::to_string(outUshort[i]));
+        }
+    }
+    return pass("page-boundary pixel map getters matched");
+}
+
+static TestResult testPixelMapVectorInputs(TestContext&) {
+    const GLfloat floatValues[4] = { 0.0f, 0.125f, 0.5f, 1.0f };
+    const GLuint uintValues[4] = { 19, 23, 29, 31 };
+    const GLushort ushortValues[4] = { 2, 4, 8, 16 };
+
+    PageBytes floatInputBytes;
+    PageBytes uintInputBytes;
+    PageBytes ushortInputBytes;
+    PageBytes floatOutputBytes;
+    PageBytes uintOutputBytes;
+    PageBytes ushortOutputBytes;
+    if (!floatInputBytes.init(sizeof(floatValues), 9) ||
+        !uintInputBytes.init(sizeof(uintValues), 13) ||
+        !ushortInputBytes.init(sizeof(ushortValues), 7) ||
+        !floatOutputBytes.init(sizeof(floatValues), 17) ||
+        !uintOutputBytes.init(sizeof(uintValues), 19) ||
+        !ushortOutputBytes.init(sizeof(ushortValues), 11)) {
+        return skip("VirtualAlloc failed for pixel map vector input buffers");
+    }
+
+    std::memcpy(floatInputBytes.data, floatValues, sizeof(floatValues));
+    std::memcpy(uintInputBytes.data, uintValues, sizeof(uintValues));
+    std::memcpy(ushortInputBytes.data, ushortValues, sizeof(ushortValues));
+
+    glPixelMapfv(GL_PIXEL_MAP_I_TO_G, 4, (const GLfloat*)floatInputBytes.data);
+    glPixelMapuiv(GL_PIXEL_MAP_I_TO_I, 4, (const GLuint*)uintInputBytes.data);
+    glPixelMapusv(GL_PIXEL_MAP_S_TO_S, 4, (const GLushort*)ushortInputBytes.data);
+
+    glGetPixelMapfv(GL_PIXEL_MAP_I_TO_G, (GLfloat*)floatOutputBytes.data);
+    glGetPixelMapuiv(GL_PIXEL_MAP_I_TO_I, (GLuint*)uintOutputBytes.data);
+    glGetPixelMapusv(GL_PIXEL_MAP_S_TO_S, (GLushort*)ushortOutputBytes.data);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("pixel map vector inputs produced GL error " + std::to_string(err));
+    }
+
+    const GLfloat* outFloat = (const GLfloat*)floatOutputBytes.data;
+    const GLuint* outUint = (const GLuint*)uintOutputBytes.data;
+    const GLushort* outUshort = (const GLushort*)ushortOutputBytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outFloat[i], floatValues[i])) {
+            return fail("glPixelMapfv page-boundary input did not match getter output");
+        }
+        if (!pixelMapUintMatches(outUint[i], uintValues[i])) {
+            return fail("glPixelMapuiv page-boundary input did not match getter output at element " +
+                std::to_string(i) + ": expected " + std::to_string(uintValues[i]) +
+                " got " + std::to_string(outUint[i]));
+        }
+        if (outUshort[i] != ushortValues[i]) {
+            return fail("glPixelMapusv page-boundary input did not match getter output at element " +
+                std::to_string(i) + ": expected " + std::to_string(ushortValues[i]) +
+                " got " + std::to_string(outUshort[i]));
+        }
+    }
+    return pass("page-boundary pixel map vector inputs matched getters");
+}
+
+static TestResult testEvaluatorMapGetters(TestContext&) {
+    const GLfloat map1Points[6] = {
+        1.0f, 2.0f, 3.0f,
+        4.0f, 5.0f, 6.0f
+    };
+    const GLfloat map2Points[12] = {
+        1.0f, 2.0f, 3.0f,
+        4.0f, 5.0f, 6.0f,
+        7.0f, 8.0f, 9.0f,
+        10.0f, 11.0f, 12.0f
+    };
+
+    PageBytes map1CoeffBytes;
+    PageBytes map1OrderBytes;
+    PageBytes map1DomainBytes;
+    PageBytes map2OrderBytes;
+    PageBytes map2DomainBytes;
+    if (!map1CoeffBytes.init(sizeof(map1Points), 7) ||
+        !map1OrderBytes.init(sizeof(GLint), 2) ||
+        !map1DomainBytes.init(2 * sizeof(GLdouble), 5) ||
+        !map2OrderBytes.init(2 * sizeof(GLint), 3) ||
+        !map2DomainBytes.init(4 * sizeof(GLfloat), 6)) {
+        return skip("VirtualAlloc failed for evaluator map getter buffers");
+    }
+
+    glMap1f(GL_MAP1_VERTEX_3, -1.0f, 1.0f, 3, 2, map1Points);
+    glMap2f(GL_MAP2_VERTEX_3, 0.0f, 1.0f, 3, 2, 2.0f, 4.0f, 6, 2, map2Points);
+
+    GLfloat* map1Coeff = (GLfloat*)map1CoeffBytes.data;
+    GLint* map1Order = (GLint*)map1OrderBytes.data;
+    GLdouble* map1Domain = (GLdouble*)map1DomainBytes.data;
+    GLint* map2Order = (GLint*)map2OrderBytes.data;
+    GLfloat* map2Domain = (GLfloat*)map2DomainBytes.data;
+    glGetMapfv(GL_MAP1_VERTEX_3, GL_COEFF, map1Coeff);
+    glGetMapiv(GL_MAP1_VERTEX_3, GL_ORDER, map1Order);
+    glGetMapdv(GL_MAP1_VERTEX_3, GL_DOMAIN, map1Domain);
+    glGetMapiv(GL_MAP2_VERTEX_3, GL_ORDER, map2Order);
+    glGetMapfv(GL_MAP2_VERTEX_3, GL_DOMAIN, map2Domain);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("evaluator map getters produced GL error " + std::to_string(err));
+    }
+    for (int i = 0; i < 6; i++) {
+        if (!nearlyEqual(map1Coeff[i], map1Points[i])) {
+            return fail("MAP1 coeff getter mismatch at element " + std::to_string(i));
+        }
+    }
+    if (map1Order[0] != 2) {
+        return fail("MAP1 order getter did not match");
+    }
+    if (!nearlyEqual(map1Domain[0], -1.0) || !nearlyEqual(map1Domain[1], 1.0)) {
+        return fail("MAP1 domain getter did not match");
+    }
+    if (map2Order[0] != 2 || map2Order[1] != 2) {
+        return fail("MAP2 order getter did not match");
+    }
+    if (!nearlyEqual(map2Domain[0], 0.0f) || !nearlyEqual(map2Domain[1], 1.0f) ||
+        !nearlyEqual(map2Domain[2], 2.0f) || !nearlyEqual(map2Domain[3], 4.0f)) {
+        return fail("MAP2 domain getter did not match");
+    }
+    return pass("page-boundary evaluator map getters matched");
+}
+
+static TestResult testEvaluatorMapVectorInputs(TestContext&) {
+    const GLdouble map1D[6] = {
+        -1.0, -0.5, 0.25,
+         0.75, 1.25, 1.75
+    };
+    const GLfloat map1F[8] = {
+        0.05f, 0.15f, 0.25f, 0.35f,
+        0.45f, 0.55f, 0.65f, 0.75f
+    };
+    const GLdouble map2D[8] = {
+        0.0, 0.1,
+        0.2, 0.3,
+        0.4, 0.5,
+        0.6, 0.7
+    };
+    const GLdouble expectedMap2D[8] = {
+        0.0, 0.1,
+        0.4, 0.5,
+        0.2, 0.3,
+        0.6, 0.7
+    };
+    const GLfloat map2F[12] = {
+        -0.75f, -0.50f, -0.25f,
+         0.25f, -0.50f,  0.00f,
+        -0.75f,  0.50f,  0.25f,
+         0.25f,  0.50f,  0.50f
+    };
+    const GLfloat expectedMap2F[12] = {
+        -0.75f, -0.50f, -0.25f,
+        -0.75f,  0.50f,  0.25f,
+         0.25f, -0.50f,  0.00f,
+         0.25f,  0.50f,  0.50f
+    };
+
+    PageBytes map1DInputBytes;
+    PageBytes map1DOutputBytes;
+    PageBytes map1FInputBytes;
+    PageBytes map1FOutputBytes;
+    PageBytes map2DInputBytes;
+    PageBytes map2DOutputBytes;
+    PageBytes map2FInputBytes;
+    PageBytes map2FOutputBytes;
+    if (!map1DInputBytes.init(sizeof(map1D), 17) ||
+        !map1DOutputBytes.init(sizeof(map1D), 19) ||
+        !map1FInputBytes.init(sizeof(map1F), 13) ||
+        !map1FOutputBytes.init(sizeof(map1F), 11) ||
+        !map2DInputBytes.init(sizeof(map2D), 23) ||
+        !map2DOutputBytes.init(sizeof(map2D), 29) ||
+        !map2FInputBytes.init(sizeof(map2F), 31) ||
+        !map2FOutputBytes.init(sizeof(map2F), 37)) {
+        return skip("VirtualAlloc failed for evaluator map vector input buffers");
+    }
+
+    std::memcpy(map1DInputBytes.data, map1D, sizeof(map1D));
+    std::memcpy(map1FInputBytes.data, map1F, sizeof(map1F));
+    std::memcpy(map2DInputBytes.data, map2D, sizeof(map2D));
+    std::memcpy(map2FInputBytes.data, map2F, sizeof(map2F));
+
+    glMap1d(GL_MAP1_VERTEX_3, -1.0, 1.0, 3, 2, (const GLdouble*)map1DInputBytes.data);
+    glGetMapdv(GL_MAP1_VERTEX_3, GL_COEFF, (GLdouble*)map1DOutputBytes.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glMap1d page-boundary input produced GL error " + std::to_string(err));
+    }
+    const GLdouble* outMap1D = (const GLdouble*)map1DOutputBytes.data;
+    for (int i = 0; i < 6; i++) {
+        if (!nearlyEqual(outMap1D[i], map1D[i])) {
+            return fail("glMap1d page-boundary coeff input did not match getter output");
+        }
+    }
+
+    glMap1f(GL_MAP1_COLOR_4, 0.0f, 1.0f, 4, 2, (const GLfloat*)map1FInputBytes.data);
+    glGetMapfv(GL_MAP1_COLOR_4, GL_COEFF, (GLfloat*)map1FOutputBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glMap1f page-boundary input produced GL error " + std::to_string(err));
+    }
+    const GLfloat* outMap1F = (const GLfloat*)map1FOutputBytes.data;
+    for (int i = 0; i < 8; i++) {
+        if (!nearlyEqual(outMap1F[i], map1F[i])) {
+            return fail("glMap1f page-boundary coeff input did not match getter output");
+        }
+    }
+
+    glMap2d(GL_MAP2_TEXTURE_COORD_2, 0.0, 1.0, 2, 2, 0.0, 1.0, 4, 2, (const GLdouble*)map2DInputBytes.data);
+    glGetMapdv(GL_MAP2_TEXTURE_COORD_2, GL_COEFF, (GLdouble*)map2DOutputBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glMap2d page-boundary input produced GL error " + std::to_string(err));
+    }
+    const GLdouble* outMap2D = (const GLdouble*)map2DOutputBytes.data;
+    for (int i = 0; i < 8; i++) {
+        if (!nearlyEqual(outMap2D[i], expectedMap2D[i])) {
+            std::ostringstream os;
+            os << "glMap2d page-boundary coeff input did not match getter output at element "
+                << i << ": got " << outMap2D[i] << " expected " << expectedMap2D[i];
+            return fail(os.str());
+        }
+    }
+
+    glMap2f(GL_MAP2_VERTEX_3, 0.0f, 1.0f, 3, 2, 0.0f, 1.0f, 6, 2, (const GLfloat*)map2FInputBytes.data);
+    glGetMapfv(GL_MAP2_VERTEX_3, GL_COEFF, (GLfloat*)map2FOutputBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glMap2f page-boundary input produced GL error " + std::to_string(err));
+    }
+    const GLfloat* outMap2F = (const GLfloat*)map2FOutputBytes.data;
+    for (int i = 0; i < 12; i++) {
+        if (!nearlyEqual(outMap2F[i], expectedMap2F[i])) {
+            std::ostringstream os;
+            os << "glMap2f page-boundary coeff input did not match getter output at element "
+                << i << ": got " << outMap2F[i] << " expected " << expectedMap2F[i];
+            return fail(os.str());
+        }
+    }
+
+    return pass("page-boundary evaluator map vector inputs matched coefficients");
+}
+
+static TestResult testEvalCoordVectorInputs(TestContext&) {
+    PageBytes coord1DBytes;
+    PageBytes coord1FBytes;
+    PageBytes coord2DBytes;
+    PageBytes coord2FBytes;
+    PageBytes feedbackBytes;
+    if (!coord1DBytes.init(sizeof(GLdouble), 3) ||
+        !coord1FBytes.init(sizeof(GLfloat), 5) ||
+        !coord2DBytes.init(2 * sizeof(GLdouble), 7) ||
+        !coord2FBytes.init(2 * sizeof(GLfloat), 11) ||
+        !feedbackBytes.init(64 * sizeof(GLfloat), 13)) {
+        return skip("VirtualAlloc failed for evaluator coordinate vector buffers");
+    }
+
+    const GLdouble coord1D = 0.25;
+    const GLfloat coord1F = 0.75f;
+    const GLdouble coord2D[2] = { 0.25, 0.5 };
+    const GLfloat coord2F[2] = { 0.75f, 0.5f };
+    std::memcpy(coord1DBytes.data, &coord1D, sizeof(coord1D));
+    std::memcpy(coord1FBytes.data, &coord1F, sizeof(coord1F));
+    std::memcpy(coord2DBytes.data, coord2D, sizeof(coord2D));
+    std::memcpy(coord2FBytes.data, coord2F, sizeof(coord2F));
+
+    const GLdouble map1D[6] = {
+        -0.5, -0.5, 0.0,
+         0.5, -0.5, 0.0
+    };
+    const GLfloat map1F[6] = {
+        -0.5f, 0.0f, 0.0f,
+         0.5f, 0.0f, 0.0f
+    };
+    const GLdouble map2D[12] = {
+        -0.5, 0.25, 0.0,
+         0.5, 0.25, 0.0,
+        -0.5, 0.75, 0.0,
+         0.5, 0.75, 0.0
+    };
+    const GLfloat map2F[12] = {
+        -0.5f, -0.75f, 0.0f,
+         0.5f, -0.75f, 0.0f,
+        -0.5f, -0.25f, 0.0f,
+         0.5f, -0.25f, 0.0f
+    };
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_MAP1_VERTEX_3);
+    glDisable(GL_MAP2_VERTEX_3);
+
+    GLfloat* feedback = (GLfloat*)feedbackBytes.data;
+    for (int i = 0; i < 64; i++) {
+        feedback[i] = -99.0f;
+    }
+
+    glFeedbackBuffer(64, GL_3D, feedback);
+    GLint enter = glRenderMode(GL_FEEDBACK);
+
+    glMap1d(GL_MAP1_VERTEX_3, 0.0, 1.0, 3, 2, map1D);
+    glEnable(GL_MAP1_VERTEX_3);
+    glBegin(GL_POINTS);
+    glEvalCoord1dv((const GLdouble*)coord1DBytes.data);
+    glEnd();
+
+    glMap1f(GL_MAP1_VERTEX_3, 0.0f, 1.0f, 3, 2, map1F);
+    glBegin(GL_POINTS);
+    glEvalCoord1fv((const GLfloat*)coord1FBytes.data);
+    glEnd();
+    glDisable(GL_MAP1_VERTEX_3);
+
+    glMap2d(GL_MAP2_VERTEX_3, 0.0, 1.0, 3, 2, 0.0, 1.0, 6, 2, map2D);
+    glEnable(GL_MAP2_VERTEX_3);
+    glBegin(GL_POINTS);
+    glEvalCoord2dv((const GLdouble*)coord2DBytes.data);
+    glEnd();
+
+    glMap2f(GL_MAP2_VERTEX_3, 0.0f, 1.0f, 3, 2, 0.0f, 1.0f, 6, 2, map2F);
+    glBegin(GL_POINTS);
+    glEvalCoord2fv((const GLfloat*)coord2FBytes.data);
+    glEnd();
+    glDisable(GL_MAP2_VERTEX_3);
+
+    GLint count = glRenderMode(GL_RENDER);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("evaluator coordinate vector inputs produced GL error " + std::to_string(err));
+    }
+    if (enter != 0) {
+        return fail("entering feedback mode before evaluator inputs returned unexpected result");
+    }
+    if (count < 16) {
+        return fail("evaluator coordinate feedback returned too few values");
+    }
+
+    const GLfloat expected[4][3] = {
+        { 24.0f, 16.0f, 0.5f },
+        { 40.0f, 32.0f, 0.5f },
+        { 24.0f, 48.0f, 0.5f },
+        { 40.0f, 16.0f, 0.5f },
+    };
+    int offset = 0;
+    for (int point = 0; point < 4; point++) {
+        if (!nearlyEqual(feedback[offset], (GLfloat)GL_POINT_TOKEN)) {
+            return fail("evaluator coordinate feedback did not contain point tokens");
+        }
+        for (int i = 0; i < 3; i++) {
+            if (!nearlyEqual(feedback[offset + 1 + i], expected[point][i])) {
+                std::ostringstream os;
+                os << "evaluator coordinate feedback position did not match expected value at point "
+                    << point << " element " << i << ": got " << feedback[offset + 1 + i]
+                    << " expected " << expected[point][i];
+                return fail(os.str());
+            }
+        }
+        offset += 4;
+    }
+
+    return pass("page-boundary evaluator coordinate vector inputs produced expected feedback");
+}
+
+static TestResult testFeedbackBufferRoundTrip(TestContext&) {
+    PageBytes feedbackBytes;
+    if (!feedbackBytes.init(32 * sizeof(GLfloat), 11)) {
+        return skip("VirtualAlloc failed for feedback buffer");
+    }
+
+    GLfloat* feedback = (GLfloat*)feedbackBytes.data;
+    for (int i = 0; i < 32; i++) {
+        feedback[i] = -99.0f;
+    }
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glFeedbackBuffer(32, GL_2D, feedback);
+    GLint enter = glRenderMode(GL_FEEDBACK);
+    glPassThrough(42.5f);
+    GLint count = glRenderMode(GL_RENDER);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("feedback buffer round-trip produced GL error " + std::to_string(err));
+    }
+    if (enter != 0) {
+        return fail("entering feedback mode returned unexpected result");
+    }
+    if (count < 2) {
+        return fail("feedback buffer returned too few values");
+    }
+    if (!nearlyEqual(feedback[0], (GLfloat)GL_PASS_THROUGH_TOKEN) ||
+        !nearlyEqual(feedback[1], 42.5f)) {
+        return fail("feedback buffer values did not match pass-through token");
+    }
+    return pass("page-boundary feedback buffer copied back");
+}
+
+static TestResult testSelectBufferRoundTrip(TestContext&) {
+    PageBytes selectBytes;
+    if (!selectBytes.init(32 * sizeof(GLuint), 9)) {
+        return skip("VirtualAlloc failed for select buffer");
+    }
+
+    GLuint* select = (GLuint*)selectBytes.data;
+    for (int i = 0; i < 32; i++) {
+        select[i] = 0xCDCDCDCDu;
+    }
+
+    glSelectBuffer(32, select);
+    GLint enter = glRenderMode(GL_SELECT);
+    glInitNames();
+    glPushName(0x1234u);
+    glBegin(GL_POINTS);
+    glVertex2f(0.0f, 0.0f);
+    glEnd();
+    GLint hits = glRenderMode(GL_RENDER);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("select buffer round-trip produced GL error " + std::to_string(err));
+    }
+    if (enter != 0) {
+        return fail("entering select mode returned unexpected result");
+    }
+    if (hits != 1) {
+        return fail("select buffer hit count did not match");
+    }
+    if (select[0] != 1 || select[3] != 0x1234u) {
+        return fail("select buffer hit record did not copy back correctly");
+    }
+    return pass("page-boundary select buffer copied back");
+}
+
+static TestResult testClipPlaneGetters(TestContext&) {
+    PageBytes equationBytes;
+    if (!equationBytes.init(4 * sizeof(GLdouble), 9)) {
+        return skip("VirtualAlloc failed for clip plane getter buffer");
+    }
+
+    const GLdouble equation[4] = { 1.0, -2.0, 3.5, -4.25 };
+    GLdouble* outEquation = (GLdouble*)equationBytes.data;
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glClipPlane(GL_CLIP_PLANE0, equation);
+    glGetClipPlane(GL_CLIP_PLANE0, outEquation);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("clip plane getter produced GL error " + std::to_string(err));
+    }
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outEquation[i], equation[i])) {
+            return fail("clip plane getter mismatch at element " + std::to_string(i));
+        }
+    }
+    return pass("page-boundary clip plane getter matched");
+}
+
+static TestResult testPolygonStippleRoundTrip(TestContext&) {
+    PageBytes inputBytes;
+    PageBytes outputBytes;
+    if (!inputBytes.init(128, 17) || !outputBytes.init(128, 19)) {
+        return skip("VirtualAlloc failed for polygon stipple buffers");
+    }
+
+    for (int i = 0; i < 128; i++) {
+        inputBytes.data[i] = (unsigned char)(i * 37 + 11);
+        outputBytes.data[i] = 0xCD;
+    }
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glPolygonStipple(inputBytes.data);
+    glGetPolygonStipple(outputBytes.data);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("polygon stipple round-trip produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(outputBytes.data, inputBytes.data, inputBytes.size) != 0) {
+        return fail("polygon stipple bytes did not copy back correctly");
+    }
+    return pass("page-boundary polygon stipple round-trip matched");
+}
+
+static TestResult testFogStateGetters(TestContext&) {
+    PageBytes colorBytes;
+    PageBytes modeBytes;
+    PageBytes densityBytes;
+    if (!colorBytes.init(4 * sizeof(GLfloat), 7) ||
+        !modeBytes.init(sizeof(GLint), 2) ||
+        !densityBytes.init(sizeof(GLdouble), 3)) {
+        return skip("VirtualAlloc failed for fog state getter buffers");
+    }
+
+    const GLfloat fogColor[4] = { 0.1f, 0.3f, 0.5f, 0.7f };
+    glFogfv(GL_FOG_COLOR, fogColor);
+    glFogi(GL_FOG_MODE, GL_EXP2);
+    glFogf(GL_FOG_DENSITY, 0.375f);
+
+    GLfloat* outColor = (GLfloat*)colorBytes.data;
+    GLint* outMode = (GLint*)modeBytes.data;
+    GLdouble* outDensity = (GLdouble*)densityBytes.data;
+    glGetFloatv(GL_FOG_COLOR, outColor);
+    glGetIntegerv(GL_FOG_MODE, outMode);
+    glGetDoublev(GL_FOG_DENSITY, outDensity);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("fog state getters produced GL error " + std::to_string(err));
+    }
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outColor[i], fogColor[i])) {
+            return fail("fog color getter mismatch at element " + std::to_string(i));
+        }
+    }
+    if (*outMode != GL_EXP2) {
+        return fail("fog mode getter did not match");
+    }
+    if (!nearlyEqual(*outDensity, 0.375)) {
+        return fail("fog density getter did not match");
+    }
+    return pass("page-boundary fog state getters matched");
+}
+
+static TestResult testFogVectorInputs(TestContext&) {
+    PageBytes colorFBytes;
+    PageBytes modeIBytes;
+    PageBytes densityFBytes;
+    PageBytes outColorBytes;
+    PageBytes outModeBytes;
+    PageBytes outDensityBytes;
+    if (!colorFBytes.init(4 * sizeof(GLfloat), 5) ||
+        !modeIBytes.init(sizeof(GLint), 7) ||
+        !densityFBytes.init(sizeof(GLfloat), 11) ||
+        !outColorBytes.init(4 * sizeof(GLfloat), 13) ||
+        !outModeBytes.init(sizeof(GLint), 17) ||
+        !outDensityBytes.init(sizeof(GLfloat), 19)) {
+        return skip("VirtualAlloc failed for fog vector input buffers");
+    }
+
+    const GLfloat fogColor[4] = { 0.25f, 0.5f, 0.75f, 1.0f };
+    const GLint fogMode = GL_LINEAR;
+    const GLfloat fogDensity = 0.625f;
+    std::memcpy(colorFBytes.data, fogColor, sizeof(fogColor));
+    std::memcpy(modeIBytes.data, &fogMode, sizeof(fogMode));
+    std::memcpy(densityFBytes.data, &fogDensity, sizeof(fogDensity));
+
+    glFogfv(GL_FOG_COLOR, (const GLfloat*)colorFBytes.data);
+    glGetFloatv(GL_FOG_COLOR, (GLfloat*)outColorBytes.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glFogfv color vector input produced GL error " + std::to_string(err));
+    }
+    const GLfloat* outColor = (const GLfloat*)outColorBytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outColor[i], fogColor[i])) {
+            return fail("glFogfv page-boundary color input did not match getter output");
+        }
+    }
+
+    glFogiv(GL_FOG_MODE, (const GLint*)modeIBytes.data);
+    glGetIntegerv(GL_FOG_MODE, (GLint*)outModeBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glFogiv scalar vector input produced GL error " + std::to_string(err));
+    }
+    if (*(const GLint*)outModeBytes.data != fogMode) {
+        return fail("glFogiv page-boundary mode input did not match getter output");
+    }
+
+    glFogfv(GL_FOG_DENSITY, (const GLfloat*)densityFBytes.data);
+    glGetFloatv(GL_FOG_DENSITY, (GLfloat*)outDensityBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glFogfv density vector input produced GL error " + std::to_string(err));
+    }
+    if (!nearlyEqual(*(const GLfloat*)outDensityBytes.data, fogDensity)) {
+        return fail("glFogfv page-boundary density input did not match getter output");
+    }
+
+    return pass("page-boundary fog vector inputs matched state getters");
+}
+
+static TestResult testPixelTransferStateGetters(TestContext&) {
+    PageBytes redScaleBytes;
+    PageBytes greenBiasBytes;
+    PageBytes alphaScaleBytes;
+    if (!redScaleBytes.init(sizeof(GLfloat), 2) ||
+        !greenBiasBytes.init(sizeof(GLdouble), 3) ||
+        !alphaScaleBytes.init(sizeof(GLint), 2)) {
+        return skip("VirtualAlloc failed for pixel transfer getter buffers");
+    }
+
+    glPixelTransferf(GL_RED_SCALE, 1.75f);
+    glPixelTransferf(GL_GREEN_BIAS, 0.25f);
+    glPixelTransferi(GL_ALPHA_SCALE, 2);
+
+    GLfloat* redScale = (GLfloat*)redScaleBytes.data;
+    GLdouble* greenBias = (GLdouble*)greenBiasBytes.data;
+    GLint* alphaScale = (GLint*)alphaScaleBytes.data;
+    glGetFloatv(GL_RED_SCALE, redScale);
+    glGetDoublev(GL_GREEN_BIAS, greenBias);
+    glGetIntegerv(GL_ALPHA_SCALE, alphaScale);
+    GLenum err = glGetError();
+
+    glPixelTransferf(GL_RED_SCALE, 1.0f);
+    glPixelTransferf(GL_GREEN_BIAS, 0.0f);
+    glPixelTransferf(GL_ALPHA_SCALE, 1.0f);
+
+    if (err != GL_NO_ERROR) {
+        return fail("pixel transfer getters produced GL error " + std::to_string(err));
+    }
+    if (!nearlyEqual(*redScale, 1.75f)) {
+        return fail("red scale getter did not match");
+    }
+    if (!nearlyEqual(*greenBias, 0.25)) {
+        return fail("green bias getter did not match");
+    }
+    if (*alphaScale != 2) {
+        return fail("alpha scale getter did not match");
+    }
+    return pass("page-boundary pixel transfer state getters matched");
+}
+
+static TestResult testClientPointerGetters(TestContext&) {
+    PageBytes vertexBytes;
+    PageBytes colorBytes;
+    PageBytes normalBytes;
+    PageBytes texCoordBytes;
+    PageBytes indexBytes;
+    PageBytes edgeFlagBytes;
+    PageBytes vertexOutBytes;
+    PageBytes colorOutBytes;
+    PageBytes normalOutBytes;
+    PageBytes texCoordOutBytes;
+    PageBytes indexOutBytes;
+    PageBytes edgeFlagOutBytes;
+    if (!vertexBytes.init(6 * sizeof(GLfloat), 11) ||
+        !colorBytes.init(12 * sizeof(GLfloat), 13) ||
+        !normalBytes.init(9 * sizeof(GLfloat), 15) ||
+        !texCoordBytes.init(6 * sizeof(GLfloat), 17) ||
+        !indexBytes.init(3 * sizeof(GLfloat), 19) ||
+        !edgeFlagBytes.init(3 * sizeof(GLboolean), 2) ||
+        !vertexOutBytes.init(sizeof(void*), 3) ||
+        !colorOutBytes.init(sizeof(void*), 3) ||
+        !normalOutBytes.init(sizeof(void*), 3) ||
+        !texCoordOutBytes.init(sizeof(void*), 3) ||
+        !indexOutBytes.init(sizeof(void*), 3) ||
+        !edgeFlagOutBytes.init(sizeof(void*), 3)) {
+        return skip("VirtualAlloc failed for client pointer getter buffers");
+    }
+
+    glVertexPointer(2, GL_FLOAT, 0, vertexBytes.data);
+    glColorPointer(4, GL_FLOAT, 0, colorBytes.data);
+    glNormalPointer(GL_FLOAT, 0, normalBytes.data);
+    glTexCoordPointer(2, GL_FLOAT, 0, texCoordBytes.data);
+    glIndexPointer(GL_FLOAT, 0, indexBytes.data);
+    glEdgeFlagPointer(0, edgeFlagBytes.data);
+
+    void** vertexOut = (void**)vertexOutBytes.data;
+    void** colorOut = (void**)colorOutBytes.data;
+    void** normalOut = (void**)normalOutBytes.data;
+    void** texCoordOut = (void**)texCoordOutBytes.data;
+    void** indexOut = (void**)indexOutBytes.data;
+    void** edgeFlagOut = (void**)edgeFlagOutBytes.data;
+    *vertexOut = (void*)0x1;
+    *colorOut = (void*)0x2;
+    *normalOut = (void*)0x3;
+    *texCoordOut = (void*)0x4;
+    *indexOut = (void*)0x5;
+    *edgeFlagOut = (void*)0x6;
+
+    glGetPointerv(GL_VERTEX_ARRAY_POINTER, vertexOut);
+    glGetPointerv(GL_COLOR_ARRAY_POINTER, colorOut);
+    glGetPointerv(GL_NORMAL_ARRAY_POINTER, normalOut);
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, texCoordOut);
+    glGetPointerv(GL_INDEX_ARRAY_POINTER, indexOut);
+    glGetPointerv(GL_EDGE_FLAG_ARRAY_POINTER, edgeFlagOut);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("client pointer getters produced GL error " + std::to_string(err));
+    }
+    if (*vertexOut != vertexBytes.data ||
+        *colorOut != colorBytes.data ||
+        *normalOut != normalBytes.data ||
+        *texCoordOut != texCoordBytes.data ||
+        *indexOut != indexBytes.data ||
+        *edgeFlagOut != edgeFlagBytes.data) {
+        return fail("one or more client pointer getters did not return the original pointer");
+    }
+    return pass("page-boundary client pointer getters matched");
+}
+
+static TestResult testTextureObjectArrayAPIs(TestContext&) {
+    PageBytes textureBytes;
+    PageBytes priorityBytes;
+    PageBytes residenceBytes;
+    if (!textureBytes.init(3 * sizeof(GLuint), 5) ||
+        !priorityBytes.init(3 * sizeof(GLclampf), 7) ||
+        !residenceBytes.init(3 * sizeof(GLboolean), 2)) {
+        return skip("VirtualAlloc failed for texture object array buffers");
+    }
+
+    GLuint* textures = (GLuint*)textureBytes.data;
+    GLclampf* priorities = (GLclampf*)priorityBytes.data;
+    GLboolean* residences = (GLboolean*)residenceBytes.data;
+    priorities[0] = 0.25f;
+    priorities[1] = 0.5f;
+    priorities[2] = 1.0f;
+    residences[0] = residences[1] = residences[2] = GL_FALSE;
+
+    glGenTextures(3, textures);
+    unsigned char pixel[4] = { 1, 2, 3, 255 };
+    for (int i = 0; i < 3; i++) {
+        glBindTexture(GL_TEXTURE_2D, textures[i]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+    }
+    glPrioritizeTextures(3, textures, priorities);
+    GLboolean allResident = glAreTexturesResident(3, textures, residences);
+    GLboolean isTexture0 = glIsTexture(textures[0]);
+    GLboolean isTexture1 = glIsTexture(textures[1]);
+    GLboolean isTexture2 = glIsTexture(textures[2]);
+    GLenum err = glGetError();
+    glDeleteTextures(3, textures);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (err != GL_NO_ERROR) {
+        return fail("texture object array APIs produced GL error " + std::to_string(err));
+    }
+    if (!textures[0] || !textures[1] || !textures[2]) {
+        return fail("glGenTextures did not fill the page-boundary texture array");
+    }
+    if (!isTexture0 || !isTexture1 || !isTexture2) {
+        return fail("glIsTexture did not recognize generated texture objects");
+    }
+    for (int i = 0; i < 3; i++) {
+        if (residences[i] != (allResident ? GL_TRUE : residences[i])) {
+            return fail("texture residence output contained an unexpected value");
+        }
+        if (residences[i] != GL_TRUE && residences[i] != GL_FALSE) {
+            return fail("texture residence output was not a GLboolean value");
+        }
+    }
+    return pass("page-boundary texture object array APIs completed");
+}
+
+static TestResult testBindTexturesPageBoundary(TestContext&) {
+    if (!glx.CreateTextures || !glx.BindTextures || !glx.GetIntegeri_v) {
+        return skip("texture multi-bind entry points are unavailable");
+    }
+
+    PageBytes textureBytes;
+    PageBytes queryBytes;
+    if (!textureBytes.init(3 * sizeof(GLuint), 7) || !queryBytes.init(sizeof(GLint), 3)) {
+        return skip("VirtualAlloc failed for bind textures buffers");
+    }
+
+    GLuint* textures = (GLuint*)textureBytes.data;
+    textures[0] = textures[1] = textures[2] = 0;
+    glx.CreateTextures(GL_TEXTURE_2D, 3, textures);
+    if (textures[0] == 0 || textures[1] == 0 || textures[2] == 0) {
+        glDeleteTextures(3, textures);
+        return fail("glCreateTextures did not copy back texture names");
+    }
+
+    glx.BindTextures(1, 3, textures);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindTextures(1, 3, nullptr);
+        glDeleteTextures(3, textures);
+        return fail("glBindTextures produced GL error " + std::to_string(err));
+    }
+
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)queryBytes.data = -1;
+        glx.GetIntegeri_v(GL_TEXTURE_BINDING_2D, 1 + i, (GLint*)queryBytes.data);
+        if (*(GLint*)queryBytes.data != (GLint)textures[i]) {
+            glx.BindTextures(1, 3, nullptr);
+            glDeleteTextures(3, textures);
+            return fail("glBindTextures binding was not copied correctly");
+        }
+    }
+
+    glx.BindTextures(1, 3, nullptr);
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)queryBytes.data = -1;
+        glx.GetIntegeri_v(GL_TEXTURE_BINDING_2D, 1 + i, (GLint*)queryBytes.data);
+        if (*(GLint*)queryBytes.data != 0) {
+            glDeleteTextures(3, textures);
+            return fail("glBindTextures null array did not unbind texture unit");
+        }
+    }
+
+    glDeleteTextures(3, textures);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("bind textures cleanup produced GL error " + std::to_string(err));
+    }
+
+    return pass("page-boundary glBindTextures state copied back");
+}
+
+static TestResult testBindImageTexturesPageBoundary(TestContext&) {
+    if (!glx.CreateTextures || !glx.TextureStorage2D || !glx.BindImageTextures || !glx.GetIntegeri_v) {
+        return skip("image texture multi-bind entry points are unavailable");
+    }
+
+    PageBytes textureBytes;
+    PageBytes queryBytes;
+    if (!textureBytes.init(3 * sizeof(GLuint), 11) || !queryBytes.init(sizeof(GLint), 3)) {
+        return skip("VirtualAlloc failed for bind image textures buffers");
+    }
+
+    GLuint* textures = (GLuint*)textureBytes.data;
+    textures[0] = textures[1] = textures[2] = 0;
+    glx.CreateTextures(GL_TEXTURE_2D, 3, textures);
+    for (int i = 0; i < 3; ++i) {
+        if (textures[i] == 0) {
+            glDeleteTextures(3, textures);
+            return fail("glCreateTextures did not copy back image texture names");
+        }
+        glx.TextureStorage2D(textures[i], 1, GL_RGBA8, 2, 2);
+    }
+
+    glx.BindImageTextures(2, 3, textures);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glx.BindImageTextures(2, 3, nullptr);
+        glDeleteTextures(3, textures);
+        return fail("glBindImageTextures produced GL error " + std::to_string(err));
+    }
+
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)queryBytes.data = -1;
+        glx.GetIntegeri_v(GL_IMAGE_BINDING_NAME, 2 + i, (GLint*)queryBytes.data);
+        if (*(GLint*)queryBytes.data != (GLint)textures[i]) {
+            glx.BindImageTextures(2, 3, nullptr);
+            glDeleteTextures(3, textures);
+            return fail("glBindImageTextures binding was not copied correctly");
+        }
+    }
+
+    glx.BindImageTextures(2, 3, nullptr);
+    for (GLuint i = 0; i < 3; ++i) {
+        *(GLint*)queryBytes.data = -1;
+        glx.GetIntegeri_v(GL_IMAGE_BINDING_NAME, 2 + i, (GLint*)queryBytes.data);
+        if (*(GLint*)queryBytes.data != 0) {
+            glDeleteTextures(3, textures);
+            return fail("glBindImageTextures null array did not unbind image unit");
+        }
+    }
+
+    glDeleteTextures(3, textures);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("bind image textures cleanup produced GL error " + std::to_string(err));
+    }
+
+    return pass("page-boundary glBindImageTextures state copied back");
+}
+
+static void setupLowerLeftRasterState() {
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_SCISSOR_TEST);
+    glViewport(0, 0, 16, 16);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glPixelZoom(1.0f, 1.0f);
+    glRasterPos2f(-1.0f, -1.0f);
+}
+
+static TestResult testDrawPixelsPageBoundary(TestContext&) {
+    PageBytes pixels;
+    PageBytes readback;
+    if (!pixels.init(2 * 2 * 4, 11) || !readback.init(2 * 2 * 4, 13)) {
+        return skip("VirtualAlloc failed for glDrawPixels buffers");
+    }
+
+    const unsigned char expected[16] = {
+        200, 10, 20, 255,
+        30, 210, 40, 255,
+        50, 60, 220, 255,
+        230, 240, 70, 255
+    };
+    std::memcpy(pixels.data, expected, sizeof(expected));
+
+    setupLowerLeftRasterState();
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glDrawPixels(2, 2, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data);
+    glReadPixels(0, 0, 2, 2, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("glDrawPixels produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(readback.data, expected, sizeof(expected)) != 0) {
+        return fail("glDrawPixels readback did not match source pixels");
+    }
+    return pass("page-boundary glDrawPixels rendered expected pixels");
+}
+
+static TestResult testBitmapPageBoundary(TestContext&) {
+    PageBytes bitmap;
+    PageBytes feedbackBytes;
+    if (!bitmap.init(1, 1) || !feedbackBytes.init(16 * sizeof(GLfloat), 9)) {
+        return skip("VirtualAlloc failed for glBitmap buffers");
+    }
+
+    bitmap.data[0] = 0x80;
+    GLfloat* feedback = (GLfloat*)feedbackBytes.data;
+    for (int i = 0; i < 16; i++) {
+        feedback[i] = -99.0f;
+    }
+
+    setupLowerLeftRasterState();
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_LSB_FIRST, GL_FALSE);
+    glFeedbackBuffer(16, GL_2D, feedback);
+    GLint enter = glRenderMode(GL_FEEDBACK);
+    glBitmap(8, 1, 0.0f, 0.0f, 0.0f, 0.0f, bitmap.data);
+    GLint count = glRenderMode(GL_RENDER);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("glBitmap produced GL error " + std::to_string(err));
+    }
+    if (enter != 0) {
+        return fail("entering feedback mode before glBitmap returned unexpected result");
+    }
+    if (count < 3 || !nearlyEqual(feedback[0], (GLfloat)GL_BITMAP_TOKEN)) {
+        return fail("glBitmap feedback token was not produced");
+    }
+    return pass("page-boundary glBitmap produced feedback token");
+}
+
+static TestResult testCurrentVectorInputs(TestContext&) {
+    PageBytes colorBytes;
+    PageBytes normalBytes;
+    PageBytes texCoordBytes;
+    PageBytes rasterBytes;
+    PageBytes outColorBytes;
+    PageBytes outNormalBytes;
+    PageBytes outTexCoordBytes;
+    PageBytes outRasterBytes;
+    PageBytes outValidBytes;
+    if (!colorBytes.init(4 * sizeof(GLfloat), 3) ||
+        !normalBytes.init(3 * sizeof(GLfloat), 5) ||
+        !texCoordBytes.init(4 * sizeof(GLfloat), 7) ||
+        !rasterBytes.init(4 * sizeof(GLfloat), 11) ||
+        !outColorBytes.init(4 * sizeof(GLfloat), 13) ||
+        !outNormalBytes.init(3 * sizeof(GLfloat), 17) ||
+        !outTexCoordBytes.init(4 * sizeof(GLfloat), 19) ||
+        !outRasterBytes.init(4 * sizeof(GLfloat), 23) ||
+        !outValidBytes.init(sizeof(GLboolean), 29)) {
+        return skip("VirtualAlloc failed for current vector input buffers");
+    }
+
+    const GLfloat color[4] = { 0.125f, 0.25f, 0.5f, 0.75f };
+    const GLfloat normal[3] = { 0.0f, 0.6f, 0.8f };
+    const GLfloat texCoord[4] = { 1.0f, 2.0f, 3.0f, 4.0f };
+    const GLfloat raster[4] = { 0.25f, -0.5f, 0.0f, 1.0f };
+    std::memcpy(colorBytes.data, color, sizeof(color));
+    std::memcpy(normalBytes.data, normal, sizeof(normal));
+    std::memcpy(texCoordBytes.data, texCoord, sizeof(texCoord));
+    std::memcpy(rasterBytes.data, raster, sizeof(raster));
+
+    setupLowerLeftRasterState();
+    glColor4fv((const GLfloat*)colorBytes.data);
+    glNormal3fv((const GLfloat*)normalBytes.data);
+    glTexCoord4fv((const GLfloat*)texCoordBytes.data);
+    glRasterPos4fv((const GLfloat*)rasterBytes.data);
+    glGetFloatv(GL_CURRENT_COLOR, (GLfloat*)outColorBytes.data);
+    glGetFloatv(GL_CURRENT_NORMAL, (GLfloat*)outNormalBytes.data);
+    glGetFloatv(GL_CURRENT_TEXTURE_COORDS, (GLfloat*)outTexCoordBytes.data);
+    glGetFloatv(GL_CURRENT_RASTER_POSITION, (GLfloat*)outRasterBytes.data);
+    glGetBooleanv(GL_CURRENT_RASTER_POSITION_VALID, (GLboolean*)outValidBytes.data);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("current vector input APIs produced GL error " + std::to_string(err));
+    }
+
+    const GLfloat* outColor = (const GLfloat*)outColorBytes.data;
+    const GLfloat* outNormal = (const GLfloat*)outNormalBytes.data;
+    const GLfloat* outTexCoord = (const GLfloat*)outTexCoordBytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outColor[i], color[i])) {
+            return fail("glColor4fv current color did not match page-boundary input");
+        }
+        if (!nearlyEqual(outTexCoord[i], texCoord[i])) {
+            return fail("glTexCoord4fv current texcoord did not match page-boundary input");
+        }
+    }
+    for (int i = 0; i < 3; i++) {
+        if (!nearlyEqual(outNormal[i], normal[i])) {
+            return fail("glNormal3fv current normal did not match page-boundary input");
+        }
+    }
+
+    const GLfloat* outRaster = (const GLfloat*)outRasterBytes.data;
+    const GLfloat expectedRaster[4] = { 10.0f, 4.0f, 0.5f, 1.0f };
+    if (*(const GLboolean*)outValidBytes.data != GL_TRUE) {
+        return fail("glRasterPos4fv did not produce a valid raster position");
+    }
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outRaster[i], expectedRaster[i])) {
+            return fail("glRasterPos4fv current raster position did not match transformed input");
+        }
+    }
+
+    return pass("fixed-function current vector inputs matched");
+}
+
+static TestResult testColorIndexEdgeVectorInputs(TestContext&) {
+    PageBytes color4ubBytes;
+    PageBytes color3usBytes;
+    PageBytes indexBytes;
+    PageBytes edgeFalseBytes;
+    PageBytes edgeTrueBytes;
+    PageBytes outColorBytes;
+    PageBytes outIndexBytes;
+    PageBytes outEdgeBytes;
+    if (!color4ubBytes.init(4 * sizeof(GLubyte), 3) ||
+        !color3usBytes.init(3 * sizeof(GLushort), 5) ||
+        !indexBytes.init(sizeof(GLubyte), 7) ||
+        !edgeFalseBytes.init(sizeof(GLboolean), 11) ||
+        !edgeTrueBytes.init(sizeof(GLboolean), 13) ||
+        !outColorBytes.init(4 * sizeof(GLfloat), 17) ||
+        !outIndexBytes.init(sizeof(GLfloat), 19) ||
+        !outEdgeBytes.init(sizeof(GLboolean), 23)) {
+        return skip("VirtualAlloc failed for color/index/edge vector buffers");
+    }
+
+    const GLubyte color4ub[4] = { 64, 128, 192, 255 };
+    const GLushort color3us[3] = { 65535, 32768, 0 };
+    const GLubyte index = 37;
+    const GLboolean edgeFalse = GL_FALSE;
+    const GLboolean edgeTrue = GL_TRUE;
+    std::memcpy(color4ubBytes.data, color4ub, sizeof(color4ub));
+    std::memcpy(color3usBytes.data, color3us, sizeof(color3us));
+    std::memcpy(indexBytes.data, &index, sizeof(index));
+    std::memcpy(edgeFalseBytes.data, &edgeFalse, sizeof(edgeFalse));
+    std::memcpy(edgeTrueBytes.data, &edgeTrue, sizeof(edgeTrue));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+
+    glColor4ubv((const GLubyte*)color4ubBytes.data);
+    glGetFloatv(GL_CURRENT_COLOR, (GLfloat*)outColorBytes.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glColor4ubv produced GL error " + std::to_string(err));
+    }
+    const GLfloat* outColor = (const GLfloat*)outColorBytes.data;
+    for (int i = 0; i < 4; i++) {
+        const GLfloat expected = (GLfloat)color4ub[i] / 255.0f;
+        if (!nearlyEqual(outColor[i], expected)) {
+            return fail("glColor4ubv current color did not match page-boundary input");
+        }
+    }
+
+    glColor3usv((const GLushort*)color3usBytes.data);
+    glGetFloatv(GL_CURRENT_COLOR, (GLfloat*)outColorBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glColor3usv produced GL error " + std::to_string(err));
+    }
+    outColor = (const GLfloat*)outColorBytes.data;
+    const GLfloat expectedColor3us[4] = {
+        1.0f,
+        (GLfloat)color3us[1] / 65535.0f,
+        0.0f,
+        1.0f
+    };
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outColor[i], expectedColor3us[i])) {
+            return fail("glColor3usv current color did not match page-boundary input");
+        }
+    }
+
+    glIndexubv((const GLubyte*)indexBytes.data);
+    glGetFloatv(GL_CURRENT_INDEX, (GLfloat*)outIndexBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glIndexubv produced GL error " + std::to_string(err));
+    }
+    if (!nearlyEqual(*(const GLfloat*)outIndexBytes.data, (GLfloat)index)) {
+        return fail("glIndexubv current index did not match page-boundary input");
+    }
+
+    glEdgeFlagv((const GLboolean*)edgeFalseBytes.data);
+    glGetBooleanv(GL_EDGE_FLAG, (GLboolean*)outEdgeBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glEdgeFlagv false produced GL error " + std::to_string(err));
+    }
+    if (*(const GLboolean*)outEdgeBytes.data != GL_FALSE) {
+        return fail("glEdgeFlagv did not set GL_EDGE_FLAG false");
+    }
+
+    glEdgeFlagv((const GLboolean*)edgeTrueBytes.data);
+    glGetBooleanv(GL_EDGE_FLAG, (GLboolean*)outEdgeBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glEdgeFlagv true produced GL error " + std::to_string(err));
+    }
+    if (*(const GLboolean*)outEdgeBytes.data != GL_TRUE) {
+        return fail("glEdgeFlagv did not set GL_EDGE_FLAG true");
+    }
+
+    return pass("page-boundary color/index/edge vectors matched current state");
+}
+
+static TestResult testMatrixVectorInputs(TestContext&) {
+    PageBytes loadFBytes;
+    PageBytes loadDBytes;
+    PageBytes multFBytes;
+    PageBytes multDBytes;
+    PageBytes outFBytes;
+    PageBytes outDBytes;
+    if (!loadFBytes.init(16 * sizeof(GLfloat), 3) ||
+        !loadDBytes.init(16 * sizeof(GLdouble), 5) ||
+        !multFBytes.init(16 * sizeof(GLfloat), 7) ||
+        !multDBytes.init(16 * sizeof(GLdouble), 11) ||
+        !outFBytes.init(16 * sizeof(GLfloat), 13) ||
+        !outDBytes.init(16 * sizeof(GLdouble), 17)) {
+        return skip("VirtualAlloc failed for matrix vector buffers");
+    }
+
+    const GLfloat loadF[16] = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 2.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 3.0f, 0.0f,
+        4.0f, 5.0f, 6.0f, 1.0f
+    };
+    const GLdouble loadD[16] = {
+        0.5, 0.0, 0.0, 0.0,
+        0.0, 1.5, 0.0, 0.0,
+        0.0, 0.0, 2.5, 0.0,
+        3.5, 4.5, 5.5, 1.0
+    };
+    const GLfloat multF[16] = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.25f, 0.5f, 0.75f, 1.0f
+    };
+    const GLdouble multD[16] = {
+        2.0, 0.0, 0.0, 0.0,
+        0.0, 3.0, 0.0, 0.0,
+        0.0, 0.0, 4.0, 0.0,
+        -1.0, -2.0, -3.0, 1.0
+    };
+    std::memcpy(loadFBytes.data, loadF, sizeof(loadF));
+    std::memcpy(loadDBytes.data, loadD, sizeof(loadD));
+    std::memcpy(multFBytes.data, multF, sizeof(multF));
+    std::memcpy(multDBytes.data, multD, sizeof(multD));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glMatrixMode(GL_MODELVIEW);
+
+    glLoadMatrixf((const GLfloat*)loadFBytes.data);
+    glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat*)outFBytes.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glLoadIdentity();
+        return fail("glLoadMatrixf produced GL error " + std::to_string(err));
+    }
+    const GLfloat* outF = (const GLfloat*)outFBytes.data;
+    for (int i = 0; i < 16; i++) {
+        if (!nearlyEqual(outF[i], loadF[i])) {
+            glLoadIdentity();
+            return fail("glLoadMatrixf modelview matrix did not match page-boundary input");
+        }
+    }
+
+    glLoadMatrixd((const GLdouble*)loadDBytes.data);
+    glGetDoublev(GL_MODELVIEW_MATRIX, (GLdouble*)outDBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glLoadIdentity();
+        return fail("glLoadMatrixd produced GL error " + std::to_string(err));
+    }
+    const GLdouble* outD = (const GLdouble*)outDBytes.data;
+    for (int i = 0; i < 16; i++) {
+        if (!nearlyEqual(outD[i], loadD[i])) {
+            glLoadIdentity();
+            return fail("glLoadMatrixd modelview matrix did not match page-boundary input");
+        }
+    }
+
+    glLoadIdentity();
+    glMultMatrixf((const GLfloat*)multFBytes.data);
+    glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat*)outFBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glLoadIdentity();
+        return fail("glMultMatrixf produced GL error " + std::to_string(err));
+    }
+    outF = (const GLfloat*)outFBytes.data;
+    for (int i = 0; i < 16; i++) {
+        if (!nearlyEqual(outF[i], multF[i])) {
+            glLoadIdentity();
+            return fail("glMultMatrixf modelview matrix did not match page-boundary input");
+        }
+    }
+
+    glLoadIdentity();
+    glMultMatrixd((const GLdouble*)multDBytes.data);
+    glGetDoublev(GL_MODELVIEW_MATRIX, (GLdouble*)outDBytes.data);
+    err = glGetError();
+    glLoadIdentity();
+    if (err != GL_NO_ERROR) {
+        return fail("glMultMatrixd produced GL error " + std::to_string(err));
+    }
+    outD = (const GLdouble*)outDBytes.data;
+    for (int i = 0; i < 16; i++) {
+        if (!nearlyEqual(outD[i], multD[i])) {
+            return fail("glMultMatrixd modelview matrix did not match page-boundary input");
+        }
+    }
+
+    return pass("page-boundary matrix vector inputs matched modelview state");
+}
+
+static TestResult testTexCoordVectorInputs(TestContext&) {
+    PageBytes tex1DBytes;
+    PageBytes tex2IBytes;
+    PageBytes tex3SBytes;
+    PageBytes tex4DBytes;
+    PageBytes outBytes;
+    if (!tex1DBytes.init(sizeof(GLdouble), 3) ||
+        !tex2IBytes.init(2 * sizeof(GLint), 5) ||
+        !tex3SBytes.init(3 * sizeof(GLshort), 7) ||
+        !tex4DBytes.init(4 * sizeof(GLdouble), 11) ||
+        !outBytes.init(4 * sizeof(GLfloat), 13)) {
+        return skip("VirtualAlloc failed for texcoord vector buffers");
+    }
+
+    const GLdouble tex1D[1] = { 0.25 };
+    const GLint tex2I[2] = { 2, 3 };
+    const GLshort tex3S[3] = { 4, 5, 6 };
+    const GLdouble tex4D[4] = { 7.25, 8.5, 9.75, 10.0 };
+    std::memcpy(tex1DBytes.data, tex1D, sizeof(tex1D));
+    std::memcpy(tex2IBytes.data, tex2I, sizeof(tex2I));
+    std::memcpy(tex3SBytes.data, tex3S, sizeof(tex3S));
+    std::memcpy(tex4DBytes.data, tex4D, sizeof(tex4D));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+
+    struct TexCoordCase {
+        const char* label;
+        GLfloat expected[4];
+    };
+    TexCoordCase expected[] = {
+        { "glTexCoord1dv", { 0.25f, 0.0f, 0.0f, 1.0f } },
+        { "glTexCoord2iv", { 2.0f, 3.0f, 0.0f, 1.0f } },
+        { "glTexCoord3sv", { 4.0f, 5.0f, 6.0f, 1.0f } },
+        { "glTexCoord4dv", { 7.25f, 8.5f, 9.75f, 10.0f } },
+    };
+
+    glTexCoord1dv((const GLdouble*)tex1DBytes.data);
+    glGetFloatv(GL_CURRENT_TEXTURE_COORDS, (GLfloat*)outBytes.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glTexCoord1dv produced GL error " + std::to_string(err));
+    }
+    const GLfloat* out = (const GLfloat*)outBytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(out[i], expected[0].expected[i])) {
+            return fail("glTexCoord1dv current texcoord did not match page-boundary input");
+        }
+    }
+
+    glTexCoord2iv((const GLint*)tex2IBytes.data);
+    glGetFloatv(GL_CURRENT_TEXTURE_COORDS, (GLfloat*)outBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glTexCoord2iv produced GL error " + std::to_string(err));
+    }
+    out = (const GLfloat*)outBytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(out[i], expected[1].expected[i])) {
+            return fail("glTexCoord2iv current texcoord did not match page-boundary input");
+        }
+    }
+
+    glTexCoord3sv((const GLshort*)tex3SBytes.data);
+    glGetFloatv(GL_CURRENT_TEXTURE_COORDS, (GLfloat*)outBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glTexCoord3sv produced GL error " + std::to_string(err));
+    }
+    out = (const GLfloat*)outBytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(out[i], expected[2].expected[i])) {
+            return fail("glTexCoord3sv current texcoord did not match page-boundary input");
+        }
+    }
+
+    glTexCoord4dv((const GLdouble*)tex4DBytes.data);
+    glGetFloatv(GL_CURRENT_TEXTURE_COORDS, (GLfloat*)outBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glTexCoord4dv produced GL error " + std::to_string(err));
+    }
+    out = (const GLfloat*)outBytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(out[i], expected[3].expected[i])) {
+            return fail("glTexCoord4dv current texcoord did not match page-boundary input");
+        }
+    }
+
+    return pass("page-boundary texcoord vector inputs matched current state");
+}
+
+static TestResult testRasterPosVectorInputs(TestContext&) {
+    PageBytes raster2DBytes;
+    PageBytes raster3IBytes;
+    PageBytes raster4SBytes;
+    PageBytes outRasterBytes;
+    PageBytes outValidBytes;
+    if (!raster2DBytes.init(2 * sizeof(GLdouble), 3) ||
+        !raster3IBytes.init(3 * sizeof(GLint), 5) ||
+        !raster4SBytes.init(4 * sizeof(GLshort), 7) ||
+        !outRasterBytes.init(4 * sizeof(GLfloat), 11) ||
+        !outValidBytes.init(sizeof(GLboolean), 13)) {
+        return skip("VirtualAlloc failed for raster position vector buffers");
+    }
+
+    const GLdouble raster2D[2] = { -0.75, -0.25 };
+    const GLint raster3I[3] = { 0, 0, 0 };
+    const GLshort raster4S[4] = { 0, 0, 0, 1 };
+    std::memcpy(raster2DBytes.data, raster2D, sizeof(raster2D));
+    std::memcpy(raster3IBytes.data, raster3I, sizeof(raster3I));
+    std::memcpy(raster4SBytes.data, raster4S, sizeof(raster4S));
+
+    setupLowerLeftRasterState();
+
+    struct RasterCase {
+        const char* label;
+        GLfloat expected[4];
+    };
+    RasterCase expected[] = {
+        { "glRasterPos2dv", { 2.0f, 6.0f, 0.5f, 1.0f } },
+        { "glRasterPos3iv", { 8.0f, 8.0f, 0.5f, 1.0f } },
+        { "glRasterPos4sv", { 8.0f, 8.0f, 0.5f, 1.0f } },
+    };
+
+    glRasterPos2dv((const GLdouble*)raster2DBytes.data);
+    glGetFloatv(GL_CURRENT_RASTER_POSITION, (GLfloat*)outRasterBytes.data);
+    glGetBooleanv(GL_CURRENT_RASTER_POSITION_VALID, (GLboolean*)outValidBytes.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glRasterPos2dv produced GL error " + std::to_string(err));
+    }
+    if (*(const GLboolean*)outValidBytes.data != GL_TRUE) {
+        return fail("glRasterPos2dv did not produce a valid raster position");
+    }
+    const GLfloat* outRaster = (const GLfloat*)outRasterBytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outRaster[i], expected[0].expected[i])) {
+            return fail("glRasterPos2dv current raster position did not match transformed input");
+        }
+    }
+
+    glRasterPos3iv((const GLint*)raster3IBytes.data);
+    glGetFloatv(GL_CURRENT_RASTER_POSITION, (GLfloat*)outRasterBytes.data);
+    glGetBooleanv(GL_CURRENT_RASTER_POSITION_VALID, (GLboolean*)outValidBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glRasterPos3iv produced GL error " + std::to_string(err));
+    }
+    if (*(const GLboolean*)outValidBytes.data != GL_TRUE) {
+        return fail("glRasterPos3iv did not produce a valid raster position");
+    }
+    outRaster = (const GLfloat*)outRasterBytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outRaster[i], expected[1].expected[i])) {
+            return fail("glRasterPos3iv current raster position did not match transformed input");
+        }
+    }
+
+    glRasterPos4sv((const GLshort*)raster4SBytes.data);
+    glGetFloatv(GL_CURRENT_RASTER_POSITION, (GLfloat*)outRasterBytes.data);
+    glGetBooleanv(GL_CURRENT_RASTER_POSITION_VALID, (GLboolean*)outValidBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glRasterPos4sv produced GL error " + std::to_string(err));
+    }
+    if (*(const GLboolean*)outValidBytes.data != GL_TRUE) {
+        return fail("glRasterPos4sv did not produce a valid raster position");
+    }
+    outRaster = (const GLfloat*)outRasterBytes.data;
+    for (int i = 0; i < 4; i++) {
+        if (!nearlyEqual(outRaster[i], expected[2].expected[i])) {
+            return fail("glRasterPos4sv current raster position did not match transformed input");
+        }
+    }
+
+    return pass("page-boundary raster position vector inputs matched current state");
+}
+
+static TestResult testRectVectorInputs(TestContext&) {
+    PageBytes rectDv1Bytes;
+    PageBytes rectDv2Bytes;
+    PageBytes rectFv1Bytes;
+    PageBytes rectFv2Bytes;
+    PageBytes rectIv1Bytes;
+    PageBytes rectIv2Bytes;
+    PageBytes rectSv1Bytes;
+    PageBytes rectSv2Bytes;
+    if (!rectDv1Bytes.init(2 * sizeof(GLdouble), 3) ||
+        !rectDv2Bytes.init(2 * sizeof(GLdouble), 5) ||
+        !rectFv1Bytes.init(2 * sizeof(GLfloat), 7) ||
+        !rectFv2Bytes.init(2 * sizeof(GLfloat), 11) ||
+        !rectIv1Bytes.init(2 * sizeof(GLint), 13) ||
+        !rectIv2Bytes.init(2 * sizeof(GLint), 17) ||
+        !rectSv1Bytes.init(2 * sizeof(GLshort), 19) ||
+        !rectSv2Bytes.init(2 * sizeof(GLshort), 23)) {
+        return skip("VirtualAlloc failed for rect vector buffers");
+    }
+
+    const GLdouble rectDv1[2] = { -3.0, -3.0 };
+    const GLdouble rectDv2[2] = { -2.0, -2.0 };
+    const GLfloat rectFv1[2] = { -1.0f, -3.0f };
+    const GLfloat rectFv2[2] = { 0.0f, -2.0f };
+    const GLint rectIv1[2] = { 1, -3 };
+    const GLint rectIv2[2] = { 2, -2 };
+    const GLshort rectSv1[2] = { -1, 1 };
+    const GLshort rectSv2[2] = { 1, 3 };
+    std::memcpy(rectDv1Bytes.data, rectDv1, sizeof(rectDv1));
+    std::memcpy(rectDv2Bytes.data, rectDv2, sizeof(rectDv2));
+    std::memcpy(rectFv1Bytes.data, rectFv1, sizeof(rectFv1));
+    std::memcpy(rectFv2Bytes.data, rectFv2, sizeof(rectFv2));
+    std::memcpy(rectIv1Bytes.data, rectIv1, sizeof(rectIv1));
+    std::memcpy(rectIv2Bytes.data, rectIv2, sizeof(rectIv2));
+    std::memcpy(rectSv1Bytes.data, rectSv1, sizeof(rectSv1));
+    std::memcpy(rectSv2Bytes.data, rectSv2, sizeof(rectSv2));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glDisable(GL_CULL_FACE);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(-4.0, 4.0, -4.0, 4.0, -1.0, 1.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glRectdv((const GLdouble*)rectDv1Bytes.data, (const GLdouble*)rectDv2Bytes.data);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glRectfv((const GLfloat*)rectFv1Bytes.data, (const GLfloat*)rectFv2Bytes.data);
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glRectiv((const GLint*)rectIv1Bytes.data, (const GLint*)rectIv2Bytes.data);
+    glColor3f(1.0f, 1.0f, 0.0f);
+    glRectsv((const GLshort*)rectSv1Bytes.data, (const GLshort*)rectSv2Bytes.data);
+    glFinish();
+
+    unsigned char redPx[4] = {};
+    unsigned char greenPx[4] = {};
+    unsigned char bluePx[4] = {};
+    unsigned char yellowPx[4] = {};
+    glReadPixels(12, 12, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, redPx);
+    glReadPixels(28, 12, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, greenPx);
+    glReadPixels(44, 12, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bluePx);
+    glReadPixels(32, 48, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, yellowPx);
+    GLenum err = glGetError();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    if (err != GL_NO_ERROR) {
+        return fail("rect vector APIs produced GL error " + std::to_string(err));
+    }
+    if (redPx[0] < 180 || redPx[1] > 80 || redPx[2] > 80) {
+        return fail("glRectdv page-boundary rectangle did not render at the expected pixel");
+    }
+    if (greenPx[1] < 180 || greenPx[0] > 80 || greenPx[2] > 80) {
+        return fail("glRectfv page-boundary rectangle did not render at the expected pixel");
+    }
+    if (bluePx[2] < 180 || bluePx[0] > 80 || bluePx[1] > 80) {
+        return fail("glRectiv page-boundary rectangle did not render at the expected pixel");
+    }
+    if (yellowPx[0] < 180 || yellowPx[1] < 180 || yellowPx[2] > 80) {
+        return fail("glRectsv page-boundary rectangle did not render at the expected pixel");
+    }
+    return pass("page-boundary rect vector inputs rendered expected pixels");
+}
+
+static TestResult testImmediateVertexVectorInputs(TestContext&) {
+    PageBytes v2dBytes;
+    PageBytes v3fBytes;
+    PageBytes v3iBytes;
+    PageBytes v4sBytes;
+    if (!v2dBytes.init(2 * sizeof(GLdouble), 3) ||
+        !v3fBytes.init(3 * sizeof(GLfloat), 5) ||
+        !v3iBytes.init(3 * sizeof(GLint), 7) ||
+        !v4sBytes.init(4 * sizeof(GLshort), 11)) {
+        return skip("VirtualAlloc failed for immediate vertex vector buffers");
+    }
+
+    const GLdouble v2d[2] = { -1.5, -1.5 };
+    const GLfloat v3f[3] = { 0.0f, 0.0f, 0.0f };
+    const GLint v3i[3] = { 1, -1, 0 };
+    const GLshort v4s[4] = { 1, 1, 0, 1 };
+    std::memcpy(v2dBytes.data, v2d, sizeof(v2d));
+    std::memcpy(v3fBytes.data, v3f, sizeof(v3f));
+    std::memcpy(v3iBytes.data, v3i, sizeof(v3i));
+    std::memcpy(v4sBytes.data, v4s, sizeof(v4s));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glDisable(GL_POINT_SMOOTH);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(-2.0, 2.0, -2.0, 2.0, -1.0, 1.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glPointSize(5.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glBegin(GL_POINTS);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glVertex2dv((const GLdouble*)v2dBytes.data);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3fv((const GLfloat*)v3fBytes.data);
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glVertex3iv((const GLint*)v3iBytes.data);
+    glColor3f(1.0f, 1.0f, 0.0f);
+    glVertex4sv((const GLshort*)v4sBytes.data);
+    glEnd();
+    glFinish();
+
+    unsigned char redPx[4] = {};
+    unsigned char centerPx[4] = {};
+    unsigned char bluePx[4] = {};
+    unsigned char yellowPx[4] = {};
+    glReadPixels(8, 8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, redPx);
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, centerPx);
+    glReadPixels(48, 16, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bluePx);
+    glReadPixels(48, 48, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, yellowPx);
+    GLenum err = glGetError();
+    glPointSize(1.0f);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    if (err != GL_NO_ERROR) {
+        return fail("immediate vertex vector APIs produced GL error " + std::to_string(err));
+    }
+    if (redPx[0] < 180 || redPx[1] > 80 || redPx[2] > 80) {
+        return fail("glVertex2dv page-boundary point did not render at the expected pixel");
+    }
+    if (centerPx[1] < 180 || centerPx[0] > 80 || centerPx[2] > 80) {
+        return fail("glVertex3fv page-boundary point did not render at the expected pixel");
+    }
+    if (bluePx[2] < 180 || bluePx[0] > 80 || bluePx[1] > 80) {
+        return fail("glVertex3iv page-boundary point did not render at the expected pixel");
+    }
+    if (yellowPx[0] < 180 || yellowPx[1] < 180 || yellowPx[2] > 80) {
+        return fail("glVertex4sv page-boundary point did not render at the expected pixel");
+    }
+    return pass("page-boundary immediate vertex vectors rendered expected pixels");
+}
+
+static TestResult testFramebufferTextureReadback(TestContext&) {
+    if (!glx.GenFramebuffers || !glx.BindFramebuffer || !glx.FramebufferTexture2D ||
+        !glx.CheckFramebufferStatus || !glx.DeleteFramebuffers) {
+        return skip("framebuffer entry points are unavailable");
+    }
+
+    PageBytes readPixels;
+    PageBytes readTexture;
+    if (!readPixels.init(4, 3) || !readTexture.init(16 * 16 * 4, 24)) {
+        return skip("VirtualAlloc failed for framebuffer readback buffers");
+    }
+
+    GLuint tex = 0;
+    GLuint fbo = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glx.GenFramebuffers(1, &fbo);
+    glx.BindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glx.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+    GLenum status = glx.CheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &tex);
+        return fail("framebuffer was incomplete: " + std::to_string(status));
+    }
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glDisable(GL_TEXTURE_2D);
+    glViewport(0, 0, 16, 16);
+    glClearColor(0.125f, 0.625f, 0.25f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glReadPixels(8, 8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, readPixels.data);
+    glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readTexture.data);
+    GLenum err = glGetError();
+    glx.DeleteFramebuffers(1, &fbo);
+    glDeleteTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (err != GL_NO_ERROR) {
+        return fail("framebuffer readback produced GL error " + std::to_string(err));
+    }
+    if (readPixels.data[0] < 25 || readPixels.data[0] > 40 ||
+        readPixels.data[1] < 150 || readPixels.data[1] > 170 ||
+        readPixels.data[2] < 55 || readPixels.data[2] > 75 ||
+        readPixels.data[3] < 250) {
+        return fail("framebuffer glReadPixels color did not match clear color");
+    }
+    if (readTexture.data[0] < 25 || readTexture.data[0] > 40 ||
+        readTexture.data[1] < 150 || readTexture.data[1] > 170 ||
+        readTexture.data[2] < 55 || readTexture.data[2] > 75 ||
+        readTexture.data[3] < 250) {
+        return fail("framebuffer texture readback color did not match clear color");
+    }
+    return pass("framebuffer texture readbacks matched clear color");
+}
+
+static TestResult testFramebufferRenderbufferObjectPageBoundary(TestContext&) {
+    if (!glx.CreateFramebuffers || !glx.DeleteFramebuffers ||
+        !glx.CreateRenderbuffers || !glx.GenRenderbuffers || !glx.DeleteRenderbuffers ||
+        !glx.BindRenderbuffer || !glx.IsRenderbuffer || !glx.NamedRenderbufferStorage ||
+        !glx.GetNamedRenderbufferParameteriv || !glx.GetRenderbufferParameteriv ||
+        !glx.NamedFramebufferRenderbuffer || !glx.CheckNamedFramebufferStatus ||
+        !glx.GetNamedFramebufferAttachmentParameteriv || !glx.GetFramebufferAttachmentParameteriv ||
+        !glx.BindFramebuffer) {
+        return skip("framebuffer/renderbuffer DSA entry points are unavailable");
+    }
+
+    PageBytes framebufferBytes;
+    PageBytes renderbufferBytes;
+    PageBytes genRenderbufferBytes;
+    PageBytes intBytes;
+    if (!framebufferBytes.init(sizeof(GLuint), 3) ||
+        !renderbufferBytes.init(sizeof(GLuint), 5) ||
+        !genRenderbufferBytes.init(sizeof(GLuint), 7) ||
+        !intBytes.init(sizeof(GLint), 2)) {
+        return skip("VirtualAlloc failed for framebuffer/renderbuffer buffers");
+    }
+
+    GLuint* fbo = (GLuint*)framebufferBytes.data;
+    GLuint* rbo = (GLuint*)renderbufferBytes.data;
+    GLuint* generatedRbo = (GLuint*)genRenderbufferBytes.data;
+    *fbo = 0;
+    *rbo = 0;
+    *generatedRbo = 0;
+
+    glx.CreateFramebuffers(1, fbo);
+    glx.CreateRenderbuffers(1, rbo);
+    glx.GenRenderbuffers(1, generatedRbo);
+    glx.BindRenderbuffer(GL_RENDERBUFFER, *generatedRbo);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        if (*generatedRbo) glx.DeleteRenderbuffers(1, generatedRbo);
+        if (*rbo) glx.DeleteRenderbuffers(1, rbo);
+        if (*fbo) glx.DeleteFramebuffers(1, fbo);
+        return fail("framebuffer/renderbuffer creation produced GL error " + std::to_string(err));
+    }
+    if (*fbo == 0 || *rbo == 0 || *generatedRbo == 0 || glx.IsRenderbuffer(*generatedRbo) != GL_TRUE) {
+        if (*generatedRbo) glx.DeleteRenderbuffers(1, generatedRbo);
+        if (*rbo) glx.DeleteRenderbuffers(1, rbo);
+        if (*fbo) glx.DeleteFramebuffers(1, fbo);
+        return fail("framebuffer/renderbuffer object IDs were not copied back");
+    }
+
+    glx.NamedRenderbufferStorage(*rbo, GL_RGBA8, 8, 6);
+    glx.GetNamedRenderbufferParameteriv(*rbo, GL_RENDERBUFFER_WIDTH, (GLint*)intBytes.data);
+    if (*(GLint*)intBytes.data != 8) {
+        glx.DeleteRenderbuffers(1, generatedRbo);
+        glx.DeleteRenderbuffers(1, rbo);
+        glx.DeleteFramebuffers(1, fbo);
+        return fail("glGetNamedRenderbufferParameteriv width was not copied back");
+    }
+    glx.GetNamedRenderbufferParameteriv(*rbo, GL_RENDERBUFFER_HEIGHT, (GLint*)intBytes.data);
+    if (*(GLint*)intBytes.data != 6) {
+        glx.DeleteRenderbuffers(1, generatedRbo);
+        glx.DeleteRenderbuffers(1, rbo);
+        glx.DeleteFramebuffers(1, fbo);
+        return fail("glGetNamedRenderbufferParameteriv height was not copied back");
+    }
+    glx.BindRenderbuffer(GL_RENDERBUFFER, *rbo);
+    glx.GetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_INTERNAL_FORMAT, (GLint*)intBytes.data);
+    if (*(GLint*)intBytes.data != GL_RGBA8) {
+        glx.BindRenderbuffer(GL_RENDERBUFFER, 0);
+        glx.DeleteRenderbuffers(1, generatedRbo);
+        glx.DeleteRenderbuffers(1, rbo);
+        glx.DeleteFramebuffers(1, fbo);
+        return fail("glGetRenderbufferParameteriv internal format was not copied back");
+    }
+
+    glx.NamedFramebufferRenderbuffer(*fbo, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, *rbo);
+    GLenum status = glx.CheckNamedFramebufferStatus(*fbo, GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        glx.BindRenderbuffer(GL_RENDERBUFFER, 0);
+        glx.DeleteRenderbuffers(1, generatedRbo);
+        glx.DeleteRenderbuffers(1, rbo);
+        glx.DeleteFramebuffers(1, fbo);
+        return fail("named framebuffer was incomplete: " + std::to_string(status));
+    }
+
+    *(GLint*)intBytes.data = -1;
+    glx.GetNamedFramebufferAttachmentParameteriv(*fbo, GL_COLOR_ATTACHMENT0,
+        GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, (GLint*)intBytes.data);
+    if (*(GLint*)intBytes.data != GL_RENDERBUFFER) {
+        glx.BindRenderbuffer(GL_RENDERBUFFER, 0);
+        glx.DeleteRenderbuffers(1, generatedRbo);
+        glx.DeleteRenderbuffers(1, rbo);
+        glx.DeleteFramebuffers(1, fbo);
+        return fail("named framebuffer attachment type was not copied back");
+    }
+
+    *(GLint*)intBytes.data = -1;
+    glx.GetNamedFramebufferAttachmentParameteriv(*fbo, GL_COLOR_ATTACHMENT0,
+        GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, (GLint*)intBytes.data);
+    if (*(GLint*)intBytes.data != (GLint)*rbo) {
+        glx.BindRenderbuffer(GL_RENDERBUFFER, 0);
+        glx.DeleteRenderbuffers(1, generatedRbo);
+        glx.DeleteRenderbuffers(1, rbo);
+        glx.DeleteFramebuffers(1, fbo);
+        return fail("named framebuffer attachment object name was not copied back");
+    }
+
+    glx.BindFramebuffer(GL_FRAMEBUFFER, *fbo);
+    *(GLint*)intBytes.data = -1;
+    glx.GetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+        GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, (GLint*)intBytes.data);
+    err = glGetError();
+    glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+    glx.BindRenderbuffer(GL_RENDERBUFFER, 0);
+    glx.DeleteRenderbuffers(1, generatedRbo);
+    glx.DeleteRenderbuffers(1, rbo);
+    glx.DeleteFramebuffers(1, fbo);
+
+    if (err != GL_NO_ERROR) {
+        return fail("framebuffer/renderbuffer query produced GL error " + std::to_string(err));
+    }
+    if (*(GLint*)intBytes.data != (GLint)*rbo) {
+        return fail("bound framebuffer attachment object name was not copied back");
+    }
+
+    return pass("page-boundary framebuffer/renderbuffer object queries copied back");
+}
+
+static TestResult testPixelStorePackUnpackState(TestContext&) {
+    PageBytes source;
+    PageBytes packed;
+    if (!source.init(4 * 4 * 4, 20) || !packed.init(4 * 4 * 4, 24)) {
+        return skip("VirtualAlloc failed for pixel-store buffers");
+    }
+
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            unsigned char* p = source.data + (y * 4 + x) * 4;
+            p[0] = (unsigned char)(10 + x);
+            p[1] = (unsigned char)(40 + y);
+            p[2] = (unsigned char)(90 + x + y);
+            p[3] = 255;
+        }
+    }
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 4);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 1);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, source.data);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ROW_LENGTH, 4);
+    glPixelStorei(GL_PACK_SKIP_PIXELS, 1);
+    glPixelStorei(GL_PACK_SKIP_ROWS, 1);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, packed.data);
+    glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_PACK_SKIP_PIXELS, 0);
+    glPixelStorei(GL_PACK_SKIP_ROWS, 0);
+    GLenum err = glGetError();
+    glDeleteTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (err != GL_NO_ERROR) {
+        return fail("pixel-store texture path produced GL error " + std::to_string(err));
+    }
+
+    const unsigned char* expected00 = source.data + (1 * 4 + 1) * 4;
+    const unsigned char* expected10 = source.data + (1 * 4 + 2) * 4;
+    const unsigned char* expected01 = source.data + (2 * 4 + 1) * 4;
+    const unsigned char* out00 = packed.data + (1 * 4 + 1) * 4;
+    const unsigned char* out10 = packed.data + (1 * 4 + 2) * 4;
+    const unsigned char* out01 = packed.data + (2 * 4 + 1) * 4;
+    if (std::memcmp(out00, expected00, 4) != 0 ||
+        std::memcmp(out10, expected10, 4) != 0 ||
+        std::memcmp(out01, expected01, 4) != 0) {
+        return fail("pixel-store pack/unpack output did not match expected region");
+    }
+    return pass("pack/unpack row-length and skip state matched");
+}
+
+static TestResult testPixelStoreSkipPixelsTightRows(TestContext&) {
+    PageBytes source;
+    PageBytes readback;
+    if (!source.init(20, 12) || !readback.init(2 * 2 * 4, 11)) {
+        return skip("VirtualAlloc failed for tight skip-pixels buffers");
+    }
+
+    for (int i = 0; i < 5; i++) {
+        unsigned char* p = source.data + i * 4;
+        p[0] = (unsigned char)(20 + i * 11);
+        p[1] = (unsigned char)(40 + i * 7);
+        p[2] = (unsigned char)(90 + i * 5);
+        p[3] = 255;
+    }
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 1);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, source.data);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("tight skip-pixels texture upload produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(readback.data, source.data + 4, 16) != 0) {
+        return fail("tight skip-pixels texture upload did not include the final skipped source byte range");
+    }
+    return pass("tight skip-pixels texture upload crossed page boundary correctly");
+}
+
+static TestResult testReadPixelsPageBoundary(TestContext&) {
+    PageBytes out;
+    if (!out.init(4, 3)) {
+        return skip("VirtualAlloc failed for page-boundary readback buffer");
+    }
+
+    glViewport(0, 0, 16, 16);
+    glDisable(GL_TEXTURE_2D);
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glClearColor(0.25f, 0.5f, 0.75f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(8, 8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, out.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glReadPixels produced GL error " + std::to_string(err));
+    }
+    if (out.data[0] < 55 || out.data[0] > 75 ||
+        out.data[1] < 120 || out.data[1] > 140 ||
+        out.data[2] < 180 || out.data[2] > 200 ||
+        out.data[3] < 250) {
+        return fail("glReadPixels color did not match clear color");
+    }
+    return pass("page-boundary glReadPixels matched");
+}
+
+static TestResult testReadnPixelsPageBoundary(TestContext&) {
+    if (!glx.ReadnPixels) {
+        return skip("glReadnPixels is unavailable");
+    }
+
+    PageBytes out;
+    if (!out.init(4, 3)) {
+        return skip("VirtualAlloc failed for page-boundary readn buffer");
+    }
+
+    glViewport(0, 0, 16, 16);
+    glDisable(GL_TEXTURE_2D);
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glClearColor(0.75f, 0.25f, 0.5f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glx.ReadnPixels(8, 8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, (GLsizei)out.size, out.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glReadnPixels produced GL error " + std::to_string(err));
+    }
+    if (out.data[0] < 180 || out.data[0] > 200 ||
+        out.data[1] < 55 || out.data[1] > 75 ||
+        out.data[2] < 120 || out.data[2] > 140 ||
+        out.data[3] < 250) {
+        return fail("glReadnPixels color did not match clear color");
+    }
+    return pass("page-boundary glReadnPixels matched");
+}
+
+static TestResult testPixelPackBufferReadPixels(TestContext&) {
+    if (!glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.GetBufferSubData || !glx.DeleteBuffers) {
+        return skip("PBO readback buffer entry points are unavailable");
+    }
+
+    PageBytes out;
+    if (!out.init(4, 3)) {
+        return skip("VirtualAlloc failed for PBO readback verification buffer");
+    }
+
+    GLuint pbo = 0;
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_PACK_BUFFER, 32, nullptr, GL_STREAM_READ);
+
+    glViewport(0, 0, 16, 16);
+    glDisable(GL_TEXTURE_2D);
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glClearColor(0.0f, 0.5f, 0.25f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(8, 8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, (void*)4);
+    glx.GetBufferSubData(GL_PIXEL_PACK_BUFFER, 4, 4, out.data);
+    GLenum err = glGetError();
+    glx.BindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (err != GL_NO_ERROR) {
+        return fail("PBO glReadPixels produced GL error " + std::to_string(err));
+    }
+    if (out.data[0] > 20 ||
+        out.data[1] < 120 || out.data[1] > 140 ||
+        out.data[2] < 55 || out.data[2] > 75 ||
+        out.data[3] < 250) {
+        return fail("PBO glReadPixels color did not match clear color");
+    }
+    return pass("pixel pack buffer glReadPixels matched");
+}
+
+static TestResult testPixelUnpackBufferTextureUpload(TestContext&) {
+    if (!glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("PBO upload buffer entry points are unavailable");
+    }
+
+    unsigned char pboBytes[20] = {};
+    const unsigned char pixels[16] = {
+        12, 34, 56, 255,
+        78, 90, 123, 255,
+        45, 67, 89, 255,
+        210, 111, 9, 255
+    };
+    std::memcpy(pboBytes + 4, pixels, sizeof(pixels));
+
+    PageBytes readback;
+    if (!readback.init(16, 12)) {
+        return skip("VirtualAlloc failed for PBO texture readback buffer");
+    }
+
+    GLuint pbo = 0;
+    GLuint tex = 0;
+    glx.GenBuffers(1, &pbo);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glx.BufferData(GL_PIXEL_UNPACK_BUFFER, sizeof(pboBytes), pboBytes, GL_STATIC_DRAW);
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)4);
+    glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+    glx.DeleteBuffers(1, &pbo);
+
+    if (err != GL_NO_ERROR) {
+        return fail("PBO texture upload produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(readback.data, pixels, sizeof(pixels)) != 0) {
+        return fail("PBO texture upload/readback bytes did not match");
+    }
+    return pass("pixel unpack buffer texture upload matched");
+}
+
+static TestResult testBufferSubDataPageBoundary(TestContext&) {
+    if (!glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.BufferSubData ||
+        !glx.GetBufferSubData || !glx.DeleteBuffers) {
+        return skip("buffer subdata entry points are unavailable");
+    }
+
+    PageBytes input;
+    PageBytes output;
+    if (!input.init(8, 5) || !output.init(8, 6)) {
+        return skip("VirtualAlloc failed for buffer subdata test buffers");
+    }
+    const unsigned char expected[8] = { 9, 8, 7, 6, 55, 44, 33, 22 };
+    std::memcpy(input.data, expected, sizeof(expected));
+
+    GLuint buffer = 0;
+    glx.GenBuffers(1, &buffer);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+    glx.BufferData(GL_ARRAY_BUFFER, 24, nullptr, GL_DYNAMIC_DRAW);
+    glx.BufferSubData(GL_ARRAY_BUFFER, 4, (GLsizeiptr)input.size, input.data);
+    glx.GetBufferSubData(GL_ARRAY_BUFFER, 4, (GLsizeiptr)output.size, output.data);
+    GLenum err = glGetError();
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.DeleteBuffers(1, &buffer);
+
+    if (err != GL_NO_ERROR) {
+        return fail("buffer subdata produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(output.data, expected, sizeof(expected)) != 0) {
+        return fail("buffer subdata readback bytes did not match");
+    }
+    return pass("page-boundary buffer subdata round-trip matched");
+}
+
+static TestResult testClearBufferDataPageBoundary(TestContext&) {
+    if (!glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.ClearBufferData ||
+        !glx.GetBufferSubData || !glx.DeleteBuffers) {
+        return skip("clear buffer data entry points are unavailable");
+    }
+
+    PageBytes clearValue;
+    PageBytes output;
+    if (!clearValue.init(4, 2) || !output.init(16, 6)) {
+        return skip("VirtualAlloc failed for clear buffer data buffers");
+    }
+    const unsigned char expected[4] = { 18, 52, 86, 120 };
+    std::memcpy(clearValue.data, expected, sizeof(expected));
+
+    GLuint buffer = 0;
+    glx.GenBuffers(1, &buffer);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+    glx.BufferData(GL_ARRAY_BUFFER, 16, nullptr, GL_DYNAMIC_DRAW);
+    glx.ClearBufferData(GL_ARRAY_BUFFER, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, clearValue.data);
+    glx.GetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)output.size, output.data);
+    GLenum err = glGetError();
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.DeleteBuffers(1, &buffer);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glClearBufferData produced GL error " + std::to_string(err));
+    }
+    for (int i = 0; i < 4; ++i) {
+        if (!rgbaEquals(output.data + i * 4, expected)) {
+            return fail("glClearBufferData readback did not match clear value");
+        }
+    }
+    return pass("page-boundary glClearBufferData value matched");
+}
+
+static TestResult testClearBufferSubDataPageBoundary(TestContext&) {
+    if (!glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.ClearBufferSubData ||
+        !glx.GetBufferSubData || !glx.DeleteBuffers) {
+        return skip("clear buffer subdata entry points are unavailable");
+    }
+
+    PageBytes clearValue;
+    PageBytes output;
+    if (!clearValue.init(4, 3) || !output.init(16, 8)) {
+        return skip("VirtualAlloc failed for clear buffer subdata buffers");
+    }
+    const unsigned char expected[4] = { 201, 33, 144, 255 };
+    std::memcpy(clearValue.data, expected, sizeof(expected));
+
+    GLuint buffer = 0;
+    unsigned char zeros[16] = {};
+    glx.GenBuffers(1, &buffer);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+    glx.BufferData(GL_ARRAY_BUFFER, sizeof(zeros), zeros, GL_DYNAMIC_DRAW);
+    glx.ClearBufferSubData(GL_ARRAY_BUFFER, GL_RGBA8, 4, 8, GL_RGBA, GL_UNSIGNED_BYTE, clearValue.data);
+    glx.GetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)output.size, output.data);
+    GLenum err = glGetError();
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.DeleteBuffers(1, &buffer);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glClearBufferSubData produced GL error " + std::to_string(err));
+    }
+    unsigned char zero[4] = {};
+    if (!rgbaEquals(output.data, zero) ||
+        !rgbaEquals(output.data + 12, zero) ||
+        !rgbaEquals(output.data + 4, expected) ||
+        !rgbaEquals(output.data + 8, expected)) {
+        return fail("glClearBufferSubData readback did not match selected clear range");
+    }
+    return pass("page-boundary glClearBufferSubData value matched");
+}
+
+static TestResult runNamedBufferSubDataCase(bool ext) {
+    auto namedBufferData = ext ? glx.NamedBufferDataEXT : glx.NamedBufferData;
+    auto namedBufferSubData = ext ? glx.NamedBufferSubDataEXT : glx.NamedBufferSubData;
+    auto getNamedBufferSubData = ext ? glx.GetNamedBufferSubDataEXT : glx.GetNamedBufferSubData;
+    const char* label = ext ? "EXT named buffer" : "named buffer";
+    if (!glx.GenBuffers || !glx.BindBuffer || !glx.DeleteBuffers ||
+        !namedBufferData || !namedBufferSubData || !getNamedBufferSubData) {
+        return skip(std::string(label) + " entry points are unavailable");
+    }
+
+    PageBytes input;
+    PageBytes output;
+    if (!input.init(10, 7) || !output.init(10, 9)) {
+        return skip("VirtualAlloc failed for named buffer test buffers");
+    }
+    const unsigned char expected[10] = { 1, 3, 5, 7, 9, 11, 13, 15, 17, 19 };
+    std::memcpy(input.data, expected, sizeof(expected));
+
+    GLuint buffer = 0;
+    glx.GenBuffers(1, &buffer);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+    glx.BufferData(GL_ARRAY_BUFFER, 32, nullptr, GL_DYNAMIC_DRAW);
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    namedBufferData(buffer, 32, nullptr, GL_DYNAMIC_DRAW);
+    namedBufferSubData(buffer, 6, (GLsizeiptr)input.size, input.data);
+    getNamedBufferSubData(buffer, 6, (GLsizeiptr)output.size, output.data);
+    GLenum err = glGetError();
+    glx.DeleteBuffers(1, &buffer);
+
+    if (err != GL_NO_ERROR) {
+        return fail(std::string(label) + " subdata produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(output.data, expected, sizeof(expected)) != 0) {
+        return fail(std::string(label) + " subdata readback bytes did not match");
+    }
+    return pass(std::string("page-boundary ") + label + " subdata round-trip matched");
+}
+
+static TestResult testNamedBufferSubDataPageBoundary(TestContext&) {
+    return runNamedBufferSubDataCase(false);
+}
+
+static TestResult testEXTNamedBufferSubDataPageBoundary(TestContext&) {
+    return runNamedBufferSubDataCase(true);
+}
+
+static TestResult testMapBufferWriteReadback(TestContext&) {
+    if (!glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.MapBuffer ||
+        !glx.UnmapBuffer || !glx.GetBufferSubData || !glx.DeleteBuffers) {
+        return skip("map buffer entry points are unavailable");
+    }
+
+    PageBytes output;
+    if (!output.init(8, 5)) {
+        return skip("VirtualAlloc failed for map buffer output");
+    }
+    const unsigned char expected[8] = { 201, 202, 203, 204, 1, 2, 3, 4 };
+
+    GLuint buffer = 0;
+    glx.GenBuffers(1, &buffer);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+    glx.BufferData(GL_ARRAY_BUFFER, 16, nullptr, GL_DYNAMIC_DRAW);
+    void* mapped = glx.MapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+    if (!mapped) {
+        GLenum err = glGetError();
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        glx.DeleteBuffers(1, &buffer);
+        return fail("glMapBuffer returned null, GL error " + std::to_string(err));
+    }
+    std::memcpy((unsigned char*)mapped + 4, expected, sizeof(expected));
+    GLboolean unmapped = glx.UnmapBuffer(GL_ARRAY_BUFFER);
+    glx.GetBufferSubData(GL_ARRAY_BUFFER, 4, sizeof(expected), output.data);
+    GLenum err = glGetError();
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.DeleteBuffers(1, &buffer);
+
+    if (!unmapped) {
+        return fail("glUnmapBuffer reported data corruption");
+    }
+    if (err != GL_NO_ERROR) {
+        return fail("mapped buffer readback produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(output.data, expected, sizeof(expected)) != 0) {
+        return fail("mapped buffer readback bytes did not match");
+    }
+    return pass("mapped buffer write/readback matched");
+}
+
+static TestResult testMapBufferRangeWriteReadback(TestContext&) {
+    if (!glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.MapBufferRange ||
+        !glx.UnmapBuffer || !glx.GetBufferSubData || !glx.DeleteBuffers) {
+        return skip("map buffer range entry points are unavailable");
+    }
+
+    PageBytes output;
+    if (!output.init(6, 4)) {
+        return skip("VirtualAlloc failed for map buffer range output");
+    }
+    const unsigned char expected[6] = { 42, 43, 44, 45, 46, 47 };
+
+    GLuint buffer = 0;
+    glx.GenBuffers(1, &buffer);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+    glx.BufferData(GL_ARRAY_BUFFER, 24, nullptr, GL_DYNAMIC_DRAW);
+    void* mapped = glx.MapBufferRange(GL_ARRAY_BUFFER, 8, sizeof(expected), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT);
+    if (!mapped) {
+        GLenum err = glGetError();
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        glx.DeleteBuffers(1, &buffer);
+        return fail("glMapBufferRange returned null, GL error " + std::to_string(err));
+    }
+    std::memcpy(mapped, expected, sizeof(expected));
+    GLboolean unmapped = glx.UnmapBuffer(GL_ARRAY_BUFFER);
+    glx.GetBufferSubData(GL_ARRAY_BUFFER, 8, sizeof(expected), output.data);
+    GLenum err = glGetError();
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.DeleteBuffers(1, &buffer);
+
+    if (!unmapped) {
+        return fail("glUnmapBuffer after range map reported data corruption");
+    }
+    if (err != GL_NO_ERROR) {
+        return fail("mapped range readback produced GL error " + std::to_string(err));
+    }
+    if (std::memcmp(output.data, expected, sizeof(expected)) != 0) {
+        return fail("mapped range readback bytes did not match");
+    }
+    return pass("mapped range write/readback matched");
+}
+
+static TestResult testClientArrayPageBoundaryRender(TestContext&) {
+    PageBytes vertices;
+    if (!vertices.init(6 * sizeof(float), 12)) {
+        return skip("VirtualAlloc failed for page-boundary vertex buffer");
+    }
+
+    float* v = (float*)vertices.data;
+    v[0] = -0.8f; v[1] = -0.8f;
+    v[2] = 0.8f; v[3] = -0.8f;
+    v[4] = 0.0f; v[5] = 0.8f;
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices.data);
+    glColor3f(1.0f, 0.0f, 1.0f);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("client array render produced GL error " + std::to_string(err));
+    }
+    if (px[0] < 180 || px[2] < 180 || px[1] > 80) {
+        return fail("client array render pixel check failed");
+    }
+    return pass("page-boundary client array rendered expected pixel");
+}
+
+static TestResult testClientArrayStridePageBoundaryRender(TestContext&) {
+    PageBytes vertices;
+    if (!vertices.init(3 * 4 * sizeof(float), 16)) {
+        return skip("VirtualAlloc failed for strided vertex buffer");
+    }
+
+    float* v = (float*)vertices.data;
+    v[0] = -0.8f; v[1] = -0.8f; v[2] = 100.0f; v[3] = 101.0f;
+    v[4] = 0.8f; v[5] = -0.8f; v[6] = 102.0f; v[7] = 103.0f;
+    v[8] = 0.0f; v[9] = 0.8f; v[10] = 104.0f; v[11] = 105.0f;
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 4 * sizeof(float), vertices.data);
+    glColor3f(0.0f, 1.0f, 1.0f);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("strided client array render produced GL error " + std::to_string(err));
+    }
+    if (px[1] < 180 || px[2] < 180 || px[0] > 80) {
+        return fail("strided client array pixel check failed");
+    }
+    return pass("strided page-boundary client array rendered expected pixel");
+}
+
+static TestResult testInterleavedArraysPageBoundaryRender(TestContext&) {
+    const int floatsPerVertex = 8;
+    PageBytes interleaved;
+    if (!interleaved.init(3 * floatsPerVertex * sizeof(float), 20)) {
+        return skip("VirtualAlloc failed for interleaved array buffer");
+    }
+
+    float* v = (float*)interleaved.data;
+    const float rows[3][8] = {
+        { 0.0f, 0.95f, 0.05f, -0.8f, -0.8f, 0.0f, 91.0f, 92.0f },
+        { 0.0f, 0.95f, 0.05f,  0.8f, -0.8f, 0.0f, 93.0f, 94.0f },
+        { 0.0f, 0.95f, 0.05f,  0.0f,  0.8f, 0.0f, 95.0f, 96.0f },
+    };
+    std::memcpy(v, rows, sizeof(rows));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glInterleavedArrays(GL_C3F_V3F, floatsPerVertex * sizeof(float), interleaved.data);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("interleaved array render produced GL error " + std::to_string(err));
+    }
+    if (px[1] < 180 || px[0] > 80 || px[2] > 80) {
+        return fail("interleaved array render pixel check failed");
+    }
+    return pass("page-boundary interleaved arrays rendered expected pixel");
+}
+
+static bool pixelIsGreenish(const unsigned char* px);
+
+static TestResult testClientColorTexCoordArraysPageBoundaryRender(TestContext&) {
+    PageBytes vertices;
+    PageBytes colors;
+    PageBytes texCoords;
+    if (!vertices.init(3 * 3 * sizeof(float), 8) ||
+        !colors.init(3 * 5 * sizeof(float), 16) ||
+        !texCoords.init(3 * 4 * sizeof(float), 12)) {
+        return skip("VirtualAlloc failed for color/texcoord client-array buffers");
+    }
+
+    const float vertexData[9] = {
+        -0.8f, -0.8f, 91.0f,
+         0.8f, -0.8f, 92.0f,
+         0.0f,  0.8f, 93.0f
+    };
+    const float colorData[15] = {
+        1.0f, 1.0f, 1.0f, 1.0f, 101.0f,
+        1.0f, 1.0f, 1.0f, 1.0f, 102.0f,
+        1.0f, 1.0f, 1.0f, 1.0f, 103.0f
+    };
+    const float texCoordData[12] = {
+        0.75f, 0.25f, 201.0f, 202.0f,
+        0.75f, 0.25f, 203.0f, 204.0f,
+        0.75f, 0.25f, 205.0f, 206.0f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+    std::memcpy(colors.data, colorData, sizeof(colorData));
+    std::memcpy(texCoords.data, texCoordData, sizeof(texCoordData));
+
+    const unsigned char pixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        0, 0, 255, 255,
+        255, 255, 255, 255
+    };
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_TEXTURE_2D);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 3 * sizeof(float), vertices.data);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glColorPointer(4, GL_FLOAT, 5 * sizeof(float), colors.data);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(float), texCoords.data);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("color/texcoord client-array render produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("color/texcoord client-array render pixel check failed");
+    }
+    return pass("page-boundary color/texcoord client arrays rendered expected pixel");
+}
+
+static TestResult testClientNormalArrayPageBoundaryRender(TestContext&) {
+    PageBytes vertices;
+    PageBytes normals;
+    if (!vertices.init(3 * 3 * sizeof(float), 8) ||
+        !normals.init(3 * 4 * sizeof(float), 12)) {
+        return skip("VirtualAlloc failed for normal client-array buffers");
+    }
+
+    const float vertexData[9] = {
+        -0.8f, -0.8f, 0.0f,
+         0.8f, -0.8f, 0.0f,
+         0.0f,  0.8f, 0.0f
+    };
+    const float normalData[12] = {
+        0.0f, 0.0f, 1.0f, 101.0f,
+        0.0f, 0.0f, 1.0f, 102.0f,
+        0.0f, 0.0f, 1.0f, 103.0f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+    std::memcpy(normals.data, normalData, sizeof(normalData));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(3, GL_FLOAT, 0, vertices.data);
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glNormalPointer(GL_FLOAT, 4 * sizeof(float), normals.data);
+
+    const GLfloat lightPosition[4] = { 0.0f, 0.0f, 1.0f, 0.0f };
+    const GLfloat zero[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    const GLfloat white[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    const GLfloat green[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+    const GLfloat spotDirection[3] = { 0.0f, 0.0f, -1.0f };
+    glDisable(GL_COLOR_MATERIAL);
+    glDisable(GL_BLEND);
+    glDisable(GL_ALPHA_TEST);
+    glDisable(GL_FOG);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_SCISSOR_TEST);
+    glShadeModel(GL_SMOOTH);
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, zero);
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE);
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, zero);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, white);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, zero);
+    glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, spotDirection);
+    glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 180.0f);
+    glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 1.0f);
+    glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.0f);
+    glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.0f);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, zero);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, green);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, zero);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_LIGHTING);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glDisable(GL_LIGHTING);
+    glDisable(GL_LIGHT0);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("normal client-array render produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("normal client-array lighting pixel check failed");
+    }
+    return pass("page-boundary normal client array lit expected pixel");
+}
+
+static TestResult testClientSecondaryColorArrayPageBoundaryRender(TestContext&) {
+    PFNGLSECONDARYCOLORPOINTERPROC secondaryColorPointer = glx.SecondaryColorPointer ? glx.SecondaryColorPointer : glx.SecondaryColorPointerEXT;
+    if (!secondaryColorPointer) {
+        return skip("secondary color pointer entry point is unavailable");
+    }
+
+    PageBytes vertices;
+    PageBytes colors;
+    PageBytes secondaryColors;
+    if (!vertices.init(3 * 3 * sizeof(float), 8) ||
+        !colors.init(3 * 5 * sizeof(float), 16) ||
+        !secondaryColors.init(3 * 4 * sizeof(float), 12)) {
+        return skip("VirtualAlloc failed for secondary-color client-array buffers");
+    }
+
+    const float vertexData[9] = {
+        -0.8f, -0.8f, 91.0f,
+         0.8f, -0.8f, 92.0f,
+         0.0f,  0.8f, 93.0f
+    };
+    const float primaryColorData[15] = {
+        0.0f, 0.0f, 0.0f, 1.0f, 101.0f,
+        0.0f, 0.0f, 0.0f, 1.0f, 102.0f,
+        0.0f, 0.0f, 0.0f, 1.0f, 103.0f
+    };
+    const float secondaryColorData[12] = {
+        0.0f, 1.0f, 0.0f, 201.0f,
+        0.0f, 1.0f, 0.0f, 202.0f,
+        0.0f, 1.0f, 0.0f, 203.0f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+    std::memcpy(colors.data, primaryColorData, sizeof(primaryColorData));
+    std::memcpy(secondaryColors.data, secondaryColorData, sizeof(secondaryColorData));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glEnable(GL_COLOR_SUM);
+    glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SEPARATE_SPECULAR_COLOR);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 3 * sizeof(float), vertices.data);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glColorPointer(4, GL_FLOAT, 5 * sizeof(float), colors.data);
+    glEnableClientState(GL_SECONDARY_COLOR_ARRAY);
+    secondaryColorPointer(3, GL_FLOAT, 4 * sizeof(float), secondaryColors.data);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glDisableClientState(GL_SECONDARY_COLOR_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR);
+    glDisable(GL_COLOR_SUM);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("secondary-color client-array render produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("secondary-color client-array pixel check failed");
+    }
+    return pass("page-boundary secondary-color client array rendered expected pixel");
+}
+
+static TestResult testClientFogCoordArrayPageBoundaryRender(TestContext&) {
+    PFNGLFOGCOORDPOINTERPROC fogCoordPointer = glx.FogCoordPointer ? glx.FogCoordPointer : glx.FogCoordPointerEXT;
+    if (!fogCoordPointer) {
+        return skip("fog coordinate pointer entry point is unavailable");
+    }
+
+    PageBytes vertices;
+    PageBytes colors;
+    PageBytes fogCoords;
+    if (!vertices.init(3 * 3 * sizeof(float), 8) ||
+        !colors.init(3 * 5 * sizeof(float), 16) ||
+        !fogCoords.init(3 * 2 * sizeof(float), 4)) {
+        return skip("VirtualAlloc failed for fog-coordinate client-array buffers");
+    }
+
+    const float vertexData[9] = {
+        -0.8f, -0.8f, 41.0f,
+         0.8f, -0.8f, 42.0f,
+         0.0f,  0.8f, 43.0f
+    };
+    const float colorData[15] = {
+        0.0f, 0.0f, 0.0f, 1.0f, 101.0f,
+        0.0f, 0.0f, 0.0f, 1.0f, 102.0f,
+        0.0f, 0.0f, 0.0f, 1.0f, 103.0f
+    };
+    const float fogCoordData[6] = {
+        1.0f, 201.0f,
+        1.0f, 202.0f,
+        1.0f, 203.0f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+    std::memcpy(colors.data, colorData, sizeof(colorData));
+    std::memcpy(fogCoords.data, fogCoordData, sizeof(fogCoordData));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_COLOR_SUM);
+    glDisableClientState(GL_SECONDARY_COLOR_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 3 * sizeof(float), vertices.data);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glColorPointer(4, GL_FLOAT, 5 * sizeof(float), colors.data);
+    glEnableClientState(GL_FOG_COORD_ARRAY);
+    fogCoordPointer(GL_FLOAT, 2 * sizeof(float), fogCoords.data);
+
+    const GLfloat fogColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+    glFogi(GL_FOG_COORDINATE_SOURCE, GL_FOG_COORDINATE);
+    glFogi(GL_FOG_MODE, GL_LINEAR);
+    glFogf(GL_FOG_START, 0.0f);
+    glFogf(GL_FOG_END, 1.0f);
+    glFogfv(GL_FOG_COLOR, fogColor);
+    glEnable(GL_FOG);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glDisable(GL_FOG);
+    glFogi(GL_FOG_COORDINATE_SOURCE, GL_FRAGMENT_DEPTH);
+    glDisableClientState(GL_FOG_COORD_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("fog-coordinate client-array render produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("fog-coordinate client-array pixel check failed");
+    }
+    return pass("page-boundary fog-coordinate client array rendered expected pixel");
+}
+
+static TestResult testClientEdgeFlagArrayPageBoundaryRender(TestContext&) {
+    PageBytes vertices;
+    PageBytes edgeFlags;
+    if (!vertices.init(3 * 3 * sizeof(float), 8) ||
+        !edgeFlags.init(3 * 2 * sizeof(GLboolean), 3)) {
+        return skip("VirtualAlloc failed for edge-flag client-array buffers");
+    }
+
+    const float vertexData[9] = {
+        -0.75f, -0.75f, 91.0f,
+         0.75f, -0.75f, 92.0f,
+         0.0f,   0.75f, 93.0f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+
+    GLboolean* flags = (GLboolean*)edgeFlags.data;
+    flags[0] = GL_FALSE; flags[1] = 7;
+    flags[2] = GL_FALSE; flags[3] = 8;
+    flags[4] = GL_FALSE; flags[5] = 9;
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glDisable(GL_LINE_SMOOTH);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 3 * sizeof(float), vertices.data);
+    glEnableClientState(GL_EDGE_FLAG_ARRAY);
+    glEdgeFlagPointer(2 * sizeof(GLboolean), edgeFlags.data);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glLineWidth(3.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glFinish();
+
+    unsigned char hiddenEdgePx[4] = {};
+    glReadPixels(32, 8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, hiddenEdgePx);
+    if (hiddenEdgePx[0] > 80 || hiddenEdgePx[1] > 80 || hiddenEdgePx[2] > 80) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glLineWidth(1.0f);
+        glDisableClientState(GL_EDGE_FLAG_ARRAY);
+        glDisableClientState(GL_VERTEX_ARRAY);
+        return fail("edge-flag false array still rendered a boundary edge");
+    }
+
+    flags[0] = GL_TRUE;
+    flags[2] = GL_TRUE;
+    flags[4] = GL_TRUE;
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glLineWidth(1.0f);
+    glDisableClientState(GL_EDGE_FLAG_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char visibleEdgePx[4] = {};
+    glReadPixels(32, 8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, visibleEdgePx);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("edge-flag client-array render produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(visibleEdgePx)) {
+        return fail("edge-flag true array did not render the expected boundary edge");
+    }
+    return pass("page-boundary edge-flag client array controlled wireframe edges");
+}
+
+static TestResult testEXTClientPointerArraysPageBoundaryRender(TestContext&) {
+    if (!glx.VertexPointerEXT || !glx.ColorPointerEXT || !glx.TexCoordPointerEXT) {
+        return skip("EXT client pointer entry points are unavailable");
+    }
+
+    PageBytes vertices;
+    PageBytes colors;
+    PageBytes texCoords;
+    if (!vertices.init(3 * 3 * sizeof(float), 8) ||
+        !colors.init(3 * 5 * sizeof(float), 16) ||
+        !texCoords.init(3 * 4 * sizeof(float), 12)) {
+        return skip("VirtualAlloc failed for EXT client-pointer buffers");
+    }
+
+    const float vertexData[9] = {
+        -0.8f, -0.8f, 91.0f,
+         0.8f, -0.8f, 92.0f,
+         0.0f,  0.8f, 93.0f
+    };
+    const float colorData[15] = {
+        1.0f, 1.0f, 1.0f, 1.0f, 101.0f,
+        1.0f, 1.0f, 1.0f, 1.0f, 102.0f,
+        1.0f, 1.0f, 1.0f, 1.0f, 103.0f
+    };
+    const float texCoordData[12] = {
+        0.75f, 0.25f, 201.0f, 202.0f,
+        0.75f, 0.25f, 203.0f, 204.0f,
+        0.75f, 0.25f, 205.0f, 206.0f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+    std::memcpy(colors.data, colorData, sizeof(colorData));
+    std::memcpy(texCoords.data, texCoordData, sizeof(texCoordData));
+
+    const unsigned char pixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        0, 0, 255, 255,
+        255, 255, 255, 255
+    };
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glEnable(GL_TEXTURE_2D);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glx.VertexPointerEXT(2, GL_FLOAT, 3 * sizeof(float), 3, vertices.data);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glx.ColorPointerEXT(4, GL_FLOAT, 5 * sizeof(float), 3, colors.data);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.TexCoordPointerEXT(2, GL_FLOAT, 4 * sizeof(float), 3, texCoords.data);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("EXT client-pointer render produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("EXT client-pointer render pixel check failed");
+    }
+    return pass("page-boundary EXT vertex/color/texcoord pointers rendered expected pixel");
+}
+
+static TestResult testEXTNormalPointerPageBoundaryRender(TestContext&) {
+    if (!glx.VertexPointerEXT || !glx.NormalPointerEXT) {
+        return skip("EXT vertex/normal pointer entry points are unavailable");
+    }
+
+    PageBytes vertices;
+    PageBytes normals;
+    if (!vertices.init(3 * 3 * sizeof(float), 8) ||
+        !normals.init(3 * 4 * sizeof(float), 12)) {
+        return skip("VirtualAlloc failed for EXT normal-pointer buffers");
+    }
+
+    const float vertexData[9] = {
+        -0.8f, -0.8f, 0.0f,
+         0.8f, -0.8f, 0.0f,
+         0.0f,  0.8f, 0.0f
+    };
+    const float normalData[12] = {
+        0.0f, 0.0f, 1.0f, 101.0f,
+        0.0f, 0.0f, 1.0f, 102.0f,
+        0.0f, 0.0f, 1.0f, 103.0f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+    std::memcpy(normals.data, normalData, sizeof(normalData));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_FOG);
+    glDisable(GL_COLOR_MATERIAL);
+    glDisable(GL_BLEND);
+    glDisable(GL_ALPHA_TEST);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_SCISSOR_TEST);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_SECONDARY_COLOR_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glx.VertexPointerEXT(3, GL_FLOAT, 0, 3, vertices.data);
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glx.NormalPointerEXT(GL_FLOAT, 4 * sizeof(float), 3, normals.data);
+
+    const GLfloat lightPosition[4] = { 0.0f, 0.0f, 1.0f, 0.0f };
+    const GLfloat zero[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    const GLfloat white[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    const GLfloat green[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+    const GLfloat spotDirection[3] = { 0.0f, 0.0f, -1.0f };
+    glShadeModel(GL_SMOOTH);
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, zero);
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE);
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, zero);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, white);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, zero);
+    glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, spotDirection);
+    glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 180.0f);
+    glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 1.0f);
+    glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.0f);
+    glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.0f);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, zero);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, green);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, zero);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_LIGHTING);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glDisable(GL_LIGHTING);
+    glDisable(GL_LIGHT0);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("EXT normal-pointer render produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("EXT normal-pointer lighting pixel check failed");
+    }
+    return pass("page-boundary EXT normal pointer lit expected pixel");
+}
+
+static TestResult testEXTEdgeFlagPointerPageBoundaryRender(TestContext&) {
+    if (!glx.VertexPointerEXT || !glx.EdgeFlagPointerEXT) {
+        return skip("EXT vertex/edge-flag pointer entry points are unavailable");
+    }
+
+    PageBytes vertices;
+    PageBytes edgeFlags;
+    if (!vertices.init(3 * 3 * sizeof(float), 8) ||
+        !edgeFlags.init(3 * 2 * sizeof(GLboolean), 3)) {
+        return skip("VirtualAlloc failed for EXT edge-flag pointer buffers");
+    }
+
+    const float vertexData[9] = {
+        -0.75f, -0.75f, 91.0f,
+         0.75f, -0.75f, 92.0f,
+         0.0f,   0.75f, 93.0f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+
+    GLboolean* flags = (GLboolean*)edgeFlags.data;
+    flags[0] = GL_FALSE; flags[1] = 7;
+    flags[2] = GL_FALSE; flags[3] = 8;
+    flags[4] = GL_FALSE; flags[5] = 9;
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glDisable(GL_LINE_SMOOTH);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glx.VertexPointerEXT(2, GL_FLOAT, 3 * sizeof(float), 3, vertices.data);
+    glEnableClientState(GL_EDGE_FLAG_ARRAY);
+    glx.EdgeFlagPointerEXT(2 * sizeof(GLboolean), 3, (const GLboolean*)edgeFlags.data);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glLineWidth(3.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glFinish();
+
+    unsigned char hiddenEdgePx[4] = {};
+    glReadPixels(32, 8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, hiddenEdgePx);
+    if (hiddenEdgePx[0] > 80 || hiddenEdgePx[1] > 80 || hiddenEdgePx[2] > 80) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glLineWidth(1.0f);
+        glDisableClientState(GL_EDGE_FLAG_ARRAY);
+        glDisableClientState(GL_VERTEX_ARRAY);
+        return fail("EXT edge-flag false array still rendered a boundary edge");
+    }
+
+    flags[0] = GL_TRUE;
+    flags[2] = GL_TRUE;
+    flags[4] = GL_TRUE;
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glLineWidth(1.0f);
+    glDisableClientState(GL_EDGE_FLAG_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char visibleEdgePx[4] = {};
+    glReadPixels(32, 8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, visibleEdgePx);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("EXT edge-flag pointer render produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(visibleEdgePx)) {
+        return fail("EXT edge-flag true array did not render the expected boundary edge");
+    }
+    return pass("page-boundary EXT edge-flag pointer controlled wireframe edges");
+}
+
+static TestResult testEXTMultiTexCoordPointerPageBoundaryRender(TestContext&) {
+    if (!glx.ActiveTexture || !glx.ClientActiveTexture || !glx.MultiTexCoordPointerEXT) {
+        return skip("multitexture client pointer entry points are unavailable");
+    }
+
+    GLint maxTextureUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
+    if (maxTextureUnits < 2) {
+        return skip("fewer than two fixed-function texture units are available");
+    }
+
+    PageBytes vertices;
+    PageBytes texCoords0;
+    PageBytes texCoords1;
+    if (!vertices.init(3 * 3 * sizeof(float), 8) ||
+        !texCoords0.init(3 * 4 * sizeof(float), 12) ||
+        !texCoords1.init(3 * 4 * sizeof(float), 16)) {
+        return skip("VirtualAlloc failed for EXT multitexcoord pointer buffers");
+    }
+
+    const float vertexData[9] = {
+        -0.8f, -0.8f, 91.0f,
+         0.8f, -0.8f, 92.0f,
+         0.0f,  0.8f, 93.0f
+    };
+    const float texCoord0Data[12] = {
+        0.75f, 0.25f, 101.0f, 102.0f,
+        0.75f, 0.25f, 103.0f, 104.0f,
+        0.75f, 0.25f, 105.0f, 106.0f
+    };
+    const float texCoord1Data[12] = {
+        0.75f, 0.25f, 201.0f, 202.0f,
+        0.75f, 0.25f, 203.0f, 204.0f,
+        0.75f, 0.25f, 205.0f, 206.0f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+    std::memcpy(texCoords0.data, texCoord0Data, sizeof(texCoord0Data));
+    std::memcpy(texCoords1.data, texCoord1Data, sizeof(texCoord1Data));
+
+    const unsigned char tex0Pixels[16] = {
+        255, 0, 0, 255,
+        255, 255, 255, 255,
+        0, 0, 255, 255,
+        255, 255, 255, 255
+    };
+    const unsigned char tex1Pixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        0, 0, 255, 255,
+        255, 255, 255, 255
+    };
+
+    GLuint textures[2] = {};
+    glGenTextures(2, textures);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    glx.ActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex0Pixels);
+
+    glx.ActiveTexture(GL_TEXTURE1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex1Pixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 3 * sizeof(float), vertices.data);
+
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.MultiTexCoordPointerEXT(GL_TEXTURE0, 2, GL_FLOAT, 4 * sizeof(float), texCoords0.data);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.MultiTexCoordPointerEXT(GL_TEXTURE1, 2, GL_FLOAT, 4 * sizeof(float), texCoords1.data);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+
+    glx.ActiveTexture(GL_TEXTURE1);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(2, textures);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("EXT multitexcoord pointer render produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("EXT multitexcoord pointer render pixel check failed");
+    }
+    return pass("page-boundary EXT multitexcoord pointers rendered expected pixel");
+}
+
+static TestResult testSGISMultiTexCoordPointerPageBoundaryRender(TestContext&) {
+    if (!glx.ActiveTexture || !glx.ClientActiveTexture || !glx.MultiTexCoordPointerSGIS) {
+        return skip("SGIS multitexture client pointer entry points are unavailable");
+    }
+
+    GLint maxTextureUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
+    if (maxTextureUnits < 2) {
+        return skip("fewer than two fixed-function texture units are available");
+    }
+
+    PageBytes vertices;
+    PageBytes texCoords0;
+    PageBytes texCoords1;
+    if (!vertices.init(3 * 3 * sizeof(float), 8) ||
+        !texCoords0.init(3 * 4 * sizeof(float), 12) ||
+        !texCoords1.init(3 * 4 * sizeof(float), 16)) {
+        return skip("VirtualAlloc failed for SGIS multitexcoord pointer buffers");
+    }
+
+    const float vertexData[9] = {
+        -0.8f, -0.8f, 91.0f,
+         0.8f, -0.8f, 92.0f,
+         0.0f,  0.8f, 93.0f
+    };
+    const float texCoord0Data[12] = {
+        0.75f, 0.25f, 101.0f, 102.0f,
+        0.75f, 0.25f, 103.0f, 104.0f,
+        0.75f, 0.25f, 105.0f, 106.0f
+    };
+    const float texCoord1Data[12] = {
+        0.75f, 0.25f, 201.0f, 202.0f,
+        0.75f, 0.25f, 203.0f, 204.0f,
+        0.75f, 0.25f, 205.0f, 206.0f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+    std::memcpy(texCoords0.data, texCoord0Data, sizeof(texCoord0Data));
+    std::memcpy(texCoords1.data, texCoord1Data, sizeof(texCoord1Data));
+
+    const unsigned char tex0Pixels[16] = {
+        255, 0, 0, 255,
+        255, 255, 255, 255,
+        0, 0, 255, 255,
+        255, 255, 255, 255
+    };
+    const unsigned char tex1Pixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        0, 0, 255, 255,
+        255, 255, 255, 255
+    };
+
+    GLuint textures[2] = {};
+    glGenTextures(2, textures);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    glx.ActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex0Pixels);
+
+    glx.ActiveTexture(GL_TEXTURE1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex1Pixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 3 * sizeof(float), vertices.data);
+
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.MultiTexCoordPointerSGIS(GL_TEXTURE0_SGIS, 2, GL_FLOAT, 4 * sizeof(float), texCoords0.data);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.MultiTexCoordPointerSGIS(GL_TEXTURE1_SGIS, 2, GL_FLOAT, 4 * sizeof(float), texCoords1.data);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+
+    glx.ActiveTexture(GL_TEXTURE1);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(2, textures);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("SGIS multitexcoord pointer render produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("SGIS multitexcoord pointer render pixel check failed");
+    }
+    return pass("page-boundary SGIS multitexcoord pointers rendered expected pixel");
+}
+
+static TestResult testArrayElementPageBoundaryRender(TestContext&) {
+    PageBytes vertices;
+    PageBytes colors;
+    if (!vertices.init(3 * 2 * sizeof(float), 8) ||
+        !colors.init(3 * 3 * sizeof(float), 12)) {
+        return skip("VirtualAlloc failed for array element vertex buffer");
+    }
+
+    float* v = (float*)vertices.data;
+    v[0] = -0.8f; v[1] = -0.8f;
+    v[2] = 0.8f; v[3] = -0.8f;
+    v[4] = 0.0f; v[5] = 0.8f;
+
+    float* c = (float*)colors.data;
+    for (int i = 0; i < 3; i++) {
+        c[i * 3 + 0] = 1.0f;
+        c[i * 3 + 1] = 0.45f;
+        c[i * 3 + 2] = 0.0f;
+    }
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices.data);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glColorPointer(3, GL_FLOAT, 0, colors.data);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glBegin(GL_TRIANGLES);
+    glArrayElement(0);
+    glArrayElement(1);
+    glArrayElement(2);
+    glEnd();
+
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glArrayElement render produced GL error " + std::to_string(err));
+    }
+    if (px[0] < 180 || px[1] < 70 || px[1] > 170 || px[2] > 80) {
+        return fail("glArrayElement page-boundary render pixel check failed");
+    }
+    return pass("page-boundary glArrayElement rendered expected pixel");
+}
+
+static TestResult testArrayElementTexCoordPageBoundaryRender(TestContext&) {
+    PageBytes vertices;
+    PageBytes texCoords;
+    if (!vertices.init(3 * 2 * sizeof(float), 8) ||
+        !texCoords.init(3 * 2 * sizeof(float), 12)) {
+        return skip("VirtualAlloc failed for array element texcoord buffers");
+    }
+
+    float* v = (float*)vertices.data;
+    v[0] = -0.8f; v[1] = -0.8f;
+    v[2] = 0.8f; v[3] = -0.8f;
+    v[4] = 0.0f; v[5] = 0.8f;
+
+    float* tc = (float*)texCoords.data;
+    for (int i = 0; i < 3; i++) {
+        tc[i * 2 + 0] = 0.75f;
+        tc[i * 2 + 1] = 0.25f;
+    }
+
+    const unsigned char pixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        0, 0, 255, 255,
+        255, 255, 255, 255
+    };
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_TEXTURE_2D);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices.data);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 0, texCoords.data);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glBegin(GL_TRIANGLES);
+    glArrayElement(0);
+    glArrayElement(1);
+    glArrayElement(2);
+    glEnd();
+
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glArrayElement texcoord render produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("glArrayElement texcoord render pixel check failed");
+    }
+    return pass("page-boundary glArrayElement texcoords rendered expected pixel");
+}
+
+static TestResult testDrawElementsPageBoundary(TestContext&) {
+    PageBytes indices;
+    if (!indices.init(3 * sizeof(GLushort), 4)) {
+        return skip("VirtualAlloc failed for draw-elements index buffer");
+    }
+    GLushort* idx = (GLushort*)indices.data;
+    idx[0] = 0;
+    idx[1] = 1;
+    idx[2] = 2;
+
+    GLfloat vertices[] = {
+        -0.8f, -0.8f,
+         0.8f, -0.8f,
+         0.0f,  0.8f
+    };
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, indices.data);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glDrawElements produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("glDrawElements page-boundary index pixel check failed");
+    }
+    return pass("page-boundary glDrawElements rendered expected pixel");
+}
+
+static void drawListTriangle(float x0, float x1, float x2) {
+    glBegin(GL_TRIANGLES);
+    glVertex2f(x0, -0.8f);
+    glVertex2f(x1, -0.8f);
+    glVertex2f(x2, 0.8f);
+    glEnd();
+}
+
+static TestResult testCallListsPageBoundary(TestContext&) {
+    PageBytes byteLists;
+    PageBytes uintLists;
+    if (!byteLists.init(2 * sizeof(GLubyte), 1) ||
+        !uintLists.init(2 * sizeof(GLuint), 4)) {
+        return skip("VirtualAlloc failed for call-list buffers");
+    }
+    byteLists.data[0] = 0;
+    byteLists.data[1] = 1;
+    GLuint* ui = (GLuint*)uintLists.data;
+    ui[0] = 0;
+    ui[1] = 1;
+
+    GLuint base = glGenLists(2);
+    if (!base) {
+        return skip("glGenLists failed");
+    }
+
+    glNewList(base, GL_COMPILE);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    drawListTriangle(-0.95f, -0.05f, -0.5f);
+    glEndList();
+    glNewList(base + 1, GL_COMPILE);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    drawListTriangle(0.05f, 0.95f, 0.5f);
+    glEndList();
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glListBase(base);
+    glCallLists(2, GL_UNSIGNED_BYTE, byteLists.data);
+    glCallLists(2, GL_UNSIGNED_INT, uintLists.data);
+    glDeleteLists(base, 2);
+    glFinish();
+
+    unsigned char leftPx[4] = {};
+    unsigned char rightPx[4] = {};
+    glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, leftPx);
+    glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rightPx);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glCallLists produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(leftPx) || !pixelIsGreenish(rightPx)) {
+        return fail("glCallLists page-boundary list pixel check failed");
+    }
+    return pass("page-boundary glCallLists rendered expected pixels");
+}
+
+static TestResult testDrawRangeElementsPageBoundary(TestContext&) {
+    if (!glx.DrawRangeElements) {
+        return skip("glDrawRangeElements is unavailable");
+    }
+
+    PageBytes vertices;
+    PageBytes indices;
+    if (!vertices.init(6 * 2 * sizeof(GLfloat), 12) ||
+        !indices.init(3 * sizeof(GLushort), 4)) {
+        return skip("VirtualAlloc failed for draw-range buffers");
+    }
+    GLushort* idx = (GLushort*)indices.data;
+    idx[0] = 3;
+    idx[1] = 4;
+    idx[2] = 5;
+
+    GLfloat* v = (GLfloat*)vertices.data;
+    const GLfloat vertexData[12] = {
+        -0.95f, -0.95f,
+         0.95f, -0.95f,
+        -0.95f,  0.95f,
+        -0.8f,  -0.8f,
+         0.8f,  -0.8f,
+         0.0f,   0.8f
+    };
+    std::memcpy(v, vertexData, sizeof(vertexData));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices.data);
+    glColor3f(1.0f, 1.0f, 0.0f);
+    glx.DrawRangeElements(GL_TRIANGLES, 3, 5, 3, GL_UNSIGNED_SHORT, indices.data);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glDrawRangeElements produced GL error " + std::to_string(err));
+    }
+    if (px[0] < 180 || px[1] < 180 || px[2] > 80) {
+        return fail("glDrawRangeElements pixel check failed");
+    }
+
+    if (glx.DrawRangeElementsEXT) {
+        glClear(GL_COLOR_BUFFER_BIT);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glVertexPointer(2, GL_FLOAT, 0, vertices.data);
+        glColor3f(0.0f, 1.0f, 1.0f);
+        glx.DrawRangeElementsEXT(GL_TRIANGLES, 3, 5, 3, GL_UNSIGNED_SHORT, indices.data);
+        glDisableClientState(GL_VERTEX_ARRAY);
+        glFinish();
+
+        unsigned char extPx[4] = {};
+        glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, extPx);
+        err = glGetError();
+        if (err != GL_NO_ERROR) {
+            return fail("glDrawRangeElementsEXT produced GL error " + std::to_string(err));
+        }
+        if (extPx[0] > 80 || extPx[1] < 180 || extPx[2] < 180) {
+            return fail("glDrawRangeElementsEXT pixel check failed");
+        }
+    }
+
+    return pass("page-boundary glDrawRangeElements variants rendered expected pixel");
+}
+
+static TestResult testDrawElementsBaseVertexPageBoundary(TestContext&) {
+    if (!glx.DrawElementsBaseVertex) {
+        return skip("glDrawElementsBaseVertex is unavailable");
+    }
+
+    PageBytes vertices;
+    PageBytes indices;
+    if (!vertices.init(6 * 2 * sizeof(float), 12) ||
+        !indices.init(3 * sizeof(GLushort), 4)) {
+        return skip("VirtualAlloc failed for base-vertex draw buffers");
+    }
+
+    GLfloat* v = (GLfloat*)vertices.data;
+    const GLfloat vertexData[12] = {
+        -0.95f, -0.95f,
+         0.95f, -0.95f,
+        -0.95f,  0.95f,
+        -0.8f,  -0.8f,
+         0.8f,  -0.8f,
+         0.0f,   0.8f
+    };
+    const GLushort indexData[3] = { 0, 1, 2 };
+    std::memcpy(v, vertexData, sizeof(vertexData));
+    std::memcpy(indices.data, indexData, sizeof(indexData));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices.data);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0f, 0.75f, 1.0f);
+
+    glx.DrawElementsBaseVertex(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, indices.data, 3);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glDrawElementsBaseVertex produced GL error " + std::to_string(err));
+    }
+    if (px[2] < 180 || px[1] < 120 || px[0] > 80) {
+        return fail("glDrawElementsBaseVertex pixel check failed");
+    }
+    return pass("page-boundary glDrawElementsBaseVertex rendered expected pixel");
+}
+
+static TestResult testDrawRangeElementsBaseVertexPageBoundary(TestContext&) {
+    if (!glx.DrawRangeElementsBaseVertex) {
+        return skip("glDrawRangeElementsBaseVertex is unavailable");
+    }
+
+    PageBytes vertices;
+    PageBytes indices;
+    if (!vertices.init(6 * 2 * sizeof(float), 12) ||
+        !indices.init(3 * sizeof(GLushort), 4)) {
+        return skip("VirtualAlloc failed for range base-vertex draw buffers");
+    }
+
+    const GLfloat vertexData[12] = {
+        -0.95f, -0.95f,
+         0.95f, -0.95f,
+        -0.95f,  0.95f,
+        -0.8f,  -0.8f,
+         0.8f,  -0.8f,
+         0.0f,   0.8f
+    };
+    const GLushort indexData[3] = { 0, 1, 2 };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+    std::memcpy(indices.data, indexData, sizeof(indexData));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices.data);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0f, 0.75f, 1.0f);
+
+    glx.DrawRangeElementsBaseVertex(GL_TRIANGLES, 0, 2, 3, GL_UNSIGNED_SHORT, indices.data, 3);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glDrawRangeElementsBaseVertex produced GL error " + std::to_string(err));
+    }
+    if (px[2] < 180 || px[1] < 120 || px[0] > 80) {
+        return fail("glDrawRangeElementsBaseVertex pixel check failed");
+    }
+    return pass("page-boundary glDrawRangeElementsBaseVertex rendered expected pixel");
+}
+
+static bool pixelIsGreenish(const unsigned char* px);
+
+static TestResult testDrawArraysInstancedPageBoundary(TestContext&) {
+    if (!glx.DrawArraysInstanced || !glx.DrawArraysInstancedBaseInstance) {
+        return skip("draw arrays instanced variants are unavailable");
+    }
+
+    PageBytes vertices;
+    if (!vertices.init(6 * 2 * sizeof(float), 12)) {
+        return skip("VirtualAlloc failed for instanced array vertex buffer");
+    }
+
+    const GLfloat vertexData[12] = {
+        -0.8f, -0.8f,
+         0.8f, -0.8f,
+         0.0f,  0.8f,
+        -0.8f, -0.8f,
+         0.8f, -0.8f,
+         0.0f,  0.8f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices.data);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glx.DrawArraysInstanced(GL_TRIANGLES, 0, 3, 1);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+        return fail("glDrawArraysInstanced produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+        return fail("glDrawArraysInstanced pixel check failed");
+    }
+
+    std::memset(px, 0, sizeof(px));
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glx.DrawArraysInstancedBaseInstance(GL_TRIANGLES, 3, 3, 1, 5);
+    glFinish();
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+        return fail("glDrawArraysInstancedBaseInstance produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+        return fail("glDrawArraysInstancedBaseInstance pixel check failed");
+    }
+
+    if (glx.DrawArraysInstancedARB) {
+        std::memset(px, 0, sizeof(px));
+        glClear(GL_COLOR_BUFFER_BIT);
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glx.DrawArraysInstancedARB(GL_TRIANGLES, 0, 3, 1);
+        glFinish();
+        glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+        err = glGetError();
+        if (err != GL_NO_ERROR) {
+            glDisableClientState(GL_VERTEX_ARRAY);
+            return fail("glDrawArraysInstancedARB produced GL error " + std::to_string(err));
+        }
+        if (!pixelIsGreenish(px)) {
+            glDisableClientState(GL_VERTEX_ARRAY);
+            return fail("glDrawArraysInstancedARB pixel check failed");
+        }
+    }
+
+    if (glx.DrawArraysInstancedEXT) {
+        std::memset(px, 0, sizeof(px));
+        glClear(GL_COLOR_BUFFER_BIT);
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glx.DrawArraysInstancedEXT(GL_TRIANGLES, 3, 3, 1);
+        glFinish();
+        glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+        err = glGetError();
+        if (err != GL_NO_ERROR) {
+            glDisableClientState(GL_VERTEX_ARRAY);
+            return fail("glDrawArraysInstancedEXT produced GL error " + std::to_string(err));
+        }
+        if (!pixelIsGreenish(px)) {
+            glDisableClientState(GL_VERTEX_ARRAY);
+            return fail("glDrawArraysInstancedEXT pixel check failed");
+        }
+    }
+    glDisableClientState(GL_VERTEX_ARRAY);
+    return pass("page-boundary glDrawArraysInstanced variants rendered expected pixels");
+}
+
+static TestResult testDrawElementsInstancedPageBoundary(TestContext&) {
+    if (!glx.DrawElementsInstanced || !glx.DrawElementsInstancedBaseVertex ||
+        !glx.DrawElementsInstancedBaseVertexBaseInstance) {
+        return skip("draw elements instanced variants are unavailable");
+    }
+
+    PageBytes indices;
+    PageBytes vertices;
+    if (!indices.init(3 * sizeof(GLushort), 4) ||
+        !vertices.init(6 * 2 * sizeof(float), 12)) {
+        return skip("VirtualAlloc failed for instanced draw index buffer");
+    }
+
+    const GLushort indexData[3] = { 0, 1, 2 };
+    std::memcpy(indices.data, indexData, sizeof(indexData));
+
+    const GLfloat vertexData[12] = {
+        -0.8f, -0.8f,
+         0.8f, -0.8f,
+         0.0f,  0.8f,
+        -0.8f, -0.8f,
+         0.8f, -0.8f,
+         0.0f,  0.8f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices.data);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glx.DrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, indices.data, 1);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+        return fail("glDrawElementsInstanced produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+        return fail("glDrawElementsInstanced pixel check failed");
+    }
+
+    std::memset(px, 0, sizeof(px));
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glx.DrawElementsInstancedBaseVertex(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, indices.data, 1, 3);
+    glFinish();
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+        return fail("glDrawElementsInstancedBaseVertex produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+        return fail("glDrawElementsInstancedBaseVertex pixel check failed");
+    }
+
+    std::memset(px, 0, sizeof(px));
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    if (glx.DrawElementsInstancedBaseInstance) {
+        glx.DrawElementsInstancedBaseInstance(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, indices.data, 1, 5);
+        glFinish();
+        glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+        err = glGetError();
+        if (err != GL_NO_ERROR) {
+            glDisableClientState(GL_VERTEX_ARRAY);
+            return fail("glDrawElementsInstancedBaseInstance produced GL error " + std::to_string(err));
+        }
+        if (!pixelIsGreenish(px)) {
+            glDisableClientState(GL_VERTEX_ARRAY);
+            return fail("glDrawElementsInstancedBaseInstance pixel check failed");
+        }
+        std::memset(px, 0, sizeof(px));
+        glClear(GL_COLOR_BUFFER_BIT);
+        glColor3f(0.0f, 1.0f, 0.0f);
+    }
+
+    glx.DrawElementsInstancedBaseVertexBaseInstance(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, indices.data, 1, 3, 7);
+    glFinish();
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+        return fail("glDrawElementsInstancedBaseVertexBaseInstance produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+        return fail("glDrawElementsInstancedBaseVertexBaseInstance pixel check failed");
+    }
+
+    if (glx.DrawElementsInstancedARB) {
+        std::memset(px, 0, sizeof(px));
+        glClear(GL_COLOR_BUFFER_BIT);
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glx.DrawElementsInstancedARB(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, indices.data, 1);
+        glFinish();
+        glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+        err = glGetError();
+        if (err != GL_NO_ERROR) {
+            glDisableClientState(GL_VERTEX_ARRAY);
+            return fail("glDrawElementsInstancedARB produced GL error " + std::to_string(err));
+        }
+        if (!pixelIsGreenish(px)) {
+            glDisableClientState(GL_VERTEX_ARRAY);
+            return fail("glDrawElementsInstancedARB pixel check failed");
+        }
+    }
+
+    if (glx.DrawElementsInstancedEXT) {
+        std::memset(px, 0, sizeof(px));
+        glClear(GL_COLOR_BUFFER_BIT);
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glx.DrawElementsInstancedEXT(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, indices.data, 1);
+        glFinish();
+        glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+        err = glGetError();
+        if (err != GL_NO_ERROR) {
+            glDisableClientState(GL_VERTEX_ARRAY);
+            return fail("glDrawElementsInstancedEXT produced GL error " + std::to_string(err));
+        }
+        if (!pixelIsGreenish(px)) {
+            glDisableClientState(GL_VERTEX_ARRAY);
+            return fail("glDrawElementsInstancedEXT pixel check failed");
+        }
+    }
+
+    glDisableClientState(GL_VERTEX_ARRAY);
+    return pass("page-boundary glDrawElementsInstanced variants rendered expected pixels");
+}
+
+static bool pixelIsGreenish(const unsigned char* px) {
+    return px[1] > 160 && px[0] < 80 && px[2] < 80;
+}
+
+static TestResult testMultiDrawArraysPageBoundary(TestContext&) {
+    if (!glx.MultiDrawArrays) {
+        return skip("glMultiDrawArrays is unavailable");
+    }
+
+    PageBytes vertices;
+    PageBytes firstBytes;
+    PageBytes countBytes;
+    if (!vertices.init(6 * 2 * sizeof(float), 12) ||
+        !firstBytes.init(2 * sizeof(GLint), 4) ||
+        !countBytes.init(2 * sizeof(GLsizei), 6)) {
+        return skip("VirtualAlloc failed for multi-draw arrays buffers");
+    }
+
+    GLfloat* v = (GLfloat*)vertices.data;
+    const GLfloat vertexData[12] = {
+        -0.9f, -0.9f,
+         0.0f, -0.9f,
+        -0.9f,  0.9f,
+         0.9f, -0.9f,
+         0.9f,  0.9f,
+         0.0f,  0.9f
+    };
+    const GLint first[2] = { 0, 3 };
+    const GLsizei count[2] = { 3, 3 };
+    std::memcpy(v, vertexData, sizeof(vertexData));
+    std::memcpy(firstBytes.data, first, sizeof(first));
+    std::memcpy(countBytes.data, count, sizeof(count));
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices.data);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0f, 1.0f, 0.0f);
+
+    glx.MultiDrawArrays(GL_TRIANGLES, (const GLint*)firstBytes.data, (const GLsizei*)countBytes.data, 2);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char leftPx[4] = {};
+    unsigned char rightPx[4] = {};
+    glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, leftPx);
+    glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rightPx);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glMultiDrawArrays produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(leftPx) || !pixelIsGreenish(rightPx)) {
+        std::ostringstream os;
+        os << "glMultiDrawArrays pixel check failed: left=("
+            << (int)leftPx[0] << "," << (int)leftPx[1] << "," << (int)leftPx[2] << "," << (int)leftPx[3]
+            << ") right=("
+            << (int)rightPx[0] << "," << (int)rightPx[1] << "," << (int)rightPx[2] << "," << (int)rightPx[3] << ")";
+        return fail(os.str());
+    }
+    return pass("page-boundary glMultiDrawArrays rendered expected pixels");
+}
+
+template <typename T>
+static TestResult runMultiDrawIndexTypeCase(GLenum type, const char* label) {
+    GLfloat vertices[] = {
+        -0.9f, -0.9f,
+         0.0f, -0.9f,
+        -0.9f,  0.9f,
+         0.9f, -0.9f,
+         0.9f,  0.9f,
+         0.0f,  0.9f
+    };
+    T left[] = { 0, 1, 2 };
+    T right[] = { 3, 4, 5 };
+    GLsizei counts[] = { 3, 3 };
+    const void* indices[] = { left, right };
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glx.MultiDrawElements(GL_TRIANGLES, counts, type, indices, 2);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char leftPx[4] = {};
+    unsigned char rightPx[4] = {};
+    glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, leftPx);
+    glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rightPx);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail(std::string(label) + " multi-draw produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(leftPx) || !pixelIsGreenish(rightPx)) {
+        return fail(std::string(label) + " multi-draw pixel check failed");
+    }
+    return pass(std::string(label) + " multi-draw rendered expected pixels");
+}
+
+static TestResult testMultiDrawElementsWideIndexTypes(TestContext&) {
+    if (!glx.MultiDrawElements) {
+        return skip("glMultiDrawElements is unavailable");
+    }
+
+    TestResult ushortResult = runMultiDrawIndexTypeCase<GLushort>(GL_UNSIGNED_SHORT, "ushort");
+    if (ushortResult.status != TestResult::Pass) {
+        return ushortResult;
+    }
+    TestResult uintResult = runMultiDrawIndexTypeCase<GLuint>(GL_UNSIGNED_INT, "uint");
+    if (uintResult.status != TestResult::Pass) {
+        return uintResult;
+    }
+    return pass("ushort and uint multi-draw variants rendered expected pixels");
+}
+
+static TestResult testMultiDrawElementsBaseVertexPageBoundary(TestContext&) {
+    if (!glx.MultiDrawElementsBaseVertex) {
+        return skip("glMultiDrawElementsBaseVertex is unavailable");
+    }
+
+    PageBytes counts;
+    PageBytes indexPointers;
+    PageBytes baseVertices;
+    PageBytes leftIndices;
+    PageBytes rightIndices;
+    if (!counts.init(2 * sizeof(GLsizei), 4) ||
+        !indexPointers.init(2 * sizeof(const void*), sizeof(const void*)) ||
+        !baseVertices.init(2 * sizeof(GLint), 4) ||
+        !leftIndices.init(3 * sizeof(GLubyte), 2) ||
+        !rightIndices.init(3 * sizeof(GLubyte), 2)) {
+        return skip("VirtualAlloc failed for multi-draw base-vertex buffers");
+    }
+
+    GLsizei drawCounts[2] = { 3, 3 };
+    GLint baseVertexValues[2] = { 0, 3 };
+    GLubyte localIndices[3] = { 0, 1, 2 };
+    std::memcpy(counts.data, drawCounts, sizeof(drawCounts));
+    std::memcpy(baseVertices.data, baseVertexValues, sizeof(baseVertexValues));
+    std::memcpy(leftIndices.data, localIndices, sizeof(localIndices));
+    std::memcpy(rightIndices.data, localIndices, sizeof(localIndices));
+    const void* drawIndices[2] = { leftIndices.data, rightIndices.data };
+    std::memcpy(indexPointers.data, drawIndices, sizeof(drawIndices));
+
+    const GLfloat vertices[] = {
+        -0.9f, -0.9f,
+         0.0f, -0.9f,
+        -0.9f,  0.9f,
+         0.9f, -0.9f,
+         0.9f,  0.9f,
+         0.0f,  0.9f
+    };
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0f, 1.0f, 0.0f);
+
+    glx.MultiDrawElementsBaseVertex(GL_TRIANGLES, (const GLsizei*)counts.data, GL_UNSIGNED_BYTE,
+        (const void* const*)indexPointers.data, 2, (const GLint*)baseVertices.data);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char leftPx[4] = {};
+    unsigned char rightPx[4] = {};
+    glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, leftPx);
+    glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rightPx);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glMultiDrawElementsBaseVertex produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(leftPx) || !pixelIsGreenish(rightPx)) {
+        return fail("glMultiDrawElementsBaseVertex pixel check failed");
+    }
+    return pass("page-boundary glMultiDrawElementsBaseVertex rendered expected pixels");
+}
+
+static TestResult testIndirectDrawPageBoundary(TestContext&) {
+    if (!glx.DrawArraysIndirect || !glx.DrawElementsIndirect ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("indirect draw buffer APIs are unavailable");
+    }
+
+    PageBytes arraysCommand;
+    PageBytes elementsCommand;
+    if (!arraysCommand.init(4 * sizeof(GLuint), 8) ||
+        !elementsCommand.init(5 * sizeof(GLuint), 12)) {
+        return skip("VirtualAlloc failed for page-boundary indirect draw commands");
+    }
+
+    GLuint drawArraysCmd[4] = {
+        3,  // count
+        1,  // primCount
+        0,  // first
+        0   // baseInstance
+    };
+    GLuint drawElementsCmd[5] = {
+        3,  // count
+        1,  // primCount
+        0,  // firstIndex
+        0,  // baseVertex
+        0   // baseInstance
+    };
+    std::memcpy(arraysCommand.data, drawArraysCmd, sizeof(drawArraysCmd));
+    std::memcpy(elementsCommand.data, drawElementsCmd, sizeof(drawElementsCmd));
+
+    const GLfloat vertices[] = {
+        -0.9f, -0.9f,
+         0.0f, -0.9f,
+        -0.9f,  0.9f,
+         0.9f, -0.9f,
+         0.9f,  0.9f,
+         0.0f,  0.9f
+    };
+    const GLubyte rightTriangle[] = { 3, 4, 5 };
+    GLuint buffers[2] = {};
+    glx.GenBuffers(2, buffers);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+    glx.BufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[1]);
+    glx.BufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(rightTriangle), rightTriangle, GL_STATIC_DRAW);
+    glx.BindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, nullptr);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0f, 1.0f, 0.0f);
+
+    glx.DrawArraysIndirect(GL_TRIANGLES, arraysCommand.data);
+    glx.DrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_BYTE, elementsCommand.data);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.DeleteBuffers(2, buffers);
+    glFinish();
+
+    unsigned char leftPx[4] = {};
+    unsigned char rightPx[4] = {};
+    glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, leftPx);
+    glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rightPx);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("indirect draw produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(leftPx) || !pixelIsGreenish(rightPx)) {
+        std::ostringstream os;
+        os << "indirect draw pixel check failed: left=("
+            << (int)leftPx[0] << "," << (int)leftPx[1] << "," << (int)leftPx[2] << "," << (int)leftPx[3]
+            << ") right=("
+            << (int)rightPx[0] << "," << (int)rightPx[1] << "," << (int)rightPx[2] << "," << (int)rightPx[3] << ")";
+        return fail(os.str());
+    }
+    return pass("page-boundary glDrawArraysIndirect/glDrawElementsIndirect rendered expected pixels");
+}
+
+static TestResult testMultiDrawIndirectPageBoundary(TestContext&) {
+    if (!glx.MultiDrawArraysIndirect || !glx.MultiDrawElementsIndirect ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("multi-draw indirect buffer APIs are unavailable");
+    }
+
+    const GLsizei drawCount = 2;
+    const GLsizei arraysStride = 32;
+    const GLsizei elementsStride = 32;
+    PageBytes arraysCommands;
+    PageBytes elementsCommands;
+    if (!arraysCommands.init(arraysStride * drawCount, 8) ||
+        !elementsCommands.init(elementsStride * drawCount, 12)) {
+        return skip("VirtualAlloc failed for page-boundary multi-draw indirect commands");
+    }
+
+    const GLuint drawArraysCmds[2][4] = {
+        { 3, 1, 0, 0 },
+        { 3, 1, 3, 0 }
+    };
+    const GLuint drawElementsCmds[2][5] = {
+        { 3, 1, 0, 0, 0 },
+        { 3, 1, 3, 0, 0 }
+    };
+    for (GLsizei i = 0; i < drawCount; ++i) {
+        std::memcpy(arraysCommands.data + arraysStride * i, drawArraysCmds[i], sizeof(drawArraysCmds[i]));
+        std::memcpy(elementsCommands.data + elementsStride * i, drawElementsCmds[i], sizeof(drawElementsCmds[i]));
+    }
+
+    const GLfloat vertices[] = {
+        -0.9f, -0.9f,
+         0.0f, -0.9f,
+        -0.9f,  0.9f,
+         0.9f, -0.9f,
+         0.9f,  0.9f,
+         0.0f,  0.9f
+    };
+    const GLubyte indices[] = { 0, 1, 2, 3, 4, 5 };
+    GLuint buffers[2] = {};
+    glx.GenBuffers(2, buffers);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+    glx.BufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[1]);
+    glx.BufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glx.BindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, nullptr);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glx.MultiDrawArraysIndirect(GL_TRIANGLES, arraysCommands.data, drawCount, arraysStride);
+    glFinish();
+
+    unsigned char leftPx[4] = {};
+    unsigned char rightPx[4] = {};
+    glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, leftPx);
+    glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rightPx);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+        glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        glx.DeleteBuffers(2, buffers);
+        return fail("glMultiDrawArraysIndirect produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(leftPx) || !pixelIsGreenish(rightPx)) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+        glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        glx.DeleteBuffers(2, buffers);
+        return fail("glMultiDrawArraysIndirect pixel check failed");
+    }
+
+    std::memset(leftPx, 0, sizeof(leftPx));
+    std::memset(rightPx, 0, sizeof(rightPx));
+    glClear(GL_COLOR_BUFFER_BIT);
+    glx.MultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_BYTE, elementsCommands.data, drawCount, elementsStride);
+    glFinish();
+    glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, leftPx);
+    glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rightPx);
+    err = glGetError();
+
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.DeleteBuffers(2, buffers);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glMultiDrawElementsIndirect produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(leftPx) || !pixelIsGreenish(rightPx)) {
+        return fail("glMultiDrawElementsIndirect pixel check failed");
+    }
+    return pass("page-boundary multi-draw indirect commands rendered expected pixels");
+}
+
+static TestResult testMultiDrawElements(TestContext&) {
+    if (!glx.MultiDrawElements) {
+        return skip("glMultiDrawElements is unavailable");
+    }
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    GLfloat vertices[] = {
+        -0.9f, -0.9f,
+         0.0f, -0.9f,
+        -0.9f,  0.9f,
+         0.9f, -0.9f,
+         0.9f,  0.9f,
+         0.0f,  0.9f
+    };
+    GLubyte left[] = { 0, 1, 2 };
+    GLubyte right[] = { 3, 4, 5 };
+    GLsizei counts[] = { 3, 3 };
+    const void* indices[] = { left, right };
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glx.MultiDrawElements(GL_TRIANGLES, counts, GL_UNSIGNED_BYTE, indices, 2);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFinish();
+
+    unsigned char leftPx[4] = {};
+    unsigned char rightPx[4] = {};
+    glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, leftPx);
+    glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rightPx);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("client multi-draw produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(leftPx) || !pixelIsGreenish(rightPx)) {
+        return fail("client multi-draw pixel check failed");
+    }
+
+    if (glx.GenBuffers && glx.BindBuffer && glx.BufferData && glx.DeleteBuffers) {
+        glClear(GL_COLOR_BUFFER_BIT);
+        GLuint ebo = 0;
+        GLubyte combined[70] = {};
+        combined[64] = 0;
+        combined[65] = 1;
+        combined[66] = 2;
+        combined[67] = 3;
+        combined[68] = 4;
+        combined[69] = 5;
+        const void* offsets[] = { (const void*)64, (const void*)67 };
+        glx.GenBuffers(1, &ebo);
+        glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glx.BufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(combined), combined, GL_STATIC_DRAW);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glVertexPointer(2, GL_FLOAT, 0, vertices);
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glx.MultiDrawElements(GL_TRIANGLES, counts, GL_UNSIGNED_BYTE, offsets, 2);
+        glDisableClientState(GL_VERTEX_ARRAY);
+        glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glx.DeleteBuffers(1, &ebo);
+        glFinish();
+
+        glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, leftPx);
+        glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rightPx);
+        err = glGetError();
+        if (err != GL_NO_ERROR) {
+            return fail("element-buffer multi-draw produced GL error " + std::to_string(err));
+        }
+        if (!pixelIsGreenish(leftPx) || !pixelIsGreenish(rightPx)) {
+            return fail("element-buffer multi-draw pixel check failed");
+        }
+    }
+
+    return pass("multi-draw rendered expected pixels");
+}
+
+static std::vector<TestCase> tests() {
+    return {
+        { "shader-string-arrays", testShaderStringArrays },
+        { "shader-page-boundary-strings", testShaderPageBoundaryStrings },
+        { "shader-info-log-page-boundary", testShaderInfoLogPageBoundary },
+        { "program-info-log-page-boundary", testProgramInfoLogPageBoundary },
+        { "active-uniform-attrib-page-boundary", testActiveUniformAttribPageBoundary },
+        { "shader-source-getter-page-boundary", testShaderSourceGetterPageBoundary },
+        { "active-uniform-name-page-boundary", testActiveUniformNamePageBoundary },
+        { "transform-feedback-varying-page-boundary", testTransformFeedbackVaryingPageBoundary },
+        { "transform-feedback-object-page-boundary", testTransformFeedbackObjectPageBoundary },
+        { "program-resource-name-page-boundary", testProgramResourceNamePageBoundary },
+        { "program-resourceiv-page-boundary", testProgramResourceivPageBoundary },
+        { "object-label-page-boundary", testObjectLabelPageBoundary },
+        { "named-string-arb-page-boundary", testNamedStringARBPageBoundary },
+        { "program-pipeline-page-boundary", testProgramPipelinePageBoundary },
+        { "debug-message-log-page-boundary", testDebugMessageLogPageBoundary },
+        { "query-object-page-boundary", testQueryObjectPageBoundary },
+        { "query-buffer-object-page-boundary", testQueryBufferObjectPageBoundary },
+        { "sync-object-page-boundary", testSyncObjectPageBoundary },
+        { "sampler-object-page-boundary", testSamplerObjectPageBoundary },
+        { "bind-samplers-page-boundary", testBindSamplersPageBoundary },
+        { "uniform-block-page-boundary", testUniformBlockPageBoundary },
+        { "vertex-attrib-pointer-page-boundary", testVertexAttribPointerPageBoundary },
+        { "vertex-attrib-client-array-render-page-boundary", testVertexAttribClientArrayRenderPageBoundary },
+        { "vertex-array-object-page-boundary", testVertexArrayObjectPageBoundary },
+        { "bind-vertex-buffers-page-boundary", testBindVertexBuffersPageBoundary },
+        { "bind-buffers-range-page-boundary", testBindBuffersRangePageBoundary },
+        { "bind-transform-feedback-buffers-range-page-boundary", testBindTransformFeedbackBuffersRangePageBoundary },
+        { "bind-shader-storage-buffers-range-page-boundary", testBindShaderStorageBuffersRangePageBoundary },
+        { "bind-atomic-counter-buffers-range-page-boundary", testBindAtomicCounterBuffersRangePageBoundary },
+        { "program-binary-page-boundary", testProgramBinaryPageBoundary },
+        { "uniform-getters", testUniformGetters },
+        { "uniform-array-getters", testUniformArrayGetters },
+        { "uniform-matrix-shape-getters", testUniformMatrixShapeGetters },
+        { "texture-page-boundary-upload-readback", testTexturePageBoundaryUploadReadback },
+        { "texture-subimage-page-boundary", testTextureSubImagePageBoundary },
+        { "texture-subimage2d-pbo-offset", testTextureSubImage2DPBOOffset },
+        { "texture-image2d-ext-pbo-offset", testTextureImage2DEXTPBOOffset },
+        { "multitex-image2d-ext-pbo-offset", testMultiTexImage2DEXTPBOOffset },
+        { "dsa-texture-subimage2d-page-boundary", testDSATextureSubImage2DPageBoundary },
+        { "ext-texture-subimage2d-page-boundary", testEXTTextureSubImage2DPageBoundary },
+        { "texture1d-page-boundary-readback", testTexture1DPageBoundaryReadback },
+        { "texture-subimage1d-page-boundary", testTextureSubImage1DPageBoundary },
+        { "texture-image1d-ext-pbo-offset", testTextureImage1DEXTPBOOffset },
+        { "multitex-image1d-ext-pbo-offset", testMultiTexImage1DEXTPBOOffset },
+        { "texture3d-page-boundary", testTexture3DPageBoundary },
+        { "texture-image3d-pbo-offset", testTextureImage3DPBOOffset },
+        { "ext-texture-image3d-pbo-offset", testEXTTextureImage3DPBOOffset },
+        { "multitex-image3d-ext-pbo-offset", testMultiTexImage3DEXTPBOOffset },
+        { "texture-image3d-ext-pbo-offset", testTextureImage3DEXTPBOOffset },
+        { "texture-subimage3d-pbo-offset", testTextureSubImage3DPBOOffset },
+        { "ext-texture-subimage3d-pbo-offset", testEXTTextureSubImage3DPBOOffset },
+        { "dsa-texture-subimage3d-pbo-offset", testDSATextureSubImage3DPBOOffset },
+        { "ext-dsa-texture-subimage3d-pbo-offset", testEXTTextureDSASubImage3DPBOOffset },
+        { "texture2d-array-page-boundary-readback", testTexture2DArrayPageBoundaryReadback },
+        { "compressed-texture-readback", testCompressedTextureReadback },
+        { "dsa-gettextureimage-page-boundary", testDSAGetTextureImagePageBoundary },
+        { "ext-gettextureimage-array-readback", testEXTGetTextureImageArrayReadback },
+        { "dsa-compressed-texture-readback", testDSACompressedTextureImagePageBoundary },
+        { "ext-compressed-texture-readback", testEXTCompressedTextureImagePageBoundary },
+        { "get-texture-subimage-page-boundary", testGetTextureSubImagePageBoundary },
+        { "get-compressed-texture-subimage-page-boundary", testGetCompressedTextureSubImagePageBoundary },
+        { "compressed-texture-subimage2d-pbo-offset", testCompressedTextureSubImage2DPBOOffset },
+        { "copy-texture-subimage2d", testCopyTextureSubImage2D },
+        { "ext-copy-texture-subimage2d", testEXTCopyTextureSubImage2D },
+        { "clear-teximage-page-boundary", testClearTexImagePageBoundary },
+        { "clear-texsubimage-page-boundary", testClearTexSubImagePageBoundary },
+        { "texture-parameter-getters", testTextureParameterGetters },
+        { "texture-parameter-vector-inputs", testTextureParameterVectorInputs },
+        { "dsa-texture-parameter-getters", testDSATextureParameterGetters },
+        { "ext-texture-parameter-getters", testEXTTextureParameterGetters },
+        { "texture-level-parameter-getters", testTextureLevelParameterGetters },
+        { "dsa-texture-level-parameter-getters", testDSATextureLevelParameterGetters },
+        { "ext-texture-level-parameter-getters", testEXTTextureLevelParameterGetters },
+        { "texenv-getters", testTexEnvGetters },
+        { "texgen-getters", testTexGenGetters },
+        { "texenv-texgen-vector-inputs", testTexEnvTexGenVectorInputs },
+        { "light-material-getters", testLightMaterialGetters },
+        { "light-material-vector-inputs", testLightMaterialVectorInputs },
+        { "pixel-map-getters", testPixelMapGetters },
+        { "pixel-map-vector-inputs", testPixelMapVectorInputs },
+        { "evaluator-map-getters", testEvaluatorMapGetters },
+        { "evaluator-map-vector-inputs", testEvaluatorMapVectorInputs },
+        { "evalcoord-vector-inputs", testEvalCoordVectorInputs },
+        { "feedback-buffer-roundtrip", testFeedbackBufferRoundTrip },
+        { "select-buffer-roundtrip", testSelectBufferRoundTrip },
+        { "clip-plane-getters", testClipPlaneGetters },
+        { "polygon-stipple-roundtrip", testPolygonStippleRoundTrip },
+        { "fog-state-getters", testFogStateGetters },
+        { "fog-vector-inputs", testFogVectorInputs },
+        { "pixel-transfer-state-getters", testPixelTransferStateGetters },
+        { "client-pointer-getters", testClientPointerGetters },
+        { "texture-object-array-apis", testTextureObjectArrayAPIs },
+        { "bind-textures-page-boundary", testBindTexturesPageBoundary },
+        { "bind-image-textures-page-boundary", testBindImageTexturesPageBoundary },
+        { "drawpixels-page-boundary", testDrawPixelsPageBoundary },
+        { "bitmap-page-boundary", testBitmapPageBoundary },
+        { "current-vector-inputs", testCurrentVectorInputs },
+        { "color-index-edge-vector-inputs", testColorIndexEdgeVectorInputs },
+        { "matrix-vector-inputs", testMatrixVectorInputs },
+        { "texcoord-vector-inputs", testTexCoordVectorInputs },
+        { "rasterpos-vector-inputs", testRasterPosVectorInputs },
+        { "rect-vector-inputs", testRectVectorInputs },
+        { "immediate-vertex-vector-inputs", testImmediateVertexVectorInputs },
+        { "fbo-texture-readback", testFramebufferTextureReadback },
+        { "framebuffer-renderbuffer-object-page-boundary", testFramebufferRenderbufferObjectPageBoundary },
+        { "pixel-store-pack-unpack", testPixelStorePackUnpackState },
+        { "pixel-store-skip-pixels-tight-rows", testPixelStoreSkipPixelsTightRows },
+        { "readpixels-page-boundary", testReadPixelsPageBoundary },
+        { "readnpixels-page-boundary", testReadnPixelsPageBoundary },
+        { "pbo-readpixels", testPixelPackBufferReadPixels },
+        { "pbo-texture-upload", testPixelUnpackBufferTextureUpload },
+        { "buffer-subdata-page-boundary", testBufferSubDataPageBoundary },
+        { "clear-buffer-data-page-boundary", testClearBufferDataPageBoundary },
+        { "clear-buffer-subdata-page-boundary", testClearBufferSubDataPageBoundary },
+        { "named-buffer-subdata-page-boundary", testNamedBufferSubDataPageBoundary },
+        { "ext-named-buffer-subdata-page-boundary", testEXTNamedBufferSubDataPageBoundary },
+        { "map-buffer-write-readback", testMapBufferWriteReadback },
+        { "map-buffer-range-write-readback", testMapBufferRangeWriteReadback },
+        { "client-array-page-boundary-render", testClientArrayPageBoundaryRender },
+        { "client-array-stride-page-boundary-render", testClientArrayStridePageBoundaryRender },
+        { "interleaved-arrays-page-boundary-render", testInterleavedArraysPageBoundaryRender },
+        { "client-color-texcoord-arrays-page-boundary-render", testClientColorTexCoordArraysPageBoundaryRender },
+        { "client-normal-array-page-boundary-render", testClientNormalArrayPageBoundaryRender },
+        { "client-secondary-color-array-page-boundary-render", testClientSecondaryColorArrayPageBoundaryRender },
+        { "client-fog-coord-array-page-boundary-render", testClientFogCoordArrayPageBoundaryRender },
+        { "client-edge-flag-array-page-boundary-render", testClientEdgeFlagArrayPageBoundaryRender },
+        { "ext-client-pointer-arrays-page-boundary-render", testEXTClientPointerArraysPageBoundaryRender },
+        { "ext-normal-pointer-page-boundary-render", testEXTNormalPointerPageBoundaryRender },
+        { "ext-edge-flag-pointer-page-boundary-render", testEXTEdgeFlagPointerPageBoundaryRender },
+        { "ext-multitexcoord-pointer-page-boundary-render", testEXTMultiTexCoordPointerPageBoundaryRender },
+        { "sgis-multitexcoord-pointer-page-boundary-render", testSGISMultiTexCoordPointerPageBoundaryRender },
+        { "array-element-page-boundary-render", testArrayElementPageBoundaryRender },
+        { "array-element-texcoord-page-boundary-render", testArrayElementTexCoordPageBoundaryRender },
+        { "draw-elements-page-boundary", testDrawElementsPageBoundary },
+        { "call-lists-page-boundary", testCallListsPageBoundary },
+        { "draw-range-elements-page-boundary", testDrawRangeElementsPageBoundary },
+        { "draw-elements-base-vertex-page-boundary", testDrawElementsBaseVertexPageBoundary },
+        { "draw-range-elements-base-vertex-page-boundary", testDrawRangeElementsBaseVertexPageBoundary },
+        { "draw-arrays-instanced-page-boundary", testDrawArraysInstancedPageBoundary },
+        { "draw-elements-instanced-page-boundary", testDrawElementsInstancedPageBoundary },
+        { "multi-draw-arrays-page-boundary", testMultiDrawArraysPageBoundary },
+        { "indirect-draw-page-boundary", testIndirectDrawPageBoundary },
+        { "multi-draw-indirect-page-boundary", testMultiDrawIndirectPageBoundary },
+        { "multi-draw-elements", testMultiDrawElements },
+        { "multi-draw-elements-wide-index-types", testMultiDrawElementsWideIndexTypes },
+        { "multi-draw-elements-base-vertex-page-boundary", testMultiDrawElementsBaseVertexPageBoundary },
+    };
+}
+
+int main(int argc, char** argv) {
+    std::string only;
+    std::string logPath;
+    bool list = false;
+    bool quiet = false;
+    for (int i = 1; i < argc; i++) {
+        if (std::strcmp(argv[i], "--list") == 0) {
+            list = true;
+        } else if (std::strcmp(argv[i], "--quiet") == 0) {
+            quiet = true;
+        } else if (std::strcmp(argv[i], "--test") == 0 && i + 1 < argc) {
+            only = argv[++i];
+        } else if (std::strcmp(argv[i], "--log") == 0 && i + 1 < argc) {
+            logPath = argv[++i];
+        } else {
+            std::string line = std::string("Unknown argument: ") + argv[i] + "\r\n";
+            DWORD written = 0;
+            WriteFile(GetStdHandle(STD_ERROR_HANDLE), line.data(), (DWORD)line.size(), &written, nullptr);
+            return 2;
+        }
+    }
+
+    auto allTests = tests();
+    if (list) {
+        for (const auto& t : allTests) {
+            std::string line = std::string(t.name) + "\r\n";
+            DWORD written = 0;
+            WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), line.data(), (DWORD)line.size(), &written, nullptr);
+        }
+        return 0;
+    }
+
+    TestContext ctx;
+    ctx.quiet = quiet;
+    if (!logPath.empty()) {
+        ctx.log.open(logPath, std::ios::out | std::ios::trunc);
+    }
+    if (!createContext(ctx)) {
+        destroyContext(ctx);
+        return 1;
+    }
+    if (!loadGLFunctions()) {
+        ctx.write("Required OpenGL 2.0 shader entry points are unavailable");
+        destroyContext(ctx);
+        return 1;
+    }
+
+    const char* version = (const char*)glGetString(GL_VERSION);
+    const char* renderer = (const char*)glGetString(GL_RENDERER);
+    ctx.write(std::string("OpenGL version: ") + (version ? version : "<unknown>"));
+    ctx.write(std::string("OpenGL renderer: ") + (renderer ? renderer : "<unknown>"));
+
+    bool found = only.empty();
+    for (const auto& t : allTests) {
+        if (!only.empty() && only != t.name) {
+            continue;
+        }
+        found = true;
+        TestResult result = t.fn(ctx);
+        const char* status = result.status == TestResult::Pass ? "PASS" :
+            result.status == TestResult::Fail ? "FAIL" : "SKIP";
+        if (result.status == TestResult::Pass) {
+            ctx.passed++;
+        } else if (result.status == TestResult::Fail) {
+            ctx.failed++;
+        } else {
+            ctx.skipped++;
+        }
+        ctx.write(std::string(status) + " " + t.name + (result.message.empty() ? "" : ": " + result.message));
+    }
+
+    if (!found) {
+        ctx.write("No such test: " + only);
+        destroyContext(ctx);
+        return 2;
+    }
+
+    std::ostringstream summary;
+    summary << "Summary: " << ctx.passed << " passed, " << ctx.failed << " failed, " << ctx.skipped << " skipped";
+    ctx.write(summary.str());
+    destroyContext(ctx);
+    return ctx.failed ? 1 : 0;
+}

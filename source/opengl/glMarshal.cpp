@@ -154,18 +154,20 @@ const GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
     switch (type) {
     case GL_UNSIGNED_BYTE_3_3_2:
     case GL_UNSIGNED_BYTE_2_3_3_REV:
-    case GL_UNSIGNED_BYTE: 
         return marshalArray<GLubyte>(cpu, pixel, 1);
+    case GL_UNSIGNED_BYTE:
+        return marshalArray<GLubyte>(cpu, pixel, len);
     case GL_BYTE:
-        return marshalArray<GLbyte>(cpu, pixel, 1);
+        return marshalArray<GLbyte>(cpu, pixel, len);
     case GL_BITMAP:
-        return marshalArray<GLubyte>(cpu, pixel, 1);
+        return marshalArray<GLubyte>(cpu, pixel, (len + 7) / 8);
     case GL_UNSIGNED_SHORT_5_6_5:
     case GL_UNSIGNED_SHORT_5_6_5_REV:
     case GL_UNSIGNED_SHORT_4_4_4_4:
     case GL_UNSIGNED_SHORT_4_4_4_4_REV:
     case GL_UNSIGNED_SHORT_5_5_5_1:
     case GL_UNSIGNED_SHORT_1_5_5_5_REV:
+        return marshalArray<GLushort>(cpu, pixel, 1);
     case GL_UNSIGNED_SHORT:
         return marshalArray<GLushort>(cpu, pixel, len);
     case GL_SHORT:
@@ -174,6 +176,7 @@ const GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
     case GL_UNSIGNED_INT_8_8_8_8_REV:
     case GL_UNSIGNED_INT_10_10_10_2:
     case GL_UNSIGNED_INT_2_10_10_10_REV:
+        return marshalArray<GLuint>(cpu, pixel, 1);
     case GL_UNSIGNED_INT:
         return marshalArray<GLuint>(cpu, pixel, len);
     case GL_INT:
@@ -188,7 +191,10 @@ const GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
 
 U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, int& bytes_per_comp, int& isSigned) {
     int bytes_per_row = 0;
+    int bytes_per_image = 0;
     int remainder = 0;
+    int bytes_per_pixel = 0;
+    int bytes_per_pixel_for_skip = 0;
 
     GLint skipPixels = 0;
     GLint skipRows = 0;
@@ -220,18 +226,21 @@ U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsiz
         pixels_per_row = width;
     if (type == GL_BITMAP) {
         bytes_per_comp = 1;
+        bytes_per_pixel_for_skip = 1;
         bytes_per_row = (pixels_per_row + 7) / 8;
     } else {
-        int bytes_per_pixel = get_bytes_per_pixel(format, type);
+        bytes_per_pixel = get_bytes_per_pixel(format, type);
         if (bytes_per_pixel <= 0) {
             kpanic_fmt("getPixelsLen unsupported format/type combination: format=0x%x type=0x%x", format, type);
             return 0;
         }
+        bytes_per_pixel_for_skip = bytes_per_pixel;
         bytes_per_row = pixels_per_row * bytes_per_pixel;
     }
     remainder = bytes_per_row % alignment;
     if (remainder > 0)
         bytes_per_row += (alignment - remainder);
+    bytes_per_image = ((imageHeight > 0) ? imageHeight : height) * bytes_per_row;
 
     switch (type) {
     case GL_UNSIGNED_BYTE_3_3_2:
@@ -278,9 +287,18 @@ U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsiz
         kpanic_fmt("glcommongl.c getPixelsLen uknown type: %d", type);
     }
 
-    U32 rowsPerImage = (imageHeight > 0) ? (U32)imageHeight : (U32)height;
-    U32 priorImages = (U32)skipImages + (depth > 0 ? (U32)depth - 1 : 0);
-    return (U32)bytes_per_row * (priorImages * rowsPerImage + (U32)skipRows + (U32)height);
+    U64 priorImages = (U64)skipImages + (depth > 0 ? (U64)depth - 1 : 0);
+    U64 priorRows = (U64)skipRows + (height > 0 ? (U64)height - 1 : 0);
+    U64 rowBytes = type == GL_BITMAP ? ((U64)width + 7) / 8 : (U64)width * (U64)bytes_per_pixel;
+    U64 len = priorImages * (U64)bytes_per_image +
+        priorRows * (U64)bytes_per_row +
+        (U64)skipPixels * (U64)bytes_per_pixel_for_skip +
+        rowBytes;
+    if (len > 0xffffffffu) {
+        kpanic_fmt("getPixelsLen too large: %" PRIu64, len);
+        return 0;
+    }
+    return (U32)len;
 }
 
 const GLvoid* marshalPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 pixels, U32 len) {
@@ -423,21 +441,6 @@ void unmapBuffer(CPU* cpu, GLenum target) {
     }
 }
 
-// instance is in the instance number within the function, so if the same function calls this 3 times, each call will have a difference instance
-GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
-    if (buffer == 0)
-        return nullptr;
-    if (buffer <0x10000) {
-        return (GLvoid*)(uintptr_t)buffer;
-    }
-    if (len != 0) {
-        return (GLvoid*)marshalArray<GLubyte>(cpu, buffer, len);
-    }
-    // :TODO: a lot of work needs to be done here, marshalp needs to be removed and instead marshal the correct type of array, like marshalf.
-    // This is also important to make things work with UNALIGNED_MEMORY
-    return (GLvoid*)cpu->memory->getRamPtr(buffer, len, false);
-}
-
 static U32 nextSyncId = 0;
 static BHashTable<U32, GLsync> getGLSync;
 static BHashTable<GLsync, U32> getGLSyncId;
@@ -473,42 +476,125 @@ GLsync marshalSync(CPU* cpu, U32 sync, bool done) {
 #endif
 }
 
-GLvoid** bufferpp;
-U32 bufferpp_len;
+static U32 nextVoidPtrId = 0;
+static BHashTable<U32, void*> getVoidPtr;
+static BHashTable<void*, U32> getVoidPtrId;
+static BOXEDWINE_MUTEX voidPtrMutex;
 
-GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount, U32 autoCharWidth) {
-    if (bytesPerCount==-1 && autoCharWidth!=1) {
-        kpanic("OpenGL marshalpp can't handle multi-byte strings");
+U32 marshalBackVoidPtr(CPU* cpu, void* ptr) {
+#ifdef BOXEDWINE_64
+    if (!ptr) {
+        return 0;
     }
-    if (!buffer)
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(voidPtrMutex);
+    U32 result = 0;
+    if (getVoidPtrId.get(ptr, result)) {
+        return result;
+    }
+    nextVoidPtrId++;
+    getVoidPtr.set(nextVoidPtrId, ptr);
+    getVoidPtrId.set(ptr, nextVoidPtrId);
+    return nextVoidPtrId;
+#else
+    return (U32)ptr;
+#endif
+}
+
+void* marshalVoidPtr(CPU* cpu, U32 ptr, bool done) {
+#ifdef BOXEDWINE_64
+    if (!ptr) {
         return nullptr;
+    }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(voidPtrMutex);
+    void* result = getVoidPtr.get(ptr);
+    if (result && done) {
+        getVoidPtr.remove(ptr);
+        getVoidPtrId.remove(result);
+    }
+    return result;
+#else
+    return (void*)ptr;
+#endif
+}
 
-    if (bufferpp && bufferpp_len<count) {
-        delete[] bufferpp;
-        bufferpp= nullptr;
+static GLvoid** pointerArrayBuffer;
+static U32 pointerArrayBufferLen;
+
+static GLvoid** ensurePointerArrayBuffer(U32 count) {
+    if (pointerArrayBuffer && pointerArrayBufferLen < count) {
+        delete[] pointerArrayBuffer;
+        pointerArrayBuffer = nullptr;
     }
-    if (!bufferpp) {
-        bufferpp = new GLvoid*[count];
-        bufferpp_len = count;
+    if (!pointerArrayBuffer) {
+        pointerArrayBuffer = new GLvoid * [count];
+        pointerArrayBufferLen = count;
     }
-    for (U32 i=0;i<count;i++) {
-        S32 len = 0;
-        U32 p = cpu->memory->readd(buffer+i*4);
-        if (sizes) {
-            U32 address = cpu->memory->readd(sizes+i*4);
-            len = (S32)cpu->memory->readd(address);
-        }
-        if (bytesPerCount) {
-            if (bytesPerCount==-1 && len<=0) {
-                len = cpu->memory->strlen(p)+1;
-            } else {
-                len*=bytesPerCount;
+    return pointerArrayBuffer;
+}
+
+static GLvoid* marshalPointerArrayEntry(CPU* cpu, U32 address, U32 bytes, bool offsetsOnly) {
+    if (!address) {
+        return nullptr;
+    }
+    if (offsetsOnly || address < 0x10000) {
+        return (GLvoid*)(uintptr_t)address;
+    }
+    if (bytes) {
+        return (GLvoid*)marshalArray<GLubyte>(cpu, address, bytes);
+    }
+    return (GLvoid*)cpu->memory->getRamPtr(address, 0, false);
+}
+
+const GLvoid** marshalPointerArrayByCount(CPU* cpu, U32 buffer, U32 count, U32 counts, U32 bytesPerCount, bool offsetsOnly) {
+    if (!buffer) {
+        return nullptr;
+    }
+
+    GLvoid** result = ensurePointerArrayBuffer(count);
+    for (U32 i = 0; i < count; i++) {
+        U32 address = cpu->memory->readd(buffer + i * 4);
+        U32 len = 0;
+        if (counts) {
+            S32 entryCount = (S32)cpu->memory->readd(counts + i * 4);
+            if (entryCount > 0) {
+                len = (U32)entryCount * bytesPerCount;
             }
         }
-        // :TODO: this is wrong if the host address isn't used directly
-        bufferpp[i] = marshalp(cpu, i, p, len);
+        result[i] = marshalPointerArrayEntry(cpu, address, len, offsetsOnly);
     }
-    return bufferpp;
+    return (const GLvoid**)result;
+}
+
+const GLvoid** marshalPointerArrayBySize(CPU* cpu, U32 buffer, U32 count, U32 sizes) {
+    if (!buffer) {
+        return nullptr;
+    }
+
+    GLvoid** result = ensurePointerArrayBuffer(count);
+    for (U32 i = 0; i < count; i++) {
+        U32 address = cpu->memory->readd(buffer + i * 4);
+        U32 len = 0;
+        if (sizes) {
+            S32 size = (S32)cpu->memory->readd(sizes + i * 4);
+            if (size > 0) {
+                len = (U32)size;
+            }
+        }
+        result[i] = marshalPointerArrayEntry(cpu, address, len, false);
+    }
+    return (const GLvoid**)result;
+}
+
+const GLvoid** marshalPointerArrayFixedSize(CPU* cpu, U32 buffer, U32 count, U32 bytes) {
+    if (!buffer) {
+        return nullptr;
+    }
+
+    GLvoid** result = ensurePointerArrayBuffer(count);
+    for (U32 i = 0; i < count; i++) {
+        result[i] = marshalPointerArrayEntry(cpu, cpu->memory->readd(buffer + i * 4), bytes, false);
+    }
+    return (const GLvoid**)result;
 }
 
 void* marshalunhandled(const char* func, const char* param, CPU* cpu, U32 address) {

@@ -242,17 +242,31 @@ const GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel);
 const GLvoid* marshalPixels(CPU* cpu, U32 dimensions, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type,  U32 pixels, U32 xoffset=0, U32 yoffset=0, U32 level=0, U32 zoffset=0);
 
 void updateVertexPointers(CPU* cpu, U32 count);
-GLvoid* marshalVetextPointer(CPU* cpu, GLuint index, GLboolean normalized, GLint size, GLenum type, GLsizei stride, U32 ptr);
+void marshalArrayElement(CPU* cpu, GLint i);
+GLvoid* marshalVetextPointer(CPU* cpu, GLuint index, GLboolean normalized, GLint size, GLenum type, GLsizei stride, U32 ptr, bool isVertexAttrib);
+GLvoid* marshalVertexAttribPointerNV(CPU* cpu, GLuint index, GLint size, GLenum type, GLsizei stride, U32 ptr);
+U32 marshalBackVertexAttribPointer(CPU* cpu, GLuint index, GLvoid* ptr, bool nv=false);
 GLvoid* marshalNormalPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalIndexPointer(CPU* cpu,  GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalTexCoordPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
+GLvoid* marshalMultiTexCoordPointerEXT(CPU* cpu, GLenum texunit, GLint size, GLenum type, GLsizei stride, U32 ptr);
+GLvoid* marshalMultiTexCoordPointerSGIS(CPU* cpu, GLenum target, GLint size, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalEdgeFlagPointer(CPU* cpu, GLsizei stride, U32 ptr);
 const GLboolean* marshalEdgeFlagPointerEXT(CPU* cpu, GLsizei stride, GLsizei count, U32 ptr);
+GLvoid* marshalElementPointerAPPLE(CPU* cpu, GLenum type, U32 ptr);
+GLvoid* marshalElementPointerATI(CPU* cpu, GLenum type, U32 ptr);
+GLvoid* marshalVariantPointerEXT(CPU* cpu, GLuint id, GLenum type, GLuint stride, U32 ptr);
+GLvoid* marshalMatrixIndexPointerARB(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
+GLvoid* marshalVertexWeightPointerEXT(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
+GLvoid* marshalWeightPointerARB(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
+void updateElementPointerAPPLE(CPU* cpu, U32 count);
+void updateElementPointerATI(CPU* cpu, U32 count);
 GLvoid* marshalSecondaryColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalSecondaryColorPointerEXT(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalFogPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalFogPointerEXT(CPU* cpu, GLenum type, GLsizei stride, U32 ptr);
+GLvoid* marshalTangentPointerEXT(CPU* cpu, GLenum type, GLsizei stride, U32 ptr);
 const GLvoid* marshalInterleavedPointer(CPU* cpu, GLenum format, GLsizei stride, U32 ptr);
 
 U32 getDataSize(GLenum type);
@@ -266,6 +280,8 @@ U32 marshalGetCompressedMultiImageSizeEXT(GLenum texunit, GLenum target, GLint l
 U32 marshalGetCompressedTextureSizeEXT(GLuint texture, GLenum target, GLint lod);
 U32 marshalGetConvolutionWidth(U32 target);
 U32 marshalGetConvolutionHeight(U32 target);
+U32 marshalGetUniformElementCount(GLuint program, GLint location);
+U32 marshalGetUniformElementCountARB(GLhandleARB program, GLint location);
 GLint components_in_format(GLenum format );
 GLsizei marshalHistogramWidth(GLenum target);
 
@@ -283,16 +299,18 @@ void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count);
 
 GLsync marshalSync(CPU* cpu, U32 sync, bool done=false);
 U32 marshalBackSync(CPU* cpu, GLsync sync);
+void* marshalVoidPtr(CPU* cpu, U32 ptr, bool done=false);
+U32 marshalBackVoidPtr(CPU* cpu, void* ptr);
 
-GLvoid* marshalp_and_check_array_buffer(CPU* cpu, U32 instance, U32 buffer, U32 len);
-GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len);
 U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size);
 U32 mapBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 offset, U32 size);
 void flushBufferRange(CPU* cpu, GLenum target, U32 offset, U32 size);
 void unmapBuffer(CPU* cpu, GLenum target);
 U32 getMappedBufferAddress(CPU* cpu, GLenum target, GLvoid* buffer, U32 size);
 
-GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount, U32 autoCharWidth);
+const GLvoid** marshalPointerArrayByCount(CPU* cpu, U32 buffer, U32 count, U32 counts, U32 bytesPerCount, bool offsetsOnly=false);
+const GLvoid** marshalPointerArrayBySize(CPU* cpu, U32 buffer, U32 count, U32 sizes);
+const GLvoid** marshalPointerArrayFixedSize(CPU* cpu, U32 buffer, U32 count, U32 bytes);
 
 void* marshalDrawArraysIndirectBindlessCommandNV(CPU* cpu, U32 address, U32 count, U32 stride, U32 vertexCount);
 
