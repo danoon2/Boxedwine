@@ -96,8 +96,7 @@ EM_JS(void, boxedwine_wasm_free_block, (int tableIndex),
 // ---------------------------------------------------------------------------
 void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
     if (op->pfnJitCode) {
-        int tableIndex = (int)(uintptr_t)op->pfnJitCode;
-        boxedwine_wasm_call_block(tableIndex, (int)(uintptr_t)cpu);
+        boxedwine_wasm_call_block((int)(uintptr_t)op->pfnJitCode, (int)(uintptr_t)cpu);
         // nextOp is updated by the WASM block itself (via helper call).
     }
 }
@@ -2037,6 +2036,14 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         cur->blockStart = op;
         if (cur == op) {
             cur->pfn = cpu->thread->process->startJITOp;
+        } else if (cur->pfn == cpu->thread->process->startJITOp) {
+            // This interior op was previously the first op of another compiled
+            // block. Its pfnJitCode has now been overwritten to this block's
+            // tableIdx, so calling startJITOp here would run the wrong WASM
+            // block from its beginning with incorrect CPU state.  Reset to the
+            // interpreter function so direct entry at this op falls back to
+            // the normal interpreter path.
+            cur->pfn = NormalCPU::getFunctionForOp(cur);
         }
         if (cur->next == nullptr) break;
         cur = cur->next;

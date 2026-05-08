@@ -521,7 +521,11 @@ void KMemory::clearJit(DecodedOp* op) {
         nextOp->runCount = 0;
         nextOp = nextOp->next;
     }
+    // WASM JIT stores a wasmTable index in pfnJitCode, not a codeMemory ptr.
+    // clearJitBlock already released the table entry; skip the heap free.
+#ifndef BOXEDWINE_WASM_JIT
     data->codeMemory.free(start);
+#endif
 }
 
 void clearJitBlock(const std::vector<void*>& jitOps);
@@ -563,9 +567,13 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     if (clearOps) {
         data->opCache.remove(address, blockLen, false);
     }        
+    // WASM JIT stores a wasmTable index in pfnJitCode, not a codeMemory ptr.
+    // clearJitBlock above already released the table entry; skip heap free.
+#ifndef BOXEDWINE_WASM_JIT
     if (pMem) {
         data->codeMemory.free(pMem);
     }
+#endif
 #ifdef _DEBUG1
     klog_fmt("removed active code block eip = %x - %x host %llx - %llx", thread->cpu->getEipAddress(), thread->cpu->getEipAddress() + blockLen, (U64)pMem, (U64)pMem + jitLen);
 #endif
