@@ -16,19 +16,11 @@ multiThreaded: export BUILD_DIR := Build/MultiThreaded
 multiThreaded: export SHELL_FILE := shell.html
 multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32
 
-uname_s  :=$(shell uname -s)
-ifeq ($(uname_s),Darwin)
-cpus  := $(shell sysctl -a | grep  machdep.cpu.core_count: |  tr -d 'machdep.cpu.core_count: ')
-else
-cpus  := $(shell grep -c ^processor /proc/cpuinfo)
-endif
+cpus := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
+make_jobs := $(shell n='$(cpus)'; expr "$$n" : '^[0-9][0-9]*$$' >/dev/null && [ "$$n" -gt 2 ] && expr "$$n" - 1)
 
-ifeq ($(cpus), 0)
-else ifeq ($(cpus), 1)
-else ifeq ($(cpus), 2)
-else
-cpus := $(shell echo $$(($(cpus)-1)))
-export MAKEFLAGS := -j $(cpus)
+ifneq ($(make_jobs),)
+export MAKEFLAGS := -j $(make_jobs)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
 jit release test testJit multiThreaded testMultiThreaded:
@@ -70,6 +62,7 @@ SOFT_SOURCES += $(wildcard $(PROJDIR)/lib/softfloat/source/8086-SSE/*.c)
 TEST_SOURCES = $(shell find $(PROJDIR)/lib/asmjit/asmjit -type f -name '*.cpp')
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/test/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/test/**/*.cpp)
+
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/sdl/emscripten/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
