@@ -18,8 +18,8 @@
           <progress value="0" max="100" id="progress"></progress>
       </div>
   </div>
-    <div>
-        <div class="emscripten">
+    <div id="app">
+        <div id="controls" class="emscripten">
             <button id="startbtn" style="display: none" onclick="start()">Start</button>
             <button id="uploadbtn" style="display: none" onclick="document.getElementById('upload').click()" >Add File(s)</button>
             <input style="display: none" id="upload" name="upload" onclick="document.getElementById('uploadbtn').click();" onchange="startWithFiles(event.target.files);"  type="file" multiple />
@@ -41,7 +41,7 @@
                 <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
             </div>
         </div>
-        <div>
+        <div id="console">
             <textarea class="emscripten" id="output" rows="8" style="display: none"></textarea>
         </div>
         <div id="openModal" class="modalDialog">

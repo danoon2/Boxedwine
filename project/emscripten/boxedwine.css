@@ -1,9 +1,82 @@
+html,
+body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+body {
+    display: flex;
+    flex-direction: column;
+}
 .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-textarea.emscripten { font-family: monospace; width: 100%; color:white; background-color:black;}
+textarea.emscripten {
+    box-sizing: border-box;
+    color: white;
+    background-color: black;
+    display: block;
+    font-family: monospace;
+    height: 9.5rem;
+    resize: none;
+    width: 100%;
+}
 div.emscripten { text-align: center; }
-div.emscripten_border { border: 1px solid black; }
+#loading {
+    flex: 0 0 auto;
+}
+#app {
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+#controls {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    padding: 4px 8px;
+}
+#dropzone {
+    align-items: center;
+    box-sizing: border-box;
+    container-type: size;
+    display: flex;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 0;
+    overflow: hidden;
+    padding: 8px;
+    text-align: center;
+    width: 100%;
+}
+div.emscripten_border {
+    aspect-ratio: 4 / 3;
+    border: 1px solid black;
+    box-sizing: border-box;
+    display: block;
+    line-height: 0;
+    margin-left: auto;
+    margin-right: auto;
+    width: min(100%, calc((100vh - 12rem) * 1.3333333333));
+}
+@supports (width: 1cqw) {
+    div.emscripten_border {
+        width: min(100cqw, 133.3333333333cqh);
+    }
+}
 /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
-canvas.emscripten { border: 0px none; }
+canvas.emscripten {
+    border: 0px none;
+    height: 100%;
+    width: 100%;
+}
+#console {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: 100%;
+}
+#app > hr {
+    display: none;
+}
 .spinner {
     height: 50px;
     width: 50px;
