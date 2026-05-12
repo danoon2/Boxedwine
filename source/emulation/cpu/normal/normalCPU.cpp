@@ -41,11 +41,10 @@
 #endif
 #endif
 
-// On non-JIT builds (WASM) use normalDispatch so the switch generates direct
+// Direct-dispatch builds use normalDispatch so the switch generates direct
 // return_call instructions per opcode rather than one return_call_indirect.
-// On JIT builds the JIT path dominates and pfn may be startJITOp, so we keep
-// the original pfn-based indirect dispatch to stay compatible.
-#ifndef BOXEDWINE_JIT
+// JIT builds keep pfn dispatch because pfn may be a JIT trampoline.
+#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
 #define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return normalDispatch(cpu, op->next);
 #else
 #define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return op->next->pfn(cpu, op->next);
@@ -63,9 +62,11 @@
 
 #define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!op->next) {op->next = cpu->getNextOp(); } cpu->nextOp = op->next;
 
-// Forward declaration so NEXT() (used inside the normal_*.h headers) can
-// reference normalDispatch before it is fully defined below.
+// Forward declaration so NEXT() can reference normalDispatch before the
+// normal_*.h opcode handlers are included.
+#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
 static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op);
+#endif
 
 #include "instructions.h"
 #include "normal_arith.h"
@@ -107,10 +108,9 @@ void OPCALL onTestEnd(CPU* cpu, DecodedOp* op) {
     cpu->nextOp = op;
 }
 
-// Dispatch the next decoded op by switching on its instruction ID.
-// Using a switch on a compile-time-typed integer lets the compiler emit
-// direct return_call instructions in WASM (one per opcode arm) instead of
-// the single return_call_indirect that op->pfn dispatch produces.
+// Dispatch the next decoded op by switching on its instruction ID. Using a
+// switch lets WASM emit direct return_call instructions for opcode arms.
+#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
 static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op) {
     switch (op->inst) {
 #undef INIT_CPU
@@ -132,6 +132,7 @@ static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op) {
         default:       MUSTTAIL return op->pfn(cpu, op); // unimplemented/invalid opcodes
     }
 }
+#endif
 
 static void initNormalOps() {
     if (normalOpsInitialized)

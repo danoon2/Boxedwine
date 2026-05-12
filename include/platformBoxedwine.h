@@ -51,6 +51,12 @@
 #define MUSTTAIL
 #endif
 
+// Direct normal-CPU dispatch is only for non-JIT builds. Future WASM JIT builds
+// should define BOXEDWINE_JIT and keep the ABI-compatible OpCallback path.
+#ifndef BOXEDWINE_JIT
+#define BOXEDWINE_DIRECT_NORMAL_DISPATCH 1
+#endif
+
 #ifdef BOXEDWINE_MSVC
 #include <codeanalysis\warnings.h>
 #pragma warning(disable:26451) 
@@ -85,10 +91,9 @@ char* platform_strcasestr(const char* s1, const char* s2);
 #endif
 #define PLATFORM_STAT_STRUCT struct stat
 #define PLATFORM_STAT stat
-// On non-JIT builds, apply preserve_none to opcode handlers so the tail-call
-// chain can use a lower-overhead calling convention. JIT builds keep the
-// default ABI because startJITOp is also stored as an OpCallback.
-#ifndef BOXEDWINE_JIT
+// Direct-dispatch builds can use preserve_none for opcode handlers. JIT builds
+// keep the default ABI because startJITOp is also stored as an OpCallback.
+#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
 #define OPCALL PRESERVE_NONE
 #else
 #define OPCALL
