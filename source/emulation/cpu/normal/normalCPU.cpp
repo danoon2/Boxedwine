@@ -41,7 +41,15 @@
 #endif
 #endif
 
-#define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next);
+// On non-JIT builds (WASM) use normalDispatch so the switch generates direct
+// return_call instructions per opcode rather than one return_call_indirect.
+// On JIT builds the JIT path dominates and pfn may be startJITOp, so we keep
+// the original pfn-based indirect dispatch to stay compatible.
+#ifndef BOXEDWINE_JIT
+#define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return normalDispatch(cpu, op->next);
+#else
+#define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return op->next->pfn(cpu, op->next);
+#endif
 #define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
 #define NEXT_DONE_JUMP_OR_CALL() cpu->nextOp = cpu->getNextOp(OP_FLAG2_JUMP_TARGET);
 
@@ -54,6 +62,10 @@
     cpu->nextOp = *(op->data.nextJump);
 
 #define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!op->next) {op->next = cpu->getNextOp(); } cpu->nextOp = op->next;
+
+// Forward declaration so NEXT() (used inside the normal_*.h headers) can
+// reference normalDispatch before it is fully defined below.
+static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op);
 
 #include "instructions.h"
 #include "normal_arith.h"
@@ -93,6 +105,32 @@ void OPCALL normal_sidt(CPU* cpu, DecodedOp* op) {
 
 void OPCALL onTestEnd(CPU* cpu, DecodedOp* op) {
     cpu->nextOp = op;
+}
+
+// Dispatch the next decoded op by switching on its instruction ID.
+// Using a switch on a compile-time-typed integer lets the compiler emit
+// direct return_call instructions in WASM (one per opcode arm) instead of
+// the single return_call_indirect that op->pfn dispatch produces.
+static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op) {
+    switch (op->inst) {
+#undef INIT_CPU
+#define INIT_CPU(e, f) case e: MUSTTAIL return normal_##f(cpu, op);
+#include "../common/cpu_init.h"
+#include "../common/cpu_init_mmx.h"
+#include "../common/cpu_init_sse.h"
+#include "../common/cpu_init_sse2.h"
+#include "../common/cpu_init_fpu.h"
+#undef INIT_CPU
+#ifdef BOXEDWINE_MULTI_THREADED
+#define INIT_CPU_LOCK(e, f) case e##_Lock: MUSTTAIL return normal_##f##_lock(cpu, op);
+#include "../common/cpu_init_lock.h"
+#undef INIT_CPU_LOCK
+#endif
+        case SIDT:     MUSTTAIL return normal_sidt(cpu, op);
+        case Callback: MUSTTAIL return onExitSignal(cpu, op);
+        case TestEnd:  MUSTTAIL return onTestEnd(cpu, op);
+        default:       MUSTTAIL return op->pfn(cpu, op); // unimplemented/invalid opcodes
+    }
 }
 
 static void initNormalOps() {

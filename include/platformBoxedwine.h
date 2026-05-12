@@ -34,6 +34,23 @@
 #define lseek64 lseek
 #endif
 
+// Tail-call dispatch support.
+// PRESERVE_NONE: callee saves no registers, enabling zero-cost tail dispatch.
+// MUSTTAIL: forces the compiler to emit a tail call rather than call+return.
+#if defined(__clang__) && __has_attribute(preserve_none)
+#define PRESERVE_NONE __attribute__((preserve_none))
+#else
+#define PRESERVE_NONE
+#endif
+
+#if defined(__has_cpp_attribute) && __has_cpp_attribute(clang::musttail)
+#define MUSTTAIL [[clang::musttail]]
+#elif defined(__has_cpp_attribute) && __has_cpp_attribute(gnu::musttail)
+#define MUSTTAIL [[gnu::musttail]]
+#else
+#define MUSTTAIL
+#endif
+
 #ifdef BOXEDWINE_MSVC
 #include <codeanalysis\warnings.h>
 #pragma warning(disable:26451) 
@@ -68,7 +85,14 @@ char* platform_strcasestr(const char* s1, const char* s2);
 #endif
 #define PLATFORM_STAT_STRUCT struct stat
 #define PLATFORM_STAT stat
+// On non-JIT builds, apply preserve_none to opcode handlers so the tail-call
+// chain can use a lower-overhead calling convention. JIT builds keep the
+// default ABI because startJITOp is also stored as an OpCallback.
+#ifndef BOXEDWINE_JIT
+#define OPCALL PRESERVE_NONE
+#else
 #define OPCALL
+#endif
 #define platform_getcwd getcwd
 #define UNISTD <unistd.h>
 #define UTIME <utime.h>
