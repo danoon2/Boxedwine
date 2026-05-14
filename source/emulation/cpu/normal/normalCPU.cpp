@@ -265,6 +265,10 @@ void NormalCPU::run() {
         }
     }
 #else
+#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+    normalDispatch(this, nextOp);
+#else
     nextOp->pfn(this, nextOp);
+#endif
 #endif
 }
