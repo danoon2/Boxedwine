@@ -34,11 +34,11 @@ void OPCALL normal_jumpNB(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_jumpZ(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    if (cpu->getZF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
+    if (normalGetZF(cpu)) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
 void OPCALL normal_jumpNZ(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    if (!cpu->getZF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
+    if (!normalGetZF(cpu)) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
 void OPCALL normal_jumpBE(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);

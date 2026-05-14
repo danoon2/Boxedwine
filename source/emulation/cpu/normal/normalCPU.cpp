@@ -21,6 +21,7 @@
 #include "../decoder.h"
 #include "normalCPU.h"
 #include "../../softmmu/soft_code_page.h"
+#include "../../softmmu/kmemory_soft.h"
 #include "../armv7/armv7CPU.h"
 #include "../armv8/armv8CPU.h"
 #include "../../../util/ptrpool.h"
@@ -51,6 +52,29 @@
 #endif
 #define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
 #define NEXT_DONE_JUMP_OR_CALL() cpu->nextOp = cpu->getNextOp(OP_FLAG2_JUMP_TARGET);
+
+#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH) && !defined(BOXEDWINE_JIT)
+static inline bool normalGetZF(CPU* cpu) {
+    switch (cpu->lazyFlagType) {
+    case FLAGS_NONE:
+        return (cpu->flags & ZF) != 0;
+    case FLAGS_ADD32:
+    case FLAGS_OR32:
+    case FLAGS_AND32:
+    case FLAGS_SUB32:
+    case FLAGS_XOR32:
+    case FLAGS_INC32:
+    case FLAGS_DEC32:
+    case FLAGS_CMP32:
+    case FLAGS_TEST32:
+        return cpu->result.u32 == 0;
+    default:
+        return cpu->getZF();
+    }
+}
+#else
+#define normalGetZF(cpu) ((cpu)->getZF())
+#endif
 
 // if jmp back, then return so that we don't blow the stack
 #define NEXT_BRANCH1()                                      \

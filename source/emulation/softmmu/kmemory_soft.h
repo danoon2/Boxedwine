@@ -76,4 +76,39 @@ public:
 
 KMemoryData* getMemData(KMemory* memory);
 
+#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH) && !defined(BOXEDWINE_JIT)
+inline U32 KMemory::readdInline(U32 address) {
+    if ((address & 0xFFF) < 0xFFD) {
+        U32 index = address >> 12;
+        MMU& mmu = data->mmu[index];
+#if !defined(UNALIGNED_MEMORY)
+        if (mmu.canReadRam) {
+            return *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
+        }
+#endif
+        return mmu.getPage()->readd(&mmu, address);
+    }
+    return readb(address) | (readb(address + 1) << 8) | (readb(address + 2) << 16) | (readb(address + 3) << 24);
+}
+
+inline void KMemory::writedInline(U32 address, U32 value) {
+    if ((address & 0xFFF) < 0xFFD) {
+        U32 index = address >> 12;
+        MMU& mmu = data->mmu[index];
+#if !defined(UNALIGNED_MEMORY)
+        if (mmu.canWriteRam) {
+            *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
+            return;
+        }
+#endif
+        mmu.getPage()->writed(&mmu, address, value);
+    } else {
+        writeb(address, value);
+        writeb(address + 1, value >> 8);
+        writeb(address + 2, value >> 16);
+        writeb(address + 3, value >> 24);
+    }
+}
+#endif
+
 #endif
