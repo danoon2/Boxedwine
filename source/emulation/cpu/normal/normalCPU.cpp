@@ -58,6 +58,26 @@ static inline bool normalGetZF(CPU* cpu) {
     switch (cpu->lazyFlagType) {
     case FLAGS_NONE:
         return (cpu->flags & ZF) != 0;
+    case FLAGS_ADD8:
+    case FLAGS_OR8:
+    case FLAGS_AND8:
+    case FLAGS_SUB8:
+    case FLAGS_XOR8:
+    case FLAGS_INC8:
+    case FLAGS_DEC8:
+    case FLAGS_CMP8:
+    case FLAGS_TEST8:
+        return cpu->result.u8 == 0;
+    case FLAGS_ADD16:
+    case FLAGS_OR16:
+    case FLAGS_AND16:
+    case FLAGS_SUB16:
+    case FLAGS_XOR16:
+    case FLAGS_INC16:
+    case FLAGS_DEC16:
+    case FLAGS_CMP16:
+    case FLAGS_TEST16:
+        return cpu->result.u16 == 0;        
     case FLAGS_ADD32:
     case FLAGS_OR32:
     case FLAGS_AND32:
@@ -72,8 +92,95 @@ static inline bool normalGetZF(CPU* cpu) {
         return cpu->getZF();
     }
 }
+static inline bool normalGetCF(CPU* cpu) {
+    switch (cpu->lazyFlagType) {
+    case FLAGS_NONE:
+        return (cpu->flags & CF) != 0;
+    case FLAGS_ADD8:
+        return cpu->result.u8 < cpu->dst.u8;
+    case FLAGS_ADD16:
+        return cpu->result.u16 < cpu->dst.u16;
+    case FLAGS_ADD32:
+        return cpu->result.u32 < cpu->dst.u32;
+    case FLAGS_SUB8:
+    case FLAGS_CMP8:
+        return cpu->dst.u8 < cpu->src.u8;
+    case FLAGS_SUB16:
+    case FLAGS_CMP16:
+        return cpu->dst.u16 < cpu->src.u16;
+    case FLAGS_SUB32:
+    case FLAGS_CMP32:
+        return cpu->dst.u32 < cpu->src.u32;
+    case FLAGS_OR8:
+    case FLAGS_OR16:
+    case FLAGS_OR32:
+    case FLAGS_AND8:
+    case FLAGS_AND16:
+    case FLAGS_AND32:
+    case FLAGS_XOR8:
+    case FLAGS_XOR16:
+    case FLAGS_XOR32:
+    case FLAGS_TEST8:
+    case FLAGS_TEST16:
+    case FLAGS_TEST32:
+        return false;
+    case FLAGS_INC8:
+    case FLAGS_INC16:
+    case FLAGS_INC32:
+    case FLAGS_DEC8:
+    case FLAGS_DEC16:
+    case FLAGS_DEC32:
+        return cpu->oldCF != 0;
+    default:
+        return cpu->getCF();
+    }
+}
+
+static inline bool normalGetNLE(CPU* cpu) {
+    switch (cpu->lazyFlagType) {
+    case FLAGS_NONE:
+        return !(cpu->flags & ZF) && (((cpu->flags & SF) != 0) == ((cpu->flags & OF) != 0));
+    case FLAGS_CMP8:
+    case FLAGS_SUB8: {
+        U8 result = cpu->result.u8;
+        U8 overflow = (cpu->dst.u8 ^ cpu->src.u8) & (cpu->dst.u8 ^ result) & 0x80;
+        return result != 0 && ((result & 0x80) != 0) == (overflow != 0);
+    }
+    case FLAGS_CMP16:
+    case FLAGS_SUB16: {
+        U16 result = cpu->result.u16;
+        U16 overflow = (cpu->dst.u16 ^ cpu->src.u16) & (cpu->dst.u16 ^ result) & 0x8000;
+        return result != 0 && ((result & 0x8000) != 0) == (overflow != 0);
+    }
+    case FLAGS_CMP32:
+    case FLAGS_SUB32: {
+        U32 result = cpu->result.u32;
+        U32 overflow = (cpu->dst.u32 ^ cpu->src.u32) & (cpu->dst.u32 ^ result) & 0x80000000;
+        return result != 0 && ((result & 0x80000000) != 0) == (overflow != 0);
+    }
+    case FLAGS_OR8:
+    case FLAGS_AND8:
+    case FLAGS_XOR8:
+    case FLAGS_TEST8:
+        return cpu->result.u8 != 0 && (cpu->result.u8 & 0x80) == 0;
+    case FLAGS_OR16:
+    case FLAGS_AND16:
+    case FLAGS_XOR16:
+    case FLAGS_TEST16:
+        return cpu->result.u16 != 0 && (cpu->result.u16 & 0x8000) == 0;
+    case FLAGS_OR32:
+    case FLAGS_AND32:
+    case FLAGS_XOR32:
+    case FLAGS_TEST32:
+        return cpu->result.u32 != 0 && (cpu->result.u32 & 0x80000000) == 0;
+    default:
+        return !cpu->getZF() && cpu->getSF() == cpu->getOF();
+    }
+}
 #else
 #define normalGetZF(cpu) ((cpu)->getZF())
+#define normalGetCF(cpu) ((cpu)->getCF())
+#define normalGetNLE(cpu) (!(cpu)->getZF() && (cpu)->getSF() == (cpu)->getOF())
 #endif
 
 // if jmp back, then return so that we don't blow the stack

@@ -26,11 +26,11 @@ void OPCALL normal_jumpNO(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_jumpB(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    if (cpu->getCF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
+    if (normalGetCF(cpu)) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
 void OPCALL normal_jumpNB(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    if (!cpu->getCF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
+    if (!normalGetCF(cpu)) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
 void OPCALL normal_jumpZ(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
@@ -42,11 +42,11 @@ void OPCALL normal_jumpNZ(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_jumpBE(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    if (cpu->getZF() || cpu->getCF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
+    if (normalGetZF(cpu) || normalGetCF(cpu)) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
 void OPCALL normal_jumpNBE(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    if (!cpu->getZF() && !cpu->getCF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
+    if (!normalGetZF(cpu) && !normalGetCF(cpu)) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
 void OPCALL normal_jumpS(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
@@ -78,5 +78,5 @@ void OPCALL normal_jumpLE(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_jumpNLE(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    if (!cpu->getZF() && cpu->getSF()==cpu->getOF()) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
+    if (normalGetNLE(cpu)) {cpu->eip.u32+=op->imm; NEXT_BRANCH1();} else {NEXT_BRANCH2();}
 }
