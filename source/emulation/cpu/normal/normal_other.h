@@ -519,9 +519,6 @@ void OPCALL normal_jmpE16(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_jmpE32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    if (op->eip == 0x1224e388) {
-        int ii = 0;
-    }
     U32 neweip = cpu->memory->readd(eaa(cpu, op));
     cpu->eip.u32 = neweip;
     NEXT_DONE_JUMP_OR_CALL();
