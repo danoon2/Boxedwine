@@ -327,6 +327,7 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitCodeGen(cpu) {
         { 8, WasmType::I32 },  // GP registers (locals 1-8)
         { 4, WasmType::I32 },  // segment addresses (locals 9-12)
         { 8, WasmType::I32 },  // scratch temporaries (locals 13-20)
+        { 1, WasmType::I64 },  // i64 scratch for 64-bit multiply (local 21)
     });
 
     // Self-modifying-code arming: capture cpu->wasmJitActiveBlock so the
@@ -1266,10 +1267,24 @@ void JitWasmCodeGen::clzReg(JitWidth w, RegPtr result, RegPtr reg) {
     m_emitter.emitLocalSet(result->hardwareReg());
 }
 
-void JitWasmCodeGen::rolReg(JitWidth w, RegPtr reg, RegPtr rm)  { emitBinOp(w, reg, rm, WASM_I32_ROTL); }
-void JitWasmCodeGen::rolValue(JitWidth w, RegPtr reg, U32 imm)  { emitBinOpImm(w, reg, imm, WASM_I32_ROTL); }
-void JitWasmCodeGen::rorReg(JitWidth w, RegPtr reg, RegPtr rm)  { emitBinOp(w, reg, rm, WASM_I32_ROTR); }
-void JitWasmCodeGen::rorValue(JitWidth w, RegPtr reg, U32 imm)  { emitBinOpImm(w, reg, imm, WASM_I32_ROTR); }
+// WASM i32.rotl/i32.rotr wrap at 32 bits; x86 8/16-bit rotates wrap at 8/16.
+// For b32 the WASM semantics match exactly; fall back for narrower widths.
+void JitWasmCodeGen::rolReg(JitWidth w, RegPtr reg, RegPtr rm) {
+    if (w == JitWidth::b32) emitBinOp(w, reg, rm, WASM_I32_ROTL);
+    else emulateSingleOp();
+}
+void JitWasmCodeGen::rolValue(JitWidth w, RegPtr reg, U32 imm) {
+    if (w == JitWidth::b32) emitBinOpImm(w, reg, imm & 31, WASM_I32_ROTL);
+    else emulateSingleOp();
+}
+void JitWasmCodeGen::rorReg(JitWidth w, RegPtr reg, RegPtr rm) {
+    if (w == JitWidth::b32) emitBinOp(w, reg, rm, WASM_I32_ROTR);
+    else emulateSingleOp();
+}
+void JitWasmCodeGen::rorValue(JitWidth w, RegPtr reg, U32 imm) {
+    if (w == JitWidth::b32) emitBinOpImm(w, reg, imm & 31, WASM_I32_ROTR);
+    else emulateSingleOp();
+}
 
 // Complex rotate-through-carry, shift double, mul/div: fall back to single-op emulation
 void JitWasmCodeGen::rclReg(JitWidth w, RegPtr reg, RegPtr rm, RegPtr cf)    { emulateSingleOp(); }
@@ -1282,8 +1297,50 @@ void JitWasmCodeGen::shldReg(JitWidth w, RegPtr reg, RegPtr rm, RegPtr cl)   { e
 void JitWasmCodeGen::shldValue(JitWidth w, RegPtr reg, RegPtr rm, U32 imm)   { emulateSingleOp(); }
 void JitWasmCodeGen::mulReg(JitWidth w, RegPtr reg)                          { emulateSingleOp(); }
 void JitWasmCodeGen::imulReg(JitWidth w, RegPtr reg)                         { emulateSingleOp(); }
-void JitWasmCodeGen::imulRRI(JitWidth w, RegPtr dst, RegPtr src, U32 s2, RegPtr ov) { emitBinOp(w, dst, src, WASM_I32_MUL); }
-void JitWasmCodeGen::imulRR(JitWidth w, RegPtr dst, RegPtr src, RegPtr ov)   { emitBinOp(w, dst, src, WASM_I32_MUL); }
+void JitWasmCodeGen::imulRRI(JitWidth w, RegPtr dst, RegPtr src, U32 s2, RegPtr ov) {
+    if (!ov) {
+        // No overflow tracking: 32-bit multiply is sufficient.
+        pushRegValue(src);
+        m_emitter.emitI32Const((S32)s2);
+        m_emitter.emitOp(WASM_I32_MUL);
+        maskToWidth(w);
+        popToReg(w, dst);
+        return;
+    }
+    // With overflow (b32 only): sign-extend operands to i64, multiply, extract halves.
+    pushRegValue(src);
+    m_emitter.emitOp(WASM_I64_EXTEND_I32_S);
+    m_emitter.emitI64Const((S64)(S32)s2);
+    m_emitter.emitOp(WASM_I64_MUL);
+    m_emitter.emitLocalTee(WASM_I64_SCRATCH);
+    m_emitter.emitOp(WASM_I32_WRAP_I64);       // low 32 bits
+    popToReg(w, dst);
+    m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+    m_emitter.emitI64Const(32);
+    m_emitter.emitOp(WASM_I64_SHR_S);
+    m_emitter.emitOp(WASM_I32_WRAP_I64);       // high 32 bits
+    popToReg(JitWidth::b32, ov);
+}
+void JitWasmCodeGen::imulRR(JitWidth w, RegPtr dst, RegPtr src, RegPtr ov) {
+    if (!ov) {
+        emitBinOp(w, dst, src, WASM_I32_MUL);
+        return;
+    }
+    // With overflow: sign-extend operands to i64, multiply, extract halves.
+    pushRegValue(dst);
+    m_emitter.emitOp(WASM_I64_EXTEND_I32_S);
+    pushRegValue(src);
+    m_emitter.emitOp(WASM_I64_EXTEND_I32_S);
+    m_emitter.emitOp(WASM_I64_MUL);
+    m_emitter.emitLocalTee(WASM_I64_SCRATCH);
+    m_emitter.emitOp(WASM_I32_WRAP_I64);       // low 32 bits
+    popToReg(w, dst);
+    m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+    m_emitter.emitI64Const(32);
+    m_emitter.emitOp(WASM_I64_SHR_S);
+    m_emitter.emitOp(WASM_I32_WRAP_I64);       // high 32 bits
+    popToReg(JitWidth::b32, ov);
+}
 void JitWasmCodeGen::divRegRegWithRemainder(JitWidth w, RegPtr d, RegPtr dh, RegPtr s) { emulateSingleOp(); }
 void JitWasmCodeGen::idivRegRegWithRemainder(JitWidth w, RegPtr d, RegPtr dh, RegPtr s) { emulateSingleOp(); }
 void JitWasmCodeGen::bsfReg(JitWidth w, RegPtr reg, RegPtr rm)               { emulateSingleOp(); }
@@ -1796,6 +1853,7 @@ void JitWasmCodeGen::emulateSingleOp() {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(m_helperEmulateSingleOpIdx);
     m_gpLoaded.fill(false);
+    m_segLoaded.fill(false);
 }
 
 // ---------------------------------------------------------------------------

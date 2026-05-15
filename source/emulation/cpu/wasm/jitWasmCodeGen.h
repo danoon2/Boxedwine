@@ -133,8 +133,10 @@ static constexpr U32 WASM_SEG_LOCAL_BASE  = 9;
 // Scratch temporaries.
 static constexpr U32 WASM_TMP_LOCAL_BASE  = 13;
 static constexpr U32 WASM_TMP_LOCAL_COUNT = 8;
+// i64 scratch local for 64-bit multiply (imulRRI/imulRR overflow tracking).
+static constexpr U32 WASM_I64_SCRATCH     = 21;
 // Total locals beyond the parameter.
-static constexpr U32 WASM_LOCAL_COUNT     = 21;
+static constexpr U32 WASM_LOCAL_COUNT     = 22;
 
 // ---------------------------------------------------------------------------
 // Mapping from emulated register index to WASM local index.
