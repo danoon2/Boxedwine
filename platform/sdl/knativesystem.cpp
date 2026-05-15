@@ -51,7 +51,11 @@ bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
     if (videoOption != VIDEO_NO_WINDOW) {
         flags |= SDL_INIT_VIDEO;
     }
-    if (allowAudio) {
+    if (allowAudio
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_WEB_WORKER)
+        && false
+#endif
+        ) {
         flags |= SDL_INIT_AUDIO;
     }
     if (SDL_Init(flags) != 0) {
