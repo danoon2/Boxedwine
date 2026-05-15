@@ -718,8 +718,9 @@
         }
       };
       Module.setStatus('Downloading...');
-      window.onerror = function() {
+      window.onerror = function(msg, file, line, column, error) {
         Module.setStatus('Exception thrown, see JavaScript console');
+        console.log(msg, file, line, column, error);
         spinnerElement.style.display = 'none';
         Module.setStatus = function(text) {
           if (text) Module.printErr('[post-exception status] ' + text);

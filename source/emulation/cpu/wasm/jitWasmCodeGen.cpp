@@ -73,6 +73,14 @@ EM_JS(int, boxedwine_wasm_instantiate,
         var fn = inst.exports['execute'];
         if (!fn) return -1;
         var idx = addFunction(fn, 'vi');
+
+        // Diagnostic: log the first compilation and every 100th after that.
+        if (!boxedwine_wasm_instantiate._count) boxedwine_wasm_instantiate._count = 0;
+        boxedwine_wasm_instantiate._count++;
+        if (boxedwine_wasm_instantiate._count === 1 || boxedwine_wasm_instantiate._count % 100 === 0) {
+            console.log('[WASM JIT] blocks compiled: ' + boxedwine_wasm_instantiate._count + ', latest tableIdx: ' + idx);
+        }
+
         return idx;
     } catch(e) {
         console.error('boxedwine_wasm_instantiate failed:', e);
@@ -82,6 +90,11 @@ EM_JS(int, boxedwine_wasm_instantiate,
 
 EM_JS(void, boxedwine_wasm_call_block, (int tableIndex, int cpuPtr),
 {
+    // Diagnostic: log the first time a JIT-compiled block is actually executed.
+    if (!boxedwine_wasm_call_block._fired) {
+        boxedwine_wasm_call_block._fired = true;
+        console.log('[WASM JIT] first JIT block executed, tableIdx: ' + tableIndex);
+    }
     wasmTable.get(tableIndex)(cpuPtr);
 });
 
@@ -1245,6 +1258,14 @@ void JitWasmCodeGen::sarValue(JitWidth w, RegPtr reg, U32 imm) {
 void JitWasmCodeGen::andValue64(RegPtr reg, U64 imm) { andValue(JitWidth::b32, reg, (U32)imm); }
 #endif
 
+static LazyFlagType lazyTypeForSub(JitWidth w) {
+    switch (w) {
+    case JitWidth::b8:  return FLAGS_SUB8;
+    case JitWidth::b16: return FLAGS_SUB16;
+    default:            return FLAGS_SUB32;
+    }
+}
+
 void JitWasmCodeGen::notReg2(JitWidth w, RegPtr reg) {
     pushRegValue(reg);
     m_emitter.emitI32Const(-1);
@@ -1254,11 +1275,22 @@ void JitWasmCodeGen::notReg2(JitWidth w, RegPtr reg) {
 }
 
 void JitWasmCodeGen::negReg2(JitWidth w, RegPtr reg) {
+    // NEG = 0 - src. Store lazy flag operands before overwriting the register.
+    // dst=0 (the implicit minuend), src=original operand, result=0-src.
+    // Flag semantics are identical to SUB(0, src).
+    storeLazyFlagsSrc(reg);
+    writeCPUValue(JitWidth::b32, (U32)offsetof(CPU, dst.u32), 0);
+    auto result = getTmpReg();
     m_emitter.emitI32Const(0);
     pushRegValue(reg);
     m_emitter.emitOp(WASM_I32_SUB);
     maskToWidth(w);
+    m_emitter.emitLocalTee(result->hardwareReg());
     popToReg(w, reg);
+    storeLazyFlagsResult(result);
+    storeLazyFlagType(lazyTypeForSub(w));
+    freeScratch(result->hardwareReg());
+    currentLazyFlags = lazyTypeForSub(w);
 }
 
 void JitWasmCodeGen::clzReg(JitWidth w, RegPtr result, RegPtr reg) {
@@ -1810,13 +1842,17 @@ void JitWasmCodeGen::nakedReturn()                 { m_emitter.emitReturn(); }
 // ---------------------------------------------------------------------------
 void JitWasmCodeGen::callHostFunction(void* address, const std::vector<DynParam>& params,
                                        bool restoreCache, bool saveCache) {
-    // For WASM: call via function table index.
-    // The function address IS a wasmTable index for C++ functions in Emscripten.
+    // WASM calling convention: all helpers have the signature void(CPU*).
+    // Any additional operands are pre-stored in CPU fields (dst, src, etc.) before
+    // the call by the caller, so params must contain exactly one CPU entry.
+    // If a future helper needs a non-CPU argument on the WASM stack, this backend
+    // must be updated to emit the extra locals before emitCallIndirect.
+    if (params.size() != 1 || params[0].type != JitCallParamType::CPU) {
+        kpanic_fmt("JitWasmCodeGen::callHostFunction: expected a single CPU param but got %zu params", params.size());
+    }
     syncDirtyRegsToHost();
-    // Pass cpu as first argument (all our helpers take CPU*)
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCallIndirect(m_typeVoidI32, 0);
-    // Re-load GP regs if needed after call
     m_gpLoaded.fill(false);
 }
 
@@ -1854,6 +1890,10 @@ void JitWasmCodeGen::emulateSingleOp() {
     m_emitter.emitCall(m_helperEmulateSingleOpIdx);
     m_gpLoaded.fill(false);
     m_segLoaded.fill(false);
+    // The interpreter may have updated cpu->lazyFlagType to any value.
+    // Reset the compile-time cache so getCondition uses the safe runtime-read
+    // path rather than emitting a guard based on a stale expected flag type.
+    currentLazyFlags = FLAGS_NULL;
 }
 
 // ---------------------------------------------------------------------------
@@ -1863,13 +1903,6 @@ void JitWasmCodeGen::emulateSingleOp() {
 // plus cpu->lazyFlagType. The helper-based condition accessors read these to
 // compute the flag, so direct-mode needs to populate them even though it
 // normally would skip lazy-flag storage.
-static LazyFlagType lazyTypeForSub(JitWidth w) {
-    switch (w) {
-    case JitWidth::b8:  return FLAGS_SUB8;
-    case JitWidth::b16: return FLAGS_SUB16;
-    default:            return FLAGS_SUB32;
-    }
-}
 static LazyFlagType lazyTypeForTest(JitWidth w) {
     switch (w) {
     case JitWidth::b8:  return FLAGS_TEST8;
@@ -1904,6 +1937,8 @@ void JitWasmCodeGen::direct_cmp(JitWidth w, RegPtr left, U32 right) {
     currentLazyFlags = lazyTypeForSub(w);
 }
 void JitWasmCodeGen::direct_test(JitWidth w, RegPtr left, RegPtr right) {
+    storeLazyFlagsDest(left);
+    storeLazyFlagsSrc(right);
     auto result = getTmpReg();
     pushRegValue(left);
     pushRegValue(right);
@@ -1915,6 +1950,8 @@ void JitWasmCodeGen::direct_test(JitWidth w, RegPtr left, RegPtr right) {
     currentLazyFlags = lazyTypeForTest(w);
 }
 void JitWasmCodeGen::direct_test(JitWidth w, RegPtr left, U32 right) {
+    storeLazyFlagsDest(left);
+    storeLazyFlagsSrc(right);
     auto result = getTmpReg();
     pushRegValue(left);
     m_emitter.emitI32Const((S32)right);
