@@ -19,7 +19,7 @@ const mimeTypes = new Map([
 function resolveRequestPath(url) {
     const { pathname } = new URL(url, "http://localhost");
     const relative = normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
-    const absolute = join(root, relative === sep ? "worker.html" : relative);
+    const absolute = join(root, relative === sep ? "boxedwine.html" : relative);
     if (absolute !== root && !absolute.startsWith(root + sep)) {
         return null;
     }
@@ -43,7 +43,7 @@ const server = createServer(async (request, response) => {
         return;
     }
 
-    const finalPath = info.isDirectory() ? join(filePath, "worker.html") : filePath;
+    const finalPath = info.isDirectory() ? join(filePath, "boxedwine.html") : filePath;
     const finalInfo = info.isDirectory() ? await stat(finalPath) : info;
     response.writeHead(200, {
         "Content-Length": finalInfo.size,
