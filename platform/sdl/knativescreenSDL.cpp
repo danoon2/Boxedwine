@@ -24,7 +24,21 @@
 #include "sdlcallback.h"
 #include "knativeinputSDL.h"
 #include "knativescreenSDL.h"
+#include "knativesystem.h"
+#include "kopengl.h"
 #include "../../source/x11/x11.h"
+
+static bool skipHiddenEmscriptenRenderer(bool visible, bool showOnDraw) {
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
+    KOpenGLPtr openGL = KNativeSystem::getOpenGL();
+    if (openGL && openGL->isActive()) {
+        return true;
+    }
+    return !visible && !showOnDraw;
+#else
+    return false;
+#endif
+}
 
 KNativeScreenSDL::KNativeScreenSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const BString& scaleQuality, U32 fullScreen, U32 vsync) {
     input = std::make_shared<KNativeInputSDL>(cx, cy, scaleX, scaleY);
@@ -182,7 +196,7 @@ void KNativeScreenSDL::clear() {
         }
     }
 #endif
-    if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer) {
+    if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer && !skipHiddenEmscriptenRenderer(visible, showOnDraw)) {
         SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
         SDL_RenderClear(renderer);
     }
@@ -211,7 +225,8 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         wnd->sdlTexture = nullptr;
         isDirty = true;
     }
-    if (isDirty) {
+    const bool skipRenderer = skipHiddenEmscriptenRenderer(visible, showOnDraw);
+    if (isDirty && !skipRenderer) {
         lastUpdateTime = KSystem::getMilliesSinceStart();
     }
     if (!wnd->sdlTexture) {
@@ -293,7 +308,7 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
     }    
 #endif     
 
-    if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer) {
+    if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer && !skipRenderer) {
         if (isDirty) {
             SDL_UpdateTexture(wnd->sdlTexture, nullptr, bits, dstPitch);
         }
@@ -308,13 +323,14 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
 }
 
 void KNativeScreenSDL::present() {
-    if (KSystem::videoOption != VIDEO_NO_WINDOW) {
+    const bool skipRenderer = skipHiddenEmscriptenRenderer(visible, showOnDraw);
+    if (KSystem::videoOption != VIDEO_NO_WINDOW && !skipRenderer) {
         if (showOnDraw) {
             showWindow(true);
         }
         SDL_RenderPresent(renderer);
+        presented = true;
     }
-    presented = true;
 #ifdef BOXEDWINE_RECORDER
     if (Recorder::instance) {
         BOXEDWINE_MUTEX_UNLOCK(drawingMutex);
@@ -705,6 +721,12 @@ void KNativeScreenSDL::recreateMainWindow() {
         int cx = input->width * input->scaleX / 100;
         int cy = input->height * input->scaleY / 100;
         int flags = SDL_WINDOW_HIDDEN | additionalSDLWindowFlags;
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+        flags |= SDL_WINDOW_OPENGL;
+#endif
         
         visible = false;
 
@@ -752,7 +774,9 @@ void KNativeScreenSDL::recreateMainWindow() {
             klog_fmt("SDL_CreateWindow failed: %s", SDL_GetError());
         }
         if (!(flags & SDL_WINDOW_VULKAN)) {
-#if defined(BOXEDWINE_LINUX) || defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
+            flags = SDL_RENDERER_ACCELERATED;
+#elif defined(BOXEDWINE_LINUX) || defined(__EMSCRIPTEN__)
             // NVidia drivers need this
             flags = SDL_RENDERER_SOFTWARE;
 #else

@@ -94,32 +94,18 @@ void KMemoryData::onPageChanged(U32 index) {
 }
 
 void KMemoryData::addCallback(OpCallback func) {
-    U64 funcAddress = (U64)func;
     U8* address = ramPageGet(callbackRam) + callbackRamPos;
 
     *address = 0xFE;
     address++;
     *address = 0x38;
     address++;
-    *address = (U8)funcAddress;
-    address++;
-    *address = (U8)(funcAddress >> 8);
-    address++;
-    *address = (U8)(funcAddress >> 16);
-    address++;
-    *address = (U8)(funcAddress >> 24);
-    callbackRamPos += 6;
-    if (sizeof(func) == 8) {
-        address++;
-        *address = (U8)(funcAddress >> 32);
-        address++;
-        *address = (U8)(funcAddress >> 40);
-        address++;
-        *address = (U8)(funcAddress >> 48);
-        address++;
-        *address = (U8)(funcAddress >> 56);
-        callbackRamPos += 4;
+    if (func == onExitSignal) {
+        *address = 1;
+    } else {
+        kpanic("Unknown callback");
     }
+    callbackRamPos += 3;
 }
 
 // don't need to add a mutex, memory->mutex should be locked when call except for construction and execv (which should only have 1 thread)

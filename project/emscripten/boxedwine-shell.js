@@ -116,7 +116,7 @@
                 	if( (property.startsWith("%22") && property.endsWith("%22") )
                 		|| (property.startsWith('%27') && property.endsWith('%27'))){
                     	let kv = property.substring(3, property.length - 3).split(':');
-                    	return '"' + kv[0].trim() + "=" + kv[1].trim() + '"';
+                    	return kv[0].trim() + "=" + kv[1].trim();
                 	}else{
 	                	console.log("ENV property must be in quoted string");
                 	}
@@ -678,6 +678,11 @@
             dump(text + '\n'); // fast, straight to the real console
           } else {
 			console.error(text);
+            var element = document.getElementById('output');
+            if (element) {
+              element.value += text + "\n";
+              element.scrollTop = element.scrollHeight;
+            }
           }
         },
         canvas: (function() {
@@ -687,6 +692,13 @@
           // application robust, you may want to override this behavior before shipping!
           // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
           canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+          var originalGetContext = canvas.getContext.bind(canvas);
+          canvas.getContext = function(type, attributes) {
+            if (type === "webgl" || type === "webgl2" || type === "experimental-webgl") {
+              attributes = Object.assign({}, attributes || {}, { preserveDrawingBuffer: true });
+            }
+            return originalGetContext(type, attributes);
+          };
           canvas.width  = 800;
           canvas.height = 600;
           return canvas;
@@ -718,12 +730,20 @@
         }
       };
       Module.setStatus('Downloading...');
-      window.onerror = function() {
+      window.onerror = function(message, source, lineno, colno, error) {
+        var details = message || 'unknown error';
+        if (source) details += ' at ' + source + ':' + lineno + ':' + colno;
+        if (error && error.stack) details += '\n' + error.stack;
+        Module.printErr(details);
         Module.setStatus('Exception thrown, see JavaScript console');
         spinnerElement.style.display = 'none';
         Module.setStatus = function(text) {
           if (text) Module.printErr('[post-exception status] ' + text);
         };
+      };
+      window.onunhandledrejection = function(event) {
+        var reason = event && event.reason;
+        Module.printErr('Unhandled promise rejection: ' + (reason && reason.stack ? reason.stack : reason));
       };
         function startWithFiles(files) {
             for (let i = 0; i < files.length; i++) {

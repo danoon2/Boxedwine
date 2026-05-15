@@ -43,6 +43,24 @@
 #ifndef GL_PROGRAM_LENGTH_NV
 #define GL_PROGRAM_LENGTH_NV 0x8627
 #endif
+#ifndef GL_QUERY_COUNTER_BITS
+#define GL_QUERY_COUNTER_BITS 0x8864
+#endif
+#ifndef GL_QUERY_COUNTER_BITS_ARB
+#define GL_QUERY_COUNTER_BITS_ARB 0x8864
+#endif
+#ifndef GL_QUERY_COUNTER_BITS_EXT
+#define GL_QUERY_COUNTER_BITS_EXT 0x8864
+#endif
+#ifndef GL_COMPILE_STATUS
+#define GL_COMPILE_STATUS 0x8B81
+#endif
+#ifndef GL_INFO_LOG_LENGTH
+#define GL_INFO_LOG_LENGTH 0x8B84
+#endif
+#ifndef GL_SHADER_SOURCE_LENGTH
+#define GL_SHADER_SOURCE_LENGTH 0x8B88
+#endif
 #ifndef GL_TEXTURE_FILTER4_SIZE_SGIS
 #define GL_TEXTURE_FILTER4_SIZE_SGIS 0x8147
 #endif
@@ -1985,6 +2003,12 @@ void glcommon_glCompileShader(CPU* cpu) {
     if (!ext_glCompileShader)
         kpanic("ext_glCompileShader is NULL");
     {
+#ifdef __EMSCRIPTEN__
+    if (!ARG1 || (ext_glIsShader && !GL_FUNC(ext_glIsShader)(ARG1))) {
+        GL_LOG ("glCompileShader skipped invalid WebGL shader GLuint shader=%d",ARG1);
+        return;
+    }
+#endif
     GL_FUNC(ext_glCompileShader)(ARG1);
     GL_LOG ("glCompileShader GLuint shader=%d",ARG1);
     }
@@ -1993,6 +2017,13 @@ void glcommon_glCompileShaderARB(CPU* cpu) {
     if (!ext_glCompileShaderARB)
         kpanic("ext_glCompileShaderARB is NULL");
     {
+#ifdef __EMSCRIPTEN__
+    GLhandleARB shader = INDEX_TO_HANDLE(hARG1);
+    if (!ARG1 || (ext_glIsShader && !GL_FUNC(ext_glIsShader)(shader))) {
+        GL_LOG ("glCompileShaderARB skipped invalid WebGL shader GLhandleARB shaderObj=%d",ARG1);
+        return;
+    }
+#endif
     GL_FUNC(ext_glCompileShaderARB)(INDEX_TO_HANDLE(hARG1));
     GL_LOG ("glCompileShaderARB GLhandleARB shaderObj=%d",ARG1);
     }
@@ -2230,6 +2261,9 @@ void glcommon_glConservativeRasterParameterfNV(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionFilter1D(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionFilter1D)
         kpanic("ext_glConvolutionFilter1D is NULL");
     {
@@ -2238,6 +2272,9 @@ void glcommon_glConvolutionFilter1D(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionFilter1DEXT(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionFilter1DEXT)
         kpanic("ext_glConvolutionFilter1DEXT is NULL");
     {
@@ -2246,6 +2283,9 @@ void glcommon_glConvolutionFilter1DEXT(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionFilter2D(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionFilter2D)
         kpanic("ext_glConvolutionFilter2D is NULL");
     {
@@ -2254,6 +2294,9 @@ void glcommon_glConvolutionFilter2D(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionFilter2DEXT(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionFilter2DEXT)
         kpanic("ext_glConvolutionFilter2DEXT is NULL");
     {
@@ -2262,6 +2305,9 @@ void glcommon_glConvolutionFilter2DEXT(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionParameterf(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionParameterf)
         kpanic("ext_glConvolutionParameterf is NULL");
     {
@@ -2270,6 +2316,9 @@ void glcommon_glConvolutionParameterf(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionParameterfEXT(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionParameterfEXT)
         kpanic("ext_glConvolutionParameterfEXT is NULL");
     {
@@ -2278,6 +2327,9 @@ void glcommon_glConvolutionParameterfEXT(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionParameterfv(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionParameterfv)
         kpanic("ext_glConvolutionParameterfv is NULL");
     {
@@ -2286,6 +2338,9 @@ void glcommon_glConvolutionParameterfv(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionParameterfvEXT(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionParameterfvEXT)
         kpanic("ext_glConvolutionParameterfvEXT is NULL");
     {
@@ -2294,6 +2349,9 @@ void glcommon_glConvolutionParameterfvEXT(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionParameteri(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionParameteri)
         kpanic("ext_glConvolutionParameteri is NULL");
     {
@@ -2302,6 +2360,9 @@ void glcommon_glConvolutionParameteri(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionParameteriEXT(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionParameteriEXT)
         kpanic("ext_glConvolutionParameteriEXT is NULL");
     {
@@ -2310,6 +2371,9 @@ void glcommon_glConvolutionParameteriEXT(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionParameteriv(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionParameteriv)
         kpanic("ext_glConvolutionParameteriv is NULL");
     {
@@ -2318,6 +2382,9 @@ void glcommon_glConvolutionParameteriv(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionParameterivEXT(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionParameterivEXT)
         kpanic("ext_glConvolutionParameterivEXT is NULL");
     {
@@ -2326,6 +2393,9 @@ void glcommon_glConvolutionParameterivEXT(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionParameterxOES(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionParameterxOES)
         kpanic("ext_glConvolutionParameterxOES is NULL");
     {
@@ -2334,6 +2404,9 @@ void glcommon_glConvolutionParameterxOES(CPU* cpu) {
     }
 }
 void glcommon_glConvolutionParameterxvOES(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    return;
+#endif
     if (!ext_glConvolutionParameterxvOES)
         kpanic("ext_glConvolutionParameterxvOES is NULL");
     {
@@ -2738,6 +2811,10 @@ void glcommon_glCreateShader(CPU* cpu) {
         kpanic("ext_glCreateShader is NULL");
     {
     EAX=GL_FUNC(ext_glCreateShader)(ARG1);
+#ifdef __EMSCRIPTEN__
+    if (EAX && ext_glIsShader && !GL_FUNC(ext_glIsShader)(EAX))
+        EAX = 0;
+#endif
     GL_LOG ("glCreateShader GLenum type=%d",ARG1);
     }
 }
@@ -2746,6 +2823,10 @@ void glcommon_glCreateShaderObjectARB(CPU* cpu) {
         kpanic("ext_glCreateShaderObjectARB is NULL");
     {
     EAX=HANDLE_TO_INDEX(GL_FUNC(ext_glCreateShaderObjectARB)(ARG1));
+#ifdef __EMSCRIPTEN__
+    if (EAX && ext_glIsShader && !GL_FUNC(ext_glIsShader)(INDEX_TO_HANDLE(EAX)))
+        EAX = 0;
+#endif
     GL_LOG ("glCreateShaderObjectARB GLenum shaderType=%d",ARG1);
     }
 }
@@ -5189,9 +5270,13 @@ void glcommon_glGetAttachedObjectsARB(CPU* cpu) {
     if (!ext_glGetAttachedObjectsARB)
         kpanic("ext_glGetAttachedObjectsARB is NULL");
     {
-        MarshalReadWrite<GLsizei> count(cpu, ARG3, 1);
         GLhandleARB* p2=(GLhandleARB*)marshalhandle(cpu, ARG4, ARG2);
-        GL_FUNC(ext_glGetAttachedObjectsARB)(INDEX_TO_HANDLE(hARG1), ARG2, count.getPtr(), p2);
+        if (ARG3) {
+            MarshalReadWrite<GLsizei> count(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetAttachedObjectsARB)(INDEX_TO_HANDLE(hARG1), ARG2, count.getPtr(), p2);
+        } else {
+            GL_FUNC(ext_glGetAttachedObjectsARB)(INDEX_TO_HANDLE(hARG1), ARG2, nullptr, p2);
+        }
         marshalBackhandle(cpu, ARG4, p2, ARG2);
         GL_LOG ("glGetAttachedObjectsARB GLhandleARB containerObj=%d, GLsizei maxCount=%d, GLsizei* count=%.08x, GLhandleARB* obj=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
@@ -5200,9 +5285,19 @@ void glcommon_glGetAttachedShaders(CPU* cpu) {
     if (!ext_glGetAttachedShaders)
         kpanic("ext_glGetAttachedShaders is NULL");
     {
-        MarshalReadWrite<GLsizei> count(cpu, ARG3, 1);
-        MarshalReadWrite<GLuint> shaders(cpu, ARG4, ARG2);
-        GL_FUNC(ext_glGetAttachedShaders)(ARG1, ARG2, count.getPtr(), shaders.getPtr());
+        if (ARG3 && ARG4 && ARG2) {
+            MarshalReadWrite<GLsizei> count(cpu, ARG3, 1);
+            MarshalReadWrite<GLuint> shaders(cpu, ARG4, ARG2);
+            GL_FUNC(ext_glGetAttachedShaders)(ARG1, ARG2, count.getPtr(), shaders.getPtr());
+        } else if (ARG3) {
+            MarshalReadWrite<GLsizei> count(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetAttachedShaders)(ARG1, ARG2, count.getPtr(), nullptr);
+        } else if (ARG4 && ARG2) {
+            MarshalReadWrite<GLuint> shaders(cpu, ARG4, ARG2);
+            GL_FUNC(ext_glGetAttachedShaders)(ARG1, ARG2, nullptr, shaders.getPtr());
+        } else {
+            GL_FUNC(ext_glGetAttachedShaders)(ARG1, ARG2, nullptr, nullptr);
+        }
         GL_LOG ("glGetAttachedShaders GLuint program=%d, GLsizei maxCount=%d, GLsizei* count=%.08x, GLuint* shaders=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -7102,9 +7197,19 @@ void glcommon_glGetProgramInfoLog(CPU* cpu) {
     if (!ext_glGetProgramInfoLog)
         kpanic("ext_glGetProgramInfoLog is NULL");
     {
-        MarshalReadWrite<GLsizei> length(cpu, ARG3, 1);
-        MarshalReadWrite<GLchar> infoLog(cpu, ARG4, ARG2);
-        GL_FUNC(ext_glGetProgramInfoLog)(ARG1, ARG2, length.getPtr(), infoLog.getPtr());
+        if (ARG3 && ARG4 && ARG2) {
+            MarshalReadWrite<GLsizei> length(cpu, ARG3, 1);
+            MarshalReadWrite<GLchar> infoLog(cpu, ARG4, ARG2);
+            GL_FUNC(ext_glGetProgramInfoLog)(ARG1, ARG2, length.getPtr(), infoLog.getPtr());
+        } else if (ARG3) {
+            MarshalReadWrite<GLsizei> length(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetProgramInfoLog)(ARG1, ARG2, length.getPtr(), nullptr);
+        } else if (ARG4 && ARG2) {
+            MarshalReadWrite<GLchar> infoLog(cpu, ARG4, ARG2);
+            GL_FUNC(ext_glGetProgramInfoLog)(ARG1, ARG2, nullptr, infoLog.getPtr());
+        } else {
+            GL_FUNC(ext_glGetProgramInfoLog)(ARG1, ARG2, nullptr, nullptr);
+        }
         GL_LOG ("glGetProgramInfoLog GLuint program=%d, GLsizei bufSize=%d, GLsizei* length=%.08x, GLchar* infoLog=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -7480,6 +7585,13 @@ void glcommon_glGetQueryiv(CPU* cpu) {
         kpanic("ext_glGetQueryiv is NULL");
     {
         MarshalReadWrite<GLint> params(cpu, ARG3, 1);
+#ifdef __EMSCRIPTEN__
+        if (ARG2 == GL_QUERY_COUNTER_BITS || ARG2 == GL_QUERY_COUNTER_BITS_ARB || ARG2 == GL_QUERY_COUNTER_BITS_EXT) {
+            params.getPtr()[0] = 0;
+            GL_LOG ("glGetQueryiv WebGL GLenum target=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
+            return;
+        }
+#endif
         GL_FUNC(ext_glGetQueryiv)(ARG1, ARG2, params.getPtr());
         GL_LOG ("glGetQueryiv GLenum target=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
     }
@@ -7489,6 +7601,13 @@ void glcommon_glGetQueryivARB(CPU* cpu) {
         kpanic("ext_glGetQueryivARB is NULL");
     {
         MarshalReadWrite<GLint> params(cpu, ARG3, 1);
+#ifdef __EMSCRIPTEN__
+        if (ARG2 == GL_QUERY_COUNTER_BITS || ARG2 == GL_QUERY_COUNTER_BITS_ARB || ARG2 == GL_QUERY_COUNTER_BITS_EXT) {
+            params.getPtr()[0] = 0;
+            GL_LOG ("glGetQueryivARB WebGL GLenum target=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
+            return;
+        }
+#endif
         GL_FUNC(ext_glGetQueryivARB)(ARG1, ARG2, params.getPtr());
         GL_LOG ("glGetQueryivARB GLenum target=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
     }
@@ -7575,9 +7694,33 @@ void glcommon_glGetShaderInfoLog(CPU* cpu) {
     if (!ext_glGetShaderInfoLog)
         kpanic("ext_glGetShaderInfoLog is NULL");
     {
-        MarshalReadWrite<GLsizei> lengthBuffer(cpu, ARG3, 1);
-        MarshalReadWrite<GLchar> infoBuffer(cpu, ARG4, ARG2);
-        GL_FUNC(ext_glGetShaderInfoLog)(ARG1, ARG2, lengthBuffer.getPtr(), infoBuffer.getPtr());
+#ifdef __EMSCRIPTEN__
+        if (!ARG1 || (ext_glIsShader && !GL_FUNC(ext_glIsShader)(ARG1))) {
+            if (ARG3) {
+                MarshalReadWrite<GLsizei> lengthBuffer(cpu, ARG3, 1);
+                lengthBuffer.getPtr()[0] = 0;
+            }
+            if (ARG4 && ARG2) {
+                MarshalReadWrite<GLchar> infoBuffer(cpu, ARG4, ARG2);
+                infoBuffer.getPtr()[0] = 0;
+            }
+            GL_LOG ("glGetShaderInfoLog skipped invalid WebGL shader GLuint shader=%d, GLsizei bufSize=%d, GLsizei* length=%.08x, GLchar* infoLog=%.08x",ARG1,ARG2,ARG3,ARG4);
+            return;
+        }
+#endif
+        if (ARG3 && ARG4 && ARG2) {
+            MarshalReadWrite<GLsizei> lengthBuffer(cpu, ARG3, 1);
+            MarshalReadWrite<GLchar> infoBuffer(cpu, ARG4, ARG2);
+            GL_FUNC(ext_glGetShaderInfoLog)(ARG1, ARG2, lengthBuffer.getPtr(), infoBuffer.getPtr());
+        } else if (ARG3) {
+            MarshalReadWrite<GLsizei> lengthBuffer(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetShaderInfoLog)(ARG1, ARG2, lengthBuffer.getPtr(), nullptr);
+        } else if (ARG4 && ARG2) {
+            MarshalReadWrite<GLchar> infoBuffer(cpu, ARG4, ARG2);
+            GL_FUNC(ext_glGetShaderInfoLog)(ARG1, ARG2, nullptr, infoBuffer.getPtr());
+        } else {
+            GL_FUNC(ext_glGetShaderInfoLog)(ARG1, ARG2, nullptr, nullptr);
+        }
     GL_LOG ("glGetShaderInfoLog GLuint shader=%d, GLsizei bufSize=%d, GLsizei* length=%.08x, GLchar* infoLog=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -7595,9 +7738,33 @@ void glcommon_glGetShaderSource(CPU* cpu) {
     if (!ext_glGetShaderSource)
         kpanic("ext_glGetShaderSource is NULL");
     {
-        MarshalReadWrite<GLsizei> length(cpu, ARG3, 1);
-        MarshalReadWrite<GLchar> source(cpu, ARG4, ARG2);
-        GL_FUNC(ext_glGetShaderSource)(ARG1, ARG2, length.getPtr(), source.getPtr());
+#ifdef __EMSCRIPTEN__
+        if (!ARG1 || (ext_glIsShader && !GL_FUNC(ext_glIsShader)(ARG1))) {
+            if (ARG3) {
+                MarshalReadWrite<GLsizei> length(cpu, ARG3, 1);
+                length.getPtr()[0] = 0;
+            }
+            if (ARG4 && ARG2) {
+                MarshalReadWrite<GLchar> source(cpu, ARG4, ARG2);
+                source.getPtr()[0] = 0;
+            }
+            GL_LOG ("glGetShaderSource skipped invalid WebGL shader GLuint shader=%d, GLsizei bufSize=%d, GLsizei* length=%.08x, GLchar* source=%.08x",ARG1,ARG2,ARG3,ARG4);
+            return;
+        }
+#endif
+        if (ARG3 && ARG4 && ARG2) {
+            MarshalReadWrite<GLsizei> length(cpu, ARG3, 1);
+            MarshalReadWrite<GLchar> source(cpu, ARG4, ARG2);
+            GL_FUNC(ext_glGetShaderSource)(ARG1, ARG2, length.getPtr(), source.getPtr());
+        } else if (ARG3) {
+            MarshalReadWrite<GLsizei> length(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetShaderSource)(ARG1, ARG2, length.getPtr(), nullptr);
+        } else if (ARG4 && ARG2) {
+            MarshalReadWrite<GLchar> source(cpu, ARG4, ARG2);
+            GL_FUNC(ext_glGetShaderSource)(ARG1, ARG2, nullptr, source.getPtr());
+        } else {
+            GL_FUNC(ext_glGetShaderSource)(ARG1, ARG2, nullptr, nullptr);
+        }
         GL_LOG ("glGetShaderSource GLuint shader=%d, GLsizei bufSize=%d, GLsizei* length=%.08x, GLchar* source=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -7616,6 +7783,13 @@ void glcommon_glGetShaderiv(CPU* cpu) {
         kpanic("ext_glGetShaderiv is NULL");
     {
         MarshalReadWrite<GLint> params(cpu, ARG3, 1);
+#ifdef __EMSCRIPTEN__
+        if (!ARG1 || (ext_glIsShader && !GL_FUNC(ext_glIsShader)(ARG1))) {
+            params.getPtr()[0] = 0;
+            GL_LOG ("glGetShaderiv skipped invalid WebGL shader GLuint shader=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
+            return;
+        }
+#endif
         GL_FUNC(ext_glGetShaderiv)(ARG1, ARG2, params.getPtr());
         GL_LOG ("glGetShaderiv GLuint shader=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
     }

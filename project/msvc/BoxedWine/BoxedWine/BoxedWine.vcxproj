@@ -3803,6 +3803,7 @@
     <ClCompile Include="..\..\..\..\source\kernel\sys\sysfs.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\sys\sysmouse.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glcommon.cpp" />
+    <ClCompile Include="..\..\..\..\source\opengl\gles.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glext.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glfunctions_ext1.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glfunctions_ext2.cpp" />

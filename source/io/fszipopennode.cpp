@@ -93,7 +93,7 @@ bool FsZipOpenNode::canMap() {
 U32 FsZipOpenNode::readNative(U8* buffer, U32 len) {
     U32 result = 0;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(*getReadMutex());
-    std::shared_ptr<FsZip> fsZip = zipNode->fsZip.lock();
+    std::shared_ptr<FsZip> fsZip = zipNode->fsZip;
     if (fsZip) {
         fsZip->setupZipRead(this->offset, this->pos);
         result = unzReadCurrentFile(fsZip->zipfile, buffer, len);
@@ -113,7 +113,7 @@ void FsZipOpenNode::reopen() {
 }
 
 BOXEDWINE_MUTEX* FsZipOpenNode::getReadMutex() {
-    std::shared_ptr<FsZip> fsZip = zipNode->fsZip.lock();
+    std::shared_ptr<FsZip> fsZip = zipNode->fsZip;
     if (fsZip) {
         return &fsZip->readMutex;
     }

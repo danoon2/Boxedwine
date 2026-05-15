@@ -11,17 +11,33 @@
 #include <string>
 #include <vector>
 
+#ifndef WGL_NUMBER_PIXEL_FORMATS_ARB
+#define WGL_NUMBER_PIXEL_FORMATS_ARB 0x2000
+#endif
+
 #ifndef GL_VERTEX_SHADER
 #define GL_VERTEX_SHADER 0x8B31
 #endif
 #ifndef GL_FRAGMENT_SHADER
 #define GL_FRAGMENT_SHADER 0x8B30
 #endif
+#ifndef GL_LOW_FLOAT
+#define GL_LOW_FLOAT 0x8DF0
+#endif
+#ifndef GL_MEDIUM_FLOAT
+#define GL_MEDIUM_FLOAT 0x8DF1
+#endif
+#ifndef GL_HIGH_FLOAT
+#define GL_HIGH_FLOAT 0x8DF2
+#endif
 #ifndef GL_COMPILE_STATUS
 #define GL_COMPILE_STATUS 0x8B81
 #endif
 #ifndef GL_LINK_STATUS
 #define GL_LINK_STATUS 0x8B82
+#endif
+#ifndef GL_NUM_EXTENSIONS
+#define GL_NUM_EXTENSIONS 0x821D
 #endif
 #ifndef GL_INFO_LOG_LENGTH
 #define GL_INFO_LOG_LENGTH 0x8B84
@@ -34,6 +50,66 @@
 #endif
 #ifndef GL_DRAW_INDIRECT_BUFFER
 #define GL_DRAW_INDIRECT_BUFFER 0x8F3F
+#endif
+#ifndef GL_PARAMETER_BUFFER_ARB
+#define GL_PARAMETER_BUFFER_ARB 0x80EE
+#endif
+#ifndef GL_POLYGON_OFFSET_CLAMP
+#define GL_POLYGON_OFFSET_CLAMP 0x8E1B
+#endif
+#ifndef GL_CONSERVATIVE_RASTERIZATION_NV
+#define GL_CONSERVATIVE_RASTERIZATION_NV 0x9346
+#endif
+#ifndef GL_CONSERVATIVE_RASTER_MODE_NV
+#define GL_CONSERVATIVE_RASTER_MODE_NV 0x954D
+#endif
+#ifndef GL_CONSERVATIVE_RASTER_MODE_POST_SNAP_NV
+#define GL_CONSERVATIVE_RASTER_MODE_POST_SNAP_NV 0x954E
+#endif
+#ifndef GL_EXCLUSIVE_EXT
+#define GL_EXCLUSIVE_EXT 0x8F11
+#endif
+#ifndef GL_WINDOW_RECTANGLE_MODE_EXT
+#define GL_WINDOW_RECTANGLE_MODE_EXT 0x8F13
+#endif
+#ifndef GL_MAX_WINDOW_RECTANGLES_EXT
+#define GL_MAX_WINDOW_RECTANGLES_EXT 0x8F14
+#endif
+#ifndef GL_NUM_WINDOW_RECTANGLES_EXT
+#define GL_NUM_WINDOW_RECTANGLES_EXT 0x8F15
+#endif
+#ifndef GL_MAX_VIEWPORTS
+#define GL_MAX_VIEWPORTS 0x825B
+#endif
+#ifndef GL_SCISSOR_TEST_EXCLUSIVE_NV
+#define GL_SCISSOR_TEST_EXCLUSIVE_NV 0x9555
+#endif
+#ifndef GL_SCISSOR_BOX_EXCLUSIVE_NV
+#define GL_SCISSOR_BOX_EXCLUSIVE_NV 0x9556
+#endif
+#ifndef GL_VIEWPORT_SWIZZLE_POSITIVE_X_NV
+#define GL_VIEWPORT_SWIZZLE_POSITIVE_X_NV 0x9350
+#endif
+#ifndef GL_VIEWPORT_SWIZZLE_POSITIVE_Y_NV
+#define GL_VIEWPORT_SWIZZLE_POSITIVE_Y_NV 0x9352
+#endif
+#ifndef GL_VIEWPORT_SWIZZLE_POSITIVE_Z_NV
+#define GL_VIEWPORT_SWIZZLE_POSITIVE_Z_NV 0x9354
+#endif
+#ifndef GL_VIEWPORT_SWIZZLE_POSITIVE_W_NV
+#define GL_VIEWPORT_SWIZZLE_POSITIVE_W_NV 0x9356
+#endif
+#ifndef GL_VIEWPORT_SWIZZLE_X_NV
+#define GL_VIEWPORT_SWIZZLE_X_NV 0x9358
+#endif
+#ifndef GL_VIEWPORT_SWIZZLE_Y_NV
+#define GL_VIEWPORT_SWIZZLE_Y_NV 0x9359
+#endif
+#ifndef GL_VIEWPORT_SWIZZLE_Z_NV
+#define GL_VIEWPORT_SWIZZLE_Z_NV 0x935A
+#endif
+#ifndef GL_VIEWPORT_SWIZZLE_W_NV
+#define GL_VIEWPORT_SWIZZLE_W_NV 0x935B
 #endif
 #ifndef GL_STATIC_DRAW
 #define GL_STATIC_DRAW 0x88E4
@@ -221,6 +297,9 @@
 #ifndef GL_TEXTURE_WRAP_R
 #define GL_TEXTURE_WRAP_R 0x8072
 #endif
+#ifndef GL_TEXTURE_DEPTH
+#define GL_TEXTURE_DEPTH 0x8071
+#endif
 #ifndef GL_FRAMEBUFFER
 #define GL_FRAMEBUFFER 0x8D40
 #endif
@@ -230,14 +309,29 @@
 #ifndef GL_COLOR_ATTACHMENT0
 #define GL_COLOR_ATTACHMENT0 0x8CE0
 #endif
+#ifndef GL_COLOR_ATTACHMENT1
+#define GL_COLOR_ATTACHMENT1 0x8CE1
+#endif
 #ifndef GL_FRAMEBUFFER_COMPLETE
 #define GL_FRAMEBUFFER_COMPLETE 0x8CD5
+#endif
+#ifndef GL_COLOR
+#define GL_COLOR 0x1800
+#endif
+#ifndef GL_DRAW_BUFFER0
+#define GL_DRAW_BUFFER0 0x8825
 #endif
 #ifndef GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE
 #define GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE 0x8CD0
 #endif
 #ifndef GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME
 #define GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME 0x8CD1
+#endif
+#ifndef GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_NUM_VIEWS_OVR
+#define GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_NUM_VIEWS_OVR 0x9630
+#endif
+#ifndef GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_BASE_VIEW_INDEX_OVR
+#define GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_BASE_VIEW_INDEX_OVR 0x9632
 #endif
 #ifndef GL_RENDERBUFFER_WIDTH
 #define GL_RENDERBUFFER_WIDTH 0x8D42
@@ -271,6 +365,12 @@
 #endif
 #ifndef GL_RGBA8
 #define GL_RGBA8 0x8058
+#endif
+#ifndef GL_TEXTURE_IMMUTABLE_FORMAT
+#define GL_TEXTURE_IMMUTABLE_FORMAT 0x912F
+#endif
+#ifndef GL_TEXTURE_IMMUTABLE_LEVELS
+#define GL_TEXTURE_IMMUTABLE_LEVELS 0x82DF
 #endif
 #ifndef GL_IMAGE_BINDING_NAME
 #define GL_IMAGE_BINDING_NAME 0x8F3A
@@ -476,6 +576,7 @@ using GLuint64 = unsigned long long;
 using GLsync = struct __GLsync*;
 
 using PFNGLCREATESHADERPROC = GLuint(APIENTRY*)(GLenum);
+using PFNGLGETSTRINGIPROC = const GLubyte*(APIENTRY*)(GLenum, GLuint);
 using PFNGLSHADERSOURCEPROC = void(APIENTRY*)(GLuint, GLsizei, const GLchar* const*, const GLint*);
 using PFNGLCOMPILESHADERPROC = void(APIENTRY*)(GLuint);
 using PFNGLGETSHADERIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
@@ -608,9 +709,14 @@ using PFNGLGETNAMEDBUFFERSUBDATAPROC = void(APIENTRY*)(GLuint, GLintptr, GLsizei
 using PFNGLMAPBUFFERPROC = void* (APIENTRY*)(GLenum, GLenum);
 using PFNGLMAPBUFFERRANGEPROC = void* (APIENTRY*)(GLenum, GLintptr, GLsizeiptr, GLbitfield);
 using PFNGLUNMAPBUFFERPROC = GLboolean(APIENTRY*)(GLenum);
+using PFNGLCLEARBUFFERFIPROC = void(APIENTRY*)(GLenum, GLint, GLfloat, GLint);
+using PFNGLCLEARBUFFERFVPROC = void(APIENTRY*)(GLenum, GLint, const GLfloat*);
+using PFNGLCLEARBUFFERIVPROC = void(APIENTRY*)(GLenum, GLint, const GLint*);
+using PFNGLCLEARBUFFERUIVPROC = void(APIENTRY*)(GLenum, GLint, const GLuint*);
 using PFNGLCLEARBUFFERDATAPROC = void(APIENTRY*)(GLenum, GLenum, GLenum, GLenum, const void*);
 using PFNGLCLEARBUFFERSUBDATAPROC = void(APIENTRY*)(GLenum, GLenum, GLintptr, GLsizeiptr, GLenum, GLenum, const void*);
 using PFNGLDELETEBUFFERSPROC = void(APIENTRY*)(GLsizei, const GLuint*);
+using PFNGLDRAWBUFFERSPROC = void(APIENTRY*)(GLsizei, const GLenum*);
 using PFNGLMULTIDRAWARRAYSPROC = void(APIENTRY*)(GLenum, const GLint*, const GLsizei*, GLsizei);
 using PFNGLMULTIDRAWELEMENTSPROC = void(APIENTRY*)(GLenum, const GLsizei*, GLenum, const void* const*, GLsizei);
 using PFNGLMULTIDRAWELEMENTSBASEVERTEXPROC = void(APIENTRY*)(GLenum, const GLsizei*, GLenum, const void* const*, GLsizei, const GLint*);
@@ -631,6 +737,15 @@ using PFNGLDRAWARRAYSINDIRECTPROC = void(APIENTRY*)(GLenum, const void*);
 using PFNGLDRAWELEMENTSINDIRECTPROC = void(APIENTRY*)(GLenum, GLenum, const void*);
 using PFNGLMULTIDRAWARRAYSINDIRECTPROC = void(APIENTRY*)(GLenum, const void*, GLsizei, GLsizei);
 using PFNGLMULTIDRAWELEMENTSINDIRECTPROC = void(APIENTRY*)(GLenum, GLenum, const void*, GLsizei, GLsizei);
+using PFNGLMULTIDRAWARRAYSINDIRECTCOUNTPROC = void(APIENTRY*)(GLenum, const void*, GLintptr, GLsizei, GLsizei);
+using PFNGLMULTIDRAWELEMENTSINDIRECTCOUNTPROC = void(APIENTRY*)(GLenum, GLenum, const void*, GLintptr, GLsizei, GLsizei);
+using PFNGLPOLYGONOFFSETCLAMPPROC = void(APIENTRY*)(GLfloat, GLfloat, GLfloat);
+using PFNGLCONSERVATIVERASTERPARAMETERINVPROC = void(APIENTRY*)(GLenum, GLint);
+using PFNGLMAXSHADERCOMPILERTHREADSKHRPROC = void(APIENTRY*)(GLuint);
+using PFNGLWINDOWRECTANGLESEXTPROC = void(APIENTRY*)(GLenum, GLsizei, const GLint*);
+using PFNGLSCISSOREXCLUSIVENVPROC = void(APIENTRY*)(GLint, GLint, GLsizei, GLsizei);
+using PFNGLSCISSOREXCLUSIVEARRAYVNVPROC = void(APIENTRY*)(GLuint, GLsizei, const GLint*);
+using PFNGLVIEWPORTSWIZZLENVPROC = void(APIENTRY*)(GLuint, GLenum, GLenum, GLenum, GLenum);
 using PFNGLCREATESHADERPROGRAMVPROC = GLuint(APIENTRY*)(GLenum, GLsizei, const GLchar* const*);
 using PFNGLGETUNIFORMINDICESPROC = void(APIENTRY*)(GLuint, GLsizei, const GLchar* const*, GLuint*);
 using PFNGLBINDATTRIBLOCATIONPROC = void(APIENTRY*)(GLuint, GLuint, const GLchar*);
@@ -692,6 +807,30 @@ using PFNGLCREATETEXTURESPROC = void(APIENTRY*)(GLenum, GLsizei, GLuint*);
 using PFNGLBINDTEXTURESPROC = void(APIENTRY*)(GLuint, GLsizei, const GLuint*);
 using PFNGLBINDIMAGETEXTURESPROC = void(APIENTRY*)(GLuint, GLsizei, const GLuint*);
 using PFNGLTEXTURESTORAGE2DPROC = void(APIENTRY*)(GLuint, GLsizei, GLenum, GLsizei, GLsizei);
+using PFNGLTEXSTORAGE1DEXTPROC = void(APIENTRY*)(GLenum, GLsizei, GLenum, GLsizei);
+using PFNGLTEXSTORAGE2DEXTPROC = void(APIENTRY*)(GLenum, GLsizei, GLenum, GLsizei, GLsizei);
+using PFNGLTEXSTORAGE3DEXTPROC = void(APIENTRY*)(GLenum, GLsizei, GLenum, GLsizei, GLsizei, GLsizei);
+using PFNGLCLEARDEPTHFPROC = void(APIENTRY*)(GLfloat);
+using PFNGLDEPTHRANGEFPROC = void(APIENTRY*)(GLfloat, GLfloat);
+using PFNGLGETSHADERPRECISIONFORMATPROC = void(APIENTRY*)(GLenum, GLenum, GLint*, GLint*);
+using PFNGLRELEASESHADERCOMPILERPROC = void(APIENTRY*)();
+using PFNGLSHADERBINARYPROC = void(APIENTRY*)(GLsizei, const GLuint*, GLenum, const void*, GLsizei);
+using PFNGLCLEARCOLORXPROC = void(APIENTRY*)(GLint, GLint, GLint, GLint);
+using PFNGLCLEARDEPTHXPROC = void(APIENTRY*)(GLint);
+using PFNGLDEPTHRANGEXPROC = void(APIENTRY*)(GLint, GLint);
+using PFNGLTEXENVXVPROC = void(APIENTRY*)(GLenum, GLenum, const GLint*);
+using PFNGLGETTEXENVXVPROC = void(APIENTRY*)(GLenum, GLenum, GLint*);
+using PFNGLLIGHTXVPROC = void(APIENTRY*)(GLenum, GLenum, const GLint*);
+using PFNGLGETLIGHTXVPROC = void(APIENTRY*)(GLenum, GLenum, GLint*);
+using PFNGLMATERIALXVPROC = void(APIENTRY*)(GLenum, GLenum, const GLint*);
+using PFNGLGETMATERIALXVPROC = void(APIENTRY*)(GLenum, GLenum, GLint*);
+using PFNGLLOADMATRIXXPROC = void(APIENTRY*)(const GLint*);
+using PFNGLMULTMATRIXXPROC = void(APIENTRY*)(const GLint*);
+using PFNGLGETFIXEDVPROC = void(APIENTRY*)(GLenum, GLint*);
+using PFNGLCLIPPLANEFPROC = void(APIENTRY*)(GLenum, const GLfloat*);
+using PFNGLGETCLIPPLANEFPROC = void(APIENTRY*)(GLenum, GLfloat*);
+using PFNGLCLIPPLANEXPROC = void(APIENTRY*)(GLenum, const GLint*);
+using PFNGLGETCLIPPLANEXPROC = void(APIENTRY*)(GLenum, GLint*);
 using PFNGLGENFRAMEBUFFERSPROC = void(APIENTRY*)(GLsizei, GLuint*);
 using PFNGLBINDFRAMEBUFFERPROC = void(APIENTRY*)(GLenum, GLuint);
 using PFNGLFRAMEBUFFERTEXTURE2DPROC = void(APIENTRY*)(GLenum, GLenum, GLenum, GLuint, GLint);
@@ -703,6 +842,7 @@ using PFNGLGENRENDERBUFFERSPROC = void(APIENTRY*)(GLsizei, GLuint*);
 using PFNGLDELETERENDERBUFFERSPROC = void(APIENTRY*)(GLsizei, const GLuint*);
 using PFNGLBINDRENDERBUFFERPROC = void(APIENTRY*)(GLenum, GLuint);
 using PFNGLISRENDERBUFFERPROC = GLboolean(APIENTRY*)(GLuint);
+using PFNGLRENDERBUFFERSTORAGEPROC = void(APIENTRY*)(GLenum, GLenum, GLsizei, GLsizei);
 using PFNGLNAMEDRENDERBUFFERSTORAGEPROC = void(APIENTRY*)(GLuint, GLenum, GLsizei, GLsizei);
 using PFNGLGETNAMEDRENDERBUFFERPARAMETERIVPROC = void(APIENTRY*)(GLuint, GLenum, GLint*);
 using PFNGLGETRENDERBUFFERPARAMETERIVPROC = void(APIENTRY*)(GLenum, GLenum, GLint*);
@@ -710,9 +850,12 @@ using PFNGLNAMEDFRAMEBUFFERRENDERBUFFERPROC = void(APIENTRY*)(GLuint, GLenum, GL
 using PFNGLCHECKNAMEDFRAMEBUFFERSTATUSPROC = GLenum(APIENTRY*)(GLuint, GLenum);
 using PFNGLGETNAMEDFRAMEBUFFERATTACHMENTPARAMETERIVPROC = void(APIENTRY*)(GLuint, GLenum, GLenum, GLint*);
 using PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC = void(APIENTRY*)(GLenum, GLenum, GLenum, GLint*);
+using PFNGLNAMEDFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC = void(APIENTRY*)(GLuint, GLenum, GLuint, GLint, GLint, GLsizei);
+using PFNGLGENERATEMIPMAPPROC = void(APIENTRY*)(GLenum);
 
 struct GLFns {
     PFNGLCREATESHADERPROC CreateShader = nullptr;
+    PFNGLGETSTRINGIPROC GetStringi = nullptr;
     PFNGLSHADERSOURCEPROC ShaderSource = nullptr;
     PFNGLCOMPILESHADERPROC CompileShader = nullptr;
     PFNGLGETSHADERIVPROC GetShaderiv = nullptr;
@@ -850,9 +993,14 @@ struct GLFns {
     PFNGLMAPBUFFERPROC MapBuffer = nullptr;
     PFNGLMAPBUFFERRANGEPROC MapBufferRange = nullptr;
     PFNGLUNMAPBUFFERPROC UnmapBuffer = nullptr;
+    PFNGLCLEARBUFFERFIPROC ClearBufferfi = nullptr;
+    PFNGLCLEARBUFFERFVPROC ClearBufferfv = nullptr;
+    PFNGLCLEARBUFFERIVPROC ClearBufferiv = nullptr;
+    PFNGLCLEARBUFFERUIVPROC ClearBufferuiv = nullptr;
     PFNGLCLEARBUFFERDATAPROC ClearBufferData = nullptr;
     PFNGLCLEARBUFFERSUBDATAPROC ClearBufferSubData = nullptr;
     PFNGLDELETEBUFFERSPROC DeleteBuffers = nullptr;
+    PFNGLDRAWBUFFERSPROC DrawBuffers = nullptr;
     PFNGLMULTIDRAWARRAYSPROC MultiDrawArrays = nullptr;
     PFNGLMULTIDRAWELEMENTSPROC MultiDrawElements = nullptr;
     PFNGLMULTIDRAWELEMENTSBASEVERTEXPROC MultiDrawElementsBaseVertex = nullptr;
@@ -874,6 +1022,15 @@ struct GLFns {
     PFNGLDRAWELEMENTSINDIRECTPROC DrawElementsIndirect = nullptr;
     PFNGLMULTIDRAWARRAYSINDIRECTPROC MultiDrawArraysIndirect = nullptr;
     PFNGLMULTIDRAWELEMENTSINDIRECTPROC MultiDrawElementsIndirect = nullptr;
+    PFNGLMULTIDRAWARRAYSINDIRECTCOUNTPROC MultiDrawArraysIndirectCount = nullptr;
+    PFNGLMULTIDRAWELEMENTSINDIRECTCOUNTPROC MultiDrawElementsIndirectCount = nullptr;
+    PFNGLPOLYGONOFFSETCLAMPPROC PolygonOffsetClamp = nullptr;
+    PFNGLCONSERVATIVERASTERPARAMETERINVPROC ConservativeRasterParameteriNV = nullptr;
+    PFNGLMAXSHADERCOMPILERTHREADSKHRPROC MaxShaderCompilerThreadsKHR = nullptr;
+    PFNGLWINDOWRECTANGLESEXTPROC WindowRectanglesEXT = nullptr;
+    PFNGLSCISSOREXCLUSIVENVPROC ScissorExclusiveNV = nullptr;
+    PFNGLSCISSOREXCLUSIVEARRAYVNVPROC ScissorExclusiveArrayvNV = nullptr;
+    PFNGLVIEWPORTSWIZZLENVPROC ViewportSwizzleNV = nullptr;
     PFNGLCREATESHADERPROGRAMVPROC CreateShaderProgramv = nullptr;
     PFNGLGETUNIFORMINDICESPROC GetUniformIndices = nullptr;
     PFNGLBINDATTRIBLOCATIONPROC BindAttribLocation = nullptr;
@@ -935,6 +1092,30 @@ struct GLFns {
     PFNGLBINDTEXTURESPROC BindTextures = nullptr;
     PFNGLBINDIMAGETEXTURESPROC BindImageTextures = nullptr;
     PFNGLTEXTURESTORAGE2DPROC TextureStorage2D = nullptr;
+    PFNGLTEXSTORAGE1DEXTPROC TexStorage1DEXT = nullptr;
+    PFNGLTEXSTORAGE2DEXTPROC TexStorage2DEXT = nullptr;
+    PFNGLTEXSTORAGE3DEXTPROC TexStorage3DEXT = nullptr;
+    PFNGLCLEARDEPTHFPROC ClearDepthf = nullptr;
+    PFNGLDEPTHRANGEFPROC DepthRangef = nullptr;
+    PFNGLGETSHADERPRECISIONFORMATPROC GetShaderPrecisionFormat = nullptr;
+    PFNGLRELEASESHADERCOMPILERPROC ReleaseShaderCompiler = nullptr;
+    PFNGLSHADERBINARYPROC ShaderBinary = nullptr;
+    PFNGLCLEARCOLORXPROC ClearColorx = nullptr;
+    PFNGLCLEARDEPTHXPROC ClearDepthx = nullptr;
+    PFNGLDEPTHRANGEXPROC DepthRangex = nullptr;
+    PFNGLTEXENVXVPROC TexEnvxv = nullptr;
+    PFNGLGETTEXENVXVPROC GetTexEnvxv = nullptr;
+    PFNGLLIGHTXVPROC Lightxv = nullptr;
+    PFNGLGETLIGHTXVPROC GetLightxv = nullptr;
+    PFNGLMATERIALXVPROC Materialxv = nullptr;
+    PFNGLGETMATERIALXVPROC GetMaterialxv = nullptr;
+    PFNGLLOADMATRIXXPROC LoadMatrixx = nullptr;
+    PFNGLMULTMATRIXXPROC MultMatrixx = nullptr;
+    PFNGLGETFIXEDVPROC GetFixedv = nullptr;
+    PFNGLCLIPPLANEFPROC ClipPlanef = nullptr;
+    PFNGLGETCLIPPLANEFPROC GetClipPlanef = nullptr;
+    PFNGLCLIPPLANEXPROC ClipPlanex = nullptr;
+    PFNGLGETCLIPPLANEXPROC GetClipPlanex = nullptr;
     PFNGLGENFRAMEBUFFERSPROC GenFramebuffers = nullptr;
     PFNGLBINDFRAMEBUFFERPROC BindFramebuffer = nullptr;
     PFNGLFRAMEBUFFERTEXTURE2DPROC FramebufferTexture2D = nullptr;
@@ -946,6 +1127,7 @@ struct GLFns {
     PFNGLDELETERENDERBUFFERSPROC DeleteRenderbuffers = nullptr;
     PFNGLBINDRENDERBUFFERPROC BindRenderbuffer = nullptr;
     PFNGLISRENDERBUFFERPROC IsRenderbuffer = nullptr;
+    PFNGLRENDERBUFFERSTORAGEPROC RenderbufferStorage = nullptr;
     PFNGLNAMEDRENDERBUFFERSTORAGEPROC NamedRenderbufferStorage = nullptr;
     PFNGLGETNAMEDRENDERBUFFERPARAMETERIVPROC GetNamedRenderbufferParameteriv = nullptr;
     PFNGLGETRENDERBUFFERPARAMETERIVPROC GetRenderbufferParameteriv = nullptr;
@@ -953,6 +1135,8 @@ struct GLFns {
     PFNGLCHECKNAMEDFRAMEBUFFERSTATUSPROC CheckNamedFramebufferStatus = nullptr;
     PFNGLGETNAMEDFRAMEBUFFERATTACHMENTPARAMETERIVPROC GetNamedFramebufferAttachmentParameteriv = nullptr;
     PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC GetFramebufferAttachmentParameteriv = nullptr;
+    PFNGLNAMEDFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC NamedFramebufferTextureMultiviewOVR = nullptr;
+    PFNGLGENERATEMIPMAPPROC GenerateMipmap = nullptr;
 } glx;
 
 struct TestContext {
@@ -987,6 +1171,9 @@ struct TestCase {
     TestResult(*fn)(TestContext&);
 };
 
+static TestResult pass(const std::string& message = {});
+static TestResult fail(const std::string& message);
+
 static std::string lastWin32Error() {
     DWORD err = GetLastError();
     if (!err) {
@@ -1000,6 +1187,62 @@ static std::string lastWin32Error() {
         LocalFree(text);
     }
     return result;
+}
+
+static void writeWineDcDiagnostics(TestContext& ctx, HDC dc) {
+    ctx.write("GetObjectType(HDC)=" + std::to_string(GetObjectType(dc))
+        + " TECHNOLOGY=" + std::to_string(GetDeviceCaps(dc, TECHNOLOGY)));
+
+    HMODULE win32u = LoadLibraryA("win32u.dll");
+    if (!win32u) {
+        ctx.write("win32u.dll not available for DC diagnostics");
+        return;
+    }
+
+    using NtGdiGetDCDwordFunc = BOOL(WINAPI*)(HDC, UINT, DWORD*);
+    auto ntGdiGetDCDword = reinterpret_cast<NtGdiGetDCDwordFunc>(
+        GetProcAddress(win32u, "NtGdiGetDCDword"));
+    if (!ntGdiGetDCDword) {
+        ctx.write("win32u.NtGdiGetDCDword not available for DC diagnostics");
+        return;
+    }
+
+    constexpr UINT NtGdiIsMemDC = 10;
+    constexpr UINT NtGdiHasOpenGL = 11;
+    DWORD value = 0;
+    SetLastError(0);
+    BOOL ok = ntGdiGetDCDword(dc, NtGdiIsMemDC, &value);
+    ctx.write("NtGdiGetDCDword(NtGdiIsMemDC) ok=" + std::to_string(ok)
+        + " value=" + std::to_string(value) + " lastError=\"" + lastWin32Error() + "\"");
+
+    value = 0;
+    SetLastError(0);
+    ok = ntGdiGetDCDword(dc, NtGdiHasOpenGL, &value);
+    ctx.write("NtGdiGetDCDword(NtGdiHasOpenGL) ok=" + std::to_string(ok)
+        + " value=" + std::to_string(value) + " lastError=\"" + lastWin32Error() + "\"");
+}
+
+static void writeWglFormatAttribDiagnostics(TestContext& ctx, HDC dc) {
+    using WglGetPixelFormatAttribivARB = BOOL(WINAPI*)(HDC, int, int, UINT, const int*, int*);
+    auto getPixelFormatAttribivARB = reinterpret_cast<WglGetPixelFormatAttribivARB>(
+        wglGetProcAddress("wglGetPixelFormatAttribivARB"));
+    if (!getPixelFormatAttribivARB) {
+        HMODULE opengl = LoadLibraryA("opengl32.dll");
+        getPixelFormatAttribivARB = opengl ? reinterpret_cast<WglGetPixelFormatAttribivARB>(
+            GetProcAddress(opengl, "wglGetPixelFormatAttribivARB")) : nullptr;
+    }
+    if (!getPixelFormatAttribivARB) {
+        ctx.write("wglGetPixelFormatAttribivARB unavailable for pixel-format diagnostics");
+        return;
+    }
+
+    int attrib = WGL_NUMBER_PIXEL_FORMATS_ARB;
+    int value = -1;
+    SetLastError(0);
+    BOOL ok = getPixelFormatAttribivARB(dc, 0, 0, 1, &attrib, &value);
+    ctx.write("wglGetPixelFormatAttribivARB(WGL_NUMBER_PIXEL_FORMATS_ARB) ok="
+        + std::to_string(ok) + " value=" + std::to_string(value)
+        + " lastError=\"" + lastWin32Error() + "\"");
 }
 
 static void* getGLProc(const char* name) {
@@ -1018,6 +1261,7 @@ static void load(T& fn, const char* name) {
 
 static bool loadGLFunctions() {
     load(glx.CreateShader, "glCreateShader");
+    load(glx.GetStringi, "glGetStringi");
     load(glx.ShaderSource, "glShaderSource");
     load(glx.CompileShader, "glCompileShader");
     load(glx.GetShaderiv, "glGetShaderiv");
@@ -1155,9 +1399,14 @@ static bool loadGLFunctions() {
     load(glx.MapBuffer, "glMapBuffer");
     load(glx.MapBufferRange, "glMapBufferRange");
     load(glx.UnmapBuffer, "glUnmapBuffer");
+    load(glx.ClearBufferfi, "glClearBufferfi");
+    load(glx.ClearBufferfv, "glClearBufferfv");
+    load(glx.ClearBufferiv, "glClearBufferiv");
+    load(glx.ClearBufferuiv, "glClearBufferuiv");
     load(glx.ClearBufferData, "glClearBufferData");
     load(glx.ClearBufferSubData, "glClearBufferSubData");
     load(glx.DeleteBuffers, "glDeleteBuffers");
+    load(glx.DrawBuffers, "glDrawBuffers");
     load(glx.MultiDrawArrays, "glMultiDrawArrays");
     load(glx.MultiDrawElements, "glMultiDrawElements");
     load(glx.MultiDrawElementsBaseVertex, "glMultiDrawElementsBaseVertex");
@@ -1179,6 +1428,15 @@ static bool loadGLFunctions() {
     load(glx.DrawElementsIndirect, "glDrawElementsIndirect");
     load(glx.MultiDrawArraysIndirect, "glMultiDrawArraysIndirect");
     load(glx.MultiDrawElementsIndirect, "glMultiDrawElementsIndirect");
+    load(glx.MultiDrawArraysIndirectCount, "glMultiDrawArraysIndirectCount");
+    load(glx.MultiDrawElementsIndirectCount, "glMultiDrawElementsIndirectCount");
+    load(glx.PolygonOffsetClamp, "glPolygonOffsetClamp");
+    load(glx.ConservativeRasterParameteriNV, "glConservativeRasterParameteriNV");
+    load(glx.MaxShaderCompilerThreadsKHR, "glMaxShaderCompilerThreadsKHR");
+    load(glx.WindowRectanglesEXT, "glWindowRectanglesEXT");
+    load(glx.ScissorExclusiveNV, "glScissorExclusiveNV");
+    load(glx.ScissorExclusiveArrayvNV, "glScissorExclusiveArrayvNV");
+    load(glx.ViewportSwizzleNV, "glViewportSwizzleNV");
     load(glx.CreateShaderProgramv, "glCreateShaderProgramv");
     load(glx.GetUniformIndices, "glGetUniformIndices");
     load(glx.BindAttribLocation, "glBindAttribLocation");
@@ -1240,6 +1498,30 @@ static bool loadGLFunctions() {
     load(glx.BindTextures, "glBindTextures");
     load(glx.BindImageTextures, "glBindImageTextures");
     load(glx.TextureStorage2D, "glTextureStorage2D");
+    load(glx.TexStorage1DEXT, "glTexStorage1DEXT");
+    load(glx.TexStorage2DEXT, "glTexStorage2DEXT");
+    load(glx.TexStorage3DEXT, "glTexStorage3DEXT");
+    load(glx.ClearDepthf, "glClearDepthf");
+    load(glx.DepthRangef, "glDepthRangef");
+    load(glx.GetShaderPrecisionFormat, "glGetShaderPrecisionFormat");
+    load(glx.ReleaseShaderCompiler, "glReleaseShaderCompiler");
+    load(glx.ShaderBinary, "glShaderBinary");
+    load(glx.ClearColorx, "glClearColorx");
+    load(glx.ClearDepthx, "glClearDepthx");
+    load(glx.DepthRangex, "glDepthRangex");
+    load(glx.TexEnvxv, "glTexEnvxv");
+    load(glx.GetTexEnvxv, "glGetTexEnvxv");
+    load(glx.Lightxv, "glLightxv");
+    load(glx.GetLightxv, "glGetLightxv");
+    load(glx.Materialxv, "glMaterialxv");
+    load(glx.GetMaterialxv, "glGetMaterialxv");
+    load(glx.LoadMatrixx, "glLoadMatrixx");
+    load(glx.MultMatrixx, "glMultMatrixx");
+    load(glx.GetFixedv, "glGetFixedv");
+    load(glx.ClipPlanef, "glClipPlanef");
+    load(glx.GetClipPlanef, "glGetClipPlanef");
+    load(glx.ClipPlanex, "glClipPlanex");
+    load(glx.GetClipPlanex, "glGetClipPlanex");
     load(glx.GenFramebuffers, "glGenFramebuffers");
     load(glx.BindFramebuffer, "glBindFramebuffer");
     load(glx.FramebufferTexture2D, "glFramebufferTexture2D");
@@ -1251,6 +1533,7 @@ static bool loadGLFunctions() {
     load(glx.DeleteRenderbuffers, "glDeleteRenderbuffers");
     load(glx.BindRenderbuffer, "glBindRenderbuffer");
     load(glx.IsRenderbuffer, "glIsRenderbuffer");
+    load(glx.RenderbufferStorage, "glRenderbufferStorage");
     load(glx.NamedRenderbufferStorage, "glNamedRenderbufferStorage");
     load(glx.GetNamedRenderbufferParameteriv, "glGetNamedRenderbufferParameteriv");
     load(glx.GetRenderbufferParameteriv, "glGetRenderbufferParameteriv");
@@ -1258,6 +1541,8 @@ static bool loadGLFunctions() {
     load(glx.CheckNamedFramebufferStatus, "glCheckNamedFramebufferStatus");
     load(glx.GetNamedFramebufferAttachmentParameteriv, "glGetNamedFramebufferAttachmentParameteriv");
     load(glx.GetFramebufferAttachmentParameteriv, "glGetFramebufferAttachmentParameteriv");
+    load(glx.NamedFramebufferTextureMultiviewOVR, "glNamedFramebufferTextureMultiviewOVR");
+    load(glx.GenerateMipmap, "glGenerateMipmap");
 
     return glx.CreateShader && glx.ShaderSource && glx.CompileShader && glx.GetShaderiv &&
         glx.CreateProgram && glx.AttachShader && glx.LinkProgram && glx.GetProgramiv &&
@@ -1272,36 +1557,68 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
     return DefWindowProcA(hwnd, msg, wparam, lparam);
 }
 
-static bool createContext(TestContext& ctx) {
+static HWND createTestWindow(TestContext& ctx, const char* title) {
     WNDCLASSA wc = {};
     wc.lpfnWndProc = wndProc;
     wc.hInstance = GetModuleHandleA(nullptr);
     wc.lpszClassName = "BoxedWineOpenGLMarshalTestWindow";
     if (!RegisterClassA(&wc) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
         ctx.write("RegisterClassA failed: " + lastWin32Error());
-        return false;
+        return nullptr;
     }
 
-    ctx.hwnd = CreateWindowExA(0, wc.lpszClassName, "OpenGL Marshal Test",
+    HWND hwnd = CreateWindowExA(0, wc.lpszClassName, title,
         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 320, 240,
         nullptr, nullptr, wc.hInstance, nullptr);
-    if (!ctx.hwnd) {
+    if (!hwnd) {
         ctx.write("CreateWindowExA failed: " + lastWin32Error());
-        return false;
     }
+    return hwnd;
+}
 
-    ctx.dc = GetDC(ctx.hwnd);
+static std::string describePfd(const PIXELFORMATDESCRIPTOR& pfd) {
+    std::ostringstream out;
+    out << "flags=0x" << std::hex << pfd.dwFlags << std::dec
+        << " type=" << (int)pfd.iPixelType
+        << " color=" << (int)pfd.cColorBits
+        << " rgba=" << (int)pfd.cRedBits << "," << (int)pfd.cGreenBits << "," << (int)pfd.cBlueBits << "," << (int)pfd.cAlphaBits
+        << " depth=" << (int)pfd.cDepthBits
+        << " stencil=" << (int)pfd.cStencilBits
+        << " layer=" << (int)pfd.iLayerType;
+    return out.str();
+}
+
+static PIXELFORMATDESCRIPTOR requestedWindowPfd(BYTE colorBits) {
     PIXELFORMATDESCRIPTOR pfd = {};
     pfd.nSize = sizeof(pfd);
     pfd.nVersion = 1;
     pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
     pfd.iPixelType = PFD_TYPE_RGBA;
-    pfd.cColorBits = 24;
+    pfd.cColorBits = colorBits;
     pfd.cDepthBits = 24;
     pfd.iLayerType = PFD_MAIN_PLANE;
+    return pfd;
+}
+
+static bool createContext(TestContext& ctx) {
+    ctx.hwnd = createTestWindow(ctx, "OpenGL Marshal Test");
+    if (!ctx.hwnd) {
+        return false;
+    }
+
+    ctx.dc = GetDC(ctx.hwnd);
+    PIXELFORMATDESCRIPTOR pfd = requestedWindowPfd(24);
+    int count = DescribePixelFormat(ctx.dc, 0, 0, nullptr);
+    if (!count) {
+        ctx.write("DescribePixelFormat reported no onscreen pixel formats: " + lastWin32Error());
+        return false;
+    }
     int pf = ChoosePixelFormat(ctx.dc, &pfd);
     if (!pf || !SetPixelFormat(ctx.dc, pf, &pfd)) {
-        ctx.write("Pixel format setup failed: " + lastWin32Error());
+        std::ostringstream out;
+        out << "Pixel format setup failed: count=" << count << " choice=" << pf
+            << " request={" << describePfd(pfd) << "} error=" << lastWin32Error();
+        ctx.write(out.str());
         return false;
     }
 
@@ -1324,6 +1641,52 @@ static void destroyContext(TestContext& ctx) {
     if (ctx.hwnd) {
         DestroyWindow(ctx.hwnd);
     }
+}
+
+static TestResult testWGLPixelFormatDiagnostics(TestContext& ctx) {
+    HWND hwnd = createTestWindow(ctx, "OpenGL Pixel Format Diagnostics");
+    if (!hwnd) {
+        return fail("window creation failed");
+    }
+    HDC dc = GetDC(hwnd);
+    if (!dc) {
+        DestroyWindow(hwnd);
+        return fail("GetDC failed: " + lastWin32Error());
+    }
+
+    writeWineDcDiagnostics(ctx, dc);
+
+    SetLastError(0);
+    int count = DescribePixelFormat(dc, 0, 0, nullptr);
+    ctx.write("DescribePixelFormat count: " + std::to_string(count) + " lastError=\"" + lastWin32Error() + "\"");
+    if (!count) {
+        writeWglFormatAttribDiagnostics(ctx, dc);
+        ReleaseDC(hwnd, dc);
+        DestroyWindow(hwnd);
+        return fail("DescribePixelFormat reported no onscreen formats");
+    }
+
+    for (BYTE colorBits : { (BYTE)32, (BYTE)24 }) {
+        PIXELFORMATDESCRIPTOR request = requestedWindowPfd(colorBits);
+        int choice = ChoosePixelFormat(dc, &request);
+        ctx.write("ChoosePixelFormat color=" + std::to_string(colorBits) + " -> " + std::to_string(choice));
+        if (choice) {
+            PIXELFORMATDESCRIPTOR actual = {};
+            int described = DescribePixelFormat(dc, choice, sizeof(actual), &actual);
+            ctx.write("DescribePixelFormat choice=" + std::to_string(choice) + " returned "
+                + std::to_string(described) + " actual={" + describePfd(actual) + "}");
+        }
+    }
+
+    PIXELFORMATDESCRIPTOR request32 = requestedWindowPfd(32);
+    int choice32 = ChoosePixelFormat(dc, &request32);
+    ReleaseDC(hwnd, dc);
+    DestroyWindow(hwnd);
+
+    if (!choice32) {
+        return fail("ChoosePixelFormat failed for 32-bit window RGBA double-buffer format");
+    }
+    return pass("WGL pixel format enumeration and 32-bit selection succeeded");
 }
 
 static std::string shaderLog(GLuint shader) {
@@ -1422,7 +1785,7 @@ static bool pixelMapUintMatches(GLuint actual, GLuint expected) {
     return actual == expected || actual == (GLuint)(0u - expected);
 }
 
-static TestResult pass(const std::string& message = {}) {
+static TestResult pass(const std::string& message) {
     return { TestResult::Pass, message };
 }
 
@@ -1537,6 +1900,551 @@ struct PageBytes {
         return true;
     }
 };
+
+static GLint fixedFromFloat(float value) {
+    return (GLint)(value * 65536.0f + (value >= 0.0f ? 0.5f : -0.5f));
+}
+
+static bool fixedNearlyEqual(GLint actual, float expected) {
+    return std::abs(actual - fixedFromFloat(expected)) <= 2;
+}
+
+static bool hasExtensionString(const char* name) {
+    const char* extensions = (const char*)glGetString(GL_EXTENSIONS);
+    if (!extensions || !name || !*name) {
+        return false;
+    }
+    size_t nameLen = std::strlen(name);
+    const char* at = extensions;
+    while ((at = std::strstr(at, name)) != nullptr) {
+        bool startOk = (at == extensions) || (at[-1] == ' ');
+        bool endOk = (at[nameLen] == '\0') || (at[nameLen] == ' ');
+        if (startOk && endOk) {
+            return true;
+        }
+        at += nameLen;
+    }
+    return false;
+}
+
+static TestResult testGLESFixedPointAliasesPageBoundary(TestContext&) {
+    if (!hasExtensionString("GL_OES_fixed_point")) {
+        return skip("GL_OES_fixed_point is not advertised by this OpenGL stack");
+    }
+    if (!glx.ClearColorx || !glx.ClearDepthx || !glx.DepthRangex ||
+        !glx.TexEnvxv || !glx.GetTexEnvxv ||
+        !glx.Lightxv || !glx.GetLightxv ||
+        !glx.Materialxv || !glx.GetMaterialxv ||
+        !glx.LoadMatrixx || !glx.MultMatrixx || !glx.GetFixedv ||
+        !glx.ClipPlanef || !glx.GetClipPlanef || !glx.ClipPlanex || !glx.GetClipPlanex) {
+        return skip("fixed-point GLES alias entry points are unavailable");
+    }
+
+    PageBytes envColorBytes;
+    PageBytes outFixed4Bytes;
+    PageBytes lightPositionBytes;
+    PageBytes materialSpecularBytes;
+    PageBytes matrixBytes;
+    PageBytes outMatrixBytes;
+    PageBytes clipFBytes;
+    PageBytes outClipFBytes;
+    PageBytes clipXBytes;
+    PageBytes outClipXBytes;
+    if (!envColorBytes.init(4 * sizeof(GLint), 5) ||
+        !outFixed4Bytes.init(4 * sizeof(GLint), 7) ||
+        !lightPositionBytes.init(4 * sizeof(GLint), 9) ||
+        !materialSpecularBytes.init(4 * sizeof(GLint), 11) ||
+        !matrixBytes.init(16 * sizeof(GLint), 13) ||
+        !outMatrixBytes.init(16 * sizeof(GLint), 15) ||
+        !clipFBytes.init(4 * sizeof(GLfloat), 17) ||
+        !outClipFBytes.init(4 * sizeof(GLfloat), 19) ||
+        !clipXBytes.init(4 * sizeof(GLint), 21) ||
+        !outClipXBytes.init(4 * sizeof(GLint), 23)) {
+        return skip("VirtualAlloc failed for fixed-point alias buffers");
+    }
+
+    const GLint fixedEnvColor[4] = {
+        fixedFromFloat(0.125f), fixedFromFloat(0.25f), fixedFromFloat(0.5f), fixedFromFloat(0.75f)
+    };
+    const GLint fixedLightPosition[4] = {
+        fixedFromFloat(0.0f), fixedFromFloat(1.0f), fixedFromFloat(2.0f), fixedFromFloat(1.0f)
+    };
+    const GLint fixedMaterialSpecular[4] = {
+        fixedFromFloat(0.2f), fixedFromFloat(0.4f), fixedFromFloat(0.6f), fixedFromFloat(1.0f)
+    };
+    const GLint fixedMatrix[16] = {
+        fixedFromFloat(1.0f), fixedFromFloat(0.0f), fixedFromFloat(0.0f), fixedFromFloat(0.0f),
+        fixedFromFloat(0.0f), fixedFromFloat(1.0f), fixedFromFloat(0.0f), fixedFromFloat(0.0f),
+        fixedFromFloat(0.0f), fixedFromFloat(0.0f), fixedFromFloat(1.0f), fixedFromFloat(0.0f),
+        fixedFromFloat(0.25f), fixedFromFloat(0.5f), fixedFromFloat(0.75f), fixedFromFloat(1.0f)
+    };
+    const GLfloat clipF[4] = { 1.0f, 0.0f, 0.0f, -0.25f };
+    const GLint clipX[4] = {
+        fixedFromFloat(0.0f), fixedFromFloat(1.0f), fixedFromFloat(0.0f), fixedFromFloat(-0.5f)
+    };
+    std::memcpy(envColorBytes.data, fixedEnvColor, sizeof(fixedEnvColor));
+    std::memcpy(lightPositionBytes.data, fixedLightPosition, sizeof(fixedLightPosition));
+    std::memcpy(materialSpecularBytes.data, fixedMaterialSpecular, sizeof(fixedMaterialSpecular));
+    std::memcpy(matrixBytes.data, fixedMatrix, sizeof(fixedMatrix));
+    std::memcpy(clipFBytes.data, clipF, sizeof(clipF));
+    std::memcpy(clipXBytes.data, clipX, sizeof(clipX));
+
+    glx.ClearColorx(fixedFromFloat(0.25f), fixedFromFloat(0.5f), fixedFromFloat(0.75f), fixedFromFloat(1.0f));
+    GLfloat clearColor[4] = {};
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, clearColor);
+    if (!nearlyEqual(clearColor[0], 0.25f) || !nearlyEqual(clearColor[1], 0.5f) ||
+        !nearlyEqual(clearColor[2], 0.75f) || !nearlyEqual(clearColor[3], 1.0f)) {
+        return fail("glClearColorx did not update clear color");
+    }
+
+    glx.ClearDepthx(fixedFromFloat(0.75f));
+    glx.DepthRangex(fixedFromFloat(0.125f), fixedFromFloat(0.875f));
+    GLdouble depthValue = 0.0;
+    GLdouble depthRange[2] = {};
+    glGetDoublev(GL_DEPTH_CLEAR_VALUE, &depthValue);
+    glGetDoublev(GL_DEPTH_RANGE, depthRange);
+    if (!nearlyEqual(depthValue, 0.75) ||
+        !nearlyEqual(depthRange[0], 0.125) || !nearlyEqual(depthRange[1], 0.875)) {
+        return fail("fixed-point depth state did not match getters");
+    }
+
+    glx.TexEnvxv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, (const GLint*)envColorBytes.data);
+    glx.GetTexEnvxv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, (GLint*)outFixed4Bytes.data);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glTexEnvxv/glGetTexEnvxv produced GL error " + std::to_string(err));
+    }
+    const GLint* outFixed4 = (const GLint*)outFixed4Bytes.data;
+    for (int i = 0; i < 4; ++i) {
+        if (!fixedNearlyEqual(outFixed4[i], (float)fixedEnvColor[i] / 65536.0f)) {
+            return fail("glGetTexEnvxv did not copy back the page-boundary color");
+        }
+    }
+
+    glx.Lightxv(GL_LIGHT0, GL_POSITION, (const GLint*)lightPositionBytes.data);
+    glx.GetLightxv(GL_LIGHT0, GL_POSITION, (GLint*)outFixed4Bytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glLightxv/glGetLightxv produced GL error " + std::to_string(err));
+    }
+    outFixed4 = (const GLint*)outFixed4Bytes.data;
+    for (int i = 0; i < 4; ++i) {
+        if (!fixedNearlyEqual(outFixed4[i], (float)fixedLightPosition[i] / 65536.0f)) {
+            return fail("glGetLightxv did not copy back the page-boundary position");
+        }
+    }
+
+    glx.Materialxv(GL_FRONT, GL_SPECULAR, (const GLint*)materialSpecularBytes.data);
+    glx.GetMaterialxv(GL_FRONT, GL_SPECULAR, (GLint*)outFixed4Bytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glMaterialxv/glGetMaterialxv produced GL error " + std::to_string(err));
+    }
+    outFixed4 = (const GLint*)outFixed4Bytes.data;
+    for (int i = 0; i < 4; ++i) {
+        if (!fixedNearlyEqual(outFixed4[i], (float)fixedMaterialSpecular[i] / 65536.0f)) {
+            return fail("glGetMaterialxv did not copy back the page-boundary specular color");
+        }
+    }
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glx.LoadMatrixx((const GLint*)matrixBytes.data);
+    glx.GetFixedv(GL_MODELVIEW_MATRIX, (GLint*)outMatrixBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        glLoadIdentity();
+        return fail("glLoadMatrixx/glGetFixedv produced GL error " + std::to_string(err));
+    }
+    const GLint* outMatrix = (const GLint*)outMatrixBytes.data;
+    for (int i = 0; i < 16; ++i) {
+        if (!fixedNearlyEqual(outMatrix[i], (float)fixedMatrix[i] / 65536.0f)) {
+            glLoadIdentity();
+            return fail("glGetFixedv did not copy back the full fixed-point matrix");
+        }
+    }
+
+    const GLint fixedScale[16] = {
+        fixedFromFloat(2.0f), fixedFromFloat(0.0f), fixedFromFloat(0.0f), fixedFromFloat(0.0f),
+        fixedFromFloat(0.0f), fixedFromFloat(2.0f), fixedFromFloat(0.0f), fixedFromFloat(0.0f),
+        fixedFromFloat(0.0f), fixedFromFloat(0.0f), fixedFromFloat(2.0f), fixedFromFloat(0.0f),
+        fixedFromFloat(0.0f), fixedFromFloat(0.0f), fixedFromFloat(0.0f), fixedFromFloat(1.0f)
+    };
+    std::memcpy(matrixBytes.data, fixedScale, sizeof(fixedScale));
+    glLoadIdentity();
+    glx.MultMatrixx((const GLint*)matrixBytes.data);
+    glx.GetFixedv(GL_MODELVIEW_MATRIX, (GLint*)outMatrixBytes.data);
+    err = glGetError();
+    glLoadIdentity();
+    if (err != GL_NO_ERROR) {
+        return fail("glMultMatrixx produced GL error " + std::to_string(err));
+    }
+    outMatrix = (const GLint*)outMatrixBytes.data;
+    if (!fixedNearlyEqual(outMatrix[0], 2.0f) ||
+        !fixedNearlyEqual(outMatrix[5], 2.0f) ||
+        !fixedNearlyEqual(outMatrix[10], 2.0f) ||
+        !fixedNearlyEqual(outMatrix[15], 1.0f)) {
+        return fail("glMultMatrixx did not apply the page-boundary fixed-point matrix");
+    }
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glx.ClipPlanef(GL_CLIP_PLANE0, (const GLfloat*)clipFBytes.data);
+    glx.GetClipPlanef(GL_CLIP_PLANE0, (GLfloat*)outClipFBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glClipPlanef/glGetClipPlanef produced GL error " + std::to_string(err));
+    }
+    const GLfloat* outClipF = (const GLfloat*)outClipFBytes.data;
+    for (int i = 0; i < 4; ++i) {
+        if (!nearlyEqual(outClipF[i], clipF[i])) {
+            return fail("glGetClipPlanef did not copy back the page-boundary equation");
+        }
+    }
+
+    glx.ClipPlanex(GL_CLIP_PLANE0, (const GLint*)clipXBytes.data);
+    glx.GetClipPlanex(GL_CLIP_PLANE0, (GLint*)outClipXBytes.data);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glClipPlanex/glGetClipPlanex produced GL error " + std::to_string(err));
+    }
+    const GLint* outClipX = (const GLint*)outClipXBytes.data;
+    for (int i = 0; i < 4; ++i) {
+        if (!fixedNearlyEqual(outClipX[i], (float)clipX[i] / 65536.0f)) {
+            return fail("glGetClipPlanex did not copy back the page-boundary equation");
+        }
+    }
+
+    return pass("fixed-point GLES aliases handled page-boundary pointers");
+}
+
+static void drainGLErrors() {
+    while (glGetError() != GL_NO_ERROR) {
+    }
+}
+
+static bool glesRgbaEquals(const unsigned char* p, const unsigned char* expected) {
+    return p[0] == expected[0] && p[1] == expected[1] &&
+        p[2] == expected[2] && p[3] == expected[3];
+}
+
+static TestResult testGLESFloatDepthState(TestContext&) {
+    if (!glx.ClearDepthf || !glx.DepthRangef) {
+        return skip("GLES float depth entry points are unavailable");
+    }
+
+    drainGLErrors();
+    glx.ClearDepthf(0.25f);
+    glx.DepthRangef(0.125f, 0.875f);
+
+    GLdouble depthValue = 0.0;
+    GLdouble depthRange[2] = {};
+    glGetDoublev(GL_DEPTH_CLEAR_VALUE, &depthValue);
+    glGetDoublev(GL_DEPTH_RANGE, depthRange);
+    GLenum err = glGetError();
+
+    glClearDepth(1.0);
+    glDepthRange(0.0, 1.0);
+
+    if (err != GL_NO_ERROR) {
+        return fail("GLES float depth calls produced GL error " + std::to_string(err));
+    }
+    if (!nearlyEqual(depthValue, 0.25) ||
+        !nearlyEqual(depthRange[0], 0.125) || !nearlyEqual(depthRange[1], 0.875)) {
+        return fail("GLES float depth state did not match getters");
+    }
+
+    return pass("GLES float depth state matched");
+}
+
+static TestResult testGLESShaderPrecisionPageBoundary(TestContext&) {
+    if (!glx.GetShaderPrecisionFormat) {
+        return skip("glGetShaderPrecisionFormat is unavailable");
+    }
+
+    PageBytes rangeBytes;
+    PageBytes precisionBytes;
+    if (!rangeBytes.init(2 * sizeof(GLint), 5) ||
+        !precisionBytes.init(sizeof(GLint), 3)) {
+        return fail("VirtualAlloc failed");
+    }
+
+    GLint* range = (GLint*)rangeBytes.data;
+    GLint* precision = (GLint*)precisionBytes.data;
+    range[0] = range[1] = -1;
+    *precision = -1;
+
+    drainGLErrors();
+    glx.GetShaderPrecisionFormat(GL_FRAGMENT_SHADER, GL_HIGH_FLOAT, range, precision);
+    GLenum err = glGetError();
+    if (err == GL_INVALID_ENUM) {
+        return skip("glGetShaderPrecisionFormat is present but GL_HIGH_FLOAT is not accepted by this stack");
+    }
+    if (err != GL_NO_ERROR) {
+        return fail("glGetShaderPrecisionFormat produced GL error " + std::to_string(err));
+    }
+    if (range[0] == -1 || range[1] == -1 || *precision == -1) {
+        return fail("glGetShaderPrecisionFormat did not write all page-boundary outputs");
+    }
+    if (range[0] > range[1] || *precision < 0) {
+        return fail("glGetShaderPrecisionFormat returned invalid precision values");
+    }
+
+    return pass("glGetShaderPrecisionFormat copied page-boundary outputs");
+}
+
+static TestResult testGLESShaderBinaryPageBoundary(TestContext&) {
+    if (!glx.ShaderBinary || !glx.ReleaseShaderCompiler) {
+        return skip("GLES shader binary entry points are unavailable");
+    }
+    if (!glx.CreateShader || !glx.DeleteShader) {
+        return skip("shader object entry points are unavailable");
+    }
+
+    PageBytes shaderBytes;
+    PageBytes binaryBytes;
+    if (!shaderBytes.init(sizeof(GLuint), 3) ||
+        !binaryBytes.init(16, 7)) {
+        return fail("VirtualAlloc failed");
+    }
+
+    GLuint shader = glx.CreateShader(GL_VERTEX_SHADER);
+    if (!shader) {
+        return fail("glCreateShader failed for shader binary test");
+    }
+
+    *(GLuint*)shaderBytes.data = shader;
+    for (size_t i = 0; i < binaryBytes.size; ++i) {
+        binaryBytes.data[i] = (unsigned char)(0x40 + i);
+    }
+
+    drainGLErrors();
+    glx.ReleaseShaderCompiler();
+    GLenum releaseErr = glGetError();
+    glx.ShaderBinary(1, (const GLuint*)shaderBytes.data, 0, binaryBytes.data, (GLsizei)binaryBytes.size);
+    GLenum binaryErr = glGetError();
+    glx.DeleteShader(shader);
+
+    if (releaseErr != GL_NO_ERROR) {
+        return fail("glReleaseShaderCompiler produced GL error " + std::to_string(releaseErr));
+    }
+    if (binaryErr != GL_INVALID_ENUM && binaryErr != GL_INVALID_VALUE && binaryErr != GL_INVALID_OPERATION) {
+        return fail("glShaderBinary did not report the expected error for an invalid page-boundary binary");
+    }
+
+    return pass("GLES shader binary entry points handled page-boundary inputs");
+}
+
+static TestResult testGLESVertexArrayObjectPageBoundary(TestContext&) {
+    if (!glx.GenVertexArrays || !glx.BindVertexArray || !glx.DeleteVertexArrays || !glx.IsVertexArray) {
+        return skip("GLES vertex array entry points are unavailable");
+    }
+
+    PageBytes vaoBytes;
+    if (!vaoBytes.init(sizeof(GLuint), 3)) {
+        return fail("VirtualAlloc failed");
+    }
+
+    GLuint* vao = (GLuint*)vaoBytes.data;
+    *vao = 0;
+
+    drainGLErrors();
+    glx.GenVertexArrays(1, vao);
+    GLenum genErr = glGetError();
+    if (genErr != GL_NO_ERROR) {
+        return fail("glGenVertexArrays produced GL error " + std::to_string(genErr));
+    }
+    if (*vao == 0) {
+        return fail("glGenVertexArrays did not write a VAO name");
+    }
+
+    glx.BindVertexArray(*vao);
+    GLboolean isVao = glx.IsVertexArray(*vao);
+    glx.BindVertexArray(0);
+    glx.DeleteVertexArrays(1, vao);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("GLES vertex array entry points produced GL error " + std::to_string(err));
+    }
+    if (isVao != GL_TRUE) {
+        return fail("glIsVertexArray did not recognize the generated VAO");
+    }
+
+    return pass("GLES vertex array object entry points handled page-boundary pointers");
+}
+
+static TestResult testGLESGetStringi(TestContext&) {
+    if (!glx.GetStringi) {
+        return skip("glGetStringi is unavailable");
+    }
+
+    GLint extensionCount = 0;
+    drainGLErrors();
+    glGetIntegerv(GL_NUM_EXTENSIONS, &extensionCount);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR || extensionCount <= 0) {
+        return skip("GL_NUM_EXTENSIONS is unavailable on this context");
+    }
+
+    const GLubyte* firstExtension = glx.GetStringi(GL_EXTENSIONS, 0);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glGetStringi produced GL error " + std::to_string(err));
+    }
+    if (!firstExtension || !firstExtension[0]) {
+        return fail("glGetStringi returned an empty extension string");
+    }
+
+    return pass("glGetStringi returned a marshalled extension string");
+}
+
+static TestResult testGLESDrawBuffersClearBufferPageBoundary(TestContext&) {
+    if (!glx.GenFramebuffers || !glx.BindFramebuffer || !glx.FramebufferTexture2D ||
+        !glx.CheckFramebufferStatus || !glx.DeleteFramebuffers ||
+        !glx.DrawBuffers || !glx.ClearBufferfv) {
+        return skip("draw-buffers/clear-buffer entry points are unavailable");
+    }
+
+    PageBytes drawBuffersBytes;
+    PageBytes clear0Bytes;
+    PageBytes clear1Bytes;
+    PageBytes pixelBytes;
+    if (!drawBuffersBytes.init(2 * sizeof(GLenum), 5) ||
+        !clear0Bytes.init(4 * sizeof(GLfloat), 7) ||
+        !clear1Bytes.init(4 * sizeof(GLfloat), 9) ||
+        !pixelBytes.init(8, 3)) {
+        return fail("VirtualAlloc failed");
+    }
+
+    GLenum* drawBuffers = (GLenum*)drawBuffersBytes.data;
+    drawBuffers[0] = GL_COLOR_ATTACHMENT0;
+    drawBuffers[1] = GL_COLOR_ATTACHMENT1;
+    const GLfloat clear0[4] = { 0.125f, 0.625f, 0.25f, 1.0f };
+    const GLfloat clear1[4] = { 0.75f, 0.25f, 0.5f, 1.0f };
+    std::memcpy(clear0Bytes.data, clear0, sizeof(clear0));
+    std::memcpy(clear1Bytes.data, clear1, sizeof(clear1));
+
+    GLuint tex[2] = {};
+    GLuint fbo = 0;
+    glGenTextures(2, tex);
+    for (int i = 0; i < 2; ++i) {
+        glBindTexture(GL_TEXTURE_2D, tex[i]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    }
+
+    glx.GenFramebuffers(1, &fbo);
+    glx.BindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glx.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex[0], 0);
+    glx.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, tex[1], 0);
+    GLenum status = glx.CheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(2, tex);
+        return fail("draw-buffers framebuffer was incomplete: " + std::to_string(status));
+    }
+
+    drainGLErrors();
+    glx.DrawBuffers(2, drawBuffers);
+    glx.ClearBufferfv(GL_COLOR, 0, (const GLfloat*)clear0Bytes.data);
+    glx.ClearBufferfv(GL_COLOR, 1, (const GLfloat*)clear1Bytes.data);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    glReadPixels(1, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixelBytes.data);
+    glReadBuffer(GL_COLOR_ATTACHMENT1);
+    glReadPixels(1, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixelBytes.data + 4);
+    GLenum err = glGetError();
+
+    glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+    glx.DeleteFramebuffers(1, &fbo);
+    glDeleteTextures(2, tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("draw-buffers clear/readback produced GL error " + std::to_string(err));
+    }
+    const unsigned char expected0[4] = { 32, 159, 64, 255 };
+    const unsigned char expected1[4] = { 191, 64, 128, 255 };
+    if (!glesRgbaEquals(pixelBytes.data, expected0) || !glesRgbaEquals(pixelBytes.data + 4, expected1)) {
+        return fail("draw-buffers clear colors did not match readback");
+    }
+
+    return pass("glDrawBuffers and glClearBufferfv handled page-boundary inputs");
+}
+
+static TestResult testGLESRenderbufferStoragePageBoundary(TestContext&) {
+    if (!glx.GenRenderbuffers || !glx.BindRenderbuffer || !glx.RenderbufferStorage ||
+        !glx.GetRenderbufferParameteriv || !glx.DeleteRenderbuffers) {
+        return skip("renderbuffer storage entry points are unavailable");
+    }
+
+    PageBytes widthBytes;
+    PageBytes heightBytes;
+    if (!widthBytes.init(sizeof(GLint), 3) ||
+        !heightBytes.init(sizeof(GLint), 5)) {
+        return fail("VirtualAlloc failed");
+    }
+
+    GLuint rbo = 0;
+    glx.GenRenderbuffers(1, &rbo);
+    glx.BindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glx.RenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, 9, 7);
+    glx.GetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, (GLint*)widthBytes.data);
+    glx.GetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, (GLint*)heightBytes.data);
+    GLenum err = glGetError();
+    glx.BindRenderbuffer(GL_RENDERBUFFER, 0);
+    glx.DeleteRenderbuffers(1, &rbo);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glRenderbufferStorage query produced GL error " + std::to_string(err));
+    }
+    if (*(GLint*)widthBytes.data != 9 || *(GLint*)heightBytes.data != 7) {
+        return fail("glRenderbufferStorage dimensions were not copied back");
+    }
+
+    return pass("glRenderbufferStorage state was visible through page-boundary getters");
+}
+
+static TestResult testGLESGenerateMipmap(TestContext&) {
+    if (!glx.GenerateMipmap) {
+        return skip("glGenerateMipmap is unavailable");
+    }
+
+    PageBytes pixelBytes;
+    if (!pixelBytes.init(4 * 4 * 4, 11)) {
+        return fail("VirtualAlloc failed");
+    }
+    for (size_t i = 0; i < pixelBytes.size; i += 4) {
+        pixelBytes.data[i + 0] = 40;
+        pixelBytes.data[i + 1] = 180;
+        pixelBytes.data[i + 2] = 90;
+        pixelBytes.data[i + 3] = 255;
+    }
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelBytes.data);
+    glx.GenerateMipmap(GL_TEXTURE_2D);
+    GLint level1Width = 0;
+    GLint level1Height = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 1, GL_TEXTURE_WIDTH, &level1Width);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 1, GL_TEXTURE_HEIGHT, &level1Height);
+    GLenum err = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glGenerateMipmap produced GL error " + std::to_string(err));
+    }
+    if (level1Width != 2 || level1Height != 2) {
+        return fail("glGenerateMipmap did not create the expected level 1 size");
+    }
+
+    return pass("glGenerateMipmap consumed a page-boundary texture upload");
+}
 
 static TestResult testShaderPageBoundaryStrings(TestContext&) {
     const char* middle =
@@ -4190,6 +5098,80 @@ static TestResult testTexturePageBoundaryUploadReadback(TestContext&) {
         return fail("texture upload/readback bytes did not match");
     }
     return pass("page-boundary texture upload/readback matched");
+}
+
+static TestResult testEXTTextureStorageEntryPoints(TestContext&) {
+    if (!hasExtensionString("GL_EXT_texture_storage")) {
+        return skip("GL_EXT_texture_storage is not advertised by this OpenGL stack");
+    }
+    if (!glx.TexStorage1DEXT || !glx.TexStorage2DEXT || !glx.TexStorage3DEXT) {
+        return skip("EXT texture storage entry points are unavailable");
+    }
+
+    GLuint textures[3] = {};
+    glGenTextures(3, textures);
+
+    glBindTexture(GL_TEXTURE_1D, textures[0]);
+    glx.TexStorage1DEXT(GL_TEXTURE_1D, 1, GL_RGBA8, 4);
+    GLenum err1 = glGetError();
+    GLint width1 = 0;
+    GLint immutable1 = 0;
+    GLint levels1 = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_1D, 0, GL_TEXTURE_WIDTH, &width1);
+    glGetTexParameteriv(GL_TEXTURE_1D, GL_TEXTURE_IMMUTABLE_FORMAT, &immutable1);
+    glGetTexParameteriv(GL_TEXTURE_1D, GL_TEXTURE_IMMUTABLE_LEVELS, &levels1);
+
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
+    glx.TexStorage2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, 4, 2);
+    GLenum err2 = glGetError();
+    GLint width2 = 0;
+    GLint height2 = 0;
+    GLint immutable2 = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width2);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height2);
+    glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_IMMUTABLE_FORMAT, &immutable2);
+
+    glBindTexture(GL_TEXTURE_3D, textures[2]);
+    glx.TexStorage3DEXT(GL_TEXTURE_3D, 1, GL_RGBA8, 4, 2, 1);
+    GLenum err3 = glGetError();
+    GLint width3 = 0;
+    GLint height3 = 0;
+    GLint depth3 = 0;
+    GLint immutable3 = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_3D, 0, GL_TEXTURE_WIDTH, &width3);
+    glGetTexLevelParameteriv(GL_TEXTURE_3D, 0, GL_TEXTURE_HEIGHT, &height3);
+    glGetTexLevelParameteriv(GL_TEXTURE_3D, 0, GL_TEXTURE_DEPTH, &depth3);
+    glGetTexParameteriv(GL_TEXTURE_3D, GL_TEXTURE_IMMUTABLE_FORMAT, &immutable3);
+    GLenum getterErr = glGetError();
+
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_1D, 0);
+    glDeleteTextures(3, textures);
+
+    if (err1 != GL_NO_ERROR) {
+        return fail("glTexStorage1DEXT produced GL error " + std::to_string(err1));
+    }
+    if (err2 != GL_NO_ERROR) {
+        return fail("glTexStorage2DEXT produced GL error " + std::to_string(err2));
+    }
+    if (err3 != GL_NO_ERROR) {
+        return fail("glTexStorage3DEXT produced GL error " + std::to_string(err3));
+    }
+    if (getterErr != GL_NO_ERROR) {
+        return fail("texture storage state getters produced GL error " + std::to_string(getterErr));
+    }
+    if (width1 != 4 || immutable1 != GL_TRUE || levels1 != 1) {
+        return fail("glTexStorage1DEXT texture state did not match");
+    }
+    if (width2 != 4 || height2 != 2 || immutable2 != GL_TRUE) {
+        return fail("glTexStorage2DEXT texture state did not match");
+    }
+    if (width3 != 4 || height3 != 2 || depth3 != 1 || immutable3 != GL_TRUE) {
+        return fail("glTexStorage3DEXT texture state did not match");
+    }
+
+    return pass("EXT texture storage entry points created immutable textures");
 }
 
 static TestResult testTextureSubImagePageBoundary(TestContext&) {
@@ -11099,6 +12081,379 @@ static TestResult testMultiDrawIndirectPageBoundary(TestContext&) {
     return pass("page-boundary multi-draw indirect commands rendered expected pixels");
 }
 
+static TestResult testMultiDrawIndirectCountBufferOffsets(TestContext&) {
+    if (!hasExtensionString("GL_ARB_indirect_parameters")) {
+        return skip("GL_ARB_indirect_parameters is not advertised by this OpenGL stack");
+    }
+    if (!glx.MultiDrawArraysIndirectCount || !glx.MultiDrawElementsIndirectCount ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers ||
+        !glx.VertexAttribPointer || !glx.EnableVertexAttribArray || !glx.DisableVertexAttribArray ||
+        !glx.UseProgram || !glx.BindAttribLocation) {
+        return skip("multi-draw indirect count APIs are unavailable");
+    }
+
+    const GLsizei drawCount = 2;
+    const GLsizei arraysStride = 32;
+    const GLsizei elementsStride = 32;
+    const GLintptr arraysCommandOffset = 32;
+    const GLintptr elementsCommandOffset = 48;
+    const GLintptr countOffset = 4;
+
+    std::vector<unsigned char> arraysCommandBuffer((size_t)arraysCommandOffset + arraysStride * drawCount, 0);
+    std::vector<unsigned char> elementsCommandBuffer((size_t)elementsCommandOffset + elementsStride * drawCount, 0);
+    std::vector<unsigned char> countBuffer((size_t)countOffset + sizeof(GLuint), 0);
+
+    const GLuint drawArraysCmds[2][4] = {
+        { 3, 1, 0, 0 },
+        { 3, 1, 3, 0 }
+    };
+    const GLuint drawElementsCmds[2][5] = {
+        { 3, 1, 0, 0, 0 },
+        { 3, 1, 3, 0, 0 }
+    };
+    const GLuint countValue = drawCount;
+    for (GLsizei i = 0; i < drawCount; ++i) {
+        std::memcpy(arraysCommandBuffer.data() + arraysCommandOffset + arraysStride * i,
+            drawArraysCmds[i], sizeof(drawArraysCmds[i]));
+        std::memcpy(elementsCommandBuffer.data() + elementsCommandOffset + elementsStride * i,
+            drawElementsCmds[i], sizeof(drawElementsCmds[i]));
+    }
+    std::memcpy(countBuffer.data() + countOffset, &countValue, sizeof(countValue));
+
+    std::string error;
+    GLuint program = makeVertexAttribRenderProgram(error);
+    if (!program) {
+        return fail("indirect count program failed to link: " + error);
+    }
+
+    const GLfloat vertices[] = {
+        -0.9f, -0.9f, 0.0f, 1.0f, 0.0f, 1.0f,
+         0.0f, -0.9f, 0.0f, 1.0f, 0.0f, 1.0f,
+        -0.9f,  0.9f, 0.0f, 1.0f, 0.0f, 1.0f,
+         0.9f, -0.9f, 0.0f, 1.0f, 0.0f, 1.0f,
+         0.9f,  0.9f, 0.0f, 1.0f, 0.0f, 1.0f,
+         0.0f,  0.9f, 0.0f, 1.0f, 0.0f, 1.0f
+    };
+    const GLubyte indices[] = { 0, 1, 2, 3, 4, 5 };
+
+    GLuint buffers[5] = {};
+    glx.GenBuffers(5, buffers);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+    glx.BufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[1]);
+    glx.BufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glx.BindBuffer(GL_DRAW_INDIRECT_BUFFER, buffers[2]);
+    glx.BufferData(GL_DRAW_INDIRECT_BUFFER, (GLsizeiptr)arraysCommandBuffer.size(), arraysCommandBuffer.data(), GL_STATIC_DRAW);
+    glx.BindBuffer(GL_PARAMETER_BUFFER_ARB, buffers[4]);
+    glx.BufferData(GL_PARAMETER_BUFFER_ARB, (GLsizeiptr)countBuffer.size(), countBuffer.data(), GL_STATIC_DRAW);
+    GLenum setupErr = glGetError();
+    if (setupErr != GL_NO_ERROR) {
+        glx.BindBuffer(GL_PARAMETER_BUFFER_ARB, 0);
+        glx.BindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+        glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        glx.DeleteBuffers(5, buffers);
+        glx.DeleteProgram(program);
+        return fail("multi-draw indirect count buffer setup produced GL error " + std::to_string(setupErr));
+    }
+
+    auto cleanup = [&]() {
+        glx.DisableVertexAttribArray(1);
+        glx.DisableVertexAttribArray(0);
+        glx.UseProgram(0);
+        glx.BindBuffer(GL_PARAMETER_BUFFER_ARB, 0);
+        glx.BindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+        glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        glx.DeleteBuffers(5, buffers);
+        glx.DeleteProgram(program);
+    };
+
+    glx.UseProgram(program);
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glx.EnableVertexAttribArray(0);
+    glx.EnableVertexAttribArray(1);
+    glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), nullptr);
+    glx.VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (const void*)(2 * sizeof(GLfloat)));
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+    glClear(GL_COLOR_BUFFER_BIT);
+    glx.MultiDrawArraysIndirectCount(GL_TRIANGLES, (const void*)arraysCommandOffset,
+        countOffset, drawCount, arraysStride);
+    glFinish();
+
+    unsigned char leftPx[4] = {};
+    unsigned char rightPx[4] = {};
+    glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, leftPx);
+    glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rightPx);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        cleanup();
+        return fail("glMultiDrawArraysIndirectCount produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(leftPx) || !pixelIsGreenish(rightPx)) {
+        cleanup();
+        return fail("glMultiDrawArraysIndirectCount pixel check failed");
+    }
+
+    glx.BindBuffer(GL_DRAW_INDIRECT_BUFFER, buffers[3]);
+    glx.BufferData(GL_DRAW_INDIRECT_BUFFER, (GLsizeiptr)elementsCommandBuffer.size(), elementsCommandBuffer.data(), GL_STATIC_DRAW);
+    std::memset(leftPx, 0, sizeof(leftPx));
+    std::memset(rightPx, 0, sizeof(rightPx));
+    glClear(GL_COLOR_BUFFER_BIT);
+    glx.MultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_BYTE, (const void*)elementsCommandOffset,
+        countOffset, drawCount, elementsStride);
+    glFinish();
+
+    glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, leftPx);
+    glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rightPx);
+    err = glGetError();
+    cleanup();
+
+    if (err != GL_NO_ERROR) {
+        return fail("glMultiDrawElementsIndirectCount produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(leftPx) || !pixelIsGreenish(rightPx)) {
+        return fail("glMultiDrawElementsIndirectCount pixel check failed");
+    }
+    return pass("multi-draw indirect count buffer offsets rendered expected pixels");
+}
+
+static TestResult testPolygonOffsetClamp(TestContext&) {
+    if (!glx.PolygonOffsetClamp) {
+        return skip("glPolygonOffsetClamp is unavailable");
+    }
+
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glx.PolygonOffsetClamp(1.0f, 2.0f, 0.5f);
+    GLfloat clamp = -1.0f;
+    glGetFloatv(GL_POLYGON_OFFSET_CLAMP, &clamp);
+    GLenum err = glGetError();
+    glDisable(GL_POLYGON_OFFSET_FILL);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glPolygonOffsetClamp produced GL error " + std::to_string(err));
+    }
+    if (!nearlyEqual(clamp, 0.5f)) {
+        return fail("glPolygonOffsetClamp did not update clamp state");
+    }
+    return pass("polygon offset clamp state matched");
+}
+
+static TestResult testConservativeRasterParameteriNV(TestContext&) {
+    if (!hasExtensionString("GL_NV_conservative_raster_pre_snap_triangles")) {
+        return skip("GL_NV_conservative_raster_pre_snap_triangles is not advertised by this OpenGL stack");
+    }
+    if (!glx.ConservativeRasterParameteriNV) {
+        return skip("glConservativeRasterParameteriNV is unavailable");
+    }
+
+    glEnable(GL_CONSERVATIVE_RASTERIZATION_NV);
+    glx.ConservativeRasterParameteriNV(GL_CONSERVATIVE_RASTER_MODE_NV, GL_CONSERVATIVE_RASTER_MODE_POST_SNAP_NV);
+    GLenum err = glGetError();
+    glDisable(GL_CONSERVATIVE_RASTERIZATION_NV);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glConservativeRasterParameteriNV produced GL error " + std::to_string(err));
+    }
+    return pass("conservative raster mode parameter accepted");
+}
+
+static TestResult testMaxShaderCompilerThreadsKHR(TestContext&) {
+    if (!glx.MaxShaderCompilerThreadsKHR) {
+        return skip("glMaxShaderCompilerThreadsKHR is unavailable");
+    }
+
+    glx.MaxShaderCompilerThreadsKHR(1);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("glMaxShaderCompilerThreadsKHR produced GL error " + std::to_string(err));
+    }
+    return pass("shader compiler thread count accepted");
+}
+
+static TestResult testNamedFramebufferTextureMultiviewOVR(TestContext&) {
+    if (!hasExtensionString("GL_OVR_multiview")) {
+        return skip("GL_OVR_multiview is not advertised by this OpenGL stack");
+    }
+    if (!glx.NamedFramebufferTextureMultiviewOVR || !glx.TexImage3D ||
+        !glx.CheckNamedFramebufferStatus || !glx.GetNamedFramebufferAttachmentParameteriv) {
+        return skip("named framebuffer multiview entry points are unavailable");
+    }
+
+    GLuint tex = 0;
+    GLuint fbo = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glx.TexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, 4, 4, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+    if (glx.CreateFramebuffers) {
+        glx.CreateFramebuffers(1, &fbo);
+    } else if (glx.GenFramebuffers) {
+        glx.GenFramebuffers(1, &fbo);
+    } else {
+        glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+        glDeleteTextures(1, &tex);
+        return skip("framebuffer creation entry points are unavailable");
+    }
+
+    glx.NamedFramebufferTextureMultiviewOVR(fbo, GL_COLOR_ATTACHMENT0, tex, 0, 0, 2);
+    GLenum err = glGetError();
+    GLenum status = err == GL_NO_ERROR ? glx.CheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER) : 0;
+    GLint baseView = -1;
+    GLint numViews = -1;
+    if (err == GL_NO_ERROR) {
+        glx.GetNamedFramebufferAttachmentParameteriv(fbo, GL_COLOR_ATTACHMENT0,
+            GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_BASE_VIEW_INDEX_OVR, &baseView);
+        glx.GetNamedFramebufferAttachmentParameteriv(fbo, GL_COLOR_ATTACHMENT0,
+            GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_NUM_VIEWS_OVR, &numViews);
+        err = glGetError();
+    }
+
+    if (glx.DeleteFramebuffers) {
+        glx.DeleteFramebuffers(1, &fbo);
+    }
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    glDeleteTextures(1, &tex);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glNamedFramebufferTextureMultiviewOVR produced GL error " + std::to_string(err));
+    }
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        return fail("multiview framebuffer was incomplete: " + std::to_string(status));
+    }
+    if (baseView != 0 || numViews != 2) {
+        return fail("multiview attachment parameters did not match");
+    }
+    return pass("named framebuffer multiview attachment state matched");
+}
+
+static TestResult testWindowRectanglesEXTPageBoundary(TestContext&) {
+    if (!glx.WindowRectanglesEXT) {
+        return skip("glWindowRectanglesEXT is unavailable");
+    }
+
+    GLint maxRectangles = 0;
+    glGetIntegerv(GL_MAX_WINDOW_RECTANGLES_EXT, &maxRectangles);
+    if (maxRectangles < 1) {
+        return skip("GL_EXT_window_rectangles reports no usable rectangles");
+    }
+
+    const GLsizei count = maxRectangles >= 2 ? 2 : 1;
+    PageBytes boxesBytes;
+    if (!boxesBytes.init(count * 4 * sizeof(GLint), 5)) {
+        return skip("VirtualAlloc failed for window rectangle buffer");
+    }
+
+    GLint* boxes = reinterpret_cast<GLint*>(boxesBytes.data);
+    boxes[0] = 1;
+    boxes[1] = 2;
+    boxes[2] = 8;
+    boxes[3] = 9;
+    if (count > 1) {
+        boxes[4] = 4;
+        boxes[5] = 5;
+        boxes[6] = 10;
+        boxes[7] = 11;
+    }
+
+    glx.WindowRectanglesEXT(GL_EXCLUSIVE_EXT, count, boxes);
+    GLint mode = 0;
+    GLint numRectangles = 0;
+    glGetIntegerv(GL_WINDOW_RECTANGLE_MODE_EXT, &mode);
+    glGetIntegerv(GL_NUM_WINDOW_RECTANGLES_EXT, &numRectangles);
+    GLenum err = glGetError();
+    glx.WindowRectanglesEXT(GL_EXCLUSIVE_EXT, 0, nullptr);
+
+    if (err != GL_NO_ERROR) {
+        return fail("glWindowRectanglesEXT produced GL error " + std::to_string(err));
+    }
+    if (mode != GL_EXCLUSIVE_EXT || numRectangles != count) {
+        return fail("window rectangle state did not match");
+    }
+    return pass("window rectangle page-boundary state matched");
+}
+
+static TestResult testViewportSwizzleNV(TestContext&) {
+    if (!glx.ViewportSwizzleNV || !glx.GetIntegeri_v) {
+        return skip("viewport swizzle entry points are unavailable");
+    }
+
+    glx.ViewportSwizzleNV(0, GL_VIEWPORT_SWIZZLE_POSITIVE_X_NV, GL_VIEWPORT_SWIZZLE_POSITIVE_Y_NV,
+        GL_VIEWPORT_SWIZZLE_POSITIVE_Z_NV, GL_VIEWPORT_SWIZZLE_POSITIVE_W_NV);
+    GLint swizzleX = 0;
+    GLint swizzleY = 0;
+    GLint swizzleZ = 0;
+    GLint swizzleW = 0;
+    glx.GetIntegeri_v(GL_VIEWPORT_SWIZZLE_X_NV, 0, &swizzleX);
+    glx.GetIntegeri_v(GL_VIEWPORT_SWIZZLE_Y_NV, 0, &swizzleY);
+    glx.GetIntegeri_v(GL_VIEWPORT_SWIZZLE_Z_NV, 0, &swizzleZ);
+    glx.GetIntegeri_v(GL_VIEWPORT_SWIZZLE_W_NV, 0, &swizzleW);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("glViewportSwizzleNV produced GL error " + std::to_string(err));
+    }
+    if (swizzleX != GL_VIEWPORT_SWIZZLE_POSITIVE_X_NV ||
+        swizzleY != GL_VIEWPORT_SWIZZLE_POSITIVE_Y_NV ||
+        swizzleZ != GL_VIEWPORT_SWIZZLE_POSITIVE_Z_NV ||
+        swizzleW != GL_VIEWPORT_SWIZZLE_POSITIVE_W_NV) {
+        return fail("viewport swizzle state did not match");
+    }
+    return pass("viewport swizzle state matched");
+}
+
+static TestResult testScissorExclusiveNVPageBoundary(TestContext&) {
+    if (!glx.ScissorExclusiveNV || !glx.ScissorExclusiveArrayvNV || !glx.GetIntegeri_v) {
+        return skip("exclusive scissor entry points are unavailable");
+    }
+
+    GLint maxViewports = 0;
+    glGetIntegerv(GL_MAX_VIEWPORTS, &maxViewports);
+    if (maxViewports < 2) {
+        return skip("exclusive scissor array test needs at least two viewports");
+    }
+
+    PageBytes boxesBytes;
+    if (!boxesBytes.init(2 * 4 * sizeof(GLint), 7)) {
+        return skip("VirtualAlloc failed for exclusive scissor buffer");
+    }
+
+    GLint* boxes = reinterpret_cast<GLint*>(boxesBytes.data);
+    boxes[0] = 1;
+    boxes[1] = 2;
+    boxes[2] = 8;
+    boxes[3] = 9;
+    boxes[4] = 4;
+    boxes[5] = 5;
+    boxes[6] = 10;
+    boxes[7] = 11;
+
+    glx.ScissorExclusiveNV(0, 0, 16, 16);
+    glx.ScissorExclusiveArrayvNV(0, 2, boxes);
+    GLint box0[4] = {};
+    GLint box1[4] = {};
+    glx.GetIntegeri_v(GL_SCISSOR_BOX_EXCLUSIVE_NV, 0, box0);
+    glx.GetIntegeri_v(GL_SCISSOR_BOX_EXCLUSIVE_NV, 1, box1);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("exclusive scissor calls produced GL error " + std::to_string(err));
+    }
+    for (int i = 0; i < 4; ++i) {
+        if (box0[i] != boxes[i] || box1[i] != boxes[4 + i]) {
+            return fail("exclusive scissor state did not match");
+        }
+    }
+    return pass("exclusive scissor page-boundary state matched");
+}
+
 static TestResult testMultiDrawElements(TestContext&) {
     if (!glx.MultiDrawElements) {
         return skip("glMultiDrawElements is unavailable");
@@ -11183,6 +12538,7 @@ static TestResult testMultiDrawElements(TestContext&) {
 
 static std::vector<TestCase> tests() {
     return {
+        { "wgl-pixel-format-diagnostics", testWGLPixelFormatDiagnostics },
         { "shader-string-arrays", testShaderStringArrays },
         { "shader-page-boundary-strings", testShaderPageBoundaryStrings },
         { "shader-info-log-page-boundary", testShaderInfoLogPageBoundary },
@@ -11221,6 +12577,7 @@ static std::vector<TestCase> tests() {
         { "texture-subimage2d-pbo-offset", testTextureSubImage2DPBOOffset },
         { "texture-image2d-ext-pbo-offset", testTextureImage2DEXTPBOOffset },
         { "multitex-image2d-ext-pbo-offset", testMultiTexImage2DEXTPBOOffset },
+        { "ext-texture-storage-entry-points", testEXTTextureStorageEntryPoints },
         { "dsa-texture-subimage2d-page-boundary", testDSATextureSubImage2DPageBoundary },
         { "ext-texture-subimage2d-page-boundary", testEXTTextureSubImage2DPageBoundary },
         { "texture1d-page-boundary-readback", testTexture1DPageBoundaryReadback },
@@ -11259,6 +12616,15 @@ static std::vector<TestCase> tests() {
         { "texenv-getters", testTexEnvGetters },
         { "texgen-getters", testTexGenGetters },
         { "texenv-texgen-vector-inputs", testTexEnvTexGenVectorInputs },
+        { "gles-float-depth-state", testGLESFloatDepthState },
+        { "gles-shader-precision-page-boundary", testGLESShaderPrecisionPageBoundary },
+        { "gles-shader-binary-page-boundary", testGLESShaderBinaryPageBoundary },
+        { "gles-vertex-array-object-page-boundary", testGLESVertexArrayObjectPageBoundary },
+        { "gles-get-stringi", testGLESGetStringi },
+        { "gles-draw-buffers-clear-buffer-page-boundary", testGLESDrawBuffersClearBufferPageBoundary },
+        { "gles-renderbuffer-storage-page-boundary", testGLESRenderbufferStoragePageBoundary },
+        { "gles-generate-mipmap", testGLESGenerateMipmap },
+        { "gles-fixed-point-aliases-page-boundary", testGLESFixedPointAliasesPageBoundary },
         { "light-material-getters", testLightMaterialGetters },
         { "light-material-vector-inputs", testLightMaterialVectorInputs },
         { "pixel-map-getters", testPixelMapGetters },
@@ -11326,6 +12692,14 @@ static std::vector<TestCase> tests() {
         { "multi-draw-arrays-page-boundary", testMultiDrawArraysPageBoundary },
         { "indirect-draw-page-boundary", testIndirectDrawPageBoundary },
         { "multi-draw-indirect-page-boundary", testMultiDrawIndirectPageBoundary },
+        { "multi-draw-indirect-count-buffer-offsets", testMultiDrawIndirectCountBufferOffsets },
+        { "polygon-offset-clamp", testPolygonOffsetClamp },
+        { "conservative-raster-parameteri-nv", testConservativeRasterParameteriNV },
+        { "max-shader-compiler-threads-khr", testMaxShaderCompilerThreadsKHR },
+        { "named-framebuffer-texture-multiview-ovr", testNamedFramebufferTextureMultiviewOVR },
+        { "window-rectangles-ext-page-boundary", testWindowRectanglesEXTPageBoundary },
+        { "viewport-swizzle-nv", testViewportSwizzleNV },
+        { "scissor-exclusive-nv-page-boundary", testScissorExclusiveNVPageBoundary },
         { "multi-draw-elements", testMultiDrawElements },
         { "multi-draw-elements-wide-index-types", testMultiDrawElementsWideIndexTypes },
         { "multi-draw-elements-base-vertex-page-boundary", testMultiDrawElementsBaseVertexPageBoundary },
@@ -11368,6 +12742,13 @@ int main(int argc, char** argv) {
     ctx.quiet = quiet;
     if (!logPath.empty()) {
         ctx.log.open(logPath, std::ios::out | std::ios::trunc);
+    }
+    if (only == "wgl-pixel-format-diagnostics") {
+        TestResult result = testWGLPixelFormatDiagnostics(ctx);
+        const char* status = result.status == TestResult::Pass ? "PASS" :
+            result.status == TestResult::Fail ? "FAIL" : "SKIP";
+        ctx.write(std::string(status) + " wgl-pixel-format-diagnostics" + (result.message.empty() ? "" : ": " + result.message));
+        return result.status == TestResult::Fail ? 1 : 0;
     }
     if (!createContext(ctx)) {
         destroyContext(ctx);

@@ -82,7 +82,7 @@ bool FsFileNode::remove() {
     }
 #ifdef BOXEDWINE_ZLIB
     if (zipNode) {
-        std::shared_ptr<FsZip> fsZip = zipNode->fsZip.lock();
+        std::shared_ptr<FsZip> fsZip = zipNode->fsZip;
         if (fsZip) {
             fsZip->remove(this->path);
         }
@@ -406,7 +406,7 @@ U32 FsFileNode::rename(BString path) {
             this->removeNodeFromParent();
 #ifdef BOXEDWINE_ZLIB
             if (zipNode) {
-                std::shared_ptr<FsZip> fsZip = zipNode->fsZip.lock();
+                std::shared_ptr<FsZip> fsZip = zipNode->fsZip;
                 if (fsZip) {
                     fsZip->remove(this->path);
                 }

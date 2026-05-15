@@ -6196,5 +6196,1427 @@ void glcommon_glWriteMaskEXT(CPU* cpu) {
     GL_LOG ("glWriteMaskEXT GLuint res=%d, GLuint in=%d, GLenum outX=%d, GLenum outY=%d, GLenum outZ=%d, GLenum outW=%d",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6);
     }
 }
+// GLES coverage additions generated from gles.txt.
+void glcommon_glAcquireKeyedMutexWin32EXT(CPU* cpu) {
+    if (!ext_glAcquireKeyedMutexWin32EXT)
+        kpanic("ext_glAcquireKeyedMutexWin32EXT is NULL");
+    {
+    EAX=GL_FUNC(ext_glAcquireKeyedMutexWin32EXT)(ARG1, llARG2, ARG3);
+    GL_LOG_NO_FMT("glAcquireKeyedMutexWin32EXT");
+    }
+}
+void glcommon_glAlphaFuncx(CPU* cpu) {
+    if (!ext_glAlphaFuncx)
+        kpanic("ext_glAlphaFuncx is NULL");
+    {
+    GL_FUNC(ext_glAlphaFuncx)(ARG1, ARG2);
+    GL_LOG_NO_FMT("glAlphaFuncx");
+    }
+}
+void glcommon_glAlphaToCoverageDitherControlNV(CPU* cpu) {
+    if (!ext_glAlphaToCoverageDitherControlNV)
+        kpanic("ext_glAlphaToCoverageDitherControlNV is NULL");
+    {
+    GL_FUNC(ext_glAlphaToCoverageDitherControlNV)(ARG1);
+    GL_LOG_NO_FMT("glAlphaToCoverageDitherControlNV");
+    }
+}
+void glcommon_glAsyncCopyBufferSubDataNVX(CPU* cpu) {
+    if (!ext_glAsyncCopyBufferSubDataNVX)
+        kpanic("ext_glAsyncCopyBufferSubDataNVX is NULL");
+    {
+    EAX=GL_FUNC(ext_glAsyncCopyBufferSubDataNVX)(ARG1, marshalArray<GLuint>(cpu, ARG2, ARG1), marshalArray<GLuint64>(cpu, ARG3, ARG1), ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, ARG10, ARG11, marshalArray<GLuint>(cpu, ARG12, ARG11), marshalArray<GLuint64>(cpu, ARG13, ARG11));
+    GL_LOG_NO_FMT("glAsyncCopyBufferSubDataNVX");
+    }
+}
+void glcommon_glAsyncCopyImageSubDataNVX(CPU* cpu) {
+    if (!ext_glAsyncCopyImageSubDataNVX)
+        kpanic("ext_glAsyncCopyImageSubDataNVX is NULL");
+    {
+    EAX=GL_FUNC(ext_glAsyncCopyImageSubDataNVX)(ARG1, marshalArray<GLuint>(cpu, ARG2, ARG1), marshalArray<GLuint64>(cpu, ARG3, ARG1), ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, ARG10, ARG11, ARG12, ARG13, ARG14, ARG15, ARG16, ARG17, ARG18, ARG19, ARG20, ARG21, marshalArray<GLuint>(cpu, ARG22, ARG21), marshalArray<GLuint64>(cpu, ARG23, ARG21));
+    GL_LOG_NO_FMT("glAsyncCopyImageSubDataNVX");
+    }
+}
+void glcommon_glBindShadingRateImageNV(CPU* cpu) {
+    if (!ext_glBindShadingRateImageNV)
+        kpanic("ext_glBindShadingRateImageNV is NULL");
+    {
+    GL_FUNC(ext_glBindShadingRateImageNV)(ARG1);
+    GL_LOG_NO_FMT("glBindShadingRateImageNV");
+    }
+}
+void glcommon_glBlitFramebufferLayerEXT(CPU* cpu) {
+    if (!ext_glBlitFramebufferLayerEXT)
+        kpanic("ext_glBlitFramebufferLayerEXT is NULL");
+    {
+    GL_FUNC(ext_glBlitFramebufferLayerEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, ARG10, ARG11, ARG12);
+    GL_LOG_NO_FMT("glBlitFramebufferLayerEXT");
+    }
+}
+void glcommon_glBlitFramebufferLayersEXT(CPU* cpu) {
+    if (!ext_glBlitFramebufferLayersEXT)
+        kpanic("ext_glBlitFramebufferLayersEXT is NULL");
+    {
+    GL_FUNC(ext_glBlitFramebufferLayersEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, ARG10);
+    GL_LOG_NO_FMT("glBlitFramebufferLayersEXT");
+    }
+}
+void glcommon_glBufferAttachMemoryNV(CPU* cpu) {
+    if (!ext_glBufferAttachMemoryNV)
+        kpanic("ext_glBufferAttachMemoryNV is NULL");
+    {
+    GL_FUNC(ext_glBufferAttachMemoryNV)(ARG1, ARG2, llARG3);
+    GL_LOG_NO_FMT("glBufferAttachMemoryNV");
+    }
+}
+void glcommon_glBufferPageCommitmentMemNV(CPU* cpu) {
+    if (!ext_glBufferPageCommitmentMemNV)
+        kpanic("ext_glBufferPageCommitmentMemNV is NULL");
+    {
+    GL_FUNC(ext_glBufferPageCommitmentMemNV)(ARG1, ARG2, ARG3, ARG4, llARG5, bARG6);
+    GL_LOG_NO_FMT("glBufferPageCommitmentMemNV");
+    }
+}
+void glcommon_glBufferStorageExternalEXT(CPU* cpu) {
+    if (!ext_glBufferStorageExternalEXT)
+        kpanic("ext_glBufferStorageExternalEXT is NULL");
+    {
+    GL_FUNC(ext_glBufferStorageExternalEXT)(ARG1, ARG2, ARG3, (void*)pARG4, ARG5);
+    GL_LOG_NO_FMT("glBufferStorageExternalEXT");
+    }
+}
+void glcommon_glBufferStorageMemEXT(CPU* cpu) {
+    if (!ext_glBufferStorageMemEXT)
+        kpanic("ext_glBufferStorageMemEXT is NULL");
+    {
+    GL_FUNC(ext_glBufferStorageMemEXT)(ARG1, ARG2, ARG3, llARG4);
+    GL_LOG_NO_FMT("glBufferStorageMemEXT");
+    }
+}
+void glcommon_glClearColorx(CPU* cpu) {
+    if (!ext_glClearColorx)
+        kpanic("ext_glClearColorx is NULL");
+    {
+    GL_FUNC(ext_glClearColorx)(ARG1, ARG2, ARG3, ARG4);
+    GL_LOG_NO_FMT("glClearColorx");
+    }
+}
+void glcommon_glClearDepthx(CPU* cpu) {
+    if (!ext_glClearDepthx)
+        kpanic("ext_glClearDepthx is NULL");
+    {
+    GL_FUNC(ext_glClearDepthx)(ARG1);
+    GL_LOG_NO_FMT("glClearDepthx");
+    }
+}
+void glcommon_glClientWaitSemaphoreui64NVX(CPU* cpu) {
+    if (!ext_glClientWaitSemaphoreui64NVX)
+        kpanic("ext_glClientWaitSemaphoreui64NVX is NULL");
+    {
+    GL_FUNC(ext_glClientWaitSemaphoreui64NVX)(ARG1, marshalArray<GLuint>(cpu, ARG2, ARG1), marshalArray<GLuint64>(cpu, ARG3, ARG1));
+    GL_LOG_NO_FMT("glClientWaitSemaphoreui64NVX");
+    }
+}
+void glcommon_glClipPlanef(CPU* cpu) {
+    if (!ext_glClipPlanef)
+        kpanic("ext_glClipPlanef is NULL");
+    {
+    GL_FUNC(ext_glClipPlanef)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 4));
+    GL_LOG_NO_FMT("glClipPlanef");
+    }
+}
+void glcommon_glClipPlanex(CPU* cpu) {
+    if (!ext_glClipPlanex)
+        kpanic("ext_glClipPlanex is NULL");
+    {
+    GL_FUNC(ext_glClipPlanex)(ARG1, marshalArray<GLfixed>(cpu, ARG2, 4));
+    GL_LOG_NO_FMT("glClipPlanex");
+    }
+}
+void glcommon_glColor4x(CPU* cpu) {
+    if (!ext_glColor4x)
+        kpanic("ext_glColor4x is NULL");
+    {
+    GL_FUNC(ext_glColor4x)(ARG1, ARG2, ARG3, ARG4);
+    GL_LOG_NO_FMT("glColor4x");
+    }
+}
+void glcommon_glConservativeRasterParameteriNV(CPU* cpu) {
+    if (!ext_glConservativeRasterParameteriNV)
+        kpanic("ext_glConservativeRasterParameteriNV is NULL");
+    {
+    GL_FUNC(ext_glConservativeRasterParameteriNV)(ARG1, ARG2);
+    GL_LOG_NO_FMT("glConservativeRasterParameteriNV");
+    }
+}
+void glcommon_glCreateMemoryObjectsEXT(CPU* cpu) {
+    if (!ext_glCreateMemoryObjectsEXT)
+        kpanic("ext_glCreateMemoryObjectsEXT is NULL");
+    {
+    MarshalReadWrite<GLuint> rw2(cpu, ARG2, ARG1);
+    GL_FUNC(ext_glCreateMemoryObjectsEXT)(ARG1, rw2.getPtr());
+    GL_LOG_NO_FMT("glCreateMemoryObjectsEXT");
+    }
+}
+void glcommon_glCreateProgressFenceNVX(CPU* cpu) {
+    if (!ext_glCreateProgressFenceNVX)
+        kpanic("ext_glCreateProgressFenceNVX is NULL");
+    {
+    EAX=GL_FUNC(ext_glCreateProgressFenceNVX)();
+    GL_LOG_NO_FMT("glCreateProgressFenceNVX");
+    }
+}
+void glcommon_glCreateSemaphoresNV(CPU* cpu) {
+    if (!ext_glCreateSemaphoresNV)
+        kpanic("ext_glCreateSemaphoresNV is NULL");
+    {
+    MarshalReadWrite<GLuint> rw2(cpu, ARG2, ARG1);
+    GL_FUNC(ext_glCreateSemaphoresNV)(ARG1, rw2.getPtr());
+    GL_LOG_NO_FMT("glCreateSemaphoresNV");
+    }
+}
+void glcommon_glDeleteMemoryObjectsEXT(CPU* cpu) {
+    if (!ext_glDeleteMemoryObjectsEXT)
+        kpanic("ext_glDeleteMemoryObjectsEXT is NULL");
+    {
+    GL_FUNC(ext_glDeleteMemoryObjectsEXT)(ARG1, marshalArray<GLuint>(cpu, ARG2, ARG1));
+    GL_LOG_NO_FMT("glDeleteMemoryObjectsEXT");
+    }
+}
+void glcommon_glDeleteQueryResourceTagNV(CPU* cpu) {
+    if (!ext_glDeleteQueryResourceTagNV)
+        kpanic("ext_glDeleteQueryResourceTagNV is NULL");
+    {
+    GL_FUNC(ext_glDeleteQueryResourceTagNV)(ARG1, marshalArray<GLint>(cpu, ARG2, ARG1));
+    GL_LOG_NO_FMT("glDeleteQueryResourceTagNV");
+    }
+}
+void glcommon_glDeleteSemaphoresEXT(CPU* cpu) {
+    if (!ext_glDeleteSemaphoresEXT)
+        kpanic("ext_glDeleteSemaphoresEXT is NULL");
+    {
+    GL_FUNC(ext_glDeleteSemaphoresEXT)(ARG1, marshalArray<GLuint>(cpu, ARG2, ARG1));
+    GL_LOG_NO_FMT("glDeleteSemaphoresEXT");
+    }
+}
+void glcommon_glDepthRangeArraydvNV(CPU* cpu) {
+    if (!ext_glDepthRangeArraydvNV)
+        kpanic("ext_glDepthRangeArraydvNV is NULL");
+    {
+    GL_FUNC(ext_glDepthRangeArraydvNV)(ARG1, ARG2, marshalArray<GLdouble>(cpu, ARG3, ARG2));
+    GL_LOG_NO_FMT("glDepthRangeArraydvNV");
+    }
+}
+void glcommon_glDepthRangeIndexeddNV(CPU* cpu) {
+    if (!ext_glDepthRangeIndexeddNV)
+        kpanic("ext_glDepthRangeIndexeddNV is NULL");
+    {
+    GL_FUNC(ext_glDepthRangeIndexeddNV)(ARG1, dARG2, dARG3);
+    GL_LOG_NO_FMT("glDepthRangeIndexeddNV");
+    }
+}
+void glcommon_glDepthRangex(CPU* cpu) {
+    if (!ext_glDepthRangex)
+        kpanic("ext_glDepthRangex is NULL");
+    {
+    GL_FUNC(ext_glDepthRangex)(ARG1, ARG2);
+    GL_LOG_NO_FMT("glDepthRangex");
+    }
+}
+void glcommon_glDrawMeshTasksEXT(CPU* cpu) {
+    if (!ext_glDrawMeshTasksEXT)
+        kpanic("ext_glDrawMeshTasksEXT is NULL");
+    {
+    GL_FUNC(ext_glDrawMeshTasksEXT)(ARG1, ARG2, ARG3);
+    GL_LOG_NO_FMT("glDrawMeshTasksEXT");
+    }
+}
+void glcommon_glDrawMeshTasksIndirectEXT(CPU* cpu) {
+    if (!ext_glDrawMeshTasksIndirectEXT)
+        kpanic("ext_glDrawMeshTasksIndirectEXT is NULL");
+    {
+    GL_FUNC(ext_glDrawMeshTasksIndirectEXT)(ARG1);
+    GL_LOG_NO_FMT("glDrawMeshTasksIndirectEXT");
+    }
+}
+void glcommon_glDrawMeshTasksIndirectNV(CPU* cpu) {
+    if (!ext_glDrawMeshTasksIndirectNV)
+        kpanic("ext_glDrawMeshTasksIndirectNV is NULL");
+    {
+    GL_FUNC(ext_glDrawMeshTasksIndirectNV)(ARG1);
+    GL_LOG_NO_FMT("glDrawMeshTasksIndirectNV");
+    }
+}
+void glcommon_glDrawMeshTasksNV(CPU* cpu) {
+    if (!ext_glDrawMeshTasksNV)
+        kpanic("ext_glDrawMeshTasksNV is NULL");
+    {
+    GL_FUNC(ext_glDrawMeshTasksNV)(ARG1, ARG2);
+    GL_LOG_NO_FMT("glDrawMeshTasksNV");
+    }
+}
+void glcommon_glDrawVkImageNV(CPU* cpu) {
+    if (!ext_glDrawVkImageNV)
+        kpanic("ext_glDrawVkImageNV is NULL");
+    {
+    GL_FUNC(ext_glDrawVkImageNV)(llARG1, ARG2, fARG3, fARG4, fARG5, fARG6, fARG7, fARG8, fARG9, fARG10, fARG11);
+    GL_LOG_NO_FMT("glDrawVkImageNV");
+    }
+}
+void glcommon_glEGLImageTargetTexStorageEXT(CPU* cpu) {
+    if (!ext_glEGLImageTargetTexStorageEXT)
+        kpanic("ext_glEGLImageTargetTexStorageEXT is NULL");
+    {
+    GL_FUNC(ext_glEGLImageTargetTexStorageEXT)(ARG1, (void*)pARG2, marshalArray<GLint>(cpu, ARG3, 1));
+    GL_LOG_NO_FMT("glEGLImageTargetTexStorageEXT");
+    }
+}
+void glcommon_glEGLImageTargetTextureStorageEXT(CPU* cpu) {
+    if (!ext_glEGLImageTargetTextureStorageEXT)
+        kpanic("ext_glEGLImageTargetTextureStorageEXT is NULL");
+    {
+    GL_FUNC(ext_glEGLImageTargetTextureStorageEXT)(ARG1, (void*)pARG2, marshalArray<GLint>(cpu, ARG3, 1));
+    GL_LOG_NO_FMT("glEGLImageTargetTextureStorageEXT");
+    }
+}
+void glcommon_glFogx(CPU* cpu) {
+    if (!ext_glFogx)
+        kpanic("ext_glFogx is NULL");
+    {
+    GL_FUNC(ext_glFogx)(ARG1, ARG2);
+    GL_LOG_NO_FMT("glFogx");
+    }
+}
+void glcommon_glFogxv(CPU* cpu) {
+    if (!ext_glFogxv)
+        kpanic("ext_glFogxv is NULL");
+    {
+    GL_FUNC(ext_glFogxv)(ARG1, marshalArray<GLfixed>(cpu, ARG2, getMarshalParamCount(ARG1)));
+    GL_LOG_NO_FMT("glFogxv");
+    }
+}
+void glcommon_glFramebufferFetchBarrierEXT(CPU* cpu) {
+    if (!ext_glFramebufferFetchBarrierEXT)
+        kpanic("ext_glFramebufferFetchBarrierEXT is NULL");
+    {
+    GL_FUNC(ext_glFramebufferFetchBarrierEXT)();
+    GL_LOG_NO_FMT("glFramebufferFetchBarrierEXT");
+    }
+}
+void glcommon_glFramebufferParameteriMESA(CPU* cpu) {
+    if (!ext_glFramebufferParameteriMESA)
+        kpanic("ext_glFramebufferParameteriMESA is NULL");
+    {
+    GL_FUNC(ext_glFramebufferParameteriMESA)(ARG1, ARG2, ARG3);
+    GL_LOG_NO_FMT("glFramebufferParameteriMESA");
+    }
+}
+void glcommon_glFramebufferSamplePositionsfvAMD(CPU* cpu) {
+    if (!ext_glFramebufferSamplePositionsfvAMD)
+        kpanic("ext_glFramebufferSamplePositionsfvAMD is NULL");
+    {
+    GL_FUNC(ext_glFramebufferSamplePositionsfvAMD)(ARG1, ARG2, ARG3, marshalArray<GLfloat>(cpu, ARG4, (ARG3*2)));
+    GL_LOG_NO_FMT("glFramebufferSamplePositionsfvAMD");
+    }
+}
+void glcommon_glFrustumf(CPU* cpu) {
+    if (!ext_glFrustumf)
+        kpanic("ext_glFrustumf is NULL");
+    {
+    GL_FUNC(ext_glFrustumf)(fARG1, fARG2, fARG3, fARG4, fARG5, fARG6);
+    GL_LOG_NO_FMT("glFrustumf");
+    }
+}
+void glcommon_glFrustumx(CPU* cpu) {
+    if (!ext_glFrustumx)
+        kpanic("ext_glFrustumx is NULL");
+    {
+    GL_FUNC(ext_glFrustumx)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    GL_LOG_NO_FMT("glFrustumx");
+    }
+}
+void glcommon_glGenQueryResourceTagNV(CPU* cpu) {
+    if (!ext_glGenQueryResourceTagNV)
+        kpanic("ext_glGenQueryResourceTagNV is NULL");
+    {
+    MarshalReadWrite<GLint> rw2(cpu, ARG2, ARG1);
+    GL_FUNC(ext_glGenQueryResourceTagNV)(ARG1, rw2.getPtr());
+    GL_LOG_NO_FMT("glGenQueryResourceTagNV");
+    }
+}
+void glcommon_glGenSemaphoresEXT(CPU* cpu) {
+    if (!ext_glGenSemaphoresEXT)
+        kpanic("ext_glGenSemaphoresEXT is NULL");
+    {
+    MarshalReadWrite<GLuint> rw2(cpu, ARG2, ARG1);
+    GL_FUNC(ext_glGenSemaphoresEXT)(ARG1, rw2.getPtr());
+    GL_LOG_NO_FMT("glGenSemaphoresEXT");
+    }
+}
+void glcommon_glGetClipPlanef(CPU* cpu) {
+    if (!ext_glGetClipPlanef)
+        kpanic("ext_glGetClipPlanef is NULL");
+    {
+    MarshalReadWrite<GLfloat> rw2(cpu, ARG2, 4);
+    GL_FUNC(ext_glGetClipPlanef)(ARG1, rw2.getPtr());
+    GL_LOG_NO_FMT("glGetClipPlanef");
+    }
+}
+void glcommon_glGetClipPlanex(CPU* cpu) {
+    if (!ext_glGetClipPlanex)
+        kpanic("ext_glGetClipPlanex is NULL");
+    {
+    MarshalReadWrite<GLfixed> rw2(cpu, ARG2, 4);
+    GL_FUNC(ext_glGetClipPlanex)(ARG1, rw2.getPtr());
+    GL_LOG_NO_FMT("glGetClipPlanex");
+    }
+}
+void glcommon_glGetFixedv(CPU* cpu) {
+    if (!ext_glGetFixedv)
+        kpanic("ext_glGetFixedv is NULL");
+    {
+    MarshalReadWrite<GLfixed> rw2(cpu, ARG2, getMarshalParamCount(ARG1));
+    GL_FUNC(ext_glGetFixedv)(ARG1, rw2.getPtr());
+    GL_LOG_NO_FMT("glGetFixedv");
+    }
+}
+void glcommon_glGetFramebufferParameterfvAMD(CPU* cpu) {
+    if (!ext_glGetFramebufferParameterfvAMD)
+        kpanic("ext_glGetFramebufferParameterfvAMD is NULL");
+    {
+    MarshalReadWrite<GLfloat> rw6(cpu, ARG6, ARG5);
+    GL_FUNC(ext_glGetFramebufferParameterfvAMD)(ARG1, ARG2, ARG3, ARG4, ARG5, rw6.getPtr());
+    GL_LOG_NO_FMT("glGetFramebufferParameterfvAMD");
+    }
+}
+void glcommon_glGetFramebufferParameterivMESA(CPU* cpu) {
+    if (!ext_glGetFramebufferParameterivMESA)
+        kpanic("ext_glGetFramebufferParameterivMESA is NULL");
+    {
+    MarshalReadWrite<GLint> rw3(cpu, ARG3, getMarshalParamCount(ARG2));
+    GL_FUNC(ext_glGetFramebufferParameterivMESA)(ARG1, ARG2, rw3.getPtr());
+    GL_LOG_NO_FMT("glGetFramebufferParameterivMESA");
+    }
+}
+void glcommon_glGetLightxv(CPU* cpu) {
+    if (!ext_glGetLightxv)
+        kpanic("ext_glGetLightxv is NULL");
+    {
+    MarshalReadWrite<GLfixed> rw3(cpu, ARG3, glcommon_glLightv_size(ARG2));
+    GL_FUNC(ext_glGetLightxv)(ARG1, ARG2, rw3.getPtr());
+    GL_LOG_NO_FMT("glGetLightxv");
+    }
+}
+void glcommon_glGetMaterialxv(CPU* cpu) {
+    if (!ext_glGetMaterialxv)
+        kpanic("ext_glGetMaterialxv is NULL");
+    {
+    MarshalReadWrite<GLfixed> rw3(cpu, ARG3, glcommon_glMaterialv_size(ARG2));
+    GL_FUNC(ext_glGetMaterialxv)(ARG1, ARG2, rw3.getPtr());
+    GL_LOG_NO_FMT("glGetMaterialxv");
+    }
+}
+void glcommon_glGetMemoryObjectDetachedResourcesuivNV(CPU* cpu) {
+    if (!ext_glGetMemoryObjectDetachedResourcesuivNV)
+        kpanic("ext_glGetMemoryObjectDetachedResourcesuivNV is NULL");
+    {
+    MarshalReadWrite<GLuint> rw5(cpu, ARG5, ARG4);
+    GL_FUNC(ext_glGetMemoryObjectDetachedResourcesuivNV)(ARG1, ARG2, ARG3, ARG4, rw5.getPtr());
+    GL_LOG_NO_FMT("glGetMemoryObjectDetachedResourcesuivNV");
+    }
+}
+void glcommon_glGetMemoryObjectParameterivEXT(CPU* cpu) {
+    if (!ext_glGetMemoryObjectParameterivEXT)
+        kpanic("ext_glGetMemoryObjectParameterivEXT is NULL");
+    {
+    MarshalReadWrite<GLint> rw3(cpu, ARG3, getMarshalParamCount(ARG2));
+    GL_FUNC(ext_glGetMemoryObjectParameterivEXT)(ARG1, ARG2, rw3.getPtr());
+    GL_LOG_NO_FMT("glGetMemoryObjectParameterivEXT");
+    }
+}
+void glcommon_glGetNamedFramebufferParameterfvAMD(CPU* cpu) {
+    if (!ext_glGetNamedFramebufferParameterfvAMD)
+        kpanic("ext_glGetNamedFramebufferParameterfvAMD is NULL");
+    {
+    MarshalReadWrite<GLfloat> rw6(cpu, ARG6, ARG5);
+    GL_FUNC(ext_glGetNamedFramebufferParameterfvAMD)(ARG1, ARG2, ARG3, ARG4, ARG5, rw6.getPtr());
+    GL_LOG_NO_FMT("glGetNamedFramebufferParameterfvAMD");
+    }
+}
+void glcommon_glGetSemaphoreParameterivNV(CPU* cpu) {
+    if (!ext_glGetSemaphoreParameterivNV)
+        kpanic("ext_glGetSemaphoreParameterivNV is NULL");
+    {
+    MarshalReadWrite<GLint> rw3(cpu, ARG3, getMarshalParamCount(ARG2));
+    GL_FUNC(ext_glGetSemaphoreParameterivNV)(ARG1, ARG2, rw3.getPtr());
+    GL_LOG_NO_FMT("glGetSemaphoreParameterivNV");
+    }
+}
+void glcommon_glGetSemaphoreParameterui64vEXT(CPU* cpu) {
+    if (!ext_glGetSemaphoreParameterui64vEXT)
+        kpanic("ext_glGetSemaphoreParameterui64vEXT is NULL");
+    {
+    MarshalReadWrite<GLuint64> rw3(cpu, ARG3, getMarshalParamCount(ARG2));
+    GL_FUNC(ext_glGetSemaphoreParameterui64vEXT)(ARG1, ARG2, rw3.getPtr());
+    GL_LOG_NO_FMT("glGetSemaphoreParameterui64vEXT");
+    }
+}
+void glcommon_glGetShadingRateImagePaletteNV(CPU* cpu) {
+    if (!ext_glGetShadingRateImagePaletteNV)
+        kpanic("ext_glGetShadingRateImagePaletteNV is NULL");
+    {
+    MarshalReadWrite<GLenum> rw3(cpu, ARG3, ARG3);
+    GL_FUNC(ext_glGetShadingRateImagePaletteNV)(ARG1, ARG2, rw3.getPtr());
+    GL_LOG_NO_FMT("glGetShadingRateImagePaletteNV");
+    }
+}
+void glcommon_glGetShadingRateSampleLocationivNV(CPU* cpu) {
+    if (!ext_glGetShadingRateSampleLocationivNV)
+        kpanic("ext_glGetShadingRateSampleLocationivNV is NULL");
+    {
+    MarshalReadWrite<GLint> rw4(cpu, ARG4, 1);
+    GL_FUNC(ext_glGetShadingRateSampleLocationivNV)(ARG1, ARG2, ARG3, rw4.getPtr());
+    GL_LOG_NO_FMT("glGetShadingRateSampleLocationivNV");
+    }
+}
+void glcommon_glGetTexEnvxv(CPU* cpu) {
+    if (!ext_glGetTexEnvxv)
+        kpanic("ext_glGetTexEnvxv is NULL");
+    {
+    MarshalReadWrite<GLfixed> rw3(cpu, ARG3, getMarshalParamCount(ARG2));
+    GL_FUNC(ext_glGetTexEnvxv)(ARG1, ARG2, rw3.getPtr());
+    GL_LOG_NO_FMT("glGetTexEnvxv");
+    }
+}
+void glcommon_glGetTexParameterxv(CPU* cpu) {
+    if (!ext_glGetTexParameterxv)
+        kpanic("ext_glGetTexParameterxv is NULL");
+    {
+    MarshalReadWrite<GLfixed> rw3(cpu, ARG3, getMarshalParamCount(ARG2));
+    GL_FUNC(ext_glGetTexParameterxv)(ARG1, ARG2, rw3.getPtr());
+    GL_LOG_NO_FMT("glGetTexParameterxv");
+    }
+}
+void glcommon_glGetUnsignedBytei_vEXT(CPU* cpu) {
+    if (!ext_glGetUnsignedBytei_vEXT)
+        kpanic("ext_glGetUnsignedBytei_vEXT is NULL");
+    {
+    MarshalReadWrite<GLubyte> rw3(cpu, ARG3, 1);
+    GL_FUNC(ext_glGetUnsignedBytei_vEXT)(ARG1, ARG2, rw3.getPtr());
+    GL_LOG_NO_FMT("glGetUnsignedBytei_vEXT");
+    }
+}
+void glcommon_glGetUnsignedBytevEXT(CPU* cpu) {
+    if (!ext_glGetUnsignedBytevEXT)
+        kpanic("ext_glGetUnsignedBytevEXT is NULL");
+    {
+    MarshalReadWrite<GLubyte> rw2(cpu, ARG2, 1);
+    GL_FUNC(ext_glGetUnsignedBytevEXT)(ARG1, rw2.getPtr());
+    GL_LOG_NO_FMT("glGetUnsignedBytevEXT");
+    }
+}
+void glcommon_glGetVkProcAddrNV(CPU* cpu) {
+    if (!ext_glGetVkProcAddrNV)
+        kpanic("ext_glGetVkProcAddrNV is NULL");
+    {
+    void* ret=GL_FUNC(ext_glGetVkProcAddrNV)(marshalsz(cpu, ARG1));
+    EAX = marshalBackVoidPtr(cpu, ret);
+    GL_LOG_NO_FMT("glGetVkProcAddrNV");
+    }
+}
+void glcommon_glImportMemoryFdEXT(CPU* cpu) {
+    if (!ext_glImportMemoryFdEXT)
+        kpanic("ext_glImportMemoryFdEXT is NULL");
+    {
+    GL_FUNC(ext_glImportMemoryFdEXT)(ARG1, llARG2, ARG3, ARG4);
+    GL_LOG_NO_FMT("glImportMemoryFdEXT");
+    }
+}
+void glcommon_glImportMemoryWin32HandleEXT(CPU* cpu) {
+    if (!ext_glImportMemoryWin32HandleEXT)
+        kpanic("ext_glImportMemoryWin32HandleEXT is NULL");
+    {
+    GL_FUNC(ext_glImportMemoryWin32HandleEXT)(ARG1, llARG2, ARG3, (void*)pARG4);
+    GL_LOG_NO_FMT("glImportMemoryWin32HandleEXT");
+    }
+}
+void glcommon_glImportMemoryWin32NameEXT(CPU* cpu) {
+    if (!ext_glImportMemoryWin32NameEXT)
+        kpanic("ext_glImportMemoryWin32NameEXT is NULL");
+    {
+    GL_FUNC(ext_glImportMemoryWin32NameEXT)(ARG1, llARG2, ARG3, (void*)pARG4);
+    GL_LOG_NO_FMT("glImportMemoryWin32NameEXT");
+    }
+}
+void glcommon_glImportSemaphoreFdEXT(CPU* cpu) {
+    if (!ext_glImportSemaphoreFdEXT)
+        kpanic("ext_glImportSemaphoreFdEXT is NULL");
+    {
+    GL_FUNC(ext_glImportSemaphoreFdEXT)(ARG1, ARG2, ARG3);
+    GL_LOG_NO_FMT("glImportSemaphoreFdEXT");
+    }
+}
+void glcommon_glImportSemaphoreWin32HandleEXT(CPU* cpu) {
+    if (!ext_glImportSemaphoreWin32HandleEXT)
+        kpanic("ext_glImportSemaphoreWin32HandleEXT is NULL");
+    {
+    GL_FUNC(ext_glImportSemaphoreWin32HandleEXT)(ARG1, ARG2, (void*)pARG3);
+    GL_LOG_NO_FMT("glImportSemaphoreWin32HandleEXT");
+    }
+}
+void glcommon_glImportSemaphoreWin32NameEXT(CPU* cpu) {
+    if (!ext_glImportSemaphoreWin32NameEXT)
+        kpanic("ext_glImportSemaphoreWin32NameEXT is NULL");
+    {
+    GL_FUNC(ext_glImportSemaphoreWin32NameEXT)(ARG1, ARG2, (void*)pARG3);
+    GL_LOG_NO_FMT("glImportSemaphoreWin32NameEXT");
+    }
+}
+void glcommon_glIsMemoryObjectEXT(CPU* cpu) {
+    if (!ext_glIsMemoryObjectEXT)
+        kpanic("ext_glIsMemoryObjectEXT is NULL");
+    {
+    EAX=GL_FUNC(ext_glIsMemoryObjectEXT)(ARG1);
+    GL_LOG_NO_FMT("glIsMemoryObjectEXT");
+    }
+}
+void glcommon_glIsSemaphoreEXT(CPU* cpu) {
+    if (!ext_glIsSemaphoreEXT)
+        kpanic("ext_glIsSemaphoreEXT is NULL");
+    {
+    EAX=GL_FUNC(ext_glIsSemaphoreEXT)(ARG1);
+    GL_LOG_NO_FMT("glIsSemaphoreEXT");
+    }
+}
+void glcommon_glLGPUCopyImageSubDataNVX(CPU* cpu) {
+    if (!ext_glLGPUCopyImageSubDataNVX)
+        kpanic("ext_glLGPUCopyImageSubDataNVX is NULL");
+    {
+    GL_FUNC(ext_glLGPUCopyImageSubDataNVX)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, ARG10, ARG11, ARG12, ARG13, ARG14, ARG15, ARG16, ARG17);
+    GL_LOG_NO_FMT("glLGPUCopyImageSubDataNVX");
+    }
+}
+void glcommon_glLGPUInterlockNVX(CPU* cpu) {
+    if (!ext_glLGPUInterlockNVX)
+        kpanic("ext_glLGPUInterlockNVX is NULL");
+    {
+    GL_FUNC(ext_glLGPUInterlockNVX)();
+    GL_LOG_NO_FMT("glLGPUInterlockNVX");
+    }
+}
+void glcommon_glLGPUNamedBufferSubDataNVX(CPU* cpu) {
+    if (!ext_glLGPUNamedBufferSubDataNVX)
+        kpanic("ext_glLGPUNamedBufferSubDataNVX is NULL");
+    {
+    GL_FUNC(ext_glLGPUNamedBufferSubDataNVX)(ARG1, ARG2, ARG3, ARG4, marshalArray<GLubyte>(cpu, ARG5, ARG4));
+    GL_LOG_NO_FMT("glLGPUNamedBufferSubDataNVX");
+    }
+}
+void glcommon_glLightModelx(CPU* cpu) {
+    if (!ext_glLightModelx)
+        kpanic("ext_glLightModelx is NULL");
+    {
+    GL_FUNC(ext_glLightModelx)(ARG1, ARG2);
+    GL_LOG_NO_FMT("glLightModelx");
+    }
+}
+void glcommon_glLightModelxv(CPU* cpu) {
+    if (!ext_glLightModelxv)
+        kpanic("ext_glLightModelxv is NULL");
+    {
+    GL_FUNC(ext_glLightModelxv)(ARG1, marshalArray<GLfixed>(cpu, ARG2, getMarshalParamCount(ARG1)));
+    GL_LOG_NO_FMT("glLightModelxv");
+    }
+}
+void glcommon_glLightx(CPU* cpu) {
+    if (!ext_glLightx)
+        kpanic("ext_glLightx is NULL");
+    {
+    GL_FUNC(ext_glLightx)(ARG1, ARG2, ARG3);
+    GL_LOG_NO_FMT("glLightx");
+    }
+}
+void glcommon_glLightxv(CPU* cpu) {
+    if (!ext_glLightxv)
+        kpanic("ext_glLightxv is NULL");
+    {
+    GL_FUNC(ext_glLightxv)(ARG1, ARG2, marshalArray<GLfixed>(cpu, ARG3, glcommon_glLightv_size(ARG2)));
+    GL_LOG_NO_FMT("glLightxv");
+    }
+}
+void glcommon_glLineWidthx(CPU* cpu) {
+    if (!ext_glLineWidthx)
+        kpanic("ext_glLineWidthx is NULL");
+    {
+    GL_FUNC(ext_glLineWidthx)(ARG1);
+    GL_LOG_NO_FMT("glLineWidthx");
+    }
+}
+void glcommon_glLoadMatrixx(CPU* cpu) {
+    if (!ext_glLoadMatrixx)
+        kpanic("ext_glLoadMatrixx is NULL");
+    {
+    GL_FUNC(ext_glLoadMatrixx)(marshalArray<GLfixed>(cpu, ARG1, 16));
+    GL_LOG_NO_FMT("glLoadMatrixx");
+    }
+}
+void glcommon_glMaterialx(CPU* cpu) {
+    if (!ext_glMaterialx)
+        kpanic("ext_glMaterialx is NULL");
+    {
+    GL_FUNC(ext_glMaterialx)(ARG1, ARG2, ARG3);
+    GL_LOG_NO_FMT("glMaterialx");
+    }
+}
+void glcommon_glMaterialxv(CPU* cpu) {
+    if (!ext_glMaterialxv)
+        kpanic("ext_glMaterialxv is NULL");
+    {
+    GL_FUNC(ext_glMaterialxv)(ARG1, ARG2, marshalArray<GLfixed>(cpu, ARG3, glcommon_glMaterialv_size(ARG2)));
+    GL_LOG_NO_FMT("glMaterialxv");
+    }
+}
+void glcommon_glMaxShaderCompilerThreadsKHR(CPU* cpu) {
+    if (!ext_glMaxShaderCompilerThreadsKHR)
+        kpanic("ext_glMaxShaderCompilerThreadsKHR is NULL");
+    {
+    GL_FUNC(ext_glMaxShaderCompilerThreadsKHR)(ARG1);
+    GL_LOG_NO_FMT("glMaxShaderCompilerThreadsKHR");
+    }
+}
+void glcommon_glMemoryObjectParameterivEXT(CPU* cpu) {
+    if (!ext_glMemoryObjectParameterivEXT)
+        kpanic("ext_glMemoryObjectParameterivEXT is NULL");
+    {
+    GL_FUNC(ext_glMemoryObjectParameterivEXT)(ARG1, ARG2, marshalArray<GLint>(cpu, ARG3, getMarshalParamCount(ARG2)));
+    GL_LOG_NO_FMT("glMemoryObjectParameterivEXT");
+    }
+}
+void glcommon_glMulticastBarrierNV(CPU* cpu) {
+    if (!ext_glMulticastBarrierNV)
+        kpanic("ext_glMulticastBarrierNV is NULL");
+    {
+    GL_FUNC(ext_glMulticastBarrierNV)();
+    GL_LOG_NO_FMT("glMulticastBarrierNV");
+    }
+}
+void glcommon_glMulticastBlitFramebufferNV(CPU* cpu) {
+    if (!ext_glMulticastBlitFramebufferNV)
+        kpanic("ext_glMulticastBlitFramebufferNV is NULL");
+    {
+    GL_FUNC(ext_glMulticastBlitFramebufferNV)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, ARG10, ARG11, ARG12);
+    GL_LOG_NO_FMT("glMulticastBlitFramebufferNV");
+    }
+}
+void glcommon_glMulticastBufferSubDataNV(CPU* cpu) {
+    if (!ext_glMulticastBufferSubDataNV)
+        kpanic("ext_glMulticastBufferSubDataNV is NULL");
+    {
+    GL_FUNC(ext_glMulticastBufferSubDataNV)(ARG1, ARG2, ARG3, ARG4, marshalArray<GLubyte>(cpu, ARG5, ARG4));
+    GL_LOG_NO_FMT("glMulticastBufferSubDataNV");
+    }
+}
+void glcommon_glMulticastCopyBufferSubDataNV(CPU* cpu) {
+    if (!ext_glMulticastCopyBufferSubDataNV)
+        kpanic("ext_glMulticastCopyBufferSubDataNV is NULL");
+    {
+    GL_FUNC(ext_glMulticastCopyBufferSubDataNV)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
+    GL_LOG_NO_FMT("glMulticastCopyBufferSubDataNV");
+    }
+}
+void glcommon_glMulticastCopyImageSubDataNV(CPU* cpu) {
+    if (!ext_glMulticastCopyImageSubDataNV)
+        kpanic("ext_glMulticastCopyImageSubDataNV is NULL");
+    {
+    GL_FUNC(ext_glMulticastCopyImageSubDataNV)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, ARG10, ARG11, ARG12, ARG13, ARG14, ARG15, ARG16, ARG17);
+    GL_LOG_NO_FMT("glMulticastCopyImageSubDataNV");
+    }
+}
+void glcommon_glMulticastFramebufferSampleLocationsfvNV(CPU* cpu) {
+    if (!ext_glMulticastFramebufferSampleLocationsfvNV)
+        kpanic("ext_glMulticastFramebufferSampleLocationsfvNV is NULL");
+    {
+    GL_FUNC(ext_glMulticastFramebufferSampleLocationsfvNV)(ARG1, ARG2, ARG3, ARG4, marshalArray<GLfloat>(cpu, ARG5, (ARG3*2)));
+    GL_LOG_NO_FMT("glMulticastFramebufferSampleLocationsfvNV");
+    }
+}
+void glcommon_glMulticastGetQueryObjecti64vNV(CPU* cpu) {
+    if (!ext_glMulticastGetQueryObjecti64vNV)
+        kpanic("ext_glMulticastGetQueryObjecti64vNV is NULL");
+    {
+    MarshalReadWrite<GLint64> rw4(cpu, ARG4, getMarshalParamCount(ARG3));
+    GL_FUNC(ext_glMulticastGetQueryObjecti64vNV)(ARG1, ARG2, ARG3, rw4.getPtr());
+    GL_LOG_NO_FMT("glMulticastGetQueryObjecti64vNV");
+    }
+}
+void glcommon_glMulticastGetQueryObjectivNV(CPU* cpu) {
+    if (!ext_glMulticastGetQueryObjectivNV)
+        kpanic("ext_glMulticastGetQueryObjectivNV is NULL");
+    {
+    MarshalReadWrite<GLint> rw4(cpu, ARG4, getMarshalParamCount(ARG3));
+    GL_FUNC(ext_glMulticastGetQueryObjectivNV)(ARG1, ARG2, ARG3, rw4.getPtr());
+    GL_LOG_NO_FMT("glMulticastGetQueryObjectivNV");
+    }
+}
+void glcommon_glMulticastGetQueryObjectui64vNV(CPU* cpu) {
+    if (!ext_glMulticastGetQueryObjectui64vNV)
+        kpanic("ext_glMulticastGetQueryObjectui64vNV is NULL");
+    {
+    MarshalReadWrite<GLuint64> rw4(cpu, ARG4, getMarshalParamCount(ARG3));
+    GL_FUNC(ext_glMulticastGetQueryObjectui64vNV)(ARG1, ARG2, ARG3, rw4.getPtr());
+    GL_LOG_NO_FMT("glMulticastGetQueryObjectui64vNV");
+    }
+}
+void glcommon_glMulticastGetQueryObjectuivNV(CPU* cpu) {
+    if (!ext_glMulticastGetQueryObjectuivNV)
+        kpanic("ext_glMulticastGetQueryObjectuivNV is NULL");
+    {
+    MarshalReadWrite<GLuint> rw4(cpu, ARG4, getMarshalParamCount(ARG3));
+    GL_FUNC(ext_glMulticastGetQueryObjectuivNV)(ARG1, ARG2, ARG3, rw4.getPtr());
+    GL_LOG_NO_FMT("glMulticastGetQueryObjectuivNV");
+    }
+}
+void glcommon_glMulticastScissorArrayvNVX(CPU* cpu) {
+    if (!ext_glMulticastScissorArrayvNVX)
+        kpanic("ext_glMulticastScissorArrayvNVX is NULL");
+    {
+    GL_FUNC(ext_glMulticastScissorArrayvNVX)(ARG1, ARG2, ARG3, marshalArray<GLint>(cpu, ARG4, (ARG2*4)));
+    GL_LOG_NO_FMT("glMulticastScissorArrayvNVX");
+    }
+}
+void glcommon_glMulticastViewportArrayvNVX(CPU* cpu) {
+    if (!ext_glMulticastViewportArrayvNVX)
+        kpanic("ext_glMulticastViewportArrayvNVX is NULL");
+    {
+    GL_FUNC(ext_glMulticastViewportArrayvNVX)(ARG1, ARG2, ARG3, marshalArray<GLfloat>(cpu, ARG4, (ARG2*4)));
+    GL_LOG_NO_FMT("glMulticastViewportArrayvNVX");
+    }
+}
+void glcommon_glMulticastViewportPositionWScaleNVX(CPU* cpu) {
+    if (!ext_glMulticastViewportPositionWScaleNVX)
+        kpanic("ext_glMulticastViewportPositionWScaleNVX is NULL");
+    {
+    GL_FUNC(ext_glMulticastViewportPositionWScaleNVX)(ARG1, ARG2, fARG3, fARG4);
+    GL_LOG_NO_FMT("glMulticastViewportPositionWScaleNVX");
+    }
+}
+void glcommon_glMulticastWaitSyncNV(CPU* cpu) {
+    if (!ext_glMulticastWaitSyncNV)
+        kpanic("ext_glMulticastWaitSyncNV is NULL");
+    {
+    GL_FUNC(ext_glMulticastWaitSyncNV)(ARG1, ARG2);
+    GL_LOG_NO_FMT("glMulticastWaitSyncNV");
+    }
+}
+void glcommon_glMultiDrawArraysIndirectCount(CPU* cpu) {
+    if (!ext_glMultiDrawArraysIndirectCount)
+        kpanic("ext_glMultiDrawArraysIndirectCount is NULL");
+    {
+    GL_FUNC(ext_glMultiDrawArraysIndirectCount)(ARG1, (void*)pARG2, ARG3, ARG4, ARG5);
+    GL_LOG_NO_FMT("glMultiDrawArraysIndirectCount");
+    }
+}
+void glcommon_glMultiDrawElementsIndirectCount(CPU* cpu) {
+    if (!ext_glMultiDrawElementsIndirectCount)
+        kpanic("ext_glMultiDrawElementsIndirectCount is NULL");
+    {
+    GL_FUNC(ext_glMultiDrawElementsIndirectCount)(ARG1, ARG2, (void*)pARG3, ARG4, ARG5, ARG6);
+    GL_LOG_NO_FMT("glMultiDrawElementsIndirectCount");
+    }
+}
+void glcommon_glMultiDrawMeshTasksIndirectCountEXT(CPU* cpu) {
+    if (!ext_glMultiDrawMeshTasksIndirectCountEXT)
+        kpanic("ext_glMultiDrawMeshTasksIndirectCountEXT is NULL");
+    {
+    GL_FUNC(ext_glMultiDrawMeshTasksIndirectCountEXT)(ARG1, ARG2, ARG3, ARG4);
+    GL_LOG_NO_FMT("glMultiDrawMeshTasksIndirectCountEXT");
+    }
+}
+void glcommon_glMultiDrawMeshTasksIndirectCountNV(CPU* cpu) {
+    if (!ext_glMultiDrawMeshTasksIndirectCountNV)
+        kpanic("ext_glMultiDrawMeshTasksIndirectCountNV is NULL");
+    {
+    GL_FUNC(ext_glMultiDrawMeshTasksIndirectCountNV)(ARG1, ARG2, ARG3, ARG4);
+    GL_LOG_NO_FMT("glMultiDrawMeshTasksIndirectCountNV");
+    }
+}
+void glcommon_glMultiDrawMeshTasksIndirectEXT(CPU* cpu) {
+    if (!ext_glMultiDrawMeshTasksIndirectEXT)
+        kpanic("ext_glMultiDrawMeshTasksIndirectEXT is NULL");
+    {
+    GL_FUNC(ext_glMultiDrawMeshTasksIndirectEXT)(ARG1, ARG2, ARG3);
+    GL_LOG_NO_FMT("glMultiDrawMeshTasksIndirectEXT");
+    }
+}
+void glcommon_glMultiDrawMeshTasksIndirectNV(CPU* cpu) {
+    if (!ext_glMultiDrawMeshTasksIndirectNV)
+        kpanic("ext_glMultiDrawMeshTasksIndirectNV is NULL");
+    {
+    GL_FUNC(ext_glMultiDrawMeshTasksIndirectNV)(ARG1, ARG2, ARG3);
+    GL_LOG_NO_FMT("glMultiDrawMeshTasksIndirectNV");
+    }
+}
+void glcommon_glMultiTexCoord4x(CPU* cpu) {
+    if (!ext_glMultiTexCoord4x)
+        kpanic("ext_glMultiTexCoord4x is NULL");
+    {
+    GL_FUNC(ext_glMultiTexCoord4x)(ARG1, ARG2, ARG3, ARG4, ARG5);
+    GL_LOG_NO_FMT("glMultiTexCoord4x");
+    }
+}
+void glcommon_glMultMatrixx(CPU* cpu) {
+    if (!ext_glMultMatrixx)
+        kpanic("ext_glMultMatrixx is NULL");
+    {
+    GL_FUNC(ext_glMultMatrixx)(marshalArray<GLfixed>(cpu, ARG1, 16));
+    GL_LOG_NO_FMT("glMultMatrixx");
+    }
+}
+void glcommon_glNamedBufferAttachMemoryNV(CPU* cpu) {
+    if (!ext_glNamedBufferAttachMemoryNV)
+        kpanic("ext_glNamedBufferAttachMemoryNV is NULL");
+    {
+    GL_FUNC(ext_glNamedBufferAttachMemoryNV)(ARG1, ARG2, llARG3);
+    GL_LOG_NO_FMT("glNamedBufferAttachMemoryNV");
+    }
+}
+void glcommon_glNamedBufferPageCommitmentMemNV(CPU* cpu) {
+    if (!ext_glNamedBufferPageCommitmentMemNV)
+        kpanic("ext_glNamedBufferPageCommitmentMemNV is NULL");
+    {
+    GL_FUNC(ext_glNamedBufferPageCommitmentMemNV)(ARG1, ARG2, ARG3, ARG4, llARG5, bARG6);
+    GL_LOG_NO_FMT("glNamedBufferPageCommitmentMemNV");
+    }
+}
+void glcommon_glNamedBufferStorageExternalEXT(CPU* cpu) {
+    if (!ext_glNamedBufferStorageExternalEXT)
+        kpanic("ext_glNamedBufferStorageExternalEXT is NULL");
+    {
+    GL_FUNC(ext_glNamedBufferStorageExternalEXT)(ARG1, ARG2, ARG3, (void*)pARG4, ARG5);
+    GL_LOG_NO_FMT("glNamedBufferStorageExternalEXT");
+    }
+}
+void glcommon_glNamedBufferStorageMemEXT(CPU* cpu) {
+    if (!ext_glNamedBufferStorageMemEXT)
+        kpanic("ext_glNamedBufferStorageMemEXT is NULL");
+    {
+    GL_FUNC(ext_glNamedBufferStorageMemEXT)(ARG1, ARG2, ARG3, llARG4);
+    GL_LOG_NO_FMT("glNamedBufferStorageMemEXT");
+    }
+}
+void glcommon_glNamedFramebufferSamplePositionsfvAMD(CPU* cpu) {
+    if (!ext_glNamedFramebufferSamplePositionsfvAMD)
+        kpanic("ext_glNamedFramebufferSamplePositionsfvAMD is NULL");
+    {
+    GL_FUNC(ext_glNamedFramebufferSamplePositionsfvAMD)(ARG1, ARG2, ARG3, marshalArray<GLfloat>(cpu, ARG4, (ARG3*2)));
+    GL_LOG_NO_FMT("glNamedFramebufferSamplePositionsfvAMD");
+    }
+}
+void glcommon_glNamedFramebufferTextureMultiviewOVR(CPU* cpu) {
+    if (!ext_glNamedFramebufferTextureMultiviewOVR)
+        kpanic("ext_glNamedFramebufferTextureMultiviewOVR is NULL");
+    {
+    GL_FUNC(ext_glNamedFramebufferTextureMultiviewOVR)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    GL_LOG_NO_FMT("glNamedFramebufferTextureMultiviewOVR");
+    }
+}
+void glcommon_glNamedRenderbufferStorageMultisampleAdvancedAMD(CPU* cpu) {
+    if (!ext_glNamedRenderbufferStorageMultisampleAdvancedAMD)
+        kpanic("ext_glNamedRenderbufferStorageMultisampleAdvancedAMD is NULL");
+    {
+    GL_FUNC(ext_glNamedRenderbufferStorageMultisampleAdvancedAMD)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    GL_LOG_NO_FMT("glNamedRenderbufferStorageMultisampleAdvancedAMD");
+    }
+}
+void glcommon_glNormal3x(CPU* cpu) {
+    if (!ext_glNormal3x)
+        kpanic("ext_glNormal3x is NULL");
+    {
+    GL_FUNC(ext_glNormal3x)(ARG1, ARG2, ARG3);
+    GL_LOG_NO_FMT("glNormal3x");
+    }
+}
+void glcommon_glOrthof(CPU* cpu) {
+    if (!ext_glOrthof)
+        kpanic("ext_glOrthof is NULL");
+    {
+    GL_FUNC(ext_glOrthof)(fARG1, fARG2, fARG3, fARG4, fARG5, fARG6);
+    GL_LOG_NO_FMT("glOrthof");
+    }
+}
+void glcommon_glOrthox(CPU* cpu) {
+    if (!ext_glOrthox)
+        kpanic("ext_glOrthox is NULL");
+    {
+    GL_FUNC(ext_glOrthox)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    GL_LOG_NO_FMT("glOrthox");
+    }
+}
+void glcommon_glPointParameterx(CPU* cpu) {
+    if (!ext_glPointParameterx)
+        kpanic("ext_glPointParameterx is NULL");
+    {
+    GL_FUNC(ext_glPointParameterx)(ARG1, ARG2);
+    GL_LOG_NO_FMT("glPointParameterx");
+    }
+}
+void glcommon_glPointParameterxv(CPU* cpu) {
+    if (!ext_glPointParameterxv)
+        kpanic("ext_glPointParameterxv is NULL");
+    {
+    GL_FUNC(ext_glPointParameterxv)(ARG1, marshalArray<GLfixed>(cpu, ARG2, getMarshalParamCount(ARG1)));
+    GL_LOG_NO_FMT("glPointParameterxv");
+    }
+}
+void glcommon_glPointSizex(CPU* cpu) {
+    if (!ext_glPointSizex)
+        kpanic("ext_glPointSizex is NULL");
+    {
+    GL_FUNC(ext_glPointSizex)(ARG1);
+    GL_LOG_NO_FMT("glPointSizex");
+    }
+}
+void glcommon_glPolygonOffsetClamp(CPU* cpu) {
+    if (!ext_glPolygonOffsetClamp)
+        kpanic("ext_glPolygonOffsetClamp is NULL");
+    {
+    GL_FUNC(ext_glPolygonOffsetClamp)(fARG1, fARG2, fARG3);
+    GL_LOG_NO_FMT("glPolygonOffsetClamp");
+    }
+}
+void glcommon_glPolygonOffsetx(CPU* cpu) {
+    if (!ext_glPolygonOffsetx)
+        kpanic("ext_glPolygonOffsetx is NULL");
+    {
+    GL_FUNC(ext_glPolygonOffsetx)(ARG1, ARG2);
+    GL_LOG_NO_FMT("glPolygonOffsetx");
+    }
+}
+void glcommon_glQueryResourceNV(CPU* cpu) {
+    if (!ext_glQueryResourceNV)
+        kpanic("ext_glQueryResourceNV is NULL");
+    {
+    MarshalReadWrite<GLint> rw4(cpu, ARG4, ARG3);
+    EAX=GL_FUNC(ext_glQueryResourceNV)(ARG1, ARG2, ARG3, rw4.getPtr());
+    GL_LOG_NO_FMT("glQueryResourceNV");
+    }
+}
+void glcommon_glQueryResourceTagNV(CPU* cpu) {
+    if (!ext_glQueryResourceTagNV)
+        kpanic("ext_glQueryResourceTagNV is NULL");
+    {
+    GL_FUNC(ext_glQueryResourceTagNV)(ARG1, marshalsz(cpu, ARG2));
+    GL_LOG_NO_FMT("glQueryResourceTagNV");
+    }
+}
+void glcommon_glReleaseKeyedMutexWin32EXT(CPU* cpu) {
+    if (!ext_glReleaseKeyedMutexWin32EXT)
+        kpanic("ext_glReleaseKeyedMutexWin32EXT is NULL");
+    {
+    EAX=GL_FUNC(ext_glReleaseKeyedMutexWin32EXT)(ARG1, llARG2);
+    GL_LOG_NO_FMT("glReleaseKeyedMutexWin32EXT");
+    }
+}
+void glcommon_glRenderbufferStorageMultisampleAdvancedAMD(CPU* cpu) {
+    if (!ext_glRenderbufferStorageMultisampleAdvancedAMD)
+        kpanic("ext_glRenderbufferStorageMultisampleAdvancedAMD is NULL");
+    {
+    GL_FUNC(ext_glRenderbufferStorageMultisampleAdvancedAMD)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    GL_LOG_NO_FMT("glRenderbufferStorageMultisampleAdvancedAMD");
+    }
+}
+void glcommon_glRenderGpuMaskNV(CPU* cpu) {
+    if (!ext_glRenderGpuMaskNV)
+        kpanic("ext_glRenderGpuMaskNV is NULL");
+    {
+    GL_FUNC(ext_glRenderGpuMaskNV)(ARG1);
+    GL_LOG_NO_FMT("glRenderGpuMaskNV");
+    }
+}
+void glcommon_glResetMemoryObjectParameterNV(CPU* cpu) {
+    if (!ext_glResetMemoryObjectParameterNV)
+        kpanic("ext_glResetMemoryObjectParameterNV is NULL");
+    {
+    GL_FUNC(ext_glResetMemoryObjectParameterNV)(ARG1, ARG2);
+    GL_LOG_NO_FMT("glResetMemoryObjectParameterNV");
+    }
+}
+void glcommon_glRotatex(CPU* cpu) {
+    if (!ext_glRotatex)
+        kpanic("ext_glRotatex is NULL");
+    {
+    GL_FUNC(ext_glRotatex)(ARG1, ARG2, ARG3, ARG4);
+    GL_LOG_NO_FMT("glRotatex");
+    }
+}
+void glcommon_glSampleCoveragex(CPU* cpu) {
+    if (!ext_glSampleCoveragex)
+        kpanic("ext_glSampleCoveragex is NULL");
+    {
+    GL_FUNC(ext_glSampleCoveragex)(ARG1, bARG2);
+    GL_LOG_NO_FMT("glSampleCoveragex");
+    }
+}
+void glcommon_glScalex(CPU* cpu) {
+    if (!ext_glScalex)
+        kpanic("ext_glScalex is NULL");
+    {
+    GL_FUNC(ext_glScalex)(ARG1, ARG2, ARG3);
+    GL_LOG_NO_FMT("glScalex");
+    }
+}
+void glcommon_glScissorExclusiveArrayvNV(CPU* cpu) {
+    if (!ext_glScissorExclusiveArrayvNV)
+        kpanic("ext_glScissorExclusiveArrayvNV is NULL");
+    {
+    GL_FUNC(ext_glScissorExclusiveArrayvNV)(ARG1, ARG2, marshalArray<GLint>(cpu, ARG3, (ARG2*4)));
+    GL_LOG_NO_FMT("glScissorExclusiveArrayvNV");
+    }
+}
+void glcommon_glScissorExclusiveNV(CPU* cpu) {
+    if (!ext_glScissorExclusiveNV)
+        kpanic("ext_glScissorExclusiveNV is NULL");
+    {
+    GL_FUNC(ext_glScissorExclusiveNV)(ARG1, ARG2, ARG3, ARG4);
+    GL_LOG_NO_FMT("glScissorExclusiveNV");
+    }
+}
+void glcommon_glSemaphoreParameterivNV(CPU* cpu) {
+    if (!ext_glSemaphoreParameterivNV)
+        kpanic("ext_glSemaphoreParameterivNV is NULL");
+    {
+    GL_FUNC(ext_glSemaphoreParameterivNV)(ARG1, ARG2, marshalArray<GLint>(cpu, ARG3, getMarshalParamCount(ARG2)));
+    GL_LOG_NO_FMT("glSemaphoreParameterivNV");
+    }
+}
+void glcommon_glSemaphoreParameterui64vEXT(CPU* cpu) {
+    if (!ext_glSemaphoreParameterui64vEXT)
+        kpanic("ext_glSemaphoreParameterui64vEXT is NULL");
+    {
+    GL_FUNC(ext_glSemaphoreParameterui64vEXT)(ARG1, ARG2, marshalArray<GLuint64>(cpu, ARG3, getMarshalParamCount(ARG2)));
+    GL_LOG_NO_FMT("glSemaphoreParameterui64vEXT");
+    }
+}
+void glcommon_glShadingRateImageBarrierNV(CPU* cpu) {
+    if (!ext_glShadingRateImageBarrierNV)
+        kpanic("ext_glShadingRateImageBarrierNV is NULL");
+    {
+    GL_FUNC(ext_glShadingRateImageBarrierNV)(bARG1);
+    GL_LOG_NO_FMT("glShadingRateImageBarrierNV");
+    }
+}
+void glcommon_glShadingRateImagePaletteNV(CPU* cpu) {
+    if (!ext_glShadingRateImagePaletteNV)
+        kpanic("ext_glShadingRateImagePaletteNV is NULL");
+    {
+    GL_FUNC(ext_glShadingRateImagePaletteNV)(ARG1, ARG2, ARG3, marshalArray<GLenum>(cpu, ARG4, ARG3));
+    GL_LOG_NO_FMT("glShadingRateImagePaletteNV");
+    }
+}
+void glcommon_glShadingRateSampleOrderCustomNV(CPU* cpu) {
+    if (!ext_glShadingRateSampleOrderCustomNV)
+        kpanic("ext_glShadingRateSampleOrderCustomNV is NULL");
+    {
+    GL_FUNC(ext_glShadingRateSampleOrderCustomNV)(ARG1, ARG2, marshalArray<GLint>(cpu, ARG3, 1));
+    GL_LOG_NO_FMT("glShadingRateSampleOrderCustomNV");
+    }
+}
+void glcommon_glShadingRateSampleOrderNV(CPU* cpu) {
+    if (!ext_glShadingRateSampleOrderNV)
+        kpanic("ext_glShadingRateSampleOrderNV is NULL");
+    {
+    GL_FUNC(ext_glShadingRateSampleOrderNV)(ARG1);
+    GL_LOG_NO_FMT("glShadingRateSampleOrderNV");
+    }
+}
+void glcommon_glSignalSemaphoreEXT(CPU* cpu) {
+    if (!ext_glSignalSemaphoreEXT)
+        kpanic("ext_glSignalSemaphoreEXT is NULL");
+    {
+    GL_FUNC(ext_glSignalSemaphoreEXT)(ARG1, ARG2, marshalArray<GLuint>(cpu, ARG3, ARG2), ARG4, marshalArray<GLuint>(cpu, ARG5, ARG4), marshalArray<GLenum>(cpu, ARG6, ARG4));
+    GL_LOG_NO_FMT("glSignalSemaphoreEXT");
+    }
+}
+void glcommon_glSignalSemaphoreui64NVX(CPU* cpu) {
+    if (!ext_glSignalSemaphoreui64NVX)
+        kpanic("ext_glSignalSemaphoreui64NVX is NULL");
+    {
+    GL_FUNC(ext_glSignalSemaphoreui64NVX)(ARG1, ARG2, marshalArray<GLuint>(cpu, ARG3, ARG1), marshalArray<GLuint64>(cpu, ARG4, ARG1));
+    GL_LOG_NO_FMT("glSignalSemaphoreui64NVX");
+    }
+}
+void glcommon_glSignalVkFenceNV(CPU* cpu) {
+    if (!ext_glSignalVkFenceNV)
+        kpanic("ext_glSignalVkFenceNV is NULL");
+    {
+    GL_FUNC(ext_glSignalVkFenceNV)(llARG1);
+    GL_LOG_NO_FMT("glSignalVkFenceNV");
+    }
+}
+void glcommon_glSignalVkSemaphoreNV(CPU* cpu) {
+    if (!ext_glSignalVkSemaphoreNV)
+        kpanic("ext_glSignalVkSemaphoreNV is NULL");
+    {
+    GL_FUNC(ext_glSignalVkSemaphoreNV)(llARG1);
+    GL_LOG_NO_FMT("glSignalVkSemaphoreNV");
+    }
+}
+void glcommon_glSpecializeShader(CPU* cpu) {
+    if (!ext_glSpecializeShader)
+        kpanic("ext_glSpecializeShader is NULL");
+    {
+    GL_FUNC(ext_glSpecializeShader)(ARG1, marshalsz(cpu, ARG2), ARG3, marshalArray<GLuint>(cpu, ARG4, ARG3), marshalArray<GLuint>(cpu, ARG5, ARG3));
+    GL_LOG_NO_FMT("glSpecializeShader");
+    }
+}
+void glcommon_glSpecializeShaderARB(CPU* cpu) {
+    if (!ext_glSpecializeShaderARB)
+        kpanic("ext_glSpecializeShaderARB is NULL");
+    {
+    GL_FUNC(ext_glSpecializeShaderARB)(ARG1, marshalsz(cpu, ARG2), ARG3, marshalArray<GLuint>(cpu, ARG4, ARG3), marshalArray<GLuint>(cpu, ARG5, ARG3));
+    GL_LOG_NO_FMT("glSpecializeShaderARB");
+    }
+}
+void glcommon_glTexAttachMemoryNV(CPU* cpu) {
+    if (!ext_glTexAttachMemoryNV)
+        kpanic("ext_glTexAttachMemoryNV is NULL");
+    {
+    GL_FUNC(ext_glTexAttachMemoryNV)(ARG1, ARG2, llARG3);
+    GL_LOG_NO_FMT("glTexAttachMemoryNV");
+    }
+}
+void glcommon_glTexEnvx(CPU* cpu) {
+    if (!ext_glTexEnvx)
+        kpanic("ext_glTexEnvx is NULL");
+    {
+    GL_FUNC(ext_glTexEnvx)(ARG1, ARG2, ARG3);
+    GL_LOG_NO_FMT("glTexEnvx");
+    }
+}
+void glcommon_glTexEnvxv(CPU* cpu) {
+    if (!ext_glTexEnvxv)
+        kpanic("ext_glTexEnvxv is NULL");
+    {
+    GL_FUNC(ext_glTexEnvxv)(ARG1, ARG2, marshalArray<GLfixed>(cpu, ARG3, getMarshalParamCount(ARG2)));
+    GL_LOG_NO_FMT("glTexEnvxv");
+    }
+}
+void glcommon_glTexPageCommitmentMemNV(CPU* cpu) {
+    if (!ext_glTexPageCommitmentMemNV)
+        kpanic("ext_glTexPageCommitmentMemNV is NULL");
+    {
+    GL_FUNC(ext_glTexPageCommitmentMemNV)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, ARG10, llARG11, bARG12);
+    GL_LOG_NO_FMT("glTexPageCommitmentMemNV");
+    }
+}
+void glcommon_glTexParameterx(CPU* cpu) {
+    if (!ext_glTexParameterx)
+        kpanic("ext_glTexParameterx is NULL");
+    {
+    GL_FUNC(ext_glTexParameterx)(ARG1, ARG2, ARG3);
+    GL_LOG_NO_FMT("glTexParameterx");
+    }
+}
+void glcommon_glTexParameterxv(CPU* cpu) {
+    if (!ext_glTexParameterxv)
+        kpanic("ext_glTexParameterxv is NULL");
+    {
+    GL_FUNC(ext_glTexParameterxv)(ARG1, ARG2, marshalArray<GLfixed>(cpu, ARG3, getMarshalParamCount(ARG2)));
+    GL_LOG_NO_FMT("glTexParameterxv");
+    }
+}
+void glcommon_glTexStorage1DEXT(CPU* cpu) {
+    if (!ext_glTexStorage1DEXT)
+        kpanic("ext_glTexStorage1DEXT is NULL");
+    {
+    GL_FUNC(ext_glTexStorage1DEXT)(ARG1, ARG2, ARG3, ARG4);
+    GL_LOG_NO_FMT("glTexStorage1DEXT");
+    }
+}
+void glcommon_glTexStorage2DEXT(CPU* cpu) {
+    if (!ext_glTexStorage2DEXT)
+        kpanic("ext_glTexStorage2DEXT is NULL");
+    {
+    GL_FUNC(ext_glTexStorage2DEXT)(ARG1, ARG2, ARG3, ARG4, ARG5);
+    GL_LOG_NO_FMT("glTexStorage2DEXT");
+    }
+}
+void glcommon_glTexStorage3DEXT(CPU* cpu) {
+    if (!ext_glTexStorage3DEXT)
+        kpanic("ext_glTexStorage3DEXT is NULL");
+    {
+    GL_FUNC(ext_glTexStorage3DEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    GL_LOG_NO_FMT("glTexStorage3DEXT");
+    }
+}
+void glcommon_glTexStorageMem1DEXT(CPU* cpu) {
+    if (!ext_glTexStorageMem1DEXT)
+        kpanic("ext_glTexStorageMem1DEXT is NULL");
+    {
+    GL_FUNC(ext_glTexStorageMem1DEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, llARG6);
+    GL_LOG_NO_FMT("glTexStorageMem1DEXT");
+    }
+}
+void glcommon_glTexStorageMem2DEXT(CPU* cpu) {
+    if (!ext_glTexStorageMem2DEXT)
+        kpanic("ext_glTexStorageMem2DEXT is NULL");
+    {
+    GL_FUNC(ext_glTexStorageMem2DEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, llARG7);
+    GL_LOG_NO_FMT("glTexStorageMem2DEXT");
+    }
+}
+void glcommon_glTexStorageMem2DMultisampleEXT(CPU* cpu) {
+    if (!ext_glTexStorageMem2DMultisampleEXT)
+        kpanic("ext_glTexStorageMem2DMultisampleEXT is NULL");
+    {
+    GL_FUNC(ext_glTexStorageMem2DMultisampleEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, bARG6, ARG7, llARG8);
+    GL_LOG_NO_FMT("glTexStorageMem2DMultisampleEXT");
+    }
+}
+void glcommon_glTexStorageMem3DEXT(CPU* cpu) {
+    if (!ext_glTexStorageMem3DEXT)
+        kpanic("ext_glTexStorageMem3DEXT is NULL");
+    {
+    GL_FUNC(ext_glTexStorageMem3DEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, llARG8);
+    GL_LOG_NO_FMT("glTexStorageMem3DEXT");
+    }
+}
+void glcommon_glTexStorageMem3DMultisampleEXT(CPU* cpu) {
+    if (!ext_glTexStorageMem3DMultisampleEXT)
+        kpanic("ext_glTexStorageMem3DMultisampleEXT is NULL");
+    {
+    GL_FUNC(ext_glTexStorageMem3DMultisampleEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, bARG7, ARG8, llARG9);
+    GL_LOG_NO_FMT("glTexStorageMem3DMultisampleEXT");
+    }
+}
+void glcommon_glTextureAttachMemoryNV(CPU* cpu) {
+    if (!ext_glTextureAttachMemoryNV)
+        kpanic("ext_glTextureAttachMemoryNV is NULL");
+    {
+    GL_FUNC(ext_glTextureAttachMemoryNV)(ARG1, ARG2, llARG3);
+    GL_LOG_NO_FMT("glTextureAttachMemoryNV");
+    }
+}
+void glcommon_glTexturePageCommitmentMemNV(CPU* cpu) {
+    if (!ext_glTexturePageCommitmentMemNV)
+        kpanic("ext_glTexturePageCommitmentMemNV is NULL");
+    {
+    GL_FUNC(ext_glTexturePageCommitmentMemNV)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, ARG10, llARG11, bARG12);
+    GL_LOG_NO_FMT("glTexturePageCommitmentMemNV");
+    }
+}
+void glcommon_glTextureStorageMem1DEXT(CPU* cpu) {
+    if (!ext_glTextureStorageMem1DEXT)
+        kpanic("ext_glTextureStorageMem1DEXT is NULL");
+    {
+    GL_FUNC(ext_glTextureStorageMem1DEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, llARG6);
+    GL_LOG_NO_FMT("glTextureStorageMem1DEXT");
+    }
+}
+void glcommon_glTextureStorageMem2DEXT(CPU* cpu) {
+    if (!ext_glTextureStorageMem2DEXT)
+        kpanic("ext_glTextureStorageMem2DEXT is NULL");
+    {
+    GL_FUNC(ext_glTextureStorageMem2DEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, llARG7);
+    GL_LOG_NO_FMT("glTextureStorageMem2DEXT");
+    }
+}
+void glcommon_glTextureStorageMem2DMultisampleEXT(CPU* cpu) {
+    if (!ext_glTextureStorageMem2DMultisampleEXT)
+        kpanic("ext_glTextureStorageMem2DMultisampleEXT is NULL");
+    {
+    GL_FUNC(ext_glTextureStorageMem2DMultisampleEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, bARG6, ARG7, llARG8);
+    GL_LOG_NO_FMT("glTextureStorageMem2DMultisampleEXT");
+    }
+}
+void glcommon_glTextureStorageMem3DEXT(CPU* cpu) {
+    if (!ext_glTextureStorageMem3DEXT)
+        kpanic("ext_glTextureStorageMem3DEXT is NULL");
+    {
+    GL_FUNC(ext_glTextureStorageMem3DEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, llARG8);
+    GL_LOG_NO_FMT("glTextureStorageMem3DEXT");
+    }
+}
+void glcommon_glTextureStorageMem3DMultisampleEXT(CPU* cpu) {
+    if (!ext_glTextureStorageMem3DMultisampleEXT)
+        kpanic("ext_glTextureStorageMem3DMultisampleEXT is NULL");
+    {
+    GL_FUNC(ext_glTextureStorageMem3DMultisampleEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, bARG7, ARG8, llARG9);
+    GL_LOG_NO_FMT("glTextureStorageMem3DMultisampleEXT");
+    }
+}
+void glcommon_glTranslatex(CPU* cpu) {
+    if (!ext_glTranslatex)
+        kpanic("ext_glTranslatex is NULL");
+    {
+    GL_FUNC(ext_glTranslatex)(ARG1, ARG2, ARG3);
+    GL_LOG_NO_FMT("glTranslatex");
+    }
+}
+void glcommon_glUploadGpuMaskNVX(CPU* cpu) {
+    if (!ext_glUploadGpuMaskNVX)
+        kpanic("ext_glUploadGpuMaskNVX is NULL");
+    {
+    GL_FUNC(ext_glUploadGpuMaskNVX)(ARG1);
+    GL_LOG_NO_FMT("glUploadGpuMaskNVX");
+    }
+}
+void glcommon_glVDPAURegisterVideoSurfaceWithPictureStructureNV(CPU* cpu) {
+    if (!ext_glVDPAURegisterVideoSurfaceWithPictureStructureNV)
+        kpanic("ext_glVDPAURegisterVideoSurfaceWithPictureStructureNV is NULL");
+    {
+    GLintptr result = GL_FUNC(ext_glVDPAURegisterVideoSurfaceWithPictureStructureNV)((void*)pARG1, ARG2, ARG3, marshalArray<GLuint>(cpu, ARG4, ARG3), bARG5);
+    EAX=marshalBackVDPAUSurface(cpu, (GLvdpauSurfaceNV)result);
+    GL_LOG_NO_FMT("glVDPAURegisterVideoSurfaceWithPictureStructureNV");
+    }
+}
+void glcommon_glViewportPositionWScaleNV(CPU* cpu) {
+    if (!ext_glViewportPositionWScaleNV)
+        kpanic("ext_glViewportPositionWScaleNV is NULL");
+    {
+    GL_FUNC(ext_glViewportPositionWScaleNV)(ARG1, fARG2, fARG3);
+    GL_LOG_NO_FMT("glViewportPositionWScaleNV");
+    }
+}
+void glcommon_glViewportSwizzleNV(CPU* cpu) {
+    if (!ext_glViewportSwizzleNV)
+        kpanic("ext_glViewportSwizzleNV is NULL");
+    {
+    GL_FUNC(ext_glViewportSwizzleNV)(ARG1, ARG2, ARG3, ARG4, ARG5);
+    GL_LOG_NO_FMT("glViewportSwizzleNV");
+    }
+}
+void glcommon_glWaitSemaphoreEXT(CPU* cpu) {
+    if (!ext_glWaitSemaphoreEXT)
+        kpanic("ext_glWaitSemaphoreEXT is NULL");
+    {
+    GL_FUNC(ext_glWaitSemaphoreEXT)(ARG1, ARG2, marshalArray<GLuint>(cpu, ARG3, ARG2), ARG4, marshalArray<GLuint>(cpu, ARG5, ARG4), marshalArray<GLenum>(cpu, ARG6, ARG4));
+    GL_LOG_NO_FMT("glWaitSemaphoreEXT");
+    }
+}
+void glcommon_glWaitSemaphoreui64NVX(CPU* cpu) {
+    if (!ext_glWaitSemaphoreui64NVX)
+        kpanic("ext_glWaitSemaphoreui64NVX is NULL");
+    {
+    GL_FUNC(ext_glWaitSemaphoreui64NVX)(ARG1, ARG2, marshalArray<GLuint>(cpu, ARG3, ARG1), marshalArray<GLuint64>(cpu, ARG4, ARG1));
+    GL_LOG_NO_FMT("glWaitSemaphoreui64NVX");
+    }
+}
+void glcommon_glWaitVkSemaphoreNV(CPU* cpu) {
+    if (!ext_glWaitVkSemaphoreNV)
+        kpanic("ext_glWaitVkSemaphoreNV is NULL");
+    {
+    GL_FUNC(ext_glWaitVkSemaphoreNV)(llARG1);
+    GL_LOG_NO_FMT("glWaitVkSemaphoreNV");
+    }
+}
+void glcommon_glWindowRectanglesEXT(CPU* cpu) {
+    if (!ext_glWindowRectanglesEXT)
+        kpanic("ext_glWindowRectanglesEXT is NULL");
+    {
+    GL_FUNC(ext_glWindowRectanglesEXT)(ARG1, ARG2, marshalArray<GLint>(cpu, ARG3, (ARG2*4)));
+    GL_LOG_NO_FMT("glWindowRectanglesEXT");
+    }
+}
 #endif
 #endif

@@ -21,7 +21,12 @@ immediate-mode vertex vector inputs, rect vector inputs, interleaved client
 arrays, `glArrayElement`, `glReadPixels`,
 `glReadnPixels`, page-boundary draw-pixels/bitmap paths, page-boundary client
 arrays, draw-range/base-vertex-elements, multi-draw-arrays, and
-multi-draw-elements pointer arrays.
+multi-draw-elements pointer arrays. A small Linux guest EGL test also verifies
+that BoxedWine can create and bind a real OpenGL ES pbuffer context through the
+guest `libEGL.so.1` stub, then run GL clear/readback and shader-source compile
+calls on that ES context. It also links an ES2 shader program, uploads vertex
+data through a VBO, draws into the pbuffer, uploads/samples a texture, and
+verifies the rendered pixels.
 
 ## Build
 
@@ -34,6 +39,14 @@ From the repository root:
 ```
 
 You can also open `OpenGLMarshalTest.sln` directly in Visual Studio.
+
+The Linux guest EGL test can be built from WSL or another shell with 32-bit gcc
+support:
+
+```bash
+cd tools/openglTest
+bash build_egl_real_es_context_test.sh
+```
 
 ## Run
 
@@ -55,3 +68,12 @@ when the host OpenGL driver does not expose the required functions.
 
 When running inside Wine/BoxedWine, use `--quiet --log opengl-test.log` if the
 console path emits cursor-control escape sequences.
+
+Run the EGL ES context test directly as a Linux guest program:
+
+```powershell
+project\msvc\BoxedWine\Release\BoxedWine.exe `
+  -root "C:\Boxedwine\tools\openglTest\Win32\Release" `
+  -zip "C:\Users\james\AppData\Roaming\Boxedwine\FileSystems2\TinyCore15Wine11.0.zip" `
+  /EGLRealESContextTest
+```

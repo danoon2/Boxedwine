@@ -399,6 +399,8 @@ bool StartUpArgs::apply() {
     envValues.push_back(B("DISPLAY=:0"));
     envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
 
+    envValues.push_back(B("WINEDLLOVERRIDES=d3d9,wined3d=n,b"));
+
     if (!this->ddrawOverridePath.isEmpty()) {
         envValues.push_back(B("WINEDLLOVERRIDES=ddraw=n,b"));
         std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, this->ddrawOverridePath, true);

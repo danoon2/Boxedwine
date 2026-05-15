@@ -124,10 +124,24 @@ GLXContext glXCreateContextAttribsARB(Display* dpy, GLXFBConfig config, GLXConte
 }
 
 #include <dlfcn.h>
+static int boxedwineIsGlProcAddressAvailable(const char* procName) {
+	uintptr_t result;
+	if (!procName || procName[0] != 'g' || procName[1] != 'l' || procName[2] == 'X')
+		return 1;
+	__asm__ volatile("push %2\n\tpush %1\n\tint $0x99\n\taddl $8, %%esp":"=a"(result):"i"(kGlProcAddressAvailable), "g"(procName):"memory");
+	return result != 0;
+}
+
 __GLXextFuncPtr glXGetProcAddressARB(const GLubyte* procName) {
 	void* result = dlsym((void*)0, (const char*)procName);
+	if (result && !boxedwineIsGlProcAddressAvailable((const char*)procName))
+		result = 0;
 	printf("libGL glXGetProcessAddressARB: %s result=%X\n", (const char*)procName, (int)result);
 	return result;
+}
+
+__GLXextFuncPtr glXGetProcAddress(const GLubyte* procName) {
+	return glXGetProcAddressARB(procName);
 }
 
 void glXSwapIntervalEXT(Display* dpy, GLXDrawable drawable, int interval) {

@@ -117,7 +117,8 @@ void mainloop() {
         }
         U64 diff = KSystem::getMicroCounter() - startTime;
 
-        if (diff>10000 || KNativeSystem::getScreen()->presentedSinceLastCheck()) {
+        KOpenGLPtr openGL = KNativeSystem::getOpenGL();
+        if (diff>10000 || KNativeSystem::getScreen()->presentedSinceLastCheck() || (openGL && openGL->presentedSinceLastCheck())) {
             if (diff > 100000) {
                 klog_fmt("ran main loop in %dms", (U32)diff / 1000);
             }

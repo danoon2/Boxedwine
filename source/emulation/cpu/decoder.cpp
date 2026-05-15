@@ -4338,13 +4338,12 @@ public:
         case 0x00: func(data, op, rm, IncR8, IncE8); break;
         case 0x01: func(data, op, rm, DecR8, DecE8); break;
         case 0x07: {
-#ifdef BOXEDWINE_64
-                U64 address = data->fetch32();
-                address |= ((U64)data->fetch32()) << 32;
-                op->pfn = (OpCallback)address;
-#else
-                op->pfn = (OpCallback)(uintptr_t)data->fetch32();
-#endif
+            U8 index = data->fetch8();
+            if (index == 1) {
+                op->pfn = onExitSignal;
+            } else {
+                kpanic_fmt("Unknown callback index %d", index);
+            }
             op->inst = Callback;
             break;
         }

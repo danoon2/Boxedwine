@@ -27,6 +27,7 @@
 #define GL_LOG if (0) klog_fmt
 #define GL_LOG_NO_FMT if (0) klog
 
+#define BOXEDWINE_GL_PROFILE_ES 0x80000000u
 
 #ifdef BOXEDWINE_OPENGL_ES
 #define GL_FUNC(name) es_##name
@@ -53,6 +54,14 @@ U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
 #define ARG13 cpu->peek32(13)
 #define ARG14 cpu->peek32(14)
 #define ARG15 cpu->peek32(15)
+#define ARG16 cpu->peek32(16)
+#define ARG17 cpu->peek32(17)
+#define ARG18 cpu->peek32(18)
+#define ARG19 cpu->peek32(19)
+#define ARG20 cpu->peek32(20)
+#define ARG21 cpu->peek32(21)
+#define ARG22 cpu->peek32(22)
+#define ARG23 cpu->peek32(23)
 
 #define pARG1 ((uintptr_t)cpu->peek32(1))
 #define pARG2 ((uintptr_t)cpu->peek32(2))
@@ -69,6 +78,14 @@ U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
 #define pARG13 ((uintptr_t)cpu->peek32(13))
 #define pARG14 ((uintptr_t)cpu->peek32(14))
 #define pARG15 ((uintptr_t)cpu->peek32(15))
+#define pARG16 ((uintptr_t)cpu->peek32(16))
+#define pARG17 ((uintptr_t)cpu->peek32(17))
+#define pARG18 ((uintptr_t)cpu->peek32(18))
+#define pARG19 ((uintptr_t)cpu->peek32(19))
+#define pARG20 ((uintptr_t)cpu->peek32(20))
+#define pARG21 ((uintptr_t)cpu->peek32(21))
+#define pARG22 ((uintptr_t)cpu->peek32(22))
+#define pARG23 ((uintptr_t)cpu->peek32(23))
 
 #define bARG1 (cpu->peek32(1) & 0xFF)
 #define bARG2 (cpu->peek32(2) & 0xFF)
@@ -85,6 +102,14 @@ U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
 #define bARG13 (cpu->peek32(13) & 0xFF)
 #define bARG14 (cpu->peek32(14) & 0xFF)
 #define bARG15 (cpu->peek32(15) & 0xFF)
+#define bARG16 (cpu->peek32(16) & 0xFF)
+#define bARG17 (cpu->peek32(17) & 0xFF)
+#define bARG18 (cpu->peek32(18) & 0xFF)
+#define bARG19 (cpu->peek32(19) & 0xFF)
+#define bARG20 (cpu->peek32(20) & 0xFF)
+#define bARG21 (cpu->peek32(21) & 0xFF)
+#define bARG22 (cpu->peek32(22) & 0xFF)
+#define bARG23 (cpu->peek32(23) & 0xFF)
 
 #define sARG1 (cpu->peek32(1) & 0xFFFF)
 #define sARG2 (cpu->peek32(2) & 0xFFFF)
@@ -101,6 +126,14 @@ U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
 #define sARG13 (cpu->peek32(13) & 0xFFFF)
 #define sARG14 (cpu->peek32(14) & 0xFFFF)
 #define sARG15 (cpu->peek32(15) & 0xFFFF)
+#define sARG16 (cpu->peek32(16) & 0xFFFF)
+#define sARG17 (cpu->peek32(17) & 0xFFFF)
+#define sARG18 (cpu->peek32(18) & 0xFFFF)
+#define sARG19 (cpu->peek32(19) & 0xFFFF)
+#define sARG20 (cpu->peek32(20) & 0xFFFF)
+#define sARG21 (cpu->peek32(21) & 0xFFFF)
+#define sARG22 (cpu->peek32(22) & 0xFFFF)
+#define sARG23 (cpu->peek32(23) & 0xFFFF)
 
 #define hARG1 ARG1
 #define hARG2 ARG2
@@ -128,6 +161,21 @@ U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
 #define llARG6 cpu->memory->readq(ARG6)
 #define llARG7 cpu->memory->readq(ARG7)
 #define llARG8 cpu->memory->readq(ARG8)
+#define llARG9 cpu->memory->readq(ARG9)
+#define llARG10 cpu->memory->readq(ARG10)
+#define llARG11 cpu->memory->readq(ARG11)
+#define llARG12 cpu->memory->readq(ARG12)
+#define llARG13 cpu->memory->readq(ARG13)
+#define llARG14 cpu->memory->readq(ARG14)
+#define llARG15 cpu->memory->readq(ARG15)
+#define llARG16 cpu->memory->readq(ARG16)
+#define llARG17 cpu->memory->readq(ARG17)
+#define llARG18 cpu->memory->readq(ARG18)
+#define llARG19 cpu->memory->readq(ARG19)
+#define llARG20 cpu->memory->readq(ARG20)
+#define llARG21 cpu->memory->readq(ARG21)
+#define llARG22 cpu->memory->readq(ARG22)
+#define llARG23 cpu->memory->readq(ARG23)
 
 #define fARG1 fARG(cpu, ARG1)
 #define fARG2 fARG(cpu, ARG2)
@@ -144,6 +192,14 @@ U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
 #define fARG13 fARG(cpu, ARG13)
 #define fARG14 fARG(cpu, ARG14)
 #define fARG15 fARG(cpu, ARG15)
+#define fARG16 fARG(cpu, ARG16)
+#define fARG17 fARG(cpu, ARG17)
+#define fARG18 fARG(cpu, ARG18)
+#define fARG19 fARG(cpu, ARG19)
+#define fARG20 fARG(cpu, ARG20)
+#define fARG21 fARG(cpu, ARG21)
+#define fARG22 fARG(cpu, ARG22)
+#define fARG23 fARG(cpu, ARG23)
 
 #define dARG1 dARG(cpu, ARG1)
 #define dARG2 dARG(cpu, ARG2)
@@ -156,6 +212,18 @@ U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
 #define dARG9 dARG(cpu, ARG9)
 #define dARG10 dARG(cpu, ARG10)
 #define dARG11 dARG(cpu, ARG11)
+#define dARG12 dARG(cpu, ARG12)
+#define dARG13 dARG(cpu, ARG13)
+#define dARG14 dARG(cpu, ARG14)
+#define dARG15 dARG(cpu, ARG15)
+#define dARG16 dARG(cpu, ARG16)
+#define dARG17 dARG(cpu, ARG17)
+#define dARG18 dARG(cpu, ARG18)
+#define dARG19 dARG(cpu, ARG19)
+#define dARG20 dARG(cpu, ARG20)
+#define dARG21 dARG(cpu, ARG21)
+#define dARG22 dARG(cpu, ARG22)
+#define dARG23 dARG(cpu, ARG23)
 
 float fARG(CPU* cpu, U32 arg);
 double dARG(CPU* cpu, int address);

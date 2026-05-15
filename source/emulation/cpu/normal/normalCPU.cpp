@@ -91,6 +91,30 @@ void OPCALL normal_sidt(CPU* cpu, DecodedOp* op) {
     NEXT();
 }
 
+void OPCALL normal_str_reg(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->reg[op->reg].u16 = 0;
+    NEXT();
+}
+
+void OPCALL normal_str_e16(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->memory->writew(eaa(cpu, op), 0);
+    NEXT();
+}
+
+void OPCALL normal_smsw_reg(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->reg[op->reg].u16 = 0;
+    NEXT();
+}
+
+void OPCALL normal_smsw_e16(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->memory->writew(eaa(cpu, op), 0);
+    NEXT();
+}
+
 void OPCALL onTestEnd(CPU* cpu, DecodedOp* op) {
     cpu->nextOp = op;
 }
@@ -117,8 +141,8 @@ static void initNormalOps() {
     
     normalOps[SLDTReg] = nullptr;
     normalOps[SLDTE16] = nullptr;
-    normalOps[STRReg] = nullptr;
-    normalOps[STRE16] = nullptr;
+    normalOps[STRReg] = normal_str_reg;
+    normalOps[STRE16] = normal_str_e16;
     normalOps[LLDTR16] = nullptr;
     normalOps[LLDTE16] = nullptr;
     normalOps[LTRR16] = nullptr;
@@ -129,8 +153,8 @@ static void initNormalOps() {
     normalOps[SIDT] = normal_sidt;
     normalOps[LGDT] = nullptr;
     normalOps[LIDT] = nullptr;
-    normalOps[SMSWRreg] = nullptr;
-    normalOps[SMSW] = nullptr;
+    normalOps[SMSWRreg] = normal_smsw_reg;
+    normalOps[SMSW] = normal_smsw_e16;
     normalOps[LMSWRreg] = nullptr;
     normalOps[LMSW] = nullptr;
     normalOps[INVLPG] = nullptr;
@@ -206,16 +230,10 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
 }
 
 void NormalCPU::run() {
-#ifdef BOXEDWINE_JIT
-    if (nextOp->runCount <= JIT_RUN_COUNT) {
-        firstOp(this, nextOp);
-    } else {
-        nextOp->pfn(this, nextOp);
-#if !defined(BOXEDWINE_MULTI_THREADED)
-        this->blockInstructionCount += nextOp->blockOpCount;
-#endif
-    }
-    if (!nextOp && !thread->terminating) {
+    if (!nextOp) {
+        if (thread->terminating) {
+            return;
+        }
         nextOp = getNextOp();
         if (!nextOp) {
             thread->seg_mapper(getEipAddress(), true, false, false);
@@ -224,6 +242,15 @@ void NormalCPU::run() {
                 kpanic_fmt("Failed to get op for thread %d of process %d at address %x", thread->id, thread->process->id, getEipAddress());
             }
         }
+    }
+#ifdef BOXEDWINE_JIT
+    if (nextOp->runCount <= JIT_RUN_COUNT) {
+        firstOp(this, nextOp);
+    } else {
+        nextOp->pfn(this, nextOp);
+#if !defined(BOXEDWINE_MULTI_THREADED)
+        this->blockInstructionCount += nextOp->blockOpCount;
+#endif
     }
 #else
     nextOp->pfn(this, nextOp);

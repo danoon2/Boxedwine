@@ -10214,3 +10214,701 @@ GLAPI void APIENTRY glWriteMaskEXT( GLuint res, GLuint in, GLenum outX, GLenum o
     CALL_6(WriteMaskEXT, res, in, outX, outY, outZ, outW);
 }
 
+
+/* GLES coverage additions generated from gles.txt. */
+
+GLAPI GLboolean APIENTRY glAcquireKeyedMutexWin32EXT( GLuint memory, GLuint64 key, GLuint timeout) {
+    CALL_3_R(AcquireKeyedMutexWin32EXT, memory, LL(key), timeout);
+}
+
+GLAPI void APIENTRY glAlphaFuncx( GLenum func, GLfixed ref) {
+    CALL_2(AlphaFuncx, func, ref);
+}
+
+GLAPI void APIENTRY glAlphaToCoverageDitherControlNV( GLenum mode) {
+    CALL_1(AlphaToCoverageDitherControlNV, mode);
+}
+
+GLAPI GLuint APIENTRY glAsyncCopyBufferSubDataNVX( GLsizei waitSemaphoreCount, const GLuint* waitSemaphoreArray, const GLuint64* fenceValueArray, GLuint readGpu, GLbitfield writeGpuMask, GLuint readBuffer, GLuint writeBuffer, GLintptr readOffset, GLintptr writeOffset, GLsizeiptr size, GLsizei signalSemaphoreCount, const GLuint* signalSemaphoreArray, const GLuint64* signalValueArray) {
+    CALL_13_R(AsyncCopyBufferSubDataNVX, waitSemaphoreCount, P(waitSemaphoreArray), P(fenceValueArray), readGpu, writeGpuMask, readBuffer, writeBuffer, readOffset, writeOffset, size, signalSemaphoreCount, P(signalSemaphoreArray), P(signalValueArray));
+}
+
+GLAPI GLuint APIENTRY glAsyncCopyImageSubDataNVX( GLsizei waitSemaphoreCount, const GLuint* waitSemaphoreArray, const GLuint64* waitValueArray, GLuint srcGpu, GLbitfield dstGpuMask, GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth, GLsizei signalSemaphoreCount, const GLuint* signalSemaphoreArray, const GLuint64* signalValueArray) {
+    CALL_23_R(AsyncCopyImageSubDataNVX, waitSemaphoreCount, P(waitSemaphoreArray), P(waitValueArray), srcGpu, dstGpuMask, srcName, srcTarget, srcLevel, srcX, srcY, srcZ, dstName, dstTarget, dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight, srcDepth, signalSemaphoreCount, P(signalSemaphoreArray), P(signalValueArray));
+}
+
+GLAPI void APIENTRY glBindShadingRateImageNV( GLuint texture) {
+    CALL_1(BindShadingRateImageNV, texture);
+}
+
+GLAPI void APIENTRY glBlitFramebufferLayerEXT( GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint srcLayer, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLint dstLayer, GLbitfield mask, GLenum filter) {
+    CALL_12(BlitFramebufferLayerEXT, srcX0, srcY0, srcX1, srcY1, srcLayer, dstX0, dstY0, dstX1, dstY1, dstLayer, mask, filter);
+}
+
+GLAPI void APIENTRY glBlitFramebufferLayersEXT( GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter) {
+    CALL_10(BlitFramebufferLayersEXT, srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+}
+
+GLAPI void APIENTRY glBufferAttachMemoryNV( GLenum target, GLuint memory, GLuint64 offset) {
+    CALL_3(BufferAttachMemoryNV, target, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glBufferPageCommitmentMemNV( GLenum target, GLintptr offset, GLsizeiptr size, GLuint memory, GLuint64 memOffset, GLboolean commit) {
+    CALL_6(BufferPageCommitmentMemNV, target, offset, size, memory, LL(memOffset), commit);
+}
+
+GLAPI void APIENTRY glBufferStorageExternalEXT( GLenum target, GLintptr offset, GLsizeiptr size, void* clientBuffer, GLbitfield flags) {
+    CALL_5(BufferStorageExternalEXT, target, offset, size, P(clientBuffer), flags);
+}
+
+GLAPI void APIENTRY glBufferStorageMemEXT( GLenum target, GLsizeiptr size, GLuint memory, GLuint64 offset) {
+    CALL_4(BufferStorageMemEXT, target, size, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glClearColorx( GLfixed red, GLfixed green, GLfixed blue, GLfixed alpha) {
+    CALL_4(ClearColorx, red, green, blue, alpha);
+}
+
+GLAPI void APIENTRY glClearDepthx( GLfixed depth) {
+    CALL_1(ClearDepthx, depth);
+}
+
+GLAPI void APIENTRY glClientWaitSemaphoreui64NVX( GLsizei fenceObjectCount, const GLuint* semaphoreArray, const GLuint64* fenceValueArray) {
+    CALL_3(ClientWaitSemaphoreui64NVX, fenceObjectCount, P(semaphoreArray), P(fenceValueArray));
+}
+
+GLAPI void APIENTRY glClipPlanef( GLenum p, const GLfloat* eqn) {
+    CALL_2(ClipPlanef, p, P(eqn));
+}
+
+GLAPI void APIENTRY glClipPlanex( GLenum plane, const GLfixed* equation) {
+    CALL_2(ClipPlanex, plane, P(equation));
+}
+
+GLAPI void APIENTRY glColor4x( GLfixed red, GLfixed green, GLfixed blue, GLfixed alpha) {
+    CALL_4(Color4x, red, green, blue, alpha);
+}
+
+GLAPI void APIENTRY glConservativeRasterParameteriNV( GLenum pname, GLint param) {
+    CALL_2(ConservativeRasterParameteriNV, pname, param);
+}
+
+GLAPI void APIENTRY glCreateMemoryObjectsEXT( GLsizei n, GLuint* memoryObjects) {
+    CALL_2(CreateMemoryObjectsEXT, n, P(memoryObjects));
+}
+
+GLAPI GLuint APIENTRY glCreateProgressFenceNVX( void) {
+    CALL_0_R(CreateProgressFenceNVX);
+}
+
+GLAPI void APIENTRY glCreateSemaphoresNV( GLsizei n, GLuint* semaphores) {
+    CALL_2(CreateSemaphoresNV, n, P(semaphores));
+}
+
+GLAPI void APIENTRY glDeleteMemoryObjectsEXT( GLsizei n, const GLuint* memoryObjects) {
+    CALL_2(DeleteMemoryObjectsEXT, n, P(memoryObjects));
+}
+
+GLAPI void APIENTRY glDeleteQueryResourceTagNV( GLsizei n, const GLint* tagIds) {
+    CALL_2(DeleteQueryResourceTagNV, n, P(tagIds));
+}
+
+GLAPI void APIENTRY glDeleteSemaphoresEXT( GLsizei n, const GLuint* semaphores) {
+    CALL_2(DeleteSemaphoresEXT, n, P(semaphores));
+}
+
+GLAPI void APIENTRY glDepthRangeArraydvNV( GLuint first, GLsizei count, const GLdouble* v) {
+    CALL_3(DepthRangeArraydvNV, first, count, P(v));
+}
+
+GLAPI void APIENTRY glDepthRangeIndexeddNV( GLuint index, GLdouble n, GLdouble f) {
+    CALL_3(DepthRangeIndexeddNV, index, D(n), D(f));
+}
+
+GLAPI void APIENTRY glDepthRangex( GLfixed n, GLfixed f) {
+    CALL_2(DepthRangex, n, f);
+}
+
+GLAPI void APIENTRY glDrawMeshTasksEXT( GLuint num_groups_x, GLuint num_groups_y, GLuint num_groups_z) {
+    CALL_3(DrawMeshTasksEXT, num_groups_x, num_groups_y, num_groups_z);
+}
+
+GLAPI void APIENTRY glDrawMeshTasksIndirectEXT( GLintptr indirect) {
+    CALL_1(DrawMeshTasksIndirectEXT, indirect);
+}
+
+GLAPI void APIENTRY glDrawMeshTasksIndirectNV( GLintptr indirect) {
+    CALL_1(DrawMeshTasksIndirectNV, indirect);
+}
+
+GLAPI void APIENTRY glDrawMeshTasksNV( GLuint first, GLuint count) {
+    CALL_2(DrawMeshTasksNV, first, count);
+}
+
+GLAPI void APIENTRY glDrawVkImageNV( GLuint64 vkImage, GLuint sampler, GLfloat x0, GLfloat y0, GLfloat x1, GLfloat y1, GLfloat z, GLfloat s0, GLfloat t0, GLfloat s1, GLfloat t1) {
+    CALL_11(DrawVkImageNV, LL(vkImage), sampler, F(x0), F(y0), F(x1), F(y1), F(z), F(s0), F(t0), F(s1), F(t1));
+}
+
+GLAPI void APIENTRY glEGLImageTargetTexStorageEXT( GLenum target, void* image, const GLint* attrib_list) {
+    CALL_3(EGLImageTargetTexStorageEXT, target, P(image), P(attrib_list));
+}
+
+GLAPI void APIENTRY glEGLImageTargetTextureStorageEXT( GLuint texture, void* image, const GLint* attrib_list) {
+    CALL_3(EGLImageTargetTextureStorageEXT, texture, P(image), P(attrib_list));
+}
+
+GLAPI void APIENTRY glFogx( GLenum pname, GLfixed param) {
+    CALL_2(Fogx, pname, param);
+}
+
+GLAPI void APIENTRY glFogxv( GLenum pname, const GLfixed* param) {
+    CALL_2(Fogxv, pname, P(param));
+}
+
+GLAPI void APIENTRY glFramebufferFetchBarrierEXT( void) {
+    CALL_0(FramebufferFetchBarrierEXT);
+}
+
+GLAPI void APIENTRY glFramebufferParameteriMESA( GLenum target, GLenum pname, GLint param) {
+    CALL_3(FramebufferParameteriMESA, target, pname, param);
+}
+
+GLAPI void APIENTRY glFramebufferSamplePositionsfvAMD( GLenum target, GLuint numsamples, GLuint pixelindex, const GLfloat* values) {
+    CALL_4(FramebufferSamplePositionsfvAMD, target, numsamples, pixelindex, P(values));
+}
+
+GLAPI void APIENTRY glFrustumf( GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f) {
+    CALL_6(Frustumf, F(l), F(r), F(b), F(t), F(n), F(f));
+}
+
+GLAPI void APIENTRY glFrustumx( GLfixed l, GLfixed r, GLfixed b, GLfixed t, GLfixed n, GLfixed f) {
+    CALL_6(Frustumx, l, r, b, t, n, f);
+}
+
+GLAPI void APIENTRY glGenQueryResourceTagNV( GLsizei n, GLint* tagIds) {
+    CALL_2(GenQueryResourceTagNV, n, P(tagIds));
+}
+
+GLAPI void APIENTRY glGenSemaphoresEXT( GLsizei n, GLuint* semaphores) {
+    CALL_2(GenSemaphoresEXT, n, P(semaphores));
+}
+
+GLAPI void APIENTRY glGetClipPlanef( GLenum plane, GLfloat* equation) {
+    CALL_2(GetClipPlanef, plane, P(equation));
+}
+
+GLAPI void APIENTRY glGetClipPlanex( GLenum plane, GLfixed* equation) {
+    CALL_2(GetClipPlanex, plane, P(equation));
+}
+
+GLAPI void APIENTRY glGetFixedv( GLenum pname, GLfixed* data) {
+    CALL_2(GetFixedv, pname, P(data));
+}
+
+GLAPI void APIENTRY glGetFramebufferParameterfvAMD( GLenum target, GLenum pname, GLuint numsamples, GLuint pixelindex, GLsizei size, GLfloat* values) {
+    CALL_6(GetFramebufferParameterfvAMD, target, pname, numsamples, pixelindex, size, P(values));
+}
+
+GLAPI void APIENTRY glGetFramebufferParameterivMESA( GLenum target, GLenum pname, GLint* params) {
+    CALL_3(GetFramebufferParameterivMESA, target, pname, P(params));
+}
+
+GLAPI void APIENTRY glGetLightxv( GLenum light, GLenum pname, GLfixed* params) {
+    CALL_3(GetLightxv, light, pname, P(params));
+}
+
+GLAPI void APIENTRY glGetMaterialxv( GLenum face, GLenum pname, GLfixed* params) {
+    CALL_3(GetMaterialxv, face, pname, P(params));
+}
+
+GLAPI void APIENTRY glGetMemoryObjectDetachedResourcesuivNV( GLuint memory, GLenum pname, GLint first, GLsizei count, GLuint* params) {
+    CALL_5(GetMemoryObjectDetachedResourcesuivNV, memory, pname, first, count, P(params));
+}
+
+GLAPI void APIENTRY glGetMemoryObjectParameterivEXT( GLuint memoryObject, GLenum pname, GLint* params) {
+    CALL_3(GetMemoryObjectParameterivEXT, memoryObject, pname, P(params));
+}
+
+GLAPI void APIENTRY glGetNamedFramebufferParameterfvAMD( GLuint framebuffer, GLenum pname, GLuint numsamples, GLuint pixelindex, GLsizei size, GLfloat* values) {
+    CALL_6(GetNamedFramebufferParameterfvAMD, framebuffer, pname, numsamples, pixelindex, size, P(values));
+}
+
+GLAPI void APIENTRY glGetSemaphoreParameterivNV( GLuint semaphore, GLenum pname, GLint* params) {
+    CALL_3(GetSemaphoreParameterivNV, semaphore, pname, P(params));
+}
+
+GLAPI void APIENTRY glGetSemaphoreParameterui64vEXT( GLuint semaphore, GLenum pname, GLuint64* params) {
+    CALL_3(GetSemaphoreParameterui64vEXT, semaphore, pname, P(params));
+}
+
+GLAPI void APIENTRY glGetShadingRateImagePaletteNV( GLuint viewport, GLuint entry, GLenum* rate) {
+    CALL_3(GetShadingRateImagePaletteNV, viewport, entry, P(rate));
+}
+
+GLAPI void APIENTRY glGetShadingRateSampleLocationivNV( GLenum rate, GLuint samples, GLuint index, GLint* location) {
+    CALL_4(GetShadingRateSampleLocationivNV, rate, samples, index, P(location));
+}
+
+GLAPI void APIENTRY glGetTexEnvxv( GLenum target, GLenum pname, GLfixed* params) {
+    CALL_3(GetTexEnvxv, target, pname, P(params));
+}
+
+GLAPI void APIENTRY glGetTexParameterxv( GLenum target, GLenum pname, GLfixed* params) {
+    CALL_3(GetTexParameterxv, target, pname, P(params));
+}
+
+GLAPI void APIENTRY glGetUnsignedBytei_vEXT( GLenum target, GLuint index, GLubyte* data) {
+    CALL_3(GetUnsignedBytei_vEXT, target, index, P(data));
+}
+
+GLAPI void APIENTRY glGetUnsignedBytevEXT( GLenum pname, GLubyte* data) {
+    CALL_2(GetUnsignedBytevEXT, pname, P(data));
+}
+
+GLAPI void* APIENTRY glGetVkProcAddrNV( const GLchar* name) {
+    CALL_1_R(GetVkProcAddrNV, P(name));
+}
+
+GLAPI void APIENTRY glImportMemoryFdEXT( GLuint memory, GLuint64 size, GLenum handleType, GLint fd) {
+    CALL_4(ImportMemoryFdEXT, memory, LL(size), handleType, fd);
+}
+
+GLAPI void APIENTRY glImportMemoryWin32HandleEXT( GLuint memory, GLuint64 size, GLenum handleType, void* handle) {
+    CALL_4(ImportMemoryWin32HandleEXT, memory, LL(size), handleType, P(handle));
+}
+
+GLAPI void APIENTRY glImportMemoryWin32NameEXT( GLuint memory, GLuint64 size, GLenum handleType, const void* name) {
+    CALL_4(ImportMemoryWin32NameEXT, memory, LL(size), handleType, P(name));
+}
+
+GLAPI void APIENTRY glImportSemaphoreFdEXT( GLuint semaphore, GLenum handleType, GLint fd) {
+    CALL_3(ImportSemaphoreFdEXT, semaphore, handleType, fd);
+}
+
+GLAPI void APIENTRY glImportSemaphoreWin32HandleEXT( GLuint semaphore, GLenum handleType, void* handle) {
+    CALL_3(ImportSemaphoreWin32HandleEXT, semaphore, handleType, P(handle));
+}
+
+GLAPI void APIENTRY glImportSemaphoreWin32NameEXT( GLuint semaphore, GLenum handleType, const void* name) {
+    CALL_3(ImportSemaphoreWin32NameEXT, semaphore, handleType, P(name));
+}
+
+GLAPI GLboolean APIENTRY glIsMemoryObjectEXT( GLuint memoryObject) {
+    CALL_1_R(IsMemoryObjectEXT, memoryObject);
+}
+
+GLAPI GLboolean APIENTRY glIsSemaphoreEXT( GLuint semaphore) {
+    CALL_1_R(IsSemaphoreEXT, semaphore);
+}
+
+GLAPI void APIENTRY glLGPUCopyImageSubDataNVX( GLuint sourceGpu, GLbitfield destinationGpuMask, GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srxY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei width, GLsizei height, GLsizei depth) {
+    CALL_17(LGPUCopyImageSubDataNVX, sourceGpu, destinationGpuMask, srcName, srcTarget, srcLevel, srcX, srxY, srcZ, dstName, dstTarget, dstLevel, dstX, dstY, dstZ, width, height, depth);
+}
+
+GLAPI void APIENTRY glLGPUInterlockNVX( void) {
+    CALL_0(LGPUInterlockNVX);
+}
+
+GLAPI void APIENTRY glLGPUNamedBufferSubDataNVX( GLbitfield gpuMask, GLuint buffer, GLintptr offset, GLsizeiptr size, const void* data) {
+    CALL_5(LGPUNamedBufferSubDataNVX, gpuMask, buffer, offset, size, P(data));
+}
+
+GLAPI void APIENTRY glLightModelx( GLenum pname, GLfixed param) {
+    CALL_2(LightModelx, pname, param);
+}
+
+GLAPI void APIENTRY glLightModelxv( GLenum pname, const GLfixed* param) {
+    CALL_2(LightModelxv, pname, P(param));
+}
+
+GLAPI void APIENTRY glLightx( GLenum light, GLenum pname, GLfixed param) {
+    CALL_3(Lightx, light, pname, param);
+}
+
+GLAPI void APIENTRY glLightxv( GLenum light, GLenum pname, const GLfixed* params) {
+    CALL_3(Lightxv, light, pname, P(params));
+}
+
+GLAPI void APIENTRY glLineWidthx( GLfixed width) {
+    CALL_1(LineWidthx, width);
+}
+
+GLAPI void APIENTRY glLoadMatrixx( const GLfixed* m) {
+    CALL_1(LoadMatrixx, P(m));
+}
+
+GLAPI void APIENTRY glMaterialx( GLenum face, GLenum pname, GLfixed param) {
+    CALL_3(Materialx, face, pname, param);
+}
+
+GLAPI void APIENTRY glMaterialxv( GLenum face, GLenum pname, const GLfixed* param) {
+    CALL_3(Materialxv, face, pname, P(param));
+}
+
+GLAPI void APIENTRY glMaxShaderCompilerThreadsKHR( GLuint count) {
+    CALL_1(MaxShaderCompilerThreadsKHR, count);
+}
+
+GLAPI void APIENTRY glMemoryObjectParameterivEXT( GLuint memoryObject, GLenum pname, const GLint* params) {
+    CALL_3(MemoryObjectParameterivEXT, memoryObject, pname, P(params));
+}
+
+GLAPI void APIENTRY glMulticastBarrierNV( void) {
+    CALL_0(MulticastBarrierNV);
+}
+
+GLAPI void APIENTRY glMulticastBlitFramebufferNV( GLuint srcGpu, GLuint dstGpu, GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter) {
+    CALL_12(MulticastBlitFramebufferNV, srcGpu, dstGpu, srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+}
+
+GLAPI void APIENTRY glMulticastBufferSubDataNV( GLbitfield gpuMask, GLuint buffer, GLintptr offset, GLsizeiptr size, const void* data) {
+    CALL_5(MulticastBufferSubDataNV, gpuMask, buffer, offset, size, P(data));
+}
+
+GLAPI void APIENTRY glMulticastCopyBufferSubDataNV( GLuint readGpu, GLbitfield writeGpuMask, GLuint readBuffer, GLuint writeBuffer, GLintptr readOffset, GLintptr writeOffset, GLsizeiptr size) {
+    CALL_7(MulticastCopyBufferSubDataNV, readGpu, writeGpuMask, readBuffer, writeBuffer, readOffset, writeOffset, size);
+}
+
+GLAPI void APIENTRY glMulticastCopyImageSubDataNV( GLuint srcGpu, GLbitfield dstGpuMask, GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth) {
+    CALL_17(MulticastCopyImageSubDataNV, srcGpu, dstGpuMask, srcName, srcTarget, srcLevel, srcX, srcY, srcZ, dstName, dstTarget, dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight, srcDepth);
+}
+
+GLAPI void APIENTRY glMulticastFramebufferSampleLocationsfvNV( GLuint gpu, GLuint framebuffer, GLuint start, GLsizei count, const GLfloat* v) {
+    CALL_5(MulticastFramebufferSampleLocationsfvNV, gpu, framebuffer, start, count, P(v));
+}
+
+GLAPI void APIENTRY glMulticastGetQueryObjecti64vNV( GLuint gpu, GLuint id, GLenum pname, GLint64* params) {
+    CALL_4(MulticastGetQueryObjecti64vNV, gpu, id, pname, P(params));
+}
+
+GLAPI void APIENTRY glMulticastGetQueryObjectivNV( GLuint gpu, GLuint id, GLenum pname, GLint* params) {
+    CALL_4(MulticastGetQueryObjectivNV, gpu, id, pname, P(params));
+}
+
+GLAPI void APIENTRY glMulticastGetQueryObjectui64vNV( GLuint gpu, GLuint id, GLenum pname, GLuint64* params) {
+    CALL_4(MulticastGetQueryObjectui64vNV, gpu, id, pname, P(params));
+}
+
+GLAPI void APIENTRY glMulticastGetQueryObjectuivNV( GLuint gpu, GLuint id, GLenum pname, GLuint* params) {
+    CALL_4(MulticastGetQueryObjectuivNV, gpu, id, pname, P(params));
+}
+
+GLAPI void APIENTRY glMulticastScissorArrayvNVX( GLuint gpu, GLuint first, GLsizei count, const GLint* v) {
+    CALL_4(MulticastScissorArrayvNVX, gpu, first, count, P(v));
+}
+
+GLAPI void APIENTRY glMulticastViewportArrayvNVX( GLuint gpu, GLuint first, GLsizei count, const GLfloat* v) {
+    CALL_4(MulticastViewportArrayvNVX, gpu, first, count, P(v));
+}
+
+GLAPI void APIENTRY glMulticastViewportPositionWScaleNVX( GLuint gpu, GLuint index, GLfloat xcoeff, GLfloat ycoeff) {
+    CALL_4(MulticastViewportPositionWScaleNVX, gpu, index, F(xcoeff), F(ycoeff));
+}
+
+GLAPI void APIENTRY glMulticastWaitSyncNV( GLuint signalGpu, GLbitfield waitGpuMask) {
+    CALL_2(MulticastWaitSyncNV, signalGpu, waitGpuMask);
+}
+
+GLAPI void APIENTRY glMultiDrawArraysIndirectCount( GLenum mode, const void* indirect, GLintptr drawcount, GLsizei maxdrawcount, GLsizei stride) {
+    CALL_5(MultiDrawArraysIndirectCount, mode, P(indirect), drawcount, maxdrawcount, stride);
+}
+
+GLAPI void APIENTRY glMultiDrawElementsIndirectCount( GLenum mode, GLenum type, const void* indirect, GLintptr drawcount, GLsizei maxdrawcount, GLsizei stride) {
+    CALL_6(MultiDrawElementsIndirectCount, mode, type, P(indirect), drawcount, maxdrawcount, stride);
+}
+
+GLAPI void APIENTRY glMultiDrawMeshTasksIndirectCountEXT( GLintptr indirect, GLintptr drawcount, GLsizei maxdrawcount, GLsizei stride) {
+    CALL_4(MultiDrawMeshTasksIndirectCountEXT, indirect, drawcount, maxdrawcount, stride);
+}
+
+GLAPI void APIENTRY glMultiDrawMeshTasksIndirectCountNV( GLintptr indirect, GLintptr drawcount, GLsizei maxdrawcount, GLsizei stride) {
+    CALL_4(MultiDrawMeshTasksIndirectCountNV, indirect, drawcount, maxdrawcount, stride);
+}
+
+GLAPI void APIENTRY glMultiDrawMeshTasksIndirectEXT( GLintptr indirect, GLsizei drawcount, GLsizei stride) {
+    CALL_3(MultiDrawMeshTasksIndirectEXT, indirect, drawcount, stride);
+}
+
+GLAPI void APIENTRY glMultiDrawMeshTasksIndirectNV( GLintptr indirect, GLsizei drawcount, GLsizei stride) {
+    CALL_3(MultiDrawMeshTasksIndirectNV, indirect, drawcount, stride);
+}
+
+GLAPI void APIENTRY glMultiTexCoord4x( GLenum texture, GLfixed s, GLfixed t, GLfixed r, GLfixed q) {
+    CALL_5(MultiTexCoord4x, texture, s, t, r, q);
+}
+
+GLAPI void APIENTRY glMultMatrixx( const GLfixed* m) {
+    CALL_1(MultMatrixx, P(m));
+}
+
+GLAPI void APIENTRY glNamedBufferAttachMemoryNV( GLuint buffer, GLuint memory, GLuint64 offset) {
+    CALL_3(NamedBufferAttachMemoryNV, buffer, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glNamedBufferPageCommitmentMemNV( GLuint buffer, GLintptr offset, GLsizeiptr size, GLuint memory, GLuint64 memOffset, GLboolean commit) {
+    CALL_6(NamedBufferPageCommitmentMemNV, buffer, offset, size, memory, LL(memOffset), commit);
+}
+
+GLAPI void APIENTRY glNamedBufferStorageExternalEXT( GLuint buffer, GLintptr offset, GLsizeiptr size, void* clientBuffer, GLbitfield flags) {
+    CALL_5(NamedBufferStorageExternalEXT, buffer, offset, size, P(clientBuffer), flags);
+}
+
+GLAPI void APIENTRY glNamedBufferStorageMemEXT( GLuint buffer, GLsizeiptr size, GLuint memory, GLuint64 offset) {
+    CALL_4(NamedBufferStorageMemEXT, buffer, size, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glNamedFramebufferSamplePositionsfvAMD( GLuint framebuffer, GLuint numsamples, GLuint pixelindex, const GLfloat* values) {
+    CALL_4(NamedFramebufferSamplePositionsfvAMD, framebuffer, numsamples, pixelindex, P(values));
+}
+
+GLAPI void APIENTRY glNamedFramebufferTextureMultiviewOVR( GLuint framebuffer, GLenum attachment, GLuint texture, GLint level, GLint baseViewIndex, GLsizei numViews) {
+    CALL_6(NamedFramebufferTextureMultiviewOVR, framebuffer, attachment, texture, level, baseViewIndex, numViews);
+}
+
+GLAPI void APIENTRY glNamedRenderbufferStorageMultisampleAdvancedAMD( GLuint renderbuffer, GLsizei samples, GLsizei storageSamples, GLenum internalformat, GLsizei width, GLsizei height) {
+    CALL_6(NamedRenderbufferStorageMultisampleAdvancedAMD, renderbuffer, samples, storageSamples, internalformat, width, height);
+}
+
+GLAPI void APIENTRY glNormal3x( GLfixed nx, GLfixed ny, GLfixed nz) {
+    CALL_3(Normal3x, nx, ny, nz);
+}
+
+GLAPI void APIENTRY glOrthof( GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f) {
+    CALL_6(Orthof, F(l), F(r), F(b), F(t), F(n), F(f));
+}
+
+GLAPI void APIENTRY glOrthox( GLfixed l, GLfixed r, GLfixed b, GLfixed t, GLfixed n, GLfixed f) {
+    CALL_6(Orthox, l, r, b, t, n, f);
+}
+
+GLAPI void APIENTRY glPointParameterx( GLenum pname, GLfixed param) {
+    CALL_2(PointParameterx, pname, param);
+}
+
+GLAPI void APIENTRY glPointParameterxv( GLenum pname, const GLfixed* params) {
+    CALL_2(PointParameterxv, pname, P(params));
+}
+
+GLAPI void APIENTRY glPointSizex( GLfixed size) {
+    CALL_1(PointSizex, size);
+}
+
+GLAPI void APIENTRY glPolygonOffsetClamp( GLfloat factor, GLfloat units, GLfloat clamp) {
+    CALL_3(PolygonOffsetClamp, F(factor), F(units), F(clamp));
+}
+
+GLAPI void APIENTRY glPolygonOffsetx( GLfixed factor, GLfixed units) {
+    CALL_2(PolygonOffsetx, factor, units);
+}
+
+GLAPI GLint APIENTRY glQueryResourceNV( GLenum queryType, GLint tagId, GLuint count, GLint* buffer) {
+    CALL_4_R(QueryResourceNV, queryType, tagId, count, P(buffer));
+}
+
+GLAPI void APIENTRY glQueryResourceTagNV( GLint tagId, const GLchar* tagString) {
+    CALL_2(QueryResourceTagNV, tagId, P(tagString));
+}
+
+GLAPI GLboolean APIENTRY glReleaseKeyedMutexWin32EXT( GLuint memory, GLuint64 key) {
+    CALL_2_R(ReleaseKeyedMutexWin32EXT, memory, LL(key));
+}
+
+GLAPI void APIENTRY glRenderbufferStorageMultisampleAdvancedAMD( GLenum target, GLsizei samples, GLsizei storageSamples, GLenum internalformat, GLsizei width, GLsizei height) {
+    CALL_6(RenderbufferStorageMultisampleAdvancedAMD, target, samples, storageSamples, internalformat, width, height);
+}
+
+GLAPI void APIENTRY glRenderGpuMaskNV( GLbitfield mask) {
+    CALL_1(RenderGpuMaskNV, mask);
+}
+
+GLAPI void APIENTRY glResetMemoryObjectParameterNV( GLuint memory, GLenum pname) {
+    CALL_2(ResetMemoryObjectParameterNV, memory, pname);
+}
+
+GLAPI void APIENTRY glRotatex( GLfixed angle, GLfixed x, GLfixed y, GLfixed z) {
+    CALL_4(Rotatex, angle, x, y, z);
+}
+
+GLAPI void APIENTRY glSampleCoveragex( GLfixed value, GLboolean invert) {
+    CALL_2(SampleCoveragex, value, invert);
+}
+
+GLAPI void APIENTRY glScalex( GLfixed x, GLfixed y, GLfixed z) {
+    CALL_3(Scalex, x, y, z);
+}
+
+GLAPI void APIENTRY glScissorExclusiveArrayvNV( GLuint first, GLsizei count, const GLint* v) {
+    CALL_3(ScissorExclusiveArrayvNV, first, count, P(v));
+}
+
+GLAPI void APIENTRY glScissorExclusiveNV( GLint x, GLint y, GLsizei width, GLsizei height) {
+    CALL_4(ScissorExclusiveNV, x, y, width, height);
+}
+
+GLAPI void APIENTRY glSemaphoreParameterivNV( GLuint semaphore, GLenum pname, const GLint* params) {
+    CALL_3(SemaphoreParameterivNV, semaphore, pname, P(params));
+}
+
+GLAPI void APIENTRY glSemaphoreParameterui64vEXT( GLuint semaphore, GLenum pname, const GLuint64* params) {
+    CALL_3(SemaphoreParameterui64vEXT, semaphore, pname, P(params));
+}
+
+GLAPI void APIENTRY glShadingRateImageBarrierNV( GLboolean synchronize) {
+    CALL_1(ShadingRateImageBarrierNV, synchronize);
+}
+
+GLAPI void APIENTRY glShadingRateImagePaletteNV( GLuint viewport, GLuint first, GLsizei count, const GLenum* rates) {
+    CALL_4(ShadingRateImagePaletteNV, viewport, first, count, P(rates));
+}
+
+GLAPI void APIENTRY glShadingRateSampleOrderCustomNV( GLenum rate, GLuint samples, const GLint* locations) {
+    CALL_3(ShadingRateSampleOrderCustomNV, rate, samples, P(locations));
+}
+
+GLAPI void APIENTRY glShadingRateSampleOrderNV( GLenum order) {
+    CALL_1(ShadingRateSampleOrderNV, order);
+}
+
+GLAPI void APIENTRY glSignalSemaphoreEXT( GLuint semaphore, GLuint numBufferBarriers, const GLuint* buffers, GLuint numTextureBarriers, const GLuint* textures, const GLenum* dstLayouts) {
+    CALL_6(SignalSemaphoreEXT, semaphore, numBufferBarriers, P(buffers), numTextureBarriers, P(textures), P(dstLayouts));
+}
+
+GLAPI void APIENTRY glSignalSemaphoreui64NVX( GLuint signalGpu, GLsizei fenceObjectCount, const GLuint* semaphoreArray, const GLuint64* fenceValueArray) {
+    CALL_4(SignalSemaphoreui64NVX, signalGpu, fenceObjectCount, P(semaphoreArray), P(fenceValueArray));
+}
+
+GLAPI void APIENTRY glSignalVkFenceNV( GLuint64 vkFence) {
+    CALL_1(SignalVkFenceNV, LL(vkFence));
+}
+
+GLAPI void APIENTRY glSignalVkSemaphoreNV( GLuint64 vkSemaphore) {
+    CALL_1(SignalVkSemaphoreNV, LL(vkSemaphore));
+}
+
+GLAPI void APIENTRY glSpecializeShader( GLuint shader, const GLchar* pEntryPoint, GLuint numSpecializationConstants, const GLuint* pConstantIndex, const GLuint* pConstantValue) {
+    CALL_5(SpecializeShader, shader, P(pEntryPoint), numSpecializationConstants, P(pConstantIndex), P(pConstantValue));
+}
+
+GLAPI void APIENTRY glSpecializeShaderARB( GLuint shader, const GLchar* pEntryPoint, GLuint numSpecializationConstants, const GLuint* pConstantIndex, const GLuint* pConstantValue) {
+    CALL_5(SpecializeShaderARB, shader, P(pEntryPoint), numSpecializationConstants, P(pConstantIndex), P(pConstantValue));
+}
+
+GLAPI void APIENTRY glTexAttachMemoryNV( GLenum target, GLuint memory, GLuint64 offset) {
+    CALL_3(TexAttachMemoryNV, target, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glTexEnvx( GLenum target, GLenum pname, GLfixed param) {
+    CALL_3(TexEnvx, target, pname, param);
+}
+
+GLAPI void APIENTRY glTexEnvxv( GLenum target, GLenum pname, const GLfixed* params) {
+    CALL_3(TexEnvxv, target, pname, P(params));
+}
+
+GLAPI void APIENTRY glTexPageCommitmentMemNV( GLenum target, GLint layer, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLuint memory, GLuint64 offset, GLboolean commit) {
+    CALL_12(TexPageCommitmentMemNV, target, layer, level, xoffset, yoffset, zoffset, width, height, depth, memory, LL(offset), commit);
+}
+
+GLAPI void APIENTRY glTexParameterx( GLenum target, GLenum pname, GLfixed param) {
+    CALL_3(TexParameterx, target, pname, param);
+}
+
+GLAPI void APIENTRY glTexParameterxv( GLenum target, GLenum pname, const GLfixed* params) {
+    CALL_3(TexParameterxv, target, pname, P(params));
+}
+
+GLAPI void APIENTRY glTexStorage1DEXT( GLenum target, GLsizei levels, GLenum internalformat, GLsizei width) {
+    CALL_4(TexStorage1DEXT, target, levels, internalformat, width);
+}
+
+GLAPI void APIENTRY glTexStorage2DEXT( GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height) {
+    CALL_5(TexStorage2DEXT, target, levels, internalformat, width, height);
+}
+
+GLAPI void APIENTRY glTexStorage3DEXT( GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth) {
+    CALL_6(TexStorage3DEXT, target, levels, internalformat, width, height, depth);
+}
+
+GLAPI void APIENTRY glTexStorageMem1DEXT( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLuint memory, GLuint64 offset) {
+    CALL_6(TexStorageMem1DEXT, target, levels, internalFormat, width, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glTexStorageMem2DEXT( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLuint memory, GLuint64 offset) {
+    CALL_7(TexStorageMem2DEXT, target, levels, internalFormat, width, height, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glTexStorageMem2DMultisampleEXT( GLenum target, GLsizei samples, GLenum internalFormat, GLsizei width, GLsizei height, GLboolean fixedSampleLocations, GLuint memory, GLuint64 offset) {
+    CALL_8(TexStorageMem2DMultisampleEXT, target, samples, internalFormat, width, height, fixedSampleLocations, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glTexStorageMem3DEXT( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, GLuint memory, GLuint64 offset) {
+    CALL_8(TexStorageMem3DEXT, target, levels, internalFormat, width, height, depth, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glTexStorageMem3DMultisampleEXT( GLenum target, GLsizei samples, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, GLboolean fixedSampleLocations, GLuint memory, GLuint64 offset) {
+    CALL_9(TexStorageMem3DMultisampleEXT, target, samples, internalFormat, width, height, depth, fixedSampleLocations, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glTextureAttachMemoryNV( GLuint texture, GLuint memory, GLuint64 offset) {
+    CALL_3(TextureAttachMemoryNV, texture, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glTexturePageCommitmentMemNV( GLuint texture, GLint layer, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLuint memory, GLuint64 offset, GLboolean commit) {
+    CALL_12(TexturePageCommitmentMemNV, texture, layer, level, xoffset, yoffset, zoffset, width, height, depth, memory, LL(offset), commit);
+}
+
+GLAPI void APIENTRY glTextureStorageMem1DEXT( GLuint texture, GLsizei levels, GLenum internalFormat, GLsizei width, GLuint memory, GLuint64 offset) {
+    CALL_6(TextureStorageMem1DEXT, texture, levels, internalFormat, width, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glTextureStorageMem2DEXT( GLuint texture, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLuint memory, GLuint64 offset) {
+    CALL_7(TextureStorageMem2DEXT, texture, levels, internalFormat, width, height, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glTextureStorageMem2DMultisampleEXT( GLuint texture, GLsizei samples, GLenum internalFormat, GLsizei width, GLsizei height, GLboolean fixedSampleLocations, GLuint memory, GLuint64 offset) {
+    CALL_8(TextureStorageMem2DMultisampleEXT, texture, samples, internalFormat, width, height, fixedSampleLocations, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glTextureStorageMem3DEXT( GLuint texture, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, GLuint memory, GLuint64 offset) {
+    CALL_8(TextureStorageMem3DEXT, texture, levels, internalFormat, width, height, depth, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glTextureStorageMem3DMultisampleEXT( GLuint texture, GLsizei samples, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, GLboolean fixedSampleLocations, GLuint memory, GLuint64 offset) {
+    CALL_9(TextureStorageMem3DMultisampleEXT, texture, samples, internalFormat, width, height, depth, fixedSampleLocations, memory, LL(offset));
+}
+
+GLAPI void APIENTRY glTranslatex( GLfixed x, GLfixed y, GLfixed z) {
+    CALL_3(Translatex, x, y, z);
+}
+
+GLAPI void APIENTRY glUploadGpuMaskNVX( GLbitfield mask) {
+    CALL_1(UploadGpuMaskNVX, mask);
+}
+
+GLAPI GLintptr APIENTRY glVDPAURegisterVideoSurfaceWithPictureStructureNV( const void* vdpSurface, GLenum target, GLsizei numTextureNames, const GLuint* textureNames, GLboolean isFrameStructure) {
+    CALL_5_R(VDPAURegisterVideoSurfaceWithPictureStructureNV, P(vdpSurface), target, numTextureNames, P(textureNames), isFrameStructure);
+}
+
+GLAPI void APIENTRY glViewportPositionWScaleNV( GLuint index, GLfloat xcoeff, GLfloat ycoeff) {
+    CALL_3(ViewportPositionWScaleNV, index, F(xcoeff), F(ycoeff));
+}
+
+GLAPI void APIENTRY glViewportSwizzleNV( GLuint index, GLenum swizzlex, GLenum swizzley, GLenum swizzlez, GLenum swizzlew) {
+    CALL_5(ViewportSwizzleNV, index, swizzlex, swizzley, swizzlez, swizzlew);
+}
+
+GLAPI void APIENTRY glWaitSemaphoreEXT( GLuint semaphore, GLuint numBufferBarriers, const GLuint* buffers, GLuint numTextureBarriers, const GLuint* textures, const GLenum* srcLayouts) {
+    CALL_6(WaitSemaphoreEXT, semaphore, numBufferBarriers, P(buffers), numTextureBarriers, P(textures), P(srcLayouts));
+}
+
+GLAPI void APIENTRY glWaitSemaphoreui64NVX( GLuint waitGpu, GLsizei fenceObjectCount, const GLuint* semaphoreArray, const GLuint64* fenceValueArray) {
+    CALL_4(WaitSemaphoreui64NVX, waitGpu, fenceObjectCount, P(semaphoreArray), P(fenceValueArray));
+}
+
+GLAPI void APIENTRY glWaitVkSemaphoreNV( GLuint64 vkSemaphore) {
+    CALL_1(WaitVkSemaphoreNV, LL(vkSemaphore));
+}
+
+GLAPI void APIENTRY glWindowRectanglesEXT( GLenum mode, GLsizei count, const GLint* box) {
+    CALL_3(WindowRectanglesEXT, mode, count, P(box));
+}

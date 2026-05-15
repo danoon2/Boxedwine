@@ -20,6 +20,9 @@
 
 #ifdef BOXEDWINE_OPENGL
 #include GLH
+#ifdef __EMSCRIPTEN__
+#include <emscripten/html5.h>
+#endif
 #include "knativesystem.h"
 #include "glcommon.h"
 
@@ -41,6 +44,71 @@
 #endif
 
 static BString glExt;
+
+#if defined(__EMSCRIPTEN__)
+static bool isUnsupportedEmscriptenProcAddress(const char* name) {
+    if (strstr(name, "Convolution") || strstr(name, "Histogram") || strstr(name, "Minmax") || strstr(name, "SeparableFilter") || strstr(name, "ColorTable")) {
+        return true;
+    }
+
+    if (!strcmp(name, "glBeginQueryEXT")
+            || !strcmp(name, "glDeleteQueriesEXT")
+            || !strcmp(name, "glEndQueryEXT")
+            || !strcmp(name, "glGenQueriesEXT")
+            || !strcmp(name, "glGetQueryivEXT")
+            || !strcmp(name, "glGetQueryObjecti64vEXT")
+            || !strcmp(name, "glGetQueryObjectivEXT")
+            || !strcmp(name, "glGetQueryObjectui64vEXT")
+            || !strcmp(name, "glGetQueryObjectuivEXT")
+            || !strcmp(name, "glIsQueryEXT")
+            || !strcmp(name, "glQueryCounterEXT")) {
+        return true;
+    }
+
+    // Emscripten's GL proc-address shim strips vendor suffixes before lookup.
+    // That makes fixed-point OES names like glConvolutionParameterxvOES match
+    // different desktop/legacy GL entry points with incompatible wasm
+    // signatures.
+    size_t len = strlen(name);
+    if (len < 6 || strcmp(name + len - 3, "OES") != 0) {
+        return false;
+    }
+    return strstr(name, "xOES") || strstr(name, "xvOES");
+}
+#endif
+
+static bool isOpenGLProcAddressAvailable(const char* name) {
+    if (!name || name[0] != 'g' || name[1] != 'l' || name[2] == 'X') {
+        return false;
+    }
+
+#if defined(__EMSCRIPTEN__)
+    if (isUnsupportedEmscriptenProcAddress(name)) {
+        return false;
+    }
+#endif
+
+#undef GL_FUNCTION
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) if (!strcmp(name, "gl" #func)) return pgl##func != nullptr;
+
+#undef GL_FUNCTION_FMT
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG) if (!strcmp(name, "gl" #func)) return pgl##func != nullptr;
+
+#undef GL_FUNCTION_CUSTOM
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) if (!strcmp(name, "gl" #func)) return pgl##func != nullptr;
+
+#undef GL_EXT_FUNCTION
+#define GL_EXT_FUNCTION(func, RET, PARAMS) if (!strcmp(name, "gl" #func)) return ext_gl##func != nullptr;
+
+#include "glfunctions.h"
+#include "glfunctions_ext.h"
+
+    return false;
+}
+
+void glcommon_glProcAddressAvailable(CPU* cpu) {
+    EAX = isOpenGLProcAddressAvailable(marshalsz(cpu, ARG1)) ? 1 : 0;
+}
 
 float fARG(CPU* cpu, U32 arg) {
     struct int2Float i;
@@ -90,6 +158,39 @@ void glcommon_glViewport(CPU* cpu) {
     GL_FUNC(pglViewport)(x, y, width, height);
 }
 
+void glcommon_glClearDepth(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    glClearDepth(dARG1);
+#else
+    if (GL_FUNC(pglClearDepth)) {
+        GL_FUNC(pglClearDepth)(dARG1);
+    }
+#endif
+    GL_LOG("glClearDepth GLclampd depth=%f", dARG1);
+}
+
+void glcommon_glDepthFunc(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    glDepthFunc(ARG1);
+#else
+    if (GL_FUNC(pglDepthFunc)) {
+        GL_FUNC(pglDepthFunc)(ARG1);
+    }
+#endif
+    GL_LOG("glDepthFunc GLenum func=%d", ARG1);
+}
+
+void glcommon_glDepthMask(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    glDepthMask((GLboolean)ARG1);
+#else
+    if (GL_FUNC(pglDepthMask)) {
+        GL_FUNC(pglDepthMask)((GLboolean)ARG1);
+    }
+#endif
+    GL_LOG("glDepthMask GLboolean flag=%d", ARG1);
+}
+
 static GLfloat* feedbackBuffer;
 static GLsizei feedbackBufferSize;
 static GLsizei feedbackSize;
@@ -136,9 +237,81 @@ void glcommon_glSelectBuffer(CPU* cpu) {
 // changed this to an invalid value to fix motorhead under windows.  I will need to reevaluate why it was necessary for ma
 static const char* addedExt[] = { "WGL_ARB_create_context_Invalid" };
 
+static const char* getFilteredExtensionString(KProcess* process) {
+#ifdef DISABLE_GL_EXTENSIONS
+    process->numberOfExtensions = 1;
+    return "GL_EXT_texture3D";
+#else
+#ifdef __EMSCRIPTEN__
+    static const char* webglFallbackExt =
+        "GL_ARB_fragment_shader "
+        "GL_ARB_framebuffer_object "
+        "GL_ARB_shading_language_100 "
+        "GL_ARB_texture_non_power_of_two "
+        "GL_ARB_vertex_buffer_object "
+        "GL_ARB_vertex_shader "
+        "GL_EXT_framebuffer_object "
+        "GL_EXT_texture3D "
+        "WGL_ARB_create_context_Invalid";
+    if (!emscripten_webgl_get_current_context()) {
+        process->numberOfExtensions = 9;
+        return webglFallbackExt;
+    }
+#endif
+    static char* ext;
+    static U32 extensionCount;
+
+    if (!ext) {
+        const char* result = (const char*)GL_FUNC(pglGetString)(GL_EXTENSIONS);
+        U32 len = result ? (U32)strlen(result) + 1 : 1;
+        for (U32 i = 0; i < sizeof(addedExt) / sizeof(*addedExt); i++) {
+            len += (U32)strlen(addedExt[i]) + 1;
+        }
+        ext = new char[len];
+        memset(ext, 0, len);
+
+        if (result) {
+            std::vector<BString> hardwareExt;
+            std::vector<BString> supportedExt;
+            B(result).split(' ', hardwareExt);
+            for (U32 i = 0; i < sizeof(extentions) / sizeof(char*); i++) {
+                supportedExt.push_back(BString::copy(extentions[i]));
+            }
+            for (U32 i = 0; i < hardwareExt.size(); i++) {
+#if defined(__EMSCRIPTEN__)
+                if (hardwareExt[i] == "GL_OES_fixed_point" || hardwareExt[i] == "GL_ARB_imaging" || hardwareExt[i] == "GL_EXT_convolution" || hardwareExt[i] == "GL_EXT_histogram" || hardwareExt[i] == "GL_SGI_color_table") {
+                    continue;
+                }
+#endif
+                if (std::find(supportedExt.begin(), supportedExt.end(), hardwareExt[i]) == supportedExt.end()) {
+                    continue;
+                }
+
+                if (!glExt.length() || strstr(glExt.c_str(), hardwareExt[i].c_str())) {
+                    if (ext[0] != 0)
+                        strcat(ext, " ");
+                    extensionCount++;
+                    strcat(ext, hardwareExt[i].c_str());
+                }
+            }
+        }
+
+        for (U32 i = 0; i < sizeof(addedExt) / sizeof(*addedExt); i++) {
+            if (ext[0] != 0)
+                strcat(ext, " ");
+            extensionCount++;
+            strcat(ext, addedExt[i]);
+        }
+    }
+    process->numberOfExtensions = extensionCount;
+    return ext;
+#endif
+}
+
 void glcommon_glGetIntegerv(CPU* cpu) {
     GLenum pname = ARG1;
     if (pname == GL_NUM_EXTENSIONS) {
+        getFilteredExtensionString(cpu->thread->process.get());
         cpu->memory->writed(ARG2, cpu->thread->process->numberOfExtensions);
     } else {
         MarshalReadWrite<GLint> buffer(cpu, ARG2, getSize(ARG1));
@@ -285,54 +458,37 @@ void printOpenGLInfo() {
 // GLAPI const GLubyte* APIENTRY glGetString( GLenum name ) {
 void glcommon_glGetString(CPU* cpu) {
     U32 name = ARG1;
-    const char* result = (const char*)GL_FUNC(pglGetString)(name);
+    const char* result;
+#ifdef __EMSCRIPTEN__
+    switch (name) {
+    case GL_VENDOR:
+        result = "BoxedWine";
+        break;
+    case GL_RENDERER:
+        result = "BoxedWine WebGL";
+        break;
+    case GL_VERSION:
+        result = "3.0 BoxedWine WebGL";
+        break;
+    case 0x8B8C: /* GL_SHADING_LANGUAGE_VERSION */
+        result = "3.00 BoxedWine WebGL";
+        break;
+    default:
+        if (!emscripten_webgl_get_current_context()) {
+            EAX = 0;
+            return;
+        }
+        result = (const char*)GL_FUNC(pglGetString)(name);
+        break;
+    }
+#else
+    result = (const char*)GL_FUNC(pglGetString)(name);
+#endif
     KProcess* process = cpu->thread->process.get();
 
     if (name == GL_EXTENSIONS) {
-#ifdef DISABLE_GL_EXTENSIONS
-        result = "GL_EXT_texture3D";
-#else
-        static char* ext;
-        if (!ext) {
-            U32 len = (U32)strlen(result)+1;
-            for (U32 i = 0; i < sizeof(addedExt) / sizeof(*addedExt); i++) {
-                len += (U32)strlen(addedExt[i])+1;
-            }
-            ext = new char[len];
-            memset(ext, 0, len);
-        }
-        if (ext[0]==0) {
-            std::vector<BString> hardwareExt;
-            std::vector<BString> supportedExt;
-            B(result).split(' ', hardwareExt);
-            for (U32 i=0;i<sizeof(extentions)/sizeof(char*);i++) {
-                supportedExt.push_back(BString::copy(extentions[i]));
-            }
-            process->numberOfExtensions = 0;
-            for (U32 i=0;i<hardwareExt.size();i++) {
-                if (std::find(supportedExt.begin(), supportedExt.end(), hardwareExt[i]) == supportedExt.end()) {
-                    continue;
-                }
-
-                if (!glExt.length() || strstr(glExt.c_str(), hardwareExt[i].c_str())) {
-                    if (ext[0]!=0)
-                        strcat(ext, " ");
-                    process->numberOfExtensions++;
-                    strcat(ext, hardwareExt[i].c_str());
-                }
-            }
-            for (U32 i = 0; i < sizeof(addedExt) / sizeof(*addedExt); i++) {
-                if (ext[0] != 0)
-                    strcat(ext, " ");
-                process->numberOfExtensions++;
-                strcat(ext, addedExt[i]);
-            }
-
-        }
-        result = ext;
-#endif
+        result = getFilteredExtensionString(process);
         GL_LOG("glGetString GLenum name=GL_EXTENSIONS ret=%s", result);
-    } else {
     }
 
     if (name == GL_EXTENSIONS && !cpu->thread->process->glStringsiExtensions) {
@@ -1450,10 +1606,18 @@ void gl_common_XSwapBuffers(CPU* cpu) {
 #include "glfunctions.h"
 
 static Int99Callback gl_callback[GL_FUNC_COUNT];
+static_assert(GL_FUNC_COUNT > kEglQueryString, "GL_FUNC_COUNT must include EGL int99 callbacks");
 
 Int99Callback* int99Callback;
 U32 int99CallbackSize;
 U32 lastGlCallTime;
+void gl_init_egl_callbacks(Int99Callback* gl_callback);
+
+#if defined(__EMSCRIPTEN__)
+static void glcommon_unsupportedEmscriptenGL(CPU* cpu) {
+    EAX = 0;
+}
+#endif
 
 void gl_init(BString allowExtensions) {
     int99Callback=gl_callback;
@@ -1470,7 +1634,11 @@ void gl_init(BString allowExtensions) {
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS) gl_callback[func] = glcommon_gl##func;
 
 #undef GL_EXT_FUNCTION
+#ifdef __EMSCRIPTEN__
+#define GL_EXT_FUNCTION(func, RET, PARAMS) gl_callback[func] = isUnsupportedEmscriptenProcAddress("gl" #func) ? glcommon_unsupportedEmscriptenGL : glcommon_gl##func;
+#else
 #define GL_EXT_FUNCTION(func, RET, PARAMS) gl_callback[func] = glcommon_gl##func;
+#endif
 
 #include "glfunctions.h"      
     
@@ -1503,6 +1671,8 @@ void gl_init(BString allowExtensions) {
     gl_callback[kXCreateContextAttribsARB] = gl_common_XCreateContextAttribsARB;
     gl_callback[kXSwapIntervalEXT] = gl_common_XSwapIntervalEXT;
     gl_callback[kXSwapBuffers] = gl_common_XSwapBuffers;
+    gl_callback[kGlProcAddressAvailable] = glcommon_glProcAddressAvailable;
+    gl_init_egl_callbacks(gl_callback);
 }
 
 #else
@@ -1514,9 +1684,32 @@ void gl_init() {
 }
 #endif
 
+#if defined(BOXEDWINE_OPENGL) && defined(__EMSCRIPTEN__)
+static bool isUnsupportedEmscriptenGlIndex(U32 index) {
+#undef GL_FUNCTION
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG)
+#undef GL_FUNCTION_FMT
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG)
+#undef GL_FUNCTION_CUSTOM
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS)
+#undef GL_EXT_FUNCTION
+#define GL_EXT_FUNCTION(func, RET, PARAMS) if (index == func && isUnsupportedEmscriptenProcAddress("gl" #func)) return true;
+
+#include "glfunctions_ext.h"
+
+    return false;
+}
+#endif
+
 void callOpenGL(CPU* cpu, U32 index) {
 #ifdef BOXEDWINE_OPENGL
     //KNativeWindow::getNativeWindow()->preOpenGLCall(index);
+#ifdef __EMSCRIPTEN__
+    if (isUnsupportedEmscriptenGlIndex(index)) {
+        EAX = 0;
+        return;
+    }
+#endif
     if (index < int99CallbackSize && int99Callback[index]) {
         cpu->thread->marshalIndex = 0;
         lastGlCallTime = KSystem::getMilliesSinceStart();
