@@ -37,8 +37,12 @@
 // Tail-call dispatch support.
 // PRESERVE_NONE: callee saves no registers, enabling zero-cost tail dispatch.
 // MUSTTAIL: forces the compiler to emit a tail call rather than call+return.
-#if defined(__clang__) && __has_attribute(preserve_none)
+#if defined(__clang__) && defined(__has_cpp_attribute)
+#if __has_attribute(preserve_none)
 #define PRESERVE_NONE __attribute__((preserve_none))
+#else
+#define PRESERVE_NONE
+#endif
 #else
 #define PRESERVE_NONE
 #endif
@@ -53,7 +57,9 @@
 
 // Direct normal-CPU dispatch is only for non-JIT builds. Future WASM JIT builds
 // should define BOXEDWINE_JIT and keep the ABI-compatible OpCallback path.
-#ifndef BOXEDWINE_JIT
+//
+// on win32 with msvc without JIT, BOXEDWINE_DIRECT_NORMAL_DISPATCH caused a 50% loss in performance for Quake 2
+#if !defined(BOXEDWINE_JIT) && defined(__EMSCRIPTEN__)
 #define BOXEDWINE_DIRECT_NORMAL_DISPATCH 1
 #endif
 

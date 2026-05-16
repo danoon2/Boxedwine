@@ -376,15 +376,9 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
 }
 
 void NormalCPU::run() {
-#ifdef BOXEDWINE_JIT
-    if (nextOp->runCount <= JIT_RUN_COUNT) {
-        firstOp(this, nextOp);
-    } else {
-        nextOp->pfn(this, nextOp);
-#if !defined(BOXEDWINE_MULTI_THREADED)
-        this->blockInstructionCount += nextOp->blockOpCount;
-#endif
-    }
+#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+    normalDispatch(this, nextOp);
+#else
     if (!nextOp && !thread->terminating) {
         nextOp = getNextOp();
         if (!nextOp) {
@@ -395,9 +389,15 @@ void NormalCPU::run() {
             }
         }
     }
-#else
-#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
-    normalDispatch(this, nextOp);
+#ifdef BOXEDWINE_JIT
+    if (nextOp->runCount <= JIT_RUN_COUNT) {
+        firstOp(this, nextOp);
+    } else {
+        nextOp->pfn(this, nextOp);
+#if !defined(BOXEDWINE_MULTI_THREADED)
+        this->blockInstructionCount += nextOp->blockOpCount;
+#endif
+    }    
 #else
     nextOp->pfn(this, nextOp);
 #endif
