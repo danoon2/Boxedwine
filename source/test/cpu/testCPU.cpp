@@ -191,7 +191,7 @@ void testRunCPU() {
     cpu->nextOp = cpu->getNextOp();
     do {
         cpu->run();
-    } while (cpu->nextOp->inst != TestEnd);
+    } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
 }
 
 void testFail(const char* msg, ...) {
