@@ -409,7 +409,7 @@ index 67058d9..4e492e3 100644
      return D3D_OK;
  }
 diff --git a/dlls/d3dx9_36/mesh.c b/dlls/d3dx9_36/mesh.c
-index e425ef4..78fab1f 100644
+index e425ef4..3f528de 100644
 --- a/dlls/d3dx9_36/mesh.c
 +++ b/dlls/d3dx9_36/mesh.c
 @@ -130,7 +130,9 @@ static ULONG WINAPI d3dx9_mesh_Release(ID3DXMesh *iface)
@@ -495,7 +495,40 @@ index e425ef4..78fab1f 100644
          hr = D3DXCreateBuffer(This->numvertices * sizeof(DWORD), &vertex_remap);
          if (FAILED(hr)) goto cleanup;
          vertex_remap_ptr = ID3DXBuffer_GetBufferPointer(vertex_remap);
-@@ -2650,7 +2656,6 @@ static HRESULT parse_texture_filename(ID3DXFileData *filedata, char **filename_o
+@@ -2607,6 +2613,8 @@ struct mesh_data {
+     DWORD *normal_indices;
+ 
+     D3DXVECTOR2 *tex_coords;
++    D3DXVECTOR4 *fvf_tex_coords;
++    unsigned int fvf_tex_coord_size;
+ 
+     DWORD *vertex_colors;
+ 
+@@ -2619,6 +2627,23 @@ struct mesh_data {
+     unsigned int skin_weights_info_count;
+ };
+ 
++static unsigned int get_fvf_texcoord_size(DWORD fvf, unsigned int idx)
++{
++    switch ((fvf >> (16 + 2 * idx)) & 0x03)
++    {
++        case D3DFVF_TEXTUREFORMAT1:
++            return 1;
++        case D3DFVF_TEXTUREFORMAT2:
++            return 2;
++        case D3DFVF_TEXTUREFORMAT3:
++            return 3;
++        case D3DFVF_TEXTUREFORMAT4:
++            return 4;
++        default:
++            return 0;
++    }
++}
++
+ static HRESULT parse_texture_filename(ID3DXFileData *filedata, char **filename_out)
+ {
+     HRESULT hr;
+@@ -2650,7 +2675,6 @@ static HRESULT parse_texture_filename(ID3DXFileData *filedata, char **filename_o
          filedata->lpVtbl->Unlock(filedata);
          return E_OUTOFMEMORY;
      }
@@ -503,7 +536,7 @@ index e425ef4..78fab1f 100644
      filedata->lpVtbl->Unlock(filedata);
  
      return D3D_OK;
-@@ -2757,6 +2762,7 @@ static HRESULT parse_material_list(ID3DXFileData *filedata, struct mesh_data *me
+@@ -2757,6 +2781,7 @@ static HRESULT parse_material_list(ID3DXFileData *filedata, struct mesh_data *me
  {
      ID3DXFileData *child = NULL;
      unsigned int material_count;
@@ -511,7 +544,7 @@ index e425ef4..78fab1f 100644
      const uint32_t *in_ptr;
      SIZE_T nb_children;
      SIZE_T data_size;
-@@ -2800,18 +2806,19 @@ static HRESULT parse_material_list(ID3DXFileData *filedata, struct mesh_data *me
+@@ -2800,18 +2825,19 @@ static HRESULT parse_material_list(ID3DXFileData *filedata, struct mesh_data *me
          WARN("Truncated data (%Id bytes).\n", data_size);
          goto end;
      }
@@ -535,7 +568,7 @@ index e425ef4..78fab1f 100644
      {
          if (*in_ptr++ >= material_count)
          {
-@@ -2827,7 +2834,15 @@ static HRESULT parse_material_list(ID3DXFileData *filedata, struct mesh_data *me
+@@ -2827,7 +2853,15 @@ static HRESULT parse_material_list(ID3DXFileData *filedata, struct mesh_data *me
          hr = E_OUTOFMEMORY;
          goto end;
      }
@@ -552,7 +585,129 @@ index e425ef4..78fab1f 100644
  
      hr = filedata->lpVtbl->GetChildren(filedata, &nb_children);
      if (FAILED(hr))
-@@ -4186,13 +4201,14 @@ HRESULT WINAPI D3DXLoadMeshFromXW(const WCHAR *filename, DWORD options, struct I
+@@ -2929,6 +2963,89 @@ end:
+     return hr;
+ }
+ 
++static HRESULT parse_fvf_data(ID3DXFileData *filedata, struct mesh_data *mesh, DWORD flags)
++{
++    const DWORD *data;
++    unsigned int tex_count, tex_coord_size, i;
++    const float *tex_data;
++    DWORD fvf, dword_count;
++    SIZE_T data_size;
++    HRESULT hr;
++
++    free(mesh->fvf_tex_coords);
++    mesh->fvf_tex_coords = NULL;
++    mesh->fvf_tex_coord_size = 0;
++
++    hr = filedata->lpVtbl->Lock(filedata, &data_size, (const void **)&data);
++    if (FAILED(hr)) return hr;
++
++    /* template FVFData {
++     *     DWORD dwFVF;
++     *     DWORD nDWords;
++     *     array DWORD data[nDWords];
++     * }
++     */
++    hr = E_FAIL;
++
++    if (data_size < 2 * sizeof(DWORD))
++    {
++        WARN("Truncated data (%Id bytes).\n", data_size);
++        goto end;
++    }
++
++    fvf = data[0];
++    dword_count = data[1];
++    if (data_size < (2 + dword_count) * sizeof(DWORD))
++    {
++        WARN("Truncated data (%Id bytes, %lu DWORDs declared).\n", data_size, dword_count);
++        goto end;
++    }
++
++    tex_count = (fvf & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
++    if (fvf & ~(D3DFVF_TEXCOUNT_MASK | 0xffff0000u))
++    {
++        FIXME("Unsupported FVFData FVF %#lx.\n", fvf);
++        hr = D3D_OK;
++        goto end;
++    }
++
++    if (tex_count != 1)
++    {
++        FIXME("Unsupported FVFData texture count %u.\n", tex_count);
++        hr = D3D_OK;
++        goto end;
++    }
++
++    tex_coord_size = get_fvf_texcoord_size(fvf, 0);
++    if (!tex_coord_size || dword_count < mesh->num_vertices * tex_coord_size)
++    {
++        WARN("Invalid FVFData texture coordinate data, size %u, DWORDs %lu, vertices %u.\n",
++                tex_coord_size, dword_count, mesh->num_vertices);
++        goto end;
++    }
++
++    mesh->fvf_tex_coords = calloc(mesh->num_vertices, sizeof(*mesh->fvf_tex_coords));
++    if (!mesh->fvf_tex_coords)
++    {
++        hr = E_OUTOFMEMORY;
++        goto end;
++    }
++
++    tex_data = (const float *)(data + 2);
++    for (i = 0; i < mesh->num_vertices; ++i)
++        memcpy(&mesh->fvf_tex_coords[i], &tex_data[i * tex_coord_size], tex_coord_size * sizeof(float));
++
++    mesh->fvf &= ~(D3DFVF_TEXCOUNT_MASK | (0x3u << 16));
++    mesh->fvf |= D3DFVF_TEX1 | (fvf & (0x3u << 16));
++    mesh->fvf_tex_coord_size = tex_coord_size;
++
++    hr = D3D_OK;
++
++end:
++    filedata->lpVtbl->Unlock(filedata);
++    return hr;
++}
++
+ static HRESULT parse_vertex_colors(ID3DXFileData *filedata, struct mesh_data *mesh, DWORD flags)
+ {
+     unsigned int color_count, i;
+@@ -3215,6 +3332,7 @@ static mesh_parse_func mesh_get_parse_func(const GUID *type)
+         {&TID_D3DRMMeshNormals, parse_normals},
+         {&TID_D3DRMMeshVertexColors, parse_vertex_colors},
+         {&TID_D3DRMMeshTextureCoords, parse_texture_coords},
++        {&DXFILEOBJ_FVFData, parse_fvf_data},
+         {&TID_D3DRMMeshMaterialList, parse_material_list},
+         {&DXFILEOBJ_XSkinMeshHeader, parse_skin_mesh_header},
+         {&DXFILEOBJ_SkinWeights, parse_skin_weights_info},
+@@ -3604,8 +3722,13 @@ HRESULT WINAPI D3DXLoadSkinMeshFromXof(struct ID3DXFileData *filedata, DWORD opt
+             out_ptr += sizeof(DWORD);
+         }
+         if (mesh_data.fvf & D3DFVF_TEX1) {
+-            *(D3DXVECTOR2*)out_ptr = mesh_data.tex_coords[i];
+-            out_ptr += sizeof(D3DXVECTOR2);
++            if (mesh_data.fvf_tex_coords) {
++                memcpy(out_ptr, &mesh_data.fvf_tex_coords[i], mesh_data.fvf_tex_coord_size * sizeof(float));
++                out_ptr += mesh_data.fvf_tex_coord_size * sizeof(float);
++            } else {
++                *(D3DXVECTOR2*)out_ptr = mesh_data.tex_coords[i];
++                out_ptr += sizeof(D3DXVECTOR2);
++            }
+         }
+     }
+     if (mesh_data.fvf & D3DFVF_NORMAL) {
+@@ -3738,6 +3861,7 @@ cleanup:
+     free(mesh_data.normal_indices);
+     destroy_materials(&mesh_data);
+     free(mesh_data.tex_coords);
++    free(mesh_data.fvf_tex_coords);
+     free(mesh_data.vertex_colors);
+     free(duplications);
+     return hr;
+@@ -4186,13 +4310,14 @@ HRESULT WINAPI D3DXLoadMeshFromXW(const WCHAR *filename, DWORD options, struct I
  
      hr = map_view_of_file(filename, &buffer, &size);
      if (FAILED(hr))
@@ -568,7 +723,7 @@ index e425ef4..78fab1f 100644
      return hr;
  }
  
-@@ -4278,7 +4294,7 @@ static HRESULT parse_frame(struct ID3DXFileData *filedata, DWORD options, struct
+@@ -4278,7 +4403,7 @@ static HRESULT parse_frame(struct ID3DXFileData *filedata, DWORD options, struct
          } else if (IsEqualGUID(&type, &TID_D3DRMFrameTransformMatrix)) {
              D3DXMATRIX new_transform;
              hr = parse_transform_matrix(child, &new_transform);
@@ -577,7 +732,7 @@ index e425ef4..78fab1f 100644
          } else if (IsEqualGUID(&type, &TID_D3DRMFrame)) {
              hr = parse_frame(child, options, device, &transform, container_list, provide_flags);
          }
-@@ -4451,9 +4467,11 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
+@@ -4451,9 +4576,11 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
                      concat_decl[j].UsageIndex == mesh_decl[k].UsageIndex)
                  {
                      if (concat_decl[j].Usage == D3DDECLUSAGE_NORMAL) {
@@ -592,7 +747,7 @@ index e425ef4..78fab1f 100644
                      } else {
                          memcpy(concat_vertices + concat_decl[j].Offset,
                                 mesh_vertices + mesh_decl[k].Offset,
-@@ -4481,6 +4499,7 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
+@@ -4481,6 +4608,7 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
          ID3DXMesh *mesh = container_ptr->mesh;
          const void *mesh_indices;
          DWORD num_mesh_faces = mesh->lpVtbl->GetNumFaces(mesh);
@@ -600,7 +755,7 @@ index e425ef4..78fab1f 100644
          DWORD i;
  
          hr = mesh->lpVtbl->LockIndexBuffer(mesh, D3DLOCK_READONLY, (void**)&mesh_indices);
-@@ -4501,7 +4520,7 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
+@@ -4501,7 +4629,7 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
          }
          mesh->lpVtbl->UnlockIndexBuffer(mesh);
  
@@ -609,7 +764,7 @@ index e425ef4..78fab1f 100644
      }
  
      concat_mesh->lpVtbl->UnlockIndexBuffer(concat_mesh);
-@@ -7636,6 +7655,8 @@ done:
+@@ -7636,6 +7764,8 @@ done:
   */
  HRESULT WINAPI D3DXComputeNormals(struct ID3DXBaseMesh *mesh, const DWORD *adjacency)
  {
@@ -618,7 +773,7 @@ index e425ef4..78fab1f 100644
      TRACE("mesh %p, adjacency %p\n", mesh, adjacency);
  
      if (mesh && (ID3DXMeshVtbl *)mesh->lpVtbl != &D3DXMesh_Vtbl)
-@@ -7644,10 +7665,11 @@ HRESULT WINAPI D3DXComputeNormals(struct ID3DXBaseMesh *mesh, const DWORD *adjac
+@@ -7644,10 +7774,11 @@ HRESULT WINAPI D3DXComputeNormals(struct ID3DXBaseMesh *mesh, const DWORD *adjac
          return D3DERR_INVALIDCALL;
      }
  
@@ -631,7 +786,7 @@ index e425ef4..78fab1f 100644
  }
  
  /*************************************************************************
-@@ -7674,10 +7696,265 @@ HRESULT WINAPI D3DXTessellateNPatches(ID3DXMesh *mesh, const DWORD *adjacency_in
+@@ -7674,10 +7805,265 @@ HRESULT WINAPI D3DXTessellateNPatches(ID3DXMesh *mesh, const DWORD *adjacency_in
  HRESULT WINAPI D3DXConvertMeshSubsetToSingleStrip(struct ID3DXBaseMesh *mesh_in, DWORD attribute_id,
          DWORD ib_flags, struct IDirect3DIndexBuffer9 **index_buffer, DWORD *index_count)
  {
@@ -899,6 +1054,18 @@ index e425ef4..78fab1f 100644
  }
  
  struct frame_node
+diff --git a/dlls/d3dx9_36/shader.c b/dlls/d3dx9_36/shader.c
+index c82478a..7d1cec5 100644
+--- a/dlls/d3dx9_36/shader.c
++++ b/dlls/d3dx9_36/shader.c
+@@ -2906,6 +2906,7 @@ static HRESULT get_shader_semantics(const DWORD *byte_code, D3DXSEMANTIC *semant
+                                 || (reg_type == D3DSPR_TEXTURE && is_ps && !output)
+                                 || reg_type == D3DSPR_RASTOUT
+                                 || reg_type == D3DSPR_ATTROUT
++                                || reg_type == D3DSPR_COLOROUT
+                                 || reg_type == D3DSPR_OUTPUT
+                                 || reg_type == D3DSPR_DEPTHOUT)
+                         {
 diff --git a/dlls/d3dx9_36/sprite.c b/dlls/d3dx9_36/sprite.c
 index 2fe822c..28a68f0 100644
 --- a/dlls/d3dx9_36/sprite.c
@@ -1683,6 +1850,24 @@ index 5e1f0de..01f3824 100644
      TRACE("Growing buffer to %u bytes.\n", size);
  
      desc.byte_width = size;
+diff --git a/dlls/wined3d/context.c b/dlls/wined3d/context.c
+index 9495ea3..df80100 100644
+--- a/dlls/wined3d/context.c
++++ b/dlls/wined3d/context.c
+@@ -294,6 +294,13 @@ void context_update_stream_info(struct wined3d_context *context, const struct wi
+             if ((UINT_PTR)element->data.addr < -state->load_base_vertex_index * element->stride)
+                 FIXME("System memory vertex data load offset is negative!\n");
+         }
++        else if (wined3d_settings.webgl && stream_info->position_transformed
++                && context->current_rt.texture && !context->current_rt.texture->swapchain
++                && (buffer->resource.usage & WINED3DUSAGE_DYNAMIC))
++        {
++            element->data.buffer_object = 0;
++            element->data.addr += (ULONG_PTR)wined3d_buffer_load_sysmem(buffer, context);
++        }
+         else
+         {
+             wined3d_buffer_load(buffer, context, state);
 diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
 index fc480f5..febb9ac 100644
 --- a/dlls/wined3d/context_gl.c

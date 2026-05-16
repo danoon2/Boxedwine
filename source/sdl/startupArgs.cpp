@@ -399,8 +399,6 @@ bool StartUpArgs::apply() {
     envValues.push_back(B("DISPLAY=:0"));
     envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
 
-    envValues.push_back(B("WINEDLLOVERRIDES=d3d9,wined3d=n,b"));
-
 #ifdef __EMSCRIPTEN__
     envValues.push_back(B("WINEDLLOVERRIDES=d3d9,d3d8,dxgi,wined3d,d3dxof,d3dx9_43=n,b"));
     std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/windows/system32"), true);
