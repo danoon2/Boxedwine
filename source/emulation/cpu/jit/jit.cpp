@@ -215,28 +215,30 @@ void Jit::arithSetup(DecodedOp* op, U32& needsToSetFlags, LazyFlagType flagType,
     if (flags) {
         needsToSetFlags = op->needsToSetFlags(cpu);
     }
-    if (needsToSetFlags) {
-        // Upgrade to the full instruction flag set before checking which
-        // lazy-state components (dst, src, result, oldCF) to store.
-        // needsToSetFlags is the intersection of "flags this op sets" with
-        // "flags needed by downstream code," so it may only contain ZF even
-        // for a CMP that can produce CF/AF/OF too.  If we store lazyFlagType
-        // but leave dst/src/result partially populated, a later fillFlags()
-        // call (e.g. from PUSHFD, LAHF, or the diagnostic snapshot) will
-        // read stale fields and produce wrong results for AF/CF/OF.
-        // Using the full set guarantees all components are always stored
-        // whenever a lazy-flag type is committed.
-        needsToSetFlags = instructionInfo[op->inst].flagsSets & ~MAYBE;
 
-        if ((flags && flags->usesOldCF(needsToSetFlags)) || (!(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF))) {
-            if (!cf) {
-                cf = getCF();
-            }
-            storeLazyFlagsOldCF(cf);
+    // Always upgrade needsToSetFlags to the full instruction flag set and
+    // always store the lazy flag type and components, regardless of whether
+    // any instruction in the current block reads flags afterward.
+    //
+    // EFLAGS persists across block boundaries: the next block may call
+    // fillFlags() which reads lazyFlagType plus the lazy components
+    // (dst/src/result/oldCF).  Gating these stores on needsToSetFlags (an
+    // intra-block analysis) leaves cross-block flag state stale, producing
+    // wrong CF/SF/ZF/OF/etc. in subsequent blocks.
+    //
+    // The original needsToSetFlags value (from op->needsToSetFlags) is
+    // returned to callers so they can still decide which components to store;
+    // we just ensure that value is never zero for a real arithmetic op.
+    needsToSetFlags = instructionInfo[op->inst].flagsSets & ~MAYBE;
+
+    if ((flags && flags->usesOldCF(needsToSetFlags)) || (!(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF))) {
+        if (!cf) {
+            cf = getCF();
         }
-        storeLazyFlagType(flagType);
-        currentLazyFlags = flagType;
+        storeLazyFlagsOldCF(cf);
     }
+    storeLazyFlagType(flagType);
+    currentLazyFlags = flagType;
 }
 
 void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFlagType flagType, bool writeback, bool addCF, InstRegReg cfCallback, InstRegImmCF callbackWithCF) {
