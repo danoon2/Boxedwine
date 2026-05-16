@@ -4341,10 +4341,15 @@ public:
             U8 index = data->fetch8();
             if (index == 1) {
                 op->pfn = onExitSignal;
+                op->inst = Callback;
             } else {
-                kpanic_fmt("Unknown callback index %d", index);
-            }
-            op->inst = Callback;
+                if ((data->eip & 0xfff) == 3) {
+                    kwarn_fmt("Unknown callback index %d", index);
+                }
+                op->inst = Invalid;
+                op->reg = rm;
+                op->imm = data->inst;
+            }            
             break;
         }
         default: op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
