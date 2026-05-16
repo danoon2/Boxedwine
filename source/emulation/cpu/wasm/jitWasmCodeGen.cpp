@@ -225,8 +225,23 @@ WASM_COND_HELPER(O,   cpu->getOF())
 WASM_COND_HELPER(NO,  !cpu->getOF())
 WASM_COND_HELPER(B,   cpu->getCF())
 WASM_COND_HELPER(NB,  !cpu->getCF())
+#ifdef BOXEDWINE_WASM_DIAGNOSTICS
+static U32 g_condZLogCount = 0;
+static void wasmHelper_cond_Z(CPU* cpu) {
+    if (g_condZLogCount < 100) {
+        g_condZLogCount++;
+        klog_fmt("[WASM-DIAG] cond_Z #%u eip=0x%08x lazyType=%u result=0x%08x dst=0x%08x flags=0x%08x ZF=%d",
+                 g_condZLogCount, cpu->eip.u32 + cpu->seg[CS].address,
+                 (U32)cpu->lazyFlagType, cpu->result.u32, cpu->dst.u32, cpu->flags,
+                 cpu->getZF() ? 1 : 0);
+    }
+    cpu->tmpReg = cpu->getZF() ? 1 : 0;
+}
+static void wasmHelper_cond_NZ(CPU* cpu) { cpu->tmpReg = (!cpu->getZF()) ? 1 : 0; }
+#else
 WASM_COND_HELPER(Z,   cpu->getZF())
 WASM_COND_HELPER(NZ,  !cpu->getZF())
+#endif
 WASM_COND_HELPER(BE,  cpu->getCF() || cpu->getZF())
 WASM_COND_HELPER(NBE, !cpu->getCF() && !cpu->getZF())
 WASM_COND_HELPER(S,   cpu->getSF())
@@ -335,12 +350,13 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitCodeGen(cpu) {
     //   local 0 (param): cpu_ptr i32
     //   locals 1-8 (i32 x8): GP registers eax-edi
     //   locals 9-12 (i32 x4): segment addresses cs, ds, ss, es
-    //   locals 13-15 (i32 x3): scratch
+    //   locals 13-44 (i32 x32): scratch temporaries
+    //   local 45 (i64 x1): i64 scratch for 64-bit multiply
     m_emitter.beginFunction({
-        { 8, WasmType::I32 },  // GP registers (locals 1-8)
-        { 4, WasmType::I32 },  // segment addresses (locals 9-12)
-        { 8, WasmType::I32 },  // scratch temporaries (locals 13-20)
-        { 1, WasmType::I64 },  // i64 scratch for 64-bit multiply (local 21)
+        { 8,  WasmType::I32 },  // GP registers (locals 1-8)
+        { 4,  WasmType::I32 },  // segment addresses (locals 9-12)
+        { 32, WasmType::I32 },  // scratch temporaries (locals 13-44)
+        { 1,  WasmType::I64 },  // i64 scratch for 64-bit multiply (local 45)
     });
 
     // Self-modifying-code arming: capture cpu->wasmJitActiveBlock so the
@@ -466,7 +482,8 @@ U32 JitWasmCodeGen::allocScratch() {
             return WASM_TMP_LOCAL_BASE + i;
         }
     }
-    return WASM_TMP_LOCAL_BASE; // fallback: reuse 0 (shouldn't happen in practice)
+    kpanic("JitWasmCodeGen: scratch local pool exhausted");
+    return WASM_TMP_LOCAL_BASE;
 }
 
 void JitWasmCodeGen::freeScratch(U32 local) {
@@ -955,6 +972,8 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
         m_emitter.emitCall(writeCheckHelperForWidth(w));
         emitBailoutCheck();
     }
+    if (addressReg && addressReg->emulatedReg == 0xff)
+        freeScratch(addressReg->hardwareReg());
     return result;
 }
 
@@ -1053,6 +1072,8 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
     m_gpLoaded  = savedGpLoaded;
     m_segLoaded = savedSegLoaded;
     freeScratch(entryLocal);
+    if (addressReg && addressReg->emulatedReg == 0xff)
+        freeScratch(addressReg->hardwareReg());
     return tmp;
 }
 
@@ -1179,9 +1200,8 @@ RegPtr JitWasmCodeGen::read(JitWidth w, MemPtr address, RegPtr result) {
         return result;
     }
     auto addr = memPtrToAddressReg(address);
-    auto r = read(w, addr, nullptr, nullptr, result);
-    freeScratch(addr->hardwareReg());
-    return r;
+    // addr scratch freed by the inner read() call (it frees any scratch addressReg)
+    return read(w, addr, nullptr, nullptr, result);
 }
 
 void JitWasmCodeGen::write(JitWidth w, MemPtr address, RegPtr src) {
@@ -1272,6 +1292,14 @@ void JitWasmCodeGen::notReg2(JitWidth w, RegPtr reg) {
     m_emitter.emitOp(WASM_I32_XOR);
     maskToWidth(w);
     popToReg(w, reg);
+}
+
+static LazyFlagType lazyTypeForSub(JitWidth w) {
+    switch (w) {
+    case JitWidth::b8:  return FLAGS_SUB8;
+    case JitWidth::b16: return FLAGS_SUB16;
+    default:            return FLAGS_SUB32;
+    }
 }
 
 void JitWasmCodeGen::negReg2(JitWidth w, RegPtr reg) {
@@ -1461,6 +1489,7 @@ void JitWasmCodeGen::mov(JitWidth w, RegPtr dest, RegPtr src) {
     pushRegValue(src);
     maskToWidth(w);
     popToReg(w, dest);
+    if (src && src->emulatedReg == 0xff) freeScratch(src->hardwareReg());
 }
 
 void JitWasmCodeGen::movzx(JitWidth dw, RegPtr dest, JitWidth sw, RegPtr src) {
@@ -1468,6 +1497,7 @@ void JitWasmCodeGen::movzx(JitWidth dw, RegPtr dest, JitWidth sw, RegPtr src) {
     maskToWidth(sw);
     // result is zero-extended to dw (source bits at low, upper dw bits are 0)
     popToReg(dw, dest);
+    if (src && src->emulatedReg == 0xff) freeScratch(src->hardwareReg());
 }
 
 void JitWasmCodeGen::movsx(JitWidth dw, RegPtr dest, JitWidth sw, RegPtr src) {
@@ -1483,6 +1513,7 @@ void JitWasmCodeGen::movsx(JitWidth dw, RegPtr dest, JitWidth sw, RegPtr src) {
         m_emitter.emitOp(WASM_I32_AND);
     }
     popToReg(dw, dest);
+    if (src && src->emulatedReg == 0xff) freeScratch(src->hardwareReg());
 }
 
 void JitWasmCodeGen::movValue(JitWidth w, RegPtr dst, DYN_PTR_SIZE imm) {
@@ -1915,7 +1946,9 @@ void JitWasmCodeGen::direct_cmp(JitWidth w, RegPtr left, RegPtr right) {
     storeLazyFlagsSrc(right);
     auto result = getTmpReg();
     pushRegValue(left);
+    if (left && left->emulatedReg == 0xff) freeScratch(left->hardwareReg());
     pushRegValue(right);
+    if (right && right->emulatedReg == 0xff) freeScratch(right->hardwareReg());
     m_emitter.emitOp(WASM_I32_SUB);
     m_emitter.emitLocalSet(result->hardwareReg());
     storeLazyFlagsResult(result);
@@ -1928,6 +1961,7 @@ void JitWasmCodeGen::direct_cmp(JitWidth w, RegPtr left, U32 right) {
     storeLazyFlagsSrc(right);
     auto result = getTmpReg();
     pushRegValue(left);
+    if (left && left->emulatedReg == 0xff) freeScratch(left->hardwareReg());
     m_emitter.emitI32Const((S32)right);
     m_emitter.emitOp(WASM_I32_SUB);
     m_emitter.emitLocalSet(result->hardwareReg());

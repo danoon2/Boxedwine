@@ -38,7 +38,7 @@
  *   locals 1-8 : GP registers eax–edi (loaded from CPU struct on first use,
  *                written back to CPU struct on block exit / sync)
  *   locals 9-12: segment base addresses cs, ds, ss, es
- *   locals 13-15: scratch temporaries
+ *   locals 13-44: scratch temporaries
  *
  * The JitReg::hardwareReg() field stores the WASM local variable index.
  * Emulated register n maps to local n+1 (so eax=1, ecx=2, ..., edi=8).
@@ -132,11 +132,11 @@ static constexpr U32 WASM_GP_LOCAL_BASE   = 1;
 static constexpr U32 WASM_SEG_LOCAL_BASE  = 9;
 // Scratch temporaries.
 static constexpr U32 WASM_TMP_LOCAL_BASE  = 13;
-static constexpr U32 WASM_TMP_LOCAL_COUNT = 8;
+static constexpr U32 WASM_TMP_LOCAL_COUNT = 32;
 // i64 scratch local for 64-bit multiply (imulRRI/imulRR overflow tracking).
-static constexpr U32 WASM_I64_SCRATCH     = 21;
+static constexpr U32 WASM_I64_SCRATCH     = 45;  // WASM_TMP_LOCAL_BASE + WASM_TMP_LOCAL_COUNT
 // Total locals beyond the parameter.
-static constexpr U32 WASM_LOCAL_COUNT     = 22;
+static constexpr U32 WASM_LOCAL_COUNT     = 46;
 
 // ---------------------------------------------------------------------------
 // Mapping from emulated register index to WASM local index.
