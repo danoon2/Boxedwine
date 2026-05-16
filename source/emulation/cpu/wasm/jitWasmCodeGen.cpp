@@ -1294,14 +1294,6 @@ void JitWasmCodeGen::notReg2(JitWidth w, RegPtr reg) {
     popToReg(w, reg);
 }
 
-static LazyFlagType lazyTypeForSub(JitWidth w) {
-    switch (w) {
-    case JitWidth::b8:  return FLAGS_SUB8;
-    case JitWidth::b16: return FLAGS_SUB16;
-    default:            return FLAGS_SUB32;
-    }
-}
-
 void JitWasmCodeGen::negReg2(JitWidth w, RegPtr reg) {
     // NEG = 0 - src. Store lazy flag operands before overwriting the register.
     // dst=0 (the implicit minuend), src=original operand, result=0-src.
