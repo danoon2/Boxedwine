@@ -76,7 +76,6 @@ public:
 
 KMemoryData* getMemData(KMemory* memory);
 
-#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH) && !defined(BOXEDWINE_JIT)
 inline U32 KMemory::readdInline(U32 address) {
     if ((address & 0xFFF) < 0xFFD) {
         U32 index = address >> 12;
@@ -109,6 +108,5 @@ inline void KMemory::writedInline(U32 address, U32 value) {
         writeb(address + 3, value >> 24);
     }
 }
-#endif
 
 #endif

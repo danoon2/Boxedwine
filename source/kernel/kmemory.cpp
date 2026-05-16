@@ -823,18 +823,7 @@ U64 KMemory::readq(U32 address) {
 }
 
 U32 KMemory::readd(U32 address) {
-    if ((address & 0xFFF) < 0xFFD) {
-        int index = address >> 12;
-#if !defined(UNALIGNED_MEMORY)
-        MMU& mmu = data->mmu[index];
-        if (mmu.canReadRam) {
-            return *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
-        }
-#endif
-        return data->mmu[index].getPage()->readd(&data->mmu[index], address);
-    } else {
-        return readb(address) | (readb(address + 1) << 8) | (readb(address + 2) << 16) | (readb(address + 3) << 24);
-    }
+	return readdInline(address);
 }
 
 U16 KMemory::readw(U32 address) {
@@ -875,21 +864,7 @@ void KMemory::writeq(U32 address, U64 value) {
 }
 
 void KMemory::writed(U32 address, U32 value) {
-    if ((address & 0xFFF) < 0xFFD) {
-        int index = address >> 12;
-#if !defined(UNALIGNED_MEMORY)
-        MMU& mmu = data->mmu[index];
-        if (mmu.canWriteRam)
-            *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
-        else
-#endif
-            data->mmu[index].getPage()->writed(&data->mmu[index], address, value);
-    } else {
-        writeb(address, value);
-        writeb(address + 1, value >> 8);
-        writeb(address + 2, value >> 16);
-        writeb(address + 3, value >> 24);
-    }
+	writedInline(address, value);
 }
 
 void KMemory::writew(U32 address, U16 value) {
