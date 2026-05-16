@@ -1,15 +1,258 @@
+diff --git a/BOXEDWINE_WEBGL_BUILD.md b/BOXEDWINE_WEBGL_BUILD.md
+new file mode 100644
+index 0000000..4299c3e
+--- /dev/null
++++ b/BOXEDWINE_WEBGL_BUILD.md
+@@ -0,0 +1,87 @@
++# BoxedWine WebGL Win32 DLL Build
++
++These instructions build the Wine DLLs used by the BoxedWine WebGL
++as true Win32 DLLs. This matters because a normal Wine build
++can produce Wine builtin PE DLLs; those DLLs may contain the marker
++`Wine builtin DLL` and do not behave the same in BoxedWine.
++
++- build native Wine tools first;
++- configure the DLL build with `--host=i686-w64-mingw32`;
++- pass `--disable-kernel32`;
++- define `USE_WIN32_OPENGL` and `USE_WIN32_VULKAN`;
++- link with `-static-libgcc`.
++
++## Prerequisites
++
++On Debian or Ubuntu, install the Wine build dependencies and MinGW:
++
++```sh
++sudo apt build-dep wine
++sudo apt install mingw-w64 git flex bison
++```
++
++The 32-bit build also needs enough 32-bit development packages for Wine's
++native tools configure step. If FreeType development files are not available,
++the script configures the tools build with `--without-freetype`.
++
++## Build
++
++From the top level of this Wine source checkout:
++
++```sh
++./build-boxedwine-webgl-dlls.sh
++```
++
++By default, the script writes build intermediates to:
++
++```text
++../boxedwine-webgl-wine-build
++```
++
++and copies the final DLLs to:
++
++```text
++../boxedwine-webgl-wine-build/boxedwine-webgl-dlls
++```
++
++To choose a different build directory:
++
++```sh
++./build-boxedwine-webgl-dlls.sh --build-dir /tmp/boxedwine-webgl-wine-build
++```
++
++To choose the parallelism:
++
++```sh
++./build-boxedwine-webgl-dlls.sh --jobs 8
++```
++
++## Outputs
++
++The script builds and stages these DLLs:
++
++- `d3d8.dll`
++- `d3d9.dll`
++- `dxgi.dll`
++- `d3dx9_43.dll`
++- `d3dxof.dll`
++- `wined3d.dll`
++
++It also prints each file's size and SHA-256 hash at the end.
++
++## Sanity Checks
++
++After a successful build, verify that `d3d9.dll` does not contain the builtin
++marker:
++
++```sh
++strings ../boxedwine-webgl-wine-build/boxedwine-webgl-dlls/d3d9.dll | grep 'Wine builtin DLL'
++```
++
++That command should print nothing.
++
++You can also confirm that `d3d9.dll` imports `wined3d.dll`:
++
++```sh
++i686-w64-mingw32-objdump -p ../boxedwine-webgl-wine-build/boxedwine-webgl-dlls/d3d9.dll | grep 'DLL Name'
++```
+diff --git a/build-boxedwine-webgl-dlls.sh b/build-boxedwine-webgl-dlls.sh
+new file mode 100755
+index 0000000..40b58db
+--- /dev/null
++++ b/build-boxedwine-webgl-dlls.sh
+@@ -0,0 +1,151 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++usage() {
++    cat <<'EOF'
++Usage: ./build-boxedwine-webgl-dlls.sh [options]
++
++Build true Win32 Wine DLLs for BoxedWine WebGL.
++
++Options:
++  --build-dir DIR   Build/output directory.
++                    Default: ../boxedwine-webgl-wine-build
++  --jobs N          Parallel make jobs. Default: detected CPU count.
++  --help            Show this help.
++
++Outputs:
++  DIR/boxedwine-webgl-dlls/{d3d8,d3d9,dxgi,d3dx9_43,d3dxof,wined3d}.dll
++EOF
++}
++
++script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++build_dir="$(cd "$script_dir/.." && pwd)/boxedwine-webgl-wine-build"
++jobs="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 1)"
++
++while [ "$#" -gt 0 ]; do
++    case "$1" in
++        --build-dir)
++            if [ "$#" -lt 2 ]; then
++                echo "error: --build-dir requires a value" >&2
++                exit 2
++            fi
++            build_dir="$2"
++            shift 2
++            ;;
++        --jobs)
++            if [ "$#" -lt 2 ]; then
++                echo "error: --jobs requires a value" >&2
++                exit 2
++            fi
++            jobs="$2"
++            shift 2
++            ;;
++        --help|-h)
++            usage
++            exit 0
++            ;;
++        *)
++            echo "error: unknown option '$1'" >&2
++            usage >&2
++            exit 2
++            ;;
++    esac
++done
++
++case "$jobs" in
++    ''|*[!0-9]*)
++        echo "error: --jobs must be a positive integer" >&2
++        exit 2
++        ;;
++    0)
++        echo "error: --jobs must be greater than zero" >&2
++        exit 2
++        ;;
++esac
++
++require_tool() {
++    if ! command -v "$1" >/dev/null 2>&1; then
++        echo "error: required tool '$1' was not found in PATH" >&2
++        exit 1
++    fi
++}
++
++require_tool make
++require_tool gcc
++require_tool i686-w64-mingw32-gcc
++require_tool i686-w64-mingw32-objdump
++require_tool sha256sum
++
++wine_tools_dir="$build_dir/wine-tools"
++wine_win32_dir="$build_dir/wine-win32"
++output_dir="$build_dir/boxedwine-webgl-dlls"
++
++echo "Wine source: $script_dir"
++echo "Build dir:   $build_dir"
++echo "Jobs:        $jobs"
++
++mkdir -p "$wine_tools_dir" "$wine_win32_dir" "$output_dir"
++
++echo
++echo "Configuring native Wine tools..."
++(
++    cd "$wine_tools_dir"
++    "$script_dir/configure" --without-x --without-freetype
++)
++
++echo
++echo "Building native Wine tools..."
++make -C "$wine_tools_dir" -j"$jobs"
++
++echo
++echo "Configuring true Win32 DLL build..."
++(
++    cd "$wine_win32_dir"
++    "$script_dir/configure" \
++        --without-x \
++        --disable-kernel32 \
++        --disable-tests \
++        --without-freetype \
++        --host=i686-w64-mingw32 \
++        CFLAGS="-O3 -DWINE_NOWINSOCK -DUSE_WIN32_OPENGL -DUSE_WIN32_VULKAN" \
++        --with-wine-tools="$wine_tools_dir/" \
++        LDFLAGS=" -static-libgcc"
++)
++
++echo
++echo "Building DLLs..."
++make -C "$wine_win32_dir" -j"$jobs" \
++    dlls/wined3d/wined3d.dll \
++    dlls/d3d9/d3d9.dll \
++    dlls/d3d8/d3d8.dll \
++    dlls/dxgi/dxgi.dll \
++    dlls/d3dx9_43/d3dx9_43.dll \
++    dlls/d3dxof/d3dxof.dll
++
++echo
++echo "Copying DLLs to $output_dir..."
++cp -f "$wine_win32_dir/dlls/wined3d/wined3d.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/d3d9/d3d9.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/d3d8/d3d8.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/dxgi/dxgi.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/d3dx9_43/d3dx9_43.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/d3dxof/d3dxof.dll" "$output_dir/"
++
++echo
++echo "Build output:"
++for dll in d3d8.dll d3d9.dll dxgi.dll d3dx9_43.dll d3dxof.dll wined3d.dll; do
++    path="$output_dir/$dll"
++    printf "%-14s %10s " "$dll" "$(stat -c %s "$path")"
++    sha256sum "$path" | awk '{print $1}'
++done
++
++echo
++if strings "$output_dir/d3d9.dll" | grep -q "Wine builtin DLL"; then
++    echo "warning: d3d9.dll contains 'Wine builtin DLL'; this is not the expected true Win32 output." >&2
++else
++    echo "Sanity check passed: d3d9.dll does not contain 'Wine builtin DLL'."
++fi
++
++echo
++echo "d3d9.dll imports:"
++i686-w64-mingw32-objdump -p "$output_dir/d3d9.dll" | grep "DLL Name" || true
 diff --git a/dlls/d3d9/d3d9_main.c b/dlls/d3d9/d3d9_main.c
-index b3fcfc272e4..99adda7a92b 100644
+index b3fcfc2..9327a4a 100644
 --- a/dlls/d3d9/d3d9_main.c
 +++ b/dlls/d3d9/d3d9_main.c
-@@ -37,18 +37,20 @@ IDirect3D9 * WINAPI DECLSPEC_HOTPATCH Direct3DCreate9(UINT sdk_version)
-     struct d3d9 *object;
- 
-     TRACE("sdk_version %#x.\n", sdk_version);
-+    TRACE("WEBGL_DIAG Direct3DCreate9 sdk_version %#x.\n", sdk_version);
- 
-     if (!(object = calloc(1, sizeof(*object))))
-         return NULL;
+@@ -43,7 +43,7 @@ IDirect3D9 * WINAPI DECLSPEC_HOTPATCH Direct3DCreate9(UINT sdk_version)
  
      if (!d3d9_init(object, FALSE, FALSE))
      {
@@ -18,17 +261,19 @@ index b3fcfc272e4..99adda7a92b 100644
          free(object);
          return NULL;
      }
- 
-     TRACE("Created d3d9 object %p.\n", object);
-+    TRACE("WEBGL_DIAG Created d3d9 object %p.\n", object);
- 
-     return (IDirect3D9 *)&object->IDirect3D9Ex_iface;
- }
 diff --git a/dlls/d3d9/device.c b/dlls/d3d9/device.c
-index 5f59d10079d..c4af2c3ce0d 100644
+index 5f59d10..38666c6 100644
 --- a/dlls/d3d9/device.c
 +++ b/dlls/d3d9/device.c
-@@ -3350,11 +3350,11 @@ static HRESULT WINAPI d3d9_device_DrawPrimitiveUP(IDirect3DDevice9Ex *iface,
+@@ -2830,7 +2830,6 @@ static HRESULT WINAPI d3d9_device_SetTexture(IDirect3DDevice9Ex *iface, DWORD st
+     struct d3d9_texture *texture_impl;
+ 
+     TRACE("iface %p, stage %lu, texture %p.\n", iface, stage, texture);
+-
+     texture_impl = unsafe_impl_from_IDirect3DBaseTexture9(texture);
+ 
+     if (stage >= D3DVERTEXTEXTURESAMPLER0 && stage <= D3DVERTEXTEXTURESAMPLER3)
+@@ -3350,11 +3349,11 @@ static HRESULT WINAPI d3d9_device_DrawPrimitiveUP(IDirect3DDevice9Ex *iface,
      if (FAILED(hr))
          goto done;
  
@@ -42,7 +287,7 @@ index 5f59d10079d..c4af2c3ce0d 100644
  
      /* Instancing is ignored for non-indexed draws. */
      wined3d_device_context_draw(device->immediate_context, vb_pos / stride, vtx_count, 0, 0);
-@@ -3419,11 +3419,11 @@ static HRESULT WINAPI d3d9_device_DrawIndexedPrimitiveUP(IDirect3DDevice9Ex *ifa
+@@ -3419,11 +3418,11 @@ static HRESULT WINAPI d3d9_device_DrawIndexedPrimitiveUP(IDirect3DDevice9Ex *ifa
      wined3d_stateblock_set_index_buffer(device->state, device->index_buffer.buffer,
              wined3dformat_from_d3dformat(index_format));
  
@@ -58,19 +303,10 @@ index 5f59d10079d..c4af2c3ce0d 100644
              vb_pos / vertex_stride - min_vertex_idx, ib_pos / idx_fmt_size, idx_count, 0,
              device->stateblock_state->streams[0].frequency);
 diff --git a/dlls/d3d9/directx.c b/dlls/d3d9/directx.c
-index e20fc981d8a..103f9d92c00 100644
+index e20fc98..b9d803b 100644
 --- a/dlls/d3d9/directx.c
 +++ b/dlls/d3d9/directx.c
-@@ -491,6 +491,8 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH d3d9_CreateDevice(IDirect3D9Ex *iface, U
- 
-     TRACE("iface %p, adapter %u, device_type %#x, focus_window %p, flags %#lx, parameters %p, device %p.\n",
-             iface, adapter, device_type, focus_window, flags, parameters, device);
-+    TRACE("WEBGL_DIAG d3d9_CreateDevice adapter %u device_type %#x flags %#lx parameters %p device %p.\n",
-+            adapter, device_type, flags, parameters, device);
- 
-     if (!(object = calloc(1, sizeof(*object))))
-         return E_OUTOFMEMORY;
-@@ -498,12 +500,13 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH d3d9_CreateDevice(IDirect3D9Ex *iface, U
+@@ -498,7 +498,7 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH d3d9_CreateDevice(IDirect3D9Ex *iface, U
      hr = device_init(object, d3d9, d3d9->wined3d, adapter, device_type, focus_window, flags, parameters, NULL);
      if (FAILED(hr))
      {
@@ -79,24 +315,7 @@ index e20fc981d8a..103f9d92c00 100644
          free(object);
          return hr;
      }
- 
-     TRACE("Created device %p.\n", object);
-+    TRACE("WEBGL_DIAG Created d3d9 device %p.\n", object);
-     *device = (IDirect3DDevice9 *)&object->IDirect3DDevice9Ex_iface;
- 
-     return D3D_OK;
-@@ -707,15 +710,18 @@ BOOL d3d9_init(struct d3d9 *d3d9, BOOL extended, BOOL d3d9on12)
-     }
- 
-     adapter_count = wined3d_get_adapter_count(d3d9->wined3d);
-+    TRACE("WEBGL_DIAG d3d9_init adapter_count %u.\n", adapter_count);
-     for (adapter_idx = 0; adapter_idx < adapter_count; ++adapter_idx)
-     {
-         wined3d_adapter = wined3d_get_adapter(d3d9->wined3d, adapter_idx);
-         output_count += wined3d_adapter_get_output_count(wined3d_adapter);
-+        TRACE("WEBGL_DIAG d3d9_init adapter %u output_count now %u.\n", adapter_idx, output_count);
-     }
- 
+@@ -716,6 +716,7 @@ BOOL d3d9_init(struct d3d9 *d3d9, BOOL extended, BOOL d3d9on12)
      d3d9->wined3d_outputs = calloc(output_count, sizeof(*d3d9->wined3d_outputs));
      if (!d3d9->wined3d_outputs)
      {
@@ -104,19 +323,48 @@ index e20fc981d8a..103f9d92c00 100644
          wined3d_decref(d3d9->wined3d);
          wined3d_mutex_unlock();
          return FALSE;
-@@ -737,6 +743,7 @@ BOOL d3d9_init(struct d3d9 *d3d9, BOOL extended, BOOL d3d9on12)
-     wined3d_mutex_unlock();
-     d3d9->extended = extended;
-     d3d9->d3d9on12 = d3d9on12;
-+    TRACE("WEBGL_DIAG d3d9_init final output_count %u.\n", d3d9->wined3d_output_count);
- 
-     return TRUE;
- }
+diff --git a/dlls/d3dx9_36/d3dx9_36.spec b/dlls/d3dx9_36/d3dx9_36.spec
+index e430426..be783a0 100644
+--- a/dlls/d3dx9_36/d3dx9_36.spec
++++ b/dlls/d3dx9_36/d3dx9_36.spec
+@@ -29,7 +29,7 @@
+ @ stdcall D3DXComputeTangentFrameEx(ptr long long long long long long long long long ptr float float float ptr ptr)
+ @ stub D3DXConcatenateMeshes(ptr long long ptr ptr ptr ptr ptr)
+ @ stdcall D3DXConvertMeshSubsetToSingleStrip(ptr long long ptr ptr)
+-@ stub D3DXConvertMeshSubsetToStrips(ptr long long ptr ptr ptr ptr)
++@ stdcall D3DXConvertMeshSubsetToStrips(ptr long long ptr ptr ptr ptr)
+ @ stdcall D3DXCreateAnimationController(long long long long ptr)
+ @ stdcall D3DXCreateBox(ptr float float float ptr ptr)
+ @ stdcall D3DXCreateBuffer(long ptr)
 diff --git a/dlls/d3dx9_36/effect.c b/dlls/d3dx9_36/effect.c
-index 72e216d3fff..fb05c56e7ba 100644
+index 72e216d..f0ee7e8 100644
 --- a/dlls/d3dx9_36/effect.c
 +++ b/dlls/d3dx9_36/effect.c
-@@ -4190,7 +4190,7 @@ static HRESULT WINAPI d3dx_effect_OnResetDevice(ID3DXEffect *iface)
+@@ -2181,7 +2181,6 @@ static D3DXHANDLE WINAPI d3dx_effect_GetParameterByName(ID3DXEffect *iface, D3DX
+ 
+     handle = get_parameter_handle(get_parameter_by_name(&effect->params, param, name));
+     TRACE("Returning parameter %p.\n", handle);
+-
+     return handle;
+ }
+ 
+@@ -2886,7 +2885,6 @@ static HRESULT WINAPI d3dx_effect_SetVector(ID3DXEffect *iface, D3DXHANDLE param
+     struct d3dx_parameter *param = get_valid_parameter(effect, parameter);
+ 
+     TRACE("iface %p, parameter %p, vector %p.\n", iface, parameter, vector);
+-
+     if (param && !param->element_count)
+     {
+         TRACE("Class %s.\n", debug_d3dxparameter_class(param->class));
+@@ -3591,7 +3589,6 @@ static HRESULT WINAPI d3dx_effect_SetTexture(ID3DXEffect *iface, D3DXHANDLE para
+     struct d3dx_parameter *param = get_valid_parameter(effect, parameter);
+ 
+     TRACE("iface %p, parameter %p, texture %p.\n", iface, parameter, texture);
+-
+     if (param && !param->element_count
+             && (param->type == D3DXPT_TEXTURE || param->type == D3DXPT_TEXTURE1D
+             || param->type == D3DXPT_TEXTURE2D || param->type ==  D3DXPT_TEXTURE3D
+@@ -4190,7 +4187,7 @@ static HRESULT WINAPI d3dx_effect_OnResetDevice(ID3DXEffect *iface)
  
      FIXME("(%p)->(): stub\n", This);
  
@@ -126,7 +374,7 @@ index 72e216d3fff..fb05c56e7ba 100644
  
  static HRESULT WINAPI d3dx_effect_SetStateManager(ID3DXEffect *iface, ID3DXEffectStateManager *manager)
 diff --git a/dlls/d3dx9_36/font.c b/dlls/d3dx9_36/font.c
-index 67058d91ecb..4e492e3010c 100644
+index 67058d9..4e492e3 100644
 --- a/dlls/d3dx9_36/font.c
 +++ b/dlls/d3dx9_36/font.c
 @@ -370,7 +370,7 @@ static HRESULT WINAPI ID3DXFontImpl_PreloadGlyphs(ID3DXFont *iface, UINT first,
@@ -161,122 +409,47 @@ index 67058d91ecb..4e492e3010c 100644
      return D3D_OK;
  }
 diff --git a/dlls/d3dx9_36/mesh.c b/dlls/d3dx9_36/mesh.c
-index e425ef40f4b..58e169e5043 100644
+index e425ef4..78fab1f 100644
 --- a/dlls/d3dx9_36/mesh.c
 +++ b/dlls/d3dx9_36/mesh.c
-@@ -124,17 +124,26 @@ static ULONG WINAPI d3dx9_mesh_Release(ID3DXMesh *iface)
-     ULONG refcount = InterlockedDecrement(&mesh->ref);
- 
-     TRACE("%p decreasing refcount to %lu.\n", mesh, refcount);
-+    TRACE("WEBGL_DIAG Mesh Release mesh %p refcount %lu.\n", mesh, refcount);
- 
-     if (!refcount)
-     {
-+        TRACE("WEBGL_DIAG Mesh Release before index_buffer release.\n");
+@@ -130,7 +130,9 @@ static ULONG WINAPI d3dx9_mesh_Release(ID3DXMesh *iface)
          IDirect3DIndexBuffer9_Release(mesh->index_buffer);
-+        TRACE("WEBGL_DIAG Mesh Release before vertex_buffer release.\n");
          IDirect3DVertexBuffer9_Release(mesh->vertex_buffer);
          if (mesh->vertex_declaration)
 +        {
-+            TRACE("WEBGL_DIAG Mesh Release before vertex_declaration release.\n");
              IDirect3DVertexDeclaration9_Release(mesh->vertex_declaration);
 +        }
-+        TRACE("WEBGL_DIAG Mesh Release before device release.\n");
          IDirect3DDevice9_Release(mesh->device);
-+        TRACE("WEBGL_DIAG Mesh Release before free buffers.\n");
          free(mesh->attrib_buffer);
          free(mesh->attrib_table);
-         free(mesh);
-+        TRACE("WEBGL_DIAG Mesh Release freed mesh.\n");
-     }
- 
-     return refcount;
-@@ -688,22 +697,29 @@ static HRESULT WINAPI d3dx9_mesh_CloneMesh(struct ID3DXMesh *iface, DWORD option
- 
-     TRACE("iface %p, options %#lx, declaration %p, device %p, clone_mesh_out %p.\n",
-             iface, options, declaration, device, clone_mesh_out);
-+    TRACE("WEBGL_DIAG CloneMesh enter iface %p options %#lx faces %lu vertices %lu declaration %p.\n",
-+            iface, options, This->numfaces, This->numvertices, declaration);
+@@ -691,10 +693,8 @@ static HRESULT WINAPI d3dx9_mesh_CloneMesh(struct ID3DXMesh *iface, DWORD option
  
      if (!clone_mesh_out)
          return D3DERR_INVALIDCALL;
- 
-+    TRACE("WEBGL_DIAG CloneMesh before GetDeclaration.\n");
+-
      hr = iface->lpVtbl->GetDeclaration(iface, orig_declaration);
      if (FAILED(hr)) return hr;
-+    TRACE("WEBGL_DIAG CloneMesh after GetDeclaration.\n");
- 
-+    TRACE("WEBGL_DIAG CloneMesh before D3DXCreateMesh.\n");
+-
      hr = D3DXCreateMesh(This->numfaces, This->numvertices, options & ~D3DXMESH_VB_SHARE,
                          declaration, device, &clone_mesh);
      if (FAILED(hr)) return hr;
-+    TRACE("WEBGL_DIAG CloneMesh after D3DXCreateMesh clone %p.\n", clone_mesh);
- 
-     cloned_this = impl_from_ID3DXMesh(clone_mesh);
-     vertex_size = clone_mesh->lpVtbl->GetNumBytesPerVertex(clone_mesh);
-     same_declaration = declaration_equals(declaration, orig_declaration);
- 
-     if (options & D3DXMESH_VB_SHARE) {
-+        TRACE("WEBGL_DIAG CloneMesh using shared VB.\n");
-         if (!same_declaration) {
-             hr = D3DERR_INVALIDCALL;
-             goto error;
-@@ -713,6 +729,7 @@ static HRESULT WINAPI d3dx9_mesh_CloneMesh(struct ID3DXMesh *iface, DWORD option
-         IDirect3DVertexBuffer9_Release(cloned_this->vertex_buffer);
-         cloned_this->vertex_buffer = This->vertex_buffer;
-     } else if (same_declaration) {
-+        TRACE("WEBGL_DIAG CloneMesh before same-declaration vertex copy.\n");
-         hr = iface->lpVtbl->LockVertexBuffer(iface, D3DLOCK_READONLY, &data_in);
-         if (FAILED(hr)) goto error;
-         hr = clone_mesh->lpVtbl->LockVertexBuffer(clone_mesh, 0, &data_out);
-@@ -723,11 +740,15 @@ static HRESULT WINAPI d3dx9_mesh_CloneMesh(struct ID3DXMesh *iface, DWORD option
-         memcpy(data_out, data_in, This->numvertices * vertex_size);
-         clone_mesh->lpVtbl->UnlockVertexBuffer(clone_mesh);
-         iface->lpVtbl->UnlockVertexBuffer(iface);
-+        TRACE("WEBGL_DIAG CloneMesh after same-declaration vertex copy.\n");
-     } else {
-+        TRACE("WEBGL_DIAG CloneMesh before convert_vertex_buffer.\n");
+@@ -727,7 +727,6 @@ static HRESULT WINAPI d3dx9_mesh_CloneMesh(struct ID3DXMesh *iface, DWORD option
          hr = convert_vertex_buffer(clone_mesh, iface);
          if (FAILED(hr)) goto error;
-+        TRACE("WEBGL_DIAG CloneMesh after convert_vertex_buffer.\n");
      }
- 
-+    TRACE("WEBGL_DIAG CloneMesh before index copy.\n");
+-
      hr = iface->lpVtbl->LockIndexBuffer(iface, D3DLOCK_READONLY, &data_in);
      if (FAILED(hr)) goto error;
      hr = clone_mesh->lpVtbl->LockIndexBuffer(clone_mesh, 0, &data_out);
-@@ -749,8 +770,10 @@ static HRESULT WINAPI d3dx9_mesh_CloneMesh(struct ID3DXMesh *iface, DWORD option
+@@ -764,7 +763,6 @@ static HRESULT WINAPI d3dx9_mesh_CloneMesh(struct ID3DXMesh *iface, DWORD option
      }
-     clone_mesh->lpVtbl->UnlockIndexBuffer(clone_mesh);
-     iface->lpVtbl->UnlockIndexBuffer(iface);
-+    TRACE("WEBGL_DIAG CloneMesh after index copy.\n");
- 
-     memcpy(cloned_this->attrib_buffer, This->attrib_buffer, This->numfaces * sizeof(*This->attrib_buffer));
-+    TRACE("WEBGL_DIAG CloneMesh after attrib buffer copy.\n");
- 
-     if (This->attrib_table_size)
-     {
-@@ -765,8 +788,10 @@ static HRESULT WINAPI d3dx9_mesh_CloneMesh(struct ID3DXMesh *iface, DWORD option
  
      *clone_mesh_out = clone_mesh;
- 
-+    TRACE("WEBGL_DIAG CloneMesh leave success clone %p.\n", clone_mesh);
+-
      return D3D_OK;
  error:
-+    TRACE("WEBGL_DIAG CloneMesh error hr %#lx.\n", hr);
      IUnknown_Release(clone_mesh);
-     return hr;
- }
-@@ -1654,6 +1679,8 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
- 
-     TRACE("iface %p, flags %#lx, adjacency_in %p, adjacency_out %p, face_remap_out %p, vertex_remap_out %p.\n",
-             iface, flags, adjacency_in, adjacency_out, face_remap_out, vertex_remap_out);
-+    TRACE("WEBGL_DIAG OptimizeInplace enter iface %p flags %#lx faces %lu vertices %lu options %#lx adjacency_in %p.\n",
-+            iface, flags, This->numfaces, This->numvertices, This->options, adjacency_in);
- 
-     if (!flags)
-         return D3DERR_INVALIDCALL;
-@@ -1665,15 +1692,31 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
+@@ -1665,15 +1663,25 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
      if (flags & (D3DXMESHOPT_VERTEXCACHE | D3DXMESHOPT_STRIPREORDER))
      {
          if (flags & D3DXMESHOPT_VERTEXCACHE)
@@ -287,8 +460,8 @@ index e425ef40f4b..58e169e5043 100644
 -        return E_NOTIMPL;
 +            FIXME("D3DXMESHOPT_STRIPREORDER not implemented, ignoring.\n");
 +        flags &= ~(D3DXMESHOPT_VERTEXCACHE | D3DXMESHOPT_STRIPREORDER);
-+    }
-+
+     }
+ 
 +    if (flags & D3DXMESHOPT_ATTRSORT)
 +    {
 +        FIXME("D3DXMESHOPT_ATTRSORT not implemented for this WebGL build, ignoring.\n");
@@ -299,124 +472,103 @@ index e425ef40f4b..58e169e5043 100644
 +    {
 +        FIXME("D3DXMESHOPT_COMPACT disabled for this WebGL build, using identity remaps.\n");
 +        flags &= ~D3DXMESHOPT_COMPACT;
-     }
-+    TRACE("WEBGL_DIAG OptimizeInplace flags after unsupported cleanup %#lx.\n", flags);
- 
-+    TRACE("WEBGL_DIAG OptimizeInplace before LockIndexBuffer.\n");
++    }
      hr = iface->lpVtbl->LockIndexBuffer(iface, 0, &indices);
      if (FAILED(hr)) goto cleanup;
-+    TRACE("WEBGL_DIAG OptimizeInplace after LockIndexBuffer indices %p.\n", indices);
- 
-+    TRACE("WEBGL_DIAG OptimizeInplace before dword index allocation count %lu.\n", This->numfaces * 3);
+-
      dword_indices = malloc(This->numfaces * 3 * sizeof(DWORD));
      if (!dword_indices) return E_OUTOFMEMORY;
      if (This->options & D3DXMESH_32BIT) {
-@@ -1683,12 +1726,15 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
-         for (i = 0; i < This->numfaces * 3; i++)
-             dword_indices[i] = *word_indices++;
-     }
-+    TRACE("WEBGL_DIAG OptimizeInplace after index copy.\n");
- 
-     if ((flags & (D3DXMESHOPT_COMPACT | D3DXMESHOPT_IGNOREVERTS | D3DXMESHOPT_ATTRSORT)) == D3DXMESHOPT_COMPACT)
-     {
-         new_num_alloc_vertices = This->numvertices;
-+        TRACE("WEBGL_DIAG OptimizeInplace before compact_mesh.\n");
-         hr = compact_mesh(This, dword_indices, &new_num_vertices, &vertex_remap);
-         if (FAILED(hr)) goto cleanup;
-+        TRACE("WEBGL_DIAG OptimizeInplace after compact_mesh new_vertices %lu.\n", new_num_vertices);
-     } else if (flags & D3DXMESHOPT_ATTRSORT) {
-         if (!(flags & D3DXMESHOPT_IGNOREVERTS))
-             FIXME("D3DXMESHOPT_ATTRSORT vertex reordering not implemented.\n");
-@@ -1709,6 +1755,7 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
+@@ -1708,7 +1716,6 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
+         DWORD vertex_size = iface->lpVtbl->GetNumBytesPerVertex(iface);
          BYTE *orig_vertices;
          BYTE *new_vertices;
- 
-+        TRACE("WEBGL_DIAG OptimizeInplace before vertex buffer remap.\n");
+-
          hr = IDirect3DVertexBuffer9_GetDesc(This->vertex_buffer, &vertex_desc);
          if (FAILED(hr)) goto cleanup;
  
-@@ -1730,14 +1777,17 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
- 
-         IDirect3DVertexBuffer9_Unlock(This->vertex_buffer);
+@@ -1732,7 +1739,6 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
          IDirect3DVertexBuffer9_Unlock(vertex_buffer);
-+        TRACE("WEBGL_DIAG OptimizeInplace after vertex buffer remap.\n");
      } else if (vertex_remap_out) {
          DWORD *vertex_remap_ptr;
- 
-+        TRACE("WEBGL_DIAG OptimizeInplace before identity vertex remap output.\n");
+-
          hr = D3DXCreateBuffer(This->numvertices * sizeof(DWORD), &vertex_remap);
          if (FAILED(hr)) goto cleanup;
          vertex_remap_ptr = ID3DXBuffer_GetBufferPointer(vertex_remap);
-         for (i = 0; i < This->numvertices; i++)
-             *vertex_remap_ptr++ = i;
-+        TRACE("WEBGL_DIAG OptimizeInplace after identity vertex remap output.\n");
+@@ -2650,7 +2656,6 @@ static HRESULT parse_texture_filename(ID3DXFileData *filedata, char **filename_o
+         filedata->lpVtbl->Unlock(filedata);
+         return E_OUTOFMEMORY;
      }
+-
+     filedata->lpVtbl->Unlock(filedata);
  
-     if (flags & D3DXMESHOPT_ATTRSORT)
-@@ -1776,6 +1826,7 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
-         This->attrib_table = attrib_table;
-         This->attrib_table_size = attrib_table_size;
-     } else {
-+        TRACE("WEBGL_DIAG OptimizeInplace before writing index buffer back.\n");
-         if (This->options & D3DXMESH_32BIT) {
-             memcpy(indices, dword_indices, This->numfaces * 3 * sizeof(DWORD));
-         } else {
-@@ -1783,9 +1834,11 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
-             for (i = 0; i < This->numfaces * 3; i++)
-                 *word_indices++ = dword_indices[i];
-         }
-+        TRACE("WEBGL_DIAG OptimizeInplace after writing index buffer back.\n");
+     return D3D_OK;
+@@ -2757,6 +2762,7 @@ static HRESULT parse_material_list(ID3DXFileData *filedata, struct mesh_data *me
+ {
+     ID3DXFileData *child = NULL;
+     unsigned int material_count;
++    unsigned int face_index_count;
+     const uint32_t *in_ptr;
+     SIZE_T nb_children;
+     SIZE_T data_size;
+@@ -2800,18 +2806,19 @@ static HRESULT parse_material_list(ID3DXFileData *filedata, struct mesh_data *me
+         WARN("Truncated data (%Id bytes).\n", data_size);
+         goto end;
      }
- 
-     if (adjacency_out) {
-+        TRACE("WEBGL_DIAG OptimizeInplace before adjacency output.\n");
-         if (face_remap) {
-             for (i = 0; i < This->numfaces; i++) {
-                 DWORD old_pos = i * 3;
-@@ -1798,6 +1851,7 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
-         } else {
-             memcpy(adjacency_out, adjacency_in, This->numfaces * 3 * sizeof(*adjacency_out));
-         }
-+        TRACE("WEBGL_DIAG OptimizeInplace after adjacency output.\n");
+-    if (*in_ptr++ != mesh->num_poly_faces)
++    face_index_count = *in_ptr++;
++    if (face_index_count != mesh->num_poly_faces && face_index_count != 1)
+     {
+         WARN("Number of material face indices (%u) doesn't match number of faces (%u).\n",
+-             *(in_ptr - 1), mesh->num_poly_faces);
++             face_index_count, mesh->num_poly_faces);
+         goto end;
      }
-     if (face_remap_out) {
-         if (face_remap) {
-@@ -1821,6 +1875,7 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
+-    if (data_size < 2 * sizeof(uint32_t) + mesh->num_poly_faces * sizeof(uint32_t))
++    if (data_size < 2 * sizeof(uint32_t) + face_index_count * sizeof(uint32_t))
+     {
+         WARN("Truncated data (%Id bytes).\n", data_size);
+         goto end;
+     }
+-    for (i = 0; i < mesh->num_poly_faces; ++i)
++    for (i = 0; i < face_index_count; ++i)
+     {
+         if (*in_ptr++ >= material_count)
+         {
+@@ -2827,7 +2834,15 @@ static HRESULT parse_material_list(ID3DXFileData *filedata, struct mesh_data *me
+         hr = E_OUTOFMEMORY;
+         goto end;
+     }
+-    memcpy(mesh->material_indices, (const uint32_t *)data + 2, mesh->num_poly_faces * sizeof(uint32_t));
++    if (face_index_count == 1)
++    {
++        for (i = 0; i < mesh->num_poly_faces; ++i)
++            mesh->material_indices[i] = *((const uint32_t *)data + 2);
++    }
++    else
++    {
++        memcpy(mesh->material_indices, (const uint32_t *)data + 2, mesh->num_poly_faces * sizeof(uint32_t));
++    }
  
-     hr = D3D_OK;
- cleanup:
-+    TRACE("WEBGL_DIAG OptimizeInplace cleanup hr %#lx.\n", hr);
-     free(sorted_attrib_buffer);
-     free(face_remap);
-     free(dword_indices);
-@@ -4180,19 +4235,26 @@ HRESULT WINAPI D3DXLoadMeshFromXW(const WCHAR *filename, DWORD options, struct I
-             "effect_instances %p, num_materials %p, mesh %p.\n",
-             debugstr_w(filename), options, device, adjacency, materials,
-             effect_instances, num_materials, mesh);
-+    TRACE("WEBGL_DIAG D3DXLoadMeshFromXW enter file %s options %#lx.\n", debugstr_w(filename), options);
- 
-     if (!filename)
-         return D3DERR_INVALIDCALL;
+     hr = filedata->lpVtbl->GetChildren(filedata, &nb_children);
+     if (FAILED(hr))
+@@ -4186,13 +4201,14 @@ HRESULT WINAPI D3DXLoadMeshFromXW(const WCHAR *filename, DWORD options, struct I
  
      hr = map_view_of_file(filename, &buffer, &size);
      if (FAILED(hr))
 +    {
-+        TRACE("WEBGL_DIAG D3DXLoadMeshFromXW map failed file %s hr %#lx.\n", debugstr_w(filename), hr);
          return D3DXERR_INVALIDDATA;
 +    }
-+    TRACE("WEBGL_DIAG D3DXLoadMeshFromXW mapped file %s size %lu.\n", debugstr_w(filename), size);
  
      hr = D3DXLoadMeshFromXInMemory(buffer, size, options, device, adjacency,
              materials, effect_instances, num_materials, mesh);
  
      UnmapViewOfFile(buffer);
- 
-+    TRACE("WEBGL_DIAG D3DXLoadMeshFromXW leave file %s hr %#lx mesh %p.\n",
-+            debugstr_w(filename), hr, mesh ? *mesh : NULL);
+-
      return hr;
  }
  
-@@ -4278,7 +4340,7 @@ static HRESULT parse_frame(struct ID3DXFileData *filedata, DWORD options, struct
+@@ -4278,7 +4294,7 @@ static HRESULT parse_frame(struct ID3DXFileData *filedata, DWORD options, struct
          } else if (IsEqualGUID(&type, &TID_D3DRMFrameTransformMatrix)) {
              D3DXMATRIX new_transform;
              hr = parse_transform_matrix(child, &new_transform);
@@ -425,66 +577,7 @@ index e425ef40f4b..58e169e5043 100644
          } else if (IsEqualGUID(&type, &TID_D3DRMFrame)) {
              hr = parse_frame(child, options, device, &transform, container_list, provide_flags);
          }
-@@ -4325,20 +4387,24 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
-     TRACE("memory %p, memory_size %lu, options %#lx, device %p, adjacency_out %p, materials_out %p, "
-             "effects_out %p, num_materials_out %p, mesh_out %p.\n", memory, memory_size, options,
-             device, adjacency_out, materials_out, effects_out, num_materials_out, mesh_out);
-+    TRACE("WEBGL_DIAG D3DXLoadMeshFromXInMemory enter size %lu options %#lx.\n", memory_size, options);
- 
-     if (!memory || !memory_size || !device || !mesh_out)
-         return D3DERR_INVALIDCALL;
- 
-     hr = D3DXFileCreate(&d3dxfile);
-     if (FAILED(hr)) goto cleanup;
-+    TRACE("WEBGL_DIAG D3DXLoadMeshFromXInMemory after D3DXFileCreate.\n");
- 
-     hr = d3dxfile->lpVtbl->RegisterTemplates(d3dxfile, D3DRM_XTEMPLATES, D3DRM_XTEMPLATE_BYTES);
-     if (FAILED(hr)) goto cleanup;
-+    TRACE("WEBGL_DIAG D3DXLoadMeshFromXInMemory after RegisterTemplates.\n");
- 
-     source.lpMemory = (void*)memory;
-     source.dSize = memory_size;
-     hr = d3dxfile->lpVtbl->CreateEnumObject(d3dxfile, &source, D3DXF_FILELOAD_FROMMEMORY, &enumobj);
-     if (FAILED(hr)) goto cleanup;
-+    TRACE("WEBGL_DIAG D3DXLoadMeshFromXInMemory after CreateEnumObject.\n");
- 
-     D3DXMatrixIdentity(&identity);
-     if (adjacency_out) provide_flags |= PROVIDE_ADJACENCY;
-@@ -4347,12 +4413,14 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
-     hr = enumobj->lpVtbl->GetChildren(enumobj, &nb_children);
-     if (FAILED(hr))
-         goto cleanup;
-+    TRACE("WEBGL_DIAG D3DXLoadMeshFromXInMemory children %Iu.\n", nb_children);
- 
-     for (i = 0; i < nb_children; i++)
-     {
-         hr = enumobj->lpVtbl->GetChild(enumobj, i, &filedata);
-         if (FAILED(hr))
-             goto cleanup;
-+        TRACE("WEBGL_DIAG D3DXLoadMeshFromXInMemory child %Iu acquired.\n", i);
- 
-         hr = filedata->lpVtbl->GetType(filedata, &guid);
-         if (SUCCEEDED(hr)) {
-@@ -4367,6 +4435,8 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
-                         (provide_flags & PROVIDE_ADJACENCY) ? &container_ptr->adjacency : NULL,
-                         (provide_flags & PROVIDE_MATERIALS) ? &container_ptr->materials : NULL,
-                         NULL, &container_ptr->num_materials, NULL, &container_ptr->mesh);
-+                TRACE("WEBGL_DIAG D3DXLoadMeshFromXInMemory child %Iu D3DXLoadSkinMeshFromXof hr %#lx mesh %p materials %lu.\n",
-+                        i, hr, container_ptr->mesh, container_ptr->num_materials);
-                 if (container_ptr->mesh)
-                 {
-                     list_add_tail(&container_list, &container_ptr->entry);
-@@ -4377,7 +4447,9 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
-                     free(container_ptr);
-                 }
-             } else if (IsEqualGUID(&guid, &TID_D3DRMFrame)) {
-+                TRACE("WEBGL_DIAG D3DXLoadMeshFromXInMemory child %Iu before parse_frame.\n", i);
-                 hr = parse_frame(filedata, options, device, &identity, &container_list, provide_flags);
-+                TRACE("WEBGL_DIAG D3DXLoadMeshFromXInMemory child %Iu after parse_frame hr %#lx.\n", i, hr);
-             }
-             if (FAILED(hr)) goto cleanup;
-         }
-@@ -4451,9 +4523,11 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
+@@ -4451,9 +4467,11 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
                      concat_decl[j].UsageIndex == mesh_decl[k].UsageIndex)
                  {
                      if (concat_decl[j].Usage == D3DDECLUSAGE_NORMAL) {
@@ -499,7 +592,7 @@ index e425ef40f4b..58e169e5043 100644
                      } else {
                          memcpy(concat_vertices + concat_decl[j].Offset,
                                 mesh_vertices + mesh_decl[k].Offset,
-@@ -4481,6 +4555,7 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
+@@ -4481,6 +4499,7 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
          ID3DXMesh *mesh = container_ptr->mesh;
          const void *mesh_indices;
          DWORD num_mesh_faces = mesh->lpVtbl->GetNumFaces(mesh);
@@ -507,7 +600,7 @@ index e425ef40f4b..58e169e5043 100644
          DWORD i;
  
          hr = mesh->lpVtbl->LockIndexBuffer(mesh, D3DLOCK_READONLY, (void**)&mesh_indices);
-@@ -4501,7 +4576,7 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
+@@ -4501,7 +4520,7 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
          }
          mesh->lpVtbl->UnlockIndexBuffer(mesh);
  
@@ -516,18 +609,16 @@ index e425ef40f4b..58e169e5043 100644
      }
  
      concat_mesh->lpVtbl->UnlockIndexBuffer(concat_mesh);
-@@ -7636,7 +7711,10 @@ done:
+@@ -7636,6 +7655,8 @@ done:
   */
  HRESULT WINAPI D3DXComputeNormals(struct ID3DXBaseMesh *mesh, const DWORD *adjacency)
  {
 +    HRESULT hr;
 +
      TRACE("mesh %p, adjacency %p\n", mesh, adjacency);
-+    TRACE("WEBGL_DIAG D3DXComputeNormals enter mesh %p adjacency %p.\n", mesh, adjacency);
  
      if (mesh && (ID3DXMeshVtbl *)mesh->lpVtbl != &D3DXMesh_Vtbl)
-     {
-@@ -7644,10 +7722,12 @@ HRESULT WINAPI D3DXComputeNormals(struct ID3DXBaseMesh *mesh, const DWORD *adjac
+@@ -7644,10 +7665,11 @@ HRESULT WINAPI D3DXComputeNormals(struct ID3DXBaseMesh *mesh, const DWORD *adjac
          return D3DERR_INVALIDCALL;
      }
  
@@ -536,13 +627,280 @@ index e425ef40f4b..58e169e5043 100644
              D3DX_DEFAULT, 0, D3DX_DEFAULT, 0, D3DDECLUSAGE_NORMAL, 0,
              D3DXTANGENT_GENERATE_IN_PLACE | D3DXTANGENT_CALCULATE_NORMALS,
              adjacency, -1.01f, -0.01f, -1.01f, NULL, NULL);
-+    TRACE("WEBGL_DIAG D3DXComputeNormals leave hr %#lx.\n", hr);
 +    return hr;
  }
  
  /*************************************************************************
+@@ -7674,10 +7696,265 @@ HRESULT WINAPI D3DXTessellateNPatches(ID3DXMesh *mesh, const DWORD *adjacency_in
+ HRESULT WINAPI D3DXConvertMeshSubsetToSingleStrip(struct ID3DXBaseMesh *mesh_in, DWORD attribute_id,
+         DWORD ib_flags, struct IDirect3DIndexBuffer9 **index_buffer, DWORD *index_count)
+ {
+-    FIXME("mesh_in %p, attribute_id %lu, ib_flags %#lx, index_buffer %p, index_count %p stub.\n",
++    IDirect3DIndexBuffer9 *new_index_buffer = NULL;
++    IDirect3DDevice9 *device = NULL;
++    D3DXATTRIBUTERANGE *attrib_table = NULL;
++    DWORD attrib_table_size = 0;
++    const WORD *indices16 = NULL;
++    const DWORD *indices32 = NULL;
++    void *src_indices = NULL;
++    void *dst_indices = NULL;
++    DWORD face_count = 0, strip_index_count = 0;
++    DWORD face_idx, range_idx, out_idx = 0;
++    DWORD options, num_faces;
++    D3DPOOL pool = D3DPOOL_DEFAULT;
++    D3DFORMAT index_format;
++    DWORD usage = 0;
++    HRESULT hr;
++
++    TRACE("mesh_in %p, attribute_id %lu, ib_flags %#lx, index_buffer %p, index_count %p.\n",
+             mesh_in, attribute_id, ib_flags, index_buffer, index_count);
+ 
+-    return E_NOTIMPL;
++    if (!mesh_in || !index_buffer || !index_count)
++        return D3DERR_INVALIDCALL;
++
++    *index_buffer = NULL;
++    *index_count = 0;
++
++    options = mesh_in->lpVtbl->GetOptions(mesh_in);
++    num_faces = mesh_in->lpVtbl->GetNumFaces(mesh_in);
++    index_format = (options & D3DXMESH_32BIT) || (ib_flags & D3DXMESH_32BIT)
++            ? D3DFMT_INDEX32 : D3DFMT_INDEX16;
++
++    if (ib_flags & D3DXMESH_IB_SYSTEMMEM)
++        pool = D3DPOOL_SYSTEMMEM;
++    else if (ib_flags & D3DXMESH_IB_MANAGED)
++        pool = D3DPOOL_MANAGED;
++
++    if (ib_flags & D3DXMESH_IB_WRITEONLY)
++        usage |= D3DUSAGE_WRITEONLY;
++    if (ib_flags & D3DXMESH_IB_DYNAMIC)
++        usage |= D3DUSAGE_DYNAMIC;
++    if (ib_flags & D3DXMESH_IB_SOFTWAREPROCESSING)
++        usage |= D3DUSAGE_SOFTWAREPROCESSING;
++
++    if (FAILED(hr = mesh_in->lpVtbl->GetAttributeTable(mesh_in, NULL, &attrib_table_size)))
++        return hr;
++
++    if (attrib_table_size)
++    {
++        if (!(attrib_table = malloc(attrib_table_size * sizeof(*attrib_table))))
++            return E_OUTOFMEMORY;
++
++        if (FAILED(hr = mesh_in->lpVtbl->GetAttributeTable(mesh_in, attrib_table, &attrib_table_size)))
++            goto done;
++
++        for (range_idx = 0; range_idx < attrib_table_size; ++range_idx)
++        {
++            if (attrib_table[range_idx].AttribId == attribute_id)
++                face_count += attrib_table[range_idx].FaceCount;
++        }
++    }
++    else if ((ID3DXMeshVtbl *)mesh_in->lpVtbl == &D3DXMesh_Vtbl)
++    {
++        struct d3dx9_mesh *mesh = impl_from_ID3DXMesh((ID3DXMesh *)mesh_in);
++
++        for (face_idx = 0; face_idx < num_faces; ++face_idx)
++        {
++            if (mesh->attrib_buffer[face_idx] == attribute_id)
++                ++face_count;
++        }
++    }
++    else
++    {
++        face_count = num_faces;
++    }
++
++    if (!face_count)
++    {
++        hr = D3D_OK;
++        goto done;
++    }
++
++    strip_index_count = 3 + (face_count - 1) * 6;
++
++    if (FAILED(hr = mesh_in->lpVtbl->GetDevice(mesh_in, &device)))
++        goto done;
++
++    if (FAILED(hr = IDirect3DDevice9_CreateIndexBuffer(device,
++            strip_index_count * (index_format == D3DFMT_INDEX32 ? sizeof(DWORD) : sizeof(WORD)),
++            usage, index_format, pool, &new_index_buffer, NULL)))
++        goto done;
++
++    if (FAILED(hr = mesh_in->lpVtbl->LockIndexBuffer(mesh_in, D3DLOCK_READONLY, &src_indices)))
++        goto done;
++
++    if (FAILED(hr = IDirect3DIndexBuffer9_Lock(new_index_buffer, 0, 0, &dst_indices, 0)))
++        goto done;
++
++    indices32 = src_indices;
++    indices16 = src_indices;
++
++    for (face_idx = 0; face_idx < num_faces; ++face_idx)
++    {
++        DWORD face_attribute = attribute_id;
++        DWORD a, b, c;
++
++        if (attrib_table_size)
++        {
++            BOOL found = FALSE;
++
++            for (range_idx = 0; range_idx < attrib_table_size; ++range_idx)
++            {
++                if (face_idx >= attrib_table[range_idx].FaceStart
++                        && face_idx < attrib_table[range_idx].FaceStart + attrib_table[range_idx].FaceCount)
++                {
++                    face_attribute = attrib_table[range_idx].AttribId;
++                    found = TRUE;
++                    break;
++                }
++            }
++            if (!found)
++                continue;
++        }
++        else if ((ID3DXMeshVtbl *)mesh_in->lpVtbl == &D3DXMesh_Vtbl)
++        {
++            struct d3dx9_mesh *mesh = impl_from_ID3DXMesh((ID3DXMesh *)mesh_in);
++
++            face_attribute = mesh->attrib_buffer[face_idx];
++        }
++
++        if (face_attribute != attribute_id)
++            continue;
++
++        if (options & D3DXMESH_32BIT)
++        {
++            a = indices32[face_idx * 3 + 0];
++            b = indices32[face_idx * 3 + 1];
++            c = indices32[face_idx * 3 + 2];
++        }
++        else
++        {
++            a = indices16[face_idx * 3 + 0];
++            b = indices16[face_idx * 3 + 1];
++            c = indices16[face_idx * 3 + 2];
++        }
++
++        if (index_format == D3DFMT_INDEX32)
++        {
++            DWORD *dst = dst_indices;
++
++            if (!out_idx)
++            {
++                dst[out_idx++] = a;
++                dst[out_idx++] = b;
++                dst[out_idx++] = c;
++            }
++            else
++            {
++                DWORD previous = dst[out_idx - 1];
++
++                dst[out_idx++] = previous;
++                dst[out_idx++] = a;
++                dst[out_idx++] = a;
++                dst[out_idx++] = a;
++                dst[out_idx++] = b;
++                dst[out_idx++] = c;
++            }
++        }
++        else
++        {
++            WORD *dst = dst_indices;
++
++            if (a > 0xffff || b > 0xffff || c > 0xffff)
++            {
++                hr = D3DERR_INVALIDCALL;
++                goto done;
++            }
++
++            if (!out_idx)
++            {
++                dst[out_idx++] = a;
++                dst[out_idx++] = b;
++                dst[out_idx++] = c;
++            }
++            else
++            {
++                WORD previous = dst[out_idx - 1];
++
++                dst[out_idx++] = previous;
++                dst[out_idx++] = a;
++                dst[out_idx++] = a;
++                dst[out_idx++] = a;
++                dst[out_idx++] = b;
++                dst[out_idx++] = c;
++            }
++        }
++    }
++
++    *index_buffer = new_index_buffer;
++    new_index_buffer = NULL;
++    *index_count = out_idx;
++    hr = D3D_OK;
++
++done:
++    if (dst_indices)
++        IDirect3DIndexBuffer9_Unlock(new_index_buffer ? new_index_buffer : *index_buffer);
++    if (src_indices)
++        mesh_in->lpVtbl->UnlockIndexBuffer(mesh_in);
++    if (new_index_buffer)
++        IDirect3DIndexBuffer9_Release(new_index_buffer);
++    if (device)
++        IDirect3DDevice9_Release(device);
++    free(attrib_table);
++    return hr;
++}
++
++HRESULT WINAPI D3DXConvertMeshSubsetToStrips(struct ID3DXBaseMesh *mesh_in, DWORD attribute_id,
++        DWORD ib_flags, struct IDirect3DIndexBuffer9 **index_buffer, DWORD *index_count,
++        struct ID3DXBuffer **strip_lengths, DWORD *strip_count)
++{
++    DWORD local_index_count = 0;
++    DWORD *lengths;
++    HRESULT hr;
++
++    TRACE("mesh_in %p, attribute_id %lu, ib_flags %#lx, index_buffer %p, index_count %p, "
++            "strip_lengths %p, strip_count %p.\n",
++            mesh_in, attribute_id, ib_flags, index_buffer, index_count, strip_lengths, strip_count);
++
++    if (!strip_lengths || !strip_count)
++        return D3DERR_INVALIDCALL;
++
++    *strip_lengths = NULL;
++    *strip_count = 0;
++
++    if (index_count)
++        *index_count = 0;
++
++    if (FAILED(hr = D3DXConvertMeshSubsetToSingleStrip(mesh_in, attribute_id,
++            ib_flags, index_buffer, &local_index_count)))
++        return hr;
++
++    if (index_count)
++        *index_count = local_index_count;
++
++    if (!local_index_count)
++        return D3D_OK;
++
++    if (FAILED(hr = D3DXCreateBuffer(sizeof(DWORD), strip_lengths)))
++    {
++        IDirect3DIndexBuffer9_Release(*index_buffer);
++        *index_buffer = NULL;
++        if (index_count)
++            *index_count = 0;
++        return hr;
++    }
++
++    lengths = ID3DXBuffer_GetBufferPointer(*strip_lengths);
++    *lengths = local_index_count;
++    *strip_count = 1;
++
++    return D3D_OK;
+ }
+ 
+ struct frame_node
 diff --git a/dlls/d3dx9_36/sprite.c b/dlls/d3dx9_36/sprite.c
-index 2fe822cc1a9..28a68f05e60 100644
+index 2fe822c..28a68f0 100644
 --- a/dlls/d3dx9_36/sprite.c
 +++ b/dlls/d3dx9_36/sprite.c
 @@ -213,7 +213,9 @@ static void set_states(struct d3dx9_sprite *object)
@@ -596,310 +954,89 @@ index 2fe822cc1a9..28a68f05e60 100644
      IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_MIPMAPLODBIAS, 0);
      IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_SRGBTEXTURE, 0);
 diff --git a/dlls/d3dx9_36/surface.c b/dlls/d3dx9_36/surface.c
-index 8734907b31f..23aa5a43f0b 100644
+index 8734907..a5b9667 100644
 --- a/dlls/d3dx9_36/surface.c
 +++ b/dlls/d3dx9_36/surface.c
-@@ -146,6 +146,8 @@ HRESULT WINAPI D3DXGetImageInfoFromFileInMemory(const void *data, UINT datasize,
-     HRESULT hr;
- 
-     TRACE("(%p, %d, %p)\n", data, datasize, info);
-+    TRACE("WEBGL_DIAG D3DXGetImageInfoFromFileInMemory enter data %p size %u info %p.\n",
-+            data, datasize, info);
- 
-     if (!data || !datasize)
-         return D3DERR_INVALIDCALL;
-@@ -156,11 +158,14 @@ HRESULT WINAPI D3DXGetImageInfoFromFileInMemory(const void *data, UINT datasize,
-     hr = d3dx_image_init(data, datasize, &image, 0, D3DX_IMAGE_INFO_ONLY);
-     if (FAILED(hr)) {
-         TRACE("Invalid or unsupported image file\n");
-+        TRACE("WEBGL_DIAG D3DXGetImageInfoFromFileInMemory image_init failed hr %#lx.\n", hr);
-         return D3DXERR_INVALIDDATA;
-     }
- 
-     if (!d3dximage_info_from_d3dx_image(info, &image))
-         return D3DXERR_INVALIDDATA;
-+    TRACE("WEBGL_DIAG D3DXGetImageInfoFromFileInMemory success format %#x size %ux%u mips %u type %#x.\n",
-+            info->Format, info->Width, info->Height, info->MipLevels, info->ResourceType);
-     return D3D_OK;
- }
- 
-@@ -202,16 +207,22 @@ HRESULT WINAPI D3DXGetImageInfoFromFileW(const WCHAR *file, D3DXIMAGE_INFO *info
-     DWORD size;
- 
-     TRACE("file %s, info %p.\n", debugstr_w(file), info);
-+    TRACE("WEBGL_DIAG D3DXGetImageInfoFromFileW enter file %s info %p.\n", debugstr_w(file), info);
- 
-     if (!file)
+@@ -207,11 +207,12 @@ HRESULT WINAPI D3DXGetImageInfoFromFileW(const WCHAR *file, D3DXIMAGE_INFO *info
          return D3DERR_INVALIDCALL;
  
      if (FAILED(map_view_of_file(file, &buffer, &size)))
 +    {
-+        TRACE("WEBGL_DIAG D3DXGetImageInfoFromFileW map failed file %s.\n", debugstr_w(file));
          return D3DXERR_INVALIDDATA;
 +    }
-+    TRACE("WEBGL_DIAG D3DXGetImageInfoFromFileW mapped file %s size %lu.\n", debugstr_w(file), size);
  
      hr = D3DXGetImageInfoFromFileInMemory(buffer, size, info);
      UnmapViewOfFile(buffer);
- 
-+    TRACE("WEBGL_DIAG D3DXGetImageInfoFromFileW leave file %s hr %#lx.\n", debugstr_w(file), hr);
-     return hr;
- }
- 
-diff --git a/dlls/d3dx9_36/texture.c b/dlls/d3dx9_36/texture.c
-index 799ff1e82ca..f0a1e91b671 100644
---- a/dlls/d3dx9_36/texture.c
-+++ b/dlls/d3dx9_36/texture.c
-@@ -590,6 +590,8 @@ HRESULT WINAPI D3DXCreateTextureFromFileInMemoryEx(struct IDirect3DDevice9 *devi
-             "srcinfo %p, palette %p, texture %p.\n",
-             device, srcdata, srcdatasize, width, height, miplevels, usage, format, pool,
-             filter, mipfilter, colorkey, srcinfo, palette, texture);
-+    TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx enter srcsize %u requested %ux%u mips %u usage %#lx format %#x pool %#x.\n",
-+            srcdatasize, width, height, miplevels, usage, format, pool);
- 
-     /* check for invalid parameters */
-     if (!device || !texture || !srcdata || !srcdatasize)
-@@ -600,18 +602,22 @@ HRESULT WINAPI D3DXCreateTextureFromFileInMemoryEx(struct IDirect3DDevice9 *devi
- 
-     staging_tex = tex = *texture = NULL;
-     mipfilter = d3dx9_get_mip_filter_value(mipfilter, &skip_levels);
-+    TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx before image_init skip_levels %u.\n", skip_levels);
-     hr = d3dx_image_init(srcdata, srcdatasize, &image, skip_levels, 0);
-     if (FAILED(hr))
-     {
-         FIXME("Unrecognized file format, returning failure.\n");
-         return hr;
-     }
-+    TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx after image_init image_format %#x.\n", image.format);
- 
-     if (!d3dximage_info_from_d3dx_image(&imginfo, &image))
-     {
-         hr = D3DXERR_INVALIDDATA;
-         goto err;
-     }
-+    TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx image info format %#x size %ux%u mips %u.\n",
-+            imginfo.Format, imginfo.Width, imginfo.Height, imginfo.MipLevels);
- 
-     /* handle default values */
-     if (!width || width == D3DX_DEFAULT_NONPOW2 || width == D3DX_FROM_FILE || width == D3DX_DEFAULT)
-@@ -631,6 +637,8 @@ HRESULT WINAPI D3DXCreateTextureFromFileInMemoryEx(struct IDirect3DDevice9 *devi
-         FIXME("Couldn't find suitable texture parameters.\n");
-         goto err;
-     }
-+    TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx requirements width %u height %u mips %u format %#x.\n",
-+            width, height, miplevels, format);
- 
-     if (colorkey && !format_specified)
-         format = get_alpha_replacement_format(format);
-@@ -646,11 +654,13 @@ HRESULT WINAPI D3DXCreateTextureFromFileInMemoryEx(struct IDirect3DDevice9 *devi
-     if (pool == D3DPOOL_DEFAULT && !dynamic_texture)
-     {
-         TRACE("Creating staging texture.\n");
-+        TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx before staging texture create.\n");
-         hr = D3DXCreateTexture(device, width, height, miplevels, 0, format, D3DPOOL_SYSTEMMEM, &staging_tex);
-         tex = staging_tex;
-     }
-     else
-     {
-+        TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx before texture create.\n");
-         hr = D3DXCreateTexture(device, width, height, miplevels, usage, format, pool, &tex);
-     }
- 
-@@ -659,6 +669,7 @@ HRESULT WINAPI D3DXCreateTextureFromFileInMemoryEx(struct IDirect3DDevice9 *devi
-         FIXME("Texture creation failed.\n");
-         goto err;
-     }
-+    TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx after texture create tex %p.\n", tex);
- 
-     TRACE("Texture created correctly. Now loading the texture data into it.\n");
-     dst_fmt_desc = get_format_info(format);
-@@ -671,6 +682,7 @@ HRESULT WINAPI D3DXCreateTextureFromFileInMemoryEx(struct IDirect3DDevice9 *devi
-         D3DLOCKED_RECT dst_locked_rect;
-         RECT dst_rect;
- 
-+        TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx before mip %u load.\n", i);
-         hr = d3dx_image_get_pixels(&image, 0, i, &src_pixels);
-         if (FAILED(hr))
-             break;
-@@ -688,6 +700,7 @@ HRESULT WINAPI D3DXCreateTextureFromFileInMemoryEx(struct IDirect3DDevice9 *devi
-         IDirect3DTexture9_UnlockRect(tex, i);
-         if (FAILED(hr))
-             break;
-+        TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx after mip %u load.\n", i);
-     }
- 
-     if (FAILED(hr))
-@@ -702,6 +715,7 @@ HRESULT WINAPI D3DXCreateTextureFromFileInMemoryEx(struct IDirect3DDevice9 *devi
-         FIXME("Texture filtering failed.\n");
-         goto err;
-     }
-+    TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx after filter.\n");
- 
-     /* Move the data to the actual texture if necessary */
-     if (staging_tex)
-@@ -722,9 +736,11 @@ HRESULT WINAPI D3DXCreateTextureFromFileInMemoryEx(struct IDirect3DDevice9 *devi
-     if (srcinfo)
-         *srcinfo = imginfo;
- 
-+    TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx leave hr %#lx texture %p.\n", hr, *texture);
-     return hr;
- 
- err:
-+    TRACE("WEBGL_DIAG D3DXCreateTextureFromFileInMemoryEx err hr %#lx.\n", hr);
-     d3dx_image_cleanup(&image);
-     if (tex)
-         IDirect3DTexture9_Release(tex);
-@@ -754,6 +770,7 @@ HRESULT WINAPI D3DXCreateTextureFromFileExW(struct IDirect3DDevice9 *device, con
-             "pool %#x, filter %#lx, mipfilter %#lx, colorkey 0x%08lx, srcinfo %p, palette %p, texture %p.\n",
-             device, debugstr_w(srcfile), width, height, miplevels, usage, format,
-             pool, filter, mipfilter, colorkey, srcinfo, palette, texture);
-+    TRACE("WEBGL_DIAG D3DXCreateTextureFromFileExW enter file %s.\n", debugstr_w(srcfile));
- 
-     if (!srcfile)
-         return D3DERR_INVALIDCALL;
-@@ -762,14 +779,17 @@ HRESULT WINAPI D3DXCreateTextureFromFileExW(struct IDirect3DDevice9 *device, con
-     if (FAILED(hr))
-     {
-         WARN("Failed to open file.\n");
-+        TRACE("WEBGL_DIAG D3DXCreateTextureFromFileExW map failed file %s hr %#lx.\n", debugstr_w(srcfile), hr);
-         return D3DXERR_INVALIDDATA;
-     }
-+    TRACE("WEBGL_DIAG D3DXCreateTextureFromFileExW mapped file %s size %lu.\n", debugstr_w(srcfile), size);
- 
-     hr = D3DXCreateTextureFromFileInMemoryEx(device, buffer, size, width, height, miplevels, usage, format, pool,
-         filter, mipfilter, colorkey, srcinfo, palette, texture);
- 
-     UnmapViewOfFile(buffer);
- 
-+    TRACE("WEBGL_DIAG D3DXCreateTextureFromFileExW leave file %s hr %#lx.\n", debugstr_w(srcfile), hr);
+-
      return hr;
  }
  
 diff --git a/dlls/d3dx9_36/xfile.c b/dlls/d3dx9_36/xfile.c
-index f7823bd58fd..b2d5ed41fd2 100644
+index f7823bd..4c762f3 100644
 --- a/dlls/d3dx9_36/xfile.c
 +++ b/dlls/d3dx9_36/xfile.c
-@@ -594,7 +594,10 @@ static HRESULT WINAPI d3dx9_file_CreateEnumObject(ID3DXFile *iface, const void *
+@@ -593,7 +593,6 @@ static HRESULT WINAPI d3dx9_file_CreateEnumObject(ID3DXFile *iface, const void *
+ 
      object->ID3DXFileEnumObject_iface.lpVtbl = &d3dx9_file_enum_object_vtbl;
      object->ref = 1;
- 
-+    TRACE("WEBGL_DIAG d3dx9_file_CreateEnumObject before d3dxof CreateEnumObject options %#lx.\n", dxfile_options);
+-
      ret = IDirectXFile_CreateEnumObject(file->dxfile, dxfile_source, dxfile_options, &dxfile_enum_object);
-+    TRACE("WEBGL_DIAG d3dx9_file_CreateEnumObject after d3dxof CreateEnumObject hr %#lx enum %p.\n",
-+            ret, dxfile_enum_object);
  
      if (ret != S_OK)
-     {
-@@ -603,6 +606,7 @@ static HRESULT WINAPI d3dx9_file_CreateEnumObject(ID3DXFile *iface, const void *
-     }
- 
-     /* Fill enum object with top level data objects */
-+    TRACE("WEBGL_DIAG d3dx9_file_CreateEnumObject before top-level enumeration.\n");
-     while (SUCCEEDED(ret = IDirectXFileEnumObject_GetNextDataObject(dxfile_enum_object, &data_object)))
-     {
-         if (object->child_count >= children_array_size)
-@@ -618,8 +622,12 @@ static HRESULT WINAPI d3dx9_file_CreateEnumObject(ID3DXFile *iface, const void *
-             }
-             object->children = new_children;
-         }
-+        TRACE("WEBGL_DIAG d3dx9_file_CreateEnumObject top-level child %u before data_create data %p.\n",
-+                object->child_count, data_object);
-         ret = d3dx9_file_data_create((IDirectXFileObject*)data_object,
-                 &object->children[object->child_count]);
-+        TRACE("WEBGL_DIAG d3dx9_file_CreateEnumObject top-level child %u after data_create hr %#lx.\n",
-+                object->child_count, ret);
-         IUnknown_Release(data_object);
-         if (FAILED(ret))
-             break;
+diff --git a/dlls/d3dx9_43/d3dx9_43.spec b/dlls/d3dx9_43/d3dx9_43.spec
+index b857564..b293c12 100644
+--- a/dlls/d3dx9_43/d3dx9_43.spec
++++ b/dlls/d3dx9_43/d3dx9_43.spec
+@@ -29,7 +29,7 @@
+ @ stdcall D3DXComputeTangentFrameEx(ptr long long long long long long long long long ptr float float float ptr ptr)
+ @ stub D3DXConcatenateMeshes(ptr long long ptr ptr ptr ptr ptr)
+ @ stdcall D3DXConvertMeshSubsetToSingleStrip(ptr long long ptr ptr)
+-@ stub D3DXConvertMeshSubsetToStrips(ptr long long ptr ptr ptr ptr)
++@ stdcall D3DXConvertMeshSubsetToStrips(ptr long long ptr ptr ptr ptr)
+ @ stdcall D3DXCreateAnimationController(long long long long ptr)
+ @ stdcall D3DXCreateBox(ptr float float float ptr ptr)
+ @ stdcall D3DXCreateBuffer(long ptr)
 diff --git a/dlls/d3dxof/d3dxof.c b/dlls/d3dxof/d3dxof.c
-index 250af38c895..2d3670b3733 100644
+index 250af38..73c6ca7 100644
 --- a/dlls/d3dxof/d3dxof.c
 +++ b/dlls/d3dxof/d3dxof.c
-@@ -241,16 +241,25 @@ static HRESULT WINAPI IDirectXFileImpl_CreateEnumObject(IDirectXFile* iface, LPV
-   object->buf.token_present = FALSE;
-   object->buf.buffer = file_buffer;
-   object->buf.rem_bytes = file_size;
-+  TRACE("WEBGL_DIAG d3dxof CreateEnumObject before parse_header size %lu buffer %p.\n",
-+          file_size, file_buffer);
-   hr = parse_header(&object->buf, &object->decomp_buffer);
-+  TRACE("WEBGL_DIAG d3dxof CreateEnumObject after parse_header hr %#lx rem %lu txt %d.\n",
-+          hr, object->buf.rem_bytes, object->buf.txt);
-   if (FAILED(hr))
-     goto error;
+@@ -1007,22 +1007,23 @@ static HRESULT WINAPI IDirectXFileEnumObjectImpl_GetNextDataObject(IDirectXFileE
  
    /* Check if there are templates defined before the object */
-+  TRACE("WEBGL_DIAG d3dxof CreateEnumObject before parse_templates templates_only TRUE rem %lu.\n",
-+          object->buf.rem_bytes);
-   if (!parse_templates(&object->buf, TRUE))
-   {
-+    TRACE("WEBGL_DIAG d3dxof CreateEnumObject parse_templates failed.\n");
-     hr = DXFILEERR_PARSEERROR;
-     goto error;
-   }
-+  TRACE("WEBGL_DIAG d3dxof CreateEnumObject after parse_templates rem %lu templates %lu.\n",
-+          object->buf.rem_bytes, This->nb_xtemplates);
- 
-   if (TRACE_ON(d3dxof))
-   {
-@@ -1006,24 +1015,40 @@ static HRESULT WINAPI IDirectXFileEnumObjectImpl_GetNextDataObject(IDirectXFileE
-   }
- 
-   /* Check if there are templates defined before the object */
-+  TRACE("WEBGL_DIAG GetNextDataObject enter rem %lu nb_xobjects %lu.\n",
-+          This->buf.rem_bytes, This->nb_xobjects);
    if (!parse_templates(&This->buf, TRUE))
 +  {
-+    TRACE("WEBGL_DIAG GetNextDataObject parse_templates failed.\n");
      return DXFILEERR_PARSEERROR;
 +  }
-+  TRACE("WEBGL_DIAG GetNextDataObject after parse_templates rem %lu.\n", This->buf.rem_bytes);
  
    if (!This->buf.rem_bytes)
 +  {
-+    TRACE("WEBGL_DIAG GetNextDataObject no more objects.\n");
      return DXFILEERR_NOMOREOBJECTS;
+-
 +  }
- 
-+  TRACE("WEBGL_DIAG GetNextDataObject before data impl create.\n");
    hr = IDirectXFileDataImpl_Create(&object);
    if (FAILED(hr))
      return hr;
-+  TRACE("WEBGL_DIAG GetNextDataObject after data impl create object %p.\n", object);
- 
-+  TRACE("WEBGL_DIAG GetNextDataObject before pobj alloc bytes %Iu.\n",
-+          sizeof(xobject) * (SIZE_T)MAX_SUBOBJECTS);
+-
    object->pobj = HeapAlloc(GetProcessHeap(), 0, sizeof(xobject)*MAX_SUBOBJECTS);
-+  TRACE("WEBGL_DIAG GetNextDataObject after pobj alloc %p.\n", object->pobj);
    if (!object->pobj)
    {
      hr = DXFILEERR_BADALLOC;
      goto error;
    }
- 
-+  TRACE("WEBGL_DIAG GetNextDataObject before pstrings alloc bytes %u.\n", MAX_STRINGS_BUFFER);
+-
    object->pstrings = HeapAlloc(GetProcessHeap(), 0, MAX_STRINGS_BUFFER);
-+  TRACE("WEBGL_DIAG GetNextDataObject after pstrings alloc %p.\n", object->pstrings);
    if (!object->pstrings)
    {
-     hr = DXFILEERR_BADALLOC;
-@@ -1045,12 +1070,15 @@ static HRESULT WINAPI IDirectXFileEnumObjectImpl_GetNextDataObject(IDirectXFileE
+@@ -1044,7 +1045,6 @@ static HRESULT WINAPI IDirectXFileEnumObjectImpl_GetNextDataObject(IDirectXFileE
+   This->buf.pxo = This->xobjects[This->nb_xobjects] = This->buf.pxo_tab = object->pobj;
    This->buf.pxo->pdata = NULL;
    This->buf.pxo->nb_subobjects = 1;
- 
-+  TRACE("WEBGL_DIAG GetNextDataObject before parse_object pxo %p.\n", This->buf.pxo);
+-
    if (!parse_object(&This->buf))
    {
      WARN("Object is not correct\n");
-     hr = DXFILEERR_PARSEERROR;
-     goto error;
-   }
-+  TRACE("WEBGL_DIAG GetNextDataObject after parse_object rem %lu subobjects %lu.\n",
-+          This->buf.rem_bytes, This->buf.pxo->nb_subobjects);
- 
-   *ppDataObj = &object->IDirectXFileData_iface;
- 
 diff --git a/dlls/d3dxof/d3dxof_private.h b/dlls/d3dxof/d3dxof_private.h
-index 9f208dfc9cb..8aa733d9678 100644
+index 9f208df..8aa733d 100644
 --- a/dlls/d3dxof/d3dxof_private.h
 +++ b/dlls/d3dxof/d3dxof_private.h
 @@ -36,7 +36,7 @@
@@ -912,33 +1049,18 @@ index 9f208dfc9cb..8aa733d9678 100644
  
  typedef struct {
 diff --git a/dlls/d3dxof/parsing.c b/dlls/d3dxof/parsing.c
-index 149e2371168..c52ff16a833 100644
+index 149e237..e03911b 100644
 --- a/dlls/d3dxof/parsing.c
 +++ b/dlls/d3dxof/parsing.c
-@@ -170,9 +170,14 @@ HRESULT parse_header(parse_buffer * buf, BYTE ** decomp_buffer_ptr)
+@@ -169,7 +169,6 @@ HRESULT parse_header(parse_buffer * buf, BYTE ** decomp_buffer_ptr)
+    *  8-11 -> Format Type (text or binary, decompressed or compressed)
     * 12-15 -> Float Size (32 or 64 bits) */
    DWORD header[4];
- 
-+  TRACE("WEBGL_DIAG parse_header enter rem %lu buffer %p.\n", buf->rem_bytes, buf->buffer);
+-
    if (!read_bytes(buf, header, sizeof(header)))
      return DXFILEERR_BADFILETYPE;
  
-+  TRACE("WEBGL_DIAG parse_header magic %s version %s type %s float %s.\n",
-+          debugstr_fourcc(header[0]), debugstr_fourcc(header[1]),
-+          debugstr_fourcc(header[2]), debugstr_fourcc(header[3]));
-+
-   if (TRACE_ON(d3dxof_parsing))
-   {
-     char string[17];
-@@ -263,6 +268,7 @@ HRESULT parse_header(parse_buffer * buf, BYTE ** decomp_buffer_ptr)
-   }
- 
-   TRACE("Header is correct\n");
-+  TRACE("WEBGL_DIAG parse_header leave rem %lu txt %d.\n", buf->rem_bytes, buf->txt);
- 
-   return S_OK;
- }
-@@ -908,7 +914,8 @@ static BOOL parse_template_option_info(parse_buffer * buf)
+@@ -908,7 +907,8 @@ static BOOL parse_template_option_info(parse_buffer * buf)
      {
        if (get_TOKEN(buf) != TOKEN_NAME)
          return FALSE;
@@ -948,7 +1070,7 @@ index 149e2371168..c52ff16a833 100644
        if (check_TOKEN(buf) == TOKEN_GUID)
          get_TOKEN(buf);
        cur_template->nb_children++;
-@@ -970,7 +977,7 @@ static BOOL parse_template_members_list(parse_buffer * buf)
+@@ -970,7 +970,7 @@ static BOOL parse_template_members_list(parse_buffer * buf)
  
      if (get_TOKEN(buf) != TOKEN_NAME)
        return FALSE;
@@ -957,7 +1079,7 @@ index 149e2371168..c52ff16a833 100644
  
      if (array)
      {
-@@ -1059,7 +1066,8 @@ static BOOL parse_template(parse_buffer * buf)
+@@ -1059,7 +1059,8 @@ static BOOL parse_template(parse_buffer * buf)
      return FALSE;
    if (get_TOKEN(buf) != TOKEN_NAME)
      return FALSE;
@@ -967,38 +1089,29 @@ index 149e2371168..c52ff16a833 100644
    if (get_TOKEN(buf) != TOKEN_OBRACE)
      return FALSE;
    if (get_TOKEN(buf) != TOKEN_GUID)
-@@ -1079,10 +1087,19 @@ static BOOL parse_template(parse_buffer * buf)
+@@ -1079,10 +1080,13 @@ static BOOL parse_template(parse_buffer * buf)
  
  BOOL parse_templates(parse_buffer * buf, BOOL templates_only)
  {
 +  ULONG parsed = 0;
-+
-+  TRACE("WEBGL_DIAG parse_templates enter templates_only %d rem %lu.\n",
-+          templates_only, buf->rem_bytes);
    while (check_TOKEN(buf) != TOKEN_NONE)
    {
      if (templates_only && (check_TOKEN(buf) != TOKEN_TEMPLATE))
 +    {
-+      TRACE("WEBGL_DIAG parse_templates leave templates_only parsed %lu rem %lu.\n",
-+              parsed, buf->rem_bytes);
        return TRUE;
 +    }
-+    TRACE("WEBGL_DIAG parse_templates before template %lu rem %lu.\n", parsed, buf->rem_bytes);
      if (!parse_template(buf))
      {
        WARN("Template is not correct\n");
-@@ -1094,7 +1111,10 @@ BOOL parse_templates(parse_buffer * buf, BOOL templates_only)
+@@ -1094,6 +1098,7 @@ BOOL parse_templates(parse_buffer * buf, BOOL templates_only)
        if (TRACE_ON(d3dxof_parsing))
          dump_template(buf->pdxf->xtemplates, &buf->pdxf->xtemplates[buf->pdxf->nb_xtemplates - 1]);
      }
 +    ++parsed;
-+    TRACE("WEBGL_DIAG parse_templates after template %lu rem %lu.\n", parsed, buf->rem_bytes);
    }
-+  TRACE("WEBGL_DIAG parse_templates leave parsed %lu rem %lu.\n", parsed, buf->rem_bytes);
    return TRUE;
  }
- 
-@@ -1361,6 +1381,7 @@ _exit:
+@@ -1361,6 +1366,7 @@ _exit:
  BOOL parse_object(parse_buffer * buf)
  {
    ULONG i;
@@ -1006,13 +1119,11 @@ index 149e2371168..c52ff16a833 100644
  
    buf->pxo->pos_data = buf->cur_pos_data;
    buf->pxo->ptarget = NULL;
-@@ -1369,11 +1390,14 @@ BOOL parse_object(parse_buffer * buf)
+@@ -1369,11 +1375,12 @@ BOOL parse_object(parse_buffer * buf)
  
    if (get_TOKEN(buf) != TOKEN_NAME)
      return FALSE;
 +  template_name = (const char *)buf->value;
-+  TRACE("WEBGL_DIAG parse_object enter template %s level %lu rem %lu.\n",
-+          template_name, buf->level, buf->rem_bytes);
  
    /* To do template lookup */
    for (i = 0; i < buf->pdxf->nb_xtemplates; i++)
@@ -1022,7 +1133,7 @@ index 149e2371168..c52ff16a833 100644
      {
        buf->pxt[buf->level] = &buf->pdxf->xtemplates[i];
        memcpy(&buf->pxo->type, &buf->pdxf->xtemplates[i].class_id, 16);
-@@ -1382,14 +1406,14 @@ BOOL parse_object(parse_buffer * buf)
+@@ -1382,14 +1389,14 @@ BOOL parse_object(parse_buffer * buf)
    }
    if (i == buf->pdxf->nb_xtemplates)
    {
@@ -1039,16 +1150,15 @@ index 149e2371168..c52ff16a833 100644
    }
    else
      buf->pxo->name[0] = 0;
-@@ -1412,5 +1436,7 @@ BOOL parse_object(parse_buffer * buf)
+@@ -1411,6 +1418,5 @@ BOOL parse_object(parse_buffer * buf)
+ 
    /* For seeking to a possibly eof to avoid parsing another object next time */
    check_TOKEN(buf);
- 
-+  TRACE("WEBGL_DIAG parse_object leave template %s level %lu rem %lu children %lu.\n",
-+          template_name, buf->level, buf->rem_bytes, buf->pxo->nb_children);
+-
    return TRUE;
  }
 diff --git a/dlls/wined3d/adapter_gl.c b/dlls/wined3d/adapter_gl.c
-index e33e27b4cc3..9680f37e682 100644
+index e33e27b..67a34ba 100644
 --- a/dlls/wined3d/adapter_gl.c
 +++ b/dlls/wined3d/adapter_gl.c
 @@ -461,6 +461,37 @@ static BOOL match_apple(const struct wined3d_gl_info *gl_info, struct wined3d_ca
@@ -1451,7 +1561,7 @@ index e33e27b4cc3..9680f37e682 100644
      {
          GLuint vao;
  
-@@ -3945,6 +4164,34 @@ static void wined3d_adapter_init_fb_cfgs(struct wined3d_adapter_gl *adapter_gl,
+@@ -3945,6 +4164,33 @@ static void wined3d_adapter_init_fb_cfgs(struct wined3d_adapter_gl *adapter_gl,
      const struct wined3d_gl_info *gl_info = &adapter_gl->gl_info;
      int i;
  
@@ -1479,14 +1589,13 @@ index e33e27b4cc3..9680f37e682 100644
 +        cfg->numSamples = 0;
 +        adapter_gl->pixel_format_count = 1;
 +
-+        TRACE("WEBGL_DIAG Using synthetic WebGL pixel format.\n");
 +        return;
 +    }
 +
      if (gl_info->supported[WGL_ARB_PIXEL_FORMAT])
      {
          UINT attrib_count = 0;
-@@ -4296,6 +4543,12 @@ static void adapter_gl_get_wined3d_caps(const struct wined3d_adapter *adapter, s
+@@ -4296,6 +4542,12 @@ static void adapter_gl_get_wined3d_caps(const struct wined3d_adapter *adapter, s
      {
          caps->PS20Caps.temp_count = max(caps->PS20Caps.temp_count, gl_info->limits.arb_ps_temps);
      }
@@ -1499,7 +1608,7 @@ index e33e27b4cc3..9680f37e682 100644
  }
  
  static BOOL adapter_gl_check_format(const struct wined3d_adapter *adapter,
-@@ -4963,6 +5216,12 @@ static void wined3d_adapter_gl_init_d3d_info(struct wined3d_adapter_gl *adapter_
+@@ -4963,6 +5215,12 @@ static void wined3d_adapter_gl_init_d3d_info(struct wined3d_adapter_gl *adapter_
      d3d_info->persistent_map = !!gl_info->supported[ARB_BUFFER_STORAGE];
      d3d_info->ffp_hlsl = wined3d_settings.ffp_hlsl;
  
@@ -1512,7 +1621,7 @@ index e33e27b4cc3..9680f37e682 100644
      if (gl_info->supported[ARB_TEXTURE_MULTISAMPLE])
          d3d_info->multisample_draw_location = WINED3D_LOCATION_TEXTURE_RGB;
      else
-@@ -4983,6 +5242,12 @@ static float wined3d_adapter_find_fill_offset(struct wined3d_caps_gl_ctx *ctx)
+@@ -4983,6 +5241,12 @@ static float wined3d_adapter_find_fill_offset(struct wined3d_caps_gl_ctx *ctx)
      unsigned int upper = ARRAY_SIZE(test_array), lower = 0, test;
      float value;
  
@@ -1525,7 +1634,7 @@ index e33e27b4cc3..9680f37e682 100644
      while (upper != lower)
      {
          test = (upper + lower) / 2;
-@@ -5043,6 +5308,9 @@ static BOOL wined3d_adapter_gl_init(struct wined3d_adapter_gl *adapter_gl,
+@@ -5043,6 +5307,9 @@ static BOOL wined3d_adapter_gl_init(struct wined3d_adapter_gl *adapter_gl,
      TRACE("adapter_gl %p, ordinal %u, wined3d_creation_flags %#x.\n",
              adapter_gl, ordinal, wined3d_creation_flags);
  
@@ -1535,32 +1644,16 @@ index e33e27b4cc3..9680f37e682 100644
      if (ordinal == 0 && wined3d_get_primary_adapter_luid(&primary_luid))
          luid = &primary_luid;
  
-@@ -5147,6 +5415,7 @@ static BOOL wined3d_adapter_gl_init(struct wined3d_adapter_gl *adapter_gl,
-         return FALSE;
+@@ -5079,7 +5346,6 @@ static BOOL wined3d_adapter_gl_init(struct wined3d_adapter_gl *adapter_gl,
+                 wined3d_settings.max_gl_version >> 16, wined3d_settings.max_gl_version & 0xffff);
+         i = ARRAY_SIZE(supported_gl_versions) - 1;
      }
- 
-+    TRACE("WEBGL_DIAG Before GL format info init.\n");
-     if (!wined3d_adapter_gl_init_format_info(&adapter_gl->a, &caps_gl_ctx))
+-
+     for (; i < ARRAY_SIZE(supported_gl_versions); ++i)
      {
-         ERR("Failed to initialize GL format info.\n");
-@@ -5154,10 +5423,15 @@ static BOOL wined3d_adapter_gl_init(struct wined3d_adapter_gl *adapter_gl,
-         free(adapter_gl->pixel_formats);
-         return FALSE;
-     }
-+    TRACE("WEBGL_DIAG After GL format info init.\n");
- 
-+    TRACE("WEBGL_DIAG Before caps GL context destroy.\n");
-     wined3d_caps_gl_ctx_destroy(&caps_gl_ctx);
-+    TRACE("WEBGL_DIAG After caps GL context destroy.\n");
- 
-+    TRACE("WEBGL_DIAG Before FFP attrib ops init.\n");
-     wined3d_adapter_init_ffp_attrib_ops(adapter_gl);
-+    TRACE("WEBGL_DIAG After FFP attrib ops init.\n");
- 
-     return TRUE;
- }
+         gl_info->selected_gl_version = supported_gl_versions[i];
 diff --git a/dlls/wined3d/buffer.c b/dlls/wined3d/buffer.c
-index 5e1f0dedee0..01f38240a97 100644
+index 5e1f0de..01f3824 100644
 --- a/dlls/wined3d/buffer.c
 +++ b/dlls/wined3d/buffer.c
 @@ -589,6 +589,7 @@ static HRESULT buffer_resource_sub_resource_map(struct wined3d_resource *resourc
@@ -1591,7 +1684,7 @@ index 5e1f0dedee0..01f38240a97 100644
  
      desc.byte_width = size;
 diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
-index fc480f5a440..7cb968f1d97 100644
+index fc480f5..febb9ac 100644
 --- a/dlls/wined3d/context_gl.c
 +++ b/dlls/wined3d/context_gl.c
 @@ -478,8 +478,16 @@ static void wined3d_context_gl_set_draw_buffer(struct wined3d_context_gl *contex
@@ -1633,23 +1726,29 @@ index fc480f5a440..7cb968f1d97 100644
              gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D_ARRAY, textures->tex_2d_array);
          }
  
-@@ -2120,7 +2130,7 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
-         gl_info->gl_ops.gl.p_glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SEPARATE_SPECULAR_COLOR);
-         checkGLcall("glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SEPARATE_SPECULAR_COLOR);");
+@@ -2122,15 +2132,36 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
      }
--    else
-+    else if (!wined3d_settings.webgl)
+     else
      {
++        const char *gl_renderer = (const char *)gl_info->gl_ops.gl.p_glGetString(GL_RENDERER);
++        const char *gl_vendor = (const char *)gl_info->gl_ops.gl.p_glGetString(GL_VENDOR);
          GLuint vao;
  
-@@ -2128,11 +2138,34 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
-         GL_EXTCALL(glBindVertexArray(vao));
-         checkGLcall("creating VAO");
+-        GL_EXTCALL(glGenVertexArrays(1, &vao));
+-        GL_EXTCALL(glBindVertexArray(vao));
+-        checkGLcall("creating VAO");
++        if (wined3d_settings.webgl && ((gl_vendor && strstr(gl_vendor, "BoxedWine"))
++                || (gl_renderer && strstr(gl_renderer, "BoxedWine"))))
++        {
++            TRACE("Skipping dummy VAO creation for BoxedWine WebGL-compatible profile.\n");
++        }
++        else
++        {
++            GL_EXTCALL(glGenVertexArrays(1, &vao));
++            GL_EXTCALL(glBindVertexArray(vao));
++            checkGLcall("creating VAO");
++        }
      }
-+    else
-+    {
-+        TRACE("Skipping dummy VAO creation for WebGL-compatible profile.\n");
-+    }
  
 -    gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ALIGNMENT, device->surface_alignment);
 -    checkGLcall("glPixelStorei(GL_PACK_ALIGNMENT, device->surface_alignment);");
@@ -1658,28 +1757,18 @@ index fc480f5a440..7cb968f1d97 100644
 +        while (gl_info->gl_ops.gl.p_glGetError() != GL_NO_ERROR)
 +            ;
 +
-+        TRACE("WEBGL_DIAG context_gl pixel store fn %p, pack alignment requested %u, using 4.\n",
-+                gl_info->gl_ops.gl.p_glPixelStorei, device->surface_alignment);
-+        TRACE("WEBGL_DIAG context_gl before GL_PACK_ALIGNMENT.\n");
 +        gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ALIGNMENT, 4);
 +        checkGLcall("glPixelStorei(GL_PACK_ALIGNMENT, 4);");
-+        TRACE("WEBGL_DIAG context_gl after GL_PACK_ALIGNMENT.\n");
 +    }
 +    else
 +    {
 +        gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ALIGNMENT, device->surface_alignment);
 +        checkGLcall("glPixelStorei(GL_PACK_ALIGNMENT, device->surface_alignment);");
 +    }
-+    if (wined3d_settings.webgl)
-+        TRACE("WEBGL_DIAG context_gl before GL_UNPACK_ALIGNMENT.\n");
      gl_info->gl_ops.gl.p_glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
      checkGLcall("glPixelStorei(GL_UNPACK_ALIGNMENT, 1);");
-+    if (wined3d_settings.webgl)
-+        TRACE("WEBGL_DIAG context_gl after GL_UNPACK_ALIGNMENT.\n");
  
-     if (gl_info->supported[NV_TEXTURE_SHADER2])
-     {
-@@ -2168,7 +2201,7 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
+@@ -2168,7 +2199,7 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
                  GL_PROGRAM_FORMAT_ASCII_ARB, strlen(dummy_program), dummy_program));
      }
  
@@ -1688,7 +1777,7 @@ index fc480f5a440..7cb968f1d97 100644
      {
          /* The actual effect of D3DRS_POINTSPRITEENABLE is more accurately
           * congruent to GL_COORD_REPLACE_ARB. GL_POINT_SPRITE_ARB, when
-@@ -2191,7 +2224,8 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
+@@ -2191,7 +2222,8 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
          }
      }
  
@@ -1698,106 +1787,46 @@ index fc480f5a440..7cb968f1d97 100644
      {
          GL_EXTCALL(glPointParameteri(GL_POINT_SPRITE_COORD_ORIGIN, GL_LOWER_LEFT));
          checkGLcall("glPointParameteri(GL_POINT_SPRITE_COORD_ORIGIN, GL_LOWER_LEFT)");
-@@ -2205,9 +2239,15 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
-     {
-         GL_EXTCALL(glProvokingVertexEXT(GL_FIRST_VERTEX_CONVENTION_EXT));
+@@ -2207,12 +2239,12 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
      }
-+    if (wined3d_settings.webgl)
-+        TRACE("WEBGL_DIAG context_gl before primitive restart setup.\n");
      if (!(d3d_info->wined3d_creation_flags & WINED3D_NO_PRIMITIVE_RESTART))
      {
 -        if (gl_info->supported[ARB_ES3_COMPATIBILITY])
-+        if (wined3d_settings.webgl)
-+        {
-+            TRACE("WEBGL_DIAG context_gl skipping GL_PRIMITIVE_RESTART_FIXED_INDEX enable.\n");
-+        }
-+        else if (gl_info->supported[ARB_ES3_COMPATIBILITY])
++        if (!wined3d_settings.webgl && gl_info->supported[ARB_ES3_COMPATIBILITY])
          {
              gl_info->gl_ops.gl.p_glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
              checkGLcall("enable GL_PRIMITIVE_RESTART_FIXED_INDEX");
-@@ -2217,33 +2257,79 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
+         }
+-        else
++        else if (!wined3d_settings.webgl)
+         {
              FIXME("OpenGL implementation does not support GL_PRIMITIVE_RESTART_FIXED_INDEX.\n");
          }
-     }
-+    if (wined3d_settings.webgl)
-+        TRACE("WEBGL_DIAG context_gl after primitive restart setup.\n");
-     if (!(d3d_info->wined3d_creation_flags & WINED3D_LEGACY_CUBEMAP_FILTERING)
-             && gl_info->supported[ARB_SEAMLESS_CUBE_MAP])
-     {
+@@ -2223,7 +2255,7 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
          gl_info->gl_ops.gl.p_glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
          checkGLcall("enable seamless cube map filtering");
      }
 -    if (gl_info->supported[ARB_CLIP_CONTROL])
-+    if (wined3d_settings.webgl)
-+        TRACE("WEBGL_DIAG context_gl after cube map filtering setup.\n");
 +    if (!wined3d_settings.webgl && gl_info->supported[ARB_CLIP_CONTROL])
          GL_EXTCALL(glPointParameteri(GL_POINT_SPRITE_COORD_ORIGIN, GL_LOWER_LEFT));
  
      /* If this happens to be the first context for the device, dummy textures
-      * are not created yet. In that case, they will be created (and bound) by
-      * create_dummy_textures right after this context is initialized. */
-+    if (wined3d_settings.webgl)
-+        TRACE("WEBGL_DIAG context_gl before dummy texture bind check.\n");
-     if (wined3d_device_gl(device)->dummy_textures.tex_2d)
-         wined3d_context_gl_bind_dummy_textures(context_gl);
-+    if (wined3d_settings.webgl)
-+        TRACE("WEBGL_DIAG context_gl after dummy texture bind check.\n");
- 
-     /* Initialise all rectangles to avoid resetting unused ones later. */
-+    if (wined3d_settings.webgl)
-+        TRACE("WEBGL_DIAG context_gl before glScissor.\n");
-     gl_info->gl_ops.gl.p_glScissor(0, 0, 0, 0);
-     checkGLcall("glScissor");
-+    if (wined3d_settings.webgl)
-+        TRACE("WEBGL_DIAG context_gl after glScissor.\n");
- 
+@@ -2239,7 +2271,13 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
      if (new_drawable)
      {
-+        if (wined3d_settings.webgl)
-+        {
-+            TRACE("WEBGL_DIAG context_gl before initial clear.\n");
-+            TRACE("WEBGL_DIAG context_gl clear fns color %p depthf %p stencil %p clear %p.\n",
-+                    gl_info->gl_ops.gl.p_glClearColor, gl_info->gl_ops.ext.p_glClearDepthf,
-+                    gl_info->gl_ops.gl.p_glClearStencil, gl_info->gl_ops.gl.p_glClear);
-+            TRACE("WEBGL_DIAG context_gl before glClearColor.\n");
-+        }
          gl_info->gl_ops.gl.p_glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 -        gl_info->gl_ops.gl.p_glClearDepth(1.0f);
-+        if (wined3d_settings.webgl)
-+            TRACE("WEBGL_DIAG context_gl after glClearColor.\n");
 +        if ((wined3d_settings.webgl || gl_info->supported[ARB_ES2_COMPATIBILITY])
 +                && gl_info->gl_ops.ext.p_glClearDepthf)
 +        {
-+            if (wined3d_settings.webgl)
-+                TRACE("WEBGL_DIAG context_gl before glClearDepthf.\n");
 +            GL_EXTCALL(glClearDepthf(1.0f));
-+            if (wined3d_settings.webgl)
-+                TRACE("WEBGL_DIAG context_gl after glClearDepthf.\n");
 +        }
-+        else if (wined3d_settings.webgl)
-+        {
-+            TRACE("WEBGL_DIAG context_gl skipping missing glClearDepthf.\n");
-+        }
-+        else
++        else if (!wined3d_settings.webgl)
 +            gl_info->gl_ops.gl.p_glClearDepth(1.0f);
-+        if (wined3d_settings.webgl)
-+            TRACE("WEBGL_DIAG context_gl before glClearStencil.\n");
          gl_info->gl_ops.gl.p_glClearStencil(0);
-+        if (wined3d_settings.webgl)
-+            TRACE("WEBGL_DIAG context_gl after glClearStencil.\n");
-+        if (wined3d_settings.webgl)
-+            TRACE("WEBGL_DIAG context_gl before glClear.\n");
          gl_info->gl_ops.gl.p_glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
          checkGLcall("glClear");
-+        if (wined3d_settings.webgl)
-+            TRACE("WEBGL_DIAG context_gl after initial clear.\n");
-     }
-+    if (wined3d_settings.webgl)
-+        TRACE("WEBGL_DIAG context_gl init returning WINED3D_OK.\n");
-     return WINED3D_OK;
- 
- fail:
-@@ -2406,11 +2492,24 @@ static void wined3d_context_gl_apply_draw_buffers(struct wined3d_context_gl *con
+@@ -2406,11 +2444,24 @@ static void wined3d_context_gl_apply_draw_buffers(struct wined3d_context_gl *con
  
      if (!rt_mask)
      {
@@ -1824,7 +1853,7 @@ index fc480f5a440..7cb968f1d97 100644
      }
      else
      {
-@@ -2433,7 +2532,10 @@ static void wined3d_context_gl_apply_draw_buffers(struct wined3d_context_gl *con
+@@ -2433,7 +2484,10 @@ static void wined3d_context_gl_apply_draw_buffers(struct wined3d_context_gl *con
          }
          else
          {
@@ -1836,7 +1865,7 @@ index fc480f5a440..7cb968f1d97 100644
          }
      }
  
-@@ -2481,10 +2583,12 @@ void wined3d_context_gl_bind_texture(struct wined3d_context_gl *context_gl, GLen
+@@ -2481,10 +2535,12 @@ void wined3d_context_gl_bind_texture(struct wined3d_context_gl *context_gl, GLen
                  /* nothing to do */
                  break;
              case GL_TEXTURE_1D:
@@ -1851,7 +1880,7 @@ index fc480f5a440..7cb968f1d97 100644
                  break;
              case GL_TEXTURE_2D:
                  gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, textures->tex_2d);
-@@ -2829,14 +2933,20 @@ map:
+@@ -2829,14 +2885,20 @@ map:
  
          bo->b.map_ptr = GL_EXTCALL(glMapBufferRange(bo->binding, 0, bo->size, gl_flags));
      }
@@ -1874,7 +1903,7 @@ index fc480f5a440..7cb968f1d97 100644
  
      if (bo->b.map_ptr)
          adapter_adjust_mapped_memory(device_gl->d.adapter, bo->size);
-@@ -4429,6 +4539,20 @@ static void wined3d_context_gl_draw_primitive_arrays(struct wined3d_context_gl *
+@@ -4429,6 +4491,20 @@ static void wined3d_context_gl_draw_primitive_arrays(struct wined3d_context_gl *
  
      indices = (const char *)idx_data + idx_size * start_idx;
  
@@ -1887,7 +1916,7 @@ index fc480f5a440..7cb968f1d97 100644
 +        {
 +            GLint binding = 0;
 +            gl_info->gl_ops.gl.p_glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &binding);
-+            TRACE("WEBGL_DIAG drawElements rebound index bo %u binding now %d count %u idx_size %u.\n",
++            TRACE("drawElements rebound index bo %u binding now %d count %u idx_size %u.\n",
 +                    index_bo, binding, count, idx_size);
 +        }
 +    }
@@ -1895,7 +1924,7 @@ index fc480f5a440..7cb968f1d97 100644
      if (!instance_count)
      {
          if (!idx_size)
-@@ -4871,7 +4995,7 @@ static void wined3d_context_gl_load_numbered_arrays(struct wined3d_context_gl *c
+@@ -4871,7 +4947,7 @@ static void wined3d_context_gl_load_numbered_arrays(struct wined3d_context_gl *c
  
          if (!(stream_info->use_map & (1u << i)))
          {
@@ -1904,13 +1933,13 @@ index fc480f5a440..7cb968f1d97 100644
                  wined3d_context_gl_unload_numbered_array(context_gl, i);
              if (!(context_gl->default_attrib_value_set & (1u << i)))
                  GL_EXTCALL(glVertexAttrib4f(i, 0.0f, 0.0f, 0.0f, 0.0f));
-@@ -4908,6 +5032,14 @@ static void wined3d_context_gl_load_numbered_arrays(struct wined3d_context_gl *c
+@@ -4908,6 +4984,14 @@ static void wined3d_context_gl_load_numbered_arrays(struct wined3d_context_gl *c
              unsigned int format_attrs = format_gl->f.attrs;
  
              bo = wined3d_bo_gl_id(element->data.buffer_object);
 +            if (wined3d_settings.webgl)
 +            {
-+                TRACE("WEBGL_DIAG attrib %u stream %u bo %u stream_buffer %p buffer_object %p "
++                TRACE("attrib %u stream %u bo %u stream_buffer %p buffer_object %p "
 +                        "stride %u offset %p format %s all_vbo %u numbered_mask %#lx.\n",
 +                        i, element->stream_idx, bo, stream->buffer, element->data.buffer_object,
 +                        element->stride, offset, debug_d3dformat(format_gl->f.id),
@@ -1919,7 +1948,7 @@ index fc480f5a440..7cb968f1d97 100644
              if (current_bo != bo)
              {
                  GL_EXTCALL(glBindBuffer(GL_ARRAY_BUFFER, bo));
-@@ -5152,6 +5284,12 @@ void wined3d_context_gl_draw_shaded_quad(struct wined3d_context_gl *context_gl,
+@@ -5152,6 +5236,12 @@ void wined3d_context_gl_draw_shaded_quad(struct wined3d_context_gl *context_gl,
      }
      else
      {
@@ -1933,7 +1962,7 @@ index fc480f5a440..7cb968f1d97 100644
  
          for (i = 0; i < ARRAY_SIZE(quad); ++i)
 diff --git a/dlls/wined3d/device.c b/dlls/wined3d/device.c
-index efa1632ec35..6d88ad2baf2 100644
+index efa1632..6d88ad2 100644
 --- a/dlls/wined3d/device.c
 +++ b/dlls/wined3d/device.c
 @@ -577,11 +577,16 @@ static void wined3d_device_gl_create_dummy_textures(struct wined3d_device_gl *de
@@ -2043,7 +2072,7 @@ index efa1632ec35..6d88ad2baf2 100644
      }
  
 diff --git a/dlls/wined3d/directx.c b/dlls/wined3d/directx.c
-index 2b673123bb2..6b490ee927e 100644
+index 2b67312..a0b4201 100644
 --- a/dlls/wined3d/directx.c
 +++ b/dlls/wined3d/directx.c
 @@ -136,9 +136,18 @@ static HRESULT wined3d_output_init(struct wined3d_output *output, unsigned int o
@@ -2068,7 +2097,7 @@ index 2b673123bb2..6b490ee927e 100644
  
      create_device_desc.hAdapter = adapter->kmt_adapter;
      if (D3DKMTCreateDevice(&create_device_desc))
-@@ -895,11 +904,20 @@ bool wined3d_driver_info_init(struct wined3d_driver_info *driver_info,
+@@ -895,11 +904,18 @@ bool wined3d_driver_info_init(struct wined3d_driver_info *driver_info,
      if (!(driver_info->sysmem_bytes = sysmem_bytes))
      {
          driver_info->sysmem_bytes = 64 * 1024 * 1024;
@@ -2078,8 +2107,6 @@ index 2b673123bb2..6b490ee927e 100644
 +        if (wined3d_settings.webgl)
 +        {
 +            driver_info->sysmem_bytes = 256 * 1024 * 1024;
-+            TRACE("WEBGL_DIAG Using fixed WebGL system memory size 0x%s bytes.\n",
-+                    wine_dbgstr_longlong(driver_info->sysmem_bytes));
 +        }
          else
 -            ERR("Failed to get global memory status.\n");
@@ -2093,7 +2120,7 @@ index 2b673123bb2..6b490ee927e 100644
      }
  
      /* Try to obtain driver version information for the current Windows version. This fails in
-@@ -3451,6 +3469,15 @@ BOOL wined3d_adapter_init(struct wined3d_adapter *adapter, unsigned int ordinal,
+@@ -3451,6 +3467,15 @@ BOOL wined3d_adapter_init(struct wined3d_adapter *adapter, unsigned int ordinal,
      }
      TRACE("Initialised %Iu outputs for adapter %p.\n", adapter->output_count, adapter);
  
@@ -2110,7 +2137,7 @@ index 2b673123bb2..6b490ee927e 100644
      if (primary_idx)
      {
 diff --git a/dlls/wined3d/ffp_gl.c b/dlls/wined3d/ffp_gl.c
-index 8bba21cb7f8..d4f4d88031b 100644
+index 8bba21c..d4f4d88 100644
 --- a/dlls/wined3d/ffp_gl.c
 +++ b/dlls/wined3d/ffp_gl.c
 @@ -48,6 +48,13 @@ static void fillmode(const struct wined3d_rasterizer_state *r, const struct wine
@@ -2163,7 +2190,7 @@ index 8bba21cb7f8..d4f4d88031b 100644
                  state->viewports[0].width, state->viewports[0].height);
      }
 diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
-index 3eae2225734..b6f5f3332aa 100644
+index 3eae222..b6f5f33 100644
 --- a/dlls/wined3d/glsl_shader.c
 +++ b/dlls/wined3d/glsl_shader.c
 @@ -395,8 +395,29 @@ static const char *shader_glsl_get_prefix(enum wined3d_shader_type type)
@@ -2955,7 +2982,7 @@ index 3eae2225734..b6f5f3332aa 100644
  
      wined3d_context_gl_active_texture(context_gl, gl_info, 0);
 diff --git a/dlls/wined3d/query.c b/dlls/wined3d/query.c
-index 26e4f5e51f2..c6fa3b4fda5 100644
+index 26e4f5e..c6fa3b4 100644
 --- a/dlls/wined3d/query.c
 +++ b/dlls/wined3d/query.c
 @@ -132,6 +132,11 @@ static UINT64 get_query_result64(GLuint id, const struct wined3d_gl_info *gl_inf
@@ -3078,7 +3105,7 @@ index 26e4f5e51f2..c6fa3b4fda5 100644
              FIXME("Unhandled query type %#x.\n", type);
              return WINED3DERR_NOTAVAILABLE;
 diff --git a/dlls/wined3d/resource.c b/dlls/wined3d/resource.c
-index edc8b9ca79d..36bbb02bdd1 100644
+index edc8b9c..36bbb02 100644
 --- a/dlls/wined3d/resource.c
 +++ b/dlls/wined3d/resource.c
 @@ -392,12 +392,14 @@ GLbitfield wined3d_resource_gl_map_flags(const struct wined3d_bo_gl *bo, DWORD d
@@ -3098,7 +3125,7 @@ index edc8b9ca79d..36bbb02bdd1 100644
  
      return ret;
 diff --git a/dlls/wined3d/sampler.c b/dlls/wined3d/sampler.c
-index 2f269f06df5..3d6feca2155 100644
+index 2f269f0..3d6feca 100644
 --- a/dlls/wined3d/sampler.c
 +++ b/dlls/wined3d/sampler.c
 @@ -103,12 +103,14 @@ static void wined3d_sampler_gl_cs_init(void *object)
@@ -3118,8 +3145,22 @@ index 2f269f06df5..3d6feca2155 100644
      GL_EXTCALL(glSamplerParameterf(name, GL_TEXTURE_MIN_LOD, desc->min_lod));
      GL_EXTCALL(glSamplerParameterf(name, GL_TEXTURE_MAX_LOD, desc->max_lod));
      if (gl_info->supported[ARB_TEXTURE_FILTER_ANISOTROPIC])
+diff --git a/dlls/wined3d/shader.c b/dlls/wined3d/shader.c
+index 3e97493..20590bd 100644
+--- a/dlls/wined3d/shader.c
++++ b/dlls/wined3d/shader.c
+@@ -2985,7 +2985,8 @@ void find_ps_compile_args(const struct wined3d_state *state, const struct wined3
+             }
+             texture = texture_from_resource(view->resource);
+ 
+-            if (can_use_texture_swizzle(d3d_info, texture->resource.format))
++            if ((texture->resource.format_caps & WINED3D_FORMAT_CAP_DECOMPRESS)
++                    || can_use_texture_swizzle(d3d_info, texture->resource.format))
+                 args->color_fixup[i] = COLOR_FIXUP_IDENTITY;
+             else
+                 args->color_fixup[i] = texture->resource.format->color_fixup;
 diff --git a/dlls/wined3d/surface.c b/dlls/wined3d/surface.c
-index 067b3afc30e..2b96458f834 100644
+index 067b3af..2b96458 100644
 --- a/dlls/wined3d/surface.c
 +++ b/dlls/wined3d/surface.c
 @@ -351,6 +351,7 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
@@ -3209,7 +3250,7 @@ index 067b3afc30e..2b96458f834 100644
      {
          GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
 diff --git a/dlls/wined3d/texture.c b/dlls/wined3d/texture.c
-index ef9703f6665..a494eaedc3a 100644
+index ef9703f..a494eae 100644
 --- a/dlls/wined3d/texture.c
 +++ b/dlls/wined3d/texture.c
 @@ -45,12 +45,87 @@ bool wined3d_texture_validate_sub_resource_idx(const struct wined3d_texture *tex
@@ -3323,7 +3364,7 @@ index ef9703f6665..a494eaedc3a 100644
  
  struct wined3d_shader_resource_view * CDECL wined3d_texture_acquire_identity_srv(struct wined3d_texture *texture)
 diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
-index 4996a24545c..b9a244350fc 100644
+index 4996a24..c728551 100644
 --- a/dlls/wined3d/texture_gl.c
 +++ b/dlls/wined3d/texture_gl.c
 @@ -210,8 +210,11 @@ static void ffp_blitter_clear_rendertargets(struct wined3d_device *device, unsig
@@ -3405,7 +3446,7 @@ index 4996a24545c..b9a244350fc 100644
      level_count = texture_gl->t.level_count;
      if (texture_gl->target == GL_TEXTURE_1D_ARRAY || texture_gl->target == GL_TEXTURE_2D_ARRAY)
          layer_count = 1;
-@@ -1261,19 +1314,25 @@ static void wined3d_texture_gl_allocate_mutable_storage(struct wined3d_texture_g
+@@ -1261,19 +1314,19 @@ static void wined3d_texture_gl_allocate_mutable_storage(struct wined3d_texture_g
                  depth = wined3d_texture_get_level_depth(&texture_gl->t, level);
                  GL_EXTCALL(glTexImage3D(target, level, gl_internal_format, width, height,
                          target == GL_TEXTURE_2D_ARRAY ? texture_gl->t.layer_count : depth, 0,
@@ -3421,12 +3462,6 @@ index 4996a24545c..b9a244350fc 100644
              }
              else
              {
-+                if (wined3d_settings.webgl)
-+                    TRACE("WEBGL_DIAG glTexImage2D target %#x level %u internal %#x width %u height %u "
-+                            "upload_format %#x upload_type %#x format_id %s.\n",
-+                            target, level, gl_internal_format, width,
-+                            target == GL_TEXTURE_1D_ARRAY ? texture_gl->t.layer_count : height,
-+                            upload_format, upload_type, debug_d3dformat(texture_gl->t.resource.format->id));
                  gl_info->gl_ops.gl.p_glTexImage2D(target, level, gl_internal_format, width,
                          target == GL_TEXTURE_1D_ARRAY ? texture_gl->t.layer_count : height, 0,
 -                        format->format, format->type, NULL);
@@ -3434,7 +3469,7 @@ index 4996a24545c..b9a244350fc 100644
                  checkGLcall("glTexImage2D");
              }
          }
-@@ -1524,6 +1583,199 @@ static void wined3d_fixup_alpha(const struct wined3d_format *format, const uint8
+@@ -1524,6 +1577,199 @@ static void wined3d_fixup_alpha(const struct wined3d_format *format, const uint8
      }
  }
  
@@ -3634,7 +3669,19 @@ index 4996a24545c..b9a244350fc 100644
  static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
          const struct wined3d_const_bo_address *src_bo_addr, const struct wined3d_format *src_format,
          const struct wined3d_box *src_box, unsigned int src_row_pitch, unsigned int src_slice_pitch,
-@@ -1672,6 +1924,27 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
+@@ -1661,6 +1907,11 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
+                 src_format->upload(src_mem, converted_mem, src_row_pitch, src_slice_pitch,
+                         dst_row_pitch, dst_slice_pitch, update_w, update_h, 1);
+ 
++            if (wined3d_settings.webgl && wined3d_texture_gl_upload_webgl_rgba8(src_format, target, level,
++                    dst_row_pitch, dst_slice_pitch, dst_x, dst_y, dst_z + z, update_w, update_h, 1,
++                    converted_mem, gl_info))
++                continue;
++
+             wined3d_texture_gl_upload_bo(src_format, target, level, dst_row_pitch, dst_slice_pitch, dst_x,
+                     dst_y, dst_z + z, update_w, update_h, 1, converted_mem, srgb, dst_texture, gl_info);
+         }
+@@ -1672,6 +1923,27 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
      {
          const uint8_t *offset = bo.addr;
  
@@ -3662,7 +3709,7 @@ index 4996a24545c..b9a244350fc 100644
          if (bo.buffer_object)
          {
              GL_EXTCALL(glBindBuffer(GL_PIXEL_UNPACK_BUFFER, wined3d_bo_gl(bo.buffer_object)->id));
-@@ -1705,7 +1978,8 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
+@@ -1705,7 +1977,8 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
  }
  
  static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl *texture_gl,
@@ -3672,7 +3719,7 @@ index 4996a24545c..b9a244350fc 100644
  {
      struct wined3d_bo_gl *bo = wined3d_bo_gl(data->buffer_object);
      const struct wined3d_gl_info *gl_info = context_gl->gl_info;
-@@ -1714,6 +1988,7 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
+@@ -1714,6 +1987,7 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
      unsigned int src_row_pitch, src_slice_pitch;
      const struct wined3d_format_gl *format_gl;
      BYTE *temporary_mem = NULL;
@@ -3680,7 +3727,7 @@ index 4996a24545c..b9a244350fc 100644
      unsigned int level;
      GLenum target;
      void *mem;
-@@ -1794,16 +2069,59 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
+@@ -1794,16 +2068,59 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
          mem = data->addr;
      }
  
@@ -3742,7 +3789,7 @@ index 4996a24545c..b9a244350fc 100644
          TRACE("Downloading texture %p, %u, level %u, format %#x, type %#x, data %p.\n",
                  texture_gl, sub_resource_idx, level, format_gl->format, format_gl->type, mem);
  
-@@ -1835,6 +2153,7 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
+@@ -1835,6 +2152,7 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
          }
      }
  
@@ -3750,7 +3797,7 @@ index 4996a24545c..b9a244350fc 100644
      if (bo)
      {
          GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
-@@ -1845,6 +2164,197 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
+@@ -1845,6 +2163,197 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
      free(temporary_mem);
  }
  
@@ -3948,7 +3995,7 @@ index 4996a24545c..b9a244350fc 100644
  static void wined3d_texture_gl_download_data(struct wined3d_context *context,
          struct wined3d_texture *src_texture, unsigned int src_sub_resource_idx, unsigned int src_location,
          const struct wined3d_box *src_box, const struct wined3d_bo_address *dst_bo_addr,
-@@ -1921,7 +2431,8 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+@@ -1921,7 +2430,8 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
              || (src_texture->flags & WINED3D_TEXTURE_CONVERTED)))
              || target == GL_TEXTURE_1D_ARRAY)
      {
@@ -3958,7 +4005,7 @@ index 4996a24545c..b9a244350fc 100644
          return;
      }
  
-@@ -1945,8 +2456,131 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+@@ -1945,8 +2455,131 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
          checkGLcall("glBindBuffer");
      }
  
@@ -4090,7 +4137,7 @@ index 4996a24545c..b9a244350fc 100644
          TRACE("Downloading compressed texture %p, %u, level %u, format %#x, type %#x, data %p.\n",
                  src_texture, src_sub_resource_idx, src_level, format_gl->format, format_gl->type, offset);
  
-@@ -1955,6 +2589,13 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+@@ -1955,6 +2588,13 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
      }
      else
      {
@@ -4104,7 +4151,7 @@ index 4996a24545c..b9a244350fc 100644
          TRACE("Downloading texture %p, %u, level %u, format %#x, type %#x, data %p.\n",
                  src_texture, src_sub_resource_idx, src_level, format_gl->format, format_gl->type, offset);
  
-@@ -1962,6 +2603,7 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+@@ -1962,6 +2602,7 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
          checkGLcall("glGetTexImage");
      }
  
@@ -4112,7 +4159,7 @@ index 4996a24545c..b9a244350fc 100644
      if (dst_bo)
      {
          GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
-@@ -1997,6 +2639,13 @@ static BOOL wined3d_texture_gl_load_sysmem(struct wined3d_texture_gl *texture_gl
+@@ -1997,6 +2638,13 @@ static BOOL wined3d_texture_gl_load_sysmem(struct wined3d_texture_gl *texture_gl
          struct wined3d_box src_box;
          uint32_t src_location;
  
@@ -4126,7 +4173,7 @@ index 4996a24545c..b9a244350fc 100644
          level = sub_resource_idx % texture_gl->t.level_count;
          wined3d_texture_get_bo_address(&texture_gl->t, sub_resource_idx, &data, dst_location);
          src_location = sub_resource->locations & WINED3D_LOCATION_TEXTURE_RGB
-@@ -2406,8 +3055,11 @@ static bool wined3d_texture_gl_clear(struct wined3d_texture *texture,
+@@ -2406,8 +3054,11 @@ static bool wined3d_texture_gl_clear(struct wined3d_texture *texture,
              gl_info->gl_ops.gl.p_glDepthMask(GL_TRUE);
              context_invalidate_state(&context_gl->c, STATE_DEPTH_STENCIL);
  
@@ -4139,7 +4186,7 @@ index 4996a24545c..b9a244350fc 100644
              else
                  gl_info->gl_ops.gl.p_glClearDepth(0.0);
              clear_mask |= GL_DEPTH_BUFFER_BIT;
-@@ -2848,7 +3500,8 @@ void wined3d_texture_gl_apply_sampler_desc(struct wined3d_texture_gl *texture_gl
+@@ -2848,7 +3499,8 @@ void wined3d_texture_gl_apply_sampler_desc(struct wined3d_texture_gl *texture_gl
      if (memcmp(gl_tex->sampler_desc.border_color, sampler_desc->border_color,
              sizeof(gl_tex->sampler_desc.border_color)))
      {
@@ -4149,7 +4196,7 @@ index 4996a24545c..b9a244350fc 100644
          memcpy(gl_tex->sampler_desc.border_color, sampler_desc->border_color,
                  sizeof(gl_tex->sampler_desc.border_color));
      }
-@@ -2907,7 +3560,7 @@ void wined3d_texture_gl_apply_sampler_desc(struct wined3d_texture_gl *texture_gl
+@@ -2907,7 +3559,7 @@ void wined3d_texture_gl_apply_sampler_desc(struct wined3d_texture_gl *texture_gl
  
      checkGLcall("Texture parameter application");
  
@@ -4159,7 +4206,7 @@ index 4996a24545c..b9a244350fc 100644
          gl_info->gl_ops.gl.p_glTexEnvf(GL_TEXTURE_FILTER_CONTROL_EXT,
                  GL_TEXTURE_LOD_BIAS_EXT, sampler_desc->lod_bias);
 diff --git a/dlls/wined3d/utils.c b/dlls/wined3d/utils.c
-index 6091f6bd820..43ab19513c9 100644
+index 6091f6b..9a4ea91 100644
 --- a/dlls/wined3d/utils.c
 +++ b/dlls/wined3d/utils.c
 @@ -827,6 +827,24 @@ static void convert_l4a4_unorm(const BYTE *src, BYTE *dst, UINT src_row_pitch, U
@@ -4818,38 +4865,28 @@ index 6091f6bd820..43ab19513c9 100644
  
              if (!(d3d_info->wined3d_creation_flags & WINED3D_NORMALIZED_DEPTH_BIAS))
              {
-@@ -4072,16 +4457,29 @@ BOOL wined3d_adapter_gl_init_format_info(struct wined3d_adapter *adapter, struct
-     if (!wined3d_adapter_init_format_info(adapter, sizeof(struct wined3d_format_gl)))
-         return FALSE;
- 
-+    TRACE("WEBGL_DIAG format: base tables done.\n");
-     if (!init_format_texture_info(adapter, gl_info)) goto fail;
-+    TRACE("WEBGL_DIAG format: texture info done.\n");
-     if (!init_format_vertex_info(adapter, gl_info)) goto fail;
-+    TRACE("WEBGL_DIAG format: vertex info done.\n");
- 
-     apply_format_fixups(adapter, gl_info);
-+    TRACE("WEBGL_DIAG format: fixups done.\n");
-     init_format_fbo_compat_info(adapter, ctx);
-+    TRACE("WEBGL_DIAG format: fbo compat done.\n");
-     init_format_filter_info(adapter, gl_info);
-+    TRACE("WEBGL_DIAG format: filter info done.\n");
-     init_format_gen_mipmap_info(adapter, gl_info);
-+    TRACE("WEBGL_DIAG format: gen mipmap info done.\n");
-     init_format_depth_bias_scale(adapter, ctx);
-+    TRACE("WEBGL_DIAG format: depth bias scale done.\n");
+@@ -4083,6 +4468,9 @@ BOOL wined3d_adapter_gl_init_format_info(struct wined3d_adapter *adapter, struct
  
      if (!init_typeless_formats(adapter)) goto fail;
-+    TRACE("WEBGL_DIAG format: typeless formats done.\n");
-+
+ 
 +    if (wined3d_settings.webgl)
 +        wined3d_adapter_apply_webgl_format_caps(adapter);
-+    TRACE("WEBGL_DIAG format: WebGL caps clamp done.\n");
- 
++
      return TRUE;
  
+ fail:
+@@ -6112,7 +6500,8 @@ void wined3d_ffp_get_fs_settings(const struct wined3d_state *state,
+ 
+         if ((texture = wined3d_state_get_ffp_texture(state, i)))
+         {
+-            if (can_use_texture_swizzle(d3d_info, texture->resource.format))
++            if ((texture->resource.format_caps & WINED3D_FORMAT_CAP_DECOMPRESS)
++                    || can_use_texture_swizzle(d3d_info, texture->resource.format))
+                 settings->op[i].color_fixup = COLOR_FIXUP_IDENTITY;
+             else
+                 settings->op[i].color_fixup = texture->resource.format->color_fixup;
 diff --git a/dlls/wined3d/wined3d_main.c b/dlls/wined3d/wined3d_main.c
-index 91d8dd567ff..a7f3e211bb9 100644
+index 91d8dd5..3d3aec3 100644
 --- a/dlls/wined3d/wined3d_main.c
 +++ b/dlls/wined3d/wined3d_main.c
 @@ -129,6 +129,8 @@ struct wined3d_settings wined3d_settings =
@@ -4861,7 +4898,16 @@ index 91d8dd567ff..a7f3e211bb9 100644
  };
  
  enum wined3d_renderer CDECL wined3d_get_renderer(void)
-@@ -468,8 +470,23 @@ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
+@@ -281,6 +283,8 @@ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
+     unsigned int tmpvalue;
+     WNDCLASSA wc;
+ 
++    ERR_(winediag)("BoxedWine WebGL WineD3D loaded as wined3d.dll.\n");
++
+     wined3d_context_tls_idx = TlsAlloc();
+     if (wined3d_context_tls_idx == TLS_OUT_OF_INDEXES)
+     {
+@@ -468,8 +472,23 @@ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
              ERR_(winediag)("Using the HLSL-based FFP backend.\n");
              wined3d_settings.ffp_hlsl = tmpvalue;
          }
@@ -4886,7 +4932,7 @@ index 91d8dd567ff..a7f3e211bb9 100644
      if (hkey) RegCloseKey( hkey );
  
 diff --git a/dlls/wined3d/wined3d_private.h b/dlls/wined3d/wined3d_private.h
-index 934239e624f..1e9d084385a 100644
+index 934239e..1e9d084 100644
 --- a/dlls/wined3d/wined3d_private.h
 +++ b/dlls/wined3d/wined3d_private.h
 @@ -491,6 +491,8 @@ struct wined3d_settings

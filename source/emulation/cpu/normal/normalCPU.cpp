@@ -139,25 +139,9 @@ static void initNormalOps() {
 #endif
 #undef INIT_CPU    
     
-    normalOps[SLDTReg] = nullptr;
-    normalOps[SLDTE16] = nullptr;
     normalOps[STRReg] = normal_str_reg;
     normalOps[STRE16] = normal_str_e16;
-    normalOps[LLDTR16] = nullptr;
-    normalOps[LLDTE16] = nullptr;
-    normalOps[LTRR16] = nullptr;
-    normalOps[LTRE16] = nullptr;
-    normalOps[VERRR16] = nullptr;
-    normalOps[VERWR16] = nullptr;
-    normalOps[SGDT] = nullptr;
     normalOps[SIDT] = normal_sidt;
-    normalOps[LGDT] = nullptr;
-    normalOps[LIDT] = nullptr;
-    normalOps[SMSWRreg] = normal_smsw_reg;
-    normalOps[SMSW] = normal_smsw_e16;
-    normalOps[LMSWRreg] = nullptr;
-    normalOps[LMSW] = nullptr;
-    normalOps[INVLPG] = nullptr;
     normalOps[Callback] = onExitSignal;
     normalOps[TestEnd] = onTestEnd;
 }

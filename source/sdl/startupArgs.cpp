@@ -401,6 +401,20 @@ bool StartUpArgs::apply() {
 
     envValues.push_back(B("WINEDLLOVERRIDES=d3d9,wined3d=n,b"));
 
+#ifdef __EMSCRIPTEN__
+    envValues.push_back(B("WINEDLLOVERRIDES=d3d9,d3d8,dxgi,wined3d,d3dxof,d3dx9_43=n,b"));
+    std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/windows/system32"), true);
+    std::shared_ptr<FsNode> webglParent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/webgl"), true);
+    if (!webglParent) {
+        klog("-webgl WineD3D overrides were enabled but /home/username/.wine/drive_c/webgl was not found in the file system");
+    } else if (!parent) {
+        klog("-webgl WineD3D overrides were enabled but /home/username/.wine/drive_c/windows/system32 was not found in the file system");
+    } else {
+        for (const char* pName : { "d3d8.dll", "d3d9.dll", "dxgi.dll", "wined3d.dll", "d3dxof.dll", "d3dx9_43.dll" }) {
+            Fs::addFileNode(parent->path + "/" + pName, webglParent->path + "/" + pName, webglParent->nativePath + "/" + pName, false, parent);
+        }
+    }
+#else
     if (!this->ddrawOverridePath.isEmpty()) {
         envValues.push_back(B("WINEDLLOVERRIDES=ddraw=n,b"));
         std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, this->ddrawOverridePath, true);
@@ -425,10 +439,11 @@ bool StartUpArgs::apply() {
             klog("-dxvk was enabled but not found in the file system");
         } else {
             for (const char* pName : { "d3d8.dll", "d3d9.dll", "d3d10core.dll", "d3d11.dll", "dxgi.dll" }) {
-               Fs::addFileNode(parent->path + "/" + pName, dxvkParent->path + "/" + pName, dxvkParent->nativePath + "/" + pName, false, parent);
+                Fs::addFileNode(parent->path + "/" + pName, dxvkParent->path + "/" + pName, dxvkParent->nativePath + "/" + pName, false, parent);
             }
         }
     }
+#endif
 
     // automatically tell wine to use ddraw.dll if its in the same directory as the app being launched
     // this is a quality of life issue so that the user doesn't have to manually add this with winecfg
