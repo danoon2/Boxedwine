@@ -26,6 +26,7 @@
 				
         var isRunning = false;
         var ExeFileTimer = null;
+        var pointerLockEventsConfigured = false;
 
       	var statusElement = document.getElementById('status');
       	var progressElement = document.getElementById('progress');
@@ -440,6 +441,9 @@
 
             document.getElementById('startbtn').style.display = 'none';
             document.getElementById('sound-checkbox').style.display = 'none';
+            if (!isPointerLockEnabled()) {
+                Config.disableHideCursor = true;
+            }
 
             var params = getEmulatorParams();
             for(var i=0; i < params.length; i++) {
@@ -448,6 +452,56 @@
 
             document.getElementById('startbtn').textContent = "Running...";
             Module["removeRunDependency"]("setupBoxedWine");
+        }
+        function isPointerLockEnabled() {
+            var pointerLock = document.getElementById('pointerLock');
+            return pointerLock && pointerLock.checked;
+        }
+        function requestCanvasPointerLock(canvas) {
+            if (!canvas || !isPointerLockEnabled() || document.pointerLockElement === canvas) {
+                return;
+            }
+            if (typeof canvas.requestPointerLock !== "function") {
+                console.log("Pointer lock is not supported by this browser");
+                return;
+            }
+            try {
+                var result = canvas.requestPointerLock();
+                if (result && typeof result.catch === "function") {
+                    result.catch(function(error) {
+                        console.log("Unable to lock pointer: " + error);
+                    });
+                }
+            } catch (error) {
+                console.log("Unable to lock pointer: " + error);
+            }
+        }
+        function togglePointerLock() {
+            var canvas = document.getElementById('canvas');
+            if (isPointerLockEnabled()) {
+                requestCanvasPointerLock(canvas);
+            } else if (document.pointerLockElement === canvas && typeof document.exitPointerLock === "function") {
+                document.exitPointerLock();
+            }
+        }
+        function setupPointerLock(canvas) {
+            var pointerLock = document.getElementById('pointerLock');
+            if (!canvas || !pointerLock) {
+                return;
+            }
+            pointerLock.addEventListener("change", togglePointerLock, false);
+            canvas.addEventListener("click", function() {
+                requestCanvasPointerLock(canvas);
+            }, false);
+            if (!pointerLockEventsConfigured) {
+                pointerLockEventsConfigured = true;
+                document.addEventListener("pointerlockchange", function() {
+                    console.log(document.pointerLockElement === canvas ? "Pointer locked" : "Pointer unlocked");
+                }, false);
+                document.addEventListener("pointerlockerror", function() {
+                    console.log("Unable to lock pointer");
+                }, false);
+            }
         }
         var initialSetup = function(){
             console.log("running initial setup");
@@ -687,6 +741,16 @@
         },
         canvas: (function() {
           var canvas = document.getElementById('canvas');
+          var canvasFrame = canvas ? canvas.parentElement : null;
+          var updateCanvasFrameSize = function() {
+            if (!canvasFrame || !canvas) {
+              return;
+            }
+            var width = Number(canvas.width) || 800;
+            var height = Number(canvas.height) || 600;
+            canvasFrame.style.setProperty("--boxedwine-canvas-width", width);
+            canvasFrame.style.setProperty("--boxedwine-canvas-height", height);
+          };
 
           // As a default initial behavior, pop up an alert when webgl context is lost. To make your
           // application robust, you may want to override this behavior before shipping!
@@ -699,8 +763,16 @@
             }
             return originalGetContext(type, attributes);
           };
+          setupPointerLock(canvas);
           canvas.width  = 800;
           canvas.height = 600;
+          updateCanvasFrameSize();
+          if (typeof MutationObserver !== "undefined") {
+            new MutationObserver(updateCanvasFrameSize).observe(canvas, {
+              attributes: true,
+              attributeFilter: ["width", "height"]
+            });
+          }
           return canvas;
         })(),
         setStatus: function(text) {
@@ -730,12 +802,14 @@
         }
       };
       Module.setStatus('Downloading...');
-      window.onerror = function(message, source, lineno, colno, error) {
-        var details = message || 'unknown error';
+
+    window.onerror = function (msg, file, line, column, error) {
+        var details = msg || 'unknown error';
         if (source) details += ' at ' + source + ':' + lineno + ':' + colno;
         if (error && error.stack) details += '\n' + error.stack;
         Module.printErr(details);
         Module.setStatus('Exception thrown, see JavaScript console');
+        console.log(msg, file, line, column, error);
         spinnerElement.style.display = 'none';
         Module.setStatus = function(text) {
           if (text) Module.printErr('[post-exception status] ' + text);
