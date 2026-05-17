@@ -34,6 +34,35 @@
 #define lseek64 lseek
 #endif
 
+// Tail-call dispatch support.
+// PRESERVE_NONE: callee saves no registers, enabling zero-cost tail dispatch.
+// MUSTTAIL: forces the compiler to emit a tail call rather than call+return.
+#if defined(__clang__) && defined(__has_cpp_attribute)
+#if __has_attribute(preserve_none)
+#define PRESERVE_NONE __attribute__((preserve_none))
+#else
+#define PRESERVE_NONE
+#endif
+#else
+#define PRESERVE_NONE
+#endif
+
+#if defined(__has_cpp_attribute) && __has_cpp_attribute(clang::musttail)
+#define MUSTTAIL [[clang::musttail]]
+#elif defined(__has_cpp_attribute) && __has_cpp_attribute(gnu::musttail)
+#define MUSTTAIL [[gnu::musttail]]
+#else
+#define MUSTTAIL
+#endif
+
+// Direct normal-CPU dispatch is only for non-JIT builds. Future WASM JIT builds
+// should define BOXEDWINE_JIT and keep the ABI-compatible OpCallback path.
+//
+// on win32 with msvc without JIT, BOXEDWINE_DIRECT_NORMAL_DISPATCH caused a 50% loss in performance for Quake 2
+#if !defined(BOXEDWINE_JIT) && defined(__EMSCRIPTEN__)
+#define BOXEDWINE_DIRECT_NORMAL_DISPATCH 1
+#endif
+
 #ifdef BOXEDWINE_MSVC
 #include <codeanalysis\warnings.h>
 #pragma warning(disable:26451) 
@@ -68,7 +97,13 @@ char* platform_strcasestr(const char* s1, const char* s2);
 #endif
 #define PLATFORM_STAT_STRUCT struct stat
 #define PLATFORM_STAT stat
+// Direct-dispatch builds can use preserve_none for opcode handlers. JIT builds
+// keep the default ABI because startJITOp is also stored as an OpCallback.
+#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+#define OPCALL PRESERVE_NONE
+#else
 #define OPCALL
+#endif
 #define platform_getcwd getcwd
 #define UNISTD <unistd.h>
 #define UTIME <utime.h>

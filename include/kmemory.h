@@ -107,6 +107,8 @@ public:
 
     U64 readq(U32 address);
     U32 readd(U32 address);
+    U32 readdInline(U32 address);
+    void writedInline(U32 address, U32 value);
     U16 readw(U32 address);
     U8  readb(U32 address);
     void writeq(U32 address, U64 value);
