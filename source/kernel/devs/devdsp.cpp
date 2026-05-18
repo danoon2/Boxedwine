@@ -21,9 +21,16 @@
 #include "kscheduler.h"
 #include "../../io/fsvirtualopennode.h"
 #include "oss.h"
+#include <algorithm>
 #include <math.h>
 #include <string.h>
 #include "kdspaudio.h"
+
+#ifdef __EMSCRIPTEN__
+static const U32 DSP_MAX_OUTPUT_FREQ = 11025;
+#else
+static const U32 DSP_MAX_OUTPUT_FREQ = 48000;
+#endif
 
 class DevDsp : public FsVirtualOpenNode {
 public:
@@ -83,17 +90,19 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         this->channels = 1;
         this->format = AFMT_U8;
         return 0;
-    case 0x5002:  // SNDCTL_DSP_SPEED 
+    case 0x5002: { // SNDCTL_DSP_SPEED 
         if (len!=4) {
             kpanic("SNDCTL_DSP_SPEED was expecting a len of 4");
         }
-		this->freq = memory->readd(IOCTL_ARG1);
-        if (freq != this->freq) {
+		U32 oldFreq = this->freq;
+		this->freq = std::min(memory->readd(IOCTL_ARG1), DSP_MAX_OUTPUT_FREQ);
+        if (oldFreq != this->freq) {
             this->audio->closeAudio();
         }
 		if (write)
             memory->writed(IOCTL_ARG1, this->freq);
         return 0;
+    }
     case 0x5003: { // SNDCTL_DSP_STEREO
         if (len!=4) {
             kpanic("SNDCTL_DSP_STEREO was expecting a len of 4");
@@ -149,7 +158,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 			this->format = AFMT_U8;
             break;
         case AFMT_FLOAT:
-            this->format = AFMT_FLOAT;
+            this->format = AFMT_S16_LE;
             break;
         }
         if (write)
@@ -180,7 +189,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         klog("DevDsp::ioctl was not expecting SNDCTL_DSP_SETFRAGMENT");
         return 0;
     case 0x500B: // SNDCTL_DSP_GETFMTS
-        memory->writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_LE | AFMT_U16_BE | AFMT_FLOAT);
+        memory->writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_LE | AFMT_U16_BE);
         return 0;
 
 		//typedef struct audio_buf_info {
@@ -194,11 +203,13 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 
     case 0x500C: // SNDCTL_DSP_GETOSPACE
     {
-        // I'm not sure why bytes works better as getBufferCapacity instead of getBufferCapacity - getBufferSize, but mac stutters a lot otherwise
-        memory->writed(IOCTL_ARG1, this->audio->getBufferCapacity() / this->audio->getFragmentSize()); // fragments
+        U32 capacity = this->audio->getBufferCapacity();
+        U32 used = std::min(this->audio->getBufferSize(), capacity);
+        U32 available = capacity - used;
+        memory->writed(IOCTL_ARG1, available / this->audio->getFragmentSize()); // fragments
         memory->writed(IOCTL_ARG1 + 4, this->audio->getBufferCapacity() / this->audio->getFragmentSize());
         memory->writed(IOCTL_ARG1 + 8, this->audio->getFragmentSize());
-        memory->writed(IOCTL_ARG1 + 12, this->audio->getBufferCapacity());
+        memory->writed(IOCTL_ARG1 + 12, available);
         return 0;
     }
     case 0x500F: // SNDCTL_DSP_GETCAPS
@@ -259,7 +270,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(p, -1); p+=4; // int pid;
             memory->writed(p, PCM_CAP_OUTPUT); p+=4; // int caps;			/* PCM_CAP_INPUT, PCM_CAP_OUTPUT */
             memory->writed(p, 0); p+=4; // int iformats
-            memory->writed(p, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE | AFMT_FLOAT); p+=4; // int oformats;
+            memory->writed(p, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE); p+=4; // int oformats;
             memory->writed(p, 0); p+=4; // int magic;			/* Reserved for internal use */
             memory->strcpy(p, ""); p+=64; // oss_cmd_t cmd;		/* Command using the device (if known) */
             memory->writed(p, 0); p+=4; // int card_number;
@@ -269,7 +280,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(p, 1); p+=4; // int enabled;			/* 1=enabled, 0=device not ready at this moment */
             memory->writed(p, 0); p+=4; // int flags;			/* For internal use only - no practical meaning */
             memory->writed(p, 11025); p += 4; // int min_rate
-            memory->writed(p, 48000); p+=4; // max_rate;	/* Sample rate limits */
+            memory->writed(p, DSP_MAX_OUTPUT_FREQ); p+=4; // max_rate;	/* Sample rate limits */
             memory->writed(p, 1); p+=4; // int min_channels
             memory->writed(p, 2); p+=4; // max_channels;	/* Number of channels supported */
             memory->writed(p, 0); p+=4; // int binding;			/* DSP_BIND_FRONT, etc. 0 means undefined */

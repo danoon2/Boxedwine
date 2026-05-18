@@ -137,6 +137,9 @@ bool doMainLoop() {
             //SDL.defaults.opaqueFrontBuffer = false;
     );
     emscripten_set_main_loop(mainloop, 0, 1);
+#ifndef BOXEDWINE_MULTI_THREADED
+    emscripten_set_main_loop_timing(EM_TIMING_SETTIMEOUT, 1);
+#endif
     return false;
 }
 #endif

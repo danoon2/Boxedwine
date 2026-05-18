@@ -60,7 +60,7 @@ public:
 	void closeAudio() override;
 	U32 writeAudio(U8* data, U32 len) override;
 	U32 getFragmentSize() override {return this->dspFragSize;}
-	U32 getBufferSize() override {return (U32)0;}
+	U32 getBufferSize() override {return this->getGuestQueuedAudioSizeWant();}
 	U32 getBufferCapacity() override { return DSP_BUFFER_SIZE;}
 
 	U32 bytesPerSampleWant() {
@@ -69,6 +69,36 @@ public:
 
 	U32 bytesPerSampleGot() {
 		return SDL_AUDIO_BITSIZE(this->got.format) / 8;
+	}
+
+	U32 bytesPerSecondWant() {
+		return this->want.freq * this->want.channels * bytesPerSampleWant();
+	}
+
+	U32 bytesPerSecondGot() {
+		return this->got.freq * this->got.channels * bytesPerSampleGot();
+	}
+
+	U32 getQueuedAudioSizeWant() {
+		if (!KSystem::soundEnabled) {
+			return (U32)this->audioBuffer.size();
+		}
+		if (!this->deviceId) {
+			return 0;
+		}
+		U32 gotBytesPerSecond = bytesPerSecondGot();
+		if (!gotBytesPerSecond) {
+			return 0;
+		}
+		return (U32)(((U64)SDL_GetQueuedAudioSize(this->deviceId) * bytesPerSecondWant()) / gotBytesPerSecond);
+	}
+
+	U32 getGuestQueuedAudioSizeWant() {
+#ifdef __EMSCRIPTEN__
+		return this->getEstimatedRealQueuedWant();
+#else
+		return this->getQueuedAudioSizeWant();
+#endif
 	}
 
 	U32 getSdlFormat(U32 format) {
@@ -108,6 +138,138 @@ public:
 	bool open = false;
 	std::deque<U8> audioBuffer; // only used when KSystem::soundEnabled is false
 	SDL_AudioDeviceID deviceId = 0;
+#ifdef BOXEDWINE_AUDIO_DEBUG
+	U32 lastStatsTime = 0;
+	U32 lastWriteTime = 0;
+	U32 statsWrites = 0;
+	U32 statsBlocks = 0;
+	U32 statsPartialWrites = 0;
+	U32 statsLowQueue = 0;
+	U32 statsMaxWriteGap = 0;
+	U32 statsMinQueueWant = 0xFFFFFFFF;
+	U32 statsMaxQueueWant = 0;
+	U32 statsInBytes = 0;
+	U32 statsOutBytes = 0;
+	U32 statsSilenceBytes = 0;
+	U32 statsConvertMs = 0;
+#endif
+	U32 realQueuedWant = 0;
+	U32 lastRealQueuedTime = 0;
+	std::vector<U8> silenceBuffer;
+
+	U32 getEstimatedRealQueuedWant() {
+		U32 now = KSystem::getMilliesSinceStart();
+		if (!this->lastRealQueuedTime) {
+			this->lastRealQueuedTime = now;
+			return this->realQueuedWant;
+		}
+		U32 elapsed = now - this->lastRealQueuedTime;
+		if (elapsed) {
+			U32 consumed = (U32)(((U64)bytesPerSecondWant() * elapsed) / 1000);
+			this->realQueuedWant = consumed >= this->realQueuedWant ? 0 : this->realQueuedWant - consumed;
+			this->lastRealQueuedTime = now;
+		}
+		return this->realQueuedWant;
+	}
+
+	void addRealQueuedWant(U32 bytes) {
+		U32 queued = getEstimatedRealQueuedWant();
+		this->realQueuedWant = std::min((U32)DSP_BUFFER_SIZE, queued + bytes);
+	}
+
+	U32 topUpSilence() {
+#ifdef __EMSCRIPTEN__
+		if (!this->deviceId) {
+			return 0;
+		}
+		U32 gotBytesPerSecond = bytesPerSecondGot();
+		U32 frameSize = bytesPerSampleGot() * this->got.channels;
+		if (!gotBytesPerSecond || !frameSize) {
+			return 0;
+		}
+		U32 queued = SDL_GetQueuedAudioSize(this->deviceId);
+		U32 target = (gotBytesPerSecond * 96 / 1000) & ~(frameSize - 1);
+		if (queued >= target) {
+			return 0;
+		}
+		U32 bytes = (target - queued) & ~(frameSize - 1);
+		if (!bytes) {
+			return 0;
+		}
+		if (this->silenceBuffer.size() < bytes) {
+			this->silenceBuffer.resize(bytes);
+		}
+		SDL_memset(this->silenceBuffer.data(), this->got.silence, bytes);
+		SDL_QueueAudio(this->deviceId, this->silenceBuffer.data(), bytes);
+		return bytes;
+#else
+		return 0;
+#endif
+	}
+
+#ifdef BOXEDWINE_AUDIO_DEBUG
+	void recordAudioStats(U32 queuedBefore, U32 queuedAfter, U32 requestedLen, U32 acceptedLen, U32 queuedLen, U32 convertMs) {
+		U32 now = KSystem::getMilliesSinceStart();
+		if (!this->lastStatsTime) {
+			this->lastStatsTime = now;
+		}
+		if (this->lastWriteTime) {
+			this->statsMaxWriteGap = std::max(this->statsMaxWriteGap, now - this->lastWriteTime);
+		}
+		this->lastWriteTime = now;
+		this->statsWrites++;
+		this->statsInBytes += acceptedLen;
+		this->statsOutBytes += queuedLen;
+		this->statsConvertMs += convertMs;
+		if (acceptedLen < requestedLen) {
+			this->statsPartialWrites++;
+		}
+		this->statsMinQueueWant = std::min(this->statsMinQueueWant, queuedBefore);
+		this->statsMaxQueueWant = std::max(this->statsMaxQueueWant, queuedAfter);
+		if (queuedBefore < this->dspFragSize) {
+			this->statsLowQueue++;
+		}
+		if (now - this->lastStatsTime >= 1000) {
+			U32 statsMs = now - this->lastStatsTime;
+			U32 wantBytesPerSecond = bytesPerSecondWant();
+			U32 gotBytesPerSecond = bytesPerSecondGot();
+			U32 minQueueMs = wantBytesPerSecond ? (U32)(((U64)this->statsMinQueueWant * 1000) / wantBytesPerSecond) : 0;
+			U32 maxQueueMs = wantBytesPerSecond ? (U32)(((U64)this->statsMaxQueueWant * 1000) / wantBytesPerSecond) : 0;
+			U32 sdlQueueBytes = this->deviceId ? SDL_GetQueuedAudioSize(this->deviceId) : 0;
+			U32 sdlQueueMs = gotBytesPerSecond ? (U32)(((U64)sdlQueueBytes * 1000) / gotBytesPerSecond) : 0;
+			U32 expectedIn = (U32)(((U64)wantBytesPerSecond * statsMs) / 1000);
+			klog_fmt("audioStats: id=%d want=%d/%d/%x got=%d/%d/%x samples=%d same=%d ms=%d writes=%d in=%d expectIn=%d out=%d silence=%d block=%d partial=%d low=%d qWantMs=%d..%d qSdl=%dms/%dB gapMax=%dms cvtMs=%d",
+				this->id, this->want.freq, this->want.channels, this->want.format, this->got.freq, this->got.channels, this->got.format, this->got.samples, this->sameFormat ? 1 : 0,
+				statsMs, this->statsWrites, this->statsInBytes, expectedIn, this->statsOutBytes, this->statsSilenceBytes, this->statsBlocks, this->statsPartialWrites, this->statsLowQueue,
+				minQueueMs, maxQueueMs, sdlQueueMs, sdlQueueBytes, this->statsMaxWriteGap, this->statsConvertMs);
+			this->lastStatsTime = now;
+			this->statsWrites = 0;
+			this->statsBlocks = 0;
+			this->statsPartialWrites = 0;
+			this->statsLowQueue = 0;
+			this->statsMaxWriteGap = 0;
+			this->statsMinQueueWant = 0xFFFFFFFF;
+			this->statsMaxQueueWant = 0;
+			this->statsInBytes = 0;
+			this->statsOutBytes = 0;
+			this->statsSilenceBytes = 0;
+			this->statsConvertMs = 0;
+		}
+	}
+
+	void recordAudioBlock(U32 queuedBefore) {
+		this->statsBlocks++;
+		this->statsMinQueueWant = std::min(this->statsMinQueueWant, queuedBefore);
+		this->statsMaxQueueWant = std::max(this->statsMaxQueueWant, queuedBefore);
+		U32 now = KSystem::getMilliesSinceStart();
+		if (!this->lastStatsTime) {
+			this->lastStatsTime = now;
+		}
+		if (now - this->lastStatsTime >= 1000) {
+			recordAudioStats(queuedBefore, queuedBefore, 0, 0, 0, 0);
+		}
+	}
+#endif
 };
 
 // Voices whose closeAudio was called while audio was still queued to SDL.
@@ -260,6 +422,29 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		return 0;
 	}
 
+	U32 queued = this->getGuestQueuedAudioSizeWant();
+	if (queued >= DSP_BUFFER_SIZE) {
+#ifdef BOXEDWINE_AUDIO_DEBUG
+		recordAudioBlock(queued);
+#endif
+		return -K_EWOULDBLOCK;
+	}
+	U32 blockSize = bytesPerSampleWant() * want.channels;
+#ifdef BOXEDWINE_AUDIO_DEBUG
+	U32 requestedLen = len;
+#endif
+	len = std::min(len, (DSP_BUFFER_SIZE - queued) & ~(blockSize - 1));
+	if (!len) {
+#ifdef BOXEDWINE_AUDIO_DEBUG
+		recordAudioBlock(queued);
+#endif
+		return -K_EWOULDBLOCK;
+	}
+
+#ifdef BOXEDWINE_AUDIO_DEBUG
+	U32 queuedLen = len;
+	U32 convertMs = 0;
+#endif
 	if (!this->sameFormat) {
 		int needed = (int)len * this->cvt.len_mult;
 		if (this->cvtBufLen && this->cvtBufLen < needed) {
@@ -274,11 +459,25 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		this->cvt.len = (int)len;
 		this->cvt.buf = this->cvtBuf;
 		memcpy(this->cvt.buf, data, len);
+#ifdef BOXEDWINE_AUDIO_DEBUG
+		U32 convertStart = KSystem::getMilliesSinceStart();
+#endif
 		SDL_ConvertAudio(&this->cvt);
+#ifdef BOXEDWINE_AUDIO_DEBUG
+		convertMs = KSystem::getMilliesSinceStart() - convertStart;
+		queuedLen = this->cvt.len_cvt;
+#endif
 		SDL_QueueAudio(this->deviceId, this->cvt.buf, this->cvt.len_cvt);
 	} else {
 		SDL_QueueAudio(this->deviceId, data, len);
 	}
+	addRealQueuedWant(len);
+#ifdef BOXEDWINE_AUDIO_DEBUG
+	this->statsSilenceBytes += topUpSilence();
+	recordAudioStats(queued, this->getGuestQueuedAudioSizeWant(), requestedLen, len, queuedLen, convertMs);
+#else
+	topUpSilence();
+#endif
 	return len;
 }
 
