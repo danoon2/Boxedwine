@@ -441,12 +441,13 @@ void gl_common_EglCreateContext(CPU* cpu) {
     }
     U32 profile = eglBoundApi == EGL_OPENGL_ES_API ? BOXEDWINE_GL_PROFILE_ES : 0;
     EAX = KNativeSystem::getOpenGL()->glCreateContext(thread, cfg->glPixelFormat, major, minor, profile, 0, ARG3);
-#ifdef __EMSCRIPTEN__
-    klog_fmt("boxedwine EGL: eglCreateContext config=0x%x resolved=0x%x version=%d.%d profile=0x%x share=%u -> %u webgl=%d",
-            ARG2, config, major, minor, profile, ARG3, EAX, emscripten_webgl_get_current_context());
-#endif
     if (eglLog()) {
+#ifdef __EMSCRIPTEN__
+        klog_fmt("boxedwine EGL: eglCreateContext config=0x%x resolved=0x%x version=%d.%d profile=0x%x share=%u -> %u webgl=%d",
+                ARG2, config, major, minor, profile, ARG3, EAX, emscripten_webgl_get_current_context());
+#else
         klog_fmt("boxedwine EGL: eglCreateContext config=0x%x resolved=0x%x fb=%u version=%d.%d profile=0x%x share=%u -> %u", ARG2, config, cfg->fbId, major, minor, profile, ARG3, EAX);
+#endif
     }
 }
 
@@ -541,12 +542,13 @@ void gl_common_EglMakeCurrent(CPU* cpu) {
     }
     thread->currentContext = ctx;
     EAX = KNativeSystem::getOpenGL()->glMakeCurrent(thread, d, ctx) ? EGL_TRUE : EGL_FALSE;
-#ifdef __EMSCRIPTEN__
-    klog_fmt("boxedwine EGL: eglMakeCurrent draw=%u read=%u ctx=%u drawable=%u -> %u webgl=%d",
-            draw, read, ctx, d ? d->id : 0, EAX, emscripten_webgl_get_current_context());
-#endif
     if (eglLog()) {
+#ifdef __EMSCRIPTEN__
+        klog_fmt("boxedwine EGL: eglMakeCurrent draw=%u read=%u ctx=%u drawable=%u -> %u webgl=%d",
+                draw, read, ctx, d ? d->id : 0, EAX, emscripten_webgl_get_current_context());
+#else
         klog_fmt("boxedwine EGL: eglMakeCurrent draw=%u read=%u ctx=%u drawable=%u -> %u", draw, read, ctx, d ? d->id : 0, EAX);
+#endif
     }
 }
 

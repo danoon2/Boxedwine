@@ -25,6 +25,10 @@
 #include "knativesystem.h"
 #include "kdspaudio.h"
 
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+#include <thread>
+#endif
+
 U32 sdlCustomEvent;
 
 KNativeInputSDL::KNativeInputSDL(U32 cx, U32 cy, int scaleX, int scaleY) {
@@ -290,10 +294,33 @@ bool KNativeInputSDL::waitForEvent(U32 ms) {
 
 bool KNativeInputSDL::processEvents() {
     SDL_Event e = {};
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+    U64 customStart = 0;
+    U32 customCount = 0;
+#endif
 
-    while (SDL_PollEvent(&e) == 1) {
+    while (true) {
+        if (SDL_PollEvent(&e) != 1) {
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+            if (customCount && KSystem::getMicroCounter() - customStart < 8000) {
+                // Give threads unblocked by a custom callback a brief chance to
+                // enqueue follow-up work before returning to the browser frame.
+                std::this_thread::yield();
+                continue;
+            } else
+#endif
+            {
+                break;
+            }
+        }
 #ifdef BOXEDWINE_MULTI_THREADED
         if (e.type == sdlCustomEvent) {
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+            if (!customCount) {
+                customStart = KSystem::getMicroCounter();
+            }
+            customCount++;
+#endif
             SdlCallback* callback = (SdlCallback*)e.user.data1;
             callback->result = (U32)callback->pfn();
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(callback->cond);

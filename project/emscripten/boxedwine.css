@@ -59,6 +59,7 @@ div.emscripten_border {
     line-height: 0;
     margin-left: auto;
     margin-right: auto;
+    position: relative;
     width: min(100%, calc((100vh - 12rem) * var(--boxedwine-canvas-aspect)));
 }
 @supports (width: 1cqw) {
@@ -71,6 +72,14 @@ canvas.emscripten {
     border: 0px none;
     height: 100%;
     width: 100%;
+}
+div.emscripten_border > canvas.emscripten {
+    inset: 0;
+    position: absolute;
+}
+canvas.boxedwine-webgl-canvas {
+    pointer-events: none;
+    z-index: 1;
 }
 #console {
     box-sizing: border-box;

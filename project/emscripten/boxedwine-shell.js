@@ -739,6 +739,61 @@
             }
           }
         },
+        boxedwinePresentFrame: (function() {
+          var canvas = null;
+          var bitmapContext = null;
+          var fallbackContext = null;
+          function finishPresent(presentState) {
+            if (presentState && typeof Atomics !== "undefined") {
+              Atomics.store(presentState, 0, 0);
+            }
+          }
+          return function(bitmap, presentState) {
+            if (!bitmap) {
+              finishPresent(presentState);
+              return;
+            }
+            if (!canvas) {
+              canvas = document.getElementById('boxedwine-webgl-canvas-0');
+            }
+            if (!canvas) {
+              if (typeof bitmap.close === "function") {
+                bitmap.close();
+              }
+              finishPresent(presentState);
+              return;
+            }
+            if (canvas.width !== bitmap.width) {
+              canvas.width = bitmap.width;
+            }
+            if (canvas.height !== bitmap.height) {
+              canvas.height = bitmap.height;
+            }
+            var canvasFrame = canvas.parentElement;
+            if (canvasFrame) {
+              canvasFrame.style.setProperty("--boxedwine-canvas-width", canvas.width || 800);
+              canvasFrame.style.setProperty("--boxedwine-canvas-height", canvas.height || 600);
+            }
+            if (!bitmapContext) {
+              bitmapContext = canvas.getContext("bitmaprenderer");
+            }
+            if (bitmapContext && typeof bitmapContext.transferFromImageBitmap === "function") {
+              bitmapContext.transferFromImageBitmap(bitmap);
+              finishPresent(presentState);
+              return;
+            }
+            if (!fallbackContext) {
+              fallbackContext = canvas.getContext("2d");
+            }
+            if (fallbackContext) {
+              fallbackContext.drawImage(bitmap, 0, 0);
+            }
+            if (typeof bitmap.close === "function") {
+              bitmap.close();
+            }
+            finishPresent(presentState);
+          };
+        })(),
         canvas: (function() {
           var canvas = document.getElementById('canvas');
           var canvasFrame = canvas ? canvas.parentElement : null;

@@ -25,6 +25,12 @@
 #endif
 #include "knativesystem.h"
 #include "glcommon.h"
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+#include <SDL.h>
+#include <emscripten/html5_webgl.h>
+#include <emscripten/threading.h>
+#include "../../platform/sdl/sdlcallback.h"
+#endif
 
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG)
@@ -1641,7 +1647,7 @@ void gl_init(BString allowExtensions) {
 #endif
 
 #include "glfunctions.h"      
-    
+
     gl_callback[kXCreateContext] = gl_common_XCreateContext;
     gl_callback[kXDestroyContext] = gl_common_XDestroyContext;
     gl_callback[kXMakeCurrent] = gl_common_XMakeCurrent;
@@ -1701,6 +1707,106 @@ static bool isUnsupportedEmscriptenGlIndex(U32 index) {
 }
 #endif
 
+static void callOpenGLCallback(CPU* cpu, U32 index) {
+    int99Callback[index](cpu);
+}
+
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+static bool useThreadWebGLCanvas() {
+    const char* value = getenv("BOXEDWINE_WEBGL_THREAD_CANVAS");
+    return !value || !value[0] || value[0] != '0';
+}
+
+static bool isThreadWebGLControlCallback(U32 index) {
+    switch (index) {
+    case kXCreateContext:
+    case kXDestroyContext:
+    case kXMakeCurrent:
+    case kXCopyContext:
+    case kXQueryVersion:
+    case kXIsDirect:
+    case kXGetCurrentContext:
+    case kXGetCurrentDrawable:
+    case kXQueryExtensionsString:
+    case kXQueryServerString:
+    case kXGetClientString:
+    case kXChooseFBConfig:
+    case kXGetFBConfigAttrib:
+    case kXGetFBConfigs:
+    case kXGetVisualFromFBConfig:
+    case kXCreatePbuffer:
+    case kXDestroyPbuffer:
+    case kXQueryDrawable:
+    case kXCreateNewContext:
+    case kXMakeContextCurrent:
+    case kXCreatePixmap:
+    case kXDestroyPixmap:
+    case kXCreateWindow:
+    case kXDestroyWindow:
+    case kXCreateContextAttribsARB:
+    case kXSwapIntervalEXT:
+    case kXSwapBuffers:
+    case kGlProcAddressAvailable:
+    case kEglGetDisplay:
+    case kEglInitialize:
+    case kEglTerminate:
+    case kEglQueryString:
+    case kEglGetConfigs:
+    case kEglChooseConfig:
+    case kEglGetConfigAttrib:
+    case kEglBindAPI:
+    case kEglCreateContext:
+    case kEglDestroyContext:
+    case kEglCreateWindowSurface:
+    case kEglCreatePbufferSurface:
+    case kEglDestroySurface:
+    case kEglMakeCurrent:
+    case kEglSwapBuffers:
+    case kEglSwapInterval:
+    case kEglGetCurrentContext:
+    case kEglGetCurrentSurface:
+    case kEglGetCurrentDisplay:
+    case kEglQuerySurface:
+    case kEglGetError:
+    case kEglReleaseThread:
+    case kEglWaitGL:
+    case kEglWaitNative:
+    case kEglCopyBuffers:
+    case kEglSurfaceAttrib:
+    case kEglBindTexImage:
+    case kEglReleaseTexImage:
+    case kEglCreateSync:
+    case kEglDestroySync:
+    case kEglClientWaitSync:
+    case kEglGetSyncAttrib:
+    case kEglWaitSync:
+    case kEglCreateImage:
+    case kEglDestroyImage:
+    case kEglCreatePbufferFromClientBuffer:
+    case kEglCreatePixmapSurface:
+    case kEglCreatePlatformPixmapSurface:
+    case kEglCreatePlatformWindowSurface:
+    case kEglGetPlatformDisplay:
+    case kEglQueryAPI:
+    case kEglQueryContext:
+    case kEglWaitClient:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static bool glCanRunOnCurrentThread(U32 index) {
+    if (isMainthread() || emscripten_webgl_get_current_context()) {
+        return true;
+    }
+    if (!useThreadWebGLCanvas()) {
+        return false;
+    }
+    return isThreadWebGLControlCallback(index);
+}
+#endif
+
 void callOpenGL(CPU* cpu, U32 index) {
 #ifdef BOXEDWINE_OPENGL
     //KNativeWindow::getNativeWindow()->preOpenGLCall(index);
@@ -1713,8 +1819,17 @@ void callOpenGL(CPU* cpu, U32 index) {
     if (index < int99CallbackSize && int99Callback[index]) {
         cpu->thread->marshalIndex = 0;
         lastGlCallTime = KSystem::getMilliesSinceStart();
-        int99Callback[index](cpu);
-    } else 
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+        if (!glCanRunOnCurrentThread(index)) {
+            sdlDispatch([cpu, index]() -> U32 {
+                callOpenGLCallback(cpu, index);
+                return 0;
+                });
+            return;
+        }
+#endif
+        callOpenGLCallback(cpu, index);
+    } else
 #endif
 {
         kpanic_fmt("Uknown int 99 call: %d", index);

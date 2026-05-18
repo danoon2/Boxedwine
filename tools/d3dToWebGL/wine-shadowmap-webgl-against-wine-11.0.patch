@@ -93,7 +93,7 @@ index 0000000..4299c3e
 +```
 diff --git a/build-boxedwine-webgl-dlls.sh b/build-boxedwine-webgl-dlls.sh
 new file mode 100755
-index 0000000..40b58db
+index 0000000..8da526f
 --- /dev/null
 +++ b/build-boxedwine-webgl-dlls.sh
 @@ -0,0 +1,151 @@
@@ -206,7 +206,7 @@ index 0000000..40b58db
 +        --disable-tests \
 +        --without-freetype \
 +        --host=i686-w64-mingw32 \
-+        CFLAGS="-O3 -DWINE_NOWINSOCK -DUSE_WIN32_OPENGL -DUSE_WIN32_VULKAN" \
++        CFLAGS="-O3 -DWINE_NO_DEBUG_MSGS -DWINE_NOWINSOCK -DUSE_WIN32_OPENGL -DUSE_WIN32_VULKAN" \
 +        --with-wine-tools="$wine_tools_dir/" \
 +        LDFLAGS=" -static-libgcc"
 +)

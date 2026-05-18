@@ -230,7 +230,7 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         lastUpdateTime = KSystem::getMilliesSinceStart();
     }
     if (!wnd->sdlTexture) {
-        if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer) {
+        if (KSystem::videoOption != VIDEO_NO_WINDOW && !skipRenderer && ensureRenderer()) {
             wnd->sdlTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
         }
         wnd->sdlTextureHeight = height;
@@ -324,7 +324,7 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
 
 void KNativeScreenSDL::present() {
     const bool skipRenderer = skipHiddenEmscriptenRenderer(visible, showOnDraw);
-    if (KSystem::videoOption != VIDEO_NO_WINDOW && !skipRenderer) {
+    if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer && !skipRenderer) {
         if (showOnDraw) {
             showWindow(true);
         }
@@ -713,6 +713,39 @@ void KNativeScreenSDL::destroyMainWindow() {
     }
 }
 
+bool KNativeScreenSDL::ensureRenderer() {
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+    // In the pthread WebGL build the canvas is transferred to OffscreenCanvas
+    // and owned by the GL path. SDL's renderer would try to create a second
+    // context for the same canvas, so 2D blits are intentionally disabled here.
+    return false;
+#endif
+    if (renderer || !window) {
+        return renderer != nullptr;
+    }
+
+    U32 flags;
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
+    flags = SDL_RENDERER_ACCELERATED;
+#elif defined(BOXEDWINE_LINUX) || defined(__EMSCRIPTEN__)
+    // NVidia drivers need this
+    flags = SDL_RENDERER_SOFTWARE;
+#else
+    flags = SDL_RENDERER_ACCELERATED;
+#endif
+    if (this->vsync != VSYNC_DISABLED) {
+        flags |= SDL_RENDERER_PRESENTVSYNC;
+    }
+    renderer = SDL_CreateRenderer(window, -1, flags);
+    if (!renderer) {
+        klog("Failed to create SDL accelerated renderer, will try software");
+        flags &= ~SDL_RENDERER_ACCELERATED;
+        flags |= SDL_RENDERER_SOFTWARE;
+        renderer = SDL_CreateRenderer(window, -1, flags);
+    }
+    return renderer != nullptr;
+}
+
 void KNativeScreenSDL::recreateMainWindow() {
     if (KSystem::videoOption != VIDEO_NO_WINDOW) {
         destroyMainWindow();
@@ -774,24 +807,11 @@ void KNativeScreenSDL::recreateMainWindow() {
             klog_fmt("SDL_CreateWindow failed: %s", SDL_GetError());
         }
         if (!(flags & SDL_WINDOW_VULKAN)) {
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
-            flags = SDL_RENDERER_ACCELERATED;
-#elif defined(BOXEDWINE_LINUX) || defined(__EMSCRIPTEN__)
-            // NVidia drivers need this
-            flags = SDL_RENDERER_SOFTWARE;
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+            renderer = nullptr;
 #else
-            flags = SDL_RENDERER_ACCELERATED;
+            ensureRenderer();
 #endif
-            if (this->vsync != VSYNC_DISABLED) {
-                flags |= SDL_RENDERER_PRESENTVSYNC;
-            }
-            renderer = SDL_CreateRenderer(window, -1, flags);
-            if (!renderer) {
-                klog("Failed to create SDL accelerated renderer, will try software");
-                flags &= ~SDL_RENDERER_ACCELERATED;
-                flags |= SDL_RENDERER_SOFTWARE;
-                renderer = SDL_CreateRenderer(window, -1, flags);
-            }
         }
     }
 }
