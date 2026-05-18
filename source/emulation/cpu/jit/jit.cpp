@@ -645,19 +645,11 @@ void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagTyp
         // daytona installer can trigger this path with dec and flags needed, this is the hard one for the number of tmp regs required since it will need to preserve cf
         U32 needsToSetFlags = 0;
         if (flags) {
-            // Always store the full lazy flag state for cross-block correctness, matching
-            // the logic in arithSetup.  op->needsToSetFlags() only covers intra-block
-            // consumers; the next block may call fillFlags() which reads lazyFlagType plus
-            // the lazy components (dst/src/result/oldCF).
-            needsToSetFlags = instructionInfo[op->inst].flagsSets & ~MAYBE;
+            needsToSetFlags = op->needsToSetFlags(cpu);
         }
         RegPtr cf;
         if (needsToSetFlags) {
-            // Save CF if the instruction preserves it in oldCF (e.g. INC/DEC which leave
-            // CF unchanged and reconstruct it via LazyFlagsInc/Dec::usesOldCF), OR if CF
-            // is not in this instruction's output set but a later instruction in this
-            // block needs it.
-            if (flags && (flags->usesOldCF(needsToSetFlags) || (!(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF)))) {
+            if (flags && !(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF)) {
                 cf = getCF();
             }
         }
