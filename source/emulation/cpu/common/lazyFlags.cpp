@@ -273,7 +273,9 @@ class LazyFlagsInc8 : public LazyFlagsDefault8 {
     bool usesResult(U32 mask) const override { return (mask & (AF | PF | ZF | SF | OF)) != 0; }
     bool usesSrc(U32 mask) const override { return false; }
     bool usesDst(U32 mask) const override { return false; }
-    bool usesOldCF(U32 mask) const override { return false; }
+    // getCF() returns cpu->oldCF unconditionally; oldCF must always be saved
+    // so fillFlags() preserves CF across block boundaries (INC/DEC don't set CF).
+    bool usesOldCF(U32 mask) const override { return true; }
 };
 
 static LazyFlagsInc8 flagsInc8;
@@ -286,7 +288,7 @@ class LazyFlagsInc16 : public LazyFlagsDefault16 {
     bool usesResult(U32 mask) const override { return (mask & (AF | PF | ZF | SF | OF)) != 0; }
     bool usesSrc(U32 mask) const override { return false; }
     bool usesDst(U32 mask) const override { return false; }
-    bool usesOldCF(U32 mask) const override { return false; }
+    bool usesOldCF(U32 mask) const override { return true; }
 };
 
 static LazyFlagsInc16 flagsInc16;
@@ -299,7 +301,7 @@ class LazyFlagsInc32 : public LazyFlagsDefault32 {
     bool usesResult(U32 mask) const override { return (mask & (AF | PF | ZF | SF | OF)) != 0; }
     bool usesSrc(U32 mask) const override { return false; }
     bool usesDst(U32 mask) const override { return false; }
-    bool usesOldCF(U32 mask) const override { return false; }
+    bool usesOldCF(U32 mask) const override { return true; }
 };
 
 static LazyFlagsInc32 flagsInc32;
@@ -312,7 +314,7 @@ class LazyFlagsDec8 : public LazyFlagsDefault8 {
     bool usesResult(U32 mask) const override { return (mask & (AF | PF | ZF | SF | OF)) != 0; }
     bool usesSrc(U32 mask) const override { return false; }
     bool usesDst(U32 mask) const override { return false; }
-    bool usesOldCF(U32 mask) const override { return false; }
+    bool usesOldCF(U32 mask) const override { return true; }
 };
 
 static LazyFlagsDec8 flagsDec8;
@@ -325,7 +327,7 @@ class LazyFlagsDec16 : public LazyFlagsDefault16 {
     bool usesResult(U32 mask) const override { return (mask & (AF | PF | ZF | SF | OF)) != 0; }
     bool usesSrc(U32 mask) const override { return false; }
     bool usesDst(U32 mask) const override { return false; }
-    bool usesOldCF(U32 mask) const override { return false; }
+    bool usesOldCF(U32 mask) const override { return true; }
 };
 
 static LazyFlagsDec16 flagsDec16;
@@ -338,7 +340,7 @@ class LazyFlagsDec32 : public LazyFlagsDefault32 {
     bool usesResult(U32 mask) const override { return (mask & (AF | PF | ZF | SF | OF)) != 0; }
     bool usesSrc(U32 mask) const override { return false; }
     bool usesDst(U32 mask) const override { return false; }
-    bool usesOldCF(U32 mask) const override { return false; }
+    bool usesOldCF(U32 mask) const override { return true; }
 };
 
 static LazyFlagsDec32 flagsDec32;
