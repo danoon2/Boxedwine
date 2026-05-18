@@ -243,7 +243,14 @@ void Jit::arithSetup(DecodedOp* op, U32& needsToSetFlags, LazyFlagType flagType,
         return;
     }
 
-    if ((flags && flags->usesOldCF(needsToSetFlags)) || (!(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF))) {
+    // Save oldCF when:
+    //   (a) usesOldCF: the instruction reads the incoming CF as an operand (ADC, SBB, RCL/RCR).
+    //   (b) instruction doesn't set CF at all (INC, DEC): INC/DEC preserve CF, and
+    //       fillFlags(FLAGS_INC32/DEC*) returns cpu->oldCF for the CF bit.  We must
+    //       save the current CF into oldCF NOW, not just when some intra-block successor
+    //       reads CF — the lazy state crosses block boundaries and the next block's
+    //       fillFlags() will read oldCF regardless of who compiled the block.
+    if ((flags && flags->usesOldCF(needsToSetFlags)) || !(instructionInfo[op->inst].flagsSets & CF)) {
         if (!cf) {
             cf = getCF();
         }
@@ -657,7 +664,9 @@ void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagTyp
             // CF unchanged and reconstruct it via LazyFlagsInc/Dec::usesOldCF), OR if CF
             // is not in this instruction's output set but a later instruction in this
             // block needs it.
-            if (flags && (flags->usesOldCF(needsToSetFlags) || (!(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF)))) {
+            // Same cross-block correctness rule as arithSetup: save CF whenever
+            // the instruction uses old CF as input OR doesn't set CF at all.
+            if (flags && (flags->usesOldCF(needsToSetFlags) || !(instructionInfo[op->inst].flagsSets & CF))) {
                 cf = getCF();
             }
         }
@@ -891,8 +900,13 @@ void JitFlags::init(Jit* jit, CPU* cpu, DecodedOp* op, LazyFlagType flagsType, R
     if (flags) {
         needsToSetFlags = op->needsToSetFlags(cpu);
     }
+    // Upgrade to the full instruction flag set for cross-block correctness
+    // (same reasoning as arithSetup: the lazy state persists across blocks).
+    needsToSetFlags = instructionInfo[op->inst].flagsSets & ~MAYBE;
     if (needsToSetFlags) {
-        if ((flags && flags->usesOldCF(needsToSetFlags)) || (!(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF))) {
+        // Same cross-block rule: save CF whenever the instruction uses old CF
+        // as input, or doesn't set CF at all (e.g. INC/DEC preserve CF via oldCF).
+        if ((flags && flags->usesOldCF(needsToSetFlags)) || !(instructionInfo[op->inst].flagsSets & CF)) {
             if (cf) {
                 oldCF = cf;
             } else {
