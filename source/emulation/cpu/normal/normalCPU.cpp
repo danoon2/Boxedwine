@@ -376,10 +376,10 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
 }
 
 void NormalCPU::run() {
-#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
-    normalDispatch(this, nextOp);
-#else
-    if (!nextOp && !thread->terminating) {
+    if (!nextOp) {
+        if (thread->terminating) {
+            return;
+        }
         nextOp = getNextOp();
         if (!nextOp) {
             thread->seg_mapper(getEipAddress(), true, false, false);
@@ -389,6 +389,9 @@ void NormalCPU::run() {
             }
         }
     }
+#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+    normalDispatch(this, nextOp);
+#else
 #ifdef BOXEDWINE_JIT
     if (nextOp->runCount <= JIT_RUN_COUNT) {
         firstOp(this, nextOp);
