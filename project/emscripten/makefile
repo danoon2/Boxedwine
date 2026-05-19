@@ -146,6 +146,7 @@ else ifeq ($(BUILD_DIR), Build/TestJit)
 # (exclude x32/armv8 backends which have their own startNewJIT definitions).
 TESTJIT_EMULATION := $(shell find $(PROJDIR)/source/emulation -type f -name '*.cpp' | grep -v '/x32/' | grep -v '/armv8/')
 SRCS := $(wildcard $(PROJDIR)/source/test/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/test/**/*.cpp)
 SRCS += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
 SRCS += $(wildcard $(PROJDIR)/source/sdl/emscripten/*.cpp)
 SRCS += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
