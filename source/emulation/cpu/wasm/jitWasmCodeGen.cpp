@@ -1765,30 +1765,43 @@ void JitWasmCodeGen::IfNotEqual(JitWidth w, RegPtr reg, RegPtr r2) {
     m_emitter.emitOp(WASM_I32_NE);
     finishIf();
 }
-void JitWasmCodeGen::IfLessThan2(JitWidth w, RegPtr reg, U32 value) {
+void JitWasmCodeGen::IfLessThan(JitWidth w, ComparisonType type, RegPtr reg, U32 value) {
     branchBoundary();
     pushRegValue(reg);
     m_emitter.emitI32Const((S32)value);
-    m_emitter.emitOp(WASM_I32_LT_U);
+    m_emitter.emitOp(type == ComparisonType::Signed ? WASM_I32_LT_S : WASM_I32_LT_U);
     finishIf();
 }
-void JitWasmCodeGen::IfLessThan2(JitWidth w, RegPtr r1, RegPtr r2) {
+void JitWasmCodeGen::IfLessThan(JitWidth w, ComparisonType type, RegPtr r1, RegPtr r2) {
     branchBoundary();
     pushRegValue(r1); pushRegValue(r2);
-    m_emitter.emitOp(WASM_I32_LT_U);
+    m_emitter.emitOp(type == ComparisonType::Signed ? WASM_I32_LT_S : WASM_I32_LT_U);
     finishIf();
 }
-void JitWasmCodeGen::IfGreaterThanOrEqual(JitWidth w, RegPtr r1, RegPtr r2) {
+void JitWasmCodeGen::IfGreaterThanOrEqual(JitWidth w, ComparisonType type, RegPtr r1, RegPtr r2) {
     branchBoundary();
     pushRegValue(r1); pushRegValue(r2);
-    m_emitter.emitOp(WASM_I32_GE_U);
+    m_emitter.emitOp(type == ComparisonType::Signed ? WASM_I32_GE_S : WASM_I32_GE_U);
     finishIf();
 }
-void JitWasmCodeGen::IfGreaterThanOrEqual(JitWidth w, RegPtr reg, U32 value) {
+void JitWasmCodeGen::IfGreaterThanOrEqual(JitWidth w, ComparisonType type, RegPtr reg, U32 value) {
     branchBoundary();
     pushRegValue(reg);
     m_emitter.emitI32Const((S32)value);
-    m_emitter.emitOp(WASM_I32_GE_U);
+    m_emitter.emitOp(type == ComparisonType::Signed ? WASM_I32_GE_S : WASM_I32_GE_U);
+    finishIf();
+}
+void JitWasmCodeGen::IfGreaterThan(JitWidth w, ComparisonType type, RegPtr r1, RegPtr r2) {
+    branchBoundary();
+    pushRegValue(r1); pushRegValue(r2);
+    m_emitter.emitOp(type == ComparisonType::Signed ? WASM_I32_GT_S : WASM_I32_GT_U);
+    finishIf();
+}
+void JitWasmCodeGen::IfGreaterThan(JitWidth w, ComparisonType type, RegPtr reg, U32 value) {
+    branchBoundary();
+    pushRegValue(reg);
+    m_emitter.emitI32Const((S32)value);
+    m_emitter.emitOp(type == ComparisonType::Signed ? WASM_I32_GT_S : WASM_I32_GT_U);
     finishIf();
 }
 void JitWasmCodeGen::IfNotCPU(JitWidth w, RegPtr sib, U8 lsl, U32 offset) {

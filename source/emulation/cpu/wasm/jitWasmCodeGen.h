@@ -276,10 +276,12 @@ public:
     void IfEqual(JitWidth w, RegPtr r1, RegPtr r2) override;
     void IfNotEqual(JitWidth w, RegPtr reg, DYN_PTR_SIZE value) override;
     void IfNotEqual(JitWidth w, RegPtr reg, RegPtr r2) override;
-    void IfLessThan2(JitWidth w, RegPtr reg, U32 value) override;
-    void IfLessThan2(JitWidth w, RegPtr r1, RegPtr r2) override;
-    void IfGreaterThanOrEqual(JitWidth w, RegPtr r1, RegPtr r2) override;
-    void IfGreaterThanOrEqual(JitWidth w, RegPtr reg, U32 value) override;
+    void IfLessThan(JitWidth w, ComparisonType type, RegPtr reg, U32 value) override;
+    void IfLessThan(JitWidth w, ComparisonType type, RegPtr r1, RegPtr r2) override;
+    void IfGreaterThanOrEqual(JitWidth w, ComparisonType type, RegPtr r1, RegPtr r2) override;
+    void IfGreaterThanOrEqual(JitWidth w, ComparisonType type, RegPtr reg, U32 value) override;
+    void IfGreaterThan(JitWidth w, ComparisonType type, RegPtr r1, RegPtr r2) override;
+    void IfGreaterThan(JitWidth w, ComparisonType type, RegPtr reg, U32 value) override;
     void IfNot(JitWidth w, RegPtr reg) override;
     void IfNotCPU(JitWidth w, RegPtr sib, U8 lsl, U32 offset) override;
     void IfCondition(JitConditional cond) override;
