@@ -145,7 +145,8 @@ else ifeq ($(BUILD_DIR), Build/TestJit)
 # TestJit: use the test sources but swap in the WASM JIT emulation sources
 # (exclude x32/armv8 backends which have their own startNewJIT definitions).
 TESTJIT_EMULATION := $(shell find $(PROJDIR)/source/emulation -type f -name '*.cpp' | grep -v '/x32/' | grep -v '/armv8/')
-SRCS := $(wildcard $(PROJDIR)/source/test/*.cpp)
+SRCS := $(shell find $(PROJDIR)/lib/asmjit/asmjit -type f -name '*.cpp')
+SRCS += $(wildcard $(PROJDIR)/source/test/*.cpp)
 SRCS += $(wildcard $(PROJDIR)/source/test/**/*.cpp)
 SRCS += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
 SRCS += $(wildcard $(PROJDIR)/source/sdl/emscripten/*.cpp)
