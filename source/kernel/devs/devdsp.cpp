@@ -28,9 +28,12 @@
 
 #ifdef __EMSCRIPTEN__
 static const U32 DSP_MAX_OUTPUT_FREQ = 11025;
+static const U32 DSP_DEFAULT_FRAGMENT_SIZE = 1024;
 #else
 static const U32 DSP_MAX_OUTPUT_FREQ = 48000;
+static const U32 DSP_DEFAULT_FRAGMENT_SIZE = 4096;
 #endif
+static const U32 DSP_DEFAULT_FRAGMENT_COUNT = 8;
 
 class DevDsp : public FsVirtualOpenNode {
 public:
@@ -39,6 +42,7 @@ public:
         this->freq = 11025;
         this->channels = 1;
         this->format = AFMT_U8;
+        this->audio->setFragmentSize(DSP_DEFAULT_FRAGMENT_SIZE);
     } 
     virtual ~DevDsp() {this->audio->closeAudio();}
 
@@ -48,11 +52,20 @@ public:
     U32 readNative(U8* buffer, U32 len) override;
     U32 writeNative(U8* buffer, U32 len) override;
     void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
+    bool isWriteReady() override;
 
     std::shared_ptr<KDspAudio> audio;
     U32 freq;
     U32 channels;
     U32 format;
+    U32 fragmentCount = DSP_DEFAULT_FRAGMENT_COUNT;
+    U32 bytesWritten = 0;
+    U32 lastOutputBlocks = 0;
+
+private:
+    U32 getEffectiveBufferCapacity();
+    U32 getUsedBufferSize();
+    U32 getAvailableBufferSize();
 };
 
 
@@ -72,7 +85,29 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
     if (!this->audio->isOpen()) {
         this->audio->openAudio(this->format, this->freq, this->channels);
     }
-    return this->audio->writeAudio(buffer, len);
+    U32 result = this->audio->writeAudio(buffer, len);
+    if ((S32)result > 0) {
+        this->bytesWritten += result;
+    }
+    return result;
+}
+
+U32 DevDsp::getEffectiveBufferCapacity() {
+    U32 capacity = this->audio->getBufferCapacity();
+    U32 fragmentCapacity = this->audio->getFragmentSize() * this->fragmentCount;
+    return std::min(capacity, fragmentCapacity ? fragmentCapacity : capacity);
+}
+
+U32 DevDsp::getUsedBufferSize() {
+    return std::min(this->audio->getBufferSize(), this->getEffectiveBufferCapacity());
+}
+
+U32 DevDsp::getAvailableBufferSize() {
+    return this->getEffectiveBufferCapacity() - this->getUsedBufferSize();
+}
+
+bool DevDsp::isWriteReady() {
+    return this->getAvailableBufferSize() >= this->audio->getFragmentSize();
 }
 
 U32 DevDsp::ioctl(KThread* thread, U32 request) {
@@ -89,6 +124,10 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         this->freq = 8000;
         this->channels = 1;
         this->format = AFMT_U8;
+        this->audio->setFragmentSize(DSP_DEFAULT_FRAGMENT_SIZE);
+        this->fragmentCount = DSP_DEFAULT_FRAGMENT_COUNT;
+        this->bytesWritten = 0;
+        this->lastOutputBlocks = 0;
         return 0;
     case 0x5002: { // SNDCTL_DSP_SPEED 
         if (len!=4) {
@@ -184,10 +223,17 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(IOCTL_ARG1, this->channels);
         return 0;
         }
-    case 0x500A: // SNDCTL_DSP_SETFRAGMENT
-		// this->data->dspFragSize = 1 << (readd(IOCTL_ARG1) & 0xFFFF);
-        klog("DevDsp::ioctl was not expecting SNDCTL_DSP_SETFRAGMENT");
+    case 0x500A: { // SNDCTL_DSP_SETFRAGMENT
+        U32 value = memory->readd(IOCTL_ARG1);
+        U32 shift = value & 0xFFFF;
+        U32 count = value >> 16;
+        if (shift > 15) {
+            shift = 15;
+        }
+        this->audio->setFragmentSize(1 << shift);
+        this->fragmentCount = std::clamp(count, (U32)2, (U32)64);
         return 0;
+    }
     case 0x500B: // SNDCTL_DSP_GETFMTS
         memory->writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_LE | AFMT_U16_BE);
         return 0;
@@ -203,11 +249,11 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 
     case 0x500C: // SNDCTL_DSP_GETOSPACE
     {
-        U32 capacity = this->audio->getBufferCapacity();
-        U32 used = std::min(this->audio->getBufferSize(), capacity);
+        U32 capacity = this->getEffectiveBufferCapacity();
+        U32 used = this->getUsedBufferSize();
         U32 available = capacity - used;
         memory->writed(IOCTL_ARG1, available / this->audio->getFragmentSize()); // fragments
-        memory->writed(IOCTL_ARG1 + 4, this->audio->getBufferCapacity() / this->audio->getFragmentSize());
+        memory->writed(IOCTL_ARG1 + 4, capacity / this->audio->getFragmentSize());
         memory->writed(IOCTL_ARG1 + 8, this->audio->getFragmentSize());
         memory->writed(IOCTL_ARG1 + 12, available);
         return 0;
@@ -233,33 +279,21 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         */
         klog("DevDsp::ioctl was not expecting SNDCTL_DSP_SETTRIGGER");
         return 0;
-    case 0x5012: // SNDCTL_DSP_GETOPTR
-        /*
-        writed(IOCTL_ARG1, 0); // Total # of bytes processed
-        writed(IOCTL_ARG1 + 4, 0); // # of fragment transitions since last time
-        if (data->pauseEnabled()) {
-			writed(IOCTL_ARG1 + 8, this->data->pauseAtLen); // Current DMA pointer value
-			if (this->data->pauseAtLen == 0) {
-                if (sdlSoundEnabled) {
-                    SDL_PauseAudio(0);
-                }
-            }
-        } else {
-			writed(IOCTL_ARG1 + 8, (U32)audioBuffer.size()); // Current DMA pointer value
-        }
-        */
-        klog("DevDsp::ioctl was not expecting SNDCTL_DSP_GETOPTR");
+    case 0x5012: { // SNDCTL_DSP_GETOPTR
+        U32 fragmentSize = this->audio->getFragmentSize();
+        U32 currentBlocks = fragmentSize ? this->bytesWritten / fragmentSize : 0;
+        U32 blocks = currentBlocks - this->lastOutputBlocks;
+        this->lastOutputBlocks = currentBlocks;
+        U32 capacity = this->getEffectiveBufferCapacity();
+        memory->writed(IOCTL_ARG1, this->bytesWritten); // Total # of bytes written
+        memory->writed(IOCTL_ARG1 + 4, blocks); // # of fragment transitions since last time
+        memory->writed(IOCTL_ARG1 + 8, capacity ? this->bytesWritten % capacity : 0); // Current DMA pointer value
         return 0;
+    }
     case 0x5016: // SNDCTL_DSP_SETDUPLEX
         return -K_EINVAL;
-    case 0x5017: // SNDCTL_DSP_GETODELAY 
-        /*
-        if (write) {
-			writed(IOCTL_ARG1, (U32)audioBuffer.size());
-            return 0;
-        }
-        */
-        klog("DevDsp::ioctl was not expecting SNDCTL_DSP_GETODELAY");
+    case 0x5017: // SNDCTL_DSP_GETODELAY
+        memory->writed(IOCTL_ARG1, this->getUsedBufferSize());
         return 0;
     case 0x580C: // SNDCTL_ENGINEINFO
         if (write) {
@@ -304,8 +338,9 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 
 void DevDsp::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLOUT) {
-        // BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->data->bufferCond, nullptr);
-        klog("DevDsp::waitForEvents POLLOUT not implemented");
+        if (this->isWriteReady()) {
+            BOXEDWINE_CONDITION_SIGNAL_ALL(parentCondition);
+        }
     }
 }
 

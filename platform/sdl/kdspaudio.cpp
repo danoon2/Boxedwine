@@ -60,6 +60,7 @@ public:
 	void closeAudio() override;
 	U32 writeAudio(U8* data, U32 len) override;
 	U32 getFragmentSize() override {return this->dspFragSize;}
+	void setFragmentSize(U32 size) override;
 	U32 getBufferSize() override {return this->getGuestQueuedAudioSizeWant();}
 	U32 getBufferCapacity() override { return DSP_BUFFER_SIZE;}
 
@@ -394,6 +395,19 @@ void KDspAudioSdl::closeAudio() {
 		SDL_CloseAudioDevice(this->deviceId);
 		this->deviceId = 0;
 	}
+}
+
+void KDspAudioSdl::setFragmentSize(U32 size) {
+#ifdef __EMSCRIPTEN__
+	size = std::clamp(size, (U32)256, (U32)4096);
+#else
+	size = std::clamp(size, (U32)512, (U32)16384);
+#endif
+	U32 blockSize = bytesPerSampleWant() * want.channels;
+	if (blockSize) {
+		size &= ~(blockSize - 1);
+	}
+	this->dspFragSize = size ? size : blockSize;
 }
 
 U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {	
