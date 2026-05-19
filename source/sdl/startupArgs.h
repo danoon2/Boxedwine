@@ -94,6 +94,7 @@ public:
     int effectiveGroupId = GID;
 
     bool soundEnabled = true;
+    U32 audioFreq = 0;
     VideoOption videoOption = VIDEO_NORMAL;
     U32 vsync = VSYNC_DEFAULT;
     bool dpiAware = false;

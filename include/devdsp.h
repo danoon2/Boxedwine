@@ -21,4 +21,5 @@
 
 FsOpenNode* openDevDsp(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 void dspShutdown();
+void dspSetMaxOutputFreq(U32 freq);
 #endif

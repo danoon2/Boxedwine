@@ -27,10 +27,10 @@
 #include "kdspaudio.h"
 
 #ifdef __EMSCRIPTEN__
-static const U32 DSP_MAX_OUTPUT_FREQ = 11025;
+static U32 dspMaxOutputFreq = 11025;
 static const U32 DSP_DEFAULT_FRAGMENT_SIZE = 1024;
 #else
-static const U32 DSP_MAX_OUTPUT_FREQ = 48000;
+static U32 dspMaxOutputFreq = 48000;
 static const U32 DSP_DEFAULT_FRAGMENT_SIZE = 4096;
 #endif
 static const U32 DSP_DEFAULT_FRAGMENT_COUNT = 8;
@@ -71,6 +71,18 @@ private:
 
 void dspShutdown() {
     KDspAudio::shutdown();
+}
+
+void dspSetMaxOutputFreq(U32 freq) {
+#ifdef __EMSCRIPTEN__
+    if (freq == 11025 || freq == 22050) {
+        dspMaxOutputFreq = freq;
+    } else {
+        kwarn_fmt("Unsupported Emscripten audio frequency %d, using %d", freq, dspMaxOutputFreq);
+    }
+#else
+    dspMaxOutputFreq = freq;
+#endif
 }
 
 bool DevDsp::setLength(S64 len) {
@@ -134,7 +146,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             kpanic("SNDCTL_DSP_SPEED was expecting a len of 4");
         }
 		U32 oldFreq = this->freq;
-		this->freq = std::min(memory->readd(IOCTL_ARG1), DSP_MAX_OUTPUT_FREQ);
+		this->freq = std::min(memory->readd(IOCTL_ARG1), dspMaxOutputFreq);
         if (oldFreq != this->freq) {
             this->audio->closeAudio();
         }
@@ -314,7 +326,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(p, 1); p+=4; // int enabled;			/* 1=enabled, 0=device not ready at this moment */
             memory->writed(p, 0); p+=4; // int flags;			/* For internal use only - no practical meaning */
             memory->writed(p, 11025); p += 4; // int min_rate
-            memory->writed(p, DSP_MAX_OUTPUT_FREQ); p+=4; // max_rate;	/* Sample rate limits */
+            memory->writed(p, dspMaxOutputFreq); p+=4; // max_rate;	/* Sample rate limits */
             memory->writed(p, 1); p+=4; // int min_channels
             memory->writed(p, 2); p+=4; // max_channels;	/* Number of channels supported */
             memory->writed(p, 0); p+=4; // int binding;			/* DSP_BIND_FRONT, etc. 0 means undefined */

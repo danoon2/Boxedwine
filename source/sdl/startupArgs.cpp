@@ -561,6 +561,9 @@ bool StartUpArgs::apply() {
         }
     }
     KSystem::videoOption = this->videoOption;
+    if (this->audioFreq) {
+        dspSetMaxOutputFreq(this->audioFreq);
+    }
     KSystem::soundEnabled = this->soundEnabled;
 #ifdef __EMSCRIPTEN__
     if (KSystem::soundEnabled) {
@@ -692,6 +695,14 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->workingDirSet = true;
         } else if (!strcmp(argv[i], "-nosound")) {
 			this->soundEnabled = false;
+        } else if (!strcmp(argv[i], "-audioFreq") && i+1<argc) {
+            U32 audioFreq = atoi(argv[i+1]);
+            if (audioFreq == 11025 || audioFreq == 22050) {
+                this->audioFreq = audioFreq;
+            } else {
+                klog("-audioFreq must be 11025 or 22050");
+            }
+            i++;
         } else if (!strcmp(argv[i], "-novideo")) {
 #ifdef BOXEDWINE_MSVC
             this->videoOption = VIDEO_HIDE_WINDOW;

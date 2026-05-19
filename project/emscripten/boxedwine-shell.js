@@ -10,6 +10,7 @@
         let DEFAULT_APP_DIRECTORY = "/home/username/.wine/dosdevices/c:/files";
         let DEFAULT_BPP = 32;
         let DEFAULT_FRAME_SKIP = "0";
+        let DEFAULT_AUDIO_FREQ = 11025;
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
         //params
         let Config = {};
@@ -44,6 +45,7 @@
             Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
             Config.isSoundEnabled = getSound();
+            Config.audioFreq = getAudioFreq();
             Config.disableHideCursor = getDisableHideCursor();
             Config.bpp = getBitsPerPixel();
 			Config.cpu = getCPU();
@@ -242,6 +244,21 @@
             }
             console.log("setting sound to: "+soundEnabled);
             return soundEnabled;
+        }
+
+        function getAudioFreq() {
+            var audioFreq = getParameter("audioFreq");
+            if (!allowParameterOverride()) {
+                audioFreq = DEFAULT_AUDIO_FREQ;
+            } else if (audioFreq == "22050") {
+                audioFreq = 22050;
+            } else if (audioFreq == "11025" || audioFreq == "") {
+                audioFreq = DEFAULT_AUDIO_FREQ;
+            } else {
+                audioFreq = DEFAULT_AUDIO_FREQ;
+            }
+            console.log("setting audioFreq to: " + audioFreq);
+            return audioFreq;
         }
 
         function getDisableHideCursor() {
@@ -659,6 +676,10 @@
             
             if(!Config.isSoundEnabled){
                 params.push("-nosound");
+            }
+            if(Config.audioFreq != DEFAULT_AUDIO_FREQ){
+                params.push("-audioFreq");
+                params.push("" + Config.audioFreq);
             }
             if (Config.disableHideCursor) {
                 params.push("-disableHideCursor");
