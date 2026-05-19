@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release releasePerf test multiThreaded jit jitPerf jitDiag testJit multiThreadedJit
+.PHONY: default all clean release releasePerf test multiThreaded jit jitPerf testJit multiThreadedJit
 
 default all: release
 
@@ -40,16 +40,6 @@ jitPerf: export BUILD_DIR := Build/JitPerf
 jitPerf: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
 jitPerf: export SHELL_FILE := shell.html
 jitPerf: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
-# Like jitPerf but adds BOXEDWINE_WASM_DIAGNOSTICS: each JIT block is also
-# run through the normal interpreter so register/flag state can be compared.
-# Divergences are logged to the browser console with full register diffs.
-# Use with the PERF_W95.EXE benchmark to find the first block where JIT
-# and interpreter disagree. See source/emulation/cpu/wasm/jitWasmCodeGen.cpp
-# (wasmDiag_runAndCompare) for caveats on memory-dependent false positives.
-jitDiag: export BUILD_DIR := Build/JitDiag
-jitDiag: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT -DBOXEDWINE_WASM_DIAGNOSTICS
-jitDiag: export SHELL_FILE := shell.html
-jitDiag: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
 # Like the test target but with the WASM JIT enabled, so the CPU test suite
 # exercises JIT-compiled blocks instead of the normal interpreter.
 testJit: export BUILD_DIR := Build/TestJit
@@ -86,10 +76,6 @@ releasePerf:
 jitPerf:
 	@$(MAKE)
 	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip PERF_W95.EXE.zip Build/JitPerf/
-
-jitDiag:
-	@$(MAKE)
-	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip PERF_W95.EXE.zip Build/JitDiag/
 
 clean:
 	$(RM) -r Build
