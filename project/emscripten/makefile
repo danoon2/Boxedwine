@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release releasePerf test multiThreaded jit jitPerf testJit multiThreadedJit
+.PHONY: default all clean release releasePerf test multiThreaded jit jitPerf jitDiag testJit multiThreadedJit
 
 default all: release
 
@@ -40,6 +40,16 @@ jitPerf: export BUILD_DIR := Build/JitPerf
 jitPerf: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
 jitPerf: export SHELL_FILE := shell.html
 jitPerf: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
+# Like jitPerf but adds BOXEDWINE_WASM_DIAGNOSTICS: each JIT block is also
+# run through the normal interpreter so register/flag state can be compared.
+# Divergences are logged to the browser console with full register diffs.
+# Use with the PERF_W95.EXE benchmark to find the first block where JIT
+# and interpreter disagree. See source/emulation/cpu/wasm/jitWasmCodeGen.cpp
+# (wasmDiag_runAndCompare) for caveats on memory-dependent false positives.
+jitDiag: export BUILD_DIR := Build/JitDiag
+jitDiag: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT -DBOXEDWINE_WASM_DIAGNOSTICS
+jitDiag: export SHELL_FILE := shell.html
+jitDiag: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
 # Like the test target but with the WASM JIT enabled, so the CPU test suite
 # exercises JIT-compiled blocks instead of the normal interpreter.
 testJit: export BUILD_DIR := Build/TestJit
@@ -71,11 +81,15 @@ jit release test testJit multiThreaded multiThreadedJit testMultiThreaded:
 
 releasePerf:
 	@$(MAKE)
-	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip Build/ReleasePerf/
+	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip PERF_W95.EXE.zip Build/ReleasePerf/
 
 jitPerf:
 	@$(MAKE)
-	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip Build/JitPerf/
+	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip PERF_W95.EXE.zip Build/JitPerf/
+
+jitDiag:
+	@$(MAKE)
+	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip PERF_W95.EXE.zip Build/JitDiag/
 
 clean:
 	$(RM) -r Build
@@ -201,6 +215,33 @@ $(BUILD_DIR)/%.c.o: %.c
 $(BUILD_DIR)/%.cpp.o: %.cpp
 	@$(MKDIR_P) $(dir $@)
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+# Files that need -fwasm-exceptions so their catch(...) blocks compile to WASM
+# catch_all instructions and can intercept WASM exceptions from JIT blocks.
+#
+# jitWasmCodeGen.cpp: wasmStartJITOp / wasmDiag_runAndCompare call
+#   boxedwine_wasm_call_block via call_indirect; their try/catch must be WASM
+#   catch_all to intercept exceptions thrown inside JIT WASM modules.
+#
+# kscheduler.cpp: runThreadSlice is the top-level CPU-loop handler.  Its
+#   catch(...) must be WASM catch_all so it can catch throw 2 (SIGSEGV) and
+#   throw 1 (exit) that propagate out of JIT block helpers as WASM exceptions.
+#   Without -fwasm-exceptions its catch uses the old JS-flag mechanism which
+#   cannot catch WASM exceptions — causing the JIT to crash the browser session
+#   instead of delivering the signal to Wine's handler.
+#
+# Adding -fwasm-exceptions globally breaks Wine loading (changes throw semantics
+# for all code, triggering RAII destructors that weren't firing before).
+# These explicit rules take precedence over the pattern rule above in GNU make.
+$(BUILD_DIR)/$(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp.o: \
+        $(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp
+	@$(MKDIR_P) $(dir $@)
+	@$(CXX) $(CPPFLAGS) -fwasm-exceptions $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+$(BUILD_DIR)/$(PROJDIR)/source/kernel/kscheduler.cpp.o: \
+        $(PROJDIR)/source/kernel/kscheduler.cpp
+	@$(MKDIR_P) $(dir $@)
+	@$(CXX) $(CPPFLAGS) -fwasm-exceptions $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 .PHONY: clean
 

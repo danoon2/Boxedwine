@@ -643,9 +643,6 @@ protected:
 extern "C" int  boxedwine_wasm_instantiate(const void* bytes, int size,
                                             const void** importFns, int importCount);
 
-// Call a previously instantiated block function by table index.
-extern "C" void boxedwine_wasm_call_block(int tableIndex, int cpuPtr);
-
 // Release a compiled block (remove from wasmTable).
 extern "C" void boxedwine_wasm_free_block(int tableIndex);
 

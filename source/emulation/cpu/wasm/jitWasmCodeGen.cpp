@@ -27,6 +27,7 @@
 #include "../../softmmu/soft_code_page.h"
 #include "../../softmmu/kmemory_soft.h"
 
+#include <bit>      // std::bit_cast (C++20) — used in boxedwine_wasm_call_block
 #include <emscripten.h>
 #include <emscripten/em_js.h>
 
@@ -88,15 +89,42 @@ EM_JS(int, boxedwine_wasm_instantiate,
     }
 });
 
-EM_JS(void, boxedwine_wasm_call_block, (int tableIndex, int cpuPtr),
-{
-    // Diagnostic: log the first time a JIT-compiled block is actually executed.
-    if (!boxedwine_wasm_call_block._fired) {
-        boxedwine_wasm_call_block._fired = true;
-        console.log('[WASM JIT] first JIT block executed, tableIdx: ' + tableIndex);
+// Call a JIT-compiled WASM block via a direct WASM indirect call (no JS frame).
+//
+// The previous implementation used EM_JS (a JavaScript wrapper around
+// wasmTable.get(tableIndex)(cpuPtr)).  That created a JavaScript stack frame
+// between the C++ caller and the JIT WASM module.  When C++ code called from
+// inside the JIT block throws an exception (e.g. seg_mapper throws 2 after
+// calling runSignal), the exception propagates out of the JIT WASM module as a
+// WebAssembly.Exception object in JavaScript.  In Emscripten's wasm-exceptions
+// model the exception does not reliably re-enter the main WASM module as a
+// catchable C++ exception after crossing the JS frame — causing "Uncaught
+// [object WebAssembly.Exception] Error: int" to reach the browser even though
+// our catch(...) and runThreadSlice's catch(...) should have intercepted it.
+//
+// Casting the table index to a C++ function pointer generates a WASM
+// call_indirect instruction instead.  The call remains entirely within the WASM
+// world: no JS frame is created, and C++ exceptions propagate back to the
+// enclosing catch(...) exactly as they do for the x32/arm JIT backends.
+typedef void (*WasmBlockFn)(int);
+static inline void boxedwine_wasm_call_block(int tableIndex, int cpuPtr) {
+    static bool fired = false;
+    if (!fired) {
+        fired = true;
+        klog_fmt("[WASM JIT] first JIT block executed, tableIdx: %d", tableIndex);
     }
-    wasmTable.get(tableIndex)(cpuPtr);
-});
+    // Emscripten WASM32: the value returned by addFunction() (and stored in
+    // pfnJitCode as void*) IS the indirect-call table index — i.e. the "function
+    // pointer" in Emscripten's ABI.  Clang C++ mode rejects a direct
+    // int → function-pointer reinterpret_cast, so we use std::bit_cast<> which
+    // is the sanctioned C++20 bit-level reinterpretation primitive.
+    // sizeof(WasmBlockFn) == sizeof(unsigned) == 4 in WASM32; the static_assert
+    // below enforces this so the bit-cast is always safe.
+    static_assert(sizeof(WasmBlockFn) == sizeof(unsigned int),
+                  "WASM32: function-pointer and unsigned must be the same width");
+    WasmBlockFn fn = std::bit_cast<WasmBlockFn>((unsigned int)tableIndex);
+    fn(cpuPtr);
+}
 
 EM_JS(void, boxedwine_wasm_free_block, (int tableIndex),
 {
@@ -109,7 +137,17 @@ EM_JS(void, boxedwine_wasm_free_block, (int tableIndex),
 // ---------------------------------------------------------------------------
 void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
     if (op->pfnJitCode) {
-        boxedwine_wasm_call_block((int)(uintptr_t)op->pfnJitCode, (int)(uintptr_t)cpu);
+        // This function is compiled with -fwasm-exceptions, so its try/catch
+        // generates WASM catch_all instructions and can intercept WASM exceptions
+        // thrown by JIT block helpers (e.g. seg_mapper's throw 2).  The re-throw
+        // propagates to runThreadSlice (kscheduler.cpp, also compiled with
+        // -fwasm-exceptions) whose catch(…) sets cpu->nextOp=nullptr and lets
+        // Wine's already-set-up signal handler frame run on the next time slice.
+        try {
+            boxedwine_wasm_call_block((int)(uintptr_t)op->pfnJitCode, (int)(uintptr_t)cpu);
+        } catch (...) {
+            throw;
+        }
         // nextOp is updated by the WASM block itself (via helper call).
     }
 }

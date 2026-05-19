@@ -718,6 +718,11 @@
         }
       };
       Module.setStatus('Downloading...');
+      // Suppress browser alert() dialogs — they block the page and prevent
+      // the developer console from being opened to inspect log output.
+      // SDL_ShowSimpleMessageBox (and any kpanic path) goes through alert();
+      // redirect it to console.error so messages are still visible.
+      window.alert = function(msg) { console.error('[alert suppressed]', msg); };
       window.onerror = function(msg, file, line, column, error) {
         Module.setStatus('Exception thrown, see JavaScript console');
         console.log(msg, file, line, column, error);
