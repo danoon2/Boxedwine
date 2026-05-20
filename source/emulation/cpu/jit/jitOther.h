@@ -100,9 +100,12 @@ void Jit::dynamic_lahf(DecodedOp* op) {
     mov(JitWidth::b8, getReg8(4), flags);
 }
 void Jit::dynamic_salc(DecodedOp* op) {
-    RegPtr cf = getCF();
-    negReg2(JitWidth::b8, cf);
-    mov(JitWidth::b8, getReg8(0), cf);
+    // SALC (undocumented, 0xD6): AL = 0xFF if CF set, 0x00 otherwise.
+    // Flags are NOT modified by SALC.  Using negReg2 here would clobber the
+    // lazy-flag state on backends (e.g. WASM) whose negReg2 explicitly writes
+    // cpu->lazyFlagType/src/result.  Fall back to the normal interpreter so
+    // the correct flag-preserving semantics are always used.
+    emulateSingleOp();
 }
 void Jit::dynamic_retn16Iw(DecodedOp* op) {
     RegPtr eip = getTmpReg();
