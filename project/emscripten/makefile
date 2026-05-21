@@ -66,8 +66,12 @@ ifneq ($(make_jobs),)
 export MAKEFLAGS := -j $(make_jobs)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
-jit release test testJit multiThreaded multiThreadedJit testMultiThreaded:
+jit release test testJit multiThreaded testMultiThreaded:
 	@$(MAKE)
+
+multiThreadedJit:
+	@$(MAKE)
+	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip PERF_W95.EXE.zip Build/MultiThreadedJit/
 
 releasePerf:
 	@$(MAKE)

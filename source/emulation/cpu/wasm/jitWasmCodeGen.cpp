@@ -30,6 +30,8 @@
 #include <bit>      // std::bit_cast (C++20) — used in boxedwine_wasm_call_block
 #include <emscripten.h>
 #include <emscripten/em_js.h>
+#include <mutex>
+#include <unordered_map>
 
 #ifdef BOXEDWINE_MULTI_THREADED
 // Monotonically increasing counter for atomic table slot allocation.
@@ -39,6 +41,14 @@
 // Value 0 is the "not yet initialized" sentinel; boxedwine_wasm_instantiate_mt
 // uses Atomics.compareExchange to set it to wasmTable.length on the first call.
 static int32_t g_wasmTableNextSlot = 0;
+// Saved WASM bytes for slots published in shared DecodedOps. Each browser
+// worker has local wasmTable visibility, so another worker may need to lazily
+// instantiate the same bytes into the same slot before call_indirect can run.
+// Entries intentionally follow the monotonic multi-threaded slot lifetime: MT
+// slots are not reused or cleared because another worker may have read the slot
+// from pfnJitCode immediately before a code invalidation race.
+static std::mutex g_wasmBlockBinariesMutex;
+static std::unordered_map<int, std::vector<U8>> g_wasmBlockBinaries;
 #endif
 
 // ---------------------------------------------------------------------------
@@ -78,11 +88,12 @@ EM_JS(int, boxedwine_wasm_instantiate,
         if (!fn) return -1;
         var idx = addFunction(fn, 'vi');
 
-        // Diagnostic: log the first compilation and every 100th after that.
         if (!boxedwine_wasm_instantiate._count) boxedwine_wasm_instantiate._count = 0;
         boxedwine_wasm_instantiate._count++;
-        if (boxedwine_wasm_instantiate._count === 1 || boxedwine_wasm_instantiate._count % 100 === 0) {
-            console.log('[WASM JIT] blocks compiled: ' + boxedwine_wasm_instantiate._count + ', latest tableIdx: ' + idx);
+        if (boxedwine_wasm_instantiate._count % 1000 === 0) {
+            console.log('[WASM JIT] compiled=' + boxedwine_wasm_instantiate._count +
+                ' latestSlot=' + idx +
+                ' tableLen=' + wasmTable.length);
         }
 
         return idx;
@@ -163,18 +174,77 @@ EM_JS(int, boxedwine_wasm_instantiate_mt,
 
         wasmTable.set(slot, fn);
 
-        // Diagnostic: log the first compilation and every 100th after that.
-        // Note: _count is per-worker JS state; it reflects per-worker totals.
+        var hasFn = false;
+        try {
+            hasFn = slot >= 0 && slot < wasmTable.length && !!wasmTable.get(slot);
+        } catch(e) {
+            hasFn = false;
+        }
+
+        if (!hasFn) {
+            var pthread = (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD);
+            var pthreadSelf = (typeof _pthread_self === 'function') ? _pthread_self() : 0;
+            console.warn('[WASM JIT install anomaly] slot=' + slot +
+                ' tableLen=' + wasmTable.length +
+                ' pthread=' + pthread +
+                ' pthreadSelf=0x' + (pthreadSelf >>> 0).toString(16));
+        }
+
         if (!boxedwine_wasm_instantiate_mt._count) boxedwine_wasm_instantiate_mt._count = 0;
         boxedwine_wasm_instantiate_mt._count++;
-        if (boxedwine_wasm_instantiate_mt._count === 1 || boxedwine_wasm_instantiate_mt._count % 100 === 0) {
-            console.log('[WASM JIT] blocks compiled: ' + boxedwine_wasm_instantiate_mt._count + ', latest tableIdx: ' + slot);
+        if (boxedwine_wasm_instantiate_mt._count % 1000 === 0) {
+            var pthread = (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD);
+            var pthreadSelf = (typeof _pthread_self === 'function') ? _pthread_self() : 0;
+            console.log('[WASM JIT] compiled=' + boxedwine_wasm_instantiate_mt._count +
+                ' latestSlot=' + slot +
+                ' tableLen=' + wasmTable.length +
+                ' pthreadSelf=0x' + (pthreadSelf >>> 0).toString(16));
         }
 
         return slot;
     } catch(e) {
         console.error('boxedwine_wasm_instantiate_mt failed:', e);
         return -1;
+    }
+});
+
+// Multi-threaded lazy install: instantiate an already-compiled block into this
+// worker's local wasmTable at the shared slot before call_indirect uses it.
+EM_JS(int, boxedwine_wasm_install_existing_mt,
+      (const void* bytes, int size, const void** importFns, int importCount, int tableIndex),
+{
+    try {
+        if (tableIndex < 0) return 0;
+        if (tableIndex < wasmTable.length && wasmTable.get(tableIndex)) return 1;
+
+        var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
+        var mod = new WebAssembly.Module(wasmBytes);
+
+        var helpers = {};
+        var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+        for (var i = 0; i < importCount; i++) {
+            helpers['fn_' + i] = wasmTable.get(view[i]);
+        }
+
+        var inst = new WebAssembly.Instance(mod, {
+            'env':     { 'memory': wasmMemory },
+            'helpers': helpers
+        });
+
+        var fn = inst.exports['execute'];
+        if (!fn) return 0;
+
+        while (tableIndex >= wasmTable.length) {
+            wasmTable.grow(tableIndex - wasmTable.length + 1);
+        }
+        wasmTable.set(tableIndex, fn);
+
+        return 1;
+    } catch(e) {
+        console.warn('[WASM JIT lazy install failed] slot=' + tableIndex +
+            ' tableLen=' + wasmTable.length +
+            ' error=' + e);
+        return 0;
     }
 });
 
@@ -247,11 +317,53 @@ EM_JS(void, boxedwine_wasm_free_block, (int tableIndex),
 // in place is safe — at worst, a racing thread runs one extra (stale) JIT
 // block call, which is no worse than the native JIT backends' behaviour under
 // eviction races.
+//
+// Browser WASM/module limits still matter here. The single-threaded path can
+// call removeFunction(), but the pthread path cannot safely reclaim/reuse a
+// published slot without a stronger cross-worker quiescence protocol. The saved
+// WASM bytes in g_wasmBlockBinaries follow this same lifetime so workers can
+// lazily install any still-observable slot.
 EM_JS(void, boxedwine_wasm_free_block_mt, (int tableIndex),
 {
     // Intentionally empty: see comment above.
     void(tableIndex);
 });
+
+// JS-side check local to the executing worker: returns 1 if wasmTable[tableIndex]
+// is non-null, 0 otherwise. In pthread builds the shared DecodedOp stores one
+// table index, but the worker that reaches wasmStartJITOp may not have that
+// slot populated in its own JS/WASM table yet.
+EM_JS(int, boxedwine_wasm_slot_check, (int tableIndex, int cpuPtr, int opPtr),
+{
+    try {
+        var hasFn = tableIndex >= 0 && tableIndex < wasmTable.length && !!wasmTable.get(tableIndex);
+        if (hasFn) return 1;
+        return 0;
+    } catch(e) {
+        return 0;
+    }
+});
+
+#ifdef BOXEDWINE_MULTI_THREADED
+static bool lazyInstallWasmJitBlockForWorker(int tableIndex);
+
+static void disableWasmJitBlockAfterSlotMiss(DecodedOp* op) {
+    DecodedOp* blockOp = op->blockStart ? op->blockStart : op;
+    U32 blockOpCount = blockOp->blockOpCount ? blockOp->blockOpCount : 1;
+    DecodedOp* cur = blockOp;
+    for (U32 i = 0; i < blockOpCount && cur; i++) {
+        cur->pfnJitCode = nullptr;
+        cur->flags &= ~OP_FLAG_JIT;
+        cur->flags |= OP_FLAG_NO_JIT;
+        cur->runCount = JIT_RUN_COUNT + 1;
+        cur->blockStart = nullptr;
+        cur->blockOpCount = 0;
+        cur->blockLen = 0;
+        cur->pfn = NormalCPU::getFunctionForOp(cur);
+        cur = cur->next;
+    }
+}
+#endif
 
 // ---------------------------------------------------------------------------
 // The OpCallback installed as process->startJITOp for WASM-compiled blocks.
@@ -259,6 +371,20 @@ EM_JS(void, boxedwine_wasm_free_block_mt, (int tableIndex),
 // ---------------------------------------------------------------------------
 void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
     if (op->pfnJitCode) {
+#ifdef BOXEDWINE_MULTI_THREADED
+        // Guard against cross-worker table visibility. Readiness cannot be
+        // cached on DecodedOp because DecodedOp is shared, while table slot
+        // visibility is local to the worker that performs call_indirect.
+        int tableIndex = (int)(uintptr_t)op->pfnJitCode;
+        if (!boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
+            if (!lazyInstallWasmJitBlockForWorker(tableIndex) ||
+                !boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
+                disableWasmJitBlockAfterSlotMiss(op);
+                NormalCPU::getFunctionForOp(op)(cpu, op);
+                return;
+            }
+        }
+#endif
         // This function is compiled with -fwasm-exceptions, so its try/catch
         // generates WASM catch_all instructions and can intercept WASM exceptions
         // thrown by JIT block helpers (e.g. seg_mapper's throw 2).  The re-throw
@@ -454,6 +580,30 @@ static const void* g_wasmHelperTable[] = {
     (void*)wasmHelper_writeMem32_check,
 };
 static constexpr int WASM_HELPER_COUNT = (int)(sizeof(g_wasmHelperTable) / sizeof(g_wasmHelperTable[0]));
+
+#ifdef BOXEDWINE_MULTI_THREADED
+static bool lazyInstallWasmJitBlockForWorker(int tableIndex) {
+    std::vector<U8> bytes;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        auto it = g_wasmBlockBinaries.find(tableIndex);
+        if (it == g_wasmBlockBinaries.end()) {
+            return false;
+        }
+        bytes = it->second;
+    }
+    if (bytes.empty()) {
+        return false;
+    }
+    return boxedwine_wasm_install_existing_mt(
+        bytes.data(),
+        (int)bytes.size(),
+        g_wasmHelperTable,
+        WASM_HELPER_COUNT,
+        tableIndex
+    ) != 0;
+}
+#endif
 
 enum WasmHelperIdx {
     HELPER_READ_MEM8         = 0,
@@ -2322,6 +2472,13 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         }
         return;
     }
+
+#ifdef BOXEDWINE_MULTI_THREADED
+    {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        g_wasmBlockBinaries[tableIdx] = m_wasmBinary;
+    }
+#endif
 
     // Walk all ops in this block: the first op gets the startJITOp entry
     // (its pfnJitCode is the wasmTable index the dispatcher invokes). All
