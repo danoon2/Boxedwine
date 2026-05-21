@@ -84,12 +84,25 @@ U32 WasmEmitter::addFuncType(const std::vector<WasmType>& params,
 // Import section
 // ---------------------------------------------------------------------------
 void WasmEmitter::addMemoryImport(const char* module, const char* field) {
-    // memory import entry: 0x02 kind, limits: 0x00 = no max, min pages
     appendStr(m_importSection, module);
     appendStr(m_importSection, field);
     m_importSection.push_back(0x02);  // import kind = memory
-    m_importSection.push_back(0x00);  // limits type = min only
-    appendULEB128(m_importSection, 256); // min 256 pages = 16 MB, enough for Emscripten
+#ifdef BOXEDWINE_MULTI_THREADED
+    // In a pthreads build Emscripten creates wasmMemory as a shared
+    // WebAssembly.Memory (backed by SharedArrayBuffer).  The WebAssembly spec
+    // requires that a module importing a shared memory declares it as shared
+    // AND specifies a maximum.  Limits flag 0x03 = has-max + shared.
+    // We declare max = 65536 pages (4 GiB) so this module accepts any shared
+    // memory Emscripten creates regardless of the -sMAXIMUM_MEMORY setting
+    // (import validation requires provided.max <= declared.max, so a large
+    // declared max is always compatible with a smaller actual max).
+    m_importSection.push_back(0x03);  // limits: has-max, shared
+    appendULEB128(m_importSection, 256);   // min 256 pages = 16 MB
+    appendULEB128(m_importSection, 65536); // max 65536 pages = 4 GiB
+#else
+    m_importSection.push_back(0x00);  // limits: min only (non-shared)
+    appendULEB128(m_importSection, 256);   // min 256 pages = 16 MB
+#endif
     m_hasMemoryImport = true;
 }
 
