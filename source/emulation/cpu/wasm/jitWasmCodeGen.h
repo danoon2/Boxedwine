@@ -86,21 +86,16 @@
  * Each fallback exists for a specific reason; if you remove one,
  * understand which constraint it papered over before doing so.
  *
- *   salc                        SALC does not modify flags. The shared
- *                               implementation uses negReg2 on CF, which
- *                               changes WASM lazy-flag state as a backend
- *                               side effect.
- *
  *   popSeg16/popSeg32           The interpreter updates the segment at
  *                               runtime, but later instructions in the same
  *                               compiled block must see hasSetSeg[reg] at
  *                               compile time so they use a runtime segment
  *                               address instead of a flat address.
  *
- *   rol/ror b8 + b16            i32.rotl/rotr rotate within the full
- *                               32-bit word; narrowing produces wrong
- *                               results (e.g. ROL b8 0x80,1 -> 0x00
- *                               instead of 0x01).
+ *   rol/ror b8 + b16 with       Narrow rotates inline when flags are not
+ *   CF/OF needed                needed. When CF/OF are live, the shared
+ *                               dynamic op still falls back to preserve the
+ *                               exact flag behavior.
  *
  *   rcl/rcr (all widths)        Need lazy CF chaining across the
  *   shrd/shld                   carry-fold; no native WASM equivalent
@@ -368,9 +363,13 @@ public:
     void direct_setcc(JitConditional cond, RegPtr dst) override;
     bool directDoesAffectFlags(DecodedOp* op) override;
 
+    // SALC does not modify flags. Generate it directly for WASM because the
+    // shared JIT implementation uses negReg2 on CF, which changes WASM
+    // lazy-flag state as a backend side effect.
+    void dynamic_salc(DecodedOp* op) override;
+
     // WASM-specific fallbacks for cases where the shared JIT implementation
     // has side effects that do not match the WASM backend.
-    void dynamic_salc(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_popSeg16(DecodedOp* op) override {
         cpu->thread->process->hasSetSeg[op->reg] = true;
         emulateSingleOp();
@@ -380,30 +379,8 @@ public:
         emulateSingleOp();
     }
 
-    // Shift/rotate family: WASM's i32.shl/shr/rotl truncate behavior doesn't
-    // match x86 byte/word semantics for CF/OF, and the base dynamic_RI lazy-
-    // flag path here is fragile. Route every shift/rotate through the normal
-    // CPU via emulateSingleOp. Perf hit is acceptable for the WASM target.
-    void dynamic_rol8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rol8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rol8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rol8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rol16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rol16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rol16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rol16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    // rol32/ror32 — base class emits native i32.rotl/rotr (32-bit rotate
-    // is correct on full-width values). b8/b16 forms still emulate
-    // because i32.rotl rotates within 32 bits and produces wrong results
-    // when narrowed.
-    void dynamic_ror8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_ror8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_ror8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_ror8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_ror16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_ror16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_ror16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_ror16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    // Shift/rotate family: narrow rol/ror inline when CF/OF are not needed;
+    // the shared dynamic ops still fall back for those flag-producing cases.
     void dynamic_rcl8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_rcl8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_rcl8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
@@ -588,6 +565,7 @@ protected:
     // Helper: emit an i32 binary operation between two registers
     void emitBinOp(JitWidth w, RegPtr dst, RegPtr src, U8 wasmOp32, U8 wasmOp64 = 0);
     void emitBinOpImm(JitWidth w, RegPtr dst, U32 imm, U8 wasmOp32);
+    void emitNarrowRotate(JitWidth w, RegPtr reg, RegPtr count, U32 imm, bool countIsImm, bool left);
 
     // Emit a C++ helper call via function table index
     // The helper has signature: void helper(CPU* cpu)

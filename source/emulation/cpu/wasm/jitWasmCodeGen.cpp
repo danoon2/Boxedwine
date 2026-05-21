@@ -1627,29 +1627,102 @@ void JitWasmCodeGen::negReg2(JitWidth w, RegPtr reg) {
     currentLazyFlags = lazyTypeForSub(w);
 }
 
+void JitWasmCodeGen::dynamic_salc(DecodedOp* op) {
+    (void)op;
+    RegPtr cf = getCF();
+    m_emitter.emitI32Const(0);
+    pushRegValue(cf);
+    m_emitter.emitOp(WASM_I32_SUB);
+    popToReg(JitWidth::b8, getReg8(0));
+    freeScratch(cf->hardwareReg());
+}
+
 void JitWasmCodeGen::clzReg(JitWidth w, RegPtr result, RegPtr reg) {
     pushRegValue(reg);
     m_emitter.emitOp(WASM_I32_CLZ);
     m_emitter.emitLocalSet(result->hardwareReg());
 }
 
-// WASM i32.rotl/i32.rotr wrap at 32 bits; x86 8/16-bit rotates wrap at 8/16.
-// For b32 the WASM semantics match exactly; fall back for narrower widths.
+static bool narrowRotateWidth(JitWidth w, U32& bits, U32& countMask) {
+    if (w == JitWidth::b8) {
+        bits = 8;
+        countMask = 7;
+        return true;
+    }
+    if (w == JitWidth::b16) {
+        bits = 16;
+        countMask = 15;
+        return true;
+    }
+    return false;
+}
+
+void JitWasmCodeGen::emitNarrowRotate(JitWidth w, RegPtr reg, RegPtr count, U32 imm, bool countIsImm, bool left) {
+    U32 bits = 0;
+    U32 countMask = 0;
+    if (!narrowRotateWidth(w, bits, countMask)) {
+        if (countIsImm) emitBinOpImm(w, reg, imm & 31, left ? WASM_I32_ROTL : WASM_I32_ROTR);
+        else emitBinOp(w, reg, count, left ? WASM_I32_ROTL : WASM_I32_ROTR);
+        return;
+    }
+
+    U32 valueLocal = allocScratch();
+    U32 countLocal = allocScratch();
+
+    pushRegValue(reg);
+    maskToWidth(w);
+    m_emitter.emitLocalSet(valueLocal);
+
+    if (countIsImm) {
+        m_emitter.emitI32Const((S32)(imm & countMask));
+    } else {
+        pushRegValue(count);
+        m_emitter.emitI32Const((S32)countMask);
+        m_emitter.emitOp(WASM_I32_AND);
+    }
+    m_emitter.emitLocalSet(countLocal);
+
+    if (left) {
+        m_emitter.emitLocalGet(valueLocal);
+        m_emitter.emitLocalGet(countLocal);
+        m_emitter.emitOp(WASM_I32_SHL);
+        m_emitter.emitLocalGet(valueLocal);
+        m_emitter.emitI32Const((S32)bits);
+        m_emitter.emitLocalGet(countLocal);
+        m_emitter.emitOp(WASM_I32_SUB);
+        m_emitter.emitOp(WASM_I32_SHR_U);
+    } else {
+        m_emitter.emitLocalGet(valueLocal);
+        m_emitter.emitLocalGet(countLocal);
+        m_emitter.emitOp(WASM_I32_SHR_U);
+        m_emitter.emitLocalGet(valueLocal);
+        m_emitter.emitI32Const((S32)bits);
+        m_emitter.emitLocalGet(countLocal);
+        m_emitter.emitOp(WASM_I32_SUB);
+        m_emitter.emitOp(WASM_I32_SHL);
+    }
+    m_emitter.emitOp(WASM_I32_OR);
+    maskToWidth(w);
+    popToReg(w, reg);
+
+    freeScratch(countLocal);
+    freeScratch(valueLocal);
+}
+
+// WASM i32.rotl/i32.rotr wrap at 32 bits. Emit explicit 8/16-bit rotate
+// expressions for narrow forms; the shared dynamic op still falls back when
+// those forms need CF/OF.
 void JitWasmCodeGen::rolReg(JitWidth w, RegPtr reg, RegPtr rm) {
-    if (w == JitWidth::b32) emitBinOp(w, reg, rm, WASM_I32_ROTL);
-    else emulateSingleOp();
+    emitNarrowRotate(w, reg, rm, 0, false, true);
 }
 void JitWasmCodeGen::rolValue(JitWidth w, RegPtr reg, U32 imm) {
-    if (w == JitWidth::b32) emitBinOpImm(w, reg, imm & 31, WASM_I32_ROTL);
-    else emulateSingleOp();
+    emitNarrowRotate(w, reg, nullptr, imm, true, true);
 }
 void JitWasmCodeGen::rorReg(JitWidth w, RegPtr reg, RegPtr rm) {
-    if (w == JitWidth::b32) emitBinOp(w, reg, rm, WASM_I32_ROTR);
-    else emulateSingleOp();
+    emitNarrowRotate(w, reg, rm, 0, false, false);
 }
 void JitWasmCodeGen::rorValue(JitWidth w, RegPtr reg, U32 imm) {
-    if (w == JitWidth::b32) emitBinOpImm(w, reg, imm & 31, WASM_I32_ROTR);
-    else emulateSingleOp();
+    emitNarrowRotate(w, reg, nullptr, imm, true, false);
 }
 
 // Complex rotate-through-carry, shift double, mul/div: fall back to single-op emulation
