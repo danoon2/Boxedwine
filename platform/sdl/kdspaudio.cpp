@@ -48,6 +48,9 @@ public:
 		if (this->cvtBuf) {
 			SDL_free(this->cvtBuf);
 		}
+		if (this->stream) {
+			SDL_FreeAudioStream(this->stream);
+		}
 		if (this->deviceId) {
 			SDL_CloseAudioDevice(this->deviceId);
 			this->deviceId = 0;
@@ -131,9 +134,11 @@ public:
 	SDL_AudioSpec want = { 0 };
 	SDL_AudioSpec got = { 0 };
 	SDL_AudioCVT cvt = { 0 };
+	SDL_AudioStream* stream = nullptr;
 	U32 openedFormat = 0;
 	int cvtBufLen = 0;
 	unsigned char* cvtBuf = nullptr;
+	std::vector<U8> streamBuffer;
 	bool sameFormat = false;
 	U32 dspFragSize = 4096;
 	bool open = false;
@@ -267,6 +272,10 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 			SDL_CloseAudioDevice(this->deviceId);
 			this->deviceId = 0;
 		}
+		if (this->stream) {
+			SDL_FreeAudioStream(this->stream);
+			this->stream = nullptr;
+		}
 	}
 
     SDL_AudioSpec requested = this->want;
@@ -284,7 +293,10 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 
 	if (this->want.freq != this->got.freq || this->want.channels != this->got.channels || this->want.format != this->got.format) {
 		this->sameFormat = false;
-		SDL_BuildAudioCVT(&this->cvt, this->want.format, this->want.channels, this->want.freq, this->got.format, this->got.channels, this->got.freq);
+		this->stream = SDL_NewAudioStream(this->want.format, this->want.channels, this->want.freq, this->got.format, this->got.channels, this->got.freq);
+		if (!this->stream) {
+			SDL_BuildAudioCVT(&this->cvt, this->want.format, this->want.channels, this->want.freq, this->got.format, this->got.channels, this->got.freq);
+		}
 	} else {
 		this->sameFormat = true;
 	}
@@ -367,7 +379,21 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		return -K_EWOULDBLOCK;
 	}
 
-	if (!this->sameFormat) {
+	if (!this->sameFormat && this->stream) {
+		if (SDL_AudioStreamPut(this->stream, data, (int)len) < 0) {
+			return 0;
+		}
+		int available = SDL_AudioStreamAvailable(this->stream);
+		if (available > 0) {
+			if ((int)this->streamBuffer.size() < available) {
+				this->streamBuffer.resize(available);
+			}
+			int got = SDL_AudioStreamGet(this->stream, this->streamBuffer.data(), available);
+			if (got > 0) {
+				SDL_QueueAudio(this->deviceId, this->streamBuffer.data(), got);
+			}
+		}
+	} else if (!this->sameFormat) {
 		int needed = (int)len * this->cvt.len_mult;
 		if (this->cvtBufLen && this->cvtBufLen < needed) {
 			SDL_free(this->cvtBuf);
