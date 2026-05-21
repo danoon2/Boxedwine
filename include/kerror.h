@@ -57,6 +57,7 @@
 #define K_ELOOP          40
 #define K_EWOULDBLOCK    K_EAGAIN
 #define	K_ENODATA        61	
+#define K_EOVERFLOW      75
 #define K_EBADFD         77
 #define K_ENOTSOCK       88
 #define K_EDESTADDRREQ   89
@@ -87,6 +88,7 @@
 #define K_EHOSTUNREACH   113
 #define K_EALREADY       114
 #define K_EINPROGRESS    115
+#define K_EOWNERDEAD     130
 
 #define K_CONTINUE       998
 #define K_WAIT           999

@@ -26,6 +26,7 @@
 #define KTYPE_SIGNAL 4
 #define KTYPE_TIMER 5
 #define KTYPE_EVENT 6
+#define KTYPE_NTSYNC 7
 
 // can be shared between processes (see kunixsocket sendmsg/recvmsg) but in each process they will have their own file descriptor
 class KObject : public std::enable_shared_from_this<KObject> {
