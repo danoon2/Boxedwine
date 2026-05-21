@@ -139,6 +139,20 @@ S32 contextTimeRemaining = DEFAULT_CONTEXT_TIME;
 int count;
 extern struct Block emptyBlock;
 
+static S32 decreaseContextTime(S32 value) {
+    if (value <= MIN_CONTEXT_TIME + CONTEXT_TIME_STEP) {
+        return MIN_CONTEXT_TIME;
+    }
+    return value - CONTEXT_TIME_STEP;
+}
+
+static S32 increaseContextTime(S32 value) {
+    if (value >= MAX_CONTEXT_TIME - CONTEXT_TIME_STEP) {
+        return MAX_CONTEXT_TIME;
+    }
+    return value + CONTEXT_TIME_STEP;
+}
+
 void runThreadSlice(KThread* thread) {
     CPU* cpu;
 
@@ -227,13 +241,9 @@ bool runSlice() {
     }
     if (!scheduledThreads.isEmpty()) {
         if (elapsedTime>11000) {
-            if (contextTime > MIN_CONTEXT_TIME) {
-                contextTime -= CONTEXT_TIME_STEP;
-            }
+            contextTime = decreaseContextTime(contextTime);
         } else if (elapsedTime<9500) {
-            if (contextTime < MAX_CONTEXT_TIME) {
-                contextTime += CONTEXT_TIME_STEP;
-            }
+            contextTime = increaseContextTime(contextTime);
         }
     }
     //klog("ran slice in %dus %d", (U32)elapsedTime, contextTime);    
