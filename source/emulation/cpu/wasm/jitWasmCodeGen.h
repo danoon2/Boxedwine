@@ -372,90 +372,88 @@ public:
     // has side effects that do not match the WASM backend.
     void dynamic_popSeg16(DecodedOp* op) override {
         cpu->thread->process->hasSetSeg[op->reg] = true;
-        emulateSingleOp();
+        fallbackToEmulateSingleOp("popSeg16");
     }
     void dynamic_popSeg32(DecodedOp* op) override {
         cpu->thread->process->hasSetSeg[op->reg] = true;
-        emulateSingleOp();
+        fallbackToEmulateSingleOp("popSeg32");
     }
 
     // Shift/rotate family: narrow rol/ror inline when CF/OF are not needed;
     // the shared dynamic ops still fall back for those flag-producing cases.
-    void dynamic_rcl8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcl8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcl8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcl8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcl16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcl16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcl16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcl16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcl32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcl32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcl32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcl32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcr8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcr8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcr8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcr8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcr16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcr16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcr16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcr16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcr32_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcr32_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcr32cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_rcr32cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shl8_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shl8_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shl8cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shl8cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shl16_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shl16_mem_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shl16cl_reg_op(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_shl16cl_mem_op(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_rcl8_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcl"); }
+    void dynamic_rcl8_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcl"); }
+    void dynamic_rcl8cl_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcl"); }
+    void dynamic_rcl8cl_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcl"); }
+    void dynamic_rcl16_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcl"); }
+    void dynamic_rcl16_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcl"); }
+    void dynamic_rcl16cl_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcl"); }
+    void dynamic_rcl16cl_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcl"); }
+    void dynamic_rcl32_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcl"); }
+    void dynamic_rcl32_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcl"); }
+    void dynamic_rcl32cl_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcl"); }
+    void dynamic_rcl32cl_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcl"); }
+    void dynamic_rcr8_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
+    void dynamic_rcr8_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
+    void dynamic_rcr8cl_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
+    void dynamic_rcr8cl_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
+    void dynamic_rcr16_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
+    void dynamic_rcr16_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
+    void dynamic_rcr16cl_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
+    void dynamic_rcr16cl_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
+    void dynamic_rcr32_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
+    void dynamic_rcr32_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
+    void dynamic_rcr32cl_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
+    void dynamic_rcr32cl_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
+    void dynamic_shl8_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
+    void dynamic_shl8_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
+    void dynamic_shl8cl_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
+    void dynamic_shl8cl_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
+    void dynamic_shl16_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
+    void dynamic_shl16_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
+    void dynamic_shl16cl_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
+    void dynamic_shl16cl_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
     // shl/shr/sar (all widths, imm + cl) — base-class codegen emits
     // native i32.shl/shr_u/shr_s with lazy-flag plumbing. WASM's shifts
     // implicitly mask count to 5 bits (matches x86 b32); b8/b16 forms
     // rely on emitBinOp's post-op maskToWidth, and sar additionally
     // sign-extends to 32 before i32.shr_s.
-    void dynamic_dshlr16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshle16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshlr32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshle32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshlclr16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshlcle16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshlclr32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshlcle32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshrr16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshre16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshrr32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshre32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshrclr16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshrcle16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshrclr32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dshrcle32r32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_dshlr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("shld"); }
+    void dynamic_dshle16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("shld"); }
+    void dynamic_dshlr32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("shld"); }
+    void dynamic_dshle32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("shld"); }
+    void dynamic_dshlclr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("shld"); }
+    void dynamic_dshlcle16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("shld"); }
+    void dynamic_dshlclr32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("shld"); }
+    void dynamic_dshlcle32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("shld"); }
+    void dynamic_dshrr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("shrd"); }
+    void dynamic_dshre16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("shrd"); }
+    void dynamic_dshrr32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("shrd"); }
+    void dynamic_dshre32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("shrd"); }
+    void dynamic_dshrclr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("shrd"); }
+    void dynamic_dshrcle16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("shrd"); }
+    void dynamic_dshrclr32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("shrd"); }
+    void dynamic_dshrcle32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("shrd"); }
 
-    // IMul/PopA: the multi-precision arithmetic (signed mul + overflow flag)
-    // and the multi-word pop sequences don't have simple WASM primitives.
-    // Route through the normal CPU.
-    void dynamic_imulR8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_imulE8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_imulR16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_imulE16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_imulR32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_imulE32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dimulcr16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dimulcr16e16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dimulcr32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dimulcr32e32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dimulr16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dimulr16e16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dimulr32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_dimulr32e32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_popA16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_popA32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_pushA16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_pushA32(DecodedOp* op) override { emulateSingleOp(); }
+    // One-operand IMul/PopA: the multi-precision arithmetic (signed mul +
+    // overflow flag) and the multi-word pop sequences don't have simple WASM
+    // primitives. Route through the normal CPU. 32-bit two/three-operand IMUL
+    // uses the shared dynamic ops plus the WASM imulRR/imulRRI helpers below;
+    // 16-bit forms still fall back until their flag path is fixed.
+    void dynamic_imulR8(DecodedOp* op) override { fallbackToEmulateSingleOp("imul"); }
+    void dynamic_imulE8(DecodedOp* op) override { fallbackToEmulateSingleOp("imul"); }
+    void dynamic_imulR16(DecodedOp* op) override { fallbackToEmulateSingleOp("imul"); }
+    void dynamic_imulE16(DecodedOp* op) override { fallbackToEmulateSingleOp("imul"); }
+    void dynamic_imulR32(DecodedOp* op) override { fallbackToEmulateSingleOp("imul"); }
+    void dynamic_imulE32(DecodedOp* op) override { fallbackToEmulateSingleOp("imul"); }
+    void dynamic_dimulcr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("imul2/3-16"); }
+    void dynamic_dimulcr16e16(DecodedOp* op) override { fallbackToEmulateSingleOp("imul2/3-16"); }
+    void dynamic_dimulr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("imul2/3-16"); }
+    void dynamic_dimulr16e16(DecodedOp* op) override { fallbackToEmulateSingleOp("imul2/3-16"); }
+    void dynamic_popA16(DecodedOp* op) override { fallbackToEmulateSingleOp("popa"); }
+    void dynamic_popA32(DecodedOp* op) override { fallbackToEmulateSingleOp("popa"); }
+    void dynamic_pushA16(DecodedOp* op) override { fallbackToEmulateSingleOp("pusha"); }
+    void dynamic_pushA32(DecodedOp* op) override { fallbackToEmulateSingleOp("pusha"); }
 
     // MUL/DIV/IDIV/BSF/BSR/RCL/RCR/SHLD/SHRD: the JIT helpers (`mulReg`,
     // `divRegRegWithRemainder`, `bsfReg`, `rclReg`, `shldReg`, `absReg`, …)
@@ -464,49 +462,49 @@ public:
     // absReg+callback within one op — would dispatch the entire instruction
     // multiple times via runNextSingleOp, corrupting state. Bypass the
     // helper-based codegen by overriding the whole op to emulateSingleOp.
-    void dynamic_mulR8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_mulE8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_mulR16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_mulE16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_mulR32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_mulE32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_divR8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_divE8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_idivR8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_idivE8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_divR16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_divE16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_idivR16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_idivE16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_divR32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_divE32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_idivR32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_idivE32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_bsfr16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_bsfr16e16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_bsfr32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_bsfr32e32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_bsrr16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_bsrr16e16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_bsrr32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_bsrr32e32(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_mulR8(DecodedOp* op) override { fallbackToEmulateSingleOp("mul"); }
+    void dynamic_mulE8(DecodedOp* op) override { fallbackToEmulateSingleOp("mul"); }
+    void dynamic_mulR16(DecodedOp* op) override { fallbackToEmulateSingleOp("mul"); }
+    void dynamic_mulE16(DecodedOp* op) override { fallbackToEmulateSingleOp("mul"); }
+    void dynamic_mulR32(DecodedOp* op) override { fallbackToEmulateSingleOp("mul"); }
+    void dynamic_mulE32(DecodedOp* op) override { fallbackToEmulateSingleOp("mul"); }
+    void dynamic_divR8(DecodedOp* op) override { fallbackToEmulateSingleOp("div"); }
+    void dynamic_divE8(DecodedOp* op) override { fallbackToEmulateSingleOp("div"); }
+    void dynamic_idivR8(DecodedOp* op) override { fallbackToEmulateSingleOp("idiv"); }
+    void dynamic_idivE8(DecodedOp* op) override { fallbackToEmulateSingleOp("idiv"); }
+    void dynamic_divR16(DecodedOp* op) override { fallbackToEmulateSingleOp("div"); }
+    void dynamic_divE16(DecodedOp* op) override { fallbackToEmulateSingleOp("div"); }
+    void dynamic_idivR16(DecodedOp* op) override { fallbackToEmulateSingleOp("idiv"); }
+    void dynamic_idivE16(DecodedOp* op) override { fallbackToEmulateSingleOp("idiv"); }
+    void dynamic_divR32(DecodedOp* op) override { fallbackToEmulateSingleOp("div"); }
+    void dynamic_divE32(DecodedOp* op) override { fallbackToEmulateSingleOp("div"); }
+    void dynamic_idivR32(DecodedOp* op) override { fallbackToEmulateSingleOp("idiv"); }
+    void dynamic_idivE32(DecodedOp* op) override { fallbackToEmulateSingleOp("idiv"); }
+    void dynamic_bsfr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("bsf"); }
+    void dynamic_bsfr16e16(DecodedOp* op) override { fallbackToEmulateSingleOp("bsf"); }
+    void dynamic_bsfr32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("bsf"); }
+    void dynamic_bsfr32e32(DecodedOp* op) override { fallbackToEmulateSingleOp("bsf"); }
+    void dynamic_bsrr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("bsr"); }
+    void dynamic_bsrr16e16(DecodedOp* op) override { fallbackToEmulateSingleOp("bsr"); }
+    void dynamic_bsrr32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("bsr"); }
+    void dynamic_bsrr32e32(DecodedOp* op) override { fallbackToEmulateSingleOp("bsr"); }
     // (RCL/RCR/SHLD/SHRD ops already overridden in the shift/rotate block above.)
 
     // XADD / CMPXCHG: lazy-flag plumbing in dynamic_RM_WriteM and friends
     // doesn't round-trip cleanly to WASM for these. Defer to normal CPU.
-    void dynamic_xaddr8r8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_xaddr8e8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_xaddr16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_xaddr16e16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_xaddr32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_xaddr32e32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchgr8r8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchge8r8(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchgr16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchge16r16(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchgr32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchge32r32(DecodedOp* op) override { emulateSingleOp(); }
-    void dynamic_cmpxchgg8b(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_xaddr8r8(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd"); }
+    void dynamic_xaddr8e8(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd"); }
+    void dynamic_xaddr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd"); }
+    void dynamic_xaddr16e16(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd"); }
+    void dynamic_xaddr32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd"); }
+    void dynamic_xaddr32e32(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd"); }
+    void dynamic_cmpxchgr8r8(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg"); }
+    void dynamic_cmpxchge8r8(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg"); }
+    void dynamic_cmpxchgr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg"); }
+    void dynamic_cmpxchge16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg"); }
+    void dynamic_cmpxchgr32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg"); }
+    void dynamic_cmpxchge32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg"); }
+    void dynamic_cmpxchgg8b(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg8b"); }
 
     // String ops (movs/cmps/stos/lods/scas, all widths) now use the
     // base-class native codegen; the rep'd loops route through
@@ -542,6 +540,7 @@ public:
 
 protected:
     // Helpers used internally during code generation
+    void fallbackToEmulateSingleOp(const char* family);
     void loadGPReg(U8 emulatedReg);   // emit: local.get cpu; i32.load; local.set localN
     void storeGPReg(U8 emulatedReg);  // emit: local.get cpu; local.get localN; i32.store
 

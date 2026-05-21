@@ -1880,6 +1880,7 @@ void JitWasmCodeGen::movzx(JitWidth dw, RegPtr dest, JitWidth sw, RegPtr src) {
 }
 
 void JitWasmCodeGen::movsx(JitWidth dw, RegPtr dest, JitWidth sw, RegPtr src) {
+    U32 srcLocal = src ? src->hardwareReg() : 0;
     pushRegValue(src);
     switch (sw) {
     case JitWidth::b8:  m_emitter.emitOp(WASM_I32_EXTEND8_S);  break;
@@ -1892,7 +1893,9 @@ void JitWasmCodeGen::movsx(JitWidth dw, RegPtr dest, JitWidth sw, RegPtr src) {
         m_emitter.emitOp(WASM_I32_AND);
     }
     popToReg(dw, dest);
-    if (src && src->emulatedReg == 0xff) freeScratch(src->hardwareReg());
+    if (src && src->emulatedReg == 0xff && (!dest || dest->hardwareReg() != srcLocal)) {
+        freeScratch(srcLocal);
+    }
 }
 
 void JitWasmCodeGen::movValue(JitWidth w, RegPtr dst, DYN_PTR_SIZE imm) {
@@ -2317,6 +2320,30 @@ void JitWasmCodeGen::emulateSingleOp() {
     // Reset the compile-time cache so getCondition uses the safe runtime-read
     // path rather than emitting a guard based on a stale expected flag type.
     currentLazyFlags = FLAGS_NULL;
+}
+
+void JitWasmCodeGen::fallbackToEmulateSingleOp(const char* family) {
+#ifdef BOXEDWINE_WASM_JIT_FALLBACK_STATS
+    static std::mutex fallbackStatsMutex;
+    static std::unordered_map<const char*, U64> fallbackStats;
+    static U64 fallbackTotal = 0;
+    U64 familyCount;
+    U64 total;
+
+    {
+        std::lock_guard<std::mutex> lock(fallbackStatsMutex);
+        familyCount = ++fallbackStats[family];
+        total = ++fallbackTotal;
+    }
+
+    if (total == 1 || (total % 1000) == 0) {
+        klog_fmt("[WASM JIT fallback] total=%llu family=%s count=%llu",
+            (unsigned long long)total, family, (unsigned long long)familyCount);
+    }
+#else
+    (void)family;
+#endif
+    emulateSingleOp();
 }
 
 // ---------------------------------------------------------------------------
