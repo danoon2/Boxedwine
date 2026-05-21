@@ -202,6 +202,23 @@ static inline void boxedwine_wasm_call_block(int tableIndex, int cpuPtr) {
         fired = true;
         klog_fmt("[WASM JIT] first JIT block executed, tableIdx: %d", tableIndex);
     }
+#ifdef BOXEDWINE_MULTI_THREADED
+    // Guard against stale / garbage pfnJitCode values that could produce an
+    // engine-level "table index is out of bounds" trap.
+    //
+    // g_wasmTableNextSlot is initialized to wasmTable.length on the first JIT
+    // compilation and then incremented for each subsequent block; every valid
+    // allocated slot S satisfies S < g_wasmTableNextSlot.  A tableIndex that
+    // falls outside (0, g_wasmTableNextSlot) was never issued by our allocator
+    // (could be a torn read, a stale DecodedOp value from before JIT, etc.).
+    // Log it and bail out so the normal CPU interpreter picks up execution on
+    // the next dispatch rather than crashing the worker thread.
+    if (tableIndex <= 0 || tableIndex >= g_wasmTableNextSlot) {
+        klog_fmt("[WASM JIT] WARNING: call_block skipped bad tableIndex=%d "
+                 "(nextSlot=%d)", tableIndex, (int)g_wasmTableNextSlot);
+        return;
+    }
+#endif
     // Emscripten WASM32: the value returned by addFunction() (and stored in
     // pfnJitCode as void*) IS the indirect-call table index — i.e. the "function
     // pointer" in Emscripten's ABI.  Clang C++ mode rejects a direct
@@ -221,12 +238,19 @@ EM_JS(void, boxedwine_wasm_free_block, (int tableIndex),
     removeFunction(tableIndex);
 });
 
-// Multi-threaded: the slot counter is monotonically increasing so slots are
-// never reused.  Just null-set the entry to release the function reference;
-// do NOT call removeFunction (its per-worker freeTableIndexes is not shared).
+// Multi-threaded: the slot counter is monotonically increasing, so slots are
+// never reused.  We intentionally leave the table entry non-null: if another
+// thread read pfnJitCode just before removeCodeBlock cleared it, that thread
+// is about to call call_indirect(slot).  Null-setting the slot here would
+// cause a "RuntimeError: null function" in that thread.  Since the slot is
+// never reassigned (monotonic counter), leaving the old function reference
+// in place is safe — at worst, a racing thread runs one extra (stale) JIT
+// block call, which is no worse than the native JIT backends' behaviour under
+// eviction races.
 EM_JS(void, boxedwine_wasm_free_block_mt, (int tableIndex),
 {
-    wasmTable.set(tableIndex, null);
+    // Intentionally empty: see comment above.
+    void(tableIndex);
 });
 
 // ---------------------------------------------------------------------------
