@@ -160,20 +160,12 @@ void Jit::dynamic_pushSeg16(DecodedOp* op) {
     push16(getReadOnlySegValue(op->reg));
 }
 void Jit::dynamic_popSeg16(DecodedOp* op) {
-    // Mark this segment as "set" at JIT-compile time so that subsequent
-    // instructions in the same block see hasSetSeg[reg]=true and use
-    // getTmpSegAddress (a runtime read) rather than flat-mode addressing
-    // (createMemPtr with disp=0). pop-seg updates the segment at runtime
-    // via emulateSingleOp; any following memory op using this segment must
-    // read the address dynamically or it will fault at address 0.
-    cpu->thread->process->hasSetSeg[op->reg] = true;
     emulateSingleOp();
 }
 void Jit::dynamic_pushSeg32(DecodedOp* op) {
     push32(getReadOnlySegValue(op->reg));
 }
 void Jit::dynamic_popSeg32(DecodedOp* op) {
-    cpu->thread->process->hasSetSeg[op->reg] = true;
     emulateSingleOp();
 }
 void Jit::dynamic_pushA16(DecodedOp* op) {

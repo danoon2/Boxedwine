@@ -88,6 +88,7 @@ EM_JS(int, boxedwine_wasm_instantiate,
         if (!fn) return -1;
         var idx = addFunction(fn, 'vi');
 
+#ifndef __TEST
         if (!boxedwine_wasm_instantiate._count) boxedwine_wasm_instantiate._count = 0;
         boxedwine_wasm_instantiate._count++;
         if (boxedwine_wasm_instantiate._count % 1000 === 0) {
@@ -95,6 +96,7 @@ EM_JS(int, boxedwine_wasm_instantiate,
                 ' latestSlot=' + idx +
                 ' tableLen=' + wasmTable.length);
         }
+#endif
 
         return idx;
     } catch(e) {
@@ -190,6 +192,7 @@ EM_JS(int, boxedwine_wasm_instantiate_mt,
                 ' pthreadSelf=0x' + (pthreadSelf >>> 0).toString(16));
         }
 
+#ifndef __TEST
         if (!boxedwine_wasm_instantiate_mt._count) boxedwine_wasm_instantiate_mt._count = 0;
         boxedwine_wasm_instantiate_mt._count++;
         if (boxedwine_wasm_instantiate_mt._count % 1000 === 0) {
@@ -200,6 +203,7 @@ EM_JS(int, boxedwine_wasm_instantiate_mt,
                 ' tableLen=' + wasmTable.length +
                 ' pthreadSelf=0x' + (pthreadSelf >>> 0).toString(16));
         }
+#endif
 
         return slot;
     } catch(e) {

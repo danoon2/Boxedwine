@@ -86,9 +86,20 @@
  * Each fallback exists for a specific reason; if you remove one,
  * understand which constraint it papered over before doing so.
  *
+ *   salc                        SALC does not modify flags. The shared
+ *                               implementation uses negReg2 on CF, which
+ *                               changes WASM lazy-flag state as a backend
+ *                               side effect.
+ *
+ *   popSeg16/popSeg32           The interpreter updates the segment at
+ *                               runtime, but later instructions in the same
+ *                               compiled block must see hasSetSeg[reg] at
+ *                               compile time so they use a runtime segment
+ *                               address instead of a flat address.
+ *
  *   rol/ror b8 + b16            i32.rotl/rotr rotate within the full
  *                               32-bit word; narrowing produces wrong
- *                               results (e.g. ROL b8 0x80,1 → 0x00
+ *                               results (e.g. ROL b8 0x80,1 -> 0x00
  *                               instead of 0x01).
  *
  *   rcl/rcr (all widths)        Need lazy CF chaining across the
@@ -96,21 +107,25 @@
  *                               and the helper-based codegen the base
  *                               class uses doesn't synthesize it.
  *
- *   mul/imul (R8/E8/...)        Lazy CF/OF for "did the result fit in
- *   div/idiv                    the low half"; div also needs the #DE
- *                               trap on zero. Routed through emulator
- *                               which already has the precise
- *                               semantics.
- *   bsf/bsr
+ *   shl b8 + b16                Avoid fragile byte/word lazy-flag handling
+ *                               in the shared dynamic_RI path. shr/sar stay
+ *                               inline because their WASM implementations
+ *                               currently handle count masking and width
+ *                               conversion correctly.
  *
- *   xadd, cmpxchg, cmpxchg8b    Atomic + lock-prefix semantics; we'd
- *                               need to coordinate with the lock
- *                               runtime in common_lock.cpp.
+ *   mul/imul                    Lazy CF/OF for "did the result fit in the
+ *   div/idiv                    low half"; div/idiv also need the #DE trap
+ *   bsf/bsr                     on zero/overflow. Some helper stubs would
+ *                               dispatch emulateSingleOp from inside one
+ *                               dynamic op, so the whole op is overridden.
  *
- *   pushA / popA                Eight sequential pushes/pops; no
- *                               base-class codegen and the manual
- *                               version would need stack-overflow
- *                               handling for each one.
+ *   xadd, cmpxchg, cmpxchg8b    Lazy-flag and read/modify/write plumbing
+ *                               does not round-trip cleanly to WASM yet.
+ *
+ *   pushA / popA                Multi-register stack sequences. Routing
+ *                               through the interpreter preserves the exact
+ *                               per-op stack behavior without duplicating
+ *                               helper logic here.
  */
 
 #ifndef __JIT_WASM_CODE_GEN_H__
@@ -352,6 +367,18 @@ public:
     void direct_cmov(JitWidth w, JitConditional cond, RegPtr dst, RegPtr src) override;
     void direct_setcc(JitConditional cond, RegPtr dst) override;
     bool directDoesAffectFlags(DecodedOp* op) override;
+
+    // WASM-specific fallbacks for cases where the shared JIT implementation
+    // has side effects that do not match the WASM backend.
+    void dynamic_salc(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_popSeg16(DecodedOp* op) override {
+        cpu->thread->process->hasSetSeg[op->reg] = true;
+        emulateSingleOp();
+    }
+    void dynamic_popSeg32(DecodedOp* op) override {
+        cpu->thread->process->hasSetSeg[op->reg] = true;
+        emulateSingleOp();
+    }
 
     // Shift/rotate family: WASM's i32.shl/shr/rotl truncate behavior doesn't
     // match x86 byte/word semantics for CF/OF, and the base dynamic_RI lazy-
