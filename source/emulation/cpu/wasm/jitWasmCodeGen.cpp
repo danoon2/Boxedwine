@@ -32,11 +32,13 @@
 #include <emscripten/em_js.h>
 
 #ifdef BOXEDWINE_MULTI_THREADED
-// Serializes addFunction()/removeFunction() calls across worker threads.
-// Under Emscripten pthreads the wasmTable is shared; wasmTable.grow() (called
-// internally by addFunction) is not thread-safe across workers. This mutex is
-// backed by Atomics on SharedArrayBuffer so it synchronizes cross-worker.
-static BOXEDWINE_MUTEX g_wasmJitTableMutex;
+// Monotonically increasing counter for atomic table slot allocation.
+// Stored in WASM linear memory (SharedArrayBuffer in pthreads builds) so
+// Atomics.add in boxedwine_wasm_instantiate_mt can claim unique slots
+// across all worker threads without a mutex.
+// Value 0 is the "not yet initialized" sentinel; boxedwine_wasm_instantiate_mt
+// uses Atomics.compareExchange to set it to wasmTable.length on the first call.
+static int32_t g_wasmTableNextSlot = 0;
 #endif
 
 // ---------------------------------------------------------------------------
@@ -49,6 +51,7 @@ static BOXEDWINE_MUTEX g_wasmJitTableMutex;
 // Returns the wasmTable index of the compiled "execute(cpu_ptr: i32)" function,
 // or -1 on failure.
 // ---------------------------------------------------------------------------
+// Single-threaded build: use Emscripten's addFunction helper.
 EM_JS(int, boxedwine_wasm_instantiate,
       (const void* bytes, int size, const void** importFns, int importCount),
 {
@@ -85,6 +88,92 @@ EM_JS(int, boxedwine_wasm_instantiate,
         return idx;
     } catch(e) {
         console.error('boxedwine_wasm_instantiate failed:', e);
+        return -1;
+    }
+});
+
+// Multi-threaded build: bypass addFunction() with Atomics-based slot allocation.
+//
+// The root cause of "table index is out of bounds" in pthreads builds:
+// Emscripten's addFunction() uses per-worker JS variables (functionsInTableMap,
+// freeTableIndexes) that are NOT shared across workers.  Even when the C++ side
+// holds a std::recursive_mutex, multiple workers still run their own JS context
+// concurrently and can all see the same wasmTable.length, all call table.grow(1),
+// and all claim the same slot index.
+//
+// Fix: g_wasmTableNextSlot lives in WASM linear memory (SharedArrayBuffer in
+// pthreads builds), so Atomics.add() gives each worker a unique, sequentially
+// assigned slot index.  No mutex is needed; wasmTable.grow() is atomic at the
+// engine level, so concurrent grows are safe (each grow is an indivisible
+// operation and the while-loop retries until the table is large enough).
+EM_JS(int, boxedwine_wasm_instantiate_mt,
+      (const void* bytes, int size, const void** importFns, int importCount, int* nextSlotPtr),
+{
+    try {
+        var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
+        var mod = new WebAssembly.Module(wasmBytes);
+
+        var helpers = {};
+        var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+        for (var i = 0; i < importCount; i++) {
+            helpers['fn_' + i] = wasmTable.get(view[i]);
+        }
+
+        var inst = new WebAssembly.Instance(mod, {
+            'env':     { 'memory': wasmMemory },
+            'helpers': helpers
+        });
+
+        var fn = inst.exports['execute'];
+        if (!fn) return -1;
+
+        // Create a TypedArray view over the shared-memory counter.
+        // nextSlotPtr points to g_wasmTableNextSlot (int32_t) in the main
+        // WASM module's linear memory, which is SharedArrayBuffer in pthreads
+        // builds, making Atomics operations valid and cross-worker safe.
+        var nextSlotTA = new Int32Array(HEAPU8.buffer, nextSlotPtr, 1);
+
+        // Lazy-initialize the counter to the current table size.
+        // Atomics.compareExchange(ta, index, expected, replacement): if the
+        // value at ta[index] == expected, replace it; returns the OLD value.
+        // Only the first worker (seeing 0) succeeds; others see the already-set
+        // value and do nothing — the add below always gives a unique slot.
+        Atomics.compareExchange(nextSlotTA, 0, 0, wasmTable.length);
+
+        // Atomically claim the next free slot index.
+        // Atomics.add returns the value BEFORE the increment, so 'slot' is
+        // the exclusive index this worker owns.
+        var slot = Atomics.add(nextSlotTA, 0, 1);
+
+        // Grow the table until it contains our claimed slot.
+        // wasmTable.grow() is an atomic engine operation; concurrent grows
+        // from different workers are safe — each call either succeeds or
+        // throws if the engine limit is hit.  The while-loop re-checks
+        // wasmTable.length after each grow in case another worker already
+        // grew the table far enough.
+        while (slot >= wasmTable.length) {
+            try {
+                wasmTable.grow(slot - wasmTable.length + 1);
+            } catch(e) {
+                if (slot < wasmTable.length) break; // another worker grew it
+                console.error('[WASM JIT] wasmTable.grow failed:', e);
+                return -1;
+            }
+        }
+
+        wasmTable.set(slot, fn);
+
+        // Diagnostic: log the first compilation and every 100th after that.
+        // Note: _count is per-worker JS state; it reflects per-worker totals.
+        if (!boxedwine_wasm_instantiate_mt._count) boxedwine_wasm_instantiate_mt._count = 0;
+        boxedwine_wasm_instantiate_mt._count++;
+        if (boxedwine_wasm_instantiate_mt._count === 1 || boxedwine_wasm_instantiate_mt._count % 100 === 0) {
+            console.log('[WASM JIT] blocks compiled: ' + boxedwine_wasm_instantiate_mt._count + ', latest tableIdx: ' + slot);
+        }
+
+        return slot;
+    } catch(e) {
+        console.error('boxedwine_wasm_instantiate_mt failed:', e);
         return -1;
     }
 });
@@ -126,9 +215,18 @@ static inline void boxedwine_wasm_call_block(int tableIndex, int cpuPtr) {
     fn(cpuPtr);
 }
 
+// Single-threaded: return the slot to Emscripten's free-list.
 EM_JS(void, boxedwine_wasm_free_block, (int tableIndex),
 {
     removeFunction(tableIndex);
+});
+
+// Multi-threaded: the slot counter is monotonically increasing so slots are
+// never reused.  Just null-set the entry to release the function reference;
+// do NOT call removeFunction (its per-worker freeTableIndexes is not shared).
+EM_JS(void, boxedwine_wasm_free_block_mt, (int tableIndex),
+{
+    wasmTable.set(tableIndex, null);
 });
 
 // ---------------------------------------------------------------------------
@@ -2167,16 +2265,24 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     if (m_wasmBinary.empty()) return;
 
     // Pass the helper function table to the JS instantiator.
-    // Under multiThreadedJit, serialize wasmTable mutations across workers.
+    // In pthreads builds use the Atomics-based allocator; in single-threaded
+    // builds use the standard addFunction() wrapper.
 #ifdef BOXEDWINE_MULTI_THREADED
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(g_wasmJitTableMutex);
-#endif
+    int tableIdx = boxedwine_wasm_instantiate_mt(
+        m_wasmBinary.data(),
+        (int)m_wasmBinary.size(),
+        g_wasmHelperTable,
+        WASM_HELPER_COUNT,
+        &g_wasmTableNextSlot
+    );
+#else
     int tableIdx = boxedwine_wasm_instantiate(
         m_wasmBinary.data(),
         (int)m_wasmBinary.size(),
         g_wasmHelperTable,
         WASM_HELPER_COUNT
     );
+#endif
 
     if (tableIdx < 0) {
         // Instantiation failed — fall back to the normal CPU interpreter
@@ -2249,9 +2355,10 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
         int tableIdx = (int)(uintptr_t)p;
         if (seen.insert(tableIdx).second) {
 #ifdef BOXEDWINE_MULTI_THREADED
-            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(g_wasmJitTableMutex);
-#endif
+            boxedwine_wasm_free_block_mt(tableIdx);
+#else
             boxedwine_wasm_free_block(tableIdx);
+#endif
         }
     }
 }
