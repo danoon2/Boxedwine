@@ -86,12 +86,17 @@ void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* t
 #else
 
 static U32 lastTitleUpdate = 0;
+static bool mainLoopTimingConfigured = false;
 
 bool isMainthread() {
     return true;
 }
 
 void mainloop() {
+    if (!mainLoopTimingConfigured) {
+        emscripten_set_main_loop_timing(EM_TIMING_SETTIMEOUT, 1);
+        mainLoopTimingConfigured = true;
+    }
     U64 startTime = KSystem::getMicroCounter();
     U32 t;
     U32 count=0;
