@@ -81,10 +81,11 @@
  *
  * Ops still routed through emulateSingleOp
  * ----------------------------------------
- * The dynamic_* overrides further down hand certain instructions to the
- * normal CPU interpreter via emulateSingleOp() instead of inlining them.
- * Each fallback exists for a specific reason; if you remove one,
- * understand which constraint it papered over before doing so.
+ * The dynamic_* overrides further down, and a few backend helper stubs in
+ * jitWasmCodeGen.cpp, hand certain instructions to the normal CPU
+ * interpreter via emulateSingleOp() instead of inlining them. Each fallback
+ * exists for a specific reason; if you remove one, understand which
+ * constraint it papered over before doing so.
  *
  *   popSeg16/popSeg32           The interpreter updates the segment at
  *                               runtime, but later instructions in the same
@@ -102,18 +103,42 @@
  *                               and the helper-based codegen the base
  *                               class uses doesn't synthesize it.
  *
- *   div/idiv                    Need the #DE trap on zero/overflow. Some
- *                               helper stubs would dispatch emulateSingleOp
- *                               from inside one dynamic op, so the whole op
- *                               is overridden.
+ *   imul r8/r16, imul m8/m16   Narrow one-operand IMUL needs signed
+ *                               width-sensitive CF/OF handling that the
+ *                               WASM backend does not sign-extend yet.
  *
- *   xadd memory8/16 forms,      Lazy-flag and read/modify/write plumbing
- *   cmpxchg8b                   does not round-trip cleanly to WASM yet.
+ *   16-bit two/three-operand    The result path works, but the shared
+ *   imul                        overflow-flag path has the same narrow
+ *                               signed-width issue.
+ *
+ *   div/idiv b8 + b16           Need the #DE trap on zero/overflow. The
+ *                               32-bit forms are implemented with explicit
+ *                               guards; narrow forms still route the whole
+ *                               op through the interpreter.
+ *
+ *   guarded div/idiv b32        Divisor-zero / quotient-overflow (and
+ *                               IDIV INT64_MIN / -1) paths intentionally
+ *                               fall back so exact #DE behavior is kept.
+ *
+ *   xadd memory8/16 forms       Narrow memory RMW is not currently worth
+ *                               the extra WASM plumbing; memory32 and
+ *                               register forms are emitted.
+ *
+ *   cmpxchg memory8/16          Narrow memory RMW needs careful conditional
+ *                               write and flag handling; memory32 and
+ *                               register forms are emitted.
+ *
+ *   cmpxchg8b                   64-bit compare/update, flags, memory RMW,
+ *                               and lock semantics make this higher risk
+ *                               than the current low fallback count merits.
  *
  *   pushA / popA                Multi-register stack sequences. Routing
  *                               through the interpreter preserves the exact
  *                               per-op stack behavior without duplicating
  *                               helper logic here.
+ *
+ *   bswap32                     The backend byteSwapReg32 helper is still
+ *                               a conservative emulateSingleOp stub.
  */
 
 #ifndef __JIT_WASM_CODE_GEN_H__
@@ -438,10 +463,10 @@ public:
     void dynamic_divE16(DecodedOp* op) override { fallbackToEmulateSingleOp("div"); }
     void dynamic_idivR16(DecodedOp* op) override { fallbackToEmulateSingleOp("idiv"); }
     void dynamic_idivE16(DecodedOp* op) override { fallbackToEmulateSingleOp("idiv"); }
-    void dynamic_divR32(DecodedOp* op) override { fallbackToEmulateSingleOp("div"); }
-    void dynamic_divE32(DecodedOp* op) override { fallbackToEmulateSingleOp("div"); }
-    void dynamic_idivR32(DecodedOp* op) override { fallbackToEmulateSingleOp("idiv"); }
-    void dynamic_idivE32(DecodedOp* op) override { fallbackToEmulateSingleOp("idiv"); }
+    void dynamic_divR32(DecodedOp* op) override;
+    void dynamic_divE32(DecodedOp* op) override;
+    void dynamic_idivR32(DecodedOp* op) override;
+    void dynamic_idivE32(DecodedOp* op) override;
     // (RCL/RCR/SHLD/SHRD ops already overridden in the shift/rotate block above.)
 
     // Narrow memory XADD / narrow memory CMPXCHG: lazy-flag and
@@ -497,6 +522,8 @@ public:
 protected:
     // Helpers used internally during code generation
     void fallbackToEmulateSingleOp(const char* family);
+    void dynamic_div32(DecodedOp* op, RegPtr src);
+    void dynamic_idiv32(DecodedOp* op, RegPtr src);
     void dynamic_cmpxchgReg(JitWidth w, U8 dstReg, U8 srcReg);
     void dynamic_cmpxchgMem32(DecodedOp* op);
     void loadGPReg(U8 emulatedReg);   // emit: local.get cpu; i32.load; local.set localN

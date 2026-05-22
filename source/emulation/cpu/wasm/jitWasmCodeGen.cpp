@@ -1971,6 +1971,154 @@ void JitWasmCodeGen::imulRR(JitWidth w, RegPtr dst, RegPtr src, RegPtr ov) {
 }
 void JitWasmCodeGen::divRegRegWithRemainder(JitWidth w, RegPtr d, RegPtr dh, RegPtr s) { emulateSingleOp(); }
 void JitWasmCodeGen::idivRegRegWithRemainder(JitWidth w, RegPtr d, RegPtr dh, RegPtr s) { emulateSingleOp(); }
+
+void JitWasmCodeGen::dynamic_divR32(DecodedOp* op) {
+    dynamic_div32(op, getReadOnlyReg(op->reg));
+}
+
+void JitWasmCodeGen::dynamic_divE32(DecodedOp* op) {
+    dynamic_div32(op, read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, getTmpReg()));
+}
+
+static void emitSignedDiv32Dividend(WasmEmitter& emitter, RegPtr eax, RegPtr edx, const std::function<void(RegPtr)>& pushRegValue) {
+    pushRegValue(edx);
+    emitter.emitOp(WASM_I64_EXTEND_I32_U);
+    emitter.emitI64Const(32);
+    emitter.emitOp(WASM_I64_SHL);
+    pushRegValue(eax);
+    emitter.emitOp(WASM_I64_EXTEND_I32_U);
+    emitter.emitOp(WASM_I64_OR);
+}
+
+void JitWasmCodeGen::dynamic_div32(DecodedOp* op, RegPtr src) {
+    (void)op;
+    RegPtr eax = getReg(0);
+    RegPtr edx = getReg(2);
+    U32 divisorLocal = allocScratch();
+    RegPtr divisor = makeWasmReg((U8)divisorLocal, WASM_GP_LOCAL_COUNT);
+
+    pushRegValue(src);
+    m_emitter.emitLocalSet(divisorLocal);
+
+    // x86 raises #DE for divisor zero or quotient overflow. Fallback to the
+    // interpreter for those rare paths so WASM never executes a trapping div.
+    IfNot(JitWidth::b32, divisor); {
+        emulateSingleOp();
+        blockExit();
+    } StartElse(); {
+        IfGreaterThanOrEqual(JitWidth::b32, ComparisonType::Unsigned, edx, divisor); {
+            emulateSingleOp();
+            blockExit();
+        } StartElse(); {
+            pushRegValue(edx);
+            m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+            m_emitter.emitI64Const(32);
+            m_emitter.emitOp(WASM_I64_SHL);
+            pushRegValue(eax);
+            m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+            m_emitter.emitOp(WASM_I64_OR);
+            m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+
+            m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+            pushRegValue(divisor);
+            m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+            m_emitter.emitOp(WASM_I64_DIV_U);
+            m_emitter.emitOp(WASM_I32_WRAP_I64);
+            popToReg(JitWidth::b32, eax);
+
+            m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+            pushRegValue(divisor);
+            m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+            m_emitter.emitOp(WASM_I64_REM_U);
+            m_emitter.emitOp(WASM_I32_WRAP_I64);
+            popToReg(JitWidth::b32, edx);
+
+            storeLazyFlagType(FLAGS_NONE);
+            currentLazyFlags = FLAGS_NONE;
+        } EndIf();
+    } EndIf();
+
+    freeScratch(divisorLocal);
+}
+
+void JitWasmCodeGen::dynamic_idivR32(DecodedOp* op) {
+    dynamic_idiv32(op, getReadOnlyReg(op->reg));
+}
+
+void JitWasmCodeGen::dynamic_idivE32(DecodedOp* op) {
+    dynamic_idiv32(op, read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, getTmpReg()));
+}
+
+void JitWasmCodeGen::dynamic_idiv32(DecodedOp* op, RegPtr src) {
+    (void)op;
+    RegPtr eax = getReg(0);
+    RegPtr edx = getReg(2);
+    U32 divisorLocal = allocScratch();
+    U32 remainderLocal = allocScratch();
+    RegPtr divisor = makeWasmReg((U8)divisorLocal, WASM_GP_LOCAL_COUNT);
+    RegPtr remainder = makeWasmReg((U8)remainderLocal, WASM_GP_LOCAL_COUNT);
+
+    pushRegValue(src);
+    m_emitter.emitLocalSet(divisorLocal);
+    emitSignedDiv32Dividend(m_emitter, eax, edx, [this](RegPtr reg) { pushRegValue(reg); });
+    m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+
+    branchBoundary();
+    pushRegValue(divisor);
+    m_emitter.emitOp(WASM_I32_EQZ);
+    pushRegValue(divisor);
+    m_emitter.emitI32Const(-1);
+    m_emitter.emitOp(WASM_I32_EQ);
+    m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+    m_emitter.emitI64Const((S64)(-9223372036854775807LL - 1));
+    m_emitter.emitOp(WASM_I64_EQ);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.emitIf();
+    {
+        emulateSingleOp();
+        blockExit();
+    } StartElse(); {
+        m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+        pushRegValue(divisor);
+        m_emitter.emitOp(WASM_I64_EXTEND_I32_S);
+        m_emitter.emitOp(WASM_I64_DIV_S);
+        m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+
+        branchBoundary();
+        m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+        m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+        m_emitter.emitOp(WASM_I32_WRAP_I64);
+        m_emitter.emitOp(WASM_I64_EXTEND_I32_S);
+        m_emitter.emitOp(WASM_I64_NE);
+        m_emitter.emitIf();
+        {
+            emulateSingleOp();
+            blockExit();
+        } StartElse(); {
+            emitSignedDiv32Dividend(m_emitter, eax, edx, [this](RegPtr reg) { pushRegValue(reg); });
+            pushRegValue(divisor);
+            m_emitter.emitOp(WASM_I64_EXTEND_I32_S);
+            m_emitter.emitOp(WASM_I64_REM_S);
+            m_emitter.emitOp(WASM_I32_WRAP_I64);
+            m_emitter.emitLocalSet(remainderLocal);
+
+            m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+            m_emitter.emitOp(WASM_I32_WRAP_I64);
+            popToReg(JitWidth::b32, eax);
+
+            pushRegValue(remainder);
+            popToReg(JitWidth::b32, edx);
+
+            storeLazyFlagType(FLAGS_NONE);
+            currentLazyFlags = FLAGS_NONE;
+        } EndIf();
+    } EndIf();
+
+    freeScratch(remainderLocal);
+    freeScratch(divisorLocal);
+}
+
 void JitWasmCodeGen::bsfReg(JitWidth w, RegPtr reg, RegPtr rm) {
     pushRegValue(rm);
     maskToWidth(w);
@@ -2675,7 +2823,7 @@ void JitWasmCodeGen::fallbackToEmulateSingleOp(const char* family) {
         std::lock_guard<std::mutex> lock(fallbackStatsMutex);
         ++fallbackStats[family];
         total = ++fallbackTotal;
-        shouldLog = (total % 20) == 0;
+        shouldLog = (total % 5) == 0;
 
         if (shouldLog) {
             for (const auto& entry : fallbackStats) {
