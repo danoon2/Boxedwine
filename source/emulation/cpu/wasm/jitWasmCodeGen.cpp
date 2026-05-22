@@ -1725,17 +1725,206 @@ void JitWasmCodeGen::rorValue(JitWidth w, RegPtr reg, U32 imm) {
     emitNarrowRotate(w, reg, nullptr, imm, true, false);
 }
 
-// Complex rotate-through-carry, shift double, mul/div: fall back to single-op emulation
+// Complex rotate-through-carry and div: fall back to single-op emulation
 void JitWasmCodeGen::rclReg(JitWidth w, RegPtr reg, RegPtr rm, RegPtr cf)    { emulateSingleOp(); }
 void JitWasmCodeGen::rclValue(JitWidth w, RegPtr reg, U32 imm, RegPtr cf)    { emulateSingleOp(); }
 void JitWasmCodeGen::rcrReg(JitWidth w, RegPtr reg, RegPtr rm, RegPtr cf)    { emulateSingleOp(); }
 void JitWasmCodeGen::rcrValue(JitWidth w, RegPtr reg, U32 imm, RegPtr cf)    { emulateSingleOp(); }
-void JitWasmCodeGen::shrdReg(JitWidth w, RegPtr reg, RegPtr rm, RegPtr cl)   { emulateSingleOp(); }
-void JitWasmCodeGen::shrdValue(JitWidth w, RegPtr reg, RegPtr rm, U32 imm)   { emulateSingleOp(); }
-void JitWasmCodeGen::shldReg(JitWidth w, RegPtr reg, RegPtr rm, RegPtr cl)   { emulateSingleOp(); }
-void JitWasmCodeGen::shldValue(JitWidth w, RegPtr reg, RegPtr rm, U32 imm)   { emulateSingleOp(); }
-void JitWasmCodeGen::mulReg(JitWidth w, RegPtr reg)                          { emulateSingleOp(); }
-void JitWasmCodeGen::imulReg(JitWidth w, RegPtr reg)                         { emulateSingleOp(); }
+void JitWasmCodeGen::shrdReg(JitWidth w, RegPtr reg, RegPtr rm, RegPtr cl) {
+    U32 countLocal = allocScratch();
+    U32 bits = w == JitWidth::b16 ? 16 : 32;
+    U32 dstLocal = allocScratch();
+    U32 srcLocal = allocScratch();
+
+    pushRegValue(reg);
+    maskToWidth(w);
+    m_emitter.emitLocalSet(dstLocal);
+    pushRegValue(rm);
+    maskToWidth(w);
+    m_emitter.emitLocalSet(srcLocal);
+    pushRegValue(cl);
+    m_emitter.emitI32Const(0x1f);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitLocalSet(countLocal);
+
+    m_emitter.emitLocalGet(countLocal);
+    m_emitter.emitI32Const(0);
+    m_emitter.emitOp(WASM_I32_NE);
+    m_emitter.emitLocalGet(countLocal);
+    m_emitter.emitI32Const((S32)bits);
+    m_emitter.emitOp(WASM_I32_LE_U);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitIf();
+
+    m_emitter.emitLocalGet(dstLocal);
+    m_emitter.emitLocalGet(countLocal);
+    m_emitter.emitOp(WASM_I32_SHR_U);
+    m_emitter.emitLocalGet(srcLocal);
+    m_emitter.emitI32Const((S32)bits);
+    m_emitter.emitLocalGet(countLocal);
+    m_emitter.emitOp(WASM_I32_SUB);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_OR);
+    maskToWidth(w);
+    popToReg(w, reg);
+
+    m_emitter.emitEnd();
+    freeScratch(srcLocal);
+    freeScratch(dstLocal);
+    freeScratch(countLocal);
+}
+void JitWasmCodeGen::shrdValue(JitWidth w, RegPtr reg, RegPtr rm, U32 imm) {
+    U32 count = imm & 0x1f;
+    if (!count || count > (w == JitWidth::b16 ? 16u : 32u)) {
+        return;
+    }
+
+    pushRegValue(reg);
+    maskToWidth(w);
+    m_emitter.emitI32Const((S32)count);
+    m_emitter.emitOp(WASM_I32_SHR_U);
+    pushRegValue(rm);
+    maskToWidth(w);
+    m_emitter.emitI32Const((S32)((w == JitWidth::b16 ? 16u : 32u) - count));
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_OR);
+    maskToWidth(w);
+    popToReg(w, reg);
+}
+void JitWasmCodeGen::shldReg(JitWidth w, RegPtr reg, RegPtr rm, RegPtr cl) {
+    U32 countLocal = allocScratch();
+    U32 bits = w == JitWidth::b16 ? 16 : 32;
+    U32 dstLocal = allocScratch();
+    U32 srcLocal = allocScratch();
+
+    pushRegValue(reg);
+    maskToWidth(w);
+    m_emitter.emitLocalSet(dstLocal);
+    pushRegValue(rm);
+    maskToWidth(w);
+    m_emitter.emitLocalSet(srcLocal);
+    pushRegValue(cl);
+    m_emitter.emitI32Const(0x1f);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitLocalSet(countLocal);
+
+    m_emitter.emitLocalGet(countLocal);
+    m_emitter.emitI32Const(0);
+    m_emitter.emitOp(WASM_I32_NE);
+    m_emitter.emitLocalGet(countLocal);
+    m_emitter.emitI32Const((S32)bits);
+    m_emitter.emitOp(WASM_I32_LE_U);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitIf();
+
+    m_emitter.emitLocalGet(dstLocal);
+    m_emitter.emitLocalGet(countLocal);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitLocalGet(srcLocal);
+    m_emitter.emitI32Const((S32)bits);
+    m_emitter.emitLocalGet(countLocal);
+    m_emitter.emitOp(WASM_I32_SUB);
+    m_emitter.emitOp(WASM_I32_SHR_U);
+    m_emitter.emitOp(WASM_I32_OR);
+    maskToWidth(w);
+    popToReg(w, reg);
+
+    m_emitter.emitEnd();
+    freeScratch(srcLocal);
+    freeScratch(dstLocal);
+    freeScratch(countLocal);
+}
+void JitWasmCodeGen::shldValue(JitWidth w, RegPtr reg, RegPtr rm, U32 imm) {
+    U32 count = imm & 0x1f;
+    if (!count || count > (w == JitWidth::b16 ? 16u : 32u)) {
+        return;
+    }
+
+    pushRegValue(reg);
+    maskToWidth(w);
+    m_emitter.emitI32Const((S32)count);
+    m_emitter.emitOp(WASM_I32_SHL);
+    pushRegValue(rm);
+    maskToWidth(w);
+    m_emitter.emitI32Const((S32)((w == JitWidth::b16 ? 16u : 32u) - count));
+    m_emitter.emitOp(WASM_I32_SHR_U);
+    m_emitter.emitOp(WASM_I32_OR);
+    maskToWidth(w);
+    popToReg(w, reg);
+}
+void JitWasmCodeGen::mulReg(JitWidth w, RegPtr reg) {
+    if (w == JitWidth::b32) {
+        pushRegValue(getReg(0));
+        m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+        pushRegValue(reg);
+        m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+        m_emitter.emitOp(WASM_I64_MUL);
+        m_emitter.emitLocalTee(WASM_I64_SCRATCH);
+        m_emitter.emitOp(WASM_I32_WRAP_I64);
+        popToReg(JitWidth::b32, getReg(0));
+        m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+        m_emitter.emitI64Const(32);
+        m_emitter.emitOp(WASM_I64_SHR_U);
+        m_emitter.emitOp(WASM_I32_WRAP_I64);
+        popToReg(JitWidth::b32, getReg(2));
+        return;
+    }
+
+    U32 productLocal = allocScratch();
+    pushRegValue(getReg(0));
+    maskToWidth(w);
+    pushRegValue(reg);
+    maskToWidth(w);
+    m_emitter.emitOp(WASM_I32_MUL);
+    m_emitter.emitLocalTee(productLocal);
+    popToReg(JitWidth::b16, getReg(0));
+
+    if (w == JitWidth::b16) {
+        m_emitter.emitLocalGet(productLocal);
+        m_emitter.emitI32Const(16);
+        m_emitter.emitOp(WASM_I32_SHR_U);
+        popToReg(JitWidth::b16, getReg(2));
+    }
+    freeScratch(productLocal);
+}
+
+void JitWasmCodeGen::imulReg(JitWidth w, RegPtr reg) {
+    if (w == JitWidth::b32) {
+        pushRegValue(getReg(0));
+        m_emitter.emitOp(WASM_I64_EXTEND_I32_S);
+        pushRegValue(reg);
+        m_emitter.emitOp(WASM_I64_EXTEND_I32_S);
+        m_emitter.emitOp(WASM_I64_MUL);
+        m_emitter.emitLocalTee(WASM_I64_SCRATCH);
+        m_emitter.emitOp(WASM_I32_WRAP_I64);
+        popToReg(JitWidth::b32, getReg(0));
+        m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+        m_emitter.emitI64Const(32);
+        m_emitter.emitOp(WASM_I64_SHR_S);
+        m_emitter.emitOp(WASM_I32_WRAP_I64);
+        popToReg(JitWidth::b32, getReg(2));
+        return;
+    }
+
+    U32 productLocal = allocScratch();
+    pushRegValue(getReg(0));
+    maskToWidth(w);
+    emitSignExtendTo32(m_emitter, w);
+    pushRegValue(reg);
+    maskToWidth(w);
+    emitSignExtendTo32(m_emitter, w);
+    m_emitter.emitOp(WASM_I32_MUL);
+    m_emitter.emitLocalTee(productLocal);
+    popToReg(JitWidth::b16, getReg(0));
+
+    if (w == JitWidth::b16) {
+        m_emitter.emitLocalGet(productLocal);
+        m_emitter.emitI32Const(16);
+        m_emitter.emitOp(WASM_I32_SHR_S);
+        popToReg(JitWidth::b16, getReg(2));
+    }
+    freeScratch(productLocal);
+}
 void JitWasmCodeGen::imulRRI(JitWidth w, RegPtr dst, RegPtr src, U32 s2, RegPtr ov) {
     if (!ov) {
         // No overflow tracking: 32-bit multiply is sufficient.
@@ -2327,18 +2516,40 @@ void JitWasmCodeGen::fallbackToEmulateSingleOp(const char* family) {
     static std::mutex fallbackStatsMutex;
     static std::unordered_map<const char*, U64> fallbackStats;
     static U64 fallbackTotal = 0;
-    U64 familyCount;
     U64 total;
+    bool shouldLog;
+    const char* topFamilies[3] = {"", "", ""};
+    U64 topCounts[3] = {0, 0, 0};
 
     {
         std::lock_guard<std::mutex> lock(fallbackStatsMutex);
-        familyCount = ++fallbackStats[family];
+        ++fallbackStats[family];
         total = ++fallbackTotal;
+        shouldLog = total == 10 || total == 50 || (total % 100) == 0;
+
+        if (shouldLog) {
+            for (const auto& entry : fallbackStats) {
+                for (U32 i = 0; i < 3; ++i) {
+                    if (entry.second > topCounts[i]) {
+                        for (U32 j = 2; j > i; --j) {
+                            topCounts[j] = topCounts[j - 1];
+                            topFamilies[j] = topFamilies[j - 1];
+                        }
+                        topCounts[i] = entry.second;
+                        topFamilies[i] = entry.first;
+                        break;
+                    }
+                }
+            }
+        }
     }
 
-    if (total == 1 || (total % 1000) == 0) {
-        klog_fmt("[WASM JIT fallback] total=%llu family=%s count=%llu",
-            (unsigned long long)total, family, (unsigned long long)familyCount);
+    if (shouldLog) {
+        klog_fmt("[WASM JIT fallback] total=%llu top=%s:%llu,%s:%llu,%s:%llu",
+            (unsigned long long)total,
+            topFamilies[0], (unsigned long long)topCounts[0],
+            topFamilies[1], (unsigned long long)topCounts[1],
+            topFamilies[2], (unsigned long long)topCounts[2]);
     }
 #else
     (void)family;
