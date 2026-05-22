@@ -102,19 +102,13 @@
  *                               and the helper-based codegen the base
  *                               class uses doesn't synthesize it.
  *
- *   shl b8 + b16                Avoid fragile byte/word lazy-flag handling
- *                               in the shared dynamic_RI path. shr/sar stay
- *                               inline because their WASM implementations
- *                               currently handle count masking and width
- *                               conversion correctly.
- *
  *   div/idiv                    Need the #DE trap on zero/overflow. Some
- *   bsf/bsr                     helper stubs would dispatch emulateSingleOp
+ *                               helper stubs would dispatch emulateSingleOp
  *                               from inside one dynamic op, so the whole op
  *                               is overridden.
  *
- *   xadd, cmpxchg, cmpxchg8b    Lazy-flag and read/modify/write plumbing
- *                               does not round-trip cleanly to WASM yet.
+ *   xadd memory8/16 forms,      Lazy-flag and read/modify/write plumbing
+ *   cmpxchg8b                   does not round-trip cleanly to WASM yet.
  *
  *   pushA / popA                Multi-register stack sequences. Routing
  *                               through the interpreter preserves the exact
@@ -404,14 +398,6 @@ public:
     void dynamic_rcr32_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
     void dynamic_rcr32cl_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
     void dynamic_rcr32cl_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("rcr"); }
-    void dynamic_shl8_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
-    void dynamic_shl8_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
-    void dynamic_shl8cl_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
-    void dynamic_shl8cl_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
-    void dynamic_shl16_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
-    void dynamic_shl16_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
-    void dynamic_shl16cl_reg_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
-    void dynamic_shl16cl_mem_op(DecodedOp* op) override { fallbackToEmulateSingleOp("shl8/16"); }
     // shl/shr/sar (all widths, imm + cl) — base-class codegen emits
     // native i32.shl/shr_u/shr_s with lazy-flag plumbing. WASM's shifts
     // implicitly mask count to 5 bits (matches x86 b32); b8/b16 forms
@@ -437,8 +423,8 @@ public:
     void dynamic_pushA16(DecodedOp* op) override { fallbackToEmulateSingleOp("pusha"); }
     void dynamic_pushA32(DecodedOp* op) override { fallbackToEmulateSingleOp("pusha"); }
 
-    // DIV/IDIV/BSF/BSR/RCL/RCR: the JIT helpers
-    // (`divRegRegWithRemainder`, `bsfReg`, `rclReg`, `absReg`, ...)
+    // DIV/IDIV/RCL/RCR: the JIT helpers
+    // (`divRegRegWithRemainder`, `rclReg`, `absReg`, ...)
     // are stubbed as `emulateSingleOp` here, which only works at the *op*
     // level. Inline use of those helpers — e.g. `Jit::div8` calls absReg+
     // absReg+callback within one op — would dispatch the entire instruction
@@ -456,30 +442,24 @@ public:
     void dynamic_divE32(DecodedOp* op) override { fallbackToEmulateSingleOp("div"); }
     void dynamic_idivR32(DecodedOp* op) override { fallbackToEmulateSingleOp("idiv"); }
     void dynamic_idivE32(DecodedOp* op) override { fallbackToEmulateSingleOp("idiv"); }
-    void dynamic_bsfr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("bsf"); }
-    void dynamic_bsfr16e16(DecodedOp* op) override { fallbackToEmulateSingleOp("bsf"); }
-    void dynamic_bsfr32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("bsf"); }
-    void dynamic_bsfr32e32(DecodedOp* op) override { fallbackToEmulateSingleOp("bsf"); }
-    void dynamic_bsrr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("bsr"); }
-    void dynamic_bsrr16e16(DecodedOp* op) override { fallbackToEmulateSingleOp("bsr"); }
-    void dynamic_bsrr32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("bsr"); }
-    void dynamic_bsrr32e32(DecodedOp* op) override { fallbackToEmulateSingleOp("bsr"); }
     // (RCL/RCR/SHLD/SHRD ops already overridden in the shift/rotate block above.)
 
-    // XADD / CMPXCHG: lazy-flag plumbing in dynamic_RM_WriteM and friends
-    // doesn't round-trip cleanly to WASM for these. Defer to normal CPU.
-    void dynamic_xaddr8r8(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd"); }
-    void dynamic_xaddr8e8(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd"); }
-    void dynamic_xaddr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd"); }
-    void dynamic_xaddr16e16(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd"); }
-    void dynamic_xaddr32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd"); }
-    void dynamic_xaddr32e32(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd"); }
-    void dynamic_cmpxchgr8r8(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg"); }
-    void dynamic_cmpxchge8r8(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg"); }
-    void dynamic_cmpxchgr16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg"); }
-    void dynamic_cmpxchge16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg"); }
-    void dynamic_cmpxchgr32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg"); }
-    void dynamic_cmpxchge32r32(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg"); }
+    // Narrow memory XADD / narrow memory CMPXCHG: lazy-flag and
+    // read/modify/write plumbing doesn't round-trip cleanly to WASM for
+    // these yet. 32-bit non-lock XADD, register XADD, and register CMPXCHG
+    // are handled by WASM-capable dynamic handlers.
+    void dynamic_xaddr8r8(DecodedOp* op) override { dynamic_RR_WriteBoth(op, JitWidth::b8, &Jit::xaddReg, FLAGS_ADD8); }
+    void dynamic_xaddr8e8(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd_mem8"); }
+    void dynamic_xaddr16r16(DecodedOp* op) override { dynamic_RR_WriteBoth(op, JitWidth::b16, &Jit::xaddReg, FLAGS_ADD16); }
+    void dynamic_xaddr16e16(DecodedOp* op) override { fallbackToEmulateSingleOp("xadd_mem16"); }
+    void dynamic_xaddr32r32(DecodedOp* op) override { dynamic_RR_WriteBoth(op, JitWidth::b32, &Jit::xaddReg, FLAGS_ADD32); }
+    void dynamic_xaddr32e32(DecodedOp* op) override { dynamic_RM_WriteM(op, JitWidth::b32, &Jit::xaddReg, FLAGS_ADD32); }
+    void dynamic_cmpxchgr8r8(DecodedOp* op) override;
+    void dynamic_cmpxchge8r8(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg_mem8"); }
+    void dynamic_cmpxchgr16r16(DecodedOp* op) override;
+    void dynamic_cmpxchge16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg_mem16"); }
+    void dynamic_cmpxchgr32r32(DecodedOp* op) override;
+    void dynamic_cmpxchge32r32(DecodedOp* op) override;
     void dynamic_cmpxchgg8b(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg8b"); }
 
     // String ops (movs/cmps/stos/lods/scas, all widths) now use the
@@ -517,6 +497,8 @@ public:
 protected:
     // Helpers used internally during code generation
     void fallbackToEmulateSingleOp(const char* family);
+    void dynamic_cmpxchgReg(JitWidth w, U8 dstReg, U8 srcReg);
+    void dynamic_cmpxchgMem32(DecodedOp* op);
     void loadGPReg(U8 emulatedReg);   // emit: local.get cpu; i32.load; local.set localN
     void storeGPReg(U8 emulatedReg);  // emit: local.get cpu; local.get localN; i32.store
 

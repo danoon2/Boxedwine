@@ -1971,8 +1971,22 @@ void JitWasmCodeGen::imulRR(JitWidth w, RegPtr dst, RegPtr src, RegPtr ov) {
 }
 void JitWasmCodeGen::divRegRegWithRemainder(JitWidth w, RegPtr d, RegPtr dh, RegPtr s) { emulateSingleOp(); }
 void JitWasmCodeGen::idivRegRegWithRemainder(JitWidth w, RegPtr d, RegPtr dh, RegPtr s) { emulateSingleOp(); }
-void JitWasmCodeGen::bsfReg(JitWidth w, RegPtr reg, RegPtr rm)               { emulateSingleOp(); }
-void JitWasmCodeGen::bsrReg(JitWidth w, RegPtr reg, RegPtr rm)               { emulateSingleOp(); }
+void JitWasmCodeGen::bsfReg(JitWidth w, RegPtr reg, RegPtr rm) {
+    pushRegValue(rm);
+    maskToWidth(w);
+    m_emitter.emitOp(WASM_I32_CTZ);
+    popToReg(w, reg);
+}
+
+void JitWasmCodeGen::bsrReg(JitWidth w, RegPtr reg, RegPtr rm) {
+    m_emitter.emitI32Const(31);
+    pushRegValue(rm);
+    maskToWidth(w);
+    m_emitter.emitOp(WASM_I32_CLZ);
+    m_emitter.emitOp(WASM_I32_SUB);
+    popToReg(w, reg);
+}
+
 void JitWasmCodeGen::absReg(JitWidth w, RegPtr reg)                          { emulateSingleOp(); }
 
 void JitWasmCodeGen::byteSwapReg32(RegPtr reg) {
@@ -1995,15 +2009,149 @@ void JitWasmCodeGen::xchgReg(JitWidth w, RegPtr dest, RegPtr src) {
 }
 
 void JitWasmCodeGen::xaddReg(JitWidth w, RegPtr reg, RegPtr rm) {
-    // tmp = reg; reg = reg+rm; rm = tmp
+    // tmp = rm; rm = rm + reg; reg = tmp
+    if (reg->hardwareReg() == rm->hardwareReg() && reg->isHigh == rm->isHigh) {
+        addReg(w, rm, reg);
+        return;
+    }
     U32 tmp = allocScratch();
-    pushRegValue(reg);
+    pushRegValue(rm);
     if (w == JitWidth::b8 || w == JitWidth::b16) maskToWidth(w);
     m_emitter.emitLocalSet(tmp);
-    addReg(w, reg, rm);
+    addReg(w, rm, reg);
     m_emitter.emitLocalGet(tmp);
-    popToReg(w, rm);
+    popToReg(w, reg);
     freeScratch(tmp);
+}
+
+static LazyFlagType cmpFlagsForWidth(JitWidth w) {
+    switch (w) {
+    case JitWidth::b8: return FLAGS_CMP8;
+    case JitWidth::b16: return FLAGS_CMP16;
+    default: return FLAGS_CMP32;
+    }
+}
+
+void JitWasmCodeGen::dynamic_cmpxchgr8r8(DecodedOp* op) {
+    dynamic_cmpxchgReg(JitWidth::b8, op->reg, op->rm);
+}
+
+void JitWasmCodeGen::dynamic_cmpxchgr16r16(DecodedOp* op) {
+    dynamic_cmpxchgReg(JitWidth::b16, op->reg, op->rm);
+}
+
+void JitWasmCodeGen::dynamic_cmpxchgr32r32(DecodedOp* op) {
+    dynamic_cmpxchgReg(JitWidth::b32, op->reg, op->rm);
+}
+
+void JitWasmCodeGen::dynamic_cmpxchge32r32(DecodedOp* op) {
+    dynamic_cmpxchgMem32(op);
+}
+
+void JitWasmCodeGen::dynamic_cmpxchgReg(JitWidth w, U8 dstReg, U8 srcReg) {
+    U32 accLocal = allocScratch();
+    U32 dstLocal = allocScratch();
+    U32 srcLocal = allocScratch();
+    U32 resultLocal = allocScratch();
+
+    RegPtr acc = w == JitWidth::b8 ? getReadOnlyReg8(0) : getReadOnlyReg(0);
+    RegPtr dst = w == JitWidth::b8 ? getReadOnlyReg8(dstReg) : getReadOnlyReg(dstReg);
+    RegPtr src = w == JitWidth::b8 ? getReadOnlyReg8(srcReg) : getReadOnlyReg(srcReg);
+
+    pushRegValue(acc);
+    maskToWidth(w);
+    m_emitter.emitLocalSet(accLocal);
+    pushRegValue(dst);
+    maskToWidth(w);
+    m_emitter.emitLocalSet(dstLocal);
+    pushRegValue(src);
+    maskToWidth(w);
+    m_emitter.emitLocalSet(srcLocal);
+
+    m_emitter.emitLocalGet(accLocal);
+    m_emitter.emitLocalGet(dstLocal);
+    m_emitter.emitOp(WASM_I32_SUB);
+    maskToWidth(w);
+    m_emitter.emitLocalSet(resultLocal);
+
+    RegPtr accTmp = makeWasmReg((U8)accLocal, 0xff);
+    RegPtr dstTmp = makeWasmReg((U8)dstLocal, 0xff);
+    RegPtr srcTmp = makeWasmReg((U8)srcLocal, 0xff);
+    RegPtr resultTmp = makeWasmReg((U8)resultLocal, 0xff);
+
+    storeLazyFlagType(cmpFlagsForWidth(w));
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, dst.u32), accTmp);
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, src.u32), dstTmp);
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, result.u32), resultTmp);
+    currentLazyFlags = cmpFlagsForWidth(w);
+
+    IfEqual(w, accTmp, dstTmp); {
+        m_emitter.emitLocalGet(srcLocal);
+        popToReg(w, w == JitWidth::b8 ? getReg8(dstReg) : getReg(dstReg));
+    } StartElse(); {
+        m_emitter.emitLocalGet(dstLocal);
+        popToReg(w, w == JitWidth::b8 ? getReg8(0) : getReg(0));
+    } EndIf();
+
+    freeScratch(resultLocal);
+    freeScratch(srcLocal);
+    freeScratch(dstLocal);
+    freeScratch(accLocal);
+}
+
+void JitWasmCodeGen::dynamic_cmpxchgMem32(DecodedOp* op) {
+    U32 addrLocal = allocScratch();
+    U32 accLocal = allocScratch();
+    U32 memLocal = allocScratch();
+    U32 srcLocal = allocScratch();
+    U32 resultLocal = allocScratch();
+
+    RegPtr eaa = calculateEaa(op);
+    pushRegValue(eaa);
+    m_emitter.emitLocalSet(addrLocal);
+    if (eaa && eaa->emulatedReg == 0xff) {
+        freeScratch(eaa->hardwareReg());
+    }
+
+    RegPtr addrTmp = makeWasmReg((U8)addrLocal, WASM_GP_LOCAL_COUNT);
+    RegPtr acc = getReadOnlyReg(0);
+    RegPtr src = getReadOnlyReg(op->reg);
+    RegPtr memTmp = makeWasmReg((U8)memLocal, WASM_GP_LOCAL_COUNT);
+
+    read(JitWidth::b32, addrTmp, nullptr, nullptr, memTmp);
+
+    pushRegValue(acc);
+    m_emitter.emitLocalSet(accLocal);
+    pushRegValue(src);
+    m_emitter.emitLocalSet(srcLocal);
+
+    m_emitter.emitLocalGet(accLocal);
+    m_emitter.emitLocalGet(memLocal);
+    m_emitter.emitOp(WASM_I32_SUB);
+    m_emitter.emitLocalSet(resultLocal);
+
+    RegPtr accTmp = makeWasmReg((U8)accLocal, WASM_GP_LOCAL_COUNT);
+    RegPtr srcTmp = makeWasmReg((U8)srcLocal, WASM_GP_LOCAL_COUNT);
+    RegPtr resultTmp = makeWasmReg((U8)resultLocal, WASM_GP_LOCAL_COUNT);
+
+    storeLazyFlagType(FLAGS_CMP32);
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, dst.u32), accTmp);
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, src.u32), memTmp);
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, result.u32), resultTmp);
+    currentLazyFlags = FLAGS_CMP32;
+
+    IfEqual(JitWidth::b32, accTmp, memTmp); {
+        write(JitWidth::b32, addrTmp, srcTmp);
+    } StartElse(); {
+        m_emitter.emitLocalGet(memLocal);
+        popToReg(JitWidth::b32, getReg(0));
+    } EndIf();
+
+    freeScratch(resultLocal);
+    freeScratch(srcLocal);
+    freeScratch(memLocal);
+    freeScratch(accLocal);
+    freeScratch(addrLocal);
 }
 
 // ---------------------------------------------------------------------------
@@ -2515,23 +2663,25 @@ void JitWasmCodeGen::fallbackToEmulateSingleOp(const char* family) {
 #ifdef BOXEDWINE_WASM_JIT_FALLBACK_STATS
     static std::mutex fallbackStatsMutex;
     static std::unordered_map<const char*, U64> fallbackStats;
+    static constexpr U32 FALLBACK_TOP_COUNT = 8;
     static U64 fallbackTotal = 0;
     U64 total;
     bool shouldLog;
-    const char* topFamilies[3] = {"", "", ""};
-    U64 topCounts[3] = {0, 0, 0};
+    const char* topFamilies[FALLBACK_TOP_COUNT] = {};
+    U64 topCounts[FALLBACK_TOP_COUNT] = {};
+    char topText[256] = {};
 
     {
         std::lock_guard<std::mutex> lock(fallbackStatsMutex);
         ++fallbackStats[family];
         total = ++fallbackTotal;
-        shouldLog = total == 10 || total == 50 || (total % 100) == 0;
+        shouldLog = (total % 20) == 0;
 
         if (shouldLog) {
             for (const auto& entry : fallbackStats) {
-                for (U32 i = 0; i < 3; ++i) {
+                for (U32 i = 0; i < FALLBACK_TOP_COUNT; ++i) {
                     if (entry.second > topCounts[i]) {
-                        for (U32 j = 2; j > i; --j) {
+                        for (U32 j = FALLBACK_TOP_COUNT - 1; j > i; --j) {
                             topCounts[j] = topCounts[j - 1];
                             topFamilies[j] = topFamilies[j - 1];
                         }
@@ -2541,15 +2691,30 @@ void JitWasmCodeGen::fallbackToEmulateSingleOp(const char* family) {
                     }
                 }
             }
+            U32 offset = 0;
+            for (U32 i = 0; i < FALLBACK_TOP_COUNT && topCounts[i]; ++i) {
+                int written = std::snprintf(
+                    topText + offset,
+                    sizeof(topText) - offset,
+                    "%s%s:%llu",
+                    i ? "," : "",
+                    topFamilies[i],
+                    (unsigned long long)topCounts[i]);
+                if (written < 0) {
+                    break;
+                }
+                if ((U32)written >= sizeof(topText) - offset) {
+                    offset = sizeof(topText) - 1;
+                    break;
+                }
+                offset += (U32)written;
+            }
         }
     }
 
     if (shouldLog) {
-        klog_fmt("[WASM JIT fallback] total=%llu top=%s:%llu,%s:%llu,%s:%llu",
-            (unsigned long long)total,
-            topFamilies[0], (unsigned long long)topCounts[0],
-            topFamilies[1], (unsigned long long)topCounts[1],
-            topFamilies[2], (unsigned long long)topCounts[2]);
+        klog_fmt("[WASM JIT fallback] total=%llu top=%s",
+            (unsigned long long)total, topText);
     }
 #else
     (void)family;
