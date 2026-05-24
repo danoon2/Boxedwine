@@ -146,11 +146,11 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 
     switch (request & 0xFFFF) {
     case 0x5000: // SNDCTL_DSP_RESET
+#ifdef __EMSCRIPTEN__
         this->audio->closeAudio();
         this->freq = 8000;
         this->channels = 1;
         this->format = AFMT_U8;
-#ifdef __EMSCRIPTEN__
         this->audio->setFragmentSize(DSP_DEFAULT_FRAGMENT_SIZE);
         this->fragmentCount = DSP_DEFAULT_FRAGMENT_COUNT;
         this->bytesWritten = 0;
