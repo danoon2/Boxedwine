@@ -65,11 +65,23 @@ public:
     U32 fragmentCount = DSP_DEFAULT_FRAGMENT_COUNT;
     U32 bytesWritten = 0;
     U32 lastOutputBlocks = 0;
+    BOXEDWINE_CONDITION writeCond = std::make_shared<BoxedWineCondition>(B("DevDsp::writeCond"));
 
 private:
+    class WriteReadyTimer : public KTimerCallback {
+    public:
+        WriteReadyTimer(DevDsp* dsp) : dsp(dsp) {}
+        bool run() override;
+    private:
+        DevDsp* dsp;
+    };
+
+    WriteReadyTimer writeReadyTimer{this};
+
     U32 getEffectiveBufferCapacity();
     U32 getUsedBufferSize();
     U32 getAvailableBufferSize();
+    void ensureWriteReadyTimer();
 };
 
 
@@ -128,6 +140,24 @@ U32 DevDsp::getAvailableBufferSize() {
 
 bool DevDsp::isWriteReady() {
     return this->getAvailableBufferSize() >= this->audio->getFragmentSize();
+}
+
+bool DevDsp::WriteReadyTimer::run() {
+    if (!this->dsp->writeCond->parentsCount()) {
+        return true;
+    }
+    if (this->dsp->isWriteReady()) {
+        BOXEDWINE_CONDITION_SIGNAL_ALL(this->dsp->writeCond);
+    }
+    this->millies = KSystem::getMilliesSinceStart() + 10;
+    return false;
+}
+
+void DevDsp::ensureWriteReadyTimer() {
+    if (!this->writeReadyTimer.active) {
+        this->writeReadyTimer.millies = KSystem::getMilliesSinceStart() + 10;
+        addTimer(&this->writeReadyTimer);
+    }
 }
 
 U32 DevDsp::ioctl(KThread* thread, U32 request) {
@@ -364,7 +394,12 @@ void DevDsp::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLOUT) {
         if (this->isWriteReady()) {
             BOXEDWINE_CONDITION_SIGNAL_ALL(parentCondition);
+        } else {
+            BOXEDWINE_CONDITION_ADD_PARENT(this->writeCond, parentCondition);
+            this->ensureWriteReadyTimer();
         }
+    } else {
+        BOXEDWINE_CONDITION_REMOVE_PARENT(this->writeCond, parentCondition);
     }
 }
 
