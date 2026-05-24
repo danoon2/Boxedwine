@@ -64,7 +64,13 @@ public:
 	U32 writeAudio(U8* data, U32 len) override;
 	U32 getFragmentSize() override {return this->dspFragSize;}
 	void setFragmentSize(U32 size) override;
-	U32 getBufferSize() override {return this->getGuestQueuedAudioSizeWant();}
+	U32 getBufferSize() override {
+#ifdef __EMSCRIPTEN__
+		return this->getGuestQueuedAudioSizeWant();
+#else
+		return 0;
+#endif
+	}
 	U32 getBufferCapacity() override { return DSP_BUFFER_SIZE;}
 
 	U32 bytesPerSampleWant() {
@@ -293,10 +299,14 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 
 	if (this->want.freq != this->got.freq || this->want.channels != this->got.channels || this->want.format != this->got.format) {
 		this->sameFormat = false;
+#ifdef __EMSCRIPTEN__
 		this->stream = SDL_NewAudioStream(this->want.format, this->want.channels, this->want.freq, this->got.format, this->got.channels, this->got.freq);
 		if (!this->stream) {
 			SDL_BuildAudioCVT(&this->cvt, this->want.format, this->want.channels, this->want.freq, this->got.format, this->got.channels, this->got.freq);
 		}
+#else
+		SDL_BuildAudioCVT(&this->cvt, this->want.format, this->want.channels, this->want.freq, this->got.format, this->got.channels, this->got.freq);
+#endif
 	} else {
 		this->sameFormat = true;
 	}
@@ -369,6 +379,7 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		return 0;
 	}
 
+#ifdef __EMSCRIPTEN__
 	U32 queued = this->getGuestQueuedAudioSizeWant();
 	if (queued >= DSP_BUFFER_SIZE) {
 		return -K_EWOULDBLOCK;
@@ -378,6 +389,7 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 	if (!len) {
 		return -K_EWOULDBLOCK;
 	}
+#endif
 
 	if (!this->sameFormat && this->stream) {
 		if (SDL_AudioStreamPut(this->stream, data, (int)len) < 0) {
@@ -412,8 +424,10 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 	} else {
 		SDL_QueueAudio(this->deviceId, data, len);
 	}
+#ifdef __EMSCRIPTEN__
 	addRealQueuedWant(len);
 	topUpSilence();
+#endif
 	return len;
 }
 
