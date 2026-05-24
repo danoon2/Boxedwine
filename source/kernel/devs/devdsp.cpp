@@ -21,7 +21,9 @@
 #include "kscheduler.h"
 #include "../../io/fsvirtualopennode.h"
 #include "oss.h"
+#ifdef __EMSCRIPTEN__
 #include <algorithm>
+#endif
 #include <math.h>
 #include <string.h>
 #include "kdspaudio.h"
@@ -29,11 +31,8 @@
 #ifdef __EMSCRIPTEN__
 static U32 dspMaxOutputFreq = 11025;
 static const U32 DSP_DEFAULT_FRAGMENT_SIZE = 1024;
-#else
-static U32 dspMaxOutputFreq = 48000;
-static const U32 DSP_DEFAULT_FRAGMENT_SIZE = 4096;
-#endif
 static const U32 DSP_DEFAULT_FRAGMENT_COUNT = 8;
+#endif
 
 class DevDsp : public FsVirtualOpenNode {
 public:
@@ -54,12 +53,15 @@ public:
     U32 readNative(U8* buffer, U32 len) override;
     U32 writeNative(U8* buffer, U32 len) override;
     void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
+#ifdef __EMSCRIPTEN__
     bool isWriteReady() override;
+#endif
 
     std::shared_ptr<KDspAudio> audio;
     U32 freq;
     U32 channels;
     U32 format;
+#ifdef __EMSCRIPTEN__
     U32 fragmentCount = DSP_DEFAULT_FRAGMENT_COUNT;
     U32 bytesWritten = 0;
     U32 lastOutputBlocks = 0;
@@ -68,6 +70,7 @@ private:
     U32 getEffectiveBufferCapacity();
     U32 getUsedBufferSize();
     U32 getAvailableBufferSize();
+#endif
 };
 
 
@@ -75,17 +78,15 @@ void dspShutdown() {
     KDspAudio::shutdown();
 }
 
-void dspSetMaxOutputFreq(U32 freq) {
 #ifdef __EMSCRIPTEN__
+void dspSetMaxOutputFreq(U32 freq) {
     if (freq == 11025 || freq == 22050) {
         dspMaxOutputFreq = freq;
     } else {
         kwarn_fmt("Unsupported Emscripten audio frequency %d, using %d", freq, dspMaxOutputFreq);
     }
-#else
-    dspMaxOutputFreq = freq;
-#endif
 }
+#endif
 
 bool DevDsp::setLength(S64 len) {
     return false;
@@ -110,14 +111,11 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
 #endif
 }
 
+#ifdef __EMSCRIPTEN__
 U32 DevDsp::getEffectiveBufferCapacity() {
     U32 capacity = this->audio->getBufferCapacity();
-#ifdef __EMSCRIPTEN__
     U32 fragmentCapacity = this->audio->getFragmentSize() * this->fragmentCount;
     return std::min(capacity, fragmentCapacity ? fragmentCapacity : capacity);
-#else
-    return capacity;
-#endif
 }
 
 U32 DevDsp::getUsedBufferSize() {
@@ -129,12 +127,9 @@ U32 DevDsp::getAvailableBufferSize() {
 }
 
 bool DevDsp::isWriteReady() {
-#ifdef __EMSCRIPTEN__
     return this->getAvailableBufferSize() >= this->audio->getFragmentSize();
-#else
-    return true;
-#endif
 }
+#endif
 
 U32 DevDsp::ioctl(KThread* thread, U32 request) {
     U32 len = (request >> 16) & 0x3FFF;
@@ -146,11 +141,11 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 
     switch (request & 0xFFFF) {
     case 0x5000: // SNDCTL_DSP_RESET
-#ifdef __EMSCRIPTEN__
         this->audio->closeAudio();
         this->freq = 8000;
         this->channels = 1;
         this->format = AFMT_U8;
+#ifdef __EMSCRIPTEN__
         this->audio->setFragmentSize(DSP_DEFAULT_FRAGMENT_SIZE);
         this->fragmentCount = DSP_DEFAULT_FRAGMENT_COUNT;
         this->bytesWritten = 0;
