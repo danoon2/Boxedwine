@@ -65,7 +65,13 @@ public:
 	U32 getFragmentSize() override {return this->dspFragSize;}
 	void setFragmentSize(U32 size) override;
 	U32 getBufferSize() override {return this->getGuestQueuedAudioSizeWant();}
-	U32 getBufferCapacity() override { return DSP_BUFFER_SIZE;}
+	U32 getBufferCapacity() override {
+#ifdef __EMSCRIPTEN__
+		return DSP_BUFFER_SIZE;
+#else
+		return std::max((U32)DSP_BUFFER_SIZE, bytesPerSecondWant() / 4);
+#endif
+	}
 
 	U32 bytesPerSampleWant() {
 		return SDL_AUDIO_BITSIZE(this->want.format) / 8;
@@ -101,7 +107,7 @@ public:
 #ifdef __EMSCRIPTEN__
 		return this->getEstimatedRealQueuedWant();
 #else
-		return 0;
+		return this->getQueuedAudioSizeWant();
 #endif
 	}
 
@@ -370,19 +376,24 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 	}
 
 	U32 blockSize = bytesPerSampleWant() * want.channels;
+	U32 capacity = this->getBufferCapacity();
 #ifdef __EMSCRIPTEN__
 	U32 queued = this->getGuestQueuedAudioSizeWant();
-	if (queued >= DSP_BUFFER_SIZE) {
+	if (queued >= capacity) {
 		return -K_EWOULDBLOCK;
 	}
-	len = std::min(len, (DSP_BUFFER_SIZE - queued) & ~(blockSize - 1));
+	len = std::min(len, (capacity - queued) & ~(blockSize - 1));
 	if (!len) {
 		return -K_EWOULDBLOCK;
 	}
 #else
-	len &= ~(blockSize - 1);
+	U32 queued = this->getGuestQueuedAudioSizeWant();
+	if (queued >= capacity) {
+		return -K_EWOULDBLOCK;
+	}
+	len = std::min(len, (capacity - queued) & ~(blockSize - 1));
 	if (!len) {
-		return 0;
+		return -K_EWOULDBLOCK;
 	}
 #endif
 
