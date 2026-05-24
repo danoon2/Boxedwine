@@ -29,9 +29,13 @@
 #ifdef __EMSCRIPTEN__
 static U32 dspMaxOutputFreq = 11025;
 static const U32 DSP_DEFAULT_FRAGMENT_SIZE = 1024;
+static const U32 DSP_SUPPORTED_OUTPUT_FORMATS = AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_LE | AFMT_U16_BE;
+static const U32 DSP_ENGINE_OUTPUT_FORMATS = AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE;
 #else
 static U32 dspMaxOutputFreq = 48000;
 static const U32 DSP_DEFAULT_FRAGMENT_SIZE = 4096;
+static const U32 DSP_SUPPORTED_OUTPUT_FORMATS = AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_LE | AFMT_U16_BE | AFMT_FLOAT;
+static const U32 DSP_ENGINE_OUTPUT_FORMATS = AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE | AFMT_FLOAT;
 #endif
 static const U32 DSP_DEFAULT_FRAGMENT_COUNT = 8;
 
@@ -209,7 +213,11 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 			this->format = AFMT_U8;
             break;
         case AFMT_FLOAT:
+#ifdef __EMSCRIPTEN__
             this->format = AFMT_S16_LE;
+#else
+            this->format = AFMT_FLOAT;
+#endif
             break;
         }
         if (write)
@@ -247,7 +255,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         return 0;
     }
     case 0x500B: // SNDCTL_DSP_GETFMTS
-        memory->writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_LE | AFMT_U16_BE);
+        memory->writed(IOCTL_ARG1, DSP_SUPPORTED_OUTPUT_FORMATS);
         return 0;
 
 		//typedef struct audio_buf_info {
@@ -316,7 +324,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(p, -1); p+=4; // int pid;
             memory->writed(p, PCM_CAP_OUTPUT); p+=4; // int caps;			/* PCM_CAP_INPUT, PCM_CAP_OUTPUT */
             memory->writed(p, 0); p+=4; // int iformats
-            memory->writed(p, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE); p+=4; // int oformats;
+            memory->writed(p, DSP_ENGINE_OUTPUT_FORMATS); p+=4; // int oformats;
             memory->writed(p, 0); p+=4; // int magic;			/* Reserved for internal use */
             memory->strcpy(p, ""); p+=64; // oss_cmd_t cmd;		/* Command using the device (if known) */
             memory->writed(p, 0); p+=4; // int card_number;
