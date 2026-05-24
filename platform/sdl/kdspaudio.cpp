@@ -101,7 +101,7 @@ public:
 #ifdef __EMSCRIPTEN__
 		return this->getEstimatedRealQueuedWant();
 #else
-		return this->getQueuedAudioSizeWant();
+		return 0;
 #endif
 	}
 
@@ -369,15 +369,22 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		return 0;
 	}
 
+	U32 blockSize = bytesPerSampleWant() * want.channels;
+#ifdef __EMSCRIPTEN__
 	U32 queued = this->getGuestQueuedAudioSizeWant();
 	if (queued >= DSP_BUFFER_SIZE) {
 		return -K_EWOULDBLOCK;
 	}
-	U32 blockSize = bytesPerSampleWant() * want.channels;
 	len = std::min(len, (DSP_BUFFER_SIZE - queued) & ~(blockSize - 1));
 	if (!len) {
 		return -K_EWOULDBLOCK;
 	}
+#else
+	len &= ~(blockSize - 1);
+	if (!len) {
+		return 0;
+	}
+#endif
 
 	if (!this->sameFormat && this->stream) {
 		if (SDL_AudioStreamPut(this->stream, data, (int)len) < 0) {
@@ -412,8 +419,10 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 	} else {
 		SDL_QueueAudio(this->deviceId, data, len);
 	}
+#ifdef __EMSCRIPTEN__
 	addRealQueuedWant(len);
 	topUpSilence();
+#endif
 	return len;
 }
 

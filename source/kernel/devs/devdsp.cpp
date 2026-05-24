@@ -110,8 +110,12 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
 
 U32 DevDsp::getEffectiveBufferCapacity() {
     U32 capacity = this->audio->getBufferCapacity();
+#ifdef __EMSCRIPTEN__
     U32 fragmentCapacity = this->audio->getFragmentSize() * this->fragmentCount;
     return std::min(capacity, fragmentCapacity ? fragmentCapacity : capacity);
+#else
+    return capacity;
+#endif
 }
 
 U32 DevDsp::getUsedBufferSize() {
