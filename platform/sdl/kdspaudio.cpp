@@ -24,6 +24,19 @@
 
 #define DSP_BUFFER_SIZE (1024*32)
 
+#ifndef __EMSCRIPTEN__
+static bool sdlAudioOpen;
+static U8 sdlSilence;
+
+static void closeSdlAudio() {
+	if (sdlAudioOpen) {
+		sdlAudioOpen = false;
+		SDL_PauseAudio(1);
+		SDL_CloseAudio();
+	}
+}
+#endif
+
 class KDspAudioSdl : public KDspAudio, public std::enable_shared_from_this<KDspAudioSdl> {
 public:
 	KDspAudioSdl() {
@@ -72,6 +85,11 @@ public:
 #endif
 	}
 	U32 getBufferCapacity() override { return DSP_BUFFER_SIZE;}
+
+#ifndef __EMSCRIPTEN__
+	void onClose();
+	void closeAudioFromAudioThread();
+#endif
 
 	U32 bytesPerSampleWant() {
 		return SDL_AUDIO_BITSIZE(this->want.format) / 8;
@@ -143,13 +161,19 @@ public:
 	SDL_AudioStream* stream = nullptr;
 	U32 openedFormat = 0;
 	int cvtBufLen = 0;
+#ifndef __EMSCRIPTEN__
+	int cvtBufPos = 0;
+#endif
 	unsigned char* cvtBuf = nullptr;
 	std::vector<U8> streamBuffer;
 	bool sameFormat = false;
 	U32 dspFragSize = 4096;
 	bool open = false;
-	std::deque<U8> audioBuffer; // only used when KSystem::soundEnabled is false
+	std::deque<U8> audioBuffer;
 	SDL_AudioDeviceID deviceId = 0;
+#ifndef __EMSCRIPTEN__
+	bool closeWhenDone = false;
+#endif
 	U32 realQueuedWant = 0;
 	U32 lastRealQueuedTime = 0;
 	std::vector<U8> silenceBuffer;
@@ -205,6 +229,79 @@ public:
 	}
 };
 
+#ifndef __EMSCRIPTEN__
+// Not really a voice; currently voices are not mixed.
+static std::list<std::shared_ptr<KDspAudioSdl>> voices;
+
+static void audioCallback(void* /*userdata*/, U8* stream, S32 len) {
+	if (!voices.size()) {
+		memset(stream, sdlSilence, len);
+		return;
+	}
+	std::shared_ptr<KDspAudioSdl> data = voices.front();
+	if (data->closeWhenDone && data->audioBuffer.size() == 0 && (data->cvtBufPos == 0 || data->cvtBufPos >= data->cvt.len_cvt)) {
+		data->closeAudioFromAudioThread();
+		memset(stream, sdlSilence, len);
+		return;
+	}
+
+	S32 available = (S32)data->audioBuffer.size();
+
+	if (!data->sameFormat) {
+		if (data->cvtBufPos < data->cvt.len_cvt) {
+			S32 todo = data->cvt.len_cvt - data->cvtBufPos;
+			if (todo > len) {
+				todo = len;
+			}
+			memcpy(stream, data->cvt.buf + data->cvtBufPos, todo);
+			data->cvtBufPos += todo;
+			stream += todo;
+			len -= todo;
+		}
+		if (len) {
+			data->cvt.len = available;
+			if (data->cvtBufLen && data->cvtBufLen < data->cvt.len * data->cvt.len_mult) {
+				data->cvtBufLen = 0;
+				SDL_free(data->cvtBuf);
+				data->cvtBuf = nullptr;
+			}
+			if (!data->cvtBufLen) {
+				data->cvtBufLen = data->cvt.len * data->cvt.len_mult;
+				data->cvtBuf = (Uint8*)SDL_malloc(data->cvt.len * data->cvt.len_mult);
+			}
+			data->cvt.buf = data->cvtBuf;
+
+			std::copy(data->audioBuffer.begin(), data->audioBuffer.begin() + available, data->cvt.buf);
+			data->audioBuffer.erase(data->audioBuffer.begin(), data->audioBuffer.begin() + available);
+
+			SDL_ConvertAudio(&data->cvt);
+			S32 todo = data->cvt.len_cvt;
+			if (todo > len) {
+				todo = len;
+			}
+			memcpy(stream, data->cvt.buf, todo);
+			stream += todo;
+			len -= todo;
+			data->cvtBufPos = todo;
+		}
+	} else {
+		if (available > len) {
+			available = len;
+		}
+		if (available) {
+			std::copy(data->audioBuffer.begin(), data->audioBuffer.begin() + available, stream);
+			data->audioBuffer.erase(data->audioBuffer.begin(), data->audioBuffer.begin() + available);
+			len -= available;
+			stream += available;
+		}
+	}
+	if (len) {
+		memset(stream, data->got.silence, len);
+	}
+}
+#endif
+
+#ifdef __EMSCRIPTEN__
 // Voices whose closeAudio was called while audio was still queued to SDL.
 // A timer polls these and finalizes the device close when the queue drains.
 static std::list<std::shared_ptr<KDspAudioSdl>> pendingCloses;
@@ -242,6 +339,7 @@ static void ensureDrainTimer() {
 		drainTimer = SDL_AddTimer(50, drainTimerCb, nullptr);
 	}
 }
+#endif
 
 void KDspAudioSdl::soundEnabled() {
 	if (this->open) {
@@ -250,18 +348,26 @@ void KDspAudioSdl::soundEnabled() {
 }
 
 void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
+#ifdef __EMSCRIPTEN__
 	this->want.callback = nullptr; // SDL_QueueAudio mode
 	this->want.userdata = nullptr;
+#else
+	this->want.callback = audioCallback;
+#endif
 	this->want.format = getSdlFormat(format);
 	this->want.freq = freq;
 	this->want.channels = channels;
 	this->openedFormat = format;
 
 	if (!KSystem::soundEnabled) {
+#ifndef __EMSCRIPTEN__
+		sdlAudioOpen = true;
+#endif
 		this->open = true;
 		return;
 	}
 
+#ifdef __EMSCRIPTEN__
 	{
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pendingClosesMutex);
 		// Drop any pending-close entry; we're reusing this voice.
@@ -283,6 +389,10 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 			this->stream = nullptr;
 		}
 	}
+#else
+	// If the previous audio is still playing, it will get cut off. If I find a game that needs this, then perhaps I should think of a mixer.
+	closeSdlAudio();
+#endif
 
     SDL_AudioSpec requested = this->want;
 #ifdef __MACH__
@@ -290,12 +400,20 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
         requested.freq = 44100;
     }
 #endif
+#ifdef __EMSCRIPTEN__
 	SDL_AudioDeviceID newId = SDL_OpenAudioDevice(nullptr, 0, &requested, &this->got, SDL_AUDIO_ALLOW_ANY_CHANGE);
 	if (newId == 0) {
 		klog_fmt("Failed to open audio: %s", SDL_GetError());
 		return;
 	}
 	this->deviceId = newId;
+#else
+	if (SDL_OpenAudio(&requested, &this->got) < 0) {
+		klog_fmt("Failed to open audio: %s", SDL_GetError());
+	}
+	sdlSilence = this->got.silence;
+	sdlAudioOpen = true;
+#endif
 
 	if (this->want.freq != this->got.freq || this->want.channels != this->got.channels || this->want.format != this->got.format) {
 		this->sameFormat = false;
@@ -312,15 +430,49 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 	}
 
 	this->open = true;	
+#ifdef __EMSCRIPTEN__
 	SDL_PauseAudioDevice(this->deviceId, 0);
+#else
+	voices.push_back(shared_from_this());
+	SDL_PauseAudio(0);
+	if (this->got.size) {
+		//this->dspFragSize = this->got.size;
+	}
+#endif
 	klog_fmt("openAudio: freq=%d(got %d) format=%x(got %x) channels=%d(got %d)", this->want.freq, this->got.freq, this->want.format, this->got.format, this->want.channels, this->got.channels);
 }
+
+#ifndef __EMSCRIPTEN__
+void KDspAudioSdl::closeAudioFromAudioThread() {
+	if (this->open) {
+		this->onClose();
+	}
+}
+#endif
 
 void KDspAudioSdl::closeAudio() {
 	if (!KSystem::soundEnabled) {
 		this->open = false;
 		return;
 	}
+#ifndef __EMSCRIPTEN__
+	if (this->open) {
+		bool needClose = true;
+		{
+			SDL_LockAudio();
+			if (audioBuffer.size() || (this->cvtBufPos != 0 && this->cvtBufPos < this->cvt.len_cvt)) {
+				closeWhenDone = true;
+				needClose = false;
+			}
+			SDL_UnlockAudio();
+		}
+		if (needClose) {
+			closeSdlAudio();
+			this->onClose();
+		}
+	}
+	return;
+#else
 	if (!this->open) {
 		return;
 	}
@@ -338,7 +490,28 @@ void KDspAudioSdl::closeAudio() {
 		SDL_CloseAudioDevice(this->deviceId);
 		this->deviceId = 0;
 	}
+#endif
 }
+
+#ifndef __EMSCRIPTEN__
+void KDspAudioSdl::onClose() {
+	if (!KSystem::soundEnabled) {
+		this->open = false;
+		return;
+	}
+	auto it = voices.begin();
+	while (it != voices.end()) {
+		std::shared_ptr<KDspAudioSdl> p = *it;
+		if (p == shared_from_this()) {
+			it = voices.erase(it);
+			break;
+		} else {
+			it++;
+		}
+	}
+	this->open = false;
+}
+#endif
 
 void KDspAudioSdl::setFragmentSize(U32 size) {
 #ifdef __EMSCRIPTEN__
@@ -353,12 +526,13 @@ void KDspAudioSdl::setFragmentSize(U32 size) {
 	this->dspFragSize = size ? size : blockSize;
 }
 
-U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {	
+U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
+	U32 wantBytesPerSecond = want.freq * want.channels * bytesPerSampleWant();
+	U32 delay = wantBytesPerSecond / 8;
+
 	if (!KSystem::soundEnabled) {
 		static U32 timeSinceLastWrite;
 
-		U32 wantBytesPerSecond = want.freq * want.channels * bytesPerSampleWant();
-		U32 delay = wantBytesPerSecond / 8;
 		U32 elapsedTime = KSystem::getMilliesSinceStart() - timeSinceLastWrite;
 		U32 bytesToRemove = wantBytesPerSecond * elapsedTime / 1000;
 
@@ -375,11 +549,25 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		return len;
 	}
 
-	if (!this->open || !this->deviceId) {
+	if (!this->open) {
 		return 0;
 	}
 
-#ifdef __EMSCRIPTEN__
+#ifndef __EMSCRIPTEN__
+	SDL_LockAudio();
+	if (this->audioBuffer.size() > delay) {
+		SDL_UnlockAudio();
+		return -K_EWOULDBLOCK;
+	}
+	U32 blockSize = bytesPerSampleWant() * want.channels;
+	len = std::min(len, ((delay - (U32)this->audioBuffer.size()) & ~(blockSize - 1)));
+	audioBuffer.insert(this->audioBuffer.end(), data, data + len);
+	SDL_UnlockAudio();
+	return len;
+#else
+	if (!this->deviceId) {
+		return 0;
+	}
 	U32 queued = this->getGuestQueuedAudioSizeWant();
 	if (queued >= DSP_BUFFER_SIZE) {
 		return -K_EWOULDBLOCK;
@@ -427,8 +615,8 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 #ifdef __EMSCRIPTEN__
 	addRealQueuedWant(len);
 	topUpSilence();
-#endif
 	return len;
+#endif
 }
 
 static U32 nextId = 0;
@@ -463,6 +651,7 @@ void KDspAudio::shutdown() {
 	if (!KSystem::soundEnabled) {
 		return;
 	}	
+#ifdef __EMSCRIPTEN__
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pendingClosesMutex);
 	if (drainTimer) {
 		SDL_RemoveTimer(drainTimer);
@@ -475,4 +664,8 @@ void KDspAudio::shutdown() {
 		}
 	}
 	pendingCloses.clear();
+#else
+	SDL_PauseAudio(1);
+	SDL_CloseAudio();
+#endif
 }
