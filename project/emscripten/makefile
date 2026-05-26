@@ -1,17 +1,12 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release releasePerf test multiThreaded jit jitPerf testJit multiThreadedJit
+.PHONY: default all clean release test multiThreaded jit testJit multiThreadedJit
 
 default all: release
 
 release: export BUILD_DIR := Build/Release
 release: export EXTRA_CPP_FLAGS := $(RELEASE_FLAGS)
 release: export SHELL_FILE := shell.html
-# Like release but also copies the web-app support files into the build folder
-# so the directory is self-contained for deployment or local testing.
-releasePerf: export BUILD_DIR := Build/ReleasePerf
-releasePerf: export EXTRA_CPP_FLAGS := $(RELEASE_FLAGS)
-releasePerf: export SHELL_FILE := shell.html
 test: export BUILD_DIR := Build/Test
 test: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC
 test: export SHELL_FILE := shelltest.html
@@ -34,12 +29,6 @@ jit: export BUILD_DIR := Build/Jit
 jit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
 jit: export SHELL_FILE := shell.html
 jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
-# Like jit but also copies the web-app support files into the build folder
-# so the directory is self-contained for deployment or local testing.
-jitPerf: export BUILD_DIR := Build/JitPerf
-jitPerf: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
-jitPerf: export SHELL_FILE := shell.html
-jitPerf: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
 # Like the test target but with the WASM JIT enabled, so the CPU test suite
 # exercises JIT-compiled blocks instead of the normal interpreter.
 testJit: export BUILD_DIR := Build/TestJit
@@ -72,14 +61,6 @@ jit release test testJit multiThreaded testMultiThreaded:
 multiThreadedJit:
 	@$(MAKE)
 	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip PERF_W95.EXE.zip Build/MultiThreadedJit/
-
-releasePerf:
-	@$(MAKE)
-	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip PERF_W95.EXE.zip Build/ReleasePerf/
-
-jitPerf:
-	@$(MAKE)
-	cp boxedwine-shell.js boxedwine.css boxedwine.zip ski32.zip PERF_W95.EXE.zip Build/JitPerf/
 
 clean:
 	$(RM) -r Build

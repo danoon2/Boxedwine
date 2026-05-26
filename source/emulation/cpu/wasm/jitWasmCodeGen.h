@@ -584,6 +584,7 @@ protected:
     // exit so the dispatcher re-decodes. Uses lastCompiledOpLen captured
     // by preCompile.
     void emitBailoutCheck();
+    void emitBlockExitWithProfile(U32 profileHelperIdx);
     U32 lastCompiledOpLen = 0;
 
     WasmEmitter m_emitter;
