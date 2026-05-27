@@ -182,7 +182,17 @@ union SSE {
     simde__m128i pi;
 };
 
+#ifndef JIT_RUN_COUNT
+#if defined(BOXEDWINE_WASM_JIT) && defined(__EMSCRIPTEN__)
+#define JIT_RUN_COUNT 200
+#else
 #define JIT_RUN_COUNT 50
+#endif
+#endif
+
+#if JIT_RUN_COUNT > 254
+#error "JIT_RUN_COUNT must fit in DecodedOp::runCount (U8) and leave room for the JIT_RUN_COUNT + 1 sentinel"
+#endif
 
 class CPU: public DecodeBlockCallback {
 public:
@@ -221,6 +231,7 @@ public:
     // direct-load`, skipping the full helper round-trip on cache hits.
     // Encoded as `(U32)(uintptr_t)wasmReadPageBase`/`wasmWritePageBase`
     // (32-bit linear-memory offsets under emcc).
+    U32 wasmJitMemoryData = 0;
     U32 wasmReadPageBaseArray  = 0;
     U32 wasmWritePageBaseArray = 0;
 #endif

@@ -192,9 +192,9 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 # Files that need -fwasm-exceptions so their catch(...) blocks compile to WASM
 # catch_all instructions and can intercept WASM exceptions from JIT blocks.
 #
-# jitWasmCodeGen.cpp: wasmStartJITOp / wasmDiag_runAndCompare call
-#   boxedwine_wasm_call_block via call_indirect; their try/catch must be WASM
-#   catch_all to intercept exceptions thrown inside JIT WASM modules.
+# jitWasmCodeGen.cpp: calls generated JIT blocks via call_indirect and contains
+#   diagnostic catch paths. Keep it in the WASM EH set so exceptions thrown
+#   inside JIT WASM modules stay in the same exception model while propagating.
 #
 # kscheduler.cpp: runThreadSlice is the top-level CPU-loop handler.  Its
 #   catch(...) must be WASM catch_all so it can catch throw 2 (SIGSEGV) and

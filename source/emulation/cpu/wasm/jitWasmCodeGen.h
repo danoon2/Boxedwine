@@ -368,6 +368,15 @@ public:
     void callHostFunctionWithResult(RegPtr result, void* address,
                                     const std::vector<DynParam>& params) override;
     void emulateSingleOp() override;
+    void dynamic_pause(DecodedOp* op) override;
+    void dynamic_FLD_SINGLE_REAL(DecodedOp* op) override;
+    void dynamic_FLD1(DecodedOp* op) override;
+    void dynamic_FDIV_ST0_STj(DecodedOp* op) override;
+    void dynamic_FST_SINGLE_REAL_Pop(DecodedOp* op) override;
+    void dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) override;
+    void dynamic_movsdXmmE64(DecodedOp* op) override;
+    void dynamic_movsdE64Xmm(DecodedOp* op) override;
+    void dynamic_movsd_op(DecodedOp* op) override;
     void nakedCall(RegPtr reg) override;
     void nakedReturn() override;
 
@@ -583,9 +592,13 @@ protected:
     // set by the checking write helper), set cpu->eip to the next op and
     // exit so the dispatcher re-decodes. Uses lastCompiledOpLen captured
     // by preCompile.
+    void emitArmSmcBailout();
     void emitBailoutCheck();
     void emitBlockExitWithProfile(U32 profileHelperIdx);
     U32 lastCompiledOpLen = 0;
+    bool m_needsWasmMemoryPageArrays = false;
+    DecodedOp* m_wasmBlockStartOp = nullptr;
+    DecodedOp* m_currentWasmOp = nullptr;
 
     WasmEmitter m_emitter;
 

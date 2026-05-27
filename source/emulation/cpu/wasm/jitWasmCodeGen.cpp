@@ -23,6 +23,9 @@
 #include "jitWasmCodeGen.h"
 #include "../jit/jitCodeGen.h"
 #include "../common/cpu.h"
+#include "../common/common_fpu.h"
+#include "../common/common_sse2.h"
+#include "../normal/normal_strings.h"
 #include "../normal/normalCPU.h"
 #include "../../softmmu/soft_code_page.h"
 #include "../../softmmu/kmemory_soft.h"
@@ -68,6 +71,7 @@ static std::atomic<U64> g_wasmJitProfileExitNext1{0};
 static std::atomic<U64> g_wasmJitProfileExitNext2{0};
 static std::atomic<U64> g_wasmJitProfileExitJump{0};
 static std::atomic<U64> g_wasmJitProfileExitGeneric{0};
+static std::atomic<U64> g_wasmJitProfileFetchNextCalls{0};
 static std::atomic<U64> g_wasmJitProfileHelperMemRead{0};
 static std::atomic<U64> g_wasmJitProfileHelperMemWrite{0};
 static std::atomic<U64> g_wasmJitProfileHelperMemWriteCheck{0};
@@ -78,7 +82,75 @@ static std::atomic<U64> g_wasmJitProfileHelperCond{0};
 static std::atomic<U64> g_wasmJitProfileInlineCond{0};
 static std::atomic<U64> g_wasmJitProfileCondByType[16];
 static std::atomic<U64> g_wasmJitProfileCondByLazyFlag[52];
+static std::atomic<U64> g_wasmJitProfileEmulateByInst[InstructionCount];
+static std::atomic<U64> g_wasmJitProfileMovsdTotal{0};
+static std::atomic<U64> g_wasmJitProfileMovsdRep{0};
+static std::atomic<U64> g_wasmJitProfileMovsdSingle{0};
+static std::atomic<U64> g_wasmJitProfileMovsdEa16{0};
+static std::atomic<U64> g_wasmJitProfileMovsdEa32{0};
+static std::atomic<U64> g_wasmJitProfileMovsdSegmented{0};
+static std::atomic<U64> g_wasmJitProfileMovsdFlat{0};
+static std::atomic<U64> g_wasmJitProfileMovsdDf1{0};
+static std::atomic<U64> g_wasmJitProfileMovsdDf0{0};
+static std::atomic<U64> g_wasmJitProfileMovsdRepFlat{0};
+static std::atomic<U64> g_wasmJitProfileMovsdRepSegmented{0};
+static std::atomic<U64> g_wasmJitProfileMovsdRepEa16{0};
+static std::atomic<U64> g_wasmJitProfileJitUs{0};
+static std::atomic<U64> g_wasmJitProfileInstantiateUs{0};
+static std::atomic<U64> g_wasmJitProfileStartUs{0};
+static std::atomic<U64> g_wasmJitProfileStartPreCallUs{0};
+static std::atomic<U64> g_wasmJitProfileStartPostCallUs{0};
+static std::atomic<U64> g_wasmJitProfileCallBlockUs{0};
+static std::atomic<U64> g_wasmJitProfileFetchNextUs{0};
+static std::atomic<U64> g_wasmJitProfileHelperMemReadUs{0};
+static std::atomic<U64> g_wasmJitProfileHelperMemWriteUs{0};
+static std::atomic<U64> g_wasmJitProfileHelperMemWriteCheckUs{0};
+static std::atomic<U64> g_wasmJitProfileHelperBlockEnterUs{0};
+static std::atomic<U64> g_wasmJitProfileHelperEmulateUs{0};
+static std::atomic<U64> g_wasmJitProfileHelperFlagsUs{0};
+static std::atomic<U64> g_wasmJitProfileHelperCondUs{0};
 static std::atomic<U32> g_wasmJitProfileLastLogMs{0};
+
+#define WASM_JIT_PROFILE_TIMING_SAMPLE 1024
+
+static constexpr U32 WASM_JIT_PROFILE_MOVSD_REP = 1;
+static constexpr U32 WASM_JIT_PROFILE_MOVSD_EA16 = 2;
+static constexpr U32 WASM_JIT_PROFILE_MOVSD_SEGMENTED = 4;
+
+static inline U64 wasmJitProfileNowNs() {
+#ifdef __EMSCRIPTEN__
+    return (U64)(emscripten_get_now() * 1000000.0);
+#else
+    return KSystem::getSystemTimeAsMicroSeconds() * 1000;
+#endif
+}
+
+static inline void wasmJitProfileAddElapsed(std::atomic<U64>& counter, U64 startNs) {
+    counter.fetch_add(wasmJitProfileNowNs() - startNs, std::memory_order_relaxed);
+}
+
+static inline void wasmJitProfileAddElapsedScaled(std::atomic<U64>& counter, U64 startNs) {
+    counter.fetch_add((wasmJitProfileNowNs() - startNs) * WASM_JIT_PROFILE_TIMING_SAMPLE, std::memory_order_relaxed);
+}
+
+class WasmJitProfileTimer {
+public:
+    explicit WasmJitProfileTimer(std::atomic<U64>& counter) : counter(counter), startNs(wasmJitProfileNowNs()) {}
+    ~WasmJitProfileTimer() {
+        wasmJitProfileAddElapsed(counter, startNs);
+    }
+private:
+    std::atomic<U64>& counter;
+    U64 startNs;
+};
+
+static U64 wasmJitProfileUs(U64 totalNs) {
+    return totalNs / 1000;
+}
+
+static U64 wasmJitProfileAvgNs(U64 totalNs, U64 count) {
+    return count ? (totalNs / count) : 0;
+}
 
 static const char* wasmJitProfileCondName(U32 cond) {
     static const char* names[] = {
@@ -127,6 +199,76 @@ static void wasmJitProfileFormatTopCounters(char* dst, size_t dstSize, const std
              nameFn(topIndex[3]), (unsigned long long)topValue[3]);
 }
 
+static const char* wasmJitProfileInstName(U32 inst) {
+    switch ((Instruction)inst) {
+    case Pause: return "Pause";
+    case FDIV_ST0_STj: return "FDIV_ST0_STj";
+    case Int80: return "Int80";
+    case Movsd: return "Movsd";
+    case MovsdXmmE64: return "MovsdXmmE64";
+    case MovsdE64Xmm: return "MovsdE64Xmm";
+    case FLD1: return "FLD1";
+    case FLD_SINGLE_REAL: return "FLD_SINGLE_REAL";
+    case FST_SINGLE_REAL_Pop: return "FST_SINGLE_REAL_Pop";
+    case FIST_DWORD_INTEGER_Pop: return "FIST_DWORD_INTEGER_Pop";
+    case RcrR32I8: return "RcrR32I8";
+    case FADD_ST0_STj: return "FADD_ST0_STj";
+    case FCOM_SINGLE_REAL_Pop: return "FCOM_SINGLE_REAL_Pop";
+    case FLD_DOUBLE_REAL: return "FLD_DOUBLE_REAL";
+    case FNSTSW_AX: return "FNSTSW_AX";
+    case Bswap32: return "Bswap32";
+    case SubsdXmmXmm: return "SubsdXmmXmm";
+    case AndpdXmmXmm: return "AndpdXmmXmm";
+    case OrpdXmmXmm: return "OrpdXmmXmm";
+    case MovapdXmmXmm: return "MovapdXmmXmm";
+    case Enter16: return "Enter16";
+    case Lodsw: return "Lodsw";
+    case RorR16I8: return "RorR16I8";
+    case PsllwXmmXmm: return "PsllwXmmXmm";
+    default: return nullptr;
+    }
+}
+
+static void wasmJitProfileFormatTopInstCounters(char* dst, size_t dstSize) {
+    static constexpr U32 TopInstCount = 12;
+    U32 topIndex[TopInstCount] = {};
+    U64 topValue[TopInstCount] = {};
+    for (U32 i = 0; i < InstructionCount; i++) {
+        U64 value = g_wasmJitProfileEmulateByInst[i].load(std::memory_order_relaxed);
+        for (U32 slot = 0; slot < TopInstCount; slot++) {
+            if (value > topValue[slot]) {
+                for (U32 move = TopInstCount - 1; move > slot; move--) {
+                    topValue[move] = topValue[move - 1];
+                    topIndex[move] = topIndex[move - 1];
+                }
+                topValue[slot] = value;
+                topIndex[slot] = i;
+                break;
+            }
+        }
+    }
+    char names[TopInstCount][48];
+    for (U32 i = 0; i < TopInstCount; i++) {
+        const char* name = wasmJitProfileInstName(topIndex[i]);
+        if (name) {
+            snprintf(names[i], sizeof(names[i]), "%s(%u)", name, topIndex[i]);
+        } else {
+            snprintf(names[i], sizeof(names[i]), "%u", topIndex[i]);
+        }
+    }
+    size_t used = 0;
+    for (U32 i = 0; i < TopInstCount && used < dstSize; i++) {
+        int written = snprintf(dst + used, dstSize - used, "%s%s=%llu",
+                               i ? " " : "",
+                               names[i],
+                               (unsigned long long)topValue[i]);
+        if (written < 0) {
+            break;
+        }
+        used += (size_t)written;
+    }
+}
+
 static void wasmJitProfileMaybeLog() {
     U32 now = KSystem::getMilliesSinceStart();
     U32 last = g_wasmJitProfileLastLogMs.load(std::memory_order_relaxed);
@@ -139,18 +281,50 @@ static void wasmJitProfileMaybeLog() {
     U64 compiledBlocks = g_wasmJitProfileCompiledBlocks.load(std::memory_order_relaxed);
     U64 compiledOps = g_wasmJitProfileCompiledOps.load(std::memory_order_relaxed);
     U64 avgOpsX10 = compiledBlocks ? (compiledOps * 10 / compiledBlocks) : 0;
+    U64 startCount = g_wasmJitProfileStartEntries.load(std::memory_order_relaxed);
+    U64 callBlockCount = g_wasmJitProfileCallBlockEntries.load(std::memory_order_relaxed);
+    U64 blockExitCount = g_wasmJitProfileBlockExits.load(std::memory_order_relaxed);
+    U64 fetchNextCount = g_wasmJitProfileFetchNextCalls.load(std::memory_order_relaxed);
+    U64 memReadCount = g_wasmJitProfileHelperMemRead.load(std::memory_order_relaxed);
+    U64 memWriteCount = g_wasmJitProfileHelperMemWrite.load(std::memory_order_relaxed);
+    U64 memWriteCheckCount = g_wasmJitProfileHelperMemWriteCheck.load(std::memory_order_relaxed);
+    U64 blockEnterCount = g_wasmJitProfileHelperBlockEnter.load(std::memory_order_relaxed);
+    U64 emulateCount = g_wasmJitProfileHelperEmulate.load(std::memory_order_relaxed);
+    U64 flagsCount = g_wasmJitProfileHelperFlags.load(std::memory_order_relaxed);
+    U64 condCount = g_wasmJitProfileHelperCond.load(std::memory_order_relaxed);
+    U64 movsdTotal = g_wasmJitProfileMovsdTotal.load(std::memory_order_relaxed);
+    U64 jitUs = g_wasmJitProfileJitUs.load(std::memory_order_relaxed);
+    U64 instantiateUs = g_wasmJitProfileInstantiateUs.load(std::memory_order_relaxed);
+    U64 startUs = g_wasmJitProfileStartUs.load(std::memory_order_relaxed);
+    U64 startPreCallUs = g_wasmJitProfileStartPreCallUs.load(std::memory_order_relaxed);
+    U64 startPostCallUs = g_wasmJitProfileStartPostCallUs.load(std::memory_order_relaxed);
+    U64 callBlockUs = g_wasmJitProfileCallBlockUs.load(std::memory_order_relaxed);
+    U64 fetchNextUs = g_wasmJitProfileFetchNextUs.load(std::memory_order_relaxed);
+    U64 memReadUs = g_wasmJitProfileHelperMemReadUs.load(std::memory_order_relaxed);
+    U64 memWriteUs = g_wasmJitProfileHelperMemWriteUs.load(std::memory_order_relaxed);
+    U64 memWriteCheckUs = g_wasmJitProfileHelperMemWriteCheckUs.load(std::memory_order_relaxed);
+    U64 blockEnterUs = g_wasmJitProfileHelperBlockEnterUs.load(std::memory_order_relaxed);
+    U64 emulateUs = g_wasmJitProfileHelperEmulateUs.load(std::memory_order_relaxed);
+    U64 flagsUs = g_wasmJitProfileHelperFlagsUs.load(std::memory_order_relaxed);
+    U64 condUs = g_wasmJitProfileHelperCondUs.load(std::memory_order_relaxed);
     char topCond[96];
     char topLazy[128];
+    char topEmulate[512];
     wasmJitProfileFormatTopCounters(topCond, sizeof(topCond), g_wasmJitProfileCondByType, 16, wasmJitProfileCondName);
     wasmJitProfileFormatTopCounters(topLazy, sizeof(topLazy), g_wasmJitProfileCondByLazyFlag, 52, wasmJitProfileLazyFlagName);
+    wasmJitProfileFormatTopInstCounters(topEmulate, sizeof(topEmulate));
     klog_fmt("[WASM JIT profile] start=%llu call_block=%llu block_exit=%llu slot_miss=%llu "
              "compiled=%llu avg_ops=%llu.%llu ops[1=%llu 2=%llu 3-4=%llu 5-8=%llu 9-16=%llu 17+=%llu] "
              "exits[next1=%llu next2=%llu jump=%llu generic=%llu] "
-             "helpers[mem_r=%llu mem_w=%llu mem_wc=%llu enter=%llu emulate=%llu flags=%llu cond=%llu inline_cond=%llu] "
-             "cond_top[%s] lazy_top[%s]",
-             (unsigned long long)g_wasmJitProfileStartEntries.load(std::memory_order_relaxed),
-             (unsigned long long)g_wasmJitProfileCallBlockEntries.load(std::memory_order_relaxed),
-             (unsigned long long)g_wasmJitProfileBlockExits.load(std::memory_order_relaxed),
+             "helpers[fetch_next=%llu mem_r=%llu mem_w=%llu mem_wc=%llu enter=%llu emulate=%llu flags=%llu cond=%llu inline_cond=%llu] "
+             "time_us[jit=%llu instantiate=%llu codegen=%llu start=%llu start_pre=%llu start_post=%llu call_block=%llu fetch_next=%llu "
+             "mem_r=%llu mem_w=%llu mem_wc=%llu enter=%llu emulate=%llu flags=%llu cond=%llu] "
+             "avg_ns[start=%llu start_pre=%llu start_post=%llu call_block=%llu fetch_next=%llu mem_r=%llu mem_w=%llu mem_wc=%llu enter=%llu emulate=%llu flags=%llu cond=%llu] "
+             "movsd[total=%llu rep=%llu single=%llu ea16=%llu ea32=%llu seg=%llu flat=%llu df1=%llu df0=%llu rep_flat=%llu rep_seg=%llu rep_ea16=%llu] "
+             "cond_top[%s] lazy_top[%s] emulate_top[%s]",
+             (unsigned long long)startCount,
+             (unsigned long long)callBlockCount,
+             (unsigned long long)blockExitCount,
              (unsigned long long)g_wasmJitProfileSlotMisses.load(std::memory_order_relaxed),
              (unsigned long long)compiledBlocks,
              (unsigned long long)(avgOpsX10 / 10),
@@ -165,25 +339,68 @@ static void wasmJitProfileMaybeLog() {
              (unsigned long long)g_wasmJitProfileExitNext2.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileExitJump.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileExitGeneric.load(std::memory_order_relaxed),
-             (unsigned long long)g_wasmJitProfileHelperMemRead.load(std::memory_order_relaxed),
-             (unsigned long long)g_wasmJitProfileHelperMemWrite.load(std::memory_order_relaxed),
-             (unsigned long long)g_wasmJitProfileHelperMemWriteCheck.load(std::memory_order_relaxed),
-             (unsigned long long)g_wasmJitProfileHelperBlockEnter.load(std::memory_order_relaxed),
-             (unsigned long long)g_wasmJitProfileHelperEmulate.load(std::memory_order_relaxed),
-             (unsigned long long)g_wasmJitProfileHelperFlags.load(std::memory_order_relaxed),
-             (unsigned long long)g_wasmJitProfileHelperCond.load(std::memory_order_relaxed),
+             (unsigned long long)fetchNextCount,
+             (unsigned long long)memReadCount,
+             (unsigned long long)memWriteCount,
+             (unsigned long long)memWriteCheckCount,
+             (unsigned long long)blockEnterCount,
+             (unsigned long long)emulateCount,
+             (unsigned long long)flagsCount,
+             (unsigned long long)condCount,
              (unsigned long long)g_wasmJitProfileInlineCond.load(std::memory_order_relaxed),
+             (unsigned long long)wasmJitProfileUs(jitUs),
+             (unsigned long long)wasmJitProfileUs(instantiateUs),
+             (unsigned long long)wasmJitProfileUs(jitUs > instantiateUs ? jitUs - instantiateUs : 0),
+             (unsigned long long)wasmJitProfileUs(startUs),
+             (unsigned long long)wasmJitProfileUs(startPreCallUs),
+             (unsigned long long)wasmJitProfileUs(startPostCallUs),
+             (unsigned long long)wasmJitProfileUs(callBlockUs),
+             (unsigned long long)wasmJitProfileUs(fetchNextUs),
+             (unsigned long long)wasmJitProfileUs(memReadUs),
+             (unsigned long long)wasmJitProfileUs(memWriteUs),
+             (unsigned long long)wasmJitProfileUs(memWriteCheckUs),
+             (unsigned long long)wasmJitProfileUs(blockEnterUs),
+             (unsigned long long)wasmJitProfileUs(emulateUs),
+             (unsigned long long)wasmJitProfileUs(flagsUs),
+             (unsigned long long)wasmJitProfileUs(condUs),
+             (unsigned long long)wasmJitProfileAvgNs(startUs, startCount),
+             (unsigned long long)wasmJitProfileAvgNs(startPreCallUs, callBlockCount),
+             (unsigned long long)wasmJitProfileAvgNs(startPostCallUs, callBlockCount),
+             (unsigned long long)wasmJitProfileAvgNs(callBlockUs, callBlockCount),
+             (unsigned long long)wasmJitProfileAvgNs(fetchNextUs, fetchNextCount),
+             (unsigned long long)wasmJitProfileAvgNs(memReadUs, memReadCount),
+             (unsigned long long)wasmJitProfileAvgNs(memWriteUs, memWriteCount),
+             (unsigned long long)wasmJitProfileAvgNs(memWriteCheckUs, memWriteCheckCount),
+             (unsigned long long)wasmJitProfileAvgNs(blockEnterUs, blockEnterCount),
+             (unsigned long long)wasmJitProfileAvgNs(emulateUs, emulateCount),
+             (unsigned long long)wasmJitProfileAvgNs(flagsUs, flagsCount),
+             (unsigned long long)wasmJitProfileAvgNs(condUs, condCount),
+             (unsigned long long)movsdTotal,
+             (unsigned long long)g_wasmJitProfileMovsdRep.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileMovsdSingle.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileMovsdEa16.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileMovsdEa32.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileMovsdSegmented.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileMovsdFlat.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileMovsdDf1.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileMovsdDf0.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileMovsdRepFlat.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileMovsdRepSegmented.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileMovsdRepEa16.load(std::memory_order_relaxed),
              topCond,
-             topLazy);
+             topLazy,
+             topEmulate);
 }
 
-static inline void wasmJitProfileStartEntry() {
-    g_wasmJitProfileStartEntries.fetch_add(1, std::memory_order_relaxed);
+static inline bool wasmJitProfileStartEntry() {
+    U64 count = g_wasmJitProfileStartEntries.fetch_add(1, std::memory_order_relaxed) + 1;
     wasmJitProfileMaybeLog();
+    return (count & (WASM_JIT_PROFILE_TIMING_SAMPLE - 1)) == 0;
 }
 
-static inline void wasmJitProfileCallBlock() {
-    g_wasmJitProfileCallBlockEntries.fetch_add(1, std::memory_order_relaxed);
+static inline bool wasmJitProfileCallBlock() {
+    U64 count = g_wasmJitProfileCallBlockEntries.fetch_add(1, std::memory_order_relaxed) + 1;
+    return (count & (WASM_JIT_PROFILE_TIMING_SAMPLE - 1)) == 0;
 }
 
 static inline void wasmJitProfileBlockExit() {
@@ -265,10 +482,44 @@ static inline void wasmJitProfileHelperCond(U32 cond, U32 lazyFlagType) {
 static inline void wasmJitProfileInlineCond() {
     g_wasmJitProfileInlineCond.fetch_add(1, std::memory_order_relaxed);
 }
+
+static inline void wasmJitProfileMovsd(U32 shape, bool df) {
+    g_wasmJitProfileMovsdTotal.fetch_add(1, std::memory_order_relaxed);
+    bool rep = (shape & WASM_JIT_PROFILE_MOVSD_REP) != 0;
+    bool ea16 = (shape & WASM_JIT_PROFILE_MOVSD_EA16) != 0;
+    bool segmented = (shape & WASM_JIT_PROFILE_MOVSD_SEGMENTED) != 0;
+    (rep ? g_wasmJitProfileMovsdRep : g_wasmJitProfileMovsdSingle).fetch_add(1, std::memory_order_relaxed);
+    (ea16 ? g_wasmJitProfileMovsdEa16 : g_wasmJitProfileMovsdEa32).fetch_add(1, std::memory_order_relaxed);
+    (segmented ? g_wasmJitProfileMovsdSegmented : g_wasmJitProfileMovsdFlat).fetch_add(1, std::memory_order_relaxed);
+    (df ? g_wasmJitProfileMovsdDf1 : g_wasmJitProfileMovsdDf0).fetch_add(1, std::memory_order_relaxed);
+    if (rep) {
+        (segmented ? g_wasmJitProfileMovsdRepSegmented : g_wasmJitProfileMovsdRepFlat).fetch_add(1, std::memory_order_relaxed);
+        if (ea16) {
+            g_wasmJitProfileMovsdRepEa16.fetch_add(1, std::memory_order_relaxed);
+        }
+    }
+}
 #define WASM_JIT_PROFILE_ONLY(stmt) stmt
 #else
 #define WASM_JIT_PROFILE_ONLY(stmt)
 #endif
+
+static bool wasmMemoryPageArraysNeedRefresh(CPU* cpu, KMemoryData** memoryDataOut) {
+    KMemoryData* d = getMemData(cpu->memory);
+    *memoryDataOut = d;
+    U32 memoryData = (U32)(uintptr_t)d;
+    return cpu->wasmJitMemoryData != memoryData;
+}
+
+static void wasmPrepareBlockEnter(CPU* cpu, KMemoryData* memoryData) {
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    wasmJitProfileHelperBlockEnter();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperBlockEnterUs);
+#endif
+    cpu->wasmJitMemoryData = (U32)(uintptr_t)memoryData;
+    cpu->wasmReadPageBaseArray  = (U32)(uintptr_t)memoryData->wasmReadPageBase;
+    cpu->wasmWritePageBaseArray = (U32)(uintptr_t)memoryData->wasmWritePageBase;
+}
 
 // ---------------------------------------------------------------------------
 // JS interop: compile and instantiate a WASM module synchronously.
@@ -486,12 +737,13 @@ EM_JS(int, boxedwine_wasm_install_existing_mt,
 //
 // Casting the table index to a C++ function pointer generates a WASM
 // call_indirect instruction instead.  The call remains entirely within the WASM
-// world: no JS frame is created, and C++ exceptions propagate back to the
-// enclosing catch(...) exactly as they do for the x32/arm JIT backends.
+// world: no JS frame is created, and C++ exceptions propagate to the scheduler's
+// catch(...) exactly as they do for the x32/arm JIT backends.
 typedef void (*WasmBlockFn)(int);
 static inline void boxedwine_wasm_call_block(int tableIndex, int cpuPtr) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
-    wasmJitProfileCallBlock();
+    bool profileSample = wasmJitProfileCallBlock();
+    U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
 #endif
     static bool fired = false;
     if (!fired) {
@@ -529,6 +781,11 @@ static inline void boxedwine_wasm_call_block(int tableIndex, int cpuPtr) {
                   "WASM32: function-pointer and unsigned must be the same width");
     WasmBlockFn fn = std::bit_cast<WasmBlockFn>((unsigned int)tableIndex);
     fn(cpuPtr);
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    if (profileSample) {
+        wasmJitProfileAddElapsedScaled(g_wasmJitProfileCallBlockUs, profileStartNs);
+    }
+#endif
 }
 
 // Single-threaded: return the slot to Emscripten's free-list.
@@ -584,6 +841,7 @@ static void disableWasmJitBlockAfterSlotMiss(DecodedOp* op) {
         cur->pfnJitCode = nullptr;
         cur->flags &= ~OP_FLAG_JIT;
         cur->flags |= OP_FLAG_NO_JIT;
+        cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
         cur->runCount = JIT_RUN_COUNT + 1;
         cur->blockStart = nullptr;
         cur->blockOpCount = 0;
@@ -600,7 +858,9 @@ static void disableWasmJitBlockAfterSlotMiss(DecodedOp* op) {
 // ---------------------------------------------------------------------------
 void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
-    wasmJitProfileStartEntry();
+    bool profileSample = wasmJitProfileStartEntry();
+    U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
+    U64 startPreCallNs = profileStartNs;
 #endif
     if (op->pfnJitCode) {
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -620,17 +880,16 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
             }
         }
 #endif
-        // This function is compiled with -fwasm-exceptions, so its try/catch
-        // generates WASM catch_all instructions and can intercept WASM exceptions
-        // thrown by JIT block helpers (e.g. seg_mapper's throw 2).  The re-throw
-        // propagates to runThreadSlice (kscheduler.cpp, also compiled with
-        // -fwasm-exceptions) whose catch(…) sets cpu->nextOp=nullptr and lets
-        // Wine's already-set-up signal handler frame run on the next time slice.
-        try {
-            boxedwine_wasm_call_block((int)(uintptr_t)op->pfnJitCode, (int)(uintptr_t)cpu);
-        } catch (...) {
-            throw;
+        U8 wasmJitSetupFlags = op->flags2 & OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+        if (wasmJitSetupFlags) {
+            KMemoryData* memoryData = nullptr;
+            if (wasmMemoryPageArraysNeedRefresh(cpu, &memoryData)) {
+                wasmPrepareBlockEnter(cpu, memoryData);
+            }
         }
+        WASM_JIT_PROFILE_ONLY(if (profileSample) { wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPreCallUs, startPreCallNs); })
+        boxedwine_wasm_call_block((int)(uintptr_t)op->pfnJitCode, (int)(uintptr_t)cpu);
+        WASM_JIT_PROFILE_ONLY(if (profileSample) { U64 startPostCallNs = wasmJitProfileNowNs(); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPostCallUs, startPostCallNs); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartUs, profileStartNs); })
         // nextOp is updated by the WASM block itself (via helper call).
     }
 }
@@ -646,36 +905,42 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
 static void wasmHelper_readMem32(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemRead();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemReadUs);
 #endif
     cpu->memHelperValue = cpu->memory->readd(cpu->memHelperAddr);
 }
 static void wasmHelper_writeMem32(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemWrite();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemWriteUs);
 #endif
     cpu->memory->writed(cpu->memHelperAddr, cpu->memHelperValue);
 }
 static void wasmHelper_readMem8(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemRead();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemReadUs);
 #endif
     cpu->memHelperValue = cpu->memory->readb(cpu->memHelperAddr);
 }
 static void wasmHelper_writeMem8(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemWrite();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemWriteUs);
 #endif
     cpu->memory->writeb(cpu->memHelperAddr, (U8)cpu->memHelperValue);
 }
 static void wasmHelper_readMem16(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemRead();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemReadUs);
 #endif
     cpu->memHelperValue = cpu->memory->readw(cpu->memHelperAddr);
 }
 static void wasmHelper_writeMem16(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemWrite();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemWriteUs);
 #endif
     cpu->memory->writew(cpu->memHelperAddr, (U16)cpu->memHelperValue);
 }
@@ -697,6 +962,7 @@ static inline void checkActiveBlockAfterWrite(CPU* cpu) {
 static void wasmHelper_writeMem32_check(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemWriteCheck();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemWriteCheckUs);
 #endif
     cpu->memory->writed(cpu->memHelperAddr, cpu->memHelperValue);
     checkActiveBlockAfterWrite(cpu);
@@ -704,6 +970,7 @@ static void wasmHelper_writeMem32_check(CPU* cpu) {
 static void wasmHelper_writeMem16_check(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemWriteCheck();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemWriteCheckUs);
 #endif
     cpu->memory->writew(cpu->memHelperAddr, (U16)cpu->memHelperValue);
     checkActiveBlockAfterWrite(cpu);
@@ -711,6 +978,7 @@ static void wasmHelper_writeMem16_check(CPU* cpu) {
 static void wasmHelper_writeMem8_check(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemWriteCheck();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemWriteCheckUs);
 #endif
     cpu->memory->writeb(cpu->memHelperAddr, (U8)cpu->memHelperValue);
     checkActiveBlockAfterWrite(cpu);
@@ -720,6 +988,8 @@ static void wasmHelper_writeMem8_check(CPU* cpu) {
 static void wasmHelper_fetchNextOp(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileBlockExit();
+    g_wasmJitProfileFetchNextCalls.fetch_add(1, std::memory_order_relaxed);
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileFetchNextUs);
 #endif
     if (!cpu->thread->terminating) {
         cpu->nextOp = cpu->getNextOp();
@@ -729,21 +999,11 @@ static void wasmHelper_fetchNextOp(CPU* cpu) {
 // Sync CPU lazy flags — flags are maintained in cpu->flags directly by WASM code
 static void wasmHelper_syncFlags(CPU* cpu) {}
 
-// Called at the top of every JIT block: capture which block is running so
-// write helpers can detect when a write hit our own bytes (cleared
-// pfnJitCode by removeCodeBlock), clear the leftover bailout flag, and
-// refresh the inline-TLB array pointers so the JIT codegen can walk
-// `wasmReadPageBase[addr>>12]` for direct host-pointer access without
-// re-resolving cpu->memory->data each block.
+// Kept in the helper table for module import-index stability. Block-entry
+// setup is now done in wasmStartJITOp before calling the generated block,
+// which avoids one generated WASM -> imported C++ helper call per block.
 static void wasmHelper_blockEnter(CPU* cpu) {
-#ifdef BOXEDWINE_WASM_JIT_PROFILE
-    wasmJitProfileHelperBlockEnter();
-#endif
-    cpu->wasmJitActiveBlock = cpu->nextOp;
-    cpu->wasmJitBailout = 0;
-    KMemoryData* d = getMemData(cpu->memory);
-    cpu->wasmReadPageBaseArray  = (U32)(uintptr_t)d->wasmReadPageBase;
-    cpu->wasmWritePageBaseArray = (U32)(uintptr_t)d->wasmWritePageBase;
+    (void)cpu;
 }
 
 // Fall back to the normal CPU interpreter for one instruction (used for
@@ -752,6 +1012,13 @@ void jitRunSingleOp(CPU* cpu);   // defined in jitCodeGen.cpp
 static void wasmHelper_emulateSingleOp(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperEmulate();
+    if (cpu->tmpReg < InstructionCount) {
+        g_wasmJitProfileEmulateByInst[cpu->tmpReg].fetch_add(1, std::memory_order_relaxed);
+    }
+    if (cpu->tmpReg == Movsd) {
+        wasmJitProfileMovsd(cpu->memHelperValue, (cpu->flags & DF) != 0);
+    }
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperEmulateUs);
 #endif
     jitRunSingleOp(cpu);
 }
@@ -762,12 +1029,14 @@ static void wasmHelper_emulateSingleOp(CPU* cpu) {
 static void wasmHelper_computeCF(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperFlags();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperFlagsUs);
 #endif
     cpu->tmpReg = cpu->getCF() ? 1 : 0;
 }
 static void wasmHelper_computeZF(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperFlags();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperFlagsUs);
 #endif
     cpu->tmpReg = cpu->getZF() ? 1 : 0;
 }
@@ -777,6 +1046,7 @@ void common_fillFlags(CPU* cpu);
 static void wasmHelper_fillFlags(CPU* cpu) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperFlags();
+    WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperFlagsUs);
 #endif
     common_fillFlags(cpu);
 }
@@ -788,6 +1058,7 @@ static void wasmHelper_fillFlags(CPU* cpu) {
 #define WASM_COND_HELPER(NAME, EXPR)                                           \
     static void wasmHelper_cond_##NAME(CPU* cpu) {                             \
         WASM_JIT_PROFILE_ONLY(wasmJitProfileHelperCond((U32)JitConditional::NAME, (U32)cpu->lazyFlagType);) \
+        WASM_JIT_PROFILE_ONLY(WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperCondUs);) \
         cpu->tmpReg = (EXPR) ? 1 : 0;                                          \
     }
 WASM_COND_HELPER(O,   cpu->getOF())
@@ -798,6 +1069,7 @@ WASM_COND_HELPER(NB,  !cpu->getCF())
 static U32 g_condZLogCount = 0;
 static void wasmHelper_cond_Z(CPU* cpu) {
     WASM_JIT_PROFILE_ONLY(wasmJitProfileHelperCond((U32)JitConditional::Z, (U32)cpu->lazyFlagType);)
+    WASM_JIT_PROFILE_ONLY(WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperCondUs);)
     if (g_condZLogCount < 100) {
         g_condZLogCount++;
         klog_fmt("[WASM-DIAG] cond_Z #%u eip=0x%08x lazyType=%u result=0x%08x dst=0x%08x flags=0x%08x ZF=%d",
@@ -809,6 +1081,7 @@ static void wasmHelper_cond_Z(CPU* cpu) {
 }
 static void wasmHelper_cond_NZ(CPU* cpu) {
     WASM_JIT_PROFILE_ONLY(wasmJitProfileHelperCond((U32)JitConditional::NZ, (U32)cpu->lazyFlagType);)
+    WASM_JIT_PROFILE_ONLY(WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperCondUs);)
     cpu->tmpReg = (!cpu->getZF()) ? 1 : 0;
 }
 #else
@@ -854,6 +1127,39 @@ static void wasmHelper_profileInlineCond(CPU* cpu) {
 }
 #endif
 
+static void wasmHelper_fldSingleReal(CPU* cpu) {
+    common_FLD_SINGLE_REAL(cpu, cpu->memHelperAddr);
+}
+
+static void wasmHelper_fld1(CPU* cpu) {
+    common_FLD1(cpu);
+}
+
+static void wasmHelper_fdivSt0Stj(CPU* cpu) {
+    common_FDIV_ST0_STj(cpu, cpu->memHelperValue);
+}
+
+static void wasmHelper_fstSingleRealPop(CPU* cpu) {
+    common_FST_SINGLE_REAL_Pop(cpu, cpu->memHelperAddr);
+}
+
+static void wasmHelper_fistDwordIntegerPop(CPU* cpu) {
+    common_FIST_DWORD_INTEGER_Pop(cpu, cpu->memHelperAddr);
+}
+
+static void wasmHelper_movsdXmmE64(CPU* cpu) {
+    common_movsdXmmE64(cpu, cpu->memHelperValue, cpu->memHelperAddr);
+}
+
+static void wasmHelper_movsdE64Xmm(CPU* cpu) {
+    common_movsdE64Xmm(cpu, cpu->memHelperValue, cpu->memHelperAddr);
+}
+
+static void wasmHelper_movsd32r(CPU* cpu) {
+    movsd32r(cpu, cpu->memHelperValue);
+    checkActiveBlockAfterWrite(cpu);
+}
+
 // ---------------------------------------------------------------------------
 // Helper table: array of C++ function pointers exported to WASM modules.
 // Order must match WasmHelperIdx below.
@@ -892,6 +1198,14 @@ static const void* g_wasmHelperTable[] = {
     (void*)wasmHelper_writeMem8_check,
     (void*)wasmHelper_writeMem16_check,
     (void*)wasmHelper_writeMem32_check,
+    (void*)wasmHelper_fldSingleReal,
+    (void*)wasmHelper_fld1,
+    (void*)wasmHelper_fdivSt0Stj,
+    (void*)wasmHelper_fstSingleRealPop,
+    (void*)wasmHelper_fistDwordIntegerPop,
+    (void*)wasmHelper_movsdXmmE64,
+    (void*)wasmHelper_movsdE64Xmm,
+    (void*)wasmHelper_movsd32r,
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     (void*)wasmHelper_profileBlockExit,
     (void*)wasmHelper_profileExitNext1,
@@ -945,12 +1259,20 @@ enum WasmHelperIdx {
     HELPER_WRITE_MEM8_CHECK  = 29,
     HELPER_WRITE_MEM16_CHECK = 30,
     HELPER_WRITE_MEM32_CHECK = 31,
-    HELPER_PROFILE_BLOCK_EXIT = 32,
-    HELPER_PROFILE_EXIT_NEXT1 = 33,
-    HELPER_PROFILE_EXIT_NEXT2 = 34,
-    HELPER_PROFILE_EXIT_JUMP = 35,
-    HELPER_PROFILE_EXIT_GENERIC = 36,
-    HELPER_PROFILE_INLINE_COND = 37,
+    HELPER_FLD_SINGLE_REAL = 32,
+    HELPER_FLD1 = 33,
+    HELPER_FDIV_ST0_STJ = 34,
+    HELPER_FST_SINGLE_REAL_POP = 35,
+    HELPER_FIST_DWORD_INTEGER_POP = 36,
+    HELPER_MOVSD_XMM_E64 = 37,
+    HELPER_MOVSD_E64_XMM = 38,
+    HELPER_MOVSD32R = 39,
+    HELPER_PROFILE_BLOCK_EXIT = 40,
+    HELPER_PROFILE_EXIT_NEXT1 = 41,
+    HELPER_PROFILE_EXIT_NEXT2 = 42,
+    HELPER_PROFILE_EXIT_JUMP = 43,
+    HELPER_PROFILE_EXIT_GENERIC = 44,
+    HELPER_PROFILE_INLINE_COND = 45,
 };
 
 // ---------------------------------------------------------------------------
@@ -996,12 +1318,6 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitCodeGen(cpu) {
         { 32, WasmType::I32 },  // scratch temporaries (locals 13-44)
         { 1,  WasmType::I64 },  // i64 scratch for 64-bit multiply (local 45)
     });
-
-    // Self-modifying-code arming: capture cpu->wasmJitActiveBlock so the
-    // checking write helpers can detect when removeCodeBlock cleared our
-    // own pfnJitCode mid-flight. Also clears the leftover bailout flag.
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(HELPER_BLOCK_ENTER);
 
     m_gpLoaded.fill(false);
     m_gpDirty.fill(false);
@@ -1553,6 +1869,15 @@ static U32 writeCheckHelperForWidth(JitWidth w) {
     }
 }
 
+void JitWasmCodeGen::emitArmSmcBailout() {
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const((U32)(uintptr_t)m_wasmBlockStartOp);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(0);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
+}
+
 // Self-modifying-code bailout check: emitted after every JIT-inline mem
 // write. If the write hit the active block's bytes, the helper set
 // cpu->wasmJitBailout. We exit by writing the *next* op's offset to
@@ -1607,6 +1932,7 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         // Use the bailout-checking write so self-modifying code that hits
         // the active block's bytes can be detected; emit the check.
+        emitArmSmcBailout();
         m_emitter.emitCall(writeCheckHelperForWidth(w));
         emitBailoutCheck();
     }
@@ -1646,6 +1972,7 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
         return tmp;
     }
 
+    m_needsWasmMemoryPageArrays = true;
     U32 entryLocal = allocScratch();
     auto savedGpDirty   = m_gpDirty;
     auto savedGpLoaded  = m_gpLoaded;
@@ -1736,11 +2063,13 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
         storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
         storeMemHelperField((U32)offsetof(CPU, memHelperValue), src);
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        emitArmSmcBailout();
         m_emitter.emitCall(writeCheckHelperForWidth(w));
         emitBailoutCheck();
         return;
     }
 
+    m_needsWasmMemoryPageArrays = true;
     U32 entryLocal = allocScratch();
     auto savedGpDirty   = m_gpDirty;
     auto savedGpLoaded  = m_gpLoaded;
@@ -1776,6 +2105,7 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
         storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
         storeMemHelperField((U32)offsetof(CPU, memHelperValue), src);
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        emitArmSmcBailout();
         m_emitter.emitCall(writeCheckHelperForWidth(w));
         emitBailoutCheck();
     }
@@ -3149,6 +3479,75 @@ void JitWasmCodeGen::jmpHost(DYN_PTR_SIZE address) { /* no native jumps in WASM 
 void JitWasmCodeGen::nakedCall(RegPtr reg)         { /* no bare calls in WASM */ }
 void JitWasmCodeGen::nakedReturn()                 { m_emitter.emitReturn(); }
 
+void JitWasmCodeGen::dynamic_pause(DecodedOp* op) {
+    (void)op;
+    // x86 PAUSE is a spin-loop hint. It has no architecturally visible state,
+    // so WASM can compile it as a no-op and avoid interpreter fallback.
+}
+
+void JitWasmCodeGen::dynamic_FLD_SINGLE_REAL(DecodedOp* op) {
+    RegPtr address = calculateEaa(op);
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_FLD_SINGLE_REAL);
+}
+
+void JitWasmCodeGen::dynamic_FLD1(DecodedOp* op) {
+    (void)op;
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_FLD1);
+}
+
+void JitWasmCodeGen::dynamic_FDIV_ST0_STj(DecodedOp* op) {
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(op->reg);
+    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_FDIV_ST0_STJ);
+}
+
+void JitWasmCodeGen::dynamic_FST_SINGLE_REAL_Pop(DecodedOp* op) {
+    RegPtr address = calculateEaa(op);
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_FST_SINGLE_REAL_POP);
+}
+
+void JitWasmCodeGen::dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) {
+    RegPtr address = calculateEaa(op);
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_FIST_DWORD_INTEGER_POP);
+}
+
+void JitWasmCodeGen::dynamic_movsdXmmE64(DecodedOp* op) {
+    RegPtr address = calculateEaa(op);
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(op->reg);
+    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_MOVSD_XMM_E64);
+}
+
+void JitWasmCodeGen::dynamic_movsdE64Xmm(DecodedOp* op) {
+    RegPtr address = calculateEaa(op);
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(op->reg);
+    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_MOVSD_E64_XMM);
+}
+
+void JitWasmCodeGen::dynamic_movsd_op(DecodedOp* op) {
+    (void)op;
+    // The direct rep movsd helper removed the fallback cost but caused a
+    // long-run WASM stack overflow. Keep profiling this path as an emulated op
+    // until the string-copy helper can be made scheduler-safe.
+    emulateSingleOp();
+}
+
 // ---------------------------------------------------------------------------
 // Function calls to C++ helpers
 // ---------------------------------------------------------------------------
@@ -3198,6 +3597,26 @@ void JitWasmCodeGen::emulateSingleOp() {
         writeEip(this->currentEip - cpu->seg[CS].address);
     }
     syncDirtyRegsToHost();
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const((U32)(m_currentWasmOp ? m_currentWasmOp->inst : InstructionCount));
+    m_emitter.emitI32Store((U32)offsetof(CPU, tmpReg));
+    if (m_currentWasmOp && m_currentWasmOp->inst == Movsd) {
+        U32 movsdShape = 0;
+        if (m_currentWasmOp->repZero || m_currentWasmOp->repNotZero) {
+            movsdShape |= WASM_JIT_PROFILE_MOVSD_REP;
+        }
+        if (m_currentWasmOp->ea16) {
+            movsdShape |= WASM_JIT_PROFILE_MOVSD_EA16;
+        }
+        if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[m_currentWasmOp->base]) {
+            movsdShape |= WASM_JIT_PROFILE_MOVSD_SEGMENTED;
+        }
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Const(movsdShape);
+        m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
+    }
+#endif
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(m_helperEmulateSingleOpIdx);
     m_gpLoaded.fill(false);
@@ -3443,12 +3862,48 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     // Reset per-instruction scratch state, then run base bookkeeping (block
     // op count, eip→buffer-pos map, preOp hook). Stash op->len for
     // emitBailoutCheck — it needs the post-write next-op EIP.
+    if (this->blockOpCount == 0) {
+        m_wasmBlockStartOp = op;
+    }
+    m_currentWasmOp = op;
     m_scratchInUse.fill(false);
     lastCompiledOpLen = op->len;
     JitCodeGen::preCompile(op, skippedOp);
 }
 
 void JitWasmCodeGen::compile(DecodedOp* op) {
+    if (op->inst == Pause) {
+        dynamic_pause(op);
+        return;
+    }
+    if (op->inst == FLD_SINGLE_REAL) {
+        dynamic_FLD_SINGLE_REAL(op);
+        return;
+    }
+    if (op->inst == FLD1) {
+        dynamic_FLD1(op);
+        return;
+    }
+    if (op->inst == FDIV_ST0_STj) {
+        dynamic_FDIV_ST0_STj(op);
+        return;
+    }
+    if (op->inst == FST_SINGLE_REAL_Pop) {
+        dynamic_FST_SINGLE_REAL_Pop(op);
+        return;
+    }
+    if (op->inst == FIST_DWORD_INTEGER_Pop) {
+        dynamic_FIST_DWORD_INTEGER_Pop(op);
+        return;
+    }
+    if (op->inst == MovsdXmmE64) {
+        dynamic_movsdXmmE64(op);
+        return;
+    }
+    if (op->inst == MovsdE64Xmm) {
+        dynamic_movsdE64Xmm(op);
+        return;
+    }
     JitCodeGen::compile(op); // delegates to dynamic_* dispatch
 }
 
@@ -3470,6 +3925,9 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     // Pass the helper function table to the JS instantiator.
     // In pthreads builds use the Atomics-based allocator; in single-threaded
     // builds use the standard addFunction() wrapper.
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    U64 instantiateStartUs = wasmJitProfileNowNs();
+#endif
 #ifdef BOXEDWINE_MULTI_THREADED
     int tableIdx = boxedwine_wasm_instantiate_mt(
         m_wasmBinary.data(),
@@ -3485,6 +3943,9 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         g_wasmHelperTable,
         WASM_HELPER_COUNT
     );
+#endif
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    wasmJitProfileAddElapsed(g_wasmJitProfileInstantiateUs, instantiateStartUs);
 #endif
 
     if (tableIdx < 0) {
@@ -3524,6 +3985,11 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     while (cur) {
         cur->pfnJitCode = (void*)(uintptr_t)(U32)tableIdx;
         cur->flags     |= OP_FLAG_JIT;
+        if (m_needsWasmMemoryPageArrays) {
+            cur->flags2 |= OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+        } else {
+            cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+        }
         cur->blockStart = op;
         if (cur == op) {
             cur->pfn = cpu->thread->process->startJITOp;
@@ -3550,9 +4016,15 @@ JitCodeGen* startNewJIT(CPU* cpu) {
 }
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    U64 jitStartUs = wasmJitProfileNowNs();
+#endif
     JitCodeGen* jit = startNewJIT(cpu);
     jit->doJIT(address, op);
     delete jit;
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    wasmJitProfileAddElapsed(g_wasmJitProfileJitUs, jitStartUs);
+#endif
 }
 
 // ---------------------------------------------------------------------------

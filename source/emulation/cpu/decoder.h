@@ -1557,6 +1557,7 @@ typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 #define OP_FLAG2_TRACED_STUB 2
 #define OP_FLAG2_JUMP_TARGET 4
 #define OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE 8
+#define OP_FLAG2_WASM_JIT_MEM_ARRAYS 16
 
 // direct jump does not read memory, so will never use disp (used by mem, enter)
 union DecodedData {
