@@ -21,7 +21,9 @@
 #include "kscheduler.h"
 #include "../../io/fsvirtualopennode.h"
 #include "oss.h"
+#ifdef __EMSCRIPTEN__
 #include <algorithm>
+#endif
 #include <math.h>
 #include <string.h>
 #include "kdspaudio.h"
@@ -29,11 +31,8 @@
 #ifdef __EMSCRIPTEN__
 static U32 dspMaxOutputFreq = 11025;
 static const U32 DSP_DEFAULT_FRAGMENT_SIZE = 1024;
-#else
-static U32 dspMaxOutputFreq = 48000;
-static const U32 DSP_DEFAULT_FRAGMENT_SIZE = 4096;
-#endif
 static const U32 DSP_DEFAULT_FRAGMENT_COUNT = 8;
+#endif
 
 class DevDsp : public FsVirtualOpenNode {
 public:
@@ -42,7 +41,9 @@ public:
         this->freq = 11025;
         this->channels = 1;
         this->format = AFMT_U8;
+#ifdef __EMSCRIPTEN__
         this->audio->setFragmentSize(DSP_DEFAULT_FRAGMENT_SIZE);
+#endif
     } 
     virtual ~DevDsp() {this->audio->closeAudio();}
 
@@ -58,6 +59,7 @@ public:
     U32 freq;
     U32 channels;
     U32 format;
+#ifdef __EMSCRIPTEN__
     U32 fragmentCount = DSP_DEFAULT_FRAGMENT_COUNT;
     U32 bytesWritten = 0;
     U32 lastOutputBlocks = 0;
@@ -66,6 +68,7 @@ private:
     U32 getEffectiveBufferCapacity();
     U32 getUsedBufferSize();
     U32 getAvailableBufferSize();
+#endif
 };
 
 
@@ -73,17 +76,15 @@ void dspShutdown() {
     KDspAudio::shutdown();
 }
 
-void dspSetMaxOutputFreq(U32 freq) {
 #ifdef __EMSCRIPTEN__
+void dspSetMaxOutputFreq(U32 freq) {
     if (freq == 11025 || freq == 22050) {
         dspMaxOutputFreq = freq;
     } else {
         kwarn_fmt("Unsupported Emscripten audio frequency %d, using %d", freq, dspMaxOutputFreq);
     }
-#else
-    dspMaxOutputFreq = freq;
-#endif
 }
+#endif
 
 bool DevDsp::setLength(S64 len) {
     return false;
@@ -97,13 +98,18 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
     if (!this->audio->isOpen()) {
         this->audio->openAudio(this->format, this->freq, this->channels);
     }
+#ifdef __EMSCRIPTEN__
     U32 result = this->audio->writeAudio(buffer, len);
     if ((S32)result > 0) {
         this->bytesWritten += result;
     }
     return result;
+#else
+    return this->audio->writeAudio(buffer, len);
+#endif
 }
 
+#ifdef __EMSCRIPTEN__
 U32 DevDsp::getEffectiveBufferCapacity() {
     U32 capacity = this->audio->getBufferCapacity();
     U32 fragmentCapacity = this->audio->getFragmentSize() * this->fragmentCount;
@@ -117,9 +123,14 @@ U32 DevDsp::getUsedBufferSize() {
 U32 DevDsp::getAvailableBufferSize() {
     return this->getEffectiveBufferCapacity() - this->getUsedBufferSize();
 }
+#endif
 
 bool DevDsp::isWriteReady() {
+#ifdef __EMSCRIPTEN__
     return this->getAvailableBufferSize() >= this->audio->getFragmentSize();
+#else
+    return this->audio->isWriteReady();
+#endif
 }
 
 U32 DevDsp::ioctl(KThread* thread, U32 request) {
@@ -136,18 +147,25 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         this->freq = 8000;
         this->channels = 1;
         this->format = AFMT_U8;
+#ifdef __EMSCRIPTEN__
         this->audio->setFragmentSize(DSP_DEFAULT_FRAGMENT_SIZE);
         this->fragmentCount = DSP_DEFAULT_FRAGMENT_COUNT;
         this->bytesWritten = 0;
         this->lastOutputBlocks = 0;
+#endif
         return 0;
     case 0x5002: { // SNDCTL_DSP_SPEED 
         if (len!=4) {
             kpanic("SNDCTL_DSP_SPEED was expecting a len of 4");
         }
-		U32 oldFreq = this->freq;
-		this->freq = std::min(memory->readd(IOCTL_ARG1), dspMaxOutputFreq);
+#ifdef __EMSCRIPTEN__
+        U32 oldFreq = this->freq;
+        this->freq = std::min(memory->readd(IOCTL_ARG1), dspMaxOutputFreq);
         if (oldFreq != this->freq) {
+#else
+		this->freq = memory->readd(IOCTL_ARG1);
+        if (freq != this->freq) {
+#endif
             this->audio->closeAudio();
         }
 		if (write)
@@ -209,7 +227,11 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 			this->format = AFMT_U8;
             break;
         case AFMT_FLOAT:
+#ifdef __EMSCRIPTEN__
             this->format = AFMT_S16_LE;
+#else
+            this->format = AFMT_FLOAT;
+#endif
             break;
         }
         if (write)
@@ -235,7 +257,9 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(IOCTL_ARG1, this->channels);
         return 0;
         }
-    case 0x500A: { // SNDCTL_DSP_SETFRAGMENT
+    case 0x500A: // SNDCTL_DSP_SETFRAGMENT
+#ifdef __EMSCRIPTEN__
+    {
         U32 value = memory->readd(IOCTL_ARG1);
         U32 shift = value & 0xFFFF;
         U32 count = value >> 16;
@@ -246,8 +270,17 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         this->fragmentCount = std::clamp(count, (U32)2, (U32)64);
         return 0;
     }
+#else
+		// this->data->dspFragSize = 1 << (readd(IOCTL_ARG1) & 0xFFFF);
+        klog("DevDsp::ioctl was not expecting SNDCTL_DSP_SETFRAGMENT");
+        return 0;
+#endif
     case 0x500B: // SNDCTL_DSP_GETFMTS
+#ifdef __EMSCRIPTEN__
         memory->writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_LE | AFMT_U16_BE);
+#else
+        memory->writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_LE | AFMT_U16_BE | AFMT_FLOAT);
+#endif
         return 0;
 
 		//typedef struct audio_buf_info {
@@ -261,6 +294,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 
     case 0x500C: // SNDCTL_DSP_GETOSPACE
     {
+#ifdef __EMSCRIPTEN__
         U32 capacity = this->getEffectiveBufferCapacity();
         U32 used = this->getUsedBufferSize();
         U32 available = capacity - used;
@@ -268,6 +302,15 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         memory->writed(IOCTL_ARG1 + 4, capacity / this->audio->getFragmentSize());
         memory->writed(IOCTL_ARG1 + 8, this->audio->getFragmentSize());
         memory->writed(IOCTL_ARG1 + 12, available);
+#else
+        U32 capacity = this->audio->getBufferCapacity();
+        U32 used = std::min(this->audio->getBufferSize(), capacity);
+        U32 available = capacity - used;
+        memory->writed(IOCTL_ARG1, available / this->audio->getFragmentSize()); // fragments
+        memory->writed(IOCTL_ARG1 + 4, capacity / this->audio->getFragmentSize());
+        memory->writed(IOCTL_ARG1 + 8, this->audio->getFragmentSize());
+        memory->writed(IOCTL_ARG1 + 12, available);
+#endif
         return 0;
     }
     case 0x500F: // SNDCTL_DSP_GETCAPS
@@ -291,7 +334,9 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         */
         klog("DevDsp::ioctl was not expecting SNDCTL_DSP_SETTRIGGER");
         return 0;
-    case 0x5012: { // SNDCTL_DSP_GETOPTR
+    case 0x5012: // SNDCTL_DSP_GETOPTR
+#ifdef __EMSCRIPTEN__
+    {
         U32 fragmentSize = this->audio->getFragmentSize();
         U32 currentBlocks = fragmentSize ? this->bytesWritten / fragmentSize : 0;
         U32 blocks = currentBlocks - this->lastOutputBlocks;
@@ -302,11 +347,40 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         memory->writed(IOCTL_ARG1 + 8, capacity ? this->bytesWritten % capacity : 0); // Current DMA pointer value
         return 0;
     }
+#else
+        /*
+        writed(IOCTL_ARG1, 0); // Total # of bytes processed
+        writed(IOCTL_ARG1 + 4, 0); // # of fragment transitions since last time
+        if (data->pauseEnabled()) {
+			writed(IOCTL_ARG1 + 8, this->data->pauseAtLen); // Current DMA pointer value
+			if (this->data->pauseAtLen == 0) {
+                if (sdlSoundEnabled) {
+                    SDL_PauseAudio(0);
+                }
+            }
+        } else {
+			writed(IOCTL_ARG1 + 8, (U32)audioBuffer.size()); // Current DMA pointer value
+        }
+        */
+        klog("DevDsp::ioctl was not expecting SNDCTL_DSP_GETOPTR");
+        return 0;
+#endif
     case 0x5016: // SNDCTL_DSP_SETDUPLEX
         return -K_EINVAL;
     case 0x5017: // SNDCTL_DSP_GETODELAY
+#ifdef __EMSCRIPTEN__
         memory->writed(IOCTL_ARG1, this->getUsedBufferSize());
         return 0;
+#else
+        /*
+        if (write) {
+			writed(IOCTL_ARG1, (U32)audioBuffer.size());
+            return 0;
+        }
+        */
+        klog("DevDsp::ioctl was not expecting SNDCTL_DSP_GETODELAY");
+        return 0;
+#endif
     case 0x580C: // SNDCTL_ENGINEINFO
         if (write) {
             U32 p = IOCTL_ARG1;
@@ -316,7 +390,11 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(p, -1); p+=4; // int pid;
             memory->writed(p, PCM_CAP_OUTPUT); p+=4; // int caps;			/* PCM_CAP_INPUT, PCM_CAP_OUTPUT */
             memory->writed(p, 0); p+=4; // int iformats
+#ifdef __EMSCRIPTEN__
             memory->writed(p, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE); p+=4; // int oformats;
+#else
+            memory->writed(p, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE | AFMT_FLOAT); p+=4; // int oformats;
+#endif
             memory->writed(p, 0); p+=4; // int magic;			/* Reserved for internal use */
             memory->strcpy(p, ""); p+=64; // oss_cmd_t cmd;		/* Command using the device (if known) */
             memory->writed(p, 0); p+=4; // int card_number;
@@ -326,7 +404,11 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(p, 1); p+=4; // int enabled;			/* 1=enabled, 0=device not ready at this moment */
             memory->writed(p, 0); p+=4; // int flags;			/* For internal use only - no practical meaning */
             memory->writed(p, 11025); p += 4; // int min_rate
+#ifdef __EMSCRIPTEN__
             memory->writed(p, dspMaxOutputFreq); p+=4; // max_rate;	/* Sample rate limits */
+#else
+            memory->writed(p, 48000); p+=4; // max_rate;	/* Sample rate limits */
+#endif
             memory->writed(p, 1); p+=4; // int min_channels
             memory->writed(p, 2); p+=4; // max_channels;	/* Number of channels supported */
             memory->writed(p, 0); p+=4; // int binding;			/* DSP_BIND_FRONT, etc. 0 means undefined */
@@ -349,11 +431,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 }
 
 void DevDsp::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
-    if (events & K_POLLOUT) {
-        if (this->isWriteReady()) {
-            BOXEDWINE_CONDITION_SIGNAL_ALL(parentCondition);
-        }
-    }
+    this->audio->waitForEvents(parentCondition, events);
 }
 
 FsOpenNode* openDevDsp(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
