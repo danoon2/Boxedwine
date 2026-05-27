@@ -159,6 +159,8 @@ public:
     void* allocCodeMemory(U32 len);
     bool isCode(void* p);
 
+    KMemoryData* getData() { return data; }
+
     BOXEDWINE_MUTEX mutex;
     KMemoryData* deleteOnNextLoop = nullptr;    
 private:
