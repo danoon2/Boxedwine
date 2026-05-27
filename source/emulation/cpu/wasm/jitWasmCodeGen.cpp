@@ -54,8 +54,13 @@ static std::mutex g_wasmBlockBinariesMutex;
 static std::unordered_map<int, std::vector<U8>> g_wasmBlockBinaries;
 #endif
 
+#ifdef BOXEDWINE_MULTI_THREADED
+static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = 1;
+static constexpr U32 WASM_JIT_INTERIOR_BRIDGE_LIMIT = 0;
+#else
 static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = 2048;
 static constexpr U32 WASM_JIT_INTERIOR_BRIDGE_LIMIT = 24;
+#endif
 
 static inline bool wasmJitCanChainTo(CPU* cpu, DecodedOp* nextOp) {
     return nextOp &&
@@ -1111,6 +1116,41 @@ static void disableWasmJitBlockAfterSlotMiss(DecodedOp* op) {
 // DecodedOp::pfnJitCode stores the wasmTable index (cast to void*).
 // ---------------------------------------------------------------------------
 void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
+#ifdef BOXEDWINE_MULTI_THREADED
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    bool profileSample = wasmJitProfileStartEntry();
+    U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
+    U64 startPreCallNs = profileStartNs;
+#endif
+    if (op->pfnJitCode) {
+        // Guard against cross-worker table visibility. Readiness cannot be
+        // cached on DecodedOp because DecodedOp is shared, while table slot
+        // visibility is local to the worker that performs call_indirect.
+        int tableIndex = (int)(uintptr_t)op->pfnJitCode;
+        if (!boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
+            if (!lazyInstallWasmJitBlockForWorker(tableIndex) ||
+                !boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+                wasmJitProfileSlotMiss();
+#endif
+                disableWasmJitBlockAfterSlotMiss(op);
+                NormalCPU::getFunctionForOp(op)(cpu, op);
+                return;
+            }
+        }
+        U8 wasmJitSetupFlags = op->flags2 & OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+        if (wasmJitSetupFlags) {
+            KMemoryData* memoryData = nullptr;
+            if (wasmMemoryPageArraysNeedRefresh(cpu, &memoryData)) {
+                wasmPrepareBlockEnter(cpu, memoryData);
+            }
+        }
+        WASM_JIT_PROFILE_ONLY(if (profileSample) { wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPreCallUs, startPreCallNs); })
+        boxedwine_wasm_call_block((int)(uintptr_t)op->pfnJitCode, (int)(uintptr_t)cpu);
+        WASM_JIT_PROFILE_ONLY(if (profileSample) { U64 startPostCallNs = wasmJitProfileNowNs(); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPostCallUs, startPostCallNs); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartUs, profileStartNs); })
+        // nextOp is updated by the WASM block itself (via helper call).
+    }
+#else
     U32 chainedBlocks = 0;
     U32 chainedInstructionCount = 0;
     bool memoryArraysChecked = false;
@@ -1178,8 +1218,9 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
     }
 #if !defined(BOXEDWINE_MULTI_THREADED)
     cpu->blockInstructionCount += chainedInstructionCount;
-#endif
     WASM_JIT_PROFILE_ONLY(if (loopProfileSample) { bool stoppedAtLimit = chainedBlocks == WASM_JIT_CHAIN_BLOCK_LIMIT && wasmJitCanChainTo(cpu, op); wasmJitProfileLoop(chainedBlocks, stoppedAtLimit, WASM_JIT_PROFILE_TIMING_SAMPLE); if (!stoppedAtLimit) { wasmJitProfileChainStop(cpu, op, WASM_JIT_PROFILE_TIMING_SAMPLE); } })
+#endif
+#endif
 }
 
 // ---------------------------------------------------------------------------
