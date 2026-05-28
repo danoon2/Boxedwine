@@ -59,7 +59,7 @@ static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = 1;
 static constexpr U32 WASM_JIT_INTERIOR_BRIDGE_LIMIT = 0;
 #else
 static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = 2048;
-static constexpr U32 WASM_JIT_INTERIOR_BRIDGE_LIMIT = 24;
+static constexpr U32 WASM_JIT_INTERIOR_BRIDGE_LIMIT = 128;
 #endif
 
 static inline bool wasmJitCanChainTo(CPU* cpu, DecodedOp* nextOp) {
@@ -113,6 +113,12 @@ static std::atomic<U64> g_wasmJitProfileChainStopInteriorIdx3To4{0};
 static std::atomic<U64> g_wasmJitProfileChainStopInteriorIdx5To8{0};
 static std::atomic<U64> g_wasmJitProfileChainStopInteriorIdx9To16{0};
 static std::atomic<U64> g_wasmJitProfileChainStopInteriorIdx17Plus{0};
+static std::atomic<U64> g_wasmJitProfileChainStopInteriorByte1To15{0};
+static std::atomic<U64> g_wasmJitProfileChainStopInteriorByte16To31{0};
+static std::atomic<U64> g_wasmJitProfileChainStopInteriorByte32To63{0};
+static std::atomic<U64> g_wasmJitProfileChainStopInteriorByte64To127{0};
+static std::atomic<U64> g_wasmJitProfileChainStopInteriorByte128Plus{0};
+static std::atomic<U64> g_wasmJitProfileInteriorByInst[InstructionCount];
 static std::atomic<U64> g_wasmJitProfileBridgeEntries{0};
 static std::atomic<U64> g_wasmJitProfileBridgeToJit{0};
 static std::atomic<U64> g_wasmJitProfileBridgeLimit{0};
@@ -277,7 +283,18 @@ static const char* wasmJitProfileInstName(U32 inst) {
     case Movsd: return "Movsd";
     case MovsdXmmE64: return "MovsdXmmE64";
     case MovsdE64Xmm: return "MovsdE64Xmm";
+    case AddR32R32: return "AddR32R32";
+    case AddR32I32: return "AddR32I32";
+    case CmpR32E32: return "CmpR32E32";
+    case CmpR32R32: return "CmpR32R32";
+    case JumpZ: return "JumpZ";
+    case MovE8R8: return "MovE8R8";
+    case MovR32R32: return "MovR32R32";
+    case MovR32E32: return "MovR32E32";
+    case MovGdXzE16: return "MovGdXzE16";
+    case LeaR32: return "LeaR32";
     case FLD1: return "FLD1";
+    case FLD_STi: return "FLD_STi";
     case FLD_SINGLE_REAL: return "FLD_SINGLE_REAL";
     case FST_SINGLE_REAL_Pop: return "FST_SINGLE_REAL_Pop";
     case FIST_DWORD_INTEGER_Pop: return "FIST_DWORD_INTEGER_Pop";
@@ -299,12 +316,12 @@ static const char* wasmJitProfileInstName(U32 inst) {
     }
 }
 
-static void wasmJitProfileFormatTopInstCounters(char* dst, size_t dstSize) {
+static void wasmJitProfileFormatTopInstCounters(char* dst, size_t dstSize, const std::atomic<U64>* counters) {
     static constexpr U32 TopInstCount = 12;
     U32 topIndex[TopInstCount] = {};
     U64 topValue[TopInstCount] = {};
     for (U32 i = 0; i < InstructionCount; i++) {
-        U64 value = g_wasmJitProfileEmulateByInst[i].load(std::memory_order_relaxed);
+        U64 value = counters[i].load(std::memory_order_relaxed);
         for (U32 slot = 0; slot < TopInstCount; slot++) {
             if (value > topValue[slot]) {
                 for (U32 move = TopInstCount - 1; move > slot; move--) {
@@ -387,9 +404,11 @@ static void wasmJitProfileMaybeLog() {
     char topCond[96];
     char topLazy[128];
     char topEmulate[512];
+    char topInterior[512];
     wasmJitProfileFormatTopCounters(topCond, sizeof(topCond), g_wasmJitProfileCondByType, 16, wasmJitProfileCondName);
     wasmJitProfileFormatTopCounters(topLazy, sizeof(topLazy), g_wasmJitProfileCondByLazyFlag, 52, wasmJitProfileLazyFlagName);
-    wasmJitProfileFormatTopInstCounters(topEmulate, sizeof(topEmulate));
+    wasmJitProfileFormatTopInstCounters(topEmulate, sizeof(topEmulate), g_wasmJitProfileEmulateByInst);
+    wasmJitProfileFormatTopInstCounters(topInterior, sizeof(topInterior), g_wasmJitProfileInteriorByInst);
     klog_fmt("[WASM JIT profile] start=%llu call_block=%llu block_exit=%llu slot_miss=%llu "
              "compiled=%llu avg_ops=%llu.%llu ops[1=%llu 2=%llu 3-4=%llu 5-8=%llu 9-16=%llu 17+=%llu] "
              "exits[next1=%llu next2=%llu jump=%llu generic=%llu] "
@@ -397,6 +416,7 @@ static void wasmJitProfileMaybeLog() {
              "chain[next_jit=%llu plain=%llu mem_arrays=%llu not_jit=%llu null=%llu pct=%llu] "
              "chain_stop[null=%llu no_flag=%llu no_table=%llu interior=%llu pfn=%llu other=%llu] "
              "interior_idx[1=%llu 2=%llu 3-4=%llu 5-8=%llu 9-16=%llu 17+=%llu] "
+             "interior_byte[1-15=%llu 16-31=%llu 32-63=%llu 64-127=%llu 128+=%llu] "
              "bridge[entries=%llu to_jit=%llu limit=%llu] "
              "bridge_len[1=%llu 2=%llu 3-4=%llu 5-8=%llu 9-16=%llu 17+=%llu cap=%llu] "
              "loop[entries=%llu extra=%llu avg_blocks=%llu.%llu limit=%llu] "
@@ -406,7 +426,7 @@ static void wasmJitProfileMaybeLog() {
              "mem_r=%llu mem_w=%llu mem_wc=%llu enter=%llu emulate=%llu flags=%llu cond=%llu] "
              "avg_ns[start=%llu start_pre=%llu start_post=%llu call_block=%llu fetch_next=%llu mem_r=%llu mem_w=%llu mem_wc=%llu enter=%llu emulate=%llu flags=%llu cond=%llu] "
              "movsd[total=%llu rep=%llu single=%llu ea16=%llu ea32=%llu seg=%llu flat=%llu df1=%llu df0=%llu rep_flat=%llu rep_seg=%llu rep_ea16=%llu] "
-             "cond_top[%s] lazy_top[%s] emulate_top[%s]",
+             "cond_top[%s] lazy_top[%s] emulate_top[%s] interior_top[%s]",
              (unsigned long long)startCount,
              (unsigned long long)callBlockCount,
              (unsigned long long)blockExitCount,
@@ -451,6 +471,11 @@ static void wasmJitProfileMaybeLog() {
              (unsigned long long)g_wasmJitProfileChainStopInteriorIdx5To8.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileChainStopInteriorIdx9To16.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileChainStopInteriorIdx17Plus.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileChainStopInteriorByte1To15.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileChainStopInteriorByte16To31.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileChainStopInteriorByte32To63.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileChainStopInteriorByte64To127.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileChainStopInteriorByte128Plus.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileBridgeEntries.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileBridgeToJit.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileBridgeLimit.load(std::memory_order_relaxed),
@@ -521,7 +546,8 @@ static void wasmJitProfileMaybeLog() {
              (unsigned long long)g_wasmJitProfileMovsdRepEa16.load(std::memory_order_relaxed),
              topCond,
              topLazy,
-             topEmulate);
+             topEmulate,
+             topInterior);
 }
 
 static inline bool wasmJitProfileStartEntry() {
@@ -642,11 +668,16 @@ static inline void wasmJitProfileChainStop(CPU* cpu, DecodedOp* nextOp, U64 scal
     } else if (nextOp->blockStart != nextOp) {
         g_wasmJitProfileChainStopInterior.fetch_add(scale, std::memory_order_relaxed);
         U32 index = 0;
+        U32 byteOffset = 0;
         DecodedOp* cur = nextOp->blockStart;
         U32 blockOpCount = cur ? cur->blockOpCount : 0;
         while (cur && cur != nextOp && index < blockOpCount) {
+            byteOffset += cur->len;
             cur = cur->next;
             index++;
+        }
+        if (nextOp->inst < InstructionCount) {
+            g_wasmJitProfileInteriorByInst[nextOp->inst].fetch_add(scale, std::memory_order_relaxed);
         }
         if (index <= 1) {
             g_wasmJitProfileChainStopInteriorIdx1.fetch_add(scale, std::memory_order_relaxed);
@@ -660,6 +691,17 @@ static inline void wasmJitProfileChainStop(CPU* cpu, DecodedOp* nextOp, U64 scal
             g_wasmJitProfileChainStopInteriorIdx9To16.fetch_add(scale, std::memory_order_relaxed);
         } else {
             g_wasmJitProfileChainStopInteriorIdx17Plus.fetch_add(scale, std::memory_order_relaxed);
+        }
+        if (byteOffset <= 15) {
+            g_wasmJitProfileChainStopInteriorByte1To15.fetch_add(scale, std::memory_order_relaxed);
+        } else if (byteOffset <= 31) {
+            g_wasmJitProfileChainStopInteriorByte16To31.fetch_add(scale, std::memory_order_relaxed);
+        } else if (byteOffset <= 63) {
+            g_wasmJitProfileChainStopInteriorByte32To63.fetch_add(scale, std::memory_order_relaxed);
+        } else if (byteOffset <= 127) {
+            g_wasmJitProfileChainStopInteriorByte64To127.fetch_add(scale, std::memory_order_relaxed);
+        } else {
+            g_wasmJitProfileChainStopInteriorByte128Plus.fetch_add(scale, std::memory_order_relaxed);
         }
     } else if (nextOp->pfn != cpu->thread->process->startJITOp) {
         g_wasmJitProfileChainStopPfn.fetch_add(scale, std::memory_order_relaxed);
@@ -3475,7 +3517,214 @@ void JitWasmCodeGen::writeFlags(RegPtr flags) {
     writeCPU(JitWidth::b32, (U32)offsetof(CPU, flags), flags);
 }
 RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
-    if (currentLazyFlags == FLAGS_SUB32 && (cond == JitConditional::Z || cond == JitConditional::NZ)) {
+    bool inlineLogicCond32 = currentLazyFlags == FLAGS_TEST32 ||
+                             currentLazyFlags == FLAGS_AND32 ||
+                             currentLazyFlags == FLAGS_OR32 ||
+                             currentLazyFlags == FLAGS_XOR32;
+    bool inlineLogicCond8 = currentLazyFlags == FLAGS_TEST8 ||
+                            currentLazyFlags == FLAGS_AND8 ||
+                            currentLazyFlags == FLAGS_OR8 ||
+                            currentLazyFlags == FLAGS_XOR8;
+    if ((inlineLogicCond32 || inlineLogicCond8) &&
+        (cond == JitConditional::B || cond == JitConditional::NB ||
+         cond == JitConditional::BE || cond == JitConditional::NBE ||
+         cond == JitConditional::L || cond == JitConditional::NL ||
+         cond == JitConditional::LE || cond == JitConditional::NLE)) {
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(HELPER_PROFILE_INLINE_COND);
+#endif
+        U32 condLocal = allocScratch();
+        if (cond == JitConditional::B) {
+            m_emitter.emitI32Const(0);
+        } else if (cond == JitConditional::NB) {
+            m_emitter.emitI32Const(1);
+        } else {
+            U32 resultLocal = allocScratch();
+            U32 valueMask = inlineLogicCond8 ? 0xff : 0xffffffffu;
+            U32 signMask = inlineLogicCond8 ? 0x80 : 0x80000000u;
+            m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+            m_emitter.emitI32Load((U32)offsetof(CPU, result.u32));
+            m_emitter.emitI32Const((S32)valueMask);
+            m_emitter.emitOp(WASM_I32_AND);
+            m_emitter.emitLocalSet(resultLocal);
+            switch (cond) {
+            case JitConditional::BE:
+                m_emitter.emitLocalGet(resultLocal);
+                m_emitter.emitOp(WASM_I32_EQZ);
+                break;
+            case JitConditional::NBE:
+                m_emitter.emitLocalGet(resultLocal);
+                m_emitter.emitI32Const(0);
+                m_emitter.emitOp(WASM_I32_NE);
+                break;
+            case JitConditional::L:
+                m_emitter.emitLocalGet(resultLocal);
+                m_emitter.emitI32Const((S32)signMask);
+                m_emitter.emitOp(WASM_I32_AND);
+                m_emitter.emitI32Const(0);
+                m_emitter.emitOp(WASM_I32_NE);
+                break;
+            case JitConditional::NL:
+                m_emitter.emitLocalGet(resultLocal);
+                m_emitter.emitI32Const((S32)signMask);
+                m_emitter.emitOp(WASM_I32_AND);
+                m_emitter.emitOp(WASM_I32_EQZ);
+                break;
+            case JitConditional::LE:
+            case JitConditional::NLE:
+                m_emitter.emitLocalGet(resultLocal);
+                m_emitter.emitOp(WASM_I32_EQZ);
+                m_emitter.emitLocalGet(resultLocal);
+                m_emitter.emitI32Const((S32)signMask);
+                m_emitter.emitOp(WASM_I32_AND);
+                m_emitter.emitI32Const(0);
+                m_emitter.emitOp(WASM_I32_NE);
+                m_emitter.emitOp(WASM_I32_OR);
+                if (cond == JitConditional::NLE) {
+                    m_emitter.emitOp(WASM_I32_EQZ);
+                }
+                break;
+            default:
+                m_emitter.emitI32Const(0);
+                break;
+            }
+            freeScratch(resultLocal);
+        }
+        m_emitter.emitLocalSet(condLocal);
+
+        RegPtr tmp = makeWasmReg((U8)condLocal, 0xff);
+        if (res && res != tmp) {
+            mov(JitWidth::b8, res, tmp);
+            freeScratch(condLocal);
+            return res;
+        }
+        return tmp;
+    }
+
+    bool inlineSubCond = currentLazyFlags == FLAGS_SUB8 ||
+                         currentLazyFlags == FLAGS_SUB16 ||
+                         currentLazyFlags == FLAGS_SUB32;
+    if (inlineSubCond &&
+        (cond == JitConditional::B || cond == JitConditional::NB ||
+         cond == JitConditional::BE || cond == JitConditional::NBE ||
+         cond == JitConditional::L || cond == JitConditional::NL ||
+         cond == JitConditional::LE || cond == JitConditional::NLE)) {
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(HELPER_PROFILE_INLINE_COND);
+#endif
+        U32 bitWidth = currentLazyFlags == FLAGS_SUB8 ? 8 : (currentLazyFlags == FLAGS_SUB16 ? 16 : 32);
+        U32 valueMask = bitWidth == 8 ? 0xff : (bitWidth == 16 ? 0xffff : 0xffffffffu);
+        U32 condLocal = allocScratch();
+        U32 dstLocal = allocScratch();
+        U32 srcLocal = allocScratch();
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Load((U32)offsetof(CPU, dst.u32));
+        if (valueMask != 0xffffffffu) {
+            m_emitter.emitI32Const((S32)valueMask);
+            m_emitter.emitOp(WASM_I32_AND);
+        }
+        m_emitter.emitLocalSet(dstLocal);
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Load((U32)offsetof(CPU, src.u32));
+        if (valueMask != 0xffffffffu) {
+            m_emitter.emitI32Const((S32)valueMask);
+            m_emitter.emitOp(WASM_I32_AND);
+        }
+        m_emitter.emitLocalSet(srcLocal);
+        auto emitSubOperand = [this, bitWidth](U32 local, bool signExtend) {
+            m_emitter.emitLocalGet(local);
+            if (signExtend && bitWidth != 32) {
+                m_emitter.emitI32Const((S32)(32 - bitWidth));
+                m_emitter.emitOp(WASM_I32_SHL);
+                m_emitter.emitI32Const((S32)(32 - bitWidth));
+                m_emitter.emitOp(WASM_I32_SHR_S);
+            }
+        };
+        switch (cond) {
+        case JitConditional::B:
+            emitSubOperand(dstLocal, false);
+            emitSubOperand(srcLocal, false);
+            m_emitter.emitOp(WASM_I32_LT_U);
+            break;
+        case JitConditional::NB:
+            emitSubOperand(dstLocal, false);
+            emitSubOperand(srcLocal, false);
+            m_emitter.emitOp(WASM_I32_GE_U);
+            break;
+        case JitConditional::BE:
+            emitSubOperand(dstLocal, false);
+            emitSubOperand(srcLocal, false);
+            m_emitter.emitOp(WASM_I32_LE_U);
+            break;
+        case JitConditional::NBE:
+            emitSubOperand(dstLocal, false);
+            emitSubOperand(srcLocal, false);
+            m_emitter.emitOp(WASM_I32_GT_U);
+            break;
+        case JitConditional::L:
+            emitSubOperand(dstLocal, true);
+            emitSubOperand(srcLocal, true);
+            m_emitter.emitOp(WASM_I32_LT_S);
+            break;
+        case JitConditional::NL:
+            emitSubOperand(dstLocal, true);
+            emitSubOperand(srcLocal, true);
+            m_emitter.emitOp(WASM_I32_GE_S);
+            break;
+        case JitConditional::LE:
+            emitSubOperand(dstLocal, true);
+            emitSubOperand(srcLocal, true);
+            m_emitter.emitOp(WASM_I32_LE_S);
+            break;
+        case JitConditional::NLE:
+            emitSubOperand(dstLocal, true);
+            emitSubOperand(srcLocal, true);
+            m_emitter.emitOp(WASM_I32_GT_S);
+            break;
+        default:
+            m_emitter.emitI32Const(0);
+            break;
+        }
+        m_emitter.emitLocalSet(condLocal);
+        freeScratch(srcLocal);
+        freeScratch(dstLocal);
+
+        RegPtr tmp = makeWasmReg((U8)condLocal, 0xff);
+        if (res && res != tmp) {
+            mov(JitWidth::b8, res, tmp);
+            freeScratch(condLocal);
+            return res;
+        }
+        return tmp;
+    }
+
+    bool inlineZeroCond32 = currentLazyFlags == FLAGS_SUB32 ||
+                            currentLazyFlags == FLAGS_TEST32 ||
+                            currentLazyFlags == FLAGS_AND32 ||
+                            currentLazyFlags == FLAGS_ADD32 ||
+                            currentLazyFlags == FLAGS_INC32 ||
+                            currentLazyFlags == FLAGS_DEC32 ||
+                            currentLazyFlags == FLAGS_OR32 ||
+                            currentLazyFlags == FLAGS_XOR32;
+    bool inlineZeroCond16 = currentLazyFlags == FLAGS_SUB16 ||
+                            currentLazyFlags == FLAGS_TEST16 ||
+                            currentLazyFlags == FLAGS_AND16 ||
+                            currentLazyFlags == FLAGS_OR16 ||
+                            currentLazyFlags == FLAGS_XOR16 ||
+                            currentLazyFlags == FLAGS_ADD16 ||
+                            currentLazyFlags == FLAGS_INC16 ||
+                            currentLazyFlags == FLAGS_DEC16;
+    bool inlineZeroCond8 = currentLazyFlags == FLAGS_SUB8 ||
+                           currentLazyFlags == FLAGS_TEST8 ||
+                           currentLazyFlags == FLAGS_AND8 ||
+                           currentLazyFlags == FLAGS_OR8 ||
+                           currentLazyFlags == FLAGS_XOR8 ||
+                           currentLazyFlags == FLAGS_ADD8 ||
+                           currentLazyFlags == FLAGS_INC8 ||
+                           currentLazyFlags == FLAGS_DEC8;
+    if ((inlineZeroCond32 || inlineZeroCond16 || inlineZeroCond8) && (cond == JitConditional::Z || cond == JitConditional::NZ)) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitCall(HELPER_PROFILE_INLINE_COND);
@@ -3483,6 +3732,10 @@ RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
         U32 condLocal = allocScratch();
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitI32Load((U32)offsetof(CPU, result.u32));
+        if (inlineZeroCond16 || inlineZeroCond8) {
+            m_emitter.emitI32Const(inlineZeroCond8 ? 0xff : 0xffff);
+            m_emitter.emitOp(WASM_I32_AND);
+        }
         if (cond == JitConditional::Z) {
             m_emitter.emitOp(WASM_I32_EQZ);
         } else {
