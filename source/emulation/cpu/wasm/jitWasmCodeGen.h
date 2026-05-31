@@ -371,7 +371,11 @@ public:
     void dynamic_pause(DecodedOp* op) override;
     void dynamic_FLD_SINGLE_REAL(DecodedOp* op) override;
     void dynamic_FLD1(DecodedOp* op) override;
+    void dynamic_FLD_DOUBLE_REAL(DecodedOp* op) override;
+    void dynamic_FCOM_SINGLE_REAL_Pop(DecodedOp* op) override;
+    void dynamic_FADD_ST0_STj(DecodedOp* op) override;
     void dynamic_FDIV_ST0_STj(DecodedOp* op) override;
+    void dynamic_FNSTSW_AX(DecodedOp* op) override;
     void dynamic_FST_SINGLE_REAL_Pop(DecodedOp* op) override;
     void dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) override;
     void dynamic_movsdXmmE64(DecodedOp* op) override;

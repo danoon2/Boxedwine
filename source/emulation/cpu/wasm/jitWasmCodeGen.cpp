@@ -1784,8 +1784,24 @@ static void wasmHelper_fld1(CPU* cpu) {
     common_FLD1(cpu);
 }
 
+static void wasmHelper_fldDoubleReal(CPU* cpu) {
+    common_FLD_DOUBLE_REAL(cpu, cpu->memHelperAddr);
+}
+
+static void wasmHelper_fcomSingleRealPop(CPU* cpu) {
+    common_FCOM_SINGLE_REAL_Pop(cpu, cpu->memHelperAddr);
+}
+
+static void wasmHelper_faddSt0Stj(CPU* cpu) {
+    common_FADD_ST0_STj(cpu, cpu->memHelperValue);
+}
+
 static void wasmHelper_fdivSt0Stj(CPU* cpu) {
     common_FDIV_ST0_STj(cpu, cpu->memHelperValue);
+}
+
+static void wasmHelper_fnstswAx(CPU* cpu) {
+    common_FNSTSW_AX(cpu);
 }
 
 static void wasmHelper_fstSingleRealPop(CPU* cpu) {
@@ -1849,7 +1865,11 @@ static const void* g_wasmHelperTable[] = {
     (void*)wasmHelper_writeMem32_check,
     (void*)wasmHelper_fldSingleReal,
     (void*)wasmHelper_fld1,
+    (void*)wasmHelper_fldDoubleReal,
+    (void*)wasmHelper_fcomSingleRealPop,
+    (void*)wasmHelper_faddSt0Stj,
     (void*)wasmHelper_fdivSt0Stj,
+    (void*)wasmHelper_fnstswAx,
     (void*)wasmHelper_fstSingleRealPop,
     (void*)wasmHelper_fistDwordIntegerPop,
     (void*)wasmHelper_movsdXmmE64,
@@ -1910,18 +1930,22 @@ enum WasmHelperIdx {
     HELPER_WRITE_MEM32_CHECK = 31,
     HELPER_FLD_SINGLE_REAL = 32,
     HELPER_FLD1 = 33,
-    HELPER_FDIV_ST0_STJ = 34,
-    HELPER_FST_SINGLE_REAL_POP = 35,
-    HELPER_FIST_DWORD_INTEGER_POP = 36,
-    HELPER_MOVSD_XMM_E64 = 37,
-    HELPER_MOVSD_E64_XMM = 38,
-    HELPER_MOVSD32R = 39,
-    HELPER_PROFILE_BLOCK_EXIT = 40,
-    HELPER_PROFILE_EXIT_NEXT1 = 41,
-    HELPER_PROFILE_EXIT_NEXT2 = 42,
-    HELPER_PROFILE_EXIT_JUMP = 43,
-    HELPER_PROFILE_EXIT_GENERIC = 44,
-    HELPER_PROFILE_INLINE_COND = 45,
+    HELPER_FLD_DOUBLE_REAL = 34,
+    HELPER_FCOM_SINGLE_REAL_POP = 35,
+    HELPER_FADD_ST0_STJ = 36,
+    HELPER_FDIV_ST0_STJ = 37,
+    HELPER_FNSTSW_AX = 38,
+    HELPER_FST_SINGLE_REAL_POP = 39,
+    HELPER_FIST_DWORD_INTEGER_POP = 40,
+    HELPER_MOVSD_XMM_E64 = 41,
+    HELPER_MOVSD_E64_XMM = 42,
+    HELPER_MOVSD32R = 43,
+    HELPER_PROFILE_BLOCK_EXIT = 44,
+    HELPER_PROFILE_EXIT_NEXT1 = 45,
+    HELPER_PROFILE_EXIT_NEXT2 = 46,
+    HELPER_PROFILE_EXIT_JUMP = 47,
+    HELPER_PROFILE_EXIT_GENERIC = 48,
+    HELPER_PROFILE_INLINE_COND = 49,
 };
 
 // ---------------------------------------------------------------------------
@@ -4379,12 +4403,40 @@ void JitWasmCodeGen::dynamic_FLD1(DecodedOp* op) {
     m_emitter.emitCall(HELPER_FLD1);
 }
 
+void JitWasmCodeGen::dynamic_FLD_DOUBLE_REAL(DecodedOp* op) {
+    RegPtr address = calculateEaa(op);
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_FLD_DOUBLE_REAL);
+}
+
+void JitWasmCodeGen::dynamic_FCOM_SINGLE_REAL_Pop(DecodedOp* op) {
+    RegPtr address = calculateEaa(op);
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_FCOM_SINGLE_REAL_POP);
+}
+
+void JitWasmCodeGen::dynamic_FADD_ST0_STj(DecodedOp* op) {
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(op->reg);
+    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_FADD_ST0_STJ);
+}
+
 void JitWasmCodeGen::dynamic_FDIV_ST0_STj(DecodedOp* op) {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Const(op->reg);
     m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(HELPER_FDIV_ST0_STJ);
+}
+
+void JitWasmCodeGen::dynamic_FNSTSW_AX(DecodedOp* op) {
+    (void)op;
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_FNSTSW_AX);
 }
 
 void JitWasmCodeGen::dynamic_FST_SINGLE_REAL_Pop(DecodedOp* op) {
@@ -4765,8 +4817,24 @@ void JitWasmCodeGen::compile(DecodedOp* op) {
         dynamic_FLD1(op);
         return;
     }
+    if (op->inst == FLD_DOUBLE_REAL) {
+        dynamic_FLD_DOUBLE_REAL(op);
+        return;
+    }
+    if (op->inst == FCOM_SINGLE_REAL_Pop) {
+        dynamic_FCOM_SINGLE_REAL_Pop(op);
+        return;
+    }
+    if (op->inst == FADD_ST0_STj) {
+        dynamic_FADD_ST0_STj(op);
+        return;
+    }
     if (op->inst == FDIV_ST0_STj) {
         dynamic_FDIV_ST0_STj(op);
+        return;
+    }
+    if (op->inst == FNSTSW_AX) {
+        dynamic_FNSTSW_AX(op);
         return;
     }
     if (op->inst == FST_SINGLE_REAL_Pop) {
