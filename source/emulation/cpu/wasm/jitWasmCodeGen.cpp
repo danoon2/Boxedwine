@@ -157,6 +157,8 @@ static std::atomic<U64> g_wasmJitProfileBridgeLen5To8{0};
 static std::atomic<U64> g_wasmJitProfileBridgeLen9To16{0};
 static std::atomic<U64> g_wasmJitProfileBridgeLen17To31{0};
 static std::atomic<U64> g_wasmJitProfileBridgeLenCap{0};
+static std::atomic<U64> g_wasmJitProfileBridgeFastCalls{0};
+static std::atomic<U64> g_wasmJitProfileBridgePfnCalls{0};
 static std::atomic<U64> g_wasmJitProfileBridgeMovR32E32{0};
 static std::atomic<U64> g_wasmJitProfileBridgeMovR32E32ToJit{0};
 static std::atomic<U64> g_wasmJitProfileBridgeMovR32E32Interior{0};
@@ -171,6 +173,7 @@ static std::atomic<U64> g_wasmJitProfileBridgeMovR32E32Ea32{0};
 static std::atomic<U64> g_wasmJitProfileBridgeMovR32E32DstReg[8];
 static std::atomic<U64> g_wasmJitProfileBridgeMovR32E32Rm[8];
 static std::atomic<U64> g_wasmJitProfileBridgeMovR32E32NextByInst[InstructionCount];
+static std::atomic<U64> g_wasmJitProfileBridgePfnByInst[InstructionCount];
 static std::atomic<U64> g_wasmJitProfileLoopEntries{0};
 static std::atomic<U64> g_wasmJitProfileLoopExtraBlocks{0};
 static std::atomic<U64> g_wasmJitProfileLoopLimitStops{0};
@@ -229,6 +232,8 @@ static std::atomic<U64> g_wasmJitProfileStartPreCallUs{0};
 static std::atomic<U64> g_wasmJitProfileStartPostCallUs{0};
 static std::atomic<U64> g_wasmJitProfileCallBlockUs{0};
 static std::atomic<U64> g_wasmJitProfileFetchNextUs{0};
+static std::atomic<U64> g_wasmJitProfileBridgeFastUs{0};
+static std::atomic<U64> g_wasmJitProfileBridgePfnUs{0};
 static std::atomic<U64> g_wasmJitProfileHelperMemReadUs{0};
 static std::atomic<U64> g_wasmJitProfileHelperMemWriteUs{0};
 static std::atomic<U64> g_wasmJitProfileHelperMemWriteCheckUs{0};
@@ -334,10 +339,18 @@ static const char* wasmJitProfileInstName(U32 inst) {
     case Movsd: return "Movsd";
     case MovsdXmmE64: return "MovsdXmmE64";
     case MovsdE64Xmm: return "MovsdE64Xmm";
+    case AddR32E32: return "AddR32E32";
     case AddR32R32: return "AddR32R32";
     case AddR32I32: return "AddR32I32";
+    case AddE32I32: return "AddE32I32";
+    case SbbR32R32: return "SbbR32R32";
+    case SbbR32I32: return "SbbR32I32";
+    case XorR32R32: return "XorR32R32";
     case CmpR32E32: return "CmpR32E32";
+    case CmpE32R32: return "CmpE32R32";
     case CmpR32R32: return "CmpR32R32";
+    case CmpR32I32: return "CmpR32I32";
+    case CmpE32I32: return "CmpE32I32";
     case JumpO: return "JumpO";
     case JumpNO: return "JumpNO";
     case JumpB: return "JumpB";
@@ -365,13 +378,18 @@ static const char* wasmJitProfileInstName(U32 inst) {
     case MovE32R32: return "MovE32R32";
     case MovR32E32: return "MovR32E32";
     case MovR32I32: return "MovR32I32";
+    case MovE32I32: return "MovE32I32";
     case MovOdEax: return "MovOdEax";
+    case MovGdXzE8: return "MovGdXzE8";
     case MovGdXzE16: return "MovGdXzE16";
     case MovGdSxE8: return "MovGdSxE8";
     case LeaR32: return "LeaR32";
     case TestR32R32: return "TestR32R32";
     case OrE32R32: return "OrE32R32";
     case JmpJb: return "JmpJb";
+    case IncR32: return "IncR32";
+    case PushR32: return "PushR32";
+    case PopR32: return "PopR32";
     case FLD1: return "FLD1";
     case FLD_STi: return "FLD_STi";
     case FLD_SINGLE_REAL: return "FLD_SINGLE_REAL";
@@ -473,6 +491,8 @@ static void wasmJitProfileMaybeLog() {
     U64 startPostCallUs = g_wasmJitProfileStartPostCallUs.load(std::memory_order_relaxed);
     U64 callBlockUs = g_wasmJitProfileCallBlockUs.load(std::memory_order_relaxed);
     U64 fetchNextUs = g_wasmJitProfileFetchNextUs.load(std::memory_order_relaxed);
+    U64 bridgeFastUs = g_wasmJitProfileBridgeFastUs.load(std::memory_order_relaxed);
+    U64 bridgePfnUs = g_wasmJitProfileBridgePfnUs.load(std::memory_order_relaxed);
     U64 memReadUs = g_wasmJitProfileHelperMemReadUs.load(std::memory_order_relaxed);
     U64 memWriteUs = g_wasmJitProfileHelperMemWriteUs.load(std::memory_order_relaxed);
     U64 memWriteCheckUs = g_wasmJitProfileHelperMemWriteCheckUs.load(std::memory_order_relaxed);
@@ -485,6 +505,7 @@ static void wasmJitProfileMaybeLog() {
     char topEmulate[512];
     char topInterior[512];
     char topMovBridgeNext[512];
+    char topBridgePfn[512];
     char topFetchNextTarget[512];
     char topGenericExit[512];
     wasmJitProfileFormatTopCounters(topCond, sizeof(topCond), g_wasmJitProfileCondByType, 16, wasmJitProfileCondName);
@@ -492,6 +513,7 @@ static void wasmJitProfileMaybeLog() {
     wasmJitProfileFormatTopInstCounters(topEmulate, sizeof(topEmulate), g_wasmJitProfileEmulateByInst);
     wasmJitProfileFormatTopInstCounters(topInterior, sizeof(topInterior), g_wasmJitProfileInteriorByInst);
     wasmJitProfileFormatTopInstCounters(topMovBridgeNext, sizeof(topMovBridgeNext), g_wasmJitProfileBridgeMovR32E32NextByInst);
+    wasmJitProfileFormatTopInstCounters(topBridgePfn, sizeof(topBridgePfn), g_wasmJitProfileBridgePfnByInst);
     wasmJitProfileFormatTopInstCounters(topFetchNextTarget, sizeof(topFetchNextTarget), g_wasmJitProfileFetchNextTargetByInst);
     wasmJitProfileFormatTopInstCounters(topGenericExit, sizeof(topGenericExit), g_wasmJitProfileGenericExitByInst);
     klog_fmt("[WASM JIT profile] start=%llu call_block=%llu block_exit=%llu slot_miss=%llu "
@@ -505,15 +527,16 @@ static void wasmJitProfileMaybeLog() {
              "interior_byte[1-15=%llu 16-31=%llu 32-63=%llu 64-127=%llu 128+=%llu] "
              "bridge[entries=%llu to_jit=%llu limit=%llu] "
              "bridge_len[1=%llu 2=%llu 3-4=%llu 5-8=%llu 9-16=%llu 17+=%llu cap=%llu] "
+             "bridge_exec[fast=%llu pfn=%llu] "
              "bridge_mov_r32_e32[total=%llu to_jit=%llu interior=%llu null=%llu no_flag=%llu no_table=%llu pfn=%llu other=%llu limit=%llu ea16=%llu ea32=%llu dst0=%llu dst1=%llu dst2=%llu dst3=%llu dst4=%llu dst5=%llu dst6=%llu dst7=%llu rm0=%llu rm1=%llu rm2=%llu rm3=%llu rm4=%llu rm5=%llu rm6=%llu rm7=%llu] "
              "loop[entries=%llu extra=%llu avg_blocks=%llu.%llu limit=%llu] "
              "loop_len[1=%llu 2=%llu 3-4=%llu 5-8=%llu 9-16=%llu 17-32=%llu 33-64=%llu 65-128=%llu 129-511=%llu 512-1023=%llu 1024-2047=%llu cap=%llu] "
              "mem_arrays[checks=%llu refresh=%llu] "
-             "time_us[jit=%llu instantiate=%llu codegen=%llu start=%llu start_pre=%llu start_post=%llu call_block=%llu fetch_next=%llu "
+             "time_us[jit=%llu instantiate=%llu codegen=%llu start=%llu start_pre=%llu start_post=%llu call_block=%llu fetch_next=%llu bridge_fast=%llu bridge_pfn=%llu "
              "mem_r=%llu mem_w=%llu mem_wc=%llu enter=%llu emulate=%llu flags=%llu cond=%llu] "
-             "avg_ns[start=%llu start_pre=%llu start_post=%llu call_block=%llu fetch_next=%llu mem_r=%llu mem_w=%llu mem_wc=%llu enter=%llu emulate=%llu flags=%llu cond=%llu] "
+             "avg_ns[start=%llu start_pre=%llu start_post=%llu call_block=%llu fetch_next=%llu bridge_fast=%llu bridge_pfn=%llu mem_r=%llu mem_w=%llu mem_wc=%llu enter=%llu emulate=%llu flags=%llu cond=%llu] "
              "movsd[total=%llu rep=%llu single=%llu ea16=%llu ea32=%llu seg=%llu flat=%llu df1=%llu df0=%llu rep_flat=%llu rep_seg=%llu rep_ea16=%llu] "
-             "cond_top[%s] lazy_top[%s] emulate_top[%s] interior_top[%s] bridge_mov_next_top[%s] fetch_next_top[%s] generic_exit_top[%s]",
+             "cond_top[%s] lazy_top[%s] emulate_top[%s] interior_top[%s] bridge_mov_next_top[%s] bridge_pfn_top[%s] fetch_next_top[%s] generic_exit_top[%s]",
              (unsigned long long)startCount,
              (unsigned long long)callBlockCount,
              (unsigned long long)blockExitCount,
@@ -580,6 +603,8 @@ static void wasmJitProfileMaybeLog() {
              (unsigned long long)g_wasmJitProfileBridgeLen9To16.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileBridgeLen17To31.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileBridgeLenCap.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileBridgeFastCalls.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileBridgePfnCalls.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileBridgeMovR32E32.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileBridgeMovR32E32ToJit.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileBridgeMovR32E32Interior.load(std::memory_order_relaxed),
@@ -634,6 +659,8 @@ static void wasmJitProfileMaybeLog() {
              (unsigned long long)wasmJitProfileUs(startPostCallUs),
              (unsigned long long)wasmJitProfileUs(callBlockUs),
              (unsigned long long)wasmJitProfileUs(fetchNextUs),
+             (unsigned long long)wasmJitProfileUs(bridgeFastUs),
+             (unsigned long long)wasmJitProfileUs(bridgePfnUs),
              (unsigned long long)wasmJitProfileUs(memReadUs),
              (unsigned long long)wasmJitProfileUs(memWriteUs),
              (unsigned long long)wasmJitProfileUs(memWriteCheckUs),
@@ -646,6 +673,8 @@ static void wasmJitProfileMaybeLog() {
              (unsigned long long)wasmJitProfileAvgNs(startPostCallUs, callBlockCount),
              (unsigned long long)wasmJitProfileAvgNs(callBlockUs, callBlockCount),
              (unsigned long long)wasmJitProfileAvgNs(fetchNextUs, fetchNextCount),
+             (unsigned long long)wasmJitProfileAvgNs(bridgeFastUs, g_wasmJitProfileBridgeFastCalls.load(std::memory_order_relaxed)),
+             (unsigned long long)wasmJitProfileAvgNs(bridgePfnUs, g_wasmJitProfileBridgePfnCalls.load(std::memory_order_relaxed)),
              (unsigned long long)wasmJitProfileAvgNs(memReadUs, memReadCount),
              (unsigned long long)wasmJitProfileAvgNs(memWriteUs, memWriteCount),
              (unsigned long long)wasmJitProfileAvgNs(memWriteCheckUs, memWriteCheckCount),
@@ -670,6 +699,7 @@ static void wasmJitProfileMaybeLog() {
              topEmulate,
              topInterior,
              topMovBridgeNext,
+             topBridgePfn,
              topFetchNextTarget,
              topGenericExit);
 }
@@ -882,6 +912,19 @@ static inline void wasmJitProfileBridge(U32 entries, bool toJit, bool hitLimit, 
     }
     if (hitLimit) {
         g_wasmJitProfileBridgeLimit.fetch_add(scale, std::memory_order_relaxed);
+    }
+}
+
+static inline void wasmJitProfileBridgeFast(U64 startNs, U64 scale) {
+    g_wasmJitProfileBridgeFastCalls.fetch_add(scale, std::memory_order_relaxed);
+    g_wasmJitProfileBridgeFastUs.fetch_add((wasmJitProfileNowNs() - startNs) * scale, std::memory_order_relaxed);
+}
+
+static inline void wasmJitProfileBridgePfn(U64 startNs, DecodedOp* op, U64 scale) {
+    g_wasmJitProfileBridgePfnCalls.fetch_add(scale, std::memory_order_relaxed);
+    g_wasmJitProfileBridgePfnUs.fetch_add((wasmJitProfileNowNs() - startNs) * scale, std::memory_order_relaxed);
+    if (op && op->inst < InstructionCount) {
+        g_wasmJitProfileBridgePfnByInst[op->inst].fetch_add(scale, std::memory_order_relaxed);
     }
 }
 
@@ -1432,8 +1475,14 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
             U32 bridgeEntries = 0;
             while (bridgeEntries < WASM_JIT_INTERIOR_BRIDGE_LIMIT && !cpu->yield && wasmJitCanBridgeInterior(cpu, op)) {
                 DecodedOp* bridgeOp = op;
-                if (!wasmJitTryBridgeFastOp(cpu, bridgeOp)) {
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+                U64 bridgeOpStartNs = loopProfileSample ? wasmJitProfileNowNs() : 0;
+#endif
+                if (wasmJitTryBridgeFastOp(cpu, bridgeOp)) {
+                    WASM_JIT_PROFILE_ONLY(if (loopProfileSample) { wasmJitProfileBridgeFast(bridgeOpStartNs, WASM_JIT_PROFILE_TIMING_SAMPLE); })
+                } else {
                     bridgeOp->pfn(cpu, bridgeOp);
+                    WASM_JIT_PROFILE_ONLY(if (loopProfileSample) { wasmJitProfileBridgePfn(bridgeOpStartNs, bridgeOp, WASM_JIT_PROFILE_TIMING_SAMPLE); })
                 }
                 bridgeEntries++;
                 op = cpu->nextOp;
