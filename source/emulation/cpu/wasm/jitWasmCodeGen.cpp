@@ -147,6 +147,9 @@ static std::atomic<U64> g_wasmJitProfileChainStopInteriorByte32To63{0};
 static std::atomic<U64> g_wasmJitProfileChainStopInteriorByte64To127{0};
 static std::atomic<U64> g_wasmJitProfileChainStopInteriorByte128Plus{0};
 static std::atomic<U64> g_wasmJitProfileInteriorByInst[InstructionCount];
+static std::atomic<U64> g_wasmJitProfileInteriorBlockStartByInst[InstructionCount];
+static std::atomic<U64> g_wasmJitProfileChainStopPfnByInst[InstructionCount];
+static std::atomic<U64> g_wasmJitProfileChainStopOtherByInst[InstructionCount];
 static std::atomic<U64> g_wasmJitProfileBridgeEntries{0};
 static std::atomic<U64> g_wasmJitProfileBridgeToJit{0};
 static std::atomic<U64> g_wasmJitProfileBridgeLimit{0};
@@ -173,7 +176,9 @@ static std::atomic<U64> g_wasmJitProfileBridgeMovR32E32Ea32{0};
 static std::atomic<U64> g_wasmJitProfileBridgeMovR32E32DstReg[8];
 static std::atomic<U64> g_wasmJitProfileBridgeMovR32E32Rm[8];
 static std::atomic<U64> g_wasmJitProfileBridgeMovR32E32NextByInst[InstructionCount];
+static std::atomic<U64> g_wasmJitProfileBridgeFastByInst[InstructionCount];
 static std::atomic<U64> g_wasmJitProfileBridgePfnByInst[InstructionCount];
+static std::atomic<U64> g_wasmJitProfileBridgeNextByInst[InstructionCount];
 static std::atomic<U64> g_wasmJitProfileLoopEntries{0};
 static std::atomic<U64> g_wasmJitProfileLoopExtraBlocks{0};
 static std::atomic<U64> g_wasmJitProfileLoopLimitStops{0};
@@ -504,16 +509,26 @@ static void wasmJitProfileMaybeLog() {
     char topLazy[128];
     char topEmulate[512];
     char topInterior[512];
+    char topInteriorBlockStart[512];
     char topMovBridgeNext[512];
+    char topBridgeFast[512];
     char topBridgePfn[512];
+    char topBridgeNext[512];
+    char topChainStopPfn[512];
+    char topChainStopOther[512];
     char topFetchNextTarget[512];
     char topGenericExit[512];
     wasmJitProfileFormatTopCounters(topCond, sizeof(topCond), g_wasmJitProfileCondByType, 16, wasmJitProfileCondName);
     wasmJitProfileFormatTopCounters(topLazy, sizeof(topLazy), g_wasmJitProfileCondByLazyFlag, 52, wasmJitProfileLazyFlagName);
     wasmJitProfileFormatTopInstCounters(topEmulate, sizeof(topEmulate), g_wasmJitProfileEmulateByInst);
     wasmJitProfileFormatTopInstCounters(topInterior, sizeof(topInterior), g_wasmJitProfileInteriorByInst);
+    wasmJitProfileFormatTopInstCounters(topInteriorBlockStart, sizeof(topInteriorBlockStart), g_wasmJitProfileInteriorBlockStartByInst);
     wasmJitProfileFormatTopInstCounters(topMovBridgeNext, sizeof(topMovBridgeNext), g_wasmJitProfileBridgeMovR32E32NextByInst);
+    wasmJitProfileFormatTopInstCounters(topBridgeFast, sizeof(topBridgeFast), g_wasmJitProfileBridgeFastByInst);
     wasmJitProfileFormatTopInstCounters(topBridgePfn, sizeof(topBridgePfn), g_wasmJitProfileBridgePfnByInst);
+    wasmJitProfileFormatTopInstCounters(topBridgeNext, sizeof(topBridgeNext), g_wasmJitProfileBridgeNextByInst);
+    wasmJitProfileFormatTopInstCounters(topChainStopPfn, sizeof(topChainStopPfn), g_wasmJitProfileChainStopPfnByInst);
+    wasmJitProfileFormatTopInstCounters(topChainStopOther, sizeof(topChainStopOther), g_wasmJitProfileChainStopOtherByInst);
     wasmJitProfileFormatTopInstCounters(topFetchNextTarget, sizeof(topFetchNextTarget), g_wasmJitProfileFetchNextTargetByInst);
     wasmJitProfileFormatTopInstCounters(topGenericExit, sizeof(topGenericExit), g_wasmJitProfileGenericExitByInst);
     klog_fmt("[WASM JIT profile] start=%llu call_block=%llu block_exit=%llu slot_miss=%llu "
@@ -536,7 +551,9 @@ static void wasmJitProfileMaybeLog() {
              "mem_r=%llu mem_w=%llu mem_wc=%llu enter=%llu emulate=%llu flags=%llu cond=%llu] "
              "avg_ns[start=%llu start_pre=%llu start_post=%llu call_block=%llu fetch_next=%llu bridge_fast=%llu bridge_pfn=%llu mem_r=%llu mem_w=%llu mem_wc=%llu enter=%llu emulate=%llu flags=%llu cond=%llu] "
              "movsd[total=%llu rep=%llu single=%llu ea16=%llu ea32=%llu seg=%llu flat=%llu df1=%llu df0=%llu rep_flat=%llu rep_seg=%llu rep_ea16=%llu] "
-             "cond_top[%s] lazy_top[%s] emulate_top[%s] interior_top[%s] bridge_mov_next_top[%s] bridge_pfn_top[%s] fetch_next_top[%s] generic_exit_top[%s]",
+             "cond_top[%s] lazy_top[%s] emulate_top[%s] interior_top[%s] interior_block_top[%s] "
+             "bridge_mov_next_top[%s] bridge_fast_top[%s] bridge_pfn_top[%s] bridge_next_top[%s] "
+             "chain_pfn_top[%s] chain_other_top[%s] fetch_next_top[%s] generic_exit_top[%s]",
              (unsigned long long)startCount,
              (unsigned long long)callBlockCount,
              (unsigned long long)blockExitCount,
@@ -698,8 +715,13 @@ static void wasmJitProfileMaybeLog() {
              topLazy,
              topEmulate,
              topInterior,
+             topInteriorBlockStart,
              topMovBridgeNext,
+             topBridgeFast,
              topBridgePfn,
+             topBridgeNext,
+             topChainStopPfn,
+             topChainStopOther,
              topFetchNextTarget,
              topGenericExit);
 }
@@ -836,6 +858,9 @@ static inline void wasmJitProfileChainStop(CPU* cpu, DecodedOp* nextOp, U64 scal
         if (nextOp->inst < InstructionCount) {
             g_wasmJitProfileInteriorByInst[nextOp->inst].fetch_add(scale, std::memory_order_relaxed);
         }
+        if (nextOp->blockStart && nextOp->blockStart->inst < InstructionCount) {
+            g_wasmJitProfileInteriorBlockStartByInst[nextOp->blockStart->inst].fetch_add(scale, std::memory_order_relaxed);
+        }
         if (index <= 1) {
             g_wasmJitProfileChainStopInteriorIdx1.fetch_add(scale, std::memory_order_relaxed);
         } else if (index == 2) {
@@ -862,8 +887,14 @@ static inline void wasmJitProfileChainStop(CPU* cpu, DecodedOp* nextOp, U64 scal
         }
     } else if (nextOp->pfn != cpu->thread->process->startJITOp) {
         g_wasmJitProfileChainStopPfn.fetch_add(scale, std::memory_order_relaxed);
+        if (nextOp->inst < InstructionCount) {
+            g_wasmJitProfileChainStopPfnByInst[nextOp->inst].fetch_add(scale, std::memory_order_relaxed);
+        }
     } else {
         g_wasmJitProfileChainStopOther.fetch_add(scale, std::memory_order_relaxed);
+        if (nextOp->inst < InstructionCount) {
+            g_wasmJitProfileChainStopOtherByInst[nextOp->inst].fetch_add(scale, std::memory_order_relaxed);
+        }
     }
 }
 
@@ -915,9 +946,12 @@ static inline void wasmJitProfileBridge(U32 entries, bool toJit, bool hitLimit, 
     }
 }
 
-static inline void wasmJitProfileBridgeFast(U64 startNs, U64 scale) {
+static inline void wasmJitProfileBridgeFast(U64 startNs, DecodedOp* op, U64 scale) {
     g_wasmJitProfileBridgeFastCalls.fetch_add(scale, std::memory_order_relaxed);
     g_wasmJitProfileBridgeFastUs.fetch_add((wasmJitProfileNowNs() - startNs) * scale, std::memory_order_relaxed);
+    if (op && op->inst < InstructionCount) {
+        g_wasmJitProfileBridgeFastByInst[op->inst].fetch_add(scale, std::memory_order_relaxed);
+    }
 }
 
 static inline void wasmJitProfileBridgePfn(U64 startNs, DecodedOp* op, U64 scale) {
@@ -929,6 +963,9 @@ static inline void wasmJitProfileBridgePfn(U64 startNs, DecodedOp* op, U64 scale
 }
 
 static inline void wasmJitProfileBridgeStep(CPU* cpu, DecodedOp* bridgeOp, DecodedOp* nextOp, bool hitLimit, U64 scale) {
+    if (nextOp && nextOp->inst < InstructionCount) {
+        g_wasmJitProfileBridgeNextByInst[nextOp->inst].fetch_add(scale, std::memory_order_relaxed);
+    }
     if (!bridgeOp || bridgeOp->inst != MovR32E32) {
         return;
     }
@@ -1479,7 +1516,7 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
                 U64 bridgeOpStartNs = loopProfileSample ? wasmJitProfileNowNs() : 0;
 #endif
                 if (wasmJitTryBridgeFastOp(cpu, bridgeOp)) {
-                    WASM_JIT_PROFILE_ONLY(if (loopProfileSample) { wasmJitProfileBridgeFast(bridgeOpStartNs, WASM_JIT_PROFILE_TIMING_SAMPLE); })
+                    WASM_JIT_PROFILE_ONLY(if (loopProfileSample) { wasmJitProfileBridgeFast(bridgeOpStartNs, bridgeOp, WASM_JIT_PROFILE_TIMING_SAMPLE); })
                 } else {
                     NormalCPU::runWasmJitBridge(cpu, bridgeOp);
                     WASM_JIT_PROFILE_ONLY(if (loopProfileSample) { wasmJitProfileBridgePfn(bridgeOpStartNs, bridgeOp, WASM_JIT_PROFILE_TIMING_SAMPLE); })
