@@ -306,6 +306,9 @@
 
         function setConfiguration() {
             Config.appDirPrefix = DEFAULT_APP_DIRECTORY;
+            Config.locateRootBaseUrl = getBaseUrl("rootBase");
+            Config.locateAppBaseUrl = getBaseUrl("appBase");
+            Config.locateOverlayBaseUrl = getBaseUrl("overlayBase");
             Config.storageMode = getStorageMode();
             Config.isAutoRunSet = getAutoRun();
             Config.loadDesktop = getLoadDesktop();
@@ -599,6 +602,19 @@
                 console.log("setting " + param + " zip file to: "+filename);
             }
             return filename;
+        }
+        function getBaseUrl(param) {
+
+            var baseUrl = getParameter(param);
+            if (!allowParameterOverride() || baseUrl === "") {
+                return "";
+            }
+            baseUrl = decodeURIComponent(baseUrl);
+            if (!baseUrl.endsWith("/")) {
+                baseUrl += "/";
+            }
+            console.log("setting " + param + " to: " + baseUrl);
+            return baseUrl;
         }
         function getRootZipFile(param) {
 

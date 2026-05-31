@@ -387,15 +387,34 @@ void XServer::draw(bool drawNow) {
 	}
 	screen->getInput()->runOnUiThread([screen, this]() {
 		bool childWasDrawn = false;
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+		std::vector<XWindowPtr> dirtyPopupWindows;
+#endif
 
 		screen->clear();
-		root->iterateMappedChildrenBackToFront([&childWasDrawn](XWindowPtr child) {
+		root->iterateMappedChildrenBackToFront([screen, &childWasDrawn
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+			, &dirtyPopupWindows
+#endif
+		](XWindowPtr child) {
 			if (child->c_class == InputOutput) {
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+				if (child->isDirty && child->width() < (U32)screen->screenWidth() && child->height() < (U32)screen->screenHeight()) {
+					dirtyPopupWindows.push_back(child);
+				}
+#endif
 				child->draw();
 				childWasDrawn = true;
 			}
 			return true;
 			}, true);		
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+		// MT WebGL can composite cached sibling windows after a dirty popup; redraw
+		// the popup-sized top-level windows so dialogs and menus stay on top.
+		for (auto& child : dirtyPopupWindows) {
+			child->draw();
+		}
+#endif
 		screen->present();
 	});	
 }

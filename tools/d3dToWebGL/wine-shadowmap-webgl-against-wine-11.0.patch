@@ -13846,106 +13846,12 @@ index 9918ac6..629cb08 100644
  void __stdcall wined3d_mutex_lock(void);
  void __stdcall wined3d_mutex_unlock(void);
  
-diff --git a/BOXEDWINE_WEBGL_BUILD.md b/BOXEDWINE_WEBGL_BUILD.md
-new file mode 100644
-index 0000000..78651bd
---- /dev/null
-+++ b/BOXEDWINE_WEBGL_BUILD.md
-@@ -0,0 +1,88 @@
-+# BoxedWine WebGL Win32 DLL Build
-+
-+These instructions build the Wine DLLs used by the BoxedWine WebGL
-+as true Win32 DLLs. This matters because a normal Wine build
-+can produce Wine builtin PE DLLs; those DLLs may contain the marker
-+`Wine builtin DLL` and do not behave the same in BoxedWine.
-+
-+- build native Wine tools first;
-+- configure the DLL build with `--host=i686-w64-mingw32`;
-+- pass `--disable-kernel32`;
-+- define `USE_WIN32_OPENGL` and `USE_WIN32_VULKAN`;
-+- link with `-static-libgcc`.
-+
-+## Prerequisites
-+
-+On Debian or Ubuntu, install the Wine build dependencies and MinGW:
-+
-+```sh
-+sudo apt build-dep wine
-+sudo apt install mingw-w64 git flex bison
-+```
-+
-+The 32-bit build also needs enough 32-bit development packages for Wine's
-+native tools configure step. If FreeType development files are not available,
-+the script configures the tools build with `--without-freetype`.
-+
-+## Build
-+
-+From the top level of this Wine source checkout:
-+
-+```sh
-+./build-boxedwine-webgl-dlls.sh
-+```
-+
-+By default, the script writes build intermediates to:
-+
-+```text
-+../boxedwine-webgl-wine-build
-+```
-+
-+and copies the final DLLs to:
-+
-+```text
-+../boxedwine-webgl-wine-build/boxedwine-webgl-dlls
-+```
-+
-+To choose a different build directory:
-+
-+```sh
-+./build-boxedwine-webgl-dlls.sh --build-dir /tmp/boxedwine-webgl-wine-build
-+```
-+
-+To choose the parallelism:
-+
-+```sh
-+./build-boxedwine-webgl-dlls.sh --jobs 8
-+```
-+
-+## Outputs
-+
-+The script builds and stages these DLLs:
-+
-+- `d3d8.dll`
-+- `d3d9.dll`
-+- `dxgi.dll`
-+- `d3dx9_36.dll`
-+- `d3dx9_43.dll`
-+- `d3dxof.dll`
-+- `wined3d.dll`
-+
-+It also prints each file's size and SHA-256 hash at the end.
-+
-+## Sanity Checks
-+
-+After a successful build, verify that `d3d9.dll` does not contain the builtin
-+marker:
-+
-+```sh
-+strings ../boxedwine-webgl-wine-build/boxedwine-webgl-dlls/d3d9.dll | grep 'Wine builtin DLL'
-+```
-+
-+That command should print nothing.
-+
-+You can also confirm that `d3d9.dll` imports `wined3d.dll`:
-+
-+```sh
-+i686-w64-mingw32-objdump -p ../boxedwine-webgl-wine-build/boxedwine-webgl-dlls/d3d9.dll | grep 'DLL Name'
-+```
 diff --git a/build-boxedwine-webgl-dlls.sh b/build-boxedwine-webgl-dlls.sh
 new file mode 100755
-index 0000000..5a5065b
+index 0000000..f6be68e
 --- /dev/null
 +++ b/build-boxedwine-webgl-dlls.sh
-@@ -0,0 +1,176 @@
+@@ -0,0 +1,178 @@
 +#!/usr/bin/env bash
 +set -euo pipefail
 +
@@ -13962,7 +13868,7 @@ index 0000000..5a5065b
 +  --help            Show this help.
 +
 +Outputs:
-+  DIR/boxedwine-webgl-dlls/{d3d8,d3d9,dxgi,d3dx9_36,d3dx9_43,d3dxof,wined3d}.dll
++  DIR/boxedwine-webgl-dlls/{d3d8,d3d9,ddraw,dxgi,d3dx9_36,d3dx9_43,d3dxof,wined3d}.dll
 +  DIR/boxedwine-webgl-tests/{d3d8,d3d9,ddraw,d3dx9_43,d3dxof}_test.exe
 +EOF
 +}
@@ -14068,6 +13974,7 @@ index 0000000..5a5065b
 +    dlls/wined3d/wined3d.dll \
 +    dlls/d3d9/d3d9.dll \
 +    dlls/d3d8/d3d8.dll \
++    dlls/ddraw/ddraw.dll \
 +    dlls/dxgi/dxgi.dll \
 +    dlls/d3dx9_36/d3dx9_36.dll \
 +    dlls/d3dx9_43/d3dx9_43.dll \
@@ -14083,6 +13990,7 @@ index 0000000..5a5065b
 +cp -f "$wine_win32_dir/dlls/wined3d/wined3d.dll" "$output_dir/"
 +cp -f "$wine_win32_dir/dlls/d3d9/d3d9.dll" "$output_dir/"
 +cp -f "$wine_win32_dir/dlls/d3d8/d3d8.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/ddraw/ddraw.dll" "$output_dir/"
 +cp -f "$wine_win32_dir/dlls/dxgi/dxgi.dll" "$output_dir/"
 +cp -f "$wine_win32_dir/dlls/d3dx9_36/d3dx9_36.dll" "$output_dir/"
 +cp -f "$wine_win32_dir/dlls/d3dx9_43/d3dx9_43.dll" "$output_dir/"
@@ -14098,7 +14006,7 @@ index 0000000..5a5065b
 +
 +echo
 +echo "DLL build output:"
-+for dll in d3d8.dll d3d9.dll dxgi.dll d3dx9_36.dll d3dx9_43.dll d3dxof.dll wined3d.dll; do
++for dll in d3d8.dll d3d9.dll ddraw.dll dxgi.dll d3dx9_36.dll d3dx9_43.dll d3dxof.dll wined3d.dll; do
 +    path="$output_dir/$dll"
 +    printf "%-14s %10s " "$dll" "$(stat -c %s "$path")"
 +    sha256sum "$path" | awk '{print $1}'
@@ -14122,3 +14030,98 @@ index 0000000..5a5065b
 +echo
 +echo "d3d9.dll imports:"
 +i686-w64-mingw32-objdump -p "$output_dir/d3d9.dll" | grep "DLL Name" || true
+diff --git a/BOXEDWINE_WEBGL_BUILD.md b/BOXEDWINE_WEBGL_BUILD.md
+new file mode 100644
+index 0000000..db31ed9
+--- /dev/null
++++ b/BOXEDWINE_WEBGL_BUILD.md
+@@ -0,0 +1,89 @@
++# BoxedWine WebGL Win32 DLL Build
++
++These instructions build the Wine DLLs used by the BoxedWine WebGL
++as true Win32 DLLs. This matters because a normal Wine build
++can produce Wine builtin PE DLLs; those DLLs may contain the marker
++`Wine builtin DLL` and do not behave the same in BoxedWine.
++
++- build native Wine tools first;
++- configure the DLL build with `--host=i686-w64-mingw32`;
++- pass `--disable-kernel32`;
++- define `USE_WIN32_OPENGL` and `USE_WIN32_VULKAN`;
++- link with `-static-libgcc`.
++
++## Prerequisites
++
++On Debian or Ubuntu, install the Wine build dependencies and MinGW:
++
++```sh
++sudo apt build-dep wine
++sudo apt install mingw-w64 git flex bison
++```
++
++The 32-bit build also needs enough 32-bit development packages for Wine's
++native tools configure step. If FreeType development files are not available,
++the script configures the tools build with `--without-freetype`.
++
++## Build
++
++From the top level of this Wine source checkout:
++
++```sh
++./build-boxedwine-webgl-dlls.sh
++```
++
++By default, the script writes build intermediates to:
++
++```text
++../boxedwine-webgl-wine-build
++```
++
++and copies the final DLLs to:
++
++```text
++../boxedwine-webgl-wine-build/boxedwine-webgl-dlls
++```
++
++To choose a different build directory:
++
++```sh
++./build-boxedwine-webgl-dlls.sh --build-dir /tmp/boxedwine-webgl-wine-build
++```
++
++To choose the parallelism:
++
++```sh
++./build-boxedwine-webgl-dlls.sh --jobs 8
++```
++
++## Outputs
++
++The script builds and stages these DLLs:
++
++- `d3d8.dll`
++- `d3d9.dll`
++- `ddraw.dll`
++- `dxgi.dll`
++- `d3dx9_36.dll`
++- `d3dx9_43.dll`
++- `d3dxof.dll`
++- `wined3d.dll`
++
++It also prints each file's size and SHA-256 hash at the end.
++
++## Sanity Checks
++
++After a successful build, verify that `d3d9.dll` does not contain the builtin
++marker:
++
++```sh
++strings ../boxedwine-webgl-wine-build/boxedwine-webgl-dlls/d3d9.dll | grep 'Wine builtin DLL'
++```
++
++That command should print nothing.
++
++You can also confirm that `d3d9.dll` imports `wined3d.dll`:
++
++```sh
++i686-w64-mingw32-objdump -p ../boxedwine-webgl-wine-build/boxedwine-webgl-dlls/d3d9.dll | grep 'DLL Name'
++```

@@ -91,9 +91,15 @@ static bool useEmscriptenSoftwareRenderer(bool skipRenderer) {
 static bool skipHiddenEmscriptenRenderer(bool visible, bool showOnDraw) {
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     KOpenGLPtr openGL = KNativeSystem::getOpenGL();
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (openGL && openGL->isActive() && !visible && !showOnDraw) {
+        return true;
+    }
+#else
     if (openGL && openGL->isActive()) {
         return true;
     }
+#endif
     return !visible && !showOnDraw;
 #else
     return false;
@@ -327,7 +333,7 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         wnd->sdlTextureHeight = height;
         wnd->sdlTextureWidth = width;
     }
-    if (isDirty && bitsPerPixel == 8) {
+    if (bitsPerPixel == 8 && (isDirty || !wnd->bits)) {
         wnd->ensureSize(dstPitch * height);
         for (U32 y = 0; y < height; y++) {
             U8* srcLine = bits + srcPitch * y;
@@ -337,7 +343,9 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
             }
         }
         bits = wnd->bits;
-    } else if (isDirty && bitsPerPixel == 16) {
+    } else if (bitsPerPixel == 8 && wnd->bits) {
+        bits = wnd->bits;
+    } else if (bitsPerPixel == 16 && (isDirty || !wnd->bits)) {
         wnd->ensureSize(dstPitch * height);
         for (U32 y = 0; y < height; y++) {
             U16* srcLine = (U16*)(bits + srcPitch * y);
@@ -353,6 +361,8 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
                 *dstLine = (r << 16) | (g << 8) | b;
             }
         }
+        bits = wnd->bits;
+    } else if (bitsPerPixel == 16 && wnd->bits) {
         bits = wnd->bits;
     }
 #ifdef BOXEDWINE_RECORDER
@@ -412,7 +422,7 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         SDL_RenderCopy(renderer, wnd->sdlTexture, nullptr, &dstrect);
     }
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
-    if (!renderer && !emscriptenSoftwareDisabled && useEmscriptenSoftwareRenderer(skipRenderer) && isDirty) {
+    if (!renderer && !emscriptenSoftwareDisabled && useEmscriptenSoftwareRenderer(skipRenderer)) {
         U32 bufferSize = screenWidth() * screenHeight() * 4;
         if (emscriptenSoftwareBufferSize < bufferSize) {
             delete[] emscriptenSoftwareBuffer;
