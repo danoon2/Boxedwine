@@ -42,7 +42,11 @@
 #endif
 #endif
 
-#define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next);
+#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+#define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return normalDispatch(cpu, op->next);
+#else
+#define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return op->next->pfn(cpu, op->next);
+#endif
 #define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
 #define NEXT_DONE_JUMP_OR_CALL() cpu->nextOp = cpu->getNextOp(OP_FLAG2_JUMP_TARGET);
 
@@ -181,6 +185,10 @@ static inline bool normalGetNLE(CPU* cpu) {
 
 #define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!op->next) {op->next = cpu->getNextOp(); } cpu->nextOp = op->next;
 
+#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op);
+#endif
+
 #include "instructions.h"
 #include "normal_arith.h"
 #include "normal_conditions.h"
@@ -220,6 +228,30 @@ void OPCALL normal_sidt(CPU* cpu, DecodedOp* op) {
 void OPCALL onTestEnd(CPU* cpu, DecodedOp* op) {
     cpu->nextOp = op;
 }
+
+#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op) {
+    switch (op->inst) {
+#undef INIT_CPU
+#define INIT_CPU(e, f) case e: MUSTTAIL return normal_##f(cpu, op);
+#include "../common/cpu_init.h"
+#include "../common/cpu_init_mmx.h"
+#include "../common/cpu_init_sse.h"
+#include "../common/cpu_init_sse2.h"
+#include "../common/cpu_init_fpu.h"
+#undef INIT_CPU
+#ifdef BOXEDWINE_MULTI_THREADED
+#define INIT_CPU_LOCK(e, f) case e##_Lock: MUSTTAIL return normal_##f##_lock(cpu, op);
+#include "../common/cpu_init_lock.h"
+#undef INIT_CPU_LOCK
+#endif
+    case SIDT: MUSTTAIL return normal_sidt(cpu, op);
+    case Callback: MUSTTAIL return onExitSignal(cpu, op);
+    case TestEnd: MUSTTAIL return onTestEnd(cpu, op);
+    default: MUSTTAIL return op->pfn(cpu, op);
+    }
+}
+#endif
 
 static void initNormalOps() {
     if (normalOpsInitialized)
@@ -332,6 +364,22 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
 }
 
 void NormalCPU::run() {
+#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+    if (!nextOp) {
+        if (thread->terminating) {
+            return;
+        }
+        nextOp = getNextOp();
+        if (!nextOp) {
+            thread->seg_mapper(getEipAddress(), true, false, false);
+            nextOp = getNextOp();
+            if (!nextOp) {
+                kpanic_fmt("Failed to get op for thread %d of process %d at address %x", thread->id, thread->process->id, getEipAddress());
+            }
+        }
+    }
+    normalDispatch(this, nextOp);
+#else
 #ifdef BOXEDWINE_JIT
     if (nextOp->runCount <= JIT_RUN_COUNT) {
         firstOp(this, nextOp);
@@ -353,5 +401,6 @@ void NormalCPU::run() {
     }
 #else
     nextOp->pfn(this, nextOp);
+#endif
 #endif
 }
