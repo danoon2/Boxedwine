@@ -792,7 +792,6 @@ U32 KMemory::ensureContinuousNative_unsafe(U32 page, U32 pageCount) {
     // :TODO: not thread safe, what if another thread modifies the memory between memcpy and setPage
     memcpy(nativeMemory, (page << K_PAGE_SHIFT), (validPages << K_PAGE_SHIFT));
     RamPage ramPage = ramPageAllocNativeContinuous(nativeMemory, chunks * 8);
-    klog_fmt("ensureContinuousNative %d pages", (U32)(chunks * 8));
     for (U32 i = 0; i < validPages; i++) {
         MMU& mmu = data->mmu[page + i];
         mmu.setPage(this, page + i, mmu.getPageType(), ramPage);

@@ -411,6 +411,16 @@ int XServer::destroyWindow(U32 window) {
 	if (!w) {
 		return BadWindow;
 	}
+	if (pointerWindow) {
+		XWindowPtr current = pointerWindow;
+		while (current) {
+			if (current->id == window) {
+				pointerWindow = root;
+				break;
+			}
+			current = current->getParent();
+		}
+	}
 	w->onDestroy();
 	windows.remove(window);
 	if (w->id == grabbedId) {

@@ -425,31 +425,31 @@ static OpenGLVetexPointer* getVertexAttribPointerNV(CPU* cpu, GLuint index) {
 
 GLvoid* marshalVetextPointer(CPU* cpu, GLuint index, GLboolean normalized, GLint size, GLenum type, GLsizei stride, U32 ptr, bool isVertexAttrib) {
     clearInterleavedArrayReplay(cpu);
-    cpu->thread->glVertextPointer.isArrayBuffer = ARRAY_BUFFER();
-    if (cpu->thread->glVertextPointer.isArrayBuffer) {        
-        cpu->thread->glVertextPointer.refreshEachCall = 0;
+
+    OpenGLVetexPointer* p;
+    if (index == 0) {
+        p = &cpu->thread->glVertextPointer;
+    } else {
+        OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(index);
+        if (!found) {
+            found = std::make_shared<OpenGLVetexPointer>();
+            cpu->thread->glVertextPointersByIndex.set(index, found);
+        }
+        p = found.get();
+    }
+
+    p->isArrayBuffer = ARRAY_BUFFER();
+    p->size = size;
+    p->type = type;
+    p->stride = stride;
+    p->ptr = ptr;
+    p->normalized = normalized != GL_FALSE;
+    p->isVertexAttrib = isVertexAttrib;
+    if (p->isArrayBuffer) {
+        p->refreshEachCall = 0;
         return (GLvoid*)(uintptr_t)ptr;
     } else {
-        OpenGLVetexPointer* p;
-
-        if (index == 0) {
-            p = &cpu->thread->glVertextPointer;
-        }
-        else {
-            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(index);
-            if (!found) {
-                found = std::make_shared<OpenGLVetexPointer>();
-                cpu->thread->glVertextPointersByIndex.set(index, found);
-            }
-            p = found.get();
-        }
-        p->size = size;
-        p->type = type;
-        p->stride = stride;
-        p->ptr = ptr;
         p->refreshEachCall = 1;
-        p->normalized = normalized != GL_FALSE;
-        p->isVertexAttrib = isVertexAttrib;
         updateVertexPointer(cpu, p, 0);
         return ptr ? p->marshal : 0;
     }

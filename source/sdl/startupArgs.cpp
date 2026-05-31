@@ -277,6 +277,7 @@ std::vector<BString> StartUpArgs::buildArgs() {
 
 bool StartUpArgs::apply() {
     KSystem::init();    
+    klog_fmt("BoxedWine build timestamp: %s %s", __DATE__, __TIME__);
 #ifdef BOXEDWINE_MULTI_THREADED
     KSystem::cpuAffinityCountForApp = this->cpuAffinity;
     if (KSystem::cpuAffinityCountForApp) {
@@ -400,7 +401,8 @@ bool StartUpArgs::apply() {
     envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
 
 #ifdef __EMSCRIPTEN__
-    envValues.push_back(B("WINEDLLOVERRIDES=d3d9,d3d8,dxgi,wined3d,d3dxof,d3dx9_43=n,b"));
+    envValues.push_back(B("WINE_D3D_CONFIG=webgl=1,webgl_glsl_es=1"));
+    envValues.push_back(B("WINEDLLOVERRIDES=ddraw,d3d9,d3d8,dxgi,wined3d,d3dxof,d3dx9_36,d3dx9_43=n,b"));
     std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/windows/system32"), true);
     std::shared_ptr<FsNode> webglParent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/webgl"), true);
     if (!webglParent) {
@@ -408,7 +410,7 @@ bool StartUpArgs::apply() {
     } else if (!parent) {
         klog("-webgl WineD3D overrides were enabled but /home/username/.wine/drive_c/windows/system32 was not found in the file system");
     } else {
-        for (const char* pName : { "d3d8.dll", "d3d9.dll", "dxgi.dll", "wined3d.dll", "d3dxof.dll", "d3dx9_43.dll" }) {
+        for (const char* pName : { "ddraw.dll", "d3d8.dll", "d3d9.dll", "dxgi.dll", "wined3d.dll", "d3dxof.dll", "d3dx9_36.dll", "d3dx9_43.dll" }) {
             Fs::addFileNode(parent->path + "/" + pName, webglParent->path + "/" + pName, webglParent->nativePath + "/" + pName, false, parent);
         }
     }

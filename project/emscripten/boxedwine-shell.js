@@ -28,6 +28,277 @@
         var ExeFileTimer = null;
         var pointerLockEventsConfigured = false;
 
+        (function() {
+          function patchBufferData(contextPrototype) {
+            if (!contextPrototype || contextPrototype.__boxedwineBufferDataPadding) {
+              return;
+            }
+            contextPrototype.__boxedwineBufferDataPadding = true;
+            var bufferSizes = new WeakMap();
+            var bufferBytes = new WeakMap();
+            function copyBytes(src, srcOffset, length) {
+              if (!src) {
+                return null;
+              }
+              var bytes = null;
+              if (src instanceof ArrayBuffer) {
+                bytes = new Uint8Array(src);
+              } else if (ArrayBuffer.isView(src)) {
+                bytes = new Uint8Array(src.buffer, src.byteOffset, src.byteLength);
+              } else if (typeof src.length === "number") {
+                bytes = Uint8Array.from(src);
+              }
+              if (!bytes) {
+                return null;
+              }
+              var start = srcOffset || 0;
+              var end = typeof length === "number" ? start + length : bytes.length;
+              return new Uint8Array(bytes.slice(start, end));
+            }
+            function recordBufferData(buffer, size, bytes) {
+              if (!buffer || !size) {
+                return;
+              }
+              bufferSizes.set(buffer, size);
+              if (bytes) {
+                bufferBytes.set(buffer, bytes);
+              }
+            }
+            function recordBufferSubData(buffer, offset, bytes) {
+              if (!buffer || !bytes) {
+                return;
+              }
+              offset = offset || 0;
+              var current = bufferBytes.get(buffer);
+              if (!current || current.length < offset + bytes.length) {
+                var expanded = new Uint8Array(offset + bytes.length);
+                if (current) {
+                  expanded.set(current);
+                }
+                current = expanded;
+              }
+              current.set(bytes, offset);
+              bufferBytes.set(buffer, current);
+              bufferSizes.set(buffer, Math.max(bufferSizes.get(buffer) || 0, offset + bytes.length));
+            }
+            function elementArrayTypeSize(gl, type) {
+              if (type === gl.UNSIGNED_BYTE) {
+                return 1;
+              }
+              if (type === gl.UNSIGNED_SHORT) {
+                return 2;
+              }
+              if (type === gl.UNSIGNED_INT) {
+                return 4;
+              }
+              return 0;
+            }
+            function getElementArrayMaxIndex(gl, type, offset, count) {
+              var buffer = gl && gl.__boxedwineElementArrayBuffer;
+              var bytes = buffer ? bufferBytes.get(buffer) : null;
+              if (!bytes || !bytes.length) {
+                return -1;
+              }
+              var elementSize = elementArrayTypeSize(gl, type);
+              if (!elementSize) {
+                return -1;
+              }
+              var start = offset || 0;
+              var end = typeof count === "number" ? Math.min(bytes.length, start + count * elementSize) : bytes.length;
+              if (start < 0 || start >= end) {
+                return -1;
+              }
+              var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+              var max = 0;
+              if (type === gl.UNSIGNED_BYTE) {
+                for (var i = start; i < end; i++) {
+                  if (bytes[i] > max) max = bytes[i];
+                }
+                return max;
+              }
+              if (type === gl.UNSIGNED_SHORT) {
+                for (var j = start; j + 1 < end; j += 2) {
+                  var value16 = view.getUint16(j, true);
+                  if (value16 > max) max = value16;
+                }
+                return max;
+              }
+              if (type === gl.UNSIGNED_INT) {
+                for (var k = start; k + 3 < end; k += 4) {
+                  var value32 = view.getUint32(k, true);
+                  if (value32 > max) max = value32;
+                }
+                return max;
+              }
+              return -1;
+            }
+            function hasEnabledClientAttribs() {
+              if (typeof GL === "undefined" || !GL.currentContext || !GL.currentContext.clientBuffers) {
+                return false;
+              }
+              for (var i = 0; i < GL.currentContext.maxVertexAttribs; i++) {
+                var cb = GL.currentContext.clientBuffers[i];
+                if (cb && cb.clientside && cb.enabled) {
+                  return true;
+                }
+              }
+              return false;
+            }
+            function uploadClientAttribsForDraw(gl, type, offset, count) {
+              if (!hasEnabledClientAttribs() || !gl.__boxedwineElementArrayBuffer) {
+                return false;
+              }
+              var maxIndex = getElementArrayMaxIndex(gl, type, offset || 0, count);
+              if (maxIndex < 0) {
+                return false;
+              }
+              var vertexCount = maxIndex + 1;
+              for (var i = 0; i < GL.currentContext.maxVertexAttribs; i++) {
+                var cb = GL.currentContext.clientBuffers[i];
+                if (!cb || !cb.clientside || !cb.enabled) {
+                  continue;
+                }
+                var size = GL.calcBufLength(cb.size, cb.type, cb.stride, vertexCount);
+                if (size <= 0) {
+                  continue;
+                }
+                var buffer = GL.getTempVertexBuffer(size);
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+                gl.bufferSubData(gl.ARRAY_BUFFER, 0, HEAPU8.subarray(cb.ptr, cb.ptr + size));
+                cb.vertexAttribPointerAdaptor.call(gl, i, cb.size, cb.type, cb.normalized, cb.stride, 0);
+              }
+              GL.resetBufferBinding = true;
+              return true;
+            }
+            window.__boxedwineGetElementArrayMaxIndex = function(gl, type) {
+              return getElementArrayMaxIndex(gl, type, 0);
+            };
+            var originalBindBuffer = contextPrototype.bindBuffer;
+            contextPrototype.bindBuffer = function(target, buffer) {
+              this.__boxedwineBufferBytes = bufferBytes;
+              if (target === this.ARRAY_BUFFER) {
+                this.__boxedwineArrayBuffer = buffer;
+              } else if (target === this.ELEMENT_ARRAY_BUFFER) {
+                this.__boxedwineElementArrayBuffer = buffer;
+              }
+              return originalBindBuffer.apply(this, arguments);
+            };
+            var originalBufferData = contextPrototype.bufferData;
+            contextPrototype.bufferData = function(target, srcOrSize, usage, srcOffset, length) {
+              var arrayBuffer = this.__boxedwineArrayBuffer;
+              var buffer = target === this.ARRAY_BUFFER ? arrayBuffer : (target === this.ELEMENT_ARRAY_BUFFER ? this.__boxedwineElementArrayBuffer : null);
+              var result;
+              if (arguments.length === 5 && target === this.ARRAY_BUFFER && srcOrSize && typeof srcOffset === "number" && typeof length === "number") {
+                var extraPadding = 256;
+                var paddedLength = length + extraPadding;
+                var padded = new Uint8Array(paddedLength);
+                var sourceBytes = copyBytes(srcOrSize, srcOffset, length);
+                if (sourceBytes) {
+                  padded.set(sourceBytes);
+                }
+                result = originalBufferData.call(this, target, padded, usage);
+                recordBufferData(arrayBuffer, paddedLength, padded);
+                return result;
+              }
+              if (arguments.length === 3 && target === this.ARRAY_BUFFER && typeof srcOrSize === "number" && srcOrSize > 0) {
+                var numericPadding = 256;
+                result = originalBufferData.call(this, target, srcOrSize + numericPadding, usage);
+                recordBufferData(arrayBuffer, srcOrSize + numericPadding, new Uint8Array(srcOrSize + numericPadding));
+                return result;
+              }
+              result = originalBufferData.apply(this, arguments);
+              if (buffer) {
+                var size = 0;
+                var bytes = null;
+                if (typeof srcOrSize === "number") {
+                  size = srcOrSize;
+                  bytes = new Uint8Array(size);
+                } else if (arguments.length === 5 && typeof length === "number") {
+                  size = length;
+                  bytes = copyBytes(srcOrSize, srcOffset, length);
+                } else if (srcOrSize && typeof srcOrSize.byteLength === "number") {
+                  size = srcOrSize.byteLength;
+                  bytes = copyBytes(srcOrSize);
+                } else if (srcOrSize && typeof srcOrSize.length === "number") {
+                  size = srcOrSize.length;
+                  bytes = copyBytes(srcOrSize);
+                }
+                if (size > 0) {
+                  recordBufferData(buffer, size, bytes);
+                }
+              }
+              return result;
+            };
+            var originalBufferSubData = contextPrototype.bufferSubData;
+            contextPrototype.bufferSubData = function(target, offset, srcData, srcOffset, length) {
+              var arrayBuffer = this.__boxedwineArrayBuffer;
+              var buffer = target === this.ARRAY_BUFFER ? arrayBuffer : (target === this.ELEMENT_ARRAY_BUFFER ? this.__boxedwineElementArrayBuffer : null);
+              var result = originalBufferSubData.apply(this, arguments);
+              if (buffer) {
+                var size = 0;
+                var bytes = null;
+                if (arguments.length >= 5 && typeof length === "number") {
+                  size = length;
+                  bytes = copyBytes(srcData, srcOffset, length);
+                } else if (srcData && typeof srcData.byteLength === "number") {
+                  size = srcData.byteLength;
+                  bytes = copyBytes(srcData);
+                } else if (srcData && typeof srcData.length === "number") {
+                  size = srcData.length;
+                  bytes = copyBytes(srcData);
+                }
+                if (size > 0) {
+                  recordBufferSubData(buffer, offset, bytes);
+                }
+              }
+              return result;
+            };
+            var originalTexSubImage2D = contextPrototype.texSubImage2D;
+            contextPrototype.texSubImage2D = function(target, level, xoffset, yoffset, width, height, format, type) {
+              if (level > 0 && xoffset === 0 && yoffset === 0 && typeof width === "number" && typeof height === "number" && width > 0 && height > 0 && arguments.length >= 9) {
+                this.texImage2D(target, level, format, width, height, 0, format, type, null);
+              }
+              return originalTexSubImage2D.apply(this, arguments);
+            };
+            var originalDrawElements = contextPrototype.drawElements;
+            contextPrototype.drawElements = function(mode, count, type, offset) {
+              if (count > 0) {
+                uploadClientAttribsForDraw(this, type, offset || 0, count);
+              }
+              return originalDrawElements.apply(this, arguments);
+            };
+          }
+          patchBufferData(window.WebGLRenderingContext && window.WebGLRenderingContext.prototype);
+          patchBufferData(window.WebGL2RenderingContext && window.WebGL2RenderingContext.prototype);
+        })();
+
+        function installEmscriptenClientBufferFix() {
+          if (typeof GL === "undefined" || !GL.preDrawHandleClientVertexAttribBindings || GL.__boxedwineClientBufferFix) {
+            return;
+          }
+          GL.__boxedwineClientBufferFix = true;
+          var originalPreDrawHandleClientVertexAttribBindings = GL.preDrawHandleClientVertexAttribBindings;
+          GL.preDrawHandleClientVertexAttribBindings = function(count) {
+            if (!count && typeof GLctx !== "undefined" && GLctx.currentElementArrayBufferBinding && GL.currentContext && GL.currentContext.clientBuffers) {
+              var needsClientUpload = false;
+              for (var i = 0; i < GL.currentContext.maxVertexAttribs; i++) {
+                var cb = GL.currentContext.clientBuffers[i];
+                if (cb && cb.clientside && cb.enabled) {
+                  needsClientUpload = true;
+                  break;
+                }
+              }
+              if (needsClientUpload && window.__boxedwineGetElementArrayMaxIndex) {
+                var maxIndex = window.__boxedwineGetElementArrayMaxIndex(GLctx, GLctx.UNSIGNED_SHORT);
+                if (maxIndex >= 0) {
+                  count = maxIndex + 1;
+                }
+              }
+            }
+            return originalPreDrawHandleClientVertexAttribBindings.call(this, count);
+          };
+        }
+
       	var statusElement = document.getElementById('status');
       	var progressElement = document.getElementById('progress');
       	var spinnerElement = document.getElementById('spinner');
@@ -35,6 +306,7 @@
 
         function setConfiguration() {
             Config.appDirPrefix = DEFAULT_APP_DIRECTORY;
+            Config.storageMode = getStorageMode();
             Config.isAutoRunSet = getAutoRun();
             Config.loadDesktop = getLoadDesktop();
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
@@ -43,6 +315,7 @@
             Config.appPayload = getPayload("app-payload"); 
             Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
+            Config.ProgramArgs = getExecutableArgs();
             Config.isSoundEnabled = getSound();
             Config.disableHideCursor = getDisableHideCursor();
             Config.bpp = getBitsPerPixel();
@@ -54,6 +327,26 @@
 			Config.ddrawOverridePath = getDDrawOverridePath();
 			Config.payloadZipFile = "app.zip";
 			Config.d_drive = "/d_drive";
+        }
+        function getStorageMode() {
+            var storage = getParameter("storage").trim().toLowerCase();
+            if (!allowParameterOverride() || storage === "") {
+                if (allowParameterOverride() && getParameter("regressionBuild").trim() !== "") {
+                    console.log("setting storage mode to: " + STORAGE_MEMORY + " for regression build");
+                    return STORAGE_MEMORY;
+                }
+                return Config.storageMode;
+            }
+            if (storage === "memory" || storage === "mem") {
+                console.log("setting storage mode to: " + STORAGE_MEMORY);
+                return STORAGE_MEMORY;
+            }
+            if (storage === "indexed_db" || storage === "indexeddb" || storage === "idb") {
+                console.log("setting storage mode to: " + STORAGE_INDEXED_DB);
+                return STORAGE_INDEXED_DB;
+            }
+            console.log("unknown storage mode: " + storage);
+            return Config.storageMode;
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -273,6 +566,25 @@
                 console.log("setting program to execute to: "+prog);
             }
             return prog;
+        }
+        function getExecutableArgs() {
+            var args = getParameter("args");
+            if(!allowParameterOverride() || args===""){
+                return [];
+            }
+            if(args.startsWith("%22") && args.endsWith("%22")){
+                args = args.substring(3, args.length - 3);
+            }else if(args.startsWith('%27') && args.endsWith('%27')){
+                args = args.substring(3, args.length - 3);
+            }
+            args = args.split('%20').join(' ');
+            var result = args.split(";").filter(function(arg) {
+                return arg.length > 0;
+            });
+            if(result.length > 0) {
+                console.log("setting program args to: " + result);
+            }
+            return result;
         }
         function getAppZipFile(param) {
 
@@ -698,6 +1010,9 @@
                     params.push("/c");
                 }
                 params.push(Config.Program);
+                for (let i = 0; i < Config.ProgramArgs.length; i++) {
+                    params.push(Config.ProgramArgs[i]);
+                }
             }else{
 	            params.push("explorer");
     	        params.push("/desktop=shell");
@@ -706,7 +1021,7 @@
             return params;
         }
       var Module = {
-        preRun: [initialSetup],
+        preRun: [installEmscriptenClientBufferFix, initialSetup],
         arguments: [],
         postRun: [],
         print: (function() {
@@ -743,16 +1058,23 @@
           var canvas = null;
           var bitmapContext = null;
           var fallbackContext = null;
+          var cropCanvas = null;
+          var cropContext = null;
           function finishPresent(presentState) {
             if (presentState && typeof Atomics !== "undefined") {
               Atomics.store(presentState, 0, 0);
             }
           }
-          return function(bitmap, presentState) {
+          return function(bitmap, presentState, sx, sy, sw, sh) {
             if (!bitmap) {
               finishPresent(presentState);
               return;
             }
+            sx = Math.max(0, sx | 0);
+            sy = Math.max(0, sy | 0);
+            sw = Math.max(1, Math.min(bitmap.width - sx, sw | 0 || bitmap.width));
+            sh = Math.max(1, Math.min(bitmap.height - sy, sh | 0 || bitmap.height));
+            var cropped = sx !== 0 || sy !== 0 || sw !== bitmap.width || sh !== bitmap.height;
             if (!canvas) {
               canvas = document.getElementById('boxedwine-webgl-canvas-0');
             }
@@ -763,11 +1085,11 @@
               finishPresent(presentState);
               return;
             }
-            if (canvas.width !== bitmap.width) {
-              canvas.width = bitmap.width;
+            if (canvas.width !== sw) {
+              canvas.width = sw;
             }
-            if (canvas.height !== bitmap.height) {
-              canvas.height = bitmap.height;
+            if (canvas.height !== sh) {
+              canvas.height = sh;
             }
             var canvasFrame = canvas.parentElement;
             if (canvasFrame) {
@@ -778,6 +1100,27 @@
               bitmapContext = canvas.getContext("bitmaprenderer");
             }
             if (bitmapContext && typeof bitmapContext.transferFromImageBitmap === "function") {
+              if (cropped) {
+                if (!cropCanvas || cropCanvas.width !== sw || cropCanvas.height !== sh) {
+                  cropCanvas = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(sw, sh) : document.createElement("canvas");
+                  cropCanvas.width = sw;
+                  cropCanvas.height = sh;
+                  cropContext = null;
+                }
+                if (!cropContext) {
+                  cropContext = cropCanvas.getContext("2d");
+                }
+                if (cropContext && typeof cropCanvas.transferToImageBitmap === "function") {
+                  cropContext.clearRect(0, 0, sw, sh);
+                  cropContext.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh);
+                  if (typeof bitmap.close === "function") {
+                    bitmap.close();
+                  }
+                  bitmapContext.transferFromImageBitmap(cropCanvas.transferToImageBitmap());
+                  finishPresent(presentState);
+                  return;
+                }
+              }
               bitmapContext.transferFromImageBitmap(bitmap);
               finishPresent(presentState);
               return;
@@ -786,10 +1129,46 @@
               fallbackContext = canvas.getContext("2d");
             }
             if (fallbackContext) {
-              fallbackContext.drawImage(bitmap, 0, 0);
+              fallbackContext.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh);
             }
             if (typeof bitmap.close === "function") {
               bitmap.close();
+            }
+            finishPresent(presentState);
+          };
+        })(),
+        boxedwinePresentSoftwareFrame: (function() {
+          var canvas = null;
+          var context = null;
+          function finishPresent(presentState) {
+            if (presentState && typeof Atomics !== "undefined") {
+              Atomics.store(presentState, 0, 0);
+            }
+          }
+          return function(width, height, buffer, presentState) {
+            if (!canvas) {
+              canvas = document.getElementById('boxedwine-webgl-canvas-0');
+            }
+            if (!canvas || !buffer) {
+              finishPresent(presentState);
+              return;
+            }
+            if (canvas.width !== width) {
+              canvas.width = width;
+            }
+            if (canvas.height !== height) {
+              canvas.height = height;
+            }
+            var canvasFrame = canvas.parentElement;
+            if (canvasFrame) {
+              canvasFrame.style.setProperty("--boxedwine-canvas-width", width || 800);
+              canvasFrame.style.setProperty("--boxedwine-canvas-height", height || 600);
+            }
+            if (!context) {
+              context = canvas.getContext("2d");
+            }
+            if (context) {
+              context.putImageData(new ImageData(new Uint8ClampedArray(buffer), width, height), 0, 0);
             }
             finishPresent(presentState);
           };

@@ -28,6 +28,66 @@
 #include "kopengl.h"
 #include "../../source/x11/x11.h"
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/html5.h>
+#endif
+
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+#include <emscripten/emscripten.h>
+
+EM_JS(void, boxedwinePresentSoftwareFrame, (const U32* pixels, int width, int height), {
+    var presentState = null;
+    if (typeof SharedArrayBuffer !== 'undefined' && typeof Atomics !== 'undefined') {
+        if (!Module.__boxedwineSoftwarePresentState) {
+            Module.__boxedwineSoftwarePresentState = new Int32Array(new SharedArrayBuffer(4));
+        }
+        presentState = Module.__boxedwineSoftwarePresentState;
+        if (Atomics.compareExchange(presentState, 0, 0, 1) !== 0) {
+            return;
+        }
+    }
+    var count = width * height;
+    var rgba = new Uint8ClampedArray(count * 4);
+    var source = pixels >> 2;
+    for (var i = 0, j = 0; i < count; ++i, j += 4) {
+        var pixel = HEAPU32[source + i];
+        rgba[j] = (pixel >> 16) & 0xff;
+        rgba[j + 1] = (pixel >> 8) & 0xff;
+        rgba[j + 2] = pixel & 0xff;
+        rgba[j + 3] = 0xff;
+    }
+    postMessage({
+        cmd: 'callHandler',
+        handler: 'boxedwinePresentSoftwareFrame',
+        args: [width, height, rgba.buffer, presentState]
+    }, [rgba.buffer]);
+});
+#endif
+
+#if defined(__EMSCRIPTEN__)
+static void ensureEmscriptenCanvasSize(U32 width, U32 height) {
+    int currentWidth = 0;
+    int currentHeight = 0;
+    if (emscripten_get_canvas_element_size("#canvas", &currentWidth, &currentHeight) != EMSCRIPTEN_RESULT_SUCCESS
+            || currentWidth != (int)width || currentHeight != (int)height) {
+        emscripten_set_canvas_element_size("#canvas", width, height);
+    }
+}
+#endif
+
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+EM_JS(void, boxedwineSetWebGLPresentSize, (int width, int height), {
+    Module.__boxedwineWebGLPresentWidth = width;
+    Module.__boxedwineWebGLPresentHeight = height;
+});
+#endif
+
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+static bool useEmscriptenSoftwareRenderer(bool skipRenderer) {
+    return KSystem::videoOption != VIDEO_NO_WINDOW && !skipRenderer;
+}
+#endif
+
 static bool skipHiddenEmscriptenRenderer(bool visible, bool showOnDraw) {
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     KOpenGLPtr openGL = KNativeSystem::getOpenGL();
@@ -56,6 +116,9 @@ KNativeScreenSDL::KNativeScreenSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scal
 
 KNativeScreenSDL::~KNativeScreenSDL() {
     destroyMainWindow();
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+    delete[] emscriptenSoftwareBuffer;
+#endif
 }
 
 KNativeInputPtr KNativeScreenSDL::getInput() {
@@ -64,6 +127,9 @@ KNativeInputPtr KNativeScreenSDL::getInput() {
 
 void KNativeScreenSDL::setScreenSize(U32 cx, U32 cy) {
     input->setScreenSize(cx, cy);
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+    boxedwineSetWebGLPresentSize(cx, cy);
+#endif
 
     // If full screen, then we just have to change the scale
     if (fullScreen != FULLSCREEN_NOTSET) {
@@ -153,6 +219,9 @@ void KNativeScreenSDL::showWindow(bool show) {
             SDL_HideWindow(window);
             visible = false;            
         } else {
+#if defined(__EMSCRIPTEN__)
+            ensureEmscriptenCanvasSize(screenWidth(), screenHeight());
+#endif
             if (KSystem::videoOption == VIDEO_NORMAL) {
                 SDL_ShowWindow(window);
                 SDL_RaiseWindow(window);
@@ -200,6 +269,23 @@ void KNativeScreenSDL::clear() {
         SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
         SDL_RenderClear(renderer);
     }
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+    const bool skipRenderer = skipHiddenEmscriptenRenderer(visible, showOnDraw);
+    if (!renderer && !emscriptenSoftwareDisabled && useEmscriptenSoftwareRenderer(skipRenderer)) {
+        U32 size = screenWidth() * screenHeight() * 4;
+        if (emscriptenSoftwareBufferSize < size) {
+            delete[] emscriptenSoftwareBuffer;
+            emscriptenSoftwareBuffer = new U8[size];
+            emscriptenSoftwareBufferSize = size;
+        }
+        U32* pixels = (U32*)emscriptenSoftwareBuffer;
+        U32 count = screenWidth() * screenHeight();
+        for (U32 i = 0; i < count; ++i) {
+            pixels[i] = (58 << 16) | (110 << 8) | 165;
+        }
+        emscriptenSoftwareDirty = true;
+    }
+#endif
 }
 
 void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcPitch, S32 dstX, S32 dstY, U32 width, U32 height, U32* palette, bool isDirty) {
@@ -229,6 +315,11 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
     if (isDirty && !skipRenderer) {
         lastUpdateTime = KSystem::getMilliesSinceStart();
     }
+#if defined(__EMSCRIPTEN__)
+    if (!skipRenderer) {
+        ensureEmscriptenCanvasSize(screenWidth(), screenHeight());
+    }
+#endif
     if (!wnd->sdlTexture) {
         if (KSystem::videoOption != VIDEO_NO_WINDOW && !skipRenderer && ensureRenderer()) {
             wnd->sdlTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
@@ -320,6 +411,50 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         dstrect.h = wnd->sdlTextureHeight * (int)input->scaleY / 100;
         SDL_RenderCopy(renderer, wnd->sdlTexture, nullptr, &dstrect);
     }
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+    if (!renderer && !emscriptenSoftwareDisabled && useEmscriptenSoftwareRenderer(skipRenderer) && isDirty) {
+        U32 bufferSize = screenWidth() * screenHeight() * 4;
+        if (emscriptenSoftwareBufferSize < bufferSize) {
+            delete[] emscriptenSoftwareBuffer;
+            emscriptenSoftwareBuffer = new U8[bufferSize];
+            emscriptenSoftwareBufferSize = bufferSize;
+            memset(emscriptenSoftwareBuffer, 0, emscriptenSoftwareBufferSize);
+        }
+
+        S32 copyX = dstX;
+        S32 copyY = dstY;
+        S32 srcX = 0;
+        S32 srcY = 0;
+        S32 copyW = width;
+        S32 copyH = height;
+        if (copyX < 0) {
+            srcX = -copyX;
+            copyW += copyX;
+            copyX = 0;
+        }
+        if (copyY < 0) {
+            srcY = -copyY;
+            copyH += copyY;
+            copyY = 0;
+        }
+        if (copyX + copyW > (S32)screenWidth()) {
+            copyW = screenWidth() - copyX;
+        }
+        if (copyY + copyH > (S32)screenHeight()) {
+            copyH = screenHeight() - copyY;
+        }
+        if (copyW > 0 && copyH > 0) {
+            U32 softwareSrcPitch = bitsPerPixel == 32 ? srcPitch : dstPitch;
+            for (S32 y = 0; y < copyH; ++y) {
+                U8* srcLine = bits + (srcY + y) * softwareSrcPitch + srcX * 4;
+                U8* dstLine = emscriptenSoftwareBuffer + ((copyY + y) * screenWidth() + copyX) * 4;
+                memcpy(dstLine, srcLine, copyW * 4);
+            }
+            lastUpdateTime = KSystem::getMilliesSinceStart();
+            emscriptenSoftwareDirty = true;
+        }
+    }
+#endif
 }
 
 void KNativeScreenSDL::present() {
@@ -331,6 +466,18 @@ void KNativeScreenSDL::present() {
         SDL_RenderPresent(renderer);
         presented = true;
     }
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+    if (!renderer && !emscriptenSoftwareDisabled && useEmscriptenSoftwareRenderer(skipRenderer) && emscriptenSoftwareBuffer) {
+        if (showOnDraw) {
+            showWindow(true);
+        }
+        if (emscriptenSoftwareDirty) {
+            boxedwinePresentSoftwareFrame((const U32*)emscriptenSoftwareBuffer, screenWidth(), screenHeight());
+            emscriptenSoftwareDirty = false;
+            presented = true;
+        }
+    }
+#endif
 #ifdef BOXEDWINE_RECORDER
     if (Recorder::instance) {
         BOXEDWINE_MUTEX_UNLOCK(drawingMutex);
@@ -715,9 +862,6 @@ void KNativeScreenSDL::destroyMainWindow() {
 
 bool KNativeScreenSDL::ensureRenderer() {
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
-    // In the pthread WebGL build the canvas is transferred to OffscreenCanvas
-    // and owned by the GL path. SDL's renderer would try to create a second
-    // context for the same canvas, so 2D blits are intentionally disabled here.
     return false;
 #endif
     if (renderer || !window) {
@@ -762,6 +906,9 @@ void KNativeScreenSDL::recreateMainWindow() {
 #endif
         
         visible = false;
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+        emscriptenSoftwareDisabled = false;
+#endif
 
         SDL_DisplayMode dm;
 
@@ -807,11 +954,7 @@ void KNativeScreenSDL::recreateMainWindow() {
             klog_fmt("SDL_CreateWindow failed: %s", SDL_GetError());
         }
         if (!(flags & SDL_WINDOW_VULKAN)) {
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
-            renderer = nullptr;
-#else
             ensureRenderer();
-#endif
         }
     }
 }

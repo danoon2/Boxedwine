@@ -22,6 +22,7 @@
 #include GLH
 #ifdef __EMSCRIPTEN__
 #include <emscripten/html5.h>
+#include <emscripten.h>
 #endif
 #include "knativesystem.h"
 #include "glcommon.h"
@@ -50,6 +51,28 @@
 #endif
 
 static BString glExt;
+
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+EM_JS(void, boxedwine_read_pixels_temp_rgba8, (int x, int y, int width, int height, int format, int type, int pixels), {
+    var size = width * height * 4;
+    var buffer = Module['boxedwineReadPixelsTempRGBA8'];
+    if (!buffer || buffer.length < size) {
+        buffer = new Uint8Array(size);
+        Module['boxedwineReadPixelsTempRGBA8'] = buffer;
+    }
+    GLctx.readPixels(x, y, width, height, format, type, buffer);
+    HEAPU8.set(buffer.subarray(0, size), pixels);
+});
+
+static bool glReadPixelsTempBufferEnabled() {
+    static int enabled = -1;
+    if (enabled == -1) {
+        const char* value = getenv("BOXEDWINE_GL_READPIXELS_TEMP_BUFFER");
+        enabled = (!value || !value[0]) ? 1 : value[0] != '0';
+    }
+    return enabled != 0;
+}
+#endif
 
 #if defined(__EMSCRIPTEN__)
 static bool isUnsupportedEmscriptenProcAddress(const char* name) {
@@ -761,7 +784,15 @@ void glcommon_glReadPixels(CPU* cpu) {
     GL_LOG("glReadPixels GLint x=%d, GLint y=%d, GLsizei width=%d, GLsizei height=%d, GLenum format=%d, GLenum type=%d, GLvoid *pixels=%.08x", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
 
     MarshalReadWritePackedPixels pixels(cpu, 2, width, height, 1, format, type, ARG7);
-    GL_FUNC(pglReadPixels)(ARG1, ARG2, width, height, format, type, pixels.getPtr());
+    GLvoid* ptr = pixels.getPtr();
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+    if (format == GL_RGBA && type == GL_UNSIGNED_BYTE && glReadPixelsTempBufferEnabled()) {
+        boxedwine_read_pixels_temp_rgba8(ARG1, ARG2, width, height, format, type, (int)(uintptr_t)ptr);
+    } else
+#endif
+    {
+        GL_FUNC(pglReadPixels)(ARG1, ARG2, width, height, format, type, ptr);
+    }
 }
 
 void OPENGL_CALL_TYPE debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {

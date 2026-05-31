@@ -30,10 +30,13 @@
 #include "../../source/ui/mainui.h"
 #include "../../platform/sdl/sdlcallback.h"
 
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+#ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
-#include <emscripten/html5_webgl.h>
 #include <emscripten/html5.h>
+#endif
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten/html5_webgl.h>
 #include <string>
 #endif
 
@@ -45,7 +48,7 @@ typedef void (GLAPIENTRY *pfnglFlush)();
 static pfnglFinish pglFinish;
 static pfnglFlush pglFlush;
 
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+#ifdef __EMSCRIPTEN__
 // With PROXY_TO_PTHREAD and OffscreenCanvas, SDL's Emscripten GL path still
 // routes context creation through the browser main thread. Create the WebGL
 // context directly on BoxedWine's SDL/main-loop pthread instead.
@@ -65,29 +68,75 @@ static bool useThreadWebGLCanvas() {
 EM_JS(bool, boxedwineRegisterThreadWebGLCanvas, (const char* selector, int width, int height), {
     var selectorString = UTF8ToString(selector);
     var id = selectorString[0] === '#' ? selectorString.slice(1) : selectorString;
-    if (!id || typeof OffscreenCanvas === 'undefined' || typeof GL === 'undefined') {
+    if (!id || typeof GL === 'undefined') {
         return false;
     }
-    if (!GL.offscreenCanvases[id]) {
-        var canvas = new OffscreenCanvas(width || 1, height || 1);
-        canvas.id = id;
-        GL.offscreenCanvases[id] = {
-            canvas: canvas,
-            offscreenCanvas: canvas,
-            canvasSharedPtr: 0,
-            id: id
-        };
-    } else {
-        var existing = GL.offscreenCanvases[id].canvas || GL.offscreenCanvases[id].offscreenCanvas;
-        if (existing) {
-            existing.width = width || existing.width || 1;
-            existing.height = height || existing.height || 1;
+    if (typeof OffscreenCanvas !== 'undefined') {
+        if (!GL.offscreenCanvases[id]) {
+            var canvas = new OffscreenCanvas(width || 1, height || 1);
+            canvas.id = id;
+            GL.offscreenCanvases[id] = {
+                canvas: canvas,
+                offscreenCanvas: canvas,
+                canvasSharedPtr: 0,
+                id: id
+            };
+        } else {
+            var existing = GL.offscreenCanvases[id].canvas || GL.offscreenCanvases[id].offscreenCanvas;
+            if (existing) {
+                var nextWidth = width || existing.width || 1;
+                var nextHeight = height || existing.height || 1;
+                if (existing.width !== nextWidth) {
+                    existing.width = nextWidth;
+                }
+                if (existing.height !== nextHeight) {
+                    existing.height = nextHeight;
+                }
+            }
         }
+        if (!Module.__boxedwineOffscreenCanvasLookup && typeof findCanvasEventTarget === 'function') {
+            var previousFindCanvasEventTarget = findCanvasEventTarget;
+            findCanvasEventTarget = function(target) {
+                var targetString = target > 2 ? UTF8ToString(target) : target;
+                if (typeof targetString === 'string') {
+                    var canvasId = targetString[0] === '#' ? targetString.slice(1) : targetString;
+                    var offscreen = GL.offscreenCanvases && GL.offscreenCanvases[canvasId];
+                    if (offscreen) {
+                        return offscreen.canvas || offscreen.offscreenCanvas;
+                    }
+                }
+                return previousFindCanvasEventTarget(target);
+            };
+            Module.__boxedwineOffscreenCanvasLookup = true;
+        }
+        return true;
+    } else if (typeof document !== 'undefined') {
+        var domCanvas = document.getElementById(id);
+        if (!domCanvas) {
+            domCanvas = document.createElement('canvas');
+            domCanvas.id = id;
+            domCanvas.style.display = 'none';
+            document.body.appendChild(domCanvas);
+        }
+        domCanvas.width = width || domCanvas.width || 1;
+        domCanvas.height = height || domCanvas.height || 1;
+        return true;
     }
-    return true;
+    return false;
 });
 
-EM_JS(void, boxedwinePresentCurrentWebGLFrame, (), {
+EM_JS(void, boxedwineUnregisterThreadWebGLCanvas, (const char* selector), {
+    if (typeof GL === 'undefined' || !GL.offscreenCanvases) {
+        return;
+    }
+    var selectorString = UTF8ToString(selector);
+    var id = selectorString[0] === '#' ? selectorString.slice(1) : selectorString;
+    if (id) {
+        delete GL.offscreenCanvases[id];
+    }
+});
+
+EM_JS(void, boxedwinePresentCurrentWebGLFrame, (int requestedWidth, int requestedHeight), {
     if (typeof GL === 'undefined' || !GL.currentContext || !GL.currentContext.GLctx) {
         return;
     }
@@ -102,7 +151,77 @@ EM_JS(void, boxedwinePresentCurrentWebGLFrame, (), {
         }
     }
     var source = GL.currentContext.GLctx.canvas;
-    if (!source || typeof source.transferToImageBitmap !== 'function') {
+    if (!source) {
+        if (presentState) {
+            Atomics.store(presentState, 0, 0);
+        }
+        return;
+    }
+    var sx = 0;
+    var sy = 0;
+    var sw = source.width;
+    var sh = source.height;
+    try {
+        var requestedPresentWidth = requestedWidth | 0;
+        var requestedPresentHeight = requestedHeight | 0;
+        var screenPresentWidth = Module.__boxedwineWebGLPresentWidth | 0;
+        var screenPresentHeight = Module.__boxedwineWebGLPresentHeight | 0;
+        var presentWidth = 0;
+        var presentHeight = 0;
+        if (requestedPresentWidth > 0 && requestedPresentHeight > 0 && requestedPresentWidth <= source.width && requestedPresentHeight <= source.height) {
+            presentWidth = requestedPresentWidth;
+            presentHeight = requestedPresentHeight;
+        }
+        if (screenPresentWidth > 0 && screenPresentHeight > 0 && screenPresentWidth <= source.width && screenPresentHeight <= source.height
+                && (presentWidth <= 0 || screenPresentWidth * screenPresentHeight < presentWidth * presentHeight)) {
+            presentWidth = screenPresentWidth;
+            presentHeight = screenPresentHeight;
+        }
+        if (presentWidth > 0 && presentHeight > 0 && presentWidth <= source.width && presentHeight <= source.height) {
+            sw = presentWidth;
+            sh = presentHeight;
+            sy = Math.max(0, source.height - sh);
+        } else {
+            var gl = GL.currentContext.GLctx;
+            var viewport = gl.getParameter(gl.VIEWPORT);
+            if (viewport && viewport.length >= 4 && viewport[2] > 0 && viewport[3] > 0 && viewport[2] <= source.width && viewport[3] <= source.height) {
+                sx = Math.max(0, viewport[0] | 0);
+                sw = Math.min(source.width - sx, viewport[2] | 0);
+                sh = Math.min(source.height, viewport[3] | 0);
+                sy = Math.max(0, source.height - ((viewport[1] | 0) + sh));
+            }
+        }
+    } catch (e) {
+        sx = 0;
+        sy = 0;
+        sw = source.width;
+        sh = source.height;
+    }
+    if (typeof document !== 'undefined') {
+        var target = document.getElementById('boxedwine-webgl-canvas-0');
+        if (target) {
+            if (target.width !== sw) {
+                target.width = sw;
+            }
+            if (target.height !== sh) {
+                target.height = sh;
+            }
+            var canvasFrame = target.parentElement;
+            if (canvasFrame) {
+                canvasFrame.style.setProperty("--boxedwine-canvas-width", target.width || 800);
+                canvasFrame.style.setProperty("--boxedwine-canvas-height", target.height || 600);
+            }
+            var context = target.getContext('2d');
+            if (context) {
+                context.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
+            }
+        }
+        if (presentState) {
+            Atomics.store(presentState, 0, 0);
+        }
+        return;
+    }
+    if (typeof source.transferToImageBitmap !== 'function') {
         if (presentState) {
             Atomics.store(presentState, 0, 0);
         }
@@ -113,7 +232,7 @@ EM_JS(void, boxedwinePresentCurrentWebGLFrame, (), {
         postMessage({
             cmd: 'callHandler',
             handler: 'boxedwinePresentFrame',
-            args: [bitmap, presentState]
+            args: [bitmap, presentState, sx, sy, sw, sh]
         }, [bitmap]);
     } catch (e) {
         if (presentState) {
@@ -137,22 +256,73 @@ static EMSCRIPTEN_WEBGL_CONTEXT_HANDLE createWebGLContextForTarget(const char* t
     attributes.alpha = false;
     attributes.premultipliedAlpha = false;
     attributes.enableExtensionsByDefault = true;
+#ifdef BOXEDWINE_MULTI_THREADED
     attributes.proxyContextToMainThread = EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW;
+#endif
     return emscripten_webgl_create_context(target, &attributes);
 }
 
 static EMSCRIPTEN_WEBGL_CONTEXT_HANDLE createWebGLContext(U32 major, U32 minor) {
     return createWebGLContextForTarget("#canvas", major, minor);
 }
+#endif
 
+#ifdef __EMSCRIPTEN__
 static void resizeWebGLCanvas(SDL_Window* window, U32 cx, U32 cy) {
     if (!cx || !cy) {
         return;
     }
+    int currentWidth = 0;
+    int currentHeight = 0;
+    bool canvasMatches = emscripten_get_canvas_element_size("#canvas", &currentWidth, &currentHeight) == EMSCRIPTEN_RESULT_SUCCESS
+            && currentWidth == (int)cx && currentHeight == (int)cy;
+    bool webglCanvasMatches = emscripten_get_canvas_element_size("#boxedwine-webgl-canvas-0", &currentWidth, &currentHeight) == EMSCRIPTEN_RESULT_SUCCESS
+            && currentWidth == (int)cx && currentHeight == (int)cy;
+    if (canvasMatches && webglCanvasMatches) {
+        return;
+    }
     SDL_SetWindowSize(window, cx, cy);
-    emscripten_set_canvas_element_size("#canvas", cx, cy);
-    emscripten_set_canvas_element_size("#boxedwine-webgl-canvas-0", cx, cy);
+    if (!canvasMatches) {
+        emscripten_set_canvas_element_size("#canvas", cx, cy);
+    }
+    if (!webglCanvasMatches) {
+        emscripten_set_canvas_element_size("#boxedwine-webgl-canvas-0", cx, cy);
+    }
 }
+
+static bool deferGlWindowShowUntilSwap() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    return false;
+#else
+    return true;
+#endif
+}
+
+static bool useDirectEmscriptenWebGLContext(U32 width, U32 height, const XWindowPtr& wnd) {
+#ifdef BOXEDWINE_MULTI_THREADED
+    return true;
+#else
+    (void)wnd;
+    (void)width;
+    (void)height;
+    return false;
+#endif
+}
+
+static bool useSharedThreadWebGLCanvas(U32 width, U32 height, const XWindowPtr& wnd) {
+#ifdef BOXEDWINE_MULTI_THREADED
+    (void)wnd;
+    (void)width;
+    (void)height;
+    return true;
+#else
+    (void)wnd;
+    (void)width;
+    (void)height;
+    return false;
+#endif
+}
+
 #endif
 
 class SDLGlWindow : public std::enable_shared_from_this<SDLGlWindow> {
@@ -175,7 +345,7 @@ public:
 
     void destroy();
     void showWindow(bool show);
-    static std::shared_ptr<SDLGlWindow> createWindow(const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, U32 cx, U32 cy);
+    static std::shared_ptr<SDLGlWindow> createWindow(const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, U32 cx, U32 cy, bool useDirectContext);
 };
 
 typedef std::shared_ptr<SDLGlWindow> SDLGlWindowPtr;
@@ -199,18 +369,25 @@ void SDLGlWindow::destroy() {
     }
 }
 
-SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, U32 cx, U32 cy) {
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
-    KNativeScreenSDLPtr screen = std::dynamic_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
-    if (!screen || !screen->window) {
-        kwarn("Couldn't get main SDL window for Emscripten WebGL");
-        return nullptr;
+SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, U32 cx, U32 cy, bool useDirectContext) {
+#ifdef __EMSCRIPTEN__
+    if (useDirectContext) {
+        KNativeScreenSDLPtr screen = std::dynamic_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
+        if (!screen || !screen->window) {
+            kwarn("Couldn't get main SDL window for Emscripten WebGL");
+            return nullptr;
+        }
+        screen->destroyTextureCache();
+        if (screen->renderer) {
+            SDL_DestroyRenderer(screen->renderer);
+            screen->renderer = nullptr;
+        }
+        // The offscreen canvas can only have one browser-side owner. Reuse the
+        // main SDL window record instead of creating another SDL GL window.
+        resizeWebGLCanvas(screen->window, cx, cy);
+        return std::make_shared<SDLGlWindow>(screen->window, pixelFormat, 3, 0, profile | BOXEDWINE_GL_PROFILE_ES, flags, false);
     }
-    // The offscreen canvas can only have one browser-side owner. Reuse the
-    // main SDL window record instead of creating another SDL GL window.
-    resizeWebGLCanvas(screen->window, cx, cy);
-    return std::make_shared<SDLGlWindow>(screen->window, pixelFormat, 3, 0, profile | BOXEDWINE_GL_PROFILE_ES, flags, false);
-#else
+#endif
 #ifdef __EMSCRIPTEN__
     major = 3;
     minor = 0;
@@ -280,8 +457,10 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
         kwarn_fmt("Couldn't create window: %s", SDL_GetError());
         return nullptr;
     }
-    return std::make_shared<SDLGlWindow>(window, pixelFormat, major, minor, profile, flags);
+#ifdef __EMSCRIPTEN__
+    resizeWebGLCanvas(window, cx, cy);
 #endif
+    return std::make_shared<SDLGlWindow>(window, pixelFormat, major, minor, profile, flags);
 }
 
 class SDLGlContext {
@@ -296,9 +475,11 @@ public:
     const U32 minor;
     const U32 profile;
     const U32 flags;
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+#ifdef __EMSCRIPTEN__
     std::string canvasSelector;
     bool threadCanvas = false;
+    bool sharedThreadCanvas = false;
+    bool webglContext = false;
 #endif
 };
 
@@ -361,7 +542,7 @@ void SDLGlWindow::showWindow(bool show) {
             gl->lastUpdateTime = now;
         }
     }
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+#ifdef __EMSCRIPTEN__
     if (!ownsWindow) {
         visible = show;
         return;
@@ -482,10 +663,22 @@ void KOpenGLSdl::glDestroyContext(KThread* thread, U32 contextId) {
     SDLGlContextPtr context = contextsById.get(contextId);
 
 #ifdef __EMSCRIPTEN__
-    /* SDL's Emscripten backend may hand multiple Wine GL context records the
-     * same underlying WebGL context. Deleting one temporary Wine context can
-     * destroy the browser context currently used by a later WineD3D caps
-     * context, making subsequent glGetString() calls report no GL context. */
+    if (context && context->webglContext) {
+        if (thread && thread->currentContext == contextId) {
+            emscripten_webgl_make_context_current(0);
+        }
+        if (!context->sharedThreadCanvas) {
+            emscripten_webgl_destroy_context(toWebGLContext(context->context));
+        }
+        if (context->threadCanvas && !context->sharedThreadCanvas && context->canvasSelector.length()) {
+            boxedwineUnregisterThreadWebGLCanvas(context->canvasSelector.c_str());
+        }
+    }
+    /* SDL's Emscripten backend, and our shared worker canvas path, may hand
+     * multiple Wine GL context records the same underlying WebGL context.
+     * Deleting one temporary Wine context can destroy the browser context
+     * currently used by a later WineD3D caps context. Only destroy direct
+     * WebGL contexts that own a private worker canvas. */
 #else
     if (context) {
         SDL_GL_DeleteContext(context->context);
@@ -495,8 +688,13 @@ void KOpenGLSdl::glDestroyContext(KThread* thread, U32 contextId) {
 }
 
 bool KOpenGLSdl::isActive() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
-    return contextsById.size() > 0;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+    for (auto& w : sdlWindowById) {
+        if (w.value->visible) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool KOpenGLSdl::presentedSinceLastCheck() {
@@ -513,7 +711,7 @@ void KOpenGLSdl::glResizeWindow(const std::shared_ptr<XWindow>& wnd) {
     }
     if (window) {
         KNativeSystem::getCurrentInput()->runOnUiThread([&window, &wnd]() {
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+#if defined(__EMSCRIPTEN__)
             resizeWebGLCanvas(window->window, wnd->width(), wnd->height());
 #else
             SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
@@ -530,31 +728,40 @@ void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>
     }
     if (window) {
         window->showWindow(true);
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+#ifdef __EMSCRIPTEN__
         SDLGlContextPtr currentContext;
         if (thread && thread->currentContext) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
             currentContext = contextsById.get(thread->currentContext);
         }
+        bool useDirectWebGLContext = currentContext && currentContext->webglContext;
         bool usePrivateThreadCanvas = currentContext && currentContext->threadCanvas && useThreadWebGLCanvas();
 #endif
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
-        if (usePrivateThreadCanvas) {
+#ifdef __EMSCRIPTEN__
+        if (useDirectWebGLContext) {
             if (pglFlush) {
                 pglFlush();
             }
-            boxedwinePresentCurrentWebGLFrame();
+            if (usePrivateThreadCanvas) {
+                boxedwinePresentCurrentWebGLFrame(d->width(), d->height());
+            }
         } else {
             if (pglFlush) {
                 pglFlush();
             }
             SDL_GL_SwapWindow(window->window);
         }
+        if (!usePrivateThreadCanvas) {
+            resizeWebGLCanvas(window->window, d->width(), d->height());
+        }
 #else
         if (pglFlush) {
             pglFlush();
         }
         SDL_GL_SwapWindow(window->window);
+#ifdef __EMSCRIPTEN__
+        resizeWebGLCanvas(window->window, d->width(), d->height());
+#endif
 #endif
         presented = true;
 #ifdef __EMSCRIPTEN__
@@ -572,11 +779,15 @@ void KOpenGLSdl::glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>&
         window = sdlWindowById.get(wnd->id);
     }
     if (!window) {
+        bool useDirectContext = useDirectEmscriptenWebGLContext(wnd->width(), wnd->height(), wnd);
         KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
-            window = SDLGlWindow::createWindow(cfg->glPixelFormat, 0, 0, 0, 0, wnd->width(), wnd->height());
+            window = SDLGlWindow::createWindow(cfg->glPixelFormat, 0, 0, 0, 0, wnd->width(), wnd->height(), useDirectContext);
             });
         window->drawable = wnd;
         sdlWindowById.set(wnd->id, window);
+#ifdef __EMSCRIPTEN__
+        if (!deferGlWindowShowUntilSwap())
+#endif
         window->showWindow(true);
     }
 }
@@ -686,18 +897,14 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             }
             context->currentWindow = nullptr;
         }
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
-        if (context && context->threadCanvas) {
+#ifdef __EMSCRIPTEN__
+        if (context && context->webglContext) {
             emscripten_webgl_make_context_current(0);
         } else {
             KNativeSystem::getCurrentInput()->runOnUiThread([]() {
-                emscripten_webgl_make_context_current(0);
+                SDL_GL_MakeCurrent(nullptr, 0);
                 });
         }
-#elif defined(__EMSCRIPTEN__)
-        KNativeSystem::getCurrentInput()->runOnUiThread([]() {
-            SDL_GL_MakeCurrent(nullptr, 0);
-            });
 #else
         SDL_GL_MakeCurrent(nullptr, 0);
 #endif
@@ -714,8 +921,13 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
                 window = nullptr;
             }
             if (!window) {
+                XWindowPtr drawableWindow;
+                if (d && d->isWindow) {
+                    drawableWindow = std::dynamic_pointer_cast<XWindow>(d);
+                }
+                bool useDirectContext = useDirectEmscriptenWebGLContext(d->width(), d->height(), drawableWindow);
                 KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
-                    window = SDLGlWindow::createWindow(context->pixelFormat, context->major, context->minor, context->profile, context->flags, d->width(), d->height());
+                    window = SDLGlWindow::createWindow(context->pixelFormat, context->major, context->minor, context->profile, context->flags, d->width(), d->height(), useDirectContext);
                     });
                 if (!window || !window->window) {
                     kwarn("KOpenGLSdl::glMakeCurrent failed to create an SDL GL window");
@@ -726,26 +938,49 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             }
         }
         if (!context->context) {
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
-            if (useThreadWebGLCanvas()) {
-                context->canvasSelector = "#boxedwine-webgl-thread-" + std::to_string(context->id);
-                if (boxedwineRegisterThreadWebGLCanvas(context->canvasSelector.c_str(), d->width(), d->height())) {
-                    context->context = toSDLGLContext(createWebGLContextForTarget(context->canvasSelector.c_str(), context->major, context->minor));
+#ifdef __EMSCRIPTEN__
+            XWindowPtr drawableWindow;
+            if (d && d->isWindow) {
+                drawableWindow = std::dynamic_pointer_cast<XWindow>(d);
+            }
+            bool useDirectContext = useDirectEmscriptenWebGLContext(d->width(), d->height(), drawableWindow);
+            if (useDirectContext) {
+                if (useThreadWebGLCanvas()) {
+                    context->sharedThreadCanvas = useSharedThreadWebGLCanvas(d->width(), d->height(), drawableWindow);
+                    context->canvasSelector = context->sharedThreadCanvas
+                            ? "#boxedwine-webgl-thread-shared"
+                            : "#boxedwine-webgl-thread-" + std::to_string(context->id);
+                    if (boxedwineRegisterThreadWebGLCanvas(context->canvasSelector.c_str(), d->width(), d->height())) {
+                        context->context = toSDLGLContext(createWebGLContextForTarget(context->canvasSelector.c_str(), context->major, context->minor));
+                        context->threadCanvas = context->context != nullptr;
+                        context->webglContext = context->context != nullptr;
+                    }
+                }
+                if (!context->context) {
+                    KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
+                        context->context = toSDLGLContext(createWebGLContext(context->major, context->minor));
+                        });
                     context->threadCanvas = context->context != nullptr;
+                    context->webglContext = context->context != nullptr;
                 }
             }
             if (!context->context) {
                 KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
-                    context->context = toSDLGLContext(createWebGLContext(context->major, context->minor));
+                    context->context = SDL_GL_CreateContext(window->window);
                     });
+                context->threadCanvas = false;
+                context->webglContext = false;
             }
             if (!context->context) {
-                kwarn("KOpenGLSdl::glMakeCurrent emscripten_webgl_create_context failed");
+                kwarn("KOpenGLSdl::glMakeCurrent Emscripten GL context creation failed");
                 return false;
             }
 #else
             KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
                 context->context = SDL_GL_CreateContext(window->window);
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+                resizeWebGLCanvas(window->window, d->width(), d->height());
+#endif
                 });
             if (!context->context) {
                 kwarn_fmt("KOpenGLSdl::glMakeCurrent SDL_GL_CreateContext failed: %s", SDL_GetError());
@@ -754,18 +989,17 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
 #endif
         }
         bool result = false;
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
-        if (context->threadCanvas) {
+#ifdef __EMSCRIPTEN__
+        if (context->threadCanvas && useThreadWebGLCanvas() && context->canvasSelector.length()) {
+            boxedwineRegisterThreadWebGLCanvas(context->canvasSelector.c_str(), d->width(), d->height());
+        }
+        if (context->webglContext) {
             result = emscripten_webgl_make_context_current(toWebGLContext(context->context)) == EMSCRIPTEN_RESULT_SUCCESS;
         } else {
             KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
-                result = emscripten_webgl_make_context_current(toWebGLContext(context->context)) == EMSCRIPTEN_RESULT_SUCCESS;
+                result = SDL_GL_MakeCurrent(window->window, context->context) == 0;
                 });
         }
-#elif defined(__EMSCRIPTEN__)
-        KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
-            result = SDL_GL_MakeCurrent(window->window, context->context) == 0;
-            });
 #else
         result = SDL_GL_MakeCurrent(window->window, context->context) == 0;
 #endif
@@ -800,6 +1034,9 @@ static void sdl_glFlush(CPU* cpu) {
             context = KOpenGLSdl::contextsById.get(thread->currentContext);
         }
         if (context && context->currentWindow) {
+#ifdef __EMSCRIPTEN__
+            if (!deferGlWindowShowUntilSwap())
+#endif
             context->currentWindow->showWindow(true);
         }
     }

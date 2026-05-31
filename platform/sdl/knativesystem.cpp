@@ -78,6 +78,9 @@ KNativeScreenPtr KNativeSystem::getScreen() {
 }
 
 void KNativeSystem::tick() {
+#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
+    return;
+#endif
     if (opengl && opengl->getLastUpdateTime() + 100 < screen->getLastUpdateTime()) {
         opengl->hideCurrentWindow();
     }
@@ -135,6 +138,28 @@ void KNativeSystem::moveWindow(const XWindowPtr& wnd) {
 }
 
 void KNativeSystem::showWindow(const XWindowPtr & wnd, bool bShow) {
+#if defined(__EMSCRIPTEN__)
+    if (bShow && screen) {
+        if (wnd && wnd->isOpenGL) {
+#ifdef BOXEDWINE_MULTI_THREADED
+            screen->showWindow(false);
+#endif
+            return;
+        }
+#if !defined(BOXEDWINE_MULTI_THREADED)
+        // WineD3D can map the non-GL parent window after the GL drawable is
+        // active. In the single-threaded build that software window shares the
+        // browser canvas stack, so showing it can cover the real GL frame.
+        if (opengl && opengl->isActive() && !screen->isVisible() && wnd) {
+            return;
+        }
+#endif
+        if (opengl) {
+            opengl->hideCurrentWindow();
+        }
+        screen->showWindow(true);
+    }
+#endif
 }
 
 void KNativeSystem::shutdown() {

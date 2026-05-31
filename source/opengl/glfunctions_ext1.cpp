@@ -23,10 +23,32 @@
 #include GLH
 #include "glcommon.h"
 #include "glMarshal.h"
+#ifdef __EMSCRIPTEN__
+#include <vector>
+#endif
 
 #ifndef GL_TEXTURE_DEPTH
 #define GL_TEXTURE_DEPTH 0x8071
 #endif
+
+static const GLvoid* marshalBufferData(CPU* cpu, GLenum target, GLsizeiptr size, U32 address, GLsizeiptr* uploadSize) {
+    *uploadSize = size;
+#ifdef __EMSCRIPTEN__
+    if (target == GL_ARRAY_BUFFER && size > 0) {
+        constexpr GLsizeiptr padding = 256;
+        *uploadSize = size + padding;
+        if (address) {
+            thread_local std::vector<GLubyte> padded;
+            padded.resize((size_t)*uploadSize);
+            const GLubyte* data = marshalArray<GLubyte>(cpu, address, (U32)size);
+            memcpy(padded.data(), data, (size_t)size);
+            memset(padded.data() + size, 0, (size_t)padding);
+            return padded.data();
+        }
+    }
+#endif
+    return marshalArray<GLubyte>(cpu, address, (U32)size);
+}
 
 #ifndef GL_DETAIL_TEXTURE_FUNC_POINTS_SGIS
 #define GL_DETAIL_TEXTURE_FUNC_POINTS_SGIS 0x809C
@@ -1251,7 +1273,9 @@ void glcommon_glBufferData(CPU* cpu) {
     if (!ext_glBufferData)
         kpanic("ext_glBufferData is NULL");
     {
-    GL_FUNC(ext_glBufferData)(ARG1, ARG2, marshalArray<GLubyte>(cpu, ARG3, ARG2), ARG4);
+    GLsizeiptr uploadSize;
+    const GLvoid* data = marshalBufferData(cpu, ARG1, ARG2, ARG3, &uploadSize);
+    GL_FUNC(ext_glBufferData)(ARG1, uploadSize, data, ARG4);
     GL_LOG ("glBufferData GLenum target=%d, GLsizeiptr size=%d, const void* data=%.08x, GLenum usage=%d",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -1259,7 +1283,9 @@ void glcommon_glBufferDataARB(CPU* cpu) {
     if (!ext_glBufferDataARB)
         kpanic("ext_glBufferDataARB is NULL");
     {
-    GL_FUNC(ext_glBufferDataARB)(ARG1, ARG2, marshalArray<GLubyte>(cpu, ARG3, ARG2), ARG4);
+    GLsizeiptr uploadSize;
+    const GLvoid* data = marshalBufferData(cpu, ARG1, ARG2, ARG3, &uploadSize);
+    GL_FUNC(ext_glBufferDataARB)(ARG1, uploadSize, data, ARG4);
     GL_LOG ("glBufferDataARB GLenum target=%d, GLsizeiptrARB size=%d, const void* data=%.08x, GLenum usage=%d",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -3460,14 +3486,15 @@ void glcommon_glDisableVertexAttribArray(CPU* cpu) {
         kpanic("ext_glDisableVertexAttribArray is NULL");
     {
         OpenGLVetexPointer* p = nullptr;
-        if (ARG2 == 0) {
+        if (ARG1 == 0) {
             p = &cpu->thread->glVertextPointer;
         } else {
-            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(ARG2);
+            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(ARG1);
             p = found.get();
         }
         if (p) {
             p->refreshEachCall = 0;
+            p->enabled = false;
         }
 
     GL_FUNC(ext_glDisableVertexAttribArray)(ARG1);
@@ -3478,6 +3505,18 @@ void glcommon_glDisableVertexAttribArrayARB(CPU* cpu) {
     if (!ext_glDisableVertexAttribArrayARB)
         kpanic("ext_glDisableVertexAttribArrayARB is NULL");
     {
+        OpenGLVetexPointer* p = nullptr;
+        if (ARG1 == 0) {
+            p = &cpu->thread->glVertextPointer;
+        } else {
+            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(ARG1);
+            p = found.get();
+        }
+        if (p) {
+            p->refreshEachCall = 0;
+            p->enabled = false;
+        }
+
     GL_FUNC(ext_glDisableVertexAttribArrayARB)(ARG1);
     GL_LOG ("glDisableVertexAttribArrayARB GLuint index=%d",ARG1);
     }
@@ -4004,15 +4043,16 @@ void glcommon_glEnableVertexAttribArray(CPU* cpu) {
         kpanic("ext_glEnableVertexAttribArray is NULL");
     {
         OpenGLVetexPointer* p = nullptr;
-        if (ARG2 == 0) {
+        if (ARG1 == 0) {
             p = &cpu->thread->glVertextPointer;
         }
         else {
-            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(ARG2);
+            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(ARG1);
             p = found.get();
         }
         if (p) {
-            p->refreshEachCall = 1;
+            p->enabled = true;
+            p->refreshEachCall = p->isArrayBuffer ? 0 : 1;
         }
     GL_FUNC(ext_glEnableVertexAttribArray)(ARG1);
     GL_LOG ("glEnableVertexAttribArray GLuint index=%d",ARG1);
@@ -4022,6 +4062,19 @@ void glcommon_glEnableVertexAttribArrayARB(CPU* cpu) {
     if (!ext_glEnableVertexAttribArrayARB)
         kpanic("ext_glEnableVertexAttribArrayARB is NULL");
     {
+        OpenGLVetexPointer* p = nullptr;
+        if (ARG1 == 0) {
+            p = &cpu->thread->glVertextPointer;
+        }
+        else {
+            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(ARG1);
+            p = found.get();
+        }
+        if (p) {
+            p->enabled = true;
+            p->refreshEachCall = p->isArrayBuffer ? 0 : 1;
+        }
+
     GL_FUNC(ext_glEnableVertexAttribArrayARB)(ARG1);
     GL_LOG ("glEnableVertexAttribArrayARB GLuint index=%d",ARG1);
     }
