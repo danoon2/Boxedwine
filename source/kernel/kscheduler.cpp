@@ -123,10 +123,35 @@ void terminateCurrentThread(KThread* thread) {
 	unscheduleThread(thread);
 }
 
+#ifdef __EMSCRIPTEN__
+static const S32 DEFAULT_CONTEXT_TIME = 10000;
+static const S32 MIN_CONTEXT_TIME = 2000;
+static const S32 MAX_CONTEXT_TIME = 10000;
+static const S32 CONTEXT_TIME_STEP = 1000;
+S32 contextTime = DEFAULT_CONTEXT_TIME;
+S32 contextTimeRemaining = DEFAULT_CONTEXT_TIME;
+#else
 S32 contextTime = 100000;
 S32 contextTimeRemaining = 100000;
+#endif
 int count;
 extern struct Block emptyBlock;
+
+#ifdef __EMSCRIPTEN__
+static S32 decreaseContextTime(S32 value) {
+    if (value <= MIN_CONTEXT_TIME + CONTEXT_TIME_STEP) {
+        return MIN_CONTEXT_TIME;
+    }
+    return value - CONTEXT_TIME_STEP;
+}
+
+static S32 increaseContextTime(S32 value) {
+    if (value >= MAX_CONTEXT_TIME - CONTEXT_TIME_STEP) {
+        return MAX_CONTEXT_TIME;
+    }
+    return value + CONTEXT_TIME_STEP;
+}
+#endif
 
 void runThreadSlice(KThread* thread) {
     CPU* cpu;
@@ -216,10 +241,18 @@ bool runSlice() {
     }
     if (!scheduledThreads.isEmpty()) {
         if (elapsedTime>11000) {
+#ifdef __EMSCRIPTEN__
+            contextTime = decreaseContextTime(contextTime);
+#else
             if (contextTime>100000)
                 contextTime-=20000;
+#endif
         } else if (elapsedTime<9500) {
+#ifdef __EMSCRIPTEN__
+            contextTime = increaseContextTime(contextTime);
+#else
             contextTime+=20000;
+#endif
         }
     }
     //klog("ran slice in %dus %d", (U32)elapsedTime, contextTime);    

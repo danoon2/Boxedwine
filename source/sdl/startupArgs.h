@@ -94,6 +94,9 @@ public:
     int effectiveGroupId = GID;
 
     bool soundEnabled = true;
+#ifdef __EMSCRIPTEN__
+    U32 audioFreq = 0;
+#endif
     VideoOption videoOption = VIDEO_NORMAL;
     U32 vsync = VSYNC_DEFAULT;
     bool dpiAware = false;

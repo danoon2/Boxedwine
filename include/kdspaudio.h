@@ -36,6 +36,7 @@ public:
 	virtual void closeAudio() = 0;
 	virtual U32 writeAudio(U8* data, U32 len) = 0;
 	virtual U32 getFragmentSize() = 0;
+	virtual void setFragmentSize(U32 size) = 0;
 	virtual U32 getBufferSize() = 0;
 	virtual U32 getBufferCapacity() = 0;
 
