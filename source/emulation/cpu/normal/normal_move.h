@@ -73,12 +73,12 @@ void OPCALL normal_movr32r32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_move32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->memory->writed(eaa(cpu, op), cpu->reg[op->reg].u32);
+    cpu->memory->writedInline(eaa(cpu, op), cpu->reg[op->reg].u32);
     NEXT();
 }
 void OPCALL normal_movr32e32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->reg[op->reg].u32 = cpu->memory->readd(eaa(cpu, op));
+    cpu->reg[op->reg].u32 = cpu->memory->readdInline(eaa(cpu, op));
     NEXT();
 }
 void OPCALL normal_movr32(CPU* cpu, DecodedOp* op) {

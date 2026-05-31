@@ -152,11 +152,11 @@ void OPCALL normal_add32_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_add32_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
-    cpu->dst.u32 = cpu->memory->readd(eaa);
+    cpu->dst.u32 = cpu->memory->readdInline(eaa);
     cpu->src.u32 = op->imm;
     cpu->result.u32 = cpu->dst.u32 + cpu->src.u32;
     cpu->lazyFlagType = FLAGS_ADD32;
-    cpu->memory->writed(eaa,  cpu->result.u32);
+    cpu->memory->writedInline(eaa,  cpu->result.u32);
     NEXT();
 }
 void OPCALL normal_orr8r8(CPU* cpu, DecodedOp* op) {
@@ -1130,7 +1130,7 @@ void OPCALL normal_cmpr32r32(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_cmpe32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
-    cpu->dst.u32 = cpu->memory->readd(eaa);
+    cpu->dst.u32 = cpu->memory->readdInline(eaa);
     cpu->src.u32 = cpu->reg[op->reg].u32;
     cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
     cpu->lazyFlagType = FLAGS_CMP32;
@@ -1139,7 +1139,7 @@ void OPCALL normal_cmpe32r32(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_cmpr32e32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->dst.u32 = cpu->reg[op->reg].u32;
-    cpu->src.u32 = cpu->memory->readd(eaa(cpu, op));
+    cpu->src.u32 = cpu->memory->readdInline(eaa(cpu, op));
     cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
     cpu->lazyFlagType = FLAGS_CMP32;
     NEXT();
@@ -1155,7 +1155,7 @@ void OPCALL normal_cmp32_reg(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_cmp32_mem(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
-    cpu->dst.u32 = cpu->memory->readd(eaa);
+    cpu->dst.u32 = cpu->memory->readdInline(eaa);
     cpu->src.u32 = op->imm;
     cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
     cpu->lazyFlagType = FLAGS_CMP32;
