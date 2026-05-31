@@ -42,8 +42,23 @@
 #endif
 #endif
 
-#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH)
 #define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return normalDispatch(cpu, op->next);
+#elif defined(BOXEDWINE_WASM_JIT)
+#define NEXT() do {                                                                                 \
+    cpu->eip.u32 += op->len;                                                                         \
+    DecodedOp* nextOp = op->next ? op->next : cpu->getNextOp();                                      \
+    if (cpu->wasmJitBridgeBlockStart) {                                                              \
+        if (nextOp && nextOp->blockStart == cpu->wasmJitBridgeBlockStart &&                          \
+            nextOp->pfn && nextOp->pfn != cpu->thread->process->startJITOp) {                        \
+            MUSTTAIL return normalDispatch(cpu, nextOp);                                             \
+        }                                                                                            \
+        cpu->nextOp = nextOp;                                                                        \
+        cpu->wasmJitBridgeBlockStart = nullptr;                                                      \
+        return;                                                                                      \
+    }                                                                                                \
+    MUSTTAIL return nextOp->pfn(cpu, nextOp);                                                        \
+} while (0)
 #else
 #define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return op->next->pfn(cpu, op->next);
 #endif
@@ -185,7 +200,7 @@ static inline bool normalGetNLE(CPU* cpu) {
 
 #define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!op->next) {op->next = cpu->getNextOp(); } cpu->nextOp = op->next;
 
-#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH) || defined(BOXEDWINE_WASM_JIT)
 static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op);
 #endif
 
@@ -229,7 +244,7 @@ void OPCALL onTestEnd(CPU* cpu, DecodedOp* op) {
     cpu->nextOp = op;
 }
 
-#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH) || defined(BOXEDWINE_WASM_JIT)
 static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op) {
     switch (op->inst) {
 #undef INIT_CPU
@@ -313,6 +328,14 @@ NormalCPU::NormalCPU(KMemory* memory) : CPU(memory) {
 OpCallback NormalCPU::getFunctionForOp(DecodedOp* op) {
     return normalOps[op->inst];
 }
+
+#ifdef BOXEDWINE_WASM_JIT
+void NormalCPU::runWasmJitBridge(CPU* cpu, DecodedOp* op) {
+    cpu->wasmJitBridgeBlockStart = op->blockStart;
+    normalDispatch(cpu, op);
+    cpu->wasmJitBridgeBlockStart = nullptr;
+}
+#endif
 
 bool NormalCPU::isValidExecutableAddress(U32 address) {
     return (memory->getPageFlags(address >> K_PAGE_SHIFT) & PAGE_EXEC) != 0;

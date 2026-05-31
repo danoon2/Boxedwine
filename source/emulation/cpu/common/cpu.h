@@ -234,6 +234,7 @@ public:
     U32 wasmJitMemoryData = 0;
     U32 wasmReadPageBaseArray  = 0;
     U32 wasmWritePageBaseArray = 0;
+    DecodedOp* wasmJitBridgeBlockStart = nullptr;
 #endif
     U8* reg8[9];
     ALIGN(SSE xmm[8], 16);    

@@ -33,8 +33,11 @@ public:
     bool isValidExecutableAddress(U32 address) override;
 
     static OpCallback getFunctionForOp(DecodedOp* op);
+#ifdef BOXEDWINE_WASM_JIT
+    static void runWasmJitBridge(CPU* cpu, DecodedOp* op);
+#endif
 
-    OpCallback firstOp;    
+    OpCallback firstOp;
 };
 
 #endif

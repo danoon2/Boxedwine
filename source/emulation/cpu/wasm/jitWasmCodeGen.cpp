@@ -1481,7 +1481,7 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
                 if (wasmJitTryBridgeFastOp(cpu, bridgeOp)) {
                     WASM_JIT_PROFILE_ONLY(if (loopProfileSample) { wasmJitProfileBridgeFast(bridgeOpStartNs, WASM_JIT_PROFILE_TIMING_SAMPLE); })
                 } else {
-                    bridgeOp->pfn(cpu, bridgeOp);
+                    NormalCPU::runWasmJitBridge(cpu, bridgeOp);
                     WASM_JIT_PROFILE_ONLY(if (loopProfileSample) { wasmJitProfileBridgePfn(bridgeOpStartNs, bridgeOp, WASM_JIT_PROFILE_TIMING_SAMPLE); })
                 }
                 bridgeEntries++;
