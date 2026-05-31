@@ -345,7 +345,7 @@ public:
 
     void destroy();
     void showWindow(bool show);
-    static std::shared_ptr<SDLGlWindow> createWindow(const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, U32 cx, U32 cy, bool useDirectContext);
+    static std::shared_ptr<SDLGlWindow> createWindow(const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, U32 cx, U32 cy, XWindowPtr wnd);
 };
 
 typedef std::shared_ptr<SDLGlWindow> SDLGlWindowPtr;
@@ -369,8 +369,9 @@ void SDLGlWindow::destroy() {
     }
 }
 
-SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, U32 cx, U32 cy, bool useDirectContext) {
+SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, U32 cx, U32 cy, XWindowPtr wnd) {
 #ifdef __EMSCRIPTEN__
+    bool useDirectContext = useDirectEmscriptenWebGLContext(cx, cy, wnd);
     if (useDirectContext) {
         KNativeScreenSDLPtr screen = std::dynamic_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
         if (!screen || !screen->window) {
@@ -611,7 +612,7 @@ U32 KOpenGLSdl::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFo
     SDLGlWindowPtr window;
     
     KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
-        window = SDLGlWindow::createWindow(pixelFormat, major, minor, profile, flags, 100, 100);
+        window = SDLGlWindow::createWindow(pixelFormat, major, minor, profile, flags, 100, 100, nullptr);
         });
 
     SDLGlContextPtr restoreContext;
@@ -778,10 +779,9 @@ void KOpenGLSdl::glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>&
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
         window = sdlWindowById.get(wnd->id);
     }
-    if (!window) {
-        bool useDirectContext = useDirectEmscriptenWebGLContext(wnd->width(), wnd->height(), wnd);
+    if (!window) {        
         KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
-            window = SDLGlWindow::createWindow(cfg->glPixelFormat, 0, 0, 0, 0, wnd->width(), wnd->height(), useDirectContext);
+            window = SDLGlWindow::createWindow(cfg->glPixelFormat, 0, 0, 0, 0, wnd->width(), wnd->height(), wnd);
             });
         window->drawable = wnd;
         sdlWindowById.set(wnd->id, window);
@@ -925,9 +925,8 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
                 if (d && d->isWindow) {
                     drawableWindow = std::dynamic_pointer_cast<XWindow>(d);
                 }
-                bool useDirectContext = useDirectEmscriptenWebGLContext(d->width(), d->height(), drawableWindow);
                 KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
-                    window = SDLGlWindow::createWindow(context->pixelFormat, context->major, context->minor, context->profile, context->flags, d->width(), d->height(), useDirectContext);
+                    window = SDLGlWindow::createWindow(context->pixelFormat, context->major, context->minor, context->profile, context->flags, d->width(), d->height(), drawableWindow);
                     });
                 if (!window || !window->window) {
                     kwarn("KOpenGLSdl::glMakeCurrent failed to create an SDL GL window");
