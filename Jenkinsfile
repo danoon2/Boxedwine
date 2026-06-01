@@ -515,11 +515,13 @@ pipeline {
                         archiveArtifacts artifacts: "build-${env.BUILD_NUMBER}.zip", fingerprint: true, allowEmptyArchive: true
                     }
                     script {
-                        withEnv([
-                            "BUILD_RESULT=${currentBuild.currentResult ?: 'SUCCESS'}",
-                            "BUILD_SITE_ARTIFACT=${env.WORKSPACE}/project/linux/Deploy/build-${env.BUILD_NUMBER}.zip"
-                        ]) {
-                            sh "${env.WORKSPACE}/tools/jenkins/publish-build-site.sh"
+                        withFolderProperties {
+                            withEnv([
+                                "BUILD_RESULT=${currentBuild.currentResult ?: 'SUCCESS'}",
+                                "BUILD_SITE_ARTIFACT=${env.WORKSPACE}/project/linux/Deploy/build-${env.BUILD_NUMBER}.zip"
+                            ]) {
+                                sh "bash ${env.WORKSPACE}/tools/jenkins/publish-build-site.sh"
+                            }
                         }
                     }
                 }
