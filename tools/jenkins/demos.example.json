@@ -10,15 +10,20 @@
       "exe": "c:/c3.bat",
       "description": "City-building strategy demo running from a Wine drive overlay."
     },
-    "mw3.zip": {
-      "title": "Mech Warrior 3 Demo (1999 D3D 6)",
-      "exe": "mech3demo.exe",
-      "description": "MechWarrior 3 is a tactical mech combat game where players pilot customizable BattleMechs."
+    "drowned.zip": {
+      "title": "Drowed God Demo (1996)",
+      "exe": "DROWNGOD.EXE",
+      "description": "rowned God is surreal point-and-click adventure game built around occult symbolism, conspiracy lore, and strange puzzle-driven exploration."
     },
     "mdkperf.zip": {
       "title": "MDK Performance Test (1999 DirectDraw)",
       "exe": "PERF_W95.EXE",
       "description": "A Performance test that shipped with the game."
+    },
+    "mw3.zip": {
+      "title": "Mech Warrior 3 Demo (1999 D3D 6)",
+      "exe": "mech3demo.exe",
+      "description": "MechWarrior 3 is a tactical mech combat game where players pilot customizable BattleMechs."
     },
     "pinball.zip": {
       "title": "Full Tilt! Pinball Demo (1995)",

@@ -672,8 +672,8 @@ def render_demo_page(title, subtitle, intro, back_href, content):
 
 def demo_launch_url(branch_slug, build_number, mode, demo):
     params = {
-        "root": "../boxedwine.zip",
-        demo.get("zipParam", "app"): f"../../../../apps/{demo['zip']}",
+        "root": "boxedwine.zip",
+        demo.get("zipParam", "app"): demo["zip"],
     }
     if demo["program"]:
         params["p"] = demo["program"]
@@ -683,8 +683,8 @@ def demo_launch_url(branch_slug, build_number, mode, demo):
 
 def build_demo_launch_url(mode, demo):
     params = {
-        "root": "../boxedwine.zip",
-        demo.get("zipParam", "app"): f"../../../../apps/{demo['zip']}",
+        "root": "boxedwine.zip",
+        demo.get("zipParam", "app"): demo["zip"],
     }
     if demo["program"]:
         params["p"] = demo["program"]
@@ -744,6 +744,14 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, singl
 
     copy_tree_contents(single_threaded_dir, build_dir / "st", skip_zip=True)
     copy_tree_contents(multi_threaded_dir, build_dir / "mt", skip_zip=True)
+    if boxedwine_zip.exists():
+        link_or_copy(boxedwine_zip, build_dir / "st" / "boxedwine.zip")
+        link_or_copy(boxedwine_zip, build_dir / "mt" / "boxedwine.zip")
+    for demo in demos:
+        app_zip = apps_dir / demo["zip"]
+        if app_zip.exists():
+            link_or_copy(app_zip, build_dir / "st" / demo["zip"])
+            link_or_copy(app_zip, build_dir / "mt" / demo["zip"])
 
     render_build_demo_html(build_dir, branch, build_number, demos)
     prune_old_demo_builds(site_dir, branch_slug, keep)
