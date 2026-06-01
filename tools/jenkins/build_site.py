@@ -654,7 +654,7 @@ def demo_launch_url(branch_slug, build_number, mode, demo):
 def build_demo_launch_url(mode, demo):
     params = {
         "root": "../boxedwine.zip",
-        demo.get("zipParam", "app"): f"../../../apps/{demo['zip']}",
+        demo.get("zipParam", "app"): f"../../../../apps/{demo['zip']}",
     }
     if demo["program"]:
         params["p"] = demo["program"]
