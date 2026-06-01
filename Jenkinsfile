@@ -10,6 +10,57 @@ void gitCheckout() {
     }
 }
 
+void publishGithubBuildStatus(String state, String description) {
+    if (!env.GIT_COMMIT) {
+        echo 'GIT_COMMIT is not set; skipping GitHub build status update.'
+        return
+    }
+
+    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+        withCredentials([usernamePassword(credentialsId: '2f2698c7-8fb4-4eb7-9cde-d048228a04ae', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
+            withEnv([
+                "GITHUB_STATUS_STATE=${state}",
+                "GITHUB_STATUS_DESCRIPTION=${description}",
+                "GITHUB_STATUS_CONTEXT=${env.GITHUB_STATUS_CONTEXT ?: 'jenkins/automation'}",
+                "GITHUB_STATUS_TARGET_URL=${env.GITHUB_STATUS_TARGET_URL ?: 'http://boxedwine.org/builds/'}"
+            ]) {
+                sh '''#!/bin/bash
+                    python3 - <<'PY'
+import json
+import os
+import urllib.request
+
+token = os.environ["GITHUB_TOKEN"]
+commit = os.environ["GIT_COMMIT"]
+payload = json.dumps({
+    "state": os.environ["GITHUB_STATUS_STATE"],
+    "target_url": os.environ["GITHUB_STATUS_TARGET_URL"],
+    "description": os.environ["GITHUB_STATUS_DESCRIPTION"],
+    "context": os.environ["GITHUB_STATUS_CONTEXT"],
+}).encode("utf-8")
+
+request = urllib.request.Request(
+    f"https://api.github.com/repos/danoon2/Boxedwine/statuses/{commit}",
+    data=payload,
+    headers={
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "User-Agent": "boxedwine-jenkins",
+        "X-GitHub-Api-Version": "2022-11-28",
+    },
+    method="POST",
+)
+
+with urllib.request.urlopen(request, timeout=30) as response:
+    print(f"Updated GitHub status: {response.status}")
+PY
+                '''
+            }
+        }
+    }
+}
+
 pipeline {
     agent none
     options { 
@@ -544,6 +595,7 @@ pipeline {
         }
         success {
             script {
+                publishGithubBuildStatus('success', 'Boxedwine build passed')
                 emailext subject: '$DEFAULT_SUBJECT',
                     body: '$DEFAULT_CONTENT',
                     recipientProviders: [
@@ -555,6 +607,7 @@ pipeline {
         }
         failure {
             script {
+                publishGithubBuildStatus('failure', 'Boxedwine build failed')
                 emailext subject: '$DEFAULT_SUBJECT',
                     body: '$DEFAULT_CONTENT',
                     recipientProviders: [
@@ -562,6 +615,16 @@ pipeline {
                         [$class: 'RequesterRecipientProvider']
                     ], 
                     replyTo: '$DEFAULT_REPLYTO'
+            }
+        }
+        unstable {
+            script {
+                publishGithubBuildStatus('failure', 'Boxedwine build unstable')
+            }
+        }
+        aborted {
+            script {
+                publishGithubBuildStatus('error', 'Boxedwine build aborted')
             }
         }
     }

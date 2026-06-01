@@ -57,6 +57,20 @@ if [ -n "${BUILD_SITE_ARTIFACT:-}" ] && [ -f "$BUILD_SITE_ARTIFACT" ]; then
     ARTIFACT_ARGS+=(--artifact "$BUILD_SITE_ARTIFACT")
 fi
 
+DEMO_ARGS=()
+DEMO_SOURCE="${BUILD_SITE_DEMOS_SOURCE:-$SITE_DIR/demos/apps}"
+SINGLE_THREADED_DIR="${BUILD_SITE_SINGLE_THREADED_DIR:-$ROOT_DIR/project/linux/Deploy/Web/SingleThreaded}"
+MULTI_THREADED_DIR="${BUILD_SITE_MULTI_THREADED_DIR:-$ROOT_DIR/project/linux/Deploy/Web/MultiThreaded}"
+if [ -d "$DEMO_SOURCE" ] && [ -d "$SINGLE_THREADED_DIR" ] && [ -d "$MULTI_THREADED_DIR" ]; then
+    DEMO_ARGS+=(
+        --demo-source "$DEMO_SOURCE"
+        --single-threaded-dir "$SINGLE_THREADED_DIR"
+        --multi-threaded-dir "$MULTI_THREADED_DIR"
+    )
+else
+    echo "Demo site inputs are not complete; skipping demo page update."
+fi
+
 "$ROOT_DIR/tools/jenkins/build_site.py" \
     --site-dir "$SITE_DIR" \
     --title "${BUILD_SITE_TITLE:-Boxedwine Builds}" \
@@ -66,6 +80,7 @@ fi
     --commit "${GIT_COMMIT:-}" \
     --commit-url "${GIT_URL:-}" \
     --build-url "${BUILD_URL:-}" \
-    "${ARTIFACT_ARGS[@]}"
+    "${ARTIFACT_ARGS[@]}" \
+    "${DEMO_ARGS[@]}"
 
 rsync -az --delete "${SSH_ARGS[@]}" "$SITE_DIR/" "$BUILD_SITE_REMOTE/"

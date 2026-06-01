@@ -5,8 +5,11 @@ import json
 import os
 import re
 import shutil
+import subprocess
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 
 def slugify(value):
@@ -50,6 +53,102 @@ def copy_artifacts(artifact_paths, build_dir):
     return artifacts
 
 
+def copy_tree_contents(source, destination, skip_zip=False):
+    source = Path(source)
+    if not source.exists():
+        return
+    destination.mkdir(parents=True, exist_ok=True)
+    for item in source.iterdir():
+        if skip_zip and item.is_file() and item.suffix.lower() == ".zip":
+            continue
+        target = destination / item.name
+        if item.is_dir():
+            if target.exists():
+                shutil.rmtree(target)
+            shutil.copytree(item, target)
+        else:
+            shutil.copy2(item, target)
+
+
+def link_or_copy(source, destination):
+    source = Path(source)
+    destination = Path(destination)
+    if destination.exists() or destination.is_symlink():
+        destination.unlink()
+    try:
+        relative_source = os.path.relpath(source, destination.parent)
+        destination.symlink_to(relative_source)
+    except OSError:
+        shutil.copy2(source, destination)
+
+
+def find_demo_program(zip_path):
+    with zipfile.ZipFile(zip_path) as archive:
+        names = [name for name in archive.namelist() if not name.endswith("/")]
+
+    programs = [name for name in names if name.lower().endswith((".bat", ".exe"))]
+    if not programs:
+        return ""
+
+    bat_files = [name for name in programs if name.lower().endswith(".bat")]
+    if bat_files:
+        return sorted(bat_files, key=lambda name: (name.count("/"), len(name), name.lower()))[0]
+
+    stem = zip_path.stem.lower()
+    exact_stem_matches = [
+        name for name in programs
+        if Path(name).stem.lower() == stem
+    ]
+    if exact_stem_matches:
+        return sorted(exact_stem_matches, key=lambda name: (name.count("/"), len(name), name.lower()))[0]
+
+    top_level = [name for name in programs if "/" not in name]
+    if top_level:
+        return sorted(top_level, key=lambda name: (len(name), name.lower()))[0]
+
+    return sorted(programs, key=lambda name: (name.count("/"), len(name), name.lower()))[0]
+
+
+def is_overlay_demo(zip_path):
+    with zipfile.ZipFile(zip_path) as archive:
+        return any(name.startswith("home/username/.wine/drive_c/") for name in archive.namelist())
+
+
+def normalize_demo_program(program):
+    prefix = "home/username/.wine/drive_c/"
+    if program.startswith(prefix):
+        return "c:/" + program[len(prefix):]
+    return program
+
+
+def title_from_zip(zip_path):
+    name = zip_path.stem
+    name = re.sub(r"[-_]+", " ", name)
+    name = re.sub(r"(?<=[a-z])(?=[A-Z0-9])", " ", name)
+    return name.title()
+
+
+def get_remote_branch_slugs():
+    try:
+        output = subprocess.check_output(
+            ["git", "ls-remote", "--heads", "origin"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=30,
+        )
+    except Exception:
+        return set()
+
+    slugs = set()
+    for line in output.splitlines():
+        if "refs/heads/" not in line:
+            continue
+        branch = line.split("refs/heads/", 1)[1].strip()
+        if branch:
+            slugs.add(slugify(branch))
+    return slugs
+
+
 def load_builds(site_dir):
     branches_dir = site_dir / "branches"
     branches = []
@@ -77,6 +176,34 @@ def load_builds(site_dir):
 
 def prune_old_builds(branch_dir, keep):
     build_dirs = [path for path in (branch_dir / "builds").glob("*") if path.is_dir()]
+    build_dirs.sort(key=lambda path: int(path.name) if path.name.isdigit() else -1, reverse=True)
+    for old_build_dir in build_dirs[keep:]:
+        shutil.rmtree(old_build_dir)
+
+
+def prune_removed_demo_branches(site_dir):
+    active_branch_slugs = get_remote_branch_slugs()
+    if not active_branch_slugs:
+        return
+
+    branches_dir = site_dir / "branches"
+    if branches_dir.exists():
+        for branch_dir in branches_dir.iterdir():
+            if branch_dir.is_dir() and branch_dir.name not in active_branch_slugs:
+                shutil.rmtree(branch_dir)
+
+    demo_build_dir = site_dir / "demos" / "build"
+    if demo_build_dir.exists():
+        for branch_dir in demo_build_dir.iterdir():
+            if branch_dir.is_dir() and branch_dir.name not in active_branch_slugs:
+                shutil.rmtree(branch_dir)
+
+
+def prune_old_demo_builds(site_dir, branch_slug, keep):
+    branch_dir = site_dir / "demos" / "build" / branch_slug
+    if not branch_dir.exists():
+        return
+    build_dirs = [path for path in branch_dir.iterdir() if path.is_dir()]
     build_dirs.sort(key=lambda path: int(path.name) if path.name.isdigit() else -1, reverse=True)
     for old_build_dir in build_dirs[keep:]:
         shutil.rmtree(old_build_dir)
@@ -288,6 +415,307 @@ def render_html(site_dir, branches, title):
     (site_dir / "index.html").write_text(html_page, encoding="utf-8")
 
 
+def render_demos_html(site_dir, branch, branch_slug, build_number, demos):
+    demos_dir = site_dir / "demos"
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    branch_html = html.escape(branch)
+    build_html = html.escape(str(build_number))
+    content = render_demo_cards(
+        demos,
+        lambda demo, mode: demo_launch_url(branch_slug, build_number, mode, demo),
+        "images",
+    )
+    page = render_demo_page(
+        "Boxedwine Demos",
+        f"Branch {branch_html}, build {build_html}. Last updated {html.escape(generated_at)}",
+        "Each demo can run against the current single threaded or multi threaded web build.",
+        "../",
+        content,
+    )
+    demos_dir.mkdir(parents=True, exist_ok=True)
+    (demos_dir / "index.html").write_text(page, encoding="utf-8")
+
+
+def render_build_demo_html(build_dir, branch, build_number, demos):
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    branch_html = html.escape(branch)
+    build_html = html.escape(str(build_number))
+    content = render_demo_cards(
+        demos,
+        lambda demo, mode: build_demo_launch_url(mode, demo),
+        "../../../images",
+    )
+    page = render_demo_page(
+        "Boxedwine Demos",
+        f"Branch {branch_html}, build {build_html}. Last updated {html.escape(generated_at)}",
+        "Each demo can run against this build's single threaded or multi threaded web runner.",
+        "../../../../",
+        content,
+    )
+    (build_dir / "index.html").write_text(page, encoding="utf-8")
+
+
+def render_demo_cards(demos, url_builder, image_prefix):
+    cards = []
+    for demo in demos:
+        image = html.escape(f"{image_prefix}/{demo['stem']}.png")
+        title = html.escape(demo["title"])
+        zip_name = html.escape(demo["zip"])
+        program = html.escape(demo["program"] or "Select executable")
+        st_url = html.escape(url_builder(demo, "st"))
+        mt_url = html.escape(url_builder(demo, "mt"))
+        cards.append(f"""
+        <article class="demo-card">
+          <div class="screenshot">
+            <img src="{image}" alt="{title} screenshot" loading="lazy">
+          </div>
+          <div class="demo-body">
+            <h2>{title}</h2>
+            <p>{zip_name}</p>
+            <p class="program">{program}</p>
+            <div class="actions">
+              <a href="{st_url}">Single Threaded</a>
+              <a href="{mt_url}">Multi Threaded</a>
+            </div>
+          </div>
+        </article>
+        """)
+
+    return "\n".join(cards) if cards else "<p class=\"empty\">No demos are available.</p>"
+
+
+def render_demo_page(title, subtitle, intro, back_href, content):
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{html.escape(title)}</title>
+  <style>
+    :root {{
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #667487;
+      --line: #d9e0e8;
+      --link: #155cc1;
+      --button: #1f6f43;
+      --button-alt: #244f82;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }}
+    header {{
+      background: #202a35;
+      color: #fff;
+      border-bottom: 4px solid #4ba36f;
+      padding: 26px 22px;
+    }}
+    header .inner, main {{
+      max-width: 1180px;
+      margin: 0 auto;
+    }}
+    h1 {{
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0;
+    }}
+    header p {{
+      margin: 6px 0 0;
+      color: #c9d3df;
+    }}
+    main {{
+      padding: 24px;
+    }}
+    .toolbar {{
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 18px;
+      color: var(--muted);
+    }}
+    .toolbar a {{
+      color: var(--link);
+      font-weight: 700;
+      text-decoration: none;
+    }}
+    .grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 18px;
+    }}
+    .demo-card {{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(23, 32, 42, 0.05);
+    }}
+    .screenshot {{
+      aspect-ratio: 16 / 10;
+      background: #e8edf3;
+      border-bottom: 1px solid var(--line);
+    }}
+    .screenshot img {{
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }}
+    .demo-body {{
+      padding: 14px;
+    }}
+    h2 {{
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }}
+    .demo-body p {{
+      margin: 5px 0 0;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }}
+    .program {{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+    }}
+    .actions {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 14px;
+    }}
+    .actions a {{
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 38px;
+      border-radius: 6px;
+      background: var(--button);
+      color: #fff;
+      font-weight: 700;
+      text-decoration: none;
+      padding: 8px 10px;
+      text-align: center;
+    }}
+    .actions a + a {{
+      background: var(--button-alt);
+    }}
+    .empty {{
+      color: var(--muted);
+    }}
+    @media (max-width: 640px) {{
+      header {{ padding: 22px 16px; }}
+      main {{ padding: 16px; }}
+      .toolbar {{
+        align-items: flex-start;
+        flex-direction: column;
+      }}
+    }}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="inner">
+      <h1>{html.escape(title)}</h1>
+      <p>{subtitle}</p>
+    </div>
+  </header>
+  <main>
+    <div class="toolbar">
+      <span>{html.escape(intro)}</span>
+      <a href="{html.escape(back_href)}">Build Status</a>
+    </div>
+    <div class="grid">
+      {content}
+    </div>
+  </main>
+</body>
+</html>
+"""
+
+
+def demo_launch_url(branch_slug, build_number, mode, demo):
+    params = {
+        "root": "../boxedwine.zip",
+        demo.get("zipParam", "app"): f"../../../../apps/{demo['zip']}",
+    }
+    if demo["program"]:
+        params["p"] = demo["program"]
+    query = "&".join(f"{key}={quote(value, safe='/:._-')}" for key, value in params.items())
+    return f"build/{quote(branch_slug)}/{quote(str(build_number))}/{mode}/boxedwine.html?{query}"
+
+
+def build_demo_launch_url(mode, demo):
+    params = {
+        "root": "../boxedwine.zip",
+        demo.get("zipParam", "app"): f"../../../apps/{demo['zip']}",
+    }
+    if demo["program"]:
+        params["p"] = demo["program"]
+    query = "&".join(f"{key}={quote(value, safe='/:._-')}" for key, value in params.items())
+    return f"{mode}/boxedwine.html?{query}"
+
+
+def update_demos(site_dir, branch, branch_slug, build_number, demo_source, single_threaded_dir, multi_threaded_dir, keep):
+    demo_source = Path(demo_source)
+    if not demo_source.exists():
+        return
+
+    demos_dir = site_dir / "demos"
+    apps_dir = demos_dir / "apps"
+    images_dir = demos_dir / "images"
+    apps_dir.mkdir(parents=True, exist_ok=True)
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    same_apps_dir = demo_source.resolve() == apps_dir.resolve()
+    if not same_apps_dir:
+        for old_zip in apps_dir.glob("*.zip"):
+            old_zip.unlink()
+
+    demos = []
+    for zip_path in sorted(demo_source.glob("*.zip"), key=lambda path: path.name.lower()):
+        if not same_apps_dir:
+            shutil.copy2(zip_path, apps_dir / zip_path.name)
+        if zip_path.name.lower() == "boxedwine.zip":
+            continue
+        demos.append(
+            {
+                "zip": zip_path.name,
+                "stem": zip_path.stem,
+                "title": title_from_zip(zip_path),
+                "program": normalize_demo_program(find_demo_program(zip_path)),
+                "zipParam": "overlay" if is_overlay_demo(zip_path) else "app",
+            }
+        )
+
+    source_images_dir = demo_source / "images"
+    if source_images_dir.exists():
+        for image_path in source_images_dir.glob("*.png"):
+            shutil.copy2(image_path, images_dir / image_path.name)
+
+    build_dir = demos_dir / "build" / branch_slug / str(build_number)
+    if build_dir.exists():
+        shutil.rmtree(build_dir)
+    build_dir.mkdir(parents=True, exist_ok=True)
+
+    boxedwine_zip = apps_dir / "boxedwine.zip"
+    if boxedwine_zip.exists():
+        link_or_copy(boxedwine_zip, build_dir / "boxedwine.zip")
+
+    copy_tree_contents(single_threaded_dir, build_dir / "st", skip_zip=True)
+    copy_tree_contents(multi_threaded_dir, build_dir / "mt", skip_zip=True)
+
+    render_build_demo_html(build_dir, branch, build_number, demos)
+    prune_old_demo_builds(site_dir, branch_slug, keep)
+    render_demos_html(site_dir, branch, branch_slug, build_number, demos)
+
+
 def render_builds(builds):
     if not builds:
         return "<p class=\"empty\">No builds for this branch.</p>"
@@ -310,6 +738,11 @@ def render_builds(builds):
                 f"<a class=\"artifact\" href=\"{html.escape(artifact['path'])}\">"
                 f"{html.escape(artifact['name'])} <span class=\"meta\">{html.escape(format_size(artifact.get('size', 0)))}</span>"
                 "</a>"
+            )
+        if build.get("branchSlug") and build.get("buildNumber"):
+            artifacts.append(
+                f"<a class=\"artifact\" href=\"demos/build/{html.escape(build['branchSlug'])}/{html.escape(str(build['buildNumber']))}/\">"
+                "Demos</a>"
             )
         artifact_html = "\n".join(artifacts) if artifacts else "<span class=\"meta\">No artifact</span>"
 
@@ -337,6 +770,9 @@ def main():
     parser.add_argument("--commit-url", default=os.environ.get("GIT_URL", ""))
     parser.add_argument("--build-url", default=os.environ.get("BUILD_URL", ""))
     parser.add_argument("--artifact", action="append", default=[])
+    parser.add_argument("--demo-source")
+    parser.add_argument("--single-threaded-dir")
+    parser.add_argument("--multi-threaded-dir")
     parser.add_argument("--keep", type=int, default=5)
     args = parser.parse_args()
 
@@ -373,6 +809,19 @@ def main():
         },
     )
 
+    if args.demo_source and args.single_threaded_dir and args.multi_threaded_dir:
+        update_demos(
+            site_dir,
+            args.branch,
+            branch_slug,
+            args.build_number,
+            args.demo_source,
+            args.single_threaded_dir,
+            args.multi_threaded_dir,
+            args.keep,
+        )
+
+    prune_removed_demo_branches(site_dir)
     prune_old_builds(branch_dir, args.keep)
     branches = load_builds(site_dir)
     write_json(site_dir / "builds.json", {"generatedAt": built_at, "branches": branches})
