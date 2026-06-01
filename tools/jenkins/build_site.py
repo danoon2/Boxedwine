@@ -448,7 +448,7 @@ def render_demos_html(site_dir, branch, branch_slug, build_number, demos):
     content = render_demo_cards(
         demos,
         lambda demo, mode: demo_launch_url(branch_slug, build_number, mode, demo),
-        "images",
+        "/builds/demos/images",
     )
     page = render_demo_page(
         "Boxedwine Demos",
@@ -468,7 +468,7 @@ def render_build_demo_html(build_dir, branch, build_number, demos):
     content = render_demo_cards(
         demos,
         lambda demo, mode: build_demo_launch_url(mode, demo),
-        "../../../images",
+        "/builds/demos/images",
     )
     page = render_demo_page(
         "Boxedwine Demos",
@@ -582,6 +582,8 @@ def render_demo_page(title, subtitle, intro, back_href, content):
       border-radius: 8px;
       overflow: hidden;
       box-shadow: 0 1px 2px rgba(23, 32, 42, 0.05);
+      display: flex;
+      flex-direction: column;
     }}
     .screenshot {{
       aspect-ratio: 16 / 10;
@@ -596,6 +598,9 @@ def render_demo_page(title, subtitle, intro, back_href, content):
     }}
     .demo-body {{
       padding: 14px;
+      display: flex;
+      flex: 1;
+      flex-direction: column;
     }}
     h2 {{
       margin: 0;
@@ -618,7 +623,8 @@ def render_demo_page(title, subtitle, intro, back_href, content):
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
-      margin-top: 14px;
+      margin-top: auto;
+      padding-top: 14px;
     }}
     .actions a {{
       display: inline-flex;
