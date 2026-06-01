@@ -128,6 +128,31 @@ def title_from_zip(zip_path):
     return name.title()
 
 
+def load_demo_manifest(demo_source):
+    manifest = read_json(Path(demo_source) / "demos.json", {})
+    if isinstance(manifest, list):
+        return {
+            item.get("zip", ""): item
+            for item in manifest
+            if isinstance(item, dict) and item.get("zip")
+        }
+    if isinstance(manifest, dict):
+        demos = manifest.get("demos", manifest)
+        if isinstance(demos, list):
+            return {
+                item.get("zip", ""): item
+                for item in demos
+                if isinstance(item, dict) and item.get("zip")
+            }
+        if isinstance(demos, dict):
+            return {
+                key: value
+                for key, value in demos.items()
+                if isinstance(value, dict)
+            }
+    return {}
+
+
 def get_remote_branch_slugs():
     try:
         output = subprocess.check_output(
@@ -462,6 +487,7 @@ def render_demo_cards(demos, url_builder, image_prefix):
         title = html.escape(demo["title"])
         zip_name = html.escape(demo["zip"])
         program = html.escape(demo["program"] or "Select executable")
+        description = html.escape(demo.get("description", ""))
         st_url = html.escape(url_builder(demo, "st"))
         mt_url = html.escape(url_builder(demo, "mt"))
         cards.append(f"""
@@ -473,6 +499,7 @@ def render_demo_cards(demos, url_builder, image_prefix):
             <h2>{title}</h2>
             <p>{zip_name}</p>
             <p class="program">{program}</p>
+            {f'<p class="description">{description}</p>' if description else ''}
             <div class="actions">
               <a href="{st_url}">Single Threaded</a>
               <a href="{mt_url}">Multi Threaded</a>
@@ -584,6 +611,9 @@ def render_demo_page(title, subtitle, intro, back_href, content):
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 13px;
     }}
+    .description {{
+      min-height: 42px;
+    }}
     .actions {{
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -678,18 +708,22 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, singl
         for old_zip in apps_dir.glob("*.zip"):
             old_zip.unlink()
 
+    manifest = load_demo_manifest(demo_source)
     demos = []
     for zip_path in sorted(demo_source.glob("*.zip"), key=lambda path: path.name.lower()):
         if not same_apps_dir:
             shutil.copy2(zip_path, apps_dir / zip_path.name)
         if zip_path.name.lower() == "boxedwine.zip":
             continue
+        manifest_entry = manifest.get(zip_path.name, {})
+        program = manifest_entry.get("exe") or manifest_entry.get("program") or find_demo_program(zip_path)
         demos.append(
             {
                 "zip": zip_path.name,
                 "stem": zip_path.stem,
-                "title": title_from_zip(zip_path),
-                "program": normalize_demo_program(find_demo_program(zip_path)),
+                "title": manifest_entry.get("title") or title_from_zip(zip_path),
+                "description": manifest_entry.get("description", ""),
+                "program": normalize_demo_program(program),
                 "zipParam": "overlay" if is_overlay_demo(zip_path) else "app",
             }
         )
