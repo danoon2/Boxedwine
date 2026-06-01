@@ -448,7 +448,7 @@ def render_demos_html(site_dir, branch, branch_slug, build_number, demos):
     content = render_demo_cards(
         demos,
         lambda demo, mode: demo_launch_url(branch_slug, build_number, mode, demo),
-        "/builds/demos/images",
+        "images",
     )
     page = render_demo_page(
         "Boxedwine Demos",
@@ -468,7 +468,7 @@ def render_build_demo_html(build_dir, branch, build_number, demos):
     content = render_demo_cards(
         demos,
         lambda demo, mode: build_demo_launch_url(mode, demo),
-        "/builds/demos/images",
+        "images",
     )
     page = render_demo_page(
         "Boxedwine Demos",
@@ -750,6 +750,12 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, singl
 
     copy_tree_contents(single_threaded_dir, build_dir / "st", skip_zip=True)
     copy_tree_contents(multi_threaded_dir, build_dir / "mt", skip_zip=True)
+    build_images_dir = build_dir / "images"
+    build_images_dir.mkdir(parents=True, exist_ok=True)
+    for demo in demos:
+        image_path = images_dir / f"{demo['stem']}.png"
+        if image_path.exists():
+            link_or_copy(image_path, build_images_dir / image_path.name)
     if boxedwine_zip.exists():
         link_or_copy(boxedwine_zip, build_dir / "st" / "boxedwine.zip")
         link_or_copy(boxedwine_zip, build_dir / "mt" / "boxedwine.zip")
