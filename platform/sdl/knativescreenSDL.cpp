@@ -298,6 +298,8 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
     if (!bitsPerPixel || !srcPitch) {
         return;
     }
+    U8* srcBits = bits;
+    U32 originalSrcPitch = srcPitch;
     WndCachePtr wnd;
     
     {
@@ -375,6 +377,13 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         S32 srcLeftAdjust = 0;
         S32 bytesPerPixel = (this->bpp + 7) / 8;
         S32 recorderPitch = (screenWidth() * ((this->bpp + 7) / 8) + 3) & ~3;
+        U8* recorderBits = bits;
+        S32 sourcePitch = dstPitch;
+
+        if (bitsPerPixel == this->bpp) {
+            recorderBits = srcBits;
+            sourcePitch = originalSrcPitch;
+        }
 
         if (top < 0) {
             wndHeight += top;
@@ -394,7 +403,6 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
             wndHeight = screenHeight() - top;
         }
 
-        int pitch = (wndWidth * ((this->bpp + 7) / 8) + 3) & ~3;
         if (dstX + wndWidth > (S32)screenWidth()) {
             wndWidth = screenWidth() - left;
         }
@@ -404,7 +412,7 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
             if (offset<0 || offset + copyPitch>(S32)recordBufferSize || copyPitch < 0) {
                 kpanic("script recorder overwrote memory when copying screen");
             }
-            memcpy(recordBuffer + offset, bits + pitch * (y + srcTopAdjust) + (srcLeftAdjust * bytesPerPixel), copyPitch);
+            memcpy(recordBuffer + offset, recorderBits + sourcePitch * (y + srcTopAdjust) + (srcLeftAdjust * bytesPerPixel), copyPitch);
         }
     }    
 #endif     
