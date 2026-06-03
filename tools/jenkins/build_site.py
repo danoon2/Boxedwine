@@ -53,6 +53,23 @@ def copy_artifacts(artifact_paths, build_dir):
     return artifacts
 
 
+def copy_log(log_path, build_dir):
+    if not log_path:
+        return None
+
+    source = Path(log_path)
+    if not source.exists():
+        return None
+
+    destination = build_dir / "console.log"
+    shutil.copy2(source, destination)
+    return {
+        "name": destination.name,
+        "path": destination.relative_to(build_dir.parents[3]).as_posix(),
+        "size": destination.stat().st_size,
+    }
+
+
 def copy_tree_contents(source, destination, skip_zip=False):
     source = Path(source)
     if not source.exists():
@@ -248,27 +265,10 @@ def format_size(size):
 
 def render_html(site_dir, branches, title):
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    rows = []
-    for branch in branches:
-        latest = branch["builds"][0] if branch["builds"] else {}
-        status = latest.get("result", "UNKNOWN").lower()
-        branch_name = html.escape(branch["name"])
-        rows.append(f"""
-        <section class="branch">
-          <div class="branch-header">
-            <div>
-              <h2>{branch_name}</h2>
-              <p>Latest build #{html.escape(str(latest.get("buildNumber", "n/a")))} on {html.escape(latest.get("builtAt", "unknown"))}</p>
-            </div>
-            <span class="status {html.escape(status)}">{html.escape(latest.get("result", "UNKNOWN"))}</span>
-          </div>
-          <div class="build-list">
-            {render_builds(branch["builds"])}
-          </div>
-        </section>
-        """)
+    safe_branches = json.dumps(branches, separators=(",", ":")).replace("</", "<\\/")
+    branch_count = len(branches)
+    build_count = sum(len(branch["builds"]) for branch in branches)
 
-    content = "\n".join(rows) if rows else "<p class=\"empty\">No builds have been published yet.</p>"
     html_page = f"""<!doctype html>
 <html lang="en">
 <head>
@@ -278,8 +278,9 @@ def render_html(site_dir, branches, title):
   <style>
     :root {{
       color-scheme: light;
-      --bg: #f5f7fa;
+      --bg: #f3f5f7;
       --panel: #ffffff;
+      --panel-soft: #f8fafc;
       --text: #17202a;
       --muted: #647184;
       --line: #d9e0e8;
@@ -288,6 +289,8 @@ def render_html(site_dir, branches, title):
       --running: #936a00;
       --unknown: #5d6573;
       --link: #155cc1;
+      --selected: #e8f1ff;
+      --selected-line: #86aee8;
     }}
     * {{ box-sizing: border-box; }}
     body {{
@@ -299,12 +302,8 @@ def render_html(site_dir, branches, title):
     header {{
       background: #202a35;
       color: #fff;
-      padding: 28px 24px;
+      padding: 24px 28px;
       border-bottom: 4px solid #4ba36f;
-    }}
-    header .inner, main {{
-      max-width: 1120px;
-      margin: 0 auto;
     }}
     h1 {{
       margin: 0;
@@ -316,35 +315,91 @@ def render_html(site_dir, branches, title):
       margin: 6px 0 0;
       color: #c9d3df;
     }}
-    main {{
-      padding: 24px;
+    .layout {{
+      display: grid;
+      grid-template-columns: minmax(230px, 320px) minmax(0, 1fr);
+      min-height: calc(100vh - 92px);
     }}
-    .branch {{
+    .branch-index {{
+      border-right: 1px solid var(--line);
       background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      margin-bottom: 18px;
-      overflow: hidden;
-      box-shadow: 0 1px 2px rgba(23, 32, 42, 0.05);
+      min-height: 100%;
     }}
-    .branch-header {{
+    .index-header {{
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 18px 18px 12px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }}
+    .index-title {{
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+    }}
+    .index-meta {{
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }}
+    .branch-list {{
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      padding: 8px;
+    }}
+    .branch-button {{
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      width: 100%;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      padding: 10px 9px;
+      text-align: left;
+    }}
+    .branch-button:hover {{
+      background: var(--panel-soft);
+      border-color: var(--line);
+    }}
+    .branch-button.selected {{
+      background: var(--selected);
+      border-color: var(--selected-line);
+    }}
+    .branch-name {{
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 650;
+    }}
+    .branch-count {{
+      color: var(--muted);
+      font-size: 13px;
+    }}
+    main {{
+      min-width: 0;
+      padding: 24px 28px;
+    }}
+    .branch-summary {{
+      display: flex;
+      align-items: flex-start;
       justify-content: space-between;
       gap: 16px;
-      padding: 18px 20px;
-      border-bottom: 1px solid var(--line);
-      background: #fbfcfe;
+      margin-bottom: 18px;
     }}
     h2 {{
       margin: 0;
-      font-size: 20px;
+      font-size: 24px;
       letter-spacing: 0;
+      overflow-wrap: anywhere;
     }}
-    .branch-header p {{
-      margin: 4px 0 0;
+    .summary-meta {{
+      margin: 5px 0 0;
       color: var(--muted);
-      font-size: 14px;
     }}
     .status {{
       display: inline-flex;
@@ -357,16 +412,24 @@ def render_html(site_dir, branches, title):
       font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
+      white-space: nowrap;
     }}
     .success {{ background: var(--success); }}
-    .failure, .failed, .unstable, .aborted {{ background: var(--failure); }}
-    .running, .building {{ background: var(--running); }}
-    .unknown, .not_built {{ background: var(--unknown); }}
+    .failure {{ background: var(--failure); }}
+    .running {{ background: var(--running); }}
+    .unknown {{ background: var(--unknown); }}
+    .build-list {{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(23, 32, 42, 0.05);
+    }}
     .build {{
       display: grid;
-      grid-template-columns: 120px 1fr auto;
+      grid-template-columns: 120px minmax(0, 1fr) minmax(220px, auto);
       gap: 16px;
-      padding: 14px 20px;
+      padding: 15px 18px;
       border-bottom: 1px solid var(--line);
       align-items: start;
     }}
@@ -387,7 +450,7 @@ def render_html(site_dir, branches, title):
       flex-wrap: wrap;
       justify-content: flex-end;
       gap: 8px;
-      min-width: 220px;
+      min-width: 0;
     }}
     a {{
       color: var(--link);
@@ -406,11 +469,30 @@ def render_html(site_dir, branches, title):
       padding: 24px;
       color: var(--muted);
     }}
-    @media (max-width: 760px) {{
-      header {{ padding: 22px 16px; }}
-      main {{ padding: 16px; }}
-      .branch-header {{
-        align-items: flex-start;
+    @media (max-width: 820px) {{
+      header {{ padding: 20px 16px; }}
+      .layout {{
+        grid-template-columns: 1fr;
+      }}
+      .branch-index {{
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }}
+      .index-header {{
+        position: static;
+      }}
+      .branch-list {{
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 8px 8px 10px;
+      }}
+      .branch-button {{
+        min-width: 190px;
+      }}
+      main {{
+        padding: 18px 16px;
+      }}
+      .branch-summary {{
         flex-direction: column;
       }}
       .build {{
@@ -419,21 +501,146 @@ def render_html(site_dir, branches, title):
       }}
       .artifact-list {{
         justify-content: flex-start;
-        min-width: 0;
       }}
     }}
   </style>
 </head>
 <body>
   <header>
-    <div class="inner">
-      <h1>{html.escape(title)}</h1>
-      <p>Last updated {html.escape(generated_at)}</p>
-    </div>
+    <h1>{html.escape(title)}</h1>
+    <p>Last updated {html.escape(generated_at)}</p>
   </header>
-  <main>
-    {content}
-  </main>
+  <div class="layout">
+    <aside class="branch-index" aria-label="Branch index">
+      <div class="index-header">
+        <p class="index-title">Branches</p>
+        <p class="index-meta">{branch_count} branches, {build_count} retained builds</p>
+      </div>
+      <nav id="branch-list" class="branch-list"></nav>
+    </aside>
+    <main id="build-pane">
+      <p class="empty">No builds have been published yet.</p>
+    </main>
+  </div>
+  <script>
+    const branches = {safe_branches};
+
+    function escapeHtml(value) {{
+      return String(value ?? "").replace(/[&<>"']/g, (character) => ({{
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }}[character]));
+    }}
+
+    function statusClass(status) {{
+      const normalized = String(status || "UNKNOWN").toLowerCase();
+      if (["failure", "failed", "unstable", "aborted"].includes(normalized)) return "failure";
+      if (["running", "building"].includes(normalized)) return "running";
+      if (normalized === "success") return "success";
+      return "unknown";
+    }}
+
+    function formatSize(size) {{
+      const units = ["B", "KB", "MB", "GB"];
+      let value = Number(size || 0);
+      for (const unit of units) {{
+        if (value < 1024 || unit === units[units.length - 1]) {{
+          return unit === "B" ? `${{Math.round(value)}} ${{unit}}` : `${{value.toFixed(1)}} ${{unit}}`;
+        }}
+        value /= 1024;
+      }}
+      return `${{size}} B`;
+    }}
+
+    function buildUrl(url, label, className = "") {{
+      if (!url) return escapeHtml(label);
+      return `<a${{className ? ` class="${{className}}"` : ""}} href="${{escapeHtml(url)}}">${{escapeHtml(label)}}</a>`;
+    }}
+
+    function renderArtifacts(build) {{
+      const artifacts = build.artifacts || [];
+      const links = artifacts.map((artifact) => (
+        `<a class="artifact" href="${{escapeHtml(artifact.path)}}">` +
+        `${{escapeHtml(artifact.name)}} <span class="meta">${{escapeHtml(formatSize(artifact.size))}}</span>` +
+        "</a>"
+      ));
+      if (build.log && statusClass(build.result) === "failure") {{
+        links.push(
+          `<a class="artifact" href="${{escapeHtml(build.log.path)}}">` +
+          `Error Log <span class="meta">${{escapeHtml(formatSize(build.log.size))}}</span>` +
+          "</a>"
+        );
+      }} else if (build.branchSlug && build.buildNumber) {{
+        links.push(
+          `<a class="artifact" href="demos/build/${{escapeHtml(build.branchSlug)}}/${{escapeHtml(build.buildNumber)}}/">Demos</a>`
+        );
+      }}
+      return links.length ? links.join("") : '<span class="meta">No artifact</span>';
+    }}
+
+    function renderBranch(branch) {{
+      const builds = branch.builds || [];
+      const latest = builds[0] || {{}};
+      const latestStatus = latest.result || "UNKNOWN";
+      const latestNumber = latest.buildNumber ?? "n/a";
+      const visibleBuilds = builds.slice(0, 5);
+      const buildRows = visibleBuilds.length ? visibleBuilds.map((build) => {{
+        const shortCommit = build.commit ? String(build.commit).slice(0, 12) : "unknown";
+        return `
+          <article class="build">
+            <div class="build-number">${{buildUrl(build.buildUrl, `#${{build.buildNumber ?? "n/a"}}`)}}</div>
+            <div>
+              <div>${{escapeHtml(build.result || "UNKNOWN")}} on ${{escapeHtml(build.builtAt || "unknown")}}</div>
+              <div class="meta">Commit ${{buildUrl(build.commitUrl, shortCommit, "commit")}}</div>
+            </div>
+            <div class="artifact-list">${{renderArtifacts(build)}}</div>
+          </article>
+        `;
+      }}).join("") : '<p class="empty">No builds for this branch.</p>';
+
+      document.getElementById("build-pane").innerHTML = `
+        <section class="branch-summary">
+          <div>
+            <h2>${{escapeHtml(branch.name)}}</h2>
+            <p class="summary-meta">Latest build #${{escapeHtml(latestNumber)}} on ${{escapeHtml(latest.builtAt || "unknown")}}. Showing the last ${{visibleBuilds.length}} builds.</p>
+          </div>
+          <span class="status ${{statusClass(latestStatus)}}">${{escapeHtml(latestStatus)}}</span>
+        </section>
+        <section class="build-list">${{buildRows}}</section>
+      `;
+
+      document.querySelectorAll(".branch-button").forEach((button) => {{
+        button.classList.toggle("selected", button.dataset.slug === branch.slug);
+      }});
+      if (location.hash !== `#${{branch.slug}}`) {{
+        history.replaceState(null, "", `#${{branch.slug}}`);
+      }}
+    }}
+
+    function renderBranchIndex() {{
+      const list = document.getElementById("branch-list");
+      list.innerHTML = branches.map((branch, index) => `
+        <button class="branch-button" type="button" data-slug="${{escapeHtml(branch.slug)}}" data-index="${{index}}">
+          <span class="branch-name" title="${{escapeHtml(branch.name)}}">${{escapeHtml(branch.name)}}</span>
+          <span class="branch-count">${{(branch.builds || []).length}}</span>
+        </button>
+      `).join("");
+      list.addEventListener("click", (event) => {{
+        const button = event.target.closest(".branch-button");
+        if (!button) return;
+        renderBranch(branches[Number(button.dataset.index)]);
+      }});
+    }}
+
+    renderBranchIndex();
+    if (branches.length) {{
+      const hashSlug = decodeURIComponent(location.hash.replace(/^#/, ""));
+      renderBranch(branches.find((branch) => branch.slug === hashSlug) || branches[0]);
+    }}
+  </script>
 </body>
 </html>
 """
@@ -793,7 +1000,15 @@ def render_builds(builds):
                 f"{html.escape(artifact['name'])} <span class=\"meta\">{html.escape(format_size(artifact.get('size', 0)))}</span>"
                 "</a>"
             )
-        if build.get("branchSlug") and build.get("buildNumber"):
+        failed = str(build.get("result", "")).lower() in ("failure", "failed", "unstable", "aborted")
+        if failed and build.get("log"):
+            log = build["log"]
+            artifacts.append(
+                f"<a class=\"artifact\" href=\"{html.escape(log['path'])}\">"
+                f"Error Log <span class=\"meta\">{html.escape(format_size(log.get('size', 0)))}</span>"
+                "</a>"
+            )
+        elif build.get("branchSlug") and build.get("buildNumber"):
             artifacts.append(
                 f"<a class=\"artifact\" href=\"demos/build/{html.escape(build['branchSlug'])}/{html.escape(str(build['buildNumber']))}/\">"
                 "Demos</a>"
@@ -824,6 +1039,7 @@ def main():
     parser.add_argument("--commit-url", default=os.environ.get("GIT_URL", ""))
     parser.add_argument("--build-url", default=os.environ.get("BUILD_URL", ""))
     parser.add_argument("--artifact", action="append", default=[])
+    parser.add_argument("--log")
     parser.add_argument("--demo-source")
     parser.add_argument("--single-threaded-dir")
     parser.add_argument("--multi-threaded-dir")
@@ -841,6 +1057,7 @@ def main():
     build_dir.mkdir(parents=True, exist_ok=True)
 
     artifacts = copy_artifacts(args.artifact, build_dir)
+    log = copy_log(args.log, build_dir)
     built_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     commit_url = ""
     if args.commit and args.commit_url:
@@ -860,6 +1077,7 @@ def main():
             "buildUrl": args.build_url,
             "builtAt": built_at,
             "artifacts": artifacts,
+            "log": log,
         },
     )
 
