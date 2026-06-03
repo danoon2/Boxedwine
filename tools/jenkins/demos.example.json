@@ -18,6 +18,10 @@
     "mdkperf.zip": {
       "title": "MDK Performance Test (1999 DirectDraw)",
       "exe": "PERF_W95.EXE",
+      "urlParams": {
+        "bpp": "8",
+        "resolution": "640x480"
+      },
       "description": "A Performance test that shipped with the game."
     },
     "mw3.zip": {

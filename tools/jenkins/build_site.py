@@ -9,7 +9,7 @@ import subprocess
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import parse_qsl, quote
 
 
 def slugify(value):
@@ -119,6 +119,24 @@ def normalize_demo_program(program):
     if program.startswith(prefix):
         return "c:/" + program[len(prefix):]
     return program
+
+
+def normalize_demo_url_params(params):
+    if params is None:
+        return []
+    if isinstance(params, str):
+        return [
+            (key, value)
+            for key, value in parse_qsl(params.lstrip("?&"), keep_blank_values=True)
+            if key
+        ]
+    if isinstance(params, dict):
+        return [
+            (str(key), str(value))
+            for key, value in params.items()
+            if key
+        ]
+    return []
 
 
 def title_from_zip(zip_path):
@@ -677,24 +695,26 @@ def render_demo_page(title, subtitle, intro, back_href, content):
 
 
 def demo_launch_url(branch_slug, build_number, mode, demo):
-    params = {
-        "root": "boxedwine.zip",
-        demo.get("zipParam", "app"): demo["zip"],
-    }
+    params = [
+        ("root", "boxedwine.zip"),
+        (demo.get("zipParam", "app"), demo["zip"]),
+    ]
     if demo["program"]:
-        params["p"] = demo["program"]
-    query = "&".join(f"{key}={quote(value, safe='/:._-')}" for key, value in params.items())
+        params.append(("p", demo["program"]))
+    params.extend(demo.get("urlParams", []))
+    query = "&".join(f"{quote(key, safe='')}={quote(value, safe='/:._-')}" for key, value in params)
     return f"build/{quote(branch_slug)}/{quote(str(build_number))}/{mode}/boxedwine.html?{query}"
 
 
 def build_demo_launch_url(mode, demo):
-    params = {
-        "root": "boxedwine.zip",
-        demo.get("zipParam", "app"): demo["zip"],
-    }
+    params = [
+        ("root", "boxedwine.zip"),
+        (demo.get("zipParam", "app"), demo["zip"]),
+    ]
     if demo["program"]:
-        params["p"] = demo["program"]
-    query = "&".join(f"{key}={quote(value, safe='/:._-')}" for key, value in params.items())
+        params.append(("p", demo["program"]))
+    params.extend(demo.get("urlParams", []))
+    query = "&".join(f"{quote(key, safe='')}={quote(value, safe='/:._-')}" for key, value in params)
     return f"{mode}/boxedwine.html?{query}"
 
 
@@ -731,6 +751,9 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, singl
                 "description": manifest_entry.get("description", ""),
                 "program": normalize_demo_program(program),
                 "zipParam": "overlay" if is_overlay_demo(zip_path) else "app",
+                "urlParams": normalize_demo_url_params(
+                    manifest_entry.get("urlParams", manifest_entry.get("extraParams"))
+                ),
             }
         )
 
