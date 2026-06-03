@@ -1274,13 +1274,12 @@
       };
       Module.setStatus('Downloading...');
 
-    window.onerror = function (msg, file, line, column, error) {
-        var details = msg || 'unknown error';
+      window.onerror = function(message, source, lineno, colno, error) {
+        var details = message || 'unknown error';
         if (source) details += ' at ' + source + ':' + lineno + ':' + colno;
         if (error && error.stack) details += '\n' + error.stack;
         Module.printErr(details);
         Module.setStatus('Exception thrown, see JavaScript console');
-        console.log(msg, file, line, column, error);
         spinnerElement.style.display = 'none';
         Module.setStatus = function(text) {
           if (text) Module.printErr('[post-exception status] ' + text);
