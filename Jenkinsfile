@@ -6,19 +6,24 @@ void gitCheckout() {
         if (retryAttempt > 0) {
             sleep(120  * retryAttempt)
         }
-        checkout scm
+        def checkoutVars = checkout scm
+        if (checkoutVars.GIT_COMMIT) {
+            env.BOXEDWINE_GIT_COMMIT = checkoutVars.GIT_COMMIT
+        }
     }
 }
 
 void publishGithubBuildStatus(String state, String description) {
-    if (!env.GIT_COMMIT) {
-        echo 'GIT_COMMIT is not set; skipping GitHub build status update.'
+    def commit = env.GIT_COMMIT ?: env.BOXEDWINE_GIT_COMMIT
+    if (!commit) {
+        echo 'GIT_COMMIT and BOXEDWINE_GIT_COMMIT are not set; skipping GitHub build status update.'
         return
     }
 
     catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
         withCredentials([usernamePassword(credentialsId: '2f2698c7-8fb4-4eb7-9cde-d048228a04ae', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
             withEnv([
+                "GITHUB_STATUS_COMMIT=${commit}",
                 "GITHUB_STATUS_STATE=${state}",
                 "GITHUB_STATUS_DESCRIPTION=${description}",
                 "GITHUB_STATUS_CONTEXT=${env.GITHUB_STATUS_CONTEXT ?: 'jenkins/automation'}",
@@ -31,7 +36,7 @@ import os
 import urllib.request
 
 token = os.environ["GITHUB_TOKEN"]
-commit = os.environ["GIT_COMMIT"]
+commit = os.environ["GITHUB_STATUS_COMMIT"]
 payload = json.dumps({
     "state": os.environ["GITHUB_STATUS_STATE"],
     "target_url": os.environ["GITHUB_STATUS_TARGET_URL"],
@@ -69,6 +74,17 @@ pipeline {
         disableConcurrentBuilds()
     }
     stages {
+        stage ('GitHub Status') {
+            agent {
+                label "linux64"
+            }
+            steps {
+                script {
+                    gitCheckout()
+                    publishGithubBuildStatus('pending', 'Boxedwine build running')
+                }
+            }
+        }
         stage ('Test') {
             parallel {
                 stage ('Test Emscripten') {
@@ -569,6 +585,7 @@ pipeline {
                         withFolderProperties {
                             withEnv([
                                 "BUILD_RESULT=${currentBuild.currentResult ?: 'SUCCESS'}",
+                                "GIT_COMMIT=${env.GIT_COMMIT ?: env.BOXEDWINE_GIT_COMMIT ?: ''}",
                                 "BUILD_SITE_ARTIFACT=${env.WORKSPACE}/project/linux/Deploy/build-${env.BUILD_NUMBER}.zip"
                             ]) {
                                 sh "bash ${env.WORKSPACE}/tools/jenkins/publish-build-site.sh"
@@ -595,7 +612,9 @@ pipeline {
         }
         success {
             script {
-                publishGithubBuildStatus('success', 'Boxedwine build passed')
+                node('linux64') {
+                    publishGithubBuildStatus('success', 'Boxedwine build passed')
+                }
                 emailext subject: '$DEFAULT_SUBJECT',
                     body: '$DEFAULT_CONTENT',
                     recipientProviders: [
@@ -607,7 +626,9 @@ pipeline {
         }
         failure {
             script {
-                publishGithubBuildStatus('failure', 'Boxedwine build failed')
+                node('linux64') {
+                    publishGithubBuildStatus('failure', 'Boxedwine build failed')
+                }
                 emailext subject: '$DEFAULT_SUBJECT',
                     body: '$DEFAULT_CONTENT',
                     recipientProviders: [
@@ -619,12 +640,16 @@ pipeline {
         }
         unstable {
             script {
-                publishGithubBuildStatus('failure', 'Boxedwine build unstable')
+                node('linux64') {
+                    publishGithubBuildStatus('failure', 'Boxedwine build unstable')
+                }
             }
         }
         aborted {
             script {
-                publishGithubBuildStatus('error', 'Boxedwine build aborted')
+                node('linux64') {
+                    publishGithubBuildStatus('error', 'Boxedwine build aborted')
+                }
             }
         }
     }
