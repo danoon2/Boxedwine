@@ -57,6 +57,11 @@ if [ -n "${BUILD_SITE_ARTIFACT:-}" ] && [ -f "$BUILD_SITE_ARTIFACT" ]; then
     ARTIFACT_ARGS+=(--artifact "$BUILD_SITE_ARTIFACT")
 fi
 
+LOG_ARGS=()
+if [ -n "${BUILD_SITE_LOG:-}" ] && [ -f "$BUILD_SITE_LOG" ]; then
+    LOG_ARGS+=(--log "$BUILD_SITE_LOG")
+fi
+
 DEMO_ARGS=()
 DEMO_SOURCE="${BUILD_SITE_DEMOS_SOURCE:-$SITE_DIR/demos/apps}"
 SINGLE_THREADED_DIR="${BUILD_SITE_SINGLE_THREADED_DIR:-$ROOT_DIR/project/linux/Deploy/Web/SingleThreaded}"
@@ -81,6 +86,7 @@ fi
     --commit-url "${GIT_URL:-}" \
     --build-url "${BUILD_URL:-}" \
     "${ARTIFACT_ARGS[@]}" \
+    "${LOG_ARGS[@]}" \
     "${DEMO_ARGS[@]}"
 
 rsync -az --delete "${SSH_ARGS[@]}" "$SITE_DIR/" "$BUILD_SITE_REMOTE/"

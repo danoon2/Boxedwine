@@ -716,11 +716,15 @@ int runTestTestsFromArgs(int argc, char** argv) {
 }
 
 #ifdef __MACH__
-extern "C" {
-    int runCpuTestsMac(void);
-}
+#if defined(__GNUC__)
+#define BOXEDWINE_TEST_EXPORT __attribute__((visibility("default")))
+#else
+#define BOXEDWINE_TEST_EXPORT
+#endif
 
-int runCpuTestsMac(void) {
+extern "C" BOXEDWINE_TEST_EXPORT int runCpuTestsMac(void);
+
+extern "C" BOXEDWINE_TEST_EXPORT int runCpuTestsMac(void) {
     const char* start = getenv("BOXEDWINE_TEST_START");
     const char* count = getenv("BOXEDWINE_TEST_COUNT");
     const char* threads = getenv("BOXEDWINE_TEST_THREADS");
@@ -732,6 +736,8 @@ int runCpuTestsMac(void) {
     }
     return runTestTests();
 }
+
+#undef BOXEDWINE_TEST_EXPORT
 #else
 int main(int argc, char** argv) {
     return runTestTestsFromArgs(argc, argv);

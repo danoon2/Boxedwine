@@ -22,7 +22,7 @@ void publishGithubBuildStatus(String state, String description) {
                 "GITHUB_STATUS_STATE=${state}",
                 "GITHUB_STATUS_DESCRIPTION=${description}",
                 "GITHUB_STATUS_CONTEXT=${env.GITHUB_STATUS_CONTEXT ?: 'jenkins/automation'}",
-                "GITHUB_STATUS_TARGET_URL=${env.GITHUB_STATUS_TARGET_URL ?: 'http://boxedwine.org/builds/'}"
+                "GITHUB_STATUS_TARGET_URL=${env.GITHUB_STATUS_TARGET_URL ?: 'https://boxedwine.org/builds/'}"
             ]) {
                 sh '''#!/bin/bash
                     python3 - <<'PY'

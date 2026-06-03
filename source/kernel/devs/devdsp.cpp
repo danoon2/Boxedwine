@@ -225,11 +225,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 			this->format = AFMT_U8;
             break;
         case AFMT_FLOAT:
-#ifdef __EMSCRIPTEN__
-            this->format = AFMT_S16_LE;
-#else
             this->format = AFMT_FLOAT;
-#endif
             break;
         }
         if (write)
