@@ -612,7 +612,9 @@ pipeline {
         }
         success {
             script {
-                publishGithubBuildStatus('success', 'Boxedwine build passed')
+                node('linux64') {
+                    publishGithubBuildStatus('success', 'Boxedwine build passed')
+                }
                 emailext subject: '$DEFAULT_SUBJECT',
                     body: '$DEFAULT_CONTENT',
                     recipientProviders: [
@@ -624,7 +626,9 @@ pipeline {
         }
         failure {
             script {
-                publishGithubBuildStatus('failure', 'Boxedwine build failed')
+                node('linux64') {
+                    publishGithubBuildStatus('failure', 'Boxedwine build failed')
+                }
                 emailext subject: '$DEFAULT_SUBJECT',
                     body: '$DEFAULT_CONTENT',
                     recipientProviders: [
@@ -636,12 +640,16 @@ pipeline {
         }
         unstable {
             script {
-                publishGithubBuildStatus('failure', 'Boxedwine build unstable')
+                node('linux64') {
+                    publishGithubBuildStatus('failure', 'Boxedwine build unstable')
+                }
             }
         }
         aborted {
             script {
-                publishGithubBuildStatus('error', 'Boxedwine build aborted')
+                node('linux64') {
+                    publishGithubBuildStatus('error', 'Boxedwine build aborted')
+                }
             }
         }
     }
