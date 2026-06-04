@@ -12,6 +12,9 @@ from pathlib import Path
 from urllib.parse import parse_qsl, quote
 
 
+DEFAULT_PUBLIC_URL = "https://boxedwine.org/builds/"
+
+
 def slugify(value):
     value = value.strip().replace("/", "__")
     value = re.sub(r"[^A-Za-z0-9._-]+", "-", value)
@@ -281,9 +284,33 @@ def format_size(size):
     return f"{size} B"
 
 
-def render_html(site_dir, branches, title):
+def public_url_prefix(public_url):
+    return str(public_url or "").rstrip("/")
+
+
+def demo_build_path(branch_slug, build_number):
+    return f"demos/build/{quote(str(branch_slug))}/{quote(str(build_number))}/"
+
+
+def secure_public_href(path, public_url):
+    public_url = public_url_prefix(public_url)
+    if not public_url:
+        return path
+    return f"{public_url}/{path.lstrip('/')}"
+
+
+def https_redirect_script():
+    return """<script>
+    if (location.protocol === "http:" && location.hostname && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+      location.replace("https:" + location.href.substring(location.protocol.length));
+    }
+  </script>"""
+
+
+def render_html(site_dir, branches, title, public_url):
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     safe_branches = json.dumps(branches, separators=(",", ":")).replace("</", "<\\/")
+    safe_public_url = json.dumps(public_url_prefix(public_url))
     branch_count = len(branches)
     build_count = sum(len(branch["builds"]) for branch in branches)
 
@@ -293,6 +320,7 @@ def render_html(site_dir, branches, title):
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{html.escape(title)}</title>
+  {https_redirect_script()}
   <style>
     :root {{
       color-scheme: light;
@@ -542,6 +570,7 @@ def render_html(site_dir, branches, title):
   </div>
   <script>
     const branches = {safe_branches};
+    const publicUrl = {safe_public_url};
 
     function escapeHtml(value) {{
       return String(value ?? "").replace(/[&<>"']/g, (character) => ({{
@@ -578,6 +607,11 @@ def render_html(site_dir, branches, title):
       return `<a${{className ? ` class="${{className}}"` : ""}} href="${{escapeHtml(url)}}">${{escapeHtml(label)}}</a>`;
     }}
 
+    function demoBuildUrl(build) {{
+      const path = `demos/build/${{encodeURIComponent(build.branchSlug)}}/${{encodeURIComponent(build.buildNumber)}}/`;
+      return publicUrl ? `${{publicUrl}}/${{path}}` : path;
+    }}
+
     function renderArtifacts(build) {{
       const artifacts = build.artifacts || [];
       const links = artifacts.map((artifact) => (
@@ -593,7 +627,7 @@ def render_html(site_dir, branches, title):
         );
       }} else if (build.branchSlug && build.buildNumber) {{
         links.push(
-          `<a class="artifact" href="demos/build/${{escapeHtml(build.branchSlug)}}/${{escapeHtml(build.buildNumber)}}/">Demos</a>`
+          `<a class="artifact" href="${{escapeHtml(demoBuildUrl(build))}}">Demos</a>`
         );
       }}
       return links.length ? links.join("") : '<span class="meta">No artifact</span>';
@@ -743,6 +777,7 @@ def render_demo_page(title, subtitle, intro, back_href, content):
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{html.escape(title)}</title>
+  {https_redirect_script()}
   <style>
     :root {{
       --bg: #f4f6f8;
@@ -1000,7 +1035,7 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, singl
     render_demos_html(site_dir, branch, branch_slug, build_number, demos)
 
 
-def render_builds(builds):
+def render_builds(builds, public_url=""):
     if not builds:
         return "<p class=\"empty\">No builds for this branch.</p>"
 
@@ -1032,8 +1067,9 @@ def render_builds(builds):
                 "</a>"
             )
         elif build.get("branchSlug") and build.get("buildNumber"):
+            demo_href = secure_public_href(demo_build_path(build["branchSlug"], build["buildNumber"]), public_url)
             artifacts.append(
-                f"<a class=\"artifact\" href=\"demos/build/{html.escape(build['branchSlug'])}/{html.escape(str(build['buildNumber']))}/\">"
+                f"<a class=\"artifact\" href=\"{html.escape(demo_href)}\">"
                 "Demos</a>"
             )
         artifact_html = "\n".join(artifacts) if artifacts else "<span class=\"meta\">No artifact</span>"
@@ -1061,6 +1097,7 @@ def main():
     parser.add_argument("--commit", default=os.environ.get("GIT_COMMIT", ""))
     parser.add_argument("--commit-url", default=os.environ.get("GIT_URL", ""))
     parser.add_argument("--build-url", default=os.environ.get("BUILD_URL", ""))
+    parser.add_argument("--public-url", default=os.environ.get("BUILD_SITE_PUBLIC_URL", DEFAULT_PUBLIC_URL))
     parser.add_argument("--artifact", action="append", default=[])
     parser.add_argument("--log")
     parser.add_argument("--demo-source")
@@ -1120,7 +1157,7 @@ def main():
     prune_old_builds(branch_dir, args.keep)
     branches = load_builds(site_dir)
     write_json(site_dir / "builds.json", {"generatedAt": built_at, "branches": branches})
-    render_html(site_dir, branches, args.title)
+    render_html(site_dir, branches, args.title, args.public_url)
 
 
 if __name__ == "__main__":
