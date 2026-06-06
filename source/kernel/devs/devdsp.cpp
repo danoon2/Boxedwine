@@ -53,9 +53,7 @@ public:
     U32 readNative(U8* buffer, U32 len) override;
     U32 writeNative(U8* buffer, U32 len) override;
     void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
-#ifdef __EMSCRIPTEN__
     bool isWriteReady() override;
-#endif
 
     std::shared_ptr<KDspAudio> audio;
     U32 freq;
@@ -125,11 +123,15 @@ U32 DevDsp::getUsedBufferSize() {
 U32 DevDsp::getAvailableBufferSize() {
     return this->getEffectiveBufferCapacity() - this->getUsedBufferSize();
 }
+#endif
 
 bool DevDsp::isWriteReady() {
+#ifdef __EMSCRIPTEN__
     return this->getAvailableBufferSize() >= this->audio->getFragmentSize();
-}
+#else
+    return this->audio->isWriteReady();
 #endif
+}
 
 U32 DevDsp::ioctl(KThread* thread, U32 request) {
     U32 len = (request >> 16) & 0x3FFF;
@@ -297,11 +299,13 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         memory->writed(IOCTL_ARG1 + 8, this->audio->getFragmentSize());
         memory->writed(IOCTL_ARG1 + 12, available);
 #else
-        // I'm not sure why bytes works better as getBufferCapacity instead of getBufferCapacity - getBufferSize, but mac stutters a lot otherwise
-        memory->writed(IOCTL_ARG1, this->audio->getBufferCapacity() / this->audio->getFragmentSize()); // fragments
-        memory->writed(IOCTL_ARG1 + 4, this->audio->getBufferCapacity() / this->audio->getFragmentSize());
+        U32 capacity = this->audio->getBufferCapacity();
+        U32 used = std::min(this->audio->getBufferSize(), capacity);
+        U32 available = capacity - used;
+        memory->writed(IOCTL_ARG1, available / this->audio->getFragmentSize()); // fragments
+        memory->writed(IOCTL_ARG1 + 4, capacity / this->audio->getFragmentSize());
         memory->writed(IOCTL_ARG1 + 8, this->audio->getFragmentSize());
-        memory->writed(IOCTL_ARG1 + 12, this->audio->getBufferCapacity());
+        memory->writed(IOCTL_ARG1 + 12, available);
 #endif
         return 0;
     }
@@ -423,16 +427,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 }
 
 void DevDsp::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
-    if (events & K_POLLOUT) {
-#ifdef __EMSCRIPTEN__
-        if (this->isWriteReady()) {
-            BOXEDWINE_CONDITION_SIGNAL_ALL(parentCondition);
-        }
-#else
-        // BOXEDWINE_CONDITION_ADD_CHILD_CONDITION(parentCondition, this->data->bufferCond, nullptr);
-        klog("DevDsp::waitForEvents POLLOUT not implemented");
-#endif
-    }
+    this->audio->waitForEvents(parentCondition, events);
 }
 
 FsOpenNode* openDevDsp(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {

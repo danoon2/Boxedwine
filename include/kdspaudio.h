@@ -39,6 +39,8 @@ public:
 	virtual void setFragmentSize(U32 size) = 0;
 	virtual U32 getBufferSize() = 0;
 	virtual U32 getBufferCapacity() = 0;
+	virtual bool isWriteReady() = 0;
+	virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) = 0;
 
 	U32 id = 0;
 

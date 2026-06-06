@@ -879,6 +879,7 @@
     <ClInclude Include="..\..\..\..\include\fpu.h" />
     <ClInclude Include="..\..\..\..\include\jit.h" />
     <ClInclude Include="..\..\..\..\include\kdspaudio.h" />
+    <ClInclude Include="..\..\..\..\include\kdspaudio_math.h" />
     <ClInclude Include="..\..\..\..\include\kepoll.h" />
     <ClInclude Include="..\..\..\..\include\kerror.h" />
     <ClInclude Include="..\..\..\..\include\kevent.h" />
@@ -1194,6 +1195,7 @@
     <ClInclude Include="..\..\..\..\source\test\cpu\testX86Util.h" />
     <ClInclude Include="..\..\..\..\source\test\cpu\testXchg.h" />
     <ClInclude Include="..\..\..\..\source\test\cpu\testXor.h" />
+    <ClInclude Include="..\..\..\..\source\test\devs\testDspAudio.h" />
     <ClInclude Include="..\..\..\..\source\test\mmu\testSelfModifying.h" />
     <ClInclude Include="..\..\..\..\source\ui\boxedwineui.h" />
     <ClInclude Include="..\..\..\..\source\ui\controls\appbar.h" />
@@ -3850,6 +3852,7 @@
     <ClCompile Include="..\..\..\..\source\test\cpu\testX86Util.cpp" />
     <ClCompile Include="..\..\..\..\source\test\cpu\testXchg.cpp" />
     <ClCompile Include="..\..\..\..\source\test\cpu\testXor.cpp" />
+    <ClCompile Include="..\..\..\..\source\test\devs\testDspAudio.cpp" />
     <ClCompile Include="..\..\..\..\source\test\mmu\testSelfModifying.cpp" />
     <ClCompile Include="..\..\..\..\source\test\process\testWaitPid.cpp" />
     <ClCompile Include="..\..\..\..\source\ui\controls\appbar.cpp">
