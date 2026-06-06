@@ -107,6 +107,7 @@ public:
 
 	U32 getQueuedAudioSizeWant() {
 		if (!KSystem::soundEnabled) {
+			this->drainNoSoundAudioBuffer();
 			return (U32)this->audioBuffer.size();
 		}
 		if (!this->deviceId) {
@@ -118,6 +119,24 @@ public:
 		}
 		U64 queued = (U64)SDL_GetQueuedAudioSize(this->deviceId) * bytesPerSecondWant() / gotBytesPerSecond;
 		return (U32)std::min<U64>(queued, 0xFFFFFFFFu);
+	}
+
+	void drainNoSoundAudioBuffer() {
+		U32 now = KSystem::getMilliesSinceStart();
+		if (!this->lastNoSoundDrainTime) {
+			this->lastNoSoundDrainTime = now;
+			return;
+		}
+		U32 elapsedTime = now - this->lastNoSoundDrainTime;
+		this->lastNoSoundDrainTime = now;
+		if (!elapsedTime || this->audioBuffer.empty()) {
+			return;
+		}
+		U32 queued = (U32)this->audioBuffer.size();
+		U32 remaining = KDspAudioMath::getQueuedAfterElapsed(queued, bytesPerSecondWant(), elapsedTime);
+		if (remaining < queued) {
+			this->audioBuffer.erase(this->audioBuffer.begin(), this->audioBuffer.begin() + (queued - remaining));
+		}
 	}
 
 #ifdef __EMSCRIPTEN__
@@ -168,6 +187,7 @@ public:
 	U32 dspFragSize = 4096;
 	bool open = false;
 	std::deque<U8> audioBuffer; // only used when KSystem::soundEnabled is false
+	U32 lastNoSoundDrainTime = 0;
 	SDL_AudioDeviceID deviceId = 0;
 	BOXEDWINE_CONDITION writeCond = std::make_shared<BoxedWineCondition>(B("KDspAudioSdl::writeCond"));
 	bool writeWatchActive = false;
@@ -300,6 +320,7 @@ bool KDspAudioSdl::isWriteReady() {
 		return false;
 	}
 	if (!KSystem::soundEnabled) {
+		this->drainNoSoundAudioBuffer();
 		return this->audioBuffer.size() < capacity;
 	}
 	if (!this->open || !this->deviceId) {
@@ -346,6 +367,7 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 
 	if (!KSystem::soundEnabled) {
 		this->open = true;
+		this->lastNoSoundDrainTime = KSystem::getMilliesSinceStart();
 		return;
 	}
 
@@ -408,6 +430,8 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 void KDspAudioSdl::closeAudio() {
 	if (!KSystem::soundEnabled) {
 		this->open = false;
+		this->audioBuffer.clear();
+		this->lastNoSoundDrainTime = 0;
 		return;
 	}
 	if (!this->open) {
@@ -444,15 +468,8 @@ void KDspAudioSdl::setFragmentSize(U32 size) {
 
 U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {	
 	if (!KSystem::soundEnabled) {
-		static U32 timeSinceLastWrite;
-
-		U32 wantBytesPerSecond = want.freq * want.channels * bytesPerSampleWant();
 		U32 capacity = getWriteCapacityWant();
-		U32 elapsedTime = KSystem::getMilliesSinceStart() - timeSinceLastWrite;
-		U32 bytesToRemove = wantBytesPerSecond * elapsedTime / 1000;
-
-		bytesToRemove = std::min((U32)this->audioBuffer.size(), bytesToRemove);
-		this->audioBuffer.erase(this->audioBuffer.begin(), this->audioBuffer.begin() + bytesToRemove);
+		this->drainNoSoundAudioBuffer();
 
 		if (this->audioBuffer.size() >= capacity) {
 			return -K_EWOULDBLOCK;
@@ -460,7 +477,6 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		U32 blockSize = bytesPerSampleWant() * want.channels;
 		len = KDspAudioMath::getWritableBytes(len, capacity, (U32)this->audioBuffer.size(), blockSize);
 		audioBuffer.insert(this->audioBuffer.end(), data, data + len);
-		timeSinceLastWrite = KSystem::getMilliesSinceStart();
 		return len;
 	}
 
