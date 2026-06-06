@@ -49,6 +49,7 @@
 #include "cpu/testX86Util.h"
 #include "cpu/testXchg.h"
 #include "cpu/testXor.h"
+#include "devs/testDspAudio.h"
 #include "mmu/testSelfModifying.h"
 
 void testWaitPid();
@@ -58,6 +59,7 @@ namespace {
 int totalFails = 0;
 
 const TestEntry TEST_ENTRIES[] = {
+    {testDspAudioWriteMath, "Test DSP Audio Write Math"},
     {testMemoryAccess32, "Test 32-bit Memory Access"},
     {testMemoryAccess16, "Test 16-bit Memory Access"},
     {testAddR8R8_0x000, "Test Add R8,R8 000"},

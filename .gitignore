@@ -28,6 +28,7 @@ project/msvc/BoxedWine/BoxedWine/imgui.ini
 project/linux/bin/
 project/linux/linux_build/
 project/mac-xcode/bin/
+project/emscripten/Build/
 **/imgui.ini
 **/*.vcxproj.user
 project/linux/msvc-remote/Boxedwine/.vs/

@@ -255,7 +255,8 @@ U32 XServer::setInputFocus(const DisplayDataPtr& data, U32 window, U32 revertTo,
 		log.append(window, 16);
 	}
 	inputFocusRevertTo = revertTo;
-	XWindowPtr w = getWindow(window);
+	inputFocusIsPointerRoot = window == PointerRoot;
+	XWindowPtr w = inputFocusIsPointerRoot ? getRoot() : getWindow(window);
 	
 	if (this->inputFocus != w) {
 		if (this->inputFocus) {
@@ -1038,7 +1039,13 @@ void XServer::key(U32 key, bool pressed) {
 		S32 x = 0;
 		S32 y = 0;
 		KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
-		inputFocus->keyScreenCoords(key, x, y, pressed);
+		XWindowPtr wnd = inputFocus;
+		if (inputFocusIsPointerRoot && root) {
+			wnd = root->getWindowFromPoint(x, y);
+		}
+		while (wnd && !wnd->keyScreenCoords(key, x, y, pressed)) {
+			wnd = wnd->getParent();
+		}
 	}
 }
 
