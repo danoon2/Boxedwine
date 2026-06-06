@@ -88,6 +88,7 @@ public:
 	static U32 getNextId();
 
 	XWindowPtr inputFocus;
+	bool inputFocusIsPointerRoot = false;
 	// the main sdl window is the emulated desktop
 	// in order to handle opengl or vulkan the main sdl window changes and emulates just that one window that is using opengl or vulkan
 	// so if that opengl/vulkan window is not full screen, then it will have a non zero x,y coord which will throw off the mouse
