@@ -70,6 +70,16 @@ void testDspAudioWriteMath() {
 		KDspAudioMath::getWritableBytes(3, 4096, 0, 4),
 		0,
 		"sub-block writes align down to zero");
+
+	expectEqual(
+		KDspAudioMath::getQueuedAfterElapsed(4096, 11025, 100),
+		2994,
+		"queued no-sound bytes drain as time passes");
+
+	expectEqual(
+		KDspAudioMath::getQueuedAfterElapsed(4096, 11025, 1000),
+		0,
+		"queued no-sound bytes clamp to zero after enough time passes");
 }
 
 #endif

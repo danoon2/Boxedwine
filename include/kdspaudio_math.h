@@ -26,6 +26,11 @@ namespace KDspAudioMath {
 		return queued >= capacity ? 0 : capacity - queued;
 	}
 
+	inline U32 getQueuedAfterElapsed(U32 queued, U32 bytesPerSecond, U32 elapsedMs) {
+		U64 consumed = (U64)bytesPerSecond * elapsedMs / 1000;
+		return consumed >= queued ? 0 : queued - (U32)consumed;
+	}
+
 	inline U32 alignWriteBytes(U32 bytes, U32 blockSize) {
 		if (!blockSize) {
 			return 0;
