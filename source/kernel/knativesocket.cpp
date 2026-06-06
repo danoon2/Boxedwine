@@ -67,6 +67,16 @@ fd_set waitingWriteset;
 fd_set waitingErrorset;
 int maxSocketId;
 
+struct KNetworkInterfaceStats {
+    U64 rxBytes = 0;
+    U64 rxPackets = 0;
+    U64 txBytes = 0;
+    U64 txPackets = 0;
+};
+
+static BOXEDWINE_MUTEX networkStatsMutex;
+static KNetworkInterfaceStats eth0Stats;
+
 BString socketAddressName(KMemory* memory, U32 address, U32 len);
 #ifdef _DEBUG
 #define LOG_SOCK if (0) klog_fmt
@@ -82,6 +92,49 @@ static BOXEDWINE_MUTEX waitingNodeMutex;
 static bool checkWaitingNativeSocketsThreadDone;
 static S32 nativeSocketPipe[2];
 #endif
+
+static void recordEth0Rx(U32 bytes) {
+    if (!bytes) {
+        return;
+    }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(networkStatsMutex);
+    eth0Stats.rxBytes += bytes;
+    eth0Stats.rxPackets++;
+}
+
+static void recordEth0Tx(U32 bytes) {
+    if (!bytes) {
+        return;
+    }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(networkStatsMutex);
+    eth0Stats.txBytes += bytes;
+    eth0Stats.txPackets++;
+}
+
+static void appendProcNetDevLine(BString& result, const char* name, const KNetworkInterfaceStats& stats) {
+    char buffer[512];
+    snprintf(buffer, sizeof(buffer), "%6s:%8llu %7llu    0    0    0     0          0         0 %8llu %7llu    0    0    0     0       0          0\n",
+        name,
+        (unsigned long long)stats.rxBytes,
+        (unsigned long long)stats.rxPackets,
+        (unsigned long long)stats.txBytes,
+        (unsigned long long)stats.txPackets);
+    result += buffer;
+}
+
+FsOpenNode* openProcNetDev(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
+    KNetworkInterfaceStats eth0Snapshot;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(networkStatsMutex);
+        eth0Snapshot = eth0Stats;
+    }
+
+    BString result = B("Inter-|   Receive                                                |  Transmit\n"
+        " face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n");
+    appendProcNetDevLine(result, "lo", KNetworkInterfaceStats());
+    appendProcNetDevLine(result, "eth0", eth0Snapshot);
+    return new BufferAccess(node, flags, result);
+}
 
 void updateWaitingList() {
     FD_ZERO(&waitingReadset);
@@ -858,7 +911,8 @@ void KNativeSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U3
 U32 KNativeSocketObject::writeNative(U8* buffer, U32 len) {    
     S32 result = (S32)::send(this->nativeSocket, (const char*)buffer, len, 0);
     LOG_SOCK("native socket: %x writeNative len=%d result=%x", nativeSocket, len, result);
-    if (result>=0) {            
+    if (result>=0) {
+        recordEth0Tx(result);
         this->error = 0;
         return result;
     }
@@ -871,7 +925,8 @@ U32 KNativeSocketObject::readNative(U8* buffer, U32 len) {
     S32 result = (S32)::recv(this->nativeSocket, (char*)buffer, len, 0);
 
     LOG_SOCK("%x native socket: %x readNative len=%d result=%x", KThread::currentThread()->id, nativeSocket, len, result);
-    if (result>=0) {  
+    if (result>=0) {
+        recordEth0Rx(result);
         this->error = 0;
         return result;
     }
@@ -942,6 +997,7 @@ U32 KNativeSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, 
             this->error = 0;
             this->connecting = 0;
             this->connected = true;
+            recordEth0Rx(64);
             removeWaitingSocket(this->nativeSocket);
             return 0;
         }
@@ -997,6 +1053,8 @@ U32 KNativeSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, 
 
         if (error == 0) {
             this->connected = true;
+            recordEth0Tx(64);
+            recordEth0Rx(64);
             return 0;
         }
         this->connecting = false;
@@ -1008,6 +1066,7 @@ U32 KNativeSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, 
         t->error = K_EINPROGRESS;
     }
     if ((S32)result == -K_EINPROGRESS) {
+        recordEth0Tx(64);
         this->connected = true;
     }
 #ifndef BOXEDWINE_MULTI_THREADED
@@ -1476,6 +1535,7 @@ U32 KNativeSocketObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd, 
     LOG_SOCK("%x native socket: %x sendmsg msg_name=%x msg_namelen=%x result=%x", thread->id, nativeSocket, hdr.msg_name, hdr.msg_namelen, result);
     delete[] buffer;
     if ((S32)result >= 0) {
+        recordEth0Tx(result);
         this->error = 0;
         return result;
     }
@@ -1536,6 +1596,9 @@ U32 KNativeSocketObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd, 
     if (this->type==K_SOCK_STREAM)
         memory->writed(address + 4, 0); // msg_namelen, set to 0 for connected sockets
     memory->writed(address + 20, 0); // msg_controllen
+    if ((S32)result > 0 && !(nativeFlags & MSG_PEEK)) {
+        recordEth0Rx(result);
+    }
     return result;
 }
 
@@ -1565,6 +1628,7 @@ U32 KNativeSocketObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U
     LOG_SOCK("%x native socket: %x sendto dest_addr=%x dest_len=%x result=%x", thread->id, nativeSocket, dest_addr, dest_len, result);
     delete[] tmp;
     if ((S32)result>=0) {
+        recordEth0Tx(result);
         this->error = 0;
         return result;
     }
@@ -1604,6 +1668,9 @@ U32 KNativeSocketObject::recvfrom(KThread* thread, const KFileDescriptorPtr& fd,
     U32 result = (U32)::recvfrom(this->nativeSocket, tmp, length, nativeFlags, address_len?(struct sockaddr*)&addr:nullptr, address_len?&outLen: nullptr);
     LOG_SOCK("%x native socket: %x recvfrom buffer=%x length=%d address=%x address_len=%x flags=%x result=%x", thread->id, nativeSocket, buffer, length, address, address_len, flags, result);
     if ((S32)result>=0) {
+        if (!(nativeFlags & MSG_PEEK)) {
+            recordEth0Rx(result);
+        }
         memory->memcpy(buffer, tmp, result);
         if (address) {
             writeSockAddrIn(&addr, memory, address);

@@ -76,6 +76,33 @@ void BoxedContainer::saveInstalledPackageList() {
     writeLinesToFile(path, installedPackages);
 }
 
+BString BoxedContainer::getInstalledComponentsFilePath() {
+    return this->dirPath.stringByApppendingPath("installedComponents.txt");
+}
+
+bool BoxedContainer::isComponentInstalled(BString optionsName) {
+    std::vector<BString> components;
+
+    readLinesFromFile(getInstalledComponentsFilePath(), components);
+    return vectorContainsIgnoreCase(components, optionsName.trim());
+}
+
+void BoxedContainer::markComponentInstalled(BString optionsName) {
+    optionsName = optionsName.trim();
+    if (optionsName.length() == 0) {
+        return;
+    }
+
+    std::vector<BString> components;
+    BString path = getInstalledComponentsFilePath();
+
+    readLinesFromFile(path, components);
+    if (!vectorContainsIgnoreCase(components, optionsName)) {
+        components.push_back(optionsName);
+        writeLinesToFile(path, components);
+    }
+}
+
 BoxedContainer* BoxedContainer::createContainer(BString dirPath, BString name, std::shared_ptr<FileSystemZip> fileSystem) {
     BoxedContainer* container = new BoxedContainer();
     container->name = name;
@@ -304,6 +331,19 @@ void BoxedContainer::findApps(std::vector<BoxedApp>& apps) {
     std::sort(apps.begin(), apps.end(), compareApps);
 }
 
+static bool isJarShortcutFor(const BoxedApp* app, BString parentPath, BString jarName) {
+    if (app->getCmd().compareTo("java.exe", true) != 0 || app->getPath() != parentPath) {
+        return false;
+    }
+    const std::vector<BString>& args = app->getArgs();
+    for (size_t i = 0; i + 1 < args.size(); i++) {
+        if (args[i] == "-jar" && args[i + 1].compareTo(jarName, true) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount, BString nativeDirectory) {
     BString root;
     BString path;
@@ -321,17 +361,24 @@ void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount
     }
     BString winDir = B("drive_c").stringByApppendingPath("windows");
     Fs::iterateAllNativeFiles(path, true, true, [this, &apps, root, mount, winDir] (BString filepath, bool isDir)->U32 {
-        if (filepath.endsWith(".exe", true) && !filepath.contains(winDir)) {
+        bool isExe = filepath.endsWith(".exe", true);
+        bool isJar = filepath.endsWith(".jar", true);
+
+        if ((isExe || isJar) && !filepath.contains(winDir)) {
             BString localPath = filepath.substr(root.length());
             if (mount) {
                 localPath = mount->getFullLocalPath() + localPath;
             }
-            Fs::remoteNameToLocal(localPath);            
+            Fs::remoteNameToLocal(localPath);
             BString name = Fs::getFileNameFromPath(localPath);
+            BString parentPath = Fs::getParentPath(localPath);
 
             bool found = false;
             for (auto& a : this->apps) {
-                if (a->cmd==name) {
+                if (isJar && isJarShortcutFor(a, parentPath, name)) {
+                    found = true;
+                    break;
+                } else if (isExe && a->cmd==name) {
                     found = true;
                     break;
                 }
@@ -340,8 +387,16 @@ void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount
                 BoxedApp app;
                 app.container = this;
                 app.name = name;
-                app.path = Fs::getParentPath(localPath);
-                app.cmd = app.name;
+                app.path = parentPath;
+                if (isJar) {
+                    app.cmd = B("java.exe");
+                    app.args.push_back(B("-Dsun.java2d.d3d=false"));
+                    app.args.push_back(B("-jar"));
+                    app.args.push_back(name);
+                    app.requiredComponentOptionsName = B("Java");
+                } else {
+                    app.cmd = app.name;
+                }
                 apps.push_back(app);
             }
         }
@@ -497,6 +552,72 @@ static const char szKeyNT[] = "Software\\Microsoft\\Windows NT\\CurrentVersion";
 static const char szKeyProdNT[] = "System\\CurrentControlSet\\Control\\ProductOptions";
 static const char szKeyWindNT[] = "System\\CurrentControlSet\\Control\\Windows";
 static const char szKeyEnvNT[] = "System\\CurrentControlSet\\Control\\Session Manager\\Environment";
+static const char szKeyEnvControlSet001[] = "System\\ControlSet001\\Control\\Session Manager\\Environment";
+
+static BString normalizeWindowsPathForCompare(BString path) {
+    path = path.trim().replace('/', '\\').toLowerCase();
+    while (path.length() > 3 && path.endsWith('\\')) {
+        path = path.substr(0, path.length() - 1);
+    }
+    return path;
+}
+
+static BString unescapeRegistryExpandString(BString value) {
+    value = value.trim();
+    if (value.startsWith("str(2):", true)) {
+        value = value.substr(7);
+    }
+    return value.replace("\\\\", "\\");
+}
+
+static BString escapeRegistryString(BString value) {
+    return value.replace("\\", "\\\\");
+}
+
+static bool pathListContains(BString pathList, BString path) {
+    BString normalizedPath = normalizeWindowsPathForCompare(path);
+    std::vector<BString> entries;
+
+    pathList.split(';', entries);
+    for (BString& entry : entries) {
+        if (normalizeWindowsPathForCompare(entry) == normalizedPath) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void BoxedContainer::addPath(BString path) {
+    path = path.trim();
+    if (path.length() == 0) {
+        return;
+    }
+
+    BoxedReg reg(this, true);
+    BString value;
+    if (!reg.readKey(szKeyEnvNT, "PATH", value)) {
+        reg.readKey(szKeyEnvControlSet001, "PATH", value);
+    }
+    value = unescapeRegistryExpandString(value);
+    if (value.length() == 0) {
+        value = B("%SystemRoot%\\system32;%SystemRoot%;%SystemRoot%\\system32\\wbem;%SystemRoot%\\system32\\WindowsPowershell\\v1.0");
+    }
+    if (pathListContains(value, path)) {
+        return;
+    }
+
+    BString newPath = path;
+    if (!newPath.endsWith(';')) {
+        newPath += ";";
+    }
+    newPath += value;
+
+    BString regValue = B("str(2):\"");
+    regValue += escapeRegistryString(newPath);
+    regValue += "\"";
+    reg.writeKey(szKeyEnvNT, "PATH", regValue.c_str(), false);
+    reg.save();
+}
 
 BString BoxedContainer::getWindowsVersion2() {
     BoxedReg reg(this, false);

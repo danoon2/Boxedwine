@@ -32,21 +32,8 @@ void AppChooserDlg::drawItems(std::vector<BoxedApp>& apps, int startingIndex) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::PushID(i+startingIndex);
         if (ImGui::Selectable("", false, 0, ImVec2(ImGui::GetColumnWidth(), ImGui::GetTextLineHeight() + ImGui::GetStyle().ItemSpacing.y))) {
-            if (this->saveApp) {
-                apps[i].saveApp();
-                apps[i].getContainer()->reload();
-                GlobalSettings::reloadApps();
-            }
             std::function<void(BoxedApp)> onSelected = this->onSelected;
-            BoxedApp app = apps[i];
-
-            runOnMainUI([app, onSelected]() {
-                // don't hold on to this, it will be deleted before this runs
-                if (onSelected) {
-                    onSelected(app);
-                }
-                return false;
-                });
+            selectApp(apps[i], onSelected, this->saveApp);
             this->done();
         }
         ImGui::PopID();
@@ -60,7 +47,64 @@ void AppChooserDlg::drawItems(std::vector<BoxedApp>& apps, int startingIndex) {
         }
         SAFE_IMGUI_TEXT(apps[i].getName().c_str());
         ImGui::NextColumn();
-    }    
+    }
+}
+
+void AppChooserDlg::saveAndSelectApp(BoxedApp app, std::function<void(BoxedApp app)> onSelected) {
+    app.saveApp();
+    app.getContainer()->reload();
+    GlobalSettings::reloadApps();
+
+    runOnMainUI([app, onSelected]() {
+        if (onSelected) {
+            onSelected(app);
+        }
+        return false;
+        });
+}
+
+void AppChooserDlg::selectApp(BoxedApp app, std::function<void(BoxedApp app)> onSelected, bool saveApp) {
+    if (!saveApp) {
+        runOnMainUI([app, onSelected]() {
+            if (onSelected) {
+                onSelected(app);
+            }
+            return false;
+            });
+        return;
+    }
+
+    BString requiredComponent = app.getRequiredComponentOptionsName();
+    BoxedContainer* container = app.getContainer();
+
+    if (container && requiredComponent.length() && !container->isComponentInstalled(requiredComponent)) {
+        AppFilePtr component = GlobalSettings::getComponentByOptionName(requiredComponent);
+        if (component) {
+            std::function<void()> saveAndInstall = [app, onSelected, component, container]() {
+                saveAndSelectApp(app, onSelected);
+                component->install(false, container);
+                };
+
+            if (Fs::doesNativePathExist(component->localFilePath)) {
+                saveAndInstall();
+            } else {
+                BString label = component->name;
+                label += B(" is required to run ");
+                label += app.getName();
+                label += B(". Download and install ");
+                label += BString::valueOf(component->size);
+                label += B(" MB now?");
+                new YesNoDlg(Msg::GENERIC_DLG_CONFIRM_TITLE, label, [saveAndInstall](bool yes) {
+                    if (yes) {
+                        saveAndInstall();
+                    }
+                    });
+            }
+            return;
+        }
+    }
+
+    saveAndSelectApp(app, onSelected);
 }
 
 void AppChooserDlg::run() {

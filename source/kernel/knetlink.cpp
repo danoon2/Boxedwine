@@ -357,8 +357,42 @@ U32 KNetLinkObject::getsockopt(KThread* thread, const KFileDescriptorPtr& fd, U3
 }
 
 U32 KNetLinkObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 flags) {
-    kpanic("KNetLinkObject::sendmsg not implemented");
-    return 0;
+    MsgHdr hdr = {};
+    KMemory* memory = thread->memory;
+
+    readMsgHdr(thread, address, &hdr);
+
+    if (flags) {
+        kwarn_fmt("KNetLinkObject::sendmsg unhandled flags=%x", flags);
+    }
+    if (hdr.msg_control || hdr.msg_controllen) {
+        kwarn("KNetLinkObject::sendmsg ignoring control data");
+    }
+
+    U32 len = 0;
+    for (U32 i = 0; i < hdr.msg_iovlen; i++) {
+        len += memory->readd(hdr.msg_iov + 8 * i + 4);
+    }
+
+    std::vector<U8> buffer(len);
+    U32 offset = 0;
+    for (U32 i = 0; i < hdr.msg_iovlen; i++) {
+        U32 p = memory->readd(hdr.msg_iov + 8 * i);
+        U32 toCopy = memory->readd(hdr.msg_iov + 8 * i + 4);
+
+        memory->memcpy(buffer.data() + offset, p, toCopy);
+        offset += toCopy;
+    }
+
+    U32 tmp = thread->process->alloc(thread, len);
+    if (!tmp) {
+        return -K_ENOMEM;
+    }
+    memory->memcpy(tmp, buffer.data(), len);
+
+    U32 result = sendto(thread, fd, tmp, len, 0, hdr.msg_name, hdr.msg_namelen);
+    thread->process->free(tmp);
+    return result;
 }
 
 U32 KNetLinkObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 flags) {
@@ -463,7 +497,6 @@ void KNetLinkObject::append(const char* s) {
 U32 ipAddress();
 
 U32 KNetLinkObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 message, U32 length, U32 sendtoFlags, U32 dest_addr, U32 dest_len) {
-
     if (length >= 16) {
         //U32 len = thread->memory->readd(message);
         U16 type = thread->memory->readw(message + 4);
@@ -513,7 +546,7 @@ U32 KNetLinkObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 me
             boxed_nlmsghdr hdr2;
             boxed_ifinfomsg msg2;
             hdr2.nlmsg_len = sizeof(hdr2) + sizeof(msg2) + 28;
-            hdr2.nlmsg_type = type;
+            hdr2.nlmsg_type = 16; // RTM_NEWLINK
             hdr2.nlmsg_flags = 0x301; // NLM_F_REQUEST | NLM_F_DUMP
             hdr2.nlmsg_seq = seq;
             hdr2.nlmsg_pid = afBound->nl_pid;

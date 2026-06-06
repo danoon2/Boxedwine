@@ -76,5 +76,6 @@ public:
 bool checkWaitingNativeSockets(int timeout);
 FsOpenNode* openHosts(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 FsOpenNode* openHostname(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openProcNetDev(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 
 #endif

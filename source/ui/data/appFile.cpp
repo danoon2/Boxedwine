@@ -101,6 +101,8 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             }
         } else if (option.startsWith("wine=")) {
             continue; // should have already been handled
+        } else if (option.startsWith("AddPath=", true)) {
+            container->addPath(option.substr(8));
         } else if (option.startsWith("resolution=")) {
             if (app) {
                 app->resolution = option.substr(11);
@@ -348,5 +350,16 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
             return true;
         };
         runner.push_back(runPostInstall);
-    }    
+    }
+    if (this->optionsName.length()) {
+        BString componentOptionsName = this->optionsName;
+        std::function<bool() > markComponentInstalled = [containerDir, componentOptionsName]() {
+            BoxedContainer* container = BoxedwineData::getContainerByDir(containerDir);
+            if (container) {
+                container->markComponentInstalled(componentOptionsName);
+            }
+            return true;
+        };
+        runner.push_back(markComponentInstalled);
+    }
 }
