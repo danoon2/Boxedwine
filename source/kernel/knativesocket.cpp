@@ -58,8 +58,22 @@ void closesocket(int socket) { close(socket); }
 
 #define K_SIOCGIFHWADDR 0x8927
 #define K_SIOCGIFCONF 0x8912
+#define K_SIOCGIFADDR 0x8915
 #define K_SIOCGIFFLAGS 0x8913
+#define K_SIOCGIFBRDADDR 0x8919
+#define K_SIOCGIFNETMASK 0x891b
 #define K_SIOCGIFMTU 0x8921
+#define K_SIOCGIFINDEX 0x8933
+#define K_SIOCGIWNAME 0x8b01
+
+#define K_IFF_UP 0x1
+#define K_IFF_BROADCAST 0x2
+#define K_IFF_LOOPBACK 0x8
+#define K_IFF_RUNNING 0x40
+#define K_IFF_MULTICAST 0x1000
+
+#define K_ARPHRD_ETHER 1
+#define K_ARPHRD_LOOPBACK 772
 
 std::vector<std::shared_ptr<KNativeSocketObject>> waitingNativeSockets;
 fd_set waitingReadset;
@@ -78,6 +92,7 @@ static BOXEDWINE_MUTEX networkStatsMutex;
 static KNetworkInterfaceStats eth0Stats;
 
 BString socketAddressName(KMemory* memory, U32 address, U32 len);
+U32 ipAddress();
 #ifdef _DEBUG
 #define LOG_SOCK if (0) klog_fmt
 #else
@@ -122,6 +137,81 @@ static void appendProcNetDevLine(BString& result, const char* name, const KNetwo
     result += buffer;
 }
 
+static U32 fallbackEth0IpAddress() {
+    return 0x0f02000a; // 10.0.2.15 in network byte order on x86.
+}
+
+static U32 eth0IpAddress() {
+    U32 ip = ipAddress();
+    if (!ip || ip == 0x0100007f) {
+        return fallbackEth0IpAddress();
+    }
+    return ip;
+}
+
+const std::vector<KEmulatedNetworkInterface>& getEmulatedNetworkInterfaces() {
+    static std::vector<KEmulatedNetworkInterface> result;
+    if (result.empty()) {
+        KEmulatedNetworkInterface lo = {};
+        lo.name = "lo";
+        lo.index = 1;
+        lo.ipv4 = 0x0100007f; // 127.0.0.1
+        lo.netmask = 0x000000ff; // 255.0.0.0
+        lo.broadcast = 0;
+        lo.flags = K_IFF_UP | K_IFF_LOOPBACK | K_IFF_RUNNING;
+        lo.mtu = 65536;
+        lo.hardwareType = K_ARPHRD_LOOPBACK;
+        lo.prefixLength = 8;
+        result.push_back(lo);
+
+        KEmulatedNetworkInterface eth0 = {};
+        eth0.name = "eth0";
+        eth0.index = 2;
+        eth0.ipv4 = eth0IpAddress();
+        eth0.netmask = 0x00ffffff; // 255.255.255.0
+        eth0.broadcast = (eth0.ipv4 & eth0.netmask) | ~eth0.netmask;
+        eth0.flags = K_IFF_UP | K_IFF_BROADCAST | K_IFF_RUNNING | K_IFF_MULTICAST;
+        eth0.mtu = 1500;
+        eth0.hardwareType = K_ARPHRD_ETHER;
+        eth0.mac[0] = 0x02;
+        eth0.mac[1] = 0x00;
+        eth0.mac[2] = 0x5e;
+        eth0.mac[3] = 0x10;
+        eth0.mac[4] = 0x00;
+        eth0.mac[5] = 0x02;
+        eth0.prefixLength = 24;
+        result.push_back(eth0);
+    }
+    return result;
+}
+
+const KEmulatedNetworkInterface* getEmulatedNetworkInterfaceByName(const BString& name) {
+    const std::vector<KEmulatedNetworkInterface>& interfaces = getEmulatedNetworkInterfaces();
+    for (U32 i = 0; i < interfaces.size(); ++i) {
+        if (name == interfaces[i].name) {
+            return &interfaces[i];
+        }
+    }
+    return nullptr;
+}
+
+const KEmulatedNetworkInterface* getEmulatedNetworkInterfaceByIndex(U32 index) {
+    const std::vector<KEmulatedNetworkInterface>& interfaces = getEmulatedNetworkInterfaces();
+    for (U32 i = 0; i < interfaces.size(); ++i) {
+        if (interfaces[i].index == index) {
+            return &interfaces[i];
+        }
+    }
+    return nullptr;
+}
+
+void writeEmulatedNetworkSockAddr(KMemory* memory, U32 address, U32 ipv4) {
+    memory->writew(address, K_AF_INET);
+    memory->writew(address + 2, 0);
+    memory->writed(address + 4, ipv4);
+    memory->memset(address + 8, 0, 8);
+}
+
 FsOpenNode* openProcNetDev(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     KNetworkInterfaceStats eth0Snapshot;
     {
@@ -131,8 +221,10 @@ FsOpenNode* openProcNetDev(const std::shared_ptr<FsNode>& node, U32 flags, U32 d
 
     BString result = B("Inter-|   Receive                                                |  Transmit\n"
         " face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n");
-    appendProcNetDevLine(result, "lo", KNetworkInterfaceStats());
-    appendProcNetDevLine(result, "eth0", eth0Snapshot);
+    const std::vector<KEmulatedNetworkInterface>& interfaces = getEmulatedNetworkInterfaces();
+    for (U32 i = 0; i < interfaces.size(); ++i) {
+        appendProcNetDevLine(result, interfaces[i].name, interfaces[i].index == 2 ? eth0Snapshot : KNetworkInterfaceStats());
+    }
     return new BufferAccess(node, flags, result);
 }
 
@@ -577,10 +669,25 @@ struct ifconf {
 };
 */
 #define K_IFNAMSIZ 16
+#define K_IFREQ_SIZE 40
+
+static const KEmulatedNetworkInterface* getInterfaceFromIfReq(KMemory* memory, U32 address) {
+    return getEmulatedNetworkInterfaceByName(memory->readString(address));
+}
+
+static void writeIfReqSockAddr(KMemory* memory, U32 address, U32 ipv4) {
+    writeEmulatedNetworkSockAddr(memory, address + K_IFNAMSIZ, ipv4);
+}
+
+static void writeIfReqNameAndAddr(KMemory* memory, U32 address, const KEmulatedNetworkInterface& iface) {
+    memory->memset(address, 0, K_IFREQ_SIZE);
+    memory->memcpy(address, iface.name, (U32)strlen(iface.name) + 1);
+    writeIfReqSockAddr(memory, address, iface.ipv4);
+}
 
 U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
     CPU* cpu = thread->cpu;
-    if (request == 0x541b) {        
+    if (request == 0x541b) {
 #ifdef WIN32
         u_long value=0;
         U32 result = ioctlsocket(this->nativeSocket, FIONREAD, &value);
@@ -601,59 +708,21 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         if (!address) {
             return -K_EFAULT;
         }
-#ifdef WIN32
-        INTERFACE_INFO interfaces[20];
-        unsigned long bytes;
-
-        if (this->nativeSocket == SOCKET_ERROR) {
-            return -1;
-        }
-
-        if (WSAIoctl(this->nativeSocket, SIO_GET_INTERFACE_LIST, 0, 0, &interfaces, sizeof(interfaces), &bytes, 0, 0) == SOCKET_ERROR) {
-            std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
-            return handleNativeSocketError(t, false);
-        }
-
-        U32 count = bytes / sizeof(INTERFACE_INFO);
-        thread->memory->writed(address, count * 40);
+        U32 requestedLen = thread->memory->readd(address);
         U32 buf = thread->memory->readd(address + 4);
+        if (!buf && requestedLen) {
+            return -K_EFAULT;
+        }
+
+        const std::vector<KEmulatedNetworkInterface>& interfaces = getEmulatedNetworkInterfaces();
+        U32 maxCount = requestedLen / K_IFREQ_SIZE;
+        U32 count = std::min((U32)interfaces.size(), maxCount);
         for (U32 i = 0; i < count; i++) {
-            struct sockaddr_in* addr = (struct sockaddr_in*)&(interfaces[i].iiAddress);
-            if (addr->sin_family == AF_INET && (interfaces[i].iiFlags & IFF_LOOPBACK)) {
-                thread->memory->memcpy(buf + 40 * i, "lo", 3);
-            } else {
-                BString s;
-                s += "eth";
-                s += i;
-                thread->memory->memcpy(buf + 40 * i, s.c_str(), s.length() + 1);
-            }
-            thread->memory->memcpy(buf + 40 * i + 16, addr, 16); // 16 sizeof addr            
+            writeIfReqNameAndAddr(thread->memory, buf + K_IFREQ_SIZE * i, interfaces[i]);
         }
+        thread->memory->writed(address, count * K_IFREQ_SIZE);
         this->error = 0;
         return 0;
-#else        
-        U32 numifs = 64;
-
-#ifdef SIOCGIFNUM
-        ::ioctl(this->nativeSocket, SIOCGIFNUM, (char*)&numifs);
-#endif
-        struct ifreq* ifs = new struct ifreq[numifs];
-        struct ifconf ifconf = { 0 };
-
-        ifconf.ifc_buf = (char*)(ifs);
-        ifconf.ifc_len = sizeof(struct ifreq) * numifs;
-
-        U32 result = ::ioctl(this->nativeSocket, SIOCGIFCONF, &ifconf);
-        if (result == 0xffffffff) {
-            std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
-            return handleNativeSocketError(t, false);
-        }
-        thread->memory->writed(address, ifconf.ifc_len);
-        thread->memory->memcpy(thread->memory->readd(address + 4), ifs, ifconf.ifc_len);
-        delete[] ifs;
-        this->error = 0;
-        return 0;
-#endif
     } else if (request == 0x5421) {
         U32 address = IOCTL_ARG1;
 #ifdef WIN32
@@ -674,103 +743,54 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         return 0;
     } else if (request == K_SIOCGIFHWADDR) {
         U32 address = IOCTL_ARG1;
-        BString name = thread->memory->readString(address);
-#ifdef WIN32
-        if (name == "lo") {
-            thread->memory->writew(address, domain);
-            thread->memory->memset(address + 2, 0, 14);
-            return 0;
+        const KEmulatedNetworkInterface* iface = getInterfaceFromIfReq(thread->memory, address);
+        if (!iface) {
+            return -K_ENODEV;
         }
-        PIP_ADAPTER_ADDRESSES addresses = getAdapterAddresses();
-        if (!addresses) {
-            std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
-            return handleNativeSocketError(t, true);
-        }
-        PIP_ADAPTER_UNICAST_ADDRESS ua = addresses->FirstUnicastAddress;
-        while (ua) {
-            if (emulatedFamilyFromHostFamily(ua->Address.lpSockaddr->sa_family) == domain) {
-                break;
-            }
-            ua = ua->Next;
-        }
-        if (!ua) {
-            free(addresses);
-            return -1;
-        }
-        thread->memory->writew(address, domain);
-        thread->memory->memcpy(address + 2, addresses->PhysicalAddress, std::min((U32)14, (U32)addresses->PhysicalAddressLength));
-        free(addresses);
+        thread->memory->writew(address + K_IFNAMSIZ, iface->hardwareType);
+        thread->memory->memcpy(address + K_IFNAMSIZ + 2, iface->mac, 6);
+        thread->memory->memset(address + K_IFNAMSIZ + 8, 0, 8);
         return 0;
-#elif defined(__MACH__)
-        struct ifaddrs *ifap, *ifaptr;
-        unsigned char *ptr;
-
-        if (getifaddrs(&ifap) == 0) {
-            for(ifaptr = ifap; ifaptr != NULL; ifaptr = (ifaptr)->ifa_next) {
-                if (((ifaptr)->ifa_addr)->sa_family == AF_LINK && !strcmp(ifaptr->ifa_name, "en0")) {
-                    ptr = (unsigned char *)LLADDR((struct sockaddr_dl *)(ifaptr)->ifa_addr);
-                    thread->memory->writew(address, domain);
-                    thread->memory->memcpy(address + 2, ptr, 6);
-                    return 0;
-                }
-            }
+    } else if (request == K_SIOCGIFADDR || request == K_SIOCGIFBRDADDR || request == K_SIOCGIFNETMASK) {
+        U32 address = IOCTL_ARG1;
+        const KEmulatedNetworkInterface* iface = getInterfaceFromIfReq(thread->memory, address);
+        if (!iface) {
+            return -K_ENODEV;
         }
-        return -1;
-#else
-        struct ifreq ifr = { };
-        thread->memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
-        U32 result = ::ioctl(this->nativeSocket, SIOCGIFHWADDR, &ifr);
-        if (result) {
-            std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
-            return handleNativeSocketError(t, true);
+        if (request == K_SIOCGIFADDR) {
+            writeIfReqSockAddr(thread->memory, address, iface->ipv4);
+        } else if (request == K_SIOCGIFBRDADDR) {
+            writeIfReqSockAddr(thread->memory, address, iface->broadcast ? iface->broadcast : iface->ipv4);
+        } else {
+            writeIfReqSockAddr(thread->memory, address, iface->netmask);
         }
-        thread->memory->writew(address, emulatedFamilyFromHostFamily(ifr.ifr_hwaddr.sa_family));
-        thread->memory->memcpy(address + 2, ifr.ifr_hwaddr.sa_data, 6);
         return 0;
-#endif
     } else if (request == K_SIOCGIFFLAGS) {
         U32 address = IOCTL_ARG1;
-        BString name = thread->memory->readString(address);
-#ifdef WIN32
-        if (name == "lo") {
-            thread->memory->writew(address + K_IFNAMSIZ, 0x49); // IFF_UP | IFF_LOOPBACK | IFF_RUNNING
-        } else {
-            thread->memory->writew(address + K_IFNAMSIZ, 0x1043); // IFF_UP | IFF_BROADCAST | IFF_RUNNING | IFF_MULTICAST
+        const KEmulatedNetworkInterface* iface = getInterfaceFromIfReq(thread->memory, address);
+        if (!iface) {
+            return -K_ENODEV;
         }
+        thread->memory->writew(address + K_IFNAMSIZ, (U16)iface->flags);
         return 0;
-#else
-        struct ifreq ifr = { };
-        thread->memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
-        U32 result = ::ioctl(this->nativeSocket, SIOCGIFFLAGS, &ifr);
-        if (result) {
-            std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
-            return handleNativeSocketError(t, true);
-        }
-        thread->memory->writew(address + K_IFNAMSIZ, ifr.ifr_flags);
-        return 0;
-#endif
     } else if (request == K_SIOCGIFMTU) {
         U32 address = IOCTL_ARG1;
-        BString name = thread->memory->readString(address);
-#ifdef WIN32
-        PIP_ADAPTER_ADDRESSES addresses = getAdapterAddress(name);
-        if (!addresses) {
-            std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
-            return handleNativeSocketError(t, true);
+        const KEmulatedNetworkInterface* iface = getInterfaceFromIfReq(thread->memory, address);
+        if (!iface) {
+            return -K_ENODEV;
         }
-        thread->memory->writew(address + K_IFNAMSIZ, (U16)addresses->Mtu);
+        thread->memory->writed(address + K_IFNAMSIZ, iface->mtu);
         return 0;
-#else
-        struct ifreq ifr = { };
-        thread->memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
-        U32 result = ::ioctl(this->nativeSocket, SIOCGIFMTU, &ifr);
-        if (result) {
-            std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
-            return handleNativeSocketError(t, true);
+    } else if (request == K_SIOCGIFINDEX) {
+        U32 address = IOCTL_ARG1;
+        const KEmulatedNetworkInterface* iface = getInterfaceFromIfReq(thread->memory, address);
+        if (!iface) {
+            return -K_ENODEV;
         }
-        thread->memory->writew(address + K_IFNAMSIZ, ifr.ifr_mtu);
+        thread->memory->writed(address + K_IFNAMSIZ, iface->index);
         return 0;
-#endif
+    } else if (request == K_SIOCGIWNAME) {
+        return -K_EOPNOTSUPP;
     } else {
         kwarn_fmt("KNativeSocketObject::ioctl request=%x not implemented", request);
     }

@@ -21,6 +21,19 @@
 
 #include "ksocketobject.h"
 
+struct KEmulatedNetworkInterface {
+    const char* name;
+    U32 index;
+    U32 ipv4;
+    U32 netmask;
+    U32 broadcast;
+    U32 flags;
+    U32 mtu;
+    U16 hardwareType;
+    U8 mac[6];
+    U8 prefixLength;
+};
+
 class KNativeSocketObject : public KSocketObject {
 public:
     KNativeSocketObject(U32 domain, U32 type, U32 protocol);
@@ -77,5 +90,9 @@ bool checkWaitingNativeSockets(int timeout);
 FsOpenNode* openHosts(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 FsOpenNode* openHostname(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 FsOpenNode* openProcNetDev(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
+const std::vector<KEmulatedNetworkInterface>& getEmulatedNetworkInterfaces();
+const KEmulatedNetworkInterface* getEmulatedNetworkInterfaceByName(const BString& name);
+const KEmulatedNetworkInterface* getEmulatedNetworkInterfaceByIndex(U32 index);
+void writeEmulatedNetworkSockAddr(KMemory* memory, U32 address, U32 ipv4);
 
 #endif

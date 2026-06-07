@@ -33,7 +33,7 @@ protected:
 private:
     void drawItems(std::vector<BoxedApp>& apps, int startingIndex);
     static void selectApp(BoxedApp app, std::function<void(BoxedApp app)> onSelected, bool saveApp);
-    static void saveAndSelectApp(BoxedApp app, std::function<void(BoxedApp app)> onSelected);
+    static bool saveAndSelectApp(BoxedApp app, std::function<void(BoxedApp app)> onSelected);
 
     std::vector<BoxedApp> items;
     std::vector<BoxedApp> wineApps;

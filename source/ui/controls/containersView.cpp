@@ -214,7 +214,11 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
                 this->currentContainer->findApps(wineApps);
                 new AppChooserDlg(items, wineApps, [this](BoxedApp app) {
                     BString iniPath = app.getIniFilePath();
-                    this->setCurrentApp(app.getContainer()->getAppByIniFile(iniPath));
+                    BoxedApp* savedApp = app.getContainer()->getAppByIniFile(iniPath);
+                    if (!savedApp) {
+                        return;
+                    }
+                    this->setCurrentApp(savedApp);
                     rebuildShortcutsCombobox();
                     showAppSection(true);
                     this->appPickerControl->setSelectionStringValue(iniPath);

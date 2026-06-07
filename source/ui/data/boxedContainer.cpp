@@ -20,6 +20,7 @@
 #include "../boxedwineui.h"
 #include "../../io/fszip.h"
 #include "../../util/networkutils.h"
+#include "javaJarInfo.h"
 
 bool BoxedContainer::load(BString dirPath) {
     this->dirPath = dirPath;
@@ -214,6 +215,9 @@ void BoxedContainer::launch() {
         Fs::makeNativeDirs(root);
     }
     GlobalSettings::startUpArgs.setRoot(root);
+    if (fs && fs->hasWine()) {
+        ensureWineNetworkDriversRegistered();
+    }
     GlobalSettings::startUpArgs.mountInfo = this->mounts;
     GlobalSettings::startUpArgs.logPath = getLogPath();
 }
@@ -332,7 +336,10 @@ void BoxedContainer::findApps(std::vector<BoxedApp>& apps) {
 }
 
 static bool isJarShortcutFor(const BoxedApp* app, BString parentPath, BString jarName) {
-    if (app->getCmd().compareTo("java.exe", true) != 0 || app->getPath() != parentPath) {
+    BString cmd = app->getCmd();
+    BString cmdFileName = Fs::getFileNameFromNativePath(cmd);
+    cmdFileName = Fs::getFileNameFromPath(cmdFileName);
+    if (cmdFileName.compareTo("java.exe", true) != 0 || app->getPath() != parentPath) {
         return false;
     }
     const std::vector<BString>& args = app->getArgs();
@@ -342,6 +349,31 @@ static bool isJarShortcutFor(const BoxedApp* app, BString parentPath, BString ja
         }
     }
     return false;
+}
+
+static BString getComponentAddPath(AppFilePtr component) {
+    if (!component) {
+        return BString::empty;
+    }
+    for (BString option : component->installOptions) {
+        option = option.trim();
+        if (option.startsWith("AddPath=", true)) {
+            return option.substr(8).trim();
+        }
+    }
+    return BString::empty;
+}
+
+static BString getJavaCommandForComponent(AppFilePtr component) {
+    BString javaPath = getComponentAddPath(component);
+    if (javaPath.length() == 0) {
+        return B("java.exe");
+    }
+    if (!javaPath.endsWith('\\') && !javaPath.endsWith('/')) {
+        javaPath += "\\";
+    }
+    javaPath += "java.exe";
+    return javaPath;
 }
 
 void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount, BString nativeDirectory) {
@@ -389,11 +421,14 @@ void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount
                 app.name = name;
                 app.path = parentPath;
                 if (isJar) {
-                    app.cmd = B("java.exe");
+                    AppFilePtr javaComponent = GlobalSettings::getJavaComponentForVersion(getRequiredJavaVersionFromJar(filepath.c_str()));
+                    app.cmd = getJavaCommandForComponent(javaComponent);
                     app.args.push_back(B("-Dsun.java2d.d3d=false"));
                     app.args.push_back(B("-jar"));
                     app.args.push_back(name);
-                    app.requiredComponentOptionsName = B("Java");
+                    if (javaComponent) {
+                        app.requiredComponentOptionsName = javaComponent->optionsName;
+                    }
                 } else {
                     app.cmd = app.name;
                 }
@@ -453,6 +488,19 @@ bool BoxedContainer::doesFileExist(const BString& localFilePath) {
 }
 
 BString BoxedContainer::getNativePathForApp(const BoxedApp& app) {
+    const char* cmd = app.cmd.c_str();
+    if (app.cmd.length() > 2 && cmd[1] == ':' && (cmd[2] == '\\' || cmd[2] == '/')) {
+        char drive = (char)tolower(cmd[0]);
+        BString drivePath = app.cmd.substr(3);
+        if (drive == 'c') {
+            return GlobalSettings::getRootFolder(this).stringByApppendingPath(B("home/username/.wine/drive_c/") + Fs::nativeFromLocal(drivePath));
+        }
+        for (auto& mount : mounts) {
+            if (mount.wine && mount.localPath.length() == 1 && mount.localPath.c_str()[0] == drive) {
+                return mount.nativePath + Fs::nativeFromLocal("/" + drivePath);
+            }
+        }
+    }
     for (auto& mount : mounts) {
         BString path = mount.getFullLocalPath();
         if (app.path.startsWith(path)) {
@@ -553,6 +601,8 @@ static const char szKeyProdNT[] = "System\\CurrentControlSet\\Control\\ProductOp
 static const char szKeyWindNT[] = "System\\CurrentControlSet\\Control\\Windows";
 static const char szKeyEnvNT[] = "System\\CurrentControlSet\\Control\\Session Manager\\Environment";
 static const char szKeyEnvControlSet001[] = "System\\ControlSet001\\Control\\Session Manager\\Environment";
+static const char szKeyNdisService[] = "System\\ControlSet001\\Services\\NDIS";
+static const char szKeyNsiProxyService[] = "System\\ControlSet001\\Services\\nsiproxy";
 
 static BString normalizeWindowsPathForCompare(BString path) {
     path = path.trim().replace('/', '\\').toLowerCase();
@@ -572,6 +622,25 @@ static BString unescapeRegistryExpandString(BString value) {
 
 static BString escapeRegistryString(BString value) {
     return value.replace("\\", "\\\\");
+}
+
+static BString makeRegistryExpandString(BString value) {
+    BString result = B("str(2):\"");
+    result += escapeRegistryString(value);
+    result += "\"";
+    return result;
+}
+
+static bool registryExpandStringEquals(BString value, BString expected) {
+    return normalizeWindowsPathForCompare(unescapeRegistryExpandString(value)) == normalizeWindowsPathForCompare(expected);
+}
+
+static bool registryDwordEquals(BString value, U32 expected) {
+    value = value.trim();
+    if (value.startsWith("dword:", true)) {
+        value = value.substr(6);
+    }
+    return (U32)strtoul(value.c_str(), nullptr, 16) == expected;
 }
 
 static bool pathListContains(BString pathList, BString path) {
@@ -612,11 +681,49 @@ void BoxedContainer::addPath(BString path) {
     }
     newPath += value;
 
-    BString regValue = B("str(2):\"");
-    regValue += escapeRegistryString(newPath);
-    regValue += "\"";
+    BString regValue = makeRegistryExpandString(newPath);
     reg.writeKey(szKeyEnvNT, "PATH", regValue.c_str(), false);
     reg.save();
+}
+
+void BoxedContainer::ensureWineNetworkDriversRegistered() {
+    BoxedReg reg(this, true);
+    BString value;
+    BString ndisImagePath = B("C:\\windows\\system32\\drivers\\ndis.sys");
+    BString nsiProxyImagePath = B("C:\\windows\\system32\\drivers\\nsiproxy.sys");
+    bool updateNdis = !reg.readKey(szKeyNdisService, "ImagePath", value) || !registryExpandStringEquals(value, ndisImagePath);
+    updateNdis = updateNdis || !reg.readKey(szKeyNdisService, "Start", value) || !registryDwordEquals(value, 2);
+    updateNdis = updateNdis || !reg.readKey(szKeyNdisService, "Type", value) || !registryDwordEquals(value, 1);
+
+    if (updateNdis) {
+        reg.writeKey(szKeyNdisService, "DisplayName", "NDIS");
+        reg.writeKeyDword(szKeyNdisService, "ErrorControl", 1);
+        reg.writeKey(szKeyNdisService, "Group", "System Bus Extender");
+        BString imagePath = makeRegistryExpandString(ndisImagePath);
+        reg.writeKey(szKeyNdisService, "ImagePath", imagePath.c_str(), false);
+        reg.writeKeyDword(szKeyNdisService, "Start", 2);
+        reg.writeKeyDword(szKeyNdisService, "Tag", 2);
+        reg.writeKeyDword(szKeyNdisService, "Type", 1);
+    }
+
+    bool updateNsiProxy = !reg.readKey(szKeyNsiProxyService, "ImagePath", value) || !registryExpandStringEquals(value, nsiProxyImagePath);
+    updateNsiProxy = updateNsiProxy || !reg.readKey(szKeyNsiProxyService, "Start", value) || !registryDwordEquals(value, 2);
+    updateNsiProxy = updateNsiProxy || !reg.readKey(szKeyNsiProxyService, "Type", value) || !registryDwordEquals(value, 1);
+
+    if (updateNsiProxy) {
+        reg.writeKey(szKeyNsiProxyService, "DisplayName", "NSI Proxy");
+        reg.writeKeyDword(szKeyNsiProxyService, "ErrorControl", 1);
+        reg.writeKey(szKeyNsiProxyService, "Group", "System Bus Extender");
+        BString imagePath = makeRegistryExpandString(nsiProxyImagePath);
+        reg.writeKey(szKeyNsiProxyService, "ImagePath", imagePath.c_str(), false);
+        reg.writeKeyDword(szKeyNsiProxyService, "Start", 2);
+        reg.writeKeyDword(szKeyNsiProxyService, "Tag", 1);
+        reg.writeKeyDword(szKeyNsiProxyService, "Type", 1);
+    }
+
+    if (updateNdis || updateNsiProxy) {
+        reg.save();
+    }
 }
 
 BString BoxedContainer::getWindowsVersion2() {

@@ -22,6 +22,7 @@
 #include "ksocket.h"
 #include "kstat.h"
 #include "ksignal.h"
+#include "knativesocket.h"
 
 KNetLinkObject::KNetLinkObject(U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_UNIX_SOCKET, domain, type, protocol),
 lockCond(std::make_shared<BoxedWineCondition>(B("KNetLinkObject::lockCond")))
@@ -494,8 +495,6 @@ void KNetLinkObject::append(const char* s) {
     recvBuffer.insert(recvBuffer.end(), (U8*)s, ((U8*)s) + (U32)(strlen(s)+1));
 }
 
-U32 ipAddress();
-
 U32 KNetLinkObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 message, U32 length, U32 sendtoFlags, U32 dest_addr, U32 dest_len) {
     if (length >= 16) {
         //U32 len = thread->memory->readd(message);
@@ -503,6 +502,46 @@ U32 KNetLinkObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 me
         //U16 flags = thread->memory->readw(message + 6);
         U32 seq = thread->memory->readd(message + 8);
         //U32 pid = thread->memory->readd(message + 12);
+        U32 responsePid = afBound ? afBound->nl_pid : 0;
+
+        auto align4 = [](U32 value) -> U32 {
+            return (value + 3) & ~3;
+        };
+        auto appendRaw = [this](const void* data, U32 len) {
+            const S8* bytes = (const S8*)data;
+            recvBuffer.insert(recvBuffer.end(), bytes, bytes + len);
+        };
+        auto appendZeroPadding = [this](U32 len) {
+            for (U32 i = 0; i < len; ++i) {
+                recvBuffer.push_back(0);
+            }
+        };
+        auto appendAttr = [&](U16 attrType, const void* data, U32 dataLen) {
+            U16 attrLen = (U16)(4 + dataLen);
+            appendRaw(&attrLen, 2);
+            appendRaw(&attrType, 2);
+            appendRaw(data, dataLen);
+            appendZeroPadding(align4(attrLen) - attrLen);
+            return align4(attrLen);
+        };
+        auto attrLen = [&](U32 dataLen) -> U32 {
+            return align4(4 + dataLen);
+        };
+        auto appendStringAttr = [&](U16 attrType, const char* value) -> U32 {
+            return appendAttr(attrType, value, (U32)strlen(value) + 1);
+        };
+        auto appendU32Attr = [&](U16 attrType, U32 value) -> U32 {
+            return appendAttr(attrType, &value, 4);
+        };
+        auto appendDone = [&]() {
+            boxed_nlmsghdr hdr = {};
+            hdr.nlmsg_len = sizeof(hdr);
+            hdr.nlmsg_type = 3; // NLMSG_DONE
+            hdr.nlmsg_flags = 2; // NLM_F_MULTI
+            hdr.nlmsg_seq = seq;
+            hdr.nlmsg_pid = responsePid;
+            appendRaw(&hdr, sizeof(hdr));
+        };
 
         // start in Wine 7 (with Tiny Core Linux), this function will crash if I don't return something.  I'm not sure if what I'm returning is correct, but it stops the crash
         //
@@ -514,159 +553,79 @@ U32 KNetLinkObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 me
         //
         //    for (entry = indices; entry->if_index; entry++)
         if (type == 0x12) { // RTM_GETLINK
-            //U8 ifa_family = thread->memory->readb(message + 12);
+            static const U8 ethBroadcast[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+            static const U8 zeroMac[6] = {};
 
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(lockCond);
+            const std::vector<KEmulatedNetworkInterface>& interfaces = getEmulatedNetworkInterfaces();
+            for (U32 i = 0; i < interfaces.size(); ++i) {
+                const KEmulatedNetworkInterface& iface = interfaces[i];
+                U32 nameLen = (U32)strlen(iface.name) + 1;
+                U32 attrsLen = attrLen(6) + attrLen(6) + attrLen(nameLen) + attrLen(4);
 
-            boxed_nlmsghdr hdr;
-            boxed_ifinfomsg msg;
-            hdr.nlmsg_len = sizeof(hdr) + sizeof(msg) + 16;
-            hdr.nlmsg_type = 16; // RTM_NEWLINK
-            hdr.nlmsg_flags = 0x301; // NLM_F_REQUEST | NLM_F_DUMP
-            hdr.nlmsg_seq = seq;
-            hdr.nlmsg_pid = afBound->nl_pid;
-            msg.ifi_family = 0;
-            msg.ifi_type = 1;
-            msg.ifi_index = 1;
-            msg.ifi_flags = 0;
-            msg.ifi_change = 0xffffffff;
+                boxed_nlmsghdr hdr = {};
+                boxed_ifinfomsg msg = {};
+                hdr.nlmsg_len = sizeof(hdr) + sizeof(msg) + attrsLen;
+                hdr.nlmsg_type = 16; // RTM_NEWLINK
+                hdr.nlmsg_flags = 2; // NLM_F_MULTI
+                hdr.nlmsg_seq = seq;
+                hdr.nlmsg_pid = responsePid;
+                msg.ifi_family = 0;
+                msg.ifi_type = iface.hardwareType;
+                msg.ifi_index = iface.index;
+                msg.ifi_flags = iface.flags;
+                msg.ifi_change = 0xffffffff;
 
-            recvBuffer.insert(recvBuffer.end(), (U8*)&hdr, ((U8*)&hdr) + sizeof(hdr));
-            recvBuffer.insert(recvBuffer.end(), (U8*)&msg, ((U8*)&msg) + sizeof(msg));
-
-            append((U16)8);
-            append((U16)1); // IFLA_ADDRESS
-            append((U32)0x0100007f);
-
-            append((U16)7);
-            append((U16)3); // IFLA_IFNAME
-            append("lo");
-            append((U8)0); // pad
-      
-            boxed_nlmsghdr hdr2;
-            boxed_ifinfomsg msg2;
-            hdr2.nlmsg_len = sizeof(hdr2) + sizeof(msg2) + 28;
-            hdr2.nlmsg_type = 16; // RTM_NEWLINK
-            hdr2.nlmsg_flags = 0x301; // NLM_F_REQUEST | NLM_F_DUMP
-            hdr2.nlmsg_seq = seq;
-            hdr2.nlmsg_pid = afBound->nl_pid;
-            msg2.ifi_family = 0;
-            msg2.ifi_type = 1;
-            msg2.ifi_index = 2;
-            msg2.ifi_flags = 0;
-            msg2.ifi_change = 0xffffffff;                        
-
-            recvBuffer.insert(recvBuffer.end(), (U8*)&hdr2, ((U8*)&hdr2) + sizeof(hdr2));
-            recvBuffer.insert(recvBuffer.end(), (U8*)&msg2, ((U8*)&msg2) + sizeof(msg2));
-      
-            U32 ip = ipAddress();
-            append((U16)8);
-            append((U16)1); // IFLA_ADDRESS
-            append(ip);
-
-            append((U16)8);
-            append((U16)2); // IFLA_BROADCAST
-            append(ip);
-
-            append((U16)9);
-            append((U16)3); // IFLA_IFNAME
-            append("eth0");
-            append((U8)0); // pad
-            append((U16)0); // pad
-
-            hdr.nlmsg_len = sizeof(hdr);
-            hdr.nlmsg_type = 3; // NLMSG_DONE
-            recvBuffer.insert(recvBuffer.end(), (U8*)&hdr, ((U8*)&hdr) + sizeof(hdr));
+                appendRaw(&hdr, sizeof(hdr));
+                appendRaw(&msg, sizeof(msg));
+                appendAttr(1, iface.mac, 6); // IFLA_ADDRESS
+                appendAttr(2, iface.index == 1 ? zeroMac : ethBroadcast, 6); // IFLA_BROADCAST
+                appendStringAttr(3, iface.name); // IFLA_IFNAME
+                appendU32Attr(4, iface.mtu); // IFLA_MTU
+            }
+            appendDone();
             BOXEDWINE_CONDITION_SIGNAL_ALL(lockCond);
             return length;
         } else if (type == 0x16) { // RTM_GETADDR
             U8 ifa_family = thread->memory->readb(message + 12);
 
-            if (ifa_family != K_AF_INET) {
-                //klog("KNetLinkObject::sendto unhandled ifa_family %d", ifa_family);
-                //return -1;
-            }
-
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(lockCond);
+            if (!ifa_family || ifa_family == K_AF_INET) {
+                const std::vector<KEmulatedNetworkInterface>& interfaces = getEmulatedNetworkInterfaces();
+                for (U32 i = 0; i < interfaces.size(); ++i) {
+                    const KEmulatedNetworkInterface& iface = interfaces[i];
+                    U32 nameLen = (U32)strlen(iface.name) + 1;
+                    U32 attrsLen = attrLen(4) + attrLen(4) + attrLen(nameLen) + attrLen(4);
+                    if (iface.broadcast) {
+                        attrsLen += attrLen(4);
+                    }
 
-            // lo
-            boxed_nlmsghdr hdr;
-            boxed_ifaddrmsg msg;
-            hdr.nlmsg_len = 56; // sizeof(hdr) + sizeof(msg) + data + aligned 4 (24 + 32)
-            hdr.nlmsg_type = 20; // RTM_NEWADDR
-            hdr.nlmsg_flags = 2; // NLM_F_MULTI
-            hdr.nlmsg_seq = seq;
-            hdr.nlmsg_pid = afBound->nl_pid;
-            msg.ifa_family = K_AF_INET;
-            msg.ifa_prefixlen = 8;
-            msg.ifa_flags = 0x80; // IFA_F_PERMANENT
-            msg.ifa_scope = 254; // RT_SCOPE_HOST
-            msg.ifa_index = 1;
+                    boxed_nlmsghdr hdr = {};
+                    boxed_ifaddrmsg msg = {};
+                    U32 ifaFlags = 0x80; // IFA_F_PERMANENT
+                    hdr.nlmsg_len = sizeof(hdr) + sizeof(msg) + attrsLen;
+                    hdr.nlmsg_type = 20; // RTM_NEWADDR
+                    hdr.nlmsg_flags = 2; // NLM_F_MULTI
+                    hdr.nlmsg_seq = seq;
+                    hdr.nlmsg_pid = responsePid;
+                    msg.ifa_family = K_AF_INET;
+                    msg.ifa_prefixlen = iface.prefixLength;
+                    msg.ifa_flags = 0x80; // IFA_F_PERMANENT
+                    msg.ifa_scope = iface.index == 1 ? 254 : 0; // RT_SCOPE_HOST or RT_SCOPE_UNIVERSE
+                    msg.ifa_index = iface.index;
 
-            
-            recvBuffer.insert(recvBuffer.end(), (U8*)&hdr, ((U8*)&hdr) + sizeof(hdr));
-            recvBuffer.insert(recvBuffer.end(), (U8*)&msg, ((U8*)&msg) + sizeof(msg));
-                        
-            append((U16)8);
-            append((U16)1); // IFA_ADDRESS
-            append((U32)0x0100007f);
-            
-            append((U16)8);
-            append((U16)2); // IFA_LOCAL
-            append((U32)0x0100007f);
-            
-            append((U16)8);
-            append((U16)8); // IFA_FLAGS
-            append((U32)0x80); // IFA_F_PERMANENT
-            
-            append((U16)7);
-            append((U16)3); // IFA_LABEL
-            append("lo");
-            append((U8)0); // pad
-
-            // eth0
-            // :TODO: not sure why this causes a hang
-            /*
-            boxed_nlmsghdr hdr2;
-            boxed_ifaddrmsg msg2;
-            hdr2.nlmsg_len = 60; // sizeof(hdr) + sizeof(msg) + data + aligned 4 (24 + 36)
-            hdr2.nlmsg_type = 20; // RTM_NEWADDR
-            hdr2.nlmsg_flags = 2; // NLM_F_MULTI
-            hdr2.nlmsg_seq = seq;
-            hdr2.nlmsg_pid = afBound->nl_pid;
-            msg2.ifa_family = K_AF_INET;
-            msg2.ifa_prefixlen = 24; // :TODO: get real value
-            msg2.ifa_flags = 0;
-            msg2.ifa_scope = 0; // RT_SCOPE_UNIVERSE
-            msg2.ifa_index = 2;
-
-            recvBuffer.insert(recvBuffer.end(), (U8*)&hdr2, ((U8*)&hdr2) + sizeof(hdr2));
-            recvBuffer.insert(recvBuffer.end(), (U8*)&msg2, ((U8*)&msg2) + sizeof(msg2));
-
-            U32 ip = ipAddress();
-
-            append((U16)8);
-            append((U16)1); // IFA_ADDRESS
-            append((U32)ip);
-
-            append((U16)8);
-            append((U16)4); // IFA_BROADCAST
-            append((U32)(0xFF000000 | ip)); // :TODO: get real value
-
-            append((U16)8);
-            append((U16)8); // IFA_FLAGS
-            append((U32)0);
-
-            append((U16)9);
-            append((U16)3); // IFA_LABEL
-            append("eth0");
-            append((U8)0); // pad
-            append((U16)0); // pad
-            */
-
-            hdr.nlmsg_len = sizeof(hdr);
-            hdr.nlmsg_type = 3; // NLMSG_DONE
-            recvBuffer.insert(recvBuffer.end(), (U8*)&hdr, ((U8*)&hdr) + sizeof(hdr));
+                    appendRaw(&hdr, sizeof(hdr));
+                    appendRaw(&msg, sizeof(msg));
+                    appendU32Attr(1, iface.ipv4); // IFA_ADDRESS
+                    appendU32Attr(2, iface.ipv4); // IFA_LOCAL
+                    appendStringAttr(3, iface.name); // IFA_LABEL
+                    if (iface.broadcast) {
+                        appendU32Attr(4, iface.broadcast); // IFA_BROADCAST
+                    }
+                    appendU32Attr(8, ifaFlags); // IFA_FLAGS
+                }
+            }
+            appendDone();
             BOXEDWINE_CONDITION_SIGNAL_ALL(lockCond);
             return length;
         } else {

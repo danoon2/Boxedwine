@@ -19,7 +19,7 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-AppFile::AppFile(BString name, BString installType, BString iconPath, BString filePath, U32 size, BString exe, BString exeOptions, BString help, BString optionsName, BString installOptions, BString installExe, const std::vector<BString>& args) : name(name), optionsName(optionsName), installType(installType), filePath(filePath), iconPath(iconPath), size(size), exe(exe), args(args), installExe(installExe), help(help), iconTexture(NULL) {
+AppFile::AppFile(BString name, BString installType, BString iconPath, BString filePath, U32 size, BString exe, BString exeOptions, BString help, BString optionsName, BString installOptions, BString installExe, const std::vector<BString>& args, int javaVersion) : name(name), optionsName(optionsName), installType(installType), filePath(filePath), iconPath(iconPath), size(size), exe(exe), args(args), installExe(installExe), help(help), javaVersion(javaVersion), iconTexture(NULL) {
     if (iconPath.length()) {
         int pos = iconPath.lastIndexOf('/');
         if (pos != -1) {

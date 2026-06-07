@@ -93,6 +93,7 @@ private:
     void getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount, BString nativeDirectory);
     BString getWindowsVersion2();
     void ensureFileSystemSet();
+    void ensureWineNetworkDriversRegistered();
 
     std::vector<BoxedApp*> apps;
     BString name;

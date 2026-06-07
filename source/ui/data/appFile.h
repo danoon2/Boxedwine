@@ -38,7 +38,7 @@ public:
 
 class AppFile {
 public:
-    AppFile(BString name, BString installType, BString iconPath, BString filePath, U32 size, BString exe, BString exeOptions, BString help, BString optionsName, BString installOptions, BString installExe, const std::vector<BString>& args);
+    AppFile(BString name, BString installType, BString iconPath, BString filePath, U32 size, BString exe, BString exeOptions, BString help, BString optionsName, BString installOptions, BString installExe, const std::vector<BString>& args, int javaVersion = 0);
     BString name;
     BString optionsName;
     BString installType;
@@ -53,6 +53,7 @@ public:
     std::vector<BString> installOptions;
     std::vector<BString> exeOptions;
     BString help;
+    int javaVersion = 0;
 
     std::shared_ptr<BoxedTexture> iconTexture;
 

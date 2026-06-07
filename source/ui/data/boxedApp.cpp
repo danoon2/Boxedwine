@@ -30,6 +30,7 @@ bool BoxedApp::load(BoxedContainer* container, BString iniFilePath) {
     this->cmd = config.readString(B("Cmd"), B(""));
     this->iconPath = config.readString(B("Icon"), B(""));
     this->path = config.readString(B("Path"), B(""));
+    this->requiredComponentOptionsName = config.readString(B("RequiredComponent"), B(""));
     this->resolution = config.readString(B("Resolution"),B(""));
     this->bpp = config.readInt(B("BPP"),32);
     this->fullScreen = config.readInt(B("Fullscreen"),FULLSCREEN_NOTSET);
@@ -88,6 +89,7 @@ bool BoxedApp::saveApp() {
     config.writeString(B("Cmd"), this->cmd);
     config.writeString(B("Icon"), this->iconPath);
     config.writeString(B("Path"), this->path);
+    config.writeString(B("RequiredComponent"), this->requiredComponentOptionsName);
     config.writeString(B("Resolution"),this->resolution);
     config.writeInt(B("BPP"),this->bpp);
     config.writeInt(B("Fullscreen"),this->fullScreen);
