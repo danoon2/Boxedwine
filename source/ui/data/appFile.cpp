@@ -43,6 +43,41 @@ AppFile::AppFile(BString name, BString installType, BString iconPath, BString fi
     }
 }
 
+static bool appMatchesShortcutExe(const BoxedApp& app, const BString& shortcutExe) {
+    if (app.getCmd().compareTo(shortcutExe, true) == 0) {
+        return true;
+    }
+    if (!shortcutExe.endsWith(".jar", true)) {
+        return false;
+    }
+
+    const std::vector<BString>& args = app.getArgs();
+    for (size_t i = 0; i + 1 < args.size(); i++) {
+        if (args[i].compareTo("-jar", true) == 0 && args[i + 1].compareTo(shortcutExe, true) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void addJavaArg(BoxedApp* app, BString arg) {
+    arg = arg.trim();
+    if (!app || arg.length() == 0) {
+        return;
+    }
+
+    std::vector<BString> args = app->getArgs();
+    auto insertAt = args.end();
+    for (auto it = args.begin(); it != args.end(); ++it) {
+        if (it->compareTo("-jar", true) == 0) {
+            insertAt = it;
+            break;
+        }
+    }
+    args.insert(insertAt, arg);
+    app->setArgs(args);
+}
+
 void AppFile::buildIconTexture() {
     if (Fs::doesNativePathExist(localIconPath)) {
         int w = 0, h = 0;
@@ -103,6 +138,8 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             continue; // should have already been handled
         } else if (option.startsWith("AddPath=", true)) {
             container->addPath(option.substr(8));
+        } else if (option.startsWith("JavaArg=", true)) {
+            addJavaArg(app, option.substr(8));
         } else if (option.startsWith("resolution=")) {
             if (app) {
                 app->resolution = option.substr(11);
@@ -328,9 +365,11 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                     std::list< std::function<bool() > > runTasks; // for now, post install cannot run anything
                     std::list<AppDownloadTask> downloadTasks;
                     for (auto& app : items) {
-                        if (app.getCmd() == cmd) {
+                        if (appMatchesShortcutExe(app, cmd)) {
                             app.setName(appName);
-                            app.setArgs(args);
+                            if (args.size()) {
+                                app.setArgs(args);
+                            }
                             runOptions(container, &app, exeOptions, runTasks, downloadTasks);
                             app.saveApp();
                             app.getContainer()->reload();

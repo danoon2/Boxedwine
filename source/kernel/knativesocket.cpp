@@ -1130,6 +1130,8 @@ U32 KNativeSocketObject::accept(KThread* thread, const KFileDescriptorPtr& fd, U
         }
 
         s->nativeSocket = result;
+        s->connected = true;
+        s->error = 0;
 #ifndef BOXEDWINE_MULTI_THREADED
         setNativeBlocking(result, false);
 #endif
@@ -1339,7 +1341,7 @@ U32 KNativeSocketObject::setsockopt(KThread* thread, const KFileDescriptorPtr& f
                     kpanic("KNativeSocketObject::setsockopt SO_REUSEADDR expecting len of 4");
                 }
                 v = memory->readd(value);
-                ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_BROADCAST, (const char*)&v, 4);
+                ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_REUSEADDR, (const char*)&v, 4);
                 break;
             case K_SO_LINGER: // steam installer triggered this
                 if (len != 8) {
