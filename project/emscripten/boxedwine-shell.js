@@ -44,6 +44,8 @@
             Config.appPayload = getPayload("app-payload"); 
             Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
+            Config.ProgramArgs = getProgramArgs();
+            Config.storageMode = getStorageMode();
             Config.isSoundEnabled = getSound();
             Config.audioFreq = getAudioFreq();
             Config.disableHideCursor = getDisableHideCursor();
@@ -231,6 +233,21 @@
             }
             return payload;
         }
+        function getStorageMode() {
+            var storageMode = getParameter("storage");
+            if (!allowParameterOverride()) {
+                storageMode = "";
+            }
+            if (storageMode === "memory") {
+                storageMode = STORAGE_MEMORY;
+            } else if (storageMode === "indexeddb" || storageMode === "indexed_db") {
+                storageMode = STORAGE_INDEXED_DB;
+            } else {
+                storageMode = STORAGE_INDEXED_DB;
+            }
+            console.log("setting storage mode to: " + storageMode);
+            return storageMode;
+        }
         function getSound() {
             var soundEnabled =  getParameter("sound");
             if(!allowParameterOverride()){
@@ -286,10 +303,22 @@
                 }else if(prog.startsWith('%27') && prog.endsWith('%27')){
                     prog = prog.substring(3, prog.length - 3);
                 }
-                prog = prog.split('%20').join(' ');
+                prog = decodeUrlValue(prog);
                 console.log("setting program to execute to: "+prog);
             }
             return prog;
+        }
+        function getProgramArgs() {
+            var args = getParameter("args");
+            if (!allowParameterOverride() || args === "") {
+                return [];
+            }
+            args = decodeUrlValue(args);
+            let result = splitCommandLine(args);
+            if (result.length > 0) {
+                console.log("setting program arguments to: " + result.join(" "));
+            }
+            return result;
         }
         function getAppZipFile(param) {
 
@@ -719,6 +748,9 @@
                     params.push("/c");
                 }
                 params.push(Config.Program);
+                for (let i = 0; i < Config.ProgramArgs.length; i++) {
+                    params.push(Config.ProgramArgs[i]);
+                }
             }else{
 	            params.push("explorer");
     	        params.push("/desktop=shell");
@@ -916,10 +948,10 @@ function getParameter(inputKey) {
         var params = paramStr.split("&");
         for(var x=0;x<params.length;x++){
             var param = params[x];
-            var kv = param.split("=");
-            var key = kv[0];
+            var separator = param.indexOf("=");
+            var key = separator >= 0 ? param.substring(0, separator) : param;
             if(key === inputKey){
-                retVal = kv[1];
+                retVal = separator >= 0 ? param.substring(separator + 1) : "";
                 break;
             }
         }
@@ -929,6 +961,41 @@ function getParameter(inputKey) {
         retVal = retVal.substring(0, hashIndex);
     }
     return retVal;
+}
+function decodeUrlValue(value) {
+    try {
+        return decodeURIComponent(value.replace(/\+/g, " "));
+    } catch (e) {
+        return value.split("%20").join(" ");
+    }
+}
+function splitCommandLine(value) {
+    let result = [];
+    let current = "";
+    let quote = "";
+    for (let i = 0; i < value.length; i++) {
+        let c = value[i];
+        if (quote.length > 0) {
+            if (c === quote) {
+                quote = "";
+            } else {
+                current += c;
+            }
+        } else if (c === '"' || c === "'") {
+            quote = c;
+        } else if (/\s/.test(c)) {
+            if (current.length > 0) {
+                result.push(current);
+                current = "";
+            }
+        } else {
+            current += c;
+        }
+    }
+    if (current.length > 0) {
+        result.push(current);
+    }
+    return result;
 }
 var index = 0;
 var files = [];

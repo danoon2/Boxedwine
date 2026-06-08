@@ -103,10 +103,20 @@ void mainloop() {
     U32 count=0;
     BString mipsTitle;
     while (1) {
-        bool ran = runSlice();
+        bool ran;
+        try {
+            ran = runSlice();
+        } catch (...) {
+            if (!recoverRunSliceException()) {
+                throw;
+            }
+            break;
+        }
 
         KNativeSystem::tick();
+#ifdef BOXEDWINE_MULTI_THREADED
         checkWaitingNativeSockets(0);
+#endif
         if (!KNativeSystem::getCurrentInput()->processEvents()) {
             KNativeSystem::cleanup();
             return;

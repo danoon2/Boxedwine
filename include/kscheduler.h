@@ -30,6 +30,9 @@ void removeTimer(KTimerCallback* timer);
 
 bool runSlice();
 void runThreadSlice(KThread* thread);
+#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
+bool recoverRunSliceException();
+#endif
 void waitForProcessToFinish(const KProcessPtr& process, KThread* thread);
 U32 getMIPS();
 
