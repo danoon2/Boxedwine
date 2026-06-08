@@ -62,6 +62,7 @@ bool FsZip::init(BString zipPath, BString mount) {
     if (zipPath.length()) {
         unz_global_info global_info = {};
 
+        this->zipPath = zipPath;
         this->zipfile = unzOpen(zipPath.c_str());
         if (!this->zipfile) {
             klog_fmt("Could not load zip file: %s", zipPath.c_str());
@@ -88,6 +89,8 @@ bool FsZip::init(BString zipPath, BString mount) {
             }
             zipInfo[i].filename = BString::copy(tmp);
             zipInfo[i].offset = unzGetOffset64(this->zipfile);
+            zipInfo[i].compressedLength = file_info.compressed_size;
+            zipInfo[i].compressionMethod = (U32)file_info.compression_method;
             Fs::remoteNameToLocal(zipInfo[i].filename); // converts special characters like :
 
             if (zipInfo[i].filename.endsWith("/")) {
@@ -106,7 +109,14 @@ bool FsZip::init(BString zipPath, BString mount) {
                 tm.tm_year-=1900;
 
             zipInfo[i].lastModified = ((U64)mktime(&tm))*1000l;
-            
+
+            if (!zipInfo[i].isDirectory && zipInfo[i].compressionMethod == 0) {
+                if (unzOpenCurrentFile(this->zipfile) == UNZ_OK) {
+                    zipInfo[i].dataOffset = unzGetCurrentFileZStreamPos64(this->zipfile);
+                    unzCloseCurrentFile(this->zipfile);
+                }
+            }
+
             unzGoToNextFile(this->zipfile);
         }
         std::vector<BString> deletedLocalPaths;

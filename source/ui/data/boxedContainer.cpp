@@ -215,9 +215,6 @@ void BoxedContainer::launch() {
         Fs::makeNativeDirs(root);
     }
     GlobalSettings::startUpArgs.setRoot(root);
-    if (fs && fs->hasWine()) {
-        ensureWineNetworkDriversRegistered();
-    }
     GlobalSettings::startUpArgs.mountInfo = this->mounts;
     GlobalSettings::startUpArgs.logPath = getLogPath();
 }
@@ -684,46 +681,6 @@ void BoxedContainer::addPath(BString path) {
     BString regValue = makeRegistryExpandString(newPath);
     reg.writeKey(szKeyEnvNT, "PATH", regValue.c_str(), false);
     reg.save();
-}
-
-void BoxedContainer::ensureWineNetworkDriversRegistered() {
-    BoxedReg reg(this, true);
-    BString value;
-    BString ndisImagePath = B("C:\\windows\\system32\\drivers\\ndis.sys");
-    BString nsiProxyImagePath = B("C:\\windows\\system32\\drivers\\nsiproxy.sys");
-    bool updateNdis = !reg.readKey(szKeyNdisService, "ImagePath", value) || !registryExpandStringEquals(value, ndisImagePath);
-    updateNdis = updateNdis || !reg.readKey(szKeyNdisService, "Start", value) || !registryDwordEquals(value, 2);
-    updateNdis = updateNdis || !reg.readKey(szKeyNdisService, "Type", value) || !registryDwordEquals(value, 1);
-
-    if (updateNdis) {
-        reg.writeKey(szKeyNdisService, "DisplayName", "NDIS");
-        reg.writeKeyDword(szKeyNdisService, "ErrorControl", 1);
-        reg.writeKey(szKeyNdisService, "Group", "System Bus Extender");
-        BString imagePath = makeRegistryExpandString(ndisImagePath);
-        reg.writeKey(szKeyNdisService, "ImagePath", imagePath.c_str(), false);
-        reg.writeKeyDword(szKeyNdisService, "Start", 2);
-        reg.writeKeyDword(szKeyNdisService, "Tag", 2);
-        reg.writeKeyDword(szKeyNdisService, "Type", 1);
-    }
-
-    bool updateNsiProxy = !reg.readKey(szKeyNsiProxyService, "ImagePath", value) || !registryExpandStringEquals(value, nsiProxyImagePath);
-    updateNsiProxy = updateNsiProxy || !reg.readKey(szKeyNsiProxyService, "Start", value) || !registryDwordEquals(value, 2);
-    updateNsiProxy = updateNsiProxy || !reg.readKey(szKeyNsiProxyService, "Type", value) || !registryDwordEquals(value, 1);
-
-    if (updateNsiProxy) {
-        reg.writeKey(szKeyNsiProxyService, "DisplayName", "NSI Proxy");
-        reg.writeKeyDword(szKeyNsiProxyService, "ErrorControl", 1);
-        reg.writeKey(szKeyNsiProxyService, "Group", "System Bus Extender");
-        BString imagePath = makeRegistryExpandString(nsiProxyImagePath);
-        reg.writeKey(szKeyNsiProxyService, "ImagePath", imagePath.c_str(), false);
-        reg.writeKeyDword(szKeyNsiProxyService, "Start", 2);
-        reg.writeKeyDword(szKeyNsiProxyService, "Tag", 1);
-        reg.writeKeyDword(szKeyNsiProxyService, "Type", 1);
-    }
-
-    if (updateNdis || updateNsiProxy) {
-        reg.save();
-    }
 }
 
 BString BoxedContainer::getWindowsVersion2() {

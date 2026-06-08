@@ -102,34 +102,34 @@ U32 KNetLinkObject::writev(KThread* thread, U32 iov, S32 iovcnt) {
     U32 len = 0;
     KMemory* memory = thread->memory;
 
+    for (S32 i = 0; i < iovcnt; i++) {
+        U32 toWrite = memory->readd(iov + i * 8 + 4);
+        len += toWrite;
+    }
+    if (!len) {
+        return 0;
+    }
 
+    U32 tmp = thread->process->alloc(thread, len);
+    if (!tmp) {
+        return -K_ENOMEM;
+    }
+    U32 offset = 0;
     for (S32 i = 0; i < iovcnt; i++) {
         U32 buf = memory->readd(iov + i * 8);
         U32 toWrite = memory->readd(iov + i * 8 + 4);
-        S32 result;
-
         if (toWrite) {
-            result = this->write(thread, buf, toWrite);
-            if (result < 0) {
-                if (i > 0) {
-                    return len;
-                }
-                return result;
-            }
-            len += result;
+            memory->memcpy(tmp + offset, buf, toWrite);
+            offset += toWrite;
         }
     }
-    return len;
+    U32 result = sendto(thread, KFileDescriptorPtr(), tmp, len, 0, 0, 0);
+    thread->process->free(tmp);
+    return result;
 }
 
 U32 KNetLinkObject::write(KThread* thread, U32 buffer, U32 len) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(lockCond);
-    thread->memory->performOnMemory(buffer, len, true, [this](U8* ram, U32 len) {
-        this->recvBuffer.insert(this->recvBuffer.end(), ram, ram + len);
-        return true;
-        });
-    BOXEDWINE_CONDITION_SIGNAL_ALL(lockCond);
-    return len;
+    return sendto(thread, KFileDescriptorPtr(), buffer, len, 0, 0, 0);
 }
 
 U32 KNetLinkObject::writeNative(U8* buffer, U32 len) {

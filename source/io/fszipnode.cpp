@@ -41,7 +41,7 @@ bool FsZipNode::moveToFileSystem(std::shared_ptr<FsNode> node) {
 
     FsOpenNode* from = this->open(node, K_O_RDONLY);
     bool result = false;
-    U32 to = ::open(node->nativePath.c_str(), O_WRONLY | O_CREAT | O_BINARY, 0666);
+    U32 to = ::open(node->nativePath.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666);
     if (to != 0xFFFFFFFF) {
         U8 buffer[4096];
         U32 read = from->readNative(buffer, 4096);
@@ -74,7 +74,12 @@ U64 FsZipNode::length() {
 
 FsOpenNode* FsZipNode::open(std::shared_ptr<FsNode> node, U32 flags) {
     std::shared_ptr<FsZipNode> zipNode = shared_from_this();
-    return new FsZipOpenNode(node, zipNode, flags, (U64)this->zipInfo.offset);
+    std::shared_ptr<FsZip> fsZip = this->fsZip.lock();
+    BString zipPath;
+    if (fsZip) {
+        zipPath = fsZip->zipPath;
+    }
+    return new FsZipOpenNode(node, zipNode, flags, (U64)this->zipInfo.offset, this->zipInfo.dataOffset, this->zipInfo.compressionMethod, zipPath);
 }
 
 #endif
