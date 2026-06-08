@@ -59,6 +59,10 @@ SOURCES += $(PROJDIR)/lib/imgui/imgui_draw.cpp
 SOURCES += $(PROJDIR)/lib/imgui/imgui.cpp
 SOURCES += $(PROJDIR)/lib/tiny-process/process.cpp
 SOURCES += $(PROJDIR)/lib/tiny-process/process_unix.cpp
+SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/ioapi.c
+SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/mztools.c
+SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/unzip.c
+SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
 
 SOFT_SOURCES = $(wildcard $(PROJDIR)/lib/softfloat/source/*.c)
 SOFT_SOURCES += $(wildcard $(PROJDIR)/lib/softfloat/source/8086-SSE/*.c)
@@ -79,6 +83,10 @@ TEST_SOURCES += $(wildcard $(PROJDIR)/source/opengl/sdl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/opengl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/vulkan/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/x11/*.cpp)
+TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/ioapi.c
+TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/mztools.c
+TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/unzip.c
+TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
 
 ifeq ($(BUILD_DIR), Build/Test)
 SRCS := $(TEST_SOURCES)
@@ -92,14 +100,14 @@ ALL := $(OBJS)
 ALL += $(SOFT_OBJS)
 DEPS := $(ALL:.o=.d)
 
-$(OBJS): INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/glew/include -I../../lib/imgui -I../../lib/simde -I../../lib/pugixml/src
+$(OBJS): INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/glew/include -I../../lib/imgui -I../../lib/simde -I../../lib/pugixml/src -I../../lib/zlib -I../../lib/zlib/contrib/minizip
 $(SOFT_OBJS): INCLUDES := -I../../lib/softfloat/source/include -I../../lib/softfloat/source -I../../lib/softfloat/source/8086-SSE
 
 SDL_CFLAGS = $(shell sdl2-config --cflags)
 SDL_LIBS = $(shell sdl2-config --libs)
 CPPFLAGS ?= -std=c++20 -O2 $(EXTRA_CPP_FLAGS) $(GCC_EXTRA_FLAGS) -Werror=switch -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS)
 CFLAGS ?= -O2 $(INCLUDES)
-LDFLAGS = -L./linux_build/lib -lcurl -lssl -lcrypto -lpthread -lm -lz -lminizip -lGL -lstdc++ -lstdc++fs $(SDL_LIBS)
+LDFLAGS = -L./linux_build/lib -lcurl -lssl -lcrypto -lpthread -lm -lz -lGL -lstdc++ -lstdc++fs $(SDL_LIBS)
 
 #$(TEST_BUILD_DIR)/boxedwineTest: $(TEST_OBJS)
 #	$(CC) $(TEST_OBJS) -o $@ $(LDFLAGS)

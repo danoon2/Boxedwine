@@ -577,7 +577,6 @@ KNativeSocketObject::KNativeSocketObject(U32 domain, U32 type, U32 protocol) : K
         return;
     }
 #ifdef __EMSCRIPTEN__
-    this->emulated = true;
     this->error = 0;
     return;
 #endif
