@@ -418,6 +418,9 @@ void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount
                 app.name = name;
                 app.path = parentPath;
                 if (isJar) {
+                    if (!isJavaJarLaunchable(filepath.c_str())) {
+                        return 0;
+                    }
                     AppFilePtr javaComponent = GlobalSettings::getJavaComponentForVersion(getRequiredJavaVersionFromJar(filepath.c_str()));
                     app.cmd = getJavaCommandForComponent(javaComponent);
                     app.args.push_back(B("-Dsun.java2d.d3d=false"));

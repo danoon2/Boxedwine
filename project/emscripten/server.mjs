@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 
-const root = resolve(process.cwd());
+const root = resolve(import.meta.dirname);
 const port = Number(process.argv[2] || 8000);
 const host = process.argv[3] || "127.0.0.1";
 
