@@ -579,6 +579,9 @@ protected:
     // Store a GP/scratch RegPtr into a CPU struct field (used to stage
     // mem-helper args — address/value — without touching lazy-flag state).
     void storeMemHelperField(U32 offset, RegPtr reg);
+    void emitInlineFld1();
+    void emitInlineFldSingleReal(DecodedOp* op);
+    void emitInlineFdivSt0Stj(DecodedOp* op);
 
     // Flatten a MemPtr (base + index*scale + disp) into a single 32-bit
     // virtual-address scratch reg. Used by the emulated-memory read/write

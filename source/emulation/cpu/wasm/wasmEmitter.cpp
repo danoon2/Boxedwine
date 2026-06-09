@@ -231,6 +231,14 @@ void WasmEmitter::emitI64Store(U32 offset, U32 align) {
     m_currentBody.push_back(WASM_I64_STORE);
     emitMemArg(m_currentBody, align, offset);
 }
+void WasmEmitter::emitF64Load(U32 offset, U32 align) {
+    m_currentBody.push_back(WASM_F64_LOAD);
+    emitMemArg(m_currentBody, align, offset);
+}
+void WasmEmitter::emitF64Store(U32 offset, U32 align) {
+    m_currentBody.push_back(WASM_F64_STORE);
+    emitMemArg(m_currentBody, align, offset);
+}
 
 void WasmEmitter::emitOp(U8 op) { m_currentBody.push_back(op); }
 

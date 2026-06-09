@@ -81,12 +81,14 @@ enum WasmOp : U8 {
     WASM_LOCAL_TEE      = 0x22,
     WASM_I32_LOAD       = 0x28,
     WASM_I64_LOAD       = 0x29,
+    WASM_F64_LOAD       = 0x2b,
     WASM_I32_LOAD8_S    = 0x2c,
     WASM_I32_LOAD8_U    = 0x2d,
     WASM_I32_LOAD16_S   = 0x2e,
     WASM_I32_LOAD16_U   = 0x2f,
     WASM_I32_STORE      = 0x36,
     WASM_I64_STORE      = 0x37,
+    WASM_F64_STORE      = 0x39,
     WASM_I32_STORE8     = 0x3a,
     WASM_I32_STORE16    = 0x3b,
     WASM_I32_CONST      = 0x41,
@@ -135,9 +137,13 @@ enum WasmOp : U8 {
     WASM_I64_SHL        = 0x86,
     WASM_I64_SHR_S      = 0x87,
     WASM_I64_SHR_U      = 0x88,
+    WASM_F64_DIV        = 0xa3,
     WASM_I32_WRAP_I64   = 0xa7,
     WASM_I64_EXTEND_I32_S = 0xac,
     WASM_I64_EXTEND_I32_U = 0xad,
+    WASM_F64_PROMOTE_F32      = 0xbb,
+    WASM_I64_REINTERPRET_F64  = 0xbd,
+    WASM_F32_REINTERPRET_I32  = 0xbe,
     WASM_I32_EXTEND8_S  = 0xc0,
     WASM_I32_EXTEND16_S = 0xc1,
 };
@@ -197,6 +203,8 @@ public:
     void emitI32Store16(U32 offset);
     void emitI64Load(U32 offset, U32 align = 3);
     void emitI64Store(U32 offset, U32 align = 3);
+    void emitF64Load(U32 offset, U32 align = 3);
+    void emitF64Store(U32 offset, U32 align = 3);
 
     void emitOp(U8 op);   // emit a standalone opcode
     void emitCall(U32 funcIdx);

@@ -4390,7 +4390,156 @@ void JitWasmCodeGen::dynamic_pause(DecodedOp* op) {
     // so WASM can compile it as a no-op and avoid interpreter fallback.
 }
 
+void JitWasmCodeGen::emitInlineFld1() {
+    U32 topLocal = allocScratch();
+
+    // top = (top - 1) & 7; tags[top] = TAG_Valid
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, fpu.top));
+    m_emitter.emitI32Const(1);
+    m_emitter.emitOp(WASM_I32_SUB);
+    m_emitter.emitI32Const(7);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitLocalTee(topLocal);
+    m_emitter.emitI32Store((U32)offsetof(CPU, fpu.top));
+
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(topLocal);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Const(TAG_Valid);
+    m_emitter.emitI32Store8((U32)offsetof(CPU, fpu.tags[0]));
+
+    // store 1.0 as f64 bits into regCache[top]
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(topLocal);
+    m_emitter.emitI32Const(3);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI64Const((S64)0x3ff0000000000000LL);
+    m_emitter.emitI64Store((U32)offsetof(CPU, fpu.regCache[0].l));
+
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(topLocal);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Const(1);
+    m_emitter.emitI32Store8((U32)offsetof(CPU, fpu.isRegCached[0]));
+
+    freeScratch(topLocal);
+}
+
+void JitWasmCodeGen::emitInlineFldSingleReal(DecodedOp* op) {
+    RegPtr value = read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, getTmpReg());
+    U32 topLocal = allocScratch();
+
+    // Read succeeded; now adjust the FPU stack.
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, fpu.top));
+    m_emitter.emitI32Const(1);
+    m_emitter.emitOp(WASM_I32_SUB);
+    m_emitter.emitI32Const(7);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitLocalTee(topLocal);
+    m_emitter.emitI32Store((U32)offsetof(CPU, fpu.top));
+
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(topLocal);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Const(TAG_Valid);
+    m_emitter.emitI32Store8((U32)offsetof(CPU, fpu.tags[0]));
+
+    // Convert f32 bits -> f64 bits and store into regCache[top]
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(topLocal);
+    m_emitter.emitI32Const(3);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_ADD);
+    pushRegValue(value);
+    m_emitter.emitOp(WASM_F32_REINTERPRET_I32);
+    m_emitter.emitOp(WASM_F64_PROMOTE_F32);
+    m_emitter.emitOp(WASM_I64_REINTERPRET_F64);
+    m_emitter.emitI64Store((U32)offsetof(CPU, fpu.regCache[0].l));
+
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(topLocal);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Const(1);
+    m_emitter.emitI32Store8((U32)offsetof(CPU, fpu.isRegCached[0]));
+
+    freeScratch(value->hardwareReg());
+    freeScratch(topLocal);
+}
+
+void JitWasmCodeGen::emitInlineFdivSt0Stj(DecodedOp* op) {
+    U32 topLocal = allocScratch();
+    U32 otherLocal = allocScratch();
+
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, fpu.top));
+    m_emitter.emitLocalTee(topLocal);
+    m_emitter.emitI32Const((S32)op->reg);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Const(7);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitLocalSet(otherLocal);
+
+    // Fast path: both registers are cached as f64 — divide in place
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(topLocal);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Load8U((U32)offsetof(CPU, fpu.isRegCached[0]));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(otherLocal);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Load8U((U32)offsetof(CPU, fpu.isRegCached[0]));
+    m_emitter.emitOp(WASM_I32_AND);
+
+    m_emitter.emitIf();
+    {
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitLocalGet(topLocal);
+        m_emitter.emitI32Const(3);
+        m_emitter.emitOp(WASM_I32_SHL);
+        m_emitter.emitOp(WASM_I32_ADD);
+
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitLocalGet(topLocal);
+        m_emitter.emitI32Const(3);
+        m_emitter.emitOp(WASM_I32_SHL);
+        m_emitter.emitOp(WASM_I32_ADD);
+        m_emitter.emitF64Load((U32)offsetof(CPU, fpu.regCache[0].d));
+
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitLocalGet(otherLocal);
+        m_emitter.emitI32Const(3);
+        m_emitter.emitOp(WASM_I32_SHL);
+        m_emitter.emitOp(WASM_I32_ADD);
+        m_emitter.emitF64Load((U32)offsetof(CPU, fpu.regCache[0].d));
+
+        m_emitter.emitOp(WASM_F64_DIV);
+        m_emitter.emitF64Store((U32)offsetof(CPU, fpu.regCache[0].d));
+    }
+    m_emitter.emitElse();
+    {
+        // Slow path: fall back to the C++ helper
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Const(op->reg);
+        m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(HELPER_FDIV_ST0_STJ);
+    }
+    m_emitter.emitEnd();
+
+    freeScratch(topLocal);
+    freeScratch(otherLocal);
+}
+
 void JitWasmCodeGen::dynamic_FLD_SINGLE_REAL(DecodedOp* op) {
+    if (KSystem::useF64) {
+        emitInlineFldSingleReal(op);
+        return;
+    }
     RegPtr address = calculateEaa(op);
     storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
@@ -4399,6 +4548,10 @@ void JitWasmCodeGen::dynamic_FLD_SINGLE_REAL(DecodedOp* op) {
 
 void JitWasmCodeGen::dynamic_FLD1(DecodedOp* op) {
     (void)op;
+    if (KSystem::useF64) {
+        emitInlineFld1();
+        return;
+    }
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(HELPER_FLD1);
 }
@@ -4426,6 +4579,10 @@ void JitWasmCodeGen::dynamic_FADD_ST0_STj(DecodedOp* op) {
 }
 
 void JitWasmCodeGen::dynamic_FDIV_ST0_STj(DecodedOp* op) {
+    if (KSystem::useF64) {
+        emitInlineFdivSt0Stj(op);
+        return;
+    }
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Const(op->reg);
     m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
