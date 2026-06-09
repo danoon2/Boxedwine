@@ -2566,6 +2566,7 @@ void JitWasmCodeGen::emitBailoutCheck() {
     auto savedSegLoaded = m_segLoaded;
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Load((U32)offsetof(CPU, wasmJitBailout));
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
     m_emitter.emitIf();
     // currentEip is the *current* op's start (postCompile bumps it after
     // compile returns), so add op->len = lastCompiledOpLen to land at the
@@ -2674,6 +2675,7 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
         m_emitter.emitOp(WASM_I32_OR);
     }
 
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
     m_emitter.emitIf();
     {
         // Slow path: existing helper-based load.
@@ -2771,6 +2773,7 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
         m_emitter.emitOp(WASM_I32_OR);
     }
 
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
     m_emitter.emitIf();
     {
         // Slow path: bailout-checking helper. Writes to CodePages, RO
@@ -3329,10 +3332,12 @@ void JitWasmCodeGen::dynamic_div32(DecodedOp* op, RegPtr src) {
 
     // x86 raises #DE for divisor zero or quotient overflow. Fallback to the
     // interpreter for those rare paths so WASM never executes a trapping div.
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
     IfNot(JitWidth::b32, divisor); {
         emulateSingleOp();
         blockExit();
     } StartElse(); {
+        m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
         IfGreaterThanOrEqual(JitWidth::b32, ComparisonType::Unsigned, edx, divisor); {
             emulateSingleOp();
             blockExit();
@@ -3401,6 +3406,7 @@ void JitWasmCodeGen::dynamic_idiv32(DecodedOp* op, RegPtr src) {
     m_emitter.emitOp(WASM_I64_EQ);
     m_emitter.emitOp(WASM_I32_AND);
     m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
     m_emitter.emitIf();
     {
         emulateSingleOp();
@@ -3418,6 +3424,7 @@ void JitWasmCodeGen::dynamic_idiv32(DecodedOp* op, RegPtr src) {
         m_emitter.emitOp(WASM_I32_WRAP_I64);
         m_emitter.emitOp(WASM_I64_EXTEND_I32_S);
         m_emitter.emitOp(WASM_I64_NE);
+        m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
         m_emitter.emitIf();
         {
             emulateSingleOp();
@@ -4388,6 +4395,74 @@ void JitWasmCodeGen::dynamic_pause(DecodedOp* op) {
     (void)op;
     // x86 PAUSE is a spin-loop hint. It has no architecturally visible state,
     // so WASM can compile it as a no-op and avoid interpreter fallback.
+}
+
+void JitWasmCodeGen::dynamic_loopnz(DecodedOp* op) {
+    JitWidth width = op->ea16 ? JitWidth::b16 : JitWidth::b32;
+    RegPtr reg = getTmpReg();
+    {
+        RegPtr cx = getReg(1);
+        decReg(width, cx);
+        mov(width, reg, cx);
+    }
+    IfCondition(JitConditional::Z);
+        movValue(width, reg, 0);
+    EndIf();
+    m_emitter.setNextBranchHint(WasmBranchHint::Likely);
+    If(width, reg);
+        if (canJumpInBlock(op)) {
+            JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
+        } else {
+            blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
+        }
+    EndIf();
+    if (!canJumpInBlock(op)) {
+        blockNext2(currentEip + op->len, op);
+    }
+}
+
+void JitWasmCodeGen::dynamic_loopz(DecodedOp* op) {
+    JitWidth width = op->ea16 ? JitWidth::b16 : JitWidth::b32;
+    RegPtr reg = getTmpReg();
+    {
+        RegPtr cx = getReg(1);
+        decReg(width, cx);
+        mov(width, reg, cx);
+    }
+    IfCondition(JitConditional::NZ);
+        movValue(width, reg, 0);
+    EndIf();
+    m_emitter.setNextBranchHint(WasmBranchHint::Likely);
+    If(width, reg);
+        if (canJumpInBlock(op)) {
+            JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
+        } else {
+            blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
+        }
+    EndIf();
+    if (!canJumpInBlock(op)) {
+        blockNext2(currentEip + op->len, op);
+    }
+}
+
+void JitWasmCodeGen::dynamic_loop(DecodedOp* op) {
+    JitWidth width = op->ea16 ? JitWidth::b16 : JitWidth::b32;
+    decReg(width, getReg(1));
+    m_emitter.setNextBranchHint(WasmBranchHint::Likely);
+    If(width, getReadOnlyReg(1));
+        if (canJumpInBlock(op)) {
+            JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
+        } else {
+            blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
+        }
+    EndIf();
+    if (!canJumpInBlock(op)) {
+        blockNext2(currentEip + op->len, op);
+    }
+}
+
+void JitWasmCodeGen::hintLikelyStringLoopContinue() {
+    m_emitter.setNextBranchHint(WasmBranchHint::Likely);
 }
 
 void JitWasmCodeGen::emitInlineFld1() {

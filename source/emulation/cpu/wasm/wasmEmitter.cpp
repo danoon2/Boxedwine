@@ -120,6 +120,7 @@ U32 WasmEmitter::addFunctionImport(const char* module, const char* field, U32 ty
 U32 WasmEmitter::addFunction(U32 typeIdx) {
     U32 idx = m_numImportedFunctions + (U32)m_localFunctions.size();
     m_localFunctions.push_back(typeIdx);
+    m_lastFunctionIndex = idx;
     return idx;
 }
 
@@ -136,6 +137,8 @@ void WasmEmitter::beginFunction(const std::vector<std::pair<U32, WasmType>>& loc
     m_currentBody.clear();
     m_inFunction = true;
     m_ctrlDepth = 0;
+    m_currentFunctionIndex = m_lastFunctionIndex;
+    clearNextBranchHint();
     // Encode locals declaration
     appendULEB128(m_currentBody, (U64)locals.size());
     for (auto& lp : locals) {
@@ -155,6 +158,7 @@ void WasmEmitter::endFunction() {
     m_codeFuncCount++;
     m_inFunction = false;
     m_currentBody.clear();
+    clearNextBranchHint();
 }
 
 // ---------------------------------------------------------------------------
@@ -252,7 +256,70 @@ void WasmEmitter::emitCallIndirect(U32 typeIdx, U32 tableIdx) {
     appendULEB128(m_currentBody, tableIdx);
 }
 
+void WasmEmitter::setNextBranchHint(WasmBranchHint hint) {
+    m_nextBranchHint = (U8)hint;
+    m_hasNextBranchHint = true;
+}
+
+void WasmEmitter::clearNextBranchHint() {
+    m_hasNextBranchHint = false;
+}
+
+void WasmEmitter::recordBranchHintIfNeeded() {
+    if (!m_hasNextBranchHint) {
+        return;
+    }
+    // Branch-hint offsets are relative to the start of the function body
+    // (after locals). m_currentBody starts there, so the current size is the
+    // exact byte offset the metadata section expects.
+    m_branchHints.push_back({
+        m_currentFunctionIndex,
+        (U32)m_currentBody.size(),
+        m_nextBranchHint,
+    });
+    clearNextBranchHint();
+}
+
+void WasmEmitter::appendBranchHintSection(std::vector<U8>& result) const {
+    if (m_branchHints.empty()) {
+        return;
+    }
+
+    std::vector<U8> content;
+    appendStr(content, "metadata.code.branch_hint");
+
+    U32 functionCount = 0;
+    U32 lastFuncIndex = (U32)-1;
+    for (const BranchHintEntry& hint : m_branchHints) {
+        if (hint.funcIndex != lastFuncIndex) {
+            functionCount++;
+            lastFuncIndex = hint.funcIndex;
+        }
+    }
+
+    appendULEB128(content, functionCount);
+    for (U32 i = 0; i < m_branchHints.size();) {
+        U32 funcIndex = m_branchHints[i].funcIndex;
+        U32 j = i;
+        U32 hintCount = 0;
+        while (j < m_branchHints.size() && m_branchHints[j].funcIndex == funcIndex) {
+            hintCount++;
+            j++;
+        }
+        appendULEB128(content, funcIndex);
+        appendULEB128(content, hintCount);
+        for (; i < j; i++) {
+            appendULEB128(content, m_branchHints[i].offset);
+            appendULEB128(content, 1); // hint payload size
+            appendULEB128(content, m_branchHints[i].likely);
+        }
+    }
+
+    appendSection(result, WasmSection::Custom, content);
+}
+
 void WasmEmitter::emitIf(WasmType blockType) {
+    recordBranchHintIfNeeded();
     m_currentBody.push_back(WASM_IF);
     m_currentBody.push_back((U8)blockType);
     ++m_ctrlDepth;
@@ -281,6 +348,7 @@ void WasmEmitter::emitBr(U32 depth)  {
     appendULEB128(m_currentBody, depth);
 }
 void WasmEmitter::emitBrIf(U32 depth) {
+    recordBranchHintIfNeeded();
     m_currentBody.push_back(WASM_BR_IF);
     appendULEB128(m_currentBody, depth);
 }
@@ -342,6 +410,8 @@ std::vector<U8> WasmEmitter::finalize() {
         expContent.insert(expContent.end(), m_exportSection.begin(), m_exportSection.end());
         appendSection(result, WasmSection::Export, expContent);
     }
+
+    appendBranchHintSection(result);
 
     // Code section
     if (m_codeFuncCount > 0) {

@@ -94,6 +94,7 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     }
     if (doDF1) {
         U32 label = LoopBegin();
+        hintLikelyStringLoopContinue();
         If(regWidth, ecx); {
             write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
             subValue(regWidth, esi, size);
@@ -108,6 +109,7 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     }
     if (doDF0) {
         U32 label = LoopBegin();
+        hintLikelyStringLoopContinue();
         If(regWidth, ecx); {
             write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
             addValue(regWidth, esi, size);
@@ -394,6 +396,7 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
     IfDF(); {
         If(regWidth, getReadOnlyReg(1)); {
             U32 label = LoopBegin();
+            hintLikelyStringLoopContinue();
             If(regWidth, getReadOnlyReg(1)); {
                 read(valueWidth, esi, nullptr, onFailure, dest);
                 read(valueWidth, edi, nullptr, onFailure, src);
@@ -421,6 +424,7 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
     } StartElse(); {
         If(regWidth, getReadOnlyReg(1)); {
             U32 label = LoopBegin();
+            hintLikelyStringLoopContinue();
             If(regWidth, getReadOnlyReg(1)); {
                 read(valueWidth, esi, nullptr, onFailure, dest);
                 read(valueWidth, edi, nullptr, onFailure, src);
@@ -570,6 +574,7 @@ void Jit::stosr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
 
     IfDF(); {
         U32 label = LoopBegin();
+        hintLikelyStringLoopContinue();
         If(regWidth, ecx); {
             write(valueWidth, edi, al, nullptr, onFailure);
             subValue(regWidth, edi, size);
@@ -579,6 +584,7 @@ void Jit::stosr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         LoopEnd();
     } StartElse(); {
         U32 label = LoopBegin();
+        hintLikelyStringLoopContinue();
         If(regWidth, ecx); {
             write(valueWidth, edi, al, nullptr, onFailure);
             addValue(regWidth, edi, size);
@@ -704,6 +710,7 @@ void Jit::lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
 
     IfDF(); {
         U32 label = LoopBegin();
+        hintLikelyStringLoopContinue();
         If(regWidth, ecx); {
             mov(valueWidth, al, read(valueWidth, esi, nullptr, onFailure, getTmpReg8()));
             subValue(regWidth, esi, size);
@@ -713,6 +720,7 @@ void Jit::lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         LoopEnd();
     } StartElse(); {
         U32 label = LoopBegin();
+        hintLikelyStringLoopContinue();
         If(regWidth, ecx); {
             mov(valueWidth, al, read(valueWidth, esi, nullptr, onFailure, getTmpReg8()));
             addValue(regWidth, esi, size);
@@ -854,6 +862,7 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
     IfDF(); {
         If(regWidth, ecx); {
             U32 label = LoopBegin();
+            hintLikelyStringLoopContinue();
             If(regWidth, ecx); {
                 read(valueWidth, edi, nullptr, onFailure, src);
                 subValue(regWidth, edi, size);
@@ -879,6 +888,7 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
     } StartElse(); {
         If(regWidth, ecx); {
             U32 label = LoopBegin();
+            hintLikelyStringLoopContinue();
             If(regWidth, ecx); {
                 read(valueWidth, edi, nullptr, onFailure, src);
                 addValue(regWidth, edi, size);

@@ -42,6 +42,7 @@
 // WASM section IDs
 // ---------------------------------------------------------------------------
 enum class WasmSection : U8 {
+    Custom   = 0x00,
     Type     = 0x01,
     Import   = 0x02,
     Function = 0x03,
@@ -56,6 +57,11 @@ enum class WasmType : U8 {
     I32  = 0x7f,
     I64  = 0x7e,
     Void = 0x40,  // for block result types that return nothing
+};
+
+enum class WasmBranchHint : U8 {
+    Unlikely = 0,
+    Likely   = 1,
 };
 
 // ---------------------------------------------------------------------------
@@ -218,6 +224,10 @@ public:
     void emitBr(U32 depth);
     void emitBrIf(U32 depth);
 
+    // Applies to the next emitted if/br_if only. Hint is consumed and cleared.
+    void setNextBranchHint(WasmBranchHint hint);
+    void clearNextBranchHint();
+
     // Number of currently-open structural blocks (if/block/loop). Used by
     // the JIT codegen to compute the relative depth argument for `br` in
     // LoopBegin/Goto. Counts each emitIf/emitBlock/emitLoop as +1 and
@@ -261,6 +271,21 @@ private:
     std::vector<U8>  m_currentBody;      // being built by begin/endFunction
     bool             m_inFunction = false;
     U32              m_ctrlDepth = 0;    // open structural blocks (if/block/loop)
+
+    struct BranchHintEntry {
+        U32 funcIndex;
+        U32 offset;
+        U8  likely;
+    };
+
+    void recordBranchHintIfNeeded();
+    void appendBranchHintSection(std::vector<U8>& result) const;
+
+    std::vector<BranchHintEntry> m_branchHints;
+    U32  m_lastFunctionIndex = 0;
+    U32  m_currentFunctionIndex = 0;
+    U8   m_nextBranchHint = 0;
+    bool m_hasNextBranchHint = false;
 };
 
 #endif // BOXEDWINE_WASM_JIT

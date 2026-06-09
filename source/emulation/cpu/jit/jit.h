@@ -295,6 +295,7 @@ public:
     // also needs to inline.
     virtual U32 LoopBegin() { return MarkJumpLocation(); }
     virtual void LoopEnd() {}
+    virtual void hintLikelyStringLoopContinue() {}
     virtual void IfDF() = 0;
     virtual void IfSmallStack() = 0;
 

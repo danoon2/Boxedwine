@@ -369,6 +369,10 @@ public:
                                     const std::vector<DynParam>& params) override;
     void emulateSingleOp() override;
     void dynamic_pause(DecodedOp* op) override;
+    void dynamic_loop(DecodedOp* op) override;
+    void dynamic_loopz(DecodedOp* op) override;
+    void dynamic_loopnz(DecodedOp* op) override;
+    void hintLikelyStringLoopContinue() override;
     void dynamic_FLD_SINGLE_REAL(DecodedOp* op) override;
     void dynamic_FLD1(DecodedOp* op) override;
     void dynamic_FLD_DOUBLE_REAL(DecodedOp* op) override;
