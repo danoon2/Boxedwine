@@ -101,22 +101,34 @@ $(OBJS): INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/simde
 $(SOFT_OBJS): INCLUDES := -I../../lib/softfloat/source/include -I../../lib/softfloat/source -I../../lib/softfloat/source/8086-SSE
 
 CXXFLAGS ?= -std=c++20
-
-CPPFLAGS ?= -O3 -s USE_SDL=2 -s USE_ZLIB=1 -DBOXEDWINE_ZLIB -DSDL2=1 -DBOXEDWINE_DISABLE_UI -DBOXEDWINE_OPENGL_SDL -D'GLH=<GL/gl.h>' -DSIMDE_SSE2_NO_NATIVE $(GCC_EXTRA_FLAGS) -Wall -Wno-deprecated-pragma -Wno-format-security -Wno-unused-private-field -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable -mtail-call $(INCLUDES) $(EXTRA_CPP_FLAGS)
+TAIL_CALL_FLAG ?= -mtail-call
+COMPILE_EXCEPTION_FLAG ?= -fexceptions
+LINK_EXCEPTION_FLAG ?= -fexceptions
+LONGJMP_FLAG ?= -sSUPPORT_LONGJMP=emscripten
+EXCEPTION_CATCHING_ALLOWED ?= ["_Z8mainloopv","_ZN3CPU15runNextSingleOpEv","_ZL14platformThreadP3CPU"]
+EXCEPTION_CATCHING_FLAG ?= -sEXCEPTION_CATCHING_ALLOWED='$(EXCEPTION_CATCHING_ALLOWED)'
+CPPFLAGS ?= -O3 $(TAIL_CALL_FLAG) $(COMPILE_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s USE_SDL=2 -s USE_ZLIB=1 -DBOXEDWINE_ZLIB -DSDL2=1 -DBOXEDWINE_DISABLE_UI -DBOXEDWINE_OPENGL_SDL -D'GLH=<GL/gl.h>' -DSIMDE_SSE2_NO_NATIVE $(GCC_EXTRA_FLAGS) -Wall -Wno-deprecated-pragma -Wno-format-security -Wno-unused-private-field -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) $(EXTRA_CPP_FLAGS)
 
 SHELL_LDFLAGS := $(if $(filter %.html,$(TARGET_EXEC)),--shell-file $(SHELL_FILE),)
-LDFLAGS = -s FORCE_FILESYSTEM -lidbfs.js -s USE_SDL=2 -s USE_ZLIB=1 -sFULL_ES3 -s STACK_SIZE=1048576 -fwasm-exceptions -s INITIAL_MEMORY=536870912 $(SHELL_LDFLAGS) -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency","ERRNO_CODES","ccall","FS"]' -mtail-call $(EXTRA_LD_FLAGS)
+LDFLAGS = $(TAIL_CALL_FLAG) -s FORCE_FILESYSTEM -lidbfs.js -s USE_SDL=2 -s USE_ZLIB=1 -sFULL_ES3 -s STACK_SIZE=1048576 $(LINK_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s INITIAL_MEMORY=536870912 $(SHELL_LDFLAGS) -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency","ERRNO_CODES","ccall","FS"]' $(EXTRA_LD_FLAGS)
+
+ASSET_OUTPUTS := $(addprefix $(BUILD_DIR)/,$(ASSET_FILES))
+
+.PHONY: all copy-assets
+
+all: $(BUILD_DIR)/$(TARGET_EXEC) copy-assets
+
+copy-assets: $(ASSET_OUTPUTS)
+
+$(ASSET_OUTPUTS): $(BUILD_DIR)/%: %
+	@$(MKDIR_P) $(dir $@)
+	@cp "$<" "$@"
 
 #$(TEST_BUILD_DIR)/boxedwineTest: $(TEST_OBJS)
 #	$(CC) $(TEST_OBJS) -o $@ $(LDFLAGS)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(ALL)
 	@$(CC) $(ALL) -o $@ $(LDFLAGS)
-ifneq ($(strip $(ASSET_FILES)),)
-	@for asset in $(ASSET_FILES); do \
-		if [ -e "$$asset" ]; then cp "$$asset" "$(BUILD_DIR)/"; fi; \
-	done
-endif
 
 # assembly
 $(BUILD_DIR)/%.s.o: %.s

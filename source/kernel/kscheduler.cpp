@@ -138,6 +138,8 @@ int count;
 extern struct Block emptyBlock;
 
 #ifdef __EMSCRIPTEN__
+static KThread* runSliceExceptionThread;
+
 static S32 decreaseContextTime(S32 value) {
     if (value <= MIN_CONTEXT_TIME + CONTEXT_TIME_STEP) {
         return MIN_CONTEXT_TIME;
@@ -151,6 +153,15 @@ static S32 increaseContextTime(S32 value) {
     }
     return value + CONTEXT_TIME_STEP;
 }
+
+bool recoverRunSliceException() {
+    if (!runSliceExceptionThread) {
+        return false;
+    }
+    runSliceExceptionThread->cpu->nextOp = nullptr;
+    runSliceExceptionThread = nullptr;
+    return true;
+}
 #endif
 
 void runThreadSlice(KThread* thread) {
@@ -160,6 +171,11 @@ void runThreadSlice(KThread* thread) {
     cpu->blockInstructionCount = 0;
     cpu->yield = false;
     cpu->nextOp = cpu->getNextOp(); // another thread that just ran could have modified this
+#ifdef __EMSCRIPTEN__
+    do {
+        cpu->run();
+    } while ((int)cpu->blockInstructionCount < contextTimeRemaining && !cpu->yield);
+#else
     try {
         do {
             cpu->run();
@@ -167,6 +183,7 @@ void runThreadSlice(KThread* thread) {
     } catch (...) {
         cpu->nextOp = nullptr;
     }
+#endif
 
     cpu->instructionCount+=cpu->blockInstructionCount;
 }
@@ -208,12 +225,18 @@ bool runSlice() {
         KListNode<KThread*>* node = scheduledThreads.front();
         KThread* currentThread = (KThread*)node->data;
         KNativeSystem::scheduledNewThread(currentThread);
-        sysCallTime = 0;    
+        sysCallTime = 0;
 
+#ifdef __EMSCRIPTEN__
+        runSliceExceptionThread = currentThread;
+#endif
         ChangeThread c(currentThread);
         static U64 rdtsc;
         currentThread->cpu->instructionCount = rdtsc;
         runThreadSlice(currentThread);
+#ifdef __EMSCRIPTEN__
+        runSliceExceptionThread = nullptr;
+#endif
         rdtsc = currentThread->cpu->instructionCount;
 
         U64 threadEndTime = KSystem::getMicroCounter();

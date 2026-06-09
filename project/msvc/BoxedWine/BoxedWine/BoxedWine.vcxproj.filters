@@ -439,6 +439,9 @@
     <ClCompile Include="..\..\..\..\source\ui\data\globalSettings.cpp">
       <Filter>source\ui\data</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\javaJarInfo.cpp">
+      <Filter>source\ui\data</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\data\configFile.cpp">
       <Filter>source\ui\data</Filter>
     </ClCompile>
@@ -1651,6 +1654,9 @@
       <Filter>source\ui\data</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\data\globalSettings.h">
+      <Filter>source\ui\data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\data\javaJarInfo.h">
       <Filter>source\ui\data</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\data\configFile.h">

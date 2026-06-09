@@ -24,12 +24,17 @@
 #include "fszipnode.h"
 #include "fszip.h"
 
+#include <fcntl.h>
+#include UNISTD
 
-FsZipOpenNode::FsZipOpenNode(std::shared_ptr<FsNode> node, std::shared_ptr<FsZipNode>& zipNode, U32 flags, U64 offset) : FsOpenNode(node, flags), zipNode(zipNode), pos(0), offset(offset) {
+FsZipOpenNode::FsZipOpenNode(std::shared_ptr<FsNode> node, std::shared_ptr<FsZipNode>& zipNode, U32 flags, U64 offset, U64 dataOffset, U32 compressionMethod, BString zipPath) : FsOpenNode(node, flags), zipNode(zipNode), pos(0), offset(offset), dataOffset(dataOffset), compressionMethod(compressionMethod) {
+    if (compressionMethod == 0 && dataOffset && zipPath.length()) {
+        directHandle = ::open(zipPath.c_str(), O_RDONLY | O_BINARY);
+    }
 }
 
 S64 FsZipOpenNode::length() {
-    return this->node->length();
+    return this->zipNode->length();
 }
 
 bool FsZipOpenNode::setLength(S64 len) {
@@ -43,14 +48,18 @@ S64 FsZipOpenNode::getFilePointer() {
 }
 
 S64 FsZipOpenNode::seek(S64 pos) {
-    if (pos>(S64)this->node->length())
-        this->pos = this->node->length();
+    if (pos>(S64)this->length())
+        this->pos = this->length();
     else
         this->pos = pos;
     return this->pos;
 }
 
 void FsZipOpenNode::close() {
+    if (directHandle != 0xFFFFFFFF) {
+        ::close(directHandle);
+        directHandle = 0xFFFFFFFF;
+    }
 }
 
 bool FsZipOpenNode::isOpen() {
@@ -91,6 +100,29 @@ bool FsZipOpenNode::canMap() {
 }
 
 U32 FsZipOpenNode::readNative(U8* buffer, U32 len) {
+    if (directHandle != 0xFFFFFFFF) {
+        if (this->pos >= this->length()) {
+            return 0;
+        }
+        U64 available = this->length() - (U64)this->pos;
+        if (len > available) {
+            len = (U32)available;
+        }
+        if (!len) {
+            return 0;
+        }
+        if (lseek64(directHandle, dataOffset + this->pos, SEEK_SET) < 0) {
+            return 0;
+        }
+        S32 read = (S32)::read(directHandle, buffer, len);
+        if (read <= 0) {
+            return 0;
+        }
+        U32 result = (U32)read;
+        this->pos += result;
+        return result;
+    }
+
     U32 result = 0;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(*getReadMutex());
     std::shared_ptr<FsZip> fsZip = zipNode->fsZip;

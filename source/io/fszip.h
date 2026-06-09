@@ -39,8 +39,11 @@ public:
     bool isLink = false;
     bool isDirectory = false;
     U64 length = 0;
+    U64 compressedLength = 0;
     U64 lastModified = 0;
     U64 offset = 0;
+    U64 dataOffset = 0;
+    U32 compressionMethod = 0;
 };
 
 class FsZip : public std::enable_shared_from_this<FsZip> {
@@ -49,6 +52,7 @@ public:
     ~FsZip();
     bool init(BString zipPath, BString mount);
     unzFile zipfile = nullptr;
+    BString zipPath;
 
     U64 lastZipOffset = 0xFFFFFFFFFFFFFFFFl;
     U64 lastZipFileOffset = 0;

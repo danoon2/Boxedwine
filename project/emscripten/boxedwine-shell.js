@@ -319,7 +319,7 @@
             Config.appPayload = getPayload("app-payload"); 
             Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
-            Config.ProgramArgs = getExecutableArgs();
+            Config.ProgramArgs = getProgramArgs();
             Config.isSoundEnabled = getSound();
             Config.audioFreq = getAudioFreq();
             Config.disableHideCursor = getDisableHideCursor();
@@ -582,27 +582,20 @@
                 }else if(prog.startsWith('%27') && prog.endsWith('%27')){
                     prog = prog.substring(3, prog.length - 3);
                 }
-                prog = prog.split('%20').join(' ');
+                prog = decodeUrlValue(prog);
                 console.log("setting program to execute to: "+prog);
             }
             return prog;
         }
-        function getExecutableArgs() {
+        function getProgramArgs() {
             var args = getParameter("args");
-            if(!allowParameterOverride() || args===""){
+            if (!allowParameterOverride() || args === "") {
                 return [];
             }
-            if(args.startsWith("%22") && args.endsWith("%22")){
-                args = args.substring(3, args.length - 3);
-            }else if(args.startsWith('%27') && args.endsWith('%27')){
-                args = args.substring(3, args.length - 3);
-            }
-            args = args.split('%20').join(' ');
-            var result = args.split(";").filter(function(arg) {
-                return arg.length > 0;
-            });
-            if(result.length > 0) {
-                console.log("setting program args to: " + result);
+            args = decodeUrlValue(args);
+            let result = splitCommandLine(args);
+            if (result.length > 0) {
+                console.log("setting program arguments to: " + result.join(" "));
             }
             return result;
         }
@@ -1386,10 +1379,10 @@ function getParameter(inputKey) {
         var params = paramStr.split("&");
         for(var x=0;x<params.length;x++){
             var param = params[x];
-            var kv = param.split("=");
-            var key = kv[0];
+            var separator = param.indexOf("=");
+            var key = separator >= 0 ? param.substring(0, separator) : param;
             if(key === inputKey){
-                retVal = kv[1];
+                retVal = separator >= 0 ? param.substring(separator + 1) : "";
                 break;
             }
         }
@@ -1399,6 +1392,41 @@ function getParameter(inputKey) {
         retVal = retVal.substring(0, hashIndex);
     }
     return retVal;
+}
+function decodeUrlValue(value) {
+    try {
+        return decodeURIComponent(value.replace(/\+/g, " "));
+    } catch (e) {
+        return value.split("%20").join(" ");
+    }
+}
+function splitCommandLine(value) {
+    let result = [];
+    let current = "";
+    let quote = "";
+    for (let i = 0; i < value.length; i++) {
+        let c = value[i];
+        if (quote.length > 0) {
+            if (c === quote) {
+                quote = "";
+            } else {
+                current += c;
+            }
+        } else if (c === '"' || c === "'") {
+            quote = c;
+        } else if (/\s/.test(c)) {
+            if (current.length > 0) {
+                result.push(current);
+                current = "";
+            }
+        } else {
+            current += c;
+        }
+    }
+    if (current.length > 0) {
+        result.push(current);
+    }
+    return result;
 }
 var index = 0;
 var files = [];

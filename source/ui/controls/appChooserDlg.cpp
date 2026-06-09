@@ -32,21 +32,8 @@ void AppChooserDlg::drawItems(std::vector<BoxedApp>& apps, int startingIndex) {
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::PushID(i+startingIndex);
         if (ImGui::Selectable("", false, 0, ImVec2(ImGui::GetColumnWidth(), ImGui::GetTextLineHeight() + ImGui::GetStyle().ItemSpacing.y))) {
-            if (this->saveApp) {
-                apps[i].saveApp();
-                apps[i].getContainer()->reload();
-                GlobalSettings::reloadApps();
-            }
             std::function<void(BoxedApp)> onSelected = this->onSelected;
-            BoxedApp app = apps[i];
-
-            runOnMainUI([app, onSelected]() {
-                // don't hold on to this, it will be deleted before this runs
-                if (onSelected) {
-                    onSelected(app);
-                }
-                return false;
-                });
+            selectApp(apps[i], onSelected, this->saveApp);
             this->done();
         }
         ImGui::PopID();
@@ -60,7 +47,97 @@ void AppChooserDlg::drawItems(std::vector<BoxedApp>& apps, int startingIndex) {
         }
         SAFE_IMGUI_TEXT(apps[i].getName().c_str());
         ImGui::NextColumn();
-    }    
+    }
+}
+
+bool AppChooserDlg::saveAndSelectApp(BoxedApp app, std::function<void(BoxedApp app)> onSelected) {
+    if (!app.saveApp()) {
+        BString label = B("Failed to save shortcut ");
+        label += app.getName();
+        label += B(".");
+        new OkDlg(Msg::GENERIC_DLG_ERROR_TITLE, label, nullptr, 500, 200);
+        return false;
+    }
+    app.getContainer()->reload();
+    GlobalSettings::reloadApps();
+
+    runOnMainUI([app, onSelected]() {
+        if (onSelected) {
+            onSelected(app);
+        }
+        return false;
+        });
+    return true;
+}
+
+void AppChooserDlg::selectApp(BoxedApp app, std::function<void(BoxedApp app)> onSelected, bool saveApp) {
+    if (!saveApp) {
+        runOnMainUI([app, onSelected]() {
+            if (onSelected) {
+                onSelected(app);
+            }
+            return false;
+            });
+        return;
+    }
+
+    BString requiredComponent = app.getRequiredComponentOptionsName();
+    BoxedContainer* container = app.getContainer();
+
+    if (container && requiredComponent.length() && !container->isComponentInstalled(requiredComponent)) {
+        AppFilePtr component = GlobalSettings::getComponentByOptionName(requiredComponent);
+        if (component) {
+            std::function<bool()> saveShortcut = [app, onSelected]() {
+                return saveAndSelectApp(app, onSelected);
+                };
+            std::function<void()> installComponent = [component, container]() {
+                component->install(false, container);
+                };
+
+            if (Fs::doesNativePathExist(component->localFilePath)) {
+                if (!saveShortcut()) {
+                    return;
+                }
+                BString label = component->name;
+                label += B(" is required to run ");
+                label += app.getName();
+                label += B(". Install it in this container now?");
+                runOnMainUI([label, installComponent]() {
+                    new YesNoDlg(Msg::GENERIC_DLG_CONFIRM_TITLE, label, [installComponent](bool yes) {
+                        if (yes) {
+                            installComponent();
+                        }
+                        });
+                    return false;
+                    });
+            } else {
+                if (!saveShortcut()) {
+                    return;
+                }
+                BString label = component->name;
+                label += B(" is required to run ");
+                label += app.getName();
+                label += B(". Download and install ");
+                label += BString::valueOf(component->size);
+                label += B(" MB now?");
+                runOnMainUI([label, component, installComponent]() {
+                    new YesNoDlg(Msg::GENERIC_DLG_CONFIRM_TITLE, label, [component, installComponent](bool yes) {
+                        if (yes) {
+                            GlobalSettings::downloadFile(component->filePath, component->localFilePath, component->name, component->size, [installComponent](bool success) {
+                                if (success) {
+                                    installComponent();
+                                }
+                                });
+                        }
+                        });
+                    return false;
+                    });
+            }
+            return;
+        }
+    }
+
+    saveAndSelectApp(app, onSelected);
 }
 
 void AppChooserDlg::run() {

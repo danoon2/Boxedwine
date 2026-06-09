@@ -108,6 +108,7 @@ void StartUpArgs::buildVirtualFileSystem() {
     std::shared_ptr<FsNode> inputNode = Fs::addFileNode(B("/dev/input"), B(""), B(""), true, devNode);
     KSystem::procNode = Fs::addFileNode(B("/proc"), B(""), B(""), true, rootNode);
     std::shared_ptr<FsNode> procSysNode = Fs::addFileNode(B("/proc/sys"), B(""), B(""), true, KSystem::procNode);
+    std::shared_ptr<FsNode> procNetNode = Fs::addFileNode(B("/proc/net"), B(""), B(""), true, KSystem::procNode);
     std::shared_ptr<FsNode> procSysKernelNode = Fs::addFileNode(B("/proc/sys/kernel"), B(""), B(""), true, procSysNode);
     Fs::addVirtualFile(B("/proc/sys/kernel/ngroups_max"), [](const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
         return new BufferAccess(node, flags, B("65536"));
@@ -115,6 +116,7 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::addVirtualFile(B("/proc/filesystems"), [](const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
         return new BufferAccess(node, flags, B("nodev\tsysfs\nnodev\trootfs\nnodev\tbdev\nnodev\tproc\nnodev\tcpuset\nnodev\tcgroup\nnodev\tcgroup2\nnodev\ttmpfs\nnodev\tdevtmpfs\nnodev\tdebugfs\nnodev\ttracefs\nnodev\tsecurityfs\nnodev\tsockfs\nnodev\tdax\nnodev\tbpf\nnodev\tpipefs\nnodev\thugetlbfs\nnodev\tdevpts\nodev\tmqueue\nnodev\tpstore\next3\next2\next4\nnodev\tautofs\nfuseblk\nnodev\tfuse\nnodev\tfusectl\n"));
         }, K__S_IREAD, k_mdev(0, 0), KSystem::procNode);
+    Fs::addVirtualFile(B("/proc/net/dev"), openProcNetDev, K__S_IREAD, k_mdev(0, 0), procNetNode);
 
     std::shared_ptr<FsNode> etcNode = Fs::getNodeFromLocalPath(B(""), B("/etc"), true);
     createSysfs(rootNode);    

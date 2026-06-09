@@ -23,6 +23,7 @@
 #include "syscpumaxfreq.h"
 #include "syscpuscalingcurfreq.h"
 #include "syscpuscalingmaxfreq.h"
+#include "knativesocket.h"
 
 std::shared_ptr<FsNode> createSysBus(const std::shared_ptr<FsNode> sysNode);
 std::shared_ptr<FsNode> createSysDevices(const std::shared_ptr<FsNode> sysNode);
@@ -30,6 +31,63 @@ std::shared_ptr<FsNode> createSysDev(const std::shared_ptr<FsNode> sysNode);
 void sysAddFrameBuffer(const std::shared_ptr<FsNode>& sysNode, const std::shared_ptr<FsNode>& devicesNode);
 
 void sysAddMouse(const std::shared_ptr<FsNode>& busNode, const std::shared_ptr<FsNode>& devicesNode);
+
+static BString sysfsValue(const BString& value) {
+    return value + B("\n");
+}
+
+static BString sysfsHexValue(U32 value) {
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "0x%x\n", value);
+    return BString::copy(buffer);
+}
+
+static BString sysfsMacAddress(const KEmulatedNetworkInterface& iface) {
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "%02x:%02x:%02x:%02x:%02x:%02x\n",
+        iface.mac[0], iface.mac[1], iface.mac[2], iface.mac[3], iface.mac[4], iface.mac[5]);
+    return BString::copy(buffer);
+}
+
+static BString sysfsNetUevent(const KEmulatedNetworkInterface& iface) {
+    return B("INTERFACE=") + iface.name + B("\nIFINDEX=") + BString::valueOf(iface.index) + B("\n");
+}
+
+static void addSysfsNetworkInterface(const std::shared_ptr<FsNode>& netNode, const KEmulatedNetworkInterface& iface) {
+    BString name = BString::copy(iface.name);
+    BString ifacePath = B("/sys/class/net/") + name;
+    std::shared_ptr<FsNode> ifaceNode = Fs::addFileNode(ifacePath, B(""), B(""), true, netNode);
+
+    Fs::addVirtualFile(ifacePath + B("/address"), K__S_IREAD, k_mdev(0, 0), ifaceNode, sysfsMacAddress(iface));
+    Fs::addVirtualFile(ifacePath + B("/broadcast"), K__S_IREAD, k_mdev(0, 0), ifaceNode, sysfsValue(B("ff:ff:ff:ff:ff:ff")));
+    Fs::addVirtualFile(ifacePath + B("/carrier"), K__S_IREAD, k_mdev(0, 0), ifaceNode, sysfsValue(B("1")));
+    Fs::addVirtualFile(ifacePath + B("/dormant"), K__S_IREAD, k_mdev(0, 0), ifaceNode, sysfsValue(B("0")));
+    Fs::addVirtualFile(ifacePath + B("/flags"), K__S_IREAD, k_mdev(0, 0), ifaceNode, sysfsHexValue(iface.flags));
+    Fs::addVirtualFile(ifacePath + B("/ifindex"), K__S_IREAD, k_mdev(0, 0), ifaceNode, sysfsValue(BString::valueOf(iface.index)));
+    Fs::addVirtualFile(ifacePath + B("/iflink"), K__S_IREAD, k_mdev(0, 0), ifaceNode, sysfsValue(BString::valueOf(iface.index)));
+    Fs::addVirtualFile(ifacePath + B("/mtu"), K__S_IREAD, k_mdev(0, 0), ifaceNode, sysfsValue(BString::valueOf(iface.mtu)));
+    Fs::addVirtualFile(ifacePath + B("/operstate"), K__S_IREAD, k_mdev(0, 0), ifaceNode, sysfsValue(B("up")));
+    Fs::addVirtualFile(ifacePath + B("/tx_queue_len"), K__S_IREAD, k_mdev(0, 0), ifaceNode, sysfsValue(B("1000")));
+    Fs::addVirtualFile(ifacePath + B("/type"), K__S_IREAD, k_mdev(0, 0), ifaceNode, sysfsValue(BString::valueOf(iface.hardwareType)));
+    Fs::addVirtualFile(ifacePath + B("/uevent"), K__S_IREAD, k_mdev(0, 0), ifaceNode, sysfsNetUevent(iface));
+}
+
+static void sysAddNetworkClass(const std::shared_ptr<FsNode>& sysNode) {
+    std::shared_ptr<FsNode> classNode = Fs::getNodeFromLocalPath(B(""), B("/sys/class"), true);
+    if (!classNode) {
+        classNode = Fs::addFileNode(B("/sys/class"), B(""), B(""), true, sysNode);
+    }
+
+    std::shared_ptr<FsNode> netNode = Fs::getNodeFromLocalPath(B(""), B("/sys/class/net"), true);
+    if (!netNode) {
+        netNode = Fs::addFileNode(B("/sys/class/net"), B(""), B(""), true, classNode);
+    }
+
+    const std::vector<KEmulatedNetworkInterface>& interfaces = getEmulatedNetworkInterfaces();
+    for (U32 i = 0; i < interfaces.size(); ++i) {
+        addSysfsNetworkInterface(netNode, interfaces[i]);
+    }
+}
 
 void createSysfs(const std::shared_ptr<FsNode> rootNode) {
     std::shared_ptr<FsNode> sysNode = Fs::getNodeFromLocalPath(B(""), B("/sys"), true);
@@ -44,6 +102,7 @@ void createSysfs(const std::shared_ptr<FsNode> rootNode) {
 
     sysAddMouse(busNode, devicesNode);
     sysAddFrameBuffer(sysNode, devicesNode);
+    sysAddNetworkClass(sysNode);
 
     std::shared_ptr<FsNode> devicesSystemNode = Fs::addFileNode(B("/sys/devices/system"), B(""), B(""), true, devicesNode);
     std::shared_ptr<FsNode> cpuNode = Fs::addFileNode(B("/sys/devices/system/cpu"), B(""), B(""), true, devicesSystemNode);

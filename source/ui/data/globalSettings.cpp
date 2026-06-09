@@ -563,10 +563,11 @@ void GlobalSettings::loadFileLists() {
             BString help = BString::copy(component.child("Help").text().as_string());
             BString options = BString::copy(component.child("Options").text().as_string());
             BString installOptions = BString::copy(component.child("InstallOptions").text().as_string());
+            int javaVersion = component.child("JavaVersion").text().as_int();
             std::vector<BString> args;
 
             if (childName.length() && file.length()) {
-                GlobalSettings::components.push_back(std::make_shared<AppFile>(childName, installType, icon, file, fileSize, exe, options, help, optionsName, installOptions, B(""), args));
+                GlobalSettings::components.push_back(std::make_shared<AppFile>(childName, installType, icon, file, fileSize, exe, options, help, optionsName, installOptions, B(""), args, javaVersion));
             } else {
                 break;
             }
@@ -591,6 +592,22 @@ AppFilePtr GlobalSettings::getComponentByOptionName(BString name) {
         }
     }
     return nullptr;
+}
+
+AppFilePtr GlobalSettings::getJavaComponentForVersion(int javaVersion) {
+    AppFilePtr result = nullptr;
+    for (auto& app : GlobalSettings::components) {
+        if (app->javaVersion <= 0) {
+            continue;
+        }
+        if (javaVersion > 0 && app->javaVersion < javaVersion) {
+            continue;
+        }
+        if (!result || app->javaVersion < result->javaVersion) {
+            result = app;
+        }
+    }
+    return result;
 }
 
 bool GlobalSettings::checkFileListForUpdate() {

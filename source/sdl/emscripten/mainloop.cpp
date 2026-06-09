@@ -19,6 +19,7 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include "boxedwine.h"
+#include "knativesocket.h"
 #include "knativesystem.h"
 
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -102,9 +103,20 @@ void mainloop() {
     U32 count=0;
     BString mipsTitle;
     while (1) {
-        bool ran = runSlice();
+        bool ran;
+        try {
+            ran = runSlice();
+        } catch (...) {
+            if (!recoverRunSliceException()) {
+                throw;
+            }
+            break;
+        }
 
         KNativeSystem::tick();
+#ifdef BOXEDWINE_MULTI_THREADED
+        checkWaitingNativeSockets(0);
+#endif
         if (!KNativeSystem::getCurrentInput()->processEvents()) {
             KNativeSystem::cleanup();
             return;
@@ -112,10 +124,10 @@ void mainloop() {
         t = KSystem::getMilliesSinceStart();                
         if (lastTitleUpdate+1000 < t) {
             lastTitleUpdate = t;
-	    mipsTitle = B("BoxedWine ");
-	    mipsTitle.append(getMIPS());
-	    mipsTitle.append(" MIPS");
-	    emscripten_set_window_title(mipsTitle.c_str());           
+	        mipsTitle = B("BoxedWine ");
+	        mipsTitle.append(getMIPS());
+	        mipsTitle.append(" MIPS");
+	        emscripten_set_window_title(mipsTitle.c_str());           
         }
         if (!ran) {
             break;
