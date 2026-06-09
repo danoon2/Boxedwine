@@ -87,6 +87,34 @@ void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* t
 
 static U32 lastTitleUpdate = 0;
 
+static constexpr U32 MIPS_WINDOW = 20;
+static U32 mipsSamples[MIPS_WINDOW] = {};
+static U32 mipsSampleIndex = 0;
+static U32 mipsSampleCount = 0;
+static U32 mipsLogCount = 0;
+static U64 mipsWarmTotal = 0;
+static U32 mipsWarmCount = 0;
+
+static U32 recordMipsSample(U32 mips, U32* minOut, U32* maxOut) {
+    mipsSamples[mipsSampleIndex] = mips;
+    mipsSampleIndex = (mipsSampleIndex + 1) % MIPS_WINDOW;
+    if (mipsSampleCount < MIPS_WINDOW) {
+        mipsSampleCount++;
+    }
+    U64 total = 0;
+    U32 minVal = 0xffffffffu;
+    U32 maxVal = 0;
+    for (U32 i = 0; i < mipsSampleCount; ++i) {
+        U32 s = mipsSamples[i];
+        total += s;
+        if (s < minVal) minVal = s;
+        if (s > maxVal) maxVal = s;
+    }
+    if (minOut) *minOut = minVal;
+    if (maxOut) *maxOut = maxVal;
+    return mipsSampleCount ? (U32)((total + mipsSampleCount / 2) / mipsSampleCount) : mips;
+}
+
 bool isMainthread() {
     return true;
 }
@@ -107,10 +135,21 @@ void mainloop() {
         t = KSystem::getMilliesSinceStart();                
         if (lastTitleUpdate+1000 < t) {
             lastTitleUpdate = t;
+            U32 mipsRaw = getMIPS();
+            U32 mipsMin = 0, mipsMax = 0;
+            U32 mipsAvg = recordMipsSample(mipsRaw, &mipsMin, &mipsMax);
+            mipsLogCount++;
+            if (mipsLogCount >= MIPS_WINDOW) {
+                mipsWarmTotal += mipsRaw;
+                mipsWarmCount++;
+            }
+            U32 mipsWarmAvg = mipsWarmCount ? (U32)((mipsWarmTotal + mipsWarmCount / 2) / mipsWarmCount) : mipsAvg;
+            klog_fmt("[MIPS] count=%u raw=%u avg=%u min=%u max=%u warmAvg=%u warmSamples=%u",
+                mipsLogCount, mipsRaw, mipsAvg, mipsMin, mipsMax, mipsWarmAvg, mipsWarmCount);
 	    mipsTitle = B("BoxedWine ");
-	    mipsTitle.append(getMIPS());
+	    mipsTitle.append(mipsAvg);
 	    mipsTitle.append(" MIPS");
-	    emscripten_set_window_title(mipsTitle.c_str());           
+	    emscripten_set_window_title(mipsTitle.c_str());
         }
         if (!ran) {
             break;
