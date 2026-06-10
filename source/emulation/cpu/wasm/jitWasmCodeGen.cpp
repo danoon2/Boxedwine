@@ -30,11 +30,25 @@
 #include "../../softmmu/soft_code_page.h"
 #include "../../softmmu/kmemory_soft.h"
 
+#include <atomic>
 #include <bit>      // std::bit_cast (C++20) — used in boxedwine_wasm_call_block
 #include <emscripten.h>
 #include <emscripten/em_js.h>
 #include <mutex>
 #include <unordered_map>
+
+#if !defined(BOXEDWINE_MULTI_THREADED) && !defined(__TEST)
+// minizip/unzip: used for JIT module import (ST builds only).
+// Export (saving) is handled entirely in JavaScript; only import (reading the
+// zip that JS writes to the virtual FS) needs C code.
+// Must follow fszip.h's pattern: extern "C" + undef OF before/after.
+#undef OF
+#define STRICTUNZIP
+extern "C" {
+#include "../../../../lib/zlib/contrib/minizip/unzip.h"
+}
+#undef OF
+#endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
 // Monotonically increasing counter for atomic table slot allocation.
@@ -53,6 +67,78 @@ static int32_t g_wasmTableNextSlot = 0;
 static std::mutex g_wasmBlockBinariesMutex;
 static std::unordered_map<int, std::vector<U8>> g_wasmBlockBinaries;
 #endif
+
+#ifdef BOXEDWINE_MULTI_THREADED
+// Persistent cache key -> WASM bytes. Populated on the main thread before
+// main() runs (Module.onRuntimeInitialized in boxedwine-shell.js calls
+// wasm_jit_mt_register for every entry loaded from the server zip) and
+// extended by worker threads as they compile fresh blocks. The key combines
+// the CS-relative EIP with a decoded-block hash so reused code addresses do
+// not consume stale wasm. Protected by g_wasmBlockBinariesMutex (shared with
+// g_wasmBlockBinaries).
+static std::unordered_map<uint64_t, std::vector<U8>> g_wasmCacheByKey;
+#endif
+
+// Runtime persistence mode. When active, generated modules must not embed
+// host pointers (DecodedOp*, nextJump cache slots, ...) because those are only
+// valid for the run that compiled them. The relocatable codegen paths below
+// trade those pointer fast paths (~12% throughput in single-threaded
+// benchmarks) for modules that can be exported, served and re-imported on a
+// later run — so the mode is off by default and a plain session pays nothing.
+//
+// boxedwine-shell.js activates it (via the exported
+// wasm_jit_set_persistence_active, or implicitly through wasm_jit_mt_register)
+// when a server cache zip was imported or the jit-record URL parameter is set.
+// Activation happens in Module.onRuntimeInitialized — after the wasm-jit-cache
+// run dependency resolved, before main() — so the flag is latched before the
+// first block is compiled. It is deliberately one-way: only blocks compiled
+// while active are saved/exported, so a session that mixed modes would export
+// an incomplete cache and pay the relocatable cost without the benefit.
+static std::atomic<bool> g_wasmJitPersistenceActive{false};
+
+static inline bool wasmJitPersistenceActive() {
+    return g_wasmJitPersistenceActive.load(std::memory_order_relaxed);
+}
+
+// Exported to JS (see EXPORTED_FUNCTIONS in project/emscripten/makefile).
+extern "C" void wasm_jit_set_persistence_active() {
+    g_wasmJitPersistenceActive.store(true, std::memory_order_relaxed);
+}
+
+static inline uint64_t wasmJitCacheKey(U32 eip, U32 blockHash) {
+    return ((uint64_t)eip << 32) | blockHash;
+}
+
+// FNV-1a over the fields of each decoded op in the block. The hash guards the
+// persistent cache against the same EIP holding different code across runs
+// (relocated modules, self-modifying code, different app versions).
+static inline U32 wasmJitHashMix(U32 hash, U32 value) {
+    hash ^= value;
+    hash *= 16777619u;
+    return hash;
+}
+
+static inline U32 wasmJitHashDecodedOp(U32 hash, DecodedOp* op) {
+    hash = wasmJitHashMix(hash, (U32)op->inst);
+    hash = wasmJitHashMix(hash, op->imm);
+    // For direct branches, DecodedData stores data.nextJump, a host pointer
+    // cache location. That pointer is not part of the x86 instruction shape
+    // and is unstable across runs, so do not hash it as data.disp.
+    if (!op->isDirectBranch()) {
+        hash = wasmJitHashMix(hash, op->data.disp);
+    }
+    hash = wasmJitHashMix(hash, op->reg | (op->rm << 8) | (op->base << 16));
+    hash = wasmJitHashMix(hash, op->sibIndex | (op->sibScale << 8) | (op->len << 16));
+    hash = wasmJitHashMix(hash, op->lock | (op->repZero << 1) |
+        (op->repNotZero << 2) | (op->ea16 << 3));
+    return hash;
+}
+
+static inline U32 wasmJitFinalizeBlockHash(U32 decodedOpsHash, U32 blockOpCount, U32 emulatedLen) {
+    U32 hash = wasmJitHashMix(decodedOpsHash, blockOpCount);
+    hash = wasmJitHashMix(hash, emulatedLen);
+    return hash ? hash : 1;
+}
 
 #ifdef BOXEDWINE_MULTI_THREADED
 static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = 1;
@@ -1143,6 +1229,107 @@ EM_JS(int, boxedwine_wasm_instantiate,
     }
 });
 
+#if !defined(BOXEDWINE_MULTI_THREADED) && !defined(__TEST)
+
+// ---------------------------------------------------------------------------
+// JIT module persistence (single-threaded JS-cache path).
+// Only reached when the runtime persistence mode is active (see
+// wasmJitPersistenceActive); a plain session never calls into here.
+//
+// Module.wasmJitCache (key -> wasm bytes) and Module.wasmJitCompiledCache
+// (key -> precompiled WebAssembly.Module) are created and preloaded by
+// initWasmJitCache() in boxedwine-shell.js before the emulator starts. The
+// cache key convention is 'v3-<eip hex8>-<blockHash hex8>'; it is computed
+// inline here (rather than calling a shell-defined helper) so these EM_JS
+// bodies stay self-contained and never depend on which shell page loaded us.
+// ---------------------------------------------------------------------------
+
+// Look up a previously compiled block by CS-relative EIP + block hash.
+// Returns its wasmTable index (directly usable as pfnJitCode), or -1 on
+// miss / stale entry / instantiation failure.
+EM_JS(int, boxedwine_wasm_lookup_cached,
+      (U32 eip, U32 blockHash, const void** importFns, int importCount),
+{
+    if (!Module.wasmJitStats) {
+        Module.wasmJitStats = { hits: 0, misses: 0, stale: 0, saved: 0 };
+    }
+    var s = Module.wasmJitStats;
+    function logStats() {
+        var lookups = s.hits + s.misses + s.stale;
+        if (lookups > 0 && lookups % 1000 === 0) {
+            console.log('[WASM JIT cache] hits=' + s.hits +
+                ' misses=' + s.misses +
+                ' stale=' + s.stale +
+                ' saved=' + s.saved +
+                ' tableLen=' + wasmTable.length);
+        }
+    }
+    var key = 'v3-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
+              '-'   + ('00000000' + ((blockHash >>> 0).toString(16))).slice(-8);
+    var cached = Module.wasmJitCache && Module.wasmJitCache.get(key);
+    var mod = Module.wasmJitCompiledCache && Module.wasmJitCompiledCache.get(key);
+    if (!cached && !mod) {
+        s.misses++;
+        logStats();
+        return -1;
+    }
+    try {
+        if (!mod) {
+            mod = new WebAssembly.Module(cached);
+            if (!Module.wasmJitCompiledCache) Module.wasmJitCompiledCache = new Map();
+            Module.wasmJitCompiledCache.set(key, mod);
+        }
+        var helpers = {};
+        var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+        for (var i = 0; i < importCount; i++) {
+            helpers['fn_' + i] = wasmTable.get(view[i]);
+        }
+        var inst = new WebAssembly.Instance(mod, {
+            'env':     { 'memory': wasmMemory },
+            'helpers': helpers
+        });
+        var fn = inst.exports['execute'];
+        if (!fn) {
+            s.stale++;
+            if (Module.wasmJitCache) Module.wasmJitCache.delete(key);
+            if (Module.wasmJitCompiledCache) Module.wasmJitCompiledCache.delete(key);
+            logStats();
+            return -1;
+        }
+        var idx = addFunction(fn, 'vi');
+        s.hits++;
+        logStats();
+        return idx;
+    } catch(e) {
+        s.stale++;
+        console.warn('[WASM JIT cache] stale entry for key=' + key + ', recompiling');
+        if (Module.wasmJitCache) Module.wasmJitCache.delete(key);
+        if (Module.wasmJitCompiledCache) Module.wasmJitCompiledCache.delete(key);
+        logStats();
+        return -1;
+    }
+});
+
+// Save a freshly compiled block to Module.wasmJitCache (the source of truth
+// for the Save-JIT-Cache export) and async-write it to IndexedDB.
+EM_JS(void, boxedwine_wasm_save_block, (U32 eip, U32 blockHash, const void* bytes, int size),
+{
+    var key = 'v3-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
+              '-'   + ('00000000' + ((blockHash >>> 0).toString(16))).slice(-8);
+    var binary = new Uint8Array(HEAPU8.buffer, bytes, size).slice();
+    if (!Module.wasmJitCache) Module.wasmJitCache = new Map();
+    Module.wasmJitCache.set(key, binary);
+    if (Module.wasmJitStats) Module.wasmJitStats.saved++;
+    if (Module.wasmJitDb) {
+        try {
+            var tx = Module.wasmJitDb.transaction('blocks', 'readwrite');
+            tx.objectStore('blocks').put(binary, key);
+        } catch(e) { /* fire-and-forget; ignore */ }
+    }
+});
+
+#endif // !BOXEDWINE_MULTI_THREADED && !__TEST
+
 // Multi-threaded build: bypass addFunction() with Atomics-based slot allocation.
 //
 // The root cause of "table index is out of bounds" in pthreads builds:
@@ -1289,6 +1476,65 @@ EM_JS(int, boxedwine_wasm_install_existing_mt,
         return 0;
     }
 });
+
+#ifdef BOXEDWINE_MULTI_THREADED
+
+// ---------------------------------------------------------------------------
+// JIT module persistence (multi-threaded path).
+//
+// Worker threads compile blocks, so the JS-side Module.wasmJitCache (a main-
+// thread Map) cannot be the working cache: an EM_JS body executes in the JS
+// context of the *calling* thread, and pthread workers do not load
+// boxedwine-shell.js. (That is exactly the bug the first MT attempt hit —
+// worker EM_JS referenced a shell-defined boxedwineWasmJitCacheKey() and threw
+// ReferenceError.) Instead the C++ map g_wasmCacheByKey, which lives in shared
+// linear memory, is the working cache:
+//   - load:   Module.onRuntimeInitialized (main thread, boxedwine-shell.js)
+//             calls the exported wasm_jit_mt_register() for each server-zip
+//             entry before main() runs.
+//   - save:   commitJIT() inserts freshly compiled blocks under the mutex.
+//   - export: the Save-JIT-Cache button calls the exported
+//             wasm_jit_mt_prepare_export(), which mirrors the C++ map into
+//             Module.wasmJitCache on the main thread; saveJitModules() then
+//             zips that Map exactly as in the single-threaded build.
+// ---------------------------------------------------------------------------
+
+// Mirror one block from the C++ heap into Module.wasmJitCache. Only ever
+// called on the main thread (from wasm_jit_mt_prepare_export), but the cache
+// key is still computed inline so the body never depends on shell-page JS.
+EM_JS(void, wasm_jit_mt_populate_js_cache_entry,
+      (U32 eip, U32 blockHash, const void* bytes, int size),
+{
+    var key = 'v3-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
+              '-'   + ('00000000' + ((blockHash >>> 0).toString(16))).slice(-8);
+    var binary = new Uint8Array(HEAPU8.buffer, bytes, size).slice();
+    if (!Module.wasmJitCache) Module.wasmJitCache = new Map();
+    Module.wasmJitCache.set(key, binary);
+});
+
+// Exported to JS (see EXPORTED_FUNCTIONS in project/emscripten/makefile).
+extern "C" void wasm_jit_mt_register(uint32_t eip, uint32_t blockHash, const void* bytes, int size) {
+    if (size <= 0 || !bytes) return;
+    // Registering imported blocks implies a replay session — switch the JIT
+    // into relocatable codegen before any worker compiles a block.
+    wasm_jit_set_persistence_active();
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    auto& v = g_wasmCacheByKey[wasmJitCacheKey(eip, blockHash)];
+    v.assign(static_cast<const U8*>(bytes),
+             static_cast<const U8*>(bytes) + size);
+}
+
+// Exported to JS; called by saveJitModules() right before building the zip.
+extern "C" void wasm_jit_mt_prepare_export() {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    for (auto& kv : g_wasmCacheByKey) {
+        wasm_jit_mt_populate_js_cache_entry(
+            (U32)(kv.first >> 32), (U32)kv.first,
+            kv.second.data(), (int)kv.second.size());
+    }
+}
+
+#endif // BOXEDWINE_MULTI_THREADED
 
 // Call a JIT-compiled WASM block via a direct WASM indirect call (no JS frame).
 //
@@ -2543,11 +2789,19 @@ static U32 writeCheckHelperForWidth(JitWidth w) {
 }
 
 void JitWasmCodeGen::emitArmSmcBailout() {
+    // Relocatable (persistence) modules cannot embed the block-start DecodedOp
+    // pointer, so the write helper cannot tell whether the write hit *this*
+    // block. Pre-arm wasmJitBailout instead: every slow-path write then exits
+    // the block conservatively (correct for SMC; only slow-path writes pay).
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Const((U32)(uintptr_t)m_wasmBlockStartOp);
+    if (wasmJitPersistenceActive()) {
+        m_emitter.emitI32Const(0);
+    } else {
+        m_emitter.emitI32Const((U32)(uintptr_t)m_wasmBlockStartOp);
+    }
     m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Const(0);
+    m_emitter.emitI32Const(wasmJitPersistenceActive() ? 1 : 0);
     m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
 }
 
@@ -4237,7 +4491,9 @@ void JitWasmCodeGen::JumpIfCondition(JitConditional cond, U32 address) {
     // `address` parameter is the *linear* EIP (CS.address + offset), but
     // cpu->eip.u32 stores only the offset relative to CS — subtract here.
     IfCondition(cond);
-    DecodedOp* targetOp = cpu->memory->getDecodedOp(address);
+    // Relocatable modules can't embed the target DecodedOp host pointer;
+    // fall back to the eip-write + blockExit path.
+    DecodedOp* targetOp = wasmJitPersistenceActive() ? nullptr : cpu->memory->getDecodedOp(address);
     if (targetOp) {
         syncDirtyRegsToHost();
         writeEip(address - cpu->seg[CS].address);
@@ -4316,7 +4572,7 @@ void JitWasmCodeGen::blockExit() {
 // through). Mirror the base JitCodeGen::blockNext{1,2}: write the CS-offset
 // EIP and emit a blockExit so the dispatcher picks up the next op.
 void JitWasmCodeGen::blockNext1(U32 eip, DecodedOp* op) {
-    if (op->data.nextJump) {
+    if (!wasmJitPersistenceActive() && op->data.nextJump) {
         syncDirtyRegsToHost();
         writeEip(eip - cpu->seg[CS].address);
 
@@ -4351,7 +4607,7 @@ void JitWasmCodeGen::blockNext1(U32 eip, DecodedOp* op) {
     emitBlockExitWithProfile(HELPER_PROFILE_EXIT_NEXT1);
 }
 void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
-    if (op->next) {
+    if (!wasmJitPersistenceActive() && op->next) {
         syncDirtyRegsToHost();
         writeEip(eip - cpu->seg[CS].address);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
@@ -5029,6 +5285,23 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     // emitBailoutCheck — it needs the post-write next-op EIP.
     if (this->blockOpCount == 0) {
         m_wasmBlockStartOp = op;
+        m_preCompileBlockHash = 2166136261u;
+    }
+    if (wasmJitPersistenceActive()) {
+        if (op->isStringOp()) {
+            // String ops reuse decoded fields as runtime profiling/adaptation
+            // counters before JIT kicks in. For persisted modules those values
+            // make cache keys depend on warmup history, and direction-
+            // specialized cached code could be wrong if DF differs on a later
+            // run. Resetting these fields makes the wasm string-op emitters
+            // choose their generic both-direction path and gives us a stable
+            // decoded-op hash.
+            op->STR_COUNT = 0;
+            op->STR_TOTAL = 0;
+            op->DF0 = 0;
+            op->DF1 = 0;
+        }
+        m_preCompileBlockHash = wasmJitHashDecodedOp(m_preCompileBlockHash, op);
     }
     m_currentWasmOp = op;
     m_scratchInUse.fill(false);
@@ -5103,6 +5376,13 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
 
     if (m_wasmBinary.empty()) return;
 
+    // Cache identity for the persistence mode. Cheap relative to module
+    // emission; computed unconditionally so the flow below stays simple.
+    // m_preCompileBlockHash only accumulates while persistence is active, but
+    // it is never consulted unless the mode is active either.
+    const U32 blockHash = wasmJitFinalizeBlockHash(m_preCompileBlockHash, this->blockOpCount, this->emulatedLen);
+    const U32 cacheEip = this->startingEip - cpu->seg[CS].address;
+
     // Pass the helper function table to the JS instantiator.
     // In pthreads builds use the Atomics-based allocator; in single-threaded
     // builds use the standard addFunction() wrapper.
@@ -5110,20 +5390,58 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     U64 instantiateStartUs = wasmJitProfileNowNs();
 #endif
 #ifdef BOXEDWINE_MULTI_THREADED
+    // When persistence is active, check the persistent cache (primed from the
+    // server zip before main() ran, extended by every worker as it compiles).
+    // On a hit, instantiate the cached bytes instead of the freshly emitted
+    // ones — for now they are equivalent, but a later slice may serve
+    // post-processed (e.g. direct-call optimized) modules through the same key.
+    std::vector<U8> cachedBytes;
+    if (wasmJitPersistenceActive()) {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        auto it = g_wasmCacheByKey.find(wasmJitCacheKey(cacheEip, blockHash));
+        if (it != g_wasmCacheByKey.end()) {
+            cachedBytes = it->second;
+        }
+    }
+    const bool usingCached = !cachedBytes.empty();
+    const void* instBytes = usingCached ? cachedBytes.data() : m_wasmBinary.data();
+    const int instSize = usingCached ? (int)cachedBytes.size() : (int)m_wasmBinary.size();
     int tableIdx = boxedwine_wasm_instantiate_mt(
-        m_wasmBinary.data(),
-        (int)m_wasmBinary.size(),
+        instBytes,
+        instSize,
         g_wasmHelperTable,
         WASM_HELPER_COUNT,
         &g_wasmTableNextSlot
     );
 #else
+  #ifndef __TEST
+    // When persistence is active, try the persistent cache first and save
+    // fresh compiles; a plain session goes straight to instantiation.
+    int tableIdx = -1;
+    if (wasmJitPersistenceActive()) {
+        tableIdx = boxedwine_wasm_lookup_cached(
+            cacheEip, blockHash, g_wasmHelperTable, WASM_HELPER_COUNT);
+    }
+    if (tableIdx < 0) {
+        tableIdx = boxedwine_wasm_instantiate(
+            m_wasmBinary.data(),
+            (int)m_wasmBinary.size(),
+            g_wasmHelperTable,
+            WASM_HELPER_COUNT
+        );
+        if (tableIdx >= 0 && wasmJitPersistenceActive()) {
+            boxedwine_wasm_save_block(
+                cacheEip, blockHash, m_wasmBinary.data(), (int)m_wasmBinary.size());
+        }
+    }
+  #else
     int tableIdx = boxedwine_wasm_instantiate(
         m_wasmBinary.data(),
         (int)m_wasmBinary.size(),
         g_wasmHelperTable,
         WASM_HELPER_COUNT
     );
+  #endif
 #endif
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileAddElapsed(g_wasmJitProfileInstantiateUs, instantiateStartUs);
@@ -5147,7 +5465,12 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
 #ifdef BOXEDWINE_MULTI_THREADED
     {
         std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
-        g_wasmBlockBinaries[tableIdx] = m_wasmBinary;
+        // Keep the per-slot bytes consistent with what was instantiated so
+        // lazy cross-worker installs run the same module.
+        g_wasmBlockBinaries[tableIdx] = usingCached ? cachedBytes : m_wasmBinary;
+        if (wasmJitPersistenceActive() && !usingCached) {
+            g_wasmCacheByKey[wasmJitCacheKey(cacheEip, blockHash)] = m_wasmBinary;
+        }
     }
 #endif
 
@@ -5228,5 +5551,54 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// JIT module persistence - zip import (single-threaded builds only).
+//
+// Export is handled in JavaScript by saveJitModules(). This import hook reads
+// a zip staged at WASM_JIT_IMPORT_PATH on the virtual FS and stores each
+// v3-xxxxxxxx-hhhhhhhh.wasm entry into the JS cache via
+// boxedwine_wasm_save_block(). It doubles as the exported sentinel
+// (Module._wasm_jit_import_from_file) that boxedwine-shell.js uses to detect
+// a persistence-capable single-threaded build and show the save button.
+// ---------------------------------------------------------------------------
+#if !defined(BOXEDWINE_MULTI_THREADED) && !defined(__TEST)
+
+static const char WASM_JIT_IMPORT_PATH[] = "/tmp-jit-modules/wasm-jit-import.zip";
+
+extern "C" void wasm_jit_import_from_file() {
+    unzFile uf = unzOpen(WASM_JIT_IMPORT_PATH);
+    if (!uf) return;
+    int ret = unzGoToFirstFile(uf);
+    while (ret == UNZ_OK) {
+        char filename[32];
+        unz_file_info fi;
+        if (unzGetCurrentFileInfo(uf, &fi, filename, sizeof(filename),
+                                   nullptr, 0, nullptr, 0) == UNZ_OK
+            && fi.uncompressed_size > 0) {
+            if (strncmp(filename, "v3-", 3) != 0) {
+                ret = unzGoToNextFile(uf);
+                continue;
+            }
+            uint32_t eip = (uint32_t)strtoul(filename + 3, nullptr, 16);
+            const char* dash = strchr(filename + 3, '-');
+            uint32_t blockHash = dash ? (uint32_t)strtoul(dash + 1, nullptr, 16) : 0;
+            if (!blockHash) {
+                ret = unzGoToNextFile(uf);
+                continue;
+            }
+            std::vector<U8> data(fi.uncompressed_size);
+            if (unzOpenCurrentFile(uf) == UNZ_OK) {
+                unzReadCurrentFile(uf, data.data(), (unsigned)data.size());
+                unzCloseCurrentFile(uf);
+                boxedwine_wasm_save_block(eip, blockHash, data.data(), (int)data.size());
+            }
+        }
+        ret = unzGoToNextFile(uf);
+    }
+    unzClose(uf);
+}
+
+#endif // !BOXEDWINE_MULTI_THREADED && !__TEST
 
 #endif // BOXEDWINE_WASM_JIT

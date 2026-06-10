@@ -28,7 +28,7 @@ multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32
 jit: export BUILD_DIR := Build/Jit
 jit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
 jit: export SHELL_FILE := shell.html
-jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
+jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable -sEXPORTED_FUNCTIONS=_main,_wasm_jit_import_from_file,_wasm_jit_set_persistence_active
 # Like the test target but with the WASM JIT enabled, so the CPU test suite
 # exercises JIT-compiled blocks instead of the normal interpreter.
 testJit: export BUILD_DIR := Build/TestJit
@@ -46,7 +46,9 @@ testJit: export EXTRA_LD_FLAGS := --emrun -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GR
 multiThreadedJit: export BUILD_DIR := Build/MultiThreadedJit
 multiThreadedJit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_WASM_JIT -pthread
 multiThreadedJit: export SHELL_FILE := shell.html
-multiThreadedJit: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable
+# HEAPU8/_malloc/_free: used by boxedwine-shell.js (onRuntimeInitialized) to
+# copy server-zip cache entries into wasm memory for _wasm_jit_mt_register.
+multiThreadedJit: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8 -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_prepare_export,_wasm_jit_set_persistence_active,_malloc,_free
 
 cpus := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
 make_jobs := $(shell n='$(cpus)'; expr "$$n" : '^[0-9][0-9]*$$' >/dev/null && [ "$$n" -gt 2 ] && expr "$$n" - 1)
@@ -55,8 +57,12 @@ ifneq ($(make_jobs),)
 export MAKEFLAGS := -j $(make_jobs)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
-jit release test testJit multiThreaded testMultiThreaded:
+release test testJit multiThreaded testMultiThreaded:
 	@$(MAKE)
+
+jit:
+	@$(MAKE)
+	cp boxedwine-shell.js boxedwine.css Build/Jit/
 
 multiThreadedJit:
 	@$(MAKE)

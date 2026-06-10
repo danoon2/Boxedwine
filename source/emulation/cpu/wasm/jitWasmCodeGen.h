@@ -610,6 +610,11 @@ protected:
     bool m_needsWasmMemoryPageArrays = false;
     DecodedOp* m_wasmBlockStartOp = nullptr;
     DecodedOp* m_currentWasmOp = nullptr;
+    // FNV-1a hash over the block's decoded ops, accumulated by preCompile and
+    // finalized in commitJIT. Combined with the block-start EIP it forms the
+    // persistent-cache key for saved WASM modules (only meaningful while the
+    // runtime persistence mode is active — see wasmJitPersistenceActive()).
+    U32 m_preCompileBlockHash = 2166136261u;
 
     WasmEmitter m_emitter;
 
