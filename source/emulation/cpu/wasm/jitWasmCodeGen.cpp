@@ -2612,6 +2612,7 @@ EM_JS(int, boxedwine_wasm_slot_check, (int tableIndex, int cpuPtr, int opPtr),
 
 #ifdef BOXEDWINE_MULTI_THREADED
 static bool lazyInstallWasmJitBlockForWorker(int tableIndex);
+static bool wasmJitSlotReadyForWorker(int tableIndex, CPU* cpu, DecodedOp* op);
 
 static void disableWasmJitBlockAfterSlotMiss(DecodedOp* op) {
     DecodedOp* blockOp = op->blockStart ? op->blockStart : op;
@@ -2643,21 +2644,58 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
     U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
     U64 startPreCallNs = profileStartNs;
 #endif
+#ifdef BOXEDWINE_WASM_JIT_MT_CHAIN
+    // MT chain loop: hop directly between compiled blocks like the ST loop,
+    // but with MT-shaped conditions. Deliberately NOT conditioned on
+    // cpu->yield — nothing ever resets it in MT builds (both reset sites are
+    // in the ST scheduler), so one sched_yield would permanently stop
+    // chaining for the thread. terminating + the chain limit bound the time
+    // between returns to platformThread's loop; each iteration re-validates
+    // the target through the per-worker readiness cache and the
+    // bad-tableIndex guard inside boxedwine_wasm_call_block.
+    static constexpr U32 WASM_JIT_MT_CHAIN_LIMIT = 256;
+    WASM_JIT_PROFILE_ONLY((void)profileSample; (void)startPreCallNs;)
+    U32 chainedBlocks = 0;
+    bool memoryArraysChecked = false;
+    while (op && op->pfnJitCode && chainedBlocks < WASM_JIT_MT_CHAIN_LIMIT &&
+           !cpu->thread->terminating) {
+        int tableIndex = (int)(uintptr_t)op->pfnJitCode;
+        if (!wasmJitSlotReadyForWorker(tableIndex, cpu, op)) {
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+            wasmJitProfileSlotMiss();
+#endif
+            disableWasmJitBlockAfterSlotMiss(op);
+            NormalCPU::getFunctionForOp(op)(cpu, op);
+            return;
+        }
+        if (!memoryArraysChecked && (op->flags2 & OP_FLAG2_WASM_JIT_MEM_ARRAYS)) {
+            KMemoryData* memoryData = nullptr;
+            if (wasmMemoryPageArraysNeedRefresh(cpu, &memoryData)) {
+                wasmPrepareBlockEnter(cpu, memoryData);
+            }
+            memoryArraysChecked = true;
+        }
+        boxedwine_wasm_call_block(tableIndex, (int)(uintptr_t)cpu, (int)wasmJitRelocBaseForTable(tableIndex));
+        chainedBlocks++;
+        op = cpu->nextOp;
+        if (!wasmJitCanChainTo(cpu, op)) {
+            break;
+        }
+    }
+#else
     if (op->pfnJitCode) {
         // Guard against cross-worker table visibility. Readiness cannot be
         // cached on DecodedOp because DecodedOp is shared, while table slot
-        // visibility is local to the worker that performs call_indirect.
+        // visibility is local to the worker that performs call_indirect; the
+        // per-worker cache makes the JS slot_check a one-time cost per slot.
         int tableIndex = (int)(uintptr_t)op->pfnJitCode;
-        if (!boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
-            if (!lazyInstallWasmJitBlockForWorker(tableIndex) ||
-                !boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
+        if (!wasmJitSlotReadyForWorker(tableIndex, cpu, op)) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
-                wasmJitProfileSlotMiss();
+            wasmJitProfileSlotMiss();
 #endif
-                disableWasmJitBlockAfterSlotMiss(op);
-                NormalCPU::getFunctionForOp(op)(cpu, op);
-                return;
-            }
+            disableWasmJitBlockAfterSlotMiss(op);
+            NormalCPU::getFunctionForOp(op)(cpu, op);
+            return;
         }
         U8 wasmJitSetupFlags = op->flags2 & OP_FLAG2_WASM_JIT_MEM_ARRAYS;
         if (wasmJitSetupFlags) {
@@ -2671,6 +2709,7 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
         WASM_JIT_PROFILE_ONLY(if (profileSample) { U64 startPostCallNs = wasmJitProfileNowNs(); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPostCallUs, startPostCallNs); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartUs, profileStartNs); })
         // nextOp is updated by the WASM block itself (via helper call).
     }
+#endif // BOXEDWINE_WASM_JIT_MT_CHAIN
 #else
     U32 chainedBlocks = 0;
     U32 chainedInstructionCount = 0;
@@ -3167,10 +3206,21 @@ static bool lazyInstallWasmJitBlockForWorker(int tableIndex) {
 }
 #endif
 
+#ifdef BOXEDWINE_MULTI_THREADED
+// Set once when the first reloc array registers (persistence sessions only).
+// Plain MT sessions never register any, so the per-call lookup below stays a
+// single relaxed atomic load — taking g_wasmBlockBinariesMutex on every block
+// call would serialize all worker threads on the hottest path.
+static std::atomic<bool> g_wasmHasRelocArrays{false};
+#endif
+
 // relocBase for a block call: the per-call second parameter of every
 // compiled block (0 = no slots; the generated guards take the slow paths).
 static inline U32 wasmJitRelocBaseForTable(int tableIndex) {
 #ifdef BOXEDWINE_MULTI_THREADED
+    if (!g_wasmHasRelocArrays.load(std::memory_order_relaxed)) {
+        return 0;
+    }
     std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
     auto it = g_wasmRelocArrays.find(tableIndex);
     return it != g_wasmRelocArrays.end() ? (U32)(uintptr_t)it->second : 0;
@@ -3179,6 +3229,33 @@ static inline U32 wasmJitRelocBaseForTable(int tableIndex) {
         ? (U32)(uintptr_t)g_wasmRelocBaseByTable[tableIndex] : 0;
 #endif
 }
+
+#ifdef BOXEDWINE_MULTI_THREADED
+// Per-worker slot readiness. Worker wasmTable visibility is per host thread
+// (the shared DecodedOp can't carry it), but MT slots are monotonic and never
+// freed or reused (free_block_mt is deliberately empty), so once a slot is
+// verified/installed in this worker it stays callable forever. The first call
+// per (slot, worker) pays the JS slot_check (+ lazy install); every later
+// call is a thread_local vector read, removing an EM_JS round trip from
+// every block dispatch.
+static bool wasmJitSlotReadyForWorker(int tableIndex, CPU* cpu, DecodedOp* op) {
+    static thread_local std::vector<bool> ready;
+    if (tableIndex > 0 && (size_t)tableIndex < ready.size() && ready[(size_t)tableIndex]) {
+        return true;
+    }
+    if (!boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
+        if (!lazyInstallWasmJitBlockForWorker(tableIndex) ||
+            !boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
+            return false;
+        }
+    }
+    if ((size_t)tableIndex >= ready.size()) {
+        ready.resize((size_t)tableIndex + 64, false);
+    }
+    ready[(size_t)tableIndex] = true;
+    return true;
+}
+#endif
 
 enum WasmHelperIdx {
     HELPER_READ_MEM8         = 0,
@@ -6728,6 +6805,7 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         if (!g_wasmRelocArrays.emplace(tableIdx, relocArr).second) {
             delete[] relocArr;
         }
+        g_wasmHasRelocArrays.store(true, std::memory_order_relaxed);
 #else
         if ((size_t)tableIdx >= g_wasmRelocBaseByTable.size()) {
             g_wasmRelocBaseByTable.resize(tableIdx + 1, nullptr);
