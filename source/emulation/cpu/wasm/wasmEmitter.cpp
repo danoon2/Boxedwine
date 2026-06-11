@@ -114,6 +114,15 @@ U32 WasmEmitter::addFunctionImport(const char* module, const char* field, U32 ty
     return m_numImportedFunctions++;
 }
 
+U32 WasmEmitter::addGlobalImport(const char* module, const char* field) {
+    appendStr(m_importSection, module);
+    appendStr(m_importSection, field);
+    m_importSection.push_back(0x03);          // import kind = global
+    m_importSection.push_back((U8)WasmType::I32);
+    m_importSection.push_back(0x00);          // mutability = const
+    return m_numImportedGlobals++;
+}
+
 // ---------------------------------------------------------------------------
 // Function + Export sections
 // ---------------------------------------------------------------------------
@@ -179,6 +188,10 @@ void WasmEmitter::emitLocalSet(U32 idx) {
 }
 void WasmEmitter::emitLocalTee(U32 idx) {
     m_currentBody.push_back(WASM_LOCAL_TEE);
+    appendULEB128(m_currentBody, idx);
+}
+void WasmEmitter::emitGlobalGet(U32 idx) {
+    m_currentBody.push_back(WASM_GLOBAL_GET);
     appendULEB128(m_currentBody, idx);
 }
 void WasmEmitter::emitI32Const(S32 val) {
@@ -385,7 +398,7 @@ std::vector<U8> WasmEmitter::finalize() {
     // Import section
     if (!m_importSection.empty()) {
         std::vector<U8> importContent;
-        U32 importCount = m_numImportedFunctions + (m_hasMemoryImport ? 1 : 0);
+        U32 importCount = m_numImportedFunctions + m_numImportedGlobals + (m_hasMemoryImport ? 1 : 0);
         appendULEB128(importContent, importCount);
         importContent.insert(importContent.end(),
                              m_importSection.begin(), m_importSection.end());

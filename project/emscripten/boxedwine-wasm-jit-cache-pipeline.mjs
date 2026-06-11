@@ -384,13 +384,17 @@ function buildCodeBody(localDecls, instructions) {
   return Buffer.concat([writeWasmUleb(payload.length), payload]);
 }
 
-function globalSectionForDirectCallDepth() {
-  return section(6, Buffer.from([
-    0x01,       // one global
-    0x7f, 0x01, // i32 mutable
-    0x41, 0x00, // i32.const 0
-    0x0b,       // end
-  ]));
+// Globals for a merged group module. Index 0 (when present) replaces the
+// stripped "env"."relocBase" import: immutable i32, init 0, so every
+// relocatable pointer fast path in the merged bodies fails its guard and
+// takes the helper slow path. The mutable direct-call depth counter (when
+// directCallDepth > 0) comes after it.
+function mergedGlobalsSection(hasRelocGlobal, directCallDepth) {
+  const globals = [];
+  if (hasRelocGlobal) globals.push(Buffer.from([0x7f, 0x00, 0x41, 0x00, 0x0b])); // i32 const, init 0
+  if (directCallDepth > 0) globals.push(Buffer.from([0x7f, 0x01, 0x41, 0x00, 0x0b])); // i32 mut, init 0
+  if (!globals.length) return [];
+  return [section(6, Buffer.concat([writeWasmUleb(globals.length), ...globals]))];
 }
 
 function findStaticEipStoreBefore(instructions, end, maxLookback = 128) {
@@ -485,15 +489,16 @@ function yieldAwareReturnCallTail(targetIndex, opCount, runtime) {
   ]);
 }
 
-function guardedDirectCallTail(targetIndex, depthLimit) {
+function guardedDirectCallTail(targetIndex, depthLimit, depthGlobalIndex = 0) {
+  const g = writeWasmUleb(depthGlobalIndex);
   return Buffer.concat([
-    Buffer.from([0x23, 0x00]),               // global.get 0
+    Buffer.from([0x23]), g,                  // global.get depth
     Buffer.from([0x41]), writeWasmSleb(depthLimit),
     Buffer.from([0x49]),                     // i32.lt_u
     Buffer.from([0x04, 0x40]),               // if
-    Buffer.from([0x23, 0x00, 0x41]), writeWasmSleb(1), Buffer.from([0x6a, 0x24, 0x00]), // depth++
+    Buffer.from([0x23]), g, Buffer.from([0x41]), writeWasmSleb(1), Buffer.from([0x6a, 0x24]), g, // depth++
     Buffer.from([0x20, 0x00, 0x10]), writeWasmUleb(targetIndex),
-    Buffer.from([0x23, 0x00, 0x41]), writeWasmSleb(1), Buffer.from([0x6b, 0x24, 0x00]), // depth--
+    Buffer.from([0x23]), g, Buffer.from([0x41]), writeWasmSleb(1), Buffer.from([0x6b, 0x24]), g, // depth--
     Buffer.from([0x0f, 0x0b]),               // return; end
     Buffer.from([0x20, 0x00, 0x10, 0x06, 0x0f]), // original helper fallback
   ]);
@@ -519,7 +524,7 @@ function rewriteDirectCallsInBody(body, targetIndexByEip, options = {}) {
         } else if (target.tailCall) {
           out.push(returnCallTail(target.index));
         } else if (target.guarded) {
-          out.push(guardedDirectCallTail(target.index, options.directCallDepth));
+          out.push(guardedDirectCallTail(target.index, options.directCallDepth, options.depthGlobalIndex || 0));
           guarded++;
         } else {
           out.push(directCallTail(target.index));
@@ -546,6 +551,7 @@ function parseWasmForMerge(wasm) {
     importedFunctions: 0,
     functionTypes: [],
     codeBodies: [],
+    hadRelocImport: false,
   };
   let pos = 8;
   while (pos < wasm.length) {
@@ -558,11 +564,21 @@ function parseWasmForMerge(wasm) {
     if (id === 1) {
       parsed.typePayload = Buffer.from(wasm.subarray(sectionStart, sectionEnd));
     } else if (id === 2) {
-      parsed.importPayload = Buffer.from(wasm.subarray(sectionStart, sectionEnd));
+      // Relocatable (persistence-mode) modules import an immutable i32
+      // global "env"."relocBase" whose value is per-block and only known to
+      // the runtime. Merged group modules can't supply per-function values,
+      // so strip the import here and let buildMergedGroupWasm define a
+      // local global 0 initialized to 0 instead — the generated fast paths
+      // guard relocBase != 0 and fall back to their helper slow paths, so
+      // a merged module behaves exactly like pre-reloc relocatable code.
+      // Stripping also normalizes the payload so modules with and without
+      // the import pass the ABI-equality check below.
       let q = sectionStart;
       const [count, q2] = readWasmUleb(wasm, q);
       q = q2;
+      const keptEntries = [];
       for (let i = 0; i < count; i++) {
+        const entryStart = q;
         let moduleName; [moduleName, q] = wasmName(wasm, q);
         let fieldName; [fieldName, q] = wasmName(wasm, q);
         const kind = wasm[q++];
@@ -580,7 +596,15 @@ function parseWasmForMerge(wasm) {
         } else {
           throw new Error(`Unsupported import kind ${kind}`);
         }
+        if (kind === 3 && moduleName === 'env' && fieldName === 'relocBase') {
+          parsed.hadRelocImport = true;
+          continue;
+        }
+        keptEntries.push(Buffer.from(wasm.subarray(entryStart, q)));
       }
+      parsed.importPayload = parsed.hadRelocImport
+        ? Buffer.concat([writeWasmUleb(count - 1), ...keptEntries])
+        : Buffer.from(wasm.subarray(sectionStart, sectionEnd));
     } else if (id === 3) {
       let q = sectionStart;
       const [count, q2] = readWasmUleb(wasm, q);
@@ -610,7 +634,13 @@ function parseWasmForMerge(wasm) {
 
 function buildMergedGroupWasm(sortedEntries, options = {}) {
   if (!sortedEntries.length) throw new Error('Cannot merge an empty group');
-  const first = parseWasmForMerge(sortedEntries[0].data);
+  const parsedEntries = sortedEntries.map((entry) => parseWasmForMerge(entry.data));
+  const first = parsedEntries[0];
+  // Any body that referenced the stripped relocBase import needs the merged
+  // module to define global 0 (= 0) in its place; the depth counter (when
+  // enabled) then lives at index 1 instead of 0.
+  const hasRelocGlobal = parsedEntries.some((parsed) => parsed.hadRelocImport);
+  const depthGlobalIndex = hasRelocGlobal ? 1 : 0;
   const sortedKeys = new Set(sortedEntries.map((entry) => entry.key));
   const functionIndexByKey = new Map(sortedEntries.map((entry, i) => [entry.key, first.importedFunctions + i]));
   const directTargetsByKey = new Map();
@@ -634,8 +664,9 @@ function buildMergedGroupWasm(sortedEntries, options = {}) {
   const codeBodies = [];
   let directCallsRewritten = 0;
   let guardedDirectCallsRewritten = 0;
-  for (const entry of sortedEntries) {
-    const parsed = parseWasmForMerge(entry.data);
+  for (let entryIndex = 0; entryIndex < sortedEntries.length; entryIndex++) {
+    const entry = sortedEntries[entryIndex];
+    const parsed = parsedEntries[entryIndex];
     if (!parsed.typePayload.equals(first.typePayload) || !parsed.importPayload.equals(first.importPayload)) {
       throw new Error(`Module ABI mismatch while merging ${entry.key}`);
     }
@@ -646,6 +677,7 @@ function buildMergedGroupWasm(sortedEntries, options = {}) {
       const rewritten = rewriteDirectCallsInBody(body, directTargets, {
         ...options,
         opCount: entry.opCount,
+        depthGlobalIndex,
       });
       body = rewritten.body;
       directCallsRewritten += rewritten.rewritten;
@@ -673,7 +705,7 @@ function buildMergedGroupWasm(sortedEntries, options = {}) {
     section(1, first.typePayload),
     section(2, first.importPayload),
     section(3, functionPayload),
-    ...(options.directCallDepth > 0 ? [globalSectionForDirectCallDepth()] : []),
+    ...mergedGlobalsSection(hasRelocGlobal, options.directCallDepth),
     section(7, exportPayload),
     section(10, codePayload),
   ]);

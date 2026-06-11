@@ -635,6 +635,27 @@ protected:
     // runtime persistence mode is active — see wasmJitPersistenceActive()).
     U32 m_preCompileBlockHash = 2166136261u;
 
+    // Relocation slots for persistence-mode (relocatable) codegen. Instead of
+    // embedding host DecodedOp pointers as i32.const (which would tie the
+    // module to the compiling run), pointer fast paths read them from a
+    // C++-owned per-block U32 array whose address is supplied at instantiate
+    // time through an imported immutable i32 global ("env"."relocBase").
+    // Slot 0 is reserved for the block-start DecodedOp* (SMC arming); further
+    // slots are appended in emission order by blockNext1/blockNext2/
+    // JumpIfCondition. Every generated read guards relocBase != 0 and
+    // slot != 0, falling back to the existing slow path — so a module
+    // instantiated with relocBase = 0 (e.g. an offline-merged group module
+    // whose import was internalized to 0) behaves exactly like the old
+    // relocatable codegen. m_relocValues holds the values resolved against
+    // the current session's decoded ops; commitJIT copies them into the
+    // long-lived array.
+    int m_relocGlobalIdx = -1;
+    std::vector<U32> m_relocValues;
+    // Lazily import relocBase and reserve slot 0; returns the global index.
+    U32 relocGlobalIdx();
+    // Append a slot holding `value`, return its byte offset in the array.
+    U32 addRelocSlot(U32 value);
+
     WasmEmitter m_emitter;
 
     // Type indices pre-registered for common helper signatures
@@ -680,8 +701,11 @@ protected:
 // Compile and instantiate a WASM binary. Returns the wasmTable index of the
 // compiled "execute" function, or -1 on failure.
 // importFns: array of C++ function pointers that the module imports.
+// relocBase: address of the block's relocation slot array (0 when the block
+// has none); supplied as the imported "env"."relocBase" global.
 extern "C" int  boxedwine_wasm_instantiate(const void* bytes, int size,
-                                            const void** importFns, int importCount);
+                                            const void** importFns, int importCount,
+                                            U32 relocBase);
 
 // Release a compiled block (remove from wasmTable).
 extern "C" void boxedwine_wasm_free_block(int tableIndex);

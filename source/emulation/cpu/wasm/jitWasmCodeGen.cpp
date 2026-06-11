@@ -81,6 +81,19 @@ static std::mutex g_wasmBlockBinariesMutex;
 static std::unordered_map<int, std::vector<U8>> g_wasmBlockBinaries;
 #endif
 
+// Per-block relocation slot arrays for persistence-mode modules, keyed by
+// wasmTable index. Each array's address is supplied to the module instance
+// as the imported "env"."relocBase" global; the values are host DecodedOp
+// pointers resolved against the session that instantiated the module (see
+// relocGlobalIdx()/addRelocSlot()). Every pointer stored in a block's slots
+// shares that block's lifetime (slot 0 = own block start, next2 = own
+// fall-through chain, jump targets = in-block ops, next1 = the dispatcher-
+// managed nextJump cache slot), so the array can be freed exactly when the
+// block is evicted. ST frees in clearJitBlock; MT entries intentionally
+// follow the monotonic never-freed slot lifetime of g_wasmBlockBinaries
+// (protected by g_wasmBlockBinariesMutex; ST is single-threaded, no lock).
+static std::unordered_map<int, U32*> g_wasmRelocArrays;
+
 #ifdef BOXEDWINE_MULTI_THREADED
 // Persistent cache key -> WASM bytes. Populated on the main thread before
 // main() runs (Module.onRuntimeInitialized in boxedwine-shell.js calls
@@ -130,7 +143,15 @@ static std::vector<std::string> g_wasmInteriorProfileLines;
 // first block is compiled. It is deliberately one-way: only blocks compiled
 // while active are saved/exported, so a session that mixed modes would export
 // an incomplete cache and pay the relocatable cost without the benefit.
+// BOXEDWINE_WASM_JIT_FORCE_PERSISTENCE is a test/diagnostic define: it latches
+// the mode from startup so the CPU test suite (which has no shell to activate
+// it) exercises the relocatable codegen paths, e.g.
+//   make -B testJit GCC_EXTRA_FLAGS=-DBOXEDWINE_WASM_JIT_FORCE_PERSISTENCE
+#ifdef BOXEDWINE_WASM_JIT_FORCE_PERSISTENCE
+static std::atomic<bool> g_wasmJitPersistenceActive{true};
+#else
 static std::atomic<bool> g_wasmJitPersistenceActive{false};
+#endif
 
 static inline bool wasmJitPersistenceActive() {
     return g_wasmJitPersistenceActive.load(std::memory_order_relaxed);
@@ -1601,7 +1622,7 @@ static void wasmPrepareBlockEnter(CPU* cpu, KMemoryData* memoryData) {
 // ---------------------------------------------------------------------------
 // Single-threaded build: use Emscripten's addFunction helper.
 EM_JS(int, boxedwine_wasm_instantiate,
-      (const void* bytes, int size, const void** importFns, int importCount),
+      (const void* bytes, int size, const void** importFns, int importCount, U32 relocBase),
 {
     try {
         var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
@@ -1616,8 +1637,10 @@ EM_JS(int, boxedwine_wasm_instantiate,
             helpers['fn_' + i] = wasmTable.get(view[i]);
         }
 
+        // relocBase is only declared as an import by persistence-mode
+        // (relocatable) modules; others ignore the extra entry.
         var inst = new WebAssembly.Instance(mod, {
-            'env':     { 'memory': wasmMemory },
+            'env':     { 'memory': wasmMemory, 'relocBase': relocBase >>> 0 },
             'helpers': helpers
         });
 
@@ -1703,7 +1726,7 @@ EM_JS(int, boxedwine_wasm_profile_split_before, (U32 blockStartEip, U32 currentE
 // precompiled module. Returns the wasmTable index (directly usable as
 // pfnJitCode), or -1 on miss / stale entry / instantiation failure.
 EM_JS(int, boxedwine_wasm_lookup_cached,
-      (U32 eip, U32 blockHash, const void** importFns, int importCount),
+      (U32 eip, U32 blockHash, const void** importFns, int importCount, U32 relocBase),
 {
     if (!Module.wasmJitStats) {
         Module.wasmJitStats = { hits: 0, misses: 0, eipMisses: 0, hashMisses: 0, stale: 0, cachedInstalls: 0, freshCompiled: 0, saved: 0, eipMissSamples: [], hashMissSamples: [] };
@@ -1959,8 +1982,10 @@ EM_JS(int, boxedwine_wasm_lookup_cached,
         for (var i = 0; i < importCount; i++) {
             helpers['fn_' + i] = wasmTable.get(view[i]);
         }
+        // relocBase lights up the pointer fast paths in relocatable flat
+        // modules; legacy modules without the import ignore the extra entry.
         var inst = new WebAssembly.Instance(mod, {
-            'env':     { 'memory': wasmMemory },
+            'env':     { 'memory': wasmMemory, 'relocBase': relocBase >>> 0 },
             'helpers': helpers
         });
         var fn = inst.exports['execute'];
@@ -2108,7 +2133,7 @@ EM_JS(void, wasm_jit_js_store_entry, (U32 eip, U32 blockHash, const void* bytes,
 // engine level, so concurrent grows are safe (each grow is an indivisible
 // operation and the while-loop retries until the table is large enough).
 EM_JS(int, boxedwine_wasm_instantiate_mt,
-      (const void* bytes, int size, const void** importFns, int importCount, int* nextSlotPtr),
+      (const void* bytes, int size, const void** importFns, int importCount, int* nextSlotPtr, U32 relocBase),
 {
     try {
         var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
@@ -2120,8 +2145,10 @@ EM_JS(int, boxedwine_wasm_instantiate_mt,
             helpers['fn_' + i] = wasmTable.get(view[i]);
         }
 
+        // relocBase is only declared as an import by persistence-mode
+        // (relocatable) modules; others ignore the extra entry.
         var inst = new WebAssembly.Instance(mod, {
-            'env':     { 'memory': wasmMemory },
+            'env':     { 'memory': wasmMemory, 'relocBase': relocBase >>> 0 },
             'helpers': helpers
         });
 
@@ -2203,7 +2230,7 @@ EM_JS(int, boxedwine_wasm_instantiate_mt,
 // Multi-threaded lazy install: instantiate an already-compiled block into this
 // worker's local wasmTable at the shared slot before call_indirect uses it.
 EM_JS(int, boxedwine_wasm_install_existing_mt,
-      (const void* bytes, int size, const void** importFns, int importCount, int tableIndex),
+      (const void* bytes, int size, const void** importFns, int importCount, int tableIndex, U32 relocBase),
 {
     try {
         if (tableIndex < 0) return 0;
@@ -2218,8 +2245,10 @@ EM_JS(int, boxedwine_wasm_install_existing_mt,
             helpers['fn_' + i] = wasmTable.get(view[i]);
         }
 
+        // Same relocBase as the original instantiation: the slot array is
+        // shared process memory, valid in every worker.
         var inst = new WebAssembly.Instance(mod, {
-            'env':     { 'memory': wasmMemory },
+            'env':     { 'memory': wasmMemory, 'relocBase': relocBase >>> 0 },
             'helpers': helpers
         });
 
@@ -3025,6 +3054,7 @@ static constexpr int WASM_HELPER_COUNT = (int)(sizeof(g_wasmHelperTable) / sizeo
 #ifdef BOXEDWINE_MULTI_THREADED
 static bool lazyInstallWasmJitBlockForWorker(int tableIndex) {
     std::vector<U8> bytes;
+    U32 relocBase = 0;
     {
         std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
         auto it = g_wasmBlockBinaries.find(tableIndex);
@@ -3032,6 +3062,10 @@ static bool lazyInstallWasmJitBlockForWorker(int tableIndex) {
             return false;
         }
         bytes = it->second;
+        auto relocIt = g_wasmRelocArrays.find(tableIndex);
+        if (relocIt != g_wasmRelocArrays.end()) {
+            relocBase = (U32)(uintptr_t)relocIt->second;
+        }
     }
     if (bytes.empty()) {
         return false;
@@ -3041,7 +3075,8 @@ static bool lazyInstallWasmJitBlockForWorker(int tableIndex) {
         (int)bytes.size(),
         g_wasmHelperTable,
         WASM_HELPER_COUNT,
-        tableIndex
+        tableIndex,
+        relocBase
     ) != 0;
 }
 #endif
@@ -3678,20 +3713,63 @@ static U32 writeCheckHelperForWidth(JitWidth w) {
     }
 }
 
-void JitWasmCodeGen::emitArmSmcBailout() {
-    // Relocatable (persistence) modules cannot embed the block-start DecodedOp
-    // pointer, so the write helper cannot tell whether the write hit *this*
-    // block. Pre-arm wasmJitBailout instead: every slow-path write then exits
-    // the block conservatively (correct for SMC; only slow-path writes pay).
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    if (wasmJitPersistenceActive()) {
-        m_emitter.emitI32Const(0);
-    } else {
-        m_emitter.emitI32Const((U32)(uintptr_t)m_wasmBlockStartOp);
+// Lazily import the "env"."relocBase" immutable i32 global and reserve
+// slot 0 for the block-start DecodedOp*. Imported globals have their own
+// index space, so adding this mid-codegen never disturbs the helper
+// function imports.
+U32 JitWasmCodeGen::relocGlobalIdx() {
+    if (m_relocGlobalIdx < 0) {
+        m_relocGlobalIdx = (int)m_emitter.addGlobalImport("env", "relocBase");
+        m_relocValues.push_back((U32)(uintptr_t)m_wasmBlockStartOp);
     }
+    return (U32)m_relocGlobalIdx;
+}
+
+// Append a relocation slot holding `value` (resolved against the current
+// session's decoded ops) and return its byte offset for use as an i32.load
+// memarg offset off relocBase.
+U32 JitWasmCodeGen::addRelocSlot(U32 value) {
+    relocGlobalIdx();
+    U32 offset = (U32)(m_relocValues.size() * sizeof(U32));
+    m_relocValues.push_back(value);
+    return offset;
+}
+
+void JitWasmCodeGen::emitArmSmcBailout() {
+    if (wasmJitPersistenceActive()) {
+        // Relocatable modules read the block-start DecodedOp* from reloc
+        // slot 0 at runtime instead of embedding it. When the module was
+        // instantiated without a slot array (relocBase == 0, e.g. an
+        // offline-merged group module), fall back to pre-arming
+        // wasmJitBailout: every slow-path write then exits the block
+        // conservatively (correct for SMC; only slow-path writes pay).
+        // No scratch local: the write paths calling this run with the
+        // pool nearly exhausted, so re-read the global instead of tee'ing.
+        // Neither arm touches GP locals, so no tracker save/restore needed.
+        m_emitter.emitGlobalGet(relocGlobalIdx());
+        m_emitter.emitIf();
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitGlobalGet(relocGlobalIdx());
+        m_emitter.emitI32Load(0);                  // slot 0 = block-start op
+        m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Const(0);
+        m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
+        m_emitter.emitElse();
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Const(0);
+        m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Const(1);
+        m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
+        m_emitter.emitEnd();
+        return;
+    }
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const((U32)(uintptr_t)m_wasmBlockStartOp);
     m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Const(wasmJitPersistenceActive() ? 1 : 0);
+    m_emitter.emitI32Const(0);
     m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
 }
 
@@ -5385,10 +5463,39 @@ void JitWasmCodeGen::JumpIfCondition(JitConditional cond, U32 address) {
         m_manifestJumpTarget = address - cpu->seg[CS].address;
     }
     IfCondition(cond);
-    // Relocatable modules can't embed the target DecodedOp host pointer;
-    // fall back to the eip-write + blockExit path.
-    DecodedOp* targetOp = wasmJitPersistenceActive() ? nullptr : cpu->memory->getDecodedOp(address);
-    if (targetOp) {
+    DecodedOp* targetOp = cpu->memory->getDecodedOp(address);
+    if (wasmJitPersistenceActive()) {
+        // Relocatable variant: the target DecodedOp* comes from a reloc slot
+        // instead of an embedded i32.const. The slot is 0 when the target
+        // isn't decoded yet (or the module was instantiated without a slot
+        // array); the guards then fall through to the blockExit slow path.
+        U32 slotOffset = addRelocSlot((U32)(uintptr_t)targetOp);
+        syncDirtyRegsToHost();
+        writeEip(address - cpu->seg[CS].address);
+
+        U32 targetLocal = allocScratch();
+        m_emitter.emitGlobalGet(relocGlobalIdx());
+        m_emitter.emitLocalTee(targetLocal);
+        m_emitter.emitIf();                        // relocBase != 0
+        m_emitter.emitLocalGet(targetLocal);
+        m_emitter.emitI32Load(slotOffset);         // target DecodedOp*
+        m_emitter.emitLocalTee(targetLocal);
+        m_emitter.emitIf();                        // target != 0
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(HELPER_PROFILE_BLOCK_EXIT);
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(HELPER_PROFILE_EXIT_JUMP);
+#endif
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitLocalGet(targetLocal);
+        m_emitter.emitI32Store((U32)offsetof(CPU, nextOp));
+        m_emitter.emitReturn();
+        m_emitter.emitEnd();
+        m_emitter.emitEnd();
+        freeScratch(targetLocal);
+        blockExit();
+    } else if (targetOp) {
         syncDirtyRegsToHost();
         writeEip(address - cpu->seg[CS].address);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
@@ -5474,7 +5581,44 @@ void JitWasmCodeGen::blockNext1(U32 eip, DecodedOp* op) {
     if (!m_manifestNext1Target) {
         m_manifestNext1Target = eip - cpu->seg[CS].address;
     }
-    if (!wasmJitPersistenceActive() && op->data.nextJump) {
+    if (wasmJitPersistenceActive()) {
+        // Relocatable variant of the fast path below: the nextJump cache-slot
+        // address comes from a reloc slot instead of an embedded i32.const.
+        // Emitted unconditionally (even when op->data.nextJump is currently
+        // null) so the module shape stays deterministic across sessions; the
+        // runtime guards fall through to the dispatcher exit when relocBase,
+        // the slot value, or the live target is 0.
+        U32 slotOffset = addRelocSlot((U32)(uintptr_t)op->data.nextJump);
+        syncDirtyRegsToHost();
+        writeEip(eip - cpu->seg[CS].address);
+
+        U32 targetLocal = allocScratch();
+        m_emitter.emitGlobalGet(relocGlobalIdx());
+        m_emitter.emitLocalTee(targetLocal);
+        m_emitter.emitIf();                        // relocBase != 0
+        m_emitter.emitLocalGet(targetLocal);
+        m_emitter.emitI32Load(slotOffset);         // nextJump cache-slot ptr
+        m_emitter.emitLocalTee(targetLocal);
+        m_emitter.emitIf();                        // slot ptr != 0
+        m_emitter.emitLocalGet(targetLocal);
+        m_emitter.emitI32Load(0);                  // live target DecodedOp*
+        m_emitter.emitLocalTee(targetLocal);
+        m_emitter.emitIf();                        // target != 0
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(HELPER_PROFILE_BLOCK_EXIT);
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(HELPER_PROFILE_EXIT_NEXT1);
+#endif
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitLocalGet(targetLocal);
+        m_emitter.emitI32Store((U32)offsetof(CPU, nextOp));
+        m_emitter.emitReturn();
+        m_emitter.emitEnd();
+        m_emitter.emitEnd();
+        m_emitter.emitEnd();
+        freeScratch(targetLocal);
+    } else if (op->data.nextJump) {
         syncDirtyRegsToHost();
         writeEip(eip - cpu->seg[CS].address);
 
@@ -5513,7 +5657,37 @@ void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
     if (!m_manifestNext2Target) {
         m_manifestNext2Target = eip - cpu->seg[CS].address;
     }
-    if (!wasmJitPersistenceActive() && op->next) {
+    if (wasmJitPersistenceActive()) {
+        // Relocatable variant: op->next comes from a reloc slot instead of
+        // an embedded i32.const. Guarded (unlike the unconditional embedded
+        // path below) because the slot is 0 when op->next was null at
+        // compile time or the module was instantiated without a slot array.
+        U32 slotOffset = addRelocSlot((U32)(uintptr_t)op->next);
+        syncDirtyRegsToHost();
+        writeEip(eip - cpu->seg[CS].address);
+
+        U32 targetLocal = allocScratch();
+        m_emitter.emitGlobalGet(relocGlobalIdx());
+        m_emitter.emitLocalTee(targetLocal);
+        m_emitter.emitIf();                        // relocBase != 0
+        m_emitter.emitLocalGet(targetLocal);
+        m_emitter.emitI32Load(slotOffset);         // op->next DecodedOp*
+        m_emitter.emitLocalTee(targetLocal);
+        m_emitter.emitIf();                        // target != 0
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(HELPER_PROFILE_BLOCK_EXIT);
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitCall(HELPER_PROFILE_EXIT_NEXT2);
+#endif
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitLocalGet(targetLocal);
+        m_emitter.emitI32Store((U32)offsetof(CPU, nextOp));
+        m_emitter.emitReturn();
+        m_emitter.emitEnd();
+        m_emitter.emitEnd();
+        freeScratch(targetLocal);
+    } else if (op->next) {
         syncDirtyRegsToHost();
         writeEip(eip - cpu->seg[CS].address);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
@@ -6331,6 +6505,18 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     const U32 blockHash = wasmJitFinalizeBlockHash(m_preCompileBlockHash, this->blockOpCount, this->emulatedLen);
     const U32 cacheEip = this->startingEip - cpu->seg[CS].address;
 
+    // Long-lived copy of the relocation slot values (persistence mode only;
+    // empty otherwise). Supplied to the instance as the relocBase global.
+    // On a cached-bytes hit the values still apply: the cached module was
+    // emitted by this same build from the identical decoded chain (the block
+    // hash guards the chain; cache zips are per-build artifacts), so its slot
+    // layout matches the one this codegen pass just produced.
+    U32* relocArr = nullptr;
+    if (!m_relocValues.empty()) {
+        relocArr = new U32[m_relocValues.size()];
+        memcpy(relocArr, m_relocValues.data(), m_relocValues.size() * sizeof(U32));
+    }
+
     // Pass the helper function table to the JS instantiator.
     // In pthreads builds use the Atomics-based allocator; in single-threaded
     // builds use the standard addFunction() wrapper.
@@ -6359,7 +6545,8 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         instSize,
         g_wasmHelperTable,
         WASM_HELPER_COUNT,
-        &g_wasmTableNextSlot
+        &g_wasmTableNextSlot,
+        (U32)(uintptr_t)relocArr
     );
 #else
   #ifndef __TEST
@@ -6368,14 +6555,16 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     int tableIdx = -1;
     if (wasmJitPersistenceActive()) {
         tableIdx = boxedwine_wasm_lookup_cached(
-            cacheEip, blockHash, g_wasmHelperTable, WASM_HELPER_COUNT);
+            cacheEip, blockHash, g_wasmHelperTable, WASM_HELPER_COUNT,
+            (U32)(uintptr_t)relocArr);
     }
     if (tableIdx < 0) {
         tableIdx = boxedwine_wasm_instantiate(
             m_wasmBinary.data(),
             (int)m_wasmBinary.size(),
             g_wasmHelperTable,
-            WASM_HELPER_COUNT
+            WASM_HELPER_COUNT,
+            (U32)(uintptr_t)relocArr
         );
         if (tableIdx >= 0 && wasmJitPersistenceActive()) {
             boxedwine_wasm_save_block(
@@ -6401,7 +6590,8 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         m_wasmBinary.data(),
         (int)m_wasmBinary.size(),
         g_wasmHelperTable,
-        WASM_HELPER_COUNT
+        WASM_HELPER_COUNT,
+        (U32)(uintptr_t)relocArr
     );
   #endif
 #endif
@@ -6410,6 +6600,7 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
 #endif
 
     if (tableIdx < 0) {
+        delete[] relocArr;
         // Instantiation failed — fall back to the normal CPU interpreter
         // for every op in the block. Without this, op->pfn stays as
         // firstDynamicOp, which would recompile-then-call-self every time
@@ -6422,6 +6613,21 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
             cur = cur->next;
         }
         return;
+    }
+
+    if (relocArr) {
+        // Register the slot array under the table index so clearJitBlock can
+        // free it with the block (ST) and lazy cross-worker installs can
+        // re-supply it (MT). A merged-group install can hand back a table
+        // index that already has an array from an earlier commit of the same
+        // key; such instances were instantiated with relocBase = 0, so the
+        // duplicate array is simply not needed.
+#ifdef BOXEDWINE_MULTI_THREADED
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+#endif
+        if (!g_wasmRelocArrays.emplace(tableIdx, relocArr).second) {
+            delete[] relocArr;
+        }
     }
 
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -6530,8 +6736,20 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
         if (seen.insert(tableIdx).second) {
 #ifdef BOXEDWINE_MULTI_THREADED
             boxedwine_wasm_free_block_mt(tableIdx);
+            // The reloc array intentionally follows the monotonic MT slot
+            // lifetime (never freed) — a racing worker may still run the
+            // instance once after eviction, exactly like the bytes in
+            // g_wasmBlockBinaries.
 #else
             boxedwine_wasm_free_block(tableIdx);
+            // The instance is now unreachable (removeFunction); release its
+            // relocation slot array. Every pointer in it shared this block's
+            // lifetime, so nothing else can reference the array.
+            auto relocIt = g_wasmRelocArrays.find(tableIdx);
+            if (relocIt != g_wasmRelocArrays.end()) {
+                delete[] relocIt->second;
+                g_wasmRelocArrays.erase(relocIt);
+            }
 #endif
         }
     }

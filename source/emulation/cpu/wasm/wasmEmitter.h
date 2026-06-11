@@ -85,6 +85,7 @@ enum WasmOp : U8 {
     WASM_LOCAL_GET      = 0x20,
     WASM_LOCAL_SET      = 0x21,
     WASM_LOCAL_TEE      = 0x22,
+    WASM_GLOBAL_GET     = 0x23,
     WASM_I32_LOAD       = 0x28,
     WASM_I64_LOAD       = 0x29,
     WASM_F64_LOAD       = 0x2b,
@@ -175,6 +176,10 @@ public:
     void addMemoryImport(const char* module, const char* field);
     // Import a function; returns the function index (starting at 0).
     U32  addFunctionImport(const char* module, const char* field, U32 typeIdx);
+    // Import an immutable i32 global; returns the global index (starting at 0).
+    // Globals have their own index space, so this can be added at any point
+    // before finalize() without disturbing function import indices.
+    U32  addGlobalImport(const char* module, const char* field);
 
     U32 numImportedFunctions() const { return m_numImportedFunctions; }
 
@@ -196,6 +201,7 @@ public:
     void emitLocalGet(U32 idx);
     void emitLocalSet(U32 idx);
     void emitLocalTee(U32 idx);
+    void emitGlobalGet(U32 idx);
     void emitI32Const(S32 val);
     void emitI64Const(S64 val);
 
@@ -262,6 +268,7 @@ private:
     std::vector<U8> m_importSection;
     bool            m_hasMemoryImport = false;
     U32             m_numImportedFunctions = 0;
+    U32             m_numImportedGlobals = 0;
 
     std::vector<U32> m_localFunctions;   // type indices
     std::vector<U8>  m_exportSection;
