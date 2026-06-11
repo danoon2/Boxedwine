@@ -123,6 +123,9 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
 
     // opentdd will trigger this isValid check
     while (nextOp && nextOp->isValid()) {
+        if (eip != this->startingEip && shouldStopBlockBefore(eip, nextOp)) {
+            break;
+        }
         // could be ret, call, int.  Basically this is an instruction where we are not guaranteed to see a next instruction
         if (nextOp->isBranch() && !nextOp->isDirectJumpBranch()) {
             // is this the last return, if so, then don't decode more

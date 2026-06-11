@@ -35,7 +35,9 @@
 #include <emscripten.h>
 #include <emscripten/em_js.h>
 #include <mutex>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #if !defined(BOXEDWINE_MULTI_THREADED) && !defined(__TEST)
 // minizip/unzip: used for JIT module import (ST builds only).
@@ -48,6 +50,17 @@ extern "C" {
 #include "../../../../lib/zlib/contrib/minizip/unzip.h"
 }
 #undef OF
+#endif
+
+#ifndef BOXEDWINE_MULTI_THREADED
+// Defined in kscheduler.cpp (single-threaded scheduler only — MT threads run
+// on real pthreads and check cpu->yield instead of a slice budget). The
+// address of this scheduler budget is exported in the saved-cache manifest
+// (runtime constants) so the offline pipeline can rewrite intra-group block
+// exits into yield-aware direct tail calls that test the same budget the
+// dispatcher loop uses. MT manifests carry 0 here, and the pipeline's grouped
+// mode rejects such input (MT consumes --flat output, which never bakes it).
+extern S32 contextTimeRemaining;
 #endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -77,6 +90,29 @@ static std::unordered_map<int, std::vector<U8>> g_wasmBlockBinaries;
 // not consume stale wasm. Protected by g_wasmBlockBinariesMutex (shared with
 // g_wasmBlockBinaries).
 static std::unordered_map<uint64_t, std::vector<U8>> g_wasmCacheByKey;
+
+// Per-key exit metadata for freshly compiled blocks (the MT equivalent of the
+// ST Module.wasmJitBlockMeta map, which workers cannot reach). Mirrored to JS
+// by wasm_jit_mt_prepare_export so MT-recorded zips carry the
+// boxedwine-jit-manifest.json the offline pipeline requires. Protected by
+// g_wasmBlockBinariesMutex.
+struct WasmJitMtBlockMeta {
+    U32 opCount;
+    U32 emulatedLen;
+    U32 next1Target;
+    U32 next2Target;
+    U32 jumpTarget;
+    U32 next1Count;
+    U32 next2Count;
+    U32 jumpCount;
+};
+static std::unordered_map<uint64_t, WasmJitMtBlockMeta> g_wasmCacheMetaByKey;
+
+// Interior-transition profile snapshot lines, appended by whichever worker
+// crosses the 5M-exit threshold and mirrored to Module at export time (the
+// MT replacement for the ST boxedwine_wasm_record_transition_profile EM_JS).
+// Protected by g_wasmBlockBinariesMutex.
+static std::vector<std::string> g_wasmInteriorProfileLines;
 #endif
 
 // Runtime persistence mode. When active, generated modules must not embed
@@ -140,6 +176,142 @@ static inline U32 wasmJitFinalizeBlockHash(U32 decodedOpsHash, U32 blockOpCount,
     return hash ? hash : 1;
 }
 
+// ---------------------------------------------------------------------------
+// Helper-call diagnostics (opt-in, BOXEDWINE_WASM_JIT_HELPER_CALL_STATS).
+//
+// Counts every generated-wasm -> C++ helper call by family and, for the
+// bounded x87/SSE helpers, by specific helper. Used to decide which helper to
+// inline or specialize next in the cache-pipeline improvement work (see
+// docs/Wasm-JIT-Cache-Direct-Call-Improvements.md). Intentionally not part of
+// normal benchmark builds: the counters sit inside hot helper paths and can
+// perturb timing.
+// ---------------------------------------------------------------------------
+#if defined(BOXEDWINE_WASM_JIT_HELPER_CALL_STATS) && !defined(BOXEDWINE_MULTI_THREADED)
+enum class WasmJitHelperStat : U8 {
+    ReadMem,
+    WriteMem,
+    WriteMemCheck,
+    FetchNext,
+    Emulate,
+    Flags,
+    Cond,
+    X87,
+    Sse,
+    Movsd32r,
+    BlockEnter,
+    Count,
+};
+
+enum class WasmJitHelperDetail : U8 {
+    FldSingle,
+    Fld1,
+    FldDouble,
+    FcomSinglePop,
+    FaddSt0Stj,
+    FdivSt0Stj,
+    FnstswAx,
+    FstSinglePop,
+    FistDwordPop,
+    MovsdXmmE64,
+    MovsdE64Xmm,
+    Movsd32r,
+    Count,
+};
+
+static U64 g_wasmJitHelperStatCounts[(U32)WasmJitHelperStat::Count] = {};
+static U64 g_wasmJitHelperDetailCounts[(U32)WasmJitHelperDetail::Count] = {};
+static U64 g_wasmJitHelperStatTotal = 0;
+
+static const char* wasmJitHelperStatName(WasmJitHelperStat stat) {
+    switch (stat) {
+    case WasmJitHelperStat::ReadMem:       return "mem_r";
+    case WasmJitHelperStat::WriteMem:      return "mem_w";
+    case WasmJitHelperStat::WriteMemCheck: return "mem_wc";
+    case WasmJitHelperStat::FetchNext:     return "fetch_next";
+    case WasmJitHelperStat::Emulate:       return "emulate";
+    case WasmJitHelperStat::Flags:         return "flags";
+    case WasmJitHelperStat::Cond:          return "cond";
+    case WasmJitHelperStat::X87:           return "x87";
+    case WasmJitHelperStat::Sse:           return "sse";
+    case WasmJitHelperStat::Movsd32r:      return "movsd32r";
+    case WasmJitHelperStat::BlockEnter:    return "enter";
+    default:                               return "unknown";
+    }
+}
+
+static const char* wasmJitHelperDetailName(WasmJitHelperDetail detail) {
+    switch (detail) {
+    case WasmJitHelperDetail::FldSingle:       return "fld_s";
+    case WasmJitHelperDetail::Fld1:            return "fld1";
+    case WasmJitHelperDetail::FldDouble:       return "fld_d";
+    case WasmJitHelperDetail::FcomSinglePop:   return "fcom_s_pop";
+    case WasmJitHelperDetail::FaddSt0Stj:      return "fadd_st";
+    case WasmJitHelperDetail::FdivSt0Stj:      return "fdiv_st";
+    case WasmJitHelperDetail::FnstswAx:        return "fnstsw_ax";
+    case WasmJitHelperDetail::FstSinglePop:    return "fst_s_pop";
+    case WasmJitHelperDetail::FistDwordPop:    return "fist_d_pop";
+    case WasmJitHelperDetail::MovsdXmmE64:     return "movsd_xmm_e64";
+    case WasmJitHelperDetail::MovsdE64Xmm:     return "movsd_e64_xmm";
+    case WasmJitHelperDetail::Movsd32r:        return "movsd32r";
+    default:                                   return "unknown";
+    }
+}
+
+static void wasmJitRecordHelperCall(WasmJitHelperStat stat) {
+    g_wasmJitHelperStatCounts[(U32)stat]++;
+    g_wasmJitHelperStatTotal++;
+    if (g_wasmJitHelperStatTotal % 5000000 != 0) {
+        return;
+    }
+    char counts[512] = {};
+    size_t offset = 0;
+    for (U32 i = 0; i < (U32)WasmJitHelperStat::Count; i++) {
+        int written = snprintf(counts + offset, sizeof(counts) - offset,
+            "%s%s=%llu",
+            i ? "," : "",
+            wasmJitHelperStatName((WasmJitHelperStat)i),
+            g_wasmJitHelperStatCounts[i]);
+        if (written <= 0) {
+            break;
+        }
+        offset += (size_t)written;
+        if (offset >= sizeof(counts)) {
+            counts[sizeof(counts) - 1] = 0;
+            break;
+        }
+    }
+    char details[512] = {};
+    offset = 0;
+    for (U32 i = 0; i < (U32)WasmJitHelperDetail::Count; i++) {
+        int written = snprintf(details + offset, sizeof(details) - offset,
+            "%s%s=%llu",
+            i ? "," : "",
+            wasmJitHelperDetailName((WasmJitHelperDetail)i),
+            g_wasmJitHelperDetailCounts[i]);
+        if (written <= 0) {
+            break;
+        }
+        offset += (size_t)written;
+        if (offset >= sizeof(details)) {
+            details[sizeof(details) - 1] = 0;
+            break;
+        }
+    }
+    klog_fmt("[WASM JIT helper calls] total=%llu counts[%s] detail[%s]",
+        g_wasmJitHelperStatTotal, counts, details);
+}
+
+static void wasmJitRecordHelperDetail(WasmJitHelperDetail detail) {
+    g_wasmJitHelperDetailCounts[(U32)detail]++;
+}
+
+#define WASM_JIT_HELPER_STAT(STAT) wasmJitRecordHelperCall(WasmJitHelperStat::STAT)
+#define WASM_JIT_HELPER_DETAIL(DETAIL) wasmJitRecordHelperDetail(WasmJitHelperDetail::DETAIL)
+#else
+#define WASM_JIT_HELPER_STAT(STAT) do {} while (0)
+#define WASM_JIT_HELPER_DETAIL(DETAIL) do {} while (0)
+#endif
+
 #ifdef BOXEDWINE_MULTI_THREADED
 static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = 1;
 static constexpr U32 WASM_JIT_INTERIOR_BRIDGE_LIMIT = 0;
@@ -163,6 +335,248 @@ static inline bool wasmJitCanBridgeInterior(CPU* cpu, DecodedOp* nextOp) {
         nextOp->blockStart != nextOp &&
         nextOp->pfn &&
         nextOp->pfn != cpu->thread->process->startJITOp;
+}
+
+// ---------------------------------------------------------------------------
+// fetchNextOp transition profiling.
+//
+// Classifies every helper-dispatched block exit (the path direct tail calls in
+// pipeline-optimized modules bypass) and, on single-threaded builds, keeps an
+// approximate top list of interior-target EIPs. Each periodic snapshot is also
+// pushed to Module.wasmJitInteriorProfileLines, which saveJitModules() embeds
+// in the cache zip as boxedwine-jit-profile.txt — the offline pipeline turns
+// it into profile-guided split hints.
+//
+// Runtime-gated on wasmJitPersistenceActive(): a plain session pays one
+// predictable branch in fetchNextOp and nothing else, while record/replay
+// sessions (which already run relocatable codegen) carry the counters.
+// ---------------------------------------------------------------------------
+static std::atomic<U64> g_wasmJitTransitionFetchNext{0};
+static std::atomic<U64> g_wasmJitTransitionFetchNextYield{0};
+static std::atomic<U64> g_wasmJitTransitionFetchNextTargetJit{0};
+static std::atomic<U64> g_wasmJitTransitionFetchNextTargetInterior{0};
+static std::atomic<U64> g_wasmJitTransitionFetchNextTargetNull{0};
+static std::atomic<U64> g_wasmJitTransitionFetchNextTargetNoJitFlag{0};
+static std::atomic<U64> g_wasmJitTransitionFetchNextTargetNoTable{0};
+static std::atomic<U64> g_wasmJitTransitionFetchNextTargetPfn{0};
+static std::atomic<U64> g_wasmJitTransitionFetchNextTargetOther{0};
+
+#ifndef BOXEDWINE_MULTI_THREADED
+// Push one transition-profile snapshot line to the main-thread JS side so the
+// Save-JIT-Cache export can embed the profile sidecar. ST-only and fully
+// self-contained (no shell-page function dependencies). MT builds collect the
+// same lines in g_wasmInteriorProfileLines instead (workers cannot reach the
+// main-thread Module) and mirror them in wasm_jit_mt_prepare_export.
+EM_JS(void, boxedwine_wasm_record_transition_profile, (U64 total, U64 yieldCount,
+      U64 jit, U64 interior, U64 nullTarget, U64 noFlag, U64 noTable, U64 pfn, U64 other,
+      const char* interiorTopPtr), {
+    if (!Module.wasmJitInteriorProfileLines) Module.wasmJitInteriorProfileLines = [];
+    var interiorTop = UTF8ToString(interiorTopPtr);
+    var line = '[WASM JIT transitions] fetchNext=' + Number(total) +
+        ' yield=' + Number(yieldCount) +
+        ' target[jit=' + Number(jit) +
+        ',interior=' + Number(interior) +
+        ',null=' + Number(nullTarget) +
+        ',noFlag=' + Number(noFlag) +
+        ',noTable=' + Number(noTable) +
+        ',pfn=' + Number(pfn) +
+        ',other=' + Number(other) +
+        '] interiorTop[' + interiorTop + ']';
+    Module.wasmJitInteriorProfileLines.push(line);
+    if (Module.wasmJitInteriorProfileLines.length > 256) {
+        Module.wasmJitInteriorProfileLines.shift();
+    }
+});
+#endif // !BOXEDWINE_MULTI_THREADED
+
+// Approximate space-saving top list of interior transition targets. The
+// approximate count ranks entries (it can over-count after an eviction); the
+// exact count restarts at 1 whenever a slot is recycled.
+// In MT builds the slots are updated by multiple workers without
+// synchronization — entries can tear or under-count. That is acceptable: this
+// is an approximate ranking that feeds offline split *hints*, every hint is
+// re-validated against manifest block ranges by the pipeline, and putting
+// atomics or a lock in the fetchNextOp path would perturb the very behavior
+// being profiled.
+static constexpr U32 WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT = 16;
+static U32 g_wasmJitInteriorTargetSampleEip[WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT] = {};
+static U32 g_wasmJitInteriorTargetSampleBlockStart[WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT] = {};
+static U64 g_wasmJitInteriorTargetSampleCount[WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT] = {};
+static U64 g_wasmJitInteriorTargetSampleExactCount[WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT] = {};
+
+static inline U64 wasmJitRecordInteriorTargetSample(U32 targetEip, U32 blockStartEip) {
+    for (U32 i = 0; i < WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT; i++) {
+        if (g_wasmJitInteriorTargetSampleEip[i] == targetEip &&
+            g_wasmJitInteriorTargetSampleBlockStart[i] == blockStartEip) {
+            g_wasmJitInteriorTargetSampleCount[i]++;
+            g_wasmJitInteriorTargetSampleExactCount[i]++;
+            return g_wasmJitInteriorTargetSampleExactCount[i];
+        }
+    }
+    for (U32 i = 0; i < WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT; i++) {
+        if (!g_wasmJitInteriorTargetSampleEip[i]) {
+            g_wasmJitInteriorTargetSampleEip[i] = targetEip;
+            g_wasmJitInteriorTargetSampleBlockStart[i] = blockStartEip;
+            g_wasmJitInteriorTargetSampleCount[i] = 1;
+            g_wasmJitInteriorTargetSampleExactCount[i] = 1;
+            return 1;
+        }
+    }
+    U32 minIndex = 0;
+    U64 minCount = g_wasmJitInteriorTargetSampleCount[0];
+    for (U32 i = 1; i < WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT; i++) {
+        if (g_wasmJitInteriorTargetSampleCount[i] < minCount) {
+            minCount = g_wasmJitInteriorTargetSampleCount[i];
+            minIndex = i;
+        }
+    }
+    g_wasmJitInteriorTargetSampleEip[minIndex] = targetEip;
+    g_wasmJitInteriorTargetSampleBlockStart[minIndex] = blockStartEip;
+    g_wasmJitInteriorTargetSampleCount[minIndex] = minCount + 1;
+    g_wasmJitInteriorTargetSampleExactCount[minIndex] = 1;
+    return 1;
+}
+
+// Byte offset of nextOp from its containing block's start, or 0 if the chain
+// can't be walked. Used to report the containing block-start EIP alongside
+// the interior target so the offline pipeline can match manifest ranges.
+static inline U32 wasmJitInteriorByteDistance(DecodedOp* nextOp) {
+    if (!nextOp || !nextOp->blockStart || nextOp->blockStart == nextOp) {
+        return 0;
+    }
+    U32 byteOffset = 0;
+    U32 index = 0;
+    DecodedOp* cur = nextOp->blockStart;
+    U32 blockOpCount = cur ? cur->blockOpCount : 0;
+    while (cur && cur != nextOp && index < blockOpCount) {
+        byteOffset += cur->len;
+        cur = cur->next;
+        index++;
+    }
+    return cur == nextOp ? byteOffset : 0;
+}
+
+static inline void wasmJitFormatInteriorTargetSamples(char* out, U32 outSize) {
+    if (!outSize) {
+        return;
+    }
+    out[0] = 0;
+    U32 used = 0;
+    bool selected[WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT] = {};
+    for (U32 rank = 0; rank < WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT; rank++) {
+        U32 best = WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT;
+        U64 bestCount = 0;
+        for (U32 i = 0; i < WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT; i++) {
+            if (selected[i] || !g_wasmJitInteriorTargetSampleEip[i] || g_wasmJitInteriorTargetSampleCount[i] <= bestCount) {
+                continue;
+            }
+            best = i;
+            bestCount = g_wasmJitInteriorTargetSampleCount[i];
+        }
+        if (best == WASM_JIT_INTERIOR_TARGET_SAMPLE_COUNT) {
+            break;
+        }
+        selected[best] = true;
+        S32 written = snprintf(out + used, outSize - used, "%s%08x@%08x=%llu/%llu",
+            used ? "," : "",
+            g_wasmJitInteriorTargetSampleEip[best],
+            g_wasmJitInteriorTargetSampleBlockStart[best],
+            (unsigned long long)g_wasmJitInteriorTargetSampleCount[best],
+            (unsigned long long)g_wasmJitInteriorTargetSampleExactCount[best]);
+        if (written <= 0) {
+            break;
+        }
+        used += (U32)written;
+        if (used >= outSize) {
+            out[outSize - 1] = 0;
+            break;
+        }
+    }
+}
+
+static inline void wasmJitRecordFetchNextTransition(CPU* cpu, DecodedOp* nextOp) {
+    U64 total = g_wasmJitTransitionFetchNext.fetch_add(1, std::memory_order_relaxed) + 1;
+    if (cpu->yield) {
+        g_wasmJitTransitionFetchNextYield.fetch_add(1, std::memory_order_relaxed);
+    }
+    if (!nextOp) {
+        g_wasmJitTransitionFetchNextTargetNull.fetch_add(1, std::memory_order_relaxed);
+    } else if (wasmJitCanChainTo(cpu, nextOp)) {
+        g_wasmJitTransitionFetchNextTargetJit.fetch_add(1, std::memory_order_relaxed);
+    } else if (!(nextOp->flags & OP_FLAG_JIT)) {
+        g_wasmJitTransitionFetchNextTargetNoJitFlag.fetch_add(1, std::memory_order_relaxed);
+    } else if (!nextOp->pfnJitCode) {
+        g_wasmJitTransitionFetchNextTargetNoTable.fetch_add(1, std::memory_order_relaxed);
+    } else if (nextOp->blockStart != nextOp) {
+        g_wasmJitTransitionFetchNextTargetInterior.fetch_add(1, std::memory_order_relaxed);
+        U32 targetEip = cpu->eip.u32 - cpu->seg[CS].address;
+        U32 byteDistance = wasmJitInteriorByteDistance(nextOp);
+        wasmJitRecordInteriorTargetSample(targetEip, targetEip - byteDistance);
+    } else if (nextOp->pfn != cpu->thread->process->startJITOp) {
+        g_wasmJitTransitionFetchNextTargetPfn.fetch_add(1, std::memory_order_relaxed);
+    } else {
+        g_wasmJitTransitionFetchNextTargetOther.fetch_add(1, std::memory_order_relaxed);
+    }
+    if (total % 5000000 == 0) {
+        char interiorTop[512];
+        wasmJitFormatInteriorTargetSamples(interiorTop, sizeof(interiorTop));
+        U64 yieldCount = g_wasmJitTransitionFetchNextYield.load(std::memory_order_relaxed);
+        U64 jitCount = g_wasmJitTransitionFetchNextTargetJit.load(std::memory_order_relaxed);
+        U64 interiorCount = g_wasmJitTransitionFetchNextTargetInterior.load(std::memory_order_relaxed);
+        U64 nullCount = g_wasmJitTransitionFetchNextTargetNull.load(std::memory_order_relaxed);
+        U64 noFlagCount = g_wasmJitTransitionFetchNextTargetNoJitFlag.load(std::memory_order_relaxed);
+        U64 noTableCount = g_wasmJitTransitionFetchNextTargetNoTable.load(std::memory_order_relaxed);
+        U64 pfnCount = g_wasmJitTransitionFetchNextTargetPfn.load(std::memory_order_relaxed);
+        U64 otherCount = g_wasmJitTransitionFetchNextTargetOther.load(std::memory_order_relaxed);
+        klog_fmt("[WASM JIT transitions] fetchNext=%llu yield=%llu target[jit=%llu,interior=%llu,null=%llu,noFlag=%llu,noTable=%llu,pfn=%llu,other=%llu] interiorTop[%s]",
+            (unsigned long long)total,
+            (unsigned long long)yieldCount,
+            (unsigned long long)jitCount,
+            (unsigned long long)interiorCount,
+            (unsigned long long)nullCount,
+            (unsigned long long)noFlagCount,
+            (unsigned long long)noTableCount,
+            (unsigned long long)pfnCount,
+            (unsigned long long)otherCount,
+            interiorTop);
+#ifndef BOXEDWINE_MULTI_THREADED
+        boxedwine_wasm_record_transition_profile(
+            total,
+            yieldCount,
+            jitCount,
+            interiorCount,
+            nullCount,
+            noFlagCount,
+            noTableCount,
+            pfnCount,
+            otherCount,
+            interiorTop);
+#else
+        // Workers cannot reach the main-thread Module, so collect the same
+        // snapshot line in shared memory; wasm_jit_mt_prepare_export mirrors
+        // it to Module.wasmJitInteriorProfileLines for the zip export.
+        {
+            char line[768];
+            snprintf(line, sizeof(line),
+                "[WASM JIT transitions] fetchNext=%llu yield=%llu target[jit=%llu,interior=%llu,null=%llu,noFlag=%llu,noTable=%llu,pfn=%llu,other=%llu] interiorTop[%s]",
+                (unsigned long long)total,
+                (unsigned long long)yieldCount,
+                (unsigned long long)jitCount,
+                (unsigned long long)interiorCount,
+                (unsigned long long)nullCount,
+                (unsigned long long)noFlagCount,
+                (unsigned long long)noTableCount,
+                (unsigned long long)pfnCount,
+                (unsigned long long)otherCount,
+                interiorTop);
+            std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+            if (g_wasmInteriorProfileLines.size() >= 256) {
+                g_wasmInteriorProfileLines.erase(g_wasmInteriorProfileLines.begin());
+            }
+            g_wasmInteriorProfileLines.push_back(line);
+        }
+#endif
+    }
 }
 
 static inline void wasmJitFinishBridgeOp(CPU* cpu, DecodedOp* op) {
@@ -1213,10 +1627,12 @@ EM_JS(int, boxedwine_wasm_instantiate,
         var idx = addFunction(fn, 'vi');
 
 #ifndef __TEST
-        if (!boxedwine_wasm_instantiate._count) boxedwine_wasm_instantiate._count = 0;
-        boxedwine_wasm_instantiate._count++;
-        if (boxedwine_wasm_instantiate._count % 1000 === 0) {
-            console.log('[WASM JIT] compiled=' + boxedwine_wasm_instantiate._count +
+        if (!Module.wasmJitStats) {
+            Module.wasmJitStats = { hits: 0, misses: 0, eipMisses: 0, hashMisses: 0, stale: 0, cachedInstalls: 0, freshCompiled: 0, saved: 0, eipMissSamples: [], hashMissSamples: [] };
+        }
+        Module.wasmJitStats.freshCompiled++;
+        if (Module.wasmJitStats.freshCompiled % 1000 === 0) {
+            console.log('[WASM JIT] freshCompiled=' + Module.wasmJitStats.freshCompiled +
                 ' latestSlot=' + idx +
                 ' tableLen=' + wasmTable.length);
         }
@@ -1236,41 +1652,300 @@ EM_JS(int, boxedwine_wasm_instantiate,
 // Only reached when the runtime persistence mode is active (see
 // wasmJitPersistenceActive); a plain session never calls into here.
 //
-// Module.wasmJitCache (key -> wasm bytes) and Module.wasmJitCompiledCache
-// (key -> precompiled WebAssembly.Module) are created and preloaded by
-// initWasmJitCache() in boxedwine-shell.js before the emulator starts. The
-// cache key convention is 'v3-<eip hex8>-<blockHash hex8>'; it is computed
+// Main-thread JS caches, created/preloaded by initWasmJitCache() in
+// boxedwine-shell.js before the emulator starts:
+//   Module.wasmJitCache            key -> wasm bytes (flat modules)
+//   Module.wasmJitCompiledCache    key -> precompiled WebAssembly.Module
+//   Module.wasmJitGroupModules     group path -> compiled merged group module
+//   Module.wasmJitGroupInstances   group path -> instantiated merged group
+//   Module.wasmJitGroupEntryMap    key -> { groupPath, exportName }
+//   Module.wasmJitInstalledCache   key -> wasmTable index of installed export
+//   Module.wasmJitInstalledByTableIndex   reverse map for free-block cleanup
+//   Module.wasmJitProfileSplitTargets     blockStart hex -> target hex hints
+//
+// The cache key convention is 'v3-<eip hex8>-<blockHash hex8>'; it is computed
 // inline here (rather than calling a shell-defined helper) so these EM_JS
 // bodies stay self-contained and never depend on which shell page loaded us.
 // ---------------------------------------------------------------------------
 
+// Consulted by shouldStopBlockBefore() while a block is being built: returns 1
+// when a profile-guided split hint says the block must end before currentEip
+// so the hot interior target can become its own block-start cache entry.
+EM_JS(int, boxedwine_wasm_profile_split_before, (U32 blockStartEip, U32 currentEip), {
+    if (!Module.wasmJitProfileSplitTargets) return 0;
+    function hex32(v) { return ('00000000' + ((v >>> 0).toString(16))).slice(-8); }
+    var blockStartKey = hex32(blockStartEip);
+    var target = Module.wasmJitProfileSplitTargets.get(blockStartKey);
+    if (!target) return 0;
+    if (!Module.wasmJitProfileSplitStats) {
+        Module.wasmJitProfileSplitStats = {
+            hints: Module.wasmJitProfileSplitTargets.size,
+            hintedLookups: 0, exactHits: 0, installedHits: 0, groupHits: 0, flatHits: 0,
+            bypasses: 0, hintedCompileChecks: 0, compileStops: 0, splitTargetSaves: 0
+        };
+    }
+    var stats = Module.wasmJitProfileSplitStats;
+    stats.hintedCompileChecks++;
+    if (target === hex32(currentEip)) {
+        stats.compileStops++;
+        if (stats.compileStops <= 8 || stats.compileStops % 100 === 0) {
+            console.log('[WASM JIT profile split] compile stop block=' + blockStartKey +
+                ' target=' + target + ' ' + JSON.stringify(stats));
+        }
+        return 1;
+    }
+    return 0;
+});
+
 // Look up a previously compiled block by CS-relative EIP + block hash.
-// Returns its wasmTable index (directly usable as pfnJitCode), or -1 on
-// miss / stale entry / instantiation failure.
+// Resolution order: already-installed merged export -> merged group entry
+// (instantiating the group module on first touch) -> flat cached bytes /
+// precompiled module. Returns the wasmTable index (directly usable as
+// pfnJitCode), or -1 on miss / stale entry / instantiation failure.
 EM_JS(int, boxedwine_wasm_lookup_cached,
       (U32 eip, U32 blockHash, const void** importFns, int importCount),
 {
     if (!Module.wasmJitStats) {
-        Module.wasmJitStats = { hits: 0, misses: 0, stale: 0, saved: 0 };
+        Module.wasmJitStats = { hits: 0, misses: 0, eipMisses: 0, hashMisses: 0, stale: 0, cachedInstalls: 0, freshCompiled: 0, saved: 0, eipMissSamples: [], hashMissSamples: [] };
     }
-    var s = Module.wasmJitStats;
-    function logStats() {
-        var lookups = s.hits + s.misses + s.stale;
-        if (lookups > 0 && lookups % 1000 === 0) {
-            console.log('[WASM JIT cache] hits=' + s.hits +
-                ' misses=' + s.misses +
-                ' stale=' + s.stale +
-                ' saved=' + s.saved +
-                ' tableLen=' + wasmTable.length);
+    function hex32(v) { return ('00000000' + ((v >>> 0).toString(16))).slice(-8); }
+    function splitStats() {
+        if (!Module.wasmJitProfileSplitStats) {
+            Module.wasmJitProfileSplitStats = {
+                hints: Module.wasmJitProfileSplitTargets ? Module.wasmJitProfileSplitTargets.size : 0,
+                hintedLookups: 0, exactHits: 0, installedHits: 0, groupHits: 0, flatHits: 0,
+                bypasses: 0, hintedCompileChecks: 0, compileStops: 0, splitTargetSaves: 0
+            };
+        }
+        return Module.wasmJitProfileSplitStats;
+    }
+    function recordSplitExactHit(kind) {
+        var p = splitStats();
+        p.exactHits++;
+        if (kind === 'installed') p.installedHits++;
+        else if (kind === 'group') p.groupHits++;
+        else if (kind === 'flat') p.flatHits++;
+    }
+    function getMergedProfile() {
+        if (!Module.wasmJitMergedProfile) {
+            var groupedStats = (Module.wasmJitGroupedManifest && Module.wasmJitGroupedManifest.stats) || {};
+            var directStats = groupedStats.directCalls || {};
+            var groups = (Module.wasmJitGroupedManifest && Module.wasmJitGroupedManifest.groups) || [];
+            var manifestEntries = 0;
+            for (var gi = 0; gi < groups.length; gi++) {
+                manifestEntries += (groups[gi].entries || []).length;
+            }
+            Module.wasmJitMergedProfile = {
+                lookups: 0,
+                groupAvailable: 0,
+                groupHits: 0,
+                flatHits: 0,
+                installedReuse: 0,
+                groupInstantiates: 0,
+                groupInstanceReuse: 0,
+                groupInstallAttempts: 0,
+                groupInstallSuccess: 0,
+                groupInstallFail: 0,
+                manifestEntries: manifestEntries,
+                manifestGroups: groups.length,
+                directSites: directStats.rewritten || 0,
+                candidateEdges: directStats.candidateEdges || 0,
+                guarded: directStats.guardedRewritten || 0,
+                yieldAware: !!directStats.yieldAwareTailCalls
+            };
+        }
+        return Module.wasmJitMergedProfile;
+    }
+    function logMergedProfile() {
+        var p = getMergedProfile();
+        if (p.lookups > 0 && p.lookups % 1000 === 0) {
+            console.log('[WASM JIT merged profile] lookups=' + p.lookups +
+                ' groupAvailable=' + p.groupAvailable +
+                ' groupHits=' + p.groupHits +
+                ' flatHits=' + p.flatHits +
+                ' installedReuse=' + p.installedReuse +
+                ' groupInstantiates=' + p.groupInstantiates +
+                ' groupInstanceReuse=' + p.groupInstanceReuse +
+                ' groupInstallAttempts=' + p.groupInstallAttempts +
+                ' groupInstallSuccess=' + p.groupInstallSuccess +
+                ' groupInstallFail=' + p.groupInstallFail +
+                ' manifestGroups=' + p.manifestGroups +
+                ' manifestEntries=' + p.manifestEntries +
+                ' directSites=' + p.directSites +
+                ' candidateEdges=' + p.candidateEdges +
+                ' guarded=' + p.guarded +
+                ' yieldAware=' + (p.yieldAware ? 1 : 0));
         }
     }
-    var key = 'v3-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
-              '-'   + ('00000000' + ((blockHash >>> 0).toString(16))).slice(-8);
+    getMergedProfile().lookups++;
+    function logStats() {
+        var s = Module.wasmJitStats;
+        var lookups = s.hits + s.misses + s.stale;
+        if (lookups > 0 && lookups % 1000 === 0) {
+            var samples = "";
+            if (s.eipMissSamples.length > 0) {
+                samples += ' eipMissSamples=' + s.eipMissSamples.join(',');
+            }
+            if (s.hashMissSamples.length > 0) {
+                samples += ' hashMissSamples=' + s.hashMissSamples.join(',');
+            }
+            console.log('[WASM JIT cache] hits=' + s.hits +
+                ' misses=' + s.misses +
+                ' eipMisses=' + s.eipMisses +
+                ' hashMisses=' + s.hashMisses +
+                ' stale=' + s.stale +
+                ' cachedInstalls=' + s.cachedInstalls +
+                ' freshCompiled=' + s.freshCompiled +
+                ' saved=' + s.saved +
+                ' tableLen=' + wasmTable.length +
+                samples);
+            logMergedProfile();
+            if (Module.wasmJitProfileSplitTargets && Module.wasmJitProfileSplitTargets.size > 0) {
+                console.log('[WASM JIT profile split] ' + JSON.stringify(splitStats()));
+            }
+        }
+    }
+    var eipKey = hex32(eip);
+    var key = 'v3-' + eipKey + '-' + hex32(blockHash);
+    var splitTarget = Module.wasmJitProfileSplitTargets && Module.wasmJitProfileSplitTargets.get(eipKey);
+    var hasExactSplitKey = false;
+    if (splitTarget) splitStats().hintedLookups++;
+    function recordSample(arr, sample) {
+        if (arr.length < 12 && arr.indexOf(sample) < 0) arr.push(sample);
+    }
+    function recordMiss() {
+        Module.wasmJitStats.misses++;
+        var knownHashes = Module.wasmJitCacheEipHashes && Module.wasmJitCacheEipHashes.get(eipKey);
+        if (knownHashes) {
+            Module.wasmJitStats.hashMisses++;
+            recordSample(Module.wasmJitStats.hashMissSamples,
+                eipKey + ':' + hex32(blockHash) + '!=' + knownHashes.join('|'));
+        } else {
+            Module.wasmJitStats.eipMisses++;
+            recordSample(Module.wasmJitStats.eipMissSamples, eipKey);
+        }
+        logStats();
+    }
+    function isInstalledSlotLive(tableIndex) {
+        try {
+            return tableIndex !== undefined && wasmTable.get(tableIndex) !== null;
+        } catch(e) {
+            return false;
+        }
+    }
+    function instantiateMergedGroup(groupPath) {
+        if (!Module.wasmJitGroupModules) return false;
+        if (!Module.wasmJitGroupInstances) Module.wasmJitGroupInstances = new Map();
+        var inst = Module.wasmJitGroupInstances.get(groupPath);
+        if (inst) {
+            getMergedProfile().groupInstanceReuse++;
+            return inst;
+        }
+        var mod = Module.wasmJitGroupModules.get(groupPath);
+        if (!mod) return false;
+
+        var helpers = {};
+        var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+        for (var i = 0; i < importCount; i++) {
+            helpers['fn_' + i] = wasmTable.get(view[i]);
+        }
+        inst = new WebAssembly.Instance(mod, {
+            'env':     { 'memory': wasmMemory },
+            'helpers': helpers
+        });
+        Module.wasmJitGroupInstances.set(groupPath, inst);
+        getMergedProfile().groupInstantiates++;
+        return inst;
+    }
+    function installMergedGroupEntry(key, groupEntry) {
+        if (!Module.wasmJitInstalledCache) Module.wasmJitInstalledCache = new Map();
+        var tableIndex = Module.wasmJitInstalledCache.get(key);
+        if (isInstalledSlotLive(tableIndex)) {
+            getMergedProfile().installedReuse++;
+            return tableIndex;
+        }
+        if (tableIndex !== undefined) {
+            Module.wasmJitInstalledCache.delete(key);
+            if (Module.wasmJitInstalledByTableIndex) Module.wasmJitInstalledByTableIndex.delete(tableIndex);
+        }
+
+        getMergedProfile().groupInstallAttempts++;
+        var inst = instantiateMergedGroup(groupEntry.groupPath);
+        if (!inst) {
+            getMergedProfile().groupInstallFail++;
+            return undefined;
+        }
+        var exportName = groupEntry.exportName || key;
+        var fn = inst.exports[exportName];
+        if (!fn) {
+            getMergedProfile().groupInstallFail++;
+            return undefined;
+        }
+        tableIndex = addFunction(fn, 'vi');
+        Module.wasmJitInstalledCache.set(key, tableIndex);
+        if (!Module.wasmJitInstalledByTableIndex) Module.wasmJitInstalledByTableIndex = new Map();
+        Module.wasmJitInstalledByTableIndex.set(tableIndex, key);
+        getMergedProfile().groupInstallSuccess++;
+        return tableIndex;
+    }
+    var installed = Module.wasmJitInstalledCache && Module.wasmJitInstalledCache.get(key);
+    if (installed !== undefined) {
+        hasExactSplitKey = true;
+        if (!isInstalledSlotLive(installed)) {
+            Module.wasmJitInstalledCache.delete(key);
+            if (Module.wasmJitInstalledByTableIndex) Module.wasmJitInstalledByTableIndex.delete(installed);
+        } else {
+            Module.wasmJitStats.hits++;
+            Module.wasmJitStats.cachedInstalls++;
+            if (splitTarget) recordSplitExactHit('installed');
+            getMergedProfile().groupAvailable++;
+            getMergedProfile().groupHits++;
+            logStats();
+            return installed;
+        }
+    }
+    var groupEntry = Module.wasmJitGroupEntryMap && Module.wasmJitGroupEntryMap.get(key);
+    if (groupEntry) {
+        hasExactSplitKey = true;
+        getMergedProfile().groupAvailable++;
+        try {
+            installed = installMergedGroupEntry(key, groupEntry);
+            if (installed !== undefined) {
+                Module.wasmJitStats.hits++;
+                Module.wasmJitStats.cachedInstalls++;
+                if (splitTarget) recordSplitExactHit('group');
+                getMergedProfile().groupHits++;
+                logStats();
+                return installed;
+            }
+        } catch(e) {
+            Module.wasmJitStats.stale++;
+            console.warn('[WASM JIT cache] merged group install failed for key=' +
+                key + ', recompiling');
+            logStats();
+            return -1;
+        }
+    }
     var cached = Module.wasmJitCache && Module.wasmJitCache.get(key);
     var mod = Module.wasmJitCompiledCache && Module.wasmJitCompiledCache.get(key);
+    if (splitTarget && (cached || mod)) {
+        hasExactSplitKey = true;
+    }
+    if (splitTarget && !hasExactSplitKey) {
+        // A split hint names this block start but no split-shaped cache entry
+        // exists yet: force a miss so the runtime compiles (and saves) the
+        // split-shaped block instead of installing the old unsplit one.
+        var sStats = splitStats();
+        sStats.bypasses++;
+        if (sStats.bypasses <= 8 || sStats.bypasses % 100 === 0) {
+            console.log('[WASM JIT profile split] bypass cached block=' + eipKey +
+                ' target=' + splitTarget + ' ' + JSON.stringify(sStats));
+        }
+        recordMiss();
+        return -1;
+    }
     if (!cached && !mod) {
-        s.misses++;
-        logStats();
+        recordMiss();
         return -1;
     }
     try {
@@ -1290,20 +1965,25 @@ EM_JS(int, boxedwine_wasm_lookup_cached,
         });
         var fn = inst.exports['execute'];
         if (!fn) {
-            s.stale++;
+            Module.wasmJitStats.stale++;
             if (Module.wasmJitCache) Module.wasmJitCache.delete(key);
+            if (Module.wasmJitBlockMeta) Module.wasmJitBlockMeta.delete(key);
             if (Module.wasmJitCompiledCache) Module.wasmJitCompiledCache.delete(key);
             logStats();
             return -1;
         }
         var idx = addFunction(fn, 'vi');
-        s.hits++;
+        Module.wasmJitStats.hits++;
+        Module.wasmJitStats.cachedInstalls++;
+        if (splitTarget) recordSplitExactHit('flat');
+        getMergedProfile().flatHits++;
         logStats();
         return idx;
     } catch(e) {
-        s.stale++;
+        Module.wasmJitStats.stale++;
         console.warn('[WASM JIT cache] stale entry for key=' + key + ', recompiling');
         if (Module.wasmJitCache) Module.wasmJitCache.delete(key);
+        if (Module.wasmJitBlockMeta) Module.wasmJitBlockMeta.delete(key);
         if (Module.wasmJitCompiledCache) Module.wasmJitCompiledCache.delete(key);
         logStats();
         return -1;
@@ -1311,20 +1991,103 @@ EM_JS(int, boxedwine_wasm_lookup_cached,
 });
 
 // Save a freshly compiled block to Module.wasmJitCache (the source of truth
-// for the Save-JIT-Cache export) and async-write it to IndexedDB.
-EM_JS(void, boxedwine_wasm_save_block, (U32 eip, U32 blockHash, const void* bytes, int size),
+// for the Save-JIT-Cache export) and async-write it to IndexedDB. The extra
+// arguments capture the per-block exit metadata and runtime constants that
+// saveJitModules() serializes as boxedwine-jit-manifest.json for the offline
+// cache pipeline.
+EM_JS(void, boxedwine_wasm_save_block,
+      (U32 eip, U32 blockHash, const void* bytes, int size, U32 opCount, U32 emulatedLen,
+       U32 next1Target, U32 next2Target, U32 jumpTarget, U32 next1Count, U32 next2Count, U32 jumpCount,
+       U32 cpuBlockInstructionCountOffset, U32 cpuYieldOffset, U32 contextTimeRemainingPtr),
 {
-    var key = 'v3-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
-              '-'   + ('00000000' + ((blockHash >>> 0).toString(16))).slice(-8);
+    function hex32(v) { return ('00000000' + ((v >>> 0).toString(16))).slice(-8); }
+    var eipKey = hex32(eip);
+    var hashKey = hex32(blockHash);
+    var key = 'v3-' + eipKey + '-' + hashKey;
     var binary = new Uint8Array(HEAPU8.buffer, bytes, size).slice();
+    if (!Module.wasmJitStats) {
+        Module.wasmJitStats = { hits: 0, misses: 0, eipMisses: 0, hashMisses: 0, stale: 0, cachedInstalls: 0, freshCompiled: 0, saved: 0, eipMissSamples: [], hashMissSamples: [] };
+    }
+    Module.wasmJitStats.saved++;
     if (!Module.wasmJitCache) Module.wasmJitCache = new Map();
+    if (!Module.wasmJitCacheEips) Module.wasmJitCacheEips = new Set();
+    if (!Module.wasmJitCacheEipHashes) Module.wasmJitCacheEipHashes = new Map();
+    if (Module.wasmJitProfileSplitTargetSources && Module.wasmJitProfileSplitTargetSources.has(eipKey) &&
+            Module.wasmJitProfileSplitStats) {
+        var splitStats = Module.wasmJitProfileSplitStats;
+        splitStats.splitTargetSaves++;
+        if (splitStats.splitTargetSaves <= 8 || splitStats.splitTargetSaves % 100 === 0) {
+            console.log('[WASM JIT profile split] saved target=' + eipKey +
+                ' sources=' + Module.wasmJitProfileSplitTargetSources.get(eipKey).join('|') +
+                ' ' + JSON.stringify(splitStats));
+        }
+    }
+    var hashes = Module.wasmJitCacheEipHashes.get(eipKey);
+    if (!hashes) {
+        hashes = [];
+        Module.wasmJitCacheEipHashes.set(eipKey, hashes);
+    }
+    if (hashes.length < 4 && hashes.indexOf(hashKey) < 0) hashes.push(hashKey);
     Module.wasmJitCache.set(key, binary);
-    if (Module.wasmJitStats) Module.wasmJitStats.saved++;
+    Module.wasmJitCacheEips.add(eipKey);
+    Module.wasmJitRuntimeConstants = {
+        version: 1,
+        cpu: {
+            blockInstructionCountOffset: cpuBlockInstructionCountOffset >>> 0,
+            yieldOffset: cpuYieldOffset >>> 0
+        },
+        scheduler: {
+            contextTimeRemainingPtr: contextTimeRemainingPtr >>> 0
+        }
+    };
+    if (!Module.wasmJitBlockMeta) Module.wasmJitBlockMeta = new Map();
+    Module.wasmJitBlockMeta.set(key, {
+        key: key,
+        eip: eip >>> 0,
+        blockHash: blockHash >>> 0,
+        wasmBytes: size >>> 0,
+        opCount: opCount >>> 0,
+        emulatedLen: emulatedLen >>> 0,
+        exits: {
+            next1: { count: next1Count >>> 0, firstTarget: next1Target >>> 0 },
+            next2: { count: next2Count >>> 0, firstTarget: next2Target >>> 0 },
+            jump:  { count: jumpCount >>> 0, firstTarget: jumpTarget >>> 0 }
+        }
+    });
     if (Module.wasmJitDb) {
         try {
             var tx = Module.wasmJitDb.transaction('blocks', 'readwrite');
             tx.objectStore('blocks').put(binary, key);
         } catch(e) { /* fire-and-forget; ignore */ }
+    }
+});
+
+// Called from C++ (wasm_jit_import_from_file) for each imported zip entry.
+// No block metadata is available for these, so they participate in lookups
+// and IDB but not in the exported manifest.
+EM_JS(void, wasm_jit_js_store_entry, (U32 eip, U32 blockHash, const void* bytes, int size),
+{
+    function hex32(v) { return ('00000000' + ((v >>> 0).toString(16))).slice(-8); }
+    var eipKey = hex32(eip);
+    var hashKey = hex32(blockHash);
+    var key = 'v3-' + eipKey + '-' + hashKey;
+    var binary = new Uint8Array(HEAPU8.buffer, bytes, size).slice();
+    if (!Module.wasmJitCache) Module.wasmJitCache = new Map();
+    if (!Module.wasmJitCacheEips) Module.wasmJitCacheEips = new Set();
+    if (!Module.wasmJitCacheEipHashes) Module.wasmJitCacheEipHashes = new Map();
+    var hashes = Module.wasmJitCacheEipHashes.get(eipKey);
+    if (!hashes) {
+        hashes = [];
+        Module.wasmJitCacheEipHashes.set(eipKey, hashes);
+    }
+    if (hashes.length < 4 && hashes.indexOf(hashKey) < 0) hashes.push(hashKey);
+    Module.wasmJitCache.set(key, binary);
+    Module.wasmJitCacheEips.add(eipKey);
+    if (Module.wasmJitDb) {
+        try {
+            var tx = Module.wasmJitDb.transaction('blocks', 'readwrite');
+            tx.objectStore('blocks').put(binary, key);
+        } catch(e) {}
     }
 });
 
@@ -1524,6 +2287,56 @@ extern "C" void wasm_jit_mt_register(uint32_t eip, uint32_t blockHash, const voi
              static_cast<const U8*>(bytes) + size);
 }
 
+// Mirror one block's exit metadata into Module.wasmJitBlockMeta and (re)set
+// Module.wasmJitRuntimeConstants — the same shape boxedwine_wasm_save_block
+// produces on ST builds, so saveJitModules() emits an identical
+// boxedwine-jit-manifest.json for MT-recorded zips.
+EM_JS(void, wasm_jit_mt_populate_js_meta_entry,
+      (U32 eip, U32 blockHash, U32 wasmSize, U32 opCount, U32 emulatedLen,
+       U32 next1Target, U32 next2Target, U32 jumpTarget,
+       U32 next1Count, U32 next2Count, U32 jumpCount,
+       U32 cpuBlockInstructionCountOffset, U32 cpuYieldOffset, U32 contextTimeRemainingPtr),
+{
+    var key = 'v3-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
+              '-'   + ('00000000' + ((blockHash >>> 0).toString(16))).slice(-8);
+    Module.wasmJitRuntimeConstants = {
+        version: 1,
+        cpu: {
+            blockInstructionCountOffset: cpuBlockInstructionCountOffset >>> 0,
+            yieldOffset: cpuYieldOffset >>> 0
+        },
+        scheduler: {
+            contextTimeRemainingPtr: contextTimeRemainingPtr >>> 0
+        }
+    };
+    if (!Module.wasmJitBlockMeta) Module.wasmJitBlockMeta = new Map();
+    Module.wasmJitBlockMeta.set(key, {
+        key: key,
+        eip: eip >>> 0,
+        blockHash: blockHash >>> 0,
+        wasmBytes: wasmSize >>> 0,
+        opCount: opCount >>> 0,
+        emulatedLen: emulatedLen >>> 0,
+        exits: {
+            next1: { count: next1Count >>> 0, firstTarget: next1Target >>> 0 },
+            next2: { count: next2Count >>> 0, firstTarget: next2Target >>> 0 },
+            jump:  { count: jumpCount >>> 0, firstTarget: jumpTarget >>> 0 }
+        }
+    });
+});
+
+// Mirror one interior-transition profile snapshot line into
+// Module.wasmJitInteriorProfileLines so the exported zip carries the
+// boxedwine-jit-profile.txt sidecar.
+EM_JS(void, wasm_jit_mt_populate_js_profile_line, (const char* line),
+{
+    if (!Module.wasmJitInteriorProfileLines) Module.wasmJitInteriorProfileLines = [];
+    Module.wasmJitInteriorProfileLines.push(UTF8ToString(line));
+    if (Module.wasmJitInteriorProfileLines.length > 256) {
+        Module.wasmJitInteriorProfileLines.shift();
+    }
+});
+
 // Exported to JS; called by saveJitModules() right before building the zip.
 extern "C" void wasm_jit_mt_prepare_export() {
     std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
@@ -1531,6 +2344,29 @@ extern "C" void wasm_jit_mt_prepare_export() {
         wasm_jit_mt_populate_js_cache_entry(
             (U32)(kv.first >> 32), (U32)kv.first,
             kv.second.data(), (int)kv.second.size());
+        auto metaIt = g_wasmCacheMetaByKey.find(kv.first);
+        if (metaIt != g_wasmCacheMetaByKey.end()) {
+            const WasmJitMtBlockMeta& meta = metaIt->second;
+            wasm_jit_mt_populate_js_meta_entry(
+                (U32)(kv.first >> 32), (U32)kv.first,
+                (U32)kv.second.size(),
+                meta.opCount,
+                meta.emulatedLen,
+                meta.next1Target,
+                meta.next2Target,
+                meta.jumpTarget,
+                meta.next1Count,
+                meta.next2Count,
+                meta.jumpCount,
+                (U32)offsetof(CPU, blockInstructionCount),
+                (U32)offsetof(CPU, yield),
+                // No slice-budget global in MT (threads check cpu->yield);
+                // 0 marks the manifest as flat-pipeline-only.
+                0);
+        }
+    }
+    for (const std::string& line : g_wasmInteriorProfileLines) {
+        wasm_jit_mt_populate_js_profile_line(line.c_str());
     }
 }
 
@@ -1602,9 +2438,18 @@ static inline void boxedwine_wasm_call_block(int tableIndex, int cpuPtr) {
 #endif
 }
 
-// Single-threaded: return the slot to Emscripten's free-list.
+// Single-threaded: return the slot to Emscripten's free-list. If the slot
+// held an installed merged-group export, drop the installed-cache entries so
+// a later lookup re-installs instead of returning a freed table index.
 EM_JS(void, boxedwine_wasm_free_block, (int tableIndex),
 {
+    if (Module.wasmJitInstalledByTableIndex) {
+        var key = Module.wasmJitInstalledByTableIndex.get(tableIndex);
+        if (key !== undefined) {
+            Module.wasmJitInstalledByTableIndex.delete(tableIndex);
+            if (Module.wasmJitInstalledCache) Module.wasmJitInstalledCache.delete(key);
+        }
+    }
     removeFunction(tableIndex);
 });
 
@@ -1796,6 +2641,7 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
 // (rather than cpu->src.u32 / cpu->dst.u32) keeps lazy-flag state intact
 // across an RMW op's callback.
 static void wasmHelper_readMem32(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(ReadMem);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemRead();
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemReadUs);
@@ -1803,6 +2649,7 @@ static void wasmHelper_readMem32(CPU* cpu) {
     cpu->memHelperValue = cpu->memory->readd(cpu->memHelperAddr);
 }
 static void wasmHelper_writeMem32(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(WriteMem);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemWrite();
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemWriteUs);
@@ -1810,6 +2657,7 @@ static void wasmHelper_writeMem32(CPU* cpu) {
     cpu->memory->writed(cpu->memHelperAddr, cpu->memHelperValue);
 }
 static void wasmHelper_readMem8(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(ReadMem);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemRead();
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemReadUs);
@@ -1817,6 +2665,7 @@ static void wasmHelper_readMem8(CPU* cpu) {
     cpu->memHelperValue = cpu->memory->readb(cpu->memHelperAddr);
 }
 static void wasmHelper_writeMem8(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(WriteMem);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemWrite();
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemWriteUs);
@@ -1824,6 +2673,7 @@ static void wasmHelper_writeMem8(CPU* cpu) {
     cpu->memory->writeb(cpu->memHelperAddr, (U8)cpu->memHelperValue);
 }
 static void wasmHelper_readMem16(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(ReadMem);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemRead();
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemReadUs);
@@ -1831,6 +2681,7 @@ static void wasmHelper_readMem16(CPU* cpu) {
     cpu->memHelperValue = cpu->memory->readw(cpu->memHelperAddr);
 }
 static void wasmHelper_writeMem16(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(WriteMem);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemWrite();
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemWriteUs);
@@ -1853,6 +2704,7 @@ static inline void checkActiveBlockAfterWrite(CPU* cpu) {
     }
 }
 static void wasmHelper_writeMem32_check(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(WriteMemCheck);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemWriteCheck();
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemWriteCheckUs);
@@ -1861,6 +2713,7 @@ static void wasmHelper_writeMem32_check(CPU* cpu) {
     checkActiveBlockAfterWrite(cpu);
 }
 static void wasmHelper_writeMem16_check(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(WriteMemCheck);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemWriteCheck();
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemWriteCheckUs);
@@ -1869,6 +2722,7 @@ static void wasmHelper_writeMem16_check(CPU* cpu) {
     checkActiveBlockAfterWrite(cpu);
 }
 static void wasmHelper_writeMem8_check(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(WriteMemCheck);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperMemWriteCheck();
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperMemWriteCheckUs);
@@ -1879,6 +2733,7 @@ static void wasmHelper_writeMem8_check(CPU* cpu) {
 
 // Update cpu->nextOp by decoding the block at cpu->eip.u32
 static void wasmHelper_fetchNextOp(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(FetchNext);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileBlockExit();
     g_wasmJitProfileFetchNextCalls.fetch_add(1, std::memory_order_relaxed);
@@ -1886,6 +2741,9 @@ static void wasmHelper_fetchNextOp(CPU* cpu) {
 #endif
     if (!cpu->thread->terminating) {
         cpu->nextOp = cpu->getNextOp();
+        if (wasmJitPersistenceActive()) {
+            wasmJitRecordFetchNextTransition(cpu, cpu->nextOp);
+        }
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
         wasmJitProfileFetchNextTarget(cpu, cpu->nextOp);
 #endif
@@ -1899,6 +2757,7 @@ static void wasmHelper_syncFlags(CPU* cpu) {}
 // setup is now done in wasmStartJITOp before calling the generated block,
 // which avoids one generated WASM -> imported C++ helper call per block.
 static void wasmHelper_blockEnter(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(BlockEnter);
     (void)cpu;
 }
 
@@ -1906,6 +2765,7 @@ static void wasmHelper_blockEnter(CPU* cpu) {
 // operations the WASM JIT doesn't inline, e.g. FPU/SSE/complex shifts).
 void jitRunSingleOp(CPU* cpu);   // defined in jitCodeGen.cpp
 static void wasmHelper_emulateSingleOp(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(Emulate);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperEmulate();
     if (cpu->tmpReg < InstructionCount) {
@@ -1923,6 +2783,7 @@ static void wasmHelper_emulateSingleOp(CPU* cpu) {
 // cpu->tmpReg. Used by the WASM backend's getCF() override since it can't
 // do a nakedCall to the per-flag-type computation functions.
 static void wasmHelper_computeCF(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(Flags);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperFlags();
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperFlagsUs);
@@ -1930,6 +2791,7 @@ static void wasmHelper_computeCF(CPU* cpu) {
     cpu->tmpReg = cpu->getCF() ? 1 : 0;
 }
 static void wasmHelper_computeZF(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(Flags);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperFlags();
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperFlagsUs);
@@ -1940,6 +2802,7 @@ static void wasmHelper_computeZF(CPU* cpu) {
 // Materialize all lazy flags into cpu->flags; reset lazyFlagType to FLAGS_NONE.
 void common_fillFlags(CPU* cpu);
 static void wasmHelper_fillFlags(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(Flags);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileHelperFlags();
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperFlagsUs);
@@ -1953,6 +2816,7 @@ static void wasmHelper_fillFlags(CPU* cpu) {
 // cpu->src.u32 would clobber live lazy-flag state.
 #define WASM_COND_HELPER(NAME, EXPR)                                           \
     static void wasmHelper_cond_##NAME(CPU* cpu) {                             \
+        WASM_JIT_HELPER_STAT(Cond);                                            \
         WASM_JIT_PROFILE_ONLY(wasmJitProfileHelperCond((U32)JitConditional::NAME, (U32)cpu->lazyFlagType);) \
         WASM_JIT_PROFILE_ONLY(WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperCondUs);) \
         cpu->tmpReg = (EXPR) ? 1 : 0;                                          \
@@ -1964,6 +2828,7 @@ WASM_COND_HELPER(NB,  !cpu->getCF())
 #ifdef BOXEDWINE_WASM_DIAGNOSTICS
 static U32 g_condZLogCount = 0;
 static void wasmHelper_cond_Z(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(Cond);
     WASM_JIT_PROFILE_ONLY(wasmJitProfileHelperCond((U32)JitConditional::Z, (U32)cpu->lazyFlagType);)
     WASM_JIT_PROFILE_ONLY(WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperCondUs);)
     if (g_condZLogCount < 100) {
@@ -1976,6 +2841,7 @@ static void wasmHelper_cond_Z(CPU* cpu) {
     cpu->tmpReg = cpu->getZF() ? 1 : 0;
 }
 static void wasmHelper_cond_NZ(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(Cond);
     WASM_JIT_PROFILE_ONLY(wasmJitProfileHelperCond((U32)JitConditional::NZ, (U32)cpu->lazyFlagType);)
     WASM_JIT_PROFILE_ONLY(WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperCondUs);)
     cpu->tmpReg = (!cpu->getZF()) ? 1 : 0;
@@ -2023,50 +2889,74 @@ static void wasmHelper_profileInlineCond(CPU* cpu) {
 #endif
 
 static void wasmHelper_fldSingleReal(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(X87);
+    WASM_JIT_HELPER_DETAIL(FldSingle);
     common_FLD_SINGLE_REAL(cpu, cpu->memHelperAddr);
 }
 
 static void wasmHelper_fld1(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(X87);
+    WASM_JIT_HELPER_DETAIL(Fld1);
     common_FLD1(cpu);
 }
 
 static void wasmHelper_fldDoubleReal(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(X87);
+    WASM_JIT_HELPER_DETAIL(FldDouble);
     common_FLD_DOUBLE_REAL(cpu, cpu->memHelperAddr);
 }
 
 static void wasmHelper_fcomSingleRealPop(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(X87);
+    WASM_JIT_HELPER_DETAIL(FcomSinglePop);
     common_FCOM_SINGLE_REAL_Pop(cpu, cpu->memHelperAddr);
 }
 
 static void wasmHelper_faddSt0Stj(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(X87);
+    WASM_JIT_HELPER_DETAIL(FaddSt0Stj);
     common_FADD_ST0_STj(cpu, cpu->memHelperValue);
 }
 
 static void wasmHelper_fdivSt0Stj(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(X87);
+    WASM_JIT_HELPER_DETAIL(FdivSt0Stj);
     common_FDIV_ST0_STj(cpu, cpu->memHelperValue);
 }
 
 static void wasmHelper_fnstswAx(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(X87);
+    WASM_JIT_HELPER_DETAIL(FnstswAx);
     common_FNSTSW_AX(cpu);
 }
 
 static void wasmHelper_fstSingleRealPop(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(X87);
+    WASM_JIT_HELPER_DETAIL(FstSinglePop);
     common_FST_SINGLE_REAL_Pop(cpu, cpu->memHelperAddr);
 }
 
 static void wasmHelper_fistDwordIntegerPop(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(X87);
+    WASM_JIT_HELPER_DETAIL(FistDwordPop);
     common_FIST_DWORD_INTEGER_Pop(cpu, cpu->memHelperAddr);
 }
 
 static void wasmHelper_movsdXmmE64(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(Sse);
+    WASM_JIT_HELPER_DETAIL(MovsdXmmE64);
     common_movsdXmmE64(cpu, cpu->memHelperValue, cpu->memHelperAddr);
 }
 
 static void wasmHelper_movsdE64Xmm(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(Sse);
+    WASM_JIT_HELPER_DETAIL(MovsdE64Xmm);
     common_movsdE64Xmm(cpu, cpu->memHelperValue, cpu->memHelperAddr);
 }
 
 static void wasmHelper_movsd32r(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(Movsd32r);
+    WASM_JIT_HELPER_DETAIL(Movsd32r);
     movsd32r(cpu, cpu->memHelperValue);
     checkActiveBlockAfterWrite(cpu);
 }
@@ -4490,6 +5380,10 @@ void JitWasmCodeGen::JumpIfCondition(JitConditional cond, U32 address) {
     // intra-block jumps, so treat it as a block exit to the target. The
     // `address` parameter is the *linear* EIP (CS.address + offset), but
     // cpu->eip.u32 stores only the offset relative to CS — subtract here.
+    m_manifestJumpCount++;
+    if (!m_manifestJumpTarget) {
+        m_manifestJumpTarget = address - cpu->seg[CS].address;
+    }
     IfCondition(cond);
     // Relocatable modules can't embed the target DecodedOp host pointer;
     // fall back to the eip-write + blockExit path.
@@ -4545,6 +5439,10 @@ void JitWasmCodeGen::JumpInBlock(U32 address) {
     // No native intra-block branching: set EIP (offset within CS, so strip
     // the CS base) and exit. fetchNextOp picks back up at the target op
     // in the next dispatcher round.
+    m_manifestJumpCount++;
+    if (!m_manifestJumpTarget) {
+        m_manifestJumpTarget = address - cpu->seg[CS].address;
+    }
     writeEip(address - cpu->seg[CS].address);
     emitBlockExitWithProfile(HELPER_PROFILE_EXIT_JUMP);
 }
@@ -4572,6 +5470,10 @@ void JitWasmCodeGen::blockExit() {
 // through). Mirror the base JitCodeGen::blockNext{1,2}: write the CS-offset
 // EIP and emit a blockExit so the dispatcher picks up the next op.
 void JitWasmCodeGen::blockNext1(U32 eip, DecodedOp* op) {
+    m_manifestNext1Count++;
+    if (!m_manifestNext1Target) {
+        m_manifestNext1Target = eip - cpu->seg[CS].address;
+    }
     if (!wasmJitPersistenceActive() && op->data.nextJump) {
         syncDirtyRegsToHost();
         writeEip(eip - cpu->seg[CS].address);
@@ -4607,6 +5509,10 @@ void JitWasmCodeGen::blockNext1(U32 eip, DecodedOp* op) {
     emitBlockExitWithProfile(HELPER_PROFILE_EXIT_NEXT1);
 }
 void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
+    m_manifestNext2Count++;
+    if (!m_manifestNext2Target) {
+        m_manifestNext2Target = eip - cpu->seg[CS].address;
+    }
     if (!wasmJitPersistenceActive() && op->next) {
         syncDirtyRegsToHost();
         writeEip(eip - cpu->seg[CS].address);
@@ -5286,6 +6192,17 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     if (this->blockOpCount == 0) {
         m_wasmBlockStartOp = op;
         m_preCompileBlockHash = 2166136261u;
+        m_manifestNext1Target = 0;
+        m_manifestNext2Target = 0;
+        m_manifestJumpTarget = 0;
+        m_manifestNext1Count = 0;
+        m_manifestNext2Count = 0;
+        m_manifestJumpCount = 0;
+        if (m_profileSplitBlockStartEip != this->startingEip) {
+            m_profileSplitTargetOp = nullptr;
+            m_profileSplitBlockStartEip = 0;
+            m_profileSplitTargetEip = 0;
+        }
     }
     if (wasmJitPersistenceActive()) {
         if (op->isStringOp()) {
@@ -5369,6 +6286,30 @@ void JitWasmCodeGen::postCompile(DecodedOp* op) {
     JitCodeGen::postCompile(op);
 }
 
+bool JitWasmCodeGen::shouldStopBlockBefore(U32 eip, DecodedOp* op) {
+#if !defined(BOXEDWINE_MULTI_THREADED) && !defined(__TEST)
+    // Honor profile-guided split hints from the grouped manifest: end the
+    // block before a hot interior target so that target compiles (and is
+    // cached) as its own block-start entry, making it reachable by the
+    // grouped direct-call machinery. The JS side keeps the hint map; without
+    // an active persistence session there are no hints and no EM_JS call.
+    if (!wasmJitPersistenceActive() || !op || eip == this->startingEip) {
+        return false;
+    }
+    if (boxedwine_wasm_profile_split_before(
+        this->startingEip - cpu->seg[CS].address,
+        eip - cpu->seg[CS].address) != 0) {
+        m_profileSplitTargetOp = op;
+        m_profileSplitBlockStartEip = this->startingEip;
+        m_profileSplitTargetEip = eip;
+        return true;
+    }
+    return false;
+#else
+    return false;
+#endif
+}
+
 void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     // Finalize the WASM function body and the module binary.
     m_emitter.endFunction();
@@ -5431,7 +6372,21 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         );
         if (tableIdx >= 0 && wasmJitPersistenceActive()) {
             boxedwine_wasm_save_block(
-                cacheEip, blockHash, m_wasmBinary.data(), (int)m_wasmBinary.size());
+                cacheEip,
+                blockHash,
+                m_wasmBinary.data(),
+                (int)m_wasmBinary.size(),
+                this->blockOpCount,
+                this->emulatedLen,
+                m_manifestNext1Target,
+                m_manifestNext2Target,
+                m_manifestJumpTarget,
+                m_manifestNext1Count,
+                m_manifestNext2Count,
+                m_manifestJumpCount,
+                (U32)offsetof(CPU, blockInstructionCount),
+                (U32)offsetof(CPU, yield),
+                (U32)(uintptr_t)&contextTimeRemaining);
         }
     }
   #else
@@ -5470,6 +6425,20 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         g_wasmBlockBinaries[tableIdx] = usingCached ? cachedBytes : m_wasmBinary;
         if (wasmJitPersistenceActive() && !usingCached) {
             g_wasmCacheByKey[wasmJitCacheKey(cacheEip, blockHash)] = m_wasmBinary;
+            // Exit metadata for the exported manifest (the ST build records
+            // this in Module.wasmJitBlockMeta from boxedwine_wasm_save_block;
+            // workers can't reach that Map, so keep it here and mirror it in
+            // wasm_jit_mt_prepare_export).
+            g_wasmCacheMetaByKey[wasmJitCacheKey(cacheEip, blockHash)] = {
+                this->blockOpCount,
+                this->emulatedLen,
+                m_manifestNext1Target,
+                m_manifestNext2Target,
+                m_manifestJumpTarget,
+                m_manifestNext1Count,
+                m_manifestNext2Count,
+                m_manifestJumpCount,
+            };
         }
     }
 #endif
@@ -5509,6 +6478,15 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         if (cur->next == nullptr) break;
         cur = cur->next;
     }
+
+#ifndef BOXEDWINE_MULTI_THREADED
+    // The split-shaped prefix block has committed; the hinted target op keeps
+    // its normal pfn and compiles as its own block-start entry when execution
+    // reaches it.
+    m_profileSplitTargetOp = nullptr;
+    m_profileSplitBlockStartEip = 0;
+    m_profileSplitTargetEip = 0;
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -5558,9 +6536,9 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
 // Export is handled in JavaScript by saveJitModules(). This import hook reads
 // a zip staged at WASM_JIT_IMPORT_PATH on the virtual FS and stores each
 // v3-xxxxxxxx-hhhhhhhh.wasm entry into the JS cache via
-// boxedwine_wasm_save_block(). It doubles as the exported sentinel
+// wasm_jit_js_store_entry(). It doubles as the exported sentinel
 // (Module._wasm_jit_import_from_file) that boxedwine-shell.js uses to detect
-// a persistence-capable single-threaded build and show the save button.
+// a persistence-capable single-threaded build.
 // ---------------------------------------------------------------------------
 #if !defined(BOXEDWINE_MULTI_THREADED) && !defined(__TEST)
 
@@ -5591,7 +6569,7 @@ extern "C" void wasm_jit_import_from_file() {
             if (unzOpenCurrentFile(uf) == UNZ_OK) {
                 unzReadCurrentFile(uf, data.data(), (unsigned)data.size());
                 unzCloseCurrentFile(uf);
-                boxedwine_wasm_save_block(eip, blockHash, data.data(), (int)data.size());
+                wasm_jit_js_store_entry(eip, blockHash, data.data(), (int)data.size());
             }
         }
         ret = unzGoToNextFile(uf);

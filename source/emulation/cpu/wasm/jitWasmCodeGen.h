@@ -532,6 +532,25 @@ public:
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void compile(DecodedOp* op) override;
     void postCompile(DecodedOp* op) override;
+    bool shouldStopBlockBefore(U32 eip, DecodedOp* op) override;
+
+    // Per-block exit metadata recorded while compiling, exported with the
+    // saved module as boxedwine-jit-manifest.json so the offline cache
+    // pipeline can build the successor graph for grouping and direct-call
+    // rewriting. Targets are CS-relative; only the first target of each exit
+    // kind is kept (enough to resolve the dominant edge).
+    U32 m_manifestNext1Target = 0;
+    U32 m_manifestNext2Target = 0;
+    U32 m_manifestJumpTarget = 0;
+    U32 m_manifestNext1Count = 0;
+    U32 m_manifestNext2Count = 0;
+    U32 m_manifestJumpCount = 0;
+    // Profile-guided split bookkeeping: set when shouldStopBlockBefore ends a
+    // block early because a grouped-manifest split hint named an interior
+    // target; cleared once the prefix block commits.
+    DecodedOp* m_profileSplitTargetOp = nullptr;
+    U32 m_profileSplitBlockStartEip = 0;
+    U32 m_profileSplitTargetEip = 0;
 
     // virtual commitJIT is inherited from JitCodeGen and calls createStartJITCode
     void commitJIT(DecodedOp* op) override;

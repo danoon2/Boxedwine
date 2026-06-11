@@ -911,18 +911,26 @@ function toggleSound() {
 function initWasmJitCache(callback) {
     Module.wasmJitCache = new Map();
     Module.wasmJitCompiledCache = new Map();
+    Module.wasmJitGroupModules = new Map();
+    Module.wasmJitGroupInstances = new Map();
+    Module.wasmJitGroupEntryMap = new Map();
+    Module.wasmJitInstalledCache = new Map();
+    Module.wasmJitInstalledByTableIndex = new Map();
+    Module.wasmJitGroupedManifest = null;
     Module.wasmJitPersistenceWanted = false;
     // Persistence is a runtime mode: the JIT compiles relocatable (exportable)
-    // blocks only when this session is a replay (the server zip provided
-    // blocks) or a recording (?jit-record=true). Decided here, once, before
-    // the emulator starts; Module.onRuntimeInitialized latches it into C++ via
-    // the exported _wasm_jit_set_persistence_active before main() runs.
+    // blocks only when this session is a replay (the server zip provided flat
+    // blocks or merged groups) or a recording (?jit-record=true). Decided
+    // here, once, before the emulator starts; Module.onRuntimeInitialized
+    // latches it into C++ via the exported _wasm_jit_set_persistence_active
+    // before main() runs.
     var done = function() {
-        Module.wasmJitPersistenceWanted =
-            (Module.wasmJitCache.size > 0) || Config.recordJITCache === true;
+        var replay = Module.wasmJitCache.size > 0 ||
+                     Module.wasmJitGroupEntryMap.size > 0;
+        Module.wasmJitPersistenceWanted = replay || Config.recordJITCache === true;
         if (Module.wasmJitPersistenceWanted) {
             console.log('[WASM JIT] persistence mode on (' +
-                (Module.wasmJitCache.size > 0 ? 'replay' : 'record') + ')');
+                (replay ? 'replay' : 'record') + ')');
         }
         updateSaveJitButton();
         callback();
@@ -1019,17 +1027,23 @@ function fetchServerJitCache(callback) {
         });
 }
 
-// Parse a wasm-jit-modules.zip buffer and load every v3-*.wasm entry into
-// wasmJitCache and IndexedDB.  Handles both compression method 0 (STORED)
-// and method 8 (DEFLATE, produced by saveJitModules).
-// Decompression of all entries runs in parallel via Promise.all, then the
-// results are committed to wasmJitCache and IDB in a single transaction.
+// Parse a JIT cache zip buffer and load its contents:
+//   v3-*.wasm                            flat block modules -> wasmJitCache
+//   groups/*.wasm                        merged group modules (pipeline output)
+//   boxedwine-jit-grouped-manifest.json  group entry map + direct-call stats +
+//                                        profile-guided split hints
+// Handles both compression method 0 (STORED) and method 8 (DEFLATE, produced
+// by saveJitModules and the offline pipeline). Decompression of all entries
+// runs in parallel via Promise.all, then the results are committed to the
+// in-memory caches and IndexedDB in a single transaction.
 async function importJitModulesFromBuffer(bytes) {
     try {
         var view  = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
         var dec   = new TextDecoder();
         var pos   = 0;
         var entries = [];
+        var manifests = [];
+        var groupModules = [];
 
         // Phase 1: scan local file headers synchronously — no decompression yet.
         while (pos + 30 <= bytes.length) {
@@ -1054,6 +1068,17 @@ async function importJitModulesFromBuffer(bytes) {
                         method:    method,
                         data:      bytes.slice(dataStart, dataStart + cSize)
                     });
+                } else if (fn === 'boxedwine-jit-grouped-manifest.json') {
+                    manifests.push({
+                        method: method,
+                        data: bytes.slice(dataStart, dataStart + cSize)
+                    });
+                } else if (fn.indexOf('groups/') === 0 && fn.toLowerCase().endsWith('.wasm')) {
+                    groupModules.push({
+                        path: fn,
+                        method: method,
+                        data: bytes.slice(dataStart, dataStart + cSize)
+                    });
                 }
             }
             pos = dataStart + cSize;
@@ -1071,13 +1096,23 @@ async function importJitModulesFromBuffer(bytes) {
             }
         }));
         var valid = results.filter(function(r) { return r !== null; });
+        var manifestResults = await Promise.all(manifests.map(async function(e) {
+            try {
+                var data = e.method === 8 ? await inflateRaw(e.data) : e.data;
+                return JSON.parse(new TextDecoder().decode(data));
+            } catch(ex) {
+                console.warn('[WASM JIT] grouped manifest import failed:', ex);
+                return null;
+            }
+        }));
 
         // Phase 3 (ST only): precompile all modules while startup is still
         // blocked on the wasm-jit-cache run dependency, so cache hits skip the
         // synchronous WebAssembly.Module compile. The byte cache remains the
         // source of truth for export/IDB; compiled modules are memory-only.
         // MT builds consume raw bytes from the C++ side (workers cannot reach
-        // this main-thread Map), so precompiling here would be wasted work.
+        // these main-thread Maps), so precompiling here would be wasted work —
+        // and merged group modules are unusable in MT for the same reason.
         var isMT = typeof Module._wasm_jit_mt_register === 'function';
         var compiled = isMT ? [] : await Promise.all(valid.map(async function(r) {
             try {
@@ -1087,8 +1122,81 @@ async function importJitModulesFromBuffer(bytes) {
                 return null;
             }
         }));
+        var groupResults = isMT ? [] : await Promise.all(groupModules.map(async function(e) {
+            try {
+                var data = e.method === 8 ? await inflateRaw(e.data) : e.data;
+                return { path: e.path, module: await WebAssembly.compile(data) };
+            } catch(ex) {
+                console.warn('[WASM JIT] grouped module precompile failed for path=' + e.path + ':', ex);
+                return null;
+            }
+        }));
+        if (isMT && groupModules.length > 0) {
+            console.warn('[WASM JIT] grouped cache modules are single-threaded only; ' +
+                         'for multi-threaded builds record with the MT build and run the ' +
+                         'cache pipeline with --flat (caches are per-build either way)');
+        }
 
+        var groupedManifest = manifestResults.find(function(m) { return m && m.format === 'boxedwine-wasm-jit-grouped-cache'; }) || null;
+        Module.wasmJitGroupedManifest = groupedManifest;
+        Module.wasmJitProfileSplitTargets = new Map();
+        Module.wasmJitProfileSplitTargetSources = new Map();
+        Module.wasmJitProfileSplitStats = null;
+        groupResults.forEach(function(r) {
+            if (r) Module.wasmJitGroupModules.set(r.path, r.module);
+        });
+        if (groupedManifest && groupedManifest.groups && !isMT) {
+            groupedManifest.groups.forEach(function(group) {
+                var path = group.path;
+                (group.entries || []).forEach(function(entry) {
+                    Module.wasmJitGroupEntryMap.set(entry.key, {
+                        groupPath: entry.path || path,
+                        exportName: entry.exportName || entry.key
+                    });
+                });
+            });
+        }
+        if (groupedManifest && groupedManifest.profileGuidedSplits &&
+                Array.isArray(groupedManifest.profileGuidedSplits.targets)) {
+            groupedManifest.profileGuidedSplits.targets.forEach(function(split) {
+                if (!split || split.blockStart == null || split.target == null) return;
+                var blockStartKey = boxedwineWasmJitHex32(split.blockStart >>> 0);
+                var targetKey = boxedwineWasmJitHex32(split.target >>> 0);
+                Module.wasmJitProfileSplitTargets.set(blockStartKey, targetKey);
+                var sources = Module.wasmJitProfileSplitTargetSources.get(targetKey);
+                if (!sources) {
+                    sources = [];
+                    Module.wasmJitProfileSplitTargetSources.set(targetKey, sources);
+                }
+                if (sources.indexOf(blockStartKey) < 0) sources.push(blockStartKey);
+            });
+        }
+
+        // Remember which eip/hash identities the cache covers so lookup misses
+        // can be classified (unknown EIP vs. same EIP with a different hash).
+        if (!Module.wasmJitCacheEips) Module.wasmJitCacheEips = new Set();
+        if (!Module.wasmJitCacheEipHashes) Module.wasmJitCacheEipHashes = new Map();
+        function rememberCacheIdentity(eip, blockHash) {
+            var eipKey = boxedwineWasmJitHex32(eip);
+            var hashKey = boxedwineWasmJitHex32(blockHash);
+            var hashes = Module.wasmJitCacheEipHashes.get(eipKey);
+            if (!hashes) {
+                hashes = [];
+                Module.wasmJitCacheEipHashes.set(eipKey, hashes);
+            }
+            if (hashes.length < 4 && hashes.indexOf(hashKey) < 0) hashes.push(hashKey);
+            Module.wasmJitCacheEips.add(eipKey);
+        }
+        if (groupedManifest && groupedManifest.groups) {
+            groupedManifest.groups.forEach(function(group) {
+                (group.entries || []).forEach(function(entry) {
+                    var cacheKey = parseWasmJitCacheKey(entry.key);
+                    if (cacheKey) rememberCacheIdentity(cacheKey.eip, cacheKey.blockHash);
+                });
+            });
+        }
         valid.forEach(function(r) {
+            rememberCacheIdentity(r.eip, r.blockHash);
             Module.wasmJitCache.set(r.key, r.data);
         });
         compiled.forEach(function(r) {
@@ -1101,8 +1209,22 @@ async function importJitModulesFromBuffer(bytes) {
                 valid.forEach(function(r) { store.put(r.data, r.key); });
             } catch(e) {}
         }
-        console.log('[WASM JIT] imported ' + valid.length +
-                    ' blocks from server cache precompiled=' + Module.wasmJitCompiledCache.size);
+        if (groupedManifest) {
+            var stats = groupedManifest.stats || {};
+            var graph = stats.graphEdges || {};
+            var imports = stats.imports || {};
+            console.log('[WASM JIT] imported ' + valid.length +
+                        ' blocks from grouped server cache groups=' + (stats.groups || (groupedManifest.groups ? groupedManifest.groups.length : 0)) +
+                        ' groupModules=' + Module.wasmJitGroupModules.size +
+                        ' precompiled=' + Module.wasmJitCompiledCache.size +
+                        ' profileSplits=' + Module.wasmJitProfileSplitTargets.size +
+                        ' resolvedEdges=' + (graph.resolved || 0) +
+                        ' intraGroupEdges=' + (graph.inGroup || 0) +
+                        ' functionImports=' + (imports.functionImportsBefore || 0) + '->' + (imports.functionImportsAfterGroupedEstimate || 0));
+        } else {
+            console.log('[WASM JIT] imported ' + valid.length +
+                        ' blocks from server cache precompiled=' + Module.wasmJitCompiledCache.size);
+        }
     } catch(e) {
         console.warn('[WASM JIT] server cache import failed:', e);
     }
@@ -1142,13 +1264,51 @@ async function saveJitModules() {
         // Compress all entries in parallel so we know each compressed size
         // before writing any local file header.
         var cacheEntries = Array.from(Module.wasmJitCache.entries());
+        var exportedCacheKeys = new Set();
         var compressed = await Promise.all(cacheEntries.map(async function(kv) {
             var key = String(kv[0]), data = kv[1];
             if (!parseWasmJitCacheKey(key)) return null;
+            exportedCacheKeys.add(key);
             var compData = await deflateRaw(data);
             return { name: key + '.wasm', data: data, compData: compData, crc: crc32(data) };
         }));
         compressed = compressed.filter(function(e) { return e !== null; });
+
+        // Per-block exit metadata + runtime constants, consumed by the offline
+        // cache pipeline (boxedwine-wasm-jit-cache-pipeline.mjs) to build the
+        // successor graph for grouping/direct-call rewriting. Only blocks that
+        // made it into the zip are listed.
+        if (Module.wasmJitBlockMeta && Module.wasmJitBlockMeta.size > 0) {
+            var manifestEntries = Array.from(Module.wasmJitBlockMeta.values())
+                .filter(function(entry) { return entry && exportedCacheKeys.has(entry.key); })
+                .sort(function(a, b) { return a.key < b.key ? -1 : (a.key > b.key ? 1 : 0); });
+            var manifest = {
+                version: 1,
+                generatedAt: new Date().toISOString(),
+                entryCount: manifestEntries.length,
+                runtime: Module.wasmJitRuntimeConstants || null,
+                entries: manifestEntries
+            };
+            var manifestData = new TextEncoder().encode(JSON.stringify(manifest, null, 2));
+            compressed.push({
+                name: 'boxedwine-jit-manifest.json',
+                data: manifestData,
+                compData: await deflateRaw(manifestData),
+                crc: crc32(manifestData)
+            });
+        }
+
+        // Interior-transition profile sidecar; the pipeline parses it (or a
+        // pasted console log) into profile-guided split hints.
+        if (Module.wasmJitInteriorProfileLines && Module.wasmJitInteriorProfileLines.length > 0) {
+            var profileData = new TextEncoder().encode(Module.wasmJitInteriorProfileLines.join('\n') + '\n');
+            compressed.push({
+                name: 'boxedwine-jit-profile.txt',
+                data: profileData,
+                compData: await deflateRaw(profileData),
+                crc: crc32(profileData)
+            });
+        }
 
         var parts   = [];
         var cdParts = [];
