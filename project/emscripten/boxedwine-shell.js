@@ -343,7 +343,7 @@
             return zipFiles;
         }
         // ---------------------------------------------------------------
-        // WASM JIT persistent-cache key convention: 'v3-<eip>-<blockHash>'
+        // WASM JIT persistent-cache key convention: 'v4-<eip>-<blockHash>'
         // where both values are 8-digit lowercase hex. Must stay in sync
         // with the inline key construction in the EM_JS bodies in
         // source/emulation/cpu/wasm/jitWasmCodeGen.cpp.
@@ -352,14 +352,14 @@
             return ('00000000' + ((value >>> 0).toString(16))).slice(-8);
         }
         function boxedwineWasmJitCacheKey(eip, blockHash) {
-            return 'v3-' + boxedwineWasmJitHex32(eip) + '-' + boxedwineWasmJitHex32(blockHash);
+            return 'v4-' + boxedwineWasmJitHex32(eip) + '-' + boxedwineWasmJitHex32(blockHash);
         }
         function parseWasmJitCacheKey(filename) {
             var slash = Math.max(filename.lastIndexOf('/'), filename.lastIndexOf('\\'));
             var base = slash >= 0 ? filename.slice(slash + 1) : filename;
             var stem = base.toLowerCase().endsWith('.wasm') ? base.slice(0, -5) : base;
             var parts = stem.split('-');
-            if (parts.length !== 3 || parts[0] !== 'v3' || parts[1].length !== 8 || parts[2].length !== 8) return null;
+            if (parts.length !== 3 || parts[0] !== 'v4' || parts[1].length !== 8 || parts[2].length !== 8) return null;
             var eip = parseInt(parts[1], 16) >>> 0;
             var blockHash = parseInt(parts[2], 16) >>> 0;
             if (isNaN(eip) || isNaN(blockHash) || blockHash === 0) return null;
@@ -1028,7 +1028,7 @@ function fetchServerJitCache(callback) {
 }
 
 // Parse a JIT cache zip buffer and load its contents:
-//   v3-*.wasm                            flat block modules -> wasmJitCache
+//   v4-*.wasm                            flat block modules -> wasmJitCache
 //   groups/*.wasm                        merged group modules (pipeline output)
 //   boxedwine-jit-grouped-manifest.json  group entry map + direct-call stats +
 //                                        profile-guided split hints
@@ -1122,9 +1122,48 @@ async function importJitModulesFromBuffer(bytes) {
                 return null;
             }
         }));
+        // Grouped reloc parity: merged group modules carry intra-group
+        // direct-call sites whose second argument (the *target* block's
+        // reloc slot array) is an i32.const placeholder. The loader
+        // allocates a zeroed array per entry and patches each site with the
+        // target's array address before the group compiles; the runtime
+        // copies values in on each cache lookup, every table call passes
+        // the block's own array as the second parameter, and free_block
+        // zeroes arrays on eviction.
+        var earlyGroupedManifest = manifestResults.find(function(m) { return m && m.format === 'boxedwine-wasm-jit-grouped-cache'; }) || null;
+        var relocWorkByPath = new Map();
+        if (earlyGroupedManifest && earlyGroupedManifest.groups && !isMT) {
+            earlyGroupedManifest.groups.forEach(function(group) {
+                var entries = (group.entries || []).filter(function(entry) {
+                    return entry && (entry.relocCount >>> 0) > 0;
+                });
+                var patches = group.directCallPatches || [];
+                if (!entries.length && !patches.length) return;
+                relocWorkByPath.set(group.path, { entries: entries, patches: patches });
+            });
+        }
+        if (!Module.wasmJitGroupRelocArrays) Module.wasmJitGroupRelocArrays = new Map();
+        // Groups with reloc work are staged UNPATCHED: arrays and patched-in
+        // addresses are per guest process (DecodedOp pointers are only valid
+        // in one address space), so the runtime lookup path lazily allocates
+        // a process's arrays, patches a private copy and compiles it on that
+        // process's first touch of the group. Groups without reloc work are
+        // process-agnostic and precompile shared, as before.
+        if (!Module.wasmJitGroupUnpatched) Module.wasmJitGroupUnpatched = new Map();
+        var relocPending = 0;
         var groupResults = isMT ? [] : await Promise.all(groupModules.map(async function(e) {
             try {
                 var data = e.method === 8 ? await inflateRaw(e.data) : e.data;
+                var relocWork = relocWorkByPath.get(e.path);
+                if (relocWork) {
+                    Module.wasmJitGroupUnpatched.set(e.path, {
+                        bytes: new Uint8Array(data),
+                        entries: relocWork.entries,
+                        patches: relocWork.patches
+                    });
+                    relocPending++;
+                    return null; // compiled per process by the lookup path
+                }
                 return { path: e.path, module: await WebAssembly.compile(data) };
             } catch(ex) {
                 console.warn('[WASM JIT] grouped module precompile failed for path=' + e.path + ':', ex);
@@ -1137,7 +1176,7 @@ async function importJitModulesFromBuffer(bytes) {
                          'cache pipeline with --flat (caches are per-build either way)');
         }
 
-        var groupedManifest = manifestResults.find(function(m) { return m && m.format === 'boxedwine-wasm-jit-grouped-cache'; }) || null;
+        var groupedManifest = earlyGroupedManifest;
         Module.wasmJitGroupedManifest = groupedManifest;
         Module.wasmJitProfileSplitTargets = new Map();
         Module.wasmJitProfileSplitTargetSources = new Map();
@@ -1220,6 +1259,7 @@ async function importJitModulesFromBuffer(bytes) {
                         ' profileSplits=' + Module.wasmJitProfileSplitTargets.size +
                         ' resolvedEdges=' + (graph.resolved || 0) +
                         ' intraGroupEdges=' + (graph.inGroup || 0) +
+                        ' relocGroups=' + relocPending +
                         ' functionImports=' + (imports.functionImportsBefore || 0) + '->' + (imports.functionImportsAfterGroupedEstimate || 0));
         } else {
             console.log('[WASM JIT] imported ' + valid.length +

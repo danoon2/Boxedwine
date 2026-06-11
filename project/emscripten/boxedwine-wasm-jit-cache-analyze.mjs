@@ -4,7 +4,7 @@ import { inflateRawSync } from 'node:zlib';
 import { readFile } from 'node:fs/promises';
 
 const WASM_MAGIC = Buffer.from([0x00, 0x61, 0x73, 0x6d]);
-const CACHE_NAME_RE = /^(?:v3-)?([0-9a-f]{8})-([0-9a-f]{8})\.wasm$/i;
+const CACHE_NAME_RE = /^(?:v4-)?([0-9a-f]{8})-([0-9a-f]{8})\.wasm$/i;
 const BRANCH_HINT_SECTION = 'metadata.code.branch_hint';
 const PROFILE_NAME = 'boxedwine-jit-profile.txt';
 const PROFILE_SWEEP_THRESHOLDS = [200000, 100000, 75000, 50000, 25000, 10000];

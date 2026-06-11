@@ -22,7 +22,7 @@
  * Design overview
  * ---------------
  * Each compiled basic block becomes a standalone WASM module containing one
- * function: `execute(cpu_ptr: i32)`.  On first call (runCount == JIT_RUN_COUNT)
+ * function: `execute(cpu_ptr: i32, reloc_base: i32)`.  On first call (runCount == JIT_RUN_COUNT)
  * the WASM binary is compiled and instantiated via WebAssembly.Module +
  * WebAssembly.Instance (synchronous, as in the QEMU wasm64 backend).  The
  * resulting function is added to Emscripten's wasmTable and the table index is
@@ -35,13 +35,15 @@
  * the JIT register file:
  *
  *   local 0   : function parameter — cpu_ptr (i32, pointer into linear memory)
- *   locals 1-8 : GP registers eax–edi (loaded from CPU struct on first use,
+ *   local 1   : function parameter — reloc_base (i32, the block's relocation
+ *               slot array; 0 when the caller has none)
+ *   locals 2-9 : GP registers eax–edi (loaded from CPU struct on first use,
  *                written back to CPU struct on block exit / sync)
- *   locals 9-12: segment base addresses cs, ds, ss, es
- *   locals 13-44: scratch temporaries
+ *   locals 10-13: segment base addresses cs, ds, ss, es
+ *   locals 14-45: scratch temporaries
  *
  * The JitReg::hardwareReg() field stores the WASM local variable index.
- * Emulated register n maps to local n+1 (so eax=1, ecx=2, ..., edi=8).
+ * Emulated register n maps to local n+2 (so eax=2, ecx=3, ..., edi=9).
  *
  * CPU state access
  * ----------------
@@ -152,19 +154,25 @@
 
 // Number of WASM locals used as GP register slots (eax-edi = 8).
 static constexpr U32 WASM_GP_LOCAL_COUNT  = 8;
-// Index of the cpu_ptr parameter local (always 0 — the function parameter).
+// Index of the cpu_ptr parameter local (first function parameter).
 static constexpr U32 WASM_CPU_LOCAL       = 0;
+// Index of the relocBase parameter local (second function parameter): the
+// block's relocation slot array, or 0 when the caller has none. Per
+// activation by construction — unlike a module global, nested guest
+// execution (signal delivery from a helper, scheduler switches inside a
+// blocking syscall) can never clobber another activation's value.
+static constexpr U32 WASM_RELOC_LOCAL     = 1;
 // First GP register local (eax).
-static constexpr U32 WASM_GP_LOCAL_BASE   = 1;
+static constexpr U32 WASM_GP_LOCAL_BASE   = 2;
 // Segment address locals (cs, ds, ss, es).
-static constexpr U32 WASM_SEG_LOCAL_BASE  = 9;
+static constexpr U32 WASM_SEG_LOCAL_BASE  = 10;
 // Scratch temporaries.
-static constexpr U32 WASM_TMP_LOCAL_BASE  = 13;
+static constexpr U32 WASM_TMP_LOCAL_BASE  = 14;
 static constexpr U32 WASM_TMP_LOCAL_COUNT = 32;
 // i64 scratch local for 64-bit multiply (imulRRI/imulRR overflow tracking).
-static constexpr U32 WASM_I64_SCRATCH     = 45;  // WASM_TMP_LOCAL_BASE + WASM_TMP_LOCAL_COUNT
-// Total locals beyond the parameter.
-static constexpr U32 WASM_LOCAL_COUNT     = 46;
+static constexpr U32 WASM_I64_SCRATCH     = 46;  // WASM_TMP_LOCAL_BASE + WASM_TMP_LOCAL_COUNT
+// Total locals beyond the parameters.
+static constexpr U32 WASM_LOCAL_COUNT     = 47;
 
 // ---------------------------------------------------------------------------
 // Mapping from emulated register index to WASM local index.
@@ -638,21 +646,20 @@ protected:
     // Relocation slots for persistence-mode (relocatable) codegen. Instead of
     // embedding host DecodedOp pointers as i32.const (which would tie the
     // module to the compiling run), pointer fast paths read them from a
-    // C++-owned per-block U32 array whose address is supplied at instantiate
-    // time through an imported immutable i32 global ("env"."relocBase").
+    // C++-owned per-block U32 array whose address arrives as the function's
+    // second parameter (WASM_RELOC_LOCAL) on every call — per activation, so
+    // nested guest execution can never alias another block's array.
     // Slot 0 is reserved for the block-start DecodedOp* (SMC arming); further
     // slots are appended in emission order by blockNext1/blockNext2/
     // JumpIfCondition. Every generated read guards relocBase != 0 and
-    // slot != 0, falling back to the existing slow path — so a module
-    // instantiated with relocBase = 0 (e.g. an offline-merged group module
-    // whose import was internalized to 0) behaves exactly like the old
-    // relocatable codegen. m_relocValues holds the values resolved against
-    // the current session's decoded ops; commitJIT copies them into the
-    // long-lived array.
-    int m_relocGlobalIdx = -1;
+    // slot != 0, falling back to the existing slow path — so a call that
+    // passes relocBase = 0 (plain sessions, unresolved direct-call edges in
+    // offline-merged groups) behaves exactly like the old relocatable
+    // codegen. m_relocValues holds the values resolved against the current
+    // session's decoded ops; commitJIT copies them into the long-lived array.
     std::vector<U32> m_relocValues;
-    // Lazily import relocBase and reserve slot 0; returns the global index.
-    U32 relocGlobalIdx();
+    // Reserve slot 0 (block-start op) on first use.
+    void ensureRelocSlot0();
     // Append a slot holding `value`, return its byte offset in the array.
     U32 addRelocSlot(U32 value);
 
@@ -699,13 +706,11 @@ protected:
 // ---------------------------------------------------------------------------
 
 // Compile and instantiate a WASM binary. Returns the wasmTable index of the
-// compiled "execute" function, or -1 on failure.
+// compiled "execute" function (signature (cpu_ptr, relocBase) -> void), or
+// -1 on failure.
 // importFns: array of C++ function pointers that the module imports.
-// relocBase: address of the block's relocation slot array (0 when the block
-// has none); supplied as the imported "env"."relocBase" global.
 extern "C" int  boxedwine_wasm_instantiate(const void* bytes, int size,
-                                            const void** importFns, int importCount,
-                                            U32 relocBase);
+                                            const void** importFns, int importCount);
 
 // Release a compiled block (remove from wasmTable).
 extern "C" void boxedwine_wasm_free_block(int tableIndex);

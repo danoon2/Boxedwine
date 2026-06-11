@@ -7,7 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const WASM_MAGIC = Buffer.from([0x00, 0x61, 0x73, 0x6d]);
-const CACHE_NAME_RE = /^v3-([0-9a-f]{8})-([0-9a-f]{8})\.wasm$/i;
+const CACHE_NAME_RE = /^v4-([0-9a-f]{8})-([0-9a-f]{8})\.wasm$/i;
 const GROUPED_MANIFEST = 'boxedwine-jit-grouped-manifest.json';
 const PROFILE_NAME = 'boxedwine-jit-profile.txt';
 
@@ -31,7 +31,7 @@ Options:
   --binaryen-js PATH       Optimize wasm modules with Binaryen JS/WASM.
                            Defaults to ./binaryen_js.js if present.
   --flat                   Binaryen-optimize the per-block modules and re-emit
-                           a flat cache zip (same v3-*.wasm layout + manifest),
+                           a flat cache zip (same v4-*.wasm layout + manifest),
                            skipping grouping, direct-call rewriting and profile
                            split hints. This is the only mode multi-threaded
                            builds can consume: MT workers instantiate raw
@@ -44,7 +44,7 @@ Options:
                            target split hints to the grouped manifest. If omitted,
                            boxedwine-jit-profile.txt is read from the input zip.
   --profile-split-threshold N
-                           Minimum exact interior-target count. Default: 50000.
+                           Minimum exact interior-target count. Default: 10000.
   --profile-split-limit N  Maximum split hints to emit. Default: 16.
   --profile-split-rejection-samples N
                            Number of rejected split candidates to print. Default: 4.
@@ -64,7 +64,10 @@ function parseArgs(argv) {
     flat: false,
     budget: 512 * 1024,
     interiorProfile: null,
-    profileSplitThreshold: 50000,
+    // 10000 admits most genuinely hot pairs; the old 50000 default left all
+    // but one pair below threshold on typical PERF recordings, and split
+    // hints are individually cheap (one shorter block + one extra entry).
+    profileSplitThreshold: 10000,
     profileSplitLimit: 16,
     profileSplitRejectionSamples: 4,
     compressionLevel: 9,
@@ -384,17 +387,40 @@ function buildCodeBody(localDecls, instructions) {
   return Buffer.concat([writeWasmUleb(payload.length), payload]);
 }
 
-// Globals for a merged group module. Index 0 (when present) replaces the
-// stripped "env"."relocBase" import: immutable i32, init 0, so every
-// relocatable pointer fast path in the merged bodies fails its guard and
-// takes the helper slow path. The mutable direct-call depth counter (when
-// directCallDepth > 0) comes after it.
-function mergedGlobalsSection(hasRelocGlobal, directCallDepth) {
-  const globals = [];
-  if (hasRelocGlobal) globals.push(Buffer.from([0x7f, 0x00, 0x41, 0x00, 0x0b])); // i32 const, init 0
-  if (directCallDepth > 0) globals.push(Buffer.from([0x7f, 0x01, 0x41, 0x00, 0x0b])); // i32 mut, init 0
-  if (!globals.length) return [];
-  return [section(6, Buffer.concat([writeWasmUleb(globals.length), ...globals]))];
+// Globals for a merged group module: just the mutable direct-call depth
+// counter (when directCallDepth > 0). Reloc values flow through each block
+// function's second parameter, never through module state — a module-level
+// register is not re-entrancy safe (signals and blocking syscalls nest other
+// group functions mid-block; see Wasm-JIT-Grouped-Reloc-Parity.md).
+function mergedGlobalsSection(directCallDepth) {
+  if (!(directCallDepth > 0)) return [];
+  return [section(6, Buffer.from([
+    0x01,       // one global
+    0x7f, 0x01, // i32 mutable
+    0x41, 0x00, // i32.const 0
+    0x0b,       // end
+  ]))];
+}
+
+// 5-byte padded SLEB128 of a 32-bit value (the encoding i32.const placeholders
+// use so the loader can patch them in place without shifting offsets).
+function paddedSleb32(v) {
+  return Buffer.from([
+    (v & 0x7f) | 0x80,
+    ((v >>> 7) & 0x7f) | 0x80,
+    ((v >>> 14) & 0x7f) | 0x80,
+    ((v >>> 21) & 0x7f) | 0x80,
+    ((v >>> 28) & 0x0f) | ((v & 0x80000000) ? 0x70 : 0),
+  ]);
+}
+
+// Second argument of a rewritten direct call: the *target* block's reloc
+// slot array, as an i32.const marker placeholder the loader patches with the
+// real address (0 when the target has no array — the callee's guards then
+// take the slow paths). Per call argument = per activation, so nested guest
+// execution can never alias another block's array.
+function relocArgPlaceholder(marker) {
+  return Buffer.concat([Buffer.from([0x41]), paddedSleb32(marker)]);
 }
 
 function findStaticEipStoreBefore(instructions, end, maxLookback = 128) {
@@ -426,17 +452,21 @@ function findStaticEipStoreBefore(instructions, end, maxLookback = 128) {
   return best;
 }
 
-function directCallTail(targetIndex) {
+function directCallTail(targetIndex, relocArg) {
   return Buffer.concat([
-    Buffer.from([0x20, 0x00, 0x10]),
+    Buffer.from([0x20, 0x00]),
+    relocArg,
+    Buffer.from([0x10]),
     writeWasmUleb(targetIndex),
     Buffer.from([0x0f]),
   ]);
 }
 
-function returnCallTail(targetIndex) {
+function returnCallTail(targetIndex, relocArg) {
   return Buffer.concat([
-    Buffer.from([0x20, 0x00, 0x12]),
+    Buffer.from([0x20, 0x00]),
+    relocArg,
+    Buffer.from([0x12]),
     writeWasmUleb(targetIndex),
   ]);
 }
@@ -457,7 +487,7 @@ function wasmI32Store8(offset) {
   return Buffer.concat([Buffer.from([0x3a]), writeWasmUleb(0), writeWasmUleb(offset)]);
 }
 
-function yieldAwareReturnCallTail(targetIndex, opCount, runtime) {
+function yieldAwareReturnCallTail(targetIndex, opCount, runtime, relocArg) {
   const blockInstructionCountOffset = runtime.cpu.blockInstructionCountOffset >>> 0;
   const yieldOffset = runtime.cpu.yieldOffset >>> 0;
   const contextTimeRemainingPtr = runtime.scheduler.contextTimeRemainingPtr >>> 0;
@@ -485,20 +515,23 @@ function yieldAwareReturnCallTail(targetIndex, opCount, runtime) {
     Buffer.from([0x20, 0x00, 0x10, 0x06, 0x0f]), // call fetchNextOp; return
     Buffer.from([0x0b]), // end
 
-    Buffer.from([0x20, 0x00, 0x12]), writeWasmUleb(targetIndex),
+    Buffer.from([0x20, 0x00]),
+    relocArg,
+    Buffer.from([0x12]), writeWasmUleb(targetIndex),
   ]);
 }
 
-function guardedDirectCallTail(targetIndex, depthLimit, depthGlobalIndex = 0) {
-  const g = writeWasmUleb(depthGlobalIndex);
+function guardedDirectCallTail(targetIndex, depthLimit, relocArg) {
   return Buffer.concat([
-    Buffer.from([0x23]), g,                  // global.get depth
+    Buffer.from([0x23, 0x00]),               // global.get depth
     Buffer.from([0x41]), writeWasmSleb(depthLimit),
     Buffer.from([0x49]),                     // i32.lt_u
     Buffer.from([0x04, 0x40]),               // if
-    Buffer.from([0x23]), g, Buffer.from([0x41]), writeWasmSleb(1), Buffer.from([0x6a, 0x24]), g, // depth++
-    Buffer.from([0x20, 0x00, 0x10]), writeWasmUleb(targetIndex),
-    Buffer.from([0x23]), g, Buffer.from([0x41]), writeWasmSleb(1), Buffer.from([0x6b, 0x24]), g, // depth--
+    Buffer.from([0x23, 0x00, 0x41]), writeWasmSleb(1), Buffer.from([0x6a, 0x24, 0x00]), // depth++
+    Buffer.from([0x20, 0x00]),
+    relocArg,
+    Buffer.from([0x10]), writeWasmUleb(targetIndex),
+    Buffer.from([0x23, 0x00, 0x41]), writeWasmSleb(1), Buffer.from([0x6b, 0x24, 0x00]), // depth--
     Buffer.from([0x0f, 0x0b]),               // return; end
     Buffer.from([0x20, 0x00, 0x10, 0x06, 0x0f]), // original helper fallback
   ]);
@@ -518,16 +551,20 @@ function rewriteDirectCallsInBody(body, targetIndexByEip, options = {}) {
       const eipStore = findStaticEipStoreBefore(instructions, pos);
       const target = eipStore ? targetIndexByEip.get(eipStore.eip) : undefined;
       if (target !== undefined) {
+        // Every direct call passes the target's reloc slot array as the
+        // second argument — a marker placeholder here, patched by the
+        // loader once the arrays are allocated.
+        const relocArg = options.allocRelocArg(target.key);
         if (target.yieldAwareTailCall) {
-          out.push(yieldAwareReturnCallTail(target.index, options.opCount, options.runtime));
+          out.push(yieldAwareReturnCallTail(target.index, options.opCount, options.runtime, relocArg));
           guarded++;
         } else if (target.tailCall) {
-          out.push(returnCallTail(target.index));
+          out.push(returnCallTail(target.index, relocArg));
         } else if (target.guarded) {
-          out.push(guardedDirectCallTail(target.index, options.directCallDepth, options.depthGlobalIndex || 0));
+          out.push(guardedDirectCallTail(target.index, options.directCallDepth, relocArg));
           guarded++;
         } else {
-          out.push(directCallTail(target.index));
+          out.push(directCallTail(target.index, relocArg));
         }
         pos += 5;
         rewritten++;
@@ -551,7 +588,6 @@ function parseWasmForMerge(wasm) {
     importedFunctions: 0,
     functionTypes: [],
     codeBodies: [],
-    hadRelocImport: false,
   };
   let pos = 8;
   while (pos < wasm.length) {
@@ -564,21 +600,11 @@ function parseWasmForMerge(wasm) {
     if (id === 1) {
       parsed.typePayload = Buffer.from(wasm.subarray(sectionStart, sectionEnd));
     } else if (id === 2) {
-      // Relocatable (persistence-mode) modules import an immutable i32
-      // global "env"."relocBase" whose value is per-block and only known to
-      // the runtime. Merged group modules can't supply per-function values,
-      // so strip the import here and let buildMergedGroupWasm define a
-      // local global 0 initialized to 0 instead — the generated fast paths
-      // guard relocBase != 0 and fall back to their helper slow paths, so
-      // a merged module behaves exactly like pre-reloc relocatable code.
-      // Stripping also normalizes the payload so modules with and without
-      // the import pass the ABI-equality check below.
+      parsed.importPayload = Buffer.from(wasm.subarray(sectionStart, sectionEnd));
       let q = sectionStart;
       const [count, q2] = readWasmUleb(wasm, q);
       q = q2;
-      const keptEntries = [];
       for (let i = 0; i < count; i++) {
-        const entryStart = q;
         let moduleName; [moduleName, q] = wasmName(wasm, q);
         let fieldName; [fieldName, q] = wasmName(wasm, q);
         const kind = wasm[q++];
@@ -596,15 +622,7 @@ function parseWasmForMerge(wasm) {
         } else {
           throw new Error(`Unsupported import kind ${kind}`);
         }
-        if (kind === 3 && moduleName === 'env' && fieldName === 'relocBase') {
-          parsed.hadRelocImport = true;
-          continue;
-        }
-        keptEntries.push(Buffer.from(wasm.subarray(entryStart, q)));
       }
-      parsed.importPayload = parsed.hadRelocImport
-        ? Buffer.concat([writeWasmUleb(count - 1), ...keptEntries])
-        : Buffer.from(wasm.subarray(sectionStart, sectionEnd));
     } else if (id === 3) {
       let q = sectionStart;
       const [count, q2] = readWasmUleb(wasm, q);
@@ -636,11 +654,6 @@ function buildMergedGroupWasm(sortedEntries, options = {}) {
   if (!sortedEntries.length) throw new Error('Cannot merge an empty group');
   const parsedEntries = sortedEntries.map((entry) => parseWasmForMerge(entry.data));
   const first = parsedEntries[0];
-  // Any body that referenced the stripped relocBase import needs the merged
-  // module to define global 0 (= 0) in its place; the depth counter (when
-  // enabled) then lives at index 1 instead of 0.
-  const hasRelocGlobal = parsedEntries.some((parsed) => parsed.hadRelocImport);
-  const depthGlobalIndex = hasRelocGlobal ? 1 : 0;
   const sortedKeys = new Set(sortedEntries.map((entry) => entry.key));
   const functionIndexByKey = new Map(sortedEntries.map((entry, i) => [entry.key, first.importedFunctions + i]));
   const directTargetsByKey = new Map();
@@ -654,6 +667,7 @@ function buildMergedGroupWasm(sortedEntries, options = {}) {
       }
       targets.set(edge.targetEip >>> 0, {
         index: functionIndexByKey.get(edge.to),
+        key: edge.to,
         tailCall: Boolean(options.tailCalls),
         yieldAwareTailCall: Boolean(options.yieldAwareTailCalls && edge.guarded),
         guarded: Boolean(edge.guarded),
@@ -664,6 +678,15 @@ function buildMergedGroupWasm(sortedEntries, options = {}) {
   const codeBodies = [];
   let directCallsRewritten = 0;
   let guardedDirectCallsRewritten = 0;
+  // Per-site reloc-argument markers: { marker, targetKey } recorded by the
+  // direct-call rewriter, located after assembly so the loader can patch
+  // each site with its target's array address.
+  const relocSiteMarkers = [];
+  const allocRelocArg = (targetKey) => {
+    const marker = 0x1bace000 + relocSiteMarkers.length;
+    relocSiteMarkers.push({ marker, targetKey });
+    return relocArgPlaceholder(marker);
+  };
   for (let entryIndex = 0; entryIndex < sortedEntries.length; entryIndex++) {
     const entry = sortedEntries[entryIndex];
     const parsed = parsedEntries[entryIndex];
@@ -677,7 +700,7 @@ function buildMergedGroupWasm(sortedEntries, options = {}) {
       const rewritten = rewriteDirectCallsInBody(body, directTargets, {
         ...options,
         opCount: entry.opCount,
-        depthGlobalIndex,
+        allocRelocArg,
       });
       body = rewritten.body;
       directCallsRewritten += rewritten.rewritten;
@@ -705,11 +728,28 @@ function buildMergedGroupWasm(sortedEntries, options = {}) {
     section(1, first.typePayload),
     section(2, first.importPayload),
     section(3, functionPayload),
-    ...mergedGlobalsSection(hasRelocGlobal, options.directCallDepth),
+    ...mergedGlobalsSection(options.directCallDepth),
     section(7, exportPayload),
     section(10, codePayload),
   ]);
-  return { wasm, directCallsRewritten, guardedDirectCallsRewritten };
+  // Locate each direct-call reloc-argument placeholder in the final bytes.
+  // A miss or duplicate would leave a garbage marker live in the compiled
+  // module (the callee's guards would treat it as a valid pointer), so fail
+  // the build instead.
+  const directCallPatches = [];
+  for (const { marker, targetKey } of relocSiteMarkers) {
+    const pat = relocArgPlaceholder(marker);
+    let found = -1;
+    for (let i = 0; i <= wasm.length - pat.length; i++) {
+      if (wasm.compare(pat, 0, pat.length, i, i + pat.length) === 0) {
+        if (found >= 0) throw new Error(`Ambiguous reloc-arg marker for site -> ${targetKey}`);
+        found = i;
+      }
+    }
+    if (found < 0) throw new Error(`Reloc-arg marker not found for site -> ${targetKey}`);
+    directCallPatches.push({ offset: found, targetKey }); // offset of the i32.const opcode
+  }
+  return { wasm, directCallsRewritten, guardedDirectCallsRewritten, directCallPatches };
 }
 
 function hex32(value) {
@@ -1111,6 +1151,7 @@ async function loadCacheZip(path) {
       wasmBytes: entry.wasmBytes || wasm.data.length,
       opCount: entry.opCount || 0,
       emulatedLen: entry.emulatedLen || 0,
+      relocCount: entry.relocCount || 0,
       exits: entry.exits || {},
       data: wasm.data,
     }];
@@ -1200,6 +1241,7 @@ async function main() {
         wasmBytes: entry.data.length,
         opCount: entry.opCount,
         emulatedLen: entry.emulatedLen,
+        relocCount: entry.relocCount || 0,
         exits: entry.exits,
       })),
     };
@@ -1295,6 +1337,7 @@ async function main() {
       directCallCandidateEdges: directEdgesByGroup[index],
       directCallsRewritten: directCallsRewrittenByGroup[index],
       guardedDirectCallsRewritten: guardedDirectCallsRewrittenByGroup[index],
+      directCallPatches: merged.directCallPatches,
       entries: sorted.map((entry) => ({
         key: entry.key,
         path: groupPath,
@@ -1304,6 +1347,7 @@ async function main() {
         wasmBytes: entry.wasmBytes,
         opCount: entry.opCount,
         emulatedLen: entry.emulatedLen,
+        relocCount: entry.relocCount || 0,
       })),
     };
   });
@@ -1351,6 +1395,12 @@ async function main() {
         cyclicBlocksExcluded: cyclicKeys.size,
         depthLimit: 0,
       },
+      reloc: {
+        entriesWithSlots: manifestGroups.reduce((sum, group) =>
+          sum + group.entries.filter((entry) => (entry.relocCount || 0) > 0).length, 0),
+        directCallSitePatches: manifestGroups.reduce((sum, group) =>
+          sum + group.directCallPatches.length, 0),
+      },
       imports: {
         helperFieldsPerModule: shape.helperFields.size,
         functionImportsBefore: shape.totalFunctions * entries.length,
@@ -1379,6 +1429,8 @@ async function main() {
   console.log(`Merged groups:      yes`);
   const directStats = groupedManifest.stats.directCalls;
   console.log(`Direct calls:       ${directStats.rewritten} tail sites rewritten, candidateEdges=${directStats.candidateEdges}, tailCalls=yes, yieldAware=yes, guarded=${directStats.guardedRewritten}, cyclicBlocks=${directStats.cyclicBlocksExcluded}`);
+  const relocStats = groupedManifest.stats.reloc;
+  console.log(`Reloc:              ${relocStats.entriesWithSlots} entries with slot arrays, ${relocStats.directCallSitePatches} direct-call sites patched with target arrays`);
   console.log(`Components:         ${components.length}`);
   console.log(`Wasm bytes:         ${formatBytes(wasmBefore)} -> ${formatBytes(wasmAfter)} (${pct(wasmAfter - wasmBefore, wasmBefore)}%)`);
   console.log(`Graph edges:        ${inGroupEdges}/${resolvedEdges} resolved intra-group; unresolved=${unresolvedEdges} interior=${interiorEdges} ambiguousInterior=${ambiguousInteriorEdges}`);

@@ -28,7 +28,10 @@ multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32
 jit: export BUILD_DIR := Build/Jit
 jit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
 jit: export SHELL_FILE := shell.html
-jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable -sEXPORTED_FUNCTIONS=_main,_wasm_jit_import_from_file,_wasm_jit_set_persistence_active
+# _malloc/_free + HEAPU32: used by boxedwine-shell.js (finishGroupRelocPatching,
+# called from onRuntimeInitialized) to allocate and zero the per-entry reloc
+# slot arrays patched into grouped cache modules.
+jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU32 -sEXPORTED_FUNCTIONS=_main,_wasm_jit_import_from_file,_wasm_jit_set_persistence_active,_malloc,_free
 # Like the test target but with the WASM JIT enabled, so the CPU test suite
 # exercises JIT-compiled blocks instead of the normal interpreter.
 testJit: export BUILD_DIR := Build/TestJit
