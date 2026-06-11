@@ -5829,8 +5829,15 @@ void JitWasmCodeGen::dynamic_FDIV_ST0_STj(DecodedOp* op) {
 
 void JitWasmCodeGen::dynamic_FNSTSW_AX(DecodedOp* op) {
     (void)op;
+    syncDirtyRegsToHost();
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(HELPER_FNSTSW_AX);
+    // The helper writes AX into cpu->reg[0] at runtime, so the cached eax local
+    // is now stale. Invalidate it so a following consumer (e.g. sahf / test ah
+    // after fnstsw ax in an FPU compare) reloads eax from the CPU struct instead
+    // of using a stale cached value -> wrong flags -> bad guest pointer.
+    m_gpLoaded[0] = false;
+    m_gpDirty[0] = false;
 }
 
 void JitWasmCodeGen::dynamic_FST_SINGLE_REAL_Pop(DecodedOp* op) {
