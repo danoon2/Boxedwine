@@ -734,23 +734,69 @@
                 Module._wasm_jit_set_record_active();
             }
             if (typeof Module._wasm_jit_mt_register !== 'function') return;
+            // A fully piped zip can have zero flat blocks, so the group
+            // feeding below must not sit behind a flat-cache early return.
             if (!Module.wasmJitCache || Module.wasmJitCache.size === 0) {
-                console.log('[WASM JIT MT] no cached blocks to preload');
-                return;
+                console.log('[WASM JIT MT] no flat blocks to preload');
+            } else {
+                var count = 0;
+                Module.wasmJitCache.forEach(function(data, key) {
+                    var cacheKey = parseWasmJitCacheKey(String(key));
+                    if (!cacheKey) return;
+                    var size = data.length;
+                    var ptr = Module._malloc(size);
+                    if (!ptr) return;
+                    Module.HEAPU8.set(data, ptr);
+                    Module._wasm_jit_mt_register(cacheKey.eip, cacheKey.blockHash, ptr, size);
+                    Module._free(ptr);
+                    count++;
+                });
+                console.log('[WASM JIT MT] preloaded ' + count + ' blocks into C++ cache');
             }
-            var count = 0;
-            Module.wasmJitCache.forEach(function(data, key) {
-                var cacheKey = parseWasmJitCacheKey(String(key));
-                if (!cacheKey) return;
-                var size = data.length;
-                var ptr = Module._malloc(size);
-                if (!ptr) return;
-                Module.HEAPU8.set(data, ptr);
-                Module._wasm_jit_mt_register(cacheKey.eip, cacheKey.blockHash, ptr, size);
-                Module._free(ptr);
-                count++;
-            });
-            console.log('[WASM JIT MT] preloaded ' + count + ' blocks into C++ cache');
+            // Piped (grouped) modules: feed unpatched bytes + manifest rows
+            // into the shared C++ registry (workers cannot reach this Module).
+            if (Module.wasmJitMtPendingGroups && Module.wasmJitMtPendingGroups.length &&
+                    typeof Module._wasm_jit_mt_register_group === 'function') {
+                var writeCStr = function(s) {
+                    var ptr = Module._malloc(s.length + 1);
+                    if (!ptr) return 0;
+                    for (var i = 0; i < s.length; i++) {
+                        Module.HEAPU8[ptr + i] = s.charCodeAt(i) & 0xff; // export names are ASCII keys
+                    }
+                    Module.HEAPU8[ptr + s.length] = 0;
+                    return ptr;
+                };
+                var groupCount = 0, entryCount = 0, patchCount = 0;
+                Module.wasmJitMtPendingGroups.forEach(function(group) {
+                    var ptr = Module._malloc(group.bytes.length);
+                    if (!ptr) return;
+                    Module.HEAPU8.set(group.bytes, ptr);
+                    var groupIdx = Module._wasm_jit_mt_register_group(ptr, group.bytes.length);
+                    Module._free(ptr);
+                    if (groupIdx < 0) return;
+                    groupCount++;
+                    group.entries.forEach(function(entry) {
+                        var cacheKey = parseWasmJitCacheKey(String(entry.key));
+                        if (!cacheKey) return;
+                        var namePtr = writeCStr(String(entry.exportName || entry.key));
+                        if (!namePtr) return;
+                        Module._wasm_jit_mt_register_group_entry(groupIdx,
+                            cacheKey.eip, cacheKey.blockHash, namePtr, entry.relocCount >>> 0);
+                        Module._free(namePtr);
+                        entryCount++;
+                    });
+                    group.patches.forEach(function(patch) {
+                        var targetKey = parseWasmJitCacheKey(String(patch.targetKey));
+                        if (!targetKey) return;
+                        Module._wasm_jit_mt_register_group_patch(groupIdx,
+                            patch.offset >>> 0, targetKey.eip, targetKey.blockHash);
+                        patchCount++;
+                    });
+                });
+                console.log('[WASM JIT MT] registered ' + groupCount + ' piped groups (' +
+                    entryCount + ' entries, ' + patchCount + ' direct-call patches)');
+                Module.wasmJitMtPendingGroups = null;
+            }
         },
         print: (function() {
           var element = document.getElementById('output');
@@ -933,7 +979,8 @@ function initWasmJitCache(callback) {
     // before main() runs.
     var done = function() {
         var replay = Module.wasmJitCache.size > 0 ||
-                     Module.wasmJitGroupEntryMap.size > 0;
+                     Module.wasmJitGroupEntryMap.size > 0 ||
+                     (Module.wasmJitMtPendingGroups && Module.wasmJitMtPendingGroups.length > 0);
         Module.wasmJitPersistenceWanted = replay || Config.recordJITCache === true;
         if (Module.wasmJitPersistenceWanted) {
             console.log('[WASM JIT] persistence mode on (' +
@@ -1138,6 +1185,17 @@ async function importJitModulesFromBuffer(bytes) {
         // the block's own array as the second parameter, and free_block
         // zeroes arrays on eviction.
         var earlyGroupedManifest = manifestResults.find(function(m) { return m && m.format === 'boxedwine-wasm-jit-grouped-cache'; }) || null;
+        // Grouped zips are build-shape-specific: MT-piped zips carry mt:true
+        // (their direct-call tails have no ST slice-budget check), ST zips
+        // don't. Loading the wrong shape would either bake the ST budget
+        // address into MT workers or strip ST scheduling accounting.
+        if (earlyGroupedManifest && !!earlyGroupedManifest.mt !== !!isMT) {
+            console.warn('[WASM JIT] grouped cache zip was piped for ' +
+                (earlyGroupedManifest.mt ? 'multi-threaded' : 'single-threaded') +
+                ' builds but this build is ' + (isMT ? 'multi-threaded' : 'single-threaded') +
+                '; ignoring grouped modules (re-run the pipeline against this build\'s recording)');
+            earlyGroupedManifest = null;
+        }
         var relocWorkByPath = new Map();
         if (earlyGroupedManifest && earlyGroupedManifest.groups && !isMT) {
             earlyGroupedManifest.groups.forEach(function(group) {
@@ -1177,10 +1235,35 @@ async function importJitModulesFromBuffer(bytes) {
                 return null;
             }
         }));
-        if (isMT && groupModules.length > 0) {
-            console.warn('[WASM JIT] grouped cache modules are single-threaded only; ' +
-                         'for multi-threaded builds record with the MT build and run the ' +
-                         'cache pipeline with --flat (caches are per-build either way)');
+        // MT-piped groups: stage unpatched bytes + manifest rows for
+        // onRuntimeInitialized to feed into the shared C++ group registry
+        // (per-process patching, per-worker compilation, slot claiming all
+        // happen on the C++/worker side).
+        if (isMT && earlyGroupedManifest && groupModules.length > 0) {
+            var mtRowsByPath = new Map();
+            earlyGroupedManifest.groups.forEach(function(group) {
+                mtRowsByPath.set(group.path, {
+                    entries: group.entries || [],
+                    patches: group.directCallPatches || []
+                });
+            });
+            Module.wasmJitMtPendingGroups = [];
+            await Promise.all(groupModules.map(async function(e) {
+                try {
+                    var data = e.method === 8 ? await inflateRaw(e.data) : e.data;
+                    var rows = mtRowsByPath.get(e.path);
+                    if (!rows) return;
+                    Module.wasmJitMtPendingGroups.push({
+                        bytes: new Uint8Array(data),
+                        entries: rows.entries,
+                        patches: rows.patches
+                    });
+                } catch(ex) {
+                    console.warn('[WASM JIT] MT group stage failed for path=' + e.path + ':', ex);
+                }
+            }));
+            console.log('[WASM JIT MT] staged ' + Module.wasmJitMtPendingGroups.length +
+                ' piped groups for C++ registration');
         }
 
         var groupedManifest = earlyGroupedManifest;

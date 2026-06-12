@@ -1185,13 +1185,13 @@ async function main() {
     throw new Error('Input manifest is missing runtime CPU/scheduler constants; regenerate the JIT cache zip with the updated BoxedWine build');
   }
   // Multi-threaded builds have no scheduler slice-budget global, so their
-  // manifests carry contextTimeRemainingPtr=0. Grouped mode would bake that
-  // address into yield-aware direct tail calls — refuse rather than emit
-  // modules that poke memory at 0. (Grouped output is single-threaded-only
-  // anyway; MT consumes --flat output, which never bakes runtime addresses.)
-  if (!opts.flat && runtime.scheduler.contextTimeRemainingPtr === 0) {
-    throw new Error('Input was recorded by a multi-threaded build; grouped mode is single-threaded-only — run with --flat');
-  }
+  // manifests carry contextTimeRemainingPtr=0. The ST yield-aware tail bakes
+  // that address into rewritten sites, so MT groups use plain return_call
+  // tails instead — and edges touching cyclic blocks are not rewritten at
+  // all (in ST the budget check is what bounds those cycles; in MT an
+  // unguarded cyclic tail chain would never return to the dispatcher).
+  // The output manifest carries mt:true so the loader matches build shapes.
+  const isMtInput = runtime.scheduler.contextTimeRemainingPtr === 0;
   // Flat mode carries no grouped manifest, so there is nowhere to put split
   // hints; skip the profile parse entirely.
   const profileGuidedSplits = opts.flat
@@ -1312,11 +1312,14 @@ async function main() {
       .map((edge) => ({
         ...edge,
         guarded: cyclicKeys.has(edge.from) || cyclicKeys.has(edge.to),
-      }));
+      }))
+      // MT: no slice budget exists to bound cyclic tail chains, so
+      // cyclic-touching edges keep their dispatcher exit (see isMtInput).
+      .filter((edge) => !isMtInput || !edge.guarded);
     const merged = buildMergedGroupWasm(sorted, {
       directCalls: true,
       tailCalls: true,
-      yieldAwareTailCalls: true,
+      yieldAwareTailCalls: !isMtInput,
       runtime: manifest.runtime,
       directCallDepth: 0,
       edges: directEdges,
@@ -1355,6 +1358,7 @@ async function main() {
   const groupedManifest = {
     version: 2,
     format: 'boxedwine-wasm-jit-grouped-cache',
+    mt: isMtInput,
     source: {
       inputZip: opts.inputZip,
       inputManifestVersion: manifest.version,
@@ -1364,7 +1368,7 @@ async function main() {
       mergedGroups: true,
       directCalls: true,
       tailCalls: true,
-      yieldAwareTailCalls: true,
+      yieldAwareTailCalls: !isMtInput,
       directCallDepth: 0,
       interiorProfile: opts.interiorProfile,
       profileSplitThreshold: opts.profileSplitThreshold,
@@ -1391,7 +1395,7 @@ async function main() {
         rewritten: directCallsRewrittenByGroup.reduce((sum, count) => sum + count, 0),
         guardedRewritten: guardedDirectCallsRewrittenByGroup.reduce((sum, count) => sum + count, 0),
         tailCalls: true,
-        yieldAwareTailCalls: true,
+        yieldAwareTailCalls: !isMtInput,
         cyclicBlocksExcluded: cyclicKeys.size,
         depthLimit: 0,
       },
@@ -1428,7 +1432,7 @@ async function main() {
   console.log(`Groups:             ${groups.length}`);
   console.log(`Merged groups:      yes`);
   const directStats = groupedManifest.stats.directCalls;
-  console.log(`Direct calls:       ${directStats.rewritten} tail sites rewritten, candidateEdges=${directStats.candidateEdges}, tailCalls=yes, yieldAware=yes, guarded=${directStats.guardedRewritten}, cyclicBlocks=${directStats.cyclicBlocksExcluded}`);
+  console.log(`Direct calls:       ${directStats.rewritten} tail sites rewritten, candidateEdges=${directStats.candidateEdges}, tailCalls=yes, yieldAware=${directStats.yieldAwareTailCalls ? 'yes' : 'no (MT)'}, guarded=${directStats.guardedRewritten}, cyclicBlocks=${directStats.cyclicBlocksExcluded}`);
   const relocStats = groupedManifest.stats.reloc;
   console.log(`Reloc:              ${relocStats.entriesWithSlots} entries with slot arrays, ${relocStats.directCallSitePatches} direct-call sites patched with target arrays`);
   console.log(`Components:         ${components.length}`);

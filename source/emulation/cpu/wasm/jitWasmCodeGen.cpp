@@ -34,6 +34,7 @@
 #include <bit>      // std::bit_cast (C++20) — used in boxedwine_wasm_call_block
 #include <emscripten.h>
 #include <emscripten/em_js.h>
+#include <map>      // g_wasmMtGroupProcState (node-based: stable references)
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -135,6 +136,54 @@ static std::unordered_map<uint64_t, WasmJitMtBlockMeta> g_wasmCacheMetaByKey;
 // MT replacement for the ST boxedwine_wasm_record_transition_profile EM_JS).
 // Protected by g_wasmBlockBinariesMutex.
 static std::vector<std::string> g_wasmInteriorProfileLines;
+
+// ---------------------------------------------------------------------------
+// Piped (grouped) module registry — the MT counterpart of the ST shell's
+// Module.wasmJitGroupUnpatched staging. Worker EM_JS cannot reach main-thread
+// JS Maps, so the unpatched group bytes, entry table and direct-call patch
+// table live in shared C++ memory, registered from the main thread before
+// main() via the wasm_jit_mt_register_group* exports.
+//
+// Per-process state mirrors the ST loader's design: every entry gets a
+// zero-filled U32[relocCount] array on the C++ heap (shared memory, visible
+// to every worker), the direct-call sites get the *target* entry's array
+// address patched into their 5-byte padded-SLEB i32.const placeholder, and
+// the patched bytes are compiled per worker on first touch. Zeroed arrays
+// are safe: un-promoted entries stay on the generated code's guarded slow
+// paths, exactly as in ST. Unlike ST there is no refresh-copy: the promotion
+// path registers the group array itself in g_wasmRelocArrays, so table calls
+// and intra-group direct calls read the same slots.
+// All protected by g_wasmBlockBinariesMutex.
+struct WasmJitMtGroupEntry {
+    uint64_t key;
+    std::string exportName;
+    U32 relocCount;
+};
+struct WasmJitMtGroupPatch {
+    U32 offset;          // byte offset of the i32.const opcode (0x41)
+    uint64_t targetKey;
+};
+struct WasmJitMtGroup {
+    std::vector<U8> bytes; // unpatched merged module
+    std::vector<WasmJitMtGroupEntry> entries;
+    std::vector<WasmJitMtGroupPatch> patches;
+};
+struct WasmJitMtGroupProcState {
+    std::vector<U8> patchedBytes;
+    std::vector<U32*> entryArrays;   // index parallel to group entries; never freed (MT slot lifetime)
+};
+static std::vector<WasmJitMtGroup> g_wasmMtGroups;
+static std::unordered_map<uint64_t, std::pair<U32, U32>> g_wasmMtGroupByKey; // key -> (groupIdx, entryIdx)
+// (groupIdx, memId) -> per-process patched bytes + arrays
+static std::map<std::pair<U32, U32>, WasmJitMtGroupProcState> g_wasmMtGroupProcState;
+// table slot -> (groupIdx, memId) so cross-worker lazy installs route to the
+// group instead of g_wasmBlockBinaries. exportName resolved via entryIdx.
+struct WasmJitMtGroupSlotRef {
+    U32 groupIdx;
+    U32 entryIdx;
+    U32 memId;
+};
+static std::unordered_map<int, WasmJitMtGroupSlotRef> g_wasmMtGroupSlotRefs;
 #endif
 
 // Runtime persistence mode. When active, generated modules must not embed
@@ -2326,6 +2375,101 @@ EM_JS(int, boxedwine_wasm_instantiate_mt,
     }
 });
 
+// Instantiate (or reuse) a per-process patched merged-group module in THIS
+// worker and publish one of its exports at a freshly claimed shared slot.
+// Self-contained: the per-worker instance cache lives on globalThis (workers
+// do not load boxedwine-shell.js), keyed by (groupIdx, memId) — the bytes are
+// per-process patched, so the cache key must carry the process identity.
+// Slot claiming is the same Atomics protocol as boxedwine_wasm_instantiate_mt.
+EM_JS(int, boxedwine_wasm_instantiate_group_mt,
+      (const void* bytes, int size, const void** importFns, int importCount,
+       int* nextSlotPtr, const char* exportNamePtr, int groupIdx, U32 memId),
+{
+    try {
+        if (!globalThis.bwJitMtGroupInstances) globalThis.bwJitMtGroupInstances = new Map();
+        var instKey = groupIdx + '|' + (memId >>> 0).toString(16);
+        var inst = globalThis.bwJitMtGroupInstances.get(instKey);
+        if (!inst) {
+            var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
+            var mod = new WebAssembly.Module(wasmBytes);
+            var helpers = {};
+            var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+            for (var i = 0; i < importCount; i++) {
+                helpers['fn_' + i] = wasmTable.get(view[i]);
+            }
+            inst = new WebAssembly.Instance(mod, {
+                'env':     { 'memory': wasmMemory },
+                'helpers': helpers
+            });
+            globalThis.bwJitMtGroupInstances.set(instKey, inst);
+        }
+        var exportName = UTF8ToString(exportNamePtr);
+        var fn = inst.exports[exportName];
+        if (!fn) {
+            console.warn('[WASM JIT MT group] missing export ' + exportName + ' in group ' + groupIdx);
+            return -1;
+        }
+
+        var nextSlotTA = new Int32Array(HEAPU8.buffer, nextSlotPtr, 1);
+        Atomics.compareExchange(nextSlotTA, 0, 0, wasmTable.length);
+        var slot = Atomics.add(nextSlotTA, 0, 1);
+        while (slot >= wasmTable.length) {
+            try {
+                wasmTable.grow(slot - wasmTable.length + 1);
+            } catch(e) {
+                if (slot < wasmTable.length) break;
+                console.error('[WASM JIT MT group] wasmTable.grow failed:', e);
+                return -1;
+            }
+        }
+        wasmTable.set(slot, fn);
+        return slot;
+    } catch(e) {
+        console.error('boxedwine_wasm_instantiate_group_mt failed:', e);
+        return -1;
+    }
+});
+
+// Group counterpart of boxedwine_wasm_install_existing_mt: make a shared slot
+// that some other worker claimed for a merged-group export callable in THIS
+// worker, reusing (or creating) this worker's instance of the group.
+EM_JS(int, boxedwine_wasm_install_existing_group_mt,
+      (const void* bytes, int size, const void** importFns, int importCount,
+       int tableIndex, const char* exportNamePtr, int groupIdx, U32 memId),
+{
+    try {
+        if (tableIndex < 0) return 0;
+        if (tableIndex < wasmTable.length && wasmTable.get(tableIndex)) return 1;
+        if (!globalThis.bwJitMtGroupInstances) globalThis.bwJitMtGroupInstances = new Map();
+        var instKey = groupIdx + '|' + (memId >>> 0).toString(16);
+        var inst = globalThis.bwJitMtGroupInstances.get(instKey);
+        if (!inst) {
+            var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
+            var mod = new WebAssembly.Module(wasmBytes);
+            var helpers = {};
+            var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+            for (var i = 0; i < importCount; i++) {
+                helpers['fn_' + i] = wasmTable.get(view[i]);
+            }
+            inst = new WebAssembly.Instance(mod, {
+                'env':     { 'memory': wasmMemory },
+                'helpers': helpers
+            });
+            globalThis.bwJitMtGroupInstances.set(instKey, inst);
+        }
+        var fn = inst.exports[UTF8ToString(exportNamePtr)];
+        if (!fn) return 0;
+        while (tableIndex >= wasmTable.length) {
+            wasmTable.grow(tableIndex - wasmTable.length + 1);
+        }
+        wasmTable.set(tableIndex, fn);
+        return 1;
+    } catch(e) {
+        console.warn('[WASM JIT MT group lazy install failed] slot=' + tableIndex + ' error=' + e);
+        return 0;
+    }
+});
+
 // Multi-threaded lazy install: instantiate an already-compiled block into this
 // worker's local wasmTable at the shared slot before call_indirect uses it.
 EM_JS(int, boxedwine_wasm_install_existing_mt,
@@ -2411,6 +2555,46 @@ extern "C" void wasm_jit_mt_register(uint32_t eip, uint32_t blockHash, const voi
     auto& v = g_wasmCacheByKey[wasmJitCacheKey(eip, blockHash)];
     v.assign(static_cast<const U8*>(bytes),
              static_cast<const U8*>(bytes) + size);
+}
+
+// Piped (grouped) registration — called from the main thread in
+// onRuntimeInitialized, one _register_group per merged module followed by
+// one _register_group_entry / _register_group_patch call per manifest row.
+// Exported to JS (see EXPORTED_FUNCTIONS in project/emscripten/makefile).
+extern "C" int wasm_jit_mt_register_group(const void* bytes, int size) {
+    if (size <= 0 || !bytes) return -1;
+    wasm_jit_set_persistence_active();
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    g_wasmMtGroups.emplace_back();
+    g_wasmMtGroups.back().bytes.assign(static_cast<const U8*>(bytes),
+                                       static_cast<const U8*>(bytes) + size);
+    return (int)g_wasmMtGroups.size() - 1;
+}
+
+extern "C" void wasm_jit_mt_register_group_entry(int groupIdx, uint32_t eip, uint32_t blockHash,
+                                                 const char* exportName, uint32_t relocCount) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    if (groupIdx < 0 || (size_t)groupIdx >= g_wasmMtGroups.size() || !exportName) return;
+    WasmJitMtGroup& group = g_wasmMtGroups[groupIdx];
+    uint64_t key = wasmJitCacheKey(eip, blockHash);
+    // First registration wins, matching the flat map's behavior for
+    // duplicate keys across groups.
+    if (!g_wasmMtGroupByKey.emplace(key, std::make_pair((U32)groupIdx, (U32)group.entries.size())).second) {
+        return;
+    }
+    group.entries.push_back({ key, std::string(exportName), relocCount });
+}
+
+extern "C" void wasm_jit_mt_register_group_patch(int groupIdx, uint32_t offset,
+                                                 uint32_t targetEip, uint32_t targetHash) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    if (groupIdx < 0 || (size_t)groupIdx >= g_wasmMtGroups.size()) return;
+    WasmJitMtGroup& group = g_wasmMtGroups[groupIdx];
+    if (offset + 6 > group.bytes.size() || group.bytes[offset] != 0x41) {
+        klog_fmt("[WASM JIT MT group] bad direct-call patch offset %u for group %d (dropped)", offset, groupIdx);
+        return;
+    }
+    group.patches.push_back({ offset, wasmJitCacheKey(targetEip, targetHash) });
 }
 
 // Mirror one block's exit metadata into Module.wasmJitBlockMeta and (re)set
@@ -3139,7 +3323,76 @@ static const void* g_wasmHelperTable[] = {
 static constexpr int WASM_HELPER_COUNT = (int)(sizeof(g_wasmHelperTable) / sizeof(g_wasmHelperTable[0]));
 
 #ifdef BOXEDWINE_MULTI_THREADED
+// Get or build the per-(group, process) state: zero-filled reloc arrays for
+// every entry plus a patched byte copy whose direct-call sites carry this
+// process's target array addresses. Caller holds g_wasmBlockBinariesMutex.
+// References stay stable after creation: g_wasmMtGroupProcState is a
+// node-based map, and g_wasmMtGroups is append-only and only written before
+// main() (registration is main-thread, pre-worker).
+static WasmJitMtGroupProcState& wasmJitMtGroupProcStateLocked(U32 groupIdx, U32 memId) {
+    auto key = std::make_pair(groupIdx, memId);
+    auto it = g_wasmMtGroupProcState.find(key);
+    if (it != g_wasmMtGroupProcState.end()) {
+        return it->second;
+    }
+    const WasmJitMtGroup& group = g_wasmMtGroups[groupIdx];
+    WasmJitMtGroupProcState st;
+    st.entryArrays.resize(group.entries.size(), nullptr);
+    for (size_t i = 0; i < group.entries.size(); i++) {
+        U32 count = group.entries[i].relocCount;
+        if (count) {
+            st.entryArrays[i] = new U32[count](); // zero-filled: un-promoted entries stay on guarded slow paths
+        }
+    }
+    st.patchedBytes = group.bytes;
+    for (const WasmJitMtGroupPatch& patch : group.patches) {
+        U32 v = 0;
+        auto kt = g_wasmMtGroupByKey.find(patch.targetKey);
+        if (kt != g_wasmMtGroupByKey.end() && kt->second.first == groupIdx) {
+            v = (U32)(uintptr_t)st.entryArrays[kt->second.second];
+        }
+        // 5-byte padded SLEB128 i32.const operand, same encoding as the ST
+        // shell loader (offset validity checked at registration).
+        U8* data = st.patchedBytes.data() + patch.offset;
+        data[1] = (U8)((v & 0x7f) | 0x80);
+        data[2] = (U8)(((v >> 7) & 0x7f) | 0x80);
+        data[3] = (U8)(((v >> 14) & 0x7f) | 0x80);
+        data[4] = (U8)(((v >> 21) & 0x7f) | 0x80);
+        data[5] = (U8)(((v >> 28) & 0x0f) | ((v & 0x80000000u) ? 0x70 : 0));
+    }
+    return g_wasmMtGroupProcState.emplace(key, std::move(st)).first->second;
+}
+
 static bool lazyInstallWasmJitBlockForWorker(int tableIndex) {
+    // Group slots route to the per-worker group instance; the patched bytes
+    // and export name are read under the mutex but the (potentially large)
+    // compile runs outside it. Pointers stay valid by the stability rules on
+    // wasmJitMtGroupProcStateLocked.
+    {
+        const U8* groupBytes = nullptr;
+        int groupSize = 0;
+        const char* exportName = nullptr;
+        U32 groupIdx = 0, memId = 0;
+        {
+            std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+            auto refIt = g_wasmMtGroupSlotRefs.find(tableIndex);
+            if (refIt != g_wasmMtGroupSlotRefs.end()) {
+                const WasmJitMtGroupSlotRef& ref = refIt->second;
+                WasmJitMtGroupProcState& st = wasmJitMtGroupProcStateLocked(ref.groupIdx, ref.memId);
+                groupBytes = st.patchedBytes.data();
+                groupSize = (int)st.patchedBytes.size();
+                exportName = g_wasmMtGroups[ref.groupIdx].entries[ref.entryIdx].exportName.c_str();
+                groupIdx = ref.groupIdx;
+                memId = ref.memId;
+            }
+        }
+        if (groupBytes) {
+            return boxedwine_wasm_install_existing_group_mt(
+                groupBytes, groupSize,
+                g_wasmHelperTable, WASM_HELPER_COUNT,
+                tableIndex, exportName, (int)groupIdx, memId) != 0;
+        }
+    }
     std::vector<U8> bytes;
     {
         std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
@@ -6656,29 +6909,91 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     U64 instantiateStartUs = wasmJitProfileNowNs();
 #endif
 #ifdef BOXEDWINE_MULTI_THREADED
-    // When persistence is active, check the persistent cache (primed from the
-    // server zip before main() ran, extended by every worker as it compiles).
-    // On a hit, instantiate the cached bytes instead of the freshly emitted
-    // ones — for now they are equivalent, but a later slice may serve
-    // post-processed (e.g. direct-call optimized) modules through the same key.
+    // When persistence is active, check the piped-group registry first, then
+    // the flat persistent cache (primed from the server zip before main()
+    // ran, extended by every worker as it compiles). On a group hit the
+    // merged module's export is published at a fresh slot and the group's
+    // per-(entry, process) reloc array becomes the block's array — table
+    // calls and intra-group direct calls then read the same slots, so no
+    // ST-style refresh copy is needed.
     std::vector<U8> cachedBytes;
+    bool usedGroup = false;
+    int tableIdx = -1;
     if (wasmJitPersistenceActive()) {
-        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
-        auto it = g_wasmCacheByKey.find(wasmJitCacheKey(cacheEip, blockHash));
-        if (it != g_wasmCacheByKey.end()) {
-            cachedBytes = it->second;
+        const U8* groupBytes = nullptr;
+        int groupSize = 0;
+        const char* groupExportName = nullptr;
+        U32* groupArr = nullptr;
+        U32 groupIdx = 0, entryIdx = 0;
+        {
+            std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+            const uint64_t key = wasmJitCacheKey(cacheEip, blockHash);
+            auto git = g_wasmMtGroupByKey.find(key);
+            if (git != g_wasmMtGroupByKey.end()) {
+                groupIdx = git->second.first;
+                entryIdx = git->second.second;
+                const WasmJitMtGroupEntry& entry = g_wasmMtGroups[groupIdx].entries[entryIdx];
+                if (entry.relocCount == (U32)m_relocValues.size()) {
+                    WasmJitMtGroupProcState& st =
+                        wasmJitMtGroupProcStateLocked(groupIdx, (U32)(uintptr_t)cpu->memory);
+                    groupArr = st.entryArrays[entryIdx];
+                    if (groupArr && !m_relocValues.empty()) {
+                        memcpy(groupArr, m_relocValues.data(), m_relocValues.size() * sizeof(U32));
+                    }
+                    groupBytes = st.patchedBytes.data();
+                    groupSize = (int)st.patchedBytes.size();
+                    groupExportName = entry.exportName.c_str();
+                } else {
+                    static bool warned = false;
+                    if (!warned) {
+                        warned = true;
+                        klog_fmt("[WASM JIT MT group] relocCount mismatch eip=%x manifest=%u runtime=%u (using flat path)",
+                            cacheEip, entry.relocCount, (U32)m_relocValues.size());
+                    }
+                }
+            }
+            if (!groupBytes) {
+                auto it = g_wasmCacheByKey.find(key);
+                if (it != g_wasmCacheByKey.end()) {
+                    cachedBytes = it->second;
+                }
+            }
+        }
+        if (groupBytes) {
+            // Compile/instantiate outside the mutex — first touch of a large
+            // merged group should not serialize other workers' commits.
+            tableIdx = boxedwine_wasm_instantiate_group_mt(
+                groupBytes, groupSize,
+                g_wasmHelperTable, WASM_HELPER_COUNT,
+                &g_wasmTableNextSlot,
+                groupExportName, (int)groupIdx, (U32)(uintptr_t)cpu->memory);
+            if (tableIdx >= 0) {
+                usedGroup = true;
+                std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+                if (groupArr) {
+                    g_wasmRelocArrays[tableIdx] = groupArr;
+                    g_wasmHasRelocArrays.store(true, std::memory_order_relaxed);
+                }
+                g_wasmMtGroupSlotRefs[tableIdx] = { groupIdx, entryIdx, (U32)(uintptr_t)cpu->memory };
+            }
+            // On instantiation failure fall through to the flat/fresh path
+            // (cachedBytes was not read for a group hit; the fresh binary
+            // still works — the group entry array simply stays live for any
+            // direct calls that already target it).
         }
     }
     const bool usingCached = !cachedBytes.empty();
     const void* instBytes = usingCached ? cachedBytes.data() : m_wasmBinary.data();
     const int instSize = usingCached ? (int)cachedBytes.size() : (int)m_wasmBinary.size();
-    int tableIdx = boxedwine_wasm_instantiate_mt(
-        instBytes,
-        instSize,
-        g_wasmHelperTable,
-        WASM_HELPER_COUNT,
-        &g_wasmTableNextSlot
-    );
+    if (tableIdx < 0) {
+        tableIdx = boxedwine_wasm_instantiate_mt(
+            instBytes,
+            instSize,
+            g_wasmHelperTable,
+            WASM_HELPER_COUNT,
+            &g_wasmTableNextSlot
+        );
+    }
 #else
   #ifndef __TEST
     // When persistence is active, try the persistent cache first and save
@@ -6757,11 +7072,19 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         // an earlier commit of the same key; keep the existing one (its
         // values are identical — same key, same build, same decode).
 #ifdef BOXEDWINE_MULTI_THREADED
-        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
-        if (!g_wasmRelocArrays.emplace(tableIdx, relocArr).second) {
+        if (usedGroup) {
+            // The group's per-(entry, process) array is already registered
+            // for this slot and holds the same values; the standalone copy
+            // is not needed.
             delete[] relocArr;
+            relocArr = nullptr;
+        } else {
+            std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+            if (!g_wasmRelocArrays.emplace(tableIdx, relocArr).second) {
+                delete[] relocArr;
+            }
+            g_wasmHasRelocArrays.store(true, std::memory_order_relaxed);
         }
-        g_wasmHasRelocArrays.store(true, std::memory_order_relaxed);
 #else
         if ((size_t)tableIdx >= g_wasmRelocBaseByTable.size()) {
             g_wasmRelocBaseByTable.resize(tableIdx + 1, nullptr);
@@ -6778,9 +7101,13 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     {
         std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
         // Keep the per-slot bytes consistent with what was instantiated so
-        // lazy cross-worker installs run the same module.
-        g_wasmBlockBinaries[tableIdx] = usingCached ? cachedBytes : m_wasmBinary;
-        if (wasmJitPersistenceActive() && !usingCached) {
+        // lazy cross-worker installs run the same module. Group slots are
+        // covered by g_wasmMtGroupSlotRefs instead (lazy installs route to
+        // the per-worker group instance).
+        if (!usedGroup) {
+            g_wasmBlockBinaries[tableIdx] = usingCached ? cachedBytes : m_wasmBinary;
+        }
+        if (wasmJitPersistenceActive() && !usingCached && !usedGroup) {
             g_wasmCacheByKey[wasmJitCacheKey(cacheEip, blockHash)] = m_wasmBinary;
             // Exit metadata for the exported manifest (the ST build records
             // this in Module.wasmJitBlockMeta from boxedwine_wasm_save_block;
