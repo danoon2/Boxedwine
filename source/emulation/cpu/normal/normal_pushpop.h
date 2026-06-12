@@ -18,6 +18,18 @@
 
 #include "../common/common_pushpop.h"
 
+static U32 normal_eaaAfterPop(CPU* cpu, DecodedOp* op, U32 popBytes) {
+    if (op->rm != regSP && op->sibIndex != regSP) {
+        return eaa(cpu, op);
+    }
+
+    U32 oldEsp = ESP;
+    ESP = (oldEsp & cpu->stackNotMask) | ((oldEsp + popBytes) & cpu->stackMask);
+    U32 address = eaa(cpu, op);
+    ESP = oldEsp;
+    return address;
+}
+
 void OPCALL normal_pushEw_reg(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
     cpu->push16(cpu->reg[op->reg].u16);
@@ -35,15 +47,10 @@ void OPCALL normal_pushEw_mem(CPU* cpu, DecodedOp* op){
 }
 void OPCALL normal_popEw_mem(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    U32 oldEsp = ESP;
-    U16 value = cpu->pop16();
-    U32 address = eaa(cpu, op); // eaa must be calculated after esp is incremented in pop16
-    try {
-        cpu->memory->writew(address, value);
-    } catch (...) {
-        ESP = oldEsp;
-        throw;
-    }
+    U16 value = cpu->peek16(0);
+    U32 address = normal_eaaAfterPop(cpu, op, 2);
+    cpu->memory->writew(address, value);
+    ESP = (ESP & cpu->stackNotMask) | ((ESP + 2 ) & cpu->stackMask);
     NEXT();
 }
 void OPCALL normal_pushEd_reg(CPU* cpu, DecodedOp* op){
@@ -68,15 +75,10 @@ void OPCALL normal_pushEd_mem(CPU* cpu, DecodedOp* op){
 // a result of the POP instruction, the resulting location of the memory write is processor-family-specific.
 void OPCALL normal_popEd_mem(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    U32 oldEsp = ESP;
-    U32 value = cpu->pop32();
-    U32 address = eaa(cpu, op);
-    try {
-        cpu->memory->writed(address, value);
-    } catch (...) {
-        ESP = oldEsp;
-        throw;
-    }
+    U32 value = cpu->peek32(0);
+    U32 address = normal_eaaAfterPop(cpu, op, 4);
+    cpu->memory->writed(address, value);
+    ESP = (ESP & cpu->stackNotMask) | ((ESP + 4 ) & cpu->stackMask);
     NEXT();
 }
 void OPCALL normal_pushSeg16(CPU* cpu, DecodedOp* op){
