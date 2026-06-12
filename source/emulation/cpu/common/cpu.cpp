@@ -1279,6 +1279,7 @@ void CPU::runNextSingleOp() {
 #endif
         DecodedOp o = *op;
         lastOp.pfn = onLastOp;
+        lastOp.inst = Custom1; // Custom1 has no normalDispatch case, so inst-switch chains fall to default: and call pfn
         o.next = &lastOp;
         o.pfn = NormalCPU::getFunctionForOp(op);
         o.pfn(this, &o);

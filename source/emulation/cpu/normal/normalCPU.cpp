@@ -45,6 +45,26 @@
 #if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH)
 #define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return normalDispatch(cpu, op->next);
 #elif defined(BOXEDWINE_WASM_JIT)
+#ifndef BOXEDWINE_WASM_JIT_NO_DIRECT_INTERP
+// Non-bridge interpreter chains go through normalDispatch's switch (direct
+// tail calls) instead of the indirect nextOp->pfn call. Default on: A/B
+// measured MT 62 -> 82 (beats the 80 interpreter) and ST 27 -> 28 / 30
+// with piped modules; BOXEDWINE_WASM_JIT_NO_DIRECT_INTERP is a diagnostic
+// opt-out. Chains exit to run() at compiled-block heads so wasmStartJITOp
+// keeps its machinery (per-worker readiness, relocBase, runCount counting);
+// branches still break chains in NEXT_BRANCH1/2 - that is the stack bound
+// and must stay (the historical branch-through variant overflowed the JS
+// stack). Any DecodedOp whose pfn is not normalOps[inst] must keep an inst
+// that lands in normalDispatch's default: case (see cpu.cpp's lastOp).
+#define NEXT_INTERP_CHAIN()                                                                         \
+    if (nextOp && nextOp->pfn != cpu->thread->process->startJITOp) {                                \
+        MUSTTAIL return normalDispatch(cpu, nextOp);                                                \
+    }                                                                                                \
+    cpu->nextOp = nextOp;                                                                            \
+    return
+#else
+#define NEXT_INTERP_CHAIN() MUSTTAIL return nextOp->pfn(cpu, nextOp)
+#endif
 #define NEXT() do {                                                                                 \
     cpu->eip.u32 += op->len;                                                                         \
     DecodedOp* nextOp = op->next ? op->next : cpu->getNextOp();                                      \
@@ -57,7 +77,7 @@
         cpu->wasmJitBridgeBlockStart = nullptr;                                                      \
         return;                                                                                      \
     }                                                                                                \
-    MUSTTAIL return nextOp->pfn(cpu, nextOp);                                                        \
+    NEXT_INTERP_CHAIN();                                                                             \
 } while (0)
 #else
 #define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return op->next->pfn(cpu, op->next);

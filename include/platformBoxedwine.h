@@ -58,7 +58,10 @@
 // Direct normal dispatch is initially scoped to non-JIT Emscripten builds.
 // JIT builds can store JIT trampolines in DecodedOp::pfn, so they need a
 // narrower integration point before this can be enabled there.
-#if !defined(BOXEDWINE_JIT) && defined(__EMSCRIPTEN__)
+// BOXEDWINE_NO_DIRECT_NORMAL_DISPATCH is a diagnostic opt-out so the
+// dispatcher's contribution can be measured in isolation, e.g.
+//   make -B multiThreaded GCC_EXTRA_FLAGS=-DBOXEDWINE_NO_DIRECT_NORMAL_DISPATCH
+#if !defined(BOXEDWINE_JIT) && defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_NO_DIRECT_NORMAL_DISPATCH)
 #define BOXEDWINE_DIRECT_NORMAL_DISPATCH 1
 #endif
 
