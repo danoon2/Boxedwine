@@ -2644,45 +2644,6 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
     U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
     U64 startPreCallNs = profileStartNs;
 #endif
-#ifdef BOXEDWINE_WASM_JIT_MT_CHAIN
-    // MT chain loop: hop directly between compiled blocks like the ST loop,
-    // but with MT-shaped conditions. Deliberately NOT conditioned on
-    // cpu->yield — nothing ever resets it in MT builds (both reset sites are
-    // in the ST scheduler), so one sched_yield would permanently stop
-    // chaining for the thread. terminating + the chain limit bound the time
-    // between returns to platformThread's loop; each iteration re-validates
-    // the target through the per-worker readiness cache and the
-    // bad-tableIndex guard inside boxedwine_wasm_call_block.
-    static constexpr U32 WASM_JIT_MT_CHAIN_LIMIT = 256;
-    WASM_JIT_PROFILE_ONLY((void)profileSample; (void)startPreCallNs;)
-    U32 chainedBlocks = 0;
-    bool memoryArraysChecked = false;
-    while (op && op->pfnJitCode && chainedBlocks < WASM_JIT_MT_CHAIN_LIMIT &&
-           !cpu->thread->terminating) {
-        int tableIndex = (int)(uintptr_t)op->pfnJitCode;
-        if (!wasmJitSlotReadyForWorker(tableIndex, cpu, op)) {
-#ifdef BOXEDWINE_WASM_JIT_PROFILE
-            wasmJitProfileSlotMiss();
-#endif
-            disableWasmJitBlockAfterSlotMiss(op);
-            NormalCPU::getFunctionForOp(op)(cpu, op);
-            return;
-        }
-        if (!memoryArraysChecked && (op->flags2 & OP_FLAG2_WASM_JIT_MEM_ARRAYS)) {
-            KMemoryData* memoryData = nullptr;
-            if (wasmMemoryPageArraysNeedRefresh(cpu, &memoryData)) {
-                wasmPrepareBlockEnter(cpu, memoryData);
-            }
-            memoryArraysChecked = true;
-        }
-        boxedwine_wasm_call_block(tableIndex, (int)(uintptr_t)cpu, (int)wasmJitRelocBaseForTable(tableIndex));
-        chainedBlocks++;
-        op = cpu->nextOp;
-        if (!wasmJitCanChainTo(cpu, op)) {
-            break;
-        }
-    }
-#else
     if (op->pfnJitCode) {
         // Guard against cross-worker table visibility. Readiness cannot be
         // cached on DecodedOp because DecodedOp is shared, while table slot
@@ -2709,7 +2670,6 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
         WASM_JIT_PROFILE_ONLY(if (profileSample) { U64 startPostCallNs = wasmJitProfileNowNs(); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPostCallUs, startPostCallNs); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartUs, profileStartNs); })
         // nextOp is updated by the WASM block itself (via helper call).
     }
-#endif // BOXEDWINE_WASM_JIT_MT_CHAIN
 #else
     U32 chainedBlocks = 0;
     U32 chainedInstructionCount = 0;
@@ -2985,31 +2945,8 @@ WASM_COND_HELPER(O,   cpu->getOF())
 WASM_COND_HELPER(NO,  !cpu->getOF())
 WASM_COND_HELPER(B,   cpu->getCF())
 WASM_COND_HELPER(NB,  !cpu->getCF())
-#ifdef BOXEDWINE_WASM_DIAGNOSTICS
-static U32 g_condZLogCount = 0;
-static void wasmHelper_cond_Z(CPU* cpu) {
-    WASM_JIT_HELPER_STAT(Cond);
-    WASM_JIT_PROFILE_ONLY(wasmJitProfileHelperCond((U32)JitConditional::Z, (U32)cpu->lazyFlagType);)
-    WASM_JIT_PROFILE_ONLY(WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperCondUs);)
-    if (g_condZLogCount < 100) {
-        g_condZLogCount++;
-        klog_fmt("[WASM-DIAG] cond_Z #%u eip=0x%08x lazyType=%u result=0x%08x dst=0x%08x flags=0x%08x ZF=%d",
-                 g_condZLogCount, cpu->eip.u32 + cpu->seg[CS].address,
-                 (U32)cpu->lazyFlagType, cpu->result.u32, cpu->dst.u32, cpu->flags,
-                 cpu->getZF() ? 1 : 0);
-    }
-    cpu->tmpReg = cpu->getZF() ? 1 : 0;
-}
-static void wasmHelper_cond_NZ(CPU* cpu) {
-    WASM_JIT_HELPER_STAT(Cond);
-    WASM_JIT_PROFILE_ONLY(wasmJitProfileHelperCond((U32)JitConditional::NZ, (U32)cpu->lazyFlagType);)
-    WASM_JIT_PROFILE_ONLY(WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperCondUs);)
-    cpu->tmpReg = (!cpu->getZF()) ? 1 : 0;
-}
-#else
 WASM_COND_HELPER(Z,   cpu->getZF())
 WASM_COND_HELPER(NZ,  !cpu->getZF())
-#endif
 WASM_COND_HELPER(BE,  cpu->getCF() || cpu->getZF())
 WASM_COND_HELPER(NBE, !cpu->getCF() && !cpu->getZF())
 WASM_COND_HELPER(S,   cpu->getSF())
