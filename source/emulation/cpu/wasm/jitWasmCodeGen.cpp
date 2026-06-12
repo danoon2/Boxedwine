@@ -166,9 +166,28 @@ static inline bool wasmJitPersistenceActive() {
     return g_wasmJitPersistenceActive.load(std::memory_order_relaxed);
 }
 
+// Record sessions (?jit-record=true) additionally collect the fetchNext
+// transition profile that the Save-JIT-Cache export embeds for the offline
+// pipeline's split hints. Replay sessions never export, so they must not pay
+// for the recording (per-landing atomic increments contend across MT
+// workers). FORCE_PERSISTENCE keeps it on so the test suite covers the path.
+#ifdef BOXEDWINE_WASM_JIT_FORCE_PERSISTENCE
+static std::atomic<bool> g_wasmJitRecordActive{true};
+#else
+static std::atomic<bool> g_wasmJitRecordActive{false};
+#endif
+
+static inline bool wasmJitRecordActive() {
+    return g_wasmJitRecordActive.load(std::memory_order_relaxed);
+}
+
 // Exported to JS (see EXPORTED_FUNCTIONS in project/emscripten/makefile).
 extern "C" void wasm_jit_set_persistence_active() {
     g_wasmJitPersistenceActive.store(true, std::memory_order_relaxed);
+}
+
+extern "C" void wasm_jit_set_record_active() {
+    g_wasmJitRecordActive.store(true, std::memory_order_relaxed);
 }
 
 static inline uint64_t wasmJitCacheKey(U32 eip, U32 blockHash) {
@@ -2861,7 +2880,7 @@ static void wasmHelper_fetchNextOp(CPU* cpu) {
 #endif
     if (!cpu->thread->terminating) {
         cpu->nextOp = cpu->getNextOp();
-        if (wasmJitPersistenceActive()) {
+        if (wasmJitRecordActive()) {
             wasmJitRecordFetchNextTransition(cpu, cpu->nextOp);
         }
 #ifdef BOXEDWINE_WASM_JIT_PROFILE

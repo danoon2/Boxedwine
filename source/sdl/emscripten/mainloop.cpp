@@ -144,8 +144,10 @@ void mainloop() {
                 mipsWarmCount++;
             }
             U32 mipsWarmAvg = mipsWarmCount ? (U32)((mipsWarmTotal + mipsWarmCount / 2) / mipsWarmCount) : mipsAvg;
-            klog_fmt("[MIPS] count=%u raw=%u avg=%u min=%u max=%u warmAvg=%u warmSamples=%u",
-                mipsLogCount, mipsRaw, mipsAvg, mipsMin, mipsMax, mipsWarmAvg, mipsWarmCount);
+            if (mipsLogCount % 10 == 0) { // sample every second, log every 10th
+                klog_fmt("[MIPS] count=%u raw=%u avg=%u min=%u max=%u warmAvg=%u warmSamples=%u",
+                    mipsLogCount, mipsRaw, mipsAvg, mipsMin, mipsMax, mipsWarmAvg, mipsWarmCount);
+            }
 	    mipsTitle = B("BoxedWine ");
 	    mipsTitle.append(mipsAvg);
 	    mipsTitle.append(" MIPS");

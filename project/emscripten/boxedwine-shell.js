@@ -726,6 +726,13 @@
                     typeof Module._wasm_jit_set_persistence_active === 'function') {
                 Module._wasm_jit_set_persistence_active();
             }
+            // Record sessions also collect the fetchNext transition profile
+            // for the Save-JIT-Cache export; replay sessions never export,
+            // so they skip the recording cost.
+            if (Config.recordJITCache === true &&
+                    typeof Module._wasm_jit_set_record_active === 'function') {
+                Module._wasm_jit_set_record_active();
+            }
             if (typeof Module._wasm_jit_mt_register !== 'function') return;
             if (!Module.wasmJitCache || Module.wasmJitCache.size === 0) {
                 console.log('[WASM JIT MT] no cached blocks to preload');
