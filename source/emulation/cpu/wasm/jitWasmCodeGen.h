@@ -141,6 +141,53 @@
  *
  *   bswap32                     The backend byteSwapReg32 helper is still
  *                               a conservative emulateSingleOp stub.
+ *
+ * Build-time defines (all opt-in via GCC_EXTRA_FLAGS unless noted)
+ * ----------------------------------------------------------------
+ * Every gate below is deliberate — diagnostics and verification tools, not
+ * feature toggles. Failed-experiment defines are not kept in this code; the
+ * experiment history lives in docs/Wasm-JIT-*.md and on the experiment
+ * branches.
+ *
+ *   BOXEDWINE_WASM_JIT          The backend itself (jit / multiThreadedJit /
+ *                               testJit targets in project/emscripten).
+ *
+ *   BOXEDWINE_WASM_JIT_PROFILE  Profiling instrument: dispatch/exit/helper
+ *                               counters and sampled wall times, printed
+ *                               periodically. In MT builds trust the counts,
+ *                               not the nanoseconds — the shared atomic
+ *                               counters contend across workers and poison
+ *                               the wall times.
+ *
+ *   BOXEDWINE_WASM_JIT_FORCE_PERSISTENCE
+ *                               Latches record/replay persistence on from
+ *                               startup so the CPU test suite exercises the
+ *                               relocatable codegen and module-cache paths
+ *                               (see the comment at g_wasmJitPersistenceActive
+ *                               in jitWasmCodeGen.cpp).
+ *
+ *   BOXEDWINE_WASM_JIT_HELPER_CALL_STATS
+ *                               Per-helper call counters (ST only); used to
+ *                               pick the next helper to inline/specialize.
+ *                               Perturbs timing — not for benchmark builds.
+ *
+ *   BOXEDWINE_WASM_JIT_FALLBACK_STATS
+ *                               Counts emulateSingleOp fallbacks by family
+ *                               (the list above) to spot hot fallbacks.
+ *
+ *   BOXEDWINE_WASM_JIT_NO_DIRECT_INTERP
+ *                               Diagnostic opt-out in normalCPU.cpp: reverts
+ *                               the interpreter's non-bridge chains to
+ *                               indirect pfn dispatch. Direct dispatch is
+ *                               default-on and was measured at MT 62 -> 82,
+ *                               ST 27 -> 28 (30 with piped modules).
+ *
+ *   BOXEDWINE_NO_DIRECT_NORMAL_DISPATCH
+ *                               (platformBoxedwine.h, non-JIT builds.)
+ *                               Disables the interpreter's switch/MUSTTAIL
+ *                               dispatcher so its contribution can be
+ *                               measured in isolation — the diagnostic that
+ *                               sized the MT dispatcher win.
  */
 
 #ifndef __JIT_WASM_CODE_GEN_H__
