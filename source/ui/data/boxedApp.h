@@ -46,6 +46,8 @@ public:
     BString getPath() const {return this->path;}
     BString getCmd() const { return this->cmd;}
     BString getIniFilePath() const {return this->iniFilePath;}
+    const std::vector<BString>& getArgs() const { return this->args; }
+    BString getRequiredComponentOptionsName() const { return this->requiredComponentOptionsName; }
 
     void setName(BString name) {this->name = name;}
     void setArgs(const std::vector<BString>& args) {this->args = args;}
@@ -97,6 +99,7 @@ private:
     int uid = -1;
     int euid = -1;
     bool isWine = true;
+    BString requiredComponentOptionsName;
 
     BoxedContainer* container = nullptr;
     BString iniFilePath;

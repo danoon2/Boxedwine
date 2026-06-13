@@ -208,7 +208,7 @@ U32 KUnixSocketObject::writev(KThread* thread, U32 iov, S32 iovcnt) {
             len += result;
         }
     }    
-    if (con) {
+    if (con && len) {
         BOXEDWINE_CONDITION_SIGNAL_ALL(cond);
     }
     return len;
@@ -220,7 +220,7 @@ U32 KUnixSocketObject::write(KThread* thread, U32 buffer, U32 len) {
     BOXEDWINE_CONDITION& cond = (con?con->lockCond:this->lockCond);
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(cond);
     U32 result = this->internal_write(thread, con, cond, buffer, len);    
-    if (con) {
+    if (con && result > 0) {
         BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
     }
     return result;
@@ -244,7 +244,9 @@ U32 KUnixSocketObject::writeNative(U8* buffer, U32 len) {
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond); 
     con->recvBuffer.put(buffer, len);
-    BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
+    if (len) {
+        BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
+    }
     return len;
 }
 
@@ -268,7 +270,9 @@ U32 KUnixSocketObject::unixsocket_write_native_nowait(const std::shared_ptr<KObj
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond);
     //printf("SOCKET write len=%d bufferSize=%d pos=%d\n", len, s->connection->recvBufferLen, s->connection->recvBufferWritePos);
     con->recvBuffer.put(value, len);
-    BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
+    if (len) {
+        BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
+    }
 
     return len;
 }

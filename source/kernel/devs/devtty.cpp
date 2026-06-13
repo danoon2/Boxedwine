@@ -37,6 +37,17 @@
 
 static U32 activeTTY;
 
+#ifdef BOXEDWINE_MSVC
+static bool hostStdoutIsAvailable() {
+    intptr_t handle = _get_osfhandle(1);
+    return handle != -1 && handle != -2;
+}
+#else
+static bool hostStdoutIsAvailable() {
+    return true;
+}
+#endif
+
 class DevTTY : public FsVirtualOpenNode {
 public:
     DevTTY(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags), 
@@ -123,6 +134,9 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
     if (KSystem::watchTTY) {
         KSystem::watchTTY(s);
     }
+    if (!hostStdoutIsAvailable()) {
+        return len;
+    }
     if (KSystem::ttyPrepend) {
         thread_local static bool newLine = true;
         if (newLine) {
@@ -136,7 +150,11 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
             newLine = true;
         }
     }
-    return (U32)::write(1, buffer, len);    
+    S32 result = (S32)::write(1, buffer, len);
+    if (result < 0) {
+        return len;
+    }
+    return (U32)result;
 }
 
 

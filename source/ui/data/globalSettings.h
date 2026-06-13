@@ -161,6 +161,7 @@ public:
     static std::vector<AppFilePtr>& getDemos() {return GlobalSettings::demos;}
     static std::vector<AppFilePtr>& getComponents() { return GlobalSettings::components; }
     static AppFilePtr getComponentByOptionName(BString name);
+    static AppFilePtr getJavaComponentForVersion(int javaVersion);
     static void downloadFile(BString url, BString filePath, BString name, U32 sizeMB, std::function<void(bool)> onCompleted);
     static void downloadOpenGL(std::function<void(bool)> onCompleted);
     static BString createUniqueContainerPath(BString name);

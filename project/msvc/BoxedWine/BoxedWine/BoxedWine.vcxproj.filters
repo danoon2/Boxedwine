@@ -379,6 +379,9 @@
     <ClCompile Include="..\..\..\..\source\test\cpu\testXor.cpp">
       <Filter>source\test\cpu</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\devs\testDspAudio.cpp">
+      <Filter>source\test\devs</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\test\mmu\testSelfModifying.cpp">
       <Filter>source\test\mmu</Filter>
     </ClCompile>
@@ -431,6 +434,9 @@
       <Filter>source\ui\data</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\data\globalSettings.cpp">
+      <Filter>source\ui\data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\ui\data\javaJarInfo.cpp">
       <Filter>source\ui\data</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\ui\data\configFile.cpp">
@@ -1578,6 +1584,9 @@
     <ClInclude Include="..\..\..\..\source\test\cpu\testXor.h">
       <Filter>source\test\cpu</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\devs\testDspAudio.h">
+      <Filter>source\test\devs</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\source\test\mmu\testSelfModifying.h">
       <Filter>source\test\mmu</Filter>
     </ClInclude>
@@ -1642,6 +1651,9 @@
       <Filter>source\ui\data</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\data\globalSettings.h">
+      <Filter>source\ui\data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\ui\data\javaJarInfo.h">
       <Filter>source\ui\data</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\ui\data\configFile.h">
@@ -1765,6 +1777,9 @@
       <Filter>source\ui\controls</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\kdspaudio.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kdspaudio_math.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\platform\sdl\knativeaudiosdl.h">
@@ -2380,6 +2395,9 @@
     </Filter>
     <Filter Include="source\test\process">
       <UniqueIdentifier>{d461c471-20dc-4bd1-bf70-e7e737db1d91}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\test\devs">
+      <UniqueIdentifier>{47b45091-ebdf-4966-81d0-df969fa1d8f5}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\util">
       <UniqueIdentifier>{61d9f8bc-45fb-4306-81d6-fcd7fe308745}</UniqueIdentifier>

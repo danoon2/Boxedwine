@@ -360,7 +360,7 @@ static void x11_SetInputFocus(CPU* cpu) {
     U32 focus = ARG2;
     XWindowPtr w;
 
-    if (focus != PointerRoot) {
+    if (focus != PointerRoot && focus != None) {
         w = server->getWindow(ARG2);
         if (!w) {
             EAX = BadWindow;
@@ -420,11 +420,8 @@ static void x11_GetInputFocus(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
-    if (server->inputFocus) {
-        memory->writed(ARG2, server->inputFocus->id);
-	} else {
-        memory->writed(ARG2, None);
-	}
+    U32 focus = server->inputFocusIsPointerRoot ? PointerRoot : (server->inputFocus ? server->inputFocus->id : None);
+    memory->writed(ARG2, focus);
     memory->writed(ARG3, server->inputFocusRevertTo);
     EAX = Success;
     if (server->trace) {
@@ -435,7 +432,7 @@ static void x11_GetInputFocus(CPU* cpu) {
         log += " revert_to=";
         log.append(server->inputFocusRevertTo, 16);
         log += " focus=";
-        log.append(server->inputFocus->id, 16);
+        log.append(focus, 16);
         klog(log.c_str());
     }
 }

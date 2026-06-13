@@ -35,8 +35,8 @@
 #endif
 
 // Tail-call dispatch support.
-// PRESERVE_NONE: callee saves no registers where supported.
-// MUSTTAIL: asks the compiler to emit a tail call rather than call+return.
+// PRESERVE_NONE: callee saves no registers, enabling zero-cost tail dispatch.
+// MUSTTAIL: forces the compiler to emit a tail call rather than call+return.
 #if defined(__clang__) && defined(__has_attribute)
 #if __has_attribute(preserve_none)
 #define PRESERVE_NONE __attribute__((preserve_none))
@@ -55,9 +55,11 @@
 #define MUSTTAIL
 #endif
 
-// Direct normal dispatch is initially scoped to non-JIT Emscripten builds.
-// JIT builds can store JIT trampolines in DecodedOp::pfn, so they need a
-// narrower integration point before this can be enabled there.
+// Direct normal-CPU dispatch is only for non-JIT Emscripten builds.
+// Future WASM JIT builds should define BOXEDWINE_JIT and keep the
+// ABI-compatible OpCallback path.
+//
+// on win32 with msvc without JIT, BOXEDWINE_DIRECT_NORMAL_DISPATCH caused a 50% loss in performance for Quake 2.
 // BOXEDWINE_NO_DIRECT_NORMAL_DISPATCH is a diagnostic opt-out so the
 // dispatcher's contribution can be measured in isolation, e.g.
 //   make -B multiThreaded GCC_EXTRA_FLAGS=-DBOXEDWINE_NO_DIRECT_NORMAL_DISPATCH
@@ -99,6 +101,8 @@ char* platform_strcasestr(const char* s1, const char* s2);
 #endif
 #define PLATFORM_STAT_STRUCT struct stat
 #define PLATFORM_STAT stat
+// Direct-dispatch builds can use preserve_none for opcode handlers. JIT builds
+// keep the default ABI because startJITOp is also stored as an OpCallback.
 #ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
 #define OPCALL PRESERVE_NONE
 #else

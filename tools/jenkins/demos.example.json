@@ -1,0 +1,48 @@
+{
+  "demos": {
+    "abiword.zip": {
+      "title": "AbiWord",
+      "exe": "ABIWORD.EXE",
+      "description": "A lightweight word processor demo."
+    },
+    "c3.zip": {
+      "title": "Caesar III Demo (1998 DirectDraw)",
+      "exe": "c:/c3.bat",
+      "description": "City-building strategy demo running from a Wine drive overlay."
+    },
+    "drowned.zip": {
+      "title": "Drowed God Demo (1996)",
+      "exe": "DROWNGOD.EXE",
+      "description": "rowned God is surreal point-and-click adventure game built around occult symbolism, conspiracy lore, and strange puzzle-driven exploration."
+    },
+    "mdkperf.zip": {
+      "title": "MDK Performance Test (1999 DirectDraw)",
+      "exe": "PERF_W95.EXE",
+      "urlParams": {
+        "bpp": "8",
+        "resolution": "640x480"
+      },
+      "description": "A Performance test that shipped with the game."
+    },
+    "mw3.zip": {
+      "title": "Mech Warrior 3 Demo (1999 D3D 6)",
+      "exe": "mech3demo.exe",
+      "description": "MechWarrior 3 is a tactical mech combat game where players pilot customizable BattleMechs."
+    },
+    "pinball.zip": {
+      "title": "Full Tilt! Pinball Demo (1995)",
+      "exe": "DEMO.EXE",
+      "description": "Full Tilt! Pinball is a 1995 arcade-style pinball game featuring fast physics and detailed themed tables."
+    },
+    "TombRaider3.zip": {
+      "title": "Tomb Raider III Demo (1998 D3D 6)",
+      "exe": "tomb3.exe",
+      "description": "Classic 3D action-adventure demo."
+    },
+    "videodd1.zip": {
+      "title": "VideoDD Benchmark (2003 DirectDraw)",
+      "exe": "onedd.exe",
+      "description": "Benchmark measures graphics speeds via DirectDraw functions."
+    }
+  }
+}

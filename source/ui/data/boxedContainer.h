@@ -70,6 +70,9 @@ public:
     void setVideoMemorySize(BString videoMemorySize);
     BString getMouseWarpOverride();
     void setMouseWarpOverride(BString value);
+    void addPath(BString path);
+    bool isComponentInstalled(BString optionsName);
+    void markComponentInstalled(BString optionsName);
     BString getWindowsVersion();
     void setWindowsVersion(const BoxedWinVersion& version);    
     BString getLogPath();
@@ -82,6 +85,7 @@ private:
     void doInstallTinyCorePackage(const std::vector<BString>& todo);
     void loadInstalledPackageList();
     void saveInstalledPackageList();
+    BString getInstalledComponentsFilePath();
     BString getCacheFolder();
 
     void loadApps();

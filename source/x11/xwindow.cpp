@@ -929,9 +929,9 @@ void XWindow::configureNotify() {
 	}
 
 	if (parent) {
-		XServer::getServer()->iterateEventMask(parent->id, StructureNotifyMask, [this, above](const DisplayDataPtr& data) {
+		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [this, above](const DisplayDataPtr& data) {
 			XEvent event = {};
-			event.type = SubstructureNotifyMask;
+			event.type = ConfigureNotify;
 			event.xconfigure.event = parent->id;
 			event.xconfigure.window = id;
 			event.xconfigure.x = left;
@@ -1436,9 +1436,12 @@ bool XWindow::mouseButtonScreenCoords(U32 button, S32 x, S32 y, bool pressed) {
 	return found;
 }
 
-void XWindow::keyScreenCoords(U32 key, S32 x, S32 y, bool pressed) {
+bool XWindow::keyScreenCoords(U32 key, S32 x, S32 y, bool pressed) {
+	bool found = false;
 
-	XServer::getServer()->iterateEventMask(id, pressed ? KeyPressMask : KeyReleaseMask, [this, key, x, y, pressed](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateEventMask(id, pressed ? KeyPressMask : KeyReleaseMask, [&found, this, key, x, y, pressed](const DisplayDataPtr& data) {
 		keyNotify(data, key, x, y, pressed);
+		found = true;
 		});
+	return found;
 }

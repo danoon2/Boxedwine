@@ -19,6 +19,7 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include "boxedwine.h"
+#include "knativesocket.h"
 #include "knativesystem.h"
 
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -86,6 +87,7 @@ void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* t
 #else
 
 static U32 lastTitleUpdate = 0;
+static bool mainLoopTimingConfigured = false;
 
 static constexpr U32 MIPS_WINDOW = 20;
 static U32 mipsSamples[MIPS_WINDOW] = {};
@@ -120,14 +122,29 @@ bool isMainthread() {
 }
 
 void mainloop() {
+    if (!mainLoopTimingConfigured) {
+        emscripten_set_main_loop_timing(EM_TIMING_SETTIMEOUT, 1);
+        mainLoopTimingConfigured = true;
+    }
     U64 startTime = KSystem::getMicroCounter();
     U32 t;
     U32 count=0;
     BString mipsTitle;
     while (1) {
-        bool ran = runSlice();
+        bool ran;
+        try {
+            ran = runSlice();
+        } catch (...) {
+            if (!recoverRunSliceException()) {
+                throw;
+            }
+            break;
+        }
 
         KNativeSystem::tick();
+#ifdef BOXEDWINE_MULTI_THREADED
+        checkWaitingNativeSockets(0);
+#endif
         if (!KNativeSystem::getCurrentInput()->processEvents()) {
             KNativeSystem::cleanup();
             return;

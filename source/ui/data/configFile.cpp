@@ -27,14 +27,16 @@ ConfigFile::ConfigFile(BString fileName) {
     readLinesFromFile(fileName, lines);
     this->fileName = fileName;
     for (auto& line : lines) {
-        std::vector<BString> parts;
-        line.split('=', parts);
-        if (parts.size() < 2) {
+        if (line.trim().isEmpty()) {
+            continue;
+        }
+        int separator = line.indexOf('=');
+        if (separator < 0) {
             kwarn_fmt("%s has a malformed key/value pair", fileName.c_str());
         } else {
-            parts[0] = parts[0].trim();
-            parts[1] = parts[1].trim();
-            this->values.set(parts[0], parts[1]);
+            BString key = line.substr(0, separator).trim();
+            BString value = line.substr(separator + 1).trim();
+            this->values.set(key, value);
         }
     }
 }

@@ -49,18 +49,21 @@ div.emscripten { text-align: center; }
     width: 100%;
 }
 div.emscripten_border {
-    aspect-ratio: 4 / 3;
+    --boxedwine-canvas-width: 800;
+    --boxedwine-canvas-height: 600;
+    --boxedwine-canvas-aspect: calc(var(--boxedwine-canvas-width) / var(--boxedwine-canvas-height));
+    aspect-ratio: var(--boxedwine-canvas-width) / var(--boxedwine-canvas-height);
     border: 1px solid black;
     box-sizing: border-box;
     display: block;
     line-height: 0;
     margin-left: auto;
     margin-right: auto;
-    width: min(100%, calc((100vh - 12rem) * 1.3333333333));
+    width: min(100%, calc((100vh - 12rem) * var(--boxedwine-canvas-aspect)));
 }
 @supports (width: 1cqw) {
     div.emscripten_border {
-        width: min(100cqw, 133.3333333333cqh);
+        width: min(100cqw, calc(100cqh * var(--boxedwine-canvas-aspect)));
     }
 }
 /* the canvas *must not* have any border or padding, or mouse coords will be wrong */

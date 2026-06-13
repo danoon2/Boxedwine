@@ -135,13 +135,22 @@ U32 KSystem::getProcessCount() {
 }
 
 U32 KSystem::uname(KThread* thread, U32 address) {
-    char name[64];
+    char name[65] = {};
     strcpy(name, "Boxedwine");
     std::shared_ptr<FsNode> hostName = Fs::getNodeFromLocalPath(B(""), B("/etc/hostname"), true);
     if (hostName) {
         FsOpenNode* openHostName = hostName->open(K_O_RDONLY);
         if (openHostName) {
-            openHostName->readNative((U8*)name, 64);
+            S32 read = (S32)openHostName->readNative((U8*)name, 64);
+            if (read > 0) {
+                name[read < 64 ? read : 64] = 0;
+                for (S32 i = 0; i < read && i < 64; i++) {
+                    if (name[i] == '\r' || name[i] == '\n') {
+                        name[i] = 0;
+                        break;
+                    }
+                }
+            }
             openHostName->close();
         }
     }

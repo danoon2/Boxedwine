@@ -214,7 +214,11 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
                 this->currentContainer->findApps(wineApps);
                 new AppChooserDlg(items, wineApps, [this](BoxedApp app) {
                     BString iniPath = app.getIniFilePath();
-                    this->setCurrentApp(app.getContainer()->getAppByIniFile(iniPath));
+                    BoxedApp* savedApp = app.getContainer()->getAppByIniFile(iniPath);
+                    if (!savedApp) {
+                        return;
+                    }
+                    this->setCurrentApp(savedApp);
                     rebuildShortcutsCombobox();
                     showAppSection(true);
                     this->appPickerControl->setSelectionStringValue(iniPath);
@@ -288,12 +292,13 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
 
     appPathControl = appSection->addTextInputRow(Msg::CONTAINER_VIEW_SHORTCUT_PATH_LABEL, Msg::CONTAINER_VIEW_SHORTCUT_PATH_HELP, B(""), true);
     appArgumentsControl = appSection->addTextInputRow(Msg::CONTAINER_VIEW_SHORTCUT_ARGUMENTS_LABEL, Msg::CONTAINER_VIEW_SHORTCUT_ARGUMENTS_HELP);
-    appArgumentsControl->setNumberOfLines(1);
+    appArgumentsControl->setNumberOfLines(2);
     appArgumentsControl->onChange = [this]() {
         this->currentAppChanged = true;
         std::vector<BString> args;
         appArgumentsControl->getText().split('\n', args);
-        appArgumentsControl->setNumberOfLines((int)args.size() + 1);
+        int lineCount = (int)args.size() + 1;
+        appArgumentsControl->setNumberOfLines(lineCount < 2 ? 2 : lineCount);
     };
 
     std::vector<ComboboxItem> resolutions;
@@ -663,7 +668,8 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
         args += arg;
     }
     appArgumentsControl->setText(args);
-    appArgumentsControl->setNumberOfLines((int)app->args.size() + 1);
+    int lineCount = (int)app->args.size() + 1;
+    appArgumentsControl->setNumberOfLines(lineCount < 2 ? 2 : lineCount);
     appResolutionControl->setSelectionByLabel(app->resolution);
     appBppControl->setSelectionIntValue(app->bpp);    
 

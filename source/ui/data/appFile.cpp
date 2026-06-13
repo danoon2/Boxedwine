@@ -19,7 +19,7 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-AppFile::AppFile(BString name, BString installType, BString iconPath, BString filePath, U32 size, BString exe, BString exeOptions, BString help, BString optionsName, BString installOptions, BString installExe, const std::vector<BString>& args) : name(name), optionsName(optionsName), installType(installType), filePath(filePath), iconPath(iconPath), size(size), exe(exe), args(args), installExe(installExe), help(help), iconTexture(NULL) {
+AppFile::AppFile(BString name, BString installType, BString iconPath, BString filePath, U32 size, BString exe, BString exeOptions, BString help, BString optionsName, BString installOptions, BString installExe, const std::vector<BString>& args, int javaVersion) : name(name), optionsName(optionsName), installType(installType), filePath(filePath), iconPath(iconPath), size(size), exe(exe), args(args), installExe(installExe), help(help), javaVersion(javaVersion), iconTexture(NULL) {
     if (iconPath.length()) {
         int pos = iconPath.lastIndexOf('/');
         if (pos != -1) {
@@ -41,6 +41,41 @@ AppFile::AppFile(BString name, BString installType, BString iconPath, BString fi
     for (auto& s : this->installOptions) {
         s = s.trim();
     }
+}
+
+static bool appMatchesShortcutExe(const BoxedApp& app, const BString& shortcutExe) {
+    if (app.getCmd().compareTo(shortcutExe, true) == 0) {
+        return true;
+    }
+    if (!shortcutExe.endsWith(".jar", true)) {
+        return false;
+    }
+
+    const std::vector<BString>& args = app.getArgs();
+    for (size_t i = 0; i + 1 < args.size(); i++) {
+        if (args[i].compareTo("-jar", true) == 0 && args[i + 1].compareTo(shortcutExe, true) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void addJavaArg(BoxedApp* app, BString arg) {
+    arg = arg.trim();
+    if (!app || arg.length() == 0) {
+        return;
+    }
+
+    std::vector<BString> args = app->getArgs();
+    auto insertAt = args.end();
+    for (auto it = args.begin(); it != args.end(); ++it) {
+        if (it->compareTo("-jar", true) == 0) {
+            insertAt = it;
+            break;
+        }
+    }
+    args.insert(insertAt, arg);
+    app->setArgs(args);
 }
 
 void AppFile::buildIconTexture() {
@@ -101,6 +136,10 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             }
         } else if (option.startsWith("wine=")) {
             continue; // should have already been handled
+        } else if (option.startsWith("AddPath=", true)) {
+            container->addPath(option.substr(8));
+        } else if (option.startsWith("JavaArg=", true)) {
+            addJavaArg(app, option.substr(8));
         } else if (option.startsWith("resolution=")) {
             if (app) {
                 app->resolution = option.substr(11);
@@ -326,9 +365,11 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                     std::list< std::function<bool() > > runTasks; // for now, post install cannot run anything
                     std::list<AppDownloadTask> downloadTasks;
                     for (auto& app : items) {
-                        if (app.getCmd() == cmd) {
+                        if (appMatchesShortcutExe(app, cmd)) {
                             app.setName(appName);
-                            app.setArgs(args);
+                            if (args.size()) {
+                                app.setArgs(args);
+                            }
                             runOptions(container, &app, exeOptions, runTasks, downloadTasks);
                             app.saveApp();
                             app.getContainer()->reload();
@@ -348,5 +389,16 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
             return true;
         };
         runner.push_back(runPostInstall);
-    }    
+    }
+    if (this->optionsName.length()) {
+        BString componentOptionsName = this->optionsName;
+        std::function<bool() > markComponentInstalled = [containerDir, componentOptionsName]() {
+            BoxedContainer* container = BoxedwineData::getContainerByDir(containerDir);
+            if (container) {
+                container->markComponentInstalled(componentOptionsName);
+            }
+            return true;
+        };
+        runner.push_back(markComponentInstalled);
+    }
 }

@@ -49,6 +49,7 @@
 #include "cpu/testX86Util.h"
 #include "cpu/testXchg.h"
 #include "cpu/testXor.h"
+#include "devs/testDspAudio.h"
 #include "mmu/testSelfModifying.h"
 
 void testWaitPid();
@@ -58,6 +59,7 @@ namespace {
 int totalFails = 0;
 
 const TestEntry TEST_ENTRIES[] = {
+    {testDspAudioWriteMath, "Test DSP Audio Write Math"},
     {testMemoryAccess32, "Test 32-bit Memory Access"},
     {testMemoryAccess16, "Test 16-bit Memory Access"},
     {testAddR8R8_0x000, "Test Add R8,R8 000"},
@@ -716,11 +718,15 @@ int runTestTestsFromArgs(int argc, char** argv) {
 }
 
 #ifdef __MACH__
-extern "C" {
-    int runCpuTestsMac(void);
-}
+#if defined(__GNUC__)
+#define BOXEDWINE_TEST_EXPORT __attribute__((visibility("default")))
+#else
+#define BOXEDWINE_TEST_EXPORT
+#endif
 
-int runCpuTestsMac(void) {
+extern "C" BOXEDWINE_TEST_EXPORT int runCpuTestsMac(void);
+
+extern "C" BOXEDWINE_TEST_EXPORT int runCpuTestsMac(void) {
     const char* start = getenv("BOXEDWINE_TEST_START");
     const char* count = getenv("BOXEDWINE_TEST_COUNT");
     const char* threads = getenv("BOXEDWINE_TEST_THREADS");
@@ -732,6 +738,8 @@ int runCpuTestsMac(void) {
     }
     return runTestTests();
 }
+
+#undef BOXEDWINE_TEST_EXPORT
 #else
 int main(int argc, char** argv) {
     return runTestTestsFromArgs(argc, argv);

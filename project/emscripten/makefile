@@ -2,11 +2,14 @@ ifndef BUILD_DIR
 
 .PHONY: default all clean release test multiThreaded jit testJit multiThreadedJit
 
+ZIP_ASSET_FILES := $(wildcard *.zip)
+
 default all: release
 
 release: export BUILD_DIR := Build/Release
 release: export EXTRA_CPP_FLAGS := $(RELEASE_FLAGS)
 release: export SHELL_FILE := shell.html
+release: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
 test: export BUILD_DIR := Build/Test
 test: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC
 test: export SHELL_FILE := shelltest.html
@@ -14,7 +17,8 @@ test: export EXTRA_LD_FLAGS := --emrun
 multiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -pthread
 multiThreaded: export BUILD_DIR := Build/MultiThreaded
 multiThreaded: export SHELL_FILE := shell.html
-multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32
+multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-multithreaded-audio.js
+multiThreaded: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
 # WASM JIT build: compiles each basic block to a standalone WASM module that
 # is instantiated at runtime (inspired by the QEMU wasm64 TCG backend).
 # Key flags:
@@ -173,10 +177,28 @@ $(OBJS): INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/simde
 $(SOFT_OBJS): INCLUDES := -I../../lib/softfloat/source/include -I../../lib/softfloat/source -I../../lib/softfloat/source/8086-SSE
 
 CXXFLAGS ?= -std=c++20
-TAIL_CALL_FLAGS := $(if $(filter Build/Release Build/MultiThreaded Build/Jit Build/TestJit Build/MultiThreadedJit,$(BUILD_DIR)),-mtail-call,)
-CPPFLAGS ?= -O3 -s USE_SDL=2 -s USE_ZLIB=1 -DBOXEDWINE_ZLIB -DSDL2=1 -DBOXEDWINE_DISABLE_UI -DSIMDE_SSE2_NO_NATIVE $(GCC_EXTRA_FLAGS) $(TAIL_CALL_FLAGS) -Wall -Wno-deprecated-pragma -Wno-format-security -Wno-unused-private-field -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) $(EXTRA_CPP_FLAGS)
+TAIL_CALL_FLAG ?= -mtail-call
+COMPILE_EXCEPTION_FLAG ?= -fexceptions
+LINK_EXCEPTION_FLAG ?= -fexceptions
+LONGJMP_FLAG ?= -sSUPPORT_LONGJMP=emscripten
+EXCEPTION_CATCHING_ALLOWED ?= ["_Z8mainloopv","_ZN3CPU15runNextSingleOpEv","_ZL14platformThreadP3CPU"]
+EXCEPTION_CATCHING_FLAG ?= -sEXCEPTION_CATCHING_ALLOWED='$(EXCEPTION_CATCHING_ALLOWED)'
+CPPFLAGS ?= -O3 $(TAIL_CALL_FLAG) $(COMPILE_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s USE_SDL=2 -s USE_ZLIB=1 -DBOXEDWINE_ZLIB -DSDL2=1 -DBOXEDWINE_DISABLE_UI -DSIMDE_SSE2_NO_NATIVE $(GCC_EXTRA_FLAGS) -Wall -Wno-deprecated-pragma -Wno-format-security -Wno-unused-private-field -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) $(EXTRA_CPP_FLAGS)
 
-LDFLAGS = -s FORCE_FILESYSTEM -lidbfs.js -s USE_SDL=2 -s USE_ZLIB=1 -fwasm-exceptions -s INITIAL_MEMORY=536870912 --shell-file $(SHELL_FILE) -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency","ERRNO_CODES"]' $(TAIL_CALL_FLAGS) $(EXTRA_LD_FLAGS)
+SHELL_LDFLAGS := $(if $(filter %.html,$(TARGET_EXEC)),--shell-file $(SHELL_FILE),)
+LDFLAGS = $(TAIL_CALL_FLAG) -s FORCE_FILESYSTEM -lidbfs.js -s USE_SDL=2 -s USE_ZLIB=1 $(LINK_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s INITIAL_MEMORY=536870912 $(SHELL_LDFLAGS) -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency","ERRNO_CODES","ccall","FS"]' $(EXTRA_LD_FLAGS)
+
+ASSET_OUTPUTS := $(addprefix $(BUILD_DIR)/,$(ASSET_FILES))
+
+.PHONY: all copy-assets
+
+all: $(BUILD_DIR)/$(TARGET_EXEC) copy-assets
+
+copy-assets: $(ASSET_OUTPUTS)
+
+$(ASSET_OUTPUTS): $(BUILD_DIR)/%: %
+	@$(MKDIR_P) $(dir $@)
+	@cp "$<" "$@"
 
 #$(TEST_BUILD_DIR)/boxedwineTest: $(TEST_OBJS)
 #	$(CC) $(TEST_OBJS) -o $@ $(LDFLAGS)
@@ -216,15 +238,21 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 # Adding -fwasm-exceptions globally breaks Wine loading (changes throw semantics
 # for all code, triggering RAII destructors that weren't firing before).
 # These explicit rules take precedence over the pattern rule above in GNU make.
+ifneq (,$(findstring BOXEDWINE_WASM_JIT,$(EXTRA_CPP_FLAGS)))
+WASM_EXCEPTION_CPPFLAGS = $(filter-out $(COMPILE_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG),$(CPPFLAGS)) -fwasm-exceptions -sSUPPORT_LONGJMP=wasm
+else
+WASM_EXCEPTION_CPPFLAGS = $(CPPFLAGS)
+endif
+
 $(BUILD_DIR)/$(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp.o: \
         $(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp
 	@$(MKDIR_P) $(dir $@)
-	@$(CXX) $(CPPFLAGS) -fwasm-exceptions $(CXXFLAGS) -MMD -MP -c $< -o $@
+	@$(CXX) $(WASM_EXCEPTION_CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 $(BUILD_DIR)/$(PROJDIR)/source/kernel/kscheduler.cpp.o: \
         $(PROJDIR)/source/kernel/kscheduler.cpp
 	@$(MKDIR_P) $(dir $@)
-	@$(CXX) $(CPPFLAGS) -fwasm-exceptions $(CXXFLAGS) -MMD -MP -c $< -o $@
+	@$(CXX) $(WASM_EXCEPTION_CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 .PHONY: clean
 
