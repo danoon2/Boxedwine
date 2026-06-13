@@ -1104,6 +1104,7 @@ def main():
     parser.add_argument("--single-threaded-dir")
     parser.add_argument("--multi-threaded-dir")
     parser.add_argument("--keep", type=int, default=5)
+    parser.add_argument("--skip-prune-removed-demo-branches", action="store_true")
     args = parser.parse_args()
 
     site_dir = Path(args.site_dir)
@@ -1153,7 +1154,8 @@ def main():
             args.keep,
         )
 
-    prune_removed_demo_branches(site_dir)
+    if not args.skip_prune_removed_demo_branches:
+        prune_removed_demo_branches(site_dir)
     prune_old_builds(branch_dir, args.keep)
     branches = load_builds(site_dir)
     write_json(site_dir / "builds.json", {"generatedAt": built_at, "branches": branches})
