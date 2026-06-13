@@ -102,11 +102,11 @@ $(SOFT_OBJS): INCLUDES := -I../../lib/softfloat/source/include -I../../lib/softf
 
 CXXFLAGS ?= -std=c++20
 TAIL_CALL_FLAG ?= -mtail-call
-COMPILE_EXCEPTION_FLAG ?= -fexceptions
-LINK_EXCEPTION_FLAG ?= -fexceptions
-LONGJMP_FLAG ?= -sSUPPORT_LONGJMP=emscripten
+COMPILE_EXCEPTION_FLAG ?= -fwasm-exceptions
+LINK_EXCEPTION_FLAG ?= -fwasm-exceptions
+LONGJMP_FLAG ?= -sSUPPORT_LONGJMP=0
 EXCEPTION_CATCHING_ALLOWED ?= ["_Z8mainloopv","_ZN3CPU15runNextSingleOpEv","_ZL14platformThreadP3CPU"]
-EXCEPTION_CATCHING_FLAG ?= -sEXCEPTION_CATCHING_ALLOWED='$(EXCEPTION_CATCHING_ALLOWED)'
+EXCEPTION_CATCHING_FLAG ?=
 CPPFLAGS ?= -O3 $(TAIL_CALL_FLAG) $(COMPILE_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s USE_SDL=2 -s USE_ZLIB=1 -DBOXEDWINE_ZLIB -DSDL2=1 -DBOXEDWINE_DISABLE_UI -DSIMDE_SSE2_NO_NATIVE $(GCC_EXTRA_FLAGS) -Wall -Wno-deprecated-pragma -Wno-format-security -Wno-unused-private-field -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) $(EXTRA_CPP_FLAGS)
 
 SHELL_LDFLAGS := $(if $(filter %.html,$(TARGET_EXEC)),--shell-file $(SHELL_FILE),)

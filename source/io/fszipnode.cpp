@@ -74,7 +74,7 @@ U64 FsZipNode::length() {
 
 FsOpenNode* FsZipNode::open(std::shared_ptr<FsNode> node, U32 flags) {
     std::shared_ptr<FsZipNode> zipNode = shared_from_this();
-    std::shared_ptr<FsZip> fsZip = this->fsZip.lock();
+    std::shared_ptr<FsZip> fsZip = this->fsZip;
     BString zipPath;
     if (fsZip) {
         zipPath = fsZip->zipPath;
