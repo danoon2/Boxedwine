@@ -22,6 +22,9 @@
 
 #include "jitWasmCodeGen.h"
 #include "../jit/jitCodeGen.h"
+#ifdef __TEST
+#include "../jit/jitFPU.h"
+#endif
 #include "../common/cpu.h"
 #include "../common/common_fpu.h"
 #include "../common/common_sse2.h"
@@ -33,12 +36,20 @@
 #include <atomic>
 #include <bit>      // std::bit_cast (C++20) — used in boxedwine_wasm_call_block
 #include <emscripten.h>
+#ifdef __TEST
+#include <type_traits>
+#endif
 #include <emscripten/em_js.h>
 #include <map>      // g_wasmMtGroupProcState (node-based: stable references)
 #include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#ifdef __TEST
+static_assert(std::is_base_of<JitFPU, JitWasmCodeGen>::value,
+              "WASM JIT should reuse the shared JitFPU base");
+#endif
 
 #if !defined(BOXEDWINE_MULTI_THREADED) && !defined(__TEST)
 // minizip/unzip: used for JIT module import (ST builds only).
@@ -301,15 +312,7 @@ enum class WasmJitHelperStat : U8 {
 };
 
 enum class WasmJitHelperDetail : U8 {
-    FldSingle,
-    Fld1,
-    FldDouble,
-    FcomSinglePop,
-    FaddSt0Stj,
-    FdivSt0Stj,
-    FnstswAx,
-    FstSinglePop,
-    FistDwordPop,
+    CacheFloat,
     MovsdXmmE64,
     MovsdE64Xmm,
     Movsd32r,
@@ -339,15 +342,7 @@ static const char* wasmJitHelperStatName(WasmJitHelperStat stat) {
 
 static const char* wasmJitHelperDetailName(WasmJitHelperDetail detail) {
     switch (detail) {
-    case WasmJitHelperDetail::FldSingle:       return "fld_s";
-    case WasmJitHelperDetail::Fld1:            return "fld1";
-    case WasmJitHelperDetail::FldDouble:       return "fld_d";
-    case WasmJitHelperDetail::FcomSinglePop:   return "fcom_s_pop";
-    case WasmJitHelperDetail::FaddSt0Stj:      return "fadd_st";
-    case WasmJitHelperDetail::FdivSt0Stj:      return "fdiv_st";
-    case WasmJitHelperDetail::FnstswAx:        return "fnstsw_ax";
-    case WasmJitHelperDetail::FstSinglePop:    return "fst_s_pop";
-    case WasmJitHelperDetail::FistDwordPop:    return "fist_d_pop";
+    case WasmJitHelperDetail::CacheFloat:      return "cache_float";
     case WasmJitHelperDetail::MovsdXmmE64:     return "movsd_xmm_e64";
     case WasmJitHelperDetail::MovsdE64Xmm:     return "movsd_e64_xmm";
     case WasmJitHelperDetail::Movsd32r:        return "movsd32r";
@@ -3188,58 +3183,12 @@ static void wasmHelper_profileInlineCond(CPU* cpu) {
 }
 #endif
 
-static void wasmHelper_fldSingleReal(CPU* cpu) {
+static void wasmHelper_cacheFloat(CPU* cpu) {
     WASM_JIT_HELPER_STAT(X87);
-    WASM_JIT_HELPER_DETAIL(FldSingle);
-    common_FLD_SINGLE_REAL(cpu, cpu->memHelperAddr);
-}
-
-static void wasmHelper_fld1(CPU* cpu) {
-    WASM_JIT_HELPER_STAT(X87);
-    WASM_JIT_HELPER_DETAIL(Fld1);
-    common_FLD1(cpu);
-}
-
-static void wasmHelper_fldDoubleReal(CPU* cpu) {
-    WASM_JIT_HELPER_STAT(X87);
-    WASM_JIT_HELPER_DETAIL(FldDouble);
-    common_FLD_DOUBLE_REAL(cpu, cpu->memHelperAddr);
-}
-
-static void wasmHelper_fcomSingleRealPop(CPU* cpu) {
-    WASM_JIT_HELPER_STAT(X87);
-    WASM_JIT_HELPER_DETAIL(FcomSinglePop);
-    common_FCOM_SINGLE_REAL_Pop(cpu, cpu->memHelperAddr);
-}
-
-static void wasmHelper_faddSt0Stj(CPU* cpu) {
-    WASM_JIT_HELPER_STAT(X87);
-    WASM_JIT_HELPER_DETAIL(FaddSt0Stj);
-    common_FADD_ST0_STj(cpu, cpu->memHelperValue);
-}
-
-static void wasmHelper_fdivSt0Stj(CPU* cpu) {
-    WASM_JIT_HELPER_STAT(X87);
-    WASM_JIT_HELPER_DETAIL(FdivSt0Stj);
-    common_FDIV_ST0_STj(cpu, cpu->memHelperValue);
-}
-
-static void wasmHelper_fnstswAx(CPU* cpu) {
-    WASM_JIT_HELPER_STAT(X87);
-    WASM_JIT_HELPER_DETAIL(FnstswAx);
-    common_FNSTSW_AX(cpu);
-}
-
-static void wasmHelper_fstSingleRealPop(CPU* cpu) {
-    WASM_JIT_HELPER_STAT(X87);
-    WASM_JIT_HELPER_DETAIL(FstSinglePop);
-    common_FST_SINGLE_REAL_Pop(cpu, cpu->memHelperAddr);
-}
-
-static void wasmHelper_fistDwordIntegerPop(CPU* cpu) {
-    WASM_JIT_HELPER_STAT(X87);
-    WASM_JIT_HELPER_DETAIL(FistDwordPop);
-    common_FIST_DWORD_INTEGER_Pop(cpu, cpu->memHelperAddr);
+    WASM_JIT_HELPER_DETAIL(CacheFloat);
+    U32 regIndex = cpu->memHelperValue;
+    cpu->fpu.getF64(cpu->fpu.STV(regIndex));
+    cpu->fpu.getF64(cpu->fpu.STV(0));
 }
 
 static void wasmHelper_movsdXmmE64(CPU* cpu) {
@@ -3299,15 +3248,7 @@ static const void* g_wasmHelperTable[] = {
     (void*)wasmHelper_writeMem8_check,
     (void*)wasmHelper_writeMem16_check,
     (void*)wasmHelper_writeMem32_check,
-    (void*)wasmHelper_fldSingleReal,
-    (void*)wasmHelper_fld1,
-    (void*)wasmHelper_fldDoubleReal,
-    (void*)wasmHelper_fcomSingleRealPop,
-    (void*)wasmHelper_faddSt0Stj,
-    (void*)wasmHelper_fdivSt0Stj,
-    (void*)wasmHelper_fnstswAx,
-    (void*)wasmHelper_fstSingleRealPop,
-    (void*)wasmHelper_fistDwordIntegerPop,
+    (void*)wasmHelper_cacheFloat,
     (void*)wasmHelper_movsdXmmE64,
     (void*)wasmHelper_movsdE64Xmm,
     (void*)wasmHelper_movsd32r,
@@ -3484,30 +3425,22 @@ enum WasmHelperIdx {
     HELPER_WRITE_MEM8_CHECK  = 29,
     HELPER_WRITE_MEM16_CHECK = 30,
     HELPER_WRITE_MEM32_CHECK = 31,
-    HELPER_FLD_SINGLE_REAL = 32,
-    HELPER_FLD1 = 33,
-    HELPER_FLD_DOUBLE_REAL = 34,
-    HELPER_FCOM_SINGLE_REAL_POP = 35,
-    HELPER_FADD_ST0_STJ = 36,
-    HELPER_FDIV_ST0_STJ = 37,
-    HELPER_FNSTSW_AX = 38,
-    HELPER_FST_SINGLE_REAL_POP = 39,
-    HELPER_FIST_DWORD_INTEGER_POP = 40,
-    HELPER_MOVSD_XMM_E64 = 41,
-    HELPER_MOVSD_E64_XMM = 42,
-    HELPER_MOVSD32R = 43,
-    HELPER_PROFILE_BLOCK_EXIT = 44,
-    HELPER_PROFILE_EXIT_NEXT1 = 45,
-    HELPER_PROFILE_EXIT_NEXT2 = 46,
-    HELPER_PROFILE_EXIT_JUMP = 47,
-    HELPER_PROFILE_EXIT_GENERIC = 48,
-    HELPER_PROFILE_INLINE_COND = 49,
+    HELPER_CACHE_FLOAT      = 32,
+    HELPER_MOVSD_XMM_E64    = 33,
+    HELPER_MOVSD_E64_XMM    = 34,
+    HELPER_MOVSD32R         = 35,
+    HELPER_PROFILE_BLOCK_EXIT = 36,
+    HELPER_PROFILE_EXIT_NEXT1 = 37,
+    HELPER_PROFILE_EXIT_NEXT2 = 38,
+    HELPER_PROFILE_EXIT_JUMP = 39,
+    HELPER_PROFILE_EXIT_GENERIC = 40,
+    HELPER_PROFILE_INLINE_COND = 41,
 };
 
 // ---------------------------------------------------------------------------
 // JitWasmCodeGen constructor
 // ---------------------------------------------------------------------------
-JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitCodeGen(cpu) {
+JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitFPU(cpu) {
     // Register common function types for the module being built.
     m_typeVoidVoid   = m_emitter.addFuncType({}, {});
     m_typeVoidI32    = m_emitter.addFuncType({ WasmType::I32 }, {});
@@ -3544,17 +3477,20 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitCodeGen(cpu) {
     //   locals 10-13 (i32 x4): segment addresses cs, ds, ss, es
     //   locals 14-45 (i32 x32): scratch temporaries
     //   local 46 (i64 x1): i64 scratch for 64-bit multiply
+    //   locals 47-54 (f64 x8): FPU temporaries for shared JitFPU code
     m_emitter.beginFunction({
         { 8,  WasmType::I32 },  // GP registers (locals 2-9)
         { 4,  WasmType::I32 },  // segment addresses (locals 10-13)
         { 32, WasmType::I32 },  // scratch temporaries (locals 14-45)
         { 1,  WasmType::I64 },  // i64 scratch for 64-bit multiply (local 46)
+        { 8,  WasmType::F64 },  // FPU temporaries (locals 47-54)
     });
 
     m_gpLoaded.fill(false);
     m_gpDirty.fill(false);
     m_segLoaded.fill(false);
     m_scratchInUse.fill(false);
+    m_f64ScratchInUse.fill(false);
 }
 
 JitWasmCodeGen::~JitWasmCodeGen() {}
@@ -3678,12 +3614,532 @@ void JitWasmCodeGen::freeScratch(U32 local) {
     }
 }
 
+U32 JitWasmCodeGen::allocF64Scratch() {
+    for (U32 i = 0; i < WASM_F64_LOCAL_COUNT; i++) {
+        if (!m_f64ScratchInUse[i]) {
+            m_f64ScratchInUse[i] = true;
+            return WASM_F64_LOCAL_BASE + i;
+        }
+    }
+    kpanic("JitWasmCodeGen: f64 scratch local pool exhausted");
+    return WASM_F64_LOCAL_BASE;
+}
+
+void JitWasmCodeGen::freeF64Scratch(U32 local) {
+    if (local >= WASM_F64_LOCAL_BASE && local < WASM_F64_LOCAL_BASE + WASM_F64_LOCAL_COUNT) {
+        m_f64ScratchInUse[local - WASM_F64_LOCAL_BASE] = false;
+    }
+}
+
 static RegPtr makeWasmReg(U8 hwLocal, U8 emulatedReg) {
     return std::make_shared<JitReg>(hwLocal, emulatedReg);
 }
 
 static RegPtr makeWasmReg(U8 hwLocal, U8 emulatedReg, bool isHigh) {
     return std::make_shared<JitReg>(hwLocal, emulatedReg, isHigh);
+}
+
+static bool canReleaseScratchReg(const RegPtr& reg) {
+    return reg && reg->emulatedReg == 0xff && reg.use_count() == 1;
+}
+
+FPURegPtr JitWasmCodeGen::getFPUTmp() {
+    return std::shared_ptr<FPURegInternal>(new FPURegInternal((U8)allocF64Scratch()), [this](FPURegInternal* p) {
+        freeF64Scratch(p->hardwareReg());
+        delete p;
+    });
+}
+
+void JitWasmCodeGen::storeCpuFpuReg(FPURegPtr reg, RegPtr index) {
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    pushRegValue(index);
+    m_emitter.emitI32Const(3);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitLocalGet(reg->hardwareReg());
+    m_emitter.emitF64Store((U32)offsetof(CPU, fpu.regCache[0].d));
+}
+
+void JitWasmCodeGen::loadCpuFpuReg(FPURegPtr reg, RegPtr index) {
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    pushRegValue(index);
+    m_emitter.emitI32Const(3);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitF64Load((U32)offsetof(CPU, fpu.regCache[0].d));
+    m_emitter.emitLocalSet(reg->hardwareReg());
+}
+
+void JitWasmCodeGen::loadCpuFpuRegConst(FPURegPtr reg, U32 offset) {
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitF64Load(offset);
+    m_emitter.emitLocalSet(reg->hardwareReg());
+}
+
+void JitWasmCodeGen::cacheFpuReg(U32 regIndex) {
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const((S32)regIndex);
+    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_CACHE_FLOAT);
+}
+
+static void emitWasmMemBase(WasmEmitter& emitter, const std::function<void(RegPtr)>& pushReg, MemPtr address, U32& memOffset) {
+    memOffset = 0;
+    if (address->rm) {
+        pushReg(address->rm);
+        if (address->sib) {
+            pushReg(address->sib);
+            if (address->lsl) {
+                emitter.emitI32Const((S32)address->lsl);
+                emitter.emitOp(WASM_I32_SHL);
+            }
+            emitter.emitOp(WASM_I32_ADD);
+        }
+        memOffset = address->offset;
+    } else {
+        emitter.emitI32Const((S32)address->offset);
+    }
+}
+
+void JitWasmCodeGen::storeFpuReg(FPURegPtr reg, MemPtr address, DynFpuWidth width) {
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitLocalGet(reg->hardwareReg());
+    if (width == DYN_FPU_64_BIT) {
+        m_emitter.emitF64Store(memOffset);
+    } else {
+        m_emitter.emitOp(WASM_F32_DEMOTE_F64);
+        m_emitter.emitF32Store(memOffset);
+    }
+}
+
+void JitWasmCodeGen::loadFpuReg(FPURegPtr reg, MemPtr address, DynFpuWidth width) {
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    if (width == DYN_FPU_64_BIT) {
+        m_emitter.emitF64Load(memOffset);
+    } else {
+        m_emitter.emitF32Load(memOffset);
+        m_emitter.emitOp(WASM_F64_PROMOTE_F32);
+    }
+    m_emitter.emitLocalSet(reg->hardwareReg());
+}
+
+void JitWasmCodeGen::loadFpuRegFromInt(FPURegPtr reg, MemPtr address) {
+    auto tmp = getTmpReg();
+    readHost(JitWidth::b32, address, tmp);
+    pushRegValue(tmp);
+    m_emitter.emitOp(WASM_F64_CONVERT_I32_S);
+    m_emitter.emitLocalSet(reg->hardwareReg());
+    freeScratch(tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::dynamic_FILD_QWORD_INTEGER(DecodedOp* op) {
+    read(JitWidth::b64, calculateEaa(op), [this](MemPtr address) {
+        RegPtr topReg = getTopReg();
+        dynamic_FPU_PREP_PUSH(topReg, true); // will change topReg
+
+        U32 memOffset = 0;
+        emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+        m_emitter.emitI64Load(memOffset);
+        m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+
+        U32 signExp = allocScratch();
+        U32 dist = allocScratch();
+        m_emitter.emitI32Const(0);
+        m_emitter.emitLocalSet(signExp);
+
+        m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+        m_emitter.emitI64Const(0);
+        m_emitter.emitOp(WASM_I64_NE);
+        m_emitter.emitIf();
+        {
+            m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+            m_emitter.emitI64Const(63);
+            m_emitter.emitOp(WASM_I64_SHR_U);
+            m_emitter.emitOp(WASM_I32_WRAP_I64);
+            m_emitter.emitI32Const(15);
+            m_emitter.emitOp(WASM_I32_SHL);
+            m_emitter.emitLocalSet(signExp);
+
+            m_emitter.emitLocalGet(signExp);
+            m_emitter.emitIf();
+            {
+                m_emitter.emitI64Const(0);
+                m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+                m_emitter.emitOp(WASM_I64_SUB);
+                m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+            }
+            m_emitter.emitEnd();
+
+            m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+            m_emitter.emitOp(WASM_I64_CLZ);
+            m_emitter.emitOp(WASM_I32_WRAP_I64);
+            m_emitter.emitLocalSet(dist);
+
+            m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+            m_emitter.emitLocalGet(dist);
+            m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+            m_emitter.emitOp(WASM_I64_SHL);
+            m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+
+            m_emitter.emitLocalGet(signExp);
+            m_emitter.emitI32Const(0x403e);
+            m_emitter.emitLocalGet(dist);
+            m_emitter.emitOp(WASM_I32_SUB);
+            m_emitter.emitOp(WASM_I32_OR);
+            m_emitter.emitLocalSet(signExp);
+        }
+        m_emitter.emitEnd();
+
+        setRegIsCached(topReg, false);
+        shlValue(JitWidth::b32, topReg, 4);
+
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        pushRegValue(topReg);
+        m_emitter.emitI32Const((S32)offsetof(CPU, fpu.regs[0].signExp));
+        m_emitter.emitOp(WASM_I32_ADD);
+        m_emitter.emitOp(WASM_I32_ADD);
+        m_emitter.emitLocalGet(signExp);
+        m_emitter.emitI32Store16(0);
+
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        pushRegValue(topReg);
+        m_emitter.emitI32Const((S32)offsetof(CPU, fpu.regs[0].signif));
+        m_emitter.emitOp(WASM_I32_ADD);
+        m_emitter.emitOp(WASM_I32_ADD);
+        m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+        m_emitter.emitI64Store(0);
+
+        freeScratch(dist);
+        freeScratch(signExp);
+    });
+}
+
+void JitWasmCodeGen::fpuRegExtend32To64(FPURegPtr dst, FPURegPtr src) {
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        return;
+    }
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::fpuReg64To32(FPURegPtr dst, FPURegPtr src) {
+    if (dst->hardwareReg() == src->hardwareReg()) {
+        return;
+    }
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitOp(WASM_F32_DEMOTE_F64);
+    m_emitter.emitOp(WASM_F64_PROMOTE_F32);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+RegPtr JitWasmCodeGen::fpuRegToInt32(FPURegPtr fpuRegSrc, bool truncate) {
+    auto result = getTmpReg();
+    if (truncate) {
+        m_emitter.emitLocalGet(fpuRegSrc->hardwareReg());
+    } else {
+        U32 rounded = allocF64Scratch();
+        RegPtr round = readCPU(JitWidth::b32, (U32)offsetof(CPU, fpu.round));
+        IfNot(JitWidth::b32, round); {
+            m_emitter.emitLocalGet(fpuRegSrc->hardwareReg());
+            m_emitter.emitOp(WASM_F64_NEAREST);
+            m_emitter.emitLocalSet(rounded);
+        } StartElse(); {
+            IfEqual(JitWidth::b32, round, ROUND_Down); {
+                m_emitter.emitLocalGet(fpuRegSrc->hardwareReg());
+                m_emitter.emitOp(WASM_F64_FLOOR);
+                m_emitter.emitLocalSet(rounded);
+            } StartElse(); {
+                IfEqual(JitWidth::b32, round, ROUND_Up); {
+                    m_emitter.emitLocalGet(fpuRegSrc->hardwareReg());
+                    m_emitter.emitOp(WASM_F64_CEIL);
+                    m_emitter.emitLocalSet(rounded);
+                } StartElse(); {
+                    m_emitter.emitLocalGet(fpuRegSrc->hardwareReg());
+                    m_emitter.emitOp(WASM_F64_TRUNC);
+                    m_emitter.emitLocalSet(rounded);
+                } EndIf();
+            } EndIf();
+        } EndIf();
+        m_emitter.emitLocalGet(rounded);
+        freeF64Scratch(rounded);
+    }
+    m_emitter.emitOp(WASM_I32_TRUNC_F64_S);
+    m_emitter.emitLocalSet(result->hardwareReg());
+    return result;
+}
+
+void JitWasmCodeGen::regToFpuReg(FPURegPtr dst, RegPtr src) {
+    pushRegValue(src);
+    m_emitter.emitOp(WASM_F64_CONVERT_I32_S);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+#ifdef BOXEDWINE_64
+void JitWasmCodeGen::regToFpuReg64(FPURegPtr dst, RegPtr src) {
+    pushRegValue(src);
+    m_emitter.emitOp(WASM_F64_CONVERT_I64_S);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+#endif
+
+void JitWasmCodeGen::updateFPURounding() {
+}
+
+void JitWasmCodeGen::restoreFPURounding() {
+}
+
+void JitWasmCodeGen::roundFPUToInt64(FPURegPtr src) {
+    RegPtr round = readCPU(JitWidth::b32, (U32)offsetof(CPU, fpu.round));
+    IfNot(JitWidth::b32, round); {
+        m_emitter.emitLocalGet(src->hardwareReg());
+        m_emitter.emitOp(WASM_F64_NEAREST);
+        m_emitter.emitLocalSet(src->hardwareReg());
+    } StartElse(); {
+        IfEqual(JitWidth::b32, round, ROUND_Down); {
+            m_emitter.emitLocalGet(src->hardwareReg());
+            m_emitter.emitOp(WASM_F64_FLOOR);
+            m_emitter.emitLocalSet(src->hardwareReg());
+        } StartElse(); {
+            IfEqual(JitWidth::b32, round, ROUND_Up); {
+                m_emitter.emitLocalGet(src->hardwareReg());
+                m_emitter.emitOp(WASM_F64_CEIL);
+                m_emitter.emitLocalSet(src->hardwareReg());
+            } StartElse(); {
+                m_emitter.emitLocalGet(src->hardwareReg());
+                m_emitter.emitOp(WASM_F64_TRUNC);
+                m_emitter.emitLocalSet(src->hardwareReg());
+            } EndIf();
+        } EndIf();
+    } EndIf();
+}
+
+void JitWasmCodeGen::storeFPUToInt64(FPURegPtr src, MemPtr address, bool truncate) {
+    U32 memOffset = 0;
+    if (address->rm) {
+        pushRegValue(address->rm);
+        if (address->sib) {
+            pushRegValue(address->sib);
+            if (address->lsl) {
+                m_emitter.emitI32Const((S32)address->lsl);
+                m_emitter.emitOp(WASM_I32_SHL);
+            }
+            m_emitter.emitOp(WASM_I32_ADD);
+        }
+        memOffset = address->offset;
+    } else {
+        m_emitter.emitI32Const((S32)address->offset);
+    }
+    if (!truncate) {
+        roundFPUToInt64(src);
+    }
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitOp(WASM_I64_TRUNC_F64_S);
+    m_emitter.emitI64Store(memOffset);
+}
+
+void JitWasmCodeGen::fpuAdd(FPURegPtr dst, FPURegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitOp(WASM_F64_ADD);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::fpuMul(FPURegPtr dst, FPURegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitOp(WASM_F64_MUL);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::fpuSub(FPURegPtr dst, FPURegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitOp(WASM_F64_SUB);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::fpuDiv(FPURegPtr dst, FPURegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitOp(WASM_F64_DIV);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::fpuXor(FPURegPtr dst, FPURegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitOp(WASM_I64_REINTERPRET_F64);
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitOp(WASM_I64_REINTERPRET_F64);
+    m_emitter.emitOp(WASM_I64_XOR);
+    m_emitter.emitOp(WASM_F64_REINTERPRET_I64);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::fpuAnd(FPURegPtr dst, FPURegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitOp(WASM_I64_REINTERPRET_F64);
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitOp(WASM_I64_REINTERPRET_F64);
+    m_emitter.emitOp(WASM_I64_AND);
+    m_emitter.emitOp(WASM_F64_REINTERPRET_I64);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::fpuSqrt(FPURegPtr dst, FPURegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitOp(WASM_F64_SQRT);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+RegPtr JitWasmCodeGen::fcompareResult(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags) {
+    auto result = getTmpReg();
+
+    subValue(JitWidth::b8, ordTags, TAG_Empty);
+
+    m_emitter.emitI32Const(0);
+    m_emitter.emitLocalSet(result->hardwareReg());
+
+    m_emitter.emitI32Const(1);
+    m_emitter.emitLocalGet(result->hardwareReg());
+    m_emitter.emitLocalGet(fpuReg2->hardwareReg());
+    m_emitter.emitLocalGet(fpuReg1->hardwareReg());
+    m_emitter.emitOp(WASM_F64_LT);
+    m_emitter.emitOp(WASM_SELECT);
+    m_emitter.emitLocalSet(result->hardwareReg());
+
+    m_emitter.emitI32Const(2);
+    m_emitter.emitLocalGet(result->hardwareReg());
+    m_emitter.emitLocalGet(fpuReg2->hardwareReg());
+    m_emitter.emitLocalGet(fpuReg1->hardwareReg());
+    m_emitter.emitOp(WASM_F64_EQ);
+    m_emitter.emitOp(WASM_SELECT);
+    m_emitter.emitLocalSet(result->hardwareReg());
+
+    m_emitter.emitI32Const(3);
+    m_emitter.emitLocalGet(result->hardwareReg());
+    pushRegValue(ordTags);
+    maskToWidth(JitWidth::b8);
+    m_emitter.emitOp(WASM_I32_EQZ);
+    m_emitter.emitLocalGet(fpuReg1->hardwareReg());
+    m_emitter.emitLocalGet(fpuReg1->hardwareReg());
+    m_emitter.emitOp(WASM_F64_NE);
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.emitLocalGet(fpuReg2->hardwareReg());
+    m_emitter.emitLocalGet(fpuReg2->hardwareReg());
+    m_emitter.emitOp(WASM_F64_NE);
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.emitOp(WASM_SELECT);
+    m_emitter.emitLocalSet(result->hardwareReg());
+
+    return result;
+}
+
+void JitWasmCodeGen::emitSelectI32ByFCompareResult(RegPtr compare, U32 greater, U32 less, U32 equal, U32 invalid) {
+    U32 selected = allocScratch();
+
+    m_emitter.emitI32Const((S32)greater);
+    m_emitter.emitLocalSet(selected);
+
+    m_emitter.emitI32Const((S32)less);
+    m_emitter.emitLocalGet(selected);
+    pushRegValue(compare);
+    m_emitter.emitI32Const(1);
+    m_emitter.emitOp(WASM_I32_EQ);
+    m_emitter.emitOp(WASM_SELECT);
+    m_emitter.emitLocalSet(selected);
+
+    m_emitter.emitI32Const((S32)equal);
+    m_emitter.emitLocalGet(selected);
+    pushRegValue(compare);
+    m_emitter.emitI32Const(2);
+    m_emitter.emitOp(WASM_I32_EQ);
+    m_emitter.emitOp(WASM_SELECT);
+    m_emitter.emitLocalSet(selected);
+
+    m_emitter.emitI32Const((S32)invalid);
+    m_emitter.emitLocalGet(selected);
+    pushRegValue(compare);
+    m_emitter.emitI32Const(3);
+    m_emitter.emitOp(WASM_I32_EQ);
+    m_emitter.emitOp(WASM_SELECT);
+
+    freeScratch(selected);
+}
+
+void JitWasmCodeGen::doFCOM(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags) {
+    RegPtr compare = fcompareResult(fpuReg1, fpuReg2, ordTags);
+    RegPtr sw = readCPU(JitWidth::b32, offsetof(CPU, fpu.sw));
+
+    pushRegValue(sw);
+    emitSelectI32ByFCompareResult(compare, ~0x4700, ~0x4600, ~0x0700, ~0x0200);
+    m_emitter.emitOp(WASM_I32_AND);
+    emitSelectI32ByFCompareResult(compare, 0, 0x0100, 0x4000, 0x4500);
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.emitLocalSet(sw->hardwareReg());
+
+    writeCPU(JitWidth::b32, offsetof(CPU, fpu.sw), sw);
+    freeScratch(compare->hardwareReg());
+}
+
+void JitWasmCodeGen::doFCOMI(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags) {
+    RegPtr compare = fcompareResult(fpuReg1, fpuReg2, ordTags);
+    RegPtr flags = readCPU(JitWidth::b32, offsetof(CPU, flags));
+
+    pushRegValue(flags);
+    m_emitter.emitI32Const((S32)~FMASK_TEST);
+    m_emitter.emitOp(WASM_I32_AND);
+    emitSelectI32ByFCompareResult(compare, 0, CF, ZF, CF | PF | ZF);
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.emitLocalSet(flags->hardwareReg());
+
+    writeCPU(JitWidth::b32, offsetof(CPU, flags), flags);
+    storeLazyFlagType(FLAGS_NONE);
+    currentLazyFlags = FLAGS_NONE;
+    freeScratch(compare->hardwareReg());
+}
+
+void JitWasmCodeGen::fcompare(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags,
+                              const std::function<void()>& pfnEqual,
+                              const std::function<void()>& pfnLessThan,
+                              const std::function<void()>& pfnGreaterThan,
+                              const std::function<void()>& pfnInvalid) {
+    subValue(JitWidth::b8, ordTags, TAG_Empty);
+    IfNot(JitWidth::b8, ordTags); {
+        pfnInvalid();
+    } StartElse(); {
+        branchBoundary();
+        m_emitter.emitLocalGet(fpuReg1->hardwareReg());
+        m_emitter.emitLocalGet(fpuReg1->hardwareReg());
+        m_emitter.emitOp(WASM_F64_NE);
+        m_emitter.emitLocalGet(fpuReg2->hardwareReg());
+        m_emitter.emitLocalGet(fpuReg2->hardwareReg());
+        m_emitter.emitOp(WASM_F64_NE);
+        m_emitter.emitOp(WASM_I32_OR);
+        finishIf(); {
+            pfnInvalid();
+        } StartElse(); {
+            branchBoundary();
+            m_emitter.emitLocalGet(fpuReg2->hardwareReg());
+            m_emitter.emitLocalGet(fpuReg1->hardwareReg());
+            m_emitter.emitOp(WASM_F64_EQ);
+            finishIf(); {
+                pfnEqual();
+            } StartElse(); {
+                branchBoundary();
+                m_emitter.emitLocalGet(fpuReg2->hardwareReg());
+                m_emitter.emitLocalGet(fpuReg1->hardwareReg());
+                m_emitter.emitOp(WASM_F64_LT);
+                finishIf(); {
+                    pfnLessThan();
+                } StartElse(); {
+                    pfnGreaterThan();
+                } EndIf();
+            } EndIf();
+        } EndIf();
+    } EndIf();
 }
 
 // Emit a masked value on the WASM stack.
@@ -3895,7 +4351,11 @@ RegPtr JitWasmCodeGen::readCPU(JitWidth w, RegPtr sib, U8 lsl, U32 offset, RegPt
     m_emitter.emitI32Const((S32)offset);
     m_emitter.emitOp(WASM_I32_ADD);
     m_emitter.emitOp(WASM_I32_ADD);
-    m_emitter.emitI32Load(0);
+    switch (w) {
+    case JitWidth::b8:  m_emitter.emitI32Load8U(0);  break;
+    case JitWidth::b16: m_emitter.emitI32Load16U(0); break;
+    default:            m_emitter.emitI32Load(0);    break;
+    }
     m_emitter.emitLocalSet(res->hardwareReg());
     freeScratch(scratch);
     return res;
@@ -4217,7 +4677,7 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
         m_emitter.emitCall(writeCheckHelperForWidth(w));
         emitBailoutCheck();
     }
-    if (addressReg && addressReg->emulatedReg == 0xff)
+    if (canReleaseScratchReg(addressReg))
         freeScratch(addressReg->hardwareReg());
     return result;
 }
@@ -4242,14 +4702,68 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
                              RegPtr tmp, bool checkAlignment) {
     if (!tmp) tmp = getTmpReg();
     if (customOp) {
-        // Legacy path: customOp expects a MemPtr it can manipulate; the
-        // fast path can't supply one, so always slow-path here.
-        storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
+        m_needsWasmMemoryPageArrays = true;
+        U32 entryLocal = allocScratch();
+        U32 hostLocal = allocScratch();
+        auto savedGpDirty   = m_gpDirty;
+        auto savedGpLoaded  = m_gpLoaded;
+        auto savedSegLoaded = m_segLoaded;
+
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitCall(readHelperForWidth(w));
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Load((U32)offsetof(CPU, memHelperValue));
-        m_emitter.emitLocalSet(tmp->hardwareReg());
+        m_emitter.emitI32Load((U32)offsetof(CPU, wasmReadPageBaseArray));
+        pushRegValue(addressReg);
+        m_emitter.emitI32Const(K_PAGE_SHIFT);
+        m_emitter.emitOp(WASM_I32_SHR_U);
+        m_emitter.emitI32Const(2);
+        m_emitter.emitOp(WASM_I32_SHL);
+        m_emitter.emitOp(WASM_I32_ADD);
+        m_emitter.emitI32Load(0);
+        m_emitter.emitLocalTee(entryLocal);
+        m_emitter.emitOp(WASM_I32_EQZ);
+
+        if (w != JitWidth::b8) {
+            U32 widthBytes = 4;
+            if (w == JitWidth::b16) {
+                widthBytes = 2;
+            } else if (w == JitWidth::b64) {
+                widthBytes = 8;
+            }
+            pushRegValue(addressReg);
+            m_emitter.emitI32Const(K_PAGE_MASK);
+            m_emitter.emitOp(WASM_I32_AND);
+            m_emitter.emitI32Const((S32)(K_PAGE_SIZE - widthBytes));
+            m_emitter.emitOp(WASM_I32_GT_U);
+            m_emitter.emitOp(WASM_I32_OR);
+        }
+
+        m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
+        m_emitter.emitIf();
+        {
+            if (failedOp) {
+                failedOp();
+            } else {
+                emulateSingleOp();
+            }
+        }
+        m_emitter.emitElse();
+        {
+            m_emitter.emitLocalGet(entryLocal);
+            pushRegValue(addressReg);
+            m_emitter.emitI32Const(K_PAGE_MASK);
+            m_emitter.emitOp(WASM_I32_AND);
+            m_emitter.emitOp(WASM_I32_ADD);
+            m_emitter.emitLocalSet(hostLocal);
+            customOp(createMemPtr(makeWasmReg((U8)hostLocal, 0xff), 0, false));
+        }
+        m_emitter.emitEnd();
+
+        m_gpDirty   = savedGpDirty;
+        m_gpLoaded  = savedGpLoaded;
+        m_segLoaded = savedSegLoaded;
+        freeScratch(hostLocal);
+        freeScratch(entryLocal);
+        if (canReleaseScratchReg(addressReg))
+            freeScratch(addressReg->hardwareReg());
         return tmp;
     }
 
@@ -4319,7 +4833,7 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
     m_gpLoaded  = savedGpLoaded;
     m_segLoaded = savedSegLoaded;
     freeScratch(entryLocal);
-    if (addressReg && addressReg->emulatedReg == 0xff)
+    if (canReleaseScratchReg(addressReg))
         freeScratch(addressReg->hardwareReg());
     return tmp;
 }
@@ -4341,13 +4855,66 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
                             std::function<void(MemPtr)> customOp,
                             std::function<void()> failedOp, bool checkAlignment) {
     if (customOp) {
-        // Legacy path: customOp expects a MemPtr; slow-path only.
-        storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
-        storeMemHelperField((U32)offsetof(CPU, memHelperValue), src);
+        m_needsWasmMemoryPageArrays = true;
+        U32 entryLocal = allocScratch();
+        U32 hostLocal = allocScratch();
+        auto savedGpDirty   = m_gpDirty;
+        auto savedGpLoaded  = m_gpLoaded;
+        auto savedSegLoaded = m_segLoaded;
+
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        emitArmSmcBailout();
-        m_emitter.emitCall(writeCheckHelperForWidth(w));
-        emitBailoutCheck();
+        m_emitter.emitI32Load((U32)offsetof(CPU, wasmWritePageBaseArray));
+        pushRegValue(addressReg);
+        m_emitter.emitI32Const(K_PAGE_SHIFT);
+        m_emitter.emitOp(WASM_I32_SHR_U);
+        m_emitter.emitI32Const(2);
+        m_emitter.emitOp(WASM_I32_SHL);
+        m_emitter.emitOp(WASM_I32_ADD);
+        m_emitter.emitI32Load(0);
+        m_emitter.emitLocalTee(entryLocal);
+        m_emitter.emitOp(WASM_I32_EQZ);
+
+        if (w != JitWidth::b8) {
+            U32 widthBytes = 4;
+            if (w == JitWidth::b16) {
+                widthBytes = 2;
+            } else if (w == JitWidth::b64) {
+                widthBytes = 8;
+            }
+            pushRegValue(addressReg);
+            m_emitter.emitI32Const(K_PAGE_MASK);
+            m_emitter.emitOp(WASM_I32_AND);
+            m_emitter.emitI32Const((S32)(K_PAGE_SIZE - widthBytes));
+            m_emitter.emitOp(WASM_I32_GT_U);
+            m_emitter.emitOp(WASM_I32_OR);
+        }
+
+        m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
+        m_emitter.emitIf();
+        {
+            if (failedOp) {
+                failedOp();
+            } else {
+                emulateSingleOp();
+            }
+        }
+        m_emitter.emitElse();
+        {
+            m_emitter.emitLocalGet(entryLocal);
+            pushRegValue(addressReg);
+            m_emitter.emitI32Const(K_PAGE_MASK);
+            m_emitter.emitOp(WASM_I32_AND);
+            m_emitter.emitOp(WASM_I32_ADD);
+            m_emitter.emitLocalSet(hostLocal);
+            customOp(createMemPtr(makeWasmReg((U8)hostLocal, 0xff), 0, false));
+        }
+        m_emitter.emitEnd();
+
+        m_gpDirty   = savedGpDirty;
+        m_gpLoaded  = savedGpLoaded;
+        m_segLoaded = savedSegLoaded;
+        freeScratch(hostLocal);
+        freeScratch(entryLocal);
         return;
     }
 
@@ -4484,6 +5051,14 @@ void JitWasmCodeGen::write(JitWidth w, MemPtr address, U32 imm) {
 // ---------------------------------------------------------------------------
 void JitWasmCodeGen::addReg(JitWidth w, RegPtr reg, RegPtr rm)   { emitBinOp(w, reg, rm,  WASM_I32_ADD); }
 void JitWasmCodeGen::addValue(JitWidth w, RegPtr reg, U32 imm)   { emitBinOpImm(w, reg, imm, WASM_I32_ADD); }
+void JitWasmCodeGen::addValueWithDest(JitWidth w, RegPtr dst, RegPtr reg, U32 imm) {
+    if (dst->hardwareReg() != reg->hardwareReg()) {
+        pushRegValue(reg);
+        maskToWidth(w);
+        popToReg(w, dst);
+    }
+    addValue(w, dst, imm);
+}
 void JitWasmCodeGen::subReg(JitWidth w, RegPtr reg, RegPtr rm)   { emitBinOp(w, reg, rm,  WASM_I32_SUB); }
 void JitWasmCodeGen::subValue(JitWidth w, RegPtr reg, U32 imm)   { emitBinOpImm(w, reg, imm, WASM_I32_SUB); }
 void JitWasmCodeGen::orReg(JitWidth w, RegPtr reg, RegPtr rm)    { emitBinOp(w, reg, rm,  WASM_I32_OR); }
@@ -4546,32 +5121,11 @@ void JitWasmCodeGen::notReg2(JitWidth w, RegPtr reg) {
 }
 
 void JitWasmCodeGen::negReg2(JitWidth w, RegPtr reg) {
-    // NEG = 0 - src. Store lazy flag operands before overwriting the register.
-    // dst=0 (the implicit minuend), src=original operand, result=0-src.
-    // Flag semantics are identical to SUB(0, src).
-    storeLazyFlagsSrc(reg);
-    writeCPUValue(JitWidth::b32, (U32)offsetof(CPU, dst.u32), 0);
-    auto result = getTmpReg();
     m_emitter.emitI32Const(0);
     pushRegValue(reg);
     m_emitter.emitOp(WASM_I32_SUB);
     maskToWidth(w);
-    m_emitter.emitLocalTee(result->hardwareReg());
     popToReg(w, reg);
-    storeLazyFlagsResult(result);
-    storeLazyFlagType(lazyTypeForSub(w));
-    freeScratch(result->hardwareReg());
-    currentLazyFlags = lazyTypeForSub(w);
-}
-
-void JitWasmCodeGen::dynamic_salc(DecodedOp* op) {
-    (void)op;
-    RegPtr cf = getCF();
-    m_emitter.emitI32Const(0);
-    pushRegValue(cf);
-    m_emitter.emitOp(WASM_I32_SUB);
-    popToReg(JitWidth::b8, getReg8(0));
-    freeScratch(cf->hardwareReg());
 }
 
 void JitWasmCodeGen::clzReg(JitWidth w, RegPtr result, RegPtr reg) {
@@ -6186,233 +6740,6 @@ void JitWasmCodeGen::hintLikelyStringLoopContinue() {
     m_emitter.setNextBranchHint(WasmBranchHint::Likely);
 }
 
-void JitWasmCodeGen::emitInlineFld1() {
-    U32 topLocal = allocScratch();
-
-    // top = (top - 1) & 7; tags[top] = TAG_Valid
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Load((U32)offsetof(CPU, fpu.top));
-    m_emitter.emitI32Const(1);
-    m_emitter.emitOp(WASM_I32_SUB);
-    m_emitter.emitI32Const(7);
-    m_emitter.emitOp(WASM_I32_AND);
-    m_emitter.emitLocalTee(topLocal);
-    m_emitter.emitI32Store((U32)offsetof(CPU, fpu.top));
-
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitLocalGet(topLocal);
-    m_emitter.emitOp(WASM_I32_ADD);
-    m_emitter.emitI32Const(TAG_Valid);
-    m_emitter.emitI32Store8((U32)offsetof(CPU, fpu.tags[0]));
-
-    // store 1.0 as f64 bits into regCache[top]
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitLocalGet(topLocal);
-    m_emitter.emitI32Const(3);
-    m_emitter.emitOp(WASM_I32_SHL);
-    m_emitter.emitOp(WASM_I32_ADD);
-    m_emitter.emitI64Const((S64)0x3ff0000000000000LL);
-    m_emitter.emitI64Store((U32)offsetof(CPU, fpu.regCache[0].l));
-
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitLocalGet(topLocal);
-    m_emitter.emitOp(WASM_I32_ADD);
-    m_emitter.emitI32Const(1);
-    m_emitter.emitI32Store8((U32)offsetof(CPU, fpu.isRegCached[0]));
-
-    freeScratch(topLocal);
-}
-
-void JitWasmCodeGen::emitInlineFldSingleReal(DecodedOp* op) {
-    RegPtr value = read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, getTmpReg());
-    U32 topLocal = allocScratch();
-
-    // Read succeeded; now adjust the FPU stack.
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Load((U32)offsetof(CPU, fpu.top));
-    m_emitter.emitI32Const(1);
-    m_emitter.emitOp(WASM_I32_SUB);
-    m_emitter.emitI32Const(7);
-    m_emitter.emitOp(WASM_I32_AND);
-    m_emitter.emitLocalTee(topLocal);
-    m_emitter.emitI32Store((U32)offsetof(CPU, fpu.top));
-
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitLocalGet(topLocal);
-    m_emitter.emitOp(WASM_I32_ADD);
-    m_emitter.emitI32Const(TAG_Valid);
-    m_emitter.emitI32Store8((U32)offsetof(CPU, fpu.tags[0]));
-
-    // Convert f32 bits -> f64 bits and store into regCache[top]
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitLocalGet(topLocal);
-    m_emitter.emitI32Const(3);
-    m_emitter.emitOp(WASM_I32_SHL);
-    m_emitter.emitOp(WASM_I32_ADD);
-    pushRegValue(value);
-    m_emitter.emitOp(WASM_F32_REINTERPRET_I32);
-    m_emitter.emitOp(WASM_F64_PROMOTE_F32);
-    m_emitter.emitOp(WASM_I64_REINTERPRET_F64);
-    m_emitter.emitI64Store((U32)offsetof(CPU, fpu.regCache[0].l));
-
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitLocalGet(topLocal);
-    m_emitter.emitOp(WASM_I32_ADD);
-    m_emitter.emitI32Const(1);
-    m_emitter.emitI32Store8((U32)offsetof(CPU, fpu.isRegCached[0]));
-
-    freeScratch(value->hardwareReg());
-    freeScratch(topLocal);
-}
-
-void JitWasmCodeGen::emitInlineFdivSt0Stj(DecodedOp* op) {
-    U32 topLocal = allocScratch();
-    U32 otherLocal = allocScratch();
-
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Load((U32)offsetof(CPU, fpu.top));
-    m_emitter.emitLocalTee(topLocal);
-    m_emitter.emitI32Const((S32)op->reg);
-    m_emitter.emitOp(WASM_I32_ADD);
-    m_emitter.emitI32Const(7);
-    m_emitter.emitOp(WASM_I32_AND);
-    m_emitter.emitLocalSet(otherLocal);
-
-    // Fast path: both registers are cached as f64 — divide in place
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitLocalGet(topLocal);
-    m_emitter.emitOp(WASM_I32_ADD);
-    m_emitter.emitI32Load8U((U32)offsetof(CPU, fpu.isRegCached[0]));
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitLocalGet(otherLocal);
-    m_emitter.emitOp(WASM_I32_ADD);
-    m_emitter.emitI32Load8U((U32)offsetof(CPU, fpu.isRegCached[0]));
-    m_emitter.emitOp(WASM_I32_AND);
-
-    m_emitter.emitIf();
-    {
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitLocalGet(topLocal);
-        m_emitter.emitI32Const(3);
-        m_emitter.emitOp(WASM_I32_SHL);
-        m_emitter.emitOp(WASM_I32_ADD);
-
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitLocalGet(topLocal);
-        m_emitter.emitI32Const(3);
-        m_emitter.emitOp(WASM_I32_SHL);
-        m_emitter.emitOp(WASM_I32_ADD);
-        m_emitter.emitF64Load((U32)offsetof(CPU, fpu.regCache[0].d));
-
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitLocalGet(otherLocal);
-        m_emitter.emitI32Const(3);
-        m_emitter.emitOp(WASM_I32_SHL);
-        m_emitter.emitOp(WASM_I32_ADD);
-        m_emitter.emitF64Load((U32)offsetof(CPU, fpu.regCache[0].d));
-
-        m_emitter.emitOp(WASM_F64_DIV);
-        m_emitter.emitF64Store((U32)offsetof(CPU, fpu.regCache[0].d));
-    }
-    m_emitter.emitElse();
-    {
-        // Slow path: fall back to the C++ helper
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Const(op->reg);
-        m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitCall(HELPER_FDIV_ST0_STJ);
-    }
-    m_emitter.emitEnd();
-
-    freeScratch(topLocal);
-    freeScratch(otherLocal);
-}
-
-void JitWasmCodeGen::dynamic_FLD_SINGLE_REAL(DecodedOp* op) {
-    if (KSystem::useF64) {
-        emitInlineFldSingleReal(op);
-        return;
-    }
-    RegPtr address = calculateEaa(op);
-    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(HELPER_FLD_SINGLE_REAL);
-}
-
-void JitWasmCodeGen::dynamic_FLD1(DecodedOp* op) {
-    (void)op;
-    if (KSystem::useF64) {
-        emitInlineFld1();
-        return;
-    }
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(HELPER_FLD1);
-}
-
-void JitWasmCodeGen::dynamic_FLD_DOUBLE_REAL(DecodedOp* op) {
-    RegPtr address = calculateEaa(op);
-    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(HELPER_FLD_DOUBLE_REAL);
-}
-
-void JitWasmCodeGen::dynamic_FCOM_SINGLE_REAL_Pop(DecodedOp* op) {
-    RegPtr address = calculateEaa(op);
-    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(HELPER_FCOM_SINGLE_REAL_POP);
-}
-
-void JitWasmCodeGen::dynamic_FADD_ST0_STj(DecodedOp* op) {
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Const(op->reg);
-    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(HELPER_FADD_ST0_STJ);
-}
-
-void JitWasmCodeGen::dynamic_FDIV_ST0_STj(DecodedOp* op) {
-    if (KSystem::useF64) {
-        emitInlineFdivSt0Stj(op);
-        return;
-    }
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Const(op->reg);
-    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(HELPER_FDIV_ST0_STJ);
-}
-
-void JitWasmCodeGen::dynamic_FNSTSW_AX(DecodedOp* op) {
-    (void)op;
-    syncDirtyRegsToHost();
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(HELPER_FNSTSW_AX);
-    // The helper writes AX into cpu->reg[0] at runtime, so the cached eax local
-    // is now stale. Invalidate it so a following consumer (e.g. sahf / test ah
-    // after fnstsw ax in an FPU compare) reloads eax from the CPU struct instead
-    // of using a stale cached value -> wrong flags -> bad guest pointer.
-    m_gpLoaded[0] = false;
-    m_gpDirty[0] = false;
-}
-
-void JitWasmCodeGen::dynamic_FST_SINGLE_REAL_Pop(DecodedOp* op) {
-    RegPtr address = calculateEaa(op);
-    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(HELPER_FST_SINGLE_REAL_POP);
-}
-
-void JitWasmCodeGen::dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) {
-    RegPtr address = calculateEaa(op);
-    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(HELPER_FIST_DWORD_INTEGER_POP);
-}
-
 void JitWasmCodeGen::dynamic_movsdXmmE64(DecodedOp* op) {
     RegPtr address = calculateEaa(op);
     storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
@@ -6788,6 +7115,7 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     }
     m_currentWasmOp = op;
     m_scratchInUse.fill(false);
+    m_f64ScratchInUse.fill(false);
     lastCompiledOpLen = op->len;
     JitCodeGen::preCompile(op, skippedOp);
 }
@@ -6795,42 +7123,6 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
 void JitWasmCodeGen::compile(DecodedOp* op) {
     if (op->inst == Pause) {
         dynamic_pause(op);
-        return;
-    }
-    if (op->inst == FLD_SINGLE_REAL) {
-        dynamic_FLD_SINGLE_REAL(op);
-        return;
-    }
-    if (op->inst == FLD1) {
-        dynamic_FLD1(op);
-        return;
-    }
-    if (op->inst == FLD_DOUBLE_REAL) {
-        dynamic_FLD_DOUBLE_REAL(op);
-        return;
-    }
-    if (op->inst == FCOM_SINGLE_REAL_Pop) {
-        dynamic_FCOM_SINGLE_REAL_Pop(op);
-        return;
-    }
-    if (op->inst == FADD_ST0_STj) {
-        dynamic_FADD_ST0_STj(op);
-        return;
-    }
-    if (op->inst == FDIV_ST0_STj) {
-        dynamic_FDIV_ST0_STj(op);
-        return;
-    }
-    if (op->inst == FNSTSW_AX) {
-        dynamic_FNSTSW_AX(op);
-        return;
-    }
-    if (op->inst == FST_SINGLE_REAL_Pop) {
-        dynamic_FST_SINGLE_REAL_Pop(op);
-        return;
-    }
-    if (op->inst == FIST_DWORD_INTEGER_Pop) {
-        dynamic_FIST_DWORD_INTEGER_Pop(op);
         return;
     }
     if (op->inst == MovsdXmmE64) {

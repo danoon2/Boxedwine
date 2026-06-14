@@ -195,7 +195,7 @@
 
 #ifdef BOXEDWINE_WASM_JIT
 
-#include "../jit/jitCodeGen.h"
+#include "../jit/jitFPU.h"
 #include "wasmEmitter.h"
 #include <array>
 
@@ -218,8 +218,11 @@ static constexpr U32 WASM_TMP_LOCAL_BASE  = 14;
 static constexpr U32 WASM_TMP_LOCAL_COUNT = 32;
 // i64 scratch local for 64-bit multiply (imulRRI/imulRR overflow tracking).
 static constexpr U32 WASM_I64_SCRATCH     = 46;  // WASM_TMP_LOCAL_BASE + WASM_TMP_LOCAL_COUNT
+// f64 scratch locals used by the shared JitFPU implementation.
+static constexpr U32 WASM_F64_LOCAL_BASE  = 47;
+static constexpr U32 WASM_F64_LOCAL_COUNT = 8;
 // Total locals beyond the parameters.
-static constexpr U32 WASM_LOCAL_COUNT     = 47;
+static constexpr U32 WASM_LOCAL_COUNT     = 55;
 
 // ---------------------------------------------------------------------------
 // Mapping from emulated register index to WASM local index.
@@ -232,7 +235,7 @@ static inline U32 wasmLocalForGPReg(U8 emulatedReg) {
 // ---------------------------------------------------------------------------
 // JitWasmCodeGen
 // ---------------------------------------------------------------------------
-class JitWasmCodeGen : public JitCodeGen {
+class JitWasmCodeGen : public JitFPU {
 public:
     explicit JitWasmCodeGen(CPU* cpu);
     ~JitWasmCodeGen() override;
@@ -274,6 +277,7 @@ public:
     // --- Arithmetic ---
     void addReg(JitWidth w, RegPtr reg, RegPtr rm) override;
     void addValue(JitWidth w, RegPtr reg, U32 imm) override;
+    void addValueWithDest(JitWidth w, RegPtr dst, RegPtr reg, U32 imm) override;
     void orReg(JitWidth w, RegPtr reg, RegPtr rm) override;
     void orValue(JitWidth w, RegPtr reg, U32 imm) override;
     void subReg(JitWidth w, RegPtr reg, RegPtr rm) override;
@@ -428,15 +432,7 @@ public:
     void dynamic_loopz(DecodedOp* op) override;
     void dynamic_loopnz(DecodedOp* op) override;
     void hintLikelyStringLoopContinue() override;
-    void dynamic_FLD_SINGLE_REAL(DecodedOp* op) override;
-    void dynamic_FLD1(DecodedOp* op) override;
-    void dynamic_FLD_DOUBLE_REAL(DecodedOp* op) override;
-    void dynamic_FCOM_SINGLE_REAL_Pop(DecodedOp* op) override;
-    void dynamic_FADD_ST0_STj(DecodedOp* op) override;
-    void dynamic_FDIV_ST0_STj(DecodedOp* op) override;
-    void dynamic_FNSTSW_AX(DecodedOp* op) override;
-    void dynamic_FST_SINGLE_REAL_Pop(DecodedOp* op) override;
-    void dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) override;
+    void dynamic_FILD_QWORD_INTEGER(DecodedOp* op) override;
     void dynamic_movsdXmmE64(DecodedOp* op) override;
     void dynamic_movsdE64Xmm(DecodedOp* op) override;
     void dynamic_movsd_op(DecodedOp* op) override;
@@ -453,10 +449,42 @@ public:
     void direct_setcc(JitConditional cond, RegPtr dst) override;
     bool directDoesAffectFlags(DecodedOp* op) override;
 
-    // SALC does not modify flags. Generate it directly for WASM because the
-    // shared JIT implementation uses negReg2 on CF, which changes WASM
-    // lazy-flag state as a backend side effect.
-    void dynamic_salc(DecodedOp* op) override;
+    // --- JitFPU backend hooks ---
+    FPURegPtr getFPUTmp() override;
+    void storeCpuFpuReg(FPURegPtr reg, RegPtr index) override;
+    void loadCpuFpuReg(FPURegPtr reg, RegPtr index) override;
+    void loadCpuFpuRegConst(FPURegPtr reg, U32 offset) override;
+    void cacheFpuReg(U32 regIndex) override;
+    void storeFpuReg(FPURegPtr reg, MemPtr address, DynFpuWidth width = DYN_FPU_64_BIT) override;
+    void loadFpuReg(FPURegPtr reg, MemPtr address, DynFpuWidth width = DYN_FPU_64_BIT) override;
+    void loadFpuRegFromInt(FPURegPtr reg, MemPtr address) override;
+    void fpuRegExtend32To64(FPURegPtr dst, FPURegPtr src) override;
+    void fpuReg64To32(FPURegPtr dst, FPURegPtr src) override;
+    RegPtr fpuRegToInt32(FPURegPtr fpuRegSrc, bool truncate) override;
+    void regToFpuReg(FPURegPtr dst, RegPtr src) override;
+#ifdef BOXEDWINE_64
+    void regToFpuReg64(FPURegPtr dst, RegPtr src) override;
+#endif
+    void updateFPURounding() override;
+    void restoreFPURounding() override;
+    void roundFPUToInt64(FPURegPtr src) override;
+    void storeFPUToInt64(FPURegPtr src, MemPtr address, bool truncate) override;
+    void fpuAdd(FPURegPtr dst, FPURegPtr src) override;
+    void fpuMul(FPURegPtr dst, FPURegPtr src) override;
+    void fpuSub(FPURegPtr dst, FPURegPtr src) override;
+    void fpuDiv(FPURegPtr dst, FPURegPtr src) override;
+    void fpuXor(FPURegPtr dst, FPURegPtr src) override;
+    void fpuAnd(FPURegPtr dst, FPURegPtr src) override;
+    void fpuSqrt(FPURegPtr dst, FPURegPtr src) override;
+    void doFCOM(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags) override;
+    void doFCOMI(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags) override;
+    void fcompare(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags,
+                  const std::function<void()>& pfnEqual,
+                  const std::function<void()>& pfnLessThan,
+                  const std::function<void()>& pfnGreaterThan,
+                  const std::function<void()>& pfnInvalid) override;
+    RegPtr fcompareResult(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags);
+    void emitSelectI32ByFCompareResult(RegPtr compare, U32 greater, U32 less, U32 equal, U32 invalid);
 
     // WASM-specific fallbacks for cases where the shared JIT implementation
     // has side effects that do not match the WASM backend.
@@ -649,6 +677,8 @@ protected:
     // Allocate a scratch local (from WASM_TMP_LOCAL_BASE range)
     U32 allocScratch();
     void freeScratch(U32 local);
+    U32 allocF64Scratch();
+    void freeF64Scratch(U32 local);
 
     // Common tail of every IfXxx: emit the WASM `if`. The condition is
     // already on the value stack.
@@ -657,10 +687,6 @@ protected:
     // Store a GP/scratch RegPtr into a CPU struct field (used to stage
     // mem-helper args — address/value — without touching lazy-flag state).
     void storeMemHelperField(U32 offset, RegPtr reg);
-    void emitInlineFld1();
-    void emitInlineFldSingleReal(DecodedOp* op);
-    void emitInlineFdivSt0Stj(DecodedOp* op);
-
     // Flatten a MemPtr (base + index*scale + disp) into a single 32-bit
     // virtual-address scratch reg. Used by the emulated-memory read/write
     // overloads; the result feeds the MMU helper call.
@@ -737,6 +763,7 @@ protected:
 
     // Scratch allocation
     std::array<bool, WASM_TMP_LOCAL_COUNT> m_scratchInUse{};
+    std::array<bool, WASM_F64_LOCAL_COUNT> m_f64ScratchInUse{};
 
     // The current block's WASM binary (set in commitJIT)
     std::vector<U8> m_wasmBinary;

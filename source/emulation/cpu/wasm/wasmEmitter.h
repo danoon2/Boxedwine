@@ -56,6 +56,8 @@ enum class WasmSection : U8 {
 enum class WasmType : U8 {
     I32  = 0x7f,
     I64  = 0x7e,
+    F32  = 0x7d,
+    F64  = 0x7c,
     Void = 0x40,  // for block result types that return nothing
 };
 
@@ -88,6 +90,7 @@ enum WasmOp : U8 {
     WASM_GLOBAL_GET     = 0x23,
     WASM_I32_LOAD       = 0x28,
     WASM_I64_LOAD       = 0x29,
+    WASM_F32_LOAD       = 0x2a,
     WASM_F64_LOAD       = 0x2b,
     WASM_I32_LOAD8_S    = 0x2c,
     WASM_I32_LOAD8_U    = 0x2d,
@@ -95,6 +98,7 @@ enum WasmOp : U8 {
     WASM_I32_LOAD16_U   = 0x2f,
     WASM_I32_STORE      = 0x36,
     WASM_I64_STORE      = 0x37,
+    WASM_F32_STORE      = 0x38,
     WASM_F64_STORE      = 0x39,
     WASM_I32_STORE8     = 0x3a,
     WASM_I32_STORE16    = 0x3b,
@@ -113,6 +117,12 @@ enum WasmOp : U8 {
     WASM_I32_GE_U       = 0x4f,
     WASM_I64_EQ         = 0x51,
     WASM_I64_NE         = 0x52,
+    WASM_F64_EQ         = 0x61,
+    WASM_F64_NE         = 0x62,
+    WASM_F64_LT         = 0x63,
+    WASM_F64_GT         = 0x64,
+    WASM_F64_LE         = 0x65,
+    WASM_F64_GE         = 0x66,
     WASM_I32_CLZ        = 0x67,
     WASM_I32_CTZ        = 0x68,
     WASM_I32_POPCNT     = 0x69,
@@ -144,13 +154,32 @@ enum WasmOp : U8 {
     WASM_I64_SHL        = 0x86,
     WASM_I64_SHR_S      = 0x87,
     WASM_I64_SHR_U      = 0x88,
+    WASM_I64_CLZ        = 0x79,
+    WASM_F64_ABS        = 0x99,
+    WASM_F64_NEG        = 0x9a,
+    WASM_F64_CEIL       = 0x9b,
+    WASM_F64_FLOOR      = 0x9c,
+    WASM_F64_TRUNC      = 0x9d,
+    WASM_F64_NEAREST    = 0x9e,
+    WASM_F64_SQRT       = 0x9f,
+    WASM_F64_ADD        = 0xa0,
+    WASM_F64_SUB        = 0xa1,
+    WASM_F64_MUL        = 0xa2,
     WASM_F64_DIV        = 0xa3,
     WASM_I32_WRAP_I64   = 0xa7,
+    WASM_I32_TRUNC_F64_S = 0xaa,
+    WASM_I64_TRUNC_F64_S = 0xb0,
     WASM_I64_EXTEND_I32_S = 0xac,
     WASM_I64_EXTEND_I32_U = 0xad,
+    WASM_F32_DEMOTE_F64       = 0xb6,
+    WASM_F64_CONVERT_I32_S    = 0xb7,
+    WASM_F64_CONVERT_I32_U    = 0xb8,
+    WASM_F64_CONVERT_I64_S    = 0xb9,
     WASM_F64_PROMOTE_F32      = 0xbb,
+    WASM_I32_REINTERPRET_F32  = 0xbc,
     WASM_I64_REINTERPRET_F64  = 0xbd,
     WASM_F32_REINTERPRET_I32  = 0xbe,
+    WASM_F64_REINTERPRET_I64  = 0xbf,
     WASM_I32_EXTEND8_S  = 0xc0,
     WASM_I32_EXTEND16_S = 0xc1,
 };
@@ -215,6 +244,8 @@ public:
     void emitI32Store16(U32 offset);
     void emitI64Load(U32 offset, U32 align = 3);
     void emitI64Store(U32 offset, U32 align = 3);
+    void emitF32Load(U32 offset, U32 align = 2);
+    void emitF32Store(U32 offset, U32 align = 2);
     void emitF64Load(U32 offset, U32 align = 3);
     void emitF64Store(U32 offset, U32 align = 3);
 
