@@ -58,6 +58,7 @@ enum class WasmType : U8 {
     I64  = 0x7e,
     F32  = 0x7d,
     F64  = 0x7c,
+    V128 = 0x7b,
     Void = 0x40,  // for block result types that return nothing
 };
 
@@ -184,6 +185,113 @@ enum WasmOp : U8 {
     WASM_I32_EXTEND16_S = 0xc1,
 };
 
+enum WasmSimdOp : U32 {
+    WASM_SIMD_V128_LOAD                 = 0x00,
+    WASM_SIMD_V128_LOAD64_SPLAT         = 0x0a,
+    WASM_SIMD_V128_STORE                = 0x0b,
+    WASM_SIMD_V128_CONST                = 0x0c,
+    WASM_SIMD_I8X16_SHUFFLE             = 0x0d,
+    WASM_SIMD_I8X16_SPLAT               = 0x0f,
+    WASM_SIMD_I16X8_SPLAT               = 0x10,
+    WASM_SIMD_I32X4_SPLAT               = 0x11,
+    WASM_SIMD_I64X2_SPLAT               = 0x12,
+
+    WASM_SIMD_I8X16_EXTRACT_LANE_S      = 0x15,
+    WASM_SIMD_I8X16_EXTRACT_LANE_U      = 0x16,
+    WASM_SIMD_I8X16_REPLACE_LANE        = 0x17,
+    WASM_SIMD_I16X8_EXTRACT_LANE_S      = 0x18,
+    WASM_SIMD_I16X8_EXTRACT_LANE_U      = 0x19,
+    WASM_SIMD_I16X8_REPLACE_LANE        = 0x1a,
+    WASM_SIMD_I32X4_EXTRACT_LANE        = 0x1b,
+    WASM_SIMD_I32X4_REPLACE_LANE        = 0x1c,
+    WASM_SIMD_I64X2_EXTRACT_LANE        = 0x1d,
+    WASM_SIMD_I64X2_REPLACE_LANE        = 0x1e,
+
+    WASM_SIMD_I8X16_EQ                  = 0x23,
+    WASM_SIMD_I8X16_NE                  = 0x24,
+    WASM_SIMD_I8X16_LT_S                = 0x25,
+    WASM_SIMD_I8X16_GT_S                = 0x27,
+    WASM_SIMD_I16X8_EQ                  = 0x2d,
+    WASM_SIMD_I16X8_NE                  = 0x2e,
+    WASM_SIMD_I16X8_LT_S                = 0x2f,
+    WASM_SIMD_I16X8_GT_S                = 0x31,
+    WASM_SIMD_I32X4_EQ                  = 0x37,
+    WASM_SIMD_I32X4_NE                  = 0x38,
+    WASM_SIMD_I32X4_LT_S                = 0x39,
+    WASM_SIMD_I32X4_GT_S                = 0x3b,
+
+    WASM_SIMD_V128_NOT                  = 0x4d,
+    WASM_SIMD_V128_AND                  = 0x4e,
+    WASM_SIMD_V128_ANDNOT               = 0x4f,
+    WASM_SIMD_V128_OR                   = 0x50,
+    WASM_SIMD_V128_XOR                  = 0x51,
+    WASM_SIMD_V128_BITSELECT            = 0x52,
+
+    WASM_SIMD_V128_LOAD64_ZERO          = 0x5d,
+
+    WASM_SIMD_I8X16_BITMASK             = 0x64,
+    WASM_SIMD_I8X16_NARROW_I16X8_S      = 0x65,
+    WASM_SIMD_I8X16_NARROW_I16X8_U      = 0x66,
+    WASM_SIMD_I8X16_SHL                 = 0x6b,
+    WASM_SIMD_I8X16_SHR_S               = 0x6c,
+    WASM_SIMD_I8X16_SHR_U               = 0x6d,
+    WASM_SIMD_I8X16_ADD                 = 0x6e,
+    WASM_SIMD_I8X16_ADD_SAT_S           = 0x6f,
+    WASM_SIMD_I8X16_ADD_SAT_U           = 0x70,
+    WASM_SIMD_I8X16_SUB                 = 0x71,
+    WASM_SIMD_I8X16_SUB_SAT_S           = 0x72,
+    WASM_SIMD_I8X16_SUB_SAT_U           = 0x73,
+    WASM_SIMD_I8X16_MIN_S               = 0x76,
+    WASM_SIMD_I8X16_MIN_U               = 0x77,
+    WASM_SIMD_I8X16_MAX_S               = 0x78,
+    WASM_SIMD_I8X16_MAX_U               = 0x79,
+    WASM_SIMD_I8X16_AVGR_U              = 0x7b,
+
+    WASM_SIMD_I16X8_BITMASK             = 0x84,
+    WASM_SIMD_I16X8_NARROW_I32X4_S      = 0x85,
+    WASM_SIMD_I16X8_NARROW_I32X4_U      = 0x86,
+    WASM_SIMD_I16X8_SHL                 = 0x8b,
+    WASM_SIMD_I16X8_SHR_S               = 0x8c,
+    WASM_SIMD_I16X8_SHR_U               = 0x8d,
+    WASM_SIMD_I16X8_ADD                 = 0x8e,
+    WASM_SIMD_I16X8_ADD_SAT_S           = 0x8f,
+    WASM_SIMD_I16X8_ADD_SAT_U           = 0x90,
+    WASM_SIMD_I16X8_SUB                 = 0x91,
+    WASM_SIMD_I16X8_SUB_SAT_S           = 0x92,
+    WASM_SIMD_I16X8_SUB_SAT_U           = 0x93,
+    WASM_SIMD_I16X8_MUL                 = 0x95,
+    WASM_SIMD_I16X8_MIN_S               = 0x96,
+    WASM_SIMD_I16X8_MIN_U               = 0x97,
+    WASM_SIMD_I16X8_MAX_S               = 0x98,
+    WASM_SIMD_I16X8_MAX_U               = 0x99,
+    WASM_SIMD_I16X8_AVGR_U              = 0x9b,
+
+    WASM_SIMD_I32X4_BITMASK             = 0xa4,
+    WASM_SIMD_I32X4_SHL                 = 0xab,
+    WASM_SIMD_I32X4_SHR_S               = 0xac,
+    WASM_SIMD_I32X4_SHR_U               = 0xad,
+    WASM_SIMD_I32X4_ADD                 = 0xae,
+    WASM_SIMD_I32X4_SUB                 = 0xb1,
+    WASM_SIMD_I32X4_MUL                 = 0xb5,
+    WASM_SIMD_I32X4_MIN_S               = 0xb6,
+    WASM_SIMD_I32X4_MIN_U               = 0xb7,
+    WASM_SIMD_I32X4_MAX_S               = 0xb8,
+    WASM_SIMD_I32X4_MAX_U               = 0xb9,
+    WASM_SIMD_I32X4_DOT_I16X8_S         = 0xba,
+
+    WASM_SIMD_I64X2_BITMASK             = 0xc4,
+    WASM_SIMD_I64X2_SHL                 = 0xcb,
+    WASM_SIMD_I64X2_SHR_S               = 0xcc,
+    WASM_SIMD_I64X2_SHR_U               = 0xcd,
+    WASM_SIMD_I64X2_ADD                 = 0xce,
+    WASM_SIMD_I64X2_SUB                 = 0xd1,
+    WASM_SIMD_I64X2_MUL                 = 0xd5,
+    WASM_SIMD_I64X2_EQ                  = 0xd6,
+    WASM_SIMD_I64X2_NE                  = 0xd7,
+    WASM_SIMD_I64X2_LT_S                = 0xd8,
+    WASM_SIMD_I64X2_GT_S                = 0xd9,
+};
+
 // ---------------------------------------------------------------------------
 // WasmEmitter
 //
@@ -250,6 +358,14 @@ public:
     void emitF64Store(U32 offset, U32 align = 3);
 
     void emitOp(U8 op);   // emit a standalone opcode
+    void emitSimdOp(U32 op);
+    // For SIMD ops whose lane immediate directly follows the opcode.
+    // Lane load/store ops need a separate memarg+lane helper if added later.
+    void emitSimdLaneOp(U32 op, U8 lane);
+    void emitI8x16Shuffle(const U8 lanes[16]);
+    void emitV128Const(const U8 bytes[16]);
+    void emitV128Load(U32 offset, U32 align = 4);
+    void emitV128Store(U32 offset, U32 align = 4);
     void emitCall(U32 funcIdx);
     void emitCallIndirect(U32 typeIdx, U32 tableIdx = 0);
 

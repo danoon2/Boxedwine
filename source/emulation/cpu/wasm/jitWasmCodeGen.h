@@ -31,8 +31,8 @@
  *
  * Register model
  * --------------
- * WASM has no native register file.  We use WASM *local variables* (i32) as
- * the JIT register file:
+ * WASM has no native register file.  We use WASM *local variables* as the
+ * JIT register file and scratch space:
  *
  *   local 0   : function parameter — cpu_ptr (i32, pointer into linear memory)
  *   local 1   : function parameter — reloc_base (i32, the block's relocation
@@ -40,7 +40,10 @@
  *   locals 2-9 : GP registers eax–edi (loaded from CPU struct on first use,
  *                written back to CPU struct on block exit / sync)
  *   locals 10-13: segment base addresses cs, ds, ss, es
- *   locals 14-45: scratch temporaries
+ *   locals 14-45: i32 scratch temporaries
+ *   local 46: i64 scratch
+ *   locals 47-54: f64 scratch temporaries for JitFPU
+ *   locals 55-66: v128 scratch temporaries for JitMMX/MMX
  *
  * The JitReg::hardwareReg() field stores the WASM local variable index.
  * Emulated register n maps to local n+2 (so eax=2, ecx=3, ..., edi=9).
@@ -195,7 +198,7 @@
 
 #ifdef BOXEDWINE_WASM_JIT
 
-#include "../jit/jitFPU.h"
+#include "../jit/jitMMX.h"
 #include "wasmEmitter.h"
 #include <array>
 
@@ -221,8 +224,11 @@ static constexpr U32 WASM_I64_SCRATCH     = 46;  // WASM_TMP_LOCAL_BASE + WASM_T
 // f64 scratch locals used by the shared JitFPU implementation.
 static constexpr U32 WASM_F64_LOCAL_BASE  = 47;
 static constexpr U32 WASM_F64_LOCAL_COUNT = 8;
-// Total locals beyond the parameters.
-static constexpr U32 WASM_LOCAL_COUNT     = 55;
+// v128 scratch locals reserved for future MMX/SIMD lowering.
+static constexpr U32 WASM_V128_LOCAL_BASE  = WASM_F64_LOCAL_BASE + WASM_F64_LOCAL_COUNT;
+static constexpr U32 WASM_V128_LOCAL_COUNT = 12;
+// Total WASM local slots, including parameters.
+static constexpr U32 WASM_LOCAL_COUNT     = WASM_V128_LOCAL_BASE + WASM_V128_LOCAL_COUNT;
 
 // ---------------------------------------------------------------------------
 // Mapping from emulated register index to WASM local index.
@@ -235,7 +241,7 @@ static inline U32 wasmLocalForGPReg(U8 emulatedReg) {
 // ---------------------------------------------------------------------------
 // JitWasmCodeGen
 // ---------------------------------------------------------------------------
-class JitWasmCodeGen : public JitFPU {
+class JitWasmCodeGen : public JitMMX {
 public:
     explicit JitWasmCodeGen(CPU* cpu);
     ~JitWasmCodeGen() override;
@@ -591,11 +597,84 @@ public:
     // base-class native codegen; the rep'd loops route through
     // LoopBegin/LoopEnd which emit a structural WASM `loop`/`end` pair.
 
-
-
-
-
-
+    // --- MMX hook surface ---
+    MMXRegPtr getTmpMMX() override;
+    MMXRegPtr loadMMXFromReg(RegPtr reg) override;
+    void storeCpuMMXReg(MMXRegPtr reg, U32 index) override;
+    void storeMMXToReg(MMXRegPtr mmx, RegPtr reg) override;
+    MMXRegPtr loadCpuMMXReg(U8 index) override;
+    MMXRegPtr loadMMXFromMem32(U8 index, MemPtr address) override;
+    MMXRegPtr loadMMXFromMem64(U8 index, MemPtr address) override;
+    void storeMMXToMem32(MMXRegPtr reg, MemPtr address) override;
+    void storeMMXToMem64(MMXRegPtr reg, MemPtr address) override;
+    void xorMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void orMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void andMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void andnMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psllwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psrlwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psrawMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psllwMmx(MMXRegPtr dst, U32 imm) override;
+    void psrlwMmx(MMXRegPtr dst, U32 imm) override;
+    void psrawMmx(MMXRegPtr dst, U32 imm) override;
+    void pslldMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psrldMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psradMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pslldMmx(MMXRegPtr dst, U32 imm) override;
+    void psrldMmx(MMXRegPtr dst, U32 imm) override;
+    void psradMmx(MMXRegPtr dst, U32 imm) override;
+    void psllqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psrlqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psllqMmx(MMXRegPtr dst, U32 imm) override;
+    void psrlqMmx(MMXRegPtr dst, U32 imm) override;
+    void paddbMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void paddwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void padddMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void paddsbMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void paddswMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void paddusbMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void padduswMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psubbMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psubwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psubdMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psubsbMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psubswMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psubusbMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psubuswMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pmulhwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pmullwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pmaddwdMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pcmpeqbMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pcmpeqwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pcmpeqdMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pcmpgtbMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pcmpgtwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pcmpgtdMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void packsswbMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void packssdwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void packuswbMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void punpckhbwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void punpckhwdMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void punpckhdqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void punpcklbwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void punpcklwdMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void punpckldqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pavgbMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pavgwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psadbwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pextrwRegMmx(RegPtr dst, MMXRegPtr src, U8 srcIndex) override;
+    void pinsrwMmxReg(MMXRegPtr dest, RegPtr src, U8 dstIndex) override;
+    void pmaxswMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pmaxubMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pminswMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pminubMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pmovmskbMmxMmx(RegPtr dst, MMXRegPtr src) override;
+    void pmulhuwMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pshufwMmxMmx(MMXRegPtr dst, MMXRegPtr src, U8 mask) override;
+    void maskmovq(MMXRegPtr src, MMXRegPtr mask, MemPtr destAddress) override;
+    void paddqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void psubqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
+    void pmuludqMmxMmx(MMXRegPtr dst, MMXRegPtr src) override;
 
     // --- Code management ---
     U32  getBufferSize() override;
@@ -679,6 +758,12 @@ protected:
     void freeScratch(U32 local);
     U32 allocF64Scratch();
     void freeF64Scratch(U32 local);
+    U32 allocV128Scratch();
+    void freeV128Scratch(U32 local);
+    MMXRegPtr makeWasmMMXReg(U8 hwLocal, U8 emulatedReg);
+    void emitZeroHigh64(MMXRegPtr reg);
+    void emitI64ToMmxLocal(U32 local);
+    void emitMmxLocalToI64(U32 local);
 
     // Common tail of every IfXxx: emit the WASM `if`. The condition is
     // already on the value stack.
@@ -764,6 +849,7 @@ protected:
     // Scratch allocation
     std::array<bool, WASM_TMP_LOCAL_COUNT> m_scratchInUse{};
     std::array<bool, WASM_F64_LOCAL_COUNT> m_f64ScratchInUse{};
+    std::array<bool, WASM_V128_LOCAL_COUNT> m_v128ScratchInUse{};
 
     // The current block's WASM binary (set in commitJIT)
     std::vector<U8> m_wasmBinary;

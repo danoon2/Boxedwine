@@ -29,20 +29,21 @@ multiThreaded: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSE
 #   -sMAXIMUM_MEMORY=3 GiB   – long sessions accumulate many compiled
 #                              blocks; without an explicit max,
 #                              ALLOW_MEMORY_GROWTH caps near 2 GiB.
+WASM_JIT_SIMD_FLAG := -msimd128
 jit: export BUILD_DIR := Build/Jit
-jit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
+jit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT $(WASM_JIT_SIMD_FLAG)
 jit: export SHELL_FILE := shell.html
 # _malloc/_free + HEAPU32: used by boxedwine-shell.js (finishGroupRelocPatching,
 # called from onRuntimeInitialized) to allocate and zero the per-entry reloc
 # slot arrays patched into grouped cache modules.
-jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU32 -sEXPORTED_FUNCTIONS=_main,_wasm_jit_import_from_file,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
+jit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU32 -sEXPORTED_FUNCTIONS=_main,_wasm_jit_import_from_file,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
 jit: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
 # Like the test target but with the WASM JIT enabled, so the CPU test suite
 # exercises JIT-compiled blocks instead of the normal interpreter.
 testJit: export BUILD_DIR := Build/TestJit
-testJit: export EXTRA_CPP_FLAGS := -D__TEST -DBOXEDWINE_WASM_JIT
+testJit: export EXTRA_CPP_FLAGS := -D__TEST -DBOXEDWINE_WASM_JIT $(WASM_JIT_SIMD_FLAG)
 testJit: export SHELL_FILE := shelltest.html
-testJit: export EXTRA_LD_FLAGS := --emrun -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction
+testJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) --emrun -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction
 # Multi-threaded WASM JIT: combines the multiThreaded and jit flag sets.
 # Within a single emulated process, JIT compilation is serialized via
 # memory->mutex, and the inline-TLB arrays are mutated under the same
@@ -52,11 +53,11 @@ testJit: export EXTRA_LD_FLAGS := --emrun -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GR
 # wasmTable.grow()/addFunction(); rare on the emscripten target since
 # typically only one Wine process runs.
 multiThreadedJit: export BUILD_DIR := Build/MultiThreadedJit
-multiThreadedJit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_WASM_JIT -pthread
+multiThreadedJit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_WASM_JIT $(WASM_JIT_SIMD_FLAG) -pthread
 multiThreadedJit: export SHELL_FILE := shell.html
 # HEAPU8/_malloc/_free: used by boxedwine-shell.js (onRuntimeInitialized) to
 # copy server-zip cache entries into wasm memory for _wasm_jit_mt_register.
-multiThreadedJit: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8 -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_register_group,_wasm_jit_mt_register_group_entry,_wasm_jit_mt_register_group_patch,_wasm_jit_mt_prepare_export,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
+multiThreadedJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) -pthread -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8 -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_register_group,_wasm_jit_mt_register_group_entry,_wasm_jit_mt_register_group_patch,_wasm_jit_mt_prepare_export,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
 multiThreadedJit: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
 
 cpus := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)

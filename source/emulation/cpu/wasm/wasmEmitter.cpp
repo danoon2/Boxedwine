@@ -267,6 +267,40 @@ void WasmEmitter::emitF64Store(U32 offset, U32 align) {
 
 void WasmEmitter::emitOp(U8 op) { m_currentBody.push_back(op); }
 
+void WasmEmitter::emitSimdOp(U32 op) {
+    m_currentBody.push_back(0xfd);
+    appendULEB128(m_currentBody, op);
+}
+
+void WasmEmitter::emitSimdLaneOp(U32 op, U8 lane) {
+    emitSimdOp(op);
+    m_currentBody.push_back(lane);
+}
+
+void WasmEmitter::emitI8x16Shuffle(const U8 lanes[16]) {
+    emitSimdOp(WASM_SIMD_I8X16_SHUFFLE);
+    for (U32 i = 0; i < 16; i++) {
+        m_currentBody.push_back(lanes[i]);
+    }
+}
+
+void WasmEmitter::emitV128Const(const U8 bytes[16]) {
+    emitSimdOp(WASM_SIMD_V128_CONST);
+    for (U32 i = 0; i < 16; i++) {
+        m_currentBody.push_back(bytes[i]);
+    }
+}
+
+void WasmEmitter::emitV128Load(U32 offset, U32 align) {
+    emitSimdOp(WASM_SIMD_V128_LOAD);
+    emitMemArg(m_currentBody, align, offset);
+}
+
+void WasmEmitter::emitV128Store(U32 offset, U32 align) {
+    emitSimdOp(WASM_SIMD_V128_STORE);
+    emitMemArg(m_currentBody, align, offset);
+}
+
 void WasmEmitter::emitCall(U32 funcIdx) {
     m_currentBody.push_back(WASM_CALL);
     appendULEB128(m_currentBody, funcIdx);
