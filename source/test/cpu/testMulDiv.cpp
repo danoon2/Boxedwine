@@ -789,11 +789,14 @@ void runBaseMemoryCases(MulDivOp op, int width, const OneOpCase& data, FlagMode 
         if (base == R_AX || base == R_DX) {
             continue;
         }
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         U32 regs[8];
         initAddressRegisters(regs);
         regs[base] = MEM_BASE + 0x1000 + base * 0x80;
 
-        if (base != R_BP) {
+        if (base != R_BP && testRunMemoryBaseDisplacement(base, 0)) {
             AddressCase address;
             makeBaseCase(address, base, regs[base], 0, width);
             beginInstruction(INITIAL_FLAGS);
@@ -803,21 +806,25 @@ void runBaseMemoryCases(MulDivOp op, int width, const OneOpCase& data, FlagMode 
             runOneOperandPreparedMemCase(op, width, data, address, flagMode, name);
         }
 
-        AddressCase disp8;
-        makeBaseCase(disp8, base, regs[base], 0x11, width);
-        beginInstruction(INITIAL_FLAGS);
-        emitOneOperandMem(op, disp8);
-        overwriteFlagsIfNeeded(flagMode);
-        writeRegs(cpu, regs);
-        runOneOperandPreparedMemCase(op, width, data, disp8, flagMode, name);
+        if (testRunMemoryBaseDisplacement(base, 1)) {
+            AddressCase disp8;
+            makeBaseCase(disp8, base, regs[base], 0x11, width);
+            beginInstruction(INITIAL_FLAGS);
+            emitOneOperandMem(op, disp8);
+            overwriteFlagsIfNeeded(flagMode);
+            writeRegs(cpu, regs);
+            runOneOperandPreparedMemCase(op, width, data, disp8, flagMode, name);
+        }
 
-        AddressCase disp32;
-        makeBaseCase(disp32, base, regs[base], 0x123, width);
-        beginInstruction(INITIAL_FLAGS);
-        emitOneOperandMem(op, disp32);
-        overwriteFlagsIfNeeded(flagMode);
-        writeRegs(cpu, regs);
-        runOneOperandPreparedMemCase(op, width, data, disp32, flagMode, name);
+        if (testRunMemoryBaseDisplacement(base, 2)) {
+            AddressCase disp32;
+            makeBaseCase(disp32, base, regs[base], 0x123, width);
+            beginInstruction(INITIAL_FLAGS);
+            emitOneOperandMem(op, disp32);
+            overwriteFlagsIfNeeded(flagMode);
+            writeRegs(cpu, regs);
+            runOneOperandPreparedMemCase(op, width, data, disp32, flagMode, name);
+        }
     }
 }
 
@@ -843,6 +850,9 @@ void runSibMemoryCases(MulDivOp op, int width, const OneOpCase& data, FlagMode f
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 AddressCase address;
                 U32 targetOffset = MEM_BASE + 0x7000 + base * 0x200 + index * 0x20 + shift * 4;
@@ -862,8 +872,14 @@ void runSibMemoryCases(MulDivOp op, int width, const OneOpCase& data, FlagMode f
 
 void runImulBaseMemoryCases(ImulForm form, int width, const ImulCase& data, FlagMode flagMode, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         for (int dst = 0; dst < 8; ++dst) {
             if (dst == base) {
+                continue;
+            }
+            if (!testRunRegister(dst)) {
                 continue;
             }
             U32 regs[8];
@@ -883,6 +899,9 @@ void runImulBaseMemoryCases(ImulForm form, int width, const ImulCase& data, Flag
 
 void runImulAbsoluteMemoryCases(ImulForm form, int width, const ImulCase& data, FlagMode flagMode, const char* name) {
     for (int dst = 0; dst < 8; ++dst) {
+        if (!testRunRegister(dst)) {
+            continue;
+        }
         U32 regs[8];
         AddressCase address;
         initAddressRegisters(regs);
@@ -908,6 +927,9 @@ void runOneOperandCases(MulDivOp op, int width, const OneOpCase* cases, size_t c
                 if ((op == OP_DIV || op == OP_IDIV) && width != 8 && reg == R_DX) {
                     continue;
                 }
+                if (!testRunRegister(reg)) {
+                    continue;
+                }
                 runOneOperandRegCase(op, width, cases[i], reg, (FlagMode)flagMode, name);
             }
             runBaseMemoryCases(op, width, cases[i], (FlagMode)flagMode, name);
@@ -922,6 +944,9 @@ void runImulCases(ImulForm form, int width, const ImulCase* cases, size_t count,
         for (int flagMode = FLAGS_CHECKED; flagMode <= FLAGS_OVERWRITTEN; ++flagMode) {
             for (int dst = 0; dst < 8; ++dst) {
                 for (int src = 0; src < 8; ++src) {
+                    if (!testRunRegisterPair(dst, src)) {
+                        continue;
+                    }
                     runImulRegCase(form, width, cases[i], dst, src, (FlagMode)flagMode, name);
                 }
             }

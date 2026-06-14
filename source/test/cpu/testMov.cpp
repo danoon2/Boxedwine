@@ -288,6 +288,9 @@ void runRegisterCases(MovDirection direction, int width, const MovCase* cases, s
     for (size_t i = 0; i < count; ++i) {
         for (int dst = 0; dst < 8; ++dst) {
             for (int src = 0; src < 8; ++src) {
+                if (!testRunRegisterPair(dst, src)) {
+                    continue;
+                }
                 runRegisterCase(direction, width, dst, src, cases[i], name);
             }
         }
@@ -316,6 +319,9 @@ void runPreparedMemoryCase(MovDirection direction, int reg, int width, const Add
 
 void runBaseMemoryCases(MovDirection direction, int reg, int width, const MovCase& data, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         U32 regs[8];
         initAddressRegisters(regs);
         regs[base] = baseMemoryOffset(base);
@@ -326,7 +332,7 @@ void runBaseMemoryCases(MovDirection direction, int reg, int width, const MovCas
             applyRegValue(regs, reg, width, data.src);
         }
 
-        if (base != R_BP) {
+        if (base != R_BP && testRunMemoryBaseDisplacement(base, 0)) {
             AddressCase address = {segmentBaseForAddressReg(base) + regs[base], memPtr(reg32(base), 0, width)};
             newInstruction(INITIAL_FLAGS);
             emitMovMemReg(direction, address.operand, regForWidth(reg, width));
@@ -334,17 +340,21 @@ void runBaseMemoryCases(MovDirection direction, int reg, int width, const MovCas
             runPreparedMemoryCase(direction, reg, width, address, data, name);
         }
 
-        AddressCase address = {segmentBaseForAddressReg(base) + regs[base] + 0x11, memPtr(reg32(base), 0x11, width)};
-        newInstruction(INITIAL_FLAGS);
-        emitMovMemReg(direction, address.operand, regForWidth(reg, width));
-        writeRegs(cpu, regs);
-        runPreparedMemoryCase(direction, reg, width, address, data, name);
+        if (testRunMemoryBaseDisplacement(base, 1)) {
+            AddressCase address = {segmentBaseForAddressReg(base) + regs[base] + 0x11, memPtr(reg32(base), 0x11, width)};
+            newInstruction(INITIAL_FLAGS);
+            emitMovMemReg(direction, address.operand, regForWidth(reg, width));
+            writeRegs(cpu, regs);
+            runPreparedMemoryCase(direction, reg, width, address, data, name);
+        }
 
-        address = {segmentBaseForAddressReg(base) + regs[base] + 0x123, memPtr(reg32(base), 0x123, width)};
-        newInstruction(INITIAL_FLAGS);
-        emitMovMemReg(direction, address.operand, regForWidth(reg, width));
-        writeRegs(cpu, regs);
-        runPreparedMemoryCase(direction, reg, width, address, data, name);
+        if (testRunMemoryBaseDisplacement(base, 2)) {
+            AddressCase address = {segmentBaseForAddressReg(base) + regs[base] + 0x123, memPtr(reg32(base), 0x123, width)};
+            newInstruction(INITIAL_FLAGS);
+            emitMovMemReg(direction, address.operand, regForWidth(reg, width));
+            writeRegs(cpu, regs);
+            runPreparedMemoryCase(direction, reg, width, address, data, name);
+        }
     }
 }
 
@@ -370,6 +380,9 @@ void runSibMemoryCases(MovDirection direction, int reg, int width, const MovCase
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 U32 targetOffset = MEM_BASE + 0x7000 + base * 0x200 + index * 0x20 + shift * 4;
                 initAddressRegisters(regs);
@@ -393,6 +406,9 @@ void runSibMemoryCases(MovDirection direction, int reg, int width, const MovCase
 void runMemoryCases(MovDirection direction, int width, const MovCase* cases, size_t count, const char* name) {
     for (size_t i = 0; i < count; ++i) {
         for (int reg = 0; reg < 8; ++reg) {
+            if (!testRunRegister(reg)) {
+                continue;
+            }
             runBaseMemoryCases(direction, reg, width, cases[i], name);
             runAbsoluteMemoryCase(direction, reg, width, cases[i], name);
             runSibMemoryCases(direction, reg, width, cases[i], name);
@@ -428,6 +444,9 @@ void runExtendRegisterCases(ExtendMode mode, int dstWidth, int srcWidth, const U
     for (size_t i = 0; i < count; ++i) {
         for (int dst = 0; dst < 8; ++dst) {
             for (int src = 0; src < 8; ++src) {
+                if (!testRunRegisterPair(dst, src)) {
+                    continue;
+                }
                 runExtendRegisterCase(mode, dstWidth, srcWidth, dst, src, cases[i], name);
             }
         }
@@ -452,11 +471,14 @@ void runPreparedExtendMemoryCase(ExtendMode mode, int dst, int dstWidth, int src
 
 void runExtendBaseMemoryCases(ExtendMode mode, int dst, int dstWidth, int srcWidth, U32 value, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         U32 regs[8];
         initAddressRegisters(regs);
         regs[base] = baseMemoryOffset(base);
 
-        if (base != R_BP) {
+        if (base != R_BP && testRunMemoryBaseDisplacement(base, 0)) {
             AddressCase address = {segmentBaseForAddressReg(base) + regs[base], memPtr(reg32(base), 0, srcWidth)};
             newInstruction(INITIAL_FLAGS);
             emitMovExtendRegMem(mode, dst, dstWidth, address.operand);
@@ -464,17 +486,21 @@ void runExtendBaseMemoryCases(ExtendMode mode, int dst, int dstWidth, int srcWid
             runPreparedExtendMemoryCase(mode, dst, dstWidth, srcWidth, address, value, name);
         }
 
-        AddressCase address = {segmentBaseForAddressReg(base) + regs[base] + 0x11, memPtr(reg32(base), 0x11, srcWidth)};
-        newInstruction(INITIAL_FLAGS);
-        emitMovExtendRegMem(mode, dst, dstWidth, address.operand);
-        writeRegs(cpu, regs);
-        runPreparedExtendMemoryCase(mode, dst, dstWidth, srcWidth, address, value, name);
+        if (testRunMemoryBaseDisplacement(base, 1)) {
+            AddressCase address = {segmentBaseForAddressReg(base) + regs[base] + 0x11, memPtr(reg32(base), 0x11, srcWidth)};
+            newInstruction(INITIAL_FLAGS);
+            emitMovExtendRegMem(mode, dst, dstWidth, address.operand);
+            writeRegs(cpu, regs);
+            runPreparedExtendMemoryCase(mode, dst, dstWidth, srcWidth, address, value, name);
+        }
 
-        address = {segmentBaseForAddressReg(base) + regs[base] + 0x123, memPtr(reg32(base), 0x123, srcWidth)};
-        newInstruction(INITIAL_FLAGS);
-        emitMovExtendRegMem(mode, dst, dstWidth, address.operand);
-        writeRegs(cpu, regs);
-        runPreparedExtendMemoryCase(mode, dst, dstWidth, srcWidth, address, value, name);
+        if (testRunMemoryBaseDisplacement(base, 2)) {
+            AddressCase address = {segmentBaseForAddressReg(base) + regs[base] + 0x123, memPtr(reg32(base), 0x123, srcWidth)};
+            newInstruction(INITIAL_FLAGS);
+            emitMovExtendRegMem(mode, dst, dstWidth, address.operand);
+            writeRegs(cpu, regs);
+            runPreparedExtendMemoryCase(mode, dst, dstWidth, srcWidth, address, value, name);
+        }
     }
 }
 
@@ -497,6 +523,9 @@ void runExtendSibMemoryCases(ExtendMode mode, int dst, int dstWidth, int srcWidt
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 U32 targetOffset = MEM_BASE + 0xa000 + base * 0x200 + index * 0x20 + shift * 4;
                 initAddressRegisters(regs);
@@ -517,6 +546,9 @@ void runExtendSibMemoryCases(ExtendMode mode, int dst, int dstWidth, int srcWidt
 void runExtendMemoryCases(ExtendMode mode, int dstWidth, int srcWidth, const U32* cases, size_t count, const char* name) {
     for (size_t i = 0; i < count; ++i) {
         for (int dst = 0; dst < 8; ++dst) {
+            if (!testRunRegister(dst)) {
+                continue;
+            }
             runExtendBaseMemoryCases(mode, dst, dstWidth, srcWidth, cases[i], name);
             runExtendAbsoluteMemoryCase(mode, dst, dstWidth, srcWidth, cases[i], name);
             runExtendSibMemoryCases(mode, dst, dstWidth, srcWidth, cases[i], name);
@@ -572,6 +604,9 @@ void runSegmentToRegCases(bool bigDestination, const char* name) {
     for (int segIndex = 0; segIndex < 6; ++segIndex) {
         int seg = VALID_SEGMENTS[segIndex];
         for (int reg = 0; reg < 8; ++reg) {
+            if (!testRunRegister(reg)) {
+                continue;
+            }
             U32 expectedRegs[8];
             U32 segValues[6];
             U32 segAddresses[6];
@@ -621,6 +656,9 @@ void runMemoryOrRegToSegmentCases(bool bigSource, const char* name) {
         U32 selector = selectorForSegment(seg);
 
         for (int reg = 0; reg < 8; ++reg) {
+            if (!testRunRegister(reg)) {
+                continue;
+            }
             U32 expectedRegs[8];
             newInstruction(INITIAL_FLAGS);
             emitMovRegMemToSreg(seg, reg, true, bigSource);
@@ -720,6 +758,9 @@ void emitMovRegImmediate(int reg, int width, U32 value) {
 void runRegImmediateCases(int width, const MovCase* cases, size_t count, const char* name) {
     for (size_t i = 0; i < count; ++i) {
         for (int reg = 0; reg < 8; ++reg) {
+            if (!testRunRegister(reg)) {
+                continue;
+            }
             U32 expectedRegs[8];
             newInstruction(INITIAL_FLAGS);
             emitMovRegImmediate(reg, width, cases[i].src);
@@ -761,6 +802,9 @@ void emitMovRegImmediateC6C7(int reg, int width, U32 value) {
 void runRegImmediateC6C7Cases(int width, const MovCase* cases, size_t count, const char* name) {
     for (size_t i = 0; i < count; ++i) {
         for (int reg = 0; reg < 8; ++reg) {
+            if (!testRunRegister(reg)) {
+                continue;
+            }
             U32 expectedRegs[8];
             newInstruction(INITIAL_FLAGS);
             emitMovRegImmediateC6C7(reg, width, cases[i].src);

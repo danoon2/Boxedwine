@@ -376,6 +376,9 @@ void runPreparedMemoryCase(int reg, int width, U32 linearAddress, const XchgCase
 
 void runBaseMemoryCases(int reg, int width, const XchgCase& data, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         U32 regs[8];
         U32 baseOffset = baseMemoryOffset(base, width, reg, data.src);
         initAddressRegisters(regs);
@@ -384,22 +387,26 @@ void runBaseMemoryCases(int reg, int width, const XchgCase& data, const char* na
             applyRegValue(regs, reg, width, data.src);
         }
 
-        if (base != R_BP) {
+        if (base != R_BP && testRunMemoryBaseDisplacement(base, 0)) {
             newInstruction(INITIAL_FLAGS);
             emitXchg(memPtr(reg32(base), 0, width), regForWidth(reg, width));
             writeRegs(cpu, regs);
             runPreparedMemoryCase(reg, width, segmentBaseForAddressReg(base) + regs[base], data, name);
         }
 
-        newInstruction(INITIAL_FLAGS);
-        emitXchg(memPtr(reg32(base), 0x11, width), regForWidth(reg, width));
-        writeRegs(cpu, regs);
-        runPreparedMemoryCase(reg, width, segmentBaseForAddressReg(base) + regs[base] + 0x11, data, name);
+        if (testRunMemoryBaseDisplacement(base, 1)) {
+            newInstruction(INITIAL_FLAGS);
+            emitXchg(memPtr(reg32(base), 0x11, width), regForWidth(reg, width));
+            writeRegs(cpu, regs);
+            runPreparedMemoryCase(reg, width, segmentBaseForAddressReg(base) + regs[base] + 0x11, data, name);
+        }
 
-        newInstruction(INITIAL_FLAGS);
-        emitXchg(memPtr(reg32(base), 0x123, width), regForWidth(reg, width));
-        writeRegs(cpu, regs);
-        runPreparedMemoryCase(reg, width, segmentBaseForAddressReg(base) + regs[base] + 0x123, data, name);
+        if (testRunMemoryBaseDisplacement(base, 2)) {
+            newInstruction(INITIAL_FLAGS);
+            emitXchg(memPtr(reg32(base), 0x123, width), regForWidth(reg, width));
+            writeRegs(cpu, regs);
+            runPreparedMemoryCase(reg, width, segmentBaseForAddressReg(base) + regs[base] + 0x123, data, name);
+        }
     }
 }
 
@@ -422,6 +429,9 @@ void runSibMemoryCases(int reg, int width, const XchgCase& data, const char* nam
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 U32 targetOffset = MEM_BASE + 0x7000 + base * 0x200 + index * 0x20 + shift * 4;
                 initAddressRegisters(regs);
@@ -445,6 +455,9 @@ void runRegisterCases(int width, const XchgCase* cases, size_t count, const char
     for (size_t i = 0; i < count; ++i) {
         for (int dst = 0; dst < 8; ++dst) {
             for (int src = 0; src < 8; ++src) {
+                if (!testRunRegisterPair(dst, src)) {
+                    continue;
+                }
                 U32 expectedRegs[8];
 
                 newInstruction(INITIAL_FLAGS);
@@ -472,6 +485,9 @@ void runRegisterCases(int width, const XchgCase* cases, size_t count, const char
 void runMemoryCases(int width, const XchgCase* cases, size_t count, const char* name) {
     for (size_t i = 0; i < count; ++i) {
         for (int reg = 0; reg < 8; ++reg) {
+            if (!testRunRegister(reg)) {
+                continue;
+            }
             runBaseMemoryCases(reg, width, cases[i], name);
             runAbsoluteMemoryCases(reg, width, cases[i], name);
             runSibMemoryCases(reg, width, cases[i], name);
@@ -603,10 +619,16 @@ void runCmpXchgCases(int width, bool big, const CmpXchgCase* cases, size_t count
         for (int flagMode = 0; flagMode < 3; ++flagMode) {
             for (int dst = 0; dst < 8; ++dst) {
                 for (int src = 0; src < 8; ++src) {
+                    if (!testRunRegisterPair(dst, src)) {
+                        continue;
+                    }
                     runCmpXchgRegCase(width, big, dst, src, cases[i], flagMode, name);
                 }
             }
             for (int src = 0; src < 8; ++src) {
+                if (!testRunRegister(src)) {
+                    continue;
+                }
                 runCmpXchgMemCase(width, big, src, cases[i], flagMode, false, false, false, name);
                 runCmpXchgMemCase(width, big, src, cases[i], flagMode, false, true, false, name);
                 runCmpXchgMemCase(width, big, src, cases[i], flagMode, false, false, true, name);

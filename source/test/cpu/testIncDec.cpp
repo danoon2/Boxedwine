@@ -502,11 +502,14 @@ void runPreparedMemoryCase(IncDecOp op, int width, U32 linearAddress, const IncD
 
 void runBaseMemoryCases(IncDecOp op, int width, const IncDecCase& data, bool lockPrefix, FlagMode flagMode, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         U32 regs[8];
         initAddressRegisters(regs);
         regs[base] = MEM_BASE + 0x1000 + base * 0x80;
 
-        if (base != R_BP) {
+        if (base != R_BP && testRunMemoryBaseDisplacement(base, 0)) {
             beginInstruction(data.initialFlags);
             emitMem(op, memPtr(reg32(base), 0, width), lockPrefix);
             overwriteFlagsIfNeeded(flagMode);
@@ -514,17 +517,21 @@ void runBaseMemoryCases(IncDecOp op, int width, const IncDecCase& data, bool loc
             runPreparedMemoryCase(op, width, segmentBaseForAddressReg(base) + regs[base], data, flagMode, name);
         }
 
-        beginInstruction(data.initialFlags);
-        emitMem(op, memPtr(reg32(base), 0x11, width), lockPrefix);
-        overwriteFlagsIfNeeded(flagMode);
-        writeRegs(cpu, regs);
-        runPreparedMemoryCase(op, width, segmentBaseForAddressReg(base) + regs[base] + 0x11, data, flagMode, name);
+        if (testRunMemoryBaseDisplacement(base, 1)) {
+            beginInstruction(data.initialFlags);
+            emitMem(op, memPtr(reg32(base), 0x11, width), lockPrefix);
+            overwriteFlagsIfNeeded(flagMode);
+            writeRegs(cpu, regs);
+            runPreparedMemoryCase(op, width, segmentBaseForAddressReg(base) + regs[base] + 0x11, data, flagMode, name);
+        }
 
-        beginInstruction(data.initialFlags);
-        emitMem(op, memPtr(reg32(base), 0x123, width), lockPrefix);
-        overwriteFlagsIfNeeded(flagMode);
-        writeRegs(cpu, regs);
-        runPreparedMemoryCase(op, width, segmentBaseForAddressReg(base) + regs[base] + 0x123, data, flagMode, name);
+        if (testRunMemoryBaseDisplacement(base, 2)) {
+            beginInstruction(data.initialFlags);
+            emitMem(op, memPtr(reg32(base), 0x123, width), lockPrefix);
+            overwriteFlagsIfNeeded(flagMode);
+            writeRegs(cpu, regs);
+            runPreparedMemoryCase(op, width, segmentBaseForAddressReg(base) + regs[base] + 0x123, data, flagMode, name);
+        }
     }
 }
 
@@ -547,6 +554,9 @@ void runSibMemoryCases(IncDecOp op, int width, const IncDecCase& data, bool lock
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 U32 targetOffset = MEM_BASE + 0x7000 + base * 0x200 + index * 0x20 + shift * 4;
                 initAddressRegisters(regs);
@@ -568,6 +578,9 @@ void runRegisterCases(IncDecOp op, int width, const IncDecCase* cases, size_t co
     for (size_t i = 0; i < count; ++i) {
         for (int flagMode = FLAGS_CHECKED; flagMode <= FLAGS_OVERWRITTEN; ++flagMode) {
             for (int reg = 0; reg < 8; ++reg) {
+                if (!testRunRegister(reg)) {
+                    continue;
+                }
                 runRegisterCase(op, reg, width, cases[i], (FlagMode)flagMode, name);
             }
         }

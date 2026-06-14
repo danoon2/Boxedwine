@@ -26,6 +26,7 @@ namespace {
 
 constexpr U32 TEST_PAGES_PER_SEG = 32;
 
+std::atomic<bool> fastMode(false);
 std::mutex testContextCreateMutex;
 std::unique_ptr<TestContext> serialContext;
 std::vector<std::unique_ptr<TestContext>> parallelContexts;
@@ -109,6 +110,15 @@ void createContext(TestContext& context) {
     context.memory->mmap(context.thread, TEST_HEAP_ADDRESS, TEST_PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
     setupSegments(context);
     resetMemory(context);
+}
+
+bool intInList(int value, const int* values, size_t count) {
+    for (size_t i = 0; i < count; ++i) {
+        if (values[i] == value) {
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace
@@ -207,6 +217,142 @@ void testFail(const char* msg, ...) {
     context.failures.push_back(text);
     if (!runningParallelTest) {
         failed("%s", text);
+    }
+}
+
+bool testIsFastMode() {
+    return fastMode.load();
+}
+
+void testSetFastMode(bool fast) {
+    fastMode.store(fast);
+}
+
+bool testShouldRunRegister(bool fast, int reg) {
+    if (!fast) {
+        return true;
+    }
+    static const int fastRegs[] = {0, 1, 3, 4, 5, 7};
+    return intInList(reg, fastRegs, sizeof(fastRegs) / sizeof(fastRegs[0]));
+}
+
+bool testShouldRunRegisterPair(bool fast, int dst, int src) {
+    if (!fast) {
+        return true;
+    }
+    static const int fastPairs[][2] = {
+        {0, 0},
+        {0, 1},
+        {1, 0},
+        {2, 3},
+        {3, 2},
+        {4, 5},
+        {5, 4},
+        {6, 7},
+        {7, 6},
+        {4, 0},
+        {0, 4}
+    };
+    for (size_t i = 0; i < sizeof(fastPairs) / sizeof(fastPairs[0]); ++i) {
+        if (fastPairs[i][0] == dst && fastPairs[i][1] == src) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool testShouldRunMemoryBase(bool fast, int base) {
+    if (!fast) {
+        return true;
+    }
+    static const int fastBases[] = {0, 3, 4, 5, 6};
+    return intInList(base, fastBases, sizeof(fastBases) / sizeof(fastBases[0]));
+}
+
+bool testShouldRunMemoryBaseDisplacement(bool fast, int base, int displacementIndex) {
+    if (!fast) {
+        return true;
+    }
+    if (!testShouldRunMemoryBase(true, base)) {
+        return false;
+    }
+    if (displacementIndex == 0) {
+        return base == 0 || base == 4;
+    }
+    if (displacementIndex == 1) {
+        return base == 3 || base == 5;
+    }
+    return base == 6;
+}
+
+bool testShouldRunMemorySib(bool fast, int base, int index, int shift) {
+    if (!fast) {
+        return true;
+    }
+    static const int fastSibCases[][3] = {
+        {0, 1, 0},
+        {0, 6, 2},
+        {1, 3, 2},
+        {2, 7, 0},
+        {3, 2, 1},
+        {4, 1, 3},
+        {4, 7, 2},
+        {5, 0, 3},
+        {5, 4, 0},
+        {5, 6, 1},
+        {6, 0, 3},
+        {6, 5, 0},
+        {7, 3, 1}
+    };
+    for (size_t i = 0; i < sizeof(fastSibCases) / sizeof(fastSibCases[0]); ++i) {
+        if (fastSibCases[i][0] == base && fastSibCases[i][1] == index && fastSibCases[i][2] == shift) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool testRunRegister(int reg) {
+    return testShouldRunRegister(testIsFastMode(), reg);
+}
+
+bool testRunRegisterPair(int dst, int src) {
+    return testShouldRunRegisterPair(testIsFastMode(), dst, src);
+}
+
+bool testRunMemoryBase(int base) {
+    return testShouldRunMemoryBase(testIsFastMode(), base);
+}
+
+bool testRunMemoryBaseDisplacement(int base, int displacementIndex) {
+    return testShouldRunMemoryBaseDisplacement(testIsFastMode(), base, displacementIndex);
+}
+
+bool testRunMemorySib(int base, int index, int shift) {
+    return testShouldRunMemorySib(testIsFastMode(), base, index, shift);
+}
+
+void testFastModeSelectionHelpers() {
+    if (!testShouldRunRegisterPair(false, 2, 6) ||
+            !testShouldRunMemorySib(false, 2, 4, 3) ||
+            !testShouldRunMemoryBaseDisplacement(false, 7, 2)) {
+        testFail("full mode should keep exhaustive combinations");
+    }
+    if (!testShouldRunRegisterPair(true, 4, 0) ||
+            !testShouldRunRegisterPair(true, 6, 7) ||
+            testShouldRunRegisterPair(true, 2, 6)) {
+        testFail("fast mode register pair sampling");
+    }
+    if (!testShouldRunMemoryBaseDisplacement(true, 0, 0) ||
+            !testShouldRunMemoryBaseDisplacement(true, 5, 1) ||
+            !testShouldRunMemoryBaseDisplacement(true, 6, 2) ||
+            testShouldRunMemoryBaseDisplacement(true, 7, 2)) {
+        testFail("fast mode base/displacement sampling");
+    }
+    if (!testShouldRunMemorySib(true, 4, 7, 2) ||
+            !testShouldRunMemorySib(true, 5, 0, 3) ||
+            testShouldRunMemorySib(true, 2, 4, 3)) {
+        testFail("fast mode sib sampling");
     }
 }
 

@@ -787,12 +787,15 @@ void runAbsoluteBoundCase(int width, const BoundCase& data, int reg, const char*
 
 void runBaseBoundCases(int width, const BoundCase& data, int reg, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         U32 regs[8];
         initAddressRegisters(regs);
         regs[base] = MEM_BASE + 0x1000 + base * 0x80;
         setBoundRegValue(regs, reg, width, data.value);
 
-        if (base != R_BP) {
+        if (base != R_BP && testRunMemoryBaseDisplacement(base, 0)) {
             AddressCase noDisp;
             makeBaseCase(noDisp, base, regs[base], 0, width);
             beginInstruction();
@@ -800,17 +803,21 @@ void runBaseBoundCases(int width, const BoundCase& data, int reg, const char* na
             runPreparedBoundCase(width, data, reg, noDisp, regs, name);
         }
 
-        AddressCase disp8;
-        makeBaseCase(disp8, base, regs[base], 0x11, width);
-        beginInstruction();
-        emitBound(disp8, reg, width);
-        runPreparedBoundCase(width, data, reg, disp8, regs, name);
+        if (testRunMemoryBaseDisplacement(base, 1)) {
+            AddressCase disp8;
+            makeBaseCase(disp8, base, regs[base], 0x11, width);
+            beginInstruction();
+            emitBound(disp8, reg, width);
+            runPreparedBoundCase(width, data, reg, disp8, regs, name);
+        }
 
-        AddressCase disp32;
-        makeBaseCase(disp32, base, regs[base], 0x123, width);
-        beginInstruction();
-        emitBound(disp32, reg, width);
-        runPreparedBoundCase(width, data, reg, disp32, regs, name);
+        if (testRunMemoryBaseDisplacement(base, 2)) {
+            AddressCase disp32;
+            makeBaseCase(disp32, base, regs[base], 0x123, width);
+            beginInstruction();
+            emitBound(disp32, reg, width);
+            runPreparedBoundCase(width, data, reg, disp32, regs, name);
+        }
     }
 }
 
@@ -821,6 +828,9 @@ void runSibBoundCases(int width, const BoundCase& data, int reg, const char* nam
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 AddressCase address;
                 U32 targetOffset = MEM_BASE + 0x7000 + base * 0x200 + index * 0x20 + shift * 4;
@@ -840,6 +850,9 @@ void runSibBoundCases(int width, const BoundCase& data, int reg, const char* nam
 void runBoundCases(int width, const BoundCase* cases, size_t count, const char* name) {
     for (size_t i = 0; i < count; ++i) {
         for (int reg = 0; reg < 8; ++reg) {
+            if (!testRunRegister(reg)) {
+                continue;
+            }
             runAbsoluteBoundCase(width, cases[i], reg, name);
 
             if (cases[i].value < 0) {
@@ -1148,6 +1161,9 @@ void runMemoryAccess16Cases(const char* name) {
     static const S32 disp16Values[] = {0x1000, -0x1000, 0x10010};
 
     for (int rm = 0; rm < 8; ++rm) {
+        if (!testRunMemoryBase(rm)) {
+            continue;
+        }
         for (size_t valueIndex = 0; valueIndex < caseCount(values); ++valueIndex) {
             U32 regs[8];
             bool directAddress = rm == 6;
@@ -1156,18 +1172,27 @@ void runMemoryAccess16Cases(const char* name) {
             U16 expected = effectiveAddress16(rm, regs, disp, directAddress);
             U32 segment = segmentForAddress16(rm, directAddress);
             for (int dst = 0; dst < 8; ++dst) {
+                if (!testRunRegister(dst)) {
+                    continue;
+                }
                 runMemoryAccess16Encoding((U8)rm, false, directAddress, disp, regs, expected, segment, dst, name);
             }
         }
     }
 
     for (int rm = 0; rm < 8; ++rm) {
+        if (!testRunMemoryBase(rm)) {
+            continue;
+        }
         for (size_t i = 0; i < caseCount(disp8Values); ++i) {
             U32 regs[8];
             writeMemoryAccess16Regs(regs, rm, 0x1000, 0x0100);
             U16 expected = effectiveAddress16(rm, regs, disp8Values[i], false);
             U32 segment = segmentForAddress16(rm, false);
             for (int dst = 0; dst < 8; ++dst) {
+                if (!testRunRegister(dst)) {
+                    continue;
+                }
                 runMemoryAccess16Encoding((U8)(0x40 | rm), true, false, disp8Values[i], regs, expected, segment, dst, name);
             }
         }
@@ -1178,6 +1203,9 @@ void runMemoryAccess16Cases(const char* name) {
             U16 expected = effectiveAddress16(rm, regs, disp16Values[i], false);
             U32 segment = segmentForAddress16(rm, false);
             for (int dst = 0; dst < 8; ++dst) {
+                if (!testRunRegister(dst)) {
+                    continue;
+                }
                 runMemoryAccess16Encoding((U8)(0x80 | rm), false, true, disp16Values[i], regs, expected, segment, dst, name);
             }
         }
@@ -1289,6 +1317,12 @@ void runMemoryAccess32Cases(const char* name) {
             if (hasSib) {
                 continue;
             }
+            if (!testRunMemoryBase(rm) && !(mod == 0 && rm == R_BP)) {
+                continue;
+            }
+            if (!testRunMemoryBaseDisplacement(rm, mod) && !(mod == 0 && rm == R_BP)) {
+                continue;
+            }
             int dispCount = mod == 0 ? 1 : (mod == 1 ? (int)caseCount(disp8Values) : (int)caseCount(disp32Values));
             for (int dispIndex = 0; dispIndex < dispCount; ++dispIndex) {
                 U32 regs[8];
@@ -1310,6 +1344,9 @@ void runMemoryAccess32Cases(const char* name) {
                 U32 expected = effectiveAddress32(mod, rm, false, 0, regs, disp);
                 U32 segment = segmentForAddress32(mod, rm, false, 0);
                 for (int dst = 0; dst < 8; ++dst) {
+                    if (!testRunRegister(dst)) {
+                        continue;
+                    }
                     runMemoryAccess32Encoding((U8)((mod << 6) | rm), false, 0, hasDisp8, hasDisp32, disp, regs, expected, segment, dst, name);
                 }
             }
@@ -1321,6 +1358,9 @@ void runMemoryAccess32Cases(const char* name) {
         for (int base = 0; base < 8; ++base) {
             for (int index = 0; index < 8; ++index) {
                 for (int scale = 0; scale < 4; ++scale) {
+                    if (!testRunMemorySib(base, index, scale)) {
+                        continue;
+                    }
                     U8 sib = (U8)((scale << 6) | (index << 3) | base);
                     for (int dispIndex = 0; dispIndex < dispCount; ++dispIndex) {
                         U32 regs[8];
@@ -1361,6 +1401,9 @@ void runMemoryAccess32Cases(const char* name) {
                         U32 expected = effectiveAddress32(mod, R_SP, true, sib, regs, disp);
                         U32 segment = segmentForAddress32(mod, R_SP, true, sib);
                         for (int dst = 0; dst < 8; ++dst) {
+                            if (!testRunRegister(dst)) {
+                                continue;
+                            }
                             runMemoryAccess32Encoding((U8)((mod << 6) | R_SP), true, sib, hasDisp8, hasDisp32, disp, regs, expected, segment, dst, name);
                         }
                     }

@@ -44,5 +44,18 @@ void testPushCode32(int value);
 void testRunCPU();
 void testFail(const char* msg, ...);
 void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCount = 0);
+bool testIsFastMode();
+void testSetFastMode(bool fast);
+bool testShouldRunRegister(bool fast, int reg);
+bool testShouldRunRegisterPair(bool fast, int dst, int src);
+bool testShouldRunMemoryBase(bool fast, int base);
+bool testShouldRunMemoryBaseDisplacement(bool fast, int base, int displacementIndex);
+bool testShouldRunMemorySib(bool fast, int base, int index, int shift);
+bool testRunRegister(int reg);
+bool testRunRegisterPair(int dst, int src);
+bool testRunMemoryBase(int base);
+bool testRunMemoryBaseDisplacement(int base, int displacementIndex);
+bool testRunMemorySib(int base, int index, int shift);
+void testFastModeSelectionHelpers();
 
 #endif

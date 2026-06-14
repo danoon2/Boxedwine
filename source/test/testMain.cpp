@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "cpu/testAdc.h"
 #include "cpu/testAdd.h"
@@ -60,6 +61,7 @@ int totalFails = 0;
 
 const TestEntry TEST_ENTRIES[] = {
     {testDspAudioWriteMath, "Test DSP Audio Write Math"},
+    {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
     {testMemoryAccess32, "Test 32-bit Memory Access"},
     {testMemoryAccess16, "Test 16-bit Memory Access"},
     {testAddR8R8_0x000, "Test Add R8,R8 000"},
@@ -666,8 +668,40 @@ void failed(const char* msg, ...) {
     totalFails++;
 }
 
-int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCount = 0) {
+struct TestRunArgs {
+    size_t startEntry = 0;
+    size_t requestedCount = 0;
+    U32 workerCount = 0;
+    bool fast = false;
+};
+
+TestRunArgs parseTestRunArgs(int argc, char** argv) {
+    TestRunArgs args;
+    int positional = 0;
+
+    for (int i = 1; i < argc; ++i) {
+        if (!strcmp(argv[i], "-fast")) {
+            args.fast = true;
+            continue;
+        }
+
+        if (positional == 0) {
+            args.startEntry = (size_t)strtoul(argv[i], nullptr, 0);
+        } else if (positional == 1) {
+            args.requestedCount = (size_t)strtoul(argv[i], nullptr, 0);
+        } else if (positional == 2) {
+            args.workerCount = (U32)strtoul(argv[i], nullptr, 0);
+        }
+        ++positional;
+    }
+
+    return args;
+}
+
+int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCount = 0, bool fast = false) {
     size_t entryCount = sizeof(TEST_ENTRIES) / sizeof(TEST_ENTRIES[0]);
+    totalFails = 0;
+    testSetFastMode(fast);
 
     if (startEntry > entryCount) {
         startEntry = entryCount;
@@ -694,6 +728,9 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
     }
     
     printf("Running %zu Test tests with %d threads", runCount, workerCount);
+    if (fast) {
+        printf(" in fast mode");
+    }
     if (startEntry || runCount != entryCount) {
         printf(" starting at %zu", startEntry);
     }
@@ -711,10 +748,8 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
 }
 
 int runTestTestsFromArgs(int argc, char** argv) {
-    size_t startEntry = argc > 1 ? (size_t)strtoul(argv[1], nullptr, 0) : 0;
-    size_t requestedCount = argc > 2 ? (size_t)strtoul(argv[2], nullptr, 0) : 0;
-    U32 workerCount = argc > 3 ? (U32)strtoul(argv[3], nullptr, 0) : 0;
-    return runTestTests(startEntry, requestedCount, workerCount);
+    TestRunArgs args = parseTestRunArgs(argc, argv);
+    return runTestTests(args.startEntry, args.requestedCount, args.workerCount, args.fast);
 }
 
 #ifdef __MACH__
@@ -730,11 +765,13 @@ extern "C" BOXEDWINE_TEST_EXPORT int runCpuTestsMac(void) {
     const char* start = getenv("BOXEDWINE_TEST_START");
     const char* count = getenv("BOXEDWINE_TEST_COUNT");
     const char* threads = getenv("BOXEDWINE_TEST_THREADS");
-    if (start || count || threads) {
+    const char* fast = getenv("BOXEDWINE_TEST_FAST");
+    if (start || count || threads || fast) {
         return runTestTests(
             start ? (size_t)strtoul(start, nullptr, 0) : 0,
             count ? (size_t)strtoul(count, nullptr, 0) : 0,
-            threads ? (U32)strtoul(threads, nullptr, 0) : 0);
+            threads ? (U32)strtoul(threads, nullptr, 0) : 0,
+            fast && strcmp(fast, "0"));
     }
     return runTestTests();
 }
