@@ -56,6 +56,11 @@ public:
 
     virtual void preOp(DecodedOp* op) {}
     virtual void onBlockPreCommit(DecodedOp* op) {}
+    // Consulted per op while calculateLongestBlock extends a block (never for
+    // the block's first op). Returning true ends the block before `op`, so a
+    // backend can honor profile-guided split hints that want a hot interior
+    // target compiled as its own block-start entry.
+    virtual bool shouldStopBlockBefore(U32 eip, DecodedOp* op) { return false; }
     virtual void readMMU(RegPtr dest, RegPtr index, U32 offset = 0) = 0;
     virtual void readMMU(RegPtr dest, U32 index) = 0;
 

@@ -175,6 +175,24 @@ void DecodedOpCache::clear() {
 	pendingDeallocs.clear();
 }
 
+#ifdef BOXEDWINE_JIT
+void DecodedOpCache::collectAllJitBlocks(std::vector<void*>& out) {
+	for (U32 firstIndex = 0; firstIndex < FIRST_INDEX_SIZE; firstIndex++) {
+		if (pageData[firstIndex] == emptyPageCacheLevel1) continue;
+		for (U32 secondIndex = 0; secondIndex < SECOND_INDEX_SIZE; secondIndex++) {
+			DecodedOpPageCache* page = pageData[firstIndex][secondIndex];
+			if (!page) continue;
+			for (U32 i = 0; i < K_PAGE_SIZE; i++) {
+				DecodedOp* op = page->ops[i];
+				if (op && op->pfnJitCode) {
+					out.push_back(op->pfnJitCode);
+				}
+			}
+		}
+	}
+}
+#endif
+
 void DecodedOpCache::clearPendingDeallocs(U32 threadId) {
 	if (pendingDeallocs.count(threadId)) {
 		for (auto& op : pendingDeallocs[threadId]) {

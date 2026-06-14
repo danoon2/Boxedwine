@@ -1124,6 +1124,29 @@ void runFNSTSWMemory(bool big, float left, float right, U32 expectedStatus, cons
     }
 }
 
+void runFNSTSWAxAfterDirtyEax(bool big, const char* name) {
+    begin(big);
+    fninit();
+    pushCode8(0xb8);
+    if (big) {
+        pushCode32(0x12345678); // mov eax, imm32
+    } else {
+        pushCode16(0x5678); // mov ax, imm16
+    }
+    fnstswAx();
+    pushCode8(0x8b);
+    pushCode8(0xd8); // mov ebx/eax or bx/ax
+
+    runTestCPU();
+    U32 expected = big ? 0x12340000 : 0;
+    if (cpu->reg[3].u32 != expected) {
+        failed("%s ebx expected=%x actual=%x", name, expected, cpu->reg[3].u32);
+    }
+    if (cpu->reg[0].u32 != expected) {
+        failed("%s eax expected=%x actual=%x", name, expected, cpu->reg[0].u32);
+    }
+}
+
 U32 expectedFCOMIFlags(float left, float right) {
     if (std::isnan(left) || std::isnan(right)) {
         return CF | PF | ZF;
@@ -1541,6 +1564,7 @@ void runDF(bool big) {
     runFCOMI(big, 0xdf, 5, true, 2.0f, 3.0f, "fucomip df");
     runFCOMI(big, 0xdf, 6, true, 3.0f, 2.0f, "fcomip df");
     runFCOMI(big, 0xdf, 6, true, floatFromBits(F32_QNAN), 2.0f, "fcomip df unordered");
+    runFNSTSWAxAfterDirtyEax(big, "fnstsw ax after dirty eax df");
     runFFREEP(big, "ffreep df");
 }
 

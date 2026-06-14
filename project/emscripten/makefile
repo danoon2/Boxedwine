@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test multiThreaded
+.PHONY: default all clean release test multiThreaded jit testJit multiThreadedJit
 
 ZIP_ASSET_FILES := $(wildcard *.zip)
 
@@ -19,6 +19,45 @@ multiThreaded: export BUILD_DIR := Build/MultiThreaded
 multiThreaded: export SHELL_FILE := shell.html
 multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-multithreaded-audio.js
 multiThreaded: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
+# WASM JIT build: compiles each basic block to a standalone WASM module that
+# is instantiated at runtime (inspired by the QEMU wasm64 TCG backend).
+# Key flags:
+#   BOXEDWINE_WASM_JIT       – enables the new wasm/ JIT backend
+#   BOXEDWINE_JIT            – pulled in automatically by boxedwine.h
+#   -sALLOW_TABLE_GROWTH     – allows addFunction() to grow the wasmTable
+#   -sALLOW_MEMORY_GROWTH    – compiled blocks can allocate their own memory
+#   -sMAXIMUM_MEMORY=3 GiB   – long sessions accumulate many compiled
+#                              blocks; without an explicit max,
+#                              ALLOW_MEMORY_GROWTH caps near 2 GiB.
+jit: export BUILD_DIR := Build/Jit
+jit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT
+jit: export SHELL_FILE := shell.html
+# _malloc/_free + HEAPU32: used by boxedwine-shell.js (finishGroupRelocPatching,
+# called from onRuntimeInitialized) to allocate and zero the per-entry reloc
+# slot arrays patched into grouped cache modules.
+jit: export EXTRA_LD_FLAGS := -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU32 -sEXPORTED_FUNCTIONS=_main,_wasm_jit_import_from_file,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
+jit: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
+# Like the test target but with the WASM JIT enabled, so the CPU test suite
+# exercises JIT-compiled blocks instead of the normal interpreter.
+testJit: export BUILD_DIR := Build/TestJit
+testJit: export EXTRA_CPP_FLAGS := -D__TEST -DBOXEDWINE_WASM_JIT
+testJit: export SHELL_FILE := shelltest.html
+testJit: export EXTRA_LD_FLAGS := --emrun -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction
+# Multi-threaded WASM JIT: combines the multiThreaded and jit flag sets.
+# Within a single emulated process, JIT compilation is serialized via
+# memory->mutex, and the inline-TLB arrays are mutated under the same
+# mutex (reads from the JIT fast path are unsynchronized U32 loads — same
+# hazard the existing BOXEDWINE_MEM_CACHE arrays already accept).
+# Cross-process concurrent compilation could in principle race on
+# wasmTable.grow()/addFunction(); rare on the emscripten target since
+# typically only one Wine process runs.
+multiThreadedJit: export BUILD_DIR := Build/MultiThreadedJit
+multiThreadedJit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_WASM_JIT -pthread
+multiThreadedJit: export SHELL_FILE := shell.html
+# HEAPU8/_malloc/_free: used by boxedwine-shell.js (onRuntimeInitialized) to
+# copy server-zip cache entries into wasm memory for _wasm_jit_mt_register.
+multiThreadedJit: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8 -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_register_group,_wasm_jit_mt_register_group_entry,_wasm_jit_mt_register_group_patch,_wasm_jit_mt_prepare_export,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
+multiThreadedJit: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
 
 cpus := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
 make_jobs := $(shell n='$(cpus)'; expr "$$n" : '^[0-9][0-9]*$$' >/dev/null && [ "$$n" -gt 2 ] && expr "$$n" - 1)
@@ -27,7 +66,7 @@ ifneq ($(make_jobs),)
 export MAKEFLAGS := -j $(make_jobs)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
-release test multiThreaded:
+release test testJit multiThreaded testMultiThreaded jit multiThreadedJit:
 	@$(MAKE)
 
 clean:
@@ -46,7 +85,14 @@ SOURCES += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/source/sdl/emscripten/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/platform/linux/*.cpp)
-SOURCES += $(shell find $(PROJDIR)/source/emulation -type f -name '*.cpp')
+# For the WASM JIT build, exclude the native JIT backends (x32, armv8) which
+# each define their own startNewJIT() that would clash with the wasm/ backend.
+# For normal builds, exclude the wasm/ directory to avoid empty compilation units.
+ifneq (,$(findstring BOXEDWINE_WASM_JIT,$(EXTRA_CPP_FLAGS)))
+SOURCES += $(shell find $(PROJDIR)/source/emulation -type f -name '*.cpp' | grep -v '/x32/' | grep -v '/armv8/')
+else
+SOURCES += $(shell find $(PROJDIR)/source/emulation -type f -name '*.cpp' | grep -v '/wasm/')
+endif
 SOURCES += $(wildcard $(PROJDIR)/source/io/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/source/kernel/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/source/kernel/**/*.cpp)
@@ -87,6 +133,30 @@ TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
 
 ifeq ($(BUILD_DIR), Build/Test)
 SRCS := $(TEST_SOURCES)
+else ifeq ($(BUILD_DIR), Build/TestJit)
+# TestJit: use the test sources but swap in the WASM JIT emulation sources
+# (exclude x32/armv8 backends which have their own startNewJIT definitions).
+TESTJIT_EMULATION := $(shell find $(PROJDIR)/source/emulation -type f -name '*.cpp' | grep -v '/x32/' | grep -v '/armv8/')
+SRCS := $(shell find $(PROJDIR)/lib/asmjit/asmjit -type f -name '*.cpp')
+SRCS += $(wildcard $(PROJDIR)/source/test/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/test/**/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/sdl/emscripten/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/platform/linux/*.cpp)
+SRCS += $(TESTJIT_EMULATION)
+SRCS += $(wildcard $(PROJDIR)/source/io/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/kernel/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/kernel/**/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/util/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/opengl/sdl/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/opengl/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/vulkan/*.cpp)
+SRCS += $(wildcard $(PROJDIR)/source/x11/*.cpp)
+SRCS += $(PROJDIR)/lib/zlib/contrib/minizip/ioapi.c
+SRCS += $(PROJDIR)/lib/zlib/contrib/minizip/mztools.c
+SRCS += $(PROJDIR)/lib/zlib/contrib/minizip/unzip.c
+SRCS += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
 else
 SRCS := $(SOURCES)
 endif
@@ -144,6 +214,39 @@ $(BUILD_DIR)/%.c.o: %.c
 $(BUILD_DIR)/%.cpp.o: %.cpp
 	@$(MKDIR_P) $(dir $@)
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+# Files that need -fwasm-exceptions so their catch(...) blocks compile to WASM
+# catch_all instructions and can intercept WASM exceptions from JIT blocks.
+#
+# jitWasmCodeGen.cpp: calls generated JIT blocks via call_indirect and contains
+#   diagnostic catch paths. Keep it in the WASM EH set so exceptions thrown
+#   inside JIT WASM modules stay in the same exception model while propagating.
+#
+# kscheduler.cpp: runThreadSlice is the top-level CPU-loop handler.  Its
+#   catch(...) must be WASM catch_all so it can catch throw 2 (SIGSEGV) and
+#   throw 1 (exit) that propagate out of JIT block helpers as WASM exceptions.
+#   Without -fwasm-exceptions its catch uses the old JS-flag mechanism which
+#   cannot catch WASM exceptions — causing the JIT to crash the browser session
+#   instead of delivering the signal to Wine's handler.
+#
+# Adding -fwasm-exceptions globally breaks Wine loading (changes throw semantics
+# for all code, triggering RAII destructors that weren't firing before).
+# These explicit rules take precedence over the pattern rule above in GNU make.
+ifneq (,$(findstring BOXEDWINE_WASM_JIT,$(EXTRA_CPP_FLAGS)))
+WASM_EXCEPTION_CPPFLAGS = $(filter-out $(COMPILE_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG),$(CPPFLAGS)) -fwasm-exceptions -sSUPPORT_LONGJMP=wasm
+else
+WASM_EXCEPTION_CPPFLAGS = $(CPPFLAGS)
+endif
+
+$(BUILD_DIR)/$(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp.o: \
+        $(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp
+	@$(MKDIR_P) $(dir $@)
+	@$(CXX) $(WASM_EXCEPTION_CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+$(BUILD_DIR)/$(PROJDIR)/source/kernel/kscheduler.cpp.o: \
+        $(PROJDIR)/source/kernel/kscheduler.cpp
+	@$(MKDIR_P) $(dir $@)
+	@$(CXX) $(WASM_EXCEPTION_CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 .PHONY: clean
 

@@ -475,7 +475,22 @@ void KMemory::threadCleanup(U32 threadId) {
     }
 }
 
+#if defined(BOXEDWINE_JIT)
+extern void clearJitBlock(const std::vector<void*>& jitOps);
+#endif
+
 void KMemory::clearOpCache() {
+#if defined(BOXEDWINE_JIT)
+    // Collect JIT block pointers before the op cache frees the DecodedOps,
+    // then hand them to clearJitBlock so the backend can release resources
+    // (e.g. wasmTable entries for the WASM JIT). Without this, every
+    // __TEST-mode newInstruction() call leaks one compiled module.
+    std::vector<void*> jitOps;
+    data->opCache.collectAllJitBlocks(jitOps);
+    if (!jitOps.empty()) {
+        clearJitBlock(jitOps);
+    }
+#endif
     data->opCache.clear();
 }
 
@@ -506,7 +521,11 @@ void KMemory::clearJit(DecodedOp* op) {
         nextOp->runCount = 0;
         nextOp = nextOp->next;
     }
+    // WASM JIT stores a wasmTable index in pfnJitCode, not a codeMemory ptr.
+    // clearJitBlock already released the table entry; skip the heap free.
+#ifndef BOXEDWINE_WASM_JIT
     data->codeMemory.free(start);
+#endif
 }
 
 void clearJitBlock(const std::vector<void*>& jitOps);
@@ -548,9 +567,13 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     if (clearOps) {
         data->opCache.remove(address, blockLen, false);
     }        
+    // WASM JIT stores a wasmTable index in pfnJitCode, not a codeMemory ptr.
+    // clearJitBlock above already released the table entry; skip heap free.
+#ifndef BOXEDWINE_WASM_JIT
     if (pMem) {
         data->codeMemory.free(pMem);
     }
+#endif
 #ifdef _DEBUG1
     klog_fmt("removed active code block eip = %x - %x host %llx - %llx", thread->cpu->getEipAddress(), thread->cpu->getEipAddress() + blockLen, (U64)pMem, (U64)pMem + jitLen);
 #endif
@@ -823,7 +846,7 @@ U64 KMemory::readq(U32 address) {
 }
 
 U32 KMemory::readd(U32 address) {
-	return readdInline(address);
+    return readdInline(address);
 }
 
 U16 KMemory::readw(U32 address) {
@@ -864,7 +887,7 @@ void KMemory::writeq(U32 address, U64 value) {
 }
 
 void KMemory::writed(U32 address, U32 value) {
-	writedInline(address, value);
+    writedInline(address, value);
 }
 
 void KMemory::writew(U32 address, U16 value) {

@@ -182,7 +182,17 @@ union SSE {
     simde__m128i pi;
 };
 
+#ifndef JIT_RUN_COUNT
+#if defined(BOXEDWINE_WASM_JIT) && defined(__EMSCRIPTEN__)
+#define JIT_RUN_COUNT 200
+#else
 #define JIT_RUN_COUNT 50
+#endif
+#endif
+
+#if JIT_RUN_COUNT > 254
+#error "JIT_RUN_COUNT must fit in DecodedOp::runCount (U8) and leave room for the JIT_RUN_COUNT + 1 sentinel"
+#endif
 
 class CPU: public DecodeBlockCallback {
 public:
@@ -200,6 +210,31 @@ public:
     Reg eip;
 #ifdef BOXEDWINE_JIT
     U32 tmpReg;
+#endif
+#ifdef BOXEDWINE_WASM_JIT
+    // Scratch fields used only by the WASM JIT to pass
+    // address/value to its per-width memory helpers without trampling
+    // lazy-flag state in src.u32/dst.u32.
+    U32 memHelperAddr = 0;
+    U32 memHelperValue = 0;
+    // Self-modifying-code support: blockEnter helper captures the active
+    // block's first DecodedOp. After every JIT-inline memory write, the
+    // helper checks whether that op's pfnJitCode was cleared by
+    // removeCodeBlock (i.e. the write hit our own code page) and sets
+    // wasmJitBailout=1. The JIT emits an `if (wasmJitBailout) blockExit()`
+    // after each write so we exit before stale compiled bytes run.
+    DecodedOp* wasmJitActiveBlock = nullptr;
+    U32 wasmJitBailout = 0;
+    // Inline TLB fast-path: cached pointers to the per-page host-base
+    // arrays in KMemoryData. Set up by wasmHelper_blockEnter so the JIT
+    // codegen can do `wasmReadPageBaseArray[page] -> entry; if (entry)
+    // direct-load`, skipping the full helper round-trip on cache hits.
+    // Encoded as `(U32)(uintptr_t)wasmReadPageBase`/`wasmWritePageBase`
+    // (32-bit linear-memory offsets under emcc).
+    U32 wasmJitMemoryData = 0;
+    U32 wasmReadPageBaseArray  = 0;
+    U32 wasmWritePageBaseArray = 0;
+    DecodedOp* wasmJitBridgeBlockStart = nullptr;
 #endif
     U8* reg8[9];
     ALIGN(SSE xmm[8], 16);    

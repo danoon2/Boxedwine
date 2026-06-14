@@ -37,7 +37,7 @@
 // Tail-call dispatch support.
 // PRESERVE_NONE: callee saves no registers, enabling zero-cost tail dispatch.
 // MUSTTAIL: forces the compiler to emit a tail call rather than call+return.
-#if defined(__clang__) && defined(__has_cpp_attribute)
+#if defined(__clang__) && defined(__has_attribute)
 #if __has_attribute(preserve_none)
 #define PRESERVE_NONE __attribute__((preserve_none))
 #else
@@ -55,11 +55,15 @@
 #define MUSTTAIL
 #endif
 
-// Direct normal-CPU dispatch is only for non-JIT builds. Future WASM JIT builds
-// should define BOXEDWINE_JIT and keep the ABI-compatible OpCallback path.
+// Direct normal-CPU dispatch is only for non-JIT Emscripten builds.
+// Future WASM JIT builds should define BOXEDWINE_JIT and keep the
+// ABI-compatible OpCallback path.
 //
-// on win32 with msvc without JIT, BOXEDWINE_DIRECT_NORMAL_DISPATCH caused a 50% loss in performance for Quake 2
-#if !defined(BOXEDWINE_JIT) && defined(__EMSCRIPTEN__)
+// on win32 with msvc without JIT, BOXEDWINE_DIRECT_NORMAL_DISPATCH caused a 50% loss in performance for Quake 2.
+// BOXEDWINE_NO_DIRECT_NORMAL_DISPATCH is a diagnostic opt-out so the
+// dispatcher's contribution can be measured in isolation, e.g.
+//   make -B multiThreaded GCC_EXTRA_FLAGS=-DBOXEDWINE_NO_DIRECT_NORMAL_DISPATCH
+#if !defined(BOXEDWINE_JIT) && defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_NO_DIRECT_NORMAL_DISPATCH)
 #define BOXEDWINE_DIRECT_NORMAL_DISPATCH 1
 #endif
 

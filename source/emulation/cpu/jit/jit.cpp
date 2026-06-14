@@ -215,16 +215,49 @@ void Jit::arithSetup(DecodedOp* op, U32& needsToSetFlags, LazyFlagType flagType,
     if (flags) {
         needsToSetFlags = op->needsToSetFlags(cpu);
     }
-    if (needsToSetFlags) {
-        if ((flags && flags->usesOldCF(needsToSetFlags)) || (!(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF))) {
-            if (!cf) {
-                cf = getCF();
-            }
-            storeLazyFlagsOldCF(cf);
-        }
-        storeLazyFlagType(flagType);
-        currentLazyFlags = flagType;
+
+    // Always upgrade needsToSetFlags to the full instruction flag set and
+    // always store the lazy flag type and components, regardless of whether
+    // any instruction in the current block reads flags afterward.
+    //
+    // EFLAGS persists across block boundaries: the next block may call
+    // fillFlags() which reads lazyFlagType plus the lazy components
+    // (dst/src/result/oldCF).  Gating these stores on needsToSetFlags (an
+    // intra-block analysis) leaves cross-block flag state stale, producing
+    // wrong CF/SF/ZF/OF/etc. in subsequent blocks.
+    //
+    // The original needsToSetFlags value (from op->needsToSetFlags) is
+    // returned to callers so they can still decide which components to store;
+    // we just ensure that value is never zero for a real arithmetic op.
+    needsToSetFlags = instructionInfo[op->inst].flagsSets & ~MAYBE;
+
+    // FLAGS_NULL means the instruction does not affect EFLAGS (e.g. NOT,
+    // ROL/ROR when the caller determined CF/OF are not consumed).  Committing
+    // FLAGS_NULL to cpu->lazyFlagType would store the null-pointer slot of the
+    // lazyFlags[] array (lazyFlags[FLAGS_NULL] == nullptr), crashing any
+    // subsequent getCF()/getSF()/fillFlags() call with a null dereference.
+    // Instead, leave cpu->lazyFlagType unchanged — the previous instruction's
+    // lazy state correctly describes the pre-FLAGS_NULL flags.
+    if (flagType == FLAGS_NULL) {
+        currentLazyFlags = FLAGS_NULL; // compile-time tracking only; no runtime store
+        return;
     }
+
+    // Save oldCF when:
+    //   (a) usesOldCF: the instruction reads the incoming CF as an operand (ADC, SBB, RCL/RCR).
+    //   (b) instruction doesn't set CF at all (INC, DEC): INC/DEC preserve CF, and
+    //       fillFlags(FLAGS_INC32/DEC*) returns cpu->oldCF for the CF bit.  We must
+    //       save the current CF into oldCF NOW, not just when some intra-block successor
+    //       reads CF — the lazy state crosses block boundaries and the next block's
+    //       fillFlags() will read oldCF regardless of who compiled the block.
+    if ((flags && flags->usesOldCF(needsToSetFlags)) || !(instructionInfo[op->inst].flagsSets & CF)) {
+        if (!cf) {
+            cf = getCF();
+        }
+        storeLazyFlagsOldCF(cf);
+    }
+    storeLazyFlagType(flagType);
+    currentLazyFlags = flagType;
 }
 
 void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFlagType flagType, bool writeback, bool addCF, InstRegReg cfCallback, InstRegImmCF callbackWithCF) {
@@ -619,11 +652,21 @@ void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagTyp
         // daytona installer can trigger this path with dec and flags needed, this is the hard one for the number of tmp regs required since it will need to preserve cf
         U32 needsToSetFlags = 0;
         if (flags) {
-            needsToSetFlags = op->needsToSetFlags(cpu);
+            // Always store the full lazy flag state for cross-block correctness, matching
+            // the logic in arithSetup.  op->needsToSetFlags() only covers intra-block
+            // consumers; the next block may call fillFlags() which reads lazyFlagType plus
+            // the lazy components (dst/src/result/oldCF).
+            needsToSetFlags = instructionInfo[op->inst].flagsSets & ~MAYBE;
         }
         RegPtr cf;
         if (needsToSetFlags) {
-            if (flags && !(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF)) {
+            // Save CF if the instruction preserves it via oldCF (e.g. INC/DEC which leave
+            // CF unchanged and reconstruct it via LazyFlagsInc/Dec::usesOldCF), OR if CF
+            // is not in this instruction's output set but a later instruction in this
+            // block needs it.
+            // Same cross-block correctness rule as arithSetup: save CF whenever
+            // the instruction uses old CF as input OR doesn't set CF at all.
+            if (flags && (flags->usesOldCF(needsToSetFlags) || !(instructionInfo[op->inst].flagsSets & CF))) {
                 cf = getCF();
             }
         }
@@ -857,8 +900,13 @@ void JitFlags::init(Jit* jit, CPU* cpu, DecodedOp* op, LazyFlagType flagsType, R
     if (flags) {
         needsToSetFlags = op->needsToSetFlags(cpu);
     }
+    // Upgrade to the full instruction flag set for cross-block correctness
+    // (same reasoning as arithSetup: the lazy state persists across blocks).
+    needsToSetFlags = instructionInfo[op->inst].flagsSets & ~MAYBE;
     if (needsToSetFlags) {
-        if ((flags && flags->usesOldCF(needsToSetFlags)) || (!(instructionInfo[op->inst].flagsSets & CF) && op->getNeededFlagsAfter(CF))) {
+        // Same cross-block rule: save CF whenever the instruction uses old CF
+        // as input, or doesn't set CF at all (e.g. INC/DEC preserve CF via oldCF).
+        if ((flags && flags->usesOldCF(needsToSetFlags)) || !(instructionInfo[op->inst].flagsSets & CF)) {
             if (cf) {
                 oldCF = cf;
             } else {

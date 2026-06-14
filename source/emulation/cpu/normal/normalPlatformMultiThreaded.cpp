@@ -24,6 +24,39 @@
 std::atomic<int> platformThreadCount = 0;
 void platformInitExceptionHandling();
 
+// Helper path for the emscripten builds, which compile with global
+// -fwasm-exceptions (project/emscripten/makefile), where try{}/catch(...) is a
+// near-zero-cost WASM catch_all. The hot worker loop runs in a force-noinline
+// platformThreadRun(); platformThread() keeps the catch hoisted above it, and the
+// page-fault throw (KThread::seg_*: throw 1/2) unwinds out of platformThreadRun()
+// into that catch. This noinline-split structure measured ~4 PERF_W95 points faster
+// for multiThreadedJit than an inline per-block try{ cpu->run(); } (75 -> 79), and
+// ~neutral for the normal-core multiThreaded.
+#ifdef __EMSCRIPTEN__
+#if defined(_MSC_VER)
+#define BOXEDWINE_NOINLINE __declspec(noinline)
+#else
+#define BOXEDWINE_NOINLINE __attribute__((noinline))
+#endif
+
+// inline (not noinline): runs after every cpu->run() in the hot loop, so an
+// out-of-line call here would cost a call per dispatch (measurably slower on the
+// fast JIT). Only platformThreadRun is force-noinline (see above).
+static inline bool platformThreadShouldStop(CPU* cpu) {
+    if (cpu->thread->process->terminated) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
+        cpu->memory->cleanup();
+    }
+    return cpu->thread->terminating;
+}
+
+static BOXEDWINE_NOINLINE void platformThreadRun(CPU* cpu) {
+    do {
+        cpu->run();
+    } while (!platformThreadShouldStop(cpu));
+}
+#endif
+
 static void platformThread(CPU* cpu) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
     platformInitExceptionHandling();
@@ -39,6 +72,24 @@ static void platformThread(CPU* cpu) {
 			kpanic_fmt("Failed to get first op for thread %d of process %d at address %x", cpu->thread->id, process->id, cpu->getEipAddress());
 		}
     }
+#ifdef __EMSCRIPTEN__
+    // emscripten: hot loop runs in platformThreadRun() (force-noinline); only a
+    // thrown page fault returns control here, where we recover nextOp and re-run
+    // the stop check exactly as the per-block loop below would.
+    while (true) {
+        try {
+            platformThreadRun(cpu);
+            break;
+        } catch (...) {
+            if (!cpu->thread->terminating) {
+                cpu->nextOp = cpu->getNextOp();
+            }
+            if (platformThreadShouldStop(cpu)) {
+                break;
+            }
+        }
+    }
+#else
     while (true) {
         try {
             cpu->run();
@@ -62,8 +113,9 @@ static void platformThread(CPU* cpu) {
         }
 #endif
     }
+#endif
 
-    cpu->thread->cleanup();    
+    cpu->thread->cleanup();
 
     platformThreadCount--;
     process->deleteThread(cpu->thread);

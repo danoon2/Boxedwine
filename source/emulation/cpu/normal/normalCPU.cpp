@@ -44,16 +44,52 @@
 
 // Direct-dispatch builds use normalDispatch so the switch generates direct
 // return_call instructions per opcode rather than one return_call_indirect.
-// JIT builds keep pfn dispatch because pfn may be a JIT trampoline.
-#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+// WASM JIT interpreter chains also use normalDispatch until they reach a JIT
+// block head, where they return to the regular run loop.
+#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH)
 #define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return normalDispatch(cpu, op->next);
+#elif defined(BOXEDWINE_WASM_JIT)
+#ifndef BOXEDWINE_WASM_JIT_NO_DIRECT_INTERP
+// Non-bridge interpreter chains go through normalDispatch's switch (direct
+// tail calls) instead of the indirect nextOp->pfn call. Default on: A/B
+// measured MT 62 -> 82 (beats the 80 interpreter) and ST 27 -> 28 / 30
+// with piped modules; BOXEDWINE_WASM_JIT_NO_DIRECT_INTERP is a diagnostic
+// opt-out. Chains exit to run() at compiled-block heads so wasmStartJITOp
+// keeps its machinery (per-worker readiness, relocBase, runCount counting);
+// branches still break chains in NEXT_BRANCH1/2 - that is the stack bound
+// and must stay (the historical branch-through variant overflowed the JS
+// stack). Any DecodedOp whose pfn is not normalOps[inst] must keep an inst
+// that lands in normalDispatch's default: case (see cpu.cpp's lastOp).
+#define NEXT_INTERP_CHAIN()                                                                         \
+    if (nextOp && nextOp->pfn != cpu->thread->process->startJITOp) {                                \
+        MUSTTAIL return normalDispatch(cpu, nextOp);                                                \
+    }                                                                                                \
+    cpu->nextOp = nextOp;                                                                            \
+    return
+#else
+#define NEXT_INTERP_CHAIN() MUSTTAIL return nextOp->pfn(cpu, nextOp)
+#endif
+#define NEXT() do {                                                                                 \
+    cpu->eip.u32 += op->len;                                                                         \
+    DecodedOp* nextOp = op->next ? op->next : cpu->getNextOp();                                      \
+    if (cpu->wasmJitBridgeBlockStart) {                                                              \
+        if (nextOp && nextOp->blockStart == cpu->wasmJitBridgeBlockStart &&                          \
+            nextOp->pfn && nextOp->pfn != cpu->thread->process->startJITOp) {                        \
+            MUSTTAIL return normalDispatch(cpu, nextOp);                                             \
+        }                                                                                            \
+        cpu->nextOp = nextOp;                                                                        \
+        cpu->wasmJitBridgeBlockStart = nullptr;                                                      \
+        return;                                                                                      \
+    }                                                                                                \
+    NEXT_INTERP_CHAIN();                                                                             \
+} while (0)
 #else
 #define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return op->next->pfn(cpu, op->next);
 #endif
 #define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
 #define NEXT_DONE_JUMP_OR_CALL() cpu->nextOp = cpu->getNextOp(OP_FLAG2_JUMP_TARGET);
 
-#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH) && !defined(BOXEDWINE_JIT)
+#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH) || defined(BOXEDWINE_WASM_JIT)
 static inline bool normalGetZF(CPU* cpu) {
     switch (cpu->lazyFlagType) {
     case FLAGS_NONE:
@@ -77,7 +113,7 @@ static inline bool normalGetZF(CPU* cpu) {
     case FLAGS_DEC16:
     case FLAGS_CMP16:
     case FLAGS_TEST16:
-        return cpu->result.u16 == 0;        
+        return cpu->result.u16 == 0;
     case FLAGS_ADD32:
     case FLAGS_OR32:
     case FLAGS_AND32:
@@ -92,6 +128,7 @@ static inline bool normalGetZF(CPU* cpu) {
         return cpu->getZF();
     }
 }
+
 static inline bool normalGetCF(CPU* cpu) {
     switch (cpu->lazyFlagType) {
     case FLAGS_NONE:
@@ -193,9 +230,7 @@ static inline bool normalGetNLE(CPU* cpu) {
 
 #define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!op->next) {op->next = cpu->getNextOp(); } cpu->nextOp = op->next;
 
-// Forward declaration so NEXT() can reference normalDispatch before the
-// normal_*.h opcode handlers are included.
-#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH) || defined(BOXEDWINE_WASM_JIT)
 static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op);
 #endif
 
@@ -241,7 +276,7 @@ void OPCALL onTestEnd(CPU* cpu, DecodedOp* op) {
 
 // Dispatch the next decoded op by switching on its instruction ID. Using a
 // switch lets WASM emit direct return_call instructions for opcode arms.
-#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH) || defined(BOXEDWINE_WASM_JIT)
 static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op) {
     switch (op->inst) {
 #undef INIT_CPU
@@ -326,6 +361,14 @@ OpCallback NormalCPU::getFunctionForOp(DecodedOp* op) {
     return normalOps[op->inst];
 }
 
+#ifdef BOXEDWINE_WASM_JIT
+void NormalCPU::runWasmJitBridge(CPU* cpu, DecodedOp* op) {
+    cpu->wasmJitBridgeBlockStart = op->blockStart;
+    normalDispatch(cpu, op);
+    cpu->wasmJitBridgeBlockStart = nullptr;
+}
+#endif
+
 bool NormalCPU::isValidExecutableAddress(U32 address) {
     return (memory->getPageFlags(address >> K_PAGE_SHIFT) & PAGE_EXEC) != 0;
 }
@@ -400,7 +443,7 @@ void NormalCPU::run() {
 #if !defined(BOXEDWINE_MULTI_THREADED)
         this->blockInstructionCount += nextOp->blockOpCount;
 #endif
-    }    
+    }
 #else
     nextOp->pfn(this, nextOp);
 #endif

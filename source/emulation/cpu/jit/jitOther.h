@@ -88,6 +88,7 @@ void Jit::dynamic_sahf(DecodedOp* op) {
     RegPtr flags = getTmpReg();
     movzx(JitWidth::b32, flags, JitWidth::b8, getReadOnlyReg8(4));
     setFlags(flags, FMASK_ALL & 0xFF);
+    storeLazyFlagType(FLAGS_NONE);
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_lahf(DecodedOp* op) {
