@@ -101,9 +101,13 @@ char* platform_strcasestr(const char* s1, const char* s2);
 #endif
 #define PLATFORM_STAT_STRUCT struct stat
 #define PLATFORM_STAT stat
-// Direct-dispatch builds can use preserve_none for opcode handlers. JIT builds
-// keep the default ABI because startJITOp is also stored as an OpCallback.
-#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+// Direct-dispatch builds use preserve_none for opcode handlers. The WASM JIT can
+// too: its startJITOp is the C++ wasmStartJITOp (not generated machine code), and
+// generated blocks are reached via pfnJitCode/call_indirect (never via op->pfn), so
+// all OpCallback calls are C++ and stay ABI-consistent. The native x32/armv8 JIT —
+// whose startJITOp IS generated code cast to OpCallback and must keep the default
+// ABI — is excluded from WASM_JIT builds, so this is safe. (EXPERIMENT: forward perf.)
+#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH) || defined(BOXEDWINE_WASM_JIT)
 #define OPCALL PRESERVE_NONE
 #else
 #define OPCALL
