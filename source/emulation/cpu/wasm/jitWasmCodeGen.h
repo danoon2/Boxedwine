@@ -198,7 +198,7 @@
 
 #ifdef BOXEDWINE_WASM_JIT
 
-#include "../jit/jitMMX.h"
+#include "../jit/jitSSE.h"
 #include "wasmEmitter.h"
 #include <array>
 
@@ -241,7 +241,7 @@ static inline U32 wasmLocalForGPReg(U8 emulatedReg) {
 // ---------------------------------------------------------------------------
 // JitWasmCodeGen
 // ---------------------------------------------------------------------------
-class JitWasmCodeGen : public JitMMX {
+class JitWasmCodeGen : public JitSSE {
 public:
     explicit JitWasmCodeGen(CPU* cpu);
     ~JitWasmCodeGen() override;
@@ -439,9 +439,6 @@ public:
     void dynamic_loopnz(DecodedOp* op) override;
     void hintLikelyStringLoopContinue() override;
     void dynamic_FILD_QWORD_INTEGER(DecodedOp* op) override;
-    void dynamic_movsdXmmE64(DecodedOp* op) override;
-    void dynamic_movsdE64Xmm(DecodedOp* op) override;
-    void dynamic_movsd_op(DecodedOp* op) override;
     void nakedCall(RegPtr reg) override;
     void nakedReturn() override;
 
@@ -597,6 +594,194 @@ public:
     // base-class native codegen; the rep'd loops route through
     // LoopBegin/LoopEnd which emit a structural WASM `loop`/`end` pair.
 
+    // --- SSE hook surface ---
+    SSERegPtr getTmpSSE() override;
+    bool isSseRegCached(U8 reg) override;
+    void storeCpuXMMReg(SSERegPtr reg, U32 index) override;
+    SSERegPtr loadCpuXMMReg(U8 index) override;
+    SSERegPtr loadXMMFromMem128(U8 index, MemPtr address, SSERegPtr result = nullptr) override;
+    SSERegPtr loadXMMFromMem32(U8 index, MemPtr address) override;
+    SSERegPtr loadXMMFromMem64(U8 index, MemPtr address) override;
+    SSERegPtr loadLowXMMFromMem64(U8 index, MemPtr address) override;
+    SSERegPtr loadHighXMMFromMem64(U8 index, MemPtr address) override;
+    void storeXMMToMem128(SSERegPtr reg, MemPtr address) override;
+    void storeXMMToMem64(SSERegPtr reg, MemPtr address) override;
+    void storeXMMToMem32(SSERegPtr reg, MemPtr address) override;
+    void storeHighXMMToMem64(SSERegPtr reg, MemPtr address) override;
+    void addpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void addssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void subpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void subssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void mulpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void mulssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void divpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void divssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void rcppsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void rcpssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void sqrtpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void sqrtssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void rsqrtpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void rsqrtssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void maxpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void maxssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void minpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void minssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void andnpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void andpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void orpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void xorpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cvtpi2psXmmMmx(SSERegPtr dst, MMXRegPtr src) override;
+    void cvtps2piMmxXmm(MMXRegPtr dst, SSERegPtr src) override;
+    void cvtsi2ssXmmR32(SSERegPtr dst, RegPtr src) override;
+    void cvtss2siR32Xmm(RegPtr dst, SSERegPtr src) override;
+    void cvttps2piMmxXmm(MMXRegPtr dst, SSERegPtr src) override;
+    void cvttss2siR32Xmm(RegPtr dst, SSERegPtr src) override;
+    void movhlpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void movlhpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void movmskpsR32Xmm(RegPtr dst, SSERegPtr src) override;
+    void movssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void shufpsXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
+    void unpckhpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void unpcklpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cmppsXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
+    void cmpssXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
+    void comissXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void ucomissXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void sfence() override;
+    void stmxcsr(MemPtr address) override;
+    void ldmxcsr(MemPtr address) override;
+#ifdef BOXEDWINE_64
+    void cvtsi2sdXmmR64(SSERegPtr dst, RegPtr src) override;
+#endif
+    void addpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void addsdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void subpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void subsdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void mulpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void mulsdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void divpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void divsdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void maxpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void maxsdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void minpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void minsdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void paddbXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void paddwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void padddXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void paddqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void paddsbXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void paddswXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void paddusbXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void padduswXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psubbXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psubwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psubdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psubqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psubsbXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psubswXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psubusbXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psubuswXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pmaddwdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pmulhwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pmullwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pmuludqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void sqrtpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void sqrtsdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void andnpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void andpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pandXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pandnXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void porXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pslldqXmm(SSERegPtr dst, U32 imm) override;
+    void psllqXmm(SSERegPtr dst, U32 imm) override;
+    void pslldXmm(SSERegPtr dst, U32 imm) override;
+    void psllwXmm(SSERegPtr dst, U32 imm) override;
+    void psradXmm(SSERegPtr dst, U32 imm) override;
+    void psrawXmm(SSERegPtr dst, U32 imm) override;
+    void psrldqXmm(SSERegPtr dst, U32 imm) override;
+    void psrlqXmm(SSERegPtr dst, U32 imm) override;
+    void psrldXmm(SSERegPtr dst, U32 imm) override;
+    void psrlwXmm(SSERegPtr dst, U32 imm) override;
+    void psllqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pslldXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psllwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psradXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psrawXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psrlqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psrldXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psrlwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pxorXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void orpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void xorpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cmppdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
+    void cmpsdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
+    void comisdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void ucomisdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pcmpgtbXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pcmpgtwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pcmpgtdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pcmpeqbXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pcmpeqwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pcmpeqdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cvtdq2pdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cvtdq2psXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cvtpd2piMmxXmm(MMXRegPtr dst, SSERegPtr src) override;
+    void cvtpi2pdXmmMmx(SSERegPtr dst, MMXRegPtr src) override;
+    void cvtpd2dqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cvtpd2psXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cvttpd2piMmxXmm(MMXRegPtr dst, SSERegPtr src) override;
+    void cvtps2dqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cvtps2pdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cvtsd2siR32Xmm(RegPtr dst, SSERegPtr src) override;
+    void cvtsd2ssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cvtsi2sdXmmR32(SSERegPtr dst, RegPtr src) override;
+    void cvtss2sdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cvttpd2dqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cvttps2dqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void cvttsd2siR32Xmm(RegPtr dst, SSERegPtr src) override;
+    void movsdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void movupdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void movmskpd(RegPtr dst, SSERegPtr src) override;
+    void movd(RegPtr dst, SSERegPtr src) override;
+    void movd(SSERegPtr dst, RegPtr src) override;
+    void movdq2q(MMXRegPtr dst, SSERegPtr src) override;
+    void movq2dq(SSERegPtr dst, MMXRegPtr src) override;
+    void movq(SSERegPtr dst, SSERegPtr src) override;
+    void maskmovdqu(SSERegPtr dst, SSERegPtr src, MemPtr address) override;
+    void pshufdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
+    void pshufhwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
+    void pshuflwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
+    void shufpdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
+    void unpckhpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void unpcklpdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void punpckhbwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void punpckhwdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void punpckhdqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void punpckhqdqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void punpcklbwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void punpcklwdXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void punpckldqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void punpcklqdqXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void packssdwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void packsswbXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void packuswbXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pavgbXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pavgwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void psadbwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pmaxswXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pmaxubXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pminswXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pminubXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void pmulhuwXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    void lfence() override;
+    void mfence() override;
+    void clflush(MemPtr address) override;
+    void pause() override;
+    void pextrwR32Xmm(RegPtr dst, SSERegPtr src, U32 imm) override;
+    void pinsrwXmmR32(SSERegPtr dst, RegPtr src, U32 imm) override;
+    void pmovmskbR32Xmm(RegPtr dst, SSERegPtr src) override;
+    void IfSseLessThan(SSERegPtr src1, SSERegPtr src2) override;
+
     // --- MMX hook surface ---
     MMXRegPtr getTmpMMX() override;
     MMXRegPtr loadMMXFromReg(RegPtr reg) override;
@@ -689,6 +874,7 @@ public:
     // Returns a non-null stub so doJIT's calculateCF[0] null-check passes.
     // The stub is never actually called from WASM (nakedCall is a no-op).
     U8*  createDynamicExecutableMemory(U32* pSize = nullptr) override;
+    void createHelpers() override;
 
     // --- Compilation lifecycle ---
     void preCompile(DecodedOp* op, bool skippedOp = false) override;

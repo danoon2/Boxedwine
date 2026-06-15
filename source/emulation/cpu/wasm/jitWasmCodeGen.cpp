@@ -50,9 +50,18 @@ static constexpr U32 WASM_FMASK_TEST = CF | PF | AF | ZF | SF | OF;
 static_assert(WASM_LOCAL_COUNT <= 0xff,
               "JitReg/MMXRegInternal store WASM local ids in U8 fields");
 
+static std::atomic<bool> g_wasmJitSimdEnabledLogged{ false };
+
+static void logWasmJitSimdEnabledOnce() {
+    bool expected = false;
+    if (g_wasmJitSimdEnabledLogged.compare_exchange_strong(expected, true)) {
+        klog("WASM JIT simd enabled");
+    }
+}
+
 #ifdef __TEST
-static_assert(std::is_base_of<JitMMX, JitWasmCodeGen>::value,
-              "WASM JIT should reuse the shared JitMMX base");
+static_assert(std::is_base_of<JitSSE, JitWasmCodeGen>::value,
+              "WASM JIT should reuse the shared JitSSE base");
 #endif
 
 #if !defined(BOXEDWINE_MULTI_THREADED) && !defined(__TEST)
@@ -3444,7 +3453,7 @@ enum WasmHelperIdx {
 // ---------------------------------------------------------------------------
 // JitWasmCodeGen constructor
 // ---------------------------------------------------------------------------
-JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitMMX(cpu) {
+JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitSSE(cpu) {
     // Register common function types for the module being built.
     m_typeVoidVoid   = m_emitter.addFuncType({}, {});
     m_typeVoidI32    = m_emitter.addFuncType({ WasmType::I32 }, {});
@@ -3693,6 +3702,1904 @@ void JitWasmCodeGen::emitI64ToMmxLocal(U32 local) {
 void JitWasmCodeGen::emitMmxLocalToI64(U32 local) {
     m_emitter.emitLocalGet(local);
     m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_EXTRACT_LANE, 0);
+}
+
+void JitWasmCodeGen::pmaddwdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_I32X4_DOT_I16X8_S);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::pmuludqXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 dwordLanes0And2[16] = {0, 1, 2, 3, 8, 9, 10, 11, 0, 1, 2, 3, 8, 9, 10, 11};
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitI8x16Shuffle(dwordLanes0And2);
+
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitI8x16Shuffle(dwordLanes0And2);
+
+    m_emitter.emitSimdOp(WASM_SIMD_I64X2_EXTMUL_LOW_I32X4_U);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+static void emitWasmXmmZero(WasmEmitter& emitter, SSERegPtr dst) {
+    const U8 zero[16] = {};
+    emitter.emitV128Const(zero);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::pslldqXmm(SSERegPtr dst, U32 imm) {
+    if (imm > 15) {
+        emitWasmXmmZero(m_emitter, dst);
+        return;
+    }
+
+    U8 lanes[16];
+    for (U32 i = 0; i < 16; i++) {
+        lanes[i] = i >= imm ? (U8)(i - imm) : (U8)(16 + i);
+    }
+
+    const U8 zero[16] = {};
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitV128Const(zero);
+    m_emitter.emitI8x16Shuffle(lanes);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::psrldqXmm(SSERegPtr dst, U32 imm) {
+    if (imm > 15) {
+        emitWasmXmmZero(m_emitter, dst);
+        return;
+    }
+
+    U8 lanes[16];
+    for (U32 i = 0; i < 16; i++) {
+        lanes[i] = i + imm < 16 ? (U8)(i + imm) : (U8)(16 + i);
+    }
+
+    const U8 zero[16] = {};
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitV128Const(zero);
+    m_emitter.emitI8x16Shuffle(lanes);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+#define WASM_XMM_LOGICAL_SHIFT_IMM(name, op, maxCount) \
+    void JitWasmCodeGen::name(SSERegPtr dst, U32 imm) { \
+        if (imm > maxCount) { \
+            emitWasmXmmZero(m_emitter, dst); \
+            return; \
+        } \
+        m_emitter.emitLocalGet(dst->hardwareReg()); \
+        m_emitter.emitI32Const((S32)imm); \
+        m_emitter.emitSimdOp(op); \
+        m_emitter.emitLocalSet(dst->hardwareReg()); \
+    }
+
+#define WASM_XMM_ARITH_SHIFT_IMM(name, op, maxCount) \
+    void JitWasmCodeGen::name(SSERegPtr dst, U32 imm) { \
+        if (imm > maxCount) \
+            imm = maxCount; \
+        m_emitter.emitLocalGet(dst->hardwareReg()); \
+        m_emitter.emitI32Const((S32)imm); \
+        m_emitter.emitSimdOp(op); \
+        m_emitter.emitLocalSet(dst->hardwareReg()); \
+    }
+
+WASM_XMM_LOGICAL_SHIFT_IMM(psllqXmm, WASM_SIMD_I64X2_SHL, 63)
+WASM_XMM_LOGICAL_SHIFT_IMM(pslldXmm, WASM_SIMD_I32X4_SHL, 31)
+WASM_XMM_LOGICAL_SHIFT_IMM(psllwXmm, WASM_SIMD_I16X8_SHL, 15)
+WASM_XMM_ARITH_SHIFT_IMM(psradXmm, WASM_SIMD_I32X4_SHR_S, 31)
+WASM_XMM_ARITH_SHIFT_IMM(psrawXmm, WASM_SIMD_I16X8_SHR_S, 15)
+WASM_XMM_LOGICAL_SHIFT_IMM(psrlqXmm, WASM_SIMD_I64X2_SHR_U, 63)
+WASM_XMM_LOGICAL_SHIFT_IMM(psrldXmm, WASM_SIMD_I32X4_SHR_U, 31)
+WASM_XMM_LOGICAL_SHIFT_IMM(psrlwXmm, WASM_SIMD_I16X8_SHR_U, 15)
+
+#undef WASM_XMM_ARITH_SHIFT_IMM
+#undef WASM_XMM_LOGICAL_SHIFT_IMM
+
+static void emitWasmXmmShiftCount(WasmEmitter& emitter, SSERegPtr src) {
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdLaneOp(WASM_SIMD_I64X2_EXTRACT_LANE, 0);
+    emitter.emitLocalSet(WASM_I64_SCRATCH);
+}
+
+#define WASM_XMM_LOGICAL_SHIFT_VAR(name, op, overshiftBits) \
+    void JitWasmCodeGen::name(SSERegPtr dst, SSERegPtr src) { \
+        emitWasmXmmShiftCount(m_emitter, src); \
+        m_emitter.emitLocalGet(WASM_I64_SCRATCH); \
+        m_emitter.emitI64Const(overshiftBits); \
+        m_emitter.emitOp(WASM_I64_SHR_U); \
+        m_emitter.emitI64Const(0); \
+        m_emitter.emitOp(WASM_I64_NE); \
+        m_emitter.emitIf(); \
+        emitWasmXmmZero(m_emitter, dst); \
+        m_emitter.emitElse(); \
+        m_emitter.emitLocalGet(dst->hardwareReg()); \
+        m_emitter.emitLocalGet(WASM_I64_SCRATCH); \
+        m_emitter.emitOp(WASM_I32_WRAP_I64); \
+        m_emitter.emitSimdOp(op); \
+        m_emitter.emitLocalSet(dst->hardwareReg()); \
+        m_emitter.emitEnd(); \
+    }
+
+#define WASM_XMM_ARITH_SHIFT_VAR(name, op, maxCount, overshiftBits) \
+    void JitWasmCodeGen::name(SSERegPtr dst, SSERegPtr src) { \
+        emitWasmXmmShiftCount(m_emitter, src); \
+        m_emitter.emitLocalGet(dst->hardwareReg()); \
+        m_emitter.emitLocalGet(WASM_I64_SCRATCH); \
+        m_emitter.emitI64Const(overshiftBits); \
+        m_emitter.emitOp(WASM_I64_SHR_U); \
+        m_emitter.emitI64Const(0); \
+        m_emitter.emitOp(WASM_I64_NE); \
+        m_emitter.emitIf(WasmType::I32); \
+        m_emitter.emitI32Const(maxCount); \
+        m_emitter.emitElse(); \
+        m_emitter.emitLocalGet(WASM_I64_SCRATCH); \
+        m_emitter.emitOp(WASM_I32_WRAP_I64); \
+        m_emitter.emitEnd(); \
+        m_emitter.emitSimdOp(op); \
+        m_emitter.emitLocalSet(dst->hardwareReg()); \
+    }
+
+WASM_XMM_LOGICAL_SHIFT_VAR(psllqXmmXmm, WASM_SIMD_I64X2_SHL, 6)
+WASM_XMM_LOGICAL_SHIFT_VAR(pslldXmmXmm, WASM_SIMD_I32X4_SHL, 5)
+WASM_XMM_LOGICAL_SHIFT_VAR(psllwXmmXmm, WASM_SIMD_I16X8_SHL, 4)
+WASM_XMM_ARITH_SHIFT_VAR(psradXmmXmm, WASM_SIMD_I32X4_SHR_S, 31, 5)
+WASM_XMM_ARITH_SHIFT_VAR(psrawXmmXmm, WASM_SIMD_I16X8_SHR_S, 15, 4)
+WASM_XMM_LOGICAL_SHIFT_VAR(psrlqXmmXmm, WASM_SIMD_I64X2_SHR_U, 6)
+WASM_XMM_LOGICAL_SHIFT_VAR(psrldXmmXmm, WASM_SIMD_I32X4_SHR_U, 5)
+WASM_XMM_LOGICAL_SHIFT_VAR(psrlwXmmXmm, WASM_SIMD_I16X8_SHR_U, 4)
+
+#undef WASM_XMM_ARITH_SHIFT_VAR
+#undef WASM_XMM_LOGICAL_SHIFT_VAR
+void JitWasmCodeGen::comisdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (currentLazyFlags != FLAGS_NONE && currentLazyFlags != FLAGS_NULL) {
+        fillFlags(WASM_FMASK_TEST);
+    }
+
+    U32 lhs = allocF64Scratch();
+    U32 rhs = allocF64Scratch();
+    U32 result = allocScratch();
+    RegPtr flags = readCPU(JitWidth::b32, (U32)offsetof(CPU, flags));
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F64X2_EXTRACT_LANE, 0);
+    m_emitter.emitLocalSet(lhs);
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F64X2_EXTRACT_LANE, 0);
+    m_emitter.emitLocalSet(rhs);
+
+    m_emitter.emitI32Const(0);
+    m_emitter.emitLocalSet(result);
+
+    m_emitter.emitI32Const(CF);
+    m_emitter.emitLocalGet(result);
+    m_emitter.emitLocalGet(lhs);
+    m_emitter.emitLocalGet(rhs);
+    m_emitter.emitOp(WASM_F64_LT);
+    m_emitter.emitOp(WASM_SELECT);
+    m_emitter.emitLocalSet(result);
+
+    m_emitter.emitI32Const(ZF);
+    m_emitter.emitLocalGet(result);
+    m_emitter.emitLocalGet(lhs);
+    m_emitter.emitLocalGet(rhs);
+    m_emitter.emitOp(WASM_F64_EQ);
+    m_emitter.emitOp(WASM_SELECT);
+    m_emitter.emitLocalSet(result);
+
+    m_emitter.emitI32Const(CF | PF | ZF);
+    m_emitter.emitLocalGet(result);
+    m_emitter.emitLocalGet(lhs);
+    m_emitter.emitLocalGet(lhs);
+    m_emitter.emitOp(WASM_F64_NE);
+    m_emitter.emitLocalGet(rhs);
+    m_emitter.emitLocalGet(rhs);
+    m_emitter.emitOp(WASM_F64_NE);
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.emitOp(WASM_SELECT);
+    m_emitter.emitLocalSet(result);
+
+    pushRegValue(flags);
+    m_emitter.emitI32Const((S32)~WASM_FMASK_TEST);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitLocalGet(result);
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.emitLocalSet(flags->hardwareReg());
+
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, flags), flags);
+    storeLazyFlagType(FLAGS_NONE);
+    currentLazyFlags = FLAGS_NONE;
+    freeScratch(flags->hardwareReg());
+    freeScratch(result);
+    freeF64Scratch(rhs);
+    freeF64Scratch(lhs);
+}
+
+void JitWasmCodeGen::ucomisdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    comisdXmmXmm(dst, src);
+}
+
+void JitWasmCodeGen::cvtdq2pdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_F64X2_CONVERT_LOW_I32X4_S);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::cvtdq2psXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_F32X4_CONVERT_I32X4_S);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::cvtpi2pdXmmMmx(SSERegPtr dst, MMXRegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_F64X2_CONVERT_LOW_I32X4_S);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::cvtpd2psXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_F32X4_DEMOTE_F64X2_ZERO);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::cvtps2pdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_F64X2_PROMOTE_LOW_F32X4);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::cvtsd2ssXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F64X2_EXTRACT_LANE, 0);
+    m_emitter.emitOp(WASM_F32_DEMOTE_F64);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::cvtsi2sdXmmR32(SSERegPtr dst, RegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    pushRegValue(src);
+    m_emitter.emitOp(WASM_F64_CONVERT_I32_S);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F64X2_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+#ifdef BOXEDWINE_64
+void JitWasmCodeGen::cvtsi2sdXmmR64(SSERegPtr dst, RegPtr src) {
+    (void)dst;
+    (void)src;
+    kpanic("WASM cvtsi2sdXmmR64 is not supported for 32-bit guest RegPtr sources");
+}
+#endif
+
+void JitWasmCodeGen::cvtss2sdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F32X4_EXTRACT_LANE, 0);
+    m_emitter.emitOp(WASM_F64_PROMOTE_F32);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F64X2_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::IfSseLessThan(SSERegPtr src1, SSERegPtr src2) {
+    branchBoundary();
+    m_emitter.emitLocalGet(src1->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F32X4_EXTRACT_LANE, 0);
+    m_emitter.emitLocalGet(src2->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F32X4_EXTRACT_LANE, 0);
+    m_emitter.emitOp(WASM_F32_LT);
+    finishIf();
+}
+
+void JitWasmCodeGen::movmskpd(RegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_I64X2_BITMASK);
+    popToReg(JitWidth::b32, dst);
+    forceSyncBackIfNotCached(dst);
+}
+void JitWasmCodeGen::maskmovdqu(SSERegPtr dst, SSERegPtr src, MemPtr address) {
+    if (address->emulatedAddress) {
+        kpanic("WASM SSE maskmovdqu expects a host MemPtr");
+    }
+
+    U32 oldValue = allocV128Scratch();
+    U32 byteMask = allocV128Scratch();
+
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitV128Load(memOffset, 0);
+    m_emitter.emitLocalSet(oldValue);
+
+    // Convert each mask byte's high bit to a full 0x00/0xff byte mask.
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitI32Const(7);
+    m_emitter.emitSimdOp(WASM_SIMD_I8X16_SHR_S);
+    m_emitter.emitLocalSet(byteMask);
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(oldValue);
+    m_emitter.emitLocalGet(byteMask);
+    m_emitter.emitSimdOp(WASM_SIMD_V128_BITSELECT);
+    m_emitter.emitLocalSet(byteMask);
+
+    memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitLocalGet(byteMask);
+    m_emitter.emitV128Store(memOffset, 0);
+
+    freeV128Scratch(byteMask);
+    freeV128Scratch(oldValue);
+}
+void JitWasmCodeGen::psadbwXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr originalDst = getTmpSSE();
+    RegPtr sumLow = getTmpReg();
+    RegPtr sumHigh = getTmpReg();
+    RegPtr left = getTmpReg();
+    RegPtr right = getTmpReg();
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalSet(originalDst->hardwareReg());
+
+    m_emitter.emitI32Const(0);
+    m_emitter.emitLocalSet(sumLow->hardwareReg());
+    m_emitter.emitI32Const(0);
+    m_emitter.emitLocalSet(sumHigh->hardwareReg());
+
+    for (U8 lane = 0; lane < 16; ++lane) {
+        m_emitter.emitLocalGet(originalDst->hardwareReg());
+        m_emitter.emitSimdLaneOp(WASM_SIMD_I8X16_EXTRACT_LANE_U, lane);
+        m_emitter.emitLocalSet(left->hardwareReg());
+        m_emitter.emitLocalGet(src->hardwareReg());
+        m_emitter.emitSimdLaneOp(WASM_SIMD_I8X16_EXTRACT_LANE_U, lane);
+        m_emitter.emitLocalSet(right->hardwareReg());
+
+        RegPtr sum = lane < 8 ? sumLow : sumHigh;
+        m_emitter.emitLocalGet(sum->hardwareReg());
+        m_emitter.emitLocalGet(left->hardwareReg());
+        m_emitter.emitLocalGet(right->hardwareReg());
+        m_emitter.emitOp(WASM_I32_SUB);
+        m_emitter.emitLocalGet(right->hardwareReg());
+        m_emitter.emitLocalGet(left->hardwareReg());
+        m_emitter.emitOp(WASM_I32_SUB);
+        m_emitter.emitLocalGet(left->hardwareReg());
+        m_emitter.emitLocalGet(right->hardwareReg());
+        m_emitter.emitOp(WASM_I32_GT_U);
+        m_emitter.emitOp(WASM_SELECT);
+        m_emitter.emitOp(WASM_I32_ADD);
+        m_emitter.emitLocalSet(sum->hardwareReg());
+    }
+
+    const U8 zero[16] = {};
+    m_emitter.emitV128Const(zero);
+    m_emitter.emitLocalGet(sumLow->hardwareReg());
+    m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_REPLACE_LANE, 0);
+    m_emitter.emitLocalGet(sumHigh->hardwareReg());
+    m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_REPLACE_LANE, 1);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    freeScratch(right->hardwareReg());
+    freeScratch(left->hardwareReg());
+    freeScratch(sumHigh->hardwareReg());
+    freeScratch(sumLow->hardwareReg());
+}
+void JitWasmCodeGen::pmulhwXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_I32X4_EXTMUL_LOW_I16X8_S);
+    m_emitter.emitI32Const(16);
+    m_emitter.emitSimdOp(WASM_SIMD_I32X4_SHR_S);
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_I32X4_EXTMUL_HIGH_I16X8_S);
+    m_emitter.emitI32Const(16);
+    m_emitter.emitSimdOp(WASM_SIMD_I32X4_SHR_S);
+
+    m_emitter.emitSimdOp(WASM_SIMD_I16X8_NARROW_I32X4_S);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::pmulhuwXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_I32X4_EXTMUL_LOW_I16X8_U);
+    m_emitter.emitI32Const(16);
+    m_emitter.emitSimdOp(WASM_SIMD_I32X4_SHR_U);
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_I32X4_EXTMUL_HIGH_I16X8_U);
+    m_emitter.emitI32Const(16);
+    m_emitter.emitSimdOp(WASM_SIMD_I32X4_SHR_U);
+
+    m_emitter.emitSimdOp(WASM_SIMD_I16X8_NARROW_I32X4_U);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::sfence() {
+}
+
+void JitWasmCodeGen::stmxcsr(MemPtr address) {
+    if (address->emulatedAddress) {
+        kpanic("WASM SSE stmxcsr expects a host MemPtr");
+    }
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, mxcsr));
+    m_emitter.emitI32Store(memOffset, 0);
+}
+
+void JitWasmCodeGen::ldmxcsr(MemPtr address) {
+    if (address->emulatedAddress) {
+        kpanic("WASM SSE ldmxcsr expects a host MemPtr");
+    }
+    U32 memOffset = 0;
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitI32Load(memOffset, 0);
+    m_emitter.emitI32Store((U32)offsetof(CPU, mxcsr));
+}
+
+void JitWasmCodeGen::lfence() {
+}
+
+void JitWasmCodeGen::mfence() {
+}
+
+void JitWasmCodeGen::clflush(MemPtr address) {
+    (void)address;
+}
+
+void JitWasmCodeGen::pause() {
+}
+
+static void emitXmmBinarySimdOp(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, U32 op) {
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdOp(op);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::pcmpgtbXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_GT_S);
+}
+
+void JitWasmCodeGen::pcmpgtwXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_GT_S);
+}
+
+void JitWasmCodeGen::pcmpgtdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I32X4_GT_S);
+}
+
+void JitWasmCodeGen::pcmpeqbXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_EQ);
+}
+
+void JitWasmCodeGen::pcmpeqwXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_EQ);
+}
+
+void JitWasmCodeGen::pcmpeqdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I32X4_EQ);
+}
+
+void JitWasmCodeGen::paddbXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_ADD);
+}
+
+void JitWasmCodeGen::paddwXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_ADD);
+}
+
+void JitWasmCodeGen::padddXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I32X4_ADD);
+}
+
+void JitWasmCodeGen::paddqXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I64X2_ADD);
+}
+
+void JitWasmCodeGen::paddsbXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_ADD_SAT_S);
+}
+
+void JitWasmCodeGen::paddswXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_ADD_SAT_S);
+}
+
+void JitWasmCodeGen::paddusbXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_ADD_SAT_U);
+}
+
+void JitWasmCodeGen::padduswXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_ADD_SAT_U);
+}
+
+void JitWasmCodeGen::pmullwXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_MUL);
+}
+
+void JitWasmCodeGen::psubbXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_SUB);
+}
+
+void JitWasmCodeGen::psubwXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_SUB);
+}
+
+void JitWasmCodeGen::psubdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I32X4_SUB);
+}
+
+void JitWasmCodeGen::psubqXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I64X2_SUB);
+}
+
+void JitWasmCodeGen::psubsbXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_SUB_SAT_S);
+}
+
+void JitWasmCodeGen::psubswXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_SUB_SAT_S);
+}
+
+void JitWasmCodeGen::psubusbXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_SUB_SAT_U);
+}
+
+void JitWasmCodeGen::psubuswXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_SUB_SAT_U);
+}
+
+void JitWasmCodeGen::packssdwXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_NARROW_I32X4_S);
+}
+
+void JitWasmCodeGen::packsswbXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_NARROW_I16X8_S);
+}
+
+void JitWasmCodeGen::packuswbXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_NARROW_I16X8_U);
+}
+
+void JitWasmCodeGen::pavgbXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_AVGR_U);
+}
+
+void JitWasmCodeGen::pavgwXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_AVGR_U);
+}
+
+void JitWasmCodeGen::pmaxswXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_MAX_S);
+}
+
+void JitWasmCodeGen::pmaxubXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_MAX_U);
+}
+
+void JitWasmCodeGen::pminswXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I16X8_MIN_S);
+}
+
+void JitWasmCodeGen::pminubXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_I8X16_MIN_U);
+}
+
+void JitWasmCodeGen::pextrwR32Xmm(RegPtr dst, SSERegPtr src, U32 imm) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I16X8_EXTRACT_LANE_U, imm & 7);
+    popToReg(JitWidth::b32, dst);
+    forceSyncBackIfNotCached(dst);
+}
+
+void JitWasmCodeGen::pinsrwXmmR32(SSERegPtr dst, RegPtr src, U32 imm) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    pushRegValue(src);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I16X8_REPLACE_LANE, imm & 7);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::pmovmskbR32Xmm(RegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_I8X16_BITMASK);
+    popToReg(JitWidth::b32, dst);
+    forceSyncBackIfNotCached(dst);
+}
+
+static void emitXmmUnarySimdOp(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, U32 op) {
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdOp(op);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+static void emitXmmF32CompareSelect(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, U32 compareOp) {
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdOp(compareOp);
+    emitter.emitSimdOp(WASM_SIMD_V128_BITSELECT);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+static void emitXmmScalarF32CompareSelect(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, U32 compareOp, U32 tmpLocal) {
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdOp(compareOp);
+    emitter.emitSimdOp(WASM_SIMD_V128_BITSELECT);
+    emitter.emitLocalSet(tmpLocal);
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(tmpLocal);
+    emitter.emitSimdLaneOp(WASM_SIMD_F32X4_EXTRACT_LANE, 0);
+    emitter.emitSimdLaneOp(WASM_SIMD_F32X4_REPLACE_LANE, 0);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+static void emitXmmF64CompareSelect(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, U32 compareOp) {
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdOp(compareOp);
+    emitter.emitSimdOp(WASM_SIMD_V128_BITSELECT);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+static void emitXmmScalarF64CompareSelect(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, U32 compareOp, U32 tmpLocal) {
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdOp(compareOp);
+    emitter.emitSimdOp(WASM_SIMD_V128_BITSELECT);
+    emitter.emitLocalSet(tmpLocal);
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(tmpLocal);
+    emitter.emitSimdLaneOp(WASM_SIMD_F64X2_EXTRACT_LANE, 0);
+    emitter.emitSimdLaneOp(WASM_SIMD_F64X2_REPLACE_LANE, 0);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+static void emitXmmScalarBinaryF32Op(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, U32 op, U32 tmpLocal) {
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdOp(op);
+    emitter.emitLocalSet(tmpLocal);
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(tmpLocal);
+    emitter.emitSimdLaneOp(WASM_SIMD_F32X4_EXTRACT_LANE, 0);
+    emitter.emitSimdLaneOp(WASM_SIMD_F32X4_REPLACE_LANE, 0);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+static void emitXmmScalarUnaryF32Op(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, U32 op, U32 tmpLocal) {
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdOp(op);
+    emitter.emitLocalSet(tmpLocal);
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(tmpLocal);
+    emitter.emitSimdLaneOp(WASM_SIMD_F32X4_EXTRACT_LANE, 0);
+    emitter.emitSimdLaneOp(WASM_SIMD_F32X4_REPLACE_LANE, 0);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+static void emitXmmScalarBinaryF64Op(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, U32 op, U32 tmpLocal) {
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdOp(op);
+    emitter.emitLocalSet(tmpLocal);
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(tmpLocal);
+    emitter.emitSimdLaneOp(WASM_SIMD_F64X2_EXTRACT_LANE, 0);
+    emitter.emitSimdLaneOp(WASM_SIMD_F64X2_REPLACE_LANE, 0);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+static void emitXmmScalarUnaryF64Op(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, U32 op, U32 tmpLocal) {
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdOp(op);
+    emitter.emitLocalSet(tmpLocal);
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(tmpLocal);
+    emitter.emitSimdLaneOp(WASM_SIMD_F64X2_EXTRACT_LANE, 0);
+    emitter.emitSimdLaneOp(WASM_SIMD_F64X2_REPLACE_LANE, 0);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+static void emitXmmF32CompareMask(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, U32 pred) {
+    switch (pred & 7) {
+    case 0:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F32X4_EQ);
+        break;
+    case 1:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F32X4_LT);
+        break;
+    case 2:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F32X4_LE);
+        break;
+    case 3:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F32X4_EQ);
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F32X4_EQ);
+        emitter.emitSimdOp(WASM_SIMD_V128_AND);
+        emitter.emitSimdOp(WASM_SIMD_V128_NOT);
+        break;
+    case 4:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F32X4_EQ);
+        emitter.emitSimdOp(WASM_SIMD_V128_NOT);
+        break;
+    case 5:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F32X4_LT);
+        emitter.emitSimdOp(WASM_SIMD_V128_NOT);
+        break;
+    case 6:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F32X4_LE);
+        emitter.emitSimdOp(WASM_SIMD_V128_NOT);
+        break;
+    case 7:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F32X4_EQ);
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F32X4_EQ);
+        emitter.emitSimdOp(WASM_SIMD_V128_AND);
+        break;
+    }
+}
+
+static void emitXmmF64CompareMask(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, U32 pred) {
+    switch (pred & 7) {
+    case 0:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F64X2_EQ);
+        break;
+    case 1:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F64X2_LT);
+        break;
+    case 2:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F64X2_LE);
+        break;
+    case 3:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F64X2_EQ);
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F64X2_EQ);
+        emitter.emitSimdOp(WASM_SIMD_V128_AND);
+        emitter.emitSimdOp(WASM_SIMD_V128_NOT);
+        break;
+    case 4:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F64X2_EQ);
+        emitter.emitSimdOp(WASM_SIMD_V128_NOT);
+        break;
+    case 5:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F64X2_LT);
+        emitter.emitSimdOp(WASM_SIMD_V128_NOT);
+        break;
+    case 6:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F64X2_LE);
+        emitter.emitSimdOp(WASM_SIMD_V128_NOT);
+        break;
+    case 7:
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitLocalGet(dst->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F64X2_EQ);
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitLocalGet(src->hardwareReg());
+        emitter.emitSimdOp(WASM_SIMD_F64X2_EQ);
+        emitter.emitSimdOp(WASM_SIMD_V128_AND);
+        break;
+    }
+}
+
+static void emitXmmAndNot(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src) {
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitSimdOp(WASM_SIMD_V128_ANDNOT);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+static void emitXmmShuffle(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, const U8 lanes[16]) {
+    emitter.emitLocalGet(dst->hardwareReg());
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitI8x16Shuffle(lanes);
+    emitter.emitLocalSet(dst->hardwareReg());
+}
+
+static void emitWasmF64ConstBits(WasmEmitter& emitter, U64 bits) {
+    emitter.emitI64Const((S64)bits);
+    emitter.emitOp(WASM_F64_REINTERPRET_I64);
+}
+
+static void emitWasmF32x4SplatBits(WasmEmitter& emitter, U32 bits) {
+    emitter.emitI32Const((S32)bits);
+    emitter.emitOp(WASM_F32_REINTERPRET_I32);
+    emitter.emitSimdOp(WASM_SIMD_F32X4_SPLAT);
+}
+
+static void emitWasmI32x4Splat(WasmEmitter& emitter, U32 value) {
+    emitter.emitI32Const((S32)value);
+    emitter.emitSimdOp(WASM_SIMD_I32X4_SPLAT);
+}
+
+static void emitWasmRcpApproxF32x4(WasmEmitter& emitter, SSERegPtr src, U32 tmpLocal) {
+    emitWasmI32x4Splat(emitter, 0x7ef311c3u);
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdOp(WASM_SIMD_I32X4_SUB);
+    emitter.emitLocalSet(tmpLocal);
+
+    emitter.emitLocalGet(tmpLocal);
+    emitWasmF32x4SplatBits(emitter, 0x40000000u);
+    emitter.emitLocalGet(tmpLocal);
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdOp(WASM_SIMD_F32X4_MUL);
+    emitter.emitSimdOp(WASM_SIMD_F32X4_SUB);
+    emitter.emitSimdOp(WASM_SIMD_F32X4_MUL);
+}
+
+static void emitWasmRsqrtApproxF32x4(WasmEmitter& emitter, SSERegPtr src, U32 tmpLocal) {
+    emitWasmI32x4Splat(emitter, 0x5f375a82u);
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitI32Const(1);
+    emitter.emitSimdOp(WASM_SIMD_I32X4_SHR_U);
+    emitter.emitSimdOp(WASM_SIMD_I32X4_SUB);
+    emitter.emitLocalSet(tmpLocal);
+
+    emitter.emitLocalGet(tmpLocal);
+    emitWasmF32x4SplatBits(emitter, 0x3fc01d31u);
+    emitter.emitLocalGet(src->hardwareReg());
+    emitWasmF32x4SplatBits(emitter, 0x3f000000u);
+    emitter.emitSimdOp(WASM_SIMD_F32X4_MUL);
+    emitter.emitLocalGet(tmpLocal);
+    emitter.emitSimdOp(WASM_SIMD_F32X4_MUL);
+    emitter.emitLocalGet(tmpLocal);
+    emitter.emitSimdOp(WASM_SIMD_F32X4_MUL);
+    emitter.emitSimdOp(WASM_SIMD_F32X4_SUB);
+    emitter.emitSimdOp(WASM_SIMD_F32X4_MUL);
+}
+
+static void emitWasmF32LaneAsF64(WasmEmitter& emitter, SSERegPtr src, U8 lane) {
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdLaneOp(WASM_SIMD_F32X4_EXTRACT_LANE, lane);
+    emitter.emitOp(WASM_F64_PROMOTE_F32);
+}
+
+static void emitWasmRoundF64ForSseI32(WasmEmitter& emitter, U32 f64Local, U32 mxcsrLocal, bool truncate) {
+    if (truncate) {
+        emitter.emitOp(WASM_F64_TRUNC);
+        emitter.emitLocalSet(f64Local);
+        return;
+    }
+
+    emitter.emitLocalSet(f64Local);
+
+    emitter.emitLocalGet(mxcsrLocal);
+    emitter.emitI32Const(13);
+    emitter.emitOp(WASM_I32_SHR_U);
+    emitter.emitI32Const(3);
+    emitter.emitOp(WASM_I32_AND);
+    emitter.emitOp(WASM_I32_EQZ);
+    emitter.emitIf();
+    emitter.emitLocalGet(f64Local);
+    emitter.emitOp(WASM_F64_NEAREST);
+    emitter.emitLocalSet(f64Local);
+    emitter.emitElse();
+    emitter.emitLocalGet(mxcsrLocal);
+    emitter.emitI32Const(13);
+    emitter.emitOp(WASM_I32_SHR_U);
+    emitter.emitI32Const(3);
+    emitter.emitOp(WASM_I32_AND);
+    emitter.emitI32Const(ROUND_Down);
+    emitter.emitOp(WASM_I32_EQ);
+    emitter.emitIf();
+    emitter.emitLocalGet(f64Local);
+    emitter.emitOp(WASM_F64_FLOOR);
+    emitter.emitLocalSet(f64Local);
+    emitter.emitElse();
+    emitter.emitLocalGet(mxcsrLocal);
+    emitter.emitI32Const(13);
+    emitter.emitOp(WASM_I32_SHR_U);
+    emitter.emitI32Const(3);
+    emitter.emitOp(WASM_I32_AND);
+    emitter.emitI32Const(ROUND_Up);
+    emitter.emitOp(WASM_I32_EQ);
+    emitter.emitIf();
+    emitter.emitLocalGet(f64Local);
+    emitter.emitOp(WASM_F64_CEIL);
+    emitter.emitLocalSet(f64Local);
+    emitter.emitElse();
+    emitter.emitLocalGet(f64Local);
+    emitter.emitOp(WASM_F64_TRUNC);
+    emitter.emitLocalSet(f64Local);
+    emitter.emitEnd();
+    emitter.emitEnd();
+    emitter.emitEnd();
+}
+
+static void emitWasmSafeF64ToI32ForSse(WasmEmitter& emitter, U32 f64Local) {
+    emitter.emitLocalGet(f64Local);
+    emitter.emitLocalGet(f64Local);
+    emitter.emitOp(WASM_F64_NE);
+
+    emitter.emitLocalGet(f64Local);
+    emitWasmF64ConstBits(emitter, 0xc1e0000000000000ULL); // -2147483648.0
+    emitter.emitOp(WASM_F64_LT);
+    emitter.emitOp(WASM_I32_OR);
+
+    emitter.emitLocalGet(f64Local);
+    emitWasmF64ConstBits(emitter, 0x41dfffffffc00000ULL); // 2147483647.0
+    emitter.emitOp(WASM_F64_GT);
+    emitter.emitOp(WASM_I32_OR);
+
+    emitter.emitIf(WasmType::I32);
+    emitter.emitI32Const((S32)0x80000000u);
+    emitter.emitElse();
+    emitter.emitLocalGet(f64Local);
+    emitter.emitOp(WASM_I32_TRUNC_F64_S);
+    emitter.emitEnd();
+}
+
+static void emitWasmSseF32LaneToI32(WasmEmitter& emitter, SSERegPtr src, U8 lane, U32 f64Local, U32 mxcsrLocal, bool truncate) {
+    emitWasmF32LaneAsF64(emitter, src, lane);
+    emitWasmRoundF64ForSseI32(emitter, f64Local, mxcsrLocal, truncate);
+    emitWasmSafeF64ToI32ForSse(emitter, f64Local);
+}
+
+static void emitWasmSseF64LaneToI32(WasmEmitter& emitter, SSERegPtr src, U8 lane, U32 f64Local, U32 mxcsrLocal, bool truncate) {
+    emitter.emitLocalGet(src->hardwareReg());
+    emitter.emitSimdLaneOp(WASM_SIMD_F64X2_EXTRACT_LANE, lane);
+    emitWasmRoundF64ForSseI32(emitter, f64Local, mxcsrLocal, truncate);
+    emitWasmSafeF64ToI32ForSse(emitter, f64Local);
+}
+
+static void emitWasmZeroV128Local(WasmEmitter& emitter, U32 local) {
+    U8 zero[16] = {};
+    emitter.emitV128Const(zero);
+    emitter.emitLocalSet(local);
+}
+
+void JitWasmCodeGen::cvtpi2psXmmMmx(SSERegPtr dst, MMXRegPtr src) {
+    SSERegPtr converted = getTmpSSE();
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_F32X4_CONVERT_I32X4_S);
+    m_emitter.emitLocalSet(converted->hardwareReg());
+
+    const U8 lanes[16] = { 16, 17, 18, 19, 20, 21, 22, 23, 8, 9, 10, 11, 12, 13, 14, 15 };
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(converted->hardwareReg());
+    m_emitter.emitI8x16Shuffle(lanes);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::cvtpd2piMmxXmm(MMXRegPtr dst, SSERegPtr src) {
+    U32 f64Local = allocF64Scratch();
+    RegPtr mxcsr = readCPU(JitWidth::b32, (U32)offsetof(CPU, mxcsr));
+
+    emitWasmZeroV128Local(m_emitter, dst->hardwareReg());
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    emitWasmSseF64LaneToI32(m_emitter, src, 0, f64Local, mxcsr->hardwareReg(), false);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    emitWasmSseF64LaneToI32(m_emitter, src, 1, f64Local, mxcsr->hardwareReg(), false);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 1);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    freeF64Scratch(f64Local);
+    freeScratch(mxcsr->hardwareReg());
+}
+
+void JitWasmCodeGen::cvtpd2dqXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    U32 f64Local = allocF64Scratch();
+    RegPtr mxcsr = readCPU(JitWidth::b32, (U32)offsetof(CPU, mxcsr));
+    SSERegPtr result = getTmpSSE();
+
+    emitWasmZeroV128Local(m_emitter, result->hardwareReg());
+
+    m_emitter.emitLocalGet(result->hardwareReg());
+    emitWasmSseF64LaneToI32(m_emitter, src, 0, f64Local, mxcsr->hardwareReg(), false);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(result->hardwareReg());
+
+    m_emitter.emitLocalGet(result->hardwareReg());
+    emitWasmSseF64LaneToI32(m_emitter, src, 1, f64Local, mxcsr->hardwareReg(), false);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 1);
+    m_emitter.emitLocalSet(result->hardwareReg());
+
+    m_emitter.emitLocalGet(result->hardwareReg());
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    freeF64Scratch(f64Local);
+    freeScratch(mxcsr->hardwareReg());
+}
+
+void JitWasmCodeGen::cvttpd2piMmxXmm(MMXRegPtr dst, SSERegPtr src) {
+    U32 f64Local = allocF64Scratch();
+
+    emitWasmZeroV128Local(m_emitter, dst->hardwareReg());
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    emitWasmSseF64LaneToI32(m_emitter, src, 0, f64Local, 0, true);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    emitWasmSseF64LaneToI32(m_emitter, src, 1, f64Local, 0, true);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 1);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    freeF64Scratch(f64Local);
+}
+
+void JitWasmCodeGen::cvtps2dqXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    U32 f64Local = allocF64Scratch();
+    RegPtr mxcsr = readCPU(JitWidth::b32, (U32)offsetof(CPU, mxcsr));
+    SSERegPtr result = getTmpSSE();
+
+    emitWasmZeroV128Local(m_emitter, result->hardwareReg());
+
+    for (U8 lane = 0; lane < 4; ++lane) {
+        m_emitter.emitLocalGet(result->hardwareReg());
+        emitWasmSseF32LaneToI32(m_emitter, src, lane, f64Local, mxcsr->hardwareReg(), false);
+        m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, lane);
+        m_emitter.emitLocalSet(result->hardwareReg());
+    }
+
+    m_emitter.emitLocalGet(result->hardwareReg());
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    freeF64Scratch(f64Local);
+    freeScratch(mxcsr->hardwareReg());
+}
+
+void JitWasmCodeGen::cvtps2piMmxXmm(MMXRegPtr dst, SSERegPtr src) {
+    U32 f64Local = allocF64Scratch();
+    RegPtr mxcsr = readCPU(JitWidth::b32, (U32)offsetof(CPU, mxcsr));
+
+    U8 zero[16] = {};
+    m_emitter.emitV128Const(zero);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    emitWasmSseF32LaneToI32(m_emitter, src, 0, f64Local, mxcsr->hardwareReg(), false);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    emitWasmSseF32LaneToI32(m_emitter, src, 1, f64Local, mxcsr->hardwareReg(), false);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 1);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    freeF64Scratch(f64Local);
+    freeScratch(mxcsr->hardwareReg());
+}
+
+void JitWasmCodeGen::cvtsi2ssXmmR32(SSERegPtr dst, RegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    pushRegValue(src);
+    m_emitter.emitOp(WASM_F64_CONVERT_I32_S);
+    m_emitter.emitOp(WASM_F32_DEMOTE_F64);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::cvtss2siR32Xmm(RegPtr dst, SSERegPtr src) {
+    U32 f64Local = allocF64Scratch();
+    RegPtr mxcsr = readCPU(JitWidth::b32, (U32)offsetof(CPU, mxcsr));
+    emitWasmSseF32LaneToI32(m_emitter, src, 0, f64Local, mxcsr->hardwareReg(), false);
+    popToReg(JitWidth::b32, dst);
+    forceSyncBackIfNotCached(dst);
+    freeF64Scratch(f64Local);
+    freeScratch(mxcsr->hardwareReg());
+}
+
+void JitWasmCodeGen::cvtsd2siR32Xmm(RegPtr dst, SSERegPtr src) {
+    U32 f64Local = allocF64Scratch();
+    RegPtr mxcsr = readCPU(JitWidth::b32, (U32)offsetof(CPU, mxcsr));
+    emitWasmSseF64LaneToI32(m_emitter, src, 0, f64Local, mxcsr->hardwareReg(), false);
+    popToReg(JitWidth::b32, dst);
+    forceSyncBackIfNotCached(dst);
+    freeF64Scratch(f64Local);
+    freeScratch(mxcsr->hardwareReg());
+}
+
+void JitWasmCodeGen::cvttps2piMmxXmm(MMXRegPtr dst, SSERegPtr src) {
+    U32 f64Local = allocF64Scratch();
+
+    U8 zero[16] = {};
+    m_emitter.emitV128Const(zero);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    emitWasmSseF32LaneToI32(m_emitter, src, 0, f64Local, 0, true);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    emitWasmSseF32LaneToI32(m_emitter, src, 1, f64Local, 0, true);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 1);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    freeF64Scratch(f64Local);
+}
+
+void JitWasmCodeGen::cvttpd2dqXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    U32 f64Local = allocF64Scratch();
+    SSERegPtr result = getTmpSSE();
+
+    emitWasmZeroV128Local(m_emitter, result->hardwareReg());
+
+    m_emitter.emitLocalGet(result->hardwareReg());
+    emitWasmSseF64LaneToI32(m_emitter, src, 0, f64Local, 0, true);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(result->hardwareReg());
+
+    m_emitter.emitLocalGet(result->hardwareReg());
+    emitWasmSseF64LaneToI32(m_emitter, src, 1, f64Local, 0, true);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 1);
+    m_emitter.emitLocalSet(result->hardwareReg());
+
+    m_emitter.emitLocalGet(result->hardwareReg());
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    freeF64Scratch(f64Local);
+}
+
+void JitWasmCodeGen::cvttps2dqXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    U32 f64Local = allocF64Scratch();
+    SSERegPtr result = getTmpSSE();
+
+    emitWasmZeroV128Local(m_emitter, result->hardwareReg());
+
+    for (U8 lane = 0; lane < 4; ++lane) {
+        m_emitter.emitLocalGet(result->hardwareReg());
+        emitWasmSseF32LaneToI32(m_emitter, src, lane, f64Local, 0, true);
+        m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, lane);
+        m_emitter.emitLocalSet(result->hardwareReg());
+    }
+
+    m_emitter.emitLocalGet(result->hardwareReg());
+    m_emitter.emitLocalSet(dst->hardwareReg());
+
+    freeF64Scratch(f64Local);
+}
+
+void JitWasmCodeGen::cvttss2siR32Xmm(RegPtr dst, SSERegPtr src) {
+    U32 f64Local = allocF64Scratch();
+    emitWasmSseF32LaneToI32(m_emitter, src, 0, f64Local, 0, true);
+    popToReg(JitWidth::b32, dst);
+    forceSyncBackIfNotCached(dst);
+    freeF64Scratch(f64Local);
+}
+
+void JitWasmCodeGen::cvttsd2siR32Xmm(RegPtr dst, SSERegPtr src) {
+    U32 f64Local = allocF64Scratch();
+    emitWasmSseF64LaneToI32(m_emitter, src, 0, f64Local, 0, true);
+    popToReg(JitWidth::b32, dst);
+    forceSyncBackIfNotCached(dst);
+    freeF64Scratch(f64Local);
+}
+
+void JitWasmCodeGen::movhlpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 24, 25, 26, 27, 28, 29, 30, 31, 8, 9, 10, 11, 12, 13, 14, 15 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::movlhpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::movmskpsR32Xmm(RegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_I32X4_BITMASK);
+    popToReg(JitWidth::b32, dst);
+    forceSyncBackIfNotCached(dst);
+}
+
+void JitWasmCodeGen::shufpsXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
+    U8 lanes[16];
+    const U32 lane0 = (imm >> 0) & 3;
+    const U32 lane1 = (imm >> 2) & 3;
+    const U32 lane2 = (imm >> 4) & 3;
+    const U32 lane3 = (imm >> 6) & 3;
+
+    for (U32 i = 0; i < 4; i++) {
+        lanes[i] = (U8)(lane0 * 4 + i);
+        lanes[4 + i] = (U8)(lane1 * 4 + i);
+        lanes[8 + i] = (U8)(16 + lane2 * 4 + i);
+        lanes[12 + i] = (U8)(16 + lane3 * 4 + i);
+    }
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::pshufdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
+    U8 lanes[16];
+
+    for (U32 out = 0; out < 4; out++) {
+        const U32 in = (imm >> (out * 2)) & 3;
+        for (U32 i = 0; i < 4; i++) {
+            lanes[out * 4 + i] = (U8)(in * 4 + i);
+        }
+    }
+
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitI8x16Shuffle(lanes);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::pshufhwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
+    U8 lanes[16] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+
+    for (U32 out = 4; out < 8; out++) {
+        const U32 in = 4 + ((imm >> ((out - 4) * 2)) & 3);
+        lanes[out * 2] = (U8)(in * 2);
+        lanes[out * 2 + 1] = (U8)(in * 2 + 1);
+    }
+
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitI8x16Shuffle(lanes);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::pshuflwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
+    U8 lanes[16];
+
+    for (U32 out = 0; out < 4; out++) {
+        const U32 in = (imm >> (out * 2)) & 3;
+        lanes[out * 2] = (U8)(in * 2);
+        lanes[out * 2 + 1] = (U8)(in * 2 + 1);
+    }
+    for (U32 i = 8; i < 16; i++) {
+        lanes[i] = (U8)i;
+    }
+
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitI8x16Shuffle(lanes);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::shufpdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
+    U8 lanes[16];
+    const U32 dstQword = imm & 1;
+    const U32 srcQword = (imm >> 1) & 1;
+
+    for (U32 i = 0; i < 8; i++) {
+        lanes[i] = (U8)(dstQword * 8 + i);
+        lanes[8 + i] = (U8)(16 + srcQword * 8 + i);
+    }
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::unpcklpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 0, 1, 2, 3, 16, 17, 18, 19, 4, 5, 6, 7, 20, 21, 22, 23 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::unpckhpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 8, 9, 10, 11, 24, 25, 26, 27, 12, 13, 14, 15, 28, 29, 30, 31 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::unpcklpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::unpckhpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::punpcklbwXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::punpcklwdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 0, 1, 16, 17, 2, 3, 18, 19, 4, 5, 20, 21, 6, 7, 22, 23 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::punpckldqXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 0, 1, 2, 3, 16, 17, 18, 19, 4, 5, 6, 7, 20, 21, 22, 23 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::punpcklqdqXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::punpckhbwXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::punpckhwdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 8, 9, 24, 25, 10, 11, 26, 27, 12, 13, 28, 29, 14, 15, 30, 31 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::punpckhdqXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 8, 9, 10, 11, 24, 25, 26, 27, 12, 13, 14, 15, 28, 29, 30, 31 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::punpckhqdqXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    const U8 lanes[16] = { 8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31 };
+    emitXmmShuffle(m_emitter, dst, src, lanes);
+}
+
+void JitWasmCodeGen::addpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_F32X4_ADD);
+}
+
+void JitWasmCodeGen::addssXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarBinaryF32Op(m_emitter, dst, src, WASM_SIMD_F32X4_ADD, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::addpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_F64X2_ADD);
+}
+
+void JitWasmCodeGen::addsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarBinaryF64Op(m_emitter, dst, src, WASM_SIMD_F64X2_ADD, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::subpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_F32X4_SUB);
+}
+
+void JitWasmCodeGen::subssXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarBinaryF32Op(m_emitter, dst, src, WASM_SIMD_F32X4_SUB, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::subpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_F64X2_SUB);
+}
+
+void JitWasmCodeGen::subsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarBinaryF64Op(m_emitter, dst, src, WASM_SIMD_F64X2_SUB, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::mulpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_F32X4_MUL);
+}
+
+void JitWasmCodeGen::mulssXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarBinaryF32Op(m_emitter, dst, src, WASM_SIMD_F32X4_MUL, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::mulpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_F64X2_MUL);
+}
+
+void JitWasmCodeGen::mulsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarBinaryF64Op(m_emitter, dst, src, WASM_SIMD_F64X2_MUL, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::divpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_F32X4_DIV);
+}
+
+void JitWasmCodeGen::divssXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarBinaryF32Op(m_emitter, dst, src, WASM_SIMD_F32X4_DIV, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::divpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_F64X2_DIV);
+}
+
+void JitWasmCodeGen::divsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarBinaryF64Op(m_emitter, dst, src, WASM_SIMD_F64X2_DIV, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::minpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmF32CompareSelect(m_emitter, dst, src, WASM_SIMD_F32X4_LT);
+}
+
+void JitWasmCodeGen::minssXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarF32CompareSelect(m_emitter, dst, src, WASM_SIMD_F32X4_LT, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::minpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmF64CompareSelect(m_emitter, dst, src, WASM_SIMD_F64X2_LT);
+}
+
+void JitWasmCodeGen::minsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarF64CompareSelect(m_emitter, dst, src, WASM_SIMD_F64X2_LT, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::maxpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmF32CompareSelect(m_emitter, dst, src, WASM_SIMD_F32X4_GT);
+}
+
+void JitWasmCodeGen::maxssXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarF32CompareSelect(m_emitter, dst, src, WASM_SIMD_F32X4_GT, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::maxpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmF64CompareSelect(m_emitter, dst, src, WASM_SIMD_F64X2_GT);
+}
+
+void JitWasmCodeGen::maxsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarF64CompareSelect(m_emitter, dst, src, WASM_SIMD_F64X2_GT, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::sqrtpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmUnarySimdOp(m_emitter, dst, src, WASM_SIMD_F32X4_SQRT);
+}
+
+void JitWasmCodeGen::sqrtssXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarUnaryF32Op(m_emitter, dst, src, WASM_SIMD_F32X4_SQRT, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::sqrtpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmUnarySimdOp(m_emitter, dst, src, WASM_SIMD_F64X2_SQRT);
+}
+
+void JitWasmCodeGen::sqrtsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmScalarUnaryF64Op(m_emitter, dst, src, WASM_SIMD_F64X2_SQRT, tmp->hardwareReg());
+}
+
+void JitWasmCodeGen::rcppsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitWasmRcpApproxF32x4(m_emitter, src, tmp->hardwareReg());
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::rcpssXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    emitWasmF32x4SplatBits(m_emitter, 0x3f800000u);
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdOp(WASM_SIMD_F32X4_DIV);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F32X4_EXTRACT_LANE, 0);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::rsqrtpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitWasmRsqrtApproxF32x4(m_emitter, src, tmp->hardwareReg());
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::rsqrtssXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    SSERegPtr tmp = getTmpSSE();
+    emitWasmRsqrtApproxF32x4(m_emitter, src, tmp->hardwareReg());
+    m_emitter.emitLocalSet(tmp->hardwareReg());
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(tmp->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F32X4_EXTRACT_LANE, 0);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_F32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::cmppsXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
+    emitXmmF32CompareMask(m_emitter, dst, src, imm);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::cmpssXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmF32CompareMask(m_emitter, dst, src, imm);
+    m_emitter.emitLocalSet(tmp->hardwareReg());
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(tmp->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_EXTRACT_LANE, 0);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::cmppdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
+    emitXmmF64CompareMask(m_emitter, dst, src, imm);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::cmpsdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) {
+    SSERegPtr tmp = getTmpSSE();
+    emitXmmF64CompareMask(m_emitter, dst, src, imm);
+    m_emitter.emitLocalSet(tmp->hardwareReg());
+
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(tmp->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_EXTRACT_LANE, 0);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::comissXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (currentLazyFlags != FLAGS_NONE && currentLazyFlags != FLAGS_NULL) {
+        fillFlags(WASM_FMASK_TEST);
+    }
+
+    U32 lhs = allocF64Scratch();
+    U32 rhs = allocF64Scratch();
+    U32 result = allocScratch();
+    RegPtr flags = readCPU(JitWidth::b32, (U32)offsetof(CPU, flags));
+
+    emitWasmF32LaneAsF64(m_emitter, dst, 0);
+    m_emitter.emitLocalSet(lhs);
+    emitWasmF32LaneAsF64(m_emitter, src, 0);
+    m_emitter.emitLocalSet(rhs);
+
+    m_emitter.emitI32Const(0);
+    m_emitter.emitLocalSet(result);
+
+    m_emitter.emitI32Const(CF);
+    m_emitter.emitLocalGet(result);
+    m_emitter.emitLocalGet(lhs);
+    m_emitter.emitLocalGet(rhs);
+    m_emitter.emitOp(WASM_F64_LT);
+    m_emitter.emitOp(WASM_SELECT);
+    m_emitter.emitLocalSet(result);
+
+    m_emitter.emitI32Const(ZF);
+    m_emitter.emitLocalGet(result);
+    m_emitter.emitLocalGet(lhs);
+    m_emitter.emitLocalGet(rhs);
+    m_emitter.emitOp(WASM_F64_EQ);
+    m_emitter.emitOp(WASM_SELECT);
+    m_emitter.emitLocalSet(result);
+
+    m_emitter.emitI32Const(CF | PF | ZF);
+    m_emitter.emitLocalGet(result);
+    m_emitter.emitLocalGet(lhs);
+    m_emitter.emitLocalGet(lhs);
+    m_emitter.emitOp(WASM_F64_NE);
+    m_emitter.emitLocalGet(rhs);
+    m_emitter.emitLocalGet(rhs);
+    m_emitter.emitOp(WASM_F64_NE);
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.emitOp(WASM_SELECT);
+    m_emitter.emitLocalSet(result);
+
+    pushRegValue(flags);
+    m_emitter.emitI32Const((S32)~WASM_FMASK_TEST);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitLocalGet(result);
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.emitLocalSet(flags->hardwareReg());
+
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, flags), flags);
+    storeLazyFlagType(FLAGS_NONE);
+    currentLazyFlags = FLAGS_NONE;
+    freeScratch(flags->hardwareReg());
+    freeScratch(result);
+    freeF64Scratch(rhs);
+    freeF64Scratch(lhs);
+}
+
+void JitWasmCodeGen::ucomissXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    comissXmmXmm(dst, src);
+}
+
+void JitWasmCodeGen::andpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_V128_AND);
+}
+
+void JitWasmCodeGen::orpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_V128_OR);
+}
+
+void JitWasmCodeGen::xorpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_V128_XOR);
+}
+
+void JitWasmCodeGen::andnpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmAndNot(m_emitter, dst, src);
+}
+
+void JitWasmCodeGen::andpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_V128_AND);
+}
+
+void JitWasmCodeGen::orpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_V128_OR);
+}
+
+void JitWasmCodeGen::xorpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_V128_XOR);
+}
+
+void JitWasmCodeGen::andnpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmAndNot(m_emitter, dst, src);
+}
+
+void JitWasmCodeGen::pandXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_V128_AND);
+}
+
+void JitWasmCodeGen::porXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_V128_OR);
+}
+
+void JitWasmCodeGen::pxorXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    logWasmJitSimdEnabledOnce();
+    emitXmmBinarySimdOp(m_emitter, dst, src, WASM_SIMD_V128_XOR);
+}
+
+void JitWasmCodeGen::pandnXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    emitXmmAndNot(m_emitter, dst, src);
+}
+
+void JitWasmCodeGen::movssXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_EXTRACT_LANE, 0);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::movsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_EXTRACT_LANE, 0);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::movupdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::movd(RegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_EXTRACT_LANE, 0);
+    popToReg(JitWidth::b32, dst);
+}
+
+void JitWasmCodeGen::movd(SSERegPtr dst, RegPtr src) {
+    U8 zero[16] = {};
+    m_emitter.emitV128Const(zero);
+    pushRegValue(src);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::movdq2q(MMXRegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_EXTRACT_LANE, 0);
+    emitI64ToMmxLocal(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::movq2dq(SSERegPtr dst, MMXRegPtr src) {
+    emitMmxLocalToI64(src->hardwareReg());
+    emitI64ToMmxLocal(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::movq(SSERegPtr dst, SSERegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_EXTRACT_LANE, 0);
+    emitI64ToMmxLocal(dst->hardwareReg());
+}
+
+SSERegPtr JitWasmCodeGen::getTmpSSE() {
+    return std::shared_ptr<SSERegInternal>(new SSERegInternal((U8)allocV128Scratch(), SSE_TMP_INDEX), [this](SSERegInternal* p) {
+        freeV128Scratch(p->hardwareReg());
+        delete p;
+    });
+}
+
+bool JitWasmCodeGen::isSseRegCached(U8 reg) {
+    (void)reg;
+    return true;
+}
+
+void JitWasmCodeGen::storeCpuXMMReg(SSERegPtr reg, U32 index) {
+    if (index >= 8) {
+        kpanic("WASM storeCpuXMMReg invalid XMM index");
+        return;
+    }
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(reg->hardwareReg());
+    m_emitter.emitV128Store((U32)(offsetof(CPU, xmm) + index * sizeof(cpu->xmm[0])));
+}
+
+SSERegPtr JitWasmCodeGen::loadCpuXMMReg(U8 index) {
+    if (index >= 8) {
+        kpanic("WASM loadCpuXMMReg invalid XMM index");
+        return getTmpSSE();
+    }
+    SSERegPtr tmp = getTmpSSE();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitV128Load((U32)(offsetof(CPU, xmm) + index * sizeof(cpu->xmm[0])));
+    m_emitter.emitLocalSet(tmp->hardwareReg());
+    return tmp;
+}
+
+SSERegPtr JitWasmCodeGen::loadXMMFromMem128(U8 index, MemPtr address, SSERegPtr result) {
+    (void)index;
+    if (!result) {
+        result = getTmpSSE();
+    }
+    if (address->emulatedAddress) {
+        kpanic("WASM SSE loadXMMFromMem128 expects a host MemPtr");
+    }
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitV128Load(memOffset, 0);
+    m_emitter.emitLocalSet(result->hardwareReg());
+    return result;
+}
+
+SSERegPtr JitWasmCodeGen::loadXMMFromMem32(U8 index, MemPtr address) {
+    (void)index;
+    SSERegPtr tmp = getTmpSSE();
+    if (address->emulatedAddress) {
+        kpanic("WASM SSE loadXMMFromMem32 expects a host MemPtr");
+    }
+    U32 memOffset = 0;
+    U32 valueLocal = allocScratch();
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitI32Load(memOffset, 0);
+    m_emitter.emitLocalSet(valueLocal);
+    U8 zero[16] = {};
+    m_emitter.emitV128Const(zero);
+    m_emitter.emitLocalGet(valueLocal);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(tmp->hardwareReg());
+    freeScratch(valueLocal);
+    return tmp;
+}
+
+SSERegPtr JitWasmCodeGen::loadXMMFromMem64(U8 index, MemPtr address) {
+    (void)index;
+    SSERegPtr tmp = getTmpSSE();
+    if (address->emulatedAddress) {
+        kpanic("WASM SSE loadXMMFromMem64 expects a host MemPtr");
+    }
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitI64Load(memOffset, 0);
+    m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+    U8 zero[16] = {};
+    m_emitter.emitV128Const(zero);
+    m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(tmp->hardwareReg());
+    return tmp;
+}
+
+SSERegPtr JitWasmCodeGen::loadLowXMMFromMem64(U8 index, MemPtr address) {
+    SSERegPtr reg = loadCpuXMMReg(index);
+    if (address->emulatedAddress) {
+        kpanic("WASM SSE loadLowXMMFromMem64 expects a host MemPtr");
+    }
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitI64Load(memOffset, 0);
+    m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+    m_emitter.emitLocalGet(reg->hardwareReg());
+    m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_REPLACE_LANE, 0);
+    m_emitter.emitLocalSet(reg->hardwareReg());
+    return reg;
+}
+
+SSERegPtr JitWasmCodeGen::loadHighXMMFromMem64(U8 index, MemPtr address) {
+    SSERegPtr reg = loadCpuXMMReg(index);
+    if (address->emulatedAddress) {
+        kpanic("WASM SSE loadHighXMMFromMem64 expects a host MemPtr");
+    }
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitI64Load(memOffset, 0);
+    m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+    m_emitter.emitLocalGet(reg->hardwareReg());
+    m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_REPLACE_LANE, 1);
+    m_emitter.emitLocalSet(reg->hardwareReg());
+    return reg;
+}
+
+void JitWasmCodeGen::storeXMMToMem128(SSERegPtr reg, MemPtr address) {
+    if (address->emulatedAddress) {
+        kpanic("WASM SSE storeXMMToMem128 expects a host MemPtr");
+    }
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitLocalGet(reg->hardwareReg());
+    m_emitter.emitV128Store(memOffset, 0);
+}
+
+void JitWasmCodeGen::storeXMMToMem64(SSERegPtr reg, MemPtr address) {
+    if (address->emulatedAddress) {
+        kpanic("WASM SSE storeXMMToMem64 expects a host MemPtr");
+    }
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitLocalGet(reg->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_EXTRACT_LANE, 0);
+    m_emitter.emitI64Store(memOffset, 0);
+}
+
+void JitWasmCodeGen::storeXMMToMem32(SSERegPtr reg, MemPtr address) {
+    if (address->emulatedAddress) {
+        kpanic("WASM SSE storeXMMToMem32 expects a host MemPtr");
+    }
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitLocalGet(reg->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I32X4_EXTRACT_LANE, 0);
+    m_emitter.emitI32Store(memOffset, 0);
+}
+
+void JitWasmCodeGen::storeHighXMMToMem64(SSERegPtr reg, MemPtr address) {
+    if (address->emulatedAddress) {
+        kpanic("WASM SSE storeHighXMMToMem64 expects a host MemPtr");
+    }
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitLocalGet(reg->hardwareReg());
+    m_emitter.emitSimdLaneOp(WASM_SIMD_I64X2_EXTRACT_LANE, 1);
+    m_emitter.emitI64Store(memOffset, 0);
 }
 
 MMXRegPtr JitWasmCodeGen::getTmpMMX() {
@@ -5109,6 +7016,19 @@ void JitWasmCodeGen::clearIfSpansPage(JitWidth w, RegPtr offset, RegPtr reg) {
 // Helper-import index for emulated-memory read/write of the given width.
 // Picking the wrong width corrupts neighboring bytes: writeMem32 on a
 // 16-bit push would clobber the two bytes above the stack slot.
+static U32 wasmJitWidthBytes(JitWidth w) {
+    switch (w) {
+    case JitWidth::b8:   return 1;
+    case JitWidth::b16:  return 2;
+    case JitWidth::b32:  return 4;
+    case JitWidth::b64:  return 8;
+    case JitWidth::b128: return 16;
+    case JitWidth::b256: return 32;
+    }
+    kpanic("WASM JIT unsupported JitWidth");
+    return K_PAGE_SIZE;
+}
+
 static U32 readHelperForWidth(JitWidth w) {
     switch (w) {
     case JitWidth::b8:  return HELPER_READ_MEM8;
@@ -5297,12 +7217,7 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
         m_emitter.emitOp(WASM_I32_EQZ);
 
         if (w != JitWidth::b8) {
-            U32 widthBytes = 4;
-            if (w == JitWidth::b16) {
-                widthBytes = 2;
-            } else if (w == JitWidth::b64) {
-                widthBytes = 8;
-            }
+            U32 widthBytes = wasmJitWidthBytes(w);
             pushRegValue(addressReg);
             m_emitter.emitI32Const(K_PAGE_MASK);
             m_emitter.emitOp(WASM_I32_AND);
@@ -5362,7 +7277,7 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
     m_emitter.emitOp(WASM_I32_EQZ);
 
     if (w != JitWidth::b8) {
-        U32 widthBytes = (w == JitWidth::b16) ? 2 : 4;
+        U32 widthBytes = wasmJitWidthBytes(w);
         pushRegValue(addressReg);
         m_emitter.emitI32Const(K_PAGE_MASK);
         m_emitter.emitOp(WASM_I32_AND);
@@ -5450,12 +7365,7 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
         m_emitter.emitOp(WASM_I32_EQZ);
 
         if (w != JitWidth::b8) {
-            U32 widthBytes = 4;
-            if (w == JitWidth::b16) {
-                widthBytes = 2;
-            } else if (w == JitWidth::b64) {
-                widthBytes = 8;
-            }
+            U32 widthBytes = wasmJitWidthBytes(w);
             pushRegValue(addressReg);
             m_emitter.emitI32Const(K_PAGE_MASK);
             m_emitter.emitOp(WASM_I32_AND);
@@ -5513,7 +7423,7 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
     m_emitter.emitOp(WASM_I32_EQZ);
 
     if (w != JitWidth::b8) {
-        U32 widthBytes = (w == JitWidth::b16) ? 2 : 4;
+        U32 widthBytes = wasmJitWidthBytes(w);
         pushRegValue(addressReg);
         m_emitter.emitI32Const(K_PAGE_MASK);
         m_emitter.emitOp(WASM_I32_AND);
@@ -7315,34 +9225,6 @@ void JitWasmCodeGen::hintLikelyStringLoopContinue() {
     m_emitter.setNextBranchHint(WasmBranchHint::Likely);
 }
 
-void JitWasmCodeGen::dynamic_movsdXmmE64(DecodedOp* op) {
-    RegPtr address = calculateEaa(op);
-    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Const(op->reg);
-    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(HELPER_MOVSD_XMM_E64);
-}
-
-void JitWasmCodeGen::dynamic_movsdE64Xmm(DecodedOp* op) {
-    RegPtr address = calculateEaa(op);
-    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Const(op->reg);
-    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCall(HELPER_MOVSD_E64_XMM);
-}
-
-void JitWasmCodeGen::dynamic_movsd_op(DecodedOp* op) {
-    (void)op;
-    // The direct rep movsd helper removed the fallback cost but caused a
-    // long-run WASM stack overflow. Keep profiling this path as an emulated op
-    // until the string-copy helper can be made scheduler-safe.
-    emulateSingleOp();
-}
-
 // ---------------------------------------------------------------------------
 // Function calls to C++ helpers
 // ---------------------------------------------------------------------------
@@ -7642,6 +9524,12 @@ U8* JitWasmCodeGen::createBlockExit()     { return nullptr; }
 static void wasmDummyCode(CPU*) {}
 U8* JitWasmCodeGen::createDynamicExecutableMemory(U32* pSize) {
     return (U8*)(void*)wasmDummyCode;
+}
+
+void JitWasmCodeGen::createHelpers() {
+    // JitSSE helper generation builds XMM-based cos helpers and requires real
+    // XMM hook implementations. Keep the previous empty WASM/JitMMX behavior
+    // until the SSE hooks are lowered instead of panic stubs.
 }
 
 U8* JitWasmCodeGen::createStartJITCode() {
