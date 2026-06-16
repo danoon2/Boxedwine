@@ -22,6 +22,8 @@ Emscripten
 see boxedwine-shell.js
 By default files are stored to IndexedDB. To NOT save changes set:
 Config.storageMode = STORAGE_MEMORY;
+To mount a user-selected host folder as d: set:
+Config.storageMode = STORAGE_HOST_FOLDER;
 
 settings:
  - specify an alternate root zip file system.
@@ -47,7 +49,7 @@ example:
 
 
 Other configuration options:
-AUTO_RUN - indicates if start button is shown or page auto-runs. default false
+AUTO_RUN - indicates if start button is shown or page auto-runs. default true. Host folder storage forces this off so the user can select a folder before startup.
 ALLOW_PARAM_OVERRIDE_FROM_URL - indicates if url can be appended with params as above for dir, app, m & p.
 
 see var Module and configure as appropriate

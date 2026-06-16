@@ -11,8 +11,9 @@
         let ROOT = "/root";
         let STORAGE_INDEXED_DB = "INDEXED_DB";
         let STORAGE_MEMORY = "MEMORY";
+        let STORAGE_HOST_FOLDER = "HOST_FOLDER";
 
-        let DEFAULT_AUTO_RUN = false;
+        let DEFAULT_AUTO_RUN = true;
         let DEFAULT_LOAD_DESKTOP = false;
         let DEFAULT_SOUND_ENABLED = true;
         let DEFAULT_DISABLE_HIDE_CURSOR = false;
@@ -21,8 +22,6 @@
         let DEFAULT_FRAME_SKIP = "0";
         let DEFAULT_AUDIO_FREQ = 11025;
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
-        let DEFAULT_HOST_FOLDER_DRIVE = "e";
-        let DEFAULT_HOST_FOLDER_MOUNT = "/e_drive";
         //params
         let Config = {};
         Config.locateRootBaseUrl = ""; // ie "assets/"
@@ -139,8 +138,6 @@
 			Config.ddrawOverridePath = getDDrawOverridePath();
 			Config.networking = getNetworkingConfig();
 			Config.payloadZipFile = "app.zip";
-			Config.hostFolderDrive = DEFAULT_HOST_FOLDER_DRIVE;
-			Config.hostFolderMount = DEFAULT_HOST_FOLDER_MOUNT;
 			Config.hostFolderHandle = null;
 			Config.hostFolderEnabled = false;
 			Config.hostFolderReadWrite = true;
@@ -185,6 +182,10 @@
             if (storage === "indexed_db" || storage === "indexeddb" || storage === "idb") {
                 console.log("setting storage mode to: " + STORAGE_INDEXED_DB);
                 return STORAGE_INDEXED_DB;
+            }
+            if (storage === "hostfolder" || storage === "host_folder" || storage === "host-folder") {
+                console.log("setting storage mode to: " + STORAGE_HOST_FOLDER);
+                return STORAGE_HOST_FOLDER;
             }
             console.log("unknown storage mode: " + storage);
             return Config.storageMode;
@@ -363,6 +364,9 @@
                 auto = false;
             }else{
                 auto = DEFAULT_AUTO_RUN;
+            }
+            if (Config.storageMode === STORAGE_HOST_FOLDER) {
+                auto = false;
             }
             console.log("setting auto run to: "+auto);
             return auto;
@@ -688,7 +692,6 @@
     		console.log("Use Storage mode: "+Config.storageMode);
             FS.mkdirTree(ROOT);
             FS.mkdirTree(Config.d_drive);
-            FS.mkdirTree(Config.hostFolderMount);
 			if (Config.storageMode == STORAGE_INDEXED_DB) {
 	  			FS.mount(IDBFS, {autoPersist: true}, ROOT);
 	  			if (Config.persist_d_drive) {
@@ -712,7 +715,6 @@
             }
             // The Save JIT Cache button is handled by updateSaveJitButton(),
             // called from initWasmJitCache once the persistence mode is known.
-            updateHostFolderControls();
             spinnerElement.style.display = 'none';
             toggleConsole();
             if(Config.isAutoRunSet){
@@ -720,22 +722,30 @@
             }else{
                 var startBtn = document.getElementById('startbtn');
                 startBtn.disabled = false;
+                startBtn.textContent = isHostFolderStorage() ? "Mount d:" : "Start";
                 startBtn.style.display = "";
                 var soundToggle = document.getElementById('soundToggle');
                 if(Config.isSoundEnabled){
                     soundToggle.checked = true;
                 }
                 document.getElementById('sound-checkbox').style.display = "";
+                updateHostFolderControls();
             }
         }
         function closeGetFilesModal() { //called by boxedwine.html
 		}
-        function start() { //called by boxedwine.html
+        async function start() { //called by boxedwine.html
         	if(isRunning){
                 return;
             }
             if (hostFolderBusy) {
                 return;
+            }
+            if (isHostFolderStorage() && !Config.hostFolderEnabled) {
+                if (!(await mountHostFolder())) {
+                    updateHostFolderControls();
+                    return;
+                }
             }
             startEmulator();
         }
@@ -744,10 +754,6 @@
 
             document.getElementById('startbtn').style.display = 'none';
             document.getElementById('sound-checkbox').style.display = 'none';
-            var hostFolderBtn = document.getElementById('hostfolderbtn');
-            if (hostFolderBtn) {
-                hostFolderBtn.style.display = 'none';
-            }
             if (!isPointerLockEnabled()) {
                 Config.disableHideCursor = true;
             }
@@ -945,19 +951,13 @@
         function isHostFolderAccessSupported() {
             return typeof window !== "undefined" && typeof window.showDirectoryPicker === "function";
         }
+        function isHostFolderStorage() {
+            return Config.storageMode === STORAGE_HOST_FOLDER;
+        }
         function updateHostFolderControls() {
-            var hostFolderBtn = document.getElementById('hostfolderbtn');
-            var syncHostFolderBtn = document.getElementById('synchostfolderbtn');
-            if (hostFolderBtn) {
-                hostFolderBtn.disabled = hostFolderBusy || isRunning || !isHostFolderAccessSupported();
-                hostFolderBtn.style.display = !Config.isAutoRunSet && !isRunning ? "" : "none";
-            }
-            if (syncHostFolderBtn) {
-                syncHostFolderBtn.disabled = hostFolderBusy || !Config.hostFolderEnabled;
-                syncHostFolderBtn.style.display = Config.hostFolderEnabled ? "" : "none";
-            }
             var startBtn = document.getElementById('startbtn');
             if (startBtn && !isRunning) {
+                startBtn.textContent = isHostFolderStorage() && !Config.hostFolderEnabled ? "Mount d:" : "Start";
                 startBtn.disabled = hostFolderBusy;
             }
         }
@@ -1006,7 +1006,7 @@
             if (!Config.hostFolderMounted) {
                 return null;
             }
-            let lookup = FS.lookupPath(Config.hostFolderMount, {follow_mount: false});
+            let lookup = FS.lookupPath(Config.d_drive, {follow_mount: false});
             return lookup && lookup.node ? lookup.node.mounted : null;
         }
         function syncHostFolderMount(populate) {
@@ -1030,32 +1030,36 @@
                 return;
             }
             await syncHostFolderMount(false);
-            FS.unmount(Config.hostFolderMount);
+            FS.unmount(Config.d_drive);
             Config.hostFolderMounted = false;
             Config.hostFolderEnabled = false;
             Config.hostFolderHandle = null;
         }
         async function mountHostFolder() {
             if (isRunning || hostFolderBusy) {
-                return;
+                return false;
+            }
+            if (!isHostFolderStorage()) {
+                setHostFolderStatus("Host folder mounting is only available when storage=hostfolder", true);
+                return false;
             }
             if (!isHostFolderAccessSupported()) {
                 setHostFolderStatus("Host folder mounting is not supported by this browser", true);
-                return;
+                return false;
             }
             if (typeof installFSFS !== "function") {
                 setHostFolderStatus("Host folder mounting support was not loaded", true);
-                return;
+                return false;
             }
             try {
                 let handle = await window.showDirectoryPicker({
-                    id: "boxedwine-host-drive-" + Config.hostFolderDrive,
+                    id: "boxedwine-host-drive-d",
                     mode: Config.hostFolderReadWrite ? "readwrite" : "read"
                 });
                 setHostFolderBusy(true, "Mounting host folder...");
                 if (!(await ensureHostFolderPermission(handle, Config.hostFolderReadWrite ? "readwrite" : "read"))) {
                     setHostFolderStatus("Host folder permission was not granted", true);
-                    return;
+                    return false;
                 }
                 await unmountHostFolder();
                 let fsfs = installFSFS();
@@ -1065,41 +1069,28 @@
                     autoPersist: true,
                     onPersistError: function(error) {
                         logHostFolderMessage("Host folder auto-sync failed: " + error, true);
+                    },
+                    onPersistComplete: function() {
+                        logHostFolderMessage("Synced D: folder", false);
                     }
-                }, Config.hostFolderMount);
+                }, Config.d_drive);
                 Config.hostFolderMounted = true;
                 await syncHostFolderMount(true);
                 Config.hostFolderEnabled = true;
-                setHostFolderStatus("Mounted host folder as " + Config.hostFolderDrive + ": (auto-sync enabled)", false);
+                setHostFolderStatus("Mounted D: folder (auto-sync enabled)", false);
+                return true;
             } catch (e) {
                 if (e && e.name === "AbortError") {
                     setHostFolderStatus("Host folder selection canceled", false);
                 } else {
                     setHostFolderStatus("Unable to mount host folder: " + e, true);
                 }
+                return false;
             } finally {
                 setHostFolderBusy(false);
             }
         }
-        async function syncHostFolder() {
-            if (!Config.hostFolderEnabled || !Config.hostFolderHandle || hostFolderBusy) {
-                return;
-            }
-            try {
-                setHostFolderBusy(true, "Syncing host folder...");
-                if (!(await ensureHostFolderPermission(Config.hostFolderHandle, "readwrite"))) {
-                    setHostFolderStatus("Host folder write permission was not granted", true);
-                    return;
-                }
-                await syncHostFolderMount(false);
-                setHostFolderStatus("Synced host folder", false);
-            } catch (e) {
-                setHostFolderStatus("Unable to sync host folder: " + e, true);
-            } finally {
-                setHostFolderBusy(false);
-            }
-        }
-	        function getEmulatorParams() {
+		        function getEmulatorParams() {
 	            let params = ["-root", ROOT];
             params.push("-zip");
     		params.push(Config.rootZipFile);
@@ -1128,11 +1119,6 @@
 	            params.push("-mount_drive"); // -mount_drive "/d_drive" d
 	            params.push(Config.d_drive);
 	            params.push("d");
-	            if (Config.hostFolderEnabled) {
-		            params.push("-mount_drive");
-		            params.push(Config.hostFolderMount);
-		            params.push(Config.hostFolderDrive);
-	            }
 
 	            if (Config.resolution != null) {
             	params.push("-resolution");
