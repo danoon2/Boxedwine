@@ -22,6 +22,10 @@ Emscripten
 see boxedwine-shell.js
 By default files are stored to IndexedDB. To NOT save changes set:
 Config.storageMode = STORAGE_MEMORY;
+Experimental WasmFS/OPFS builds are available with the `releaseOpfs` and
+`multiThreadedOpfs` Emscripten make targets. In those builds, use `storage=opfs`
+or leave storage unset. OPFS setup happens at native startup because WasmFS is
+not generally available from JavaScript `Module.preRun`.
 
 settings:
  - specify an alternate root zip file system.
@@ -31,6 +35,7 @@ settings:
  - change the program to execute via ?p=/home/username/chomp/CHOMP.EXE. surround in quotes if path includes spaces. Can call a .BAT file.
  - set the working directory via ?work=chomp. This simplifies p as it can then be relative to the working directory.
  - set an overlay via ?overlay=more.zip;files.zip. Where each zip file contains additional files to add to the root file system.
+ - set storage with ?storage=indexeddb, ?storage=memory, or ?storage=opfs. The opfs option requires the releaseOpfs or multiThreadedOpfs build and a browser with OPFS support.
  - set the initial emulated screen size via ?resolution=WxH. Ie resolution=640x480.
  - use c:/ as shorthand for /home/username/.wine/dosdevices/c:/ (also works for d:/)
 Some simplifications are possible:

@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test multiThreaded
+.PHONY: default all clean release test multiThreaded releaseOpfs multiThreadedOpfs
 
 ZIP_ASSET_FILES := $(wildcard *.zip)
 
@@ -17,8 +17,20 @@ test: export EXTRA_LD_FLAGS := --emrun
 multiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -pthread
 multiThreaded: export BUILD_DIR := Build/MultiThreaded
 multiThreaded: export SHELL_FILE := shell.html
-multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-multithreaded-audio.js
+multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-worker-audio.js
 multiThreaded: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
+releaseOpfs: export BUILD_DIR := Build/ReleaseOPFS
+releaseOpfs: export EXTRA_CPP_FLAGS := $(RELEASE_FLAGS) -DBOXEDWINE_WASMFS_OPFS -pthread
+releaseOpfs: export SHELL_FILE := shell.html
+releaseOpfs: export EXTRA_LD_FLAGS := -pthread -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-worker-audio.js
+releaseOpfs: export FILESYSTEM_LD_FLAGS := -s FORCE_FILESYSTEM -sWASMFS -lopfs.js
+releaseOpfs: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
+multiThreadedOpfs: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_WASMFS_OPFS -pthread
+multiThreadedOpfs: export BUILD_DIR := Build/MultiThreadedOPFS
+multiThreadedOpfs: export SHELL_FILE := shell.html
+multiThreadedOpfs: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-worker-audio.js
+multiThreadedOpfs: export FILESYSTEM_LD_FLAGS := -s FORCE_FILESYSTEM -sWASMFS -lopfs.js
+multiThreadedOpfs: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
 
 cpus := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
 make_jobs := $(shell n='$(cpus)'; expr "$$n" : '^[0-9][0-9]*$$' >/dev/null && [ "$$n" -gt 2 ] && expr "$$n" - 1)
@@ -27,7 +39,7 @@ ifneq ($(make_jobs),)
 export MAKEFLAGS := -j $(make_jobs)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
-release test multiThreaded:
+release test multiThreaded releaseOpfs multiThreadedOpfs:
 	@$(MAKE)
 
 clean:
@@ -110,7 +122,8 @@ EXCEPTION_CATCHING_FLAG ?= -sEXCEPTION_CATCHING_ALLOWED='$(EXCEPTION_CATCHING_AL
 CPPFLAGS ?= -O3 $(TAIL_CALL_FLAG) $(COMPILE_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s USE_SDL=2 -s USE_ZLIB=1 -DBOXEDWINE_ZLIB -DSDL2=1 -DBOXEDWINE_DISABLE_UI -DSIMDE_SSE2_NO_NATIVE $(GCC_EXTRA_FLAGS) -Wall -Wno-deprecated-pragma -Wno-format-security -Wno-unused-private-field -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) $(EXTRA_CPP_FLAGS)
 
 SHELL_LDFLAGS := $(if $(filter %.html,$(TARGET_EXEC)),--shell-file $(SHELL_FILE),)
-LDFLAGS = $(TAIL_CALL_FLAG) -s FORCE_FILESYSTEM -lidbfs.js -s USE_SDL=2 -s USE_ZLIB=1 $(LINK_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s INITIAL_MEMORY=536870912 $(SHELL_LDFLAGS) -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency","ERRNO_CODES","ccall","FS"]' $(EXTRA_LD_FLAGS)
+FILESYSTEM_LD_FLAGS ?= -s FORCE_FILESYSTEM -lidbfs.js
+LDFLAGS = $(TAIL_CALL_FLAG) $(FILESYSTEM_LD_FLAGS) -s USE_SDL=2 -s USE_ZLIB=1 $(LINK_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s INITIAL_MEMORY=536870912 $(SHELL_LDFLAGS) -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency","ERRNO_CODES","ccall","FS"]' $(EXTRA_LD_FLAGS)
 
 ASSET_OUTPUTS := $(addprefix $(BUILD_DIR)/,$(ASSET_FILES))
 

@@ -2,6 +2,7 @@
         let ROOT = "/root";
         let STORAGE_INDEXED_DB = "INDEXED_DB";
         let STORAGE_MEMORY = "MEMORY";
+        let STORAGE_OPFS = "OPFS";
 
         let DEFAULT_AUTO_RUN = true;
         let DEFAULT_LOAD_DESKTOP = false;
@@ -57,7 +58,7 @@
 			Config.resolution = getResolution();
 			Config.ddrawOverridePath = getDDrawOverridePath();
 			Config.payloadZipFile = "app.zip";
-			Config.d_drive = "/d_drive";
+			Config.d_drive = getDDrivePath();
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -238,15 +239,46 @@
             if (!allowParameterOverride()) {
                 storageMode = "";
             }
+            storageMode = storageMode.toLowerCase();
             if (storageMode === "memory") {
                 storageMode = STORAGE_MEMORY;
             } else if (storageMode === "indexeddb" || storageMode === "indexed_db") {
                 storageMode = STORAGE_INDEXED_DB;
+            } else if (storageMode === "opfs" || storageMode === "wasmfs" || storageMode === "wasmfs_opfs") {
+                storageMode = STORAGE_OPFS;
             } else {
-                storageMode = STORAGE_INDEXED_DB;
+                storageMode = getDefaultStorageMode();
             }
             console.log("setting storage mode to: " + storageMode);
             return storageMode;
+        }
+        function hasIndexedDbBackend() {
+            return typeof IDBFS !== "undefined" && IDBFS && typeof IDBFS.mount === "function";
+        }
+        function hasOpfsBackend() {
+            return typeof OPFS !== "undefined" && OPFS && typeof OPFS.createBackend === "function";
+        }
+        function getDefaultStorageMode() {
+            if (hasOpfsBackend() && !hasIndexedDbBackend()) {
+                return STORAGE_OPFS;
+            }
+            return STORAGE_INDEXED_DB;
+        }
+        function getDDrivePath() {
+            if (Config.storageMode == STORAGE_OPFS) {
+                return ROOT + "/.boxedwine-d-drive";
+            }
+            return "/d_drive";
+        }
+        function isOpfsSupported() {
+            return typeof navigator !== "undefined"
+                && navigator.storage
+                && typeof navigator.storage.getDirectory === "function";
+        }
+        function failStorageMode(message) {
+            console.log(message);
+            Module.setStatus(message);
+            throw new Error(message);
         }
         function getSound() {
             var soundEnabled =  getParameter("sound");
@@ -436,7 +468,20 @@
         }
         function initBrowserFilesystem(callback) {
     		console.log("Use Storage mode: "+Config.storageMode);
-			FS.mkdir(ROOT);
+            if (Config.storageMode == STORAGE_OPFS) {
+                if (!hasOpfsBackend()) {
+                    failStorageMode("OPFS storage was requested, but this build was not linked with WasmFS OPFS support. Build the releaseOpfs or multiThreadedOpfs target, or choose storage=indexeddb.");
+                }
+                if (!isOpfsSupported()) {
+                    failStorageMode("OPFS storage was requested, but this browser does not support navigator.storage.getDirectory().");
+                }
+                callback();
+                return;
+            }
+			if (Config.storageMode == STORAGE_INDEXED_DB && !hasIndexedDbBackend()) {
+                failStorageMode("IndexedDB storage was requested, but this build does not include IDBFS. Use an IndexedDB build or choose storage=opfs.");
+            }
+            FS.mkdir(ROOT);
 			FS.mkdir(Config.d_drive);
 			if (Config.storageMode == STORAGE_INDEXED_DB) {
 	  			FS.mount(IDBFS, {autoPersist: true}, ROOT);

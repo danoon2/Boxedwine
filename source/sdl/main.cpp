@@ -38,10 +38,20 @@ U32 gensrc;
 void writeSource();
 #endif
 
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_WASMFS_OPFS)
+bool boxedwineSetupWasmFsOpfs();
+#endif
+
 int boxedmain(int argc, const char **argv) {
     StartUpArgs startupArgs;                  
 
     klog("Starting ...");
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_WASMFS_OPFS)
+    if (!boxedwineSetupWasmFsOpfs()) {
+        klog("Unable to initialize OPFS storage");
+        return 1;
+    }
+#endif
 #if defined(__MACH__)
     std::vector<BString> lines;
     std::vector<const char*> args;
