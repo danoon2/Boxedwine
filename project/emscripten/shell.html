@@ -21,8 +21,6 @@
     <div id="app">
         <div id="controls" class="emscripten">
             <button id="startbtn" style="display: none" onclick="start()">Start</button>
-            <button id="hostfolderbtn" style="display: none" onclick="mountHostFolder()">Mount Host Folder</button>
-            <button id="synchostfolderbtn" style="display: none" onclick="syncHostFolder()">Sync Host Folder</button>
             <button id="uploadbtn" style="display: none" onclick="document.getElementById('upload').click()" >Add File(s)</button>
             <input style="display: none" id="upload" name="upload" onclick="document.getElementById('uploadbtn').click();" onchange="startWithFiles(event.target.files);"  type="file" multiple />
             <button id="downloadbtn" style="display: none" onclick="buildGetFilesModal();">Get File(s)</button>
