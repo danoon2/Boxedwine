@@ -55,9 +55,11 @@
 #define MUSTTAIL
 #endif
 
-// Direct normal-CPU dispatch is only for non-JIT Emscripten builds.
-// Future WASM JIT builds should define BOXEDWINE_JIT and keep the
-// ABI-compatible OpCallback path.
+// BOXEDWINE_DIRECT_NORMAL_DISPATCH below is the per-opcode return_call dispatcher
+// used by NEXT(); it is enabled only for non-JIT Emscripten builds. WASM JIT builds
+// (BOXEDWINE_JIT defined) instead chain through NEXT_INTERP_CHAIN (normalCPU.cpp),
+// but share the same preserve_none OPCALL — see the OPCALL definition below for why
+// preserve_none is ABI-safe for the WASM JIT.
 //
 // on win32 with msvc without JIT, BOXEDWINE_DIRECT_NORMAL_DISPATCH caused a 50% loss in performance for Quake 2.
 // BOXEDWINE_NO_DIRECT_NORMAL_DISPATCH is a diagnostic opt-out so the
