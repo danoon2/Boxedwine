@@ -14,8 +14,6 @@
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
         let DEFAULT_HOST_FOLDER_DRIVE = "e";
         let DEFAULT_HOST_FOLDER_MOUNT = "/e_drive";
-        let HOST_FOLDER_WARN_FILE_COUNT = 5000;
-        let HOST_FOLDER_WARN_TOTAL_BYTES = 512 * 1024 * 1024;
         //params
         let Config = {};
         Config.locateRootBaseUrl = ""; // ie "assets/"
@@ -68,7 +66,7 @@
 			Config.hostFolderHandle = null;
 			Config.hostFolderEnabled = false;
 			Config.hostFolderReadWrite = true;
-			Config.hostFolderManifest = new Map();
+			Config.hostFolderMounted = false;
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -680,303 +678,163 @@
                 getEntriesAsPromise(items[i].webkitGetAsEntry(), exeFiles, allFiles, true);
             }
         }, false);
-	        function isHostFolderAccessSupported() {
-	            return typeof window !== "undefined" && typeof window.showDirectoryPicker === "function";
-	        }
-	        function updateHostFolderControls() {
-	            var hostFolderBtn = document.getElementById('hostfolderbtn');
-	            var syncHostFolderBtn = document.getElementById('synchostfolderbtn');
-	            if (hostFolderBtn) {
-	                hostFolderBtn.disabled = hostFolderBusy || isRunning || !isHostFolderAccessSupported();
-	                hostFolderBtn.style.display = !Config.isAutoRunSet && !isRunning ? "" : "none";
-	            }
-	            if (syncHostFolderBtn) {
-	                syncHostFolderBtn.disabled = hostFolderBusy || !Config.hostFolderEnabled;
-	                syncHostFolderBtn.style.display = Config.hostFolderEnabled ? "" : "none";
-	            }
-	            var startBtn = document.getElementById('startbtn');
-	            if (startBtn && !isRunning) {
-	                startBtn.disabled = hostFolderBusy;
-	            }
-	        }
-	        function logHostFolderMessage(message, isError) {
-	            if (!message) {
-	                return;
-	            }
-	            if (isError) {
-	                console.error(message);
-	            } else {
-	                console.log(message);
-	            }
-	            var output = document.getElementById('output');
-	            if (output) {
-	                output.value += message + "\n";
-	                output.scrollTop = output.scrollHeight;
-	            }
-	        }
-	        function setHostFolderStatus(message, isError) {
-	            if (message) {
-	                logHostFolderMessage(message, isError);
-	            }
-	        }
-	        function setHostFolderBusy(busy, message) {
-	            hostFolderBusy = busy;
-	            if (message) {
-	                setHostFolderStatus(message, false);
-	            }
-	            updateHostFolderControls();
-	        }
-	        async function ensureHostFolderPermission(handle, mode) {
-	            if (!handle || typeof handle.queryPermission !== "function") {
-	                return true;
-	            }
-	            let state = await handle.queryPermission({mode: mode});
-	            if (state === "granted") {
-	                return true;
-	            }
-	            if (typeof handle.requestPermission !== "function") {
-	                return false;
-	            }
-	            state = await handle.requestPermission({mode: mode});
-	            return state === "granted";
-	        }
-	        function ensureFsDirectory(path) {
-	            let info = FS.analyzePath(path);
-	            if (!info.exists) {
-	                FS.mkdir(path);
-	            }
-	        }
-	        function fsPathJoin(parent, name) {
-	            return parent.endsWith("/") ? parent + name : parent + "/" + name;
-	        }
-	        function clearFsDirectory(path) {
-	            ensureFsDirectory(path);
-	            let entries = FS.readdir(path).filter(function(entry) {
-	                return entry !== "." && entry !== "..";
-	            });
-	            entries.forEach(function(entry) {
-	                let childPath = fsPathJoin(path, entry);
-	                let child = FS.lookupPath(childPath, { follow: false }).node;
-	                if (FS.isDir(child.mode) && !FS.isLink(child.mode)) {
-	                    clearFsDirectory(childPath);
-	                    FS.rmdir(childPath);
-	                } else {
-	                    FS.unlink(childPath);
-	                }
-	            });
-	        }
-	        function hashBytes(bytes) {
-	            let hash = 2166136261;
-	            for (let i = 0; i < bytes.length; i++) {
-	                hash ^= bytes[i];
-	                hash = Math.imul(hash, 16777619);
-	            }
-	            return (hash >>> 0).toString(16);
-	        }
-	        function normalizeRelativePath(path) {
-	            return path.split("\\").join("/").replace(/^\/+/, "");
-	        }
-	        function splitRelativePath(path) {
-	            path = normalizeRelativePath(path);
-	            return path.length ? path.split("/").filter(function(part) {
-	                return part.length > 0 && part !== "." && part !== "..";
-	            }) : [];
-	        }
-	        async function mirrorHostFolderFile(fileHandle, fsPath, relativePath, stats) {
-	            let file = await fileHandle.getFile();
-	            let bytes = new Uint8Array(await file.arrayBuffer());
-	            FS.writeFile(fsPath, bytes);
-	            Config.hostFolderManifest.set(relativePath, {
-	                size: bytes.length,
-	                lastModified: file.lastModified,
-	                hash: hashBytes(bytes)
-	            });
-	            stats.files++;
-	            stats.bytes += bytes.length;
-	            if (!stats.warnedFileCount && stats.files > HOST_FOLDER_WARN_FILE_COUNT) {
-	                stats.warnedFileCount = true;
-	                logHostFolderMessage("Host folder contains more than " + HOST_FOLDER_WARN_FILE_COUNT + " files", false);
-	            }
-	            if (!stats.warnedTotalBytes && stats.bytes > HOST_FOLDER_WARN_TOTAL_BYTES) {
-	                stats.warnedTotalBytes = true;
-	                logHostFolderMessage("Host folder import is larger than " + HOST_FOLDER_WARN_TOTAL_BYTES + " bytes", false);
-	            }
-	        }
-	        async function mirrorHostFolderDirectory(directoryHandle, fsPath, relativePath, stats) {
-	            ensureFsDirectory(fsPath);
-	            if (relativePath.length > 0) {
-	                stats.directories++;
-	            }
-	            for await (let entry of directoryHandle.entries()) {
-	                let name = entry[0];
-	                let handle = entry[1];
-	                if (name === "." || name === "..") {
-	                    continue;
-	                }
-	                let childFsPath = fsPathJoin(fsPath, name);
-	                let childRelativePath = relativePath.length ? relativePath + "/" + name : name;
-	                try {
-	                    if (handle.kind === "directory") {
-	                        await mirrorHostFolderDirectory(handle, childFsPath, childRelativePath, stats);
-	                    } else if (handle.kind === "file") {
-	                        await mirrorHostFolderFile(handle, childFsPath, childRelativePath, stats);
-	                    }
-	                } catch (e) {
-	                    stats.skipped++;
-	                    logHostFolderMessage("Unable to import host folder entry " + childRelativePath + ": " + e, true);
-	                }
-	            }
-	        }
-	        async function mountHostFolder() {
-	            if (isRunning || hostFolderBusy) {
-	                return;
-	            }
-	            if (!isHostFolderAccessSupported()) {
-	                setHostFolderStatus("Host folder mounting is not supported by this browser", true);
-	                return;
-	            }
-	            try {
-	                let handle = await window.showDirectoryPicker({
-	                    id: "boxedwine-host-drive-" + Config.hostFolderDrive,
-	                    mode: Config.hostFolderReadWrite ? "readwrite" : "read"
-	                });
-	                setHostFolderBusy(true, "Importing host folder...");
-	                if (!(await ensureHostFolderPermission(handle, Config.hostFolderReadWrite ? "readwrite" : "read"))) {
-	                    setHostFolderStatus("Host folder permission was not granted", true);
-	                    return;
-	                }
-	                Config.hostFolderHandle = handle;
-	                Config.hostFolderEnabled = false;
-	                Config.hostFolderManifest = new Map();
-	                clearFsDirectory(Config.hostFolderMount);
-	                let stats = {files: 0, directories: 0, bytes: 0, skipped: 0, warnedFileCount: false, warnedTotalBytes: false};
-	                await mirrorHostFolderDirectory(handle, Config.hostFolderMount, "", stats);
-	                Config.hostFolderEnabled = true;
-	                let message = "Mounted host folder as " + Config.hostFolderDrive + ": (" + stats.files + " file(s)";
-	                if (stats.skipped > 0) {
-	                    message += ", " + stats.skipped + " skipped";
-	                }
-	                message += ")";
-	                if (stats.warnedFileCount || stats.warnedTotalBytes) {
-	                    message += " - large folder";
-	                }
-	                setHostFolderStatus(message, false);
-	            } catch (e) {
-	                if (e && e.name === "AbortError") {
-	                    setHostFolderStatus("Host folder selection canceled", false);
-	                } else {
-	                    setHostFolderStatus("Unable to mount host folder: " + e, true);
-	                }
-	            } finally {
-	                setHostFolderBusy(false);
-	            }
-	        }
-	        function collectFsHostFolderTree(currentFsPath, relativePath, filesByPath, directories) {
-	            let entries = FS.readdir(currentFsPath).filter(function(entry) {
-	                return entry !== "." && entry !== "..";
-	            });
-	            entries.forEach(function(entry) {
-	                let childFsPath = fsPathJoin(currentFsPath, entry);
-	                let childRelativePath = relativePath.length ? relativePath + "/" + entry : entry;
-	                let child = FS.lookupPath(childFsPath, { follow: false }).node;
-	                if (FS.isDir(child.mode) && !FS.isLink(child.mode)) {
-	                    directories.add(childRelativePath);
-	                    collectFsHostFolderTree(childFsPath, childRelativePath, filesByPath, directories);
-	                } else if (FS.isFile(child.mode)) {
-	                    let data = FS.readFile(childFsPath, { encoding: "binary" });
-	                    let bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
-	                    filesByPath.set(childRelativePath, {
-	                        data: bytes,
-	                        size: bytes.length,
-	                        hash: hashBytes(bytes)
-	                    });
-	                }
-	            });
-	        }
-	        async function getHostDirectoryHandle(rootHandle, relativePath, create) {
-	            let current = rootHandle;
-	            let parts = splitRelativePath(relativePath);
-	            for (let i = 0; i < parts.length; i++) {
-	                current = await current.getDirectoryHandle(parts[i], {create: create});
-	            }
-	            return current;
-	        }
-	        async function writeHostFolderFile(rootHandle, relativePath, bytes) {
-	            let parts = splitRelativePath(relativePath);
-	            if (parts.length === 0) {
-	                return null;
-	            }
-	            let fileName = parts.pop();
-	            let directory = await getHostDirectoryHandle(rootHandle, parts.join("/"), true);
-	            let fileHandle = await directory.getFileHandle(fileName, {create: true});
-	            let writable = await fileHandle.createWritable({keepExistingData: false});
-	            await writable.write(bytes);
-	            await writable.close();
-	            return await fileHandle.getFile();
-	        }
-	        async function syncHostFolder() {
-	            if (!Config.hostFolderEnabled || !Config.hostFolderHandle || hostFolderBusy) {
-	                return;
-	            }
-	            try {
-	                setHostFolderBusy(true, "Syncing host folder...");
-	                if (!(await ensureHostFolderPermission(Config.hostFolderHandle, "readwrite"))) {
-	                    setHostFolderStatus("Host folder write permission was not granted", true);
-	                    return;
-	                }
-	                let filesByPath = new Map();
-	                let directories = new Set();
-	                collectFsHostFolderTree(Config.hostFolderMount, "", filesByPath, directories);
-	                let stats = {directories: 0, written: 0, unchanged: 0, deletedSkipped: 0, failed: 0};
-	                for (let directoryPath of directories) {
-	                    try {
-	                        await getHostDirectoryHandle(Config.hostFolderHandle, directoryPath, true);
-	                        stats.directories++;
-	                    } catch (e) {
-	                        stats.failed++;
-	                        logHostFolderMessage("Unable to create host folder directory " + directoryPath + ": " + e, true);
-	                    }
-	                }
-	                for (let item of filesByPath.entries()) {
-	                    let relativePath = item[0];
-	                    let fileInfo = item[1];
-	                    let manifestInfo = Config.hostFolderManifest.get(relativePath);
-	                    if (manifestInfo && manifestInfo.size === fileInfo.size && manifestInfo.hash === fileInfo.hash) {
-	                        stats.unchanged++;
-	                        continue;
-	                    }
-	                    try {
-	                        let writtenFile = await writeHostFolderFile(Config.hostFolderHandle, relativePath, fileInfo.data);
-	                        Config.hostFolderManifest.set(relativePath, {
-	                            size: fileInfo.size,
-	                            lastModified: writtenFile ? writtenFile.lastModified : Date.now(),
-	                            hash: fileInfo.hash
-	                        });
-	                        stats.written++;
-	                    } catch (e) {
-	                        stats.failed++;
-	                        logHostFolderMessage("Unable to sync host folder file " + relativePath + ": " + e, true);
-	                    }
-	                }
-	                Config.hostFolderManifest.forEach(function(value, relativePath) {
-	                    if (!filesByPath.has(relativePath)) {
-	                        stats.deletedSkipped++;
-	                    }
-	                });
-	                let message = "Synced host folder: " + stats.written + " file(s) written";
-	                if (stats.deletedSkipped > 0) {
-	                    message += ", " + stats.deletedSkipped + " guest deletion(s) skipped";
-	                }
-	                if (stats.failed > 0) {
-	                    message += ", " + stats.failed + " failed";
-	                }
-	                setHostFolderStatus(message, stats.failed > 0);
-	            } catch (e) {
-	                setHostFolderStatus("Unable to sync host folder: " + e, true);
-	            } finally {
-	                setHostFolderBusy(false);
-	            }
-	        }
+        function isHostFolderAccessSupported() {
+            return typeof window !== "undefined" && typeof window.showDirectoryPicker === "function";
+        }
+        function updateHostFolderControls() {
+            var hostFolderBtn = document.getElementById('hostfolderbtn');
+            var syncHostFolderBtn = document.getElementById('synchostfolderbtn');
+            if (hostFolderBtn) {
+                hostFolderBtn.disabled = hostFolderBusy || isRunning || !isHostFolderAccessSupported();
+                hostFolderBtn.style.display = !Config.isAutoRunSet && !isRunning ? "" : "none";
+            }
+            if (syncHostFolderBtn) {
+                syncHostFolderBtn.disabled = hostFolderBusy || !Config.hostFolderEnabled;
+                syncHostFolderBtn.style.display = Config.hostFolderEnabled ? "" : "none";
+            }
+            var startBtn = document.getElementById('startbtn');
+            if (startBtn && !isRunning) {
+                startBtn.disabled = hostFolderBusy;
+            }
+        }
+        function logHostFolderMessage(message, isError) {
+            if (!message) {
+                return;
+            }
+            if (isError) {
+                console.error(message);
+            } else {
+                console.log(message);
+            }
+            var output = document.getElementById('output');
+            if (output) {
+                output.value += message + "\n";
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+        function setHostFolderStatus(message, isError) {
+            if (message) {
+                logHostFolderMessage(message, isError);
+            }
+        }
+        function setHostFolderBusy(busy, message) {
+            hostFolderBusy = busy;
+            if (message) {
+                setHostFolderStatus(message, false);
+            }
+            updateHostFolderControls();
+        }
+        async function ensureHostFolderPermission(handle, mode) {
+            if (!handle || typeof handle.queryPermission !== "function") {
+                return true;
+            }
+            let state = await handle.queryPermission({mode: mode});
+            if (state === "granted") {
+                return true;
+            }
+            if (typeof handle.requestPermission !== "function") {
+                return false;
+            }
+            state = await handle.requestPermission({mode: mode});
+            return state === "granted";
+        }
+        function getHostFolderMount() {
+            if (!Config.hostFolderMounted) {
+                return null;
+            }
+            let lookup = FS.lookupPath(Config.hostFolderMount, {follow_mount: false});
+            return lookup && lookup.node ? lookup.node.mounted : null;
+        }
+        function syncHostFolderMount(populate) {
+            return new Promise(function(resolve, reject) {
+                let mount = getHostFolderMount();
+                if (!mount || !mount.type || typeof mount.type.syncfs !== "function") {
+                    resolve();
+                    return;
+                }
+                mount.type.syncfs(mount, populate, function(err) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+        }
+        async function unmountHostFolder() {
+            if (!Config.hostFolderMounted) {
+                return;
+            }
+            await syncHostFolderMount(false);
+            FS.unmount(Config.hostFolderMount);
+            Config.hostFolderMounted = false;
+            Config.hostFolderEnabled = false;
+            Config.hostFolderHandle = null;
+        }
+        async function mountHostFolder() {
+            if (isRunning || hostFolderBusy) {
+                return;
+            }
+            if (!isHostFolderAccessSupported()) {
+                setHostFolderStatus("Host folder mounting is not supported by this browser", true);
+                return;
+            }
+            if (typeof installFSFS !== "function") {
+                setHostFolderStatus("Host folder mounting support was not loaded", true);
+                return;
+            }
+            try {
+                let handle = await window.showDirectoryPicker({
+                    id: "boxedwine-host-drive-" + Config.hostFolderDrive,
+                    mode: Config.hostFolderReadWrite ? "readwrite" : "read"
+                });
+                setHostFolderBusy(true, "Mounting host folder...");
+                if (!(await ensureHostFolderPermission(handle, Config.hostFolderReadWrite ? "readwrite" : "read"))) {
+                    setHostFolderStatus("Host folder permission was not granted", true);
+                    return;
+                }
+                await unmountHostFolder();
+                let fsfs = installFSFS();
+                Config.hostFolderHandle = handle;
+                FS.mount(fsfs, {
+                    dirHandle: handle,
+                    autoPersist: true,
+                    onPersistError: function(error) {
+                        logHostFolderMessage("Host folder auto-sync failed: " + error, true);
+                    }
+                }, Config.hostFolderMount);
+                Config.hostFolderMounted = true;
+                await syncHostFolderMount(true);
+                Config.hostFolderEnabled = true;
+                setHostFolderStatus("Mounted host folder as " + Config.hostFolderDrive + ": (auto-sync enabled)", false);
+            } catch (e) {
+                if (e && e.name === "AbortError") {
+                    setHostFolderStatus("Host folder selection canceled", false);
+                } else {
+                    setHostFolderStatus("Unable to mount host folder: " + e, true);
+                }
+            } finally {
+                setHostFolderBusy(false);
+            }
+        }
+        async function syncHostFolder() {
+            if (!Config.hostFolderEnabled || !Config.hostFolderHandle || hostFolderBusy) {
+                return;
+            }
+            try {
+                setHostFolderBusy(true, "Syncing host folder...");
+                if (!(await ensureHostFolderPermission(Config.hostFolderHandle, "readwrite"))) {
+                    setHostFolderStatus("Host folder write permission was not granted", true);
+                    return;
+                }
+                await syncHostFolderMount(false);
+                setHostFolderStatus("Synced host folder", false);
+            } catch (e) {
+                setHostFolderStatus("Unable to sync host folder: " + e, true);
+            } finally {
+                setHostFolderBusy(false);
+            }
+        }
 	        function getEmulatorParams() {
 	            let params = ["-root", ROOT];
             params.push("-zip");
