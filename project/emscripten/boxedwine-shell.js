@@ -3,6 +3,10 @@
         let STORAGE_INDEXED_DB = "INDEXED_DB";
         let STORAGE_MEMORY = "MEMORY";
         let STORAGE_HOST_FOLDER = "HOST_FOLDER";
+        let HOST_FOLDER_HANDLE_DB = "boxedwine-host-folder-handles";
+        let HOST_FOLDER_HANDLE_DB_VERSION = 1;
+        let HOST_FOLDER_HANDLE_STORE = "handles";
+        let HOST_FOLDER_HANDLE_KEY = "d";
 
         let DEFAULT_AUTO_RUN = true;
         let DEFAULT_LOAD_DESKTOP = false;
@@ -61,6 +65,9 @@
 			Config.payloadZipFile = "app.zip";
 			Config.d_drive = "/d_drive";
 			Config.hostFolderHandle = null;
+			Config.hostFolderPersistedHandle = null;
+			Config.hostFolderPersistedName = "";
+			Config.hostFolderPermissionState = "unknown";
 			Config.hostFolderEnabled = false;
 			Config.hostFolderReadWrite = true;
 			Config.hostFolderMounted = false;
@@ -479,7 +486,7 @@
             }else{
                 var startBtn = document.getElementById('startbtn');
                 startBtn.disabled = false;
-                startBtn.textContent = isHostFolderStorage() ? "Mount d:" : "Start";
+                startBtn.textContent = getHostFolderStartButtonText();
                 startBtn.style.display = "";
                 var soundToggle = document.getElementById('soundToggle');
                 if(Config.isSoundEnabled){
@@ -582,19 +589,21 @@
             	});
             }
             Module["addRunDependency"]("setupBoxedWine");
-            initBrowserFilesystem(() => {
-            	spinnerElement.style.display = '';
-            	spinnerElement.hidden = false;
-            
-	        	buildExtraFileSystems(() => {
-    	        	buildAppFileSystem(() => {
-    	            	loadFile(Config.locateRootBaseUrl, Config.rootZipFile, (rootZipfileBytes) => {
-    	            	    createFile("/", Config.rootZipFile, rootZipfileBytes);
-                        	buildBrowserFileSystem();
-						});
-                	});
-	        	});
-	        });
+            loadPersistedHostFolderHandle().then(function() {
+                initBrowserFilesystem(() => {
+                    spinnerElement.style.display = '';
+                    spinnerElement.hidden = false;
+
+                    buildExtraFileSystems(() => {
+                        buildAppFileSystem(() => {
+                            loadFile(Config.locateRootBaseUrl, Config.rootZipFile, (rootZipfileBytes) => {
+                                createFile("/", Config.rootZipFile, rootZipfileBytes);
+                                buildBrowserFileSystem();
+                            });
+                        });
+                    });
+                });
+            });
         }
         function getEntriesAsPromise(item, exeFiles, allFiles, firstCall) {
             return new Promise((resolve, reject) => {
@@ -690,10 +699,22 @@
         function isHostFolderStorage() {
             return Config.storageMode === STORAGE_HOST_FOLDER;
         }
+        function getHostFolderPermissionMode() {
+            return Config.hostFolderReadWrite ? "readwrite" : "read";
+        }
+        function getHostFolderStartButtonText() {
+            if (!isHostFolderStorage()) {
+                return "Start";
+            }
+            if (Config.hostFolderEnabled) {
+                return "Start";
+            }
+            return Config.hostFolderPersistedHandle ? "Reconnect d:" : "Mount d:";
+        }
         function updateHostFolderControls() {
             var startBtn = document.getElementById('startbtn');
             if (startBtn && !isRunning) {
-                startBtn.textContent = isHostFolderStorage() && !Config.hostFolderEnabled ? "Mount d:" : "Start";
+                startBtn.textContent = getHostFolderStartButtonText();
                 startBtn.disabled = hostFolderBusy;
             }
         }
@@ -724,11 +745,173 @@
             }
             updateHostFolderControls();
         }
+        function isHostFolderHandlePersistenceSupported() {
+            return typeof indexedDB !== "undefined";
+        }
+        function idbRequestAsPromise(request) {
+            return new Promise(function(resolve, reject) {
+                request.onsuccess = function() {
+                    resolve(request.result);
+                };
+                request.onerror = function() {
+                    reject(request.error);
+                };
+            });
+        }
+        function idbTransactionAsPromise(transaction) {
+            return new Promise(function(resolve, reject) {
+                transaction.oncomplete = function() {
+                    resolve();
+                };
+                transaction.onerror = function() {
+                    reject(transaction.error);
+                };
+                transaction.onabort = function() {
+                    reject(transaction.error || new Error("IndexedDB transaction aborted"));
+                };
+            });
+        }
+        function openHostFolderHandleDb() {
+            return new Promise(function(resolve, reject) {
+                if (!isHostFolderHandlePersistenceSupported()) {
+                    reject(new Error("IndexedDB is not available"));
+                    return;
+                }
+                var request = indexedDB.open(HOST_FOLDER_HANDLE_DB, HOST_FOLDER_HANDLE_DB_VERSION);
+                request.onupgradeneeded = function() {
+                    var db = request.result;
+                    if (!db.objectStoreNames.contains(HOST_FOLDER_HANDLE_STORE)) {
+                        db.createObjectStore(HOST_FOLDER_HANDLE_STORE);
+                    }
+                };
+                request.onsuccess = function() {
+                    resolve(request.result);
+                };
+                request.onerror = function() {
+                    reject(request.error);
+                };
+                request.onblocked = function() {
+                    reject(new Error("Host folder handle database is blocked"));
+                };
+            });
+        }
+        async function readPersistedHostFolderRecord() {
+            var db = await openHostFolderHandleDb();
+            try {
+                var transaction = db.transaction(HOST_FOLDER_HANDLE_STORE, "readonly");
+                var store = transaction.objectStore(HOST_FOLDER_HANDLE_STORE);
+                return await idbRequestAsPromise(store.get(HOST_FOLDER_HANDLE_KEY));
+            } finally {
+                db.close();
+            }
+        }
+        async function writePersistedHostFolderHandle(handle) {
+            if (!handle) {
+                return;
+            }
+            var db = await openHostFolderHandleDb();
+            try {
+                var transaction = db.transaction(HOST_FOLDER_HANDLE_STORE, "readwrite");
+                var store = transaction.objectStore(HOST_FOLDER_HANDLE_STORE);
+                store.put({
+                    handle: handle,
+                    name: handle.name || "Host folder",
+                    storedAt: Date.now()
+                }, HOST_FOLDER_HANDLE_KEY);
+                await idbTransactionAsPromise(transaction);
+            } finally {
+                db.close();
+            }
+        }
+        async function deletePersistedHostFolderHandle() {
+            var db = await openHostFolderHandleDb();
+            try {
+                var transaction = db.transaction(HOST_FOLDER_HANDLE_STORE, "readwrite");
+                var store = transaction.objectStore(HOST_FOLDER_HANDLE_STORE);
+                store.delete(HOST_FOLDER_HANDLE_KEY);
+                await idbTransactionAsPromise(transaction);
+            } finally {
+                db.close();
+            }
+        }
+        async function forgetPersistedHostFolderHandle(removeStoredHandle) {
+            Config.hostFolderPersistedHandle = null;
+            Config.hostFolderPersistedName = "";
+            Config.hostFolderPermissionState = "unknown";
+            updateHostFolderControls();
+            if (!removeStoredHandle || !isHostFolderHandlePersistenceSupported()) {
+                return;
+            }
+            try {
+                await deletePersistedHostFolderHandle();
+            } catch (e) {
+                logHostFolderMessage("Unable to forget remembered D: folder: " + e, true);
+            }
+        }
+        async function loadPersistedHostFolderHandle() {
+            if (!isHostFolderStorage() || !isHostFolderAccessSupported()) {
+                return;
+            }
+            if (!isHostFolderHandlePersistenceSupported()) {
+                logHostFolderMessage("Remembered D: folder is not available because IndexedDB is disabled", false);
+                return;
+            }
+            try {
+                var record = await readPersistedHostFolderRecord();
+                var handle = record && record.handle ? record.handle : record;
+                if (!handle) {
+                    return;
+                }
+                if (handle.kind && handle.kind !== "directory") {
+                    logHostFolderMessage("Remembered D: folder is no longer a directory handle", true);
+                    await forgetPersistedHostFolderHandle(true);
+                    return;
+                }
+                var permissionState = await queryHostFolderPermission(handle, getHostFolderPermissionMode());
+                Config.hostFolderPersistedHandle = handle;
+                Config.hostFolderPersistedName = record && record.name ? record.name : (handle.name || "Host folder");
+                Config.hostFolderPermissionState = permissionState;
+                if (Config.hostFolderPermissionState === "granted") {
+                    logHostFolderMessage("Remembered D: folder is ready to reconnect: " + Config.hostFolderPersistedName, false);
+                } else if (Config.hostFolderPermissionState === "prompt") {
+                    logHostFolderMessage("Remembered D: folder needs permission; click Reconnect d:", false);
+                } else {
+                    logHostFolderMessage("Remembered D: folder permission is denied; choose a folder again", true);
+                    await forgetPersistedHostFolderHandle(true);
+                }
+            } catch (e) {
+                await forgetPersistedHostFolderHandle(false);
+                logHostFolderMessage("Unable to load remembered D: folder: " + e, true);
+            }
+        }
+        async function rememberHostFolderHandle(handle) {
+            Config.hostFolderPersistedHandle = handle;
+            Config.hostFolderPersistedName = handle && handle.name ? handle.name : "Host folder";
+            Config.hostFolderPermissionState = "granted";
+            updateHostFolderControls();
+            if (!isHostFolderHandlePersistenceSupported()) {
+                logHostFolderMessage("D: folder mounted, but IndexedDB is disabled so it cannot be remembered", false);
+                return;
+            }
+            try {
+                await writePersistedHostFolderHandle(handle);
+                logHostFolderMessage("Remembered D: folder for future sessions", false);
+            } catch (e) {
+                logHostFolderMessage("D: folder mounted, but could not be remembered: " + e, true);
+            }
+        }
+        async function queryHostFolderPermission(handle, mode) {
+            if (!handle || typeof handle.queryPermission !== "function") {
+                return "granted";
+            }
+            return await handle.queryPermission({mode: mode});
+        }
         async function ensureHostFolderPermission(handle, mode) {
             if (!handle || typeof handle.queryPermission !== "function") {
                 return true;
             }
-            let state = await handle.queryPermission({mode: mode});
+            let state = await queryHostFolderPermission(handle, mode);
+            Config.hostFolderPermissionState = state;
             if (state === "granted") {
                 return true;
             }
@@ -736,7 +919,23 @@
                 return false;
             }
             state = await handle.requestPermission({mode: mode});
+            Config.hostFolderPermissionState = state;
             return state === "granted";
+        }
+        async function getHostFolderHandleForMount(mode) {
+            if (Config.hostFolderPersistedHandle) {
+                setHostFolderStatus("Reconnecting remembered D: folder...", false);
+                if (await ensureHostFolderPermission(Config.hostFolderPersistedHandle, mode)) {
+                    return Config.hostFolderPersistedHandle;
+                }
+                setHostFolderStatus("Remembered D: folder permission was not granted; click Mount d: to choose a folder", true);
+                await forgetPersistedHostFolderHandle(true);
+                return null;
+            }
+            return await window.showDirectoryPicker({
+                id: "boxedwine-host-drive-d",
+                mode: mode
+            });
         }
         function getHostFolderMount() {
             if (!Config.hostFolderMounted) {
@@ -788,12 +987,13 @@
                 return false;
             }
             try {
-                let handle = await window.showDirectoryPicker({
-                    id: "boxedwine-host-drive-d",
-                    mode: Config.hostFolderReadWrite ? "readwrite" : "read"
-                });
+                let permissionMode = getHostFolderPermissionMode();
+                let handle = await getHostFolderHandleForMount(permissionMode);
+                if (!handle) {
+                    return false;
+                }
                 setHostFolderBusy(true, "Mounting host folder...");
-                if (!(await ensureHostFolderPermission(handle, Config.hostFolderReadWrite ? "readwrite" : "read"))) {
+                if (!(await ensureHostFolderPermission(handle, permissionMode))) {
                     setHostFolderStatus("Host folder permission was not granted", true);
                     return false;
                 }
@@ -813,6 +1013,7 @@
                 Config.hostFolderMounted = true;
                 await syncHostFolderMount(true);
                 Config.hostFolderEnabled = true;
+                await rememberHostFolderHandle(handle);
                 setHostFolderStatus("Mounted D: folder (auto-sync enabled)", false);
                 return true;
             } catch (e) {
