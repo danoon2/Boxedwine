@@ -46,6 +46,7 @@ void testFail(const char* msg, ...);
 void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCount = 0);
 bool testIsFastMode();
 void testSetFastMode(bool fast);
+void testWasmJitOnlyBlockEntryIsCallable();
 bool testShouldRunRegister(bool fast, int reg);
 bool testShouldRunRegisterPair(bool fast, int dst, int src);
 bool testShouldRunMemoryBase(bool fast, int base);

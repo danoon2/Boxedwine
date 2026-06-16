@@ -228,6 +228,170 @@ void testSetFastMode(bool fast) {
     fastMode.store(fast);
 }
 
+void testWasmJitOnlyBlockEntryIsCallable() {
+#ifdef BOXEDWINE_WASM_JIT
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+
+    testNewInstruction(0);
+    testPushCode8(0x40); // inc eax
+    testPushCode8(0x41); // inc ecx
+    testPushCode8(0x42); // inc edx
+    testRunCPU();
+
+    DecodedOp* first = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* second = first ? first->next : nullptr;
+    DecodedOp* third = second ? second->next : nullptr;
+
+    if (!first || !second || !third) {
+        testFail("wasm jit block metadata decode");
+        return;
+    }
+    if (first->pfn != cpu->thread->process->startJITOp || !first->pfnJitCode) {
+        testFail("wasm jit first op callable entry");
+    }
+    if (second->pfn == cpu->thread->process->startJITOp || second->pfnJitCode) {
+        testFail("wasm jit second op interior is not callable entry");
+    }
+    if (third->pfn == cpu->thread->process->startJITOp || third->pfnJitCode) {
+        testFail("wasm jit third op interior is not callable entry");
+    }
+    if (second->blockStart != first || third->blockStart != first) {
+        testFail("wasm jit interior ops keep owner block");
+    }
+
+    cpu->eip.u32 = first->len;
+    cpu->nextOp = second;
+    cpu->run();
+
+    if (second->pfn == cpu->thread->process->startJITOp || second->pfnJitCode) {
+        testFail("wasm jit fallthrough interior op is not callable entry");
+    }
+    if (second->blockStart != first) {
+        testFail("wasm jit fallthrough interior keeps longer owner block");
+    }
+
+    second->runCount = 0;
+    second->flags2 |= OP_FLAG2_JUMP_TARGET;
+    cpu->eip.u32 = first->len;
+    cpu->nextOp = second;
+    cpu->run();
+
+    if (second->pfn != cpu->thread->process->startJITOp || !second->pfnJitCode) {
+        testFail("wasm jit jump-target interior op can compile as subblock entry");
+    }
+    if (second->blockStart != first) {
+        testFail("wasm jit subblock keeps longer owner block");
+    }
+    if (third->pfn == cpu->thread->process->startJITOp || third->pfnJitCode) {
+        testFail("wasm jit subblock interior is not callable entry");
+    }
+
+    if (first->pfnJitCode == second->pfnJitCode) {
+        testFail("wasm jit parent and subblock have distinct entries");
+    }
+
+    context.memory->removeCodeBlock(TEST_CODE_ADDRESS, first, false);
+
+    if (first->pfnJitCode || second->pfnJitCode || third->pfnJitCode) {
+        testFail("wasm jit parent invalidation clears subblock entries");
+    }
+    if (first->blockStart || second->blockStart || third->blockStart) {
+        testFail("wasm jit parent invalidation clears owner metadata");
+    }
+
+    testNewInstruction(0);
+    cpu->reg[0].u32 = 0x100; // eax
+    cpu->reg[2].u32 = 0x200; // edx
+    cpu->reg[6].u32 = 0x103FEB4C; // stale esi value should be overwritten
+    cpu->reg[7].u32 = 0x11223344; // stale edi value should be overwritten
+    context.memory->writed(TEST_HEAP_ADDRESS + 0x100, 0x12345678);
+    context.memory->writed(TEST_HEAP_ADDRESS + 0x104, 3);
+
+    testPushCode8(0x8b); // mov esi,[eax+4]
+    testPushCode8(0x70);
+    testPushCode8(0x04);
+    testPushCode8(0x8b); // mov edi,[eax]
+    testPushCode8(0x38);
+    testPushCode8(0x66); // mov [edx+esi*8+6],di
+    testPushCode8(0x89);
+    testPushCode8(0x7c);
+    testPushCode8(0xf2);
+    testPushCode8(0x06);
+    testRunCPU();
+
+    if (context.memory->readw(TEST_HEAP_ADDRESS + 0x200 + 3 * 8 + 6) != 0x5678) {
+        testFail("wasm jit scaled-index word store uses loaded esi/edi");
+    }
+
+    testNewInstruction(0);
+    testPushCode8(0x75); // jnz to the ret, keeping ret inside a forward-branch range
+    testPushCode8(0x00);
+    testPushCode8(0xc3); // ret
+    testPushCode8(0x43); // inc ebx, a decoded next function/op that must not join the ret block
+    testPushCode8(0xcd);
+    testPushCode8(0x97);
+
+    context.memory->writed(cpu->seg[SS].address + cpu->reg[4].u32, 4);
+    cpu->getOp(TEST_CODE_ADDRESS + 3, 0);
+    cpu->nextOp = cpu->getNextOp();
+    do {
+        cpu->run();
+    } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+
+    DecodedOp* branch = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* ret = branch && branch->next ? branch->next : nullptr;
+    DecodedOp* afterRet = ret && ret->next ? ret->next : context.memory->getDecodedOp(TEST_CODE_ADDRESS + 3);
+
+    if (!branch || !ret || !afterRet) {
+        testFail("wasm jit ret boundary metadata decode");
+        return;
+    }
+    if (branch->pfn != cpu->thread->process->startJITOp || !branch->pfnJitCode) {
+        testFail("wasm jit ret boundary block compiled");
+    }
+    if (branch->blockLen != 3 || branch->blockOpCount != 2) {
+        testFail("wasm jit ret boundary stops at computed exit");
+    }
+    if (ret->blockStart != branch) {
+        testFail("wasm jit ret stays in owner block");
+    }
+    if (afterRet->blockStart == branch) {
+        testFail("wasm jit ret boundary does not absorb following decoded op");
+    }
+
+    testNewInstruction(0);
+    testPushCode8(0xbe); // mov esi,3
+    testPushCode32(3);
+    testPushCode8(0xe8); // call helper
+    testPushCode32(17);
+    testPushCode8(0xbf); // mov edi,0x12345678
+    testPushCode32(0x12345678);
+    testPushCode8(0xba); // mov edx,0x200
+    testPushCode32(0x200);
+    testPushCode8(0x66); // mov [edx+esi*8+6],di
+    testPushCode8(0x89);
+    testPushCode8(0x7c);
+    testPushCode8(0xf2);
+    testPushCode8(0x06);
+    testPushCode8(0xcd);
+    testPushCode8(0x97);
+    testPushCode8(0x56); // helper: push esi
+    testPushCode8(0xbe); // mov esi,7
+    testPushCode32(7);
+    testPushCode8(0x5e); // pop esi
+    testPushCode8(0xc3); // ret
+    testRunCPU();
+
+    if (context.memory->readw(TEST_HEAP_ADDRESS + 0x200 + 3 * 8 + 6) != 0x5678) {
+        testFail("wasm jit call preserves restored esi for caller");
+    }
+    if (context.memory->readw(TEST_HEAP_ADDRESS + 0x200 + 7 * 8 + 6) == 0x5678) {
+        testFail("wasm jit call must not use callee-clobbered esi");
+    }
+#endif
+}
+
 bool testShouldRunRegister(bool fast, int reg) {
     if (!fast) {
         return true;

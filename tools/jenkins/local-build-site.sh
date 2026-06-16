@@ -287,10 +287,10 @@ build_emscripten() {
         echo "+ cd $EMSCRIPTEN_DIR"
         echo "+ rm -rf Deploy/Web"
         echo "+ make clean"
-        echo "+ make multiThreaded"
-        echo "+ copy Build/MultiThreaded to $MULTI_THREADED_DIR"
-        echo "+ make release"
-        echo "+ copy Build/Release to $SINGLE_THREADED_DIR"
+        echo "+ make multiThreadedJit"
+        echo "+ copy Build/MultiThreadedJit to $MULTI_THREADED_DIR"
+        echo "+ make jit"
+        echo "+ copy Build/Jit to $SINGLE_THREADED_DIR"
         return
     fi
 
@@ -299,18 +299,18 @@ build_emscripten() {
     cd "$EMSCRIPTEN_DIR"
     rm -rf Deploy/Web
     make clean
-    make multiThreaded
-    if [ ! -f "Build/MultiThreaded/boxedwine.wasm" ]; then
-        echo "Build/MultiThreaded/boxedwine.wasm was not created." >&2
+    make multiThreadedJit
+    if [ ! -f "Build/MultiThreadedJit/boxedwine.wasm" ]; then
+        echo "Build/MultiThreadedJit/boxedwine.wasm was not created." >&2
         exit 1
     fi
-    copy_web_build "$EMSCRIPTEN_DIR/Build/MultiThreaded" "$MULTI_THREADED_DIR"
-    make release
-    if [ ! -f "Build/Release/boxedwine.wasm" ]; then
-        echo "Build/Release/boxedwine.wasm was not created." >&2
+    copy_web_build "$EMSCRIPTEN_DIR/Build/MultiThreadedJit" "$MULTI_THREADED_DIR"
+    make jit
+    if [ ! -f "Build/Jit/boxedwine.wasm" ]; then
+        echo "Build/Jit/boxedwine.wasm was not created." >&2
         exit 1
     fi
-    copy_web_build "$EMSCRIPTEN_DIR/Build/Release" "$SINGLE_THREADED_DIR"
+    copy_web_build "$EMSCRIPTEN_DIR/Build/Jit" "$SINGLE_THREADED_DIR"
 }
 
 generate_site() {

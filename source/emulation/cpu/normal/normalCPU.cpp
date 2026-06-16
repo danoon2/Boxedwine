@@ -72,15 +72,6 @@
 #define NEXT() do {                                                                                 \
     cpu->eip.u32 += op->len;                                                                         \
     DecodedOp* nextOp = op->next ? op->next : cpu->getNextOp();                                      \
-    if (cpu->wasmJitBridgeBlockStart) {                                                              \
-        if (nextOp && nextOp->blockStart == cpu->wasmJitBridgeBlockStart &&                          \
-            nextOp->pfn && nextOp->pfn != cpu->thread->process->startJITOp) {                        \
-            MUSTTAIL return normalDispatch(cpu, nextOp);                                             \
-        }                                                                                            \
-        cpu->nextOp = nextOp;                                                                        \
-        cpu->wasmJitBridgeBlockStart = nullptr;                                                      \
-        return;                                                                                      \
-    }                                                                                                \
     NEXT_INTERP_CHAIN();                                                                             \
 } while (0)
 #else
@@ -360,14 +351,6 @@ NormalCPU::NormalCPU(KMemory* memory) : CPU(memory) {
 OpCallback NormalCPU::getFunctionForOp(DecodedOp* op) {
     return normalOps[op->inst];
 }
-
-#ifdef BOXEDWINE_WASM_JIT
-void NormalCPU::runWasmJitBridge(CPU* cpu, DecodedOp* op) {
-    cpu->wasmJitBridgeBlockStart = op->blockStart;
-    normalDispatch(cpu, op);
-    cpu->wasmJitBridgeBlockStart = nullptr;
-}
-#endif
 
 bool NormalCPU::isValidExecutableAddress(U32 address) {
     return (memory->getPageFlags(address >> K_PAGE_SHIFT) & PAGE_EXEC) != 0;

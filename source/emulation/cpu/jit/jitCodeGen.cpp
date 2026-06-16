@@ -123,11 +123,18 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
 
     // opentdd will trigger this isValid check
     while (nextOp && nextOp->isValid()) {
+        bool stopAfterCurrentOp = false;
         if (eip != this->startingEip && shouldStopBlockBefore(eip, nextOp)) {
             break;
         }
         // could be ret, call, int.  Basically this is an instruction where we are not guaranteed to see a next instruction
         if (nextOp->isBranch() && !nextOp->isDirectJumpBranch()) {
+#ifdef BOXEDWINE_WASM_JIT
+            if (nextOp->isRet() || nextOp->isIndirectJump()) {
+                stopAfterCurrentOp = true;
+            } else
+#endif
+            {
             // is this the last return, if so, then don't decode more
             if (nextOp->isRet() && furthestJump < eip) {
                 break;
@@ -159,6 +166,7 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             if (!nextOp->next) {
                 // since we couldn't figure out if the next byte is part of a valid instruction, we are done looking
                 break;
+            }
             }
         }
         if (nextOp->isDirectJumpBranch() && (eip + nextOp->len + nextOp->imm) < this->startingEip) {
@@ -203,6 +211,9 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             }
         }
         eip += nextOp->len;
+        if (stopAfterCurrentOp) {
+            break;
+        }
         if (nextOp->next) {
             if (nextOp->next->flags & OP_FLAG_NO_JIT) {
                 break;
@@ -644,6 +655,11 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
             skipToOp = nullptr;
         }
         postCompile(nextOp);
+#ifdef BOXEDWINE_WASM_JIT
+        if (nextOp->isRet() || nextOp->isIndirectJump()) {
+            break;
+        }
+#endif
         if (this->currentEip > this->lastOpEip) {
             break;
         } else {
@@ -722,11 +738,21 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
 
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 #ifdef __TEST
-    if (op->runCount == 0) {
+    bool shouldStartJit = op->runCount == 0;
 #else
     // done check is for long blocks that get broken up, affects f-22/f-16
-    if (op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT)) {
+    bool shouldStartJit = op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT);
 #endif    
+#if defined(BOXEDWINE_WASM_JIT)
+    // A WASM block can only be entered at its first op. Interior subblocks are
+    // valid when control really jumps there, but compiling plain fallthrough
+    // interiors can confuse signal/page-fault recovery paths that re-enter
+    // decoded ops after seg_access/seg_mapper.
+    if (shouldStartJit && op->blockStart && op->blockStart != op && !(op->flags2 & OP_FLAG2_JUMP_TARGET)) {
+        shouldStartJit = false;
+    }
+#endif
+    if (shouldStartJit) {
         startNewJIT(cpu, cpu->getEipAddress(), op);
     }
 #ifdef _DEBUG

@@ -977,6 +977,7 @@ protected:
     void emitArmSmcBailout();
     void emitBailoutCheck();
     void emitBlockExitWithProfile(U32 profileHelperIdx);
+    void syncStateBeforeFaultingMemoryHelper();
     U32 lastCompiledOpLen = 0;
     bool m_needsWasmMemoryPageArrays = false;
     DecodedOp* m_wasmBlockStartOp = nullptr;

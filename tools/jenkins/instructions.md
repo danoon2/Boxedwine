@@ -12,10 +12,10 @@ The script mirrors the existing public build site, builds fresh single-threaded 
 2. Hydrates demo assets for local use.
    - Demo app zips are copied into `demos/apps`.
    - `boxedwine.zip` is always downloaded from `http://boxedwine.org/v2/demos/boxedwine.1.zip`.
-3. Builds the Emscripten web targets from `project/emscripten`.
-   - `make multiThreaded`
-   - `make release`
-4. Copies the web build outputs into:
+3. Builds the JIT-enabled Emscripten web targets from `project/emscripten`.
+   - `make multiThreadedJit`
+   - `make jit`
+4. Copies the JIT web build outputs into the existing demo runner layout:
    - `project/emscripten/Deploy/Web/MultiThreaded`
    - `project/emscripten/Deploy/Web/SingleThreaded`
 5. Runs `tools/jenkins/build_site.py` against the local site directory.

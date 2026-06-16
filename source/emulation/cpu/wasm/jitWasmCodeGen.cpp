@@ -420,27 +420,15 @@ static void wasmJitRecordHelperDetail(WasmJitHelperDetail detail) {
 
 #ifdef BOXEDWINE_MULTI_THREADED
 static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = 1;
-static constexpr U32 WASM_JIT_INTERIOR_BRIDGE_LIMIT = 0;
 #else
 static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = 2048;
-static constexpr U32 WASM_JIT_INTERIOR_BRIDGE_LIMIT = 128;
 #endif
 
 static inline bool wasmJitCanChainTo(CPU* cpu, DecodedOp* nextOp) {
     return nextOp &&
         (nextOp->flags & OP_FLAG_JIT) &&
         nextOp->pfnJitCode &&
-        nextOp->blockStart == nextOp &&
         nextOp->pfn == cpu->thread->process->startJITOp;
-}
-
-static inline bool wasmJitCanBridgeInterior(CPU* cpu, DecodedOp* nextOp) {
-    return nextOp &&
-        (nextOp->flags & OP_FLAG_JIT) &&
-        nextOp->pfnJitCode &&
-        nextOp->blockStart != nextOp &&
-        nextOp->pfn &&
-        nextOp->pfn != cpu->thread->process->startJITOp;
 }
 
 // ---------------------------------------------------------------------------
@@ -683,34 +671,6 @@ static inline void wasmJitRecordFetchNextTransition(CPU* cpu, DecodedOp* nextOp)
         }
 #endif
     }
-}
-
-static inline void wasmJitFinishBridgeOp(CPU* cpu, DecodedOp* op) {
-    cpu->blockInstructionCount++;
-    cpu->eip.u32 += op->len;
-    cpu->nextOp = op->next ? op->next : cpu->getNextOp();
-}
-
-static inline bool wasmJitTryBridgeFastOp(CPU* cpu, DecodedOp* op) {
-#ifdef BOXEDWINE_MULTI_THREADED
-    return false;
-#else
-    if (!op) {
-        return false;
-    }
-    switch (op->inst) {
-    case MovR32E32:
-        if (op->ea16) {
-            return false;
-        }
-        cpu->reg[op->reg].u32 = cpu->memory->readd(eaa3(cpu, op));
-        break;
-    default:
-        return false;
-    }
-    wasmJitFinishBridgeOp(cpu, op);
-    return true;
-#endif
 }
 
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
@@ -2931,29 +2891,7 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
         chainedBlocks++;
         op = cpu->nextOp;
         if (!wasmJitCanChainTo(cpu, op)) {
-            U32 bridgeEntries = 0;
-            while (bridgeEntries < WASM_JIT_INTERIOR_BRIDGE_LIMIT && !cpu->yield && wasmJitCanBridgeInterior(cpu, op)) {
-                DecodedOp* bridgeOp = op;
-#ifdef BOXEDWINE_WASM_JIT_PROFILE
-                U64 bridgeOpStartNs = loopProfileSample ? wasmJitProfileNowNs() : 0;
-#endif
-                if (wasmJitTryBridgeFastOp(cpu, bridgeOp)) {
-                    WASM_JIT_PROFILE_ONLY(if (loopProfileSample) { wasmJitProfileBridgeFast(bridgeOpStartNs, bridgeOp, WASM_JIT_PROFILE_TIMING_SAMPLE); })
-                } else {
-                    NormalCPU::runWasmJitBridge(cpu, bridgeOp);
-                    WASM_JIT_PROFILE_ONLY(if (loopProfileSample) { wasmJitProfileBridgePfn(bridgeOpStartNs, bridgeOp, WASM_JIT_PROFILE_TIMING_SAMPLE); })
-                }
-                bridgeEntries++;
-                op = cpu->nextOp;
-                WASM_JIT_PROFILE_ONLY(if (loopProfileSample) { wasmJitProfileBridgeStep(cpu, bridgeOp, op, bridgeEntries == WASM_JIT_INTERIOR_BRIDGE_LIMIT && wasmJitCanBridgeInterior(cpu, op), WASM_JIT_PROFILE_TIMING_SAMPLE); })
-                if (wasmJitCanChainTo(cpu, op)) {
-                    break;
-                }
-            }
-            WASM_JIT_PROFILE_ONLY(if (loopProfileSample) { wasmJitProfileBridge(bridgeEntries, wasmJitCanChainTo(cpu, op), bridgeEntries == WASM_JIT_INTERIOR_BRIDGE_LIMIT && wasmJitCanBridgeInterior(cpu, op), WASM_JIT_PROFILE_TIMING_SAMPLE); })
-            if (!wasmJitCanChainTo(cpu, op)) {
-                break;
-            }
+            break;
         }
     }
 #if !defined(BOXEDWINE_MULTI_THREADED)
@@ -3543,6 +3481,11 @@ void JitWasmCodeGen::syncDirtyRegsToHost() {
     for (U8 i = 0; i < WASM_GP_LOCAL_COUNT; i++) {
         if (m_gpDirty[i]) storeGPReg(i);
     }
+}
+
+void JitWasmCodeGen::syncStateBeforeFaultingMemoryHelper() {
+    writeEip(this->currentEip - cpu->seg[CS].address);
+    syncDirtyRegsToHost();
 }
 
 void JitWasmCodeGen::pushRegValue(RegPtr reg) {
@@ -7154,6 +7097,7 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
                                      std::function<void(RegPtr)> prepareWrite, S8 hint) {
     auto result = getTmpReg();
     storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
+    syncStateBeforeFaultingMemoryHelper();
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(readHelperForWidth(w));
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
@@ -7165,6 +7109,7 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
         // memHelperAddr indirectly — re-stage it before dispatching write.
         storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
         storeMemHelperField((U32)offsetof(CPU, memHelperValue), result);
+        syncStateBeforeFaultingMemoryHelper();
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         // Use the bailout-checking write so self-modifying code that hits
         // the active block's bytes can be detected; emit the check.
@@ -7291,6 +7236,7 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
     {
         // Slow path: existing helper-based load.
         storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
+        syncStateBeforeFaultingMemoryHelper();
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitCall(readHelperForWidth(w));
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
@@ -7439,6 +7385,7 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
         // pages, on-demand pages, and cross-page accesses all land here.
         storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
         storeMemHelperField((U32)offsetof(CPU, memHelperValue), src);
+        syncStateBeforeFaultingMemoryHelper();
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         emitArmSmcBailout();
         m_emitter.emitCall(writeCheckHelperForWidth(w));
@@ -9589,6 +9536,11 @@ void JitWasmCodeGen::compile(DecodedOp* op) {
         dynamic_pause(op);
         return;
     }
+    if (op->inst == Int80) {
+        emulateSingleOp();
+        blockExit();
+        return;
+    }
     if (op->inst == MovsdXmmE64) {
         dynamic_movsdXmmE64(op);
         return;
@@ -9884,39 +9836,38 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     }
 #endif
 
-    // Walk all ops in this block: the first op gets the startJITOp entry
-    // (its pfnJitCode is the wasmTable index the dispatcher invokes). All
-    // ops in the block share the same tableIdx so removeCodeBlock's sweep
-    // picks them up for cleanup; they also get OP_FLAG_JIT so doJIT skips
-    // recompiling. Only the first op's pfn points at startJITOp — control
-    // never re-enters the middle of a WASM block.
+    // Walk all ops in this block. The first op gets the startJITOp entry;
+    // interior ops keep normal dispatch and only record the owner block.
+    // The owner's invalidation sweep frees any subblock table entries it
+    // finds in the covered range. Only callable entries get OP_FLAG_JIT.
     op->blockLen     = this->emulatedLen;
     op->blockOpCount = this->blockOpCount;
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileCompiledBlock(this->blockOpCount);
 #endif
     DecodedOp* cur = op;
-    while (cur) {
-        cur->pfnJitCode = (void*)(uintptr_t)(U32)tableIdx;
-        cur->flags     |= OP_FLAG_JIT;
-        if (m_needsWasmMemoryPageArrays) {
-            cur->flags2 |= OP_FLAG2_WASM_JIT_MEM_ARRAYS;
-        } else {
-            cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+    for (U32 i = 0; i < this->blockOpCount && cur; i++) {
+        DecodedOp* owner = cur->blockStart;
+        if (!owner || owner->blockLen < this->emulatedLen) {
+            owner = op;
         }
-        cur->blockStart = op;
+        cur->blockStart = owner;
+
         if (cur == op) {
+            cur->pfnJitCode = (void*)(uintptr_t)(U32)tableIdx;
+            cur->flags |= OP_FLAG_JIT;
             cur->pfn = cpu->thread->process->startJITOp;
-        } else if (cur->pfn == cpu->thread->process->startJITOp) {
-            // This interior op was previously the first op of another compiled
-            // block. Its pfnJitCode has now been overwritten to this block's
-            // tableIdx, so calling startJITOp here would run the wrong WASM
-            // block from its beginning with incorrect CPU state.  Reset to the
-            // interpreter function so direct entry at this op falls back to
-            // the normal interpreter path.
+            if (m_needsWasmMemoryPageArrays) {
+                cur->flags2 |= OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+            } else {
+                cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+            }
+        } else if (!cur->pfnJitCode || cur->pfn != cpu->thread->process->startJITOp) {
+            cur->pfnJitCode = nullptr;
+            cur->flags &= ~OP_FLAG_JIT;
+            cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
             cur->pfn = NormalCPU::getFunctionForOp(cur);
         }
-        if (cur->next == nullptr) break;
         cur = cur->next;
     }
 
@@ -9955,8 +9906,8 @@ void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {
 // For WASM, release the compiled function from wasmTable.
 // ---------------------------------------------------------------------------
 void clearJitBlock(const std::vector<void*>& jitOps) {
-    // All ops in a WASM-compiled block share the same wasmTable index
-    // (we don't sub-compile individual ops), so dedupe before freeing.
+    // A parent block can contain subblock entries with distinct wasmTable
+    // indexes, so dedupe before freeing.
     std::set<int> seen;
     for (void* p : jitOps) {
         if (!p) continue;

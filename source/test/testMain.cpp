@@ -62,6 +62,9 @@ int totalFails = 0;
 const TestEntry TEST_ENTRIES[] = {
     {testDspAudioWriteMath, "Test DSP Audio Write Math"},
     {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
+#ifdef BOXEDWINE_WASM_JIT
+    {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT only block entry is callable"},
+#endif
     {testMemoryAccess32, "Test 32-bit Memory Access"},
     {testMemoryAccess16, "Test 16-bit Memory Access"},
     {testAddR8R8_0x000, "Test Add R8,R8 000"},
