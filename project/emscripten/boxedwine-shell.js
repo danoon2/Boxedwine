@@ -25,6 +25,7 @@
         Config.locateOverlayBaseUrl = "";
         Config.urlParams = "";
         Config.storageMode = STORAGE_INDEXED_DB;
+        Config.rootStorageMode = "";
         Config.persist_d_drive = true;
         Config.showUploadDownload = false;
         Config.WorkingDir = "";
@@ -50,6 +51,7 @@
         function setConfiguration() {
             Config.appDirPrefix = DEFAULT_APP_DIRECTORY;
             Config.storageMode = getStorageMode();
+            Config.rootStorageMode = getRootStorageMode();
             Config.isAutoRunSet = getAutoRun();
             Config.loadDesktop = getLoadDesktop();
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
@@ -275,6 +277,24 @@
             console.log("setting storage mode to: " + storageMode);
             return storageMode;
         }
+        function getRootStorageMode() {
+            var defaultRootStorageMode = Config.storageMode === STORAGE_MEMORY ? STORAGE_MEMORY : STORAGE_INDEXED_DB;
+            var rootStorageMode = Config.rootStorageMode || defaultRootStorageMode;
+            var rootStorageParam = getParameter("rootfs");
+            if (allowParameterOverride() && rootStorageParam.length > 0) {
+                rootStorageMode = rootStorageParam;
+            }
+            rootStorageMode = rootStorageMode.toLowerCase();
+            if (rootStorageMode === "memory") {
+                rootStorageMode = STORAGE_MEMORY;
+            } else if (rootStorageMode === "indexeddb" || rootStorageMode === "indexed_db") {
+                rootStorageMode = STORAGE_INDEXED_DB;
+            } else {
+                rootStorageMode = defaultRootStorageMode;
+            }
+            console.log("setting root fs storage mode to: " + rootStorageMode);
+            return rootStorageMode;
+        }
         function getSound() {
             var soundEnabled =  getParameter("sound");
             if(!allowParameterOverride()){
@@ -463,24 +483,32 @@
         }
         function initBrowserFilesystem(callback) {
     		console.log("Use Storage mode: "+Config.storageMode);
-			FS.mkdir(ROOT);
-			FS.mkdir(Config.d_drive);
-			if (Config.storageMode == STORAGE_INDEXED_DB) {
-	  			FS.mount(IDBFS, {autoPersist: true}, ROOT);
-	  			if (Config.persist_d_drive) {
-	  				FS.mount(IDBFS, {autoPersist: true}, Config.d_drive);
-	  			}
-  				FS.syncfs(true, function (err) {
-  					if (err) {
-  						console.log('unable to sync folder: ' + ROOT);
-  					} else {
-  						callback();
-  					}
-				});
-			} else {
-				callback();
-			}
-		}
+            console.log("Use Root FS storage mode: "+Config.rootStorageMode);
+            FS.mkdir(ROOT);
+            FS.mkdir(Config.d_drive);
+            var mountedPersistentFileSystem = false;
+            if (Config.rootStorageMode == STORAGE_INDEXED_DB) {
+                FS.mount(IDBFS, {autoPersist: true}, ROOT);
+                mountedPersistentFileSystem = true;
+            }
+            if (Config.storageMode == STORAGE_INDEXED_DB) {
+                if (Config.persist_d_drive) {
+                    FS.mount(IDBFS, {autoPersist: true}, Config.d_drive);
+                    mountedPersistentFileSystem = true;
+                }
+            }
+            if (mountedPersistentFileSystem) {
+                FS.syncfs(true, function (err) {
+                    if (err) {
+                        console.log('unable to sync browser storage');
+                    } else {
+                        callback();
+                    }
+                });
+            } else {
+                callback();
+            }
+        }
         function buildBrowserFileSystem() {
             if(Config.showUploadDownload){
                 document.getElementById('uploadbtn').style.display = "";
@@ -495,11 +523,6 @@
                 startBtn.disabled = false;
                 startBtn.textContent = getHostFolderStartButtonText();
                 startBtn.style.display = "";
-                var soundToggle = document.getElementById('soundToggle');
-                if(Config.isSoundEnabled){
-                    soundToggle.checked = true;
-                }
-                document.getElementById('sound-checkbox').style.display = "";
                 updateHostFolderControls();
             }
         }
@@ -524,7 +547,6 @@
             isRunning = true;
 
             document.getElementById('startbtn').style.display = 'none';
-            document.getElementById('sound-checkbox').style.display = 'none';
             if (!isPointerLockEnabled()) {
                 Config.disableHideCursor = true;
             }
@@ -1430,10 +1452,6 @@ function toggleConsole() {
     }else{
         console.style.display = 'none';
     }
-}
-function toggleSound() {
-    var el = document.getElementById('soundToggle');
-    Config.isSoundEnabled = el.checked;
 }
 function toggleDirectory(item) {
 	var itemWidget =document.getElementById(item);
