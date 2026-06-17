@@ -115,6 +115,8 @@ public:
     void removeChildByName(BString name);
     void getAllChildren(std::vector<std::shared_ptr<FsNode> > & results);
     void reserveChildren(std::size_t capacity);
+    void invalidateChildrenFromFileSystem();
+    void invalidateChildrenFromFileSystemRecursive();
     void setChildrenVisibilityMutex(BOXEDWINE_MUTEX* mutex);
 #ifdef __TEST
     bool trySetChildrenVisibilityMutexForTest(BOXEDWINE_MUTEX* mutex);
