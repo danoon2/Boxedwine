@@ -86,6 +86,8 @@ public:
     void addChild(std::shared_ptr<FsNode> node);
     void removeChildByName(BString name);
     void getAllChildren(std::vector<std::shared_ptr<FsNode> > & results);
+    void invalidateChildrenFromFileSystem();
+    void invalidateChildrenFromFileSystemRecursive();
 
     U32 addLock(KFileLock* lock);
     bool unlock(KFileLock* lock);

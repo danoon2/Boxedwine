@@ -7,6 +7,7 @@
         let HOST_FOLDER_HANDLE_DB_VERSION = 1;
         let HOST_FOLDER_HANDLE_STORE = "handles";
         let HOST_FOLDER_HANDLE_KEY = "d";
+        let HOST_FOLDER_REFRESH_INTERVAL_MS = 10000;
 
         let DEFAULT_AUTO_RUN = true;
         let DEFAULT_LOAD_DESKTOP = false;
@@ -39,6 +40,12 @@
       	var spinnerElement = document.getElementById('spinner');
         var dropzone = document.getElementById("dropzone");
         var hostFolderBusy = false;
+        var hostFolderRefreshBusy = false;
+        var hostFolderRefreshPendingReason = "";
+        var hostFolderRefreshTimer = null;
+        var hostFolderRefreshObserver = null;
+        var hostFolderRefreshEventsConfigured = false;
+        var hostFolderInvalidateWarningShown = false;
 
         function setConfiguration() {
             Config.appDirPrefix = DEFAULT_APP_DIRECTORY;
@@ -745,6 +752,136 @@
             }
             updateHostFolderControls();
         }
+        function summarizeHostFolderRefresh(result) {
+            if (!result) {
+                return 0;
+            }
+            return (result.created || 0) + (result.updated || 0) + (result.removed || 0);
+        }
+        function getHostFolderRefreshMount() {
+            let mount = getHostFolderMount();
+            if (!mount || !mount.type || typeof mount.type.refreshFromHost !== "function") {
+                return null;
+            }
+            return mount;
+        }
+        function invalidateHostFolderBoxedwineCache() {
+            if (typeof Module === "undefined" || typeof Module.ccall !== "function") {
+                return false;
+            }
+            try {
+                Module.ccall("boxedwineInvalidateFsNodeCache", null, ["string"], ["/mnt/drive_d"]);
+                return true;
+            } catch (e) {
+                if (!hostFolderInvalidateWarningShown) {
+                    hostFolderInvalidateWarningShown = true;
+                    logHostFolderMessage("Unable to notify Boxedwine about host folder refresh: " + e, true);
+                }
+                return false;
+            }
+        }
+        function refreshHostFolderFromHost(reason) {
+            if (!Config.hostFolderMounted) {
+                return Promise.resolve(false);
+            }
+            let mount = getHostFolderRefreshMount();
+            if (!mount) {
+                return Promise.resolve(false);
+            }
+            if (hostFolderRefreshBusy) {
+                hostFolderRefreshPendingReason = reason || "pending";
+                return Promise.resolve(false);
+            }
+            hostFolderRefreshBusy = true;
+            return new Promise(function(resolve) {
+                mount.type.refreshFromHost(mount, function(err, result) {
+                    hostFolderRefreshBusy = false;
+                    if (err) {
+                        logHostFolderMessage("Host folder refresh failed: " + err, true);
+                        resolve(false);
+                    } else {
+                        let changeCount = summarizeHostFolderRefresh(result);
+                        if (changeCount > 0) {
+                            invalidateHostFolderBoxedwineCache();
+                            logHostFolderMessage("Refreshed D: folder from host (" + changeCount + " change" + (changeCount === 1 ? "" : "s") + ")", false);
+                        }
+                        resolve(changeCount > 0);
+                    }
+                    if (hostFolderRefreshPendingReason) {
+                        let pendingReason = hostFolderRefreshPendingReason;
+                        hostFolderRefreshPendingReason = "";
+                        setTimeout(function() {
+                            refreshHostFolderFromHost(pendingReason);
+                        }, 0);
+                    }
+                });
+            });
+        }
+        function scheduleHostFolderRefresh(reason) {
+            if (!Config.hostFolderMounted) {
+                return;
+            }
+            setTimeout(function() {
+                refreshHostFolderFromHost(reason);
+            }, 0);
+        }
+        async function startHostFolderObserver() {
+            if (typeof FileSystemObserver !== "function" || !Config.hostFolderHandle) {
+                return;
+            }
+            try {
+                hostFolderRefreshObserver = new FileSystemObserver(function(records) {
+                    for (let i = 0; i < records.length; i++) {
+                        if (records[i].type === "errored") {
+                            logHostFolderMessage("Host folder observer stopped; falling back to periodic refresh", true);
+                            if (hostFolderRefreshObserver) {
+                                hostFolderRefreshObserver.disconnect();
+                            }
+                            hostFolderRefreshObserver = null;
+                            return;
+                        }
+                    }
+                    scheduleHostFolderRefresh("observer");
+                });
+                await hostFolderRefreshObserver.observe(Config.hostFolderHandle, {recursive: true});
+                logHostFolderMessage("Watching D: folder for host changes", false);
+            } catch (e) {
+                hostFolderRefreshObserver = null;
+                logHostFolderMessage("Host folder change observer is unavailable; using periodic refresh", false);
+            }
+        }
+        function startHostFolderRefresh() {
+            if (!Config.hostFolderMounted || hostFolderRefreshTimer) {
+                return;
+            }
+            if (!hostFolderRefreshEventsConfigured) {
+                hostFolderRefreshEventsConfigured = true;
+                window.addEventListener("focus", function() {
+                    scheduleHostFolderRefresh("focus");
+                }, false);
+                document.addEventListener("visibilitychange", function() {
+                    if (document.visibilityState === "visible") {
+                        scheduleHostFolderRefresh("visible");
+                    }
+                }, false);
+            }
+            hostFolderRefreshTimer = setInterval(function() {
+                refreshHostFolderFromHost("poll");
+            }, HOST_FOLDER_REFRESH_INTERVAL_MS);
+            startHostFolderObserver();
+        }
+        function stopHostFolderRefresh() {
+            if (hostFolderRefreshTimer) {
+                clearInterval(hostFolderRefreshTimer);
+                hostFolderRefreshTimer = null;
+            }
+            if (hostFolderRefreshObserver) {
+                hostFolderRefreshObserver.disconnect();
+                hostFolderRefreshObserver = null;
+            }
+            hostFolderRefreshBusy = false;
+            hostFolderRefreshPendingReason = "";
+        }
         function isHostFolderHandlePersistenceSupported() {
             return typeof indexedDB !== "undefined";
         }
@@ -969,6 +1106,7 @@
             Config.hostFolderMounted = false;
             Config.hostFolderEnabled = false;
             Config.hostFolderHandle = null;
+            stopHostFolderRefresh();
         }
         async function mountHostFolder() {
             if (isRunning || hostFolderBusy) {
@@ -1008,12 +1146,18 @@
                     },
                     onPersistComplete: function() {
                         logHostFolderMessage("Synced D: folder", false);
+                    },
+                    onConflict: function(source, conflicts) {
+                        if (conflicts.length > 0) {
+                            logHostFolderMessage("Host folder " + source + " skipped " + conflicts.length + " conflicting path" + (conflicts.length === 1 ? "" : "s"), true);
+                        }
                     }
                 }, Config.d_drive);
                 Config.hostFolderMounted = true;
                 await syncHostFolderMount(true);
                 Config.hostFolderEnabled = true;
                 await rememberHostFolderHandle(handle);
+                startHostFolderRefresh();
                 setHostFolderStatus("Mounted D: folder (auto-sync enabled)", false);
                 return true;
             } catch (e) {

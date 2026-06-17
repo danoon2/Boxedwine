@@ -143,6 +143,32 @@ void FsNode::getAllChildren(std::vector<std::shared_ptr<FsNode> > & results) {
     }
 }
 
+void FsNode::invalidateChildrenFromFileSystem() {
+    if (!this->isDirectory()) {
+        return;
+    }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
+    this->childrenByName.clear();
+    this->hasLoadedChildrenFromFileSystem = false;
+}
+
+void FsNode::invalidateChildrenFromFileSystemRecursive() {
+    if (!this->isDirectory()) {
+        return;
+    }
+    std::vector<std::shared_ptr<FsNode> > children;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
+        for (auto& n : this->childrenByName) {
+            children.push_back(n.value);
+        }
+    }
+    for (auto& child : children) {
+        child->invalidateChildrenFromFileSystemRecursive();
+    }
+    this->invalidateChildrenFromFileSystem();
+}
+
 bool FsNode::unlock(KFileLock* lock) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);
     KFileLock* found = internalGetLock(lock, false);
