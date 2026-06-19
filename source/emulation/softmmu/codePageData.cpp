@@ -366,7 +366,7 @@ void DecodedOpCache::clearPageWriteCounts(U32 pageIndex) {
 	U8** first = writeCounts[firstIndex];
 
 	if (first && first[secondIndex]) {
-		memset(first[secondIndex], 0, sizeof(K_PAGE_SIZE));
+		memset(first[secondIndex], 0, K_PAGE_SIZE);
 	}
 }
 
