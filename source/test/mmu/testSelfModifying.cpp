@@ -192,4 +192,94 @@ void testSelfModifyingBack() {
     verifyReg32(0, 0x60, "self modifying back eax");
 }
 
+void testSelfModifyingWriteProtectPageIsDynamic() {
+#ifdef BOXEDWINE_JIT
+    newInstruction(0);
+    pushCode8(0x40); // inc eax
+    runTestCPU();
+
+    DecodedOp* first = memory->getDecodedOp(TEST_CODE_ADDRESS);
+    if (!first) {
+        failed("self modifying write-protect dynamic initial decode");
+        return;
+    }
+
+    if (memory->mprotect(cpu->thread, TEST_CODE_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE) != 0) {
+        failed("self modifying write-protect dynamic writable mprotect");
+        return;
+    }
+    memory->writeb(TEST_CODE_ADDRESS, 0x43); // inc ebx
+    if (memory->mprotect(cpu->thread, TEST_CODE_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_EXEC) != 0) {
+        failed("self modifying write-protect dynamic executable mprotect");
+        return;
+    }
+
+    cpu->eip.u32 = 0;
+    cpu->nextOp = nullptr;
+    DecodedOp* patched = cpu->getNextOp();
+    if (!patched) {
+        failed("self modifying write-protect dynamic patched decode");
+        return;
+    }
+    if (!(patched->flags & OP_FLAG_NO_JIT)) {
+        failed("self modifying write-protect dynamic page disables jit");
+    }
+    memory->mprotect(cpu->thread, TEST_CODE_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC);
+#endif
+}
+
+void testSelfModifyingUndecodedWriteIsDynamic() {
+#ifdef BOXEDWINE_JIT
+    newInstruction(0);
+    pushCode8(0x40); // inc eax
+
+    memory->removeCode(cpu->thread, TEST_CODE_ADDRESS, 1, true);
+
+    DecodedOp* op = cpu->getNextOp();
+    if (!op) {
+        failed("self modifying undecoded write dynamic decode");
+        return;
+    }
+    if (!(op->flags & OP_FLAG_NO_JIT)) {
+        failed("self modifying undecoded write disables jit");
+    }
+#endif
+}
+
+void testSelfModifyingWritableToExecutablePageIsDynamic() {
+#ifdef BOXEDWINE_JIT
+    newInstruction(0);
+
+    memory->unmap(TEST_CODE_ADDRESS, K_PAGE_SIZE);
+    U32 mapped = memory->mmap(cpu->thread, TEST_CODE_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    if (mapped != TEST_CODE_ADDRESS) {
+        failed("self modifying writable-to-executable mmap");
+        return;
+    }
+
+    memory->writeb(TEST_CODE_ADDRESS, 0x40);     // inc eax
+    memory->writeb(TEST_CODE_ADDRESS + 1, 0xcd); // test end
+    memory->writeb(TEST_CODE_ADDRESS + 2, 0x97);
+
+    if (memory->mprotect(cpu->thread, TEST_CODE_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_EXEC) != 0) {
+        failed("self modifying writable-to-executable mprotect");
+        return;
+    }
+
+    cpu->eip.u32 = 0;
+    cpu->nextOp = nullptr;
+    DecodedOp* op = cpu->getNextOp();
+    if (!op) {
+        failed("self modifying writable-to-executable decode");
+        return;
+    }
+    if (!(op->flags & OP_FLAG_NO_JIT)) {
+        failed("self modifying writable-to-executable page disables jit");
+    }
+
+    memory->unmap(TEST_CODE_ADDRESS, K_PAGE_SIZE);
+    memory->mmap(cpu->thread, TEST_CODE_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+#endif
+}
+
 #endif

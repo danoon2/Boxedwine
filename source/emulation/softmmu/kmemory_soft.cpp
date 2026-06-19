@@ -217,9 +217,16 @@ bool KMemoryData::reserveAddress(U32 startingPage, U32 pageCount, U32* result, b
 }
 
 void KMemoryData::protectPage(KThread* thread, U32 i, U32 permissions) {
-    if (mmu[i].getPageType() == PageType::Code && (mmu[i].flags & PAGE_EXEC) && !(permissions & PAGE_EXEC)) {
+    U32 oldFlags = mmu[i].flags;
+    if (mmu[i].getPageType() == PageType::Code && (oldFlags & PAGE_EXEC) && !(permissions & PAGE_EXEC)) {
         // not really a write, but this more of a hint to the JIT to treat this as code that might change a lot
         memory->removeCode(KThread::currentThread(), i << K_PAGE_SHIFT, K_PAGE_SIZE, true);
+    } else if ((oldFlags & PAGE_WRITE) && !(oldFlags & PAGE_EXEC) && (permissions & PAGE_EXEC)) {
+#ifndef BOXEDWINE_DISABLE_WX_REMOVE_CODE
+        // Writes to a plain writable RAM page bypass CodePage write hooks. If
+        // the page later becomes executable, remember the bytes as dynamic code.
+        memory->removeCode(thread, i << K_PAGE_SHIFT, K_PAGE_SIZE, true);
+#endif
     }
     mmu[i].setPermissions(permissions);
     onPageChanged(i);

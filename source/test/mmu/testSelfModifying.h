@@ -14,5 +14,8 @@ void testSelfModifying();
 void testSelfModifyingMovsb();
 void testSelfModifyingFront();
 void testSelfModifyingBack();
+void testSelfModifyingWriteProtectPageIsDynamic();
+void testSelfModifyingUndecodedWriteIsDynamic();
+void testSelfModifyingWritableToExecutablePageIsDynamic();
 
 #endif

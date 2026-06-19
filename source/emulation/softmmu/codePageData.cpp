@@ -92,23 +92,23 @@ void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 		end = K_PAGE_SIZE;
 	}
 
-	DecodedOpPageCache* page = getPageCache(pageIndex, false);
-	if (!page) {
-		return;
-	}
 	U8* pageWriteCounts = nullptr;
 	if (becauseOfWrite) {
 		pageWriteCounts = getWriteCounts(pageIndex, true);
 	}
+	DecodedOpPageCache* page = getPageCache(pageIndex, false);
+	if (!page && !pageWriteCounts) {
+		return;
+	}
 
-	KThread* thread = KThread::currentThread();
+	KThread* thread = page ? KThread::currentThread() : nullptr;
 	for (U32 i = offset; i < end; i++) {
-		if (page->ops[i]) {
+		if (page && page->ops[i]) {
 			pendingDeallocs[thread->id].push_back(page->ops[i]);
 			page->ops[i] = nullptr;
 			activeOps--;
 		}
-		if (becauseOfWrite) {
+		if (pageWriteCounts) {
 			if ((pageWriteCounts[i] < MAX_DYNAMIC_COUNT)) {
 				pageWriteCounts[i]++;
 			}
@@ -330,7 +330,7 @@ bool DecodedOpCache::isAddressDynamic(U32 address, U32 len) {
 		end = K_PAGE_SIZE;
 	}
 	for (U32 i = offset; i < end; i++) {
-		if (pageWriteCounts[i] == MAX_DYNAMIC_COUNT) {
+		if (pageWriteCounts[i] != 0) {
 			return true;
 		}
 	}

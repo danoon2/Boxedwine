@@ -176,19 +176,26 @@ void testNewInstruction(int flags) {
 void testPushCode8(int value) {
     TestContext& context = testContext();
     context.memory->writeb(context.codeIp, value);
+    context.memory->clearPageWriteCounts(context.codeIp >> K_PAGE_SHIFT);
     context.codeIp++;
 }
 
 void testPushCode16(int value) {
     TestContext& context = testContext();
+    U32 startPage = context.codeIp >> K_PAGE_SHIFT;
     context.memory->writew(context.codeIp, value);
     context.codeIp += 2;
+    context.memory->clearPageWriteCounts(startPage);
+    context.memory->clearPageWriteCounts((context.codeIp - 1) >> K_PAGE_SHIFT);
 }
 
 void testPushCode32(int value) {
     TestContext& context = testContext();
+    U32 startPage = context.codeIp >> K_PAGE_SHIFT;
     context.memory->writed(context.codeIp, value);
     context.codeIp += 4;
+    context.memory->clearPageWriteCounts(startPage);
+    context.memory->clearPageWriteCounts((context.codeIp - 1) >> K_PAGE_SHIFT);
 }
 
 void testRunCPU() {
