@@ -110,6 +110,8 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
     U32 eip = this->startingEip;
     DecodedOp* nextOp = op;
     U32 furthestJump = 0;
+    bool hasTerminalRet = false;
+    U32 terminalRetEip = 0;
 
     // find the longest block we can compile
     // branches that jump out of the block will be the end of the block
@@ -123,26 +125,25 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
 
     // opentdd will trigger this isValid check
     while (nextOp && nextOp->isValid()) {
-        bool stopAfterCurrentOp = false;
         if (eip != this->startingEip && shouldStopBlockBefore(eip, nextOp)) {
             break;
         }
         // could be ret, call, int.  Basically this is an instruction where we are not guaranteed to see a next instruction
         if (nextOp->isBranch() && !nextOp->isDirectJumpBranch()) {
-#ifdef BOXEDWINE_WASM_JIT
-            if (nextOp->isRet() || nextOp->isIndirectJump()) {
-                stopAfterCurrentOp = true;
-            } else
-#endif
             {
-            // is this the last return, if so, then don't decode more
-            if (nextOp->isRet() && furthestJump < eip) {
+            // Stop on a ret unless a known direct branch reaches code after it.
+            if (nextOp->isRet() && furthestJump < eip + nextOp->len) {
+                hasTerminalRet = true;
+                terminalRetEip = eip;
+                eip += nextOp->len;
                 break;
             }
+#ifndef BOXEDWINE_WASM_JIT
             if (nextOp->isIndirectJump()) {
                 // opentdd needs this when creating a new game, I'm not sure why data.cpu->memory->getDecodedOp(eip + nextOp->len) will find an op but its not correct, might be another bug 
                 break;
             }
+#endif
             // These next 4 look aheads, nextOp->next =
             // They don't improve performance on Quake 2, but do make a significant improvement for Cinebench, 10-20%
             if (!nextOp->next) {
@@ -211,9 +212,6 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             }
         }
         eip += nextOp->len;
-        if (stopAfterCurrentOp) {
-            break;
-        }
         if (nextOp->next) {
             if (nextOp->next->flags & OP_FLAG_NO_JIT) {
                 break;
@@ -237,6 +235,10 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
         nextOp = op;
         this->lastOpEip = this->startingEip;
         while (nextOp && this->lastOpEip < lastFurthestEip) {
+            if (hasTerminalRet && this->lastOpEip == terminalRetEip && nextOp->isRet()) {
+                nextOp = nullptr;
+                break;
+            }
             if (nextOp->isDirectJumpBranch()) {
                 U32 target = this->lastOpEip + nextOp->len + nextOp->imm;
                 if (target >= lastFurthestEip || target < this->startingEip) {
@@ -655,11 +657,6 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
             skipToOp = nullptr;
         }
         postCompile(nextOp);
-#ifdef BOXEDWINE_WASM_JIT
-        if (nextOp->isRet() || nextOp->isIndirectJump()) {
-            break;
-        }
-#endif
         if (this->currentEip > this->lastOpEip) {
             break;
         } else {
@@ -743,15 +740,6 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
     // done check is for long blocks that get broken up, affects f-22/f-16
     bool shouldStartJit = op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT);
 #endif    
-#if defined(BOXEDWINE_WASM_JIT)
-    // A WASM block can only be entered at its first op. Interior subblocks are
-    // valid when control really jumps there, but compiling plain fallthrough
-    // interiors can confuse signal/page-fault recovery paths that re-enter
-    // decoded ops after seg_access/seg_mapper.
-    if (shouldStartJit && op->blockStart && op->blockStart != op && !(op->flags2 & OP_FLAG2_JUMP_TARGET)) {
-        shouldStartJit = false;
-    }
-#endif
     if (shouldStartJit) {
         startNewJIT(cpu, cpu->getEipAddress(), op);
     }

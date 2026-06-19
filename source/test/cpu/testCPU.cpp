@@ -271,31 +271,18 @@ void testWasmJitOnlyBlockEntryIsCallable() {
     cpu->nextOp = second;
     cpu->run();
 
-    if (second->pfn == cpu->thread->process->startJITOp || second->pfnJitCode) {
-        testFail("wasm jit fallthrough interior op is not callable entry");
+    if (second->pfn != cpu->thread->process->startJITOp || !second->pfnJitCode) {
+        testFail("wasm jit fallthrough interior op can compile as subblock entry");
     }
     if (second->blockStart != first) {
         testFail("wasm jit fallthrough interior keeps longer owner block");
     }
-
-    second->runCount = 0;
-    second->flags2 |= OP_FLAG2_JUMP_TARGET;
-    cpu->eip.u32 = first->len;
-    cpu->nextOp = second;
-    cpu->run();
-
-    if (second->pfn != cpu->thread->process->startJITOp || !second->pfnJitCode) {
-        testFail("wasm jit jump-target interior op can compile as subblock entry");
-    }
-    if (second->blockStart != first) {
-        testFail("wasm jit subblock keeps longer owner block");
-    }
     if (third->pfn == cpu->thread->process->startJITOp || third->pfnJitCode) {
-        testFail("wasm jit subblock interior is not callable entry");
+        testFail("wasm jit fallthrough subblock interior is not callable entry");
     }
 
     if (first->pfnJitCode == second->pfnJitCode) {
-        testFail("wasm jit parent and subblock have distinct entries");
+        testFail("wasm jit parent and fallthrough subblock have distinct entries");
     }
 
     context.memory->removeCodeBlock(TEST_CODE_ADDRESS, first, false);

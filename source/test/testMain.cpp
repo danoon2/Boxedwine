@@ -63,7 +63,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testDspAudioWriteMath, "Test DSP Audio Write Math"},
     {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
 #ifdef BOXEDWINE_WASM_JIT
-    {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT only block entry is callable"},
+    {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT subblock entries and invalidation"},
 #endif
     {testMemoryAccess32, "Test 32-bit Memory Access"},
     {testMemoryAccess16, "Test 16-bit Memory Access"},
