@@ -330,7 +330,7 @@ bool DecodedOpCache::isAddressDynamic(U32 address, U32 len) {
 		end = K_PAGE_SIZE;
 	}
 	for (U32 i = offset; i < end; i++) {
-		if (pageWriteCounts[i] != 0) {
+		if (pageWriteCounts[i] == MAX_DYNAMIC_COUNT) {
 			return true;
 		}
 	}
