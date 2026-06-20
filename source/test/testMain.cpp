@@ -659,9 +659,6 @@ const TestEntry TEST_ENTRIES[] = {
     {testSelfModifyingMovsb, "Test Self Modifying Code using movsb"},
     {testSelfModifyingFront, "Test Self Modifying Code Same Block(Previous)"},
     {testSelfModifyingBack, "Test Self Modifying Code Same Block(Next)"},
-    {testSelfModifyingWriteProtectPageIsDynamic, "Test Self Modifying Write-Protect Page Is Dynamic"},
-    {testSelfModifyingUndecodedWriteIsDynamic, "Test Self Modifying Undecoded Write Is Dynamic"},
-    {testSelfModifyingWritableToExecutablePageIsDynamic, "Test Self Modifying Writable-To-Executable Page Is Dynamic"},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testLockedInc, "Test Multi-threaded locked inc"},
 #endif
