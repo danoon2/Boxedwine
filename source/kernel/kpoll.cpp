@@ -103,21 +103,24 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
             clearPollData(thread, firstData, count);
             return -K_EINTR;
         }
-        if (!thread->condStartWaitTime) {
-            thread->condStartWaitTime = KSystem::getMilliesSinceStart();
-        } else {
-            U32 diff = KSystem::getMilliesSinceStart()-thread->condStartWaitTime;
-            if (diff>timeout) {
-                thread->condStartWaitTime = 0;
-                clearPollData(thread, firstData, count);
-                return 0;
+        U32 waitTime = timeout;
+        if (timeout <= 0xF0000000) {
+            if (!thread->condStartWaitTime) {
+                thread->condStartWaitTime = KSystem::getMilliesSinceStart();
+            } else {
+                U32 diff = KSystem::getMilliesSinceStart() - thread->condStartWaitTime;
+                if (diff >= timeout) {
+                    thread->condStartWaitTime = 0;
+                    clearPollData(thread, firstData, count);
+                    return 0;
+                }
+                waitTime = timeout - diff;
             }
-            timeout-=diff;
-        }   
+        }
         if (timeout>0xF0000000) {
             BOXEDWINE_CONDITION_WAIT(thread->pollCond);
         } else {
-            BOXEDWINE_CONDITION_WAIT_TIMEOUT(thread->pollCond, timeout);
+            BOXEDWINE_CONDITION_WAIT_TIMEOUT(thread->pollCond, waitTime);
         }
         clearPollData(thread, firstData, count);
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -128,7 +131,7 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
             KThread::currentThread()->startSignal = false;
             return -K_CONTINUE;
         }
-#endif        
+#endif
     }
 }
 
@@ -145,7 +148,7 @@ U32 kpoll(KThread* thread, U32 pfds, U32 nfds, U32 timeout) {
     }
 
     S32 result = internal_poll(thread, pollData, nfds, timeout);
-    if (result >= 0) { 
+    if (result >= 0) {
         pfds+=6;
         for (U32 i=0;i<nfds;i++) {
             memory->writew(pfds, pollData[i].revents);
@@ -155,7 +158,6 @@ U32 kpoll(KThread* thread, U32 pfds, U32 nfds, U32 timeout) {
     delete[] pollData;
     return result;
 }
-
 
 U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout, bool timeoutIsTimeVal, U32 sigmask, bool time64) {
     S32 result = 0;

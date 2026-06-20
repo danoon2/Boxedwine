@@ -261,41 +261,63 @@ public:
     BOXEDWINE_CONDITION cond;
 };
 
-#define MAX_FUTEXES 128
+static BOXEDWINE_MUTEX_NR systemFutexesMutex;
+static std::vector<std::unique_ptr<futex> > systemFutexes;
 
-struct futex system_futex[MAX_FUTEXES];
+class SystemFutexesLock {
+public:
+    SystemFutexesLock() {
+        BOXEDWINE_MUTEX_LOCK(systemFutexesMutex);
+    }
+
+    ~SystemFutexesLock() {
+        BOXEDWINE_MUTEX_UNLOCK(systemFutexesMutex);
+    }
+};
+
+static void initFutex(struct futex* f, KThread* thread, U64 address, U32 millies) {
+    f->thread = thread;
+    f->address = address;
+    f->expireTimeInMillies = millies;
+    f->wake = false;
+    f->mask = 0;
+    f->waiting = false;
+}
 
 struct futex* getFutex(KThread* thread, U64 address) {
-    int i=0;
+    SystemFutexesLock futexesLock;
 
-    for (i=0;i<MAX_FUTEXES;i++) {
-        if (system_futex[i].address == address && system_futex[i].thread==thread) {
-            return &system_futex[i];
+    for (auto& entry : systemFutexes) {
+        struct futex* f = entry.get();
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
+        if (f->address == address && f->thread == thread) {
+            return f;
         }
     }
     return nullptr;
 }
 
 struct futex* allocFutex(KThread* thread, U64 address, U32 millies) {
-    int i=0;
+    SystemFutexesLock futexesLock;
 
-    for (i=0;i<MAX_FUTEXES;i++) {
-        if (system_futex[i].thread== nullptr) {
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
-            if (system_futex[i].thread != nullptr) {
-                continue;
-            }
-            system_futex[i].thread = thread;
-            system_futex[i].address = address;
-            system_futex[i].expireTimeInMillies = millies;
-            system_futex[i].wake = false;
-            system_futex[i].mask = 0;
-            system_futex[i].waiting = false;
-            return &system_futex[i];
+    for (auto& entry : systemFutexes) {
+        struct futex* f = entry.get();
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
+        if (f->thread != nullptr) {
+            continue;
         }
+        initFutex(f, thread, address, millies);
+        return f;
     }
-    kpanic("ran out of futexes");
-    return nullptr;
+
+    std::unique_ptr<futex> entry(new futex());
+    struct futex* f = entry.get();
+    systemFutexes.push_back(std::move(entry));
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
+        initFutex(f, thread, address, millies);
+    }
+    return f;
 }
 
 void freeFutex(struct futex* f) {
@@ -304,14 +326,13 @@ void freeFutex(struct futex* f) {
 }
 
 void KThread::clearFutexes() {
-    U32 i;
+    SystemFutexesLock futexesLock;
 
-    for (i=0;i<MAX_FUTEXES;i++) {
-        if (system_futex[i].thread == this) {
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
-            if (system_futex[i].thread == this) {
-                freeFutex(&system_futex[i]);
-            }
+    for (auto& entry : systemFutexes) {
+        struct futex* f = entry.get();
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
+        if (f->thread == this) {
+            freeFutex(f);
         }
     }
 }
@@ -430,24 +451,26 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
         U32 count = 0;
         //klog_fmt("%x/%x futux wake addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
         {            
-            for (int i = 0; i < MAX_FUTEXES && count < value; i++) {                
-                if (!system_futex[i].thread) {
+            SystemFutexesLock futexesLock;
+            for (auto& entry : systemFutexes) {
+                if (count >= value) {
+                    break;
+                }
+                struct futex* f = entry.get();
+                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
+                if (!f->thread) {
                     continue;
                 }
-                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
-                if (!system_futex[i].thread) {
-                    continue;
-                }
-                bool processCheck = (!isPrivate || system_futex[i].thread->process->id == this->process->id);
-                bool addressCheck = system_futex[i].address == ramAddress;
-                bool maskCheck = ((cmd != FUTEX_WAKE_BITSET) || (system_futex[i].mask & val3));
-                bool waiting = system_futex[i].waiting; // there is a small gap when waiting on a futex between creating the futex and getting the lock for this to be false
-                if (processCheck && addressCheck && !system_futex[i].wake && maskCheck) {
+                bool processCheck = (!isPrivate || f->thread->process->id == this->process->id);
+                bool addressCheck = f->address == ramAddress;
+                bool maskCheck = ((cmd != FUTEX_WAKE_BITSET) || (f->mask & val3));
+                bool waiting = f->waiting; // there is a small gap when waiting on a futex between creating the futex and getting the lock for this to be false
+                if (processCheck && addressCheck && !f->wake && maskCheck) {
                     if (!waiting) {
                         continue;
                     }
-                    system_futex[i].wake = true;
-                    BOXEDWINE_CONDITION_SIGNAL(system_futex[i].cond);
+                    f->wake = true;
+                    BOXEDWINE_CONDITION_SIGNAL(f->cond);
                     count++;
                 }
             }
@@ -1345,20 +1368,21 @@ U32 KThread::sleep(U32 ms) {
         return Platform::nanoSleep(((U64)ms) * 1000000l);
     }
     while (true) {
+        U32 waitTime = ms;
         if (!this->condStartWaitTime) {
             this->condStartWaitTime = KSystem::getMilliesSinceStart();
         } else {
-            U32 diff = KSystem::getMilliesSinceStart()-this->condStartWaitTime;
-            if (diff>ms) {
+            U32 diff = KSystem::getMilliesSinceStart() - this->condStartWaitTime;
+            if (diff >= ms) {
                 this->condStartWaitTime = 0;
                 return 0;
             }
-            ms-=diff;
+            waitTime = ms - diff;
         }
 
         {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->sleepCond);
-            BOXEDWINE_CONDITION_WAIT_TIMEOUT(this->sleepCond, ms);
+            BOXEDWINE_CONDITION_WAIT_TIMEOUT(this->sleepCond, waitTime);
         }
 #ifdef BOXEDWINE_MULTI_THREADED
 		if (this->terminating) {
