@@ -35,6 +35,12 @@
 #include "fszipnode.h"
 #include "knativethread.h"
 
+static constexpr U32 FS_UTIME_OMIT = 0x3ffffffe;
+
+static U64 fileTimeOverrideMillis(const FsFileTimeOverride& value) {
+    return value.seconds * 1000 + value.nanos / 1000000;
+}
+
 static void unlinkXAttrSidecars(const BString& nativePath) {
     unlink((nativePath + EXT_DOSATTRIB).c_str());
     unlink((nativePath + EXT_WINEREPARSE).c_str());
@@ -44,11 +50,17 @@ static void renameXAttrSidecarsInternal(const BString& oldNativePath, const BStr
     BString dosAttrib = oldNativePath + EXT_DOSATTRIB;
     if (Fs::doesNativePathExist(dosAttrib)) {
         BString dosAttribDst = newNativePath + EXT_DOSATTRIB;
+        if (dosAttrib != dosAttribDst) {
+            unlink(dosAttribDst.c_str());
+        }
         ::rename(dosAttrib.c_str(), dosAttribDst.c_str());
     }
     BString wineReparse = oldNativePath + EXT_WINEREPARSE;
     if (Fs::doesNativePathExist(wineReparse)) {
         BString wineReparseDst = newNativePath + EXT_WINEREPARSE;
+        if (wineReparse != wineReparseDst) {
+            unlink(wineReparseDst.c_str());
+        }
         ::rename(wineReparse.c_str(), wineReparseDst.c_str());
     }
 }
@@ -177,6 +189,10 @@ bool FsFileNode::remove() {
 }
 
 U64 FsFileNode::lastModified() {
+    const FsFileTimeOverride& timeOverride = this->hardLinkState ? this->hardLinkState->modifiedTimeOverride : this->modifiedTimeOverride;
+    if (timeOverride.active) {
+        return fileTimeOverrideMillis(timeOverride);
+    }
     PLATFORM_STAT_STRUCT buf;
 
     if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf)==0) {
@@ -193,7 +209,41 @@ U64 FsFileNode::lastModified() {
     return 0;
 }
 
-U64 FsFileNode::length() {    
+U32 FsFileNode::lastModifiedNano() {
+    const FsFileTimeOverride& timeOverride = this->hardLinkState ? this->hardLinkState->modifiedTimeOverride : this->modifiedTimeOverride;
+    if (timeOverride.active) {
+        return timeOverride.nanos;
+    }
+    return FsNode::lastModifiedNano();
+}
+
+U64 FsFileNode::lastAccessed() {
+    const FsFileTimeOverride& timeOverride = this->hardLinkState ? this->hardLinkState->accessTimeOverride : this->accessTimeOverride;
+    if (timeOverride.active) {
+        return fileTimeOverrideMillis(timeOverride);
+    }
+    PLATFORM_STAT_STRUCT buf;
+
+    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf) == 0) {
+        return ((U64)buf.st_atime) * 1000l;
+    }
+#ifdef BOXEDWINE_ZLIB
+    if (this->zipNode) {
+        return this->zipNode->lastModified();
+    }
+#endif
+    return 0;
+}
+
+U32 FsFileNode::lastAccessedNano() {
+    const FsFileTimeOverride& timeOverride = this->hardLinkState ? this->hardLinkState->accessTimeOverride : this->accessTimeOverride;
+    if (timeOverride.active) {
+        return timeOverride.nanos;
+    }
+    return FsNode::lastAccessedNano();
+}
+
+U64 FsFileNode::length() {
     if (this->isDirectory())
         return 4096;
 
@@ -551,6 +601,7 @@ U32 FsFileNode::removeDir() {
     if (Fs::doesNativePathExist(this->nativePath) && ::rmdir(this->nativePath.c_str()) < 0) {
         return -translateErr(errno);
     }
+    unlinkXAttrSidecars(this->getNativePathForData());
     std::shared_ptr<FsNode> parent = this->getParent().lock();
     if (parent) {
         parent->removeChildByName(this->name);
@@ -560,15 +611,37 @@ U32 FsFileNode::removeDir() {
 
 U32 FsFileNode::setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano) {
     struct utimbuf settime = {0, 0};
+    bool shouldUpdateHost = false;
 
     this->ensurePathIsLocal(false);
-    if (lastAccessTime) {
-        settime.actime = lastAccessTime;
+    BString nativePath = this->getNativePathForData();
+    PLATFORM_STAT_STRUCT buf;
+    if (PLATFORM_STAT(nativePath.c_str(), &buf) == 0) {
+        settime.actime = buf.st_atime;
+        settime.modtime = buf.st_mtime;
+    } else {
+        settime.actime = (time_t)(this->lastAccessed() / 1000);
+        settime.modtime = (time_t)(this->lastModified() / 1000);
     }
-    if (lastModifiedTime) {
+    if (lastAccessTimeNano != FS_UTIME_OMIT) {
+        FsFileTimeOverride& timeOverride = this->hardLinkState ? this->hardLinkState->accessTimeOverride : this->accessTimeOverride;
+        timeOverride.active = true;
+        timeOverride.seconds = lastAccessTime;
+        timeOverride.nanos = lastAccessTimeNano;
+        settime.actime = lastAccessTime;
+        shouldUpdateHost = true;
+    }
+    if (lastModifiedTimeNano != FS_UTIME_OMIT) {
+        FsFileTimeOverride& timeOverride = this->hardLinkState ? this->hardLinkState->modifiedTimeOverride : this->modifiedTimeOverride;
+        timeOverride.active = true;
+        timeOverride.seconds = lastModifiedTime;
+        timeOverride.nanos = lastModifiedTimeNano;
         settime.modtime = lastModifiedTime;
-    }       
-    utime(this->getNativePathForData().c_str(),&settime);
+        shouldUpdateHost = true;
+    }
+    if (shouldUpdateHost) {
+        utime(nativePath.c_str(), &settime);
+    }
     return 0; // no error checking, we don't care if this fails
 }
 

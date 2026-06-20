@@ -343,7 +343,7 @@ private:
     U32 readlinkInDirectory(BString currentDirectory, BString path, U32 buffer, U32 bufSize);
     void onExec(KThread* thread);
     U32 getCurrentDirectoryFromDirFD(FD dirfd, BString& currentDirectory);
-    void writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 seconds, U32 nano);
+    void writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 atimeSeconds, U32 atimeNano, U32 mtimeSeconds, U32 mtimeNano, U32 ctimeSeconds, U32 ctimeNano);
 
     bool systemProcess = false;
     bool cloneVM = false; // if this process was created using CLONE_VM, then we need to be careful with its shared memory with its parent

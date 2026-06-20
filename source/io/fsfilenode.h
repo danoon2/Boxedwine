@@ -29,6 +29,12 @@ S32 translateErr(U32 e);
 
 class FsFileNode;
 
+struct FsFileTimeOverride {
+    bool active = false;
+    U64 seconds = 0;
+    U32 nanos = 0;
+};
+
 struct FsHardLinkState {
     FsHardLinkState(U32 id, BString nativePath, U32 linkCount, U32 modeOverride);
 
@@ -36,6 +42,8 @@ struct FsHardLinkState {
     BString nativePath;
     U32 linkCount;
     U32 modeOverride;
+    FsFileTimeOverride accessTimeOverride;
+    FsFileTimeOverride modifiedTimeOverride;
     std::vector<std::weak_ptr<FsFileNode> > nodes;
 };
 
@@ -51,6 +59,9 @@ public:
     U32 rename(BString path) override; //return 0 if success, else errno
     bool remove() override;
     U64 lastModified() override;
+    U32 lastModifiedNano() override;
+    U64 lastAccessed() override;
+    U32 lastAccessedNano() override;
     U64 length() override;
     FsOpenNode* open(U32 flags) override;
     U32 getType(bool checkForLink) override;
@@ -90,6 +101,8 @@ private:
     bool isRootPath;
     U32 modeOverride;
     std::shared_ptr<FsHardLinkState> hardLinkState;
+    FsFileTimeOverride accessTimeOverride;
+    FsFileTimeOverride modifiedTimeOverride;
 };
 
 #endif

@@ -54,6 +54,11 @@
 
 void testWaitPid();
 void testHardLinksShareIdentityDataAndXattrs();
+void testReadDirectoryReturnsIsDir();
+void testUtimensatPreservesAccessTimeInStat();
+void testFutimensPreservesAccessTimeInFstat();
+void testFutimensTime64SignExtendedSecondsPreservesAccessTimeInFstat();
+void testDirectoryReparseSidecarReplacedAfterRemoveAndRecreate();
 
 namespace {
 
@@ -660,6 +665,11 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
     {testWaitPid, "Test waitpid child selection"},
     {testHardLinksShareIdentityDataAndXattrs, "Test hard links share identity, data, and xattrs"},
+    {testReadDirectoryReturnsIsDir, "Test read on directory returns EISDIR"},
+    {testUtimensatPreservesAccessTimeInStat, "Test utimensat preserves access time in stat"},
+    {testFutimensPreservesAccessTimeInFstat, "Test futimens preserves access time in fstat"},
+    {testFutimensTime64SignExtendedSecondsPreservesAccessTimeInFstat, "Test futimens time64 sign-extended seconds in fstat"},
+    {testDirectoryReparseSidecarReplacedAfterRemoveAndRecreate, "Test directory reparse sidecar replacement after recreate"},
 };
 
 } // namespace

@@ -495,6 +495,11 @@ U32 KSystem::gettimeofday(KThread* thread, U32 tv, U32 tz) {
 }
 
 void KSystem::writeStat(KProcess* process, BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount) {
+    U32 nano = (U32)(mtime % 1000) * 1000000;
+    writeStat(process, path, buf, is64, st_dev, st_ino, st_mode, st_rdev, st_size, st_blksize, st_blocks, mtime, nano, mtime, nano, mtime, nano, linkCount);
+}
+
+void KSystem::writeStat(KProcess* process, BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 atime, U32 atimeNano, U64 mtime, U32 mtimeNano, U64 ctime, U32 ctimeNano, U32 linkCount) {
     KMemory* memory = process->memory;
 
     if (path == "/tmp/.X11-unix") {
@@ -505,9 +510,10 @@ void KSystem::writeStat(KProcess* process, BString path, U32 buf, bool is64, U64
     }
 
      if (is64) {
-        U32 t = (U32)(mtime/1000); // ms to sec
-        U32 n = (U32)(mtime % 1000) * 1000000;
-        
+        U32 at = (U32)(atime / 1000); // ms to sec
+        U32 mt = (U32)(mtime / 1000);
+        U32 ct = (U32)(ctime / 1000);
+
         memory->writeq(buf, st_dev);buf+=8;//st_dev               // 0
         buf+=4; // padding                                          // 8
         memory->writed(buf, (U32)st_ino); buf += 4;//__st_ino     // 12
@@ -525,15 +531,17 @@ void KSystem::writeStat(KProcess* process, BString path, U32 buf, bool is64, U64
         memory->writeq(buf, st_size); buf += 8;//st_size          // 44
         memory->writed(buf, st_blksize); buf += 4;//st_blksize    // 52
         memory->writeq(buf, st_blocks); buf += 8; //st_blocks     // 56
-        memory->writed(buf, t); buf += 4; // st_atime             // 64
-        memory->writed(buf, n); buf += 4; // st_atime_nsec        // 68
-        memory->writed(buf, t); buf += 4; // st_mtime             // 72
-        memory->writed(buf, n); buf += 4; // st_mtime_nsec        // 76
-        memory->writed(buf, t); buf += 4; // st_ctime             // 80
-        memory->writed(buf, n); buf += 4; // st_ctime_nsec        // 84
+        memory->writed(buf, at); buf += 4; // st_atime            // 64
+        memory->writed(buf, atimeNano); buf += 4; // st_atime_nsec // 68
+        memory->writed(buf, mt); buf += 4; // st_mtime            // 72
+        memory->writed(buf, mtimeNano); buf += 4; // st_mtime_nsec // 76
+        memory->writed(buf, ct); buf += 4; // st_ctime            // 80
+        memory->writed(buf, ctimeNano); buf += 4; // st_ctime_nsec // 84
         memory->writeq(buf, st_ino); // st_ino                    // 88
      } else {
-        U32 t = (U32)(mtime/1000); // ms to sec
+        U32 at = (U32)(atime / 1000); // ms to sec
+        U32 mt = (U32)(mtime / 1000);
+        U32 ct = (U32)(ctime / 1000);
         memory->writed(buf, (U32)st_dev); buf += 4;//st_dev
         memory->writed(buf, (U32)st_ino); buf += 4;//st_ino
         memory->writed(buf, st_mode); buf += 4;//st_mode
@@ -544,12 +552,12 @@ void KSystem::writeStat(KProcess* process, BString path, U32 buf, bool is64, U64
         } else {
             memory->writed(buf, process->userId); buf += 4;//st_uid
             memory->writed(buf, process->groupId); buf += 4;//st_gid
-        } 
+        }
         memory->writed(buf, (U32)st_rdev); buf += 4;//st_rdev
         memory->writed(buf, (U32)st_size); buf += 4;//st_size
-        memory->writed(buf, t); buf += 4;//st_atime
-        memory->writed(buf, t); buf += 4;//st_mtime
-        memory->writed(buf, t); buf += 4;//st_ctime
+        memory->writed(buf, at); buf += 4;//st_atime
+        memory->writed(buf, mt); buf += 4;//st_mtime
+        memory->writed(buf, ct); buf += 4;//st_ctime
         memory->writed(buf, st_blksize); buf += 4;//st_blksize (not used on wine)
         memory->writed(buf, (U32)st_blocks);//st_blocks
      }

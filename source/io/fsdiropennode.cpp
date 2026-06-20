@@ -88,11 +88,11 @@ bool FsDirOpenNode::canMap() {
 }
 
 U32 FsDirOpenNode::readNative(U8* buffer, U32 len) {
-    return 0;
+    return -K_EISDIR;
 }
 
 U32 FsDirOpenNode::writeNative(U8* buffer, U32 len) {
-    return 0;
+    return -K_EISDIR;
 }
 
 void FsDirOpenNode::reopen() {

@@ -115,6 +115,7 @@ public:
 
     // helpers
     static void writeStat(KProcess* process, BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount);
+    static void writeStat(KProcess* process, BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 atime, U32 atimeNano, U64 mtime, U32 mtimeNano, U64 ctime, U32 ctimeNano, U32 linkCount);
     static KProcessPtr getProcess(U32 id);
     static void eraseFileCache(BString name);
     static std::shared_ptr<MappedFileCache> getFileCache(BString name);

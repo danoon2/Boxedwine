@@ -1998,7 +1998,7 @@ U32 KProcess::stat64(BString path, U32 buffer) {
         return -K_ENOENT;
     }
     U64 len = node->length();
-    KSystem::writeStat(this, node->path, buffer, true, 1, node->getId(), node->getMode(), node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(this, node->path, buffer, true, 1, node->getId(), node->getMode(), node->rdev, len, 4096, (len + 4095) / 4096, node->lastAccessed(), node->lastAccessedNano(), node->lastModified(), node->lastModifiedNano(), node->lastStatusChanged(), node->lastStatusChangedNano(), node->getHardLinkCount());
     return 0;
 }
 
@@ -2018,7 +2018,7 @@ U32 KProcess::lstat64(BString path, U32 buffer) {
         len = node->length();
         mode = node->getMode();
     }
-    KSystem::writeStat(this, node->path, buffer, true, 1, node->getId(), mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(this, node->path, buffer, true, 1, node->getId(), mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastAccessed(), node->lastAccessedNano(), node->lastModified(), node->lastModifiedNano(), node->lastStatusChanged(), node->lastStatusChangedNano(), node->getHardLinkCount());
     return 0;
 }
 
@@ -2371,7 +2371,7 @@ struct statx {
 
 */
 
-void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 seconds, U32 nano) {
+void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 atimeSeconds, U32 atimeNano, U32 mtimeSeconds, U32 mtimeNano, U32 ctimeSeconds, U32 ctimeNano) {
     // 0x00
     memory->writed(buf, 0xfff); buf += 4; // stx_mask
     memory->writed(buf, 512); buf += 4; // stx_blksize
@@ -2388,17 +2388,17 @@ void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLi
     memory->writeq(buf, (len + 511) / 512); buf += 8; // stx_blocks
     memory->writeq(buf, 0); buf += 8; // stx_attributes_mask
     // 0x40
-    memory->writeq(buf, seconds); buf += 8; // stx_atime
-    memory->writed(buf, nano); buf += 4;
+    memory->writeq(buf, atimeSeconds); buf += 8; // stx_atime
+    memory->writed(buf, atimeNano); buf += 4;
     memory->writed(buf, 0); buf += 4;
-    memory->writeq(buf, seconds); buf += 8; // stx_btime
-    memory->writed(buf, nano); buf += 4;
+    memory->writeq(buf, ctimeSeconds); buf += 8; // stx_btime
+    memory->writed(buf, ctimeNano); buf += 4;
     memory->writed(buf, 0); buf += 4;
-    memory->writeq(buf, seconds); buf += 8; // stx_ctime
-    memory->writed(buf, nano); buf += 4;
+    memory->writeq(buf, ctimeSeconds); buf += 8; // stx_ctime
+    memory->writed(buf, ctimeNano); buf += 4;
     memory->writed(buf, 0); buf += 4;
-    memory->writeq(buf, seconds); buf += 8; // stx_mtime
-    memory->writed(buf, nano); buf += 4;
+    memory->writeq(buf, mtimeSeconds); buf += 8; // stx_mtime
+    memory->writed(buf, mtimeNano); buf += 4;
     memory->writed(buf, 0); buf += 4;
     // 0x80
     memory->writed(buf, rdev); buf += 4; // stx_rdev_major
@@ -2431,7 +2431,7 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
                 U64 t = s->lastModifiedTime;
                 U32 seconds = (U32)(t / 1000);
                 U32 n = (U32)(t % 1000) * 1000000;
-                writeStatX(memory, buf, (s->node ? s->node->id : 0), (s->node ? s->node->rdev : 0), 1, userId, groupId, K_S_IFSOCK | K__S_IWRITE | K__S_IREAD, 0, seconds, n);
+                writeStatX(memory, buf, (s->node ? s->node->id : 0), (s->node ? s->node->rdev : 0), 1, userId, groupId, K_S_IFSOCK | K__S_IWRITE | K__S_IREAD, 0, seconds, n, seconds, n, seconds, n);
                 return 0;
             }
         }
@@ -2449,12 +2449,12 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
     if (node->isLink() || isLink) {
         mode |= K__S_IFLNK;
     }
-    U64 t = node->lastModified();
-    U32 seconds = (U32)(t / 1000);
-    U32 n = (U32)(t % 1000) * 1000000;
+    U64 atime = node->lastAccessed();
+    U64 mtime = node->lastModified();
+    U64 ctime = node->lastStatusChanged();
     U32 hardLinkCount = node->getHardLinkCount();
 
-    writeStatX(memory, buf, node->getId(), node->rdev, hardLinkCount, userId, groupId, mode, len, seconds, n);
+    writeStatX(memory, buf, node->getId(), node->rdev, hardLinkCount, userId, groupId, mode, len, (U32)(atime / 1000), node->lastAccessedNano(), (U32)(mtime / 1000), node->lastModifiedNano(), (U32)(ctime / 1000), node->lastStatusChangedNano());
     return 0;
 }
 
@@ -2480,8 +2480,8 @@ U32 KProcess::fstatat64(FD dirfd, BString path, U32 buf, U32 flag) {
         mode|=K__S_IFLNK;
     }
     
-    KSystem::writeStat(this, path, buf, true, 1, node->getId(), mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
-    return 0;    
+    KSystem::writeStat(this, path, buf, true, 1, node->getId(), mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastAccessed(), node->lastAccessedNano(), node->lastModified(), node->lastModifiedNano(), node->lastStatusChanged(), node->lastStatusChangedNano(), node->getHardLinkCount());
+    return 0;
 }
 
 U32 KProcess::unlinkat(FD dirfd, BString path, U32 flags) {
@@ -2532,6 +2532,13 @@ U32 KProcess::faccessat(U32 dirfd, BString path, U32 mode, U32 flags) {
 #define K_UTIME_NOW 0x3fffffff
 #define K_UTIME_OMIT 0x3ffffffe
 
+static U64 normalizeTime64TimespecSeconds(U64 seconds) {
+    if ((seconds >> 32) == 0xffffffff) {
+        return (U32)seconds;
+    }
+    return seconds;
+}
+
 U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags, bool time64) {
     BString dir;
     U32 result = 0;
@@ -2560,9 +2567,9 @@ U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags, bool time64
                 __int32_t : 32;            // Padding
             };
             */
-            lastAccessTime = memory->readq(times);
+            lastAccessTime = normalizeTime64TimespecSeconds(memory->readq(times));
             lastAccessTimeNano = memory->readd(times + 8);
-            lastModifiedTime = memory->readq(times + 16);
+            lastModifiedTime = normalizeTime64TimespecSeconds(memory->readq(times + 16));
             lastModifiedTimeNano = memory->readd(times + 24);
         } else {
             lastAccessTime = memory->readd(times);
