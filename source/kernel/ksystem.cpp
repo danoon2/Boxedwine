@@ -878,6 +878,26 @@ KProcessPtr KSystem::getProcess(U32 id) {
     return KSystem::processes[id];
 }
 
+static FsOpenNode* openProcPidStatus(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
+    KProcessPtr process = KSystem::getProcess(data);
+    BString name = process && process->name.length() ? process->name : B("boxedwine");
+    U32 parentId = process ? process->parentId : 0;
+    char buffer[512];
+
+    snprintf(buffer, sizeof(buffer),
+        "Name:\t%s\n"
+        "Pid:\t%u\n"
+        "PPid:\t%u\n"
+        "VmPeak:\t262144 kB\n"
+        "VmSize:\t262144 kB\n"
+        "VmHWM:\t65536 kB\n"
+        "VmRSS:\t65536 kB\n"
+        "RssAnon:\t32768 kB\n"
+        "VmSwap:\t0 kB\n",
+        name.c_str(), data, parentId);
+    return new BufferAccess(node, flags, BString::copy(buffer));
+}
+
 void KSystem::eraseFileCache(BString name) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
     KSystem::fileCache.remove(name);
@@ -911,6 +931,7 @@ std::shared_ptr<FsNode> KSystem::addProcess(U32 id, const KProcessPtr& process) 
     KSystem::processes.set(id, process);
     if (KSystem::procNode) {
         std::shared_ptr<FsNode> processNode = Fs::addFileNode("/proc/" + BString::valueOf(id), B(""), B(""), true, KSystem::procNode);
+        Fs::addVirtualFile(processNode->path + B("/status"), openProcPidStatus, K__S_IREAD, k_mdev(0, 0), processNode, id);
         KSystem::procNode->addChild(processNode);
         return processNode;
     }

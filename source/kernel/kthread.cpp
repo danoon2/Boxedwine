@@ -719,6 +719,9 @@ void KThread::signalTrap(U32 code) {
     this->process->sigActions[K_SIGTRAP].sigInfo[0] = K_SIGTRAP;
     this->process->sigActions[K_SIGTRAP].sigInfo[2] = code;
     this->process->sigActions[K_SIGTRAP].sigInfo[3] = cpu->eip.u32;
+    if (code == 1) {
+        cpu->eip.u32++;
+    }
     this->runSignal(K_SIGTRAP, 3, 0);
 }
 

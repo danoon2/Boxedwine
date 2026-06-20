@@ -238,6 +238,185 @@ static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
     return -K_EPERM;
 }
 
+static KProcessPtr getProcessByPidOrThreadId(U32 id) {
+    KProcessPtr process = KSystem::getProcess(id);
+    if (!process) {
+        KThread* thread = KSystem::getThreadById(id);
+        if (thread) {
+            process = thread->process;
+        }
+    }
+    return process;
+}
+
+static U32 syscall_process_vm_readv(CPU* cpu, U32 eipCount) {
+    constexpr U32 IOV_SIZE = 8;
+    constexpr U32 IOV_MAX = 1024;
+    KMemory* memory = cpu->memory;
+
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "process_vm_readv: pid=%d local_iov=%X liovcnt=%d remote_iov=%X riovcnt=%d flags=%X", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+
+    if (ARG6) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EINVAL, -K_EINVAL);
+        return -K_EINVAL;
+    }
+    if (!ARG3 || !ARG5) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=0(0x0)\n");
+        return 0;
+    }
+    if (ARG3 > IOV_MAX || ARG5 > IOV_MAX) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EINVAL, -K_EINVAL);
+        return -K_EINVAL;
+    }
+    if (!memory->canRead(ARG2, ARG3 * IOV_SIZE) || !memory->canRead(ARG4, ARG5 * IOV_SIZE)) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EFAULT, -K_EFAULT);
+        return -K_EFAULT;
+    }
+
+    KProcessPtr remoteProcess = getProcessByPidOrThreadId(ARG1);
+    if (!remoteProcess || remoteProcess->isTerminated() || !remoteProcess->memory) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_ESRCH, -K_ESRCH);
+        return -K_ESRCH;
+    }
+
+    U32 localIndex = 0;
+    U32 remoteIndex = 0;
+    U32 localBase = memory->readd(ARG2);
+    U32 localLen = memory->readd(ARG2 + 4);
+    U32 remoteBase = memory->readd(ARG4);
+    U32 remoteLen = memory->readd(ARG4 + 4);
+    U32 total = 0;
+    U8 buffer[4096];
+
+    while (localIndex < ARG3 && remoteIndex < ARG5) {
+        if (!localLen) {
+            localIndex++;
+            if (localIndex >= ARG3) {
+                break;
+            }
+            localBase = memory->readd(ARG2 + localIndex * IOV_SIZE);
+            localLen = memory->readd(ARG2 + localIndex * IOV_SIZE + 4);
+            continue;
+        }
+        if (!remoteLen) {
+            remoteIndex++;
+            if (remoteIndex >= ARG5) {
+                break;
+            }
+            remoteBase = memory->readd(ARG4 + remoteIndex * IOV_SIZE);
+            remoteLen = memory->readd(ARG4 + remoteIndex * IOV_SIZE + 4);
+            continue;
+        }
+
+        U32 todo = localLen < remoteLen ? localLen : remoteLen;
+        if (todo > sizeof(buffer)) {
+            todo = sizeof(buffer);
+        }
+        if (!memory->canWrite(localBase, todo) || !remoteProcess->memory->canRead(remoteBase, todo)) {
+            if (total) {
+                break;
+            }
+            SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EFAULT, -K_EFAULT);
+            return -K_EFAULT;
+        }
+
+        remoteProcess->memory->memcpy(buffer, remoteBase, todo);
+        memory->memcpy(localBase, buffer, todo);
+        localBase += todo;
+        localLen -= todo;
+        remoteBase += todo;
+        remoteLen -= todo;
+        total += todo;
+    }
+
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", total, total);
+    return total;
+}
+
+static U32 syscall_process_vm_writev(CPU* cpu, U32 eipCount) {
+    constexpr U32 IOV_SIZE = 8;
+    constexpr U32 IOV_MAX = 1024;
+    KMemory* memory = cpu->memory;
+
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "process_vm_writev: pid=%d local_iov=%X liovcnt=%d remote_iov=%X riovcnt=%d flags=%X", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+
+    if (ARG6) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EINVAL, -K_EINVAL);
+        return -K_EINVAL;
+    }
+    if (!ARG3 || !ARG5) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=0(0x0)\n");
+        return 0;
+    }
+    if (ARG3 > IOV_MAX || ARG5 > IOV_MAX) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EINVAL, -K_EINVAL);
+        return -K_EINVAL;
+    }
+    if (!memory->canRead(ARG2, ARG3 * IOV_SIZE) || !memory->canRead(ARG4, ARG5 * IOV_SIZE)) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EFAULT, -K_EFAULT);
+        return -K_EFAULT;
+    }
+
+    KProcessPtr remoteProcess = getProcessByPidOrThreadId(ARG1);
+    if (!remoteProcess || remoteProcess->isTerminated() || !remoteProcess->memory) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_ESRCH, -K_ESRCH);
+        return -K_ESRCH;
+    }
+
+    U32 localIndex = 0;
+    U32 remoteIndex = 0;
+    U32 localBase = memory->readd(ARG2);
+    U32 localLen = memory->readd(ARG2 + 4);
+    U32 remoteBase = memory->readd(ARG4);
+    U32 remoteLen = memory->readd(ARG4 + 4);
+    U32 total = 0;
+    U8 buffer[4096];
+
+    while (localIndex < ARG3 && remoteIndex < ARG5) {
+        if (!localLen) {
+            localIndex++;
+            if (localIndex >= ARG3) {
+                break;
+            }
+            localBase = memory->readd(ARG2 + localIndex * IOV_SIZE);
+            localLen = memory->readd(ARG2 + localIndex * IOV_SIZE + 4);
+            continue;
+        }
+        if (!remoteLen) {
+            remoteIndex++;
+            if (remoteIndex >= ARG5) {
+                break;
+            }
+            remoteBase = memory->readd(ARG4 + remoteIndex * IOV_SIZE);
+            remoteLen = memory->readd(ARG4 + remoteIndex * IOV_SIZE + 4);
+            continue;
+        }
+
+        U32 todo = localLen < remoteLen ? localLen : remoteLen;
+        if (todo > sizeof(buffer)) {
+            todo = sizeof(buffer);
+        }
+        if (!memory->canRead(localBase, todo) || !remoteProcess->memory->canWrite(remoteBase, todo)) {
+            if (total) {
+                break;
+            }
+            SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EFAULT, -K_EFAULT);
+            return -K_EFAULT;
+        }
+
+        memory->memcpy(buffer, localBase, todo);
+        remoteProcess->memory->memcpy(remoteBase, buffer, todo);
+        localBase += todo;
+        localLen -= todo;
+        remoteBase += todo;
+        remoteLen -= todo;
+        total += todo;
+    }
+
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", total, total);
+    return total;
+}
+
 static U32 syscall_alarm(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_PROCESS, cpu, "alarm: seconds=%d", ARG1);
     U32 result = cpu->thread->process->alarm(ARG1);
@@ -1361,12 +1540,41 @@ static U32 syscall_sched_setaffinity(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_sched_getaffinity(CPU* cpu, U32 eipCount) {    
-#ifdef _DEBUG
-     kwarn("__NR_sched_getaffinity not implemented");
+static U32 syscall_sched_getaffinity(CPU* cpu, U32 eipCount) {
+    if (!ARG3) {
+        return -K_EFAULT;
+    }
+    if (ARG1 && !KSystem::getProcess(ARG1) && !KSystem::getThreadById(ARG1)) {
+        return -K_ESRCH;
+    }
+
+    U32 cpuCount = Platform::getCpuCount();
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (KSystem::cpuAffinityCountForApp && KSystem::cpuAffinityCountForApp < cpuCount) {
+        cpuCount = KSystem::cpuAffinityCountForApp;
+    }
 #endif
-    U32 result = -K_EPERM;
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_getaffinity: pid=%d cpusetsize=%d mask=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, ARG3, result, result);
+    if (!cpuCount) {
+        cpuCount = 1;
+    }
+
+    U32 maskBytes = ((cpuCount + 31) / 32) * sizeof(U32);
+    if (ARG2 < maskBytes) {
+        return -K_EINVAL;
+    }
+    if (!cpu->memory->canWrite(ARG3, ARG2)) {
+        return -K_EFAULT;
+    }
+
+    std::vector<U8> mask(maskBytes, 0);
+    for (U32 i = 0; i < cpuCount; i++) {
+        mask[i >> 3] |= 1 << (i & 7);
+    }
+    cpu->memory->memset(ARG3, 0, ARG2);
+    cpu->memory->memcpy(ARG3, mask.data(), maskBytes);
+
+    U32 result = maskBytes;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_getaffinity: pid=%d cpusetsize=%d mask=%X result=%d(0x%X)\n", ARG1, ARG2, ARG3, result, result);
     return result;
 }
 
@@ -2186,10 +2394,10 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 342 __NR_open_by_handle_at
     nullptr,                  // 343
     nullptr,                  // 344
-    syscall_sendmmsg,   // 345 __NR_sendmmsg 
+    syscall_sendmmsg,   // 345 __NR_sendmmsg
     nullptr,                  // 346
-    nullptr,                  // 347
-    nullptr,                  // 348
+    syscall_process_vm_readv, // 347 __NR_process_vm_readv
+    syscall_process_vm_writev, // 348 __NR_process_vm_writev
     nullptr,                  // 349
     nullptr,                  // 350
     nullptr,                  // 351
