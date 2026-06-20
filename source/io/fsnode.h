@@ -27,6 +27,8 @@
 #define EXT_DOSATTRIB ".user.DOSATTRIB"
 #define EXT_WINEREPARSE ".user.WINEREPARSE"
 #define EXT_LINK ".link"
+#define EXT_HARDLINK ".hardlink"
+#define EXT_HARDLINK_BACKING ".hardlink-data"
 
 class FsOpenNode;
 class KProcess;
@@ -57,6 +59,9 @@ public:
     virtual U32 setMode(U32 mode) { return 0; }
     virtual U32 removeDir()=0;
     virtual U32 setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano)=0;
+    virtual U32 getId() { return this->id; }
+    virtual U32 getHardLinkCount() { return this->hardLinkCount; }
+    virtual BString getNativePathForData() { return this->nativePath; }
 
     virtual bool canRead();
     virtual bool canWrite();
@@ -64,7 +69,6 @@ public:
     virtual BString getLink() {return this->link;}
     virtual bool isLink() { return this->link.length() > 0; }
 
-    U32 getHardLinkCount() {return this->hardLinkCount;}    
     bool isDirectory() {return this->isDir;}
     std::weak_ptr<FsNode> getParent() {return this->parent;}
 

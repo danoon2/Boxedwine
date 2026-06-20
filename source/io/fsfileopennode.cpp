@@ -73,7 +73,7 @@ void FsFileOpenNode::reopen() {
         openFlags|=O_APPEND;
     }
 
-    this->handle = ::open(this->fileNode->nativePath.c_str(), openFlags, 0666);
+    this->handle = ::open(this->fileNode->getNativePathForData().c_str(), openFlags, 0666);
 }
 
 U32 FsFileOpenNode::ioctl(KThread* thread, U32 request) {

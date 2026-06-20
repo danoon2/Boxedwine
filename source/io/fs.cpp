@@ -481,10 +481,10 @@ BString Fs::trimTrailingSlash(const BString& s) {
 
 static BString getXAttrNativePath(const std::shared_ptr<FsNode>& file, const BString& name) {
     if (name == "user.DOSATTRIB") {
-        return file->nativePath + EXT_DOSATTRIB;
+        return file->getNativePathForData() + EXT_DOSATTRIB;
     }
     if (name == "user.WINEREPARSE") {
-        return file->nativePath + EXT_WINEREPARSE;
+        return file->getNativePathForData() + EXT_WINEREPARSE;
     }
     return BString::empty;
 }
@@ -540,10 +540,11 @@ U32 Fs::removeXAttr(const std::shared_ptr<FsNode>& file, const BString& name) {
 }
 
 U32 Fs::listXAttrNames(const std::shared_ptr<FsNode>& file, std::vector<BString>& names) {
-    if (Fs::doesNativePathExist(file->nativePath + EXT_DOSATTRIB)) {
+    BString nativePath = file->getNativePathForData();
+    if (Fs::doesNativePathExist(nativePath + EXT_DOSATTRIB)) {
         names.push_back(B("user.DOSATTRIB"));
     }
-    if (Fs::doesNativePathExist(file->nativePath + EXT_WINEREPARSE)) {
+    if (Fs::doesNativePathExist(nativePath + EXT_WINEREPARSE)) {
         names.push_back(B("user.WINEREPARSE"));
     }
     return 0;

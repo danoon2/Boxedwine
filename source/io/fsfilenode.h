@@ -27,6 +27,18 @@ class FsZipNode;
 
 S32 translateErr(U32 e);
 
+class FsFileNode;
+
+struct FsHardLinkState {
+    FsHardLinkState(U32 id, BString nativePath, U32 linkCount, U32 modeOverride);
+
+    U32 id;
+    BString nativePath;
+    U32 linkCount;
+    U32 modeOverride;
+    std::vector<std::weak_ptr<FsFileNode> > nodes;
+};
+
 class FsFileNode : public FsNode {
 public:
     static void getTmpPath(BString& nativePath, BString& localPath);
@@ -46,8 +58,21 @@ public:
     U32 setMode(U32 mode) override;
     U32 removeDir() override;
     BString getLink() override;
+    U32 getId() override;
+    U32 getHardLinkCount() override;
+    BString getNativePathForData() override;
 
     U32 setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano) override;
+
+    void setHardLinkState(const std::shared_ptr<FsHardLinkState>& state);
+    std::shared_ptr<FsHardLinkState> getHardLinkState();
+    bool isHardLinked() const;
+    U32 convertToHardLinkBacking(const std::shared_ptr<FsHardLinkState>& state);
+
+    static std::shared_ptr<FsHardLinkState> createHardLinkState(U32 id, const BString& nativePath, U32 linkCount, U32 modeOverride);
+    static std::shared_ptr<FsHardLinkState> readHardLinkMetadata(const BString& metadataNativePath);
+    static bool writeHardLinkMetadata(const BString& visibleNativePath, const std::shared_ptr<FsHardLinkState>& state);
+    static void renameXAttrSidecars(const BString& oldNativePath, const BString& newNativePath);
 
     static std::set<BString> nonExecFileFullPaths;
 private:
@@ -64,6 +89,7 @@ private:
     friend class Fs;
     bool isRootPath;
     U32 modeOverride;
+    std::shared_ptr<FsHardLinkState> hardLinkState;
 };
 
 #endif

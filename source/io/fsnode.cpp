@@ -18,6 +18,7 @@
 
 #include "boxedwine.h"
 
+#include "fsfilenode.h"
 #include "kstat.h"
 
 FsNode::FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, std::shared_ptr<FsNode> parent) :
@@ -78,7 +79,20 @@ void FsNode::loadChildren() {
                 if (localPath.endsWith(EXT_MIXED)) {
                     localPath.remove(localPath.length() - 6);
                 }
-                if (localPath.endsWith(EXT_DOSATTRIB) || localPath.endsWith(EXT_WINEREPARSE)) {
+                if (localPath.endsWith(EXT_DOSATTRIB) || localPath.endsWith(EXT_WINEREPARSE) || localPath.endsWith(EXT_HARDLINK_BACKING)) {
+                    continue;
+                }
+                if (localPath.endsWith(EXT_HARDLINK)) {
+                    std::shared_ptr<FsHardLinkState> state = FsFileNode::readHardLinkMetadata(remotePath);
+                    if (!state) {
+                        kwarn_fmt("Could not read hard link file from filesystem: %s", localPath.c_str());
+                        continue;
+                    }
+                    localPath = localPath.substr(0, localPath.length() - BString(EXT_HARDLINK, true).length());
+                    BString visibleNativePath = remotePath.substr(0, remotePath.length() - BString(EXT_HARDLINK, true).length());
+                    std::shared_ptr<FsFileNode> node = Fs::addFileNode(localPath, B(""), visibleNativePath, false, shared_from_this());
+                    state->linkCount++;
+                    node->setHardLinkState(state);
                     continue;
                 }
                 if (!localPath.endsWith(EXT_LINK)) {

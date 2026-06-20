@@ -111,7 +111,7 @@ U32 KFile::stat(KProcess* process, U32 address, bool is64) {
     std::shared_ptr<FsNode> node = openNode->node;
     U64 len = (U64)openNode->length();
 
-    KSystem::writeStat(process, node->path, address, is64, 1, node->id, node->getMode(), node->rdev, len, FS_BLOCK_SIZE, (len+FS_BLOCK_SIZE-1)/FS_BLOCK_SIZE, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(process, node->path, address, is64, 1, node->getId(), node->getMode(), node->rdev, len, FS_BLOCK_SIZE, (len+FS_BLOCK_SIZE-1)/FS_BLOCK_SIZE, node->lastModified(), node->getHardLinkCount());
     return 0;
 }
 

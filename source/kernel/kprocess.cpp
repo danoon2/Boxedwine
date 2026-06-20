@@ -1036,6 +1036,7 @@ U32 KProcess::unlinkFile(BString path) {
 U32 KProcess::link(BString from, BString to) {
     std::shared_ptr<FsNode> fromNode = Fs::getNodeFromLocalPath(this->currentDirectory, from, false);
     std::shared_ptr<FsNode> toNode = Fs::getNodeFromLocalPath(this->currentDirectory, to, false);
+    BString fullTo = Fs::getFullPath(this->currentDirectory, to);
 
     if (!fromNode) {
         return -K_ENOENT;
@@ -1048,33 +1049,47 @@ U32 KProcess::link(BString from, BString to) {
         return -K_EPERM;
     }
 
-    FsOpenNode* fromOpenNode = fromNode->open(K_O_RDONLY);
-    if (!fromOpenNode)
-        return -K_EIO;
+    std::shared_ptr<FsFileNode> fromFile = std::dynamic_pointer_cast<FsFileNode>(fromNode);
+    if (!fromFile) {
+        return -K_EPERM;
+    }
 
-    std::shared_ptr<FsNode> toParentNode = Fs::getNodeFromLocalPath(this->currentDirectory, Fs::getParentPath(to), false);
+    std::shared_ptr<FsNode> toParentNode = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(fullTo), false);
     if (!toParentNode)
         return -K_ENOENT;
 
-    toNode = Fs::addFileNode(to, B(""), Fs::getNativePathFromParentAndLocalFilename(toParentNode, Fs::getFileNameFromPath(to)), false, toParentNode);
-    FsOpenNode* toOpenNode = toNode->open(K_O_WRONLY|K_O_CREAT);
-    if (!toOpenNode) {
-        fromOpenNode->close();
-        return -K_EIO;
+    std::shared_ptr<FsHardLinkState> hardLinkState = fromFile->getHardLinkState();
+    if (!hardLinkState) {
+        FsOpenNode* fromOpenNode = fromNode->open(K_O_RDONLY);
+        if (!fromOpenNode) {
+            return -K_EIO;
+        }
+        delete fromOpenNode;
+
+        BString backingNativePath = fromFile->nativePath + EXT_HARDLINK_BACKING;
+        if (Fs::doesNativePathExist(backingNativePath)) {
+            backingNativePath = fromFile->nativePath + B(".") + BString::valueOf(fromFile->getId()) + EXT_HARDLINK_BACKING;
+        }
+        hardLinkState = FsFileNode::createHardLinkState(fromFile->getId(), backingNativePath, 1, fromFile->getMode());
+        U32 result = fromFile->convertToHardLinkBacking(hardLinkState);
+        if (result) {
+            return result;
+        }
+        if (!FsFileNode::writeHardLinkMetadata(fromFile->nativePath, hardLinkState)) {
+            return -K_EIO;
+        }
     }
 
-    while (1) {
-        U8 buffer[K_PAGE_SIZE];
-        U32 r = fromOpenNode->readNative(buffer, K_PAGE_SIZE);	
-        toOpenNode->writeNative(buffer, r);
-        if (r<K_PAGE_SIZE)
-            break;
+    BString fileName = Fs::getFileNameFromPath(fullTo);
+    toNode = Fs::addFileNode(fullTo, B(""), Fs::getNativePathFromParentAndLocalFilename(toParentNode, fileName), false, toParentNode);
+    std::shared_ptr<FsFileNode> toFile = std::dynamic_pointer_cast<FsFileNode>(toNode);
+    hardLinkState->linkCount++;
+    toFile->setHardLinkState(hardLinkState);
+    if (!FsFileNode::writeHardLinkMetadata(toFile->nativePath, hardLinkState)) {
+        hardLinkState->linkCount--;
+        toFile->removeNodeFromParent();
+        return -K_EIO;
     }
-    toOpenNode->close();
-    fromOpenNode->close();
-    toNode->hardLinkCount++;
-    fromNode->hardLinkCount++;
-    kdebug("Hard link not implemented");
     return 0;
 }
 
@@ -1983,7 +1998,7 @@ U32 KProcess::stat64(BString path, U32 buffer) {
         return -K_ENOENT;
     }
     U64 len = node->length();
-    KSystem::writeStat(this, node->path, buffer, true, 1, node->id, node->getMode(), node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(this, node->path, buffer, true, 1, node->getId(), node->getMode(), node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
     return 0;
 }
 
@@ -2003,7 +2018,7 @@ U32 KProcess::lstat64(BString path, U32 buffer) {
         len = node->length();
         mode = node->getMode();
     }
-    KSystem::writeStat(this, node->path, buffer, true, 1, node->id, mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(this, node->path, buffer, true, 1, node->getId(), mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
     return 0;
 }
 
@@ -2439,7 +2454,7 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
     U32 n = (U32)(t % 1000) * 1000000;
     U32 hardLinkCount = node->getHardLinkCount();
 
-    writeStatX(memory, buf, node->id, node->rdev, hardLinkCount, userId, groupId, mode, len, seconds, n);
+    writeStatX(memory, buf, node->getId(), node->rdev, hardLinkCount, userId, groupId, mode, len, seconds, n);
     return 0;
 }
 
@@ -2465,7 +2480,7 @@ U32 KProcess::fstatat64(FD dirfd, BString path, U32 buf, U32 flag) {
         mode|=K__S_IFLNK;
     }
     
-    KSystem::writeStat(this, path, buf, true, 1, node->id, mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(this, path, buf, true, 1, node->getId(), mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
     return 0;    
 }
 

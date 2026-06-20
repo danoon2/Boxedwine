@@ -53,6 +53,7 @@
 #include "mmu/testSelfModifying.h"
 
 void testWaitPid();
+void testHardLinksShareIdentityDataAndXattrs();
 
 namespace {
 
@@ -658,6 +659,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testLockedInc, "Test Multi-threaded locked inc"},
 #endif
     {testWaitPid, "Test waitpid child selection"},
+    {testHardLinksShareIdentityDataAndXattrs, "Test hard links share identity, data, and xattrs"},
 };
 
 } // namespace

@@ -382,6 +382,9 @@
     <ClCompile Include="..\..\..\..\source\test\devs\testDspAudio.cpp">
       <Filter>source\test\devs</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\fs\testHardLinks.cpp">
+      <Filter>source\test\fs</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\test\mmu\testSelfModifying.cpp">
       <Filter>source\test\mmu</Filter>
     </ClCompile>
@@ -2398,6 +2401,9 @@
     </Filter>
     <Filter Include="source\test\devs">
       <UniqueIdentifier>{47b45091-ebdf-4966-81d0-df969fa1d8f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\test\fs">
+      <UniqueIdentifier>{9c975ed9-698d-40d8-9b9c-d80fe58655b8}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\util">
       <UniqueIdentifier>{61d9f8bc-45fb-4306-81d6-fcd7fe308745}</UniqueIdentifier>
