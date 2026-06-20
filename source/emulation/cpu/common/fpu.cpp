@@ -19,6 +19,7 @@
 #include "boxedwine.h"
 #include <math.h>
 #include "fpu.h"
+#include "ksignal.h"
 
 #define FMASK_TEST (CF | PF | AF | ZF | SF | OF)    
 
@@ -103,6 +104,31 @@ struct FPU_Float {
 
 #define FPU_GET_TOP(fpu) (((fpu)->sw & 0x3800) >> 11)
 #define FPU_SET_TOP(fpu, val) (fpu)->sw &= ~0x3800; (fpu)->sw |= (val & 7) << 11
+
+static constexpr U32 FPU_SW_IE = 0x0001;
+static constexpr U32 FPU_SW_DE = 0x0002;
+static constexpr U32 FPU_SW_ZE = 0x0004;
+static constexpr U32 FPU_SW_OE = 0x0008;
+static constexpr U32 FPU_SW_UE = 0x0010;
+static constexpr U32 FPU_SW_PE = 0x0020;
+static constexpr U32 FPU_SW_SF = 0x0040;
+static constexpr U32 FPU_SW_ES = 0x0080;
+static constexpr U32 FPU_SW_EXCEPTION_MASK = FPU_SW_IE | FPU_SW_DE | FPU_SW_ZE | FPU_SW_OE | FPU_SW_UE | FPU_SW_PE;
+
+static bool fpuIsZero(FPU* fpu, int reg) {
+    if (fpu->tags[reg] == TAG_Zero) {
+        return true;
+    }
+    return fpu->getF64(reg) == 0.0;
+}
+
+static void fpuSetException(FPU* fpu, U32 bits) {
+    fpu->sw |= bits;
+    U32 unmasked = bits & ~(fpu->cw & FPU_SW_EXCEPTION_MASK) & FPU_SW_EXCEPTION_MASK;
+    if (unmasked) {
+        fpu->sw |= FPU_SW_ES;
+    }
+}
 
 void FPU::LOG_STACK() {
 #ifdef LOG_FPU
@@ -224,9 +250,48 @@ void FPU::PREP_PUSH() {
 }
 
 void FPU::FPOP() {
+    if (this->tags[this->top] == TAG_Empty) {
+        setStackFaultException();
+    }
     this->tags[this->top] = TAG_Empty;
     //maybe set zero in it as well
     this->top = ((this->top + 1) & 7);
+}
+
+void FPU::setInvalidOperationException() {
+    fpuSetException(this, FPU_SW_IE);
+}
+
+void FPU::setStackFaultException() {
+    fpuSetException(this, FPU_SW_IE | FPU_SW_SF);
+}
+
+void FPU::setDivideByZeroException() {
+    fpuSetException(this, FPU_SW_ZE);
+}
+
+int FPU::getPendingExceptionCode() {
+    U32 status = this->sw & ~(this->cw & FPU_SW_EXCEPTION_MASK) & FPU_SW_EXCEPTION_MASK;
+
+    if (!status) {
+        return 0;
+    }
+    if (status & FPU_SW_IE) {
+        return K_FPE_FLTINV;
+    }
+    if (status & FPU_SW_ZE) {
+        return K_FPE_FLTDIV;
+    }
+    if (status & FPU_SW_OE) {
+        return K_FPE_FLTOVF;
+    }
+    if (status & FPU_SW_UE) {
+        return K_FPE_FLTUND;
+    }
+    if (status & FPU_SW_PE) {
+        return K_FPE_FLTRES;
+    }
+    return K_FPE_FLTINV;
 }
 
 uint_fast8_t FPU::getSoftRounding() {
@@ -477,6 +542,15 @@ void FPU::FADD(int op1, int op2) {
 }
 
 void FPU::FDIV(int st, int other) {
+    if (this->tags[st] == TAG_Empty || this->tags[other] == TAG_Empty) {
+        setStackFaultException();
+    } else if (fpuIsZero(this, other)) {
+        if (fpuIsZero(this, st)) {
+            setInvalidOperationException();
+        } else {
+            setDivideByZeroException();
+        }
+    }
     if (KSystem::useF64) {
         this->regCache[st].d = getF64(st) / getF64(other);
     } else {
@@ -486,6 +560,15 @@ void FPU::FDIV(int st, int other) {
 }
 
 void FPU::FDIVR(int st, int other) {
+    if (this->tags[st] == TAG_Empty || this->tags[other] == TAG_Empty) {
+        setStackFaultException();
+    } else if (fpuIsZero(this, st)) {
+        if (fpuIsZero(this, other)) {
+            setInvalidOperationException();
+        } else {
+            setDivideByZeroException();
+        }
+    }
     if (KSystem::useF64) {
         this->regCache[st].d = getF64(other) / getF64(st);
     } else {
@@ -550,6 +633,9 @@ void FPU::FXCH(int st, int other) {
 }
 
 void FPU::FST(int st, int other) {
+    if (this->tags[st] == TAG_Empty) {
+        setStackFaultException();
+    }
     this->tags[other] = this->tags[st];
     if (isRegCached[st]) {
         this->regCache[other] = this->regCache[st];

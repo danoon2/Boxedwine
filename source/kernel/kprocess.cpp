@@ -85,12 +85,14 @@ KProcess::KProcess(U32 id) : id(id), exitOrExecCond(std::make_shared<BoxedWineCo
     this->ldt[1].base_addr = 0;
     this->ldt[1].entry_number = 1;
     this->ldt[1].seg_32bit = 1;
+    this->ldt[1].contents = 2;
     this->ldt[1].seg_not_present = 0;
     this->ldt[1].read_exec_only = 0;
 
     this->ldt[2].base_addr = 0;
     this->ldt[2].entry_number = 2;
     this->ldt[2].seg_32bit = 1;
+    this->ldt[2].contents = 0;
     this->ldt[2].seg_not_present = 0;
     this->ldt[2].read_exec_only = 0;
 
@@ -139,12 +141,14 @@ void KProcess::onExec(KThread* thread) {
     this->ldt[1].base_addr = 0;
     this->ldt[1].entry_number = 1;
     this->ldt[1].seg_32bit = 1;
+    this->ldt[1].contents = 2;
     this->ldt[1].seg_not_present = 0;
     this->ldt[1].read_exec_only = 0;
 
     this->ldt[2].base_addr = 0;
     this->ldt[2].entry_number = 2;
     this->ldt[2].seg_32bit = 1;
+    this->ldt[2].contents = 0;
     this->ldt[2].seg_not_present = 0;
     this->ldt[2].read_exec_only = 0;
 

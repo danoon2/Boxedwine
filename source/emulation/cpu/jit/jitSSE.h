@@ -124,10 +124,10 @@ public:
 	void dynamic_mulpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::mulpsXmmXmm); }
 	void dynamic_mulssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::mulssXmmXmm); }
 	void dynamic_mulssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::mulssXmmXmm); }
-	void dynamic_divpsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::divpsXmmXmm); }
-	void dynamic_divpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::divpsXmmXmm); }
-	void dynamic_divssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::divssXmmXmm); }
-	void dynamic_divssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::divssXmmXmm); }
+	void dynamic_divpsXmm(DecodedOp* op) override { emulateSingleOp(); }
+	void dynamic_divpsE128(DecodedOp* op) override { emulateSingleOp(); }
+	void dynamic_divssXmm(DecodedOp* op) override { emulateSingleOp(); }
+	void dynamic_divssE32(DecodedOp* op) override { emulateSingleOp(); }
 	void dynamic_rcppsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::rcppsXmmXmm); }
 	void dynamic_rcppsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::rcppsXmmXmm); }
 	void dynamic_rcpssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::rcpssXmmXmm); }

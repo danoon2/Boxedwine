@@ -48,7 +48,7 @@ void Jit::dynamic_done(DecodedOp* op) {
     kpanic("Jit::dynamic_done should have been handled in JitCodeGen::compileOps");
 }
 void Jit::dynamic_wait(DecodedOp* op) {
-    // Wait
+    emulateSingleOp();
 }
 void Jit::dynamic_cwd(DecodedOp* op) {
     RegPtr dx = getReg(2);
@@ -149,6 +149,9 @@ void Jit::dynamic_intIb(DecodedOp* op) {
 void Jit::dynamic_int3(DecodedOp* op) {
     emulateSingleOp();
 }
+void Jit::dynamic_icebp(DecodedOp* op) {
+    emulateSingleOp();
+}
 void Jit::dynamic_xlat(DecodedOp* op) {
     RegPtr address = getTmpReg8(0);
 
@@ -179,10 +182,10 @@ void Jit::dynamic_stc(DecodedOp* op) {
     orCPUFlagsImmV2(CF);
 }
 void Jit::dynamic_cli(DecodedOp* op) {
-    andCPUFlagsImmV2(~IF);
+    emulateSingleOp();
 }
 void Jit::dynamic_sti(DecodedOp* op) {
-    orCPUFlagsImmV2(IF);
+    emulateSingleOp();
 }
 void Jit::dynamic_cld(DecodedOp* op) {
     andCPUFlagsImmV2(~DF);
@@ -350,40 +353,40 @@ void Jit::dynamic_jcxz(DecodedOp* op) {
     }
 }
 void Jit::dynamic_InAlIb(DecodedOp* op) {
-    movValue(JitWidth::b8, getReg8(0), 0xff);
+    emulateSingleOp();
 }
 void Jit::dynamic_InAxIb(DecodedOp* op) {
-    movValue(JitWidth::b16, getReg(0), 0xffff);
+    emulateSingleOp();
 }
 void Jit::dynamic_InEaxIb(DecodedOp* op) {
-    movValue(JitWidth::b32, getReg(0), 0xffffffff);
+    emulateSingleOp();
 }
 void Jit::dynamic_OutIbAl(DecodedOp* op) {
-    // do nothing
+    emulateSingleOp();
 }
 void Jit::dynamic_OutIbAx(DecodedOp* op) {
-    // do nothing
+    emulateSingleOp();
 }
 void Jit::dynamic_OutIbEax(DecodedOp* op) {
-    // do nothing
+    emulateSingleOp();
 }
 void Jit::dynamic_InAlDx(DecodedOp* op) {
-    movValue(JitWidth::b8, getReg8(0), 0xff);
+    emulateSingleOp();
 }
 void Jit::dynamic_InAxDx(DecodedOp* op) {
-    movValue(JitWidth::b16, getReg(0), 0xffff);
+    emulateSingleOp();
 }
 void Jit::dynamic_InEaxDx(DecodedOp* op) {
-    movValue(JitWidth::b32, getReg(0), 0xffffffff);
+    emulateSingleOp();
 }
 void Jit::dynamic_OutDxAl(DecodedOp* op) {
-    // do nothing
+    emulateSingleOp();
 }
 void Jit::dynamic_OutDxAx(DecodedOp* op) {
-    // do nothing
+    emulateSingleOp();
 }
 void Jit::dynamic_OutDxEax(DecodedOp* op) {
-    // do nothing
+    emulateSingleOp();
 }
 void Jit::dynamic_callJw(DecodedOp* op) {
     RegPtr eip = getTmpReg();

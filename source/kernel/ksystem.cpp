@@ -24,6 +24,7 @@
 #include "../emulation/softmmu/soft_ram.h"
 #include "../emulation/cpu/normal/normalCPU.h"
 #include "knativesystem.h"
+#include "ksignal.h"
 #include "pixelformat.h"
 #include "../io/fsfilenode.h"
 #include "../x11/x11.h"
@@ -380,7 +381,20 @@ U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
         bool hasChild = false;
 
         if (pid>0) {
-            process = KSystem::processes[pid];		
+            for (auto& n : KSystem::processes) {
+                KProcessPtr p = n.value;
+                KThread* tracedThread = p ? p->getThreadById((U32)pid) : nullptr;
+                if (tracedThread && tracedThread->ptraceStopPending) {
+                    tracedThread->ptraceStopPending = false;
+                    if (statusAddress) {
+                        U32 stopSignal = tracedThread->ptraceStopSignal ? tracedThread->ptraceStopSignal : K_SIGSTOP;
+                        memory->writed(statusAddress, (stopSignal << 8) | 0x7f);
+                    }
+                    return tracedThread->id;
+                }
+            }
+
+            process = KSystem::processes[pid];
             if (!process || process->parentId != parentId) {
                 return -K_ECHILD;
             }

@@ -455,7 +455,7 @@ void JitFPU::dynamic_FST_STi(DecodedOp* op) {
 }
 
 void JitFPU::dynamic_FST_STi_Pop(DecodedOp* op) {
-    doFST_STi(op, true);
+    emulateSingleOp();
 }
 
 void JitFPU::dynamic_FLD1(DecodedOp* op) {

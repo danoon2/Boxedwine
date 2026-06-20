@@ -18,22 +18,26 @@
 
 #include "../common/common_sse.h"
 
+#define SSE_FINISH() do { if (cpu->eip.u32 != startEip) { NEXT_DONE(); } else { NEXT(); } } while (0)
+
 #undef SSE_0
-#define SSE_0(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu);NEXT();}
+#define SSE_0(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); U32 startEip = cpu->eip.u32; common_##name(cpu); SSE_FINISH();}
 #undef SSE_RR
-#define SSE_RR(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, op->rm);NEXT();}
+#define SSE_RR(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); U32 startEip = cpu->eip.u32; common_##name(cpu, op->reg, op->rm); SSE_FINISH();}
 #undef SSE_RR_SETS_FLAGS
-#define SSE_RR_SETS_FLAGS(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, op->rm);NEXT();}
+#define SSE_RR_SETS_FLAGS(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); U32 startEip = cpu->eip.u32; common_##name(cpu, op->reg, op->rm); SSE_FINISH();}
 #undef SSE_RE
-#define SSE_RE(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, eaa(cpu, op));NEXT();}
+#define SSE_RE(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); U32 startEip = cpu->eip.u32; common_##name(cpu, op->reg, eaa(cpu, op)); SSE_FINISH();}
 #undef SSE_RE_SETS_FLAGS
-#define SSE_RE_SETS_FLAGS(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, eaa(cpu, op));NEXT();}
+#define SSE_RE_SETS_FLAGS(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); U32 startEip = cpu->eip.u32; common_##name(cpu, op->reg, eaa(cpu, op)); SSE_FINISH();}
 #undef SSE_RR_I8
-#define SSE_RR_I8(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, op->rm, (U8)op->imm);NEXT();}
+#define SSE_RR_I8(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); U32 startEip = cpu->eip.u32; common_##name(cpu, op->reg, op->rm, (U8)op->imm); SSE_FINISH();}
 #undef SSE_RE_I8
-#define SSE_RE_I8(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, eaa(cpu, op), (U8)op->imm);NEXT();}
+#define SSE_RE_I8(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); U32 startEip = cpu->eip.u32; common_##name(cpu, op->reg, eaa(cpu, op), (U8)op->imm); SSE_FINISH();}
 
 #undef SSE_RR_EDI
-#define SSE_RR_EDI(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, op->rm, EDI+cpu->seg[op->base].address);NEXT();}
+#define SSE_RR_EDI(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); U32 startEip = cpu->eip.u32; common_##name(cpu, op->reg, op->rm, EDI+cpu->seg[op->base].address); SSE_FINISH();}
 
 #include "../common/common_sse_def.h"
+
+#undef SSE_FINISH

@@ -92,8 +92,8 @@ public:
     void dynamic_FMUL_ST0_STj(DecodedOp* op) override { dynamic_ST0_STj(op, &JitFPU::fpuMul); }
     void dynamic_FSUBR_ST0_STj(DecodedOp* op) override { dynamic_ST0_STj(op, &JitFPU::fpuSub, true); }
     void dynamic_FSUB_ST0_STj(DecodedOp* op) override { dynamic_ST0_STj(op, &JitFPU::fpuSub); }
-    void dynamic_FDIVR_ST0_STj(DecodedOp* op) override { dynamic_ST0_STj(op, &JitFPU::fpuDiv, true); }
-    void dynamic_FDIV_ST0_STj(DecodedOp* op) override { dynamic_ST0_STj(op, &JitFPU::fpuDiv); }
+    void dynamic_FDIVR_ST0_STj(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_FDIV_ST0_STj(DecodedOp* op) override { emulateSingleOp(); }
 
     void dynamic_STi_ST0(DecodedOp* op, XmmXmmCallback callback, bool reverse = false, bool pop = false);
     void dynamic_FADD_STi_ST0(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuAdd); }
@@ -102,15 +102,15 @@ public:
     void dynamic_FCOM_STi_Pop(DecodedOp* op) override;
     void dynamic_FSUBR_STi_ST0(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuSub, true); }
     void dynamic_FSUB_STi_ST0(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuSub); }
-    void dynamic_FDIVR_STi_ST0(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuDiv, true); }
-    void dynamic_FDIV_STi_ST0(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuDiv); }
+    void dynamic_FDIVR_STi_ST0(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_FDIV_STi_ST0(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_FADD_STi_ST0_Pop(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuAdd, false, true); }
     void dynamic_FMUL_STi_ST0_Pop(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuMul, false, true); }
     void dynamic_FCOMPP(DecodedOp* op) override;
     void dynamic_FSUBR_STi_ST0_Pop(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuSub, true, true); }
     void dynamic_FSUB_STi_ST0_Pop(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuSub, false, true); }
-    void dynamic_FDIVR_STi_ST0_Pop(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuDiv, true, true); }
-    void dynamic_FDIV_STi_ST0_Pop(DecodedOp* op) override { dynamic_STi_ST0(op, &JitFPU::fpuDiv, false, true); }
+    void dynamic_FDIVR_STi_ST0_Pop(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_FDIV_STi_ST0_Pop(DecodedOp* op) override { emulateSingleOp(); }
 
     void dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool reverse = false);
     void dynamic_DOUBLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool reverse = false);
@@ -123,32 +123,32 @@ public:
     void dynamic_FCOM_SINGLE_REAL_Pop(DecodedOp* op) override;
     void dynamic_FSUB_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuSub); }
     void dynamic_FSUBR_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuSub, true); }
-    void dynamic_FDIV_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuDiv); }
-    void dynamic_FDIVR_SINGLE_REAL(DecodedOp* op) override { dynamic_SINGLE_REAL(op, &JitFPU::fpuDiv, true); }
+    void dynamic_FDIV_SINGLE_REAL(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_FDIVR_SINGLE_REAL(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_FADD_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuAdd); }
     void dynamic_FMUL_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuMul); }
     void dynamic_FCOM_DOUBLE_REAL(DecodedOp* op) override;
     void dynamic_FCOM_DOUBLE_REAL_Pop(DecodedOp* op) override;
     void dynamic_FSUB_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuSub); }
     void dynamic_FSUBR_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuSub, true); }
-    void dynamic_FDIV_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuDiv); }
-    void dynamic_FDIVR_DOUBLE_REAL(DecodedOp* op) override { dynamic_DOUBLE_REAL(op, &JitFPU::fpuDiv, true); }
+    void dynamic_FDIV_DOUBLE_REAL(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_FDIVR_DOUBLE_REAL(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_FIADD_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuAdd); }
     void dynamic_FIMUL_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuMul); }
     void dynamic_FICOM_DWORD_INTEGER(DecodedOp* op) override;
     void dynamic_FICOM_DWORD_INTEGER_Pop(DecodedOp* op) override;
     void dynamic_FISUB_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuSub); }
     void dynamic_FISUBR_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuSub, true); }
-    void dynamic_FIDIV_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuDiv); }
-    void dynamic_FIDIVR_DWORD_INTEGER(DecodedOp* op) override { dynamic_DWORD_INTEGER(op, &JitFPU::fpuDiv, true); }
+    void dynamic_FIDIV_DWORD_INTEGER(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_FIDIVR_DWORD_INTEGER(DecodedOp* op) override { emulateSingleOp(); }
     void dynamic_FIADD_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuAdd); }
     void dynamic_FIMUL_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuMul); }
     void dynamic_FICOM_WORD_INTEGER(DecodedOp* op) override;
     void dynamic_FICOM_WORD_INTEGER_Pop(DecodedOp* op) override;
     void dynamic_FISUB_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuSub); }
     void dynamic_FISUBR_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuSub, true); }
-    void dynamic_FIDIV_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuDiv); }
-    void dynamic_FIDIVR_WORD_INTEGER(DecodedOp* op) override { dynamic_WORD_INTEGER(op, &JitFPU::fpuDiv, true); }
+    void dynamic_FIDIV_WORD_INTEGER(DecodedOp* op) override { emulateSingleOp(); }
+    void dynamic_FIDIVR_WORD_INTEGER(DecodedOp* op) override { emulateSingleOp(); }
 
     void dynamic_FCMOV_ST0_STj_CF(DecodedOp* op) override;
     void dynamic_FCMOV_ST0_STj_ZF(DecodedOp* op) override;

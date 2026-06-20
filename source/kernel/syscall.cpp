@@ -234,8 +234,142 @@ static U32 syscall_getuid(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+namespace {
+
+constexpr U32 K_PTRACE_PEEKTEXT = 1;
+constexpr U32 K_PTRACE_PEEKDATA = 2;
+constexpr U32 K_PTRACE_PEEKUSER = 3;
+constexpr U32 K_PTRACE_POKETEXT = 4;
+constexpr U32 K_PTRACE_POKEDATA = 5;
+constexpr U32 K_PTRACE_POKEUSER = 6;
+constexpr U32 K_PTRACE_CONT = 7;
+constexpr U32 K_PTRACE_KILL = 8;
+constexpr U32 K_PTRACE_SINGLESTEP = 9;
+constexpr U32 K_PTRACE_ATTACH = 16;
+constexpr U32 K_PTRACE_DETACH = 17;
+constexpr U32 K_PTRACE_SETOPTIONS = 0x4200;
+
+bool getPtraceDebugRegIndex(U32 offset, U32* index) {
+    constexpr U32 I386_DEBUGREG_OFFSET = 252;
+    constexpr U32 X86_64_DEBUGREG_OFFSET = 848;
+
+    if (offset >= I386_DEBUGREG_OFFSET && offset < I386_DEBUGREG_OFFSET + 8 * 4 && ((offset - I386_DEBUGREG_OFFSET) & 3) == 0) {
+        *index = (offset - I386_DEBUGREG_OFFSET) / 4;
+        return true;
+    }
+    if (offset >= X86_64_DEBUGREG_OFFSET && offset < X86_64_DEBUGREG_OFFSET + 8 * 8 && ((offset - X86_64_DEBUGREG_OFFSET) & 7) == 0) {
+        *index = (offset - X86_64_DEBUGREG_OFFSET) / 8;
+        return true;
+    }
+    return false;
+}
+
+bool isSupportedDebugReg(U32 index) {
+    return index <= 3 || index == 6 || index == 7;
+}
+
+U32 writePtracePeekResult(CPU* cpu, U32 value) {
+    if (!ARG4) {
+        return value;
+    }
+    if (!cpu->memory->canWrite(ARG4, 4)) {
+        return -K_EFAULT;
+    }
+    cpu->memory->writed(ARG4, value);
+    return 0;
+}
+
+} // namespace
+
 static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
-    return -K_EPERM;
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "ptrace: request=%d pid=%d addr=%X data=%X", ARG1, ARG2, ARG3, ARG4);
+
+    KThread* target = KSystem::getThreadById(ARG2);
+    U32 result = 0;
+
+    if (!target) {
+        result = -K_ESRCH;
+    } else {
+        switch (ARG1) {
+        case K_PTRACE_ATTACH:
+            target->ptraceAttached = true;
+            target->setPtraceStop(K_SIGSTOP);
+            break;
+        case K_PTRACE_CONT:
+            target->ptraceSingleStep = false;
+            if (target->cpu) {
+                target->cpu->fillFlags();
+                target->cpu->flags &= ~TF;
+            }
+            target->resumeFromPtraceStop();
+            break;
+        case K_PTRACE_DETACH:
+            target->ptraceAttached = false;
+            target->ptraceSingleStep = false;
+            if (target->cpu) {
+                target->cpu->fillFlags();
+                target->cpu->flags &= ~TF;
+            }
+            target->resumeFromPtraceStop();
+            break;
+        case K_PTRACE_SINGLESTEP:
+            target->ptraceSingleStep = true;
+            if (target->cpu) {
+                target->cpu->fillFlags();
+                target->cpu->flags |= TF;
+            }
+            target->resumeFromPtraceStop();
+            break;
+        case K_PTRACE_KILL:
+            target->ptraceAttached = false;
+            target->ptraceSingleStep = false;
+            target->resumeFromPtraceStop();
+            result = target->signal(K_SIGKILL, false);
+            break;
+        case K_PTRACE_PEEKUSER: {
+            U32 index = 0;
+            if (!getPtraceDebugRegIndex(ARG3, &index) || !isSupportedDebugReg(index)) {
+                result = -K_EIO;
+            } else {
+                result = writePtracePeekResult(cpu, target->debugRegs[index]);
+            }
+            break;
+        }
+        case K_PTRACE_POKEUSER: {
+            U32 index = 0;
+            if (!getPtraceDebugRegIndex(ARG3, &index) || !isSupportedDebugReg(index)) {
+                result = -K_EIO;
+            } else {
+                target->debugRegs[index] = ARG4;
+            }
+            break;
+        }
+        case K_PTRACE_PEEKTEXT:
+        case K_PTRACE_PEEKDATA:
+            if (!target->memory || !target->memory->canRead(ARG3, 4)) {
+                result = -K_EIO;
+            } else {
+                result = writePtracePeekResult(cpu, target->memory->readd(ARG3));
+            }
+            break;
+        case K_PTRACE_POKETEXT:
+        case K_PTRACE_POKEDATA:
+            if (!target->memory || !target->memory->canWrite(ARG3, 4)) {
+                result = -K_EIO;
+            } else {
+                target->memory->writed(ARG3, ARG4);
+            }
+            break;
+        case K_PTRACE_SETOPTIONS:
+            break;
+        default:
+            result = -K_EINVAL;
+            break;
+        }
+    }
+
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static KProcessPtr getProcessByPidOrThreadId(U32 id) {

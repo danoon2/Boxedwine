@@ -86,6 +86,18 @@ void CPU::setIsBig(U32 value) {
     this->big = value;
 }
 
+bool CPU::isNullSegment(U32 seg) const {
+    return seg < 6 && seg != CS && (this->seg[seg].value & 0xfffc) == 0;
+}
+
+bool CPU::checkSegmentAccess(U32 seg) {
+    if (this->isNullSegment(seg)) {
+        this->prepareException(EXCEPTION_GP, 0);
+        return false;
+    }
+    return true;
+}
+
 void CPU::reset() {
     this->flags = ID;
     this->eip.u32 = 0;
@@ -208,17 +220,17 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
     }
 }
 
-void CPU::prepareFpuException(int code, int error) {
+void CPU::prepareFpuException(int code, int trapNo, int error) {
     const KProcessPtr& process = this->thread->process;
 
     // blocking signals, signalfd can't handle these
-    if (process->sigActions[K_SIGSEGV].handlerAndSigAction != K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction != K_SIG_DFL) {
-        process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGFPE;
-        process->sigActions[K_SIGSEGV].sigInfo[1] = error; // always 0?
-        process->sigActions[K_SIGSEGV].sigInfo[2] = code;
-        process->sigActions[K_SIGSEGV].sigInfo[3] = 0; // address
-        process->sigActions[K_SIGSEGV].sigInfo[4] = 16; // trap #, TRAP_x86_ARITHTRAP
-        this->thread->runSignal(K_SIGSEGV, 13, error);
+    if (process->sigActions[K_SIGFPE].handlerAndSigAction != K_SIG_IGN && process->sigActions[K_SIGFPE].handlerAndSigAction != K_SIG_DFL) {
+        process->sigActions[K_SIGFPE].sigInfo[0] = K_SIGFPE;
+        process->sigActions[K_SIGFPE].sigInfo[1] = error; // always 0?
+        process->sigActions[K_SIGFPE].sigInfo[2] = code;
+        process->sigActions[K_SIGFPE].sigInfo[3] = this->eip.u32; // address
+        process->sigActions[K_SIGFPE].sigInfo[4] = trapNo;
+        this->thread->runSignal(K_SIGFPE, trapNo, error);
     } else {
         CPU* cpu = this;
         this->walkStack(this->eip.u32, EBP, 2);
@@ -537,6 +549,10 @@ U32 CPU::setSegment(U32 seg, U32 value) {
                 this->prepareException(EXCEPTION_NP,value & 0xfffc);
             return 0;
         }
+        if (seg == SS && (ldt->contents == 2 || ldt->read_exec_only)) {
+            this->prepareException(EXCEPTION_GP, 0);
+            return 0;
+        }
         this->setSeg(seg, ldt->base_addr, value);        
         if (seg == SS) {
             if (ldt->seg_32bit) {
@@ -772,7 +788,7 @@ void CPU::iret(U32 big, U32 oldeip) {
             ESP = (ESP & this->stackNotMask) | ((ESP + (big?12:6)) & this->stackMask);
             this->setSeg(CS, ldt->base_addr, n_cs_sel);
             this->setIsBig(ldt->seg_32bit);
-            this->eip.u32 = n_eip;     
+            this->eip.u32 = n_eip;
             U32 mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
             if (((this->flags & IOPL) >> 12) < this->cpl) mask &= ~IF;
             this->lazyFlagType = FLAGS_NONE;
@@ -981,6 +997,39 @@ void CPU::setFlags(U32 flags, U32 mask) {
     this->flags=(this->flags & ~mask)|(flags & mask)|2;
 }
 
+bool CPU::startDebugInstruction() {
+    if (!this->thread) {
+        this->debugTrapOnNextInstruction = false;
+        return false;
+    }
+    if (this->thread->debugTrapBeforeInstruction()) {
+        this->debugTrapOnNextInstruction = false;
+        this->nextOp = this->getNextOp();
+        return true;
+    }
+    this->debugTrapOnNextInstruction = (this->flags & TF) != 0;
+    return false;
+}
+
+bool CPU::finishDebugInstruction() {
+    if (!this->thread) {
+        this->debugTrapOnNextInstruction = false;
+        return false;
+    }
+    if (this->debugTrapOnNextInstruction) {
+        this->debugTrapOnNextInstruction = false;
+        this->thread->signalDebugTrap(2, 0x4000);
+        this->nextOp = this->getNextOp();
+        return true;
+    }
+    this->debugTrapOnNextInstruction = false;
+    if (this->flags & TF) {
+        this->nextOp = this->getNextOp();
+        return true;
+    }
+    return false;
+}
+
 void CPU::addFlag(U32 flags) {
 #ifdef _DEBUG
     if (this->lazyFlagType !=FLAGS_NONE && (flags & (CF|AF|OF|SF|ZF|PF))) {
@@ -1185,14 +1234,13 @@ U32 CPU::getEipAddress() {
 }
 
 U32 CPU::readCrx(U32 which, U32 reg) {
-    //this->prepareException(EXCEPTION_GP, 0);
-    this->reg[reg].u32 = 0;
-    return 1;
+    this->prepareException(EXCEPTION_GP, 0);
+    return 0;
 }
 
 U32 CPU::writeCrx(U32 which, U32 value) {
-    //this->prepareException(EXCEPTION_GP, 0);
-    return 1;
+    this->prepareException(EXCEPTION_GP, 0);
+    return 0;
 }
 
 bool CPU::shouldContinue(U32 eip) {

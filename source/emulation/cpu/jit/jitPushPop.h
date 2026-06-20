@@ -285,10 +285,10 @@ void Jit::dynamic_push32imm(DecodedOp* op) {
     push32(reg);
 }
 void Jit::dynamic_popf16(DecodedOp* op) {
-    setFlags(pop16(), FMASK_ALL & 0xFFFF);
+    emulateSingleOp();
 }
 void Jit::dynamic_popf32(DecodedOp* op) {
-    setFlags(pop32(), FMASK_ALL);
+    emulateSingleOp();
 }
 void Jit::dynamic_pushf16(DecodedOp* op) {
     fillFlags();

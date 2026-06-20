@@ -47,6 +47,7 @@ void setupSegments(TestContext& context) {
     ldt->entry_number = TEST_HEAP_SEG >> 3;
     ldt->base_addr = TEST_HEAP_ADDRESS;
     ldt->seg_32bit = 1;
+    ldt->contents = 0;
     ldt->read_exec_only = 0;
     ldt->seg_not_present = 0;
 
@@ -54,6 +55,7 @@ void setupSegments(TestContext& context) {
     ldt->entry_number = TEST_STACK_SEG >> 3;
     ldt->base_addr = TEST_STACK_ADDRESS - K_PAGE_SIZE * TEST_PAGES_PER_SEG;
     ldt->seg_32bit = 1;
+    ldt->contents = 0;
     ldt->read_exec_only = 0;
     ldt->seg_not_present = 0;
 
@@ -61,6 +63,7 @@ void setupSegments(TestContext& context) {
     ldt->entry_number = TEST_CODE_SEG >> 3;
     ldt->base_addr = TEST_CODE_ADDRESS;
     ldt->seg_32bit = 1;
+    ldt->contents = 2;
     ldt->read_exec_only = 0;
     ldt->seg_not_present = 0;
 
@@ -68,6 +71,7 @@ void setupSegments(TestContext& context) {
     ldt->entry_number = TEST_CODE_SEG_16 >> 3;
     ldt->base_addr = TEST_CODE_ADDRESS;
     ldt->seg_32bit = 0;
+    ldt->contents = 2;
     ldt->read_exec_only = 0;
     ldt->seg_not_present = 0;
 

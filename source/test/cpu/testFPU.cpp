@@ -32,6 +32,8 @@ constexpr U32 MEM_BASE = 0x1000;
 constexpr U32 EXPECT_BASE = MEM_BASE + 0x800;
 constexpr U32 FLOAT_GUARD = 0xCDCDCDCD;
 constexpr U32 STATUS_MASK = 0x4700;
+constexpr U32 FPU_STATUS_ZE = 0x0004;
+constexpr U32 FPU_STATUS_ES = 0x0080;
 constexpr U32 F32_POS_ZERO = 0x00000000;
 constexpr U32 F32_NEG_ZERO = 0x80000000;
 constexpr U32 F32_POS_INF = 0x7f800000;
@@ -1102,6 +1104,47 @@ void runFPUEnvironmentStore(bool big, const char* name) {
     }
 }
 
+void runMaskedDivideByZeroStatus(bool big, const char* name) {
+    constexpr U32 ZERO = MEM_BASE + 0x620;
+    constexpr U32 ENV_MASKED = MEM_BASE + 0x640;
+    constexpr U32 CW_UNMASK_ZE = MEM_BASE + 0x680;
+    constexpr U32 ENV_UNMASKED = MEM_BASE + 0x6c0;
+    constexpr U32 STATUS_BITS = FPU_STATUS_ZE | FPU_STATUS_ES;
+
+    begin(big);
+    fninit();
+
+    writeF32(MEM_BASE, 1.0f);
+    writeF32(ZERO, 0.0f);
+    fldF32(MEM_BASE, big);
+    pushCode8(0xd8);
+    emitMemModRM(6, ZERO, big); // FDIV m32fp
+    fnstswAx();
+    emitD9MemoryGroup(6, ENV_MASKED, big); // FNSTENV
+
+    fninit();
+    writeI16(CW_UNMASK_ZE, 0x037b);
+    pushCode8(0xd9);
+    emitMemModRM(5, CW_UNMASK_ZE, big); // FLDCW
+    fldF32(MEM_BASE, big);
+    pushCode8(0xd8);
+    emitMemModRM(6, ZERO, big); // FDIV m32fp
+    emitD9MemoryGroup(6, ENV_UNMASKED, big); // FNSTENV
+
+    runTestCPU();
+
+    U32 maskedAxStatus = cpu->reg[0].u16 & STATUS_BITS;
+    U32 maskedEnvStatus = readEnvValue(ENV_MASKED, 1, big) & STATUS_BITS;
+    if (maskedAxStatus != FPU_STATUS_ZE || maskedEnvStatus != FPU_STATUS_ZE) {
+        failed("%s masked divide-by-zero status ax=%x env=%x", name, maskedAxStatus, maskedEnvStatus);
+    }
+
+    U32 unmaskedEnvStatus = readEnvValue(ENV_UNMASKED, 1, big) & STATUS_BITS;
+    if (unmaskedEnvStatus != STATUS_BITS) {
+        failed("%s unmasked divide-by-zero status env=%x", name, unmaskedEnvStatus);
+    }
+}
+
 void runFNSTSWMemory(bool big, float left, float right, U32 expectedStatus, const char* name) {
     constexpr U32 OUT = MEM_BASE + 0x600;
 
@@ -1399,6 +1442,7 @@ void runD9(bool big) {
     runD9Constant(big, 6, 0.0f, "fldz d9");
     runFPUEnvironmentLoad(big, "fldenv d9");
     runFPUEnvironmentStore(big, "fnstenv d9");
+    runMaskedDivideByZeroStatus(big, "masked x87 exception d9");
     runD9RoundSqrtScale(big, "sqrt round scale d9");
     runFSQRTBits(big, 0x40800000, 0x40000000, "fsqrt d9");
     runFSQRTBits(big, 0x41800000, 0x40800000, "fsqrt d9");

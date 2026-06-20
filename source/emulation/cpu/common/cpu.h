@@ -222,7 +222,8 @@ public:
     U32 stackNotMask = 0;
     U32 stackMask = 0;
     U32 fpuDirtyFlags = 0;
-    DecodedOp*** opCache = nullptr;    
+    bool debugTrapOnNextInstruction = false;
+    DecodedOp*** opCache = nullptr;
 
     U64 fAbs = 0x7fffffffffffffffl;
     U64 fNeg = 0x8000000000000000l;
@@ -255,6 +256,8 @@ public:
     void fillFlagsNoZF();
     void fillFlags();
     void setFlags(U32 flags, U32 mask);
+    bool startDebugInstruction();
+    bool finishDebugInstruction();
 
     void addFlag(U32 flags);
     void removeFlag(U32 flags);
@@ -278,8 +281,10 @@ public:
     U32 push16_r(U32 esp, U16 value);
 
     U32 setSegment(U32 seg, U32 value);
+    bool isNullSegment(U32 seg) const;
+    bool checkSegmentAccess(U32 seg);
     void prepareException(int code, int error);
-    void prepareFpuException(int code, int error=0);
+    void prepareFpuException(int code, int trapNo=16, int error=0);
     void call(U32 big, U32 selector, U32 offset, U32 oldEip);
     void jmp(U32 big, U32 selector, U32 offset, U32 oldEip);
     void ret(U32 big, U32 bytes);

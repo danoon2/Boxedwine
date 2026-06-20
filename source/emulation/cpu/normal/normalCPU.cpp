@@ -26,19 +26,23 @@
 #include "../armv8/armv8CPU.h"
 #include "../../../util/ptrpool.h"
 
+#define DEBUG_OP_ACTIVE(cpu) ((cpu)->debugTrapOnNextInstruction || ((cpu)->flags & TF) || ((cpu)->thread && ((cpu)->thread->debugRegs[7] & 0xff)))
+#define START_DEBUG_OP(cpu) do { if (DEBUG_OP_ACTIVE(cpu) && (cpu)->startDebugInstruction()) return; } while (0)
+#define FINISH_DEBUG_OP(cpu) do { if (DEBUG_OP_ACTIVE(cpu) && (cpu)->finishDebugInstruction()) return; } while (0)
+
 #ifdef BOXEDWINE_MULTI_THREADED
 #ifdef _DEBUG
 //#define START_OP(cpu, op) op->log(cpu)
-#define START_OP(cpu, op)
+#define START_OP(cpu, op) START_DEBUG_OP(cpu)
 #else
-#define START_OP(cpu, op)
+#define START_OP(cpu, op) START_DEBUG_OP(cpu)
 #endif
 #else
 #ifdef _DEBUG
-#define START_OP(cpu, op) cpu->blockInstructionCount++; op->log(cpu)
+#define START_OP(cpu, op) do { cpu->blockInstructionCount++; START_DEBUG_OP(cpu); op->log(cpu); } while (0)
  //#define START_OP(cpu, op)
 #else
-#define START_OP(cpu, op) cpu->blockInstructionCount++
+#define START_OP(cpu, op) do { cpu->blockInstructionCount++; START_DEBUG_OP(cpu); } while (0)
 #endif
 #endif
 
@@ -46,12 +50,12 @@
 // return_call instructions per opcode rather than one return_call_indirect.
 // JIT builds keep pfn dispatch because pfn may be a JIT trampoline.
 #ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
-#define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return normalDispatch(cpu, op->next);
+#define NEXT() cpu->eip.u32+=op->len; FINISH_DEBUG_OP(cpu); MUSTTAIL return normalDispatch(cpu, op->next);
 #else
-#define NEXT() cpu->eip.u32+=op->len; MUSTTAIL return op->next->pfn(cpu, op->next);
+#define NEXT() cpu->eip.u32+=op->len; FINISH_DEBUG_OP(cpu); MUSTTAIL return op->next->pfn(cpu, op->next);
 #endif
-#define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
-#define NEXT_DONE_JUMP_OR_CALL() cpu->nextOp = cpu->getNextOp(OP_FLAG2_JUMP_TARGET);
+#define NEXT_DONE() FINISH_DEBUG_OP(cpu); cpu->nextOp = cpu->getNextOp();
+#define NEXT_DONE_JUMP_OR_CALL() FINISH_DEBUG_OP(cpu); cpu->nextOp = cpu->getNextOp(OP_FLAG2_JUMP_TARGET);
 
 #if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH) && !defined(BOXEDWINE_JIT)
 static inline bool normalGetZF(CPU* cpu) {
@@ -189,9 +193,10 @@ static inline bool normalGetNLE(CPU* cpu) {
     if (!(*(op->data.nextJump))) {                          \
         *(op->data.nextJump) = cpu->getNextOp(OP_FLAG2_JUMP_TARGET);            \
     }                                                       \
-    cpu->nextOp = *(op->data.nextJump);
+    cpu->nextOp = *(op->data.nextJump);                     \
+    FINISH_DEBUG_OP(cpu);
 
-#define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!op->next) {op->next = cpu->getNextOp(); } cpu->nextOp = op->next;
+#define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!op->next) {op->next = cpu->getNextOp(); } cpu->nextOp = op->next; FINISH_DEBUG_OP(cpu);
 
 // Forward declaration so NEXT() can reference normalDispatch before the
 // normal_*.h opcode handlers are included.
@@ -335,7 +340,6 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
         return nullptr;
 
     DecodedOp* op = memory->getDecodedOp(startIp);
-
     if (!op) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
         op = memory->getDecodedOp(startIp);
@@ -393,6 +397,10 @@ void NormalCPU::run() {
     normalDispatch(this, nextOp);
 #else
 #ifdef BOXEDWINE_JIT
+    if (thread->isDebugTrapActive()) {
+        runNextSingleOp();
+        return;
+    }
     if (nextOp->runCount <= JIT_RUN_COUNT) {
         firstOp(this, nextOp);
     } else {

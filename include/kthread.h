@@ -80,8 +80,15 @@ public:
     void seg_access(U32 address, bool readFault, bool writeFault, bool throwException=true);
     bool runSignals();
     void runSignal(U32 signal, U32 trapNo, U32 errorNo);
-    void signalIllegalInstruction(int code);   
+    void signalIllegalInstruction(int code);
     void signalTrap(U32 code);
+    void signalDebugTrap(U32 code, U32 dr6);
+    bool debugTrapBeforeInstruction();
+    bool hasHardwareBreakpointAt(U32 address) const;
+    bool isDebugTrapActive() const;
+    void setPtraceStop(U32 signal);
+    void resumeFromPtraceStop();
+    void waitForPtraceResume();
     void clone(KThread* from);
     void setupStack();
     void setTLS(struct user_desc* desc);
@@ -120,7 +127,14 @@ public:
 #endif
     bool terminating = false;
     U32 clear_child_tid = 0;
-    
+    U32 debugRegs[8] = {};
+    bool ptraceStopPending = false;
+    U32 ptraceStopSignal = 0;
+    bool ptraceStopped = false;
+    bool ptraceAttached = false;
+    bool ptraceSingleStep = false;
+    BOXEDWINE_CONDITION ptraceCond;
+
     U64 getThreadUserTime();
 
     U64 kernelTime = 0;

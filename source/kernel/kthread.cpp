@@ -95,6 +95,7 @@ KThread::KThread(U32 id, const KProcessPtr& process) :
     memory(process->memory),    
     waitingForSignalToEndCond(std::make_shared<BoxedWineCondition>(B("KThread::waitingForSignalToEndCond"))),
     sigWaitCond(std::make_shared<BoxedWineCondition>(B("KThread::sigWaitCond"))),
+    ptraceCond(std::make_shared<BoxedWineCondition>(B("KThread::ptraceCond"))),
     pollCond(std::make_shared<BoxedWineCondition>(B("KThread::pollCond"))),
 #ifndef BOXEDWINE_MULTI_THREADED
     scheduledThreadNode(this),
@@ -725,6 +726,102 @@ void KThread::signalTrap(U32 code) {
     this->runSignal(K_SIGTRAP, 3, 0);
 }
 
+void KThread::signalDebugTrap(U32 code, U32 dr6) {
+    if (this->ptraceSingleStep || this->ptraceAttached) {
+        this->ptraceSingleStep = false;
+        this->debugRegs[6] = dr6;
+        this->cpu->fillFlags();
+        this->cpu->flags &= ~TF;
+        this->setPtraceStop(K_SIGTRAP);
+        return;
+    }
+
+    KSigAction* action = &this->process->sigActions[K_SIGTRAP];
+    if (action->handlerAndSigAction == K_SIG_DFL) {
+        DecodedOp* op = cpu->getNextOp();
+        kpanic_fmt("%s tid=%04X eip=%08X Debug trap but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->inst);
+    }
+    memset(this->process->sigActions[K_SIGTRAP].sigInfo, 0, sizeof(this->process->sigActions[K_SIGTRAP].sigInfo));
+    this->process->sigActions[K_SIGTRAP].sigInfo[0] = K_SIGTRAP;
+    this->process->sigActions[K_SIGTRAP].sigInfo[2] = code;
+    this->process->sigActions[K_SIGTRAP].sigInfo[3] = cpu->eip.u32;
+    this->debugRegs[6] = dr6;
+    this->cpu->fillFlags();
+    this->cpu->flags &= ~TF;
+    this->runSignal(K_SIGTRAP, 1, 0);
+}
+
+bool KThread::debugTrapBeforeInstruction() {
+    U32 dr7 = this->debugRegs[7];
+    if (!(dr7 & 0xff)) {
+        return false;
+    }
+
+    U32 eip = this->cpu->getEipAddress();
+    if (!this->memory->canExec(eip >> K_PAGE_SHIFT)) {
+        return false;
+    }
+    for (U32 i = 0; i < 4; ++i) {
+        U32 enabled = (dr7 >> (i * 2)) & 3;
+        U32 type = (dr7 >> (16 + i * 4)) & 3;
+        if (enabled && type == 0 && this->debugRegs[i] == eip) {
+            this->signalDebugTrap(4, 1u << i);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool KThread::hasHardwareBreakpointAt(U32 address) const {
+    if (!this->memory->canExec(address >> K_PAGE_SHIFT)) {
+        return false;
+    }
+    U32 dr7 = this->debugRegs[7];
+    if (!(dr7 & 0xff)) {
+        return false;
+    }
+    for (U32 i = 0; i < 4; ++i) {
+        U32 enabled = (dr7 >> (i * 2)) & 3;
+        U32 type = (dr7 >> (16 + i * 4)) & 3;
+        if (enabled && type == 0 && this->debugRegs[i] == address) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool KThread::isDebugTrapActive() const {
+    return this->cpu && ((this->cpu->flags & TF) || this->hasHardwareBreakpointAt(this->cpu->getEipAddress()));
+}
+
+void KThread::setPtraceStop(U32 signal) {
+    this->ptraceStopSignal = signal;
+    this->ptraceStopPending = true;
+    this->ptraceStopped = true;
+    if (this->cpu) {
+        this->cpu->yield = true;
+    }
+    KSystem::wakeThreadsWaitingOnProcessStateChanged();
+}
+
+void KThread::resumeFromPtraceStop() {
+    this->ptraceStopPending = false;
+    this->ptraceStopped = false;
+    if (this->cpu) {
+        this->cpu->yield = false;
+    }
+    BOXEDWINE_CONDITION_SIGNAL_ALL(this->ptraceCond);
+}
+
+void KThread::waitForPtraceResume() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->ptraceCond);
+    while (this->ptraceStopped && !this->terminating) {
+        BOXEDWINE_CONDITION_WAIT(this->ptraceCond);
+    }
+#endif
+}
+
 void KThread::signalIllegalInstruction(int code) {
     KSigAction* action = &this->process->sigActions[K_SIGILL];
     if (action->handlerAndSigAction == K_SIG_DFL) {
@@ -1003,15 +1100,15 @@ void writeToContext(KThread* thread, U32 stack, U32 context, bool altStack, U32 
     memory->writed(context+0x54, cpu->flags);
     memory->writed(context+0x58, stack); // REG_UESP
     memory->writed(context+0x5C, cpu->seg[SS].value);
-    memory->writed(context+0x60, 0); // sigset_t uc_sigmask;
-    memory->writed(context+0x64, 0); // cr2
-    memory->writed(context+0x68, context + 0x70); // fpu save state
+    memory->writed(context+0x60, context + 0x70); // uc_mcontext.fpregs
+    memory->writed(context+0x64, 0); // oldmask
+    memory->writed(context+0x68, 0); // cr2
     // sizeof(struct _fpstate) = 624 (0x270) on 32-bit debian 11
     memory->writed(context+0x70, cpu->fpu.CW());
     memory->writed(context+0x74, cpu->fpu.SW());
     memory->writed(context+0x78, cpu->fpu.GetTag(cpu));
-    memory->writed(context+0x7C, 0);
-    memory->writed(context+0x80, 0);
+    memory->writed(context+0x7C, trapNo == 16 ? (cpu->isBig() ? cpu->eip.u32 : cpu->eip.u16) : 0);
+    memory->writed(context+0x80, trapNo == 16 ? cpu->seg[CS].value : 0);
     memory->writed(context+0x84, 0);
     memory->writed(context+0x88, 0);
     for (U32 i = 0; i < 8; i++) {
@@ -1207,10 +1304,11 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
 		if (altStack) {
 			context = this->alternateStack + this->alternateStackSize - CONTEXT_SIZE;
         } else {
-	        context = this->cpu->seg[SS].address + (ESP & this->cpu->stackMask) - CONTEXT_SIZE;        
+	        context = this->cpu->seg[SS].address + (ESP & this->cpu->stackMask) - CONTEXT_SIZE;
         }
         writeToContext(this, stack, context, altStack, trapNo, errorNo);
-        
+        this->cpu->flags &= ~DF;
+
         this->cpu->stackMask = 0xFFFFFFFF;
         this->cpu->stackNotMask = 0;
         this->cpu->seg[SS].address = 0;

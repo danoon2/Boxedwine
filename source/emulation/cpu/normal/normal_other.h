@@ -77,6 +77,12 @@ void OPCALL normal_done(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_wait(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+    int code = cpu->fpu.getPendingExceptionCode();
+    if (code) {
+        cpu->prepareFpuException(code, 16);
+        NEXT_DONE();
+        return;
+    }
     NEXT();
 }
 void OPCALL normal_cwd(CPU* cpu, DecodedOp* op) {
@@ -222,9 +228,15 @@ void OPCALL normal_int3(CPU* cpu, DecodedOp* op) {
     cpu->thread->signalTrap(1);// 1=TRAP_BRKPT
     NEXT_DONE();
 }
+void OPCALL normal_icebp(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->eip.u32 += op->len;
+    cpu->thread->signalDebugTrap(2, 0);
+    NEXT_DONE();
+}
 void OPCALL normal_intIb(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->thread->signalIllegalInstruction(5);// 5=ILL_PRVOPC  // :TODO: just a guess
+    cpu->prepareException(EXCEPTION_GP, (op->imm << 3) | 2);
     NEXT_DONE();
 }
 void OPCALL normal_xlat(CPU* cpu, DecodedOp* op) {
@@ -238,7 +250,8 @@ void OPCALL normal_xlat(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_hlt(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    kpanic("Hlt");
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_cmc(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
@@ -260,13 +273,13 @@ void OPCALL normal_stc(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_cli(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->removeFlag(IF);
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_sti(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->addFlag(IF);
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_cld(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
@@ -394,57 +407,63 @@ void OPCALL normal_jcxz(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_InAlIb(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    AL=0xFF;
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_InAxIb(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    AX=0xFFFF;
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_InEaxIb(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    EAX=0xFFFFFFFF;
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_OutIbAl(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_OutIbAx(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_OutIbEax(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_InAlDx(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    AL=0xFF;
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_InAxDx(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    AX=0xFFFF;
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_InEaxDx(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    EAX=0xFFFFFFFF;
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_OutDxAl(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_OutDxAx(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_OutDxEax(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    NEXT();
+    cpu->prepareException(EXCEPTION_GP, 0);
+    NEXT_DONE();
 }
 void OPCALL normal_callJw(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);

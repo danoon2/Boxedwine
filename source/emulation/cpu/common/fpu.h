@@ -137,6 +137,10 @@ public:
     void FCLEX();
     void PREP_PUSH();
     void FPOP();
+    void setInvalidOperationException();
+    void setStackFaultException();
+    void setDivideByZeroException();
+    int getPendingExceptionCode();
     uint_fast8_t getSoftRounding();
     bool getSoftExact() {
         return false;

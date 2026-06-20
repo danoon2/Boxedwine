@@ -6476,25 +6476,31 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
 #ifdef _DEBUG
         op->lastInst = op->inst;
 #endif
-        if (op->inst == Invalid) {
+        U32 decodedOpLen = d.opLen;
+        if (!decodedOpLen) {
+            decodedOpLen = 1;
+        }
+        bool overlongOp = decodedOpLen > 15;
+
+        d.opCountSoFarInThisBlock++;
+        op->len = overlongOp ? 15 : (U8)decodedOpLen;
+        op->ea16 = d.ea16;
+        decodedLen += op->len;
+        opCount++;
 #if defined _DEBUG
-            op->originalOp = d.inst;
+        op->originalOp = d.inst;
 #endif
+        if (op->inst == Invalid) {
             break;
         }
-        d.opCountSoFarInThisBlock++;
-        op->len = d.opLen;
-        op->ea16 = d.ea16;
-        decodedLen += d.opLen;
-        opCount++;
+        if (overlongOp) {
+            break;
+        }
 #ifdef __TEST
         if (op->inst == TestEnd) {
             break;
         }
 #endif
-#if defined _DEBUG
-        op->originalOp = d.inst;
-#endif        
         if (instructionInfo[op->inst].branch & DECODE_BRANCH_1) {
             op->data.nextJump = callback->getOpLocation(d.eip + op->imm);
         }

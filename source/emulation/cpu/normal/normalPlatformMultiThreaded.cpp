@@ -47,6 +47,7 @@ static void platformThread(CPU* cpu) {
                 cpu->nextOp = cpu->getNextOp();
             }
         }
+        cpu->thread->waitForPtraceResume();
 #ifdef __TEST
         if (cpu->nextOp->inst == TestEnd) {
             return;
