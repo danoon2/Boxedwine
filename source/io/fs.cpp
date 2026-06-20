@@ -76,18 +76,105 @@ bool Fs::initFileSystem(const BString& rootPath) {
     return true;
 }
 
+static bool startsWithToken(const char* value, int len, int index, const char* token) {
+    int tokenLen = (int)strlen(token);
+    return index + tokenLen <= len && memcmp(value + index, token, tokenLen) == 0;
+}
+
+static int hexValue(char c) {
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    }
+    if (c >= 'A' && c <= 'F') {
+        return c - 'A' + 10;
+    }
+    if (c >= 'a' && c <= 'f') {
+        return c - 'a' + 10;
+    }
+    return -1;
+}
+
+static void appendEscapedByte(BString& value, U8 c) {
+    char buffer[8];
+    snprintf(buffer, sizeof(buffer), "(_x%02X_)", c);
+    value.append(buffer);
+}
+
+static bool isLocalPathSeparator(char c) {
+    return c == '/';
+}
+
+static bool isAtEndOfLocalPathPart(const char* value, int len, int index) {
+    return index + 1 >= len || isLocalPathSeparator(value[index + 1]);
+}
+
 void Fs::remoteNameToLocal(BString& path) {
-    path.replace(Fs::nativePathSeperator, "/");
-    path.replace("(_colon_)", ":");
-    path.replace("(_question_)", "?");
-    path.replace("(_at_)", "@");
+    BString result;
+    const char* value = path.c_str();
+    int len = path.length();
+
+    for (int i = 0; i < len;) {
+        if (Fs::nativePathSeperator.length() && startsWithToken(value, len, i, Fs::nativePathSeperator.c_str())) {
+            result.append('/');
+            i += Fs::nativePathSeperator.length();
+        } else if (startsWithToken(value, len, i, "(_colon_)")) {
+            result.append(':');
+            i += 9;
+        } else if (startsWithToken(value, len, i, "(_question_)")) {
+            result.append('?');
+            i += 12;
+        } else if (startsWithToken(value, len, i, "(_at_)")) {
+            result.append('@');
+            i += 6;
+        } else if (startsWithToken(value, len, i, "(_dot_)")) {
+            result.append('.');
+            i += 7;
+        } else if (startsWithToken(value, len, i, "(_space_)")) {
+            result.append(' ');
+            i += 9;
+        } else if (i + 7 <= len && memcmp(value + i, "(_x", 3) == 0 && value[i + 5] == '_' && value[i + 6] == ')') {
+            int hi = hexValue(value[i + 3]);
+            int lo = hexValue(value[i + 4]);
+            if (hi >= 0 && lo >= 0) {
+                result.append((char)((hi << 4) | lo));
+                i += 7;
+            } else {
+                result.append(value[i++]);
+            }
+        } else {
+            result.append(value[i++]);
+        }
+    }
+    path = result;
 }
 
 void Fs::localNameToRemote(BString& path) {
-    path.replace("/", Fs::nativePathSeperator);
-    path.replace(":", "(_colon_)");
-    path.replace("?", "(_question_)");
-    path.replace("@", "(_at_)");
+    BString result;
+    const char* value = path.c_str();
+    int len = path.length();
+
+    for (int i = 0; i < len; i++) {
+        U8 c = (U8)value[i];
+
+        if (isLocalPathSeparator(value[i])) {
+            result.append(Fs::nativePathSeperator);
+        } else if (value[i] == ':') {
+            result.append("(_colon_)");
+        } else if (value[i] == '?') {
+            result.append("(_question_)");
+        } else if (value[i] == '@') {
+            result.append("(_at_)");
+        } else if (value[i] == '.' && isAtEndOfLocalPathPart(value, len, i)) {
+            result.append("(_dot_)");
+        } else if (value[i] == ' ' && isAtEndOfLocalPathPart(value, len, i)) {
+            result.append("(_space_)");
+        } else if (c >= 0x80) {
+            appendEscapedByte(result, c);
+        } else {
+            result.append(value[i]);
+        }
+    }
+    path = result;
 }
 
 BString Fs::localFromNative(const BString& path) {
@@ -154,7 +241,7 @@ bool cleanPath(std::vector<BString>& parts) {
             continue;
         }
         if (parts[i]==".") {
-            i++;
+            parts.erase(parts.begin()+i, parts.begin()+i+1);
             continue;
         }
         if (parts[i]=="..") {

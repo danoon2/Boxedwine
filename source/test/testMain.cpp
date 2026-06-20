@@ -59,6 +59,11 @@ void testUtimensatPreservesAccessTimeInStat();
 void testFutimensPreservesAccessTimeInFstat();
 void testFutimensTime64SignExtendedSecondsPreservesAccessTimeInFstat();
 void testDirectoryReparseSidecarReplacedAfterRemoveAndRecreate();
+void testDotDotAfterDotResolvesToParentDirectory();
+void testUtf8NamesSurviveNativeFilesystemReload();
+void testTrailingDotNamesCanBeUnlinked();
+void testDirectorySeekCanStoreOpaquePosition();
+void testStartupArgsDefaultUtf8LocaleEnvironment();
 
 namespace {
 
@@ -670,6 +675,11 @@ const TestEntry TEST_ENTRIES[] = {
     {testFutimensPreservesAccessTimeInFstat, "Test futimens preserves access time in fstat"},
     {testFutimensTime64SignExtendedSecondsPreservesAccessTimeInFstat, "Test futimens time64 sign-extended seconds in fstat"},
     {testDirectoryReparseSidecarReplacedAfterRemoveAndRecreate, "Test directory reparse sidecar replacement after recreate"},
+    {testDotDotAfterDotResolvesToParentDirectory, "Test ./.. resolves to parent directory"},
+    {testUtf8NamesSurviveNativeFilesystemReload, "Test UTF-8 file names survive native filesystem reload"},
+    {testTrailingDotNamesCanBeUnlinked, "Test trailing-dot file names can be unlinked"},
+    {testDirectorySeekCanStoreOpaquePosition, "Test directory seek can store opaque position"},
+    {testStartupArgsDefaultUtf8LocaleEnvironment, "Test startup args default UTF-8 locale environment"},
 };
 
 } // namespace

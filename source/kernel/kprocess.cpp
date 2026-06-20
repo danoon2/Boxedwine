@@ -1842,8 +1842,15 @@ U32 KProcess::getdents(FD fildes, U32 dirp, U32 count, bool is64) {
     }
     U32 entries = openNode->getDirectoryEntryCount();
     U32 len = 0;
+    S64 filePos = openNode->getFilePointer();
 
-    for (U32 i=(U32)openNode->getFilePointer();i<entries;i++) {
+    if (filePos < 0) {
+        return -K_EINVAL;
+    }
+    if (filePos > entries) {
+        filePos = entries;
+    }
+    for (U32 i=(U32)filePos;i<entries;i++) {
         BString name;
         std::shared_ptr<FsNode> entry = openNode->getDirectoryEntry(i, name);
         S32 recordLen = writeRecord(memory, dirp, len, count, i + 2, is64, name.c_str(), entry->id, entry->getType(true));

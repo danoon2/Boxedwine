@@ -45,6 +45,10 @@
 #include "knativeaudio.h"
 #include "knativesocket.h"
 
+#ifdef __TEST
+#include "../test/cpu/testCPU.h"
+#endif
+
 #ifndef BOXEDWINE_DISABLE_UI
 #include "../ui/data/globalSettings.h"
 #endif
@@ -58,6 +62,71 @@ void x11_init();
 void createSysfs(const std::shared_ptr<FsNode> rootNode);
 
 U32 StartUpArgs::uiType;
+
+static bool hasEnvValue(const std::vector<BString>& envValues, const char* name) {
+    BString prefix = BString::copy(name);
+    prefix += "=";
+    for (auto& value : envValues) {
+        if (value.startsWith(prefix)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void addDefaultEnvValue(std::vector<BString>& envValues, const char* value) {
+    const char* equals = strchr(value, '=');
+    if (!equals) {
+        return;
+    }
+    BString name = BString::copy(value, (int)(equals - value));
+    if (!hasEnvValue(envValues, name.c_str())) {
+        envValues.push_back(BString::copy(value));
+    }
+}
+
+static void addDefaultUtf8LocaleEnv(std::vector<BString>& envValues) {
+    addDefaultEnvValue(envValues, "LANG=en_US.UTF-8");
+    addDefaultEnvValue(envValues, "LC_ALL=en_US.UTF-8");
+}
+
+#ifdef __TEST
+static bool hasExactEnvValue(const std::vector<BString>& envValues, const char* value) {
+    for (auto& envValue : envValues) {
+        if (envValue == value) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void testStartupArgsDefaultUtf8LocaleEnvironment() {
+    std::vector<BString> envValues;
+    addDefaultUtf8LocaleEnv(envValues);
+
+    if (!hasExactEnvValue(envValues, "LANG=en_US.UTF-8")) {
+        testFail("default LANG was not added");
+    }
+    if (!hasExactEnvValue(envValues, "LC_ALL=en_US.UTF-8")) {
+        testFail("default LC_ALL was not added");
+    }
+
+    std::vector<BString> explicitEnvValues;
+    explicitEnvValues.push_back(B("LANG=C"));
+    explicitEnvValues.push_back(B("LC_ALL=C"));
+    addDefaultUtf8LocaleEnv(explicitEnvValues);
+
+    if (explicitEnvValues.size() != 2) {
+        testFail("explicit locale env values were not preserved");
+    }
+    if (!hasExactEnvValue(explicitEnvValues, "LANG=C")) {
+        testFail("explicit LANG was overwritten");
+    }
+    if (!hasExactEnvValue(explicitEnvValues, "LC_ALL=C")) {
+        testFail("explicit LC_ALL was overwritten");
+    }
+}
+#endif
 
 FsOpenNode* openKernelCommandLine(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new BufferAccess(node, flags, B(""));
@@ -400,6 +469,7 @@ bool StartUpArgs::apply() {
     envValues.push_back("PWD="+this->workingDir);
     envValues.push_back(B("DISPLAY=:0"));
     envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
+    addDefaultUtf8LocaleEnv(envValues);
 
     if (!this->ddrawOverridePath.isEmpty()) {
         envValues.push_back(B("WINEDLLOVERRIDES=ddraw=n,b"));

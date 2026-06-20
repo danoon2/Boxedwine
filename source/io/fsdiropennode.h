@@ -47,7 +47,7 @@ public:
     bool isOpen() override;
 
 private:
-    S32 pos;
+    S64 pos;
 };
 
 #endif
