@@ -78,7 +78,7 @@ void FsNode::loadChildren() {
                 if (localPath.endsWith(EXT_MIXED)) {
                     localPath.remove(localPath.length() - 6);
                 }
-                if (localPath.endsWith(EXT_DOSATTRIB)) {
+                if (localPath.endsWith(EXT_DOSATTRIB) || localPath.endsWith(EXT_WINEREPARSE)) {
                     continue;
                 }
                 if (!localPath.endsWith(EXT_LINK)) {

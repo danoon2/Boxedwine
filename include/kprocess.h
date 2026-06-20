@@ -142,7 +142,7 @@ public:
     KFileDescriptorPtr getFileDescriptor(FD handle);
     KFileDescriptor* getFileDescriptor_nolock(FD handle);
     void clearFdHandle(FD handle);
-    U32 openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptorPtr& result);
+    U32 openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptorPtr& result, U32 mode=0666);
     bool isStopped();
     bool isTerminated();
     KThread* startProcess(BString currentDirectory, const std::vector<BString>& args, const std::vector<BString>& envValues, int userId, int groupId, int effectiveUserId, int effectiveGroupId);
@@ -177,6 +177,8 @@ public:
     U32 exitgroup(KThread* thread, U32 code);
     U32 faccessat(U32 dirfd, BString path, U32 mode, U32 flags);
     U32 fchdir(FD fildes);
+    U32 fchmod(FD fildes, U32 mode);
+    U32 fchmodat(FD dirfd, BString path, U32 mode, U32 flags);
     U32 fcntrl(KThread* thread, FD fildes, U32 cmd, U32 arg);
     U32 fstat64(FD handle, U32 buf);
     U32 fstatat64(FD dirfd, BString path, U32 buf, U32 flag);
@@ -195,8 +197,8 @@ public:
     U32 mkdirat(U32 dirfd, BString path, U32 mode);
     U32 mincore(U32 address, U32 length, U32 vec);    
     U32 msync(KThread* thread, U32 addr, U32 len, U32 flags);
-    U32 open(BString path, U32 flags);
-    U32 openat(FD dirfd, BString path, U32 flags);
+    U32 open(BString path, U32 flags, U32 mode);
+    U32 openat(FD dirfd, BString path, U32 flags, U32 mode);
     U32 prctl(U32 option, U32 arg2);
     U32 pread64(KThread* thread, FD fildes, U32 address, U32 len, U64 offset);
     U32 pwrite64(KThread* thread, FD fildes, U32 address, U32 len, U64 offset);
@@ -334,7 +336,7 @@ private:
     U32 usedTLS[TLS_ENTRIES] = { 0 };
     BOXEDWINE_MUTEX usedTlsMutex;
 
-    U32 openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptorPtr& result);    
+    U32 openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptorPtr& result, U32 mode=0666);    
     void setupCommandlineNode();
     void initStdio();
     std::shared_ptr<FsNode> findInPath(BString path);

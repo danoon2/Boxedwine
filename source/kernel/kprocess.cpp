@@ -468,11 +468,12 @@ U32 translateOpenError() {
     return -K_EINVAL;
 }
 
-U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptorPtr& result) {
+U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptorPtr& result, U32 mode) {
     std::shared_ptr<FsNode> node;
     std::shared_ptr<KObject> kobject;
     BString fullPath = Fs::getFullPath(currentDirectory, localPath);
     bool trailingSlashRequiresDirectory = fullPath.length() > 1 && fullPath.endsWith("/");
+    bool createdNode = false;
 
     node = Fs::getNodeFromLocalPath(currentDirectory, localPath, true);
     if (!node && (accessFlags & (K_O_CREAT|K_O_TMPFILE))==0) {
@@ -513,6 +514,7 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
             }
         }
         node = Fs::addFileNode(parent->path+"/"+fileName, B(""), nativePath, false, parent);
+        createdNode = true;
         Fs::makeLocalDirs(parent->path);
     }
     std::shared_ptr<KObject> nodeObject = node->kobject.lock();
@@ -526,12 +528,15 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
         openNode->openedPath = Fs::getFullPath(currentDirectory, localPath);
         kobject = std::make_shared<KFile>(openNode);
     }
+    if (createdNode) {
+        node->setMode(mode);
+    }
     result = this->allocFileDescriptor(kobject, accessFlags, descriptorFlags, handle, afterHandle);
     return 0;
 }
 
-U32 KProcess::openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptorPtr& result) {
-    return this->openFileDescriptor( currentDirectory, localPath, accessFlags, (accessFlags & K_O_CLOEXEC)?FD_CLOEXEC:0, -1, 0, result);
+U32 KProcess::openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptorPtr& result, U32 mode) {
+    return this->openFileDescriptor( currentDirectory, localPath, accessFlags, (accessFlags & K_O_CLOEXEC)?FD_CLOEXEC:0, -1, 0, result, mode);
 }
 
 void KProcess::initStdio() {
@@ -984,7 +989,19 @@ U32 KProcess::chmod(BString path, U32 mode) {
     std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
     if (!node)
         return -K_ENOENT;
-    return 0;
+    return node->setMode(mode);
+}
+
+U32 KProcess::fchmod(FD fildes, U32 mode) {
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
+    if (!fd) {
+        return -K_EBADF;
+    }
+    if (fd->kobject->type != KTYPE_FILE) {
+        return -K_EINVAL;
+    }
+    std::shared_ptr<KFile> file = std::dynamic_pointer_cast<KFile>(fd->kobject);
+    return file->openFile->node->setMode(mode);
 }
 
 U32 KProcess::chdir(BString path) {
@@ -1070,10 +1087,10 @@ U32 KProcess::close(FD fildes) {
     return 0;
 }
 
-U32 KProcess::open(BString path, U32 flags) {
+U32 KProcess::open(BString path, U32 flags, U32 mode) {
     KFileDescriptorPtr fd;
         
-    U32 result = this->openFile(this->currentDirectory, path, flags, fd);
+    U32 result = this->openFile(this->currentDirectory, path, flags, fd, mode);
     if (result || !fd) {
         return result;
     }
@@ -2225,7 +2242,7 @@ U32 KProcess::getCurrentDirectoryFromDirFD(FD dirfd, BString& currentDirectory) 
     return result;
 }
 
-U32 KProcess::openat(FD dirfd, BString path, U32 flags) {
+U32 KProcess::openat(FD dirfd, BString path, U32 flags, U32 mode) {
     BString dir;
     U32 result = 0;
     
@@ -2235,7 +2252,7 @@ U32 KProcess::openat(FD dirfd, BString path, U32 flags) {
     if (result)
         return result;
     KFileDescriptorPtr fd;
-    result = this->openFile(dir, path, flags, fd);
+    result = this->openFile(dir, path, flags, fd, mode);
     if (result || !fd) {
         return result;
     }
@@ -2253,6 +2270,22 @@ U32 KProcess::mkdirat(U32 dirfd, BString path, U32 mode) {
         return result;
     BString fullPath = Fs::getFullPath(dir, path);
     return this->mkdir(fullPath);
+}
+
+U32 KProcess::fchmodat(FD dirfd, BString path, U32 mode, U32 flags) {
+    BString dir;
+    U32 result = 0;
+
+    if (path.charAt(0) != '/')
+        result = getCurrentDirectoryFromDirFD(dirfd, dir);
+
+    if (result)
+        return result;
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100)==0);
+    if (!node) {
+        return -K_ENOENT;
+    }
+    return node->setMode(mode);
 }
 
 #define K_AT_SYMLINK_FOLLOW	0x400   // Follow symbolic links. 

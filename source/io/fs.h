@@ -107,6 +107,10 @@ public:
     static BString getDosAttrib(const std::shared_ptr<FsNode>& file);
     static void setDosAttrib(const std::shared_ptr<FsNode>& file, const BString& attrib);
     static U32 removeDosAttrib(const std::shared_ptr<FsNode>& file);
+    static U32 getXAttr(const std::shared_ptr<FsNode>& file, const BString& name, std::vector<U8>& value);
+    static U32 setXAttr(const std::shared_ptr<FsNode>& file, const BString& name, const U8* value, U32 len);
+    static U32 removeXAttr(const std::shared_ptr<FsNode>& file, const BString& name);
+    static U32 listXAttrNames(const std::shared_ptr<FsNode>& file, std::vector<BString>& names);
 
     static std::shared_ptr<FsFileNode> rootNode;
 	static void shutDown();

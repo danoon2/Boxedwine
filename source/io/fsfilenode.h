@@ -43,6 +43,7 @@ public:
     FsOpenNode* open(U32 flags) override;
     U32 getType(bool checkForLink) override;
     U32 getMode() override;
+    U32 setMode(U32 mode) override;
     U32 removeDir() override;
     BString getLink() override;
 
@@ -62,6 +63,7 @@ private:
 #endif    
     friend class Fs;
     bool isRootPath;
+    U32 modeOverride;
 };
 
 #endif

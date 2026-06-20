@@ -151,18 +151,28 @@ S64 KFile::length() {
 }
 
 U32 KFile::pread(KThread* thread, U32 buffer, S64 offset, U32 len) {
+    if (offset < 0) {
+        return -K_EINVAL;
+    }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     S64 previousOffset = this->openFile->getFilePointer();
-    this->openFile->seek(offset);
+    if (this->openFile->seek(offset) < 0) {
+        return -K_EINVAL;
+    }
     U32 result = this->openFile->read(thread, buffer, len);
     this->openFile->seek(previousOffset);
     return result;
 }
 
 U32 KFile::pwrite(KThread* thread, U32 buffer, S64 offset, U32 len) {
+    if (offset < 0) {
+        return -K_EINVAL;
+    }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     S64 previousOffset = this->openFile->getFilePointer();
-    this->openFile->seek(offset);
+    if (this->openFile->seek(offset) < 0) {
+        return -K_EINVAL;
+    }
     U32 result = this->openFile->write(thread, buffer, len);
     this->openFile->seek(previousOffset);
     return result;

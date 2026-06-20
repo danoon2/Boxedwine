@@ -113,8 +113,8 @@ static U32 syscall_write(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_open(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG1);
-    SYS_LOG1(SYSCALL_FILE, cpu, "open: name=%s flags=%x", name.c_str(), ARG2);
-    U32 result = cpu->thread->process->open(name, ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "open: name=%s flags=%x mode=%o", name.c_str(), ARG2, ARG3);
+    U32 result = cpu->thread->process->open(name, ARG2, ARG3);
 #ifdef _DEBUG
     if (result>1000) {
         printf("open: name=%s flags=%x result=%X\n", name.c_str(), ARG2, result);
@@ -481,11 +481,8 @@ static U32 syscall_ftruncate(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_fchmod(CPU* cpu, U32 eipCount) {	
-#ifdef _DEBUG
-    klog("fchmod not implemented");
-#endif
-    U32 result = 0;
-    SYS_LOG1(SYSCALL_FILE, cpu, "fchmod: fd=%X mod=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, result, result);
+    U32 result = cpu->thread->process->fchmod(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "fchmod: fd=%X mode=%o result=%d(0x%X)\n", ARG1, ARG2, result, result);
     return result;
 }
 
@@ -1174,23 +1171,60 @@ static U32 syscall_gettid(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_fsetxattr(CPU* cpu, U32 eipCount) {    
-    U32 result = -K_ENOTSUP;
-    BString name = cpu->memory->readString(ARG2);
+static U32 getXAttrResult(KMemory* memory, const std::shared_ptr<FsNode>& file, const BString& name, U32 valueAddress, U32 size) {
+    std::vector<U8> value;
+    U32 result = Fs::getXAttr(file, name, value);
+    if (result) {
+        return result;
+    }
+    if (!size) {
+        return (U32)value.size();
+    }
+    if (!valueAddress) {
+        return -K_EFAULT;
+    }
+    if (value.size() > size) {
+        return -K_ERANGE;
+    }
+    if (value.size()) {
+        memory->memcpy(valueAddress, value.data(), (U32)value.size());
+    }
+    return (U32)value.size();
+}
 
-    KFileDescriptorPtr fd = cpu->thread->process->getFileDescriptor(ARG1);
-    if (!fd) {
+static std::shared_ptr<KFile> getFileFromDescriptor(const KProcessPtr& process, FD fd, U32& result) {
+    KFileDescriptorPtr fileDescriptor = process->getFileDescriptor(fd);
+    if (!fileDescriptor) {
         result = -K_EBADFD;
-    } else if (name == "user.DOSATTRIB") {
-        BString value = cpu->memory->readString(ARG3);
-        std::shared_ptr<KFile> node = std::dynamic_pointer_cast<KFile>(fd->kobject);
-        if (!node) {
-            result = -K_ENOTSUP;
+        return nullptr;
+    }
+    std::shared_ptr<KFile> file = std::dynamic_pointer_cast<KFile>(fileDescriptor->kobject);
+    if (!file) {
+        result = -K_ENOTSUP;
+        return nullptr;
+    }
+    result = 0;
+    return file;
+}
+
+static U32 syscall_fsetxattr(CPU* cpu, U32 eipCount) {
+    BString name = cpu->memory->readString(ARG2);
+    U32 result = 0;
+    std::shared_ptr<KFile> file = getFileFromDescriptor(cpu->thread->process, ARG1, result);
+    if (file) {
+        std::vector<U8> value(ARG4);
+        if (ARG4) {
+            if (!ARG3) {
+                result = -K_EFAULT;
+            } else {
+                cpu->memory->memcpy(value.data(), ARG3, ARG4);
+                result = Fs::setXAttr(file->openFile->node, name, value.data(), ARG4);
+            }
         } else {
-            Fs::setDosAttrib(node->openFile->node, value);
+            result = Fs::setXAttr(file->openFile->node, name, nullptr, 0);
         }
     }
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fsetxattr: result=%x\n", result);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fsetxattr: fd=%d name=%s size=%u result=%x\n", ARG1, name.c_str(), ARG4, result);
     return result;
 }
 
@@ -1198,99 +1232,81 @@ static U32 syscall_getxattr(CPU* cpu, U32 eipCount) {
     BString path = cpu->memory->readString(ARG1);
     BString name = cpu->memory->readString(ARG2);
 
-    U32 result = -K_ENOTSUP;
-    if (name == "user.DOSATTRIB") {
-        std::shared_ptr<FsNode> file = Fs::getNodeFromLocalPath(cpu->thread->process->currentDirectory, path, true);
-        if (!file) {
-            result = -K_ENOENT;
-        } else {
-            BString attr = Fs::getDosAttrib(file);
-            if (attr.length() == 0) {
-                result = -K_ENODATA;
-            } else if ((U32)attr.length() < ARG4) {
-                cpu->memory->strcpy(ARG3, attr.c_str());
-                result = attr.length();
-            } else {
-                result = -K_ERANGE;
-            }
-        }
+    U32 result;
+    std::shared_ptr<FsNode> file = Fs::getNodeFromLocalPath(cpu->thread->process->currentDirectory, path, true);
+    if (!file) {
+        result = -K_ENOENT;
+    } else {
+        result = getXAttrResult(cpu->memory, file, name, ARG3, ARG4);
     }
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getxattr: path=%s name=%s result = %x\n", path.c_str(), name.c_str(), result);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getxattr: path=%s name=%s size=%u result = %x\n", path.c_str(), name.c_str(), ARG4, result);
     return result;
 }
 
 static U32 syscall_lgetxattr(CPU* cpu, U32 eipCount) {
     BString path = cpu->memory->readString(ARG1);
     BString name = cpu->memory->readString(ARG2);
-    U32 result = -K_ENOTSUP;
-    if (name == "user.DOSATTRIB") {
-        std::shared_ptr<FsNode> file = Fs::getNodeFromLocalPath(cpu->thread->process->currentDirectory, path, false);
-        if (!file) {
-            result = -K_ENOENT;
-        } else {
-            BString attr = Fs::getDosAttrib(file);
-            if (attr.length() == 0) {
-                result = -K_ENODATA;
-            } else if ((U32)attr.length() < ARG4) {
-                cpu->memory->strcpy(ARG3, attr.c_str());
-                result = attr.length();
-            } else {
-                result = -K_ERANGE;
-            }
-        }
+
+    U32 result;
+    std::shared_ptr<FsNode> file = Fs::getNodeFromLocalPath(cpu->thread->process->currentDirectory, path, false);
+    if (!file) {
+        result = -K_ENOENT;
+    } else {
+        result = getXAttrResult(cpu->memory, file, name, ARG3, ARG4);
     }
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "lgetxattr: path=%s name=%s result=%x\n", path.c_str(), name.c_str(), result);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "lgetxattr: path=%s name=%s size=%u result=%x\n", path.c_str(), name.c_str(), ARG4, result);
     return result;
 }
 
 static U32 syscall_fgetxattr(CPU* cpu, U32 eipCount) {
-    U32 result = -K_ENOTSUP;
     BString name = cpu->memory->readString(ARG2);
-
-    KFileDescriptorPtr fd = cpu->thread->process->getFileDescriptor(ARG1);
-    if (!fd) {
-        result = -K_EBADFD;
-    } else if (name == "user.DOSATTRIB") {
-        std::shared_ptr<KFile> node = std::dynamic_pointer_cast<KFile>(fd->kobject);
-        if (!node) {
-            result = -K_ENOTSUP;
-        } else {
-            BString attr = Fs::getDosAttrib(node->openFile->node);
-            if (attr.length() == 0) {
-                result = -K_ENODATA;
-            } else if ((U32)attr.length() < ARG4) {
-                cpu->memory->strcpy(ARG3, attr.c_str());
-                result = attr.length();
-            } else {
-                result = -K_ERANGE;
-            }
-        }
+    U32 result = 0;
+    std::shared_ptr<KFile> file = getFileFromDescriptor(cpu->thread->process, ARG1, result);
+    if (file) {
+        result = getXAttrResult(cpu->memory, file->openFile->node, name, ARG3, ARG4);
     }
 
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fgetxattr: result = %x\n", result);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fgetxattr: fd=%d name=%s size=%u result = %x\n", ARG1, name.c_str(), ARG4, result);
     return result;
 }
 
 static U32 syscall_flistxattr(CPU* cpu, U32 eipCount) {
-    U32 result = -K_ENOTSUP;
-    SYS_LOG1_NO_FMT(SYSCALL_SYSTEM, cpu, "flistxattr: result = ENOTSUP IGNORED\n");
+    U32 result = 0;
+    std::shared_ptr<KFile> file = getFileFromDescriptor(cpu->thread->process, ARG1, result);
+    if (file) {
+        std::vector<BString> names;
+        result = Fs::listXAttrNames(file->openFile->node, names);
+        if (!result) {
+            U32 len = 0;
+            for (auto& name : names) {
+                len += name.length() + 1;
+            }
+            if (!ARG3) {
+                result = len;
+            } else if (!ARG2) {
+                result = -K_EFAULT;
+            } else if (len > ARG3) {
+                result = -K_ERANGE;
+            } else {
+                U32 address = ARG2;
+                for (auto& name : names) {
+                    cpu->memory->memcpy(address, name.c_str(), name.length() + 1);
+                    address += name.length() + 1;
+                }
+                result = len;
+            }
+        }
+    }
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "flistxattr: fd=%d size=%u result = %x\n", ARG1, ARG3, result);
     return result;
 }
 
 static U32 syscall_fremovexattr(CPU* cpu, U32 eipCount) {
-    U32 result = -K_ENOTSUP;
     BString name = cpu->memory->readString(ARG2);
-
-    KFileDescriptorPtr fd = cpu->thread->process->getFileDescriptor(ARG1);
-    if (!fd) {
-        result = -K_EBADFD;
-    } else if (name == "user.DOSATTRIB") {
-        std::shared_ptr<KFile> node = std::dynamic_pointer_cast<KFile>(fd->kobject);
-        if (!node) {
-            result = -K_ENOTSUP;
-        } else {
-            result = Fs::removeDosAttrib(node->openFile->node);            
-        }
+    U32 result = 0;
+    std::shared_ptr<KFile> file = getFileFromDescriptor(cpu->thread->process, ARG1, result);
+    if (file) {
+        result = Fs::removeXAttr(file->openFile->node, name);
     }
 
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "fremovexattr: fd=%d name=%s result = %x\n", ARG1, name.c_str(), result);
@@ -1467,7 +1483,7 @@ static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_openat(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG2);
-    SYS_LOG1(SYSCALL_FILE, cpu, "openat: dirfd=%d name=%s flags=%x", ARG1, name.c_str(), ARG3);
+    SYS_LOG1(SYSCALL_FILE, cpu, "openat: dirfd=%d name=%s flags=%x mode=%o", ARG1, name.c_str(), ARG3, ARG4);
 #ifdef _DEBUG    
     if (name == "c_rehash.sh") {
         // not sure why installing ca_certificats with TinyCore Linux 15 needs this
@@ -1475,7 +1491,7 @@ static U32 syscall_openat(CPU* cpu, U32 eipCount) {
         name = "/usr/local/sbin/c_rehash.sh";
     }
 #endif
-    U32 result = cpu->thread->process->openat(ARG1, name, ARG3);
+    U32 result = cpu->thread->process->openat(ARG1, name, ARG3, ARG4);
 #ifdef _DEBUG
     if (result>1000 && !name.contains("font") && !name.startsWith("/sys")) {
         printf("openat: dirfd=%d name=%s flags=%x result=%x\n", (int)ARG1, name.c_str(), ARG3, result);
@@ -1541,8 +1557,8 @@ static U32 syscall_readlinkat(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_fchmodat(CPU* cpu, U32 eipCount) {
     BString pathname = cpu->memory->readString(ARG2);
-    U32 result = 0;
-    SYS_LOG1(SYSCALL_FILE, cpu, "fchmodat pathname=%X(%s) mode=%X flags=%X result=%d(0x%X) IGNORED\n", ARG2, pathname.c_str(), ARG3, ARG4, result, result);
+    U32 result = cpu->thread->process->fchmodat(ARG1, pathname, ARG3, 0);
+    SYS_LOG1(SYSCALL_FILE, cpu, "fchmodat pathname=%X(%s) mode=%o result=%d(0x%X)\n", ARG2, pathname.c_str(), ARG3, result, result);
     return result;
 }
 

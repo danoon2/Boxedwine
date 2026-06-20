@@ -79,12 +79,14 @@ bool Fs::initFileSystem(const BString& rootPath) {
 void Fs::remoteNameToLocal(BString& path) {
     path.replace(Fs::nativePathSeperator, "/");
     path.replace("(_colon_)", ":");
+    path.replace("(_question_)", "?");
     path.replace("(_at_)", "@");
 }
 
 void Fs::localNameToRemote(BString& path) {
     path.replace("/", Fs::nativePathSeperator);
     path.replace(":", "(_colon_)");
+    path.replace("?", "(_question_)");
     path.replace("@", "(_at_)");
 }
 
@@ -477,6 +479,76 @@ BString Fs::trimTrailingSlash(const BString& s) {
     return s;
 }
 
+static BString getXAttrNativePath(const std::shared_ptr<FsNode>& file, const BString& name) {
+    if (name == "user.DOSATTRIB") {
+        return file->nativePath + EXT_DOSATTRIB;
+    }
+    if (name == "user.WINEREPARSE") {
+        return file->nativePath + EXT_WINEREPARSE;
+    }
+    return BString::empty;
+}
+
+U32 Fs::getXAttr(const std::shared_ptr<FsNode>& file, const BString& name, std::vector<U8>& value) {
+    BString nativePath = getXAttrNativePath(file, name);
+    if (nativePath.isEmpty()) {
+        return -K_ENOTSUP;
+    }
+    if (!Fs::doesNativePathExist(nativePath)) {
+        return -K_ENODATA;
+    }
+    U64 len = Fs::getNativeFileSize(nativePath);
+    value.resize((size_t)len);
+    if (!len) {
+        return 0;
+    }
+    BReadFile f(nativePath);
+    if (!f.isOpen()) {
+        return -K_EIO;
+    }
+    if (f.read(value.data(), len) != len) {
+        return -K_EIO;
+    }
+    return 0;
+}
+
+U32 Fs::setXAttr(const std::shared_ptr<FsNode>& file, const BString& name, const U8* value, U32 len) {
+    BString nativePath = getXAttrNativePath(file, name);
+    if (nativePath.isEmpty()) {
+        return -K_ENOTSUP;
+    }
+    BWriteFile w(nativePath, true);
+    if (!w.isOpen()) {
+        return -K_EIO;
+    }
+    if (len && w.write(value, len) != len) {
+        return -K_EIO;
+    }
+    return 0;
+}
+
+U32 Fs::removeXAttr(const std::shared_ptr<FsNode>& file, const BString& name) {
+    BString nativePath = getXAttrNativePath(file, name);
+    if (nativePath.isEmpty()) {
+        return -K_ENOTSUP;
+    }
+    if (Fs::doesNativePathExist(nativePath)) {
+        deleteNativeFile(nativePath);
+        return 0;
+    }
+    return -K_ENODATA;
+}
+
+U32 Fs::listXAttrNames(const std::shared_ptr<FsNode>& file, std::vector<BString>& names) {
+    if (Fs::doesNativePathExist(file->nativePath + EXT_DOSATTRIB)) {
+        names.push_back(B("user.DOSATTRIB"));
+    }
+    if (Fs::doesNativePathExist(file->nativePath + EXT_WINEREPARSE)) {
+        names.push_back(B("user.WINEREPARSE"));
+    }
+    return 0;
+}
+
 /*
 Read - Only = 0x1
 Hidden = 0x2
@@ -484,26 +556,17 @@ System = 0x4
 Archive = 0x20
 */
 BString Fs::getDosAttrib(const std::shared_ptr<FsNode>& file) {
-    U8 buffer[1024] = { 0 };
-    if (Fs::readNativeFile(file->nativePath + EXT_DOSATTRIB, buffer, 1024)) {
-        return BString::copy((const char*)buffer);
+    std::vector<U8> value;
+    if (Fs::getXAttr(file, B("user.DOSATTRIB"), value) == 0 && value.size()) {
+        return BString::copy((const char*)value.data(), (int)value.size());
     }
     return BString::empty;
 }
 
 void Fs::setDosAttrib(const std::shared_ptr<FsNode>& file, const BString& attrib) {
-    BWriteFile w(file->nativePath + EXT_DOSATTRIB, true);
-    if (w.isOpen()) {
-        w.write(attrib);
-    }
+    Fs::setXAttr(file, B("user.DOSATTRIB"), (const U8*)attrib.c_str(), attrib.length());
 }
 
 U32 Fs::removeDosAttrib(const std::shared_ptr<FsNode>& file) {
-    BString nativePath = file->nativePath + EXT_DOSATTRIB;
-    if (Fs::doesNativePathExist(nativePath)) {
-        deleteNativeFile(nativePath);
-        return 0;
-    } else {
-        return -K_ENODATA; // ENOATTR
-    }
+    return Fs::removeXAttr(file, B("user.DOSATTRIB"));
 }

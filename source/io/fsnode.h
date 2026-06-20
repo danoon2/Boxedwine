@@ -25,6 +25,7 @@
 // on windows one.txt and One.txt are the same file but on Linux they are different
 #define EXT_MIXED ".mixed"
 #define EXT_DOSATTRIB ".user.DOSATTRIB"
+#define EXT_WINEREPARSE ".user.WINEREPARSE"
 #define EXT_LINK ".link"
 
 class FsOpenNode;
@@ -53,6 +54,7 @@ public:
     virtual FsOpenNode* open(U32 flags)=0;    
     virtual U32 getType(bool checkForLink)=0;
     virtual U32 getMode()=0;
+    virtual U32 setMode(U32 mode) { return 0; }
     virtual U32 removeDir()=0;
     virtual U32 setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano)=0;
 

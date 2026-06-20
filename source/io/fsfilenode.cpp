@@ -34,9 +34,27 @@
 #include "fszipnode.h"
 #include "knativethread.h"
 
+static void unlinkXAttrSidecars(const BString& nativePath) {
+    unlink((nativePath + EXT_DOSATTRIB).c_str());
+    unlink((nativePath + EXT_WINEREPARSE).c_str());
+}
+
+static void renameXAttrSidecars(const BString& oldNativePath, const BString& newNativePath) {
+    BString dosAttrib = oldNativePath + EXT_DOSATTRIB;
+    if (Fs::doesNativePathExist(dosAttrib)) {
+        BString dosAttribDst = newNativePath + EXT_DOSATTRIB;
+        ::rename(dosAttrib.c_str(), dosAttribDst.c_str());
+    }
+    BString wineReparse = oldNativePath + EXT_WINEREPARSE;
+    if (Fs::doesNativePathExist(wineReparse)) {
+        BString wineReparseDst = newNativePath + EXT_WINEREPARSE;
+        ::rename(wineReparse.c_str(), wineReparseDst.c_str());
+    }
+}
+
 std::set<BString> FsFileNode::nonExecFileFullPaths;
 
-FsFileNode::FsFileNode(U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, bool isRootPath, std::shared_ptr<FsNode> parent) : FsNode(Type::File, id, rdev, path, link, nativePath, isDirectory, parent), isRootPath(isRootPath) {
+FsFileNode::FsFileNode(U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, bool isRootPath, std::shared_ptr<FsNode> parent) : FsNode(Type::File, id, rdev, path, link, nativePath, isDirectory, parent), isRootPath(isRootPath), modeOverride(0) {
 }
 
 BString FsFileNode::getNativeTmpPath() {
@@ -91,8 +109,7 @@ bool FsFileNode::remove() {
     }
 #endif
     if (exists) {
-        BString dosAttrib = nativePath + EXT_DOSATTRIB;
-        unlink(dosAttrib.c_str());
+        unlinkXAttrSidecars(nativePath);
         result = unlink(nativePath.c_str()) == 0;        
     }
     // if the file failed to be deleted and it exists then its because someone else has it open, 
@@ -212,6 +229,10 @@ FsOpenNode* FsFileNode::open(U32 flags) {
         return new FsDirOpenNode(n, flags);
     }
     if ((flags & K_O_ACCMODE)==K_O_RDONLY) {
+        if (this->modeOverride && (this->modeOverride & K__S_IREAD)==0) {
+            errno = EACCES;
+            return nullptr;
+        }
         openFlags|=O_RDONLY;
         // make the file local so that it will load faster (no inflate and weird seeking logic)
 #if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__)
@@ -220,6 +241,10 @@ FsOpenNode* FsFileNode::open(U32 flags) {
         }
 #endif
     } else {
+        if (this->modeOverride && Fs::doesNativePathExist(this->nativePath) && (this->modeOverride & K__S_IWRITE)==0) {
+            errno = EACCES;
+            return nullptr;
+        }
         if ((flags & K_O_ACCMODE)==K_O_WRONLY) {
             openFlags|=O_WRONLY;        
         } else {
@@ -275,6 +300,9 @@ U32 FsFileNode::getType(bool checkForLink) {
 }
 
 U32 FsFileNode::getMode() {
+    if (this->modeOverride) {
+        return this->modeOverride;
+    }
     U32 result = K__S_IREAD | (FsFileNode::getType(false) << 12);
     if (this->path == "/etc/sudoers") {
         return result | K__S_IRGRP;
@@ -293,6 +321,12 @@ U32 FsFileNode::getMode() {
         }
     }
     return result;
+}
+
+U32 FsFileNode::setMode(U32 mode) {
+    U32 permissionMask = K__S_IRWXU | K__S_IRWXG | K__S_IRWXO | K__S_ISUID | K__S_ISGID | K__S_ISVTX;
+    this->modeOverride = (FsFileNode::getType(false) << 12) | (mode & permissionMask);
+    return 0;
 }
 
 S32 translateErr(U32 e) {
@@ -398,11 +432,7 @@ U32 FsFileNode::rename(BString path) {
         }    
         result = ::rename(this->nativePath.c_str(), nativePath.c_str());
         if (result==0) {
-            BString dosAttrib = this->nativePath + EXT_DOSATTRIB;
-            if (Fs::doesNativePathExist(dosAttrib)) {
-                BString dosAttribDst = nativePath + EXT_DOSATTRIB;
-                ::rename(dosAttrib.c_str(), dosAttribDst.c_str());
-            }
+            renameXAttrSidecars(this->nativePath, nativePath);
             this->removeNodeFromParent();
 #ifdef BOXEDWINE_ZLIB
             if (zipNode) {
@@ -428,10 +458,11 @@ U32 FsFileNode::rename(BString path) {
         break;
     }
     int i=0;
-    this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
+    this->openNodes.for_each([&tmpPos,&i,&path](KListNode<FsOpenNode*>* n) {
         if (i<(int)tmpPos.size() && tmpPos.at(i)!=-1) {
             FsOpenNode* openNode = n->data;
             if (openNode) {
+                openNode->openedPath = path;
                 openNode->reopen();
                 openNode->seek(tmpPos.at(i));
             }
