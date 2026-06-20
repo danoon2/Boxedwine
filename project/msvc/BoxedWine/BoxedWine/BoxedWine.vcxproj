@@ -740,7 +740,7 @@
       </TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
@@ -895,6 +895,7 @@
     <ClInclude Include="..\..\..\..\include\kopengl.h" />
     <ClInclude Include="..\..\..\..\include\knativescreen.h" />
     <ClInclude Include="..\..\..\..\include\knetlink.h" />
+    <ClInclude Include="..\..\..\..\include\kinotify.h" />
     <ClInclude Include="..\..\..\..\include\kobject.h" />
     <ClInclude Include="..\..\..\..\include\kpoll.h" />
     <ClInclude Include="..\..\..\..\include\kprocess.h" />
@@ -3775,6 +3776,7 @@
     <ClCompile Include="..\..\..\..\source\kernel\kmemory.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\knativesocket.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\knetlink.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kinotify.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kobject.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kpoll.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kprocess.cpp" />

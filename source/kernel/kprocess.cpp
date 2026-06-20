@@ -18,6 +18,8 @@
 
 #include "boxedwine.h"
 
+#include "kinotify.h"
+
 #include "kscheduler.h"
 #include "loader.h"
 #include "kstat.h"
@@ -898,11 +900,16 @@ U32 KProcess::rmdir(BString path) {
 
     if (!node)
         return -K_ENOENT;
-    return node->removeDir();
+    BString fullPath = node->path;
+    U32 result = node->removeDir();
+    if (!result) {
+        KInotifyObject::notifyPath(fullPath, K_IN_DELETE | K_IN_ISDIR);
+    }
+    return result;
 }
 
 U32 KProcess::mkdir(BString path) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);   
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);
     if (node) {
         return -K_EEXIST;
     }
@@ -912,7 +919,12 @@ U32 KProcess::mkdir(BString path) {
     if (!node) {
         return -K_ENOENT;
     }
-    return Fs::makeLocalDirs(fullpath);
+    U32 result = Fs::makeLocalDirs(fullpath);
+    if (!result) {
+        node = Fs::getNodeFromLocalPath(B(""), fullpath, false);
+        KInotifyObject::notifyPath(node ? node->path : fullpath, K_IN_CREATE | K_IN_ISDIR);
+    }
+    return result;
 }
 
 U32 KProcess::rename(BString from, BString to) {
@@ -1026,10 +1038,12 @@ U32 KProcess::unlinkFile(BString path) {
     if (!node) {
         return -K_ENOENT;
     }
+    BString fullPath = node->path;
     if (!node->remove()) {
         kwarn_fmt("failed to remove file: errno=%d", errno);
         return -K_EBUSY;
     }
+    KInotifyObject::notifyPath(fullPath, K_IN_DELETE);
     return 0;
 }
 

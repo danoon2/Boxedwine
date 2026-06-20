@@ -18,6 +18,8 @@
 
 #include "boxedwine.h"
 
+#include "kinotify.h"
+
 #include "log.h"
 #include "kscheduler.h"
 #include "ksignal.h"
@@ -1475,9 +1477,25 @@ static U32 syscall_fadvise64(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {    
-    U32 result = -K_ENOSYS;
-    SYS_LOG1(SYSCALL_FILE, cpu, "inotify_init: result=%d(0x%X) IGNORED\n", result, result);
+static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_FILE, cpu, "inotify_init:");
+    U32 result = KInotifyObject::create(cpu->thread, 0);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_inotify_add_watch(CPU* cpu, U32 eipCount) {
+    BString path = cpu->memory->readString(ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "inotify_add_watch: fd=%d path=%s mask=%X", ARG1, path.c_str(), ARG3);
+    U32 result = KInotifyObject::addWatch(cpu->thread, ARG1, path, ARG3);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_inotify_rm_watch(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_FILE, cpu, "inotify_rm_watch: fd=%d wd=%d", ARG1, ARG2);
+    U32 result = KInotifyObject::removeWatch(cpu->thread, ARG1, ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 
@@ -2115,8 +2133,8 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 289
     nullptr,                  // 290
     syscall_inotify_init,// 291 __NR_inotify_init
-    nullptr,                  // 292 __NR_inotify_add_watch
-    nullptr,                  // 293 __NR_inotify_rm_watch
+    syscall_inotify_add_watch, // 292 __NR_inotify_add_watch
+    syscall_inotify_rm_watch,  // 293 __NR_inotify_rm_watch
     nullptr,                  // 294
     syscall_openat,     // 295 __NR_openat
     syscall_mkdirat,    // 296 __NR_mkdirat

@@ -619,6 +619,9 @@
     <ClCompile Include="..\..\..\..\source\kernel\knetlink.cpp">
       <Filter>source\kernel</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kinotify.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\kernel\kevent.cpp">
       <Filter>source\kernel</Filter>
     </ClCompile>
@@ -1837,6 +1840,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\knetlink.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kinotify.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\kevent.h">

@@ -63,6 +63,8 @@ void testDotDotAfterDotResolvesToParentDirectory();
 void testUtf8NamesSurviveNativeFilesystemReload();
 void testTrailingDotNamesCanBeUnlinked();
 void testDirectorySeekCanStoreOpaquePosition();
+void testInotifyReportsChildDirectoryCreate();
+void testInotifyFollowsWatchedSymlinkTarget();
 void testStartupArgsDefaultUtf8LocaleEnvironment();
 
 namespace {
@@ -679,6 +681,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testUtf8NamesSurviveNativeFilesystemReload, "Test UTF-8 file names survive native filesystem reload"},
     {testTrailingDotNamesCanBeUnlinked, "Test trailing-dot file names can be unlinked"},
     {testDirectorySeekCanStoreOpaquePosition, "Test directory seek can store opaque position"},
+    {testInotifyReportsChildDirectoryCreate, "Test inotify reports child directory create"},
+    {testInotifyFollowsWatchedSymlinkTarget, "Test inotify follows watched symlink target"},
     {testStartupArgsDefaultUtf8LocaleEnvironment, "Test startup args default UTF-8 locale environment"},
 };
 
