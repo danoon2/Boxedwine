@@ -462,6 +462,7 @@ U32 translateOpenError() {
     case EACCES: return -K_EACCES;
     case EEXIST: return -K_EEXIST;
     case ENOENT: return -K_ENOENT;
+    case ENOTDIR: return -K_ENOTDIR;
     case EISDIR: return -K_EISDIR;
     }
     return -K_EINVAL;
@@ -470,10 +471,15 @@ U32 translateOpenError() {
 U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptorPtr& result) {
     std::shared_ptr<FsNode> node;
     std::shared_ptr<KObject> kobject;
+    BString fullPath = Fs::getFullPath(currentDirectory, localPath);
+    bool trailingSlashRequiresDirectory = fullPath.length() > 1 && fullPath.endsWith("/");
 
     node = Fs::getNodeFromLocalPath(currentDirectory, localPath, true);
     if (!node && (accessFlags & (K_O_CREAT|K_O_TMPFILE))==0) {
         return -K_ENOENT;
+    }
+    if (node && trailingSlashRequiresDirectory && !node->isDirectory()) {
+        return -K_ENOTDIR;
     }
     if (accessFlags & K_O_TMPFILE) {
         if ((accessFlags & K_O_ACCMODE)!=K_O_WRONLY && (accessFlags & K_O_ACCMODE)!=K_O_RDWR) {
@@ -492,7 +498,6 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
         }
     }
     if (!node) {
-        BString fullPath = Fs::getFullPath(currentDirectory, localPath);
         BString parentPath = Fs::getParentPath(fullPath);
         BString fileName = Fs::getFileNameFromPath(fullPath);
         std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), parentPath, true);
