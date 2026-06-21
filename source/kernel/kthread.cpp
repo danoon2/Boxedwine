@@ -201,6 +201,7 @@ U32 KThread::signal(U32 signal, bool wait) {
                 if (!handled) {
                     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
                     this->pendingSignals |= (1ULL << (signal - 1));
+                    this->cpu->yield = true;
                 }
             }
             if (wait && !this->terminating) {
@@ -751,6 +752,25 @@ void KThread::signalDebugTrap(U32 code, U32 dr6) {
     this->runSignal(K_SIGTRAP, 1, 0);
 }
 
+static U32 debugBreakpointLength(U32 dr7, U32 index) {
+    switch ((dr7 >> (18 + index * 4)) & 3) {
+    case 0:
+        return 1;
+    case 1:
+        return 2;
+    case 2:
+        return 8;
+    default:
+        return 4;
+    }
+}
+
+static bool debugRangesOverlap(U32 a, U32 aLen, U32 b, U32 bLen) {
+    U64 aStart = a;
+    U64 bStart = b;
+    return aStart < bStart + bLen && bStart < aStart + aLen;
+}
+
 bool KThread::debugTrapBeforeInstruction() {
     U32 dr7 = this->debugRegs[7];
     if (!(dr7 & 0xff)) {
@@ -790,8 +810,57 @@ bool KThread::hasHardwareBreakpointAt(U32 address) const {
     return false;
 }
 
+bool KThread::hasDataBreakpoint() const {
+    U32 dr7 = this->debugRegs[7];
+    if (!(dr7 & 0xff)) {
+        return false;
+    }
+    for (U32 i = 0; i < 4; ++i) {
+        U32 enabled = (dr7 >> (i * 2)) & 3;
+        U32 type = (dr7 >> (16 + i * 4)) & 3;
+        if (enabled && type != 0 && type != 2) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool KThread::queueDataBreakpointIfHit(U32 address, U32 len, bool write) {
+    if (!this->cpu || this->inSysCall || !len) {
+        return false;
+    }
+
+    U32 dr7 = this->debugRegs[7];
+    if (!(dr7 & 0xff)) {
+        return false;
+    }
+
+    U32 dr6 = 0;
+    for (U32 i = 0; i < 4; ++i) {
+        U32 enabled = (dr7 >> (i * 2)) & 3;
+        U32 type = (dr7 >> (16 + i * 4)) & 3;
+        if (!enabled || type == 0 || type == 2) {
+            continue;
+        }
+        if (write ? (type != 1 && type != 3) : (type != 3)) {
+            continue;
+        }
+        U32 watchLen = debugBreakpointLength(dr7, i);
+        if (debugRangesOverlap(address, len, this->debugRegs[i], watchLen)) {
+            dr6 |= 1u << i;
+        }
+    }
+    if (!dr6) {
+        return false;
+    }
+
+    this->cpu->pendingDebugTrapCode = 4;
+    this->cpu->pendingDebugTrapDr6 |= dr6;
+    return true;
+}
+
 bool KThread::isDebugTrapActive() const {
-    return this->cpu && ((this->cpu->flags & TF) || this->hasHardwareBreakpointAt(this->cpu->getEipAddress()));
+    return this->cpu && ((this->cpu->flags & TF) || this->cpu->pendingDebugTrapDr6 || this->hasHardwareBreakpointAt(this->cpu->getEipAddress()) || this->hasDataBreakpoint());
 }
 
 void KThread::setPtraceStop(U32 signal) {
@@ -1374,13 +1443,13 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
 // bit 3 - 0 = n/a, 1 = use of reserved bit detected
 // bit 4 - 0 = n/a, 1 = fault was an instruction fetch
 
-void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool throwException) {
+void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool throwException, bool instructionFetch) {
     if (this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
         this->process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
         this->process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
         this->process->sigActions[K_SIGSEGV].sigInfo[2] = 1; // SEGV_MAPERR
         this->process->sigActions[K_SIGSEGV].sigInfo[3] = address;
-        this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, (writeFault?2:0));
+        this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, (writeFault?2:0) | (instructionFetch?0x10:0));
         if (throwException) {
             throw 2;
         }
@@ -1390,19 +1459,27 @@ void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool thro
 }
 
 // motorhead demo installer, tomb raider 3 demo will trigger this
-void KThread::seg_access(U32 address, bool readFault, bool writeFault, bool throwException) {
+void KThread::seg_access(U32 address, bool readFault, bool writeFault, bool throwException, bool instructionFetch) {
     if (this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
 
         this->process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
         this->process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
         this->process->sigActions[K_SIGSEGV].sigInfo[2] = 2; // SEGV_ACCERR
         this->process->sigActions[K_SIGSEGV].sigInfo[3] = address;        
-        this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, 1 | (writeFault?2:0)); 
+        this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, 1 | (writeFault?2:0) | (instructionFetch?0x10:0)); 
         if (throwException) {
             throw 1;
         }
     } else {
         this->memory->logPageFault(this, address);
+    }
+}
+
+void KThread::seg_instruction_fetch(U32 address, bool throwException) {
+    if (this->memory->isPageMapped(address >> K_PAGE_SHIFT)) {
+        this->seg_access(address, false, false, throwException, true);
+    } else {
+        this->seg_mapper(address, false, false, throwException, true);
     }
 }
 

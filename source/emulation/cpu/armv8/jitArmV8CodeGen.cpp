@@ -338,6 +338,7 @@ public:
     void IfGreaterThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, U32 value) override;
     void IfNot(JitWidth regWidth, RegPtr reg) override;
     void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) override;    
+    void IfYieldNotSet() override;
     void JumpIfCondition(JitConditional condition, U32 address) override;
     void clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) override;
     void clearIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) override;
@@ -3265,6 +3266,11 @@ RegPtr JitArmV8CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
 void JitArmV8CodeGen::IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) {
     RegPtr tmp = readCPU(regWidth, sib, lsl, offset);
     IfNot(regWidth, tmp);
+}
+
+void JitArmV8CodeGen::IfYieldNotSet() {
+    RegPtr yieldReg = readYield();
+    IfNot(JitWidth::b8, yieldReg);
 }
 
 void JitArmV8CodeGen::clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) {
@@ -6841,6 +6847,24 @@ void JitArmV8CodeGen::direct_jump(JitConditional condition, U32 address) {
         opLabels.set(address, label);
         pendingLabels.set(address, label);
     }
+
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (address <= currentEip) {
+        Label taken = compiler.new_label();
+        Label done = compiler.new_label();
+
+        compiler.b(getCondCode(condition), taken);
+        compiler.b(done);
+        compiler.bind(taken);
+        IfYieldNotSet(); {
+            compiler.b(label);
+        } EndIf();
+        writeEip(address - cpu->seg[CS].address);
+        blockExit();
+        compiler.bind(done);
+        return;
+    }
+#endif
 
     compiler.b(getCondCode(condition), label);
 }

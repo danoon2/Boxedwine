@@ -15,6 +15,8 @@
 #include "testCPU.h"
 #include "testAsmJit.h"
 #include "ksignal.h"
+#include <chrono>
+#include <thread>
 
 #define cpu (testContext().cpu)
 #define memory (testContext().memory)
@@ -67,6 +69,13 @@ void initCode(asmjit::CodeHolder& code) {
     }
 }
 
+void pushGeneratedCode(const asmjit::CodeHolder& code) {
+    const asmjit::CodeBuffer& buffer = code.text_section()->buffer();
+    for (size_t i = 0; i < buffer.size(); ++i) {
+        pushCode8(buffer.data()[i]);
+    }
+}
+
 void emitByte(U8 value) {
     asmjit::CodeHolder code;
     initCode(code);
@@ -74,10 +83,7 @@ void emitByte(U8 value) {
     if (a.db(value) != asmjit::Error::kOk) {
         failed("asmjit push/pop byte emit failed");
     }
-    const asmjit::CodeBuffer& buffer = code.text_section()->buffer();
-    for (size_t i = 0; i < buffer.size(); ++i) {
-        pushCode8(buffer.data()[i]);
-    }
+    pushGeneratedCode(code);
 }
 
 void emitWord(U16 value) {
@@ -1062,6 +1068,225 @@ void runPopSsFromCodeSelectorRaisesProtectionFault() {
     action.reset();
 }
 
+void runInstructionFetchOnNonExecPageRaisesProtectionFault() {
+    U32 faultEip = TEST_HEAP_ADDRESS - TEST_CODE_ADDRESS;
+
+    newInstruction(0);
+    cpu->big = true;
+    memory->writeb(TEST_HEAP_ADDRESS, 0xc3);
+
+    KSigAction& action = testContext().process->sigActions[K_SIGSEGV];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS;
+    action.flags = 0;
+    cpu->eip.u32 = faultEip;
+
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGSEGV) {
+        failed("instruction fetch on non-exec page did not raise SIGSEGV");
+        action.reset();
+        return;
+    }
+    if (action.sigInfo[2] != 2) {
+        failed("instruction fetch on non-exec page SIGSEGV code");
+    }
+    if (action.sigInfo[3] != TEST_HEAP_ADDRESS) {
+        failed("instruction fetch on non-exec page SIGSEGV address");
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 14) {
+        failed("instruction fetch on non-exec page context trap number");
+    }
+    if (memory->readd(context + 0x48) != 0x11) {
+        failed("instruction fetch on non-exec page context error");
+    }
+    if (memory->readd(context + 0x4c) != faultEip) {
+        failed("instruction fetch on non-exec page context eip");
+    }
+
+    action.reset();
+}
+
+#undef cpu
+
+#ifdef BOXEDWINE_MULTI_THREADED
+constexpr U32 ASYNC_SIGNAL_STARTED = MEM_BASE + 0x100;
+constexpr U32 ASYNC_SIGNAL_STOP = MEM_BASE + 0x104;
+constexpr U32 ASYNC_SIGNAL_HANDLED = MEM_BASE + 0x108;
+constexpr U32 ASYNC_SIGNAL_DONE = MEM_BASE + 0x10c;
+constexpr U32 ASYNC_SIGNAL_LOOPING = MEM_BASE + 0x110;
+
+bool waitForMemoryDword(U32 offset, U32 expected, U32 timeoutMs) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    do {
+        if (memory->readd(TEST_HEAP_ADDRESS + offset) == expected) {
+            return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    } while (std::chrono::steady_clock::now() < deadline);
+    return memory->readd(TEST_HEAP_ADDRESS + offset) == expected;
+}
+
+void resetAsyncSignalMemory() {
+    memory->writed(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_STARTED, 0);
+    memory->writed(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_STOP, 0);
+    memory->writed(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_HANDLED, 0);
+    memory->writed(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_DONE, 0);
+    memory->writed(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_LOOPING, 0);
+}
+
+U32 emitAsyncSignalHandler() {
+    U32 handlerOffset = testContext().codeIp - TEST_CODE_ADDRESS;
+
+    asmjit::CodeHolder handler;
+    initCode(handler);
+    asmjit::x86::Assembler h(&handler);
+    asmjit::Error err = h.mov(asmjit::x86::eax, asmjit::Imm(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_HANDLED));
+    if (err == asmjit::Error::kOk) err = h.mov(asmjit::x86::dword_ptr(asmjit::x86::eax), asmjit::Imm(1));
+    if (err == asmjit::Error::kOk) err = h.mov(asmjit::x86::eax, asmjit::Imm(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_STOP));
+    if (err == asmjit::Error::kOk) err = h.mov(asmjit::x86::dword_ptr(asmjit::x86::eax), asmjit::Imm(1));
+    if (err == asmjit::Error::kOk) err = h.ret();
+    if (err != asmjit::Error::kOk) {
+        failed("asmjit async signal handler failed");
+    }
+    pushGeneratedCode(handler);
+
+    return handlerOffset;
+}
+
+U32 emitAsyncSignalBusyLoop() {
+    asmjit::CodeHolder code;
+    initCode(code);
+    asmjit::x86::Assembler a(&code);
+    asmjit::Label loop = a.new_label();
+
+    asmjit::Error err = a.mov(asmjit::x86::dword_ptr(ASYNC_SIGNAL_STARTED), asmjit::Imm(1));
+    if (err == asmjit::Error::kOk) err = a.bind(loop);
+    if (err == asmjit::Error::kOk) err = a.cmp(asmjit::x86::dword_ptr(ASYNC_SIGNAL_STOP), asmjit::Imm(0));
+    if (err == asmjit::Error::kOk) err = a.je(loop);
+    if (err == asmjit::Error::kOk) err = a.mov(asmjit::x86::dword_ptr(ASYNC_SIGNAL_DONE), asmjit::Imm(1));
+    if (err != asmjit::Error::kOk) {
+        failed("asmjit async signal loop failed");
+    }
+    pushGeneratedCode(code);
+    emitByte(0xcd);
+    emitByte(0x97);
+
+    return emitAsyncSignalHandler();
+}
+
+U32 emitAsyncSignalSplitBlockLoop() {
+    asmjit::CodeHolder code;
+    initCode(code);
+    asmjit::x86::Assembler a(&code);
+    asmjit::Label loop = a.new_label();
+
+    asmjit::Error err = a.mov(asmjit::x86::dword_ptr(ASYNC_SIGNAL_STARTED), asmjit::Imm(1));
+    if (err == asmjit::Error::kOk) err = a.jmp(loop);
+    if (err == asmjit::Error::kOk) err = a.bind(loop);
+    if (err == asmjit::Error::kOk) err = a.mov(asmjit::x86::dword_ptr(ASYNC_SIGNAL_LOOPING), asmjit::Imm(1));
+    if (err == asmjit::Error::kOk) err = a.cmp(asmjit::x86::dword_ptr(ASYNC_SIGNAL_STOP), asmjit::Imm(0));
+    if (err == asmjit::Error::kOk) err = a.je(loop);
+    if (err == asmjit::Error::kOk) err = a.mov(asmjit::x86::dword_ptr(ASYNC_SIGNAL_DONE), asmjit::Imm(1));
+    if (err != asmjit::Error::kOk) {
+        failed("asmjit async signal split-block loop failed");
+    }
+    pushGeneratedCode(code);
+    emitByte(0xcd);
+    emitByte(0x97);
+
+    return emitAsyncSignalHandler();
+}
+#endif
+
+void runPendingSignalHandledWhileUserLoopRuns() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    newInstruction(0);
+    resetAsyncSignalMemory();
+
+    U32 handlerOffset = emitAsyncSignalBusyLoop();
+    KSigAction& action = testContext().process->sigActions[K_SIGUSR1];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + handlerOffset;
+    action.flags = 0;
+
+    KThread* signaledThread = testContext().process->createThread();
+    signaledThread->cpu->clone(testContext().cpu);
+    signaledThread->cpu->nextOp = nullptr;
+    scheduleThread(signaledThread);
+
+    if (!waitForMemoryDword(ASYNC_SIGNAL_STARTED, 1, 1000)) {
+        memory->writed(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_STOP, 1);
+        joinThread(signaledThread);
+        KThread::setCurrentThread(testContext().thread);
+        action.reset();
+        failed("async signal loop did not start");
+        return;
+    }
+
+    signaledThread->signal(K_SIGUSR1, false);
+    bool handled = waitForMemoryDword(ASYNC_SIGNAL_HANDLED, 1, 1000);
+    memory->writed(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_STOP, 1);
+    joinThread(signaledThread);
+    KThread::setCurrentThread(testContext().thread);
+
+    if (!handled) {
+        failed("pending SIGUSR1 was not handled while user loop ran");
+    }
+    if (memory->readd(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_DONE) != 1) {
+        failed("async signal loop did not finish");
+    }
+
+    action.reset();
+#endif
+}
+
+void runPendingSignalHandledWhileSplitBlockLoopRuns() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    newInstruction(0);
+    resetAsyncSignalMemory();
+
+    U32 handlerOffset = emitAsyncSignalSplitBlockLoop();
+    KSigAction& action = testContext().process->sigActions[K_SIGUSR1];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + handlerOffset;
+    action.flags = 0;
+
+    KThread* signaledThread = testContext().process->createThread();
+    signaledThread->cpu->clone(testContext().cpu);
+    signaledThread->cpu->nextOp = nullptr;
+    scheduleThread(signaledThread);
+
+    if (!waitForMemoryDword(ASYNC_SIGNAL_LOOPING, 1, 1000)) {
+        memory->writed(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_STOP, 1);
+        joinThread(signaledThread);
+        KThread::setCurrentThread(testContext().thread);
+        action.reset();
+        failed("async signal split-block loop did not start");
+        return;
+    }
+
+    signaledThread->signal(K_SIGUSR1, false);
+    bool handled = waitForMemoryDword(ASYNC_SIGNAL_HANDLED, 1, 1000);
+    memory->writed(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_STOP, 1);
+    joinThread(signaledThread);
+    KThread::setCurrentThread(testContext().thread);
+
+    if (!handled) {
+        failed("pending SIGUSR1 was not handled while split-block loop ran");
+    }
+    if (memory->readd(TEST_HEAP_ADDRESS + ASYNC_SIGNAL_DONE) != 1) {
+        failed("async signal split-block loop did not finish");
+    }
+
+    action.reset();
+#endif
+}
+
+#define cpu (testContext().cpu)
+
 void clearDebugRegisters() {
     for (U32 i = 0; i < 8; ++i) {
         testContext().thread->debugRegs[i] = 0;
@@ -1440,6 +1665,82 @@ void runHardwareBreakpointTrap() {
     clearDebugRegisters();
 }
 
+void runHardwareWriteBreakpointTrap() {
+    constexpr U32 WRITE_OFFSET = 0x120;
+    constexpr U32 INSTRUCTION_LEN = 10;
+
+    newInstruction(0);
+    cpu->big = true;
+    clearDebugRegisters();
+    KSigAction& action = testContext().process->sigActions[K_SIGTRAP];
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + INSTRUCTION_LEN;
+    action.flags = 0;
+    testContext().thread->debugRegs[0] = TEST_HEAP_ADDRESS + WRITE_OFFSET;
+    testContext().thread->debugRegs[7] = 3 | (3 << 16) | (3 << 18);
+
+    emitByte(0xc7); // mov dword ptr [disp32], imm32
+    emitByte(0x05);
+    emitDword(WRITE_OFFSET);
+    emitDword(0xdeadbeef);
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGTRAP) {
+        failed("hardware write breakpoint did not raise SIGTRAP");
+        action.reset();
+        clearDebugRegisters();
+        return;
+    }
+    if (action.sigInfo[2] != 4) {
+        failed("hardware write breakpoint SIGTRAP code");
+    }
+    if (memory->readd(TEST_HEAP_ADDRESS + WRITE_OFFSET) != 0xdeadbeef) {
+        failed("hardware write breakpoint did not complete store");
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 1) {
+        failed("hardware write breakpoint context trap number");
+    }
+    if (memory->readd(context + 0x4c) != INSTRUCTION_LEN) {
+        failed("hardware write breakpoint context eip");
+    }
+    if ((testContext().thread->debugRegs[6] & 0xf) != 1) {
+        failed("hardware write breakpoint Dr6 B0");
+    }
+    if (testContext().thread->debugRegs[6] & 0x4000) {
+        failed("hardware write breakpoint Dr6 BS");
+    }
+
+    action.reset();
+    clearDebugRegisters();
+}
+
+void runHardwareWriteBreakpointIgnoresSyscallWrite() {
+    constexpr U32 WRITE_OFFSET = 0x124;
+
+    newInstruction(0);
+    cpu->big = true;
+    clearDebugRegisters();
+    KSigAction& action = testContext().process->sigActions[K_SIGTRAP];
+    action.reset();
+    testContext().thread->debugRegs[0] = TEST_HEAP_ADDRESS + WRITE_OFFSET;
+    testContext().thread->debugRegs[7] = 3 | (3 << 16) | (3 << 18);
+
+    testContext().thread->inSysCall++;
+    memory->writed(TEST_HEAP_ADDRESS + WRITE_OFFSET, 0xfeedface);
+    testContext().thread->inSysCall--;
+
+    if (action.sigInfo[0] == K_SIGTRAP) {
+        failed("hardware write breakpoint trapped during syscall write");
+    }
+    if (memory->readd(TEST_HEAP_ADDRESS + WRITE_OFFSET) != 0xfeedface) {
+        failed("hardware write breakpoint syscall write value");
+    }
+
+    action.reset();
+    clearDebugRegisters();
+}
+
 void runHardwareBreakpointIgnoresNonExecutableAddress() {
     newInstruction(0);
     cpu->big = true;
@@ -1598,6 +1899,18 @@ void testPopSsFromCodeSelectorRaisesProtectionFault() {
     runPopSsFromCodeSelectorRaisesProtectionFault();
 }
 
+void testInstructionFetchOnNonExecPageRaisesProtectionFault() {
+    runInstructionFetchOnNonExecPageRaisesProtectionFault();
+}
+
+void testPendingSignalHandledWhileUserLoopRuns() {
+    runPendingSignalHandledWhileUserLoopRuns();
+}
+
+void testPendingSignalHandledWhileSplitBlockLoopRuns() {
+    runPendingSignalHandledWhileSplitBlockLoopRuns();
+}
+
 void testSingleStepRaisesTrap() {
     runSingleStepTrap();
 }
@@ -1629,6 +1942,14 @@ void testX87FwaitRaisesPendingException() {
 
 void testHardwareBreakpointRaisesTrap() {
     runHardwareBreakpointTrap();
+}
+
+void testHardwareWriteBreakpointRaisesTrap() {
+    runHardwareWriteBreakpointTrap();
+}
+
+void testHardwareWriteBreakpointIgnoresSyscallWrite() {
+    runHardwareWriteBreakpointIgnoresSyscallWrite();
 }
 
 void testHardwareBreakpointIgnoresNonExecutableAddress() {

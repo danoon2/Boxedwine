@@ -44,6 +44,10 @@ public:
         return opEip < lastOpEip && opEip + op->len + op->imm <= lastOpEip && opEip + op->len + op->imm >= startingEip;
     }
 
+    RegPtr readYield() override {
+        return readCPU(JitWidth::b8, offsetof(CPU, yield));
+    }
+
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void compile(DecodedOp* op) override;
     void postCompile(DecodedOp* op) override;

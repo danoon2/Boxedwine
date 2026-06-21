@@ -856,6 +856,7 @@ void KMemory::writeq(U32 address, U64 value) {
         MMU& mmu = data->mmu[index];
         if (mmu.canWriteRam) {
             *(U64*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
+            queueDataBreakpointOnWrite(address, 8);
             return;
         }
     }
@@ -872,11 +873,16 @@ void KMemory::writew(U32 address, U16 value) {
         int index = address >> 12;
 #if !defined(UNALIGNED_MEMORY)
         MMU& mmu = data->mmu[index];
-        if (mmu.canWriteRam)
+        if (mmu.canWriteRam) {
             *(U16*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
-        else
+            queueDataBreakpointOnWrite(address, 2);
+        } else {
 #endif
             data->mmu[index].getPage()->writew(&data->mmu[index], address, value);
+            queueDataBreakpointOnWrite(address, 2);
+#if !defined(UNALIGNED_MEMORY)
+        }
+#endif
     } else {
         writeb(address, (U8)value);
         writeb(address + 1, (U8)(value >> 8));
@@ -891,6 +897,7 @@ void KMemory::writeb(U32 address, U8 value) {
     } else {
         data->mmu[index].getPage()->writeb(&data->mmu[index], address, value);
     }
+    queueDataBreakpointOnWrite(address, 1);
 }
 
 U8* KMemory::getRamPtr(U32 address, U32 len, bool write, bool futex) {

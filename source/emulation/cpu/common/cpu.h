@@ -223,6 +223,8 @@ public:
     U32 stackMask = 0;
     U32 fpuDirtyFlags = 0;
     bool debugTrapOnNextInstruction = false;
+    U32 pendingDebugTrapCode = 0;
+    U32 pendingDebugTrapDr6 = 0;
     DecodedOp*** opCache = nullptr;
 
     U64 fAbs = 0x7fffffffffffffffl;

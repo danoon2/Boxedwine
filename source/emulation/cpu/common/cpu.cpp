@@ -1000,6 +1000,8 @@ void CPU::setFlags(U32 flags, U32 mask) {
 bool CPU::startDebugInstruction() {
     if (!this->thread) {
         this->debugTrapOnNextInstruction = false;
+        this->pendingDebugTrapCode = 0;
+        this->pendingDebugTrapDr6 = 0;
         return false;
     }
     if (this->thread->debugTrapBeforeInstruction()) {
@@ -1014,7 +1016,22 @@ bool CPU::startDebugInstruction() {
 bool CPU::finishDebugInstruction() {
     if (!this->thread) {
         this->debugTrapOnNextInstruction = false;
+        this->pendingDebugTrapCode = 0;
+        this->pendingDebugTrapDr6 = 0;
         return false;
+    }
+    if (this->pendingDebugTrapDr6) {
+        U32 code = this->pendingDebugTrapCode ? this->pendingDebugTrapCode : 4;
+        U32 dr6 = this->pendingDebugTrapDr6;
+        if (this->debugTrapOnNextInstruction) {
+            dr6 |= 0x4000;
+        }
+        this->pendingDebugTrapCode = 0;
+        this->pendingDebugTrapDr6 = 0;
+        this->debugTrapOnNextInstruction = false;
+        this->thread->signalDebugTrap(code, dr6);
+        this->nextOp = this->getNextOp();
+        return true;
     }
     if (this->debugTrapOnNextInstruction) {
         this->debugTrapOnNextInstruction = false;
@@ -1306,7 +1323,7 @@ void CPU::runNextSingleOp() {
     try {
         op = getNextOp();
         if (!op) {
-            this->thread->seg_mapper(getEipAddress(), true, false, false);
+            this->thread->seg_instruction_fetch(getEipAddress(), false);
             this->nextOp = getNextOp();
         }
     } catch (...) {

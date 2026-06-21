@@ -386,13 +386,22 @@ void NormalCPU::run() {
         }
         nextOp = getNextOp();
         if (!nextOp) {
-            thread->seg_mapper(getEipAddress(), true, false, false);
+            thread->seg_instruction_fetch(getEipAddress(), false);
             nextOp = getNextOp();
             if (!nextOp) {
                 kpanic_fmt("Failed to get op for thread %d of process %d at address %x", thread->id, thread->process->id, getEipAddress());
             }
         }
     }
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (thread->pendingSignals) {
+        if (thread->runSignals()) {
+            this->yield = false;
+            nextOp = getNextOp();
+            return;
+        }
+    }
+#endif
 #ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
     normalDispatch(this, nextOp);
 #else

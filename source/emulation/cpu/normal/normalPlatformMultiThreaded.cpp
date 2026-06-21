@@ -33,7 +33,7 @@ static void platformThread(CPU* cpu) {
 
     cpu->nextOp = cpu->getNextOp();
     if (!cpu->nextOp) {
-        cpu->thread->seg_mapper(cpu->getEipAddress(), true, false, false);
+        cpu->thread->seg_instruction_fetch(cpu->getEipAddress(), false);
         cpu->nextOp = cpu->getNextOp();
         if (!cpu->nextOp) {
 			kpanic_fmt("Failed to get first op for thread %d of process %d at address %x", cpu->thread->id, process->id, cpu->getEipAddress());
@@ -49,7 +49,7 @@ static void platformThread(CPU* cpu) {
         }
         cpu->thread->waitForPtraceResume();
 #ifdef __TEST
-        if (cpu->nextOp->inst == TestEnd) {
+        if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
             return;
         }
         continue;

@@ -18,7 +18,23 @@
 
 void Jit::dynamic_jump(DecodedOp* op, JitConditional condition) {
     if (canJumpInBlock(op)) {
-        JumpIfCondition(condition, currentEip + op->len + op->imm);
+        U32 target = currentEip + op->len + op->imm;
+#ifdef BOXEDWINE_MULTI_THREADED
+        if (target <= currentEip) {
+            IfCondition(condition); {
+                RegPtr yieldReg = readYield();
+                IfNot(JitWidth::b8, yieldReg); {
+                    JumpInBlock(target);
+                } StartElse(); {
+                    writeEip(target - cpu->seg[CS].address);
+                    blockExit();
+                } EndIf();
+            } EndIf();
+        } else
+#endif
+        {
+            JumpIfCondition(condition, target);
+        }
     } else {
         IfCondition(condition); {
             blockNext1(currentEip + op->len + op->imm, op);

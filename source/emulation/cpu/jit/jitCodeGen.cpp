@@ -773,7 +773,13 @@ void JitCodeGen::blockNext1(U32 eip, DecodedOp* op) {
             RegPtr jit = getTmpReg();
             readHost(DYN_PTR, createMemPtr(nextOp, (U32)offsetof(DecodedOp, pfnJitCode)), jit, false);
             If(DYN_PTR, jit); {
+#ifdef BOXEDWINE_MULTI_THREADED
+                IfYieldNotSet(); {
+                    jmpHost(jit);
+                } EndIf();
+#else
                 jmpHost(jit);
+#endif
             } EndIf();
         } EndIf();
     }
@@ -801,7 +807,13 @@ void JitCodeGen::blockNext2(U32 eip, DecodedOp* op) {
             RegPtr jit = getTmpReg();
             readHost(DYN_PTR, createMemPtr(nextReg, (U32)offsetof(DecodedOp, pfnJitCode)), jit, false);
             If(DYN_PTR, jit); {
+#ifdef BOXEDWINE_MULTI_THREADED
+                IfYieldNotSet(); {
+                    jmpHost(jit);
+                } EndIf();
+#else
                 jmpHost(jit);
+#endif
             } EndIf();
         } EndIf();
     }    
@@ -865,7 +877,13 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
             readHost(DYN_PTR, createMemPtr(tmp, (U32)offsetof(DecodedOp, pfnJitCode)), tmp, false);
             // tmp contains pfnJitCode
             If(DYN_PTR, tmp); {
+#ifdef BOXEDWINE_MULTI_THREADED
+                IfYieldNotSet(); {
+                    jmpHost(tmp);
+                } EndIf();
+#else
                 jmpHost(tmp);
+#endif
             } EndIf();
         } EndIf();
     } EndIf();

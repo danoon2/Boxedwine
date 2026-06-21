@@ -76,8 +76,9 @@ public:
     bool readyForSignal(U32 signal);
     void cleanup();
 
-    void seg_mapper(U32 address, bool readFault, bool writeFault, bool throwException=true);
-    void seg_access(U32 address, bool readFault, bool writeFault, bool throwException=true);
+    void seg_mapper(U32 address, bool readFault, bool writeFault, bool throwException=true, bool instructionFetch=false);
+    void seg_access(U32 address, bool readFault, bool writeFault, bool throwException=true, bool instructionFetch=false);
+    void seg_instruction_fetch(U32 address, bool throwException=true);
     bool runSignals();
     void runSignal(U32 signal, U32 trapNo, U32 errorNo);
     void signalIllegalInstruction(int code);
@@ -85,6 +86,8 @@ public:
     void signalDebugTrap(U32 code, U32 dr6);
     bool debugTrapBeforeInstruction();
     bool hasHardwareBreakpointAt(U32 address) const;
+    bool hasDataBreakpoint() const;
+    bool queueDataBreakpointIfHit(U32 address, U32 len, bool write);
     bool isDebugTrapActive() const;
     void setPtraceStop(U32 signal);
     void resumeFromPtraceStop();

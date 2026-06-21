@@ -2645,6 +2645,13 @@ void ksyscall(CPU* cpu, U32 eipCount) {
             return;
         }
     }
+
+    struct SysCallScope {
+        KThread* thread;
+        SysCallScope(KThread* thread) : thread(thread) { this->thread->inSysCall++; }
+        ~SysCallScope() { this->thread->inSysCall--; }
+    } sysCallScope(cpu->thread);
+
     if (EAX>439) {
         result = -K_ENOSYS;
         kdebug("no syscall for %d", EAX);
