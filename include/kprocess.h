@@ -251,6 +251,8 @@ public:
     U32 exitCode = 0;
     U32 umaskValue = 0;
     bool terminated = false;
+    U32 ptraceTracerProcessId = 0;
+    U32 ptraceTraceeThreadId = 0;
     KMemory* memory = nullptr;
 
     BString currentDirectory;

@@ -83,7 +83,7 @@ void OPCALL normal_popEd_mem(CPU* cpu, DecodedOp* op){
 }
 void OPCALL normal_pushSeg16(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    cpu->push16(cpu->seg[op->reg].value);
+    cpu->push16(cpu->getSegValue(op->reg));
     NEXT();
 }
 void OPCALL normal_popSeg16(CPU* cpu, DecodedOp* op){
@@ -92,7 +92,7 @@ void OPCALL normal_popSeg16(CPU* cpu, DecodedOp* op){
 }
 void OPCALL normal_pushSeg32(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    cpu->push32(cpu->seg[op->reg].value);
+    cpu->push32(cpu->getSegValue(op->reg));
     NEXT();
 }
 void OPCALL normal_popSeg32(CPU* cpu, DecodedOp* op){

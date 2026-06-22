@@ -85,9 +85,29 @@ static void addDefaultEnvValue(std::vector<BString>& envValues, const char* valu
     }
 }
 
-static void addDefaultUtf8LocaleEnv(std::vector<BString>& envValues) {
+static void addDefaultUtf8LocaleEnv(std::vector<BString>& envValues, bool guestHasUtf8Locale) {
+    if (!guestHasUtf8Locale) {
+        return;
+    }
     addDefaultEnvValue(envValues, "LANG=en_US.UTF-8");
     addDefaultEnvValue(envValues, "LC_ALL=en_US.UTF-8");
+}
+
+static bool guestHasUtf8Locale() {
+    const char* localePaths[] = {
+        "/usr/lib/locale/locale-archive",
+        "/usr/lib/locale/en_US.UTF-8",
+        "/usr/lib/locale/en_US.utf8",
+        "/usr/lib/locale/C.UTF-8",
+        "/usr/lib/locale/C.utf8",
+    };
+
+    for (const char* path : localePaths) {
+        if (Fs::getNodeFromLocalPath(B(""), BString::copy(path), false)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 #ifdef __TEST
@@ -101,8 +121,15 @@ static bool hasExactEnvValue(const std::vector<BString>& envValues, const char* 
 }
 
 void testStartupArgsDefaultUtf8LocaleEnvironment() {
+    std::vector<BString> unsupportedEnvValues;
+    addDefaultUtf8LocaleEnv(unsupportedEnvValues, false);
+
+    if (unsupportedEnvValues.size() != 0) {
+        testFail("default UTF-8 locale env values were added without guest locale support");
+    }
+
     std::vector<BString> envValues;
-    addDefaultUtf8LocaleEnv(envValues);
+    addDefaultUtf8LocaleEnv(envValues, true);
 
     if (!hasExactEnvValue(envValues, "LANG=en_US.UTF-8")) {
         testFail("default LANG was not added");
@@ -114,7 +141,7 @@ void testStartupArgsDefaultUtf8LocaleEnvironment() {
     std::vector<BString> explicitEnvValues;
     explicitEnvValues.push_back(B("LANG=C"));
     explicitEnvValues.push_back(B("LC_ALL=C"));
-    addDefaultUtf8LocaleEnv(explicitEnvValues);
+    addDefaultUtf8LocaleEnv(explicitEnvValues, true);
 
     if (explicitEnvValues.size() != 2) {
         testFail("explicit locale env values were not preserved");
@@ -469,7 +496,7 @@ bool StartUpArgs::apply() {
     envValues.push_back("PWD="+this->workingDir);
     envValues.push_back(B("DISPLAY=:0"));
     envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
-    addDefaultUtf8LocaleEnv(envValues);
+    addDefaultUtf8LocaleEnv(envValues, guestHasUtf8Locale());
 
     if (!this->ddrawOverridePath.isEmpty()) {
         envValues.push_back(B("WINEDLLOVERRIDES=ddraw=n,b"));

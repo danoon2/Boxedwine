@@ -33,7 +33,7 @@ static void platformThread(CPU* cpu) {
 
     cpu->nextOp = cpu->getNextOp();
     if (!cpu->nextOp) {
-        cpu->thread->seg_instruction_fetch(cpu->getEipAddress(), false);
+        cpu->thread->seg_instructionFetch(cpu->getEipAddress(), false);
         cpu->nextOp = cpu->getNextOp();
         if (!cpu->nextOp) {
 			kpanic_fmt("Failed to get first op for thread %d of process %d at address %x", cpu->thread->id, process->id, cpu->getEipAddress());
@@ -49,7 +49,7 @@ static void platformThread(CPU* cpu) {
         }
         cpu->thread->waitForPtraceResume();
 #ifdef __TEST
-        if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
+        if (cpu->nextOp->inst == TestEnd) {
             return;
         }
         continue;
@@ -108,14 +108,16 @@ void scheduleThread(KThread* thread) {
 void terminateOtherThread(const KProcessPtr& process, U32 threadId) {
     KThread* thread = process->getThreadById(threadId);
     if (thread) {
-        thread->terminating = true;
+        BOXEDWINE_CONDITION cond;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
+            thread->terminating = true;
+            cond = thread->waitingCond;
+        }
 
-        const std::shared_ptr<BoxedWineCondition> cond = thread->waitingCond;
-
-        // wake up the thread if it is waiting
         if (cond) {
             cond->lock();
-            cond->signal();
+            cond->signalAll();
             cond->unlock();
         }
     }

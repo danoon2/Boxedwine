@@ -157,13 +157,13 @@ void Jit::dynamic_popEd_mem(DecodedOp* op) {
     }
 }
 void Jit::dynamic_pushSeg16(DecodedOp* op) {
-    push16(getReadOnlySegValue(op->reg));
+    emulateSingleOp();
 }
 void Jit::dynamic_popSeg16(DecodedOp* op) {
     emulateSingleOp();
 }
 void Jit::dynamic_pushSeg32(DecodedOp* op) {
-    push32(getReadOnlySegValue(op->reg));
+    emulateSingleOp();
 }
 void Jit::dynamic_popSeg32(DecodedOp* op) {
     emulateSingleOp();

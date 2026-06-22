@@ -117,7 +117,7 @@ static U32 syscall_open(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG1);
     SYS_LOG1(SYSCALL_FILE, cpu, "open: name=%s flags=%x mode=%o", name.c_str(), ARG2, ARG3);
     U32 result = cpu->thread->process->open(name, ARG2, ARG3);
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     if (result>1000) {
         printf("open: name=%s flags=%x result=%X\n", name.c_str(), ARG2, result);
     }
@@ -293,6 +293,9 @@ static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
         switch (ARG1) {
         case K_PTRACE_ATTACH:
             target->ptraceAttached = true;
+            target->ptraceTracerProcessId = cpu->thread->process->id;
+            target->process->ptraceTracerProcessId = cpu->thread->process->id;
+            target->process->ptraceTraceeThreadId = target->id;
             target->setPtraceStop(K_SIGSTOP);
             break;
         case K_PTRACE_CONT:
@@ -306,6 +309,11 @@ static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
         case K_PTRACE_DETACH:
             target->ptraceAttached = false;
             target->ptraceSingleStep = false;
+            target->ptraceTracerProcessId = 0;
+            if (target->process->ptraceTraceeThreadId == target->id) {
+                target->process->ptraceTracerProcessId = 0;
+                target->process->ptraceTraceeThreadId = 0;
+            }
             if (target->cpu) {
                 target->cpu->fillFlags();
                 target->cpu->flags &= ~TF;
@@ -323,6 +331,7 @@ static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
         case K_PTRACE_KILL:
             target->ptraceAttached = false;
             target->ptraceSingleStep = false;
+            target->ptraceTracerProcessId = 0;
             target->resumeFromPtraceStop();
             result = target->signal(K_SIGKILL, false);
             break;
@@ -349,7 +358,12 @@ static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
             if (!target->memory || !target->memory->canRead(ARG3, 4)) {
                 result = -K_EIO;
             } else {
-                result = writePtracePeekResult(cpu, target->memory->readd(ARG3));
+                U32 value;
+                {
+                    ChangeThread remoteThread(target);
+                    value = target->memory->readd(ARG3);
+                }
+                result = writePtracePeekResult(cpu, value);
             }
             break;
         case K_PTRACE_POKETEXT:
@@ -357,6 +371,7 @@ static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
             if (!target->memory || !target->memory->canWrite(ARG3, 4)) {
                 result = -K_EIO;
             } else {
+                ChangeThread remoteThread(target);
                 target->memory->writed(ARG3, ARG4);
             }
             break;
@@ -454,7 +469,10 @@ static U32 syscall_process_vm_readv(CPU* cpu, U32 eipCount) {
             return -K_EFAULT;
         }
 
-        remoteProcess->memory->memcpy(buffer, remoteBase, todo);
+        {
+            ChangeThread remoteThread(remoteProcess->getThread());
+            remoteProcess->memory->memcpy(buffer, remoteBase, todo);
+        }
         memory->memcpy(localBase, buffer, todo);
         localBase += todo;
         localLen -= todo;
@@ -539,7 +557,10 @@ static U32 syscall_process_vm_writev(CPU* cpu, U32 eipCount) {
         }
 
         memory->memcpy(buffer, localBase, todo);
-        remoteProcess->memory->memcpy(remoteBase, buffer, todo);
+        {
+            ChangeThread remoteThread(remoteProcess->getThread());
+            remoteProcess->memory->memcpy(remoteBase, buffer, todo);
+        }
         localBase += todo;
         localLen -= todo;
         remoteBase += todo;
@@ -717,8 +738,8 @@ static U32 syscall_getpgrp(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_setsid(CPU* cpu, U32 eipCount) {	
-#ifdef _DEBUG
+static U32 syscall_setsid(CPU* cpu, U32 eipCount) {
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     klog("setsid not implemented");
 #endif
     U32 result = 0;
@@ -726,8 +747,8 @@ static U32 syscall_setsid(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_setrlimit(CPU* cpu, U32 eipCount) {	
-#ifdef _DEBUG
+static U32 syscall_setrlimit(CPU* cpu, U32 eipCount) {
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     klog("setrlimit not implemented");
 #endif
     U32 result = 0;
@@ -801,8 +822,8 @@ static U32 syscall_fchmod(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_setpriority(CPU* cpu, U32 eipCount) {	    
-#ifdef _DEBUG
+static U32 syscall_setpriority(CPU* cpu, U32 eipCount) {
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     klog("setpriority not implemented");
 #endif
     U32 result = 0;
@@ -819,8 +840,8 @@ static U32 syscall_statfs(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_ioperm(CPU* cpu, U32 eipCount) {	    
-#ifdef _DEBUG
+static U32 syscall_ioperm(CPU* cpu, U32 eipCount) {
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     klog_fmt("ioperm not implemented: from=0x%X len=%d on=%d", ARG1, ARG2, ARG3);
 #endif
     U32 result = 0;
@@ -924,7 +945,7 @@ static U32 syscall_iopl(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_wait4(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_PROCESS, cpu, "wait4: pid=%d status=%d options=%x rusage=%X", ARG1, ARG2, ARG3, ARG4);
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
         if (ARG4) {
             kwarn("__NR_wait4 rusuage not implemented");
         }
@@ -1099,8 +1120,8 @@ static U32 syscall_pselect6_time64(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_flock(CPU* cpu, U32 eipCount) {    
-#ifdef _DEBUG
+static U32 syscall_flock(CPU* cpu, U32 eipCount) {
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     klog("flock not implemented");
 #endif
     U32 result = 0;
@@ -1852,7 +1873,7 @@ static U32 syscall_openat(CPU* cpu, U32 eipCount) {
     }
 #endif
     U32 result = cpu->thread->process->openat(ARG1, name, ARG3, ARG4);
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     if (result>1000 && !name.contains("font") && !name.startsWith("/sys")) {
         printf("openat: dirfd=%d name=%s flags=%x result=%x\n", (int)ARG1, name.c_str(), ARG3, result);
     }
@@ -2645,13 +2666,6 @@ void ksyscall(CPU* cpu, U32 eipCount) {
             return;
         }
     }
-
-    struct SysCallScope {
-        KThread* thread;
-        SysCallScope(KThread* thread) : thread(thread) { this->thread->inSysCall++; }
-        ~SysCallScope() { this->thread->inSysCall--; }
-    } sysCallScope(cpu->thread);
-
     if (EAX>439) {
         result = -K_ENOSYS;
         kdebug("no syscall for %d", EAX);

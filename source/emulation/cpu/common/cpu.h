@@ -155,6 +155,10 @@ public:
 };
 
 #define LDT_ENTRIES 8192
+#define BOXEDWINE_INTERNAL_USER_CODE_SELECTOR 0x0F
+#define BOXEDWINE_INTERNAL_USER_DATA_SELECTOR 0x17
+#define BOXEDWINE_VISIBLE_USER_CODE_SELECTOR 0x0B
+#define BOXEDWINE_VISIBLE_USER_DATA_SELECTOR 0x13
 
 struct user_desc {
     U32  entry_number;
@@ -223,6 +227,7 @@ public:
     U32 stackMask = 0;
     U32 fpuDirtyFlags = 0;
     bool debugTrapOnNextInstruction = false;
+    bool pendingDebugTrap = false;
     U32 pendingDebugTrapCode = 0;
     U32 pendingDebugTrapDr6 = 0;
     DecodedOp*** opCache = nullptr;
@@ -307,9 +312,12 @@ public:
 
     DecodedOp* nextOp = nullptr;
 
-    virtual void run()=0;    
+    virtual void run()=0;
     virtual void restart() {}
     virtual void setSeg(U32 index, U32 address, U32 value);
+    U32 getSegValue(U32 index) const;
+    static U32 makeSegmentVisible(U32 value);
+    static U32 makeSegmentInternal(U32 value);
 
     bool isBig() {return this->big!=0;}
     virtual void setIsBig(U32 value);

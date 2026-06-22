@@ -119,6 +119,7 @@ public:
     static KProcessPtr getProcess(U32 id);
     static void eraseFileCache(BString name);
     static std::shared_ptr<MappedFileCache> getFileCache(BString name);
+    static std::shared_ptr<MappedFileCache> getOrCreateFileCache(BString name, const std::shared_ptr<KFile>& file, U32 minPageCount);
     static void setFileCache(BString name, const std::shared_ptr<MappedFileCache>& fileCache);
     static void eraseProcess(U32 id);
     static std::shared_ptr<FsNode> addProcess(U32 id, const KProcessPtr& process);
@@ -172,6 +173,9 @@ public:
 private:
     static void initDisplayModes();
     static void internalEraseProcess(U32 id);
+    static KThread* getThreadByIdNoProcessLock(U32 threadId);
+    static KThread* findSelectedPtraceStop(KThread* waiter, S32 pid, U32 parentGroupId, bool* hasPtraceTracee);
+    static KProcessPtr findSelectedPtraceTermination(KThread* waiter, S32 pid, U32 parentGroupId, bool* hasPtraceTracee);
 
     static U32 nextThreadId;
     static bool adjustClock;

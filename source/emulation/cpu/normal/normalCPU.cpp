@@ -26,23 +26,28 @@
 #include "../armv8/armv8CPU.h"
 #include "../../../util/ptrpool.h"
 
-#define DEBUG_OP_ACTIVE(cpu) ((cpu)->debugTrapOnNextInstruction || ((cpu)->flags & TF) || ((cpu)->thread && ((cpu)->thread->debugRegs[7] & 0xff)))
+#define DEBUG_OP_ACTIVE(cpu) ((cpu)->debugTrapOnNextInstruction || (cpu)->pendingDebugTrap || ((cpu)->flags & TF) || ((cpu)->thread && !(cpu)->thread->inSignal && ((cpu)->thread->debugRegs[7] & 0xff)))
 #define START_DEBUG_OP(cpu) do { if (DEBUG_OP_ACTIVE(cpu) && (cpu)->startDebugInstruction()) return; } while (0)
 #define FINISH_DEBUG_OP(cpu) do { if (DEBUG_OP_ACTIVE(cpu) && (cpu)->finishDebugInstruction()) return; } while (0)
+#ifdef BOXEDWINE_MULTI_THREADED
+#define START_SIGNAL_OP(cpu) do { if ((cpu)->thread && (cpu)->thread->pendingSignals && (cpu)->thread->runSignals()) { (cpu)->nextOp = (cpu)->getNextOp(); return; } } while (0)
+#else
+#define START_SIGNAL_OP(cpu) do {} while (0)
+#endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
 #ifdef _DEBUG
 //#define START_OP(cpu, op) op->log(cpu)
-#define START_OP(cpu, op) START_DEBUG_OP(cpu)
+#define START_OP(cpu, op) do { START_DEBUG_OP(cpu); START_SIGNAL_OP(cpu); } while (0)
 #else
-#define START_OP(cpu, op) START_DEBUG_OP(cpu)
+#define START_OP(cpu, op) do { START_DEBUG_OP(cpu); START_SIGNAL_OP(cpu); } while (0)
 #endif
 #else
 #ifdef _DEBUG
-#define START_OP(cpu, op) do { cpu->blockInstructionCount++; START_DEBUG_OP(cpu); op->log(cpu); } while (0)
+#define START_OP(cpu, op) do { cpu->blockInstructionCount++; START_DEBUG_OP(cpu); START_SIGNAL_OP(cpu); op->log(cpu); } while (0)
  //#define START_OP(cpu, op)
 #else
-#define START_OP(cpu, op) do { cpu->blockInstructionCount++; START_DEBUG_OP(cpu); } while (0)
+#define START_OP(cpu, op) do { cpu->blockInstructionCount++; START_DEBUG_OP(cpu); START_SIGNAL_OP(cpu); } while (0)
 #endif
 #endif
 
@@ -386,7 +391,7 @@ void NormalCPU::run() {
         }
         nextOp = getNextOp();
         if (!nextOp) {
-            thread->seg_instruction_fetch(getEipAddress(), false);
+            thread->seg_instructionFetch(getEipAddress(), false);
             nextOp = getNextOp();
             if (!nextOp) {
                 kpanic_fmt("Failed to get op for thread %d of process %d at address %x", thread->id, thread->process->id, getEipAddress());
@@ -394,12 +399,9 @@ void NormalCPU::run() {
         }
     }
 #ifdef BOXEDWINE_MULTI_THREADED
-    if (thread->pendingSignals) {
-        if (thread->runSignals()) {
-            this->yield = false;
-            nextOp = getNextOp();
-            return;
-        }
+    if (thread->pendingSignals && thread->runSignals()) {
+        nextOp = getNextOp();
+        return;
     }
 #endif
 #ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH

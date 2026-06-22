@@ -62,13 +62,13 @@ void Jit::dynamic_move32(DecodedOp* op) {
     write(JitWidth::b32, createMemPtr(calculateEaa(op)), op->imm);
 }
 void Jit::dynamic_movr16s16(DecodedOp* op) {
-    mov(JitWidth::b16, getReg(op->reg), getReadOnlySegValue(op->rm));
+    emulateSingleOp();
 }
 void Jit::dynamic_movr32s16(DecodedOp* op) {
-    mov(JitWidth::b32, getReg(op->reg, -1, false), getReadOnlySegValue(op->rm));
+    emulateSingleOp();
 }
 void Jit::dynamic_move16s16(DecodedOp* op) {
-    write(JitWidth::b16, calculateEaa(op), getReadOnlySegValue(op->reg));
+    emulateSingleOp();
 }
 void Jit::dynamic_movs16e16(DecodedOp* op) {
     emulateSingleOp();

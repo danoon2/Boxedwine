@@ -837,14 +837,16 @@ void KProcess::signalProcess(U32 signal) {
     }
 
 #ifdef BOXEDWINE_MULTI_THREADED
-    // give each thread a chance to run a signal, some or all of them might have the signal masked off.  
+    // give each thread a chance to run a signal, some or all of them might have the signal masked off.
     // In that case when the user unmasks the signal with sigprocmask it will be caught then
     iterateThreads([](KThread* thread) {
-        if (thread->waitingCond) {
+        bool waiting = false;
+        {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
-            if (thread->waitingCond) {
-                thread->runSignals();
-            }
+            waiting = thread->waitingCond != nullptr;
+        }
+        if (waiting) {
+            thread->runSignals();
         }
         return true;
     });
@@ -2835,8 +2837,17 @@ void KProcess::printStack() {
         KThread* thread = t.value;
         CPU* cpu=thread->cpu;
         
-        if (thread->waitingCond) {            
-            klog_fmt("  thread %X WAITING %s", thread->id, thread->waitingCond->name.c_str());
+        BOXEDWINE_CONDITION waitingCond;
+#ifdef BOXEDWINE_MULTI_THREADED
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
+            waitingCond = thread->waitingCond;
+        }
+#else
+        waitingCond = thread->waitingCond;
+#endif
+        if (waitingCond) {
+            klog_fmt("  thread %X WAITING %s", thread->id, waitingCond->name.c_str());
         } else {
             klog_fmt("  thread %X RUNNING", thread->id);
             BString name = this->getModuleName(cpu->seg[CS].address+cpu->eip.u32);
@@ -2867,7 +2878,7 @@ U32 KProcess::signal(U32 signal) {
             for (auto& t : this->threads) {
                 KThread* thread = t.value;
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->sigWaitCond);
-                if (thread->sigWaitMask & signal) {
+                if (thread->sigWaitMask & (1ULL << (signal - 1))) {
                     thread->foundWaitSignal = signal;
                     BOXEDWINE_CONDITION_SIGNAL(thread->sigWaitCond);
                     return 0;
@@ -2902,7 +2913,14 @@ void KProcess::signalFd(KThread* thread, U32 signal) {
         KFileDescriptorPtr fd = n.value;
         if (fd->kobject->type == KTYPE_SIGNAL) {
             std::shared_ptr<KSignal> p = std::dynamic_pointer_cast<KSignal>(fd->kobject);
-            if ((p->mask & (1ULL << (signal - 1))) && (!thread || thread->waitingCond == p->lockCond)) {
+            BOXEDWINE_CONDITION waitingCond;
+            if (thread) {
+#ifdef BOXEDWINE_MULTI_THREADED
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
+#endif
+                waitingCond = thread->waitingCond;
+            }
+            if ((p->mask & (1ULL << (signal - 1))) && (!thread || waitingCond == p->lockCond)) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(p->lockCond);
                 p->sigAction = this->sigActions[signal];
                 p->signalingPid = this->id;

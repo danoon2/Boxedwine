@@ -9,6 +9,8 @@
 
 #include "boxedwine.h"
 #include "kinotify.h"
+#include "kpoll.h"
+#include "ksignal.h"
 #include "../../io/fsfilenode.h"
 
 #ifdef __TEST
@@ -61,6 +63,13 @@ void cleanupRoot(const BString& root) {
     KSystem::procNode = nullptr;
     Fs::shutDown();
     Fs::deleteNativeDirAndAllFilesInDir(root);
+}
+
+KProcessPtr createProcessWithMemory(KThread** thread) {
+    KProcessPtr process = KProcess::create();
+    process->memory = KMemory::create(process.get());
+    *thread = process->createThread();
+    return process;
 }
 
 std::shared_ptr<FsNode> addRegularFile(const BString& path) {
@@ -195,6 +204,183 @@ void testHardLinksShareIdentityDataAndXattrs() {
     expectZero("get source xattr after unlink", Fs::getXAttr(nodeA, B("user.WINEREPARSE"), value));
     expectBytes("source xattr after unlink", value, reparseData, sizeof(reparseData));
 
+    cleanupRoot(root);
+}
+
+void testSharedFileMappingGrowthKeepsPagesShared() {
+    TestContext& context = testContext();
+    constexpr U32 INITIAL_SIZE = 0x10000;
+    constexpr U32 GROWN_SIZE = 0x200000;
+    constexpr U32 GROWN_OFFSET = 0x140000;
+    constexpr U32 CACHE_PRIME_ADDRESS = 0x02000000;
+    constexpr U32 WRITER_ADDRESS = 0x02100000;
+    constexpr U32 READER_ADDRESS = 0x02200000;
+    constexpr U32 EXPECTED = 0x13579bdf;
+    const BString path = B("/tmp/shared-map-growth");
+    const BString root = B("tmp/test-shared-map-growth-root");
+
+    cleanupRoot(root);
+    Fs::initFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp"));
+    Fs::makeLocalDirs(B("/proc"));
+    KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
+    KSystem::eraseFileCache(path);
+
+    KThread* writerThread = nullptr;
+    KThread* readerThread = nullptr;
+    KProcessPtr writer = createProcessWithMemory(&writerThread);
+    KProcessPtr reader = createProcessWithMemory(&readerThread);
+    U32 actual = 0;
+
+    U32 writerFd = writer->open(path, K_O_CREAT | K_O_TRUNC | K_O_RDWR, 0666);
+    U32 readerFd = reader->open(path, K_O_RDWR, 0666);
+    if ((S32)writerFd < 0 || (S32)readerFd < 0) {
+        testFail("shared-map-growth open failed writer=%d reader=%d", (S32)writerFd, (S32)readerFd);
+        goto done;
+    }
+
+    if (writer->ftruncate64(writerFd, INITIAL_SIZE)) {
+        testFail("shared-map-growth initial truncate failed");
+        goto done;
+    }
+
+    KThread::setCurrentThread(writerThread);
+    if (writer->memory->mmap(writerThread, CACHE_PRIME_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_SHARED | K_MAP_FIXED, writerFd, 0) != CACHE_PRIME_ADDRESS) {
+        testFail("shared-map-growth initial map failed");
+        goto done;
+    }
+
+    if (writer->ftruncate64(writerFd, GROWN_SIZE)) {
+        testFail("shared-map-growth grow truncate failed");
+        goto done;
+    }
+
+    if (writer->memory->mmap(writerThread, WRITER_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_SHARED | K_MAP_FIXED, writerFd, GROWN_OFFSET) != WRITER_ADDRESS) {
+        testFail("shared-map-growth writer map failed");
+        goto done;
+    }
+
+    KThread::setCurrentThread(readerThread);
+    if (reader->memory->mmap(readerThread, READER_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_SHARED | K_MAP_FIXED, readerFd, GROWN_OFFSET) != READER_ADDRESS) {
+        testFail("shared-map-growth reader map failed");
+        goto done;
+    }
+
+    KThread::setCurrentThread(writerThread);
+    writer->memory->writed(WRITER_ADDRESS, EXPECTED);
+
+    KThread::setCurrentThread(readerThread);
+    actual = reader->memory->readd(READER_ADDRESS);
+    if (actual != EXPECTED) {
+        testFail("shared-map-growth reader expected 0x%X, got 0x%X", EXPECTED, actual);
+    }
+
+done:
+    KThread::setCurrentThread(context.thread);
+    if (writer) {
+        if ((S32)writerFd >= 0) writer->close(writerFd);
+        KSystem::eraseProcess(writer->id);
+        writer = nullptr;
+    }
+    if (reader) {
+        if ((S32)readerFd >= 0) reader->close(readerFd);
+        KSystem::eraseProcess(reader->id);
+        reader = nullptr;
+    }
+    KSystem::eraseFileCache(path);
+    cleanupRoot(root);
+}
+
+void testProcessVmReadvUsesRemoteFileMappingContext() {
+    TestContext& context = testContext();
+    constexpr U32 TARGET_ADDRESS = 0x03000000;
+    constexpr U32 CALLER_IOV_PAGE = 0x03100000;
+    constexpr U32 LOCAL_IOV = CALLER_IOV_PAGE;
+    constexpr U32 REMOTE_IOV = CALLER_IOV_PAGE + 0x20;
+    constexpr U32 LOCAL_BUFFER = CALLER_IOV_PAGE + 0x40;
+    constexpr U32 K_SYSCALL_PROCESS_VM_READV = 347;
+    constexpr U32 EXPECTED = 0x12345678;
+    const U8 fileBytes[] = { 0x78, 0x56, 0x34, 0x12 };
+    const BString path = B("/tmp/process-vm-map");
+    const BString root = B("tmp/test-process-vm-map-root");
+
+    cleanupRoot(root);
+    Fs::initFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp"));
+    Fs::makeLocalDirs(B("/proc"));
+    KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
+    KSystem::eraseFileCache(path);
+
+    std::shared_ptr<FsNode> node = addRegularFile(path);
+    if (!node) {
+        testFail("process-vm map source node was not created");
+        cleanupRoot(root);
+        return;
+    }
+    FsOpenNode* openNode = node->open(K_O_CREAT | K_O_RDWR);
+    if (!openNode) {
+        testFail("process-vm map source file could not be opened");
+        cleanupRoot(root);
+        return;
+    }
+    expectU32("write process-vm source", openNode->writeNative((U8*)fileBytes, sizeof(fileBytes)), sizeof(fileBytes));
+    delete openNode;
+
+    KThread* targetThread = nullptr;
+    KThread* callerThread = nullptr;
+    KProcessPtr target = createProcessWithMemory(&targetThread);
+    KProcessPtr caller = createProcessWithMemory(&callerThread);
+    U32 targetFd = target->open(path, K_O_RDWR, 0666);
+    if ((S32)targetFd < 0) {
+        testFail("process-vm map open failed target=%d", (S32)targetFd);
+        goto done;
+    }
+
+    KThread::setCurrentThread(targetThread);
+    if (target->memory->mmap(targetThread, TARGET_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_SHARED | K_MAP_FIXED, targetFd, 0) != TARGET_ADDRESS) {
+        testFail("process-vm target map failed");
+        goto done;
+    }
+
+    KThread::setCurrentThread(callerThread);
+    if (caller->memory->mmap(callerThread, CALLER_IOV_PAGE, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0) != CALLER_IOV_PAGE) {
+        testFail("process-vm caller iov map failed");
+        goto done;
+    }
+
+    caller->memory->writed(LOCAL_IOV, LOCAL_BUFFER);
+    caller->memory->writed(LOCAL_IOV + 4, sizeof(fileBytes));
+    caller->memory->writed(REMOTE_IOV, TARGET_ADDRESS);
+    caller->memory->writed(REMOTE_IOV + 4, sizeof(fileBytes));
+    callerThread->cpu->reg[0].u32 = K_SYSCALL_PROCESS_VM_READV;
+    callerThread->cpu->reg[3].u32 = target->id;
+    callerThread->cpu->reg[1].u32 = LOCAL_IOV;
+    callerThread->cpu->reg[2].u32 = 1;
+    callerThread->cpu->reg[6].u32 = REMOTE_IOV;
+    callerThread->cpu->reg[7].u32 = 1;
+    callerThread->cpu->reg[5].u32 = 0;
+    callerThread->cpu->eip.u32 = 0;
+    ksyscall(callerThread->cpu, 2);
+
+    expectU32("process-vm readv copied lazy file mapping", callerThread->cpu->reg[0].u32, sizeof(fileBytes));
+    expectU32("process-vm readv copied value", caller->memory->readd(LOCAL_BUFFER), EXPECTED);
+
+done:
+    KThread::setCurrentThread(context.thread);
+    if (target) {
+        if ((S32)targetFd >= 0) target->close(targetFd);
+        KSystem::eraseProcess(target->id);
+        target = nullptr;
+    }
+    if (caller) {
+        KSystem::eraseProcess(caller->id);
+        caller = nullptr;
+    }
     cleanupRoot(root);
 }
 
@@ -606,6 +792,122 @@ void testInotifyFollowsWatchedSymlinkTarget() {
     if (strcmp(memory->readString(BUFFER + 16).c_str(), "child")) {
         testFail("symlink event name expected child, got %s", memory->readString(BUFFER + 16).c_str());
     }
+
+    process->close(fd);
+    process->removeThread(thread);
+    delete thread;
+    KSystem::eraseProcess(process->id);
+    process->memory = nullptr;
+    cleanupRoot(root);
+}
+
+void testInotifyPollReportsChildDirectoryDelete() {
+    TestContext& context = testContext();
+    KMemory* memory = context.memory;
+
+    BString root = B("tmp/test-inotify-directory-delete-root");
+    cleanupRoot(root);
+    Fs::initFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp/watch"));
+    Fs::makeLocalDirs(B("/proc"));
+    KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
+
+    KProcessPtr process = KProcess::create();
+    process->memory = memory;
+    KThread* thread = process->createThread();
+    ChangeThread current(thread);
+
+    U32 fd = KInotifyObject::create(thread, 0);
+    if ((S32)fd < 0) {
+        testFail("inotify fd was not created, got %d (0x%X)", (S32)fd, fd);
+        cleanupRoot(root);
+        return;
+    }
+
+    U32 wd = KInotifyObject::addWatch(thread, fd, B("/tmp/watch"), K_IN_DELETE);
+    if ((S32)wd < 0) {
+        testFail("inotify watch was not added, got %d (0x%X)", (S32)wd, wd);
+        cleanupRoot(root);
+        return;
+    }
+
+    KPollData pollData = {};
+    pollData.fd = fd;
+    pollData.events = K_POLLIN;
+    expectU32("poll before watched rmdir", internal_poll(thread, &pollData, 1, 0), 0);
+    expectU32("poll before watched rmdir revents", pollData.revents, 0);
+
+    expectZero("mkdir watched child before delete", process->mkdir(B("/tmp/watch/child")));
+    expectZero("rmdir watched child", process->rmdir(B("/tmp/watch/child")));
+
+    pollData.revents = 0;
+    expectU32("poll after watched rmdir", internal_poll(thread, &pollData, 1, 0), 1);
+    expectU32("poll after watched rmdir revents", pollData.revents, K_POLLIN);
+
+    U32 read = process->read(thread, fd, BUFFER, 64);
+    expectU32("read inotify delete event length", read, 24);
+    expectU32("delete event watch descriptor", memory->readd(BUFFER), wd);
+    expectU32("delete event mask", memory->readd(BUFFER + 4), K_IN_DELETE | K_IN_ISDIR);
+    expectU32("delete event cookie", memory->readd(BUFFER + 8), 0);
+    expectU32("delete event name length", memory->readd(BUFFER + 12), 8);
+    if (strcmp(memory->readString(BUFFER + 16).c_str(), "child")) {
+        testFail("delete event name expected child, got %s", memory->readString(BUFFER + 16).c_str());
+    }
+
+    process->close(fd);
+    process->removeThread(thread);
+    delete thread;
+    KSystem::eraseProcess(process->id);
+    process->memory = nullptr;
+    cleanupRoot(root);
+}
+
+void testInotifyAsyncSignalsSigioOnDelete() {
+    TestContext& context = testContext();
+    KMemory* memory = context.memory;
+
+    BString root = B("tmp/test-inotify-async-sigio-root");
+    cleanupRoot(root);
+    Fs::initFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp/watch"));
+    Fs::makeLocalDirs(B("/proc"));
+    KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
+
+    KProcessPtr process = KProcess::create();
+    process->memory = memory;
+    KThread* thread = process->createThread();
+    ChangeThread current(thread);
+
+    U32 fd = KInotifyObject::create(thread, 0);
+    if ((S32)fd < 0) {
+        testFail("inotify fd was not created, got %d (0x%X)", (S32)fd, fd);
+        cleanupRoot(root);
+        return;
+    }
+
+    U32 wd = KInotifyObject::addWatch(thread, fd, B("/tmp/watch"), K_IN_DELETE);
+    if ((S32)wd < 0) {
+        testFail("inotify watch was not added, got %d (0x%X)", (S32)wd, wd);
+        cleanupRoot(root);
+        return;
+    }
+
+    if (thread->cpu) {
+        thread->cpu->reg[3].u32 = fd;
+    }
+    expectZero("inotify fcntl F_SETSIG SIGIO", process->fcntrl(thread, fd, K_F_SETSIG, K_SIGIO));
+    expectZero("inotify fcntl F_SETFL O_ASYNC", process->fcntrl(thread, fd, K_F_SETFL, K_O_ASYNC));
+
+    expectZero("mkdir watched async child before delete", process->mkdir(B("/tmp/watch/child")));
+    expectZero("rmdir watched async child", process->rmdir(B("/tmp/watch/child")));
+
+    U64 sigioBit = 1ULL << (K_SIGIO - 1);
+    if (!(process->pendingSignals & sigioBit)) {
+        testFail("inotify async delete did not signal SIGIO");
+    }
+    expectU32("inotify async SIGIO code", process->sigActions[K_SIGIO].sigInfo[2], K_POLL_IN);
+    expectU32("inotify async SIGIO band", process->sigActions[K_SIGIO].sigInfo[3], 0);
+    expectU32("inotify async SIGIO fd", process->sigActions[K_SIGIO].sigInfo[4], fd);
 
     process->close(fd);
     process->removeThread(thread);

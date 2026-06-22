@@ -134,6 +134,26 @@ void common_mulssE32(CPU* cpu, U32 reg, U32 address) {
     cpu->xmm[reg].ps = simde_mm_mul_ss(cpu->xmm[reg].ps, value);
 }
 
+static bool isSingleZero(U32 value) {
+    return (value & 0x7fffffff) == 0;
+}
+
+static bool isSingleInf(U32 value) {
+    return (value & 0x7fffffff) == 0x7f800000;
+}
+
+static bool isSingleNan(U32 value) {
+    return (value & 0x7f800000) == 0x7f800000 && (value & 0x007fffff) != 0;
+}
+
+static bool isSingleSignalingNan(U32 value) {
+    return isSingleNan(value) && (value & 0x00400000) == 0;
+}
+
+static bool isSingleFiniteNonZero(U32 value) {
+    return !isSingleZero(value) && (value & 0x7f800000) != 0x7f800000;
+}
+
 static bool common_sse_check_div_exception(CPU* cpu, const simde__m128& dividend, const simde__m128& divisor, U32 laneCount) {
     constexpr U32 MXCSR_INVALID_OPERATION_FLAG = 1u << 0;
     constexpr U32 MXCSR_DIVIDE_BY_ZERO_FLAG = 1u << 2;
@@ -144,11 +164,13 @@ static bool common_sse_check_div_exception(CPU* cpu, const simde__m128& dividend
     bool invalidOperation = false;
     bool divideByZero = false;
     for (U32 i = 0; i < laneCount; ++i) {
-        bool srcZero = (divisor.u32[i] & 0x7fffffff) == 0;
-        bool dstZero = (dividend.u32[i] & 0x7fffffff) == 0;
-        if (srcZero && dstZero) {
+        U32 dst = dividend.u32[i];
+        U32 src = divisor.u32[i];
+        bool srcZero = isSingleZero(src);
+        bool dstZero = isSingleZero(dst);
+        if (isSingleSignalingNan(dst) || isSingleSignalingNan(src) || (srcZero && dstZero) || (isSingleInf(dst) && isSingleInf(src))) {
             invalidOperation = true;
-        } else if (srcZero) {
+        } else if (srcZero && isSingleFiniteNonZero(dst)) {
             divideByZero = true;
         }
     }

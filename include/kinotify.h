@@ -83,7 +83,8 @@ private:
     std::deque<U8> recvBuffer;
     S32 nextWatch = 1;
     bool blocking = true;
-    bool async = false;
+    U32 asyncProcessId = 0;
+    FD asyncFd = 0;
     U64 createdTime = 0;
 
     void queueEvent(const BString& parentPath, const BString& name, U32 mask);

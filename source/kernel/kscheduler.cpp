@@ -168,6 +168,10 @@ void runThreadSlice(KThread* thread) {
     CPU* cpu;
 
     cpu = thread->cpu;
+    if (thread->ptraceStopped) {
+        cpu->yield = true;
+        return;
+    }
     cpu->blockInstructionCount = 0;
     cpu->yield = false;
     cpu->nextOp = cpu->getNextOp(); // another thread that just ran could have modified this
@@ -256,6 +260,8 @@ bool runSlice() {
         // this is how we signal to delete the current thread, since we can't delete it in the syscall, maybe we should use smart_ptr for threads
         if (currentThread->terminating) {
             delete currentThread;
+        } else if (currentThread->ptraceStopped) {
+            node->remove();
         } else if (!currentThread->waitingCond) {
             // make sure we are behind any threads that were recently scheduled
             node->remove();

@@ -53,7 +53,12 @@
 #include "mmu/testSelfModifying.h"
 
 void testWaitPid();
+void testProcessSignalWakesSigwaitMask();
+void testBlockedThreadSignalStartsHandler();
+void testMemoryThreadCleanupUsesMemoryMutex();
 void testHardLinksShareIdentityDataAndXattrs();
+void testSharedFileMappingGrowthKeepsPagesShared();
+void testProcessVmReadvUsesRemoteFileMappingContext();
 void testReadDirectoryReturnsIsDir();
 void testUtimensatPreservesAccessTimeInStat();
 void testFutimensPreservesAccessTimeInFstat();
@@ -65,7 +70,15 @@ void testTrailingDotNamesCanBeUnlinked();
 void testDirectorySeekCanStoreOpaquePosition();
 void testInotifyReportsChildDirectoryCreate();
 void testInotifyFollowsWatchedSymlinkTarget();
+void testInotifyPollReportsChildDirectoryDelete();
+void testInotifyAsyncSignalsSigioOnDelete();
 void testStartupArgsDefaultUtf8LocaleEnvironment();
+void testTerminatingThreadDoesNotEnterFutexWait();
+void testUnixSocketPollOutClearsPeerCondition();
+void testUnixSocketSendmsgStreamPayloadCanBeRead();
+void testUnixSocketWritevInvalidSecondIovAfterZeroLengthFirstReturnsEfault();
+void testUnixSocketWritevInvalidSecondIovDoesNotPartiallyWriteFirst();
+void testUnixSocketPendingConnectionsOnlyReadableForListeners();
 
 namespace {
 
@@ -417,15 +430,14 @@ const TestEntry TEST_ENTRIES[] = {
     {testPrefixedCliRaisesProtectionFault, "Test prefixed cli raises protection fault"},
     {testOverlongPrefixedCliDoesNotPoisonCodeCache, "Test overlong prefixed cli does not poison code cache"},
     {testInt2dRaisesInterruptProtectionFault, "Test int 2d raises interrupt protection fault"},
+    {testInt3ImmediateRaisesBreakpoint, "Test int 3 immediate raises breakpoint"},
     {testPortIoRaisesProtectionFault, "Test port I/O raises protection fault"},
     {testHltRaisesProtectionFault, "Test hlt raises protection fault"},
     {testInvalidInterruptRaisesProtectionFault, "Test invalid interrupt raises protection fault"},
     {testControlRegisterAccessRaisesProtectionFault, "Test control register access raises protection fault"},
     {testNullSegmentMoffsRaisesProtectionFault, "Test null segment moffs raises protection fault"},
     {testPopSsFromCodeSelectorRaisesProtectionFault, "Test pop ss from code selector raises protection fault"},
-    {testInstructionFetchOnNonExecPageRaisesProtectionFault, "Test instruction fetch on non-exec page raises protection fault"},
-    {testPendingSignalHandledWhileUserLoopRuns, "Test pending signal handled while user loop runs"},
-    {testPendingSignalHandledWhileSplitBlockLoopRuns, "Test pending signal handled while split-block loop runs"},
+    {testInstructionFetchFaultSetsExecuteBit, "Test instruction fetch fault sets execute bit"},
     {testSingleStepRaisesTrap, "Test single-step raises trap"},
     {testSingleStepRaisesTrapAfterRet, "Test single-step raises trap after ret"},
     {testIcebpRaisesSingleStepTrap, "Test icebp raises single-step trap"},
@@ -433,9 +445,11 @@ const TestEntry TEST_ENTRIES[] = {
     {testDivssRaisesSimdException, "Test divss raises SIMD exception"},
     {testX87FwaitRaisesPendingException, "Test x87 fwait raises pending exception"},
     {testHardwareBreakpointRaisesTrap, "Test hardware breakpoint raises trap"},
-    {testHardwareWriteBreakpointRaisesTrap, "Test hardware write breakpoint raises trap"},
-    {testHardwareWriteBreakpointIgnoresSyscallWrite, "Test hardware write breakpoint ignores syscall write"},
     {testHardwareBreakpointIgnoresNonExecutableAddress, "Test hardware breakpoint ignores non-executable address"},
+    {testDataHardwareBreakpointRaisesTrap, "Test data hardware breakpoint raises trap"},
+    {testDefaultUserSegmentsUseGdtSelectors, "Test default user segments use GDT selectors"},
+    {testSignalHandlerSegmentsUseGdtSelectors, "Test signal handler segments use GDT selectors"},
+    {testSignalReturnPreservesLoadedInvalidTlsSelector, "Test signal return preserves loaded invalid TLS selector"},
     {testSahf_0x09e, "Test Sahf 09e"},
     {testSahf_0x29e, "Test Sahf 29e"},
     {testLahf_0x09f, "Test Lahf 09f"},
@@ -694,7 +708,14 @@ const TestEntry TEST_ENTRIES[] = {
     {testLockedInc, "Test Multi-threaded locked inc"},
 #endif
     {testWaitPid, "Test waitpid child selection"},
+    {testProcessSignalWakesSigwaitMask, "Test process signal wakes sigwait mask"},
+#ifdef BOXEDWINE_MULTI_THREADED
+    {testBlockedThreadSignalStartsHandler, "Test blocked thread signal starts handler"},
+    {testMemoryThreadCleanupUsesMemoryMutex, "Test memory thread cleanup uses memory mutex"},
+#endif
     {testHardLinksShareIdentityDataAndXattrs, "Test hard links share identity, data, and xattrs"},
+    {testSharedFileMappingGrowthKeepsPagesShared, "Test shared file mapping stays shared after growth"},
+    {testProcessVmReadvUsesRemoteFileMappingContext, "Test process_vm_readv uses remote file mapping context"},
     {testReadDirectoryReturnsIsDir, "Test read on directory returns EISDIR"},
     {testUtimensatPreservesAccessTimeInStat, "Test utimensat preserves access time in stat"},
     {testFutimensPreservesAccessTimeInFstat, "Test futimens preserves access time in fstat"},
@@ -706,7 +727,17 @@ const TestEntry TEST_ENTRIES[] = {
     {testDirectorySeekCanStoreOpaquePosition, "Test directory seek can store opaque position"},
     {testInotifyReportsChildDirectoryCreate, "Test inotify reports child directory create"},
     {testInotifyFollowsWatchedSymlinkTarget, "Test inotify follows watched symlink target"},
+    {testInotifyPollReportsChildDirectoryDelete, "Test inotify poll reports child directory delete"},
+    {testInotifyAsyncSignalsSigioOnDelete, "Test inotify async signals SIGIO on delete"},
     {testStartupArgsDefaultUtf8LocaleEnvironment, "Test startup args default UTF-8 locale environment"},
+#ifdef BOXEDWINE_MULTI_THREADED
+    {testTerminatingThreadDoesNotEnterFutexWait, "Test terminating thread does not enter futex wait"},
+#endif
+    {testUnixSocketPollOutClearsPeerCondition, "Test Unix socket POLLOUT poll cleanup removes peer condition"},
+    {testUnixSocketSendmsgStreamPayloadCanBeRead, "Test Unix socket stream sendmsg payload can be read"},
+    {testUnixSocketWritevInvalidSecondIovAfterZeroLengthFirstReturnsEfault, "Test Unix socket writev invalid second iov after zero-length first returns EFAULT"},
+    {testUnixSocketWritevInvalidSecondIovDoesNotPartiallyWriteFirst, "Test Unix socket writev invalid second iov does not partially write first"},
+    {testUnixSocketPendingConnectionsOnlyReadableForListeners, "Test Unix socket pending connections only make listeners readable"},
 };
 
 } // namespace

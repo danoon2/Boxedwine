@@ -82,6 +82,30 @@ void CPU::setSeg(U32 index, U32 address, U32 value) {
     }
 }
 
+U32 CPU::getSegValue(U32 index) const {
+    return makeSegmentVisible(this->seg[index].value);
+}
+
+U32 CPU::makeSegmentVisible(U32 value) {
+    if (value == BOXEDWINE_INTERNAL_USER_CODE_SELECTOR) {
+        return BOXEDWINE_VISIBLE_USER_CODE_SELECTOR;
+    }
+    if (value == BOXEDWINE_INTERNAL_USER_DATA_SELECTOR) {
+        return BOXEDWINE_VISIBLE_USER_DATA_SELECTOR;
+    }
+    return value;
+}
+
+U32 CPU::makeSegmentInternal(U32 value) {
+    if (value == BOXEDWINE_VISIBLE_USER_CODE_SELECTOR) {
+        return BOXEDWINE_INTERNAL_USER_CODE_SELECTOR;
+    }
+    if (value == BOXEDWINE_VISIBLE_USER_DATA_SELECTOR) {
+        return BOXEDWINE_INTERNAL_USER_DATA_SELECTOR;
+    }
+    return value;
+}
+
 void CPU::setIsBig(U32 value) {
     this->big = value;
 }
@@ -114,10 +138,10 @@ void CPU::reset() {
     }
     this->lazyFlagType = FLAGS_NONE;
     this->setIsBig(1);
-    this->seg[CS].value = 0xF; // index 1, LDT, rpl=3
-    this->seg[SS].value = 0x17; // index 2, LDT, rpl=3
-    this->seg[DS].value = 0x17; // index 2, LDT, rpl=3
-    this->seg[ES].value = 0x17; // index 2, LDT, rpl=3
+    this->seg[CS].value = BOXEDWINE_INTERNAL_USER_CODE_SELECTOR;
+    this->seg[SS].value = BOXEDWINE_INTERNAL_USER_DATA_SELECTOR;
+    this->seg[DS].value = BOXEDWINE_INTERNAL_USER_DATA_SELECTOR;
+    this->seg[ES].value = BOXEDWINE_INTERNAL_USER_DATA_SELECTOR;
     this->cpl = 3; // user mode
     this->cr0 = CR0_PROTECTION | CR0_FPUPRESENT | CR0_PAGING;
     this->flags|=IF;
@@ -125,6 +149,10 @@ void CPU::reset() {
     this->stackNotMask = 0;
     this->stackMask = 0xFFFFFFFF;
     this->nextOp = nullptr;
+    this->debugTrapOnNextInstruction = false;
+    this->pendingDebugTrap = false;
+    this->pendingDebugTrapCode = 0;
+    this->pendingDebugTrapDr6 = 0;
 #ifdef BOXEDWINE_MULTI_THREADED
     this->tmpLockAddress = 0;
 #endif
@@ -532,36 +560,39 @@ U32 CPU::setSegment(U32 seg, U32 value) {
     }
     if (this->flags & VM) {
         this->setSeg(seg, value << 4, value);
-    } else  if ((value & 0xfffc)==0) {
-        this->setSeg(seg, 0, value);
     } else {
-        U32 index = value >> 3;
-        struct user_desc* ldt = this->thread->getLDT(index);
+        value = makeSegmentInternal(value);
+        if ((value & 0xfffc)==0) {
+            this->setSeg(seg, 0, value);
+        } else {
+            U32 index = value >> 3;
+            struct user_desc* ldt = this->thread->getLDT(index);
 
-        if (!ldt) {
-            this->prepareException(EXCEPTION_GP,value & 0xfffc);
-            return 0;
-        }
-        if (ldt->seg_not_present) {
-            if (seg==SS)
-                this->prepareException(EXCEPTION_SS,value & 0xfffc);
-            else
-                this->prepareException(EXCEPTION_NP,value & 0xfffc);
-            return 0;
-        }
-        if (seg == SS && (ldt->contents == 2 || ldt->read_exec_only)) {
-            this->prepareException(EXCEPTION_GP, 0);
-            return 0;
-        }
-        this->setSeg(seg, ldt->base_addr, value);        
-        if (seg == SS) {
-            if (ldt->seg_32bit) {
-                this->stackMask = 0xffffffff;
-                this->stackNotMask = 0;
-            } else {
-                this->stackMask = 0xffff;
-                this->stackNotMask = 0xffff0000;
-                this->thread->process->hasSetStackMask = true;
+            if (!ldt) {
+                this->prepareException(EXCEPTION_GP,value & 0xfffc);
+                return 0;
+            }
+            if (ldt->seg_not_present) {
+                if (seg==SS)
+                    this->prepareException(EXCEPTION_SS,value & 0xfffc);
+                else
+                    this->prepareException(EXCEPTION_NP,value & 0xfffc);
+                return 0;
+            }
+            if (seg == SS && (ldt->contents == 2 || ldt->read_exec_only)) {
+                this->prepareException(EXCEPTION_GP, 0);
+                return 0;
+            }
+            this->setSeg(seg, ldt->base_addr, value);
+            if (seg == SS) {
+                if (ldt->seg_32bit) {
+                    this->stackMask = 0xffffffff;
+                    this->stackNotMask = 0;
+                } else {
+                    this->stackMask = 0xffff;
+                    this->stackNotMask = 0xffff0000;
+                    this->thread->process->hasSetStackMask = true;
+                }
             }
         }
     }
@@ -1000,8 +1031,6 @@ void CPU::setFlags(U32 flags, U32 mask) {
 bool CPU::startDebugInstruction() {
     if (!this->thread) {
         this->debugTrapOnNextInstruction = false;
-        this->pendingDebugTrapCode = 0;
-        this->pendingDebugTrapDr6 = 0;
         return false;
     }
     if (this->thread->debugTrapBeforeInstruction()) {
@@ -1016,19 +1045,21 @@ bool CPU::startDebugInstruction() {
 bool CPU::finishDebugInstruction() {
     if (!this->thread) {
         this->debugTrapOnNextInstruction = false;
+        this->pendingDebugTrap = false;
         this->pendingDebugTrapCode = 0;
         this->pendingDebugTrapDr6 = 0;
         return false;
     }
-    if (this->pendingDebugTrapDr6) {
-        U32 code = this->pendingDebugTrapCode ? this->pendingDebugTrapCode : 4;
+    if (this->pendingDebugTrap) {
+        U32 code = this->pendingDebugTrapCode;
         U32 dr6 = this->pendingDebugTrapDr6;
         if (this->debugTrapOnNextInstruction) {
             dr6 |= 0x4000;
         }
+        this->debugTrapOnNextInstruction = false;
+        this->pendingDebugTrap = false;
         this->pendingDebugTrapCode = 0;
         this->pendingDebugTrapDr6 = 0;
-        this->debugTrapOnNextInstruction = false;
         this->thread->signalDebugTrap(code, dr6);
         this->nextOp = this->getNextOp();
         return true;
@@ -1323,7 +1354,7 @@ void CPU::runNextSingleOp() {
     try {
         op = getNextOp();
         if (!op) {
-            this->thread->seg_instruction_fetch(getEipAddress(), false);
+            this->thread->seg_instructionFetch(getEipAddress(), false);
             this->nextOp = getNextOp();
         }
     } catch (...) {

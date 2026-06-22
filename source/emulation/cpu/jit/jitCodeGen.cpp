@@ -538,9 +538,12 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
             opEip += nextOp->len;
             nextOp = nextOp->next;
         }
-        if (directType == DirectType::Jump && !canJumpInBlock(opEip, nextOp)) {
-            fallback();
-            return;
+        if (directType == DirectType::Jump) {
+            U32 target = opEip + nextOp->len + nextOp->imm;
+            if (!canJumpInBlock(opEip, nextOp) || target <= opEip) {
+                fallback();
+                return;
+            }
         }
         callback();
         postCompile(op);
@@ -744,14 +747,46 @@ bool JitCodeGen::isParamTypeReg(JitCallParamType paramType) {
 void JitCodeGen::jumpEip(RegPtr reg) {
     RegPtr tmp = getTmpReg();
     mov(JitWidth::b32, tmp, reg);
+    exitToRunLoopIfPendingSignal(reg);
     jumpToEipIfCached(tmp); // jumpToEipIfCached can modify the passed in reg
     writeEip(reg);
     writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
     blockExit();
 }
 
+void JitCodeGen::exitToRunLoopIfPendingSignal(U32 eip) {
+#ifdef BOXEDWINE_MULTI_THREADED
+    RegPtr guestEip = getTmpReg();
+    movValue(JitWidth::b32, guestEip, eip - cpu->seg[CS].address);
+    exitToRunLoopIfPendingSignal(guestEip);
+#endif
+}
+
+void JitCodeGen::exitToRunLoopIfPendingSignal(RegPtr eip) {
+#ifdef BOXEDWINE_MULTI_THREADED
+    RegPtr thread = readCPU(DYN_PTR, offsetof(CPU, thread));
+    If(DYN_PTR, thread); {
+        RegPtr pendingSignals = getTmpReg();
+        readHost(JitWidth::b32, createMemPtr(thread, (U32)offsetof(KThread, pendingSignals)), pendingSignals, false);
+        If(JitWidth::b32, pendingSignals); {
+            writeEip(eip);
+            writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+            blockExit();
+        } EndIf();
+    } EndIf();
+#endif
+}
+
+void JitCodeGen::jumpInBlock(U32 address) {
+    if (address <= currentEip) {
+        exitToRunLoopIfPendingSignal(address);
+    }
+    JumpInBlock(address);
+}
+
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
 void JitCodeGen::blockNext1(U32 eip, DecodedOp* op) {
+    exitToRunLoopIfPendingSignal(eip);
     // if (!(*(op->nextJump))) {
     //     *(op->nextJump) = cpu->getNextOp();
     // }
@@ -773,13 +808,7 @@ void JitCodeGen::blockNext1(U32 eip, DecodedOp* op) {
             RegPtr jit = getTmpReg();
             readHost(DYN_PTR, createMemPtr(nextOp, (U32)offsetof(DecodedOp, pfnJitCode)), jit, false);
             If(DYN_PTR, jit); {
-#ifdef BOXEDWINE_MULTI_THREADED
-                IfYieldNotSet(); {
-                    jmpHost(jit);
-                } EndIf();
-#else
                 jmpHost(jit);
-#endif
             } EndIf();
         } EndIf();
     }
@@ -790,6 +819,7 @@ void JitCodeGen::blockNext1(U32 eip, DecodedOp* op) {
 }
 
 void JitCodeGen::blockNext2(U32 eip, DecodedOp* op) {
+    exitToRunLoopIfPendingSignal(eip);
     // if (!op->next) { 
     //     op->next = cpu->getNextOp(); 
     // }
@@ -807,13 +837,7 @@ void JitCodeGen::blockNext2(U32 eip, DecodedOp* op) {
             RegPtr jit = getTmpReg();
             readHost(DYN_PTR, createMemPtr(nextReg, (U32)offsetof(DecodedOp, pfnJitCode)), jit, false);
             If(DYN_PTR, jit); {
-#ifdef BOXEDWINE_MULTI_THREADED
-                IfYieldNotSet(); {
-                    jmpHost(jit);
-                } EndIf();
-#else
                 jmpHost(jit);
-#endif
             } EndIf();
         } EndIf();
     }    
@@ -877,13 +901,7 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
             readHost(DYN_PTR, createMemPtr(tmp, (U32)offsetof(DecodedOp, pfnJitCode)), tmp, false);
             // tmp contains pfnJitCode
             If(DYN_PTR, tmp); {
-#ifdef BOXEDWINE_MULTI_THREADED
-                IfYieldNotSet(); {
-                    jmpHost(tmp);
-                } EndIf();
-#else
                 jmpHost(tmp);
-#endif
             } EndIf();
         } EndIf();
     } EndIf();
@@ -933,7 +951,7 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
     U32 address = startingEip;
     DecodedOp* nextOp = op;
     DecodedOp* last = op;
-#if defined (_DEBUG) && !defined (__TEST)
+#if defined (_DEBUG) && !defined (__TEST) && defined(BOXEDWINE_VERBOSE_JIT_PROGRESS)
     BOXEDWINE_CRITICAL_SECTION;
     static int totalBlocks;
     totalBlocks++;

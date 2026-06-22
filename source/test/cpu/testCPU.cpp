@@ -11,6 +11,7 @@
 
 #ifdef __TEST
 
+#include "ksignal.h"
 #include "testCPU.h"
 #include <atomic>
 #include <cstdarg>
@@ -163,8 +164,21 @@ void testNewInstruction(int flags) {
     cpu->reg[6].u32 = 0;
     cpu->reg[7].u32 = 0;
     cpu->eip.u32 = 0;
+    cpu->nextOp = nullptr;
     context.memory->clearOpCache();
     cpu->mxcsr = 0x1F80;
+    cpu->debugTrapOnNextInstruction = false;
+    cpu->pendingDebugTrap = false;
+    cpu->pendingDebugTrapCode = 0;
+    cpu->pendingDebugTrapDr6 = 0;
+    context.thread->inSignal = 0;
+    context.thread->inSigMask = 0;
+    context.thread->pendingSignals = 0;
+    context.thread->startSignal = false;
+    context.thread->interrupted = false;
+    for (U32& debugReg : context.thread->debugRegs) {
+        debugReg = 0;
+    }
 }
 
 void testPushCode8(int value) {
@@ -222,6 +236,10 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
     if (!entryCount) {
         return;
     }
+
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    platformInitExceptionHandling();
+#endif
 
     ensureParallelContexts(workerCount);
 
@@ -283,6 +301,133 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
 
     for (auto& worker : workers) {
         worker.join();
+    }
+}
+
+void testDefaultUserSegmentsUseGdtSelectors() {
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+
+    if (cpu->seg[CS].value != BOXEDWINE_INTERNAL_USER_CODE_SELECTOR) {
+        testFail("internal default CS selector");
+    }
+    if (cpu->seg[SS].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR ||
+        cpu->seg[DS].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR ||
+        cpu->seg[ES].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR) {
+        testFail("internal default data selectors");
+    }
+    if (cpu->getSegValue(CS) != BOXEDWINE_VISIBLE_USER_CODE_SELECTOR) {
+        testFail("visible default CS selector");
+    }
+    if (cpu->getSegValue(SS) != BOXEDWINE_VISIBLE_USER_DATA_SELECTOR ||
+        cpu->getSegValue(DS) != BOXEDWINE_VISIBLE_USER_DATA_SELECTOR ||
+        cpu->getSegValue(ES) != BOXEDWINE_VISIBLE_USER_DATA_SELECTOR) {
+        testFail("visible default data selectors");
+    }
+    if (!cpu->setSegment(DS, BOXEDWINE_VISIBLE_USER_DATA_SELECTOR)) {
+        testFail("set visible default data selector");
+    }
+    if (cpu->seg[DS].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR) {
+        testFail("visible default data selector should map to internal selector");
+    }
+}
+
+void testSignalHandlerSegmentsUseGdtSelectors() {
+    constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, SIGNAL_STACK_TOP - K_PAGE_SIZE, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    cpu->reg[4].u32 = SIGNAL_STACK_TOP;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+
+    thread->runSignal(K_SIGUSR1, 0, 0);
+
+    if (cpu->eip.u32 != SIGNAL_HANDLER) {
+        testFail("signal handler eip");
+    }
+    if (cpu->seg[CS].value != BOXEDWINE_INTERNAL_USER_CODE_SELECTOR) {
+        testFail("signal handler internal CS selector");
+    }
+    if (cpu->seg[SS].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR ||
+        cpu->seg[DS].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR ||
+        cpu->seg[ES].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR) {
+        testFail("signal handler internal data selectors");
+    }
+    if (cpu->getSegValue(CS) != BOXEDWINE_VISIBLE_USER_CODE_SELECTOR) {
+        testFail("signal handler visible CS selector");
+    }
+    if (cpu->getSegValue(SS) != BOXEDWINE_VISIBLE_USER_DATA_SELECTOR ||
+        cpu->getSegValue(DS) != BOXEDWINE_VISIBLE_USER_DATA_SELECTOR ||
+        cpu->getSegValue(ES) != BOXEDWINE_VISIBLE_USER_DATA_SELECTOR) {
+        testFail("signal handler visible data selectors");
+    }
+}
+
+void testSignalReturnPreservesLoadedInvalidTlsSelector() {
+    constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+    constexpr U32 GS_SELECTOR = (TLS_ENTRY_START_INDEX << 3) | 3;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, SIGNAL_STACK_TOP - K_PAGE_SIZE, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    memory->mmap(thread, TEST_CODE_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    memory->writeb(TEST_CODE_ADDRESS, 0x90);
+
+    struct user_desc tls = {};
+    tls.entry_number = TLS_ENTRY_START_INDEX;
+    tls.base_addr = TEST_HEAP_ADDRESS;
+    tls.limit = 0xFFFFF;
+    tls.seg_32bit = 1;
+    tls.limit_in_pages = 1;
+    tls.seg_not_present = 0;
+    tls.useable = 1;
+    thread->setTLS(&tls);
+
+    if (!cpu->setSegment(GS, GS_SELECTOR)) {
+        testFail("set GS to TLS selector");
+    }
+    cpu->reg[4].u32 = SIGNAL_STACK_TOP;
+    cpu->eip.u32 = TEST_CODE_ADDRESS;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+
+    thread->runSignal(K_SIGUSR1, 0, 0);
+    if (cpu->eip.u32 != SIGNAL_HANDLER) {
+        testFail("signal handler eip before invalid TLS return");
+    }
+
+    struct user_desc emptyTls = {};
+    emptyTls.entry_number = TLS_ENTRY_START_INDEX;
+    emptyTls.read_exec_only = 1;
+    emptyTls.seg_not_present = 1;
+    thread->setTLS(&emptyTls);
+
+    U32 returnAddress = cpu->pop32();
+    if (returnAddress != SIG_RETURN_ADDRESS) {
+        testFail("signal return callback address");
+    }
+    onExitSignal(cpu, nullptr);
+
+    if (cpu->seg[GS].value != GS_SELECTOR || cpu->seg[GS].address != TEST_HEAP_ADDRESS) {
+        testFail("already-loaded invalid GS selector should be preserved on signal return");
+    }
+    if (cpu->eip.u32 != TEST_CODE_ADDRESS) {
+        testFail("signal return eip after invalid TLS selector");
     }
 }
 

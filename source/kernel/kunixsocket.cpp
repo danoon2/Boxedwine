@@ -123,7 +123,7 @@ bool KUnixSocketObject::isOpen() {
 
 bool KUnixSocketObject::isReadReady() {
     //BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
-    return this->inClosed || this->recvBuffer.size_used() || this->pendingConnections.size() || this->msgs.size();
+    return this->inClosed || this->recvBuffer.size_used() || (this->listening && this->pendingConnections.size()) || this->msgs.size();
 }
 
 bool KUnixSocketObject::isWriteReady() {
@@ -131,29 +131,27 @@ bool KUnixSocketObject::isWriteReady() {
 }
 
 void KUnixSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
-    bool addedLock = false;
+    bool needsOwnLock = false;
+    std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
 
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_ADD_PARENT(this->lockCond, parentCondition);
-        addedLock = true;
+        needsOwnLock = true;
     }
     if (events & K_POLLOUT) {
-        std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
         if (con) {
             BOXEDWINE_CONDITION_ADD_PARENT(con->lockCond, parentCondition);
         } else {
-            if (!addedLock) {
-                BOXEDWINE_CONDITION_ADD_PARENT(this->lockCond, parentCondition);
-                addedLock = true;
-            }
+            needsOwnLock = true;
         }
+    } else if (con) {
+        BOXEDWINE_CONDITION_REMOVE_PARENT(con->lockCond, parentCondition);
     }
     if (events && ((events & ~(K_POLLIN | K_POLLOUT)) || this->listening)) {
-        if (!addedLock) {
-            BOXEDWINE_CONDITION_ADD_PARENT(this->lockCond, parentCondition);
-        }
+        needsOwnLock = true;
     }
-    if (events == 0) {
+    if (needsOwnLock) {
+        BOXEDWINE_CONDITION_ADD_PARENT(this->lockCond, parentCondition);
+    } else {
         BOXEDWINE_CONDITION_REMOVE_PARENT(this->lockCond, parentCondition);
     }
 }
@@ -189,6 +187,18 @@ U32 KUnixSocketObject::writev(KThread* thread, U32 iov, S32 iovcnt) {
     std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
     KMemory* memory = thread->memory;
 
+    for (S32 i=0;i<iovcnt;i++) {
+        U32 entry = iov + i * 8;
+        if (!memory->canRead(entry, 8)) {
+            return -K_EFAULT;
+        }
+        U32 buf = memory->readd(entry);
+        U32 toWrite = memory->readd(entry + 4);
+        if (toWrite && !memory->canRead(buf, toWrite)) {
+            return -K_EFAULT;
+        }
+    }
+
     BOXEDWINE_CONDITION& cond = (con?con->lockCond:this->lockCond);
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(cond);
 
@@ -200,7 +210,7 @@ U32 KUnixSocketObject::writev(KThread* thread, U32 iov, S32 iovcnt) {
         if (toWrite) {
             result = this->internal_write(thread, con, cond, buf, toWrite);
             if (result < 0) {
-                if (i > 0) {
+                if (len > 0) {
                     return len;
                 }
                 return result;
@@ -822,9 +832,29 @@ U32 KUnixSocketObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd, U3
     }
     readMsgHdr(thread, address, &hdr);
 
+    bool hasControl = hdr.msg_control && hdr.msg_controllen;
+    if (this->type == K_SOCK_STREAM && !hasControl) {
+        for (U32 i = 0; i < hdr.msg_iovlen; i++) {
+            U32 p = memory->readd(hdr.msg_iov + 8 * i);
+            U32 len = memory->readd(hdr.msg_iov + 8 * i + 4);
+
+            if (len) {
+                S32 writeResult = this->internal_write(thread, con, con->lockCond, p, len);
+                if (writeResult < 0) {
+                    return result ? result : writeResult;
+                }
+                result += writeResult;
+            }
+        }
+        if (result) {
+            BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
+        }
+        return result;
+    }
+
     std::shared_ptr<KSocketMsg> msg = std::make_shared<KSocketMsg>();
 
-    if (hdr.msg_control) {
+    if (hasControl) {
         CMsgHdr cmsg;			
 
         readCMsgHdr(thread, hdr.msg_control, &cmsg);

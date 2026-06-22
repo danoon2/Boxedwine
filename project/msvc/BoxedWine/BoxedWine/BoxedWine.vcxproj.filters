@@ -385,6 +385,12 @@
     <ClCompile Include="..\..\..\..\source\test\fs\testHardLinks.cpp">
       <Filter>source\test\fs</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\kernel\testFutex.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\kernel\testUnixSocketPoll.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\test\mmu\testSelfModifying.cpp">
       <Filter>source\test\mmu</Filter>
     </ClCompile>

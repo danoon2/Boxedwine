@@ -109,13 +109,13 @@ public:
     U32 readd(U32 address);
     U32 readdInline(U32 address);
     void writedInline(U32 address, U32 value);
+    void checkDebugTrapOnMemoryWrite(U32 address, U32 len);
     U16 readw(U32 address);
     U8  readb(U32 address);
     void writeq(U32 address, U64 value);
     void writed(U32 address, U32 value);
     void writew(U32 address, U16 value);
     void writeb(U32 address, U8 value);
-    void queueDataBreakpointOnWrite(U32 address, U32 len);
 
     BString readString(U32 address);
     BString readStringW(U32 address);

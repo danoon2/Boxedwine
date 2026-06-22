@@ -93,17 +93,17 @@ void OPCALL normal_move32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_movr16s16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->reg[op->reg].u16 = cpu->seg[op->rm].value;;
+    cpu->reg[op->reg].u16 = cpu->getSegValue(op->rm);
     NEXT();
 }
 void OPCALL normal_movr32s16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->reg[op->reg].u32 = cpu->seg[op->rm].value;
+    cpu->reg[op->reg].u32 = cpu->getSegValue(op->rm);
     NEXT();
 }
 void OPCALL normal_move16s16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->memory->writew(eaa(cpu, op), cpu->seg[op->reg].value);
+    cpu->memory->writew(eaa(cpu, op), cpu->getSegValue(op->reg));
     NEXT();
 }
 void OPCALL normal_movs16e16(CPU* cpu, DecodedOp* op) {

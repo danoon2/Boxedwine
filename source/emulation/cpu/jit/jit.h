@@ -283,7 +283,6 @@ public:
     virtual void IfGreaterThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, U32 value) = 0;
     virtual void IfNot(JitWidth regWidth, RegPtr reg) = 0;
     virtual void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) = 0;
-    virtual void IfYieldNotSet() = 0;
     virtual void IfCondition(JitConditional condition) = 0;
     virtual void JumpIfCondition(JitConditional condition, U32 address) = 0;
     virtual U32 MarkJumpLocation() = 0;
@@ -327,13 +326,13 @@ public:
 
     virtual bool canJumpInBlock(DecodedOp* op) = 0;
     virtual bool canJumpInBlock(U32 opEip, DecodedOp* op) = 0;
-    virtual RegPtr readYield() = 0;
 
     virtual void blockNext1(U32 eip, DecodedOp* op) = 0;
     virtual void blockNext2(U32 eip, DecodedOp* op) = 0;
     virtual void blockExit() = 0;
     virtual void jumpEip(RegPtr reg) = 0;
 
+    virtual void jumpInBlock(U32 address) = 0;
     virtual void JumpInBlock(U32 address) = 0;
     virtual void StartElse() = 0;
     virtual void EndIf() = 0;

@@ -236,6 +236,12 @@ void OPCALL normal_icebp(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_intIb(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+    if (op->imm == 3) {
+        cpu->eip.u32 += op->len - 1;
+        cpu->thread->signalTrap(1);
+        NEXT_DONE();
+        return;
+    }
     cpu->prepareException(EXCEPTION_GP, (op->imm << 3) | 2);
     NEXT_DONE();
 }

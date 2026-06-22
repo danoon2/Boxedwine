@@ -76,13 +76,6 @@ public:
 
 KMemoryData* getMemData(KMemory* memory);
 
-inline void KMemory::queueDataBreakpointOnWrite(U32 address, U32 len) {
-    KThread* thread = KThread::currentThread();
-    if (thread && thread->memory == this && (thread->debugRegs[7] & 0xff) && !thread->inSysCall) {
-        thread->queueDataBreakpointIfHit(address, len, true);
-    }
-}
-
 inline U32 KMemory::readdInline(U32 address) {
     if ((address & 0xFFF) < 0xFFD) {
         U32 index = address >> 12;
@@ -104,12 +97,12 @@ inline void KMemory::writedInline(U32 address, U32 value) {
 #if !defined(UNALIGNED_MEMORY)
         if (mmu.canWriteRam) {
             *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
-            queueDataBreakpointOnWrite(address, 4);
+            checkDebugTrapOnMemoryWrite(address, 4);
             return;
         }
 #endif
         mmu.getPage()->writed(&mmu, address, value);
-        queueDataBreakpointOnWrite(address, 4);
+        checkDebugTrapOnMemoryWrite(address, 4);
     } else {
         writeb(address, value);
         writeb(address + 1, value >> 8);

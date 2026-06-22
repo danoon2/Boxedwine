@@ -368,10 +368,112 @@ void KSystem::wakeThreadsWaitingOnProcessStateChanged() {
     BOXEDWINE_CONDITION_SIGNAL_ALL(processesCond);
 }
 
+namespace {
+
+bool ptraceTraceeBelongsToWaiter(KThread* waiter, KThread* tracee) {
+    return waiter && waiter->process && tracee && tracee->ptraceTracerProcessId && tracee->ptraceTracerProcessId == waiter->process->id;
+}
+
+bool hasWaitablePtraceRelationship(KThread* waiter, KThread* tracee) {
+    if (!tracee) {
+        return false;
+    }
+    if (!tracee->ptraceTracerProcessId) {
+        return tracee->ptraceStopPending;
+    }
+    return ptraceTraceeBelongsToWaiter(waiter, tracee);
+}
+
+bool canReportPtraceStop(KThread* waiter, KThread* tracee) {
+    return tracee && tracee->ptraceStopPending && hasWaitablePtraceRelationship(waiter, tracee);
+}
+
+bool ptraceTerminatedProcessBelongsToWaiter(KThread* waiter, const KProcessPtr& tracee) {
+    return waiter && waiter->process && tracee && tracee->terminated && tracee->ptraceTracerProcessId && tracee->ptraceTracerProcessId == waiter->process->id;
+}
+
+bool waitSelectionMatchesProcess(S32 pid, const KProcessPtr& process, U32 parentGroupId) {
+    return pid == -1 || (pid == 0 && process->groupId == parentGroupId) || (pid < -1 && process->groupId == (U32)(-pid));
+}
+
+bool waitSelectionMatchesPtraceTermination(S32 pid, const KProcessPtr& process, U32 parentGroupId) {
+    if (pid > 0) {
+        return process->id == (U32)pid || process->ptraceTraceeThreadId == (U32)pid;
+    }
+    return waitSelectionMatchesProcess(pid, process, parentGroupId);
+}
+
+U32 reportPtraceStop(KThread* waiter, KThread* tracee, U32 statusAddress) {
+    tracee->ptraceStopPending = false;
+    if (statusAddress) {
+        U32 stopSignal = tracee->ptraceStopSignal ? tracee->ptraceStopSignal : K_SIGSTOP;
+        waiter->memory->writed(statusAddress, (stopSignal << 8) | 0x7f);
+    }
+    return tracee->id;
+}
+
+} // namespace
+
+KThread* KSystem::getThreadByIdNoProcessLock(U32 threadId) {
+    for (auto& n : KSystem::processes) {
+        KProcessPtr process = n.value;
+        KThread* thread = process ? process->getThreadById(threadId) : nullptr;
+        if (thread) {
+            return thread;
+        }
+    }
+    return nullptr;
+}
+
+KThread* KSystem::findSelectedPtraceStop(KThread* waiter, S32 pid, U32 parentGroupId, bool* hasPtraceTracee) {
+    if (pid > 0) {
+        KThread* tracee = KSystem::getThreadByIdNoProcessLock((U32)pid);
+        if (hasWaitablePtraceRelationship(waiter, tracee)) {
+            *hasPtraceTracee = true;
+        }
+        return canReportPtraceStop(waiter, tracee) ? tracee : nullptr;
+    }
+
+    for (auto& n : KSystem::processes) {
+        KProcessPtr process = n.value;
+        if (!process || !waitSelectionMatchesProcess(pid, process, parentGroupId)) {
+            continue;
+        }
+        KThread* result = nullptr;
+        process->iterateThreads([&](KThread* tracee) {
+            if (hasWaitablePtraceRelationship(waiter, tracee)) {
+                *hasPtraceTracee = true;
+                if (canReportPtraceStop(waiter, tracee)) {
+                    result = tracee;
+                    return false;
+                }
+            }
+            return true;
+        });
+        if (result) {
+            return result;
+        }
+    }
+    return nullptr;
+}
+
+KProcessPtr KSystem::findSelectedPtraceTermination(KThread* waiter, S32 pid, U32 parentGroupId, bool* hasPtraceTracee) {
+    for (auto& n : KSystem::processes) {
+        KProcessPtr process = n.value;
+        if (!ptraceTerminatedProcessBelongsToWaiter(waiter, process)) {
+            continue;
+        }
+        if (waitSelectionMatchesPtraceTermination(pid, process, parentGroupId)) {
+            *hasPtraceTracee = true;
+            return process;
+        }
+    }
+    return nullptr;
+}
+
 U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
     KProcessPtr process;
     U32 result = 0;
-    KMemory* memory = thread->memory;
     U32 parentId = thread->process->id;
     U32 parentGroupId = thread->process->groupId;
 
@@ -379,28 +481,39 @@ U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
 
     while (!process) {
         bool hasChild = false;
+        bool hasPtraceTracee = false;
+        KThread* ptraceStop = findSelectedPtraceStop(thread, pid, parentGroupId, &hasPtraceTracee);
+        if (ptraceStop) {
+            return reportPtraceStop(thread, ptraceStop, statusAddress);
+        }
+        KProcessPtr ptraceTermination = findSelectedPtraceTermination(thread, pid, parentGroupId, &hasPtraceTracee);
+        if (ptraceTermination) {
+            if (statusAddress) {
+                int s = 0;
+                s |= ((ptraceTermination->exitCode & 0xFF) << 8);
+                s |= (ptraceTermination->signaled & 0x7F);
+                thread->memory->writed(statusAddress, s);
+            }
+            U32 traceeThreadId = ptraceTermination->ptraceTraceeThreadId;
+            U32 processId = ptraceTermination->id;
+            KSystem::internalEraseProcess(processId);
+            return traceeThreadId ? traceeThreadId : processId;
+        }
 
         if (pid>0) {
-            for (auto& n : KSystem::processes) {
-                KProcessPtr p = n.value;
-                KThread* tracedThread = p ? p->getThreadById((U32)pid) : nullptr;
-                if (tracedThread && tracedThread->ptraceStopPending) {
-                    tracedThread->ptraceStopPending = false;
-                    if (statusAddress) {
-                        U32 stopSignal = tracedThread->ptraceStopSignal ? tracedThread->ptraceStopSignal : K_SIGSTOP;
-                        memory->writed(statusAddress, (stopSignal << 8) | 0x7f);
-                    }
-                    return tracedThread->id;
-                }
-            }
-
             process = KSystem::processes[pid];
             if (!process || process->parentId != parentId) {
-                return -K_ECHILD;
+                if (hasPtraceTracee) {
+                    process = 0;
+                    hasChild = true;
+                } else {
+                    return -K_ECHILD;
+                }
+            } else {
+                hasChild = true;
             }
-            hasChild = true;
-            if (!process->isStopped() && !process->isTerminated()) {
-                process = 0;			
+            if (process && !process->isStopped() && !process->isTerminated()) {
+                process = 0;
             }
         } else {
             for (auto& n : KSystem::processes) {
@@ -408,7 +521,7 @@ U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
                 if (!p || p->parentId != parentId) {
                     continue;
                 }
-                if (pid == -1 || (pid == 0 && p->groupId == parentGroupId) || (pid < -1 && p->groupId == (U32)(-pid))) {
+                if (waitSelectionMatchesProcess(pid, p, parentGroupId)) {
                     hasChild = true;
                     if (p->isStopped() || p->isTerminated()) {
                         process = p;
@@ -416,7 +529,7 @@ U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
                     }
                 }
             }
-            if (!hasChild) {
+            if (!hasChild && !hasPtraceTracee) {
                 return -K_ECHILD;
             }
         }
@@ -446,7 +559,7 @@ U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
             s|=((process->exitCode & 0xFF) << 8);
             s|=(process->signaled & 0x7F);
         }
-        memory->writed(statusAddress, s);
+        thread->memory->writed(statusAddress, s);
     }
     result = process->id;
     KSystem::internalEraseProcess(result);
@@ -765,7 +878,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
                 memory->writeq(oldlimit, 0x7FFFFFFF);
                 memory->writeq(oldlimit + 8, 0x7FFFFFFF);
             }
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
             if (newlimit!=0) {
                 klog_fmt("prlimit64 RLIMIT_CPU set=%d ignored", (U32)memory->readq(newlimit));
             }
@@ -776,7 +889,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
                 memory->writeq(oldlimit, 0x800000000);
                 memory->writeq(oldlimit + 8, 0x800000000);
             }
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
             if (newlimit!=0) {
                 klog_fmt("prlimit64 RLIMIT_FSIZE set=%d ignored", (U32)memory->readq(newlimit));
             }
@@ -787,7 +900,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
                 memory->writeq(oldlimit, MAX_DATA_SIZE);
                 memory->writeq(oldlimit + 8, MAX_DATA_SIZE);
             }
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
             if (newlimit!=0) {
                 klog_fmt("prlimit64 RLIMIT_DATA set=%d ignored", (U32)memory->readq(newlimit));
             }
@@ -798,7 +911,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
                 memory->writeq(oldlimit, MAX_STACK_SIZE);
                 memory->writeq(oldlimit + 8, MAX_STACK_SIZE);
             }
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
             if (newlimit!=0) {
                 klog_fmt("prlimit64 RLIMIT_STACK set=%d ignored", (U32)memory->readq(newlimit));
             }
@@ -809,7 +922,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
                 memory->writeq(oldlimit, K_RLIM_INFINITY);
                 memory->writeq(oldlimit + 8, K_RLIM_INFINITY);
             }
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
             if (newlimit!=0) {
                 klog_fmt("prlimit64 RLIMIT_CORE set=%d ignored", (U32)memory->readq(newlimit));
             }
@@ -820,7 +933,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
                 memory->writeq(oldlimit, MAX_DATA_SIZE);
                 memory->writeq(oldlimit + 8, MAX_DATA_SIZE);
             }
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
             if (newlimit!=0) {
                 klog_fmt("prlimit64 RLIMIT_RSS set=%d ignored", (U32)memory->readq(newlimit));
             }
@@ -831,7 +944,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
                 memory->writeq(oldlimit, 4096);
                 memory->writeq(oldlimit + 8, 4096);
             }
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
             if (newlimit!=0) {
                 klog_fmt("prlimit64 RLIMIT_NPROC set=%d ignored", (U32)memory->readq(newlimit));
             }
@@ -842,7 +955,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
                 memory->writeq(oldlimit, MAX_NUMBER_OF_FILES); // some apps might iterate all the possible file handles, so don't make this too big
                 memory->writeq(oldlimit + 8, MAX_NUMBER_OF_FILES);
             }
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
             if (newlimit!=0) {
                 klog_fmt("prlimit64 RLIMIT_NOFILE set=%d ignored", (U32)memory->readq(newlimit));
             }
@@ -853,7 +966,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
                 memory->writeq(oldlimit, K_RLIM_INFINITY);
                 memory->writeq(oldlimit + 8, K_RLIM_INFINITY);
             }
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
             if (newlimit!=0) {
                 klog_fmt("prlimit64 RLIMIT_AS set=%d ignored", (U32)memory->readq(newlimit));
             }
@@ -864,7 +977,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
                 memory->writeq(oldlimit, -20);
                 memory->writeq(oldlimit + 8, 20);
             }
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
             if (newlimit != 0) {
                 klog_fmt("prlimit64 RLIMIT_NICE set=%d ignored", (U32)memory->readq(newlimit));
             }
@@ -875,7 +988,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
                 memory->writeq(oldlimit, 200);
                 memory->writeq(oldlimit + 8, 200);
             }
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
             if (newlimit!=0) {
                 klog_fmt("prlimit64 RLIMIT_AS set=%d ignored", (U32)memory->readq(newlimit));
             }
@@ -920,6 +1033,20 @@ void KSystem::eraseFileCache(BString name) {
 std::shared_ptr<MappedFileCache> KSystem::getFileCache(BString name) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
     return KSystem::fileCache[name];
+}
+
+std::shared_ptr<MappedFileCache> KSystem::getOrCreateFileCache(BString name, const std::shared_ptr<KFile>& file, U32 minPageCount) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
+    std::shared_ptr<MappedFileCache> cache = KSystem::fileCache[name];
+    if (!cache) {
+        cache = std::make_shared<MappedFileCache>(name);
+        cache->file = file;
+        KSystem::fileCache.set(name, cache);
+    }
+    if (cache->data.size() < minPageCount) {
+        cache->data.resize(minPageCount);
+    }
+    return cache;
 }
 
 void KSystem::setFileCache(BString name, const std::shared_ptr<MappedFileCache>& fileCache) {

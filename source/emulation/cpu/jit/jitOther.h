@@ -269,7 +269,7 @@ void Jit::dynamic_loopnz(DecodedOp* op) {
     EndIf();
     If(width, reg);
         if (canJumpInBlock(op)) {                
-            JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
+            jumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
         } else {
             blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
         }
@@ -299,7 +299,7 @@ void Jit::dynamic_loopz(DecodedOp* op) {
     EndIf();
     If(width, reg);
         if (canJumpInBlock(op)) {
-            JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
+            jumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
         } else {
             blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
         }
@@ -323,7 +323,7 @@ void Jit::dynamic_loop(DecodedOp* op) {
 
     If(width, getReadOnlyReg(1));
         if (canJumpInBlock(op)) {
-            JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
+            jumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
         } else {
             blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
         }
@@ -343,7 +343,7 @@ void Jit::dynamic_jcxz(DecodedOp* op) {
 
     IfNot(width, getReadOnlyReg(1));
         if (canJumpInBlock(op)) {
-            JumpInBlock(currentEip + op->len + op->imm);
+            jumpInBlock(currentEip + op->len + op->imm);
         } else {
             blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
         }
@@ -402,21 +402,21 @@ void Jit::dynamic_callJd(DecodedOp* op) {
 }
 void Jit::dynamic_jmp8(DecodedOp* op) {
     if (canJumpInBlock(op)) {
-        JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
+        jumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
     } else {
         blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
     }
 }
 void Jit::dynamic_jmp16(DecodedOp* op) {
     if (canJumpInBlock(op)) {
-        JumpInBlock(currentEip + op->len + (S32)((S16)op->imm));
+        jumpInBlock(currentEip + op->len + (S32)((S16)op->imm));
     } else {
         blockNext1(currentEip + op->len + (S32)((S16)op->imm), op);
     }
 }
 void Jit::dynamic_jmp32(DecodedOp* op) {
     if (canJumpInBlock(op)) {
-        JumpInBlock(currentEip + op->len + (S32)op->imm);
+        jumpInBlock(currentEip + op->len + (S32)op->imm);
     } else {
         blockNext1(currentEip + op->len + (S32)op->imm, op);
     }

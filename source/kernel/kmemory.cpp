@@ -48,7 +48,7 @@ KMemory::~KMemory() {
 }
 
 void KMemory::cleanup() {
-    BOXEDWINE_CRITICAL_SECTION;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (data) {
         delete data;
         data = nullptr;
@@ -166,15 +166,8 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
             mappedFile->key = this->process->nextMappedFileIndex++;
             bool addFileToSystemCache = true;
             if (addFileToSystemCache) {
-                std::shared_ptr<MappedFileCache> cache = KSystem::getFileCache(mappedFile->file->openFile->node->path);
-                if (!cache) {
-                    cache = std::make_shared<MappedFileCache>(mappedFile->file->openFile->node->path);
-                    KSystem::setFileCache(mappedFile->file->openFile->node->path, cache);
-                    cache->file = mappedFile->file;
-                    U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT));
-                    cache->data.resize(size);
-                }
-                mappedFile->systemCacheEntry = cache;
+                U32 cachePageCount = ((U32)((fd->kobject->length() + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT));
+                mappedFile->systemCacheEntry = KSystem::getOrCreateFileCache(mappedFile->file->openFile->node->path, mappedFile->file, cachePageCount);
             }
             this->process->mappedFiles.set(mappedFile->key, mappedFile);
             this->data->allocPages(thread, pageStart, pageCount, permissions, fildes, off, mappedFile);
@@ -470,6 +463,7 @@ DecodedOp* KMemory::getDecodedOp(U32 address) {
 }
 
 void KMemory::threadCleanup(U32 threadId) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (data) {
         data->opCache.threadCleanup(threadId);
     }
@@ -822,6 +816,13 @@ U64 KMemory::readq(U32 address) {
     return readd(address) | ((U64)readd(address + 4) << 32);
 }
 
+void KMemory::checkDebugTrapOnMemoryWrite(U32 address, U32 len) {
+    KThread* thread = KThread::currentThread();
+    if (thread && thread->memory == this && !thread->inSignal && thread->hasMemoryWriteBreakpointEnabled()) {
+        thread->checkDebugTrapOnMemoryWrite(address, len);
+    }
+}
+
 U32 KMemory::readd(U32 address) {
 	return readdInline(address);
 }
@@ -856,7 +857,7 @@ void KMemory::writeq(U32 address, U64 value) {
         MMU& mmu = data->mmu[index];
         if (mmu.canWriteRam) {
             *(U64*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
-            queueDataBreakpointOnWrite(address, 8);
+            checkDebugTrapOnMemoryWrite(address, 8);
             return;
         }
     }
@@ -873,16 +874,12 @@ void KMemory::writew(U32 address, U16 value) {
         int index = address >> 12;
 #if !defined(UNALIGNED_MEMORY)
         MMU& mmu = data->mmu[index];
-        if (mmu.canWriteRam) {
+        if (mmu.canWriteRam)
             *(U16*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
-            queueDataBreakpointOnWrite(address, 2);
-        } else {
+        else
 #endif
             data->mmu[index].getPage()->writew(&data->mmu[index], address, value);
-            queueDataBreakpointOnWrite(address, 2);
-#if !defined(UNALIGNED_MEMORY)
-        }
-#endif
+        checkDebugTrapOnMemoryWrite(address, 2);
     } else {
         writeb(address, (U8)value);
         writeb(address + 1, (U8)(value >> 8));
@@ -897,7 +894,7 @@ void KMemory::writeb(U32 address, U8 value) {
     } else {
         data->mmu[index].getPage()->writeb(&data->mmu[index], address, value);
     }
-    queueDataBreakpointOnWrite(address, 1);
+    checkDebugTrapOnMemoryWrite(address, 1);
 }
 
 U8* KMemory::getRamPtr(U32 address, U32 len, bool write, bool futex) {

@@ -10,6 +10,7 @@
 #include "boxedwine.h"
 
 #include "kinotify.h"
+#include "ksignal.h"
 #include "kstat.h"
 
 namespace {
@@ -169,16 +170,29 @@ U32 KInotifyObject::removeWatch(S32 wd) {
 void KInotifyObject::queueEvent(const BString& parentPath, const BString& name, U32 mask) {
     U32 eventMask = mask & K_IN_ALL_EVENTS;
     bool queued = false;
+    U32 asyncProcessId = 0;
+    FD asyncFd = 0;
 
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
-    for (const Watch& watch : this->watches) {
-        if (watch.path == parentPath && (watch.mask & eventMask)) {
-            this->appendEvent(watch.wd, mask, name);
-            queued = true;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
+        for (const Watch& watch : this->watches) {
+            if (watch.path == parentPath && (watch.mask & eventMask)) {
+                this->appendEvent(watch.wd, mask, name);
+                queued = true;
+            }
+        }
+        if (queued) {
+            asyncProcessId = this->asyncProcessId;
+            asyncFd = this->asyncFd;
+            BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
         }
     }
-    if (queued) {
-        BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
+
+    if (asyncProcessId) {
+        KProcessPtr process = KSystem::getProcess(asyncProcessId);
+        if (process) {
+            process->signalIO(K_POLL_IN, 0, asyncFd);
+        }
     }
 }
 
@@ -232,11 +246,23 @@ bool KInotifyObject::isBlocking() {
 }
 
 void KInotifyObject::setAsync(bool isAsync) {
-    this->async = isAsync;
+    KThread* thread = KThread::currentThread();
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
+    if (isAsync) {
+        if (thread && thread->process) {
+            this->asyncProcessId = thread->process->id;
+            this->asyncFd = thread->cpu ? thread->cpu->reg[3].u32 : 0;
+        }
+    } else if (!thread || !thread->process || this->asyncProcessId == thread->process->id) {
+        this->asyncProcessId = 0;
+        this->asyncFd = 0;
+    }
 }
 
 bool KInotifyObject::isAsync() {
-    return this->async;
+    KThread* thread = KThread::currentThread();
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
+    return thread && thread->process && this->asyncProcessId == thread->process->id;
 }
 
 KFileLock* KInotifyObject::getLock(KFileLock* lock) {

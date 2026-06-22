@@ -44,10 +44,6 @@ public:
         return opEip < lastOpEip && opEip + op->len + op->imm <= lastOpEip && opEip + op->len + op->imm >= startingEip;
     }
 
-    RegPtr readYield() override {
-        return readCPU(JitWidth::b8, offsetof(CPU, yield));
-    }
-
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void compile(DecodedOp* op) override;
     void postCompile(DecodedOp* op) override;
@@ -134,6 +130,9 @@ public:
     void blockNext1(U32 eip, DecodedOp* op) override;
     void blockNext2(U32 eip, DecodedOp* op) override;
     void jumpEip(RegPtr reg) override;
+    void jumpInBlock(U32 address) override;
+    void exitToRunLoopIfPendingSignal(U32 eip);
+    void exitToRunLoopIfPendingSignal(RegPtr eip);
 
     void doJIT(U32 address, DecodedOp* op);
     void onTestEnd(DecodedOp* op) override;

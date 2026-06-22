@@ -345,7 +345,6 @@ public:
     void IfGreaterThan(JitWidth regWidth, ComparisonType type, RegPtr reg1, U32 value) override;
     void IfNot(JitWidth regWidth, RegPtr reg) override;
     void IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) override;    
-    void IfYieldNotSet() override;
     void IfDF() override;
     void IfSmallStack() override;
     void JumpIfCondition(JitConditional condition, U32 address) override;
@@ -2956,14 +2955,6 @@ void JitX86CodeGen::IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) 
     compiler.jnz(label);
 }
 
-void JitX86CodeGen::IfYieldNotSet() {
-    Label label = compiler.new_label();
-    ifLabels.push_back(label);
-
-    compiler.cmp(Mem8(HOST_CPU, offsetof(CPU, yield)), 0);
-    compiler.jnz(label);
-}
-
 void JitX86CodeGen::clearIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg) {    
     if (width == JitWidth::b16) {
         compiler.cmp(R32(offset), 0xFFF);
@@ -5541,24 +5532,6 @@ void JitX86CodeGen::direct_jump(JitConditional condition, U32 address) {
         opLabels.set(address, label);
         pendingLabels.set(address, label);
     }
-
-#ifdef BOXEDWINE_MULTI_THREADED
-    if (address <= currentEip) {
-        Label taken = compiler.new_label();
-        Label done = compiler.new_label();
-
-        compiler.j(getCondCode(condition), taken);
-        compiler.jmp(done);
-        compiler.bind(taken);
-        IfYieldNotSet(); {
-            compiler.jmp(label);
-        } EndIf();
-        writeEip(address - cpu->seg[CS].address);
-        blockExit();
-        compiler.bind(done);
-        return;
-    }
-#endif
 
     compiler.j(getCondCode(condition), label);
 }
