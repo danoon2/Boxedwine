@@ -4602,7 +4602,10 @@ static void emitWasmRoundF64ForSseI32(WasmEmitter& emitter, U32 f64Local, U32 mx
     emitter.emitEnd();
 }
 
-static void emitWasmSafeF64ToI32ForSse(WasmEmitter& emitter, U32 f64Local) {
+// WebAssembly's scalar truncation instructions trap for NaN and out-of-range
+// values.  Masked x86 x87/SSE conversions instead produce the integer
+// indefinite value, so validate the rounded input before emitting truncation.
+static void emitWasmF64ToI32OrIndefinite(WasmEmitter& emitter, U32 f64Local) {
     emitter.emitLocalGet(f64Local);
     emitter.emitLocalGet(f64Local);
     emitter.emitOp(WASM_F64_NE);
@@ -4613,8 +4616,8 @@ static void emitWasmSafeF64ToI32ForSse(WasmEmitter& emitter, U32 f64Local) {
     emitter.emitOp(WASM_I32_OR);
 
     emitter.emitLocalGet(f64Local);
-    emitWasmF64ConstBits(emitter, 0x41dfffffffc00000ULL); // 2147483647.0
-    emitter.emitOp(WASM_F64_GT);
+    emitWasmF64ConstBits(emitter, 0x41e0000000000000ULL); // 2147483648.0
+    emitter.emitOp(WASM_F64_GE);
     emitter.emitOp(WASM_I32_OR);
 
     emitter.emitIf(WasmType::I32);
@@ -4625,17 +4628,40 @@ static void emitWasmSafeF64ToI32ForSse(WasmEmitter& emitter, U32 f64Local) {
     emitter.emitEnd();
 }
 
+static void emitWasmF64ToI64OrIndefinite(WasmEmitter& emitter, U32 f64Local) {
+    emitter.emitLocalGet(f64Local);
+    emitter.emitLocalGet(f64Local);
+    emitter.emitOp(WASM_F64_NE);
+
+    emitter.emitLocalGet(f64Local);
+    emitWasmF64ConstBits(emitter, 0xc3e0000000000000ULL); // -9223372036854775808.0
+    emitter.emitOp(WASM_F64_LT);
+    emitter.emitOp(WASM_I32_OR);
+
+    emitter.emitLocalGet(f64Local);
+    emitWasmF64ConstBits(emitter, 0x43e0000000000000ULL); // 9223372036854775808.0
+    emitter.emitOp(WASM_F64_GE);
+    emitter.emitOp(WASM_I32_OR);
+
+    emitter.emitIf(WasmType::I64);
+    emitter.emitI64Const((S64)(-9223372036854775807LL - 1));
+    emitter.emitElse();
+    emitter.emitLocalGet(f64Local);
+    emitter.emitOp(WASM_I64_TRUNC_F64_S);
+    emitter.emitEnd();
+}
+
 static void emitWasmSseF32LaneToI32(WasmEmitter& emitter, SSERegPtr src, U8 lane, U32 f64Local, U32 mxcsrLocal, bool truncate) {
     emitWasmF32LaneAsF64(emitter, src, lane);
     emitWasmRoundF64ForSseI32(emitter, f64Local, mxcsrLocal, truncate);
-    emitWasmSafeF64ToI32ForSse(emitter, f64Local);
+    emitWasmF64ToI32OrIndefinite(emitter, f64Local);
 }
 
 static void emitWasmSseF64LaneToI32(WasmEmitter& emitter, SSERegPtr src, U8 lane, U32 f64Local, U32 mxcsrLocal, bool truncate) {
     emitter.emitLocalGet(src->hardwareReg());
     emitter.emitSimdLaneOp(WASM_SIMD_F64X2_EXTRACT_LANE, lane);
     emitWasmRoundF64ForSseI32(emitter, f64Local, mxcsrLocal, truncate);
-    emitWasmSafeF64ToI32ForSse(emitter, f64Local);
+    emitWasmF64ToI32OrIndefinite(emitter, f64Local);
 }
 
 static void emitWasmZeroV128Local(WasmEmitter& emitter, U32 local) {
@@ -6291,7 +6317,10 @@ RegPtr JitWasmCodeGen::fpuRegToInt32(FPURegPtr fpuRegSrc, bool truncate) {
         m_emitter.emitLocalGet(rounded);
         freeF64Scratch(rounded);
     }
-    m_emitter.emitOp(WASM_I32_TRUNC_F64_S);
+    U32 rounded = allocF64Scratch();
+    m_emitter.emitLocalSet(rounded);
+    emitWasmF64ToI32OrIndefinite(m_emitter, rounded);
+    freeF64Scratch(rounded);
     m_emitter.emitLocalSet(result->hardwareReg());
     return result;
 }
@@ -6361,7 +6390,10 @@ void JitWasmCodeGen::storeFPUToInt64(FPURegPtr src, MemPtr address, bool truncat
         roundFPUToInt64(src);
     }
     m_emitter.emitLocalGet(src->hardwareReg());
-    m_emitter.emitOp(WASM_I64_TRUNC_F64_S);
+    U32 rounded = allocF64Scratch();
+    m_emitter.emitLocalSet(rounded);
+    emitWasmF64ToI64OrIndefinite(m_emitter, rounded);
+    freeF64Scratch(rounded);
     m_emitter.emitI64Store(memOffset);
 }
 
