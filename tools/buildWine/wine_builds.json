@@ -1,0 +1,161 @@
+{
+  "base_filesystem": {
+    "url": "https://boxedwine.org/v2/7/TinyCore15WineBase.zip",
+    "filename": "TinyCore15WineBase.zip",
+    "size": 67443325,
+    "sha256": "46769cd240696968e31182bc86808b9038916fc44cdc3ef0ff217fd942ed44c0"
+  },
+  "wine": {
+    "repo": "https://github.com/wine-mirror/wine.git",
+    "source_dir": "wine-git"
+  },
+  "build": {
+    "prefix": "/opt/wine",
+    "configure_args": [
+      "--with-oss",
+      "--with-opengl",
+      "--with-vulkan",
+      "--without-mingw",
+      "--without-capi",
+      "--without-cups",
+      "--without-pulse",
+      "--without-dbus",
+      "--without-sane",
+      "--without-gphoto",
+      "--without-krb5",
+      "--without-gssapi",
+      "--without-gettextpo",
+      "--without-v4l2",
+      "--without-hal",
+      "--without-udev",
+      "--without-usb",
+      "--without-xshape",
+      "--without-xshm",
+      "--without-xcomposite",
+      "--without-wayland",
+      "--without-pcap",
+      "--without-alsa",
+      "--prefix=/opt/wine",
+      "--disable-tests"
+    ],
+    "cc": "gcc -m32",
+    "cxx": "g++ -m32",
+    "cflags": "-DNDEBUG -O2 -msse2 -march=pentium4 -mfpmath=sse",
+    "ld": "ld -m elf_i386",
+    "targetflags": "-m32",
+    "ldflags": "-s"
+  },
+  "required_config_checks": [
+    {
+      "checking": "checking for ft2build.h",
+      "result": "yes",
+      "apt": ["libfreetype-dev:i386"],
+      "reason": "Official Debian 11 VM build had FreeType headers"
+    },
+    {
+      "checking": "checking for -lEGL",
+      "result": "libEGL.so.1",
+      "apt": ["libegl-dev:i386"],
+      "reason": "Required for Boxedwine EGL/OpenGL support"
+    },
+    {
+      "checking": "checking for -lGL",
+      "result": "libGL.so.1",
+      "apt": ["libgl-dev:i386"],
+      "reason": "Required for Boxedwine OpenGL support"
+    },
+    {
+      "checking": "checking for -lvulkan",
+      "result": "libvulkan.so.1",
+      "apt": ["libvulkan-dev:i386"],
+      "reason": "Required for Boxedwine Vulkan support"
+    },
+    {
+      "checking": "checking for oss_sysinfo.numaudioengines",
+      "result": "yes",
+      "apt": [],
+      "reason": "Required for Wine OSS sound support"
+    },
+    {
+      "checking": "checking for -lgnutls",
+      "result": "libgnutls.so.30",
+      "apt": ["libgnutls28-dev:i386"],
+      "reason": "Official Debian 11 VM build had GnuTLS schannel support"
+    },
+    {
+      "checking": "checking for gnutls_cipher_init",
+      "result": "yes",
+      "apt": ["libgnutls28-dev:i386"],
+      "reason": "Official Debian 11 VM build had GnuTLS cipher support"
+    },
+    {
+      "checking": "checking for gst_pad_new in -lgstreamer-1.0",
+      "result": "yes",
+      "apt": ["libgstreamer1.0-dev:i386", "libgstreamer-plugins-base1.0-dev:i386"],
+      "reason": "Official Debian 11 VM build had GStreamer codec support"
+    },
+    {
+      "checking": "checking for -lSDL2",
+      "result": "libSDL2-2.0.so.0",
+      "apt": ["libsdl2-dev:i386"],
+      "reason": "Official Debian 11 VM build had SDL support"
+    },
+    {
+      "checking": "checking for -lfontconfig",
+      "result": "libfontconfig.so.1",
+      "apt": ["libfontconfig-dev:i386"],
+      "reason": "Official Debian 11 VM build had fontconfig support"
+    }
+  ],
+  "operations": [
+    {
+      "when": { "min": "9.3", "max": "10.8" },
+      "cherry_pick": "6fee37c2b6eb486ae60d6af4dd6e45549be0b624",
+      "reason": "Backport Wine fix used by previous Boxedwine 9.x and 10.x builds"
+    },
+    {
+      "when": { "min": "9.0", "max": "9.2" },
+      "revert": "a6e969560b02ca776f987319db37e6550a1ec",
+      "reason": "Avoid regression seen on slower systems"
+    },
+    {
+      "when": { "min": "9.13", "max": "9.99" },
+      "revert": "54ca1ab607d3ff22a1f57a9561430f64c75f0916",
+      "reason": "Avoid regression seen on slower systems"
+    },
+    {
+      "when": { "min": "6.23" },
+      "apply_patch": "fixSetupApiFromCrashingDuringDllDetach.patch",
+      "reason": "Avoid setupapi crash during DLL detach"
+    },
+    {
+      "apply_patch": "FAudio_opentdd_mac_crash.patch",
+      "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
+    },
+    {
+      "when": { "min": "5.21", "max": "6.18" },
+      "apply_patch": "wine6_font_race.patch",
+      "reason": "Backport Wine font race fix"
+    },
+    {
+      "when": { "min": "6.19", "max": "6.21" },
+      "cherry_pick": "39fea6cd1eb175cddf3cbccc1fd09fec48da881e",
+      "reason": "Backport Wine font race fix"
+    },
+    {
+      "when": { "min": "4.0", "max": "7.18" },
+      "apply_patch": "auto_refresh/auto_refresh6.patch",
+      "reason": "Keep DirectDraw auto-refresh behavior for older Wine"
+    },
+    {
+      "when": { "max": "3.99" },
+      "apply_patch": "auto_refresh/auto_refresh3.patch",
+      "reason": "Keep DirectDraw auto-refresh behavior for older Wine"
+    },
+    {
+      "when": { "min": "4.1", "max": "4.1" },
+      "apply_patch": "ddraw_waitvblank.patch",
+      "reason": "Keep current Boxedwine Wine 4.1 DirectDraw wait-vblank patch"
+    }
+  ]
+}
