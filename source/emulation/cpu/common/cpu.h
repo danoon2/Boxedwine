@@ -234,6 +234,9 @@ public:
     U32 wasmJitMemoryData = 0;
     U32 wasmReadPageBaseArray  = 0;
     U32 wasmWritePageBaseArray = 0;
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    U32 wasmJitProfileSampleCounter = 0;
+#endif
 #endif
     U8* reg8[9];
     ALIGN(SSE xmm[8], 16);    

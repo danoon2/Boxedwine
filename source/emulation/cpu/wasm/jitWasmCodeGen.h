@@ -157,10 +157,9 @@
  *
  *   BOXEDWINE_WASM_JIT_PROFILE  Profiling instrument: dispatch/exit/helper
  *                               counters and sampled wall times, printed
- *                               periodically. In MT builds trust the counts,
- *                               not the nanoseconds — the shared atomic
- *                               counters contend across workers and poison
- *                               the wall times.
+ *                               periodically. Hot-event totals are 1-in-1024
+ *                               samples scaled back to estimated counts. In
+ *                               MT builds trust the counts, not nanoseconds.
  *
  *   BOXEDWINE_WASM_JIT_FORCE_PERSISTENCE
  *                               Latches record/replay persistence on from
@@ -977,6 +976,9 @@ protected:
     void emitArmSmcBailout();
     void emitBailoutCheck();
     void emitBlockExitWithProfile(U32 profileHelperIdx);
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    void emitProfileSampledCall(U32 helperIdx, U32 detail = InstructionCount);
+#endif
     void syncStateBeforeFaultingMemoryHelper();
     U32 lastCompiledOpLen = 0;
     bool m_needsWasmMemoryPageArrays = false;
