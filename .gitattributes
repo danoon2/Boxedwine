@@ -2,6 +2,8 @@
 # Set default behavior to automatically normalize line endings.
 ###############################################################################
 * text=auto
+tools/jenkins/*.py text eol=lf
+tools/jenkins/*.sh text eol=lf
 
 ###############################################################################
 # Set default behavior for command prompt diff.

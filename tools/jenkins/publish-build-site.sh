@@ -8,6 +8,7 @@ fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SITE_DIR="$(mktemp -d)"
+BOXEDWINE_ZIP_URL="http://boxedwine.org/v2/demos/boxedwine.1.zip"
 REMOTE_LOCK_ACQUIRED=0
 REMOTE_HOST="${BUILD_SITE_REMOTE%%:*}"
 REMOTE_PATH="${BUILD_SITE_REMOTE#*:}"
@@ -66,7 +67,9 @@ DEMO_ARGS=()
 DEMO_SOURCE="${BUILD_SITE_DEMOS_SOURCE:-$SITE_DIR/demos/apps}"
 SINGLE_THREADED_DIR="${BUILD_SITE_SINGLE_THREADED_DIR:-$ROOT_DIR/project/linux/Deploy/Web/SingleThreaded}"
 MULTI_THREADED_DIR="${BUILD_SITE_MULTI_THREADED_DIR:-$ROOT_DIR/project/linux/Deploy/Web/MultiThreaded}"
-if [ -d "$DEMO_SOURCE" ] && [ -d "$SINGLE_THREADED_DIR" ] && [ -d "$MULTI_THREADED_DIR" ]; then
+if [ -d "$SINGLE_THREADED_DIR" ] && [ -d "$MULTI_THREADED_DIR" ]; then
+    mkdir -p "$DEMO_SOURCE"
+    wget -O "$DEMO_SOURCE/boxedwine.zip" "$BOXEDWINE_ZIP_URL"
     DEMO_ARGS+=(
         --demo-source "$DEMO_SOURCE"
         --single-threaded-dir "$SINGLE_THREADED_DIR"

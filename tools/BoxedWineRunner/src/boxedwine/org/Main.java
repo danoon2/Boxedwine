@@ -30,6 +30,7 @@ import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
@@ -41,6 +42,9 @@ public class Main {
     static boolean verbose = false;
     static String perfName = "Performance";
     static boolean atleastOneFailed = false;
+    static final long DEFAULT_BOXEDWINE_TIMEOUT_SECONDS = TimeUnit.MINUTES.toSeconds(30);
+    static final long boxedWineTimeoutSeconds = Math.max(1, Long.getLong("boxedwine.runner.timeout.seconds", DEFAULT_BOXEDWINE_TIMEOUT_SECONDS));
+    static final long PROCESS_FORCED_SHUTDOWN_SECONDS = 30;
 
     static class Results {
         int exitCode;
@@ -58,6 +62,47 @@ public class Main {
             Files.copy(source, dest, REPLACE_EXISTING);
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    private static boolean terminateProcessTree(Process process) {
+        try {
+            Class<?> processHandleClass = Class.forName("java.lang.ProcessHandle");
+            Object processHandle = Process.class.getMethod("toHandle").invoke(process);
+            Stream<?> descendants = (Stream<?>)processHandleClass.getMethod("descendants").invoke(processHandle);
+            Object[] childHandles = descendants.toArray();
+            for (int i = childHandles.length - 1; i >= 0; i--) {
+                processHandleClass.getMethod("destroyForcibly").invoke(childHandles[i]);
+            }
+            processHandleClass.getMethod("destroyForcibly").invoke(processHandle);
+            return true;
+        } catch (ReflectiveOperationException | LinkageError | ClassCastException e) {
+            return false;
+        }
+    }
+
+    private static void terminateProcess(Process process, String program) {
+        if (!process.isAlive()) {
+            return;
+        }
+        if (!terminateProcessTree(process)) {
+            process.destroyForcibly();
+        }
+        try {
+            if (!process.waitFor(PROCESS_FORCED_SHUTDOWN_SECONDS, TimeUnit.SECONDS)) {
+                System.out.println("WARNING: " + program + " is still running after forced termination");
+            }
+        } catch (InterruptedException e) {
+            process.destroyForcibly();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void waitForStreamGobbler(Thread streamGobblerThread) {
+        try {
+            streamGobblerThread.join(TimeUnit.SECONDS.toMillis(5));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -105,21 +150,28 @@ public class Main {
             System.out.println(results.commandLine);
         }
         builder.directory(new File(directory));
+        builder.redirectErrorStream(true);
         Process process = builder.start();
         StreamGobbler streamGobbler = new StreamGobbler(process.getInputStream(), name);
-        streamGobbler.run();
+        Thread streamGobblerThread = new Thread(streamGobbler, "BoxedWineRunner output " + name);
+        streamGobblerThread.setDaemon(true);
+        streamGobblerThread.start();
         try {
-            if (!process.waitFor(30, TimeUnit.MINUTES)) {
-                System.out.println("Killing "+parts[1]);
-                process.destroyForcibly();
+            if (!process.waitFor(boxedWineTimeoutSeconds, TimeUnit.SECONDS)) {
+                System.out.println("Killing "+parts[1]+" after "+boxedWineTimeoutSeconds+" seconds");
+                terminateProcess(process, parts[1]);
                 results.exitCode = 1; // 111 is the valid return code
             } else {
                 results.exitCode = process.exitValue();
             }
+            waitForStreamGobbler(streamGobblerThread);
             results.scriptFinished = streamGobbler.scriptFinished;
             results.output = streamGobbler.lines;
         } catch (InterruptedException e) {
-            throw new IOException("Failed to run "+parts[1]);
+            System.out.println("Interrupted while running "+parts[1]+", killing process");
+            terminateProcess(process, parts[1]);
+            Thread.currentThread().interrupt();
+            throw new IOException("Failed to run "+parts[1], e);
         }
     }
 

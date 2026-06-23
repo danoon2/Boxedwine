@@ -37,6 +37,9 @@ project/linux/msvc-remote/Boxedwine/Boxedwine/obj/
 **/xcuserdata/*
 tools/vulkan/gen/
 tools/BoxedwineRunner/out/
+tools/jenkins/*.log
+tools/jenkins/*.pid
+project/linux/Deploy/LocalBuildSite/
 lib/mac
 .vs/
 .github/
