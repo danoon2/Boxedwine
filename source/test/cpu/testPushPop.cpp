@@ -15,6 +15,7 @@
 #include "testCPU.h"
 #include "testAsmJit.h"
 #include "ksignal.h"
+#include "../../emulation/cpu/common/common_sse.h"
 
 #define cpu (testContext().cpu)
 #define memory (testContext().memory)
@@ -1494,6 +1495,72 @@ void runDivssDoesNotRaiseDivideByZeroForNonFiniteDividend(bool memoryOperand) {
     action.reset();
 }
 
+void runSseDivFastPathDecision() {
+    constexpr U32 DEFAULT_MXCSR = 0x1f80;
+    constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+
+    if (common_sse_div_control_requires_slow_path(DEFAULT_MXCSR)) {
+        failed("default SSE divide control marked slow");
+    }
+    if (!common_sse_div_control_requires_slow_path(DEFAULT_MXCSR & ~MXCSR_INVALID_OPERATION_MASK)) {
+        failed("unmasked invalid operation SSE divide control marked fast");
+    }
+    if (!common_sse_div_control_requires_slow_path(DEFAULT_MXCSR & ~MXCSR_DIVIDE_BY_ZERO_MASK)) {
+        failed("unmasked divide-by-zero SSE divide control marked fast");
+    }
+    if (common_sse_div_control_requires_slow_path(DEFAULT_MXCSR ^ 0x6000)) {
+        failed("rounding-only SSE divide control marked slow");
+    }
+}
+
+void runX87DivFastPathDecision() {
+    constexpr U32 FPU_INVALID_OPERATION_MASK = 0x0001;
+    constexpr U32 FPU_DIVIDE_BY_ZERO_MASK = 0x0004;
+
+    FPU fpu;
+    fpu.FINIT();
+    fpu.tags[0] = TAG_Valid;
+    fpu.tags[1] = TAG_Valid;
+    if (fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
+        failed("default x87 divide control and valid tags marked slow");
+    }
+
+    fpu.cw &= ~FPU_DIVIDE_BY_ZERO_MASK;
+    if (!fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
+        failed("unmasked x87 divide-by-zero marked fast");
+    }
+
+    fpu.FINIT();
+    fpu.tags[0] = TAG_Valid;
+    fpu.tags[1] = TAG_Valid;
+    fpu.cw &= ~FPU_INVALID_OPERATION_MASK;
+    if (!fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
+        failed("unmasked x87 invalid operation marked fast");
+    }
+
+    fpu.FINIT();
+    fpu.tags[0] = TAG_Valid;
+    fpu.tags[1] = TAG_Zero;
+    if (!fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
+        failed("x87 FDIV zero divisor tag marked fast");
+    }
+
+    fpu.FINIT();
+    fpu.tags[0] = TAG_Zero;
+    fpu.tags[1] = TAG_Valid;
+    if (!fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, true)) {
+        failed("x87 FDIVR zero divisor tag marked fast");
+    }
+
+    fpu.FINIT();
+    fpu.tags[0] = TAG_Empty;
+    fpu.tags[1] = TAG_Valid;
+    if (!fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
+        failed("x87 empty divide operand tag marked fast");
+    }
+}
+
 void emitBytes(const U8* bytes, size_t count) {
     for (size_t i = 0; i < count; ++i) {
         emitByte(bytes[i]);
@@ -1889,6 +1956,14 @@ void testDivssRaisesSimdException() {
     runDivssRaisesSimdException(true, true);
     runDivssDoesNotRaiseDivideByZeroForNonFiniteDividend(false);
     runDivssDoesNotRaiseDivideByZeroForNonFiniteDividend(true);
+}
+
+void testSseDivFastPathDecision() {
+    runSseDivFastPathDecision();
+}
+
+void testX87DivFastPathDecision() {
+    runX87DivFastPathDecision();
 }
 
 void testX87FwaitRaisesPendingException() {

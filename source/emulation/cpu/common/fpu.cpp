@@ -122,6 +122,16 @@ static bool fpuIsZero(FPU* fpu, int reg) {
     return fpu->getF64(reg) == 0.0;
 }
 
+bool fpu_div_control_or_tag_requires_slow_path(const FPU* fpu, int st, int other, bool reverse) {
+    constexpr U32 REQUIRED_MASKS = FPU_SW_IE | FPU_SW_ZE;
+    (void)reverse;
+
+    if ((fpu->cw & REQUIRED_MASKS) != REQUIRED_MASKS) {
+        return true;
+    }
+    return fpu->tags[st] != TAG_Valid || fpu->tags[other] != TAG_Valid;
+}
+
 static void fpuSetException(FPU* fpu, U32 bits) {
     fpu->sw |= bits;
     U32 unmasked = bits & ~(fpu->cw & FPU_SW_EXCEPTION_MASK) & FPU_SW_EXCEPTION_MASK;

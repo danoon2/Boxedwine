@@ -154,6 +154,14 @@ static bool isSingleFiniteNonZero(U32 value) {
     return !isSingleZero(value) && (value & 0x7f800000) != 0x7f800000;
 }
 
+bool common_sse_div_control_requires_slow_path(U32 mxcsr) {
+    constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+    constexpr U32 REQUIRED_MASKS = MXCSR_INVALID_OPERATION_MASK | MXCSR_DIVIDE_BY_ZERO_MASK;
+
+    return (mxcsr & REQUIRED_MASKS) != REQUIRED_MASKS;
+}
+
 static bool common_sse_check_div_exception(CPU* cpu, const simde__m128& dividend, const simde__m128& divisor, U32 laneCount) {
     constexpr U32 MXCSR_INVALID_OPERATION_FLAG = 1u << 0;
     constexpr U32 MXCSR_DIVIDE_BY_ZERO_FLAG = 1u << 2;

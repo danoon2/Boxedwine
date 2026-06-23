@@ -443,6 +443,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testIcebpRaisesSingleStepTrap, "Test icebp raises single-step trap"},
     {testDivpsRaisesSimdException, "Test divps raises SIMD exception"},
     {testDivssRaisesSimdException, "Test divss raises SIMD exception"},
+    {testSseDivFastPathDecision, "Test SSE divide fast path decision"},
+    {testX87DivFastPathDecision, "Test x87 divide fast path decision"},
     {testX87FwaitRaisesPendingException, "Test x87 fwait raises pending exception"},
     {testHardwareBreakpointRaisesTrap, "Test hardware breakpoint raises trap"},
     {testHardwareBreakpointIgnoresNonExecutableAddress, "Test hardware breakpoint ignores non-executable address"},

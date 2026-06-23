@@ -21,6 +21,18 @@
 #ifdef BOXEDWINE_JIT
 #include "jitSSE.h"
 
+void JitSSE::guardSseDiv() {
+    constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+    constexpr U32 REQUIRED_MASKS = MXCSR_INVALID_OPERATION_MASK | MXCSR_DIVIDE_BY_ZERO_MASK;
+
+    RegPtr mxcsr = readCPU(JitWidth::b32, offsetof(CPU, mxcsr));
+    andValue(JitWidth::b32, mxcsr, REQUIRED_MASKS);
+    IfNotEqual(JitWidth::b32, mxcsr, REQUIRED_MASKS); {
+        emulateSingleOp();
+    } EndIf();
+}
+
 void JitSSE::opXmmXmm(DecodedOp* op, XmmXmmCallback callback, bool loadDest) {
     SSERegPtr reg;
 

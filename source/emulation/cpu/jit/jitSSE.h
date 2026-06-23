@@ -112,6 +112,8 @@ public:
 	virtual void stmxcsr(MemPtr address) = 0;
 	virtual void ldmxcsr(MemPtr address) = 0;
 
+	void guardSseDiv();
+
 	void dynamic_addpsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::addpsXmmXmm); }
 	void dynamic_addpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::addpsXmmXmm); }
 	void dynamic_addssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::addssXmmXmm); }
@@ -124,10 +126,10 @@ public:
 	void dynamic_mulpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::mulpsXmmXmm); }
 	void dynamic_mulssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::mulssXmmXmm); }
 	void dynamic_mulssE32(DecodedOp* op) override { opXmmE32(op, &JitSSE::mulssXmmXmm); }
-	void dynamic_divpsXmm(DecodedOp* op) override { emulateSingleOp(); }
-	void dynamic_divpsE128(DecodedOp* op) override { emulateSingleOp(); }
-	void dynamic_divssXmm(DecodedOp* op) override { emulateSingleOp(); }
-	void dynamic_divssE32(DecodedOp* op) override { emulateSingleOp(); }
+	void dynamic_divpsXmm(DecodedOp* op) override { guardSseDiv(); opXmmXmm(op, &JitSSE::divpsXmmXmm); }
+	void dynamic_divpsE128(DecodedOp* op) override { guardSseDiv(); opXmmE128(op, &JitSSE::divpsXmmXmm); }
+	void dynamic_divssXmm(DecodedOp* op) override { guardSseDiv(); opXmmXmm(op, &JitSSE::divssXmmXmm); }
+	void dynamic_divssE32(DecodedOp* op) override { guardSseDiv(); opXmmE32(op, &JitSSE::divssXmmXmm); }
 	void dynamic_rcppsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::rcppsXmmXmm); }
 	void dynamic_rcppsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::rcppsXmmXmm); }
 	void dynamic_rcpssXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::rcpssXmmXmm); }

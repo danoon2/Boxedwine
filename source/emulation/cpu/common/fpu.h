@@ -256,4 +256,6 @@ public:
     bool isMMXInUse;
 };
 
+bool fpu_div_control_or_tag_requires_slow_path(const FPU* fpu, int st, int other, bool reverse);
+
 #endif

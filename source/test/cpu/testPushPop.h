@@ -43,6 +43,8 @@ void testSingleStepRaisesTrapAfterRet();
 void testIcebpRaisesSingleStepTrap();
 void testDivpsRaisesSimdException();
 void testDivssRaisesSimdException();
+void testSseDivFastPathDecision();
+void testX87DivFastPathDecision();
 void testX87FwaitRaisesPendingException();
 void testHardwareBreakpointRaisesTrap();
 void testHardwareBreakpointIgnoresNonExecutableAddress();
