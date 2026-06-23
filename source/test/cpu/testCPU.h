@@ -34,7 +34,10 @@ struct TestContext {
 struct TestEntry {
     void (*function)();
     const char* name;
+    U32 flags = 0;
 };
+
+constexpr U32 TEST_ENTRY_SERIAL = 1u << 0;
 
 TestContext& testContext();
 void testNewInstruction(int flags);

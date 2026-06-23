@@ -2578,7 +2578,7 @@ static const SyscallFunc syscallFunc[] = {
     syscall_recvfrom,   // 371 __NR_recvfrom
     syscall_recvmsg,    // 372 __NR_recvmsg
     syscall_shutdown,   // 373 __NR_shutdown
-    nullptr,                  // 374
+    nullptr,                  // __NR_userfaultfd 374
     nullptr,                  // 375
     nullptr,                  // 376
     nullptr,                  // 377

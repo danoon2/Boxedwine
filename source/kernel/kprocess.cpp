@@ -457,9 +457,11 @@ KFileDescriptorPtr KProcess::allocFileDescriptor(const std::shared_ptr<KObject>&
     KFileDescriptorPtr result = std::make_shared<KFileDescriptor>(shared_from_this(), kobject, accessFlags, descriptorFlags, handle);
     
     this->fds.set(handle, result);
-    Fs::addDynamicLinkFile(fdNode->path+"/"+BString::valueOf(handle), k_mdev(0, 0), fdNode, false, [kobject] {
-        return kobject->selfFd();
-    });
+    if (fdNode) {
+        Fs::addDynamicLinkFile(fdNode->path + "/" + BString::valueOf(handle), k_mdev(0, 0), fdNode, false, [kobject] {
+            return kobject->selfFd();
+        });
+    }
     return result;
 }
 

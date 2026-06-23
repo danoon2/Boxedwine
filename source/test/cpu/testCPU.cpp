@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <vector>
 
@@ -145,6 +146,23 @@ void bindParallelContext(U32 index) {
     KThread::setCurrentThread(currentContext->thread);
 }
 
+void resetEntryContext(TestContext& context) {
+    KThread::setCurrentThread(context.thread);
+    setupSegments(context);
+    context.thread->inSignal = 0;
+    context.thread->inSigMask = 0;
+    context.thread->pendingSignals = 0;
+    context.thread->startSignal = false;
+    context.thread->interrupted = false;
+    context.cpu->debugTrapOnNextInstruction = false;
+    context.cpu->pendingDebugTrap = false;
+    context.cpu->pendingDebugTrapCode = 0;
+    context.cpu->pendingDebugTrapDr6 = 0;
+    for (U32& debugReg : context.thread->debugRegs) {
+        debugReg = 0;
+    }
+}
+
 void testNewInstruction(int flags) {
     TestContext& context = testContext();
     CPU* cpu = context.cpu;
@@ -245,15 +263,23 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
 
     std::atomic<size_t> nextEntry(0);
     std::mutex printMutex;
+    std::shared_mutex serialTestMutex;
 
     auto runEntry = [&](U32 contextIndex, size_t entryIndex) {
         bindParallelContext(contextIndex);
         TestContext& context = *currentContext;
         runningParallelTest = true;
 
+        resetEntryContext(context);
         context.failed = false;
         context.failures.clear();
-        entries[entryIndex].function();
+        if (entries[entryIndex].flags & TEST_ENTRY_SERIAL) {
+            std::unique_lock<std::shared_mutex> lock(serialTestMutex);
+            entries[entryIndex].function();
+        } else {
+            std::shared_lock<std::shared_mutex> lock(serialTestMutex);
+            entries[entryIndex].function();
+        }
         {
             std::lock_guard<std::mutex> lock(printMutex);
             printf("%s", entries[entryIndex].name);

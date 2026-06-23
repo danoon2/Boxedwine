@@ -16,6 +16,7 @@
 #ifdef __TEST
 
 #include "../cpu/testCPU.h"
+#include <filesystem>
 
 namespace {
 
@@ -65,6 +66,19 @@ void cleanupRoot(const BString& root) {
     Fs::deleteNativeDirAndAllFilesInDir(root);
 }
 
+void initTestFileSystem(const BString& root) {
+    std::filesystem::path rootPath(root.c_str());
+    std::filesystem::path parentPath = rootPath.parent_path();
+    if (!parentPath.empty()) {
+        std::error_code error;
+        std::filesystem::create_directories(parentPath, error);
+        if (error) {
+            testFail("native root parent %s could not be created: %s", parentPath.string().c_str(), error.message().c_str());
+        }
+    }
+    Fs::initFileSystem(root);
+}
+
 KProcessPtr createProcessWithMemory(KThread** thread) {
     KProcessPtr process = KProcess::create();
     process->memory = KMemory::create(process.get());
@@ -90,7 +104,7 @@ void testHardLinksShareIdentityDataAndXattrs() {
 
     BString root = B("tmp/test-hardlinks-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp"));
 
     const char original[] = "source";
@@ -146,7 +160,7 @@ void testHardLinksShareIdentityDataAndXattrs() {
     nodeA = nullptr;
     nodeB = nullptr;
     Fs::shutDown();
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
 
     nodeA = Fs::getNodeFromLocalPath(B(""), B("/tmp/hardlink-a"), false);
     nodeB = Fs::getNodeFromLocalPath(B(""), B("/tmp/hardlink-b"), false);
@@ -220,7 +234,7 @@ void testSharedFileMappingGrowthKeepsPagesShared() {
     const BString root = B("tmp/test-shared-map-growth-root");
 
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp"));
     Fs::makeLocalDirs(B("/proc"));
     KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
@@ -308,7 +322,7 @@ void testProcessVmReadvUsesRemoteFileMappingContext() {
     const BString root = B("tmp/test-process-vm-map-root");
 
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp"));
     Fs::makeLocalDirs(B("/proc"));
     KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
@@ -389,7 +403,7 @@ void testReadDirectoryReturnsIsDir() {
 
     BString root = B("tmp/test-read-directory-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp"));
 
     std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), B("/tmp"), false);
@@ -417,7 +431,7 @@ void testUtimensatPreservesAccessTimeInStat() {
 
     BString root = B("tmp/test-file-times-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp"));
 
     std::shared_ptr<FsNode> node = addRegularFile(B("/tmp/time-file"));
@@ -453,7 +467,7 @@ void testFutimensPreservesAccessTimeInFstat() {
 
     BString root = B("tmp/test-file-futimens-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp"));
     Fs::makeLocalDirs(B("/proc"));
     KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
@@ -492,7 +506,7 @@ void testFutimensTime64SignExtendedSecondsPreservesAccessTimeInFstat() {
 
     BString root = B("tmp/test-file-futimens-sign-extended-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp"));
     Fs::makeLocalDirs(B("/proc"));
     KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
@@ -531,7 +545,7 @@ void testDirectoryReparseSidecarReplacedAfterRemoveAndRecreate() {
 
     BString root = B("tmp/test-directory-reparse-sidecar-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp/link"));
 
     std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), B("/tmp/link"), false);
@@ -575,7 +589,7 @@ void testDirectoryReparseSidecarReplacedAfterRemoveAndRecreate() {
 void testDotDotAfterDotResolvesToParentDirectory() {
     BString root = B("tmp/test-dot-dot-after-dot-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp/parent/child"));
 
     std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/tmp/parent"), false);
@@ -599,7 +613,7 @@ void testDotDotAfterDotResolvesToParentDirectory() {
 void testUtf8NamesSurviveNativeFilesystemReload() {
     BString root = B("tmp/test-utf8-native-file-name-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp"));
 
     BString utf8Name = BString::copy("\xC3\xA9" "a.tmp");
@@ -619,7 +633,7 @@ void testUtf8NamesSurviveNativeFilesystemReload() {
     delete openNode;
 
     Fs::shutDown();
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     if (!Fs::getNodeFromLocalPath(B(""), path, false)) {
         testFail("UTF-8 file was not found after native filesystem reload");
     }
@@ -630,7 +644,7 @@ void testUtf8NamesSurviveNativeFilesystemReload() {
 void testTrailingDotNamesCanBeUnlinked() {
     BString root = B("tmp/test-trailing-dot-file-name-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp"));
 
     std::shared_ptr<FsNode> node = addRegularFile(B("/tmp/a.."));
@@ -651,7 +665,7 @@ void testTrailingDotNamesCanBeUnlinked() {
         testFail("trailing-dot file could not be removed");
     }
     Fs::shutDown();
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     if (Fs::getNodeFromLocalPath(B(""), B("/tmp/a.."), false)) {
         testFail("trailing-dot file was found after removal and reload");
     }
@@ -662,7 +676,7 @@ void testTrailingDotNamesCanBeUnlinked() {
 void testDirectorySeekCanStoreOpaquePosition() {
     BString root = B("tmp/test-directory-opaque-position-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp/dir"));
 
     std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), B("/tmp/dir"), false);
@@ -692,7 +706,7 @@ void testInotifyReportsChildDirectoryCreate() {
 
     BString root = B("tmp/test-inotify-directory-create-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp/watch"));
     Fs::makeLocalDirs(B("/proc"));
     KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
@@ -745,7 +759,7 @@ void testInotifyFollowsWatchedSymlinkTarget() {
 
     BString root = B("tmp/test-inotify-symlink-watch-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp/watch-target"));
     Fs::makeLocalDirs(B("/proc"));
     KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
@@ -807,7 +821,7 @@ void testInotifyPollReportsChildDirectoryDelete() {
 
     BString root = B("tmp/test-inotify-directory-delete-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp/watch"));
     Fs::makeLocalDirs(B("/proc"));
     KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
@@ -868,7 +882,7 @@ void testInotifyAsyncSignalsSigioOnDelete() {
 
     BString root = B("tmp/test-inotify-async-sigio-root");
     cleanupRoot(root);
-    Fs::initFileSystem(root);
+    initTestFileSystem(root);
     Fs::makeLocalDirs(B("/tmp/watch"));
     Fs::makeLocalDirs(B("/proc"));
     KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);

@@ -89,6 +89,7 @@ void setupPopSelector() {
     ldt->entry_number = POP_SEG_INDEX;
     ldt->base_addr = TEST_HEAP_ADDRESS;
     ldt->seg_32bit = 1;
+    ldt->contents = 0;
     ldt->read_exec_only = 0;
     ldt->seg_not_present = 0;
 }
