@@ -27,8 +27,8 @@ public class StreamGobbler implements Runnable
 {
     private final InputStream _inputStream;
     private final String name;
-    public boolean scriptFinished = false;
-    public Vector<String> lines;
+    public volatile boolean scriptFinished = false;
+    public Vector<String> lines = new Vector<>();
 
     StreamGobbler(InputStream is, String name)
     {
@@ -40,7 +40,6 @@ public class StreamGobbler implements Runnable
     {
         InputStreamReader isr = null;
         BufferedReader br = null;
-        lines = new Vector<>();
         try
         {
             isr = new InputStreamReader(_inputStream);
@@ -62,7 +61,7 @@ public class StreamGobbler implements Runnable
         finally
         {
             if (isr!=null) try {isr.close();} catch (IOException e) {}
-            if (isr!=null) try {br.close();} catch (IOException e) {}
+            if (br!=null) try {br.close();} catch (IOException e) {}
         }
     }
 }
