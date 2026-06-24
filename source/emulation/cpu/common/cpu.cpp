@@ -1398,6 +1398,7 @@ void CPU::runNextSingleOp() {
 #endif
         DecodedOp o = *op;
         lastOp.pfn = onLastOp;
+        lastOp.inst = TestEnd;
         o.next = &lastOp;
         o.pfn = NormalCPU::getFunctionForOp(op);
         o.pfn(this, &o);
