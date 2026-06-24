@@ -1647,11 +1647,9 @@
     <ClInclude Include="..\..\..\..\..\include\platformOpenGL.h" />
     <ClInclude Include="..\..\..\..\..\include\platformtypes.h" />
     <ClInclude Include="..\..\..\..\..\include\player.h" />
-    <ClInclude Include="..\..\..\..\..\include\proccpuinfo.h" />
     <ClInclude Include="..\..\..\..\..\include\procselfexe.h" />
     <ClInclude Include="..\..\..\..\..\include\procstat.h" />
     <ClInclude Include="..\..\..\..\..\include\recorder.h" />
-    <ClInclude Include="..\..\..\..\..\include\reg.h" />
     <ClInclude Include="..\..\..\..\..\include\syscpumaxfreq.h" />
     <ClInclude Include="..\..\..\..\..\include\syscpuonline.h" />
     <ClInclude Include="..\..\..\..\..\include\syscpuscalingcurfreq.h" />
@@ -1975,9 +1973,7 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\normal\normal_strings.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\normal\normal_strings_op.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\normal\normal_xchg.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\ops.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\pushpop.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\setcc.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\shift.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\shift_op.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\strings.h" />
@@ -2223,7 +2219,6 @@
     <ClInclude Include="..\..\..\..\..\source\util\bstring.h" />
     <ClInclude Include="..\..\..\..\..\source\util\concurrentqueue.h" />
     <ClInclude Include="..\..\..\..\..\source\util\fileutils.h" />
-    <ClInclude Include="..\..\..\..\..\source\util\karray.h" />
     <ClInclude Include="..\..\..\..\..\source\util\klist.h" />
     <ClInclude Include="..\..\..\..\..\source\util\networkutils.h" />
     <ClInclude Include="..\..\..\..\..\source\util\pixelMatch.h" />
