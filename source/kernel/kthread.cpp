@@ -109,12 +109,12 @@ void KThread::setupStack() {
 }
 
 KThread::KThread(U32 id, const KProcessPtr& process) : 
-    id(id),   
+    id(id),
     process(process),
-    memory(process->memory),    
+    memory(process->memory),
+    ptraceCond(std::make_shared<BoxedWineCondition>(B("KThread::ptraceCond"))),
     waitingForSignalToEndCond(std::make_shared<BoxedWineCondition>(B("KThread::waitingForSignalToEndCond"))),
     sigWaitCond(std::make_shared<BoxedWineCondition>(B("KThread::sigWaitCond"))),
-    ptraceCond(std::make_shared<BoxedWineCondition>(B("KThread::ptraceCond"))),
     pollCond(std::make_shared<BoxedWineCondition>(B("KThread::pollCond"))),
 #ifndef BOXEDWINE_MULTI_THREADED
     scheduledThreadNode(this),

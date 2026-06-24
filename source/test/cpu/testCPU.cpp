@@ -152,7 +152,9 @@ void resetEntryContext(TestContext& context) {
     context.thread->inSignal = 0;
     context.thread->inSigMask = 0;
     context.thread->pendingSignals = 0;
+#ifdef BOXEDWINE_MULTI_THREADED
     context.thread->startSignal = false;
+#endif
     context.thread->interrupted = false;
     context.cpu->debugTrapOnNextInstruction = false;
     context.cpu->pendingDebugTrap = false;
@@ -192,7 +194,9 @@ void testNewInstruction(int flags) {
     context.thread->inSignal = 0;
     context.thread->inSigMask = 0;
     context.thread->pendingSignals = 0;
+#ifdef BOXEDWINE_MULTI_THREADED
     context.thread->startSignal = false;
+#endif
     context.thread->interrupted = false;
     for (U32& debugReg : context.thread->debugRegs) {
         debugReg = 0;

@@ -2844,8 +2844,8 @@ void JitArmV8CodeGen::setParams(const std::vector<DynParam>& params) {
         pushParam(params[1], 1);
         pushParam(params[0], 0);
     } else {
-        for (int i = 0; i < params.size(); i++) {
-            pushParam(params[i], i);
+        for (std::size_t i = 0; i < params.size(); i++) {
+            pushParam(params[i], static_cast<U32>(i));
         }
     }
 }

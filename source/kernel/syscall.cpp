@@ -400,7 +400,7 @@ static KProcessPtr getProcessByPidOrThreadId(U32 id) {
 
 static U32 syscall_process_vm_readv(CPU* cpu, U32 eipCount) {
     constexpr U32 IOV_SIZE = 8;
-    constexpr U32 IOV_MAX = 1024;
+    constexpr U32 BOXEDWINE_PROCESS_VM_IOV_MAX = 1024;
     KMemory* memory = cpu->memory;
 
     SYS_LOG1(SYSCALL_MEMORY, cpu, "process_vm_readv: pid=%d local_iov=%X liovcnt=%d remote_iov=%X riovcnt=%d flags=%X", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
@@ -413,7 +413,7 @@ static U32 syscall_process_vm_readv(CPU* cpu, U32 eipCount) {
         SYS_LOG(SYSCALL_MEMORY, cpu, " result=0(0x0)\n");
         return 0;
     }
-    if (ARG3 > IOV_MAX || ARG5 > IOV_MAX) {
+    if (ARG3 > BOXEDWINE_PROCESS_VM_IOV_MAX || ARG5 > BOXEDWINE_PROCESS_VM_IOV_MAX) {
         SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EINVAL, -K_EINVAL);
         return -K_EINVAL;
     }
@@ -487,7 +487,7 @@ static U32 syscall_process_vm_readv(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_process_vm_writev(CPU* cpu, U32 eipCount) {
     constexpr U32 IOV_SIZE = 8;
-    constexpr U32 IOV_MAX = 1024;
+    constexpr U32 BOXEDWINE_PROCESS_VM_IOV_MAX = 1024;
     KMemory* memory = cpu->memory;
 
     SYS_LOG1(SYSCALL_MEMORY, cpu, "process_vm_writev: pid=%d local_iov=%X liovcnt=%d remote_iov=%X riovcnt=%d flags=%X", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
@@ -500,7 +500,7 @@ static U32 syscall_process_vm_writev(CPU* cpu, U32 eipCount) {
         SYS_LOG(SYSCALL_MEMORY, cpu, " result=0(0x0)\n");
         return 0;
     }
-    if (ARG3 > IOV_MAX || ARG5 > IOV_MAX) {
+    if (ARG3 > BOXEDWINE_PROCESS_VM_IOV_MAX || ARG5 > BOXEDWINE_PROCESS_VM_IOV_MAX) {
         SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EINVAL, -K_EINVAL);
         return -K_EINVAL;
     }
