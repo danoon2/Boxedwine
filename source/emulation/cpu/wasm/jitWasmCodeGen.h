@@ -44,6 +44,7 @@
  *   local 46: i64 scratch
  *   locals 47-54: f64 scratch temporaries for JitFPU
  *   locals 55-66: v128 scratch temporaries for JitMMX/MMX
+ *   local 67: bounded direct-loop iteration budget
  *
  * The JitReg::hardwareReg() field stores the WASM local variable index.
  * Emulated register n maps to local n+2 (so eax=2, ecx=3, ..., edi=9).
@@ -226,8 +227,9 @@ static constexpr U32 WASM_F64_LOCAL_COUNT = 8;
 // v128 scratch locals reserved for future MMX/SIMD lowering.
 static constexpr U32 WASM_V128_LOCAL_BASE  = WASM_F64_LOCAL_BASE + WASM_F64_LOCAL_COUNT;
 static constexpr U32 WASM_V128_LOCAL_COUNT = 12;
+static constexpr U32 WASM_DIRECT_LOOP_BUDGET_LOCAL = WASM_V128_LOCAL_BASE + WASM_V128_LOCAL_COUNT;
 // Total WASM local slots, including parameters.
-static constexpr U32 WASM_LOCAL_COUNT     = WASM_V128_LOCAL_BASE + WASM_V128_LOCAL_COUNT;
+static constexpr U32 WASM_LOCAL_COUNT = WASM_DIRECT_LOOP_BUDGET_LOCAL + 1;
 
 // ---------------------------------------------------------------------------
 // Mapping from emulated register index to WASM local index.
@@ -892,6 +894,12 @@ public:
     U32 m_manifestNext1Count = 0;
     U32 m_manifestNext2Count = 0;
     U32 m_manifestJumpCount = 0;
+    U32 m_directLoopTargetEip = 0;
+    U32 m_directLoopSourceEip = 0;
+    U32 m_directLoopOpCount = 0;
+    U32 m_directLoopToken = 0;
+    bool m_hasDirectLoopCandidate = false;
+    bool m_directLoopOpen = false;
     // Profile-guided split bookkeeping: set when shouldStopBlockBefore ends a
     // block early because a grouped-manifest split hint named an interior
     // target; cleared once the prefix block commits.
@@ -911,6 +919,8 @@ protected:
     void dynamic_cmpxchgMem32(DecodedOp* op);
     void loadGPReg(U8 emulatedReg);   // emit: local.get cpu; i32.load; local.set localN
     void storeGPReg(U8 emulatedReg);  // emit: local.get cpu; local.get localN; i32.store
+    void findDirectLoopCandidate(DecodedOp* op);
+    bool emitDirectLoopBackedge(U32 address);
 
     // Emit cpu_ptr onto WASM stack (local.get 0)
     void pushCpuPtr();

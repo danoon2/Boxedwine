@@ -423,6 +423,7 @@ static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = 1;
 #else
 static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = 2048;
 #endif
+static constexpr U32 WASM_DIRECT_LOOP_ITERATIONS = 64;
 
 static inline bool wasmJitCanChainTo(CPU* cpu, DecodedOp* nextOp) {
     return nextOp &&
@@ -712,6 +713,13 @@ static std::atomic<U64> g_wasmJitProfileChainStopInteriorByte16To31{0};
 static std::atomic<U64> g_wasmJitProfileChainStopInteriorByte32To63{0};
 static std::atomic<U64> g_wasmJitProfileChainStopInteriorByte64To127{0};
 static std::atomic<U64> g_wasmJitProfileChainStopInteriorByte128Plus{0};
+static std::atomic<U64> g_wasmJitProfileDirectLoopsCreated{0};
+static std::atomic<U64> g_wasmJitProfileDirectLoopOps{0};
+static std::atomic<U64> g_wasmJitProfileDirectLoopIterations{0};
+static std::atomic<U64> g_wasmJitProfileDirectLoopOps1To4{0};
+static std::atomic<U64> g_wasmJitProfileDirectLoopOps5To8{0};
+static std::atomic<U64> g_wasmJitProfileDirectLoopOps9To16{0};
+static std::atomic<U64> g_wasmJitProfileDirectLoopOps17Plus{0};
 static std::atomic<U64> g_wasmJitProfileInteriorByInst[InstructionCount];
 static std::atomic<U64> g_wasmJitProfileInteriorBlockStartByInst[InstructionCount];
 static std::atomic<U64> g_wasmJitProfileChainStopPfnByInst[InstructionCount];
@@ -1041,6 +1049,11 @@ static void wasmJitProfileMaybeLog() {
     U64 loopEntries = g_wasmJitProfileLoopEntries.load(std::memory_order_relaxed);
     U64 loopExtraBlocks = g_wasmJitProfileLoopExtraBlocks.load(std::memory_order_relaxed);
     U64 loopAvgBlocksX10 = loopEntries ? ((loopEntries + loopExtraBlocks) * 10 / loopEntries) : 0;
+    U64 directLoopsCreated = g_wasmJitProfileDirectLoopsCreated.load(std::memory_order_relaxed);
+    U64 directLoopAvgOpsX10 = directLoopsCreated ?
+        (g_wasmJitProfileDirectLoopOps.load(std::memory_order_relaxed) * 10 / directLoopsCreated) : 0;
+    U64 directLoopAvgIterations = directLoopsCreated ?
+        (g_wasmJitProfileDirectLoopIterations.load(std::memory_order_relaxed) / directLoopsCreated) : 0;
     U64 memArrayChecks = g_wasmJitProfileMemArrayChecks.load(std::memory_order_relaxed);
     U64 jitUs = g_wasmJitProfileJitUs.load(std::memory_order_relaxed);
     U64 instantiateUs = g_wasmJitProfileInstantiateUs.load(std::memory_order_relaxed);
@@ -1086,6 +1099,7 @@ static void wasmJitProfileMaybeLog() {
              "chain_stop[null=%llu no_flag=%llu no_table=%llu interior=%llu pfn=%llu other=%llu] "
              "interior_idx[1=%llu 2=%llu 3-4=%llu 5-8=%llu 9-16=%llu 17+=%llu] "
              "interior_byte[1-15=%llu 16-31=%llu 32-63=%llu 64-127=%llu 128+=%llu] "
+             "direct_loop[created=%llu avg_ops=%llu.%llu avg_iter=%llu ops1-4=%llu ops5-8=%llu ops9-16=%llu ops17+=%llu] "
              "loop[entries=%llu extra=%llu avg_blocks=%llu.%llu limit=%llu] "
              "loop_len[1=%llu 2=%llu 3-4=%llu 5-8=%llu 9-16=%llu 17-32=%llu 33-64=%llu 65-128=%llu 129-511=%llu 512-1023=%llu 1024-2047=%llu cap=%llu] "
              "mem_arrays[checks=%llu refresh=%llu] "
@@ -1154,6 +1168,14 @@ static void wasmJitProfileMaybeLog() {
              (unsigned long long)g_wasmJitProfileChainStopInteriorByte32To63.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileChainStopInteriorByte64To127.load(std::memory_order_relaxed),
              (unsigned long long)g_wasmJitProfileChainStopInteriorByte128Plus.load(std::memory_order_relaxed),
+             (unsigned long long)directLoopsCreated,
+             (unsigned long long)(directLoopAvgOpsX10 / 10),
+             (unsigned long long)(directLoopAvgOpsX10 % 10),
+             (unsigned long long)directLoopAvgIterations,
+             (unsigned long long)g_wasmJitProfileDirectLoopOps1To4.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileDirectLoopOps5To8.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileDirectLoopOps9To16.load(std::memory_order_relaxed),
+             (unsigned long long)g_wasmJitProfileDirectLoopOps17Plus.load(std::memory_order_relaxed),
              (unsigned long long)loopEntries,
              (unsigned long long)loopExtraBlocks,
              (unsigned long long)(loopAvgBlocksX10 / 10),
@@ -1627,7 +1649,7 @@ EM_JS(int, boxedwine_wasm_instantiate,
 //   Module.wasmJitInstalledByTableIndex   reverse map for free-block cleanup
 //   Module.wasmJitProfileSplitTargets     blockStart hex -> target hex hints
 //
-// The cache key convention is 'v4-<eip hex8>-<blockHash hex8>'; it is computed
+// The cache key convention is 'v5-<eip hex8>-<blockHash hex8>'; it is computed
 // inline here (rather than calling a shell-defined helper) so these EM_JS
 // bodies stay self-contained and never depend on which shell page loaded us.
 // ---------------------------------------------------------------------------
@@ -1772,7 +1794,7 @@ EM_JS(int, boxedwine_wasm_lookup_cached,
         }
     }
     var eipKey = hex32(eip);
-    var key = 'v4-' + eipKey + '-' + hex32(blockHash);
+    var key = 'v5-' + eipKey + '-' + hex32(blockHash);
     // Per-process identity. DecodedOp pointers are per guest process, so
     // grouped reloc arrays, installed exports and group instances must all
     // be keyed by (key, memId): wineserver and wine map the same libraries
@@ -2042,7 +2064,7 @@ EM_JS(void, boxedwine_wasm_save_block,
     function hex32(v) { return ('00000000' + ((v >>> 0).toString(16))).slice(-8); }
     var eipKey = hex32(eip);
     var hashKey = hex32(blockHash);
-    var key = 'v4-' + eipKey + '-' + hashKey;
+    var key = 'v5-' + eipKey + '-' + hashKey;
     var binary = new Uint8Array(HEAPU8.buffer, bytes, size).slice();
     if (!Module.wasmJitStats) {
         Module.wasmJitStats = { hits: 0, misses: 0, eipMisses: 0, hashMisses: 0, stale: 0, cachedInstalls: 0, freshCompiled: 0, saved: 0, eipMissSamples: [], hashMissSamples: [] };
@@ -2110,7 +2132,7 @@ EM_JS(void, wasm_jit_js_store_entry, (U32 eip, U32 blockHash, const void* bytes,
     function hex32(v) { return ('00000000' + ((v >>> 0).toString(16))).slice(-8); }
     var eipKey = hex32(eip);
     var hashKey = hex32(blockHash);
-    var key = 'v4-' + eipKey + '-' + hashKey;
+    var key = 'v5-' + eipKey + '-' + hashKey;
     var binary = new Uint8Array(HEAPU8.buffer, bytes, size).slice();
     if (!Module.wasmJitCache) Module.wasmJitCache = new Map();
     if (!Module.wasmJitCacheEips) Module.wasmJitCacheEips = new Set();
@@ -2403,7 +2425,7 @@ EM_JS(int, boxedwine_wasm_install_existing_mt,
 EM_JS(void, wasm_jit_mt_populate_js_cache_entry,
       (U32 eip, U32 blockHash, const void* bytes, int size),
 {
-    var key = 'v4-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
+    var key = 'v5-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
               '-'   + ('00000000' + ((blockHash >>> 0).toString(16))).slice(-8);
     var binary = new Uint8Array(HEAPU8.buffer, bytes, size).slice();
     if (!Module.wasmJitCache) Module.wasmJitCache = new Map();
@@ -2473,7 +2495,7 @@ EM_JS(void, wasm_jit_mt_populate_js_meta_entry,
        U32 cpuBlockInstructionCountOffset, U32 cpuYieldOffset, U32 contextTimeRemainingPtr,
        U32 relocCount),
 {
-    var key = 'v4-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
+    var key = 'v5-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
               '-'   + ('00000000' + ((blockHash >>> 0).toString(16))).slice(-8);
     Module.wasmJitRuntimeConstants = {
         version: 1,
@@ -2948,6 +2970,10 @@ static void wasmHelper_emulateSingleOp(CPU* cpu) {
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperEmulateUs, profileSample, WASM_JIT_PROFILE_TIMING_SAMPLE);
 #endif
     jitRunSingleOp(cpu);
+    // Interpreter-backed instructions can write code too (notably REP
+    // MOVS). Mark an invalidated active block so a structured JIT backedge
+    // returns to the dispatcher instead of re-entering stale WASM.
+    checkActiveBlockAfterWrite(cpu);
 }
 
 // Compute CF using the C++ lazy-flag machinery and stash the result in
@@ -3234,9 +3260,28 @@ static inline U32 wasmJitRelocBaseForTable(int tableIndex) {
     if (!g_wasmHasRelocArrays.load(std::memory_order_relaxed)) {
         return 0;
     }
+    // MT table slots and their relocation arrays have monotonic lifetimes:
+    // slots are never reused and arrays remain live until process shutdown.
+    // Cache both hits and misses per worker so persistence replay does not
+    // serialize every generated block call on g_wasmBlockBinariesMutex.
+    static thread_local std::vector<U32> cachedBases;
+    static thread_local std::vector<bool> cached;
+    if (tableIndex >= 0 && (size_t)tableIndex < cached.size() && cached[(size_t)tableIndex]) {
+        return cachedBases[(size_t)tableIndex];
+    }
     std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
     auto it = g_wasmRelocArrays.find(tableIndex);
-    return it != g_wasmRelocArrays.end() ? (U32)(uintptr_t)it->second : 0;
+    U32 base = it != g_wasmRelocArrays.end() ? (U32)(uintptr_t)it->second : 0;
+    if (tableIndex >= 0) {
+        size_t required = (size_t)tableIndex + 64;
+        if (cached.size() < required) {
+            cached.resize(required, false);
+            cachedBases.resize(required, 0);
+        }
+        cachedBases[(size_t)tableIndex] = base;
+        cached[(size_t)tableIndex] = true;
+    }
+    return base;
 #else
     return (tableIndex >= 0 && (size_t)tableIndex < g_wasmRelocBaseByTable.size())
         ? (U32)(uintptr_t)g_wasmRelocBaseByTable[tableIndex] : 0;
@@ -3343,6 +3388,7 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitSSE(cpu) {
     //   local 46 (i64 x1): i64 scratch for 64-bit multiply
     //   locals 47-54 (f64 x8): FPU temporaries for shared JitFPU code
     //   locals 55-66 (v128 x12): MMX/SIMD scratch locals
+    //   local 67 (i32 x1): bounded direct-loop iteration budget
     m_emitter.beginFunction({
         { 8,  WasmType::I32 },  // GP registers (locals 2-9)
         { 4,  WasmType::I32 },  // segment addresses (locals 10-13)
@@ -3350,6 +3396,7 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitSSE(cpu) {
         { 1,  WasmType::I64 },  // i64 scratch for 64-bit multiply (local 46)
         { 8,  WasmType::F64 },  // FPU temporaries (locals 47-54)
         { 12, WasmType::V128 }, // MMX/SIMD scratch locals (locals 55-66)
+        { 1,  WasmType::I32 },  // direct-loop budget (local 67)
     });
 
     m_gpLoaded.fill(false);
@@ -8903,6 +8950,7 @@ void JitWasmCodeGen::JumpIfCondition(JitConditional cond, U32 address) {
         m_manifestJumpTarget = address - cpu->seg[CS].address;
     }
     IfCondition(cond);
+    emitDirectLoopBackedge(address);
     DecodedOp* targetOp = cpu->memory->getDecodedOp(address);
     if (wasmJitPersistenceActive()) {
         // Relocatable variant: the target DecodedOp* comes from a reloc slot
@@ -8977,13 +9025,14 @@ void JitWasmCodeGen::EndIf() {
     m_emitter.emitEnd();
 }
 void JitWasmCodeGen::JumpInBlock(U32 address) {
-    // No native intra-block branching: set EIP (offset within CS, so strip
-    // the CS base) and exit. fetchNextOp picks back up at the target op
-    // in the next dispatcher round.
+    // A selected hot backward edge can remain in this WASM activation for a
+    // bounded number of iterations. Other intra-block jumps retain the
+    // dispatcher exit used by the general, unstructured control-flow case.
     m_manifestJumpCount++;
     if (!m_manifestJumpTarget) {
         m_manifestJumpTarget = address - cpu->seg[CS].address;
     }
+    emitDirectLoopBackedge(address);
     writeEip(address - cpu->seg[CS].address);
     emitBlockExitWithProfile(HELPER_PROFILE_EXIT_JUMP);
 }
@@ -9566,6 +9615,90 @@ U8* JitWasmCodeGen::createStartJITCode() {
 // ---------------------------------------------------------------------------
 // Compilation lifecycle
 // ---------------------------------------------------------------------------
+void JitWasmCodeGen::findDirectLoopCandidate(DecodedOp* op) {
+    m_directLoopTargetEip = 0;
+    m_directLoopSourceEip = 0;
+    m_directLoopOpCount = 0;
+    m_directLoopToken = 0;
+    m_hasDirectLoopCandidate = false;
+    m_directLoopOpen = false;
+
+    U32 eip = this->startingEip;
+    DecodedOp* cur = op;
+    while (cur && eip <= this->lastOpEip) {
+        if (cur->isDirectJumpBranch()) {
+            U32 targetEip = eip + cur->len + cur->imm;
+            if (targetEip >= this->startingEip && targetEip < eip &&
+                targetEip <= this->lastOpEip &&
+                (!m_hasDirectLoopCandidate || targetEip > m_directLoopTargetEip)) {
+                U32 checkEip = this->startingEip;
+                DecodedOp* check = op;
+                while (check && checkEip < targetEip) {
+                    checkEip += check->len;
+                    check = check->next;
+                }
+                if (check && checkEip == targetEip) {
+                    m_directLoopTargetEip = targetEip;
+                    m_directLoopSourceEip = eip;
+                    m_hasDirectLoopCandidate = true;
+                }
+            }
+        }
+        eip += cur->len;
+        cur = cur->next;
+    }
+
+    if (m_hasDirectLoopCandidate) {
+        eip = this->startingEip;
+        cur = op;
+        while (cur && eip <= m_directLoopSourceEip) {
+            if (eip >= m_directLoopTargetEip) {
+                m_directLoopOpCount++;
+            }
+            eip += cur->len;
+            cur = cur->next;
+        }
+    }
+}
+
+bool JitWasmCodeGen::emitDirectLoopBackedge(U32 address) {
+    if (!m_directLoopOpen || address != m_directLoopTargetEip ||
+        currentEip != m_directLoopSourceEip) {
+        return false;
+    }
+
+    // Make the loop header's reloads observe all guest-register changes from
+    // this iteration. EIP is also kept architecturally current for helpers,
+    // signals, and the budget-exhausted dispatcher path.
+    syncDirtyRegsToHost();
+    writeEip(address - cpu->seg[CS].address);
+
+    m_emitter.emitLocalGet(WASM_DIRECT_LOOP_BUDGET_LOCAL);
+    m_emitter.emitI32Const(1);
+    m_emitter.emitOp(WASM_I32_SUB);
+    m_emitter.emitLocalTee(WASM_DIRECT_LOOP_BUDGET_LOCAL);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, wasmJitBailout));
+    m_emitter.emitOp(WASM_I32_EQZ);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.setNextBranchHint(WasmBranchHint::Likely);
+    m_emitter.emitIf();
+
+    // The outer dispatcher accounts for the function's first pass. Each
+    // successful backedge starts one additional pass through this loop body.
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, blockInstructionCount));
+    m_emitter.emitI32Const((S32)m_directLoopOpCount);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Store((U32)offsetof(CPU, blockInstructionCount));
+
+    U32 currentDepth = m_emitter.currentCtrlDepth();
+    m_emitter.emitBr(currentDepth - m_directLoopToken);
+    m_emitter.emitEnd();
+    return true;
+}
+
 void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     // Reset per-instruction scratch state, then run base bookkeeping (block
     // op count, eip→buffer-pos map, preOp hook). Stash op->len for
@@ -9579,6 +9712,7 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
         m_manifestNext1Count = 0;
         m_manifestNext2Count = 0;
         m_manifestJumpCount = 0;
+        findDirectLoopCandidate(op);
         if (m_profileSplitBlockStartEip != this->startingEip) {
             m_profileSplitTargetOp = nullptr;
             m_profileSplitBlockStartEip = 0;
@@ -9606,6 +9740,37 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     m_f64ScratchInUse.fill(false);
     m_v128ScratchInUse.fill(false);
     lastCompiledOpLen = op->len;
+
+    if (!skippedOp && m_hasDirectLoopCandidate && !m_directLoopOpen &&
+        this->currentEip == m_directLoopTargetEip) {
+            // Synchronize the one-time linear entry before opening the loop.
+            // The compile-time caches are then cleared so loads emitted in
+            // the body execute on every backedge and observe flushed values.
+            branchBoundary();
+            m_emitter.emitI32Const((S32)WASM_DIRECT_LOOP_ITERATIONS);
+            m_emitter.emitLocalSet(WASM_DIRECT_LOOP_BUDGET_LOCAL);
+            m_emitter.emitLoop();
+            m_directLoopToken = m_emitter.currentCtrlDepth();
+            m_directLoopOpen = true;
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+            g_wasmJitProfileDirectLoopsCreated.fetch_add(1, std::memory_order_relaxed);
+            g_wasmJitProfileDirectLoopOps.fetch_add(m_directLoopOpCount, std::memory_order_relaxed);
+            g_wasmJitProfileDirectLoopIterations.fetch_add(WASM_DIRECT_LOOP_ITERATIONS, std::memory_order_relaxed);
+            if (m_directLoopOpCount <= 4) {
+                g_wasmJitProfileDirectLoopOps1To4.fetch_add(1, std::memory_order_relaxed);
+            } else if (m_directLoopOpCount <= 8) {
+                g_wasmJitProfileDirectLoopOps5To8.fetch_add(1, std::memory_order_relaxed);
+            } else if (m_directLoopOpCount <= 16) {
+                g_wasmJitProfileDirectLoopOps9To16.fetch_add(1, std::memory_order_relaxed);
+            } else {
+                g_wasmJitProfileDirectLoopOps17Plus.fetch_add(1, std::memory_order_relaxed);
+            }
+#endif
+            m_gpDirty.fill(false);
+            m_gpLoaded.fill(false);
+            m_segLoaded.fill(false);
+            currentLazyFlags = FLAGS_NULL;
+        }
     JitCodeGen::preCompile(op, skippedOp);
 }
 
@@ -9664,6 +9829,10 @@ bool JitWasmCodeGen::shouldStopBlockBefore(U32 eip, DecodedOp* op) {
 
 void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     // Finalize the WASM function body and the module binary.
+    if (m_directLoopOpen) {
+        m_emitter.emitEnd();
+        m_directLoopOpen = false;
+    }
     m_emitter.endFunction();
     m_wasmBinary = m_emitter.finalize();
 
@@ -10017,7 +10186,7 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
 //
 // Export is handled in JavaScript by saveJitModules(). This import hook reads
 // a zip staged at WASM_JIT_IMPORT_PATH on the virtual FS and stores each
-// v4-xxxxxxxx-hhhhhhhh.wasm entry into the JS cache via
+// v5-xxxxxxxx-hhhhhhhh.wasm entry into the JS cache via
 // wasm_jit_js_store_entry(). It doubles as the exported sentinel
 // (Module._wasm_jit_import_from_file) that boxedwine-shell.js uses to detect
 // a persistence-capable single-threaded build.
@@ -10036,7 +10205,7 @@ extern "C" void wasm_jit_import_from_file() {
         if (unzGetCurrentFileInfo(uf, &fi, filename, sizeof(filename),
                                    nullptr, 0, nullptr, 0) == UNZ_OK
             && fi.uncompressed_size > 0) {
-            if (strncmp(filename, "v4-", 3) != 0) {
+            if (strncmp(filename, "v5-", 3) != 0) {
                 ret = unzGoToNextFile(uf);
                 continue;
             }

@@ -390,23 +390,25 @@
             return zipFiles;
         }
         // ---------------------------------------------------------------
-        // WASM JIT persistent-cache key convention: 'v4-<eip>-<blockHash>'
+        // WASM JIT persistent-cache key convention: 'v5-<eip>-<blockHash>'
         // where both values are 8-digit lowercase hex. Must stay in sync
         // with the inline key construction in the EM_JS bodies in
         // source/emulation/cpu/wasm/jitWasmCodeGen.cpp.
         // ---------------------------------------------------------------
+        var BOXEDWINE_WASM_JIT_CACHE_VERSION = 'v5';
         function boxedwineWasmJitHex32(value) {
             return ('00000000' + ((value >>> 0).toString(16))).slice(-8);
         }
         function boxedwineWasmJitCacheKey(eip, blockHash) {
-            return 'v4-' + boxedwineWasmJitHex32(eip) + '-' + boxedwineWasmJitHex32(blockHash);
+            return BOXEDWINE_WASM_JIT_CACHE_VERSION + '-' + boxedwineWasmJitHex32(eip) + '-' + boxedwineWasmJitHex32(blockHash);
         }
         function parseWasmJitCacheKey(filename) {
             var slash = Math.max(filename.lastIndexOf('/'), filename.lastIndexOf('\\'));
             var base = slash >= 0 ? filename.slice(slash + 1) : filename;
             var stem = base.toLowerCase().endsWith('.wasm') ? base.slice(0, -5) : base;
             var parts = stem.split('-');
-            if (parts.length !== 3 || parts[0] !== 'v4' || parts[1].length !== 8 || parts[2].length !== 8) return null;
+            if (parts.length !== 3 || parts[0] !== BOXEDWINE_WASM_JIT_CACHE_VERSION ||
+                    parts[1].length !== 8 || parts[2].length !== 8) return null;
             var eip = parseInt(parts[1], 16) >>> 0;
             var blockHash = parseInt(parts[2], 16) >>> 0;
             if (isNaN(eip) || isNaN(blockHash) || blockHash === 0) return null;
@@ -1207,7 +1209,7 @@ function fetchServerJitCache(callback) {
 }
 
 // Parse a JIT cache zip buffer and load its contents:
-//   v4-*.wasm                            flat block modules -> wasmJitCache
+//   v5-*.wasm                            flat block modules -> wasmJitCache
 //   groups/*.wasm                        merged group modules (pipeline output)
 //   boxedwine-jit-grouped-manifest.json  group entry map + direct-call stats +
 //                                        profile-guided split hints
@@ -1310,6 +1312,13 @@ async function importJitModulesFromBuffer(bytes) {
         // the block's own array as the second parameter, and free_block
         // zeroes arrays on eviction.
         var earlyGroupedManifest = manifestResults.find(function(m) { return m && m.format === 'boxedwine-wasm-jit-grouped-cache'; }) || null;
+        if (earlyGroupedManifest &&
+                earlyGroupedManifest.cacheVersion !== BOXEDWINE_WASM_JIT_CACHE_VERSION) {
+            console.warn('[WASM JIT] grouped cache version ' +
+                (earlyGroupedManifest.cacheVersion || 'unknown') + ' does not match ' +
+                BOXEDWINE_WASM_JIT_CACHE_VERSION + '; ignoring grouped modules');
+            earlyGroupedManifest = null;
+        }
         // Grouped zips are build-shape-specific: MT-piped zips carry mt:true
         // (their direct-call tails have no ST slice-budget check), ST zips
         // don't. Loading the wrong shape would either bake the ST budget
@@ -1539,6 +1548,7 @@ async function saveJitModules() {
                 .sort(function(a, b) { return a.key < b.key ? -1 : (a.key > b.key ? 1 : 0); });
             var manifest = {
                 version: 1,
+                cacheVersion: BOXEDWINE_WASM_JIT_CACHE_VERSION,
                 generatedAt: new Date().toISOString(),
                 entryCount: manifestEntries.length,
                 runtime: Module.wasmJitRuntimeConstants || null,

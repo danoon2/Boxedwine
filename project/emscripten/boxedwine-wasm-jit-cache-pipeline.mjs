@@ -7,7 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const WASM_MAGIC = Buffer.from([0x00, 0x61, 0x73, 0x6d]);
-const CACHE_NAME_RE = /^v4-([0-9a-f]{8})-([0-9a-f]{8})\.wasm$/i;
+const CACHE_NAME_RE = /^v5-([0-9a-f]{8})-([0-9a-f]{8})\.wasm$/i;
 const GROUPED_MANIFEST = 'boxedwine-jit-grouped-manifest.json';
 const PROFILE_NAME = 'boxedwine-jit-profile.txt';
 
@@ -31,14 +31,19 @@ Options:
   --binaryen-js PATH       Optimize wasm modules with Binaryen JS/WASM.
                            Defaults to ./binaryen_js.js if present.
   --flat                   Binaryen-optimize the per-block modules and re-emit
-                           a flat cache zip (same v4-*.wasm layout + manifest),
+                           a flat cache zip (same v5-*.wasm layout + manifest),
                            skipping grouping, direct-call rewriting and profile
-                           split hints. This is the only mode multi-threaded
-                           builds can consume: MT workers instantiate raw
-                           per-block bytes from shared memory and cannot share
-                           merged group instances. Caches remain per-build —
+                           split hints. Use this as the ungrouped baseline;
+                           both flat and grouped output remain per-build, so
                            record with the same target (jit or multiThreadedJit)
                            that will replay the output.
+  --no-direct-calls        Merge modules but retain dispatcher exits instead
+                           of rewriting intra-group exits as direct calls.
+  --direct-call-kinds LIST Rewrite only the named exit kinds (comma-separated
+                           next1,next2,jump). Intended for correctness triage;
+                           the default is next1,next2. Generic jump rewriting
+                           remains experimental because its inferred target
+                           can cross structured control-flow arms.
   --budget BYTES           Target grouped wasm payload size. Default: 524288.
   --interior-profile PATH  Parse BoxedWine console output and add hot interior
                            target split hints to the grouped manifest. If omitted,
@@ -55,13 +60,15 @@ Produces the current BoxedWine wasm JIT merged grouped-cache format:
   groups/group-XXXX.wasm
   boxedwine-jit-grouped-manifest.json
 
-The input must contain v3 cache module names and boxedwine-jit-manifest.json.`);
+The input must contain v5 cache module names and boxedwine-jit-manifest.json.`);
 }
 
 function parseArgs(argv) {
   const opts = {
     binaryenJs: null,
     flat: false,
+    directCalls: true,
+    directCallKinds: new Set(['next1', 'next2']),
     budget: 512 * 1024,
     interiorProfile: null,
     // 10000 admits most genuinely hot pairs; the old 50000 default left all
@@ -84,6 +91,12 @@ function parseArgs(argv) {
       opts.binaryenJs = arg.slice('--binaryen-js='.length);
     } else if (arg === '--flat') {
       opts.flat = true;
+    } else if (arg === '--no-direct-calls') {
+      opts.directCalls = false;
+    } else if (arg === '--direct-call-kinds') {
+      opts.directCallKinds = parseDirectCallKinds(argv[++i]);
+    } else if (arg.startsWith('--direct-call-kinds=')) {
+      opts.directCallKinds = parseDirectCallKinds(arg.slice('--direct-call-kinds='.length));
     } else if (arg === '--budget') {
       opts.budget = Number(argv[++i]);
     } else if (arg.startsWith('--budget=')) {
@@ -123,6 +136,15 @@ function parseArgs(argv) {
     throw new Error('--compression-level must be an integer from 0 to 9');
   }
   return { ...opts, inputZip: opts.positional[0], outputZip: opts.positional[1] };
+}
+
+function parseDirectCallKinds(value) {
+  const allowed = new Set(['next1', 'next2', 'jump']);
+  const kinds = new Set(String(value || '').split(',').filter(Boolean));
+  if (!kinds.size || [...kinds].some((kind) => !allowed.has(kind))) {
+    throw new Error(`Invalid --direct-call-kinds value: ${value}`);
+  }
+  return kinds;
 }
 
 function readU16(buf, off) {
@@ -1177,6 +1199,9 @@ async function main() {
   const manifest = inputCache.manifest;
   const entries = inputCache.entries;
   const embeddedProfileText = inputCache.profileText;
+  if (manifest.cacheVersion !== 'v5') {
+    throw new Error(`Input cache version ${manifest.cacheVersion || 'unknown'} is not v5; record a new cache with this build`);
+  }
   const runtime = manifest.runtime;
   if (!runtime?.cpu || !runtime?.scheduler ||
       !Number.isInteger(runtime.cpu.blockInstructionCountOffset) ||
@@ -1309,6 +1334,10 @@ async function main() {
     const directEdges = graph.edges
       .filter((edge) => edge.resolved)
       .filter((edge) => groupByKey.get(edge.from) === groupByKey.get(edge.to))
+      // Generic jump tails are deliberately excluded by default. Their
+      // destination is currently inferred by a raw backward byte scan, which
+      // can cross a structured-control arm and execute the wrong guest block.
+      .filter((edge) => opts.directCallKinds.has(edge.kind))
       .map((edge) => ({
         ...edge,
         guarded: cyclicKeys.has(edge.from) || cyclicKeys.has(edge.to),
@@ -1317,9 +1346,9 @@ async function main() {
       // cyclic-touching edges keep their dispatcher exit (see isMtInput).
       .filter((edge) => !isMtInput || !edge.guarded);
     const merged = buildMergedGroupWasm(sorted, {
-      directCalls: true,
-      tailCalls: true,
-      yieldAwareTailCalls: !isMtInput,
+      directCalls: opts.directCalls,
+      tailCalls: opts.directCalls,
+      yieldAwareTailCalls: opts.directCalls && !isMtInput,
       runtime: manifest.runtime,
       directCallDepth: 0,
       edges: directEdges,
@@ -1358,6 +1387,7 @@ async function main() {
   const groupedManifest = {
     version: 2,
     format: 'boxedwine-wasm-jit-grouped-cache',
+    cacheVersion: 'v5',
     mt: isMtInput,
     source: {
       inputZip: opts.inputZip,
@@ -1366,11 +1396,12 @@ async function main() {
       preset: 'local',
       budgetBytes: opts.budget,
       mergedGroups: true,
-      directCalls: true,
-      tailCalls: true,
-      yieldAwareTailCalls: !isMtInput,
+      directCalls: opts.directCalls,
+      tailCalls: opts.directCalls,
+      yieldAwareTailCalls: opts.directCalls && !isMtInput,
       directCallDepth: 0,
       interiorProfile: opts.interiorProfile,
+      directCallKinds: opts.directCalls ? [...opts.directCallKinds] : [],
       profileSplitThreshold: opts.profileSplitThreshold,
       profileSplitLimit: opts.profileSplitLimit,
     },
@@ -1394,8 +1425,8 @@ async function main() {
         candidateEdges: inGroupEdges,
         rewritten: directCallsRewrittenByGroup.reduce((sum, count) => sum + count, 0),
         guardedRewritten: guardedDirectCallsRewrittenByGroup.reduce((sum, count) => sum + count, 0),
-        tailCalls: true,
-        yieldAwareTailCalls: !isMtInput,
+        tailCalls: opts.directCalls,
+        yieldAwareTailCalls: opts.directCalls && !isMtInput,
         cyclicBlocksExcluded: cyclicKeys.size,
         depthLimit: 0,
       },
@@ -1432,7 +1463,7 @@ async function main() {
   console.log(`Groups:             ${groups.length}`);
   console.log(`Merged groups:      yes`);
   const directStats = groupedManifest.stats.directCalls;
-  console.log(`Direct calls:       ${directStats.rewritten} tail sites rewritten, candidateEdges=${directStats.candidateEdges}, tailCalls=yes, yieldAware=${directStats.yieldAwareTailCalls ? 'yes' : 'no (MT)'}, guarded=${directStats.guardedRewritten}, cyclicBlocks=${directStats.cyclicBlocksExcluded}`);
+  console.log(`Direct calls:       ${directStats.rewritten} tail sites rewritten, candidateEdges=${directStats.candidateEdges}, kinds=${groupedManifest.source.directCallKinds.join(',') || 'none'}, tailCalls=${directStats.tailCalls ? 'yes' : 'no'}, yieldAware=${directStats.yieldAwareTailCalls ? 'yes' : 'no'}, guarded=${directStats.guardedRewritten}, cyclicBlocks=${directStats.cyclicBlocksExcluded}`);
   const relocStats = groupedManifest.stats.reloc;
   console.log(`Reloc:              ${relocStats.entriesWithSlots} entries with slot arrays, ${relocStats.directCallSitePatches} direct-call sites patched with target arrays`);
   console.log(`Components:         ${components.length}`);
