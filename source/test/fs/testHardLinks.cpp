@@ -891,6 +891,8 @@ void testInotifyAsyncSignalsSigioOnDelete() {
     process->memory = memory;
     KThread* thread = process->createThread();
     ChangeThread current(thread);
+    U64 oldSigMask = thread->sigMask;
+    const U64 sigioBit = 1ULL << (K_SIGIO - 1);
 
     U32 fd = KInotifyObject::create(thread, 0);
     if ((S32)fd < 0) {
@@ -909,13 +911,13 @@ void testInotifyAsyncSignalsSigioOnDelete() {
     if (thread->cpu) {
         thread->cpu->reg[3].u32 = fd;
     }
+    thread->sigMask |= sigioBit;
     expectZero("inotify fcntl F_SETSIG SIGIO", process->fcntrl(thread, fd, K_F_SETSIG, K_SIGIO));
     expectZero("inotify fcntl F_SETFL O_ASYNC", process->fcntrl(thread, fd, K_F_SETFL, K_O_ASYNC));
 
     expectZero("mkdir watched async child before delete", process->mkdir(B("/tmp/watch/child")));
     expectZero("rmdir watched async child", process->rmdir(B("/tmp/watch/child")));
 
-    U64 sigioBit = 1ULL << (K_SIGIO - 1);
     if (!(process->pendingSignals & sigioBit)) {
         testFail("inotify async delete did not signal SIGIO");
     }
@@ -923,6 +925,7 @@ void testInotifyAsyncSignalsSigioOnDelete() {
     expectU32("inotify async SIGIO band", process->sigActions[K_SIGIO].sigInfo[3], 0);
     expectU32("inotify async SIGIO fd", process->sigActions[K_SIGIO].sigInfo[4], fd);
 
+    thread->sigMask = oldSigMask;
     process->close(fd);
     process->removeThread(thread);
     delete thread;

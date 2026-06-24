@@ -759,7 +759,7 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
         runCount = requestedCount;
     }
 
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) || !defined(BOXEDWINE_MULTI_THREADED)
     if (workerCount != 1) {
         workerCount = 1;
     }

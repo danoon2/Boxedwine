@@ -178,11 +178,21 @@ void runThreadSlice(KThread* thread) {
 #ifdef __EMSCRIPTEN__
     do {
         cpu->run();
+#ifdef __TEST
+        if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
+            break;
+        }
+#endif
     } while ((int)cpu->blockInstructionCount < contextTimeRemaining && !cpu->yield);
 #else
     try {
         do {
             cpu->run();
+#ifdef __TEST
+            if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
+                break;
+            }
+#endif
         } while ((int)cpu->blockInstructionCount < contextTimeRemaining && !cpu->yield);
     } catch (...) {
         cpu->nextOp = nullptr;
