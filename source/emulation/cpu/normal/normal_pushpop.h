@@ -133,12 +133,22 @@ void OPCALL normal_popf16(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
     cpu->lazyFlagType = FLAGS_NONE;
     cpu->setFlags(cpu->pop16(), FMASK_ALL & 0xFFFF);
+    if (cpu->debugTrapActive) {
+        cpu->eip.u32 += op->len;
+        cpu->nextOp = cpu->getNextOp();
+        return;
+    }
     NEXT();
 }
 void OPCALL normal_popf32(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
     cpu->lazyFlagType = FLAGS_NONE;
     cpu->setFlags(cpu->pop32(), FMASK_ALL);
+    if (cpu->debugTrapActive) {
+        cpu->eip.u32 += op->len;
+        cpu->nextOp = cpu->getNextOp();
+        return;
+    }
     NEXT();
 }
 void OPCALL normal_pushf16(CPU* cpu, DecodedOp* op){

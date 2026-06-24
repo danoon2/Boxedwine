@@ -109,7 +109,9 @@ public:
     U32 readd(U32 address);
     U32 readdInline(U32 address);
     void writedInline(U32 address, U32 value);
-    void checkDebugTrapOnMemoryWrite(U32 address, U32 len);
+    void checkDebugTrapOnMemoryWrite(U32 address, U32 len) { if (debugMemoryWriteTrapActive.load(std::memory_order_relaxed)) checkDebugTrapOnMemoryWriteSlow(address, len); }
+    void checkDebugTrapOnMemoryWriteSlow(U32 address, U32 len);
+    void updateDebugMemoryWriteTrapActive();
     U16 readw(U32 address);
     U8  readb(U32 address);
     void writeq(U32 address, U64 value);
@@ -171,6 +173,7 @@ private:
 
     KMemoryData* data;    
     KProcess* process;
+    std::atomic<bool> debugMemoryWriteTrapActive { false };
 
     class LockedMemory {
     public:

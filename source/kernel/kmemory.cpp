@@ -506,6 +506,9 @@ void KMemory::clearJit(DecodedOp* op) {
 void clearJitBlock(const std::vector<void*>& jitOps);
 
 void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
+    if (!op || !op->blockStart) {
+        return;
+    }
     DecodedOp* blockOp = op->blockStart;
     U32 blockLen = blockOp->blockLen;
     U32 blockOpCount = blockOp->blockOpCount;
@@ -816,7 +819,21 @@ U64 KMemory::readq(U32 address) {
     return readd(address) | ((U64)readd(address + 4) << 32);
 }
 
-void KMemory::checkDebugTrapOnMemoryWrite(U32 address, U32 len) {
+void KMemory::updateDebugMemoryWriteTrapActive() {
+    bool active = false;
+    if (this->process) {
+        this->process->iterateThreads([this, &active](KThread* thread) {
+            if (thread && thread->memory == this && thread->hasMemoryWriteBreakpointEnabled()) {
+                active = true;
+                return false;
+            }
+            return true;
+        });
+    }
+    this->debugMemoryWriteTrapActive.store(active, std::memory_order_relaxed);
+}
+
+void KMemory::checkDebugTrapOnMemoryWriteSlow(U32 address, U32 len) {
     KThread* thread = KThread::currentThread();
     if (thread && thread->memory == this && !thread->inSignal && thread->hasMemoryWriteBreakpointEnabled()) {
         thread->checkDebugTrapOnMemoryWrite(address, len);

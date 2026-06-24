@@ -151,6 +151,7 @@ void CPU::reset() {
     this->nextOp = nullptr;
     this->debugTrapOnNextInstruction = false;
     this->pendingDebugTrap = false;
+    this->debugTrapActive = false;
     this->pendingDebugTrapCode = 0;
     this->pendingDebugTrapDr6 = 0;
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -1026,19 +1027,29 @@ void CPU::setFlags(U32 flags, U32 mask) {
     }
 #endif
     this->flags=(this->flags & ~mask)|(flags & mask)|2;
+    if (mask & TF) {
+        this->updateDebugTrapActive();
+    }
+}
+
+void CPU::updateDebugTrapActive() {
+    this->debugTrapActive = this->debugTrapOnNextInstruction || this->pendingDebugTrap || (this->flags & TF) || (this->thread && !this->thread->inSignal && (this->thread->debugRegs[7] & 0xff));
 }
 
 bool CPU::startDebugInstruction() {
     if (!this->thread) {
         this->debugTrapOnNextInstruction = false;
+        this->updateDebugTrapActive();
         return false;
     }
     if (this->thread->debugTrapBeforeInstruction()) {
         this->debugTrapOnNextInstruction = false;
         this->nextOp = this->getNextOp();
+        this->updateDebugTrapActive();
         return true;
     }
     this->debugTrapOnNextInstruction = (this->flags & TF) != 0;
+    this->updateDebugTrapActive();
     return false;
 }
 
@@ -1048,6 +1059,7 @@ bool CPU::finishDebugInstruction() {
         this->pendingDebugTrap = false;
         this->pendingDebugTrapCode = 0;
         this->pendingDebugTrapDr6 = 0;
+        this->updateDebugTrapActive();
         return false;
     }
     if (this->pendingDebugTrap) {
@@ -1062,15 +1074,18 @@ bool CPU::finishDebugInstruction() {
         this->pendingDebugTrapDr6 = 0;
         this->thread->signalDebugTrap(code, dr6);
         this->nextOp = this->getNextOp();
+        this->updateDebugTrapActive();
         return true;
     }
     if (this->debugTrapOnNextInstruction) {
         this->debugTrapOnNextInstruction = false;
         this->thread->signalDebugTrap(2, 0x4000);
         this->nextOp = this->getNextOp();
+        this->updateDebugTrapActive();
         return true;
     }
     this->debugTrapOnNextInstruction = false;
+    this->updateDebugTrapActive();
     if (this->flags & TF) {
         this->nextOp = this->getNextOp();
         return true;
@@ -1237,6 +1252,11 @@ void CPU::clone(CPU* from) {
     this->cr0 = from->cr0;
     this->stackNotMask = from->stackNotMask;
     this->stackMask = from->stackMask;
+    this->debugTrapOnNextInstruction = from->debugTrapOnNextInstruction;
+    this->pendingDebugTrap = from->pendingDebugTrap;
+    this->pendingDebugTrapCode = from->pendingDebugTrapCode;
+    this->pendingDebugTrapDr6 = from->pendingDebugTrapDr6;
+    this->updateDebugTrapActive();
 
     //KThread* thread;
     //Memory* memory;
@@ -1366,6 +1386,9 @@ void CPU::runNextSingleOp() {
         kpanic("jitRunSingleOp oops");
     }
     try {
+        if (this->debugTrapActive && this->startDebugInstruction()) {
+            return;
+        }
 #ifdef BOXEDWINE_JIT
         if (op->flags2 & OP_FLAG2_TRACED_STUB) {
             op->flags2 &= ~OP_FLAG2_TRACED_STUB;
@@ -1378,6 +1401,9 @@ void CPU::runNextSingleOp() {
         o.next = &lastOp;
         o.pfn = NormalCPU::getFunctionForOp(op);
         o.pfn(this, &o);
+        if (this->debugTrapActive && this->finishDebugInstruction()) {
+            return;
+        }
     } catch (...) {
         // motorhead 3dfx will trigger this when pressing enter to start a new game
     }

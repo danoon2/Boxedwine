@@ -90,6 +90,7 @@ void KThread::reset() {
     memory->threadCleanup(id);
     this->clearFutexes();
     this->cpu->reset();
+    this->updateDebugTrapActive();
     this->alternateStack = 0;
     this->alternateStackSize = 0;
     this->setupStack();    
@@ -775,6 +776,7 @@ void KThread::signalDebugTrap(U32 code, U32 dr6) {
         this->debugRegs[6] = dr6;
         this->cpu->fillFlags();
         this->cpu->flags &= ~TF;
+        this->cpu->updateDebugTrapActive();
         this->setPtraceStop(K_SIGTRAP);
         return;
     }
@@ -791,6 +793,7 @@ void KThread::signalDebugTrap(U32 code, U32 dr6) {
     this->debugRegs[6] = dr6;
     this->cpu->fillFlags();
     this->cpu->flags &= ~TF;
+    this->cpu->updateDebugTrapActive();
     this->runSignal(K_SIGTRAP, 1, 0);
 }
 
@@ -854,6 +857,15 @@ bool KThread::hasMemoryWriteBreakpointEnabled() const {
     return false;
 }
 
+void KThread::updateDebugTrapActive() {
+    if (this->cpu) {
+        this->cpu->updateDebugTrapActive();
+    }
+    if (this->memory) {
+        this->memory->updateDebugMemoryWriteTrapActive();
+    }
+}
+
 void KThread::checkDebugTrapOnMemoryWrite(U32 address, U32 len) {
     if (!this->cpu || !len) {
         return;
@@ -880,6 +892,7 @@ void KThread::checkDebugTrapOnMemoryWrite(U32 address, U32 len) {
     this->cpu->pendingDebugTrap = true;
     this->cpu->pendingDebugTrapCode = 4;
     this->cpu->pendingDebugTrapDr6 |= dr6;
+    this->cpu->updateDebugTrapActive();
 }
 
 bool KThread::hasHardwareBreakpointAt(U32 address) const {
@@ -1391,6 +1404,7 @@ void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
 #endif
     cpu->instructionCount = count;
     cpu->thread->inSignal--;
+    cpu->thread->updateDebugTrapActive();
     
     if (cpu->thread->waitingForSignalToEndMaskToRestore & RESTORE_SIGNAL_MASK) {
         cpu->thread->sigMask = cpu->thread->waitingForSignalToEndMaskToRestore & RESTORE_SIGNAL_MASK;
@@ -1503,6 +1517,7 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         this->cpu->eip.u32 = action->handlerAndSigAction;
 
         this->inSignal++;
+        this->updateDebugTrapActive();
 
         this->cpu->setSegment(CS, BOXEDWINE_INTERNAL_USER_CODE_SELECTOR);
         this->cpu->setSegment(SS, BOXEDWINE_INTERNAL_USER_DATA_SELECTOR);

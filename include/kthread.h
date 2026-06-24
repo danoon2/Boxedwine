@@ -87,6 +87,7 @@ public:
     bool debugTrapBeforeInstruction();
     bool hasHardwareBreakpointAt(U32 address) const;
     bool hasMemoryWriteBreakpointEnabled() const;
+    void updateDebugTrapActive();
     void checkDebugTrapOnMemoryWrite(U32 address, U32 len);
     bool isDebugTrapActive() const;
     void setPtraceStop(U32 signal);

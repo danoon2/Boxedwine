@@ -163,6 +163,7 @@ void resetEntryContext(TestContext& context) {
     for (U32& debugReg : context.thread->debugRegs) {
         debugReg = 0;
     }
+    context.thread->updateDebugTrapActive();
 }
 
 void testNewInstruction(int flags) {
@@ -201,6 +202,7 @@ void testNewInstruction(int flags) {
     for (U32& debugReg : context.thread->debugRegs) {
         debugReg = 0;
     }
+    context.thread->updateDebugTrapActive();
 }
 
 void testPushCode8(int value) {

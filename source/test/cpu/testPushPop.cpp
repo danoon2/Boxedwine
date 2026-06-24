@@ -1146,6 +1146,7 @@ void clearDebugRegisters() {
     for (U32 i = 0; i < 8; ++i) {
         testContext().thread->debugRegs[i] = 0;
     }
+    testContext().thread->updateDebugTrapActive();
 }
 
 void runSingleStepTrap() {
@@ -1663,6 +1664,7 @@ void runHardwareBreakpointTrap() {
     action.flags = 0;
     testContext().thread->debugRegs[0] = TEST_CODE_ADDRESS;
     testContext().thread->debugRegs[7] = 3;
+    testContext().thread->updateDebugTrapActive();
 
     emitByte(0x90); // nop, should not execute before the #DB
     runTestCPU();
@@ -1711,6 +1713,7 @@ void runHardwareBreakpointIgnoresNonExecutableAddress() {
     cpu->seg[CS].value = 0xf;
     testContext().thread->debugRegs[1] = 0;
     testContext().thread->debugRegs[7] = 1u << 2;
+    testContext().thread->updateDebugTrapActive();
 
     if (testContext().thread->debugTrapBeforeInstruction()) {
         failed("hardware breakpoint fired on non-executable address");
@@ -1748,6 +1751,7 @@ void runDataHardwareBreakpointTrap() {
 
     testContext().thread->debugRegs[0] = DATA_ADDRESS;
     testContext().thread->debugRegs[7] = 3 | (1u << 16) | (3u << 18);
+    testContext().thread->updateDebugTrapActive();
 
     runTestCPU();
 

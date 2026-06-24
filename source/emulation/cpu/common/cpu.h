@@ -228,6 +228,7 @@ public:
     U32 fpuDirtyFlags = 0;
     bool debugTrapOnNextInstruction = false;
     bool pendingDebugTrap = false;
+    bool debugTrapActive = false;
     U32 pendingDebugTrapCode = 0;
     U32 pendingDebugTrapDr6 = 0;
     DecodedOp*** opCache = nullptr;
@@ -263,6 +264,7 @@ public:
     void fillFlagsNoZF();
     void fillFlags();
     void setFlags(U32 flags, U32 mask);
+    void updateDebugTrapActive();
     bool startDebugInstruction();
     bool finishDebugInstruction();
 

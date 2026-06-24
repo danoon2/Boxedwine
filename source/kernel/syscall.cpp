@@ -296,6 +296,7 @@ static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
             target->ptraceTracerProcessId = cpu->thread->process->id;
             target->process->ptraceTracerProcessId = cpu->thread->process->id;
             target->process->ptraceTraceeThreadId = target->id;
+            target->updateDebugTrapActive();
             target->setPtraceStop(K_SIGSTOP);
             break;
         case K_PTRACE_CONT:
@@ -304,6 +305,7 @@ static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
                 target->cpu->fillFlags();
                 target->cpu->flags &= ~TF;
             }
+            target->updateDebugTrapActive();
             target->resumeFromPtraceStop();
             break;
         case K_PTRACE_DETACH:
@@ -318,6 +320,7 @@ static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
                 target->cpu->fillFlags();
                 target->cpu->flags &= ~TF;
             }
+            target->updateDebugTrapActive();
             target->resumeFromPtraceStop();
             break;
         case K_PTRACE_SINGLESTEP:
@@ -326,12 +329,14 @@ static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
                 target->cpu->fillFlags();
                 target->cpu->flags |= TF;
             }
+            target->updateDebugTrapActive();
             target->resumeFromPtraceStop();
             break;
         case K_PTRACE_KILL:
             target->ptraceAttached = false;
             target->ptraceSingleStep = false;
             target->ptraceTracerProcessId = 0;
+            target->updateDebugTrapActive();
             target->resumeFromPtraceStop();
             result = target->signal(K_SIGKILL, false);
             break;
@@ -350,6 +355,7 @@ static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
                 result = -K_EIO;
             } else {
                 target->debugRegs[index] = ARG4;
+                target->updateDebugTrapActive();
             }
             break;
         }

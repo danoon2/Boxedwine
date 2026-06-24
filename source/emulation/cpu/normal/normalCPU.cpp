@@ -26,11 +26,11 @@
 #include "../armv8/armv8CPU.h"
 #include "../../../util/ptrpool.h"
 
-#define DEBUG_OP_ACTIVE(cpu) ((cpu)->debugTrapOnNextInstruction || (cpu)->pendingDebugTrap || ((cpu)->flags & TF) || ((cpu)->thread && !(cpu)->thread->inSignal && ((cpu)->thread->debugRegs[7] & 0xff)))
-#define START_DEBUG_OP(cpu) do { if (DEBUG_OP_ACTIVE(cpu) && (cpu)->startDebugInstruction()) return; } while (0)
-#define FINISH_DEBUG_OP(cpu) do { if (DEBUG_OP_ACTIVE(cpu) && (cpu)->finishDebugInstruction()) return; } while (0)
+#define DEBUG_OP_ACTIVE(cpu) ((cpu)->debugTrapActive)
+#define START_DEBUG_OP(cpu) do {} while (0)
+#define FINISH_DEBUG_OP(cpu) do {} while (0)
 #ifdef BOXEDWINE_MULTI_THREADED
-#define START_SIGNAL_OP(cpu) do { if ((cpu)->thread && (cpu)->thread->pendingSignals && (cpu)->thread->runSignals()) { (cpu)->nextOp = (cpu)->getNextOp(); return; } } while (0)
+#define START_SIGNAL_OP(cpu) do {} while (0)
 #else
 #define START_SIGNAL_OP(cpu) do {} while (0)
 #endif
@@ -404,14 +404,14 @@ void NormalCPU::run() {
         return;
     }
 #endif
+    if (debugTrapActive) {
+        runNextSingleOp();
+        return;
+    }
 #ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
     normalDispatch(this, nextOp);
 #else
 #ifdef BOXEDWINE_JIT
-    if (thread->isDebugTrapActive()) {
-        runNextSingleOp();
-        return;
-    }
     if (nextOp->runCount <= JIT_RUN_COUNT) {
         firstOp(this, nextOp);
     } else {
