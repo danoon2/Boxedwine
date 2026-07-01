@@ -8538,6 +8538,92 @@ void JitWasmCodeGen::writeFlags(RegPtr flags) {
     writeCPU(JitWidth::b32, (U32)offsetof(CPU, flags), flags);
 }
 RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
+    U32 resultSignMask = 0;
+    switch (currentLazyFlags) {
+    case FLAGS_ADD8:
+    case FLAGS_OR8:
+    case FLAGS_ADC8:
+    case FLAGS_SBB8:
+    case FLAGS_AND8:
+    case FLAGS_SUB8:
+    case FLAGS_XOR8:
+    case FLAGS_INC8:
+    case FLAGS_DEC8:
+    case FLAGS_SHL8:
+    case FLAGS_SHR8:
+    case FLAGS_SAR8:
+    case FLAGS_CMP8:
+    case FLAGS_TEST8:
+    case FLAGS_NEG8:
+        resultSignMask = 0x80;
+        break;
+    case FLAGS_ADD16:
+    case FLAGS_OR16:
+    case FLAGS_ADC16:
+    case FLAGS_SBB16:
+    case FLAGS_AND16:
+    case FLAGS_SUB16:
+    case FLAGS_XOR16:
+    case FLAGS_INC16:
+    case FLAGS_DEC16:
+    case FLAGS_SHL16:
+    case FLAGS_SHR16:
+    case FLAGS_SAR16:
+    case FLAGS_CMP16:
+    case FLAGS_TEST16:
+    case FLAGS_DSHL16:
+    case FLAGS_DSHR16:
+    case FLAGS_NEG16:
+        resultSignMask = 0x8000;
+        break;
+    case FLAGS_ADD32:
+    case FLAGS_OR32:
+    case FLAGS_ADC32:
+    case FLAGS_SBB32:
+    case FLAGS_AND32:
+    case FLAGS_SUB32:
+    case FLAGS_XOR32:
+    case FLAGS_INC32:
+    case FLAGS_DEC32:
+    case FLAGS_SHL32:
+    case FLAGS_SHR32:
+    case FLAGS_SAR32:
+    case FLAGS_CMP32:
+    case FLAGS_TEST32:
+    case FLAGS_DSHL32:
+    case FLAGS_DSHR32:
+    case FLAGS_NEG32:
+        resultSignMask = 0x80000000u;
+        break;
+    default:
+        break;
+    }
+    if (resultSignMask && (cond == JitConditional::S || cond == JitConditional::NS)) {
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+        emitProfileSampledCall(HELPER_PROFILE_INLINE_COND);
+#endif
+        U32 condLocal = allocScratch();
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Load((U32)offsetof(CPU, result.u32));
+        m_emitter.emitI32Const((S32)resultSignMask);
+        m_emitter.emitOp(WASM_I32_AND);
+        if (cond == JitConditional::S) {
+            m_emitter.emitI32Const(0);
+            m_emitter.emitOp(WASM_I32_NE);
+        } else {
+            m_emitter.emitOp(WASM_I32_EQZ);
+        }
+        m_emitter.emitLocalSet(condLocal);
+
+        RegPtr tmp = makeWasmReg((U8)condLocal, 0xff);
+        if (res && res != tmp) {
+            mov(JitWidth::b8, res, tmp);
+            freeScratch(condLocal);
+            return res;
+        }
+        return tmp;
+    }
+
     bool inlineLogicCond32 = currentLazyFlags == FLAGS_TEST32 ||
                              currentLazyFlags == FLAGS_AND32 ||
                              currentLazyFlags == FLAGS_OR32 ||
