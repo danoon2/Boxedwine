@@ -419,7 +419,10 @@ static void wasmJitRecordHelperDetail(WasmJitHelperDetail detail) {
 #endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
-static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = 1;
+#ifndef WASM_JIT_MT_CHAIN_BLOCK_LIMIT
+#define WASM_JIT_MT_CHAIN_BLOCK_LIMIT 2
+#endif
+static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = WASM_JIT_MT_CHAIN_BLOCK_LIMIT;
 #else
 static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = 2048;
 #endif
