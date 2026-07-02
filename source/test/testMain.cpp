@@ -661,6 +661,19 @@ const TestEntry TEST_ENTRIES[] = {
     {testSelfModifyingBack, "Test Self Modifying Code Same Block(Next)"},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testLockedInc, "Test Multi-threaded locked inc"},
+    {testLockedIncAgainstPlainStore, "Test Multi-threaded locked inc against plain store"},
+    {testLockedCmpXchgAgainstPlainStore, "Test Multi-threaded locked cmpxchg against plain store"},
+    {testImplicitLockedXchgAgainstPlainStore, "Test Multi-threaded implicit locked xchg against plain store"},
+    {testLockedCmpXchgFailureAgainstPlainStore, "Test Multi-threaded locked cmpxchg failure against plain store"},
+    {testLockedXaddAgainstPlainStore, "Test Multi-threaded locked xadd against plain store"},
+    {testPlainReadAgainstLockedWrite, "Test Multi-threaded plain read against locked write"},
+    {testLockedAdditionalFamilies, "Test Multi-threaded additional locked operation families"},
+    {testLockedCmpXchg8bAgainstPlainStore, "Test Multi-threaded locked cmpxchg8b against plain store"},
+    {testLockedPageBoundaryNoPartialWrite, "Test locked page-boundary write has no partial update"},
+    {testImplicitLockedXchgSelfModifyingCode, "Test implicit locked xchg invalidates self-modifying code"},
+    {testPlainMemoryOrdering, "Test Multi-threaded plain x86 memory ordering"},
+    {testLockedWidthsAndAlignmentAgainstPlainStore, "Test Multi-threaded locked widths and alignment against plain store"},
+    {testLockedMemoryOrdering, "Test Multi-threaded locked memory ordering"},
 #endif
     {testWaitPid, "Test waitpid child selection"},
 };

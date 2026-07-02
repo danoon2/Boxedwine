@@ -320,6 +320,22 @@ bool KMemory::canRead(U32 address, U32 len) {
     return result;
 }
 
+void KMemory::preflightWrite(U32 address, U32 len) {
+    for (U32 i = 0; i < len; ++i) {
+        U32 current = address + i;
+        U32 flags = getPageFlags(current >> K_PAGE_SHIFT);
+        if (flags & PAGE_WRITE) {
+            continue;
+        }
+        KThread* thread = KThread::currentThread();
+        if (flags) {
+            thread->seg_access(current, false, true);
+        } else {
+            thread->seg_mapper(current, false, true);
+        }
+    }
+}
+
 void KMemory::execvReset(bool cloneVM) {
     if (!cloneVM) {
         data->execvReset();
@@ -883,6 +899,9 @@ void KMemory::writeq(U32 address, U64 value) {
         }
     }
 #endif
+    if ((address & K_PAGE_MASK) > K_PAGE_SIZE - 8) {
+        preflightWrite(address, 8);
+    }
     writed(address, (U32)value); writed(address + 4, (U32)(value >> 32));
 }
 
@@ -901,6 +920,7 @@ void KMemory::writew(U32 address, U16 value) {
 #endif
             data->mmu[index].getPage()->writew(&data->mmu[index], address, value);
     } else {
+        preflightWrite(address, 2);
         writeb(address, (U8)value);
         writeb(address + 1, (U8)(value >> 8));
     }

@@ -35,6 +35,17 @@ constexpr U32 INC_DEC_FLAG_MASK = CF | PF | AF | ZF | SF | OF;
 #ifdef BOXEDWINE_MULTI_THREADED
 constexpr U32 LOCKED_INC_THREADS = 10;
 constexpr U32 LOCKED_INC_ITERATIONS = 1000000;
+#ifdef __EMSCRIPTEN__
+constexpr U32 LOCKED_PLAIN_STORE_ITERATIONS = 1000;
+#else
+constexpr U32 LOCKED_PLAIN_STORE_ITERATIONS = 100000;
+#endif
+constexpr U32 LOCKED_PLAIN_STORE_TARGET = 0xc8;
+constexpr U32 LOCKED_PLAIN_STORE_PHASE = 0xd0;
+constexpr U32 LOCKED_PLAIN_STORE_WRITER_DONE = 0xd4;
+constexpr U32 LOCKED_PLAIN_STORE_ACK = 0xd8;
+constexpr U32 LOCKED_PLAIN_STORE_ERROR = 0xdc;
+constexpr U32 LOCKED_PLAIN_STORE_SENTINEL = 0x10000;
 #endif
 
 enum IncDecOp {
@@ -653,6 +664,104 @@ void runLockedIncCase(U32 address, const char* name) {
         failed("%s expected %u, got %u", name, expectedValue, value);
     }
 }
+
+void expectAsmOk(asmjit::Error err, const char* name) {
+    if (err != asmjit::Error::kOk) {
+        failed("%s failed", name);
+    }
+}
+
+void emitWaitDwordEquals(asmjit::x86::Assembler& a, U32 address, asmjit::x86::Gp value, const char* name) {
+    asmjit::Label wait = a.new_label();
+    expectAsmOk(a.bind(wait), name);
+    expectAsmOk(a.cmp(asmjit::x86::dword_ptr(address), value), name);
+    expectAsmOk(a.jne(wait), name);
+}
+
+U32 emitPlainStoreWriterLoop() {
+    U32 eip = testContext().codeIp - TEST_CODE_ADDRESS;
+    asmjit::CodeHolder code;
+    initCode(code);
+    asmjit::x86::Assembler a(&code);
+    asmjit::Label loop = a.new_label();
+
+    expectAsmOk(a.mov(asmjit::x86::edx, 1), "asmjit plain store phase init");
+    expectAsmOk(a.bind(loop), "asmjit plain store loop bind");
+    emitWaitDwordEquals(a, LOCKED_PLAIN_STORE_PHASE, asmjit::x86::edx, "asmjit plain store wait phase");
+    expectAsmOk(a.mov(asmjit::x86::dword_ptr(LOCKED_PLAIN_STORE_TARGET), LOCKED_PLAIN_STORE_SENTINEL), "asmjit plain store target");
+    expectAsmOk(a.mov(asmjit::x86::dword_ptr(LOCKED_PLAIN_STORE_WRITER_DONE), asmjit::x86::edx), "asmjit plain store done");
+    emitWaitDwordEquals(a, LOCKED_PLAIN_STORE_ACK, asmjit::x86::edx, "asmjit plain store wait ack");
+    expectAsmOk(a.inc(asmjit::x86::edx), "asmjit plain store phase inc");
+    expectAsmOk(a.loop(loop), "asmjit plain store loop");
+    pushGeneratedCode(code);
+    pushCode8(0xcd);
+    pushCode8(0x97);
+    return eip;
+}
+
+U32 emitLockedIncAgainstPlainStoreLoop() {
+    U32 eip = testContext().codeIp - TEST_CODE_ADDRESS;
+    asmjit::CodeHolder code;
+    initCode(code);
+    asmjit::x86::Assembler a(&code);
+    asmjit::Label loop = a.new_label();
+    asmjit::Label ok = a.new_label();
+
+    expectAsmOk(a.mov(asmjit::x86::edx, 1), "asmjit locked inc phase init");
+    expectAsmOk(a.bind(loop), "asmjit locked inc plain loop bind");
+    expectAsmOk(a.mov(asmjit::x86::dword_ptr(LOCKED_PLAIN_STORE_TARGET), 0), "asmjit locked inc target reset");
+    expectAsmOk(a.mov(asmjit::x86::dword_ptr(LOCKED_PLAIN_STORE_PHASE), asmjit::x86::edx), "asmjit locked inc phase publish");
+    a.lock();
+    expectAsmOk(a.inc(asmjit::x86::dword_ptr(LOCKED_PLAIN_STORE_TARGET)), "asmjit locked inc plain target");
+    emitWaitDwordEquals(a, LOCKED_PLAIN_STORE_WRITER_DONE, asmjit::x86::edx, "asmjit locked inc wait writer");
+    expectAsmOk(a.cmp(asmjit::x86::dword_ptr(LOCKED_PLAIN_STORE_TARGET), 1), "asmjit locked inc check target");
+    expectAsmOk(a.jne(ok), "asmjit locked inc check branch");
+    expectAsmOk(a.mov(asmjit::x86::dword_ptr(LOCKED_PLAIN_STORE_ERROR), asmjit::x86::edx), "asmjit locked inc error");
+    expectAsmOk(a.bind(ok), "asmjit locked inc ok bind");
+    expectAsmOk(a.mov(asmjit::x86::dword_ptr(LOCKED_PLAIN_STORE_ACK), asmjit::x86::edx), "asmjit locked inc ack");
+    expectAsmOk(a.inc(asmjit::x86::edx), "asmjit locked inc phase inc");
+    expectAsmOk(a.loop(loop), "asmjit locked inc plain loop");
+    pushGeneratedCode(code);
+    pushCode8(0xcd);
+    pushCode8(0x97);
+    return eip;
+}
+
+KThread* startGuestThreadAt(U32 eip, U32 iterations) {
+    KThread* thread = testContext().process->createThread();
+    thread->cpu->clone(testContext().cpu);
+    thread->cpu->eip.u32 = eip;
+    thread->cpu->reg[R_CX].u32 = iterations;
+    scheduleThread(thread);
+    return thread;
+}
+
+void runLockedIncAgainstPlainStoreCase(const char* name) {
+    newInstruction(0);
+    CPU* baseCpu = testContext().cpu;
+    KMemory* baseMemory = testContext().memory;
+
+    baseMemory->writed(baseCpu->seg[DS].address + LOCKED_PLAIN_STORE_TARGET, 0);
+    baseMemory->writed(baseCpu->seg[DS].address + LOCKED_PLAIN_STORE_PHASE, 0);
+    baseMemory->writed(baseCpu->seg[DS].address + LOCKED_PLAIN_STORE_WRITER_DONE, 0);
+    baseMemory->writed(baseCpu->seg[DS].address + LOCKED_PLAIN_STORE_ACK, 0);
+    baseMemory->writed(baseCpu->seg[DS].address + LOCKED_PLAIN_STORE_ERROR, 0);
+
+    U32 writerEip = emitPlainStoreWriterLoop();
+    U32 lockedEip = emitLockedIncAgainstPlainStoreLoop();
+
+    KThread* writer = startGuestThreadAt(writerEip, LOCKED_PLAIN_STORE_ITERATIONS);
+    KThread* locked = startGuestThreadAt(lockedEip, LOCKED_PLAIN_STORE_ITERATIONS);
+
+    joinThread(writer);
+    joinThread(locked);
+    KThread::setCurrentThread(testContext().thread);
+
+    U32 errorPhase = baseMemory->readd(baseCpu->seg[DS].address + LOCKED_PLAIN_STORE_ERROR);
+    if (errorPhase) {
+        failed("%s stale locked inc write observed at phase %u", name, errorPhase);
+    }
+}
 #define cpu (testContext().cpu)
 #define memory (testContext().memory)
 #endif
@@ -712,6 +821,10 @@ void testLockedInc() {
     runLockedIncCase(0xc8, "locked inc aligned 8");
     runLockedIncCase(0xc4, "locked inc aligned 4");
     runLockedIncCase(0xc9, "locked inc aligned 1");
+}
+
+void testLockedIncAgainstPlainStore() {
+    runLockedIncAgainstPlainStoreCase("locked inc against plain store");
 }
 #endif
 

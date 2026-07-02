@@ -9368,8 +9368,10 @@ void JitWasmCodeGen::emulateSingleOp() {
         m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
     }
 #endif
+    emitArmSmcBailout();
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(m_helperEmulateSingleOpIdx);
+    emitBailoutCheck();
     m_gpLoaded.fill(false);
     m_segLoaded.fill(false);
     // The interpreter may have updated cpu->lazyFlagType to any value.

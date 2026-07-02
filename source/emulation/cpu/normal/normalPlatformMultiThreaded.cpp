@@ -43,6 +43,11 @@ void platformInitExceptionHandling();
 // out-of-line call here would cost a call per dispatch (measurably slower on the
 // fast JIT). Only platformThreadRun is force-noinline (see above).
 static inline bool platformThreadShouldStop(CPU* cpu) {
+#ifdef __TEST
+    if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
+        return true;
+    }
+#endif
     if (cpu->thread->process->terminated) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
         cpu->memory->cleanup();
@@ -79,6 +84,11 @@ static void platformThread(CPU* cpu) {
     while (true) {
         try {
             platformThreadRun(cpu);
+#ifdef __TEST
+            if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
+                return;
+            }
+#endif
             break;
         } catch (...) {
             if (!cpu->thread->terminating) {
