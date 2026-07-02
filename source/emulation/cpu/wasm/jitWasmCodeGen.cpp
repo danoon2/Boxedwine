@@ -9679,6 +9679,9 @@ bool JitWasmCodeGen::emitDirectLoopBackedge(U32 address) {
     m_emitter.emitI32Const(1);
     m_emitter.emitOp(WASM_I32_SUB);
     m_emitter.emitLocalTee(WASM_DIRECT_LOOP_BUDGET_LOCAL);
+    // Booleanize before the bitwise AND with !wasmJitBailout.
+    m_emitter.emitOp(WASM_I32_EQZ);
+    m_emitter.emitOp(WASM_I32_EQZ);
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Load((U32)offsetof(CPU, wasmJitBailout));
     m_emitter.emitOp(WASM_I32_EQZ);
