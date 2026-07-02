@@ -210,7 +210,7 @@ ALL := $(OBJS)
 ALL += $(SOFT_OBJS)
 DEPS := $(ALL:.o=.d)
 
-COMMON_INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/simde
+COMMON_INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/simde -I../../lib/zlib -I../../lib/zlib/contrib/minizip
 SOFTFLOAT_INCLUDES := -I../../lib/softfloat/source/include -I../../lib/softfloat/source -I../../lib/softfloat/source/8086-SSE
 $(OBJS): INCLUDES := $(COMMON_INCLUDES)
 $(SOFT_OBJS): INCLUDES := $(SOFTFLOAT_INCLUDES)

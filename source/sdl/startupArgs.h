@@ -114,6 +114,7 @@ public:
     BString runAutomation;
 
     BString ddrawOverridePath;
+    BString cdromPath;
     bool enableDXVK = false;
     bool disableHideCursor = false;
     bool forceRelativeMouse = false;
