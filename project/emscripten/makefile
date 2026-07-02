@@ -97,7 +97,7 @@ ALL := $(OBJS)
 ALL += $(SOFT_OBJS)
 DEPS := $(ALL:.o=.d)
 
-$(OBJS): INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/simde
+$(OBJS): INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/simde -I../../lib/zlib -I../../lib/zlib/contrib/minizip
 $(SOFT_OBJS): INCLUDES := -I../../lib/softfloat/source/include -I../../lib/softfloat/source -I../../lib/softfloat/source/8086-SSE
 
 CXXFLAGS ?= -std=c++20

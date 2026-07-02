@@ -136,6 +136,12 @@
     <ClCompile Include="..\..\..\..\..\source\io\fszip.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\io\fsiso.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\io\fsisoopennode.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\io\fszipnode.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
@@ -152,6 +158,9 @@
       <Filter>source\kernel\devs</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devnull.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\kernel\devs\devcdrom.cpp">
       <Filter>source\kernel\devs</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devsequencer.cpp">
@@ -1248,6 +1257,9 @@
     <ClInclude Include="..\..\..\..\..\include\crc.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\devcdrom.h">
+      <Filter>include</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\devdsp.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -1594,6 +1606,12 @@
       <Filter>source\io</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\io\fszip.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\io\fsiso.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\io\fsisoopennode.h">
       <Filter>source\io</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\io\fszipnode.h">

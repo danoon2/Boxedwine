@@ -19,6 +19,7 @@
 #include "boxedwine.h"
 
 #include "fsvirtualnode.h"
+#include "fsdiropennode.h"
 #include "kstat.h"
 
 bool FsVirtualNode::remove() {
@@ -26,11 +27,13 @@ bool FsVirtualNode::remove() {
 }
 
 U64 FsVirtualNode::lastModified() {
-    return 0;
+    return this->virtualLastModified;
 }
 
 U64 FsVirtualNode::length() {
-    return 0;
+    if (this->isDirectory() && !this->virtualLength)
+        return 4096;
+    return this->virtualLength;
 }
 
 U32 FsVirtualNode::getMode() {
@@ -38,6 +41,12 @@ U32 FsVirtualNode::getMode() {
 }
 
 FsOpenNode* FsVirtualNode::open(U32 flags) {
+    if (this->isDirectory()) {
+        std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), this->path, true);
+        if (!node)
+            return nullptr;
+        return new FsDirOpenNode(node, flags);
+    }
     if ((flags & K_O_ACCMODE)==K_O_RDONLY) {
         if (!this->canRead())
             return nullptr;
@@ -84,8 +93,7 @@ U32 FsVirtualNode::rename(BString path) {
 }
 
 U32 FsVirtualNode::removeDir() {
-    kpanic("FsVirtualNode::removeDir not implemented");
-    return 0;
+    return -K_EROFS;
 }
 
 U32 FsVirtualNode::setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano) {

@@ -100,8 +100,8 @@ BString Fs::nativeFromLocal(const BString& path) {
     return result;
 }
 
-std::shared_ptr<FsNode> Fs::addVirtualFile(const BString& path, std::function<FsOpenNode* (const std::shared_ptr<FsNode>& node, U32 flags, U32 data)> func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data) {
-    std::shared_ptr<FsNode> result = std::make_shared<FsVirtualNode>(Fs::nextNodeId++, rdev, path, func, mode, parent, data);
+std::shared_ptr<FsNode> Fs::addVirtualFile(const BString& path, std::function<FsOpenNode* (const std::shared_ptr<FsNode>& node, U32 flags, U32 data)> func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data, U64 length, U64 lastModified) {
+    std::shared_ptr<FsNode> result = std::make_shared<FsVirtualNode>(Fs::nextNodeId++, rdev, path, func, mode, parent, data, length, lastModified);
     parent->addChild(result);
     return result;
 }
@@ -110,6 +110,12 @@ std::shared_ptr<FsNode> Fs::addVirtualFile(const BString& path, U32 mode, U32 rd
     std::shared_ptr<FsNode> result = std::make_shared<FsVirtualNode>(Fs::nextNodeId++, rdev, path, [value](const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
         return new BufferAccess(node, flags, value);
         }, mode, parent, 0);
+    parent->addChild(result);
+    return result;
+}
+
+std::shared_ptr<FsNode> Fs::addVirtualDirectory(const BString& path, U32 mode, const std::shared_ptr<FsNode>& parent, U64 lastModified) {
+    std::shared_ptr<FsNode> result = std::make_shared<FsVirtualNode>(Fs::nextNodeId++, 0, path, nullptr, mode, parent, 0, 4096, lastModified, true);
     parent->addChild(result);
     return result;
 }

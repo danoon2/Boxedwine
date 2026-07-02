@@ -121,6 +121,12 @@
     <ClCompile Include="..\..\..\..\source\io\fszip.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fsiso.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fsisoopennode.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\io\fsfileopennode.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
@@ -245,6 +251,9 @@
       <Filter>source\util</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\kernel\devs\devsequencer.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devcdrom.cpp">
       <Filter>source\kernel\devs</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\platform\windows\winmidi.cpp">
@@ -1335,6 +1344,12 @@
     <ClInclude Include="..\..\..\..\source\io\fszip.h">
       <Filter>source\io</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fsiso.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fsisoopennode.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\source\io\fsfileopennode.h">
       <Filter>source\io</Filter>
     </ClInclude>
@@ -1441,6 +1456,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\devsequencer.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\devcdrom.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\synchronization.h">

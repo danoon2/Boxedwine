@@ -85,6 +85,7 @@ private:
     U32 fullScreen = FULLSCREEN_NOTSET;
     U32 vsync = VSYNC_NOT_SET;
     bool dpiAware = false;
+    BString cdromPath;
     bool ddrawOverride = false;
     bool enableDXVK = false;
     bool disableHideCursor = false;

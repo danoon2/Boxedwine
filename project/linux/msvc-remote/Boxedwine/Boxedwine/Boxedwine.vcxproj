@@ -1286,6 +1286,8 @@
     <ClCompile Include="..\..\..\..\..\source\io\fsdynamiclinknode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fsfilenode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fsfileopennode.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\io\fsiso.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\io\fsisoopennode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fsmemnode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fsmemopennode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fsnode.cpp" />
@@ -1294,6 +1296,7 @@
     <ClCompile Include="..\..\..\..\..\source\io\fszip.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fszipnode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fszipopennode.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\devs\devcdrom.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devdsp.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devfb.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devinput.cpp" />
@@ -1597,6 +1600,7 @@
     <ClInclude Include="..\..\..\..\..\include\boxedwine.h" />
     <ClInclude Include="..\..\..\..\..\include\bufferaccess.h" />
     <ClInclude Include="..\..\..\..\..\include\crc.h" />
+    <ClInclude Include="..\..\..\..\..\include\devcdrom.h" />
     <ClInclude Include="..\..\..\..\..\include\devdsp.h" />
     <ClInclude Include="..\..\..\..\..\include\devfb.h" />
     <ClInclude Include="..\..\..\..\..\include\devinput.h" />
@@ -1994,6 +1998,8 @@
     <ClInclude Include="..\..\..\..\..\source\io\fsdynamiclinknode.h" />
     <ClInclude Include="..\..\..\..\..\source\io\fsfilenode.h" />
     <ClInclude Include="..\..\..\..\..\source\io\fsfileopennode.h" />
+    <ClInclude Include="..\..\..\..\..\source\io\fsiso.h" />
+    <ClInclude Include="..\..\..\..\..\source\io\fsisoopennode.h" />
     <ClInclude Include="..\..\..\..\..\source\io\fsmemnode.h" />
     <ClInclude Include="..\..\..\..\..\source\io\fsmemopennode.h" />
     <ClInclude Include="..\..\..\..\..\source\io\fsnode.h" />

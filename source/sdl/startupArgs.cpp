@@ -35,6 +35,8 @@
 #include "devmixer.h"
 #include "devsequencer.h"
 #include "devfb.h"
+#include "devcdrom.h"
+#include "../io/fsiso.h"
 #include "mainloop.h"
 #include "../io/fsfilenode.h"
 #include "../io/fszip.h"
@@ -145,7 +147,42 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::addVirtualFile(B("/dev/input/event4"), openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, k_mdev(0xd, 0x44), inputNode);
 	Fs::addVirtualFile(B("/dev/dsp"), openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 3), devNode);
 	Fs::addVirtualFile(B("/dev/mixer"), openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 0), devNode);
-    Fs::addVirtualFile(B("/dev/sequencer"), openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 1), devNode);    
+    Fs::addVirtualFile(B("/dev/sequencer"), openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 1), devNode);
+
+    // CD-ROM block device (Linux SCSI CD-ROM major = 11)
+    Fs::addVirtualFile(B("/dev/cdrom"), openDevCDROM, K__S_IREAD | K__S_IFCHR, k_mdev(11, 0), devNode);
+    Fs::addVirtualFile(B("/dev/sr0"),   openDevCDROM, K__S_IREAD | K__S_IFCHR, k_mdev(11, 0), devNode);
+
+    // /proc/sys/dev/cdrom/info — Wine reads this to detect CD drives
+    std::shared_ptr<FsNode> procSysDevNode = Fs::addFileNode(B("/proc/sys/dev"), B(""), B(""), true, procSysNode);
+    std::shared_ptr<FsNode> procSysCdromNode = Fs::addFileNode(B("/proc/sys/dev/cdrom"), B(""), B(""), true, procSysDevNode);
+    Fs::addVirtualFile(B("/proc/sys/dev/cdrom/info"), [](const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
+        return new BufferAccess(node, flags, B(
+            "CD-ROM information, Id: cdrom.c 3.20 2003/12/17\n"
+            "\n"
+            "drive name:\t\tsr0\n"
+            "drive speed:\t\t52\n"
+            "drive # of slots:\t1\n"
+            "Can close tray:\t\t1\n"
+            "Can open tray:\t\t1\n"
+            "Can lock tray:\t\t1\n"
+            "Can change speed:\t1\n"
+            "Can select disk:\t0\n"
+            "Can read multisession:\t1\n"
+            "Can read MCN:\t\t1\n"
+            "Reports media changed:\t1\n"
+            "Can play audio:\t\t1\n"
+            "Can write CD-R:\t\t0\n"
+            "Can write CD-RW:\t0\n"
+            "Can read DVD:\t\t1\n"
+            "Can write DVD-R:\t0\n"
+            "Can write DVD-RAM:\t0\n"
+            "Can read MRW:\t\t1\n"
+            "Can write MRW:\t\t0\n"
+            "Can write RAM:\t\t0\n"
+            "\n\n"
+        ));
+    }, K__S_IREAD, k_mdev(0, 0), procSysCdromNode);
 
     Fs::addVirtualFile(B("/etc/hostname"), openHostname, K__S_IREAD, k_mdev(0, 0), etcNode);
     Fs::addVirtualFile(B("/etc/hosts"), openHosts, K__S_IREAD, k_mdev(0, 0), etcNode);
@@ -165,6 +202,10 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (title.length()) {
         args.push_back(B("-title"));
         args.push_back(title);
+    }
+    if (cdromPath.length()) {
+        args.push_back(B("-cdrom"));
+        args.push_back(cdromPath);
     }
     if (userId != UID) {
         args.push_back(B("-uid"));
@@ -490,6 +531,19 @@ bool StartUpArgs::apply() {
         }
     }
 
+    if (!this->cdromPath.isEmpty()) {
+        std::shared_ptr<FsIso> fsIso = std::make_shared<FsIso>();
+        if (fsIso->init(this->cdromPath, B("/mnt/cdrom"))) {
+            setCdromIso(fsIso);
+            // Wire up Wine's E: drive letter to the ISO mount point
+            std::shared_ptr<FsNode> dosdevParent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
+            if (dosdevParent) {
+                Fs::addFileNode(B("/home/username/.wine/dosdevices/e:"),  B("/mnt/cdrom"), B(""), false, dosdevParent);
+                Fs::addFileNode(B("/home/username/.wine/dosdevices/e::"), B("/dev/sr0"),   B(""), false, dosdevParent);
+            }
+        }
+    }
+
     if (this->args.size()==0) {
         args.push_back(B("/bin/wine"));
         args.push_back(B("explorer"));
@@ -662,6 +716,9 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     for (i=1;i<argc;i++) {
         if (!strcmp(argv[i], "-root") && i+1<argc) {
             this->setRoot(BString::copy(argv[i+1]));
+            i++;
+        } else if (!strcmp(argv[i], "-cdrom") && i+1<argc) {
+            this->cdromPath = BString::copy(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-zip") && i+1<argc) {
 #ifdef BOXEDWINE_ZLIB
