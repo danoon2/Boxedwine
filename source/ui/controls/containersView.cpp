@@ -346,6 +346,12 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         };
     }
 
+    appCdromControl = appSection->addTextInputRow(Msg::CONTAINER_VIEW_CDROM_LABEL, Msg::CONTAINER_VIEW_CDROM_HELP, B(""), true);
+    appCdromControl->setBrowseFileButton({B("*.iso"), B("*.ISO")});
+    appCdromControl->onChange = [this]() {
+        this->currentAppChanged = true;
+    };
+
     appDdrawOverrideControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_DDRAW_OVERRIDE_LABEL, Msg::CONTAINER_VIEW_DDRAW_OVERRIDE_HELP, false);
     appDdrawOverrideControl->onChange = [this]() {
         this->currentAppChanged = true;
@@ -631,6 +637,7 @@ bool ContainersView::saveChanges() {
             if (GlobalSettings::isDpiAware()) {
                 this->currentApp->dpiAware = this->appDpiAwareControl->isChecked();
             }
+            this->currentApp->cdromPath = this->appCdromControl->getText();
             this->currentApp->ddrawOverride = this->appDdrawOverrideControl->isChecked();
             this->currentApp->enableDXVK = this->appEnableDXVKControl->isChecked();
             this->currentApp->disableHideCursor = this->appDisableHideCursorControl->isChecked();
@@ -686,6 +693,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appFullScreenControl->setSelectionIntValue(app->fullScreen);
     appVSyncControl->setSelectionIntValue(app->vsync);
     appDpiAwareControl->setCheck(app->dpiAware);
+    appCdromControl->setText(app->cdromPath);
     appDdrawOverrideControl->setCheck(app->ddrawOverride);
     appEnableDXVKControl->setCheck(app->enableDXVK);
     appDisableHideCursorControl->setCheck(app->disableHideCursor);

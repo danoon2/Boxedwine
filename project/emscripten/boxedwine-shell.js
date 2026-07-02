@@ -41,6 +41,7 @@
         Config.locateRootBaseUrl = ""; // ie "assets/"
         Config.locateAppBaseUrl = "";
         Config.locateOverlayBaseUrl = "";
+        Config.locateCDRomBaseUrl = "";
         Config.urlParams = "";
         Config.storageMode = STORAGE_INDEXED_DB;
         Config.rootStorageMode = "";
@@ -137,6 +138,7 @@
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
             Config.extraZipFiles = getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
             Config.appZipFile = getAppZipFile("app"); //MANUAL:"chomp.zip";
+            Config.cdromISOFile = getCDRomISOFile("cdrom");
             Config.appPayload = getPayload("app-payload"); 
             Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
@@ -607,6 +609,16 @@
             }
             return result;
         }
+        function getCDRomISOFile(param) {
+            var filename =  getParameter(param);
+            if(!allowParameterOverride() || filename===""){
+                filename = "";
+                console.log("not setting " + param + " ISO file");
+            }else{
+                console.log("setting " + param + " ISO file to: "+filename);
+            }
+            return filename;
+        }
         function getAppZipFile(param) {
 
             var filename =  getParameter(param);
@@ -736,6 +748,16 @@
             		createFile("/", Config.appZipFile, uint8Array);
             		callback();
             	});
+            }else{
+                callback();
+            }
+        }
+        function buildCDRomFileSystems(callback) {
+			if(Config.cdromISOFile.length > 0){
+				loadFile(Config.locateCDRomBaseUrl, Config.cdromISOFile, (uint8Array) => {
+					createFile("/", Config.cdromISOFile, uint8Array);
+					callback();
+				});
             }else{
                 callback();
             }
@@ -936,11 +958,13 @@
                     spinnerElement.style.display = '';
                     spinnerElement.hidden = false;
 
-                    buildExtraFileSystems(() => {
-                        buildAppFileSystem(() => {
-                            loadFile(Config.locateRootBaseUrl, Config.rootZipFile, (rootZipfileBytes) => {
-                                createFile("/", Config.rootZipFile, rootZipfileBytes);
-                                buildBrowserFileSystem();
+                    buildCDRomFileSystems(() => {
+                        buildExtraFileSystems(() => {
+                            buildAppFileSystem(() => {
+                                loadFile(Config.locateRootBaseUrl, Config.rootZipFile, (rootZipfileBytes) => {
+                                    createFile("/", Config.rootZipFile, rootZipfileBytes);
+                                    buildBrowserFileSystem();
+                                });
                             });
                         });
                     });
@@ -1601,6 +1625,10 @@
             }
             params.push("-zip");
             params.push(Config.rootZipFile);
+            if(Config.cdromISOFile.length > 0){
+				params.push("-cdrom");
+				params.push(Config.cdromISOFile);
+			}
             
             if (Config.appZipFile.length > 0) { // -mount $appZipFile "/home/username/files/"
     			params.push("-mount");

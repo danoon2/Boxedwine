@@ -330,6 +330,10 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "DPI Aware:";
     case Msg::CONTAINER_VIEW_DPI_AWARE_HELP:
         return "DPI (dots per inch) Aware means the app will be responsible for itself when it comes to scaling to large resolutions.  If this is checked and the app can not handle it, then the app might appear to run in a window that is too small.";
+    case Msg::CONTAINER_VIEW_CDROM_LABEL:
+        return "CD-ROM (ISO):";
+    case Msg::CONTAINER_VIEW_CDROM_HELP:
+        return "Path to an ISO image to mount as the E: CD-ROM drive inside Wine.";
     case Msg::CONTAINER_VIEW_DDRAW_OVERRIDE_LABEL:
         return "CNC DDraw:";
     case Msg::CONTAINER_VIEW_DDRAW_OVERRIDE_HELP:
