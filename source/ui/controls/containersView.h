@@ -74,7 +74,6 @@ private:
     std::shared_ptr<LayoutComboboxControl> appFullScreenControl;
     std::shared_ptr<LayoutComboboxControl> appVSyncControl;
     std::shared_ptr<LayoutCheckboxControl> appDpiAwareControl;
-    std::shared_ptr<LayoutTextInputControl> appCdromControl;
     std::shared_ptr<LayoutCheckboxControl> appDdrawOverrideControl;
     std::shared_ptr<LayoutCheckboxControl> appEnableDXVKControl;
     std::shared_ptr<LayoutCheckboxControl> appDisableHideCursorControl;

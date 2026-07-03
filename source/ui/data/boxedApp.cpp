@@ -36,7 +36,6 @@ bool BoxedApp::load(BoxedContainer* container, BString iniFilePath) {
     this->fullScreen = config.readInt(B("Fullscreen"),FULLSCREEN_NOTSET);
     this->vsync = config.readInt(B("VSync"), VSYNC_NOT_SET);
     this->dpiAware = config.readBool(B("DpiAware"), false);
-    this->cdromPath = config.readString(B("CdromPath"), B(""));
     this->ddrawOverride = config.readBool(B("DDrawOverride"), false);
     this->enableDXVK = config.readBool(B("EnableDXVK"), false);
     this->disableHideCursor = config.readBool(B("DisableHideCursor"), false);
@@ -96,7 +95,6 @@ bool BoxedApp::saveApp() {
     config.writeInt(B("Fullscreen"),this->fullScreen);
     config.writeInt(B("VSync"), this->vsync);
     config.writeBool(B("DpiAware"), this->dpiAware);
-    config.writeString(B("CdromPath"), this->cdromPath);
     config.writeBool(B("DDrawOverride"), this->ddrawOverride);
     config.writeBool(B("EnableDXVK"), this->enableDXVK);
     config.writeBool(B("DisableHideCursor"), this->disableHideCursor);
@@ -172,7 +170,6 @@ void BoxedApp::launch() {
     if (this->ddrawOverride) {
         GlobalSettings::startUpArgs.ddrawOverridePath = this->path;
     }
-    GlobalSettings::startUpArgs.cdromPath = this->cdromPath;
     GlobalSettings::startUpArgs.enableDXVK = this->enableDXVK;
     GlobalSettings::startUpArgs.disableHideCursor = this->disableHideCursor;
     GlobalSettings::startUpArgs.forceRelativeMouse = this->forceRelativeMouse;
