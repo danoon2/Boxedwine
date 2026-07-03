@@ -70,11 +70,6 @@ DecodedOp* DecodedOpCache::get(U32 address) {
 	DecodedOpPageCache* page = getPageCache(pageIndex, false);
 	if (page) {
 		U32 offset = address & K_PAGE_MASK;
-		if (page->ops[offset] == nullptr) {
-			if (offset > 0 && page->ops[offset - 1] && page->ops[offset - 1]->lock) {
-				return page->ops[offset - 1];
-			}
-		}
 		return page->ops[offset];
 	}
 	return nullptr;

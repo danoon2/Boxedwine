@@ -38,6 +38,12 @@ constexpr U32 REG_GUARD = 0xA55A0000;
 constexpr U32 MEM_BASE = 0x10000;
 constexpr U32 CMPXCHG_MEM_BASE = 0x3000;
 constexpr U32 CMPXCHG_SETCC_RESULT = 0x5000;
+constexpr U32 CMPXCHG_BRANCH_EVENT = 0x5100;
+constexpr U32 CMPXCHG_BRANCH_ERROR = 0x5104;
+constexpr U32 CMPXCHG_BRANCH_ITERATIONS = 512;
+constexpr U32 CMPXCHG_SYNC_TARGET = 0x5200;
+constexpr U32 CMPXCHG_SYNC_EAX = 0x5204;
+constexpr U32 CMPXCHG_SYNC_ZF = 0x5208;
 constexpr U32 INITIAL_FLAGS = CF | PF | AF | ZF | SF | OF | DF;
 constexpr U32 FLAG_MASK = CF | PF | AF | ZF | SF | OF | DF;
 constexpr U32 CMPXCHG_FLAG_MASK = CF | PF | AF | ZF | SF | OF | DF;
@@ -755,6 +761,149 @@ void runCmpXchg8bCases(const char* name) {
                 runCmpXchg8bCase(CMPXCHG8B_CASES[i], lockPrefix != 0, false, true, flagMode, name);
             }
         }
+    }
+}
+
+void runJitCmpXchgBranchAfterEmulatedOpCase(const char* name) {
+    newInstruction(0);
+
+    asmjit::CodeHolder code;
+    initCode(code);
+    asmjit::x86::Assembler a(&code);
+    asmjit::Label loop = a.new_label();
+    asmjit::Label validValue = a.new_label();
+    asmjit::Label cmpxchgFailed = a.new_label();
+    asmjit::Label done = a.new_label();
+    auto expectOk = [](asmjit::Error err, const char* msg) {
+        if (err != asmjit::Error::kOk) {
+            failed("%s", msg);
+        }
+    };
+
+    expectOk(a.mov(asmjit::x86::ecx, CMPXCHG_BRANCH_ITERATIONS), "asmjit cmpxchg branch iteration count");
+    expectOk(a.bind(loop), "asmjit cmpxchg branch loop");
+    expectOk(a.mov(asmjit::x86::eax, asmjit::x86::dword_ptr(CMPXCHG_BRANCH_EVENT)), "asmjit cmpxchg branch load event");
+    expectOk(a.mov(asmjit::x86::ebx, asmjit::x86::eax), "asmjit cmpxchg branch desired copy");
+    expectOk(a.sub(asmjit::x86::ebx, 1), "asmjit cmpxchg branch desired decrement");
+    a.lock();
+    expectOk(a.cmpxchg(asmjit::x86::dword_ptr(CMPXCHG_BRANCH_EVENT), asmjit::x86::ebx), "asmjit cmpxchg branch cmpxchg");
+    expectOk(a.jnz(cmpxchgFailed), "asmjit cmpxchg branch must see zf");
+    expectOk(a.cmp(asmjit::x86::eax, 0), "asmjit cmpxchg branch compare zero");
+    expectOk(a.je(validValue), "asmjit cmpxchg branch zero valid");
+    expectOk(a.cmp(asmjit::x86::eax, 1), "asmjit cmpxchg branch compare one");
+    expectOk(a.je(validValue), "asmjit cmpxchg branch one valid");
+    expectOk(a.mov(asmjit::x86::dword_ptr(CMPXCHG_BRANCH_ERROR), asmjit::x86::eax), "asmjit cmpxchg branch invalid value");
+    expectOk(a.jmp(done), "asmjit cmpxchg branch invalid done");
+    expectOk(a.bind(validValue), "asmjit cmpxchg branch valid bind");
+    expectOk(a.mov(asmjit::x86::dword_ptr(CMPXCHG_BRANCH_EVENT), 1), "asmjit cmpxchg branch reset event");
+    expectOk(a.dec(asmjit::x86::ecx), "asmjit cmpxchg branch decrement iteration");
+    expectOk(a.jnz(loop), "asmjit cmpxchg branch loop branch");
+    expectOk(a.jmp(done), "asmjit cmpxchg branch done jump");
+    expectOk(a.bind(cmpxchgFailed), "asmjit cmpxchg branch failed bind");
+    expectOk(a.mov(asmjit::x86::dword_ptr(CMPXCHG_BRANCH_ERROR), 0xdead0001), "asmjit cmpxchg branch failed marker");
+    expectOk(a.bind(done), "asmjit cmpxchg branch done bind");
+    pushGeneratedCode(code);
+
+    memory->writed(cpu->seg[DS].address + CMPXCHG_BRANCH_EVENT, 1);
+    memory->writed(cpu->seg[DS].address + CMPXCHG_BRANCH_ERROR, 0);
+    runTestCPU();
+
+    U32 error = memory->readd(cpu->seg[DS].address + CMPXCHG_BRANCH_ERROR);
+    if (error) {
+        failed("%s error=%x", name, error);
+    }
+    U32 eventValue = memory->readd(cpu->seg[DS].address + CMPXCHG_BRANCH_EVENT);
+    if (eventValue != 1) {
+        failed("%s event=%x", name, eventValue);
+    }
+}
+
+void runJitCmpXchgEmulateSyncCase(const char* name) {
+    newInstruction(0);
+
+    constexpr U32 expectedMemory = 0x33333333;
+    constexpr U32 expectedRegisterBeforeCmpXchg = 0x11111111;
+    constexpr U32 replacement = 0x22222222;
+
+    asmjit::CodeHolder code;
+    initCode(code);
+    asmjit::x86::Assembler a(&code);
+    auto expectOk = [](asmjit::Error err, const char* msg) {
+        if (err != asmjit::Error::kOk) {
+            failed("%s", msg);
+        }
+    };
+
+    expectOk(a.mov(asmjit::x86::eax, expectedRegisterBeforeCmpXchg), "asmjit cmpxchg sync eax");
+    expectOk(a.mov(asmjit::x86::ecx, replacement), "asmjit cmpxchg sync ecx");
+    a.lock();
+    expectOk(a.cmpxchg(asmjit::x86::dword_ptr(CMPXCHG_SYNC_TARGET), asmjit::x86::ecx), "asmjit cmpxchg sync cmpxchg");
+    expectOk(a.mov(asmjit::x86::dword_ptr(CMPXCHG_SYNC_EAX), asmjit::x86::eax), "asmjit cmpxchg sync store eax");
+    expectOk(a.setz(asmjit::x86::byte_ptr(CMPXCHG_SYNC_ZF)), "asmjit cmpxchg sync store zf");
+    pushGeneratedCode(code);
+
+    memory->writed(cpu->seg[DS].address + CMPXCHG_SYNC_TARGET, expectedMemory);
+    memory->writed(cpu->seg[DS].address + CMPXCHG_SYNC_EAX, 0);
+    memory->writeb(cpu->seg[DS].address + CMPXCHG_SYNC_ZF, 0xff);
+
+    runTestCPU();
+
+    U32 actualMemory = memory->readd(cpu->seg[DS].address + CMPXCHG_SYNC_TARGET);
+    if (actualMemory != expectedMemory) {
+        failed("%s memory expected %.8X got %.8X", name, expectedMemory, actualMemory);
+    }
+    U32 actualEax = memory->readd(cpu->seg[DS].address + CMPXCHG_SYNC_EAX);
+    if (actualEax != expectedMemory) {
+        failed("%s eax expected %.8X got %.8X", name, expectedMemory, actualEax);
+    }
+    U8 actualZf = memory->readb(cpu->seg[DS].address + CMPXCHG_SYNC_ZF);
+    if (actualZf != 0) {
+        failed("%s zf expected 0 got %u", name, actualZf);
+    }
+}
+
+void runJitCmpXchgPrefixSkippedEntryCase(const char* name) {
+    newInstruction(0);
+
+    constexpr U32 expectedMemory = 0x33333333;
+    constexpr U32 replacement = 0x22222222;
+    constexpr U32 marker = 0x12345678;
+
+    pushCode8(0xba); // mov edx,CMPXCHG_SYNC_TARGET
+    pushCode32(CMPXCHG_SYNC_TARGET);
+    pushCode8(0xb9); // mov ecx,replacement
+    pushCode32(replacement);
+    pushCode8(0xb8); // mov eax,expectedMemory
+    pushCode32(expectedMemory);
+    pushCode8(0xeb); // jmp over the lock prefix so execution starts at 0f b1 0a
+    pushCode8(0x01);
+    U32 lockPrefixAddress = testContext().codeIp;
+    pushCode8(0xf0);
+    pushCode8(0x0f); // cmpxchg [edx],ecx
+    pushCode8(0xb1);
+    pushCode8(0x0a);
+    pushCode8(0xb8); // mov eax,marker
+    pushCode32(marker);
+    pushCode8(0xa3); // mov [CMPXCHG_SYNC_EAX],eax
+    pushCode32(CMPXCHG_SYNC_EAX);
+
+    memory->writed(cpu->seg[DS].address + CMPXCHG_SYNC_TARGET, expectedMemory);
+    memory->writed(cpu->seg[DS].address + CMPXCHG_SYNC_EAX, 0);
+    DecodedOp* lockOp = cpu->getOp(lockPrefixAddress, 0);
+    if (!lockOp || !lockOp->lock || lockOp->len != 4) {
+        failed("%s failed to predecode lock-prefixed cmpxchg", name);
+        return;
+    }
+
+    runTestCPU();
+
+    U32 actualMemory = memory->readd(cpu->seg[DS].address + CMPXCHG_SYNC_TARGET);
+    if (actualMemory != replacement) {
+        failed("%s memory expected %.8X got %.8X", name, replacement, actualMemory);
+    }
+    U32 actualMarker = memory->readd(cpu->seg[DS].address + CMPXCHG_SYNC_EAX);
+    if (actualMarker != marker) {
+        failed("%s marker expected %.8X got %.8X", name, marker, actualMarker);
     }
 }
 
@@ -1699,6 +1848,18 @@ void testCmpXchgE8R8_0x3b0() { runCmpXchgCases(8, true, CMPXCHG8_CASES, caseCoun
 void testCmpXchgE16R16_0x1b1() { runCmpXchgCases(16, false, CMPXCHG16_CASES, caseCount(CMPXCHG16_CASES), "cmpxchg e16,r16 1b1"); }
 void testCmpXchgE32R32_0x3b1() { runCmpXchgCases(32, true, CMPXCHG32_CASES, caseCount(CMPXCHG32_CASES), "cmpxchg e32,r32 3b1"); }
 void testCmpXchg8b_0x3c7() { runCmpXchg8bCases("cmpxchg8b 3c7"); }
+
+void testJitCmpXchgBranchAfterEmulatedOp() {
+    runJitCmpXchgBranchAfterEmulatedOpCase("jit cmpxchg branch after emulated op");
+}
+
+void testJitCmpXchgEmulateSync() {
+    runJitCmpXchgEmulateSyncCase("jit cmpxchg emulate sync");
+}
+
+void testJitCmpXchgPrefixSkippedEntry() {
+    runJitCmpXchgPrefixSkippedEntryCase("jit cmpxchg prefix-skipped entry");
+}
 
 #ifdef BOXEDWINE_MULTI_THREADED
 void testLockedCmpXchgAgainstPlainStore() { runLockedCmpXchgAgainstPlainStoreCase("locked cmpxchg against plain store"); }

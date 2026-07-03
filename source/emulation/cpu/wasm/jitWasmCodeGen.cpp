@@ -2774,11 +2774,11 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
         U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
         U64 startPreCallNs = profileStartNs;
 #endif
+        int tableIndex = (int)(uintptr_t)op->pfnJitCode;
 #ifdef BOXEDWINE_MULTI_THREADED
         // Guard against cross-worker table visibility. Readiness cannot be
         // cached on DecodedOp because DecodedOp is shared, while table slot
         // visibility is local to the worker that performs call_indirect.
-        int tableIndex = (int)(uintptr_t)op->pfnJitCode;
         if (!boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
             if (!lazyInstallWasmJitBlockForWorker(tableIndex) ||
                 !boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
@@ -2803,7 +2803,7 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
             memoryArraysChecked = true;
         }
         WASM_JIT_PROFILE_ONLY(if (profileSample) { wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPreCallUs, startPreCallNs); })
-        boxedwine_wasm_call_block((int)(uintptr_t)op->pfnJitCode, (int)(uintptr_t)cpu, (int)wasmJitRelocBaseForTable((int)(uintptr_t)op->pfnJitCode));
+        boxedwine_wasm_call_block(tableIndex, (int)(uintptr_t)cpu, (int)wasmJitRelocBaseForTable(tableIndex));
         WASM_JIT_PROFILE_ONLY(if (profileSample) { U64 startPostCallNs = wasmJitProfileNowNs(); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPostCallUs, startPostCallNs); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartUs, profileStartNs); })
         WASM_JIT_PROFILE_ONLY(if (profileSample) { wasmJitProfileChainTarget(cpu, cpu->nextOp, WASM_JIT_PROFILE_TIMING_SAMPLE); })
         // nextOp is updated by the WASM block itself (via helper call).
@@ -9190,11 +9190,11 @@ void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
         m_manifestNext2Target = eip - cpu->seg[CS].address;
     }
     if (wasmJitPersistenceActive()) {
-        // Relocatable variant: op->next comes from a reloc slot instead of
-        // an embedded i32.const. Guarded (unlike the unconditional embedded
-        // path below) because the slot is 0 when op->next was null at
-        // compile time or the module was instantiated without a slot array.
-        U32 slotOffset = addRelocSlot((U32)(uintptr_t)op->next);
+        // Relocatable variant: the DecodedOp comes from a reloc slot, then
+        // op->next is read live. removeCode() can splice op->next to Done
+        // when the fall-through target is invalidated, so embedding op->next
+        // itself would leave a stale pointer in the generated block.
+        U32 slotOffset = addRelocSlot((U32)(uintptr_t)op);
         syncDirtyRegsToHost();
         writeEip(eip - cpu->seg[CS].address);
 
@@ -9203,9 +9203,13 @@ void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
         m_emitter.emitLocalTee(targetLocal);
         m_emitter.emitIf();                        // relocBase != 0
         m_emitter.emitLocalGet(targetLocal);
-        m_emitter.emitI32Load(slotOffset);         // op->next DecodedOp*
+        m_emitter.emitI32Load(slotOffset);         // DecodedOp*
         m_emitter.emitLocalTee(targetLocal);
-        m_emitter.emitIf();                        // target != 0
+        m_emitter.emitIf();                        // op != 0
+        m_emitter.emitLocalGet(targetLocal);
+        m_emitter.emitI32Load((U32)offsetof(DecodedOp, next));
+        m_emitter.emitLocalTee(targetLocal);
+        m_emitter.emitIf();                        // live op->next != 0
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
         emitProfileSampledCall(HELPER_PROFILE_EXIT_NEXT2);
 #endif
@@ -9215,17 +9219,25 @@ void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
         m_emitter.emitReturn();
         m_emitter.emitEnd();
         m_emitter.emitEnd();
+        m_emitter.emitEnd();
         freeScratch(targetLocal);
     } else if (op->next) {
         syncDirtyRegsToHost();
         writeEip(eip - cpu->seg[CS].address);
+        U32 targetLocal = allocScratch();
+        m_emitter.emitI32Const((S32)(uintptr_t)op);
+        m_emitter.emitI32Load((U32)offsetof(DecodedOp, next));
+        m_emitter.emitLocalTee(targetLocal);
+        m_emitter.emitIf();
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
         emitProfileSampledCall(HELPER_PROFILE_EXIT_NEXT2);
 #endif
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Const((S32)(uintptr_t)op->next);
+        m_emitter.emitLocalGet(targetLocal);
         m_emitter.emitI32Store((U32)offsetof(CPU, nextOp));
         m_emitter.emitReturn();
+        m_emitter.emitEnd();
+        freeScratch(targetLocal);
     }
     writeCPUValue(DYN_PTR, (U32)offsetof(CPU, nextOp), 0);
     writeEip(eip - cpu->seg[CS].address);
