@@ -24,6 +24,7 @@
 
 #ifdef BOXEDWINE_MULTI_THREADED
 #include "knativethread.h"
+#include "../../x11/x11.h"
 
 U32 getNextTimer();
 void runTimers();
@@ -58,6 +59,12 @@ void mainloop() {
         if (nextTimer == 0) {
             runTimers();
         }
+        XServer* server = XServer::getServer(true);
+        if (server) {
+            server->isDisplayDirty = true;
+            server->draw();
+        }
+        KNativeSystem::tick();
            
         if (lastTitleUpdate + 5000 < t) {
             lastTitleUpdate = t;

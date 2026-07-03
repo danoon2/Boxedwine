@@ -18,6 +18,7 @@
 
 #include "boxedwine.h"
 #include "x11.h"
+#include "ksdlframeskip.h"
 #include "knativesystem.h"
 #include "ksocket.h"
 
@@ -378,6 +379,9 @@ void XServer::draw(bool drawNow) {
 		if (!drawNow && (now - lastDraw < 16)) {
 			return;
 		}
+		if (!drawNow && !kSDLFrameSkipShouldRender()) {
+			return;
+		}
 		lastDraw = now;
 		isDisplayDirty = false;
 	}
@@ -389,6 +393,7 @@ void XServer::draw(bool drawNow) {
 	screen->getInput()->runOnUiThread([screen, this]() {
 		bool childWasDrawn = false;
 
+		screen->beginX11Frame();
 		screen->clear();
 		root->iterateMappedChildrenBackToFront([&childWasDrawn](XWindowPtr child) {
 			if (child->c_class == InputOutput) {
@@ -397,7 +402,7 @@ void XServer::draw(bool drawNow) {
 			}
 			return true;
 			}, true);		
-		screen->present();
+		screen->presentX11();
 	});	
 }
 

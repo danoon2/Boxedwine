@@ -45,6 +45,8 @@ public:
 	// if isDirty is false then the cached texture will be drawn
 	virtual void putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcPitch, S32 dstX, S32 dstY, U32 width, U32 height, U32* palette, bool isDirty) = 0;
 	virtual void present() = 0;
+	virtual void beginX11Frame() {}
+	virtual void presentX11() { present(); }
 	virtual bool presentedSinceLastCheck() = 0;
 	virtual void clearTextureCache(U32 id) = 0;	
 	virtual bool canBltToScreen() = 0;

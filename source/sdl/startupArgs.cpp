@@ -231,6 +231,14 @@ std::vector<BString> StartUpArgs::buildArgs() {
         args.push_back(B("-skipFrameFPS"));
         args.push_back(BString::valueOf(skipFrameFPS));
     }
+#ifdef __EMSCRIPTEN__
+    if (skipUnchangedFrames) {
+        args.push_back(B("-skipUnchangedFrames"));
+    }
+    if (showFPS) {
+        args.push_back(B("-showFPS"));
+    }
+#endif
     if (cpuAffinity) {
         args.push_back(B("-cpuAffinity"));
         args.push_back(BString::valueOf(cpuAffinity));
@@ -296,6 +304,10 @@ bool StartUpArgs::apply() {
     KSystem::openglLib = this->openGlLib;
     KSystem::ttyPrepend = this->ttyPrepend;
     KSystem::skipFrameFPS = this->skipFrameFPS;
+#ifdef __EMSCRIPTEN__
+    KSystem::skipUnchangedFrames = this->skipUnchangedFrames;
+    KSystem::showFPS = this->showFPS;
+#endif
     if (!KSystem::logFile.isOpen() && this->logPath.length()) {
         KSystem::logFile.createNew(this->logPath);
     }
@@ -810,7 +822,17 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i++;
         } else if (!strcmp(argv[i], "-skipFrameFPS") && i+1<argc) {
             this->skipFrameFPS = atoi(argv[i+1]);
+            if (this->skipFrameFPS > 50) {
+                klog("-skipFrameFPS must be between 0 and 50");
+                this->skipFrameFPS = 0;
+            }
             i++;
+#ifdef __EMSCRIPTEN__
+        } else if (!strcmp(argv[i], "-skipUnchangedFrames")) {
+            this->skipUnchangedFrames = true;
+        } else if (!strcmp(argv[i], "-showFPS")) {
+            this->showFPS = true;
+#endif
         } else if (!strcmp(argv[i], "-log") && i + 1 < argc) {
             this->logPath = BString::copy(argv[i + 1]);
             i++;

@@ -31,9 +31,12 @@ public:
     SDL_Texture* sdlTexture = nullptr;
     U32 sdlTextureHeight = 0;
     U32 sdlTextureWidth = 0;
+#ifdef __EMSCRIPTEN__
+    U64 contentSerial = 0;
+#endif
 
     U8* bits = nullptr;
-    U32 bitsSize;
+    U32 bitsSize = 0;
 
     void ensureSize(U32 size) {
         if (bitsSize < size) {
@@ -85,6 +88,8 @@ public:
     void clear() override;
     void putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcPitch, S32 dstX, S32 dstY, U32 width, U32 height, U32* palette, bool isDirty) override;
     void present() override;
+    void beginX11Frame() override;
+    void presentX11() override;
     bool presentedSinceLastCheck() override;
     void clearTextureCache(U32 id) override;
     bool canBltToScreen() override;
@@ -130,6 +135,7 @@ private:
     SDL_Renderer* renderer = nullptr;
     U32 additionalSDLWindowFlags = 0;
 
+    void presentInternal(bool x11Frame);
     void recreateMainWindow();
     void destroyMainWindow();
 
@@ -145,6 +151,14 @@ private:
     SDL_Texture* screenCopyTexture = nullptr;
     U8* recordBuffer = nullptr;
     U32 recordBufferSize = 0;
+#endif
+
+#ifdef __EMSCRIPTEN__
+    U64 nextContentSerial = 0;
+    U64 compositionHash = 0;
+    U64 lastCompositionHash = 0;
+    bool compositionHasContent = false;
+    bool hasLastCompositionHash = false;
 #endif
 
     BOXEDWINE_MUTEX drawingMutex;

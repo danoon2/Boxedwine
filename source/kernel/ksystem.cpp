@@ -32,6 +32,10 @@
 
 bool KSystem::modesInitialized = false;
 U32 KSystem::skipFrameFPS = 0;
+#ifdef __EMSCRIPTEN__
+bool KSystem::skipUnchangedFrames = false;
+bool KSystem::showFPS = false;
+#endif
 VideoOption KSystem::videoOption = VIDEO_NORMAL;
 BString KSystem::openglLib;
 bool KSystem::soundEnabled = true;

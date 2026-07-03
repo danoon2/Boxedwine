@@ -24,7 +24,16 @@
 #include "sdlcallback.h"
 #include "knativeinputSDL.h"
 #include "knativescreenSDL.h"
+#ifdef __EMSCRIPTEN__
+#include "ksdlfpshud.h"
+#endif
 #include "../../source/x11/x11.h"
+
+#ifdef __EMSCRIPTEN__
+static void kSDLHashValue(U64& hash, U64 value) {
+    hash ^= value + 0x9e3779b97f4a7c15ULL + (hash << 6) + (hash >> 2);
+}
+#endif
 
 KNativeScreenSDL::KNativeScreenSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const BString& scaleQuality, U32 fullScreen, U32 vsync) {
     input = std::make_shared<KNativeInputSDL>(cx, cy, scaleX, scaleY);
@@ -188,6 +197,25 @@ void KNativeScreenSDL::clear() {
     }
 }
 
+void KNativeScreenSDL::beginX11Frame() {
+#ifdef __EMSCRIPTEN__
+    compositionHash = 1469598103934665603ULL;
+    compositionHasContent = false;
+    if (KSystem::skipUnchangedFrames) {
+        kSDLHashValue(compositionHash, 58);
+        kSDLHashValue(compositionHash, 110);
+        kSDLHashValue(compositionHash, 165);
+        kSDLHashValue(compositionHash, screenWidth());
+        kSDLHashValue(compositionHash, screenHeight());
+        kSDLHashValue(compositionHash, input->scaleX);
+        kSDLHashValue(compositionHash, input->scaleY);
+        kSDLHashValue(compositionHash, input->scaleXOffset);
+        kSDLHashValue(compositionHash, input->scaleYOffset);
+        compositionHasContent = true;
+    }
+#endif
+}
+
 void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcPitch, S32 dstX, S32 dstY, U32 width, U32 height, U32* palette, bool isDirty) {
     if (!bitsPerPixel || !srcPitch) {
         return;
@@ -249,6 +277,11 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         }
         bits = wnd->bits;
     }
+#ifdef __EMSCRIPTEN__
+    if (KSystem::skipUnchangedFrames && isDirty) {
+        wnd->contentSerial = ++nextContentSerial;
+    }
+#endif
 #ifdef BOXEDWINE_RECORDER
     if ((Recorder::instance || Player::instance) && screenBpp() > 8) {
         int wndWidth = width;
@@ -303,16 +336,65 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         dstrect.y = dstY * (int)input->scaleY / 100 + input->scaleYOffset;
         dstrect.w = wnd->sdlTextureWidth * (int)input->scaleX / 100;
         dstrect.h = wnd->sdlTextureHeight * (int)input->scaleY / 100;
+#ifdef __EMSCRIPTEN__
+        if (KSystem::skipUnchangedFrames) {
+            kSDLHashValue(compositionHash, id);
+            kSDLHashValue(compositionHash, wnd->contentSerial);
+            kSDLHashValue(compositionHash, (U32)dstrect.x);
+            kSDLHashValue(compositionHash, (U32)dstrect.y);
+            kSDLHashValue(compositionHash, (U32)dstrect.w);
+            kSDLHashValue(compositionHash, (U32)dstrect.h);
+            kSDLHashValue(compositionHash, wnd->sdlTextureWidth);
+            kSDLHashValue(compositionHash, wnd->sdlTextureHeight);
+            compositionHasContent = true;
+        }
+#endif
         SDL_RenderCopy(renderer, wnd->sdlTexture, nullptr, &dstrect);
     }
 }
 
 void KNativeScreenSDL::present() {
+    presentInternal(false);
+}
+
+void KNativeScreenSDL::presentX11() {
+    presentInternal(true);
+}
+
+void KNativeScreenSDL::presentInternal(bool x11Frame) {
     if (KSystem::videoOption != VIDEO_NO_WINDOW) {
         if (showOnDraw) {
             showWindow(true);
         }
+#ifdef __EMSCRIPTEN__
+        if (x11Frame && KSystem::skipUnchangedFrames && renderer) {
+            bool unchanged = compositionHasContent && hasLastCompositionHash && lastCompositionHash == compositionHash;
+            if (compositionHasContent && hasLastCompositionHash) {
+                kSDLFpsHudRecordSameCandidate(unchanged);
+            }
+            bool hudNeedsRefresh = kSDLFpsHudNeedsRefresh();
+            lastCompositionHash = compositionHash;
+            hasLastCompositionHash = compositionHasContent;
+            if (unchanged && !hudNeedsRefresh) {
+                kSDLFpsHudRecordFrameForConsole(false);
+#ifdef BOXEDWINE_RECORDER
+                if (Recorder::instance) {
+                    BOXEDWINE_MUTEX_UNLOCK(drawingMutex);
+                }
+#endif
+                return;
+            }
+        }
+        if (x11Frame) {
+            kSDLFpsHudRender(renderer, KSystem::skipUnchangedFrames);
+        }
+#endif
         SDL_RenderPresent(renderer);
+#ifdef __EMSCRIPTEN__
+        if (x11Frame) {
+            kSDLFpsHudRecordFrameForConsole(true);
+        }
+#endif
     }
     presented = true;
 #ifdef BOXEDWINE_RECORDER

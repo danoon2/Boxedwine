@@ -101,6 +101,10 @@ public:
     U32 vsync = VSYNC_DEFAULT;
     bool dpiAware = false;
     U32 skipFrameFPS = 0;
+#ifdef __EMSCRIPTEN__
+    bool skipUnchangedFrames = false;
+    bool showFPS = false;
+#endif
     static U32 uiType;
     bool readyToLaunch = false;
     BString openGlLib;

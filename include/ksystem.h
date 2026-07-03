@@ -98,6 +98,10 @@ public:
 #endif
     static U32 pollRate;
     static U32 skipFrameFPS;
+#ifdef __EMSCRIPTEN__
+    static bool skipUnchangedFrames;
+    static bool showFPS;
+#endif
     static BWriteFile logFile;
     static std::function<void(BString line)> watchTTY;
     static bool ttyPrepend;

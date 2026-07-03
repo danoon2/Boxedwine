@@ -7,6 +7,8 @@
         let DEFAULT_LOAD_DESKTOP = false;
         let DEFAULT_SOUND_ENABLED = true;
         let DEFAULT_DISABLE_HIDE_CURSOR = false;
+        let DEFAULT_SHOW_FPS = false;
+        let DEFAULT_SKIP_UNCHANGED_FRAMES = false;
         let DEFAULT_APP_DIRECTORY = "/home/username/.wine/dosdevices/c:/files";
         let DEFAULT_BPP = 32;
         let DEFAULT_FRAME_SKIP = "0";
@@ -49,6 +51,8 @@
             Config.isSoundEnabled = getSound();
             Config.audioFreq = getAudioFreq();
             Config.disableHideCursor = getDisableHideCursor();
+            Config.showFPS = getShowFPS();
+            Config.skipUnchangedFrames = getSkipUnchangedFrames();
             Config.bpp = getBitsPerPixel();
 			Config.cpu = getCPU();
 			Config.envProp = getEnvProp();
@@ -181,6 +185,34 @@
             }
             console.log("setting skipFrameFPS to: "+frameskip);
             return frameskip;
+        }
+        function getShowFPS() {
+            var showFPS = getParameter("showFPS");
+            if (!allowParameterOverride()) {
+                showFPS = DEFAULT_SHOW_FPS;
+            } else if (showFPS == "true") {
+                showFPS = true;
+            } else if (showFPS == "false") {
+                showFPS = false;
+            } else {
+                showFPS = DEFAULT_SHOW_FPS;
+            }
+            console.log("setting showFPS to: " + showFPS);
+            return showFPS;
+        }
+        function getSkipUnchangedFrames() {
+            var skipUnchangedFrames = getParameter("skipUnchangedFrames");
+            if (!allowParameterOverride()) {
+                skipUnchangedFrames = DEFAULT_SKIP_UNCHANGED_FRAMES;
+            } else if (skipUnchangedFrames == "true") {
+                skipUnchangedFrames = true;
+            } else if (skipUnchangedFrames == "false") {
+                skipUnchangedFrames = false;
+            } else {
+                skipUnchangedFrames = DEFAULT_SKIP_UNCHANGED_FRAMES;
+            }
+            console.log("setting skipUnchangedFrames to: " + skipUnchangedFrames);
+            return skipUnchangedFrames;
         }
         function getBitsPerPixel() {
             var bpp =  getParameter("bpp");
@@ -712,6 +744,12 @@
             }
             if (Config.disableHideCursor) {
                 params.push("-disableHideCursor");
+            }
+            if (Config.showFPS) {
+                params.push("-showFPS");
+            }
+            if (Config.skipUnchangedFrames) {
+                params.push("-skipUnchangedFrames");
             }
             if(Config.bpp != DEFAULT_BPP){
                 params.push("-bpp");
