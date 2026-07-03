@@ -65,6 +65,9 @@ const TestEntry TEST_ENTRIES[] = {
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT subblock entries and invalidation"},
 #endif
+#ifdef BOXEDWINE_JIT
+    {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},
+#endif
     {testMemoryAccess32, "Test 32-bit Memory Access"},
     {testMemoryAccess16, "Test 16-bit Memory Access"},
     {testAddR8R8_0x000, "Test Add R8,R8 000"},
@@ -727,7 +730,9 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
         runCount = requestedCount;
     }
 
-#ifdef __EMSCRIPTEN__
+#if !defined(BOXEDWINE_MULTI_THREADED)
+    workerCount = 1;
+#elif defined(__EMSCRIPTEN__)
     if (workerCount != 1) {
         workerCount = 1;
     }

@@ -422,10 +422,10 @@ void NormalCPU::run() {
     if (nextOp->runCount <= JIT_RUN_COUNT) {
         firstOp(this, nextOp);
     } else {
-        nextOp->pfn(this, nextOp);
 #if !defined(BOXEDWINE_MULTI_THREADED)
         this->blockInstructionCount += nextOp->blockOpCount;
 #endif
+        nextOp->pfn(this, nextOp);
     }
 #else
     nextOp->pfn(this, nextOp);

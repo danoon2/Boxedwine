@@ -37,11 +37,11 @@ public:
     
     // per instruction, not per block.  
     bool canJumpInBlock(DecodedOp* op) override {
-        return currentEip < lastOpEip && currentEip + op->len + op->imm <= lastOpEip && currentEip + op->len + op->imm >= startingEip;
+        return currentEip < lastOpEip && isBlockOpBoundary(currentEip + op->len + op->imm);
     }
 
     bool canJumpInBlock(U32 opEip, DecodedOp* op) override {
-        return opEip < lastOpEip && opEip + op->len + op->imm <= lastOpEip && opEip + op->len + op->imm >= startingEip;
+        return opEip < lastOpEip && isBlockOpBoundary(opEip + op->len + op->imm);
     }
 
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
@@ -149,6 +149,27 @@ public:
     void incReg(JitWidth regWidth, RegPtr dest) override;
     void decReg(JitWidth regWidth, RegPtr dest) override;
     void xaddReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
+
+private:
+    bool isBlockOpBoundary(U32 eip) {
+        if (eip < startingEip || eip > lastOpEip) {
+            return false;
+        }
+        U32 opEip = startingEip;
+        DecodedOp* nextOp = firstOp;
+        while (nextOp && opEip <= lastOpEip) {
+            if (opEip == eip) {
+                return true;
+            }
+            if (!nextOp->len) {
+                break;
+            }
+            opEip += nextOp->len;
+            nextOp = nextOp->next;
+        }
+        return false;
+    }
+
 protected:
 
     virtual U32 getBufferSize() = 0;

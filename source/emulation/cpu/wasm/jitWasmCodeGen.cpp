@@ -2595,6 +2595,9 @@ static inline void boxedwine_wasm_call_block(int tableIndex, int cpuPtr, int rel
     bool profileSample = wasmJitProfileCallBlock();
     U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
 #endif
+    CPU* cpu = (CPU*)(uintptr_t)cpuPtr;
+    cpu->wasmJitActiveBlock = nullptr;
+    cpu->wasmJitBailout = 0;
     static bool fired = false;
     if (!fired) {
         fired = true;
@@ -7027,9 +7030,6 @@ void JitWasmCodeGen::emitArmSmcBailout() {
         m_emitter.emitLocalGet(WASM_RELOC_LOCAL);
         m_emitter.emitI32Load(0);                  // slot 0 = block-start op
         m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Const(0);
-        m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
         m_emitter.emitElse();
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitI32Const(0);
@@ -7043,9 +7043,6 @@ void JitWasmCodeGen::emitArmSmcBailout() {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Const((U32)(uintptr_t)m_wasmBlockStartOp);
     m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Const(0);
-    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
 }
 
 // Self-modifying-code bailout check: emitted after every JIT-inline mem
@@ -7065,11 +7062,42 @@ void JitWasmCodeGen::emitBailoutCheck() {
     m_emitter.emitI32Load((U32)offsetof(CPU, wasmJitBailout));
     m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
     m_emitter.emitIf();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(0);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(0);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
     // currentEip is the *current* op's start (postCompile bumps it after
     // compile returns), so add op->len = lastCompiledOpLen to land at the
     // next op so the dispatcher resumes there.
     writeEip(this->currentEip + this->lastCompiledOpLen
              - cpu->seg[CS].address);
+    blockExit();
+    m_emitter.emitEnd();
+    m_gpDirty   = savedGpDirty;
+    m_gpLoaded  = savedGpLoaded;
+    m_segLoaded = savedSegLoaded;
+}
+
+// A pending SMC bailout observed before a guest branch must resume at the
+// branch itself. The branch has not executed yet, so using the post-write
+// next-op bailout helper here would skip branch/call/ret side effects.
+void JitWasmCodeGen::emitBranchBailoutCheck() {
+    auto savedGpDirty   = m_gpDirty;
+    auto savedGpLoaded  = m_gpLoaded;
+    auto savedSegLoaded = m_segLoaded;
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, wasmJitBailout));
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
+    m_emitter.emitIf();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(0);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(0);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
+    writeEip(this->currentEip - cpu->seg[CS].address);
     blockExit();
     m_emitter.emitEnd();
     m_gpDirty   = savedGpDirty;
@@ -9513,6 +9541,7 @@ void JitWasmCodeGen::direct_test(JitWidth w, RegPtr left, U32 right) {
     currentLazyFlags = lazyTypeForTest(w);
 }
 void JitWasmCodeGen::direct_jump(JitConditional cond, U32 address) {
+    emitBranchBailoutCheck();
     JumpIfCondition(cond, address);
 }
 void JitWasmCodeGen::direct_cmov(JitWidth w, JitConditional cond, RegPtr dst, RegPtr src) {
@@ -9780,6 +9809,9 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
 }
 
 void JitWasmCodeGen::compile(DecodedOp* op) {
+    if (op->isBranch()) {
+        emitBranchBailoutCheck();
+    }
     if (op->inst == Pause) {
         dynamic_pause(op);
         return;

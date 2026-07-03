@@ -556,6 +556,20 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     void* pMem = (void*)blockOp->pfnJitCode;
     U32 jitLen = 0;
 
+#ifdef BOXEDWINE_WASM_JIT
+    DecodedOp* activeBlock = thread->cpu->wasmJitActiveBlock;
+    if (activeBlock) {
+        DecodedOp* blockSearchOp = blockOp;
+        for (U32 i = 0; i < blockOpCount && blockSearchOp; i++) {
+            if (blockSearchOp == activeBlock) {
+                thread->cpu->wasmJitBailout = 1;
+                break;
+            }
+            blockSearchOp = blockSearchOp->next;
+        }
+    }
+#endif
+
     std::vector<void*> jitOps;
     for (U32 i = 0; i < blockOpCount; i++) {
         if (nextOp->blockStart != blockOp && nextOp->inst != Done) {

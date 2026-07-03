@@ -985,6 +985,7 @@ protected:
     // by preCompile.
     void emitArmSmcBailout();
     void emitBailoutCheck();
+    void emitBranchBailoutCheck();
     void emitBlockExitWithProfile(U32 profileHelperIdx);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     void emitProfileSampledCall(U32 helperIdx, U32 detail = InstructionCount);
