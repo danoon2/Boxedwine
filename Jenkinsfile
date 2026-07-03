@@ -199,31 +199,31 @@ pipeline {
                                 set -x
                                 rm -rf Deploy
                                 make clean
-                                make multiThreaded
-                                if [ ! -f "Build/MultiThreaded/boxedwine.wasm" ] 
+                                make multiThreadedJit
+                                if [ ! -f "Build/MultiThreadedJit/boxedwine.wasm" ]
                                 then
                                     echo "boxedwine.wasm DOES NOT exists."
                                     exit 999
                                 fi
                                 mkdir -p Deploy/Web/MultiThreaded
-                                cp Build/MultiThreaded/boxedwine.html Deploy/Web/MultiThreaded
+                                cp Build/MultiThreadedJit/boxedwine.html Deploy/Web/MultiThreaded
                                 cp boxedwine.css Deploy/Web/MultiThreaded
                                 cp boxedwine-shell.js Deploy/Web/MultiThreaded
-                                cp Build/MultiThreaded/boxedwine.js Deploy/Web/MultiThreaded
-                                cp Build/MultiThreaded/boxedwine.wasm Deploy/Web/MultiThreaded
+                                cp Build/MultiThreadedJit/boxedwine.js Deploy/Web/MultiThreaded
+                                cp Build/MultiThreadedJit/boxedwine.wasm Deploy/Web/MultiThreaded
                                 cp /var/www/buildfiles/* Deploy/Web/MultiThreaded
-                                make release
-                                if [ ! -f "Build/Release/boxedwine.wasm" ] 
+                                make jit
+                                if [ ! -f "Build/Jit/boxedwine.wasm" ]
                                 then
                                     echo "boxedwine.wasm DOES NOT exists."
                                     exit 999
                                 fi
                                 mkdir -p Deploy/Web/SingleThreaded
-                                cp Build/Release/boxedwine.html Deploy/Web/SingleThreaded
+                                cp Build/Jit/boxedwine.html Deploy/Web/SingleThreaded
                                 cp boxedwine.css Deploy/Web/SingleThreaded
                                 cp boxedwine-shell.js Deploy/Web/SingleThreaded
-                                cp Build/Release/boxedwine.js Deploy/Web/SingleThreaded
-                                cp Build/Release/boxedwine.wasm Deploy/Web/SingleThreaded
+                                cp Build/Jit/boxedwine.js Deploy/Web/SingleThreaded
+                                cp Build/Jit/boxedwine.wasm Deploy/Web/SingleThreaded
                                 cp /var/www/buildfiles/* Deploy/Web/SingleThreaded
                             ''' 
                         }

@@ -65,6 +65,9 @@ fi
 
 DEMO_ARGS=()
 DEMO_SOURCE="${BUILD_SITE_DEMOS_SOURCE:-$SITE_DIR/demos/apps}"
+# Jenkins unstashes the web build into project/linux/Deploy/Web before this
+# script runs. The Emscripten build stage populates these dirs from the JIT
+# targets: Build/Jit and Build/MultiThreadedJit.
 SINGLE_THREADED_DIR="${BUILD_SITE_SINGLE_THREADED_DIR:-$ROOT_DIR/project/linux/Deploy/Web/SingleThreaded}"
 MULTI_THREADED_DIR="${BUILD_SITE_MULTI_THREADED_DIR:-$ROOT_DIR/project/linux/Deploy/Web/MultiThreaded}"
 if [ -d "$SINGLE_THREADED_DIR" ] && [ -d "$MULTI_THREADED_DIR" ]; then
