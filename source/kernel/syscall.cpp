@@ -835,8 +835,10 @@ static U32 syscall_sched_getscheduler(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_sched_yield(CPU* cpu, U32 eipCount) {    
+static U32 syscall_sched_yield(CPU* cpu, U32 eipCount) {
+#ifndef BOXEDWINE_MULTI_THREADED
     cpu->yield = true;
+#endif
     U32 result = 0;
     std::this_thread::yield();
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "yield: result=%d(0x%X)\n", result, result);

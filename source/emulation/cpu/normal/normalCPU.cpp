@@ -402,6 +402,16 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
 }
 
 void NormalCPU::run() {
+#if defined(BOXEDWINE_WASM_JIT) && !defined(__TEST)
+    if (nextOp) {
+        // WASM JIT fast exits can carry DecodedOp* values across code-cache
+        // invalidation; refetch from the live cache before dereferencing.
+        DecodedOp* liveOp = memory->getDecodedOp(getEipAddress());
+        if (liveOp != nextOp) {
+            nextOp = liveOp;
+        }
+    }
+#endif
     if (!nextOp) {
         if (thread->terminating) {
             return;

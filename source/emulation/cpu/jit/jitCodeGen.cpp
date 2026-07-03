@@ -750,7 +750,21 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
     }
 #endif
     op->runCount++;
+#ifdef BOXEDWINE_WASM_JIT
+    // Callback ops store the callback address in pfn, so dispatch warmup ops
+    // through the normal table until the op is replaced with startJITOp.
+    if (op->pfn == cpu->thread->process->startJITOp) {
+        op->pfn(cpu, op);
+    } else {
+        OpCallback pfn = NormalCPU::getFunctionForOp(op);
+        if (!pfn) {
+            kpanic_fmt("firstDynamicOp: no normal handler for instruction %u", op->inst);
+        }
+        pfn(cpu, op);
+    }
+#else
     op->pfn(cpu, op);
+#endif
 }
 
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
