@@ -65,6 +65,9 @@ const TestEntry TEST_ENTRIES[] = {
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT subblock entries and invalidation"},
 #endif
+#ifdef BOXEDWINE_JIT
+    {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},
+#endif
     {testMemoryAccess32, "Test 32-bit Memory Access"},
     {testMemoryAccess16, "Test 16-bit Memory Access"},
     {testAddR8R8_0x000, "Test Add R8,R8 000"},
@@ -399,6 +402,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testCmpXchgE8R8_0x3b0, "Test CmpXchg E8,R8 3b0"},
     {testCmpXchgE16R16_0x1b1, "Test CmpXchg E16,R16 1b1"},
     {testCmpXchgE32R32_0x3b1, "Test CmpXchg E32,R32 3b1"},
+    {testJitCmpXchgBranchAfterEmulatedOp, "Test JIT cmpxchg branch after emulated op"},
+    {testJitCmpXchgEmulateSync, "Test JIT cmpxchg emulate sync"},
+    {testJitCmpXchgPrefixSkippedEntry, "Test JIT cmpxchg prefix-skipped entry"},
     {testCbw_0x098, "Test Cbw 098"},
     {testCwde_0x298, "Test Cwde 298"},
     {testCwd_0x099, "Test Cwd 099"},
@@ -661,6 +667,19 @@ const TestEntry TEST_ENTRIES[] = {
     {testSelfModifyingBack, "Test Self Modifying Code Same Block(Next)"},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testLockedInc, "Test Multi-threaded locked inc"},
+    {testLockedIncAgainstPlainStore, "Test Multi-threaded locked inc against plain store"},
+    {testLockedCmpXchgAgainstPlainStore, "Test Multi-threaded locked cmpxchg against plain store"},
+    {testImplicitLockedXchgAgainstPlainStore, "Test Multi-threaded implicit locked xchg against plain store"},
+    {testLockedCmpXchgFailureAgainstPlainStore, "Test Multi-threaded locked cmpxchg failure against plain store"},
+    {testLockedXaddAgainstPlainStore, "Test Multi-threaded locked xadd against plain store"},
+    {testPlainReadAgainstLockedWrite, "Test Multi-threaded plain read against locked write"},
+    {testLockedAdditionalFamilies, "Test Multi-threaded additional locked operation families"},
+    {testLockedCmpXchg8bAgainstPlainStore, "Test Multi-threaded locked cmpxchg8b against plain store"},
+    {testLockedPageBoundaryNoPartialWrite, "Test locked page-boundary write has no partial update"},
+    {testImplicitLockedXchgSelfModifyingCode, "Test implicit locked xchg invalidates self-modifying code"},
+    {testPlainMemoryOrdering, "Test Multi-threaded plain x86 memory ordering"},
+    {testLockedWidthsAndAlignmentAgainstPlainStore, "Test Multi-threaded locked widths and alignment against plain store"},
+    {testLockedMemoryOrdering, "Test Multi-threaded locked memory ordering"},
 #endif
     {testWaitPid, "Test waitpid child selection"},
 };
@@ -714,7 +733,9 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
         runCount = requestedCount;
     }
 
-#ifdef __EMSCRIPTEN__
+#if !defined(BOXEDWINE_MULTI_THREADED)
+    workerCount = 1;
+#elif defined(__EMSCRIPTEN__)
     if (workerCount != 1) {
         workerCount = 1;
     }

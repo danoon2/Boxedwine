@@ -2598,6 +2598,9 @@ static inline void boxedwine_wasm_call_block(int tableIndex, int cpuPtr, int rel
     bool profileSample = wasmJitProfileCallBlock();
     U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
 #endif
+    CPU* cpu = (CPU*)(uintptr_t)cpuPtr;
+    cpu->wasmJitActiveBlock = nullptr;
+    cpu->wasmJitBailout = 0;
     static bool fired = false;
     if (!fired) {
         fired = true;
@@ -2682,11 +2685,41 @@ EM_JS(void, boxedwine_wasm_free_block, (int tableIndex),
 // published slot without a stronger cross-worker quiescence protocol. The saved
 // WASM bytes in g_wasmBlockBinaries follow this same lifetime so workers can
 // lazily install any still-observable slot.
+// __TEST is a narrow exception: the Emscripten unit runner uses one CPU test
+// thread and intentionally churns the op cache, so it may clear without reusing
+// slots to avoid exhausting the host wasm-code cache.
 EM_JS(void, boxedwine_wasm_free_block_mt, (int tableIndex),
 {
+#ifdef __TEST
+    try {
+        if (tableIndex >= 0 && tableIndex < wasmTable.length) {
+            wasmTable.set(tableIndex, null);
+        }
+    } catch(e) {
+        console.warn('[WASM JIT MT test] failed to clear slot ' + tableIndex + ': ' + e);
+    }
+#else
     // Intentionally empty: see comment above.
     void(tableIndex);
+#endif
 });
+
+#if defined(BOXEDWINE_MULTI_THREADED) && defined(__TEST)
+static void wasmJitMtClearBlockMetadataForTest(int tableIndex) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    g_wasmBlockBinaries.erase(tableIndex);
+
+    bool groupSlot = g_wasmMtGroupSlotRefs.erase(tableIndex) != 0;
+
+    auto relocIt = g_wasmRelocArrays.find(tableIndex);
+    if (relocIt != g_wasmRelocArrays.end()) {
+        if (!groupSlot) {
+            delete[] relocIt->second;
+        }
+        g_wasmRelocArrays.erase(relocIt);
+    }
+}
+#endif
 
 // JS-side check local to the executing worker: returns 1 if wasmTable[tableIndex]
 // is non-null, 0 otherwise. In pthread builds the shared DecodedOp stores one
@@ -2774,11 +2807,11 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
         U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
         U64 startPreCallNs = profileStartNs;
 #endif
+        int tableIndex = (int)(uintptr_t)op->pfnJitCode;
 #ifdef BOXEDWINE_MULTI_THREADED
         // Guard against cross-worker table visibility. Readiness cannot be
         // cached on DecodedOp because DecodedOp is shared, while table slot
         // visibility is local to the worker that performs call_indirect.
-        int tableIndex = (int)(uintptr_t)op->pfnJitCode;
         if (!boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
             if (!lazyInstallWasmJitBlockForWorker(tableIndex) ||
                 !boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
@@ -2803,7 +2836,7 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
             memoryArraysChecked = true;
         }
         WASM_JIT_PROFILE_ONLY(if (profileSample) { wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPreCallUs, startPreCallNs); })
-        boxedwine_wasm_call_block((int)(uintptr_t)op->pfnJitCode, (int)(uintptr_t)cpu, (int)wasmJitRelocBaseForTable((int)(uintptr_t)op->pfnJitCode));
+        boxedwine_wasm_call_block(tableIndex, (int)(uintptr_t)cpu, (int)wasmJitRelocBaseForTable(tableIndex));
         WASM_JIT_PROFILE_ONLY(if (profileSample) { U64 startPostCallNs = wasmJitProfileNowNs(); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPostCallUs, startPostCallNs); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartUs, profileStartNs); })
         WASM_JIT_PROFILE_ONLY(if (profileSample) { wasmJitProfileChainTarget(cpu, cpu->nextOp, WASM_JIT_PROFILE_TIMING_SAMPLE); })
         // nextOp is updated by the WASM block itself (via helper call).
@@ -7030,9 +7063,6 @@ void JitWasmCodeGen::emitArmSmcBailout() {
         m_emitter.emitLocalGet(WASM_RELOC_LOCAL);
         m_emitter.emitI32Load(0);                  // slot 0 = block-start op
         m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Const(0);
-        m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
         m_emitter.emitElse();
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitI32Const(0);
@@ -7046,9 +7076,6 @@ void JitWasmCodeGen::emitArmSmcBailout() {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Const((U32)(uintptr_t)m_wasmBlockStartOp);
     m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Const(0);
-    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
 }
 
 // Self-modifying-code bailout check: emitted after every JIT-inline mem
@@ -7068,11 +7095,42 @@ void JitWasmCodeGen::emitBailoutCheck() {
     m_emitter.emitI32Load((U32)offsetof(CPU, wasmJitBailout));
     m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
     m_emitter.emitIf();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(0);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(0);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
     // currentEip is the *current* op's start (postCompile bumps it after
     // compile returns), so add op->len = lastCompiledOpLen to land at the
     // next op so the dispatcher resumes there.
     writeEip(this->currentEip + this->lastCompiledOpLen
              - cpu->seg[CS].address);
+    blockExit();
+    m_emitter.emitEnd();
+    m_gpDirty   = savedGpDirty;
+    m_gpLoaded  = savedGpLoaded;
+    m_segLoaded = savedSegLoaded;
+}
+
+// A pending SMC bailout observed before a guest branch must resume at the
+// branch itself. The branch has not executed yet, so using the post-write
+// next-op bailout helper here would skip branch/call/ret side effects.
+void JitWasmCodeGen::emitBranchBailoutCheck() {
+    auto savedGpDirty   = m_gpDirty;
+    auto savedGpLoaded  = m_gpLoaded;
+    auto savedSegLoaded = m_segLoaded;
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, wasmJitBailout));
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
+    m_emitter.emitIf();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(0);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(0);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
+    writeEip(this->currentEip - cpu->seg[CS].address);
     blockExit();
     m_emitter.emitEnd();
     m_gpDirty   = savedGpDirty;
@@ -9251,11 +9309,11 @@ void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
         m_manifestNext2Target = eip - cpu->seg[CS].address;
     }
     if (wasmJitPersistenceActive()) {
-        // Relocatable variant: op->next comes from a reloc slot instead of
-        // an embedded i32.const. Guarded (unlike the unconditional embedded
-        // path below) because the slot is 0 when op->next was null at
-        // compile time or the module was instantiated without a slot array.
-        U32 slotOffset = addRelocSlot((U32)(uintptr_t)op->next);
+        // Relocatable variant: the DecodedOp comes from a reloc slot, then
+        // op->next is read live. removeCode() can splice op->next to Done
+        // when the fall-through target is invalidated, so embedding op->next
+        // itself would leave a stale pointer in the generated block.
+        U32 slotOffset = addRelocSlot((U32)(uintptr_t)op);
         syncDirtyRegsToHost();
         writeEip(eip - cpu->seg[CS].address);
 
@@ -9264,9 +9322,13 @@ void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
         m_emitter.emitLocalTee(targetLocal);
         m_emitter.emitIf();                        // relocBase != 0
         m_emitter.emitLocalGet(targetLocal);
-        m_emitter.emitI32Load(slotOffset);         // op->next DecodedOp*
+        m_emitter.emitI32Load(slotOffset);         // DecodedOp*
         m_emitter.emitLocalTee(targetLocal);
-        m_emitter.emitIf();                        // target != 0
+        m_emitter.emitIf();                        // op != 0
+        m_emitter.emitLocalGet(targetLocal);
+        m_emitter.emitI32Load((U32)offsetof(DecodedOp, next));
+        m_emitter.emitLocalTee(targetLocal);
+        m_emitter.emitIf();                        // live op->next != 0
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
         emitProfileSampledCall(HELPER_PROFILE_EXIT_NEXT2);
 #endif
@@ -9276,17 +9338,25 @@ void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
         m_emitter.emitReturn();
         m_emitter.emitEnd();
         m_emitter.emitEnd();
+        m_emitter.emitEnd();
         freeScratch(targetLocal);
     } else if (op->next) {
         syncDirtyRegsToHost();
         writeEip(eip - cpu->seg[CS].address);
+        U32 targetLocal = allocScratch();
+        m_emitter.emitI32Const((S32)(uintptr_t)op);
+        m_emitter.emitI32Load((U32)offsetof(DecodedOp, next));
+        m_emitter.emitLocalTee(targetLocal);
+        m_emitter.emitIf();
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
         emitProfileSampledCall(HELPER_PROFILE_EXIT_NEXT2);
 #endif
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Const((S32)(uintptr_t)op->next);
+        m_emitter.emitLocalGet(targetLocal);
         m_emitter.emitI32Store((U32)offsetof(CPU, nextOp));
         m_emitter.emitReturn();
+        m_emitter.emitEnd();
+        freeScratch(targetLocal);
     }
     writeCPUValue(DYN_PTR, (U32)offsetof(CPU, nextOp), 0);
     writeEip(eip - cpu->seg[CS].address);
@@ -9457,8 +9527,10 @@ void JitWasmCodeGen::emulateSingleOp() {
         m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
     }
 #endif
+    emitArmSmcBailout();
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(m_helperEmulateSingleOpIdx);
+    emitBailoutCheck();
     m_gpLoaded.fill(false);
     m_segLoaded.fill(false);
     // The interpreter may have updated cpu->lazyFlagType to any value.
@@ -9600,6 +9672,7 @@ void JitWasmCodeGen::direct_test(JitWidth w, RegPtr left, U32 right) {
     currentLazyFlags = lazyTypeForTest(w);
 }
 void JitWasmCodeGen::direct_jump(JitConditional cond, U32 address) {
+    emitBranchBailoutCheck();
     JumpIfCondition(cond, address);
 }
 void JitWasmCodeGen::direct_cmov(JitWidth w, JitConditional cond, RegPtr dst, RegPtr src) {
@@ -9867,6 +9940,9 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
 }
 
 void JitWasmCodeGen::compile(DecodedOp* op) {
+    if (op->isBranch()) {
+        emitBranchBailoutCheck();
+    }
     if (op->inst == Pause) {
         dynamic_pause(op);
         return;
@@ -10254,10 +10330,14 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
         if (seen.insert(tableIdx).second) {
 #ifdef BOXEDWINE_MULTI_THREADED
             boxedwine_wasm_free_block_mt(tableIdx);
+#ifdef __TEST
+            wasmJitMtClearBlockMetadataForTest(tableIdx);
+#else
             // The reloc array intentionally follows the monotonic MT slot
             // lifetime (never freed) — a racing worker may still run the
             // instance once after eviction, exactly like the bytes in
             // g_wasmBlockBinaries.
+#endif
 #else
             boxedwine_wasm_free_block(tableIdx);
             // The function is now unreachable (removeFunction); release its

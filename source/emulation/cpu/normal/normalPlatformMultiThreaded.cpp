@@ -18,6 +18,9 @@
 
 #include "boxedwine.h"
 #include "knativesystem.h"
+#if defined(BOXEDWINE_JIT_ARMV8)
+#include "../armv8/jitArmV8CodeGen.h"
+#endif
 
 #if defined(BOXEDWINE_MULTI_THREADED)
 
@@ -43,6 +46,11 @@ void platformInitExceptionHandling();
 // out-of-line call here would cost a call per dispatch (measurably slower on the
 // fast JIT). Only platformThreadRun is force-noinline (see above).
 static inline bool platformThreadShouldStop(CPU* cpu) {
+#ifdef __TEST
+    if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
+        return true;
+    }
+#endif
     if (cpu->thread->process->terminated) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
         cpu->memory->cleanup();
@@ -60,6 +68,9 @@ static BOXEDWINE_NOINLINE void platformThreadRun(CPU* cpu) {
 static void platformThread(CPU* cpu) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
     platformInitExceptionHandling();
+#endif
+#if defined(BOXEDWINE_JIT_ARMV8)
+    ensureArmV8HardwareTSOForThread();
 #endif
     KThread::setCurrentThread(cpu->thread);
     KProcessPtr process = KSystem::getProcess(cpu->thread->process->id);
@@ -79,6 +90,11 @@ static void platformThread(CPU* cpu) {
     while (true) {
         try {
             platformThreadRun(cpu);
+#ifdef __TEST
+            if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
+                return;
+            }
+#endif
             break;
         } catch (...) {
             if (!cpu->thread->terminating) {

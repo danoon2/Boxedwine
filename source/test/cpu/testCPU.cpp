@@ -12,6 +12,9 @@
 #ifdef __TEST
 
 #include "testCPU.h"
+#if defined(BOXEDWINE_JIT_ARMV8)
+#include "../../emulation/cpu/armv8/jitArmV8CodeGen.h"
+#endif
 #include <atomic>
 #include <cstdarg>
 #include <cstdio>
@@ -199,6 +202,9 @@ void testPushCode32(int value) {
 }
 
 void testRunCPU() {
+#if defined(BOXEDWINE_JIT_ARMV8)
+    ensureArmV8HardwareTSOForThread();
+#endif
     TestContext& context = testContext();
     CPU* cpu = context.cpu;
 
@@ -285,8 +291,13 @@ void testWasmJitOnlyBlockEntryIsCallable() {
         testFail("wasm jit parent and fallthrough subblock have distinct entries");
     }
 
+    cpu->wasmJitActiveBlock = first;
+    cpu->wasmJitBailout = 0;
     context.memory->removeCodeBlock(TEST_CODE_ADDRESS, first, false);
 
+    if (cpu->wasmJitBailout != 1) {
+        testFail("wasm jit active invalidation requests bailout");
+    }
     if (first->pfnJitCode || second->pfnJitCode || third->pfnJitCode) {
         testFail("wasm jit parent invalidation clears subblock entries");
     }
@@ -382,6 +393,32 @@ void testWasmJitOnlyBlockEntryIsCallable() {
     }
     if (context.memory->readw(TEST_HEAP_ADDRESS + 0x200 + 7 * 8 + 6) == 0x5678) {
         testFail("wasm jit call must not use callee-clobbered esi");
+    }
+#endif
+}
+
+void testJitOverlappingDirectJumpTarget() {
+#ifdef BOXEDWINE_JIT
+    CPU* cpu = testContext().cpu;
+
+    testNewInstruction(0);
+    cpu->reg[0].u32 = 0x12340000;
+
+    testPushCode8(0x39); // cmp eax,eax
+    testPushCode8(0xc0);
+    testPushCode8(0x74); // jz +1 into the immediate bytes of the fallthrough mov
+    testPushCode8(0x01);
+    testPushCode8(0xb8); // fallthrough: mov eax,0x02eb07b0
+    testPushCode8(0xb0); // target: mov al,7
+    testPushCode8(0x07);
+    testPushCode8(0xeb); // jmp over mov al,3
+    testPushCode8(0x02);
+    testPushCode8(0xb0); // fallthrough stream: mov al,3
+    testPushCode8(0x03);
+    testRunCPU();
+
+    if ((cpu->reg[0].u32 & 0xff) != 7) {
+        testFail("jit overlapping direct jump target");
     }
 #endif
 }
@@ -554,6 +591,9 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
     };
 
     if (workerCount == 1) {
+#if defined(BOXEDWINE_JIT_ARMV8)
+        ensureArmV8HardwareTSOForThread();
+#endif
         for (size_t i = 0; i < entryCount; ++i) {
             runEntry(0, i);
         }
@@ -568,6 +608,9 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
         workers.push_back(std::thread([&, i]() {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
             platformInitExceptionHandling();
+#endif
+#if defined(BOXEDWINE_JIT_ARMV8)
+            ensureArmV8HardwareTSOForThread();
 #endif
             while (true) {
                 size_t entryIndex = nextEntry.fetch_add(1);

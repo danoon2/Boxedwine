@@ -114,6 +114,7 @@ inline void KMemory::writedInline(U32 address, U32 value) {
 #endif
         mmu.getPage()->writed(&mmu, address, value);
     } else {
+        preflightWrite(address, 4);
         writeb(address, value);
         writeb(address + 1, value >> 8);
         writeb(address + 2, value >> 16);

@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test multiThreaded jit testJit multiThreadedJit
+.PHONY: default all clean release test testMultiThreaded multiThreaded jit testJit testMultiThreadedJit multiThreadedJit
 
 ZIP_ASSET_FILES := $(wildcard *.zip)
 
@@ -14,6 +14,10 @@ test: export BUILD_DIR := Build/Test
 test: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC
 test: export SHELL_FILE := shelltest.html
 test: export EXTRA_LD_FLAGS := --emrun
+testMultiThreaded: export BUILD_DIR := Build/TestMultiThreaded
+testMultiThreaded: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC -DBOXEDWINE_MULTI_THREADED -pthread
+testMultiThreaded: export SHELL_FILE := shelltest.html
+testMultiThreaded: export EXTRA_LD_FLAGS := --emrun -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-multithreaded-audio.js
 multiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -pthread
 multiThreaded: export BUILD_DIR := Build/MultiThreaded
 multiThreaded: export SHELL_FILE := shell.html
@@ -44,6 +48,10 @@ testJit: export BUILD_DIR := Build/TestJit
 testJit: export EXTRA_CPP_FLAGS := -D__TEST -DBOXEDWINE_WASM_JIT $(WASM_JIT_SIMD_FLAG)
 testJit: export SHELL_FILE := shelltest.html
 testJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) --emrun -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction
+testMultiThreadedJit: export BUILD_DIR := Build/TestMultiThreadedJit
+testMultiThreadedJit: export EXTRA_CPP_FLAGS := -D__TEST -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_WASM_JIT $(WASM_JIT_SIMD_FLAG) -pthread
+testMultiThreadedJit: export SHELL_FILE := shelltest.html
+testMultiThreadedJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) --emrun -pthread -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8 -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_register_group,_wasm_jit_mt_register_group_entry,_wasm_jit_mt_register_group_patch,_wasm_jit_mt_prepare_export,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
 # Multi-threaded WASM JIT: combines the multiThreaded and jit flag sets.
 # Within a single emulated process, JIT compilation is serialized via
 # memory->mutex, and the inline-TLB arrays are mutated under the same
@@ -67,7 +75,7 @@ ifneq ($(make_jobs),)
 export MAKEFLAGS := -j $(make_jobs)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
-release test testJit multiThreaded testMultiThreaded jit multiThreadedJit:
+release test testMultiThreaded testJit testMultiThreadedJit multiThreaded jit multiThreadedJit:
 	@$(MAKE)
 
 clean:
@@ -132,10 +140,10 @@ TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/mztools.c
 TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/unzip.c
 TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
 
-ifeq ($(BUILD_DIR), Build/Test)
+ifneq (,$(filter $(BUILD_DIR),Build/Test Build/TestMultiThreaded))
 SRCS := $(TEST_SOURCES)
-else ifeq ($(BUILD_DIR), Build/TestJit)
-# TestJit: use the test sources but swap in the WASM JIT emulation sources
+else ifneq (,$(filter $(BUILD_DIR),Build/TestJit Build/TestMultiThreadedJit))
+# Test JIT builds: use the test sources but swap in the WASM JIT emulation sources
 # (exclude x32/armv8 backends which have their own startNewJIT definitions).
 TESTJIT_EMULATION := $(shell find $(PROJDIR)/source/emulation -type f -name '*.cpp' | grep -v '/x32/' | grep -v '/armv8/')
 SRCS := $(shell find $(PROJDIR)/lib/asmjit/asmjit -type f -name '*.cpp')

@@ -115,6 +115,7 @@ public:
     void writedInline(U32 address, U32 value);
     void writew(U32 address, U16 value);
     void writeb(U32 address, U8 value);
+    void preflightWrite(U32 address, U32 len);
 
     BString readString(U32 address);
     BString readStringW(U32 address);

@@ -217,12 +217,12 @@ public:
     // lazy-flag state in src.u32/dst.u32.
     U32 memHelperAddr = 0;
     U32 memHelperValue = 0;
-    // Self-modifying-code support: blockEnter helper captures the active
-    // block's first DecodedOp. After every JIT-inline memory write, the
-    // helper checks whether that op's pfnJitCode was cleared by
-    // removeCodeBlock (i.e. the write hit our own code page) and sets
-    // wasmJitBailout=1. The JIT emits an `if (wasmJitBailout) blockExit()`
-    // after each write so we exit before stale compiled bytes run.
+    // Self-modifying-code support: each JIT block call clears these fields.
+    // Before a checked memory write, generated code records the active block's
+    // first DecodedOp. If removeCodeBlock clears that block while it is active
+    // (or a post-write helper observes that its pfnJitCode was cleared), it
+    // sets wasmJitBailout=1 so generated bailout checks can exit before stale
+    // compiled bytes keep running.
     DecodedOp* wasmJitActiveBlock = nullptr;
     U32 wasmJitBailout = 0;
     // Inline TLB fast-path: cached pointers to the per-page host-base

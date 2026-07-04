@@ -13,6 +13,12 @@ from urllib.parse import parse_qsl, quote
 
 
 DEFAULT_PUBLIC_URL = "https://boxedwine.org/builds/"
+DEMO_RUNNER_SPECS = (
+    ("st", "Single Threaded", "single_threaded_dir"),
+    ("mt", "Multi Threaded", "multi_threaded_dir"),
+    ("st-jit", "Single Threaded JIT", "single_threaded_jit_dir"),
+    ("mt-jit", "Multi Threaded JIT", "multi_threaded_jit_dir"),
+)
 
 
 def slugify(value):
@@ -699,7 +705,7 @@ def render_html(site_dir, branches, title, public_url):
     (site_dir / "index.html").write_text(html_page, encoding="utf-8")
 
 
-def render_demos_html(site_dir, branch, branch_slug, build_number, demos):
+def render_demos_html(site_dir, branch, branch_slug, build_number, demos, runners):
     demos_dir = site_dir / "demos"
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     branch_html = html.escape(branch)
@@ -708,11 +714,12 @@ def render_demos_html(site_dir, branch, branch_slug, build_number, demos):
         demos,
         lambda demo, mode: demo_launch_url(branch_slug, build_number, mode, demo),
         "images",
+        runners,
     )
     page = render_demo_page(
         "Boxedwine Demos",
         f"Branch {branch_html}, build {build_html}. Last updated {html.escape(generated_at)}",
-        "Each demo can run against the current single threaded or multi threaded web build.",
+        "Each demo can run against the current web build flavors.",
         "../",
         content,
     )
@@ -720,7 +727,7 @@ def render_demos_html(site_dir, branch, branch_slug, build_number, demos):
     (demos_dir / "index.html").write_text(page, encoding="utf-8")
 
 
-def render_build_demo_html(build_dir, branch, build_number, demos):
+def render_build_demo_html(build_dir, branch, build_number, demos, runners):
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     branch_html = html.escape(branch)
     build_html = html.escape(str(build_number))
@@ -728,18 +735,19 @@ def render_build_demo_html(build_dir, branch, build_number, demos):
         demos,
         lambda demo, mode: build_demo_launch_url(mode, demo),
         "images",
+        runners,
     )
     page = render_demo_page(
         "Boxedwine Demos",
         f"Branch {branch_html}, build {build_html}. Last updated {html.escape(generated_at)}",
-        "Each demo can run against this build's single threaded or multi threaded web runner.",
+        "Each demo can run against this build's web runner flavors.",
         "../../../../",
         content,
     )
     (build_dir / "index.html").write_text(page, encoding="utf-8")
 
 
-def render_demo_cards(demos, url_builder, image_prefix):
+def render_demo_cards(demos, url_builder, image_prefix, runners):
     cards = []
     for demo in demos:
         image = html.escape(f"{image_prefix}/{demo['stem']}.png")
@@ -747,8 +755,10 @@ def render_demo_cards(demos, url_builder, image_prefix):
         zip_name = html.escape(demo["zip"])
         program = html.escape(demo["program"] or "Select executable")
         description = html.escape(demo.get("description", ""))
-        st_url = html.escape(url_builder(demo, "st"))
-        mt_url = html.escape(url_builder(demo, "mt"))
+        actions = "\n".join(
+            f'              <a href="{html.escape(url_builder(demo, runner["mode"]))}">{html.escape(runner["label"])}</a>'
+            for runner in runners
+        )
         cards.append(f"""
         <article class="demo-card">
           <div class="screenshot">
@@ -760,8 +770,7 @@ def render_demo_cards(demos, url_builder, image_prefix):
             <p class="program">{program}</p>
             {f'<p class="description">{description}</p>' if description else ''}
             <div class="actions">
-              <a href="{st_url}">Single Threaded</a>
-              <a href="{mt_url}">Multi Threaded</a>
+{actions}
             </div>
           </div>
         </article>
@@ -960,7 +969,16 @@ def build_demo_launch_url(mode, demo):
     return f"{mode}/boxedwine.html?{query}"
 
 
-def update_demos(site_dir, branch, branch_slug, build_number, demo_source, single_threaded_dir, multi_threaded_dir, keep):
+def demo_runners_from_args(args):
+    runners = []
+    for mode, label, attr in DEMO_RUNNER_SPECS:
+        source = getattr(args, attr)
+        if source:
+            runners.append({"mode": mode, "label": label, "source": Path(source)})
+    return runners
+
+
+def update_demos(site_dir, branch, branch_slug, build_number, demo_source, runners, keep):
     demo_source = Path(demo_source)
     if not demo_source.exists():
         return
@@ -1013,8 +1031,8 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, singl
     if boxedwine_zip.exists():
         link_or_copy(boxedwine_zip, build_dir / "boxedwine.zip")
 
-    copy_tree_contents(single_threaded_dir, build_dir / "st", skip_zip=True)
-    copy_tree_contents(multi_threaded_dir, build_dir / "mt", skip_zip=True)
+    for runner in runners:
+        copy_tree_contents(runner["source"], build_dir / runner["mode"], skip_zip=True)
     build_images_dir = build_dir / "images"
     build_images_dir.mkdir(parents=True, exist_ok=True)
     for demo in demos:
@@ -1022,17 +1040,17 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, singl
         if image_path.exists():
             link_or_copy(image_path, build_images_dir / image_path.name)
     if boxedwine_zip.exists():
-        link_or_copy(boxedwine_zip, build_dir / "st" / "boxedwine.zip")
-        link_or_copy(boxedwine_zip, build_dir / "mt" / "boxedwine.zip")
+        for runner in runners:
+            link_or_copy(boxedwine_zip, build_dir / runner["mode"] / "boxedwine.zip")
     for demo in demos:
         app_zip = apps_dir / demo["zip"]
         if app_zip.exists():
-            link_or_copy(app_zip, build_dir / "st" / demo["zip"])
-            link_or_copy(app_zip, build_dir / "mt" / demo["zip"])
+            for runner in runners:
+                link_or_copy(app_zip, build_dir / runner["mode"] / demo["zip"])
 
-    render_build_demo_html(build_dir, branch, build_number, demos)
+    render_build_demo_html(build_dir, branch, build_number, demos, runners)
     prune_old_demo_builds(site_dir, branch_slug, keep)
-    render_demos_html(site_dir, branch, branch_slug, build_number, demos)
+    render_demos_html(site_dir, branch, branch_slug, build_number, demos, runners)
 
 
 def render_builds(builds, public_url=""):
@@ -1103,6 +1121,8 @@ def main():
     parser.add_argument("--demo-source")
     parser.add_argument("--single-threaded-dir")
     parser.add_argument("--multi-threaded-dir")
+    parser.add_argument("--single-threaded-jit-dir")
+    parser.add_argument("--multi-threaded-jit-dir")
     parser.add_argument("--keep", type=int, default=5)
     parser.add_argument("--skip-prune-removed-demo-branches", action="store_true")
     args = parser.parse_args()
@@ -1142,15 +1162,15 @@ def main():
         },
     )
 
-    if args.demo_source and args.single_threaded_dir and args.multi_threaded_dir:
+    demo_runners = demo_runners_from_args(args)
+    if args.demo_source and demo_runners:
         update_demos(
             site_dir,
             args.branch,
             branch_slug,
             args.build_number,
             args.demo_source,
-            args.single_threaded_dir,
-            args.multi_threaded_dir,
+            demo_runners,
             args.keep,
         )
 

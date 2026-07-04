@@ -104,6 +104,15 @@ pipeline {
                             cd Build/Test
                             emrun --kill_start --kill_exit --browser="/usr/bin/firefox" --browser_args="--headless" boxedwine.html
                         '''
+                        sh '''#!/bin/bash
+                            source ~/emsdk/emsdk_env.sh
+                            cd project/emscripten
+                            make clean
+                            make testJit
+                            killall -9 python3
+                            cd Build/TestJit
+                            emrun --kill_start --kill_exit --browser="/usr/bin/firefox" --browser_args="--headless" boxedwine.html
+                        '''
                     }
                 }
                 stage ('Test Linux (x64)') {
@@ -196,35 +205,37 @@ pipeline {
                         dir("project/emscripten") {
                             sh '''#!/bin/bash
                                 source ~/emsdk/emsdk_env.sh
+                                set -e
                                 set -x
                                 rm -rf Deploy
                                 make clean
-                                make multiThreaded
-                                if [ ! -f "Build/MultiThreaded/boxedwine.wasm" ] 
-                                then
-                                    echo "boxedwine.wasm DOES NOT exists."
-                                    exit 999
-                                fi
-                                mkdir -p Deploy/Web/MultiThreaded
-                                cp Build/MultiThreaded/boxedwine.html Deploy/Web/MultiThreaded
-                                cp boxedwine.css Deploy/Web/MultiThreaded
-                                cp boxedwine-shell.js Deploy/Web/MultiThreaded
-                                cp Build/MultiThreaded/boxedwine.js Deploy/Web/MultiThreaded
-                                cp Build/MultiThreaded/boxedwine.wasm Deploy/Web/MultiThreaded
-                                cp /var/www/buildfiles/* Deploy/Web/MultiThreaded
-                                make release
-                                if [ ! -f "Build/Release/boxedwine.wasm" ] 
-                                then
-                                    echo "boxedwine.wasm DOES NOT exists."
-                                    exit 999
-                                fi
-                                mkdir -p Deploy/Web/SingleThreaded
-                                cp Build/Release/boxedwine.html Deploy/Web/SingleThreaded
-                                cp boxedwine.css Deploy/Web/SingleThreaded
-                                cp boxedwine-shell.js Deploy/Web/SingleThreaded
-                                cp Build/Release/boxedwine.js Deploy/Web/SingleThreaded
-                                cp Build/Release/boxedwine.wasm Deploy/Web/SingleThreaded
-                                cp /var/www/buildfiles/* Deploy/Web/SingleThreaded
+
+                                build_web_target() {
+                                    local make_target="$1"
+                                    local build_dir="$2"
+                                    local deploy_name="$3"
+                                    local deploy_dir="Deploy/Web/${deploy_name}"
+
+                                    make "${make_target}"
+                                    if [ ! -f "${build_dir}/boxedwine.wasm" ]
+                                    then
+                                        echo "${build_dir}/boxedwine.wasm DOES NOT exist."
+                                        exit 999
+                                    fi
+
+                                    mkdir -p "${deploy_dir}"
+                                    cp "${build_dir}/boxedwine.html" "${deploy_dir}"
+                                    cp boxedwine.css "${deploy_dir}"
+                                    cp boxedwine-shell.js "${deploy_dir}"
+                                    cp "${build_dir}/boxedwine.js" "${deploy_dir}"
+                                    cp "${build_dir}/boxedwine.wasm" "${deploy_dir}"
+                                    cp /var/www/buildfiles/* "${deploy_dir}"
+                                }
+
+                                build_web_target release Build/Release SingleThreaded
+                                build_web_target multiThreaded Build/MultiThreaded MultiThreaded
+                                build_web_target jit Build/Jit SingleThreadedJit
+                                build_web_target multiThreadedJit Build/MultiThreadedJit MultiThreadedJit
                             ''' 
                         }
                         dir("project/emscripten") {

@@ -720,6 +720,7 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
     }    
     this->currentEip = address;
     this->startingEip = address;
+    this->firstOp = op;
 
     initDynamicOps();
 
