@@ -18,6 +18,9 @@
 
 #include "boxedwine.h"
 #include "knativesystem.h"
+#if defined(BOXEDWINE_JIT_ARMV8)
+#include "../armv8/jitArmV8CodeGen.h"
+#endif
 
 #if defined(BOXEDWINE_MULTI_THREADED)
 
@@ -65,6 +68,9 @@ static BOXEDWINE_NOINLINE void platformThreadRun(CPU* cpu) {
 static void platformThread(CPU* cpu) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
     platformInitExceptionHandling();
+#endif
+#if defined(BOXEDWINE_JIT_ARMV8)
+    ensureArmV8HardwareTSOForThread();
 #endif
     KThread::setCurrentThread(cpu->thread);
     KProcessPtr process = KSystem::getProcess(cpu->thread->process->id);

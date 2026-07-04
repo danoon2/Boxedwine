@@ -12,6 +12,9 @@
 #ifdef __TEST
 
 #include "testCPU.h"
+#if defined(BOXEDWINE_JIT_ARMV8)
+#include "../../emulation/cpu/armv8/jitArmV8CodeGen.h"
+#endif
 #include <atomic>
 #include <cstdarg>
 #include <cstdio>
@@ -199,6 +202,9 @@ void testPushCode32(int value) {
 }
 
 void testRunCPU() {
+#if defined(BOXEDWINE_JIT_ARMV8)
+    ensureArmV8HardwareTSOForThread();
+#endif
     TestContext& context = testContext();
     CPU* cpu = context.cpu;
 
@@ -585,6 +591,9 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
     };
 
     if (workerCount == 1) {
+#if defined(BOXEDWINE_JIT_ARMV8)
+        ensureArmV8HardwareTSOForThread();
+#endif
         for (size_t i = 0; i < entryCount; ++i) {
             runEntry(0, i);
         }
@@ -599,6 +608,9 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
         workers.push_back(std::thread([&, i]() {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
             platformInitExceptionHandling();
+#endif
+#if defined(BOXEDWINE_JIT_ARMV8)
+            ensureArmV8HardwareTSOForThread();
 #endif
             while (true) {
                 size_t entryIndex = nextEntry.fetch_add(1);
