@@ -51,6 +51,7 @@
             Config.recordJITCache = getJitRecord();
             Config.audioFreq = getAudioFreq();
             Config.disableHideCursor = getDisableHideCursor();
+            Config.disableWasmJitForWrittenCode = getDisableWasmJitForWrittenCode();
             Config.bpp = getBitsPerPixel();
 			Config.cpu = getCPU();
 			Config.envProp = getEnvProp();
@@ -311,6 +312,19 @@
                 disableHideCursor = DEFAULT_DISABLE_HIDE_CURSOR;
             }            
             return disableHideCursor;
+        }
+
+        function getDisableWasmJitForWrittenCode() {
+            var disableWasmJitForWrittenCode = getParameter("disableWasmJitForWrittenCode");
+            if (!allowParameterOverride()) {
+                disableWasmJitForWrittenCode = false;
+            } else if (disableWasmJitForWrittenCode == "true") {
+                disableWasmJitForWrittenCode = true;
+                console.log("setting disableWasmJitForWrittenCode to: " + disableWasmJitForWrittenCode);
+            } else {
+                disableWasmJitForWrittenCode = false;
+            }
+            return disableWasmJitForWrittenCode;
         }
 
         function getExecutable() {
@@ -771,6 +785,9 @@
             }
             if (Config.disableHideCursor) {
                 params.push("-disableHideCursor");
+            }
+            if (Config.disableWasmJitForWrittenCode) {
+                params.push("-disableWasmJitForWrittenCode");
             }
             if(Config.bpp != DEFAULT_BPP){
                 params.push("-bpp");

@@ -109,6 +109,12 @@ void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 			activeOps--;
 		}
 		if (pageWriteCounts) {
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+			if (KSystem::disableWasmJitForWrittenCode) {
+				pageWriteCounts[i] = MAX_DYNAMIC_COUNT;
+				continue;
+			}
+#endif
 			if ((pageWriteCounts[i] < MAX_DYNAMIC_COUNT)) {
 				pageWriteCounts[i]++;
 			}

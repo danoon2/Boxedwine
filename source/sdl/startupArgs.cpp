@@ -271,6 +271,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (this->cacheReads) {
         args.push_back(B("-cacheReads"));
     }
+    if (this->disableWasmJitForWrittenCode) {
+        args.push_back(B("-disableWasmJitForWrittenCode"));
+    }
     for (auto& a : this->args) {
         args.push_back(a);
     }
@@ -288,6 +291,7 @@ bool StartUpArgs::apply() {
     KSystem::disableHideCursor = this->disableHideCursor;
     KSystem::forceRelativeMouse = this->forceRelativeMouse;
     KSystem::cacheReads = this->cacheReads;
+    KSystem::disableWasmJitForWrittenCode = this->disableWasmJitForWrittenCode;
     KSystem::pentiumLevel = this->pentiumLevel;
     KSystem::pollRate = this->pollRate;
     if (KSystem::pollRate < 0) {
@@ -844,6 +848,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->forceRelativeMouse = true;
         }  else if (!strcmp(argv[i], "-cacheReads")) {
             this->cacheReads = true;
+        }  else if (!strcmp(argv[i], "-disableWasmJitForWrittenCode")) {
+            this->disableWasmJitForWrittenCode = true;
         }
         else if (!strcmp(argv[i], "-dxvk")) {
             BString dxvk;
