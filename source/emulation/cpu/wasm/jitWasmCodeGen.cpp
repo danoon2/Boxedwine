@@ -2685,11 +2685,41 @@ EM_JS(void, boxedwine_wasm_free_block, (int tableIndex),
 // published slot without a stronger cross-worker quiescence protocol. The saved
 // WASM bytes in g_wasmBlockBinaries follow this same lifetime so workers can
 // lazily install any still-observable slot.
+// __TEST is a narrow exception: the Emscripten unit runner uses one CPU test
+// thread and intentionally churns the op cache, so it may clear without reusing
+// slots to avoid exhausting the host wasm-code cache.
 EM_JS(void, boxedwine_wasm_free_block_mt, (int tableIndex),
 {
+#ifdef __TEST
+    try {
+        if (tableIndex >= 0 && tableIndex < wasmTable.length) {
+            wasmTable.set(tableIndex, null);
+        }
+    } catch(e) {
+        console.warn('[WASM JIT MT test] failed to clear slot ' + tableIndex + ': ' + e);
+    }
+#else
     // Intentionally empty: see comment above.
     void(tableIndex);
+#endif
 });
+
+#if defined(BOXEDWINE_MULTI_THREADED) && defined(__TEST)
+static void wasmJitMtClearBlockMetadataForTest(int tableIndex) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    g_wasmBlockBinaries.erase(tableIndex);
+
+    bool groupSlot = g_wasmMtGroupSlotRefs.erase(tableIndex) != 0;
+
+    auto relocIt = g_wasmRelocArrays.find(tableIndex);
+    if (relocIt != g_wasmRelocArrays.end()) {
+        if (!groupSlot) {
+            delete[] relocIt->second;
+        }
+        g_wasmRelocArrays.erase(relocIt);
+    }
+}
+#endif
 
 // JS-side check local to the executing worker: returns 1 if wasmTable[tableIndex]
 // is non-null, 0 otherwise. In pthread builds the shared DecodedOp stores one
@@ -10300,10 +10330,14 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
         if (seen.insert(tableIdx).second) {
 #ifdef BOXEDWINE_MULTI_THREADED
             boxedwine_wasm_free_block_mt(tableIdx);
+#ifdef __TEST
+            wasmJitMtClearBlockMetadataForTest(tableIdx);
+#else
             // The reloc array intentionally follows the monotonic MT slot
             // lifetime (never freed) — a racing worker may still run the
             // instance once after eviction, exactly like the bytes in
             // g_wasmBlockBinaries.
+#endif
 #else
             boxedwine_wasm_free_block(tableIdx);
             // The function is now unreachable (removeFunction); release its

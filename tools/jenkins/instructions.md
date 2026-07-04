@@ -2,7 +2,7 @@
 
 `local-build-site.sh` builds a local copy of the Boxedwine web demo site so Emscripten builds can be tested in a browser before publishing anything.
 
-The script mirrors the existing public build site, builds fresh single-threaded and multi-threaded Emscripten outputs, places those outputs into the same layout used by the published site, regenerates the demo pages, and starts a local static server with the headers required by the multi-threaded build.
+The script mirrors the existing public build site, builds fresh single-threaded, multi-threaded, single-threaded JIT, and multi-threaded JIT Emscripten outputs, places those outputs into the same layout used by the published site, regenerates the demo pages, and starts a local static server with the headers required by the multi-threaded builds.
 
 ## What It Does
 
@@ -12,12 +12,16 @@ The script mirrors the existing public build site, builds fresh single-threaded 
 2. Hydrates demo assets for local use.
    - Demo app zips are copied into `demos/apps`.
    - `boxedwine.zip` is always downloaded from `http://boxedwine.org/v2/demos/boxedwine.1.zip`.
-3. Builds the JIT-enabled Emscripten web targets from `project/emscripten`.
-   - `make multiThreadedJit`
+3. Builds the Emscripten web targets from `project/emscripten`.
+   - `make release`
+   - `make multiThreaded`
    - `make jit`
-4. Copies the JIT web build outputs into the existing demo runner layout:
-   - `project/emscripten/Deploy/Web/MultiThreaded`
+   - `make multiThreadedJit`
+4. Copies the web build outputs into the existing demo runner layout:
    - `project/emscripten/Deploy/Web/SingleThreaded`
+   - `project/emscripten/Deploy/Web/MultiThreaded`
+   - `project/emscripten/Deploy/Web/SingleThreadedJit`
+   - `project/emscripten/Deploy/Web/MultiThreadedJit`
 5. Runs `tools/jenkins/build_site.py` against the local site directory.
 6. Starts `project/emscripten/server.mjs` with:
    - `Cross-Origin-Embedder-Policy: require-corp`
@@ -105,6 +109,11 @@ BUILD_SITE_SSH_KEY         SSH key used with BUILD_SITE_REMOTE
 BUILD_SITE_MIRROR_URL      fallback public mirror URL
 LOCAL_BUILD_SITE_DIR       local generated site directory
 BUILD_SITE_DEMOS_SOURCE    source directory for demo zips and demos.json
+BUILD_SITE_SINGLE_THREADED_DIR
+BUILD_SITE_MULTI_THREADED_DIR
+BUILD_SITE_SINGLE_THREADED_JIT_DIR
+BUILD_SITE_MULTI_THREADED_JIT_DIR
+                           override Emscripten web runner directories
 BUILD_SITE_PUBLIC_URL      public URL written into generated links
 BUILD_SITE_KEEP            number of builds to keep per branch
 EMSDK_DIR                  Emscripten SDK directory
@@ -118,6 +127,8 @@ PORT                       local server port
 project/linux/Deploy/LocalBuildSite/
 project/emscripten/Deploy/Web/SingleThreaded/
 project/emscripten/Deploy/Web/MultiThreaded/
+project/emscripten/Deploy/Web/SingleThreadedJit/
+project/emscripten/Deploy/Web/MultiThreadedJit/
 ```
 
 The generated local site and server log/pid files are local runtime artifacts and should not be checked in.
