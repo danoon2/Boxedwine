@@ -99,6 +99,71 @@ static void splitScriptLines(const std::vector<U8>& data, std::vector<BString>& 
     }
 }
 
+static U16 readLe16(const std::vector<U8>& data, size_t offset) {
+    return (U16)data[offset] | ((U16)data[offset + 1] << 8);
+}
+
+static U32 readLe32(const std::vector<U8>& data, size_t offset) {
+    return (U32)data[offset] | ((U32)data[offset + 1] << 8) | ((U32)data[offset + 2] << 16) | ((U32)data[offset + 3] << 24);
+}
+
+static S32 readLe32Signed(const std::vector<U8>& data, size_t offset) {
+    return (S32)readLe32(data, offset);
+}
+
+static unsigned char* loadBmpFromMemory(const std::vector<U8>& data, int* width, int* height) {
+    if (data.size() < 54 || data[0] != 'B' || data[1] != 'M') {
+        return nullptr;
+    }
+
+    U32 pixelOffset = readLe32(data, 10);
+    U32 dibSize = readLe32(data, 14);
+    if (dibSize < 40 || pixelOffset >= data.size()) {
+        return nullptr;
+    }
+
+    S32 bmpWidth = readLe32Signed(data, 18);
+    S32 bmpHeight = readLe32Signed(data, 22);
+    U16 planes = readLe16(data, 26);
+    U16 bpp = readLe16(data, 28);
+    U32 compression = readLe32(data, 30);
+    if (bmpWidth <= 0 || bmpHeight == 0 || planes != 1 || compression != 0 || (bpp != 24 && bpp != 32)) {
+        return nullptr;
+    }
+
+    bool topDown = bmpHeight < 0;
+    U32 outWidth = (U32)bmpWidth;
+    U32 outHeight = (U32)(topDown ? -bmpHeight : bmpHeight);
+    U32 bytesPerPixel = bpp / 8;
+    U32 rowStride = ((outWidth * bytesPerPixel) + 3) & ~3;
+    U64 neededSize = (U64)pixelOffset + (U64)rowStride * outHeight;
+    if (neededSize > data.size()) {
+        return nullptr;
+    }
+
+    unsigned char* out = (unsigned char*)malloc((size_t)outWidth * outHeight * 4);
+    if (!out) {
+        return nullptr;
+    }
+
+    for (U32 y = 0; y < outHeight; y++) {
+        U32 fileY = topDown ? y : outHeight - 1 - y;
+        const U8* row = data.data() + pixelOffset + (size_t)fileY * rowStride;
+        for (U32 x = 0; x < outWidth; x++) {
+            const U8* src = row + x * bytesPerPixel;
+            unsigned char* dst = out + ((size_t)y * outWidth + x) * 4;
+            dst[0] = src[2];
+            dst[1] = src[1];
+            dst[2] = src[0];
+            dst[3] = bpp == 32 ? src[3] : 255;
+        }
+    }
+
+    *width = (int)outWidth;
+    *height = (int)outHeight;
+    return out;
+}
+
 static unsigned char* loadAutomationImage(Player* player, const BString& fileName, int* width, int* height) {
     BString path = player->directory.stringByApppendingPath(fileName);
     if (!player->useVirtualFiles) {
@@ -107,6 +172,11 @@ static unsigned char* loadAutomationImage(Player* player, const BString& fileNam
     std::vector<U8> data;
     if (!readVirtualFile(path, data) || data.empty()) {
         return nullptr;
+    }
+    // STB asserts on these recorder BMPs when decoding from memory.
+    unsigned char* bmp = loadBmpFromMemory(data, width, height);
+    if (bmp) {
+        return bmp;
     }
     return stbi_load_from_memory(data.data(), (int)data.size(), width, height, nullptr, 4);
 }
