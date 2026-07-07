@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test testMultiThreaded multiThreaded jit testJit testMultiThreadedJit multiThreadedJit
+.PHONY: default all clean release test testMultiThreaded multiThreaded jit automationJit testJit testMultiThreadedJit multiThreadedJit
 
 ZIP_ASSET_FILES := $(wildcard *.zip)
 
@@ -42,6 +42,13 @@ jit: export SHELL_FILE := shell.html
 # slot arrays patched into grouped cache modules.
 jit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU32 -sEXPORTED_FUNCTIONS=_main,_wasm_jit_import_from_file,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
 jit: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
+# CI browser automation target: same single-threaded WASM JIT runtime, with
+# recorder playback enabled and --emrun so Jenkins can observe browser exit.
+automationJit: export BUILD_DIR := Build/AutomationJit
+automationJit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT -DBOXEDWINE_RECORDER $(WASM_JIT_SIMD_FLAG)
+automationJit: export SHELL_FILE := shell.html
+automationJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) --emrun -sEXIT_RUNTIME=1 -sALLOW_TABLE_GROWTH -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472 -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU32 -sEXPORTED_FUNCTIONS=_main,_wasm_jit_import_from_file,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
+automationJit: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
 # Like the test target but with the WASM JIT enabled, so the CPU test suite
 # exercises JIT-compiled blocks instead of the normal interpreter.
 testJit: export BUILD_DIR := Build/TestJit
@@ -75,7 +82,7 @@ ifneq ($(make_jobs),)
 export MAKEFLAGS := -j $(make_jobs)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
-release test testMultiThreaded testJit testMultiThreadedJit multiThreaded jit multiThreadedJit:
+release test testMultiThreaded testJit testMultiThreadedJit multiThreaded jit automationJit multiThreadedJit:
 	@$(MAKE)
 
 clean:

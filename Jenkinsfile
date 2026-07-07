@@ -389,6 +389,85 @@ pipeline {
         }
         stage ('Automation') {
             parallel {
+                stage ('Emscripten AbiWord Automation') {
+                    agent {
+                        label "emscripten"
+                    }
+                    steps {
+                        script {
+                            gitCheckout()
+                        }
+                        sh '''#!/bin/bash
+                            source ~/emsdk/emsdk_env.sh
+                            cd project/emscripten
+                            set -euo pipefail
+
+                            ABIWORD_AUTO_URL='https://boxedwine.org/v2/1/abiword_auto_v1.zip'
+                            ABIWORD_AUTO_SHA256='80dc5a5f99f23637e4eb29b72e4f5484e9c03d697e72e4e4777574985b351181'
+                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/1/boxedwine_v1.zip'
+                            BOXEDWINE_AUTO_SHA256='67742f667f989083a327d4405f7e4cd59cacea061a5936dbedcc5d47898de4d9'
+
+                            file_matches_sha256() {
+                                local file="$1"
+                                local expected_sha="$2"
+                                [ -f "$file" ] && printf '%s  %s\\n' "$expected_sha" "$file" | sha256sum -c - >/dev/null 2>&1
+                            }
+
+                            download_checked() {
+                                local url="$1"
+                                local output="$2"
+                                local expected_sha="$3"
+                                local tmp="${output}.tmp"
+
+                                if file_matches_sha256 "$output" "$expected_sha"; then
+                                    echo "$output already exists and matches expected SHA-256"
+                                    return 0
+                                fi
+
+                                echo "Downloading $output from $url"
+                                rm -f "$tmp"
+                                curl -fL --retry 3 --retry-delay 5 --connect-timeout 30 "$url" -o "$tmp"
+                                printf '%s  %s\\n' "$expected_sha" "$tmp" | sha256sum -c -
+                                mv "$tmp" "$output"
+                            }
+
+                            download_checked "$ABIWORD_AUTO_URL" abiword_auto.zip "$ABIWORD_AUTO_SHA256"
+                            download_checked "$BOXEDWINE_AUTO_URL" boxedwine.zip "$BOXEDWINE_AUTO_SHA256"
+
+                            make clean
+                            make automationJit
+
+                            last_rc=1
+                            for attempt in 1 2 3
+                            do
+                                echo "AbiWord Emscripten automation attempt ${attempt}/3"
+                                killall -9 python3 2>/dev/null || true
+                                killall -9 firefox 2>/dev/null || true
+
+                                cd Build/AutomationJit
+                                set +e
+                                emrun --kill_start --kill_exit --timeout 600 --timeout-returncode 124 --browser="/usr/bin/firefox" --browser_args="--headless" boxedwine.html?root=boxedwine\\&overlay=abiword_auto\\&w=%2Ffiles\\&play=%2Ffiles%2Fscript.txt\\&p=ABIWORD.EXE\\&resolution=1024x768\\&storage=memory
+                                rc=$?
+                                set -e
+                                cd ../..
+
+                                if [ "$rc" = "111" ]; then
+                                    echo "AbiWord Emscripten automation passed"
+                                    exit 0
+                                fi
+
+                                last_rc="$rc"
+                                echo "AbiWord Emscripten automation attempt ${attempt}/3 failed with exit code ${rc}"
+                            done
+
+                            echo "AbiWord Emscripten automation failed after 3 attempts"
+                            if [ "$last_rc" = "0" ]; then
+                                exit 1
+                            fi
+                            exit "$last_rc"
+                        '''
+                    }
+                }
                 stage ('Linux (x64) Automation') {
                     agent {
                         label "linux64"

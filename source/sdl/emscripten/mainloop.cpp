@@ -142,6 +142,9 @@ void mainloop() {
         }
 
         KNativeSystem::tick();
+#ifdef BOXEDWINE_RECORDER
+        BOXEDWINE_RECORDER_RUN_SLICE();
+#endif
 #ifdef BOXEDWINE_MULTI_THREADED
         checkWaitingNativeSockets(0);
 #endif

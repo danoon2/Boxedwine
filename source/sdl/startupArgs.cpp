@@ -311,10 +311,6 @@ bool StartUpArgs::apply() {
     if (this->recordAutomation.length()) {
         Recorder::start(this->recordAutomation);
     }
-    if (this->runAutomation.length()) {
-        Player::start(this->runAutomation);
-    }
-    BOXEDWINE_RECORDER_INIT(this->root, this->zips, this->workingDir, this->args);
 #endif
 
     klog_fmt("Using root directory: %s", root.c_str());
@@ -396,6 +392,13 @@ bool StartUpArgs::apply() {
     KSystem::title = title;
 
     buildVirtualFileSystem();
+
+#ifdef BOXEDWINE_RECORDER
+    if (this->runAutomation.length()) {
+        Player::start(this->runAutomation);
+    }
+    BOXEDWINE_RECORDER_INIT(this->root, this->zips, this->workingDir, this->args);
+#endif
 
     envValues.push_back(B("HOME=/home/username"));
     envValues.push_back(B("LOGNAME=username"));
@@ -835,6 +838,9 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                 klog_fmt("-automation directory does not exist %s", argv[i+1]);
                 return false;
             }
+            this->runAutomation = BString::copy(argv[i + 1]);
+            i++;
+        }  else if (!strcmp(argv[i], "-play")) {
             this->runAutomation = BString::copy(argv[i + 1]);
             i++;
         }

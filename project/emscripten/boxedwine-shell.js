@@ -23,6 +23,7 @@
         Config.showUploadDownload = false;
         Config.showSaveJITCache = true;
         Config.WorkingDir = "";
+        Config.PlayScript = "";
         Config.loadDesktop = false;
         Config.appSubfolder = "";
 				
@@ -46,6 +47,8 @@
             Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
             Config.ProgramArgs = getProgramArgs();
+            Config.WorkingDir = getWorkingDir();
+            Config.PlayScript = getPlayScript();
             Config.storageMode = getStorageMode();
             Config.isSoundEnabled = getSound();
             Config.recordJITCache = getJitRecord();
@@ -354,6 +357,27 @@
             }
             return result;
         }
+        function getWorkingDir() {
+            var workingDir = getParameter("w");
+            if (workingDir === "") {
+                workingDir = getParameter("workingDir");
+            }
+            if (!allowParameterOverride() || workingDir === "") {
+                return "";
+            }
+            workingDir = decodeUrlValue(workingDir);
+            console.log("setting working directory to: " + workingDir);
+            return workingDir;
+        }
+        function getPlayScript() {
+            var playScript = getParameter("play");
+            if (!allowParameterOverride() || playScript === "") {
+                return "";
+            }
+            playScript = decodeUrlValue(playScript);
+            console.log("setting automation play script to: " + playScript);
+            return playScript;
+        }
         function getAppZipFile(param) {
 
             var filename =  getParameter(param);
@@ -553,6 +577,10 @@
             }
 
             var params = getEmulatorParams();
+            if (!Module['arguments']) {
+                Module['arguments'] = [];
+            }
+            Module['arguments'].length = 0;
             for(var i=0; i < params.length; i++) {
                 Module['arguments'].push(params[i]);
             }
@@ -816,6 +844,10 @@
                 		params.push(Config.appDirPrefix);
                 	}
             	}
+            }
+            if (Config.PlayScript.length > 0) {
+                params.push("-play");
+                params.push(Config.PlayScript);
             }
         	params.push("/bin/wine");
             if(Config.Program.length > 0 && !Config.loadDesktop){

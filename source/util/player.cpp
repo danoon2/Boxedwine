@@ -20,6 +20,10 @@
 #include "knativesystem.h"
 #include "pixelMatch.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
+
 #ifdef BOXEDWINE_RECORDER
 
 #pragma warning(push)
@@ -39,12 +43,89 @@ static void flipRGBBitmap(unsigned char* data, int stride, int height) {
 
 Player* Player::instance;
 
+static BString getAutomationScriptPath(BString path, BString& directory) {
+    int lastSlash = path.lastIndexOf('/');
+    int lastBackslash = path.lastIndexOf('\\');
+    int separator = lastSlash > lastBackslash ? lastSlash : lastBackslash;
+    if (separator >= 0 && path.substr(separator + 1) == RECORDER_SCRIPT) {
+        directory = separator == 0 ? path.substr(0, 1) : path.substr(0, separator);
+        return path;
+    }
+    directory = path;
+    return path.stringByApppendingPath(RECORDER_SCRIPT);
+}
+
+static bool readVirtualFile(BString path, std::vector<U8>& data) {
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(BString::empty, path, true);
+    if (!node || node->isDirectory()) {
+        return false;
+    }
+    FsOpenNode* openNode = node->open(K_O_RDONLY);
+    if (!openNode) {
+        return false;
+    }
+    S64 fileLength = openNode->length();
+    if (fileLength < 0) {
+        openNode->close();
+        return false;
+    }
+    data.resize((size_t)fileLength);
+    U32 totalRead = 0;
+    while (totalRead < data.size()) {
+        U32 read = openNode->readNative(data.data() + totalRead, (U32)(data.size() - totalRead));
+        if (!read) {
+            break;
+        }
+        totalRead += read;
+    }
+    openNode->close();
+    data.resize(totalRead);
+    return totalRead == fileLength;
+}
+
+static void splitScriptLines(const std::vector<U8>& data, std::vector<BString>& lines) {
+    BString line;
+    for (U8 value : data) {
+        char c = (char)value;
+        if (c == '\n') {
+            lines.push_back(line);
+            line.removeAll();
+        } else if (c != '\r') {
+            line.append(c);
+        }
+    }
+    if (line.length()) {
+        lines.push_back(line);
+    }
+}
+
+static unsigned char* loadAutomationImage(Player* player, const BString& fileName, int* width, int* height) {
+    BString path = player->directory.stringByApppendingPath(fileName);
+    if (!player->useVirtualFiles) {
+        return stbi_load(path.c_str(), width, height, nullptr, 4);
+    }
+    std::vector<U8> data;
+    if (!readVirtualFile(path, data) || data.empty()) {
+        return nullptr;
+    }
+    return stbi_load_from_memory(data.data(), (int)data.size(), width, height, nullptr, 4);
+}
+
 void Player::readCommand() {
     this->nextCommand.clear();
     this->nextValue.clear();
 
     BString line;
-    if (!file.readLine(line)) {
+    bool hasLine = false;
+    if (this->useVirtualFiles) {
+        if (this->scriptLineIndex < this->scriptLines.size()) {
+            line = this->scriptLines[this->scriptLineIndex++];
+            hasLine = true;
+        }
+    } else {
+        hasLine = file.readLine(line);
+    }
+    if (!hasLine) {
         klog("script finished: success");
         this->nextCommand = B("DONE"); // will cause success exit code to be returned
         KSystem::killTime = KSystem::getMilliesSinceStart() + 30000;
@@ -76,12 +157,18 @@ void Player::readCommand() {
 
 bool Player::start(BString directory) {
     Player::instance = new Player();
-    BString script = BString(directory+"/"+RECORDER_SCRIPT);
-    instance->directory = directory;
+    BString script = getAutomationScriptPath(directory, instance->directory);
     instance->file.open(script);
+    if (!instance->file.isOpen()) {
+        std::vector<U8> scriptData;
+        if (readVirtualFile(script, scriptData)) {
+            splitScriptLines(scriptData, instance->scriptLines);
+            instance->useVirtualFiles = true;
+        }
+    }
     instance->lastCommandTime = 0;
     instance->lastScreenRead = 0;
-    if (!instance->file.isOpen()) {
+    if (!instance->file.isOpen() && instance->scriptLines.empty()) {
         klog_fmt("script not found: %s error=%d(%s)", script.c_str(), errno, strerror(errno));
         exit(100);
     } else {
@@ -121,6 +208,26 @@ static U32 outputLen;
 static std::mutex comparingCondMutex;
 static std::condition_variable comparingCond;
 
+#ifdef __EMSCRIPTEN__
+static void finishEmscriptenAutomation(U32 code) {
+    if (Player::instance) {
+        Player::instance->quit();
+    }
+    emscripten_force_exit(code);
+}
+#endif
+
+static bool compareScreenshotPixels() {
+    if (outputLen < bufferlen) {
+        if (output) {
+            delete[] output;
+        }
+        output = new U8[bufferlen];
+        outputLen = bufferlen;
+    }
+    return pixelmatch(image_data, image_width * 4, buffer, image_width * 4, image_width, image_height, output) == 0;
+}
+
 void bitmapCompareThread(Player* player) {    
     while (comparingPixels != COMPARING_PIXELS_DONE) {
         {
@@ -131,14 +238,7 @@ void bitmapCompareThread(Player* player) {
             }
             comparingPixels = COMPARING_PIXELS_WORKING;
         }
-        if (outputLen < bufferlen) {
-            if (output) {
-                delete[] output;
-            }
-            output = new U8[bufferlen];
-            outputLen = bufferlen;
-        }
-        if (pixelmatch(image_data, image_width * 4, buffer, image_width * 4, image_width, image_height, output) == 0) {
+        if (compareScreenshotPixels()) {
             std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_DONE) {
                 break;
@@ -241,7 +341,9 @@ void Player::runSlice() {
             instance->readCommand();            
         }
     } else if (this->nextCommand=="DONE") {
-        //exit(1);, let it exit gracefully
+#ifdef __EMSCRIPTEN__
+        finishEmscriptenAutomation(111);
+#endif
     } else if (this->nextCommand=="SCREENSHOT") {
         if (KSystem::getMicroCounter()<this->lastScreenRead+1000000) {
             return;
@@ -266,7 +368,11 @@ void Player::runSlice() {
                 if (image_data) {
                     free(image_data);
                 }
-                image_data = stbi_load((directory.stringByApppendingPath(fileName)).c_str(), &image_width, &image_height, nullptr, 4);
+                image_data = loadAutomationImage(this, fileName, &image_width, &image_height);
+                if (!image_data) {
+                    klog_fmt("script: screenshot image not found, %s", fileName.c_str());
+                    exit(101);
+                }
                 lastFileName = fileName;
                 U32 len = image_width * 4 * image_height;
                 if (bufferlen < len) {
@@ -287,11 +393,17 @@ void Player::runSlice() {
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
                 comparingPixels = COMPARING_PIXELS_WAITING;
-            } else if (comparingPixels == COMPARING_PIXELS_WAITING && screen->partialScreenShot(B(""), x, y, w, h, buffer, bufferlen)) {
-                if (comparingThread.native_handle() == 0) {
-                    comparingThread = std::thread(bitmapCompareThread, this);
+            } else if (comparingPixels == COMPARING_PIXELS_WAITING) {
+                if (screen->partialScreenShot(B(""), x, y, w, h, buffer, bufferlen)) {
+#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
+                    comparingPixels = compareScreenshotPixels() ? COMPARING_PIXELS_SUCCESS : COMPARING_PIXELS_WAITING;
+#else
+                    if (comparingThread.native_handle() == 0) {
+                        comparingThread = std::thread(bitmapCompareThread, this);
+                    }
+                    comparingCond.notify_one();
+#endif
                 }
-                comparingCond.notify_one();
             }
         } else if (items.size()>0) {
             BString fileName = items[0];
@@ -300,7 +412,11 @@ void Player::runSlice() {
                 if (image_data) {
                     free(image_data);
                 }
-                image_data = stbi_load((directory.stringByApppendingPath(fileName)).c_str(), &image_width, &image_height, nullptr, 4);
+                image_data = loadAutomationImage(this, fileName, &image_width, &image_height);
+                if (!image_data) {
+                    klog_fmt("script: screenshot image not found, %s", fileName.c_str());
+                    exit(101);
+                }
                 lastFileName = fileName;
                 U32 len = image_width * 4 * image_height;
                 if (bufferlen < len) {
@@ -321,11 +437,17 @@ void Player::runSlice() {
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
                 comparingPixels = COMPARING_PIXELS_WAITING;
-            } else if (comparingPixels == COMPARING_PIXELS_WAITING && screen->screenShot(B(""), buffer, bufferlen)) {
-                if (comparingThread.native_handle() == 0) {
-                    comparingThread = std::thread(bitmapCompareThread, this);
+            } else if (comparingPixels == COMPARING_PIXELS_WAITING) {
+                if (screen->screenShot(B(""), buffer, bufferlen)) {
+#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
+                    comparingPixels = compareScreenshotPixels() ? COMPARING_PIXELS_SUCCESS : COMPARING_PIXELS_WAITING;
+#else
+                    if (comparingThread.native_handle() == 0) {
+                        comparingThread = std::thread(bitmapCompareThread, this);
+                    }
+                    comparingCond.notify_one();
+#endif
                 }
-                comparingCond.notify_one();
             }
         }        
     }
@@ -361,8 +483,12 @@ void Player::runSlice() {
             screen->screenShot(B("failed.bmp"), nullptr, 0);
         }
         screen->saveBmp(B("failed_diff.bmp"), output, 32, image_width, image_height);
+#ifdef __EMSCRIPTEN__
+        finishEmscriptenAutomation(2);
+#else
         quit();
         exit(2);
+#endif
     }
 }
 
