@@ -399,6 +399,8 @@ pipeline {
                         }
                         sh '''#!/bin/bash
                             source ~/emsdk/emsdk_env.sh
+                            export DISPLAY=:0
+                            export XAUTHORITY="$HOME/.Xauthority"
                             cd project/emscripten
                             set -euo pipefail
 
@@ -442,11 +444,11 @@ pipeline {
                             do
                                 echo "AbiWord Emscripten automation attempt ${attempt}/3"
                                 killall -9 python3 2>/dev/null || true
-                                killall -9 firefox 2>/dev/null || true
+                                killall -9 chrome 2>/dev/null || true
 
                                 cd Build/AutomationJit
                                 set +e
-                                emrun --kill_start --kill_exit --timeout 600 --timeout-returncode 124 --browser="/usr/bin/firefox" --browser_args="--headless" boxedwine.html?root=boxedwine\\&overlay=abiword_auto\\&w=%2Ffiles\\&play=%2Ffiles%2Fscript.txt\\&p=ABIWORD.EXE\\&resolution=1024x768\\&storage=memory
+                                emrun --kill_start --kill_exit --port 6932 --timeout 600 --timeout-returncode 124 --browser="/usr/bin/google-chrome" boxedwine.html?root=boxedwine\\&overlay=abiword_auto\\&w=%2Ffiles\\&play=%2Ffiles%2Fscript.txt\\&p=ABIWORD.EXE\\&resolution=1024x768\\&storage=memory
                                 rc=$?
                                 set -e
                                 cd ../..
