@@ -137,7 +137,12 @@ public:
     U32 createString(KThread* thread, const BString& str);
 
     BString getModuleName(U32 eip);
-    U32 getModuleEip(U32 eip);    
+    U32 getModuleEip(U32 eip);
+    MappedFilePtr getMappedFileForRange(U32 address, U32 len);
+#ifdef __TEST
+    static MappedFilePtr selectMappedFileForRangeForTest(
+        const std::vector<MappedFilePtr>& mappings, U32 address, U32 len);
+#endif
     KFileDescriptorPtr allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);
     KFileDescriptorPtr getFileDescriptor(FD handle);
     KFileDescriptor* getFileDescriptor_nolock(FD handle);

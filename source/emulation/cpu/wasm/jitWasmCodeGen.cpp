@@ -21,7 +21,10 @@
 #ifdef BOXEDWINE_WASM_JIT
 
 #include "jitWasmCodeGen.h"
+#include "wasmJitBatchPolicy.h"
+#include "wasmModuleMerger.h"
 #include "../jit/jitCodeGen.h"
+#include "../jit/jitCodeLifecycle.h"
 #ifdef __TEST
 #include "../jit/jitFPU.h"
 #endif
@@ -35,6 +38,7 @@
 
 #include <atomic>
 #include <bit>      // std::bit_cast (C++20) — used in boxedwine_wasm_call_block
+#include <deque>
 #include <emscripten.h>
 #ifdef __TEST
 #include <type_traits>
@@ -126,6 +130,85 @@ static std::unordered_map<int, U32*> g_wasmRelocArrays;
 static std::vector<U32*> g_wasmRelocBaseByTable;
 #endif
 static inline U32 wasmJitRelocBaseForTable(int tableIndex);
+
+#ifndef BOXEDWINE_MULTI_THREADED
+enum class WasmJitPendingKind : U8 { FileBatch, TinyAnonymous };
+enum class WasmJitPendingState : U8 { Open, SealedOom };
+enum class WasmJitSealedKind : U8 { RuntimeBatch, TinyAnonymous };
+
+struct WasmJitPendingBlock {
+    U64 id = 0;
+    WasmJitPendingKind kind = WasmJitPendingKind::FileBatch;
+    WasmJitPendingState state = WasmJitPendingState::Open;
+    KMemory* memory = nullptr;
+    KProcess* process = nullptr;
+    DecodedOp* op = nullptr;
+    U32 address = 0;
+    U32 mappedFileKey = 0;
+    U32 blockOpCount = 0;
+    U32 emulatedLen = 0;
+    U32 extraHits = 0;
+    bool needsMemoryPageArrays = false;
+    std::vector<U8> bytes;
+    std::vector<U32> relocValues;
+    std::unique_ptr<U32[]> relocArray;
+};
+
+struct WasmJitSealedRequest {
+    WasmJitSealedKind kind = WasmJitSealedKind::RuntimeBatch;
+    std::vector<WasmJitBatchEntryId> entries;
+};
+
+static std::map<U64, std::unique_ptr<WasmJitPendingBlock>> g_wasmJitPendingBlocks;
+static std::unordered_map<DecodedOp*, U64> g_wasmJitPendingByOp;
+static WasmJitBatchPolicy g_wasmJitBatchPolicy;
+static U64 g_wasmJitNextPendingId = 1;
+static std::deque<WasmJitSealedRequest> g_wasmJitSealedRequests;
+static bool g_wasmJitCompilationPaused = false;
+// A release while paused unlocks exactly one browser compilation probe. The
+// first standalone, grouped, or tiny attempt consumes this token.
+static bool g_wasmJitOomRetryProbePending = false;
+static constexpr U32 WASM_JIT_TINY_ADDITIONAL_HITS = 3 * JIT_RUN_COUNT;
+
+struct WasmJitRuntimeStats {
+    U64 translatedFileBacked = 0;
+    U64 translatedAnonymous = 0;
+    U64 standaloneModules = 0;
+    U64 groupedModules = 0;
+    U64 groupedFunctions = 0;
+    U64 rawInputBytes = 0;
+    U64 mergedBytes = 0;
+    U64 countFlushes = 0;
+    U64 byteFlushes = 0;
+    U64 urgentFlushes = 0;
+    U64 processCapFlushes = 0;
+    U64 cancelledEntries = 0;
+    U64 permanentFailures = 0;
+    U64 tinyDeferred = 0;
+    U64 tinyPromoted = 0;
+    U64 oomPauses = 0;
+    U64 blockedAttempts = 0;
+    U64 oomRetries = 0;
+    U64 oomResumptions = 0;
+};
+
+static WasmJitRuntimeStats g_wasmJitRuntimeStats;
+static void wasmJitLogRuntimeStats();
+static void wasmJitMaybeLogRuntimeStats();
+
+#ifdef __TEST
+static bool g_wasmJitTestRuntimeBatchingEnabled = false;
+static S32 g_wasmJitTestMappedFileKeyOverride = -1;
+static U32 g_wasmJitTestTinyAdditionalHits = WASM_JIT_TINY_ADDITIONAL_HITS;
+#endif
+
+static void registerPendingWasmJitBlock(std::unique_ptr<WasmJitPendingBlock> pending);
+static void publishWasmJitBlock(WasmJitPendingBlock& pending, int tableIdx);
+static void failPendingWasmJitBlock(WasmJitPendingBlock& pending);
+static void erasePendingWasmJitBlock(U64 id);
+static void flushRuntimeBatch(const WasmJitFlushRequest& request);
+static void retryOldestSealedRequest();
+#endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
 // Persistent cache key -> WASM bytes. Populated on the main thread before
@@ -1247,6 +1330,9 @@ static void wasmJitProfileMaybeLog() {
              topFetchNextTarget,
              topGenericExit,
              topRmw);
+#ifndef BOXEDWINE_MULTI_THREADED
+    wasmJitLogRuntimeStats();
+#endif
 }
 
 static inline bool wasmJitProfileStartEntry() {
@@ -1591,7 +1677,23 @@ static void wasmPrepareBlockEnter(CPU* cpu, KMemoryData* memoryData) {
 EM_JS(int, boxedwine_wasm_instantiate,
       (const void* bytes, int size, const void** importFns, int importCount),
 {
+    if (Module.wasmJitReleaseGeneration === undefined) {
+        Module.wasmJitReleaseGeneration = 0;
+    }
+    var blockedGeneration = Module.wasmJitOomGeneration;
+    if (blockedGeneration !== undefined && blockedGeneration === Module.wasmJitReleaseGeneration) {
+        return -1;
+    }
+    var retryingAfterOom = blockedGeneration !== undefined;
     try {
+#ifdef __TEST
+        Module.wasmJitStandaloneModuleAttemptCount =
+            (Module.wasmJitStandaloneModuleAttemptCount || 0) + 1;
+        if (Module.wasmJitTestForceNextModuleOom) {
+            Module.wasmJitTestForceNextModuleOom = false;
+            throw new Error('out of memory');
+        }
+#endif
         var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
         var mod = new WebAssembly.Module(wasmBytes);
 
@@ -1615,6 +1717,11 @@ EM_JS(int, boxedwine_wasm_instantiate,
         if (!fn) return -1;
         var idx = addFunction(fn, 'vii');
 
+        if (retryingAfterOom) {
+            delete Module.wasmJitOomGeneration;
+            console.warn('[WASM JIT] module compilation resumed after releasing JIT code');
+        }
+
 #ifndef __TEST
         if (!Module.wasmJitStats) {
             Module.wasmJitStats = { hits: 0, misses: 0, eipMisses: 0, hashMisses: 0, stale: 0, cachedInstalls: 0, freshCompiled: 0, saved: 0, eipMissSamples: [], hashMissSamples: [] };
@@ -1629,10 +1736,181 @@ EM_JS(int, boxedwine_wasm_instantiate,
 
         return idx;
     } catch(e) {
+        var errorText = String(e);
+        if (errorText.toLowerCase().indexOf('out of memory') !== -1) {
+            var newlyPaused = Module.wasmJitOomGeneration === undefined;
+            Module.wasmJitOomGeneration = Module.wasmJitReleaseGeneration;
+            if (newlyPaused) {
+                console.warn('[WASM JIT] module compilation paused after out of memory; waiting for JIT code release');
+            }
+        }
         console.error('boxedwine_wasm_instantiate failed:', e);
         return -1;
     }
 });
+
+#ifndef BOXEDWINE_MULTI_THREADED
+static constexpr int WASM_JIT_BATCH_ERROR = -1;
+static constexpr int WASM_JIT_BATCH_PAUSED = 0;
+static constexpr int WASM_JIT_BATCH_OK = 1;
+
+EM_JS(int, boxedwine_wasm_jit_compilation_paused, (), {
+    return Module.wasmJitOomGeneration !== undefined && Module.wasmJitOomGeneration === Module.wasmJitReleaseGeneration;
+});
+
+EM_JS(void, boxedwine_wasm_log_runtime_stats,
+      (U64 compiledBlocks, U64 browserModules,
+       U64 translatedFileBacked, U64 translatedAnonymous,
+       U64 standaloneModules, U64 groupedModules, U64 groupedFunctions,
+       U64 rawInputBytes, U64 mergedBytes, U64 countFlushes,
+       U64 byteFlushes, U64 urgentFlushes, U64 processCapFlushes,
+       U64 cancelledEntries, U64 permanentFailures, U64 tinyDeferred,
+       U64 tinyPromoted, U64 oomPauses, U64 blockedAttempts,
+       U64 oomRetries, U64 oomResumptions, U64 functionsPerGroup,
+       U64 functionsPerGroupTenth), {
+    var liveGroups = Module.wasmJitRuntimeGroups ? Module.wasmJitRuntimeGroups.size : 0;
+    var groupsCreated = Module.wasmJitRuntimeGroupsCreated || 0;
+    var groupsReleased = Module.wasmJitRuntimeGroupsReleased || 0;
+    console.log('[WASM JIT batching] compiledBlocks=' + compiledBlocks +
+        ' browserModules=' + browserModules +
+        ' functionsPerGroup=' + functionsPerGroup + '.' + functionsPerGroupTenth +
+        ' mapped=' + translatedFileBacked +
+        ' anonymous=' + translatedAnonymous +
+        ' rawBytes=' + rawInputBytes +
+        ' mergedBytes=' + mergedBytes +
+        ' flushes[count=' + countFlushes +
+            ' bytes=' + byteFlushes +
+            ' urgent=' + urgentFlushes +
+            ' processCap=' + processCapFlushes + ']' +
+        ' groups[live=' + liveGroups +
+            ' created=' + groupsCreated +
+            ' released=' + groupsReleased + ']' +
+        ' cancelled=' + cancelledEntries +
+        ' failed=' + permanentFailures +
+        ' tiny[deferred=' + tinyDeferred + ' promoted=' + tinyPromoted + ']' +
+        ' oom[pauses=' + oomPauses +
+            ' blocked=' + blockedAttempts +
+            ' retries=' + oomRetries +
+            ' resumptions=' + oomResumptions + ']');
+});
+
+EM_JS(int, boxedwine_wasm_instantiate_runtime_batch, (const void* bytes, int size, const void** importFns, int importCount, int entryCount, int* outputSlots), {
+    if (Module.wasmJitReleaseGeneration === undefined) Module.wasmJitReleaseGeneration = 0;
+    if (Module.wasmJitOomGeneration === Module.wasmJitReleaseGeneration) return 0;
+    var allocated = [];
+    var groupId;
+    try {
+        Module.wasmJitRuntimeModuleAttemptCount = (Module.wasmJitRuntimeModuleAttemptCount || 0) + 1;
+#ifdef __TEST
+        if (Module.wasmJitTestForceNextModuleOom) {
+            Module.wasmJitTestForceNextModuleOom = false;
+            throw new Error('out of memory');
+        }
+#endif
+        var module = new WebAssembly.Module(new Uint8Array(HEAPU8.buffer, bytes, size));
+        var helpers = {};
+        var imports = new Int32Array(HEAP32.buffer, importFns, importCount);
+        for (var i = 0; i < importCount; ++i) helpers['fn_' + i] = wasmTable.get(imports[i]);
+        var instance = new WebAssembly.Instance(module, {
+            env: {memory: wasmMemory}, helpers: helpers
+        });
+        for (var i = 0; i < entryCount; ++i) {
+            var fn = instance.exports['b' + i];
+            if (!fn) throw new Error('missing runtime batch export b' + i);
+            allocated.push(addFunction(fn, 'vii'));
+#ifdef __TEST
+            if (Module.wasmJitTestFailBatchAfterSlots >= 0 && allocated.length >= Module.wasmJitTestFailBatchAfterSlots) {
+                throw new Error('forced partial runtime batch install failure');
+            }
+#endif
+        }
+        if (!Module.wasmJitRuntimeGroups) Module.wasmJitRuntimeGroups = new Map();
+        if (!Module.wasmJitRuntimeGroupBySlot) Module.wasmJitRuntimeGroupBySlot = new Map();
+        groupId = (Module.wasmJitRuntimeNextGroupId || 1) >>> 0;
+        Module.wasmJitRuntimeNextGroupId = (groupId + 1) >>> 0;
+        var group = {module: module, instance: instance, slots: new Set(allocated)};
+        Module.wasmJitRuntimeGroups.set(groupId, group);
+        for (var i = 0; i < allocated.length; ++i) {
+            HEAP32[(outputSlots >> 2) + i] = allocated[i];
+            Module.wasmJitRuntimeGroupBySlot.set(allocated[i], groupId);
+        }
+        Module.wasmJitRuntimeModuleCount = (Module.wasmJitRuntimeModuleCount || 0) + 1;
+        Module.wasmJitRuntimeGroupsCreated = (Module.wasmJitRuntimeGroupsCreated || 0) + 1;
+        delete Module.wasmJitOomGeneration;
+        return 1;
+    } catch (e) {
+        if (groupId !== undefined && Module.wasmJitRuntimeGroups) {
+            Module.wasmJitRuntimeGroups.delete(groupId);
+        }
+        if (Module.wasmJitRuntimeGroupBySlot) {
+            for (var i = 0; i < allocated.length; ++i) {
+                Module.wasmJitRuntimeGroupBySlot.delete(allocated[i]);
+            }
+        }
+        for (var i = 0; i < allocated.length; ++i) {
+            try { removeFunction(allocated[i]); } catch (_) {}
+        }
+        var oom = String(e).toLowerCase().indexOf('out of memory') !== -1;
+        if (oom) Module.wasmJitOomGeneration = Module.wasmJitReleaseGeneration;
+        console.error('boxedwine_wasm_instantiate_runtime_batch failed:', e);
+        return oom ? 0 : -1;
+    }
+});
+#endif
+
+#if defined(__TEST) && !defined(BOXEDWINE_MULTI_THREADED)
+EM_JS(void, boxedwine_wasm_test_force_next_module_oom, (), {
+    Module.wasmJitTestForceNextModuleOom = true;
+});
+
+EM_JS(void, boxedwine_wasm_test_reset_oom_state, (), {
+    Module.wasmJitTestForceNextModuleOom = false;
+    Module.wasmJitReleaseGeneration = 0;
+    delete Module.wasmJitOomGeneration;
+});
+
+EM_JS(void, wasmJitTestFailBatchAfterSlots, (S32 slotCount), {
+    Module.wasmJitTestFailBatchAfterSlots = slotCount;
+});
+
+EM_JS(U32, wasmJitTestRuntimeGroupCount, (), {
+    return Module.wasmJitRuntimeGroups ? Module.wasmJitRuntimeGroups.size : 0;
+});
+
+EM_JS(U32, wasmJitTestRuntimeModuleCount, (), {
+    return Module.wasmJitRuntimeModuleCount || 0;
+});
+
+EM_JS(U32, wasmJitTestRuntimeModuleAttemptCount, (), {
+    return Module.wasmJitRuntimeModuleAttemptCount || 0;
+});
+
+EM_JS(U32, wasmJitTestStandaloneModuleAttemptCount, (), {
+    return Module.wasmJitStandaloneModuleAttemptCount || 0;
+});
+
+EM_JS(U32, wasmJitTestRuntimeGroupReleaseCount, (), {
+    return Module.wasmJitRuntimeGroupsReleased || 0;
+});
+
+EM_JS(void, boxedwine_wasm_test_reset_runtime_batching_js, (), {
+    if (Module.wasmJitRuntimeGroups && Module.wasmJitRuntimeGroups.size) {
+        throw new Error('cannot reset wasm runtime batching with live groups');
+    }
+    Module.wasmJitRuntimeGroups = new Map();
+    Module.wasmJitRuntimeGroupBySlot = new Map();
+    Module.wasmJitRuntimeNextGroupId = 1;
+    Module.wasmJitRuntimeModuleCount = 0;
+    Module.wasmJitRuntimeModuleAttemptCount = 0;
+    Module.wasmJitStandaloneModuleAttemptCount = 0;
+    Module.wasmJitRuntimeGroupsCreated = 0;
+    Module.wasmJitRuntimeGroupsReleased = 0;
+    Module.wasmJitTestFailBatchAfterSlots = -1;
+    Module.wasmJitTestForceNextModuleOom = false;
+    Module.wasmJitReleaseGeneration = 0;
+    delete Module.wasmJitOomGeneration;
+});
+#endif
 
 #if !defined(BOXEDWINE_MULTI_THREADED) && !defined(__TEST)
 
@@ -1678,8 +1956,7 @@ EM_JS(int, boxedwine_wasm_profile_split_before, (U32 blockStartEip, U32 currentE
     if (target === hex32(currentEip)) {
         stats.compileStops++;
         if (stats.compileStops <= 8 || stats.compileStops % 100 === 0) {
-            console.log('[WASM JIT profile split] compile stop block=' + blockStartKey +
-                ' target=' + target + ' ' + JSON.stringify(stats));
+            console.log('[WASM JIT profile split] compile stop block=' + blockStartKey + ' target=' + target + ' ' + JSON.stringify(stats));
         }
         return 1;
     }
@@ -2649,6 +2926,8 @@ static inline void boxedwine_wasm_call_block(int tableIndex, int cpuPtr, int rel
 // a later lookup re-installs instead of returning a freed table index.
 EM_JS(void, boxedwine_wasm_free_block, (int tableIndex),
 {
+    var runtimeGroupId = Module.wasmJitRuntimeGroupBySlot
+        ? Module.wasmJitRuntimeGroupBySlot.get(tableIndex) : undefined;
     if (Module.wasmJitInstalledByTableIndex) {
         var key = Module.wasmJitInstalledByTableIndex.get(tableIndex);
         if (key !== undefined) {
@@ -2668,6 +2947,23 @@ EM_JS(void, boxedwine_wasm_free_block, (int tableIndex),
         }
     }
     removeFunction(tableIndex);
+    if (runtimeGroupId !== undefined) {
+        Module.wasmJitRuntimeGroupBySlot.delete(tableIndex);
+        var runtimeGroup = Module.wasmJitRuntimeGroups
+            ? Module.wasmJitRuntimeGroups.get(runtimeGroupId) : undefined;
+        if (runtimeGroup) {
+            runtimeGroup.slots.delete(tableIndex);
+            if (runtimeGroup.slots.size === 0) {
+                Module.wasmJitRuntimeGroups.delete(runtimeGroupId);
+                Module.wasmJitRuntimeGroupsReleased =
+                    (Module.wasmJitRuntimeGroupsReleased || 0) + 1;
+            }
+        }
+    }
+    if (Module.wasmJitReleaseGeneration === undefined) {
+        Module.wasmJitReleaseGeneration = 0;
+    }
+    Module.wasmJitReleaseGeneration++;
 });
 
 // Multi-threaded: the slot counter is monotonically increasing, so slots are
@@ -3187,6 +3483,624 @@ static const void* g_wasmHelperTable[] = {
 #endif
 };
 static constexpr int WASM_HELPER_COUNT = (int)(sizeof(g_wasmHelperTable) / sizeof(g_wasmHelperTable[0]));
+
+#ifndef BOXEDWINE_MULTI_THREADED
+static void wasmJitLogRuntimeStats() {
+    const WasmJitRuntimeStats& stats = g_wasmJitRuntimeStats;
+    U64 functionsPerGroupX10 = stats.groupedModules
+        ? stats.groupedFunctions * 10 / stats.groupedModules : 0;
+    boxedwine_wasm_log_runtime_stats(
+        stats.translatedFileBacked + stats.translatedAnonymous,
+        stats.standaloneModules + stats.groupedModules,
+        stats.translatedFileBacked, stats.translatedAnonymous,
+        stats.standaloneModules, stats.groupedModules, stats.groupedFunctions,
+        stats.rawInputBytes, stats.mergedBytes, stats.countFlushes,
+        stats.byteFlushes, stats.urgentFlushes, stats.processCapFlushes,
+        stats.cancelledEntries, stats.permanentFailures, stats.tinyDeferred,
+        stats.tinyPromoted, stats.oomPauses, stats.blockedAttempts,
+        stats.oomRetries, stats.oomResumptions, functionsPerGroupX10 / 10,
+        functionsPerGroupX10 % 10);
+}
+
+static void wasmJitMaybeLogRuntimeStats() {
+    U64 translatedBlocks = g_wasmJitRuntimeStats.translatedFileBacked +
+        g_wasmJitRuntimeStats.translatedAnonymous;
+    if (translatedBlocks && translatedBlocks % 1000 == 0) {
+        wasmJitLogRuntimeStats();
+    }
+}
+
+static void wasmJitRecordFlushReason(WasmJitFlushReason reason) {
+    switch (reason) {
+    case WasmJitFlushReason::BlockCount:
+        ++g_wasmJitRuntimeStats.countFlushes;
+        break;
+    case WasmJitFlushReason::ByteCount:
+        ++g_wasmJitRuntimeStats.byteFlushes;
+        break;
+    case WasmJitFlushReason::PendingHits:
+        ++g_wasmJitRuntimeStats.urgentFlushes;
+        break;
+    case WasmJitFlushReason::ProcessBytes:
+        ++g_wasmJitRuntimeStats.processCapFlushes;
+        break;
+    }
+}
+
+static void wasmJitRecordOomPause() {
+    if (g_wasmJitCompilationPaused) {
+        ++g_wasmJitRuntimeStats.blockedAttempts;
+    } else {
+        ++g_wasmJitRuntimeStats.oomPauses;
+    }
+    g_wasmJitCompilationPaused = true;
+}
+
+static bool wasmJitBeginOomRetryProbe() {
+    if (!g_wasmJitOomRetryProbePending) {
+        return false;
+    }
+    g_wasmJitOomRetryProbePending = false;
+    ++g_wasmJitRuntimeStats.oomRetries;
+    return true;
+}
+
+static void wasmJitRecordOomResumption(bool retryProbe) {
+    if (retryProbe) {
+        ++g_wasmJitRuntimeStats.oomResumptions;
+    }
+}
+
+static void wasmJitRecordStandaloneTranslation(U64 rawBytes, int tableIdx,
+                                                bool retryProbe) {
+    ++g_wasmJitRuntimeStats.translatedAnonymous;
+    g_wasmJitRuntimeStats.rawInputBytes += rawBytes;
+    if (tableIdx < 0 && boxedwine_wasm_jit_compilation_paused()) {
+        wasmJitRecordOomPause();
+    } else if (tableIdx >= 0) {
+        ++g_wasmJitRuntimeStats.standaloneModules;
+        wasmJitRecordOomResumption(retryProbe);
+    } else {
+        ++g_wasmJitRuntimeStats.permanentFailures;
+    }
+    wasmJitMaybeLogRuntimeStats();
+}
+
+static std::unique_ptr<U32[]> allocateWasmJitRelocArray(
+        const std::vector<U32>& relocValues) {
+    if (relocValues.empty()) {
+        return nullptr;
+    }
+    auto relocArray = std::make_unique<U32[]>(relocValues.size());
+    memcpy(relocArray.get(), relocValues.data(), relocValues.size() * sizeof(U32));
+    return relocArray;
+}
+
+static std::unique_ptr<U32[]> takeWasmJitRelocArray(WasmJitPendingBlock& pending) {
+    if (pending.relocArray) {
+        return std::move(pending.relocArray);
+    }
+    return allocateWasmJitRelocArray(pending.relocValues);
+}
+
+static bool isNestedWasmJitEntry(const WasmJitPendingBlock& pending, DecodedOp* op) {
+    return op != pending.op &&
+        ((op->flags2 & OP_FLAG2_WASM_JIT_PENDING) ||
+         (op->pfnJitCode && op->pfn == pending.process->startJITOp));
+}
+
+static void markPendingBlock(WasmJitPendingBlock& pending) {
+    pending.op->blockLen = pending.emulatedLen;
+    pending.op->blockOpCount = pending.blockOpCount;
+    pending.op->runCount = JIT_RUN_COUNT;
+    DecodedOp* cur = pending.op;
+    for (U32 i = 0; i < pending.blockOpCount && cur; ++i) {
+        DecodedOp* owner = cur->blockStart;
+        if (!owner || owner->blockLen < pending.emulatedLen) {
+            owner = pending.op;
+        }
+        cur->blockStart = owner;
+        if (cur == pending.op) {
+            cur->pfnJitCode = nullptr;
+            cur->flags &= ~OP_FLAG_JIT;
+            cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+            cur->flags2 |= OP_FLAG2_WASM_JIT_PENDING;
+        }
+        cur = cur->next;
+    }
+}
+
+static void registerPendingWasmJitBlock(std::unique_ptr<WasmJitPendingBlock> pending) {
+    markPendingBlock(*pending);
+    g_wasmJitPendingByOp[pending->op] = pending->id;
+    g_wasmJitPendingBlocks[pending->id] = std::move(pending);
+}
+
+static void publishWasmJitBlock(WasmJitPendingBlock& pending, int tableIdx) {
+    std::unique_ptr<U32[]> relocArr = takeWasmJitRelocArray(pending);
+    if (relocArr) {
+        if ((size_t)tableIdx >= g_wasmRelocBaseByTable.size()) {
+            g_wasmRelocBaseByTable.resize(tableIdx + 1, nullptr);
+        }
+        if (g_wasmRelocBaseByTable[tableIdx]) {
+            relocArr.reset();
+        } else {
+            g_wasmRelocBaseByTable[tableIdx] = relocArr.release();
+        }
+    }
+
+    pending.op->blockLen = pending.emulatedLen;
+    pending.op->blockOpCount = pending.blockOpCount;
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    wasmJitProfileCompiledBlock(pending.blockOpCount);
+#endif
+    DecodedOp* cur = pending.op;
+    for (U32 i = 0; i < pending.blockOpCount && cur; ++i) {
+        DecodedOp* owner = cur->blockStart;
+        if (!owner || owner->blockLen < pending.emulatedLen) {
+            owner = pending.op;
+        }
+        cur->blockStart = owner;
+
+        if (cur == pending.op) {
+            cur->pfnJitCode = (void*)(uintptr_t)(U32)tableIdx;
+            cur->flags |= OP_FLAG_JIT;
+            cur->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+            cur->pfn = pending.process->startJITOp;
+            if (pending.needsMemoryPageArrays) {
+                cur->flags2 |= OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+            } else {
+                cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+            }
+        } else if (!isNestedWasmJitEntry(pending, cur)) {
+            cur->pfnJitCode = nullptr;
+            cur->flags &= ~OP_FLAG_JIT;
+            cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+            cur->pfn = NormalCPU::getFunctionForOp(cur);
+        }
+        cur = cur->next;
+    }
+}
+
+static void failPendingWasmJitBlock(WasmJitPendingBlock& pending) {
+    DecodedOp* cur = pending.op;
+    for (U32 i = 0; i < pending.blockOpCount && cur; ++i) {
+        if (!isNestedWasmJitEntry(pending, cur)) {
+            cur->pfnJitCode = nullptr;
+            cur->pfn = NormalCPU::getFunctionForOp(cur);
+            cur->flags &= ~OP_FLAG_JIT;
+            cur->flags2 &= ~(OP_FLAG2_WASM_JIT_PENDING | OP_FLAG2_WASM_JIT_MEM_ARRAYS);
+            cur->runCount = JIT_RUN_COUNT + 1;
+            if (cur->blockStart == pending.op) {
+                cur->blockStart = nullptr;
+                cur->blockOpCount = 0;
+                cur->blockLen = 0;
+            }
+        }
+        cur = cur->next;
+    }
+}
+
+static void erasePendingWasmJitBlock(U64 id) {
+    auto found = g_wasmJitPendingBlocks.find(id);
+    if (found == g_wasmJitPendingBlocks.end()) {
+        return;
+    }
+    auto byOp = g_wasmJitPendingByOp.find(found->second->op);
+    if (byOp != g_wasmJitPendingByOp.end() && byOp->second == id) {
+        g_wasmJitPendingByOp.erase(byOp);
+    }
+    if (found->second->kind == WasmJitPendingKind::FileBatch) {
+        g_wasmJitBatchPolicy.cancel(id);
+    }
+    g_wasmJitPendingBlocks.erase(found);
+}
+
+static void failRuntimeBatch(const std::vector<WasmJitBatchEntryId>& liveIds,
+                             const char* stage, const char* detail = nullptr) {
+    if (detail) {
+        klog_fmt("[WASM JIT batch] %s failed: %s", stage, detail);
+    } else {
+        klog_fmt("[WASM JIT batch] %s failed", stage);
+    }
+    for (WasmJitBatchEntryId id : liveIds) {
+        auto found = g_wasmJitPendingBlocks.find(id);
+        if (found != g_wasmJitPendingBlocks.end()) {
+            ++g_wasmJitRuntimeStats.permanentFailures;
+            failPendingWasmJitBlock(*found->second);
+            erasePendingWasmJitBlock(id);
+        }
+    }
+}
+
+static void flushRuntimeBatch(const WasmJitFlushRequest& request) {
+    std::vector<WasmJitBatchEntryId> liveIds;
+    std::vector<WasmJitMergeInput> inputs;
+    liveIds.reserve(request.entries.size());
+    inputs.reserve(request.entries.size());
+    for (WasmJitBatchEntryId id : request.entries) {
+        auto found = g_wasmJitPendingBlocks.find(id);
+        if (found != g_wasmJitPendingBlocks.end()) {
+            liveIds.push_back(id);
+            inputs.push_back({&found->second->bytes});
+        }
+    }
+    if (liveIds.empty()) {
+        return;
+    }
+
+    std::vector<U8> merged;
+    BString error;
+    if (!wasmJitMergeModules(inputs, merged, error)) {
+        failRuntimeBatch(liveIds, "merge", error.c_str());
+        return;
+    }
+
+    std::vector<int> slots(liveIds.size(), -1);
+    bool retryProbe = wasmJitBeginOomRetryProbe();
+    int result = boxedwine_wasm_instantiate_runtime_batch(
+        merged.data(), (int)merged.size(), g_wasmHelperTable,
+        WASM_HELPER_COUNT, (int)liveIds.size(), slots.data());
+    if (result == WASM_JIT_BATCH_PAUSED) {
+        wasmJitRecordOomPause();
+        for (WasmJitBatchEntryId id : liveIds) {
+            auto found = g_wasmJitPendingBlocks.find(id);
+            if (found != g_wasmJitPendingBlocks.end()) {
+                found->second->state = WasmJitPendingState::SealedOom;
+            }
+        }
+        return;
+    }
+    if (result == WASM_JIT_BATCH_ERROR) {
+        failRuntimeBatch(liveIds, "runtime install");
+        return;
+    }
+    if (result != WASM_JIT_BATCH_OK) {
+        failRuntimeBatch(liveIds, "runtime install status");
+        return;
+    }
+    g_wasmJitCompilationPaused = false;
+    wasmJitRecordOomResumption(retryProbe);
+    ++g_wasmJitRuntimeStats.groupedModules;
+    g_wasmJitRuntimeStats.groupedFunctions += liveIds.size();
+    g_wasmJitRuntimeStats.mergedBytes += merged.size();
+
+    for (size_t i = 0; i < liveIds.size(); ++i) {
+        auto found = g_wasmJitPendingBlocks.find(liveIds[i]);
+        if (found != g_wasmJitPendingBlocks.end()) {
+            publishWasmJitBlock(*found->second, slots[i]);
+        }
+    }
+    for (WasmJitBatchEntryId id : liveIds) {
+        erasePendingWasmJitBlock(id);
+    }
+}
+
+static bool retainedEntriesStillPending(const std::vector<WasmJitBatchEntryId>& entries) {
+    for (WasmJitBatchEntryId id : entries) {
+        if (g_wasmJitPendingBlocks.find(id) != g_wasmJitPendingBlocks.end()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void attemptTinyAnonymousPromotion(WasmJitPendingBlock& pending,
+                                          bool retainOnOom) {
+    bool retryProbe = wasmJitBeginOomRetryProbe();
+    int tableIdx = boxedwine_wasm_instantiate(
+        pending.bytes.data(), (int)pending.bytes.size(),
+        g_wasmHelperTable, WASM_HELPER_COUNT);
+    if (tableIdx >= 0) {
+        g_wasmJitCompilationPaused = false;
+        wasmJitRecordOomResumption(retryProbe);
+        ++g_wasmJitRuntimeStats.standaloneModules;
+        ++g_wasmJitRuntimeStats.tinyPromoted;
+        U64 id = pending.id;
+        publishWasmJitBlock(pending, tableIdx);
+        erasePendingWasmJitBlock(id);
+    } else if (boxedwine_wasm_jit_compilation_paused()) {
+        wasmJitRecordOomPause();
+        pending.state = WasmJitPendingState::SealedOom;
+        if (retainOnOom) {
+            g_wasmJitSealedRequests.push_back(
+                {WasmJitSealedKind::TinyAnonymous, {pending.id}});
+        }
+    } else {
+        U64 id = pending.id;
+        ++g_wasmJitRuntimeStats.permanentFailures;
+        failPendingWasmJitBlock(pending);
+        erasePendingWasmJitBlock(id);
+    }
+}
+
+static void retryOldestSealedRequest() {
+    while (!g_wasmJitSealedRequests.empty()) {
+        WasmJitSealedRequest& sealed = g_wasmJitSealedRequests.front();
+        std::vector<WasmJitBatchEntryId>& entries = sealed.entries;
+        entries.erase(std::remove_if(entries.begin(), entries.end(),
+            [](WasmJitBatchEntryId id) {
+                return g_wasmJitPendingBlocks.find(id) == g_wasmJitPendingBlocks.end();
+            }), entries.end());
+        if (!entries.empty()) {
+            if (sealed.kind == WasmJitSealedKind::RuntimeBatch) {
+                WasmJitFlushRequest request;
+                request.entries = entries;
+                flushRuntimeBatch(request);
+            } else {
+                auto found = g_wasmJitPendingBlocks.find(entries.front());
+                if (found != g_wasmJitPendingBlocks.end()) {
+                    attemptTinyAnonymousPromotion(*found->second, false);
+                }
+            }
+            if (!retainedEntriesStillPending(entries)) {
+                g_wasmJitSealedRequests.pop_front();
+            }
+            return;
+        }
+        g_wasmJitSealedRequests.pop_front();
+    }
+}
+
+static void queueRuntimeFlushes(const std::vector<WasmJitFlushRequest>& flushes) {
+    bool processNow = g_wasmJitSealedRequests.empty();
+    for (const WasmJitFlushRequest& request : flushes) {
+        wasmJitRecordFlushReason(request.reason);
+        g_wasmJitSealedRequests.push_back(
+            {WasmJitSealedKind::RuntimeBatch, request.entries});
+    }
+    if (!processNow) {
+        return;
+    }
+    while (!g_wasmJitSealedRequests.empty()) {
+        WasmJitFlushRequest request;
+        request.entries = g_wasmJitSealedRequests.front().entries;
+        flushRuntimeBatch(request);
+        if (retainedEntriesStillPending(request.entries)) {
+            break;
+        }
+        g_wasmJitSealedRequests.pop_front();
+    }
+}
+
+static void submitPendingWasmJitBlock(CPU* cpu, DecodedOp* op, U32 address,
+                                      U32 blockOpCount, U32 emulatedLen,
+                                      U32 mappedFileKey, WasmJitPendingKind kind,
+                                      bool needsMemoryPageArrays,
+                                      std::vector<U8>&& bytes,
+                                      std::vector<U32>&& relocValues) {
+    auto pending = std::make_unique<WasmJitPendingBlock>();
+    pending->id = g_wasmJitNextPendingId++;
+    pending->kind = kind;
+    pending->memory = cpu->memory;
+    pending->process = cpu->thread->process.get();
+    pending->op = op;
+    pending->address = address;
+    pending->mappedFileKey = mappedFileKey;
+    pending->blockOpCount = blockOpCount;
+    pending->emulatedLen = emulatedLen;
+    pending->needsMemoryPageArrays = needsMemoryPageArrays;
+    pending->bytes = std::move(bytes);
+    pending->relocValues = std::move(relocValues);
+    U64 id = pending->id;
+    U64 byteCount = pending->bytes.size();
+    WasmJitBatchKey key{pending->memory, pending->mappedFileKey};
+    WasmJitPendingKind pendingKind = pending->kind;
+    if (pendingKind == WasmJitPendingKind::FileBatch) {
+        ++g_wasmJitRuntimeStats.translatedFileBacked;
+    } else {
+        ++g_wasmJitRuntimeStats.translatedAnonymous;
+        ++g_wasmJitRuntimeStats.tinyDeferred;
+    }
+    g_wasmJitRuntimeStats.rawInputBytes += byteCount;
+    registerPendingWasmJitBlock(std::move(pending));
+    if (pendingKind == WasmJitPendingKind::FileBatch) {
+        queueRuntimeFlushes(g_wasmJitBatchPolicy.enqueue(id, key, byteCount));
+    }
+    wasmJitMaybeLogRuntimeStats();
+}
+
+static void removePendingFromSealedRequests(WasmJitBatchEntryId id) {
+    for (auto sealed = g_wasmJitSealedRequests.begin();
+            sealed != g_wasmJitSealedRequests.end();) {
+        sealed->entries.erase(
+            std::remove(sealed->entries.begin(), sealed->entries.end(), id),
+            sealed->entries.end());
+        if (sealed->entries.empty()) {
+            sealed = g_wasmJitSealedRequests.erase(sealed);
+        } else {
+            ++sealed;
+        }
+    }
+}
+
+static void cancelPendingWasmJitBlock(WasmJitBatchEntryId id, DecodedOp* liveOp) {
+    auto found = g_wasmJitPendingBlocks.find(id);
+    if (found == g_wasmJitPendingBlocks.end()) {
+        if (liveOp) {
+            liveOp->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+        }
+        return;
+    }
+    DecodedOp* pendingOp = found->second->op;
+    auto byOp = g_wasmJitPendingByOp.find(pendingOp);
+    if (byOp != g_wasmJitPendingByOp.end() && byOp->second == id) {
+        g_wasmJitPendingByOp.erase(byOp);
+    }
+    if (found->second->kind == WasmJitPendingKind::FileBatch) {
+        g_wasmJitBatchPolicy.cancel(id);
+    }
+    removePendingFromSealedRequests(id);
+    if (pendingOp) {
+        pendingOp->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+    }
+    if (liveOp && liveOp != pendingOp) {
+        liveOp->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+    }
+    ++g_wasmJitRuntimeStats.cancelledEntries;
+    g_wasmJitPendingBlocks.erase(found);
+}
+
+void wasmJitHandlePendingHit(CPU* cpu, DecodedOp* op) {
+    auto byOp = g_wasmJitPendingByOp.find(op);
+    if (byOp == g_wasmJitPendingByOp.end()) {
+        op->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+        return;
+    }
+    auto found = g_wasmJitPendingBlocks.find(byOp->second);
+    if (found == g_wasmJitPendingBlocks.end()) {
+        g_wasmJitPendingByOp.erase(byOp);
+        op->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+        return;
+    }
+    if (found->second->memory != cpu->memory ||
+            found->second->state != WasmJitPendingState::Open) {
+        return;
+    }
+    WasmJitPendingBlock& pending = *found->second;
+    if (pending.kind == WasmJitPendingKind::TinyAnonymous) {
+        if (pending.extraHits != std::numeric_limits<U32>::max()) {
+            ++pending.extraHits;
+        }
+#ifdef __TEST
+        U32 additionalHitTarget = g_wasmJitTestTinyAdditionalHits;
+#else
+        constexpr U32 additionalHitTarget = WASM_JIT_TINY_ADDITIONAL_HITS;
+#endif
+        if (pending.extraHits < additionalHitTarget) {
+            return;
+        }
+        attemptTinyAnonymousPromotion(pending, true);
+        return;
+    }
+
+    WasmJitFlushRequest flush;
+    if (g_wasmJitBatchPolicy.recordPendingHit(pending.id, flush)) {
+        queueRuntimeFlushes({flush});
+    }
+}
+
+static void wasmJitCancelPendingBlock(DecodedOp* op) {
+    if (!op) {
+        return;
+    }
+    auto byOp = g_wasmJitPendingByOp.find(op);
+    if (byOp == g_wasmJitPendingByOp.end()) {
+        op->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+        return;
+    }
+    cancelPendingWasmJitBlock(byOp->second, op);
+}
+
+static void wasmJitCancelPendingMemory(KMemory* memory) {
+    std::vector<WasmJitBatchEntryId> ids;
+    for (const auto& pending : g_wasmJitPendingBlocks) {
+        if (pending.second->memory == memory) {
+            ids.push_back(pending.first);
+        }
+    }
+    for (WasmJitBatchEntryId id : ids) {
+        auto found = g_wasmJitPendingBlocks.find(id);
+        DecodedOp* op = found != g_wasmJitPendingBlocks.end()
+            ? found->second->op : nullptr;
+        cancelPendingWasmJitBlock(id, op);
+    }
+}
+
+bool wasmJitCompilationPaused() {
+    return g_wasmJitCompilationPaused;
+}
+
+#ifdef __TEST
+void wasmJitTestEnableRuntimeBatching(bool enabled) {
+    g_wasmJitTestRuntimeBatchingEnabled = enabled;
+}
+
+void wasmJitTestSetBatchLimits(const WasmJitBatchLimits& limits) {
+    g_wasmJitBatchPolicy.reset(limits);
+}
+
+void wasmJitTestSetMappedFileKeyOverride(S32 mappedFileKey) {
+    g_wasmJitTestMappedFileKeyOverride = mappedFileKey;
+}
+
+void wasmJitTestSetTinyAdditionalHits(U32 hits) {
+    g_wasmJitTestTinyAdditionalHits = hits;
+}
+
+void wasmJitTestResetRuntimeBatching() {
+    for (auto& pending : g_wasmJitPendingBlocks) {
+        failPendingWasmJitBlock(*pending.second);
+    }
+    g_wasmJitPendingBlocks.clear();
+    g_wasmJitPendingByOp.clear();
+    g_wasmJitBatchPolicy.reset();
+    g_wasmJitSealedRequests.clear();
+    g_wasmJitCompilationPaused = false;
+    g_wasmJitOomRetryProbePending = false;
+    g_wasmJitTestRuntimeBatchingEnabled = false;
+    g_wasmJitTestMappedFileKeyOverride = -1;
+    g_wasmJitTestTinyAdditionalHits = WASM_JIT_TINY_ADDITIONAL_HITS;
+    g_wasmJitRuntimeStats = {};
+    boxedwine_wasm_test_reset_runtime_batching_js();
+}
+
+U32 wasmJitTestPendingCount() {
+    return (U32)g_wasmJitPendingBlocks.size();
+}
+
+U32 wasmJitTestSealedCount() {
+    return (U32)g_wasmJitSealedRequests.size();
+}
+
+U64 wasmJitTestPendingRawBytes() {
+    U64 result = 0;
+    for (const auto& pending : g_wasmJitPendingBlocks) {
+        result += pending.second->bytes.size();
+    }
+    return result;
+}
+
+bool wasmJitTestRelocAllocationTransfer() {
+    WasmJitPendingBlock pending;
+    pending.relocValues = {0x11223344, 0x55667788};
+    pending.relocArray = allocateWasmJitRelocArray(pending.relocValues);
+    U32* lookupPointer = pending.relocArray.get();
+    std::unique_ptr<U32[]> publicationArray = takeWasmJitRelocArray(pending);
+    return lookupPointer && publicationArray.get() == lookupPointer &&
+        publicationArray[0] == 0x11223344 && publicationArray[1] == 0x55667788 &&
+        !pending.relocArray;
+}
+
+U32 wasmJitTestStandaloneModuleCount() {
+    return (U32)g_wasmJitRuntimeStats.standaloneModules;
+}
+
+WasmJitRuntimeStatsSnapshot wasmJitTestGetRuntimeStats() {
+    WasmJitRuntimeStatsSnapshot snapshot;
+    snapshot.translatedFileBacked = g_wasmJitRuntimeStats.translatedFileBacked;
+    snapshot.translatedAnonymous = g_wasmJitRuntimeStats.translatedAnonymous;
+    snapshot.standaloneModules = g_wasmJitRuntimeStats.standaloneModules;
+    snapshot.groupedModules = g_wasmJitRuntimeStats.groupedModules;
+    snapshot.groupedFunctions = g_wasmJitRuntimeStats.groupedFunctions;
+    snapshot.rawInputBytes = g_wasmJitRuntimeStats.rawInputBytes;
+    snapshot.mergedBytes = g_wasmJitRuntimeStats.mergedBytes;
+    snapshot.countFlushes = g_wasmJitRuntimeStats.countFlushes;
+    snapshot.byteFlushes = g_wasmJitRuntimeStats.byteFlushes;
+    snapshot.urgentFlushes = g_wasmJitRuntimeStats.urgentFlushes;
+    snapshot.processCapFlushes = g_wasmJitRuntimeStats.processCapFlushes;
+    snapshot.cancelledEntries = g_wasmJitRuntimeStats.cancelledEntries;
+    snapshot.permanentFailures = g_wasmJitRuntimeStats.permanentFailures;
+    snapshot.tinyDeferred = g_wasmJitRuntimeStats.tinyDeferred;
+    snapshot.tinyPromoted = g_wasmJitRuntimeStats.tinyPromoted;
+    snapshot.oomPauses = g_wasmJitRuntimeStats.oomPauses;
+    snapshot.blockedAttempts = g_wasmJitRuntimeStats.blockedAttempts;
+    snapshot.oomRetries = g_wasmJitRuntimeStats.oomRetries;
+    snapshot.oomResumptions = g_wasmJitRuntimeStats.oomResumptions;
+    return snapshot;
+}
+#endif
+#endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
 // Get or build the per-(group, process) state: zero-filled reloc arrays for
@@ -10020,10 +10934,22 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     // hash guards the chain; cache zips are per-build artifacts), so its slot
     // layout matches the one this codegen pass just produced.
     U32* relocArr = nullptr;
+#ifdef BOXEDWINE_MULTI_THREADED
     if (!m_relocValues.empty()) {
         relocArr = new U32[m_relocValues.size()];
         memcpy(relocArr, m_relocValues.data(), m_relocValues.size() * sizeof(U32));
     }
+#else
+    std::unique_ptr<U32[]> immediateRelocArray;
+#ifndef __TEST
+    if (wasmJitPersistenceActive()) {
+        // A cache/group hit publishes immediately. Give the lookup the exact
+        // allocation that publication will register for this table slot so
+        // no JS-created cached state can retain transient vector storage.
+        immediateRelocArray = allocateWasmJitRelocArray(m_relocValues);
+    }
+#endif
+#endif
 
     // Pass the helper function table to the JS instantiator.
     // In pthreads builds use the Atomics-based allocator; in single-threaded
@@ -10125,20 +11051,19 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     if (wasmJitPersistenceActive()) {
         tableIdx = boxedwine_wasm_lookup_cached(
             cacheEip, blockHash, g_wasmHelperTable, WASM_HELPER_COUNT,
-            (U32)(uintptr_t)relocArr, (U32)m_relocValues.size(),
+            (U32)(uintptr_t)immediateRelocArray.get(),
+            (U32)m_relocValues.size(),
             // Per-process identity: DecodedOp pointers are only meaningful
             // within one guest address space, so grouped reloc state is
             // keyed by the KMemory that owns this block.
             (U32)(uintptr_t)cpu->memory);
     }
     if (tableIdx < 0) {
-        tableIdx = boxedwine_wasm_instantiate(
-            m_wasmBinary.data(),
-            (int)m_wasmBinary.size(),
-            g_wasmHelperTable,
-            WASM_HELPER_COUNT
-        );
-        if (tableIdx >= 0 && wasmJitPersistenceActive()) {
+        MappedFilePtr mappedFile = cpu->thread->process->getMappedFileForRange(
+            this->startingEip, this->emulatedLen);
+        // Record the original standalone module before either online policy
+        // can move its bytes or attempt browser compilation.
+        if (wasmJitPersistenceActive()) {
             boxedwine_wasm_save_block(
                 cacheEip,
                 blockHash,
@@ -10157,18 +11082,73 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
                 (U32)(uintptr_t)&contextTimeRemaining,
                 (U32)m_relocValues.size());
         }
+        if (mappedFile) {
+            submitPendingWasmJitBlock(
+                cpu, op, this->startingEip, this->blockOpCount,
+                this->emulatedLen, mappedFile->key,
+                WasmJitPendingKind::FileBatch,
+                m_needsWasmMemoryPageArrays,
+                std::move(m_wasmBinary), std::move(m_relocValues));
+            return;
+        }
+        if (this->blockOpCount < 4) {
+            submitPendingWasmJitBlock(
+                cpu, op, this->startingEip, this->blockOpCount,
+                this->emulatedLen, 0, WasmJitPendingKind::TinyAnonymous,
+                m_needsWasmMemoryPageArrays,
+                std::move(m_wasmBinary), std::move(m_relocValues));
+            return;
+        }
+        bool retryProbe = wasmJitBeginOomRetryProbe();
+        tableIdx = boxedwine_wasm_instantiate(
+            m_wasmBinary.data(),
+            (int)m_wasmBinary.size(),
+            g_wasmHelperTable,
+            WASM_HELPER_COUNT
+        );
+        wasmJitRecordStandaloneTranslation(
+            m_wasmBinary.size(), tableIdx, retryProbe);
     }
   #else
+    if (g_wasmJitTestRuntimeBatchingEnabled) {
+        S32 mappedFileKey = g_wasmJitTestMappedFileKeyOverride;
+        if (mappedFileKey < 0) {
+            MappedFilePtr mappedFile = cpu->thread->process->getMappedFileForRange(
+                this->startingEip, this->emulatedLen);
+            mappedFileKey = mappedFile ? (S32)mappedFile->key : 0;
+        }
+        if (mappedFileKey || this->blockOpCount < 4) {
+            submitPendingWasmJitBlock(
+                cpu, op, this->startingEip, this->blockOpCount, this->emulatedLen,
+                (U32)mappedFileKey,
+                mappedFileKey ? WasmJitPendingKind::FileBatch
+                              : WasmJitPendingKind::TinyAnonymous,
+                m_needsWasmMemoryPageArrays,
+                std::move(m_wasmBinary), std::move(m_relocValues));
+            return;
+        }
+    }
+    bool retryProbe = wasmJitBeginOomRetryProbe();
     int tableIdx = boxedwine_wasm_instantiate(
         m_wasmBinary.data(),
         (int)m_wasmBinary.size(),
         g_wasmHelperTable,
         WASM_HELPER_COUNT
     );
+    wasmJitRecordStandaloneTranslation(
+        m_wasmBinary.size(), tableIdx, retryProbe);
   #endif
 #endif
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileAddElapsed(g_wasmJitProfileInstantiateUs, instantiateStartUs);
+#endif
+
+#ifndef BOXEDWINE_MULTI_THREADED
+    if (tableIdx >= 0) {
+        g_wasmJitCompilationPaused = false;
+    } else if (boxedwine_wasm_jit_compilation_paused()) {
+        g_wasmJitCompilationPaused = true;
+    }
 #endif
 
     if (tableIdx < 0) {
@@ -10251,6 +11231,24 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     }
 #endif
 
+#ifndef BOXEDWINE_MULTI_THREADED
+    WasmJitPendingBlock published;
+    published.memory = cpu->memory;
+    published.process = cpu->thread->process.get();
+    published.op = op;
+    published.address = this->startingEip;
+    published.blockOpCount = this->blockOpCount;
+    published.emulatedLen = this->emulatedLen;
+    published.needsMemoryPageArrays = m_needsWasmMemoryPageArrays;
+    published.relocValues = std::move(m_relocValues);
+    published.relocArray = std::move(immediateRelocArray);
+    publishWasmJitBlock(published, tableIdx);
+    m_profileSplitTargetOp = nullptr;
+    m_profileSplitBlockStartEip = 0;
+    m_profileSplitTargetEip = 0;
+    return;
+#endif
+
     // Walk all ops in this block. The first op gets the startJITOp entry;
     // interior ops keep normal dispatch and only record the owner block.
     // The owner's invalidation sweep frees any subblock table entries it
@@ -10300,7 +11298,41 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
 // Factory function: create a new WASM JIT backend instance.
 // This is called by the shared JIT infrastructure in jitCodeGen.cpp.
 // ---------------------------------------------------------------------------
+static void wasmJitCodeInvalidated(
+        KMemory* memory, const std::vector<DecodedOp*>& decodedOps) {
+    KThread* thread = KThread::currentThread();
+    if (thread && thread->memory == memory && thread->cpu) {
+        DecodedOp* activeBlock = thread->cpu->wasmJitActiveBlock;
+        if (activeBlock && std::find(decodedOps.begin(), decodedOps.end(),
+                activeBlock) != decodedOps.end()) {
+            thread->cpu->wasmJitBailout = 1;
+        }
+    }
+#ifndef BOXEDWINE_MULTI_THREADED
+    for (DecodedOp* op : decodedOps) {
+        wasmJitCancelPendingBlock(op);
+    }
+#endif
+}
+
+static void wasmJitMemoryInvalidated(KMemory* memory) {
+#ifndef BOXEDWINE_MULTI_THREADED
+    wasmJitCancelPendingMemory(memory);
+#else
+    (void)memory;
+#endif
+}
+
+static void registerWasmJitLifecycleCallbacks() {
+    static std::once_flag callbacksInitFlag;
+    std::call_once(callbacksInitFlag, []() {
+        setJitLifecycleCallbacks({
+            wasmJitCodeInvalidated, wasmJitMemoryInvalidated, false});
+    });
+}
+
 JitCodeGen* startNewJIT(CPU* cpu) {
+    registerWasmJitLifecycleCallbacks();
     return new JitWasmCodeGen(cpu);
 }
 
@@ -10324,6 +11356,9 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
     // A parent block can contain subblock entries with distinct wasmTable
     // indexes, so dedupe before freeing.
     std::set<int> seen;
+#ifndef BOXEDWINE_MULTI_THREADED
+    bool releasedSlot = false;
+#endif
     for (void* p : jitOps) {
         if (!p) continue;
         int tableIdx = (int)(uintptr_t)p;
@@ -10340,6 +11375,7 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
 #endif
 #else
             boxedwine_wasm_free_block(tableIdx);
+            releasedSlot = true;
             // The function is now unreachable (removeFunction); release its
             // relocation slot array. Every pointer in it shared this block's
             // lifetime, so nothing else can reference the array.
@@ -10351,6 +11387,16 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
 #endif
         }
     }
+#ifndef BOXEDWINE_MULTI_THREADED
+    if (releasedSlot) {
+        bool wasPaused = g_wasmJitCompilationPaused;
+        g_wasmJitCompilationPaused = false;
+        if (wasPaused) {
+            g_wasmJitOomRetryProbePending = true;
+        }
+        retryOldestSealedRequest();
+    }
+#endif
 }
 
 // ---------------------------------------------------------------------------

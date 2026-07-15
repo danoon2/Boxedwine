@@ -25,6 +25,7 @@
 #include "cpu/testCMov.h"
 #include "cpu/testCmp.h"
 #include "cpu/testCPU.h"
+#include "cpu/testWasmJitBatch.h"
 #include "cpu/testFPU.h"
 #include "cpu/testIncDec.h"
 #include "cpu/testJmp.h"
@@ -64,6 +65,16 @@ const TestEntry TEST_ENTRIES[] = {
     {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT subblock entries and invalidation"},
+#endif
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+    {testWasmJitModuleMerger, "Test WASM JIT runtime module merger"},
+    {testWasmJitBatchPolicy, "Test WASM JIT runtime batch policy"},
+    {testWasmJitMappedFileRange, "Test WASM JIT mapped file range"},
+    {testWasmJitRuntimeGrouping, "Test WASM JIT runtime grouping"},
+    {testWasmJitPendingLifecycle, "Test WASM JIT pending lifecycle"},
+    {testWasmJitTinyAnonymousPromotion, "Test WASM JIT tiny anonymous promotion"},
+    {testWasmJitGroupedOomRecovery, "Test WASM JIT grouped OOM recovery"},
+    {testWasmJitOomRetryAfterRelease, "Test WASM JIT OOM retry after release"},
 #endif
 #ifdef BOXEDWINE_JIT
     {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},

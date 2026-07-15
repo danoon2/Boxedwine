@@ -20,9 +20,48 @@
 
 #ifdef BOXEDWINE_JIT
 #include "jitCodeGen.h"
+#include "jitCodeLifecycle.h"
 #include "../normal/normalCPU.h"
 #include "jitFlags.h"
 #include "../../softmmu/kmemory_soft.h"
+
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+void wasmJitHandlePendingHit(CPU* cpu, DecodedOp* op);
+bool wasmJitCompilationPaused();
+#endif
+
+void clearJitBlock(const std::vector<void*>& jitOps);
+
+static JitLifecycleCallbacks g_jitLifecycleCallbacks;
+
+void setJitLifecycleCallbacks(const JitLifecycleCallbacks& callbacks) {
+    g_jitLifecycleCallbacks = callbacks;
+}
+
+bool jitUsesCodeMemory() {
+    return g_jitLifecycleCallbacks.usesCodeMemory;
+}
+
+void jitCodeInvalidated(KMemory* memory,
+                        const std::vector<DecodedOp*>& decodedOps,
+                        const std::vector<void*>& jitEntries) {
+    if (g_jitLifecycleCallbacks.codeInvalidated) {
+        g_jitLifecycleCallbacks.codeInvalidated(memory, decodedOps);
+    }
+    if (!jitEntries.empty()) {
+        clearJitBlock(jitEntries);
+    }
+}
+
+void jitMemoryInvalidated(KMemory* memory,
+                          const std::vector<void*>& jitEntries) {
+    if (g_jitLifecycleCallbacks.memoryInvalidated) {
+        g_jitLifecycleCallbacks.memoryInvalidated(memory);
+    }
+    if (!jitEntries.empty()) {
+        clearJitBlock(jitEntries);
+    }
+}
 
 static JitCodeGen::OpFunction dynamicOps[NUMBER_OF_OPS];
 static std::once_flag dynamicOpsInitFlag;
@@ -735,21 +774,36 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
 }
 
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+    if (op->flags2 & OP_FLAG2_WASM_JIT_PENDING) {
+        wasmJitHandlePendingHit(cpu, op);
+    } else if (!wasmJitCompilationPaused()) {
+#endif
 #ifdef __TEST
-    bool shouldStartJit = op->runCount == 0;
+        bool shouldStartJit = op->runCount == 0;
 #else
-    // done check is for long blocks that get broken up, affects f-22/f-16
-    bool shouldStartJit = op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT);
-#endif    
-    if (shouldStartJit) {
-        startNewJIT(cpu, cpu->getEipAddress(), op);
+        // done check is for long blocks that get broken up, affects f-22/f-16
+        bool shouldStartJit = op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT);
+#endif
+        if (shouldStartJit) {
+            startNewJIT(cpu, cpu->getEipAddress(), op);
+        }
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
     }
+#endif
 #ifdef _DEBUG
     if (op->pfnJitCode && cpu->calculateCF[0] == nullptr) {
         //kpanic("firstDynamicOp");
     }
 #endif
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+    if (!(op->flags2 & OP_FLAG2_WASM_JIT_PENDING) &&
+            !wasmJitCompilationPaused() && op->runCount != 0xff) {
+        op->runCount++;
+    }
+#else
     op->runCount++;
+#endif
 #ifdef BOXEDWINE_WASM_JIT
     // Callback ops store the callback address in pfn, so dispatch warmup ops
     // through the normal table until the op is replaced with startJITOp.

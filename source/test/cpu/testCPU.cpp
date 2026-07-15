@@ -15,6 +15,12 @@
 #if defined(BOXEDWINE_JIT_ARMV8)
 #include "../../emulation/cpu/armv8/jitArmV8CodeGen.h"
 #endif
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+#include "../../emulation/cpu/wasm/jitWasmCodeGen.h"
+#endif
+#ifdef BOXEDWINE_WASM_JIT
+#include "../../emulation/cpu/jit/jitCodeLifecycle.h"
+#endif
 #include <atomic>
 #include <cstdarg>
 #include <cstdio>
@@ -252,6 +258,10 @@ void testWasmJitOnlyBlockEntryIsCallable() {
     testPushCode8(0x42); // inc edx
     testRunCPU();
 
+    if (jitUsesCodeMemory()) {
+        testFail("wasm jit entries are not backed by native code memory");
+    }
+
     DecodedOp* first = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
     DecodedOp* second = first ? first->next : nullptr;
     DecodedOp* third = second ? second->next : nullptr;
@@ -393,6 +403,94 @@ void testWasmJitOnlyBlockEntryIsCallable() {
     }
     if (context.memory->readw(TEST_HEAP_ADDRESS + 0x200 + 7 * 8 + 6) == 0x5678) {
         testFail("wasm jit call must not use callee-clobbered esi");
+    }
+#endif
+}
+
+void testWasmJitOomRetryAfterRelease() {
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+
+    testNewInstruction(0);
+    wasmJitTestResetRuntimeBatching();
+    boxedwine_wasm_test_reset_oom_state();
+    struct ResetOomState {
+        ~ResetOomState() {
+            wasmJitTestResetRuntimeBatching();
+            boxedwine_wasm_test_reset_oom_state();
+        }
+    } resetOomState;
+
+    U32 addresses[5];
+    for (U32& address : addresses) {
+        address = context.codeIp;
+        testPushCode8(0x40); // inc eax
+        testPushCode8(0xcd);
+        testPushCode8(0x97); // TestEnd
+    }
+
+    auto compileBlock = [&](U32 address) -> DecodedOp* {
+        DecodedOp* op = cpu->getOp(address, 0);
+        if (!op) {
+            testFail("wasm jit OOM recovery decode at %x", address);
+            return nullptr;
+        }
+        startNewJIT(cpu, address, op);
+        return op;
+    };
+    auto isJitBlock = [&](DecodedOp* op) {
+        return op && op->pfn == cpu->thread->process->startJITOp && op->pfnJitCode && (op->flags & OP_FLAG_JIT);
+    };
+
+    DecodedOp* releasable = compileBlock(addresses[0]);
+    if (!isJitBlock(releasable)) {
+        testFail("wasm jit OOM recovery setup block compiled");
+        return;
+    }
+    WasmJitRuntimeStatsSnapshot stats = wasmJitTestGetRuntimeStats();
+    U64 rawBytesPerBlock = stats.rawInputBytes;
+    if (stats.translatedAnonymous != 1 || stats.translatedFileBacked != 0 || stats.standaloneModules != 1 || rawBytesPerBlock == 0) {
+        testFail("wasm jit standalone OOM statistics setup");
+    }
+
+    boxedwine_wasm_test_force_next_module_oom();
+    DecodedOp* oomBlock = compileBlock(addresses[1]);
+    if (isJitBlock(oomBlock)) {
+        testFail("wasm jit forced OOM falls back to interpreter");
+    }
+    stats = wasmJitTestGetRuntimeStats();
+    if (stats.translatedAnonymous != 2 || stats.rawInputBytes != rawBytesPerBlock * 2 || stats.oomRetries != 0 || stats.oomResumptions != 0) {
+        testFail("wasm jit standalone OOM translation statistics");
+    }
+
+    DecodedOp* blockedBlock = compileBlock(addresses[2]);
+    if (isJitBlock(blockedBlock)) {
+        testFail("wasm jit OOM blocks compilation until release");
+    }
+    stats = wasmJitTestGetRuntimeStats();
+    if (stats.translatedAnonymous != 3 || stats.rawInputBytes != rawBytesPerBlock * 3 || stats.oomRetries != 0 || stats.oomResumptions != 0) {
+        testFail("wasm jit blocked standalone translation statistics");
+    }
+
+    context.memory->removeCodeBlock(addresses[0], releasable, false);
+
+    DecodedOp* retryBlock = compileBlock(addresses[3]);
+    if (!isJitBlock(retryBlock)) {
+        testFail("wasm jit release permits one recovery probe");
+    }
+    stats = wasmJitTestGetRuntimeStats();
+    if (stats.translatedAnonymous != 4 || stats.rawInputBytes != rawBytesPerBlock * 4 || stats.oomRetries != 1 || stats.oomResumptions != 1) {
+        testFail("wasm jit standalone OOM retry statistics");
+    }
+
+    DecodedOp* continuedBlock = compileBlock(addresses[4]);
+    if (!isJitBlock(continuedBlock)) {
+        testFail("wasm jit successful OOM recovery resumes compilation");
+    }
+    stats = wasmJitTestGetRuntimeStats();
+    if (stats.translatedAnonymous != 5 || stats.rawInputBytes != rawBytesPerBlock * 5 || stats.oomRetries != 1 || stats.oomResumptions != 1) {
+        testFail("wasm jit resumed standalone statistics");
     }
 #endif
 }

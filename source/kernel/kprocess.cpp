@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -663,7 +663,7 @@ BString KProcess::getModuleName(U32 eip) {
     return B("Unknown");
 }
 
-U32 KProcess::getModuleEip(U32 eip) {    
+U32 KProcess::getModuleEip(U32 eip) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
         std::shared_ptr<MappedFile> mappedFile = n.value;
@@ -671,6 +671,41 @@ U32 KProcess::getModuleEip(U32 eip) {
             return (U32)(eip-mappedFile->address+mappedFile->offset);
     }
     return 0;
+}
+
+static MappedFilePtr selectMappedFileForRange(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len) {
+    U64 start = address;
+    U64 end = start + len;
+    if (len == 0 || end > 0x100000000ULL) {
+        return nullptr;
+    }
+
+    MappedFilePtr result;
+    for (const MappedFilePtr& mapping : mappings) {
+        if (mapping && start >= mapping->address && end <= mapping->address + mapping->len && (!result || mapping->key > result->key)) {
+            result = mapping;
+        }
+    }
+    return result;
+}
+
+#ifdef __TEST
+MappedFilePtr KProcess::selectMappedFileForRangeForTest(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len) {
+    return selectMappedFileForRange(mappings, address, len);
+}
+#endif
+
+MappedFilePtr KProcess::getMappedFileForRange(U32 address, U32 len) {
+    std::vector<MappedFilePtr> mappings;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
+        for (auto& n : this->mappedFiles) {
+            if (n.value) {
+                mappings.push_back(n.value);
+            }
+        }
+    }
+    return selectMappedFileForRange(mappings, address, len);
 }
 
 U32 KProcess::alarm(U32 seconds) {

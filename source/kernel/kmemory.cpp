@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,10 @@
 #include "../emulation/softmmu/soft_copy_on_write_page.h"
 #include "../emulation/cpu/normal/normalCPU.h"
 
+#ifdef BOXEDWINE_JIT
+#include "../emulation/cpu/jit/jitCodeLifecycle.h"
+#endif
+
 MappedFileCache::~MappedFileCache() {
     for (RamPage& page : data) {
         ramPageRelease(page);
@@ -40,6 +44,9 @@ KMemory::KMemory(KProcess* process) : process(process) {
 
 KMemory::~KMemory() {
     if (data) {
+#ifdef BOXEDWINE_JIT
+        jitMemoryInvalidated(this, {});
+#endif
         delete data;
     }
     if (deleteOnNextLoop) {
@@ -50,6 +57,9 @@ KMemory::~KMemory() {
 void KMemory::cleanup() {
     BOXEDWINE_CRITICAL_SECTION;
     if (data) {
+#ifdef BOXEDWINE_JIT
+        jitMemoryInvalidated(this, {});
+#endif
         delete data;
         data = nullptr;
     }
@@ -337,6 +347,9 @@ void KMemory::preflightWrite(U32 address, U32 len) {
 }
 
 void KMemory::execvReset(bool cloneVM) {
+#ifdef BOXEDWINE_JIT
+    jitMemoryInvalidated(this, {});
+#endif
     if (!cloneVM) {
         data->execvReset();
     } else {
@@ -491,21 +504,13 @@ void KMemory::threadCleanup(U32 threadId) {
     }
 }
 
-#if defined(BOXEDWINE_JIT)
-extern void clearJitBlock(const std::vector<void*>& jitOps);
-#endif
-
 void KMemory::clearOpCache() {
 #if defined(BOXEDWINE_JIT)
-    // Collect JIT block pointers before the op cache frees the DecodedOps,
-    // then hand them to clearJitBlock so the backend can release resources
-    // (e.g. wasmTable entries for the WASM JIT). Without this, every
-    // __TEST-mode newInstruction() call leaks one compiled module.
+    // Collect installed entries before the cache frees the DecodedOps, then
+    // notify the selected backend so it can also discard unpublished work.
     std::vector<void*> jitOps;
     data->opCache.collectAllJitBlocks(jitOps);
-    if (!jitOps.empty()) {
-        clearJitBlock(jitOps);
-    }
+    jitMemoryInvalidated(this, jitOps);
 #endif
     data->opCache.clear();
 }
@@ -537,14 +542,10 @@ void KMemory::clearJit(DecodedOp* op) {
         nextOp->runCount = 0;
         nextOp = nextOp->next;
     }
-    // WASM JIT stores a wasmTable index in pfnJitCode, not a codeMemory ptr.
-    // clearJitBlock already released the table entry; skip the heap free.
-#ifndef BOXEDWINE_WASM_JIT
-    data->codeMemory.free(start);
-#endif
+    if (start && jitUsesCodeMemory()) {
+        data->codeMemory.free(start);
+    }
 }
-
-void clearJitBlock(const std::vector<void*>& jitOps);
 
 void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     DecodedOp* blockOp = op->blockStart;
@@ -556,21 +557,9 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     void* pMem = (void*)blockOp->pfnJitCode;
     U32 jitLen = 0;
 
-#ifdef BOXEDWINE_WASM_JIT
-    DecodedOp* activeBlock = thread->cpu->wasmJitActiveBlock;
-    if (activeBlock) {
-        DecodedOp* blockSearchOp = blockOp;
-        for (U32 i = 0; i < blockOpCount && blockSearchOp; i++) {
-            if (blockSearchOp == activeBlock) {
-                thread->cpu->wasmJitBailout = 1;
-                break;
-            }
-            blockSearchOp = blockSearchOp->next;
-        }
-    }
-#endif
-
     std::vector<void*> jitOps;
+    std::vector<DecodedOp*> decodedOps;
+    decodedOps.reserve(blockOpCount);
     for (U32 i = 0; i < blockOpCount; i++) {
         if (nextOp->blockStart != blockOp && nextOp->inst != Done) {
             kpanic("KMemory::removeCodeBlock nextOp->blockStart");
@@ -584,26 +573,21 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
         nextOp->flags &= ~OP_FLAG_JIT;
         if (nextOp->pfnJitCode) {
-            jitOps.push_back(nextOp->pfnJitCode);            
+            jitOps.push_back(nextOp->pfnJitCode);
         }
+        decodedOps.push_back(nextOp);
         jitLen += nextOp->jitLen;
         nextOp->pfnJitCode = nullptr;
         nextOp->jitLen = 0;
         nextOp = nextOp->next;
     }
-    if (jitOps.size()) {
-        clearJitBlock(jitOps);
-    }
+    jitCodeInvalidated(this, decodedOps, jitOps);
     if (clearOps) {
         data->opCache.remove(address, blockLen, false);
     }        
-    // WASM JIT stores a wasmTable index in pfnJitCode, not a codeMemory ptr.
-    // clearJitBlock above already released the table entry; skip heap free.
-#ifndef BOXEDWINE_WASM_JIT
-    if (pMem) {
+    if (pMem && jitUsesCodeMemory()) {
         data->codeMemory.free(pMem);
     }
-#endif
 #ifdef _DEBUG1
     klog_fmt("removed active code block eip = %x - %x host %llx - %llx", thread->cpu->getEipAddress(), thread->cpu->getEipAddress() + blockLen, (U64)pMem, (U64)pMem + jitLen);
 #endif

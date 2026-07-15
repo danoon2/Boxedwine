@@ -21,13 +21,12 @@
  *
  * Design overview
  * ---------------
- * Each compiled basic block becomes a standalone WASM module containing one
- * function: `execute(cpu_ptr: i32, reloc_base: i32)`.  On first call (runCount == JIT_RUN_COUNT)
- * the WASM binary is compiled and instantiated via WebAssembly.Module +
- * WebAssembly.Instance (synchronous, as in the QEMU wasm64 backend).  The
- * resulting function is added to Emscripten's wasmTable and the table index is
- * stored in DecodedOp::pfnJitCode.  Subsequent calls go through
- * wasmStartJITOp() which reads that index and calls the compiled function.
+ * Each compiled basic block first becomes a raw one-function WASM module.
+ * Depending on its origin and runtime policy, that module is either compiled
+ * and installed standalone or merged with other modules into a bounded runtime
+ * group.  The resulting function export is added to Emscripten's wasmTable and
+ * its table index is stored in DecodedOp::pfnJitCode.  Subsequent calls go
+ * through wasmStartJITOp(), which reads that index and calls the function.
  *
  * Register model
  * --------------
@@ -1072,8 +1071,65 @@ protected:
 extern "C" int  boxedwine_wasm_instantiate(const void* bytes, int size,
                                             const void** importFns, int importCount);
 
+#ifndef BOXEDWINE_MULTI_THREADED
+extern "C" int boxedwine_wasm_instantiate_runtime_batch(const void* bytes, int size, const void** importFns, int importCount, int entryCount, int* outputSlots);
+#endif
+
 // Release a compiled block (remove from wasmTable).
 extern "C" void boxedwine_wasm_free_block(int tableIndex);
+
+#ifndef BOXEDWINE_MULTI_THREADED
+void wasmJitHandlePendingHit(CPU* cpu, DecodedOp* op);
+bool wasmJitCompilationPaused();
+#endif
+
+#if defined(__TEST) && !defined(BOXEDWINE_MULTI_THREADED)
+extern "C" void boxedwine_wasm_test_force_next_module_oom();
+extern "C" void boxedwine_wasm_test_reset_oom_state();
+
+struct WasmJitBatchLimits;
+
+void wasmJitTestEnableRuntimeBatching(bool enabled);
+void wasmJitTestSetBatchLimits(const WasmJitBatchLimits& limits);
+void wasmJitTestSetMappedFileKeyOverride(S32 mappedFileKey);
+void wasmJitTestSetTinyAdditionalHits(U32 hits);
+extern "C" void wasmJitTestFailBatchAfterSlots(S32 slotCount);
+void wasmJitTestResetRuntimeBatching();
+U32 wasmJitTestPendingCount();
+bool wasmJitTestRelocAllocationTransfer();
+U32 wasmJitTestSealedCount();
+extern "C" U32 wasmJitTestRuntimeGroupCount();
+extern "C" U32 wasmJitTestRuntimeModuleCount();
+extern "C" U32 wasmJitTestRuntimeModuleAttemptCount();
+extern "C" U32 wasmJitTestStandaloneModuleAttemptCount();
+U32 wasmJitTestStandaloneModuleCount();
+extern "C" U32 wasmJitTestRuntimeGroupReleaseCount();
+U64 wasmJitTestPendingRawBytes();
+
+struct WasmJitRuntimeStatsSnapshot {
+    U64 translatedFileBacked = 0;
+    U64 translatedAnonymous = 0;
+    U64 standaloneModules = 0;
+    U64 groupedModules = 0;
+    U64 groupedFunctions = 0;
+    U64 rawInputBytes = 0;
+    U64 mergedBytes = 0;
+    U64 countFlushes = 0;
+    U64 byteFlushes = 0;
+    U64 urgentFlushes = 0;
+    U64 processCapFlushes = 0;
+    U64 cancelledEntries = 0;
+    U64 permanentFailures = 0;
+    U64 tinyDeferred = 0;
+    U64 tinyPromoted = 0;
+    U64 oomPauses = 0;
+    U64 blockedAttempts = 0;
+    U64 oomRetries = 0;
+    U64 oomResumptions = 0;
+};
+
+WasmJitRuntimeStatsSnapshot wasmJitTestGetRuntimeStats();
+#endif
 
 // The static OpCallback used as startJITOp for WASM-compiled blocks.
 void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op);
