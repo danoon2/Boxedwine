@@ -23,8 +23,7 @@ multiThreaded: export BUILD_DIR := Build/MultiThreaded
 multiThreaded: export SHELL_FILE := shell.html
 multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-multithreaded-audio.js
 multiThreaded: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
-# WASM JIT build: emits each basic block as a raw one-function WASM module,
-# then installs it standalone or merges it into a bounded runtime group.
+# WASM JIT build: emits each basic block as a raw one-function WASM module, then installs it standalone or merges it into a bounded runtime group.
 # Key flags:
 #   BOXEDWINE_WASM_JIT       – enables the new wasm/ JIT backend
 #   BOXEDWINE_JIT            – pulled in automatically by boxedwine.h

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,12 +21,7 @@
  *
  * Design overview
  * ---------------
- * Each compiled basic block first becomes a raw one-function WASM module.
- * Depending on its origin and runtime policy, that module is either compiled
- * and installed standalone or merged with other modules into a bounded runtime
- * group.  The resulting function export is added to Emscripten's wasmTable and
- * its table index is stored in DecodedOp::pfnJitCode.  Subsequent calls go
- * through wasmStartJITOp(), which reads that index and calls the function.
+ * Each compiled basic block first becomes a raw one-function WASM module. Depending on its origin and runtime policy, that module is either compiled and installed standalone or merged with other modules into a bounded runtime group. The resulting function export is added to Emscripten's wasmTable and its table index is stored in DecodedOp::pfnJitCode. Subsequent calls go through wasmStartJITOp(), which reads that index and calls the function.
  *
  * Register model
  * --------------

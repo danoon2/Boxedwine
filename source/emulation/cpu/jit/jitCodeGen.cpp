@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -42,9 +42,7 @@ bool jitUsesCodeMemory() {
     return g_jitLifecycleCallbacks.usesCodeMemory;
 }
 
-void jitCodeInvalidated(KMemory* memory,
-                        const std::vector<DecodedOp*>& decodedOps,
-                        const std::vector<void*>& jitEntries) {
+void jitCodeInvalidated(KMemory* memory, const std::vector<DecodedOp*>& decodedOps, const std::vector<void*>& jitEntries) {
     if (g_jitLifecycleCallbacks.codeInvalidated) {
         g_jitLifecycleCallbacks.codeInvalidated(memory, decodedOps);
     }
@@ -53,8 +51,7 @@ void jitCodeInvalidated(KMemory* memory,
     }
 }
 
-void jitMemoryInvalidated(KMemory* memory,
-                          const std::vector<void*>& jitEntries) {
+void jitMemoryInvalidated(KMemory* memory, const std::vector<void*>& jitEntries) {
     if (g_jitLifecycleCallbacks.memoryInvalidated) {
         g_jitLifecycleCallbacks.memoryInvalidated(memory);
     }
@@ -797,8 +794,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
     }
 #endif
 #if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
-    if (!(op->flags2 & OP_FLAG2_WASM_JIT_PENDING) &&
-            !wasmJitCompilationPaused() && op->runCount != 0xff) {
+    if (!(op->flags2 & OP_FLAG2_WASM_JIT_PENDING) && !wasmJitCompilationPaused() && op->runCount != 0xff) {
         op->runCount++;
     }
 #else

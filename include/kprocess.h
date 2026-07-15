@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -140,8 +140,7 @@ public:
     U32 getModuleEip(U32 eip);
     MappedFilePtr getMappedFileForRange(U32 address, U32 len);
 #ifdef __TEST
-    static MappedFilePtr selectMappedFileForRangeForTest(
-        const std::vector<MappedFilePtr>& mappings, U32 address, U32 len);
+    static MappedFilePtr selectMappedFileForRangeForTest(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len);
 #endif
     KFileDescriptorPtr allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);
     KFileDescriptorPtr getFileDescriptor(FD handle);
