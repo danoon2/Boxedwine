@@ -65,6 +65,7 @@ const TestEntry TEST_ENTRIES[] = {
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT subblock entries and invalidation"},
 #endif
+    {testFlagsAcrossIndirectJitBlockBoundary, "Test flags across indirect JIT block boundary"},
 #ifdef BOXEDWINE_JIT
     {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},
 #endif

@@ -397,6 +397,93 @@ void testWasmJitOnlyBlockEntryIsCallable() {
 #endif
 }
 
+namespace {
+
+constexpr U32 CROSS_BLOCK_FLAGS_TARGET_OFFSET = 0x100;
+constexpr U32 CROSS_BLOCK_FLAGS_MASK = CF | PF | AF | ZF | SF | OF;
+
+void padCrossBlockFlagsCodeToTarget() {
+    TestContext& context = testContext();
+    while (context.codeIp < TEST_CODE_ADDRESS + CROSS_BLOCK_FLAGS_TARGET_OFFSET) {
+        testPushCode8(0x90); // nop
+    }
+}
+
+void verifyCrossBlockJitEntries(const char* name) {
+#ifdef BOXEDWINE_JIT
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* consumer = context.memory->getDecodedOp(TEST_CODE_ADDRESS + CROSS_BLOCK_FLAGS_TARGET_OFFSET);
+
+    if (!producer || !consumer) {
+        testFail("%s metadata decode", name);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode) {
+        testFail("%s producer compiled entry", name);
+    }
+    if (consumer->pfn != cpu->thread->process->startJITOp || !consumer->pfnJitCode) {
+        testFail("%s consumer compiled entry", name);
+    }
+    if (producer->blockStart != producer) {
+        testFail("%s producer owns block", name);
+    }
+    if (consumer->blockStart != consumer) {
+        testFail("%s consumer owns block", name);
+    }
+    if (producer->pfnJitCode && producer->pfnJitCode == consumer->pfnJitCode) {
+        testFail("%s producer and consumer use distinct compiled entries", name);
+    }
+#else
+    (void)name;
+#endif
+}
+
+void runCrossBlockFlagsCase(const U8* producerCode, U32 producerCodeLen, U32 initialFlags,
+                            U32 esi, U32 edi, U32 expectedEsi, U32 expectedFlags,
+                            const char* name) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+
+    testNewInstruction((int)initialFlags);
+    cpu->reg[0].u32 = CROSS_BLOCK_FLAGS_TARGET_OFFSET; // eax: indirect jump target
+    cpu->reg[6].u32 = esi;
+    cpu->reg[7].u32 = edi;
+
+    for (U32 i = 0; i < producerCodeLen; ++i) {
+        testPushCode8(producerCode[i]);
+    }
+    testPushCode8(0xff); // jmp eax
+    testPushCode8(0xe0);
+    padCrossBlockFlagsCodeToTarget();
+    testPushCode8(0x9c); // pushfd
+    testPushCode8(0x5b); // pop ebx
+
+    testRunCPU();
+
+    if (cpu->reg[6].u32 != expectedEsi) {
+        testFail("%s result", name);
+    }
+    if (((cpu->reg[3].u32 ^ expectedFlags) & CROSS_BLOCK_FLAGS_MASK) != 0) {
+        testFail("%s flags", name);
+    }
+    verifyCrossBlockJitEntries(name);
+}
+
+}
+
+void testFlagsAcrossIndirectJitBlockBoundary() {
+    static const U8 incEsi[] = {0x46};
+    runCrossBlockFlagsCase(incEsi, sizeof(incEsi), CROSS_BLOCK_FLAGS_MASK,
+                           0, 0, 1, CF, "cross-block inc/pushfd");
+
+    static const U8 subEsiEdi[] = {0x29, 0xfe};
+    runCrossBlockFlagsCase(subEsiEdi, sizeof(subEsiEdi), ZF | OF,
+                           0, 1, 0xffffffff, CF | PF | AF | SF,
+                           "cross-block sub/pushfd");
+}
+
 void testJitOverlappingDirectJumpTarget() {
 #ifdef BOXEDWINE_JIT
     CPU* cpu = testContext().cpu;

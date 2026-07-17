@@ -47,6 +47,7 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
 bool testIsFastMode();
 void testSetFastMode(bool fast);
 void testWasmJitOnlyBlockEntryIsCallable();
+void testFlagsAcrossIndirectJitBlockBoundary();
 void testJitOverlappingDirectJumpTarget();
 bool testShouldRunRegister(bool fast, int reg);
 bool testShouldRunRegisterPair(bool fast, int dst, int src);
