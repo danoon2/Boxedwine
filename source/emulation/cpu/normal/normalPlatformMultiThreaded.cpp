@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,30 +21,19 @@
 #if defined(BOXEDWINE_JIT_ARMV8)
 #include "../armv8/jitArmV8CodeGen.h"
 #endif
+#ifdef BOXEDWINE_JIT
+#include "../jit/jitCodeLifecycle.h"
+#endif
 
 #if defined(BOXEDWINE_MULTI_THREADED)
 
 std::atomic<int> platformThreadCount = 0;
 void platformInitExceptionHandling();
 
-// Helper path for the emscripten builds, which compile with global
-// -fwasm-exceptions (project/emscripten/makefile), where try{}/catch(...) is a
-// near-zero-cost WASM catch_all. The hot worker loop runs in a force-noinline
-// platformThreadRun(); platformThread() keeps the catch hoisted above it, and the
-// page-fault throw (KThread::seg_*: throw 1/2) unwinds out of platformThreadRun()
-// into that catch. This noinline-split structure measured ~4 PERF_W95 points faster
-// for multiThreadedJit than an inline per-block try{ cpu->run(); } (75 -> 79), and
-// ~neutral for the normal-core multiThreaded.
-#ifdef __EMSCRIPTEN__
-#if defined(_MSC_VER)
-#define BOXEDWINE_NOINLINE __declspec(noinline)
-#else
-#define BOXEDWINE_NOINLINE __attribute__((noinline))
-#endif
-
 // inline (not noinline): runs after every cpu->run() in the hot loop, so an
 // out-of-line call here would cost a call per dispatch (measurably slower on the
-// fast JIT). Only platformThreadRun is force-noinline (see above).
+// fast JIT). Keeping the try/catch outside the noinline platformThreadRun measured
+// ~4 PERF_W95 points faster for multiThreadedJit and is also valid on native hosts.
 static inline bool platformThreadShouldStop(CPU* cpu) {
 #ifdef __TEST
     if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
@@ -58,12 +47,11 @@ static inline bool platformThreadShouldStop(CPU* cpu) {
     return cpu->thread->terminating;
 }
 
-static BOXEDWINE_NOINLINE void platformThreadRun(CPU* cpu) {
+static NO_INLINE void platformThreadRun(CPU* cpu) {
     do {
         cpu->run();
     } while (!platformThreadShouldStop(cpu));
 }
-#endif
 
 static void platformThread(CPU* cpu) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
@@ -83,10 +71,6 @@ static void platformThread(CPU* cpu) {
 			kpanic_fmt("Failed to get first op for thread %d of process %d at address %x", cpu->thread->id, process->id, cpu->getEipAddress());
 		}
     }
-#ifdef __EMSCRIPTEN__
-    // emscripten: hot loop runs in platformThreadRun() (force-noinline); only a
-    // thrown page fault returns control here, where we recover nextOp and re-run
-    // the stop check exactly as the per-block loop below would.
     while (true) {
         try {
             platformThreadRun(cpu);
@@ -105,31 +89,6 @@ static void platformThread(CPU* cpu) {
             }
         }
     }
-#else
-    while (true) {
-        try {
-            cpu->run();
-        } catch (...) {
-            if (!cpu->thread->terminating) {
-                cpu->nextOp = cpu->getNextOp();
-            }
-        }
-#ifdef __TEST
-        if (cpu->nextOp->inst == TestEnd) {
-            return;
-        }
-        continue;
-#else
-        if (cpu->thread->process->terminated) {
-            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
-            cpu->memory->cleanup();
-        }
-        if (cpu->thread->terminating) {
-            break;
-        }
-#endif
-    }
-#endif
 
     cpu->thread->cleanup();
 
@@ -141,32 +100,35 @@ static void platformThread(CPU* cpu) {
     }
 }
 
+static void* platformThreadStart(void* arg) {
+    platformThread((CPU*)arg);
+    return nullptr;
+}
+
 #ifdef __TEST
 void initThreadForTesting() {
 }
 
 void joinThread(KThread* thread) {
-    std::thread* cppThread = (std::thread*)thread->cpu->nativeHandle;
-    cppThread->join();
-    delete cppThread;
+    platformJoinThread(thread);
 }
 #endif
-
-void platformSetThreadDescription(KThread* thread);
 
 void scheduleThread(KThread* thread) {
     platformThreadCount++;
     CPU* cpu = thread->cpu;
-#ifdef __TEST
-    cpu->nativeHandle = (U64)new std::thread(platformThread, cpu);
-#else
-    std::thread cppThread = std::thread(platformThread, cpu);
-    cpu->nativeHandle = (U64)cppThread.native_handle();
-#if defined(_DEBUG) && defined(BOXEDWINE_MSVC)
-    platformSetThreadDescription(thread);
+#ifdef BOXEDWINE_JIT
+    jitThreadStartPreparing(cpu);
 #endif
-    cppThread.detach();
+    S32 result = platformStartThread(thread, platformThreadStart);
+    if (result) {
+#ifdef BOXEDWINE_JIT
+        jitThreadStartCancelled(cpu);
 #endif
+        platformThreadCount--;
+        kpanic_fmt("platformStartThread failed: %d", result);
+        return;
+    }
     if (!thread->process->isSystemProcess() && KSystem::cpuAffinityCountForApp) {
         Platform::setCpuAffinityForThread(thread, KSystem::cpuAffinityCountForApp);
     }

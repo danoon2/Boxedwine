@@ -25,9 +25,11 @@
 #include "jitFlags.h"
 #include "../../softmmu/kmemory_soft.h"
 
-#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+#ifdef BOXEDWINE_WASM_JIT
 void wasmJitHandlePendingHit(CPU* cpu, DecodedOp* op);
+#ifndef BOXEDWINE_MULTI_THREADED
 bool wasmJitCompilationPaused();
+#endif
 #endif
 
 void clearJitBlock(const std::vector<void*>& jitOps);
@@ -57,6 +59,18 @@ void jitMemoryInvalidated(KMemory* memory, const std::vector<void*>& jitEntries)
     }
     if (!jitEntries.empty()) {
         clearJitBlock(jitEntries);
+    }
+}
+
+void jitThreadStartPreparing(CPU* cpu) {
+    if (g_jitLifecycleCallbacks.threadStartPreparing) {
+        g_jitLifecycleCallbacks.threadStartPreparing(cpu);
+    }
+}
+
+void jitThreadStartCancelled(CPU* cpu) {
+    if (g_jitLifecycleCallbacks.threadStartCancelled) {
+        g_jitLifecycleCallbacks.threadStartCancelled(cpu);
     }
 }
 
@@ -713,8 +727,8 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
 
 void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
-    // did another thread beat us to JITing this block?
-    if (op->flags & OP_FLAG_JIT) {
+    // Did another thread beat us to compiling or queueing this block?
+    if ((op->flags & OP_FLAG_JIT) || (op->flags2 & OP_FLAG2_WASM_JIT_PENDING)) {
         // this will get triggered a few times, especially during shutdown
         // I have see this in firefight installer at the end and opentdd start up
         return;
@@ -771,11 +785,31 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
 }
 
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
-#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+    bool allowStartJit = true;
+    bool executePendingNormally = false;
+#ifdef BOXEDWINE_WASM_JIT
     if (op->flags2 & OP_FLAG2_WASM_JIT_PENDING) {
+#ifdef BOXEDWINE_MULTI_THREADED
+        executePendingNormally = true;
+        std::unique_lock<std::recursive_mutex> lock(cpu->memory->mutex);
+        DecodedOp* liveOp = cpu->memory->getDecodedOp(cpu->getEipAddress());
+        if (liveOp != op) {
+            return;
+        }
+        if (op->flags2 & OP_FLAG2_WASM_JIT_PENDING) {
+            wasmJitHandlePendingHit(cpu, op);
+        }
+#else
         wasmJitHandlePendingHit(cpu, op);
-    } else if (!wasmJitCompilationPaused()) {
 #endif
+        allowStartJit = false;
+#ifndef BOXEDWINE_MULTI_THREADED
+    } else if (wasmJitCompilationPaused()) {
+        allowStartJit = false;
+#endif
+    }
+#endif
+    if (allowStartJit) {
 #ifdef __TEST
         bool shouldStartJit = op->runCount == 0;
 #else
@@ -785,9 +819,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         if (shouldStartJit) {
             startNewJIT(cpu, cpu->getEipAddress(), op);
         }
-#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
     }
-#endif
 #ifdef _DEBUG
     if (op->pfnJitCode && cpu->calculateCF[0] == nullptr) {
         //kpanic("firstDynamicOp");
@@ -797,13 +829,17 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
     if (!(op->flags2 & OP_FLAG2_WASM_JIT_PENDING) && !wasmJitCompilationPaused() && op->runCount != 0xff) {
         op->runCount++;
     }
+#elif defined(BOXEDWINE_WASM_JIT)
+    if (op->runCount != 0xff) {
+        op->runCount++;
+    }
 #else
     op->runCount++;
 #endif
 #ifdef BOXEDWINE_WASM_JIT
     // Callback ops store the callback address in pfn, so dispatch warmup ops
     // through the normal table until the op is replaced with startJITOp.
-    if (op->pfn == cpu->thread->process->startJITOp) {
+    if (!executePendingNormally && op->pfn == cpu->thread->process->startJITOp) {
         op->pfn(cpu, op);
     } else {
         OpCallback pfn = NormalCPU::getFunctionForOp(op);

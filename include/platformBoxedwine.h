@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -87,6 +87,7 @@
 #define RMDIR_INCLUDE <direct.h>
 #define MKDIR(x) mkdir(x)
 #define INLINE __inline
+#define NO_INLINE __declspec(noinline)
 #define OPENGL_CALL_TYPE __stdcall
 #define PACKED( s ) __pragma( pack(push, 1) ) s __pragma( pack(pop) )
 #define ALIGN(t, x) __declspec(align(x)) t
@@ -123,6 +124,7 @@ char* platform_strcasestr(const char* s1, const char* s2);
 #define MKDIR(x) mkdir(x, 0777)
 #define O_BINARY 0
 #define INLINE inline
+#define NO_INLINE __attribute__((noinline))
 #define OPENGL_CALL_TYPE
 #define PACKED( s ) s __attribute__((__packed__))
 #define ALIGN(t, x) t __attribute__((aligned(x)))
@@ -209,6 +211,12 @@ bool platformHasBMI2();
 
 #ifdef BOXEDWINE_MULTI_THREADED
 void ATOMIC_WRITE64(U64* pTarget, U64 value);
+
+using PlatformThreadFunction = void* (*)(void*);
+S32 platformStartThread(KThread* thread, PlatformThreadFunction entry);
+#ifdef __TEST
+void platformJoinThread(KThread* thread);
+#endif
 #endif
 
 #ifdef BOXEDWINE_MIDI

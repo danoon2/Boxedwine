@@ -37,10 +37,12 @@
 #include "../../softmmu/kmemory_soft.h"
 
 #include <atomic>
+#include <cstddef>
 #include <bit>      // std::bit_cast (C++20) — used in boxedwine_wasm_call_block
 #include <deque>
 #include <emscripten.h>
 #ifdef __TEST
+#include <emscripten/threading.h>
 #include <type_traits>
 #endif
 #include <emscripten/em_js.h>
@@ -48,7 +50,10 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
+
+void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op);
 
 static constexpr U32 WASM_FMASK_TEST = CF | PF | AF | ZF | SF | OF;
 static_assert(WASM_LOCAL_COUNT <= 0xff,
@@ -108,6 +113,182 @@ static int32_t g_wasmTableNextSlot = 0;
 // from pfnJitCode immediately before a code invalidation race.
 static std::mutex g_wasmBlockBinariesMutex;
 static std::unordered_map<int, std::vector<U8>> g_wasmBlockBinaries;
+
+enum WasmJitMtBrokerLookupResult : S32 {
+    WASM_JIT_MT_BROKER_LOOKUP_NONE = 0,
+    WASM_JIT_MT_BROKER_LOOKUP_LOCAL_COMPILE = 1,
+    WASM_JIT_MT_BROKER_LOOKUP_HIT = 2,
+};
+
+struct WasmJitMtOwner {
+    U32 memoryId = 0;
+    U32 memoryIncarnation = 0;
+};
+
+struct WasmJitMtModuleRef {
+    U32 moduleId = 0;
+    U32 memoryId = 0;
+    U32 memoryIncarnation = 0;
+};
+
+struct WasmJitMtBrokerStats {
+    U64 localCompiles = 0;
+    U64 brokerHits = 0;
+};
+
+static U64 wasmJitMtOwnerKey(U32 memoryId, U32 memoryIncarnation) {
+    return ((U64)memoryIncarnation << 32) | memoryId;
+}
+
+static std::atomic<S32> g_wasmJitMtModuleBrokerEnabled{1};
+static U32 g_wasmJitMtNextMemoryIncarnation = 1;
+static U32 g_wasmJitMtNextModuleId = 1;
+static std::unordered_map<U32, U32> g_wasmJitMtMemoryIncarnations;
+static std::unordered_map<U32, U32> g_wasmJitMtLastRetiredIncarnations;
+static std::unordered_map<U32, WasmJitMtOwner> g_wasmJitMtModuleOwners;
+static std::unordered_map<U64, std::unordered_set<U32>> g_wasmJitMtModulesByOwner;
+static std::unordered_map<U32, WasmJitMtOwner> g_wasmJitMtThreadStartOwners;
+static std::unordered_map<U64, WasmJitMtBrokerStats> g_wasmJitMtBrokerStatsByOwner;
+static std::unordered_map<int, WasmJitMtModuleRef> g_wasmJitMtModulesBySlot;
+
+static WasmJitMtOwner wasmJitMtGetOwnerLocked(U32 memoryId, bool create) {
+    auto it = g_wasmJitMtMemoryIncarnations.find(memoryId);
+    if (it != g_wasmJitMtMemoryIncarnations.end()) {
+        return {memoryId, it->second};
+    }
+    if (!create || !g_wasmJitMtNextMemoryIncarnation) {
+        return {};
+    }
+    U32 memoryIncarnation = g_wasmJitMtNextMemoryIncarnation++;
+    g_wasmJitMtMemoryIncarnations[memoryId] = memoryIncarnation;
+    return {memoryId, memoryIncarnation};
+}
+
+static WasmJitMtModuleRef wasmJitMtAllocateModuleLocked(U32 memoryId) {
+    WasmJitMtOwner owner = wasmJitMtGetOwnerLocked(memoryId, true);
+    if (!owner.memoryIncarnation) {
+        return {};
+    }
+    if (!g_wasmJitMtNextModuleId) {
+        return {0, owner.memoryId, owner.memoryIncarnation};
+    }
+    U32 moduleId = g_wasmJitMtNextModuleId++;
+    g_wasmJitMtModuleOwners[moduleId] = owner;
+    g_wasmJitMtModulesByOwner[wasmJitMtOwnerKey(owner.memoryId, owner.memoryIncarnation)].insert(moduleId);
+    return {moduleId, owner.memoryId, owner.memoryIncarnation};
+}
+
+static bool wasmJitMtModuleIsLiveLocked(const WasmJitMtModuleRef& ref) {
+    auto it = g_wasmJitMtModuleOwners.find(ref.moduleId);
+    return it != g_wasmJitMtModuleOwners.end() &&
+        it->second.memoryId == ref.memoryId &&
+        it->second.memoryIncarnation == ref.memoryIncarnation;
+}
+
+static bool wasmJitMtModuleOwnerIsCurrentLocked(const WasmJitMtModuleRef& ref) {
+    auto it = g_wasmJitMtMemoryIncarnations.find(ref.memoryId);
+    if (it == g_wasmJitMtMemoryIncarnations.end() || it->second != ref.memoryIncarnation) {
+        return false;
+    }
+    return !ref.moduleId || wasmJitMtModuleIsLiveLocked(ref);
+}
+
+static void wasmJitMtReleaseUnpublishedModuleLocked(const WasmJitMtModuleRef& ref) {
+    if (!wasmJitMtModuleIsLiveLocked(ref)) {
+        return;
+    }
+    g_wasmJitMtModuleOwners.erase(ref.moduleId);
+    U64 ownerKey = wasmJitMtOwnerKey(ref.memoryId, ref.memoryIncarnation);
+    auto idsIt = g_wasmJitMtModulesByOwner.find(ownerKey);
+    if (idsIt != g_wasmJitMtModulesByOwner.end()) {
+        idsIt->second.erase(ref.moduleId);
+        if (idsIt->second.empty()) {
+            g_wasmJitMtModulesByOwner.erase(idsIt);
+        }
+    }
+}
+
+static void wasmJitMtRecordLookupLocked(const WasmJitMtModuleRef& ref, S32 lookupResult) {
+    if (!ref.memoryIncarnation) {
+        return;
+    }
+    WasmJitMtBrokerStats& stats = g_wasmJitMtBrokerStatsByOwner[
+        wasmJitMtOwnerKey(ref.memoryId, ref.memoryIncarnation)];
+    if (lookupResult == WASM_JIT_MT_BROKER_LOOKUP_LOCAL_COMPILE) {
+        ++stats.localCompiles;
+    } else if (lookupResult == WASM_JIT_MT_BROKER_LOOKUP_HIT) {
+        ++stats.brokerHits;
+    }
+}
+
+extern "C" void wasm_jit_mt_set_module_broker_enabled(S32 enabled) {
+    g_wasmJitMtModuleBrokerEnabled.store(enabled ? 1 : 0, std::memory_order_release);
+}
+
+static void wasmJitMtRegisterThreadStartLocked(U32 startArg, U32 memoryId) {
+    WasmJitMtOwner owner = wasmJitMtGetOwnerLocked(memoryId, true);
+    if (startArg && owner.memoryIncarnation) {
+        g_wasmJitMtThreadStartOwners[startArg] = owner;
+    }
+}
+
+static void wasmJitThreadStartPreparing(CPU* cpu) {
+    if (!cpu || !cpu->memory) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    wasmJitMtRegisterThreadStartLocked((U32)(uintptr_t)cpu, (U32)(uintptr_t)cpu->memory);
+}
+
+static void wasmJitThreadStartCancelled(CPU* cpu) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    g_wasmJitMtThreadStartOwners.erase((U32)(uintptr_t)cpu);
+}
+
+extern "C" S32 wasm_jit_mt_take_thread_start_owner(U32 startArg, U32* memoryId, U32* memoryIncarnation) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    *memoryId = 0;
+    *memoryIncarnation = 0;
+    auto it = g_wasmJitMtThreadStartOwners.find(startArg);
+    if (it == g_wasmJitMtThreadStartOwners.end()) {
+        return 0;
+    }
+    WasmJitMtOwner owner = it->second;
+    g_wasmJitMtThreadStartOwners.erase(it);
+    *memoryId = owner.memoryId;
+    *memoryIncarnation = owner.memoryIncarnation;
+    if (!g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire)) {
+        return -1;
+    }
+    auto currentIt = g_wasmJitMtMemoryIncarnations.find(owner.memoryId);
+    if (currentIt == g_wasmJitMtMemoryIncarnations.end() || currentIt->second != owner.memoryIncarnation) {
+        return 0;
+    }
+    return 1;
+}
+
+extern "C" S32 wasm_jit_mt_broker_validate_module(U32 moduleId, U32 memoryId, U32 memoryIncarnation) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    auto moduleIt = g_wasmJitMtModuleOwners.find(moduleId);
+    if (moduleIt != g_wasmJitMtModuleOwners.end()) {
+        if (moduleIt->second.memoryId != memoryId) {
+            return -1;
+        }
+        if (moduleIt->second.memoryIncarnation != memoryIncarnation) {
+            return -2;
+        }
+        return 1;
+    }
+    auto currentIt = g_wasmJitMtMemoryIncarnations.find(memoryId);
+    if (currentIt != g_wasmJitMtMemoryIncarnations.end() && currentIt->second != memoryIncarnation) {
+        return -2;
+    }
+    auto retiredIt = g_wasmJitMtLastRetiredIncarnations.find(memoryId);
+    if (retiredIt != g_wasmJitMtLastRetiredIncarnations.end() && memoryIncarnation <= retiredIt->second) {
+        return -2;
+    }
+    return 0;
+}
 #endif
 
 // Per-block relocation slot arrays for persistence-mode modules, keyed by
@@ -126,6 +307,9 @@ static std::unordered_map<int, std::vector<U8>> g_wasmBlockBinaries;
 // monotonic never-freed slot lifetime of g_wasmBlockBinaries.
 #ifdef BOXEDWINE_MULTI_THREADED
 static std::unordered_map<int, U32*> g_wasmRelocArrays;
+// Plain MT sessions never register any relocation arrays, so the per-call
+// lookup stays a single relaxed atomic load until the first registration.
+static std::atomic<bool> g_wasmHasRelocArrays{false};
 #else
 static std::vector<U32*> g_wasmRelocBaseByTable;
 #endif
@@ -269,7 +453,13 @@ struct WasmJitMtGroupPatch {
     U32 offset;          // byte offset of the i32.const opcode (0x41)
     uint64_t targetKey;
 };
+enum class WasmJitMtGroupKind : U8 {
+    Imported,
+    Runtime,
+};
 struct WasmJitMtGroup {
+    WasmJitMtGroupKind kind = WasmJitMtGroupKind::Imported;
+    U32 instanceIdentity = 0;
     std::vector<U8> bytes; // unpatched merged module
     std::vector<WasmJitMtGroupEntry> entries;
     std::vector<WasmJitMtGroupPatch> patches;
@@ -277,19 +467,259 @@ struct WasmJitMtGroup {
 struct WasmJitMtGroupProcState {
     std::vector<U8> patchedBytes;
     std::vector<U32*> entryArrays;   // index parallel to group entries; never freed (MT slot lifetime)
+    WasmJitMtModuleRef moduleRef;
 };
-static std::vector<WasmJitMtGroup> g_wasmMtGroups;
+static std::deque<WasmJitMtGroup> g_wasmMtGroups;
 static std::unordered_map<uint64_t, std::pair<U32, U32>> g_wasmMtGroupByKey; // key -> (groupIdx, entryIdx)
-// (groupIdx, memId) -> per-process patched bytes + arrays
+// (groupIdx, memoryId) -> per-process patched bytes + arrays + broker module ID
 static std::map<std::pair<U32, U32>, WasmJitMtGroupProcState> g_wasmMtGroupProcState;
-// table slot -> (groupIdx, memId) so cross-worker lazy installs route to the
+// table slot -> (groupIdx, entryIdx, module owner) so cross-worker lazy installs route to the
 // group instead of g_wasmBlockBinaries. exportName resolved via entryIdx.
 struct WasmJitMtGroupSlotRef {
     U32 groupIdx;
     U32 entryIdx;
-    U32 memId;
+    WasmJitMtModuleRef moduleRef;
 };
 static std::unordered_map<int, WasmJitMtGroupSlotRef> g_wasmMtGroupSlotRefs;
+static U32 g_wasmJitMtNextRuntimeGroupIdentity = 1;
+
+enum class WasmJitMtPendingState : U8 {
+    Open,
+    Sealed,
+};
+
+struct WasmJitMtPendingBlock {
+    WasmJitBatchEntryId id = 0;
+    U64 sealedRequestId = 0;
+    WasmJitMtPendingState state = WasmJitMtPendingState::Open;
+    KMemory* memory = nullptr;
+    KProcess* process = nullptr;
+    DecodedOp* op = nullptr;
+    U32 address = 0;
+    U32 mappedFileKey = 0;
+    U32 blockOpCount = 0;
+    U32 emulatedLen = 0;
+    bool needsMemoryPageArrays = false;
+    std::vector<U8> bytes;
+    std::vector<U32> relocValues;
+};
+
+struct WasmJitMtRuntimeStats {
+    U64 translatedFileBacked = 0;
+    U64 translatedAnonymous = 0;
+    U64 groupedModules = 0;
+    U64 groupedFunctions = 0;
+    U64 standaloneModules = 0;
+    U64 rawInputBytes = 0;
+    U64 mergedBytes = 0;
+    U64 countFlushes = 0;
+    U64 byteFlushes = 0;
+    U64 urgentFlushes = 0;
+    U64 processCapFlushes = 0;
+    U64 cancelledEntries = 0;
+    U64 permanentFailures = 0;
+    U64 groupedOomBlocks = 0;
+    U64 skippedConstructionAttempts = 0;
+    U64 constructionAttempts = 0;
+    U64 constructionSuccesses = 0;
+    U64 maxFunctionsPerGroup = 0;
+};
+
+static std::mutex g_wasmJitMtPendingMutex;
+static std::map<WasmJitBatchEntryId, std::unique_ptr<WasmJitMtPendingBlock>> g_wasmJitMtPendingBlocks;
+static std::unordered_map<DecodedOp*, WasmJitBatchEntryId> g_wasmJitMtPendingByOp;
+static WasmJitBatchPolicy g_wasmJitMtBatchPolicy;
+static WasmJitBatchLimits g_wasmJitMtBatchLimits;
+static WasmJitBatchEntryId g_wasmJitMtNextPendingId = 1;
+static U64 g_wasmJitMtNextSealedRequestId = 1;
+static U64 g_wasmJitMtPendingRawBytes = 0;
+static WasmJitMtRuntimeStats g_wasmJitMtRuntimeStats;
+static std::mutex g_wasmJitMtGroupWorkerStatsMutex;
+static std::atomic<U64> g_wasmJitMtGroupInstanceCreations{0};
+static std::atomic<U64> g_wasmJitMtGroupInstanceReuses{0};
+static std::atomic<U64> g_wasmJitMtGroupedBrokerHits{0};
+static std::atomic<U64> g_wasmJitMtGroupedLocalCompiles{0};
+
+#ifdef __TEST
+static S32 g_wasmJitTestMtGroupWorkerEventPause = 0;
+static S32 g_wasmJitTestMtGroupWorkerEventPaused = 0;
+static S32 g_wasmJitTestMtGroupWorkerEventRelease = 0;
+static bool g_wasmJitTestMtRuntimeBatchingEnabled = false;
+static S32 g_wasmJitTestMtMappedFileKeyOverride = -1;
+static S32 g_wasmJitTestMtCancelSealedEntryIndex = -1;
+static U32 g_wasmJitTestMtReplacementAddress = 0;
+static DecodedOp** g_wasmJitTestMtReplacementOp = nullptr;
+static U64 g_wasmJitTestMtPendingByteChargeOverride = 0;
+#endif
+
+static U32 wasmJitMtReserveRuntimeGroupIdentityLocked() {
+    if (!g_wasmJitMtNextRuntimeGroupIdentity) {
+        return 0;
+    }
+    return g_wasmJitMtNextRuntimeGroupIdentity++;
+}
+
+static U64 wasmJitMtReserveSealedRequestIdLocked() {
+    U64 candidate = g_wasmJitMtNextSealedRequestId;
+    if (!candidate) {
+        candidate = 1;
+    }
+    for (size_t attempt = 0; attempt <= g_wasmJitMtPendingBlocks.size(); ++attempt) {
+        g_wasmJitMtNextSealedRequestId = candidate + 1;
+        if (!g_wasmJitMtNextSealedRequestId) {
+            g_wasmJitMtNextSealedRequestId = 1;
+        }
+        bool inUse = false;
+        for (const auto& pending : g_wasmJitMtPendingBlocks) {
+            if (pending.second->sealedRequestId == candidate) {
+                inUse = true;
+                break;
+            }
+        }
+        if (!inUse) {
+            return candidate;
+        }
+        candidate = g_wasmJitMtNextSealedRequestId;
+    }
+    return 0;
+}
+
+#ifdef __TEST
+static_assert(sizeof(WasmJitMtRuntimeBatchStatsSnapshot) == 192);
+static_assert(offsetof(WasmJitMtRuntimeBatchStatsSnapshot, translatedFileBacked) == 0);
+static_assert(offsetof(WasmJitMtRuntimeBatchStatsSnapshot, pendingEntries) == 16);
+static_assert(offsetof(WasmJitMtRuntimeBatchStatsSnapshot, groupedModules) == 40);
+static_assert(offsetof(WasmJitMtRuntimeBatchStatsSnapshot, constructionAttempts) == 56);
+static_assert(offsetof(WasmJitMtRuntimeBatchStatsSnapshot, groupedOomBlocks) == 128);
+static_assert(offsetof(WasmJitMtRuntimeBatchStatsSnapshot, groupInstanceCreations) == 144);
+static_assert(offsetof(WasmJitMtRuntimeBatchStatsSnapshot, groupedLocalCompiles) == 168);
+static_assert(offsetof(WasmJitMtRuntimeBatchStatsSnapshot, maxBlocks) == 176);
+static_assert(offsetof(WasmJitMtRuntimeBatchStatsSnapshot, maxProcessOpenBytes) == 188);
+#endif
+
+extern "C" void wasm_jit_mt_record_group_worker_event(U32 event) {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtGroupWorkerStatsMutex);
+    switch (event) {
+    case 1:
+        g_wasmJitMtGroupInstanceCreations.fetch_add(1, std::memory_order_relaxed);
+#ifdef __TEST
+        if (__atomic_exchange_n(
+                &g_wasmJitTestMtGroupWorkerEventPause, 0, __ATOMIC_ACQ_REL)) {
+            __atomic_store_n(
+                &g_wasmJitTestMtGroupWorkerEventPaused, 1, __ATOMIC_RELEASE);
+            emscripten_futex_wake(&g_wasmJitTestMtGroupWorkerEventPaused, INT_MAX);
+            while (!__atomic_load_n(
+                    &g_wasmJitTestMtGroupWorkerEventRelease, __ATOMIC_ACQUIRE)) {
+                emscripten_futex_wait(
+                    &g_wasmJitTestMtGroupWorkerEventRelease, 0, 50.0);
+            }
+        }
+#endif
+        g_wasmJitMtGroupedLocalCompiles.fetch_add(1, std::memory_order_relaxed);
+        break;
+    case 2:
+        g_wasmJitMtGroupInstanceCreations.fetch_add(1, std::memory_order_relaxed);
+        g_wasmJitMtGroupedBrokerHits.fetch_add(1, std::memory_order_relaxed);
+        break;
+    case 3:
+        g_wasmJitMtGroupInstanceReuses.fetch_add(1, std::memory_order_relaxed);
+        break;
+    default:
+        break;
+    }
+}
+
+#ifdef __TEST
+void wasmJitTestPauseNextMtGroupWorkerEvent() {
+    __atomic_store_n(&g_wasmJitTestMtGroupWorkerEventPaused, 0, __ATOMIC_RELEASE);
+    __atomic_store_n(&g_wasmJitTestMtGroupWorkerEventRelease, 0, __ATOMIC_RELEASE);
+    __atomic_store_n(&g_wasmJitTestMtGroupWorkerEventPause, 1, __ATOMIC_RELEASE);
+}
+
+bool wasmJitTestWaitForMtGroupWorkerEventPause() {
+    double deadline = emscripten_get_now() + 2000.0;
+    while (emscripten_get_now() < deadline) {
+        S32 paused = __atomic_load_n(
+            &g_wasmJitTestMtGroupWorkerEventPaused, __ATOMIC_ACQUIRE);
+        if (paused) {
+            return true;
+        }
+        emscripten_futex_wait(
+            &g_wasmJitTestMtGroupWorkerEventPaused, paused, 50.0);
+    }
+    return false;
+}
+
+void wasmJitTestReleaseMtGroupWorkerEvent() {
+    __atomic_store_n(&g_wasmJitTestMtGroupWorkerEventPause, 0, __ATOMIC_RELEASE);
+    __atomic_store_n(&g_wasmJitTestMtGroupWorkerEventRelease, 1, __ATOMIC_RELEASE);
+    emscripten_futex_wake(&g_wasmJitTestMtGroupWorkerEventRelease, INT_MAX);
+}
+#endif
+
+extern "C" void wasm_jit_mt_copy_runtime_batch_stats(
+        WasmJitMtRuntimeBatchStatsSnapshot* snapshot) {
+    if (!snapshot) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    U64 sealedGroupCount = 0;
+    for (auto pending = g_wasmJitMtPendingBlocks.begin();
+            pending != g_wasmJitMtPendingBlocks.end(); ++pending) {
+        if (pending->second->state != WasmJitMtPendingState::Sealed) {
+            continue;
+        }
+        bool firstForGroup = true;
+        for (auto previous = g_wasmJitMtPendingBlocks.begin();
+                previous != pending; ++previous) {
+            if (previous->second->state == WasmJitMtPendingState::Sealed &&
+                    previous->second->sealedRequestId != 0 &&
+                    previous->second->sealedRequestId == pending->second->sealedRequestId) {
+                firstForGroup = false;
+                break;
+            }
+        }
+        if (firstForGroup && pending->second->sealedRequestId) {
+            ++sealedGroupCount;
+        }
+    }
+    snapshot->translatedFileBacked = g_wasmJitMtRuntimeStats.translatedFileBacked;
+    snapshot->translatedAnonymous = g_wasmJitMtRuntimeStats.translatedAnonymous;
+    snapshot->pendingEntries = g_wasmJitMtPendingBlocks.size();
+    snapshot->openBytes = g_wasmJitMtPendingRawBytes;
+    snapshot->sealedGroups = sealedGroupCount;
+    snapshot->groupedModules = g_wasmJitMtRuntimeStats.groupedModules;
+    snapshot->groupedFunctions = g_wasmJitMtRuntimeStats.groupedFunctions;
+    snapshot->constructionAttempts = g_wasmJitMtRuntimeStats.constructionAttempts;
+    snapshot->constructionSuccesses = g_wasmJitMtRuntimeStats.constructionSuccesses;
+    snapshot->maxFunctionsPerGroup = g_wasmJitMtRuntimeStats.maxFunctionsPerGroup;
+    snapshot->countFlushes = g_wasmJitMtRuntimeStats.countFlushes;
+    snapshot->byteFlushes = g_wasmJitMtRuntimeStats.byteFlushes;
+    snapshot->urgentFlushes = g_wasmJitMtRuntimeStats.urgentFlushes;
+    snapshot->processCapFlushes = g_wasmJitMtRuntimeStats.processCapFlushes;
+    snapshot->cancelledEntries = g_wasmJitMtRuntimeStats.cancelledEntries;
+    snapshot->permanentFailures = g_wasmJitMtRuntimeStats.permanentFailures;
+    snapshot->groupedOomBlocks = g_wasmJitMtRuntimeStats.groupedOomBlocks;
+    snapshot->skippedConstructionAttempts =
+        g_wasmJitMtRuntimeStats.skippedConstructionAttempts;
+    {
+        std::lock_guard<std::mutex> groupStatsLock(
+            g_wasmJitMtGroupWorkerStatsMutex);
+        snapshot->groupInstanceCreations =
+            g_wasmJitMtGroupInstanceCreations.load(std::memory_order_relaxed);
+        snapshot->groupInstanceReuses =
+            g_wasmJitMtGroupInstanceReuses.load(std::memory_order_relaxed);
+        snapshot->groupedBrokerHits =
+            g_wasmJitMtGroupedBrokerHits.load(std::memory_order_relaxed);
+        snapshot->groupedLocalCompiles =
+            g_wasmJitMtGroupedLocalCompiles.load(std::memory_order_relaxed);
+    }
+    snapshot->maxBlocks = g_wasmJitMtBatchLimits.maxBlocks;
+    snapshot->maxBatchBytes = (U32)g_wasmJitMtBatchLimits.maxBatchBytes;
+    snapshot->urgentPendingHits = g_wasmJitMtBatchLimits.urgentPendingHits;
+    snapshot->maxProcessOpenBytes =
+        (U32)g_wasmJitMtBatchLimits.maxProcessOpenBytes;
+}
 #endif
 
 // Runtime persistence mode. When active, generated modules must not embed
@@ -2453,11 +2883,16 @@ EM_JS(void, wasm_jit_js_store_entry, (U32 eip, U32 blockHash, const void* bytes,
 // engine level, so concurrent grows are safe (each grow is an indivisible
 // operation and the while-loop retries until the table is large enough).
 EM_JS(int, boxedwine_wasm_instantiate_mt,
-      (const void* bytes, int size, const void** importFns, int importCount, int* nextSlotPtr),
+      (const void* bytes, int size, const void** importFns, int importCount, int* nextSlotPtr,
+       U32 moduleId, U32 memoryId, U32 memoryIncarnation, S32 brokerEnabled, S32* lookupResultPtr),
 {
+    HEAP32[lookupResultPtr >> 2] = 0;
     try {
         var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
-        var mod = new WebAssembly.Module(wasmBytes);
+        var lookup = globalThis.bwWasmJitBrokerGetOrCompile(moduleId, memoryId, memoryIncarnation,
+            wasmBytes, brokerEnabled !== 0, 1, 1);
+        var mod = lookup.module;
+        HEAP32[lookupResultPtr >> 2] = lookup.source;
 
         var helpers = {};
         var view = new Int32Array(HEAP32.buffer, importFns, importCount);
@@ -2471,7 +2906,9 @@ EM_JS(int, boxedwine_wasm_instantiate_mt,
         });
 
         var fn = inst.exports['execute'];
-        if (!fn) return -1;
+        if (!fn) {
+            return -1;
+        }
 
         // Create a TypedArray view over the shared-memory counter.
         // nextSlotPtr points to g_wasmTableNextSlot (int32_t) in the main
@@ -2501,7 +2938,9 @@ EM_JS(int, boxedwine_wasm_instantiate_mt,
             try {
                 wasmTable.grow(slot - wasmTable.length + 1);
             } catch(e) {
-                if (slot < wasmTable.length) break; // another worker grew it
+                if (slot < wasmTable.length) {
+                    break; // another worker grew it
+                }
                 console.error('[WASM JIT] wasmTable.grow failed:', e);
                 return -1;
             }
@@ -2540,43 +2979,79 @@ EM_JS(int, boxedwine_wasm_instantiate_mt,
 
         return slot;
     } catch(e) {
-        console.error('boxedwine_wasm_instantiate_mt failed:', e);
+        if (!e || e.bwWasmJitBrokerOom !== true) {
+            console.error('boxedwine_wasm_instantiate_mt failed:', e);
+        }
         return -1;
     }
+});
+
+EM_JS(void, boxedwine_wasm_release_broker_memory_mt,
+    (U32 memoryId, U32 memoryIncarnation, const U32* moduleIds, U32 count), {
+    var ids = Array.from(new Uint32Array(HEAPU8.buffer, moduleIds, count));
+    globalThis.bwWasmJitBrokerReleaseMemory(memoryId, memoryIncarnation, ids);
 });
 
 // Instantiate (or reuse) a per-process patched merged-group module in THIS
 // worker and publish one of its exports at a freshly claimed shared slot.
 // Self-contained: the per-worker instance cache lives on globalThis (workers
-// do not load boxedwine-shell.js), keyed by (groupIdx, memId) — the bytes are
-// per-process patched, so the cache key must carry the process identity.
+// do not load boxedwine-shell.js), keyed by broker module ID when available.
+// Disabled/exhausted-ID paths use the group identity and memory incarnation.
 // Slot claiming is the same Atomics protocol as boxedwine_wasm_instantiate_mt.
 EM_JS(int, boxedwine_wasm_instantiate_group_mt,
       (const void* bytes, int size, const void** importFns, int importCount,
-       int* nextSlotPtr, const char* exportNamePtr, int groupIdx, U32 memId),
+       int* nextSlotPtr, const char* exportNamePtr, U32 groupKind, U32 groupIdentity, U32 memoryId,
+       U32 memoryIncarnation, U32 moduleId, U32 representedBlockCount, S32 brokerEnabled, S32* lookupResultPtr),
 {
+    HEAP32[lookupResultPtr >> 2] = 0;
     try {
-        if (!globalThis.bwJitMtGroupInstances) globalThis.bwJitMtGroupInstances = new Map();
-        var instKey = groupIdx + '|' + (memId >>> 0).toString(16);
-        var inst = globalThis.bwJitMtGroupInstances.get(instKey);
+        if (typeof globalThis.bwWasmJitMtGroupInstanceKey !== 'function') {
+            throw new Error('missing MT group instance key helper');
+        }
+        if (!globalThis.bwJitMtGroupInstances) {
+            globalThis.bwJitMtGroupInstances = new Map();
+        }
+        if (!globalThis.bwWasmJitMtGroupWorkerStats) {
+            globalThis.bwWasmJitMtGroupWorkerStats = {
+                groupInstanceCreations: 0,
+                groupInstanceReuses: 0,
+                groupedBrokerHits: 0,
+                groupedLocalCompiles: 0
+            };
+        }
+        var instanceKey = globalThis.bwWasmJitMtGroupInstanceKey(
+            moduleId, groupKind, groupIdentity, memoryId, memoryIncarnation);
+        var inst = globalThis.bwJitMtGroupInstances.get(instanceKey);
+        var reusedInstance = !!inst;
         if (!inst) {
             var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
-            var mod = new WebAssembly.Module(wasmBytes);
+            var lookup = globalThis.bwWasmJitBrokerGetOrCompile(moduleId, memoryId, memoryIncarnation,
+                wasmBytes, brokerEnabled !== 0, 2, representedBlockCount);
+            HEAP32[lookupResultPtr >> 2] = lookup.source;
             var helpers = {};
             var view = new Int32Array(HEAP32.buffer, importFns, importCount);
             for (var i = 0; i < importCount; i++) {
                 helpers['fn_' + i] = wasmTable.get(view[i]);
             }
-            inst = new WebAssembly.Instance(mod, {
+            inst = new WebAssembly.Instance(lookup.module, {
                 'env':     { 'memory': wasmMemory },
                 'helpers': helpers
             });
-            globalThis.bwJitMtGroupInstances.set(instKey, inst);
+            globalThis.bwJitMtGroupInstances.set(instanceKey, inst);
+            ++globalThis.bwWasmJitMtGroupWorkerStats.groupInstanceCreations;
+            if (lookup.source === 1) {
+                ++globalThis.bwWasmJitMtGroupWorkerStats.groupedLocalCompiles;
+                globalThis.bwWasmJitMtRecordGroupWorkerEvent(1);
+            } else if (lookup.source === 2) {
+                ++globalThis.bwWasmJitMtGroupWorkerStats.groupedBrokerHits;
+                globalThis.bwWasmJitMtRecordGroupWorkerEvent(2);
+            }
         }
         var exportName = UTF8ToString(exportNamePtr);
         var fn = inst.exports[exportName];
         if (!fn) {
-            console.warn('[WASM JIT MT group] missing export ' + exportName + ' in group ' + groupIdx);
+            console.warn('[WASM JIT MT group] missing export ' + exportName +
+                ' in group ' + groupIdentity);
             return -1;
         }
 
@@ -2587,16 +3062,187 @@ EM_JS(int, boxedwine_wasm_instantiate_group_mt,
             try {
                 wasmTable.grow(slot - wasmTable.length + 1);
             } catch(e) {
-                if (slot < wasmTable.length) break;
+                if (slot < wasmTable.length) {
+                    break;
+                }
                 console.error('[WASM JIT MT group] wasmTable.grow failed:', e);
                 return -1;
             }
         }
         wasmTable.set(slot, fn);
+        if (reusedInstance) {
+            ++globalThis.bwWasmJitMtGroupWorkerStats.groupInstanceReuses;
+            globalThis.bwWasmJitMtRecordGroupWorkerEvent(3);
+        }
         return slot;
     } catch(e) {
-        console.error('boxedwine_wasm_instantiate_group_mt failed:', e);
+        if (!e || e.bwWasmJitBrokerOom !== true) {
+            console.error('boxedwine_wasm_instantiate_group_mt failed:', e);
+        }
         return -1;
+    }
+});
+
+EM_JS(int, boxedwine_wasm_instantiate_runtime_group_mt,
+      (const void* bytes, int size, const void** importFns, int importCount,
+       int* nextSlotPtr, U32 entryCount, int* outputSlots, U32 groupKind,
+       U32 groupIdentity, U32 moduleId, U32 memoryId, U32 memoryIncarnation,
+       S32 brokerEnabled, S32* lookupResultPtr),
+{
+    HEAP32[lookupResultPtr >> 2] = 0;
+    for (var i = 0; i < entryCount; ++i) {
+        HEAP32[(outputSlots >> 2) + i] = -1;
+    }
+    var instanceKey;
+    var inst;
+    var createdInstance = false;
+    var reservedSlot = -1;
+    var installedCount = 0;
+    var forcedFailure = false;
+    try {
+        if (!entryCount) {
+            throw new Error('empty MT runtime group');
+        }
+        if (typeof globalThis.bwWasmJitMtGroupInstanceKey !== 'function') {
+            throw new Error('missing MT group instance key helper');
+        }
+        if (!globalThis.bwJitMtGroupInstances) {
+            globalThis.bwJitMtGroupInstances = new Map();
+        }
+        if (!globalThis.bwWasmJitMtGroupWorkerStats) {
+            globalThis.bwWasmJitMtGroupWorkerStats = {
+                groupInstanceCreations: 0,
+                groupInstanceReuses: 0,
+                groupedBrokerHits: 0,
+                groupedLocalCompiles: 0
+            };
+        }
+        instanceKey = globalThis.bwWasmJitMtGroupInstanceKey(
+            moduleId, groupKind, groupIdentity, memoryId, memoryIncarnation);
+        inst = globalThis.bwJitMtGroupInstances.get(instanceKey);
+        var reusedInstance = !!inst;
+        if (!inst) {
+            if (typeof globalThis.bwWasmJitMtCanConstructFreshGroup !== 'function') {
+                throw new Error('missing MT fresh group construction guard');
+            }
+            if (!globalThis.bwWasmJitMtCanConstructFreshGroup(memoryId, memoryIncarnation)) {
+                return -2;
+            }
+            var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
+            var lookup = globalThis.bwWasmJitBrokerGetOrCompile(
+                moduleId, memoryId, memoryIncarnation, wasmBytes,
+                brokerEnabled !== 0, 2, entryCount);
+            HEAP32[lookupResultPtr >> 2] = lookup.source;
+#ifdef __TEST
+            if (lookup.source === 1) {
+                Module.wasmJitMtRuntimeGroupConstructionCount =
+                    (Module.wasmJitMtRuntimeGroupConstructionCount || 0) + 1;
+            }
+#endif
+            var helpers = {};
+            var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+            for (var i = 0; i < importCount; ++i) {
+                helpers['fn_' + i] = wasmTable.get(view[i]);
+            }
+            try {
+#ifdef __TEST
+                if (typeof globalThis.bwWasmJitMtTestRecordInstanceConstructor === 'function') {
+                    globalThis.bwWasmJitMtTestRecordInstanceConstructor();
+                }
+                if (Module.wasmJitTestForceNextMtRuntimeGroupInstanceOom) {
+                    Module.wasmJitTestForceNextMtRuntimeGroupInstanceOom = false;
+                    throw new RangeError('WebAssembly.Instance(): Out of memory');
+                }
+#endif
+                inst = new WebAssembly.Instance(lookup.module, {
+                    'env':     { 'memory': wasmMemory },
+                    'helpers': helpers
+                });
+            } catch (instanceError) {
+                if (typeof globalThis.bwWasmJitBrokerIsOom === 'function' &&
+                        globalThis.bwWasmJitBrokerIsOom(instanceError)) {
+                    instanceError.bwWasmJitBrokerOom = true;
+                }
+                throw instanceError;
+            }
+            globalThis.bwJitMtGroupInstances.set(instanceKey, inst);
+            createdInstance = true;
+            ++globalThis.bwWasmJitMtGroupWorkerStats.groupInstanceCreations;
+            if (lookup.source === 1) {
+                ++globalThis.bwWasmJitMtGroupWorkerStats.groupedLocalCompiles;
+                globalThis.bwWasmJitMtRecordGroupWorkerEvent(1);
+            } else if (lookup.source === 2) {
+                ++globalThis.bwWasmJitMtGroupWorkerStats.groupedBrokerHits;
+                globalThis.bwWasmJitMtRecordGroupWorkerEvent(2);
+            }
+        }
+
+        var functions = [];
+        for (var i = 0; i < entryCount; ++i) {
+            var fn = inst.exports['b' + i];
+            if (!fn) {
+                throw new Error('missing MT runtime group export b' + i);
+            }
+            functions.push(fn);
+        }
+
+        var nextSlotTA = new Int32Array(HEAPU8.buffer, nextSlotPtr, 1);
+        Atomics.compareExchange(nextSlotTA, 0, 0, wasmTable.length);
+        reservedSlot = Atomics.add(nextSlotTA, 0, entryCount);
+        var lastReservedSlot = reservedSlot + entryCount - 1;
+        if (lastReservedSlot >= wasmTable.length) {
+            try {
+                wasmTable.grow(lastReservedSlot - wasmTable.length + 1);
+            } catch (error) {
+                if (lastReservedSlot >= wasmTable.length) {
+                    throw error;
+                }
+            }
+        }
+
+        for (var i = 0; i < entryCount; ++i) {
+            var slot = reservedSlot + i;
+            wasmTable.set(slot, functions[i]);
+            installedCount = i + 1;
+            HEAP32[(outputSlots >> 2) + i] = slot;
+#ifdef __TEST
+            if (Module.wasmJitTestFailMtRuntimeGroupAfterSlots >= 0 &&
+                    installedCount >= Module.wasmJitTestFailMtRuntimeGroupAfterSlots) {
+                forcedFailure = true;
+                throw new Error('forced partial MT runtime group install failure');
+            }
+#endif
+        }
+        if (reusedInstance) {
+            ++globalThis.bwWasmJitMtGroupWorkerStats.groupInstanceReuses;
+            globalThis.bwWasmJitMtRecordGroupWorkerEvent(3);
+        }
+        return 1;
+    } catch (error) {
+        if (reservedSlot >= 0) {
+            for (var i = 0; i < installedCount; ++i) {
+                try {
+                    wasmTable.set(reservedSlot + i, null);
+                } catch (_) {
+                }
+            }
+        }
+        if (createdInstance && globalThis.bwJitMtGroupInstances &&
+                globalThis.bwJitMtGroupInstances.get(instanceKey) === inst) {
+            globalThis.bwJitMtGroupInstances.delete(instanceKey);
+        }
+        for (var i = 0; i < entryCount; ++i) {
+            HEAP32[(outputSlots >> 2) + i] = -1;
+        }
+        var oom = !forcedFailure && error && error.bwWasmJitBrokerOom === true;
+        if (oom && typeof globalThis.bwWasmJitMtBlockFreshGroupConstruction === 'function') {
+            globalThis.bwWasmJitMtBlockFreshGroupConstruction(
+                memoryId, memoryIncarnation);
+        }
+        if (!forcedFailure && !oom) {
+            console.error('boxedwine_wasm_instantiate_runtime_group_mt failed:', error);
+        }
+        return oom ? -1 : 0;
     }
 });
 
@@ -2605,37 +3251,81 @@ EM_JS(int, boxedwine_wasm_instantiate_group_mt,
 // worker, reusing (or creating) this worker's instance of the group.
 EM_JS(int, boxedwine_wasm_install_existing_group_mt,
       (const void* bytes, int size, const void** importFns, int importCount,
-       int tableIndex, const char* exportNamePtr, int groupIdx, U32 memId),
+       int tableIndex, const char* exportNamePtr, U32 groupKind, U32 groupIdentity, U32 memoryId,
+       U32 memoryIncarnation, U32 moduleId, U32 representedBlockCount, S32 brokerEnabled, S32* lookupResultPtr),
 {
+    HEAP32[lookupResultPtr >> 2] = 0;
     try {
-        if (tableIndex < 0) return 0;
-        if (tableIndex < wasmTable.length && wasmTable.get(tableIndex)) return 1;
-        if (!globalThis.bwJitMtGroupInstances) globalThis.bwJitMtGroupInstances = new Map();
-        var instKey = groupIdx + '|' + (memId >>> 0).toString(16);
-        var inst = globalThis.bwJitMtGroupInstances.get(instKey);
+        if (tableIndex < 0) {
+            return 0;
+        }
+        if (tableIndex < wasmTable.length && wasmTable.get(tableIndex)) {
+            return 1;
+        }
+        if (typeof globalThis.bwWasmJitMtGroupInstanceKey !== 'function') {
+            throw new Error('missing MT group instance key helper');
+        }
+        if (!globalThis.bwJitMtGroupInstances) {
+            globalThis.bwJitMtGroupInstances = new Map();
+        }
+        if (!globalThis.bwWasmJitMtGroupWorkerStats) {
+            globalThis.bwWasmJitMtGroupWorkerStats = {
+                groupInstanceCreations: 0,
+                groupInstanceReuses: 0,
+                groupedBrokerHits: 0,
+                groupedLocalCompiles: 0
+            };
+        }
+        var instanceKey = globalThis.bwWasmJitMtGroupInstanceKey(
+            moduleId, groupKind, groupIdentity, memoryId, memoryIncarnation);
+        var inst = globalThis.bwJitMtGroupInstances.get(instanceKey);
+        var reusedInstance = !!inst;
         if (!inst) {
             var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
-            var mod = new WebAssembly.Module(wasmBytes);
+            var lookup = globalThis.bwWasmJitBrokerGetOrCompile(moduleId, memoryId, memoryIncarnation,
+                wasmBytes, brokerEnabled !== 0, 2, representedBlockCount);
+            HEAP32[lookupResultPtr >> 2] = lookup.source;
             var helpers = {};
             var view = new Int32Array(HEAP32.buffer, importFns, importCount);
             for (var i = 0; i < importCount; i++) {
                 helpers['fn_' + i] = wasmTable.get(view[i]);
             }
-            inst = new WebAssembly.Instance(mod, {
+#ifdef __TEST
+            if (typeof globalThis.bwWasmJitMtTestRecordInstanceConstructor === 'function') {
+                globalThis.bwWasmJitMtTestRecordInstanceConstructor();
+            }
+#endif
+            inst = new WebAssembly.Instance(lookup.module, {
                 'env':     { 'memory': wasmMemory },
                 'helpers': helpers
             });
-            globalThis.bwJitMtGroupInstances.set(instKey, inst);
+            globalThis.bwJitMtGroupInstances.set(instanceKey, inst);
+            ++globalThis.bwWasmJitMtGroupWorkerStats.groupInstanceCreations;
+            if (lookup.source === 1) {
+                ++globalThis.bwWasmJitMtGroupWorkerStats.groupedLocalCompiles;
+                globalThis.bwWasmJitMtRecordGroupWorkerEvent(1);
+            } else if (lookup.source === 2) {
+                ++globalThis.bwWasmJitMtGroupWorkerStats.groupedBrokerHits;
+                globalThis.bwWasmJitMtRecordGroupWorkerEvent(2);
+            }
         }
         var fn = inst.exports[UTF8ToString(exportNamePtr)];
-        if (!fn) return 0;
+        if (!fn) {
+            return 0;
+        }
         while (tableIndex >= wasmTable.length) {
             wasmTable.grow(tableIndex - wasmTable.length + 1);
         }
         wasmTable.set(tableIndex, fn);
+        if (reusedInstance) {
+            ++globalThis.bwWasmJitMtGroupWorkerStats.groupInstanceReuses;
+            globalThis.bwWasmJitMtRecordGroupWorkerEvent(3);
+        }
         return 1;
     } catch(e) {
-        console.warn('[WASM JIT MT group lazy install failed] slot=' + tableIndex + ' error=' + e);
+        if (!e || e.bwWasmJitBrokerOom !== true) {
+            console.warn('[WASM JIT MT group lazy install failed] slot=' + tableIndex + ' error=' + e);
+        }
         return 0;
     }
 });
@@ -2643,14 +3333,23 @@ EM_JS(int, boxedwine_wasm_install_existing_group_mt,
 // Multi-threaded lazy install: instantiate an already-compiled block into this
 // worker's local wasmTable at the shared slot before call_indirect uses it.
 EM_JS(int, boxedwine_wasm_install_existing_mt,
-      (const void* bytes, int size, const void** importFns, int importCount, int tableIndex),
+      (const void* bytes, int size, const void** importFns, int importCount, int tableIndex,
+       U32 moduleId, U32 memoryId, U32 memoryIncarnation, S32 brokerEnabled, S32* lookupResultPtr),
 {
+    HEAP32[lookupResultPtr >> 2] = 0;
     try {
-        if (tableIndex < 0) return 0;
-        if (tableIndex < wasmTable.length && wasmTable.get(tableIndex)) return 1;
+        if (tableIndex < 0) {
+            return 0;
+        }
+        if (tableIndex < wasmTable.length && wasmTable.get(tableIndex)) {
+            return 1;
+        }
 
         var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
-        var mod = new WebAssembly.Module(wasmBytes);
+        var lookup = globalThis.bwWasmJitBrokerGetOrCompile(moduleId, memoryId, memoryIncarnation,
+            wasmBytes, brokerEnabled !== 0, 1, 1);
+        var mod = lookup.module;
+        HEAP32[lookupResultPtr >> 2] = lookup.source;
 
         var helpers = {};
         var view = new Int32Array(HEAP32.buffer, importFns, importCount);
@@ -2664,7 +3363,9 @@ EM_JS(int, boxedwine_wasm_install_existing_mt,
         });
 
         var fn = inst.exports['execute'];
-        if (!fn) return 0;
+        if (!fn) {
+            return 0;
+        }
 
         while (tableIndex >= wasmTable.length) {
             wasmTable.grow(tableIndex - wasmTable.length + 1);
@@ -2673,9 +3374,11 @@ EM_JS(int, boxedwine_wasm_install_existing_mt,
 
         return 1;
     } catch(e) {
-        console.warn('[WASM JIT lazy install failed] slot=' + tableIndex +
-            ' tableLen=' + wasmTable.length +
-            ' error=' + e);
+        if (!e || e.bwWasmJitBrokerOom !== true) {
+            console.warn('[WASM JIT lazy install failed] slot=' + tableIndex +
+                ' tableLen=' + wasmTable.length +
+                ' error=' + e);
+        }
         return 0;
     }
 });
@@ -2736,9 +3439,12 @@ extern "C" int wasm_jit_mt_register_group(const void* bytes, int size) {
     wasm_jit_set_persistence_active();
     std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
     g_wasmMtGroups.emplace_back();
-    g_wasmMtGroups.back().bytes.assign(static_cast<const U8*>(bytes),
-                                       static_cast<const U8*>(bytes) + size);
-    return (int)g_wasmMtGroups.size() - 1;
+    WasmJitMtGroup& group = g_wasmMtGroups.back();
+    group.kind = WasmJitMtGroupKind::Imported;
+    group.instanceIdentity = (U32)g_wasmMtGroups.size() - 1;
+    group.bytes.assign(static_cast<const U8*>(bytes),
+                       static_cast<const U8*>(bytes) + size);
+    return (int)group.instanceIdentity;
 }
 
 extern "C" void wasm_jit_mt_register_group_entry(int groupIdx, uint32_t eip, uint32_t blockHash,
@@ -4068,28 +4774,46 @@ WasmJitRuntimeStatsSnapshot wasmJitTestGetRuntimeStats() {
 #endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
-// Get or build the per-(group, process) state: zero-filled reloc arrays for
-// every entry plus a patched byte copy whose direct-call sites carry this
-// process's target array addresses. Caller holds g_wasmBlockBinariesMutex.
-// References stay stable after creation: g_wasmMtGroupProcState is a
-// node-based map, and g_wasmMtGroups is append-only and only written before
-// main() (registration is main-thread, pre-worker).
-static WasmJitMtGroupProcState& wasmJitMtGroupProcStateLocked(U32 groupIdx, U32 memId) {
-    auto key = std::make_pair(groupIdx, memId);
+// Get or build the per-(group, process) state. Imported groups allocate
+// zero-filled reloc arrays and patch a byte copy with this process's target
+// array addresses. Runtime groups retain their immutable merged bytes and
+// transferred relocation arrays without repatching or replacement allocation.
+// Caller holds g_wasmBlockBinariesMutex.
+// References to the returned process state stay stable after creation because
+// g_wasmMtGroupProcState is a node-based map. Group registry reads and appends
+// are serialized by g_wasmBlockBinariesMutex.
+static WasmJitMtGroupProcState& wasmJitMtGroupProcStateLocked(U32 groupIdx, U32 memoryId) {
+    auto key = std::make_pair(groupIdx, memoryId);
     auto it = g_wasmMtGroupProcState.find(key);
     if (it != g_wasmMtGroupProcState.end()) {
+        WasmJitMtOwner owner = wasmJitMtGetOwnerLocked(memoryId, true);
+        if (it->second.moduleRef.memoryIncarnation != owner.memoryIncarnation) {
+            it->second.moduleRef = {0, owner.memoryId, owner.memoryIncarnation};
+        }
+        if (g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire) &&
+                !wasmJitMtModuleIsLiveLocked(it->second.moduleRef)) {
+            it->second.moduleRef = wasmJitMtAllocateModuleLocked(memoryId);
+        }
         return it->second;
     }
     const WasmJitMtGroup& group = g_wasmMtGroups[groupIdx];
     WasmJitMtGroupProcState st;
+    WasmJitMtOwner owner = wasmJitMtGetOwnerLocked(memoryId, true);
+    st.moduleRef = {0, owner.memoryId, owner.memoryIncarnation};
+    if (g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire)) {
+        st.moduleRef = wasmJitMtAllocateModuleLocked(memoryId);
+    }
+    st.patchedBytes = group.bytes;
     st.entryArrays.resize(group.entries.size(), nullptr);
+    if (group.kind == WasmJitMtGroupKind::Runtime) {
+        return g_wasmMtGroupProcState.emplace(key, std::move(st)).first->second;
+    }
     for (size_t i = 0; i < group.entries.size(); i++) {
         U32 count = group.entries[i].relocCount;
         if (count) {
             st.entryArrays[i] = new U32[count](); // zero-filled: un-promoted entries stay on guarded slow paths
         }
     }
-    st.patchedBytes = group.bytes;
     for (const WasmJitMtGroupPatch& patch : group.patches) {
         U32 v = 0;
         auto kt = g_wasmMtGroupByKey.find(patch.targetKey);
@@ -4108,6 +4832,547 @@ static WasmJitMtGroupProcState& wasmJitMtGroupProcStateLocked(U32 groupIdx, U32 
     return g_wasmMtGroupProcState.emplace(key, std::move(st)).first->second;
 }
 
+struct WasmJitMtFlushEntry {
+    WasmJitBatchEntryId id = 0;
+    KMemory* memory = nullptr;
+    KProcess* process = nullptr;
+    DecodedOp* op = nullptr;
+    U32 address = 0;
+    U32 mappedFileKey = 0;
+    U32 blockOpCount = 0;
+    U32 emulatedLen = 0;
+    bool needsMemoryPageArrays = false;
+    std::vector<U8> bytes;
+    std::vector<U32> relocValues;
+};
+
+static bool isNestedMtWasmJitEntry(const WasmJitMtPendingBlock& pending, DecodedOp* op) {
+    return op != pending.op && ((op->flags2 & OP_FLAG2_WASM_JIT_PENDING) ||
+        (op->pfnJitCode && op->pfn == pending.process->startJITOp));
+}
+
+static void markMtPendingBlock(WasmJitMtPendingBlock& pending) {
+    pending.op->blockLen = pending.emulatedLen;
+    pending.op->blockOpCount = pending.blockOpCount;
+    pending.op->runCount = JIT_RUN_COUNT;
+    DecodedOp* cur = pending.op;
+    for (U32 i = 0; i < pending.blockOpCount && cur; ++i) {
+        DecodedOp* owner = cur->blockStart;
+        if (!owner || owner->blockLen < pending.emulatedLen) {
+            owner = pending.op;
+        }
+        cur->blockStart = owner;
+        if (cur == pending.op) {
+            cur->pfnJitCode = nullptr;
+            cur->pfn = firstDynamicOp;
+            cur->flags &= ~OP_FLAG_JIT;
+            cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+            cur->flags2 |= OP_FLAG2_WASM_JIT_PENDING;
+        }
+        cur = cur->next;
+    }
+}
+
+static void failMtPendingBlock(WasmJitMtPendingBlock& pending) {
+    DecodedOp* cur = pending.op;
+    for (U32 i = 0; i < pending.blockOpCount && cur; ++i) {
+        if (!isNestedMtWasmJitEntry(pending, cur)) {
+            cur->pfnJitCode = nullptr;
+            cur->pfn = NormalCPU::getFunctionForOp(cur);
+            cur->flags &= ~OP_FLAG_JIT;
+            cur->flags2 &= ~(OP_FLAG2_WASM_JIT_PENDING | OP_FLAG2_WASM_JIT_MEM_ARRAYS);
+            cur->runCount = JIT_RUN_COUNT + 1;
+            if (cur->blockStart == pending.op) {
+                cur->blockStart = nullptr;
+                cur->blockOpCount = 0;
+                cur->blockLen = 0;
+            }
+        }
+        cur = cur->next;
+    }
+}
+
+static void eraseMtPendingBlockLocked(WasmJitBatchEntryId id) {
+    auto found = g_wasmJitMtPendingBlocks.find(id);
+    if (found == g_wasmJitMtPendingBlocks.end()) {
+        return;
+    }
+    auto byOp = g_wasmJitMtPendingByOp.find(found->second->op);
+    if (byOp != g_wasmJitMtPendingByOp.end() && byOp->second == id) {
+        g_wasmJitMtPendingByOp.erase(byOp);
+    }
+    g_wasmJitMtBatchPolicy.cancel(id);
+    if (found->second->state == WasmJitMtPendingState::Open) {
+        U64 bytes = found->second->bytes.size();
+        g_wasmJitMtPendingRawBytes = bytes <= g_wasmJitMtPendingRawBytes ? g_wasmJitMtPendingRawBytes - bytes : 0;
+    }
+    g_wasmJitMtPendingBlocks.erase(found);
+}
+
+static void cancelMtPendingBlockLocked(WasmJitBatchEntryId id, DecodedOp* liveOp) {
+    auto found = g_wasmJitMtPendingBlocks.find(id);
+    if (found == g_wasmJitMtPendingBlocks.end()) {
+        if (liveOp) {
+            liveOp->pfn = NormalCPU::getFunctionForOp(liveOp);
+            liveOp->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+        }
+        return;
+    }
+    DecodedOp* pendingOp = found->second->op;
+    if (pendingOp) {
+        pendingOp->pfn = NormalCPU::getFunctionForOp(pendingOp);
+        pendingOp->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+    }
+    if (liveOp && liveOp != pendingOp) {
+        liveOp->pfn = NormalCPU::getFunctionForOp(liveOp);
+        liveOp->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+    }
+    ++g_wasmJitMtRuntimeStats.cancelledEntries;
+    eraseMtPendingBlockLocked(id);
+}
+
+static void wasmJitMtCancelPendingOps(KMemory* memory, const std::vector<DecodedOp*>& decodedOps) {
+    (void)memory;
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    for (DecodedOp* op : decodedOps) {
+        if (!op) {
+            continue;
+        }
+        auto byOp = g_wasmJitMtPendingByOp.find(op);
+        if (byOp == g_wasmJitMtPendingByOp.end()) {
+            op->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+            continue;
+        }
+        auto found = g_wasmJitMtPendingBlocks.find(byOp->second);
+        if (found == g_wasmJitMtPendingBlocks.end()) {
+            g_wasmJitMtPendingByOp.erase(byOp);
+            op->pfn = NormalCPU::getFunctionForOp(op);
+            op->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+            continue;
+        }
+        cancelMtPendingBlockLocked(byOp->second, op);
+    }
+}
+
+static void wasmJitMtCancelPendingMemory(KMemory* memory) {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    std::vector<WasmJitBatchEntryId> ids;
+    for (const auto& pending : g_wasmJitMtPendingBlocks) {
+        if (pending.second->memory == memory) {
+            ids.push_back(pending.first);
+        }
+    }
+    for (WasmJitBatchEntryId id : ids) {
+        auto found = g_wasmJitMtPendingBlocks.find(id);
+        DecodedOp* op = found != g_wasmJitMtPendingBlocks.end() ? found->second->op : nullptr;
+        cancelMtPendingBlockLocked(id, op);
+    }
+}
+
+static void publishMtPendingBlock(WasmJitMtPendingBlock& pending, int tableIdx) {
+    pending.op->blockLen = pending.emulatedLen;
+    pending.op->blockOpCount = pending.blockOpCount;
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    wasmJitProfileCompiledBlock(pending.blockOpCount);
+#endif
+    DecodedOp* cur = pending.op;
+    for (U32 i = 0; i < pending.blockOpCount && cur; ++i) {
+        DecodedOp* owner = cur->blockStart;
+        if (!owner || owner->blockLen < pending.emulatedLen) {
+            owner = pending.op;
+        }
+        cur->blockStart = owner;
+        if (cur == pending.op) {
+            cur->pfnJitCode = (void*)(uintptr_t)(U32)tableIdx;
+            cur->flags |= OP_FLAG_JIT;
+            cur->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+            cur->pfn = pending.process->startJITOp;
+            if (pending.needsMemoryPageArrays) {
+                cur->flags2 |= OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+            } else {
+                cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+            }
+        } else if (!isNestedMtWasmJitEntry(pending, cur)) {
+            cur->pfnJitCode = nullptr;
+            cur->flags &= ~OP_FLAG_JIT;
+            cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+            cur->pfn = NormalCPU::getFunctionForOp(cur);
+        }
+        cur = cur->next;
+    }
+}
+
+static void recordMtRuntimeFlushReasonLocked(WasmJitFlushReason reason) {
+    switch (reason) {
+    case WasmJitFlushReason::BlockCount:
+        ++g_wasmJitMtRuntimeStats.countFlushes;
+        break;
+    case WasmJitFlushReason::ByteCount:
+        ++g_wasmJitMtRuntimeStats.byteFlushes;
+        break;
+    case WasmJitFlushReason::PendingHits:
+        ++g_wasmJitMtRuntimeStats.urgentFlushes;
+        break;
+    case WasmJitFlushReason::ProcessBytes:
+        ++g_wasmJitMtRuntimeStats.processCapFlushes;
+        break;
+    }
+}
+
+static void clearMtRuntimeBatch(const std::vector<WasmJitMtFlushEntry>& entries, bool permanentFailure) {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    for (const WasmJitMtFlushEntry& snapshot : entries) {
+        auto found = g_wasmJitMtPendingBlocks.find(snapshot.id);
+        if (found == g_wasmJitMtPendingBlocks.end()) {
+            continue;
+        }
+        WasmJitMtPendingBlock& pending = *found->second;
+        if (pending.op == snapshot.op && pending.memory == snapshot.memory) {
+            failMtPendingBlock(pending);
+        }
+        if (permanentFailure) {
+            ++g_wasmJitMtRuntimeStats.permanentFailures;
+        }
+        eraseMtPendingBlockLocked(snapshot.id);
+    }
+}
+
+static void failMtRuntimeBatch(const std::vector<WasmJitMtFlushEntry>& entries, const char* stage, const char* detail = nullptr) {
+    if (detail) {
+        klog_fmt("[WASM JIT MT batch] %s failed: %s", stage, detail);
+    } else {
+        klog_fmt("[WASM JIT MT batch] %s failed", stage);
+    }
+    clearMtRuntimeBatch(entries, true);
+}
+
+static std::unique_ptr<U32[]> allocateMtWasmJitRelocArray(const std::vector<U32>& relocValues) {
+    if (relocValues.empty()) {
+        return nullptr;
+    }
+    auto result = std::make_unique<U32[]>(relocValues.size());
+    memcpy(result.get(), relocValues.data(), relocValues.size() * sizeof(U32));
+    return result;
+}
+
+static void flushMtRuntimeBatch(CPU* cpu, const WasmJitFlushRequest& request) {
+    if (!cpu || request.entries.empty() || request.key.memory != cpu->memory) {
+        return;
+    }
+
+    std::vector<WasmJitMtFlushEntry> entries;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+        entries.reserve(request.entries.size());
+        bool valid = true;
+        for (WasmJitBatchEntryId id : request.entries) {
+            auto found = g_wasmJitMtPendingBlocks.find(id);
+            if (found == g_wasmJitMtPendingBlocks.end()) {
+                valid = false;
+                break;
+            }
+            WasmJitMtPendingBlock& pending = *found->second;
+            if (pending.state != WasmJitMtPendingState::Open ||
+                    pending.memory != request.key.memory || pending.mappedFileKey != request.key.mappedFileKey) {
+                valid = false;
+                break;
+            }
+        }
+        if (!valid) {
+            for (WasmJitBatchEntryId id : request.entries) {
+                auto found = g_wasmJitMtPendingBlocks.find(id);
+                if (found != g_wasmJitMtPendingBlocks.end() && found->second->memory == cpu->memory) {
+                    failMtPendingBlock(*found->second);
+                    ++g_wasmJitMtRuntimeStats.permanentFailures;
+                    eraseMtPendingBlockLocked(id);
+                }
+            }
+            return;
+        }
+        U64 sealedRequestId = wasmJitMtReserveSealedRequestIdLocked();
+        if (!sealedRequestId) {
+            for (WasmJitBatchEntryId id : request.entries) {
+                auto found = g_wasmJitMtPendingBlocks.find(id);
+                if (found != g_wasmJitMtPendingBlocks.end()) {
+                    failMtPendingBlock(*found->second);
+                    ++g_wasmJitMtRuntimeStats.permanentFailures;
+                    eraseMtPendingBlockLocked(id);
+                }
+            }
+            return;
+        }
+        for (WasmJitBatchEntryId id : request.entries) {
+            WasmJitMtPendingBlock& pending = *g_wasmJitMtPendingBlocks.find(id)->second;
+            U64 bytes = pending.bytes.size();
+            g_wasmJitMtPendingRawBytes = bytes <= g_wasmJitMtPendingRawBytes ? g_wasmJitMtPendingRawBytes - bytes : 0;
+            pending.state = WasmJitMtPendingState::Sealed;
+            pending.sealedRequestId = sealedRequestId;
+            WasmJitMtFlushEntry snapshot;
+            snapshot.id = pending.id;
+            snapshot.memory = pending.memory;
+            snapshot.process = pending.process;
+            snapshot.op = pending.op;
+            snapshot.address = pending.address;
+            snapshot.mappedFileKey = pending.mappedFileKey;
+            snapshot.blockOpCount = pending.blockOpCount;
+            snapshot.emulatedLen = pending.emulatedLen;
+            snapshot.needsMemoryPageArrays = pending.needsMemoryPageArrays;
+            snapshot.bytes = pending.bytes;
+            snapshot.relocValues = pending.relocValues;
+            entries.push_back(std::move(snapshot));
+        }
+        recordMtRuntimeFlushReasonLocked(request.reason);
+    }
+
+    std::vector<WasmJitMergeInput> inputs;
+    inputs.reserve(entries.size());
+    for (const WasmJitMtFlushEntry& entry : entries) {
+        inputs.push_back({&entry.bytes});
+    }
+    std::vector<U8> merged;
+    BString error;
+    if (!wasmJitMergeModules(inputs, merged, error)) {
+        failMtRuntimeBatch(entries, "merge", error.c_str());
+        return;
+    }
+
+    U32 groupIdentity = 0;
+    WasmJitMtModuleRef moduleRef;
+    S32 brokerEnabled = 0;
+    U64 mergedSize = merged.size();
+    {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        groupIdentity = wasmJitMtReserveRuntimeGroupIdentityLocked();
+        if (groupIdentity) {
+            U32 memoryId = (U32)(uintptr_t)cpu->memory;
+            brokerEnabled = g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire);
+            if (brokerEnabled) {
+                moduleRef = wasmJitMtAllocateModuleLocked(memoryId);
+            } else {
+                WasmJitMtOwner owner = wasmJitMtGetOwnerLocked(memoryId, true);
+                moduleRef = {0, owner.memoryId, owner.memoryIncarnation};
+            }
+        }
+    }
+    if (!groupIdentity || !moduleRef.memoryIncarnation) {
+        failMtRuntimeBatch(entries, "runtime group identity");
+        return;
+    }
+
+    std::vector<S32> slots(entries.size(), -1);
+    S32 lookupResult = WASM_JIT_MT_BROKER_LOOKUP_NONE;
+    S32 installResult = boxedwine_wasm_instantiate_runtime_group_mt(
+        merged.data(), (int)merged.size(),
+        g_wasmHelperTable, WASM_HELPER_COUNT,
+        &g_wasmTableNextSlot, (U32)entries.size(), slots.data(),
+        (U32)WasmJitMtGroupKind::Runtime, groupIdentity,
+        moduleRef.moduleId, moduleRef.memoryId, moduleRef.memoryIncarnation,
+        brokerEnabled && moduleRef.moduleId, &lookupResult);
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+        if (installResult != WasmJitMtRuntimeGroupInstallBlocked) {
+            ++g_wasmJitMtRuntimeStats.constructionAttempts;
+        }
+    }
+    if (installResult != WasmJitMtRuntimeGroupInstallSuccess) {
+        {
+            std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+            if (lookupResult == WASM_JIT_MT_BROKER_LOOKUP_NONE) {
+                wasmJitMtReleaseUnpublishedModuleLocked(moduleRef);
+            } else {
+                wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
+            }
+        }
+        if (installResult == WasmJitMtRuntimeGroupInstallOom) {
+            clearMtRuntimeBatch(entries, false);
+            std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+            ++g_wasmJitMtRuntimeStats.groupedOomBlocks;
+        } else if (installResult == WasmJitMtRuntimeGroupInstallBlocked) {
+            clearMtRuntimeBatch(entries, false);
+            std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+            ++g_wasmJitMtRuntimeStats.skippedConstructionAttempts;
+        } else {
+            failMtRuntimeBatch(entries, "runtime install");
+        }
+        return;
+    }
+
+#ifdef __TEST
+    S32 cancelEntryIndex = -1;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+        cancelEntryIndex = g_wasmJitTestMtCancelSealedEntryIndex;
+        g_wasmJitTestMtCancelSealedEntryIndex = -1;
+    }
+    if (cancelEntryIndex >= 0 && (size_t)cancelEntryIndex < entries.size()) {
+        const WasmJitMtFlushEntry& entry = entries[(size_t)cancelEntryIndex];
+        wasmJitMtCancelPendingOps(entry.memory, {entry.op});
+    }
+
+    U32 replacementAddress = 0;
+    DecodedOp** replacementOp = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+        replacementAddress = g_wasmJitTestMtReplacementAddress;
+        replacementOp = g_wasmJitTestMtReplacementOp;
+        g_wasmJitTestMtReplacementAddress = 0;
+        g_wasmJitTestMtReplacementOp = nullptr;
+    }
+    if (replacementOp) {
+        cpu->memory->clearOpCache();
+        *replacementOp = cpu->getOp(replacementAddress, 0);
+    }
+#endif
+
+    std::vector<bool> live(entries.size(), false);
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+        for (size_t i = 0; i < entries.size(); ++i) {
+            auto found = g_wasmJitMtPendingBlocks.find(entries[i].id);
+            live[i] = found != g_wasmJitMtPendingBlocks.end() &&
+                found->second->state == WasmJitMtPendingState::Sealed &&
+                found->second->op == entries[i].op &&
+                found->second->memory == entries[i].memory;
+        }
+    }
+
+    std::vector<std::unique_ptr<U32[]>> relocArrays;
+    relocArrays.reserve(entries.size());
+    for (const WasmJitMtFlushEntry& entry : entries) {
+        relocArrays.push_back(allocateMtWasmJitRelocArray(entry.relocValues));
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        if (!wasmJitMtModuleOwnerIsCurrentLocked(moduleRef)) {
+            return;
+        }
+        U32 groupIdx = (U32)g_wasmMtGroups.size();
+        WasmJitMtGroup group;
+        group.kind = WasmJitMtGroupKind::Runtime;
+        group.instanceIdentity = groupIdentity;
+        group.bytes = std::move(merged);
+        group.entries.reserve(entries.size());
+        for (size_t i = 0; i < entries.size(); ++i) {
+            group.entries.push_back({0, "b" + std::to_string(i), (U32)entries[i].relocValues.size()});
+        }
+        g_wasmMtGroups.push_back(std::move(group));
+
+        WasmJitMtGroupProcState state;
+        state.patchedBytes = g_wasmMtGroups[groupIdx].bytes;
+        state.entryArrays.resize(entries.size(), nullptr);
+        state.moduleRef = moduleRef;
+        for (size_t i = 0; i < entries.size(); ++i) {
+            U32* relocArray = relocArrays[i].release();
+            state.entryArrays[i] = relocArray;
+            if (relocArray) {
+                g_wasmRelocArrays[slots[i]] = relocArray;
+                g_wasmHasRelocArrays.store(true, std::memory_order_relaxed);
+            }
+            g_wasmMtGroupSlotRefs[slots[i]] = {groupIdx, (U32)i, moduleRef};
+        }
+        g_wasmMtGroupProcState.emplace(std::make_pair(groupIdx, moduleRef.memoryId), std::move(state));
+        wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+        ++g_wasmJitMtRuntimeStats.groupedModules;
+        g_wasmJitMtRuntimeStats.groupedFunctions += entries.size();
+        g_wasmJitMtRuntimeStats.mergedBytes += mergedSize;
+        ++g_wasmJitMtRuntimeStats.constructionSuccesses;
+        g_wasmJitMtRuntimeStats.maxFunctionsPerGroup = std::max<U64>(
+            g_wasmJitMtRuntimeStats.maxFunctionsPerGroup, entries.size());
+        for (size_t i = 0; i < entries.size(); ++i) {
+            auto found = g_wasmJitMtPendingBlocks.find(entries[i].id);
+            if (found == g_wasmJitMtPendingBlocks.end()) {
+                continue;
+            }
+            WasmJitMtPendingBlock& pending = *found->second;
+            if (live[i] && pending.state == WasmJitMtPendingState::Sealed &&
+                    pending.op == entries[i].op && pending.memory == entries[i].memory) {
+                publishMtPendingBlock(pending, slots[i]);
+            } else {
+                ++g_wasmJitMtRuntimeStats.cancelledEntries;
+            }
+            eraseMtPendingBlockLocked(entries[i].id);
+        }
+    }
+}
+
+static void submitMtPendingWasmJitBlock(CPU* cpu, DecodedOp* op, U32 address, U32 blockOpCount,
+        U32 emulatedLen, U32 mappedFileKey, bool needsMemoryPageArrays,
+        std::vector<U8>&& bytes, std::vector<U32>&& relocValues) {
+    auto pending = std::make_unique<WasmJitMtPendingBlock>();
+    pending->memory = cpu->memory;
+    pending->process = cpu->thread->process.get();
+    pending->op = op;
+    pending->address = address;
+    pending->mappedFileKey = mappedFileKey;
+    pending->blockOpCount = blockOpCount;
+    pending->emulatedLen = emulatedLen;
+    pending->needsMemoryPageArrays = needsMemoryPageArrays;
+    pending->bytes = std::move(bytes);
+    pending->relocValues = std::move(relocValues);
+
+    std::vector<WasmJitFlushRequest> flushes;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+        if (!g_wasmJitMtNextPendingId) {
+            ++g_wasmJitMtRuntimeStats.permanentFailures;
+            failMtPendingBlock(*pending);
+            return;
+        }
+        pending->id = g_wasmJitMtNextPendingId++;
+        U64 rawBytes = pending->bytes.size();
+        U64 byteCharge = rawBytes;
+#ifdef __TEST
+        if (g_wasmJitTestMtPendingByteChargeOverride) {
+            byteCharge = g_wasmJitTestMtPendingByteChargeOverride;
+        }
+#endif
+        WasmJitBatchEntryId id = pending->id;
+        WasmJitBatchKey key{pending->memory, pending->mappedFileKey};
+        markMtPendingBlock(*pending);
+        g_wasmJitMtPendingByOp[pending->op] = id;
+        g_wasmJitMtPendingBlocks[id] = std::move(pending);
+        g_wasmJitMtPendingRawBytes += rawBytes;
+        ++g_wasmJitMtRuntimeStats.translatedFileBacked;
+        g_wasmJitMtRuntimeStats.rawInputBytes += rawBytes;
+        flushes = g_wasmJitMtBatchPolicy.enqueue(id, key, byteCharge);
+    }
+    for (const WasmJitFlushRequest& flush : flushes) {
+        flushMtRuntimeBatch(cpu, flush);
+    }
+}
+
+void wasmJitHandlePendingHit(CPU* cpu, DecodedOp* op) {
+    WasmJitFlushRequest flush;
+    bool shouldFlush = false;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+        auto byOp = g_wasmJitMtPendingByOp.find(op);
+        if (byOp == g_wasmJitMtPendingByOp.end()) {
+            op->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+            return;
+        }
+        auto found = g_wasmJitMtPendingBlocks.find(byOp->second);
+        if (found == g_wasmJitMtPendingBlocks.end()) {
+            g_wasmJitMtPendingByOp.erase(byOp);
+            op->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
+            return;
+        }
+        WasmJitMtPendingBlock& pending = *found->second;
+        if (pending.memory != cpu->memory || pending.state != WasmJitMtPendingState::Open) {
+            return;
+        }
+        shouldFlush = g_wasmJitMtBatchPolicy.recordPendingHit(pending.id, flush);
+    }
+    if (shouldFlush) {
+        flushMtRuntimeBatch(cpu, flush);
+    }
+}
+
 static bool lazyInstallWasmJitBlockForWorker(int tableIndex) {
     // Group slots route to the per-worker group instance; the patched bytes
     // and export name are read under the mutex but the (potentially large)
@@ -4117,55 +5382,685 @@ static bool lazyInstallWasmJitBlockForWorker(int tableIndex) {
         const U8* groupBytes = nullptr;
         int groupSize = 0;
         const char* exportName = nullptr;
-        U32 groupIdx = 0, memId = 0;
+        U32 groupKind = 0;
+        U32 groupIdentity = 0;
+        U32 representedBlockCount = 0;
+        WasmJitMtModuleRef moduleRef;
+        S32 brokerEnabled = 0;
         {
             std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
             auto refIt = g_wasmMtGroupSlotRefs.find(tableIndex);
             if (refIt != g_wasmMtGroupSlotRefs.end()) {
                 const WasmJitMtGroupSlotRef& ref = refIt->second;
-                WasmJitMtGroupProcState& st = wasmJitMtGroupProcStateLocked(ref.groupIdx, ref.memId);
+                WasmJitMtGroupProcState& st = wasmJitMtGroupProcStateLocked(ref.groupIdx, ref.moduleRef.memoryId);
                 groupBytes = st.patchedBytes.data();
                 groupSize = (int)st.patchedBytes.size();
                 exportName = g_wasmMtGroups[ref.groupIdx].entries[ref.entryIdx].exportName.c_str();
-                groupIdx = ref.groupIdx;
-                memId = ref.memId;
+                const WasmJitMtGroup& group = g_wasmMtGroups[ref.groupIdx];
+                groupKind = (U32)group.kind;
+                groupIdentity = group.instanceIdentity;
+                representedBlockCount = (U32)group.entries.size();
+                moduleRef = ref.moduleRef;
+                brokerEnabled = g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire) &&
+                    wasmJitMtModuleIsLiveLocked(moduleRef);
             }
         }
         if (groupBytes) {
-            return boxedwine_wasm_install_existing_group_mt(
+            S32 lookupResult = WASM_JIT_MT_BROKER_LOOKUP_NONE;
+            bool result = boxedwine_wasm_install_existing_group_mt(
                 groupBytes, groupSize,
                 g_wasmHelperTable, WASM_HELPER_COUNT,
-                tableIndex, exportName, (int)groupIdx, memId) != 0;
+                tableIndex, exportName, groupKind, groupIdentity, moduleRef.memoryId,
+                moduleRef.memoryIncarnation, moduleRef.moduleId, representedBlockCount,
+                brokerEnabled, &lookupResult) != 0;
+            if (result && lookupResult != WASM_JIT_MT_BROKER_LOOKUP_NONE) {
+                std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+                wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
+            }
+            return result;
         }
     }
     std::vector<U8> bytes;
+    WasmJitMtModuleRef moduleRef;
+    S32 brokerEnabled = 0;
     {
         std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
-        auto it = g_wasmBlockBinaries.find(tableIndex);
-        if (it == g_wasmBlockBinaries.end()) {
+        auto bytesIt = g_wasmBlockBinaries.find(tableIndex);
+        if (bytesIt == g_wasmBlockBinaries.end()) {
             return false;
         }
-        bytes = it->second;
+        bytes = bytesIt->second;
+        auto refIt = g_wasmJitMtModulesBySlot.find(tableIndex);
+        if (refIt != g_wasmJitMtModulesBySlot.end()) {
+            moduleRef = refIt->second;
+            brokerEnabled = g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire) &&
+                wasmJitMtModuleIsLiveLocked(moduleRef);
+        }
     }
     if (bytes.empty()) {
         return false;
     }
-    return boxedwine_wasm_install_existing_mt(
-        bytes.data(),
-        (int)bytes.size(),
-        g_wasmHelperTable,
-        WASM_HELPER_COUNT,
-        tableIndex
-    ) != 0;
+    S32 lookupResult = WASM_JIT_MT_BROKER_LOOKUP_NONE;
+    bool result = boxedwine_wasm_install_existing_mt(bytes.data(), (int)bytes.size(), g_wasmHelperTable, WASM_HELPER_COUNT,
+        tableIndex, moduleRef.moduleId, moduleRef.memoryId, moduleRef.memoryIncarnation, brokerEnabled, &lookupResult) != 0;
+    if (result && lookupResult != WASM_JIT_MT_BROKER_LOOKUP_NONE) {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
+    }
+    return result;
+}
+
+#if defined(__TEST)
+int wasmJitTestInstantiateMtGroupEntry(U32 groupIdx, U32 entryIdx, KMemory* memory) {
+    const U8* bytes = nullptr;
+    int size = 0;
+    const char* exportName = nullptr;
+    WasmJitMtModuleRef moduleRef;
+    U32 memoryId = (U32)(uintptr_t)memory;
+    U32 groupKind = 0;
+    U32 groupIdentity = 0;
+    U32 representedBlockCount = 0;
+    S32 brokerEnabled = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        if (groupIdx >= g_wasmMtGroups.size() || entryIdx >= g_wasmMtGroups[groupIdx].entries.size()) {
+            return -1;
+        }
+        WasmJitMtGroupProcState& state = wasmJitMtGroupProcStateLocked(groupIdx, memoryId);
+        bytes = state.patchedBytes.data();
+        size = (int)state.patchedBytes.size();
+        exportName = g_wasmMtGroups[groupIdx].entries[entryIdx].exportName.c_str();
+        const WasmJitMtGroup& group = g_wasmMtGroups[groupIdx];
+        groupKind = (U32)group.kind;
+        groupIdentity = group.instanceIdentity;
+        representedBlockCount = (U32)group.entries.size();
+        moduleRef = state.moduleRef;
+        brokerEnabled = g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire) &&
+            wasmJitMtModuleIsLiveLocked(moduleRef);
+    }
+    S32 lookupResult = WASM_JIT_MT_BROKER_LOOKUP_NONE;
+    int tableIndex = boxedwine_wasm_instantiate_group_mt(bytes, size, g_wasmHelperTable, WASM_HELPER_COUNT,
+        &g_wasmTableNextSlot, exportName, groupKind, groupIdentity, moduleRef.memoryId, moduleRef.memoryIncarnation,
+        moduleRef.moduleId, representedBlockCount, brokerEnabled, &lookupResult);
+    if (tableIndex >= 0) {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        g_wasmMtGroupSlotRefs[tableIndex] = {groupIdx, entryIdx, moduleRef};
+        wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
+    }
+    return tableIndex;
+}
+
+U32 wasmJitTestGetMtGroupModuleId(U32 groupIdx, KMemory* memory) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    auto it = g_wasmMtGroupProcState.find(std::make_pair(groupIdx, (U32)(uintptr_t)memory));
+    if (it == g_wasmMtGroupProcState.end()) {
+        return 0;
+    }
+    return it->second.moduleRef.moduleId;
+}
+
+U32 wasmJitTestGetMtGroupInstanceIdentity(U32 groupIdx) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    if (groupIdx >= g_wasmMtGroups.size()) {
+        return 0;
+    }
+    return g_wasmMtGroups[groupIdx].instanceIdentity;
+}
+
+bool wasmJitTestInstallMtRuntimeGroup(const std::vector<U8>& bytes, U32 entryCount,
+        KMemory* memory, std::vector<S32>& slots) {
+    slots.assign(entryCount, -1);
+    if (bytes.empty() || !entryCount || !memory) {
+        return false;
+    }
+
+    U32 groupIdentity = 0;
+    WasmJitMtModuleRef moduleRef;
+    S32 brokerEnabled = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        groupIdentity = wasmJitMtReserveRuntimeGroupIdentityLocked();
+        if (!groupIdentity) {
+            return false;
+        }
+        brokerEnabled = g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire);
+        if (brokerEnabled) {
+            moduleRef = wasmJitMtAllocateModuleLocked((U32)(uintptr_t)memory);
+        } else {
+            WasmJitMtOwner owner = wasmJitMtGetOwnerLocked((U32)(uintptr_t)memory, true);
+            moduleRef = {0, owner.memoryId, owner.memoryIncarnation};
+        }
+        if (!moduleRef.memoryIncarnation) {
+            return false;
+        }
+    }
+
+    S32 lookupResult = WASM_JIT_MT_BROKER_LOOKUP_NONE;
+    S32 installResult = boxedwine_wasm_instantiate_runtime_group_mt(
+        bytes.data(), (int)bytes.size(),
+        g_wasmHelperTable, WASM_HELPER_COUNT,
+        &g_wasmTableNextSlot, entryCount, slots.data(),
+        (U32)WasmJitMtGroupKind::Runtime, groupIdentity,
+        moduleRef.moduleId, moduleRef.memoryId, moduleRef.memoryIncarnation,
+        brokerEnabled && moduleRef.moduleId, &lookupResult);
+    if (installResult != WasmJitMtRuntimeGroupInstallSuccess) {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        if (lookupResult == WASM_JIT_MT_BROKER_LOOKUP_NONE) {
+            wasmJitMtReleaseUnpublishedModuleLocked(moduleRef);
+        } else {
+            wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
+        }
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    if (!wasmJitMtModuleOwnerIsCurrentLocked(moduleRef)) {
+        return false;
+    }
+    U32 groupIdx = (U32)g_wasmMtGroups.size();
+    WasmJitMtGroup group;
+    group.kind = WasmJitMtGroupKind::Runtime;
+    group.instanceIdentity = groupIdentity;
+    group.bytes = bytes;
+    group.entries.reserve(entryCount);
+    for (U32 i = 0; i < entryCount; ++i) {
+        group.entries.push_back({0, "b" + std::to_string(i), 0});
+    }
+    g_wasmMtGroups.push_back(std::move(group));
+    WasmJitMtGroupProcState state;
+    state.patchedBytes = g_wasmMtGroups[groupIdx].bytes;
+    state.entryArrays.resize(entryCount, nullptr);
+    state.moduleRef = moduleRef;
+    for (U32 i = 0; i < entryCount; ++i) {
+        g_wasmMtGroupSlotRefs[slots[i]] = {groupIdx, i, moduleRef};
+    }
+    g_wasmMtGroupProcState.emplace(
+        std::make_pair(groupIdx, moduleRef.memoryId), std::move(state));
+    wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
+    return true;
+}
+
+EM_JS(void, wasmJitTestFailMtRuntimeGroupAfterSlots, (S32 slotCount), {
+    Module.wasmJitTestFailMtRuntimeGroupAfterSlots = slotCount;
+});
+
+EM_JS(U32, wasmJitTestMtRuntimeGroupConstructionCount, (), {
+    return Module.wasmJitMtRuntimeGroupConstructionCount || 0;
+});
+
+EM_JS(void, wasmJitTestForceNextMtRuntimeGroupInstanceOom, (S32 enabled), {
+    Module.wasmJitTestForceNextMtRuntimeGroupInstanceOom = enabled !== 0;
+});
+
+EM_JS(void, wasmJitTestResetMtRuntimeGroupConstructorStats, (), {
+    globalThis.bwWasmJitMtRuntimeGroupConstructorStats = {
+        moduleAttempts: 0,
+        instanceAttempts: 0
+    };
+});
+
+EM_JS(void, wasmJitTestCopyMtRuntimeGroupConstructorStats,
+        (WasmJitMtRuntimeGroupConstructorStatsSnapshot* snapshot), {
+    var stats = globalThis.bwWasmJitMtRuntimeGroupConstructorStats || {};
+    HEAPU32[(snapshot >> 2) + 0] = stats.moduleAttempts || 0;
+    HEAPU32[(snapshot >> 2) + 1] = stats.instanceAttempts || 0;
+});
+
+WasmJitMtRuntimeGroupConstructorStatsSnapshot wasmJitTestGetMtRuntimeGroupConstructorStats() {
+    WasmJitMtRuntimeGroupConstructorStatsSnapshot result;
+    wasmJitTestCopyMtRuntimeGroupConstructorStats(&result);
+    return result;
+}
+
+EM_JS(S32, wasmJitTestDropCurrentWorkerMtRuntimeGroupInstanceJs,
+        (U32 moduleId, U32 groupKind, U32 groupIdentity, U32 memoryId, U32 memoryIncarnation), {
+    if (typeof globalThis.bwWasmJitMtGroupInstanceKey !== 'function' ||
+            !globalThis.bwJitMtGroupInstances) {
+        return 0;
+    }
+    var key = globalThis.bwWasmJitMtGroupInstanceKey(
+        moduleId, groupKind, groupIdentity, memoryId, memoryIncarnation);
+    return globalThis.bwJitMtGroupInstances.delete(key) ? 1 : 0;
+});
+
+bool wasmJitTestDropCurrentWorkerMtRuntimeGroupInstance(int tableIndex) {
+    U32 groupKind = 0;
+    U32 groupIdentity = 0;
+    WasmJitMtModuleRef moduleRef;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        auto slotIt = g_wasmMtGroupSlotRefs.find(tableIndex);
+        if (slotIt == g_wasmMtGroupSlotRefs.end() || slotIt->second.groupIdx >= g_wasmMtGroups.size()) {
+            return false;
+        }
+        const WasmJitMtGroup& group = g_wasmMtGroups[slotIt->second.groupIdx];
+        groupKind = (U32)group.kind;
+        groupIdentity = group.instanceIdentity;
+        moduleRef = slotIt->second.moduleRef;
+    }
+    return wasmJitTestDropCurrentWorkerMtRuntimeGroupInstanceJs(
+        moduleRef.moduleId, groupKind, groupIdentity,
+        moduleRef.memoryId, moduleRef.memoryIncarnation) != 0;
+}
+
+EM_JS(S32, wasmJitTestClearCurrentWorkerMtSlotJs, (S32 tableIndex), {
+    if (tableIndex < 0 || tableIndex >= wasmTable.length) {
+        return 0;
+    }
+    try {
+        wasmTable.set(tableIndex, null);
+        return wasmTable.get(tableIndex) === null ? 1 : 0;
+    } catch (_) {
+        return 0;
+    }
+});
+
+bool wasmJitTestClearCurrentWorkerMtSlot(int tableIndex) {
+    return wasmJitTestClearCurrentWorkerMtSlotJs(tableIndex) != 0;
+}
+
+EM_JS(S32, wasmJitTestCanCurrentWorkerConstructFreshMtGroupJs,
+        (U32 memoryId, U32 memoryIncarnation), {
+    if (typeof globalThis.bwWasmJitMtCanConstructFreshGroup !== 'function') {
+        return 1;
+    }
+    return globalThis.bwWasmJitMtCanConstructFreshGroup(memoryId, memoryIncarnation) ? 1 : 0;
+});
+
+bool wasmJitTestCanCurrentWorkerConstructFreshMtGroup(KMemory* memory) {
+    WasmJitMtOwner owner;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        owner = wasmJitMtGetOwnerLocked((U32)(uintptr_t)memory, true);
+    }
+    return owner.memoryIncarnation &&
+        wasmJitTestCanCurrentWorkerConstructFreshMtGroupJs(
+            owner.memoryId, owner.memoryIncarnation) != 0;
+}
+
+bool wasmJitTestIsCurrentWorkerFreshMtGroupBlocked(
+        U32 memoryId, U32 memoryIncarnation) {
+    return wasmJitTestCanCurrentWorkerConstructFreshMtGroupJs(
+        memoryId, memoryIncarnation) == 0;
+}
+
+bool wasmJitTestSetMtPersistenceActive(bool active) {
+    return g_wasmJitPersistenceActive.exchange(active, std::memory_order_relaxed);
+}
+
+void wasmJitTestEnableMtRuntimeBatching(bool enabled) {
+    g_wasmJitTestMtRuntimeBatchingEnabled = enabled;
+}
+
+void wasmJitTestSetMtBatchLimits(const WasmJitBatchLimits& limits) {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    g_wasmJitMtBatchLimits = limits;
+    g_wasmJitMtBatchPolicy.reset(limits);
+}
+
+void wasmJitTestSetMtMappedFileKeyOverride(S32 mappedFileKey) {
+    g_wasmJitTestMtMappedFileKeyOverride = mappedFileKey;
+}
+
+void wasmJitTestCancelMtSealedEntryBeforePublish(S32 entryIndex) {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    g_wasmJitTestMtCancelSealedEntryIndex = entryIndex;
+}
+
+void wasmJitTestReplaceMtMemoryBeforePublish(U32 address, DecodedOp** replacementOp) {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    g_wasmJitTestMtReplacementAddress = address;
+    g_wasmJitTestMtReplacementOp = replacementOp;
+}
+
+void wasmJitTestSetMtPendingByteChargeOverride(U64 byteCount) {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    g_wasmJitTestMtPendingByteChargeOverride = byteCount;
+}
+
+bool wasmJitTestAddMtSealedRequestForStats(KMemory* memory, U32 mappedFileKey,
+        U32 entryCount) {
+    if (!memory || !entryCount) {
+        return false;
+    }
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    U64 sealedRequestId = wasmJitMtReserveSealedRequestIdLocked();
+    if (!sealedRequestId) {
+        return false;
+    }
+    std::vector<WasmJitBatchEntryId> created;
+    created.reserve(entryCount);
+    for (U32 i = 0; i < entryCount; ++i) {
+        if (!g_wasmJitMtNextPendingId) {
+            for (WasmJitBatchEntryId id : created) {
+                eraseMtPendingBlockLocked(id);
+            }
+            return false;
+        }
+        auto pending = std::make_unique<WasmJitMtPendingBlock>();
+        pending->id = g_wasmJitMtNextPendingId++;
+        pending->sealedRequestId = sealedRequestId;
+        pending->state = WasmJitMtPendingState::Sealed;
+        pending->memory = memory;
+        pending->mappedFileKey = mappedFileKey;
+        created.push_back(pending->id);
+        g_wasmJitMtPendingBlocks[pending->id] = std::move(pending);
+    }
+    return true;
+}
+
+EM_JS(void, wasmJitTestBrokerStatsSnapshotFailureJs, (S32* done), {
+    if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) {
+        postMessage({
+            cmd: 'callHandler',
+            handler: 'bwWasmJitBrokerTestStatsSnapshotFailure',
+            args: [done]
+        });
+    } else if (typeof Module.bwWasmJitBrokerTestStatsSnapshotFailure === 'function') {
+        Module.bwWasmJitBrokerTestStatsSnapshotFailure(done);
+    } else {
+        Atomics.store(HEAP32, done >>> 2, -1);
+        Atomics.notify(HEAP32, done >>> 2);
+    }
+});
+
+bool wasmJitTestBrokerStatsSnapshotFailureCompletes() {
+    S32 done = 0;
+    wasmJitTestBrokerStatsSnapshotFailureJs(&done);
+    double deadline = emscripten_get_now() + 2000.0;
+    while (emscripten_get_now() < deadline) {
+        S32 value = __atomic_load_n(&done, __ATOMIC_ACQUIRE);
+        if (value) {
+            return value == 1;
+        }
+        emscripten_futex_wait(&done, value, 50.0);
+    }
+    return false;
+}
+
+EM_JS(void, wasmJitTestBrokerIncompleteStatsJs,
+        (U32 expectedCreations, U32 expectedReuses, U32 expectedBrokerHits,
+         U32 expectedLocalCompiles, S32* done), {
+    if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) {
+        postMessage({
+            cmd: 'callHandler',
+            handler: 'bwWasmJitBrokerTestIncompleteStats',
+            args: [
+                expectedCreations,
+                expectedReuses,
+                expectedBrokerHits,
+                expectedLocalCompiles,
+                done
+            ]
+        });
+    } else if (typeof Module.bwWasmJitBrokerTestIncompleteStats === 'function') {
+        Module.bwWasmJitBrokerTestIncompleteStats(
+            expectedCreations, expectedReuses, expectedBrokerHits,
+            expectedLocalCompiles, done);
+    } else {
+        Atomics.store(HEAP32, done >>> 2, -1);
+        Atomics.notify(HEAP32, done >>> 2);
+    }
+});
+
+bool wasmJitTestBrokerIncompleteStats(U32 expectedCreations,
+        U32 expectedReuses, U32 expectedBrokerHits, U32 expectedLocalCompiles) {
+    S32 done = 0;
+    wasmJitTestBrokerIncompleteStatsJs(
+        expectedCreations, expectedReuses, expectedBrokerHits,
+        expectedLocalCompiles, &done);
+    double deadline = emscripten_get_now() + 2000.0;
+    while (emscripten_get_now() < deadline) {
+        S32 value = __atomic_load_n(&done, __ATOMIC_ACQUIRE);
+        if (value) {
+            return value == 1;
+        }
+        emscripten_futex_wait(&done, value, 50.0);
+    }
+    return false;
+}
+
+EM_JS(void, wasmJitTestResetMtScheduleThreadPreloadStatsJs, (S32* done), {
+    if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) {
+        postMessage({
+            cmd: 'callHandler',
+            handler: 'bwWasmJitBrokerResetScheduleThreadTestStats',
+            args: [done]
+        });
+    } else if (typeof Module.bwWasmJitBrokerResetScheduleThreadTestStats === 'function') {
+        Module.bwWasmJitBrokerResetScheduleThreadTestStats(done);
+    }
+});
+
+bool wasmJitTestResetMtScheduleThreadPreloadStats() {
+    S32 done = 0;
+    wasmJitTestResetMtScheduleThreadPreloadStatsJs(&done);
+    double deadline = emscripten_get_now() + 5000.0;
+    while (emscripten_get_now() < deadline) {
+        S32 value = __atomic_load_n(&done, __ATOMIC_ACQUIRE);
+        if (value) {
+            return value == 1;
+        }
+        emscripten_futex_wait(&done, value, 50.0);
+    }
+    return false;
+}
+
+void wasmJitTestResetMtRuntimeBatching() {
+    while (true) {
+        KMemory* memory = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+            if (g_wasmJitMtPendingBlocks.empty()) {
+                break;
+            }
+            memory = g_wasmJitMtPendingBlocks.begin()->second->memory;
+        }
+        std::unique_lock<std::recursive_mutex> memoryLock(memory->mutex);
+        std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+        std::vector<WasmJitBatchEntryId> ids;
+        for (const auto& pending : g_wasmJitMtPendingBlocks) {
+            if (pending.second->memory == memory) {
+                ids.push_back(pending.first);
+            }
+        }
+        for (WasmJitBatchEntryId id : ids) {
+            auto found = g_wasmJitMtPendingBlocks.find(id);
+            if (found != g_wasmJitMtPendingBlocks.end()) {
+                failMtPendingBlock(*found->second);
+                eraseMtPendingBlockLocked(id);
+            }
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+        g_wasmJitMtBatchLimits = {};
+        g_wasmJitMtBatchPolicy.reset(g_wasmJitMtBatchLimits);
+        g_wasmJitMtPendingRawBytes = 0;
+        g_wasmJitMtRuntimeStats = {};
+        g_wasmJitMtNextSealedRequestId = 1;
+        g_wasmJitTestMtCancelSealedEntryIndex = -1;
+        g_wasmJitTestMtReplacementAddress = 0;
+        g_wasmJitTestMtReplacementOp = nullptr;
+        g_wasmJitTestMtPendingByteChargeOverride = 0;
+    }
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtGroupWorkerStatsMutex);
+        g_wasmJitMtGroupInstanceCreations.store(0, std::memory_order_relaxed);
+        g_wasmJitMtGroupInstanceReuses.store(0, std::memory_order_relaxed);
+        g_wasmJitMtGroupedBrokerHits.store(0, std::memory_order_relaxed);
+        g_wasmJitMtGroupedLocalCompiles.store(0, std::memory_order_relaxed);
+    }
+    g_wasmJitTestMtRuntimeBatchingEnabled = false;
+    g_wasmJitTestMtMappedFileKeyOverride = -1;
+}
+
+U32 wasmJitTestMtPendingCount() {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    return (U32)g_wasmJitMtPendingBlocks.size();
+}
+
+U32 wasmJitTestMtOpenCount() {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    U32 result = 0;
+    for (const auto& pending : g_wasmJitMtPendingBlocks) {
+        if (pending.second->state == WasmJitMtPendingState::Open) {
+            ++result;
+        }
+    }
+    return result;
+}
+
+U32 wasmJitTestMtSealedCount() {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    U32 result = 0;
+    for (const auto& pending : g_wasmJitMtPendingBlocks) {
+        if (pending.second->state == WasmJitMtPendingState::Sealed) {
+            ++result;
+        }
+    }
+    return result;
+}
+
+U64 wasmJitTestMtPendingRawBytes() {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    return g_wasmJitMtPendingRawBytes;
+}
+
+U32 wasmJitTestMtTranslationCount() {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    return (U32)g_wasmJitMtRuntimeStats.translatedFileBacked;
+}
+
+U32 wasmJitTestMtRuntimeGroupCount() {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    return (U32)g_wasmJitMtRuntimeStats.groupedModules;
+}
+
+U32 wasmJitTestMtRuntimeModuleCount() {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    return (U32)g_wasmJitMtRuntimeStats.constructionSuccesses;
+}
+
+WasmJitMtRuntimeStatsSnapshot wasmJitTestGetMtRuntimeStats() {
+    std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+    WasmJitMtRuntimeStatsSnapshot snapshot;
+    snapshot.translatedFileBacked = g_wasmJitMtRuntimeStats.translatedFileBacked;
+    snapshot.translatedAnonymous = g_wasmJitMtRuntimeStats.translatedAnonymous;
+    snapshot.groupedModules = g_wasmJitMtRuntimeStats.groupedModules;
+    snapshot.groupedFunctions = g_wasmJitMtRuntimeStats.groupedFunctions;
+    snapshot.standaloneModules = g_wasmJitMtRuntimeStats.standaloneModules;
+    snapshot.rawInputBytes = g_wasmJitMtRuntimeStats.rawInputBytes;
+    snapshot.mergedBytes = g_wasmJitMtRuntimeStats.mergedBytes;
+    snapshot.countFlushes = g_wasmJitMtRuntimeStats.countFlushes;
+    snapshot.byteFlushes = g_wasmJitMtRuntimeStats.byteFlushes;
+    snapshot.urgentFlushes = g_wasmJitMtRuntimeStats.urgentFlushes;
+    snapshot.processCapFlushes = g_wasmJitMtRuntimeStats.processCapFlushes;
+    snapshot.cancelledEntries = g_wasmJitMtRuntimeStats.cancelledEntries;
+    snapshot.permanentFailures = g_wasmJitMtRuntimeStats.permanentFailures;
+    snapshot.groupedOomBlocks = g_wasmJitMtRuntimeStats.groupedOomBlocks;
+    snapshot.skippedConstructionAttempts = g_wasmJitMtRuntimeStats.skippedConstructionAttempts;
+    snapshot.constructionAttempts = g_wasmJitMtRuntimeStats.constructionAttempts;
+    snapshot.constructionSuccesses = g_wasmJitMtRuntimeStats.constructionSuccesses;
+    snapshot.maxFunctionsPerGroup = g_wasmJitMtRuntimeStats.maxFunctionsPerGroup;
+    return snapshot;
+}
+
+EM_JS(U32, wasmJitTestCurrentWorkerGroupInstanceCount, (), {
+    return globalThis.bwJitMtGroupInstances ? globalThis.bwJitMtGroupInstances.size : 0;
+});
+
+EM_JS(U32, wasmJitTestCurrentWorkerRuntimeGroupInstanceCount, (), {
+    return globalThis.bwJitMtGroupInstances ? globalThis.bwJitMtGroupInstances.size : 0;
+});
+
+WasmJitMtBrokerModuleRef wasmJitTestGetMtBrokerSlotRef(int tableIndex) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    auto it = g_wasmJitMtModulesBySlot.find(tableIndex);
+    if (it != g_wasmJitMtModulesBySlot.end()) {
+        return {it->second.moduleId, it->second.memoryId, it->second.memoryIncarnation};
+    }
+    auto groupIt = g_wasmMtGroupSlotRefs.find(tableIndex);
+    if (groupIt != g_wasmMtGroupSlotRefs.end()) {
+        const WasmJitMtModuleRef& ref = groupIt->second.moduleRef;
+        return {ref.moduleId, ref.memoryId, ref.memoryIncarnation};
+    }
+    return {};
+}
+
+WasmJitMtBrokerStatsSnapshot wasmJitTestGetMtBrokerStats(KMemory* memory) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    WasmJitMtOwner owner = wasmJitMtGetOwnerLocked((U32)(uintptr_t)memory, false);
+    if (!owner.memoryIncarnation) {
+        return {};
+    }
+    auto it = g_wasmJitMtBrokerStatsByOwner.find(wasmJitMtOwnerKey(owner.memoryId, owner.memoryIncarnation));
+    if (it == g_wasmJitMtBrokerStatsByOwner.end()) {
+        return {owner.memoryIncarnation, 0, 0};
+    }
+    return {owner.memoryIncarnation, it->second.localCompiles, it->second.brokerHits};
+}
+
+void wasmJitTestResetMtBrokerStats() {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    g_wasmJitMtBrokerStatsByOwner.clear();
+}
+
+bool wasmJitTestLazyInstallMtSlot(int tableIndex) {
+    return lazyInstallWasmJitBlockForWorker(tableIndex);
+}
+
+S32 wasmJitTestSetMtModuleBrokerEnabled(S32 enabled) {
+    return g_wasmJitMtModuleBrokerEnabled.exchange(enabled ? 1 : 0, std::memory_order_acq_rel);
+}
+
+U32 wasmJitTestSetMtNextModuleId(U32 nextModuleId) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    U32 result = g_wasmJitMtNextModuleId;
+    g_wasmJitMtNextModuleId = nextModuleId;
+    return result;
+}
+
+U32 wasmJitTestReserveMtBrokerModule(KMemory* memory) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    return wasmJitMtAllocateModuleLocked((U32)(uintptr_t)memory).moduleId;
+}
+
+U32 wasmJitTestGetMtMemoryIncarnation(KMemory* memory) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    return wasmJitMtGetOwnerLocked((U32)(uintptr_t)memory, true).memoryIncarnation;
+}
+
+void wasmJitTestPrepareMtThreadStart(void* startArg, KMemory* memory) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    wasmJitMtRegisterThreadStartLocked((U32)(uintptr_t)startArg, (U32)(uintptr_t)memory);
+}
+
+void wasmJitTestPrepareMtStaleThreadStart(void* startArg, KMemory* memory) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    U32 memoryId = (U32)(uintptr_t)memory;
+    WasmJitMtOwner owner = wasmJitMtGetOwnerLocked(memoryId, true);
+    U32 staleIncarnation = owner.memoryIncarnation + 1;
+    if (!staleIncarnation) {
+        staleIncarnation = owner.memoryIncarnation - 1;
+    }
+    g_wasmJitMtThreadStartOwners[(U32)(uintptr_t)startArg] = {memoryId, staleIncarnation};
+}
+
+void wasmJitTestCancelMtThreadStart(void* startArg) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    g_wasmJitMtThreadStartOwners.erase((U32)(uintptr_t)startArg);
+}
+
+bool wasmJitTestTakeMtThreadStart(void* startArg, WasmJitMtThreadStartOwnerSnapshot* owner) {
+    U32 memoryId = 0;
+    U32 memoryIncarnation = 0;
+    S32 result = wasm_jit_mt_take_thread_start_owner((U32)(uintptr_t)startArg, &memoryId, &memoryIncarnation);
+    owner->memoryId = memoryId;
+    owner->memoryIncarnation = memoryIncarnation;
+    return result == 1;
 }
 #endif
-
-#ifdef BOXEDWINE_MULTI_THREADED
-// Set once when the first reloc array registers (persistence sessions only).
-// Plain MT sessions never register any, so the per-call lookup below stays a
-// single relaxed atomic load — taking g_wasmBlockBinariesMutex on every block
-// call would serialize all worker threads on the hottest path.
-static std::atomic<bool> g_wasmHasRelocArrays{false};
 #endif
 
 // relocBase for a block call: the per-call second parameter of every
@@ -10899,12 +12794,7 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     // hash guards the chain; cache zips are per-build artifacts), so its slot
     // layout matches the one this codegen pass just produced.
     U32* relocArr = nullptr;
-#ifdef BOXEDWINE_MULTI_THREADED
-    if (!m_relocValues.empty()) {
-        relocArr = new U32[m_relocValues.size()];
-        memcpy(relocArr, m_relocValues.data(), m_relocValues.size() * sizeof(U32));
-    }
-#else
+#ifndef BOXEDWINE_MULTI_THREADED
     std::unique_ptr<U32[]> immediateRelocArray;
 #ifndef __TEST
     if (wasmJitPersistenceActive()) {
@@ -10931,12 +12821,18 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     std::vector<U8> cachedBytes;
     bool usedGroup = false;
     int tableIdx = -1;
+    U32 memoryId = (U32)(uintptr_t)cpu->memory;
     if (wasmJitPersistenceActive()) {
         const U8* groupBytes = nullptr;
         int groupSize = 0;
         const char* groupExportName = nullptr;
         U32* groupArr = nullptr;
         U32 groupIdx = 0, entryIdx = 0;
+        U32 groupKind = 0;
+        U32 groupIdentity = 0;
+        U32 groupRepresentedBlockCount = 0;
+        WasmJitMtModuleRef groupModuleRef;
+        S32 groupBrokerEnabled = 0;
         {
             std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
             const uint64_t key = wasmJitCacheKey(cacheEip, blockHash);
@@ -10947,7 +12843,7 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
                 const WasmJitMtGroupEntry& entry = g_wasmMtGroups[groupIdx].entries[entryIdx];
                 if (entry.relocCount == (U32)m_relocValues.size()) {
                     WasmJitMtGroupProcState& st =
-                        wasmJitMtGroupProcStateLocked(groupIdx, (U32)(uintptr_t)cpu->memory);
+                        wasmJitMtGroupProcStateLocked(groupIdx, memoryId);
                     groupArr = st.entryArrays[entryIdx];
                     if (groupArr && !m_relocValues.empty()) {
                         memcpy(groupArr, m_relocValues.data(), m_relocValues.size() * sizeof(U32));
@@ -10955,6 +12851,13 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
                     groupBytes = st.patchedBytes.data();
                     groupSize = (int)st.patchedBytes.size();
                     groupExportName = entry.exportName.c_str();
+                    const WasmJitMtGroup& group = g_wasmMtGroups[groupIdx];
+                    groupKind = (U32)group.kind;
+                    groupIdentity = group.instanceIdentity;
+                    groupRepresentedBlockCount = (U32)group.entries.size();
+                    groupModuleRef = st.moduleRef;
+                    groupBrokerEnabled = g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire) &&
+                        wasmJitMtModuleIsLiveLocked(groupModuleRef);
                 } else {
                     static bool warned = false;
                     if (!warned) {
@@ -10974,11 +12877,14 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         if (groupBytes) {
             // Compile/instantiate outside the mutex — first touch of a large
             // merged group should not serialize other workers' commits.
+            S32 groupLookupResult = WASM_JIT_MT_BROKER_LOOKUP_NONE;
             tableIdx = boxedwine_wasm_instantiate_group_mt(
                 groupBytes, groupSize,
                 g_wasmHelperTable, WASM_HELPER_COUNT,
                 &g_wasmTableNextSlot,
-                groupExportName, (int)groupIdx, (U32)(uintptr_t)cpu->memory);
+                groupExportName, groupKind, groupIdentity, groupModuleRef.memoryId,
+                groupModuleRef.memoryIncarnation, groupModuleRef.moduleId, groupRepresentedBlockCount,
+                groupBrokerEnabled, &groupLookupResult);
             if (tableIdx >= 0) {
                 usedGroup = true;
                 std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
@@ -10986,7 +12892,8 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
                     g_wasmRelocArrays[tableIdx] = groupArr;
                     g_wasmHasRelocArrays.store(true, std::memory_order_relaxed);
                 }
-                g_wasmMtGroupSlotRefs[tableIdx] = { groupIdx, entryIdx, (U32)(uintptr_t)cpu->memory };
+                g_wasmMtGroupSlotRefs[tableIdx] = {groupIdx, entryIdx, groupModuleRef};
+                wasmJitMtRecordLookupLocked(groupModuleRef, groupLookupResult);
             }
             // On instantiation failure fall through to the flat/fresh path
             // (cachedBytes was not read for a group hit; the fresh binary
@@ -10994,17 +12901,90 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
             // direct calls that already target it).
         }
     }
+    if (tableIdx < 0 && cachedBytes.empty() && wasmJitPersistenceActive()) {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        auto it = g_wasmCacheByKey.find(wasmJitCacheKey(cacheEip, blockHash));
+        if (it != g_wasmCacheByKey.end()) {
+            cachedBytes = it->second;
+        }
+    }
+    const bool freshMiss = tableIdx < 0 && cachedBytes.empty();
+    bool mtRuntimeBatchingEnabled = true;
+#ifdef __TEST
+    mtRuntimeBatchingEnabled = g_wasmJitTestMtRuntimeBatchingEnabled;
+#endif
+    if (freshMiss) {
+        MappedFilePtr mappedFile = cpu->thread->process->getMappedFileForRange(this->startingEip, this->emulatedLen);
+        S32 mappedFileKey = mappedFile ? (S32)mappedFile->key : 0;
+#ifdef __TEST
+        if (g_wasmJitTestMtMappedFileKeyOverride >= 0) {
+            mappedFileKey = g_wasmJitTestMtMappedFileKeyOverride;
+        }
+#endif
+        if (wasmJitPersistenceActive()) {
+            std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+            const uint64_t key = wasmJitCacheKey(cacheEip, blockHash);
+            g_wasmCacheByKey[key] = m_wasmBinary;
+            g_wasmCacheMetaByKey[key] = {
+                this->blockOpCount,
+                this->emulatedLen,
+                m_manifestNext1Target,
+                m_manifestNext2Target,
+                m_manifestJumpTarget,
+                m_manifestNext1Count,
+                m_manifestNext2Count,
+                m_manifestJumpCount,
+                (U32)m_relocValues.size(),
+            };
+        }
+        if (mtRuntimeBatchingEnabled && mappedFileKey) {
+            submitMtPendingWasmJitBlock(cpu, op, this->startingEip, this->blockOpCount,
+                this->emulatedLen, (U32)mappedFileKey, m_needsWasmMemoryPageArrays,
+                std::move(m_wasmBinary), std::move(m_relocValues));
+            return;
+        }
+        if (mtRuntimeBatchingEnabled) {
+            std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+            ++g_wasmJitMtRuntimeStats.translatedAnonymous;
+            g_wasmJitMtRuntimeStats.rawInputBytes += m_wasmBinary.size();
+        }
+    }
     const bool usingCached = !cachedBytes.empty();
     const void* instBytes = usingCached ? cachedBytes.data() : m_wasmBinary.data();
     const int instSize = usingCached ? (int)cachedBytes.size() : (int)m_wasmBinary.size();
+    WasmJitMtModuleRef moduleRef;
+    S32 brokerEnabled = g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire);
+    S32 lookupResult = WASM_JIT_MT_BROKER_LOOKUP_NONE;
     if (tableIdx < 0) {
+        {
+            std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+            if (brokerEnabled) {
+                moduleRef = wasmJitMtAllocateModuleLocked(memoryId);
+            } else {
+                WasmJitMtOwner owner = wasmJitMtGetOwnerLocked(memoryId, true);
+                moduleRef = {0, owner.memoryId, owner.memoryIncarnation};
+            }
+        }
         tableIdx = boxedwine_wasm_instantiate_mt(
             instBytes,
             instSize,
             g_wasmHelperTable,
             WASM_HELPER_COUNT,
-            &g_wasmTableNextSlot
+            &g_wasmTableNextSlot,
+            moduleRef.moduleId,
+            moduleRef.memoryId,
+            moduleRef.memoryIncarnation,
+            brokerEnabled && moduleRef.moduleId,
+            &lookupResult
         );
+    }
+    if (freshMiss && mtRuntimeBatchingEnabled) {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
+        if (tableIdx >= 0) {
+            ++g_wasmJitMtRuntimeStats.standaloneModules;
+        } else {
+            ++g_wasmJitMtRuntimeStats.permanentFailures;
+        }
     }
 #else
   #ifndef __TEST
@@ -11084,6 +13064,13 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     }
 #endif
 
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (tableIdx < 0 && moduleRef.moduleId && lookupResult == WASM_JIT_MT_BROKER_LOOKUP_NONE) {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        wasmJitMtReleaseUnpublishedModuleLocked(moduleRef);
+    }
+#endif
+
     if (tableIdx < 0) {
         delete[] relocArr;
         // Instantiation failed — fall back to the normal CPU interpreter
@@ -11099,6 +13086,13 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         }
         return;
     }
+
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (!usedGroup && !m_relocValues.empty()) {
+        relocArr = new U32[m_relocValues.size()];
+        memcpy(relocArr, m_relocValues.data(), m_relocValues.size() * sizeof(U32));
+    }
+#endif
 
     if (relocArr) {
         // Register the slot array under the table index so every call can
@@ -11142,24 +13136,8 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         // the per-worker group instance).
         if (!usedGroup) {
             g_wasmBlockBinaries[tableIdx] = usingCached ? cachedBytes : m_wasmBinary;
-        }
-        if (wasmJitPersistenceActive() && !usingCached && !usedGroup) {
-            g_wasmCacheByKey[wasmJitCacheKey(cacheEip, blockHash)] = m_wasmBinary;
-            // Exit metadata for the exported manifest (the ST build records
-            // this in Module.wasmJitBlockMeta from boxedwine_wasm_save_block;
-            // workers can't reach that Map, so keep it here and mirror it in
-            // wasm_jit_mt_prepare_export).
-            g_wasmCacheMetaByKey[wasmJitCacheKey(cacheEip, blockHash)] = {
-                this->blockOpCount,
-                this->emulatedLen,
-                m_manifestNext1Target,
-                m_manifestNext2Target,
-                m_manifestJumpTarget,
-                m_manifestNext1Count,
-                m_manifestNext2Count,
-                m_manifestJumpCount,
-                (U32)m_relocValues.size(),
-            };
+            g_wasmJitMtModulesBySlot[tableIdx] = moduleRef;
+            wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
         }
     }
 #endif
@@ -11239,25 +13217,86 @@ static void wasmJitCodeInvalidated(KMemory* memory, const std::vector<DecodedOp*
             thread->cpu->wasmJitBailout = 1;
         }
     }
-#ifndef BOXEDWINE_MULTI_THREADED
+#ifdef BOXEDWINE_MULTI_THREADED
+    // The lifecycle caller already owns memory->mutex.
+    wasmJitMtCancelPendingOps(memory, decodedOps);
+#else
     for (DecodedOp* op : decodedOps) {
         wasmJitCancelPendingBlock(op);
     }
 #endif
 }
 
+#ifdef BOXEDWINE_MULTI_THREADED
+static void wasmJitMtBrokerMemoryInvalidated(U32 memoryId) {
+    U32 oldIncarnation = 0;
+    std::vector<U32> moduleIds;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        auto incarnationIt = g_wasmJitMtMemoryIncarnations.find(memoryId);
+        if (incarnationIt != g_wasmJitMtMemoryIncarnations.end()) {
+            oldIncarnation = incarnationIt->second;
+            U64 ownerKey = wasmJitMtOwnerKey(memoryId, oldIncarnation);
+            auto idsIt = g_wasmJitMtModulesByOwner.find(ownerKey);
+            if (idsIt != g_wasmJitMtModulesByOwner.end()) {
+                moduleIds.assign(idsIt->second.begin(), idsIt->second.end());
+                for (U32 moduleId : moduleIds) {
+                    g_wasmJitMtModuleOwners.erase(moduleId);
+                }
+                g_wasmJitMtModulesByOwner.erase(idsIt);
+            }
+            for (auto it = g_wasmJitMtThreadStartOwners.begin(); it != g_wasmJitMtThreadStartOwners.end();) {
+                if (it->second.memoryId == memoryId && it->second.memoryIncarnation == oldIncarnation) {
+                    it = g_wasmJitMtThreadStartOwners.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+            g_wasmJitMtBrokerStatsByOwner.erase(ownerKey);
+            g_wasmJitMtLastRetiredIncarnations[memoryId] = oldIncarnation;
+            g_wasmJitMtMemoryIncarnations.erase(incarnationIt);
+        }
+    }
+    if (oldIncarnation) {
+        boxedwine_wasm_release_broker_memory_mt(memoryId, oldIncarnation, moduleIds.data(), (U32)moduleIds.size());
+    }
+}
+#endif
+
 static void wasmJitMemoryInvalidated(KMemory* memory) {
 #ifndef BOXEDWINE_MULTI_THREADED
     wasmJitCancelPendingMemory(memory);
 #else
-    (void)memory;
+    // Full-memory lifecycle callers do not consistently own this lock.
+    // It is recursive because clearOpCache can invalidate while doJIT owns it.
+    std::unique_lock<std::recursive_mutex> memoryLock(memory->mutex);
+    wasmJitMtCancelPendingMemory(memory);
+    wasmJitMtBrokerMemoryInvalidated((U32)(uintptr_t)memory);
 #endif
 }
+
+#if defined(BOXEDWINE_MULTI_THREADED) && defined(__TEST)
+void wasmJitTestInvalidateMtBrokerMemory(KMemory* memory) {
+    wasmJitMemoryInvalidated(memory);
+}
+
+void wasmJitTestInvalidateMtBrokerMemoryId(U32 memoryId) {
+    wasmJitMtBrokerMemoryInvalidated(memoryId);
+}
+#endif
 
 static void registerWasmJitLifecycleCallbacks() {
     static std::once_flag callbacksInitFlag;
     std::call_once(callbacksInitFlag, []() {
-        setJitLifecycleCallbacks({wasmJitCodeInvalidated, wasmJitMemoryInvalidated, false});
+        JitLifecycleCallbacks callbacks;
+        callbacks.codeInvalidated = wasmJitCodeInvalidated;
+        callbacks.memoryInvalidated = wasmJitMemoryInvalidated;
+#ifdef BOXEDWINE_MULTI_THREADED
+        callbacks.threadStartPreparing = wasmJitThreadStartPreparing;
+        callbacks.threadStartCancelled = wasmJitThreadStartCancelled;
+#endif
+        callbacks.usesCodeMemory = false;
+        setJitLifecycleCallbacks(callbacks);
     });
 }
 

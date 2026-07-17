@@ -144,7 +144,9 @@ bool WasmJitBatchPolicy::recordPendingHit(WasmJitBatchEntryId id, WasmJitFlushRe
     OpenBatch& batch = state->openBatches[batchIndex];
     for (OpenEntry& entry : batch.entries) {
         if (entry.id == id) {
-            entry.pendingHits++;
+            if (entry.pendingHits != std::numeric_limits<U32>::max()) {
+                ++entry.pendingHits;
+            }
             if (entry.pendingHits >= state->limits.urgentPendingHits) {
                 flush = state->seal(batchIndex, WasmJitFlushReason::PendingHits);
                 return true;

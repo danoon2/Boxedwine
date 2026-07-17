@@ -15,6 +15,9 @@
 #if defined(BOXEDWINE_JIT_ARMV8)
 #include "../../emulation/cpu/armv8/jitArmV8CodeGen.h"
 #endif
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+#include "../../emulation/cpu/x32/jitX86CodeGen.h"
+#endif
 #if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
 #include "../../emulation/cpu/wasm/jitWasmCodeGen.h"
 #endif
@@ -41,6 +44,13 @@ std::unique_ptr<TestContext> serialContext;
 std::vector<std::unique_ptr<TestContext>> parallelContexts;
 thread_local TestContext* currentContext = nullptr;
 thread_local bool runningParallelTest = false;
+
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+void OPCALL testJitRunCountCallback(CPU* cpu, DecodedOp* op) {
+    (void)cpu;
+    (void)op;
+}
+#endif
 
 void setupSegments(TestContext& context) {
     CPU* cpu = context.cpu;
@@ -517,6 +527,20 @@ void testJitOverlappingDirectJumpTarget() {
 
     if ((cpu->reg[0].u32 & 0xff) != 7) {
         testFail("jit overlapping direct jump target");
+    }
+#endif
+}
+
+void testNativeJitRunCountWraps() {
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+    DecodedOp op;
+    op.runCount = 0xff;
+    op.pfn = testJitRunCountCallback;
+
+    firstDynamicOp(testContext().cpu, &op);
+
+    if (op.runCount != 0) {
+        testFail("native JIT runCount wraps after a failed compile threshold");
     }
 #endif
 }

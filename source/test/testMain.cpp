@@ -26,6 +26,9 @@
 #include "cpu/testCmp.h"
 #include "cpu/testCPU.h"
 #include "cpu/testWasmJitBatch.h"
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+#include "cpu/testWasmJitModuleBroker.h"
+#endif
 #include "cpu/testFPU.h"
 #include "cpu/testIncDec.h"
 #include "cpu/testJmp.h"
@@ -65,11 +68,25 @@ const TestEntry TEST_ENTRIES[] = {
     {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT subblock entries and invalidation"},
-#endif
-#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
     {testWasmJitModuleMerger, "Test WASM JIT runtime module merger"},
     {testWasmJitBatchPolicy, "Test WASM JIT runtime batch policy"},
     {testWasmJitMappedFileRange, "Test WASM JIT mapped file range"},
+#endif
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    {testWasmJitMtModuleBrokerTransport, "Test MT WASM JIT module broker transport"},
+    {testWasmJitMtStandaloneModuleBroker, "Test MT WASM JIT standalone module broker"},
+    {testWasmJitMtGroupedModuleBroker, "Test MT WASM JIT grouped module broker"},
+    {testWasmJitMtModuleBrokerLifecycle, "Test MT WASM JIT module broker lifecycle"},
+    {testWasmJitMtModuleBrokerThreadStartOwner, "Test MT WASM JIT thread-start owner"},
+    {testWasmJitMtModuleBrokerPreloadSelection, "Test MT WASM JIT preload selection"},
+    {testWasmJitMtModuleBrokerExecIncarnation, "Test MT WASM JIT exec incarnation"},
+    {testWasmJitMtModuleBrokerPreloadDiagnostics, "Test MT WASM JIT preload diagnostics"},
+    {testWasmJitMtScheduleThreadPreload, "Test MT WASM JIT scheduleThread preload"},
+    {testWasmJitMtRuntimeGrouping, "Test MT WASM JIT runtime grouping"},
+    {testWasmJitMtPendingLifecycle, "Test MT WASM JIT pending lifecycle and limits"},
+    {testWasmJitMtGroupedOomBlock, "Test MT WASM JIT grouped OOM construction block"},
+#endif
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
     {testWasmJitRuntimeGrouping, "Test WASM JIT runtime grouping"},
     {testWasmJitPendingLifecycle, "Test WASM JIT pending lifecycle"},
     {testWasmJitTinyAnonymousPromotion, "Test WASM JIT tiny anonymous promotion"},
@@ -78,6 +95,9 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
 #ifdef BOXEDWINE_JIT
     {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},
+#endif
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+    {testNativeJitRunCountWraps, "Test native JIT runCount wrap"},
 #endif
     {testMemoryAccess32, "Test 32-bit Memory Access"},
     {testMemoryAccess16, "Test 16-bit Memory Access"},

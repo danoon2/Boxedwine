@@ -10,12 +10,20 @@
 #ifndef __TEST_WASM_JIT_BATCH_H__
 #define __TEST_WASM_JIT_BATCH_H__
 
+#ifdef BOXEDWINE_WASM_JIT
 void testWasmJitModuleMerger();
 void testWasmJitBatchPolicy();
 void testWasmJitMappedFileRange();
+#ifdef BOXEDWINE_MULTI_THREADED
+void testWasmJitMtRuntimeGrouping();
+void testWasmJitMtPendingLifecycle();
+void testWasmJitMtGroupedOomBlock();
+#else
 void testWasmJitRuntimeGrouping();
 void testWasmJitPendingLifecycle();
 void testWasmJitTinyAnonymousPromotion();
 void testWasmJitGroupedOomRecovery();
+#endif
+#endif
 
 #endif

@@ -1068,13 +1068,72 @@ extern "C" int  boxedwine_wasm_instantiate(const void* bytes, int size,
 
 #ifndef BOXEDWINE_MULTI_THREADED
 extern "C" int boxedwine_wasm_instantiate_runtime_batch(const void* bytes, int size, const void** importFns, int importCount, int entryCount, int* outputSlots);
+#else
+enum WasmJitMtRuntimeGroupInstallResult : S32 {
+    WasmJitMtRuntimeGroupInstallSuccess = 1,
+    WasmJitMtRuntimeGroupInstallFailure = 0,
+    WasmJitMtRuntimeGroupInstallOom = -1,
+    WasmJitMtRuntimeGroupInstallBlocked = -2,
+};
+
+extern "C" int boxedwine_wasm_instantiate_runtime_group_mt(
+    const void* bytes,
+    int size,
+    const void** importFns,
+    int importCount,
+    int* nextSlotPtr,
+    U32 entryCount,
+    int* outputSlots,
+    U32 groupKind,
+    U32 groupIdentity,
+    U32 moduleId,
+    U32 memoryId,
+    U32 memoryIncarnation,
+    S32 brokerEnabled,
+    S32* lookupResultPtr);
+extern "C" int wasm_jit_mt_register_group(const void* bytes, int size);
+extern "C" void wasm_jit_mt_register_group_entry(int groupIdx, U32 eip, U32 blockHash, const char* exportName, U32 relocCount);
+extern "C" S32 wasm_jit_mt_broker_validate_module(U32 moduleId, U32 memoryId, U32 memoryIncarnation);
+
+struct WasmJitMtRuntimeBatchStatsSnapshot {
+    U64 translatedFileBacked;
+    U64 translatedAnonymous;
+    U64 pendingEntries;
+    U64 openBytes;
+    U64 sealedGroups;
+    U64 groupedModules;
+    U64 groupedFunctions;
+    U64 constructionAttempts;
+    U64 constructionSuccesses;
+    U64 maxFunctionsPerGroup;
+    U64 countFlushes;
+    U64 byteFlushes;
+    U64 urgentFlushes;
+    U64 processCapFlushes;
+    U64 cancelledEntries;
+    U64 permanentFailures;
+    U64 groupedOomBlocks;
+    U64 skippedConstructionAttempts;
+    U64 groupInstanceCreations;
+    U64 groupInstanceReuses;
+    U64 groupedBrokerHits;
+    U64 groupedLocalCompiles;
+    U32 maxBlocks;
+    U32 maxBatchBytes;
+    U32 urgentPendingHits;
+    U32 maxProcessOpenBytes;
+};
+
+extern "C" void wasm_jit_mt_copy_runtime_batch_stats(
+    WasmJitMtRuntimeBatchStatsSnapshot* snapshot);
+extern "C" void wasm_jit_mt_record_group_worker_event(U32 event);
 #endif
 
 // Release a compiled block (remove from wasmTable).
 extern "C" void boxedwine_wasm_free_block(int tableIndex);
 
-#ifndef BOXEDWINE_MULTI_THREADED
 void wasmJitHandlePendingHit(CPU* cpu, DecodedOp* op);
+#ifndef BOXEDWINE_MULTI_THREADED
 bool wasmJitCompilationPaused();
 #endif
 
@@ -1124,6 +1183,134 @@ struct WasmJitRuntimeStatsSnapshot {
 };
 
 WasmJitRuntimeStatsSnapshot wasmJitTestGetRuntimeStats();
+#endif
+
+#if defined(__TEST) && defined(BOXEDWINE_MULTI_THREADED)
+struct WasmJitBatchLimits;
+
+struct WasmJitMtBrokerModuleRef {
+    U32 moduleId = 0;
+    U32 memoryId = 0;
+    U32 memoryIncarnation = 0;
+};
+
+struct WasmJitMtBrokerStatsSnapshot {
+    U32 memoryIncarnation = 0;
+    U64 localCompiles = 0;
+    U64 brokerHits = 0;
+};
+
+struct WasmJitMtThreadStartOwnerSnapshot {
+    U32 memoryId = 0;
+    U32 memoryIncarnation = 0;
+};
+
+struct WasmJitMtBrokerMainStatsSnapshot {
+    U32 firstPublications = 0;
+    U32 duplicatePublications = 0;
+    U32 ownershipErrors = 0;
+    U32 unknownModuleIds = 0;
+    U32 scheduledDeliveries = 0;
+    U32 deliveryFailures = 0;
+    U32 purgedModules = 0;
+    U32 liveRegistryModules = 0;
+    U32 preloadAttempts = 0;
+    U32 preloadCandidates = 0;
+    U32 preloadSent = 0;
+    U32 preloadSkippedHeld = 0;
+    U32 preloadFailures = 0;
+    U32 preloadOwnerMisses = 0;
+    U32 preloadOomBlocks = 0;
+    U32 staleIncarnationDrops = 0;
+    U32 preloadModuleLimit = 0;
+};
+
+struct WasmJitMtRuntimeStatsSnapshot {
+    U64 translatedFileBacked = 0;
+    U64 translatedAnonymous = 0;
+    U64 groupedModules = 0;
+    U64 groupedFunctions = 0;
+    U64 standaloneModules = 0;
+    U64 rawInputBytes = 0;
+    U64 mergedBytes = 0;
+    U64 countFlushes = 0;
+    U64 byteFlushes = 0;
+    U64 urgentFlushes = 0;
+    U64 processCapFlushes = 0;
+    U64 cancelledEntries = 0;
+    U64 permanentFailures = 0;
+    U64 groupedOomBlocks = 0;
+    U64 skippedConstructionAttempts = 0;
+    U64 constructionAttempts = 0;
+    U64 constructionSuccesses = 0;
+    U64 maxFunctionsPerGroup = 0;
+};
+
+struct WasmJitMtRuntimeGroupConstructorStatsSnapshot {
+    U32 moduleAttempts = 0;
+    U32 instanceAttempts = 0;
+};
+
+WasmJitMtBrokerModuleRef wasmJitTestGetMtBrokerSlotRef(int tableIndex);
+WasmJitMtBrokerStatsSnapshot wasmJitTestGetMtBrokerStats(KMemory* memory);
+WasmJitMtBrokerMainStatsSnapshot wasmJitTestGetMtBrokerMainStats();
+void wasmJitTestResetMtBrokerStats();
+bool wasmJitTestLazyInstallMtSlot(int tableIndex);
+bool wasmJitTestWaitForMtBrokerDelivery(U32 moduleId);
+int wasmJitTestInstantiateMtGroupEntry(U32 groupIdx, U32 entryIdx, KMemory* memory);
+U32 wasmJitTestGetMtGroupModuleId(U32 groupIdx, KMemory* memory);
+U32 wasmJitTestGetMtGroupInstanceIdentity(U32 groupIdx);
+bool wasmJitTestInstallMtRuntimeGroup(const std::vector<U8>& bytes, U32 entryCount, KMemory* memory, std::vector<S32>& slots);
+extern "C" void wasmJitTestFailMtRuntimeGroupAfterSlots(S32 slotCount);
+extern "C" U32 wasmJitTestMtRuntimeGroupConstructionCount();
+extern "C" U32 wasmJitTestCurrentWorkerGroupInstanceCount();
+extern "C" U32 wasmJitTestCurrentWorkerRuntimeGroupInstanceCount();
+extern "C" void wasmJitTestForceNextMtRuntimeGroupInstanceOom(S32 enabled);
+extern "C" void wasmJitTestResetMtRuntimeGroupConstructorStats();
+WasmJitMtRuntimeGroupConstructorStatsSnapshot wasmJitTestGetMtRuntimeGroupConstructorStats();
+bool wasmJitTestDropCurrentWorkerMtRuntimeGroupInstance(int tableIndex);
+bool wasmJitTestClearCurrentWorkerMtSlot(int tableIndex);
+bool wasmJitTestCanCurrentWorkerConstructFreshMtGroup(KMemory* memory);
+bool wasmJitTestIsCurrentWorkerFreshMtGroupBlocked(U32 memoryId, U32 memoryIncarnation);
+bool wasmJitTestSetMtPersistenceActive(bool active);
+void wasmJitTestEnableMtRuntimeBatching(bool enabled);
+void wasmJitTestSetMtBatchLimits(const WasmJitBatchLimits& limits);
+void wasmJitTestSetMtMappedFileKeyOverride(S32 mappedFileKey);
+void wasmJitTestCancelMtSealedEntryBeforePublish(S32 entryIndex);
+void wasmJitTestReplaceMtMemoryBeforePublish(U32 address, DecodedOp** replacementOp);
+void wasmJitTestSetMtPendingByteChargeOverride(U64 byteCount);
+bool wasmJitTestAddMtSealedRequestForStats(KMemory* memory, U32 mappedFileKey,
+    U32 entryCount);
+bool wasmJitTestBrokerStatsSnapshotFailureCompletes();
+bool wasmJitTestBrokerIncompleteStats(U32 expectedCreations,
+    U32 expectedReuses, U32 expectedBrokerHits, U32 expectedLocalCompiles);
+void wasmJitTestPauseNextMtGroupWorkerEvent();
+bool wasmJitTestWaitForMtGroupWorkerEventPause();
+void wasmJitTestReleaseMtGroupWorkerEvent();
+void wasmJitTestResetMtRuntimeBatching();
+bool wasmJitTestResetMtScheduleThreadPreloadStats();
+U32 wasmJitTestMtPendingCount();
+U32 wasmJitTestMtOpenCount();
+U32 wasmJitTestMtSealedCount();
+U64 wasmJitTestMtPendingRawBytes();
+U32 wasmJitTestMtTranslationCount();
+U32 wasmJitTestMtRuntimeGroupCount();
+U32 wasmJitTestMtRuntimeModuleCount();
+WasmJitMtRuntimeStatsSnapshot wasmJitTestGetMtRuntimeStats();
+void wasmJitTestInvalidateMtBrokerMemory(KMemory* memory);
+void wasmJitTestInvalidateMtBrokerMemoryId(U32 memoryId);
+bool wasmJitTestWaitForMtBrokerPurge(U32 moduleId, U32 memoryId, U32 memoryIncarnation, S32* cachedModules);
+void wasmJitTestSetMtBrokerDeliveryFailure(U32 moduleId, bool enabled);
+S32 wasmJitTestSetMtModuleBrokerEnabled(S32 enabled);
+U32 wasmJitTestSetMtNextModuleId(U32 nextModuleId);
+U32 wasmJitTestReserveMtBrokerModule(KMemory* memory);
+U32 wasmJitTestGetMtMemoryIncarnation(KMemory* memory);
+void wasmJitTestPrepareMtThreadStart(void* startArg, KMemory* memory);
+void wasmJitTestPrepareMtStaleThreadStart(void* startArg, KMemory* memory);
+void wasmJitTestCancelMtThreadStart(void* startArg);
+bool wasmJitTestTakeMtThreadStart(void* startArg, WasmJitMtThreadStartOwnerSnapshot* owner);
+void wasmJitTestSetMtBrokerDeliveryOom(U32 moduleId, bool enabled);
+void wasmJitTestSetMtBrokerCompileOom(U32 moduleId, bool enabled);
 #endif
 
 // The static OpCallback used as startJITOp for WASM-compiled blocks.

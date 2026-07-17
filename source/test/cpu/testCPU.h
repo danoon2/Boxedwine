@@ -49,6 +49,7 @@ void testSetFastMode(bool fast);
 void testWasmJitOnlyBlockEntryIsCallable();
 void testWasmJitOomRetryAfterRelease();
 void testJitOverlappingDirectJumpTarget();
+void testNativeJitRunCountWraps();
 bool testShouldRunRegister(bool fast, int reg);
 bool testShouldRunRegisterPair(bool fast, int dst, int src);
 bool testShouldRunMemoryBase(bool fast, int base);

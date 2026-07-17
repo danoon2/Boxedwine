@@ -13,14 +13,19 @@
 #include <vector>
 
 class DecodedOp;
+class CPU;
 class KMemory;
 
 using JitCodeInvalidatedCallback = void (*)(KMemory* memory, const std::vector<DecodedOp*>& decodedOps);
 using JitMemoryInvalidatedCallback = void (*)(KMemory* memory);
+using JitThreadStartPreparingCallback = void (*)(CPU* cpu);
+using JitThreadStartCancelledCallback = void (*)(CPU* cpu);
 
 struct JitLifecycleCallbacks {
     JitCodeInvalidatedCallback codeInvalidated = nullptr;
     JitMemoryInvalidatedCallback memoryInvalidated = nullptr;
+    JitThreadStartPreparingCallback threadStartPreparing = nullptr;
+    JitThreadStartCancelledCallback threadStartCancelled = nullptr;
     bool usesCodeMemory = true;
 };
 
@@ -35,5 +40,8 @@ void jitCodeInvalidated(KMemory* memory, const std::vector<DecodedOp*>& decodedO
 
 // Notify the selected JIT backend before an address space or its entire decoded-operation cache is reset. jitEntries may be empty when only the address-space identity is being detached from backend-owned pending work.
 void jitMemoryInvalidated(KMemory* memory, const std::vector<void*>& jitEntries);
+
+void jitThreadStartPreparing(CPU* cpu);
+void jitThreadStartCancelled(CPU* cpu);
 
 #endif
