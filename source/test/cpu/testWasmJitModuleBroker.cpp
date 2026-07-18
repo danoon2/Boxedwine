@@ -822,6 +822,39 @@ struct BrokerOwnerRowCounts {
     std::vector<BrokerWorkerDiagnosticStats> workerStats;
 };
 
+void logBrokerOwnerRowMismatch(const char* label,
+        const BrokerOwnerRowCounts& baseline,
+        const BrokerOwnerRowCounts& current) {
+    std::cout << label << " main=" << baseline.mainRows << "->"
+        << current.mainRows << " workerCount=" << baseline.workerRows.size()
+        << "->" << current.workerRows.size() << " workers=";
+    U32 workerCount = (U32)std::max(
+        baseline.workerRows.size(), current.workerRows.size());
+    for (U32 i = 0; i < workerCount; ++i) {
+        if (i) {
+            std::cout << ',';
+        }
+        std::cout << (i < baseline.workerRows.size() ?
+            baseline.workerRows[i] : UINT_MAX) << "->"
+            << (i < current.workerRows.size() ? current.workerRows[i] : UINT_MAX);
+    }
+    std::cout << std::endl;
+}
+
+std::vector<U32> liveBrokerOwnerRows(const BrokerOwnerRowCounts& counts) {
+    // A cancelled pthread can make Emscripten grow the pool with an empty
+    // replacement Worker. Ignore those zero-row Workers while still requiring
+    // every live owner-row count to return to its pre-stress distribution.
+    std::vector<U32> rows;
+    for (U32 rowCount : counts.workerRows) {
+        if (rowCount) {
+            rows.push_back(rowCount);
+        }
+    }
+    std::sort(rows.begin(), rows.end());
+    return rows;
+}
+
 bool getBrokerOwnerRowCounts(BrokerOwnerRowCounts& result) {
     constexpr U32 MAX_WORKERS = 64;
     std::vector<U32> workerRows(MAX_WORKERS, 0);
@@ -971,7 +1004,10 @@ __attribute__((noinline)) void runBrokerOwnerRowStress(const std::vector<U8>& by
     if (!getBrokerOwnerRowCounts(ownerRowsBeforeRetiredRun)) {
         testFail("MT WASM broker pre-stale-run row snapshot waits for every Worker reply");
     } else if (ownerRowsBeforeRetiredRun.mainRows != ownerRowBaseline.mainRows ||
-            ownerRowsBeforeRetiredRun.workerRows != ownerRowBaseline.workerRows) {
+            liveBrokerOwnerRows(ownerRowsBeforeRetiredRun) !=
+                liveBrokerOwnerRows(ownerRowBaseline)) {
+        logBrokerOwnerRowMismatch("MT WASM broker pre-stale owner rows",
+            ownerRowBaseline, ownerRowsBeforeRetiredRun);
         testFail("MT WASM broker late retired publications leave owner rows absent");
     }
     WasmJitMtBrokerMainStatsSnapshot beforeRetiredRun =
@@ -995,8 +1031,11 @@ __attribute__((noinline)) void runBrokerOwnerRowStress(const std::vector<U8>& by
         if (ownerRowsAfterStress.mainRows != ownerRowBaseline.mainRows) {
             testFail("MT WASM broker retired stale thread-start does not recreate main owner row");
         }
-        if (ownerRowsAfterStress.workerRows != ownerRowBaseline.workerRows) {
-            testFail("MT WASM broker retired Worker diagnostic rows return to each live-owner baseline");
+        if (liveBrokerOwnerRows(ownerRowsAfterStress) !=
+                liveBrokerOwnerRows(ownerRowBaseline)) {
+            logBrokerOwnerRowMismatch("MT WASM broker post-stale owner rows",
+                ownerRowBaseline, ownerRowsAfterStress);
+            testFail("MT WASM broker retired Worker diagnostic rows return to the live-owner baseline");
         }
     }
     WasmJitMtBrokerMainStatsSnapshot lifetimeAfterStress =
