@@ -73,6 +73,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testWasmJitMappedFileRange, "Test WASM JIT mapped file range"},
 #endif
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    {testWasmJitMtCpuHazardStateIsCold, "Test MT WASM JIT CPU hazard state layout"},
+    {testWasmJitMtExecDetachPreservesSharedDecodedOps, "Test MT WASM JIT exec detach preserves shared decoded ops"},
     {testWasmJitMtModuleBrokerTransport, "Test MT WASM JIT module broker transport"},
     {testWasmJitMtStandaloneModuleBroker, "Test MT WASM JIT standalone module broker"},
     {testWasmJitMtGroupedModuleBroker, "Test MT WASM JIT grouped module broker"},

@@ -44,7 +44,11 @@ KMemory::KMemory(KProcess* process) : process(process) {
 
 KMemory::~KMemory() {
     if (data) {
-#ifdef BOXEDWINE_JIT
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+        std::vector<void*> jitOps;
+        data->opCache.collectAllJitBlocks(jitOps);
+        jitMemoryInvalidated(this, jitOps);
+#elif defined(BOXEDWINE_JIT)
         jitMemoryInvalidated(this, {});
 #endif
         delete data;
@@ -57,7 +61,11 @@ KMemory::~KMemory() {
 void KMemory::cleanup() {
     BOXEDWINE_CRITICAL_SECTION;
     if (data) {
-#ifdef BOXEDWINE_JIT
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+        std::vector<void*> jitOps;
+        data->opCache.collectAllJitBlocks(jitOps);
+        jitMemoryInvalidated(this, jitOps);
+#elif defined(BOXEDWINE_JIT)
         jitMemoryInvalidated(this, {});
 #endif
         delete data;
@@ -347,7 +355,13 @@ void KMemory::preflightWrite(U32 address, U32 len) {
 }
 
 void KMemory::execvReset(bool cloneVM) {
-#ifdef BOXEDWINE_JIT
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    // Full-owner invalidation retires every broker/table slot through the MT
+    // module registry. Do not sweep DecodedOps first: exec can run inside a
+    // compiled frame, and CLONE_VM detach still leaves the old op cache live
+    // in the other wrapper.
+    jitMemoryInvalidated(this, {});
+#elif defined(BOXEDWINE_JIT)
     jitMemoryInvalidated(this, {});
 #endif
     if (!cloneVM) {
@@ -564,6 +578,22 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         if (nextOp->blockStart != blockOp && nextOp->inst != Done) {
             kpanic("KMemory::removeCodeBlock nextOp->blockStart");
         }
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+        void* jitCode;
+        if (nextOp->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
+            jitCode = __atomic_exchange_n(
+                &nextOp->pfnJitCode, nullptr, __ATOMIC_SEQ_CST);
+        } else {
+            // Relocation-free MT functions have no reclaimable shared state.
+            // Their worker-local table slot is cleared by an ordered worker
+            // message, so the branch's historical benign-stale dispatch is
+            // sufficient and keeps ordinary JIT calls free of wasm atomics.
+            jitCode = nextOp->pfnJitCode;
+            nextOp->pfnJitCode = nullptr;
+        }
+#else
+        void* jitCode = nextOp->pfnJitCode;
+#endif
         nextOp->blockStart = nullptr;
         nextOp->blockOpCount = 0;
         nextOp->blockLen = 0;
@@ -572,12 +602,14 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         }
         nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
         nextOp->flags &= ~OP_FLAG_JIT;
-        if (nextOp->pfnJitCode) {
-            jitOps.push_back(nextOp->pfnJitCode);
+        if (jitCode) {
+            jitOps.push_back(jitCode);
         }
         decodedOps.push_back(nextOp);
         jitLen += nextOp->jitLen;
+#if !defined(BOXEDWINE_WASM_JIT) || !defined(BOXEDWINE_MULTI_THREADED)
         nextOp->pfnJitCode = nullptr;
+#endif
         nextOp->jitLen = 0;
         nextOp = nextOp->next;
     }

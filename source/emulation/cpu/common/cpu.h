@@ -199,7 +199,7 @@ public:
     static CPU* allocCPU(KMemory* memory);
 
     CPU(KMemory* memory);
-    virtual ~CPU() {}
+    virtual ~CPU();
     
     Reg reg[9];
     Seg seg[7];    
@@ -528,9 +528,22 @@ public:
     };
 
 #ifndef __TEST
-protected:    
+protected:
 #endif
     U32 big;
+
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+public:
+    // Keep owner-hazard bookkeeping after every pre-existing CPU field. Raw
+    // WASM JIT modules embed CPU member offsets, so inserting cold MT state
+    // into the established layout changes their generated-code ABI.
+    U32 wasmJitActiveTableIndex = 0;
+    U32 wasmJitActiveTableIndexLocal = 0;
+    U32 wasmJitCallsUntilQuiescence = 0;
+    U32 wasmJitInCompiledCall = 0;
+    U32 wasmJitReapRetiredOnExit = 0;
+    U32 wasmJitHazardRegistered = 0;
+#endif
 };
 
 void common_prepareException(CPU* cpu, int code, int error);

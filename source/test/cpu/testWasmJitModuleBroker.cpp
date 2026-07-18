@@ -374,6 +374,11 @@ EM_JS(S32, testWasmJitBrokerHasGroupInstance,
     return globalThis.bwJitMtGroupInstances.has(key) ? 1 : 0;
 });
 
+EM_JS(S32, testWasmJitBrokerSlotIsClear, (S32 tableIndex), {
+    return tableIndex >= 0 && tableIndex < wasmTable.length &&
+        wasmTable.get(tableIndex) === null ? 1 : 0;
+});
+
 bool waitForBrokerDelivery(S32& expected, S32& received) {
     double deadline = emscripten_get_now() + 5000.0;
     while (emscripten_get_now() < deadline) {
@@ -1132,6 +1137,9 @@ void testWasmJitMtStandaloneModuleBroker() {
     startNewJIT(testContext().cpu, address, op);
 
     int tableIndex = (int)(uintptr_t)op->pfnJitCode;
+    if (op->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
+        testFail("MT WASM relocation-free standalone block keeps the fast call path");
+    }
     WasmJitMtBrokerModuleRef ref = wasmJitTestGetMtBrokerSlotRef(tableIndex);
     WasmJitMtBrokerStatsSnapshot before = wasmJitTestGetMtBrokerStats(testContext().memory);
     if (!op->pfnJitCode || !ref.moduleId || ref.memoryId != (U32)(uintptr_t)testContext().memory ||
@@ -1158,6 +1166,53 @@ void testWasmJitMtStandaloneModuleBroker() {
     if (!args.firstInstalled || after.localCompiles != 1 || after.brokerHits != 1) {
         testFail("MT WASM standalone lazy install reuses broker module");
     }
+
+    wasmJitTestSetMtActiveSlot(testContext().cpu, tableIndex);
+    testContext().memory->removeCodeBlock(address, op, false);
+    bool activeMetadataRetained = wasmJitTestHasMtSlotMetadata(tableIndex);
+    bool activeSlotClear = testWasmJitBrokerSlotIsClear(tableIndex) != 0;
+    S32 activeValidation = wasm_jit_mt_broker_validate_module(
+        ref.moduleId, ref.memoryId, ref.memoryIncarnation);
+    if (op->pfnJitCode || !activeMetadataRetained || activeSlotClear ||
+            activeValidation != 1) {
+        testFail("MT WASM standalone eviction unpublishes but defers active module reclamation: pfn=%p metadata=%d slotClear=%d validation=%d",
+            op->pfnJitCode, activeMetadataRetained, activeSlotClear,
+            activeValidation);
+    }
+    wasmJitTestSetMtActiveSlot(testContext().cpu, -1);
+    wasmJitTestReapMtRetiredSlots(testContext().memory);
+    bool retiredMetadataRetained = wasmJitTestHasMtSlotMetadata(tableIndex);
+    bool retiredSlotClear = testWasmJitBrokerSlotIsClear(tableIndex) != 0;
+    S32 retiredValidation = wasm_jit_mt_broker_validate_module(
+        ref.moduleId, ref.memoryId, ref.memoryIncarnation);
+    if (retiredMetadataRetained || !retiredSlotClear || retiredValidation != 0) {
+        testFail("MT WASM standalone quiescence reclaims slot, bytes, relocations, and broker module: metadata=%d slotClear=%d validation=%d",
+            retiredMetadataRetained, retiredSlotClear, retiredValidation);
+    }
+
+    CPU* resetCpu = CPU::allocCPU(testContext().memory);
+    resetCpu->wasmJitActiveTableIndex = (U32)tableIndex;
+    resetCpu->wasmJitActiveTableIndexLocal = (U32)tableIndex;
+    resetCpu->wasmJitCallsUntilQuiescence = 17;
+    resetCpu->wasmJitInCompiledCall = 1;
+    resetCpu->wasmJitReapRetiredOnExit = 1;
+    resetCpu->reset();
+    if (resetCpu->wasmJitActiveTableIndex != (U32)tableIndex ||
+            resetCpu->wasmJitActiveTableIndexLocal != (U32)tableIndex ||
+            resetCpu->wasmJitCallsUntilQuiescence != 17 ||
+            resetCpu->wasmJitInCompiledCall != 1 ||
+            resetCpu->wasmJitReapRetiredOnExit != 1) {
+        testFail("MT WASM exec reset preserves the unwinding compiled-call hazard");
+    }
+    resetCpu->wasmJitInCompiledCall = 0;
+    resetCpu->wasmJitReapRetiredOnExit = 0;
+    resetCpu->reset();
+    if (resetCpu->wasmJitActiveTableIndex ||
+            resetCpu->wasmJitActiveTableIndexLocal ||
+            resetCpu->wasmJitCallsUntilQuiescence) {
+        testFail("MT WASM quiescent reset clears a carried owner hazard");
+    }
+    delete resetCpu;
     wasmJitTestSetMtModuleBrokerEnabled(oldEnabled);
 }
 
@@ -1217,6 +1272,7 @@ void testWasmJitMtGroupedModuleBroker() {
     }
 
     U32 constructionCount = wasmJitTestMtRuntimeGroupConstructionCount();
+    U64 retainedRuntimeBytesBefore = wasmJitTestMtRuntimeGroupRetainedBytes();
     BrokerGroupWorkerStats beforeRuntimeStats = getBrokerGroupWorkerStats();
     std::vector<S32> runtimeSlots;
     if (!wasmJitTestInstallMtRuntimeGroup(merged, 2, testContext().memory, runtimeSlots) ||
@@ -1274,38 +1330,132 @@ void testWasmJitMtGroupedModuleBroker() {
         testFail("MT WASM online broker group records one broker hit and export reuse");
     }
 
+    bool runtimeInstancePresent = testWasmJitBrokerHasGroupInstance(
+        runtimeRef.moduleId, 0, 0, runtimeRef.memoryId,
+        runtimeRef.memoryIncarnation) != 0;
+    // CLONE_VM can expose the same decoded entries through a CPU which is not
+    // in the KProcess that originally owned the compiled slot. Quiescence
+    // must observe that CPU too, rather than scanning only the owner process.
+    CPU* detachedActiveCpu = CPU::allocCPU(testContext().memory);
+    wasmJitTestSetMtActiveSlot(detachedActiveCpu, runtimeSlots[0]);
+    wasmJitTestRetireMtSlot(runtimeSlots[1]);
+    bool activeRuntimeMetadataRetained =
+        wasmJitTestHasMtSlotMetadata(runtimeSlots[1]);
+    bool activeRuntimeSlotClear =
+        testWasmJitBrokerSlotIsClear(runtimeSlots[1]) != 0;
+    if (!runtimeInstancePresent || !activeRuntimeMetadataRetained ||
+            activeRuntimeSlotClear) {
+        testFail("MT WASM grouped block eviction defers sibling slots owned by the active incarnation: instance=%d metadata=%d slotClear=%d",
+            runtimeInstancePresent, activeRuntimeMetadataRetained,
+            activeRuntimeSlotClear);
+    }
+    wasmJitTestSetMtActiveSlot(detachedActiveCpu, -1);
+    delete detachedActiveCpu;
+    wasmJitTestReapMtRetiredSlots(testContext().memory);
+    bool firstRuntimeMetadataRetained =
+        wasmJitTestHasMtSlotMetadata(runtimeSlots[1]);
+    bool firstRuntimeSlotClear =
+        testWasmJitBrokerSlotIsClear(runtimeSlots[1]) != 0;
+    runtimeInstancePresent = testWasmJitBrokerHasGroupInstance(
+        runtimeRef.moduleId, 0, 0, runtimeRef.memoryId,
+        runtimeRef.memoryIncarnation) != 0;
+    if (firstRuntimeMetadataRetained || !firstRuntimeSlotClear ||
+            !runtimeInstancePresent) {
+        testFail("MT WASM grouped block quiescence reclaims one slot but retains the shared instance: instance=%d metadata=%d slotClear=%d",
+            runtimeInstancePresent, firstRuntimeMetadataRetained,
+            firstRuntimeSlotClear);
+    }
+    wasmJitTestRetireMtSlot(runtimeSlots[0]);
+    wasmJitTestReapMtRetiredSlots(testContext().memory);
+    bool secondRuntimeMetadataRetained =
+        wasmJitTestHasMtSlotMetadata(runtimeSlots[0]);
+    bool secondRuntimeSlotClear =
+        testWasmJitBrokerSlotIsClear(runtimeSlots[0]) != 0;
+    runtimeInstancePresent = testWasmJitBrokerHasGroupInstance(
+        runtimeRef.moduleId, 0, 0, runtimeRef.memoryId,
+        runtimeRef.memoryIncarnation) != 0;
+    if (secondRuntimeMetadataRetained || !secondRuntimeSlotClear ||
+            runtimeInstancePresent) {
+        testFail("MT WASM grouped final block quiescence reclaims the group instance: instance=%d metadata=%d slotClear=%d",
+            runtimeInstancePresent, secondRuntimeMetadataRetained,
+            secondRuntimeSlotClear);
+    }
+    U64 retainedRuntimeBytesAfter = wasmJitTestMtRuntimeGroupRetainedBytes();
+    if (retainedRuntimeBytesAfter != retainedRuntimeBytesBefore) {
+        testFail("MT WASM grouped final block quiescence releases retained runtime module bytes: before=%llu after=%llu",
+            retainedRuntimeBytesBefore, retainedRuntimeBytesAfter);
+    }
+
     int fallbackGroupIdx = wasm_jit_mt_register_group(merged.data(), (int)merged.size());
-    wasm_jit_mt_register_group_entry(fallbackGroupIdx, 0x2000, 0x3000, "b0", 0);
-    wasm_jit_mt_register_group_entry(fallbackGroupIdx, 0x2004, 0x3001, "b1", 0);
+    wasm_jit_mt_register_group_entry(fallbackGroupIdx, 0x2000, 0x3000, "b0", 1);
+    wasm_jit_mt_register_group_entry(fallbackGroupIdx, 0x2004, 0x3001, "b1", 1);
     MtNextModuleIdRestorer nextModuleIdRestorer{wasmJitTestSetMtNextModuleId(0)};
     U32 beforeFallbackInstances = wasmJitTestCurrentWorkerRuntimeGroupInstanceCount();
     BrokerGroupWorkerStats beforeFallbackStats = getBrokerGroupWorkerStats();
     U32 firstFallbackIncarnation = wasmJitTestGetMtMemoryIncarnation(testContext().memory);
     int firstFallbackSlot =
         wasmJitTestInstantiateMtGroupEntry((U32)fallbackGroupIdx, 0, testContext().memory);
+    constexpr U32 staleRelocSentinel = 0x7f4a39c1;
+    if (firstFallbackSlot < 0 ||
+            !wasmJitTestSetMtGroupRelocValue(firstFallbackSlot, 0, staleRelocSentinel)) {
+        testFail("MT WASM grouped fallback relocation setup");
+        wasmJitTestSetMtModuleBrokerEnabled(oldEnabled);
+        return;
+    }
     WasmJitMtBrokerModuleRef firstFallbackRef =
         wasmJitTestGetMtBrokerSlotRef(firstFallbackSlot);
     U32 afterFirstFallbackInstances = wasmJitTestCurrentWorkerRuntimeGroupInstanceCount();
+    wasmJitTestSetMtActiveSlot(testContext().cpu, firstFallbackSlot);
     wasmJitTestInvalidateMtBrokerMemory(testContext().memory);
+    bool oldFallbackMetadataRetained = wasmJitTestHasMtSlotMetadata(firstFallbackSlot);
+    bool oldFallbackSlotClear = testWasmJitBrokerSlotIsClear(firstFallbackSlot) != 0;
+    bool oldFallbackInstanceRetained = testWasmJitBrokerHasGroupInstance(
+        0, 0, wasmJitTestGetMtGroupInstanceIdentity((U32)fallbackGroupIdx),
+        (U32)(uintptr_t)testContext().memory, firstFallbackIncarnation) != 0;
+    if (!oldFallbackMetadataRetained || oldFallbackSlotClear || !oldFallbackInstanceRetained) {
+        testFail("MT WASM grouped invalidation defers active owner state: metadata=%d slotClear=%d instance=%d",
+            oldFallbackMetadataRetained, oldFallbackSlotClear, oldFallbackInstanceRetained);
+    }
     U32 secondFallbackIncarnation = wasmJitTestGetMtMemoryIncarnation(testContext().memory);
+    int replacementFallbackSlot =
+        wasmJitTestInstantiateMtGroupEntry((U32)fallbackGroupIdx, 0, testContext().memory);
+    U32 replacementRelocValue =
+        wasmJitTestGetMtGroupRelocValue(replacementFallbackSlot, 0);
     int secondFallbackSlot =
         wasmJitTestInstantiateMtGroupEntry((U32)fallbackGroupIdx, 1, testContext().memory);
     WasmJitMtBrokerModuleRef secondFallbackRef =
         wasmJitTestGetMtBrokerSlotRef(secondFallbackSlot);
-    U32 afterSecondFallbackInstances = wasmJitTestCurrentWorkerRuntimeGroupInstanceCount();
+    bool replacementFallbackInstancePresent = testWasmJitBrokerHasGroupInstance(
+        0, 0, wasmJitTestGetMtGroupInstanceIdentity((U32)fallbackGroupIdx),
+        (U32)(uintptr_t)testContext().memory, secondFallbackIncarnation) != 0;
     BrokerGroupWorkerStats afterFallbackStats = getBrokerGroupWorkerStats();
-    if (firstFallbackSlot < 0 || secondFallbackSlot < 0 ||
+    if (firstFallbackSlot < 0 || replacementFallbackSlot < 0 || secondFallbackSlot < 0 ||
             firstFallbackRef.moduleId || secondFallbackRef.moduleId ||
             firstFallbackRef.memoryIncarnation != firstFallbackIncarnation ||
             secondFallbackRef.memoryIncarnation != secondFallbackIncarnation ||
             firstFallbackIncarnation == secondFallbackIncarnation ||
             afterFirstFallbackInstances != beforeFallbackInstances + 1 ||
-            afterSecondFallbackInstances != afterFirstFallbackInstances + 1) {
+            !replacementFallbackInstancePresent) {
         testFail("MT WASM grouped fallback identity separates owner incarnations");
+    }
+    if (replacementRelocValue != 0) {
+        testFail("MT WASM grouped fallback replacement incarnation starts with zero relocations: value=%x expected=0",
+            replacementRelocValue);
+    }
+    wasmJitTestSetMtActiveSlot(testContext().cpu, -1);
+    wasmJitTestReapMtRetiredSlots(testContext().memory);
+    oldFallbackMetadataRetained = wasmJitTestHasMtSlotMetadata(firstFallbackSlot);
+    oldFallbackSlotClear = testWasmJitBrokerSlotIsClear(firstFallbackSlot) != 0;
+    oldFallbackInstanceRetained = testWasmJitBrokerHasGroupInstance(
+        0, 0, wasmJitTestGetMtGroupInstanceIdentity((U32)fallbackGroupIdx),
+        (U32)(uintptr_t)testContext().memory, firstFallbackIncarnation) != 0;
+    if (oldFallbackMetadataRetained || !oldFallbackSlotClear || oldFallbackInstanceRetained) {
+        testFail("MT WASM grouped quiescence reclaims deferred owner state: metadata=%d slotClear=%d instance=%d",
+            oldFallbackMetadataRetained, oldFallbackSlotClear, oldFallbackInstanceRetained);
     }
     if (afterFallbackStats.groupInstanceCreations !=
             beforeFallbackStats.groupInstanceCreations + 2 ||
-            afterFallbackStats.groupInstanceReuses != beforeFallbackStats.groupInstanceReuses ||
+            afterFallbackStats.groupInstanceReuses != beforeFallbackStats.groupInstanceReuses + 1 ||
             afterFallbackStats.groupedLocalCompiles !=
                 beforeFallbackStats.groupedLocalCompiles + 2 ||
             afterFallbackStats.groupedBrokerHits != beforeFallbackStats.groupedBrokerHits) {
@@ -1327,19 +1477,19 @@ void testWasmJitMtGroupedModuleBroker() {
         wasmJitTestSetMtModuleBrokerEnabled(oldEnabled);
         return;
     }
-    if (!fallbackArgs.firstInstalled || !fallbackArgs.secondInstalled ||
-            !fallbackArgs.oldKeyAfterFirst || fallbackArgs.newKeyAfterFirst ||
-            !fallbackArgs.oldKeyAfterSecond || !fallbackArgs.newKeyAfterSecond ||
-            fallbackArgs.instanceCount != 2 ||
-            fallbackArgs.firstValue != 0x11223344 ||
+    if (fallbackArgs.firstInstalled || !fallbackArgs.secondInstalled ||
+            fallbackArgs.oldKeyAfterFirst || fallbackArgs.newKeyAfterFirst ||
+            fallbackArgs.oldKeyAfterSecond || !fallbackArgs.newKeyAfterSecond ||
+            fallbackArgs.instanceCount != 1 ||
+            fallbackArgs.firstValue != 0 ||
             fallbackArgs.secondValue != 0x55667788) {
-        testFail("MT WASM grouped fallback lazy install preserves each slot's exact owner incarnation and export");
+        testFail("MT WASM grouped fallback lazy install rejects the retired owner and installs the replacement");
     }
-    if (fallbackArgs.stats.groupInstanceCreations != 2 ||
+    if (fallbackArgs.stats.groupInstanceCreations != 1 ||
             fallbackArgs.stats.groupInstanceReuses != 0 ||
             fallbackArgs.stats.groupedBrokerHits != 0 ||
-            fallbackArgs.stats.groupedLocalCompiles != 2) {
-        testFail("MT WASM grouped fallback lazy install records two exact local cache identities");
+            fallbackArgs.stats.groupedLocalCompiles != 1) {
+        testFail("MT WASM grouped fallback lazy install records only the replacement cache identity");
     }
     wasmJitTestSetMtModuleBrokerEnabled(oldEnabled);
 }
@@ -1907,8 +2057,9 @@ void testWasmJitMtModuleBrokerExecIncarnation() {
     if (!waitForBrokerPurgeCount(holderMemoryId, holderIncarnation,
             holderPurgeMessages, holderCachedModules)) {
         testFail("MT WASM broker known-holder purge barrier timeout");
-    } else if (holderPurgeMessages != holderCount || holderCachedModules != 0) {
-        testFail("MT WASM broker retirement purges exact known holders only");
+    } else if (holderPurgeMessages != workerCount - 1 || holderCachedModules != 0) {
+        testFail("MT WASM broker retirement broadcasts slot-safe purge to every observed allocated worker: messages=%d workers=%d cached=%d",
+            holderPurgeMessages, workerCount, holderCachedModules);
     }
 
     U32 reusedModuleId = wasmJitTestReserveMtBrokerModule(holderOwner);

@@ -47,8 +47,10 @@
 #endif
 #include <emscripten/em_js.h>
 #include <map>      // g_wasmMtGroupProcState (node-based: stable references)
+#include <memory>
 #include <mutex>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -108,9 +110,9 @@ static int32_t g_wasmTableNextSlot = 0;
 // Saved WASM bytes for slots published in shared DecodedOps. Each browser
 // worker has local wasmTable visibility, so another worker may need to lazily
 // instantiate the same bytes into the same slot before call_indirect can run.
-// Entries intentionally follow the monotonic multi-threaded slot lifetime: MT
-// slots are not reused or cleared because another worker may have read the slot
-// from pfnJitCode immediately before a code invalidation race.
+// Entries follow their monotonic table slots until quiescent retirement. A
+// retiring slot stays available for lazy installation while any CPU can still
+// be racing through that exact table index.
 static std::mutex g_wasmBlockBinariesMutex;
 static std::unordered_map<int, std::vector<U8>> g_wasmBlockBinaries;
 
@@ -150,6 +152,31 @@ static std::unordered_map<U64, std::unordered_set<U32>> g_wasmJitMtModulesByOwne
 static std::unordered_map<U32, WasmJitMtOwner> g_wasmJitMtThreadStartOwners;
 static std::unordered_map<U64, WasmJitMtBrokerStats> g_wasmJitMtBrokerStatsByOwner;
 static std::unordered_map<int, WasmJitMtModuleRef> g_wasmJitMtModulesBySlot;
+
+static void* wasmJitMtLoadPublishedCode(DecodedOp* op) {
+    if (op->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
+        return __atomic_load_n(&op->pfnJitCode, __ATOMIC_SEQ_CST);
+    }
+    return op->pfnJitCode;
+}
+
+static void wasmJitMtPublishCode(DecodedOp* op, void* jitCode) {
+    if (op->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
+        __atomic_store_n(&op->pfnJitCode, jitCode, __ATOMIC_SEQ_CST);
+    } else {
+        op->pfnJitCode = jitCode;
+    }
+}
+
+static void* wasmJitMtUnpublishCode(DecodedOp* op) {
+    if (op->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
+        return __atomic_exchange_n(&op->pfnJitCode, nullptr,
+            __ATOMIC_SEQ_CST);
+    }
+    void* result = op->pfnJitCode;
+    op->pfnJitCode = nullptr;
+    return result;
+}
 
 static WasmJitMtOwner wasmJitMtGetOwnerLocked(U32 memoryId, bool create) {
     auto it = g_wasmJitMtMemoryIncarnations.find(memoryId);
@@ -302,9 +329,8 @@ extern "C" S32 wasm_jit_mt_broker_validate_module(U32 moduleId, U32 memoryId, U3
 // block is evicted.
 // ST: a flat vector indexed by table index — O(1) and lock-free on the hot
 // chain-loop path; freed in clearJitBlock. MT: a map protected by
-// g_wasmBlockBinariesMutex (the MT call path already pays a JS slot_check
-// per call, so the lock is noise); entries intentionally follow the
-// monotonic never-freed slot lifetime of g_wasmBlockBinaries.
+// g_wasmBlockBinariesMutex and released only after its monotonic table slot
+// is unpublished and no CPU advertises an active call through that slot.
 #ifdef BOXEDWINE_MULTI_THREADED
 static std::unordered_map<int, U32*> g_wasmRelocArrays;
 // Plain MT sessions never register any relocation arrays, so the per-call
@@ -460,19 +486,29 @@ enum class WasmJitMtGroupKind : U8 {
 struct WasmJitMtGroup {
     WasmJitMtGroupKind kind = WasmJitMtGroupKind::Imported;
     U32 instanceIdentity = 0;
+    bool retired = false;
     std::vector<U8> bytes; // unpatched merged module
     std::vector<WasmJitMtGroupEntry> entries;
     std::vector<WasmJitMtGroupPatch> patches;
 };
 struct WasmJitMtGroupProcState {
     std::vector<U8> patchedBytes;
-    std::vector<U32*> entryArrays;   // index parallel to group entries; never freed (MT slot lifetime)
+    std::vector<U32*> entryArrays;   // index parallel to group entries
     WasmJitMtModuleRef moduleRef;
+
+    ~WasmJitMtGroupProcState() {
+        for (U32* entryArray : entryArrays) {
+            delete[] entryArray;
+        }
+    }
 };
 static std::deque<WasmJitMtGroup> g_wasmMtGroups;
+static std::vector<U32> g_wasmMtFreeRuntimeGroupIndices;
 static std::unordered_map<uint64_t, std::pair<U32, U32>> g_wasmMtGroupByKey; // key -> (groupIdx, entryIdx)
-// (groupIdx, memoryId) -> per-process patched bytes + arrays + broker module ID
-static std::map<std::pair<U32, U32>, WasmJitMtGroupProcState> g_wasmMtGroupProcState;
+// (groupIdx, memoryId, memoryIncarnation) -> patched bytes + arrays + broker module ID
+using WasmJitMtGroupProcKey = std::tuple<U32, U32, U32>;
+using WasmJitMtGroupProcStatePtr = std::shared_ptr<WasmJitMtGroupProcState>;
+static std::map<WasmJitMtGroupProcKey, WasmJitMtGroupProcStatePtr> g_wasmMtGroupProcState;
 // table slot -> (groupIdx, entryIdx, module owner) so cross-worker lazy installs route to the
 // group instead of g_wasmBlockBinaries. exportName resolved via entryIdx.
 struct WasmJitMtGroupSlotRef {
@@ -481,7 +517,105 @@ struct WasmJitMtGroupSlotRef {
     WasmJitMtModuleRef moduleRef;
 };
 static std::unordered_map<int, WasmJitMtGroupSlotRef> g_wasmMtGroupSlotRefs;
+
+// Runtime group slots are reusable after the final exact-owner state and
+// table slot disappear. instanceIdentity remains monotonic, so a recycled
+// numeric groupIdx cannot alias an older worker-local group instance.
+static void wasmJitMtReleaseRuntimeGroupDefinitionIfUnusedLocked(U32 groupIdx) {
+    if (groupIdx >= g_wasmMtGroups.size() ||
+            g_wasmMtGroups[groupIdx].kind != WasmJitMtGroupKind::Runtime ||
+            g_wasmMtGroups[groupIdx].retired) {
+        return;
+    }
+    for (const auto& slot : g_wasmMtGroupSlotRefs) {
+        if (slot.second.groupIdx == groupIdx) {
+            return;
+        }
+    }
+    for (const auto& state : g_wasmMtGroupProcState) {
+        if (std::get<0>(state.first) == groupIdx) {
+            return;
+        }
+    }
+    WasmJitMtGroup& group = g_wasmMtGroups[groupIdx];
+    std::vector<U8>().swap(group.bytes);
+    std::vector<WasmJitMtGroupEntry>().swap(group.entries);
+    std::vector<WasmJitMtGroupPatch>().swap(group.patches);
+    group.retired = true;
+    g_wasmMtFreeRuntimeGroupIndices.push_back(groupIdx);
+}
+
+static U32 wasmJitMtStoreRuntimeGroupLocked(WasmJitMtGroup&& group) {
+    if (!g_wasmMtFreeRuntimeGroupIndices.empty()) {
+        U32 groupIdx = g_wasmMtFreeRuntimeGroupIndices.back();
+        g_wasmMtFreeRuntimeGroupIndices.pop_back();
+        g_wasmMtGroups[groupIdx] = std::move(group);
+        return groupIdx;
+    }
+    U32 groupIdx = (U32)g_wasmMtGroups.size();
+    g_wasmMtGroups.push_back(std::move(group));
+    return groupIdx;
+}
+
+struct WasmJitMtRetiredOwner {
+    WasmJitMtOwner owner;
+    std::vector<U32> moduleIds;
+};
+struct WasmJitMtRetiredSlot {
+    S32 tableIndex = -1;
+    U32 groupIdx = 0;
+    bool group = false;
+    WasmJitMtModuleRef moduleRef;
+};
+static std::unordered_map<U64, WasmJitMtRetiredOwner> g_wasmJitMtRetiredOwners;
+static std::unordered_map<S32, WasmJitMtRetiredSlot> g_wasmJitMtRetiredSlots;
+static std::atomic<bool> g_wasmJitMtRetirementPending{false};
+static void wasmJitMtTryReapRetired(KMemory* memory);
+static KMemory* wasmJitMtRetireSlot(S32 tableIndex);
+static void wasmJitMtFlushBrokerReleases(bool force);
 static U32 g_wasmJitMtNextRuntimeGroupIdentity = 1;
+// KMemoryData can be exposed through distinct KMemory/KProcess wrappers by
+// CLONE_VM. Track every CPU which can advertise a relocation hazard instead
+// of scanning only the process that originally compiled a table slot. The
+// registry mutex also prevents a CPU from being destroyed during a scan.
+static std::mutex g_wasmJitMtHazardCpuMutex;
+static std::unordered_set<CPU*> g_wasmJitMtHazardCpus;
+
+static void wasmJitMtRegisterCpu(CPU* cpu) {
+    if (!cpu || cpu->wasmJitHazardRegistered) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(g_wasmJitMtHazardCpuMutex);
+    if (!cpu->wasmJitHazardRegistered) {
+        g_wasmJitMtHazardCpus.insert(cpu);
+        cpu->wasmJitHazardRegistered = 1;
+    }
+}
+
+void wasmJitMtUnregisterCpu(CPU* cpu) {
+    if (!cpu || !cpu->wasmJitHazardRegistered) {
+        return;
+    }
+    bool retryReclamation = false;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtHazardCpuMutex);
+        if (!cpu->wasmJitHazardRegistered) {
+            return;
+        }
+        retryReclamation = __atomic_exchange_n(
+            &cpu->wasmJitReapRetiredOnExit, 0, __ATOMIC_SEQ_CST) != 0;
+        cpu->wasmJitActiveTableIndexLocal = 0;
+        cpu->wasmJitCallsUntilQuiescence = 0;
+        cpu->wasmJitInCompiledCall = 0;
+        __atomic_store_n(&cpu->wasmJitActiveTableIndex, 0,
+            __ATOMIC_SEQ_CST);
+        g_wasmJitMtHazardCpus.erase(cpu);
+        cpu->wasmJitHazardRegistered = 0;
+    }
+    if (retryReclamation) {
+        wasmJitMtTryReapRetired(nullptr);
+    }
+}
 
 enum class WasmJitMtPendingState : U8 {
     Open,
@@ -2987,10 +3121,75 @@ EM_JS(int, boxedwine_wasm_instantiate_mt,
 });
 
 EM_JS(void, boxedwine_wasm_release_broker_memory_mt,
-    (U32 memoryId, U32 memoryIncarnation, const U32* moduleIds, U32 count), {
-    var ids = Array.from(new Uint32Array(HEAPU8.buffer, moduleIds, count));
-    globalThis.bwWasmJitBrokerReleaseMemory(memoryId, memoryIncarnation, ids);
+    (U32 memoryId, U32 memoryIncarnation, const U32* moduleIds, U32 count,
+     const S32* tableSlots, U32 slotCount, S32 retireOwner,
+     U32 groupKind, U32 groupIdentity, S32 releaseGroupInstance), {
+    var ids = count ? Array.from(new Uint32Array(HEAPU8.buffer, moduleIds, count)) : [];
+    var slots = slotCount ? Array.from(new Int32Array(HEAPU8.buffer, tableSlots, slotCount)) : [];
+    var groupInstanceKeys = [];
+    if (releaseGroupInstance && typeof globalThis.bwWasmJitMtGroupInstanceKey === 'function') {
+        groupInstanceKeys.push(globalThis.bwWasmJitMtGroupInstanceKey(
+            ids.length ? ids[0] : 0, groupKind, groupIdentity,
+            memoryId, memoryIncarnation));
+    }
+    globalThis.bwWasmJitBrokerReleaseMemory(
+        memoryId, memoryIncarnation, ids, slots, retireOwner !== 0,
+        groupInstanceKeys);
 });
+
+// Bulk form used by quiescent retirement. Each record has ten U32 fields:
+// owner id/incarnation, module offset/count, slot offset/count, retire-owner,
+// group kind/identity, and release-group-instance.
+EM_JS(void, boxedwine_wasm_release_broker_batches_mt,
+    (const U32* records, U32 recordCount, const U32* moduleIds,
+     const S32* tableSlots), {
+    var rows = new Uint32Array(HEAPU8.buffer, records, recordCount * 10);
+    for (var i = 0; i < recordCount; ++i) {
+        var base = i * 10;
+        var moduleOffset = rows[base + 2] >>> 0;
+        var moduleCount = rows[base + 3] >>> 0;
+        var slotOffset = rows[base + 4] >>> 0;
+        var slotCount = rows[base + 5] >>> 0;
+        var ids = moduleCount ? Array.from(new Uint32Array(
+            HEAPU8.buffer, moduleIds + moduleOffset * 4, moduleCount)) : [];
+        var slots = slotCount ? Array.from(new Int32Array(
+            HEAPU8.buffer, tableSlots + slotOffset * 4, slotCount)) : [];
+        var groupInstanceKeys = [];
+        if (rows[base + 9] &&
+                typeof globalThis.bwWasmJitMtGroupInstanceKey === 'function') {
+            groupInstanceKeys.push(globalThis.bwWasmJitMtGroupInstanceKey(
+                ids.length ? ids[0] : 0, rows[base + 7], rows[base + 8],
+                rows[base], rows[base + 1]));
+        }
+        globalThis.bwWasmJitBrokerReleaseMemory(
+            rows[base], rows[base + 1], ids, slots,
+            rows[base + 6] !== 0, groupInstanceKeys);
+    }
+});
+
+#ifdef BOXEDWINE_MULTI_THREADED
+static void wasmJitMtReleaseDiscardedSlots(
+        const WasmJitMtModuleRef& moduleRef,
+        const S32* tableSlots, U32 slotCount,
+        bool releaseModule, U32 groupKind = 0,
+        U32 groupIdentity = 0, bool releaseGroupInstance = false) {
+    U32 moduleId = releaseModule ? moduleRef.moduleId : 0;
+    boxedwine_wasm_release_broker_memory_mt(
+        moduleRef.memoryId, moduleRef.memoryIncarnation,
+        &moduleId, moduleId ? 1 : 0,
+        tableSlots, slotCount, 0,
+        groupKind, groupIdentity, releaseGroupInstance ? 1 : 0);
+}
+
+static void wasmJitMtReleaseDiscardedSlot(
+        const WasmJitMtModuleRef& moduleRef, S32 tableSlot,
+        bool releaseModule, U32 groupKind = 0,
+        U32 groupIdentity = 0, bool releaseGroupInstance = false) {
+    wasmJitMtReleaseDiscardedSlots(
+        moduleRef, &tableSlot, 1, releaseModule,
+        groupKind, groupIdentity, releaseGroupInstance);
+}
+#endif
 
 // Instantiate (or reuse) a per-process patched merged-group module in THIS
 // worker and publish one of its exports at a freshly claimed shared slot.
@@ -3038,6 +3237,8 @@ EM_JS(int, boxedwine_wasm_instantiate_group_mt,
                 'helpers': helpers
             });
             globalThis.bwJitMtGroupInstances.set(instanceKey, inst);
+            globalThis.bwWasmJitMtRememberGroupInstance(
+                instanceKey, memoryId, memoryIncarnation);
             ++globalThis.bwWasmJitMtGroupWorkerStats.groupInstanceCreations;
             if (lookup.source === 1) {
                 ++globalThis.bwWasmJitMtGroupWorkerStats.groupedLocalCompiles;
@@ -3166,6 +3367,8 @@ EM_JS(int, boxedwine_wasm_instantiate_runtime_group_mt,
                 throw instanceError;
             }
             globalThis.bwJitMtGroupInstances.set(instanceKey, inst);
+            globalThis.bwWasmJitMtRememberGroupInstance(
+                instanceKey, memoryId, memoryIncarnation);
             createdInstance = true;
             ++globalThis.bwWasmJitMtGroupWorkerStats.groupInstanceCreations;
             if (lookup.source === 1) {
@@ -3230,6 +3433,7 @@ EM_JS(int, boxedwine_wasm_instantiate_runtime_group_mt,
         if (createdInstance && globalThis.bwJitMtGroupInstances &&
                 globalThis.bwJitMtGroupInstances.get(instanceKey) === inst) {
             globalThis.bwJitMtGroupInstances.delete(instanceKey);
+            globalThis.bwWasmJitMtForgetGroupInstance(instanceKey);
         }
         for (var i = 0; i < entryCount; ++i) {
             HEAP32[(outputSlots >> 2) + i] = -1;
@@ -3300,6 +3504,8 @@ EM_JS(int, boxedwine_wasm_install_existing_group_mt,
                 'helpers': helpers
             });
             globalThis.bwJitMtGroupInstances.set(instanceKey, inst);
+            globalThis.bwWasmJitMtRememberGroupInstance(
+                instanceKey, memoryId, memoryIncarnation);
             ++globalThis.bwWasmJitMtGroupWorkerStats.groupInstanceCreations;
             if (lookup.source === 1) {
                 ++globalThis.bwWasmJitMtGroupWorkerStats.groupedLocalCompiles;
@@ -3674,57 +3880,9 @@ EM_JS(void, boxedwine_wasm_free_block, (int tableIndex),
     Module.wasmJitReleaseGeneration++;
 });
 
-// Multi-threaded: the slot counter is monotonically increasing, so slots are
-// never reused.  We intentionally leave the table entry non-null: if another
-// thread read pfnJitCode just before removeCodeBlock cleared it, that thread
-// is about to call call_indirect(slot).  Null-setting the slot here would
-// cause a "RuntimeError: null function" in that thread.  Since the slot is
-// never reassigned (monotonic counter), leaving the old function reference
-// in place is safe — at worst, a racing thread runs one extra (stale) JIT
-// block call, which is no worse than the native JIT backends' behaviour under
-// eviction races.
-//
-// Browser WASM/module limits still matter here. The single-threaded path can
-// call removeFunction(), but the pthread path cannot safely reclaim/reuse a
-// published slot without a stronger cross-worker quiescence protocol. The saved
-// WASM bytes in g_wasmBlockBinaries follow this same lifetime so workers can
-// lazily install any still-observable slot.
-// __TEST is a narrow exception: the Emscripten unit runner uses one CPU test
-// thread and intentionally churns the op cache, so it may clear without reusing
-// slots to avoid exhausting the host wasm-code cache.
-EM_JS(void, boxedwine_wasm_free_block_mt, (int tableIndex),
-{
-#ifdef __TEST
-    try {
-        if (tableIndex >= 0 && tableIndex < wasmTable.length) {
-            wasmTable.set(tableIndex, null);
-        }
-    } catch(e) {
-        console.warn('[WASM JIT MT test] failed to clear slot ' + tableIndex + ': ' + e);
-    }
-#else
-    // Intentionally empty: see comment above.
-    void(tableIndex);
-#endif
-});
-
-#if defined(BOXEDWINE_MULTI_THREADED) && defined(__TEST)
-static void wasmJitMtClearBlockMetadataForTest(int tableIndex) {
-    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
-    g_wasmBlockBinaries.erase(tableIndex);
-
-    bool groupSlot = g_wasmMtGroupSlotRefs.erase(tableIndex) != 0;
-
-    auto relocIt = g_wasmRelocArrays.find(tableIndex);
-    if (relocIt != g_wasmRelocArrays.end()) {
-        if (!groupSlot) {
-            delete[] relocIt->second;
-        }
-        g_wasmRelocArrays.erase(relocIt);
-    }
-}
-#endif
-
+// MT table indices remain monotonic and are never reused. Eviction first
+// unpublishes the shared DecodedOp entry, then waits until no CPU advertises
+// the slot before the broker clears it in every worker.
 // JS-side check local to the executing worker: returns 1 if wasmTable[tableIndex]
 // is non-null, 0 otherwise. In pthread builds the shared DecodedOp stores one
 // table index, but the worker that reaches wasmStartJITOp may not have that
@@ -3744,12 +3902,88 @@ EM_JS(int, boxedwine_wasm_slot_check, (int tableIndex, int cpuPtr, int opPtr),
 static bool lazyInstallWasmJitBlockForWorker(int tableIndex);
 static bool wasmJitSlotReadyForWorker(int tableIndex, CPU* cpu, DecodedOp* op);
 
+// One owner hazard can safely cover consecutive compiled calls because a CPU
+// stays attached to one KMemory incarnation until reset/exec. Retirements use
+// the representative slot only to recover that exact owner. Periodic renewal
+// bounds reclamation latency for loops which never return to the interpreter.
+static constexpr U32 WASM_JIT_MT_CALLS_PER_QUIESCENT_POINT = 1024;
+
+void wasmJitMtLeaveCpu(CPU* cpu) {
+    if (!cpu || !cpu->wasmJitActiveTableIndexLocal) {
+        return;
+    }
+    cpu->wasmJitActiveTableIndexLocal = 0;
+    cpu->wasmJitCallsUntilQuiescence = 0;
+    __atomic_store_n(&cpu->wasmJitActiveTableIndex, 0, __ATOMIC_SEQ_CST);
+    if (__atomic_exchange_n(&cpu->wasmJitReapRetiredOnExit, 0,
+            __ATOMIC_SEQ_CST)) {
+        // A CLONE_VM CPU can be executing a slot owned by another KMemory
+        // wrapper, so retry every pending owner rather than filtering on the
+        // current wrapper's address.
+        wasmJitMtTryReapRetired(nullptr);
+    }
+}
+
+class WasmJitMtActiveCall {
+public:
+    WasmJitMtActiveCall(CPU* cpu, int tableIndex, DecodedOp* op,
+            void* expectedJitCode) : cpu(cpu) {
+        if (!cpu->wasmJitActiveTableIndexLocal ||
+                !cpu->wasmJitCallsUntilQuiescence) {
+            wasmJitMtRegisterCpu(cpu);
+            wasmJitMtLeaveCpu(cpu);
+            cpu->wasmJitActiveTableIndexLocal = (U32)tableIndex;
+            cpu->wasmJitCallsUntilQuiescence =
+                WASM_JIT_MT_CALLS_PER_QUIESCENT_POINT;
+            __atomic_store_n(&cpu->wasmJitActiveTableIndex,
+                (U32)tableIndex, __ATOMIC_SEQ_CST);
+            // The invalidator may have unpublished and reclaimed this slot
+            // before our announcement. Re-read after publication before the
+            // first call protected by this owner hazard.
+            if (wasmJitMtLoadPublishedCode(op) != expectedJitCode) {
+                wasmJitMtLeaveCpu(cpu);
+                return;
+            }
+        } else {
+            --cpu->wasmJitCallsUntilQuiescence;
+        }
+        cpu->wasmJitInCompiledCall = 1;
+        callable = true;
+    }
+
+    ~WasmJitMtActiveCall() {
+        if (callable) {
+            cpu->wasmJitInCompiledCall = 0;
+            wasmJitMtLeaveCpu(cpu);
+        }
+    }
+
+    bool canCall() const {
+        return callable;
+    }
+
+    void finish(bool keepOwnerHazard) {
+        if (!callable) {
+            return;
+        }
+        cpu->wasmJitInCompiledCall = 0;
+        callable = false;
+        if (!keepOwnerHazard) {
+            wasmJitMtLeaveCpu(cpu);
+        }
+    }
+
+private:
+    CPU* cpu;
+    bool callable = false;
+};
+
 static void disableWasmJitBlockAfterSlotMiss(DecodedOp* op) {
     DecodedOp* blockOp = op->blockStart ? op->blockStart : op;
     U32 blockOpCount = blockOp->blockOpCount ? blockOp->blockOpCount : 1;
     DecodedOp* cur = blockOp;
     for (U32 i = 0; i < blockOpCount && cur; i++) {
-        cur->pfnJitCode = nullptr;
+        wasmJitMtUnpublishCode(cur);
         cur->flags &= ~OP_FLAG_JIT;
         cur->flags |= OP_FLAG_NO_JIT;
         cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
@@ -3774,17 +4008,53 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
     U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
     U64 startPreCallNs = profileStartNs;
 #endif
-    if (op->pfnJitCode) {
+    void* jitCode = wasmJitMtLoadPublishedCode(op);
+    if (jitCode) {
         // Guard against cross-worker table visibility. Readiness cannot be
         // cached on DecodedOp because DecodedOp is shared, while table slot
         // visibility is local to the worker that performs call_indirect; the
         // per-worker cache makes the JS slot_check a one-time cost per slot.
-        int tableIndex = (int)(uintptr_t)op->pfnJitCode;
+        int tableIndex = (int)(uintptr_t)jitCode;
+        bool needsRelocHazard =
+            (op->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) != 0;
+        if (!needsRelocHazard) {
+            // wasmTable is worker-local: a purge posted by another worker
+            // cannot run on this worker in the middle of this synchronous
+            // call. With no shared relocation array to dereference, the
+            // atomic publication load above is sufficient; a slot miss simply
+            // falls back if retirement already removed lazy-install metadata.
+            wasmJitMtLeaveCpu(cpu);
+            if (!wasmJitSlotReadyForWorker(tableIndex, cpu, op)) {
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+                wasmJitProfileSlotMiss();
+#endif
+                disableWasmJitBlockAfterSlotMiss(op);
+                NormalCPU::getFunctionForOp(op)(cpu, op);
+                return;
+            }
+            U8 wasmJitSetupFlags =
+                op->flags2 & OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+            if (wasmJitSetupFlags) {
+                KMemoryData* memoryData = nullptr;
+                if (wasmMemoryPageArraysNeedRefresh(cpu, &memoryData)) {
+                    wasmPrepareBlockEnter(cpu, memoryData);
+                }
+            }
+            WASM_JIT_PROFILE_ONLY(if (profileSample) { wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPreCallUs, startPreCallNs); })
+            boxedwine_wasm_call_block(tableIndex, (int)(uintptr_t)cpu, 0);
+            WASM_JIT_PROFILE_ONLY(if (profileSample) { U64 startPostCallNs = wasmJitProfileNowNs(); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPostCallUs, startPostCallNs); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartUs, profileStartNs); })
+            return;
+        }
+        WasmJitMtActiveCall activeCall(cpu, tableIndex, op, jitCode);
+        if (!activeCall.canCall()) {
+            return;
+        }
         if (!wasmJitSlotReadyForWorker(tableIndex, cpu, op)) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
             wasmJitProfileSlotMiss();
 #endif
             disableWasmJitBlockAfterSlotMiss(op);
+            activeCall.finish(false);
             NormalCPU::getFunctionForOp(op)(cpu, op);
             return;
         }
@@ -3796,9 +4066,16 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
             }
         }
         WASM_JIT_PROFILE_ONLY(if (profileSample) { wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPreCallUs, startPreCallNs); })
-        boxedwine_wasm_call_block((int)(uintptr_t)op->pfnJitCode, (int)(uintptr_t)cpu, (int)wasmJitRelocBaseForTable((int)(uintptr_t)op->pfnJitCode));
+        boxedwine_wasm_call_block(tableIndex, (int)(uintptr_t)cpu, (int)wasmJitRelocBaseForTable(tableIndex));
         WASM_JIT_PROFILE_ONLY(if (profileSample) { U64 startPostCallNs = wasmJitProfileNowNs(); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPostCallUs, startPostCallNs); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartUs, profileStartNs); })
         // nextOp is updated by the WASM block itself (via helper call).
+        activeCall.finish(cpu->nextOp && !cpu->yield &&
+            !cpu->thread->terminating &&
+            cpu->nextOp->pfn == cpu->thread->process->startJITOp);
+    } else {
+        // A stale pfn can still enter this callback after its published slot
+        // was cleared. It is a quiescent point for any carried owner hazard.
+        wasmJitMtLeaveCpu(cpu);
     }
 #else
     U32 chainedBlocks = 0;
@@ -4779,57 +5056,60 @@ WasmJitRuntimeStatsSnapshot wasmJitTestGetRuntimeStats() {
 // array addresses. Runtime groups retain their immutable merged bytes and
 // transferred relocation arrays without repatching or replacement allocation.
 // Caller holds g_wasmBlockBinariesMutex.
-// References to the returned process state stay stable after creation because
-// g_wasmMtGroupProcState is a node-based map. Group registry reads and appends
-// are serialized by g_wasmBlockBinariesMutex.
-static WasmJitMtGroupProcState& wasmJitMtGroupProcStateLocked(U32 groupIdx, U32 memoryId) {
-    auto key = std::make_pair(groupIdx, memoryId);
+// Returned shared ownership keeps bytes and arrays alive while a worker
+// compiles outside the mutex, even if concurrent retirement erases the map
+// entry. Group registry reads and appends are serialized by the mutex.
+static WasmJitMtGroupProcStatePtr wasmJitMtFindGroupProcStateLocked(
+        U32 groupIdx, const WasmJitMtModuleRef& moduleRef) {
+    auto it = g_wasmMtGroupProcState.find(std::make_tuple(
+        groupIdx, moduleRef.memoryId, moduleRef.memoryIncarnation));
+    return it != g_wasmMtGroupProcState.end() ? it->second : nullptr;
+}
+
+static WasmJitMtGroupProcStatePtr wasmJitMtGroupProcStateLocked(U32 groupIdx, U32 memoryId) {
+    WasmJitMtOwner owner = wasmJitMtGetOwnerLocked(memoryId, true);
+    auto key = std::make_tuple(groupIdx, owner.memoryId, owner.memoryIncarnation);
     auto it = g_wasmMtGroupProcState.find(key);
     if (it != g_wasmMtGroupProcState.end()) {
-        WasmJitMtOwner owner = wasmJitMtGetOwnerLocked(memoryId, true);
-        if (it->second.moduleRef.memoryIncarnation != owner.memoryIncarnation) {
-            it->second.moduleRef = {0, owner.memoryId, owner.memoryIncarnation};
-        }
         if (g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire) &&
-                !wasmJitMtModuleIsLiveLocked(it->second.moduleRef)) {
-            it->second.moduleRef = wasmJitMtAllocateModuleLocked(memoryId);
+                !wasmJitMtModuleIsLiveLocked(it->second->moduleRef)) {
+            it->second->moduleRef = wasmJitMtAllocateModuleLocked(memoryId);
         }
         return it->second;
     }
     const WasmJitMtGroup& group = g_wasmMtGroups[groupIdx];
-    WasmJitMtGroupProcState st;
-    WasmJitMtOwner owner = wasmJitMtGetOwnerLocked(memoryId, true);
-    st.moduleRef = {0, owner.memoryId, owner.memoryIncarnation};
+    WasmJitMtGroupProcStatePtr st = std::make_shared<WasmJitMtGroupProcState>();
+    st->moduleRef = {0, owner.memoryId, owner.memoryIncarnation};
     if (g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire)) {
-        st.moduleRef = wasmJitMtAllocateModuleLocked(memoryId);
+        st->moduleRef = wasmJitMtAllocateModuleLocked(memoryId);
     }
-    st.patchedBytes = group.bytes;
-    st.entryArrays.resize(group.entries.size(), nullptr);
+    st->patchedBytes = group.bytes;
+    st->entryArrays.resize(group.entries.size(), nullptr);
     if (group.kind == WasmJitMtGroupKind::Runtime) {
-        return g_wasmMtGroupProcState.emplace(key, std::move(st)).first->second;
+        return g_wasmMtGroupProcState.emplace(key, st).first->second;
     }
     for (size_t i = 0; i < group.entries.size(); i++) {
         U32 count = group.entries[i].relocCount;
         if (count) {
-            st.entryArrays[i] = new U32[count](); // zero-filled: un-promoted entries stay on guarded slow paths
+            st->entryArrays[i] = new U32[count](); // zero-filled: un-promoted entries stay on guarded slow paths
         }
     }
     for (const WasmJitMtGroupPatch& patch : group.patches) {
         U32 v = 0;
         auto kt = g_wasmMtGroupByKey.find(patch.targetKey);
         if (kt != g_wasmMtGroupByKey.end() && kt->second.first == groupIdx) {
-            v = (U32)(uintptr_t)st.entryArrays[kt->second.second];
+            v = (U32)(uintptr_t)st->entryArrays[kt->second.second];
         }
         // 5-byte padded SLEB128 i32.const operand, same encoding as the ST
         // shell loader (offset validity checked at registration).
-        U8* data = st.patchedBytes.data() + patch.offset;
+        U8* data = st->patchedBytes.data() + patch.offset;
         data[1] = (U8)((v & 0x7f) | 0x80);
         data[2] = (U8)(((v >> 7) & 0x7f) | 0x80);
         data[3] = (U8)(((v >> 14) & 0x7f) | 0x80);
         data[4] = (U8)(((v >> 21) & 0x7f) | 0x80);
         data[5] = (U8)(((v >> 28) & 0x0f) | ((v & 0x80000000u) ? 0x70 : 0));
     }
-    return g_wasmMtGroupProcState.emplace(key, std::move(st)).first->second;
+    return g_wasmMtGroupProcState.emplace(key, st).first->second;
 }
 
 struct WasmJitMtFlushEntry {
@@ -4848,7 +5128,7 @@ struct WasmJitMtFlushEntry {
 
 static bool isNestedMtWasmJitEntry(const WasmJitMtPendingBlock& pending, DecodedOp* op) {
     return op != pending.op && ((op->flags2 & OP_FLAG2_WASM_JIT_PENDING) ||
-        (op->pfnJitCode && op->pfn == pending.process->startJITOp));
+        (wasmJitMtLoadPublishedCode(op) && op->pfn == pending.process->startJITOp));
 }
 
 static void markMtPendingBlock(WasmJitMtPendingBlock& pending) {
@@ -4863,7 +5143,7 @@ static void markMtPendingBlock(WasmJitMtPendingBlock& pending) {
         }
         cur->blockStart = owner;
         if (cur == pending.op) {
-            cur->pfnJitCode = nullptr;
+            wasmJitMtUnpublishCode(cur);
             cur->pfn = firstDynamicOp;
             cur->flags &= ~OP_FLAG_JIT;
             cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
@@ -4877,7 +5157,7 @@ static void failMtPendingBlock(WasmJitMtPendingBlock& pending) {
     DecodedOp* cur = pending.op;
     for (U32 i = 0; i < pending.blockOpCount && cur; ++i) {
         if (!isNestedMtWasmJitEntry(pending, cur)) {
-            cur->pfnJitCode = nullptr;
+            wasmJitMtUnpublishCode(cur);
             cur->pfn = NormalCPU::getFunctionForOp(cur);
             cur->flags &= ~OP_FLAG_JIT;
             cur->flags2 &= ~(OP_FLAG2_WASM_JIT_PENDING | OP_FLAG2_WASM_JIT_MEM_ARRAYS);
@@ -4983,17 +5263,22 @@ static void publishMtPendingBlock(WasmJitMtPendingBlock& pending, int tableIdx) 
         }
         cur->blockStart = owner;
         if (cur == pending.op) {
-            cur->pfnJitCode = (void*)(uintptr_t)(U32)tableIdx;
             cur->flags |= OP_FLAG_JIT;
             cur->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
-            cur->pfn = pending.process->startJITOp;
+            // Runtime batches share reclaimable group relocation state. Keep
+            // this bit set for the DecodedOp lifetime so a delayed reader of
+            // an older publication cannot mistake it for a relocation-free
+            // table call after recompilation.
+            cur->flags2 |= OP_FLAG2_WASM_JIT_RELOC_HAZARD;
             if (pending.needsMemoryPageArrays) {
                 cur->flags2 |= OP_FLAG2_WASM_JIT_MEM_ARRAYS;
             } else {
                 cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
             }
+            wasmJitMtPublishCode(cur, (void*)(uintptr_t)(U32)tableIdx);
+            cur->pfn = pending.process->startJITOp;
         } else if (!isNestedMtWasmJitEntry(pending, cur)) {
-            cur->pfnJitCode = nullptr;
+            wasmJitMtUnpublishCode(cur);
             cur->flags &= ~OP_FLAG_JIT;
             cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
             cur->pfn = NormalCPU::getFunctionForOp(cur);
@@ -5061,6 +5346,7 @@ static void flushMtRuntimeBatch(CPU* cpu, const WasmJitFlushRequest& request) {
     }
 
     std::vector<WasmJitMtFlushEntry> entries;
+    std::vector<S32> unusedSlots;
     {
         std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
         entries.reserve(request.entries.size());
@@ -5242,37 +5528,46 @@ static void flushMtRuntimeBatch(CPU* cpu, const WasmJitFlushRequest& request) {
         relocArrays.push_back(allocateMtWasmJitRelocArray(entry.relocValues));
     }
 
+    bool groupCommitted = false;
     {
         std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
-        if (!wasmJitMtModuleOwnerIsCurrentLocked(moduleRef)) {
-            return;
-        }
-        U32 groupIdx = (U32)g_wasmMtGroups.size();
-        WasmJitMtGroup group;
-        group.kind = WasmJitMtGroupKind::Runtime;
-        group.instanceIdentity = groupIdentity;
-        group.bytes = std::move(merged);
-        group.entries.reserve(entries.size());
-        for (size_t i = 0; i < entries.size(); ++i) {
-            group.entries.push_back({0, "b" + std::to_string(i), (U32)entries[i].relocValues.size()});
-        }
-        g_wasmMtGroups.push_back(std::move(group));
-
-        WasmJitMtGroupProcState state;
-        state.patchedBytes = g_wasmMtGroups[groupIdx].bytes;
-        state.entryArrays.resize(entries.size(), nullptr);
-        state.moduleRef = moduleRef;
-        for (size_t i = 0; i < entries.size(); ++i) {
-            U32* relocArray = relocArrays[i].release();
-            state.entryArrays[i] = relocArray;
-            if (relocArray) {
-                g_wasmRelocArrays[slots[i]] = relocArray;
-                g_wasmHasRelocArrays.store(true, std::memory_order_relaxed);
+        if (wasmJitMtModuleOwnerIsCurrentLocked(moduleRef)) {
+            WasmJitMtGroup group;
+            group.kind = WasmJitMtGroupKind::Runtime;
+            group.instanceIdentity = groupIdentity;
+            group.bytes = std::move(merged);
+            group.entries.reserve(entries.size());
+            for (size_t i = 0; i < entries.size(); ++i) {
+                group.entries.push_back({0, "b" + std::to_string(i), (U32)entries[i].relocValues.size()});
             }
-            g_wasmMtGroupSlotRefs[slots[i]] = {groupIdx, (U32)i, moduleRef};
+            U32 groupIdx = wasmJitMtStoreRuntimeGroupLocked(std::move(group));
+
+            WasmJitMtGroupProcStatePtr state = std::make_shared<WasmJitMtGroupProcState>();
+            state->patchedBytes = g_wasmMtGroups[groupIdx].bytes;
+            state->entryArrays.resize(entries.size(), nullptr);
+            state->moduleRef = moduleRef;
+            for (size_t i = 0; i < entries.size(); ++i) {
+                U32* relocArray = relocArrays[i].release();
+                state->entryArrays[i] = relocArray;
+                if (relocArray) {
+                    g_wasmRelocArrays[slots[i]] = relocArray;
+                    g_wasmHasRelocArrays.store(true, std::memory_order_relaxed);
+                }
+                g_wasmMtGroupSlotRefs[slots[i]] = {groupIdx, (U32)i, moduleRef};
+            }
+            g_wasmMtGroupProcState.emplace(
+                std::make_tuple(groupIdx, moduleRef.memoryId, moduleRef.memoryIncarnation),
+                state);
+            wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
+            groupCommitted = true;
         }
-        g_wasmMtGroupProcState.emplace(std::make_pair(groupIdx, moduleRef.memoryId), std::move(state));
-        wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
+    }
+    if (!groupCommitted) {
+        wasmJitMtReleaseDiscardedSlots(
+            moduleRef, slots.data(), (U32)slots.size(),
+            moduleRef.moduleId != 0,
+            (U32)WasmJitMtGroupKind::Runtime, groupIdentity, true);
+        return;
     }
 
     {
@@ -5286,6 +5581,7 @@ static void flushMtRuntimeBatch(CPU* cpu, const WasmJitFlushRequest& request) {
         for (size_t i = 0; i < entries.size(); ++i) {
             auto found = g_wasmJitMtPendingBlocks.find(entries[i].id);
             if (found == g_wasmJitMtPendingBlocks.end()) {
+                unusedSlots.push_back(slots[i]);
                 continue;
             }
             WasmJitMtPendingBlock& pending = *found->second;
@@ -5294,9 +5590,22 @@ static void flushMtRuntimeBatch(CPU* cpu, const WasmJitFlushRequest& request) {
                 publishMtPendingBlock(pending, slots[i]);
             } else {
                 ++g_wasmJitMtRuntimeStats.cancelledEntries;
+                unusedSlots.push_back(slots[i]);
             }
             eraseMtPendingBlockLocked(entries[i].id);
         }
+    }
+    std::vector<KMemory*> retiredMemories;
+    for (S32 tableIndex : unusedSlots) {
+        KMemory* slotMemory = wasmJitMtRetireSlot(tableIndex);
+        if (slotMemory && std::find(retiredMemories.begin(),
+                retiredMemories.end(), slotMemory) ==
+                retiredMemories.end()) {
+            retiredMemories.push_back(slotMemory);
+        }
+    }
+    for (KMemory* retiredMemory : retiredMemories) {
+        wasmJitMtTryReapRetired(retiredMemory);
     }
 }
 
@@ -5379,9 +5688,10 @@ static bool lazyInstallWasmJitBlockForWorker(int tableIndex) {
     // compile runs outside it. Pointers stay valid by the stability rules on
     // wasmJitMtGroupProcStateLocked.
     {
+        WasmJitMtGroupProcStatePtr groupState;
         const U8* groupBytes = nullptr;
         int groupSize = 0;
-        const char* exportName = nullptr;
+        std::string exportName;
         U32 groupKind = 0;
         U32 groupIdentity = 0;
         U32 representedBlockCount = 0;
@@ -5392,17 +5702,20 @@ static bool lazyInstallWasmJitBlockForWorker(int tableIndex) {
             auto refIt = g_wasmMtGroupSlotRefs.find(tableIndex);
             if (refIt != g_wasmMtGroupSlotRefs.end()) {
                 const WasmJitMtGroupSlotRef& ref = refIt->second;
-                WasmJitMtGroupProcState& st = wasmJitMtGroupProcStateLocked(ref.groupIdx, ref.moduleRef.memoryId);
-                groupBytes = st.patchedBytes.data();
-                groupSize = (int)st.patchedBytes.size();
-                exportName = g_wasmMtGroups[ref.groupIdx].entries[ref.entryIdx].exportName.c_str();
-                const WasmJitMtGroup& group = g_wasmMtGroups[ref.groupIdx];
-                groupKind = (U32)group.kind;
-                groupIdentity = group.instanceIdentity;
-                representedBlockCount = (U32)group.entries.size();
-                moduleRef = ref.moduleRef;
-                brokerEnabled = g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire) &&
-                    wasmJitMtModuleIsLiveLocked(moduleRef);
+                groupState =
+                    wasmJitMtFindGroupProcStateLocked(ref.groupIdx, ref.moduleRef);
+                if (groupState) {
+                    groupBytes = groupState->patchedBytes.data();
+                    groupSize = (int)groupState->patchedBytes.size();
+                    exportName = g_wasmMtGroups[ref.groupIdx].entries[ref.entryIdx].exportName;
+                    const WasmJitMtGroup& group = g_wasmMtGroups[ref.groupIdx];
+                    groupKind = (U32)group.kind;
+                    groupIdentity = group.instanceIdentity;
+                    representedBlockCount = (U32)group.entries.size();
+                    moduleRef = ref.moduleRef;
+                    brokerEnabled = g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire) &&
+                        wasmJitMtModuleIsLiveLocked(moduleRef);
+                }
             }
         }
         if (groupBytes) {
@@ -5410,7 +5723,7 @@ static bool lazyInstallWasmJitBlockForWorker(int tableIndex) {
             bool result = boxedwine_wasm_install_existing_group_mt(
                 groupBytes, groupSize,
                 g_wasmHelperTable, WASM_HELPER_COUNT,
-                tableIndex, exportName, groupKind, groupIdentity, moduleRef.memoryId,
+                tableIndex, exportName.c_str(), groupKind, groupIdentity, moduleRef.memoryId,
                 moduleRef.memoryIncarnation, moduleRef.moduleId, representedBlockCount,
                 brokerEnabled, &lookupResult) != 0;
             if (result && lookupResult != WASM_JIT_MT_BROKER_LOOKUP_NONE) {
@@ -5452,6 +5765,7 @@ static bool lazyInstallWasmJitBlockForWorker(int tableIndex) {
 
 #if defined(__TEST)
 int wasmJitTestInstantiateMtGroupEntry(U32 groupIdx, U32 entryIdx, KMemory* memory) {
+    WasmJitMtGroupProcStatePtr state;
     const U8* bytes = nullptr;
     int size = 0;
     const char* exportName = nullptr;
@@ -5466,15 +5780,15 @@ int wasmJitTestInstantiateMtGroupEntry(U32 groupIdx, U32 entryIdx, KMemory* memo
         if (groupIdx >= g_wasmMtGroups.size() || entryIdx >= g_wasmMtGroups[groupIdx].entries.size()) {
             return -1;
         }
-        WasmJitMtGroupProcState& state = wasmJitMtGroupProcStateLocked(groupIdx, memoryId);
-        bytes = state.patchedBytes.data();
-        size = (int)state.patchedBytes.size();
+        state = wasmJitMtGroupProcStateLocked(groupIdx, memoryId);
+        bytes = state->patchedBytes.data();
+        size = (int)state->patchedBytes.size();
         exportName = g_wasmMtGroups[groupIdx].entries[entryIdx].exportName.c_str();
         const WasmJitMtGroup& group = g_wasmMtGroups[groupIdx];
         groupKind = (U32)group.kind;
         groupIdentity = group.instanceIdentity;
         representedBlockCount = (U32)group.entries.size();
-        moduleRef = state.moduleRef;
+        moduleRef = state->moduleRef;
         brokerEnabled = g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire) &&
             wasmJitMtModuleIsLiveLocked(moduleRef);
     }
@@ -5483,20 +5797,116 @@ int wasmJitTestInstantiateMtGroupEntry(U32 groupIdx, U32 entryIdx, KMemory* memo
         &g_wasmTableNextSlot, exportName, groupKind, groupIdentity, moduleRef.memoryId, moduleRef.memoryIncarnation,
         moduleRef.moduleId, representedBlockCount, brokerEnabled, &lookupResult);
     if (tableIndex >= 0) {
-        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
-        g_wasmMtGroupSlotRefs[tableIndex] = {groupIdx, entryIdx, moduleRef};
-        wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
+        bool accepted = false;
+        bool retiredOwner = false;
+        bool replacementState = false;
+        {
+            std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+            auto stateIt = g_wasmMtGroupProcState.find(std::make_tuple(
+                groupIdx, moduleRef.memoryId, moduleRef.memoryIncarnation));
+            replacementState = stateIt != g_wasmMtGroupProcState.end() &&
+                stateIt->second != state;
+            accepted = stateIt != g_wasmMtGroupProcState.end() &&
+                stateIt->second == state &&
+                wasmJitMtModuleOwnerIsCurrentLocked(moduleRef);
+            retiredOwner = g_wasmJitMtRetiredOwners.find(wasmJitMtOwnerKey(
+                moduleRef.memoryId, moduleRef.memoryIncarnation)) !=
+                    g_wasmJitMtRetiredOwners.end();
+            if (accepted) {
+                g_wasmMtGroupSlotRefs[tableIndex] = {
+                    groupIdx, entryIdx, moduleRef};
+                wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
+            }
+        }
+        if (!accepted) {
+            wasmJitMtReleaseDiscardedSlot(
+                moduleRef, tableIndex,
+                !retiredOwner && moduleRef.moduleId,
+                groupKind, groupIdentity,
+                !retiredOwner && !replacementState);
+            tableIndex = -1;
+        }
     }
     return tableIndex;
 }
 
 U32 wasmJitTestGetMtGroupModuleId(U32 groupIdx, KMemory* memory) {
     std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
-    auto it = g_wasmMtGroupProcState.find(std::make_pair(groupIdx, (U32)(uintptr_t)memory));
+    WasmJitMtOwner owner = wasmJitMtGetOwnerLocked((U32)(uintptr_t)memory, false);
+    auto it = g_wasmMtGroupProcState.find(std::make_tuple(
+        groupIdx, owner.memoryId, owner.memoryIncarnation));
     if (it == g_wasmMtGroupProcState.end()) {
         return 0;
     }
-    return it->second.moduleRef.moduleId;
+    return it->second->moduleRef.moduleId;
+}
+
+static U32* wasmJitTestGetMtGroupRelocArrayLocked(int tableIndex, U32 relocIndex) {
+    auto refIt = g_wasmMtGroupSlotRefs.find(tableIndex);
+    if (refIt == g_wasmMtGroupSlotRefs.end()) {
+        return nullptr;
+    }
+    const WasmJitMtGroupSlotRef& ref = refIt->second;
+    if (ref.groupIdx >= g_wasmMtGroups.size() ||
+            ref.entryIdx >= g_wasmMtGroups[ref.groupIdx].entries.size() ||
+            relocIndex >= g_wasmMtGroups[ref.groupIdx].entries[ref.entryIdx].relocCount) {
+        return nullptr;
+    }
+    auto stateIt = g_wasmMtGroupProcState.find(std::make_tuple(
+        ref.groupIdx, ref.moduleRef.memoryId, ref.moduleRef.memoryIncarnation));
+    if (stateIt == g_wasmMtGroupProcState.end() ||
+            ref.entryIdx >= stateIt->second->entryArrays.size()) {
+        return nullptr;
+    }
+    U32* relocArray = stateIt->second->entryArrays[ref.entryIdx];
+    return relocArray ? relocArray + relocIndex : nullptr;
+}
+
+U32 wasmJitTestGetMtGroupRelocValue(int tableIndex, U32 relocIndex) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    U32* value = wasmJitTestGetMtGroupRelocArrayLocked(tableIndex, relocIndex);
+    return value ? *value : 0;
+}
+
+bool wasmJitTestSetMtGroupRelocValue(int tableIndex, U32 relocIndex, U32 value) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    U32* destination = wasmJitTestGetMtGroupRelocArrayLocked(tableIndex, relocIndex);
+    if (!destination) {
+        return false;
+    }
+    *destination = value;
+    return true;
+}
+
+bool wasmJitTestHasMtSlotMetadata(int tableIndex) {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    return g_wasmBlockBinaries.find(tableIndex) != g_wasmBlockBinaries.end() ||
+        g_wasmRelocArrays.find(tableIndex) != g_wasmRelocArrays.end() ||
+        g_wasmJitMtModulesBySlot.find(tableIndex) != g_wasmJitMtModulesBySlot.end() ||
+        g_wasmMtGroupSlotRefs.find(tableIndex) != g_wasmMtGroupSlotRefs.end();
+}
+
+void wasmJitTestSetMtActiveSlot(CPU* cpu, int tableIndex) {
+    if (!cpu) {
+        return;
+    }
+    if (tableIndex <= 0) {
+        cpu->wasmJitInCompiledCall = 0;
+        wasmJitMtLeaveCpu(cpu);
+        return;
+    }
+    wasmJitMtRegisterCpu(cpu);
+    cpu->wasmJitActiveTableIndexLocal = (U32)tableIndex;
+    cpu->wasmJitCallsUntilQuiescence =
+        WASM_JIT_MT_CALLS_PER_QUIESCENT_POINT;
+    cpu->wasmJitInCompiledCall = 1;
+    __atomic_store_n(&cpu->wasmJitActiveTableIndex,
+        (U32)tableIndex, __ATOMIC_SEQ_CST);
+}
+
+void wasmJitTestReapMtRetiredSlots(KMemory* memory) {
+    wasmJitMtTryReapRetired(memory);
+    wasmJitMtFlushBrokerReleases(true);
 }
 
 U32 wasmJitTestGetMtGroupInstanceIdentity(U32 groupIdx) {
@@ -5505,6 +5915,17 @@ U32 wasmJitTestGetMtGroupInstanceIdentity(U32 groupIdx) {
         return 0;
     }
     return g_wasmMtGroups[groupIdx].instanceIdentity;
+}
+
+U64 wasmJitTestMtRuntimeGroupRetainedBytes() {
+    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+    U64 result = 0;
+    for (const WasmJitMtGroup& group : g_wasmMtGroups) {
+        if (group.kind == WasmJitMtGroupKind::Runtime) {
+            result += group.bytes.size();
+        }
+    }
+    return result;
 }
 
 bool wasmJitTestInstallMtRuntimeGroup(const std::vector<U8>& bytes, U32 entryCount,
@@ -5553,31 +5974,42 @@ bool wasmJitTestInstallMtRuntimeGroup(const std::vector<U8>& bytes, U32 entryCou
         return false;
     }
 
-    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
-    if (!wasmJitMtModuleOwnerIsCurrentLocked(moduleRef)) {
-        return false;
+    bool committed = false;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        if (wasmJitMtModuleOwnerIsCurrentLocked(moduleRef)) {
+            WasmJitMtGroup group;
+            group.kind = WasmJitMtGroupKind::Runtime;
+            group.instanceIdentity = groupIdentity;
+            group.bytes = bytes;
+            group.entries.reserve(entryCount);
+            for (U32 i = 0; i < entryCount; ++i) {
+                group.entries.push_back({0, "b" + std::to_string(i), 0});
+            }
+            U32 groupIdx = wasmJitMtStoreRuntimeGroupLocked(std::move(group));
+            WasmJitMtGroupProcStatePtr state =
+                std::make_shared<WasmJitMtGroupProcState>();
+            state->patchedBytes = g_wasmMtGroups[groupIdx].bytes;
+            state->entryArrays.resize(entryCount, nullptr);
+            state->moduleRef = moduleRef;
+            for (U32 i = 0; i < entryCount; ++i) {
+                g_wasmMtGroupSlotRefs[slots[i]] = {groupIdx, i, moduleRef};
+            }
+            g_wasmMtGroupProcState.emplace(
+                std::make_tuple(groupIdx, moduleRef.memoryId,
+                    moduleRef.memoryIncarnation),
+                state);
+            wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
+            committed = true;
+        }
     }
-    U32 groupIdx = (U32)g_wasmMtGroups.size();
-    WasmJitMtGroup group;
-    group.kind = WasmJitMtGroupKind::Runtime;
-    group.instanceIdentity = groupIdentity;
-    group.bytes = bytes;
-    group.entries.reserve(entryCount);
-    for (U32 i = 0; i < entryCount; ++i) {
-        group.entries.push_back({0, "b" + std::to_string(i), 0});
+    if (!committed) {
+        wasmJitMtReleaseDiscardedSlots(
+            moduleRef, slots.data(), (U32)slots.size(),
+            moduleRef.moduleId != 0,
+            (U32)WasmJitMtGroupKind::Runtime, groupIdentity, true);
     }
-    g_wasmMtGroups.push_back(std::move(group));
-    WasmJitMtGroupProcState state;
-    state.patchedBytes = g_wasmMtGroups[groupIdx].bytes;
-    state.entryArrays.resize(entryCount, nullptr);
-    state.moduleRef = moduleRef;
-    for (U32 i = 0; i < entryCount; ++i) {
-        g_wasmMtGroupSlotRefs[slots[i]] = {groupIdx, i, moduleRef};
-    }
-    g_wasmMtGroupProcState.emplace(
-        std::make_pair(groupIdx, moduleRef.memoryId), std::move(state));
-    wasmJitMtRecordLookupLocked(moduleRef, lookupResult);
-    return true;
+    return committed;
 }
 
 EM_JS(void, wasmJitTestFailMtRuntimeGroupAfterSlots, (S32 slotCount), {
@@ -5620,7 +6052,11 @@ EM_JS(S32, wasmJitTestDropCurrentWorkerMtRuntimeGroupInstanceJs,
     }
     var key = globalThis.bwWasmJitMtGroupInstanceKey(
         moduleId, groupKind, groupIdentity, memoryId, memoryIncarnation);
-    return globalThis.bwJitMtGroupInstances.delete(key) ? 1 : 0;
+    var removed = globalThis.bwJitMtGroupInstances.delete(key);
+    if (removed) {
+        globalThis.bwWasmJitMtForgetGroupInstance(key);
+    }
+    return removed ? 1 : 0;
 });
 
 bool wasmJitTestDropCurrentWorkerMtRuntimeGroupInstance(int tableIndex) {
@@ -6070,8 +6506,9 @@ static inline U32 wasmJitRelocBaseForTable(int tableIndex) {
     if (!g_wasmHasRelocArrays.load(std::memory_order_relaxed)) {
         return 0;
     }
-    // MT table slots and their relocation arrays have monotonic lifetimes:
-    // slots are never reused and arrays remain live until process shutdown.
+    // MT table indices are never reused. Relocation arrays stay live until
+    // slot quiescence; cached pointers for retired indices cannot be observed
+    // by a later call because those indices are never republished.
     // Cache both hits and misses per worker so persistence replay does not
     // serialize every generated block call on g_wasmBlockBinariesMutex.
     static thread_local std::vector<U32> cachedBases;
@@ -6100,12 +6537,11 @@ static inline U32 wasmJitRelocBaseForTable(int tableIndex) {
 
 #ifdef BOXEDWINE_MULTI_THREADED
 // Per-worker slot readiness. Worker wasmTable visibility is per host thread
-// (the shared DecodedOp can't carry it), but MT slots are monotonic and never
-// freed or reused (free_block_mt is deliberately empty), so once a slot is
-// verified/installed in this worker it stays callable forever. The first call
-// per (slot, worker) pays the JS slot_check (+ lazy install); every later
-// call is a thread_local vector read, removing an EM_JS round trip from
-// every block dispatch.
+// (the shared DecodedOp can't carry it), and MT table indices are monotonic.
+// Once a slot is verified in this worker, the ready bit remains valid for that
+// index; retirement prevents the index from being published or reused. The
+// first call per (slot, worker) pays the JS slot_check (+ lazy install); every
+// later call is a thread_local vector read.
 static bool wasmJitSlotReadyForWorker(int tableIndex, CPU* cpu, DecodedOp* op) {
     static thread_local std::vector<bool> ready;
     if (tableIndex > 0 && (size_t)tableIndex < ready.size() && ready[(size_t)tableIndex]) {
@@ -12831,6 +13267,7 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         U32 groupKind = 0;
         U32 groupIdentity = 0;
         U32 groupRepresentedBlockCount = 0;
+        WasmJitMtGroupProcStatePtr groupState;
         WasmJitMtModuleRef groupModuleRef;
         S32 groupBrokerEnabled = 0;
         {
@@ -12842,20 +13279,19 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
                 entryIdx = git->second.second;
                 const WasmJitMtGroupEntry& entry = g_wasmMtGroups[groupIdx].entries[entryIdx];
                 if (entry.relocCount == (U32)m_relocValues.size()) {
-                    WasmJitMtGroupProcState& st =
-                        wasmJitMtGroupProcStateLocked(groupIdx, memoryId);
-                    groupArr = st.entryArrays[entryIdx];
+                    groupState = wasmJitMtGroupProcStateLocked(groupIdx, memoryId);
+                    groupArr = groupState->entryArrays[entryIdx];
                     if (groupArr && !m_relocValues.empty()) {
                         memcpy(groupArr, m_relocValues.data(), m_relocValues.size() * sizeof(U32));
                     }
-                    groupBytes = st.patchedBytes.data();
-                    groupSize = (int)st.patchedBytes.size();
+                    groupBytes = groupState->patchedBytes.data();
+                    groupSize = (int)groupState->patchedBytes.size();
                     groupExportName = entry.exportName.c_str();
                     const WasmJitMtGroup& group = g_wasmMtGroups[groupIdx];
                     groupKind = (U32)group.kind;
                     groupIdentity = group.instanceIdentity;
                     groupRepresentedBlockCount = (U32)group.entries.size();
-                    groupModuleRef = st.moduleRef;
+                    groupModuleRef = groupState->moduleRef;
                     groupBrokerEnabled = g_wasmJitMtModuleBrokerEnabled.load(std::memory_order_acquire) &&
                         wasmJitMtModuleIsLiveLocked(groupModuleRef);
                 } else {
@@ -12886,14 +13322,44 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
                 groupModuleRef.memoryIncarnation, groupModuleRef.moduleId, groupRepresentedBlockCount,
                 groupBrokerEnabled, &groupLookupResult);
             if (tableIdx >= 0) {
-                usedGroup = true;
-                std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
-                if (groupArr) {
-                    g_wasmRelocArrays[tableIdx] = groupArr;
-                    g_wasmHasRelocArrays.store(true, std::memory_order_relaxed);
+                bool accepted = false;
+                bool retiredOwner = false;
+                bool replacementState = false;
+                {
+                    std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+                    auto stateIt = g_wasmMtGroupProcState.find(std::make_tuple(
+                        groupIdx, groupModuleRef.memoryId,
+                        groupModuleRef.memoryIncarnation));
+                    replacementState = stateIt != g_wasmMtGroupProcState.end() &&
+                        stateIt->second != groupState;
+                    accepted = stateIt != g_wasmMtGroupProcState.end() &&
+                        stateIt->second == groupState &&
+                        wasmJitMtModuleOwnerIsCurrentLocked(groupModuleRef);
+                    retiredOwner = g_wasmJitMtRetiredOwners.find(wasmJitMtOwnerKey(
+                        groupModuleRef.memoryId,
+                        groupModuleRef.memoryIncarnation)) !=
+                            g_wasmJitMtRetiredOwners.end();
+                    if (accepted) {
+                        usedGroup = true;
+                        if (groupArr) {
+                            g_wasmRelocArrays[tableIdx] = groupArr;
+                            g_wasmHasRelocArrays.store(true, std::memory_order_relaxed);
+                        }
+                        g_wasmMtGroupSlotRefs[tableIdx] = {
+                            groupIdx, entryIdx, groupModuleRef};
+                        wasmJitMtRecordLookupLocked(
+                            groupModuleRef, groupLookupResult);
+                    }
                 }
-                g_wasmMtGroupSlotRefs[tableIdx] = {groupIdx, entryIdx, groupModuleRef};
-                wasmJitMtRecordLookupLocked(groupModuleRef, groupLookupResult);
+                if (!accepted) {
+                    bool releaseModule =
+                        !retiredOwner && groupModuleRef.moduleId;
+                    bool releaseInstance = !retiredOwner && !replacementState;
+                    wasmJitMtReleaseDiscardedSlot(
+                        groupModuleRef, tableIdx, releaseModule,
+                        groupKind, groupIdentity, releaseInstance);
+                    tableIdx = -1;
+                }
             }
             // On instantiation failure fall through to the flat/fresh path
             // (cachedBytes was not read for a group hit; the fresh binary
@@ -12977,6 +13443,18 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
             brokerEnabled && moduleRef.moduleId,
             &lookupResult
         );
+        if (tableIdx >= 0) {
+            bool accepted = false;
+            {
+                std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+                accepted = wasmJitMtModuleOwnerIsCurrentLocked(moduleRef);
+            }
+            if (!accepted) {
+                wasmJitMtReleaseDiscardedSlot(
+                    moduleRef, tableIdx, moduleRef.moduleId != 0);
+                tableIdx = -1;
+            }
+        }
     }
     if (freshMiss && mtRuntimeBatchingEnabled) {
         std::lock_guard<std::mutex> lock(g_wasmJitMtPendingMutex);
@@ -13080,7 +13558,11 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         DecodedOp* cur = op;
         while (cur) {
             cur->pfn = NormalCPU::getFunctionForOp(cur);
+#ifdef BOXEDWINE_MULTI_THREADED
+            wasmJitMtUnpublishCode(cur);
+#else
             cur->pfnJitCode = nullptr;
+#endif
             if (cur->next == nullptr) break;
             cur = cur->next;
         }
@@ -13178,16 +13660,33 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         cur->blockStart = owner;
 
         if (cur == op) {
-            cur->pfnJitCode = (void*)(uintptr_t)(U32)tableIdx;
             cur->flags |= OP_FLAG_JIT;
-            cur->pfn = cpu->thread->process->startJITOp;
             if (m_needsWasmMemoryPageArrays) {
                 cur->flags2 |= OP_FLAG2_WASM_JIT_MEM_ARRAYS;
             } else {
                 cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
             }
+#ifdef BOXEDWINE_MULTI_THREADED
+            if (usedGroup || relocArr) {
+                // Set-only for this DecodedOp lifetime; a delayed reader of an
+                // older relocation-bearing publication must remain protected
+                // if the same op is later recompiled without relocations.
+                cur->flags2 |= OP_FLAG2_WASM_JIT_RELOC_HAZARD;
+            }
+            wasmJitMtPublishCode(cur, (void*)(uintptr_t)(U32)tableIdx);
+            cur->pfn = cpu->thread->process->startJITOp;
+#else
+            cur->pfnJitCode = (void*)(uintptr_t)(U32)tableIdx;
+            cur->pfn = cpu->thread->process->startJITOp;
+#endif
+#ifdef BOXEDWINE_MULTI_THREADED
+        } else if (!wasmJitMtLoadPublishedCode(cur) ||
+                cur->pfn != cpu->thread->process->startJITOp) {
+            wasmJitMtUnpublishCode(cur);
+#else
         } else if (!cur->pfnJitCode || cur->pfn != cpu->thread->process->startJITOp) {
             cur->pfnJitCode = nullptr;
+#endif
             cur->flags &= ~OP_FLAG_JIT;
             cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
             cur->pfn = NormalCPU::getFunctionForOp(cur);
@@ -13228,7 +13727,357 @@ static void wasmJitCodeInvalidated(KMemory* memory, const std::vector<DecodedOp*
 }
 
 #ifdef BOXEDWINE_MULTI_THREADED
-static void wasmJitMtBrokerMemoryInvalidated(U32 memoryId) {
+struct WasmJitMtReleaseBatch {
+    WasmJitMtOwner owner;
+    std::vector<U32> moduleIds;
+    std::vector<S32> tableSlots;
+    bool retireOwner = false;
+    bool releaseGroupInstance = false;
+    U32 groupKind = 0;
+    U32 groupIdentity = 0;
+};
+
+// C++ metadata is reclaimed immediately after quiescence, but worker-local JS
+// table/module cleanup can be coalesced because table indices are monotonic and
+// already unreachable from live DecodedOps. Keep the lag bounded at fewer than
+// one batch of releases; explicit test barriers force immediate delivery.
+static constexpr U32 WASM_JIT_MT_BROKER_RELEASE_SLOT_BATCH = 128;
+static std::mutex g_wasmJitMtBrokerReleaseMutex;
+static std::vector<WasmJitMtReleaseBatch> g_wasmJitMtPendingBrokerReleases;
+static U32 g_wasmJitMtPendingBrokerReleaseSlots = 0;
+
+static void wasmJitMtFlushBrokerReleases(bool force) {
+    std::vector<WasmJitMtReleaseBatch> releases;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtBrokerReleaseMutex);
+        if (!force && g_wasmJitMtPendingBrokerReleaseSlots <
+                WASM_JIT_MT_BROKER_RELEASE_SLOT_BATCH) {
+            return;
+        }
+        releases.swap(g_wasmJitMtPendingBrokerReleases);
+        g_wasmJitMtPendingBrokerReleaseSlots = 0;
+    }
+    if (releases.empty()) {
+        return;
+    }
+    std::vector<U32> records;
+    std::vector<U32> moduleIds;
+    std::vector<S32> tableSlots;
+    records.reserve(releases.size() * 10);
+    for (const WasmJitMtReleaseBatch& release : releases) {
+        U32 moduleOffset = (U32)moduleIds.size();
+        U32 slotOffset = (U32)tableSlots.size();
+        moduleIds.insert(moduleIds.end(), release.moduleIds.begin(),
+            release.moduleIds.end());
+        tableSlots.insert(tableSlots.end(), release.tableSlots.begin(),
+            release.tableSlots.end());
+        records.insert(records.end(), {
+            release.owner.memoryId, release.owner.memoryIncarnation,
+            moduleOffset, (U32)release.moduleIds.size(),
+            slotOffset, (U32)release.tableSlots.size(),
+            release.retireOwner ? 1u : 0u,
+            release.groupKind, release.groupIdentity,
+            release.releaseGroupInstance ? 1u : 0u});
+    }
+    boxedwine_wasm_release_broker_batches_mt(
+        records.data(), (U32)releases.size(), moduleIds.data(),
+        tableSlots.data());
+}
+
+static void wasmJitMtQueueBrokerRelease(WasmJitMtReleaseBatch&& release) {
+    {
+        std::lock_guard<std::mutex> lock(g_wasmJitMtBrokerReleaseMutex);
+        WasmJitMtReleaseBatch* destination = nullptr;
+        if (!release.releaseGroupInstance) {
+            for (WasmJitMtReleaseBatch& pending :
+                    g_wasmJitMtPendingBrokerReleases) {
+                if (!pending.releaseGroupInstance &&
+                        pending.owner.memoryId == release.owner.memoryId &&
+                        pending.owner.memoryIncarnation ==
+                            release.owner.memoryIncarnation) {
+                    destination = &pending;
+                    break;
+                }
+            }
+        }
+        g_wasmJitMtPendingBrokerReleaseSlots += std::max<U32>(
+            1, (U32)release.tableSlots.size());
+        if (destination) {
+            destination->moduleIds.insert(destination->moduleIds.end(),
+                release.moduleIds.begin(), release.moduleIds.end());
+            destination->tableSlots.insert(destination->tableSlots.end(),
+                release.tableSlots.begin(), release.tableSlots.end());
+            destination->retireOwner =
+                destination->retireOwner || release.retireOwner;
+        } else {
+            g_wasmJitMtPendingBrokerReleases.push_back(std::move(release));
+        }
+    }
+    wasmJitMtFlushBrokerReleases(false);
+}
+
+static bool wasmJitMtSlotOwnedByLocked(U32 tableIndex, const WasmJitMtOwner& owner) {
+    auto standaloneIt = g_wasmJitMtModulesBySlot.find((int)tableIndex);
+    if (standaloneIt != g_wasmJitMtModulesBySlot.end()) {
+        const WasmJitMtModuleRef& ref = standaloneIt->second;
+        return ref.memoryId == owner.memoryId &&
+            ref.memoryIncarnation == owner.memoryIncarnation;
+    }
+    auto groupIt = g_wasmMtGroupSlotRefs.find((int)tableIndex);
+    if (groupIt != g_wasmMtGroupSlotRefs.end()) {
+        const WasmJitMtModuleRef& ref = groupIt->second.moduleRef;
+        return ref.memoryId == owner.memoryId &&
+            ref.memoryIncarnation == owner.memoryIncarnation;
+    }
+    return false;
+}
+
+static KMemory* wasmJitMtRetireSlot(S32 tableIndex) {
+    KMemory* memory = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        if (g_wasmJitMtRetiredSlots.find(tableIndex) !=
+                g_wasmJitMtRetiredSlots.end()) {
+            return nullptr;
+        }
+
+        WasmJitMtRetiredSlot retired;
+        retired.tableIndex = tableIndex;
+        auto groupIt = g_wasmMtGroupSlotRefs.find(tableIndex);
+        if (groupIt != g_wasmMtGroupSlotRefs.end()) {
+            retired.group = true;
+            retired.groupIdx = groupIt->second.groupIdx;
+            retired.moduleRef = groupIt->second.moduleRef;
+        } else {
+            auto standaloneIt = g_wasmJitMtModulesBySlot.find(tableIndex);
+            if (standaloneIt == g_wasmJitMtModulesBySlot.end()) {
+                return nullptr;
+            }
+            retired.moduleRef = standaloneIt->second;
+        }
+        memory = (KMemory*)(uintptr_t)retired.moduleRef.memoryId;
+        g_wasmJitMtRetiredSlots.emplace(tableIndex, retired);
+        g_wasmJitMtRetirementPending.store(true, std::memory_order_release);
+    }
+    return memory;
+}
+
+static void wasmJitMtTryReapRetired(KMemory* memory) {
+    if (!g_wasmJitMtRetirementPending.load(std::memory_order_acquire)) {
+        return;
+    }
+
+    std::vector<U32> activeSlots;
+    U32 memoryId = memory ? (U32)(uintptr_t)memory : 0;
+    {
+        std::lock_guard<std::mutex> hazardLock(g_wasmJitMtHazardCpuMutex);
+        for (CPU* cpu : g_wasmJitMtHazardCpus) {
+            U32 tableIndex = __atomic_load_n(
+                &cpu->wasmJitActiveTableIndex, __ATOMIC_SEQ_CST);
+            if (tableIndex) {
+                __atomic_store_n(&cpu->wasmJitReapRetiredOnExit,
+                    1, __ATOMIC_SEQ_CST);
+                tableIndex = __atomic_load_n(
+                    &cpu->wasmJitActiveTableIndex, __ATOMIC_SEQ_CST);
+                if (tableIndex) {
+                    activeSlots.push_back(tableIndex);
+                }
+            }
+        }
+    }
+
+    std::vector<WasmJitMtReleaseBatch> releases;
+    {
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        for (auto retiredIt = g_wasmJitMtRetiredOwners.begin();
+                retiredIt != g_wasmJitMtRetiredOwners.end();) {
+            const WasmJitMtRetiredOwner& retired = retiredIt->second;
+            if (memoryId && retired.owner.memoryId != memoryId) {
+                ++retiredIt;
+                continue;
+            }
+
+            bool active = false;
+            for (U32 tableIndex : activeSlots) {
+                if (wasmJitMtSlotOwnedByLocked(tableIndex, retired.owner)) {
+                    active = true;
+                    break;
+                }
+            }
+            if (active) {
+                ++retiredIt;
+                continue;
+            }
+
+            WasmJitMtReleaseBatch release;
+            release.owner = retired.owner;
+            release.moduleIds = retired.moduleIds;
+            release.retireOwner = true;
+            std::unordered_set<U32> runtimeGroupCandidates;
+
+            for (auto it = g_wasmJitMtModulesBySlot.begin();
+                    it != g_wasmJitMtModulesBySlot.end();) {
+                const WasmJitMtModuleRef& ref = it->second;
+                if (ref.memoryId == release.owner.memoryId &&
+                        ref.memoryIncarnation == release.owner.memoryIncarnation) {
+                    int tableIndex = it->first;
+                    release.tableSlots.push_back(tableIndex);
+                    g_wasmBlockBinaries.erase(tableIndex);
+                    auto relocIt = g_wasmRelocArrays.find(tableIndex);
+                    if (relocIt != g_wasmRelocArrays.end()) {
+                        delete[] relocIt->second;
+                        g_wasmRelocArrays.erase(relocIt);
+                    }
+                    it = g_wasmJitMtModulesBySlot.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+            for (auto it = g_wasmMtGroupSlotRefs.begin();
+                    it != g_wasmMtGroupSlotRefs.end();) {
+                const WasmJitMtModuleRef& ref = it->second.moduleRef;
+                if (ref.memoryId == release.owner.memoryId &&
+                        ref.memoryIncarnation == release.owner.memoryIncarnation) {
+                    runtimeGroupCandidates.insert(it->second.groupIdx);
+                    release.tableSlots.push_back(it->first);
+                    g_wasmRelocArrays.erase(it->first);
+                    it = g_wasmMtGroupSlotRefs.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+            for (auto it = g_wasmMtGroupProcState.begin();
+                    it != g_wasmMtGroupProcState.end();) {
+                if (std::get<1>(it->first) == release.owner.memoryId &&
+                        std::get<2>(it->first) == release.owner.memoryIncarnation) {
+                    runtimeGroupCandidates.insert(std::get<0>(it->first));
+                    it = g_wasmMtGroupProcState.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+            for (auto it = g_wasmJitMtRetiredSlots.begin();
+                    it != g_wasmJitMtRetiredSlots.end();) {
+                const WasmJitMtModuleRef& ref = it->second.moduleRef;
+                if (ref.memoryId == release.owner.memoryId &&
+                        ref.memoryIncarnation == release.owner.memoryIncarnation) {
+                    it = g_wasmJitMtRetiredSlots.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+            for (U32 groupIdx : runtimeGroupCandidates) {
+                wasmJitMtReleaseRuntimeGroupDefinitionIfUnusedLocked(groupIdx);
+            }
+
+            releases.push_back(std::move(release));
+            retiredIt = g_wasmJitMtRetiredOwners.erase(retiredIt);
+        }
+
+        for (auto retiredIt = g_wasmJitMtRetiredSlots.begin();
+                retiredIt != g_wasmJitMtRetiredSlots.end();) {
+            const WasmJitMtRetiredSlot& retired = retiredIt->second;
+            if (memoryId && retired.moduleRef.memoryId != memoryId) {
+                ++retiredIt;
+                continue;
+            }
+            WasmJitMtOwner retiredOwner = {
+                retired.moduleRef.memoryId,
+                retired.moduleRef.memoryIncarnation};
+            bool ownerActive = false;
+            for (U32 activeSlot : activeSlots) {
+                if (wasmJitMtSlotOwnedByLocked(activeSlot, retiredOwner)) {
+                    ownerActive = true;
+                    break;
+                }
+            }
+            if (ownerActive) {
+                ++retiredIt;
+                continue;
+            }
+
+            WasmJitMtReleaseBatch release;
+            release.owner = retiredOwner;
+            release.tableSlots.push_back(retired.tableIndex);
+
+            if (retired.group) {
+                auto slotIt = g_wasmMtGroupSlotRefs.find(retired.tableIndex);
+                if (slotIt != g_wasmMtGroupSlotRefs.end() &&
+                        slotIt->second.groupIdx == retired.groupIdx &&
+                        slotIt->second.moduleRef.memoryId == retired.moduleRef.memoryId &&
+                        slotIt->second.moduleRef.memoryIncarnation ==
+                            retired.moduleRef.memoryIncarnation) {
+                    g_wasmRelocArrays.erase(retired.tableIndex);
+                    g_wasmMtGroupSlotRefs.erase(slotIt);
+
+                    bool groupHasSlots = false;
+                    for (const auto& remaining : g_wasmMtGroupSlotRefs) {
+                        const WasmJitMtGroupSlotRef& ref = remaining.second;
+                        if (ref.groupIdx == retired.groupIdx &&
+                                ref.moduleRef.memoryId == retired.moduleRef.memoryId &&
+                                ref.moduleRef.memoryIncarnation ==
+                                    retired.moduleRef.memoryIncarnation) {
+                            groupHasSlots = true;
+                            break;
+                        }
+                    }
+                    if (!groupHasSlots) {
+                        g_wasmMtGroupProcState.erase(std::make_tuple(
+                            retired.groupIdx, retired.moduleRef.memoryId,
+                            retired.moduleRef.memoryIncarnation));
+                        if (retired.moduleRef.moduleId) {
+                            release.moduleIds.push_back(retired.moduleRef.moduleId);
+                            wasmJitMtReleaseUnpublishedModuleLocked(
+                                retired.moduleRef);
+                        }
+                        if (retired.groupIdx < g_wasmMtGroups.size()) {
+                            const WasmJitMtGroup& group =
+                                g_wasmMtGroups[retired.groupIdx];
+                            release.releaseGroupInstance = true;
+                            release.groupKind = (U32)group.kind;
+                            release.groupIdentity = group.instanceIdentity;
+                        }
+                        wasmJitMtReleaseRuntimeGroupDefinitionIfUnusedLocked(
+                            retired.groupIdx);
+                    }
+                }
+            } else {
+                auto slotIt = g_wasmJitMtModulesBySlot.find(retired.tableIndex);
+                if (slotIt != g_wasmJitMtModulesBySlot.end() &&
+                        slotIt->second.moduleId == retired.moduleRef.moduleId &&
+                        slotIt->second.memoryId == retired.moduleRef.memoryId &&
+                        slotIt->second.memoryIncarnation ==
+                            retired.moduleRef.memoryIncarnation) {
+                    g_wasmBlockBinaries.erase(retired.tableIndex);
+                    auto relocIt = g_wasmRelocArrays.find(retired.tableIndex);
+                    if (relocIt != g_wasmRelocArrays.end()) {
+                        delete[] relocIt->second;
+                        g_wasmRelocArrays.erase(relocIt);
+                    }
+                    g_wasmJitMtModulesBySlot.erase(slotIt);
+                    if (retired.moduleRef.moduleId) {
+                        release.moduleIds.push_back(retired.moduleRef.moduleId);
+                        wasmJitMtReleaseUnpublishedModuleLocked(
+                            retired.moduleRef);
+                    }
+                }
+            }
+
+            releases.push_back(std::move(release));
+            retiredIt = g_wasmJitMtRetiredSlots.erase(retiredIt);
+        }
+        g_wasmJitMtRetirementPending.store(
+            !g_wasmJitMtRetiredOwners.empty() ||
+                !g_wasmJitMtRetiredSlots.empty(),
+            std::memory_order_release);
+    }
+
+    for (WasmJitMtReleaseBatch& release : releases) {
+        wasmJitMtQueueBrokerRelease(std::move(release));
+    }
+}
+
+static void wasmJitMtBrokerMemoryInvalidated(U32 memoryId, KMemory* memory = nullptr) {
     U32 oldIncarnation = 0;
     std::vector<U32> moduleIds;
     {
@@ -13255,10 +14104,13 @@ static void wasmJitMtBrokerMemoryInvalidated(U32 memoryId) {
             g_wasmJitMtBrokerStatsByOwner.erase(ownerKey);
             g_wasmJitMtLastRetiredIncarnations[memoryId] = oldIncarnation;
             g_wasmJitMtMemoryIncarnations.erase(incarnationIt);
+            g_wasmJitMtRetiredOwners[ownerKey] = {
+                {memoryId, oldIncarnation}, std::move(moduleIds)};
+            g_wasmJitMtRetirementPending.store(true, std::memory_order_release);
         }
     }
     if (oldIncarnation) {
-        boxedwine_wasm_release_broker_memory_mt(memoryId, oldIncarnation, moduleIds.data(), (U32)moduleIds.size());
+        wasmJitMtTryReapRetired(memory);
     }
 }
 #endif
@@ -13267,21 +14119,32 @@ static void wasmJitMemoryInvalidated(KMemory* memory) {
 #ifndef BOXEDWINE_MULTI_THREADED
     wasmJitCancelPendingMemory(memory);
 #else
+    KThread* currentThread = KThread::currentThread();
+    if (currentThread && currentThread->memory == memory &&
+            currentThread->cpu &&
+            !currentThread->cpu->wasmJitInCompiledCall) {
+        // A carried hazard between calls is already quiescent on this CPU.
+        // Drop it before retiring the current incarnation so exec/reset does
+        // not wait for a compiled call which is no longer running.
+        wasmJitMtLeaveCpu(currentThread->cpu);
+    }
     // Full-memory lifecycle callers do not consistently own this lock.
     // It is recursive because clearOpCache can invalidate while doJIT owns it.
     std::unique_lock<std::recursive_mutex> memoryLock(memory->mutex);
     wasmJitMtCancelPendingMemory(memory);
-    wasmJitMtBrokerMemoryInvalidated((U32)(uintptr_t)memory);
+    wasmJitMtBrokerMemoryInvalidated((U32)(uintptr_t)memory, memory);
 #endif
 }
 
 #if defined(BOXEDWINE_MULTI_THREADED) && defined(__TEST)
 void wasmJitTestInvalidateMtBrokerMemory(KMemory* memory) {
     wasmJitMemoryInvalidated(memory);
+    wasmJitMtFlushBrokerReleases(true);
 }
 
 void wasmJitTestInvalidateMtBrokerMemoryId(U32 memoryId) {
     wasmJitMtBrokerMemoryInvalidated(memoryId);
+    wasmJitMtFlushBrokerReleases(true);
 }
 #endif
 
@@ -13327,21 +14190,20 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
     std::set<int> seen;
 #ifndef BOXEDWINE_MULTI_THREADED
     bool releasedSlot = false;
+#else
+    std::vector<KMemory*> retiredMemories;
 #endif
     for (void* p : jitOps) {
         if (!p) continue;
         int tableIdx = (int)(uintptr_t)p;
         if (seen.insert(tableIdx).second) {
 #ifdef BOXEDWINE_MULTI_THREADED
-            boxedwine_wasm_free_block_mt(tableIdx);
-#ifdef __TEST
-            wasmJitMtClearBlockMetadataForTest(tableIdx);
-#else
-            // The reloc array intentionally follows the monotonic MT slot
-            // lifetime (never freed) — a racing worker may still run the
-            // instance once after eviction, exactly like the bytes in
-            // g_wasmBlockBinaries.
-#endif
+            KMemory* retiredMemory = wasmJitMtRetireSlot(tableIdx);
+            if (retiredMemory && std::find(retiredMemories.begin(),
+                    retiredMemories.end(), retiredMemory) ==
+                    retiredMemories.end()) {
+                retiredMemories.push_back(retiredMemory);
+            }
 #else
             boxedwine_wasm_free_block(tableIdx);
             releasedSlot = true;
@@ -13356,7 +14218,11 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
 #endif
         }
     }
-#ifndef BOXEDWINE_MULTI_THREADED
+#ifdef BOXEDWINE_MULTI_THREADED
+    for (KMemory* retiredMemory : retiredMemories) {
+        wasmJitMtTryReapRetired(retiredMemory);
+    }
+#else
     if (releasedSlot) {
         bool wasPaused = g_wasmJitCompilationPaused;
         g_wasmJitCompilationPaused = false;
@@ -13367,6 +14233,12 @@ void clearJitBlock(const std::vector<void*>& jitOps) {
     }
 #endif
 }
+
+#if defined(BOXEDWINE_MULTI_THREADED) && defined(__TEST)
+void wasmJitTestRetireMtSlot(int tableIndex) {
+    clearJitBlock({(void*)(uintptr_t)(U32)tableIndex});
+}
+#endif
 
 // ---------------------------------------------------------------------------
 // JIT module persistence - zip import (single-threaded builds only).

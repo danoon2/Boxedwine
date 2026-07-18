@@ -185,8 +185,22 @@ void DecodedOpCache::collectAllJitBlocks(std::vector<void*>& out) {
 			if (!page) continue;
 			for (U32 i = 0; i < K_PAGE_SIZE; i++) {
 				DecodedOp* op = page->ops[i];
-				if (op && op->pfnJitCode) {
-					out.push_back(op->pfnJitCode);
+				if (op) {
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+					void* jitCode;
+					if (op->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
+						jitCode = __atomic_exchange_n(
+							&op->pfnJitCode, nullptr, __ATOMIC_SEQ_CST);
+					} else {
+						jitCode = op->pfnJitCode;
+						op->pfnJitCode = nullptr;
+					}
+#else
+					void* jitCode = op->pfnJitCode;
+#endif
+					if (jitCode) {
+						out.push_back(jitCode);
+					}
 				}
 			}
 		}

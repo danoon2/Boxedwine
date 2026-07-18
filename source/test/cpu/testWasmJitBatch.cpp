@@ -23,6 +23,49 @@
 #include <pthread.h>
 #endif
 
+#ifdef BOXEDWINE_MULTI_THREADED
+void testWasmJitMtCpuHazardStateIsCold() {
+    CPU* cpu = testContext().cpu;
+    uintptr_t existingStateEnd = (uintptr_t)&cpu->big + sizeof(cpu->big) - 1;
+    uintptr_t hazardStateStart = (uintptr_t)&cpu->wasmJitActiveTableIndex;
+    if (hazardStateStart <= existingStateEnd) {
+        testFail("MT WASM JIT owner-hazard bookkeeping must not shift existing CPU/JIT state");
+    }
+}
+
+void testWasmJitMtExecDetachPreservesSharedDecodedOps() {
+    testNewInstruction(0);
+    U32 address = testContext().codeIp;
+    testPushCode8(0x90); // nop
+    testPushCode8(0xcd);
+    testPushCode8(0x97);
+    DecodedOp* sharedOp = testContext().cpu->getOp(address, 0);
+    void* sentinelJitCode = reinterpret_cast<void*>(0x1234);
+    sharedOp->pfnJitCode = sentinelJitCode;
+
+    KProcessPtr cloneProcess = KProcess::create();
+    KMemory* cloneMemory = KMemory::create(cloneProcess.get());
+    cloneProcess->memory = cloneMemory;
+    cloneMemory->clone(testContext().memory, true);
+    cloneMemory->execvReset(true);
+
+    if (sharedOp->pfnJitCode != sentinelJitCode) {
+        testFail("MT WASM JIT CLONE_VM exec detach must not sweep the shared decoded-op cache");
+    }
+    sharedOp->pfnJitCode = nullptr;
+
+    U32 cloneProcessId = cloneProcess->id;
+    KProcessWeakPtr weakCloneProcess = cloneProcess;
+    if (KSystem::getProcess(cloneProcessId)) {
+        KSystem::eraseProcess(cloneProcessId);
+    }
+    cloneProcess.reset();
+    if (!weakCloneProcess.expired()) {
+        testFail("MT WASM JIT exec detach test leaked its clone process");
+    }
+}
+#endif
+
 static std::vector<U8> makeMergeInput(S32 value, const char* memoryName = "memory") {
     WasmEmitter emitter;
     U32 type = emitter.addFuncType({WasmType::I32, WasmType::I32}, {});
@@ -1407,7 +1450,15 @@ void testWasmJitPendingLifecycle() {
         testContext().cpu->nextOp = third;
         testContext().cpu->run();
     }
-    if (!third->pfnJitCode || (third->flags2 & OP_FLAG2_WASM_JIT_PENDING) || wasmJitTestPendingCount() != 0 || wasmJitTestRuntimeModuleCount() != 1 || wasmJitTestRuntimeGroupCount() != 1) {
+    bool missingMtRelocHazard = false;
+#ifdef BOXEDWINE_MULTI_THREADED
+    missingMtRelocHazard = !(third->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD);
+#endif
+    if (!third->pfnJitCode || (third->flags2 & OP_FLAG2_WASM_JIT_PENDING) ||
+            missingMtRelocHazard ||
+            wasmJitTestPendingCount() != 0 ||
+            wasmJitTestRuntimeModuleCount() != 1 ||
+            wasmJitTestRuntimeGroupCount() != 1) {
         testFail("pending lifecycle urgent hit installs one-entry runtime group");
     }
     testContext().memory->removeCodeBlock(addresses[2], third, false);
