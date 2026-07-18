@@ -28,12 +28,33 @@ void runEmscriptenAbiWordAutomation(String automationName, String buildDir, Stri
 
             chrome_profile=''
             cleanup_chrome_profile() {
+                local cleanup_attempt
+
                 if [ -z "$chrome_profile" ]; then
                     return 0
                 fi
 
                 case "$chrome_profile" in
-                    "$WORKSPACE"/.chrome-*) rm -rf -- "$chrome_profile" ;;
+                    "$WORKSPACE"/.chrome-*)
+                        # emrun terminates Chrome, but its child processes can briefly
+                        # recreate profile files while they are shutting down.
+                        for cleanup_attempt in 1 2 3 4 5
+                        do
+                            if rm -rf -- "$chrome_profile"; then
+                                chrome_profile=''
+                                return 0
+                            fi
+
+                            if [ "$cleanup_attempt" != "5" ]; then
+                                echo "Chrome profile is still busy; retrying cleanup (${cleanup_attempt}/5)"
+                                sleep 1
+                            fi
+                        done
+
+                        echo "WARNING: Chrome profile is still busy; leaving it for workspace cleanup: $chrome_profile" >&2
+                        chrome_profile=''
+                        return 0
+                        ;;
                     *)
                         echo "Refusing to remove unexpected Chrome profile path: $chrome_profile" >&2
                         return 1
