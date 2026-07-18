@@ -13,6 +13,50 @@ void gitCheckout() {
     }
 }
 
+void runEmscriptenUnitTest(String testName, String buildDir, String port) {
+    withEnv([
+        "BOXEDWINE_UNIT_TEST_NAME=${testName}",
+        "BOXEDWINE_UNIT_TEST_BUILD_DIR=${buildDir}",
+        "BOXEDWINE_UNIT_TEST_PORT=${port}"
+    ]) {
+        sh '''#!/bin/bash
+            source ~/emsdk/emsdk_env.sh
+            cd project/emscripten
+            set -euo pipefail
+
+            firefox_profile="$(mktemp -d "$WORKSPACE/.firefox-${BOXEDWINE_UNIT_TEST_BUILD_DIR}.XXXXXX")"
+            cleanup_firefox_profile() {
+                if [ -z "$firefox_profile" ]; then
+                    return 0
+                fi
+
+                case "$firefox_profile" in
+                    "$WORKSPACE"/.firefox-*)
+                        if ! rm -rf -- "$firefox_profile"; then
+                            echo "WARNING: Could not remove Firefox profile: $firefox_profile" >&2
+                        fi
+                        firefox_profile=''
+                        ;;
+                    *)
+                        echo "WARNING: Refusing to remove unexpected Firefox profile path: $firefox_profile" >&2
+                        firefox_profile=''
+                        ;;
+                esac
+                return 0
+            }
+            trap cleanup_firefox_profile EXIT
+
+            echo "Running ${BOXEDWINE_UNIT_TEST_NAME}"
+            cd "Build/${BOXEDWINE_UNIT_TEST_BUILD_DIR}"
+            emrun --kill-exit \
+                --port "$BOXEDWINE_UNIT_TEST_PORT" \
+                --browser="/usr/bin/firefox" \
+                --browser-args="--headless --no-remote --profile ${firefox_profile}" \
+                boxedwine.html
+        '''
+    }
+}
+
 void runEmscriptenAbiWordAutomation(String automationName, String buildDir, String port) {
     withEnv([
         "BOXEDWINE_AUTOMATION_NAME=${automationName}",
@@ -188,30 +232,29 @@ pipeline {
                         sh '''#!/bin/bash
                             source ~/emsdk/emsdk_env.sh
                             cd project/emscripten
+                            set -euo pipefail
+
                             make clean
                             make test
-                            killall -9 python3
-                            cd Build/Test
-                            emrun --kill_start --kill_exit --browser="/usr/bin/firefox" --browser_args="--headless" boxedwine.html
-                        '''
-                        sh '''#!/bin/bash
-                            source ~/emsdk/emsdk_env.sh
-                            cd project/emscripten
-                            make clean
                             make testJit
-                            killall -9 python3
-                            cd Build/TestJit
-                            emrun --kill_start --kill_exit --browser="/usr/bin/firefox" --browser_args="--headless" boxedwine.html
-                        '''
-                        sh '''#!/bin/bash
-                            source ~/emsdk/emsdk_env.sh
-                            cd project/emscripten
-                            make clean
                             make testMultiThreadedJit
-                            killall -9 python3
-                            cd Build/TestMultiThreadedJit
-                            emrun --kill_start --kill_exit --browser="/usr/bin/firefox" --browser_args="--headless" boxedwine.html
+
+                            killall -9 python3 2>/dev/null || true
+                            killall -9 firefox 2>/dev/null || true
                         '''
+                        script {
+                            parallel(
+                                'Emscripten ST': {
+                                    runEmscriptenUnitTest('Emscripten ST unit tests', 'Test', '6921')
+                                },
+                                'Emscripten ST JIT': {
+                                    runEmscriptenUnitTest('Emscripten ST JIT unit tests', 'TestJit', '6922')
+                                },
+                                'Emscripten MT JIT': {
+                                    runEmscriptenUnitTest('Emscripten MT JIT unit tests', 'TestMultiThreadedJit', '6923')
+                                }
+                            )
+                        }
                     }
                 }
                 stage ('Test Linux (x64)') {
