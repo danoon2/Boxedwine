@@ -72,6 +72,9 @@ void mainloop() {
             title.append(getSize(allocatedRamPages));
 	    emscripten_set_window_title(title.c_str());
         }
+#ifdef BOXEDWINE_RECORDER
+        BOXEDWINE_RECORDER_RUN_SLICE();
+#endif
         if (!KNativeSystem::getCurrentInput()->processEvents()) {
             KNativeSystem::cleanup();
         }
