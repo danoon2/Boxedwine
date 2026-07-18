@@ -13,6 +13,75 @@ void gitCheckout() {
     }
 }
 
+void runEmscriptenAbiWordAutomation(String automationName, String buildDir, String port) {
+    withEnv([
+        "BOXEDWINE_AUTOMATION_NAME=${automationName}",
+        "BOXEDWINE_AUTOMATION_BUILD_DIR=${buildDir}",
+        "BOXEDWINE_AUTOMATION_PORT=${port}"
+    ]) {
+        sh '''#!/bin/bash
+            source ~/emsdk/emsdk_env.sh
+            export DISPLAY=:0
+            export XAUTHORITY="$HOME/.Xauthority"
+            cd project/emscripten
+            set -euo pipefail
+
+            chrome_profile=''
+            cleanup_chrome_profile() {
+                if [ -z "$chrome_profile" ]; then
+                    return 0
+                fi
+
+                case "$chrome_profile" in
+                    "$WORKSPACE"/.chrome-*) rm -rf -- "$chrome_profile" ;;
+                    *)
+                        echo "Refusing to remove unexpected Chrome profile path: $chrome_profile" >&2
+                        return 1
+                        ;;
+                esac
+            }
+            trap cleanup_chrome_profile EXIT
+
+            last_rc=1
+            for attempt in 1 2 3
+            do
+                echo "${BOXEDWINE_AUTOMATION_NAME} attempt ${attempt}/3"
+                chrome_profile="$(mktemp -d "$WORKSPACE/.chrome-${BOXEDWINE_AUTOMATION_BUILD_DIR}-${attempt}.XXXXXX")"
+
+                cd "Build/${BOXEDWINE_AUTOMATION_BUILD_DIR}"
+                set +e
+                emrun --kill-exit \
+                    --port "$BOXEDWINE_AUTOMATION_PORT" \
+                    --timeout 600 \
+                    --timeout-returncode 124 \
+                    --browser="/usr/bin/google-chrome" \
+                    --browser-args="--user-data-dir=${chrome_profile}" \
+                    'boxedwine.html?root=boxedwine&overlay=abiword_auto&w=%2Ffiles&play=%2Ffiles%2Fscript.txt&p=ABIWORD.EXE&resolution=1024x768&storage=memory'
+                rc=$?
+                set -e
+                cd ../..
+
+                cleanup_chrome_profile
+                chrome_profile=''
+
+                if [ "$rc" = "111" ]; then
+                    echo "${BOXEDWINE_AUTOMATION_NAME} passed"
+                    exit 0
+                fi
+
+                last_rc="$rc"
+                echo "${BOXEDWINE_AUTOMATION_NAME} attempt ${attempt}/3 failed with exit code ${rc}"
+            done
+
+            echo "${BOXEDWINE_AUTOMATION_NAME} failed after 3 attempts"
+            if [ "$last_rc" = "0" ]; then
+                exit 1
+            fi
+            exit "$last_rc"
+        '''
+    }
+}
+
 void publishGithubBuildStatus(String state, String description) {
     def commit = env.GIT_COMMIT ?: env.BOXEDWINE_GIT_COMMIT
     if (!commit) {
@@ -446,37 +515,30 @@ pipeline {
                             download_checked "$BOXEDWINE_AUTO_URL" boxedwine.zip "$BOXEDWINE_AUTO_SHA256"
 
                             make clean
+                            make automation
+                            make automationMultiThreaded
                             make automationJit
+                            make automationMultiThreadedJit
 
-                            last_rc=1
-                            for attempt in 1 2 3
-                            do
-                                echo "AbiWord Emscripten automation attempt ${attempt}/3"
-                                killall -9 python3 2>/dev/null || true
-                                killall -9 chrome 2>/dev/null || true
-
-                                cd Build/AutomationJit
-                                set +e
-                                emrun --kill_start --kill_exit --port 6932 --timeout 600 --timeout-returncode 124 --browser="/usr/bin/google-chrome" boxedwine.html?root=boxedwine\\&overlay=abiword_auto\\&w=%2Ffiles\\&play=%2Ffiles%2Fscript.txt\\&p=ABIWORD.EXE\\&resolution=1024x768\\&storage=memory
-                                rc=$?
-                                set -e
-                                cd ../..
-
-                                if [ "$rc" = "111" ]; then
-                                    echo "AbiWord Emscripten automation passed"
-                                    exit 0
-                                fi
-
-                                last_rc="$rc"
-                                echo "AbiWord Emscripten automation attempt ${attempt}/3 failed with exit code ${rc}"
-                            done
-
-                            echo "AbiWord Emscripten automation failed after 3 attempts"
-                            if [ "$last_rc" = "0" ]; then
-                                exit 1
-                            fi
-                            exit "$last_rc"
+                            killall -9 python3 2>/dev/null || true
+                            killall -9 chrome 2>/dev/null || true
                         '''
+                        script {
+                            parallel(
+                                'Emscripten ST': {
+                                    runEmscriptenAbiWordAutomation('AbiWord Emscripten ST automation', 'Automation', '6931')
+                                },
+                                'Emscripten MT': {
+                                    runEmscriptenAbiWordAutomation('AbiWord Emscripten MT automation', 'AutomationMultiThreaded', '6932')
+                                },
+                                'Emscripten ST JIT': {
+                                    runEmscriptenAbiWordAutomation('AbiWord Emscripten ST JIT automation', 'AutomationJit', '6933')
+                                },
+                                'Emscripten MT JIT': {
+                                    runEmscriptenAbiWordAutomation('AbiWord Emscripten MT JIT automation', 'AutomationMultiThreadedJit', '6934')
+                                }
+                            )
+                        }
                     }
                 }
                 stage ('Linux (x64) Automation') {
