@@ -673,21 +673,46 @@ U32 KProcess::getModuleEip(U32 eip) {
     return 0;
 }
 
-static MappedFilePtr selectMappedFileForRange(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len) {
-    U64 start = address;
-    U64 end = start + len;
-    if (len == 0 || end > 0x100000000ULL) {
-        return nullptr;
+namespace {
+class MappedFileRangeSelector {
+public:
+    MappedFileRangeSelector(U32 address, U32 len)
+        : start(address), end(start + len), valid(len != 0 && end <= 0x100000000ULL) {
     }
 
-    MappedFilePtr result;
-    for (const MappedFilePtr& mapping : mappings) {
-        if (mapping && start >= mapping->address && end <= mapping->address + mapping->len && (!result || mapping->key > result->key)) {
+    bool isValid() const {
+        return valid;
+    }
+
+    void consider(const MappedFilePtr& mapping) {
+        if (mapping && start >= mapping->address && end <= mapping->address + mapping->len &&
+                (!result || mapping->key > result->key)) {
             result = mapping;
         }
     }
-    return result;
+
+    MappedFilePtr takeResult() {
+        return std::move(result);
+    }
+
+private:
+    U64 start;
+    U64 end;
+    bool valid;
+    MappedFilePtr result;
+};
+
+static MappedFilePtr selectMappedFileForRange(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len) {
+    MappedFileRangeSelector selector(address, len);
+    if (!selector.isValid()) {
+        return nullptr;
+    }
+    for (const MappedFilePtr& mapping : mappings) {
+        selector.consider(mapping);
+    }
+    return selector.takeResult();
 }
+} // namespace
 
 #ifdef __TEST
 MappedFilePtr KProcess::selectMappedFileForRangeForTest(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len) {
@@ -696,16 +721,17 @@ MappedFilePtr KProcess::selectMappedFileForRangeForTest(const std::vector<Mapped
 #endif
 
 MappedFilePtr KProcess::getMappedFileForRange(U32 address, U32 len) {
-    std::vector<MappedFilePtr> mappings;
+    MappedFileRangeSelector selector(address, len);
+    if (!selector.isValid()) {
+        return nullptr;
+    }
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
-        for (auto& n : this->mappedFiles) {
-            if (n.value) {
-                mappings.push_back(n.value);
-            }
+        for (const auto& n : this->mappedFiles) {
+            selector.consider(n.value);
         }
     }
-    return selectMappedFileForRange(mappings, address, len);
+    return selector.takeResult();
 }
 
 U32 KProcess::alarm(U32 seconds) {

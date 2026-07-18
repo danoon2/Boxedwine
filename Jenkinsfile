@@ -113,6 +113,15 @@ pipeline {
                             cd Build/TestJit
                             emrun --kill_start --kill_exit --browser="/usr/bin/firefox" --browser_args="--headless" boxedwine.html
                         '''
+                        sh '''#!/bin/bash
+                            source ~/emsdk/emsdk_env.sh
+                            cd project/emscripten
+                            make clean
+                            make testMultiThreadedJit
+                            killall -9 python3
+                            cd Build/TestMultiThreadedJit
+                            emrun --kill_start --kill_exit --browser="/usr/bin/firefox" --browser_args="--headless" boxedwine.html
+                        '''
                     }
                 }
                 stage ('Test Linux (x64)') {

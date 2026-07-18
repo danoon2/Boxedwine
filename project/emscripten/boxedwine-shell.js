@@ -665,16 +665,20 @@
             	});
             }
 
-            // Create /tmp-jit-modules so the JIT cache import path is valid.
-            try { FS.mkdir('/tmp-jit-modules'); } catch(e) {}
+            // preRun executes after the WASM exports have been installed. Only
+            // JIT builds export this persistence latch and can use the cache.
+            if (typeof Module._wasm_jit_set_persistence_active === 'function') {
+                // Create /tmp-jit-modules so the JIT cache import path is valid.
+                try { FS.mkdir('/tmp-jit-modules'); } catch(e) {}
 
-            // Preload the JIT module cache (clear stale IndexedDB blocks, then
-            // fetch the per-app server zip) before the emulator starts. This
-            // dependency is resolved inside initWasmJitCache's callback.
-            Module["addRunDependency"]("wasm-jit-cache");
-            initWasmJitCache(function() {
-                Module["removeRunDependency"]("wasm-jit-cache");
-            });
+                // Preload the JIT module cache (clear stale IndexedDB blocks, then
+                // fetch the per-app server zip) before the emulator starts. This
+                // dependency is resolved inside initWasmJitCache's callback.
+                Module["addRunDependency"]("wasm-jit-cache");
+                initWasmJitCache(function() {
+                    Module["removeRunDependency"]("wasm-jit-cache");
+                });
+            }
 
             Module["addRunDependency"]("setupBoxedWine");
             initBrowserFilesystem(() => {

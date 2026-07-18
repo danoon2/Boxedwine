@@ -58,6 +58,12 @@
     var delayedTestPublicationIds = new Set();
     var testTrackedPurgeOwners = new Set();
     var testPurgeMessagesByOwner = new Map();
+    // Table indices are monotonic and C++ unpublishes them before requesting a
+    // purge, so worker-side slot clearing may be coalesced until the current JS
+    // turn completes. This avoids one postMessage per retired slot per worker
+    // during large code-cache teardown while preserving per-worker ordering.
+    var pendingWorkerPurges = new Map();
+    var pendingWorkerPurgeFlushScheduled = false;
     var workerStatsToken = (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD ? 'worker-' : 'main-') +
         Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
     var allocatedWorkerStatsTokens = new WeakMap();
@@ -83,6 +89,21 @@
         return (groupKind >>> 0) + '|' + String(groupIdentity) + '|' +
             (memoryId >>> 0).toString(16) + '|' +
             (memoryIncarnation >>> 0).toString(16);
+    };
+
+    globalThis.bwWasmJitMtRememberGroupInstance = function(
+            instanceKey, memoryId, memoryIncarnation) {
+        if (!globalThis.bwJitMtGroupInstanceOwners) {
+            globalThis.bwJitMtGroupInstanceOwners = new Map();
+        }
+        globalThis.bwJitMtGroupInstanceOwners.set(
+            instanceKey, ownerKey(memoryId, memoryIncarnation));
+    };
+
+    globalThis.bwWasmJitMtForgetGroupInstance = function(instanceKey) {
+        if (globalThis.bwJitMtGroupInstanceOwners) {
+            globalThis.bwJitMtGroupInstanceOwners.delete(instanceKey);
+        }
     };
 
     globalThis.bwWasmJitMtRecordGroupWorkerEvent = function(event) {
@@ -618,9 +639,14 @@
         return result;
     };
 
-    function purgeLocalModules(memoryId, memoryIncarnation, moduleIds) {
+    function purgeLocalModules(memoryId, memoryIncarnation, moduleIds, tableSlots,
+            retireOwner, groupInstanceKeys) {
         memoryId = memoryId >>> 0;
         memoryIncarnation = memoryIncarnation >>> 0;
+        moduleIds = moduleIds || [];
+        tableSlots = tableSlots || [];
+        groupInstanceKeys = groupInstanceKeys || [];
+        retireOwner = retireOwner === true;
         var key = ownerKey(memoryId, memoryIncarnation);
         var exactIds = [];
         moduleIds.forEach(function(moduleId) {
@@ -638,7 +664,44 @@
         }
         exactIds.forEach(function(moduleId) {
             localModules.delete(moduleId);
+            var instanceKey = 'm' + (moduleId >>> 0);
+            if (globalThis.bwJitMtGroupInstances) {
+                globalThis.bwJitMtGroupInstances.delete(instanceKey);
+            }
+            globalThis.bwWasmJitMtForgetGroupInstance(instanceKey);
         });
+
+        tableSlots.forEach(function(tableIndex) {
+            tableIndex = tableIndex | 0;
+            try {
+                if (tableIndex >= 0 && tableIndex < wasmTable.length) {
+                    wasmTable.set(tableIndex, null);
+                }
+            } catch (_) {
+            }
+        });
+
+        groupInstanceKeys.forEach(function(instanceKey) {
+            if (globalThis.bwJitMtGroupInstances) {
+                globalThis.bwJitMtGroupInstances.delete(instanceKey);
+            }
+            globalThis.bwWasmJitMtForgetGroupInstance(instanceKey);
+        });
+
+        if (retireOwner && globalThis.bwJitMtGroupInstanceOwners) {
+            var retiredInstanceKeys = [];
+            globalThis.bwJitMtGroupInstanceOwners.forEach(function(instanceOwner, instanceKey) {
+                if (instanceOwner === key) {
+                    retiredInstanceKeys.push(instanceKey);
+                }
+            });
+            retiredInstanceKeys.forEach(function(instanceKey) {
+                if (globalThis.bwJitMtGroupInstances) {
+                    globalThis.bwJitMtGroupInstances.delete(instanceKey);
+                }
+                globalThis.bwJitMtGroupInstanceOwners.delete(instanceKey);
+            });
+        }
 
         var ownerStillLive = false;
         localModules.forEach(function(entry) {
@@ -655,12 +718,103 @@
         return exactIds.length;
     }
 
-    function releaseMemoryOnMain(memoryId, memoryIncarnation, moduleIds) {
+    function flushPendingWorkerPurges() {
+        pendingWorkerPurgeFlushScheduled = false;
+        var pending = Array.from(pendingWorkerPurges.values());
+        pendingWorkerPurges.clear();
+        var purgesByWorker = new Map();
+        pending.forEach(function(batch) {
+            var payload = {
+                memoryId: batch.memoryId,
+                memoryIncarnation: batch.memoryIncarnation,
+                moduleIds: Array.from(batch.moduleIds),
+                tableSlots: Array.from(batch.tableSlots),
+                retireOwner: batch.retireOwner,
+                groupInstanceKeys: Array.from(batch.groupInstanceKeys)
+            };
+            batch.holders.forEach(function(worker) {
+                var workerBatch = purgesByWorker.get(worker);
+                if (!workerBatch) {
+                    workerBatch = {purges: [], ownerStats: []};
+                    purgesByWorker.set(worker, workerBatch);
+                }
+                workerBatch.purges.push(payload);
+                if (batch.ownerStats) {
+                    workerBatch.ownerStats.push(batch.ownerStats);
+                }
+            });
+        });
+        purgesByWorker.forEach(function(workerBatch, worker) {
+            try {
+                var post = worker.bwWasmJitBrokerOriginalPostMessage ||
+                    worker.postMessage.bind(worker);
+                post({
+                    bwWasmJitModuleBroker: {
+                        type: 'purgeBatch',
+                        purges: workerBatch.purges
+                    }
+                });
+            } catch (error) {
+                mainStats.deliveryFailures += 1;
+                workerBatch.ownerStats.forEach(function(ownerStats) {
+                    ownerStats.deliveryFailures += 1;
+                });
+            }
+        });
+    }
+
+    function queueWorkerPurge(memoryId, memoryIncarnation, moduleIds, tableSlots,
+            retireOwner, groupInstanceKeys, holders, ownerStats) {
+        var key = ownerKey(memoryId, memoryIncarnation);
+        var batch = pendingWorkerPurges.get(key);
+        if (!batch) {
+            batch = {
+                memoryId: memoryId,
+                memoryIncarnation: memoryIncarnation,
+                moduleIds: new Set(),
+                tableSlots: new Set(),
+                groupInstanceKeys: new Set(),
+                retireOwner: false,
+                holders: new Set(),
+                ownerStats: ownerStats
+            };
+            pendingWorkerPurges.set(key, batch);
+        }
+        moduleIds.forEach(function(moduleId) {
+            batch.moduleIds.add(moduleId >>> 0);
+        });
+        tableSlots.forEach(function(tableSlot) {
+            batch.tableSlots.add(tableSlot | 0);
+        });
+        groupInstanceKeys.forEach(function(instanceKey) {
+            batch.groupInstanceKeys.add(instanceKey);
+        });
+        holders.forEach(function(worker) {
+            batch.holders.add(worker);
+        });
+        batch.retireOwner = batch.retireOwner || retireOwner;
+        if (!pendingWorkerPurgeFlushScheduled) {
+            pendingWorkerPurgeFlushScheduled = true;
+            if (typeof queueMicrotask === 'function') {
+                queueMicrotask(flushPendingWorkerPurges);
+            } else {
+                Promise.resolve().then(flushPendingWorkerPurges);
+            }
+        }
+    }
+
+    function releaseMemoryOnMain(memoryId, memoryIncarnation, moduleIds, tableSlots,
+            retireOwner, groupInstanceKeys) {
         memoryId = memoryId >>> 0;
         memoryIncarnation = memoryIncarnation >>> 0;
+        moduleIds = moduleIds || [];
+        tableSlots = tableSlots || [];
+        groupInstanceKeys = groupInstanceKeys || [];
+        retireOwner = retireOwner === true;
         var key = ownerKey(memoryId, memoryIncarnation);
         var ownerModules = mainModulesByOwner.get(key);
         var exactIds = [];
+        var purgeIds = [];
         var holders = new Set();
         var seen = new Set();
 
@@ -670,6 +824,7 @@
                 return;
             }
             seen.add(moduleId);
+            purgeIds.push(moduleId);
             var entry = mainModules.get(moduleId);
             if (!entry || entry.memoryId !== memoryId ||
                     entry.memoryIncarnation !== memoryIncarnation) {
@@ -695,29 +850,23 @@
             }
         });
 
+        if (tableSlots.length || groupInstanceKeys.length || retireOwner) {
+            allocatedWorkers().forEach(function(worker) {
+                holders.add(worker);
+            });
+        }
+
         holders.forEach(function(worker) {
             if (worker.bwWasmJitBrokerHeldIds) {
-                exactIds.forEach(function(moduleId) {
+                purgeIds.forEach(function(moduleId) {
                     worker.bwWasmJitBrokerHeldIds.delete(moduleId);
                 });
             }
-            try {
-                var post = worker.bwWasmJitBrokerOriginalPostMessage || worker.postMessage.bind(worker);
-                post({
-                    bwWasmJitModuleBroker: {
-                        type: 'purge',
-                        memoryId: memoryId,
-                        memoryIncarnation: memoryIncarnation,
-                        moduleIds: exactIds
-                    }
-                });
-            } catch (error) {
-                mainStats.deliveryFailures += 1;
-                if (ownerStats) {
-                    ownerStats.deliveryFailures += 1;
-                }
-            }
         });
+        if (holders.size) {
+            queueWorkerPurge(memoryId, memoryIncarnation, purgeIds, tableSlots,
+                retireOwner, groupInstanceKeys, holders, ownerStats);
+        }
 
         if (!ownerModules || !ownerModules.size) {
             mainModulesByOwner.delete(key);
@@ -735,16 +884,26 @@
         }
     }
 
-    globalThis.bwWasmJitBrokerReleaseMemory = function(memoryId, memoryIncarnation, moduleIds) {
-        purgeLocalModules(memoryId, memoryIncarnation, moduleIds);
+    globalThis.bwWasmJitBrokerReleaseMemory = function(
+            memoryId, memoryIncarnation, moduleIds, tableSlots, retireOwner,
+            groupInstanceKeys) {
+        moduleIds = moduleIds || [];
+        tableSlots = tableSlots || [];
+        groupInstanceKeys = groupInstanceKeys || [];
+        retireOwner = retireOwner === true;
+        purgeLocalModules(memoryId, memoryIncarnation, moduleIds, tableSlots,
+            retireOwner, groupInstanceKeys);
         if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) {
             postToMain({
                 cmd: 'callHandler',
                 handler: 'bwWasmJitBrokerReleaseMemory',
-                args: [memoryId, memoryIncarnation, moduleIds]
+                args: [memoryId, memoryIncarnation, moduleIds, tableSlots,
+                    retireOwner, groupInstanceKeys]
             });
         } else {
-            releaseMemoryOnMain(memoryId, memoryIncarnation, moduleIds);
+            releaseMemoryOnMain(
+                memoryId, memoryIncarnation, moduleIds, tableSlots,
+                retireOwner, groupInstanceKeys);
         }
     };
 
@@ -893,6 +1052,7 @@
 
     function requestBrokerStats() {
         return new Promise(function(resolve, reject) {
+            flushPendingWorkerPurges();
             var requestId = nextStatsRequestId++;
             var workers = allocatedWorkers();
             var pending = {
@@ -1073,6 +1233,17 @@
         PThread.runningWorkers.concat(PThread.unusedWorkers).forEach(wrapWorkerRun);
     }
 
+    function applyWorkerPurge(message) {
+        var purgeKey = ownerKey(message.memoryId, message.memoryIncarnation);
+        if (testTrackedPurgeOwners.has(purgeKey)) {
+            testPurgeMessagesByOwner.set(purgeKey,
+                (testPurgeMessagesByOwner.get(purgeKey) || 0) + 1);
+        }
+        purgeLocalModules(message.memoryId, message.memoryIncarnation,
+            message.moduleIds, message.tableSlots, message.retireOwner,
+            message.groupInstanceKeys);
+    }
+
     function receiveBrokerMessage(message) {
         if (!message) {
             return;
@@ -1092,12 +1263,9 @@
                 statsForOwner(localStats.byOwner, memoryId, memoryIncarnation).receivedCacheEntries += 1;
             }
         } else if (message.type === 'purge') {
-            var purgeKey = ownerKey(message.memoryId, message.memoryIncarnation);
-            if (testTrackedPurgeOwners.has(purgeKey)) {
-                testPurgeMessagesByOwner.set(purgeKey,
-                    (testPurgeMessagesByOwner.get(purgeKey) || 0) + 1);
-            }
-            purgeLocalModules(message.memoryId, message.memoryIncarnation, message.moduleIds);
+            applyWorkerPurge(message);
+        } else if (message.type === 'purgeBatch') {
+            (message.purges || []).forEach(applyWorkerPurge);
         } else if (message.type === 'testTrackPurges') {
             testTrackedPurgeOwners.add(ownerKey(message.memoryId, message.memoryIncarnation));
         } else if (message.type === 'testPurgeCountBarrier') {
@@ -1307,6 +1475,7 @@
         };
         Module['bwWasmJitBrokerPurgeCountBarrier'] = function(memoryId, memoryIncarnation,
                 publisher, expected, received, purgeMessages, cachedModules) {
+            flushPendingWorkerPurges();
             var sourceWorker = publisherWorker(publisher);
             var count = 0;
             allocatedWorkers().forEach(function(worker) {
@@ -1329,6 +1498,7 @@
         };
         Module['bwWasmJitBrokerPurgeBarrier'] = function(moduleId, memoryId, memoryIncarnation,
                 publisher, expected, received, cached) {
+            flushPendingWorkerPurges();
             var sourceWorker = publisherWorker(publisher);
             var count = 0;
             allocatedWorkers().forEach(function(worker) {

@@ -227,7 +227,11 @@ void testWasmJitMappedFileRange() {
     other->address = 0x3000;
     other->len = 0x1000;
     other->key = 30;
-    std::vector<MappedFilePtr> maps = {oldMap, other, newMap};
+    auto endMap = std::make_shared<MappedFile>();
+    endMap->address = 0xfffff000;
+    endMap->len = 0x1000;
+    endMap->key = 40;
+    std::vector<MappedFilePtr> maps = {oldMap, other, newMap, endMap};
 
     if (KProcess::selectMappedFileForRangeForTest(maps, 0x1100, 0x20) != newMap) {
         testFail("mapped range chooses newest overlapping mapping");
@@ -240,6 +244,9 @@ void testWasmJitMappedFileRange() {
     }
     if (KProcess::selectMappedFileForRangeForTest(maps, 0xfffffff0, 0x40)) {
         testFail("mapped range rejects address overflow");
+    }
+    if (KProcess::selectMappedFileForRangeForTest(maps, 0xfffffff0, 0x10) != endMap) {
+        testFail("mapped range accepts end at 4 GiB");
     }
 }
 
