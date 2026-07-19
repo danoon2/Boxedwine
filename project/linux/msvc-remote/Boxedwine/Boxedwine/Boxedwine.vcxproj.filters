@@ -1359,9 +1359,6 @@
     <ClInclude Include="..\..\..\..\..\include\recorder.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\include\reg.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\syscpumaxfreq.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -1375,9 +1372,6 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\fileutils.h">
-      <Filter>source\util</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\util\karray.h">
       <Filter>source\util</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\klist.h">
@@ -1533,13 +1527,7 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\instructions.h">
       <Filter>source\emulation\cpu</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\ops.h">
-      <Filter>source\emulation\cpu</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\pushpop.h">
-      <Filter>source\emulation\cpu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\setcc.h">
       <Filter>source\emulation\cpu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\shift.h">
@@ -2801,9 +2789,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\lib\asmjit\asmjit\support\support_p.h">
       <Filter>lib\asmjit\asmjit\support</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\include\proccpuinfo.h">
-      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

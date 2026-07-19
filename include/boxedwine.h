@@ -116,7 +116,6 @@ typedef std::weak_ptr<KProcess> KProcessWeakPtr;
 #include "../source/util/klist.h"
 #include "ktimercallback.h"
 #include "../source/util/synchronization.h"
-#include "../source/util/karray.h"
 #include "../source/util/stringutil.h"
 #include "../source/util/vectorutils.h"
 #include "../source/util/fileutils.h"
