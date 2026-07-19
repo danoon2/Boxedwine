@@ -191,6 +191,9 @@
 #ifndef GL_MAX_TEXTURE_UNITS
 #define GL_MAX_TEXTURE_UNITS 0x84E2
 #endif
+#ifndef GL_MAX_TEXTURE_COORDS
+#define GL_MAX_TEXTURE_COORDS 0x8871
+#endif
 #ifndef GL_TEXTURE_1D
 #define GL_TEXTURE_1D 0x0DE0
 #endif
@@ -7305,6 +7308,318 @@ static TestResult testClientPointerGetters(TestContext&) {
     return pass("page-boundary client pointer getters matched");
 }
 
+static TestResult testClientActiveTextureStateRestore(TestContext&) {
+    auto clientActiveTextureARB = reinterpret_cast<PFNGLCLIENTACTIVETEXTUREPROC>(
+        getGLProc("glClientActiveTextureARB"));
+    if (!glx.ClientActiveTexture || !clientActiveTextureARB) {
+        return skip("core/ARB client-active texture entry points are unavailable");
+    }
+
+    GLint maxTextureUnits = 0;
+    GLint maxTextureCoords = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
+    glGetIntegerv(GL_MAX_TEXTURE_COORDS, &maxTextureCoords);
+    if (maxTextureUnits < 2) {
+        return skip("fewer than two fixed-function texture units are available");
+    }
+
+    GLfloat unit1Temporary[2] = {};
+    GLfloat unit0AfterPop[2] = {};
+    GLfloat unit1AfterPop[2] = {};
+    GLfloat unit1AfterInvalid[2] = {};
+
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
+    clientActiveTextureARB(GL_TEXTURE1);
+    glTexCoordPointer(2, GL_FLOAT, 0, unit1Temporary);
+    glPopClientAttrib();
+
+    GLint restoredUnit = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &restoredUnit);
+    glTexCoordPointer(2, GL_FLOAT, 0, unit0AfterPop);
+    clientActiveTextureARB(GL_TEXTURE1);
+    glTexCoordPointer(2, GL_FLOAT, 0, unit1AfterPop);
+
+    void* unit0Pointer = nullptr;
+    void* unit1Pointer = nullptr;
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &unit0Pointer);
+    clientActiveTextureARB(GL_TEXTURE1);
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &unit1Pointer);
+
+    while (glGetError() != GL_NO_ERROR) {
+    }
+    glx.ClientActiveTexture(GL_TEXTURE0 + maxTextureCoords);
+    GLint unitAfterInvalid = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &unitAfterInvalid);
+    glTexCoordPointer(2, GL_FLOAT, 0, unit1AfterInvalid);
+    GLenum invalidError = glGetError();
+
+    void* unit0AfterInvalidPointer = nullptr;
+    void* unit1AfterInvalidPointer = nullptr;
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &unit0AfterInvalidPointer);
+    clientActiveTextureARB(GL_TEXTURE1);
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &unit1AfterInvalidPointer);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    GLenum cleanupError = glGetError();
+
+    if (restoredUnit != GL_TEXTURE0) {
+        return fail("glPopClientAttrib did not restore GL_CLIENT_ACTIVE_TEXTURE");
+    }
+    if (unit0Pointer != unit0AfterPop || unit1Pointer != unit1AfterPop) {
+        return fail("pointer defined after glPopClientAttrib was recorded on the wrong texture unit");
+    }
+    if (unitAfterInvalid != GL_TEXTURE1) {
+        return fail("invalid glClientActiveTexture changed the active client unit");
+    }
+    if (invalidError != GL_INVALID_ENUM) {
+        return fail("invalid glClientActiveTexture error was not observable");
+    }
+    if (unit0AfterInvalidPointer != unit0AfterPop ||
+        unit1AfterInvalidPointer != unit1AfterInvalid) {
+        return fail("invalid glClientActiveTexture changed recorded unit ownership");
+    }
+    if (cleanupError != GL_NO_ERROR) {
+        return fail("client-active texture state restore cleanup produced GL error " +
+            std::to_string(cleanupError));
+    }
+    return pass("client-active texture state and pointer ownership were restored");
+}
+
+static TestResult testMultiTextureVBOTexCoordPointerGetter(TestContext&) {
+    if (!glx.ClientActiveTexture || !glx.GenBuffers || !glx.BindBuffer ||
+        !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("multitexture/VBO entry points are unavailable");
+    }
+
+    GLint maxTextureUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
+    if (maxTextureUnits < 2) {
+        return skip("fewer than two fixed-function texture units are available");
+    }
+
+    GLfloat unit0ClientPointer[2] = {};
+    GLfloat unit1PriorClientPointer[2] = {};
+    const GLfloat bufferData[8] = {};
+    const void* expectedOffset = (const void*)(uintptr_t)(2 * sizeof(GLfloat));
+
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glTexCoordPointer(2, GL_FLOAT, 0, unit0ClientPointer);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glTexCoordPointer(2, GL_FLOAT, 0, unit1PriorClientPointer);
+
+    GLuint vbo = 0;
+    glx.GenBuffers(1, &vbo);
+    glx.BindBuffer(GL_ARRAY_BUFFER, vbo);
+    glx.BufferData(GL_ARRAY_BUFFER, sizeof(bufferData), bufferData, GL_STATIC_DRAW);
+    glTexCoordPointer(2, GL_FLOAT, 2 * sizeof(GLfloat), expectedOffset);
+
+    void* unit1Pointer = nullptr;
+    void* unit0Pointer = nullptr;
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &unit1Pointer);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &unit0Pointer);
+
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.DeleteBuffers(1, &vbo);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("multitexture VBO pointer getter produced GL error " + std::to_string(err));
+    }
+    if (unit1Pointer != expectedOffset) {
+        return fail("texture-coordinate pointer getter leaked a prior client pointer instead of the VBO offset");
+    }
+    if (unit0Pointer != unit0ClientPointer) {
+        return fail("texture-coordinate pointer getter returned the wrong unit's VBO offset");
+    }
+    return pass("per-unit texture-coordinate pointer getter returned the VBO offset");
+}
+
+static TestResult testMultiTextureVBOTexCoordRejectedState(TestContext&) {
+    if (!glx.ActiveTexture || !glx.ClientActiveTexture ||
+        !glx.GenBuffers || !glx.BindBuffer ||
+        !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("multitexture/VBO entry points are unavailable");
+    }
+
+    GLint maxTextureUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
+    if (maxTextureUnits < 2) {
+        return skip("fewer than two fixed-function texture units are available");
+    }
+
+    PageBytes interleaved;
+    if (!interleaved.init(3 * 5 * sizeof(GLfloat), 16)) {
+        return skip("VirtualAlloc failed for rejected texture-coordinate interleaved buffer");
+    }
+    const GLfloat interleavedRows[3][5] = {
+        { 0.75f, 0.25f, -0.8f, -0.8f, 0.0f },
+        { 0.75f, 0.25f,  0.8f, -0.8f, 0.0f },
+        { 0.75f, 0.25f,  0.0f,  0.8f, 0.0f },
+    };
+    std::memcpy(interleaved.data, interleavedRows, sizeof(interleavedRows));
+
+    const GLfloat bufferData[32] = {};
+    const void* validOffset = (const void*)(uintptr_t)16;
+    const void* invalidSizeOffset = (const void*)(uintptr_t)32;
+    const void* invalidTypeOffset = (const void*)(uintptr_t)48;
+    const void* invalidStrideOffset = (const void*)(uintptr_t)64;
+
+    GLuint vbo = 0;
+    glx.GenBuffers(1, &vbo);
+    glx.BindBuffer(GL_ARRAY_BUFFER, vbo);
+    glx.BufferData(GL_ARRAY_BUFFER, sizeof(bufferData), bufferData, GL_STATIC_DRAW);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    while (glGetError() != GL_NO_ERROR) {
+    }
+    glTexCoordPointer(2, GL_FLOAT, 2 * sizeof(GLfloat), validOffset);
+    GLenum validError = glGetError();
+
+    void* pointerBefore = nullptr;
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &pointerBefore);
+    GLboolean enabledBefore = glIsEnabled(GL_TEXTURE_COORD_ARRAY);
+    GLint clientTextureBefore = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &clientTextureBefore);
+
+    glTexCoordPointer(5, GL_FLOAT, 2 * sizeof(GLfloat), invalidSizeOffset);
+    GLenum invalidSizeError = glGetError();
+    void* pointerAfterSize = nullptr;
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &pointerAfterSize);
+    GLboolean enabledAfterSize = glIsEnabled(GL_TEXTURE_COORD_ARRAY);
+    GLint clientTextureAfterSize = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &clientTextureAfterSize);
+
+    glTexCoordPointer(2, GL_UNSIGNED_BYTE, 2 * sizeof(GLfloat), invalidTypeOffset);
+    GLenum invalidTypeError = glGetError();
+    void* pointerAfterType = nullptr;
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &pointerAfterType);
+    GLboolean enabledAfterType = glIsEnabled(GL_TEXTURE_COORD_ARRAY);
+    GLint clientTextureAfterType = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &clientTextureAfterType);
+
+    glTexCoordPointer(2, GL_FLOAT, -1, invalidStrideOffset);
+    GLenum invalidStrideError = glGetError();
+    void* pointerAfterStride = nullptr;
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &pointerAfterStride);
+    GLboolean enabledAfterStride = glIsEnabled(GL_TEXTURE_COORD_ARRAY);
+    GLint clientTextureAfterStride = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &clientTextureAfterStride);
+
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.DeleteBuffers(1, &vbo);
+
+    const unsigned char texturePixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        255, 0, 0, 255,
+        0, 255, 0, 255
+    };
+    GLuint texture = 0;
+    glGenTextures(1, &texture);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, texturePixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glTexCoord2f(0.25f, 0.25f);
+
+    glInterleavedArrays(GL_T2F_V3F, 5 * sizeof(GLfloat), interleaved.data);
+    void* interleavedPointerBefore = nullptr;
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &interleavedPointerBefore);
+    GLboolean interleavedTexCoordEnabledBefore = glIsEnabled(GL_TEXTURE_COORD_ARRAY);
+    GLboolean interleavedVertexEnabledBefore = glIsEnabled(GL_VERTEX_ARRAY);
+
+    while (glGetError() != GL_NO_ERROR) {
+    }
+    glTexCoordPointer(5, GL_FLOAT, 5 * sizeof(GLfloat),
+        interleaved.data + sizeof(GLfloat));
+    GLenum interleavedRejectedError = glGetError();
+    void* interleavedPointerAfter = nullptr;
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &interleavedPointerAfter);
+    GLboolean interleavedTexCoordEnabledAfter = glIsEnabled(GL_TEXTURE_COORD_ARRAY);
+    GLboolean interleavedVertexEnabledAfter = glIsEnabled(GL_VERTEX_ARRAY);
+    GLint interleavedClientTextureAfter = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &interleavedClientTextureAfter);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glFinish();
+
+    unsigned char interleavedPixel[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, interleavedPixel);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &texture);
+    GLenum cleanupError = glGetError();
+
+    if (validError != GL_NO_ERROR || pointerBefore != validOffset ||
+        enabledBefore != GL_TRUE || clientTextureBefore != GL_TEXTURE1) {
+        return fail("valid unit-1 VBO texture-coordinate state was not established");
+    }
+    if (invalidSizeError != GL_INVALID_VALUE ||
+        invalidTypeError != GL_INVALID_ENUM ||
+        invalidStrideError != GL_INVALID_VALUE) {
+        return fail("rejected VBO texture-coordinate definitions did not preserve host errors");
+    }
+    if (pointerAfterSize != validOffset || pointerAfterType != validOffset ||
+        pointerAfterStride != validOffset) {
+        return fail("rejected VBO texture-coordinate definition replaced the valid offset");
+    }
+    if (enabledAfterSize != GL_TRUE || enabledAfterType != GL_TRUE ||
+        enabledAfterStride != GL_TRUE ||
+        clientTextureAfterSize != GL_TEXTURE1 ||
+        clientTextureAfterType != GL_TEXTURE1 ||
+        clientTextureAfterStride != GL_TEXTURE1) {
+        return fail("rejected VBO texture-coordinate definition changed client state");
+    }
+    if (interleavedRejectedError != GL_INVALID_VALUE) {
+        return fail("rejected client texture-coordinate definition did not preserve host error");
+    }
+    if (interleavedPointerBefore != interleaved.data ||
+        interleavedPointerAfter != interleaved.data ||
+        interleavedTexCoordEnabledBefore != GL_TRUE ||
+        interleavedTexCoordEnabledAfter != GL_TRUE ||
+        interleavedVertexEnabledBefore != GL_TRUE ||
+        interleavedVertexEnabledAfter != GL_TRUE ||
+        interleavedClientTextureAfter != GL_TEXTURE0) {
+        return fail("rejected client texture-coordinate definition changed interleaved state");
+    }
+    if (interleavedPixel[1] < 180 || interleavedPixel[0] > 80 ||
+        interleavedPixel[2] > 80) {
+        return fail("rejected client texture-coordinate definition cleared interleaved replay");
+    }
+    if (cleanupError != GL_NO_ERROR) {
+        return fail("rejected VBO texture-coordinate cleanup produced GL error " +
+            std::to_string(cleanupError));
+    }
+    return pass("rejected texture-coordinate definitions preserved VBO and interleaved state");
+}
+
 static TestResult testTextureObjectArrayAPIs(TestContext&) {
     PageBytes textureBytes;
     PageBytes priorityBytes;
@@ -9019,6 +9334,640 @@ static TestResult testInterleavedArraysPageBoundaryRender(TestContext&) {
 
 static bool pixelIsGreenish(const unsigned char* px);
 
+static TestResult testMultiTextureInterleavedArraysPageBoundaryRender(TestContext&) {
+    if (!glx.ActiveTexture || !glx.ClientActiveTexture) {
+        return skip("multitexture client entry points are unavailable");
+    }
+
+    GLint maxTextureUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
+    if (maxTextureUnits < 2) {
+        return skip("fewer than two fixed-function texture units are available");
+    }
+
+    const int floatsPerVertex = 5;
+    PageBytes interleaved;
+    if (!interleaved.init(3 * floatsPerVertex * sizeof(float), 16)) {
+        return skip("VirtualAlloc failed for multitexture interleaved array buffer");
+    }
+    const float rows[3][5] = {
+        { 0.25f, 0.25f, -0.8f, -0.8f, 0.0f },
+        { 0.25f, 0.25f,  0.8f, -0.8f, 0.0f },
+        { 0.25f, 0.25f,  0.0f,  0.8f, 0.0f },
+    };
+    std::memcpy(interleaved.data, rows, sizeof(rows));
+
+    const unsigned char tex0Pixels[16] = {
+        255, 0, 0, 255,
+        255, 255, 255, 255,
+        255, 0, 0, 255,
+        255, 255, 255, 255
+    };
+    const unsigned char tex1Pixels[16] = {
+        0, 255, 0, 255,
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        255, 0, 0, 255
+    };
+
+    GLuint textures[2] = {};
+    glGenTextures(2, textures);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex0Pixels);
+    glx.ActiveTexture(GL_TEXTURE1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex1Pixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glTexCoord2f(0.75f, 0.25f);
+
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glInterleavedArrays(GL_T2F_V3F, floatsPerVertex * sizeof(float), interleaved.data);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    GLint clientTextureAfterDraw = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &clientTextureAfterDraw);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    void* recordedPointer = nullptr;
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &recordedPointer);
+
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glx.ActiveTexture(GL_TEXTURE1);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(2, textures);
+
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("multitexture interleaved render produced GL error " + std::to_string(err));
+    }
+    if (clientTextureAfterDraw != GL_TEXTURE0) {
+        return fail("multitexture interleaved replay did not restore GL_CLIENT_ACTIVE_TEXTURE");
+    }
+    if (recordedPointer != interleaved.data) {
+        return fail("interleaved texture-coordinate pointer was not recorded on its owning unit");
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("multitexture interleaved render sampled the wrong client texture unit");
+    }
+    return pass("page-boundary interleaved array replayed on its owning texture unit");
+}
+
+static TestResult testMultiTextureInterleavedArrayElementPageBoundaryRender(TestContext&) {
+    if (!glx.ActiveTexture || !glx.ClientActiveTexture) {
+        return skip("multitexture client entry points are unavailable");
+    }
+
+    GLint maxTextureUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
+    if (maxTextureUnits < 2) {
+        return skip("fewer than two fixed-function texture units are available");
+    }
+
+    PageBytes interleaved;
+    if (!interleaved.init(3 * 5 * sizeof(float), 16)) {
+        return skip("VirtualAlloc failed for interleaved array-element buffer");
+    }
+    const float rows[3][5] = {
+        { 0.75f, 0.25f, -0.8f, -0.8f, 0.0f },
+        { 0.75f, 0.25f,  0.8f, -0.8f, 0.0f },
+        { 0.75f, 0.25f,  0.0f,  0.8f, 0.0f },
+    };
+    std::memcpy(interleaved.data, rows, sizeof(rows));
+
+    const unsigned char pixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        255, 0, 0, 255,
+        0, 255, 0, 255
+    };
+    GLuint texture = 0;
+    glGenTextures(1, &texture);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.ActiveTexture(GL_TEXTURE1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glInterleavedArrays(GL_T2F_V3F, 0, interleaved.data);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBegin(GL_TRIANGLES);
+    glArrayElement(0);
+    glArrayElement(1);
+    glArrayElement(2);
+    glEnd();
+
+    GLint clientTextureAfterDraw = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &clientTextureAfterDraw);
+    glFinish();
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glx.ActiveTexture(GL_TEXTURE1);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &texture);
+
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("interleaved glArrayElement render produced GL error " + std::to_string(err));
+    }
+    if (clientTextureAfterDraw != GL_TEXTURE0) {
+        return fail("interleaved glArrayElement changed GL_CLIENT_ACTIVE_TEXTURE");
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("interleaved glArrayElement did not emit the owning texcoord and vertex");
+    }
+    return pass("page-boundary interleaved glArrayElement emitted texcoord and vertex metadata");
+}
+
+static TestResult testInterleavedT2FC4UBV3FZeroStrideArrayElement(TestContext&) {
+    if (!glx.ActiveTexture || !glx.ClientActiveTexture) {
+        return skip("multitexture client entry points are unavailable");
+    }
+
+    struct InterleavedVertex {
+        GLfloat texCoord[2];
+        GLubyte color[4];
+        GLfloat vertex[3];
+    };
+    static_assert(sizeof(InterleavedVertex) == 24,
+        "GL_T2F_C4UB_V3F must use a 24-byte packed aggregate");
+
+    PageBytes interleaved;
+    if (!interleaved.init(3 * sizeof(InterleavedVertex), 12)) {
+        return skip("VirtualAlloc failed for zero-stride interleaved buffer");
+    }
+    const InterleavedVertex rows[3] = {
+        { { 0.75f, 0.25f }, { 255, 255, 255, 255 }, { -0.8f, -0.8f, 0.0f } },
+        { { 0.75f, 0.25f }, { 255, 255, 255, 255 }, {  0.8f, -0.8f, 0.0f } },
+        { { 0.75f, 0.25f }, { 255, 255, 255, 255 }, {  0.0f,  0.8f, 0.0f } },
+    };
+    std::memcpy(interleaved.data, rows, sizeof(rows));
+
+    const unsigned char pixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        255, 0, 0, 255,
+        0, 255, 0, 255
+    };
+    GLuint texture = 0;
+    glGenTextures(1, &texture);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glInterleavedArrays(GL_T2F_C4UB_V3F, 0, interleaved.data);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBegin(GL_TRIANGLES);
+    glArrayElement(0);
+    glArrayElement(1);
+    glArrayElement(2);
+    glEnd();
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &texture);
+
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("zero-stride interleaved render produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("zero-stride interleaved layout misrouted texcoord, color, or vertex data");
+    }
+    return pass("24-byte zero-stride interleaved layout rendered every element correctly");
+}
+
+static TestResult testInterleavedNegativeStridePreservesState(TestContext&) {
+    if (!glx.ActiveTexture || !glx.ClientActiveTexture) {
+        return skip("multitexture client entry points are unavailable");
+    }
+
+    GLint maxTextureUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
+    if (maxTextureUnits < 2) {
+        return skip("fewer than two fixed-function texture units are available");
+    }
+
+    PageBytes valid;
+    PageBytes rejected;
+    if (!valid.init(5 * sizeof(GLfloat), 8) ||
+        !rejected.init(5 * sizeof(GLfloat), 12)) {
+        return skip("VirtualAlloc failed for negative-stride interleaved buffers");
+    }
+    const GLfloat validRow[5] = { 0.75f, 0.25f, 0.0f, 0.0f, 0.0f };
+    const GLfloat rejectedRow[5] = { 0.25f, 0.25f, -0.8f, -0.8f, 0.0f };
+    std::memcpy(valid.data, validRow, sizeof(validRow));
+    std::memcpy(rejected.data, rejectedRow, sizeof(rejectedRow));
+
+    const unsigned char pixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        255, 0, 0, 255,
+        0, 255, 0, 255
+    };
+    GLuint texture = 0;
+    glGenTextures(1, &texture);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.ActiveTexture(GL_TEXTURE1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glPointSize(15.0f);
+
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glInterleavedArrays(GL_T2F_V3F, 0, valid.data);
+
+    void* texCoordBefore = nullptr;
+    void* vertexBefore = nullptr;
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &texCoordBefore);
+    glGetPointerv(GL_VERTEX_ARRAY_POINTER, &vertexBefore);
+    GLboolean enabledBefore[4] = {
+        glIsEnabled(GL_TEXTURE_COORD_ARRAY),
+        glIsEnabled(GL_VERTEX_ARRAY),
+        glIsEnabled(GL_COLOR_ARRAY),
+        glIsEnabled(GL_NORMAL_ARRAY)
+    };
+    GLint clientTextureBefore = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &clientTextureBefore);
+
+    while (glGetError() != GL_NO_ERROR) {
+    }
+    glInterleavedArrays(GL_T2F_V3F, -1, rejected.data);
+    GLenum invalidError = glGetError();
+
+    void* texCoordAfter = nullptr;
+    void* vertexAfter = nullptr;
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &texCoordAfter);
+    glGetPointerv(GL_VERTEX_ARRAY_POINTER, &vertexAfter);
+    GLboolean enabledAfter[4] = {
+        glIsEnabled(GL_TEXTURE_COORD_ARRAY),
+        glIsEnabled(GL_VERTEX_ARRAY),
+        glIsEnabled(GL_COLOR_ARRAY),
+        glIsEnabled(GL_NORMAL_ARRAY)
+    };
+    GLint clientTextureAfter = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &clientTextureAfter);
+
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBegin(GL_POINTS);
+    glArrayElement(0);
+    glEnd();
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glx.ActiveTexture(GL_TEXTURE1);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &texture);
+    GLenum postError = glGetError();
+
+    if (invalidError != GL_INVALID_VALUE) {
+        return fail("negative interleaved stride did not preserve observable GL_INVALID_VALUE");
+    }
+    if (texCoordBefore != valid.data ||
+        vertexBefore != valid.data + 2 * sizeof(GLfloat) ||
+        texCoordAfter != texCoordBefore || vertexAfter != vertexBefore) {
+        return fail("negative interleaved stride replaced retained client pointers");
+    }
+    if (std::memcmp(enabledBefore, enabledAfter, sizeof(enabledBefore)) != 0 ||
+        enabledAfter[0] != GL_TRUE || enabledAfter[1] != GL_TRUE ||
+        enabledAfter[2] != GL_FALSE || enabledAfter[3] != GL_FALSE) {
+        return fail("negative interleaved stride changed retained client enables");
+    }
+    if (clientTextureBefore != GL_TEXTURE1 || clientTextureAfter != GL_TEXTURE1) {
+        return fail("negative interleaved stride changed GL_CLIENT_ACTIVE_TEXTURE");
+    }
+    if (postError != GL_NO_ERROR) {
+        return fail("retained interleaved ArrayElement render produced GL error " + std::to_string(postError));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("ArrayElement did not render from interleaved state retained after invalid stride");
+    }
+    return pass("negative interleaved stride preserved error and prior client-array state");
+}
+
+static TestResult testInterleavedDisablesIndexEdgeArrayState(TestContext&) {
+    if (!glx.ActiveTexture || !glx.ClientActiveTexture) {
+        return skip("multitexture client entry points are unavailable");
+    }
+
+    PageBytes interleaved;
+    PageBytes indices;
+    PageBytes edgeFlags;
+    if (!interleaved.init(3 * 5 * sizeof(GLfloat), 16) ||
+        !indices.init(3 * sizeof(GLfloat), 8) ||
+        !edgeFlags.init(3 * sizeof(GLboolean), 1)) {
+        return skip("VirtualAlloc failed for interleaved index/edge buffers");
+    }
+    const GLfloat rows[3][5] = {
+        { 0.75f, 0.25f, -0.8f, -0.8f, 0.0f },
+        { 0.75f, 0.25f,  0.8f, -0.8f, 0.0f },
+        { 0.75f, 0.25f,  0.0f,  0.8f, 0.0f },
+    };
+    const GLfloat indexValues[3] = { 1.0f, 2.0f, 3.0f };
+    const GLboolean edgeValues[3] = { GL_FALSE, GL_FALSE, GL_FALSE };
+    std::memcpy(interleaved.data, rows, sizeof(rows));
+    std::memcpy(indices.data, indexValues, sizeof(indexValues));
+    std::memcpy(edgeFlags.data, edgeValues, sizeof(edgeValues));
+
+    const unsigned char texturePixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        255, 0, 0, 255,
+        0, 255, 0, 255
+    };
+    GLuint texture = 0;
+    glGenTextures(1, &texture);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, texturePixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glDisable(GL_LINE_SMOOTH);
+    glLineWidth(5.0f);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glEnableClientState(GL_INDEX_ARRAY);
+    glIndexPointer(GL_FLOAT, 0, indices.data);
+    glEnableClientState(GL_EDGE_FLAG_ARRAY);
+    glEdgeFlagPointer(0, edgeFlags.data);
+    glInterleavedArrays(GL_T2F_V3F, 0, interleaved.data);
+    GLboolean indexEnabled = glIsEnabled(GL_INDEX_ARRAY);
+    GLboolean edgeEnabled = glIsEnabled(GL_EDGE_FLAG_ARRAY);
+    const GLfloat retainedIndex = 37.0f;
+    glIndexf(retainedIndex);
+    glEdgeFlag(GL_TRUE);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBegin(GL_TRIANGLES);
+    glArrayElement(0);
+    glArrayElement(1);
+    glArrayElement(2);
+    glEnd();
+    GLfloat currentIndexAfter = 0.0f;
+    glGetFloatv(GL_CURRENT_INDEX, &currentIndexAfter);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 6, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glLineWidth(1.0f);
+    glDisableClientState(GL_INDEX_ARRAY);
+    glDisableClientState(GL_EDGE_FLAG_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &texture);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("interleaved index/edge state render produced GL error " + std::to_string(err));
+    }
+    if (indexEnabled != GL_FALSE || edgeEnabled != GL_FALSE) {
+        return fail("valid interleaved call did not disable host index/edge arrays");
+    }
+    if (!nearlyEqual(currentIndexAfter, retainedIndex)) {
+        return fail("stale index shadow state replaced the retained current color index");
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("stale index/edge shadow state suppressed interleaved ArrayElement output");
+    }
+    return pass("valid interleaved call disabled index/edge state before ArrayElement");
+}
+
+static TestResult testMultiTextureInterleavedNoTexCoordState(TestContext&) {
+    if (!glx.ClientActiveTexture) {
+        return skip("client-active texture entry point is unavailable");
+    }
+
+    GLint maxTextureUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
+    if (maxTextureUnits < 2) {
+        return skip("fewer than two fixed-function texture units are available");
+    }
+
+    PageBytes vertices;
+    PageBytes unit0TexCoords;
+    if (!vertices.init(3 * 3 * sizeof(float), 12) ||
+        !unit0TexCoords.init(3 * 2 * sizeof(float), 8)) {
+        return skip("VirtualAlloc failed for interleaved no-texcoord buffers");
+    }
+    const float vertexData[9] = {
+        -0.8f, -0.8f, 0.0f,
+         0.8f, -0.8f, 0.0f,
+         0.0f,  0.8f, 0.0f,
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 0, unit0TexCoords.data);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glInterleavedArrays(GL_V3F, 3 * sizeof(float), vertices.data);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDrawArrays(GL_POINTS, 0, 3);
+
+    GLint clientTextureAfterDraw = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &clientTextureAfterDraw);
+    GLboolean unit0Enabled = glIsEnabled(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    GLboolean unit1Enabled = glIsEnabled(GL_TEXTURE_COORD_ARRAY);
+
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    GLenum err = glGetError();
+
+    if (err != GL_NO_ERROR) {
+        return fail("interleaved no-texcoord state test produced GL error " + std::to_string(err));
+    }
+    if (clientTextureAfterDraw != GL_TEXTURE0) {
+        return fail("interleaved no-texcoord replay did not restore GL_CLIENT_ACTIVE_TEXTURE");
+    }
+    if (unit0Enabled != GL_TRUE || unit1Enabled != GL_FALSE) {
+        return fail("interleaved no-texcoord replay disabled the wrong texture unit");
+    }
+    return pass("interleaved no-texcoord replay preserved per-unit client state");
+}
+
 static TestResult testClientColorTexCoordArraysPageBoundaryRender(TestContext&) {
     PageBytes vertices;
     PageBytes colors;
@@ -9719,6 +10668,144 @@ static TestResult testEXTEdgeFlagPointerPageBoundaryRender(TestContext&) {
     return pass("page-boundary EXT edge-flag pointer controlled wireframe edges");
 }
 
+static TestResult testCoreMultiTexCoordPointerPageBoundaryRender(TestContext&) {
+    if (!glx.ActiveTexture || !glx.ClientActiveTexture) {
+        return skip("multitexture client entry points are unavailable");
+    }
+
+    GLint maxTextureUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
+    if (maxTextureUnits < 2) {
+        return skip("fewer than two fixed-function texture units are available");
+    }
+
+    PageBytes vertices;
+    PageBytes texCoords0;
+    PageBytes texCoords1;
+    if (!vertices.init(3 * 3 * sizeof(float), 8) ||
+        !texCoords0.init(3 * 4 * sizeof(float), 12) ||
+        !texCoords1.init(3 * 4 * sizeof(float), 16)) {
+        return skip("VirtualAlloc failed for core multitexture client buffers");
+    }
+
+    const float vertexData[9] = {
+        -0.8f, -0.8f, 91.0f,
+         0.8f, -0.8f, 92.0f,
+         0.0f,  0.8f, 93.0f
+    };
+    const float texCoord0Data[12] = {
+        0.75f, 0.25f, 101.0f, 102.0f,
+        0.75f, 0.25f, 103.0f, 104.0f,
+        0.75f, 0.25f, 105.0f, 106.0f
+    };
+    const float texCoord1Data[12] = {
+        0.25f, 0.25f, 201.0f, 202.0f,
+        0.25f, 0.25f, 203.0f, 204.0f,
+        0.25f, 0.25f, 205.0f, 206.0f
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+    std::memcpy(texCoords0.data, texCoord0Data, sizeof(texCoord0Data));
+    std::memcpy(texCoords1.data, texCoord1Data, sizeof(texCoord1Data));
+
+    const unsigned char tex0Pixels[16] = {
+        255, 0, 0, 255,
+        255, 255, 255, 255,
+        255, 0, 0, 255,
+        255, 255, 255, 255
+    };
+    const unsigned char tex1Pixels[16] = {
+        0, 255, 0, 255,
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        255, 0, 0, 255
+    };
+
+    GLuint textures[2] = {};
+    glGenTextures(2, textures);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    glx.ActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex0Pixels);
+
+    glx.ActiveTexture(GL_TEXTURE1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex1Pixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 3 * sizeof(float), vertices.data);
+
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(float), texCoords0.data);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(float), texCoords1.data);
+
+    // Alice returns to unit zero before drawing its base-texture/lightmap pass.
+    // A BoxedWine replay must select each pointer's owning unit, then restore zero.
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    GLint clientTextureAfterDraw = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &clientTextureAfterDraw);
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+
+    glx.ActiveTexture(GL_TEXTURE1);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(2, textures);
+
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("core multitexture client render produced GL error " + std::to_string(err));
+    }
+    if (clientTextureAfterDraw != GL_TEXTURE0) {
+        return fail("core multitexture draw did not restore GL_CLIENT_ACTIVE_TEXTURE");
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("core multitexture client render pixel check failed");
+    }
+    return pass("per-unit core texture-coordinate arrays rendered expected pixel");
+}
+
 static TestResult testEXTMultiTexCoordPointerPageBoundaryRender(TestContext&) {
     if (!glx.ActiveTexture || !glx.ClientActiveTexture || !glx.MultiTexCoordPointerEXT) {
         return skip("multitexture client pointer entry points are unavailable");
@@ -10115,6 +11202,257 @@ static TestResult testArrayElementTexCoordPageBoundaryRender(TestContext&) {
         return fail("glArrayElement texcoord render pixel check failed");
     }
     return pass("page-boundary glArrayElement texcoords rendered expected pixel");
+}
+
+static TestResult testMultiTextureArrayElementPageBoundaryRender(TestContext&) {
+    if (!glx.ActiveTexture || !glx.ClientActiveTexture) {
+        return skip("multitexture client entry points are unavailable");
+    }
+
+    GLint maxTextureUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
+    if (maxTextureUnits < 2) {
+        return skip("fewer than two fixed-function texture units are available");
+    }
+
+    PageBytes vertices;
+    PageBytes texCoords0;
+    PageBytes texCoords1;
+    if (!vertices.init(3 * 2 * sizeof(float), 8) ||
+        !texCoords0.init(3 * 4 * sizeof(float), 12) ||
+        !texCoords1.init(3 * 4 * sizeof(float), 16)) {
+        return skip("VirtualAlloc failed for multitexture array-element buffers");
+    }
+    const float vertexData[6] = {
+        -0.8f, -0.8f,
+         0.8f, -0.8f,
+         0.0f,  0.8f,
+    };
+    const float texCoord0Data[12] = {
+        0.75f, 0.25f, 101.0f, 102.0f,
+        0.75f, 0.25f, 103.0f, 104.0f,
+        0.75f, 0.25f, 105.0f, 106.0f,
+    };
+    const float texCoord1Data[12] = {
+        0.75f, 0.25f, 201.0f, 202.0f,
+        0.75f, 0.25f, 203.0f, 204.0f,
+        0.75f, 0.25f, 205.0f, 206.0f,
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+    std::memcpy(texCoords0.data, texCoord0Data, sizeof(texCoord0Data));
+    std::memcpy(texCoords1.data, texCoord1Data, sizeof(texCoord1Data));
+
+    const unsigned char tex0Pixels[16] = {
+        255, 0, 0, 255,
+        255, 255, 255, 255,
+        255, 0, 0, 255,
+        255, 255, 255, 255
+    };
+    const unsigned char tex1Pixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        255, 0, 0, 255,
+        0, 255, 0, 255
+    };
+
+    GLuint textures[2] = {};
+    glGenTextures(2, textures);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex0Pixels);
+    glx.ActiveTexture(GL_TEXTURE1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex1Pixels);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices.data);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(float), texCoords0.data);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(float), texCoords1.data);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBegin(GL_TRIANGLES);
+    glArrayElement(0);
+    glArrayElement(1);
+    glArrayElement(2);
+    glEnd();
+
+    GLint clientTextureAfterDraw = 0;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &clientTextureAfterDraw);
+    glFinish();
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glx.ActiveTexture(GL_TEXTURE1);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(2, textures);
+
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("multitexture glArrayElement render produced GL error " + std::to_string(err));
+    }
+    if (clientTextureAfterDraw != GL_TEXTURE0) {
+        return fail("multitexture glArrayElement changed GL_CLIENT_ACTIVE_TEXTURE");
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("multitexture glArrayElement did not emit every owning unit");
+    }
+    return pass("page-boundary glArrayElement emitted both client texture units");
+}
+
+static TestResult testMultiTextureArrayElementMixedStorage(TestContext&) {
+    if (!glx.ActiveTexture || !glx.ClientActiveTexture || !glx.GenBuffers ||
+        !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("multitexture/VBO entry points are unavailable");
+    }
+
+    GLint maxTextureUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
+    if (maxTextureUnits < 2) {
+        return skip("fewer than two fixed-function texture units are available");
+    }
+
+    const GLfloat vertices[6] = {
+        -0.8f, -0.8f,
+         0.8f, -0.8f,
+         0.0f,  0.8f,
+    };
+    const GLfloat unit0TexCoords[6] = {
+        0.75f, 0.25f,
+        0.75f, 0.25f,
+        0.75f, 0.25f,
+    };
+    const GLfloat unit1TexCoords[6] = {
+        0.75f, 0.25f,
+        0.75f, 0.25f,
+        0.75f, 0.25f,
+    };
+    const unsigned char tex0Pixels[16] = {
+        255, 0, 0, 255,
+        255, 255, 255, 255,
+        255, 0, 0, 255,
+        255, 255, 255, 255
+    };
+    const unsigned char tex1Pixels[16] = {
+        255, 0, 0, 255,
+        0, 255, 0, 255,
+        255, 0, 0, 255,
+        0, 255, 0, 255
+    };
+
+    GLuint textures[2] = {};
+    glGenTextures(2, textures);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex0Pixels);
+    glx.ActiveTexture(GL_TEXTURE1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex1Pixels);
+
+    GLuint vbo = 0;
+    glx.GenBuffers(1, &vbo);
+    glx.BindBuffer(GL_ARRAY_BUFFER, vbo);
+    glx.BufferData(GL_ARRAY_BUFFER, sizeof(unit1TexCoords), unit1TexCoords, GL_STATIC_DRAW);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 0, nullptr);
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 0, unit0TexCoords);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices);
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 64, 64);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBegin(GL_TRIANGLES);
+    glArrayElement(0);
+    glArrayElement(1);
+    glArrayElement(2);
+    glEnd();
+    glFinish();
+
+    unsigned char px[4] = {};
+    glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    glx.ClientActiveTexture(GL_TEXTURE1);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glx.ClientActiveTexture(GL_TEXTURE0);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glx.DeleteBuffers(1, &vbo);
+    glx.ActiveTexture(GL_TEXTURE1);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glDisable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(2, textures);
+
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        return fail("mixed-storage glArrayElement produced GL error " + std::to_string(err));
+    }
+    if (!pixelIsGreenish(px)) {
+        return fail("mixed-storage glArrayElement did not delegate the noncurrent VBO unit");
+    }
+    return pass("mixed VBO/client glArrayElement preserved both texture units");
 }
 
 static TestResult testDrawElementsPageBoundary(TestContext&) {
@@ -11274,6 +12612,9 @@ static std::vector<TestCase> tests() {
         { "fog-vector-inputs", testFogVectorInputs },
         { "pixel-transfer-state-getters", testPixelTransferStateGetters },
         { "client-pointer-getters", testClientPointerGetters },
+        { "client-active-texture-state-restore", testClientActiveTextureStateRestore },
+        { "multitexture-vbo-texcoord-pointer-getter", testMultiTextureVBOTexCoordPointerGetter },
+        { "multitexture-vbo-texcoord-rejected-state", testMultiTextureVBOTexCoordRejectedState },
         { "texture-object-array-apis", testTextureObjectArrayAPIs },
         { "bind-textures-page-boundary", testBindTexturesPageBoundary },
         { "bind-image-textures-page-boundary", testBindImageTexturesPageBoundary },
@@ -11304,6 +12645,12 @@ static std::vector<TestCase> tests() {
         { "client-array-page-boundary-render", testClientArrayPageBoundaryRender },
         { "client-array-stride-page-boundary-render", testClientArrayStridePageBoundaryRender },
         { "interleaved-arrays-page-boundary-render", testInterleavedArraysPageBoundaryRender },
+        { "multitexture-interleaved-arrays-page-boundary-render", testMultiTextureInterleavedArraysPageBoundaryRender },
+        { "multitexture-interleaved-array-element-page-boundary-render", testMultiTextureInterleavedArrayElementPageBoundaryRender },
+        { "interleaved-t2f-c4ub-v3f-zero-stride-array-element", testInterleavedT2FC4UBV3FZeroStrideArrayElement },
+        { "interleaved-negative-stride-preserves-state", testInterleavedNegativeStridePreservesState },
+        { "interleaved-disables-index-edge-array-state", testInterleavedDisablesIndexEdgeArrayState },
+        { "multitexture-interleaved-no-texcoord-state", testMultiTextureInterleavedNoTexCoordState },
         { "client-color-texcoord-arrays-page-boundary-render", testClientColorTexCoordArraysPageBoundaryRender },
         { "client-normal-array-page-boundary-render", testClientNormalArrayPageBoundaryRender },
         { "client-secondary-color-array-page-boundary-render", testClientSecondaryColorArrayPageBoundaryRender },
@@ -11312,10 +12659,13 @@ static std::vector<TestCase> tests() {
         { "ext-client-pointer-arrays-page-boundary-render", testEXTClientPointerArraysPageBoundaryRender },
         { "ext-normal-pointer-page-boundary-render", testEXTNormalPointerPageBoundaryRender },
         { "ext-edge-flag-pointer-page-boundary-render", testEXTEdgeFlagPointerPageBoundaryRender },
+        { "core-multitexcoord-pointer-page-boundary-render", testCoreMultiTexCoordPointerPageBoundaryRender },
         { "ext-multitexcoord-pointer-page-boundary-render", testEXTMultiTexCoordPointerPageBoundaryRender },
         { "sgis-multitexcoord-pointer-page-boundary-render", testSGISMultiTexCoordPointerPageBoundaryRender },
         { "array-element-page-boundary-render", testArrayElementPageBoundaryRender },
         { "array-element-texcoord-page-boundary-render", testArrayElementTexCoordPageBoundaryRender },
+        { "multitexture-array-element-page-boundary-render", testMultiTextureArrayElementPageBoundaryRender },
+        { "multitexture-array-element-mixed-storage", testMultiTextureArrayElementMixedStorage },
         { "draw-elements-page-boundary", testDrawElementsPageBoundary },
         { "call-lists-page-boundary", testCallListsPageBoundary },
         { "draw-range-elements-page-boundary", testDrawRangeElementsPageBoundary },

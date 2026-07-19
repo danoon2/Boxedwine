@@ -243,6 +243,8 @@ const GLvoid* marshalPixels(CPU* cpu, U32 dimensions, GLsizei width, GLsizei hei
 
 void updateVertexPointers(CPU* cpu, U32 count);
 void marshalArrayElement(CPU* cpu, GLint i);
+void syncClientActiveTextureFromHost(CPU* cpu);
+OpenGLVetexPointer* getCurrentTexCoordPointer(CPU* cpu);
 GLvoid* marshalVetextPointer(CPU* cpu, GLuint index, GLboolean normalized, GLint size, GLenum type, GLsizei stride, U32 ptr, bool isVertexAttrib);
 GLvoid* marshalVertexAttribPointerNV(CPU* cpu, GLuint index, GLint size, GLenum type, GLsizei stride, U32 ptr);
 U32 marshalBackVertexAttribPointer(CPU* cpu, GLuint index, GLvoid* ptr, bool nv=false);
