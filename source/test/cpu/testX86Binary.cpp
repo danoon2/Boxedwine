@@ -1070,6 +1070,9 @@ void runPreparedMemoryImmediateCase(TestBinaryOp op, int width, U32 linearAddres
 
 void runBaseMemoryCases(TestBinaryOp op, int srcReg, int width, const TestBinaryCase& data, bool lockPrefix, BinaryFlagMode flagMode, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         U32 regs[8];
         U32 baseOffset = baseMemoryOffset(base, width, srcReg, data.src);
         initAddressRegisters(regs);
@@ -1078,7 +1081,7 @@ void runBaseMemoryCases(TestBinaryOp op, int srcReg, int width, const TestBinary
             applyRegValue(regs, srcReg, width, data.src);
         }
 
-        if (base != R_BP) {
+        if (base != R_BP && testRunMemoryBaseDisplacement(base, 0)) {
             beginGeneratedInstruction(data.initialFlags);
             emitBinary(op, memPtr(reg32(base), 0, width), regForWidth(srcReg, width), lockPrefix);
             overwriteFlagsIfNeeded(flagMode);
@@ -1086,22 +1089,29 @@ void runBaseMemoryCases(TestBinaryOp op, int srcReg, int width, const TestBinary
             runPreparedMemoryCase(op, srcReg, width, segmentBaseForAddressReg(base) + regs[base], data, flagMode, name);
         }
 
-        beginGeneratedInstruction(data.initialFlags);
-        emitBinary(op, memPtr(reg32(base), 0x11, width), regForWidth(srcReg, width), lockPrefix);
-        overwriteFlagsIfNeeded(flagMode);
-        writeRegs(cpu, regs);
-        runPreparedMemoryCase(op, srcReg, width, segmentBaseForAddressReg(base) + regs[base] + 0x11, data, flagMode, name);
+        if (testRunMemoryBaseDisplacement(base, 1)) {
+            beginGeneratedInstruction(data.initialFlags);
+            emitBinary(op, memPtr(reg32(base), 0x11, width), regForWidth(srcReg, width), lockPrefix);
+            overwriteFlagsIfNeeded(flagMode);
+            writeRegs(cpu, regs);
+            runPreparedMemoryCase(op, srcReg, width, segmentBaseForAddressReg(base) + regs[base] + 0x11, data, flagMode, name);
+        }
 
-        beginGeneratedInstruction(data.initialFlags);
-        emitBinary(op, memPtr(reg32(base), 0x123, width), regForWidth(srcReg, width), lockPrefix);
-        overwriteFlagsIfNeeded(flagMode);
-        writeRegs(cpu, regs);
-        runPreparedMemoryCase(op, srcReg, width, segmentBaseForAddressReg(base) + regs[base] + 0x123, data, flagMode, name);
+        if (testRunMemoryBaseDisplacement(base, 2)) {
+            beginGeneratedInstruction(data.initialFlags);
+            emitBinary(op, memPtr(reg32(base), 0x123, width), regForWidth(srcReg, width), lockPrefix);
+            overwriteFlagsIfNeeded(flagMode);
+            writeRegs(cpu, regs);
+            runPreparedMemoryCase(op, srcReg, width, segmentBaseForAddressReg(base) + regs[base] + 0x123, data, flagMode, name);
+        }
     }
 }
 
 void runBaseMemorySourceCases(TestBinaryOp op, int dstReg, int width, const TestBinaryCase& data, BinaryFlagMode flagMode, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         U32 regs[8];
         U32 baseOffset = baseMemoryOffset(base, width, dstReg, data.dst);
         initAddressRegisters(regs);
@@ -1110,7 +1120,7 @@ void runBaseMemorySourceCases(TestBinaryOp op, int dstReg, int width, const Test
             applyRegValue(regs, dstReg, width, data.dst);
         }
 
-        if (base != R_BP) {
+        if (base != R_BP && testRunMemoryBaseDisplacement(base, 0)) {
             beginGeneratedInstruction(data.initialFlags);
             emitBinary(op, regForWidth(dstReg, width), memPtr(reg32(base), 0, width));
             overwriteFlagsIfNeeded(flagMode);
@@ -1118,17 +1128,21 @@ void runBaseMemorySourceCases(TestBinaryOp op, int dstReg, int width, const Test
             runPreparedMemorySourceCase(op, dstReg, width, segmentBaseForAddressReg(base) + cpu->reg[base].u32, data, flagMode, name);
         }
 
-        beginGeneratedInstruction(data.initialFlags);
-        emitBinary(op, regForWidth(dstReg, width), memPtr(reg32(base), 0x11, width));
-        overwriteFlagsIfNeeded(flagMode);
-        writeRegs(cpu, regs);
-        runPreparedMemorySourceCase(op, dstReg, width, segmentBaseForAddressReg(base) + cpu->reg[base].u32 + 0x11, data, flagMode, name);
+        if (testRunMemoryBaseDisplacement(base, 1)) {
+            beginGeneratedInstruction(data.initialFlags);
+            emitBinary(op, regForWidth(dstReg, width), memPtr(reg32(base), 0x11, width));
+            overwriteFlagsIfNeeded(flagMode);
+            writeRegs(cpu, regs);
+            runPreparedMemorySourceCase(op, dstReg, width, segmentBaseForAddressReg(base) + cpu->reg[base].u32 + 0x11, data, flagMode, name);
+        }
 
-        beginGeneratedInstruction(data.initialFlags);
-        emitBinary(op, regForWidth(dstReg, width), memPtr(reg32(base), 0x123, width));
-        overwriteFlagsIfNeeded(flagMode);
-        writeRegs(cpu, regs);
-        runPreparedMemorySourceCase(op, dstReg, width, segmentBaseForAddressReg(base) + cpu->reg[base].u32 + 0x123, data, flagMode, name);
+        if (testRunMemoryBaseDisplacement(base, 2)) {
+            beginGeneratedInstruction(data.initialFlags);
+            emitBinary(op, regForWidth(dstReg, width), memPtr(reg32(base), 0x123, width));
+            overwriteFlagsIfNeeded(flagMode);
+            writeRegs(cpu, regs);
+            runPreparedMemorySourceCase(op, dstReg, width, segmentBaseForAddressReg(base) + cpu->reg[base].u32 + 0x123, data, flagMode, name);
+        }
     }
 }
 
@@ -1165,6 +1179,9 @@ void runSibMemoryCases(TestBinaryOp op, int srcReg, int width, const TestBinaryC
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 U32 targetOffset = MEM_BASE + 0x7000 + base * 0x200 + index * 0x20 + shift * 4;
                 initAddressRegisters(regs);
@@ -1192,6 +1209,9 @@ void runSibMemorySourceCases(TestBinaryOp op, int dstReg, int width, const TestB
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 U32 targetOffset = MEM_BASE + 0x7000 + base * 0x200 + index * 0x20 + shift * 4;
                 initAddressRegisters(regs);
@@ -1214,11 +1234,14 @@ void runSibMemorySourceCases(TestBinaryOp op, int dstReg, int width, const TestB
 
 void runBaseMemoryImmediateCases(TestBinaryOp op, int width, const TestBinaryCase& data, U8 opcode, Group1ImmediateSize immediateSize, bool lockPrefix, BinaryFlagMode flagMode, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         U32 regs[8];
         initAddressRegisters(regs);
         regs[base] = baseMemoryOffset(base, width, R_AX, 0);
 
-        if (base != R_BP) {
+        if (base != R_BP && testRunMemoryBaseDisplacement(base, 0)) {
             beginGeneratedInstruction(data.initialFlags);
             emitBinaryGroup1Immediate(op, memPtr(reg32(base), 0, width), width, opcode, immediateSize, encodedImmediateValue(data, immediateSize), lockPrefix);
             overwriteFlagsIfNeeded(flagMode);
@@ -1226,17 +1249,21 @@ void runBaseMemoryImmediateCases(TestBinaryOp op, int width, const TestBinaryCas
             runPreparedMemoryImmediateCase(op, width, segmentBaseForAddressReg(base) + regs[base], data, flagMode, name);
         }
 
-        beginGeneratedInstruction(data.initialFlags);
-        emitBinaryGroup1Immediate(op, memPtr(reg32(base), 0x11, width), width, opcode, immediateSize, encodedImmediateValue(data, immediateSize), lockPrefix);
-        overwriteFlagsIfNeeded(flagMode);
-        writeRegs(cpu, regs);
-        runPreparedMemoryImmediateCase(op, width, segmentBaseForAddressReg(base) + regs[base] + 0x11, data, flagMode, name);
+        if (testRunMemoryBaseDisplacement(base, 1)) {
+            beginGeneratedInstruction(data.initialFlags);
+            emitBinaryGroup1Immediate(op, memPtr(reg32(base), 0x11, width), width, opcode, immediateSize, encodedImmediateValue(data, immediateSize), lockPrefix);
+            overwriteFlagsIfNeeded(flagMode);
+            writeRegs(cpu, regs);
+            runPreparedMemoryImmediateCase(op, width, segmentBaseForAddressReg(base) + regs[base] + 0x11, data, flagMode, name);
+        }
 
-        beginGeneratedInstruction(data.initialFlags);
-        emitBinaryGroup1Immediate(op, memPtr(reg32(base), 0x123, width), width, opcode, immediateSize, encodedImmediateValue(data, immediateSize), lockPrefix);
-        overwriteFlagsIfNeeded(flagMode);
-        writeRegs(cpu, regs);
-        runPreparedMemoryImmediateCase(op, width, segmentBaseForAddressReg(base) + regs[base] + 0x123, data, flagMode, name);
+        if (testRunMemoryBaseDisplacement(base, 2)) {
+            beginGeneratedInstruction(data.initialFlags);
+            emitBinaryGroup1Immediate(op, memPtr(reg32(base), 0x123, width), width, opcode, immediateSize, encodedImmediateValue(data, immediateSize), lockPrefix);
+            overwriteFlagsIfNeeded(flagMode);
+            writeRegs(cpu, regs);
+            runPreparedMemoryImmediateCase(op, width, segmentBaseForAddressReg(base) + regs[base] + 0x123, data, flagMode, name);
+        }
     }
 }
 
@@ -1259,6 +1286,9 @@ void runSibMemoryImmediateCases(TestBinaryOp op, int width, const TestBinaryCase
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 U32 targetOffset = MEM_BASE + 0x7000 + base * 0x200 + index * 0x20 + shift * 4;
                 initAddressRegisters(regs);
@@ -1284,6 +1314,9 @@ void testRunBinaryRegister(TestBinaryOp op, int width, const TestBinaryCase* cas
         for (int flagMode = BINARY_FLAGS_CHECKED; flagMode <= BINARY_FLAGS_OVERWRITTEN; ++flagMode) {
             for (int dst = 0; dst < 8; ++dst) {
                 for (int src = 0; src < 8; ++src) {
+                    if (!testRunRegisterPair(dst, src)) {
+                        continue;
+                    }
                     U32 expectedRegs[8];
                     U32 actualDst;
                     U32 actualSrc;
@@ -1312,6 +1345,9 @@ void testRunBinaryMemoryDestination(TestBinaryOp op, int width, const TestBinary
         const TestBinaryCase& data = cases[i];
         for (int flagMode = BINARY_FLAGS_CHECKED; flagMode <= BINARY_FLAGS_OVERWRITTEN; ++flagMode) {
             for (int src = 0; src < 8; ++src) {
+                if (!testRunRegister(src)) {
+                    continue;
+                }
                 int lockPrefixCount = supportsLockPrefix(op) ? 2 : 1;
                 for (int lockPrefix = 0; lockPrefix < lockPrefixCount; ++lockPrefix) {
                     runBaseMemoryCases(op, src, width, data, lockPrefix != 0, (BinaryFlagMode)flagMode, name);
@@ -1328,6 +1364,9 @@ void testRunBinaryMemorySource(TestBinaryOp op, int width, const TestBinaryCase*
         const TestBinaryCase& data = cases[i];
         for (int flagMode = BINARY_FLAGS_CHECKED; flagMode <= BINARY_FLAGS_OVERWRITTEN; ++flagMode) {
             for (int dst = 0; dst < 8; ++dst) {
+                if (!testRunRegister(dst)) {
+                    continue;
+                }
                 runBaseMemorySourceCases(op, dst, width, data, (BinaryFlagMode)flagMode, name);
                 runAbsoluteMemorySourceCases(op, dst, width, data, (BinaryFlagMode)flagMode, name);
                 runSibMemorySourceCases(op, dst, width, data, (BinaryFlagMode)flagMode, name);
@@ -1374,6 +1413,9 @@ void testRunBinaryGroup1Immediate(TestBinaryOp op, int width, const TestBinaryCa
         TestBinaryCase data = normalizedImmediateCase(cases[i], width, immediateSize);
         for (int flagMode = BINARY_FLAGS_CHECKED; flagMode <= BINARY_FLAGS_OVERWRITTEN; ++flagMode) {
             for (int dst = 0; dst < 8; ++dst) {
+                if (!testRunRegister(dst)) {
+                    continue;
+                }
                 U32 expectedRegs[8];
                 U32 actualDst;
 

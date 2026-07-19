@@ -30,12 +30,17 @@ public:
     void quit();
 
     BReadFile file;
+    std::vector<BString> scriptLines;
     BString directory;
     BString version;
     U64 lastCommandTime = 0;
+    U32 lastCommandWallTime = 0;
     U64 lastScreenRead = 0;
+    U32 lastScreenshotLogTime = 0;
     BString nextCommand;
     U32 currentInputModifiers = 0;
+    U32 scriptLineIndex = 0;
+    bool useVirtualFiles = false;
 private:    
     BString nextValue;
     std::thread comparingThread;

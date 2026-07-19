@@ -19,8 +19,8 @@
 #ifndef __BOXEDWINE_H__
 #define __BOXEDWINE_H__
 
-#define BOXEDWINE_VERSION_STR "26R1"
-#define BOXEDWINE_VERSION_DISPLAY "26.0.0"
+#define BOXEDWINE_VERSION_STR "26R2"
+#define BOXEDWINE_VERSION_DISPLAY "26.1.0"
 
 #include <vector>
 #include <memory>
@@ -50,6 +50,15 @@
 
 #ifndef ASMJIT_STATIC
 #define ASMJIT_STATIC
+#endif
+
+// WASM JIT backend: emits WebAssembly bytecode for each compiled block.
+// Enabled by passing -DBOXEDWINE_WASM_JIT to the Emscripten compiler.
+// Implies BOXEDWINE_JIT (shared infrastructure) but does NOT use asmjit.
+#ifdef BOXEDWINE_WASM_JIT
+#define BOXEDWINE_JIT
+// No BOXEDWINE_MULTI_THREADED: WASM is single-threaded by default
+// No ASMJIT flags: the WASM backend bypasses asmjit entirely
 #endif
 
 #ifdef BOXEDWINE_MAC_JIT

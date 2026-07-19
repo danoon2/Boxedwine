@@ -47,6 +47,10 @@ KMemoryData::KMemoryData(KMemory* memory) : memory(memory) {
     ::memset(readCache, 0, sizeof(readCache));
     ::memset(writeCache, 0, sizeof(writeCache));
 #endif
+#ifdef BOXEDWINE_WASM_JIT
+    ::memset(wasmReadPageBase,  0, sizeof(wasmReadPageBase));
+    ::memset(wasmWritePageBase, 0, sizeof(wasmWritePageBase));
+#endif
     if(!callbackRam.value) {
         callbackRam = ramPageAlloc();
         addCallback(onExitSignal);
@@ -90,6 +94,16 @@ void KMemoryData::onPageChanged(U32 index) {
     } else {
         writeCache[index] = (U8*)((U8*)0 - (index << K_PAGE_SHIFT));
     }
+#endif
+#ifdef BOXEDWINE_WASM_JIT
+    // Encode `0` for no-access; the JIT inline check tests for 0 and
+    // falls to the existing helper. ramPageGet returns a U8* into the
+    // Emscripten heap, which under wasm32 is just a 32-bit linear-mem
+    // offset; the truncation is identity.
+    wasmReadPageBase[index]  = mmu[index].canReadRam
+        ? (U32)(uintptr_t)ramPageGet((RamPage)mmu[index].ramIndex) : 0;
+    wasmWritePageBase[index] = mmu[index].canWriteRam
+        ? (U32)(uintptr_t)ramPageGet((RamPage)mmu[index].ramIndex) : 0;
 #endif
 }
 
@@ -203,9 +217,16 @@ bool KMemoryData::reserveAddress(U32 startingPage, U32 pageCount, U32* result, b
 }
 
 void KMemoryData::protectPage(KThread* thread, U32 i, U32 permissions) {
-    if (mmu[i].getPageType() == PageType::Code && (mmu[i].flags & PAGE_EXEC) && !(permissions & PAGE_EXEC)) {
+    U32 oldFlags = mmu[i].flags;
+    if (mmu[i].getPageType() == PageType::Code && (oldFlags & PAGE_EXEC) && !(permissions & PAGE_EXEC)) {
         // not really a write, but this more of a hint to the JIT to treat this as code that might change a lot
         memory->removeCode(KThread::currentThread(), i << K_PAGE_SHIFT, K_PAGE_SIZE, true);
+    } else if ((oldFlags & PAGE_WRITE) && !(oldFlags & PAGE_EXEC) && (permissions & PAGE_EXEC)) {
+#ifndef BOXEDWINE_DISABLE_WX_REMOVE_CODE
+        // Writes to a plain writable RAM page bypass CodePage write hooks. If
+        // the page later becomes executable, remember the bytes as dynamic code.
+        memory->removeCode(thread, i << K_PAGE_SHIFT, K_PAGE_SIZE, true);
+#endif
     }
     mmu[i].setPermissions(permissions);
     onPageChanged(i);

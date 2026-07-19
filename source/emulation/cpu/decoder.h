@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -1557,6 +1557,9 @@ typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 #define OP_FLAG2_TRACED_STUB 2
 #define OP_FLAG2_JUMP_TARGET 4
 #define OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE 8
+#define OP_FLAG2_WASM_JIT_MEM_ARRAYS 16
+#define OP_FLAG2_WASM_JIT_PENDING 32
+#define OP_FLAG2_WASM_JIT_RELOC_HAZARD 64
 
 // direct jump does not read memory, so will never use disp (used by mem, enter)
 union DecodedData {

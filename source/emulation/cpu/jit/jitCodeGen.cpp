@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,9 +20,59 @@
 
 #ifdef BOXEDWINE_JIT
 #include "jitCodeGen.h"
+#include "jitCodeLifecycle.h"
 #include "../normal/normalCPU.h"
 #include "jitFlags.h"
 #include "../../softmmu/kmemory_soft.h"
+
+#ifdef BOXEDWINE_WASM_JIT
+void wasmJitHandlePendingHit(CPU* cpu, DecodedOp* op);
+#ifndef BOXEDWINE_MULTI_THREADED
+bool wasmJitCompilationPaused();
+#endif
+#endif
+
+void clearJitBlock(const std::vector<void*>& jitOps);
+
+static JitLifecycleCallbacks g_jitLifecycleCallbacks;
+
+void setJitLifecycleCallbacks(const JitLifecycleCallbacks& callbacks) {
+    g_jitLifecycleCallbacks = callbacks;
+}
+
+bool jitUsesCodeMemory() {
+    return g_jitLifecycleCallbacks.usesCodeMemory;
+}
+
+void jitCodeInvalidated(KMemory* memory, const std::vector<DecodedOp*>& decodedOps, const std::vector<void*>& jitEntries) {
+    if (g_jitLifecycleCallbacks.codeInvalidated) {
+        g_jitLifecycleCallbacks.codeInvalidated(memory, decodedOps);
+    }
+    if (!jitEntries.empty()) {
+        clearJitBlock(jitEntries);
+    }
+}
+
+void jitMemoryInvalidated(KMemory* memory, const std::vector<void*>& jitEntries) {
+    if (g_jitLifecycleCallbacks.memoryInvalidated) {
+        g_jitLifecycleCallbacks.memoryInvalidated(memory);
+    }
+    if (!jitEntries.empty()) {
+        clearJitBlock(jitEntries);
+    }
+}
+
+void jitThreadStartPreparing(CPU* cpu) {
+    if (g_jitLifecycleCallbacks.threadStartPreparing) {
+        g_jitLifecycleCallbacks.threadStartPreparing(cpu);
+    }
+}
+
+void jitThreadStartCancelled(CPU* cpu) {
+    if (g_jitLifecycleCallbacks.threadStartCancelled) {
+        g_jitLifecycleCallbacks.threadStartCancelled(cpu);
+    }
+}
 
 static JitCodeGen::OpFunction dynamicOps[NUMBER_OF_OPS];
 static std::once_flag dynamicOpsInitFlag;
@@ -110,6 +160,8 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
     U32 eip = this->startingEip;
     DecodedOp* nextOp = op;
     U32 furthestJump = 0;
+    bool hasTerminalRet = false;
+    U32 terminalRetEip = 0;
 
     // find the longest block we can compile
     // branches that jump out of the block will be the end of the block
@@ -123,16 +175,25 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
 
     // opentdd will trigger this isValid check
     while (nextOp && nextOp->isValid()) {
+        if (eip != this->startingEip && shouldStopBlockBefore(eip, nextOp)) {
+            break;
+        }
         // could be ret, call, int.  Basically this is an instruction where we are not guaranteed to see a next instruction
         if (nextOp->isBranch() && !nextOp->isDirectJumpBranch()) {
-            // is this the last return, if so, then don't decode more
-            if (nextOp->isRet() && furthestJump < eip) {
+            {
+            // Stop on a ret unless a known direct branch reaches code after it.
+            if (nextOp->isRet() && furthestJump < eip + nextOp->len) {
+                hasTerminalRet = true;
+                terminalRetEip = eip;
+                eip += nextOp->len;
                 break;
             }
+#ifndef BOXEDWINE_WASM_JIT
             if (nextOp->isIndirectJump()) {
                 // opentdd needs this when creating a new game, I'm not sure why data.cpu->memory->getDecodedOp(eip + nextOp->len) will find an op but its not correct, might be another bug 
                 break;
             }
+#endif
             // These next 4 look aheads, nextOp->next =
             // They don't improve performance on Quake 2, but do make a significant improvement for Cinebench, 10-20%
             if (!nextOp->next) {
@@ -156,6 +217,7 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             if (!nextOp->next) {
                 // since we couldn't figure out if the next byte is part of a valid instruction, we are done looking
                 break;
+            }
             }
         }
         if (nextOp->isDirectJumpBranch() && (eip + nextOp->len + nextOp->imm) < this->startingEip) {
@@ -223,6 +285,10 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
         nextOp = op;
         this->lastOpEip = this->startingEip;
         while (nextOp && this->lastOpEip < lastFurthestEip) {
+            if (hasTerminalRet && this->lastOpEip == terminalRetEip && nextOp->isRet()) {
+                nextOp = nullptr;
+                break;
+            }
             if (nextOp->isDirectJumpBranch()) {
                 U32 target = this->lastOpEip + nextOp->len + nextOp->imm;
                 if (target >= lastFurthestEip || target < this->startingEip) {
@@ -661,8 +727,8 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
 
 void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
-    // did another thread beat us to JITing this block?
-    if (op->flags & OP_FLAG_JIT) {
+    // Did another thread beat us to compiling or queueing this block?
+    if ((op->flags & OP_FLAG_JIT) || (op->flags2 & OP_FLAG2_WASM_JIT_PENDING)) {
         // this will get triggered a few times, especially during shutdown
         // I have see this in firefight installer at the end and opentdd start up
         return;
@@ -704,6 +770,7 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
     }    
     this->currentEip = address;
     this->startingEip = address;
+    this->firstOp = op;
 
     initDynamicOps();
 
@@ -718,21 +785,72 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
 }
 
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
-#ifdef __TEST
-    if (op->runCount == 0) {
+    bool allowStartJit = true;
+    bool executePendingNormally = false;
+#ifdef BOXEDWINE_WASM_JIT
+    if (op->flags2 & OP_FLAG2_WASM_JIT_PENDING) {
+#ifdef BOXEDWINE_MULTI_THREADED
+        executePendingNormally = true;
+        std::unique_lock<std::recursive_mutex> lock(cpu->memory->mutex);
+        DecodedOp* liveOp = cpu->memory->getDecodedOp(cpu->getEipAddress());
+        if (liveOp != op) {
+            return;
+        }
+        if (op->flags2 & OP_FLAG2_WASM_JIT_PENDING) {
+            wasmJitHandlePendingHit(cpu, op);
+        }
 #else
-    // done check is for long blocks that get broken up, affects f-22/f-16
-    if (op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT)) {
-#endif    
-        startNewJIT(cpu, cpu->getEipAddress(), op);
+        wasmJitHandlePendingHit(cpu, op);
+#endif
+        allowStartJit = false;
+#ifndef BOXEDWINE_MULTI_THREADED
+    } else if (wasmJitCompilationPaused()) {
+        allowStartJit = false;
+#endif
+    }
+#endif
+    if (allowStartJit) {
+#ifdef __TEST
+        bool shouldStartJit = op->runCount == 0;
+#else
+        // done check is for long blocks that get broken up, affects f-22/f-16
+        bool shouldStartJit = op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT);
+#endif
+        if (shouldStartJit) {
+            startNewJIT(cpu, cpu->getEipAddress(), op);
+        }
     }
 #ifdef _DEBUG
     if (op->pfnJitCode && cpu->calculateCF[0] == nullptr) {
         //kpanic("firstDynamicOp");
     }
 #endif
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+    if (!(op->flags2 & OP_FLAG2_WASM_JIT_PENDING) && !wasmJitCompilationPaused() && op->runCount != 0xff) {
+        op->runCount++;
+    }
+#elif defined(BOXEDWINE_WASM_JIT)
+    if (op->runCount != 0xff) {
+        op->runCount++;
+    }
+#else
     op->runCount++;
+#endif
+#ifdef BOXEDWINE_WASM_JIT
+    // Callback ops store the callback address in pfn, so dispatch warmup ops
+    // through the normal table until the op is replaced with startJITOp.
+    if (!executePendingNormally && op->pfn == cpu->thread->process->startJITOp) {
+        op->pfn(cpu, op);
+    } else {
+        OpCallback pfn = NormalCPU::getFunctionForOp(op);
+        if (!pfn) {
+            kpanic_fmt("firstDynamicOp: no normal handler for instruction %u", op->inst);
+        }
+        pfn(cpu, op);
+    }
+#else
     op->pfn(cpu, op);
+#endif
 }
 
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)

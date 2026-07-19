@@ -80,6 +80,7 @@ public:
     void setRegIsCached(RegPtr indexReg, bool regIsCached);
     void syncXmmToCPU(RegPtr topReg, FPURegPtr xmm, U8 regIndex);
     void syncXmmToCPUWithIndexReg(RegPtr indexReg, FPURegPtr fpuReg);
+    virtual void cacheFpuReg(U32 regIndex);
     RegPtr syncCPUToXmm(RegPtr topReg, FPURegPtr xmm, U8 regIndex);
     RegPtr readFPUTag(RegPtr indexReg);
     void writeFPUTag(RegPtr indexReg, RegPtr valueReg);
@@ -217,8 +218,8 @@ public:
 private:
     void loadFpuRegFromShort(FPURegPtr reg, MemPtr address);
     void fpuLoadConst(U32 offset);
-    void doFCOM(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags);
-    void doFCOMI(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags);
+    virtual void doFCOM(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags);
+    virtual void doFCOMI(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags);
     void doFST_STi(DecodedOp* op, bool pop);
     void doFCOM_STi(DecodedOp* op, bool pop);
     void doFCOMI_ST0_STj(DecodedOp* op, bool pop);

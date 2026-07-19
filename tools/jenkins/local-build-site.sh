@@ -26,6 +26,8 @@ GIT_COMMIT="${GIT_COMMIT:-$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || tru
 DEMO_SOURCE="${BUILD_SITE_DEMOS_SOURCE:-$SITE_DIR/demos/apps}"
 SINGLE_THREADED_DIR="${BUILD_SITE_SINGLE_THREADED_DIR:-$EMSCRIPTEN_DIR/Deploy/Web/SingleThreaded}"
 MULTI_THREADED_DIR="${BUILD_SITE_MULTI_THREADED_DIR:-$EMSCRIPTEN_DIR/Deploy/Web/MultiThreaded}"
+SINGLE_THREADED_JIT_DIR="${BUILD_SITE_SINGLE_THREADED_JIT_DIR:-$EMSCRIPTEN_DIR/Deploy/Web/SingleThreadedJit}"
+MULTI_THREADED_JIT_DIR="${BUILD_SITE_MULTI_THREADED_JIT_DIR:-$EMSCRIPTEN_DIR/Deploy/Web/MultiThreadedJit}"
 
 usage() {
     cat <<EOF
@@ -272,7 +274,7 @@ copy_web_build() {
 
 build_emscripten() {
     if [ "$SKIP_BUILD" = "1" ]; then
-        echo "Skipping Emscripten build; using $SINGLE_THREADED_DIR and $MULTI_THREADED_DIR"
+        echo "Skipping Emscripten build; using existing Emscripten Deploy/Web outputs"
         return
     fi
 
@@ -287,10 +289,14 @@ build_emscripten() {
         echo "+ cd $EMSCRIPTEN_DIR"
         echo "+ rm -rf Deploy/Web"
         echo "+ make clean"
-        echo "+ make multiThreaded"
-        echo "+ copy Build/MultiThreaded to $MULTI_THREADED_DIR"
         echo "+ make release"
         echo "+ copy Build/Release to $SINGLE_THREADED_DIR"
+        echo "+ make multiThreaded"
+        echo "+ copy Build/MultiThreaded to $MULTI_THREADED_DIR"
+        echo "+ make jit"
+        echo "+ copy Build/Jit to $SINGLE_THREADED_JIT_DIR"
+        echo "+ make multiThreadedJit"
+        echo "+ copy Build/MultiThreadedJit to $MULTI_THREADED_JIT_DIR"
         return
     fi
 
@@ -299,18 +305,30 @@ build_emscripten() {
     cd "$EMSCRIPTEN_DIR"
     rm -rf Deploy/Web
     make clean
-    make multiThreaded
-    if [ ! -f "Build/MultiThreaded/boxedwine.wasm" ]; then
-        echo "Build/MultiThreaded/boxedwine.wasm was not created." >&2
-        exit 1
-    fi
-    copy_web_build "$EMSCRIPTEN_DIR/Build/MultiThreaded" "$MULTI_THREADED_DIR"
     make release
     if [ ! -f "Build/Release/boxedwine.wasm" ]; then
         echo "Build/Release/boxedwine.wasm was not created." >&2
         exit 1
     fi
     copy_web_build "$EMSCRIPTEN_DIR/Build/Release" "$SINGLE_THREADED_DIR"
+    make multiThreaded
+    if [ ! -f "Build/MultiThreaded/boxedwine.wasm" ]; then
+        echo "Build/MultiThreaded/boxedwine.wasm was not created." >&2
+        exit 1
+    fi
+    copy_web_build "$EMSCRIPTEN_DIR/Build/MultiThreaded" "$MULTI_THREADED_DIR"
+    make jit
+    if [ ! -f "Build/Jit/boxedwine.wasm" ]; then
+        echo "Build/Jit/boxedwine.wasm was not created." >&2
+        exit 1
+    fi
+    copy_web_build "$EMSCRIPTEN_DIR/Build/Jit" "$SINGLE_THREADED_JIT_DIR"
+    make multiThreadedJit
+    if [ ! -f "Build/MultiThreadedJit/boxedwine.wasm" ]; then
+        echo "Build/MultiThreadedJit/boxedwine.wasm was not created." >&2
+        exit 1
+    fi
+    copy_web_build "$EMSCRIPTEN_DIR/Build/MultiThreadedJit" "$MULTI_THREADED_JIT_DIR"
 }
 
 generate_site() {
@@ -322,9 +340,12 @@ generate_site() {
             echo "Run without --skip-sync, set BUILD_SITE_REMOTE, or set BUILD_SITE_DEMOS_SOURCE." >&2
             exit 1
         fi
-        if [ ! -d "$SINGLE_THREADED_DIR" ] || [ ! -d "$MULTI_THREADED_DIR" ]; then
+        if [ ! -d "$SINGLE_THREADED_DIR" ] ||
+            [ ! -d "$MULTI_THREADED_DIR" ] ||
+            [ ! -d "$SINGLE_THREADED_JIT_DIR" ] ||
+            [ ! -d "$MULTI_THREADED_JIT_DIR" ]; then
             echo "Emscripten web outputs are missing." >&2
-            echo "Expected: $SINGLE_THREADED_DIR and $MULTI_THREADED_DIR" >&2
+            echo "Expected: $SINGLE_THREADED_DIR, $MULTI_THREADED_DIR, $SINGLE_THREADED_JIT_DIR, and $MULTI_THREADED_JIT_DIR" >&2
             exit 1
         fi
     fi
@@ -343,6 +364,8 @@ generate_site() {
         --demo-source "$DEMO_SOURCE" \
         --single-threaded-dir "$SINGLE_THREADED_DIR" \
         --multi-threaded-dir "$MULTI_THREADED_DIR" \
+        --single-threaded-jit-dir "$SINGLE_THREADED_JIT_DIR" \
+        --multi-threaded-jit-dir "$MULTI_THREADED_JIT_DIR" \
         --keep "$KEEP" \
         --skip-prune-removed-demo-branches
 }

@@ -391,10 +391,16 @@ void runBitCases(BitOp op, int width, const BitCase* cases, size_t count, const 
         for (int flagMode = 0; flagMode < 3; ++flagMode) {
             for (int dst = 0; dst < 8; ++dst) {
                 for (int src = 0; src < 8; ++src) {
+                    if (!testRunRegisterPair(dst, src)) {
+                        continue;
+                    }
                     runBitRegCase(op, width, dst, src, cases[i], flagMode, name);
                 }
             }
             for (int src = 0; src < 8; ++src) {
+                if (!testRunRegister(src)) {
+                    continue;
+                }
                 runBitMemCase(op, width, src, cases[i], flagMode, false, false, name);
                 if (mutates(op)) {
                     runBitMemCase(op, width, src, cases[i], flagMode, true, false, name);
@@ -485,6 +491,9 @@ void runGroup8Cases(int width, const BitCase* cases, size_t count, const char* n
         for (size_t i = 0; i < count; ++i) {
             for (int flagMode = 0; flagMode < 3; ++flagMode) {
                 for (int dst = 0; dst < 8; ++dst) {
+                    if (!testRunRegister(dst)) {
+                        continue;
+                    }
                     runGroup8RegCase(op, width, dst, cases[i], flagMode, name);
                 }
                 runGroup8MemCase(op, width, cases[i], flagMode, false, false, name);
@@ -571,7 +580,13 @@ void runScanCases(ScanOp op, int width, const ScanCase* cases, size_t count, con
         for (int flagMode = 0; flagMode < 3; ++flagMode) {
             for (int dst = 0; dst < 8; ++dst) {
                 for (int src = 0; src < 8; ++src) {
+                    if (!testRunRegisterPair(dst, src)) {
+                        continue;
+                    }
                     runScanRegCase(op, width, dst, src, cases[i], flagMode, name);
+                }
+                if (!testRunRegister(dst)) {
+                    continue;
                 }
                 runScanMemCase(op, width, dst, cases[i], flagMode, name);
             }

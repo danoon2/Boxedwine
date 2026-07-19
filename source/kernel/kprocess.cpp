@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -663,7 +663,7 @@ BString KProcess::getModuleName(U32 eip) {
     return B("Unknown");
 }
 
-U32 KProcess::getModuleEip(U32 eip) {    
+U32 KProcess::getModuleEip(U32 eip) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
         std::shared_ptr<MappedFile> mappedFile = n.value;
@@ -671,6 +671,67 @@ U32 KProcess::getModuleEip(U32 eip) {
             return (U32)(eip-mappedFile->address+mappedFile->offset);
     }
     return 0;
+}
+
+namespace {
+class MappedFileRangeSelector {
+public:
+    MappedFileRangeSelector(U32 address, U32 len)
+        : start(address), end(start + len), valid(len != 0 && end <= 0x100000000ULL) {
+    }
+
+    bool isValid() const {
+        return valid;
+    }
+
+    void consider(const MappedFilePtr& mapping) {
+        if (mapping && start >= mapping->address && end <= mapping->address + mapping->len &&
+                (!result || mapping->key > result->key)) {
+            result = mapping;
+        }
+    }
+
+    MappedFilePtr takeResult() {
+        return std::move(result);
+    }
+
+private:
+    U64 start;
+    U64 end;
+    bool valid;
+    MappedFilePtr result;
+};
+
+static MappedFilePtr selectMappedFileForRange(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len) {
+    MappedFileRangeSelector selector(address, len);
+    if (!selector.isValid()) {
+        return nullptr;
+    }
+    for (const MappedFilePtr& mapping : mappings) {
+        selector.consider(mapping);
+    }
+    return selector.takeResult();
+}
+} // namespace
+
+#ifdef __TEST
+MappedFilePtr KProcess::selectMappedFileForRangeForTest(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len) {
+    return selectMappedFileForRange(mappings, address, len);
+}
+#endif
+
+MappedFilePtr KProcess::getMappedFileForRange(U32 address, U32 len) {
+    MappedFileRangeSelector selector(address, len);
+    if (!selector.isValid()) {
+        return nullptr;
+    }
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
+        for (const auto& n : this->mappedFiles) {
+            selector.consider(n.value);
+        }
+    }
+    return selector.takeResult();
 }
 
 U32 KProcess::alarm(U32 seconds) {

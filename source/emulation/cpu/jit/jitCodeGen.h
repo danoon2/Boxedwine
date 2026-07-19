@@ -37,11 +37,11 @@ public:
     
     // per instruction, not per block.  
     bool canJumpInBlock(DecodedOp* op) override {
-        return currentEip < lastOpEip && currentEip + op->len + op->imm <= lastOpEip && currentEip + op->len + op->imm >= startingEip;
+        return currentEip < lastOpEip && isBlockOpBoundary(currentEip + op->len + op->imm);
     }
 
     bool canJumpInBlock(U32 opEip, DecodedOp* op) override {
-        return opEip < lastOpEip && opEip + op->len + op->imm <= lastOpEip && opEip + op->len + op->imm >= startingEip;
+        return opEip < lastOpEip && isBlockOpBoundary(opEip + op->len + op->imm);
     }
 
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
@@ -56,6 +56,11 @@ public:
 
     virtual void preOp(DecodedOp* op) {}
     virtual void onBlockPreCommit(DecodedOp* op) {}
+    // Consulted per op while calculateLongestBlock extends a block (never for
+    // the block's first op). Returning true ends the block before `op`, so a
+    // backend can honor profile-guided split hints that want a hot interior
+    // target compiled as its own block-start entry.
+    virtual bool shouldStopBlockBefore(U32 eip, DecodedOp* op) { return false; }
     virtual void readMMU(RegPtr dest, RegPtr index, U32 offset = 0) = 0;
     virtual void readMMU(RegPtr dest, U32 index) = 0;
 
@@ -144,6 +149,27 @@ public:
     void incReg(JitWidth regWidth, RegPtr dest) override;
     void decReg(JitWidth regWidth, RegPtr dest) override;
     void xaddReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
+
+private:
+    bool isBlockOpBoundary(U32 eip) {
+        if (eip < startingEip || eip > lastOpEip) {
+            return false;
+        }
+        U32 opEip = startingEip;
+        DecodedOp* nextOp = firstOp;
+        while (nextOp && opEip <= lastOpEip) {
+            if (opEip == eip) {
+                return true;
+            }
+            if (!nextOp->len) {
+                break;
+            }
+            opEip += nextOp->len;
+            nextOp = nextOp->next;
+        }
+        return false;
+    }
+
 protected:
 
     virtual U32 getBufferSize() = 0;

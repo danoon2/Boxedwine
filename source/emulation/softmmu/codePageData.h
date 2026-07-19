@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -46,6 +46,10 @@ public:
 	DecodedOp* getPreviousOpAndRemoveIfOverlapping(U32 address);
 	void remove(U32 address, U32 len, bool becauseOfWrite);
 	void iterateOps(U32 address, U32 len, OpCacheCallback callback, void* pData);
+#ifdef BOXEDWINE_JIT
+	// Walk every cached DecodedOp and collect published JIT entries before the cache is wiped.
+	void collectAllJitBlocks(std::vector<void*>& out);
+#endif
 	void add(DecodedOp* op, U32 address, U32 opCount);
 	bool isAddressDynamic(U32 address, U32 len);
 	void clearPageWriteCounts(U32 pageIndex);
