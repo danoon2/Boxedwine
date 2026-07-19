@@ -26,6 +26,9 @@
 #include <sys/mman.h>
 #include "pixelformat.h"
 #include UNISTD
+#ifdef __EMSCRIPTEN__
+#include <emscripten/threading.h>
+#endif
 
 unsigned long long int Platform::getSystemTimeAsMicroSeconds() {
 	struct timeval  tv;
@@ -140,7 +143,18 @@ U32 Platform::getCpuMaxScalingFreqMHz(U32 cpuIndex) {
 
 U32 Platform::getCpuCount() {
 #ifdef BOXEDWINE_MULTI_THREADED
+#ifdef __EMSCRIPTEN__
+    int count = emscripten_num_logical_cores();
+    if (count < 2 && emscripten_has_threading_support()) {
+        count = 2;
+    }
+    if (count < 1) {
+        count = 1;
+    }
+    return (U32)count;
+#else
     return (U32)SDL_GetCPUCount();
+#endif
 #else
     return 1;
 #endif

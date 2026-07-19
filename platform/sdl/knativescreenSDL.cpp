@@ -433,10 +433,26 @@ void KNativeScreenSDL::drawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U3
 bool KNativeScreenSDL::internalScreenShot(const BString& filepath, SDL_Rect* rect, U8* buffer, U32 bufferlen) {
 #ifdef BOXEDWINE_RECORDER
     if (!recordBuffer) {
-        if (filepath.length()) {
-            klog_fmt("failed to save screenshot, %s, because recorderBuffer was NULL", filepath.c_str());
+        if (renderer && bpp == 32) {
+            U32 pitch = screenWidth() * 4;
+            U32 size = pitch * screenHeight();
+            if (recordBufferSize < size) {
+                delete[] recordBuffer;
+                recordBuffer = new U8[size];
+                recordBufferSize = size;
+            }
+            if (SDL_RenderReadPixels(renderer, nullptr, SDL_PIXELFORMAT_ARGB8888, recordBuffer, pitch)) {
+                if (filepath.length()) {
+                    klog_fmt("failed to save screenshot, %s, SDL_RenderReadPixels failed: %s", filepath.c_str(), SDL_GetError());
+                }
+                return false;
+            }
+        } else {
+            if (filepath.length()) {
+                klog_fmt("failed to save screenshot, %s, because recorderBuffer was NULL", filepath.c_str());
+            }
+            return false;
         }
-        return false;
     }
     if (bpp == 8) {
         klog("KNativeScreenSDL::internalScreenShot 8 bit screen shots not supported");

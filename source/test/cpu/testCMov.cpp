@@ -286,7 +286,13 @@ void runCmovOpcode(U8 opcode, bool big, const char* name) {
         if ((bits & 0x20) != 0) flags |= OF;
         for (int dst = 0; dst < 8; ++dst) {
             for (int src = 0; src < 8; ++src) {
+                if (!testRunRegisterPair(dst, src)) {
+                    continue;
+                }
                 runRegCase(opcode, big, dst, src, flags, true, false, name);
+            }
+            if (!testRunRegister(dst)) {
+                continue;
             }
             runMemCase(opcode, big, dst, flags, true, false, name);
         }
@@ -295,8 +301,14 @@ void runCmovOpcode(U8 opcode, bool big, const char* name) {
     for (size_t i = 0; i < caseCount(CMP_CASES); ++i) {
         for (int dst = 0; dst < 8; ++dst) {
             for (int src = 0; src < 8; ++src) {
+                if (!testRunRegisterPair(dst, src)) {
+                    continue;
+                }
                 runCmpRegCase(opcode, big, dst, src, CMP_CASES[i], false, name);
                 runCmpRegCase(opcode, big, dst, src, CMP_CASES[i], true, name);
+            }
+            if (!testRunRegister(dst)) {
+                continue;
             }
             runCmpMemCase(opcode, big, dst, CMP_CASES[i], false, name);
             runCmpMemCase(opcode, big, dst, CMP_CASES[i], true, name);

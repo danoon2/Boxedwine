@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@
 // Tail-call dispatch support.
 // PRESERVE_NONE: callee saves no registers, enabling zero-cost tail dispatch.
 // MUSTTAIL: forces the compiler to emit a tail call rather than call+return.
-#if defined(__clang__) && defined(__has_cpp_attribute)
+#if defined(__clang__) && defined(__has_attribute)
 #if __has_attribute(preserve_none)
 #define PRESERVE_NONE __attribute__((preserve_none))
 #else
@@ -55,11 +55,17 @@
 #define MUSTTAIL
 #endif
 
-// Direct normal-CPU dispatch is only for non-JIT builds. Future WASM JIT builds
-// should define BOXEDWINE_JIT and keep the ABI-compatible OpCallback path.
+// BOXEDWINE_DIRECT_NORMAL_DISPATCH below is the per-opcode return_call dispatcher
+// used by NEXT(); it is enabled only for non-JIT Emscripten builds. WASM JIT builds
+// (BOXEDWINE_JIT defined) instead chain through NEXT_INTERP_CHAIN (normalCPU.cpp),
+// but share the same preserve_none OPCALL — see the OPCALL definition below for why
+// preserve_none is ABI-safe for the WASM JIT.
 //
-// on win32 with msvc without JIT, BOXEDWINE_DIRECT_NORMAL_DISPATCH caused a 50% loss in performance for Quake 2
-#if !defined(BOXEDWINE_JIT) && defined(__EMSCRIPTEN__)
+// on win32 with msvc without JIT, BOXEDWINE_DIRECT_NORMAL_DISPATCH caused a 50% loss in performance for Quake 2.
+// BOXEDWINE_NO_DIRECT_NORMAL_DISPATCH is a diagnostic opt-out so the
+// dispatcher's contribution can be measured in isolation, e.g.
+//   make -B multiThreaded GCC_EXTRA_FLAGS=-DBOXEDWINE_NO_DIRECT_NORMAL_DISPATCH
+#if !defined(BOXEDWINE_JIT) && defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_NO_DIRECT_NORMAL_DISPATCH)
 #define BOXEDWINE_DIRECT_NORMAL_DISPATCH 1
 #endif
 
@@ -81,6 +87,7 @@
 #define RMDIR_INCLUDE <direct.h>
 #define MKDIR(x) mkdir(x)
 #define INLINE __inline
+#define NO_INLINE __declspec(noinline)
 #define OPENGL_CALL_TYPE __stdcall
 #define PACKED( s ) __pragma( pack(push, 1) ) s __pragma( pack(pop) )
 #define ALIGN(t, x) __declspec(align(x)) t
@@ -97,9 +104,13 @@ char* platform_strcasestr(const char* s1, const char* s2);
 #endif
 #define PLATFORM_STAT_STRUCT struct stat
 #define PLATFORM_STAT stat
-// Direct-dispatch builds can use preserve_none for opcode handlers. JIT builds
-// keep the default ABI because startJITOp is also stored as an OpCallback.
-#ifdef BOXEDWINE_DIRECT_NORMAL_DISPATCH
+// Direct-dispatch builds use preserve_none for opcode handlers. The WASM JIT can
+// too: its startJITOp is the C++ wasmStartJITOp (not generated machine code), and
+// generated blocks are reached via pfnJitCode/call_indirect (never via op->pfn), so
+// all OpCallback calls are C++ and stay ABI-consistent. The native x32/armv8 JIT —
+// whose startJITOp IS generated code cast to OpCallback and must keep the default
+// ABI — is excluded from WASM_JIT builds, so this is safe. (EXPERIMENT: forward perf.)
+#if defined(BOXEDWINE_DIRECT_NORMAL_DISPATCH) || defined(BOXEDWINE_WASM_JIT)
 #define OPCALL PRESERVE_NONE
 #else
 #define OPCALL
@@ -113,6 +124,7 @@ char* platform_strcasestr(const char* s1, const char* s2);
 #define MKDIR(x) mkdir(x, 0777)
 #define O_BINARY 0
 #define INLINE inline
+#define NO_INLINE __attribute__((noinline))
 #define OPENGL_CALL_TYPE
 #define PACKED( s ) s __attribute__((__packed__))
 #define ALIGN(t, x) t __attribute__((aligned(x)))
@@ -199,6 +211,12 @@ bool platformHasBMI2();
 
 #ifdef BOXEDWINE_MULTI_THREADED
 void ATOMIC_WRITE64(U64* pTarget, U64 value);
+
+using PlatformThreadFunction = void* (*)(void*);
+S32 platformStartThread(KThread* thread, PlatformThreadFunction entry);
+#ifdef __TEST
+void platformJoinThread(KThread* thread);
+#endif
 #endif
 
 #ifdef BOXEDWINE_MIDI

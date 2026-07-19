@@ -6,8 +6,19 @@
 #include "../../softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
 
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+void wasmJitMtLeaveCpu(CPU* cpu);
+void wasmJitMtUnregisterCpu(CPU* cpu);
+#endif
+
 CPU* CPU::allocCPU(KMemory* memory) {
     return new NormalCPU(memory);
+}
+
+CPU::~CPU() {
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    wasmJitMtUnregisterCpu(this);
+#endif
 }
 
 U32 CPU_CHECK_COND(CPU* cpu, U32 cond, const char* msg, int exc, int sel) {
@@ -87,6 +98,15 @@ void CPU::setIsBig(U32 value) {
 }
 
 void CPU::reset() {
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    // exec can reset the CPU from a syscall helper while the old compiled
+    // frame is still unwinding. Preserve its owner hazard until the outer
+    // wasmStartJITOp call returns; ordinary resets are already quiescent.
+    bool resetInsideWasmJitCall = this->wasmJitInCompiledCall != 0;
+    if (!resetInsideWasmJitCall) {
+        wasmJitMtLeaveCpu(this);
+    }
+#endif
     this->flags = ID;
     this->eip.u32 = 0;
     this->instructionCount = 0;
@@ -115,6 +135,15 @@ void CPU::reset() {
     this->nextOp = nullptr;
 #ifdef BOXEDWINE_MULTI_THREADED
     this->tmpLockAddress = 0;
+#endif
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    if (!resetInsideWasmJitCall) {
+        this->wasmJitActiveTableIndex = 0;
+        this->wasmJitActiveTableIndexLocal = 0;
+        this->wasmJitCallsUntilQuiescence = 0;
+        this->wasmJitInCompiledCall = 0;
+        this->wasmJitReapRetiredOnExit = 0;
+    }
 #endif
 #ifdef BOXEDWINE_JIT
     memset(calculateCF, 0, sizeof(calculateCF));
@@ -1279,6 +1308,7 @@ void CPU::runNextSingleOp() {
 #endif
         DecodedOp o = *op;
         lastOp.pfn = onLastOp;
+        lastOp.inst = Custom1; // Custom1 has no normalDispatch case, so inst-switch chains fall to default: and call pfn
         o.next = &lastOp;
         o.pfn = NormalCPU::getFunctionForOp(op);
         o.pfn(this, &o);

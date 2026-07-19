@@ -21,6 +21,7 @@
 
 #if defined(BOXEDWINE_JIT_ARMV8)
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op);
+void ensureArmV8HardwareTSOForThread();
 #endif
 
 #endif

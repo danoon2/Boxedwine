@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "cpu/testAdc.h"
 #include "cpu/testAdd.h"
@@ -24,6 +25,10 @@
 #include "cpu/testCMov.h"
 #include "cpu/testCmp.h"
 #include "cpu/testCPU.h"
+#include "cpu/testWasmJitBatch.h"
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+#include "cpu/testWasmJitModuleBroker.h"
+#endif
 #include "cpu/testFPU.h"
 #include "cpu/testIncDec.h"
 #include "cpu/testJmp.h"
@@ -60,6 +65,43 @@ int totalFails = 0;
 
 const TestEntry TEST_ENTRIES[] = {
     {testDspAudioWriteMath, "Test DSP Audio Write Math"},
+    {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
+#ifdef BOXEDWINE_WASM_JIT
+    {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT subblock entries and invalidation"},
+    {testWasmJitModuleMerger, "Test WASM JIT runtime module merger"},
+    {testWasmJitBatchPolicy, "Test WASM JIT runtime batch policy"},
+    {testWasmJitMappedFileRange, "Test WASM JIT mapped file range"},
+#endif
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    {testWasmJitMtCpuHazardStateIsCold, "Test MT WASM JIT CPU hazard state layout"},
+    {testWasmJitMtExecDetachPreservesSharedDecodedOps, "Test MT WASM JIT exec detach preserves shared decoded ops"},
+    {testWasmJitMtModuleBrokerTransport, "Test MT WASM JIT module broker transport"},
+    {testWasmJitMtStandaloneModuleBroker, "Test MT WASM JIT standalone module broker"},
+    {testWasmJitMtGroupedModuleBroker, "Test MT WASM JIT grouped module broker"},
+    {testWasmJitMtModuleBrokerLifecycle, "Test MT WASM JIT module broker lifecycle"},
+    {testWasmJitMtModuleBrokerThreadStartOwner, "Test MT WASM JIT thread-start owner"},
+    {testWasmJitMtModuleBrokerPreloadSelection, "Test MT WASM JIT preload selection"},
+    {testWasmJitMtModuleBrokerExecIncarnation, "Test MT WASM JIT exec incarnation"},
+    {testWasmJitMtModuleBrokerPreloadDiagnostics, "Test MT WASM JIT preload diagnostics"},
+    {testWasmJitMtScheduleThreadPreload, "Test MT WASM JIT scheduleThread preload"},
+    {testWasmJitMtRuntimeGrouping, "Test MT WASM JIT runtime grouping"},
+    {testWasmJitMtPendingLifecycle, "Test MT WASM JIT pending lifecycle and limits"},
+    {testWasmJitMtGroupedOomBlock, "Test MT WASM JIT grouped OOM construction block"},
+#endif
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+    {testWasmJitRuntimeGrouping, "Test WASM JIT runtime grouping"},
+    {testWasmJitPendingLifecycle, "Test WASM JIT pending lifecycle"},
+    {testWasmJitTinyAnonymousPromotion, "Test WASM JIT tiny anonymous promotion"},
+    {testWasmJitGroupedOomRecovery, "Test WASM JIT grouped OOM recovery"},
+    {testWasmJitOomRetryAfterRelease, "Test WASM JIT OOM retry after release"},
+#endif
+    {testFlagsAcrossIndirectJitBlockBoundary, "Test flags across indirect JIT block boundary"},
+#ifdef BOXEDWINE_JIT
+    {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},
+#endif
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+    {testNativeJitRunCountWraps, "Test native JIT runCount wrap"},
+#endif
     {testMemoryAccess32, "Test 32-bit Memory Access"},
     {testMemoryAccess16, "Test 16-bit Memory Access"},
     {testAddR8R8_0x000, "Test Add R8,R8 000"},
@@ -394,6 +436,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testCmpXchgE8R8_0x3b0, "Test CmpXchg E8,R8 3b0"},
     {testCmpXchgE16R16_0x1b1, "Test CmpXchg E16,R16 1b1"},
     {testCmpXchgE32R32_0x3b1, "Test CmpXchg E32,R32 3b1"},
+    {testJitCmpXchgBranchAfterEmulatedOp, "Test JIT cmpxchg branch after emulated op"},
+    {testJitCmpXchgEmulateSync, "Test JIT cmpxchg emulate sync"},
+    {testJitCmpXchgPrefixSkippedEntry, "Test JIT cmpxchg prefix-skipped entry"},
     {testCbw_0x098, "Test Cbw 098"},
     {testCwde_0x298, "Test Cwde 298"},
     {testCwd_0x099, "Test Cwd 099"},
@@ -656,6 +701,19 @@ const TestEntry TEST_ENTRIES[] = {
     {testSelfModifyingBack, "Test Self Modifying Code Same Block(Next)"},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testLockedInc, "Test Multi-threaded locked inc"},
+    {testLockedIncAgainstPlainStore, "Test Multi-threaded locked inc against plain store"},
+    {testLockedCmpXchgAgainstPlainStore, "Test Multi-threaded locked cmpxchg against plain store"},
+    {testImplicitLockedXchgAgainstPlainStore, "Test Multi-threaded implicit locked xchg against plain store"},
+    {testLockedCmpXchgFailureAgainstPlainStore, "Test Multi-threaded locked cmpxchg failure against plain store"},
+    {testLockedXaddAgainstPlainStore, "Test Multi-threaded locked xadd against plain store"},
+    {testPlainReadAgainstLockedWrite, "Test Multi-threaded plain read against locked write"},
+    {testLockedAdditionalFamilies, "Test Multi-threaded additional locked operation families"},
+    {testLockedCmpXchg8bAgainstPlainStore, "Test Multi-threaded locked cmpxchg8b against plain store"},
+    {testLockedPageBoundaryNoPartialWrite, "Test locked page-boundary write has no partial update"},
+    {testImplicitLockedXchgSelfModifyingCode, "Test implicit locked xchg invalidates self-modifying code"},
+    {testPlainMemoryOrdering, "Test Multi-threaded plain x86 memory ordering"},
+    {testLockedWidthsAndAlignmentAgainstPlainStore, "Test Multi-threaded locked widths and alignment against plain store"},
+    {testLockedMemoryOrdering, "Test Multi-threaded locked memory ordering"},
 #endif
     {testWaitPid, "Test waitpid child selection"},
 };
@@ -666,8 +724,40 @@ void failed(const char* msg, ...) {
     totalFails++;
 }
 
-int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCount = 0) {
+struct TestRunArgs {
+    size_t startEntry = 0;
+    size_t requestedCount = 0;
+    U32 workerCount = 0;
+    bool fast = false;
+};
+
+TestRunArgs parseTestRunArgs(int argc, char** argv) {
+    TestRunArgs args;
+    int positional = 0;
+
+    for (int i = 1; i < argc; ++i) {
+        if (!strcmp(argv[i], "-fast")) {
+            args.fast = true;
+            continue;
+        }
+
+        if (positional == 0) {
+            args.startEntry = (size_t)strtoul(argv[i], nullptr, 0);
+        } else if (positional == 1) {
+            args.requestedCount = (size_t)strtoul(argv[i], nullptr, 0);
+        } else if (positional == 2) {
+            args.workerCount = (U32)strtoul(argv[i], nullptr, 0);
+        }
+        ++positional;
+    }
+
+    return args;
+}
+
+int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCount = 0, bool fast = false) {
     size_t entryCount = sizeof(TEST_ENTRIES) / sizeof(TEST_ENTRIES[0]);
+    totalFails = 0;
+    testSetFastMode(fast);
 
     if (startEntry > entryCount) {
         startEntry = entryCount;
@@ -677,7 +767,9 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
         runCount = requestedCount;
     }
 
-#ifdef __EMSCRIPTEN__
+#if !defined(BOXEDWINE_MULTI_THREADED)
+    workerCount = 1;
+#elif defined(__EMSCRIPTEN__)
     if (workerCount != 1) {
         workerCount = 1;
     }
@@ -694,6 +786,9 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
     }
     
     printf("Running %zu Test tests with %d threads", runCount, workerCount);
+    if (fast) {
+        printf(" in fast mode");
+    }
     if (startEntry || runCount != entryCount) {
         printf(" starting at %zu", startEntry);
     }
@@ -711,10 +806,8 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
 }
 
 int runTestTestsFromArgs(int argc, char** argv) {
-    size_t startEntry = argc > 1 ? (size_t)strtoul(argv[1], nullptr, 0) : 0;
-    size_t requestedCount = argc > 2 ? (size_t)strtoul(argv[2], nullptr, 0) : 0;
-    U32 workerCount = argc > 3 ? (U32)strtoul(argv[3], nullptr, 0) : 0;
-    return runTestTests(startEntry, requestedCount, workerCount);
+    TestRunArgs args = parseTestRunArgs(argc, argv);
+    return runTestTests(args.startEntry, args.requestedCount, args.workerCount, args.fast);
 }
 
 #ifdef __MACH__
@@ -730,11 +823,13 @@ extern "C" BOXEDWINE_TEST_EXPORT int runCpuTestsMac(void) {
     const char* start = getenv("BOXEDWINE_TEST_START");
     const char* count = getenv("BOXEDWINE_TEST_COUNT");
     const char* threads = getenv("BOXEDWINE_TEST_THREADS");
-    if (start || count || threads) {
+    const char* fast = getenv("BOXEDWINE_TEST_FAST");
+    if (start || count || threads || fast) {
         return runTestTests(
             start ? (size_t)strtoul(start, nullptr, 0) : 0,
             count ? (size_t)strtoul(count, nullptr, 0) : 0,
-            threads ? (U32)strtoul(threads, nullptr, 0) : 0);
+            threads ? (U32)strtoul(threads, nullptr, 0) : 0,
+            fast && strcmp(fast, "0"));
     }
     return runTestTests();
 }

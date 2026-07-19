@@ -75,6 +75,10 @@ static void dynamic_cache_float(CPU* cpu, U32 index) {
     cpu->fpu.getF64(cpu->fpu.STV(0));
 }
 
+void JitFPU::cacheFpuReg(U32 regIndex) {
+    call_I(dynamic_cache_float, regIndex);
+}
+
 // movsd xmm, qword ptr[HOST_CPU + topReg*8 + offsetof(CPU, fpu.regs[0].d)]
 RegPtr JitFPU::syncCPUToXmm(RegPtr topReg, FPURegPtr fpuReg, U8 regIndex) {
     RegPtr indexReg = topReg;
@@ -82,7 +86,7 @@ RegPtr JitFPU::syncCPUToXmm(RegPtr topReg, FPURegPtr fpuReg, U8 regIndex) {
         indexReg = calculateIndexReg(topReg, regIndex);
     }
     IfNotRegCached(indexReg);
-    call_I(dynamic_cache_float, (U32)regIndex);
+    cacheFpuReg((U32)regIndex);
     EndIf();
     loadCpuFpuReg(fpuReg, indexReg);
     return indexReg;

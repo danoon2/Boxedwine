@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,10 @@
 #include "../emulation/softmmu/soft_copy_on_write_page.h"
 #include "../emulation/cpu/normal/normalCPU.h"
 
+#ifdef BOXEDWINE_JIT
+#include "../emulation/cpu/jit/jitCodeLifecycle.h"
+#endif
+
 MappedFileCache::~MappedFileCache() {
     for (RamPage& page : data) {
         ramPageRelease(page);
@@ -40,6 +44,13 @@ KMemory::KMemory(KProcess* process) : process(process) {
 
 KMemory::~KMemory() {
     if (data) {
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+        std::vector<void*> jitOps;
+        data->opCache.collectAllJitBlocks(jitOps);
+        jitMemoryInvalidated(this, jitOps);
+#elif defined(BOXEDWINE_JIT)
+        jitMemoryInvalidated(this, {});
+#endif
         delete data;
     }
     if (deleteOnNextLoop) {
@@ -50,6 +61,13 @@ KMemory::~KMemory() {
 void KMemory::cleanup() {
     BOXEDWINE_CRITICAL_SECTION;
     if (data) {
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+        std::vector<void*> jitOps;
+        data->opCache.collectAllJitBlocks(jitOps);
+        jitMemoryInvalidated(this, jitOps);
+#elif defined(BOXEDWINE_JIT)
+        jitMemoryInvalidated(this, {});
+#endif
         delete data;
         data = nullptr;
     }
@@ -320,7 +338,32 @@ bool KMemory::canRead(U32 address, U32 len) {
     return result;
 }
 
+void KMemory::preflightWrite(U32 address, U32 len) {
+    for (U32 i = 0; i < len; ++i) {
+        U32 current = address + i;
+        U32 flags = getPageFlags(current >> K_PAGE_SHIFT);
+        if (flags & PAGE_WRITE) {
+            continue;
+        }
+        KThread* thread = KThread::currentThread();
+        if (flags) {
+            thread->seg_access(current, false, true);
+        } else {
+            thread->seg_mapper(current, false, true);
+        }
+    }
+}
+
 void KMemory::execvReset(bool cloneVM) {
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    // Full-owner invalidation retires every broker/table slot through the MT
+    // module registry. Do not sweep DecodedOps first: exec can run inside a
+    // compiled frame, and CLONE_VM detach still leaves the old op cache live
+    // in the other wrapper.
+    jitMemoryInvalidated(this, {});
+#elif defined(BOXEDWINE_JIT)
+    jitMemoryInvalidated(this, {});
+#endif
     if (!cloneVM) {
         data->execvReset();
     } else {
@@ -476,6 +519,13 @@ void KMemory::threadCleanup(U32 threadId) {
 }
 
 void KMemory::clearOpCache() {
+#if defined(BOXEDWINE_JIT)
+    // Collect installed entries before the cache frees the DecodedOps, then
+    // notify the selected backend so it can also discard unpublished work.
+    std::vector<void*> jitOps;
+    data->opCache.collectAllJitBlocks(jitOps);
+    jitMemoryInvalidated(this, jitOps);
+#endif
     data->opCache.clear();
 }
 
@@ -506,10 +556,10 @@ void KMemory::clearJit(DecodedOp* op) {
         nextOp->runCount = 0;
         nextOp = nextOp->next;
     }
-    data->codeMemory.free(start);
+    if (start && jitUsesCodeMemory()) {
+        data->codeMemory.free(start);
+    }
 }
-
-void clearJitBlock(const std::vector<void*>& jitOps);
 
 void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     DecodedOp* blockOp = op->blockStart;
@@ -522,10 +572,28 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     U32 jitLen = 0;
 
     std::vector<void*> jitOps;
+    std::vector<DecodedOp*> decodedOps;
+    decodedOps.reserve(blockOpCount);
     for (U32 i = 0; i < blockOpCount; i++) {
         if (nextOp->blockStart != blockOp && nextOp->inst != Done) {
             kpanic("KMemory::removeCodeBlock nextOp->blockStart");
         }
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+        void* jitCode;
+        if (nextOp->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
+            jitCode = __atomic_exchange_n(
+                &nextOp->pfnJitCode, nullptr, __ATOMIC_SEQ_CST);
+        } else {
+            // Relocation-free MT functions have no reclaimable shared state.
+            // Their worker-local table slot is cleared by an ordered worker
+            // message, so the branch's historical benign-stale dispatch is
+            // sufficient and keeps ordinary JIT calls free of wasm atomics.
+            jitCode = nextOp->pfnJitCode;
+            nextOp->pfnJitCode = nullptr;
+        }
+#else
+        void* jitCode = nextOp->pfnJitCode;
+#endif
         nextOp->blockStart = nullptr;
         nextOp->blockOpCount = 0;
         nextOp->blockLen = 0;
@@ -534,21 +602,22 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         }
         nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
         nextOp->flags &= ~OP_FLAG_JIT;
-        if (nextOp->pfnJitCode) {
-            jitOps.push_back(nextOp->pfnJitCode);            
+        if (jitCode) {
+            jitOps.push_back(jitCode);
         }
+        decodedOps.push_back(nextOp);
         jitLen += nextOp->jitLen;
+#if !defined(BOXEDWINE_WASM_JIT) || !defined(BOXEDWINE_MULTI_THREADED)
         nextOp->pfnJitCode = nullptr;
+#endif
         nextOp->jitLen = 0;
         nextOp = nextOp->next;
     }
-    if (jitOps.size()) {
-        clearJitBlock(jitOps);
-    }
+    jitCodeInvalidated(this, decodedOps, jitOps);
     if (clearOps) {
         data->opCache.remove(address, blockLen, false);
     }        
-    if (pMem) {
+    if (pMem && jitUsesCodeMemory()) {
         data->codeMemory.free(pMem);
     }
 #ifdef _DEBUG1
@@ -823,7 +892,7 @@ U64 KMemory::readq(U32 address) {
 }
 
 U32 KMemory::readd(U32 address) {
-	return readdInline(address);
+    return readdInline(address);
 }
 
 U16 KMemory::readw(U32 address) {
@@ -860,11 +929,14 @@ void KMemory::writeq(U32 address, U64 value) {
         }
     }
 #endif
+    if ((address & K_PAGE_MASK) > K_PAGE_SIZE - 8) {
+        preflightWrite(address, 8);
+    }
     writed(address, (U32)value); writed(address + 4, (U32)(value >> 32));
 }
 
 void KMemory::writed(U32 address, U32 value) {
-	writedInline(address, value);
+    writedInline(address, value);
 }
 
 void KMemory::writew(U32 address, U16 value) {
@@ -878,6 +950,7 @@ void KMemory::writew(U32 address, U16 value) {
 #endif
             data->mmu[index].getPage()->writew(&data->mmu[index], address, value);
     } else {
+        preflightWrite(address, 2);
         writeb(address, (U8)value);
         writeb(address + 1, (U8)(value >> 8));
     }

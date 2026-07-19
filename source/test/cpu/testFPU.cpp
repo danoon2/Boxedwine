@@ -1124,6 +1124,29 @@ void runFNSTSWMemory(bool big, float left, float right, U32 expectedStatus, cons
     }
 }
 
+void runFNSTSWAxAfterDirtyEax(bool big, const char* name) {
+    begin(big);
+    fninit();
+    pushCode8(0xb8);
+    if (big) {
+        pushCode32(0x12345678); // mov eax, imm32
+    } else {
+        pushCode16(0x5678); // mov ax, imm16
+    }
+    fnstswAx();
+    pushCode8(0x8b);
+    pushCode8(0xd8); // mov ebx/eax or bx/ax
+
+    runTestCPU();
+    U32 expected = big ? 0x12340000 : 0;
+    if (cpu->reg[3].u32 != expected) {
+        failed("%s ebx expected=%x actual=%x", name, expected, cpu->reg[3].u32);
+    }
+    if (cpu->reg[0].u32 != expected) {
+        failed("%s eax expected=%x actual=%x", name, expected, cpu->reg[0].u32);
+    }
+}
+
 U32 expectedFCOMIFlags(float left, float right) {
     if (std::isnan(left) || std::isnan(right)) {
         return CF | PF | ZF;
@@ -1293,6 +1316,25 @@ void runFISTP64(bool big, S64 value, const char* name) {
     }
 }
 
+#ifdef BOXEDWINE_WASM_JIT
+void runFISTP64FromDouble(bool big, double value, U64 expected, const char* name) {
+    constexpr U32 OUT = MEM_BASE + 0x580;
+
+    begin(big);
+    writeExpected64(0, expected);
+    fninit();
+    writeF64(MEM_BASE, value);
+    fldF64(MEM_BASE, big);
+    pushCode8(0xdf);
+    emitMemModRM(7, OUT, big);
+
+    runTestCPU();
+    if (readI64(OUT) != readExpected64(0) || cpu->fpu.GetTop() != 0 || cpu->fpu.GetTag(cpu, 7) != TAG_Empty) {
+        failed("%s fistp64 result", name);
+    }
+}
+#endif
+
 void runDDRegisterOps(bool big, const char* name) {
     constexpr U32 OUT = MEM_BASE + 0x680;
 
@@ -1457,6 +1499,14 @@ void runDB(bool big) {
     runFIST32(big, 3, -98765.0f, (U32)(S32)-98765, true, "fistp m32int db");
     runFISTTP32(big, 12345.9, 12345, "fisttp m32int db");
     runFISTTP32(big, -12345.9, (U32)(S32)-12345, "fisttp m32int db");
+#ifdef BOXEDWINE_WASM_JIT
+    runFIST32(big, 2, std::numeric_limits<float>::infinity(), 0x80000000u, false, "fist m32int db infinity");
+    runFIST32(big, 3, std::numeric_limits<float>::quiet_NaN(), 0x80000000u, true, "fistp m32int db nan");
+    runFISTTP32(big, 2147483647.0, 0x7fffffffu, "fisttp m32int db upper valid");
+    runFISTTP32(big, 2147483648.0, 0x80000000u, "fisttp m32int db positive overflow");
+    runFISTTP32(big, -2147483649.0, 0x80000000u, "fisttp m32int db negative overflow");
+    runFISTTP32(big, std::numeric_limits<double>::quiet_NaN(), 0x80000000u, "fisttp m32int db nan");
+#endif
     runFCOMI(big, 0xdb, 5, false, 2.0f, 2.0f, "fucomi db");
     runFCOMI(big, 0xdb, 5, false, 2.0f, 3.0f, "fucomi db");
     runFCOMI(big, 0xdb, 6, false, 3.0f, 2.0f, "fcomi db");
@@ -1492,6 +1542,14 @@ void runDD(bool big) {
     runFISTTP64(big, -123456789.4, (U64)(S64)-123456789, "fisttp m64int dd");
     runFISTTP64(big, 0.0, 0, "fisttp m64int dd");
     runFISTTP64(big, -0.0, 0, "fisttp m64int dd");
+#ifdef BOXEDWINE_WASM_JIT
+    runFISTTP64(big, 0x1.fffffffffffffp+62, 0x7ffffffffffffc00ULL, "fisttp m64int dd upper valid");
+    runFISTTP64(big, 0x1p+63, 0x8000000000000000ULL, "fisttp m64int dd positive overflow");
+    runFISTTP64(big, std::nextafter(-0x1p+63, -std::numeric_limits<double>::infinity()), 0x8000000000000000ULL, "fisttp m64int dd negative overflow");
+    runFISTTP64(big, std::numeric_limits<double>::quiet_NaN(), 0x8000000000000000ULL, "fisttp m64int dd nan");
+    runFISTP64FromDouble(big, std::numeric_limits<double>::infinity(), 0x8000000000000000ULL, "fistp m64int df infinity");
+    runFISTP64FromDouble(big, std::numeric_limits<double>::quiet_NaN(), 0x8000000000000000ULL, "fistp m64int df nan");
+#endif
     runFNSTSWMemory(big, 2.0f, 2.0f, FPU_EQUAL, "fnstsw m16 dd");
     runFNSTSWMemory(big, 2.0f, 3.0f, FPU_LESS, "fnstsw m16 dd");
     runFNSTSWMemory(big, floatFromBits(F32_QNAN), 3.0f, FPU_UNORDERED, "fnstsw m16 dd unordered");
@@ -1541,6 +1599,7 @@ void runDF(bool big) {
     runFCOMI(big, 0xdf, 5, true, 2.0f, 3.0f, "fucomip df");
     runFCOMI(big, 0xdf, 6, true, 3.0f, 2.0f, "fcomip df");
     runFCOMI(big, 0xdf, 6, true, floatFromBits(F32_QNAN), 2.0f, "fcomip df unordered");
+    runFNSTSWAxAfterDirtyEax(big, "fnstsw ax after dirty eax df");
     runFFREEP(big, "ffreep df");
 }
 
