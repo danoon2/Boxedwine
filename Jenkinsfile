@@ -371,13 +371,13 @@ pipeline {
                                     cp boxedwine-shell.js "${deploy_dir}"
                                     cp "${build_dir}/boxedwine.js" "${deploy_dir}"
                                     cp "${build_dir}/boxedwine.wasm" "${deploy_dir}"
-                                    cp /var/www/buildfiles/* "${deploy_dir}"
                                 }
 
                                 build_web_target release Build/Release SingleThreaded
                                 build_web_target multiThreaded Build/MultiThreaded MultiThreaded
                                 build_web_target jit Build/Jit SingleThreadedJit
                                 build_web_target multiThreadedJit Build/MultiThreadedJit MultiThreadedJit
+                                cp /var/www/buildfiles/* "Deploy/Web/"
                             ''' 
                         }
                         dir("project/emscripten") {
