@@ -200,7 +200,7 @@ hydrate_demo_apps_from_mirror() {
     echo "Hydrating demo app zips from $apps_url"
     if [ "$DRY_RUN" = "1" ]; then
         echo "+ parse $demos_index for root/app/overlay zip parameters"
-        echo "+ wget missing zips into $apps_dir"
+        echo "+ wget -N changed demo zips and demos.json into $apps_dir"
         return
     fi
 
@@ -229,13 +229,10 @@ PY
         if [ "$zip_name" = "boxedwine.zip" ]; then
             continue
         fi
-        if [ -f "$apps_dir/$zip_name" ]; then
-            continue
-        fi
-        wget -nc -P "$apps_dir" "$apps_url/$zip_name"
+        wget -N -P "$apps_dir" "$apps_url/$zip_name"
     done
 
-    wget -nc -P "$apps_dir" "$apps_url/demos.json" || true
+    wget -N -P "$apps_dir" "$apps_url/demos.json" || true
 }
 
 ensure_boxedwine_zip() {

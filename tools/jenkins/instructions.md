@@ -10,7 +10,7 @@ The script mirrors the existing public build site, builds fresh single-threaded,
    - If `BUILD_SITE_REMOTE` is set, it uses `rsync` from that remote.
    - Otherwise it falls back to `wget` from `https://boxedwine.org/builds/`.
 2. Hydrates demo assets for local use.
-   - Demo app zips are copied into `demos/apps`.
+   - Demo app ZIPs and `demos.json` are refreshed when the public files are newer; unchanged local files are retained.
    - `boxedwine.zip` is always downloaded from `http://boxedwine.org/v2/demos/boxedwine.1.zip`.
 3. Builds the Emscripten web targets from `project/emscripten`.
    - `make release`
@@ -71,6 +71,8 @@ Reuse the already mirrored site and already built Emscripten outputs:
 ```powershell
 wsl bash -lc 'cd /mnt/c/BoxedwineGPT && tools/jenkins/local-build-site.sh --skip-sync --skip-build'
 ```
+
+`--skip-sync` deliberately bypasses the public demo ZIP and `demos.json` refresh.
 
 Generate the site without starting a server:
 
