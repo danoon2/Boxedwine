@@ -1765,7 +1765,9 @@ void runX87FwaitWithoutUnmaskedException(bool maskedException) {
     newInstruction(0);
     cpu->big = true;
     cpu->fpu.FINIT();
+#ifdef BOXEDWINE_JIT
     normalWaitCallCount = 0;
+#endif
     if (maskedException) {
         cpu->fpu.sw |= FPU_SW_ZE;
         cpu->fpu.sw &= ~FPU_SW_ES;
@@ -1781,9 +1783,11 @@ void runX87FwaitWithoutUnmaskedException(bool maskedException) {
     if (maskedException && (cpu->fpu.sw & FPU_SW_ES)) {
         failed("x87 %s fwait unexpectedly left ES set", caseName);
     }
+#ifdef BOXEDWINE_JIT
     if (normalWaitCallCount != 0) {
         failed("x87 %s fwait entered normal_wait", caseName);
     }
+#endif
     if (cpu->reg[0].u32 != 0x12345678) {
         failed("x87 %s fwait did not continue", caseName);
     }
