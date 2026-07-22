@@ -234,7 +234,11 @@ U32 KThread::signal(U32 signal, bool wait) {
                         }
                     }
                     if (stillWaiting) {
-                        this->queuePendingSignal(signal);
+                        if (signal == K_SIGQUIT) {
+                            this->runSignal(signal, -1, 0);
+                        } else {
+                            this->queuePendingSignal(signal);
+                        }
                         BOXEDWINE_CONDITION_SIGNAL(cond);
                         handled = true;
                     }

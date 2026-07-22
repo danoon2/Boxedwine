@@ -361,6 +361,50 @@ void testBlockedThreadSignalStartsHandler() {
 #endif
 }
 
+void testBlockedThreadSigquitStartsHandlerImmediately() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    TestContext& context = testContext();
+    KProcessPtr process = context.process;
+    KThread* thread = context.thread;
+    KThread* target = process->createThread();
+    KSigAction oldSigQuit = process->sigActions[K_SIGQUIT];
+    const U32 signalHandler = TEST_CODE_ADDRESS + 0x340;
+    const U64 sigquitBit = 1ULL << (K_SIGQUIT - 1);
+    const U64 sigioBit = 1ULL << (K_SIGIO - 1);
+
+    target->clone(thread);
+    target->cpu->reg[4].u32 = 32 * K_PAGE_SIZE;
+    target->pendingSignals &= ~sigquitBit;
+    target->sigMask &= ~sigquitBit;
+    target->sigMask |= sigioBit;
+    target->startSignal = false;
+    target->cpu->eip.u32 = TEST_CODE_ADDRESS;
+    process->sigActions[K_SIGQUIT].handlerAndSigAction = signalHandler;
+    process->sigActions[K_SIGQUIT].flags = 0;
+
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(target->waitingCondSync);
+        target->waitingCond = std::make_shared<BoxedWineCondition>(B("testBlockedThreadSigquitStartsHandlerImmediately"));
+    }
+
+    expectWaitResult("SIGQUIT blocked thread", target->signal(K_SIGQUIT, false), 0);
+    if (!target->startSignal) {
+        testFail("SIGQUIT blocked thread did not request wait interruption");
+    }
+    expectSignalBitClear("SIGQUIT blocked thread", target->pendingSignals, K_SIGQUIT);
+    expectWaitResult("SIGQUIT blocked thread handler eip", target->cpu->eip.u32, signalHandler);
+
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(target->waitingCondSync);
+        target->waitingCond = nullptr;
+    }
+    target->startSignal = false;
+    target->pendingSignals &= ~sigquitBit;
+    process->sigActions[K_SIGQUIT] = oldSigQuit;
+    process->deleteThread(target);
+#endif
+}
+
 void testMemoryThreadCleanupUsesMemoryMutex() {
 #ifdef BOXEDWINE_MULTI_THREADED
     TestContext& context = testContext();

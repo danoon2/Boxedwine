@@ -60,6 +60,7 @@
 void testWaitPid();
 void testProcessSignalWakesSigwaitMask();
 void testBlockedThreadSignalStartsHandler();
+void testBlockedThreadSigquitStartsHandlerImmediately();
 void testMemoryThreadCleanupUsesMemoryMutex();
 void testHardLinksShareIdentityDataAndXattrs();
 void testSharedFileMappingGrowthKeepsPagesShared();
@@ -774,6 +775,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testProcessSignalWakesSigwaitMask, "Test process signal wakes sigwait mask"},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testBlockedThreadSignalStartsHandler, "Test blocked thread signal starts handler"},
+    {testBlockedThreadSigquitStartsHandlerImmediately, "Test blocked thread SIGQUIT starts handler immediately"},
     {testMemoryThreadCleanupUsesMemoryMutex, "Test memory thread cleanup uses memory mutex"},
 #endif
     {testHardLinksShareIdentityDataAndXattrs, "Test hard links share identity, data, and xattrs", TEST_ENTRY_SERIAL},
