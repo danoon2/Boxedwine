@@ -166,6 +166,7 @@ void CPU::reset() {
     this->cr0 = CR0_PROTECTION | CR0_FPUPRESENT | CR0_PAGING;
     this->flags|=IF;
     this->fpu.FINIT();
+    this->setMxcsr(0x1F80);
     this->stackNotMask = 0;
     this->stackMask = 0xFFFFFFFF;
     this->nextOp = nullptr;
@@ -627,6 +628,15 @@ U32 CPU::setSegment(U32 seg, U32 value) {
         }
     }
     return 1;
+}
+
+void CPU::setMxcsr(U32 value) {
+    constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+    constexpr U32 REQUIRED_MASKS = MXCSR_INVALID_OPERATION_MASK | MXCSR_DIVIDE_BY_ZERO_MASK;
+
+    this->mxcsr = value;
+    this->sseDivExceptionsUnmasked = (value ^ REQUIRED_MASKS) & REQUIRED_MASKS;
 }
 
 void CPU::ret(U32 big, U32 bytes) {

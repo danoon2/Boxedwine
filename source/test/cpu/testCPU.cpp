@@ -216,7 +216,7 @@ void testNewInstruction(int flags) {
     cpu->eip.u32 = 0;
     cpu->nextOp = nullptr;
     context.memory->clearOpCache();
-    cpu->mxcsr = 0x1F80;
+    cpu->setMxcsr(0x1F80);
     cpu->debugTrapOnNextInstruction = false;
     cpu->pendingDebugTrap = false;
     cpu->pendingDebugTrapCode = 0;

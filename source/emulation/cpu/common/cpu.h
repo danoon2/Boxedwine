@@ -247,6 +247,7 @@ public:
 
     U32 sseControlStateTmp = 0;
     U32 mxcsr = 0x1F80; // sse control register
+    U32 sseDivExceptionsUnmasked = 0;
     
     LazyFlagType lazyFlagType = FLAGS_NONE;
     LazyFlagType lazyFlagTypePrev = FLAGS_NONE;
@@ -301,6 +302,7 @@ public:
     void fillFlagsNoZF();
     void fillFlags();
     void setFlags(U32 flags, U32 mask);
+    void setMxcsr(U32 value);
     void updateDebugTrapActive();
     bool startDebugInstruction();
     bool finishDebugInstruction();

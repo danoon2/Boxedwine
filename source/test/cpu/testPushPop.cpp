@@ -1299,7 +1299,7 @@ void runDivpsRaisesSimdException(bool invalidOperation) {
 
     newInstruction(0);
     cpu->big = true;
-    cpu->mxcsr = invalidOperation ? (0x1f80 & ~MXCSR_INVALID_OPERATION_MASK) : (0x1f80 & ~MXCSR_DIVIDE_BY_ZERO_MASK);
+    cpu->setMxcsr(invalidOperation ? (0x1f80 & ~MXCSR_INVALID_OPERATION_MASK) : (0x1f80 & ~MXCSR_DIVIDE_BY_ZERO_MASK));
     for (U32 i = 0; i < 4; ++i) {
         cpu->xmm[0].ps.u32[i] = 0;
         cpu->xmm[1].ps.u32[i] = invalidOperation ? 0 : 0x3f800000;
@@ -1347,7 +1347,7 @@ void runDivssRaisesSimdException(bool invalidOperation, bool memoryOperand) {
 
     newInstruction(0);
     cpu->big = true;
-    cpu->mxcsr = invalidOperation ? (0x1f80 & ~MXCSR_INVALID_OPERATION_MASK) : (0x1f80 & ~MXCSR_DIVIDE_BY_ZERO_MASK);
+    cpu->setMxcsr(invalidOperation ? (0x1f80 & ~MXCSR_INVALID_OPERATION_MASK) : (0x1f80 & ~MXCSR_DIVIDE_BY_ZERO_MASK));
     cpu->xmm[0].ps.u32[0] = invalidOperation ? 0 : 0x3f800000;
     cpu->xmm[1].ps.u32[0] = 0;
     cpu->xmm[0].ps.u32[1] = 0x11111111;
@@ -1403,7 +1403,7 @@ void runDivpsDoesNotRaiseDivideByZeroForNonFiniteDividend() {
 
     newInstruction(0);
     cpu->big = true;
-    cpu->mxcsr = 0x1f80 & ~MXCSR_DIVIDE_BY_ZERO_MASK;
+    cpu->setMxcsr(0x1f80 & ~MXCSR_DIVIDE_BY_ZERO_MASK);
     cpu->xmm[0].ps.u32[0] = 0x7fc00000; // qNaN
     cpu->xmm[0].ps.u32[1] = 0x7f800000; // +Inf
     cpu->xmm[0].ps.u32[2] = 0xff800000; // -Inf
@@ -1437,7 +1437,7 @@ void runDivpsInfInfRaisesInvalidOperation() {
 
     newInstruction(0);
     cpu->big = true;
-    cpu->mxcsr = 0x1f80 & ~MXCSR_INVALID_OPERATION_MASK;
+    cpu->setMxcsr(0x1f80 & ~MXCSR_INVALID_OPERATION_MASK);
     for (U32 i = 0; i < 4; ++i) {
         cpu->xmm[0].ps.u32[i] = 0x7f800000;
         cpu->xmm[1].ps.u32[i] = 0x7f800000;
@@ -1472,7 +1472,7 @@ void runDivssDoesNotRaiseDivideByZeroForNonFiniteDividend(bool memoryOperand) {
 
     newInstruction(0);
     cpu->big = true;
-    cpu->mxcsr = 0x1f80 & ~MXCSR_DIVIDE_BY_ZERO_MASK;
+    cpu->setMxcsr(0x1f80 & ~MXCSR_DIVIDE_BY_ZERO_MASK);
     cpu->xmm[0].ps.u32[0] = 0x7fc00000;
     cpu->xmm[0].ps.u32[1] = 0x11111111;
     cpu->xmm[0].ps.u32[2] = 0x22222222;
@@ -1510,6 +1510,7 @@ void runSseDivFastPathDecision() {
     constexpr U32 DEFAULT_MXCSR = 0x1f80;
     constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
     constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+    constexpr U32 STATE_ADDRESS = TEST_HEAP_ADDRESS + MEM_BASE;
 
     if (common_sse_div_control_requires_slow_path(DEFAULT_MXCSR)) {
         failed("default SSE divide control marked slow");
@@ -1523,6 +1524,42 @@ void runSseDivFastPathDecision() {
     if (common_sse_div_control_requires_slow_path(DEFAULT_MXCSR ^ 0x6000)) {
         failed("rounding-only SSE divide control marked slow");
     }
+
+    cpu->setMxcsr(DEFAULT_MXCSR);
+    if (cpu->sseDivExceptionsUnmasked) {
+        failed("default MXCSR left SSE divide exception state set");
+    }
+    cpu->setMxcsr(DEFAULT_MXCSR & ~MXCSR_INVALID_OPERATION_MASK);
+    if (!cpu->sseDivExceptionsUnmasked) {
+        failed("unmasked invalid operation did not set SSE divide exception state");
+    }
+    cpu->setMxcsr(DEFAULT_MXCSR & ~MXCSR_DIVIDE_BY_ZERO_MASK);
+    if (!cpu->sseDivExceptionsUnmasked) {
+        failed("unmasked divide-by-zero did not set SSE divide exception state");
+    }
+    cpu->setMxcsr(DEFAULT_MXCSR ^ 0x6000);
+    if (cpu->sseDivExceptionsUnmasked) {
+        failed("rounding-only MXCSR set SSE divide exception state");
+    }
+    cpu->setMxcsr(DEFAULT_MXCSR);
+    if (cpu->sseDivExceptionsUnmasked) {
+        failed("restoring default MXCSR left SSE divide exception state set");
+    }
+
+    memory->writed(STATE_ADDRESS, DEFAULT_MXCSR & ~MXCSR_INVALID_OPERATION_MASK);
+    common_ldmxcsr(cpu, 0, STATE_ADDRESS);
+    if (!cpu->sseDivExceptionsUnmasked) {
+        failed("common LDMXCSR did not update SSE divide exception state");
+    }
+
+    cpu->setMxcsr(DEFAULT_MXCSR);
+    common_fxsave(cpu, STATE_ADDRESS);
+    memory->writed(STATE_ADDRESS + 24, DEFAULT_MXCSR & ~MXCSR_DIVIDE_BY_ZERO_MASK);
+    common_fxrstor(cpu, STATE_ADDRESS);
+    if (!cpu->sseDivExceptionsUnmasked) {
+        failed("FXRSTOR did not update SSE divide exception state");
+    }
+    cpu->setMxcsr(DEFAULT_MXCSR);
 }
 
 void runX87DivFastPathDecision() {

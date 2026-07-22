@@ -113,6 +113,7 @@ public:
 	virtual void ldmxcsr(MemPtr address) = 0;
 
 	void guardSseDiv();
+	void updateSseDivExceptionState();
 
 	void dynamic_addpsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::addpsXmmXmm); }
 	void dynamic_addpsE128(DecodedOp* op) override { opXmmE128(op, &JitSSE::addpsXmmXmm); }
