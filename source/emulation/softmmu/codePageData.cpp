@@ -70,11 +70,6 @@ DecodedOp* DecodedOpCache::get(U32 address) {
 	DecodedOpPageCache* page = getPageCache(pageIndex, false);
 	if (page) {
 		U32 offset = address & K_PAGE_MASK;
-		if (page->ops[offset] == nullptr) {
-			if (offset > 0 && page->ops[offset - 1] && page->ops[offset - 1]->lock) {
-				return page->ops[offset - 1];
-			}
-		}
 		return page->ops[offset];
 	}
 	return nullptr;
@@ -92,23 +87,29 @@ void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 		end = K_PAGE_SIZE;
 	}
 
-	DecodedOpPageCache* page = getPageCache(pageIndex, false);
-	if (!page) {
-		return;
-	}
 	U8* pageWriteCounts = nullptr;
 	if (becauseOfWrite) {
 		pageWriteCounts = getWriteCounts(pageIndex, true);
 	}
+	DecodedOpPageCache* page = getPageCache(pageIndex, false);
+	if (!page && !pageWriteCounts) {
+		return;
+	}
 
-	KThread* thread = KThread::currentThread();
+	KThread* thread = page ? KThread::currentThread() : nullptr;
 	for (U32 i = offset; i < end; i++) {
-		if (page->ops[i]) {
+		if (page && page->ops[i]) {
 			pendingDeallocs[thread->id].push_back(page->ops[i]);
 			page->ops[i] = nullptr;
 			activeOps--;
 		}
-		if (becauseOfWrite) {
+		if (pageWriteCounts) {
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+			if (KSystem::disableWasmJitForWrittenCode) {
+				pageWriteCounts[i] = MAX_DYNAMIC_COUNT;
+				continue;
+			}
+#endif
 			if ((pageWriteCounts[i] < MAX_DYNAMIC_COUNT)) {
 				pageWriteCounts[i]++;
 			}
@@ -174,6 +175,38 @@ void DecodedOpCache::clear() {
 	}
 	pendingDeallocs.clear();
 }
+
+#ifdef BOXEDWINE_JIT
+void DecodedOpCache::collectAllJitBlocks(std::vector<void*>& out) {
+	for (U32 firstIndex = 0; firstIndex < FIRST_INDEX_SIZE; firstIndex++) {
+		if (pageData[firstIndex] == emptyPageCacheLevel1) continue;
+		for (U32 secondIndex = 0; secondIndex < SECOND_INDEX_SIZE; secondIndex++) {
+			DecodedOpPageCache* page = pageData[firstIndex][secondIndex];
+			if (!page) continue;
+			for (U32 i = 0; i < K_PAGE_SIZE; i++) {
+				DecodedOp* op = page->ops[i];
+				if (op) {
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+					void* jitCode;
+					if (op->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
+						jitCode = __atomic_exchange_n(
+							&op->pfnJitCode, nullptr, __ATOMIC_SEQ_CST);
+					} else {
+						jitCode = op->pfnJitCode;
+						op->pfnJitCode = nullptr;
+					}
+#else
+					void* jitCode = op->pfnJitCode;
+#endif
+					if (jitCode) {
+						out.push_back(jitCode);
+					}
+				}
+			}
+		}
+	}
+}
+#endif
 
 void DecodedOpCache::clearPendingDeallocs(U32 threadId) {
 	if (pendingDeallocs.count(threadId)) {
@@ -348,7 +381,7 @@ void DecodedOpCache::clearPageWriteCounts(U32 pageIndex) {
 	U8** first = writeCounts[firstIndex];
 
 	if (first && first[secondIndex]) {
-		memset(first[secondIndex], 0, sizeof(K_PAGE_SIZE));
+		memset(first[secondIndex], 0, K_PAGE_SIZE);
 	}
 }
 

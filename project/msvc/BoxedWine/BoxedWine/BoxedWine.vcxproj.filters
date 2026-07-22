@@ -1227,9 +1227,6 @@
     <ClInclude Include="..\..\..\..\include\platform.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\include\reg.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\opengl\glcommon.h">
       <Filter>opengl</Filter>
     </ClInclude>
@@ -1402,9 +1399,6 @@
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\klist.h">
-      <Filter>source\util</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\util\karray.h">
       <Filter>source\util</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\stringutil.h">

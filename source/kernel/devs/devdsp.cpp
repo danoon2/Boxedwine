@@ -27,6 +27,7 @@
 #include <math.h>
 #include <string.h>
 #include "kdspaudio.h"
+#include "kdspaudio_math.h"
 
 #ifdef __EMSCRIPTEN__
 static U32 dspMaxOutputFreq = 11025;
@@ -293,15 +294,14 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 #ifdef __EMSCRIPTEN__
         U32 capacity = this->getEffectiveBufferCapacity();
         U32 used = this->getUsedBufferSize();
-        U32 available = capacity - used;
+        U32 available = KDspAudioMath::getOutputSpaceAvailable(capacity, used, true);
         memory->writed(IOCTL_ARG1, available / this->audio->getFragmentSize()); // fragments
         memory->writed(IOCTL_ARG1 + 4, capacity / this->audio->getFragmentSize());
         memory->writed(IOCTL_ARG1 + 8, this->audio->getFragmentSize());
         memory->writed(IOCTL_ARG1 + 12, available);
 #else
         U32 capacity = this->audio->getBufferCapacity();
-        U32 used = std::min(this->audio->getBufferSize(), capacity);
-        U32 available = capacity - used;
+        U32 available = KDspAudioMath::getOutputSpaceAvailable(capacity, 0, false);
         memory->writed(IOCTL_ARG1, available / this->audio->getFragmentSize()); // fragments
         memory->writed(IOCTL_ARG1 + 4, capacity / this->audio->getFragmentSize());
         memory->writed(IOCTL_ARG1 + 8, this->audio->getFragmentSize());

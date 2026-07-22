@@ -105,6 +105,7 @@ public:
     static bool disableHideCursor;
     static bool forceRelativeMouse;
     static bool cacheReads;
+    static bool disableWasmJitForWrittenCode;
     static bool useF64;
     static U32 pageSize;
     static bool canJitUse4KPage;

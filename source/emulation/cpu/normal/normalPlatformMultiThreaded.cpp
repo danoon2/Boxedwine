@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,15 +18,48 @@
 
 #include "boxedwine.h"
 #include "knativesystem.h"
+#if defined(BOXEDWINE_JIT_ARMV8)
+#include "../armv8/jitArmV8CodeGen.h"
+#endif
+#ifdef BOXEDWINE_JIT
+#include "../jit/jitCodeLifecycle.h"
+#endif
 
 #if defined(BOXEDWINE_MULTI_THREADED)
 
 std::atomic<int> platformThreadCount = 0;
 void platformInitExceptionHandling();
 
+// inline (not noinline): runs after every cpu->run() in the hot loop, so an
+// out-of-line call here would cost a call per dispatch (measurably slower on the
+// fast JIT). Keeping the try/catch outside the noinline platformThreadRun measured
+// ~4 PERF_W95 points faster for multiThreadedJit and is also valid on native hosts.
+static inline bool platformThreadShouldStop(CPU* cpu) {
+#ifdef __TEST
+    if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
+        return true;
+    }
+#endif
+    if (cpu->thread->process->terminated) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
+        cpu->memory->cleanup();
+    }
+    return cpu->thread->terminating;
+}
+
+static NO_INLINE void platformThreadRun(CPU* cpu) {
+    do {
+        cpu->run();
+        cpu->thread->waitForPtraceResume();
+    } while (!platformThreadShouldStop(cpu));
+}
+
 static void platformThread(CPU* cpu) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
     platformInitExceptionHandling();
+#endif
+#if defined(BOXEDWINE_JIT_ARMV8)
+    ensureArmV8HardwareTSOForThread();
 #endif
     KThread::setCurrentThread(cpu->thread);
     KProcessPtr process = KSystem::getProcess(cpu->thread->process->id);
@@ -41,30 +74,25 @@ static void platformThread(CPU* cpu) {
     }
     while (true) {
         try {
-            cpu->run();
+            platformThreadRun(cpu);
+#ifdef __TEST
+            if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
+                return;
+            }
+#endif
+            break;
         } catch (...) {
             if (!cpu->thread->terminating) {
                 cpu->nextOp = cpu->getNextOp();
             }
+            cpu->thread->waitForPtraceResume();
+            if (platformThreadShouldStop(cpu)) {
+                break;
+            }
         }
-        cpu->thread->waitForPtraceResume();
-#ifdef __TEST
-        if (cpu->nextOp->inst == TestEnd) {
-            return;
-        }
-        continue;
-#else
-        if (cpu->thread->process->terminated) {
-            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
-            cpu->memory->cleanup();
-        }
-        if (cpu->thread->terminating) {
-            break;
-        }
-#endif
     }
 
-    cpu->thread->cleanup();    
+    cpu->thread->cleanup();
 
     platformThreadCount--;
     process->deleteThread(cpu->thread);
@@ -74,32 +102,35 @@ static void platformThread(CPU* cpu) {
     }
 }
 
+static void* platformThreadStart(void* arg) {
+    platformThread((CPU*)arg);
+    return nullptr;
+}
+
 #ifdef __TEST
 void initThreadForTesting() {
 }
 
 void joinThread(KThread* thread) {
-    std::thread* cppThread = (std::thread*)thread->cpu->nativeHandle;
-    cppThread->join();
-    delete cppThread;
+    platformJoinThread(thread);
 }
 #endif
-
-void platformSetThreadDescription(KThread* thread);
 
 void scheduleThread(KThread* thread) {
     platformThreadCount++;
     CPU* cpu = thread->cpu;
-#ifdef __TEST
-    cpu->nativeHandle = (U64)new std::thread(platformThread, cpu);
-#else
-    std::thread cppThread = std::thread(platformThread, cpu);
-    cpu->nativeHandle = (U64)cppThread.native_handle();
-#if defined(_DEBUG) && defined(BOXEDWINE_MSVC)
-    platformSetThreadDescription(thread);
+#ifdef BOXEDWINE_JIT
+    jitThreadStartPreparing(cpu);
 #endif
-    cppThread.detach();
+    S32 result = platformStartThread(thread, platformThreadStart);
+    if (result) {
+#ifdef BOXEDWINE_JIT
+        jitThreadStartCancelled(cpu);
 #endif
+        platformThreadCount--;
+        kpanic_fmt("platformStartThread failed: %d", result);
+        return;
+    }
     if (!thread->process->isSystemProcess() && KSystem::cpuAffinityCountForApp) {
         Platform::setCpuAffinityForThread(thread, KSystem::cpuAffinityCountForApp);
     }

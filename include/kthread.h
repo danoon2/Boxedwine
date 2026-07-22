@@ -177,7 +177,8 @@ public:
     OpenGLVetexPointer glSecondaryColorPointer;
     OpenGLVetexPointer glSecondaryColorPointerEXT;
     OpenGLVetexPointer glIndexPointer;
-    OpenGLVetexPointer glTexCoordPointer;
+    U32 glClientActiveTexture = 0x84C0; // GL_TEXTURE0; kthread.h does not include OpenGL headers
+    BHashTable<U32, OpenGLVetexPointerPtr> glTexCoordPointersByTexture;
     BHashTable<U32, OpenGLVetexPointerPtr> glMultiTexCoordPointerEXTByTexunit;
     BHashTable<U32, OpenGLVetexPointerPtr> glMultiTexCoordPointerSGISByTarget;
     OpenGLVetexPointer glEdgeFlagPointer;
@@ -189,6 +190,7 @@ public:
     OpenGLVetexPointer glVertexWeightPointerEXT;
     OpenGLVetexPointer glWeightPointerARB;
     OpenGLVetexPointer glInterleavedArray;
+    U32 glInterleavedArrayTexture = 0x84C0; // GL_TEXTURE0
     U32 marshalIndex = 0;
 
     inline static KThread* currentThread() {return runningThread;}

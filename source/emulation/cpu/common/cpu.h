@@ -186,14 +186,24 @@ union SSE {
     simde__m128i pi;
 };
 
+#ifndef JIT_RUN_COUNT
+#if defined(BOXEDWINE_WASM_JIT) && defined(__EMSCRIPTEN__)
+#define JIT_RUN_COUNT 200
+#else
 #define JIT_RUN_COUNT 50
+#endif
+#endif
+
+#if JIT_RUN_COUNT > 254
+#error "JIT_RUN_COUNT must fit in DecodedOp::runCount (U8) and leave room for the JIT_RUN_COUNT + 1 sentinel"
+#endif
 
 class CPU: public DecodeBlockCallback {
 public:
     static CPU* allocCPU(KMemory* memory);
 
     CPU(KMemory* memory);
-    virtual ~CPU() {}
+    virtual ~CPU();
     
     Reg reg[9];
     Seg seg[7];    
@@ -204,6 +214,33 @@ public:
     Reg eip;
 #ifdef BOXEDWINE_JIT
     U32 tmpReg;
+#endif
+#ifdef BOXEDWINE_WASM_JIT
+    // Scratch fields used only by the WASM JIT to pass
+    // address/value to its per-width memory helpers without trampling
+    // lazy-flag state in src.u32/dst.u32.
+    U32 memHelperAddr = 0;
+    U32 memHelperValue = 0;
+    // Self-modifying-code support: each JIT block call clears these fields.
+    // Before a checked memory write, generated code records the active block's
+    // first DecodedOp. If removeCodeBlock clears that block while it is active
+    // (or a post-write helper observes that its pfnJitCode was cleared), it
+    // sets wasmJitBailout=1 so generated bailout checks can exit before stale
+    // compiled bytes keep running.
+    DecodedOp* wasmJitActiveBlock = nullptr;
+    U32 wasmJitBailout = 0;
+    // Inline TLB fast-path: cached pointers to the per-page host-base
+    // arrays in KMemoryData. Set up by wasmHelper_blockEnter so the JIT
+    // codegen can do `wasmReadPageBaseArray[page] -> entry; if (entry)
+    // direct-load`, skipping the full helper round-trip on cache hits.
+    // Encoded as `(U32)(uintptr_t)wasmReadPageBase`/`wasmWritePageBase`
+    // (32-bit linear-memory offsets under emcc).
+    U32 wasmJitMemoryData = 0;
+    U32 wasmReadPageBaseArray  = 0;
+    U32 wasmWritePageBaseArray = 0;
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    U32 wasmJitProfileSampleCounter = 0;
+#endif
 #endif
     U8* reg8[9];
     ALIGN(SSE xmm[8], 16);    
@@ -508,9 +545,22 @@ public:
     };
 
 #ifndef __TEST
-protected:    
+protected:
 #endif
     U32 big;
+
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+public:
+    // Keep owner-hazard bookkeeping after every pre-existing CPU field. Raw
+    // WASM JIT modules embed CPU member offsets, so inserting cold MT state
+    // into the established layout changes their generated-code ABI.
+    U32 wasmJitActiveTableIndex = 0;
+    U32 wasmJitActiveTableIndexLocal = 0;
+    U32 wasmJitCallsUntilQuiescence = 0;
+    U32 wasmJitInCompiledCall = 0;
+    U32 wasmJitReapRetiredOnExit = 0;
+    U32 wasmJitHazardRegistered = 0;
+#endif
 };
 
 void common_prepareException(CPU* cpu, int code, int error);

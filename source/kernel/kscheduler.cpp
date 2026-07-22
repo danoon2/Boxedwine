@@ -124,10 +124,17 @@ void terminateCurrentThread(KThread* thread) {
 }
 
 #ifdef __EMSCRIPTEN__
+// Single-threaded scheduler slice size (instructions/slice), self-tuned toward a
+// ~10ms slice by runSlice() (grow when a slice took <9.5ms, shrink when >11ms).
+// The master merge capped this at 10000, which throttled ST JIT/interp throughput
+// (5-50x smaller slices than the pre-merge fixed 100000). The ceiling is raised
+// back to 100000 so cheap slices reach pre-merge throughput, while the 2000 floor
+// still lets it throttle down under load for UI responsiveness. STEP is widened
+// (1000 -> 10000) to match the larger range so it ramps/throttles in a few steps.
 static const S32 DEFAULT_CONTEXT_TIME = 10000;
 static const S32 MIN_CONTEXT_TIME = 2000;
-static const S32 MAX_CONTEXT_TIME = 10000;
-static const S32 CONTEXT_TIME_STEP = 1000;
+static const S32 MAX_CONTEXT_TIME = 100000;
+static const S32 CONTEXT_TIME_STEP = 10000;
 S32 contextTime = DEFAULT_CONTEXT_TIME;
 S32 contextTimeRemaining = DEFAULT_CONTEXT_TIME;
 #else

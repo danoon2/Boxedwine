@@ -922,7 +922,6 @@
     <ClInclude Include="..\..\..\..\include\procselfexe.h" />
     <ClInclude Include="..\..\..\..\include\procstat.h" />
     <ClInclude Include="..\..\..\..\include\recorder.h" />
-    <ClInclude Include="..\..\..\..\include\reg.h" />
     <ClInclude Include="..\..\..\..\include\syscpuscalingcurfreq.h" />
     <ClInclude Include="..\..\..\..\include\syscpumaxfreq.h" />
     <ClInclude Include="..\..\..\..\include\syscpuonline.h" />
@@ -1240,7 +1239,6 @@
     <ClInclude Include="..\..\..\..\source\util\bstring.h" />
     <ClInclude Include="..\..\..\..\source\util\concurrentqueue.h" />
     <ClInclude Include="..\..\..\..\source\util\fileutils.h" />
-    <ClInclude Include="..\..\..\..\source\util\karray.h" />
     <ClInclude Include="..\..\..\..\source\util\klist.h" />
     <ClInclude Include="..\..\..\..\source\util\networkutils.h" />
     <ClInclude Include="..\..\..\..\source\util\pixelMatch.h" />

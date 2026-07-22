@@ -46,7 +46,7 @@ GL_FUNCTION_FMT(IsEnabled, GLboolean, (GLenum cap), (ARG1),EAX=,,("glIsEnabled c
 GL_FUNCTION(PushAttrib, void, (GLbitfield mask), (ARG1),,,("glPushAttrib"))
 GL_FUNCTION(PopAttrib, void, (), (),,,("glPopAttrib"))
 GL_FUNCTION(PushClientAttrib, void, (GLbitfield mask), (ARG1),,,("glPushClientAttrib"))
-GL_FUNCTION(PopClientAttrib, void, (), (),,,("glPopClientAttrib"))
+GL_FUNCTION_CUSTOM(PopClientAttrib, void, ())
 GL_FUNCTION(Hint, void, (GLenum target, GLenum mode), (ARG1, ARG2),,,("glHint"))
 GL_FUNCTION(ClearDepth, void, (GLclampd depth), (dARG1),,,("glClearDepth"))
 GL_FUNCTION(DepthFunc, void, (GLenum func), (ARG1),,,("glDepthFunc"))

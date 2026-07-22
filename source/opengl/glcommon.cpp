@@ -183,8 +183,9 @@ void glcommon_glDisableClientState(CPU* cpu) {
         cpu->thread->glSecondaryColorPointer.refreshEachCall = 0;
         cpu->thread->glSecondaryColorPointer.enabled = false;
     } else if (cap == GL_TEXTURE_COORD_ARRAY) {
-        cpu->thread->glTexCoordPointer.refreshEachCall = 0;
-        cpu->thread->glTexCoordPointer.enabled = false;
+        OpenGLVetexPointer* p = getCurrentTexCoordPointer(cpu);
+        p->refreshEachCall = 0;
+        p->enabled = false;
     } else if (cap == GL_VERTEX_ARRAY) {
         cpu->thread->glVertextPointer.refreshEachCall = 0;
         cpu->thread->glVertextPointer.enabled = false;
@@ -219,8 +220,9 @@ void glcommon_glEnableClientState(CPU* cpu) {
         cpu->thread->glSecondaryColorPointer.enabled = true;
     }
     else if (cap == GL_TEXTURE_COORD_ARRAY) {
-        cpu->thread->glTexCoordPointer.refreshEachCall = 1;
-        cpu->thread->glTexCoordPointer.enabled = true;
+        OpenGLVetexPointer* p = getCurrentTexCoordPointer(cpu);
+        p->refreshEachCall = 1;
+        p->enabled = true;
     }
     else if (cap == GL_VERTEX_ARRAY) {
         cpu->thread->glVertextPointer.refreshEachCall = 1;
@@ -274,6 +276,12 @@ void glcommon_glDrawElements(CPU* cpu) {
 void glcommon_glArrayElement(CPU* cpu) {
     marshalArrayElement(cpu, ARG1);
     GL_LOG("glArrayElement GLint i=%d", ARG1);
+}
+
+void glcommon_glPopClientAttrib(CPU* cpu) {
+    GL_FUNC(pglPopClientAttrib)();
+    syncClientActiveTextureFromHost(cpu);
+    GL_LOG("glPopClientAttrib");
 }
 
 void printOpenGLInfo() {
@@ -573,7 +581,9 @@ void glcommon_glGetPointerv(CPU* cpu) {
     case GL_EDGE_FLAG_ARRAY_POINTER: cpu->memory->writed(ARG2, cpu->thread->glEdgeFlagPointer.ptr); break;
     case GL_INDEX_ARRAY_POINTER: cpu->memory->writed(ARG2, cpu->thread->glIndexPointer.ptr); break;
     case GL_NORMAL_ARRAY_POINTER: cpu->memory->writed(ARG2, cpu->thread->glNormalPointer.ptr); break;
-    case GL_TEXTURE_COORD_ARRAY_POINTER: cpu->memory->writed(ARG2, cpu->thread->glTexCoordPointer.ptr); break;
+    case GL_TEXTURE_COORD_ARRAY_POINTER:
+        cpu->memory->writed(ARG2, getCurrentTexCoordPointer(cpu)->ptr);
+        break;
     case GL_VERTEX_ARRAY_POINTER: cpu->memory->writed(ARG2, cpu->thread->glVertextPointer.ptr); break;
     default: 
 		klog_fmt("glGetPointerv unknown pname: %d", ARG1);

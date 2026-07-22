@@ -64,6 +64,7 @@ U32 KSystem::wineMajorVersion;
 bool KSystem::disableHideCursor = false;
 bool KSystem::forceRelativeMouse = false;
 bool KSystem::cacheReads = false;
+bool KSystem::disableWasmJitForWrittenCode = false;
 BString KSystem::showWindowTimestamp;
 U32 KSystem::pageSize = 4096;
 bool KSystem::canJitUse4KPage = false;

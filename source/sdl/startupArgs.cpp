@@ -367,6 +367,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (this->cacheReads) {
         args.push_back(B("-cacheReads"));
     }
+    if (this->disableWasmJitForWrittenCode) {
+        args.push_back(B("-disableWasmJitForWrittenCode"));
+    }
     for (auto& a : this->args) {
         args.push_back(a);
     }
@@ -384,6 +387,7 @@ bool StartUpArgs::apply() {
     KSystem::disableHideCursor = this->disableHideCursor;
     KSystem::forceRelativeMouse = this->forceRelativeMouse;
     KSystem::cacheReads = this->cacheReads;
+    KSystem::disableWasmJitForWrittenCode = this->disableWasmJitForWrittenCode;
     KSystem::pentiumLevel = this->pentiumLevel;
     KSystem::pollRate = this->pollRate;
     if (KSystem::pollRate < 0) {
@@ -403,10 +407,6 @@ bool StartUpArgs::apply() {
     if (this->recordAutomation.length()) {
         Recorder::start(this->recordAutomation);
     }
-    if (this->runAutomation.length()) {
-        Player::start(this->runAutomation);
-    }
-    BOXEDWINE_RECORDER_INIT(this->root, this->zips, this->workingDir, this->args);
 #endif
 
     klog_fmt("Using root directory: %s", root.c_str());
@@ -488,6 +488,13 @@ bool StartUpArgs::apply() {
     KSystem::title = title;
 
     buildVirtualFileSystem();
+
+#ifdef BOXEDWINE_RECORDER
+    if (this->runAutomation.length()) {
+        Player::start(this->runAutomation);
+    }
+    BOXEDWINE_RECORDER_INIT(this->root, this->zips, this->workingDir, this->args);
+#endif
 
     envValues.push_back(B("HOME=/home/username"));
     envValues.push_back(B("LOGNAME=username"));
@@ -930,6 +937,9 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             }
             this->runAutomation = BString::copy(argv[i + 1]);
             i++;
+        }  else if (!strcmp(argv[i], "-play")) {
+            this->runAutomation = BString::copy(argv[i + 1]);
+            i++;
         }
 #endif
         else if (!strcmp(argv[i], "-ddrawOverride")) {
@@ -941,6 +951,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->forceRelativeMouse = true;
         }  else if (!strcmp(argv[i], "-cacheReads")) {
             this->cacheReads = true;
+        }  else if (!strcmp(argv[i], "-disableWasmJitForWrittenCode")) {
+            this->disableWasmJitForWrittenCode = true;
         }
         else if (!strcmp(argv[i], "-dxvk")) {
             BString dxvk;

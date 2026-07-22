@@ -45,3 +45,4 @@ lib/mac
 project/mac-xcode/Boxedwine/DerivedDataCoverage
 *.xcresult
 *.profraw
+.codex-worktrees/

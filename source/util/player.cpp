@@ -20,6 +20,10 @@
 #include "knativesystem.h"
 #include "pixelMatch.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
+
 #ifdef BOXEDWINE_RECORDER
 
 #pragma warning(push)
@@ -39,12 +43,159 @@ static void flipRGBBitmap(unsigned char* data, int stride, int height) {
 
 Player* Player::instance;
 
+static BString getAutomationScriptPath(BString path, BString& directory) {
+    int lastSlash = path.lastIndexOf('/');
+    int lastBackslash = path.lastIndexOf('\\');
+    int separator = lastSlash > lastBackslash ? lastSlash : lastBackslash;
+    if (separator >= 0 && path.substr(separator + 1) == RECORDER_SCRIPT) {
+        directory = separator == 0 ? path.substr(0, 1) : path.substr(0, separator);
+        return path;
+    }
+    directory = path;
+    return path.stringByApppendingPath(RECORDER_SCRIPT);
+}
+
+static bool readVirtualFile(BString path, std::vector<U8>& data) {
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(BString::empty, path, true);
+    if (!node || node->isDirectory()) {
+        return false;
+    }
+    FsOpenNode* openNode = node->open(K_O_RDONLY);
+    if (!openNode) {
+        return false;
+    }
+    S64 fileLength = openNode->length();
+    if (fileLength < 0) {
+        openNode->close();
+        return false;
+    }
+    data.resize((size_t)fileLength);
+    U32 totalRead = 0;
+    while (totalRead < data.size()) {
+        U32 read = openNode->readNative(data.data() + totalRead, (U32)(data.size() - totalRead));
+        if (!read) {
+            break;
+        }
+        totalRead += read;
+    }
+    openNode->close();
+    data.resize(totalRead);
+    return totalRead == fileLength;
+}
+
+static void splitScriptLines(const std::vector<U8>& data, std::vector<BString>& lines) {
+    BString line;
+    for (U8 value : data) {
+        char c = (char)value;
+        if (c == '\n') {
+            lines.push_back(line);
+            line.removeAll();
+        } else if (c != '\r') {
+            line.append(c);
+        }
+    }
+    if (line.length()) {
+        lines.push_back(line);
+    }
+}
+
+static U16 readLe16(const std::vector<U8>& data, size_t offset) {
+    return (U16)data[offset] | ((U16)data[offset + 1] << 8);
+}
+
+static U32 readLe32(const std::vector<U8>& data, size_t offset) {
+    return (U32)data[offset] | ((U32)data[offset + 1] << 8) | ((U32)data[offset + 2] << 16) | ((U32)data[offset + 3] << 24);
+}
+
+static S32 readLe32Signed(const std::vector<U8>& data, size_t offset) {
+    return (S32)readLe32(data, offset);
+}
+
+static unsigned char* loadBmpFromMemory(const std::vector<U8>& data, int* width, int* height) {
+    if (data.size() < 54 || data[0] != 'B' || data[1] != 'M') {
+        return nullptr;
+    }
+
+    U32 pixelOffset = readLe32(data, 10);
+    U32 dibSize = readLe32(data, 14);
+    if (dibSize < 40 || pixelOffset >= data.size()) {
+        return nullptr;
+    }
+
+    S32 bmpWidth = readLe32Signed(data, 18);
+    S32 bmpHeight = readLe32Signed(data, 22);
+    U16 planes = readLe16(data, 26);
+    U16 bpp = readLe16(data, 28);
+    U32 compression = readLe32(data, 30);
+    if (bmpWidth <= 0 || bmpHeight == 0 || planes != 1 || compression != 0 || (bpp != 24 && bpp != 32)) {
+        return nullptr;
+    }
+
+    bool topDown = bmpHeight < 0;
+    U32 outWidth = (U32)bmpWidth;
+    U32 outHeight = (U32)(topDown ? -bmpHeight : bmpHeight);
+    U32 bytesPerPixel = bpp / 8;
+    U32 rowStride = ((outWidth * bytesPerPixel) + 3) & ~3;
+    U64 neededSize = (U64)pixelOffset + (U64)rowStride * outHeight;
+    if (neededSize > data.size()) {
+        return nullptr;
+    }
+
+    unsigned char* out = (unsigned char*)malloc((size_t)outWidth * outHeight * 4);
+    if (!out) {
+        return nullptr;
+    }
+
+    for (U32 y = 0; y < outHeight; y++) {
+        U32 fileY = topDown ? y : outHeight - 1 - y;
+        const U8* row = data.data() + pixelOffset + (size_t)fileY * rowStride;
+        for (U32 x = 0; x < outWidth; x++) {
+            const U8* src = row + x * bytesPerPixel;
+            unsigned char* dst = out + ((size_t)y * outWidth + x) * 4;
+            dst[0] = src[2];
+            dst[1] = src[1];
+            dst[2] = src[0];
+            dst[3] = bpp == 32 ? src[3] : 255;
+        }
+    }
+
+    *width = (int)outWidth;
+    *height = (int)outHeight;
+    return out;
+}
+
+static unsigned char* loadAutomationImage(Player* player, const BString& fileName, int* width, int* height) {
+    BString path = player->directory.stringByApppendingPath(fileName);
+    if (!player->useVirtualFiles) {
+        return stbi_load(path.c_str(), width, height, nullptr, 4);
+    }
+    std::vector<U8> data;
+    if (!readVirtualFile(path, data) || data.empty()) {
+        return nullptr;
+    }
+    // STB asserts on these recorder BMPs when decoding from memory.
+    unsigned char* bmp = loadBmpFromMemory(data, width, height);
+    if (bmp) {
+        return bmp;
+    }
+    return stbi_load_from_memory(data.data(), (int)data.size(), width, height, nullptr, 4);
+}
+
 void Player::readCommand() {
     this->nextCommand.clear();
     this->nextValue.clear();
 
     BString line;
-    if (!file.readLine(line)) {
+    bool hasLine = false;
+    if (this->useVirtualFiles) {
+        if (this->scriptLineIndex < this->scriptLines.size()) {
+            line = this->scriptLines[this->scriptLineIndex++];
+            hasLine = true;
+        }
+    } else {
+        hasLine = file.readLine(line);
+    }
+    if (!hasLine) {
         klog("script finished: success");
         this->nextCommand = B("DONE"); // will cause success exit code to be returned
         KSystem::killTime = KSystem::getMilliesSinceStart() + 30000;
@@ -65,6 +216,8 @@ void Player::readCommand() {
         exit(99);
     }    
     this->lastCommandTime = KSystem::getMicroCounter();
+    this->lastCommandWallTime = KSystem::getMilliesSinceStart();
+    this->lastScreenshotLogTime = 0;
     if (this->nextCommand.length()==0) {
         klog_fmt("malformed script.  Line = %s", line.c_str());
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -76,12 +229,18 @@ void Player::readCommand() {
 
 bool Player::start(BString directory) {
     Player::instance = new Player();
-    BString script = BString(directory+"/"+RECORDER_SCRIPT);
-    instance->directory = directory;
+    BString script = getAutomationScriptPath(directory, instance->directory);
     instance->file.open(script);
+    if (!instance->file.isOpen()) {
+        std::vector<U8> scriptData;
+        if (readVirtualFile(script, scriptData)) {
+            splitScriptLines(scriptData, instance->scriptLines);
+            instance->useVirtualFiles = true;
+        }
+    }
     instance->lastCommandTime = 0;
     instance->lastScreenRead = 0;
-    if (!instance->file.isOpen()) {
+    if (!instance->file.isOpen() && instance->scriptLines.empty()) {
         klog_fmt("script not found: %s error=%d(%s)", script.c_str(), errno, strerror(errno));
         exit(100);
     } else {
@@ -113,6 +272,9 @@ static unsigned char* image_data;
 static U8* output;
 static U32 outputLen;
 
+static const U32 AUTOMATION_TIMEOUT_MS = 5 * 60 * 1000;
+static const U32 SCREENSHOT_WAIT_LOG_MS = 30 * 1000;
+
 #define COMPARING_PIXELS_WAITING 0
 #define COMPARING_PIXELS_WORKING 1
 #define COMPARING_PIXELS_SUCCESS 2
@@ -120,6 +282,76 @@ static U32 outputLen;
 
 static std::mutex comparingCondMutex;
 static std::condition_variable comparingCond;
+
+#ifdef __EMSCRIPTEN__
+static void finishEmscriptenAutomation(U32 code) {
+    if (Player::instance) {
+        Player::instance->quit();
+    }
+    emscripten_force_exit(code);
+}
+#endif
+
+static bool compareScreenshotPixels(U32* diffOut = nullptr) {
+    if (outputLen < bufferlen) {
+        if (output) {
+            delete[] output;
+        }
+        output = new U8[bufferlen];
+        outputLen = bufferlen;
+    }
+    U32 diff = pixelmatch(image_data, image_width * 4, buffer, image_width * 4, image_width, image_height, output);
+    if (diffOut) {
+        *diffOut = diff;
+    }
+    return diff == 0;
+}
+
+static void logScreenshotWait(Player* player, const BString& fileName, bool captured, U32 diffCount) {
+    U32 nowMs = KSystem::getMilliesSinceStart();
+    U32 elapsedMs = nowMs - player->lastCommandWallTime;
+    if (player->lastScreenshotLogTime != 0 && nowMs - player->lastScreenshotLogTime < SCREENSHOT_WAIT_LOG_MS) {
+        return;
+    }
+    player->lastScreenshotLogTime = nowMs;
+    if (captured) {
+        klog_fmt("script: waiting for screenshot %s elapsed=%ums diff=%u", fileName.c_str(), elapsedMs, diffCount);
+    } else {
+        klog_fmt("script: waiting for screenshot %s elapsed=%ums capture=pending", fileName.c_str(), elapsedMs);
+    }
+}
+
+static bool isAutomationTimedOut(Player* player) {
+    return player->lastCommandWallTime != 0 && KSystem::getMilliesSinceStart() - player->lastCommandWallTime > AUTOMATION_TIMEOUT_MS;
+}
+
+static void failAutomationTimeout(Player* player, KNativeScreenPtr screen, const BString& nextValue) {
+    klog_fmt("script timed out %s", player->directory.c_str());
+    if (player->nextCommand == "SCREENSHOT") {
+        std::vector<BString> items;
+        nextValue.split(',', items);
+
+        if (items.size() > 4) {
+            U32 x = atoi(items[0].c_str());
+            U32 y = atoi(items[1].c_str());
+            U32 w = atoi(items[2].c_str());
+            U32 h = atoi(items[3].c_str());
+
+            screen->partialScreenShot(B("failed.bmp"), x, y, w, h, nullptr, 0);
+        } else {
+            screen->screenShot(B("failed.bmp"), nullptr, 0);
+        }
+    } else {
+        screen->screenShot(B("failed.bmp"), nullptr, 0);
+    }
+    screen->saveBmp(B("failed_diff.bmp"), output, 32, image_width, image_height);
+#ifdef __EMSCRIPTEN__
+    finishEmscriptenAutomation(2);
+#else
+    player->quit();
+    exit(2);
+#endif
+}
 
 void bitmapCompareThread(Player* player) {    
     while (comparingPixels != COMPARING_PIXELS_DONE) {
@@ -131,14 +363,7 @@ void bitmapCompareThread(Player* player) {
             }
             comparingPixels = COMPARING_PIXELS_WORKING;
         }
-        if (outputLen < bufferlen) {
-            if (output) {
-                delete[] output;
-            }
-            output = new U8[bufferlen];
-            outputLen = bufferlen;
-        }
-        if (pixelmatch(image_data, image_width * 4, buffer, image_width * 4, image_width, image_height, output) == 0) {
+        if (compareScreenshotPixels()) {
             std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_DONE) {
                 break;
@@ -187,6 +412,11 @@ void Player::runSlice() {
 
     KNativeScreenPtr screen = KNativeSystem::getScreen();
     KNativeInputPtr input = KNativeSystem::getCurrentInput();
+
+    if (isAutomationTimedOut(this)) {
+        failAutomationTimeout(this, screen, this->nextValue);
+        return;
+    }
 
     if (this->nextCommand=="MOVETO") {
         std::vector<BString> items;
@@ -241,7 +471,9 @@ void Player::runSlice() {
             instance->readCommand();            
         }
     } else if (this->nextCommand=="DONE") {
-        //exit(1);, let it exit gracefully
+#ifdef __EMSCRIPTEN__
+        finishEmscriptenAutomation(111);
+#endif
     } else if (this->nextCommand=="SCREENSHOT") {
         if (KSystem::getMicroCounter()<this->lastScreenRead+1000000) {
             return;
@@ -266,7 +498,11 @@ void Player::runSlice() {
                 if (image_data) {
                     free(image_data);
                 }
-                image_data = stbi_load((directory.stringByApppendingPath(fileName)).c_str(), &image_width, &image_height, nullptr, 4);
+                image_data = loadAutomationImage(this, fileName, &image_width, &image_height);
+                if (!image_data) {
+                    klog_fmt("script: screenshot image not found, %s", fileName.c_str());
+                    exit(101);
+                }
                 lastFileName = fileName;
                 U32 len = image_width * 4 * image_height;
                 if (bufferlen < len) {
@@ -287,11 +523,25 @@ void Player::runSlice() {
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
                 comparingPixels = COMPARING_PIXELS_WAITING;
-            } else if (comparingPixels == COMPARING_PIXELS_WAITING && screen->partialScreenShot(B(""), x, y, w, h, buffer, bufferlen)) {
-                if (comparingThread.native_handle() == 0) {
-                    comparingThread = std::thread(bitmapCompareThread, this);
+            } else if (comparingPixels == COMPARING_PIXELS_WAITING) {
+                if (screen->partialScreenShot(B(""), x, y, w, h, buffer, bufferlen)) {
+#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
+                    U32 diffCount = 0;
+                    comparingPixels = compareScreenshotPixels(&diffCount) ? COMPARING_PIXELS_SUCCESS : COMPARING_PIXELS_WAITING;
+                    if (comparingPixels == COMPARING_PIXELS_WAITING) {
+                        logScreenshotWait(this, fileName, true, diffCount);
+                    }
+#else
+                    if (comparingThread.native_handle() == 0) {
+                        comparingThread = std::thread(bitmapCompareThread, this);
+                    }
+                    comparingCond.notify_one();
+#endif
+                } else {
+#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
+                    logScreenshotWait(this, fileName, false, 0);
+#endif
                 }
-                comparingCond.notify_one();
             }
         } else if (items.size()>0) {
             BString fileName = items[0];
@@ -300,7 +550,11 @@ void Player::runSlice() {
                 if (image_data) {
                     free(image_data);
                 }
-                image_data = stbi_load((directory.stringByApppendingPath(fileName)).c_str(), &image_width, &image_height, nullptr, 4);
+                image_data = loadAutomationImage(this, fileName, &image_width, &image_height);
+                if (!image_data) {
+                    klog_fmt("script: screenshot image not found, %s", fileName.c_str());
+                    exit(101);
+                }
                 lastFileName = fileName;
                 U32 len = image_width * 4 * image_height;
                 if (bufferlen < len) {
@@ -321,11 +575,25 @@ void Player::runSlice() {
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
                 comparingPixels = COMPARING_PIXELS_WAITING;
-            } else if (comparingPixels == COMPARING_PIXELS_WAITING && screen->screenShot(B(""), buffer, bufferlen)) {
-                if (comparingThread.native_handle() == 0) {
-                    comparingThread = std::thread(bitmapCompareThread, this);
+            } else if (comparingPixels == COMPARING_PIXELS_WAITING) {
+                if (screen->screenShot(B(""), buffer, bufferlen)) {
+#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
+                    U32 diffCount = 0;
+                    comparingPixels = compareScreenshotPixels(&diffCount) ? COMPARING_PIXELS_SUCCESS : COMPARING_PIXELS_WAITING;
+                    if (comparingPixels == COMPARING_PIXELS_WAITING) {
+                        logScreenshotWait(this, fileName, true, diffCount);
+                    }
+#else
+                    if (comparingThread.native_handle() == 0) {
+                        comparingThread = std::thread(bitmapCompareThread, this);
+                    }
+                    comparingCond.notify_one();
+#endif
+                } else {
+#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
+                    logScreenshotWait(this, fileName, false, 0);
+#endif
                 }
-                comparingCond.notify_one();
             }
         }        
     }
@@ -340,29 +608,6 @@ void Player::runSlice() {
             processWaitCommand = true;
             this->lastCommandTime = KSystem::getMicroCounter();
         }
-    }
-    if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*5) {
-        klog_fmt("script timed out %s", this->directory.c_str());
-        if (this->nextCommand == "SCREENSHOT") {
-            std::vector<BString> items;
-            this->nextValue.split(',', items);
-
-            if (items.size() > 4) {
-                U32 x = atoi(items[0].c_str());
-                U32 y = atoi(items[1].c_str());
-                U32 w = atoi(items[2].c_str());
-                U32 h = atoi(items[3].c_str());
-
-                screen->partialScreenShot(B("failed.bmp"), x, y, w, h, nullptr, 0);
-            } else {
-                screen->screenShot(B("failed.bmp"), nullptr, 0);
-            }
-        } else {
-            screen->screenShot(B("failed.bmp"), nullptr, 0);
-        }
-        screen->saveBmp(B("failed_diff.bmp"), output, 32, image_width, image_height);
-        quit();
-        exit(2);
     }
 }
 

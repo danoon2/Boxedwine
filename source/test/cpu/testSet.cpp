@@ -269,6 +269,9 @@ void runSetOpcode(U8 opcode, bool big, const char* name) {
         if ((bits & 0x10) != 0) flags |= SF;
         if ((bits & 0x20) != 0) flags |= OF;
         for (int reg = 0; reg < 8; ++reg) {
+            if (!testRunRegister(reg)) {
+                continue;
+            }
             runRegCase(opcode, big, reg, flags, true, false, name);
         }
         runMemCase(opcode, big, flags, true, false, name);
@@ -276,6 +279,9 @@ void runSetOpcode(U8 opcode, bool big, const char* name) {
 
     for (size_t i = 0; i < caseCount(CMP_CASES); ++i) {
         for (int reg = 0; reg < 8; ++reg) {
+            if (!testRunRegister(reg)) {
+                continue;
+            }
             runCmpRegCase(opcode, big, reg, CMP_CASES[i], false, name);
             runCmpRegCase(opcode, big, reg, CMP_CASES[i], true, name);
         }

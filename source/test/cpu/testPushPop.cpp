@@ -471,8 +471,14 @@ void runAbsoluteMemoryCases(int width, bool push, const char* name) {
 
 void runBaseMemoryCases(int width, bool push, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         for (int dispIndex = 0; dispIndex < 3; ++dispIndex) {
             if (base == R_SP && dispIndex == 0) {
+                continue;
+            }
+            if (!testRunMemoryBaseDisplacement(base, dispIndex)) {
                 continue;
             }
             U32 regs[8];
@@ -503,6 +509,9 @@ void runSibMemoryCases(int width, bool push, const char* name) {
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 AddressCase address;
                 U32 targetOffset = MEM_BASE + 0x3000 + base * 0x200 + index * 0x20 + shift * 4;
@@ -1803,24 +1812,36 @@ void runDataHardwareBreakpointTrap() {
 
 void testPushR16_0x050() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         runPushRegCase(reg, 16, "push r16");
     }
 }
 
 void testPushR32_0x250() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         runPushRegCase(reg, 32, "push r32");
     }
 }
 
 void testPopR16_0x058() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         runPopRegCase(reg, 16, "pop r16");
     }
 }
 
 void testPopR32_0x258() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         runPopRegCase(reg, 32, "pop r32");
     }
 }
@@ -1861,6 +1882,9 @@ void testPushIb32_0x26a() {
 
 void testPopE16_0x08f() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         if (reg != R_SP) {
             runPopGroupRegCase(reg, 16, "pop e16 reg");
         }
@@ -1870,6 +1894,9 @@ void testPopE16_0x08f() {
 
 void testPopE32_0x28f() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         if (reg != R_SP) {
             runPopGroupRegCase(reg, 32, "pop e32 reg");
         }
@@ -1989,6 +2016,9 @@ void testDataHardwareBreakpointRaisesTrap() {
 
 void testPushE16_0x0ff() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         runPushGroupRegCase(reg, 16, "push e16 reg");
     }
     runPushMemoryCases(16, "push e16 memory");
@@ -1996,6 +2026,9 @@ void testPushE16_0x0ff() {
 
 void testPushE32_0x2ff() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         runPushGroupRegCase(reg, 32, "push e32 reg");
     }
     runPushMemoryCases(32, "push e32 memory");

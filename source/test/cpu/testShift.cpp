@@ -817,6 +817,9 @@ void runShiftWidth(CountMode mode, int width, const char* name) {
                 continue;
             }
             for (int reg = 0; reg < 8; ++reg) {
+                if (!testRunRegister(reg)) {
+                    continue;
+                }
                 runRegisterCase(op, width, mode, reg, data, name);
             }
             runMemoryCase(op, width, mode, data, name);
@@ -932,10 +935,16 @@ void runDoubleShiftWidth(DoubleShiftOp op, CountMode mode, int width, const char
         }
         for (int dst = 0; dst < 8; ++dst) {
             for (int src = 0; src < 8; ++src) {
+                if (!testRunRegisterPair(dst, src)) {
+                    continue;
+                }
                 runDoubleShiftRegisterCase(op, width, mode, dst, src, data, name);
             }
         }
         for (int src = 0; src < 8; ++src) {
+            if (!testRunRegister(src)) {
+                continue;
+            }
             runDoubleShiftMemoryCase(op, width, mode, src, data, name);
         }
     }

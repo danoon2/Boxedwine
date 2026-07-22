@@ -31,18 +31,10 @@ public:
 		this->want.format = AUDIO_U8;
 		this->want.channels = 1;
 		this->want.freq = 11025;
-#ifdef __EMSCRIPTEN__
-		this->want.samples = 4096; //Must be pow of 2
-#else
-		this->want.samples = 5512;
-#endif
+		this->want.samples = KDspAudioMath::getRequestedSdlPeriodFrames();
 		this->got.channels = 1;
 		this->got.freq = 11025;
-#ifdef __EMSCRIPTEN__
-		this->got.samples = 4096; //Must be pow of 2
-#else
-		this->got.samples = 5512;
-#endif
+		this->got.samples = this->want.samples;
 	}
 
 	virtual ~KDspAudioSdl() {
@@ -227,7 +219,7 @@ public:
 			return 0;
 		}
 		U32 queued = SDL_GetQueuedAudioSize(this->deviceId);
-		U32 target = (gotBytesPerSecond * 96 / 1000) & ~(frameSize - 1);
+		U32 target = KDspAudioMath::getAlignedDurationBytes(gotBytesPerSecond, 48, frameSize);
 		if (queued >= target) {
 			return 0;
 		}

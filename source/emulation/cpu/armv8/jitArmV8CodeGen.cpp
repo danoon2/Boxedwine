@@ -42,6 +42,8 @@ enum class TSOMode {
 };
 
 static TSOMode tsoMode = TSOMode::Automatic;
+static std::once_flag s_tsoModeInitFlag;
+static thread_local bool s_hardwareTsoChecked = false;
 
 #define NUMBER_OF_REGS 31
 #define NUMBER_OF_VREGS 32
@@ -164,44 +166,13 @@ public:
     }
 
     JitArmV8CodeGen(CPU* cpu) : JitSSE(cpu) {
-        static std::once_flag s_initFlag;
-        std::call_once(s_initFlag, [&]() {
-#ifdef BOXEDWINE_MSVC
-            U64 features = get_ID_AA64ISAR0_EL1();
-            U64 atomicLevel = ((int64_t)(features << (60 - 20)) >> 60);
-            if (atomicLevel >= 1) {
-                rt._cpu_features.add(asmjit::CpuFeatures::ARM::kLSE);
-            }
-
-            features = get_ID_AA64ISAR1_EL1();
-            atomicLevel = ((int64_t)(features << (60 - 20)) >> 60);
-            if (atomicLevel >= 1) {
-                rt._cpu_features.add(asmjit::CpuFeatures::ARM::kLRCPC);
-            }
-            if (atomicLevel >= 2) {
-                rt._cpu_features.add(asmjit::CpuFeatures::ARM::kLRCPC2);
-            }
-            if (atomicLevel >= 3) {
-                rt._cpu_features.add(asmjit::CpuFeatures::ARM::kLRCPC3);
-            }
-#endif
-            if (tsoMode == TSOMode::Automatic) {
-#ifdef __linux__
-                if (enableHardwareTSO()) {
-                    tsoMode = TSOMode::Hardware;
-                } else
-#endif
-                if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLRCPC2)) {
-                    tsoMode = TSOMode::FEAT_LRCPC2;
-                } else {
-                    tsoMode = TSOMode::None;
-                }
-            }
-        });
+        ensureArmV8HardwareTSOForThread();
         code.init(rt.environment());
         code.attach(&compiler);
         code.set_error_handler(this);
     }
+
+    static void initTSOMode();
 
     void preOp(DecodedOp* op) override;
     RegPtr getReadOnlyRegInLower(JitWidth width, U8 reg);
@@ -841,6 +812,52 @@ protected:
 };
 
 asmjit::JitRuntime JitArmV8CodeGen::rt;
+
+void JitArmV8CodeGen::initTSOMode() {
+    std::call_once(s_tsoModeInitFlag, []() {
+#ifdef BOXEDWINE_MSVC
+        U64 features = get_ID_AA64ISAR0_EL1();
+        U64 atomicLevel = ((int64_t)(features << (60 - 20)) >> 60);
+        if (atomicLevel >= 1) {
+            JitArmV8CodeGen::rt._cpu_features.add(asmjit::CpuFeatures::ARM::kLSE);
+        }
+
+        features = get_ID_AA64ISAR1_EL1();
+        atomicLevel = ((int64_t)(features << (60 - 20)) >> 60);
+        if (atomicLevel >= 1) {
+            JitArmV8CodeGen::rt._cpu_features.add(asmjit::CpuFeatures::ARM::kLRCPC);
+        }
+        if (atomicLevel >= 2) {
+            JitArmV8CodeGen::rt._cpu_features.add(asmjit::CpuFeatures::ARM::kLRCPC2);
+        }
+        if (atomicLevel >= 3) {
+            JitArmV8CodeGen::rt._cpu_features.add(asmjit::CpuFeatures::ARM::kLRCPC3);
+        }
+#endif
+        if (tsoMode == TSOMode::Automatic) {
+#ifdef __linux__
+            if (enableHardwareTSO()) {
+                tsoMode = TSOMode::Hardware;
+                s_hardwareTsoChecked = true;
+            } else
+#endif
+            if (JitArmV8CodeGen::rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLRCPC2)) {
+                tsoMode = TSOMode::FEAT_LRCPC2;
+            } else {
+                tsoMode = TSOMode::None;
+            }
+        }
+    });
+}
+
+void ensureArmV8HardwareTSOForThread() {
+    JitArmV8CodeGen::initTSOMode();
+#ifdef __linux__
+    if (tsoMode == TSOMode::Hardware && !s_hardwareTsoChecked) {
+        s_hardwareTsoChecked = enableHardwareTSO();
+    }
+#endif
+}
 
 void JitArmV8CodeGen::preOp(DecodedOp* op) {
     rUsed.fill(false);

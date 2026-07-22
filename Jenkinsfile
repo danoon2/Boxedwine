@@ -13,6 +13,140 @@ void gitCheckout() {
     }
 }
 
+void runEmscriptenUnitTest(String testName, String buildDir, String port) {
+    withEnv([
+        "BOXEDWINE_UNIT_TEST_NAME=${testName}",
+        "BOXEDWINE_UNIT_TEST_BUILD_DIR=${buildDir}",
+        "BOXEDWINE_UNIT_TEST_PORT=${port}"
+    ]) {
+        sh '''#!/bin/bash
+            source ~/emsdk/emsdk_env.sh
+            cd project/emscripten
+            set -euo pipefail
+
+            firefox_profile="$(mktemp -d "$WORKSPACE/.firefox-${BOXEDWINE_UNIT_TEST_BUILD_DIR}.XXXXXX")"
+            cleanup_firefox_profile() {
+                if [ -z "$firefox_profile" ]; then
+                    return 0
+                fi
+
+                case "$firefox_profile" in
+                    "$WORKSPACE"/.firefox-*)
+                        if ! rm -rf -- "$firefox_profile"; then
+                            echo "WARNING: Could not remove Firefox profile: $firefox_profile" >&2
+                        fi
+                        firefox_profile=''
+                        ;;
+                    *)
+                        echo "WARNING: Refusing to remove unexpected Firefox profile path: $firefox_profile" >&2
+                        firefox_profile=''
+                        ;;
+                esac
+                return 0
+            }
+            trap cleanup_firefox_profile EXIT
+
+            echo "Running ${BOXEDWINE_UNIT_TEST_NAME}"
+            cd "Build/${BOXEDWINE_UNIT_TEST_BUILD_DIR}"
+            emrun --kill-exit \
+                --port "$BOXEDWINE_UNIT_TEST_PORT" \
+                --browser="/usr/bin/firefox" \
+                --browser-args="--headless --no-remote --profile ${firefox_profile}" \
+                boxedwine.html
+        '''
+    }
+}
+
+void runEmscriptenAbiWordAutomation(String automationName, String buildDir, String port) {
+    withEnv([
+        "BOXEDWINE_AUTOMATION_NAME=${automationName}",
+        "BOXEDWINE_AUTOMATION_BUILD_DIR=${buildDir}",
+        "BOXEDWINE_AUTOMATION_PORT=${port}"
+    ]) {
+        sh '''#!/bin/bash
+            source ~/emsdk/emsdk_env.sh
+            export DISPLAY=:0
+            export XAUTHORITY="$HOME/.Xauthority"
+            cd project/emscripten
+            set -euo pipefail
+
+            chrome_profile=''
+            cleanup_chrome_profile() {
+                local cleanup_attempt
+
+                if [ -z "$chrome_profile" ]; then
+                    return 0
+                fi
+
+                case "$chrome_profile" in
+                    "$WORKSPACE"/.chrome-*)
+                        # emrun terminates Chrome, but its child processes can briefly
+                        # recreate profile files while they are shutting down.
+                        for cleanup_attempt in 1 2 3 4 5
+                        do
+                            if rm -rf -- "$chrome_profile"; then
+                                chrome_profile=''
+                                return 0
+                            fi
+
+                            if [ "$cleanup_attempt" != "5" ]; then
+                                echo "Chrome profile is still busy; retrying cleanup (${cleanup_attempt}/5)"
+                                sleep 1
+                            fi
+                        done
+
+                        echo "WARNING: Chrome profile is still busy; leaving it for workspace cleanup: $chrome_profile" >&2
+                        chrome_profile=''
+                        return 0
+                        ;;
+                    *)
+                        echo "Refusing to remove unexpected Chrome profile path: $chrome_profile" >&2
+                        return 1
+                        ;;
+                esac
+            }
+            trap cleanup_chrome_profile EXIT
+
+            last_rc=1
+            for attempt in 1 2 3
+            do
+                echo "${BOXEDWINE_AUTOMATION_NAME} attempt ${attempt}/3"
+                chrome_profile="$(mktemp -d "$WORKSPACE/.chrome-${BOXEDWINE_AUTOMATION_BUILD_DIR}-${attempt}.XXXXXX")"
+
+                cd "Build/${BOXEDWINE_AUTOMATION_BUILD_DIR}"
+                set +e
+                emrun --kill-exit \
+                    --port "$BOXEDWINE_AUTOMATION_PORT" \
+                    --timeout 600 \
+                    --timeout-returncode 124 \
+                    --browser="/usr/bin/google-chrome" \
+                    --browser-args="--user-data-dir=${chrome_profile}" \
+                    'boxedwine.html?root=boxedwine&overlay=abiword_auto&w=%2Ffiles&play=%2Ffiles%2Fscript.txt&p=ABIWORD.EXE&resolution=1024x768&storage=memory'
+                rc=$?
+                set -e
+                cd ../..
+
+                cleanup_chrome_profile
+                chrome_profile=''
+
+                if [ "$rc" = "111" ]; then
+                    echo "${BOXEDWINE_AUTOMATION_NAME} passed"
+                    exit 0
+                fi
+
+                last_rc="$rc"
+                echo "${BOXEDWINE_AUTOMATION_NAME} attempt ${attempt}/3 failed with exit code ${rc}"
+            done
+
+            echo "${BOXEDWINE_AUTOMATION_NAME} failed after 3 attempts"
+            if [ "$last_rc" = "0" ]; then
+                exit 1
+            fi
+            exit "$last_rc"
+        '''
+    }
+}
+
 void publishGithubBuildStatus(String state, String description) {
     def commit = env.GIT_COMMIT ?: env.BOXEDWINE_GIT_COMMIT
     if (!commit) {
@@ -98,12 +232,29 @@ pipeline {
                         sh '''#!/bin/bash
                             source ~/emsdk/emsdk_env.sh
                             cd project/emscripten
+                            set -euo pipefail
+
                             make clean
                             make test
-                            killall -9 python3
-                            cd Build/Test
-                            emrun --kill_start --kill_exit --browser="/usr/bin/firefox" --browser_args="--headless" boxedwine.html
+                            make testJit
+                            make testMultiThreadedJit
+
+                            killall -9 python3 2>/dev/null || true
+                            killall -9 firefox 2>/dev/null || true
                         '''
+                        script {
+                            parallel(
+                                'Emscripten ST': {
+                                    runEmscriptenUnitTest('Emscripten ST unit tests', 'Test', '6921')
+                                },
+                                'Emscripten ST JIT': {
+                                    runEmscriptenUnitTest('Emscripten ST JIT unit tests', 'TestJit', '6922')
+                                },
+                                'Emscripten MT JIT': {
+                                    runEmscriptenUnitTest('Emscripten MT JIT unit tests', 'TestMultiThreadedJit', '6923')
+                                }
+                            )
+                        }
                     }
                 }
                 stage ('Test Linux (x64)') {
@@ -196,35 +347,37 @@ pipeline {
                         dir("project/emscripten") {
                             sh '''#!/bin/bash
                                 source ~/emsdk/emsdk_env.sh
+                                set -e
                                 set -x
                                 rm -rf Deploy
                                 make clean
-                                make multiThreaded
-                                if [ ! -f "Build/MultiThreaded/boxedwine.wasm" ] 
-                                then
-                                    echo "boxedwine.wasm DOES NOT exists."
-                                    exit 999
-                                fi
-                                mkdir -p Deploy/Web/MultiThreaded
-                                cp Build/MultiThreaded/boxedwine.html Deploy/Web/MultiThreaded
-                                cp boxedwine.css Deploy/Web/MultiThreaded
-                                cp boxedwine-shell.js Deploy/Web/MultiThreaded
-                                cp Build/MultiThreaded/boxedwine.js Deploy/Web/MultiThreaded
-                                cp Build/MultiThreaded/boxedwine.wasm Deploy/Web/MultiThreaded
-                                cp /var/www/buildfiles/* Deploy/Web/MultiThreaded
-                                make release
-                                if [ ! -f "Build/Release/boxedwine.wasm" ] 
-                                then
-                                    echo "boxedwine.wasm DOES NOT exists."
-                                    exit 999
-                                fi
-                                mkdir -p Deploy/Web/SingleThreaded
-                                cp Build/Release/boxedwine.html Deploy/Web/SingleThreaded
-                                cp boxedwine.css Deploy/Web/SingleThreaded
-                                cp boxedwine-shell.js Deploy/Web/SingleThreaded
-                                cp Build/Release/boxedwine.js Deploy/Web/SingleThreaded
-                                cp Build/Release/boxedwine.wasm Deploy/Web/SingleThreaded
-                                cp /var/www/buildfiles/* Deploy/Web/SingleThreaded
+
+                                build_web_target() {
+                                    local make_target="$1"
+                                    local build_dir="$2"
+                                    local deploy_name="$3"
+                                    local deploy_dir="Deploy/Web/${deploy_name}"
+
+                                    make "${make_target}"
+                                    if [ ! -f "${build_dir}/boxedwine.wasm" ]
+                                    then
+                                        echo "${build_dir}/boxedwine.wasm DOES NOT exist."
+                                        exit 999
+                                    fi
+
+                                    mkdir -p "${deploy_dir}"
+                                    cp "${build_dir}/boxedwine.html" "${deploy_dir}"
+                                    cp boxedwine.css "${deploy_dir}"
+                                    cp boxedwine-shell.js "${deploy_dir}"
+                                    cp "${build_dir}/boxedwine.js" "${deploy_dir}"
+                                    cp "${build_dir}/boxedwine.wasm" "${deploy_dir}"
+                                }
+
+                                build_web_target release Build/Release SingleThreaded
+                                build_web_target multiThreaded Build/MultiThreaded MultiThreaded
+                                build_web_target jit Build/Jit SingleThreadedJit
+                                build_web_target multiThreadedJit Build/MultiThreadedJit MultiThreadedJit
+                                cp /var/www/buildfiles/* "Deploy/Web/"
                             ''' 
                         }
                         dir("project/emscripten") {
@@ -378,6 +531,80 @@ pipeline {
         }
         stage ('Automation') {
             parallel {
+                stage ('Emscripten AbiWord Automation') {
+                    agent {
+                        label "emscripten"
+                    }
+                    steps {
+                        script {
+                            gitCheckout()
+                        }
+                        sh '''#!/bin/bash
+                            source ~/emsdk/emsdk_env.sh
+                            export DISPLAY=:0
+                            export XAUTHORITY="$HOME/.Xauthority"
+                            cd project/emscripten
+                            set -euo pipefail
+
+                            ABIWORD_AUTO_URL='https://boxedwine.org/v2/1/abiword_auto_v1.zip'
+                            ABIWORD_AUTO_SHA256='80dc5a5f99f23637e4eb29b72e4f5484e9c03d697e72e4e4777574985b351181'
+                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/1/boxedwine_v1.zip'
+                            BOXEDWINE_AUTO_SHA256='67742f667f989083a327d4405f7e4cd59cacea061a5936dbedcc5d47898de4d9'
+
+                            file_matches_sha256() {
+                                local file="$1"
+                                local expected_sha="$2"
+                                [ -f "$file" ] && printf '%s  %s\\n' "$expected_sha" "$file" | sha256sum -c - >/dev/null 2>&1
+                            }
+
+                            download_checked() {
+                                local url="$1"
+                                local output="$2"
+                                local expected_sha="$3"
+                                local tmp="${output}.tmp"
+
+                                if file_matches_sha256 "$output" "$expected_sha"; then
+                                    echo "$output already exists and matches expected SHA-256"
+                                    return 0
+                                fi
+
+                                echo "Downloading $output from $url"
+                                rm -f "$tmp"
+                                curl -fL --retry 3 --retry-delay 5 --connect-timeout 30 "$url" -o "$tmp"
+                                printf '%s  %s\\n' "$expected_sha" "$tmp" | sha256sum -c -
+                                mv "$tmp" "$output"
+                            }
+
+                            download_checked "$ABIWORD_AUTO_URL" abiword_auto.zip "$ABIWORD_AUTO_SHA256"
+                            download_checked "$BOXEDWINE_AUTO_URL" boxedwine.zip "$BOXEDWINE_AUTO_SHA256"
+
+                            make clean
+                            make automation
+                            make automationMultiThreaded
+                            make automationJit
+                            make automationMultiThreadedJit
+
+                            killall -9 python3 2>/dev/null || true
+                            killall -9 chrome 2>/dev/null || true
+                        '''
+                        script {
+                            parallel(
+                                'Emscripten ST': {
+                                    runEmscriptenAbiWordAutomation('AbiWord Emscripten ST automation', 'Automation', '6931')
+                                },
+                                'Emscripten MT': {
+                                    runEmscriptenAbiWordAutomation('AbiWord Emscripten MT automation', 'AutomationMultiThreaded', '6932')
+                                },
+                                'Emscripten ST JIT': {
+                                    runEmscriptenAbiWordAutomation('AbiWord Emscripten ST JIT automation', 'AutomationJit', '6933')
+                                },
+                                'Emscripten MT JIT': {
+                                    runEmscriptenAbiWordAutomation('AbiWord Emscripten MT JIT automation', 'AutomationMultiThreadedJit', '6934')
+                                }
+                            )
+                        }
+                    }
+                }
                 stage ('Linux (x64) Automation') {
                     agent {
                         label "linux64"
@@ -385,9 +612,9 @@ pipeline {
                     steps {
                         dir("project/linux") {                                                        
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation30.zip
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation31.zip
                                 rm -rf automation
-                                unzip automation30.zip
+                                unzip automation31.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -413,9 +640,9 @@ pipeline {
                     steps {
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation30.zip http://boxedwine.org/v2/1/automation30.zip --output automation30.zip
+                                curl -z automation31.zip http://boxedwine.org/v2/1/automation31.zip --output automation31.zip
                                 rm -rf automation
-                                unzip automation30.zip
+                                unzip automation31.zip
 
                                 rm -rf bin/BoxedwineAutomation.app
                                 /bin/bash buildAutomation.sh
@@ -449,9 +676,9 @@ pipeline {
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation30.zip
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation31.zip
                                 rm -rf automation
-                                unzip automation30.zip
+                                unzip automation31.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -476,9 +703,9 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation30.zip
+                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation31.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            unzip automation30.zip
+                            unzip automation31.zip
                         '''
                         dir("automation") {
                             unstash "windows"
@@ -512,9 +739,9 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation30.zip
+                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation31.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            tar -xf automation30.zip
+                            tar -xf automation31.zip
                         '''
                         dir("automation") {
                             unstash "windowsARM64"

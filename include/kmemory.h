@@ -108,7 +108,6 @@ public:
     U64 readq(U32 address);
     U32 readd(U32 address);
     U32 readdInline(U32 address);
-    void writedInline(U32 address, U32 value);
     void checkDebugTrapOnMemoryWrite(U32 address, U32 len) { if (debugMemoryWriteTrapActive.load(std::memory_order_relaxed)) checkDebugTrapOnMemoryWriteSlow(address, len); }
     void checkDebugTrapOnMemoryWriteSlow(U32 address, U32 len);
     void updateDebugMemoryWriteTrapActive();
@@ -116,8 +115,10 @@ public:
     U8  readb(U32 address);
     void writeq(U32 address, U64 value);
     void writed(U32 address, U32 value);
+    void writedInline(U32 address, U32 value);
     void writew(U32 address, U16 value);
     void writeb(U32 address, U8 value);
+    void preflightWrite(U32 address, U32 len);
 
     BString readString(U32 address);
     BString readStringW(U32 address);
@@ -163,6 +164,8 @@ public:
 
     void* allocCodeMemory(U32 len);
     bool isCode(void* p);
+
+    KMemoryData* getData() { return data; }
 
     BOXEDWINE_MUTEX mutex;
     KMemoryData* deleteOnNextLoop = nullptr;    
