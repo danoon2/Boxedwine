@@ -780,12 +780,12 @@ void JitFPU::dynamic_FLDCW(DecodedOp* op) {
     RegPtr cw = read(JitWidth::b16, calculateEaa(op));
     movzx(JitWidth::b32, cw, JitWidth::b16, cw);
     writeCPU(JitWidth::b32, offsetof(CPU, fpu.cw), cw);
-    updateFpuDivExceptionState();
 
     shrValue(JitWidth::b32, cw, 10);
     andValue(JitWidth::b32, cw, 3);
     writeCPU(JitWidth::b32, offsetof(CPU, fpu.round), cw);
     cw = nullptr;
+    updateFpuDivExceptionState();
     updateExceptionSummary();
 }
 

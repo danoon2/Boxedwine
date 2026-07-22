@@ -12584,6 +12584,7 @@ bool JitWasmCodeGen::canJumpInBlock(U32 opEip, DecodedOp* op) {
 }
 void JitWasmCodeGen::onTestEnd(DecodedOp* op) {
     syncDirtyRegsToHost();
+    writeCurrentEip(0);
     // Set cpu->nextOp = op (the TestEnd op)
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Const((S32)(uintptr_t)op);
@@ -12764,6 +12765,23 @@ void JitWasmCodeGen::emulateSingleOp() {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(m_helperEmulateSingleOpIdx);
     emitBailoutCheck();
+
+    // An interpreter-backed instruction such as POPF can enable single-step
+    // trapping. Return to the dispatcher before compiling the following op so
+    // it runs through CPU::startDebugInstruction/finishDebugInstruction.
+    auto savedGpDirty = m_gpDirty;
+    auto savedGpLoaded = m_gpLoaded;
+    auto savedSegLoaded = m_segLoaded;
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load8U((U32)offsetof(CPU, debugTrapActive));
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
+    m_emitter.emitIf();
+    blockExit();
+    m_emitter.emitEnd();
+    m_gpDirty = savedGpDirty;
+    m_gpLoaded = savedGpLoaded;
+    m_segLoaded = savedSegLoaded;
+
     m_gpLoaded.fill(false);
     m_segLoaded.fill(false);
     // The interpreter may have updated cpu->lazyFlagType to any value.
