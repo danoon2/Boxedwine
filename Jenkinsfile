@@ -619,6 +619,9 @@ pipeline {
                         }
                         dir("project/linux/automation") {
                             unstash "linux64"
+                            sh '''#!/bin/bash
+                                killall -9 boxedwine || true
+                            '''
                             retry(3) {
                                 sh '''
                                     java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
@@ -683,6 +686,9 @@ pipeline {
                         }
                         dir("project/linux/automation") {
                             unstash "linuxArm64"
+                            sh '''#!/bin/bash
+                                killall -9 boxedwine || true
+                            '''
                             retry(3) {
                                 sh '''#!/bin/bash
                                     java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/LinuxArm64/boxedwine\" -nosound -novideo || exit 1

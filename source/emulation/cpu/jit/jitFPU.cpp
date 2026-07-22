@@ -98,7 +98,8 @@ RegPtr JitFPU::getTopReg() {
 
 void JitFPU::updateFpuDivExceptionState() {
     constexpr U32 REQUIRED_MASKS = FPU_SW_IE | FPU_SW_ZE;
-    RegPtr state = readCPU(JitWidth::b32, offsetof(CPU, fpu.cw));
+    RegPtr state = getTmpReg8();
+    readCPU(JitWidth::b32, offsetof(CPU, fpu.cw), state);
     xorValue(JitWidth::b32, state, REQUIRED_MASKS);
     andValue(JitWidth::b32, state, REQUIRED_MASKS);
     compareValue(JitWidth::b32, state, 0, JitEvaluate::NOT_EQUALS, state);
