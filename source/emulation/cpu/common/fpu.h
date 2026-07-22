@@ -240,6 +240,7 @@ public:
 
     void SetCW(U16 word);
     void SetSW(U16 word);
+    void updateDivExceptionState();
     void updateExceptionSummary();
     void SetTag(U32 tag);
 
@@ -253,7 +254,7 @@ public:
     U32 sizeofRegInRegsArray();
 
     U8 tags[9];
-    U8 pad;
+    bool divExceptionsUnmasked;
     U16 pad2;
     U32 cw;
     U32 sw;

@@ -1567,14 +1567,24 @@ void runX87DivFastPathDecision() {
     constexpr U32 FPU_DIVIDE_BY_ZERO_MASK = 0x0004;
 
     FPU fpu;
+    fpu.reset();
+    if (!fpu.divExceptionsUnmasked) {
+        failed("reset x87 control word did not mark divide exceptions unmasked");
+    }
     fpu.FINIT();
+    if (fpu.divExceptionsUnmasked) {
+        failed("default x87 control word marked divide exceptions unmasked");
+    }
     fpu.tags[0] = TAG_Valid;
     fpu.tags[1] = TAG_Valid;
     if (fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
         failed("default x87 divide control and valid tags marked slow");
     }
 
-    fpu.cw &= ~FPU_DIVIDE_BY_ZERO_MASK;
+    fpu.SetCW((U16)(fpu.cw & ~FPU_DIVIDE_BY_ZERO_MASK));
+    if (!fpu.divExceptionsUnmasked) {
+        failed("unmasked x87 divide-by-zero did not update fast-path state");
+    }
     if (!fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
         failed("unmasked x87 divide-by-zero marked fast");
     }
@@ -1582,9 +1592,17 @@ void runX87DivFastPathDecision() {
     fpu.FINIT();
     fpu.tags[0] = TAG_Valid;
     fpu.tags[1] = TAG_Valid;
-    fpu.cw &= ~FPU_INVALID_OPERATION_MASK;
+    fpu.SetCW((U16)(fpu.cw & ~FPU_INVALID_OPERATION_MASK));
+    if (!fpu.divExceptionsUnmasked) {
+        failed("unmasked x87 invalid operation did not update fast-path state");
+    }
     if (!fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
         failed("unmasked x87 invalid operation marked fast");
+    }
+
+    fpu.SetCW(0x37f);
+    if (fpu.divExceptionsUnmasked) {
+        failed("restored x87 control word left divide exceptions unmasked");
     }
 
     fpu.FINIT();

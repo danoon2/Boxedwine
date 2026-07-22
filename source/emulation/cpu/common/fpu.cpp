@@ -113,10 +113,9 @@ static bool fpuIsZero(FPU* fpu, int reg) {
 }
 
 bool fpu_div_control_or_tag_requires_slow_path(const FPU* fpu, int st, int other, bool reverse) {
-    constexpr U32 REQUIRED_MASKS = FPU_SW_IE | FPU_SW_ZE;
     (void)reverse;
 
-    if ((fpu->cw & REQUIRED_MASKS) != REQUIRED_MASKS) {
+    if (fpu->divExceptionsUnmasked) {
         return true;
     }
     return fpu->tags[st] != TAG_Valid || fpu->tags[other] != TAG_Valid;
@@ -192,9 +191,15 @@ void FPU::SetSW(U16 word) {
     this->top = FPU_GET_TOP(this);
 }
 
+void FPU::updateDivExceptionState() {
+    constexpr U32 REQUIRED_MASKS = FPU_SW_IE | FPU_SW_ZE;
+    this->divExceptionsUnmasked = (this->cw & REQUIRED_MASKS) != REQUIRED_MASKS;
+}
+
 void FPU::SetCW(U16 word) {
     this->cw = word;
     this->round = ((word >> 10) & 3);
+    updateDivExceptionState();
     updateExceptionSummary();
 
 #ifdef LOG_FPU
@@ -1488,6 +1493,7 @@ void FPU::FFREE_STi(U32 st) {
 void FPU::reset() {
     memset(this, 0, sizeof(FPU));
     SetTag(TAG_Empty);
+    updateDivExceptionState();
 }
 
 void FPU::startMMX() {

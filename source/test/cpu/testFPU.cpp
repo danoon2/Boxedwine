@@ -1143,6 +1143,50 @@ void runMaskedDivideByZeroStatus(bool big, const char* name) {
     if (unmaskedEnvStatus != STATUS_BITS) {
         failed("%s unmasked divide-by-zero status env=%x", name, unmaskedEnvStatus);
     }
+    if (!cpu->fpu.divExceptionsUnmasked) {
+        failed("%s FLDCW did not mark divide exceptions unmasked", name);
+    }
+}
+
+void runMaskedDoubleDivideByZeroStatus(bool big, const char* name) {
+    constexpr U32 ZERO = MEM_BASE + 0x620;
+    constexpr U32 ENV_MASKED = MEM_BASE + 0x640;
+    constexpr U32 CW_UNMASK_ZE = MEM_BASE + 0x680;
+    constexpr U32 ENV_UNMASKED = MEM_BASE + 0x6c0;
+    constexpr U32 STATUS_BITS = FPU_STATUS_ZE | FPU_STATUS_ES;
+
+    begin(big);
+    fninit();
+
+    writeF64(MEM_BASE, 1.0);
+    writeF64(ZERO, 0.0);
+    fldF64(MEM_BASE, big);
+    pushCode8(0xdc);
+    emitMemModRM(6, ZERO, big); // FDIV m64fp
+    fnstswAx();
+    emitD9MemoryGroup(6, ENV_MASKED, big); // FNSTENV
+
+    fninit();
+    writeI16(CW_UNMASK_ZE, 0x037b);
+    pushCode8(0xd9);
+    emitMemModRM(5, CW_UNMASK_ZE, big); // FLDCW
+    fldF64(MEM_BASE, big);
+    pushCode8(0xdc);
+    emitMemModRM(6, ZERO, big); // FDIV m64fp
+    emitD9MemoryGroup(6, ENV_UNMASKED, big); // FNSTENV
+
+    runTestCPU();
+
+    U32 maskedAxStatus = cpu->reg[0].u16 & STATUS_BITS;
+    U32 maskedEnvStatus = readEnvValue(ENV_MASKED, 1, big) & STATUS_BITS;
+    if (maskedAxStatus != FPU_STATUS_ZE || maskedEnvStatus != FPU_STATUS_ZE) {
+        failed("%s masked divide-by-zero status ax=%x env=%x", name, maskedAxStatus, maskedEnvStatus);
+    }
+
+    U32 unmaskedEnvStatus = readEnvValue(ENV_UNMASKED, 1, big) & STATUS_BITS;
+    if (unmaskedEnvStatus != STATUS_BITS) {
+        failed("%s unmasked divide-by-zero status env=%x", name, unmaskedEnvStatus);
+    }
 }
 
 void runMaskedExceptionUnmaskSummary(bool big, const char* name) {
@@ -1166,6 +1210,9 @@ void runMaskedExceptionUnmaskSummary(bool big, const char* name) {
     runTestCPU();
     if ((cpu->reg[0].u16 & STATUS_BITS) != STATUS_BITS) {
         failed("%s status=%x", name, cpu->reg[0].u16);
+    }
+    if (!cpu->fpu.divExceptionsUnmasked) {
+        failed("%s FLDENV did not mark divide exceptions unmasked", name);
     }
 }
 
@@ -1216,6 +1263,9 @@ void runUnmaskedExceptionMaskSummary(bool big, const char* name) {
     if ((cpu->reg[0].u16 & STATUS_BITS) != FPU_STATUS_ZE) {
         failed("%s status=%x", name, cpu->reg[0].u16);
     }
+    if (cpu->fpu.divExceptionsUnmasked) {
+        failed("%s FLDCW did not mark divide exceptions masked", name);
+    }
 }
 
 void runEnvironmentLoadMaskedExceptionSummary(bool big, const char* name) {
@@ -1236,6 +1286,9 @@ void runEnvironmentLoadMaskedExceptionSummary(bool big, const char* name) {
     runTestCPU();
     if ((cpu->reg[0].u16 & STATUS_BITS) != FPU_STATUS_ZE) {
         failed("%s status=%x", name, cpu->reg[0].u16);
+    }
+    if (cpu->fpu.divExceptionsUnmasked) {
+        failed("%s FLDENV did not mark divide exceptions masked", name);
     }
 }
 
@@ -1671,6 +1724,7 @@ void runDC(bool big) {
     runDCRegisterArith(big, 5, 10.0, 2.0, -8.0, "fsub sti,st0 dc");
     runDCRegisterArith(big, 6, 10.0, 2.0, 5.0, "fdivr sti,st0 dc");
     runDCRegisterArith(big, 7, 10.0, 2.0, 0.2, "fdiv sti,st0 dc");
+    runMaskedDoubleDivideByZeroStatus(big, "masked x87 double exception dc");
 }
 
 void runDD(bool big) {

@@ -84,13 +84,10 @@ public:
     RegPtr syncCPUToXmm(RegPtr topReg, FPURegPtr xmm, U8 regIndex);
     RegPtr readFPUTag(RegPtr indexReg);
     void writeFPUTag(RegPtr indexReg, RegPtr valueReg);
+    void updateFpuDivExceptionState();
     void updateExceptionSummary();
-    void guardFpuDivControl();
-    void guardFpuDivTag(RegPtr indexReg);
     void guardFpuDivRegTags(RegPtr stIndex, RegPtr otherIndex, bool reverse);
-    void guardFpuDivST0Tag(RegPtr top);
-    void guardFpuDivMemoryFloatZero(MemPtr address, JitWidth width);
-    void guardFpuDivMemoryIntZero(MemPtr address, JitWidth width);
+    void guardFpuDivMemory(RegPtr top, RegPtr isZero);
 
     void dynamic_FPU_POP(RegPtr topReg, U8 amount = 1);
     void dynamic_FPU_PREP_PUSH(RegPtr topReg, bool writeTag);
@@ -227,6 +224,10 @@ public:
     void dynamic_FISTP_QWORD_INTEGER(DecodedOp* op) override;    
 
 private:
+    RegPtr getFpuDivSlowPathState(RegPtr indexReg);
+    RegPtr getFpuDivMemoryFloatZero(MemPtr address, JitWidth width);
+    RegPtr getFpuDivMemoryIntZero(MemPtr address, JitWidth width);
+    void guardFpuDivSlowPath(RegPtr state);
     void loadFpuRegFromShort(FPURegPtr reg, MemPtr address);
     void fpuLoadConst(U32 offset);
     virtual void doFCOM(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags);

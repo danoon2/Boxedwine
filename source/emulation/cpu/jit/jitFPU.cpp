@@ -96,6 +96,15 @@ RegPtr JitFPU::getTopReg() {
     return readCPU(JitWidth::b32, offsetof(CPU, fpu.top));
 }
 
+void JitFPU::updateFpuDivExceptionState() {
+    constexpr U32 REQUIRED_MASKS = FPU_SW_IE | FPU_SW_ZE;
+    RegPtr state = readCPU(JitWidth::b32, offsetof(CPU, fpu.cw));
+    xorValue(JitWidth::b32, state, REQUIRED_MASKS);
+    andValue(JitWidth::b32, state, REQUIRED_MASKS);
+    compareValue(JitWidth::b32, state, 0, JitEvaluate::NOT_EQUALS, state);
+    writeCPU(JitWidth::b8, offsetof(CPU, fpu.divExceptionsUnmasked), state);
+}
+
 void JitFPU::updateExceptionSummary() {
     RegPtr sw = readCPU(JitWidth::b32, offsetof(CPU, fpu.sw));
     RegPtr cw = readCPU(JitWidth::b32, offsetof(CPU, fpu.cw));
@@ -112,62 +121,56 @@ void JitFPU::updateExceptionSummary() {
     writeCPU(JitWidth::b32, offsetof(CPU, fpu.sw), sw);
 }
 
-void JitFPU::guardFpuDivControl() {
-    constexpr U32 FPU_INVALID_OPERATION_MASK = 0x0001;
-    constexpr U32 FPU_DIVIDE_BY_ZERO_MASK = 0x0004;
-    constexpr U32 REQUIRED_MASKS = FPU_INVALID_OPERATION_MASK | FPU_DIVIDE_BY_ZERO_MASK;
-
-    RegPtr cw = readCPU(JitWidth::b32, offsetof(CPU, fpu.cw));
-    andValue(JitWidth::b32, cw, REQUIRED_MASKS);
-    IfNotEqual(JitWidth::b32, cw, REQUIRED_MASKS); {
-        emulateSingleOp();
-    } EndIf();
+RegPtr JitFPU::getFpuDivSlowPathState(RegPtr indexReg) {
+    RegPtr state = readCPU(JitWidth::b8, offsetof(CPU, fpu.divExceptionsUnmasked));
+    orReg(JitWidth::b8, state, readFPUTag(indexReg));
+    return state;
 }
 
-void JitFPU::guardFpuDivTag(RegPtr indexReg) {
-    RegPtr tag = readFPUTag(indexReg);
-    IfNotEqual(JitWidth::b8, tag, TAG_Valid); {
+void JitFPU::guardFpuDivSlowPath(RegPtr state) {
+    If(JitWidth::b8, state); {
         emulateSingleOp();
     } EndIf();
 }
 
 void JitFPU::guardFpuDivRegTags(RegPtr stIndex, RegPtr otherIndex, bool reverse) {
     (void)reverse;
-    guardFpuDivControl();
-    guardFpuDivTag(stIndex);
-    guardFpuDivTag(otherIndex);
+    RegPtr state = getFpuDivSlowPathState(stIndex);
+    orReg(JitWidth::b8, state, readFPUTag(otherIndex));
+    guardFpuDivSlowPath(state);
 }
 
-void JitFPU::guardFpuDivST0Tag(RegPtr top) {
-    guardFpuDivControl();
-    guardFpuDivTag(top);
-}
-
-void JitFPU::guardFpuDivMemoryFloatZero(MemPtr address, JitWidth width) {
+RegPtr JitFPU::getFpuDivMemoryFloatZero(MemPtr address, JitWidth width) {
+    RegPtr value = address->rm ? address->rm : address->sib;
     if (width == JitWidth::b64) {
         MemPtr highAddress = address->copy();
         highAddress->offset += 4;
-        RegPtr low = read(JitWidth::b32, address);
-        RegPtr high = read(JitWidth::b32, highAddress);
+        RegPtr high = getTmpReg();
+        readHost(JitWidth::b32, highAddress, high);
+        readHost(JitWidth::b32, address, value);
         andValue(JitWidth::b32, high, 0x7fffffff);
-        orReg(JitWidth::b32, low, high);
-        IfEqual(JitWidth::b32, low, 0); {
-            emulateSingleOp();
-        } EndIf();
+        orReg(JitWidth::b32, value, high);
     } else {
-        RegPtr value = read(JitWidth::b32, address);
+        readHost(JitWidth::b32, address, value);
         andValue(JitWidth::b32, value, 0x7fffffff);
-        IfEqual(JitWidth::b32, value, 0); {
-            emulateSingleOp();
-        } EndIf();
     }
+    compareValue(JitWidth::b32, value, 0, JitEvaluate::EQUALS, value);
+    return value;
 }
 
-void JitFPU::guardFpuDivMemoryIntZero(MemPtr address, JitWidth width) {
-    RegPtr value = read(width, address);
-    IfEqual(width, value, 0); {
-        emulateSingleOp();
-    } EndIf();
+RegPtr JitFPU::getFpuDivMemoryIntZero(MemPtr address, JitWidth width) {
+    RegPtr value = address->rm ? address->rm : address->sib;
+    readHost(width, address, value);
+    compareValue(width, value, 0, JitEvaluate::EQUALS, value);
+    return value;
+}
+
+void JitFPU::guardFpuDivMemory(RegPtr top, RegPtr isZero) {
+    RegPtr state = getFpuDivSlowPathState(top);
+    if (isZero) {
+        orReg(JitWidth::b8, state, isZero);
+    }
+    guardFpuDivSlowPath(state);
 }
 
 class FPUReg {
@@ -202,15 +205,16 @@ void JitFPU::dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool re
 
 void JitFPU::dynamic_DIV_SINGLE_REAL(DecodedOp* op, bool reverse) {
     read(JitWidth::b32, calculateEaa(op), [reverse, op, this](MemPtr address) {
-        RegPtr top = getTopReg();
-        guardFpuDivST0Tag(top);
-        if (!reverse) {
-            guardFpuDivMemoryFloatZero(address, JitWidth::b32);
-        }
-
         FPURegPtr tmp = getFPUTmp();
         loadFpuReg(tmp, address, DYN_FPU_32_BIT);
         fpuRegExtend32To64(tmp, tmp);
+        RegPtr isZero;
+        if (!reverse) {
+            isZero = getFpuDivMemoryFloatZero(address, JitWidth::b32);
+        }
+        address = nullptr;
+        RegPtr top = getTopReg();
+        guardFpuDivMemory(top, isZero);
         FPUReg dst(this, top, 0);
 
         if (reverse) {
@@ -384,9 +388,25 @@ void JitFPU::dynamic_DOUBLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool re
 }
 
 void JitFPU::dynamic_DIV_DOUBLE_REAL(DecodedOp* op, bool reverse) {
-    (void)op;
-    (void)reverse;
-    emulateSingleOp();
+    read(JitWidth::b64, calculateEaa(op), [reverse, op, this](MemPtr address) {
+        FPURegPtr tmp = getFPUTmp();
+        loadFpuReg(tmp, address);
+        RegPtr isZero;
+        if (!reverse) {
+            isZero = getFpuDivMemoryFloatZero(address, JitWidth::b64);
+        }
+        address = nullptr;
+        RegPtr top = getTopReg();
+        guardFpuDivMemory(top, isZero);
+        FPUReg dst(this, top, 0);
+
+        if (reverse) {
+            fpuDiv(tmp, dst.reg);
+        } else {
+            fpuDiv(dst.reg, tmp);
+        }
+        syncXmmToCPU(top, reverse ? tmp : dst.reg, 0);
+    });
 }
 
 void JitFPU::dynamic_FCOM_DOUBLE_REAL(DecodedOp* op) {
@@ -430,14 +450,15 @@ void JitFPU::dynamic_DWORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, bool 
 
 void JitFPU::dynamic_IDIV_DWORD_INTEGER(DecodedOp* op, bool reverse) {
     read(JitWidth::b32, calculateEaa(op), [reverse, op, this](MemPtr address) {
-        RegPtr top = getTopReg();
-        guardFpuDivST0Tag(top);
-        if (!reverse) {
-            guardFpuDivMemoryIntZero(address, JitWidth::b32);
-        }
-
         FPURegPtr tmp = getFPUTmp();
         loadFpuRegFromInt(tmp, address);
+        RegPtr isZero;
+        if (!reverse) {
+            isZero = getFpuDivMemoryIntZero(address, JitWidth::b32);
+        }
+        address = nullptr;
+        RegPtr top = getTopReg();
+        guardFpuDivMemory(top, isZero);
         FPUReg dst(this, top, 0);
 
         if (reverse) {
@@ -497,14 +518,15 @@ void JitFPU::dynamic_WORD_INTEGER(DecodedOp* op, XmmXmmCallback callback,  bool 
 
 void JitFPU::dynamic_IDIV_WORD_INTEGER(DecodedOp* op, bool reverse) {
     read(JitWidth::b16, calculateEaa(op), [reverse, op, this](MemPtr address) {
-        RegPtr top = getTopReg();
-        guardFpuDivST0Tag(top);
-        if (!reverse) {
-            guardFpuDivMemoryIntZero(address, JitWidth::b16);
-        }
-
         FPURegPtr tmp = getFPUTmp();
         loadFpuRegFromShort(tmp, address);
+        RegPtr isZero;
+        if (!reverse) {
+            isZero = getFpuDivMemoryIntZero(address, JitWidth::b16);
+        }
+        address = nullptr;
+        RegPtr top = getTopReg();
+        guardFpuDivMemory(top, isZero);
         FPUReg dst(this, top, 0);
 
         if (reverse) {
@@ -639,7 +661,14 @@ void JitFPU::dynamic_FST_STi(DecodedOp* op) {
 }
 
 void JitFPU::dynamic_FST_STi_Pop(DecodedOp* op) {
-    emulateSingleOp();
+    {
+        RegPtr top = getTopReg();
+        RegPtr tag = readFPUTag(top);
+        IfEqual(JitWidth::b8, tag, TAG_Empty); {
+            emulateSingleOp();
+        } EndIf();
+    }
+    doFST_STi(op, true);
 }
 
 void JitFPU::dynamic_FLD1(DecodedOp* op) {
@@ -751,6 +780,7 @@ void JitFPU::dynamic_FLDCW(DecodedOp* op) {
     RegPtr cw = read(JitWidth::b16, calculateEaa(op));
     movzx(JitWidth::b32, cw, JitWidth::b16, cw);
     writeCPU(JitWidth::b32, offsetof(CPU, fpu.cw), cw);
+    updateFpuDivExceptionState();
 
     shrValue(JitWidth::b32, cw, 10);
     andValue(JitWidth::b32, cw, 3);
@@ -827,6 +857,7 @@ void JitFPU::dynamic_FLDENV(DecodedOp* op) {
     tmp = nullptr;
     tag = nullptr;
     addressReg = nullptr;
+    updateFpuDivExceptionState();
     updateExceptionSummary();
 }
 
@@ -1153,6 +1184,7 @@ void JitFPU::dynamic_FNINIT(DecodedOp* op) {
     memset(isRegCached, 0, sizeof(isRegCached));
     */
     writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.cw), 0x37f);
+    writeCPUValue(JitWidth::b8, offsetof(CPU, fpu.divExceptionsUnmasked), 0);
     writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.sw), 0);
     writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.top), 0);
     writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.round), 0);
