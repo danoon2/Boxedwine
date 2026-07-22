@@ -53,6 +53,7 @@ void testX87ExceptionSummaryState();
 void testDefaultUserSegmentsUseGdtSelectors();
 void testSignalHandlerSegmentsUseGdtSelectors();
 void testSignalReturnPreservesLoadedInvalidTlsSelector();
+void testSignalReturnDiscardsHandlerLazyFlags();
 bool testIsFastMode();
 void testSetFastMode(bool fast);
 void testWasmJitOnlyBlockEntryIsCallable();

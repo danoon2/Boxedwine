@@ -1019,6 +1019,52 @@ void testSignalReturnPreservesLoadedInvalidTlsSelector() {
     }
 }
 
+void testSignalReturnDiscardsHandlerLazyFlags() {
+    constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, SIGNAL_STACK_TOP - K_PAGE_SIZE, K_PAGE_SIZE,
+        K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    cpu->reg[4].u32 = SIGNAL_STACK_TOP;
+    cpu->eip.u32 = TEST_CODE_ADDRESS;
+    cpu->flags = 2 | ZF;
+    cpu->lazyFlagType = FLAGS_NONE;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+
+    thread->runSignal(K_SIGUSR1, 0, 0);
+
+    // Model a handler whose last arithmetic operation contradicts the saved
+    // signal-context flags: SUB 0,1 has CF set and ZF clear.
+    cpu->dst.u32 = 0;
+    cpu->src.u32 = 1;
+    cpu->result.u32 = 0xffffffff;
+    cpu->lazyFlagType = FLAGS_SUB32;
+
+    U32 returnAddress = cpu->pop32();
+    if (returnAddress != SIG_RETURN_ADDRESS) {
+        testFail("signal return callback address for lazy flags");
+        return;
+    }
+    onExitSignal(cpu, nullptr);
+
+    if (cpu->lazyFlagType != FLAGS_NONE) {
+        testFail("signal return must discard handler lazy flags");
+    }
+    if (!cpu->getZF()) {
+        testFail("signal return must preserve saved ZF");
+    }
+    if (cpu->getCF()) {
+        testFail("signal return must preserve saved CF");
+    }
+}
+
 void testJitSignalPendingReset() {
 #ifdef BOXEDWINE_JIT
     TestContext& context = testContext();

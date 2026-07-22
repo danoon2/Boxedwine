@@ -501,6 +501,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testDefaultUserSegmentsUseGdtSelectors, "Test default user segments use GDT selectors", TEST_ENTRY_SERIAL},
     {testSignalHandlerSegmentsUseGdtSelectors, "Test signal handler segments use GDT selectors", TEST_ENTRY_SERIAL},
     {testSignalReturnPreservesLoadedInvalidTlsSelector, "Test signal return preserves loaded invalid TLS selector", TEST_ENTRY_SERIAL},
+    {testSignalReturnDiscardsHandlerLazyFlags, "Test signal return discards handler lazy flags", TEST_ENTRY_SERIAL},
     {testSahf_0x09e, "Test Sahf 09e"},
     {testSahf_0x29e, "Test Sahf 29e"},
     {testLahf_0x09f, "Test Lahf 09f"},

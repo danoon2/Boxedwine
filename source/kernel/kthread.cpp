@@ -1325,6 +1325,7 @@ void readFromContext(CPU* cpu, U32 context) {
     cpu->eip.u32 = memory->readd(context+0x4C);
     cpu->setSegment(CS, memory->readd(context+0x50));
     cpu->flags = memory->readd(context+0x54);
+    cpu->lazyFlagType = FLAGS_NONE;
     cpu->setSegment(SS, memory->readd(context+0x5C));
 
     /* common_fxrstor will handle this
