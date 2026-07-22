@@ -490,6 +490,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testDivssRaisesSimdException, "Test divss raises SIMD exception", TEST_ENTRY_SERIAL},
     {testSseDivFastPathDecision, "Test SSE divide fast path decision"},
     {testX87DivFastPathDecision, "Test x87 divide fast path decision"},
+    {testX87ExceptionSummaryState, "Test x87 exception summary state"},
     {testX87FwaitRaisesPendingException, "Test x87 fwait raises pending exception", TEST_ENTRY_SERIAL},
     {testHardwareBreakpointRaisesTrap, "Test hardware breakpoint raises trap", TEST_ENTRY_SERIAL},
     {testHardwareBreakpointIgnoresNonExecutableAddress, "Test hardware breakpoint ignores non-executable address", TEST_ENTRY_SERIAL},

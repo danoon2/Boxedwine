@@ -48,7 +48,10 @@ void Jit::dynamic_done(DecodedOp* op) {
     kpanic("Jit::dynamic_done should have been handled in JitCodeGen::compileOps");
 }
 void Jit::dynamic_wait(DecodedOp* op) {
-    emulateSingleOp();
+    RegPtr sw = readCPU(JitWidth::b32, offsetof(CPU, fpu.sw));
+    IfTestBit(JitWidth::b32, sw, 7); {
+        emulateSingleOp();
+    } EndIf();
 }
 void Jit::dynamic_cwd(DecodedOp* op) {
     RegPtr dx = getReg(2);

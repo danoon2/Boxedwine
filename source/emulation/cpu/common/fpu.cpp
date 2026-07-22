@@ -105,16 +105,6 @@ struct FPU_Float {
 #define FPU_GET_TOP(fpu) (((fpu)->sw & 0x3800) >> 11)
 #define FPU_SET_TOP(fpu, val) (fpu)->sw &= ~0x3800; (fpu)->sw |= (val & 7) << 11
 
-static constexpr U32 FPU_SW_IE = 0x0001;
-static constexpr U32 FPU_SW_DE = 0x0002;
-static constexpr U32 FPU_SW_ZE = 0x0004;
-static constexpr U32 FPU_SW_OE = 0x0008;
-static constexpr U32 FPU_SW_UE = 0x0010;
-static constexpr U32 FPU_SW_PE = 0x0020;
-static constexpr U32 FPU_SW_SF = 0x0040;
-static constexpr U32 FPU_SW_ES = 0x0080;
-static constexpr U32 FPU_SW_EXCEPTION_MASK = FPU_SW_IE | FPU_SW_DE | FPU_SW_ZE | FPU_SW_OE | FPU_SW_UE | FPU_SW_PE;
-
 static bool fpuIsZero(FPU* fpu, int reg) {
     if (fpu->tags[reg] == TAG_Zero) {
         return true;
@@ -134,10 +124,7 @@ bool fpu_div_control_or_tag_requires_slow_path(const FPU* fpu, int st, int other
 
 static void fpuSetException(FPU* fpu, U32 bits) {
     fpu->sw |= bits;
-    U32 unmasked = bits & ~(fpu->cw & FPU_SW_EXCEPTION_MASK) & FPU_SW_EXCEPTION_MASK;
-    if (unmasked) {
-        fpu->sw |= FPU_SW_ES;
-    }
+    fpu->updateExceptionSummary();
 }
 
 void FPU::LOG_STACK() {
@@ -190,14 +177,25 @@ void FPU::SetTag(U32 tag) {
     }
 }
 
+void FPU::updateExceptionSummary() {
+    U32 pending = this->sw & ~(this->cw & FPU_SW_EXCEPTION_MASK) & FPU_SW_EXCEPTION_MASK;
+    if (pending) {
+        this->sw |= FPU_SW_ES;
+    } else {
+        this->sw &= ~FPU_SW_ES;
+    }
+}
+
 void FPU::SetSW(U16 word) {
     this->sw = word;
+    updateExceptionSummary();
     this->top = FPU_GET_TOP(this);
 }
 
 void FPU::SetCW(U16 word) {
     this->cw = word;
     this->round = ((word >> 10) & 3);
+    updateExceptionSummary();
 
 #ifdef LOG_FPU
     const char* r;
@@ -234,8 +232,8 @@ void FPU::FINIT() {
         fpuLogFile.createNew("fpu2.txt");
     }
 #endif
-    SetCW(0x37F);
     this->sw = 0;
+    SetCW(0x37F);
     this->top = FPU_GET_TOP(this);
     this->tags[0] = TAG_Empty;
     this->tags[1] = TAG_Empty;

@@ -428,6 +428,7 @@ public:
     void callHostFunctionWithResult(RegPtr result, void* address,
                                     const std::vector<DynParam>& params) override;
     void emulateSingleOp() override;
+    void dynamic_wait(DecodedOp* op) override;
     void dynamic_pause(DecodedOp* op) override;
     void dynamic_loop(DecodedOp* op) override;
     void dynamic_loopz(DecodedOp* op) override;

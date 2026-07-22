@@ -12698,6 +12698,29 @@ void JitWasmCodeGen::callHostFunctionWithResult(RegPtr result, void* address,
     }
 }
 
+void JitWasmCodeGen::dynamic_wait(DecodedOp* op) {
+    (void)op;
+    auto savedGpDirty = m_gpDirty;
+    auto savedGpLoaded = m_gpLoaded;
+    auto savedSegLoaded = m_segLoaded;
+    LazyFlagType savedLazyFlags = currentLazyFlags;
+
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, fpu.sw));
+    m_emitter.emitI32Const(FPU_SW_ES);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
+    m_emitter.emitIf();
+    emulateSingleOp();
+    blockExit();
+    m_emitter.emitEnd();
+
+    m_gpDirty = savedGpDirty;
+    m_gpLoaded = savedGpLoaded;
+    m_segLoaded = savedSegLoaded;
+    currentLazyFlags = savedLazyFlags;
+}
+
 
 void JitWasmCodeGen::emulateSingleOp() {
     // Sync state, point cpu->eip.u32 at this op's offset (only when we may

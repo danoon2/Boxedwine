@@ -1145,6 +1145,100 @@ void runMaskedDivideByZeroStatus(bool big, const char* name) {
     }
 }
 
+void runMaskedExceptionUnmaskSummary(bool big, const char* name) {
+    constexpr U32 ZERO = MEM_BASE + 0x700;
+    constexpr U32 CW_UNMASK_ZE = MEM_BASE + 0x704;
+    constexpr U32 STATUS_BITS = FPU_STATUS_ZE | FPU_STATUS_ES;
+
+    begin(big);
+    fninit();
+    writeF32(MEM_BASE, 1.0f);
+    writeF32(ZERO, 0.0f);
+    writeI16(CW_UNMASK_ZE, 0x037b);
+
+    fldF32(MEM_BASE, big);
+    pushCode8(0xd8);
+    emitMemModRM(6, ZERO, big); // FDIV m32fp while ZE is masked
+    pushCode8(0xd9);
+    emitMemModRM(5, CW_UNMASK_ZE, big); // FLDCW unmasks existing ZE
+    fnstswAx();
+
+    runTestCPU();
+    if ((cpu->reg[0].u16 & STATUS_BITS) != STATUS_BITS) {
+        failed("%s status=%x", name, cpu->reg[0].u16);
+    }
+}
+
+void runEnvironmentLoadExceptionSummary(bool big, const char* name) {
+    constexpr U32 ENV = MEM_BASE + 0x740;
+    constexpr U32 STATUS_BITS = FPU_STATUS_ZE | FPU_STATUS_ES;
+
+    begin(big);
+    writeEnvValue(ENV, 0, big, 0x037b); // ZE unmasked
+    writeEnvValue(ENV, 1, big, FPU_STATUS_ZE); // pending ZE, stale ES clear
+    writeEnvValue(ENV, 2, big, 0xffff); // all tags empty
+    for (int i = 3; i < 7; ++i) {
+        writeEnvValue(ENV, i, big, 0);
+    }
+
+    emitD9MemoryGroup(4, ENV, big); // FLDENV
+    fnstswAx();
+
+    runTestCPU();
+    if ((cpu->reg[0].u16 & STATUS_BITS) != STATUS_BITS) {
+        failed("%s status=%x", name, cpu->reg[0].u16);
+    }
+}
+
+void runUnmaskedExceptionMaskSummary(bool big, const char* name) {
+    constexpr U32 ZERO = MEM_BASE + 0x700;
+    constexpr U32 CW_UNMASK_ZE = MEM_BASE + 0x704;
+    constexpr U32 CW_MASK_ZE = MEM_BASE + 0x708;
+    constexpr U32 STATUS_BITS = FPU_STATUS_ZE | FPU_STATUS_ES;
+
+    begin(big);
+    fninit();
+    writeF32(MEM_BASE, 1.0f);
+    writeF32(ZERO, 0.0f);
+    writeI16(CW_UNMASK_ZE, 0x037b);
+    writeI16(CW_MASK_ZE, 0x037f);
+
+    fldF32(MEM_BASE, big);
+    pushCode8(0xd8);
+    emitMemModRM(6, ZERO, big); // FDIV m32fp while ZE is masked
+    pushCode8(0xd9);
+    emitMemModRM(5, CW_UNMASK_ZE, big); // FLDCW makes pending ZE unmasked and sets ES
+    pushCode8(0xd9);
+    emitMemModRM(5, CW_MASK_ZE, big); // FLDCW masks pending ZE and clears ES
+    fnstswAx();
+
+    runTestCPU();
+    if ((cpu->reg[0].u16 & STATUS_BITS) != FPU_STATUS_ZE) {
+        failed("%s status=%x", name, cpu->reg[0].u16);
+    }
+}
+
+void runEnvironmentLoadMaskedExceptionSummary(bool big, const char* name) {
+    constexpr U32 ENV = MEM_BASE + 0x780;
+    constexpr U32 STATUS_BITS = FPU_STATUS_ZE | FPU_STATUS_ES;
+
+    begin(big);
+    writeEnvValue(ENV, 0, big, 0x037f); // ZE masked
+    writeEnvValue(ENV, 1, big, STATUS_BITS); // pending ZE, stale ES set
+    writeEnvValue(ENV, 2, big, 0xffff); // all tags empty
+    for (int i = 3; i < 7; ++i) {
+        writeEnvValue(ENV, i, big, 0);
+    }
+
+    emitD9MemoryGroup(4, ENV, big); // FLDENV
+    fnstswAx();
+
+    runTestCPU();
+    if ((cpu->reg[0].u16 & STATUS_BITS) != FPU_STATUS_ZE) {
+        failed("%s status=%x", name, cpu->reg[0].u16);
+    }
+}
+
 void runFNSTSWMemory(bool big, float left, float right, U32 expectedStatus, const char* name) {
     constexpr U32 OUT = MEM_BASE + 0x600;
 
@@ -1484,6 +1578,10 @@ void runD9(bool big) {
     runD9Constant(big, 6, 0.0f, "fldz d9");
     runFPUEnvironmentLoad(big, "fldenv d9");
     runFPUEnvironmentStore(big, "fnstenv d9");
+    runMaskedExceptionUnmaskSummary(big, "fldcw x87 exception summary d9");
+    runEnvironmentLoadExceptionSummary(big, "fldenv x87 exception summary d9");
+    runUnmaskedExceptionMaskSummary(big, "fldcw x87 exception summary clear d9");
+    runEnvironmentLoadMaskedExceptionSummary(big, "fldenv x87 exception summary clear d9");
     runMaskedDivideByZeroStatus(big, "masked x87 exception d9");
     runD9RoundSqrtScale(big, "sqrt round scale d9");
     runFSQRTBits(big, 0x40800000, 0x40000000, "fsqrt d9");

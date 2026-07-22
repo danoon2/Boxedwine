@@ -77,6 +77,9 @@ void OPCALL normal_done(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_wait(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+#ifdef __TEST
+    ++normalWaitCallCount;
+#endif
     int code = cpu->fpu.getPendingExceptionCode();
     if (code) {
         cpu->prepareFpuException(code, 16);

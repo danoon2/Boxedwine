@@ -84,6 +84,7 @@ public:
     RegPtr syncCPUToXmm(RegPtr topReg, FPURegPtr xmm, U8 regIndex);
     RegPtr readFPUTag(RegPtr indexReg);
     void writeFPUTag(RegPtr indexReg, RegPtr valueReg);
+    void updateExceptionSummary();
     void guardFpuDivControl();
     void guardFpuDivTag(RegPtr indexReg);
     void guardFpuDivRegTags(RegPtr stIndex, RegPtr otherIndex, bool reverse);

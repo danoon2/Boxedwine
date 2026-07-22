@@ -26,6 +26,10 @@
 #include "../armv8/armv8CPU.h"
 #include "../../../util/ptrpool.h"
 
+#ifdef __TEST
+thread_local U32 normalWaitCallCount = 0;
+#endif
+
 #ifdef BOXEDWINE_MULTI_THREADED
 #ifdef _DEBUG
 //#define START_OP(cpu, op) op->log(cpu)

@@ -96,6 +96,22 @@ RegPtr JitFPU::getTopReg() {
     return readCPU(JitWidth::b32, offsetof(CPU, fpu.top));
 }
 
+void JitFPU::updateExceptionSummary() {
+    RegPtr sw = readCPU(JitWidth::b32, offsetof(CPU, fpu.sw));
+    RegPtr cw = readCPU(JitWidth::b32, offsetof(CPU, fpu.cw));
+    xorValue(JitWidth::b32, cw, FPU_SW_EXCEPTION_MASK);
+    andReg(JitWidth::b32, cw, sw);
+    andValue(JitWidth::b32, cw, FPU_SW_EXCEPTION_MASK);
+
+    If(JitWidth::b32, cw); {
+        orValue(JitWidth::b32, sw, FPU_SW_ES);
+    } StartElse(); {
+        andValue(JitWidth::b32, sw, ~FPU_SW_ES);
+    } EndIf();
+
+    writeCPU(JitWidth::b32, offsetof(CPU, fpu.sw), sw);
+}
+
 void JitFPU::guardFpuDivControl() {
     constexpr U32 FPU_INVALID_OPERATION_MASK = 0x0001;
     constexpr U32 FPU_DIVIDE_BY_ZERO_MASK = 0x0004;
@@ -739,6 +755,8 @@ void JitFPU::dynamic_FLDCW(DecodedOp* op) {
     shrValue(JitWidth::b32, cw, 10);
     andValue(JitWidth::b32, cw, 3);
     writeCPU(JitWidth::b32, offsetof(CPU, fpu.round), cw);
+    cw = nullptr;
+    updateExceptionSummary();
 }
 
 void JitFPU::dynamic_FLDENV(DecodedOp* op) {
@@ -806,6 +824,10 @@ void JitFPU::dynamic_FLDENV(DecodedOp* op) {
         andValueWithDest(JitWidth::b32, tmp, tag, 3);
         writeCPU(JitWidth::b8, offsetof(CPU, fpu.tags[0]) + i, tmp);
     }
+    tmp = nullptr;
+    tag = nullptr;
+    addressReg = nullptr;
+    updateExceptionSummary();
 }
 
 void JitFPU::dynamic_FNSTENV(DecodedOp* op) {

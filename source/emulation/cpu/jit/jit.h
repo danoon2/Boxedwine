@@ -165,6 +165,8 @@ public:
     virtual void jmpHost(RegPtr reg) = 0;
     virtual void jmpHost(DYN_PTR_SIZE address) = 0;
     virtual void forceSyncBackIfNotCached(RegPtr reg) = 0;
+    virtual RegPtr readCPU(JitWidth width, U32 offset, RegPtr resultReg = nullptr) = 0;
+    virtual RegPtr readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr resultReg = nullptr) = 0;
 
     RegPtr calculateEffectiveEaa16(DecodedOp* op);
     RegPtr calculateEffectiveEaa32(DecodedOp* op);

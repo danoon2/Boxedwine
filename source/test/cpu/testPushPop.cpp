@@ -15,6 +15,7 @@
 #include "testCPU.h"
 #include "testAsmJit.h"
 #include "ksignal.h"
+#include "../../emulation/cpu/common/common_other.h"
 #include "../../emulation/cpu/common/common_sse.h"
 
 #define cpu (testContext().cpu)
@@ -1571,6 +1572,44 @@ void runX87DivFastPathDecision() {
     }
 }
 
+void runX87ExceptionSummaryState() {
+    constexpr U32 STATUS_ZE = 0x0004;
+    constexpr U32 STATUS_ES = 0x0080;
+    constexpr U32 STATUS_EXCEPTION_MASK = 0x003f;
+
+    FPU fpu;
+    fpu.FINIT();
+
+    if (fpu.sw & STATUS_ES) {
+        failed("x87 FINIT left exception summary set");
+    }
+
+    fpu.setDivideByZeroException();
+    if (!(fpu.sw & STATUS_ZE) || (fpu.sw & STATUS_ES)) {
+        failed("masked x87 exception summary state");
+    }
+
+    fpu.SetCW((U16)(fpu.cw & ~STATUS_ZE));
+    if (!(fpu.sw & STATUS_ES)) {
+        failed("unmasking pending x87 exception did not set summary");
+    }
+
+    fpu.FCLEX();
+    if (fpu.sw & (STATUS_EXCEPTION_MASK | STATUS_ES)) {
+        failed("x87 FCLEX did not clear exception summary");
+    }
+
+    fpu.SetSW(STATUS_ZE);
+    if (!(fpu.sw & STATUS_ES)) {
+        failed("restoring pending x87 status did not set summary");
+    }
+
+    fpu.FINIT();
+    if (fpu.sw & (STATUS_EXCEPTION_MASK | STATUS_ES)) {
+        failed("x87 FINIT did not clear restored exception summary");
+    }
+}
+
 void emitBytes(const U8* bytes, size_t count) {
     for (size_t i = 0; i < count; ++i) {
         emitByte(bytes[i]);
@@ -1660,6 +1699,39 @@ void runX87FwaitRaisesPendingException(bool stackCheck) {
     }
 
     action.reset();
+}
+
+void runX87FwaitWithoutUnmaskedException(bool maskedException) {
+    static const U8 code[] = {
+        0x9b,                               // fwait
+        0xb8, 0x78, 0x56, 0x34, 0x12,       // mov $0x12345678,%eax
+    };
+
+    newInstruction(0);
+    cpu->big = true;
+    cpu->fpu.FINIT();
+    normalWaitCallCount = 0;
+    if (maskedException) {
+        cpu->fpu.sw |= FPU_SW_ZE;
+        cpu->fpu.sw &= ~FPU_SW_ES;
+    }
+
+    emitBytes(code, sizeof(code));
+    runTestCPU();
+
+    const char* caseName = maskedException ? "masked divide-by-zero" : "no-exception";
+    if (maskedException && !(cpu->fpu.sw & FPU_SW_ZE)) {
+        failed("x87 %s fwait did not leave ZE set", caseName);
+    }
+    if (maskedException && (cpu->fpu.sw & FPU_SW_ES)) {
+        failed("x87 %s fwait unexpectedly left ES set", caseName);
+    }
+    if (normalWaitCallCount != 0) {
+        failed("x87 %s fwait entered normal_wait", caseName);
+    }
+    if (cpu->reg[0].u32 != 0x12345678) {
+        failed("x87 %s fwait did not continue", caseName);
+    }
 }
 
 void runHardwareBreakpointTrap() {
@@ -1997,9 +2069,15 @@ void testX87DivFastPathDecision() {
     runX87DivFastPathDecision();
 }
 
+void testX87ExceptionSummaryState() {
+    runX87ExceptionSummaryState();
+}
+
 void testX87FwaitRaisesPendingException() {
     runX87FwaitRaisesPendingException(true);
     runX87FwaitRaisesPendingException(false);
+    runX87FwaitWithoutUnmaskedException(false);
+    runX87FwaitWithoutUnmaskedException(true);
 }
 
 void testHardwareBreakpointRaisesTrap() {
