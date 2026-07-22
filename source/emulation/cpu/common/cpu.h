@@ -281,6 +281,9 @@ public:
     U64 fLG2 = 0x3FD34413509F79FF;
     U64 fLN2 = 0x3FE62E42FEFA39EF;
 
+#ifdef BOXEDWINE_JIT
+    std::atomic<U32> jitSignalPending { 0 };
+#endif
     KThread* thread = nullptr;
     KMemory* memory = nullptr;
     BWriteFile logFile;

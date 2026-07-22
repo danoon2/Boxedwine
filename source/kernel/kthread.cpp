@@ -178,6 +178,16 @@ bool KThread::readyForSignal(U32 signal) {
     return ((1ULL << (signal - 1)) & ~(this->inSignal ? this->inSigMask : this->sigMask)) != 0;
 }
 
+void KThread::queuePendingSignal(U32 signal) {
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
+        this->pendingSignals |= (1ULL << (signal - 1));
+    }
+#ifdef BOXEDWINE_JIT
+    this->cpu->jitSignalPending.store(1, std::memory_order_release);
+#endif
+}
+
 U32 KThread::signal(U32 signal, bool wait) {
     if (signal==0) {
         return 0;
@@ -224,15 +234,13 @@ U32 KThread::signal(U32 signal, bool wait) {
                         }
                     }
                     if (stillWaiting) {
-                        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
-                        this->pendingSignals |= (1ULL << (signal - 1));
+                        this->queuePendingSignal(signal);
                         BOXEDWINE_CONDITION_SIGNAL(cond);
                         handled = true;
                     }
                 }
                 if (!handled) {
-                    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
-                    this->pendingSignals |= (1ULL << (signal - 1));
+                    this->queuePendingSignal(signal);
                 }
             }
             if (wait && !this->terminating) {
@@ -257,8 +265,7 @@ U32 KThread::signal(U32 signal, bool wait) {
             BOXEDWINE_CONDITION_WAIT_TIMEOUT(this->waitingForSignalToEndCond, 1000);
         }        
     } else {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
-        this->pendingSignals |= (1ULL << (signal-1));
+        this->queuePendingSignal(signal);
         this->process->signalFd(this, signal);
     }
     return 0;

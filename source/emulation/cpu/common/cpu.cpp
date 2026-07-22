@@ -170,6 +170,9 @@ void CPU::reset() {
     this->stackNotMask = 0;
     this->stackMask = 0xFFFFFFFF;
     this->nextOp = nullptr;
+#ifdef BOXEDWINE_JIT
+    this->jitSignalPending.store(0, std::memory_order_release);
+#endif
     this->debugTrapOnNextInstruction = false;
     this->pendingDebugTrap = false;
     this->debugTrapActive = false;

@@ -492,6 +492,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testX87DivFastPathDecision, "Test x87 divide fast path decision"},
     {testX87ExceptionSummaryState, "Test x87 exception summary state"},
     {testX87FwaitRaisesPendingException, "Test x87 fwait raises pending exception", TEST_ENTRY_SERIAL},
+    {testJitSignalPendingReset, "Test JIT signal pending reset", TEST_ENTRY_SERIAL},
+    {testJitSignalPendingQueuedSignal, "Test JIT signal pending queued signal", TEST_ENTRY_SERIAL},
     {testHardwareBreakpointRaisesTrap, "Test hardware breakpoint raises trap", TEST_ENTRY_SERIAL},
     {testHardwareBreakpointIgnoresNonExecutableAddress, "Test hardware breakpoint ignores non-executable address", TEST_ENTRY_SERIAL},
     {testDataHardwareBreakpointRaisesTrap, "Test data hardware breakpoint raises trap", TEST_ENTRY_SERIAL},

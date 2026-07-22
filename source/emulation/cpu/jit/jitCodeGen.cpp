@@ -565,6 +565,7 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
     U32 skipped = 0;
     DirectType directType = DirectType::None;
     JitConditional cond = JitConditional::O;
+    bool pollForPendingSignal = false;
 
     for (int i = 0; i < 8 && nextOp; i++) {
         if (nextOp->flags2 & OP_FLAG2_JUMP_TARGET) {
@@ -606,10 +607,14 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
         }
         if (directType == DirectType::Jump) {
             U32 target = opEip + nextOp->len + nextOp->imm;
-            if (!canJumpInBlock(opEip, nextOp) || target <= opEip) {
+            pollForPendingSignal = target <= opEip;
+            if (!canJumpInBlock(opEip, nextOp)) {
                 fallback();
                 return;
             }
+        }
+        if (pollForPendingSignal) {
+            exitToRunLoopIfPendingSignal(currentEip);
         }
         callback();
         postCompile(op);
@@ -882,15 +887,11 @@ void JitCodeGen::exitToRunLoopIfPendingSignal(U32 eip) {
 
 void JitCodeGen::exitToRunLoopIfPendingSignal(RegPtr eip) {
 #ifdef BOXEDWINE_MULTI_THREADED
-    RegPtr thread = readCPU(DYN_PTR, offsetof(CPU, thread));
-    If(DYN_PTR, thread); {
-        RegPtr pendingSignals = getTmpReg();
-        readHost(JitWidth::b32, createMemPtr(thread, (U32)offsetof(KThread, pendingSignals)), pendingSignals, false);
-        If(JitWidth::b32, pendingSignals); {
-            writeEip(eip);
-            writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
-            blockExit();
-        } EndIf();
+    RegPtr pendingSignal = readCPU(JitWidth::b32, offsetof(CPU, jitSignalPending));
+    If(JitWidth::b32, pendingSignal); {
+        writeEip(eip);
+        writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+        blockExit();
     } EndIf();
 #endif
 }

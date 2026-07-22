@@ -429,6 +429,9 @@ void NormalCPU::run() {
         }
     }
 #ifdef BOXEDWINE_MULTI_THREADED
+#ifdef BOXEDWINE_JIT
+    this->jitSignalPending.exchange(0, std::memory_order_acq_rel);
+#endif
     if (thread->pendingSignals && thread->runSignals()) {
         nextOp = getNextOp();
         return;

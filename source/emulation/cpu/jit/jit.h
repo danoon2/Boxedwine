@@ -342,6 +342,7 @@ public:
     virtual void blockNext2(U32 eip, DecodedOp* op) = 0;
     virtual void blockExit() = 0;
     virtual void jumpEip(RegPtr reg) = 0;
+    virtual void exitToRunLoopIfPendingSignal(U32 eip) = 0;
 
     virtual void jumpInBlock(U32 address) = 0;
     virtual void JumpInBlock(U32 address) = 0;

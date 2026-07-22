@@ -1019,4 +1019,48 @@ void testSignalReturnPreservesLoadedInvalidTlsSelector() {
     }
 }
 
+void testJitSignalPendingReset() {
+#ifdef BOXEDWINE_JIT
+    TestContext& context = testContext();
+    context.cpu->jitSignalPending.store(1, std::memory_order_release);
+
+    context.cpu->reset();
+
+    if (context.cpu->jitSignalPending.load(std::memory_order_acquire) != 0) {
+        testFail("CPU reset must clear the JIT signal-pending latch");
+    }
+#endif
+}
+
+void testJitSignalPendingQueuedSignal() {
+#ifdef BOXEDWINE_JIT
+    TestContext& context = testContext();
+    KThread* thread = context.thread;
+    const U64 signalBit = 1ULL << (K_SIGUSR1 - 1);
+    const U64 oldSigMask = thread->sigMask;
+    const U64 oldSigWaitMask = thread->sigWaitMask;
+    const U64 oldPendingSignals = thread->pendingSignals;
+    const U32 oldJitSignalPending = context.cpu->jitSignalPending.load(std::memory_order_acquire);
+
+    thread->sigMask |= signalBit;
+    thread->sigWaitMask &= ~signalBit;
+    thread->pendingSignals &= ~signalBit;
+    context.cpu->jitSignalPending.store(0, std::memory_order_release);
+
+    thread->signal(K_SIGUSR1, false);
+
+    if (!(thread->pendingSignals & signalBit)) {
+        testFail("queueing a masked signal must set the thread pending-signal mask");
+    }
+    if (context.cpu->jitSignalPending.load(std::memory_order_acquire) != 1) {
+        testFail("queueing a masked signal must set the JIT signal-pending latch");
+    }
+
+    thread->sigMask = oldSigMask;
+    thread->sigWaitMask = oldSigWaitMask;
+    thread->pendingSignals = oldPendingSignals;
+    context.cpu->jitSignalPending.store(oldJitSignalPending, std::memory_order_release);
+#endif
+}
+
 #endif

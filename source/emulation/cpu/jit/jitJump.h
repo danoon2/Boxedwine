@@ -20,12 +20,9 @@ void Jit::dynamic_jump(DecodedOp* op, JitConditional condition) {
     if (canJumpInBlock(op)) {
         U32 target = currentEip + op->len + op->imm;
         if (target <= currentEip) {
-            IfCondition(condition); {
-                jumpInBlock(target);
-            } EndIf();
-        } else {
-            JumpIfCondition(condition, target);
+            exitToRunLoopIfPendingSignal(currentEip);
         }
+        JumpIfCondition(condition, target);
     } else {
         IfCondition(condition); {
             blockNext1(currentEip + op->len + op->imm, op);
