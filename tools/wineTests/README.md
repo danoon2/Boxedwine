@@ -34,7 +34,7 @@ The normal command downloads its inputs when they are absent, runs
 The versioned inputs are:
 
 - BoxedWine Wine 11 filesystem:
-  `https://boxedwine.org/v2/7/TinyCore15Wine11.0.zip`
+  `https://boxedwine.org/v2/8/TinyCore15Wine11.0.zip`
 - Wine 11 tests:
   `http://boxedwine.org/v2/1/wine_tests_v1.zip`
 
@@ -87,9 +87,16 @@ run.
 | Group | Maximum failures |
 | --- | ---: |
 | `file` | 9 |
+| `threadpool` | 1 only for the timer-merging TODO success described below |
 | `virtual` | 7 |
 | `wow64` | 3 |
 | Every other group | 0 |
+
+The `threadpool` group also passes with zero failures. Its one-failure result is
+accepted only when Wine reports the timing-dependent unexpected TODO success at
+`threadpool.c:1622` (`expected that timers are merged`) and reports no ordinary
+`Test failed:` records. An unrelated single `threadpool` failure still fails the
+run.
 
 A timeout, malformed archive, missing summary, missing `Boxedwine shutdown`,
 failed guest-root cleanup, or failed release build also fails the run. The
