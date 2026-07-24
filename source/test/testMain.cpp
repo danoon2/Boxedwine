@@ -63,7 +63,62 @@ void testBlockedThreadSignalStartsHandler();
 void testBlockedThreadSigquitStartsHandlerImmediately();
 void testMemoryThreadCleanupUsesMemoryMutex();
 void testHardLinksShareIdentityDataAndXattrs();
+void testFileCacheIdentitySurvivesRenameAndHardLink();
 void testSharedFileMappingGrowthKeepsPagesShared();
+void testSharedFileMappingTruncateClearsResidentBytes();
+void testSharedMappedWriteIsVisibleToPread();
+void testPwriteUpdatesResidentSharedMapping();
+void testExtendingPwriteAdvancesMappedFileCacheLength();
+void testMappedFileMutationOperationOrdering();
+void testMmapLengthReconcileOrdersWithFileMutation();
+void testWritebackPreparationOrdersWithFileMutation();
+void testMappedAppendDescriptorWritebackIsPositioned();
+void testMappedWritebackResultSemantics();
+void testMappedAppendWithoutPositionedWriteTargetFailsCleanly();
+void testExactEndMsyncPersistsSharedMappedBytes();
+void testPrivateMsyncDoesNotPersistCowBytes();
+void testMappedCacheTeardownPersistsSharedBytes();
+void testFinalMappedRetirementOrdersWithDescriptorMutation();
+void testMappedWritebackPreparationAllocationFailure();
+void testMappedRetirementSurvivesProcessDestruction();
+void testFinalMappedRetirementIoErrorIsRetryable();
+void testFinalMappedRetirementShortWriteIsRetryable();
+void testFinalMappedRetirementSerializesNewRetain();
+void testMmapRejectsFileOffsetOverflowBeforeReplacement();
+void testMsyncRejectsUnmappedFileRange();
+void testMsyncFlushesRangeAcrossFixedFileOverlay();
+void testMsyncValidatesArgumentsAndAcceptsAnonymousRanges();
+void testMsyncSnapshotSurvivesConcurrentPrefixTrim();
+void testMremapRoundsNonAlignedShrink();
+void testFileBackedMremapGrowthIsRejected();
+void testMprotectRejectsWriteAcrossReadOnlySharedMapping();
+void testUnmapNativeMemoryRemovesOffsetReservation();
+void testMappedFileOffsetPageIndexBoundary();
+void testMiddleFixedOverlayRekeysRightFileMapping();
+void testClonePreservesMappedLeasePieceGrouping();
+void testCloneRetirementDiagnosticsAreIndependent();
+void testCloneNewLeaseRehashFailureIsTransactional();
+void testCloneReusedLeaseInsertionFailureIsTransactional();
+void testClonePostLeaseFailureDoesNotPublishProcess();
+void testCloneMemoryAndMappedSnapshotIsAtomic();
+void testCloneReservationDefersFinalRetirement();
+void testConcurrentMappedLeaseDetachRetiresExactlyOnce();
+void testConcurrentProcessCleanupRunsOnce();
+void testCloneVmFailureDoesNotDestroySourceMemory();
+void testProcessPublicationIsFinal();
+void testChildrenVisibilityMutexBindsOnce();
+void testWindowsNoThrowCodeWriteFlushesInstructionCache();
+void testMappedRecordAllocationFailureContainment();
+void testBHashTableRehashFailurePreservesEntries();
+void testMappedFilePageLoadRetriesAfterMutation();
+void testMmapCacheAcquireDoesNotHoldMemoryLock();
+void testExecutableFixedReplacementPreparationFailurePreservesState();
+void testNativeHeapSmallFreeQueueFailureIsRetryable();
+void testCachedPositionedReadUsesCheckedOffsetAndSeek();
+void testFtruncateBackendLengthBoundaries();
+void testPrivateMappedWriteDoesNotChangePread();
+void testMemfdPwriteUpdatesResidentSharedMapping();
+void testMemfdPwriteRejectsUnrepresentableOffset();
 void testProcessVmReadvUsesRemoteFileMappingContext();
 void testReadDirectoryReturnsIsDir();
 void testUtimensatPreservesAccessTimeInStat();
@@ -95,6 +150,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT subblock entries and invalidation"},
+    {testExecutableFixedReplacementPreparationFailurePreservesState, "Test WASM JIT fixed replacement backend preparation is transactional", TEST_ENTRY_SERIAL},
     {testWasmJitModuleMerger, "Test WASM JIT runtime module merger"},
     {testWasmJitBatchPolicy, "Test WASM JIT runtime batch policy"},
     {testWasmJitMappedFileRange, "Test WASM JIT mapped file range"},
@@ -780,7 +836,64 @@ const TestEntry TEST_ENTRIES[] = {
     {testMemoryThreadCleanupUsesMemoryMutex, "Test memory thread cleanup uses memory mutex"},
 #endif
     {testHardLinksShareIdentityDataAndXattrs, "Test hard links share identity, data, and xattrs", TEST_ENTRY_SERIAL},
+    {testFileCacheIdentitySurvivesRenameAndHardLink, "Test mapped-file cache identity survives rename and hard link", TEST_ENTRY_SERIAL},
     {testSharedFileMappingGrowthKeepsPagesShared, "Test shared file mapping stays shared after growth", TEST_ENTRY_SERIAL},
+    {testSharedFileMappingTruncateClearsResidentBytes, "Test shared file mapping clears resident bytes after truncate", TEST_ENTRY_SERIAL},
+    {testSharedMappedWriteIsVisibleToPread, "Test shared mapped write is visible to pread", TEST_ENTRY_SERIAL},
+    {testPwriteUpdatesResidentSharedMapping, "Test pwrite updates resident shared mapping", TEST_ENTRY_SERIAL},
+    {testExtendingPwriteAdvancesMappedFileCacheLength, "Test extending pwrite advances mapped-file cache length", TEST_ENTRY_SERIAL},
+    {testMappedFileMutationOperationOrdering, "Test mapped-file mutation operation ordering", TEST_ENTRY_SERIAL},
+    {testMmapLengthReconcileOrdersWithFileMutation, "Test mmap length reconcile orders with file mutation", TEST_ENTRY_SERIAL},
+    {testWritebackPreparationOrdersWithFileMutation, "Test writeback preparation orders with file mutation", TEST_ENTRY_SERIAL},
+    {testMappedAppendDescriptorWritebackIsPositioned, "Test mapped append descriptor writeback is positioned", TEST_ENTRY_SERIAL},
+    {testMappedWritebackResultSemantics, "Test mapped writeback result semantics", TEST_ENTRY_SERIAL},
+    {testMappedAppendWithoutPositionedWriteTargetFailsCleanly, "Test mapped append without positioned write target fails cleanly", TEST_ENTRY_SERIAL},
+    {testExactEndMsyncPersistsSharedMappedBytes, "Test exact-end msync persists shared mapped bytes", TEST_ENTRY_SERIAL},
+    {testPrivateMsyncDoesNotPersistCowBytes, "Test private msync does not persist COW bytes", TEST_ENTRY_SERIAL},
+    {testMappedCacheTeardownPersistsSharedBytes, "Test mapped cache teardown persists shared bytes", TEST_ENTRY_SERIAL},
+    {testFinalMappedRetirementOrdersWithDescriptorMutation, "Test final mapped retirement orders with descriptor mutation", TEST_ENTRY_SERIAL},
+    {testMappedWritebackPreparationAllocationFailure, "Test mapped writeback preparation allocation failure", TEST_ENTRY_SERIAL},
+    {testMappedRetirementSurvivesProcessDestruction, "Test mapped retirement survives process destruction", TEST_ENTRY_SERIAL},
+    {testFinalMappedRetirementIoErrorIsRetryable, "Test final mapped retirement I/O error is retryable", TEST_ENTRY_SERIAL},
+    {testFinalMappedRetirementShortWriteIsRetryable, "Test final mapped retirement short write is retryable", TEST_ENTRY_SERIAL},
+    {testFinalMappedRetirementSerializesNewRetain, "Test final mapped retirement serializes a new retain", TEST_ENTRY_SERIAL},
+    {testMmapRejectsFileOffsetOverflowBeforeReplacement, "Test mmap rejects file offset overflow before replacement", TEST_ENTRY_SERIAL},
+    {testMsyncRejectsUnmappedFileRange, "Test msync rejects unmapped file range", TEST_ENTRY_SERIAL},
+    {testMsyncFlushesRangeAcrossFixedFileOverlay, "Test msync flushes range across fixed file overlay", TEST_ENTRY_SERIAL},
+    {testMsyncValidatesArgumentsAndAcceptsAnonymousRanges, "Test msync validates arguments and accepts anonymous ranges", TEST_ENTRY_SERIAL},
+    {testMsyncSnapshotSurvivesConcurrentPrefixTrim, "Test msync snapshot survives concurrent prefix trim", TEST_ENTRY_SERIAL},
+    {testMremapRoundsNonAlignedShrink, "Test mremap rounds non-aligned shrink", TEST_ENTRY_SERIAL},
+    {testFileBackedMremapGrowthIsRejected, "Test file-backed mremap growth is rejected", TEST_ENTRY_SERIAL},
+    {testMprotectRejectsWriteAcrossReadOnlySharedMapping, "Test mprotect rejects write across read-only shared mapping", TEST_ENTRY_SERIAL},
+    {testUnmapNativeMemoryRemovesOffsetReservation, "Test native memory unmap removes offset reservation", TEST_ENTRY_SERIAL},
+    {testMappedFileOffsetPageIndexBoundary, "Test mapped-file offset page-index boundary", TEST_ENTRY_SERIAL},
+    {testMiddleFixedOverlayRekeysRightFileMapping, "Test middle fixed overlay rekeys right file mapping", TEST_ENTRY_SERIAL},
+    {testClonePreservesMappedLeasePieceGrouping, "Test clone preserves mapped lease piece grouping", TEST_ENTRY_SERIAL},
+    {testCloneRetirementDiagnosticsAreIndependent, "Test clone retirement diagnostics are independent", TEST_ENTRY_SERIAL},
+    {testCloneNewLeaseRehashFailureIsTransactional, "Test clone new lease rehash failure is transactional", TEST_ENTRY_SERIAL},
+    {testCloneReusedLeaseInsertionFailureIsTransactional, "Test clone reused lease insertion failure is transactional", TEST_ENTRY_SERIAL},
+    {testClonePostLeaseFailureDoesNotPublishProcess, "Test clone post-lease failure does not publish a process", TEST_ENTRY_SERIAL},
+    {testCloneMemoryAndMappedSnapshotIsAtomic, "Test clone memory and mapped-file snapshot is atomic", TEST_ENTRY_SERIAL},
+    {testCloneReservationDefersFinalRetirement, "Test clone reservation defers final mapped retirement", TEST_ENTRY_SERIAL},
+    {testConcurrentMappedLeaseDetachRetiresExactlyOnce, "Test concurrent mapped lease detach retires exactly once", TEST_ENTRY_SERIAL},
+    {testConcurrentProcessCleanupRunsOnce, "Test concurrent process cleanup runs once", TEST_ENTRY_SERIAL},
+    {testCloneVmFailureDoesNotDestroySourceMemory, "Test failed CLONE_VM construction preserves source memory", TEST_ENTRY_SERIAL},
+    {testProcessPublicationIsFinal, "Test process publication is final", TEST_ENTRY_SERIAL},
+    {testChildrenVisibilityMutexBindsOnce, "Test child visibility mutex binds once", TEST_ENTRY_SERIAL},
+    {testWindowsNoThrowCodeWriteFlushesInstructionCache, "Test Windows no-throw code write flushes instruction cache", TEST_ENTRY_SERIAL},
+    {testMappedRecordAllocationFailureContainment, "Test mapped record allocation failure containment", TEST_ENTRY_SERIAL},
+    {testBHashTableRehashFailurePreservesEntries, "Test BHashTable rehash failure preserves entries", TEST_ENTRY_SERIAL},
+    {testMappedFilePageLoadRetriesAfterMutation, "Test mapped-file page load retries after mutation", TEST_ENTRY_SERIAL},
+    {testMmapCacheAcquireDoesNotHoldMemoryLock, "Test mmap cache acquisition does not hold guest memory lock", TEST_ENTRY_SERIAL},
+#ifndef BOXEDWINE_WASM_JIT
+    {testExecutableFixedReplacementPreparationFailurePreservesState, "Test executable fixed replacement preparation failure preserves mapping and JIT", TEST_ENTRY_SERIAL},
+#endif
+    {testNativeHeapSmallFreeQueueFailureIsRetryable, "Test native heap small free queue failure is retryable", TEST_ENTRY_SERIAL},
+    {testCachedPositionedReadUsesCheckedOffsetAndSeek, "Test cached positioned read uses checked offset and seek", TEST_ENTRY_SERIAL},
+    {testFtruncateBackendLengthBoundaries, "Test ftruncate backend length boundaries", TEST_ENTRY_SERIAL},
+    {testPrivateMappedWriteDoesNotChangePread, "Test private mapped write does not change pread", TEST_ENTRY_SERIAL},
+    {testMemfdPwriteUpdatesResidentSharedMapping, "Test memfd pwrite updates resident shared mapping", TEST_ENTRY_SERIAL},
+    {testMemfdPwriteRejectsUnrepresentableOffset, "Test memfd pwrite rejects unrepresentable offset", TEST_ENTRY_SERIAL},
     {testProcessVmReadvUsesRemoteFileMappingContext, "Test process_vm_readv uses remote file mapping context", TEST_ENTRY_SERIAL},
     {testReadDirectoryReturnsIsDir, "Test read on directory returns EISDIR", TEST_ENTRY_SERIAL},
     {testUtimensatPreservesAccessTimeInStat, "Test utimensat preserves access time in stat", TEST_ENTRY_SERIAL},

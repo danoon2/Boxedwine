@@ -202,7 +202,8 @@ void StartUpArgs::buildVirtualFileSystem() {
     std::shared_ptr<FsNode> rootNode = Fs::getNodeFromLocalPath(B(""), B("/"), true);
     std::shared_ptr<FsNode> devNode = Fs::addFileNode(B("/dev"), B(""), rootNode->nativePath.stringByApppendingPath("dev"), true, rootNode);
     std::shared_ptr<FsNode> inputNode = Fs::addFileNode(B("/dev/input"), B(""), B(""), true, devNode);
-    KSystem::procNode = Fs::addFileNode(B("/proc"), B(""), B(""), true, rootNode);
+    KSystem::setProcNode(
+        Fs::addFileNode(B("/proc"), B(""), B(""), true, rootNode));
     std::shared_ptr<FsNode> procSysNode = Fs::addFileNode(B("/proc/sys"), B(""), B(""), true, KSystem::procNode);
     std::shared_ptr<FsNode> procNetNode = Fs::addFileNode(B("/proc/net"), B(""), B(""), true, KSystem::procNode);
     std::shared_ptr<FsNode> procSysKernelNode = Fs::addFileNode(B("/proc/sys/kernel"), B(""), B(""), true, procSysNode);

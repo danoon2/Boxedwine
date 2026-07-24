@@ -43,13 +43,18 @@ public:
     bool isReadReady() override;
     U32 readNative(U8* buffer, U32 len) override;
     U32 writeNative(U8* buffer, U32 len) override;
+    bool canWriteNativeAt() override;
+    FsWriteResult writeNativeAt(U8* buffer, U64 offset, U32 len) override;
     void close() override;
     void reopen() override;
     bool isOpen() override;
 
 private:
+    void openPositionedWriteHandle();
+
     std::shared_ptr<FsFileNode> fileNode;
     U32 handle;
+    U32 positionedWriteHandle = 0xFFFFFFFF;
 };
 
 #endif

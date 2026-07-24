@@ -19,6 +19,21 @@
 #ifndef __KFILE_H__
 #define __KFILE_H__
 
+class MappedFileCache;
+
+struct KWritebackResult {
+    S32 preparationError = 0;
+    S32 ioError = 0;
+    U64 bytesWritten = 0;
+
+    void recordIo(U64 bytes, S32 error);
+};
+
+struct KWritebackRange {
+    U64 offset;
+    std::vector<U8> bytes;
+};
+
 class KFile : public KObject {
 public:
     KFile(FsOpenNode* openFile);
@@ -54,10 +69,41 @@ public:
     U32 pread(KThread* thread, U32 buffer,S64 offset,  U32 len);
     U32 pwriteNative(U8* buffer, S64 offset, U32 len);
     U32 preadNative(U8* buffer, S64 offset, U32 len);
+    U32 preadNativeUncached(U8* buffer, S64 offset, U32 len);
+    U32 setLength(U64 length);
+#ifdef __TEST
+    std::shared_ptr<MappedFileCache> getOrCreateMappedFileCacheForTest(
+        BString name, bool writable) {
+        return getOrCreateMappedFileCache(name, writable);
+    }
+#endif
 
     FsOpenNode* openFile;
 
 private:
+    friend class KMemory;
+    friend class KProcess;
+    friend class MappedFileCache;
+
+    // KMemory's mmap-only entry point. It owns filePos -> identity continuously
+    // across the backing length read and cache creation/reconciliation.
+    std::shared_ptr<MappedFileCache> getOrCreateMappedFileCache(BString name, bool writable);
+    void retainMappedFileCacheLease(const std::shared_ptr<MappedFileCache>& cache);
+
+    using WritebackRange = KWritebackRange;
+    using PrepareWriteback = S32(*)(void* context, std::vector<WritebackRange>& ranges);
+    using CommitWriteback = void(*)(void* context) noexcept;
+
+    // Writeback's only mutation entry point. The callback snapshots owned byte
+    // ranges while filePos -> identity is held. KFile performs raw I/O only
+    // after the callback has returned, structurally releasing callback-local
+    // cache metadata guards first. Preparation status, I/O status, and U64
+    // aggregate progress remain independently observable. The optional commit
+    // callback runs only after every requested byte was written and before the
+    // filePos -> identity transaction is released.
+    KWritebackResult writeback(void* context, PrepareWriteback prepare, CommitWriteback commit = nullptr);
+
+    // Acquire before FsFileIdentity::mutationOperationMutex. Cache locks come last.
     BOXEDWINE_MUTEX filePosMutex;
 };
 

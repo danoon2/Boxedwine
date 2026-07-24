@@ -28,16 +28,98 @@
 
 class MappedFileCache;
 
+struct MappedFileRetirementDiagnostic {
+    std::atomic<S32> pendingError{0};
+    S32 reportedError = 0;
+    bool hasReportedError = false;
+#ifdef __TEST
+    std::atomic<U32> reportCount{0};
+#endif
+};
+
+class MappedFileLease {
+public:
+    explicit MappedFileLease(const std::shared_ptr<MappedFileCache>& cache) : cache(cache) {}
+
+    // Piece accounting is protected by the owning process's mappedFilesMutex.
+    void addPiece();
+    bool removePiece();
+    bool tryReserveClone() noexcept;
+    void releaseCloneReservation() noexcept;
+    U32 retire() noexcept;
+    bool isRetired() const { return retired; }
+#ifdef __TEST
+    U32 getPieceCountForTest() const { return pieceCount; }
+    void setTestBeforePieceRemovalHook(const std::shared_ptr<std::function<void()>>& hook) {
+        testBeforePieceRemovalHook = hook;
+    }
+#endif
+
+private:
+    std::shared_ptr<MappedFileCache> cache;
+    U32 pieceCount = 1;
+    bool retired = false;
+    std::atomic<U32> cloneReservations{0};
+#ifdef __TEST
+    std::shared_ptr<std::function<void()>> testBeforePieceRemovalHook;
+#endif
+};
+
 class MappedFile {
 public:
-    MappedFile() = default;
+    MappedFile() : retirementDiagnostic(std::make_shared<MappedFileRetirementDiagnostic>()) {}
+    MappedFile(const MappedFile& other) :
+        systemCacheEntry(other.systemCacheEntry), lease(other.lease), file(other.file),
+        address(other.address), len(other.len), offset(other.offset),
+        offsetValid(other.offsetValid), shared(other.shared),
+        mayWrite(other.mayWrite), key(other.key),
+        retirementDiagnostic(other.retirementDiagnostic) {}
 
+    bool tryGetFileOffset(U64 delta, U64& result) const {
+        if (!offsetValid || offset > std::numeric_limits<U64>::max() - delta) {
+            return false;
+        }
+        result = offset + delta;
+        return true;
+    }
+
+    bool advanceFileOffset(U64 delta) {
+        U64 advanced;
+        if (!tryGetFileOffset(delta, advanced)) {
+            offsetValid = false;
+            return false;
+        }
+        offset = advanced;
+        return true;
+    }
     std::shared_ptr<MappedFileCache> systemCacheEntry;
+    std::shared_ptr<MappedFileLease> lease;
     std::shared_ptr<KFile> file;
     U32 address = 0;
     U64 len = 0;
     U64 offset = 0;
+    bool offsetValid = true;
+    bool shared = false;
+    // Linux retains whether the original mapping may ever become writable.
+    // A read-only MAP_SHARED file mapping must not gain PROT_WRITE merely
+    // because another mapping supplied a writable cache owner.
+    bool mayWrite = false;
     U32 key = 0; // key to KProcess::mappedFiles
+    // Intrusive ownership used only after the final live piece is detached.
+    // Queue links are intentionally excluded from the mapping copy constructor.
+    std::shared_ptr<MappedFile> pendingRetirementNext;
+    bool pendingRetirementQueued = false;
+    // A queued entry retains its KFile, which is the stable backing-file
+    // identity associated with this diagnostic.
+    std::shared_ptr<MappedFileRetirementDiagnostic> retirementDiagnostic;
+#ifdef __TEST
+    S32 getPendingRetirementErrorForTest() const {
+        return retirementDiagnostic->pendingError.load(std::memory_order_acquire);
+    }
+    U32 getPendingRetirementErrorReportCountForTest() const {
+        return retirementDiagnostic->reportCount.load(std::memory_order_acquire);
+    }
+#endif
 };
 
 typedef std::shared_ptr<MappedFile> MappedFilePtr;
@@ -87,6 +169,10 @@ public:
 
 #define K_MAP_FIXED_NOREPLACE 0x100000
 #define K_MAP_BOXEDWINE 0x80000000
+
+#define K_MS_ASYNC      0x01
+#define K_MS_INVALIDATE 0x02
+#define K_MS_SYNC       0x04
 
 #define K_MADV_DONTNEED 4
 
@@ -141,6 +227,15 @@ public:
     MappedFilePtr getMappedFileForRange(U32 address, U32 len);
 #ifdef __TEST
     static MappedFilePtr selectMappedFileForRangeForTest(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len);
+    U32 getMappedFileCountForTest();
+    void setTestAfterMappedFileRangeSnapshotHook(const std::function<void()>& hook);
+    void setTestAfterCloneMemorySnapshotHook(const std::function<void()>& hook);
+    void setTestAfterCloneSnapshotLocksReleasedHook(const std::function<void()>& hook);
+    void cloneMemoryAndProcessForTest(const KProcessPtr& from, bool cloneVM);
+    static void setTestFailCloneAfterMappedLeaseRetention(bool fail);
+    static void setTestDuringProcessPublicationHook(const std::function<void(U32)>& hook);
+    void setTestBeforeCleanupProcessHook(const std::function<void()>& hook);
+    static void retryPendingMappedFileRetirementsForTest();
 #endif
     KFileDescriptorPtr allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);
     KFileDescriptorPtr getFileDescriptor(FD handle);
@@ -306,7 +401,24 @@ public:
     BOXEDWINE_MUTEX keySymToNameMutex;
     BHashTable<U32, U32> keySymToName;
 private:
-    BHashTable<U32, KFileDescriptorPtr> fds;    
+    struct PreparedClonedMapping {
+        MappedFilePtr mapping;
+        std::shared_ptr<MappedFileLease> sourceLease;
+    };
+
+    static KProcessPtr createUnpublished();
+    void publish();
+    void cloneMemoryAndProcess(const KProcessPtr& from, bool cloneVM);
+    static void prepareMappedCloneLocked(const KProcessPtr& from, std::vector<PreparedClonedMapping>& sourceMappings, std::vector<std::shared_ptr<MappedFileLease>>& reservations);
+    void cloneFromPrepared(const KProcessPtr& from, std::vector<PreparedClonedMapping>& sourceMappings);
+    U32 snapshotMappedFilesForRange(U32 address, U32 len, std::vector<MappedFilePtr>& result);
+    void retireAllMappedFiles() noexcept;
+    static void retryPendingMappedFileRetirements() noexcept;
+    static void queuePendingMappedFileRetirement(const MappedFilePtr& mapping, S32 error) noexcept;
+    static void shutdownPendingMappedFileRetirements() noexcept;
+    BOXEDWINE_MUTEX cleanupMutex;
+    bool cleanupCompleted = false;
+    BHashTable<U32, KFileDescriptorPtr> fds;
 
     user_desc ldt[LDT_ENTRIES];
     BOXEDWINE_MUTEX ldtMutex;
@@ -318,10 +430,20 @@ private:
     BOXEDWINE_MUTEX attachedShmMutex;
 
     friend class KMemory;
+    friend class KSystem;
+    friend class MappedFileLease;
     BHashTable<U32, MappedFilePtr> mappedFiles; // key is index
     // needs to be static, since during clone, the file pages and mappedFiles are cloned with the same map index, so this nextMappedFileIndex must be shared across processes
     static std::atomic_int nextMappedFileIndex;
     BOXEDWINE_MUTEX mappedFilesMutex;
+#ifdef __TEST
+    std::shared_ptr<std::function<void()>> testAfterMappedFileRangeSnapshotHook;
+    std::shared_ptr<std::function<void()>> testAfterCloneMemorySnapshotHook;
+    std::shared_ptr<std::function<void()>> testAfterCloneSnapshotLocksReleasedHook;
+    std::shared_ptr<std::function<void()>> testBeforeCleanupProcessHook;
+    static bool testFailCloneAfterMappedLeaseRetention;
+    static std::shared_ptr<std::function<void(U32)>> testDuringProcessPublicationHook;
+#endif
 
     BHashTable<U32, KThread*> threads;
     BOXEDWINE_MUTEX threadsMutex;
@@ -353,6 +475,8 @@ private:
 
     bool systemProcess = false;
     bool cloneVM = false; // if this process was created using CLONE_VM, then we need to be careful with its shared memory with its parent
+    bool published = false;
+    bool needsCommandlineNode = false;
 
 public:
     std::shared_ptr<FsNode> processNode; // in /proc/<pid>

@@ -18,6 +18,20 @@
 
 #include "boxedwine.h"
 
+void KWritebackResult::recordIo(U64 bytes, S32 error) {
+    if (bytes > std::numeric_limits<U64>::max() - bytesWritten) {
+        bytesWritten = std::numeric_limits<U64>::max();
+        if (!ioError) {
+            ioError = -K_EFBIG;
+        }
+    } else {
+        bytesWritten += bytes;
+    }
+    if (error && !ioError) {
+        ioError = error;
+    }
+}
+
 KFile::KFile(FsOpenNode* openFile) : KObject(KTYPE_FILE) {
     this->openFile = openFile;
 }
@@ -87,13 +101,40 @@ void KFile::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
 }
 
 U32 KFile::write(KThread* thread, U32 buffer, U32 len) {
+    std::shared_ptr<MappedFileCache> cache;
+    U32 result;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
-    return this->openFile->write(thread, buffer, len);
+    std::shared_ptr<FsFileIdentity> identity = openFile->node->getFileIdentity();
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
+        cache = KSystem::getFileCache(identity);
+        result = this->openFile->write(thread, buffer, len, cache);
+    }
+    return result;
 }
 
 U32 KFile::writeNative(U8* buffer, U32 len) {
+    std::shared_ptr<MappedFileCache> cache;
+    U32 result;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
-    return this->openFile->writeNative(buffer, len);
+    std::shared_ptr<FsFileIdentity> identity = openFile->node->getFileIdentity();
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
+        result = this->openFile->writeNative(buffer, len);
+        if ((S32)result > 0) {
+            S64 end = this->openFile->getFilePointer();
+#ifdef __TEST
+            if (identity->testAfterBackingMutationBeforeCacheNotification) {
+                identity->testAfterBackingMutationBeforeCacheNotification();
+            }
+#endif
+            cache = KSystem::getFileCache(identity);
+            if (cache) {
+                cache->updateWrite(end - result, buffer, result);
+            }
+        }
+    }
+    return result;
 }
 
 U32 KFile::read(KThread* thread, U32 buffer, U32 len) {
@@ -103,7 +144,15 @@ U32 KFile::read(KThread* thread, U32 buffer, U32 len) {
 
 U32 KFile::readNative(U8* buffer, U32 len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
-    return this->openFile->readNative(buffer, len);
+    S64 offset = this->openFile->getFilePointer();
+    U32 result = this->openFile->readNative(buffer, len);
+    if ((S32)result > 0) {
+        std::shared_ptr<MappedFileCache> cache = KSystem::getFileCache(openFile->node->getFileIdentity());
+        if (cache) {
+            cache->overlayRead(offset, buffer, result);
+        }
+    }
+    return result;
 }
 
 U32 KFile::stat(KProcess* process, U32 address, bool is64) {
@@ -156,11 +205,16 @@ U32 KFile::pread(KThread* thread, U32 buffer, S64 offset, U32 len) {
     }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     S64 previousOffset = this->openFile->getFilePointer();
+    if (previousOffset < 0) {
+        return -K_EIO;
+    }
     if (this->openFile->seek(offset) < 0) {
         return -K_EINVAL;
     }
     U32 result = this->openFile->read(thread, buffer, len);
-    this->openFile->seek(previousOffset);
+    if (this->openFile->seek(previousOffset) < 0) {
+        return -K_EIO;
+    }
     return result;
 }
 
@@ -168,30 +222,204 @@ U32 KFile::pwrite(KThread* thread, U32 buffer, S64 offset, U32 len) {
     if (offset < 0) {
         return -K_EINVAL;
     }
+    std::shared_ptr<MappedFileCache> cache;
+    U32 result;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
-    S64 previousOffset = this->openFile->getFilePointer();
-    if (this->openFile->seek(offset) < 0) {
-        return -K_EINVAL;
+    std::shared_ptr<FsFileIdentity> identity = openFile->node->getFileIdentity();
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
+        S64 previousOffset = this->openFile->getFilePointer();
+        if (this->openFile->seek(offset) < 0) {
+            return -K_EINVAL;
+        }
+        cache = KSystem::getFileCache(identity);
+        result = this->openFile->write(thread, buffer, len, cache);
+        this->openFile->seek(previousOffset);
     }
-    U32 result = this->openFile->write(thread, buffer, len);
-    this->openFile->seek(previousOffset);
     return result;
 }
 
 U32 KFile::preadNative(U8* buffer, S64 offset, U32 len) {
+    if (offset < 0) {
+        return -K_EINVAL;
+    }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     S64 previousOffset = this->openFile->getFilePointer();
-    this->openFile->seek(offset);
+    if (previousOffset < 0) {
+        return -K_EIO;
+    }
+    if (this->openFile->seek(offset) < 0) {
+        return -K_EINVAL;
+    }
     U32 result = this->openFile->readNative(buffer, len);
-    this->openFile->seek(previousOffset);
+    bool restoreFailed = this->openFile->seek(previousOffset) < 0;
+    if ((S32)result > 0) {
+        std::shared_ptr<MappedFileCache> cache = KSystem::getFileCache(openFile->node->getFileIdentity());
+        if (cache) {
+            cache->overlayRead(offset, buffer, result);
+        }
+    }
+    if (restoreFailed) {
+        return -K_EIO;
+    }
     return result;
 }
 
 U32 KFile::pwriteNative(U8* buffer, S64 offset, U32 len) {
+    std::shared_ptr<MappedFileCache> cache;
+    U32 result;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
+    std::shared_ptr<FsFileIdentity> identity = openFile->node->getFileIdentity();
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
+        S64 previousOffset = this->openFile->getFilePointer();
+        this->openFile->seek(offset);
+        result = this->openFile->writeNative(buffer, len);
+        if ((S32)result > 0) {
+            S64 end = this->openFile->getFilePointer();
+#ifdef __TEST
+            if (identity->testAfterBackingMutationBeforeCacheNotification) {
+                identity->testAfterBackingMutationBeforeCacheNotification();
+            }
+#endif
+            cache = KSystem::getFileCache(identity);
+            if (cache) {
+                cache->updateWrite(end - result, buffer, result);
+            }
+        }
+        this->openFile->seek(previousOffset);
+    }
+    return result;
+}
+
+U32 KFile::preadNativeUncached(U8* buffer, S64 offset, U32 len) {
+    if (offset < 0) {
+        return -K_EINVAL;
+    }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     S64 previousOffset = this->openFile->getFilePointer();
-    this->openFile->seek(offset);
-    U32 result = this->openFile->writeNative(buffer, len);
-    this->openFile->seek(previousOffset);
+    if (previousOffset < 0) {
+        return -K_EIO;
+    }
+    if (this->openFile->seek(offset) < 0) {
+        return -K_EINVAL;
+    }
+    U32 result = this->openFile->readNative(buffer, len);
+    if (this->openFile->seek(previousOffset) < 0) {
+        return -K_EIO;
+    }
     return result;
+}
+
+KWritebackResult KFile::writeback(void* context, PrepareWriteback prepare,
+    CommitWriteback commit) {
+    // Owned snapshots deliberately outlive both guards. In particular, any
+    // future destructor work cannot recursively enter the identity gate.
+    std::vector<WritebackRange> ranges;
+    KWritebackResult result;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
+    std::shared_ptr<FsFileIdentity> identity = openFile->node->getFileIdentity();
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
+        try {
+            result.preparationError = prepare(context, ranges);
+        } catch (const std::bad_alloc&) {
+            result.preparationError = -K_ENOMEM;
+        } catch (const std::length_error&) {
+            result.preparationError = -K_ENOMEM;
+        }
+        if (result.preparationError) {
+            return result;
+        }
+        for (WritebackRange& range : ranges) {
+            U64 rangeProgress = 0;
+            while (rangeProgress < range.bytes.size()) {
+                if (range.offset > std::numeric_limits<U64>::max() - rangeProgress) {
+                    result.recordIo(0, -K_EFBIG);
+                    return result;
+                }
+                U32 requested = (U32)std::min<U64>(
+                    range.bytes.size() - rangeProgress, std::numeric_limits<U32>::max());
+                FsWriteResult writeResult = this->openFile->writeNativeAt(
+                    range.bytes.data() + (size_t)rangeProgress,
+                    range.offset + rangeProgress, requested);
+                result.recordIo(writeResult.bytesWritten, writeResult.error);
+                rangeProgress += writeResult.bytesWritten;
+                if (writeResult.error || writeResult.bytesWritten != requested) {
+                    return result;
+                }
+            }
+        }
+        if (commit) {
+            commit(context);
+        }
+    }
+    return result;
+}
+
+U32 KFile::setLength(U64 length) {
+    if (length > (U64)std::numeric_limits<S64>::max()) {
+        return -K_EINVAL;
+    }
+    if (openFile->node->type == FsNode::Type::Memory && length > (U64)std::numeric_limits<U32>::max()) {
+        return -K_EFBIG;
+    }
+    std::shared_ptr<MappedFileCache> cache;
+    U32 result = 0;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
+    std::shared_ptr<FsFileIdentity> identity = openFile->node->getFileIdentity();
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
+        if (!openFile->setLength((S64)length)) {
+            return -K_EIO;
+        }
+#ifdef __TEST
+        if (identity->testAfterBackingMutationBeforeCacheNotification) {
+            identity->testAfterBackingMutationBeforeCacheNotification();
+        }
+#endif
+        cache = KSystem::getFileCache(identity);
+        if (cache) {
+            cache->setLength(length);
+        }
+    }
+    return result;
+}
+
+std::shared_ptr<MappedFileCache> KFile::getOrCreateMappedFileCache(BString name, bool writable) {
+    // The cache owner deliberately outlives both guards. Final writeback is an
+    // explicit lease retirement and never runs from cache destruction.
+    std::shared_ptr<MappedFileCache> cache;
+    std::shared_ptr<KFile> self = std::dynamic_pointer_cast<KFile>(shared_from_this());
+    if (writable && !openFile->canWriteNativeAt()) {
+        return nullptr;
+    }
+#ifdef __TEST
+    std::shared_ptr<FsFileIdentity> testIdentity = openFile->node->getFileIdentity();
+    if (testIdentity->testBeforeMappedCacheFileLock) {
+        testIdentity->testBeforeMappedCacheFileLock();
+    }
+#endif
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
+    std::shared_ptr<FsFileIdentity> identity = openFile->node->getFileIdentity();
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
+        U64 backingLength = (U64)openFile->length();
+#ifdef __TEST
+        if (identity->testAfterMappedLengthReadBeforeCacheReconcile) {
+            identity->testAfterMappedLengthReadBeforeCacheReconcile();
+        }
+#endif
+        cache = KSystem::getOrCreateFileCache(identity, name, self, backingLength, writable);
+    }
+    return cache;
+}
+
+void KFile::retainMappedFileCacheLease(const std::shared_ptr<MappedFileCache>& cache) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
+    std::shared_ptr<FsFileIdentity> identity = openFile->node->getFileIdentity();
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
+        cache->retainMapping();
+    }
 }

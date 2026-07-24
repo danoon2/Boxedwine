@@ -34,6 +34,22 @@ class FsOpenNode;
 class KProcess;
 class KThread;
 class KObject;
+class MappedFileCache;
+
+class FsFileIdentity {
+public:
+    // Serializes a backing mutation with its cache notification. Lock order:
+    // KFile::filePosMutex -> mutationOperationMutex -> cache mutation/metadata.
+    // Page-load backing reads intentionally do not acquire this gate.
+    BOXEDWINE_MUTEX_NR mutationOperationMutex;
+    std::weak_ptr<MappedFileCache> fileCache;
+#ifdef __TEST
+    std::function<void()> testAfterBackingMutationBeforeCacheNotification;
+    std::function<void()> testAfterMappedLengthReadBeforeCacheReconcile;
+    std::function<void()> testBeforeMappedCacheFileLock;
+    std::function<bool()> testBeforeGuestMemoryAccess;
+#endif
+};
 
 class FsNode : public std::enable_shared_from_this<FsNode> {
 public:
@@ -67,6 +83,7 @@ public:
     virtual U32 getId() { return this->id; }
     virtual U32 getHardLinkCount() { return this->hardLinkCount; }
     virtual BString getNativePathForData() { return this->nativePath; }
+    std::shared_ptr<FsFileIdentity> getFileIdentity() const { return fileIdentity; }
 
     virtual bool canRead();
     virtual bool canWrite();
@@ -97,6 +114,12 @@ public:
     void addChild(std::shared_ptr<FsNode> node);
     void removeChildByName(BString name);
     void getAllChildren(std::vector<std::shared_ptr<FsNode> > & results);
+    void reserveChildren(std::size_t capacity);
+    void setChildrenVisibilityMutex(BOXEDWINE_MUTEX* mutex);
+#ifdef __TEST
+    bool trySetChildrenVisibilityMutexForTest(BOXEDWINE_MUTEX* mutex);
+    BOXEDWINE_MUTEX* getChildrenVisibilityMutexForTest() const;
+#endif
 
     U32 addLock(KFileLock* lock);
     bool unlock(KFileLock* lock);
@@ -107,6 +130,7 @@ public:
 
     void addOpenNode(KListNode<FsOpenNode*>* node);
 protected:
+    std::shared_ptr<FsFileIdentity> fileIdentity;
     std::weak_ptr<FsNode> parent; // the parent holds a strong reference to the children
 
     KList<FsOpenNode*> openNodes;
@@ -118,11 +142,15 @@ private:
 
     BHashTable<BString, std::shared_ptr<FsNode> > childrenByName;
     BOXEDWINE_MUTEX childrenByNameMutex;
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::atomic<BOXEDWINE_MUTEX*> childrenVisibilityMutex{nullptr};
+#endif
 
-    std::vector<KFileLock> locks;       
+    std::vector<KFileLock> locks;
     BOXEDWINE_CONDITION locksCS;    
 
     void loadChildren();
+    bool trySetChildrenVisibilityMutex(BOXEDWINE_MUTEX* mutex);
     KFileLock* internalGetLock(KFileLock* lock, bool otherProcess);
 };
 

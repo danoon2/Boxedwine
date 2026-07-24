@@ -24,33 +24,45 @@
 #include "soft_mmu.h"
 
 U8 FilePage::readb(MMU* mmu, U32 address) {
-    onDemmand(mmu, address >> K_PAGE_SHIFT);
+    if (!loadPage(mmu, address >> K_PAGE_SHIFT, true, false)) {
+        return 0;
+    }
     return Page::getRWPage()->readb(mmu, address);
 }
 
 void FilePage::writeb(MMU* mmu, U32 address, U8 value) {
-    onDemmand(mmu, address >> K_PAGE_SHIFT);
-    Page::getRWPage()->writeb(mmu, address, value);
+    if (!loadPage(mmu, address >> K_PAGE_SHIFT, false, true)) {
+        return;
+    }
+    mmu->getPage()->writeb(mmu, address, value);
 }
 
 U16 FilePage::readw(MMU* mmu, U32 address) {
-    onDemmand(mmu, address >> K_PAGE_SHIFT);
+    if (!loadPage(mmu, address >> K_PAGE_SHIFT, true, false)) {
+        return 0;
+    }
     return Page::getRWPage()->readw(mmu, address);
 }
 
 void FilePage::writew(MMU* mmu, U32 address, U16 value) {
-    onDemmand(mmu, address >> K_PAGE_SHIFT);
-    Page::getRWPage()->writew(mmu, address, value);
+    if (!loadPage(mmu, address >> K_PAGE_SHIFT, false, true)) {
+        return;
+    }
+    mmu->getPage()->writew(mmu, address, value);
 }
 
 U32 FilePage::readd(MMU* mmu, U32 address) {
-    onDemmand(mmu, address >> K_PAGE_SHIFT);
+    if (!loadPage(mmu, address >> K_PAGE_SHIFT, true, false)) {
+        return 0;
+    }
     return Page::getRWPage()->readd(mmu, address);
 }
 
 void FilePage::writed(MMU* mmu, U32 address, U32 value) {
-    onDemmand(mmu, address >> K_PAGE_SHIFT);
-    Page::getRWPage()->writed(mmu, address, value);
+    if (!loadPage(mmu, address >> K_PAGE_SHIFT, false, true)) {
+        return;
+    }
+    mmu->getPage()->writed(mmu, address, value);
 }
 
 bool FilePage::canReadRam(MMU* mmu) {
@@ -65,44 +77,95 @@ U8* FilePage::getRamPtr(MMU* mmu, U32 page, bool write, bool force, U32 offset, 
     if (!force) {
         return nullptr;
     }
-    onDemmand(mmu, page);
-    return Page::getRWPage()->getRamPtr(mmu, page, write, force, offset, len);
+    if (!loadPage(mmu, page, !write, write)) {
+        return nullptr;
+    }
+    return mmu->getPage()->getRamPtr(mmu, page, write, force, offset, len);
 }
 
 void FilePage::onDemmand(MMU* mmu, U32 pageIndex) {
+    loadPage(mmu, pageIndex, true, false);
+}
+
+bool FilePage::loadPage(MMU* mmu, U32 pageIndex, bool readFault, bool writeFault) {
     KThread* thread = KThread::currentThread();
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->memory->mutex);
-    if (mmu->getPageType() != PageType::File) {
-        return;
-    }
-    MappedFilePtr mappedFile = thread->process->getMappedFile((U32)mmu->ramIndex);
     U32 address = pageIndex << K_PAGE_SHIFT;
-    U32 mappedOffset = (address - mappedFile->address) & 0xfffff000;
-    U64 fileOffset = mappedOffset + mappedFile->offset;
-    U32 fileOffsetPage = (U32)(fileOffset >> K_PAGE_SHIFT);
-    RamPage ramPage;
+    while (true) {
+        MappedFilePtr mappedFile;
+        std::shared_ptr<MappedFileCache> cache;
+        std::shared_ptr<KFile> file;
+        U64 fileOffset = 0;
+        U32 mappingKey = 0;
+        bool shared = false;
+        bool invalidOffset = false;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->memory->mutex);
+            if (mmu->getPageType() != PageType::File) {
+                return true;
+            }
+            mappingKey = (U32)mmu->ramIndex;
+            mappedFile = thread->process->getMappedFile(mappingKey);
+            U64 mappedOffset = mappedFile && address >= mappedFile->address
+                ? ((U64)address - mappedFile->address) & ~(U64)K_PAGE_MASK
+                : std::numeric_limits<U64>::max();
+            if (!mappedFile || !mappedFile->tryGetFileOffset(mappedOffset, fileOffset) ||
+                (fileOffset >> K_PAGE_SHIFT) > K_MAX_MAPPED_FILE_CACHE_PAGE) {
+                mmu->setFlags(0);
+                mmu->setPage(thread->memory, pageIndex, PageType::None, (RamPage)0);
+                getMemData(thread->memory)->onPageChanged(pageIndex);
+                invalidOffset = true;
+            } else {
+                cache = mappedFile->systemCacheEntry;
+                file = mappedFile->file;
+                shared = thread->memory->mapShared(pageIndex);
+            }
+        }
+        if (invalidOffset) {
+            thread->seg_mapper(address, readFault, writeFault);
+            return false;
+        }
 
-    PageType pageType = PageType::Ram;
-
-    if (mappedFile->systemCacheEntry && fileOffsetPage < (U32)mappedFile->systemCacheEntry->data.size()) {
-        ramPage = mappedFile->systemCacheEntry->data[fileOffsetPage];
-        if (ramPage.value) {
-            ramPageRetain(ramPage);
+        // Backing reads and cache creation can acquire file/cache locks. Keep
+        // them outside KMemory::mutex, then validate that the mapping snapshot
+        // still describes this page before installing the loaded RamPage.
+        RamPage ramPage;
+        PageType pageType = PageType::Ram;
+        if (cache) {
+            ramPage = cache->getOrCreatePage((U32)(fileOffset >> K_PAGE_SHIFT), shared);
             pageType = PageType::CopyOnWrite;
+        } else {
+            ramPage = ramPageAlloc();
+            file->preadNativeUncached(ramPageGet(ramPage), fileOffset, K_PAGE_SIZE);
+        }
+
+        bool retry = false;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->memory->mutex);
+            if (mmu->getPageType() != PageType::File) {
+                ramPageRelease(ramPage);
+                return true;
+            }
+            MappedFilePtr currentMappedFile =
+                thread->process->getMappedFile((U32)mmu->ramIndex);
+            U64 currentMappedOffset =
+                currentMappedFile && address >= currentMappedFile->address
+                ? ((U64)address - currentMappedFile->address) & ~(U64)K_PAGE_MASK
+                : std::numeric_limits<U64>::max();
+            U64 currentFileOffset = 0;
+            if ((U32)mmu->ramIndex != mappingKey ||
+                currentMappedFile != mappedFile ||
+                !currentMappedFile->tryGetFileOffset(currentMappedOffset, currentFileOffset) ||
+                currentFileOffset != fileOffset ||
+                thread->memory->mapShared(pageIndex) != shared) {
+                retry = true;
+            } else {
+                mmu->setPage(thread->memory, pageIndex, pageType, ramPage);
+                getMemData(thread->memory)->onPageChanged(pageIndex);
+            }
+        }
+        ramPageRelease(ramPage); // setPage retained ramPage when installed
+        if (!retry) {
+            return true;
         }
     }
-
-    if (!ramPage.value) {
-        ramPage = ramPageAlloc();
-        mappedFile->file->preadNative(ramPageGet(ramPage), fileOffset, K_PAGE_SIZE);
-        if (mappedFile->systemCacheEntry && fileOffsetPage < (U32)mappedFile->systemCacheEntry->data.size()) {
-            ramPageRetain(ramPage);
-            ramPageMarkSystem(ramPage, true);
-            mappedFile->systemCacheEntry->data[fileOffsetPage] = ramPage;
-            pageType = PageType::CopyOnWrite;
-        }
-    }
-    mmu->setPage(thread->memory, pageIndex, pageType, ramPage);
-    ramPageRelease(ramPage); // setPageType retained ramPage
-    getMemData(thread->memory)->onPageChanged(pageIndex);
 }

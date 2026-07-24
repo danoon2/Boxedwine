@@ -99,7 +99,11 @@ void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 	KThread* thread = page ? KThread::currentThread() : nullptr;
 	for (U32 i = offset; i < end; i++) {
 		if (page && page->ops[i]) {
-			pendingDeallocs[thread->id].push_back(page->ops[i]);
+			if (preparedRemovalPendingDeallocs) {
+				preparedRemovalPendingDeallocs->push_back(page->ops[i]);
+			} else {
+				pendingDeallocs[thread->id].push_back(page->ops[i]);
+			}
 			page->ops[i] = nullptr;
 			activeOps--;
 		}
@@ -154,7 +158,11 @@ DecodedOp* DecodedOpCache::getPreviousOpAndRemoveIfOverlapping(U32 address) {
 		// does previousOp span into address, if so then remove it
 		if (previousOpAddress + previousOp->len > address) {
 			previousPageCache->ops[previousOpAddress & K_PAGE_MASK] = nullptr;			
-			pendingDeallocs[KThread::currentThread()->id].push_back(previousOp);
+			if (preparedRemovalPendingDeallocs) {
+				preparedRemovalPendingDeallocs->push_back(previousOp);
+			} else {
+				pendingDeallocs[KThread::currentThread()->id].push_back(previousOp);
+			}
 			activeOps--;
 			previousOp = getPreviousOp(previousOpAddress, &previousOpAddress, &previousPageCache);
 		}
@@ -252,9 +260,63 @@ void DecodedOpCache::iterateOps(U32 address, U32 len, OpCacheCallback callback, 
 void DecodedOpCache::remove(U32 address, U32 len, bool becauseOfWrite) {
 	DecodedOp* prev = getPreviousOpAndRemoveIfOverlapping(address);
 	if (prev) {
-		prev->next = DecodedOp::allocDone();
+		prev->next = preparedRemovalDone ? preparedRemovalDone : DecodedOp::allocDone();
 	}
 	removeStartAt(address, len, becauseOfWrite);
+}
+
+void DecodedOpCache::prepareRemoveRanges(const std::vector<std::pair<U32, U32>>& ranges) {
+	KThread* thread = KThread::currentThread();
+	if (!thread) {
+		throw std::bad_alloc();
+	}
+
+	size_t removalCount = 0;
+	for (const auto& range : ranges) {
+		U32 address = range.first;
+		U32 len = range.second;
+		if (!len) {
+			continue;
+		}
+		U32 previousOpAddress = 0;
+		DecodedOpPageCache* previousPage = nullptr;
+		DecodedOp* previousOp = getPreviousOp(address, &previousOpAddress, &previousPage);
+		if (previousOp && previousOpAddress + previousOp->len > address) {
+			++removalCount;
+		}
+
+		U64 cursor = address;
+		U64 end = cursor + len;
+		while (cursor < end) {
+			U32 pageIndex = (U32)(cursor >> K_PAGE_SHIFT);
+			U32 offset = (U32)cursor & K_PAGE_MASK;
+			U32 todo = (U32)std::min<U64>(end - cursor, K_PAGE_SIZE - offset);
+			DecodedOpPageCache* page = getPageCache(pageIndex, false);
+			if (page) {
+				for (U32 i = offset; i < offset + todo; ++i) {
+					if (page->ops[i]) {
+						++removalCount;
+					}
+				}
+			}
+			cursor += todo;
+		}
+	}
+
+	auto result = pendingDeallocs.try_emplace(thread->id);
+	std::vector<DecodedOp*>& pending = result.first->second;
+	if (removalCount > pending.max_size() - pending.size()) {
+		throw std::length_error("DecodedOp removal is too large");
+	}
+	pending.reserve(pending.size() + removalCount);
+	DecodedOp* done = DecodedOp::allocDone();
+	preparedRemovalPendingDeallocs = &pending;
+	preparedRemovalDone = done;
+}
+
+void DecodedOpCache::finishPreparedRemove() {
+	preparedRemovalPendingDeallocs = nullptr;
+	preparedRemovalDone = nullptr;
 }
 
 void DecodedOpCache::removeAll() {

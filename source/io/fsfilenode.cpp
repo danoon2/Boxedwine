@@ -345,15 +345,37 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     if (flags & K_O_APPEND) {
         openFlags|=O_APPEND;
     }
-    U32 f;
-
+    auto openHostFile = [&]() -> U32 {
 #ifdef BOXEDWINE_MSVC
-    if (dataNativePath.length() > 255) {
-        BString path = "\\\\?\\" + dataNativePath;
-        f = ::open(path.c_str(), openFlags, 0666);
-    } else
+        if (dataNativePath.length() > 255) {
+            BString path = "\\\\?\\" + dataNativePath;
+            return ::open(path.c_str(), openFlags, 0666);
+        }
 #endif
-    f = ::open(dataNativePath.c_str(), openFlags, 0666);
+        return ::open(dataNativePath.c_str(), openFlags, 0666);
+    };
+    U32 f;
+    std::shared_ptr<MappedFileCache> cache;
+    if (flags & K_O_TRUNC) {
+        std::shared_ptr<FsFileIdentity> identity = this->getFileIdentity();
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
+            f = openHostFile();
+            if (f != 0xFFFFFFFF) {
+#ifdef __TEST
+                if (identity->testAfterBackingMutationBeforeCacheNotification) {
+                    identity->testAfterBackingMutationBeforeCacheNotification();
+                }
+#endif
+                cache = KSystem::getFileCache(identity);
+                if (cache) {
+                    cache->setLength(0);
+                }
+            }
+        }
+    } else {
+        f = openHostFile();
+    }
     if (f==0xFFFFFFFF) {
 #ifdef BOXEDWINE_ZLIB
         if (this->zipNode && (flags & K_O_ACCMODE)==K_O_RDONLY)
@@ -667,6 +689,13 @@ BString FsFileNode::getNativePathForData() {
 }
 
 void FsFileNode::setHardLinkState(const std::shared_ptr<FsHardLinkState>& state) {
+    if (state) {
+        if (!state->fileIdentity) {
+            state->fileIdentity = this->fileIdentity;
+        } else {
+            this->fileIdentity = state->fileIdentity;
+        }
+    }
     this->hardLinkState = state;
     if (!state) {
         return;

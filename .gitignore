@@ -15,6 +15,7 @@ project/msvc/BoxedWine/zlib/Release/
 project/msvc/BoxedWine/BoxedWine/Test/
 project/msvc/BoxedWine/zlib/Test/
 project/msvc/BoxedWine/Test/
+project/msvc/BoxedWine/BoxedWine/Boxedwine/
 lib/sdl2/VisualC/SDL/Win32/
 lib/sdl2/VisualC/SDL/Debug/
 lib/sdl2/VisualC/SDL/ARM64/
@@ -25,6 +26,7 @@ lib/sdl2/VisualC/SDLmain/ARM64/
 lib/sdl2/VisualC/SDLmain/x64/
 project/msvc/BoxedWine/BoxedWine/imgui.ini
 project/linux/bin/
+project/linux/Build/
 project/linux/linux_build/
 project/mac-xcode/bin/
 project/emscripten/Build/
@@ -34,15 +36,12 @@ project/linux/msvc-remote/Boxedwine/.vs/
 project/linux/msvc-remote/Boxedwine/Boxedwine/bin/
 project/linux/msvc-remote/Boxedwine/Boxedwine/obj/
 **/xcuserdata/*
+tmp/
 tools/vulkan/gen/
 tools/BoxedwineRunner/out/
 tools/jenkins/*.log
 tools/jenkins/*.pid
 project/linux/Deploy/LocalBuildSite/
 lib/mac
-.vs/
-.github/
 project/mac-xcode/Boxedwine/DerivedDataCoverage
-*.xcresult
-*.profraw
-.codex-worktrees/
+.*/

@@ -6732,7 +6732,7 @@ void JitArmV8CodeGen::direct_cmp(JitWidth width, RegPtr left, U32 right) {
 void JitArmV8CodeGen::direct_test(JitWidth width, RegPtr left, RegPtr right) {
     cfInverted = false;
 
-    // The OF and CF flags are set to 0. The SF, ZF, and PF flags are set according to the result(see the “Operation” section above).The state of the AF flag is undefined.
+    // The OF and CF flags are set to 0. The SF, ZF, and PF flags are set according to the result(see the "Operation" section above).The state of the AF flag is undefined.
     if (width == JitWidth::b32) {        
         // sets Z if the result is zero and N if the highest bit is set, while C and V are cleared.
         compiler.ands(asmjit::a64::wzr, R32(left), R32(right));
@@ -7022,15 +7022,18 @@ void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {
     data.doJIT(address, op);
 }
 
+static void clearArmJitBlockEntries(void* opaque) noexcept {
+    const std::vector<void*>& jitOps = *static_cast<const std::vector<void*>*>(opaque);
+    for (void* p : jitOps) {
+        ::memset(p, 0, 4);
+    }
+}
+
 void clearJitBlock(const std::vector<void*>& jitOps) {
     U8* start = (U8*)jitOps[0];
     U8* end = (U8*)jitOps[jitOps.size() - 1];
     U32 len = static_cast<U32>(end - start) + 4;
-    Platform::writeCodeToMemory(start, len, [&jitOps]() {
-        for (void* p : jitOps) {
-            ::memset(p, 0, 4);
-        }
-    });
+    Platform::writeCodeToMemory(start, len, clearArmJitBlockEntries, const_cast<std::vector<void*>*>(&jitOps));
 }
 
 #endif

@@ -28,8 +28,9 @@ void MMU::setPageType(KMemory* memory, U32 page, PageType type) {
     setPage(memory, page, type, (RamPage)ramIndex);
 }
 
-void MMU::setPage(KMemory* memory, U32 page, PageType type, RamPage ram) {
-    if (getPageType() == PageType::Code && type != PageType::Code) {
+void MMU::setPage(KMemory* memory, U32 page, PageType type, RamPage ram,
+    bool codeAlreadyRemoved) {
+    if (!codeAlreadyRemoved && getPageType() == PageType::Code && type != PageType::Code) {
         memory->removeCode(nullptr, page << K_PAGE_SHIFT, K_PAGE_SIZE, false);
         memory->clearPageWriteCounts(page);
     }

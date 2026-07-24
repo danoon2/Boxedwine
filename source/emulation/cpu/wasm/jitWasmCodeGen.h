@@ -1138,6 +1138,10 @@ void wasmJitHandlePendingHit(CPU* cpu, DecodedOp* op);
 bool wasmJitCompilationPaused();
 #endif
 
+#ifdef __TEST
+void wasmJitTestSetFailInvalidationPreparation(bool fail);
+#endif
+
 #if defined(__TEST) && !defined(BOXEDWINE_MULTI_THREADED)
 extern "C" void boxedwine_wasm_test_force_next_module_oom();
 extern "C" void boxedwine_wasm_test_reset_oom_state();
@@ -1155,6 +1159,7 @@ bool wasmJitTestRelocAllocationTransfer();
 U32 wasmJitTestSealedCount();
 extern "C" U32 wasmJitTestRuntimeGroupCount();
 extern "C" U32 wasmJitTestRuntimeModuleCount();
+extern "C" U32 wasmJitTestRuntimeGroupIdForSlot(int tableIndex);
 extern "C" U32 wasmJitTestRuntimeModuleAttemptCount();
 extern "C" U32 wasmJitTestStandaloneModuleAttemptCount();
 U32 wasmJitTestStandaloneModuleCount();
@@ -1252,6 +1257,23 @@ struct WasmJitMtRuntimeGroupConstructorStatsSnapshot {
     U32 instanceAttempts = 0;
 };
 
+struct WasmJitMtRetirementStateSnapshot {
+    U32 retiredOwnerCount = 0;
+    U32 retiredSlotCount = 0;
+    U32 retirementPending = 0;
+    U32 groupSlotOwnerCount = 0;
+    U32 standaloneSlotOwnerCount = 0;
+    U32 pendingBrokerReleaseCount = 0;
+    U32 pendingBrokerReleaseSlots = 0;
+    U64 pendingBrokerReleaseFingerprint = 0;
+    U32 cpuActiveTableIndex = 0;
+    U32 cpuActiveTableIndexLocal = 0;
+    U32 cpuInCompiledCall = 0;
+    U32 cpuCallsUntilQuiescence = 0;
+
+    bool operator==(const WasmJitMtRetirementStateSnapshot&) const = default;
+};
+
 WasmJitMtBrokerModuleRef wasmJitTestGetMtBrokerSlotRef(int tableIndex);
 WasmJitMtBrokerStatsSnapshot wasmJitTestGetMtBrokerStats(KMemory* memory);
 WasmJitMtBrokerMainStatsSnapshot wasmJitTestGetMtBrokerMainStats();
@@ -1263,6 +1285,8 @@ U32 wasmJitTestGetMtGroupModuleId(U32 groupIdx, KMemory* memory);
 U32 wasmJitTestGetMtGroupRelocValue(int tableIndex, U32 relocIndex);
 bool wasmJitTestSetMtGroupRelocValue(int tableIndex, U32 relocIndex, U32 value);
 bool wasmJitTestHasMtSlotMetadata(int tableIndex);
+U32 wasmJitTestGetMtGroupIndexForSlot(int tableIndex);
+WasmJitMtRetirementStateSnapshot wasmJitTestGetMtRetirementState(CPU* cpu);
 void wasmJitTestSetMtActiveSlot(CPU* cpu, int tableIndex);
 void wasmJitTestReapMtRetiredSlots(KMemory* memory);
 void wasmJitTestRetireMtSlot(int tableIndex);

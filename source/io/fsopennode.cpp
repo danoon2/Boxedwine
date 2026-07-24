@@ -31,10 +31,17 @@ U32 FsOpenNode::internalRead(KThread* thread, U32 address, U32 len) {
     KMemory* memory = thread->memory;
 
     memory->performOnMemory(address, len, false, [&result, this](U8* ram, U32 len) {
+        S64 offset = this->getFilePointer();
         U32 read = this->readNative(ram, len);
         if ((S32)read < 0) {
             result = read;
             return false;
+        }
+        if ((S32)read > 0) {
+            std::shared_ptr<MappedFileCache> cache = KSystem::getFileCache(node->getFileIdentity());
+            if (cache) {
+                cache->overlayRead(offset, ram, read);
+            }
         }
         result += read;
         return read == len;
@@ -53,19 +60,70 @@ U32 FsOpenNode::read(KThread* thread, U32 address, U32 len) {
     }
 }
 
-U32 FsOpenNode::write(KThread* thread, U32 address, U32 len) {
+U32 FsOpenNode::write(KThread* thread, U32 address, U32 len,
+    const std::shared_ptr<MappedFileCache>& cache) {
     U32 result = 0;
     KMemory* memory = thread->memory;
 
-    memory->performOnMemory(address, len, true, [&result, this](U8* ram, U32 len) {
+#ifdef __TEST
+    std::shared_ptr<FsFileIdentity> identity = node->getFileIdentity();
+    if (identity->testBeforeGuestMemoryAccess && !identity->testBeforeGuestMemoryAccess()) {
+        return -K_EINTR;
+    }
+#endif
+    memory->performOnMemory(address, len, true, [&result, this, &cache](U8* ram, U32 len) {
         U32 written = this->writeNative(ram, len);
         if ((S32)written < 0) {
             result = written;
             return false;
         }
+        if ((S32)written > 0) {
+            S64 end = this->getFilePointer();
+            std::shared_ptr<FsFileIdentity> identity = node->getFileIdentity();
+#ifdef __TEST
+            if (identity->testAfterBackingMutationBeforeCacheNotification) {
+                identity->testAfterBackingMutationBeforeCacheNotification();
+            }
+#endif
+            if (cache) {
+                cache->updateWrite(end - written, ram, written);
+            }
+        }
         result += written;
         return written == len;
         });
+    return result;
+}
+
+bool FsOpenNode::canWriteNativeAt() {
+#ifdef __TEST
+    if (testForceWriteNativeAtUnavailable) {
+        return false;
+    }
+#endif
+    return true;
+}
+
+FsWriteResult FsOpenNode::writeNativeAt(U8* buffer, U64 offset, U32 len) {
+    FsWriteResult result;
+    if (offset > (U64)std::numeric_limits<S64>::max()) {
+        result.error = -K_EINVAL;
+        return result;
+    }
+    S64 previousOffset = getFilePointer();
+    if (seek((S64)offset) < 0) {
+        result.error = -K_EINVAL;
+        return result;
+    }
+    U32 written = writeNative(buffer, len);
+    if ((S32)written < 0) {
+        result.error = (S32)written;
+    } else {
+        result.bytesWritten = written;
+    }
+    if (seek(previousOffset) < 0 && !result.error) {
+        result.error = -K_EIO;
+    }
     return result;
 }
 

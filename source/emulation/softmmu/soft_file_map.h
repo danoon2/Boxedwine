@@ -34,6 +34,8 @@ public:
     bool canWriteRam(MMU* mmu) override;
     U8* getRamPtr(MMU* mmu, U32 page, bool write = false, bool force = false, U32 offset = 0, U32 len = 0) override;
     void onDemmand(MMU* mmu, U32 pageIndex) override;
+private:
+    bool loadPage(MMU* mmu, U32 pageIndex, bool readFault, bool writeFault);
 };
 
 #endif

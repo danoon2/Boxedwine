@@ -36,6 +36,50 @@ void clearJitBlock(const std::vector<void*>& jitOps);
 
 static JitLifecycleCallbacks g_jitLifecycleCallbacks;
 
+PreparedJitCodeInvalidation::PreparedJitCodeInvalidation(PreparedJitCodeInvalidation&& other) noexcept
+    : context(other.context), commitCallback(other.commitCallback), discardCallback(other.discardCallback) {
+    other.context = nullptr;
+    other.commitCallback = nullptr;
+    other.discardCallback = nullptr;
+}
+
+PreparedJitCodeInvalidation& PreparedJitCodeInvalidation::operator=(PreparedJitCodeInvalidation&& other) noexcept {
+    if (this != &other) {
+        reset();
+        context = other.context;
+        commitCallback = other.commitCallback;
+        discardCallback = other.discardCallback;
+        other.context = nullptr;
+        other.commitCallback = nullptr;
+        other.discardCallback = nullptr;
+    }
+    return *this;
+}
+
+PreparedJitCodeInvalidation::~PreparedJitCodeInvalidation() {
+    reset();
+}
+
+void PreparedJitCodeInvalidation::reset() noexcept {
+    if (context && discardCallback) {
+        discardCallback(context);
+    }
+    context = nullptr;
+    commitCallback = nullptr;
+    discardCallback = nullptr;
+}
+
+void PreparedJitCodeInvalidation::commit() noexcept {
+    void* preparedContext = context;
+    Commit preparedCommit = commitCallback;
+    context = nullptr;
+    commitCallback = nullptr;
+    discardCallback = nullptr;
+    if (preparedContext && preparedCommit) {
+        preparedCommit(preparedContext);
+    }
+}
+
 void setJitLifecycleCallbacks(const JitLifecycleCallbacks& callbacks) {
     g_jitLifecycleCallbacks = callbacks;
 }
@@ -44,13 +88,32 @@ bool jitUsesCodeMemory() {
     return g_jitLifecycleCallbacks.usesCodeMemory;
 }
 
+bool jitAggregatesPreparedCodeInvalidation() {
+    return g_jitLifecycleCallbacks.aggregatePreparedCodeInvalidation;
+}
+
+namespace {
+void commitNativeJitInvalidation(void* opaque) noexcept {
+    const std::vector<void*>* jitEntries = static_cast<const std::vector<void*>*>(opaque);
+    if (!jitEntries->empty()) {
+        clearJitBlock(*jitEntries);
+    }
+}
+
+void discardNativeJitInvalidation(void*) noexcept {
+}
+}
+
+PreparedJitCodeInvalidation prepareJitCodeInvalidation(KMemory* memory, const std::vector<DecodedOp*>& decodedOps, const std::vector<void*>& jitEntries) {
+    if (g_jitLifecycleCallbacks.prepareCodeInvalidation) {
+        return g_jitLifecycleCallbacks.prepareCodeInvalidation(memory, decodedOps, jitEntries);
+    }
+    return PreparedJitCodeInvalidation(const_cast<std::vector<void*>*>(&jitEntries), commitNativeJitInvalidation, discardNativeJitInvalidation);
+}
+
 void jitCodeInvalidated(KMemory* memory, const std::vector<DecodedOp*>& decodedOps, const std::vector<void*>& jitEntries) {
-    if (g_jitLifecycleCallbacks.codeInvalidated) {
-        g_jitLifecycleCallbacks.codeInvalidated(memory, decodedOps);
-    }
-    if (!jitEntries.empty()) {
-        clearJitBlock(jitEntries);
-    }
+    PreparedJitCodeInvalidation prepared = prepareJitCodeInvalidation(memory, decodedOps, jitEntries);
+    prepared.commit();
 }
 
 void jitMemoryInvalidated(KMemory* memory, const std::vector<void*>& jitEntries) {

@@ -24,6 +24,9 @@
 #include <cassert>
 #include <cstdio>
 #include <concepts>
+#include <limits>
+#include <stdexcept>
+#include <utility>
 
 namespace concepts
 {
@@ -68,7 +71,7 @@ private:
 		KeyValue kv;
 		bool used;
 
-		Slot() noexcept : kv{}, used{ false } {}
+		Slot() noexcept(std::is_nothrow_default_constructible_v<KeyValue>) : kv{}, used{ false } {}
 
 		Slot(Key key, Value value) :
 			kv{ std::move(key), std::move(value) },
@@ -77,14 +80,14 @@ private:
 
 		Slot(const Slot& other) = default;
 
-		Slot(Slot&& other) noexcept :
+		Slot(Slot&& other) noexcept(std::is_nothrow_move_constructible_v<KeyValue>) :
 			kv{ std::move(other.kv) },
 			used{ other.used }
 		{
 			other.used = false;
 		}
 
-		friend void swap(Slot& lhs, Slot& rhs) noexcept {
+		friend void swap(Slot& lhs, Slot& rhs) noexcept(std::is_nothrow_swappable_v<KeyValue>) {
 			using std::swap;
 			swap(lhs.kv, rhs.kv);
 			swap(lhs.used, rhs.used);
@@ -105,6 +108,10 @@ private:
 	std::vector<Slot> slots;
 	std::size_t count;
 	std::size_t max_hash_offset;
+#ifdef __TEST
+	inline static bool testFailNextRehashValue = false;
+	inline static std::size_t testFailNewInsertCountdown = std::numeric_limits<std::size_t>::max();
+#endif
 
 	// the sole purpose of this function is that we can
 	// explicitly call const member functions on 'this'.
@@ -123,11 +130,19 @@ private:
 		return slots.size() - 1;
 	}
 
+	static std::size_t checked_growth_size(std::size_t current_size) {
+		if (!current_size) {
+			return 8;
+		}
+		if (current_size > std::numeric_limits<std::size_t>::max() / 2) {
+			throw std::length_error("BHashTable capacity is too large");
+		}
+		return current_size * 2;
+	}
+
 	bool should_rehash() const {
 		// keep load factor below 0.75
-		// this ratio is chosen carefully so that it can be optimized well:
-		// it is equivalent with ((size << 1) + size) >> 2.
-		return slots.empty() || count >= slots.size() * 3 / 4;
+		return slots.empty() || count >= slots.size() - slots.size() / 4;
 	}
 
 	const Slot* get_slot(const Key& key) const {
@@ -191,28 +206,33 @@ private:
 		return &slots[i].kv;
 	}
 
-	void rehash() {
-		// compute new size. Must be a power of two.
-		const std::size_t new_size = slots.empty() ? 8 : slots.size() * 2;
+	void rehash(std::size_t new_size) {
+#ifdef __TEST
+		if (testFailNextRehashValue) {
+			testFailNextRehashValue = false;
+			throw std::bad_alloc();
+		}
+#endif
+		// Build the replacement without changing the current table. Callers can
+		// then translate an allocation failure without losing existing entries.
+		BHashTable replacement;
+		replacement.slots.resize(new_size);
 
-		// move original slot array out of *this and reset internal state
-		auto old_slots = std::move(slots);
-
-		// language lawyer: move() need not clear std::vector.
-		// this->clear() takes care of that, however
-		// (as well as zeroing out count and max_hash_offset.)
-		clear();
-
-		// make room for new slots (need to default-construct
-		// in order for them to be in an 'unused'/free state)
-		slots.resize(new_size);
-
-		// re-insert each key-value pair
-		for (auto& slot : old_slots) {
+		// Re-insert copies so that *this remains intact until the replacement is
+		// complete. This also gives value-copy failures the strong guarantee.
+		for (const auto& slot : slots) {
 			if (slot.used) {
-				insert_nonexistent_norehash(std::move(slot.kv.key), std::move(slot.kv.value));
+				replacement.insert_nonexistent_norehash(slot.kv.key, slot.kv.value);
 			}
 		}
+		slots.swap(replacement.slots);
+		std::swap(count, replacement.count);
+		std::swap(max_hash_offset, replacement.max_hash_offset);
+	}
+
+	void rehash() {
+		// compute new size. Must be a power of two.
+		rehash(checked_growth_size(slots.size()));
 	}
 
 public:
@@ -220,25 +240,16 @@ public:
 	//////////////////
 	// Constructors //
 	//////////////////
-	BHashTable() noexcept : slots{}, count{ 0 }, max_hash_offset{ 0 } {}
+	BHashTable() noexcept(std::is_nothrow_default_constructible_v<std::vector<Slot>>) :
+		slots{}, count{ 0 }, max_hash_offset{ 0 } {}
 
-	BHashTable(std::size_t capacity) noexcept : BHashTable() {
-		// Make sure the real capacity is a power of two >= 8.
-		// We should also keep in mind that the number of elements
-		// is at most 3/4 of the number of slots!
-		std::size_t min_num_slots = (capacity * 4 + 2) / 3; // round up
-		std::size_t real_cap = 8;
-
-		while (real_cap < min_num_slots) {
-			real_cap *= 2;
-		}
-
-		slots.resize(real_cap);
+	BHashTable(std::size_t capacity) : BHashTable() {
+		reserve(capacity);
 	}
 
 	BHashTable(const BHashTable&) = default;
 
-	BHashTable(BHashTable&& other) noexcept :
+	BHashTable(BHashTable&& other) noexcept(std::is_nothrow_move_constructible_v<std::vector<Slot>>) :
 		slots{ std::move(other.slots) },
 		count{ other.count },
 		max_hash_offset{ other.max_hash_offset }
@@ -258,7 +269,7 @@ public:
 	// Resource management //
 	/////////////////////////
 
-	friend void swap(BHashTable& lhs, BHashTable& rhs) noexcept {
+	friend void swap(BHashTable& lhs, BHashTable& rhs) noexcept(noexcept(lhs.slots.swap(rhs.slots))) {
 		using std::swap;
 		swap(lhs.slots, rhs.slots);
 		swap(lhs.count, rhs.count);
@@ -275,6 +286,58 @@ public:
 		count = 0;
 		max_hash_offset = 0;
 	}
+
+	void reserve(std::size_t capacity) {
+		if (capacity > (std::numeric_limits<std::size_t>::max() - 2) / 4) {
+			throw std::length_error("BHashTable capacity is too large");
+		}
+		const std::size_t min_num_slots = (capacity * 4 + 2) / 3;
+		std::size_t real_cap = 8;
+		while (real_cap < min_num_slots) {
+			real_cap = checked_growth_size(real_cap);
+		}
+		if (slots.size() < real_cap) {
+			rehash(real_cap);
+		}
+	}
+
+#ifdef __TEST
+	static void testFailNextRehash() {
+		testFailNextRehashValue = true;
+	}
+
+	static void testFailNewInsertAfter(std::size_t successfulNewInserts) {
+		testFailNewInsertCountdown = successfulNewInserts;
+	}
+
+	static void testClearFailureInjection() {
+		testFailNextRehashValue = false;
+		testFailNewInsertCountdown = std::numeric_limits<std::size_t>::max();
+	}
+
+	static bool testSlotMoveAndSwap() {
+		Slot empty;
+		Slot used(Key{}, Value{});
+		Slot moved(std::move(used));
+		if (empty.used || used.used || !moved.used) {
+			return false;
+		}
+		swap(empty, moved);
+		return empty.used && !moved.used;
+	}
+
+	static constexpr bool testSlotMoveIsNoexcept() {
+		return std::is_nothrow_move_constructible_v<Slot>;
+	}
+
+	static constexpr bool testSlotSwapIsNoexcept() {
+		return std::is_nothrow_swappable_v<Slot>;
+	}
+
+	static std::size_t testCheckedGrowthSize(std::size_t currentSize) {
+		return checked_growth_size(currentSize);
+	}
+#endif
 
 	///////////////////////////////////////////////////////////////
 	// Actual hash table operations: Get, Insert/Replace, Delete //
@@ -313,6 +376,15 @@ public:
 		}
 
 		// then we actually insert the key.
+#ifdef __TEST
+		if (testFailNewInsertCountdown != std::numeric_limits<std::size_t>::max()) {
+			if (!testFailNewInsertCountdown) {
+				testFailNewInsertCountdown = std::numeric_limits<std::size_t>::max();
+				throw std::bad_alloc();
+			}
+			--testFailNewInsertCountdown;
+		}
+#endif
 		insert_nonexistent_norehash(key, std::move(value));
 		return nullptr;
 	}
@@ -330,6 +402,15 @@ public:
 		}
 
 		// then we actually insert the key.
+#ifdef __TEST
+		if (testFailNewInsertCountdown != std::numeric_limits<std::size_t>::max()) {
+			if (!testFailNewInsertCountdown) {
+				testFailNewInsertCountdown = std::numeric_limits<std::size_t>::max();
+				throw std::bad_alloc();
+			}
+			--testFailNewInsertCountdown;
+		}
+#endif
 		insert_nonexistent_norehash(key, std::move(value));
 		return false;
 	}
@@ -494,4 +575,4 @@ public:
 		remove(it->key);
 	}
 };
-#endif 
+#endif

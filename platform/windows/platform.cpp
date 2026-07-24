@@ -254,15 +254,66 @@ void Platform::init() {
     }
 }
 
+namespace {
+
+#ifdef __TEST
+std::atomic<U32> testInstructionCacheClearCount{0};
+#endif
+
+void reportCodeWriteFailure(const char* operation, DWORD error) noexcept {
+    char message[160];
+    _snprintf_s(message, sizeof(message), _TRUNCATE, "Boxedwine: %s failed while updating JIT code (Windows error %lu)\n", operation, static_cast<unsigned long>(error));
+    OutputDebugStringA(message);
+    fputs(message, stderr);
+}
+
+} // namespace
+
 void Platform::clearInstructionCache(void* address, U32 len) {
+#ifdef __TEST
+    testInstructionCacheClearCount.fetch_add(1, std::memory_order_relaxed);
+#endif
 #ifdef _M_ARM64
-    FlushInstructionCache(GetCurrentProcess(), address, len);
+    if (!FlushInstructionCache(GetCurrentProcess(), address, len)) {
+        reportCodeWriteFailure("FlushInstructionCache", GetLastError());
+    }
 #endif
 }
 
 void Platform::writeCodeToMemory(void* address, U32 len, std::function<void()> callback) {
     callback();
 }
+
+void Platform::writeCodeToMemory(void* address, U32 len, WriteCodeCallback callback, void* context) noexcept {
+#ifdef _M_ARM64
+    DWORD oldProtect = 0;
+    if (!VirtualProtect(address, len, PAGE_EXECUTE_READWRITE, &oldProtect)) {
+        reportCodeWriteFailure("VirtualProtect(PAGE_EXECUTE_READWRITE)", GetLastError());
+        return;
+    }
+    callback(context);
+    DWORD ignoredProtect = 0;
+    if (!VirtualProtect(address, len, oldProtect, &ignoredProtect)) {
+        reportCodeWriteFailure("VirtualProtect(restore)", GetLastError());
+    }
+    clearInstructionCache(address, len);
+#else
+    callback(context);
+#ifdef __TEST
+    clearInstructionCache(address, len);
+#endif
+#endif
+}
+
+#ifdef __TEST
+void Platform::resetTestInstructionCacheClearCount() {
+    testInstructionCacheClearCount.store(0, std::memory_order_relaxed);
+}
+
+U32 Platform::getTestInstructionCacheClearCount() {
+    return testInstructionCacheClearCount.load(std::memory_order_relaxed);
+}
+#endif
 
 void Platform::startMicroCounter()
 {

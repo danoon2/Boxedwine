@@ -30,6 +30,10 @@
 #define MAX_ADDRESS_SPACE 0xFFFF0000
 #define MAX_NUMBER_OF_FILES 0x4000
 #define MAX_DATA_SIZE 1024*1024*1024
+// MappedFileCache uses a U32 page key and grows its backing vectors to
+// pageIndex + 1. Keep the all-ones value unavailable so that size calculation
+// remains representable before any mapping can reach a page fault.
+constexpr U64 K_MAX_MAPPED_FILE_CACHE_PAGE = 0xfffffffeULL;
 
 #define CALL_BACK_ADDRESS 0xFFFF0000
 #define SIG_RETURN_ADDRESS CALL_BACK_ADDRESS
@@ -42,14 +46,59 @@ class KTimerCallback;
 class CPU;
 class KProcess;
 class KThread;
+class FsFileIdentity;
+class MappedFileLease;
+struct KWritebackResult;
+struct KWritebackRange;
 
 class MappedFileCache {
 public:
-    MappedFileCache(BString name) : name(name) {}
-    virtual ~MappedFileCache();
+    MappedFileCache(BString name, const std::shared_ptr<KFile>& file, U64 length);
+    ~MappedFileCache();
+
+    RamPage getOrCreatePage(U32 pageIndex, bool shared);
+    void overlayRead(U64 offset, U8* buffer, U32 len);
+    void updateWrite(U64 offset, const U8* buffer, U32 len);
+    void setLength(U64 length);
+    void setWriteFile(const std::shared_ptr<KFile>& file);
+    U32 flush(U64 offset, U64 len);
+#ifdef __TEST
+    void setTestAfterPageReadHook(const std::function<void()>& hook);
+    void setTestAfterFinalRetirementPreparationHook(const std::function<void()>& hook);
+    void setTestFailWritebackPreparationAllocation(bool fail);
+    KWritebackResult testWritebackPreparedBytes(U64 offset, const U8* buffer, U32 len, const std::function<void()>& afterPreparation);
+    U32 getMappingLeaseCountForTest();
+    U32 getRetirementAccountingFinalizeCountForTest();
+#endif
+
     const BString name;
+private:
+    friend class KFile;
+    friend class MappedFileLease;
+
+    void retainMapping();
+    U32 retireMapping(bool& accountingCommitted);
+    S32 snapshotWritebackRangesLocked(U64 offset, U64 len, std::vector<KWritebackRange>& ranges, U64& preparedBytes);
+
+    // Writeback implementations must copy writeFile and release mutex before
+    // entering KFile::writeback. Its callback may take cache locks to snapshot
+    // owned byte ranges; raw I/O begins only after the callback returns.
     std::shared_ptr<KFile> file;
+    std::shared_ptr<KFile> writeFile;
     std::vector<RamPage> data;
+    std::vector<bool> possiblyDirty;
+    U64 length;
+    U64 mutationGeneration = 0;
+    U32 mappingLeaseCount = 0;
+#ifdef __TEST
+    std::function<void()> testAfterPageReadHook;
+    std::shared_ptr<std::function<void()>> testAfterFinalRetirementPreparationHook;
+    bool testFailWritebackPreparationAllocation = false;
+    U32 testRetirementAccountingFinalizeCount = 0;
+#endif
+    // Serializes cache-data mutations; acquire before mutex when both are needed.
+    BOXEDWINE_MUTEX mutationMutex;
+    BOXEDWINE_MUTEX mutex;
 };
 
 class SHM {
@@ -119,9 +168,7 @@ public:
     static void writeStat(KProcess* process, BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 atime, U32 atimeNano, U64 mtime, U32 mtimeNano, U64 ctime, U32 ctimeNano, U32 linkCount);
     static KProcessPtr getProcess(U32 id);
     static void eraseFileCache(BString name);
-    static std::shared_ptr<MappedFileCache> getFileCache(BString name);
-    static std::shared_ptr<MappedFileCache> getOrCreateFileCache(BString name, const std::shared_ptr<KFile>& file, U32 minPageCount);
-    static void setFileCache(BString name, const std::shared_ptr<MappedFileCache>& fileCache);
+    static std::shared_ptr<MappedFileCache> getFileCache(const std::shared_ptr<FsFileIdentity>& identity);
     static void eraseProcess(U32 id);
     static std::shared_ptr<FsNode> addProcess(U32 id, const KProcessPtr& process);
     static KThread* getThreadById(U32 threadId);
@@ -169,9 +216,19 @@ public:
     static bool isMac();
     static bool isLinux();
 
+    static void setProcNode(const std::shared_ptr<FsNode>& node);
     static std::shared_ptr<FsNode> procNode;
     static BString showWindowTimestamp;
 private:
+    friend class KFile;
+    friend class KProcess;
+
+    // Low-level mmap reconciliation. KFile is the only caller so the required
+    // filePos -> identity ordering cannot be bypassed by a new mapping path.
+    static std::shared_ptr<MappedFileCache> getOrCreateFileCache(const std::shared_ptr<FsFileIdentity>& identity, BString name, const std::shared_ptr<KFile>& file, U64 length, bool writable);
+    static void reserveProcessPublication();
+    static std::shared_ptr<FsNode> prepareProcessNode(U32 id);
+    static void publishPreparedProcess(U32 id, const KProcessPtr& process, const std::shared_ptr<FsNode>& processNode);
     static void initDisplayModes();
     static void internalEraseProcess(U32 id);
     static KThread* getThreadByIdNoProcessLock(U32 threadId);
@@ -185,9 +242,9 @@ private:
     static U64 startTimeMicroCounter;
     static U64 startTimeSystemTime;    
     static bool modesInitialized;
-    
+
     static BHashTable<U32, KProcessPtr > processes;
-    static BHashTable<BString, std::shared_ptr<MappedFileCache> > fileCache;
+    static BOXEDWINE_MUTEX processPublicationMutex;
     static BOXEDWINE_MUTEX fileCacheMutex;
 };
 

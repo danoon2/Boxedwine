@@ -29,7 +29,8 @@ FsNode::FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString 
     id(id), 
     rdev(rdev),
     hardLinkCount(1),
-    type(type),  
+    type(type),
+    fileIdentity(std::make_shared<FsFileIdentity>()),
     parent(parent),
     isDir(isDirectory),      
     hasLoadedChildrenFromFileSystem(false),
@@ -115,12 +116,28 @@ void FsNode::loadChildren() {
 
 
 std::shared_ptr<FsNode> FsNode::getChildByName(BString name) {
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::unique_lock<std::recursive_mutex> visibilityLock;
+    BOXEDWINE_MUTEX* visibilityMutex =
+        childrenVisibilityMutex.load(std::memory_order_acquire);
+    if (visibilityMutex) {
+        visibilityLock = std::unique_lock<std::recursive_mutex>(*visibilityMutex);
+    }
+#endif
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     return this->childrenByName[name];
 }
 
 std::shared_ptr<FsNode> FsNode::getChildByNameIgnoreCase(BString name) {
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::unique_lock<std::recursive_mutex> visibilityLock;
+    BOXEDWINE_MUTEX* visibilityMutex =
+        childrenVisibilityMutex.load(std::memory_order_acquire);
+    if (visibilityMutex) {
+        visibilityLock = std::unique_lock<std::recursive_mutex>(*visibilityMutex);
+    }
+#endif
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     for (auto& n : this->childrenByName) {
@@ -131,31 +148,114 @@ std::shared_ptr<FsNode> FsNode::getChildByNameIgnoreCase(BString name) {
     return nullptr;
 }
 
-U32 FsNode::getChildCount() {    
+U32 FsNode::getChildCount() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::unique_lock<std::recursive_mutex> visibilityLock;
+    BOXEDWINE_MUTEX* visibilityMutex =
+        childrenVisibilityMutex.load(std::memory_order_acquire);
+    if (visibilityMutex) {
+        visibilityLock = std::unique_lock<std::recursive_mutex>(*visibilityMutex);
+    }
+#endif
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     return (U32)this->childrenByName.size();
 }
 
 void FsNode::addChild(std::shared_ptr<FsNode> node) {
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::unique_lock<std::recursive_mutex> visibilityLock;
+    BOXEDWINE_MUTEX* visibilityMutex =
+        childrenVisibilityMutex.load(std::memory_order_acquire);
+    if (visibilityMutex) {
+        visibilityLock = std::unique_lock<std::recursive_mutex>(*visibilityMutex);
+    }
+#endif
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     this->childrenByName.set(node->name, node);
 }
 
 void FsNode::removeChildByName(BString name) {
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::unique_lock<std::recursive_mutex> visibilityLock;
+    BOXEDWINE_MUTEX* visibilityMutex =
+        childrenVisibilityMutex.load(std::memory_order_acquire);
+    if (visibilityMutex) {
+        visibilityLock = std::unique_lock<std::recursive_mutex>(*visibilityMutex);
+    }
+#endif
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     this->childrenByName.remove(name);
 }
 
 void FsNode::getAllChildren(std::vector<std::shared_ptr<FsNode> > & results) {
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::unique_lock<std::recursive_mutex> visibilityLock;
+    BOXEDWINE_MUTEX* visibilityMutex =
+        childrenVisibilityMutex.load(std::memory_order_acquire);
+    if (visibilityMutex) {
+        visibilityLock = std::unique_lock<std::recursive_mutex>(*visibilityMutex);
+    }
+#endif
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     for (auto& n : this->childrenByName) {
         results.push_back(n.value);
     }
 }
+
+void FsNode::reserveChildren(std::size_t capacity) {
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::unique_lock<std::recursive_mutex> visibilityLock;
+    BOXEDWINE_MUTEX* visibilityMutex =
+        childrenVisibilityMutex.load(std::memory_order_acquire);
+    if (visibilityMutex) {
+        visibilityLock = std::unique_lock<std::recursive_mutex>(*visibilityMutex);
+    }
+#endif
+    this->loadChildren();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
+    this->childrenByName.reserve(capacity);
+}
+
+void FsNode::setChildrenVisibilityMutex(BOXEDWINE_MUTEX* mutex) {
+    if (!trySetChildrenVisibilityMutex(mutex)) {
+        kpanic("attempted to replace an FsNode child visibility mutex");
+    }
+}
+
+bool FsNode::trySetChildrenVisibilityMutex(BOXEDWINE_MUTEX* mutex) {
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (!mutex) {
+        return childrenVisibilityMutex.load(std::memory_order_acquire) == nullptr;
+    }
+    BOXEDWINE_MUTEX* expected = nullptr;
+    if (childrenVisibilityMutex.compare_exchange_strong(expected, mutex,
+            std::memory_order_release, std::memory_order_acquire)) {
+        return true;
+    }
+    return expected == mutex;
+#else
+    (void)mutex;
+    return true;
+#endif
+}
+
+#ifdef __TEST
+bool FsNode::trySetChildrenVisibilityMutexForTest(BOXEDWINE_MUTEX* mutex) {
+    return trySetChildrenVisibilityMutex(mutex);
+}
+
+BOXEDWINE_MUTEX* FsNode::getChildrenVisibilityMutexForTest() const {
+#ifdef BOXEDWINE_MULTI_THREADED
+    return childrenVisibilityMutex.load(std::memory_order_acquire);
+#else
+    return nullptr;
+#endif
+}
+#endif
 
 bool FsNode::unlock(KFileLock* lock) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->locksCS);

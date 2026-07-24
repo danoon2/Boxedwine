@@ -22,12 +22,18 @@
 #include "platformBoxedwine.h"
 #include "kthread.h"
 
+struct FsWriteResult {
+    S32 error = 0;
+    U64 bytesWritten = 0;
+};
+
 class FsOpenNode {
 public:
     FsOpenNode(std::shared_ptr<FsNode> node, U32 flags);
 
     U32 read(KThread* thread, U32 address, U32 len); // will call into readNative
-    U32 write(KThread* thread, U32 address, U32 len); // will call into writeNative
+    U32 write(KThread* thread, U32 address, U32 len,
+        const std::shared_ptr<MappedFileCache>& cache); // will call into writeNative
 
     U32 getDirectoryEntryCount();
     std::shared_ptr<FsNode> getDirectoryEntry(U32 index, BString& name);
@@ -48,6 +54,8 @@ public:
     virtual bool isReadReady()=0;    
     virtual U32 readNative(U8* buffer, U32 len)=0;
     virtual U32 writeNative(U8* buffer, U32 len)=0;
+    virtual bool canWriteNativeAt();
+    virtual FsWriteResult writeNativeAt(U8* buffer, U64 offset, U32 len);
     virtual void close()=0;
     virtual void reopen()=0;
     virtual bool isOpen()=0;
@@ -56,6 +64,9 @@ public:
     std::shared_ptr<FsNode> const node;
     const U32 flags;     
     BString openedPath; // when call fchdir, we should set the current directory to what was passed in, not what was linked to
+#ifdef __TEST
+    bool testForceWriteNativeAtUnavailable = false;
+#endif
 
 private:
     std::vector<std::shared_ptr<FsNode> > dirEntries;

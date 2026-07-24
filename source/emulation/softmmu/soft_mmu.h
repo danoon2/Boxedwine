@@ -54,7 +54,8 @@ public:
     }
 
     void setPageType(KMemory* memory, U32 page, PageType type);
-    void setPage(KMemory* memory, U32 page, PageType type, RamPage ram);
+    void setPage(KMemory* memory, U32 page, PageType type, RamPage ram,
+        bool codeAlreadyRemoved = false);
     void setPermissions(U32 permissions);
     void setFlags(U32 flags);
 

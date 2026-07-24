@@ -21,7 +21,9 @@
 
 #ifdef BOXEDWINE_JIT
 class DynamicMemory;
+#include "../source/emulation/cpu/jit/jitCodeLifecycle.h"
 #endif
+class MappedFile;
 
 #define K_PAGE_SIZE 4096
 #define K_PAGE_MASK 0xFFF
@@ -91,6 +93,12 @@ public:
 
     bool isPageAllocated(U32 page);
     bool isPageNative(U32 page);
+#ifdef __TEST
+    void setTestFailMappedFileRecordAllocation(bool fail) { testFailMappedFileRecordAllocation = fail; }
+    void setTestFailCodeInvalidationPreparation(bool fail) {
+        testFailCodeInvalidationPreparation = fail;
+    }
+#endif
     bool canWrite(U32 address, U32 len);
     bool canRead(U32 address, U32 len);
 
@@ -170,13 +178,45 @@ public:
     BOXEDWINE_MUTEX mutex;
     KMemoryData* deleteOnNextLoop = nullptr;    
 private:
+    friend class KProcess;
+    void cloneLocked(KMemory* from, bool vfork);
+    void detachSharedDataAfterFailedClone() noexcept { data = nullptr; }
     friend KMemoryData* getMemData(KMemory* memory);
     friend KMemoryData;
     friend class NormalCPU;
 
+    struct PreparedCodeInvalidationBlock {
+        U32 address;
+        DecodedOp* blockStart;
+        std::vector<DecodedOp*> decodedOps;
+        std::vector<void*> jitOps;
+        void* codeMemoryToFree = nullptr;
+    };
+
+    void prepareCodeInvalidation(U32 address, U32 len);
+    void commitPreparedCodeInvalidation();
+    void discardPreparedCodeInvalidation();
+    void retryPendingCodeMemoryFrees();
+
+    U32 unmapLocked(U32 address, U32 len,
+        std::vector<std::shared_ptr<MappedFile>>& retirements);
+
     KMemoryData* data;    
     KProcess* process;
+    std::vector<PreparedCodeInvalidationBlock> preparedCodeBlocks;
+    std::vector<std::pair<U32, U32>> preparedCodeRemovalRanges;
+#ifdef BOXEDWINE_JIT
+    std::vector<DecodedOp*> preparedBackendDecodedOps;
+    std::vector<void*> preparedBackendJitOps;
+    std::vector<PreparedJitCodeInvalidation> preparedBackendInvalidations;
+#endif
+    std::vector<void*> pendingCodeMemoryFrees;
+    bool codeInvalidationPrepared = false;
     std::atomic<bool> debugMemoryWriteTrapActive { false };
+#ifdef __TEST
+    bool testFailMappedFileRecordAllocation = false;
+    bool testFailCodeInvalidationPreparation = false;
+#endif
 
     class LockedMemory {
     public:

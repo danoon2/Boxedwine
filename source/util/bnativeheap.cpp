@@ -31,6 +31,19 @@ static int powerOf2(U32 requestedSize) {
     return powerOf2Size;
 }
 
+namespace {
+struct NativeHeapFreeTimestamp {
+    U32* address;
+    U32 timestamp;
+};
+
+void writeNativeHeapFreeTimestamp(void* opaque) noexcept {
+    NativeHeapFreeTimestamp* context =
+        static_cast<NativeHeapFreeTimestamp*>(opaque);
+    *context->address = context->timestamp;
+}
+}
+
 void BNativeHeap::freeAll() {
 	for (auto& block : blocks) {
 		Platform::releaseNativeMemory(block, BNATIVEHEAD_64K_BLOCK_SIZE);
@@ -171,16 +184,23 @@ void BNativeHeap::free(void* address) {
 		largeBlocks.remove(rawAddress);
 		return;
 	}
+#ifdef __TEST
+    if (testFailNextSmallFreeQueue) {
+        testFailNextSmallFreeQueue = false;
+        throw std::bad_alloc();
+    }
+#endif
+	buckets[index].push_front(address);
 	if (delayedFree) {
 		U32* pTime = (U32*)address;
 		pTime--;
+        U32 timestamp = KSystem::getMilliesSinceStart();
         if (isCodeMemory) {
-            Platform::writeCodeToMemory(pTime, 4, [pTime]() {
-                *pTime = KSystem::getMilliesSinceStart();
-            });
+            NativeHeapFreeTimestamp context = {pTime, timestamp};
+            Platform::writeCodeToMemory(pTime, 4,
+                writeNativeHeapFreeTimestamp, &context);
         } else {
-            *pTime = KSystem::getMilliesSinceStart();
+            *pTime = timestamp;
         }
 	}
-	buckets[index].push_front(address);
 }

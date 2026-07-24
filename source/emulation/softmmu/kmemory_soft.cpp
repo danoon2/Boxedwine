@@ -240,11 +240,17 @@ bool KMemoryData::isPageNative(U32 page) {
     return mmu[page].getPageType() == PageType::Ram && ramPageIsNative(mmu[page].getRamPageIndex());
 }
 
-void KMemoryData::setPagesInvalid(U32 page, U32 pageCount) {
+void KMemoryData::setPagesInvalid(U32 page, U32 pageCount, bool codeAlreadyPrepared) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
+    if (codeAlreadyPrepared) {
+        memory->commitPreparedCodeInvalidation();
+    }
     for (U32 i = page; i < page + pageCount; i++) {
+        if (codeAlreadyPrepared && mmu[i].getPageType() == PageType::Code) {
+            opCache.clearPageWriteCounts(i);
+        }
         mmu[i].flags = 0;
-        mmu[i].setPage(memory, i, PageType::None, (RamPage)0);
+        mmu[i].setPage(memory, i, PageType::None, (RamPage)0, codeAlreadyPrepared);
         onPageChanged(i);
     }
 }

@@ -162,8 +162,14 @@ public:
     static bool supportsOpenFileLocation() {return true;}
     static BString getResourceFilePath(BString location);
     static void setCurrentThreadPriorityHigh();
+    using WriteCodeCallback = void (*)(void* context) noexcept;
     static void writeCodeToMemory(void* address, U32 len, std::function<void()> callback);
+    static void writeCodeToMemory(void* address, U32 len, WriteCodeCallback callback, void* context) noexcept;
     static void clearInstructionCache(void* address, U32 len);
+#if defined(__TEST) && defined(BOXEDWINE_MSVC)
+    static void resetTestInstructionCacheClearCount();
+    static U32 getTestInstructionCacheClearCount();
+#endif
     static U32 nanoSleep(U64 nano);
     static U32 getPageAllocationGranularity();
     static U32 getPagePermissionGranularity(); // assumed to be smaller or equal to getPageAllocationGranularity and that getPageAllocationGranularity / getPagePermissionGranularity is a whole number

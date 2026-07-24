@@ -47,7 +47,7 @@ public:
     void allocPages(KThread* thread, U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const std::shared_ptr<MappedFile>& mappedFile, const RamPage* ramPages = nullptr);
     bool reserveAddress(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped, bool alignNative, U32 reservedFlag);
     void protectPage(KThread* thread, U32 i, U32 permissions);
-    void setPagesInvalid(U32 page, U32 pageCount);
+    void setPagesInvalid(U32 page, U32 pageCount, bool codeAlreadyPrepared = false);
     bool isPageAllocated(U32 page);
     bool isPageNative(U32 page);
     void execvReset();    

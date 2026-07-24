@@ -39,7 +39,7 @@ bool KSystem::soundEnabled = true;
 bool KSystem::enableSoundAfterMouseClick = false;
 unsigned int KSystem::nextThreadId=10;
 BHashTable<U32, KProcessPtr > KSystem::processes;
-BHashTable<BString, std::shared_ptr<MappedFileCache> > KSystem::fileCache;
+BOXEDWINE_MUTEX KSystem::processPublicationMutex;
 BOXEDWINE_MUTEX KSystem::fileCacheMutex;
 U32 KSystem::pentiumLevel = 4;
 bool KSystem::shutingDown;
@@ -81,7 +81,6 @@ void KSystem::init() {
     KSystem::adjustClock = false;
     KSystem::nextThreadId=10;
     KSystem::processes.clear();
-    KSystem::fileCache.clear();
     KSystem::pentiumLevel = 4;
 	KSystem::shutingDown = false;
     KSystem::startTimeTicks = KNativeSystem::getTicks();
@@ -117,9 +116,9 @@ void KSystem::destroy() {
         }
         p->killAllThreads();
     }
-    KSystem::procNode = nullptr;
+    KSystem::setProcNode(nullptr);
 	KSystem::processes.clear();
-    KSystem::fileCache.clear();
+    KProcess::shutdownPendingMappedFileRetirements();
 	KSystem::shutingDown = false;
 	Fs::shutDown();
     DecodedOp::clearCache();
@@ -1002,8 +1001,16 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
 }
 
 KProcessPtr KSystem::getProcess(U32 id) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processPublicationMutex);
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     return KSystem::processes[id];
+}
+
+void KSystem::setProcNode(const std::shared_ptr<FsNode>& node) {
+    if (node) {
+        node->setChildrenVisibilityMutex(&processPublicationMutex);
+    }
+    procNode = node;
 }
 
 static FsOpenNode* openProcPidStatus(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
@@ -1027,32 +1034,45 @@ static FsOpenNode* openProcPidStatus(const std::shared_ptr<FsNode>& node, U32 fl
 }
 
 void KSystem::eraseFileCache(BString name) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
-    KSystem::fileCache.remove(name);
-}
-
-std::shared_ptr<MappedFileCache> KSystem::getFileCache(BString name) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
-    return KSystem::fileCache[name];
-}
-
-std::shared_ptr<MappedFileCache> KSystem::getOrCreateFileCache(BString name, const std::shared_ptr<KFile>& file, U32 minPageCount) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
-    std::shared_ptr<MappedFileCache> cache = KSystem::fileCache[name];
-    if (!cache) {
-        cache = std::make_shared<MappedFileCache>(name);
-        cache->file = file;
-        KSystem::fileCache.set(name, cache);
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), name, false);
+    if (!node) {
+        return;
     }
-    if (cache->data.size() < minPageCount) {
-        cache->data.resize(minPageCount);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
+    node->getFileIdentity()->fileCache.reset();
+}
+
+std::shared_ptr<MappedFileCache> KSystem::getFileCache(const std::shared_ptr<FsFileIdentity>& identity) {
+    if (!identity) {
+        return nullptr;
+    }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
+    return identity->fileCache.lock();
+}
+
+std::shared_ptr<MappedFileCache> KSystem::getOrCreateFileCache(
+    const std::shared_ptr<FsFileIdentity>& identity, BString name,
+    const std::shared_ptr<KFile>& file, U64 length, bool writable) {
+    if (!identity) {
+        return nullptr;
+    }
+    // Caller must own identity->mutationOperationMutex across its authoritative
+    // backing-length read and this reconciliation. KFile's mmap helper is the
+    // public path and also owns filePosMutex first.
+    std::shared_ptr<MappedFileCache> cache;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
+        cache = identity->fileCache.lock();
+        if (!cache) {
+            cache = std::make_shared<MappedFileCache>(name, file, length);
+            identity->fileCache = cache;
+        }
+    }
+    cache->setLength(length);
+    if (writable) {
+        cache->setWriteFile(file);
     }
     return cache;
-}
-
-void KSystem::setFileCache(BString name, const std::shared_ptr<MappedFileCache>& fileCache) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
-    KSystem::fileCache.set(name, fileCache);
 }
 
 void KSystem::internalEraseProcess(U32 id) {
@@ -1063,21 +1083,56 @@ void KSystem::internalEraseProcess(U32 id) {
 }
 
 void KSystem::eraseProcess(U32 id) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processPublicationMutex);
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     KSystem::internalEraseProcess(id);
     KSystem::wakeThreadsWaitingOnProcessStateChanged();
 }
 
 std::shared_ptr<FsNode> KSystem::addProcess(U32 id, const KProcessPtr& process) {
+    std::shared_ptr<FsNode> processNode = prepareProcessNode(id);
+    publishPreparedProcess(id, process, processNode);
+    return processNode;
+}
+
+void KSystem::reserveProcessPublication() {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
-    KSystem::processes.set(id, process);
+    KSystem::processes.reserve(KSystem::processes.size() + 1);
+}
+
+std::shared_ptr<FsNode> KSystem::prepareProcessNode(U32 id) {
     if (KSystem::procNode) {
-        std::shared_ptr<FsNode> processNode = Fs::addFileNode("/proc/" + BString::valueOf(id), B(""), B(""), true, KSystem::procNode);
+        std::shared_ptr<FsNode> processNode = Fs::createFileNode(
+            "/proc/" + BString::valueOf(id), B(""), B(""), true,
+            KSystem::procNode);
         Fs::addVirtualFile(processNode->path + B("/status"), openProcPidStatus, K__S_IREAD, k_mdev(0, 0), processNode, id);
-        KSystem::procNode->addChild(processNode);
         return processNode;
     }
     return nullptr;
+}
+
+void KSystem::publishPreparedProcess(U32 id, const KProcessPtr& process,
+    const std::shared_ptr<FsNode>& processNode) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(processPublicationMutex);
+    reserveProcessPublication();
+    if (KSystem::procNode && processNode) {
+        KSystem::procNode->reserveChildren(KSystem::procNode->getChildCount() + 1);
+    }
+
+    bool procAttached = false;
+    try {
+        if (KSystem::procNode && processNode) {
+            KSystem::procNode->addChild(processNode);
+            procAttached = true;
+        }
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
+        KSystem::processes.set(id, process);
+    } catch (...) {
+        if (procAttached) {
+            KSystem::procNode->removeChildByName(BString::valueOf(id));
+        }
+        throw;
+    }
 }
 
 U32 KSystem::getRunningProcessCount() {

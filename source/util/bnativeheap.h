@@ -29,6 +29,11 @@ public:
 	void free(void* p);
 	void freeAll();
 	bool containsAddress(void* p);
+#ifdef __TEST
+    void setTestFailNextSmallFreeQueue(bool fail) {
+        testFailNextSmallFreeQueue = fail;
+    }
+#endif
 
 	U32 delayedFree = 0; // millis before the memory can be recycles
     bool isCodeMemory = false;
@@ -38,6 +43,9 @@ private:
 	std::vector<void*> blocks;
 	BHashTable<U8*, U32> largeBlocks;
 	BHashTable<U8*, U32> delayedFreeLargeBlocks;
+#ifdef __TEST
+    bool testFailNextSmallFreeQueue = false;
+#endif
 };
 
 #endif

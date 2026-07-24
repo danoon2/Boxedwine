@@ -44,6 +44,7 @@ struct FsHardLinkState {
     U32 modeOverride;
     FsFileTimeOverride accessTimeOverride;
     FsFileTimeOverride modifiedTimeOverride;
+    std::shared_ptr<FsFileIdentity> fileIdentity;
     std::vector<std::weak_ptr<FsFileNode> > nodes;
 };
 

@@ -57,6 +57,23 @@ void Platform::writeCodeToMemory(void* address, U32 len, std::function<void()> c
 #endif //__EMSCRIPTEN__
 }
 
+void Platform::writeCodeToMemory(void* address, U32 len, WriteCodeCallback callback, void* context) noexcept {
+#ifdef BOXEDWINE_MAC_JIT
+    if (__builtin_available(macOS 11.0, *)) {
+        pthread_jit_write_protect_np(false);
+    }
+#endif
+    callback(context);
+#ifdef BOXEDWINE_MAC_JIT
+    if (__builtin_available(macOS 11.0, *)) {
+        pthread_jit_write_protect_np(true);
+    }
+#endif
+#ifndef __EMSCRIPTEN__
+    __builtin___clear_cache((char*)address, (char*)address + len);
+#endif
+}
+
 //#ifdef __EMSCRIPTEN__
 #ifdef __THIS_HANGS__
 // error TypeError: asm.js type error: missing definition of function _testSetjmp

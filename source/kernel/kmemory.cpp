@@ -28,10 +28,477 @@
 #include "../emulation/cpu/jit/jitCodeLifecycle.h"
 #endif
 
+MappedFileCache::MappedFileCache(BString name, const std::shared_ptr<KFile>& file, U64 length)
+    : name(name), file(file), length(length) {
+}
+
 MappedFileCache::~MappedFileCache() {
+    if (mappingLeaseCount) {
+        kwarn_fmt("Mapped file cache %s destroyed with %u live mapping leases",
+            name.c_str(), mappingLeaseCount);
+    }
     for (RamPage& page : data) {
         ramPageRelease(page);
     }
+}
+
+RamPage MappedFileCache::getOrCreatePage(U32 pageIndex, bool shared) {
+    while (true) {
+        U64 generation;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+            if (pageIndex < data.size() && data[pageIndex].value) {
+                if (shared) {
+                    possiblyDirty[pageIndex] = true;
+                }
+                ramPageRetain(data[pageIndex]);
+                return data[pageIndex];
+            }
+            generation = mutationGeneration;
+        }
+
+        RamPage loaded = ramPageAlloc();
+        file->preadNativeUncached(ramPageGet(loaded), (U64)pageIndex << K_PAGE_SHIFT, K_PAGE_SIZE);
+#ifdef __TEST
+        std::function<void()> afterPageRead;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+            afterPageRead = testAfterPageReadHook;
+        }
+        if (afterPageRead) {
+            afterPageRead();
+        }
+#endif
+
+        RamPage result;
+        bool installed = false;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutationMutex);
+            {
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+                if (pageIndex < data.size() && data[pageIndex].value) {
+                    result = data[pageIndex];
+                    ramPageRetain(result);
+                    if (shared) {
+                        possiblyDirty[pageIndex] = true;
+                    }
+                } else if (generation == mutationGeneration) {
+                    if (data.size() <= pageIndex) {
+                        data.resize(pageIndex + 1);
+                        possiblyDirty.resize(pageIndex + 1, false);
+                    }
+                    ramPageRetain(loaded);
+                    ramPageMarkSystem(loaded, true);
+                    data[pageIndex] = loaded;
+                    if (shared) {
+                        possiblyDirty[pageIndex] = true;
+                    }
+                    result = loaded;
+                    installed = true;
+                }
+            }
+            if (result.value) {
+                if (!installed) {
+                    ramPageRelease(loaded);
+                }
+                return result;
+            }
+        }
+        ramPageRelease(loaded);
+    }
+}
+
+#ifdef __TEST
+void MappedFileCache::setTestAfterPageReadHook(const std::function<void()>& hook) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    testAfterPageReadHook = hook;
+}
+
+void MappedFileCache::setTestAfterFinalRetirementPreparationHook(const std::function<void()>& hook) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    if (hook) {
+        testAfterFinalRetirementPreparationHook = std::make_shared<std::function<void()>>(hook);
+    } else {
+        testAfterFinalRetirementPreparationHook.reset();
+    }
+}
+
+void MappedFileCache::setTestFailWritebackPreparationAllocation(bool fail) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    testFailWritebackPreparationAllocation = fail;
+}
+
+U32 MappedFileCache::getMappingLeaseCountForTest() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    return mappingLeaseCount;
+}
+
+U32 MappedFileCache::getRetirementAccountingFinalizeCountForTest() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    return testRetirementAccountingFinalizeCount;
+}
+
+KWritebackResult MappedFileCache::testWritebackPreparedBytes(U64 offset, const U8* buffer, U32 len,
+    const std::function<void()>& afterPreparation) {
+    std::shared_ptr<KFile> target;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+        target = writeFile;
+    }
+    if (!target) {
+        KWritebackResult result;
+        result.preparationError = -K_EIO;
+        return result;
+    }
+    struct TestWritebackContext {
+        U64 offset;
+        const U8* buffer;
+        U32 len;
+        const std::function<void()>* afterPreparation;
+    } context = {offset, buffer, len, &afterPreparation};
+    KWritebackResult result = target->writeback(&context,
+        [](void* opaque, std::vector<KFile::WritebackRange>& ranges) -> S32 {
+            TestWritebackContext& context = *static_cast<TestWritebackContext*>(opaque);
+            // Model Task 5's byte snapshot inside the mutation transaction.
+            ranges.push_back({context.offset,
+                std::vector<U8>(context.buffer, context.buffer + context.len)});
+            (*context.afterPreparation)();
+            return 0;
+        });
+    return result;
+}
+#endif
+
+void MappedFileCache::overlayRead(U64 offset, U8* buffer, U32 len) {
+    while (len) {
+        U64 pageIndex = offset >> K_PAGE_SHIFT;
+        U32 pageOffset = (U32)(offset & K_PAGE_MASK);
+        U32 chunk = std::min<U32>(len, K_PAGE_SIZE - pageOffset);
+        RamPage page;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+            if (pageIndex <= std::numeric_limits<size_t>::max() &&
+                    pageIndex < data.size() &&
+                    data[(size_t)pageIndex].value) {
+                page = data[(size_t)pageIndex];
+                ramPageRetain(page);
+            }
+        }
+        if (page.value) {
+            memcpy(buffer, ramPageGet(page) + pageOffset, chunk);
+            ramPageRelease(page);
+        }
+        offset += chunk;
+        buffer += chunk;
+        len -= chunk;
+    }
+}
+
+void MappedFileCache::updateWrite(U64 offset, const U8* buffer, U32 len) {
+    if (!len) {
+        return;
+    }
+    U64 maxLength = ~(U64)0;
+    if ((U64)len > maxLength - offset) {
+        len = (U32)(maxLength - offset);
+        if (!len) {
+            return;
+        }
+    }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutationMutex);
+
+    struct ResidentRange {
+        RamPage page;
+        U32 offset;
+        U32 len;
+    };
+    std::vector<ResidentRange> holeRanges;
+    U64 writeEnd = offset + len;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+        ++mutationGeneration;
+        U64 oldLength = this->length;
+        if (writeEnd > oldLength) {
+            this->length = writeEnd;
+            if (offset > oldLength && !data.empty()) {
+                U64 firstPage = oldLength >> K_PAGE_SHIFT;
+                U64 lastPage = (offset - 1) >> K_PAGE_SHIFT;
+                if (firstPage < data.size()) {
+                    lastPage = std::min<U64>(lastPage, data.size() - 1);
+                    for (U64 pageIndex = firstPage; pageIndex <= lastPage; ++pageIndex) {
+                        RamPage page = data[(size_t)pageIndex];
+                        if (!page.value) {
+                            continue;
+                        }
+                        U64 pageStart = pageIndex << K_PAGE_SHIFT;
+                        U64 zeroStart = std::max(oldLength, pageStart);
+                        U64 zeroEnd = std::min(offset, pageStart + K_PAGE_SIZE);
+                        holeRanges.push_back({page, (U32)(zeroStart - pageStart), (U32)(zeroEnd - zeroStart)});
+                        ramPageRetain(page);
+                    }
+                }
+            }
+        }
+    }
+    for (const ResidentRange& range : holeRanges) {
+        memset(ramPageGet(range.page) + range.offset, 0, range.len);
+        ramPageRelease(range.page);
+    }
+
+    while (len) {
+        U64 pageIndex = offset >> K_PAGE_SHIFT;
+        U32 pageOffset = (U32)(offset & K_PAGE_MASK);
+        U32 chunk = std::min<U32>(len, K_PAGE_SIZE - pageOffset);
+        RamPage page;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+            if (pageIndex < data.size() && data[(size_t)pageIndex].value) {
+                page = data[(size_t)pageIndex];
+                ramPageRetain(page);
+            }
+        }
+        if (page.value) {
+            memcpy(ramPageGet(page) + pageOffset, buffer, chunk);
+            ramPageRelease(page);
+        }
+        offset += chunk;
+        buffer += chunk;
+        len -= chunk;
+    }
+}
+
+void MappedFileCache::setLength(U64 length) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutationMutex);
+    struct ResidentRange {
+        RamPage page;
+        U32 offset;
+        U32 len;
+    };
+    std::vector<ResidentRange> residentRanges;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+        ++mutationGeneration;
+        U64 oldLength = this->length;
+        this->length = length;
+        if (oldLength == length) {
+            return;
+        }
+
+        U64 rangeStart = std::min(oldLength, length);
+        U64 rangeEnd = std::max(oldLength, length);
+        U64 firstPage = rangeStart >> K_PAGE_SHIFT;
+        U64 lastPage = (rangeEnd - 1) >> K_PAGE_SHIFT;
+        if (!data.empty() && firstPage < data.size()) {
+            lastPage = std::min<U64>(lastPage, data.size() - 1);
+            for (U64 pageIndex = firstPage; pageIndex <= lastPage; ++pageIndex) {
+                RamPage page = data[(size_t)pageIndex];
+                if (!page.value) {
+                    continue;
+                }
+                U64 pageStart = pageIndex << K_PAGE_SHIFT;
+                U64 zeroStart = std::max(rangeStart, pageStart);
+                U64 zeroEnd = std::min(rangeEnd, pageStart + K_PAGE_SIZE);
+                residentRanges.push_back({page, (U32)(zeroStart - pageStart), (U32)(zeroEnd - zeroStart)});
+                ramPageRetain(page);
+            }
+        }
+    }
+    for (const ResidentRange& range : residentRanges) {
+        memset(ramPageGet(range.page) + range.offset, 0, range.len);
+        ramPageRelease(range.page);
+    }
+}
+
+void MappedFileCache::setWriteFile(const std::shared_ptr<KFile>& file) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    // Keep the first writable descriptor alive. Replacing it here could release
+    // the previous KFile while the caller owns the identity gate.
+    if (!this->writeFile) {
+        this->writeFile = file;
+    }
+}
+
+void MappedFileCache::retainMapping() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    if (mappingLeaseCount == std::numeric_limits<U32>::max()) {
+        kpanic("mapped file cache lease count overflow");
+    }
+    ++mappingLeaseCount;
+}
+
+S32 MappedFileCache::snapshotWritebackRangesLocked(U64 offset, U64 len,
+    std::vector<KWritebackRange>& ranges, U64& preparedBytes) {
+    preparedBytes = 0;
+    if (!len || offset >= length || data.empty() || possiblyDirty.empty()) {
+        return 0;
+    }
+    const U64 requestedEnd = offset + len;
+    const U64 flushEnd = std::min(requestedEnd, length);
+    if (offset >= flushEnd) {
+        return 0;
+    }
+
+    try {
+#ifdef __TEST
+        if (testFailWritebackPreparationAllocation) {
+            throw std::bad_alloc();
+        }
+#endif
+        const U64 residentPageCount = (U64)std::min(data.size(), possiblyDirty.size());
+        U64 firstPage = offset >> K_PAGE_SHIFT;
+        if (firstPage >= residentPageCount) {
+            return 0;
+        }
+        U64 lastPage = (flushEnd - 1) >> K_PAGE_SHIFT;
+        lastPage = std::min(lastPage, residentPageCount - 1);
+
+        for (U64 pageIndex = firstPage; pageIndex <= lastPage; ++pageIndex) {
+            if (!data[(size_t)pageIndex].value || !possiblyDirty[(size_t)pageIndex]) {
+                continue;
+            }
+            const U64 pageStart = pageIndex << K_PAGE_SHIFT;
+            const U64 writeStart = std::max(offset, pageStart);
+            const U64 writeEnd = std::min(flushEnd, pageStart + K_PAGE_SIZE);
+            if (writeStart >= writeEnd) {
+                continue;
+            }
+            const U64 byteCount = writeEnd - writeStart;
+            if (byteCount > std::numeric_limits<U64>::max() - preparedBytes) {
+                ranges.clear();
+                preparedBytes = 0;
+                return -K_EFBIG;
+            }
+            KWritebackRange range;
+            range.offset = writeStart;
+            range.bytes.resize((size_t)byteCount);
+            memcpy(range.bytes.data(),
+                ramPageGet(data[(size_t)pageIndex]) + (size_t)(writeStart - pageStart),
+                (size_t)byteCount);
+            ranges.push_back(std::move(range));
+            preparedBytes += byteCount;
+        }
+    } catch (const std::bad_alloc&) {
+        ranges.clear();
+        preparedBytes = 0;
+        return -K_ENOMEM;
+    } catch (const std::length_error&) {
+        ranges.clear();
+        preparedBytes = 0;
+        return -K_ENOMEM;
+    }
+    return 0;
+}
+
+U32 MappedFileCache::flush(U64 offset, U64 len) {
+    if (!len) {
+        return 0;
+    }
+    if (len > std::numeric_limits<U64>::max() - offset) {
+        return -K_EINVAL;
+    }
+
+    std::shared_ptr<KFile> target;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+        target = writeFile;
+    }
+    // A cache created only by private or read-only mappings has no writable
+    // backing owner and cannot contain guest-visible shared writes.
+    if (!target) {
+        return 0;
+    }
+
+    struct FlushContext {
+        MappedFileCache* cache;
+        U64 offset;
+        U64 len;
+        U64 preparedBytes = 0;
+    } context = {this, offset, len};
+    KWritebackResult result = target->writeback(&context,
+        [](void* opaque, std::vector<KFile::WritebackRange>& ranges) -> S32 {
+            FlushContext& context = *static_cast<FlushContext*>(opaque);
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(context.cache->mutationMutex);
+            {
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(context.cache->mutex);
+                return context.cache->snapshotWritebackRangesLocked(
+                    context.offset, context.len, ranges, context.preparedBytes);
+            }
+        });
+
+    if (result.preparationError) {
+        return (U32)result.preparationError;
+    }
+    if (result.ioError) {
+        return (U32)result.ioError;
+    }
+    return result.bytesWritten == context.preparedBytes ? 0 : (U32)-K_EIO;
+}
+
+U32 MappedFileCache::retireMapping(bool& accountingCommitted) {
+    accountingCommitted = false;
+    std::shared_ptr<KFile> target;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+        target = writeFile ? writeFile : file;
+    }
+    if (!target) {
+        return -K_EIO;
+    }
+
+    struct RetirementContext {
+        MappedFileCache* cache;
+        U64 preparedBytes = 0;
+        bool accountingCommitted = false;
+#ifdef __TEST
+        std::shared_ptr<std::function<void()>> afterPreparation;
+#endif
+    } context = {this};
+    KWritebackResult result = target->writeback(&context,
+        [](void* opaque, std::vector<KFile::WritebackRange>& ranges) -> S32 {
+            RetirementContext& context = *static_cast<RetirementContext*>(opaque);
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(context.cache->mutationMutex);
+            S32 preparationResult = 0;
+            {
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(context.cache->mutex);
+                if (!context.cache->mappingLeaseCount) {
+                    return -K_EINVAL;
+                }
+                if (context.cache->mappingLeaseCount == 1 && context.cache->writeFile) {
+                    preparationResult = context.cache->snapshotWritebackRangesLocked(
+                        0, context.cache->length, ranges, context.preparedBytes);
+#ifdef __TEST
+                    context.afterPreparation = context.cache->testAfterFinalRetirementPreparationHook;
+#endif
+                }
+            }
+#ifdef __TEST
+            if (context.afterPreparation) {
+                (*context.afterPreparation)();
+            }
+#endif
+            return preparationResult;
+        },
+        [](void* opaque) noexcept {
+            RetirementContext& context = *static_cast<RetirementContext*>(opaque);
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(context.cache->mutex);
+            if (!context.cache->mappingLeaseCount) {
+                kpanic("mapped file cache lease count underflow");
+            }
+            --context.cache->mappingLeaseCount;
+#ifdef __TEST
+            ++context.cache->testRetirementAccountingFinalizeCount;
+#endif
+            context.accountingCommitted = true;
+        });
+    accountingCommitted = context.accountingCommitted;
+
+    if (result.preparationError) {
+        return (U32)result.preparationError;
+    }
+    if (result.ioError) {
+        return (U32)result.ioError;
+    }
+    return result.bytesWritten == context.preparedBytes ? 0 : (U32)-K_EIO;
 }
 
 void KMemory::shutdown() {
@@ -84,15 +551,23 @@ U32 KMemory::mlock(U32 addr, U32 len) {
 
 U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off, bool remap) {
     bool shared = (flags & K_MAP_SHARED) != 0;
-    bool priv = (flags & K_MAP_PRIVATE) != 0;    
+    bool priv = (flags & K_MAP_PRIVATE) != 0;
     bool write = (prot & K_PROT_WRITE) != 0;
     // from https://man7.org/linux/man-pages/man2/mprotect.2.html
     // On some hardware architectures(e.g., i386), PROT_WRITE implies PROT_READ.
     bool read = (prot & K_PROT_READ) != 0 || write;
     bool exec = (prot & K_PROT_EXEC) != 0;
     U32 pageStart = addr >> K_PAGE_SHIFT;
-	U32 pageCount = (U32)(((U64)len + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT); // U64 to avoid overflow
+    U32 pageCount = (U32)(((U64)len + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT); // U64 to avoid overflow
     KFileDescriptorPtr fd;
+    std::shared_ptr<KFile> file;
+    MappedFilePtr mappedFile;
+    bool fileMapValidated = false;
+    bool mappedLeaseRetained = false;
+    bool mappingCommitted = false;
+    const bool fixedReplacement =
+        (flags & K_MAP_FIXED) && !(flags & K_MAP_FIXED_NOREPLACE);
+    std::vector<MappedFilePtr> replacementRetirements;
 
     if (0xFFFFFFFF - addr < len || len == 0) {
         return -K_EINVAL;
@@ -112,88 +587,210 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
         if (len == 0 || (off & 0xFFF) != 0) {
             return -K_EINVAL;
         }
+        const U64 firstFilePage = off >> K_PAGE_SHIFT;
+        if (firstFilePage > K_MAX_MAPPED_FILE_CACHE_PAGE ||
+            (U64)(pageCount - 1) > K_MAX_MAPPED_FILE_CACHE_PAGE - firstFilePage) {
+            return -K_EINVAL;
+        }
         if (!fd->canRead() || (!priv && (!fd->canWrite() && write))) {
             return -K_EACCES;
         }
+        file = std::dynamic_pointer_cast<KFile>(fd->kobject);
+        if (!file) {
+            return -K_EACCES;
+        }
+        if (shared && fd->canWrite()) {
+            // Positioned-write capability is retained by the live open node.
+            // Reject before taking the memory lock or reserving any address so
+            // an unavailable append-safe target needs no mmap unwind.
+            if (!file->openFile->canWriteNativeAt()) {
+                return -K_EIO;
+            }
+        }
     }
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
-    if (flags & (K_MAP_FIXED | K_MAP_FIXED_NOREPLACE)) {
+    if (fixedReplacement) {
         if (addr & (K_PAGE_SIZE - 1)) {
-            klog_fmt("tried to call mmap with invalid address: %X", addr);
             return -K_EINVAL;
         }
-        if (flags & K_MAP_FIXED_NOREPLACE) {
-            if (!remap && addr != 0 && pageStart + pageCount > ADDRESS_PROCESS_MMAP_START) {
+        // Validate the replacement before removing the old mapping.  A file
+        // mapper is allowed to reject this request, and MAP_FIXED must not
+        // destroy the existing range when that validation fails.
+        if (fd) {
+            U32 result = fd->kobject->map(thread, addr, len, prot, flags, off);
+            if (result) {
+                return result;
+            }
+            fileMapValidated = true;
+        }
+    }
+
+    // Cache lookup and lease accounting acquire filePos -> identity -> cache.
+    // Complete them before taking the guest-memory lock so descriptor I/O,
+    // which copies to or from guest memory while holding those file locks,
+    // cannot form an ABBA cycle with mmap.
+    if (fd) {
+        try {
+#ifdef __TEST
+            if (testFailMappedFileRecordAllocation) {
+                throw std::bad_alloc();
+            }
+#endif
+            mappedFile = std::make_shared<MappedFile>();
+            mappedFile->file = file;
+            mappedFile->shared = shared;
+            mappedFile->mayWrite = priv || fd->canWrite();
+            mappedFile->systemCacheEntry = file->getOrCreateMappedFileCache(
+                file->openFile->node->path, shared && fd->canWrite());
+            if (!mappedFile->systemCacheEntry) {
+                return -K_EIO;
+            }
+            mappedFile->lease = std::make_shared<MappedFileLease>(mappedFile->systemCacheEntry);
+            file->retainMappedFileCacheLease(mappedFile->systemCacheEntry);
+            mappedLeaseRetained = true;
+        } catch (const std::bad_alloc&) {
+            return -K_ENOMEM;
+        } catch (const std::length_error&) {
+            return -K_ENOMEM;
+        }
+    }
+
+    U32 permissions = PAGE_MAPPED;
+    if (write) {
+        permissions |= PAGE_WRITE;
+    }
+    if (read) {
+        permissions |= PAGE_READ;
+    }
+    if (exec) {
+        permissions |= PAGE_EXEC;
+    }
+    if (shared) {
+        permissions |= PAGE_SHARED;
+    }
+
+    U32 mappingResult = [&]() -> U32 {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+
+        if (mappedFile) {
+            try {
+                {
+                    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->mappedFilesMutex);
+                    // unmap can add at most one right split when replacing one
+                    // contiguous range. Reserve for that split and this record
+                    // before a destructive MAP_FIXED replacement begins.
+                    process->mappedFiles.reserve(process->mappedFiles.size() +
+                        (fixedReplacement ? 2 : 1));
+                }
+            } catch (const std::bad_alloc&) {
+                return -K_ENOMEM;
+            } catch (const std::length_error&) {
                 return -K_ENOMEM;
             }
-            for (U32 page = pageStart; page < pageStart + pageCount; page++) {
-                if (isPageMapped(page)) {
-                    return -K_EEXIST;
+        }
+
+        bool reservedAddress = false;
+        if (flags & (K_MAP_FIXED | K_MAP_FIXED_NOREPLACE)) {
+            if (addr & (K_PAGE_SIZE - 1)) {
+                klog_fmt("tried to call mmap with invalid address: %X", addr);
+                return -K_EINVAL;
+            }
+            if (flags & K_MAP_FIXED_NOREPLACE) {
+                if (!remap && addr != 0 && pageStart + pageCount > ADDRESS_PROCESS_MMAP_START) {
+                    return -K_ENOMEM;
+                }
+                for (U32 page = pageStart; page < pageStart + pageCount; page++) {
+                    if (isPageMapped(page)) {
+                        return -K_EEXIST;
+                    }
                 }
             }
+        } else {
+            if (pageStart + pageCount > ADDRESS_PROCESS_MMAP_START) {
+                return -K_ENOMEM;
+            }
+            if (pageStart == 0) {
+                // :TODO: this seems like a hack, there must be something wrong with how I implemented mmap
+                if (KSystem::wineMajorVersion >= 7 && (flags & K_MAP_BOXEDWINE) == 0) {
+                    pageStart = 0x10000;
+                } else {
+                    pageStart = ADDRESS_PROCESS_MMAP_START;
+                }
+            }
+            if (!data->reserveAddress(pageStart, pageCount, &pageStart, false, addr == 0, PAGE_MAPPED)) {
+                return -K_ENOMEM;
+            }
+            addr = pageStart << K_PAGE_SHIFT;
+            reservedAddress = true;
         }
-    } else {
-        if (pageStart + pageCount > ADDRESS_PROCESS_MMAP_START) {
-            return -K_ENOMEM;
-        }
-        if (pageStart == 0) {
-            // :TODO: this seems like a hack, there must be something wrong with how I implemented mmap
-            if (KSystem::wineMajorVersion >= 7 && (flags & K_MAP_BOXEDWINE) == 0) {
-                pageStart = 0x10000;
-            } else {
-                pageStart = ADDRESS_PROCESS_MMAP_START;
+
+        if (fd && !fileMapValidated) {
+            U32 result = fd->kobject->map(thread, addr, len, prot, flags, off);
+            if (result) {
+                if (reservedAddress) {
+                    data->setPagesInvalid(pageStart, pageCount);
+                }
+                return result;
             }
         }
-        if (!data->reserveAddress(pageStart, pageCount, &pageStart, false, addr == 0, PAGE_MAPPED)) {
-            return -K_ENOMEM;
-        }
-        addr = pageStart << K_PAGE_SHIFT;
-    }
-    if (fd) {
-        U32 result = fd->kobject->map(thread, addr, len, prot, flags, off);
-        if (result) {
-            return result;
-        }
-    }
 
-    // even if there are no permissions, it is important for MAP_ANONYMOUS|MAP_FIXED existing memory to be 0'd out
-    // if (write || read || exec)
-    {
-        U32 permissions = PAGE_MAPPED;
-
-        if (write) {
-            permissions |= PAGE_WRITE;
-        }
-        if (read) {
-            permissions |= PAGE_READ;
-        }
-        if (exec) {
-            permissions |= PAGE_EXEC;
-        }
-        if (shared) {
-            permissions |= PAGE_SHARED;
-        }
-        if (fd) {
-            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->mappedFilesMutex);
-            std::shared_ptr<MappedFile> mappedFile = std::make_shared<MappedFile>();
-
+        if (mappedFile) {
             mappedFile->address = pageStart << K_PAGE_SHIFT;
             mappedFile->len = ((U64)pageCount) << K_PAGE_SHIFT;
             mappedFile->offset = off;
-            mappedFile->file = std::dynamic_pointer_cast<KFile>(fd->kobject);
             mappedFile->key = this->process->nextMappedFileIndex++;
-            bool addFileToSystemCache = true;
-            if (addFileToSystemCache) {
-                U32 cachePageCount = ((U32)((fd->kobject->length() + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT));
-                mappedFile->systemCacheEntry = KSystem::getOrCreateFileCache(mappedFile->file->openFile->node->path, mappedFile->file, cachePageCount);
+            if (fixedReplacement) {
+                U32 result = this->unmapLocked(addr, len, replacementRetirements);
+                if (result) {
+                    return result;
+                }
             }
-            this->process->mappedFiles.set(mappedFile->key, mappedFile);
+            {
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->mappedFilesMutex);
+                // Capacity is already reserved. U32 hashing and shared_ptr
+                // copy/assignment are non-throwing, so no fallible operation
+                // remains after the replacement unmap.
+                this->process->mappedFiles.set(mappedFile->key, mappedFile);
+            }
             this->data->allocPages(thread, pageStart, pageCount, permissions, fildes, off, mappedFile);
         } else {
+            if (fixedReplacement) {
+                U32 result = this->unmapLocked(addr, len, replacementRetirements);
+                if (result) {
+                    return result;
+                }
+            }
             this->data->allocPages(thread, pageStart, pageCount, permissions, 0, 0, nullptr);
         }
+        mappingCommitted = true;
+        return addr;
+    }();
+
+    if (mappedLeaseRetained && !mappingCommitted) {
+        bool retire = false;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->mappedFilesMutex);
+            retire = mappedFile->lease->removePiece();
+        }
+        if (retire) {
+            U32 retireResult = mappedFile->lease->retire();
+            if ((S32)retireResult < 0 && !mappedFile->lease->isRetired()) {
+                process->queuePendingMappedFileRetirement(mappedFile, (S32)retireResult);
+            }
+        }
     }
-    return addr;
+    if (!mappingCommitted) {
+        return mappingResult;
+    }
+
+    for (const MappedFilePtr& mapping : replacementRetirements) {
+        U32 result = mapping->lease->retire();
+        if ((S32)result < 0) {
+            if (!mapping->lease->isRetired()) {
+                process->queuePendingMappedFileRetirement(mapping, (S32)result);
+            }
+        }
+    }
+    return mappingResult;
 }
 
 U32 KMemory::mprotect(KThread* thread, U32 address, U32 len, U32 prot) {
@@ -216,7 +813,22 @@ U32 KMemory::mprotect(KThread* thread, U32 address, U32 len, U32 prot) {
         if (!isPageMapped(i)) {
             return -K_ENOMEM;
         }
-    }    
+    }
+    if (write) {
+        const U64 protectStart = (U64)pageStart << K_PAGE_SHIFT;
+        const U64 protectEnd =
+            protectStart + ((U64)pageCount << K_PAGE_SHIFT);
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->mappedFilesMutex);
+        for (const auto& entry : process->mappedFiles) {
+            const MappedFilePtr& mapping = entry.value;
+            const U64 mappingStart = mapping->address;
+            const U64 mappingEnd = mappingStart + mapping->len;
+            if (!mapping->mayWrite &&
+                mappingStart < protectEnd && mappingEnd > protectStart) {
+                return -K_EACCES;
+            }
+        }
+    }
     for (U32 i = pageStart; i < pageStart + pageCount; i++) {
         this->data->protectPage(thread, i, permissions);
     }
@@ -237,7 +849,14 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
     if (oldsize == 0) {
         kpanic("mremap not implemented for oldsize==0");
     }
-    U32 oldPageCount = (oldsize + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
+    U64 roundedOldSize = ((U64)oldsize + K_PAGE_MASK) & ~(U64)K_PAGE_MASK;
+    U64 roundedNewSize = ((U64)newsize + K_PAGE_MASK) & ~(U64)K_PAGE_MASK;
+    constexpr U64 ADDRESS_SPACE_SIZE = 0x100000000ULL;
+    if ((U64)oldaddress + roundedOldSize > ADDRESS_SPACE_SIZE ||
+        (U64)oldaddress + roundedNewSize > ADDRESS_SPACE_SIZE) {
+        return -K_EINVAL;
+    }
+    U32 oldPageCount = (U32)(roundedOldSize >> K_PAGE_SHIFT);
     U32 oldPageStart = oldaddress >> K_PAGE_SHIFT;
     U32 pageFlags = getPageFlags(oldPageStart);
 
@@ -246,10 +865,31 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
             return -K_EFAULT;
         }
     }
-    if (newsize < oldsize) {
-        this->unmap(oldaddress + newsize, oldsize - newsize);
+    if (roundedNewSize < roundedOldSize) {
+        U32 result = this->unmap((U32)((U64)oldaddress + roundedNewSize),
+            (U32)(roundedOldSize - roundedNewSize));
+        if (result) {
+            return result;
+        }
         return oldaddress;
-    } else {
+    } else if (roundedNewSize > roundedOldSize) {
+        const U64 oldRangeStart = oldaddress;
+        const U64 oldRangeEnd = oldRangeStart + roundedOldSize;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->mappedFilesMutex);
+            for (const auto& entry : process->mappedFiles) {
+                const MappedFilePtr& mapping = entry.value;
+                const U64 mappingStart = mapping->address;
+                const U64 mappingEnd = mappingStart + mapping->len;
+                if (mappingStart < oldRangeEnd && mappingEnd > oldRangeStart) {
+                    // Growing or moving a file-backed mapping must retain its
+                    // cache, file offset, and lease. The generic mmap paths
+                    // below cannot do that without the original descriptor,
+                    // which may already be closed.
+                    return -K_ENOMEM;
+                }
+            }
+        }
         U32 prot = 0;
         U32 f = 0;
         if (pageFlags & PAGE_READ) {
@@ -266,25 +906,178 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
         } else {
             f |= K_MAP_PRIVATE;
         }        
-        U32 result = this->mmap(thread, oldaddress + oldsize, newsize - oldsize, prot, f | K_MAP_FIXED_NOREPLACE, -1, 0, true);
-        if (result == oldaddress + oldsize) {
+        U32 oldEnd = (U32)((U64)oldaddress + roundedOldSize);
+        U32 growth = (U32)(roundedNewSize - roundedOldSize);
+        U32 result = this->mmap(thread, oldEnd, growth, prot, f | K_MAP_FIXED_NOREPLACE, -1, 0, true);
+        if (result == oldEnd) {
             return oldaddress;
         }
         if ((flags & 1) != 0) { // MREMAP_MAYMOVE
             result = this->mmap(thread, 0, newsize, prot, f | K_MAP_ANONYMOUS, -1, 0);
+            if ((S32)result < 0) {
+                return result;
+            }
             this->memcpy(result, oldaddress, oldsize);
-            this->unmap(oldaddress, oldsize);
+            U32 unmapResult = this->unmap(oldaddress, (U32)roundedOldSize);
+            if (unmapResult) {
+                this->unmap(result, (U32)roundedNewSize);
+                return unmapResult;
+            }
             return result;
         }
         return -K_ENOMEM;
     }
+    return oldaddress;
+}
+
+U32 KMemory::unmapLocked(U32 address, U32 len, std::vector<MappedFilePtr>& retirements) {
+    if (!len || (address & K_PAGE_MASK)) {
+        return -K_EINVAL;
+    }
+    U64 rangeStart = address;
+    U64 rangeEnd = rangeStart + len;
+    if (rangeEnd > 0x100000000ULL) {
+        return -K_EINVAL;
+    }
+    rangeEnd = (rangeEnd + K_PAGE_MASK) & ~(U64)K_PAGE_MASK;
+    if (rangeEnd > 0x100000000ULL) {
+        return -K_EINVAL;
+    }
+    U32 pageStart = address >> K_PAGE_SHIFT;
+    U32 pageCount = (U32)((rangeEnd - rangeStart) >> K_PAGE_SHIFT);
+    struct PreparedSplit {
+        MappedFilePtr original;
+        MappedFilePtr right;
+    };
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->mappedFilesMutex);
+    std::vector<MappedFilePtr> mappings;
+    std::vector<PreparedSplit> splits;
+    bool preparedCodeInvalidation = false;
+    try {
+        mappings.reserve(process->mappedFiles.size());
+        retirements.reserve(process->mappedFiles.size());
+        splits.reserve(process->mappedFiles.size());
+        for (const auto& entry : process->mappedFiles) {
+            mappings.push_back(entry.value);
+        }
+        for (const MappedFilePtr& mapping : mappings) {
+            U64 mappingStart = mapping->address;
+            U64 mappingEnd = mappingStart + mapping->len;
+            U64 overlapStart = std::max(rangeStart, mappingStart);
+            U64 overlapEnd = std::min(rangeEnd, mappingEnd);
+            if (mappingStart < overlapStart && overlapEnd < mappingEnd) {
+#ifdef __TEST
+                if (testFailMappedFileRecordAllocation) {
+                    throw std::bad_alloc();
+                }
+#endif
+                MappedFilePtr right = std::make_shared<MappedFile>(*mapping);
+                right->address = (U32)overlapEnd;
+                right->len = mappingEnd - overlapEnd;
+                right->advanceFileOffset(overlapEnd - mappingStart);
+                right->key = process->nextMappedFileIndex++;
+                splits.push_back({mapping, right});
+            }
+        }
+        for (U32 page = pageStart; page < pageStart + pageCount; ++page) {
+            if (data->mmu[page].getPageType() == PageType::Code) {
+                prepareCodeInvalidation((U32)rangeStart,
+                    (U32)(rangeEnd - rangeStart));
+                preparedCodeInvalidation = true;
+                break;
+            }
+        }
+        // Insertion can allocate. Do it before invalidating pages or changing
+        // any live record so ENOMEM leaves the mapping whole.
+        for (const PreparedSplit& split : splits) {
+            process->mappedFiles.set(split.right->key, split.right);
+        }
+    } catch (const std::bad_alloc&) {
+        discardPreparedCodeInvalidation();
+        for (const PreparedSplit& split : splits) {
+            process->mappedFiles.remove(split.right->key);
+        }
+        return -K_ENOMEM;
+    } catch (const std::length_error&) {
+        discardPreparedCodeInvalidation();
+        for (const PreparedSplit& split : splits) {
+            process->mappedFiles.remove(split.right->key);
+        }
+        return -K_ENOMEM;
+    }
+
+    this->data->setPagesInvalid(pageStart, pageCount, preparedCodeInvalidation);
+    for (const MappedFilePtr& mapping : mappings) {
+        U64 mappingStart = mapping->address;
+        U64 mappingEnd = mappingStart + mapping->len;
+        U64 overlapStart = std::max(rangeStart, mappingStart);
+        U64 overlapEnd = std::min(rangeEnd, mappingEnd);
+        if (overlapStart >= overlapEnd) {
+            continue;
+        }
+
+        bool keepLeft = mappingStart < overlapStart;
+        bool keepRight = overlapEnd < mappingEnd;
+        if (!keepLeft && !keepRight) {
+            process->mappedFiles.remove(mapping->key);
+            if (mapping->lease && mapping->lease->removePiece()) {
+                retirements.push_back(mapping);
+            }
+        } else if (keepLeft && keepRight) {
+            MappedFilePtr right;
+            for (const PreparedSplit& split : splits) {
+                if (split.original == mapping) {
+                    right = split.right;
+                    break;
+                }
+            }
+            if (!right) {
+                kpanic("prepared mapped-file split was not found");
+            }
+            mapping->len = overlapStart - mappingStart;
+            if (mapping->lease) {
+                mapping->lease->addPiece();
+            }
+
+            U32 rightStartPage = right->address >> K_PAGE_SHIFT;
+            U32 rightPageCount = (U32)(right->len >> K_PAGE_SHIFT);
+            for (U32 page = rightStartPage; page < rightStartPage + rightPageCount; ++page) {
+                MMU& mmu = data->mmu[page];
+                if (mmu.getPageType() == PageType::File && mmu.ramIndex == mapping->key) {
+                    mmu.setPage(this, page, PageType::File, RamPage{right->key});
+                    data->onPageChanged(page);
+                }
+            }
+        } else if (keepLeft) {
+            mapping->len = overlapStart - mappingStart;
+        } else {
+            mapping->address = (U32)overlapEnd;
+            mapping->len = mappingEnd - overlapEnd;
+            mapping->advanceFileOffset(overlapEnd - mappingStart);
+        }
+    }
+    return 0;
 }
 
 U32 KMemory::unmap(U32 address, U32 len) {
-    U32 pageStart = address >> K_PAGE_SHIFT;
-    U32 pageCount = (len + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
-
-    this->data->setPagesInvalid(pageStart, pageCount);
+    process->retryPendingMappedFileRetirements();
+    std::vector<MappedFilePtr> retirements;
+    U32 result;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+        result = unmapLocked(address, len, retirements);
+    }
+    if (result) {
+        return result;
+    }
+    for (const MappedFilePtr& mapping : retirements) {
+        U32 retireResult = mapping->lease->retire();
+        if ((S32)retireResult < 0) {
+            if (!mapping->lease->isRetired()) {
+                process->queuePendingMappedFileRetirement(mapping, (S32)retireResult);
+            }
+        }
+    }
     return 0;
 }
 
@@ -523,8 +1316,230 @@ void KMemory::clearOpCache() {
     data->opCache.clear();
 }
 
+void KMemory::prepareCodeInvalidation(U32 address, U32 len) {
+    if (codeInvalidationPrepared) {
+        kpanic("nested code invalidation preparation");
+    }
+
+    preparedCodeBlocks.clear();
+    preparedCodeRemovalRanges.clear();
+#if defined(BOXEDWINE_JIT)
+    preparedBackendDecodedOps.clear();
+    preparedBackendJitOps.clear();
+    preparedBackendInvalidations.clear();
+#endif
+    U32 codeMemoryFreeCount = 0;
+
+#ifdef __TEST
+    if (testFailCodeInvalidationPreparation) {
+        throw std::bad_alloc();
+    }
+#endif
+
+    try {
+#if defined(BOXEDWINE_JIT)
+        struct CollectContext {
+            std::vector<PreparedCodeInvalidationBlock>* blocks;
+        } context = {&preparedCodeBlocks};
+        data->opCache.iterateOps(address, len,
+            [](U32 opAddress, DecodedOp* op, void* opaque) {
+                if (!op->blockStart) {
+                    return;
+                }
+                CollectContext& context = *static_cast<CollectContext*>(opaque);
+                DecodedOp* blockStart = op->blockStart;
+                for (const PreparedCodeInvalidationBlock& block : *context.blocks) {
+                    if (block.blockStart == blockStart) {
+                        return;
+                    }
+                }
+                U32 prefixLen = 0;
+                DecodedOp* current = blockStart;
+                while (current != op) {
+                    prefixLen += current->len;
+                    current = current->next;
+                }
+                context.blocks->push_back(
+                    {opAddress - prefixLen, blockStart, {}, {}, nullptr});
+            }, &context);
+
+        for (PreparedCodeInvalidationBlock& block : preparedCodeBlocks) {
+            DecodedOp* current = block.blockStart;
+            U32 blockOpCount = block.blockStart->blockOpCount;
+            preparedCodeRemovalRanges.push_back(
+                {block.address, block.blockStart->blockLen});
+            if (block.blockStart->pfnJitCode && jitUsesCodeMemory()) {
+                block.codeMemoryToFree = (void*)block.blockStart->pfnJitCode;
+                ++codeMemoryFreeCount;
+            }
+            block.decodedOps.reserve(blockOpCount);
+            block.jitOps.reserve(blockOpCount);
+            for (U32 i = 0; i < blockOpCount; ++i) {
+                block.decodedOps.push_back(current);
+                if (current->pfnJitCode) {
+                    block.jitOps.push_back((void*)current->pfnJitCode);
+                }
+                current = current->next;
+            }
+        }
+        if (jitAggregatesPreparedCodeInvalidation()) {
+            for (const PreparedCodeInvalidationBlock& block :
+                    preparedCodeBlocks) {
+                if (block.decodedOps.size() >
+                        preparedBackendDecodedOps.max_size() -
+                            preparedBackendDecodedOps.size() ||
+                        block.jitOps.size() >
+                        preparedBackendJitOps.max_size() -
+                            preparedBackendJitOps.size()) {
+                    throw std::length_error(
+                        "prepared backend invalidation is too large");
+                }
+                preparedBackendDecodedOps.insert(
+                    preparedBackendDecodedOps.end(),
+                    block.decodedOps.begin(), block.decodedOps.end());
+                preparedBackendJitOps.insert(
+                    preparedBackendJitOps.end(),
+                    block.jitOps.begin(), block.jitOps.end());
+            }
+            if (!preparedBackendDecodedOps.empty() ||
+                    !preparedBackendJitOps.empty()) {
+                preparedBackendInvalidations.push_back(
+                    prepareJitCodeInvalidation(this,
+                        preparedBackendDecodedOps, preparedBackendJitOps));
+            }
+        } else {
+            preparedBackendInvalidations.reserve(preparedCodeBlocks.size());
+            for (const PreparedCodeInvalidationBlock& block :
+                    preparedCodeBlocks) {
+                preparedBackendInvalidations.push_back(
+                    prepareJitCodeInvalidation(
+                        this, block.decodedOps, block.jitOps));
+            }
+        }
+#endif
+        preparedCodeRemovalRanges.push_back({address, len});
+        data->opCache.prepareRemoveRanges(preparedCodeRemovalRanges);
+        if (codeMemoryFreeCount >
+            pendingCodeMemoryFrees.max_size() - pendingCodeMemoryFrees.size()) {
+            throw std::length_error("pending code-memory frees are too large");
+        }
+        pendingCodeMemoryFrees.reserve(
+            pendingCodeMemoryFrees.size() + codeMemoryFreeCount);
+        codeInvalidationPrepared = true;
+    } catch (...) {
+        data->opCache.finishPreparedRemove();
+#if defined(BOXEDWINE_JIT)
+        preparedBackendInvalidations.clear();
+        preparedBackendDecodedOps.clear();
+        preparedBackendJitOps.clear();
+#endif
+        preparedCodeBlocks.clear();
+        preparedCodeRemovalRanges.clear();
+        throw;
+    }
+}
+
+void KMemory::commitPreparedCodeInvalidation() {
+    if (!codeInvalidationPrepared) {
+        kpanic("code invalidation was not prepared");
+    }
+
+#if defined(BOXEDWINE_JIT)
+    for (PreparedCodeInvalidationBlock& block : preparedCodeBlocks) {
+        DecodedOp* blockOp = block.blockStart;
+        DecodedOp* nextOp = blockOp;
+        U32 blockOpCount = blockOp->blockOpCount;
+        for (U32 i = 0; i < blockOpCount; ++i) {
+            if (nextOp->blockStart != blockOp && nextOp->inst != Done) {
+                kpanic("KMemory::commitPreparedCodeInvalidation nextOp->blockStart");
+            }
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+            if (nextOp->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
+                __atomic_exchange_n(&nextOp->pfnJitCode, nullptr, __ATOMIC_SEQ_CST);
+            } else {
+                nextOp->pfnJitCode = nullptr;
+            }
+#endif
+            nextOp->blockStart = nullptr;
+            nextOp->blockOpCount = 0;
+            nextOp->blockLen = 0;
+            if (nextOp->runCount) {
+                nextOp->runCount = 1;
+            }
+            nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
+            nextOp->flags &= ~OP_FLAG_JIT;
+#if !defined(BOXEDWINE_WASM_JIT) || !defined(BOXEDWINE_MULTI_THREADED)
+            nextOp->pfnJitCode = nullptr;
+#endif
+            nextOp->jitLen = 0;
+            nextOp = nextOp->next;
+        }
+    }
+    for (PreparedJitCodeInvalidation& invalidation :
+            preparedBackendInvalidations) {
+        invalidation.commit();
+    }
+#endif
+
+    for (const auto& range : preparedCodeRemovalRanges) {
+        data->opCache.remove(range.first, range.second, false);
+    }
+    data->opCache.finishPreparedRemove();
+
+#if defined(BOXEDWINE_JIT)
+    for (const PreparedCodeInvalidationBlock& block : preparedCodeBlocks) {
+        if (!block.codeMemoryToFree) {
+            continue;
+        }
+        try {
+            data->codeMemory.free(block.codeMemoryToFree);
+        } catch (...) {
+            // Capacity for every prepared free was reserved before mutation.
+            pendingCodeMemoryFrees.push_back(block.codeMemoryToFree);
+        }
+    }
+#endif
+    codeInvalidationPrepared = false;
+#if defined(BOXEDWINE_JIT)
+    preparedBackendInvalidations.clear();
+    preparedBackendDecodedOps.clear();
+    preparedBackendJitOps.clear();
+#endif
+    preparedCodeBlocks.clear();
+    preparedCodeRemovalRanges.clear();
+}
+
+void KMemory::discardPreparedCodeInvalidation() {
+    if (!codeInvalidationPrepared) {
+        return;
+    }
+    data->opCache.finishPreparedRemove();
+    codeInvalidationPrepared = false;
+#if defined(BOXEDWINE_JIT)
+    preparedBackendInvalidations.clear();
+    preparedBackendDecodedOps.clear();
+    preparedBackendJitOps.clear();
+#endif
+    preparedCodeBlocks.clear();
+    preparedCodeRemovalRanges.clear();
+}
+
+void KMemory::retryPendingCodeMemoryFrees() {
+#if defined(BOXEDWINE_JIT)
+    while (!pendingCodeMemoryFrees.empty()) {
+        try {
+            data->codeMemory.free(pendingCodeMemoryFrees.back());
+            pendingCodeMemoryFrees.pop_back();
+        } catch (...) {
+            return;
+        }
+    }
+#endif
+}
+
 void* KMemory::allocCodeMemory(U32 len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex)
+    retryPendingCodeMemoryFrees();
     return data->codeMemory.alloc(len);
 }
 
@@ -571,6 +1586,21 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     std::vector<void*> jitOps;
     std::vector<DecodedOp*> decodedOps;
     decodedOps.reserve(blockOpCount);
+    jitOps.reserve(blockOpCount);
+    for (U32 i = 0; i < blockOpCount; ++i) {
+        if (nextOp->blockStart != blockOp && nextOp->inst != Done) {
+            kpanic("KMemory::removeCodeBlock nextOp->blockStart");
+        }
+        if (nextOp->pfnJitCode) {
+            jitOps.push_back(nextOp->pfnJitCode);
+        }
+        decodedOps.push_back(nextOp);
+        nextOp = nextOp->next;
+    }
+    PreparedJitCodeInvalidation backendInvalidation =
+        prepareJitCodeInvalidation(this, decodedOps, jitOps);
+
+    nextOp = blockOp;
     for (U32 i = 0; i < blockOpCount; i++) {
         if (nextOp->blockStart != blockOp && nextOp->inst != Done) {
             kpanic("KMemory::removeCodeBlock nextOp->blockStart");
@@ -599,10 +1629,6 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         }
         nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
         nextOp->flags &= ~OP_FLAG_JIT;
-        if (jitCode) {
-            jitOps.push_back(jitCode);
-        }
-        decodedOps.push_back(nextOp);
         jitLen += nextOp->jitLen;
 #if !defined(BOXEDWINE_WASM_JIT) || !defined(BOXEDWINE_MULTI_THREADED)
         nextOp->pfnJitCode = nullptr;
@@ -610,7 +1636,7 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         nextOp->jitLen = 0;
         nextOp = nextOp->next;
     }
-    jitCodeInvalidated(this, decodedOps, jitOps);
+    backendInvalidation.commit();
     if (clearOps) {
         data->opCache.remove(address, blockLen, false);
     }        
@@ -797,8 +1823,25 @@ U8* KMemory::lockReadWriteMemory(U32 address, U32 len) {
 }
 
 void KMemory::unmapNativeMemory(U32 address, U32 size) {
-	// -K_PAGE_SIZE and + 2 * K_PAGE_SIZE are necessary to handle the guard pages that are added on either side of the mapped memory
-    unmap(address - K_PAGE_SIZE, size + 2 * K_PAGE_SIZE);
+	// The returned guest address includes the host pointer's low-page offset.
+    // Align back to the first native data page, then include both guards.
+    U64 dataStart = (U64)address & ~(U64)K_PAGE_MASK;
+    if (dataStart < K_PAGE_SIZE) {
+        kwarn_fmt("Ignoring invalid native unmap address %.8X", address);
+        return;
+    }
+    U64 dataBytes = (U64)(address & K_PAGE_MASK) + size;
+    U64 dataPageCount = (dataBytes + K_PAGE_MASK) >> K_PAGE_SHIFT;
+    U64 totalBytes = (dataPageCount + 2) << K_PAGE_SHIFT;
+    U64 guardStart = dataStart - K_PAGE_SIZE;
+    if (guardStart + totalBytes > 0x100000000ULL || totalBytes > std::numeric_limits<U32>::max()) {
+        kwarn_fmt("Ignoring overflowing native unmap address %.8X size %u", address, size);
+        return;
+    }
+    U32 result = unmap((U32)guardStart, (U32)totalBytes);
+    if (result) {
+        kwarn_fmt("Native unmap failed for %.8X size %u: %d", address, size, (S32)result);
+    }
 }
 
 U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
@@ -806,10 +1849,14 @@ U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
     U32 offset = (U32)(((RAM_TYPE)hostAddress) & 0xFFF);
     // ramPageAllocNative expect host address to be aligned to a page
     if (offset) {
-        size += offset;
         hostAddress = (U8*)hostAddress - offset;
     }
-    U32 pageCount = (size + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
+    U64 adjustedSize = (U64)size + offset;
+    U64 pageCount64 = (adjustedSize + K_PAGE_MASK) >> K_PAGE_SHIFT;
+    if (pageCount64 + 2 > std::numeric_limits<U32>::max()) {
+        return 0;
+    }
+    U32 pageCount = (U32)pageCount64;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (!data->reserveAddress(ADDRESS_PROCESS_MMAP_START, pageCount + 2, &result, false, true, PAGE_MAPPED)) {
         return 0;
@@ -1004,6 +2051,10 @@ U8* KMemory::getRamPtr(U32 address, U32 len, bool write, bool futex) {
 void KMemory::clone(KMemory* from, bool vfork) {
     // don't allow changes to the from pages while we are cloning
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(from->mutex);
+    cloneLocked(from, vfork);
+}
+
+void KMemory::cloneLocked(KMemory* from, bool vfork) {
     if (vfork) {
         delete this->data;
         this->data = from->data;
