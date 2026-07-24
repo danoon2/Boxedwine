@@ -20,6 +20,7 @@ from urllib.request import urlopen
 
 
 FILESYSTEM_URL = "https://boxedwine.org/v2/8/TinyCore15Wine11.0.zip"
+FILESYSTEM_CACHE_NAME = "TinyCore15Wine11.0-v8.zip"
 TESTS_URL = "http://boxedwine.org/v2/1/wine_tests_v1.zip"
 
 TEST_GROUPS = (
@@ -504,7 +505,7 @@ def main(argv: list[str] | None = None) -> int:
         repo_root = Path(__file__).resolve().parents[2]
         cache_dir = arguments.cache_dir.expanduser().resolve()
         cache_dir.mkdir(parents=True, exist_ok=True)
-        filesystem = cache_dir / "TinyCore15Wine11.0.zip"
+        filesystem = cache_dir / FILESYSTEM_CACHE_NAME
         tests_archive = cache_dir / "wine_tests_v1.zip"
 
         download_if_missing(arguments.filesystem_url, filesystem)

@@ -210,15 +210,35 @@ U64 FsFileNode::lastModified() {
 }
 
 U32 FsFileNode::lastModifiedNano() {
-    const FsFileTimeOverride& timeOverride = this->hardLinkState ? this->hardLinkState->modifiedTimeOverride : this->modifiedTimeOverride;
+    const FsFileTimeOverride& timeOverride = this->hardLinkState ?
+        this->hardLinkState->modifiedTimeOverride : this->modifiedTimeOverride;
     if (timeOverride.active) {
         return timeOverride.nanos;
     }
+#ifndef BOXEDWINE_MSVC
+    PLATFORM_STAT_STRUCT buf;
+    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf) == 0) {
+#ifdef __APPLE__
+        return (U32)(buf.st_mtime == 0 ? buf.st_ctimespec.tv_nsec :
+            buf.st_mtimespec.tv_nsec);
+#else
+        return (U32)(buf.st_mtime == 0 ? buf.st_ctim.tv_nsec :
+            buf.st_mtim.tv_nsec);
+#endif
+    }
+#endif
     return FsNode::lastModifiedNano();
 }
 
+void FsFileNode::clearModifiedTimeOverride() {
+    FsFileTimeOverride& timeOverride = this->hardLinkState ?
+        this->hardLinkState->modifiedTimeOverride : this->modifiedTimeOverride;
+    timeOverride.active = false;
+}
+
 U64 FsFileNode::lastAccessed() {
-    const FsFileTimeOverride& timeOverride = this->hardLinkState ? this->hardLinkState->accessTimeOverride : this->accessTimeOverride;
+    const FsFileTimeOverride& timeOverride = this->hardLinkState ?
+        this->hardLinkState->accessTimeOverride : this->accessTimeOverride;
     if (timeOverride.active) {
         return fileTimeOverrideMillis(timeOverride);
     }
@@ -236,10 +256,21 @@ U64 FsFileNode::lastAccessed() {
 }
 
 U32 FsFileNode::lastAccessedNano() {
-    const FsFileTimeOverride& timeOverride = this->hardLinkState ? this->hardLinkState->accessTimeOverride : this->accessTimeOverride;
+    const FsFileTimeOverride& timeOverride = this->hardLinkState ?
+        this->hardLinkState->accessTimeOverride : this->accessTimeOverride;
     if (timeOverride.active) {
         return timeOverride.nanos;
     }
+#ifndef BOXEDWINE_MSVC
+    PLATFORM_STAT_STRUCT buf;
+    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf) == 0) {
+#ifdef __APPLE__
+        return (U32)buf.st_atimespec.tv_nsec;
+#else
+        return (U32)buf.st_atim.tv_nsec;
+#endif
+    }
+#endif
     return FsNode::lastAccessedNano();
 }
 
@@ -362,6 +393,7 @@ FsOpenNode* FsFileNode::open(U32 flags) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
             f = openHostFile();
             if (f != 0xFFFFFFFF) {
+                this->clearModifiedTimeOverride();
 #ifdef __TEST
                 if (identity->testAfterBackingMutationBeforeCacheNotification) {
                     identity->testAfterBackingMutationBeforeCacheNotification();
@@ -469,6 +501,10 @@ S32 translateErr(U32 e) {
     case ENOLCK: return K_ENOLCK;
     case ENOSYS: return K_ENOSYS;
     case ENOTEMPTY: return K_ENOTEMPTY;
+    case EINVAL: return K_EINVAL;
+#ifdef EOPNOTSUPP
+    case EOPNOTSUPP: return K_EOPNOTSUPP;
+#endif
     default: return K_EIO;
     }
 }

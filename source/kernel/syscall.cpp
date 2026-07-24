@@ -631,7 +631,7 @@ static U32 syscall_mkdir(CPU* cpu, U32 eipCount) {
     BString path = cpu->memory->readString(ARG1);
 
     SYS_LOG1(SYSCALL_FILE, cpu, "mkdir: path=%X (%s) mode=%X", ARG1, path.c_str(), ARG2);
-    U32 result = cpu->thread->process->mkdir(path);
+    U32 result = cpu->thread->process->mkdir(path, ARG2);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -2001,6 +2001,16 @@ static U32 syscall_utimensat(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_fallocate(CPU* cpu, U32 eipCount) {
+    U64 offset = ARG3 | ((U64)ARG4 << 32);
+    U64 len = ARG5 | ((U64)ARG6 << 32);
+    SYS_LOG1(SYSCALL_FILE, cpu, "fallocate: fd=%d mode=%x offset=%lld len=%lld",
+        ARG1, ARG2, (S64)offset, (S64)len);
+    U32 result = cpu->thread->process->fallocate(ARG1, ARG2, (S64)offset, (S64)len);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
 static U32 syscall_timerfd_create(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_FILE, cpu, "timerfd_create clockid=%d flags=%X", ARG1, ARG2);
     U32 result = cpu->thread->process->timerfd_create(ARG1, ARG2);
@@ -2540,7 +2550,7 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 321
     syscall_timerfd_create,   // 322
     nullptr,                  // 323 
-    nullptr,                  // 324 __NR_fallocate	
+    syscall_fallocate,        // 324 __NR_fallocate
     syscall_timerfd_settime,  // 325
     syscall_timerfd_gettime,  // 326
     syscall_signalfd4,  // 327 __NR_signalfd4

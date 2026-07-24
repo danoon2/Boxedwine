@@ -54,6 +54,7 @@ public:
     virtual bool isReadReady()=0;    
     virtual U32 readNative(U8* buffer, U32 len)=0;
     virtual U32 writeNative(U8* buffer, U32 len)=0;
+    virtual U32 allocate(U64 offset, U64 len);
     virtual bool canWriteNativeAt();
     virtual FsWriteResult writeNativeAt(U8* buffer, U64 offset, U32 len);
     virtual void close()=0;

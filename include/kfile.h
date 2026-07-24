@@ -71,6 +71,7 @@ public:
     U32 preadNative(U8* buffer, S64 offset, U32 len);
     U32 preadNativeUncached(U8* buffer, S64 offset, U32 len);
     U32 setLength(U64 length);
+    U32 allocate(U64 offset, U64 length);
 #ifdef __TEST
     std::shared_ptr<MappedFileCache> getOrCreateMappedFileCacheForTest(
         BString name, bool writable) {

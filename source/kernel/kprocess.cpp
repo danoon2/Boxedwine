@@ -273,16 +273,22 @@ void KProcess::onExec(KThread* thread) {
     }
 
     std::vector<KThread*> toDelete;
-    for (auto& n : this->threads) {
-        if (thread != n.value) {
-            toDelete.push_back(n.value);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+        for (auto& n : this->threads) {
+            if (thread != n.value) {
+                toDelete.push_back(n.value);
+            }
         }
     }
     for (auto& otherThread : toDelete) {
         terminateOtherThread(shared_from_this(), otherThread->id);
     }
-    this->threads.clear();
-    this->threads.set(thread->id, thread);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+        this->threads.clear();
+        this->threads.set(thread->id, thread);
+    }
     
     for (int i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i].seg_not_present = 1;
@@ -521,11 +527,9 @@ U32 KProcess::getThreadCount() {
 }
 
 void KProcess::deleteThread(KThread* thread) {
-    thread->cleanup();  
+    thread->cleanup();
     if (this->getThreadCount() == 0) {
         cleanupProcess();
-        delete this->memory; // this might call KThread::currentThread, so don't delete thread before this
-        this->memory = nullptr; 
     }
     delete thread;
     // don't call into getProcess while holding threadsCondition
@@ -964,9 +968,16 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
     bool trailingSlashRequiresDirectory = fullPath.length() > 1 && fullPath.endsWith("/");
     bool createdNode = false;
 
-    node = Fs::getNodeFromLocalPath(currentDirectory, localPath, true);
+    FsPathLookupOptions lookupOptions;
+    lookupOptions.followFinalSymlink = true;
+    lookupOptions.requireDirectory = trailingSlashRequiresDirectory || (accessFlags & K_O_DIRECTORY);
+    FsPathResult resolution = Fs::resolvePath(currentDirectory, localPath, lookupOptions);
+    node = resolution.node;
+    if (!node && resolution.error != -K_ENOENT) {
+        return resolution.error;
+    }
     if (!node && (accessFlags & (K_O_CREAT|K_O_TMPFILE))==0) {
-        return -K_ENOENT;
+        return resolution.error ? resolution.error : -K_ENOENT;
     }
     if (node && trailingSlashRequiresDirectory && !node->isDirectory()) {
         return -K_ENOTDIR;
@@ -993,7 +1004,10 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
         std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), parentPath, true);
         if (!parent) {
             return -K_ENOENT;
-        }       
+        }
+        if (this->effectiveUserId && !parent->canWrite()) {
+            return -K_EACCES;
+        }
         BString nativePath = Fs::getNativePathFromParentAndLocalFilename(parent, fileName);
         std::shared_ptr<FsNode> mixedSibling = parent->getChildByNameIgnoreCase(fileName);
         if (mixedSibling) {
@@ -1021,6 +1035,9 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
         node->setMode(mode);
     }
     result = this->allocFileDescriptor(kobject, accessFlags, descriptorFlags, handle, afterHandle);
+    if (createdNode) {
+        KInotifyObject::notifyPath(node->path, K_IN_CREATE);
+    }
     return 0;
 }
 
@@ -1558,31 +1575,47 @@ U32 KProcess::rmdir(BString path) {
     return result;
 }
 
-U32 KProcess::mkdir(BString path) {
+U32 KProcess::mkdir(BString path, U32 mode) {
     std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);
     if (node) {
         return -K_EEXIST;
     }
     BString fullpath = Fs::getFullPath(this->currentDirectory, path);
     BString parentPath = Fs::getParentPath(fullpath);
-    node = Fs::getNodeFromLocalPath(B(""), parentPath, false); 
-    if (!node) {
-        return -K_ENOENT;
+    FsPathResult parentResolution = resolvePathForSyscall(B(""), parentPath, true);
+    if (parentResolution.error) {
+        return parentResolution.error;
+    }
+    node = parentResolution.node;
+    if (!node->isDirectory()) {
+        return -K_ENOTDIR;
+    }
+    if (this->effectiveUserId && !node->canWrite()) {
+        return -K_EACCES;
     }
     U32 result = Fs::makeLocalDirs(fullpath);
     if (!result) {
         node = Fs::getNodeFromLocalPath(B(""), fullpath, false);
+        if (node) {
+            node->setMode(mode & ~this->umaskValue);
+        }
         KInotifyObject::notifyPath(node ? node->path : fullpath, K_IN_CREATE | K_IN_ISDIR);
     }
     return result;
 }
 
 U32 KProcess::rename(BString from, BString to) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, from, false);    
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, from, false);
     if (!node)
         return -K_ENOENT;
+    BString oldPath = node->path;
+    bool isDirectory = node->isDirectory();
     BString fullPath = Fs::getFullPath(this->currentDirectory, to);
-    return node->rename(fullPath);
+    U32 result = node->rename(fullPath);
+    if (!result) {
+        KInotifyObject::notifyMove(oldPath, node->path, isDirectory);
+    }
+    return result;
 }
 
 U32 KProcess::renameat(FD olddirfd, BString from, FD newdirfd, BString to) {
@@ -1591,14 +1624,20 @@ U32 KProcess::renameat(FD olddirfd, BString from, FD newdirfd, BString to) {
     if (result)
         return result;
 
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, from, false);    
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, from, false);
     if (!node)
         return -K_ENOENT;
+    BString oldPath = node->path;
+    bool isDirectory = node->isDirectory();
     result = this->getCurrentDirectoryFromDirFD(newdirfd, currentDirectory);
     if (result)
         return result;
     BString fullPath = Fs::getFullPath(currentDirectory, to);
-    return node->rename(fullPath);
+    result = node->rename(fullPath);
+    if (!result) {
+        KInotifyObject::notifyMove(oldPath, node->path, isDirectory);
+    }
+    return result;
 }
 
 static S32 internalAccess(std::shared_ptr<FsNode> node, U32 flags) {
@@ -1667,7 +1706,12 @@ U32 KProcess::fchmod(FD fildes, U32 mode) {
         return -K_EINVAL;
     }
     std::shared_ptr<KFile> file = std::dynamic_pointer_cast<KFile>(fd->kobject);
-    return file->openFile->node->setMode(mode);
+    std::shared_ptr<FsNode> node = file->openFile->node;
+    U32 result = node->setMode(mode);
+    if (!result) {
+        KInotifyObject::notifyPath(node->path, K_IN_ATTRIB);
+    }
+    return result;
 }
 
 U32 KProcess::chdir(BString path) {
@@ -1760,6 +1804,7 @@ U32 KProcess::link(BString from, BString to) {
         toFile->removeNodeFromParent();
         return -K_EIO;
     }
+    KInotifyObject::notifyPath(toFile->path, K_IN_CREATE);
     return 0;
 }
 
@@ -2047,6 +2092,27 @@ U32 KProcess::ftruncate64(FD fildes, U64 length) {
         return -K_EINVAL;
     }
     return p->setLength(length);
+}
+
+U32 KProcess::fallocate(FD fildes, U32 mode, S64 offset, S64 length) {
+    if (mode) {
+        return -K_EOPNOTSUPP;
+    }
+    if (offset < 0 || length <= 0) {
+        return -K_EINVAL;
+    }
+    if ((U64)length > (U64)std::numeric_limits<S64>::max() - (U64)offset) {
+        return -K_EFBIG;
+    }
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
+    if (!fd || fd->kobject->type != KTYPE_FILE || !fd->canWrite()) {
+        return -K_EBADF;
+    }
+    std::shared_ptr<KFile> file = std::dynamic_pointer_cast<KFile>(fd->kobject);
+    if (file->openFile->node->isDirectory()) {
+        return -K_ENODEV;
+    }
+    return file->allocate((U64)offset, (U64)length);
 }
 
 #define FS_SIZE 107374182400l
@@ -2393,7 +2459,10 @@ U32 KProcess::exitgroup(KThread* thread, U32 code) {
     }
 
     thread->cleanup(); // must happen before we clear memory
-    this->threads.clear();
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+        this->threads.clear();
+    }
     if (cloneVM) {
         // make sure the shared memory is unhooked from parent
         this->memory->execvReset(cloneVM);
@@ -3019,7 +3088,7 @@ U32 KProcess::mkdirat(U32 dirfd, BString path, U32 mode) {
     if (result)
         return result;
     BString fullPath = Fs::getFullPath(dir, path);
-    return this->mkdir(fullPath);
+    return this->mkdir(fullPath, mode);
 }
 
 U32 KProcess::fchmodat(FD dirfd, BString path, U32 mode, U32 flags) {
@@ -3236,12 +3305,15 @@ U32 KProcess::unlinkat(FD dirfd, BString path, U32 flags) {
         return resolution.error;
     }
     std::shared_ptr<FsNode> node = resolution.node;
+    BString fullPath = node->path;
     if (flags & 0x200) { // unlinkat AT_REMOVEDIR
         if (resolution.finalComponentWasSymlink || !node->isDirectory()) {
             return -K_ENOTDIR;
         }
-        if (node->removeDir() == 0)
+        if (node->removeDir() == 0) {
+            KInotifyObject::notifyPath(fullPath, K_IN_DELETE | K_IN_ISDIR);
             return 0;
+        }
         return -K_ENOTEMPTY;
     } else {
         if (resolution.trailingSlash && resolution.finalComponentWasSymlink) {
@@ -3254,6 +3326,7 @@ U32 KProcess::unlinkat(FD dirfd, BString path, U32 flags) {
             kwarn_fmt("filed to remove file: errno=%d", errno);
             return -K_EBUSY;
         }
+        KInotifyObject::notifyPath(fullPath, K_IN_DELETE);
         return 0;
     }
 }

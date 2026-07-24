@@ -938,11 +938,14 @@ bool KThread::isDebugTrapActive() const {
 }
 
 void KThread::setPtraceStop(U32 signal) {
-    this->ptraceStopSignal = signal;
-    this->ptraceStopPending = true;
-    this->ptraceStopped = true;
-    if (this->cpu) {
-        this->cpu->yield = true;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->ptraceCond);
+        this->ptraceStopSignal = signal;
+        this->ptraceStopPending = true;
+        this->ptraceStopped = true;
+        if (this->cpu) {
+            this->cpu->yield = true;
+        }
     }
 #ifndef BOXEDWINE_MULTI_THREADED
     unscheduleThread(this);
@@ -951,17 +954,20 @@ void KThread::setPtraceStop(U32 signal) {
 }
 
 void KThread::resumeFromPtraceStop() {
-    this->ptraceStopPending = false;
-    this->ptraceStopped = false;
-    if (this->cpu) {
-        this->cpu->yield = false;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->ptraceCond);
+        this->ptraceStopPending = false;
+        this->ptraceStopped = false;
+        if (this->cpu) {
+            this->cpu->yield = false;
+        }
+        BOXEDWINE_CONDITION_SIGNAL_ALL(this->ptraceCond);
     }
 #ifndef BOXEDWINE_MULTI_THREADED
     if (!this->terminating && !this->waitingCond && !this->scheduledThreadNode.isInList()) {
         scheduleThread(this);
     }
 #endif
-    BOXEDWINE_CONDITION_SIGNAL_ALL(this->ptraceCond);
 }
 
 void KThread::waitForPtraceResume() {
@@ -1489,7 +1495,7 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
 	        context = this->cpu->seg[SS].address + (ESP & this->cpu->stackMask) - CONTEXT_SIZE;
         }
         writeToContext(this, stack, context, altStack, trapNo, errorNo);
-        this->cpu->flags &= ~DF;
+        this->cpu->flags &= ~(DF | TF);
 
         this->cpu->stackMask = 0xFFFFFFFF;
         this->cpu->stackNotMask = 0;

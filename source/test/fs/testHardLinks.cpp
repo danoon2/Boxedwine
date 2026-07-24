@@ -32,7 +32,29 @@
 #include <condition_variable>
 #include <filesystem>
 #include <mutex>
+#include <sys/stat.h>
 #include <thread>
+#include <unordered_set>
+
+#ifdef UTIME_OMIT
+#undef UTIME_OMIT
+#endif
+
+#ifdef stat64
+#undef stat64
+#endif
+
+#ifdef fstat64
+#undef fstat64
+#endif
+
+#ifdef lstat64
+#undef lstat64
+#endif
+
+#ifdef fstatat64
+#undef fstatat64
+#endif
 
 namespace {
 
@@ -5015,6 +5037,53 @@ void testNativeHeapSmallFreeQueueFailureIsRetryable() {
     heap.free(second);
 }
 
+void testNativeHeapConcurrentAllocFree() {
+    BNativeHeap heap;
+    constexpr U32 THREAD_COUNT = 4;
+    constexpr U32 ITERATION_COUNT = 20000;
+    std::atomic<bool> start = false;
+    std::atomic<bool> duplicateAllocation = false;
+    std::mutex activeAllocationsMutex;
+    std::unordered_set<void*> activeAllocations;
+    std::vector<std::thread> threads;
+
+    for (U32 threadIndex = 0; threadIndex < THREAD_COUNT; threadIndex++) {
+        threads.emplace_back([&]() {
+            while (!start.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+            }
+            for (U32 i = 0; i < ITERATION_COUNT; i++) {
+                void* allocation = heap.alloc(64);
+                {
+                    std::lock_guard<std::mutex> lock(activeAllocationsMutex);
+                    if (!activeAllocations.insert(allocation).second) {
+                        duplicateAllocation.store(true, std::memory_order_relaxed);
+                    }
+                }
+                memset(allocation, (int)(i & 0xff), 64);
+                if ((i & 7) == 0) {
+                    std::this_thread::yield();
+                }
+                {
+                    std::lock_guard<std::mutex> lock(activeAllocationsMutex);
+                    activeAllocations.erase(allocation);
+                }
+                heap.free(allocation);
+            }
+        });
+    }
+    start.store(true, std::memory_order_release);
+    for (auto& thread : threads) {
+        thread.join();
+    }
+    if (duplicateAllocation.load(std::memory_order_relaxed)) {
+        testFail("native heap returned one allocation to multiple threads");
+    }
+    if (!activeAllocations.empty()) {
+        testFail("native heap concurrent allocation tracking was not empty");
+    }
+}
+
 void testCachedPositionedReadUsesCheckedOffsetAndSeek() {
     TestContext& context = testContext();
     constexpr U32 GUEST_BUFFER = TEST_HEAP_ADDRESS + 0x1800;
@@ -5197,6 +5266,32 @@ void testFtruncateBackendLengthBoundaries() {
         expectU64("memory backend rejection preserves committed length", (U64)memOpen.length(), MEM_INITIAL_LENGTH);
         memNode->openNode = nullptr;
     }
+
+    Fs::makeLocalDirs(B("/proc"));
+    setTestProcNode();
+    KProcessPtr process = KProcess::create();
+    process->memory = testContext().memory;
+    U32 fd = process->open(path, K_O_RDWR, 0666);
+    if ((S32)fd < 0) {
+        testFail("fallocate regular backend open failed");
+    } else {
+        expectZero("fallocate initial length", process->ftruncate64(fd, 4));
+        expectZero("fallocate existing range", process->fallocate(fd, 0, 0, 4));
+        expectU64("fallocate existing range preserves length",
+            (U64)process->getFileDescriptor(fd)->kobject->length(), 4);
+        expectZero("fallocate extending range", process->fallocate(fd, 0, 4, 4));
+        expectU64("fallocate extending range grows file",
+            (U64)process->getFileDescriptor(fd)->kobject->length(), 8);
+        expectU32("fallocate rejects unsupported mode",
+            process->fallocate(fd, 1, 0, 4), (U32)-K_EOPNOTSUPP);
+        expectU32("fallocate rejects zero length",
+            process->fallocate(fd, 0, 0, 0), (U32)-K_EINVAL);
+        process->close(fd);
+    }
+    KSystem::eraseProcess(process->id);
+    process->memory = nullptr;
+    process = nullptr;
+
     cleanupRoot(root);
 }
 
@@ -5531,6 +5626,41 @@ void testUtimensatPreservesAccessTimeInStat() {
     expectU32("stat access seconds", stat64AccessSeconds(memory, STAT_A), 2791529009U);
     expectU32("stat access nanos", stat64AccessNanos(memory, STAT_A), 225700700U);
 
+    memory->writed(TIMES, 0);
+    memory->writed(TIMES + 4, UTIME_OMIT);
+    memory->writed(TIMES + 8, 1234567890U);
+    memory->writed(TIMES + 12, 123456789U);
+    expectZero("set modification time", process->utimesat(-100, B("/tmp/time-file"), TIMES, 0, false));
+    U64 explicitModificationTime = node->lastModified();
+
+    U32 fd = process->open(B("/tmp/time-file"), K_O_WRONLY, 0);
+    if ((S32)fd < 0) {
+        testFail("time file could not be reopened for writing, got %d (0x%X)", (S32)fd, fd);
+    } else {
+        memory->writeb(BUFFER, 0x5a);
+        expectU32("write time file", process->write(context.thread, fd, BUFFER, 1), 1);
+        process->close(fd);
+        if (node->lastModified() == explicitModificationTime) {
+            testFail("file write did not replace explicit modification time");
+        }
+#ifndef BOXEDWINE_MSVC
+        PLATFORM_STAT_STRUCT hostStat;
+        if (PLATFORM_STAT(node->getNativePathForData().c_str(), &hostStat) != 0) {
+            testFail("could not stat time file after write");
+        } else {
+#ifdef __APPLE__
+            U32 hostModifiedNanos = (U32)(hostStat.st_mtime == 0 ?
+                hostStat.st_ctimespec.tv_nsec : hostStat.st_mtimespec.tv_nsec);
+#else
+            U32 hostModifiedNanos = (U32)(hostStat.st_mtime == 0 ?
+                hostStat.st_ctim.tv_nsec : hostStat.st_mtim.tv_nsec);
+#endif
+            expectU32("stat modification nanos match host",
+                node->lastModifiedNano(), hostModifiedNanos);
+        }
+#endif
+    }
+
     cleanupRoot(root);
 }
 
@@ -5727,6 +5857,29 @@ void testLinuxPathResolutionSemantics() {
     expectU32("unlink trailing directory symlink is ENOTDIR", process->unlinkFile(B("/tmp/dir-link/")), (U32)-K_ENOTDIR);
     expectU32("rmdir trailing directory symlink is ENOTDIR", process->rmdir(B("/tmp/dir-link/")), (U32)-K_ENOTDIR);
     expectU32("access propagates intermediate ENOTDIR", process->access(B("/tmp/file/child"), 0), (U32)-K_ENOTDIR);
+    KFileDescriptorPtr openedFile;
+    expectU32("open O_DIRECTORY rejects regular file",
+        process->openFile(B(""), B("/tmp/file"), K_O_RDONLY | K_O_DIRECTORY, openedFile), (U32)-K_ENOTDIR);
+    expectU32("open propagates intermediate ENOTDIR",
+        process->openFile(B(""), B("/tmp/file/child"), K_O_RDONLY, openedFile), (U32)-K_ENOTDIR);
+
+    expectZero("create read-only parent directory", process->mkdir(B("/tmp/read-only-parent"), 0555));
+    std::shared_ptr<FsNode> readOnlyParent = Fs::getNodeFromLocalPath(B(""), B("/tmp/read-only-parent"), true);
+    if (!readOnlyParent) {
+        testFail("read-only parent directory was not found");
+    } else {
+        expectU32("mkdir preserves requested permissions", readOnlyParent->getMode() & 0777, 0555);
+        U32 originalEffectiveUserId = process->effectiveUserId;
+        process->effectiveUserId = 1000;
+        U32 deniedFd = process->open(B("/tmp/read-only-parent/child"), K_O_CREAT | K_O_RDWR, 0666);
+        U32 deniedMkdir = process->mkdir(B("/tmp/read-only-parent/grandchild"), 0755);
+        process->effectiveUserId = originalEffectiveUserId;
+        expectU32("open cannot create in read-only parent", deniedFd, (U32)-K_EACCES);
+        expectU32("mkdir cannot create in read-only parent", deniedMkdir, (U32)-K_EACCES);
+        if ((S32)deniedFd >= 0) {
+            process->close(deniedFd);
+        }
+    }
 
     expectZero("stat symlink dot-dot", process->stat64(B("/tmp/dir-link/.."), STAT_A));
     expectZero("stat symlink target parent", process->stat64(B("/tmp/real"), STAT_B));
@@ -5878,7 +6031,7 @@ void testInotifyReportsChildDirectoryCreate() {
         return;
     }
 
-    expectZero("mkdir watched child", process->mkdir(B("/tmp/watch/child")));
+    expectZero("mkdir watched child", process->mkdir(B("/tmp/watch/child"), 0777));
     if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
         testFail("inotify fd was not readable after watched mkdir");
     }
@@ -5891,6 +6044,487 @@ void testInotifyReportsChildDirectoryCreate() {
     expectU32("event name length", memory->readd(BUFFER + 12), 8);
     if (strcmp(memory->readString(BUFFER + 16).c_str(), "child")) {
         testFail("event name expected child, got %s", memory->readString(BUFFER + 16).c_str());
+    }
+
+    process->close(fd);
+    process->removeThread(thread);
+    delete thread;
+    KSystem::eraseProcess(process->id);
+    process->memory = nullptr;
+    cleanupRoot(root);
+}
+
+void testInotifyReportsChildFileCreate() {
+    TestContext& context = testContext();
+    KMemory* memory = context.memory;
+
+    BString root = B("tmp/test-inotify-file-create-root");
+    cleanupRoot(root);
+    Fs::initFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp/watch"));
+    Fs::makeLocalDirs(B("/proc"));
+    KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
+
+    KProcessPtr process = KProcess::create();
+    process->memory = memory;
+    KThread* thread = process->createThread();
+    ChangeThread current(thread);
+
+    U32 fd = KInotifyObject::create(thread, 0);
+    if ((S32)fd < 0) {
+        testFail("inotify fd was not created, got %d (0x%X)", (S32)fd, fd);
+        cleanupRoot(root);
+        return;
+    }
+
+    U32 wd = KInotifyObject::addWatch(thread, fd, B("/tmp/watch"), K_IN_CREATE);
+    if ((S32)wd < 0) {
+        testFail("inotify watch was not added, got %d (0x%X)", (S32)wd, wd);
+        cleanupRoot(root);
+        return;
+    }
+
+    U32 fileFd = process->open(B("/tmp/watch/file"), K_O_CREAT | K_O_RDWR, 0666);
+    if ((S32)fileFd < 0) {
+        testFail("watched file was not created, got %d (0x%X)", (S32)fileFd, fileFd);
+        cleanupRoot(root);
+        return;
+    }
+    process->close(fileFd);
+
+    if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
+        testFail("inotify fd was not readable after watched file create");
+    } else {
+        U32 read = process->read(thread, fd, BUFFER, 64);
+        expectU32("read file create inotify event length", read, 24);
+        expectU32("file create event watch descriptor", memory->readd(BUFFER), wd);
+        expectU32("file create event mask", memory->readd(BUFFER + 4), K_IN_CREATE);
+        expectU32("file create event cookie", memory->readd(BUFFER + 8), 0);
+        expectU32("file create event name length", memory->readd(BUFFER + 12), 8);
+        if (strcmp(memory->readString(BUFFER + 16).c_str(), "file")) {
+            testFail("file create event name expected file, got %s", memory->readString(BUFFER + 16).c_str());
+        }
+    }
+
+    process->close(fd);
+    process->removeThread(thread);
+    delete thread;
+    KSystem::eraseProcess(process->id);
+    process->memory = nullptr;
+    cleanupRoot(root);
+}
+
+void testInotifyReportsFileRenamePair() {
+    TestContext& context = testContext();
+    KMemory* memory = context.memory;
+
+    BString root = B("tmp/test-inotify-file-rename-root");
+    cleanupRoot(root);
+    Fs::initFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp/watch"));
+    Fs::makeLocalDirs(B("/proc"));
+    KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
+
+    KProcessPtr process = KProcess::create();
+    process->memory = memory;
+    KThread* thread = process->createThread();
+    ChangeThread current(thread);
+
+    U32 fileFd = process->open(B("/tmp/watch/old"), K_O_CREAT | K_O_RDWR, 0666);
+    if ((S32)fileFd < 0) {
+        testFail("file to rename was not created, got %d (0x%X)", (S32)fileFd, fileFd);
+        cleanupRoot(root);
+        return;
+    }
+    process->close(fileFd);
+
+    U32 fd = KInotifyObject::create(thread, 0);
+    U32 wd = KInotifyObject::addWatch(thread, fd, B("/tmp/watch"), K_IN_MOVED_FROM | K_IN_MOVED_TO);
+    if ((S32)fd < 0 || (S32)wd < 0) {
+        testFail("inotify file rename watch setup failed, fd=%d wd=%d", (S32)fd, (S32)wd);
+        cleanupRoot(root);
+        return;
+    }
+
+    expectZero("rename watched file", process->rename(B("/tmp/watch/old"), B("/tmp/watch/new")));
+    if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
+        testFail("inotify fd was not readable after watched file rename");
+    } else {
+        U32 read = process->read(thread, fd, BUFFER, 64);
+        expectU32("read file rename inotify event length", read, 40);
+        expectU32("file rename old watch descriptor", memory->readd(BUFFER), wd);
+        expectU32("file rename old event mask", memory->readd(BUFFER + 4), K_IN_MOVED_FROM);
+        U32 cookie = memory->readd(BUFFER + 8);
+        if (!cookie) {
+            testFail("file rename event cookie was zero");
+        }
+        expectU32("file rename old name length", memory->readd(BUFFER + 12), 4);
+        if (strcmp(memory->readString(BUFFER + 16).c_str(), "old")) {
+            testFail("file rename old event name expected old, got %s", memory->readString(BUFFER + 16).c_str());
+        }
+
+        U32 second = BUFFER + 20;
+        expectU32("file rename new watch descriptor", memory->readd(second), wd);
+        expectU32("file rename new event mask", memory->readd(second + 4), K_IN_MOVED_TO);
+        expectU32("file rename new event cookie", memory->readd(second + 8), cookie);
+        expectU32("file rename new name length", memory->readd(second + 12), 4);
+        if (strcmp(memory->readString(second + 16).c_str(), "new")) {
+            testFail("file rename new event name expected new, got %s", memory->readString(second + 16).c_str());
+        }
+    }
+
+    process->close(fd);
+    process->removeThread(thread);
+    delete thread;
+    KSystem::eraseProcess(process->id);
+    process->memory = nullptr;
+    cleanupRoot(root);
+}
+
+void testInotifyReportsRenameAtPair() {
+    TestContext& context = testContext();
+    KMemory* memory = context.memory;
+
+    BString root = B("tmp/test-inotify-renameat-root");
+    cleanupRoot(root);
+    Fs::initFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp/watch"));
+    Fs::makeLocalDirs(B("/proc"));
+    KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
+
+    KProcessPtr process = KProcess::create();
+    process->memory = memory;
+    process->currentDirectory = B("/tmp/watch");
+    KThread* thread = process->createThread();
+    ChangeThread current(thread);
+
+    U32 fileFd = process->open(B("old"), K_O_CREAT | K_O_RDWR, 0666);
+    if ((S32)fileFd < 0) {
+        testFail("renameat file was not created, got %d (0x%X)", (S32)fileFd, fileFd);
+        cleanupRoot(root);
+        return;
+    }
+    process->close(fileFd);
+
+    U32 fd = KInotifyObject::create(thread, 0);
+    U32 wd = KInotifyObject::addWatch(thread, fd, B("."), K_IN_MOVED_FROM | K_IN_MOVED_TO);
+    if ((S32)fd < 0 || (S32)wd < 0) {
+        testFail("inotify renameat watch setup failed, fd=%d wd=%d", (S32)fd, (S32)wd);
+        cleanupRoot(root);
+        return;
+    }
+
+    expectZero("renameat watched file", process->renameat(-100, B("old"), -100, B("new")));
+    if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
+        testFail("inotify fd was not readable after watched renameat");
+    } else {
+        U32 read = process->read(thread, fd, BUFFER, 64);
+        expectU32("read renameat inotify event length", read, 40);
+        expectU32("renameat old watch descriptor", memory->readd(BUFFER), wd);
+        expectU32("renameat old event mask", memory->readd(BUFFER + 4), K_IN_MOVED_FROM);
+        U32 cookie = memory->readd(BUFFER + 8);
+        if (!cookie) {
+            testFail("renameat event cookie was zero");
+        }
+
+        U32 second = BUFFER + 20;
+        expectU32("renameat new watch descriptor", memory->readd(second), wd);
+        expectU32("renameat new event mask", memory->readd(second + 4), K_IN_MOVED_TO);
+        expectU32("renameat new event cookie", memory->readd(second + 8), cookie);
+    }
+
+    process->close(fd);
+    process->removeThread(thread);
+    delete thread;
+    KSystem::eraseProcess(process->id);
+    process->memory = nullptr;
+    cleanupRoot(root);
+}
+
+void testInotifyReportsFchmodAttrib() {
+    TestContext& context = testContext();
+    KMemory* memory = context.memory;
+
+    BString root = B("tmp/test-inotify-fchmod-attrib-root");
+    cleanupRoot(root);
+    Fs::initFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp/watch"));
+    Fs::makeLocalDirs(B("/proc"));
+    KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
+
+    KProcessPtr process = KProcess::create();
+    process->memory = memory;
+    KThread* thread = process->createThread();
+    ChangeThread current(thread);
+
+    U32 fileFd = process->open(B("/tmp/watch/file"), K_O_CREAT | K_O_RDWR, 0666);
+    if ((S32)fileFd < 0) {
+        testFail("fchmod file was not created, got %d (0x%X)", (S32)fileFd, fileFd);
+        cleanupRoot(root);
+        return;
+    }
+
+    U32 fd = KInotifyObject::create(thread, 0);
+    U32 wd = KInotifyObject::addWatch(thread, fd, B("/tmp/watch"), K_IN_ATTRIB);
+    if ((S32)fd < 0 || (S32)wd < 0) {
+        testFail("inotify fchmod watch setup failed, fd=%d wd=%d", (S32)fd, (S32)wd);
+        cleanupRoot(root);
+        return;
+    }
+
+    expectZero("fchmod watched file", process->fchmod(fileFd, 0400));
+    if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
+        testFail("inotify fd was not readable after watched fchmod");
+    } else {
+        U32 read = process->read(thread, fd, BUFFER, 64);
+        expectU32("read fchmod inotify event length", read, 24);
+        expectU32("fchmod event watch descriptor", memory->readd(BUFFER), wd);
+        expectU32("fchmod event mask", memory->readd(BUFFER + 4), K_IN_ATTRIB);
+        expectU32("fchmod event cookie", memory->readd(BUFFER + 8), 0);
+        if (strcmp(memory->readString(BUFFER + 16).c_str(), "file")) {
+            testFail("fchmod event name expected file, got %s", memory->readString(BUFFER + 16).c_str());
+        }
+    }
+
+    process->close(fd);
+    process->close(fileFd);
+    process->removeThread(thread);
+    delete thread;
+    KSystem::eraseProcess(process->id);
+    process->memory = nullptr;
+    cleanupRoot(root);
+}
+
+void testInotifyReportsFileWriteModify() {
+    TestContext& context = testContext();
+    KMemory* memory = context.memory;
+
+    BString root = B("tmp/test-inotify-file-write-modify-root");
+    cleanupRoot(root);
+    Fs::initFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp/watch"));
+    Fs::makeLocalDirs(B("/proc"));
+    KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
+
+    KProcessPtr process = KProcess::create();
+    process->memory = memory;
+    KThread* thread = process->createThread();
+    ChangeThread current(thread);
+
+    U32 fileFd = process->open(B("/tmp/watch/file"), K_O_CREAT | K_O_RDWR, 0666);
+    if ((S32)fileFd < 0) {
+        testFail("file to write was not created, got %d (0x%X)", (S32)fileFd, fileFd);
+        cleanupRoot(root);
+        return;
+    }
+
+    U32 fd = KInotifyObject::create(thread, 0);
+    U32 wd = KInotifyObject::addWatch(thread, fd, B("/tmp/watch"), K_IN_MODIFY);
+    if ((S32)fd < 0 || (S32)wd < 0) {
+        testFail("inotify file write watch setup failed, fd=%d wd=%d", (S32)fd, (S32)wd);
+        cleanupRoot(root);
+        return;
+    }
+
+    memory->writeb(BUFFER, 0x5a);
+    expectU32("write watched file", process->write(thread, fileFd, BUFFER, 1), 1);
+    if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
+        testFail("inotify fd was not readable after watched file write");
+    } else {
+        U32 read = process->read(thread, fd, BUFFER, 64);
+        expectU32("read file write inotify event length", read, 24);
+        expectU32("file write event watch descriptor", memory->readd(BUFFER), wd);
+        expectU32("file write event mask", memory->readd(BUFFER + 4), K_IN_MODIFY);
+        expectU32("file write event cookie", memory->readd(BUFFER + 8), 0);
+        if (strcmp(memory->readString(BUFFER + 16).c_str(), "file")) {
+            testFail("file write event name expected file, got %s", memory->readString(BUFFER + 16).c_str());
+        }
+    }
+
+    process->close(fd);
+    process->close(fileFd);
+    process->removeThread(thread);
+    delete thread;
+    KSystem::eraseProcess(process->id);
+    process->memory = nullptr;
+    cleanupRoot(root);
+}
+
+void testInotifyReportsCrossDirectoryMoveSides() {
+    TestContext& context = testContext();
+    KMemory* memory = context.memory;
+
+    BString root = B("tmp/test-inotify-cross-directory-move-root");
+    cleanupRoot(root);
+    Fs::initFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp/watch/sub"));
+    Fs::makeLocalDirs(B("/proc"));
+    KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
+
+    KProcessPtr process = KProcess::create();
+    process->memory = memory;
+    KThread* thread = process->createThread();
+    ChangeThread current(thread);
+
+    U32 fileFd = process->open(B("/tmp/watch/file"), K_O_CREAT | K_O_RDWR, 0666);
+    if ((S32)fileFd < 0) {
+        testFail("cross-directory move file was not created, got %d (0x%X)", (S32)fileFd, fileFd);
+        cleanupRoot(root);
+        return;
+    }
+    process->close(fileFd);
+
+    U32 fd = KInotifyObject::create(thread, 0);
+    U32 wd = KInotifyObject::addWatch(thread, fd, B("/tmp/watch"), K_IN_MOVED_FROM | K_IN_MOVED_TO);
+    if ((S32)fd < 0 || (S32)wd < 0) {
+        testFail("inotify cross-directory move watch setup failed, fd=%d wd=%d", (S32)fd, (S32)wd);
+        cleanupRoot(root);
+        return;
+    }
+
+    expectZero("move watched file out", process->rename(B("/tmp/watch/file"), B("/tmp/watch/sub/file")));
+    if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
+        testFail("inotify fd was not readable after moving watched file out");
+    } else {
+        U32 read = process->read(thread, fd, BUFFER, 64);
+        expectU32("read move-out inotify event length", read, 24);
+        expectU32("move-out event watch descriptor", memory->readd(BUFFER), wd);
+        expectU32("move-out event mask", memory->readd(BUFFER + 4), K_IN_MOVED_FROM);
+        if (strcmp(memory->readString(BUFFER + 16).c_str(), "file")) {
+            testFail("move-out event name expected file, got %s", memory->readString(BUFFER + 16).c_str());
+        }
+    }
+
+    expectZero("move watched file in", process->rename(B("/tmp/watch/sub/file"), B("/tmp/watch/file")));
+    if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
+        testFail("inotify fd was not readable after moving watched file in");
+    } else {
+        U32 read = process->read(thread, fd, BUFFER, 64);
+        expectU32("read move-in inotify event length", read, 24);
+        expectU32("move-in event watch descriptor", memory->readd(BUFFER), wd);
+        expectU32("move-in event mask", memory->readd(BUFFER + 4), K_IN_MOVED_TO);
+        if (strcmp(memory->readString(BUFFER + 16).c_str(), "file")) {
+            testFail("move-in event name expected file, got %s", memory->readString(BUFFER + 16).c_str());
+        }
+    }
+
+    process->close(fd);
+    process->removeThread(thread);
+    delete thread;
+    KSystem::eraseProcess(process->id);
+    process->memory = nullptr;
+    cleanupRoot(root);
+}
+
+void testInotifyReportsLinkCreate() {
+    TestContext& context = testContext();
+    KMemory* memory = context.memory;
+
+    BString root = B("tmp/test-inotify-link-create-root");
+    cleanupRoot(root);
+    Fs::initFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp/watch"));
+    Fs::makeLocalDirs(B("/proc"));
+    KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
+
+    KProcessPtr process = KProcess::create();
+    process->memory = memory;
+    KThread* thread = process->createThread();
+    ChangeThread current(thread);
+
+    U32 fileFd = process->open(B("/tmp/source"), K_O_CREAT | K_O_RDWR, 0666);
+    if ((S32)fileFd < 0) {
+        testFail("hard-link source was not created, got %d (0x%X)", (S32)fileFd, fileFd);
+        cleanupRoot(root);
+        return;
+    }
+    process->close(fileFd);
+
+    U32 fd = KInotifyObject::create(thread, 0);
+    U32 wd = KInotifyObject::addWatch(thread, fd, B("/tmp/watch"), K_IN_CREATE);
+    if ((S32)fd < 0 || (S32)wd < 0) {
+        testFail("inotify hard-link watch setup failed, fd=%d wd=%d", (S32)fd, (S32)wd);
+        cleanupRoot(root);
+        return;
+    }
+
+    expectZero("create watched hard link", process->link(B("/tmp/source"), B("/tmp/watch/link")));
+    if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
+        testFail("inotify fd was not readable after watched hard-link create");
+    } else {
+        U32 read = process->read(thread, fd, BUFFER, 64);
+        expectU32("read hard-link create inotify event length", read, 24);
+        expectU32("hard-link create event watch descriptor", memory->readd(BUFFER), wd);
+        expectU32("hard-link create event mask", memory->readd(BUFFER + 4), K_IN_CREATE);
+        if (strcmp(memory->readString(BUFFER + 16).c_str(), "link")) {
+            testFail("hard-link create event name expected link, got %s", memory->readString(BUFFER + 16).c_str());
+        }
+    }
+
+    process->close(fd);
+    process->removeThread(thread);
+    delete thread;
+    KSystem::eraseProcess(process->id);
+    process->memory = nullptr;
+    cleanupRoot(root);
+}
+
+void testInotifyReportsUnlinkAtDelete() {
+    TestContext& context = testContext();
+    KMemory* memory = context.memory;
+
+    BString root = B("tmp/test-inotify-unlinkat-delete-root");
+    cleanupRoot(root);
+    Fs::initFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp/watch/dir"));
+    Fs::makeLocalDirs(B("/proc"));
+    KSystem::procNode = Fs::getNodeFromLocalPath(B(""), B("/proc"), false);
+
+    KProcessPtr process = KProcess::create();
+    process->memory = memory;
+    KThread* thread = process->createThread();
+    ChangeThread current(thread);
+
+    U32 fileFd = process->open(B("/tmp/watch/file"), K_O_CREAT | K_O_RDWR, 0666);
+    if ((S32)fileFd < 0) {
+        testFail("unlinkat file was not created, got %d (0x%X)", (S32)fileFd, fileFd);
+        cleanupRoot(root);
+        return;
+    }
+    process->close(fileFd);
+
+    U32 fd = KInotifyObject::create(thread, 0);
+    U32 wd = KInotifyObject::addWatch(thread, fd, B("/tmp/watch"), K_IN_DELETE);
+    if ((S32)fd < 0 || (S32)wd < 0) {
+        testFail("inotify unlinkat watch setup failed, fd=%d wd=%d", (S32)fd, (S32)wd);
+        cleanupRoot(root);
+        return;
+    }
+
+    expectZero("unlinkat watched file", process->unlinkat(-100, B("/tmp/watch/file"), 0));
+    if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
+        testFail("inotify fd was not readable after watched file unlinkat");
+    } else {
+        U32 read = process->read(thread, fd, BUFFER, 64);
+        expectU32("read file unlinkat inotify event length", read, 24);
+        expectU32("file unlinkat event watch descriptor", memory->readd(BUFFER), wd);
+        expectU32("file unlinkat event mask", memory->readd(BUFFER + 4), K_IN_DELETE);
+        if (strcmp(memory->readString(BUFFER + 16).c_str(), "file")) {
+            testFail("file unlinkat event name expected file, got %s", memory->readString(BUFFER + 16).c_str());
+        }
+    }
+
+    expectZero("unlinkat watched directory", process->unlinkat(-100, B("/tmp/watch/dir"), 0x200));
+    if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
+        testFail("inotify fd was not readable after watched directory unlinkat");
+    } else {
+        U32 read = process->read(thread, fd, BUFFER, 64);
+        expectU32("read directory unlinkat inotify event length", read, 20);
+        expectU32("directory unlinkat event watch descriptor", memory->readd(BUFFER), wd);
+        expectU32("directory unlinkat event mask", memory->readd(BUFFER + 4), K_IN_DELETE | K_IN_ISDIR);
+        if (strcmp(memory->readString(BUFFER + 16).c_str(), "dir")) {
+            testFail("directory unlinkat event name expected dir, got %s", memory->readString(BUFFER + 16).c_str());
+        }
     }
 
     process->close(fd);
@@ -5926,14 +6560,14 @@ void testInotifyFollowsWatchedSymlinkTarget() {
         return;
     }
 
-    U32 wd = KInotifyObject::addWatch(thread, fd, B("/tmp/watch-link"), K_IN_CREATE);
+    U32 wd = KInotifyObject::addWatch(thread, fd, B("/tmp/watch-link"), K_IN_CREATE | K_IN_MOVED_TO);
     if ((S32)wd < 0) {
         testFail("inotify watch was not added, got %d (0x%X)", (S32)wd, wd);
         cleanupRoot(root);
         return;
     }
 
-    expectZero("mkdir watched symlink target child", process->mkdir(B("/tmp/watch-target/child")));
+    expectZero("mkdir watched symlink target child", process->mkdir(B("/tmp/watch-target/child"), 0777));
     if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
         testFail("inotify fd was not readable after watched symlink target mkdir");
         process->close(fd);
@@ -5953,6 +6587,40 @@ void testInotifyFollowsWatchedSymlinkTarget() {
     expectU32("symlink event name length", memory->readd(BUFFER + 12), 8);
     if (strcmp(memory->readString(BUFFER + 16).c_str(), "child")) {
         testFail("symlink event name expected child, got %s", memory->readString(BUFFER + 16).c_str());
+    }
+
+    expectZero("mkdir through watched symlink", process->mkdir(B("/tmp/watch-link/alias-child"), 0777));
+    if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
+        testFail("inotify fd was not readable after mkdir through watched symlink");
+    } else {
+        read = process->read(thread, fd, BUFFER, 64);
+        expectU32("read symlink-alias inotify event length", read, 28);
+        expectU32("symlink-alias event watch descriptor", memory->readd(BUFFER), wd);
+        expectU32("symlink-alias event mask", memory->readd(BUFFER + 4), K_IN_CREATE | K_IN_ISDIR);
+        expectU32("symlink-alias event cookie", memory->readd(BUFFER + 8), 0);
+        expectU32("symlink-alias event name length", memory->readd(BUFFER + 12), 12);
+    if (strcmp(memory->readString(BUFFER + 16).c_str(), "alias-child")) {
+            testFail("symlink-alias event name expected alias-child, got %s", memory->readString(BUFFER + 16).c_str());
+        }
+    }
+
+    U32 fileFd = process->open(B("/tmp/source"), K_O_CREAT | K_O_RDWR, 0666);
+    if ((S32)fileFd < 0) {
+        testFail("symlink rename source was not created, got %d (0x%X)", (S32)fileFd, fileFd);
+    } else {
+        process->close(fileFd);
+        expectZero("rename into watched symlink", process->rename(B("/tmp/source"), B("/tmp/watch-link/renamed")));
+        if (!process->getFileDescriptor(fd)->kobject->isReadReady()) {
+            testFail("inotify fd was not readable after rename into watched symlink");
+        } else {
+            read = process->read(thread, fd, BUFFER, 64);
+            expectU32("read symlink rename inotify event length", read, 24);
+            expectU32("symlink rename event watch descriptor", memory->readd(BUFFER), wd);
+            expectU32("symlink rename event mask", memory->readd(BUFFER + 4), K_IN_MOVED_TO);
+            if (strcmp(memory->readString(BUFFER + 16).c_str(), "renamed")) {
+                testFail("symlink rename event name expected renamed, got %s", memory->readString(BUFFER + 16).c_str());
+            }
+        }
     }
 
     process->close(fd);
@@ -5999,7 +6667,7 @@ void testInotifyPollReportsChildDirectoryDelete() {
     expectU32("poll before watched rmdir", internal_poll(thread, &pollData, 1, 0), 0);
     expectU32("poll before watched rmdir revents", pollData.revents, 0);
 
-    expectZero("mkdir watched child before delete", process->mkdir(B("/tmp/watch/child")));
+    expectZero("mkdir watched child before delete", process->mkdir(B("/tmp/watch/child"), 0777));
     expectZero("rmdir watched child", process->rmdir(B("/tmp/watch/child")));
 
     pollData.revents = 0;
@@ -6063,7 +6731,7 @@ void testInotifyAsyncSignalsSigioOnDelete() {
     expectZero("inotify fcntl F_SETSIG SIGIO", process->fcntrl(thread, fd, K_F_SETSIG, K_SIGIO));
     expectZero("inotify fcntl F_SETFL O_ASYNC", process->fcntrl(thread, fd, K_F_SETFL, K_O_ASYNC));
 
-    expectZero("mkdir watched async child before delete", process->mkdir(B("/tmp/watch/child")));
+    expectZero("mkdir watched async child before delete", process->mkdir(B("/tmp/watch/child"), 0777));
     expectZero("rmdir watched async child", process->rmdir(B("/tmp/watch/child")));
 
     if (!(process->pendingSignals & sigioBit)) {

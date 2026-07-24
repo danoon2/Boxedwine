@@ -83,6 +83,8 @@ private:
     BOXEDWINE_CONDITION lockCond;
 
     Soft_Ring_Buffer recvBuffer;
+    std::atomic<U32> pendingConnectionCount = 0;
+    std::atomic<U32> messageCount = 0;
     std::queue<std::shared_ptr<KSocketMsg> > msgs;
     U32 pid = 0;
 

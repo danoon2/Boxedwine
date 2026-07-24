@@ -43,6 +43,7 @@ public:
     bool isReadReady() override;
     U32 readNative(U8* buffer, U32 len) override;
     U32 writeNative(U8* buffer, U32 len) override;
+    U32 allocate(U64 offset, U64 len) override;
     bool canWriteNativeAt() override;
     FsWriteResult writeNativeAt(U8* buffer, U64 offset, U32 len) override;
     void close() override;

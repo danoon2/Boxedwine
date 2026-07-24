@@ -163,6 +163,7 @@ void testUnixSocketPendingConnectionsOnlyReadableForListeners() {
     connected->connection = peer;
     peer->connection = connected;
     connected->pendingConnections.push_back(pending);
+    connected->pendingConnectionCount++;
 
     if (connected->isReadReady()) {
         testFail("non-listening stream socket became readable from pending connection queue");
@@ -172,10 +173,43 @@ void testUnixSocketPendingConnectionsOnlyReadableForListeners() {
     std::shared_ptr<KUnixSocketObject> listener = std::make_shared<KUnixSocketObject>(K_AF_UNIX, K_SOCK_STREAM, 0);
     listener->listening = true;
     listener->pendingConnections.push_back(pending);
+    listener->pendingConnectionCount++;
 
     if (!listener->isReadReady()) {
         testFail("listening socket with pending connection was not readable");
     }
+}
+
+void testSoftRingBufferConcurrentWritersPreserveData() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    constexpr U32 WRITER_COUNT = 8;
+    constexpr U32 RECORDS_PER_WRITER = 4096;
+    Soft_Ring_Buffer buffer(1);
+    std::atomic<bool> start = false;
+    std::vector<std::thread> writers;
+
+    for (U32 writer = 0; writer < WRITER_COUNT; writer++) {
+        writers.emplace_back([writer, &buffer, &start]() {
+            while (!start.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+            }
+            for (U32 record = 0; record < RECORDS_PER_WRITER; record++) {
+                U64 value = ((U64)writer << 32) | record;
+                buffer.put(value);
+            }
+        });
+    }
+
+    start.store(true, std::memory_order_release);
+    for (std::thread& writer : writers) {
+        writer.join();
+    }
+
+    constexpr size_t EXPECTED_SIZE = (size_t)WRITER_COUNT * RECORDS_PER_WRITER * sizeof(U64);
+    if (buffer.size_used() != EXPECTED_SIZE) {
+        testFail("concurrent soft ring buffer writers expected %zu bytes, got %zu", EXPECTED_SIZE, buffer.size_used());
+    }
+#endif
 }
 
 #endif

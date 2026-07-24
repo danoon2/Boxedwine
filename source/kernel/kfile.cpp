@@ -17,6 +17,7 @@
  */
 
 #include "boxedwine.h"
+#include "kinotify.h"
 
 void KWritebackResult::recordIo(U64 bytes, S32 error) {
     if (bytes > std::numeric_limits<U64>::max() - bytesWritten) {
@@ -109,6 +110,9 @@ U32 KFile::write(KThread* thread, U32 buffer, U32 len) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
         cache = KSystem::getFileCache(identity);
         result = this->openFile->write(thread, buffer, len, cache);
+    }
+    if ((S32)result > 0) {
+        KInotifyObject::notifyPath(openFile->node->path, K_IN_MODIFY);
     }
     return result;
 }
@@ -381,6 +385,28 @@ U32 KFile::setLength(U64 length) {
         cache = KSystem::getFileCache(identity);
         if (cache) {
             cache->setLength(length);
+        }
+    }
+    return result;
+}
+
+U32 KFile::allocate(U64 offset, U64 length) {
+    std::shared_ptr<MappedFileCache> cache;
+    U32 result;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
+    std::shared_ptr<FsFileIdentity> identity = openFile->node->getFileIdentity();
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
+        result = openFile->allocate(offset, length);
+        if (!result) {
+            cache = KSystem::getFileCache(identity);
+            if (cache) {
+                S64 newLength = openFile->length();
+                if (newLength < 0) {
+                    return -K_EIO;
+                }
+                cache->setLength((U64)newLength);
+            }
         }
     }
     return result;

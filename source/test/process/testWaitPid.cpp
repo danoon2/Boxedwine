@@ -430,4 +430,96 @@ void testMemoryThreadCleanupUsesMemoryMutex() {
 #endif
 }
 
+void testPtraceResumeCannotLoseWakeup() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    KProcessPtr process = KProcess::create();
+    process->memory = KMemory::create(process.get());
+    KThread* thread = process->createThread();
+    U32 processId = process->id;
+    std::atomic<bool> waiterStarted(false);
+    std::atomic<bool> waiterFinished(false);
+    std::atomic<bool> resumeFinished(false);
+
+    thread->setPtraceStop(K_SIGSTOP);
+    BOXEDWINE_MUTEX_LOCK(thread->waitingCondSync);
+    std::thread waiter([&]() {
+        KThread::setCurrentThread(thread);
+        waiterStarted.store(true, std::memory_order_release);
+        thread->waitForPtraceResume();
+        waiterFinished.store(true, std::memory_order_release);
+        KThread::setCurrentThread(nullptr);
+    });
+
+    bool waiterHasPtraceLock = false;
+    for (U32 i = 0; i < 1000; i++) {
+        if (waiterStarted.load(std::memory_order_acquire) && !thread->ptraceCond->m.try_lock()) {
+            waiterHasPtraceLock = true;
+            break;
+        }
+        if (waiterStarted.load(std::memory_order_acquire)) {
+            thread->ptraceCond->m.unlock();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    if (!waiterHasPtraceLock) {
+        testFail("ptrace waiter did not enter its condition critical section");
+    }
+
+    std::thread resumer([&]() {
+        thread->resumeFromPtraceStop();
+        resumeFinished.store(true, std::memory_order_release);
+    });
+    for (U32 i = 0; i < 100 && !resumeFinished.load(std::memory_order_acquire); i++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    bool resumeBypassedWaiter = resumeFinished.load(std::memory_order_acquire);
+    if (resumeBypassedWaiter) {
+        testFail("ptrace resume bypassed the waiter condition critical section");
+    }
+
+    BOXEDWINE_MUTEX_UNLOCK(thread->waitingCondSync);
+    resumer.join();
+
+    if (resumeBypassedWaiter) {
+        bool waiterRegistered = false;
+        for (U32 i = 0; i < 1000; i++) {
+            {
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
+                waiterRegistered = thread->waitingCond == thread->ptraceCond;
+            }
+            if (waiterRegistered || waiterFinished.load(std::memory_order_acquire)) {
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        thread->resumeFromPtraceStop();
+    }
+
+    waiter.join();
+    process->deleteThread(thread);
+    KSystem::eraseProcess(processId);
+#endif
+}
+
+void testLastThreadDeletionRetainsMemoryWrapper() {
+    TestContext& context = testContext();
+    KProcessPtr process = KProcess::create();
+    process->memory = KMemory::create(process.get());
+    KMemory* memory = process->memory;
+    KThread* thread = process->createThread();
+    U32 processId = process->id;
+
+    KThread::setCurrentThread(thread);
+    thread->cleanup();
+    process->deleteThread(thread);
+    KThread::setCurrentThread(context.thread);
+
+    if (process->memory != memory) {
+        testFail("last thread deletion released the KMemory wrapper before process destruction");
+    }
+
+    KSystem::eraseProcess(processId);
+    process = nullptr;
+}
+
 #endif

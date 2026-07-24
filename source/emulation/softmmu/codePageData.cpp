@@ -333,7 +333,7 @@ void DecodedOpCache::removeAll() {
 		if (writeCounts[firstIndex]) {
 			for (U32 secondIndex = 0; secondIndex < SECOND_INDEX_SIZE; secondIndex++) {
 				if (writeCounts[firstIndex][secondIndex]) {
-					delete writeCounts[firstIndex][secondIndex];
+					delete[] writeCounts[firstIndex][secondIndex];
 				}
 			}
 			delete[] writeCounts[firstIndex];

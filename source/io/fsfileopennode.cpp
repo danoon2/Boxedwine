@@ -73,9 +73,14 @@ bool FsFileOpenNode::setLength(S64 len) {
         }
         return false;
     }
+    this->fileNode->clearModifiedTimeOverride();
     return true;
 #else
-    return ftruncate(this->handle, (off_t)len) == 0;
+    bool result = ftruncate(this->handle, (off_t)len) == 0;
+    if (result) {
+        this->fileNode->clearModifiedTimeOverride();
+    }
+    return result;
 #endif
 }
 
@@ -170,7 +175,24 @@ U32 FsFileOpenNode::readNative(U8* buffer, U32 len) {
 }
 
 U32 FsFileOpenNode::writeNative(U8* buffer, U32 len) {
-    return (U32)::write(this->handle, buffer, len);
+    U32 result = (U32)::write(this->handle, buffer, len);
+    if ((S32)result > 0) {
+        this->fileNode->clearModifiedTimeOverride();
+    }
+    return result;
+}
+
+U32 FsFileOpenNode::allocate(U64 offset, U64 len) {
+#if defined(__linux__) && !defined(__EMSCRIPTEN__)
+    if (offset > (U64)std::numeric_limits<off_t>::max() ||
+        len > (U64)std::numeric_limits<off_t>::max() - offset) {
+        return -K_EFBIG;
+    }
+    int result = posix_fallocate(this->handle, (off_t)offset, (off_t)len);
+    return result ? -translateErr(result) : 0;
+#else
+    return FsOpenNode::allocate(offset, len);
+#endif
 }
 
 bool FsFileOpenNode::canWriteNativeAt() {
@@ -308,5 +330,8 @@ FsWriteResult FsFileOpenNode::writeNativeAt(U8* buffer, U64 offset, U32 len) {
     }
 #endif
 #endif
+    if (result.bytesWritten) {
+        this->fileNode->clearModifiedTimeOverride();
+    }
     return result;
 }

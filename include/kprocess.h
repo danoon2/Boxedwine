@@ -284,6 +284,7 @@ public:
     U32 fstatfs64(FD fildes, U32 address);
     U32 statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf);
     U32 ftruncate64(FD fildes, U64 length);
+    U32 fallocate(FD fildes, U32 mode, S64 offset, S64 length);
     U32 getcwd(U32 buffer, U32 size);
     U32 getdents(FD fildes, U32 dirp, U32 count, bool is64);
     U32 getrusuage(KThread* thread, U32 who, U32 usage);
@@ -292,7 +293,7 @@ public:
     S64 llseek(FD fildes, S64 offset, U32 whence);
     U32 lseek(FD fd, S32 offset, U32 whence);
     U32 lstat64(BString path, U32 buffer);
-    U32 mkdir(BString path);    
+    U32 mkdir(BString path, U32 mode);
     U32 mkdirat(U32 dirfd, BString path, U32 mode);
     U32 mincore(U32 address, U32 length, U32 vec);    
     U32 msync(KThread* thread, U32 addr, U32 len, U32 flags);

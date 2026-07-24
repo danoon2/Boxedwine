@@ -1065,6 +1065,48 @@ void testSignalReturnDiscardsHandlerLazyFlags() {
     }
 }
 
+void testSignalHandlerClearsTraceFlagUntilReturn() {
+    constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, SIGNAL_STACK_TOP - K_PAGE_SIZE, K_PAGE_SIZE,
+        K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    cpu->reg[4].u32 = SIGNAL_STACK_TOP;
+    cpu->eip.u32 = TEST_CODE_ADDRESS;
+    cpu->flags = 2 | TF;
+    cpu->lazyFlagType = FLAGS_NONE;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+
+    thread->runSignal(K_SIGUSR1, 0, 0);
+    if (cpu->flags & TF) {
+        testFail("signal handler inherited trace flag");
+    }
+    if (cpu->debugTrapActive) {
+        testFail("signal handler retained active trace trap");
+    }
+
+    U32 returnAddress = cpu->pop32();
+    if (returnAddress != SIG_RETURN_ADDRESS) {
+        testFail("signal return callback address for trace flag");
+        return;
+    }
+    onExitSignal(cpu, nullptr);
+
+    if (!(cpu->flags & TF)) {
+        testFail("signal return did not restore trace flag");
+    }
+    if (!cpu->debugTrapActive) {
+        testFail("signal return did not restore active trace trap");
+    }
+}
+
 void testJitSignalPendingReset() {
 #ifdef BOXEDWINE_JIT
     TestContext& context = testContext();

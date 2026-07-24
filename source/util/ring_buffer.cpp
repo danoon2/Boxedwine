@@ -160,7 +160,7 @@ size_t Soft_Ring_Buffer_Ex<Mutex>::size_used() const
 template <class Mutex>
 bool Soft_Ring_Buffer_Ex<Mutex>::discard(size_t len)
 {
-    std::shared_lock<Mutex> lock(shmutex_);
+    std::unique_lock<Mutex> lock(shmutex_);
     return rb_.discard(len);
 }
 
@@ -174,7 +174,7 @@ size_t Soft_Ring_Buffer_Ex<Mutex>::size_free() const
 template <class Mutex>
 bool Soft_Ring_Buffer_Ex<Mutex>::getbytes_(void *data, size_t len)
 {
-    std::shared_lock<Mutex> lock(shmutex_);
+    std::unique_lock<Mutex> lock(shmutex_);
     return rb_.getbytes_(data, len);
 }
 
@@ -189,18 +189,13 @@ bool Soft_Ring_Buffer_Ex<Mutex>::peekbytes_(void *data, size_t len) const
 template <class Mutex>
 bool Soft_Ring_Buffer_Ex<Mutex>::putbytes_(const void *data, size_t len)
 {
-    bool good;
+    std::unique_lock<Mutex> lock(shmutex_);
     size_t oldcap = rb_.capacity();
-    size_t atleastcap = size_used() + len;
-    if (atleastcap <= oldcap) {
-        std::shared_lock<Mutex> lock(shmutex_);
-        good = rb_.putbytes_(data, len);
-    }
-    else {
-        std::unique_lock<Mutex> lock(shmutex_);
+    size_t atleastcap = rb_.size_used() + len;
+    if (atleastcap > oldcap) {
         grow_(atleastcap);
-        good = rb_.putbytes_(data, len);
     }
+    bool good = rb_.putbytes_(data, len);
     assert(good);
     (void)good;
     return true;

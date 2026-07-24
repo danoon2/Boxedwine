@@ -54,6 +54,7 @@ void testDefaultUserSegmentsUseGdtSelectors();
 void testSignalHandlerSegmentsUseGdtSelectors();
 void testSignalReturnPreservesLoadedInvalidTlsSelector();
 void testSignalReturnDiscardsHandlerLazyFlags();
+void testSignalHandlerClearsTraceFlagUntilReturn();
 bool testIsFastMode();
 void testSetFastMode(bool fast);
 void testWasmJitOnlyBlockEntryIsCallable();

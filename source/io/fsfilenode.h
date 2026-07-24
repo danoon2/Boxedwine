@@ -99,6 +99,7 @@ private:
     std::shared_ptr<FsZipNode> zipNode;
 #endif    
     friend class Fs;
+    void clearModifiedTimeOverride();
     bool isRootPath;
     U32 modeOverride;
     std::shared_ptr<FsHardLinkState> hardLinkState;

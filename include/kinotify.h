@@ -43,6 +43,7 @@ public:
     static U32 addWatch(KThread* thread, FD fd, BString path, U32 mask);
     static U32 removeWatch(KThread* thread, FD fd, S32 wd);
     static void notifyPath(const BString& fullPath, U32 mask);
+    static void notifyMove(const BString& oldPath, const BString& newPath, bool isDirectory);
 
     U32 addWatch(KProcess* process, const BString& path, U32 mask);
     U32 removeWatch(S32 wd);
@@ -75,6 +76,7 @@ private:
     struct Watch {
         S32 wd = 0;
         BString path;
+        std::shared_ptr<FsNode> node;
         U32 mask = 0;
     };
 
@@ -87,8 +89,8 @@ private:
     FD asyncFd = 0;
     U64 createdTime = 0;
 
-    void queueEvent(const BString& parentPath, const BString& name, U32 mask);
-    void appendEvent(S32 wd, U32 mask, const BString& name);
+    void queueEvent(const BString& parentPath, const BString& name, U32 mask, U32 cookie);
+    void appendEvent(S32 wd, U32 mask, U32 cookie, const BString& name);
     U32 bytesAvailableForRead(U32 len);
     U32 eventLengthAt(U32 offset);
 };

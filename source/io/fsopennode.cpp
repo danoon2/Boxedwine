@@ -95,6 +95,22 @@ U32 FsOpenNode::write(KThread* thread, U32 address, U32 len,
     return result;
 }
 
+U32 FsOpenNode::allocate(U64 offset, U64 len) {
+    if (offset > (U64)std::numeric_limits<S64>::max() ||
+        len > (U64)std::numeric_limits<S64>::max() - offset) {
+        return -K_EFBIG;
+    }
+    S64 currentLength = this->length();
+    if (currentLength < 0) {
+        return -K_EIO;
+    }
+    U64 end = offset + len;
+    if (end > (U64)currentLength && !this->setLength((S64)end)) {
+        return -K_EIO;
+    }
+    return 0;
+}
+
 bool FsOpenNode::canWriteNativeAt() {
 #ifdef __TEST
     if (testForceWriteNativeAtUnavailable) {

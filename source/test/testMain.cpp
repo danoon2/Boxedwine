@@ -62,6 +62,8 @@ void testProcessSignalWakesSigwaitMask();
 void testBlockedThreadSignalStartsHandler();
 void testBlockedThreadSigquitStartsHandlerImmediately();
 void testMemoryThreadCleanupUsesMemoryMutex();
+void testPtraceResumeCannotLoseWakeup();
+void testLastThreadDeletionRetainsMemoryWrapper();
 void testHardLinksShareIdentityDataAndXattrs();
 void testFileCacheIdentitySurvivesRenameAndHardLink();
 void testSharedFileMappingGrowthKeepsPagesShared();
@@ -114,6 +116,7 @@ void testMappedFilePageLoadRetriesAfterMutation();
 void testMmapCacheAcquireDoesNotHoldMemoryLock();
 void testExecutableFixedReplacementPreparationFailurePreservesState();
 void testNativeHeapSmallFreeQueueFailureIsRetryable();
+void testNativeHeapConcurrentAllocFree();
 void testCachedPositionedReadUsesCheckedOffsetAndSeek();
 void testFtruncateBackendLengthBoundaries();
 void testPrivateMappedWriteDoesNotChangePread();
@@ -131,6 +134,14 @@ void testUtf8NamesSurviveNativeFilesystemReload();
 void testTrailingDotNamesCanBeUnlinked();
 void testDirectorySeekCanStoreOpaquePosition();
 void testInotifyReportsChildDirectoryCreate();
+void testInotifyReportsChildFileCreate();
+void testInotifyReportsFileRenamePair();
+void testInotifyReportsRenameAtPair();
+void testInotifyReportsFchmodAttrib();
+void testInotifyReportsFileWriteModify();
+void testInotifyReportsCrossDirectoryMoveSides();
+void testInotifyReportsLinkCreate();
+void testInotifyReportsUnlinkAtDelete();
 void testInotifyFollowsWatchedSymlinkTarget();
 void testInotifyPollReportsChildDirectoryDelete();
 void testInotifyAsyncSignalsSigioOnDelete();
@@ -141,6 +152,7 @@ void testUnixSocketSendmsgStreamPayloadCanBeRead();
 void testUnixSocketWritevInvalidSecondIovAfterZeroLengthFirstReturnsEfault();
 void testUnixSocketWritevInvalidSecondIovDoesNotPartiallyWriteFirst();
 void testUnixSocketPendingConnectionsOnlyReadableForListeners();
+void testSoftRingBufferConcurrentWritersPreserveData();
 
 namespace {
 
@@ -559,6 +571,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testSignalHandlerSegmentsUseGdtSelectors, "Test signal handler segments use GDT selectors", TEST_ENTRY_SERIAL},
     {testSignalReturnPreservesLoadedInvalidTlsSelector, "Test signal return preserves loaded invalid TLS selector", TEST_ENTRY_SERIAL},
     {testSignalReturnDiscardsHandlerLazyFlags, "Test signal return discards handler lazy flags", TEST_ENTRY_SERIAL},
+    {testSignalHandlerClearsTraceFlagUntilReturn, "Test signal handler clears trace flag until return", TEST_ENTRY_SERIAL},
     {testSahf_0x09e, "Test Sahf 09e"},
     {testSahf_0x29e, "Test Sahf 29e"},
     {testLahf_0x09f, "Test Lahf 09f"},
@@ -835,7 +848,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testBlockedThreadSignalStartsHandler, "Test blocked thread signal starts handler"},
     {testBlockedThreadSigquitStartsHandlerImmediately, "Test blocked thread SIGQUIT starts handler immediately"},
     {testMemoryThreadCleanupUsesMemoryMutex, "Test memory thread cleanup uses memory mutex"},
+    {testPtraceResumeCannotLoseWakeup, "Test ptrace resume cannot lose wakeup", TEST_ENTRY_SERIAL},
 #endif
+    {testLastThreadDeletionRetainsMemoryWrapper, "Test last thread deletion retains memory wrapper", TEST_ENTRY_SERIAL},
     {testHardLinksShareIdentityDataAndXattrs, "Test hard links share identity, data, and xattrs", TEST_ENTRY_SERIAL},
     {testFileCacheIdentitySurvivesRenameAndHardLink, "Test mapped-file cache identity survives rename and hard link", TEST_ENTRY_SERIAL},
     {testSharedFileMappingGrowthKeepsPagesShared, "Test shared file mapping stays shared after growth", TEST_ENTRY_SERIAL},
@@ -890,6 +905,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testExecutableFixedReplacementPreparationFailurePreservesState, "Test executable fixed replacement preparation failure preserves mapping and JIT", TEST_ENTRY_SERIAL},
 #endif
     {testNativeHeapSmallFreeQueueFailureIsRetryable, "Test native heap small free queue failure is retryable", TEST_ENTRY_SERIAL},
+#ifdef BOXEDWINE_MULTI_THREADED
+    {testNativeHeapConcurrentAllocFree, "Test native heap concurrent alloc and free", TEST_ENTRY_SERIAL},
+#endif
     {testCachedPositionedReadUsesCheckedOffsetAndSeek, "Test cached positioned read uses checked offset and seek", TEST_ENTRY_SERIAL},
     {testFtruncateBackendLengthBoundaries, "Test ftruncate backend length boundaries", TEST_ENTRY_SERIAL},
     {testPrivateMappedWriteDoesNotChangePread, "Test private mapped write does not change pread", TEST_ENTRY_SERIAL},
@@ -907,6 +925,14 @@ const TestEntry TEST_ENTRIES[] = {
     {testTrailingDotNamesCanBeUnlinked, "Test trailing-dot file names can be unlinked", TEST_ENTRY_SERIAL},
     {testDirectorySeekCanStoreOpaquePosition, "Test directory seek can store opaque position", TEST_ENTRY_SERIAL},
     {testInotifyReportsChildDirectoryCreate, "Test inotify reports child directory create", TEST_ENTRY_SERIAL},
+    {testInotifyReportsChildFileCreate, "Test inotify reports child file create", TEST_ENTRY_SERIAL},
+    {testInotifyReportsFileRenamePair, "Test inotify reports file rename pair", TEST_ENTRY_SERIAL},
+    {testInotifyReportsRenameAtPair, "Test inotify reports renameat pair", TEST_ENTRY_SERIAL},
+    {testInotifyReportsFchmodAttrib, "Test inotify reports fchmod attributes", TEST_ENTRY_SERIAL},
+    {testInotifyReportsFileWriteModify, "Test inotify reports file write modification", TEST_ENTRY_SERIAL},
+    {testInotifyReportsCrossDirectoryMoveSides, "Test inotify reports cross-directory move sides", TEST_ENTRY_SERIAL},
+    {testInotifyReportsLinkCreate, "Test inotify reports hard-link creation", TEST_ENTRY_SERIAL},
+    {testInotifyReportsUnlinkAtDelete, "Test inotify reports unlinkat deletion", TEST_ENTRY_SERIAL},
     {testInotifyFollowsWatchedSymlinkTarget, "Test inotify follows watched symlink target", TEST_ENTRY_SERIAL},
     {testInotifyPollReportsChildDirectoryDelete, "Test inotify poll reports child directory delete", TEST_ENTRY_SERIAL},
     {testInotifyAsyncSignalsSigioOnDelete, "Test inotify async signals SIGIO on delete", TEST_ENTRY_SERIAL},
@@ -919,6 +945,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testUnixSocketWritevInvalidSecondIovAfterZeroLengthFirstReturnsEfault, "Test Unix socket writev invalid second iov after zero-length first returns EFAULT"},
     {testUnixSocketWritevInvalidSecondIovDoesNotPartiallyWriteFirst, "Test Unix socket writev invalid second iov does not partially write first"},
     {testUnixSocketPendingConnectionsOnlyReadableForListeners, "Test Unix socket pending connections only make listeners readable"},
+    {testSoftRingBufferConcurrentWritersPreserveData, "Test soft ring buffer concurrent writers preserve data"},
 };
 
 } // namespace

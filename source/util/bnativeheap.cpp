@@ -45,6 +45,7 @@ void writeNativeHeapFreeTimestamp(void* opaque) noexcept {
 }
 
 void BNativeHeap::freeAll() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(heapMutex);
 	for (auto& block : blocks) {
 		Platform::releaseNativeMemory(block, BNATIVEHEAD_64K_BLOCK_SIZE);
 	}
@@ -61,6 +62,7 @@ void BNativeHeap::freeAll() {
 }
 
 bool BNativeHeap::containsAddress(void* p) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(heapMutex);
 	for (void* block : blocks) {
 		U8* address = (U8*)block;
 		if (p >= address && p < address + BNATIVEHEAD_64K_BLOCK_SIZE) {
@@ -81,6 +83,7 @@ bool BNativeHeap::containsAddress(void* p) {
 }
 
 void* BNativeHeap::alloc(U32 len, U32* blockSize) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(heapMutex);
 	U32 index = powerOf2(len + 4);
 	if (index < 4) {
 		index = 4;
@@ -170,6 +173,7 @@ void* BNativeHeap::alloc(U32 len, U32* blockSize) {
 }
 
 void BNativeHeap::free(void* address) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(heapMutex);
 	if (!address) {
 		return;
 	}

@@ -17,6 +17,7 @@ namespace {
 
 BOXEDWINE_MUTEX gInotifyMutex;
 std::vector<std::weak_ptr<KInotifyObject> > gInotifyObjects;
+std::atomic<U32> gNextInotifyCookie{1};
 
 U32 align4(U32 value) {
     return (value + 3) & ~3;
@@ -118,7 +119,39 @@ void KInotifyObject::notifyPath(const BString& fullPath, U32 mask) {
     }
 
     for (auto& object : objects) {
-        object->queueEvent(parentPath, name, mask);
+        object->queueEvent(parentPath, name, mask, 0);
+    }
+}
+
+void KInotifyObject::notifyMove(const BString& oldPath, const BString& newPath, bool isDirectory) {
+    BString oldParentPath = Fs::getParentPath(oldPath);
+    BString oldName = Fs::getFileNameFromPath(oldPath);
+    BString newParentPath = Fs::getParentPath(newPath);
+    BString newName = Fs::getFileNameFromPath(newPath);
+    std::vector<std::shared_ptr<KInotifyObject> > objects;
+    U32 cookie;
+
+    do {
+        cookie = gNextInotifyCookie.fetch_add(1, std::memory_order_relaxed);
+    } while (!cookie);
+
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(gInotifyMutex);
+        for (auto it = gInotifyObjects.begin(); it != gInotifyObjects.end();) {
+            std::shared_ptr<KInotifyObject> object = it->lock();
+            if (object) {
+                objects.push_back(object);
+                ++it;
+            } else {
+                it = gInotifyObjects.erase(it);
+            }
+        }
+    }
+
+    U32 typeMask = isDirectory ? K_IN_ISDIR : 0;
+    for (auto& object : objects) {
+        object->queueEvent(oldParentPath, oldName, K_IN_MOVED_FROM | typeMask, cookie);
+        object->queueEvent(newParentPath, newName, K_IN_MOVED_TO | typeMask, cookie);
     }
 }
 
@@ -140,7 +173,7 @@ U32 KInotifyObject::addWatch(KProcess* process, const BString& path, U32 mask) {
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
     for (Watch& watch : this->watches) {
-        if (watch.path == node->path) {
+        if (watch.node == node) {
             if (mask & K_IN_MASK_ADD) {
                 watch.mask |= mask;
             } else {
@@ -153,6 +186,7 @@ U32 KInotifyObject::addWatch(KProcess* process, const BString& path, U32 mask) {
     Watch watch;
     watch.wd = this->nextWatch++;
     watch.path = node->path;
+    watch.node = node;
     watch.mask = mask;
     this->watches.push_back(watch);
     return watch.wd;
@@ -169,17 +203,18 @@ U32 KInotifyObject::removeWatch(S32 wd) {
     return -K_EINVAL;
 }
 
-void KInotifyObject::queueEvent(const BString& parentPath, const BString& name, U32 mask) {
+void KInotifyObject::queueEvent(const BString& parentPath, const BString& name, U32 mask, U32 cookie) {
     U32 eventMask = mask & K_IN_ALL_EVENTS;
     bool queued = false;
     U32 asyncProcessId = 0;
     FD asyncFd = 0;
+    std::shared_ptr<FsNode> parentNode = Fs::getNodeFromLocalPath(B(""), parentPath, true);
 
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
         for (const Watch& watch : this->watches) {
-            if (watch.path == parentPath && (watch.mask & eventMask)) {
-                this->appendEvent(watch.wd, mask, name);
+            if ((watch.path == parentPath || (parentNode && watch.node == parentNode)) && (watch.mask & eventMask)) {
+                this->appendEvent(watch.wd, mask, cookie, name);
                 queued = true;
             }
         }
@@ -198,13 +233,13 @@ void KInotifyObject::queueEvent(const BString& parentPath, const BString& name, 
     }
 }
 
-void KInotifyObject::appendEvent(S32 wd, U32 mask, const BString& name) {
+void KInotifyObject::appendEvent(S32 wd, U32 mask, U32 cookie, const BString& name) {
     U32 rawNameLen = (U32)name.length();
     U32 nameLen = rawNameLen ? align4(rawNameLen + 1) : 0;
 
     appendU32(this->recvBuffer, (U32)wd);
     appendU32(this->recvBuffer, mask);
-    appendU32(this->recvBuffer, 0);
+    appendU32(this->recvBuffer, cookie);
     appendU32(this->recvBuffer, nameLen);
     if (nameLen) {
         for (U32 i = 0; i < rawNameLen; ++i) {

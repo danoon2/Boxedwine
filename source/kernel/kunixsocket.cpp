@@ -39,13 +39,9 @@ KUnixSocketObject::~KUnixSocketObject() {
     std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
     if (con) {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond);
-        con = this->connection.lock();
-        if (con) {
-            con->connection.reset();
-            con->inClosed = true;
-            con->outClosed = true;
-            BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
-        }
+        con->inClosed = true;
+        con->outClosed = true;
+        BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
     }        
     
     std::shared_ptr<KUnixSocketObject> c = this->connecting.lock();
@@ -54,13 +50,13 @@ KUnixSocketObject::~KUnixSocketObject() {
         auto it = c->pendingConnections.begin();
         while (it != c->pendingConnections.end()) {
             std::shared_ptr<KUnixSocketObject> p = (*it).lock();
-            if (p == shared_from_this()) {
+            if (p.get() == this) {
                 it = c->pendingConnections.erase(it);
+                c->pendingConnectionCount.fetch_sub(1, std::memory_order_release);
             } else {
                 it++;
             }
         }
-        this->connecting.reset();
     }
     {
 		std::vector< std::shared_ptr<KUnixSocketObject> > pendingConnections;
@@ -70,13 +66,13 @@ KUnixSocketObject::~KUnixSocketObject() {
             for (auto& weakSocket : this->pendingConnections) {
                 std::shared_ptr<KUnixSocketObject> s = weakSocket.lock();
                 if (s) {
-                    s->connecting.reset();
                     pendingConnections.push_back(s);
                 }
             }
         }
         for (auto& s : pendingConnections) {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(s->lockCond);
+            s->connecting.reset();
             BOXEDWINE_CONDITION_SIGNAL_ALL(s->lockCond);
         }
         while (!msgs.empty()) {
@@ -122,8 +118,9 @@ bool KUnixSocketObject::isOpen() {
 }
 
 bool KUnixSocketObject::isReadReady() {
-    //BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
-    return this->inClosed || this->recvBuffer.size_used() || (this->listening && this->pendingConnections.size()) || this->msgs.size();
+    return this->inClosed || this->recvBuffer.size_used() ||
+        (this->listening && this->pendingConnectionCount.load(std::memory_order_acquire)) ||
+        this->messageCount.load(std::memory_order_acquire);
 }
 
 bool KUnixSocketObject::isWriteReady() {
@@ -553,6 +550,7 @@ U32 KUnixSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, U3
                     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(destination->lockCond);
                     std::shared_ptr< KUnixSocketObject> t = std::dynamic_pointer_cast<KUnixSocketObject>(shared_from_this());
                     destination->pendingConnections.push_back(t);
+                    destination->pendingConnectionCount.fetch_add(1, std::memory_order_release);
                     BOXEDWINE_CONDITION_SIGNAL_ALL(destination->lockCond);
                 }
 
@@ -624,6 +622,7 @@ U32 KUnixSocketObject::accept(KThread* thread, const KFileDescriptorPtr& fd, U32
 
         pendingConnection = this->pendingConnections.front().lock();
         this->pendingConnections.pop_front();
+        this->pendingConnectionCount.fetch_sub(1, std::memory_order_release);
     }
     if (pendingConnection == nullptr) {
         return -K_ECONNABORTED;
@@ -893,6 +892,7 @@ U32 KUnixSocketObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd, U3
         }
     }
     con->msgs.push(msg);
+    con->messageCount.fetch_add(1, std::memory_order_release);
     BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
 
     return result;
@@ -945,6 +945,7 @@ U32 KUnixSocketObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd, U3
     readMsgHdr(thread, address, &hdr);
     std::shared_ptr<KSocketMsg> msg = this->msgs.front();
     this->msgs.pop();
+    this->messageCount.fetch_sub(1, std::memory_order_release);
 
     if (hdr.msg_control) {
         U32 i=0;

@@ -39,6 +39,7 @@ public:
     bool isCodeMemory = false;
 	std::function<void(void*, U32)> delayedFreeCallback;
 private:
+    BOXEDWINE_MUTEX heapMutex;
 	std::unordered_map<U32, std::deque<void*>> buckets;
 	std::vector<void*> blocks;
 	BHashTable<U8*, U32> largeBlocks;
