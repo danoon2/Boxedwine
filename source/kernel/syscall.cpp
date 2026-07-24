@@ -1577,11 +1577,13 @@ static U32 syscall_getxattr(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG2);
 
     U32 result;
-    std::shared_ptr<FsNode> file = Fs::getNodeFromLocalPath(cpu->thread->process->currentDirectory, path, true);
-    if (!file) {
-        result = -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = true;
+    FsPathResult resolution = Fs::resolvePath(cpu->thread->process->currentDirectory, path, options);
+    if (resolution.error) {
+        result = resolution.error;
     } else {
-        result = getXAttrResult(cpu->memory, file, name, ARG3, ARG4);
+        result = getXAttrResult(cpu->memory, resolution.node, name, ARG3, ARG4);
     }
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "getxattr: path=%s name=%s size=%u result = %x\n", path.c_str(), name.c_str(), ARG4, result);
     return result;
@@ -1592,11 +1594,13 @@ static U32 syscall_lgetxattr(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG2);
 
     U32 result;
-    std::shared_ptr<FsNode> file = Fs::getNodeFromLocalPath(cpu->thread->process->currentDirectory, path, false);
-    if (!file) {
-        result = -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = false;
+    FsPathResult resolution = Fs::resolvePath(cpu->thread->process->currentDirectory, path, options);
+    if (resolution.error) {
+        result = resolution.error;
     } else {
-        result = getXAttrResult(cpu->memory, file, name, ARG3, ARG4);
+        result = getXAttrResult(cpu->memory, resolution.node, name, ARG3, ARG4);
     }
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "lgetxattr: path=%s name=%s size=%u result=%x\n", path.c_str(), name.c_str(), ARG4, result);
     return result;

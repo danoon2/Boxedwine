@@ -67,9 +67,35 @@ class FsFileNode;
 
 #define k_mdev(x,y) ((x << 8) | y)
 
+struct FsPathLookupOptions {
+    // Intermediate symbolic links are always followed. This controls only the
+    // final named component; a trailing slash still requires traversal.
+    bool followFinalSymlink = true;
+    // Used by fd-relative operations such as futimens/AT_EMPTY_PATH.
+    bool allowEmptyPath = false;
+    bool requireDirectory = false;
+};
+
+struct FsPathResult {
+    std::shared_ptr<FsNode> node;
+    // The last resolved directory and unresolved components are retained for
+    // internal recursive-directory creation.
+    std::shared_ptr<FsNode> parent;
+    std::vector<BString> missingComponents;
+    BString finalName;
+    // Zero on success, otherwise a negative guest errno.
+    S32 error = 0;
+    // True when the caller's terminal name was a symlink, even if a trailing
+    // slash or followFinalSymlink caused it to be followed.
+    bool finalComponentWasSymlink = false;
+    bool trailingSlash = false;
+};
+
 class Fs {
-public:   
+public:
     static bool initFileSystem(const BString& rootPath);
+    static FsPathResult resolvePath(const BString& currentDirectory, const BString& path,
+        const FsPathLookupOptions& options = {});
     static std::shared_ptr<FsNode> getNodeFromLocalPath(const BString& currentDirectory, const BString& path, bool followLink, bool* isLink=nullptr);
     static std::shared_ptr<FsFileNode> createFileNode(const BString& path, const BString& link, const BString& nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent);
     static std::shared_ptr<FsFileNode> addFileNode(const BString& path, const BString& link, const BString& nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent);
@@ -117,8 +143,6 @@ public:
 	static void shutDown();
 private:
     friend class KUnixSocketObject;
-
-    static std::shared_ptr<FsNode> getNodeFromLocalPath(const BString& currentDirectory, const BString& path, std::shared_ptr<FsNode>* lastNode, std::vector<BString>* missingParts, bool followLink, bool* isLink= nullptr);
 
     static std::atomic_int nextNodeId;
 };

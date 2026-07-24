@@ -81,6 +81,14 @@ U32 stat64LinkCount(KMemory* memory, U32 address) {
     return memory->readd(address + 20);
 }
 
+U32 stat64Mode(KMemory* memory, U32 address) {
+    return memory->readd(address + 16);
+}
+
+U32 statxMode(KMemory* memory, U32 address) {
+    return memory->readw(address + 28);
+}
+
 U32 stat64AccessSeconds(KMemory* memory, U32 address) {
     return memory->readd(address + 64);
 }
@@ -5671,6 +5679,81 @@ void testDotDotAfterDotResolvesToParentDirectory() {
     if (resolved->getId() == child->getId()) {
         testFail("./.. resolved to the child directory");
     }
+
+    cleanupRoot(root);
+}
+
+void testLinuxPathResolutionSemantics() {
+    TestContext& context = testContext();
+    KProcessPtr process = context.process;
+    KMemory* memory = context.memory;
+
+    BString root = B("tmp/test-linux-path-resolution-root");
+    cleanupRoot(root);
+    initTestFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp/real/child"));
+    expectZero("make directories with trailing slash", Fs::makeLocalDirs(B("/tmp/trailing/")));
+    std::shared_ptr<FsNode> trailingDirectory = Fs::getNodeFromLocalPath(B(""), B("/tmp/trailing"), true);
+    if (!trailingDirectory || !trailingDirectory->isDirectory()) {
+        testFail("directory created through trailing slash was not found");
+    }
+
+    std::shared_ptr<FsNode> file = addRegularFile(B("/tmp/file"));
+    if (!file) {
+        testFail("regular file node was not created");
+        cleanupRoot(root);
+        return;
+    }
+
+    expectZero("create directory symlink", process->symlink(B("/tmp/real/child"), B("/tmp/dir-link")));
+    expectZero("create file symlink", process->symlink(B("/tmp/file"), B("/tmp/file-link")));
+    expectZero("create first loop symlink", process->symlink(B("/tmp/loop-b"), B("/tmp/loop-a")));
+    expectZero("create second loop symlink", process->symlink(B("/tmp/loop-a"), B("/tmp/loop-b")));
+    expectZero("create dangling symlink", process->symlink(B("/tmp/missing"), B("/tmp/dangling")));
+
+    expectZero("lstat directory symlink", process->lstat64(B("/tmp/dir-link"), STAT_A));
+    expectU32("lstat directory symlink mode", stat64Mode(memory, STAT_A) & K_S_IFMT, K__S_IFLNK);
+
+    expectZero("lstat directory symlink with trailing slash", process->lstat64(B("/tmp/dir-link/"), STAT_A));
+    expectU32("lstat trailing slash follows directory symlink", stat64Mode(memory, STAT_A) & K_S_IFMT, K__S_IFDIR);
+
+    expectU32("lstat trailing slash rejects file symlink", process->lstat64(B("/tmp/file-link/"), STAT_A), (U32)-K_ENOTDIR);
+    expectU32("stat rejects regular intermediate component", process->stat64(B("/tmp/file/child"), STAT_A), (U32)-K_ENOTDIR);
+    expectU32("stat detects symbolic link loop", process->stat64(B("/tmp/loop-a"), STAT_A), (U32)-K_ELOOP);
+    expectZero("lstat accepts dangling symlink", process->lstat64(B("/tmp/dangling"), STAT_A));
+    expectU32("lstat dangling symlink mode", stat64Mode(memory, STAT_A) & K_S_IFMT, K__S_IFLNK);
+    expectU32("stat follows dangling symlink", process->stat64(B("/tmp/dangling"), STAT_A), (U32)-K_ENOENT);
+    expectU32("readlink reports missing path", process->readlink(B("/tmp/missing"), BUFFER, 32), (U32)-K_ENOENT);
+    expectU32("unlink trailing directory symlink is ENOTDIR", process->unlinkFile(B("/tmp/dir-link/")), (U32)-K_ENOTDIR);
+    expectU32("rmdir trailing directory symlink is ENOTDIR", process->rmdir(B("/tmp/dir-link/")), (U32)-K_ENOTDIR);
+    expectU32("access propagates intermediate ENOTDIR", process->access(B("/tmp/file/child"), 0), (U32)-K_ENOTDIR);
+
+    expectZero("stat symlink dot-dot", process->stat64(B("/tmp/dir-link/.."), STAT_A));
+    expectZero("stat symlink target parent", process->stat64(B("/tmp/real"), STAT_B));
+    expectU32("dot-dot is evaluated after following symlink", stat64Inode(memory, STAT_A), stat64Inode(memory, STAT_B));
+    expectZero("chdir follows symlink before dot-dot", process->chdir(B("/tmp/dir-link/..")));
+    if (process->currentDirectory != B("/tmp/real")) {
+        testFail("chdir symlink/.. expected /tmp/real, got %s", process->currentDirectory.c_str());
+    }
+    expectZero("restore test current directory", process->chdir(B("/")));
+
+    expectZero("stat root parent", process->stat64(B("/.."), STAT_A));
+    expectZero("stat root", process->stat64(B("/"), STAT_B));
+    expectU32("root parent remains root", stat64Inode(memory, STAT_A), stat64Inode(memory, STAT_B));
+
+    expectZero("fstatat follows directory symlink", process->fstatat64(-100, B("/tmp/dir-link"), STAT_A, 0));
+    expectU32("fstatat followed directory symlink mode", stat64Mode(memory, STAT_A) & K_S_IFMT, K__S_IFDIR);
+    expectZero("fstatat nofollow preserves directory symlink", process->fstatat64(-100, B("/tmp/dir-link"), STAT_A, 0x100));
+    expectU32("fstatat nofollow directory symlink mode", stat64Mode(memory, STAT_A) & K_S_IFMT, K__S_IFLNK);
+    expectZero("fstatat trailing slash overrides nofollow", process->fstatat64(-100, B("/tmp/dir-link/"), STAT_A, 0x100));
+    expectU32("fstatat trailing slash directory mode", stat64Mode(memory, STAT_A) & K_S_IFMT, K__S_IFDIR);
+
+    expectZero("statx follows directory symlink", process->statx(-100, B("/tmp/dir-link"), 0, 0, STAT_A));
+    expectU32("statx followed directory symlink mode", statxMode(memory, STAT_A) & K_S_IFMT, K__S_IFDIR);
+    expectZero("statx nofollow preserves directory symlink", process->statx(-100, B("/tmp/dir-link"), 0x100, 0, STAT_A));
+    expectU32("statx nofollow directory symlink mode", statxMode(memory, STAT_A) & K_S_IFMT, K__S_IFLNK);
+    expectZero("statx trailing slash overrides nofollow", process->statx(-100, B("/tmp/dir-link/"), 0x100, 0, STAT_A));
+    expectU32("statx trailing slash directory mode", statxMode(memory, STAT_A) & K_S_IFMT, K__S_IFDIR);
 
     cleanupRoot(root);
 }

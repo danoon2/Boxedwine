@@ -673,14 +673,11 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
 
         if (mappedFile) {
             try {
-                {
-                    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->mappedFilesMutex);
-                    // unmap can add at most one right split when replacing one
-                    // contiguous range. Reserve for that split and this record
-                    // before a destructive MAP_FIXED replacement begins.
-                    process->mappedFiles.reserve(process->mappedFiles.size() +
-                        (fixedReplacement ? 2 : 1));
-                }
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->mappedFilesMutex);
+                // unmap can add at most one right split when replacing one
+                // contiguous range. Reserve for that split and this record
+                // before a destructive MAP_FIXED replacement begins.
+                process->mappedFiles.reserve(process->mappedFiles.size() + (fixedReplacement ? 2 : 1));
             } catch (const std::bad_alloc&) {
                 return -K_ENOMEM;
             } catch (const std::length_error&) {

@@ -127,11 +127,13 @@ U32 KInotifyObject::addWatch(KProcess* process, const BString& path, U32 mask) {
         return -K_EINVAL;
     }
 
-    BString fullPath = Fs::getFullPath(process->currentDirectory, path);
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), fullPath, (mask & K_IN_DONT_FOLLOW) == 0);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (mask & K_IN_DONT_FOLLOW) == 0;
+    FsPathResult resolution = Fs::resolvePath(process->currentDirectory, path, options);
+    if (resolution.error) {
+        return resolution.error;
     }
+    std::shared_ptr<FsNode> node = resolution.node;
     if ((mask & K_IN_ONLYDIR) && !node->isDirectory()) {
         return -K_ENOTDIR;
     }

@@ -51,6 +51,12 @@ MappedFilePtr pendingMappedFileRetirementsHead;
 MappedFilePtr pendingMappedFileRetirementsTail;
 bool pendingMappedFileRetirementInProgress = false;
 
+FsPathResult resolvePathForSyscall(const BString& currentDirectory, const BString& path, bool followFinalSymlink) {
+    FsPathLookupOptions options;
+    options.followFinalSymlink = followFinalSymlink;
+    return Fs::resolvePath(currentDirectory, path, options);
+}
+
 void recordMappedFileRetirementFailure(const MappedFilePtr& mapping, S32 error) noexcept {
     bool report = false;
     {
@@ -1536,10 +1542,14 @@ U32 KProcess::dup(U32 fildes) {
 }
 
 U32 KProcess::rmdir(BString path) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);
-
-    if (!node)
-        return -K_ENOENT;
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, false);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    std::shared_ptr<FsNode> node = resolution.node;
+    if (resolution.finalComponentWasSymlink || !node->isDirectory()) {
+        return -K_ENOTDIR;
+    }
     BString fullPath = node->path;
     U32 result = node->removeDir();
     if (!result) {
@@ -1614,8 +1624,11 @@ static S32 internalAccess(std::shared_ptr<FsNode> node, U32 flags) {
 }
 
 U32 KProcess::access(BString path, U32 mode) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
-    return internalAccess(node, mode); 
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    return internalAccess(resolution.node, mode);
 }
 
 U32 KProcess::lseek(FD fildes, S32 offset, U32 whence) {
@@ -1638,10 +1651,11 @@ U32 KProcess::lseek(FD fildes, S32 offset, U32 whence) {
 }
 
 U32 KProcess::chmod(BString path, U32 mode) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
-    if (!node)
-        return -K_ENOENT;
-    return node->setMode(mode);
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    return resolution.node->setMode(mode);
 }
 
 U32 KProcess::fchmod(FD fildes, U32 mode) {
@@ -1657,26 +1671,28 @@ U32 KProcess::fchmod(FD fildes, U32 mode) {
 }
 
 U32 KProcess::chdir(BString path) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
-    if (!node)
-        return -K_ENOENT;
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    std::shared_ptr<FsNode> node = resolution.node;
     if (!node->isDirectory())
         return -K_ENOTDIR;
-    if (path.startsWith('/')) {
-        this->currentDirectory = path;
-    } else {
-        this->currentDirectory = this->currentDirectory+"/"+path;
-    }
-    if (this->currentDirectory.endsWith('/')) {
-        this->currentDirectory = this->currentDirectory.substr(0, this->currentDirectory.length()-1);
-    }
+    this->currentDirectory = node->path;
     return 0;
 }
 
 U32 KProcess::unlinkFile(BString path) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, false);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    std::shared_ptr<FsNode> node = resolution.node;
+    if (resolution.trailingSlash && resolution.finalComponentWasSymlink) {
+        return -K_ENOTDIR;
+    }
+    if (node->isDirectory()) {
+        return -K_EISDIR;
     }
     BString fullPath = node->path;
     if (!node->remove()) {
@@ -1987,8 +2003,12 @@ U32 KProcess::symlink(BString target, BString linkpath) {
 
 U32 KProcess::readlinkInDirectory(BString currentDirectory, BString path, U32 buffer, U32 bufSize) {
     // :TODO: move these to the virtual filesystem
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, path, false);
-    if (!node || !node->isLink())
+    FsPathResult resolution = resolvePathForSyscall(currentDirectory, path, false);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    std::shared_ptr<FsNode> node = resolution.node;
+    if (!node->isLink())
         return -K_EINVAL;
     U32 len = (U32)node->getLink().length();
     if (len>bufSize)
@@ -2033,9 +2053,9 @@ U32 KProcess::ftruncate64(FD fildes, U64 length) {
 #define FS_FREE_SIZE 96636764160l
 
 U32 KProcess::statfs(BString path, U32 address) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
+    if (resolution.error) {
+        return resolution.error;
     }
     memory->writed(address, 0xEF53); // f_type (EXT3)
     memory->writed(address + 4, FS_BLOCK_SIZE); // f_bsize
@@ -2052,9 +2072,9 @@ U32 KProcess::statfs(BString path, U32 address) {
 }
 
 U32 KProcess::statfs64(BString path, U32 address) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
+    if (resolution.error) {
+        return resolution.error;
     }
     memory->writed(address, 0xEF53); // f_type (EXT3)
     memory->writed(address + 4, FS_BLOCK_SIZE); // f_bsize
@@ -2703,22 +2723,26 @@ U32 KProcess::getcwd(U32 buffer, U32 size) {
 }
 
 U32 KProcess::stat64(BString path, U32 buffer) {
-    bool isLink = false;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true, &isLink);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = true;
+    FsPathResult resolution = Fs::resolvePath(this->currentDirectory, path, options);
+    if (resolution.error) {
+        return resolution.error;
     }
+    std::shared_ptr<FsNode> node = resolution.node;
     U64 len = node->length();
     KSystem::writeStat(this, node->path, buffer, true, 1, node->getId(), node->getMode(), node->rdev, len, 4096, (len + 4095) / 4096, node->lastAccessed(), node->lastAccessedNano(), node->lastModified(), node->lastModifiedNano(), node->lastStatusChanged(), node->lastStatusChangedNano(), node->getHardLinkCount());
     return 0;
 }
 
 U32 KProcess::lstat64(BString path, U32 buffer) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = false;
+    FsPathResult resolution = Fs::resolvePath(this->currentDirectory, path, options);
+    if (resolution.error) {
+        return resolution.error;
     }
- 
+    std::shared_ptr<FsNode> node = resolution.node;
     U64 len = 0;
     U32 mode = 0;
 
@@ -2928,11 +2952,11 @@ U32 KProcess::epollwait(KThread* thread, FD epfd, U32 events, U32 maxevents, U32
 }
 
 U32 KProcess::utimes(BString path, U32 times) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
-
-    if (!node) {
-        return -K_ENOENT;
-    } else {        
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
+    if (resolution.error) {
+        return resolution.error;
+    } else {
+        std::shared_ptr<FsNode> node = resolution.node;
         U64 lastAccessTime = 0;
         U32 lastAccessTimeNano = 0;
         U64 lastModifiedTime =  0;
@@ -3007,11 +3031,14 @@ U32 KProcess::fchmodat(FD dirfd, BString path, U32 mode, U32 flags) {
 
     if (result)
         return result;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100)==0);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (flags & 0x100) == 0;
+    options.allowEmptyPath = !path.length();
+    FsPathResult resolution = Fs::resolvePath(dir, path, options);
+    if (resolution.error) {
+        return resolution.error;
     }
-    return node->setMode(mode);
+    return resolution.node->setMode(mode);
 }
 
 #define K_AT_SYMLINK_FOLLOW	0x400   // Follow symbolic links. 
@@ -3148,16 +3175,16 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
         }
         return result;
     }        
-    bool isLink = false;
-
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100) == 0, &isLink);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (flags & 0x100) == 0;
+    FsPathResult resolution = Fs::resolvePath(dir, path, options);
+    if (resolution.error) {
+        return resolution.error;
     }
-
+    std::shared_ptr<FsNode> node = resolution.node;
     U64 len = node->length();
     U32 mode = node->getMode();
-    if (node->isLink() || isLink) {
+    if (node->isLink()) {
         mode |= K__S_IFLNK;
     }
     U64 atime = node->lastAccessed();
@@ -3178,16 +3205,16 @@ U32 KProcess::fstatat64(FD dirfd, BString path, U32 buf, U32 flag) {
 
     if (result)
         return result;
-    bool isLink = false;
-
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flag & 0x100)==0, &isLink);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (flag & 0x100) == 0;
+    FsPathResult resolution = Fs::resolvePath(dir, path, options);
+    if (resolution.error) {
+        return resolution.error;
     }
-
+    std::shared_ptr<FsNode> node = resolution.node;
     U64 len = node->length();
     U32 mode = node->getMode();
-    if (node->isLink() || isLink) {
+    if (node->isLink()) {
         mode|=K__S_IFLNK;
     }
     
@@ -3204,18 +3231,25 @@ U32 KProcess::unlinkat(FD dirfd, BString path, U32 flags) {
 
     if (result)
         return result;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, false);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathResult resolution = resolvePathForSyscall(dir, path, false);
+    if (resolution.error) {
+        return resolution.error;
     }
+    std::shared_ptr<FsNode> node = resolution.node;
     if (flags & 0x200) { // unlinkat AT_REMOVEDIR
-        if (!node->isDirectory()) {
+        if (resolution.finalComponentWasSymlink || !node->isDirectory()) {
             return -K_ENOTDIR;
         }
         if (node->removeDir() == 0)
             return 0;
         return -K_ENOTEMPTY;
     } else {
+        if (resolution.trailingSlash && resolution.finalComponentWasSymlink) {
+            return -K_ENOTDIR;
+        }
+        if (node->isDirectory()) {
+            return -K_EISDIR;
+        }
         if (!node->remove()) {
             kwarn_fmt("filed to remove file: errno=%d", errno);
             return -K_EBUSY;
@@ -3224,7 +3258,7 @@ U32 KProcess::unlinkat(FD dirfd, BString path, U32 flags) {
     }
 }
 
-U32 KProcess::faccessat(U32 dirfd, BString path, U32 mode, U32 flags) {    
+U32 KProcess::faccessat(U32 dirfd, BString path, U32 mode, U32 flags) {
     BString dir;
     U32 result = 0;
     
@@ -3233,11 +3267,14 @@ U32 KProcess::faccessat(U32 dirfd, BString path, U32 mode, U32 flags) {
 
     if (result)
         return result;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100)==0);
-    if (!node) {
-        return -K_ENOENT;
-    }  
-    return internalAccess(node, mode);
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (flags & 0x100) == 0;
+    options.allowEmptyPath = !path.length();
+    FsPathResult resolution = Fs::resolvePath(dir, path, options);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    return internalAccess(resolution.node, mode);
 }
 
 #define K_UTIME_NOW 0x3fffffff
@@ -3259,10 +3296,14 @@ U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags, bool time64
 
     if (result)
         return result;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100)==0);
-    if (!node) {
-        return -K_ENOENT;
-    } 
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (flags & 0x100) == 0;
+    options.allowEmptyPath = !path.length();
+    FsPathResult resolution = Fs::resolvePath(dir, path, options);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    std::shared_ptr<FsNode> node = resolution.node;
     U64 lastAccessTime = 0;
     U32 lastAccessTimeNano = 0;
     U64 lastModifiedTime =  0;
@@ -3313,10 +3354,14 @@ U32 KProcess::utimesat64(FD dirfd, BString path, U32 times, U32 flags) {
 
     if (result)
         return result;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100) == 0);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (flags & 0x100) == 0;
+    options.allowEmptyPath = !path.length();
+    FsPathResult resolution = Fs::resolvePath(dir, path, options);
+    if (resolution.error) {
+        return resolution.error;
     }
+    std::shared_ptr<FsNode> node = resolution.node;
     U64 lastAccessTime = 0;
     U32 lastAccessTimeNano = 0;
     U64 lastModifiedTime = 0;
