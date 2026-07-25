@@ -154,6 +154,14 @@ void testUnixSocketWritevInvalidSecondIovAfterZeroLengthFirstReturnsEfault();
 void testUnixSocketWritevInvalidSecondIovDoesNotPartiallyWriteFirst();
 void testUnixSocketPendingConnectionsOnlyReadableForListeners();
 void testSoftRingBufferConcurrentWritersPreserveData();
+void testPollRegistrationCanSignalParentCondition();
+void testNativeSocketSetOobInlineCanBeReadBack();
+void testNativeSocketRecvmsgReceivesOobData();
+void testNativeDatagramSocketPollDoesNotReportHangup();
+void testNativeDatagramRecvmsgPeekScattersOnce();
+void testNativeDatagramRecvmsgScattersSingleMessage();
+void testNativeDatagramRecvmsgReportsTruncation();
+void testNativeStreamRecvmsgZeroIovDoesNotConsumeData();
 
 namespace {
 
@@ -951,6 +959,20 @@ const TestEntry TEST_ENTRIES[] = {
     {testUnixSocketWritevInvalidSecondIovDoesNotPartiallyWriteFirst, "Test Unix socket writev invalid second iov does not partially write first"},
     {testUnixSocketPendingConnectionsOnlyReadableForListeners, "Test Unix socket pending connections only make listeners readable"},
     {testSoftRingBufferConcurrentWritersPreserveData, "Test soft ring buffer concurrent writers preserve data"},
+    {testPollRegistrationCanSignalParentCondition,
+        "Test poll registration can signal parent condition", TEST_ENTRY_SERIAL},
+    {testNativeSocketSetOobInlineCanBeReadBack, "Test native socket SO_OOBINLINE can be read back", TEST_ENTRY_SERIAL},
+    {testNativeSocketRecvmsgReceivesOobData, "Test native socket recvmsg receives OOB data", TEST_ENTRY_SERIAL},
+    {testNativeDatagramSocketPollDoesNotReportHangup,
+        "Test native datagram socket poll does not report hangup", TEST_ENTRY_SERIAL},
+    {testNativeDatagramRecvmsgPeekScattersOnce,
+        "Test native datagram recvmsg peek scatters once", TEST_ENTRY_SERIAL},
+    {testNativeDatagramRecvmsgScattersSingleMessage,
+        "Test native datagram recvmsg scatters one message", TEST_ENTRY_SERIAL},
+    {testNativeDatagramRecvmsgReportsTruncation,
+        "Test native datagram recvmsg reports truncation", TEST_ENTRY_SERIAL},
+    {testNativeStreamRecvmsgZeroIovDoesNotConsumeData,
+        "Test native stream zero-iov recvmsg does not consume data", TEST_ENTRY_SERIAL},
 };
 
 } // namespace
