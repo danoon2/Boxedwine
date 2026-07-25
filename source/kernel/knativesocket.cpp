@@ -1566,14 +1566,15 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, const KFileDescriptorPtr& f
                 kpanic("KNativeSocketObject::getsockopt SO_OOBINLINE expecting len of 4");
             result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_OOBINLINE, (char*)&retrievedValue, &len);
             if (!result) {
+                retrievedValue = retrievedValue ? 1 : 0;
                 memory->writed(value, retrievedValue);
             }
         } else if (name == K_SO_BROADCAST) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_BROADCAST expecting len of 4");
-            U32 result = 0;
             result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_BROADCAST, (char*)&retrievedValue, &len);
             if (!result) {
+                retrievedValue = retrievedValue ? 1 : 0;
                 memory->writed(value, retrievedValue);
             }
         } else if (name == K_SO_RCVTIMEO) {
