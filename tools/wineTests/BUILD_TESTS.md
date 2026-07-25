@@ -3,12 +3,13 @@
 This guide describes the reusable process for building Wine 11 test suites as
 32-bit Windows PE executables on an x86-64 Ubuntu or Debian host.
 
-BoxedWine currently supports Wine's NTDLL and kernel32 test suites. The
-`runWineTests.py` runner and `wine_tests_v2.zip` archive require both
-`ntdll_test.exe` and `kernel32_test.exe`. The same Wine configuration,
-architecture verification, and targeted Make workflow can build other Wine
-test suites as BoxedWine support is added. Each additional suite will also
-need corresponding runner, packaging, and expected-result configuration.
+BoxedWine currently supports Wine's NTDLL and kernel32 test suites plus the
+ws2_32 AFD group. The `runWineTests.py` runner and `wine_tests_v3.zip` archive
+require `ntdll_test.exe`, `kernel32_test.exe`, and `ws2_32_test.exe`. The same
+Wine configuration, architecture verification, and targeted Make workflow can
+build other Wine test suites as BoxedWine support is added. Each additional
+suite will also need corresponding runner, packaging, and expected-result
+configuration.
 
 Use a native Linux filesystem for the Wine source and build directories. A
 WSL path below `/home` or `/tmp` is substantially faster than building below
@@ -120,6 +121,23 @@ This links all 33 kernel32 test groups into:
 $WORK_DIR/build-i386/dlls/kernel32/tests/i386-windows/kernel32_test.exe
 ```
 
+### ws2_32
+
+From the same build directory:
+
+```bash
+make -j"$(nproc)" dlls/ws2_32/tests/i386-windows/ws2_32_test.exe
+```
+
+This links the Wine socket tests into:
+
+```text
+$WORK_DIR/build-i386/dlls/ws2_32/tests/i386-windows/ws2_32_test.exe
+```
+
+The BoxedWine runner currently selects only the `afd` group from this
+executable.
+
 ### Additional Wine test suites
 
 Wine DLL test targets generally follow this layout:
@@ -141,15 +159,17 @@ automatically add it to BoxedWine's test runner.
 
 ## Verify the output architecture
 
-Do not use an x86-64 or PE32+ test binary with BoxedWine. Verify both supported
+Do not use an x86-64 or PE32+ test binary with BoxedWine. Verify all supported
 artifacts:
 
 ```bash
 NTDLL_TEST_EXE="$WORK_DIR/build-i386/dlls/ntdll/tests/i386-windows/ntdll_test.exe"
 KERNEL32_TEST_EXE="$WORK_DIR/build-i386/dlls/kernel32/tests/i386-windows/kernel32_test.exe"
-file "$NTDLL_TEST_EXE" "$KERNEL32_TEST_EXE"
+WS2_32_TEST_EXE="$WORK_DIR/build-i386/dlls/ws2_32/tests/i386-windows/ws2_32_test.exe"
+file "$NTDLL_TEST_EXE" "$KERNEL32_TEST_EXE" "$WS2_32_TEST_EXE"
 i686-w64-mingw32-objdump -f "$NTDLL_TEST_EXE" | sed -n '1,6p'
 i686-w64-mingw32-objdump -f "$KERNEL32_TEST_EXE" | sed -n '1,6p'
+i686-w64-mingw32-objdump -f "$WS2_32_TEST_EXE" | sed -n '1,6p'
 ```
 
 `file` must report output equivalent to:
@@ -170,12 +190,13 @@ Set `BOXEDWINE_DIR` to the Linux or WSL path of the BoxedWine checkout:
 BOXEDWINE_DIR=/mnt/c/Boxedwine2
 cp "$NTDLL_TEST_EXE" "$BOXEDWINE_DIR/tools/wineTests/ntdll_test.exe"
 cp "$KERNEL32_TEST_EXE" "$BOXEDWINE_DIR/tools/wineTests/kernel32_test.exe"
+cp "$WS2_32_TEST_EXE" "$BOXEDWINE_DIR/tools/wineTests/ws2_32_test.exe"
 ```
 
-When rebuilding `wine_tests_v2.zip`, also copy `COPYING.LIB` from the same
-Wine source checkout and regenerate `SHA256SUMS` for both executables and the
-license. The archive layout and runner verification commands are documented
-in `README.md`.
+When rebuilding `wine_tests_v3.zip`, also copy `COPYING.LIB` from the same
+Wine source checkout and regenerate `SHA256SUMS` for all three executables and
+the license. The archive layout and runner verification commands are
+documented in `README.md`.
 
 For an additional test suite, update `runWineTests.py`, its tests, the published
 archive layout, and the expected-result rules before treating the new
@@ -190,6 +211,7 @@ Make target. For the supported suites:
 cd "$WORK_DIR/build-i386"
 make -j"$(nproc)" dlls/ntdll/tests/i386-windows/ntdll_test.exe
 make -j"$(nproc)" dlls/kernel32/tests/i386-windows/kernel32_test.exe
+make -j"$(nproc)" dlls/ws2_32/tests/i386-windows/ws2_32_test.exe
 ```
 
 Use a new source and build directory when changing Wine versions. This avoids
@@ -207,5 +229,7 @@ mixing generated files or import libraries from different Wine releases.
 - `No rule to make target dlls/kernel32/tests/kernel32_test.exe`: use the
   complete architecture-specific target ending in
   `i386-windows/kernel32_test.exe`.
+- `No rule to make target dlls/ws2_32/tests/ws2_32_test.exe`: use the complete
+  architecture-specific target ending in `i386-windows/ws2_32_test.exe`.
 - `PE32+` or `x86-64` output: remove the build directory and configure again
   with `--enable-archs=i386`.

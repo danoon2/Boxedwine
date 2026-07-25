@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build BoxedWine and run the Wine 11 NTDLL and kernel32 regression groups."""
+"""Build BoxedWine and run the Wine 11 NTDLL, kernel32, and ws2_32 tests."""
 
 from __future__ import annotations
 
@@ -21,11 +21,12 @@ from urllib.request import urlopen
 
 FILESYSTEM_URL = "https://boxedwine.org/v2/8/TinyCore15Wine11.0.zip"
 FILESYSTEM_CACHE_NAME = "TinyCore15Wine11.0-v8.zip"
-TESTS_URL = "https://boxedwine.org/v2/1/wine_tests_v2.zip"
-TESTS_CACHE_NAME = "wine_tests_v2.zip"
+TESTS_URL = "https://boxedwine.org/v2/1/wine_tests_v3.zip"
+TESTS_CACHE_NAME = "wine_tests_v3.zip"
 TEST_EXECUTABLES = {
     "ntdll": "ntdll_test.exe",
     "kernel32": "kernel32_test.exe",
+    "ws2_32": "ws2_32_test.exe",
 }
 
 TEST_GROUPS = (
@@ -93,11 +94,15 @@ KERNEL32_TEST_GROUPS = (
     "volume",
 )
 
+WS2_32_TEST_GROUPS = ("afd",)
+
 FAILURE_CEILINGS = {group: 0 for group in TEST_GROUPS}
 FAILURE_CEILINGS.update({"file": 9, "virtual": 7, "wow64": 3})
 
 KERNEL32_FAILURE_CEILINGS = {group: 0 for group in KERNEL32_TEST_GROUPS}
 KERNEL32_FAILURE_CEILINGS.update({"sync": 1, "loader": 62, "virtual": 109})
+
+WS2_32_FAILURE_CEILINGS = {"afd": 19}
 
 
 class RunnerError(RuntimeError):
@@ -125,6 +130,13 @@ KERNEL32_SUITE = SuiteConfig(
     KERNEL32_TEST_GROUPS,
     KERNEL32_FAILURE_CEILINGS,
     frozenset({"loader", "virtual"}),
+)
+WS2_32_SUITE = SuiteConfig(
+    "ws2_32",
+    TEST_EXECUTABLES["ws2_32"],
+    WS2_32_TEST_GROUPS,
+    WS2_32_FAILURE_CEILINGS,
+    frozenset(),
 )
 
 
@@ -183,7 +195,7 @@ def _validate_pe32_i386(image: bytes, executable_name: str) -> None:
 
 
 def validate_test_archive(archive_path: Path) -> None:
-    """Require a safe ZIP containing both root-level PE32/i386 Wine tests."""
+    """Require a safe ZIP containing all root-level PE32/i386 Wine tests."""
     archive_path = Path(archive_path)
     if not zipfile.is_zipfile(archive_path):
         raise RunnerError(f"not a ZIP archive: {archive_path}")
@@ -210,7 +222,7 @@ def validate_test_archive(archive_path: Path) -> None:
 def extract_test_executables(
     archive_path: Path, destination_dir: Path
 ) -> dict[str, Path]:
-    """Validate the test archive and atomically extract both PE32 executables."""
+    """Validate the test archive and atomically extract all PE32 executables."""
     archive_path = Path(archive_path)
     destination_dir = Path(destination_dir)
     validate_test_archive(archive_path)
@@ -290,7 +302,7 @@ def command_for_group(
         str(filesystem),
         "-novideo",
     ]
-    if suite == KERNEL32_SUITE:
+    if suite in (KERNEL32_SUITE, WS2_32_SUITE):
         return command + [
             "-env",
             "WINEDLLOVERRIDES=mscoree,mshtml=",
@@ -484,7 +496,7 @@ def run_group(
     if guest_root.exists():
         raise RunnerError(f"guest root already exists: {guest_root}")
     guest_root.mkdir(parents=True)
-    if suite == KERNEL32_SUITE:
+    if suite in (KERNEL32_SUITE, WS2_32_SUITE):
         guest_executable = guest_root / "home" / "username" / suite.executable
         guest_executable.parent.mkdir(parents=True)
     else:
@@ -604,7 +616,7 @@ def run_suite(
 
 def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Build BoxedWine and run the Wine 11 NTDLL and kernel32 tests."
+        description="Build BoxedWine and run the Wine 11 NTDLL, kernel32, and ws2_32 tests."
     )
     parser.add_argument(
         "--group",
@@ -619,6 +631,13 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         choices=KERNEL32_TEST_GROUPS,
         help="run only this kernel32 test group; may be repeated",
+    )
+    parser.add_argument(
+        "--ws2-32-group",
+        dest="selected_ws2_32_groups",
+        action="append",
+        choices=WS2_32_TEST_GROUPS,
+        help="run only this ws2_32 test group; may be repeated",
     )
     parser.add_argument(
         "--timeout",
@@ -651,6 +670,7 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     has_selection = (
         arguments.selected_groups is not None
         or arguments.selected_kernel32_groups is not None
+        or arguments.selected_ws2_32_groups is not None
     )
     arguments.groups = tuple(
         arguments.selected_groups or (() if has_selection else TEST_GROUPS)
@@ -659,8 +679,13 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         arguments.selected_kernel32_groups
         or (() if has_selection else KERNEL32_TEST_GROUPS)
     )
+    arguments.ws2_32_groups = tuple(
+        arguments.selected_ws2_32_groups
+        or (() if has_selection else WS2_32_TEST_GROUPS)
+    )
     del arguments.selected_groups
     del arguments.selected_kernel32_groups
+    del arguments.selected_ws2_32_groups
     return arguments
 
 
@@ -731,6 +756,7 @@ def main(argv: list[str] | None = None) -> int:
             for suite, groups in (
                 (NTDLL_SUITE, arguments.groups),
                 (KERNEL32_SUITE, arguments.kernel32_groups),
+                (WS2_32_SUITE, arguments.ws2_32_groups),
             )
             if groups
         )
