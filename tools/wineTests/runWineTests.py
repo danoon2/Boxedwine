@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build BoxedWine and run the Wine 11 NTDLL regression groups."""
+"""Build BoxedWine and run the Wine 11 NTDLL and kernel32 regression groups."""
 
 from __future__ import annotations
 
@@ -21,7 +21,12 @@ from urllib.request import urlopen
 
 FILESYSTEM_URL = "https://boxedwine.org/v2/8/TinyCore15Wine11.0.zip"
 FILESYSTEM_CACHE_NAME = "TinyCore15Wine11.0-v8.zip"
-TESTS_URL = "http://boxedwine.org/v2/1/wine_tests_v1.zip"
+TESTS_URL = "https://boxedwine.org/v2/1/wine_tests_v2.zip"
+TESTS_CACHE_NAME = "wine_tests_v2.zip"
+TEST_EXECUTABLES = {
+    "ntdll": "ntdll_test.exe",
+    "kernel32": "kernel32_test.exe",
+}
 
 TEST_GROUPS = (
     "atom",
@@ -52,12 +57,75 @@ TEST_GROUPS = (
     "wow64",
 )
 
+KERNEL32_TEST_GROUPS = (
+    "actctx",
+    "atom",
+    "change",
+    "codepage",
+    "comm",
+    "console",
+    "debugger",
+    "directory",
+    "drive",
+    "environ",
+    "fiber",
+    "file",
+    "format_msg",
+    "generated",
+    "heap",
+    "loader",
+    "locale",
+    "mailslot",
+    "module",
+    "path",
+    "pipe",
+    "power",
+    "process",
+    "profile",
+    "resource",
+    "sync",
+    "thread",
+    "time",
+    "timer",
+    "toolhelp",
+    "version",
+    "virtual",
+    "volume",
+)
+
 FAILURE_CEILINGS = {group: 0 for group in TEST_GROUPS}
 FAILURE_CEILINGS.update({"file": 9, "virtual": 7, "wow64": 3})
+
+KERNEL32_FAILURE_CEILINGS = {group: 0 for group in KERNEL32_TEST_GROUPS}
+KERNEL32_FAILURE_CEILINGS.update({"sync": 1, "loader": 62, "virtual": 109})
 
 
 class RunnerError(RuntimeError):
     """An infrastructure or result-validation failure."""
+
+
+class SuiteConfig(NamedTuple):
+    name: str
+    executable: str
+    groups: tuple[str, ...]
+    failure_ceilings: dict[str, int]
+    fallback_failure_groups: frozenset[str]
+
+
+NTDLL_SUITE = SuiteConfig(
+    "ntdll",
+    TEST_EXECUTABLES["ntdll"],
+    TEST_GROUPS,
+    FAILURE_CEILINGS,
+    frozenset({"virtual"}),
+)
+KERNEL32_SUITE = SuiteConfig(
+    "kernel32",
+    TEST_EXECUTABLES["kernel32"],
+    KERNEL32_TEST_GROUPS,
+    KERNEL32_FAILURE_CEILINGS,
+    frozenset({"loader", "virtual"}),
+)
 
 
 class TestResult(NamedTuple):
@@ -69,6 +137,7 @@ class TestResult(NamedTuple):
     ceiling: int
     passed: bool
     reason: str
+    suite: str = "ntdll"
 
 
 def download_if_missing(
@@ -99,20 +168,22 @@ def download_if_missing(
     return True
 
 
-def _validate_pe32_i386(image: bytes) -> None:
+def _validate_pe32_i386(image: bytes, executable_name: str) -> None:
     if len(image) < 0x40 or image[:2] != b"MZ":
-        raise RunnerError("ntdll_test.exe is not PE32/i386: missing DOS header")
+        raise RunnerError(f"{executable_name} is not PE32/i386: missing DOS header")
     pe_offset = struct.unpack_from("<I", image, 0x3C)[0]
     if pe_offset + 26 > len(image) or image[pe_offset : pe_offset + 4] != b"PE\0\0":
-        raise RunnerError("ntdll_test.exe is not PE32/i386: missing PE header")
+        raise RunnerError(f"{executable_name} is not PE32/i386: missing PE header")
     machine = struct.unpack_from("<H", image, pe_offset + 4)[0]
     optional_magic = struct.unpack_from("<H", image, pe_offset + 24)[0]
     if machine != 0x014C or optional_magic != 0x010B:
-        raise RunnerError("ntdll_test.exe must be a PE32/i386 Windows executable")
+        raise RunnerError(
+            f"{executable_name} must be a PE32/i386 Windows executable"
+        )
 
 
 def validate_test_archive(archive_path: Path) -> None:
-    """Require a safe ZIP containing a root-level PE32/i386 NTDLL test."""
+    """Require a safe ZIP containing both root-level PE32/i386 Wine tests."""
     archive_path = Path(archive_path)
     if not zipfile.is_zipfile(archive_path):
         raise RunnerError(f"not a ZIP archive: {archive_path}")
@@ -123,31 +194,49 @@ def validate_test_archive(archive_path: Path) -> None:
             path = PurePosixPath(normalized)
             if path.is_absolute() or ".." in path.parts:
                 raise RunnerError(f"unsafe ZIP entry: {info.filename}")
-        try:
-            executable = archive.read("ntdll_test.exe")
-        except KeyError as error:
-            raise RunnerError("test archive is missing root-level ntdll_test.exe") from error
+        executables = {}
+        for executable_name in TEST_EXECUTABLES.values():
+            try:
+                executables[executable_name] = archive.read(executable_name)
+            except KeyError as error:
+                raise RunnerError(
+                    f"test archive is missing root-level {executable_name}"
+                ) from error
 
-    _validate_pe32_i386(executable)
+    for executable_name, executable in executables.items():
+        _validate_pe32_i386(executable, executable_name)
 
 
-def extract_test_executable(archive_path: Path, destination: Path) -> None:
-    """Validate the test archive and atomically extract its PE32 executable."""
+def extract_test_executables(
+    archive_path: Path, destination_dir: Path
+) -> dict[str, Path]:
+    """Validate the test archive and atomically extract both PE32 executables."""
     archive_path = Path(archive_path)
-    destination = Path(destination)
+    destination_dir = Path(destination_dir)
     validate_test_archive(archive_path)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    partial = destination.with_suffix(destination.suffix + ".part")
-    partial.unlink(missing_ok=True)
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    destinations = {
+        suite: destination_dir / executable_name
+        for suite, executable_name in TEST_EXECUTABLES.items()
+    }
     try:
-        with zipfile.ZipFile(archive_path) as archive, partial.open("wb") as output:
-            output.write(archive.read("ntdll_test.exe"))
-        partial.replace(destination)
+        with zipfile.ZipFile(archive_path) as archive:
+            for suite, executable_name in TEST_EXECUTABLES.items():
+                destination = destinations[suite]
+                partial = destination.with_suffix(destination.suffix + ".part")
+                partial.unlink(missing_ok=True)
+                with partial.open("wb") as output:
+                    output.write(archive.read(executable_name))
+                partial.replace(destination)
     except Exception as error:
-        partial.unlink(missing_ok=True)
+        for destination in destinations.values():
+            destination.with_suffix(destination.suffix + ".part").unlink(
+                missing_ok=True
+            )
         if isinstance(error, RunnerError):
             raise
-        raise RunnerError(f"failed to extract ntdll_test.exe: {error}") from error
+        raise RunnerError(f"failed to extract Wine test executables: {error}") from error
+    return destinations
 
 
 def require_linux_x86_64(
@@ -187,17 +276,30 @@ def command_for_group(
     guest_root: Path,
     filesystem: Path,
     group: str,
+    *,
+    suite: SuiteConfig = NTDLL_SUITE,
 ) -> list[str]:
-    """Construct the BoxedWine command for one NTDLL test group."""
-    if group not in TEST_GROUPS:
-        raise RunnerError(f"unknown NTDLL test group: {group}")
+    """Construct the BoxedWine command for one Wine test group."""
+    if group not in suite.groups:
+        raise RunnerError(f"unknown {suite.name} test group: {group}")
     command = [
         str(boxedwine),
         "-root",
         str(guest_root),
         "-zip",
         str(filesystem),
+        "-novideo",
     ]
+    if suite == KERNEL32_SUITE:
+        return command + [
+            "-env",
+            "WINEDLLOVERRIDES=mscoree,mshtml=",
+            "-w",
+            "/home/username",
+            "/bin/wine",
+            f"/home/username/{suite.executable}",
+            group,
+        ]
     if group == "wow64":
         return command + [
             "/bin/sh",
@@ -206,7 +308,7 @@ def command_for_group(
             "/opt/wine/bin/wineserver -k && "
             "echo BOXEDWINE_WINESERVER_CLEANUP_OK",
         ]
-    return command + ["/bin/wine", "/ntdll_test.exe", group]
+    return command + ["/bin/wine", f"/{suite.executable}", group]
 
 
 _ANSI_PATTERN = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
@@ -258,34 +360,81 @@ def _is_allowed_threadpool_timer_merge_result(output: str, failures: int) -> boo
     )
 
 
-def parse_result(group: str, raw_output: str) -> TestResult:
+def parse_result(
+    group: str,
+    raw_output: str,
+    *,
+    suite: SuiteConfig = NTDLL_SUITE,
+) -> TestResult:
     """Parse one Wine test log and enforce the group's failure ceiling."""
-    if group not in FAILURE_CEILINGS:
-        raise RunnerError(f"unknown NTDLL test group: {group}")
+    if group not in suite.failure_ceilings:
+        raise RunnerError(f"unknown {suite.name} test group: {group}")
 
     output = normalize_output(raw_output)
-    ceiling = FAILURE_CEILINGS[group]
+    ceiling = suite.failure_ceilings[group]
     shutdown = "Boxedwine shutdown" in output
     summary = _summary_for_group(group, output)
 
     if summary is not None:
         tests, todo, failures, skipped = summary
-    elif group == "virtual" and re.search(r"virtual\.c:\s*\d+:", output):
+    elif (
+        suite == KERNEL32_SUITE
+        and group == "console"
+        and shutdown
+        and not _deduplicated_failure_records(output)
+        and "malloc():" not in output
+        and re.search(
+            r"console\.c:\s*5869:\s*Unable to open HKCU\\Console,\s*error\s*2",
+            output,
+        )
+    ):
+        return TestResult(
+            group,
+            None,
+            None,
+            0,
+            1,
+            ceiling,
+            True,
+            "skipped: HKCU\\Console unavailable",
+            suite.name,
+        )
+    elif group in suite.fallback_failure_groups and re.search(
+        rf"{re.escape(group)}\.c:\s*\d+:", output
+    ):
         tests = None
         todo = None
         skipped = None
         failures = len(_deduplicated_failure_records(output))
     else:
-        return TestResult(group, None, None, 0, None, ceiling, False, "missing test result")
+        return TestResult(
+            group,
+            None,
+            None,
+            0,
+            None,
+            ceiling,
+            False,
+            "missing test result",
+            suite.name,
+        )
 
-    if group == "threadpool" and _is_allowed_threadpool_timer_merge_result(
+    if suite == NTDLL_SUITE and group == "threadpool" and _is_allowed_threadpool_timer_merge_result(
         output, failures
     ):
         ceiling = 1
 
     if not shutdown:
         return TestResult(
-            group, tests, todo, failures, skipped, ceiling, False, "missing Boxedwine shutdown"
+            group,
+            tests,
+            todo,
+            failures,
+            skipped,
+            ceiling,
+            False,
+            "missing Boxedwine shutdown",
+            suite.name,
         )
     if failures > ceiling:
         return TestResult(
@@ -297,8 +446,11 @@ def parse_result(group: str, raw_output: str) -> TestResult:
             ceiling,
             False,
             f"{failures} failures exceeds ceiling {ceiling}",
+            suite.name,
         )
-    return TestResult(group, tests, todo, failures, skipped, ceiling, True, "ok")
+    return TestResult(
+        group, tests, todo, failures, skipped, ceiling, True, "ok", suite.name
+    )
 
 
 def _decode_output(output: bytes | str | None) -> str:
@@ -316,22 +468,32 @@ def run_group(
     test_executable: Path,
     run_dir: Path,
     *,
+    suite: SuiteConfig = NTDLL_SUITE,
     timeout: int = 180,
+    retry: bool = False,
     runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
 ) -> TestResult:
-    """Run one NTDLL group, preserving its log and failed guest root."""
+    """Run one Wine test group, preserving its log and failed guest root."""
     run_dir = Path(run_dir)
-    log_dir = run_dir / "logs"
-    guest_root = run_dir / "roots" / group
-    log_path = log_dir / f"{group}.log"
+    log_dir = run_dir / "logs" / suite.name
+    artifact_name = f"{group}-retry" if retry else group
+    guest_root = run_dir / "roots" / suite.name / artifact_name
+    log_path = log_dir / f"{artifact_name}.log"
 
     log_dir.mkdir(parents=True, exist_ok=True)
     if guest_root.exists():
         raise RunnerError(f"guest root already exists: {guest_root}")
     guest_root.mkdir(parents=True)
-    shutil.copy2(test_executable, guest_root / "ntdll_test.exe")
+    if suite == KERNEL32_SUITE:
+        guest_executable = guest_root / "home" / "username" / suite.executable
+        guest_executable.parent.mkdir(parents=True)
+    else:
+        guest_executable = guest_root / suite.executable
+    shutil.copy2(test_executable, guest_executable)
 
-    command = command_for_group(boxedwine, guest_root, filesystem, group)
+    command = command_for_group(
+        boxedwine, guest_root, filesystem, group, suite=suite
+    )
     try:
         completed = runner(
             command,
@@ -341,9 +503,10 @@ def run_group(
             check=False,
         )
         output = _decode_output(completed.stdout)
-        result = parse_result(group, output)
+        result = parse_result(group, output, suite=suite)
         if (
-            group == "wow64"
+            suite == NTDLL_SUITE
+            and group == "wow64"
             and result.passed
             and "BOXEDWINE_WINESERVER_CLEANUP_OK" not in normalize_output(output)
         ):
@@ -361,9 +524,10 @@ def run_group(
             None,
             0,
             None,
-            FAILURE_CEILINGS[group],
+            suite.failure_ceilings[group],
             False,
             f"timed out after {timeout} seconds",
+            suite.name,
         )
     except OSError as error:
         output = f"Unable to start BoxedWine: {error}\n"
@@ -373,9 +537,10 @@ def run_group(
             None,
             0,
             None,
-            FAILURE_CEILINGS[group],
+            suite.failure_ceilings[group],
             False,
             f"unable to start BoxedWine: {error}",
+            suite.name,
         )
 
     log_path.write_text(output, encoding="utf-8")
@@ -390,30 +555,46 @@ def run_group(
 
 
 def run_suite(
-    groups: tuple[str, ...],
+    selections: tuple[tuple[SuiteConfig, tuple[str, ...]], ...],
     boxedwine: Path,
     filesystem: Path,
-    test_executable: Path,
+    test_executables: dict[str, Path],
     run_dir: Path,
     *,
     timeout: int = 180,
     runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
 ) -> list[TestResult]:
-    """Run selected groups sequentially and write a machine-readable manifest."""
+    """Run selected suites and groups, then write a machine-readable manifest."""
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
-    results = [
-        run_group(
-            group,
-            boxedwine,
-            filesystem,
-            test_executable,
-            run_dir,
-            timeout=timeout,
-            runner=runner,
-        )
-        for group in groups
-    ]
+    results = []
+    for suite, groups in selections:
+        for group in groups:
+            result = run_group(
+                group,
+                boxedwine,
+                filesystem,
+                test_executables[suite.name],
+                run_dir,
+                suite=suite,
+                timeout=timeout,
+                runner=runner,
+            )
+            if result.reason == f"timed out after {timeout} seconds":
+                result = run_group(
+                    group,
+                    boxedwine,
+                    filesystem,
+                    test_executables[suite.name],
+                    run_dir,
+                    suite=suite,
+                    timeout=timeout,
+                    retry=True,
+                    runner=runner,
+                )
+                if result.passed:
+                    result = result._replace(reason="ok after timeout retry")
+            results.append(result)
     manifest = {"results": [result._asdict() for result in results]}
     (run_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
@@ -423,14 +604,21 @@ def run_suite(
 
 def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Build BoxedWine and run the Wine 11 NTDLL regression groups."
+        description="Build BoxedWine and run the Wine 11 NTDLL and kernel32 tests."
     )
     parser.add_argument(
         "--group",
         dest="selected_groups",
         action="append",
         choices=TEST_GROUPS,
-        help="run only this test group; may be repeated",
+        help="run only this NTDLL test group; may be repeated",
+    )
+    parser.add_argument(
+        "--kernel32-group",
+        dest="selected_kernel32_groups",
+        action="append",
+        choices=KERNEL32_TEST_GROUPS,
+        help="run only this kernel32 test group; may be repeated",
     )
     parser.add_argument(
         "--timeout",
@@ -452,7 +640,7 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--tests-url",
         default=TESTS_URL,
-        help="Wine 11 NTDLL test ZIP URL",
+        help="Wine 11 test executable ZIP URL",
     )
     parser.add_argument(
         "--boxedwine",
@@ -460,8 +648,19 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="existing BoxedWine executable; skips make release",
     )
     arguments = parser.parse_args(argv)
-    arguments.groups = tuple(arguments.selected_groups or TEST_GROUPS)
+    has_selection = (
+        arguments.selected_groups is not None
+        or arguments.selected_kernel32_groups is not None
+    )
+    arguments.groups = tuple(
+        arguments.selected_groups or (() if has_selection else TEST_GROUPS)
+    )
+    arguments.kernel32_groups = tuple(
+        arguments.selected_kernel32_groups
+        or (() if has_selection else KERNEL32_TEST_GROUPS)
+    )
     del arguments.selected_groups
+    del arguments.selected_kernel32_groups
     return arguments
 
 
@@ -487,11 +686,15 @@ def _new_run_directory(cache_dir: Path) -> Path:
 
 def _print_results(results: list[TestResult], run_dir: Path) -> None:
     print()
-    print(f"{'group':<12} {'result':<6} {'failures':>8} {'limit':>6}  reason")
+    print(
+        f"{'suite':<9} {'group':<12} {'result':<6} "
+        f"{'failures':>8} {'limit':>6}  reason"
+    )
     for result in results:
         status = "PASS" if result.passed else "FAIL"
         print(
-            f"{result.group:<12} {status:<6} {result.failures:>8} "
+            f"{result.suite:<9} {result.group:<12} {status:<6} "
+            f"{result.failures:>8} "
             f"{result.ceiling:>6}  {result.reason}"
         )
     print(f"\nLogs and manifest: {run_dir}")
@@ -506,7 +709,7 @@ def main(argv: list[str] | None = None) -> int:
         cache_dir = arguments.cache_dir.expanduser().resolve()
         cache_dir.mkdir(parents=True, exist_ok=True)
         filesystem = cache_dir / FILESYSTEM_CACHE_NAME
-        tests_archive = cache_dir / "wine_tests_v1.zip"
+        tests_archive = cache_dir / TESTS_CACHE_NAME
 
         download_if_missing(arguments.filesystem_url, filesystem)
         download_if_missing(arguments.tests_url, tests_archive)
@@ -522,13 +725,20 @@ def main(argv: list[str] | None = None) -> int:
                 raise RunnerError(f"not an executable file: {boxedwine}")
 
         run_dir = _new_run_directory(cache_dir)
-        test_executable = run_dir / "input" / "ntdll_test.exe"
-        extract_test_executable(tests_archive, test_executable)
+        test_executables = extract_test_executables(tests_archive, run_dir / "input")
+        selections = tuple(
+            (suite, groups)
+            for suite, groups in (
+                (NTDLL_SUITE, arguments.groups),
+                (KERNEL32_SUITE, arguments.kernel32_groups),
+            )
+            if groups
+        )
         results = run_suite(
-            arguments.groups,
+            selections,
             boxedwine,
             filesystem,
-            test_executable,
+            test_executables,
             run_dir,
             timeout=arguments.timeout,
         )

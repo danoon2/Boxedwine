@@ -961,6 +961,137 @@ void testSignalHandlerSegmentsUseGdtSelectors() {
     }
 }
 
+void testSignalAlternateStackDeliverySemantics() {
+    constexpr U32 ALT_STACK_BASE = 0x70000000;
+    constexpr U32 ALT_STACK_SIZE = 0x10000;
+    constexpr U32 ALT_STACK_TOP = ALT_STACK_BASE + ALT_STACK_SIZE;
+    constexpr U32 SIGNAL_CONTEXT_SIZE = 768;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, ALT_STACK_BASE, ALT_STACK_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    thread->alternateStack = ALT_STACK_BASE;
+    thread->alternateStackSize = ALT_STACK_SIZE;
+    cpu->reg[4].u32 = TEST_STACK_ADDRESS;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+    process->sigActions[K_SIGUSR1].flags = K_SA_ONSTACK;
+
+    thread->runSignal(K_SIGUSR1, 0, 0);
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (context != ALT_STACK_TOP - SIGNAL_CONTEXT_SIZE) {
+        testFail("first SA_ONSTACK signal must start at the alternate stack top");
+    }
+    if (memory->readd(context + 0x8) != ALT_STACK_BASE ||
+        memory->readd(context + 0xC) != 0 ||
+        memory->readd(context + 0x10) != ALT_STACK_SIZE) {
+        testFail("first SA_ONSTACK signal must save the enabled, inactive alternate stack");
+    }
+
+    U32 nestedStack = ALT_STACK_BASE + ALT_STACK_SIZE / 2;
+    cpu->reg[4].u32 = nestedStack;
+    thread->runSignal(K_SIGUSR1, 0, 0);
+
+    context = memory->readd(cpu->reg[4].u32 + 12);
+    if (context != nestedStack - SIGNAL_CONTEXT_SIZE) {
+        testFail("nested SA_ONSTACK signal must continue below the current alternate stack pointer");
+    }
+    if (memory->readd(context + 0x8) != ALT_STACK_BASE ||
+        memory->readd(context + 0xC) != K_SS_ONSTACK ||
+        memory->readd(context + 0x10) != ALT_STACK_SIZE) {
+        testFail("nested SA_ONSTACK signal must save the active alternate stack");
+    }
+}
+
+void testSignalOnStackWithoutConfiguredAlternateStack() {
+    constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
+    constexpr U32 SIGNAL_CONTEXT_SIZE = 768;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, SIGNAL_STACK_TOP - K_PAGE_SIZE, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    cpu->reg[4].u32 = SIGNAL_STACK_TOP;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+    process->sigActions[K_SIGUSR1].flags = K_SA_ONSTACK;
+
+    thread->runSignal(K_SIGUSR1, 0, 0);
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (context != SIGNAL_STACK_TOP - SIGNAL_CONTEXT_SIZE) {
+        testFail("SA_ONSTACK without a configured alternate stack must use the current stack");
+    }
+    if (memory->readd(context + 0x8) != 0 ||
+        memory->readd(context + 0xC) != K_SS_DISABLE ||
+        memory->readd(context + 0x10) != 0) {
+        testFail("SA_ONSTACK without a configured alternate stack must save SS_DISABLE");
+    }
+}
+
+void testSigaltstackReportsActualStackState() {
+    constexpr U32 ALT_STACK_BASE = 0x70000000;
+    constexpr U32 ALT_STACK_SIZE = 0x10000;
+    constexpr U32 STRUCT_PAGE = 0x60000000;
+    constexpr U32 NEW_STACK = STRUCT_PAGE;
+    constexpr U32 OLD_STACK = STRUCT_PAGE + 16;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, ALT_STACK_BASE, ALT_STACK_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    memory->mmap(thread, STRUCT_PAGE, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    thread->alternateStack = ALT_STACK_BASE;
+    thread->alternateStackSize = ALT_STACK_SIZE;
+    cpu->seg[SS].address = 0;
+    cpu->stackMask = 0xffffffff;
+
+    cpu->reg[4].u32 = TEST_STACK_ADDRESS;
+    thread->inSignal = 1;
+    if (thread->signalstack(0, OLD_STACK) != 0 ||
+        memory->readd(OLD_STACK) != ALT_STACK_BASE ||
+        memory->readd(OLD_STACK + 4) != 0 ||
+        memory->readd(OLD_STACK + 8) != ALT_STACK_SIZE) {
+        testFail("sigaltstack must report an enabled stack as inactive while ESP is outside it");
+    }
+
+    memory->writed(NEW_STACK, ALT_STACK_BASE);
+    memory->writed(NEW_STACK + 4, 0);
+    memory->writed(NEW_STACK + 8, ALT_STACK_SIZE);
+    if (thread->signalstack(NEW_STACK, 0) != 0) {
+        testFail("sigaltstack must allow updates from a signal handler running on the normal stack");
+    }
+
+    cpu->reg[4].u32 = ALT_STACK_BASE + ALT_STACK_SIZE / 2;
+    thread->inSignal = 0;
+    if (thread->signalstack(0, OLD_STACK) != 0 || memory->readd(OLD_STACK + 4) != K_SS_ONSTACK) {
+        testFail("sigaltstack must report SS_ONSTACK whenever ESP is inside the alternate stack");
+    }
+
+    memory->writed(NEW_STACK + 4, K_SS_DISABLE);
+    if (thread->signalstack(NEW_STACK, 0) != (U32)-K_EPERM) {
+        testFail("sigaltstack must reject changes while ESP is inside the alternate stack");
+    }
+}
+
 void testSignalReturnPreservesLoadedInvalidTlsSelector() {
     constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
     constexpr U32 SIGNAL_HANDLER = 0x12345000;

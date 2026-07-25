@@ -87,6 +87,7 @@ void testFinalMappedRetirementIoErrorIsRetryable();
 void testFinalMappedRetirementShortWriteIsRetryable();
 void testFinalMappedRetirementSerializesNewRetain();
 void testMmapRejectsFileOffsetOverflowBeforeReplacement();
+void testMlockValidatesMappedAccessibleRange();
 void testMsyncRejectsUnmappedFileRange();
 void testMsyncFlushesRangeAcrossFixedFileOverlay();
 void testMsyncValidatesArgumentsAndAcceptsAnonymousRanges();
@@ -569,6 +570,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testDataHardwareBreakpointRaisesTrap, "Test data hardware breakpoint raises trap", TEST_ENTRY_SERIAL},
     {testDefaultUserSegmentsUseGdtSelectors, "Test default user segments use GDT selectors", TEST_ENTRY_SERIAL},
     {testSignalHandlerSegmentsUseGdtSelectors, "Test signal handler segments use GDT selectors", TEST_ENTRY_SERIAL},
+    {testSignalAlternateStackDeliverySemantics, "Test alternate signal stack delivery semantics", TEST_ENTRY_SERIAL},
+    {testSignalOnStackWithoutConfiguredAlternateStack, "Test SA_ONSTACK without an alternate stack", TEST_ENTRY_SERIAL},
+    {testSigaltstackReportsActualStackState, "Test sigaltstack reports actual stack state", TEST_ENTRY_SERIAL},
     {testSignalReturnPreservesLoadedInvalidTlsSelector, "Test signal return preserves loaded invalid TLS selector", TEST_ENTRY_SERIAL},
     {testSignalReturnDiscardsHandlerLazyFlags, "Test signal return discards handler lazy flags", TEST_ENTRY_SERIAL},
     {testSignalHandlerClearsTraceFlagUntilReturn, "Test signal handler clears trace flag until return", TEST_ENTRY_SERIAL},
@@ -874,6 +878,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testFinalMappedRetirementShortWriteIsRetryable, "Test final mapped retirement short write is retryable", TEST_ENTRY_SERIAL},
     {testFinalMappedRetirementSerializesNewRetain, "Test final mapped retirement serializes a new retain", TEST_ENTRY_SERIAL},
     {testMmapRejectsFileOffsetOverflowBeforeReplacement, "Test mmap rejects file offset overflow before replacement", TEST_ENTRY_SERIAL},
+    {testMlockValidatesMappedAccessibleRange, "Test mlock validates mapped accessible ranges", TEST_ENTRY_SERIAL},
     {testMsyncRejectsUnmappedFileRange, "Test msync rejects unmapped file range", TEST_ENTRY_SERIAL},
     {testMsyncFlushesRangeAcrossFixedFileOverlay, "Test msync flushes range across fixed file overlay", TEST_ENTRY_SERIAL},
     {testMsyncValidatesArgumentsAndAcceptsAnonymousRanges, "Test msync validates arguments and accepts anonymous ranges", TEST_ENTRY_SERIAL},

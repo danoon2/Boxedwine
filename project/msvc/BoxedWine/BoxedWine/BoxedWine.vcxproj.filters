@@ -388,6 +388,9 @@
     <ClCompile Include="..\..\..\..\source\test\kernel\testFutex.cpp">
       <Filter>source\test</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\kernel\testMemory.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\test\kernel\testUnixSocketPoll.cpp">
       <Filter>source\test</Filter>
     </ClCompile>

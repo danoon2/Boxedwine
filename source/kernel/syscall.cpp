@@ -1162,7 +1162,14 @@ static U32 syscall_mlock(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_sched_getparam(CPU* cpu, U32 eipCount) {    
+static U32 syscall_munlock(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "munlock: address=0x%X len=%d", ARG1, ARG2);
+    U32 result = cpu->memory->munlock(ARG1, ARG2);
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_sched_getparam(CPU* cpu, U32 eipCount) {
     U32 result = -K_EPERM;
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_getparam: pid=%d params=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, result, result);
     return result;
@@ -2377,7 +2384,7 @@ static const SyscallFunc syscallFunc[] = {
     syscall_fdatasync,  // 148 __NR_fdatasync
     nullptr,                  // 149
     syscall_mlock,      // 150 __NR_mlock
-    nullptr,                  // 151
+    syscall_munlock,    // 151 __NR_munlock
     nullptr,                  // 152
     nullptr,                  // 153
     nullptr,                  // 154

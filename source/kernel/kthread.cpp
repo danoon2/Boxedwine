@@ -1225,19 +1225,14 @@ struct FpuState {
     U32   Cr0NpxState;
 };
 void common_fxsave(CPU* cpu, U32 address);
-void writeToContext(KThread* thread, U32 stack, U32 context, bool altStack, U32 trapNo, U32 errorNo) {	
+void writeToContext(KThread* thread, U32 stack, U32 context, bool wasOnAlternateStack, U32 trapNo, U32 errorNo) {
     CPU* cpu = thread->cpu;
     KMemory* memory = thread->memory;
 
-    if (altStack) {
-        memory->writed(context+0x8, thread->alternateStack);
-        memory->writed(context+0xC, K_SS_ONSTACK);
-        memory->writed(context+0x10, thread->alternateStackSize);
-    } else {
-        memory->writed(context+0x8, thread->alternateStack);
-        memory->writed(context+0xC, K_SS_DISABLE);
-        memory->writed(context+0x10, 0);
-    }
+    bool alternateStackEnabled = thread->alternateStack && thread->alternateStackSize;
+    memory->writed(context+0x8, thread->alternateStack);
+    memory->writed(context+0xC, alternateStackEnabled ? (wasOnAlternateStack ? K_SS_ONSTACK : 0) : K_SS_DISABLE);
+    memory->writed(context+0x10, alternateStackEnabled ? thread->alternateStackSize : 0);
     memory->writed(context+0x14, cpu->getSegValue(GS));
     memory->writed(context+0x18, cpu->getSegValue(FS));
     memory->writed(context+0x1C, cpu->getSegValue(ES));
@@ -1461,8 +1456,11 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         U32 context = 0;
         U32 address = 0;
         U32 stack = this->cpu->reg[4].u32;
+        U32 stackAddress = this->cpu->seg[SS].address + (stack & this->cpu->stackMask);
         U32 interrupted = 0;
-        bool altStack = (action->flags & K_SA_ONSTACK) != 0;
+        bool wasOnAlternateStack = this->isOnAlternateSignalStack(stackAddress);
+        bool useAlternateStack = (action->flags & K_SA_ONSTACK) && this->alternateStack &&
+            this->alternateStackSize && !wasOnAlternateStack;
         ChangeThread c(this);
 
         cpu->fillFlags();        
@@ -1489,12 +1487,12 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         unscheduleThread(this);
         scheduleThread(this);
 #endif
-		if (altStack) {
+		if (useAlternateStack) {
 			context = this->alternateStack + this->alternateStackSize - CONTEXT_SIZE;
         } else {
-	        context = this->cpu->seg[SS].address + (ESP & this->cpu->stackMask) - CONTEXT_SIZE;
+	        context = stackAddress - CONTEXT_SIZE;
         }
-        writeToContext(this, stack, context, altStack, trapNo, errorNo);
+        writeToContext(this, stack, context, wasOnAlternateStack, trapNo, errorNo);
         this->cpu->flags &= ~(DF | TF);
 
         this->cpu->stackMask = 0xFFFFFFFF;
@@ -1849,20 +1847,29 @@ U32 KThread::sigsuspend(U32 mask, U32 sigsetSize) {
 #endif
 }
 
+bool KThread::isOnAlternateSignalStack(U32 stackAddress) const {
+    return this->alternateStack && this->alternateStackSize && stackAddress > this->alternateStack &&
+        (U64)stackAddress - this->alternateStack <= this->alternateStackSize;
+}
+
 U32 KThread::signalstack(U32 ss, U32 oss) {
+    U32 stackAddress = this->cpu->seg[SS].address + (this->cpu->reg[4].u32 & this->cpu->stackMask);
+    bool onAlternateStack = this->isOnAlternateSignalStack(stackAddress);
+
     if (oss!=0) {
         if (!this->memory->canWrite(oss, 12)) {
             return -K_EFAULT;
         }
         memory->writed(oss, this->alternateStack);
-        memory->writed(oss + 4, (this->alternateStack && this->inSignal) ? K_SS_ONSTACK : K_SS_DISABLE);
-        memory->writed(oss + 8, this->alternateStackSize);
+        memory->writed(oss + 4, this->alternateStack && this->alternateStackSize ?
+            (onAlternateStack ? K_SS_ONSTACK : 0) : K_SS_DISABLE);
+        memory->writed(oss + 8, this->alternateStack && this->alternateStackSize ? this->alternateStackSize : 0);
     }
     if (ss!=0) {
         if (!this->memory->canRead(ss, 12)) {
             return -K_EFAULT;
         }
-        if (this->alternateStack && this->inSignal) {
+        if (onAlternateStack) {
             return -K_EPERM;
         }
         U32 flags = memory->readd(ss + 4);

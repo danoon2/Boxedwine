@@ -546,6 +546,45 @@ KMemory* KMemory::create(KProcess* process) {
 }
 
 U32 KMemory::mlock(U32 addr, U32 len) {
+    if (!len) {
+        return 0;
+    }
+
+    U64 end = (U64)addr + len;
+    if (end > 0x100000000ULL) {
+        return -K_ENOMEM;
+    }
+
+    U32 firstPage = addr >> K_PAGE_SHIFT;
+    U32 lastPage = (U32)((end - 1) >> K_PAGE_SHIFT);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    for (U32 page = firstPage; page <= lastPage; ++page) {
+        U32 flags = getPageFlags(page);
+        if (!(flags & PAGE_MAPPED) || !(flags & (PAGE_READ | PAGE_WRITE | PAGE_EXEC))) {
+            return -K_ENOMEM;
+        }
+    }
+    return 0;
+}
+
+U32 KMemory::munlock(U32 addr, U32 len) {
+    if (!len) {
+        return 0;
+    }
+
+    U64 end = (U64)addr + len;
+    if (end > 0x100000000ULL) {
+        return -K_ENOMEM;
+    }
+
+    U32 firstPage = addr >> K_PAGE_SHIFT;
+    U32 lastPage = (U32)((end - 1) >> K_PAGE_SHIFT);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    for (U32 page = firstPage; page <= lastPage; ++page) {
+        if (!isPageMapped(page)) {
+            return -K_ENOMEM;
+        }
+    }
     return 0;
 }
 

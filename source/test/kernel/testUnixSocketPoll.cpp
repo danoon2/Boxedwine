@@ -11,6 +11,8 @@
 
 #ifdef __TEST
 
+#include "../../util/ring_buffer.h"
+
 #define private public
 #include "ksocket.h"
 #include "kunixsocket.h"
