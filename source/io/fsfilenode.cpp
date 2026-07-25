@@ -443,7 +443,13 @@ U32 FsFileNode::getMode() {
             result |= K__S_IXGRP | K__S_IXOTH;
         }
     }
-    if (KThread::currentThread()->process->userId == 0 || this->path.startsWith("/tmp") || this->path.startsWith("/var") || this->path.startsWith("/home")) {
+    bool isAutomationFilesPath = this->path == "/files" ||
+        this->path.startsWith("/files/");
+    if (KThread::currentThread()->process->userId == 0 ||
+        this->path.startsWith("/tmp") ||
+        this->path.startsWith("/var") ||
+        this->path.startsWith("/home") ||
+        isAutomationFilesPath) {
         result |= K__S_IWRITE;
         // wine server needs to be private, but winetricks check "-w" in the script on /tmp which needs these 2
         if (!this->path.startsWith("/tmp/.wine")) {

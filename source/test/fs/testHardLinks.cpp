@@ -5881,6 +5881,34 @@ void testLinuxPathResolutionSemantics() {
         }
     }
 
+    expectZero("create automation output directory",
+        Fs::makeLocalDirs(B("/files/cb_ranking")));
+    expectZero("create similarly named control directory",
+        Fs::makeLocalDirs(B("/files2/cb_ranking")));
+
+    U32 originalUserId = process->userId;
+    U32 originalEffectiveUserId = process->effectiveUserId;
+    process->userId = 1000;
+    process->effectiveUserId = 1000;
+    U32 automationFd = process->open(
+        B("/files/cb_ranking/result.txt"), K_O_CREAT | K_O_RDWR, 0666);
+    U32 prefixControlFd = process->open(
+        B("/files2/cb_ranking/result.txt"), K_O_CREAT | K_O_RDWR, 0666);
+    process->userId = originalUserId;
+    process->effectiveUserId = originalEffectiveUserId;
+
+    if ((S32)automationFd < 0) {
+        testFail("create result in /files as non-root failed, got %d (0x%X)",
+            (S32)automationFd, automationFd);
+    } else {
+        process->close(automationFd);
+    }
+    expectU32("similarly named path remains read-only",
+        prefixControlFd, (U32)-K_EACCES);
+    if ((S32)prefixControlFd >= 0) {
+        process->close(prefixControlFd);
+    }
+
     expectZero("stat symlink dot-dot", process->stat64(B("/tmp/dir-link/.."), STAT_A));
     expectZero("stat symlink target parent", process->stat64(B("/tmp/real"), STAT_B));
     expectU32("dot-dot is evaluated after following symlink", stat64Inode(memory, STAT_A), stat64Inode(memory, STAT_B));
