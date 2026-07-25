@@ -156,6 +156,7 @@ void testUnixSocketPendingConnectionsOnlyReadableForListeners();
 void testSoftRingBufferConcurrentWritersPreserveData();
 void testPollRegistrationCanSignalParentCondition();
 void testNativeSocketSetOobInlineCanBeReadBack();
+void testNativeSocketBindUnavailableAddressReturnsEaddrnotavail();
 void testNativeSocketRecvmsgReceivesOobData();
 void testNativeDatagramSocketPollDoesNotReportHangup();
 void testNativeDatagramRecvmsgPeekScattersOnce();
@@ -973,6 +974,8 @@ const TestEntry TEST_ENTRIES[] = {
         "Test native datagram recvmsg reports truncation", TEST_ENTRY_SERIAL},
     {testNativeStreamRecvmsgZeroIovDoesNotConsumeData,
         "Test native stream zero-iov recvmsg does not consume data", TEST_ENTRY_SERIAL},
+    {testNativeSocketBindUnavailableAddressReturnsEaddrnotavail,
+        "Test native socket bind unavailable address returns EADDRNOTAVAIL", TEST_ENTRY_SERIAL},
 };
 
 } // namespace

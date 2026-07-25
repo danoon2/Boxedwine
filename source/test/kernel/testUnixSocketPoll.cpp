@@ -287,6 +287,33 @@ void testNativeSocketSetOobInlineCanBeReadBack() {
 #endif
 }
 
+void testNativeSocketBindUnavailableAddressReturnsEaddrnotavail() {
+#ifndef __EMSCRIPTEN__
+    TestContext& context = testContext();
+    KMemory* memory = context.memory;
+    constexpr U32 ADDRESS = TEST_HEAP_ADDRESS + 0xa20;
+    U32 socket = ksocket(K_AF_INET, K_SOCK_STREAM, K_IPPROTO_TCP);
+
+    if ((S32)socket < 0) {
+        testFail("native socket creation for unavailable-address bind failed with %d (0x%X)", (S32)socket, socket);
+        return;
+    }
+
+    memory->memset(ADDRESS, 0, 16);
+    memory->writew(ADDRESS, K_AF_INET);
+    memory->writeb(ADDRESS + 4, 192);
+    memory->writeb(ADDRESS + 5, 0);
+    memory->writeb(ADDRESS + 6, 2);
+
+    U32 bindResult = kbind(context.thread, socket, ADDRESS, 16);
+    if (bindResult != (U32)-K_EADDRNOTAVAIL) {
+        testFail("native bind to unavailable address expected EADDRNOTAVAIL, got %d (0x%X)", (S32)bindResult,
+            bindResult);
+    }
+    context.process->close(socket);
+#endif
+}
+
 // Native non-MT poll can yield from a timed wait, so poll zero-time readiness in a bounded host-side loop.
 #ifndef __EMSCRIPTEN__
 static bool waitForNativeSocketRead(TestContext& context, U32 socket, const char* description) {

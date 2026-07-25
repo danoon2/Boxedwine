@@ -431,6 +431,10 @@ S32 translateNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, in
         result = -K_EHOSTUNREACH;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EHOSTUNREACH", result);
     }
+    else if (error == WSAEADDRNOTAVAIL) {
+        result = -K_EADDRNOTAVAIL;
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EADDRNOTAVAIL", result);
+    }
     else if (error == WSAECONNREFUSED) {
         result = -K_ECONNREFUSED;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ECONNREFUSED", result);
@@ -472,6 +476,10 @@ S32 translateNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, in
     else if (error == EHOSTUNREACH) {
         result = -K_EHOSTUNREACH;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EHOSTUNREACH", error);
+    }
+    else if (error == EADDRNOTAVAIL) {
+        result = -K_EADDRNOTAVAIL;
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EADDRNOTAVAIL", error);
     }
     else if (error == EISCONN) {
         result = -K_EISCONN;
