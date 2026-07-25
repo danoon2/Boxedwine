@@ -1,9 +1,9 @@
-# Wine 11 NTDLL, kernel32, and ws2_32 tests
+# Wine 11 NTDLL, kernel32, ws2_32, and advapi32 tests
 
 `runWineTests.py` builds the 64-bit Linux BoxedWine release and runs the
-32-bit Wine 11 `ntdll_test.exe`, `kernel32_test.exe`, and `ws2_32_test.exe`
-groups. It exits successfully only when every selected group completes within
-its suite-specific failure ceiling.
+32-bit Wine 11 `ntdll_test.exe`, `kernel32_test.exe`, `ws2_32_test.exe`, and
+`advapi32_test.exe` groups. It exits successfully only when every selected
+group completes within its suite-specific failure ceiling.
 
 Every generated BoxedWine command uses `-novideo` to prevent host test windows
 from appearing during headless execution.
@@ -27,7 +27,7 @@ python3 tools/wineTests/runWineTests.py
 
 The normal command downloads its inputs when they are absent, runs
 `make release` in `project/linux`, and executes all 26 NTDLL groups followed
-by all 33 kernel32 groups and the ws2_32 `afd` group.
+by all 33 kernel32 groups, the ws2_32 `afd` group, and all 12 advapi32 groups.
 
 ## Inputs and cache
 
@@ -36,7 +36,7 @@ The versioned inputs are:
 - BoxedWine Wine 11 filesystem:
   `https://boxedwine.org/v2/8/TinyCore15Wine11.0.zip`
 - Wine 11 tests:
-  `https://boxedwine.org/v2/1/wine_tests_v3.zip`
+  `https://boxedwine.org/v2/1/wine_tests_v4.zip`
 
 They are cached in
 `${XDG_CACHE_HOME:-$HOME/.cache}/boxedwine/wineTests`. A nonempty cached file is
@@ -50,9 +50,9 @@ Each invocation creates a timestamped directory below `runs/`. It contains:
   reason.
 - `roots/<suite>/<group>/`: retained guest state for a failed or timed-out
   group.
-- `input/ntdll_test.exe`, `input/kernel32_test.exe`, and
-  `input/ws2_32_test.exe`: the validated PE32/i386 tests extracted for that
-  run.
+- `input/ntdll_test.exe`, `input/kernel32_test.exe`,
+  `input/ws2_32_test.exe`, and `input/advapi32_test.exe`: the validated
+  PE32/i386 tests extracted for that run.
 
 Guest roots for successful groups are removed automatically.
 
@@ -78,7 +78,15 @@ Run the ws2_32 AFD group on its own:
 python3 tools/wineTests/runWineTests.py --ws2-32-group afd
 ```
 
-When any selector is present, only explicitly selected groups run. The three
+Run one or more advapi32 groups by repeating `--advapi32-group`:
+
+```bash
+python3 tools/wineTests/runWineTests.py \
+    --advapi32-group registry \
+    --advapi32-group service
+```
+
+When any selector is present, only explicitly selected groups run. The four
 selectors may be combined. With no selectors, all supported suites run.
 
 Use an existing Linux BoxedWine executable and skip the build:
@@ -158,39 +166,52 @@ supporting IPv6 sockets. IPv4 AFD behavior is still checked, and a twentieth
 failure fails the run. The ws2_32 suite also disables Mono and Gecko installer
 dialogs and runs its executable from `/home/username`.
 
+### advapi32
+
+| advapi32 group | Maximum failures |
+| --- | ---: |
+| Every group | 0 |
+
+The supported groups are `cred`, `crypt`, `crypt_lmhash`, `crypt_md4`,
+`crypt_md5`, `crypt_sha`, `eventlog`, `lsa`, `perf`, `registry`, `security`,
+and `service`. All 12 complete with zero failures under the current BoxedWine
+Wine 11 filesystem. Advapi32 also disables Mono and Gecko installer dialogs
+and runs its executable from `/home/username`.
+
 ## Test archive
 
 See [BUILD_TESTS.md](BUILD_TESTS.md) for the reusable Wine 11 test build
 process and the verified commands that produce all supported PE32/i386
 executables.
 
-`wine_tests_v3.zip` is a flat archive containing:
+`wine_tests_v4.zip` is a flat archive containing:
 
 - `ntdll_test.exe`: Wine 11 PE32/i386 test executable.
 - `kernel32_test.exe`: Wine 11 PE32/i386 test executable.
 - `ws2_32_test.exe`: Wine 11 PE32/i386 test executable.
+- `advapi32_test.exe`: Wine 11 PE32/i386 test executable.
 - `COPYING.LIB`: Wine's LGPL license.
-- `SHA256SUMS`: hashes for all four files above.
+- `SHA256SUMS`: hashes for all five payload files above.
 
-The prepared upload artifact is `tools/wineTests/wine_tests_v3.zip`. Its
+The prepared upload artifact is `tools/wineTests/wine_tests_v4.zip`. Its
 SHA-256 is:
 
 ```text
-63a720718725356ef1b4955529ad597bbac9201e11ac5f07e9fb7859268154ad
+a1f0fb582c432755bcf53be4634f711e2e08e0329587cf86bc6940bfbe9af26d
 ```
 
 Upload that file without repacking it to:
 
 ```text
-https://boxedwine.org/v2/1/wine_tests_v3.zip
+https://boxedwine.org/v2/1/wine_tests_v4.zip
 ```
 
 After uploading, verify the public file before relying on the default runner:
 
 ```bash
-curl -fL https://boxedwine.org/v2/1/wine_tests_v3.zip -o /tmp/wine_tests_v3.zip
-sha256sum /tmp/wine_tests_v3.zip
-unzip -t /tmp/wine_tests_v3.zip
+curl -fL https://boxedwine.org/v2/1/wine_tests_v4.zip -o /tmp/wine_tests_v4.zip
+sha256sum /tmp/wine_tests_v4.zip
+unzip -t /tmp/wine_tests_v4.zip
 ```
 
 ## Development checks
@@ -201,7 +222,7 @@ artifacts or build BoxedWine:
 ```bash
 python3 -m unittest discover -s tools/wineTests/tests -v
 python3 -m py_compile tools/wineTests/runWineTests.py
-unzip -t tools/wineTests/wine_tests_v3.zip
+unzip -t tools/wineTests/wine_tests_v4.zip
 ```
 
 If a real group fails, inspect its log and retained root under the run directory

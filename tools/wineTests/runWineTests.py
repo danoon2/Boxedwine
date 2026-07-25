@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build BoxedWine and run the Wine 11 NTDLL, kernel32, and ws2_32 tests."""
+"""Build BoxedWine and run the Wine 11 NTDLL, kernel32, ws2_32, and advapi32 tests."""
 
 from __future__ import annotations
 
@@ -21,12 +21,13 @@ from urllib.request import urlopen
 
 FILESYSTEM_URL = "https://boxedwine.org/v2/8/TinyCore15Wine11.0.zip"
 FILESYSTEM_CACHE_NAME = "TinyCore15Wine11.0-v8.zip"
-TESTS_URL = "https://boxedwine.org/v2/1/wine_tests_v3.zip"
-TESTS_CACHE_NAME = "wine_tests_v3.zip"
+TESTS_URL = "https://boxedwine.org/v2/1/wine_tests_v4.zip"
+TESTS_CACHE_NAME = "wine_tests_v4.zip"
 TEST_EXECUTABLES = {
     "ntdll": "ntdll_test.exe",
     "kernel32": "kernel32_test.exe",
     "ws2_32": "ws2_32_test.exe",
+    "advapi32": "advapi32_test.exe",
 }
 
 TEST_GROUPS = (
@@ -96,6 +97,21 @@ KERNEL32_TEST_GROUPS = (
 
 WS2_32_TEST_GROUPS = ("afd",)
 
+ADVAPI32_TEST_GROUPS = (
+    "cred",
+    "crypt",
+    "crypt_lmhash",
+    "crypt_md4",
+    "crypt_md5",
+    "crypt_sha",
+    "eventlog",
+    "lsa",
+    "perf",
+    "registry",
+    "security",
+    "service",
+)
+
 FAILURE_CEILINGS = {group: 0 for group in TEST_GROUPS}
 FAILURE_CEILINGS.update({"file": 9, "virtual": 7, "wow64": 3})
 
@@ -103,6 +119,8 @@ KERNEL32_FAILURE_CEILINGS = {group: 0 for group in KERNEL32_TEST_GROUPS}
 KERNEL32_FAILURE_CEILINGS.update({"sync": 1, "loader": 62, "virtual": 109})
 
 WS2_32_FAILURE_CEILINGS = {"afd": 19}
+
+ADVAPI32_FAILURE_CEILINGS = {group: 0 for group in ADVAPI32_TEST_GROUPS}
 
 
 class RunnerError(RuntimeError):
@@ -136,6 +154,13 @@ WS2_32_SUITE = SuiteConfig(
     TEST_EXECUTABLES["ws2_32"],
     WS2_32_TEST_GROUPS,
     WS2_32_FAILURE_CEILINGS,
+    frozenset(),
+)
+ADVAPI32_SUITE = SuiteConfig(
+    "advapi32",
+    TEST_EXECUTABLES["advapi32"],
+    ADVAPI32_TEST_GROUPS,
+    ADVAPI32_FAILURE_CEILINGS,
     frozenset(),
 )
 
@@ -302,7 +327,7 @@ def command_for_group(
         str(filesystem),
         "-novideo",
     ]
-    if suite in (KERNEL32_SUITE, WS2_32_SUITE):
+    if suite in (KERNEL32_SUITE, WS2_32_SUITE, ADVAPI32_SUITE):
         return command + [
             "-env",
             "WINEDLLOVERRIDES=mscoree,mshtml=",
@@ -496,7 +521,7 @@ def run_group(
     if guest_root.exists():
         raise RunnerError(f"guest root already exists: {guest_root}")
     guest_root.mkdir(parents=True)
-    if suite in (KERNEL32_SUITE, WS2_32_SUITE):
+    if suite in (KERNEL32_SUITE, WS2_32_SUITE, ADVAPI32_SUITE):
         guest_executable = guest_root / "home" / "username" / suite.executable
         guest_executable.parent.mkdir(parents=True)
     else:
@@ -616,7 +641,7 @@ def run_suite(
 
 def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Build BoxedWine and run the Wine 11 NTDLL, kernel32, and ws2_32 tests."
+        description="Build BoxedWine and run the Wine 11 NTDLL, kernel32, ws2_32, and advapi32 tests."
     )
     parser.add_argument(
         "--group",
@@ -638,6 +663,13 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         choices=WS2_32_TEST_GROUPS,
         help="run only this ws2_32 test group; may be repeated",
+    )
+    parser.add_argument(
+        "--advapi32-group",
+        dest="selected_advapi32_groups",
+        action="append",
+        choices=ADVAPI32_TEST_GROUPS,
+        help="run only this advapi32 test group; may be repeated",
     )
     parser.add_argument(
         "--timeout",
@@ -671,6 +703,7 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         arguments.selected_groups is not None
         or arguments.selected_kernel32_groups is not None
         or arguments.selected_ws2_32_groups is not None
+        or arguments.selected_advapi32_groups is not None
     )
     arguments.groups = tuple(
         arguments.selected_groups or (() if has_selection else TEST_GROUPS)
@@ -683,9 +716,14 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         arguments.selected_ws2_32_groups
         or (() if has_selection else WS2_32_TEST_GROUPS)
     )
+    arguments.advapi32_groups = tuple(
+        arguments.selected_advapi32_groups
+        or (() if has_selection else ADVAPI32_TEST_GROUPS)
+    )
     del arguments.selected_groups
     del arguments.selected_kernel32_groups
     del arguments.selected_ws2_32_groups
+    del arguments.selected_advapi32_groups
     return arguments
 
 
@@ -757,6 +795,7 @@ def main(argv: list[str] | None = None) -> int:
                 (NTDLL_SUITE, arguments.groups),
                 (KERNEL32_SUITE, arguments.kernel32_groups),
                 (WS2_32_SUITE, arguments.ws2_32_groups),
+                (ADVAPI32_SUITE, arguments.advapi32_groups),
             )
             if groups
         )
