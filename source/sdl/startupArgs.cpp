@@ -45,6 +45,10 @@
 #include "knativeaudio.h"
 #include "knativesocket.h"
 
+#ifdef __TEST
+#include "../test/cpu/testCPU.h"
+#endif
+
 #ifndef BOXEDWINE_DISABLE_UI
 #include "../ui/data/globalSettings.h"
 #endif
@@ -58,6 +62,98 @@ void x11_init();
 void createSysfs(const std::shared_ptr<FsNode> rootNode);
 
 U32 StartUpArgs::uiType;
+
+static bool hasEnvValue(const std::vector<BString>& envValues, const char* name) {
+    BString prefix = BString::copy(name);
+    prefix += "=";
+    for (auto& value : envValues) {
+        if (value.startsWith(prefix)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void addDefaultEnvValue(std::vector<BString>& envValues, const char* value) {
+    const char* equals = strchr(value, '=');
+    if (!equals) {
+        return;
+    }
+    BString name = BString::copy(value, (int)(equals - value));
+    if (!hasEnvValue(envValues, name.c_str())) {
+        envValues.push_back(BString::copy(value));
+    }
+}
+
+static void addDefaultUtf8LocaleEnv(std::vector<BString>& envValues, bool guestHasUtf8Locale) {
+    if (!guestHasUtf8Locale) {
+        return;
+    }
+    addDefaultEnvValue(envValues, "LANG=en_US.UTF-8");
+    addDefaultEnvValue(envValues, "LC_ALL=en_US.UTF-8");
+}
+
+static bool guestHasUtf8Locale() {
+    const char* localePaths[] = {
+        "/usr/lib/locale/locale-archive",
+        "/usr/lib/locale/en_US.UTF-8",
+        "/usr/lib/locale/en_US.utf8",
+        "/usr/lib/locale/C.UTF-8",
+        "/usr/lib/locale/C.utf8",
+    };
+
+    for (const char* path : localePaths) {
+        if (Fs::getNodeFromLocalPath(B(""), BString::copy(path), false)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+#ifdef __TEST
+static bool hasExactEnvValue(const std::vector<BString>& envValues, const char* value) {
+    for (auto& envValue : envValues) {
+        if (envValue == value) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void testStartupArgsDefaultUtf8LocaleEnvironment() {
+    std::vector<BString> unsupportedEnvValues;
+    addDefaultUtf8LocaleEnv(unsupportedEnvValues, false);
+
+    if (unsupportedEnvValues.size() != 0) {
+        testFail("default UTF-8 locale env values were added without guest locale support");
+    }
+
+    std::vector<BString> envValues;
+    addDefaultUtf8LocaleEnv(envValues, true);
+
+    if (!hasExactEnvValue(envValues, "LANG=en_US.UTF-8")) {
+        testFail("default LANG was not added");
+    }
+    if (!hasExactEnvValue(envValues, "LC_ALL=en_US.UTF-8")) {
+        testFail("default LC_ALL was not added");
+    }
+
+    std::vector<BString> explicitEnvValues;
+    explicitEnvValues.push_back(B("LANG=C"));
+    explicitEnvValues.push_back(B("LC_ALL=C"));
+    addDefaultUtf8LocaleEnv(explicitEnvValues, true);
+
+    if (explicitEnvValues.size() != 2) {
+        testFail("explicit locale env values were not preserved");
+    }
+    if (!hasExactEnvValue(explicitEnvValues, "LANG=C")) {
+        testFail("explicit LANG was overwritten");
+    }
+    if (!hasExactEnvValue(explicitEnvValues, "LC_ALL=C")) {
+        testFail("explicit LC_ALL was overwritten");
+    }
+}
+#endif
 
 FsOpenNode* openKernelCommandLine(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new BufferAccess(node, flags, B(""));
@@ -106,7 +202,8 @@ void StartUpArgs::buildVirtualFileSystem() {
     std::shared_ptr<FsNode> rootNode = Fs::getNodeFromLocalPath(B(""), B("/"), true);
     std::shared_ptr<FsNode> devNode = Fs::addFileNode(B("/dev"), B(""), rootNode->nativePath.stringByApppendingPath("dev"), true, rootNode);
     std::shared_ptr<FsNode> inputNode = Fs::addFileNode(B("/dev/input"), B(""), B(""), true, devNode);
-    KSystem::procNode = Fs::addFileNode(B("/proc"), B(""), B(""), true, rootNode);
+    KSystem::setProcNode(
+        Fs::addFileNode(B("/proc"), B(""), B(""), true, rootNode));
     std::shared_ptr<FsNode> procSysNode = Fs::addFileNode(B("/proc/sys"), B(""), B(""), true, KSystem::procNode);
     std::shared_ptr<FsNode> procNetNode = Fs::addFileNode(B("/proc/net"), B(""), B(""), true, KSystem::procNode);
     std::shared_ptr<FsNode> procSysKernelNode = Fs::addFileNode(B("/proc/sys/kernel"), B(""), B(""), true, procSysNode);
@@ -271,6 +368,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (this->cacheReads) {
         args.push_back(B("-cacheReads"));
     }
+    if (this->disableWasmJitForWrittenCode) {
+        args.push_back(B("-disableWasmJitForWrittenCode"));
+    }
     for (auto& a : this->args) {
         args.push_back(a);
     }
@@ -289,6 +389,7 @@ bool StartUpArgs::apply() {
     KSystem::disableHideCursor = this->disableHideCursor;
     KSystem::forceRelativeMouse = this->forceRelativeMouse;
     KSystem::cacheReads = this->cacheReads;
+    KSystem::disableWasmJitForWrittenCode = this->disableWasmJitForWrittenCode;
     KSystem::pentiumLevel = this->pentiumLevel;
     KSystem::pollRate = this->pollRate;
     if (KSystem::pollRate < 0) {
@@ -308,10 +409,6 @@ bool StartUpArgs::apply() {
     if (this->recordAutomation.length()) {
         Recorder::start(this->recordAutomation);
     }
-    if (this->runAutomation.length()) {
-        Player::start(this->runAutomation);
-    }
-    BOXEDWINE_RECORDER_INIT(this->root, this->zips, this->workingDir, this->args);
 #endif
 
     klog_fmt("Using root directory: %s", root.c_str());
@@ -394,6 +491,13 @@ bool StartUpArgs::apply() {
 
     buildVirtualFileSystem();
 
+#ifdef BOXEDWINE_RECORDER
+    if (this->runAutomation.length()) {
+        Player::start(this->runAutomation);
+    }
+    BOXEDWINE_RECORDER_INIT(this->root, this->zips, this->workingDir, this->args);
+#endif
+
     envValues.push_back(B("HOME=/home/username"));
     envValues.push_back(B("LOGNAME=username"));
     envValues.push_back(B("USERNAME=username"));
@@ -401,6 +505,7 @@ bool StartUpArgs::apply() {
     envValues.push_back("PWD="+this->workingDir);
     envValues.push_back(B("DISPLAY=:0"));
     envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
+    addDefaultUtf8LocaleEnv(envValues, guestHasUtf8Locale());
 
 #ifdef __EMSCRIPTEN__
     envValues.push_back(B("WINE_D3D_CONFIG=webgl=1,webgl_glsl_es=1"));
@@ -850,6 +955,9 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             }
             this->runAutomation = BString::copy(argv[i + 1]);
             i++;
+        }  else if (!strcmp(argv[i], "-play")) {
+            this->runAutomation = BString::copy(argv[i + 1]);
+            i++;
         }
 #endif
         else if (!strcmp(argv[i], "-ddrawOverride")) {
@@ -861,6 +969,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->forceRelativeMouse = true;
         }  else if (!strcmp(argv[i], "-cacheReads")) {
             this->cacheReads = true;
+        }  else if (!strcmp(argv[i], "-disableWasmJitForWrittenCode")) {
+            this->disableWasmJitForWrittenCode = true;
         }
         else if (!strcmp(argv[i], "-dxvk")) {
             BString dxvk;

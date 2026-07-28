@@ -21,7 +21,9 @@
 
 #ifdef BOXEDWINE_JIT
 class DynamicMemory;
+#include "../source/emulation/cpu/jit/jitCodeLifecycle.h"
 #endif
+class MappedFile;
 
 #define K_PAGE_SIZE 4096
 #define K_PAGE_MASK 0xFFF
@@ -79,6 +81,7 @@ public:
     void cleanup(); // called when the process is done but the last thread might still need to return
 
     U32 mlock(U32 addr, U32 len);
+    U32 munlock(U32 addr, U32 len);
     U32 mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off, bool remap = false);
     U32 mprotect(KThread* thread, U32 address, U32 len, U32 prot);
     U32 mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U32 flags);
@@ -91,6 +94,12 @@ public:
 
     bool isPageAllocated(U32 page);
     bool isPageNative(U32 page);
+#ifdef __TEST
+    void setTestFailMappedFileRecordAllocation(bool fail) { testFailMappedFileRecordAllocation = fail; }
+    void setTestFailCodeInvalidationPreparation(bool fail) {
+        testFailCodeInvalidationPreparation = fail;
+    }
+#endif
     bool canWrite(U32 address, U32 len);
     bool canRead(U32 address, U32 len);
 
@@ -108,13 +117,17 @@ public:
     U64 readq(U32 address);
     U32 readd(U32 address);
     U32 readdInline(U32 address);
-    void writedInline(U32 address, U32 value);
+    void checkDebugTrapOnMemoryWrite(U32 address, U32 len) { if (debugMemoryWriteTrapActive.load(std::memory_order_relaxed)) checkDebugTrapOnMemoryWriteSlow(address, len); }
+    void checkDebugTrapOnMemoryWriteSlow(U32 address, U32 len);
+    void updateDebugMemoryWriteTrapActive();
     U16 readw(U32 address);
     U8  readb(U32 address);
     void writeq(U32 address, U64 value);
     void writed(U32 address, U32 value);
+    void writedInline(U32 address, U32 value);
     void writew(U32 address, U16 value);
     void writeb(U32 address, U8 value);
+    void preflightWrite(U32 address, U32 len);
 
     BString readString(U32 address);
     BString readStringW(U32 address);
@@ -161,15 +174,50 @@ public:
     void* allocCodeMemory(U32 len);
     bool isCode(void* p);
 
+    KMemoryData* getData() { return data; }
+
     BOXEDWINE_MUTEX mutex;
     KMemoryData* deleteOnNextLoop = nullptr;    
 private:
+    friend class KProcess;
+    void cloneLocked(KMemory* from, bool vfork);
+    void detachSharedDataAfterFailedClone() noexcept { data = nullptr; }
     friend KMemoryData* getMemData(KMemory* memory);
     friend KMemoryData;
     friend class NormalCPU;
 
+    struct PreparedCodeInvalidationBlock {
+        U32 address;
+        DecodedOp* blockStart;
+        std::vector<DecodedOp*> decodedOps;
+        std::vector<void*> jitOps;
+        void* codeMemoryToFree = nullptr;
+    };
+
+    void prepareCodeInvalidation(U32 address, U32 len);
+    void commitPreparedCodeInvalidation();
+    void discardPreparedCodeInvalidation();
+    void retryPendingCodeMemoryFrees();
+
+    U32 unmapLocked(U32 address, U32 len,
+        std::vector<std::shared_ptr<MappedFile>>& retirements);
+
     KMemoryData* data;    
     KProcess* process;
+    std::vector<PreparedCodeInvalidationBlock> preparedCodeBlocks;
+    std::vector<std::pair<U32, U32>> preparedCodeRemovalRanges;
+#ifdef BOXEDWINE_JIT
+    std::vector<DecodedOp*> preparedBackendDecodedOps;
+    std::vector<void*> preparedBackendJitOps;
+    std::vector<PreparedJitCodeInvalidation> preparedBackendInvalidations;
+#endif
+    std::vector<void*> pendingCodeMemoryFrees;
+    bool codeInvalidationPrepared = false;
+    std::atomic<bool> debugMemoryWriteTrapActive { false };
+#ifdef __TEST
+    bool testFailMappedFileRecordAllocation = false;
+    bool testFailCodeInvalidationPreparation = false;
+#endif
 
     class LockedMemory {
     public:

@@ -315,6 +315,9 @@ void runXaddRegisterCases(int width, const TestBinaryCase* cases, size_t count, 
         for (int flagMode = XADD_FLAGS_CHECKED; flagMode <= XADD_FLAGS_OVERWRITTEN; ++flagMode) {
             for (int dst = 0; dst < 8; ++dst) {
                 for (int src = 0; src < 8; ++src) {
+                    if (!testRunRegisterPair(dst, src)) {
+                        continue;
+                    }
                     runXaddRegisterCase(width, dst, src, cases[i], (XaddFlagMode)flagMode, name);
                 }
             }
@@ -363,6 +366,9 @@ void runPreparedXaddMemoryCase(int srcReg, int width, U32 linearAddress, const T
 
 void runXaddBaseMemoryCases(int srcReg, int width, const TestBinaryCase& data, bool lockPrefix, XaddFlagMode flagMode, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         U32 regs[8];
         initAddressRegisters(regs);
         regs[base] = baseMemoryOffset(base);
@@ -370,7 +376,7 @@ void runXaddBaseMemoryCases(int srcReg, int width, const TestBinaryCase& data, b
             applyRegValue(regs, srcReg, width, data.src);
         }
 
-        if (base != R_BP) {
+        if (base != R_BP && testRunMemoryBaseDisplacement(base, 0)) {
             beginGeneratedInstruction(data.initialFlags);
             emitXadd(memPtr(reg32(base), 0, width), regForWidth(srcReg, width), lockPrefix);
             overwriteFlagsIfNeeded(flagMode);
@@ -378,17 +384,21 @@ void runXaddBaseMemoryCases(int srcReg, int width, const TestBinaryCase& data, b
             runPreparedXaddMemoryCase(srcReg, width, segmentBaseForAddressReg(base) + regs[base], data, flagMode, name);
         }
 
-        beginGeneratedInstruction(data.initialFlags);
-        emitXadd(memPtr(reg32(base), 0x11, width), regForWidth(srcReg, width), lockPrefix);
-        overwriteFlagsIfNeeded(flagMode);
-        writeRegs(cpu, regs);
-        runPreparedXaddMemoryCase(srcReg, width, segmentBaseForAddressReg(base) + regs[base] + 0x11, data, flagMode, name);
+        if (testRunMemoryBaseDisplacement(base, 1)) {
+            beginGeneratedInstruction(data.initialFlags);
+            emitXadd(memPtr(reg32(base), 0x11, width), regForWidth(srcReg, width), lockPrefix);
+            overwriteFlagsIfNeeded(flagMode);
+            writeRegs(cpu, regs);
+            runPreparedXaddMemoryCase(srcReg, width, segmentBaseForAddressReg(base) + regs[base] + 0x11, data, flagMode, name);
+        }
 
-        beginGeneratedInstruction(data.initialFlags);
-        emitXadd(memPtr(reg32(base), 0x123, width), regForWidth(srcReg, width), lockPrefix);
-        overwriteFlagsIfNeeded(flagMode);
-        writeRegs(cpu, regs);
-        runPreparedXaddMemoryCase(srcReg, width, segmentBaseForAddressReg(base) + regs[base] + 0x123, data, flagMode, name);
+        if (testRunMemoryBaseDisplacement(base, 2)) {
+            beginGeneratedInstruction(data.initialFlags);
+            emitXadd(memPtr(reg32(base), 0x123, width), regForWidth(srcReg, width), lockPrefix);
+            overwriteFlagsIfNeeded(flagMode);
+            writeRegs(cpu, regs);
+            runPreparedXaddMemoryCase(srcReg, width, segmentBaseForAddressReg(base) + regs[base] + 0x123, data, flagMode, name);
+        }
     }
 }
 
@@ -412,6 +422,9 @@ void runXaddSibMemoryCases(int srcReg, int width, const TestBinaryCase& data, bo
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 U32 targetOffset = MEM_BASE + 0x7000 + base * 0x200 + index * 0x20 + shift * 4;
                 initAddressRegisters(regs);
@@ -436,6 +449,9 @@ void runXaddMemoryCases(int width, const TestBinaryCase* cases, size_t count, co
     for (size_t i = 0; i < count; ++i) {
         for (int flagMode = XADD_FLAGS_CHECKED; flagMode <= XADD_FLAGS_OVERWRITTEN; ++flagMode) {
             for (int src = 0; src < 8; ++src) {
+                if (!testRunRegister(src)) {
+                    continue;
+                }
                 for (int lockPrefix = 0; lockPrefix < 2; ++lockPrefix) {
                     runXaddBaseMemoryCases(src, width, cases[i], lockPrefix != 0, (XaddFlagMode)flagMode, name);
                     runXaddAbsoluteMemoryCases(src, width, cases[i], lockPrefix != 0, (XaddFlagMode)flagMode, name);

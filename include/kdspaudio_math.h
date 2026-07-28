@@ -11,6 +11,22 @@
 #define __KDSPAUDIO_MATH_H__
 
 namespace KDspAudioMath {
+	inline U32 getRequestedSdlPeriodFrames() {
+#ifdef __EMSCRIPTEN__
+		return 4096;
+#else
+		return 1024;
+#endif
+	}
+
+	inline U32 getAlignedDurationBytes(U32 bytesPerSecond, U32 durationMs, U32 frameSize) {
+		if (!frameSize) {
+			return 0;
+		}
+		U32 bytes = (U32)((U64)bytesPerSecond * durationMs / 1000);
+		return bytes & ~(frameSize - 1);
+	}
+
 	inline U32 getWriteCapacity(U32 bytesPerSecond, U32 fragmentSize, U32 bufferSize) {
 		U32 capacity = bytesPerSecond / 8;
 		if (capacity < fragmentSize) {
@@ -24,6 +40,10 @@ namespace KDspAudioMath {
 
 	inline U32 getAvailableWriteBytes(U32 capacity, U32 queued) {
 		return queued >= capacity ? 0 : capacity - queued;
+	}
+
+	inline U32 getOutputSpaceAvailable(U32 capacity, U32 used, bool accountForQueuedAudio) {
+		return accountForQueuedAudio ? getAvailableWriteBytes(capacity, used) : capacity;
 	}
 
 	inline U32 getQueuedAfterElapsed(U32 queued, U32 bytesPerSecond, U32 elapsedMs) {

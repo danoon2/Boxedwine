@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,16 +28,98 @@
 
 class MappedFileCache;
 
+struct MappedFileRetirementDiagnostic {
+    std::atomic<S32> pendingError{0};
+    S32 reportedError = 0;
+    bool hasReportedError = false;
+#ifdef __TEST
+    std::atomic<U32> reportCount{0};
+#endif
+};
+
+class MappedFileLease {
+public:
+    explicit MappedFileLease(const std::shared_ptr<MappedFileCache>& cache) : cache(cache) {}
+
+    // Piece accounting is protected by the owning process's mappedFilesMutex.
+    void addPiece();
+    bool removePiece();
+    bool tryReserveClone() noexcept;
+    void releaseCloneReservation() noexcept;
+    U32 retire() noexcept;
+    bool isRetired() const { return retired; }
+#ifdef __TEST
+    U32 getPieceCountForTest() const { return pieceCount; }
+    void setTestBeforePieceRemovalHook(const std::shared_ptr<std::function<void()>>& hook) {
+        testBeforePieceRemovalHook = hook;
+    }
+#endif
+
+private:
+    std::shared_ptr<MappedFileCache> cache;
+    U32 pieceCount = 1;
+    bool retired = false;
+    std::atomic<U32> cloneReservations{0};
+#ifdef __TEST
+    std::shared_ptr<std::function<void()>> testBeforePieceRemovalHook;
+#endif
+};
+
 class MappedFile {
 public:
-    MappedFile() = default;
+    MappedFile() : retirementDiagnostic(std::make_shared<MappedFileRetirementDiagnostic>()) {}
+    MappedFile(const MappedFile& other) :
+        systemCacheEntry(other.systemCacheEntry), lease(other.lease), file(other.file),
+        address(other.address), len(other.len), offset(other.offset),
+        offsetValid(other.offsetValid), shared(other.shared),
+        mayWrite(other.mayWrite), key(other.key),
+        retirementDiagnostic(other.retirementDiagnostic) {}
 
+    bool tryGetFileOffset(U64 delta, U64& result) const {
+        if (!offsetValid || offset > std::numeric_limits<U64>::max() - delta) {
+            return false;
+        }
+        result = offset + delta;
+        return true;
+    }
+
+    bool advanceFileOffset(U64 delta) {
+        U64 advanced;
+        if (!tryGetFileOffset(delta, advanced)) {
+            offsetValid = false;
+            return false;
+        }
+        offset = advanced;
+        return true;
+    }
     std::shared_ptr<MappedFileCache> systemCacheEntry;
+    std::shared_ptr<MappedFileLease> lease;
     std::shared_ptr<KFile> file;
     U32 address = 0;
     U64 len = 0;
     U64 offset = 0;
+    bool offsetValid = true;
+    bool shared = false;
+    // Linux retains whether the original mapping may ever become writable.
+    // A read-only MAP_SHARED file mapping must not gain PROT_WRITE merely
+    // because another mapping supplied a writable cache owner.
+    bool mayWrite = false;
     U32 key = 0; // key to KProcess::mappedFiles
+    // Intrusive ownership used only after the final live piece is detached.
+    // Queue links are intentionally excluded from the mapping copy constructor.
+    std::shared_ptr<MappedFile> pendingRetirementNext;
+    bool pendingRetirementQueued = false;
+    // A queued entry retains its KFile, which is the stable backing-file
+    // identity associated with this diagnostic.
+    std::shared_ptr<MappedFileRetirementDiagnostic> retirementDiagnostic;
+#ifdef __TEST
+    S32 getPendingRetirementErrorForTest() const {
+        return retirementDiagnostic->pendingError.load(std::memory_order_acquire);
+    }
+    U32 getPendingRetirementErrorReportCountForTest() const {
+        return retirementDiagnostic->reportCount.load(std::memory_order_acquire);
+    }
+#endif
 };
 
 typedef std::shared_ptr<MappedFile> MappedFilePtr;
@@ -88,6 +170,10 @@ public:
 #define K_MAP_FIXED_NOREPLACE 0x100000
 #define K_MAP_BOXEDWINE 0x80000000
 
+#define K_MS_ASYNC      0x01
+#define K_MS_INVALIDATE 0x02
+#define K_MS_SYNC       0x04
+
 #define K_MADV_DONTNEED 4
 
 class KProcessTimer : public KTimerCallback {
@@ -137,12 +223,25 @@ public:
     U32 createString(KThread* thread, const BString& str);
 
     BString getModuleName(U32 eip);
-    U32 getModuleEip(U32 eip);    
+    U32 getModuleEip(U32 eip);
+    MappedFilePtr getMappedFileForRange(U32 address, U32 len);
+#ifdef __TEST
+    static MappedFilePtr selectMappedFileForRangeForTest(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len);
+    U32 getMappedFileCountForTest();
+    void setTestAfterMappedFileRangeSnapshotHook(const std::function<void()>& hook);
+    void setTestAfterCloneMemorySnapshotHook(const std::function<void()>& hook);
+    void setTestAfterCloneSnapshotLocksReleasedHook(const std::function<void()>& hook);
+    void cloneMemoryAndProcessForTest(const KProcessPtr& from, bool cloneVM);
+    static void setTestFailCloneAfterMappedLeaseRetention(bool fail);
+    static void setTestDuringProcessPublicationHook(const std::function<void(U32)>& hook);
+    void setTestBeforeCleanupProcessHook(const std::function<void()>& hook);
+    static void retryPendingMappedFileRetirementsForTest();
+#endif
     KFileDescriptorPtr allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);
     KFileDescriptorPtr getFileDescriptor(FD handle);
     KFileDescriptor* getFileDescriptor_nolock(FD handle);
     void clearFdHandle(FD handle);
-    U32 openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptorPtr& result);
+    U32 openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptorPtr& result, U32 mode=0666);
     bool isStopped();
     bool isTerminated();
     KThread* startProcess(BString currentDirectory, const std::vector<BString>& args, const std::vector<BString>& envValues, int userId, int groupId, int effectiveUserId, int effectiveGroupId);
@@ -177,12 +276,15 @@ public:
     U32 exitgroup(KThread* thread, U32 code);
     U32 faccessat(U32 dirfd, BString path, U32 mode, U32 flags);
     U32 fchdir(FD fildes);
+    U32 fchmod(FD fildes, U32 mode);
+    U32 fchmodat(FD dirfd, BString path, U32 mode, U32 flags);
     U32 fcntrl(KThread* thread, FD fildes, U32 cmd, U32 arg);
     U32 fstat64(FD handle, U32 buf);
     U32 fstatat64(FD dirfd, BString path, U32 buf, U32 flag);
     U32 fstatfs64(FD fildes, U32 address);
     U32 statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf);
     U32 ftruncate64(FD fildes, U64 length);
+    U32 fallocate(FD fildes, U32 mode, S64 offset, S64 length);
     U32 getcwd(U32 buffer, U32 size);
     U32 getdents(FD fildes, U32 dirp, U32 count, bool is64);
     U32 getrusuage(KThread* thread, U32 who, U32 usage);
@@ -191,12 +293,12 @@ public:
     S64 llseek(FD fildes, S64 offset, U32 whence);
     U32 lseek(FD fd, S32 offset, U32 whence);
     U32 lstat64(BString path, U32 buffer);
-    U32 mkdir(BString path);    
+    U32 mkdir(BString path, U32 mode);
     U32 mkdirat(U32 dirfd, BString path, U32 mode);
     U32 mincore(U32 address, U32 length, U32 vec);    
     U32 msync(KThread* thread, U32 addr, U32 len, U32 flags);
-    U32 open(BString path, U32 flags);
-    U32 openat(FD dirfd, BString path, U32 flags);
+    U32 open(BString path, U32 flags, U32 mode);
+    U32 openat(FD dirfd, BString path, U32 flags, U32 mode);
     U32 prctl(U32 option, U32 arg2);
     U32 pread64(KThread* thread, FD fildes, U32 address, U32 len, U64 offset);
     U32 pwrite64(KThread* thread, FD fildes, U32 address, U32 len, U64 offset);
@@ -249,6 +351,8 @@ public:
     U32 exitCode = 0;
     U32 umaskValue = 0;
     bool terminated = false;
+    U32 ptraceTracerProcessId = 0;
+    U32 ptraceTraceeThreadId = 0;
     KMemory* memory = nullptr;
 
     BString currentDirectory;
@@ -298,7 +402,24 @@ public:
     BOXEDWINE_MUTEX keySymToNameMutex;
     BHashTable<U32, U32> keySymToName;
 private:
-    BHashTable<U32, KFileDescriptorPtr> fds;    
+    struct PreparedClonedMapping {
+        MappedFilePtr mapping;
+        std::shared_ptr<MappedFileLease> sourceLease;
+    };
+
+    static KProcessPtr createUnpublished();
+    void publish();
+    void cloneMemoryAndProcess(const KProcessPtr& from, bool cloneVM);
+    static void prepareMappedCloneLocked(const KProcessPtr& from, std::vector<PreparedClonedMapping>& sourceMappings, std::vector<std::shared_ptr<MappedFileLease>>& reservations);
+    void cloneFromPrepared(const KProcessPtr& from, std::vector<PreparedClonedMapping>& sourceMappings);
+    U32 snapshotMappedFilesForRange(U32 address, U32 len, std::vector<MappedFilePtr>& result);
+    void retireAllMappedFiles() noexcept;
+    static void retryPendingMappedFileRetirements() noexcept;
+    static void queuePendingMappedFileRetirement(const MappedFilePtr& mapping, S32 error) noexcept;
+    static void shutdownPendingMappedFileRetirements() noexcept;
+    BOXEDWINE_MUTEX cleanupMutex;
+    bool cleanupCompleted = false;
+    BHashTable<U32, KFileDescriptorPtr> fds;
 
     user_desc ldt[LDT_ENTRIES];
     BOXEDWINE_MUTEX ldtMutex;
@@ -310,10 +431,20 @@ private:
     BOXEDWINE_MUTEX attachedShmMutex;
 
     friend class KMemory;
+    friend class KSystem;
+    friend class MappedFileLease;
     BHashTable<U32, MappedFilePtr> mappedFiles; // key is index
     // needs to be static, since during clone, the file pages and mappedFiles are cloned with the same map index, so this nextMappedFileIndex must be shared across processes
     static std::atomic_int nextMappedFileIndex;
     BOXEDWINE_MUTEX mappedFilesMutex;
+#ifdef __TEST
+    std::shared_ptr<std::function<void()>> testAfterMappedFileRangeSnapshotHook;
+    std::shared_ptr<std::function<void()>> testAfterCloneMemorySnapshotHook;
+    std::shared_ptr<std::function<void()>> testAfterCloneSnapshotLocksReleasedHook;
+    std::shared_ptr<std::function<void()>> testBeforeCleanupProcessHook;
+    static bool testFailCloneAfterMappedLeaseRetention;
+    static std::shared_ptr<std::function<void(U32)>> testDuringProcessPublicationHook;
+#endif
 
     BHashTable<U32, KThread*> threads;
     BOXEDWINE_MUTEX threadsMutex;
@@ -334,17 +465,19 @@ private:
     U32 usedTLS[TLS_ENTRIES] = { 0 };
     BOXEDWINE_MUTEX usedTlsMutex;
 
-    U32 openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptorPtr& result);    
+    U32 openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptorPtr& result, U32 mode=0666);    
     void setupCommandlineNode();
     void initStdio();
     std::shared_ptr<FsNode> findInPath(BString path);
     U32 readlinkInDirectory(BString currentDirectory, BString path, U32 buffer, U32 bufSize);
     void onExec(KThread* thread);
     U32 getCurrentDirectoryFromDirFD(FD dirfd, BString& currentDirectory);
-    void writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 seconds, U32 nano);
+    void writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 atimeSeconds, U32 atimeNano, U32 mtimeSeconds, U32 mtimeNano, U32 ctimeSeconds, U32 ctimeNano);
 
     bool systemProcess = false;
     bool cloneVM = false; // if this process was created using CLONE_VM, then we need to be careful with its shared memory with its parent
+    bool published = false;
+    bool needsCommandlineNode = false;
 
 public:
     std::shared_ptr<FsNode> processNode; // in /proc/<pid>

@@ -57,7 +57,7 @@ U32 getDataSize(GLenum type) {
     case GL_T4F_V4F:
         return 32;
     case GL_T2F_C4UB_V3F:
-        return 36;
+        return 24;
     case GL_T2F_C3F_V3F:
         return 32;
     case GL_T2F_N3F_V3F:

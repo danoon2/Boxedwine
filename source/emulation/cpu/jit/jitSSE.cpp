@@ -21,6 +21,24 @@
 #ifdef BOXEDWINE_JIT
 #include "jitSSE.h"
 
+static constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
+static constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+static constexpr U32 MXCSR_DIV_EXCEPTION_MASKS = MXCSR_INVALID_OPERATION_MASK | MXCSR_DIVIDE_BY_ZERO_MASK;
+
+void JitSSE::guardSseDiv() {
+    RegPtr exceptionsUnmasked = readCPU(JitWidth::b32, offsetof(CPU, sseDivExceptionsUnmasked));
+    If(JitWidth::b32, exceptionsUnmasked); {
+        emulateSingleOp();
+    } EndIf();
+}
+
+void JitSSE::updateSseDivExceptionState() {
+    RegPtr state = readCPU(JitWidth::b32, offsetof(CPU, mxcsr));
+    xorValue(JitWidth::b32, state, MXCSR_DIV_EXCEPTION_MASKS);
+    andValue(JitWidth::b32, state, MXCSR_DIV_EXCEPTION_MASKS);
+    writeCPU(JitWidth::b32, offsetof(CPU, sseDivExceptionsUnmasked), state);
+}
+
 void JitSSE::opXmmXmm(DecodedOp* op, XmmXmmCallback callback, bool loadDest) {
     SSERegPtr reg;
 
@@ -274,6 +292,7 @@ void JitSSE::dynamic_stmxcsr(DecodedOp* op) {
 void JitSSE::dynamic_ldmxcsr(DecodedOp* op) {
     read(JitWidth::b32, calculateEaa(op), [op, this](MemPtr address) {
         ldmxcsr(address);
+        updateSseDivExceptionState();
     });
 }
 

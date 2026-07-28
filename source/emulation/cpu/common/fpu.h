@@ -118,6 +118,17 @@ typedef union {
 #define TAG_Special 2
 #define TAG_Empty 3
 
+constexpr U32 FPU_SW_IE = 0x0001;
+constexpr U32 FPU_SW_DE = 0x0002;
+constexpr U32 FPU_SW_ZE = 0x0004;
+constexpr U32 FPU_SW_OE = 0x0008;
+constexpr U32 FPU_SW_UE = 0x0010;
+constexpr U32 FPU_SW_PE = 0x0020;
+constexpr U32 FPU_SW_SF = 0x0040;
+constexpr U32 FPU_SW_ES = 0x0080;
+constexpr U32 FPU_SW_EXCEPTION_MASK =
+    FPU_SW_IE | FPU_SW_DE | FPU_SW_ZE | FPU_SW_OE | FPU_SW_UE | FPU_SW_PE;
+
 // binary translator assumes FPU->regs will be at offset 0
 class FPU {
 public:
@@ -137,6 +148,10 @@ public:
     void FCLEX();
     void PREP_PUSH();
     void FPOP();
+    void setInvalidOperationException();
+    void setStackFaultException();
+    void setDivideByZeroException();
+    int getPendingExceptionCode();
     uint_fast8_t getSoftRounding();
     bool getSoftExact() {
         return false;
@@ -225,6 +240,8 @@ public:
 
     void SetCW(U16 word);
     void SetSW(U16 word);
+    void updateDivExceptionState();
+    void updateExceptionSummary();
     void SetTag(U32 tag);
 
     void SetTagFromAbridged(U8 tag);
@@ -237,7 +254,7 @@ public:
     U32 sizeofRegInRegsArray();
 
     U8 tags[9];
-    U8 pad;
+    bool divExceptionsUnmasked;
     U16 pad2;
     U32 cw;
     U32 sw;
@@ -251,5 +268,7 @@ public:
     bool isRegCached[9];
     bool isMMXInUse;
 };
+
+bool fpu_div_control_or_tag_requires_slow_path(const FPU* fpu, int st, int other, bool reverse);
 
 #endif

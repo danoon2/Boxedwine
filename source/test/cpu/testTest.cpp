@@ -267,26 +267,35 @@ void runTestPreparedMemCase(const TestBinaryCase& data, const AddressCase& addre
 
 void runTestMemBaseCases(const TestBinaryCase& data, int extension, int width, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         U32 regs[8];
         AddressCase address;
 
-        beginInstruction(data.initialFlags);
-        initRegisters(regs);
-        makeBaseCase(address, base, regs[base], 0, width);
-        emitTestMem(address, data.src, extension, width);
-        runTestPreparedMemCase(data, address, width, name);
+        if (testRunMemoryBaseDisplacement(base, 0)) {
+            beginInstruction(data.initialFlags);
+            initRegisters(regs);
+            makeBaseCase(address, base, regs[base], 0, width);
+            emitTestMem(address, data.src, extension, width);
+            runTestPreparedMemCase(data, address, width, name);
+        }
 
-        beginInstruction(data.initialFlags);
-        initRegisters(regs);
-        makeBaseCase(address, base, regs[base], 0x11, width);
-        emitTestMem(address, data.src, extension, width);
-        runTestPreparedMemCase(data, address, width, name);
+        if (testRunMemoryBaseDisplacement(base, 1)) {
+            beginInstruction(data.initialFlags);
+            initRegisters(regs);
+            makeBaseCase(address, base, regs[base], 0x11, width);
+            emitTestMem(address, data.src, extension, width);
+            runTestPreparedMemCase(data, address, width, name);
+        }
 
-        beginInstruction(data.initialFlags);
-        initRegisters(regs);
-        makeBaseCase(address, base, regs[base], 0x123, width);
-        emitTestMem(address, data.src, extension, width);
-        runTestPreparedMemCase(data, address, width, name);
+        if (testRunMemoryBaseDisplacement(base, 2)) {
+            beginInstruction(data.initialFlags);
+            initRegisters(regs);
+            makeBaseCase(address, base, regs[base], 0x123, width);
+            emitTestMem(address, data.src, extension, width);
+            runTestPreparedMemCase(data, address, width, name);
+        }
     }
 }
 
@@ -308,6 +317,9 @@ void runTestMemSibCases(const TestBinaryCase& data, int extension, int width, co
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 AddressCase address;
 
@@ -324,6 +336,9 @@ void runTestMemSibCases(const TestBinaryCase& data, int extension, int width, co
 void runGroup3Test(int extension, int width, const TestBinaryCase* cases, size_t count, const char* name) {
     for (size_t i = 0; i < count; ++i) {
         for (int dstReg = 0; dstReg < 8; ++dstReg) {
+            if (!testRunRegister(dstReg)) {
+                continue;
+            }
             runTestRegCase(cases[i], dstReg, extension, width, name);
         }
         runTestMemBaseCases(cases[i], extension, width, name);

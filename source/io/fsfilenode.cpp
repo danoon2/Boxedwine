@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <map>
 
 #include UNISTD
 #include UTIME
@@ -34,9 +35,44 @@
 #include "fszipnode.h"
 #include "knativethread.h"
 
+static constexpr U32 FS_UTIME_OMIT = 0x3ffffffe;
+
+static U64 fileTimeOverrideMillis(const FsFileTimeOverride& value) {
+    return value.seconds * 1000 + value.nanos / 1000000;
+}
+
+static void unlinkXAttrSidecars(const BString& nativePath) {
+    unlink((nativePath + EXT_DOSATTRIB).c_str());
+    unlink((nativePath + EXT_WINEREPARSE).c_str());
+}
+
+static void renameXAttrSidecarsInternal(const BString& oldNativePath, const BString& newNativePath) {
+    BString dosAttrib = oldNativePath + EXT_DOSATTRIB;
+    if (Fs::doesNativePathExist(dosAttrib)) {
+        BString dosAttribDst = newNativePath + EXT_DOSATTRIB;
+        if (dosAttrib != dosAttribDst) {
+            unlink(dosAttribDst.c_str());
+        }
+        ::rename(dosAttrib.c_str(), dosAttribDst.c_str());
+    }
+    BString wineReparse = oldNativePath + EXT_WINEREPARSE;
+    if (Fs::doesNativePathExist(wineReparse)) {
+        BString wineReparseDst = newNativePath + EXT_WINEREPARSE;
+        if (wineReparse != wineReparseDst) {
+            unlink(wineReparseDst.c_str());
+        }
+        ::rename(wineReparse.c_str(), wineReparseDst.c_str());
+    }
+}
+
+static std::map<BString, std::weak_ptr<FsHardLinkState> > hardLinkStatesByNativePath;
+
+FsHardLinkState::FsHardLinkState(U32 id, BString nativePath, U32 linkCount, U32 modeOverride) : id(id), nativePath(nativePath), linkCount(linkCount), modeOverride(modeOverride) {
+}
+
 std::set<BString> FsFileNode::nonExecFileFullPaths;
 
-FsFileNode::FsFileNode(U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, bool isRootPath, std::shared_ptr<FsNode> parent) : FsNode(Type::File, id, rdev, path, link, nativePath, isDirectory, parent), isRootPath(isRootPath) {
+FsFileNode::FsFileNode(U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, bool isRootPath, std::shared_ptr<FsNode> parent) : FsNode(Type::File, id, rdev, path, link, nativePath, isDirectory, parent), isRootPath(isRootPath), modeOverride(0) {
 }
 
 BString FsFileNode::getNativeTmpPath() {
@@ -74,7 +110,16 @@ void FsFileNode::getTmpPath(BString& nativePath, BString& localPath) {
 bool FsFileNode::remove() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->openNodesMutex);
     bool result = false;
-    bool exists = Fs::doesNativePathExist(this->nativePath);
+    bool exists = Fs::doesNativePathExist(this->getNativePathForData());
+
+    if (this->hardLinkState) {
+        unlink((this->nativePath + EXT_HARDLINK).c_str());
+        if (this->hardLinkState->linkCount > 1) {
+            this->hardLinkState->linkCount--;
+            this->removeNodeFromParent();
+            return true;
+        }
+    }
 
     if (!exists) {
         this->removeNodeFromParent();
@@ -91,9 +136,8 @@ bool FsFileNode::remove() {
     }
 #endif
     if (exists) {
-        BString dosAttrib = nativePath + EXT_DOSATTRIB;
-        unlink(dosAttrib.c_str());
-        result = unlink(nativePath.c_str()) == 0;        
+        unlinkXAttrSidecars(this->getNativePathForData());
+        result = unlink(this->getNativePathForData().c_str()) == 0;
     }
     // if the file failed to be deleted and it exists then its because someone else has it open, 
     // so we need to close all references, move the file then re-open the file for those handles
@@ -116,11 +160,16 @@ bool FsFileNode::remove() {
 
         BString newNativePath = FsFileNode::getNativeTmpPath();
 
-        if (::rename(nativePath.c_str(), newNativePath.c_str())!=0) {
-            klog_fmt("could not rename %s", nativePath.c_str());
+        BString oldNativePath = this->getNativePathForData();
+        if (::rename(oldNativePath.c_str(), newNativePath.c_str())!=0) {
+            klog_fmt("could not rename %s", oldNativePath.c_str());
         }
 
-        this->nativePath = newNativePath;
+        if (this->hardLinkState) {
+            this->hardLinkState->nativePath = newNativePath;
+        } else {
+            this->nativePath = newNativePath;
+        }
 
         i=0;
         this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
@@ -140,9 +189,13 @@ bool FsFileNode::remove() {
 }
 
 U64 FsFileNode::lastModified() {
+    const FsFileTimeOverride& timeOverride = this->hardLinkState ? this->hardLinkState->modifiedTimeOverride : this->modifiedTimeOverride;
+    if (timeOverride.active) {
+        return fileTimeOverrideMillis(timeOverride);
+    }
     PLATFORM_STAT_STRUCT buf;
 
-    if (PLATFORM_STAT(this->nativePath.c_str(), &buf)==0) {
+    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf)==0) {
         if (buf.st_mtime == 0) {
             // I've seen this happen with the Age of Empires installer on Raspberry Pi 5
             return ((U64)buf.st_ctime) * 1000l;
@@ -156,12 +209,77 @@ U64 FsFileNode::lastModified() {
     return 0;
 }
 
-U64 FsFileNode::length() {    
+U32 FsFileNode::lastModifiedNano() {
+    const FsFileTimeOverride& timeOverride = this->hardLinkState ?
+        this->hardLinkState->modifiedTimeOverride : this->modifiedTimeOverride;
+    if (timeOverride.active) {
+        return timeOverride.nanos;
+    }
+#ifndef BOXEDWINE_MSVC
+    PLATFORM_STAT_STRUCT buf;
+    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf) == 0) {
+#ifdef __APPLE__
+        return (U32)(buf.st_mtime == 0 ? buf.st_ctimespec.tv_nsec :
+            buf.st_mtimespec.tv_nsec);
+#else
+        return (U32)(buf.st_mtime == 0 ? buf.st_ctim.tv_nsec :
+            buf.st_mtim.tv_nsec);
+#endif
+    }
+#endif
+    return FsNode::lastModifiedNano();
+}
+
+void FsFileNode::clearModifiedTimeOverride() {
+    FsFileTimeOverride& timeOverride = this->hardLinkState ?
+        this->hardLinkState->modifiedTimeOverride : this->modifiedTimeOverride;
+    timeOverride.active = false;
+}
+
+U64 FsFileNode::lastAccessed() {
+    const FsFileTimeOverride& timeOverride = this->hardLinkState ?
+        this->hardLinkState->accessTimeOverride : this->accessTimeOverride;
+    if (timeOverride.active) {
+        return fileTimeOverrideMillis(timeOverride);
+    }
+    PLATFORM_STAT_STRUCT buf;
+
+    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf) == 0) {
+        return ((U64)buf.st_atime) * 1000l;
+    }
+#ifdef BOXEDWINE_ZLIB
+    if (this->zipNode) {
+        return this->zipNode->lastModified();
+    }
+#endif
+    return 0;
+}
+
+U32 FsFileNode::lastAccessedNano() {
+    const FsFileTimeOverride& timeOverride = this->hardLinkState ?
+        this->hardLinkState->accessTimeOverride : this->accessTimeOverride;
+    if (timeOverride.active) {
+        return timeOverride.nanos;
+    }
+#ifndef BOXEDWINE_MSVC
+    PLATFORM_STAT_STRUCT buf;
+    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf) == 0) {
+#ifdef __APPLE__
+        return (U32)buf.st_atimespec.tv_nsec;
+#else
+        return (U32)buf.st_atim.tv_nsec;
+#endif
+    }
+#endif
+    return FsNode::lastAccessedNano();
+}
+
+U64 FsFileNode::length() {
     if (this->isDirectory())
         return 4096;
 
     PLATFORM_STAT_STRUCT buf;
-    if (PLATFORM_STAT(this->nativePath.c_str(), &buf)==0) {
+    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf)==0) {
         return buf.st_size;
     }
 #ifdef BOXEDWINE_ZLIB
@@ -203,7 +321,8 @@ void FsFileNode::ensurePathIsLocal(bool prepareForWrite) {
 
 FsOpenNode* FsFileNode::open(U32 flags) {
     U32 openFlags = O_BINARY;
-            
+    BString dataNativePath = this->getNativePathForData();
+
     if (this->isDirectory()) {
         std::shared_ptr<FsNode> n = Fs::getNodeFromLocalPath(B(""), this->path, true);
         if (!n) {
@@ -212,6 +331,11 @@ FsOpenNode* FsFileNode::open(U32 flags) {
         return new FsDirOpenNode(n, flags);
     }
     if ((flags & K_O_ACCMODE)==K_O_RDONLY) {
+        U32 overrideMode = this->hardLinkState ? this->hardLinkState->modeOverride : this->modeOverride;
+        if (overrideMode && (overrideMode & K__S_IREAD)==0) {
+            errno = EACCES;
+            return nullptr;
+        }
         openFlags|=O_RDONLY;
         // make the file local so that it will load faster (no inflate and weird seeking logic)
 #if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__)
@@ -220,12 +344,17 @@ FsOpenNode* FsFileNode::open(U32 flags) {
         }
 #endif
     } else {
+        U32 overrideMode = this->hardLinkState ? this->hardLinkState->modeOverride : this->modeOverride;
+        if (overrideMode && Fs::doesNativePathExist(dataNativePath) && (overrideMode & K__S_IWRITE)==0) {
+            errno = EACCES;
+            return nullptr;
+        }
         if ((flags & K_O_ACCMODE)==K_O_WRONLY) {
             openFlags|=O_WRONLY;        
         } else {
             openFlags|=O_RDWR;            
         }
-        BString parentPath = Fs::getNativeParentPath(this->nativePath);
+        BString parentPath = Fs::getNativeParentPath(dataNativePath);
         if (!Fs::doesNativePathExist(parentPath)) {
             ensurePathIsLocal(true);
         }
@@ -247,15 +376,38 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     if (flags & K_O_APPEND) {
         openFlags|=O_APPEND;
     }
-    U32 f;
-
+    auto openHostFile = [&]() -> U32 {
 #ifdef BOXEDWINE_MSVC
-    if (this->nativePath.length() > 255) {
-        BString path = "\\\\?\\" + nativePath;
-        f = ::open(path.c_str(), openFlags, 0666);
-    } else
+        if (dataNativePath.length() > 255) {
+            BString path = "\\\\?\\" + dataNativePath;
+            return ::open(path.c_str(), openFlags, 0666);
+        }
 #endif
-    f = ::open(this->nativePath.c_str(), openFlags, 0666);	
+        return ::open(dataNativePath.c_str(), openFlags, 0666);
+    };
+    U32 f;
+    std::shared_ptr<MappedFileCache> cache;
+    if (flags & K_O_TRUNC) {
+        std::shared_ptr<FsFileIdentity> identity = this->getFileIdentity();
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX_NR(identity->mutationOperationMutex);
+            f = openHostFile();
+            if (f != 0xFFFFFFFF) {
+                this->clearModifiedTimeOverride();
+#ifdef __TEST
+                if (identity->testAfterBackingMutationBeforeCacheNotification) {
+                    identity->testAfterBackingMutationBeforeCacheNotification();
+                }
+#endif
+                cache = KSystem::getFileCache(identity);
+                if (cache) {
+                    cache->setLength(0);
+                }
+            }
+        }
+    } else {
+        f = openHostFile();
+    }
     if (f==0xFFFFFFFF) {
 #ifdef BOXEDWINE_ZLIB
         if (this->zipNode && (flags & K_O_ACCMODE)==K_O_RDONLY)
@@ -275,6 +427,12 @@ U32 FsFileNode::getType(bool checkForLink) {
 }
 
 U32 FsFileNode::getMode() {
+    if (this->hardLinkState && this->hardLinkState->modeOverride) {
+        return this->hardLinkState->modeOverride;
+    }
+    if (this->modeOverride) {
+        return this->modeOverride;
+    }
     U32 result = K__S_IREAD | (FsFileNode::getType(false) << 12);
     if (this->path == "/etc/sudoers") {
         return result | K__S_IRGRP;
@@ -285,7 +443,13 @@ U32 FsFileNode::getMode() {
             result |= K__S_IXGRP | K__S_IXOTH;
         }
     }
-    if (KThread::currentThread()->process->userId == 0 || this->path.startsWith("/tmp") || this->path.startsWith("/var") || this->path.startsWith("/home")) {
+    bool isAutomationFilesPath = this->path == "/files" ||
+        this->path.startsWith("/files/");
+    if (KThread::currentThread()->process->userId == 0 ||
+        this->path.startsWith("/tmp") ||
+        this->path.startsWith("/var") ||
+        this->path.startsWith("/home") ||
+        isAutomationFilesPath) {
         result |= K__S_IWRITE;
         // wine server needs to be private, but winetricks check "-w" in the script on /tmp which needs these 2
         if (!this->path.startsWith("/tmp/.wine")) {
@@ -293,6 +457,17 @@ U32 FsFileNode::getMode() {
         }
     }
     return result;
+}
+
+U32 FsFileNode::setMode(U32 mode) {
+    U32 permissionMask = K__S_IRWXU | K__S_IRWXG | K__S_IRWXO | K__S_ISUID | K__S_ISGID | K__S_ISVTX;
+    U32 newMode = (FsFileNode::getType(false) << 12) | (mode & permissionMask);
+    if (this->hardLinkState) {
+        this->hardLinkState->modeOverride = newMode;
+    } else {
+        this->modeOverride = newMode;
+    }
+    return 0;
 }
 
 S32 translateErr(U32 e) {
@@ -332,6 +507,10 @@ S32 translateErr(U32 e) {
     case ENOLCK: return K_ENOLCK;
     case ENOSYS: return K_ENOSYS;
     case ENOTEMPTY: return K_ENOTEMPTY;
+    case EINVAL: return K_EINVAL;
+#ifdef EOPNOTSUPP
+    case EOPNOTSUPP: return K_EOPNOTSUPP;
+#endif
     default: return K_EIO;
     }
 }
@@ -340,6 +519,53 @@ U32 FsFileNode::rename(BString path) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->openNodesMutex);
     U32 result=0;
     std::vector<S64> tmpPos;
+
+    std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(path), true);
+    if (!parent) {
+        return -K_ENOENT;
+    }
+
+    BString fileName = Fs::getFileNameFromPath(path);
+    Fs::localNameToRemote(fileName);
+    BString nativePath = parent->nativePath.stringByApppendingPath(fileName);
+
+    if (this->hardLinkState) {
+        std::shared_ptr<FsNode> existingNode = Fs::getNodeFromLocalPath(B(""), path, false);
+        if (existingNode && existingNode.get() != this) {
+            if (existingNode->isDirectory() != this->isDirectory()) {
+                if (existingNode->isDirectory()) {
+                    return -K_EISDIR;
+                }
+                return -K_ENOTDIR;
+            }
+            if (existingNode->isDirectory()) {
+                result = existingNode->removeDir();
+                if (result != 0) {
+                    return result;
+                }
+            } else {
+                existingNode->remove();
+            }
+        }
+        BString oldMetadata = this->nativePath + EXT_HARDLINK;
+        BString newMetadata = nativePath + EXT_HARDLINK;
+        if (Fs::doesNativePathExist(oldMetadata)) {
+            result = ::rename(oldMetadata.c_str(), newMetadata.c_str());
+            if (result != 0) {
+                return -translateErr(errno);
+            }
+        } else if (!FsFileNode::writeHardLinkMetadata(nativePath, this->hardLinkState)) {
+            return -K_EIO;
+        }
+        this->removeNodeFromParent();
+        this->path = path;
+        this->nativePath = nativePath;
+        this->name = Fs::getFileNameFromPath(path);
+        std::shared_ptr<FsNode> parentNode = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(path), false);
+        parentNode->addChild(shared_from_this());
+        this->parent = parentNode;
+        return 0;
+    }
 
     this->ensurePathIsLocal(false);
     if (this->openNodes.size()) {
@@ -357,14 +583,6 @@ U32 FsFileNode::rename(BString path) {
         });
     }
 
-    std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(path), true);
-    if (!parent) {
-        return -K_ENOENT;
-    }
-
-    BString fileName = Fs::getFileNameFromPath(path);
-    Fs::localNameToRemote(fileName);
-    BString nativePath = parent->nativePath.stringByApppendingPath(fileName);
     BString originalPath;
 
     if (this->isLink()) {
@@ -398,11 +616,7 @@ U32 FsFileNode::rename(BString path) {
         }    
         result = ::rename(this->nativePath.c_str(), nativePath.c_str());
         if (result==0) {
-            BString dosAttrib = this->nativePath + EXT_DOSATTRIB;
-            if (Fs::doesNativePathExist(dosAttrib)) {
-                BString dosAttribDst = nativePath + EXT_DOSATTRIB;
-                ::rename(dosAttrib.c_str(), dosAttribDst.c_str());
-            }
+            FsFileNode::renameXAttrSidecars(this->nativePath, nativePath);
             this->removeNodeFromParent();
 #ifdef BOXEDWINE_ZLIB
             if (zipNode) {
@@ -428,10 +642,11 @@ U32 FsFileNode::rename(BString path) {
         break;
     }
     int i=0;
-    this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
+    this->openNodes.for_each([&tmpPos,&i,&path](KListNode<FsOpenNode*>* n) {
         if (i<(int)tmpPos.size() && tmpPos.at(i)!=-1) {
             FsOpenNode* openNode = n->data;
             if (openNode) {
+                openNode->openedPath = path;
                 openNode->reopen();
                 openNode->seek(tmpPos.at(i));
             }
@@ -450,6 +665,7 @@ U32 FsFileNode::removeDir() {
     if (Fs::doesNativePathExist(this->nativePath) && ::rmdir(this->nativePath.c_str()) < 0) {
         return -translateErr(errno);
     }
+    unlinkXAttrSidecars(this->getNativePathForData());
     std::shared_ptr<FsNode> parent = this->getParent().lock();
     if (parent) {
         parent->removeChildByName(this->name);
@@ -459,14 +675,206 @@ U32 FsFileNode::removeDir() {
 
 U32 FsFileNode::setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano) {
     struct utimbuf settime = {0, 0};
+    bool shouldUpdateHost = false;
 
     this->ensurePathIsLocal(false);
-    if (lastAccessTime) {
-        settime.actime = lastAccessTime;
+    BString nativePath = this->getNativePathForData();
+    PLATFORM_STAT_STRUCT buf;
+    if (PLATFORM_STAT(nativePath.c_str(), &buf) == 0) {
+        settime.actime = buf.st_atime;
+        settime.modtime = buf.st_mtime;
+    } else {
+        settime.actime = (time_t)(this->lastAccessed() / 1000);
+        settime.modtime = (time_t)(this->lastModified() / 1000);
     }
-    if (lastModifiedTime) {
+    if (lastAccessTimeNano != FS_UTIME_OMIT) {
+        FsFileTimeOverride& timeOverride = this->hardLinkState ? this->hardLinkState->accessTimeOverride : this->accessTimeOverride;
+        timeOverride.active = true;
+        timeOverride.seconds = lastAccessTime;
+        timeOverride.nanos = lastAccessTimeNano;
+        settime.actime = lastAccessTime;
+        shouldUpdateHost = true;
+    }
+    if (lastModifiedTimeNano != FS_UTIME_OMIT) {
+        FsFileTimeOverride& timeOverride = this->hardLinkState ? this->hardLinkState->modifiedTimeOverride : this->modifiedTimeOverride;
+        timeOverride.active = true;
+        timeOverride.seconds = lastModifiedTime;
+        timeOverride.nanos = lastModifiedTimeNano;
         settime.modtime = lastModifiedTime;
-    }       
-    utime(this->nativePath.c_str(),&settime);
+        shouldUpdateHost = true;
+    }
+    if (shouldUpdateHost) {
+        utime(nativePath.c_str(), &settime);
+    }
     return 0; // no error checking, we don't care if this fails
+}
+
+U32 FsFileNode::getId() {
+    if (this->hardLinkState) {
+        return this->hardLinkState->id;
+    }
+    return this->id;
+}
+
+U32 FsFileNode::getHardLinkCount() {
+    if (this->hardLinkState) {
+        return this->hardLinkState->linkCount;
+    }
+    return this->hardLinkCount;
+}
+
+BString FsFileNode::getNativePathForData() {
+    if (this->hardLinkState) {
+        return this->hardLinkState->nativePath;
+    }
+    return this->nativePath;
+}
+
+void FsFileNode::setHardLinkState(const std::shared_ptr<FsHardLinkState>& state) {
+    if (state) {
+        if (!state->fileIdentity) {
+            state->fileIdentity = this->fileIdentity;
+        } else {
+            this->fileIdentity = state->fileIdentity;
+        }
+    }
+    this->hardLinkState = state;
+    if (!state) {
+        return;
+    }
+    if (!state->modeOverride && this->modeOverride) {
+        state->modeOverride = this->modeOverride;
+    }
+    std::shared_ptr<FsFileNode> self = std::dynamic_pointer_cast<FsFileNode>(shared_from_this());
+    for (auto it = state->nodes.begin(); it != state->nodes.end();) {
+        std::shared_ptr<FsFileNode> node = it->lock();
+        if (!node) {
+            it = state->nodes.erase(it);
+            continue;
+        }
+        if (node.get() == self.get()) {
+            return;
+        }
+        ++it;
+    }
+    state->nodes.push_back(self);
+}
+
+std::shared_ptr<FsHardLinkState> FsFileNode::getHardLinkState() {
+    return this->hardLinkState;
+}
+
+bool FsFileNode::isHardLinked() const {
+    return this->hardLinkState != nullptr;
+}
+
+U32 FsFileNode::convertToHardLinkBacking(const std::shared_ptr<FsHardLinkState>& state) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->openNodesMutex);
+    std::vector<S64> tmpPos;
+
+    if (!state) {
+        return -K_EIO;
+    }
+    if (this->hardLinkState) {
+        return 0;
+    }
+    for (U32 i = 0; i < this->openNodes.size(); i++) {
+        tmpPos.push_back(-1);
+    }
+    int i = 0;
+    this->openNodes.for_each([&tmpPos, &i](KListNode<FsOpenNode*>* n) {
+        FsOpenNode* openNode = n->data;
+        if (openNode->isOpen()) {
+            tmpPos[i] = openNode->getFilePointer();
+            openNode->close();
+        }
+        i++;
+    });
+
+    if (::rename(this->nativePath.c_str(), state->nativePath.c_str()) != 0) {
+        int error = errno;
+        i = 0;
+        this->openNodes.for_each([&tmpPos, &i](KListNode<FsOpenNode*>* n) {
+            if (i < (int)tmpPos.size() && tmpPos.at(i) != -1) {
+                FsOpenNode* openNode = n->data;
+                if (openNode) {
+                    openNode->reopen();
+                    openNode->seek(tmpPos.at(i));
+                }
+            }
+            i++;
+        });
+        return -translateErr(error);
+    }
+    FsFileNode::renameXAttrSidecars(this->nativePath, state->nativePath);
+    this->setHardLinkState(state);
+
+    i = 0;
+    this->openNodes.for_each([&tmpPos, &i](KListNode<FsOpenNode*>* n) {
+        if (i < (int)tmpPos.size() && tmpPos.at(i) != -1) {
+            FsOpenNode* openNode = n->data;
+            if (openNode) {
+                openNode->reopen();
+                openNode->seek(tmpPos.at(i));
+            }
+        }
+        i++;
+    });
+    return 0;
+}
+
+std::shared_ptr<FsHardLinkState> FsFileNode::createHardLinkState(U32 id, const BString& nativePath, U32 linkCount, U32 modeOverride) {
+    BOXEDWINE_CRITICAL_SECTION;
+    std::shared_ptr<FsHardLinkState> state = hardLinkStatesByNativePath[nativePath].lock();
+    if (!state) {
+        state = std::make_shared<FsHardLinkState>(id, nativePath, linkCount, modeOverride);
+        hardLinkStatesByNativePath[nativePath] = state;
+    } else {
+        if (state->linkCount < linkCount) {
+            state->linkCount = linkCount;
+        }
+        if (!state->modeOverride && modeOverride) {
+            state->modeOverride = modeOverride;
+        }
+    }
+    return state;
+}
+
+std::shared_ptr<FsHardLinkState> FsFileNode::readHardLinkMetadata(const BString& metadataNativePath) {
+    BReadFile file(metadataNativePath);
+    if (!file.isOpen()) {
+        return nullptr;
+    }
+    BString contents = file.readAll();
+    std::vector<BString> lines;
+    contents.split('\n', lines);
+    if (lines.size() < 3 || lines[0].trim() != "boxedwine-hardlink-v1") {
+        return nullptr;
+    }
+    U32 id = (U32)lines[1].trim().toInt();
+    BString backingNativePath = lines[2].trim();
+    if (!id || backingNativePath.isEmpty()) {
+        return nullptr;
+    }
+    return FsFileNode::createHardLinkState(id, backingNativePath, 0, 0);
+}
+
+bool FsFileNode::writeHardLinkMetadata(const BString& visibleNativePath, const std::shared_ptr<FsHardLinkState>& state) {
+    if (!state) {
+        return false;
+    }
+    BWriteFile file(visibleNativePath + EXT_HARDLINK, true);
+    if (!file.isOpen()) {
+        return false;
+    }
+    file.write(B("boxedwine-hardlink-v1\n"));
+    file.write(BString::valueOf(state->id));
+    file.write(B("\n"));
+    file.write(state->nativePath);
+    file.write(B("\n"));
+    return true;
+}
+
+void FsFileNode::renameXAttrSidecars(const BString& oldNativePath, const BString& newNativePath) {
+    renameXAttrSidecarsInternal(oldNativePath, newNativePath);
 }

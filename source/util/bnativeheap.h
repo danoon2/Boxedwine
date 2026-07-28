@@ -29,15 +29,24 @@ public:
 	void free(void* p);
 	void freeAll();
 	bool containsAddress(void* p);
+#ifdef __TEST
+    void setTestFailNextSmallFreeQueue(bool fail) {
+        testFailNextSmallFreeQueue = fail;
+    }
+#endif
 
 	U32 delayedFree = 0; // millis before the memory can be recycles
     bool isCodeMemory = false;
 	std::function<void(void*, U32)> delayedFreeCallback;
 private:
+    BOXEDWINE_MUTEX heapMutex;
 	std::unordered_map<U32, std::deque<void*>> buckets;
 	std::vector<void*> blocks;
 	BHashTable<U8*, U32> largeBlocks;
 	BHashTable<U8*, U32> delayedFreeLargeBlocks;
+#ifdef __TEST
+    bool testFailNextSmallFreeQueue = false;
+#endif
 };
 
 #endif

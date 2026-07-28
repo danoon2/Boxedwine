@@ -19,6 +19,7 @@
 #include "boxedwine.h"
 #include <math.h>
 #include "fpu.h"
+#include "ksignal.h"
 
 #define FMASK_TEST (CF | PF | AF | ZF | SF | OF)    
 
@@ -104,6 +105,27 @@ struct FPU_Float {
 #define FPU_GET_TOP(fpu) (((fpu)->sw & 0x3800) >> 11)
 #define FPU_SET_TOP(fpu, val) (fpu)->sw &= ~0x3800; (fpu)->sw |= (val & 7) << 11
 
+static bool fpuIsZero(FPU* fpu, int reg) {
+    if (fpu->tags[reg] == TAG_Zero) {
+        return true;
+    }
+    return fpu->getF64(reg) == 0.0;
+}
+
+bool fpu_div_control_or_tag_requires_slow_path(const FPU* fpu, int st, int other, bool reverse) {
+    (void)reverse;
+
+    if (fpu->divExceptionsUnmasked) {
+        return true;
+    }
+    return fpu->tags[st] != TAG_Valid || fpu->tags[other] != TAG_Valid;
+}
+
+static void fpuSetException(FPU* fpu, U32 bits) {
+    fpu->sw |= bits;
+    fpu->updateExceptionSummary();
+}
+
 void FPU::LOG_STACK() {
 #ifdef LOG_FPU
     U32 i;
@@ -154,14 +176,31 @@ void FPU::SetTag(U32 tag) {
     }
 }
 
+void FPU::updateExceptionSummary() {
+    U32 pending = this->sw & ~(this->cw & FPU_SW_EXCEPTION_MASK) & FPU_SW_EXCEPTION_MASK;
+    if (pending) {
+        this->sw |= FPU_SW_ES;
+    } else {
+        this->sw &= ~FPU_SW_ES;
+    }
+}
+
 void FPU::SetSW(U16 word) {
     this->sw = word;
+    updateExceptionSummary();
     this->top = FPU_GET_TOP(this);
+}
+
+void FPU::updateDivExceptionState() {
+    constexpr U32 REQUIRED_MASKS = FPU_SW_IE | FPU_SW_ZE;
+    this->divExceptionsUnmasked = (this->cw & REQUIRED_MASKS) != REQUIRED_MASKS;
 }
 
 void FPU::SetCW(U16 word) {
     this->cw = word;
     this->round = ((word >> 10) & 3);
+    updateDivExceptionState();
+    updateExceptionSummary();
 
 #ifdef LOG_FPU
     const char* r;
@@ -198,8 +237,8 @@ void FPU::FINIT() {
         fpuLogFile.createNew("fpu2.txt");
     }
 #endif
-    SetCW(0x37F);
     this->sw = 0;
+    SetCW(0x37F);
     this->top = FPU_GET_TOP(this);
     this->tags[0] = TAG_Empty;
     this->tags[1] = TAG_Empty;
@@ -224,9 +263,48 @@ void FPU::PREP_PUSH() {
 }
 
 void FPU::FPOP() {
+    if (this->tags[this->top] == TAG_Empty) {
+        setStackFaultException();
+    }
     this->tags[this->top] = TAG_Empty;
     //maybe set zero in it as well
     this->top = ((this->top + 1) & 7);
+}
+
+void FPU::setInvalidOperationException() {
+    fpuSetException(this, FPU_SW_IE);
+}
+
+void FPU::setStackFaultException() {
+    fpuSetException(this, FPU_SW_IE | FPU_SW_SF);
+}
+
+void FPU::setDivideByZeroException() {
+    fpuSetException(this, FPU_SW_ZE);
+}
+
+int FPU::getPendingExceptionCode() {
+    U32 status = this->sw & ~(this->cw & FPU_SW_EXCEPTION_MASK) & FPU_SW_EXCEPTION_MASK;
+
+    if (!status) {
+        return 0;
+    }
+    if (status & FPU_SW_IE) {
+        return K_FPE_FLTINV;
+    }
+    if (status & FPU_SW_ZE) {
+        return K_FPE_FLTDIV;
+    }
+    if (status & FPU_SW_OE) {
+        return K_FPE_FLTOVF;
+    }
+    if (status & FPU_SW_UE) {
+        return K_FPE_FLTUND;
+    }
+    if (status & FPU_SW_PE) {
+        return K_FPE_FLTRES;
+    }
+    return K_FPE_FLTINV;
 }
 
 uint_fast8_t FPU::getSoftRounding() {
@@ -477,6 +555,15 @@ void FPU::FADD(int op1, int op2) {
 }
 
 void FPU::FDIV(int st, int other) {
+    if (this->tags[st] == TAG_Empty || this->tags[other] == TAG_Empty) {
+        setStackFaultException();
+    } else if (fpuIsZero(this, other)) {
+        if (fpuIsZero(this, st)) {
+            setInvalidOperationException();
+        } else {
+            setDivideByZeroException();
+        }
+    }
     if (KSystem::useF64) {
         this->regCache[st].d = getF64(st) / getF64(other);
     } else {
@@ -486,6 +573,15 @@ void FPU::FDIV(int st, int other) {
 }
 
 void FPU::FDIVR(int st, int other) {
+    if (this->tags[st] == TAG_Empty || this->tags[other] == TAG_Empty) {
+        setStackFaultException();
+    } else if (fpuIsZero(this, st)) {
+        if (fpuIsZero(this, other)) {
+            setInvalidOperationException();
+        } else {
+            setDivideByZeroException();
+        }
+    }
     if (KSystem::useF64) {
         this->regCache[st].d = getF64(other) / getF64(st);
     } else {
@@ -550,6 +646,9 @@ void FPU::FXCH(int st, int other) {
 }
 
 void FPU::FST(int st, int other) {
+    if (this->tags[st] == TAG_Empty) {
+        setStackFaultException();
+    }
     this->tags[other] = this->tags[st];
     if (isRegCached[st]) {
         this->regCache[other] = this->regCache[st];
@@ -1394,6 +1493,7 @@ void FPU::FFREE_STi(U32 st) {
 void FPU::reset() {
     memset(this, 0, sizeof(FPU));
     SetTag(TAG_Empty);
+    updateDivExceptionState();
 }
 
 void FPU::startMMX() {

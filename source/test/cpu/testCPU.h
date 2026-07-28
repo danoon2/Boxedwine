@@ -34,7 +34,10 @@ struct TestContext {
 struct TestEntry {
     void (*function)();
     const char* name;
+    U32 flags = 0;
 };
+
+constexpr U32 TEST_ENTRY_SERIAL = 1u << 0;
 
 TestContext& testContext();
 void testNewInstruction(int flags);
@@ -44,5 +47,34 @@ void testPushCode32(int value);
 void testRunCPU();
 void testFail(const char* msg, ...);
 void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCount = 0);
+void testJitSignalPendingReset();
+void testJitSignalPendingQueuedSignal();
+void testX87ExceptionSummaryState();
+void testDefaultUserSegmentsUseGdtSelectors();
+void testSignalHandlerSegmentsUseGdtSelectors();
+void testSignalAlternateStackDeliverySemantics();
+void testSignalOnStackWithoutConfiguredAlternateStack();
+void testSigaltstackReportsActualStackState();
+void testSignalReturnPreservesLoadedInvalidTlsSelector();
+void testSignalReturnDiscardsHandlerLazyFlags();
+void testSignalHandlerClearsTraceFlagUntilReturn();
+bool testIsFastMode();
+void testSetFastMode(bool fast);
+void testWasmJitOnlyBlockEntryIsCallable();
+void testWasmJitOomRetryAfterRelease();
+void testFlagsAcrossIndirectJitBlockBoundary();
+void testJitOverlappingDirectJumpTarget();
+void testNativeJitRunCountWraps();
+bool testShouldRunRegister(bool fast, int reg);
+bool testShouldRunRegisterPair(bool fast, int dst, int src);
+bool testShouldRunMemoryBase(bool fast, int base);
+bool testShouldRunMemoryBaseDisplacement(bool fast, int base, int displacementIndex);
+bool testShouldRunMemorySib(bool fast, int base, int index, int shift);
+bool testRunRegister(int reg);
+bool testRunRegisterPair(int dst, int src);
+bool testRunMemoryBase(int base);
+bool testRunMemoryBaseDisplacement(int base, int displacementIndex);
+bool testRunMemorySib(int base, int index, int shift);
+void testFastModeSelectionHelpers();
 
 #endif

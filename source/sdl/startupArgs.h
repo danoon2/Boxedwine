@@ -118,6 +118,7 @@ public:
     bool disableHideCursor = false;
     bool forceRelativeMouse = false;
     bool cacheReads = false;
+    bool disableWasmJitForWrittenCode = false;
 
 private:
     bool workingDirSet = false;

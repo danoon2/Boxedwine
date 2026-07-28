@@ -47,7 +47,7 @@ public:
     void allocPages(KThread* thread, U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const std::shared_ptr<MappedFile>& mappedFile, const RamPage* ramPages = nullptr);
     bool reserveAddress(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped, bool alignNative, U32 reservedFlag);
     void protectPage(KThread* thread, U32 i, U32 permissions);
-    void setPagesInvalid(U32 page, U32 pageCount);
+    void setPagesInvalid(U32 page, U32 pageCount, bool codeAlreadyPrepared = false);
     bool isPageAllocated(U32 page);
     bool isPageNative(U32 page);
     void execvReset();    
@@ -62,6 +62,18 @@ public:
 #endif
     U8* readCache[K_NUMBER_OF_PAGES];
     U8* writeCache[K_NUMBER_OF_PAGES];
+#endif
+#ifdef BOXEDWINE_WASM_JIT
+    // Inline TLB for the WASM JIT. Each entry is a 32-bit linear-memory
+    // offset to the start of the page's RAM, or 0 if direct access is
+    // not allowed (CodePage, RO/no-perm, on-demand-not-allocated). The
+    // JIT codegen reads `wasmReadPageBase[addr>>12]`; on a non-zero
+    // entry it does `i32.load{8_u,16_u,_}` from `entry + addr` and
+    // skips the helper. Populated in onPageChanged() exactly the same
+    // way as readCache/writeCache above, but always with a 0 sentinel
+    // for no-access (no SIGSEGV trick — WASM can't catch it).
+    U32 wasmReadPageBase[K_NUMBER_OF_PAGES];
+    U32 wasmWritePageBase[K_NUMBER_OF_PAGES];
 #endif
     CodePage* getOrCreateCodePage(U32 address);
 
@@ -97,11 +109,14 @@ inline void KMemory::writedInline(U32 address, U32 value) {
 #if !defined(UNALIGNED_MEMORY)
         if (mmu.canWriteRam) {
             *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
+            checkDebugTrapOnMemoryWrite(address, 4);
             return;
         }
 #endif
         mmu.getPage()->writed(&mmu, address, value);
+        checkDebugTrapOnMemoryWrite(address, 4);
     } else {
+        preflightWrite(address, 4);
         writeb(address, value);
         writeb(address + 1, value >> 8);
         writeb(address + 2, value >> 16);

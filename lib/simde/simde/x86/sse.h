@@ -3892,7 +3892,9 @@ simde_mm_sad_pu8 (simde__m64 a, simde__m64 b) {
 
       SIMDE_VECTORIZE_REDUCTION(+:sum)
       for (size_t i = 0 ; i < (sizeof(r_.u8) / sizeof(r_.u8[0])) ; i++) {
-        sum += HEDLEY_STATIC_CAST(uint8_t, simde_math_abs(a_.u8[i] - b_.u8[i]));
+        sum += a_.u8[i] > b_.u8[i] ?
+          HEDLEY_STATIC_CAST(uint16_t, a_.u8[i]) - HEDLEY_STATIC_CAST(uint16_t, b_.u8[i]) :
+          HEDLEY_STATIC_CAST(uint16_t, b_.u8[i]) - HEDLEY_STATIC_CAST(uint16_t, a_.u8[i]);
       }
 
       r_.i16[0] = HEDLEY_STATIC_CAST(int16_t, sum);

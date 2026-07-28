@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2012-2025  The BoxedWine Team
+ *  Copyright (C) 2012-2026  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
  */
 
 #include "boxedwine.h"
+
+#include "kinotify.h"
 
 #include "kscheduler.h"
 #include "loader.h"
@@ -36,8 +38,115 @@
 #include <time.h> 
 
 std::atomic_int KProcess::nextMappedFileIndex = 1;
+#ifdef __TEST
+bool KProcess::testFailCloneAfterMappedLeaseRetention = false;
+std::shared_ptr<std::function<void(U32)>> KProcess::testDuringProcessPublicationHook;
+#endif
 
 #define MAX_ARG_COUNT 1024
+
+namespace {
+BOXEDWINE_MUTEX pendingMappedFileRetirementsMutex;
+MappedFilePtr pendingMappedFileRetirementsHead;
+MappedFilePtr pendingMappedFileRetirementsTail;
+bool pendingMappedFileRetirementInProgress = false;
+
+FsPathResult resolvePathForSyscall(const BString& currentDirectory, const BString& path, bool followFinalSymlink) {
+    FsPathLookupOptions options;
+    options.followFinalSymlink = followFinalSymlink;
+    return Fs::resolvePath(currentDirectory, path, options);
+}
+
+void recordMappedFileRetirementFailure(const MappedFilePtr& mapping, S32 error) noexcept {
+    bool report = false;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pendingMappedFileRetirementsMutex);
+        mapping->retirementDiagnostic->pendingError.store(
+            error, std::memory_order_release);
+        if (error != -K_EAGAIN &&
+            (!mapping->retirementDiagnostic->hasReportedError ||
+                mapping->retirementDiagnostic->reportedError != error)) {
+            mapping->retirementDiagnostic->reportedError = error;
+            mapping->retirementDiagnostic->hasReportedError = true;
+#ifdef __TEST
+            mapping->retirementDiagnostic->reportCount.fetch_add(
+                1, std::memory_order_release);
+#endif
+            report = true;
+        }
+    }
+    if (report) {
+        kwarn_fmt("Mapped file final retirement failed for %s: %d",
+            mapping->file->openFile->node->path.c_str(), error);
+    }
+}
+}
+
+void MappedFileLease::addPiece() {
+    if (pieceCount == std::numeric_limits<U32>::max()) {
+        kpanic("mapped file lease piece count overflow");
+    }
+    ++pieceCount;
+}
+
+bool MappedFileLease::removePiece() {
+#ifdef __TEST
+    if (testBeforePieceRemovalHook) {
+        (*testBeforePieceRemovalHook)();
+    }
+#endif
+    if (!pieceCount) {
+        kpanic("mapped file lease piece count underflow");
+    }
+    return --pieceCount == 0;
+}
+
+bool MappedFileLease::tryReserveClone() noexcept {
+    U32 count = cloneReservations.load(std::memory_order_relaxed);
+    while (count != std::numeric_limits<U32>::max()) {
+        if (cloneReservations.compare_exchange_weak(count, count + 1,
+            std::memory_order_acq_rel, std::memory_order_relaxed)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void MappedFileLease::releaseCloneReservation() noexcept {
+    U32 previous = cloneReservations.fetch_sub(1, std::memory_order_acq_rel);
+    if (!previous) {
+        kpanic("mapped file clone reservation underflow");
+    }
+    if (previous == 1) {
+        KProcess::retryPendingMappedFileRetirements();
+    }
+}
+
+U32 MappedFileLease::retire() noexcept {
+    if (pieceCount) {
+        return -K_EINVAL;
+    }
+    if (cloneReservations.load(std::memory_order_acquire)) {
+        return -K_EAGAIN;
+    }
+    if (retired) {
+        return 0;
+    }
+    try {
+        bool accountingCommitted = false;
+        U32 result = cache ? cache->retireMapping(accountingCommitted) : 0;
+        if (!cache || accountingCommitted) {
+            retired = true;
+        }
+        return result;
+    } catch (const std::bad_alloc&) {
+        return -K_ENOMEM;
+    } catch (const std::length_error&) {
+        return -K_ENOMEM;
+    } catch (...) {
+        return -K_EIO;
+    }
+}
 
 bool KProcessTimer::run() {
     bool result = false;
@@ -55,23 +164,66 @@ bool KProcessTimer::run() {
 }
 
 KProcessPtr KProcess::create() {
+    KProcessPtr process = createUnpublished();
+    process->publish();
+    return process;
+}
+
+KProcessPtr KProcess::createUnpublished() {
     KProcessPtr process = std::make_shared<KProcess>(KSystem::getNextThreadId());
-    process->processNode = KSystem::addProcess(process->id, process);
-    if (process->processNode) {
-        KProcessWeakPtr weak_process = process;
-        Fs::addDynamicLinkFile(process->processNode->path + "/exe", k_mdev(0, 0), process->processNode, false, [weak_process]() {
+    process->timer.process = process; // can't use shared_from_this in constructor
+    return process;
+}
+
+void KProcess::publish() {
+    if (published) {
+        return;
+    }
+    try {
+        processNode = KSystem::prepareProcessNode(id);
+        if (!processNode) {
+            KSystem::publishPreparedProcess(id, shared_from_this(), nullptr);
+            published = true;
+            return;
+        }
+        KProcessWeakPtr weak_process = shared_from_this();
+        Fs::addDynamicLinkFile(processNode->path + "/exe", k_mdev(0, 0), processNode, false, [weak_process]() {
             KProcessPtr p = weak_process.lock();
             if (p) {
                 return p->exe;
             }
             return BString::empty;
             });
-        Fs::addVirtualFile(process->processNode->path + "/loginuid", K__S_IREAD, k_mdev(0, 0), process->processNode, B("1"));
-        process->fdNode = Fs::addFileNode(process->processNode->path + "/fd", B(""), B(""), true, process->processNode);
-        process->taskNode = Fs::addFileNode(process->processNode->path + B("/task"), B(""), B(""), true, process->processNode);
+        Fs::addVirtualFile(processNode->path + "/loginuid", K__S_IREAD, k_mdev(0, 0), processNode, B("1"));
+        fdNode = Fs::addFileNode(processNode->path + "/fd", B(""), B(""), true, processNode);
+        taskNode = Fs::addFileNode(processNode->path + B("/task"), B(""), B(""), true, processNode);
+        for (const auto& entry : fds) {
+            KObject* kobject = entry.value->kobject.get();
+            Fs::addDynamicLinkFile(fdNode->path + "/" + BString::valueOf(entry.key),
+                k_mdev(0, 0), fdNode, false, [kobject] {
+                    return kobject->selfFd();
+                });
+        }
+        if (needsCommandlineNode) {
+            setupCommandlineNode();
+        }
+#ifdef __TEST
+        if (testDuringProcessPublicationHook) {
+            (*testDuringProcessPublicationHook)(id);
+        }
+#endif
+        KSystem::publishPreparedProcess(id, shared_from_this(), processNode);
+        published = true;
+    } catch (...) {
+        // The process-table entry is normally the final publication step.
+        // Remove any partial /proc node (and defensively erase a table entry)
+        // before propagating.
+        KSystem::eraseProcess(id);
+        processNode.reset();
+        fdNode.reset();
+        taskNode.reset();
+        throw;
     }
-    process->timer.process = process; // can't use shared_from_this in constructor    
-    return process;
 }
 
 KProcess::KProcess(U32 id) : id(id), exitOrExecCond(std::make_shared<BoxedWineCondition>(B("KProcess::exitOrExecCond"))), threadRemovedCondition(std::make_shared<BoxedWineCondition>(B("KProcess::threadRemovedCondition"))) {
@@ -83,12 +235,14 @@ KProcess::KProcess(U32 id) : id(id), exitOrExecCond(std::make_shared<BoxedWineCo
     this->ldt[1].base_addr = 0;
     this->ldt[1].entry_number = 1;
     this->ldt[1].seg_32bit = 1;
+    this->ldt[1].contents = 2;
     this->ldt[1].seg_not_present = 0;
     this->ldt[1].read_exec_only = 0;
 
     this->ldt[2].base_addr = 0;
     this->ldt[2].entry_number = 2;
     this->ldt[2].seg_32bit = 1;
+    this->ldt[2].contents = 0;
     this->ldt[2].seg_not_present = 0;
     this->ldt[2].read_exec_only = 0;
 
@@ -106,7 +260,9 @@ void KProcess::onExec(KThread* thread) {
     }
     this->attachedShm.clear();
     this->privateShm.clear();
-    this->mappedFiles.clear();
+    // execvReset invalidated every old page before onExec, so no direct mapped
+    // store can race the final identity-ordered retirement.
+    this->retireAllMappedFiles();
 
     for (int i = 0; i < MAX_SIG_ACTIONS; i++) {
         this->sigActions[i].reset();
@@ -117,16 +273,22 @@ void KProcess::onExec(KThread* thread) {
     }
 
     std::vector<KThread*> toDelete;
-    for (auto& n : this->threads) {
-        if (thread != n.value) {
-            toDelete.push_back(n.value);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+        for (auto& n : this->threads) {
+            if (thread != n.value) {
+                toDelete.push_back(n.value);
+            }
         }
     }
     for (auto& otherThread : toDelete) {
         terminateOtherThread(shared_from_this(), otherThread->id);
     }
-    this->threads.clear();
-    this->threads.set(thread->id, thread);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+        this->threads.clear();
+        this->threads.set(thread->id, thread);
+    }
     
     for (int i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i].seg_not_present = 1;
@@ -137,12 +299,14 @@ void KProcess::onExec(KThread* thread) {
     this->ldt[1].base_addr = 0;
     this->ldt[1].entry_number = 1;
     this->ldt[1].seg_32bit = 1;
+    this->ldt[1].contents = 2;
     this->ldt[1].seg_not_present = 0;
     this->ldt[1].read_exec_only = 0;
 
     this->ldt[2].base_addr = 0;
     this->ldt[2].entry_number = 2;
     this->ldt[2].seg_32bit = 1;
+    this->ldt[2].contents = 0;
     this->ldt[2].seg_not_present = 0;
     this->ldt[2].read_exec_only = 0;
 
@@ -177,25 +341,162 @@ KProcess::~KProcess() {
     }
 }
 
+void KProcess::retireAllMappedFiles() noexcept {
+    retryPendingMappedFileRetirements();
+    while (true) {
+        MappedFilePtr mapping;
+        bool retire = false;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
+            if (mappedFiles.isEmpty()) {
+                return;
+            }
+            auto entry = mappedFiles.begin();
+            mapping = entry->value;
+            mappedFiles.remove(entry->key);
+            retire = mapping && mapping->lease && mapping->lease->removePiece();
+        }
+        if (retire) {
+            U32 result = mapping->lease->retire();
+            if ((S32)result < 0) {
+                if (!mapping->lease->isRetired()) {
+                    queuePendingMappedFileRetirement(mapping, (S32)result);
+                }
+            }
+        }
+    }
+}
+
+void KProcess::queuePendingMappedFileRetirement(const MappedFilePtr& mapping, S32 error) noexcept {
+    if (!mapping || !mapping->lease || mapping->lease->isRetired()) {
+        return;
+    }
+    recordMappedFileRetirementFailure(mapping, error);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pendingMappedFileRetirementsMutex);
+        if (!mapping->pendingRetirementQueued) {
+            mapping->pendingRetirementNext.reset();
+            mapping->pendingRetirementQueued = true;
+            if (pendingMappedFileRetirementsTail) {
+                pendingMappedFileRetirementsTail->pendingRetirementNext = mapping;
+            } else {
+                pendingMappedFileRetirementsHead = mapping;
+            }
+            pendingMappedFileRetirementsTail = mapping;
+        }
+    }
+    // Close the enqueue/release race for clone reservations. This performs at
+    // most one attempt when the head is deferred and never spins on EAGAIN.
+    retryPendingMappedFileRetirements();
+}
+
+void KProcess::retryPendingMappedFileRetirements() noexcept {
+    while (true) {
+        MappedFilePtr mapping;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pendingMappedFileRetirementsMutex);
+            if (pendingMappedFileRetirementInProgress ||
+                !pendingMappedFileRetirementsHead) {
+                return;
+            }
+            pendingMappedFileRetirementInProgress = true;
+            mapping = pendingMappedFileRetirementsHead;
+        }
+
+        U32 result = mapping->lease->retire();
+        bool completed = (S32)result >= 0 || mapping->lease->isRetired();
+        if (!completed) {
+            recordMappedFileRetirementFailure(mapping, (S32)result);
+        }
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pendingMappedFileRetirementsMutex);
+            if (completed) {
+                if (pendingMappedFileRetirementsHead != mapping) {
+                    kpanic("pending mapped-file retirement queue head changed");
+                }
+                pendingMappedFileRetirementsHead = mapping->pendingRetirementNext;
+                mapping->pendingRetirementNext.reset();
+                mapping->pendingRetirementQueued = false;
+                mapping->retirementDiagnostic->pendingError.store(
+                    0, std::memory_order_release);
+                mapping->retirementDiagnostic->reportedError = 0;
+                mapping->retirementDiagnostic->hasReportedError = false;
+                if (!pendingMappedFileRetirementsHead) {
+                    pendingMappedFileRetirementsTail.reset();
+                }
+            }
+            pendingMappedFileRetirementInProgress = false;
+        }
+        if (!completed) {
+            return;
+        }
+    }
+}
+
+#ifdef __TEST
+void KProcess::retryPendingMappedFileRetirementsForTest() {
+    retryPendingMappedFileRetirements();
+}
+#endif
+
+void KProcess::shutdownPendingMappedFileRetirements() noexcept {
+    retryPendingMappedFileRetirements();
+
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pendingMappedFileRetirementsMutex);
+    if (pendingMappedFileRetirementInProgress) {
+        kwarn("Mapped-file retirement was still in progress during shutdown");
+        return;
+    }
+    U32 abandoned = 0;
+    while (pendingMappedFileRetirementsHead) {
+        MappedFilePtr mapping = pendingMappedFileRetirementsHead;
+        pendingMappedFileRetirementsHead = mapping->pendingRetirementNext;
+        mapping->pendingRetirementNext.reset();
+        mapping->pendingRetirementQueued = false;
+        ++abandoned;
+    }
+    pendingMappedFileRetirementsTail.reset();
+    if (abandoned) {
+        kwarn_fmt("Abandoned %u persistent mapped-file retirement(s) during shutdown",
+            abandoned);
+    }
+}
+
 void KProcess::cleanupProcess() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cleanupMutex);
+    if (cleanupCompleted) {
+        return;
+    }
+#ifdef __TEST
+    std::shared_ptr<std::function<void()>> beforeCleanupHook =
+        testBeforeCleanupProcessHook;
+    if (beforeCleanupHook) {
+        (*beforeCleanupHook)();
+    }
+#endif
     removeTimer(&this->timer);
 
-    BHashTable<U32, KFileDescriptorPtr> fdsToClose = this->fds; // make a copy since we can't remove from it while iterating
-    for( const auto& n : fdsToClose ) {
-        clearFdHandle(n.value->handle);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
+        BHashTable<U32, KFileDescriptorPtr> fdsToClose = this->fds; // make a copy since we can't remove from it while iterating
+        for( const auto& n : fdsToClose ) {
+            clearFdHandle(n.value->handle);
+        }
     }
     this->attachedShm.clear();
     this->privateShm.clear();
-    this->mappedFiles.clear();
-    // will be handled when thread exits, we don't want to delete current memory associated with execution
+    // Invalidate and release every directly accessible mapped page before a
+    // last lease begins writeback. KFile owners retained by the cache remain
+    // valid after descriptor teardown.
     if (memory) {
         memory->cleanup();
     }
+    this->retireAllMappedFiles();
     XServer* server = XServer::getServer(true);
     if (server) {
         server->processExit(id);
     }
+    cleanupCompleted = true;
 }
 
 KThread* KProcess::createThread() {	
@@ -226,11 +527,9 @@ U32 KProcess::getThreadCount() {
 }
 
 void KProcess::deleteThread(KThread* thread) {
-    thread->cleanup();  
+    thread->cleanup();
     if (this->getThreadCount() == 0) {
         cleanupProcess();
-        delete this->memory; // this might call KThread::currentThread, so don't delete thread before this
-        this->memory = nullptr; 
     }
     delete thread;
     // don't call into getProcess while holding threadsCondition
@@ -254,7 +553,37 @@ BString KProcess::getAbsoluteExePath() {
     BString path = Fs::getNodeFromLocalPath(B(""), this->exe, true)->path;
     return Fs::getParentPath(path);
 }
-void KProcess::clone(const KProcessPtr& from) {
+void KProcess::prepareMappedCloneLocked(const KProcessPtr& from,
+    std::vector<PreparedClonedMapping>& sourceMappings,
+    std::vector<std::shared_ptr<MappedFileLease>>& reservations) {
+    sourceMappings.reserve(from->mappedFiles.size());
+    reservations.reserve(from->mappedFiles.size());
+    for (const auto& entry : from->mappedFiles) {
+        MappedFilePtr mapping = std::make_shared<MappedFile>(*entry.value);
+        std::shared_ptr<MappedFileLease> sourceLease = mapping->lease;
+        mapping->lease.reset();
+
+        bool alreadyReserved = false;
+        for (const auto& reservation : reservations) {
+            if (reservation == sourceLease) {
+                alreadyReserved = true;
+                break;
+            }
+        }
+        if (sourceLease && !alreadyReserved) {
+            if (!sourceLease->tryReserveClone()) {
+                throw std::length_error("mapped file clone reservation overflow");
+            }
+            // Capacity was reserved before the first lease was touched, so the
+            // exactly-once release record cannot allocate or throw.
+            reservations.push_back(sourceLease);
+        }
+        sourceMappings.push_back({std::move(mapping), std::move(sourceLease)});
+    }
+}
+
+void KProcess::cloneFromPrepared(const KProcessPtr& from,
+    std::vector<PreparedClonedMapping>& sourceMappings) {
     this->parentId = from->id;;
     this->groupId = from->groupId;
     this->userId = from->userId;
@@ -264,21 +593,70 @@ void KProcess::clone(const KProcessPtr& from) {
     this->brkEnd = from->brkEnd;
     for (auto& n : from->fds) {
         KFileDescriptorPtr fromFd = n.value;
-        KFileDescriptorPtr fd = this->allocFileDescriptor(fromFd->kobject, fromFd->accessFlags, fromFd->descriptorFlags, n.key, 0);
-        this->fds.set(n.key, fd);     
-        KObject* kobject = fd->kobject.get();
-        Fs::addDynamicLinkFile(fdNode->path + "/" + BString::valueOf(n.key), k_mdev(0, 0), fdNode, false, [kobject] {
-            return kobject->selfFd();
-            });
+        this->allocFileDescriptor(fromFd->kobject, fromFd->accessFlags,
+            fromFd->descriptorFlags, n.key, 0);
     }
-    // :TODO: not thread safe if from has multiple threads
-    this->mappedFiles = from->mappedFiles;
+    struct CloneLeaseAcquisition {
+        std::shared_ptr<KFile> file;
+        std::shared_ptr<MappedFileCache> cache;
+    };
+    BHashTable<U32, MappedFilePtr> preparedMappedFiles;
+    preparedMappedFiles.reserve(sourceMappings.size());
+    std::vector<CloneLeaseAcquisition> cloneLeaseAcquisitions;
+    cloneLeaseAcquisitions.reserve(sourceMappings.size());
+    for (size_t i = 0; i < sourceMappings.size(); ++i) {
+        PreparedClonedMapping& record = sourceMappings[i];
+        MappedFilePtr& mapping = record.mapping;
+        if (mapping->systemCacheEntry && record.sourceLease) {
+            for (size_t previous = 0; previous < i; ++previous) {
+                if (sourceMappings[previous].sourceLease == record.sourceLease) {
+                    mapping->lease = sourceMappings[previous].mapping->lease;
+                    mapping->retirementDiagnostic =
+                        sourceMappings[previous].mapping->retirementDiagnostic;
+                    mapping->lease->addPiece();
+                    break;
+                }
+            }
+            if (!mapping->lease) {
+                std::shared_ptr<MappedFileLease> cloneLease =
+                    std::make_shared<MappedFileLease>(mapping->systemCacheEntry);
+                std::shared_ptr<MappedFileRetirementDiagnostic> cloneDiagnostic =
+                    std::make_shared<MappedFileRetirementDiagnostic>();
+                mapping->lease = std::move(cloneLease);
+                mapping->retirementDiagnostic = std::move(cloneDiagnostic);
+                cloneLeaseAcquisitions.push_back({mapping->file, mapping->systemCacheEntry});
+            }
+        }
+        preparedMappedFiles.set(mapping->key, mapping);
+    }
+    // Every fallible copy, lease-group allocation, and hash insertion has
+    // completed. Cache occurrence accounting is non-allocating, and the
+    // finished table can be published with a non-throwing vector swap.
+    for (const CloneLeaseAcquisition& acquisition : cloneLeaseAcquisitions) {
+        acquisition.file->retainMappedFileCacheLease(acquisition.cache);
+    }
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
+        if (!mappedFiles.isEmpty()) {
+            kpanic("clone target already has mapped-file records");
+        }
+        swap(mappedFiles, preparedMappedFiles);
+    }
+#ifdef __TEST
+    if (testFailCloneAfterMappedLeaseRetention) {
+        testFailCloneAfterMappedLeaseRetention = false;
+        throw std::bad_alloc();
+    }
+#endif
     std::copy(from->sigActions, from->sigActions+MAX_SIG_ACTIONS, this->sigActions);
     this->path = from->path;
     this->commandLine = from->commandLine;
     this->exe = from->exe;
     this->name = from->name;
-    this->setupCommandlineNode();
+    this->needsCommandlineNode = true;
+    if (published) {
+        this->setupCommandlineNode();
+    }
     this->umaskValue = from->umaskValue;
 
     this->privateShm = from->privateShm;
@@ -303,6 +681,119 @@ void KProcess::clone(const KProcessPtr& from) {
     this->hasSetStackMask = from->hasSetStackMask;
     this->systemProcess = from->systemProcess;
 }
+
+void KProcess::clone(const KProcessPtr& from) {
+    std::vector<PreparedClonedMapping> sourceMappings;
+    std::vector<std::shared_ptr<MappedFileLease>> reservations;
+    struct ReservationGuard {
+        std::vector<std::shared_ptr<MappedFileLease>>& reservations;
+        ~ReservationGuard() {
+            for (const auto& reservation : reservations) {
+                reservation->releaseCloneReservation();
+            }
+        }
+    } guard{reservations};
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(from->mappedFilesMutex);
+        prepareMappedCloneLocked(from, sourceMappings, reservations);
+    }
+    cloneFromPrepared(from, sourceMappings);
+}
+
+void KProcess::cloneMemoryAndProcess(const KProcessPtr& from, bool cloneVM) {
+    std::vector<PreparedClonedMapping> sourceMappings;
+    std::vector<std::shared_ptr<MappedFileLease>> reservations;
+    struct ReservationGuard {
+        std::vector<std::shared_ptr<MappedFileLease>>& reservations;
+        ~ReservationGuard() {
+            for (const auto& reservation : reservations) {
+                reservation->releaseCloneReservation();
+            }
+        }
+    } guard{reservations};
+
+    try {
+        {
+            // mmap/unmap take these in the same order. Only MMU/mapped-record
+            // copying and allocation-free lease reservation occur inside.
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(from->memory->mutex);
+            {
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(from->mappedFilesMutex);
+                memory->cloneLocked(from->memory, cloneVM);
+                prepareMappedCloneLocked(from, sourceMappings, reservations);
+#ifdef __TEST
+                if (from->testAfterCloneMemorySnapshotHook) {
+                    (*from->testAfterCloneMemorySnapshotHook)();
+                }
+#endif
+            }
+        }
+        // File/identity/cache locks are acquired only after both source locks
+        // have been released. Reservations prevent final source retirement.
+#ifdef __TEST
+        if (from->testAfterCloneSnapshotLocksReleasedHook) {
+            (*from->testAfterCloneSnapshotLocksReleasedHook)();
+        }
+#endif
+        cloneFromPrepared(from, sourceMappings);
+    } catch (...) {
+        if (cloneVM) {
+            // cloneLocked aliases the source KMemoryData for CLONE_VM. A child
+            // that never publishes must not delete that shared owner.
+            memory->detachSharedDataAfterFailedClone();
+        }
+        throw;
+    }
+}
+
+#ifdef __TEST
+void KProcess::setTestAfterCloneMemorySnapshotHook(const std::function<void()>& hook) {
+    if (hook) {
+        testAfterCloneMemorySnapshotHook =
+            std::make_shared<std::function<void()>>(hook);
+    } else {
+        testAfterCloneMemorySnapshotHook.reset();
+    }
+}
+
+void KProcess::setTestAfterCloneSnapshotLocksReleasedHook(
+    const std::function<void()>& hook) {
+    if (hook) {
+        testAfterCloneSnapshotLocksReleasedHook =
+            std::make_shared<std::function<void()>>(hook);
+    } else {
+        testAfterCloneSnapshotLocksReleasedHook.reset();
+    }
+}
+
+void KProcess::cloneMemoryAndProcessForTest(const KProcessPtr& from, bool cloneVM) {
+    cloneMemoryAndProcess(from, cloneVM);
+}
+
+void KProcess::setTestFailCloneAfterMappedLeaseRetention(bool fail) {
+    testFailCloneAfterMappedLeaseRetention = fail;
+}
+
+void KProcess::setTestDuringProcessPublicationHook(
+    const std::function<void(U32)>& hook) {
+    if (hook) {
+        testDuringProcessPublicationHook =
+            std::make_shared<std::function<void(U32)>>(hook);
+    } else {
+        testDuringProcessPublicationHook.reset();
+    }
+}
+
+void KProcess::setTestBeforeCleanupProcessHook(
+    const std::function<void()>& hook) {
+    if (hook) {
+        testBeforeCleanupProcessHook =
+            std::make_shared<std::function<void()>>(hook);
+    } else {
+        testBeforeCleanupProcessHook.reset();
+    }
+}
+#endif
 
 static void writeStackString(KThread* thread, CPU * cpu, const char* s) {
     int count = (int)((strlen(s)+4)/4);
@@ -451,9 +942,11 @@ KFileDescriptorPtr KProcess::allocFileDescriptor(const std::shared_ptr<KObject>&
     KFileDescriptorPtr result = std::make_shared<KFileDescriptor>(shared_from_this(), kobject, accessFlags, descriptorFlags, handle);
     
     this->fds.set(handle, result);
-    Fs::addDynamicLinkFile(fdNode->path+"/"+BString::valueOf(handle), k_mdev(0, 0), fdNode, false, [kobject] {
-        return kobject->selfFd();
-    });
+    if (fdNode) {
+        Fs::addDynamicLinkFile(fdNode->path + "/" + BString::valueOf(handle), k_mdev(0, 0), fdNode, false, [kobject] {
+            return kobject->selfFd();
+        });
+    }
     return result;
 }
 
@@ -462,18 +955,32 @@ U32 translateOpenError() {
     case EACCES: return -K_EACCES;
     case EEXIST: return -K_EEXIST;
     case ENOENT: return -K_ENOENT;
+    case ENOTDIR: return -K_ENOTDIR;
     case EISDIR: return -K_EISDIR;
     }
     return -K_EINVAL;
 }
 
-U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptorPtr& result) {
+U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptorPtr& result, U32 mode) {
     std::shared_ptr<FsNode> node;
     std::shared_ptr<KObject> kobject;
+    BString fullPath = Fs::getFullPath(currentDirectory, localPath);
+    bool trailingSlashRequiresDirectory = fullPath.length() > 1 && fullPath.endsWith("/");
+    bool createdNode = false;
 
-    node = Fs::getNodeFromLocalPath(currentDirectory, localPath, true);
+    FsPathLookupOptions lookupOptions;
+    lookupOptions.followFinalSymlink = true;
+    lookupOptions.requireDirectory = trailingSlashRequiresDirectory || (accessFlags & K_O_DIRECTORY);
+    FsPathResult resolution = Fs::resolvePath(currentDirectory, localPath, lookupOptions);
+    node = resolution.node;
+    if (!node && resolution.error != -K_ENOENT) {
+        return resolution.error;
+    }
     if (!node && (accessFlags & (K_O_CREAT|K_O_TMPFILE))==0) {
-        return -K_ENOENT;
+        return resolution.error ? resolution.error : -K_ENOENT;
+    }
+    if (node && trailingSlashRequiresDirectory && !node->isDirectory()) {
+        return -K_ENOTDIR;
     }
     if (accessFlags & K_O_TMPFILE) {
         if ((accessFlags & K_O_ACCMODE)!=K_O_WRONLY && (accessFlags & K_O_ACCMODE)!=K_O_RDWR) {
@@ -492,13 +999,15 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
         }
     }
     if (!node) {
-        BString fullPath = Fs::getFullPath(currentDirectory, localPath);
         BString parentPath = Fs::getParentPath(fullPath);
         BString fileName = Fs::getFileNameFromPath(fullPath);
         std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), parentPath, true);
         if (!parent) {
             return -K_ENOENT;
-        }       
+        }
+        if (this->effectiveUserId && !parent->canWrite()) {
+            return -K_EACCES;
+        }
         BString nativePath = Fs::getNativePathFromParentAndLocalFilename(parent, fileName);
         std::shared_ptr<FsNode> mixedSibling = parent->getChildByNameIgnoreCase(fileName);
         if (mixedSibling) {
@@ -508,6 +1017,7 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
             }
         }
         node = Fs::addFileNode(parent->path+"/"+fileName, B(""), nativePath, false, parent);
+        createdNode = true;
         Fs::makeLocalDirs(parent->path);
     }
     std::shared_ptr<KObject> nodeObject = node->kobject.lock();
@@ -521,12 +1031,18 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
         openNode->openedPath = Fs::getFullPath(currentDirectory, localPath);
         kobject = std::make_shared<KFile>(openNode);
     }
+    if (createdNode) {
+        node->setMode(mode);
+    }
     result = this->allocFileDescriptor(kobject, accessFlags, descriptorFlags, handle, afterHandle);
+    if (createdNode) {
+        KInotifyObject::notifyPath(node->path, K_IN_CREATE);
+    }
     return 0;
 }
 
-U32 KProcess::openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptorPtr& result) {
-    return this->openFileDescriptor( currentDirectory, localPath, accessFlags, (accessFlags & K_O_CLOEXEC)?FD_CLOEXEC:0, -1, 0, result);
+U32 KProcess::openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptorPtr& result, U32 mode) {
+    return this->openFileDescriptor( currentDirectory, localPath, accessFlags, (accessFlags & K_O_CLOEXEC)?FD_CLOEXEC:0, -1, 0, result, mode);
 }
 
 void KProcess::initStdio() {
@@ -641,7 +1157,9 @@ KFileDescriptor* KProcess::getFileDescriptor_nolock(FD handle) {
 void KProcess::clearFdHandle(FD handle) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     this->fds.remove(handle);
-    fdNode->removeChildByName(BString::valueOf(handle));
+    if (fdNode) {
+        fdNode->removeChildByName(BString::valueOf(handle));
+    }
 }
 
 bool KProcess::isStopped() {
@@ -663,13 +1181,168 @@ BString KProcess::getModuleName(U32 eip) {
     return B("Unknown");
 }
 
-U32 KProcess::getModuleEip(U32 eip) {    
+U32 KProcess::getModuleEip(U32 eip) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
         std::shared_ptr<MappedFile> mappedFile = n.value;
-        if (eip>=mappedFile->address && eip<mappedFile->address+mappedFile->len)
-            return (U32)(eip-mappedFile->address+mappedFile->offset);
+        if (eip >= mappedFile->address && eip < mappedFile->address + mappedFile->len) {
+            U64 fileOffset = 0;
+            if (mappedFile->tryGetFileOffset(eip - mappedFile->address, fileOffset) &&
+                fileOffset <= std::numeric_limits<U32>::max()) {
+                return (U32)fileOffset;
+            }
+            return 0;
+        }
     }
+    return 0;
+}
+
+namespace {
+class MappedFileRangeSelector {
+public:
+    MappedFileRangeSelector(U32 address, U32 len)
+        : start(address), end(start + len), valid(len != 0 && end <= 0x100000000ULL) {
+    }
+
+    bool isValid() const {
+        return valid;
+    }
+
+    void consider(const MappedFilePtr& mapping) {
+        if (mapping && start >= mapping->address && end <= mapping->address + mapping->len &&
+                (!result || mapping->key > result->key)) {
+            result = mapping;
+        }
+    }
+
+    MappedFilePtr takeResult() {
+        return std::move(result);
+    }
+
+private:
+    U64 start;
+    U64 end;
+    bool valid;
+    MappedFilePtr result;
+};
+
+static MappedFilePtr selectMappedFileForRange(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len) {
+    MappedFileRangeSelector selector(address, len);
+    if (!selector.isValid()) {
+        return nullptr;
+    }
+    for (const MappedFilePtr& mapping : mappings) {
+        selector.consider(mapping);
+    }
+    return selector.takeResult();
+}
+} // namespace
+
+#ifdef __TEST
+MappedFilePtr KProcess::selectMappedFileForRangeForTest(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len) {
+    return selectMappedFileForRange(mappings, address, len);
+}
+
+U32 KProcess::getMappedFileCountForTest() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
+    return (U32)mappedFiles.size();
+}
+
+void KProcess::setTestAfterMappedFileRangeSnapshotHook(const std::function<void()>& hook) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
+    if (hook) {
+        testAfterMappedFileRangeSnapshotHook = std::make_shared<std::function<void()>>(hook);
+    } else {
+        testAfterMappedFileRangeSnapshotHook.reset();
+    }
+}
+#endif
+
+MappedFilePtr KProcess::getMappedFileForRange(U32 address, U32 len) {
+    MappedFileRangeSelector selector(address, len);
+    if (!selector.isValid()) {
+        return nullptr;
+    }
+    std::shared_ptr<std::function<void()>> afterSnapshot;
+    MappedFilePtr result;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
+        for (const auto& n : this->mappedFiles) {
+            selector.consider(n.value);
+        }
+        MappedFilePtr selected = selector.takeResult();
+        if (selected) {
+            try {
+                // Range consumers must not observe later in-place surgery on
+                // the live record. Shared owners (including the lease) are
+                // retained, but a snapshot is not another mapping piece.
+                result = std::make_shared<MappedFile>(*selected);
+            } catch (const std::bad_alloc&) {
+                result.reset();
+            } catch (const std::length_error&) {
+                result.reset();
+            }
+        }
+#ifdef __TEST
+        afterSnapshot = testAfterMappedFileRangeSnapshotHook;
+#endif
+    }
+#ifdef __TEST
+    if (afterSnapshot) {
+        (*afterSnapshot)();
+    }
+#endif
+    return result;
+}
+
+U32 KProcess::snapshotMappedFilesForRange(U32 address, U32 len,
+    std::vector<MappedFilePtr>& result) {
+    const U64 rangeStart = address;
+    const U64 rangeEnd = rangeStart + len;
+    const U64 pageEnd =
+        (rangeEnd + K_PAGE_MASK) & ~(U64)K_PAGE_MASK;
+    std::shared_ptr<std::function<void()>> afterSnapshot;
+
+    try {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
+        for (U64 page = rangeStart >> K_PAGE_SHIFT;
+             page < (pageEnd >> K_PAGE_SHIFT); ++page) {
+            if (!memory->isPageMapped((U32)page)) {
+                return -K_ENOMEM;
+            }
+        }
+
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
+            result.reserve(mappedFiles.size());
+            for (const auto& entry : mappedFiles) {
+                const MappedFilePtr& mapping = entry.value;
+                const U64 mappingStart = mapping->address;
+                const U64 mappingEnd = mappingStart + mapping->len;
+                if (mappingStart < rangeEnd && mappingEnd > rangeStart) {
+                    // Keep a stable range snapshot across later unmap surgery.
+                    // This copy retains shared owners but is not another lease
+                    // piece.
+                    result.push_back(std::make_shared<MappedFile>(*mapping));
+                }
+            }
+#ifdef __TEST
+            afterSnapshot = testAfterMappedFileRangeSnapshotHook;
+#endif
+        }
+    } catch (const std::bad_alloc&) {
+        result.clear();
+        return -K_ENOMEM;
+    } catch (const std::length_error&) {
+        result.clear();
+        return -K_ENOMEM;
+    }
+
+#ifdef __TEST
+    if (afterSnapshot) {
+        (*afterSnapshot)();
+    }
+#endif
     return 0;
 }
 
@@ -821,14 +1494,16 @@ void KProcess::signalProcess(U32 signal) {
     }
 
 #ifdef BOXEDWINE_MULTI_THREADED
-    // give each thread a chance to run a signal, some or all of them might have the signal masked off.  
+    // give each thread a chance to run a signal, some or all of them might have the signal masked off.
     // In that case when the user unmasks the signal with sigprocmask it will be caught then
     iterateThreads([](KThread* thread) {
-        if (thread->waitingCond) {
+        bool waiting = false;
+        {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
-            if (thread->waitingCond) {
-                thread->runSignals();
-            }
+            waiting = thread->waitingCond != nullptr;
+        }
+        if (waiting) {
+            thread->runSignals();
         }
         return true;
     });
@@ -884,33 +1559,63 @@ U32 KProcess::dup(U32 fildes) {
 }
 
 U32 KProcess::rmdir(BString path) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);
-
-    if (!node)
-        return -K_ENOENT;
-    return node->removeDir();
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, false);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    std::shared_ptr<FsNode> node = resolution.node;
+    if (resolution.finalComponentWasSymlink || !node->isDirectory()) {
+        return -K_ENOTDIR;
+    }
+    BString fullPath = node->path;
+    U32 result = node->removeDir();
+    if (!result) {
+        KInotifyObject::notifyPath(fullPath, K_IN_DELETE | K_IN_ISDIR);
+    }
+    return result;
 }
 
-U32 KProcess::mkdir(BString path) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);   
+U32 KProcess::mkdir(BString path, U32 mode) {
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);
     if (node) {
         return -K_EEXIST;
     }
     BString fullpath = Fs::getFullPath(this->currentDirectory, path);
     BString parentPath = Fs::getParentPath(fullpath);
-    node = Fs::getNodeFromLocalPath(B(""), parentPath, false); 
-    if (!node) {
-        return -K_ENOENT;
+    FsPathResult parentResolution = resolvePathForSyscall(B(""), parentPath, true);
+    if (parentResolution.error) {
+        return parentResolution.error;
     }
-    return Fs::makeLocalDirs(fullpath);
+    node = parentResolution.node;
+    if (!node->isDirectory()) {
+        return -K_ENOTDIR;
+    }
+    if (this->effectiveUserId && !node->canWrite()) {
+        return -K_EACCES;
+    }
+    U32 result = Fs::makeLocalDirs(fullpath);
+    if (!result) {
+        node = Fs::getNodeFromLocalPath(B(""), fullpath, false);
+        if (node) {
+            node->setMode(mode & ~this->umaskValue);
+        }
+        KInotifyObject::notifyPath(node ? node->path : fullpath, K_IN_CREATE | K_IN_ISDIR);
+    }
+    return result;
 }
 
 U32 KProcess::rename(BString from, BString to) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, from, false);    
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, from, false);
     if (!node)
         return -K_ENOENT;
+    BString oldPath = node->path;
+    bool isDirectory = node->isDirectory();
     BString fullPath = Fs::getFullPath(this->currentDirectory, to);
-    return node->rename(fullPath);
+    U32 result = node->rename(fullPath);
+    if (!result) {
+        KInotifyObject::notifyMove(oldPath, node->path, isDirectory);
+    }
+    return result;
 }
 
 U32 KProcess::renameat(FD olddirfd, BString from, FD newdirfd, BString to) {
@@ -919,14 +1624,20 @@ U32 KProcess::renameat(FD olddirfd, BString from, FD newdirfd, BString to) {
     if (result)
         return result;
 
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, from, false);    
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, from, false);
     if (!node)
         return -K_ENOENT;
+    BString oldPath = node->path;
+    bool isDirectory = node->isDirectory();
     result = this->getCurrentDirectoryFromDirFD(newdirfd, currentDirectory);
     if (result)
         return result;
     BString fullPath = Fs::getFullPath(currentDirectory, to);
-    return node->rename(fullPath);
+    result = node->rename(fullPath);
+    if (!result) {
+        KInotifyObject::notifyMove(oldPath, node->path, isDirectory);
+    }
+    return result;
 }
 
 static S32 internalAccess(std::shared_ptr<FsNode> node, U32 flags) {
@@ -952,8 +1663,11 @@ static S32 internalAccess(std::shared_ptr<FsNode> node, U32 flags) {
 }
 
 U32 KProcess::access(BString path, U32 mode) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
-    return internalAccess(node, mode); 
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    return internalAccess(resolution.node, mode);
 }
 
 U32 KProcess::lseek(FD fildes, S32 offset, U32 whence) {
@@ -976,44 +1690,67 @@ U32 KProcess::lseek(FD fildes, S32 offset, U32 whence) {
 }
 
 U32 KProcess::chmod(BString path, U32 mode) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
-    if (!node)
-        return -K_ENOENT;
-    return 0;
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    return resolution.node->setMode(mode);
+}
+
+U32 KProcess::fchmod(FD fildes, U32 mode) {
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
+    if (!fd) {
+        return -K_EBADF;
+    }
+    if (fd->kobject->type != KTYPE_FILE) {
+        return -K_EINVAL;
+    }
+    std::shared_ptr<KFile> file = std::dynamic_pointer_cast<KFile>(fd->kobject);
+    std::shared_ptr<FsNode> node = file->openFile->node;
+    U32 result = node->setMode(mode);
+    if (!result) {
+        KInotifyObject::notifyPath(node->path, K_IN_ATTRIB);
+    }
+    return result;
 }
 
 U32 KProcess::chdir(BString path) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
-    if (!node)
-        return -K_ENOENT;
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    std::shared_ptr<FsNode> node = resolution.node;
     if (!node->isDirectory())
         return -K_ENOTDIR;
-    if (path.startsWith('/')) {
-        this->currentDirectory = path;
-    } else {
-        this->currentDirectory = this->currentDirectory+"/"+path;
-    }
-    if (this->currentDirectory.endsWith('/')) {
-        this->currentDirectory = this->currentDirectory.substr(0, this->currentDirectory.length()-1);
-    }
+    this->currentDirectory = node->path;
     return 0;
 }
 
 U32 KProcess::unlinkFile(BString path) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, false);
+    if (resolution.error) {
+        return resolution.error;
     }
+    std::shared_ptr<FsNode> node = resolution.node;
+    if (resolution.trailingSlash && resolution.finalComponentWasSymlink) {
+        return -K_ENOTDIR;
+    }
+    if (node->isDirectory()) {
+        return -K_EISDIR;
+    }
+    BString fullPath = node->path;
     if (!node->remove()) {
         kwarn_fmt("failed to remove file: errno=%d", errno);
         return -K_EBUSY;
     }
+    KInotifyObject::notifyPath(fullPath, K_IN_DELETE);
     return 0;
 }
 
 U32 KProcess::link(BString from, BString to) {
     std::shared_ptr<FsNode> fromNode = Fs::getNodeFromLocalPath(this->currentDirectory, from, false);
     std::shared_ptr<FsNode> toNode = Fs::getNodeFromLocalPath(this->currentDirectory, to, false);
+    BString fullTo = Fs::getFullPath(this->currentDirectory, to);
 
     if (!fromNode) {
         return -K_ENOENT;
@@ -1026,33 +1763,48 @@ U32 KProcess::link(BString from, BString to) {
         return -K_EPERM;
     }
 
-    FsOpenNode* fromOpenNode = fromNode->open(K_O_RDONLY);
-    if (!fromOpenNode)
-        return -K_EIO;
+    std::shared_ptr<FsFileNode> fromFile = std::dynamic_pointer_cast<FsFileNode>(fromNode);
+    if (!fromFile) {
+        return -K_EPERM;
+    }
 
-    std::shared_ptr<FsNode> toParentNode = Fs::getNodeFromLocalPath(this->currentDirectory, Fs::getParentPath(to), false);
+    std::shared_ptr<FsNode> toParentNode = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(fullTo), false);
     if (!toParentNode)
         return -K_ENOENT;
 
-    toNode = Fs::addFileNode(to, B(""), Fs::getNativePathFromParentAndLocalFilename(toParentNode, Fs::getFileNameFromPath(to)), false, toParentNode);
-    FsOpenNode* toOpenNode = toNode->open(K_O_WRONLY|K_O_CREAT);
-    if (!toOpenNode) {
-        fromOpenNode->close();
-        return -K_EIO;
+    std::shared_ptr<FsHardLinkState> hardLinkState = fromFile->getHardLinkState();
+    if (!hardLinkState) {
+        FsOpenNode* fromOpenNode = fromNode->open(K_O_RDONLY);
+        if (!fromOpenNode) {
+            return -K_EIO;
+        }
+        delete fromOpenNode;
+
+        BString backingNativePath = fromFile->nativePath + EXT_HARDLINK_BACKING;
+        if (Fs::doesNativePathExist(backingNativePath)) {
+            backingNativePath = fromFile->nativePath + B(".") + BString::valueOf(fromFile->getId()) + EXT_HARDLINK_BACKING;
+        }
+        hardLinkState = FsFileNode::createHardLinkState(fromFile->getId(), backingNativePath, 1, fromFile->getMode());
+        U32 result = fromFile->convertToHardLinkBacking(hardLinkState);
+        if (result) {
+            return result;
+        }
+        if (!FsFileNode::writeHardLinkMetadata(fromFile->nativePath, hardLinkState)) {
+            return -K_EIO;
+        }
     }
 
-    while (1) {
-        U8 buffer[K_PAGE_SIZE];
-        U32 r = fromOpenNode->readNative(buffer, K_PAGE_SIZE);	
-        toOpenNode->writeNative(buffer, r);
-        if (r<K_PAGE_SIZE)
-            break;
+    BString fileName = Fs::getFileNameFromPath(fullTo);
+    toNode = Fs::addFileNode(fullTo, B(""), Fs::getNativePathFromParentAndLocalFilename(toParentNode, fileName), false, toParentNode);
+    std::shared_ptr<FsFileNode> toFile = std::dynamic_pointer_cast<FsFileNode>(toNode);
+    hardLinkState->linkCount++;
+    toFile->setHardLinkState(hardLinkState);
+    if (!FsFileNode::writeHardLinkMetadata(toFile->nativePath, hardLinkState)) {
+        hardLinkState->linkCount--;
+        toFile->removeNodeFromParent();
+        return -K_EIO;
     }
-    toOpenNode->close();
-    fromOpenNode->close();
-    toNode->hardLinkCount++;
-    fromNode->hardLinkCount++;
-    kdebug("Hard link not implemented");
+    KInotifyObject::notifyPath(toFile->path, K_IN_CREATE);
     return 0;
 }
 
@@ -1065,10 +1817,10 @@ U32 KProcess::close(FD fildes) {
     return 0;
 }
 
-U32 KProcess::open(BString path, U32 flags) {
+U32 KProcess::open(BString path, U32 flags, U32 mode) {
     KFileDescriptorPtr fd;
         
-    U32 result = this->openFile(this->currentDirectory, path, flags, fd);
+    U32 result = this->openFile(this->currentDirectory, path, flags, fd, mode);
     if (result || !fd) {
         return result;
     }
@@ -1296,8 +2048,12 @@ U32 KProcess::symlink(BString target, BString linkpath) {
 
 U32 KProcess::readlinkInDirectory(BString currentDirectory, BString path, U32 buffer, U32 bufSize) {
     // :TODO: move these to the virtual filesystem
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, path, false);
-    if (!node || !node->isLink())
+    FsPathResult resolution = resolvePathForSyscall(currentDirectory, path, false);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    std::shared_ptr<FsNode> node = resolution.node;
+    if (!node->isLink())
         return -K_EINVAL;
     U32 len = (U32)node->getLink().length();
     if (len>bufSize)
@@ -1335,19 +2091,37 @@ U32 KProcess::ftruncate64(FD fildes, U64 length) {
     if (!fd->canWrite()) {
         return -K_EINVAL;
     }
-    if (!openNode->setLength(length)) {
-        return -K_EIO;
+    return p->setLength(length);
+}
+
+U32 KProcess::fallocate(FD fildes, U32 mode, S64 offset, S64 length) {
+    if (mode) {
+        return -K_EOPNOTSUPP;
     }
-    return 0;
+    if (offset < 0 || length <= 0) {
+        return -K_EINVAL;
+    }
+    if ((U64)length > (U64)std::numeric_limits<S64>::max() - (U64)offset) {
+        return -K_EFBIG;
+    }
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
+    if (!fd || fd->kobject->type != KTYPE_FILE || !fd->canWrite()) {
+        return -K_EBADF;
+    }
+    std::shared_ptr<KFile> file = std::dynamic_pointer_cast<KFile>(fd->kobject);
+    if (file->openFile->node->isDirectory()) {
+        return -K_ENODEV;
+    }
+    return file->allocate((U64)offset, (U64)length);
 }
 
 #define FS_SIZE 107374182400l
 #define FS_FREE_SIZE 96636764160l
 
 U32 KProcess::statfs(BString path, U32 address) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
+    if (resolution.error) {
+        return resolution.error;
     }
     memory->writed(address, 0xEF53); // f_type (EXT3)
     memory->writed(address + 4, FS_BLOCK_SIZE); // f_bsize
@@ -1364,9 +2138,9 @@ U32 KProcess::statfs(BString path, U32 address) {
 }
 
 U32 KProcess::statfs64(BString path, U32 address) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
+    if (resolution.error) {
+        return resolution.error;
     }
     memory->writed(address, 0xEF53); // f_type (EXT3)
     memory->writed(address + 4, FS_BLOCK_SIZE); // f_bsize
@@ -1556,52 +2330,64 @@ U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 t
         if (flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)) {
             kpanic_fmt("KProcess::clone - unhandled flag 0x%X", (U32)(flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)));
         }
-        KProcessPtr newProcess = KProcess::create();
-        newProcess->memory = KMemory::create(newProcess.get());
-        newProcess->memory->clone(this->memory, vm);
+        KProcessPtr newProcess;
+        KThread* newThread = nullptr;
+        try {
+            newProcess = KProcess::createUnpublished();
+            newProcess->memory = KMemory::create(newProcess.get());
+            newProcess->parentId = this->id;
+            newProcess->cloneVM = vm;
+            newProcess->cloneMemoryAndProcess(shared_from_this(), vm);
 
-        KThread* newThread = newProcess->createThread();
+            newThread = newProcess->createThread();
+            newThread->clone(thread);
 
-        newProcess->parentId = this->id;        
-        newProcess->cloneVM = vm;
-        newProcess->clone(shared_from_this());
-        newThread->clone(thread);
-
-        // will only create them if they are missing
-        //newProcess->initStdio();
-        
-        if ((flags & K_CLONE_CHILD_SETTID)!=0) {
-            if (ctid!=0) {
+            if ((flags & K_CLONE_CHILD_SETTID)!=0 && ctid!=0) {
                 ChangeThread c(newThread); // so that writed will go to the new memory space
                 newThread->memory->writed(ctid, newThread->id);
             }
-        }
-        if ((flags & K_CLONE_CHILD_CLEARTID)!=0) {
-            newThread->clear_child_tid = ctid;
-        }
-        if ((flags & K_CLONE_PARENT_SETTID)!=0) {
-            // CLONE_PARENT_SETTID(since Linux 2.5.49)
-            // Store the child thread ID at the location pointed to by
-            // parent_tid(clone()) or cl_args.parent_tid(clone3()) in
-            // the parent's memory.  (In Linux 2.5.32-2.5.48 there was a
-            // flag CLONE_SETTID that did this.)  The store operation
-            // completes before the clone call returns control to user
-            // space.
-            if (ptid) {                
-                memory->writed(ptid, newThread->id);
+            if ((flags & K_CLONE_CHILD_CLEARTID)!=0) {
+                newThread->clear_child_tid = ctid;
             }
+            if (child_stack!=0) {
+                newThread->cpu->reg[4].u32 = child_stack;
+            }
+            if (vm) {
+                newThread->cpu->reg[4].u32+=8;
+                newThread->cpu->eip.u32 = newThread->cpu->peek32(0);
+            } else {
+                newThread->cpu->eip.u32 += 2; // step over clone call in the new thread
+            }
+            newThread->cpu->reg[0].u32 = 0;
+
+            // No child process or /proc state is visible until every fallible
+            // memory, mapping, descriptor, thread, and proc-node copy succeeds.
+            newProcess->publish();
+        } catch (const std::bad_alloc&) {
+            if (vm && newProcess && newProcess->memory) {
+                newProcess->memory->detachSharedDataAfterFailedClone();
+            }
+            newProcess.reset();
+            return -K_ENOMEM;
+        } catch (const std::length_error&) {
+            if (vm && newProcess && newProcess->memory) {
+                newProcess->memory->detachSharedDataAfterFailedClone();
+            }
+            newProcess.reset();
+            return -K_ENOMEM;
+        } catch (...) {
+            if (vm && newProcess && newProcess->memory) {
+                newProcess->memory->detachSharedDataAfterFailedClone();
+            }
+            newProcess.reset();
+            return -K_EIO;
         }
-        if (child_stack!=0) {
-            newThread->cpu->reg[4].u32 = child_stack;
+
+        if ((flags & K_CLONE_PARENT_SETTID)!=0 && ptid) {
+            // The child is fully published before its id becomes guest-visible.
+            memory->writed(ptid, newThread->id);
         }
-        if (vm) {
-            newThread->cpu->reg[4].u32+=8;
-            newThread->cpu->eip.u32 = newThread->cpu->peek32(0);
-        } else {
-            newThread->cpu->eip.u32 += 2; // step over clone call in the new thread
-        }
-        newThread->cpu->reg[0].u32 = 0;
-        //runThreadSlice(newThread); // if the new thread runs before the current thread, it will likely call exec which will prevent unnessary copy on write actions when running the current thread first        
+        //runThreadSlice(newThread); // if the new thread runs before the current thread, it will likely call exec which will prevent unnessary copy on write actions when running the current thread first
         if (vFork) {
 #ifndef BOXEDWINE_MULTI_THREADED
             // don't re-enter when we wake up
@@ -1673,7 +2459,10 @@ U32 KProcess::exitgroup(KThread* thread, U32 code) {
     }
 
     thread->cleanup(); // must happen before we clear memory
-    this->threads.clear();
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+        this->threads.clear();
+    }
     if (cloneVM) {
         // make sure the shared memory is unhooked from parent
         this->memory->execvReset(cloneVM);
@@ -1805,8 +2594,15 @@ U32 KProcess::getdents(FD fildes, U32 dirp, U32 count, bool is64) {
     }
     U32 entries = openNode->getDirectoryEntryCount();
     U32 len = 0;
+    S64 filePos = openNode->getFilePointer();
 
-    for (U32 i=(U32)openNode->getFilePointer();i<entries;i++) {
+    if (filePos < 0) {
+        return -K_EINVAL;
+    }
+    if (filePos > entries) {
+        filePos = entries;
+    }
+    for (U32 i=(U32)filePos;i<entries;i++) {
         BString name;
         std::shared_ptr<FsNode> entry = openNode->getDirectoryEntry(i, name);
         S32 recordLen = writeRecord(memory, dirp, len, count, i + 2, is64, name.c_str(), entry->id, entry->getType(true));
@@ -1824,14 +2620,55 @@ U32 KProcess::getdents(FD fildes, U32 dirp, U32 count, bool is64) {
 }
 
 U32 KProcess::msync(KThread* thread, U32 addr, U32 len, U32 flags) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
-    for (auto& n : this->mappedFiles) {
-        std::shared_ptr<MappedFile> m = n.value;
-        if (m->address<=addr && addr+len<m->address+m->len) {
-            return m->file->pwrite(thread, addr, addr - m->address + m->offset, len);
+    if (addr & K_PAGE_MASK) {
+        return -K_EINVAL;
+    }
+    constexpr U32 allowedFlags =
+        K_MS_ASYNC | K_MS_INVALIDATE | K_MS_SYNC;
+    if ((flags & ~allowedFlags) ||
+        ((flags & K_MS_ASYNC) && (flags & K_MS_SYNC))) {
+        return -K_EINVAL;
+    }
+    if (!len) {
+        return 0;
+    }
+    const U64 rangeStart = addr;
+    const U64 rangeEnd = rangeStart + len;
+    if (rangeEnd > 0x100000000ULL) {
+        return -K_ENOMEM;
+    }
+
+    std::vector<MappedFilePtr> mappings;
+    U32 snapshotResult =
+        snapshotMappedFilesForRange(addr, len, mappings);
+    if (snapshotResult) {
+        return snapshotResult;
+    }
+
+    for (const MappedFilePtr& mapping : mappings) {
+        if (!mapping->shared || !mapping->systemCacheEntry) {
+            continue;
+        }
+        const U64 mappingStart = mapping->address;
+        const U64 mappingEnd = mappingStart + mapping->len;
+        const U64 flushStart = std::max(rangeStart, mappingStart);
+        const U64 flushEnd = std::min(rangeEnd, mappingEnd);
+        if (flushStart >= flushEnd) {
+            continue;
+        }
+        U64 fileOffset;
+        if (!mapping->tryGetFileOffset(
+                flushStart - mappingStart, fileOffset)) {
+            return -K_EINVAL;
+        }
+        U32 flushResult =
+            mapping->systemCacheEntry->flush(fileOffset,
+                flushEnd - flushStart);
+        if (flushResult) {
+            return flushResult;
         }
     }
-    return -K_ENOMEM;
+    return 0;
 }
 
 U32 KProcess::writev(KThread* thread, FD handle, U32 iov, S32 iovcnt) {
@@ -1955,22 +2792,26 @@ U32 KProcess::getcwd(U32 buffer, U32 size) {
 }
 
 U32 KProcess::stat64(BString path, U32 buffer) {
-    bool isLink = false;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true, &isLink);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = true;
+    FsPathResult resolution = Fs::resolvePath(this->currentDirectory, path, options);
+    if (resolution.error) {
+        return resolution.error;
     }
+    std::shared_ptr<FsNode> node = resolution.node;
     U64 len = node->length();
-    KSystem::writeStat(this, node->path, buffer, true, 1, node->id, node->getMode(), node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(this, node->path, buffer, true, 1, node->getId(), node->getMode(), node->rdev, len, 4096, (len + 4095) / 4096, node->lastAccessed(), node->lastAccessedNano(), node->lastModified(), node->lastModifiedNano(), node->lastStatusChanged(), node->lastStatusChangedNano(), node->getHardLinkCount());
     return 0;
 }
 
 U32 KProcess::lstat64(BString path, U32 buffer) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, false);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = false;
+    FsPathResult resolution = Fs::resolvePath(this->currentDirectory, path, options);
+    if (resolution.error) {
+        return resolution.error;
     }
- 
+    std::shared_ptr<FsNode> node = resolution.node;
     U64 len = 0;
     U32 mode = 0;
 
@@ -1981,7 +2822,7 @@ U32 KProcess::lstat64(BString path, U32 buffer) {
         len = node->length();
         mode = node->getMode();
     }
-    KSystem::writeStat(this, node->path, buffer, true, 1, node->id, mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(this, node->path, buffer, true, 1, node->getId(), mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastAccessed(), node->lastAccessedNano(), node->lastModified(), node->lastModifiedNano(), node->lastStatusChanged(), node->lastStatusChangedNano(), node->getHardLinkCount());
     return 0;
 }
 
@@ -2180,11 +3021,11 @@ U32 KProcess::epollwait(KThread* thread, FD epfd, U32 events, U32 maxevents, U32
 }
 
 U32 KProcess::utimes(BString path, U32 times) {
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(this->currentDirectory, path, true);
-
-    if (!node) {
-        return -K_ENOENT;
-    } else {        
+    FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
+    if (resolution.error) {
+        return resolution.error;
+    } else {
+        std::shared_ptr<FsNode> node = resolution.node;
         U64 lastAccessTime = 0;
         U32 lastAccessTimeNano = 0;
         U64 lastModifiedTime =  0;
@@ -2220,7 +3061,7 @@ U32 KProcess::getCurrentDirectoryFromDirFD(FD dirfd, BString& currentDirectory) 
     return result;
 }
 
-U32 KProcess::openat(FD dirfd, BString path, U32 flags) {
+U32 KProcess::openat(FD dirfd, BString path, U32 flags, U32 mode) {
     BString dir;
     U32 result = 0;
     
@@ -2230,7 +3071,7 @@ U32 KProcess::openat(FD dirfd, BString path, U32 flags) {
     if (result)
         return result;
     KFileDescriptorPtr fd;
-    result = this->openFile(dir, path, flags, fd);
+    result = this->openFile(dir, path, flags, fd, mode);
     if (result || !fd) {
         return result;
     }
@@ -2247,7 +3088,26 @@ U32 KProcess::mkdirat(U32 dirfd, BString path, U32 mode) {
     if (result)
         return result;
     BString fullPath = Fs::getFullPath(dir, path);
-    return this->mkdir(fullPath);
+    return this->mkdir(fullPath, mode);
+}
+
+U32 KProcess::fchmodat(FD dirfd, BString path, U32 mode, U32 flags) {
+    BString dir;
+    U32 result = 0;
+
+    if (path.charAt(0) != '/')
+        result = getCurrentDirectoryFromDirFD(dirfd, dir);
+
+    if (result)
+        return result;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (flags & 0x100) == 0;
+    options.allowEmptyPath = !path.length();
+    FsPathResult resolution = Fs::resolvePath(dir, path, options);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    return resolution.node->setMode(mode);
 }
 
 #define K_AT_SYMLINK_FOLLOW	0x400   // Follow symbolic links. 
@@ -2318,7 +3178,7 @@ struct statx {
 
 */
 
-void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 seconds, U32 nano) {
+void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 atimeSeconds, U32 atimeNano, U32 mtimeSeconds, U32 mtimeNano, U32 ctimeSeconds, U32 ctimeNano) {
     // 0x00
     memory->writed(buf, 0xfff); buf += 4; // stx_mask
     memory->writed(buf, 512); buf += 4; // stx_blksize
@@ -2335,17 +3195,17 @@ void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLi
     memory->writeq(buf, (len + 511) / 512); buf += 8; // stx_blocks
     memory->writeq(buf, 0); buf += 8; // stx_attributes_mask
     // 0x40
-    memory->writeq(buf, seconds); buf += 8; // stx_atime
-    memory->writed(buf, nano); buf += 4;
+    memory->writeq(buf, atimeSeconds); buf += 8; // stx_atime
+    memory->writed(buf, atimeNano); buf += 4;
     memory->writed(buf, 0); buf += 4;
-    memory->writeq(buf, seconds); buf += 8; // stx_btime
-    memory->writed(buf, nano); buf += 4;
+    memory->writeq(buf, ctimeSeconds); buf += 8; // stx_btime
+    memory->writed(buf, ctimeNano); buf += 4;
     memory->writed(buf, 0); buf += 4;
-    memory->writeq(buf, seconds); buf += 8; // stx_ctime
-    memory->writed(buf, nano); buf += 4;
+    memory->writeq(buf, ctimeSeconds); buf += 8; // stx_ctime
+    memory->writed(buf, ctimeNano); buf += 4;
     memory->writed(buf, 0); buf += 4;
-    memory->writeq(buf, seconds); buf += 8; // stx_mtime
-    memory->writed(buf, nano); buf += 4;
+    memory->writeq(buf, mtimeSeconds); buf += 8; // stx_mtime
+    memory->writed(buf, mtimeNano); buf += 4;
     memory->writed(buf, 0); buf += 4;
     // 0x80
     memory->writed(buf, rdev); buf += 4; // stx_rdev_major
@@ -2378,30 +3238,30 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
                 U64 t = s->lastModifiedTime;
                 U32 seconds = (U32)(t / 1000);
                 U32 n = (U32)(t % 1000) * 1000000;
-                writeStatX(memory, buf, (s->node ? s->node->id : 0), (s->node ? s->node->rdev : 0), 1, userId, groupId, K_S_IFSOCK | K__S_IWRITE | K__S_IREAD, 0, seconds, n);
+                writeStatX(memory, buf, (s->node ? s->node->id : 0), (s->node ? s->node->rdev : 0), 1, userId, groupId, K_S_IFSOCK | K__S_IWRITE | K__S_IREAD, 0, seconds, n, seconds, n, seconds, n);
                 return 0;
             }
         }
         return result;
     }        
-    bool isLink = false;
-
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100) == 0, &isLink);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (flags & 0x100) == 0;
+    FsPathResult resolution = Fs::resolvePath(dir, path, options);
+    if (resolution.error) {
+        return resolution.error;
     }
-
+    std::shared_ptr<FsNode> node = resolution.node;
     U64 len = node->length();
     U32 mode = node->getMode();
-    if (node->isLink() || isLink) {
+    if (node->isLink()) {
         mode |= K__S_IFLNK;
     }
-    U64 t = node->lastModified();
-    U32 seconds = (U32)(t / 1000);
-    U32 n = (U32)(t % 1000) * 1000000;
+    U64 atime = node->lastAccessed();
+    U64 mtime = node->lastModified();
+    U64 ctime = node->lastStatusChanged();
     U32 hardLinkCount = node->getHardLinkCount();
 
-    writeStatX(memory, buf, node->id, node->rdev, hardLinkCount, userId, groupId, mode, len, seconds, n);
+    writeStatX(memory, buf, node->getId(), node->rdev, hardLinkCount, userId, groupId, mode, len, (U32)(atime / 1000), node->lastAccessedNano(), (U32)(mtime / 1000), node->lastModifiedNano(), (U32)(ctime / 1000), node->lastStatusChangedNano());
     return 0;
 }
 
@@ -2414,21 +3274,21 @@ U32 KProcess::fstatat64(FD dirfd, BString path, U32 buf, U32 flag) {
 
     if (result)
         return result;
-    bool isLink = false;
-
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flag & 0x100)==0, &isLink);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (flag & 0x100) == 0;
+    FsPathResult resolution = Fs::resolvePath(dir, path, options);
+    if (resolution.error) {
+        return resolution.error;
     }
-
+    std::shared_ptr<FsNode> node = resolution.node;
     U64 len = node->length();
     U32 mode = node->getMode();
-    if (node->isLink() || isLink) {
+    if (node->isLink()) {
         mode|=K__S_IFLNK;
     }
     
-    KSystem::writeStat(this, path, buf, true, 1, node->id, mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
-    return 0;    
+    KSystem::writeStat(this, path, buf, true, 1, node->getId(), mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastAccessed(), node->lastAccessedNano(), node->lastModified(), node->lastModifiedNano(), node->lastStatusChanged(), node->lastStatusChangedNano(), node->getHardLinkCount());
+    return 0;
 }
 
 U32 KProcess::unlinkat(FD dirfd, BString path, U32 flags) {
@@ -2440,27 +3300,38 @@ U32 KProcess::unlinkat(FD dirfd, BString path, U32 flags) {
 
     if (result)
         return result;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, false);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathResult resolution = resolvePathForSyscall(dir, path, false);
+    if (resolution.error) {
+        return resolution.error;
     }
+    std::shared_ptr<FsNode> node = resolution.node;
+    BString fullPath = node->path;
     if (flags & 0x200) { // unlinkat AT_REMOVEDIR
-        if (!node->isDirectory()) {
+        if (resolution.finalComponentWasSymlink || !node->isDirectory()) {
             return -K_ENOTDIR;
         }
-        if (node->removeDir() == 0)
+        if (node->removeDir() == 0) {
+            KInotifyObject::notifyPath(fullPath, K_IN_DELETE | K_IN_ISDIR);
             return 0;
+        }
         return -K_ENOTEMPTY;
     } else {
+        if (resolution.trailingSlash && resolution.finalComponentWasSymlink) {
+            return -K_ENOTDIR;
+        }
+        if (node->isDirectory()) {
+            return -K_EISDIR;
+        }
         if (!node->remove()) {
             kwarn_fmt("filed to remove file: errno=%d", errno);
             return -K_EBUSY;
         }
+        KInotifyObject::notifyPath(fullPath, K_IN_DELETE);
         return 0;
     }
 }
 
-U32 KProcess::faccessat(U32 dirfd, BString path, U32 mode, U32 flags) {    
+U32 KProcess::faccessat(U32 dirfd, BString path, U32 mode, U32 flags) {
     BString dir;
     U32 result = 0;
     
@@ -2469,15 +3340,25 @@ U32 KProcess::faccessat(U32 dirfd, BString path, U32 mode, U32 flags) {
 
     if (result)
         return result;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100)==0);
-    if (!node) {
-        return -K_ENOENT;
-    }  
-    return internalAccess(node, mode);
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (flags & 0x100) == 0;
+    options.allowEmptyPath = !path.length();
+    FsPathResult resolution = Fs::resolvePath(dir, path, options);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    return internalAccess(resolution.node, mode);
 }
 
 #define K_UTIME_NOW 0x3fffffff
 #define K_UTIME_OMIT 0x3ffffffe
+
+static U64 normalizeTime64TimespecSeconds(U64 seconds) {
+    if ((seconds >> 32) == 0xffffffff) {
+        return (U32)seconds;
+    }
+    return seconds;
+}
 
 U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags, bool time64) {
     BString dir;
@@ -2488,10 +3369,14 @@ U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags, bool time64
 
     if (result)
         return result;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100)==0);
-    if (!node) {
-        return -K_ENOENT;
-    } 
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (flags & 0x100) == 0;
+    options.allowEmptyPath = !path.length();
+    FsPathResult resolution = Fs::resolvePath(dir, path, options);
+    if (resolution.error) {
+        return resolution.error;
+    }
+    std::shared_ptr<FsNode> node = resolution.node;
     U64 lastAccessTime = 0;
     U32 lastAccessTimeNano = 0;
     U64 lastModifiedTime =  0;
@@ -2507,9 +3392,9 @@ U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags, bool time64
                 __int32_t : 32;            // Padding
             };
             */
-            lastAccessTime = memory->readq(times);
+            lastAccessTime = normalizeTime64TimespecSeconds(memory->readq(times));
             lastAccessTimeNano = memory->readd(times + 8);
-            lastModifiedTime = memory->readq(times + 16);
+            lastModifiedTime = normalizeTime64TimespecSeconds(memory->readq(times + 16));
             lastModifiedTimeNano = memory->readd(times + 24);
         } else {
             lastAccessTime = memory->readd(times);
@@ -2542,10 +3427,14 @@ U32 KProcess::utimesat64(FD dirfd, BString path, U32 times, U32 flags) {
 
     if (result)
         return result;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100) == 0);
-    if (!node) {
-        return -K_ENOENT;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = (flags & 0x100) == 0;
+    options.allowEmptyPath = !path.length();
+    FsPathResult resolution = Fs::resolvePath(dir, path, options);
+    if (resolution.error) {
+        return resolution.error;
     }
+    std::shared_ptr<FsNode> node = resolution.node;
     U64 lastAccessTime = 0;
     U32 lastAccessTimeNano = 0;
     U64 lastModifiedTime = 0;
@@ -2750,8 +3639,17 @@ void KProcess::printStack() {
         KThread* thread = t.value;
         CPU* cpu=thread->cpu;
         
-        if (thread->waitingCond) {            
-            klog_fmt("  thread %X WAITING %s", thread->id, thread->waitingCond->name.c_str());
+        BOXEDWINE_CONDITION waitingCond;
+#ifdef BOXEDWINE_MULTI_THREADED
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
+            waitingCond = thread->waitingCond;
+        }
+#else
+        waitingCond = thread->waitingCond;
+#endif
+        if (waitingCond) {
+            klog_fmt("  thread %X WAITING %s", thread->id, waitingCond->name.c_str());
         } else {
             klog_fmt("  thread %X RUNNING", thread->id);
             BString name = this->getModuleName(cpu->seg[CS].address+cpu->eip.u32);
@@ -2782,7 +3680,7 @@ U32 KProcess::signal(U32 signal) {
             for (auto& t : this->threads) {
                 KThread* thread = t.value;
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->sigWaitCond);
-                if (thread->sigWaitMask & signal) {
+                if (thread->sigWaitMask & (1ULL << (signal - 1))) {
                     thread->foundWaitSignal = signal;
                     BOXEDWINE_CONDITION_SIGNAL(thread->sigWaitCond);
                     return 0;
@@ -2817,7 +3715,14 @@ void KProcess::signalFd(KThread* thread, U32 signal) {
         KFileDescriptorPtr fd = n.value;
         if (fd->kobject->type == KTYPE_SIGNAL) {
             std::shared_ptr<KSignal> p = std::dynamic_pointer_cast<KSignal>(fd->kobject);
-            if ((p->mask & (1ULL << (signal - 1))) && (!thread || thread->waitingCond == p->lockCond)) {
+            BOXEDWINE_CONDITION waitingCond;
+            if (thread) {
+#ifdef BOXEDWINE_MULTI_THREADED
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
+#endif
+                waitingCond = thread->waitingCond;
+            }
+            if ((p->mask & (1ULL << (signal - 1))) && (!thread || waitingCond == p->lockCond)) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(p->lockCond);
                 p->sigAction = this->sigActions[signal];
                 p->signalingPid = this->id;
@@ -2837,7 +3742,18 @@ void KProcess::printMappedFiles() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
         const std::shared_ptr<MappedFile>& mappedFile = n.value;
-        klog_fmt("    %.8X - %.8X (offset=%x) %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, (U32)mappedFile->offset, mappedFile->file->openFile->node->path.c_str());
+        U64 fileOffset = 0;
+        U64 mappingEnd = (U64)mappedFile->address + mappedFile->len;
+        if (mappedFile->tryGetFileOffset(0, fileOffset)) {
+            klog_fmt("    %.8X - %.8llX (offset=%llX) %s\n",
+                mappedFile->address, (unsigned long long)mappingEnd,
+                (unsigned long long)fileOffset,
+                mappedFile->file->openFile->node->path.c_str());
+        } else {
+            klog_fmt("    %.8X - %.8llX (offset=invalid) %s\n",
+                mappedFile->address, (unsigned long long)mappingEnd,
+                mappedFile->file->openFile->node->path.c_str());
+        }
     }
 }
 

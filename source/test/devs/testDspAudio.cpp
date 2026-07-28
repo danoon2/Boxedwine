@@ -42,6 +42,36 @@ void testDspAudioWriteMath() {
 		"high-rate capacity clamps to DSP buffer size");
 
 	expectEqual(
+		KDspAudioMath::getAlignedDurationBytes(48000 * 2 * 4, 96, 8),
+		36864,
+		"96ms stereo float silence target is frame aligned");
+
+	expectEqual(
+		KDspAudioMath::getAlignedDurationBytes(48000 * 2 * 4, 48, 8),
+		18432,
+		"48ms stereo float silence target halves the queue duration");
+
+	expectEqual(
+		KDspAudioMath::getOutputSpaceAvailable(DSP_TEST_BUFFER_SIZE, 8192, false),
+		DSP_TEST_BUFFER_SIZE,
+		"native GETOSPACE compatibility ignores partially queued audio");
+
+	expectEqual(
+		KDspAudioMath::getOutputSpaceAvailable(DSP_TEST_BUFFER_SIZE, DSP_TEST_BUFFER_SIZE, false),
+		DSP_TEST_BUFFER_SIZE,
+		"native GETOSPACE compatibility reports a full queue as available");
+
+	expectEqual(
+		KDspAudioMath::getOutputSpaceAvailable(DSP_TEST_BUFFER_SIZE, 8192, true),
+		24576,
+		"queue-aware GETOSPACE subtracts queued audio");
+
+	expectEqual(
+		KDspAudioMath::getOutputSpaceAvailable(DSP_TEST_BUFFER_SIZE, DSP_TEST_BUFFER_SIZE + 1, true),
+		0,
+		"queue-aware GETOSPACE saturates an overfull queue at zero");
+
+	expectEqual(
 		KDspAudioMath::getAvailableWriteBytes(4096, 1024),
 		3072,
 		"available bytes subtract queued bytes");

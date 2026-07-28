@@ -93,7 +93,8 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         IfDF();
     }
     if (doDF1) {
-        U32 label = MarkJumpLocation();
+        U32 label = LoopBegin();
+        hintLikelyStringLoopContinue();
         If(regWidth, ecx); {
             write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
             subValue(regWidth, esi, size);
@@ -101,12 +102,14 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
             decReg(regWidth, ecx);
             Goto(label);
         } EndIf();
+        LoopEnd();
     }
     if (doDF1 && doDF0) {
         StartElse();
     }
     if (doDF0) {
-        U32 label = MarkJumpLocation();
+        U32 label = LoopBegin();
+        hintLikelyStringLoopContinue();
         If(regWidth, ecx); {
             write(valueWidth, edi, read(valueWidth, esi, nullptr, onFailure), nullptr, onFailure);
             addValue(regWidth, esi, size);
@@ -114,6 +117,7 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
             decReg(regWidth, ecx);
             Goto(label);
         } EndIf();
+        LoopEnd();
     }
     if (doDF1 && doDF0) {
         EndIf();
@@ -391,7 +395,8 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
 
     IfDF(); {
         If(regWidth, getReadOnlyReg(1)); {
-            U32 label = MarkJumpLocation();
+            U32 label = LoopBegin();
+            hintLikelyStringLoopContinue();
             If(regWidth, getReadOnlyReg(1)); {
                 read(valueWidth, esi, nullptr, onFailure, dest);
                 read(valueWidth, edi, nullptr, onFailure, src);
@@ -407,8 +412,9 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
                     IfNotEqual(valueWidth, dest, src); {
                         Goto(label);
                     } EndIf();
-                }                
+                }
             } EndIf();
+            LoopEnd();
             storeLazyFlagsDest(dest);
             storeLazyFlagsSrc(src);
             subReg(valueWidth, dest, src);
@@ -417,7 +423,8 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
         } EndIf();
     } StartElse(); {
         If(regWidth, getReadOnlyReg(1)); {
-            U32 label = MarkJumpLocation();
+            U32 label = LoopBegin();
+            hintLikelyStringLoopContinue();
             If(regWidth, getReadOnlyReg(1)); {
                 read(valueWidth, esi, nullptr, onFailure, dest);
                 read(valueWidth, edi, nullptr, onFailure, src);
@@ -435,6 +442,7 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
                     } EndIf();
                 }
             } EndIf();
+            LoopEnd();
             storeLazyFlagsDest(dest);
             storeLazyFlagsSrc(src);
             subReg(valueWidth, dest, src);
@@ -565,21 +573,25 @@ void Jit::stosr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     };
 
     IfDF(); {
-        U32 label = MarkJumpLocation();
+        U32 label = LoopBegin();
+        hintLikelyStringLoopContinue();
         If(regWidth, ecx); {
             write(valueWidth, edi, al, nullptr, onFailure);
             subValue(regWidth, edi, size);
             decReg(regWidth, ecx);
             Goto(label);
         } EndIf();
+        LoopEnd();
     } StartElse(); {
-        U32 label = MarkJumpLocation();
+        U32 label = LoopBegin();
+        hintLikelyStringLoopContinue();
         If(regWidth, ecx); {
             write(valueWidth, edi, al, nullptr, onFailure);
             addValue(regWidth, edi, size);
             decReg(regWidth, ecx);
             Goto(label);
         } EndIf();
+        LoopEnd();
     }
     EndIf();
 }
@@ -697,21 +709,25 @@ void Jit::lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     };
 
     IfDF(); {
-        U32 label = MarkJumpLocation();
+        U32 label = LoopBegin();
+        hintLikelyStringLoopContinue();
         If(regWidth, ecx); {
             mov(valueWidth, al, read(valueWidth, esi, nullptr, onFailure, getTmpReg8()));
             subValue(regWidth, esi, size);
             decReg(regWidth, ecx);
             Goto(label);
         } EndIf();
+        LoopEnd();
     } StartElse(); {
-        U32 label = MarkJumpLocation();
+        U32 label = LoopBegin();
+        hintLikelyStringLoopContinue();
         If(regWidth, ecx); {
             mov(valueWidth, al, read(valueWidth, esi, nullptr, onFailure, getTmpReg8()));
             addValue(regWidth, esi, size);
             decReg(regWidth, ecx);
             Goto(label);
         } EndIf();
+        LoopEnd();
     }
     EndIf();
 }
@@ -845,7 +861,8 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
 
     IfDF(); {
         If(regWidth, ecx); {
-            U32 label = MarkJumpLocation();
+            U32 label = LoopBegin();
+            hintLikelyStringLoopContinue();
             If(regWidth, ecx); {
                 read(valueWidth, edi, nullptr, onFailure, src);
                 subValue(regWidth, edi, size);
@@ -861,6 +878,7 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
                     } EndIf();
                 }
             } EndIf();
+            LoopEnd();
             storeLazyFlagsDest(dest);
             storeLazyFlagsSrc(src);
             subReg(valueWidth, dest, src);
@@ -869,7 +887,8 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
         } EndIf();
     } StartElse(); {
         If(regWidth, ecx); {
-            U32 label = MarkJumpLocation();
+            U32 label = LoopBegin();
+            hintLikelyStringLoopContinue();
             If(regWidth, ecx); {
                 read(valueWidth, edi, nullptr, onFailure, src);
                 addValue(regWidth, edi, size);
@@ -885,6 +904,7 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
                     } EndIf();
                 }
             } EndIf();
+            LoopEnd();
             storeLazyFlagsDest(dest);
             storeLazyFlagsSrc(src);
             subReg(valueWidth, dest, src);

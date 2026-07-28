@@ -65,18 +65,29 @@ fi
 
 DEMO_ARGS=()
 DEMO_SOURCE="${BUILD_SITE_DEMOS_SOURCE:-$SITE_DIR/demos/apps}"
+# Jenkins unstashes the web build into project/linux/Deploy/Web before this
+# script runs. The Emscripten build stage populates these dirs from the
+# release, multiThreaded, jit, and multiThreadedJit targets.
 SINGLE_THREADED_DIR="${BUILD_SITE_SINGLE_THREADED_DIR:-$ROOT_DIR/project/linux/Deploy/Web/SingleThreaded}"
 MULTI_THREADED_DIR="${BUILD_SITE_MULTI_THREADED_DIR:-$ROOT_DIR/project/linux/Deploy/Web/MultiThreaded}"
-if [ -d "$SINGLE_THREADED_DIR" ] && [ -d "$MULTI_THREADED_DIR" ]; then
+SINGLE_THREADED_JIT_DIR="${BUILD_SITE_SINGLE_THREADED_JIT_DIR:-$ROOT_DIR/project/linux/Deploy/Web/SingleThreadedJit}"
+MULTI_THREADED_JIT_DIR="${BUILD_SITE_MULTI_THREADED_JIT_DIR:-$ROOT_DIR/project/linux/Deploy/Web/MultiThreadedJit}"
+if [ -d "$SINGLE_THREADED_DIR" ] &&
+    [ -d "$MULTI_THREADED_DIR" ] &&
+    [ -d "$SINGLE_THREADED_JIT_DIR" ] &&
+    [ -d "$MULTI_THREADED_JIT_DIR" ]; then
     mkdir -p "$DEMO_SOURCE"
     wget -O "$DEMO_SOURCE/boxedwine.zip" "$BOXEDWINE_ZIP_URL"
     DEMO_ARGS+=(
         --demo-source "$DEMO_SOURCE"
         --single-threaded-dir "$SINGLE_THREADED_DIR"
         --multi-threaded-dir "$MULTI_THREADED_DIR"
+        --single-threaded-jit-dir "$SINGLE_THREADED_JIT_DIR"
+        --multi-threaded-jit-dir "$MULTI_THREADED_JIT_DIR"
     )
 else
     echo "Demo site inputs are not complete; skipping demo page update."
+    echo "Expected: $SINGLE_THREADED_DIR, $MULTI_THREADED_DIR, $SINGLE_THREADED_JIT_DIR, and $MULTI_THREADED_JIT_DIR"
 fi
 
 "$ROOT_DIR/tools/jenkins/build_site.py" \

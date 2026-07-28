@@ -157,13 +157,13 @@ void Jit::dynamic_popEd_mem(DecodedOp* op) {
     }
 }
 void Jit::dynamic_pushSeg16(DecodedOp* op) {
-    push16(getReadOnlySegValue(op->reg));
+    emulateSingleOp();
 }
 void Jit::dynamic_popSeg16(DecodedOp* op) {
     emulateSingleOp();
 }
 void Jit::dynamic_pushSeg32(DecodedOp* op) {
-    push32(getReadOnlySegValue(op->reg));
+    emulateSingleOp();
 }
 void Jit::dynamic_popSeg32(DecodedOp* op) {
     emulateSingleOp();
@@ -285,10 +285,10 @@ void Jit::dynamic_push32imm(DecodedOp* op) {
     push32(reg);
 }
 void Jit::dynamic_popf16(DecodedOp* op) {
-    setFlags(pop16(), FMASK_ALL & 0xFFFF);
+    emulateSingleOp();
 }
 void Jit::dynamic_popf32(DecodedOp* op) {
-    setFlags(pop32(), FMASK_ALL);
+    emulateSingleOp();
 }
 void Jit::dynamic_pushf16(DecodedOp* op) {
     fillFlags();

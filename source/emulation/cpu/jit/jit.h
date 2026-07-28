@@ -165,6 +165,8 @@ public:
     virtual void jmpHost(RegPtr reg) = 0;
     virtual void jmpHost(DYN_PTR_SIZE address) = 0;
     virtual void forceSyncBackIfNotCached(RegPtr reg) = 0;
+    virtual RegPtr readCPU(JitWidth width, U32 offset, RegPtr resultReg = nullptr) = 0;
+    virtual RegPtr readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr resultReg = nullptr) = 0;
 
     RegPtr calculateEffectiveEaa16(DecodedOp* op);
     RegPtr calculateEffectiveEaa32(DecodedOp* op);
@@ -287,6 +289,15 @@ public:
     virtual void JumpIfCondition(JitConditional condition, U32 address) = 0;
     virtual U32 MarkJumpLocation() = 0;
     virtual void Goto(U32 location) = 0;
+    // Structured-loop helpers. Default impls forward to MarkJumpLocation
+    // / no-op so x86/ARM behavior is unchanged. The WASM JIT overrides
+    // these to wrap the body in a real `loop` ... `end` pair (WASM has
+    // no arbitrary backward branch; only structural control flow). Use
+    // these instead of MarkJumpLocation/Goto for any loop the WASM JIT
+    // also needs to inline.
+    virtual U32 LoopBegin() { return MarkJumpLocation(); }
+    virtual void LoopEnd() {}
+    virtual void hintLikelyStringLoopContinue() {}
     virtual void IfDF() = 0;
     virtual void IfSmallStack() = 0;
 
@@ -331,7 +342,9 @@ public:
     virtual void blockNext2(U32 eip, DecodedOp* op) = 0;
     virtual void blockExit() = 0;
     virtual void jumpEip(RegPtr reg) = 0;
+    virtual void exitToRunLoopIfPendingSignal(U32 eip) = 0;
 
+    virtual void jumpInBlock(U32 address) = 0;
     virtual void JumpInBlock(U32 address) = 0;
     virtual void StartElse() = 0;
     virtual void EndIf() = 0;

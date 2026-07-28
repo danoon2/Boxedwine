@@ -26,6 +26,9 @@
 #include <sys/mman.h>
 #include "pixelformat.h"
 #include UNISTD
+#ifdef __EMSCRIPTEN__
+#include <emscripten/threading.h>
+#endif
 
 unsigned long long int Platform::getSystemTimeAsMicroSeconds() {
 	struct timeval  tv;
@@ -52,6 +55,23 @@ void Platform::writeCodeToMemory(void* address, U32 len, std::function<void()> c
     // GCC, this is required for ARM, but for x86 it will just do nothing
     __builtin___clear_cache((char*)address, (char*)address+len);
 #endif //__EMSCRIPTEN__
+}
+
+void Platform::writeCodeToMemory(void* address, U32 len, WriteCodeCallback callback, void* context) noexcept {
+#ifdef BOXEDWINE_MAC_JIT
+    if (__builtin_available(macOS 11.0, *)) {
+        pthread_jit_write_protect_np(false);
+    }
+#endif
+    callback(context);
+#ifdef BOXEDWINE_MAC_JIT
+    if (__builtin_available(macOS 11.0, *)) {
+        pthread_jit_write_protect_np(true);
+    }
+#endif
+#ifndef __EMSCRIPTEN__
+    __builtin___clear_cache((char*)address, (char*)address + len);
+#endif
 }
 
 //#ifdef __EMSCRIPTEN__
@@ -140,7 +160,18 @@ U32 Platform::getCpuMaxScalingFreqMHz(U32 cpuIndex) {
 
 U32 Platform::getCpuCount() {
 #ifdef BOXEDWINE_MULTI_THREADED
+#ifdef __EMSCRIPTEN__
+    int count = emscripten_num_logical_cores();
+    if (count < 2 && emscripten_has_threading_support()) {
+        count = 2;
+    }
+    if (count < 1) {
+        count = 1;
+    }
+    return (U32)count;
+#else
     return (U32)SDL_GetCPUCount();
+#endif
 #else
     return 1;
 #endif

@@ -1101,7 +1101,7 @@ void testSseMovntps_0x32b() {
     }
 
     initSse();
-    cpu->mxcsr = 0x1f80;
+    cpu->setMxcsr(0x1f80);
     memory->writed(TEST_HEAP_ADDRESS + MEM_DST, 0xcdcdcdcd);
     pushCode8(0x0f);
     pushCode8(0xae);
@@ -1112,13 +1112,17 @@ void testSseMovntps_0x32b() {
     }
 
     initSse();
-    memory->writed(TEST_HEAP_ADDRESS + MEM_SRC, 0x3f80);
+    constexpr U32 LDMXCSR_VALUE = 0x1f80 & ~(1u << 9);
+    memory->writed(TEST_HEAP_ADDRESS + MEM_SRC, LDMXCSR_VALUE);
     pushCode8(0x0f);
     pushCode8(0xae);
     emitDirectAddressModRM(2, MEM_SRC);
     runTestCPU();
-    if (cpu->mxcsr != 0x3f80) {
+    if (cpu->mxcsr != LDMXCSR_VALUE) {
         failed("sse ldmxcsr");
+    }
+    if (!cpu->sseDivExceptionsUnmasked) {
+        failed("sse ldmxcsr did not update divide exception state");
     }
 
     initSse();

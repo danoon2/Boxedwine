@@ -279,26 +279,35 @@ void runPreparedMemCase(NegNotOp op, int width, const DataCase& data, const Addr
 
 void runMemBaseCases(NegNotOp op, int width, const DataCase& data, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         U32 regs[8];
         AddressCase address;
 
-        beginInstruction();
-        initRegisters(regs);
-        makeBaseCase(address, base, regs[base], 0, width);
-        emitMem(op, address);
-        runPreparedMemCase(op, width, data, address, name);
+        if (testRunMemoryBaseDisplacement(base, 0)) {
+            beginInstruction();
+            initRegisters(regs);
+            makeBaseCase(address, base, regs[base], 0, width);
+            emitMem(op, address);
+            runPreparedMemCase(op, width, data, address, name);
+        }
 
-        beginInstruction();
-        initRegisters(regs);
-        makeBaseCase(address, base, regs[base], 0x11, width);
-        emitMem(op, address);
-        runPreparedMemCase(op, width, data, address, name);
+        if (testRunMemoryBaseDisplacement(base, 1)) {
+            beginInstruction();
+            initRegisters(regs);
+            makeBaseCase(address, base, regs[base], 0x11, width);
+            emitMem(op, address);
+            runPreparedMemCase(op, width, data, address, name);
+        }
 
-        beginInstruction();
-        initRegisters(regs);
-        makeBaseCase(address, base, regs[base], 0x123, width);
-        emitMem(op, address);
-        runPreparedMemCase(op, width, data, address, name);
+        if (testRunMemoryBaseDisplacement(base, 2)) {
+            beginInstruction();
+            initRegisters(regs);
+            makeBaseCase(address, base, regs[base], 0x123, width);
+            emitMem(op, address);
+            runPreparedMemCase(op, width, data, address, name);
+        }
     }
 }
 
@@ -320,6 +329,9 @@ void runMemSibCases(NegNotOp op, int width, const DataCase& data, const char* na
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 AddressCase address;
 
@@ -336,6 +348,9 @@ void runMemSibCases(NegNotOp op, int width, const DataCase& data, const char* na
 void runOp(NegNotOp op, int width, const DataCase* cases, size_t count, const char* name) {
     for (size_t i = 0; i < count; ++i) {
         for (int dstReg = 0; dstReg < 8; ++dstReg) {
+            if (!testRunRegister(dstReg)) {
+                continue;
+            }
             runRegCase(op, width, cases[i], dstReg, name);
         }
         runMemBaseCases(op, width, cases[i], name);

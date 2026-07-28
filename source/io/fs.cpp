@@ -76,16 +76,105 @@ bool Fs::initFileSystem(const BString& rootPath) {
     return true;
 }
 
+static bool startsWithToken(const char* value, int len, int index, const char* token) {
+    int tokenLen = (int)strlen(token);
+    return index + tokenLen <= len && memcmp(value + index, token, tokenLen) == 0;
+}
+
+static int hexValue(char c) {
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    }
+    if (c >= 'A' && c <= 'F') {
+        return c - 'A' + 10;
+    }
+    if (c >= 'a' && c <= 'f') {
+        return c - 'a' + 10;
+    }
+    return -1;
+}
+
+static void appendEscapedByte(BString& value, U8 c) {
+    char buffer[8];
+    snprintf(buffer, sizeof(buffer), "(_x%02X_)", c);
+    value.append(buffer);
+}
+
+static bool isLocalPathSeparator(char c) {
+    return c == '/';
+}
+
+static bool isAtEndOfLocalPathPart(const char* value, int len, int index) {
+    return index + 1 >= len || isLocalPathSeparator(value[index + 1]);
+}
+
 void Fs::remoteNameToLocal(BString& path) {
-    path.replace(Fs::nativePathSeperator, "/");
-    path.replace("(_colon_)", ":");
-    path.replace("(_at_)", "@");
+    BString result;
+    const char* value = path.c_str();
+    int len = path.length();
+
+    for (int i = 0; i < len;) {
+        if (Fs::nativePathSeperator.length() && startsWithToken(value, len, i, Fs::nativePathSeperator.c_str())) {
+            result.append('/');
+            i += Fs::nativePathSeperator.length();
+        } else if (startsWithToken(value, len, i, "(_colon_)")) {
+            result.append(':');
+            i += 9;
+        } else if (startsWithToken(value, len, i, "(_question_)")) {
+            result.append('?');
+            i += 12;
+        } else if (startsWithToken(value, len, i, "(_at_)")) {
+            result.append('@');
+            i += 6;
+        } else if (startsWithToken(value, len, i, "(_dot_)")) {
+            result.append('.');
+            i += 7;
+        } else if (startsWithToken(value, len, i, "(_space_)")) {
+            result.append(' ');
+            i += 9;
+        } else if (i + 7 <= len && memcmp(value + i, "(_x", 3) == 0 && value[i + 5] == '_' && value[i + 6] == ')') {
+            int hi = hexValue(value[i + 3]);
+            int lo = hexValue(value[i + 4]);
+            if (hi >= 0 && lo >= 0) {
+                result.append((char)((hi << 4) | lo));
+                i += 7;
+            } else {
+                result.append(value[i++]);
+            }
+        } else {
+            result.append(value[i++]);
+        }
+    }
+    path = result;
 }
 
 void Fs::localNameToRemote(BString& path) {
-    path.replace("/", Fs::nativePathSeperator);
-    path.replace(":", "(_colon_)");
-    path.replace("@", "(_at_)");
+    BString result;
+    const char* value = path.c_str();
+    int len = path.length();
+
+    for (int i = 0; i < len; i++) {
+        U8 c = (U8)value[i];
+
+        if (isLocalPathSeparator(value[i])) {
+            result.append(Fs::nativePathSeperator);
+        } else if (value[i] == ':') {
+            result.append("(_colon_)");
+        } else if (value[i] == '?') {
+            result.append("(_question_)");
+        } else if (value[i] == '@') {
+            result.append("(_at_)");
+        } else if (value[i] == '.' && isAtEndOfLocalPathPart(value, len, i)) {
+            result.append("(_dot_)");
+        } else if (value[i] == ' ' && isAtEndOfLocalPathPart(value, len, i)) {
+            result.append("(_space_)");
+        } else if (c >= 0x80) {
+            appendEscapedByte(result, c);
+        } else {
+            result.append(value[i]);
+        }
+    }
+    path = result;
 }
 
 BString Fs::localFromNative(const BString& path) {
@@ -128,8 +217,16 @@ std::shared_ptr<FsNode> Fs::addDynamicLinkFile(const BString& path, U32 rdev, co
     return result;
 }
 
-std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(const BString& currentDirectory, const BString& path, bool followLink, bool* isLink) {
-    return Fs::getNodeFromLocalPath(currentDirectory, path, nullptr, nullptr, followLink, isLink);
+std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(const BString& currentDirectory, const BString& path,
+    bool followLink, bool* isLink) {
+    FsPathLookupOptions options;
+    options.followFinalSymlink = followLink;
+    options.allowEmptyPath = true;
+    FsPathResult result = resolvePath(currentDirectory, path, options);
+    if (isLink) {
+        *isLink = result.finalComponentWasSymlink;
+    }
+    return result.node;
 }
 
 BString Fs::getFullPath(const BString& currentDirectory, const BString& path) {
@@ -145,95 +242,126 @@ BString Fs::getFullPath(const BString& currentDirectory, const BString& path) {
     return fullpath;
 }
 
-bool cleanPath(std::vector<BString>& parts) {
-    for (U32 i=0;i<parts.size();) {
-        if (parts[i].length()==0) { // ignore double slashes
-            parts.erase(parts.begin()+i, parts.begin()+i+1);
-            continue;
-        }
-        if (parts[i]==".") {
-            i++;
-            continue;
-        }
-        if (parts[i]=="..") {
-            if (i==0)
-                return false;
-            parts.erase(parts.begin()+i-1, parts.begin()+i+1);
-            i--;
-            continue;
-        }
-        i++;
+FsPathResult Fs::resolvePath(const BString& currentDirectory, const BString& path, const FsPathLookupOptions& options) {
+    FsPathResult result;
+    result.trailingSlash = path.length() > 0 && path.endsWith("/");
+
+    if (!rootNode) {
+        result.error = -K_ENOENT;
+        return result;
     }
-    return true;
-}
-
-std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(const BString& currentDirectory, const BString& path, std::shared_ptr<FsNode>* lastNode, std::vector<BString>* missingParts, bool followLink, bool* isLink) {
-    BString fullpath = Fs::getFullPath(currentDirectory, path);
-
-    if (fullpath.length()==0 || fullpath=="/")
-        return Fs::rootNode;
-    std::vector<BString> parts;
-    Fs::splitPath(fullpath, parts);
-    std::shared_ptr<FsNode> node = Fs::rootNode;
-    if (!node) {
-        return nullptr;
+    if (!path.length() && !options.allowEmptyPath) {
+        result.error = -K_ENOENT;
+        return result;
     }
-    std::vector<std::shared_ptr<FsNode> > nodes;
 
-    nodes.push_back(node);
+    std::deque<BString> pending;
+    auto appendComponents = [&pending](const BString& value) {
+        std::vector<BString> components;
+        Fs::splitPath(value, components);
+        pending.insert(pending.end(), components.begin(), components.end());
+    };
 
-    if (!cleanPath(parts))
-        return nullptr;
-    for (U32 i=0;i<parts.size();) {
-        if (parts[i].length()==0) { // ignore double slashes
-            i++;
+    if (!path.startsWith("/")) {
+        appendComponents(currentDirectory);
+    }
+    appendComponents(path);
+
+    std::shared_ptr<FsNode> node = rootNode;
+    std::vector<std::shared_ptr<FsNode>> ancestors;
+    ancestors.push_back(rootNode);
+    U32 symlinkCount = 0;
+    bool followedFinalSymlink = false;
+
+    while (!pending.empty()) {
+        BString component = pending.front();
+        pending.pop_front();
+
+        if (!component.length()) {
             continue;
         }
-        if (parts[i]==".") {
-            i++;
+        if (!node->isDirectory()) {
+            result.error = -K_ENOTDIR;
+            return result;
+        }
+        if (component == ".") {
             continue;
         }
-        node = node->getChildByName(parts[i]);
-        if (!node) {
-            if (missingParts) {
-                for (; i < parts.size(); i++) {
-                    missingParts->push_back(parts[i]);
+        if (component == "..") {
+            if (ancestors.size() > 1) {
+                ancestors.pop_back();
+            }
+            node = ancestors.back();
+            continue;
+        }
+
+        std::shared_ptr<FsNode> child = node->getChildByName(component);
+        if (!child) {
+            result.parent = node;
+            result.finalName = component;
+            result.missingComponents.push_back(component);
+            for (const BString& missing : pending) {
+                if (missing.length() && missing != ".") {
+                    result.missingComponents.push_back(missing);
                 }
             }
-            if (lastNode) {
-                *lastNode = nodes.back();
-            }
-            return nullptr;
+            result.error = -K_ENOENT;
+            return result;
         }
-        nodes.push_back(node);
-        if (node->isLink() && (followLink || i<parts.size()-1)) {
-            if (i==parts.size()-1 && isLink) {
-                *isLink = true;
+
+        bool isFinalComponent = true;
+        for (const BString& remaining : pending) {
+            if (remaining.length()) {
+                isFinalComponent = false;
+                break;
+            }
+        }
+        if (child->isLink() && (options.followFinalSymlink || !isFinalComponent || result.trailingSlash)) {
+            if (isFinalComponent) {
+                followedFinalSymlink = true;
+            }
+            if (++symlinkCount > 40) {
+                result.error = -K_ELOOP;
+                return result;
             }
 
-            std::vector<BString> linkParts;
-            Fs::splitPath(node->getLink(), linkParts);
-            parts.erase(parts.begin()+i, parts.begin()+i+1);
-            parts.insert(parts.begin()+i, linkParts.begin(), linkParts.end());
-            if (node->getLink().startsWith("/")) {
-                parts.erase(parts.begin(), parts.begin()+i);
-            }   
-            if (!cleanPath(parts))
-                return nullptr;
-
-            nodes.clear();
-            node = Fs::rootNode;
-            nodes.push_back(node);
-            i=0;
+            BString target = child->getLink();
+            std::vector<BString> targetComponents;
+            Fs::splitPath(target, targetComponents);
+            if (target.endsWith("/")) {
+                targetComponents.push_back(B("."));
+            }
+            pending.insert(pending.begin(), targetComponents.begin(), targetComponents.end());
+            if (target.startsWith("/")) {
+                node = rootNode;
+                ancestors.clear();
+                ancestors.push_back(rootNode);
+            }
             continue;
         }
-        i++;
+
+        result.parent = node;
+        result.finalName = component;
+        result.finalComponentWasSymlink = followedFinalSymlink || child->isLink();
+        node = child;
+        ancestors.push_back(node);
     }
-    return node;
+
+    if ((result.trailingSlash || options.requireDirectory) && !node->isDirectory()) {
+        result.error = -K_ENOTDIR;
+        return result;
+    }
+    result.finalComponentWasSymlink = result.finalComponentWasSymlink || followedFinalSymlink;
+    result.node = node;
+    return result;
+}
+
+std::shared_ptr<FsFileNode> Fs::createFileNode(const BString& path, const BString& link, const BString& nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent) {
+    return std::make_shared<FsFileNode>(Fs::nextNodeId++, 0, path, link, nativePath, isDirectory, false, parent);
 }
 
 std::shared_ptr<FsFileNode> Fs::addFileNode(const BString& path, const BString& link, const BString& nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent) {
-    std::shared_ptr<FsFileNode> result = std::make_shared<FsFileNode>(Fs::nextNodeId++, 0, path, link, nativePath, isDirectory, false, parent);
+    std::shared_ptr<FsFileNode> result = createFileNode(path, link, nativePath, isDirectory, parent);
     parent->addChild(result);
     return result;
 }
@@ -330,14 +458,19 @@ bool Fs::isNativePathDirectory(const BString& path) {
 }
 
 U32 Fs::makeLocalDirs(const BString& path) {
-    std::shared_ptr<FsNode> lastNode;
-    std::vector<BString> missingParts;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), path, &lastNode, &missingParts, false);    
+    FsPathLookupOptions options;
+    options.followFinalSymlink = false;
+    options.allowEmptyPath = true;
+    FsPathResult resolution = Fs::resolvePath(B(""), path, options);
+    std::shared_ptr<FsNode> node = resolution.node;
     std::vector<std::shared_ptr<FsNode> > nodes;
     bool notFound = false;
 
     if (!node) {
-        node = lastNode;
+        if (resolution.error != -K_ENOENT || !resolution.parent) {
+            return resolution.error;
+        }
+        node = resolution.parent;
         notFound = true;
     }
     while (node) {
@@ -355,14 +488,14 @@ U32 Fs::makeLocalDirs(const BString& path) {
         }
     }
     if (notFound) {
-        BString base = lastNode->path;        
-        for (U32 i=0;i<missingParts.size();i++) {
+        BString base = resolution.parent->path;
+        for (U32 i=0;i<resolution.missingComponents.size();i++) {
             node = Fs::getNodeFromLocalPath(B(""), base, false);
 
             if (!base.endsWith("/")) // will be / if root
                 base = base + "/";
-            base = base + missingParts[i];
-            BString nativePath = missingParts[i];
+            base = base + resolution.missingComponents[i];
+            BString nativePath = resolution.missingComponents[i];
             Fs::localNameToRemote(nativePath);
             nativePath = node->nativePath.stringByApppendingPath(nativePath);
             U32 result = MKDIR(nativePath.c_str());
@@ -477,6 +610,77 @@ BString Fs::trimTrailingSlash(const BString& s) {
     return s;
 }
 
+static BString getXAttrNativePath(const std::shared_ptr<FsNode>& file, const BString& name) {
+    if (name == "user.DOSATTRIB") {
+        return file->getNativePathForData() + EXT_DOSATTRIB;
+    }
+    if (name == "user.WINEREPARSE") {
+        return file->getNativePathForData() + EXT_WINEREPARSE;
+    }
+    return BString::empty;
+}
+
+U32 Fs::getXAttr(const std::shared_ptr<FsNode>& file, const BString& name, std::vector<U8>& value) {
+    BString nativePath = getXAttrNativePath(file, name);
+    if (nativePath.isEmpty()) {
+        return -K_ENOTSUP;
+    }
+    if (!Fs::doesNativePathExist(nativePath)) {
+        return -K_ENODATA;
+    }
+    U64 len = Fs::getNativeFileSize(nativePath);
+    value.resize((size_t)len);
+    if (!len) {
+        return 0;
+    }
+    BReadFile f(nativePath);
+    if (!f.isOpen()) {
+        return -K_EIO;
+    }
+    if (f.read(value.data(), len) != len) {
+        return -K_EIO;
+    }
+    return 0;
+}
+
+U32 Fs::setXAttr(const std::shared_ptr<FsNode>& file, const BString& name, const U8* value, U32 len) {
+    BString nativePath = getXAttrNativePath(file, name);
+    if (nativePath.isEmpty()) {
+        return -K_ENOTSUP;
+    }
+    BWriteFile w(nativePath, true);
+    if (!w.isOpen()) {
+        return -K_EIO;
+    }
+    if (len && w.write(value, len) != len) {
+        return -K_EIO;
+    }
+    return 0;
+}
+
+U32 Fs::removeXAttr(const std::shared_ptr<FsNode>& file, const BString& name) {
+    BString nativePath = getXAttrNativePath(file, name);
+    if (nativePath.isEmpty()) {
+        return -K_ENOTSUP;
+    }
+    if (Fs::doesNativePathExist(nativePath)) {
+        deleteNativeFile(nativePath);
+        return 0;
+    }
+    return -K_ENODATA;
+}
+
+U32 Fs::listXAttrNames(const std::shared_ptr<FsNode>& file, std::vector<BString>& names) {
+    BString nativePath = file->getNativePathForData();
+    if (Fs::doesNativePathExist(nativePath + EXT_DOSATTRIB)) {
+        names.push_back(B("user.DOSATTRIB"));
+    }
+    if (Fs::doesNativePathExist(nativePath + EXT_WINEREPARSE)) {
+        names.push_back(B("user.WINEREPARSE"));
+    }
+    return 0;
+}
+
 /*
 Read - Only = 0x1
 Hidden = 0x2
@@ -484,26 +688,17 @@ System = 0x4
 Archive = 0x20
 */
 BString Fs::getDosAttrib(const std::shared_ptr<FsNode>& file) {
-    U8 buffer[1024] = { 0 };
-    if (Fs::readNativeFile(file->nativePath + EXT_DOSATTRIB, buffer, 1024)) {
-        return BString::copy((const char*)buffer);
+    std::vector<U8> value;
+    if (Fs::getXAttr(file, B("user.DOSATTRIB"), value) == 0 && value.size()) {
+        return BString::copy((const char*)value.data(), (int)value.size());
     }
     return BString::empty;
 }
 
 void Fs::setDosAttrib(const std::shared_ptr<FsNode>& file, const BString& attrib) {
-    BWriteFile w(file->nativePath + EXT_DOSATTRIB, true);
-    if (w.isOpen()) {
-        w.write(attrib);
-    }
+    Fs::setXAttr(file, B("user.DOSATTRIB"), (const U8*)attrib.c_str(), attrib.length());
 }
 
 U32 Fs::removeDosAttrib(const std::shared_ptr<FsNode>& file) {
-    BString nativePath = file->nativePath + EXT_DOSATTRIB;
-    if (Fs::doesNativePathExist(nativePath)) {
-        deleteNativeFile(nativePath);
-        return 0;
-    } else {
-        return -K_ENODATA; // ENOATTR
-    }
+    return Fs::removeXAttr(file, B("user.DOSATTRIB"));
 }

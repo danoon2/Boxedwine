@@ -73,15 +73,27 @@ public:
     struct user_desc* getLDT(U32 index);
     bool isLdtEmpty(struct user_desc* desc);
     U32 signal(U32 signal, bool wait);
+    void queuePendingSignal(U32 signal);
     bool readyForSignal(U32 signal);
     void cleanup();
 
-    void seg_mapper(U32 address, bool readFault, bool writeFault, bool throwException=true);
-    void seg_access(U32 address, bool readFault, bool writeFault, bool throwException=true);
+    void seg_mapper(U32 address, bool readFault, bool writeFault, bool throwException=true, bool executeFault=false);
+    void seg_access(U32 address, bool readFault, bool writeFault, bool throwException=true, bool executeFault=false);
+    void seg_instructionFetch(U32 address, bool throwException=true);
     bool runSignals();
     void runSignal(U32 signal, U32 trapNo, U32 errorNo);
-    void signalIllegalInstruction(int code);   
+    void signalIllegalInstruction(int code);
     void signalTrap(U32 code);
+    void signalDebugTrap(U32 code, U32 dr6);
+    bool debugTrapBeforeInstruction();
+    bool hasHardwareBreakpointAt(U32 address) const;
+    bool hasMemoryWriteBreakpointEnabled() const;
+    void updateDebugTrapActive();
+    void checkDebugTrapOnMemoryWrite(U32 address, U32 len);
+    bool isDebugTrapActive() const;
+    void setPtraceStop(U32 signal);
+    void resumeFromPtraceStop();
+    void waitForPtraceResume();
     void clone(KThread* from);
     void setupStack();
     void setTLS(struct user_desc* desc);
@@ -120,7 +132,15 @@ public:
 #endif
     bool terminating = false;
     U32 clear_child_tid = 0;
-    
+    U32 debugRegs[8] = {};
+    bool ptraceStopPending = false;
+    U32 ptraceStopSignal = 0;
+    bool ptraceStopped = false;
+    bool ptraceAttached = false;
+    bool ptraceSingleStep = false;
+    U32 ptraceTracerProcessId = 0;
+    BOXEDWINE_CONDITION ptraceCond;
+
     U64 getThreadUserTime();
 
     U64 kernelTime = 0;
@@ -158,7 +178,8 @@ public:
     OpenGLVetexPointer glSecondaryColorPointer;
     OpenGLVetexPointer glSecondaryColorPointerEXT;
     OpenGLVetexPointer glIndexPointer;
-    OpenGLVetexPointer glTexCoordPointer;
+    U32 glClientActiveTexture = 0x84C0; // GL_TEXTURE0; kthread.h does not include OpenGL headers
+    BHashTable<U32, OpenGLVetexPointerPtr> glTexCoordPointersByTexture;
     BHashTable<U32, OpenGLVetexPointerPtr> glMultiTexCoordPointerEXTByTexunit;
     BHashTable<U32, OpenGLVetexPointerPtr> glMultiTexCoordPointerSGISByTarget;
     OpenGLVetexPointer glEdgeFlagPointer;
@@ -170,6 +191,7 @@ public:
     OpenGLVetexPointer glVertexWeightPointerEXT;
     OpenGLVetexPointer glWeightPointerARB;
     OpenGLVetexPointer glInterleavedArray;
+    U32 glInterleavedArrayTexture = 0x84C0; // GL_TEXTURE0
     U32 marshalIndex = 0;
 
     inline static KThread* currentThread() {return runningThread;}
@@ -188,6 +210,7 @@ public:
 
     U32 condStartWaitTime = 0;
 private:
+    bool isOnAlternateSignalStack(U32 stackAddress) const;
     void internalCleanup();
     void exitRobustList();
     U32 handleFutexDeath(U32 uaddr, bool pi, bool pending_op);

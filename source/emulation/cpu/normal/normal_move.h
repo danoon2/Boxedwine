@@ -93,17 +93,17 @@ void OPCALL normal_move32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_movr16s16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->reg[op->reg].u16 = cpu->seg[op->rm].value;;
+    cpu->reg[op->reg].u16 = cpu->getSegValue(op->rm);
     NEXT();
 }
 void OPCALL normal_movr32s16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->reg[op->reg].u32 = cpu->seg[op->rm].value;
+    cpu->reg[op->reg].u32 = cpu->getSegValue(op->rm);
     NEXT();
 }
 void OPCALL normal_move16s16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->memory->writew(eaa(cpu, op), cpu->seg[op->reg].value);
+    cpu->memory->writew(eaa(cpu, op), cpu->getSegValue(op->reg));
     NEXT();
 }
 void OPCALL normal_movs16e16(CPU* cpu, DecodedOp* op) {
@@ -124,31 +124,55 @@ void OPCALL normal_movs16r16(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_movAlOb(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+    if (!cpu->checkSegmentAccess(op->base)) {
+        NEXT_DONE();
+        return;
+    }
     AL = cpu->memory->readb(cpu->seg[op->base].address+op->data.disp);
     NEXT();
 }
 void OPCALL normal_movAxOw(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+    if (!cpu->checkSegmentAccess(op->base)) {
+        NEXT_DONE();
+        return;
+    }
     AX = cpu->memory->readw(cpu->seg[op->base].address+op->data.disp);
     NEXT();
 }
 void OPCALL normal_movEaxOd(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+    if (!cpu->checkSegmentAccess(op->base)) {
+        NEXT_DONE();
+        return;
+    }
     EAX = cpu->memory->readd(cpu->seg[op->base].address+op->data.disp);
     NEXT();
 }
 void OPCALL normal_movObAl(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+    if (!cpu->checkSegmentAccess(op->base)) {
+        NEXT_DONE();
+        return;
+    }
     cpu->memory->writeb(cpu->seg[op->base].address+op->data.disp, AL);
     NEXT();
 }
 void OPCALL normal_movOwAx(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+    if (!cpu->checkSegmentAccess(op->base)) {
+        NEXT_DONE();
+        return;
+    }
     cpu->memory->writew(cpu->seg[op->base].address+op->data.disp, AX);
     NEXT();
 }
 void OPCALL normal_movOdEax(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
+    if (!cpu->checkSegmentAccess(op->base)) {
+        NEXT_DONE();
+        return;
+    }
     cpu->memory->writed(cpu->seg[op->base].address+op->data.disp, EAX);
     NEXT();
 }

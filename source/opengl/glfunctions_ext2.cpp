@@ -6459,6 +6459,7 @@ void glcommon_glPushClientAttribDefaultEXT(CPU* cpu) {
         kpanic("ext_glPushClientAttribDefaultEXT is NULL");
     {
     GL_FUNC(ext_glPushClientAttribDefaultEXT)(ARG1);
+    syncClientActiveTextureFromHost(cpu);
     GL_LOG ("glPushClientAttribDefaultEXT GLbitfield mask=%d",ARG1);
     }
 }

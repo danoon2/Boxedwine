@@ -34,7 +34,7 @@ public:
 
     static OpCallback getFunctionForOp(DecodedOp* op);
 
-    OpCallback firstOp;    
+    OpCallback firstOp;
 };
 
 #endif

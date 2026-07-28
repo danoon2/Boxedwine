@@ -18,6 +18,7 @@
 
 #include "boxedwine.h"
 #include "common_sse.h"
+#include "ksignal.h"
 #include <math.h>
 
 static U32 commonSseRoundToI32(double value, U32 mxcsr, bool truncate) {
@@ -133,7 +134,76 @@ void common_mulssE32(CPU* cpu, U32 reg, U32 address) {
     cpu->xmm[reg].ps = simde_mm_mul_ss(cpu->xmm[reg].ps, value);
 }
 
+static bool isSingleZero(U32 value) {
+    return (value & 0x7fffffff) == 0;
+}
+
+static bool isSingleInf(U32 value) {
+    return (value & 0x7fffffff) == 0x7f800000;
+}
+
+static bool isSingleNan(U32 value) {
+    return (value & 0x7f800000) == 0x7f800000 && (value & 0x007fffff) != 0;
+}
+
+static bool isSingleSignalingNan(U32 value) {
+    return isSingleNan(value) && (value & 0x00400000) == 0;
+}
+
+static bool isSingleFiniteNonZero(U32 value) {
+    return !isSingleZero(value) && (value & 0x7f800000) != 0x7f800000;
+}
+
+bool common_sse_div_control_requires_slow_path(U32 mxcsr) {
+    constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+    constexpr U32 REQUIRED_MASKS = MXCSR_INVALID_OPERATION_MASK | MXCSR_DIVIDE_BY_ZERO_MASK;
+
+    return (mxcsr & REQUIRED_MASKS) != REQUIRED_MASKS;
+}
+
+static bool common_sse_check_div_exception(CPU* cpu, const simde__m128& dividend, const simde__m128& divisor, U32 laneCount) {
+    constexpr U32 MXCSR_INVALID_OPERATION_FLAG = 1u << 0;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_FLAG = 1u << 2;
+    constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+    constexpr U32 TRAP_X86_CACHEFLT = 19;
+
+    bool invalidOperation = false;
+    bool divideByZero = false;
+    for (U32 i = 0; i < laneCount; ++i) {
+        U32 dst = dividend.u32[i];
+        U32 src = divisor.u32[i];
+        bool srcZero = isSingleZero(src);
+        bool dstZero = isSingleZero(dst);
+        if (isSingleSignalingNan(dst) || isSingleSignalingNan(src) || (srcZero && dstZero) || (isSingleInf(dst) && isSingleInf(src))) {
+            invalidOperation = true;
+        } else if (srcZero && isSingleFiniteNonZero(dst)) {
+            divideByZero = true;
+        }
+    }
+
+    if (invalidOperation) {
+        cpu->mxcsr |= MXCSR_INVALID_OPERATION_FLAG;
+        if ((cpu->mxcsr & MXCSR_INVALID_OPERATION_MASK) == 0) {
+            cpu->prepareFpuException(K_FPE_FLTINV, TRAP_X86_CACHEFLT);
+            return true;
+        }
+    }
+    if (divideByZero) {
+        cpu->mxcsr |= MXCSR_DIVIDE_BY_ZERO_FLAG;
+        if ((cpu->mxcsr & MXCSR_DIVIDE_BY_ZERO_MASK) == 0) {
+            cpu->prepareFpuException(K_FPE_FLTDIV, TRAP_X86_CACHEFLT);
+            return true;
+        }
+    }
+    return false;
+}
+
 void common_divpsXmm(CPU* cpu, U32 r1, U32 r2) {
+    if (common_sse_check_div_exception(cpu, cpu->xmm[r1].ps, cpu->xmm[r2].ps, 4)) {
+        return;
+    }
     cpu->xmm[r1].ps = simde_mm_div_ps(cpu->xmm[r1].ps, cpu->xmm[r2].ps);
 }
 
@@ -141,16 +211,25 @@ void common_divpsE128(CPU* cpu, U32 reg, U32 address) {
     simde__m128 value;
     value.u64[0] = cpu->memory->readq(address);
     value.u64[1] = cpu->memory->readq(address+8);
+    if (common_sse_check_div_exception(cpu, cpu->xmm[reg].ps, value, 4)) {
+        return;
+    }
     cpu->xmm[reg].ps = simde_mm_div_ps(cpu->xmm[reg].ps, value);
 }
 
 void common_divssXmm(CPU* cpu, U32 r1, U32 r2) {
+    if (common_sse_check_div_exception(cpu, cpu->xmm[r1].ps, cpu->xmm[r2].ps, 1)) {
+        return;
+    }
     cpu->xmm[r1].ps = simde_mm_div_ss(cpu->xmm[r1].ps, cpu->xmm[r2].ps);
 }
 
 void common_divssE32(CPU* cpu, U32 reg, U32 address) {
-    simde__m128 value;
+    simde__m128 value = cpu->xmm[reg].ps;
     value.u32[0] = cpu->memory->readd(address);
+    if (common_sse_check_div_exception(cpu, cpu->xmm[reg].ps, value, 1)) {
+        return;
+    }
     cpu->xmm[reg].ps = simde_mm_div_ss(cpu->xmm[reg].ps, value);
 }
 
@@ -814,7 +893,7 @@ void common_stmxcsr(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_ldmxcsr(CPU* cpu, U32 reg, U32 address) {
-    cpu->mxcsr = cpu->memory->readd(address);
+    cpu->setMxcsr(cpu->memory->readd(address));
 }
 
 void common_sfence(CPU* cpu) {

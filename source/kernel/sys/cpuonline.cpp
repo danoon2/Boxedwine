@@ -21,11 +21,22 @@
 #include "bufferaccess.h"
 
 FsOpenNode* openSysCpuOnline(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
-    int count = Platform::getCpuCount();
-    if (count<2) {
+    U32 count = Platform::getCpuCount();
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (KSystem::cpuAffinityCountForApp && KSystem::cpuAffinityCountForApp < count) {
+        count = KSystem::cpuAffinityCountForApp;
+    }
+#endif
+    if (!count) {
+        count = 1;
+    }
+    if (count > 32) {
+        count = 32;
+    }
+    if (count < 2) {
         return new BufferAccess(node, flags, B("0"));
     }
     char tmp[16];
-    snprintf(tmp, sizeof(tmp), "0-%d", (count-1));
+    snprintf(tmp, sizeof(tmp), "0-%u", count - 1);
     return new BufferAccess(node, flags, BString::copy(tmp));
 }

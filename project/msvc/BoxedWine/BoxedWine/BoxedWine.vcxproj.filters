@@ -385,6 +385,18 @@
     <ClCompile Include="..\..\..\..\source\test\devs\testDspAudio.cpp">
       <Filter>source\test\devs</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\fs\testHardLinks.cpp">
+      <Filter>source\test\fs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\kernel\testFutex.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\kernel\testMemory.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\kernel\testUnixSocketPoll.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\test\mmu\testSelfModifying.cpp">
       <Filter>source\test\mmu</Filter>
     </ClCompile>
@@ -617,6 +629,9 @@
       <Filter>source\kernel\proc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\kernel\knetlink.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kinotify.cpp">
       <Filter>source\kernel</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\kernel\kevent.cpp">
@@ -1218,9 +1233,6 @@
     <ClInclude Include="..\..\..\..\include\platform.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\include\reg.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\opengl\glcommon.h">
       <Filter>opengl</Filter>
     </ClInclude>
@@ -1393,9 +1405,6 @@
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\klist.h">
-      <Filter>source\util</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\util\karray.h">
       <Filter>source\util</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\stringutil.h">
@@ -1837,6 +1846,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\knetlink.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kinotify.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\kevent.h">
@@ -2401,6 +2413,9 @@
     </Filter>
     <Filter Include="source\test\devs">
       <UniqueIdentifier>{47b45091-ebdf-4966-81d0-df969fa1d8f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\test\fs">
+      <UniqueIdentifier>{9c975ed9-698d-40d8-9b9c-d80fe58655b8}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\util">
       <UniqueIdentifier>{61d9f8bc-45fb-4306-81d6-fcd7fe308745}</UniqueIdentifier>

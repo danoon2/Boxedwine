@@ -71,6 +71,40 @@ static void clearInterleavedArrayReplay(CPU* cpu) {
     cpu->thread->glInterleavedArray.refreshEachCall = 0;
 }
 
+static OpenGLVetexPointer* getClientPointerByKey(BHashTable<U32, OpenGLVetexPointerPtr>& pointers, U32 key) {
+    OpenGLVetexPointerPtr found = pointers.get(key);
+    if (!found) {
+        found = std::make_shared<OpenGLVetexPointer>();
+        pointers.set(key, found);
+    }
+    return found.get();
+}
+
+OpenGLVetexPointer* getCurrentTexCoordPointer(CPU* cpu) {
+    return getClientPointerByKey(cpu->thread->glTexCoordPointersByTexture,
+        cpu->thread->glClientActiveTexture);
+}
+
+void syncClientActiveTextureFromHost(CPU* cpu) {
+    GLint texture = GL_TEXTURE0;
+    GL_FUNC(pglGetIntegerv)(GL_CLIENT_ACTIVE_TEXTURE, &texture);
+    cpu->thread->glClientActiveTexture = (U32)texture;
+}
+
+static bool selectClientActiveTextureForReplay(GLenum texture) {
+#ifndef DISABLE_GL_EXTENSIONS
+    if (ext_glClientActiveTexture) {
+        GL_FUNC(ext_glClientActiveTexture)(texture);
+        return true;
+    }
+    if (ext_glClientActiveTextureARB) {
+        GL_FUNC(ext_glClientActiveTextureARB)(texture);
+        return true;
+    }
+#endif
+    return texture == GL_TEXTURE0;
+}
+
 void updateVertexPointers(CPU* cpu, U32 count) {
     if (cpu->thread->glVertextPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->glVertextPointer, count)) {
@@ -82,8 +116,15 @@ void updateVertexPointers(CPU* cpu, U32 count) {
         }
     }
     if (cpu->thread->glInterleavedArray.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glInterleavedArray, count))
-            GL_FUNC(pglInterleavedArrays)(cpu->thread->glInterleavedArray.type, cpu->thread->glInterleavedArray.stride, cpu->thread->glInterleavedArray.marshal);
+        if (updateVertexPointer(cpu, &cpu->thread->glInterleavedArray, count) &&
+            selectClientActiveTextureForReplay(cpu->thread->glInterleavedArrayTexture)) {
+            GL_FUNC(pglInterleavedArrays)(cpu->thread->glInterleavedArray.type,
+                cpu->thread->glInterleavedArray.stride,
+                cpu->thread->glInterleavedArray.marshal);
+            if (cpu->thread->glInterleavedArrayTexture != cpu->thread->glClientActiveTexture) {
+                selectClientActiveTextureForReplay(cpu->thread->glClientActiveTexture);
+            }
+        }
     }
     for (auto& vp : cpu->thread->glVertextPointersByIndex) {
         if (vp.value->refreshEachCall) {
@@ -157,9 +198,18 @@ void updateVertexPointers(CPU* cpu, U32 count) {
             GL_FUNC(pglIndexPointer)(cpu->thread->glIndexPointer.type, cpu->thread->glIndexPointer.stride, cpu->thread->glIndexPointer.marshal);
     }
     
-    if (cpu->thread->glTexCoordPointer.refreshEachCall) {
-        if (updateVertexPointer(cpu, &cpu->thread->glTexCoordPointer, count))
-            GL_FUNC(pglTexCoordPointer)(cpu->thread->glTexCoordPointer.size, cpu->thread->glTexCoordPointer.type, cpu->thread->glTexCoordPointer.stride, cpu->thread->glTexCoordPointer.marshal);
+    U32 replayTexture = cpu->thread->glClientActiveTexture;
+    for (auto& vp : cpu->thread->glTexCoordPointersByTexture) {
+        if (vp.value->refreshEachCall && updateVertexPointer(cpu, vp.value.get(), count)) {
+            if (selectClientActiveTextureForReplay(vp.key)) {
+                GL_FUNC(pglTexCoordPointer)(vp.value->size, vp.value->type,
+                    vp.value->stride, vp.value->marshal);
+                replayTexture = vp.key;
+            }
+        }
+    }
+    if (replayTexture != cpu->thread->glClientActiveTexture) {
+        selectClientActiveTextureForReplay(cpu->thread->glClientActiveTexture);
     }
 
 #ifndef DISABLE_GL_EXTENSIONS
@@ -326,45 +376,66 @@ static void emitIndexArrayElement(CPU* cpu, OpenGLVetexPointer* p, GLint i) {
     }
 }
 
-static void emitTexCoordArrayElement(CPU* cpu, OpenGLVetexPointer* p, GLint i) {
+#ifndef DISABLE_GL_EXTENSIONS
+#define EMIT_MULTI_TEX_COORD_OR_UNIT0(count, suffix, texture, value) do { \
+    if (ext_glMultiTexCoord##count##suffix) { \
+        GL_FUNC(ext_glMultiTexCoord##count##suffix)(texture, value); \
+    } else if (ext_glMultiTexCoord##count##suffix##ARB) { \
+        GL_FUNC(ext_glMultiTexCoord##count##suffix##ARB)(texture, value); \
+    } else if (texture == GL_TEXTURE0) { \
+        GL_FUNC(pglTexCoord##count##suffix)(value); \
+    } \
+} while (0)
+#else
+#define EMIT_MULTI_TEX_COORD_OR_UNIT0(count, suffix, texture, value) do { \
+    if (texture == GL_TEXTURE0) { \
+        GL_FUNC(pglTexCoord##count##suffix)(value); \
+    } \
+} while (0)
+#endif
+
+static void emitTexCoordArrayElement(CPU* cpu, GLenum texture,
+    OpenGLVetexPointer* p, GLint i) {
     U32 address = getArrayElementAddress(p, i);
     switch (p->type) {
     case GL_SHORT: {
         const GLshort* v = marshalArray<GLshort>(cpu, address, p->size);
-        if (p->size == 1) GL_FUNC(pglTexCoord1sv)(v);
-        else if (p->size == 2) GL_FUNC(pglTexCoord2sv)(v);
-        else if (p->size == 3) GL_FUNC(pglTexCoord3sv)(v);
-        else GL_FUNC(pglTexCoord4sv)(v);
+        if (p->size == 1) EMIT_MULTI_TEX_COORD_OR_UNIT0(1, sv, texture, v);
+        else if (p->size == 2) EMIT_MULTI_TEX_COORD_OR_UNIT0(2, sv, texture, v);
+        else if (p->size == 3) EMIT_MULTI_TEX_COORD_OR_UNIT0(3, sv, texture, v);
+        else EMIT_MULTI_TEX_COORD_OR_UNIT0(4, sv, texture, v);
         break;
     }
     case GL_INT: {
         const GLint* v = marshalArray<GLint>(cpu, address, p->size);
-        if (p->size == 1) GL_FUNC(pglTexCoord1iv)(v);
-        else if (p->size == 2) GL_FUNC(pglTexCoord2iv)(v);
-        else if (p->size == 3) GL_FUNC(pglTexCoord3iv)(v);
-        else GL_FUNC(pglTexCoord4iv)(v);
+        if (p->size == 1) EMIT_MULTI_TEX_COORD_OR_UNIT0(1, iv, texture, v);
+        else if (p->size == 2) EMIT_MULTI_TEX_COORD_OR_UNIT0(2, iv, texture, v);
+        else if (p->size == 3) EMIT_MULTI_TEX_COORD_OR_UNIT0(3, iv, texture, v);
+        else EMIT_MULTI_TEX_COORD_OR_UNIT0(4, iv, texture, v);
         break;
     }
     case GL_FLOAT: {
         const GLfloat* v = marshalArray<GLfloat>(cpu, address, p->size);
-        if (p->size == 1) GL_FUNC(pglTexCoord1fv)(v);
-        else if (p->size == 2) GL_FUNC(pglTexCoord2fv)(v);
-        else if (p->size == 3) GL_FUNC(pglTexCoord3fv)(v);
-        else GL_FUNC(pglTexCoord4fv)(v);
+        if (p->size == 1) EMIT_MULTI_TEX_COORD_OR_UNIT0(1, fv, texture, v);
+        else if (p->size == 2) EMIT_MULTI_TEX_COORD_OR_UNIT0(2, fv, texture, v);
+        else if (p->size == 3) EMIT_MULTI_TEX_COORD_OR_UNIT0(3, fv, texture, v);
+        else EMIT_MULTI_TEX_COORD_OR_UNIT0(4, fv, texture, v);
         break;
     }
     case GL_DOUBLE: {
         const GLdouble* v = marshalArray<GLdouble>(cpu, address, p->size);
-        if (p->size == 1) GL_FUNC(pglTexCoord1dv)(v);
-        else if (p->size == 2) GL_FUNC(pglTexCoord2dv)(v);
-        else if (p->size == 3) GL_FUNC(pglTexCoord3dv)(v);
-        else GL_FUNC(pglTexCoord4dv)(v);
+        if (p->size == 1) EMIT_MULTI_TEX_COORD_OR_UNIT0(1, dv, texture, v);
+        else if (p->size == 2) EMIT_MULTI_TEX_COORD_OR_UNIT0(2, dv, texture, v);
+        else if (p->size == 3) EMIT_MULTI_TEX_COORD_OR_UNIT0(3, dv, texture, v);
+        else EMIT_MULTI_TEX_COORD_OR_UNIT0(4, dv, texture, v);
         break;
     }
     default:
         break;
     }
 }
+
+#undef EMIT_MULTI_TEX_COORD_OR_UNIT0
 
 static void emitEdgeFlagArrayElement(CPU* cpu, OpenGLVetexPointer* p, GLint i) {
     GLboolean flag = cpu->memory->readb(getArrayElementAddress(p, i)) ? GL_TRUE : GL_FALSE;
@@ -382,8 +453,12 @@ void marshalArrayElement(CPU* cpu, GLint i) {
         usesHostArray(thread->glNormalPointer) ||
         usesHostArray(thread->glColorPointer) ||
         usesHostArray(thread->glIndexPointer) ||
-        usesHostArray(thread->glTexCoordPointer) ||
         usesHostArray(thread->glEdgeFlagPointer);
+    bool guestTexCoordArray = false;
+    for (auto& vp : thread->glTexCoordPointersByTexture) {
+        hostArray = hostArray || usesHostArray(*vp.value);
+        guestTexCoordArray = guestTexCoordArray || usesGuestArray(*vp.value);
+    }
     if (hostArray) {
         GL_FUNC(pglArrayElement)(i);
         return;
@@ -393,7 +468,7 @@ void marshalArrayElement(CPU* cpu, GLint i) {
         usesGuestArray(thread->glNormalPointer) ||
         usesGuestArray(thread->glColorPointer) ||
         usesGuestArray(thread->glIndexPointer) ||
-        usesGuestArray(thread->glTexCoordPointer) ||
+        guestTexCoordArray ||
         usesGuestArray(thread->glEdgeFlagPointer);
     if (!guestArray) {
         GL_FUNC(pglArrayElement)(i);
@@ -406,8 +481,11 @@ void marshalArrayElement(CPU* cpu, GLint i) {
         emitIndexArrayElement(cpu, &thread->glIndexPointer, i);
     if (usesGuestArray(thread->glNormalPointer))
         emitNormalArrayElement(cpu, &thread->glNormalPointer, i);
-    if (usesGuestArray(thread->glTexCoordPointer))
-        emitTexCoordArrayElement(cpu, &thread->glTexCoordPointer, i);
+    for (auto& vp : thread->glTexCoordPointersByTexture) {
+        if (usesGuestArray(*vp.value)) {
+            emitTexCoordArrayElement(cpu, vp.key, vp.value.get(), i);
+        }
+    }
     if (usesGuestArray(thread->glEdgeFlagPointer))
         emitEdgeFlagArrayElement(cpu, &thread->glEdgeFlagPointer, i);
     if (usesGuestArray(thread->glVertextPointer))
@@ -637,29 +715,25 @@ GLvoid* marshalIndexPointer(CPU* cpu,  GLenum type, GLsizei stride, U32 ptr) {
 }
 
 GLvoid* marshalTexCoordPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
-    clearInterleavedArrayReplay(cpu);
-    cpu->thread->glTexCoordPointer.isArrayBuffer = ARRAY_BUFFER();
-    if (cpu->thread->glTexCoordPointer.isArrayBuffer) {
-        cpu->thread->glTexCoordPointer.refreshEachCall = 0;
+    bool validType = type == GL_SHORT || type == GL_INT ||
+        type == GL_FLOAT || type == GL_DOUBLE;
+    if (size < 1 || size > 4 || !validType || stride < 0) {
         return (GLvoid*)(uintptr_t)ptr;
-    } else {
-        cpu->thread->glTexCoordPointer.size = size;
-        cpu->thread->glTexCoordPointer.type = type;
-        cpu->thread->glTexCoordPointer.stride = stride;
-        cpu->thread->glTexCoordPointer.ptr = ptr;
-        cpu->thread->glTexCoordPointer.refreshEachCall = 1;
-        updateVertexPointer(cpu, &cpu->thread->glTexCoordPointer, 0);
-        return ptr ? cpu->thread->glTexCoordPointer.marshal : 0;
     }
-}
-
-static OpenGLVetexPointer* getClientPointerByKey(BHashTable<U32, OpenGLVetexPointerPtr>& pointers, U32 key) {
-    OpenGLVetexPointerPtr found = pointers.get(key);
-    if (!found) {
-        found = std::make_shared<OpenGLVetexPointer>();
-        pointers.set(key, found);
+    clearInterleavedArrayReplay(cpu);
+    OpenGLVetexPointer* p = getCurrentTexCoordPointer(cpu);
+    p->size = size;
+    p->type = type;
+    p->stride = stride;
+    p->ptr = ptr;
+    p->isArrayBuffer = ARRAY_BUFFER();
+    if (p->isArrayBuffer) {
+        p->refreshEachCall = 0;
+        return (GLvoid*)(uintptr_t)ptr;
     }
-    return found.get();
+    p->refreshEachCall = 1;
+    updateVertexPointer(cpu, p, 0);
+    return ptr ? p->marshal : 0;
 }
 
 static GLvoid* marshalClientPointer(CPU* cpu, OpenGLVetexPointer* p, GLint size, GLenum type, GLsizei stride, U32 ptr) {
@@ -776,70 +850,138 @@ void updateElementPointerATI(CPU* cpu, U32 count) {
     }
 }
 
-static bool interleavedHasColor(GLenum format) {
+struct InterleavedArrayComponent {
+    U32 size = 0;
+    GLenum type = 0;
+    U32 offset = 0;
+};
+
+struct InterleavedArrayFormat {
+    InterleavedArrayComponent vertex;
+    InterleavedArrayComponent color;
+    InterleavedArrayComponent normal;
+    InterleavedArrayComponent texture;
+};
+
+static bool decodeInterleavedArrayFormat(GLenum format, InterleavedArrayFormat& decoded) {
+    decoded = {};
     switch (format) {
+    case GL_V2F:
+        decoded.vertex = { 2, GL_FLOAT, 0 };
+        return true;
+    case GL_V3F:
+        decoded.vertex = { 3, GL_FLOAT, 0 };
+        return true;
     case GL_C4UB_V2F:
+        decoded.color = { 4, GL_UNSIGNED_BYTE, 0 };
+        decoded.vertex = { 2, GL_FLOAT, 4 };
+        return true;
     case GL_C4UB_V3F:
+        decoded.color = { 4, GL_UNSIGNED_BYTE, 0 };
+        decoded.vertex = { 3, GL_FLOAT, 4 };
+        return true;
     case GL_C3F_V3F:
-    case GL_C4F_N3F_V3F:
-    case GL_T2F_C4UB_V3F:
-    case GL_T2F_C3F_V3F:
-    case GL_T2F_C4F_N3F_V3F:
-    case GL_T4F_C4F_N3F_V4F:
+        decoded.color = { 3, GL_FLOAT, 0 };
+        decoded.vertex = { 3, GL_FLOAT, 12 };
         return true;
-    default:
-        return false;
-    }
-}
-
-static bool interleavedHasTexture(GLenum format) {
-    switch (format) {
-    case GL_T2F_V3F:
-    case GL_T4F_V4F:
-    case GL_T2F_C4UB_V3F:
-    case GL_T2F_C3F_V3F:
-    case GL_T2F_N3F_V3F:
-    case GL_T2F_C4F_N3F_V3F:
-    case GL_T4F_C4F_N3F_V4F:
-        return true;
-    default:
-        return false;
-    }
-}
-
-static bool interleavedHasNormal(GLenum format) {
-    switch (format) {
     case GL_N3F_V3F:
+        decoded.normal = { 3, GL_FLOAT, 0 };
+        decoded.vertex = { 3, GL_FLOAT, 12 };
+        return true;
     case GL_C4F_N3F_V3F:
+        decoded.color = { 4, GL_FLOAT, 0 };
+        decoded.normal = { 3, GL_FLOAT, 16 };
+        decoded.vertex = { 3, GL_FLOAT, 28 };
+        return true;
+    case GL_T2F_V3F:
+        decoded.texture = { 2, GL_FLOAT, 0 };
+        decoded.vertex = { 3, GL_FLOAT, 8 };
+        return true;
+    case GL_T4F_V4F:
+        decoded.texture = { 4, GL_FLOAT, 0 };
+        decoded.vertex = { 4, GL_FLOAT, 16 };
+        return true;
+    case GL_T2F_C4UB_V3F:
+        decoded.texture = { 2, GL_FLOAT, 0 };
+        decoded.color = { 4, GL_UNSIGNED_BYTE, 8 };
+        decoded.vertex = { 3, GL_FLOAT, 12 };
+        return true;
+    case GL_T2F_C3F_V3F:
+        decoded.texture = { 2, GL_FLOAT, 0 };
+        decoded.color = { 3, GL_FLOAT, 8 };
+        decoded.vertex = { 3, GL_FLOAT, 20 };
+        return true;
     case GL_T2F_N3F_V3F:
+        decoded.texture = { 2, GL_FLOAT, 0 };
+        decoded.normal = { 3, GL_FLOAT, 8 };
+        decoded.vertex = { 3, GL_FLOAT, 20 };
+        return true;
     case GL_T2F_C4F_N3F_V3F:
+        decoded.texture = { 2, GL_FLOAT, 0 };
+        decoded.color = { 4, GL_FLOAT, 8 };
+        decoded.normal = { 3, GL_FLOAT, 24 };
+        decoded.vertex = { 3, GL_FLOAT, 36 };
+        return true;
     case GL_T4F_C4F_N3F_V4F:
+        decoded.texture = { 4, GL_FLOAT, 0 };
+        decoded.color = { 4, GL_FLOAT, 16 };
+        decoded.normal = { 3, GL_FLOAT, 32 };
+        decoded.vertex = { 4, GL_FLOAT, 44 };
         return true;
     default:
         return false;
+    }
+}
+
+static void syncInterleavedArrayComponent(OpenGLVetexPointer& pointer,
+    const InterleavedArrayComponent& component, U32 stride, U32 ptr,
+    bool isArrayBuffer) {
+    pointer.enabled = component.size != 0;
+    pointer.refreshEachCall = 0;
+    if (pointer.enabled) {
+        pointer.size = component.size;
+        pointer.type = component.type;
+        pointer.stride = stride;
+        pointer.ptr = ptr + component.offset;
+        pointer.isArrayBuffer = isArrayBuffer;
     }
 }
 
 const void* marshalInterleavedPointer(CPU* cpu, GLenum format, GLsizei stride, U32 ptr) {
-    cpu->thread->glVertextPointer.refreshEachCall = 0;
-    if (interleavedHasColor(format)) {
-        cpu->thread->glColorPointer.refreshEachCall = 0;
+    if (stride < 0) {
+        return (const void*)(uintptr_t)ptr;
     }
-    if (interleavedHasNormal(format)) {
-        cpu->thread->glNormalPointer.refreshEachCall = 0;
+    InterleavedArrayFormat decoded;
+    if (!decodeInterleavedArrayFormat(format, decoded)) {
+        return (const void*)(uintptr_t)ptr;
     }
-    if (interleavedHasTexture(format)) {
-        cpu->thread->glTexCoordPointer.refreshEachCall = 0;
-    }
-    if (ARRAY_BUFFER()) {
+
+    cpu->thread->glIndexPointer.enabled = false;
+    cpu->thread->glIndexPointer.refreshEachCall = 0;
+    cpu->thread->glEdgeFlagPointer.enabled = false;
+    cpu->thread->glEdgeFlagPointer.refreshEachCall = 0;
+    OpenGLVetexPointer* texCoordPointer = getCurrentTexCoordPointer(cpu);
+    bool isArrayBuffer = ARRAY_BUFFER();
+    U32 effectiveStride = stride ? stride : getDataSize(format);
+    cpu->thread->glInterleavedArrayTexture = cpu->thread->glClientActiveTexture;
+    syncInterleavedArrayComponent(cpu->thread->glVertextPointer,
+        decoded.vertex, effectiveStride, ptr, isArrayBuffer);
+    syncInterleavedArrayComponent(cpu->thread->glColorPointer,
+        decoded.color, effectiveStride, ptr, isArrayBuffer);
+    syncInterleavedArrayComponent(cpu->thread->glNormalPointer,
+        decoded.normal, effectiveStride, ptr, isArrayBuffer);
+    syncInterleavedArrayComponent(*texCoordPointer,
+        decoded.texture, effectiveStride, ptr, isArrayBuffer);
+    cpu->thread->glInterleavedArray.size = 1;
+    cpu->thread->glInterleavedArray.type = format;
+    cpu->thread->glInterleavedArray.stride = stride;
+    cpu->thread->glInterleavedArray.ptr = ptr;
+    cpu->thread->glInterleavedArray.isArrayBuffer = isArrayBuffer;
+    if (isArrayBuffer) {
         cpu->thread->glInterleavedArray.refreshEachCall = 0;
         return (const GLboolean*)(uintptr_t)ptr;
     }
     else {
-        cpu->thread->glInterleavedArray.size = 1;
-        cpu->thread->glInterleavedArray.type = format;
-        cpu->thread->glInterleavedArray.stride = stride;
-        cpu->thread->glInterleavedArray.ptr = ptr;
         cpu->thread->glInterleavedArray.refreshEachCall = 1;
         updateVertexPointer(cpu, &cpu->thread->glInterleavedArray, 0);
         return cpu->thread->glInterleavedArray.marshal;

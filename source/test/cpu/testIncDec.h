@@ -24,6 +24,7 @@ void testDecE16_0x0ff();
 void testDecE32_0x2ff();
 #ifdef BOXEDWINE_MULTI_THREADED
 void testLockedInc();
+void testLockedIncAgainstPlainStore();
 #endif
 
 #endif

@@ -11,12 +11,26 @@
 
 #ifdef __TEST
 
+#include "ksignal.h"
 #include "testCPU.h"
+#if defined(BOXEDWINE_JIT_ARMV8)
+#include "../../emulation/cpu/armv8/jitArmV8CodeGen.h"
+#endif
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+#include "../../emulation/cpu/x32/jitX86CodeGen.h"
+#endif
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+#include "../../emulation/cpu/wasm/jitWasmCodeGen.h"
+#endif
+#ifdef BOXEDWINE_WASM_JIT
+#include "../../emulation/cpu/jit/jitCodeLifecycle.h"
+#endif
 #include <atomic>
 #include <cstdarg>
 #include <cstdio>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <vector>
 
@@ -26,11 +40,19 @@ namespace {
 
 constexpr U32 TEST_PAGES_PER_SEG = 32;
 
+std::atomic<bool> fastMode(false);
 std::mutex testContextCreateMutex;
 std::unique_ptr<TestContext> serialContext;
 std::vector<std::unique_ptr<TestContext>> parallelContexts;
 thread_local TestContext* currentContext = nullptr;
 thread_local bool runningParallelTest = false;
+
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+void OPCALL testJitRunCountCallback(CPU* cpu, DecodedOp* op) {
+    (void)cpu;
+    (void)op;
+}
+#endif
 
 void setupSegments(TestContext& context) {
     CPU* cpu = context.cpu;
@@ -47,6 +69,7 @@ void setupSegments(TestContext& context) {
     ldt->entry_number = TEST_HEAP_SEG >> 3;
     ldt->base_addr = TEST_HEAP_ADDRESS;
     ldt->seg_32bit = 1;
+    ldt->contents = 0;
     ldt->read_exec_only = 0;
     ldt->seg_not_present = 0;
 
@@ -54,6 +77,7 @@ void setupSegments(TestContext& context) {
     ldt->entry_number = TEST_STACK_SEG >> 3;
     ldt->base_addr = TEST_STACK_ADDRESS - K_PAGE_SIZE * TEST_PAGES_PER_SEG;
     ldt->seg_32bit = 1;
+    ldt->contents = 0;
     ldt->read_exec_only = 0;
     ldt->seg_not_present = 0;
 
@@ -61,6 +85,7 @@ void setupSegments(TestContext& context) {
     ldt->entry_number = TEST_CODE_SEG >> 3;
     ldt->base_addr = TEST_CODE_ADDRESS;
     ldt->seg_32bit = 1;
+    ldt->contents = 2;
     ldt->read_exec_only = 0;
     ldt->seg_not_present = 0;
 
@@ -68,6 +93,7 @@ void setupSegments(TestContext& context) {
     ldt->entry_number = TEST_CODE_SEG_16 >> 3;
     ldt->base_addr = TEST_CODE_ADDRESS;
     ldt->seg_32bit = 0;
+    ldt->contents = 2;
     ldt->read_exec_only = 0;
     ldt->seg_not_present = 0;
 
@@ -111,6 +137,15 @@ void createContext(TestContext& context) {
     resetMemory(context);
 }
 
+bool intInList(int value, const int* values, size_t count) {
+    for (size_t i = 0; i < count; ++i) {
+        if (values[i] == value) {
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace
 
 TestContext& testContext() {
@@ -140,6 +175,26 @@ void bindParallelContext(U32 index) {
     KThread::setCurrentThread(currentContext->thread);
 }
 
+void resetEntryContext(TestContext& context) {
+    KThread::setCurrentThread(context.thread);
+    setupSegments(context);
+    context.thread->inSignal = 0;
+    context.thread->inSigMask = 0;
+    context.thread->pendingSignals = 0;
+#ifdef BOXEDWINE_MULTI_THREADED
+    context.thread->startSignal = false;
+#endif
+    context.thread->interrupted = false;
+    context.cpu->debugTrapOnNextInstruction = false;
+    context.cpu->pendingDebugTrap = false;
+    context.cpu->pendingDebugTrapCode = 0;
+    context.cpu->pendingDebugTrapDr6 = 0;
+    for (U32& debugReg : context.thread->debugRegs) {
+        debugReg = 0;
+    }
+    context.thread->updateDebugTrapActive();
+}
+
 void testNewInstruction(int flags) {
     TestContext& context = testContext();
     CPU* cpu = context.cpu;
@@ -159,29 +214,55 @@ void testNewInstruction(int flags) {
     cpu->reg[6].u32 = 0;
     cpu->reg[7].u32 = 0;
     cpu->eip.u32 = 0;
+    cpu->nextOp = nullptr;
     context.memory->clearOpCache();
-    cpu->mxcsr = 0x1F80;
+    cpu->setMxcsr(0x1F80);
+    cpu->debugTrapOnNextInstruction = false;
+    cpu->pendingDebugTrap = false;
+    cpu->pendingDebugTrapCode = 0;
+    cpu->pendingDebugTrapDr6 = 0;
+    context.thread->inSignal = 0;
+    context.thread->inSigMask = 0;
+    context.thread->pendingSignals = 0;
+#ifdef BOXEDWINE_MULTI_THREADED
+    context.thread->startSignal = false;
+#endif
+    context.thread->interrupted = false;
+    for (U32& debugReg : context.thread->debugRegs) {
+        debugReg = 0;
+    }
+    context.thread->updateDebugTrapActive();
 }
 
 void testPushCode8(int value) {
     TestContext& context = testContext();
     context.memory->writeb(context.codeIp, value);
+    context.memory->clearPageWriteCounts(context.codeIp >> K_PAGE_SHIFT);
     context.codeIp++;
 }
 
 void testPushCode16(int value) {
     TestContext& context = testContext();
+    U32 startPage = context.codeIp >> K_PAGE_SHIFT;
     context.memory->writew(context.codeIp, value);
     context.codeIp += 2;
+    context.memory->clearPageWriteCounts(startPage);
+    context.memory->clearPageWriteCounts((context.codeIp - 1) >> K_PAGE_SHIFT);
 }
 
 void testPushCode32(int value) {
     TestContext& context = testContext();
+    U32 startPage = context.codeIp >> K_PAGE_SHIFT;
     context.memory->writed(context.codeIp, value);
     context.codeIp += 4;
+    context.memory->clearPageWriteCounts(startPage);
+    context.memory->clearPageWriteCounts((context.codeIp - 1) >> K_PAGE_SHIFT);
 }
 
 void testRunCPU() {
+#if defined(BOXEDWINE_JIT_ARMV8)
+    ensureArmV8HardwareTSOForThread();
+#endif
     TestContext& context = testContext();
     CPU* cpu = context.cpu;
 
@@ -210,6 +291,517 @@ void testFail(const char* msg, ...) {
     }
 }
 
+bool testIsFastMode() {
+    return fastMode.load();
+}
+
+void testSetFastMode(bool fast) {
+    fastMode.store(fast);
+}
+
+void testWasmJitOnlyBlockEntryIsCallable() {
+#ifdef BOXEDWINE_WASM_JIT
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+
+    testNewInstruction(0);
+    testPushCode8(0x40); // inc eax
+    testPushCode8(0x41); // inc ecx
+    testPushCode8(0x42); // inc edx
+    testRunCPU();
+
+    if (jitUsesCodeMemory()) {
+        testFail("wasm jit entries are not backed by native code memory");
+    }
+
+    DecodedOp* first = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* second = first ? first->next : nullptr;
+    DecodedOp* third = second ? second->next : nullptr;
+
+    if (!first || !second || !third) {
+        testFail("wasm jit block metadata decode");
+        return;
+    }
+    if (first->pfn != cpu->thread->process->startJITOp || !first->pfnJitCode) {
+        testFail("wasm jit first op callable entry");
+    }
+    if (second->pfn == cpu->thread->process->startJITOp || second->pfnJitCode) {
+        testFail("wasm jit second op interior is not callable entry");
+    }
+    if (third->pfn == cpu->thread->process->startJITOp || third->pfnJitCode) {
+        testFail("wasm jit third op interior is not callable entry");
+    }
+    if (second->blockStart != first || third->blockStart != first) {
+        testFail("wasm jit interior ops keep owner block");
+    }
+
+    cpu->eip.u32 = first->len;
+    cpu->nextOp = second;
+    cpu->run();
+
+    if (second->pfn != cpu->thread->process->startJITOp || !second->pfnJitCode) {
+        testFail("wasm jit fallthrough interior op can compile as subblock entry");
+    }
+    if (second->blockStart != first) {
+        testFail("wasm jit fallthrough interior keeps longer owner block");
+    }
+    if (third->pfn == cpu->thread->process->startJITOp || third->pfnJitCode) {
+        testFail("wasm jit fallthrough subblock interior is not callable entry");
+    }
+
+    if (first->pfnJitCode == second->pfnJitCode) {
+        testFail("wasm jit parent and fallthrough subblock have distinct entries");
+    }
+
+    cpu->wasmJitActiveBlock = first;
+    cpu->wasmJitBailout = 0;
+    context.memory->removeCodeBlock(TEST_CODE_ADDRESS, first, false);
+
+    if (cpu->wasmJitBailout != 1) {
+        testFail("wasm jit active invalidation requests bailout");
+    }
+    if (first->pfnJitCode || second->pfnJitCode || third->pfnJitCode) {
+        testFail("wasm jit parent invalidation clears subblock entries");
+    }
+    if (first->blockStart || second->blockStart || third->blockStart) {
+        testFail("wasm jit parent invalidation clears owner metadata");
+    }
+
+    testNewInstruction(0);
+    cpu->reg[0].u32 = 0x100; // eax
+    cpu->reg[2].u32 = 0x200; // edx
+    cpu->reg[6].u32 = 0x103FEB4C; // stale esi value should be overwritten
+    cpu->reg[7].u32 = 0x11223344; // stale edi value should be overwritten
+    context.memory->writed(TEST_HEAP_ADDRESS + 0x100, 0x12345678);
+    context.memory->writed(TEST_HEAP_ADDRESS + 0x104, 3);
+
+    testPushCode8(0x8b); // mov esi,[eax+4]
+    testPushCode8(0x70);
+    testPushCode8(0x04);
+    testPushCode8(0x8b); // mov edi,[eax]
+    testPushCode8(0x38);
+    testPushCode8(0x66); // mov [edx+esi*8+6],di
+    testPushCode8(0x89);
+    testPushCode8(0x7c);
+    testPushCode8(0xf2);
+    testPushCode8(0x06);
+    testRunCPU();
+
+    if (context.memory->readw(TEST_HEAP_ADDRESS + 0x200 + 3 * 8 + 6) != 0x5678) {
+        testFail("wasm jit scaled-index word store uses loaded esi/edi");
+    }
+
+    testNewInstruction(0);
+    testPushCode8(0x75); // jnz to the ret, keeping ret inside a forward-branch range
+    testPushCode8(0x00);
+    testPushCode8(0xc3); // ret
+    testPushCode8(0x43); // inc ebx, a decoded next function/op that must not join the ret block
+    testPushCode8(0xcd);
+    testPushCode8(0x97);
+
+    context.memory->writed(cpu->seg[SS].address + cpu->reg[4].u32, 4);
+    cpu->getOp(TEST_CODE_ADDRESS + 3, 0);
+    cpu->nextOp = cpu->getNextOp();
+    do {
+        cpu->run();
+    } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+
+    DecodedOp* branch = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* ret = branch && branch->next ? branch->next : nullptr;
+    DecodedOp* afterRet = ret && ret->next ? ret->next : context.memory->getDecodedOp(TEST_CODE_ADDRESS + 3);
+
+    if (!branch || !ret || !afterRet) {
+        testFail("wasm jit ret boundary metadata decode");
+        return;
+    }
+    if (branch->pfn != cpu->thread->process->startJITOp || !branch->pfnJitCode) {
+        testFail("wasm jit ret boundary block compiled");
+    }
+    if (branch->blockLen != 3 || branch->blockOpCount != 2) {
+        testFail("wasm jit ret boundary stops at computed exit");
+    }
+    if (ret->blockStart != branch) {
+        testFail("wasm jit ret stays in owner block");
+    }
+    if (afterRet->blockStart == branch) {
+        testFail("wasm jit ret boundary does not absorb following decoded op");
+    }
+
+    testNewInstruction(0);
+    testPushCode8(0xbe); // mov esi,3
+    testPushCode32(3);
+    testPushCode8(0xe8); // call helper
+    testPushCode32(17);
+    testPushCode8(0xbf); // mov edi,0x12345678
+    testPushCode32(0x12345678);
+    testPushCode8(0xba); // mov edx,0x200
+    testPushCode32(0x200);
+    testPushCode8(0x66); // mov [edx+esi*8+6],di
+    testPushCode8(0x89);
+    testPushCode8(0x7c);
+    testPushCode8(0xf2);
+    testPushCode8(0x06);
+    testPushCode8(0xcd);
+    testPushCode8(0x97);
+    testPushCode8(0x56); // helper: push esi
+    testPushCode8(0xbe); // mov esi,7
+    testPushCode32(7);
+    testPushCode8(0x5e); // pop esi
+    testPushCode8(0xc3); // ret
+    testRunCPU();
+
+    if (context.memory->readw(TEST_HEAP_ADDRESS + 0x200 + 3 * 8 + 6) != 0x5678) {
+        testFail("wasm jit call preserves restored esi for caller");
+    }
+    if (context.memory->readw(TEST_HEAP_ADDRESS + 0x200 + 7 * 8 + 6) == 0x5678) {
+        testFail("wasm jit call must not use callee-clobbered esi");
+    }
+#endif
+}
+
+void testWasmJitOomRetryAfterRelease() {
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+
+    testNewInstruction(0);
+    wasmJitTestResetRuntimeBatching();
+    boxedwine_wasm_test_reset_oom_state();
+    struct ResetOomState {
+        ~ResetOomState() {
+            wasmJitTestResetRuntimeBatching();
+            boxedwine_wasm_test_reset_oom_state();
+        }
+    } resetOomState;
+
+    U32 addresses[5];
+    for (U32& address : addresses) {
+        address = context.codeIp;
+        testPushCode8(0x40); // inc eax
+        testPushCode8(0xcd);
+        testPushCode8(0x97); // TestEnd
+    }
+
+    auto compileBlock = [&](U32 address) -> DecodedOp* {
+        DecodedOp* op = cpu->getOp(address, 0);
+        if (!op) {
+            testFail("wasm jit OOM recovery decode at %x", address);
+            return nullptr;
+        }
+        startNewJIT(cpu, address, op);
+        return op;
+    };
+    auto isJitBlock = [&](DecodedOp* op) {
+        return op && op->pfn == cpu->thread->process->startJITOp && op->pfnJitCode && (op->flags & OP_FLAG_JIT);
+    };
+
+    DecodedOp* releasable = compileBlock(addresses[0]);
+    if (!isJitBlock(releasable)) {
+        testFail("wasm jit OOM recovery setup block compiled");
+        return;
+    }
+    WasmJitRuntimeStatsSnapshot stats = wasmJitTestGetRuntimeStats();
+    U64 rawBytesPerBlock = stats.rawInputBytes;
+    if (stats.translatedAnonymous != 1 || stats.translatedFileBacked != 0 || stats.standaloneModules != 1 || rawBytesPerBlock == 0) {
+        testFail("wasm jit standalone OOM statistics setup");
+    }
+
+    boxedwine_wasm_test_force_next_module_oom();
+    DecodedOp* oomBlock = compileBlock(addresses[1]);
+    if (isJitBlock(oomBlock)) {
+        testFail("wasm jit forced OOM falls back to interpreter");
+    }
+    stats = wasmJitTestGetRuntimeStats();
+    if (stats.translatedAnonymous != 2 || stats.rawInputBytes != rawBytesPerBlock * 2 || stats.oomRetries != 0 || stats.oomResumptions != 0) {
+        testFail("wasm jit standalone OOM translation statistics");
+    }
+
+    DecodedOp* blockedBlock = compileBlock(addresses[2]);
+    if (isJitBlock(blockedBlock)) {
+        testFail("wasm jit OOM blocks compilation until release");
+    }
+    stats = wasmJitTestGetRuntimeStats();
+    if (stats.translatedAnonymous != 3 || stats.rawInputBytes != rawBytesPerBlock * 3 || stats.oomRetries != 0 || stats.oomResumptions != 0) {
+        testFail("wasm jit blocked standalone translation statistics");
+    }
+
+    context.memory->removeCodeBlock(addresses[0], releasable, false);
+
+    DecodedOp* retryBlock = compileBlock(addresses[3]);
+    if (!isJitBlock(retryBlock)) {
+        testFail("wasm jit release permits one recovery probe");
+    }
+    stats = wasmJitTestGetRuntimeStats();
+    if (stats.translatedAnonymous != 4 || stats.rawInputBytes != rawBytesPerBlock * 4 || stats.oomRetries != 1 || stats.oomResumptions != 1) {
+        testFail("wasm jit standalone OOM retry statistics");
+    }
+
+    DecodedOp* continuedBlock = compileBlock(addresses[4]);
+    if (!isJitBlock(continuedBlock)) {
+        testFail("wasm jit successful OOM recovery resumes compilation");
+    }
+    stats = wasmJitTestGetRuntimeStats();
+    if (stats.translatedAnonymous != 5 || stats.rawInputBytes != rawBytesPerBlock * 5 || stats.oomRetries != 1 || stats.oomResumptions != 1) {
+        testFail("wasm jit resumed standalone statistics");
+    }
+#endif
+}
+
+namespace {
+
+constexpr U32 CROSS_BLOCK_FLAGS_TARGET_OFFSET = 0x100;
+constexpr U32 CROSS_BLOCK_FLAGS_MASK = CF | PF | AF | ZF | SF | OF;
+
+void padCrossBlockFlagsCodeToTarget() {
+    TestContext& context = testContext();
+    while (context.codeIp < TEST_CODE_ADDRESS + CROSS_BLOCK_FLAGS_TARGET_OFFSET) {
+        testPushCode8(0x90); // nop
+    }
+}
+
+void verifyCrossBlockJitEntries(const char* name) {
+#ifdef BOXEDWINE_JIT
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* consumer = context.memory->getDecodedOp(TEST_CODE_ADDRESS + CROSS_BLOCK_FLAGS_TARGET_OFFSET);
+
+    if (!producer || !consumer) {
+        testFail("%s metadata decode", name);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode) {
+        testFail("%s producer compiled entry", name);
+    }
+    if (consumer->pfn != cpu->thread->process->startJITOp || !consumer->pfnJitCode) {
+        testFail("%s consumer compiled entry", name);
+    }
+    if (producer->blockStart != producer) {
+        testFail("%s producer owns block", name);
+    }
+    if (consumer->blockStart != consumer) {
+        testFail("%s consumer owns block", name);
+    }
+    if (producer->pfnJitCode && producer->pfnJitCode == consumer->pfnJitCode) {
+        testFail("%s producer and consumer use distinct compiled entries", name);
+    }
+#else
+    (void)name;
+#endif
+}
+
+void runCrossBlockFlagsCase(const U8* producerCode, U32 producerCodeLen, U32 initialFlags,
+                            U32 esi, U32 edi, U32 expectedEsi, U32 expectedFlags,
+                            const char* name) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+
+    testNewInstruction((int)initialFlags);
+    cpu->reg[0].u32 = CROSS_BLOCK_FLAGS_TARGET_OFFSET; // eax: indirect jump target
+    cpu->reg[6].u32 = esi;
+    cpu->reg[7].u32 = edi;
+
+    for (U32 i = 0; i < producerCodeLen; ++i) {
+        testPushCode8(producerCode[i]);
+    }
+    testPushCode8(0xff); // jmp eax
+    testPushCode8(0xe0);
+    padCrossBlockFlagsCodeToTarget();
+    testPushCode8(0x9c); // pushfd
+    testPushCode8(0x5b); // pop ebx
+
+    testRunCPU();
+
+    if (cpu->reg[6].u32 != expectedEsi) {
+        testFail("%s result", name);
+    }
+    if (((cpu->reg[3].u32 ^ expectedFlags) & CROSS_BLOCK_FLAGS_MASK) != 0) {
+        testFail("%s flags", name);
+    }
+    verifyCrossBlockJitEntries(name);
+}
+
+}
+
+void testFlagsAcrossIndirectJitBlockBoundary() {
+    static const U8 incEsi[] = {0x46};
+    runCrossBlockFlagsCase(incEsi, sizeof(incEsi), CROSS_BLOCK_FLAGS_MASK,
+                           0, 0, 1, CF, "cross-block inc/pushfd");
+
+    static const U8 subEsiEdi[] = {0x29, 0xfe};
+    runCrossBlockFlagsCase(subEsiEdi, sizeof(subEsiEdi), ZF | OF,
+                           0, 1, 0xffffffff, CF | PF | AF | SF,
+                           "cross-block sub/pushfd");
+}
+
+void testJitOverlappingDirectJumpTarget() {
+#ifdef BOXEDWINE_JIT
+    CPU* cpu = testContext().cpu;
+
+    testNewInstruction(0);
+    cpu->reg[0].u32 = 0x12340000;
+
+    testPushCode8(0x39); // cmp eax,eax
+    testPushCode8(0xc0);
+    testPushCode8(0x74); // jz +1 into the immediate bytes of the fallthrough mov
+    testPushCode8(0x01);
+    testPushCode8(0xb8); // fallthrough: mov eax,0x02eb07b0
+    testPushCode8(0xb0); // target: mov al,7
+    testPushCode8(0x07);
+    testPushCode8(0xeb); // jmp over mov al,3
+    testPushCode8(0x02);
+    testPushCode8(0xb0); // fallthrough stream: mov al,3
+    testPushCode8(0x03);
+    testRunCPU();
+
+    if ((cpu->reg[0].u32 & 0xff) != 7) {
+        testFail("jit overlapping direct jump target");
+    }
+#endif
+}
+
+void testNativeJitRunCountWraps() {
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+    DecodedOp op;
+    op.runCount = 0xff;
+    op.pfn = testJitRunCountCallback;
+
+    firstDynamicOp(testContext().cpu, &op);
+
+    if (op.runCount != 0) {
+        testFail("native JIT runCount wraps after a failed compile threshold");
+    }
+#endif
+}
+
+bool testShouldRunRegister(bool fast, int reg) {
+    if (!fast) {
+        return true;
+    }
+    static const int fastRegs[] = {0, 1, 3, 4, 5, 7};
+    return intInList(reg, fastRegs, sizeof(fastRegs) / sizeof(fastRegs[0]));
+}
+
+bool testShouldRunRegisterPair(bool fast, int dst, int src) {
+    if (!fast) {
+        return true;
+    }
+    static const int fastPairs[][2] = {
+        {0, 0},
+        {0, 1},
+        {1, 0},
+        {2, 3},
+        {3, 2},
+        {4, 5},
+        {5, 4},
+        {6, 7},
+        {7, 6},
+        {4, 0},
+        {0, 4}
+    };
+    for (size_t i = 0; i < sizeof(fastPairs) / sizeof(fastPairs[0]); ++i) {
+        if (fastPairs[i][0] == dst && fastPairs[i][1] == src) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool testShouldRunMemoryBase(bool fast, int base) {
+    if (!fast) {
+        return true;
+    }
+    static const int fastBases[] = {0, 3, 4, 5, 6};
+    return intInList(base, fastBases, sizeof(fastBases) / sizeof(fastBases[0]));
+}
+
+bool testShouldRunMemoryBaseDisplacement(bool fast, int base, int displacementIndex) {
+    if (!fast) {
+        return true;
+    }
+    if (!testShouldRunMemoryBase(true, base)) {
+        return false;
+    }
+    if (displacementIndex == 0) {
+        return base == 0 || base == 4;
+    }
+    if (displacementIndex == 1) {
+        return base == 3 || base == 5;
+    }
+    return base == 6;
+}
+
+bool testShouldRunMemorySib(bool fast, int base, int index, int shift) {
+    if (!fast) {
+        return true;
+    }
+    static const int fastSibCases[][3] = {
+        {0, 1, 0},
+        {0, 6, 2},
+        {1, 3, 2},
+        {2, 7, 0},
+        {3, 2, 1},
+        {4, 1, 3},
+        {4, 7, 2},
+        {5, 0, 3},
+        {5, 4, 0},
+        {5, 6, 1},
+        {6, 0, 3},
+        {6, 5, 0},
+        {7, 3, 1}
+    };
+    for (size_t i = 0; i < sizeof(fastSibCases) / sizeof(fastSibCases[0]); ++i) {
+        if (fastSibCases[i][0] == base && fastSibCases[i][1] == index && fastSibCases[i][2] == shift) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool testRunRegister(int reg) {
+    return testShouldRunRegister(testIsFastMode(), reg);
+}
+
+bool testRunRegisterPair(int dst, int src) {
+    return testShouldRunRegisterPair(testIsFastMode(), dst, src);
+}
+
+bool testRunMemoryBase(int base) {
+    return testShouldRunMemoryBase(testIsFastMode(), base);
+}
+
+bool testRunMemoryBaseDisplacement(int base, int displacementIndex) {
+    return testShouldRunMemoryBaseDisplacement(testIsFastMode(), base, displacementIndex);
+}
+
+bool testRunMemorySib(int base, int index, int shift) {
+    return testShouldRunMemorySib(testIsFastMode(), base, index, shift);
+}
+
+void testFastModeSelectionHelpers() {
+    if (!testShouldRunRegisterPair(false, 2, 6) ||
+            !testShouldRunMemorySib(false, 2, 4, 3) ||
+            !testShouldRunMemoryBaseDisplacement(false, 7, 2)) {
+        testFail("full mode should keep exhaustive combinations");
+    }
+    if (!testShouldRunRegisterPair(true, 4, 0) ||
+            !testShouldRunRegisterPair(true, 6, 7) ||
+            testShouldRunRegisterPair(true, 2, 6)) {
+        testFail("fast mode register pair sampling");
+    }
+    if (!testShouldRunMemoryBaseDisplacement(true, 0, 0) ||
+            !testShouldRunMemoryBaseDisplacement(true, 5, 1) ||
+            !testShouldRunMemoryBaseDisplacement(true, 6, 2) ||
+            testShouldRunMemoryBaseDisplacement(true, 7, 2)) {
+        testFail("fast mode base/displacement sampling");
+    }
+    if (!testShouldRunMemorySib(true, 4, 7, 2) ||
+            !testShouldRunMemorySib(true, 5, 0, 3) ||
+            testShouldRunMemorySib(true, 2, 4, 3)) {
+        testFail("fast mode sib sampling");
+    }
+}
+
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
 void platformInitExceptionHandling();
 #endif
@@ -219,19 +811,31 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
         return;
     }
 
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    platformInitExceptionHandling();
+#endif
+
     ensureParallelContexts(workerCount);
 
     std::atomic<size_t> nextEntry(0);
     std::mutex printMutex;
+    std::shared_mutex serialTestMutex;
 
     auto runEntry = [&](U32 contextIndex, size_t entryIndex) {
         bindParallelContext(contextIndex);
         TestContext& context = *currentContext;
         runningParallelTest = true;
 
+        resetEntryContext(context);
         context.failed = false;
         context.failures.clear();
-        entries[entryIndex].function();
+        if (entries[entryIndex].flags & TEST_ENTRY_SERIAL) {
+            std::unique_lock<std::shared_mutex> lock(serialTestMutex);
+            entries[entryIndex].function();
+        } else {
+            std::shared_lock<std::shared_mutex> lock(serialTestMutex);
+            entries[entryIndex].function();
+        }
         {
             std::lock_guard<std::mutex> lock(printMutex);
             printf("%s", entries[entryIndex].name);
@@ -250,6 +854,9 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
     };
 
     if (workerCount == 1) {
+#if defined(BOXEDWINE_JIT_ARMV8)
+        ensureArmV8HardwareTSOForThread();
+#endif
         for (size_t i = 0; i < entryCount; ++i) {
             runEntry(0, i);
         }
@@ -264,6 +871,9 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
         workers.push_back(std::thread([&, i]() {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
             platformInitExceptionHandling();
+#endif
+#if defined(BOXEDWINE_JIT_ARMV8)
+            ensureArmV8HardwareTSOForThread();
 #endif
             while (true) {
                 size_t entryIndex = nextEntry.fetch_add(1);
@@ -280,6 +890,396 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
     for (auto& worker : workers) {
         worker.join();
     }
+}
+
+void testDefaultUserSegmentsUseGdtSelectors() {
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+
+    if (cpu->seg[CS].value != BOXEDWINE_INTERNAL_USER_CODE_SELECTOR) {
+        testFail("internal default CS selector");
+    }
+    if (cpu->seg[SS].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR ||
+        cpu->seg[DS].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR ||
+        cpu->seg[ES].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR) {
+        testFail("internal default data selectors");
+    }
+    if (cpu->getSegValue(CS) != BOXEDWINE_VISIBLE_USER_CODE_SELECTOR) {
+        testFail("visible default CS selector");
+    }
+    if (cpu->getSegValue(SS) != BOXEDWINE_VISIBLE_USER_DATA_SELECTOR ||
+        cpu->getSegValue(DS) != BOXEDWINE_VISIBLE_USER_DATA_SELECTOR ||
+        cpu->getSegValue(ES) != BOXEDWINE_VISIBLE_USER_DATA_SELECTOR) {
+        testFail("visible default data selectors");
+    }
+    if (!cpu->setSegment(DS, BOXEDWINE_VISIBLE_USER_DATA_SELECTOR)) {
+        testFail("set visible default data selector");
+    }
+    if (cpu->seg[DS].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR) {
+        testFail("visible default data selector should map to internal selector");
+    }
+}
+
+void testSignalHandlerSegmentsUseGdtSelectors() {
+    constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, SIGNAL_STACK_TOP - K_PAGE_SIZE, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    cpu->reg[4].u32 = SIGNAL_STACK_TOP;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+
+    thread->runSignal(K_SIGUSR1, 0, 0);
+
+    if (cpu->eip.u32 != SIGNAL_HANDLER) {
+        testFail("signal handler eip");
+    }
+    if (cpu->seg[CS].value != BOXEDWINE_INTERNAL_USER_CODE_SELECTOR) {
+        testFail("signal handler internal CS selector");
+    }
+    if (cpu->seg[SS].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR ||
+        cpu->seg[DS].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR ||
+        cpu->seg[ES].value != BOXEDWINE_INTERNAL_USER_DATA_SELECTOR) {
+        testFail("signal handler internal data selectors");
+    }
+    if (cpu->getSegValue(CS) != BOXEDWINE_VISIBLE_USER_CODE_SELECTOR) {
+        testFail("signal handler visible CS selector");
+    }
+    if (cpu->getSegValue(SS) != BOXEDWINE_VISIBLE_USER_DATA_SELECTOR ||
+        cpu->getSegValue(DS) != BOXEDWINE_VISIBLE_USER_DATA_SELECTOR ||
+        cpu->getSegValue(ES) != BOXEDWINE_VISIBLE_USER_DATA_SELECTOR) {
+        testFail("signal handler visible data selectors");
+    }
+}
+
+void testSignalAlternateStackDeliverySemantics() {
+    constexpr U32 ALT_STACK_BASE = 0x70000000;
+    constexpr U32 ALT_STACK_SIZE = 0x10000;
+    constexpr U32 ALT_STACK_TOP = ALT_STACK_BASE + ALT_STACK_SIZE;
+    constexpr U32 SIGNAL_CONTEXT_SIZE = 768;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, ALT_STACK_BASE, ALT_STACK_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    thread->alternateStack = ALT_STACK_BASE;
+    thread->alternateStackSize = ALT_STACK_SIZE;
+    cpu->reg[4].u32 = TEST_STACK_ADDRESS;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+    process->sigActions[K_SIGUSR1].flags = K_SA_ONSTACK;
+
+    thread->runSignal(K_SIGUSR1, 0, 0);
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (context != ALT_STACK_TOP - SIGNAL_CONTEXT_SIZE) {
+        testFail("first SA_ONSTACK signal must start at the alternate stack top");
+    }
+    if (memory->readd(context + 0x8) != ALT_STACK_BASE ||
+        memory->readd(context + 0xC) != 0 ||
+        memory->readd(context + 0x10) != ALT_STACK_SIZE) {
+        testFail("first SA_ONSTACK signal must save the enabled, inactive alternate stack");
+    }
+
+    U32 nestedStack = ALT_STACK_BASE + ALT_STACK_SIZE / 2;
+    cpu->reg[4].u32 = nestedStack;
+    thread->runSignal(K_SIGUSR1, 0, 0);
+
+    context = memory->readd(cpu->reg[4].u32 + 12);
+    if (context != nestedStack - SIGNAL_CONTEXT_SIZE) {
+        testFail("nested SA_ONSTACK signal must continue below the current alternate stack pointer");
+    }
+    if (memory->readd(context + 0x8) != ALT_STACK_BASE ||
+        memory->readd(context + 0xC) != K_SS_ONSTACK ||
+        memory->readd(context + 0x10) != ALT_STACK_SIZE) {
+        testFail("nested SA_ONSTACK signal must save the active alternate stack");
+    }
+}
+
+void testSignalOnStackWithoutConfiguredAlternateStack() {
+    constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
+    constexpr U32 SIGNAL_CONTEXT_SIZE = 768;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, SIGNAL_STACK_TOP - K_PAGE_SIZE, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    cpu->reg[4].u32 = SIGNAL_STACK_TOP;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+    process->sigActions[K_SIGUSR1].flags = K_SA_ONSTACK;
+
+    thread->runSignal(K_SIGUSR1, 0, 0);
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (context != SIGNAL_STACK_TOP - SIGNAL_CONTEXT_SIZE) {
+        testFail("SA_ONSTACK without a configured alternate stack must use the current stack");
+    }
+    if (memory->readd(context + 0x8) != 0 ||
+        memory->readd(context + 0xC) != K_SS_DISABLE ||
+        memory->readd(context + 0x10) != 0) {
+        testFail("SA_ONSTACK without a configured alternate stack must save SS_DISABLE");
+    }
+}
+
+void testSigaltstackReportsActualStackState() {
+    constexpr U32 ALT_STACK_BASE = 0x70000000;
+    constexpr U32 ALT_STACK_SIZE = 0x10000;
+    constexpr U32 STRUCT_PAGE = 0x60000000;
+    constexpr U32 NEW_STACK = STRUCT_PAGE;
+    constexpr U32 OLD_STACK = STRUCT_PAGE + 16;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, ALT_STACK_BASE, ALT_STACK_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    memory->mmap(thread, STRUCT_PAGE, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    thread->alternateStack = ALT_STACK_BASE;
+    thread->alternateStackSize = ALT_STACK_SIZE;
+    cpu->seg[SS].address = 0;
+    cpu->stackMask = 0xffffffff;
+
+    cpu->reg[4].u32 = TEST_STACK_ADDRESS;
+    thread->inSignal = 1;
+    if (thread->signalstack(0, OLD_STACK) != 0 ||
+        memory->readd(OLD_STACK) != ALT_STACK_BASE ||
+        memory->readd(OLD_STACK + 4) != 0 ||
+        memory->readd(OLD_STACK + 8) != ALT_STACK_SIZE) {
+        testFail("sigaltstack must report an enabled stack as inactive while ESP is outside it");
+    }
+
+    memory->writed(NEW_STACK, ALT_STACK_BASE);
+    memory->writed(NEW_STACK + 4, 0);
+    memory->writed(NEW_STACK + 8, ALT_STACK_SIZE);
+    if (thread->signalstack(NEW_STACK, 0) != 0) {
+        testFail("sigaltstack must allow updates from a signal handler running on the normal stack");
+    }
+
+    cpu->reg[4].u32 = ALT_STACK_BASE + ALT_STACK_SIZE / 2;
+    thread->inSignal = 0;
+    if (thread->signalstack(0, OLD_STACK) != 0 || memory->readd(OLD_STACK + 4) != K_SS_ONSTACK) {
+        testFail("sigaltstack must report SS_ONSTACK whenever ESP is inside the alternate stack");
+    }
+
+    memory->writed(NEW_STACK + 4, K_SS_DISABLE);
+    if (thread->signalstack(NEW_STACK, 0) != (U32)-K_EPERM) {
+        testFail("sigaltstack must reject changes while ESP is inside the alternate stack");
+    }
+}
+
+void testSignalReturnPreservesLoadedInvalidTlsSelector() {
+    constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+    constexpr U32 GS_SELECTOR = (TLS_ENTRY_START_INDEX << 3) | 3;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, SIGNAL_STACK_TOP - K_PAGE_SIZE, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    memory->mmap(thread, TEST_CODE_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    memory->writeb(TEST_CODE_ADDRESS, 0x90);
+
+    struct user_desc tls = {};
+    tls.entry_number = TLS_ENTRY_START_INDEX;
+    tls.base_addr = TEST_HEAP_ADDRESS;
+    tls.limit = 0xFFFFF;
+    tls.seg_32bit = 1;
+    tls.limit_in_pages = 1;
+    tls.seg_not_present = 0;
+    tls.useable = 1;
+    thread->setTLS(&tls);
+
+    if (!cpu->setSegment(GS, GS_SELECTOR)) {
+        testFail("set GS to TLS selector");
+    }
+    cpu->reg[4].u32 = SIGNAL_STACK_TOP;
+    cpu->eip.u32 = TEST_CODE_ADDRESS;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+
+    thread->runSignal(K_SIGUSR1, 0, 0);
+    if (cpu->eip.u32 != SIGNAL_HANDLER) {
+        testFail("signal handler eip before invalid TLS return");
+    }
+
+    struct user_desc emptyTls = {};
+    emptyTls.entry_number = TLS_ENTRY_START_INDEX;
+    emptyTls.read_exec_only = 1;
+    emptyTls.seg_not_present = 1;
+    thread->setTLS(&emptyTls);
+
+    U32 returnAddress = cpu->pop32();
+    if (returnAddress != SIG_RETURN_ADDRESS) {
+        testFail("signal return callback address");
+    }
+    onExitSignal(cpu, nullptr);
+
+    if (cpu->seg[GS].value != GS_SELECTOR || cpu->seg[GS].address != TEST_HEAP_ADDRESS) {
+        testFail("already-loaded invalid GS selector should be preserved on signal return");
+    }
+    if (cpu->eip.u32 != TEST_CODE_ADDRESS) {
+        testFail("signal return eip after invalid TLS selector");
+    }
+}
+
+void testSignalReturnDiscardsHandlerLazyFlags() {
+    constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, SIGNAL_STACK_TOP - K_PAGE_SIZE, K_PAGE_SIZE,
+        K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    cpu->reg[4].u32 = SIGNAL_STACK_TOP;
+    cpu->eip.u32 = TEST_CODE_ADDRESS;
+    cpu->flags = 2 | ZF;
+    cpu->lazyFlagType = FLAGS_NONE;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+
+    thread->runSignal(K_SIGUSR1, 0, 0);
+
+    // Model a handler whose last arithmetic operation contradicts the saved
+    // signal-context flags: SUB 0,1 has CF set and ZF clear.
+    cpu->dst.u32 = 0;
+    cpu->src.u32 = 1;
+    cpu->result.u32 = 0xffffffff;
+    cpu->lazyFlagType = FLAGS_SUB32;
+
+    U32 returnAddress = cpu->pop32();
+    if (returnAddress != SIG_RETURN_ADDRESS) {
+        testFail("signal return callback address for lazy flags");
+        return;
+    }
+    onExitSignal(cpu, nullptr);
+
+    if (cpu->lazyFlagType != FLAGS_NONE) {
+        testFail("signal return must discard handler lazy flags");
+    }
+    if (!cpu->getZF()) {
+        testFail("signal return must preserve saved ZF");
+    }
+    if (cpu->getCF()) {
+        testFail("signal return must preserve saved CF");
+    }
+}
+
+void testSignalHandlerClearsTraceFlagUntilReturn() {
+    constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    memory->mmap(thread, SIGNAL_STACK_TOP - K_PAGE_SIZE, K_PAGE_SIZE,
+        K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    cpu->reg[4].u32 = SIGNAL_STACK_TOP;
+    cpu->eip.u32 = TEST_CODE_ADDRESS;
+    cpu->flags = 2 | TF;
+    cpu->lazyFlagType = FLAGS_NONE;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+
+    thread->runSignal(K_SIGUSR1, 0, 0);
+    if (cpu->flags & TF) {
+        testFail("signal handler inherited trace flag");
+    }
+    if (cpu->debugTrapActive) {
+        testFail("signal handler retained active trace trap");
+    }
+
+    U32 returnAddress = cpu->pop32();
+    if (returnAddress != SIG_RETURN_ADDRESS) {
+        testFail("signal return callback address for trace flag");
+        return;
+    }
+    onExitSignal(cpu, nullptr);
+
+    if (!(cpu->flags & TF)) {
+        testFail("signal return did not restore trace flag");
+    }
+    if (!cpu->debugTrapActive) {
+        testFail("signal return did not restore active trace trap");
+    }
+}
+
+void testJitSignalPendingReset() {
+#ifdef BOXEDWINE_JIT
+    TestContext& context = testContext();
+    context.cpu->jitSignalPending.store(1, std::memory_order_release);
+
+    context.cpu->reset();
+
+    if (context.cpu->jitSignalPending.load(std::memory_order_acquire) != 0) {
+        testFail("CPU reset must clear the JIT signal-pending latch");
+    }
+#endif
+}
+
+void testJitSignalPendingQueuedSignal() {
+#ifdef BOXEDWINE_JIT
+    TestContext& context = testContext();
+    KThread* thread = context.thread;
+    const U64 signalBit = 1ULL << (K_SIGUSR1 - 1);
+    const U64 oldSigMask = thread->sigMask;
+    const U64 oldSigWaitMask = thread->sigWaitMask;
+    const U64 oldPendingSignals = thread->pendingSignals;
+    const U32 oldJitSignalPending = context.cpu->jitSignalPending.load(std::memory_order_acquire);
+
+    thread->sigMask |= signalBit;
+    thread->sigWaitMask &= ~signalBit;
+    thread->pendingSignals &= ~signalBit;
+    context.cpu->jitSignalPending.store(0, std::memory_order_release);
+
+    thread->signal(K_SIGUSR1, false);
+
+    if (!(thread->pendingSignals & signalBit)) {
+        testFail("queueing a masked signal must set the thread pending-signal mask");
+    }
+    if (context.cpu->jitSignalPending.load(std::memory_order_acquire) != 1) {
+        testFail("queueing a masked signal must set the JIT signal-pending latch");
+    }
+
+    thread->sigMask = oldSigMask;
+    thread->sigWaitMask = oldSigWaitMask;
+    thread->pendingSignals = oldPendingSignals;
+    context.cpu->jitSignalPending.store(oldJitSignalPending, std::memory_order_release);
+#endif
 }
 
 #endif

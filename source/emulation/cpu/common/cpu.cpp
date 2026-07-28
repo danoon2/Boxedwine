@@ -6,8 +6,19 @@
 #include "../../softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
 
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+void wasmJitMtLeaveCpu(CPU* cpu);
+void wasmJitMtUnregisterCpu(CPU* cpu);
+#endif
+
 CPU* CPU::allocCPU(KMemory* memory) {
     return new NormalCPU(memory);
+}
+
+CPU::~CPU() {
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    wasmJitMtUnregisterCpu(this);
+#endif
 }
 
 U32 CPU_CHECK_COND(CPU* cpu, U32 cond, const char* msg, int exc, int sel) {
@@ -82,11 +93,56 @@ void CPU::setSeg(U32 index, U32 address, U32 value) {
     }
 }
 
+U32 CPU::getSegValue(U32 index) const {
+    return makeSegmentVisible(this->seg[index].value);
+}
+
+U32 CPU::makeSegmentVisible(U32 value) {
+    if (value == BOXEDWINE_INTERNAL_USER_CODE_SELECTOR) {
+        return BOXEDWINE_VISIBLE_USER_CODE_SELECTOR;
+    }
+    if (value == BOXEDWINE_INTERNAL_USER_DATA_SELECTOR) {
+        return BOXEDWINE_VISIBLE_USER_DATA_SELECTOR;
+    }
+    return value;
+}
+
+U32 CPU::makeSegmentInternal(U32 value) {
+    if (value == BOXEDWINE_VISIBLE_USER_CODE_SELECTOR) {
+        return BOXEDWINE_INTERNAL_USER_CODE_SELECTOR;
+    }
+    if (value == BOXEDWINE_VISIBLE_USER_DATA_SELECTOR) {
+        return BOXEDWINE_INTERNAL_USER_DATA_SELECTOR;
+    }
+    return value;
+}
+
 void CPU::setIsBig(U32 value) {
     this->big = value;
 }
 
+bool CPU::isNullSegment(U32 seg) const {
+    return seg < 6 && seg != CS && (this->seg[seg].value & 0xfffc) == 0;
+}
+
+bool CPU::checkSegmentAccess(U32 seg) {
+    if (this->isNullSegment(seg)) {
+        this->prepareException(EXCEPTION_GP, 0);
+        return false;
+    }
+    return true;
+}
+
 void CPU::reset() {
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    // exec can reset the CPU from a syscall helper while the old compiled
+    // frame is still unwinding. Preserve its owner hazard until the outer
+    // wasmStartJITOp call returns; ordinary resets are already quiescent.
+    bool resetInsideWasmJitCall = this->wasmJitInCompiledCall != 0;
+    if (!resetInsideWasmJitCall) {
+        wasmJitMtLeaveCpu(this);
+    }
+#endif
     this->flags = ID;
     this->eip.u32 = 0;
     this->instructionCount = 0;
@@ -102,19 +158,37 @@ void CPU::reset() {
     }
     this->lazyFlagType = FLAGS_NONE;
     this->setIsBig(1);
-    this->seg[CS].value = 0xF; // index 1, LDT, rpl=3
-    this->seg[SS].value = 0x17; // index 2, LDT, rpl=3
-    this->seg[DS].value = 0x17; // index 2, LDT, rpl=3
-    this->seg[ES].value = 0x17; // index 2, LDT, rpl=3
+    this->seg[CS].value = BOXEDWINE_INTERNAL_USER_CODE_SELECTOR;
+    this->seg[SS].value = BOXEDWINE_INTERNAL_USER_DATA_SELECTOR;
+    this->seg[DS].value = BOXEDWINE_INTERNAL_USER_DATA_SELECTOR;
+    this->seg[ES].value = BOXEDWINE_INTERNAL_USER_DATA_SELECTOR;
     this->cpl = 3; // user mode
     this->cr0 = CR0_PROTECTION | CR0_FPUPRESENT | CR0_PAGING;
     this->flags|=IF;
     this->fpu.FINIT();
+    this->setMxcsr(0x1F80);
     this->stackNotMask = 0;
     this->stackMask = 0xFFFFFFFF;
     this->nextOp = nullptr;
+#ifdef BOXEDWINE_JIT
+    this->jitSignalPending.store(0, std::memory_order_release);
+#endif
+    this->debugTrapOnNextInstruction = false;
+    this->pendingDebugTrap = false;
+    this->debugTrapActive = false;
+    this->pendingDebugTrapCode = 0;
+    this->pendingDebugTrapDr6 = 0;
 #ifdef BOXEDWINE_MULTI_THREADED
     this->tmpLockAddress = 0;
+#endif
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    if (!resetInsideWasmJitCall) {
+        this->wasmJitActiveTableIndex = 0;
+        this->wasmJitActiveTableIndexLocal = 0;
+        this->wasmJitCallsUntilQuiescence = 0;
+        this->wasmJitInCompiledCall = 0;
+        this->wasmJitReapRetiredOnExit = 0;
+    }
 #endif
 #ifdef BOXEDWINE_JIT
     memset(calculateCF, 0, sizeof(calculateCF));
@@ -208,17 +282,17 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
     }
 }
 
-void CPU::prepareFpuException(int code, int error) {
+void CPU::prepareFpuException(int code, int trapNo, int error) {
     const KProcessPtr& process = this->thread->process;
 
     // blocking signals, signalfd can't handle these
-    if (process->sigActions[K_SIGSEGV].handlerAndSigAction != K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction != K_SIG_DFL) {
-        process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGFPE;
-        process->sigActions[K_SIGSEGV].sigInfo[1] = error; // always 0?
-        process->sigActions[K_SIGSEGV].sigInfo[2] = code;
-        process->sigActions[K_SIGSEGV].sigInfo[3] = 0; // address
-        process->sigActions[K_SIGSEGV].sigInfo[4] = 16; // trap #, TRAP_x86_ARITHTRAP
-        this->thread->runSignal(K_SIGSEGV, 13, error);
+    if (process->sigActions[K_SIGFPE].handlerAndSigAction != K_SIG_IGN && process->sigActions[K_SIGFPE].handlerAndSigAction != K_SIG_DFL) {
+        process->sigActions[K_SIGFPE].sigInfo[0] = K_SIGFPE;
+        process->sigActions[K_SIGFPE].sigInfo[1] = error; // always 0?
+        process->sigActions[K_SIGFPE].sigInfo[2] = code;
+        process->sigActions[K_SIGFPE].sigInfo[3] = this->eip.u32; // address
+        process->sigActions[K_SIGFPE].sigInfo[4] = trapNo;
+        this->thread->runSignal(K_SIGFPE, trapNo, error);
     } else {
         CPU* cpu = this;
         this->walkStack(this->eip.u32, EBP, 2);
@@ -520,36 +594,52 @@ U32 CPU::setSegment(U32 seg, U32 value) {
     }
     if (this->flags & VM) {
         this->setSeg(seg, value << 4, value);
-    } else  if ((value & 0xfffc)==0) {
-        this->setSeg(seg, 0, value);
     } else {
-        U32 index = value >> 3;
-        struct user_desc* ldt = this->thread->getLDT(index);
+        value = makeSegmentInternal(value);
+        if ((value & 0xfffc)==0) {
+            this->setSeg(seg, 0, value);
+        } else {
+            U32 index = value >> 3;
+            struct user_desc* ldt = this->thread->getLDT(index);
 
-        if (!ldt) {
-            this->prepareException(EXCEPTION_GP,value & 0xfffc);
-            return 0;
-        }
-        if (ldt->seg_not_present) {
-            if (seg==SS)
-                this->prepareException(EXCEPTION_SS,value & 0xfffc);
-            else
-                this->prepareException(EXCEPTION_NP,value & 0xfffc);
-            return 0;
-        }
-        this->setSeg(seg, ldt->base_addr, value);        
-        if (seg == SS) {
-            if (ldt->seg_32bit) {
-                this->stackMask = 0xffffffff;
-                this->stackNotMask = 0;
-            } else {
-                this->stackMask = 0xffff;
-                this->stackNotMask = 0xffff0000;
-                this->thread->process->hasSetStackMask = true;
+            if (!ldt) {
+                this->prepareException(EXCEPTION_GP,value & 0xfffc);
+                return 0;
+            }
+            if (ldt->seg_not_present) {
+                if (seg==SS)
+                    this->prepareException(EXCEPTION_SS,value & 0xfffc);
+                else
+                    this->prepareException(EXCEPTION_NP,value & 0xfffc);
+                return 0;
+            }
+            if (seg == SS && (ldt->contents == 2 || ldt->read_exec_only)) {
+                this->prepareException(EXCEPTION_GP, 0);
+                return 0;
+            }
+            this->setSeg(seg, ldt->base_addr, value);
+            if (seg == SS) {
+                if (ldt->seg_32bit) {
+                    this->stackMask = 0xffffffff;
+                    this->stackNotMask = 0;
+                } else {
+                    this->stackMask = 0xffff;
+                    this->stackNotMask = 0xffff0000;
+                    this->thread->process->hasSetStackMask = true;
+                }
             }
         }
     }
     return 1;
+}
+
+void CPU::setMxcsr(U32 value) {
+    constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+    constexpr U32 REQUIRED_MASKS = MXCSR_INVALID_OPERATION_MASK | MXCSR_DIVIDE_BY_ZERO_MASK;
+
+    this->mxcsr = value;
+    this->sseDivExceptionsUnmasked = (value ^ REQUIRED_MASKS) & REQUIRED_MASKS;
 }
 
 void CPU::ret(U32 big, U32 bytes) {
@@ -772,7 +862,7 @@ void CPU::iret(U32 big, U32 oldeip) {
             ESP = (ESP & this->stackNotMask) | ((ESP + (big?12:6)) & this->stackMask);
             this->setSeg(CS, ldt->base_addr, n_cs_sel);
             this->setIsBig(ldt->seg_32bit);
-            this->eip.u32 = n_eip;     
+            this->eip.u32 = n_eip;
             U32 mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
             if (((this->flags & IOPL) >> 12) < this->cpl) mask &= ~IF;
             this->lazyFlagType = FLAGS_NONE;
@@ -979,6 +1069,70 @@ void CPU::setFlags(U32 flags, U32 mask) {
     }
 #endif
     this->flags=(this->flags & ~mask)|(flags & mask)|2;
+    if (mask & TF) {
+        this->updateDebugTrapActive();
+    }
+}
+
+void CPU::updateDebugTrapActive() {
+    this->debugTrapActive = this->debugTrapOnNextInstruction || this->pendingDebugTrap || (this->flags & TF) || (this->thread && !this->thread->inSignal && (this->thread->debugRegs[7] & 0xff));
+}
+
+bool CPU::startDebugInstruction() {
+    if (!this->thread) {
+        this->debugTrapOnNextInstruction = false;
+        this->updateDebugTrapActive();
+        return false;
+    }
+    if (this->thread->debugTrapBeforeInstruction()) {
+        this->debugTrapOnNextInstruction = false;
+        this->nextOp = this->getNextOp();
+        this->updateDebugTrapActive();
+        return true;
+    }
+    this->debugTrapOnNextInstruction = (this->flags & TF) != 0;
+    this->updateDebugTrapActive();
+    return false;
+}
+
+bool CPU::finishDebugInstruction() {
+    if (!this->thread) {
+        this->debugTrapOnNextInstruction = false;
+        this->pendingDebugTrap = false;
+        this->pendingDebugTrapCode = 0;
+        this->pendingDebugTrapDr6 = 0;
+        this->updateDebugTrapActive();
+        return false;
+    }
+    if (this->pendingDebugTrap) {
+        U32 code = this->pendingDebugTrapCode;
+        U32 dr6 = this->pendingDebugTrapDr6;
+        if (this->debugTrapOnNextInstruction) {
+            dr6 |= 0x4000;
+        }
+        this->debugTrapOnNextInstruction = false;
+        this->pendingDebugTrap = false;
+        this->pendingDebugTrapCode = 0;
+        this->pendingDebugTrapDr6 = 0;
+        this->thread->signalDebugTrap(code, dr6);
+        this->nextOp = this->getNextOp();
+        this->updateDebugTrapActive();
+        return true;
+    }
+    if (this->debugTrapOnNextInstruction) {
+        this->debugTrapOnNextInstruction = false;
+        this->thread->signalDebugTrap(2, 0x4000);
+        this->nextOp = this->getNextOp();
+        this->updateDebugTrapActive();
+        return true;
+    }
+    this->debugTrapOnNextInstruction = false;
+    this->updateDebugTrapActive();
+    if (this->flags & TF) {
+        this->nextOp = this->getNextOp();
+        return true;
+    }
+    return false;
 }
 
 void CPU::addFlag(U32 flags) {
@@ -1140,6 +1294,11 @@ void CPU::clone(CPU* from) {
     this->cr0 = from->cr0;
     this->stackNotMask = from->stackNotMask;
     this->stackMask = from->stackMask;
+    this->debugTrapOnNextInstruction = from->debugTrapOnNextInstruction;
+    this->pendingDebugTrap = from->pendingDebugTrap;
+    this->pendingDebugTrapCode = from->pendingDebugTrapCode;
+    this->pendingDebugTrapDr6 = from->pendingDebugTrapDr6;
+    this->updateDebugTrapActive();
 
     //KThread* thread;
     //Memory* memory;
@@ -1185,14 +1344,13 @@ U32 CPU::getEipAddress() {
 }
 
 U32 CPU::readCrx(U32 which, U32 reg) {
-    //this->prepareException(EXCEPTION_GP, 0);
-    this->reg[reg].u32 = 0;
-    return 1;
+    this->prepareException(EXCEPTION_GP, 0);
+    return 0;
 }
 
 U32 CPU::writeCrx(U32 which, U32 value) {
-    //this->prepareException(EXCEPTION_GP, 0);
-    return 1;
+    this->prepareException(EXCEPTION_GP, 0);
+    return 0;
 }
 
 bool CPU::shouldContinue(U32 eip) {
@@ -1258,7 +1416,7 @@ void CPU::runNextSingleOp() {
     try {
         op = getNextOp();
         if (!op) {
-            this->thread->seg_mapper(getEipAddress(), true, false, false);
+            this->thread->seg_instructionFetch(getEipAddress(), false);
             this->nextOp = getNextOp();
         }
     } catch (...) {
@@ -1270,6 +1428,9 @@ void CPU::runNextSingleOp() {
         kpanic("jitRunSingleOp oops");
     }
     try {
+        if (this->debugTrapActive && this->startDebugInstruction()) {
+            return;
+        }
 #ifdef BOXEDWINE_JIT
         if (op->flags2 & OP_FLAG2_TRACED_STUB) {
             op->flags2 &= ~OP_FLAG2_TRACED_STUB;
@@ -1279,9 +1440,13 @@ void CPU::runNextSingleOp() {
 #endif
         DecodedOp o = *op;
         lastOp.pfn = onLastOp;
+        lastOp.inst = Custom1; // Custom1 has no normalDispatch case, so inst-switch chains fall to default: and call pfn
         o.next = &lastOp;
         o.pfn = NormalCPU::getFunctionForOp(op);
         o.pfn(this, &o);
+        if (this->debugTrapActive && this->finishDebugInstruction()) {
+            return;
+        }
     } catch (...) {
         // motorhead 3dfx will trigger this when pressing enter to start a new game
     }

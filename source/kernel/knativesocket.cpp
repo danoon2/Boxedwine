@@ -23,6 +23,9 @@
 #include "kstat.h"
 #include "bufferaccess.h"
 
+#include <memory>
+#include <new>
+
 #ifdef WIN32
 #undef BOOL
 #include <winsock2.h>
@@ -428,6 +431,10 @@ S32 translateNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, in
         result = -K_EHOSTUNREACH;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EHOSTUNREACH", result);
     }
+    else if (error == WSAEADDRNOTAVAIL) {
+        result = -K_EADDRNOTAVAIL;
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EADDRNOTAVAIL", result);
+    }
     else if (error == WSAECONNREFUSED) {
         result = -K_ECONNREFUSED;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ECONNREFUSED", result);
@@ -469,6 +476,10 @@ S32 translateNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, in
     else if (error == EHOSTUNREACH) {
         result = -K_EHOSTUNREACH;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EHOSTUNREACH", error);
+    }
+    else if (error == EADDRNOTAVAIL) {
+        result = -K_EADDRNOTAVAIL;
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EADDRNOTAVAIL", error);
     }
     else if (error == EISCONN) {
         result = -K_EISCONN;
@@ -897,7 +908,7 @@ bool KNativeSocketObject::isOpen() {
         return false;
     }
     */
-    return this->listening || this->connected;
+    return this->nativeSocket >= 0 && (this->type == K_SOCK_DGRAM || this->listening || this->connected);
 }
 
 bool KNativeSocketObject::isPriorityReadReady() {
@@ -1431,6 +1442,12 @@ U32 KNativeSocketObject::setsockopt(KThread* thread, const KFileDescriptorPtr& f
                 v = memory->readd(value);
                 ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_KEEPALIVE, (const char*)&v, 4);
                 break;
+            case K_SO_OOBINLINE:
+                if (len != 4)
+                    kpanic("KNativeSocketObject::setsockopt SO_OOBINLINE expecting len of 4");
+                v = memory->readd(value);
+                ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_OOBINLINE, (const char*)&v, 4);
+                break;
             case K_SO_BROADCAST:
                 if (len != 4)
                     kpanic("KNativeSocketObject::setsockopt SO_BROADCAST expecting len of 4");
@@ -1557,14 +1574,15 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, const KFileDescriptorPtr& f
                 kpanic("KNativeSocketObject::getsockopt SO_OOBINLINE expecting len of 4");
             result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_OOBINLINE, (char*)&retrievedValue, &len);
             if (!result) {
+                retrievedValue = retrievedValue ? 1 : 0;
                 memory->writed(value, retrievedValue);
             }
         } else if (name == K_SO_BROADCAST) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_BROADCAST expecting len of 4");
-            U32 result = 0;
             result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_BROADCAST, (char*)&retrievedValue, &len);
             if (!result) {
+                retrievedValue = retrievedValue ? 1 : 0;
                 memory->writed(value, retrievedValue);
             }
         } else if (name == K_SO_RCVTIMEO) {
@@ -1729,14 +1747,16 @@ U32 KNativeSocketObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd, 
     }
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(readingCond);
     KMemory* memory = thread->memory;
-    char tmp[K_PAGE_SIZE] = { 0 };
     MsgHdr hdr = { 0 };
-    U32 result = 0;
     U32 nativeFlags = 0;
     if (flags) {
         if (flags & K_MSG_PEEK) {
             nativeFlags |= MSG_PEEK;
             flags &= ~K_MSG_PEEK;
+        }
+        if (flags & K_MSG_OOB) {
+            nativeFlags |= MSG_OOB;
+            flags &= ~K_MSG_OOB;
         }
         if (flags) {
             kwarn_fmt("KNativeSocketObject::recvmsg unhandled flag %x", flags);
@@ -1744,45 +1764,80 @@ U32 KNativeSocketObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd, 
     }
     readMsgHdr(thread, address, &hdr);    
 
-    for (U32 i = 0; i < hdr.msg_iovlen; i++) {
-        U32 p = memory->readd(hdr.msg_iov + 8 * i);
-        U32 len = memory->readd(hdr.msg_iov + 8 * i + 4);
-
-        struct sockaddr_in in = {0};
-        socklen_t inLen = sizeof(struct sockaddr_in);
-
-        if (len>sizeof(tmp))
-            len = sizeof(tmp);
-        S32 r = (S32)::recvfrom(this->nativeSocket, tmp, len, nativeFlags, hdr.msg_name?(struct sockaddr*)&in:nullptr, hdr.msg_name ? &inLen : nullptr);
-        LOG_SOCK("%x native socket: %x recvmsg flags=%x msg_name=%x msg_namelen=%x result=%x", thread->id, nativeSocket, flags, hdr.msg_name, hdr.msg_namelen, r);
-        //if (r < 0) {
-        //    Platform::nanoSleep(10000000);
-        //    r = (S32)::recvfrom(this->nativeSocket, tmp, len, nativeFlags, hdr.msg_name ? (struct sockaddr*)&in : nullptr, hdr.msg_name ? &inLen : nullptr);
-        //}
-        if (r>=0) {
-            memory->memcpy(p, tmp, r);
-            // :TODO: maybe copied fields to the expected location rather than assume the structures are the same
-            if (hdr.msg_name && hdr.msg_namelen >= 16) {
-                writeSockAddrIn(&in, memory, hdr.msg_name);
-            }
-            memory->writed(address + 4, inLen);
-            result+=r;
-            this->error = 0;
-        }
-        else if (result) {
-            break;
-        } else {
-            std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
-            result = handleNativeSocketError(t, false);
+    U64 totalLen = 0;
+    for (U32 i = 0; i < hdr.msg_iovlen; ++i) {
+        totalLen += memory->readd(hdr.msg_iov + 8 * i + 4);
+        if (totalLen > 0x7fffffffULL) {
+            return -K_EINVAL;
         }
     }
-    if (this->type==K_SOCK_STREAM)
+    U32 capacity = (U32)totalLen;
+    std::unique_ptr<U8[]> buffer(new (std::nothrow) U8[capacity ? capacity : 1]);
+    if (!buffer) {
+        return -K_ENOMEM;
+    }
+
+    struct sockaddr_in sourceAddress = {};
+    U32 guestMessageFlags = 0;
+#ifdef WIN32
+    int sourceLength = hdr.msg_name ? sizeof(sourceAddress) : 0;
+    S32 received = (S32)::recvfrom(this->nativeSocket, (char*)buffer.get(), (int)capacity, nativeFlags,
+        hdr.msg_name ? (struct sockaddr*)&sourceAddress : nullptr, hdr.msg_name ? &sourceLength : nullptr);
+    if (received < 0) {
+        int nativeError = WSAGetLastError();
+        if (this->type == K_SOCK_DGRAM && nativeError == WSAEMSGSIZE) {
+            received = (S32)capacity;
+            guestMessageFlags |= K_MSG_TRUNC;
+        }
+    }
+#else
+    struct iovec nativeIov = {};
+    struct msghdr nativeMessage = {};
+    nativeIov.iov_base = buffer.get();
+    nativeIov.iov_len = capacity;
+    nativeMessage.msg_name = hdr.msg_name ? &sourceAddress : nullptr;
+    nativeMessage.msg_namelen = hdr.msg_name ? sizeof(sourceAddress) : 0;
+    nativeMessage.msg_iov = &nativeIov;
+    nativeMessage.msg_iovlen = 1;
+
+    S32 received = (S32)::recvmsg(this->nativeSocket, &nativeMessage, nativeFlags);
+    socklen_t sourceLength = nativeMessage.msg_namelen;
+    guestMessageFlags = (nativeMessage.msg_flags & MSG_TRUNC) ? K_MSG_TRUNC : 0;
+#endif
+    LOG_SOCK("%x native socket: %x recvmsg flags=%x msg_name=%x msg_namelen=%x result=%x", thread->id,
+        nativeSocket, flags, hdr.msg_name, hdr.msg_namelen, received);
+    if (received < 0) {
+        std::shared_ptr<KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+        U32 result = handleNativeSocketError(t, false);
+        if (this->type == K_SOCK_STREAM) {
+            memory->writed(address + 4, 0); // msg_namelen, set to 0 for connected sockets
+        }
+        memory->writed(address + 20, 0); // msg_controllen
+        return result;
+    }
+
+    U32 copied = 0;
+    for (U32 i = 0; i < hdr.msg_iovlen && copied < (U32)received; ++i) {
+        U32 guestAddress = memory->readd(hdr.msg_iov + 8 * i);
+        U32 guestLength = memory->readd(hdr.msg_iov + 8 * i + 4);
+        U32 count = std::min(guestLength, (U32)received - copied);
+        memory->memcpy(guestAddress, buffer.get() + copied, count);
+        copied += count;
+    }
+    if (hdr.msg_name && hdr.msg_namelen >= 16) {
+        writeSockAddrIn(&sourceAddress, memory, hdr.msg_name);
+    }
+    memory->writed(address + 4, sourceLength);
+    if (this->type == K_SOCK_STREAM) {
         memory->writed(address + 4, 0); // msg_namelen, set to 0 for connected sockets
-    memory->writed(address + 20, 0); // msg_controllen
-    if ((S32)result > 0 && !(nativeFlags & MSG_PEEK)) {
-        recordEth0Rx(result);
     }
-    return result;
+    memory->writed(address + 20, 0); // msg_controllen
+    memory->writed(address + 24, guestMessageFlags);
+    if (received > 0 && !(nativeFlags & MSG_PEEK)) {
+        recordEth0Rx(received);
+    }
+    this->error = 0;
+    return received;
 }
 
 U32 KNativeSocketObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len) {

@@ -70,11 +70,6 @@ DecodedOp* DecodedOpCache::get(U32 address) {
 	DecodedOpPageCache* page = getPageCache(pageIndex, false);
 	if (page) {
 		U32 offset = address & K_PAGE_MASK;
-		if (page->ops[offset] == nullptr) {
-			if (offset > 0 && page->ops[offset - 1] && page->ops[offset - 1]->lock) {
-				return page->ops[offset - 1];
-			}
-		}
 		return page->ops[offset];
 	}
 	return nullptr;
@@ -92,23 +87,33 @@ void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 		end = K_PAGE_SIZE;
 	}
 
-	DecodedOpPageCache* page = getPageCache(pageIndex, false);
-	if (!page) {
-		return;
-	}
 	U8* pageWriteCounts = nullptr;
 	if (becauseOfWrite) {
 		pageWriteCounts = getWriteCounts(pageIndex, true);
 	}
+	DecodedOpPageCache* page = getPageCache(pageIndex, false);
+	if (!page && !pageWriteCounts) {
+		return;
+	}
 
-	KThread* thread = KThread::currentThread();
+	KThread* thread = page ? KThread::currentThread() : nullptr;
 	for (U32 i = offset; i < end; i++) {
-		if (page->ops[i]) {
-			pendingDeallocs[thread->id].push_back(page->ops[i]);
+		if (page && page->ops[i]) {
+			if (preparedRemovalPendingDeallocs) {
+				preparedRemovalPendingDeallocs->push_back(page->ops[i]);
+			} else {
+				pendingDeallocs[thread->id].push_back(page->ops[i]);
+			}
 			page->ops[i] = nullptr;
 			activeOps--;
 		}
-		if (becauseOfWrite) {
+		if (pageWriteCounts) {
+#if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+			if (KSystem::disableWasmJitForWrittenCode) {
+				pageWriteCounts[i] = MAX_DYNAMIC_COUNT;
+				continue;
+			}
+#endif
 			if ((pageWriteCounts[i] < MAX_DYNAMIC_COUNT)) {
 				pageWriteCounts[i]++;
 			}
@@ -153,7 +158,11 @@ DecodedOp* DecodedOpCache::getPreviousOpAndRemoveIfOverlapping(U32 address) {
 		// does previousOp span into address, if so then remove it
 		if (previousOpAddress + previousOp->len > address) {
 			previousPageCache->ops[previousOpAddress & K_PAGE_MASK] = nullptr;			
-			pendingDeallocs[KThread::currentThread()->id].push_back(previousOp);
+			if (preparedRemovalPendingDeallocs) {
+				preparedRemovalPendingDeallocs->push_back(previousOp);
+			} else {
+				pendingDeallocs[KThread::currentThread()->id].push_back(previousOp);
+			}
 			activeOps--;
 			previousOp = getPreviousOp(previousOpAddress, &previousOpAddress, &previousPageCache);
 		}
@@ -174,6 +183,38 @@ void DecodedOpCache::clear() {
 	}
 	pendingDeallocs.clear();
 }
+
+#ifdef BOXEDWINE_JIT
+void DecodedOpCache::collectAllJitBlocks(std::vector<void*>& out) {
+	for (U32 firstIndex = 0; firstIndex < FIRST_INDEX_SIZE; firstIndex++) {
+		if (pageData[firstIndex] == emptyPageCacheLevel1) continue;
+		for (U32 secondIndex = 0; secondIndex < SECOND_INDEX_SIZE; secondIndex++) {
+			DecodedOpPageCache* page = pageData[firstIndex][secondIndex];
+			if (!page) continue;
+			for (U32 i = 0; i < K_PAGE_SIZE; i++) {
+				DecodedOp* op = page->ops[i];
+				if (op) {
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+					void* jitCode;
+					if (op->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
+						jitCode = __atomic_exchange_n(
+							&op->pfnJitCode, nullptr, __ATOMIC_SEQ_CST);
+					} else {
+						jitCode = op->pfnJitCode;
+						op->pfnJitCode = nullptr;
+					}
+#else
+					void* jitCode = op->pfnJitCode;
+#endif
+					if (jitCode) {
+						out.push_back(jitCode);
+					}
+				}
+			}
+		}
+	}
+}
+#endif
 
 void DecodedOpCache::clearPendingDeallocs(U32 threadId) {
 	if (pendingDeallocs.count(threadId)) {
@@ -219,9 +260,63 @@ void DecodedOpCache::iterateOps(U32 address, U32 len, OpCacheCallback callback, 
 void DecodedOpCache::remove(U32 address, U32 len, bool becauseOfWrite) {
 	DecodedOp* prev = getPreviousOpAndRemoveIfOverlapping(address);
 	if (prev) {
-		prev->next = DecodedOp::allocDone();
+		prev->next = preparedRemovalDone ? preparedRemovalDone : DecodedOp::allocDone();
 	}
 	removeStartAt(address, len, becauseOfWrite);
+}
+
+void DecodedOpCache::prepareRemoveRanges(const std::vector<std::pair<U32, U32>>& ranges) {
+	KThread* thread = KThread::currentThread();
+	if (!thread) {
+		throw std::bad_alloc();
+	}
+
+	size_t removalCount = 0;
+	for (const auto& range : ranges) {
+		U32 address = range.first;
+		U32 len = range.second;
+		if (!len) {
+			continue;
+		}
+		U32 previousOpAddress = 0;
+		DecodedOpPageCache* previousPage = nullptr;
+		DecodedOp* previousOp = getPreviousOp(address, &previousOpAddress, &previousPage);
+		if (previousOp && previousOpAddress + previousOp->len > address) {
+			++removalCount;
+		}
+
+		U64 cursor = address;
+		U64 end = cursor + len;
+		while (cursor < end) {
+			U32 pageIndex = (U32)(cursor >> K_PAGE_SHIFT);
+			U32 offset = (U32)cursor & K_PAGE_MASK;
+			U32 todo = (U32)std::min<U64>(end - cursor, K_PAGE_SIZE - offset);
+			DecodedOpPageCache* page = getPageCache(pageIndex, false);
+			if (page) {
+				for (U32 i = offset; i < offset + todo; ++i) {
+					if (page->ops[i]) {
+						++removalCount;
+					}
+				}
+			}
+			cursor += todo;
+		}
+	}
+
+	auto result = pendingDeallocs.try_emplace(thread->id);
+	std::vector<DecodedOp*>& pending = result.first->second;
+	if (removalCount > pending.max_size() - pending.size()) {
+		throw std::length_error("DecodedOp removal is too large");
+	}
+	pending.reserve(pending.size() + removalCount);
+	DecodedOp* done = DecodedOp::allocDone();
+	preparedRemovalPendingDeallocs = &pending;
+	preparedRemovalDone = done;
+}
+
+void DecodedOpCache::finishPreparedRemove() {
+	preparedRemovalPendingDeallocs = nullptr;
+	preparedRemovalDone = nullptr;
 }
 
 void DecodedOpCache::removeAll() {
@@ -238,7 +333,7 @@ void DecodedOpCache::removeAll() {
 		if (writeCounts[firstIndex]) {
 			for (U32 secondIndex = 0; secondIndex < SECOND_INDEX_SIZE; secondIndex++) {
 				if (writeCounts[firstIndex][secondIndex]) {
-					delete writeCounts[firstIndex][secondIndex];
+					delete[] writeCounts[firstIndex][secondIndex];
 				}
 			}
 			delete[] writeCounts[firstIndex];
@@ -348,7 +443,7 @@ void DecodedOpCache::clearPageWriteCounts(U32 pageIndex) {
 	U8** first = writeCounts[firstIndex];
 
 	if (first && first[secondIndex]) {
-		memset(first[secondIndex], 0, sizeof(K_PAGE_SIZE));
+		memset(first[secondIndex], 0, K_PAGE_SIZE);
 	}
 }
 

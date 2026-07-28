@@ -25,12 +25,31 @@
 // on windows one.txt and One.txt are the same file but on Linux they are different
 #define EXT_MIXED ".mixed"
 #define EXT_DOSATTRIB ".user.DOSATTRIB"
+#define EXT_WINEREPARSE ".user.WINEREPARSE"
 #define EXT_LINK ".link"
+#define EXT_HARDLINK ".hardlink"
+#define EXT_HARDLINK_BACKING ".hardlink-data"
 
 class FsOpenNode;
 class KProcess;
 class KThread;
 class KObject;
+class MappedFileCache;
+
+class FsFileIdentity {
+public:
+    // Serializes a backing mutation with its cache notification. Lock order:
+    // KFile::filePosMutex -> mutationOperationMutex -> cache mutation/metadata.
+    // Page-load backing reads intentionally do not acquire this gate.
+    BOXEDWINE_MUTEX_NR mutationOperationMutex;
+    std::weak_ptr<MappedFileCache> fileCache;
+#ifdef __TEST
+    std::function<void()> testAfterBackingMutationBeforeCacheNotification;
+    std::function<void()> testAfterMappedLengthReadBeforeCacheReconcile;
+    std::function<void()> testBeforeMappedCacheFileLock;
+    std::function<bool()> testBeforeGuestMemoryAccess;
+#endif
+};
 
 class FsNode : public std::enable_shared_from_this<FsNode> {
 public:
@@ -49,12 +68,22 @@ public:
     virtual U32 rename(BString path)=0; //return 0 if success, else errno
     virtual bool remove()=0;
     virtual U64 lastModified()=0; // returns ms since 1970
+    virtual U32 lastModifiedNano() { return (U32)(lastModified() % 1000) * 1000000; }
+    virtual U64 lastAccessed() { return lastModified(); }
+    virtual U32 lastAccessedNano() { return (U32)(lastAccessed() % 1000) * 1000000; }
+    virtual U64 lastStatusChanged() { return lastModified(); }
+    virtual U32 lastStatusChangedNano() { return lastModifiedNano(); }
     virtual U64 length()=0;
     virtual FsOpenNode* open(U32 flags)=0;    
     virtual U32 getType(bool checkForLink)=0;
     virtual U32 getMode()=0;
+    virtual U32 setMode(U32 mode) { return 0; }
     virtual U32 removeDir()=0;
     virtual U32 setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano)=0;
+    virtual U32 getId() { return this->id; }
+    virtual U32 getHardLinkCount() { return this->hardLinkCount; }
+    virtual BString getNativePathForData() { return this->nativePath; }
+    std::shared_ptr<FsFileIdentity> getFileIdentity() const { return fileIdentity; }
 
     virtual bool canRead();
     virtual bool canWrite();
@@ -62,7 +91,6 @@ public:
     virtual BString getLink() {return this->link;}
     virtual bool isLink() { return this->link.length() > 0; }
 
-    U32 getHardLinkCount() {return this->hardLinkCount;}    
     bool isDirectory() {return this->isDir;}
     std::weak_ptr<FsNode> getParent() {return this->parent;}
 
@@ -86,6 +114,12 @@ public:
     void addChild(std::shared_ptr<FsNode> node);
     void removeChildByName(BString name);
     void getAllChildren(std::vector<std::shared_ptr<FsNode> > & results);
+    void reserveChildren(std::size_t capacity);
+    void setChildrenVisibilityMutex(BOXEDWINE_MUTEX* mutex);
+#ifdef __TEST
+    bool trySetChildrenVisibilityMutexForTest(BOXEDWINE_MUTEX* mutex);
+    BOXEDWINE_MUTEX* getChildrenVisibilityMutexForTest() const;
+#endif
 
     U32 addLock(KFileLock* lock);
     bool unlock(KFileLock* lock);
@@ -96,6 +130,7 @@ public:
 
     void addOpenNode(KListNode<FsOpenNode*>* node);
 protected:
+    std::shared_ptr<FsFileIdentity> fileIdentity;
     std::weak_ptr<FsNode> parent; // the parent holds a strong reference to the children
 
     KList<FsOpenNode*> openNodes;
@@ -107,11 +142,15 @@ private:
 
     BHashTable<BString, std::shared_ptr<FsNode> > childrenByName;
     BOXEDWINE_MUTEX childrenByNameMutex;
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::atomic<BOXEDWINE_MUTEX*> childrenVisibilityMutex{nullptr};
+#endif
 
-    std::vector<KFileLock> locks;       
+    std::vector<KFileLock> locks;
     BOXEDWINE_CONDITION locksCS;    
 
     void loadChildren();
+    bool trySetChildrenVisibilityMutex(BOXEDWINE_MUTEX* mutex);
     KFileLock* internalGetLock(KFileLock* lock, bool otherProcess);
 };
 

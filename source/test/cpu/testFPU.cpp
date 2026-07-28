@@ -14,6 +14,10 @@
 #include "testFPU.h"
 #include "testCPU.h"
 
+#if defined(BOXEDWINE_MEM_CACHE)
+#include "../../emulation/softmmu/kmemory_soft.h"
+#endif
+
 #include <cmath>
 #include <limits>
 
@@ -32,6 +36,8 @@ constexpr U32 MEM_BASE = 0x1000;
 constexpr U32 EXPECT_BASE = MEM_BASE + 0x800;
 constexpr U32 FLOAT_GUARD = 0xCDCDCDCD;
 constexpr U32 STATUS_MASK = 0x4700;
+constexpr U32 FPU_STATUS_ZE = 0x0004;
+constexpr U32 FPU_STATUS_ES = 0x0080;
 constexpr U32 F32_POS_ZERO = 0x00000000;
 constexpr U32 F32_NEG_ZERO = 0x80000000;
 constexpr U32 F32_POS_INF = 0x7f800000;
@@ -1102,6 +1108,194 @@ void runFPUEnvironmentStore(bool big, const char* name) {
     }
 }
 
+void runMaskedDivideByZeroStatus(bool big, const char* name) {
+    constexpr U32 ZERO = MEM_BASE + 0x620;
+    constexpr U32 ENV_MASKED = MEM_BASE + 0x640;
+    constexpr U32 CW_UNMASK_ZE = MEM_BASE + 0x680;
+    constexpr U32 ENV_UNMASKED = MEM_BASE + 0x6c0;
+    constexpr U32 STATUS_BITS = FPU_STATUS_ZE | FPU_STATUS_ES;
+
+    begin(big);
+    fninit();
+
+    writeF32(MEM_BASE, 1.0f);
+    writeF32(ZERO, 0.0f);
+    fldF32(MEM_BASE, big);
+    pushCode8(0xd8);
+    emitMemModRM(6, ZERO, big); // FDIV m32fp
+    fnstswAx();
+    emitD9MemoryGroup(6, ENV_MASKED, big); // FNSTENV
+
+    fninit();
+    writeI16(CW_UNMASK_ZE, 0x037b);
+    pushCode8(0xd9);
+    emitMemModRM(5, CW_UNMASK_ZE, big); // FLDCW
+    fldF32(MEM_BASE, big);
+    pushCode8(0xd8);
+    emitMemModRM(6, ZERO, big); // FDIV m32fp
+    emitD9MemoryGroup(6, ENV_UNMASKED, big); // FNSTENV
+
+    runTestCPU();
+
+    U32 maskedAxStatus = cpu->reg[0].u16 & STATUS_BITS;
+    U32 maskedEnvStatus = readEnvValue(ENV_MASKED, 1, big) & STATUS_BITS;
+    if (maskedAxStatus != FPU_STATUS_ZE || maskedEnvStatus != FPU_STATUS_ZE) {
+        failed("%s masked divide-by-zero status ax=%x env=%x", name, maskedAxStatus, maskedEnvStatus);
+    }
+
+    U32 unmaskedEnvStatus = readEnvValue(ENV_UNMASKED, 1, big) & STATUS_BITS;
+    if (unmaskedEnvStatus != STATUS_BITS) {
+        failed("%s unmasked divide-by-zero status env=%x", name, unmaskedEnvStatus);
+    }
+    if (!cpu->fpu.divExceptionsUnmasked) {
+        failed("%s FLDCW did not mark divide exceptions unmasked", name);
+    }
+}
+
+void runMaskedDoubleDivideByZeroStatus(bool big, const char* name) {
+    constexpr U32 ZERO = MEM_BASE + 0x620;
+    constexpr U32 ENV_MASKED = MEM_BASE + 0x640;
+    constexpr U32 CW_UNMASK_ZE = MEM_BASE + 0x680;
+    constexpr U32 ENV_UNMASKED = MEM_BASE + 0x6c0;
+    constexpr U32 STATUS_BITS = FPU_STATUS_ZE | FPU_STATUS_ES;
+
+    begin(big);
+    fninit();
+
+    writeF64(MEM_BASE, 1.0);
+    writeF64(ZERO, 0.0);
+    fldF64(MEM_BASE, big);
+    pushCode8(0xdc);
+    emitMemModRM(6, ZERO, big); // FDIV m64fp
+    fnstswAx();
+    emitD9MemoryGroup(6, ENV_MASKED, big); // FNSTENV
+
+    fninit();
+    writeI16(CW_UNMASK_ZE, 0x037b);
+    pushCode8(0xd9);
+    emitMemModRM(5, CW_UNMASK_ZE, big); // FLDCW
+    fldF64(MEM_BASE, big);
+    pushCode8(0xdc);
+    emitMemModRM(6, ZERO, big); // FDIV m64fp
+    emitD9MemoryGroup(6, ENV_UNMASKED, big); // FNSTENV
+
+    runTestCPU();
+
+    U32 maskedAxStatus = cpu->reg[0].u16 & STATUS_BITS;
+    U32 maskedEnvStatus = readEnvValue(ENV_MASKED, 1, big) & STATUS_BITS;
+    if (maskedAxStatus != FPU_STATUS_ZE || maskedEnvStatus != FPU_STATUS_ZE) {
+        failed("%s masked divide-by-zero status ax=%x env=%x", name, maskedAxStatus, maskedEnvStatus);
+    }
+
+    U32 unmaskedEnvStatus = readEnvValue(ENV_UNMASKED, 1, big) & STATUS_BITS;
+    if (unmaskedEnvStatus != STATUS_BITS) {
+        failed("%s unmasked divide-by-zero status env=%x", name, unmaskedEnvStatus);
+    }
+}
+
+void runMaskedExceptionUnmaskSummary(bool big, const char* name) {
+    constexpr U32 ZERO = MEM_BASE + 0x700;
+    constexpr U32 CW_UNMASK_ZE = MEM_BASE + 0x704;
+    constexpr U32 STATUS_BITS = FPU_STATUS_ZE | FPU_STATUS_ES;
+
+    begin(big);
+    fninit();
+    writeF32(MEM_BASE, 1.0f);
+    writeF32(ZERO, 0.0f);
+    writeI16(CW_UNMASK_ZE, 0x037b);
+
+    fldF32(MEM_BASE, big);
+    pushCode8(0xd8);
+    emitMemModRM(6, ZERO, big); // FDIV m32fp while ZE is masked
+    pushCode8(0xd9);
+    emitMemModRM(5, CW_UNMASK_ZE, big); // FLDCW unmasks existing ZE
+    fnstswAx();
+
+    runTestCPU();
+    if ((cpu->reg[0].u16 & STATUS_BITS) != STATUS_BITS) {
+        failed("%s status=%x", name, cpu->reg[0].u16);
+    }
+    if (!cpu->fpu.divExceptionsUnmasked) {
+        failed("%s FLDENV did not mark divide exceptions unmasked", name);
+    }
+}
+
+void runEnvironmentLoadExceptionSummary(bool big, const char* name) {
+    constexpr U32 ENV = MEM_BASE + 0x740;
+    constexpr U32 STATUS_BITS = FPU_STATUS_ZE | FPU_STATUS_ES;
+
+    begin(big);
+    writeEnvValue(ENV, 0, big, 0x037b); // ZE unmasked
+    writeEnvValue(ENV, 1, big, FPU_STATUS_ZE); // pending ZE, stale ES clear
+    writeEnvValue(ENV, 2, big, 0xffff); // all tags empty
+    for (int i = 3; i < 7; ++i) {
+        writeEnvValue(ENV, i, big, 0);
+    }
+
+    emitD9MemoryGroup(4, ENV, big); // FLDENV
+    fnstswAx();
+
+    runTestCPU();
+    if ((cpu->reg[0].u16 & STATUS_BITS) != STATUS_BITS) {
+        failed("%s status=%x", name, cpu->reg[0].u16);
+    }
+}
+
+void runUnmaskedExceptionMaskSummary(bool big, const char* name) {
+    constexpr U32 ZERO = MEM_BASE + 0x700;
+    constexpr U32 CW_UNMASK_ZE = MEM_BASE + 0x704;
+    constexpr U32 CW_MASK_ZE = MEM_BASE + 0x708;
+    constexpr U32 STATUS_BITS = FPU_STATUS_ZE | FPU_STATUS_ES;
+
+    begin(big);
+    fninit();
+    writeF32(MEM_BASE, 1.0f);
+    writeF32(ZERO, 0.0f);
+    writeI16(CW_UNMASK_ZE, 0x037b);
+    writeI16(CW_MASK_ZE, 0x037f);
+
+    fldF32(MEM_BASE, big);
+    pushCode8(0xd8);
+    emitMemModRM(6, ZERO, big); // FDIV m32fp while ZE is masked
+    pushCode8(0xd9);
+    emitMemModRM(5, CW_UNMASK_ZE, big); // FLDCW makes pending ZE unmasked and sets ES
+    pushCode8(0xd9);
+    emitMemModRM(5, CW_MASK_ZE, big); // FLDCW masks pending ZE and clears ES
+    fnstswAx();
+
+    runTestCPU();
+    if ((cpu->reg[0].u16 & STATUS_BITS) != FPU_STATUS_ZE) {
+        failed("%s status=%x", name, cpu->reg[0].u16);
+    }
+    if (cpu->fpu.divExceptionsUnmasked) {
+        failed("%s FLDCW did not mark divide exceptions masked", name);
+    }
+}
+
+void runEnvironmentLoadMaskedExceptionSummary(bool big, const char* name) {
+    constexpr U32 ENV = MEM_BASE + 0x780;
+    constexpr U32 STATUS_BITS = FPU_STATUS_ZE | FPU_STATUS_ES;
+
+    begin(big);
+    writeEnvValue(ENV, 0, big, 0x037f); // ZE masked
+    writeEnvValue(ENV, 1, big, STATUS_BITS); // pending ZE, stale ES set
+    writeEnvValue(ENV, 2, big, 0xffff); // all tags empty
+    for (int i = 3; i < 7; ++i) {
+        writeEnvValue(ENV, i, big, 0);
+    }
+
+    emitD9MemoryGroup(4, ENV, big); // FLDENV
+    fnstswAx();
+
+    runTestCPU();
+    if ((cpu->reg[0].u16 & STATUS_BITS) != FPU_STATUS_ZE) {
+        failed("%s status=%x", name, cpu->reg[0].u16);
+    }
+    if (cpu->fpu.divExceptionsUnmasked) {
+        failed("%s FLDENV did not mark divide exceptions masked", name);
+    }
+}
+
 void runFNSTSWMemory(bool big, float left, float right, U32 expectedStatus, const char* name) {
     constexpr U32 OUT = MEM_BASE + 0x600;
 
@@ -1121,6 +1315,29 @@ void runFNSTSWMemory(bool big, float left, float right, U32 expectedStatus, cons
     U32 actualStatus = memory->readw(addressOf(OUT)) & STATUS_MASK;
     if (actualStatus != readExpected32(0)) {
         failed("%s fnstsw memory expected=%x actual=%x", name, readExpected32(0), actualStatus);
+    }
+}
+
+void runFNSTSWAxAfterDirtyEax(bool big, const char* name) {
+    begin(big);
+    fninit();
+    pushCode8(0xb8);
+    if (big) {
+        pushCode32(0x12345678); // mov eax, imm32
+    } else {
+        pushCode16(0x5678); // mov ax, imm16
+    }
+    fnstswAx();
+    pushCode8(0x8b);
+    pushCode8(0xd8); // mov ebx/eax or bx/ax
+
+    runTestCPU();
+    U32 expected = big ? 0x12340000 : 0;
+    if (cpu->reg[3].u32 != expected) {
+        failed("%s ebx expected=%x actual=%x", name, expected, cpu->reg[3].u32);
+    }
+    if (cpu->reg[0].u32 != expected) {
+        failed("%s eax expected=%x actual=%x", name, expected, cpu->reg[0].u32);
     }
 }
 
@@ -1173,6 +1390,43 @@ void runFILD16(bool big, S16 value, const char* name) {
         failed("%s fild16 stack", name);
     }
 }
+
+#if defined(BOXEDWINE_JIT_ARMV8) && defined(BOXEDWINE_MEM_CACHE)
+void runFILD16DoesNotRetranslateHostAddress(const char* name) {
+    constexpr S16 SOURCE_VALUE = 107;
+    constexpr S16 ALIAS_VALUE = 1840;
+    constexpr U32 OUT = MEM_BASE + 0x510;
+    U32 sourceAddress = addressOf(MEM_BASE);
+
+    begin(false);
+    writeExpected32(0, bitsOf((float)SOURCE_VALUE));
+    fninit();
+    writeI16(MEM_BASE, SOURCE_VALUE);
+
+    KMemoryData* memoryData = getMemData(memory);
+    U8* sourceHostAddress = memoryData->readCache[sourceAddress >> K_PAGE_SHIFT] + sourceAddress;
+    U32 aliasAddress = (U32)(uintptr_t)sourceHostAddress;
+    U32 aliasPage = aliasAddress & ~K_PAGE_MASK;
+    if (aliasPage == (sourceAddress & ~K_PAGE_MASK) ||
+        memory->mmap(testContext().thread, aliasPage, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+            K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0) != aliasPage) {
+        failed("%s could not prepare second-translation alias", name);
+        return;
+    }
+    memory->writew(aliasAddress, (U16)ALIAS_VALUE);
+
+    fild16(MEM_BASE, false);
+    fstTopF32(OUT, false);
+    runTestCPU();
+
+    assertFloatCloseExpected(readF32(OUT), 0, name);
+    DecodedOp* fildOp = memory->getDecodedOp(TEST_CODE_ADDRESS + 2);
+    if (!fildOp || fildOp->exceptionCount != 0) {
+        failed("%s used exception fallback after retranslating a host address", name);
+    }
+    memory->unmap(aliasPage, K_PAGE_SIZE);
+}
+#endif
 
 void runFILD32(bool big, S32 value, const char* name) {
     constexpr U32 OUT = MEM_BASE + 0x620;
@@ -1293,6 +1547,25 @@ void runFISTP64(bool big, S64 value, const char* name) {
     }
 }
 
+#ifdef BOXEDWINE_WASM_JIT
+void runFISTP64FromDouble(bool big, double value, U64 expected, const char* name) {
+    constexpr U32 OUT = MEM_BASE + 0x580;
+
+    begin(big);
+    writeExpected64(0, expected);
+    fninit();
+    writeF64(MEM_BASE, value);
+    fldF64(MEM_BASE, big);
+    pushCode8(0xdf);
+    emitMemModRM(7, OUT, big);
+
+    runTestCPU();
+    if (readI64(OUT) != readExpected64(0) || cpu->fpu.GetTop() != 0 || cpu->fpu.GetTag(cpu, 7) != TAG_Empty) {
+        failed("%s fistp64 result", name);
+    }
+}
+#endif
+
 void runDDRegisterOps(bool big, const char* name) {
     constexpr U32 OUT = MEM_BASE + 0x680;
 
@@ -1399,6 +1672,11 @@ void runD9(bool big) {
     runD9Constant(big, 6, 0.0f, "fldz d9");
     runFPUEnvironmentLoad(big, "fldenv d9");
     runFPUEnvironmentStore(big, "fnstenv d9");
+    runMaskedExceptionUnmaskSummary(big, "fldcw x87 exception summary d9");
+    runEnvironmentLoadExceptionSummary(big, "fldenv x87 exception summary d9");
+    runUnmaskedExceptionMaskSummary(big, "fldcw x87 exception summary clear d9");
+    runEnvironmentLoadMaskedExceptionSummary(big, "fldenv x87 exception summary clear d9");
+    runMaskedDivideByZeroStatus(big, "masked x87 exception d9");
     runD9RoundSqrtScale(big, "sqrt round scale d9");
     runFSQRTBits(big, 0x40800000, 0x40000000, "fsqrt d9");
     runFSQRTBits(big, 0x41800000, 0x40800000, "fsqrt d9");
@@ -1457,6 +1735,14 @@ void runDB(bool big) {
     runFIST32(big, 3, -98765.0f, (U32)(S32)-98765, true, "fistp m32int db");
     runFISTTP32(big, 12345.9, 12345, "fisttp m32int db");
     runFISTTP32(big, -12345.9, (U32)(S32)-12345, "fisttp m32int db");
+#ifdef BOXEDWINE_WASM_JIT
+    runFIST32(big, 2, std::numeric_limits<float>::infinity(), 0x80000000u, false, "fist m32int db infinity");
+    runFIST32(big, 3, std::numeric_limits<float>::quiet_NaN(), 0x80000000u, true, "fistp m32int db nan");
+    runFISTTP32(big, 2147483647.0, 0x7fffffffu, "fisttp m32int db upper valid");
+    runFISTTP32(big, 2147483648.0, 0x80000000u, "fisttp m32int db positive overflow");
+    runFISTTP32(big, -2147483649.0, 0x80000000u, "fisttp m32int db negative overflow");
+    runFISTTP32(big, std::numeric_limits<double>::quiet_NaN(), 0x80000000u, "fisttp m32int db nan");
+#endif
     runFCOMI(big, 0xdb, 5, false, 2.0f, 2.0f, "fucomi db");
     runFCOMI(big, 0xdb, 5, false, 2.0f, 3.0f, "fucomi db");
     runFCOMI(big, 0xdb, 6, false, 3.0f, 2.0f, "fcomi db");
@@ -1479,6 +1765,7 @@ void runDC(bool big) {
     runDCRegisterArith(big, 5, 10.0, 2.0, -8.0, "fsub sti,st0 dc");
     runDCRegisterArith(big, 6, 10.0, 2.0, 5.0, "fdivr sti,st0 dc");
     runDCRegisterArith(big, 7, 10.0, 2.0, 0.2, "fdiv sti,st0 dc");
+    runMaskedDoubleDivideByZeroStatus(big, "masked x87 double exception dc");
 }
 
 void runDD(bool big) {
@@ -1492,6 +1779,14 @@ void runDD(bool big) {
     runFISTTP64(big, -123456789.4, (U64)(S64)-123456789, "fisttp m64int dd");
     runFISTTP64(big, 0.0, 0, "fisttp m64int dd");
     runFISTTP64(big, -0.0, 0, "fisttp m64int dd");
+#ifdef BOXEDWINE_WASM_JIT
+    runFISTTP64(big, 0x1.fffffffffffffp+62, 0x7ffffffffffffc00ULL, "fisttp m64int dd upper valid");
+    runFISTTP64(big, 0x1p+63, 0x8000000000000000ULL, "fisttp m64int dd positive overflow");
+    runFISTTP64(big, std::nextafter(-0x1p+63, -std::numeric_limits<double>::infinity()), 0x8000000000000000ULL, "fisttp m64int dd negative overflow");
+    runFISTTP64(big, std::numeric_limits<double>::quiet_NaN(), 0x8000000000000000ULL, "fisttp m64int dd nan");
+    runFISTP64FromDouble(big, std::numeric_limits<double>::infinity(), 0x8000000000000000ULL, "fistp m64int df infinity");
+    runFISTP64FromDouble(big, std::numeric_limits<double>::quiet_NaN(), 0x8000000000000000ULL, "fistp m64int df nan");
+#endif
     runFNSTSWMemory(big, 2.0f, 2.0f, FPU_EQUAL, "fnstsw m16 dd");
     runFNSTSWMemory(big, 2.0f, 3.0f, FPU_LESS, "fnstsw m16 dd");
     runFNSTSWMemory(big, floatFromBits(F32_QNAN), 3.0f, FPU_UNORDERED, "fnstsw m16 dd unordered");
@@ -1521,6 +1816,11 @@ void runDF(bool big) {
     runFILD16(big, 0, "fild m16int df");
     runFILD16(big, 12345, "fild m16int df");
     runFILD16(big, -10235, "fild m16int df");
+#if defined(BOXEDWINE_JIT_ARMV8) && defined(BOXEDWINE_MEM_CACHE)
+    if (!big) {
+        runFILD16DoesNotRetranslateHostAddress("fild m16int must not retranslate host address df");
+    }
+#endif
     runFILD64(big, 0, "fild m64int df");
     runFILD64(big, 1, "fild m64int df");
     runFILD64(big, -1, "fild m64int df");
@@ -1541,6 +1841,7 @@ void runDF(bool big) {
     runFCOMI(big, 0xdf, 5, true, 2.0f, 3.0f, "fucomip df");
     runFCOMI(big, 0xdf, 6, true, 3.0f, 2.0f, "fcomip df");
     runFCOMI(big, 0xdf, 6, true, floatFromBits(F32_QNAN), 2.0f, "fcomip df unordered");
+    runFNSTSWAxAfterDirtyEax(big, "fnstsw ax after dirty eax df");
     runFFREEP(big, "ffreep df");
 }
 

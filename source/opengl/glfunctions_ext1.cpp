@@ -1590,6 +1590,7 @@ void glcommon_glClientActiveTexture(CPU* cpu) {
         kpanic("ext_glClientActiveTexture is NULL");
     {
     GL_FUNC(ext_glClientActiveTexture)(ARG1);
+    syncClientActiveTextureFromHost(cpu);
     GL_LOG ("glClientActiveTexture GLenum texture=%d",ARG1);
     }
 }
@@ -1598,6 +1599,7 @@ void glcommon_glClientActiveTextureARB(CPU* cpu) {
         kpanic("ext_glClientActiveTextureARB is NULL");
     {
     GL_FUNC(ext_glClientActiveTextureARB)(ARG1);
+    syncClientActiveTextureFromHost(cpu);
     GL_LOG ("glClientActiveTextureARB GLenum texture=%d",ARG1);
     }
 }
@@ -1614,6 +1616,7 @@ void glcommon_glClientAttribDefaultEXT(CPU* cpu) {
         kpanic("ext_glClientAttribDefaultEXT is NULL");
     {
     GL_FUNC(ext_glClientAttribDefaultEXT)(ARG1);
+    syncClientActiveTextureFromHost(cpu);
     GL_LOG ("glClientAttribDefaultEXT GLbitfield mask=%d",ARG1);
     }
 }

@@ -703,6 +703,7 @@ public:
     // optional override, hopefully faster than the common_ methods
     void updateHardwareFlags(U32 flags);
     void dynamic_rdtsc(DecodedOp* op) override;
+#ifdef BOXEDWINE_MULTI_THREADED
     void dynamic_arithE32R32_lock(DecodedOp* op, std::function<void(RegPtr dest, MemPtr address)> callback, bool writeReg = false);
     void dynamic_arithE16R16_lock(DecodedOp* op, std::function<void(RegPtr dest, MemPtr address)> callback, bool writeReg = false);
     void dynamic_arithE8R8_lock(DecodedOp* op, std::function<void(RegPtr dest, MemPtr address)> callback, bool writeReg = false);
@@ -774,6 +775,7 @@ public:
     void dynamic_btce16_lock(DecodedOp* op) override;
     void dynamic_btce32r32_lock(DecodedOp* op) override;
     void dynamic_btce16r16_lock(DecodedOp* op) override;    
+#endif
 
 protected:
     friend void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);
@@ -4726,6 +4728,7 @@ void JitX86CodeGen::updateHardwareFlags(U32 flags) {
     }
 }
 
+#ifdef BOXEDWINE_MULTI_THREADED
 void JitX86CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
     JitCodeGen::write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](MemPtr address) {
         if (currentOp->getNeededFlagsAfter(PF | SF | AF | CF | OF)) { // The ZF flag is set if the destination operand and EDX:EAX are equal; otherwise it is cleared. The CF, PF, AF, SF, and OF flags are unaffected.
@@ -5302,6 +5305,7 @@ void JitX86CodeGen::dynamic_btce16r16_lock(DecodedOp* op) {
         updateFlagsIfNecessary();
     });
 }
+#endif
 
 RegPtr JitX86CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
     if (op->ea16) {

@@ -155,6 +155,10 @@ public:
 };
 
 #define LDT_ENTRIES 8192
+#define BOXEDWINE_INTERNAL_USER_CODE_SELECTOR 0x0F
+#define BOXEDWINE_INTERNAL_USER_DATA_SELECTOR 0x17
+#define BOXEDWINE_VISIBLE_USER_CODE_SELECTOR 0x0B
+#define BOXEDWINE_VISIBLE_USER_DATA_SELECTOR 0x13
 
 struct user_desc {
     U32  entry_number;
@@ -182,14 +186,24 @@ union SSE {
     simde__m128i pi;
 };
 
+#ifndef JIT_RUN_COUNT
+#if defined(BOXEDWINE_WASM_JIT) && defined(__EMSCRIPTEN__)
+#define JIT_RUN_COUNT 200
+#else
 #define JIT_RUN_COUNT 50
+#endif
+#endif
+
+#if JIT_RUN_COUNT > 254
+#error "JIT_RUN_COUNT must fit in DecodedOp::runCount (U8) and leave room for the JIT_RUN_COUNT + 1 sentinel"
+#endif
 
 class CPU: public DecodeBlockCallback {
 public:
     static CPU* allocCPU(KMemory* memory);
 
     CPU(KMemory* memory);
-    virtual ~CPU() {}
+    virtual ~CPU();
     
     Reg reg[9];
     Seg seg[7];    
@@ -201,11 +215,39 @@ public:
 #ifdef BOXEDWINE_JIT
     U32 tmpReg;
 #endif
+#ifdef BOXEDWINE_WASM_JIT
+    // Scratch fields used only by the WASM JIT to pass
+    // address/value to its per-width memory helpers without trampling
+    // lazy-flag state in src.u32/dst.u32.
+    U32 memHelperAddr = 0;
+    U32 memHelperValue = 0;
+    // Self-modifying-code support: each JIT block call clears these fields.
+    // Before a checked memory write, generated code records the active block's
+    // first DecodedOp. If removeCodeBlock clears that block while it is active
+    // (or a post-write helper observes that its pfnJitCode was cleared), it
+    // sets wasmJitBailout=1 so generated bailout checks can exit before stale
+    // compiled bytes keep running.
+    DecodedOp* wasmJitActiveBlock = nullptr;
+    U32 wasmJitBailout = 0;
+    // Inline TLB fast-path: cached pointers to the per-page host-base
+    // arrays in KMemoryData. Set up by wasmHelper_blockEnter so the JIT
+    // codegen can do `wasmReadPageBaseArray[page] -> entry; if (entry)
+    // direct-load`, skipping the full helper round-trip on cache hits.
+    // Encoded as `(U32)(uintptr_t)wasmReadPageBase`/`wasmWritePageBase`
+    // (32-bit linear-memory offsets under emcc).
+    U32 wasmJitMemoryData = 0;
+    U32 wasmReadPageBaseArray  = 0;
+    U32 wasmWritePageBaseArray = 0;
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    U32 wasmJitProfileSampleCounter = 0;
+#endif
+#endif
     U8* reg8[9];
     ALIGN(SSE xmm[8], 16);    
 
     U32 sseControlStateTmp = 0;
     U32 mxcsr = 0x1F80; // sse control register
+    U32 sseDivExceptionsUnmasked = 0;
     
     LazyFlagType lazyFlagType = FLAGS_NONE;
     LazyFlagType lazyFlagTypePrev = FLAGS_NONE;
@@ -222,7 +264,12 @@ public:
     U32 stackNotMask = 0;
     U32 stackMask = 0;
     U32 fpuDirtyFlags = 0;
-    DecodedOp*** opCache = nullptr;    
+    bool debugTrapOnNextInstruction = false;
+    bool pendingDebugTrap = false;
+    bool debugTrapActive = false;
+    U32 pendingDebugTrapCode = 0;
+    U32 pendingDebugTrapDr6 = 0;
+    DecodedOp*** opCache = nullptr;
 
     U64 fAbs = 0x7fffffffffffffffl;
     U64 fNeg = 0x8000000000000000l;
@@ -234,6 +281,9 @@ public:
     U64 fLG2 = 0x3FD34413509F79FF;
     U64 fLN2 = 0x3FE62E42FEFA39EF;
 
+#ifdef BOXEDWINE_JIT
+    std::atomic<U32> jitSignalPending { 0 };
+#endif
     KThread* thread = nullptr;
     KMemory* memory = nullptr;
     BWriteFile logFile;
@@ -255,6 +305,10 @@ public:
     void fillFlagsNoZF();
     void fillFlags();
     void setFlags(U32 flags, U32 mask);
+    void setMxcsr(U32 value);
+    void updateDebugTrapActive();
+    bool startDebugInstruction();
+    bool finishDebugInstruction();
 
     void addFlag(U32 flags);
     void removeFlag(U32 flags);
@@ -278,8 +332,10 @@ public:
     U32 push16_r(U32 esp, U16 value);
 
     U32 setSegment(U32 seg, U32 value);
+    bool isNullSegment(U32 seg) const;
+    bool checkSegmentAccess(U32 seg);
     void prepareException(int code, int error);
-    void prepareFpuException(int code, int error=0);
+    void prepareFpuException(int code, int trapNo=16, int error=0);
     void call(U32 big, U32 selector, U32 offset, U32 oldEip);
     void jmp(U32 big, U32 selector, U32 offset, U32 oldEip);
     void ret(U32 big, U32 bytes);
@@ -300,9 +356,12 @@ public:
 
     DecodedOp* nextOp = nullptr;
 
-    virtual void run()=0;    
+    virtual void run()=0;
     virtual void restart() {}
     virtual void setSeg(U32 index, U32 address, U32 value);
+    U32 getSegValue(U32 index) const;
+    static U32 makeSegmentVisible(U32 value);
+    static U32 makeSegmentInternal(U32 value);
 
     bool isBig() {return this->big!=0;}
     virtual void setIsBig(U32 value);
@@ -491,9 +550,22 @@ public:
     };
 
 #ifndef __TEST
-protected:    
+protected:
 #endif
     U32 big;
+
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+public:
+    // Keep owner-hazard bookkeeping after every pre-existing CPU field. Raw
+    // WASM JIT modules embed CPU member offsets, so inserting cold MT state
+    // into the established layout changes their generated-code ABI.
+    U32 wasmJitActiveTableIndex = 0;
+    U32 wasmJitActiveTableIndexLocal = 0;
+    U32 wasmJitCallsUntilQuiescence = 0;
+    U32 wasmJitInCompiledCall = 0;
+    U32 wasmJitReapRetiredOnExit = 0;
+    U32 wasmJitHazardRegistered = 0;
+#endif
 };
 
 void common_prepareException(CPU* cpu, int code, int error);

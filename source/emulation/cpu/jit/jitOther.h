@@ -48,7 +48,10 @@ void Jit::dynamic_done(DecodedOp* op) {
     kpanic("Jit::dynamic_done should have been handled in JitCodeGen::compileOps");
 }
 void Jit::dynamic_wait(DecodedOp* op) {
-    // Wait
+    RegPtr sw = readCPU(JitWidth::b32, offsetof(CPU, fpu.sw));
+    IfTestBit(JitWidth::b32, sw, 7); {
+        emulateSingleOp();
+    } EndIf();
 }
 void Jit::dynamic_cwd(DecodedOp* op) {
     RegPtr dx = getReg(2);
@@ -88,6 +91,7 @@ void Jit::dynamic_sahf(DecodedOp* op) {
     RegPtr flags = getTmpReg();
     movzx(JitWidth::b32, flags, JitWidth::b8, getReadOnlyReg8(4));
     setFlags(flags, FMASK_ALL & 0xFF);
+    storeLazyFlagType(FLAGS_NONE);
     currentLazyFlags = FLAGS_NONE;
 }
 void Jit::dynamic_lahf(DecodedOp* op) {
@@ -149,6 +153,9 @@ void Jit::dynamic_intIb(DecodedOp* op) {
 void Jit::dynamic_int3(DecodedOp* op) {
     emulateSingleOp();
 }
+void Jit::dynamic_icebp(DecodedOp* op) {
+    emulateSingleOp();
+}
 void Jit::dynamic_xlat(DecodedOp* op) {
     RegPtr address = getTmpReg8(0);
 
@@ -179,10 +186,10 @@ void Jit::dynamic_stc(DecodedOp* op) {
     orCPUFlagsImmV2(CF);
 }
 void Jit::dynamic_cli(DecodedOp* op) {
-    andCPUFlagsImmV2(~IF);
+    emulateSingleOp();
 }
 void Jit::dynamic_sti(DecodedOp* op) {
-    orCPUFlagsImmV2(IF);
+    emulateSingleOp();
 }
 void Jit::dynamic_cld(DecodedOp* op) {
     andCPUFlagsImmV2(~DF);
@@ -266,7 +273,7 @@ void Jit::dynamic_loopnz(DecodedOp* op) {
     EndIf();
     If(width, reg);
         if (canJumpInBlock(op)) {                
-            JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
+            jumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
         } else {
             blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
         }
@@ -296,7 +303,7 @@ void Jit::dynamic_loopz(DecodedOp* op) {
     EndIf();
     If(width, reg);
         if (canJumpInBlock(op)) {
-            JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
+            jumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
         } else {
             blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
         }
@@ -320,7 +327,7 @@ void Jit::dynamic_loop(DecodedOp* op) {
 
     If(width, getReadOnlyReg(1));
         if (canJumpInBlock(op)) {
-            JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
+            jumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
         } else {
             blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
         }
@@ -340,7 +347,7 @@ void Jit::dynamic_jcxz(DecodedOp* op) {
 
     IfNot(width, getReadOnlyReg(1));
         if (canJumpInBlock(op)) {
-            JumpInBlock(currentEip + op->len + op->imm);
+            jumpInBlock(currentEip + op->len + op->imm);
         } else {
             blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
         }
@@ -350,40 +357,40 @@ void Jit::dynamic_jcxz(DecodedOp* op) {
     }
 }
 void Jit::dynamic_InAlIb(DecodedOp* op) {
-    movValue(JitWidth::b8, getReg8(0), 0xff);
+    emulateSingleOp();
 }
 void Jit::dynamic_InAxIb(DecodedOp* op) {
-    movValue(JitWidth::b16, getReg(0), 0xffff);
+    emulateSingleOp();
 }
 void Jit::dynamic_InEaxIb(DecodedOp* op) {
-    movValue(JitWidth::b32, getReg(0), 0xffffffff);
+    emulateSingleOp();
 }
 void Jit::dynamic_OutIbAl(DecodedOp* op) {
-    // do nothing
+    emulateSingleOp();
 }
 void Jit::dynamic_OutIbAx(DecodedOp* op) {
-    // do nothing
+    emulateSingleOp();
 }
 void Jit::dynamic_OutIbEax(DecodedOp* op) {
-    // do nothing
+    emulateSingleOp();
 }
 void Jit::dynamic_InAlDx(DecodedOp* op) {
-    movValue(JitWidth::b8, getReg8(0), 0xff);
+    emulateSingleOp();
 }
 void Jit::dynamic_InAxDx(DecodedOp* op) {
-    movValue(JitWidth::b16, getReg(0), 0xffff);
+    emulateSingleOp();
 }
 void Jit::dynamic_InEaxDx(DecodedOp* op) {
-    movValue(JitWidth::b32, getReg(0), 0xffffffff);
+    emulateSingleOp();
 }
 void Jit::dynamic_OutDxAl(DecodedOp* op) {
-    // do nothing
+    emulateSingleOp();
 }
 void Jit::dynamic_OutDxAx(DecodedOp* op) {
-    // do nothing
+    emulateSingleOp();
 }
 void Jit::dynamic_OutDxEax(DecodedOp* op) {
-    // do nothing
+    emulateSingleOp();
 }
 void Jit::dynamic_callJw(DecodedOp* op) {
     RegPtr eip = getTmpReg();
@@ -399,21 +406,21 @@ void Jit::dynamic_callJd(DecodedOp* op) {
 }
 void Jit::dynamic_jmp8(DecodedOp* op) {
     if (canJumpInBlock(op)) {
-        JumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
+        jumpInBlock(currentEip + op->len + (S32)((S8)op->imm));
     } else {
         blockNext1(currentEip + op->len + (S32)((S8)op->imm), op);
     }
 }
 void Jit::dynamic_jmp16(DecodedOp* op) {
     if (canJumpInBlock(op)) {
-        JumpInBlock(currentEip + op->len + (S32)((S16)op->imm));
+        jumpInBlock(currentEip + op->len + (S32)((S16)op->imm));
     } else {
         blockNext1(currentEip + op->len + (S32)((S16)op->imm), op);
     }
 }
 void Jit::dynamic_jmp32(DecodedOp* op) {
     if (canJumpInBlock(op)) {
-        JumpInBlock(currentEip + op->len + (S32)op->imm);
+        jumpInBlock(currentEip + op->len + (S32)op->imm);
     } else {
         blockNext1(currentEip + op->len + (S32)op->imm, op);
     }

@@ -18,6 +18,8 @@
 
 #include "boxedwine.h"
 
+#include "kinotify.h"
+
 #include "log.h"
 #include "kscheduler.h"
 #include "ksignal.h"
@@ -113,9 +115,9 @@ static U32 syscall_write(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_open(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG1);
-    SYS_LOG1(SYSCALL_FILE, cpu, "open: name=%s flags=%x", name.c_str(), ARG2);
-    U32 result = cpu->thread->process->open(name, ARG2);
-#ifdef _DEBUG
+    SYS_LOG1(SYSCALL_FILE, cpu, "open: name=%s flags=%x mode=%o", name.c_str(), ARG2, ARG3);
+    U32 result = cpu->thread->process->open(name, ARG2, ARG3);
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     if (result>1000) {
         printf("open: name=%s flags=%x result=%X\n", name.c_str(), ARG2, result);
     }
@@ -232,8 +234,348 @@ static U32 syscall_getuid(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+namespace {
+
+constexpr U32 K_PTRACE_PEEKTEXT = 1;
+constexpr U32 K_PTRACE_PEEKDATA = 2;
+constexpr U32 K_PTRACE_PEEKUSER = 3;
+constexpr U32 K_PTRACE_POKETEXT = 4;
+constexpr U32 K_PTRACE_POKEDATA = 5;
+constexpr U32 K_PTRACE_POKEUSER = 6;
+constexpr U32 K_PTRACE_CONT = 7;
+constexpr U32 K_PTRACE_KILL = 8;
+constexpr U32 K_PTRACE_SINGLESTEP = 9;
+constexpr U32 K_PTRACE_ATTACH = 16;
+constexpr U32 K_PTRACE_DETACH = 17;
+constexpr U32 K_PTRACE_SETOPTIONS = 0x4200;
+
+bool getPtraceDebugRegIndex(U32 offset, U32* index) {
+    constexpr U32 I386_DEBUGREG_OFFSET = 252;
+    constexpr U32 X86_64_DEBUGREG_OFFSET = 848;
+
+    if (offset >= I386_DEBUGREG_OFFSET && offset < I386_DEBUGREG_OFFSET + 8 * 4 && ((offset - I386_DEBUGREG_OFFSET) & 3) == 0) {
+        *index = (offset - I386_DEBUGREG_OFFSET) / 4;
+        return true;
+    }
+    if (offset >= X86_64_DEBUGREG_OFFSET && offset < X86_64_DEBUGREG_OFFSET + 8 * 8 && ((offset - X86_64_DEBUGREG_OFFSET) & 7) == 0) {
+        *index = (offset - X86_64_DEBUGREG_OFFSET) / 8;
+        return true;
+    }
+    return false;
+}
+
+bool isSupportedDebugReg(U32 index) {
+    return index <= 3 || index == 6 || index == 7;
+}
+
+U32 writePtracePeekResult(CPU* cpu, U32 value) {
+    if (!ARG4) {
+        return value;
+    }
+    if (!cpu->memory->canWrite(ARG4, 4)) {
+        return -K_EFAULT;
+    }
+    cpu->memory->writed(ARG4, value);
+    return 0;
+}
+
+} // namespace
+
 static U32 syscall_ptrace(CPU* cpu, U32 eipCount) {
-    return -K_EPERM;
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "ptrace: request=%d pid=%d addr=%X data=%X", ARG1, ARG2, ARG3, ARG4);
+
+    KThread* target = KSystem::getThreadById(ARG2);
+    U32 result = 0;
+
+    if (!target) {
+        result = -K_ESRCH;
+    } else {
+        switch (ARG1) {
+        case K_PTRACE_ATTACH:
+            target->ptraceAttached = true;
+            target->ptraceTracerProcessId = cpu->thread->process->id;
+            target->process->ptraceTracerProcessId = cpu->thread->process->id;
+            target->process->ptraceTraceeThreadId = target->id;
+            target->updateDebugTrapActive();
+            target->setPtraceStop(K_SIGSTOP);
+            break;
+        case K_PTRACE_CONT:
+            target->ptraceSingleStep = false;
+            if (target->cpu) {
+                target->cpu->fillFlags();
+                target->cpu->flags &= ~TF;
+            }
+            target->updateDebugTrapActive();
+            target->resumeFromPtraceStop();
+            break;
+        case K_PTRACE_DETACH:
+            target->ptraceAttached = false;
+            target->ptraceSingleStep = false;
+            target->ptraceTracerProcessId = 0;
+            if (target->process->ptraceTraceeThreadId == target->id) {
+                target->process->ptraceTracerProcessId = 0;
+                target->process->ptraceTraceeThreadId = 0;
+            }
+            if (target->cpu) {
+                target->cpu->fillFlags();
+                target->cpu->flags &= ~TF;
+            }
+            target->updateDebugTrapActive();
+            target->resumeFromPtraceStop();
+            break;
+        case K_PTRACE_SINGLESTEP:
+            target->ptraceSingleStep = true;
+            if (target->cpu) {
+                target->cpu->fillFlags();
+                target->cpu->flags |= TF;
+            }
+            target->updateDebugTrapActive();
+            target->resumeFromPtraceStop();
+            break;
+        case K_PTRACE_KILL:
+            target->ptraceAttached = false;
+            target->ptraceSingleStep = false;
+            target->ptraceTracerProcessId = 0;
+            target->updateDebugTrapActive();
+            target->resumeFromPtraceStop();
+            result = target->signal(K_SIGKILL, false);
+            break;
+        case K_PTRACE_PEEKUSER: {
+            U32 index = 0;
+            if (!getPtraceDebugRegIndex(ARG3, &index) || !isSupportedDebugReg(index)) {
+                result = -K_EIO;
+            } else {
+                result = writePtracePeekResult(cpu, target->debugRegs[index]);
+            }
+            break;
+        }
+        case K_PTRACE_POKEUSER: {
+            U32 index = 0;
+            if (!getPtraceDebugRegIndex(ARG3, &index) || !isSupportedDebugReg(index)) {
+                result = -K_EIO;
+            } else {
+                target->debugRegs[index] = ARG4;
+                target->updateDebugTrapActive();
+            }
+            break;
+        }
+        case K_PTRACE_PEEKTEXT:
+        case K_PTRACE_PEEKDATA:
+            if (!target->memory || !target->memory->canRead(ARG3, 4)) {
+                result = -K_EIO;
+            } else {
+                U32 value;
+                {
+                    ChangeThread remoteThread(target);
+                    value = target->memory->readd(ARG3);
+                }
+                result = writePtracePeekResult(cpu, value);
+            }
+            break;
+        case K_PTRACE_POKETEXT:
+        case K_PTRACE_POKEDATA:
+            if (!target->memory || !target->memory->canWrite(ARG3, 4)) {
+                result = -K_EIO;
+            } else {
+                ChangeThread remoteThread(target);
+                target->memory->writed(ARG3, ARG4);
+            }
+            break;
+        case K_PTRACE_SETOPTIONS:
+            break;
+        default:
+            result = -K_EINVAL;
+            break;
+        }
+    }
+
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static KProcessPtr getProcessByPidOrThreadId(U32 id) {
+    KProcessPtr process = KSystem::getProcess(id);
+    if (!process) {
+        KThread* thread = KSystem::getThreadById(id);
+        if (thread) {
+            process = thread->process;
+        }
+    }
+    return process;
+}
+
+static U32 syscall_process_vm_readv(CPU* cpu, U32 eipCount) {
+    constexpr U32 IOV_SIZE = 8;
+    constexpr U32 BOXEDWINE_PROCESS_VM_IOV_MAX = 1024;
+    KMemory* memory = cpu->memory;
+
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "process_vm_readv: pid=%d local_iov=%X liovcnt=%d remote_iov=%X riovcnt=%d flags=%X", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+
+    if (ARG6) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EINVAL, -K_EINVAL);
+        return -K_EINVAL;
+    }
+    if (!ARG3 || !ARG5) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=0(0x0)\n");
+        return 0;
+    }
+    if (ARG3 > BOXEDWINE_PROCESS_VM_IOV_MAX || ARG5 > BOXEDWINE_PROCESS_VM_IOV_MAX) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EINVAL, -K_EINVAL);
+        return -K_EINVAL;
+    }
+    if (!memory->canRead(ARG2, ARG3 * IOV_SIZE) || !memory->canRead(ARG4, ARG5 * IOV_SIZE)) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EFAULT, -K_EFAULT);
+        return -K_EFAULT;
+    }
+
+    KProcessPtr remoteProcess = getProcessByPidOrThreadId(ARG1);
+    if (!remoteProcess || remoteProcess->isTerminated() || !remoteProcess->memory) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_ESRCH, -K_ESRCH);
+        return -K_ESRCH;
+    }
+
+    U32 localIndex = 0;
+    U32 remoteIndex = 0;
+    U32 localBase = memory->readd(ARG2);
+    U32 localLen = memory->readd(ARG2 + 4);
+    U32 remoteBase = memory->readd(ARG4);
+    U32 remoteLen = memory->readd(ARG4 + 4);
+    U32 total = 0;
+    U8 buffer[4096];
+
+    while (localIndex < ARG3 && remoteIndex < ARG5) {
+        if (!localLen) {
+            localIndex++;
+            if (localIndex >= ARG3) {
+                break;
+            }
+            localBase = memory->readd(ARG2 + localIndex * IOV_SIZE);
+            localLen = memory->readd(ARG2 + localIndex * IOV_SIZE + 4);
+            continue;
+        }
+        if (!remoteLen) {
+            remoteIndex++;
+            if (remoteIndex >= ARG5) {
+                break;
+            }
+            remoteBase = memory->readd(ARG4 + remoteIndex * IOV_SIZE);
+            remoteLen = memory->readd(ARG4 + remoteIndex * IOV_SIZE + 4);
+            continue;
+        }
+
+        U32 todo = localLen < remoteLen ? localLen : remoteLen;
+        if (todo > sizeof(buffer)) {
+            todo = sizeof(buffer);
+        }
+        if (!memory->canWrite(localBase, todo) || !remoteProcess->memory->canRead(remoteBase, todo)) {
+            if (total) {
+                break;
+            }
+            SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EFAULT, -K_EFAULT);
+            return -K_EFAULT;
+        }
+
+        {
+            ChangeThread remoteThread(remoteProcess->getThread());
+            remoteProcess->memory->memcpy(buffer, remoteBase, todo);
+        }
+        memory->memcpy(localBase, buffer, todo);
+        localBase += todo;
+        localLen -= todo;
+        remoteBase += todo;
+        remoteLen -= todo;
+        total += todo;
+    }
+
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", total, total);
+    return total;
+}
+
+static U32 syscall_process_vm_writev(CPU* cpu, U32 eipCount) {
+    constexpr U32 IOV_SIZE = 8;
+    constexpr U32 BOXEDWINE_PROCESS_VM_IOV_MAX = 1024;
+    KMemory* memory = cpu->memory;
+
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "process_vm_writev: pid=%d local_iov=%X liovcnt=%d remote_iov=%X riovcnt=%d flags=%X", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+
+    if (ARG6) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EINVAL, -K_EINVAL);
+        return -K_EINVAL;
+    }
+    if (!ARG3 || !ARG5) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=0(0x0)\n");
+        return 0;
+    }
+    if (ARG3 > BOXEDWINE_PROCESS_VM_IOV_MAX || ARG5 > BOXEDWINE_PROCESS_VM_IOV_MAX) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EINVAL, -K_EINVAL);
+        return -K_EINVAL;
+    }
+    if (!memory->canRead(ARG2, ARG3 * IOV_SIZE) || !memory->canRead(ARG4, ARG5 * IOV_SIZE)) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EFAULT, -K_EFAULT);
+        return -K_EFAULT;
+    }
+
+    KProcessPtr remoteProcess = getProcessByPidOrThreadId(ARG1);
+    if (!remoteProcess || remoteProcess->isTerminated() || !remoteProcess->memory) {
+        SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_ESRCH, -K_ESRCH);
+        return -K_ESRCH;
+    }
+
+    U32 localIndex = 0;
+    U32 remoteIndex = 0;
+    U32 localBase = memory->readd(ARG2);
+    U32 localLen = memory->readd(ARG2 + 4);
+    U32 remoteBase = memory->readd(ARG4);
+    U32 remoteLen = memory->readd(ARG4 + 4);
+    U32 total = 0;
+    U8 buffer[4096];
+
+    while (localIndex < ARG3 && remoteIndex < ARG5) {
+        if (!localLen) {
+            localIndex++;
+            if (localIndex >= ARG3) {
+                break;
+            }
+            localBase = memory->readd(ARG2 + localIndex * IOV_SIZE);
+            localLen = memory->readd(ARG2 + localIndex * IOV_SIZE + 4);
+            continue;
+        }
+        if (!remoteLen) {
+            remoteIndex++;
+            if (remoteIndex >= ARG5) {
+                break;
+            }
+            remoteBase = memory->readd(ARG4 + remoteIndex * IOV_SIZE);
+            remoteLen = memory->readd(ARG4 + remoteIndex * IOV_SIZE + 4);
+            continue;
+        }
+
+        U32 todo = localLen < remoteLen ? localLen : remoteLen;
+        if (todo > sizeof(buffer)) {
+            todo = sizeof(buffer);
+        }
+        if (!memory->canRead(localBase, todo) || !remoteProcess->memory->canWrite(remoteBase, todo)) {
+            if (total) {
+                break;
+            }
+            SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", -K_EFAULT, -K_EFAULT);
+            return -K_EFAULT;
+        }
+
+        memory->memcpy(buffer, localBase, todo);
+        {
+            ChangeThread remoteThread(remoteProcess->getThread());
+            remoteProcess->memory->memcpy(remoteBase, buffer, todo);
+        }
+        localBase += todo;
+        localLen -= todo;
+        remoteBase += todo;
+        remoteLen -= todo;
+        total += todo;
+    }
+
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", total, total);
+    return total;
 }
 
 static U32 syscall_alarm(CPU* cpu, U32 eipCount) {
@@ -289,7 +631,7 @@ static U32 syscall_mkdir(CPU* cpu, U32 eipCount) {
     BString path = cpu->memory->readString(ARG1);
 
     SYS_LOG1(SYSCALL_FILE, cpu, "mkdir: path=%X (%s) mode=%X", ARG1, path.c_str(), ARG2);
-    U32 result = cpu->thread->process->mkdir(path);
+    U32 result = cpu->thread->process->mkdir(path, ARG2);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -402,8 +744,8 @@ static U32 syscall_getpgrp(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_setsid(CPU* cpu, U32 eipCount) {	
-#ifdef _DEBUG
+static U32 syscall_setsid(CPU* cpu, U32 eipCount) {
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     klog("setsid not implemented");
 #endif
     U32 result = 0;
@@ -411,8 +753,8 @@ static U32 syscall_setsid(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_setrlimit(CPU* cpu, U32 eipCount) {	
-#ifdef _DEBUG
+static U32 syscall_setrlimit(CPU* cpu, U32 eipCount) {
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     klog("setrlimit not implemented");
 #endif
     U32 result = 0;
@@ -481,16 +823,13 @@ static U32 syscall_ftruncate(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_fchmod(CPU* cpu, U32 eipCount) {	
-#ifdef _DEBUG
-    klog("fchmod not implemented");
-#endif
-    U32 result = 0;
-    SYS_LOG1(SYSCALL_FILE, cpu, "fchmod: fd=%X mod=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, result, result);
+    U32 result = cpu->thread->process->fchmod(ARG1, ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "fchmod: fd=%X mode=%o result=%d(0x%X)\n", ARG1, ARG2, result, result);
     return result;
 }
 
-static U32 syscall_setpriority(CPU* cpu, U32 eipCount) {	    
-#ifdef _DEBUG
+static U32 syscall_setpriority(CPU* cpu, U32 eipCount) {
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     klog("setpriority not implemented");
 #endif
     U32 result = 0;
@@ -507,8 +846,8 @@ static U32 syscall_statfs(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_ioperm(CPU* cpu, U32 eipCount) {	    
-#ifdef _DEBUG
+static U32 syscall_ioperm(CPU* cpu, U32 eipCount) {
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     klog_fmt("ioperm not implemented: from=0x%X len=%d on=%d", ARG1, ARG2, ARG3);
 #endif
     U32 result = 0;
@@ -612,7 +951,7 @@ static U32 syscall_iopl(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_wait4(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_PROCESS, cpu, "wait4: pid=%d status=%d options=%x rusage=%X", ARG1, ARG2, ARG3, ARG4);
-#ifdef _DEBUG
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
         if (ARG4) {
             kwarn("__NR_wait4 rusuage not implemented");
         }
@@ -787,8 +1126,8 @@ static U32 syscall_pselect6_time64(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_flock(CPU* cpu, U32 eipCount) {    
-#ifdef _DEBUG
+static U32 syscall_flock(CPU* cpu, U32 eipCount) {
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     klog("flock not implemented");
 #endif
     U32 result = 0;
@@ -823,7 +1162,14 @@ static U32 syscall_mlock(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_sched_getparam(CPU* cpu, U32 eipCount) {    
+static U32 syscall_munlock(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_MEMORY, cpu, "munlock: address=0x%X len=%d", ARG1, ARG2);
+    U32 result = cpu->memory->munlock(ARG1, ARG2);
+    SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_sched_getparam(CPU* cpu, U32 eipCount) {
     U32 result = -K_EPERM;
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_getparam: pid=%d params=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, result, result);
     return result;
@@ -835,8 +1181,10 @@ static U32 syscall_sched_getscheduler(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_sched_yield(CPU* cpu, U32 eipCount) {    
+static U32 syscall_sched_yield(CPU* cpu, U32 eipCount) {
+#ifndef BOXEDWINE_MULTI_THREADED
     cpu->yield = true;
+#endif
     U32 result = 0;
     std::this_thread::yield();
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "yield: result=%d(0x%X)\n", result, result);
@@ -1174,23 +1522,60 @@ static U32 syscall_gettid(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_fsetxattr(CPU* cpu, U32 eipCount) {    
-    U32 result = -K_ENOTSUP;
-    BString name = cpu->memory->readString(ARG2);
+static U32 getXAttrResult(KMemory* memory, const std::shared_ptr<FsNode>& file, const BString& name, U32 valueAddress, U32 size) {
+    std::vector<U8> value;
+    U32 result = Fs::getXAttr(file, name, value);
+    if (result) {
+        return result;
+    }
+    if (!size) {
+        return (U32)value.size();
+    }
+    if (!valueAddress) {
+        return -K_EFAULT;
+    }
+    if (value.size() > size) {
+        return -K_ERANGE;
+    }
+    if (value.size()) {
+        memory->memcpy(valueAddress, value.data(), (U32)value.size());
+    }
+    return (U32)value.size();
+}
 
-    KFileDescriptorPtr fd = cpu->thread->process->getFileDescriptor(ARG1);
-    if (!fd) {
+static std::shared_ptr<KFile> getFileFromDescriptor(const KProcessPtr& process, FD fd, U32& result) {
+    KFileDescriptorPtr fileDescriptor = process->getFileDescriptor(fd);
+    if (!fileDescriptor) {
         result = -K_EBADFD;
-    } else if (name == "user.DOSATTRIB") {
-        BString value = cpu->memory->readString(ARG3);
-        std::shared_ptr<KFile> node = std::dynamic_pointer_cast<KFile>(fd->kobject);
-        if (!node) {
-            result = -K_ENOTSUP;
+        return nullptr;
+    }
+    std::shared_ptr<KFile> file = std::dynamic_pointer_cast<KFile>(fileDescriptor->kobject);
+    if (!file) {
+        result = -K_ENOTSUP;
+        return nullptr;
+    }
+    result = 0;
+    return file;
+}
+
+static U32 syscall_fsetxattr(CPU* cpu, U32 eipCount) {
+    BString name = cpu->memory->readString(ARG2);
+    U32 result = 0;
+    std::shared_ptr<KFile> file = getFileFromDescriptor(cpu->thread->process, ARG1, result);
+    if (file) {
+        std::vector<U8> value(ARG4);
+        if (ARG4) {
+            if (!ARG3) {
+                result = -K_EFAULT;
+            } else {
+                cpu->memory->memcpy(value.data(), ARG3, ARG4);
+                result = Fs::setXAttr(file->openFile->node, name, value.data(), ARG4);
+            }
         } else {
-            Fs::setDosAttrib(node->openFile->node, value);
+            result = Fs::setXAttr(file->openFile->node, name, nullptr, 0);
         }
     }
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fsetxattr: result=%x\n", result);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fsetxattr: fd=%d name=%s size=%u result=%x\n", ARG1, name.c_str(), ARG4, result);
     return result;
 }
 
@@ -1198,99 +1583,85 @@ static U32 syscall_getxattr(CPU* cpu, U32 eipCount) {
     BString path = cpu->memory->readString(ARG1);
     BString name = cpu->memory->readString(ARG2);
 
-    U32 result = -K_ENOTSUP;
-    if (name == "user.DOSATTRIB") {
-        std::shared_ptr<FsNode> file = Fs::getNodeFromLocalPath(cpu->thread->process->currentDirectory, path, true);
-        if (!file) {
-            result = -K_ENOENT;
-        } else {
-            BString attr = Fs::getDosAttrib(file);
-            if (attr.length() == 0) {
-                result = -K_ENODATA;
-            } else if ((U32)attr.length() < ARG4) {
-                cpu->memory->strcpy(ARG3, attr.c_str());
-                result = attr.length();
-            } else {
-                result = -K_ERANGE;
-            }
-        }
+    U32 result;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = true;
+    FsPathResult resolution = Fs::resolvePath(cpu->thread->process->currentDirectory, path, options);
+    if (resolution.error) {
+        result = resolution.error;
+    } else {
+        result = getXAttrResult(cpu->memory, resolution.node, name, ARG3, ARG4);
     }
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getxattr: path=%s name=%s result = %x\n", path.c_str(), name.c_str(), result);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getxattr: path=%s name=%s size=%u result = %x\n", path.c_str(), name.c_str(), ARG4, result);
     return result;
 }
 
 static U32 syscall_lgetxattr(CPU* cpu, U32 eipCount) {
     BString path = cpu->memory->readString(ARG1);
     BString name = cpu->memory->readString(ARG2);
-    U32 result = -K_ENOTSUP;
-    if (name == "user.DOSATTRIB") {
-        std::shared_ptr<FsNode> file = Fs::getNodeFromLocalPath(cpu->thread->process->currentDirectory, path, false);
-        if (!file) {
-            result = -K_ENOENT;
-        } else {
-            BString attr = Fs::getDosAttrib(file);
-            if (attr.length() == 0) {
-                result = -K_ENODATA;
-            } else if ((U32)attr.length() < ARG4) {
-                cpu->memory->strcpy(ARG3, attr.c_str());
-                result = attr.length();
-            } else {
-                result = -K_ERANGE;
-            }
-        }
+
+    U32 result;
+    FsPathLookupOptions options;
+    options.followFinalSymlink = false;
+    FsPathResult resolution = Fs::resolvePath(cpu->thread->process->currentDirectory, path, options);
+    if (resolution.error) {
+        result = resolution.error;
+    } else {
+        result = getXAttrResult(cpu->memory, resolution.node, name, ARG3, ARG4);
     }
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "lgetxattr: path=%s name=%s result=%x\n", path.c_str(), name.c_str(), result);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "lgetxattr: path=%s name=%s size=%u result=%x\n", path.c_str(), name.c_str(), ARG4, result);
     return result;
 }
 
 static U32 syscall_fgetxattr(CPU* cpu, U32 eipCount) {
-    U32 result = -K_ENOTSUP;
     BString name = cpu->memory->readString(ARG2);
-
-    KFileDescriptorPtr fd = cpu->thread->process->getFileDescriptor(ARG1);
-    if (!fd) {
-        result = -K_EBADFD;
-    } else if (name == "user.DOSATTRIB") {
-        std::shared_ptr<KFile> node = std::dynamic_pointer_cast<KFile>(fd->kobject);
-        if (!node) {
-            result = -K_ENOTSUP;
-        } else {
-            BString attr = Fs::getDosAttrib(node->openFile->node);
-            if (attr.length() == 0) {
-                result = -K_ENODATA;
-            } else if ((U32)attr.length() < ARG4) {
-                cpu->memory->strcpy(ARG3, attr.c_str());
-                result = attr.length();
-            } else {
-                result = -K_ERANGE;
-            }
-        }
+    U32 result = 0;
+    std::shared_ptr<KFile> file = getFileFromDescriptor(cpu->thread->process, ARG1, result);
+    if (file) {
+        result = getXAttrResult(cpu->memory, file->openFile->node, name, ARG3, ARG4);
     }
 
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fgetxattr: result = %x\n", result);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fgetxattr: fd=%d name=%s size=%u result = %x\n", ARG1, name.c_str(), ARG4, result);
     return result;
 }
 
 static U32 syscall_flistxattr(CPU* cpu, U32 eipCount) {
-    U32 result = -K_ENOTSUP;
-    SYS_LOG1_NO_FMT(SYSCALL_SYSTEM, cpu, "flistxattr: result = ENOTSUP IGNORED\n");
+    U32 result = 0;
+    std::shared_ptr<KFile> file = getFileFromDescriptor(cpu->thread->process, ARG1, result);
+    if (file) {
+        std::vector<BString> names;
+        result = Fs::listXAttrNames(file->openFile->node, names);
+        if (!result) {
+            U32 len = 0;
+            for (auto& name : names) {
+                len += name.length() + 1;
+            }
+            if (!ARG3) {
+                result = len;
+            } else if (!ARG2) {
+                result = -K_EFAULT;
+            } else if (len > ARG3) {
+                result = -K_ERANGE;
+            } else {
+                U32 address = ARG2;
+                for (auto& name : names) {
+                    cpu->memory->memcpy(address, name.c_str(), name.length() + 1);
+                    address += name.length() + 1;
+                }
+                result = len;
+            }
+        }
+    }
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "flistxattr: fd=%d size=%u result = %x\n", ARG1, ARG3, result);
     return result;
 }
 
 static U32 syscall_fremovexattr(CPU* cpu, U32 eipCount) {
-    U32 result = -K_ENOTSUP;
     BString name = cpu->memory->readString(ARG2);
-
-    KFileDescriptorPtr fd = cpu->thread->process->getFileDescriptor(ARG1);
-    if (!fd) {
-        result = -K_EBADFD;
-    } else if (name == "user.DOSATTRIB") {
-        std::shared_ptr<KFile> node = std::dynamic_pointer_cast<KFile>(fd->kobject);
-        if (!node) {
-            result = -K_ENOTSUP;
-        } else {
-            result = Fs::removeDosAttrib(node->openFile->node);            
-        }
+    U32 result = 0;
+    std::shared_ptr<KFile> file = getFileFromDescriptor(cpu->thread->process, ARG1, result);
+    if (file) {
+        result = Fs::removeXAttr(file->openFile->node, name);
     }
 
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "fremovexattr: fd=%d name=%s result = %x\n", ARG1, name.c_str(), result);
@@ -1343,12 +1714,41 @@ static U32 syscall_sched_setaffinity(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_sched_getaffinity(CPU* cpu, U32 eipCount) {    
-#ifdef _DEBUG
-     kwarn("__NR_sched_getaffinity not implemented");
+static U32 syscall_sched_getaffinity(CPU* cpu, U32 eipCount) {
+    if (!ARG3) {
+        return -K_EFAULT;
+    }
+    if (ARG1 && !KSystem::getProcess(ARG1) && !KSystem::getThreadById(ARG1)) {
+        return -K_ESRCH;
+    }
+
+    U32 cpuCount = Platform::getCpuCount();
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (KSystem::cpuAffinityCountForApp && KSystem::cpuAffinityCountForApp < cpuCount) {
+        cpuCount = KSystem::cpuAffinityCountForApp;
+    }
 #endif
-    U32 result = -K_EPERM;
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_getaffinity: pid=%d cpusetsize=%d mask=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, ARG3, result, result);
+    if (!cpuCount) {
+        cpuCount = 1;
+    }
+
+    U32 maskBytes = ((cpuCount + 31) / 32) * sizeof(U32);
+    if (ARG2 < maskBytes) {
+        return -K_EINVAL;
+    }
+    if (!cpu->memory->canWrite(ARG3, ARG2)) {
+        return -K_EFAULT;
+    }
+
+    std::vector<U8> mask(maskBytes, 0);
+    for (U32 i = 0; i < cpuCount; i++) {
+        mask[i >> 3] |= 1 << (i & 7);
+    }
+    cpu->memory->memset(ARG3, 0, ARG2);
+    cpu->memory->memcpy(ARG3, mask.data(), maskBytes);
+
+    U32 result = maskBytes;
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_getaffinity: pid=%d cpusetsize=%d mask=%X result=%d(0x%X)\n", ARG1, ARG2, ARG3, result, result);
     return result;
 }
 
@@ -1459,15 +1859,31 @@ static U32 syscall_fadvise64(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {    
-    U32 result = -K_ENOSYS;
-    SYS_LOG1(SYSCALL_FILE, cpu, "inotify_init: result=%d(0x%X) IGNORED\n", result, result);
+static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_FILE, cpu, "inotify_init:");
+    U32 result = KInotifyObject::create(cpu->thread, 0);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_inotify_add_watch(CPU* cpu, U32 eipCount) {
+    BString path = cpu->memory->readString(ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "inotify_add_watch: fd=%d path=%s mask=%X", ARG1, path.c_str(), ARG3);
+    U32 result = KInotifyObject::addWatch(cpu->thread, ARG1, path, ARG3);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_inotify_rm_watch(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_FILE, cpu, "inotify_rm_watch: fd=%d wd=%d", ARG1, ARG2);
+    U32 result = KInotifyObject::removeWatch(cpu->thread, ARG1, ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 
 static U32 syscall_openat(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG2);
-    SYS_LOG1(SYSCALL_FILE, cpu, "openat: dirfd=%d name=%s flags=%x", ARG1, name.c_str(), ARG3);
+    SYS_LOG1(SYSCALL_FILE, cpu, "openat: dirfd=%d name=%s flags=%x mode=%o", ARG1, name.c_str(), ARG3, ARG4);
 #ifdef _DEBUG    
     if (name == "c_rehash.sh") {
         // not sure why installing ca_certificats with TinyCore Linux 15 needs this
@@ -1475,8 +1891,8 @@ static U32 syscall_openat(CPU* cpu, U32 eipCount) {
         name = "/usr/local/sbin/c_rehash.sh";
     }
 #endif
-    U32 result = cpu->thread->process->openat(ARG1, name, ARG3);
-#ifdef _DEBUG
+    U32 result = cpu->thread->process->openat(ARG1, name, ARG3, ARG4);
+#ifdef BOXEDWINE_VERBOSE_SYSCALL_STUBS
     if (result>1000 && !name.contains("font") && !name.startsWith("/sys")) {
         printf("openat: dirfd=%d name=%s flags=%x result=%x\n", (int)ARG1, name.c_str(), ARG3, result);
     }
@@ -1541,8 +1957,8 @@ static U32 syscall_readlinkat(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_fchmodat(CPU* cpu, U32 eipCount) {
     BString pathname = cpu->memory->readString(ARG2);
-    U32 result = 0;
-    SYS_LOG1(SYSCALL_FILE, cpu, "fchmodat pathname=%X(%s) mode=%X flags=%X result=%d(0x%X) IGNORED\n", ARG2, pathname.c_str(), ARG3, ARG4, result, result);
+    U32 result = cpu->thread->process->fchmodat(ARG1, pathname, ARG3, 0);
+    SYS_LOG1(SYSCALL_FILE, cpu, "fchmodat pathname=%X(%s) mode=%o result=%d(0x%X)\n", ARG2, pathname.c_str(), ARG3, result, result);
     return result;
 }
 
@@ -1588,6 +2004,16 @@ static U32 syscall_utimensat(CPU* cpu, U32 eipCount) {
     BString path = cpu->memory->readString(ARG2);
     SYS_LOG1(SYSCALL_FILE, cpu, "utimensat dirfd=%d path=%X(%s) times=%X flags=%X", ARG1, ARG2, path.c_str(), ARG3, ARG4);
     U32 result = cpu->thread->process->utimesat(ARG1, path, ARG3, ARG4, false);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_fallocate(CPU* cpu, U32 eipCount) {
+    U64 offset = ARG3 | ((U64)ARG4 << 32);
+    U64 len = ARG5 | ((U64)ARG6 << 32);
+    SYS_LOG1(SYSCALL_FILE, cpu, "fallocate: fd=%d mode=%x offset=%lld len=%lld",
+        ARG1, ARG2, (S64)offset, (S64)len);
+    U32 result = cpu->thread->process->fallocate(ARG1, ARG2, (S64)offset, (S64)len);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1958,7 +2384,7 @@ static const SyscallFunc syscallFunc[] = {
     syscall_fdatasync,  // 148 __NR_fdatasync
     nullptr,                  // 149
     syscall_mlock,      // 150 __NR_mlock
-    nullptr,                  // 151
+    syscall_munlock,    // 151 __NR_munlock
     nullptr,                  // 152
     nullptr,                  // 153
     nullptr,                  // 154
@@ -2099,8 +2525,8 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 289
     nullptr,                  // 290
     syscall_inotify_init,// 291 __NR_inotify_init
-    nullptr,                  // 292 __NR_inotify_add_watch
-    nullptr,                  // 293 __NR_inotify_rm_watch
+    syscall_inotify_add_watch, // 292 __NR_inotify_add_watch
+    syscall_inotify_rm_watch,  // 293 __NR_inotify_rm_watch
     nullptr,                  // 294
     syscall_openat,     // 295 __NR_openat
     syscall_mkdirat,    // 296 __NR_mkdirat
@@ -2131,7 +2557,7 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 321
     syscall_timerfd_create,   // 322
     nullptr,                  // 323 
-    nullptr,                  // 324 __NR_fallocate	
+    syscall_fallocate,        // 324 __NR_fallocate
     syscall_timerfd_settime,  // 325
     syscall_timerfd_gettime,  // 326
     syscall_signalfd4,  // 327 __NR_signalfd4
@@ -2152,10 +2578,10 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 342 __NR_open_by_handle_at
     nullptr,                  // 343
     nullptr,                  // 344
-    syscall_sendmmsg,   // 345 __NR_sendmmsg 
+    syscall_sendmmsg,   // 345 __NR_sendmmsg
     nullptr,                  // 346
-    nullptr,                  // 347
-    nullptr,                  // 348
+    syscall_process_vm_readv, // 347 __NR_process_vm_readv
+    syscall_process_vm_writev, // 348 __NR_process_vm_writev
     nullptr,                  // 349
     nullptr,                  // 350
     nullptr,                  // 351
@@ -2181,7 +2607,7 @@ static const SyscallFunc syscallFunc[] = {
     syscall_recvfrom,   // 371 __NR_recvfrom
     syscall_recvmsg,    // 372 __NR_recvmsg
     syscall_shutdown,   // 373 __NR_shutdown
-    nullptr,                  // 374
+    nullptr,                  // __NR_userfaultfd 374
     nullptr,                  // 375
     nullptr,                  // 376
     nullptr,                  // 377

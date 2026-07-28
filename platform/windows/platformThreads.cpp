@@ -357,7 +357,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         }
 #endif
         void* result = cpu->handleAccessException(op);
-        if (cpu->nextOp->pfnJitCode) {
+        if (cpu->nextOp && cpu->nextOp->pfnJitCode) {
             ep->ContextRecord->SET_REG_IP(cpu->nextOp->pfnJitCode);
         } else {
             ep->ContextRecord->SET_REG_IP(result);

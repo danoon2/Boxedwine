@@ -24,6 +24,7 @@
             <button id="uploadbtn" style="display: none" onclick="document.getElementById('upload').click()" >Add File(s)</button>
             <input style="display: none" id="upload" name="upload" onclick="document.getElementById('uploadbtn').click();" onchange="startWithFiles(event.target.files);"  type="file" multiple />
             <button id="downloadbtn" style="display: none" onclick="buildGetFilesModal();">Get File(s)</button>
+            <button id="savejitbtn" style="display: none" onclick="saveJitModules()">Save JIT Cache</button>
             <a style="display: none" id="modalLink" href="#openModal">Open</a>
             <a style="display: none" id="modalLinkExe" href="#openModalExe">Open</a>
 

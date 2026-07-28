@@ -1,0 +1,503 @@
+/*
+ *  Copyright (C) 2012-2025  The BoxedWine Team
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ */
+
+/*
+ * WasmEmitter: Builds a valid WebAssembly binary module at runtime.
+ *
+ * Architecture (inspired by the QEMU wasm64 TCG backend):
+ *  - One WASM module per compiled JIT block
+ *  - Module imports Emscripten linear memory + C++ helper functions
+ *  - Exports a single "execute" function: (param cpu_ptr i32)
+ *  - Generated via WebAssembly.Module + WebAssembly.Instance (synchronous)
+ *  - Compiled function stored by Emscripten wasmTable index in pfnJitCode
+ *
+ * WASM binary format reference: https://webassembly.github.io/spec/core/binary/
+ */
+
+#ifndef __WASM_EMITTER_H__
+#define __WASM_EMITTER_H__
+
+#ifdef BOXEDWINE_WASM_JIT
+
+#include "boxedwine.h"
+#include <vector>
+#include <utility>
+
+// ---------------------------------------------------------------------------
+// WASM section IDs
+// ---------------------------------------------------------------------------
+enum class WasmSection : U8 {
+    Custom   = 0x00,
+    Type     = 0x01,
+    Import   = 0x02,
+    Function = 0x03,
+    Export   = 0x07,
+    Code     = 0x0a,
+};
+
+// ---------------------------------------------------------------------------
+// WASM value types used in signatures and locals
+// ---------------------------------------------------------------------------
+enum class WasmType : U8 {
+    I32  = 0x7f,
+    I64  = 0x7e,
+    F32  = 0x7d,
+    F64  = 0x7c,
+    V128 = 0x7b,
+    Void = 0x40,  // for block result types that return nothing
+};
+
+enum class WasmBranchHint : U8 {
+    Unlikely = 0,
+    Likely   = 1,
+};
+
+// ---------------------------------------------------------------------------
+// WASM opcodes
+// ---------------------------------------------------------------------------
+enum WasmOp : U8 {
+    WASM_UNREACHABLE    = 0x00,
+    WASM_NOP            = 0x01,
+    WASM_BLOCK          = 0x02,
+    WASM_LOOP           = 0x03,
+    WASM_IF             = 0x04,
+    WASM_ELSE           = 0x05,
+    WASM_END            = 0x0b,
+    WASM_BR             = 0x0c,
+    WASM_BR_IF          = 0x0d,
+    WASM_RETURN         = 0x0f,
+    WASM_CALL           = 0x10,
+    WASM_CALL_INDIRECT  = 0x11,
+    WASM_DROP           = 0x1a,
+    WASM_SELECT         = 0x1b,
+    WASM_LOCAL_GET      = 0x20,
+    WASM_LOCAL_SET      = 0x21,
+    WASM_LOCAL_TEE      = 0x22,
+    WASM_GLOBAL_GET     = 0x23,
+    WASM_I32_LOAD       = 0x28,
+    WASM_I64_LOAD       = 0x29,
+    WASM_F32_LOAD       = 0x2a,
+    WASM_F64_LOAD       = 0x2b,
+    WASM_I32_LOAD8_S    = 0x2c,
+    WASM_I32_LOAD8_U    = 0x2d,
+    WASM_I32_LOAD16_S   = 0x2e,
+    WASM_I32_LOAD16_U   = 0x2f,
+    WASM_I32_STORE      = 0x36,
+    WASM_I64_STORE      = 0x37,
+    WASM_F32_STORE      = 0x38,
+    WASM_F64_STORE      = 0x39,
+    WASM_I32_STORE8     = 0x3a,
+    WASM_I32_STORE16    = 0x3b,
+    WASM_I32_CONST      = 0x41,
+    WASM_I64_CONST      = 0x42,
+    WASM_I32_EQZ        = 0x45,
+    WASM_I32_EQ         = 0x46,
+    WASM_I32_NE         = 0x47,
+    WASM_I32_LT_S       = 0x48,
+    WASM_I32_LT_U       = 0x49,
+    WASM_I32_GT_S       = 0x4a,
+    WASM_I32_GT_U       = 0x4b,
+    WASM_I32_LE_S       = 0x4c,
+    WASM_I32_LE_U       = 0x4d,
+    WASM_I32_GE_S       = 0x4e,
+    WASM_I32_GE_U       = 0x4f,
+    WASM_I64_EQ         = 0x51,
+    WASM_I64_NE         = 0x52,
+    WASM_F32_LT         = 0x5d,
+    WASM_F64_EQ         = 0x61,
+    WASM_F64_NE         = 0x62,
+    WASM_F64_LT         = 0x63,
+    WASM_F64_GT         = 0x64,
+    WASM_F64_LE         = 0x65,
+    WASM_F64_GE         = 0x66,
+    WASM_I32_CLZ        = 0x67,
+    WASM_I32_CTZ        = 0x68,
+    WASM_I32_POPCNT     = 0x69,
+    WASM_I32_ADD        = 0x6a,
+    WASM_I32_SUB        = 0x6b,
+    WASM_I32_MUL        = 0x6c,
+    WASM_I32_DIV_S      = 0x6d,
+    WASM_I32_DIV_U      = 0x6e,
+    WASM_I32_REM_S      = 0x6f,
+    WASM_I32_REM_U      = 0x70,
+    WASM_I32_AND        = 0x71,
+    WASM_I32_OR         = 0x72,
+    WASM_I32_XOR        = 0x73,
+    WASM_I32_SHL        = 0x74,
+    WASM_I32_SHR_S      = 0x75,
+    WASM_I32_SHR_U      = 0x76,
+    WASM_I32_ROTL       = 0x77,
+    WASM_I32_ROTR       = 0x78,
+    WASM_I64_ADD        = 0x7c,
+    WASM_I64_SUB        = 0x7d,
+    WASM_I64_MUL        = 0x7e,
+    WASM_I64_DIV_S      = 0x7f,
+    WASM_I64_DIV_U      = 0x80,
+    WASM_I64_REM_S      = 0x81,
+    WASM_I64_REM_U      = 0x82,
+    WASM_I64_AND        = 0x83,
+    WASM_I64_OR         = 0x84,
+    WASM_I64_XOR        = 0x85,
+    WASM_I64_SHL        = 0x86,
+    WASM_I64_SHR_S      = 0x87,
+    WASM_I64_SHR_U      = 0x88,
+    WASM_I64_CLZ        = 0x79,
+    WASM_F64_ABS        = 0x99,
+    WASM_F64_NEG        = 0x9a,
+    WASM_F64_CEIL       = 0x9b,
+    WASM_F64_FLOOR      = 0x9c,
+    WASM_F64_TRUNC      = 0x9d,
+    WASM_F64_NEAREST    = 0x9e,
+    WASM_F64_SQRT       = 0x9f,
+    WASM_F64_ADD        = 0xa0,
+    WASM_F64_SUB        = 0xa1,
+    WASM_F64_MUL        = 0xa2,
+    WASM_F64_DIV        = 0xa3,
+    WASM_I32_WRAP_I64   = 0xa7,
+    WASM_I32_TRUNC_F64_S = 0xaa,
+    WASM_I64_TRUNC_F64_S = 0xb0,
+    WASM_I64_EXTEND_I32_S = 0xac,
+    WASM_I64_EXTEND_I32_U = 0xad,
+    WASM_F32_DEMOTE_F64       = 0xb6,
+    WASM_F64_CONVERT_I32_S    = 0xb7,
+    WASM_F64_CONVERT_I32_U    = 0xb8,
+    WASM_F64_CONVERT_I64_S    = 0xb9,
+    WASM_F64_PROMOTE_F32      = 0xbb,
+    WASM_I32_REINTERPRET_F32  = 0xbc,
+    WASM_I64_REINTERPRET_F64  = 0xbd,
+    WASM_F32_REINTERPRET_I32  = 0xbe,
+    WASM_F64_REINTERPRET_I64  = 0xbf,
+    WASM_I32_EXTEND8_S  = 0xc0,
+    WASM_I32_EXTEND16_S = 0xc1,
+};
+
+enum WasmSimdOp : U32 {
+    WASM_SIMD_V128_LOAD                 = 0x00,
+    WASM_SIMD_V128_LOAD64_SPLAT         = 0x0a,
+    WASM_SIMD_V128_STORE                = 0x0b,
+    WASM_SIMD_V128_CONST                = 0x0c,
+    WASM_SIMD_I8X16_SHUFFLE             = 0x0d,
+    WASM_SIMD_I8X16_SPLAT               = 0x0f,
+    WASM_SIMD_I16X8_SPLAT               = 0x10,
+    WASM_SIMD_I32X4_SPLAT               = 0x11,
+    WASM_SIMD_I64X2_SPLAT               = 0x12,
+    WASM_SIMD_F32X4_SPLAT               = 0x13,
+    WASM_SIMD_F64X2_SPLAT               = 0x14,
+
+    WASM_SIMD_I8X16_EXTRACT_LANE_S      = 0x15,
+    WASM_SIMD_I8X16_EXTRACT_LANE_U      = 0x16,
+    WASM_SIMD_I8X16_REPLACE_LANE        = 0x17,
+    WASM_SIMD_I16X8_EXTRACT_LANE_S      = 0x18,
+    WASM_SIMD_I16X8_EXTRACT_LANE_U      = 0x19,
+    WASM_SIMD_I16X8_REPLACE_LANE        = 0x1a,
+    WASM_SIMD_I32X4_EXTRACT_LANE        = 0x1b,
+    WASM_SIMD_I32X4_REPLACE_LANE        = 0x1c,
+    WASM_SIMD_I64X2_EXTRACT_LANE        = 0x1d,
+    WASM_SIMD_I64X2_REPLACE_LANE        = 0x1e,
+    WASM_SIMD_F32X4_EXTRACT_LANE        = 0x1f,
+    WASM_SIMD_F32X4_REPLACE_LANE        = 0x20,
+    WASM_SIMD_F64X2_EXTRACT_LANE        = 0x21,
+    WASM_SIMD_F64X2_REPLACE_LANE        = 0x22,
+
+    WASM_SIMD_I8X16_EQ                  = 0x23,
+    WASM_SIMD_I8X16_NE                  = 0x24,
+    WASM_SIMD_I8X16_LT_S                = 0x25,
+    WASM_SIMD_I8X16_GT_S                = 0x27,
+    WASM_SIMD_I16X8_EQ                  = 0x2d,
+    WASM_SIMD_I16X8_NE                  = 0x2e,
+    WASM_SIMD_I16X8_LT_S                = 0x2f,
+    WASM_SIMD_I16X8_GT_S                = 0x31,
+    WASM_SIMD_I32X4_EQ                  = 0x37,
+    WASM_SIMD_I32X4_NE                  = 0x38,
+    WASM_SIMD_I32X4_LT_S                = 0x39,
+    WASM_SIMD_I32X4_GT_S                = 0x3b,
+    WASM_SIMD_F32X4_EQ                  = 0x41,
+    WASM_SIMD_F32X4_NE                  = 0x42,
+    WASM_SIMD_F32X4_LT                  = 0x43,
+    WASM_SIMD_F32X4_GT                  = 0x44,
+    WASM_SIMD_F32X4_LE                  = 0x45,
+    WASM_SIMD_F32X4_GE                  = 0x46,
+    WASM_SIMD_F64X2_EQ                  = 0x47,
+    WASM_SIMD_F64X2_NE                  = 0x48,
+    WASM_SIMD_F64X2_LT                  = 0x49,
+    WASM_SIMD_F64X2_GT                  = 0x4a,
+    WASM_SIMD_F64X2_LE                  = 0x4b,
+    WASM_SIMD_F64X2_GE                  = 0x4c,
+
+    WASM_SIMD_V128_NOT                  = 0x4d,
+    WASM_SIMD_V128_AND                  = 0x4e,
+    WASM_SIMD_V128_ANDNOT               = 0x4f,
+    WASM_SIMD_V128_OR                   = 0x50,
+    WASM_SIMD_V128_XOR                  = 0x51,
+    WASM_SIMD_V128_BITSELECT            = 0x52,
+
+    WASM_SIMD_V128_LOAD64_ZERO          = 0x5d,
+    WASM_SIMD_F32X4_DEMOTE_F64X2_ZERO   = 0x5e,
+    WASM_SIMD_F64X2_PROMOTE_LOW_F32X4   = 0x5f,
+
+    WASM_SIMD_I8X16_BITMASK             = 0x64,
+    WASM_SIMD_I8X16_NARROW_I16X8_S      = 0x65,
+    WASM_SIMD_I8X16_NARROW_I16X8_U      = 0x66,
+    WASM_SIMD_I8X16_SHL                 = 0x6b,
+    WASM_SIMD_I8X16_SHR_S               = 0x6c,
+    WASM_SIMD_I8X16_SHR_U               = 0x6d,
+    WASM_SIMD_I8X16_ADD                 = 0x6e,
+    WASM_SIMD_I8X16_ADD_SAT_S           = 0x6f,
+    WASM_SIMD_I8X16_ADD_SAT_U           = 0x70,
+    WASM_SIMD_I8X16_SUB                 = 0x71,
+    WASM_SIMD_I8X16_SUB_SAT_S           = 0x72,
+    WASM_SIMD_I8X16_SUB_SAT_U           = 0x73,
+    WASM_SIMD_I8X16_MIN_S               = 0x76,
+    WASM_SIMD_I8X16_MIN_U               = 0x77,
+    WASM_SIMD_I8X16_MAX_S               = 0x78,
+    WASM_SIMD_I8X16_MAX_U               = 0x79,
+    WASM_SIMD_I8X16_AVGR_U              = 0x7b,
+
+    WASM_SIMD_I16X8_BITMASK             = 0x84,
+    WASM_SIMD_I16X8_NARROW_I32X4_S      = 0x85,
+    WASM_SIMD_I16X8_NARROW_I32X4_U      = 0x86,
+    WASM_SIMD_I16X8_SHL                 = 0x8b,
+    WASM_SIMD_I16X8_SHR_S               = 0x8c,
+    WASM_SIMD_I16X8_SHR_U               = 0x8d,
+    WASM_SIMD_I16X8_ADD                 = 0x8e,
+    WASM_SIMD_I16X8_ADD_SAT_S           = 0x8f,
+    WASM_SIMD_I16X8_ADD_SAT_U           = 0x90,
+    WASM_SIMD_I16X8_SUB                 = 0x91,
+    WASM_SIMD_I16X8_SUB_SAT_S           = 0x92,
+    WASM_SIMD_I16X8_SUB_SAT_U           = 0x93,
+    WASM_SIMD_I16X8_MUL                 = 0x95,
+    WASM_SIMD_I16X8_MIN_S               = 0x96,
+    WASM_SIMD_I16X8_MIN_U               = 0x97,
+    WASM_SIMD_I16X8_MAX_S               = 0x98,
+    WASM_SIMD_I16X8_MAX_U               = 0x99,
+    WASM_SIMD_I16X8_AVGR_U              = 0x9b,
+
+    WASM_SIMD_I32X4_BITMASK             = 0xa4,
+    WASM_SIMD_I32X4_SHL                 = 0xab,
+    WASM_SIMD_I32X4_SHR_S               = 0xac,
+    WASM_SIMD_I32X4_SHR_U               = 0xad,
+    WASM_SIMD_I32X4_ADD                 = 0xae,
+    WASM_SIMD_I32X4_SUB                 = 0xb1,
+    WASM_SIMD_I32X4_MUL                 = 0xb5,
+    WASM_SIMD_I32X4_MIN_S               = 0xb6,
+    WASM_SIMD_I32X4_MIN_U               = 0xb7,
+    WASM_SIMD_I32X4_MAX_S               = 0xb8,
+    WASM_SIMD_I32X4_MAX_U               = 0xb9,
+    WASM_SIMD_I32X4_DOT_I16X8_S         = 0xba,
+    WASM_SIMD_I32X4_EXTMUL_LOW_I16X8_S  = 0xbc,
+    WASM_SIMD_I32X4_EXTMUL_HIGH_I16X8_S = 0xbd,
+    WASM_SIMD_I32X4_EXTMUL_LOW_I16X8_U  = 0xbe,
+    WASM_SIMD_I32X4_EXTMUL_HIGH_I16X8_U = 0xbf,
+
+    WASM_SIMD_I64X2_BITMASK             = 0xc4,
+    WASM_SIMD_I64X2_SHL                 = 0xcb,
+    WASM_SIMD_I64X2_SHR_S               = 0xcc,
+    WASM_SIMD_I64X2_SHR_U               = 0xcd,
+    WASM_SIMD_I64X2_ADD                 = 0xce,
+    WASM_SIMD_I64X2_SUB                 = 0xd1,
+    WASM_SIMD_I64X2_MUL                 = 0xd5,
+    WASM_SIMD_I64X2_EQ                  = 0xd6,
+    WASM_SIMD_I64X2_NE                  = 0xd7,
+    WASM_SIMD_I64X2_LT_S                = 0xd8,
+    WASM_SIMD_I64X2_GT_S                = 0xd9,
+    WASM_SIMD_I64X2_EXTMUL_LOW_I32X4_U  = 0xde,
+
+    WASM_SIMD_F32X4_ABS                 = 0xe0,
+    WASM_SIMD_F32X4_NEG                 = 0xe1,
+    WASM_SIMD_F32X4_SQRT                = 0xe3,
+    WASM_SIMD_F32X4_ADD                 = 0xe4,
+    WASM_SIMD_F32X4_SUB                 = 0xe5,
+    WASM_SIMD_F32X4_MUL                 = 0xe6,
+    WASM_SIMD_F32X4_DIV                 = 0xe7,
+    WASM_SIMD_F32X4_MIN                 = 0xe8,
+    WASM_SIMD_F32X4_MAX                 = 0xe9,
+    WASM_SIMD_F32X4_PMIN                = 0xea,
+    WASM_SIMD_F32X4_PMAX                = 0xeb,
+    WASM_SIMD_F64X2_ABS                 = 0xec,
+    WASM_SIMD_F64X2_NEG                 = 0xed,
+    WASM_SIMD_F64X2_SQRT                = 0xef,
+    WASM_SIMD_F64X2_ADD                 = 0xf0,
+    WASM_SIMD_F64X2_SUB                 = 0xf1,
+    WASM_SIMD_F64X2_MUL                 = 0xf2,
+    WASM_SIMD_F64X2_DIV                 = 0xf3,
+    WASM_SIMD_F64X2_MIN                 = 0xf4,
+    WASM_SIMD_F64X2_MAX                 = 0xf5,
+    WASM_SIMD_F64X2_PMIN                = 0xf6,
+    WASM_SIMD_F64X2_PMAX                = 0xf7,
+    WASM_SIMD_I32X4_TRUNC_SAT_F32X4_S   = 0xf8,
+    WASM_SIMD_I32X4_TRUNC_SAT_F32X4_U   = 0xf9,
+    WASM_SIMD_F32X4_CONVERT_I32X4_S     = 0xfa,
+    WASM_SIMD_F32X4_CONVERT_I32X4_U     = 0xfb,
+    WASM_SIMD_I32X4_TRUNC_SAT_F64X2_S_ZERO = 0xfc,
+    WASM_SIMD_I32X4_TRUNC_SAT_F64X2_U_ZERO = 0xfd,
+    WASM_SIMD_F64X2_CONVERT_LOW_I32X4_S = 0xfe,
+    WASM_SIMD_F64X2_CONVERT_LOW_I32X4_U = 0xff,
+};
+
+// ---------------------------------------------------------------------------
+// WasmEmitter
+//
+// Builds a WASM binary suitable for `new WebAssembly.Module(bytes)`.
+// Sections are accumulated in order; call finalize() to get the complete
+// binary including the magic header.
+// ---------------------------------------------------------------------------
+class WasmEmitter {
+public:
+    WasmEmitter();
+
+    // --- Type section -------------------------------------------------------
+    // Add a function type (signature) and return its index.
+    U32 addFuncType(const std::vector<WasmType>& params,
+                    const std::vector<WasmType>& results);
+
+    // --- Import section -----------------------------------------------------
+    // Import the Emscripten linear memory. Must be called before function imports.
+    void addMemoryImport(const char* module, const char* field);
+    // Import a function; returns the function index (starting at 0).
+    U32  addFunctionImport(const char* module, const char* field, U32 typeIdx);
+    // Import an immutable i32 global; returns the global index (starting at 0).
+    // Globals have their own index space, so this can be added at any point
+    // before finalize() without disturbing function import indices.
+    U32  addGlobalImport(const char* module, const char* field);
+
+    U32 numImportedFunctions() const { return m_numImportedFunctions; }
+
+    // --- Function + Export sections -----------------------------------------
+    // Declare a local function (should be called after all imports).
+    U32 addFunction(U32 typeIdx);
+    void addExport(const char* name, U32 funcIdx);
+
+    // --- Code section -------------------------------------------------------
+    // Begin writing the body for a local function.
+    // locals: list of (count, type) pairs for WASM local declarations.
+    void beginFunction(const std::vector<std::pair<U32, WasmType>>& locals);
+
+    // Core instruction emitters. These append bytes to m_currentBody.
+    void emitByte(U8 b);
+    void emitULEB(U32 val);
+    void emitSLEB(S32 val);
+
+    void emitLocalGet(U32 idx);
+    void emitLocalSet(U32 idx);
+    void emitLocalTee(U32 idx);
+    void emitGlobalGet(U32 idx);
+    void emitI32Const(S32 val);
+    void emitI64Const(S64 val);
+
+    void emitI32Load(U32 offset, U32 align = 2);
+    void emitI32Load8S(U32 offset);
+    void emitI32Load8U(U32 offset);
+    void emitI32Load16S(U32 offset);
+    void emitI32Load16U(U32 offset);
+    void emitI32Store(U32 offset, U32 align = 2);
+    void emitI32Store8(U32 offset);
+    void emitI32Store16(U32 offset);
+    void emitI64Load(U32 offset, U32 align = 3);
+    void emitI64Store(U32 offset, U32 align = 3);
+    void emitF32Load(U32 offset, U32 align = 2);
+    void emitF32Store(U32 offset, U32 align = 2);
+    void emitF64Load(U32 offset, U32 align = 3);
+    void emitF64Store(U32 offset, U32 align = 3);
+
+    void emitOp(U8 op);   // emit a standalone opcode
+    void emitSimdOp(U32 op);
+    // For SIMD ops whose lane immediate directly follows the opcode.
+    // Lane load/store ops need a separate memarg+lane helper if added later.
+    void emitSimdLaneOp(U32 op, U8 lane);
+    void emitI8x16Shuffle(const U8 lanes[16]);
+    void emitV128Const(const U8 bytes[16]);
+    void emitV128Load(U32 offset, U32 align = 4);
+    void emitV128Store(U32 offset, U32 align = 4);
+    void emitCall(U32 funcIdx);
+    void emitCallIndirect(U32 typeIdx, U32 tableIdx = 0);
+
+    void emitIf(WasmType blockType = WasmType::Void);
+    void emitElse();
+    void emitBlock(WasmType blockType = WasmType::Void);
+    void emitLoop(WasmType blockType = WasmType::Void);
+    void emitEnd();
+    void emitBr(U32 depth);
+    void emitBrIf(U32 depth);
+
+    // Applies to the next emitted if/br_if only. Hint is consumed and cleared.
+    void setNextBranchHint(WasmBranchHint hint);
+    void clearNextBranchHint();
+
+    // Number of currently-open structural blocks (if/block/loop). Used by
+    // the JIT codegen to compute the relative depth argument for `br` in
+    // LoopBegin/Goto. Counts each emitIf/emitBlock/emitLoop as +1 and
+    // each emitEnd as -1 (emitElse does not change depth — `else` stays
+    // inside the same `if` frame).
+    U32 currentCtrlDepth() const { return m_ctrlDepth; }
+    void emitDrop();
+    void emitReturn();
+    void emitUnreachable();
+
+    // End the current function body and append it to the code section.
+    void endFunction();
+
+    // Produce the complete WASM binary (magic + version + all sections).
+    std::vector<U8> finalize();
+
+public:
+    static void appendULEB128(std::vector<U8>& buf, U64 val);
+    static void appendSLEB128(std::vector<U8>& buf, S64 val);
+
+private:
+    static void appendStr(std::vector<U8>& buf, const char* s);
+    static void appendSection(std::vector<U8>& result, WasmSection id,
+                               const std::vector<U8>& content);
+
+    struct FuncType {
+        std::vector<WasmType> params;
+        std::vector<WasmType> results;
+    };
+    std::vector<FuncType> m_types;
+
+    std::vector<U8> m_importSection;
+    bool            m_hasMemoryImport = false;
+    U32             m_numImportedFunctions = 0;
+    U32             m_numImportedGlobals = 0;
+
+    std::vector<U32> m_localFunctions;   // type indices
+    std::vector<U8>  m_exportSection;
+    std::vector<U8>  m_codeSection;      // all encoded function bodies
+    U32              m_codeFuncCount = 0;
+
+    std::vector<U8>  m_currentBody;      // being built by begin/endFunction
+    bool             m_inFunction = false;
+    U32              m_ctrlDepth = 0;    // open structural blocks (if/block/loop)
+
+    struct BranchHintEntry {
+        U32 funcIndex;
+        U32 offset;
+        U8  likely;
+    };
+
+    void recordBranchHintIfNeeded();
+    void appendBranchHintSection(std::vector<U8>& result) const;
+
+    std::vector<BranchHintEntry> m_branchHints;
+    U32  m_lastFunctionIndex = 0;
+    U32  m_currentFunctionIndex = 0;
+    U8   m_nextBranchHint = 0;
+    bool m_hasNextBranchHint = false;
+};
+
+#endif // BOXEDWINE_WASM_JIT
+#endif // __WASM_EMITTER_H__

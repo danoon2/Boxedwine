@@ -67,10 +67,37 @@ class FsFileNode;
 
 #define k_mdev(x,y) ((x << 8) | y)
 
+struct FsPathLookupOptions {
+    // Intermediate symbolic links are always followed. This controls only the
+    // final named component; a trailing slash still requires traversal.
+    bool followFinalSymlink = true;
+    // Used by fd-relative operations such as futimens/AT_EMPTY_PATH.
+    bool allowEmptyPath = false;
+    bool requireDirectory = false;
+};
+
+struct FsPathResult {
+    std::shared_ptr<FsNode> node;
+    // The last resolved directory and unresolved components are retained for
+    // internal recursive-directory creation.
+    std::shared_ptr<FsNode> parent;
+    std::vector<BString> missingComponents;
+    BString finalName;
+    // Zero on success, otherwise a negative guest errno.
+    S32 error = 0;
+    // True when the caller's terminal name was a symlink, even if a trailing
+    // slash or followFinalSymlink caused it to be followed.
+    bool finalComponentWasSymlink = false;
+    bool trailingSlash = false;
+};
+
 class Fs {
-public:   
+public:
     static bool initFileSystem(const BString& rootPath);
-    static std::shared_ptr<FsNode> getNodeFromLocalPath(const BString& currentDirectory, const BString& path, bool followLink, bool* isLink=nullptr);    
+    static FsPathResult resolvePath(const BString& currentDirectory, const BString& path,
+        const FsPathLookupOptions& options = {});
+    static std::shared_ptr<FsNode> getNodeFromLocalPath(const BString& currentDirectory, const BString& path, bool followLink, bool* isLink=nullptr);
+    static std::shared_ptr<FsFileNode> createFileNode(const BString& path, const BString& link, const BString& nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent);
     static std::shared_ptr<FsFileNode> addFileNode(const BString& path, const BString& link, const BString& nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent);
     static std::shared_ptr<FsNode> addVirtualFile(const BString& path, std::function<FsOpenNode*(const std::shared_ptr<FsNode>& node, U32 flags, U32 data)> func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data=0);
     static std::shared_ptr<FsNode> addVirtualFile(const BString& path, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, const BString& value);
@@ -107,13 +134,15 @@ public:
     static BString getDosAttrib(const std::shared_ptr<FsNode>& file);
     static void setDosAttrib(const std::shared_ptr<FsNode>& file, const BString& attrib);
     static U32 removeDosAttrib(const std::shared_ptr<FsNode>& file);
+    static U32 getXAttr(const std::shared_ptr<FsNode>& file, const BString& name, std::vector<U8>& value);
+    static U32 setXAttr(const std::shared_ptr<FsNode>& file, const BString& name, const U8* value, U32 len);
+    static U32 removeXAttr(const std::shared_ptr<FsNode>& file, const BString& name);
+    static U32 listXAttrNames(const std::shared_ptr<FsNode>& file, std::vector<BString>& names);
 
     static std::shared_ptr<FsFileNode> rootNode;
 	static void shutDown();
 private:
     friend class KUnixSocketObject;
-
-    static std::shared_ptr<FsNode> getNodeFromLocalPath(const BString& currentDirectory, const BString& path, std::shared_ptr<FsNode>* lastNode, std::vector<BString>* missingParts, bool followLink, bool* isLink= nullptr);
 
     static std::atomic_int nextNodeId;
 };

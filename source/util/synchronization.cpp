@@ -19,6 +19,31 @@
 #include "boxedwine.h"
 #ifdef BOXEDWINE_MULTI_THREADED
 
+namespace {
+
+bool setThreadWaitingCondition(KThread* thread, const BOXEDWINE_CONDITION& cond) {
+    if (!thread) {
+        return true;
+    }
+
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
+    thread->waitingCond = cond;
+    if (thread->terminating) {
+        thread->waitingCond = nullptr;
+        return false;
+    }
+    return true;
+}
+
+void clearThreadWaitingCondition(KThread* thread) {
+    if (thread) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
+        thread->waitingCond = nullptr;
+    }
+}
+
+} // namespace
+
 BoxedWineCriticalSectionCond::BoxedWineCriticalSectionCond(const std::shared_ptr<BoxedWineCondition>& cond) {
     this->cond = cond;
     this->cond->lock();
@@ -94,13 +119,11 @@ void BoxedWineCondition::signalAll() {
 
 void BoxedWineCondition::wait(std::unique_lock<std::mutex>& lock) {
     KThread* thread = KThread::currentThread();
-    if (thread) {
-        thread->waitingCond = shared_from_this();
+    if (!setThreadWaitingCondition(thread, shared_from_this())) {
+        return;
     }
     this->c.wait(lock);
-    if (thread) {
-        thread->waitingCond = nullptr;
-    }
+    clearThreadWaitingCondition(thread);
     if (parentCount) {
         for (int i = 0; i < MAX_PARENTS; i++) {
             std::shared_ptr<BoxedWineCondition> parent;
@@ -116,15 +139,13 @@ void BoxedWineCondition::wait(std::unique_lock<std::mutex>& lock) {
     }
 }
 
-void BoxedWineCondition::waitWithTimeout(std::unique_lock<std::mutex>& lock, U32 ms) {    
+void BoxedWineCondition::waitWithTimeout(std::unique_lock<std::mutex>& lock, U32 ms) {
     KThread* thread = KThread::currentThread();
-    if (thread) {
-        thread->waitingCond = shared_from_this();
+    if (!setThreadWaitingCondition(thread, shared_from_this())) {
+        return;
     }
     this->c.wait_for(lock, std::chrono::milliseconds(KSystem::emulatedMilliesToHost(ms)));
-    if (thread) {
-        thread->waitingCond = nullptr;
-    }    
+    clearThreadWaitingCondition(thread);
     if (parentCount) {
         for (int i = 0; i < MAX_PARENTS; i++) {
             std::shared_ptr<BoxedWineCondition> parent;

@@ -14,6 +14,9 @@
 #include "testPushPop.h"
 #include "testCPU.h"
 #include "testAsmJit.h"
+#include "ksignal.h"
+#include "../../emulation/cpu/common/common_other.h"
+#include "../../emulation/cpu/common/common_sse.h"
 
 #define cpu (testContext().cpu)
 #define memory (testContext().memory)
@@ -469,8 +472,14 @@ void runAbsoluteMemoryCases(int width, bool push, const char* name) {
 
 void runBaseMemoryCases(int width, bool push, const char* name) {
     for (int base = 0; base < 8; ++base) {
+        if (!testRunMemoryBase(base)) {
+            continue;
+        }
         for (int dispIndex = 0; dispIndex < 3; ++dispIndex) {
             if (base == R_SP && dispIndex == 0) {
+                continue;
+            }
+            if (!testRunMemoryBaseDisplacement(base, dispIndex)) {
                 continue;
             }
             U32 regs[8];
@@ -501,6 +510,9 @@ void runSibMemoryCases(int width, bool push, const char* name) {
                 continue;
             }
             for (int shift = 0; shift < 4; ++shift) {
+                if (!testRunMemorySib(base, index, shift)) {
+                    continue;
+                }
                 U32 regs[8];
                 AddressCase address;
                 U32 targetOffset = MEM_BASE + 0x3000 + base * 0x200 + index * 0x20 + shift * 4;
@@ -734,28 +746,1233 @@ void runPushF(int width, const char* name) {
     }
 }
 
+void runCliProtectionFault() {
+    constexpr U32 HANDLER_OFFSET = 2;
+
+    newInstruction(0);
+    cpu->big = true;
+    testContext().process->sigActions[K_SIGSEGV].handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    testContext().process->sigActions[K_SIGSEGV].flags = 0;
+
+    emitByte(0xfd); // std
+    emitByte(0xfa); // cli
+    runTestCPU();
+
+    KSigAction& action = testContext().process->sigActions[K_SIGSEGV];
+    if (action.sigInfo[0] != K_SIGSEGV) {
+        failed("cli did not raise SIGSEGV");
+        action.reset();
+        return;
+    }
+    if (action.sigInfo[1] != 0) {
+        failed("cli SIGSEGV error");
+    }
+    if (action.sigInfo[4] != 13) {
+        failed("cli SIGSEGV trap number");
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 13) {
+        failed("cli context trap number");
+    }
+    if (memory->readd(context + 0x48) != 0) {
+        failed("cli context error");
+    }
+    if (memory->readd(context + 0x4c) != 1) {
+        failed("cli context eip");
+    }
+    if (!(memory->readd(context + 0x54) & DF)) {
+        failed("cli context lost DF");
+    }
+    if (cpu->flags & DF) {
+        failed("cli signal handler kept DF");
+    }
+
+    action.reset();
+}
+
+void runInt2dRaisesInterruptProtectionFault() {
+    constexpr U32 INTERRUPT_VECTOR = 0x2d;
+    constexpr U32 INTERRUPT_ERROR = (INTERRUPT_VECTOR << 3) | 2;
+    constexpr U32 HANDLER_OFFSET = 2;
+
+    newInstruction(0);
+    cpu->big = true;
+    KSigAction& action = testContext().process->sigActions[K_SIGSEGV];
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    action.flags = 0;
+    KSigAction& illAction = testContext().process->sigActions[K_SIGILL];
+    illAction.handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    illAction.flags = 0;
+
+    emitByte(0xcd);
+    emitByte(INTERRUPT_VECTOR);
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGSEGV) {
+        failed("int 2d did not raise SIGSEGV");
+        action.reset();
+        illAction.reset();
+        return;
+    }
+    if (action.sigInfo[1] != INTERRUPT_ERROR) {
+        failed("int 2d SIGSEGV error");
+    }
+    if (action.sigInfo[4] != 13) {
+        failed("int 2d SIGSEGV trap number");
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 13) {
+        failed("int 2d context trap number");
+    }
+    if (memory->readd(context + 0x48) != INTERRUPT_ERROR) {
+        failed("int 2d context error");
+    }
+    if (memory->readd(context + 0x4c) != 0) {
+        failed("int 2d context eip");
+    }
+
+    action.reset();
+    illAction.reset();
+}
+
+void runInt3ImmediateRaisesBreakpoint() {
+    constexpr U32 HANDLER_OFFSET = 2;
+
+    newInstruction(0);
+    cpu->big = true;
+    KSigAction& trapAction = testContext().process->sigActions[K_SIGTRAP];
+    KSigAction& segvAction = testContext().process->sigActions[K_SIGSEGV];
+    trapAction.reset();
+    segvAction.reset();
+    trapAction.handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    segvAction.handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    trapAction.flags = 0;
+    segvAction.flags = 0;
+
+    emitByte(0xcd);
+    emitByte(0x03);
+    runTestCPU();
+
+    if (trapAction.sigInfo[0] != K_SIGTRAP) {
+        if (segvAction.sigInfo[0] == K_SIGSEGV) {
+            failed("int 3 immediate raised SIGSEGV");
+        } else {
+            failed("int 3 immediate did not raise SIGTRAP");
+        }
+        trapAction.reset();
+        segvAction.reset();
+        return;
+    }
+    if (trapAction.sigInfo[2] != 1) {
+        failed("int 3 immediate SIGTRAP code");
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 3) {
+        failed("int 3 immediate context trap number");
+    }
+    if (memory->readd(context + 0x48) != 0) {
+        failed("int 3 immediate context error");
+    }
+    if (memory->readd(context + 0x4c) != HANDLER_OFFSET) {
+        failed("int 3 immediate context eip");
+    }
+
+    trapAction.reset();
+    segvAction.reset();
+}
+
+void runProtectionFaultBytes(const char* name, const U8* bytes, U32 byteCount, U32 expectedError = 0) {
+    newInstruction(0);
+    cpu->big = true;
+    KSigAction& action = testContext().process->sigActions[K_SIGSEGV];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + byteCount;
+    action.flags = 0;
+
+    for (U32 i = 0; i < byteCount; ++i) {
+        emitByte(bytes[i]);
+    }
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGSEGV) {
+        failed("%s did not raise SIGSEGV", name);
+        action.reset();
+        return;
+    }
+    if (action.sigInfo[1] != expectedError) {
+        failed("%s SIGSEGV error", name);
+    }
+    if (action.sigInfo[4] != 13) {
+        failed("%s SIGSEGV trap number", name);
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 13) {
+        failed("%s context trap number", name);
+    }
+    if (memory->readd(context + 0x48) != expectedError) {
+        failed("%s context error", name);
+    }
+    if (memory->readd(context + 0x4c) != 0) {
+        failed("%s context eip", name);
+    }
+
+    action.reset();
+}
+
+void runPrefixedCliRaisesProtectionFault() {
+    const U8 prefixedCli[] = { 0x64, 0x64, 0x64, 0x64, 0xfa };
+
+    runProtectionFaultBytes("prefixed cli", prefixedCli, sizeof(prefixedCli));
+}
+
+void runOverlongPrefixedCliDoesNotPoisonCodeCache() {
+    const U8 overlongPrefixedCli[] = {
+        0x64, 0x64, 0x64, 0x64, 0x64, 0x64, 0x64, 0x64,
+        0x64, 0x64, 0x64, 0x64, 0x64, 0x64, 0x64, 0xfa,
+        0xc3
+    };
+    const U8 prefixedCli[] = { 0x64, 0x64, 0x64, 0x64, 0xfa };
+
+    newInstruction(0);
+    cpu->big = true;
+    for (U32 i = 0; i < sizeof(overlongPrefixedCli); ++i) {
+        emitByte(overlongPrefixedCli[i]);
+    }
+
+    DecodedOp* op = cpu->getNextOp();
+    if (!op) {
+        failed("overlong prefixed cli did not decode");
+        return;
+    }
+    if (!op->len) {
+        failed("overlong prefixed cli decoded with zero length");
+        return;
+    }
+
+    for (U32 i = 0; i < sizeof(prefixedCli); ++i) {
+        memory->writeb(TEST_CODE_ADDRESS + i, prefixedCli[i]);
+    }
+
+    if (memory->getDecodedOp(TEST_CODE_ADDRESS)) {
+        failed("overlong prefixed cli remained cached after overwrite");
+        return;
+    }
+
+    KSigAction& action = testContext().process->sigActions[K_SIGSEGV];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + sizeof(prefixedCli);
+    action.flags = 0;
+    cpu->eip.u32 = 0;
+    cpu->nextOp = nullptr;
+    testContext().codeIp = TEST_CODE_ADDRESS + sizeof(prefixedCli);
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGSEGV) {
+        failed("overwritten prefixed cli did not raise SIGSEGV");
+    }
+
+    action.reset();
+}
+
+void runPortIoRaisesProtectionFault() {
+    const U8 inAlIb[] = { 0xe4, 0x11 };
+    const U8 inEaxIb[] = { 0xe5, 0x11 };
+    const U8 outIbAl[] = { 0xe6, 0x11 };
+    const U8 outIbEax[] = { 0xe7, 0x11 };
+    const U8 inEaxDx[] = { 0xed };
+    const U8 outDxAl[] = { 0xee };
+    const U8 outDxEax[] = { 0xef };
+
+    runProtectionFaultBytes("in al,ib", inAlIb, sizeof(inAlIb));
+    runProtectionFaultBytes("in eax,ib", inEaxIb, sizeof(inEaxIb));
+    runProtectionFaultBytes("out ib,al", outIbAl, sizeof(outIbAl));
+    runProtectionFaultBytes("out ib,eax", outIbEax, sizeof(outIbEax));
+    runProtectionFaultBytes("in eax,dx", inEaxDx, sizeof(inEaxDx));
+    runProtectionFaultBytes("out dx,al", outDxAl, sizeof(outDxAl));
+    runProtectionFaultBytes("out dx,eax", outDxEax, sizeof(outDxEax));
+}
+
+void runHltRaisesProtectionFault() {
+    const U8 hlt[] = { 0xf4 };
+
+    runProtectionFaultBytes("hlt", hlt, sizeof(hlt));
+}
+
+void runInvalidInterruptRaisesProtectionFault() {
+    constexpr U32 INTERRUPT_VECTOR = 0xff;
+    constexpr U32 INTERRUPT_ERROR = (INTERRUPT_VECTOR << 3) | 2;
+    const U8 intFF[] = { 0xcd, INTERRUPT_VECTOR };
+
+    runProtectionFaultBytes("int ff", intFF, sizeof(intFF), INTERRUPT_ERROR);
+}
+
+void runControlRegisterAccessRaisesProtectionFault() {
+    const U8 movEaxCr0[] = { 0x0f, 0x20, 0xc0 };
+    const U8 movEaxCr4[] = { 0x0f, 0x20, 0xe0 };
+    const U8 movCr0Eax[] = { 0x0f, 0x22, 0xc0 };
+    const U8 movCr4Eax[] = { 0x0f, 0x22, 0xe0 };
+
+    runProtectionFaultBytes("mov eax,cr0", movEaxCr0, sizeof(movEaxCr0));
+    runProtectionFaultBytes("mov eax,cr4", movEaxCr4, sizeof(movEaxCr4));
+    runProtectionFaultBytes("mov cr0,eax", movCr0Eax, sizeof(movCr0Eax));
+    runProtectionFaultBytes("mov cr4,eax", movCr4Eax, sizeof(movCr4Eax));
+}
+
+void runNullSegmentMoffsRaisesProtectionFault() {
+    const U8 esMoffs[] = { 0x06, 0x31, 0xc0, 0x8e, 0xc0, 0x26, 0xa1, 0, 0, 0, 0xf0 };
+    const U8 gsMoffs[] = { 0x0f, 0xa8, 0x31, 0xc0, 0x8e, 0xe8, 0x65, 0xa1, 0, 0, 0, 0xf0 };
+
+    struct NullSegCase {
+        const char* name;
+        const U8* bytes;
+        U32 byteCount;
+        U32 expectedEip;
+    };
+    const NullSegCase cases[] = {
+        { "null es moffs", esMoffs, sizeof(esMoffs), 5 },
+        { "null gs moffs", gsMoffs, sizeof(gsMoffs), 6 },
+    };
+
+    for (const NullSegCase& data : cases) {
+        newInstruction(0);
+        cpu->big = true;
+        KSigAction& action = testContext().process->sigActions[K_SIGSEGV];
+        action.reset();
+        action.handlerAndSigAction = TEST_CODE_ADDRESS + data.byteCount;
+        action.flags = 0;
+
+        for (U32 i = 0; i < data.byteCount; ++i) {
+            emitByte(data.bytes[i]);
+        }
+        runTestCPU();
+
+        if (action.sigInfo[0] != K_SIGSEGV) {
+            failed("%s did not raise SIGSEGV", data.name);
+            action.reset();
+            continue;
+        }
+        if (action.sigInfo[1] != 0) {
+            failed("%s SIGSEGV error", data.name);
+        }
+        if (action.sigInfo[4] != 13) {
+            failed("%s SIGSEGV trap number", data.name);
+        }
+
+        U32 context = memory->readd(cpu->reg[4].u32 + 12);
+        if (memory->readd(context + 0x44) != 13) {
+            failed("%s context trap number", data.name);
+        }
+        if (memory->readd(context + 0x48) != 0) {
+            failed("%s context error", data.name);
+        }
+        if (memory->readd(context + 0x4c) != data.expectedEip) {
+            failed("%s context eip", data.name);
+        }
+
+        action.reset();
+    }
+}
+
+void runPopSsFromCodeSelectorRaisesProtectionFault() {
+    constexpr U32 HANDLER_OFFSET = 2;
+    constexpr U32 MODIFY_LDT_CONTENTS_CODE = 2;
+
+    newInstruction(0);
+    cpu->big = true;
+    testContext().process->getLDT(TEST_CODE_SEG >> 3)->contents = MODIFY_LDT_CONTENTS_CODE;
+
+    KSigAction& action = testContext().process->sigActions[K_SIGSEGV];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    action.flags = 0;
+
+    emitByte(0x0e); // push cs
+    emitByte(0x17); // pop ss
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGSEGV) {
+        failed("pop ss from code selector did not raise SIGSEGV");
+        action.reset();
+        return;
+    }
+    if (action.sigInfo[1] != 0) {
+        failed("pop ss from code selector SIGSEGV error");
+    }
+    if (action.sigInfo[4] != 13) {
+        failed("pop ss from code selector SIGSEGV trap number");
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 13) {
+        failed("pop ss from code selector context trap number");
+    }
+    if (memory->readd(context + 0x48) != 0) {
+        failed("pop ss from code selector context error");
+    }
+    if (memory->readd(context + 0x4c) != 1) {
+        failed("pop ss from code selector context eip");
+    }
+
+    action.reset();
+}
+
+void runInstructionFetchFaultSetsExecuteBit() {
+    newInstruction(0);
+    cpu->big = true;
+    memory->writeb(TEST_HEAP_ADDRESS, 0xc3); // ret, but the heap page is not executable.
+
+    KSigAction& action = testContext().process->sigActions[K_SIGSEGV];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS;
+    action.flags = 0;
+
+    cpu->seg[CS].address = 0;
+    cpu->seg[CS].value = 0xf;
+    cpu->eip.u32 = TEST_HEAP_ADDRESS;
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGSEGV) {
+        failed("instruction fetch fault did not raise SIGSEGV");
+        action.reset();
+        return;
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != EXCEPTION_PAGE_FAULT) {
+        failed("instruction fetch fault context trap number");
+    }
+    if (!(memory->readd(context + 0x48) & 0x10)) {
+        failed("instruction fetch fault context missing execute bit");
+    }
+
+    action.reset();
+}
+
+void clearDebugRegisters() {
+    for (U32 i = 0; i < 8; ++i) {
+        testContext().thread->debugRegs[i] = 0;
+    }
+    testContext().thread->updateDebugTrapActive();
+}
+
+void runSingleStepTrap() {
+    constexpr U32 HANDLER_OFFSET = 7;
+
+    newInstruction(0);
+    cpu->big = true;
+    KSigAction& action = testContext().process->sigActions[K_SIGTRAP];
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    action.flags = 0;
+
+    emitByte(0x68); // push imm32
+    emitDword(TF | 2);
+    emitByte(0x9d); // popf
+    emitByte(0x90); // nop, should raise #DB after it executes
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGTRAP) {
+        failed("single-step did not raise SIGTRAP");
+        action.reset();
+        return;
+    }
+    if (action.sigInfo[2] != 2) {
+        failed("single-step SIGTRAP code");
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 1) {
+        failed("single-step context trap number");
+    }
+    if (memory->readd(context + 0x4c) != HANDLER_OFFSET) {
+        failed("single-step context eip");
+    }
+    if (memory->readd(context + 0x54) & TF) {
+        failed("single-step context kept TF");
+    }
+
+    action.reset();
+}
+
+void runSingleStepTrapAfterRet() {
+    constexpr U32 TARGET_OFFSET = 8;
+
+    newInstruction(TF);
+    cpu->big = true;
+    clearDebugRegisters();
+    cpu->push32(TARGET_OFFSET);
+
+    KSigAction& action = testContext().process->sigActions[K_SIGTRAP];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + TARGET_OFFSET;
+    action.flags = 0;
+
+    emitByte(0xc3); // ret, should raise #DB at the return target
+    while (testContext().codeIp < TEST_CODE_ADDRESS + TARGET_OFFSET) {
+        emitByte(0x90);
+    }
+    emitByte(0x90);
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGTRAP) {
+        failed("single-step ret did not raise SIGTRAP");
+        action.reset();
+        return;
+    }
+    if (action.sigInfo[2] != 2) {
+        failed("single-step ret SIGTRAP code");
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 1) {
+        failed("single-step ret context trap number");
+    }
+    if (memory->readd(context + 0x4c) != TARGET_OFFSET) {
+        failed("single-step ret context eip");
+    }
+    if (memory->readd(context + 0x54) & TF) {
+        failed("single-step ret context kept TF");
+    }
+
+    action.reset();
+}
+
+void runIcebpRaisesSingleStepTrap() {
+    constexpr U32 HANDLER_OFFSET = 1;
+
+    newInstruction(0);
+    cpu->big = true;
+    KSigAction& trapAction = testContext().process->sigActions[K_SIGTRAP];
+    KSigAction& illAction = testContext().process->sigActions[K_SIGILL];
+    KSigAction& segvAction = testContext().process->sigActions[K_SIGSEGV];
+    trapAction.reset();
+    illAction.reset();
+    segvAction.reset();
+    trapAction.handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    illAction.handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    segvAction.handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    trapAction.flags = 0;
+    illAction.flags = 0;
+    segvAction.flags = 0;
+
+    emitByte(0xf1); // icebp/int1, should raise #DB after the instruction
+    emitByte(0x90);
+    runTestCPU();
+
+    if (trapAction.sigInfo[0] != K_SIGTRAP) {
+        if (illAction.sigInfo[0] == K_SIGILL) {
+            failed("icebp raised SIGILL");
+        } else if (segvAction.sigInfo[0] == K_SIGSEGV) {
+            failed("icebp raised SIGSEGV");
+        } else {
+            failed("icebp did not raise SIGTRAP");
+        }
+        trapAction.reset();
+        illAction.reset();
+        segvAction.reset();
+        return;
+    }
+    if (trapAction.sigInfo[2] != 2) {
+        failed("icebp SIGTRAP code");
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 1) {
+        failed("icebp context trap number");
+    }
+    if (memory->readd(context + 0x4c) != HANDLER_OFFSET) {
+        failed("icebp context eip");
+    }
+
+    trapAction.reset();
+    illAction.reset();
+    segvAction.reset();
+}
+
+void runDivpsRaisesSimdException(bool invalidOperation) {
+    constexpr U32 HANDLER_OFFSET = 3;
+    constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+
+    newInstruction(0);
+    cpu->big = true;
+    cpu->setMxcsr(invalidOperation ? (0x1f80 & ~MXCSR_INVALID_OPERATION_MASK) : (0x1f80 & ~MXCSR_DIVIDE_BY_ZERO_MASK));
+    for (U32 i = 0; i < 4; ++i) {
+        cpu->xmm[0].ps.u32[i] = 0;
+        cpu->xmm[1].ps.u32[i] = invalidOperation ? 0 : 0x3f800000;
+    }
+
+    KSigAction& action = testContext().process->sigActions[K_SIGFPE];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    action.flags = 0;
+
+    emitByte(0x0f);
+    emitByte(0x5e);
+    emitByte(0xc8); // divps xmm0,xmm1
+    emitByte(0x90);
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGFPE) {
+        failed("%s divps did not raise SIGFPE", invalidOperation ? "invalid" : "divide-by-zero");
+        action.reset();
+        return;
+    }
+    if (action.sigInfo[2] != (invalidOperation ? K_FPE_FLTINV : K_FPE_FLTDIV)) {
+        failed("%s divps SIGFPE code", invalidOperation ? "invalid" : "divide-by-zero");
+    }
+    if (action.sigInfo[4] != 19) {
+        failed("%s divps trap number", invalidOperation ? "invalid" : "divide-by-zero");
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 19) {
+        failed("%s divps context trap number", invalidOperation ? "invalid" : "divide-by-zero");
+    }
+    if (memory->readd(context + 0x4c) != 0) {
+        failed("%s divps context eip", invalidOperation ? "invalid" : "divide-by-zero");
+    }
+
+    action.reset();
+}
+
+void runDivssRaisesSimdException(bool invalidOperation, bool memoryOperand) {
+    constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+    constexpr U32 SRC_ADDRESS = MEM_BASE;
+    U32 handlerOffset = memoryOperand ? 8 : 4;
+
+    newInstruction(0);
+    cpu->big = true;
+    cpu->setMxcsr(invalidOperation ? (0x1f80 & ~MXCSR_INVALID_OPERATION_MASK) : (0x1f80 & ~MXCSR_DIVIDE_BY_ZERO_MASK));
+    cpu->xmm[0].ps.u32[0] = invalidOperation ? 0 : 0x3f800000;
+    cpu->xmm[1].ps.u32[0] = 0;
+    cpu->xmm[0].ps.u32[1] = 0x11111111;
+    cpu->xmm[0].ps.u32[2] = 0x22222222;
+    cpu->xmm[0].ps.u32[3] = 0x33333333;
+    memory->writed(TEST_HEAP_ADDRESS + SRC_ADDRESS, 0);
+
+    KSigAction& action = testContext().process->sigActions[K_SIGFPE];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + handlerOffset;
+    action.flags = 0;
+
+    emitByte(0xf3);
+    emitByte(0x0f);
+    emitByte(0x5e);
+    if (memoryOperand) {
+        emitByte(0x05); // divss xmm0,m32
+        emitDword(SRC_ADDRESS);
+    } else {
+        emitByte(0xc1); // divss xmm0,xmm1
+    }
+    emitByte(0x90);
+    runTestCPU();
+
+    const char* kind = invalidOperation ? "invalid" : "divide-by-zero";
+    const char* operand = memoryOperand ? "memory" : "register";
+    if (action.sigInfo[0] != K_SIGFPE) {
+        failed("%s divss %s did not raise SIGFPE", kind, operand);
+        action.reset();
+        return;
+    }
+    if (action.sigInfo[2] != (invalidOperation ? K_FPE_FLTINV : K_FPE_FLTDIV)) {
+        failed("%s divss %s SIGFPE code", kind, operand);
+    }
+    if (action.sigInfo[4] != 19) {
+        failed("%s divss %s trap number", kind, operand);
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 19) {
+        failed("%s divss %s context trap number", kind, operand);
+    }
+    if (memory->readd(context + 0x4c) != 0) {
+        failed("%s divss %s context eip", kind, operand);
+    }
+
+    action.reset();
+}
+
+void runDivpsDoesNotRaiseDivideByZeroForNonFiniteDividend() {
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_FLAG = 1u << 2;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+
+    newInstruction(0);
+    cpu->big = true;
+    cpu->setMxcsr(0x1f80 & ~MXCSR_DIVIDE_BY_ZERO_MASK);
+    cpu->xmm[0].ps.u32[0] = 0x7fc00000; // qNaN
+    cpu->xmm[0].ps.u32[1] = 0x7f800000; // +Inf
+    cpu->xmm[0].ps.u32[2] = 0xff800000; // -Inf
+    cpu->xmm[0].ps.u32[3] = 0x7fc00001; // qNaN payload
+    for (U32 i = 0; i < 4; ++i) {
+        cpu->xmm[1].ps.u32[i] = 0;
+    }
+
+    KSigAction& action = testContext().process->sigActions[K_SIGFPE];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + 4;
+    action.flags = 0;
+
+    emitByte(0x0f);
+    emitByte(0x5e);
+    emitByte(0xc8); // divps xmm0,xmm1
+    emitByte(0x90);
+    runTestCPU();
+
+    if (action.sigInfo[0] == K_SIGFPE) {
+        failed("non-finite divps dividend raised SIGFPE");
+    }
+    if (cpu->mxcsr & MXCSR_DIVIDE_BY_ZERO_FLAG) {
+        failed("non-finite divps dividend set divide-by-zero flag");
+    }
+    action.reset();
+}
+
+void runDivpsInfInfRaisesInvalidOperation() {
+    constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
+
+    newInstruction(0);
+    cpu->big = true;
+    cpu->setMxcsr(0x1f80 & ~MXCSR_INVALID_OPERATION_MASK);
+    for (U32 i = 0; i < 4; ++i) {
+        cpu->xmm[0].ps.u32[i] = 0x7f800000;
+        cpu->xmm[1].ps.u32[i] = 0x7f800000;
+    }
+
+    KSigAction& action = testContext().process->sigActions[K_SIGFPE];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + 4;
+    action.flags = 0;
+
+    emitByte(0x0f);
+    emitByte(0x5e);
+    emitByte(0xc8); // divps xmm0,xmm1
+    emitByte(0x90);
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGFPE) {
+        failed("inf/inf divps did not raise SIGFPE");
+        action.reset();
+        return;
+    }
+    if (action.sigInfo[2] != K_FPE_FLTINV) {
+        failed("inf/inf divps SIGFPE code");
+    }
+    action.reset();
+}
+
+void runDivssDoesNotRaiseDivideByZeroForNonFiniteDividend(bool memoryOperand) {
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_FLAG = 1u << 2;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+    constexpr U32 SRC_ADDRESS = MEM_BASE;
+
+    newInstruction(0);
+    cpu->big = true;
+    cpu->setMxcsr(0x1f80 & ~MXCSR_DIVIDE_BY_ZERO_MASK);
+    cpu->xmm[0].ps.u32[0] = 0x7fc00000;
+    cpu->xmm[0].ps.u32[1] = 0x11111111;
+    cpu->xmm[0].ps.u32[2] = 0x22222222;
+    cpu->xmm[0].ps.u32[3] = 0x33333333;
+    cpu->xmm[1].ps.u32[0] = 0;
+    memory->writed(TEST_HEAP_ADDRESS + SRC_ADDRESS, 0);
+
+    KSigAction& action = testContext().process->sigActions[K_SIGFPE];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + (memoryOperand ? 8 : 4);
+    action.flags = 0;
+
+    emitByte(0xf3);
+    emitByte(0x0f);
+    emitByte(0x5e);
+    if (memoryOperand) {
+        emitByte(0x05); // divss xmm0,m32
+        emitDword(SRC_ADDRESS);
+    } else {
+        emitByte(0xc1); // divss xmm0,xmm1
+    }
+    emitByte(0x90);
+    runTestCPU();
+
+    if (action.sigInfo[0] == K_SIGFPE) {
+        failed("non-finite divss %s dividend raised SIGFPE", memoryOperand ? "memory" : "register");
+    }
+    if (cpu->mxcsr & MXCSR_DIVIDE_BY_ZERO_FLAG) {
+        failed("non-finite divss %s dividend set divide-by-zero flag", memoryOperand ? "memory" : "register");
+    }
+    action.reset();
+}
+
+void runSseDivFastPathDecision() {
+    constexpr U32 DEFAULT_MXCSR = 0x1f80;
+    constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
+    constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
+    constexpr U32 STATE_ADDRESS = TEST_HEAP_ADDRESS + MEM_BASE;
+
+    if (common_sse_div_control_requires_slow_path(DEFAULT_MXCSR)) {
+        failed("default SSE divide control marked slow");
+    }
+    if (!common_sse_div_control_requires_slow_path(DEFAULT_MXCSR & ~MXCSR_INVALID_OPERATION_MASK)) {
+        failed("unmasked invalid operation SSE divide control marked fast");
+    }
+    if (!common_sse_div_control_requires_slow_path(DEFAULT_MXCSR & ~MXCSR_DIVIDE_BY_ZERO_MASK)) {
+        failed("unmasked divide-by-zero SSE divide control marked fast");
+    }
+    if (common_sse_div_control_requires_slow_path(DEFAULT_MXCSR ^ 0x6000)) {
+        failed("rounding-only SSE divide control marked slow");
+    }
+
+    cpu->setMxcsr(DEFAULT_MXCSR);
+    if (cpu->sseDivExceptionsUnmasked) {
+        failed("default MXCSR left SSE divide exception state set");
+    }
+    cpu->setMxcsr(DEFAULT_MXCSR & ~MXCSR_INVALID_OPERATION_MASK);
+    if (!cpu->sseDivExceptionsUnmasked) {
+        failed("unmasked invalid operation did not set SSE divide exception state");
+    }
+    cpu->setMxcsr(DEFAULT_MXCSR & ~MXCSR_DIVIDE_BY_ZERO_MASK);
+    if (!cpu->sseDivExceptionsUnmasked) {
+        failed("unmasked divide-by-zero did not set SSE divide exception state");
+    }
+    cpu->setMxcsr(DEFAULT_MXCSR ^ 0x6000);
+    if (cpu->sseDivExceptionsUnmasked) {
+        failed("rounding-only MXCSR set SSE divide exception state");
+    }
+    cpu->setMxcsr(DEFAULT_MXCSR);
+    if (cpu->sseDivExceptionsUnmasked) {
+        failed("restoring default MXCSR left SSE divide exception state set");
+    }
+
+    memory->writed(STATE_ADDRESS, DEFAULT_MXCSR & ~MXCSR_INVALID_OPERATION_MASK);
+    common_ldmxcsr(cpu, 0, STATE_ADDRESS);
+    if (!cpu->sseDivExceptionsUnmasked) {
+        failed("common LDMXCSR did not update SSE divide exception state");
+    }
+
+    cpu->setMxcsr(DEFAULT_MXCSR);
+    common_fxsave(cpu, STATE_ADDRESS);
+    memory->writed(STATE_ADDRESS + 24, DEFAULT_MXCSR & ~MXCSR_DIVIDE_BY_ZERO_MASK);
+    common_fxrstor(cpu, STATE_ADDRESS);
+    if (!cpu->sseDivExceptionsUnmasked) {
+        failed("FXRSTOR did not update SSE divide exception state");
+    }
+    cpu->setMxcsr(DEFAULT_MXCSR);
+}
+
+void runX87DivFastPathDecision() {
+    constexpr U32 FPU_INVALID_OPERATION_MASK = 0x0001;
+    constexpr U32 FPU_DIVIDE_BY_ZERO_MASK = 0x0004;
+
+    FPU fpu;
+    fpu.reset();
+    if (!fpu.divExceptionsUnmasked) {
+        failed("reset x87 control word did not mark divide exceptions unmasked");
+    }
+    fpu.FINIT();
+    if (fpu.divExceptionsUnmasked) {
+        failed("default x87 control word marked divide exceptions unmasked");
+    }
+    fpu.tags[0] = TAG_Valid;
+    fpu.tags[1] = TAG_Valid;
+    if (fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
+        failed("default x87 divide control and valid tags marked slow");
+    }
+
+    fpu.SetCW((U16)(fpu.cw & ~FPU_DIVIDE_BY_ZERO_MASK));
+    if (!fpu.divExceptionsUnmasked) {
+        failed("unmasked x87 divide-by-zero did not update fast-path state");
+    }
+    if (!fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
+        failed("unmasked x87 divide-by-zero marked fast");
+    }
+
+    fpu.FINIT();
+    fpu.tags[0] = TAG_Valid;
+    fpu.tags[1] = TAG_Valid;
+    fpu.SetCW((U16)(fpu.cw & ~FPU_INVALID_OPERATION_MASK));
+    if (!fpu.divExceptionsUnmasked) {
+        failed("unmasked x87 invalid operation did not update fast-path state");
+    }
+    if (!fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
+        failed("unmasked x87 invalid operation marked fast");
+    }
+
+    fpu.SetCW(0x37f);
+    if (fpu.divExceptionsUnmasked) {
+        failed("restored x87 control word left divide exceptions unmasked");
+    }
+
+    fpu.FINIT();
+    fpu.tags[0] = TAG_Valid;
+    fpu.tags[1] = TAG_Zero;
+    if (!fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
+        failed("x87 FDIV zero divisor tag marked fast");
+    }
+
+    fpu.FINIT();
+    fpu.tags[0] = TAG_Zero;
+    fpu.tags[1] = TAG_Valid;
+    if (!fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, true)) {
+        failed("x87 FDIVR zero divisor tag marked fast");
+    }
+
+    fpu.FINIT();
+    fpu.tags[0] = TAG_Empty;
+    fpu.tags[1] = TAG_Valid;
+    if (!fpu_div_control_or_tag_requires_slow_path(&fpu, 0, 1, false)) {
+        failed("x87 empty divide operand tag marked fast");
+    }
+}
+
+void runX87ExceptionSummaryState() {
+    constexpr U32 STATUS_ZE = 0x0004;
+    constexpr U32 STATUS_ES = 0x0080;
+    constexpr U32 STATUS_EXCEPTION_MASK = 0x003f;
+
+    FPU fpu;
+    fpu.FINIT();
+
+    if (fpu.sw & STATUS_ES) {
+        failed("x87 FINIT left exception summary set");
+    }
+
+    fpu.setDivideByZeroException();
+    if (!(fpu.sw & STATUS_ZE) || (fpu.sw & STATUS_ES)) {
+        failed("masked x87 exception summary state");
+    }
+
+    fpu.SetCW((U16)(fpu.cw & ~STATUS_ZE));
+    if (!(fpu.sw & STATUS_ES)) {
+        failed("unmasking pending x87 exception did not set summary");
+    }
+
+    fpu.FCLEX();
+    if (fpu.sw & (STATUS_EXCEPTION_MASK | STATUS_ES)) {
+        failed("x87 FCLEX did not clear exception summary");
+    }
+
+    fpu.SetSW(STATUS_ZE);
+    if (!(fpu.sw & STATUS_ES)) {
+        failed("restoring pending x87 status did not set summary");
+    }
+
+    fpu.FINIT();
+    if (fpu.sw & (STATUS_EXCEPTION_MASK | STATUS_ES)) {
+        failed("x87 FINIT did not clear restored exception summary");
+    }
+}
+
+void emitBytes(const U8* bytes, size_t count) {
+    for (size_t i = 0; i < count; ++i) {
+        emitByte(bytes[i]);
+    }
+}
+
+void runX87FwaitRaisesPendingException(bool stackCheck) {
+    static const U8 stackCheckCode[] = {
+        0x83, 0xec, 0x04,                   // sub $0x4,%esp
+        0x66, 0xc7, 0x04, 0x24, 0xfe, 0x03, // movw $0x3fe,(%esp)
+        0x9b, 0xd9, 0x7c, 0x24, 0x02,       // fstcw 0x2(%esp)
+        0xd9, 0x2c, 0x24,                   // fldcw (%esp)
+        0xd9, 0xee,                         // fldz
+        0xd9, 0xe8,                         // fld1
+        0xde, 0xf1,                         // fdivp
+        0xdd, 0xd8,                         // fstp %st(0)
+        0xdd, 0xd8,                         // fstp %st(0)
+        0x9b,                               // fwait
+        0xdb, 0xe2,                         // fnclex
+    };
+    static const U8 divZeroCode[] = {
+        0x83, 0xec, 0x04,                   // sub $0x4,%esp
+        0x66, 0xc7, 0x04, 0x24, 0xfb, 0x03, // movw $0x3fb,(%esp)
+        0x9b, 0xd9, 0x7c, 0x24, 0x02,       // fstcw 0x2(%esp)
+        0xd9, 0x2c, 0x24,                   // fldcw (%esp)
+        0xdd, 0xd8,                         // fstp %st(0)
+        0xd9, 0xee,                         // fldz
+        0xd9, 0xe8,                         // fld1
+        0xde, 0xf1,                         // fdivp
+        0x9b,                               // fwait
+        0xdb, 0xe2,                         // fnclex
+    };
+    constexpr U32 STACK_CHECK_FWAIT_OFFSET = 0x1b;
+    constexpr U32 DIV_ZERO_FWAIT_OFFSET = 0x19;
+    constexpr U32 STACK_CHECK_STATUS = 0x0041;
+    constexpr U32 DIV_ZERO_STATUS = 0x0004;
+
+    const U8* bytes = stackCheck ? stackCheckCode : divZeroCode;
+    size_t count = stackCheck ? sizeof(stackCheckCode) : sizeof(divZeroCode);
+    U32 expectedEip = stackCheck ? STACK_CHECK_FWAIT_OFFSET : DIV_ZERO_FWAIT_OFFSET;
+    U32 expectedStatusBits = stackCheck ? STACK_CHECK_STATUS : DIV_ZERO_STATUS;
+    U32 expectedCode = stackCheck ? K_FPE_FLTINV : K_FPE_FLTDIV;
+    const char* name = stackCheck ? "stack-check" : "divide-by-zero";
+
+    newInstruction(0);
+    cpu->big = true;
+    cpu->fpu.FINIT();
+
+    KSigAction& action = testContext().process->sigActions[K_SIGFPE];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + expectedEip + 1;
+    action.flags = 0;
+
+    emitBytes(bytes, count);
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGFPE) {
+        failed("x87 %s fwait did not raise SIGFPE", name);
+        action.reset();
+        return;
+    }
+    if (action.sigInfo[2] != expectedCode) {
+        failed("x87 %s SIGFPE code", name);
+    }
+    if (action.sigInfo[4] != 16) {
+        failed("x87 %s trap number", name);
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 16) {
+        failed("x87 %s context trap number", name);
+    }
+    if (memory->readd(context + 0x4c) != expectedEip) {
+        failed("x87 %s context eip", name);
+    }
+    U32 fpregs = memory->readd(context + 0x60);
+    if (fpregs != context + 0x70) {
+        failed("x87 %s context fpregs pointer", name);
+        action.reset();
+        return;
+    }
+    if (memory->readd(fpregs + 0x0c) != expectedEip) {
+        failed("x87 %s fpu error offset", name);
+    }
+    if ((memory->readd(fpregs + 0x04) & expectedStatusBits) != expectedStatusBits) {
+        failed("x87 %s context status word", name);
+    }
+
+    action.reset();
+}
+
+void runX87FwaitWithoutUnmaskedException(bool maskedException) {
+    static const U8 code[] = {
+        0x9b,                               // fwait
+        0xb8, 0x78, 0x56, 0x34, 0x12,       // mov $0x12345678,%eax
+    };
+
+    newInstruction(0);
+    cpu->big = true;
+    cpu->fpu.FINIT();
+#ifdef BOXEDWINE_JIT
+    normalWaitCallCount = 0;
+#endif
+    if (maskedException) {
+        cpu->fpu.sw |= FPU_SW_ZE;
+        cpu->fpu.sw &= ~FPU_SW_ES;
+    }
+
+    emitBytes(code, sizeof(code));
+    runTestCPU();
+
+    const char* caseName = maskedException ? "masked divide-by-zero" : "no-exception";
+    if (maskedException && !(cpu->fpu.sw & FPU_SW_ZE)) {
+        failed("x87 %s fwait did not leave ZE set", caseName);
+    }
+    if (maskedException && (cpu->fpu.sw & FPU_SW_ES)) {
+        failed("x87 %s fwait unexpectedly left ES set", caseName);
+    }
+#ifdef BOXEDWINE_JIT
+    if (normalWaitCallCount != 0) {
+        failed("x87 %s fwait entered normal_wait", caseName);
+    }
+#endif
+    if (cpu->reg[0].u32 != 0x12345678) {
+        failed("x87 %s fwait did not continue", caseName);
+    }
+}
+
+void runHardwareBreakpointTrap() {
+    constexpr U32 HANDLER_OFFSET = 1;
+
+    newInstruction(0);
+    cpu->big = true;
+    clearDebugRegisters();
+    KSigAction& action = testContext().process->sigActions[K_SIGTRAP];
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    action.flags = 0;
+    testContext().thread->debugRegs[0] = TEST_CODE_ADDRESS;
+    testContext().thread->debugRegs[7] = 3;
+    testContext().thread->updateDebugTrapActive();
+
+    emitByte(0x90); // nop, should not execute before the #DB
+    runTestCPU();
+
+    if (action.sigInfo[0] != K_SIGTRAP) {
+        failed("hardware breakpoint did not raise SIGTRAP");
+        action.reset();
+        clearDebugRegisters();
+        return;
+    }
+    if (action.sigInfo[2] != 4) {
+        failed("hardware breakpoint SIGTRAP code");
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 1) {
+        failed("hardware breakpoint context trap number");
+    }
+    if (memory->readd(context + 0x4c) != 0) {
+        failed("hardware breakpoint context eip");
+    }
+    if ((testContext().thread->debugRegs[6] & 0xf) != 1) {
+        failed("hardware breakpoint Dr6 B0");
+    }
+    if (testContext().thread->debugRegs[6] & 0x4000) {
+        failed("hardware breakpoint Dr6 BS");
+    }
+
+    action.reset();
+    clearDebugRegisters();
+}
+
+void runHardwareBreakpointIgnoresNonExecutableAddress() {
+    newInstruction(0);
+    cpu->big = true;
+    clearDebugRegisters();
+
+    U32 oldEip = cpu->eip.u32;
+    U32 oldCsAddress = cpu->seg[CS].address;
+    U32 oldCsValue = cpu->seg[CS].value;
+    KSigAction& action = testContext().process->sigActions[K_SIGTRAP];
+    action.reset();
+
+    cpu->eip.u32 = 0;
+    cpu->seg[CS].address = 0;
+    cpu->seg[CS].value = 0xf;
+    testContext().thread->debugRegs[1] = 0;
+    testContext().thread->debugRegs[7] = 1u << 2;
+    testContext().thread->updateDebugTrapActive();
+
+    if (testContext().thread->debugTrapBeforeInstruction()) {
+        failed("hardware breakpoint fired on non-executable address");
+    }
+    if (action.sigInfo[0] == K_SIGTRAP) {
+        failed("hardware breakpoint populated SIGTRAP on non-executable address");
+    }
+
+    cpu->eip.u32 = oldEip;
+    cpu->seg[CS].address = oldCsAddress;
+    cpu->seg[CS].value = oldCsValue;
+    action.reset();
+    clearDebugRegisters();
+}
+
+void runDataHardwareBreakpointTrap() {
+    constexpr U32 DATA_OFFSET = 0x80;
+    constexpr U32 DATA_ADDRESS = TEST_HEAP_ADDRESS + DATA_OFFSET;
+    constexpr U32 HANDLER_OFFSET = 5;
+    constexpr U32 VALUE = 0x12345678;
+
+    newInstruction(0);
+    cpu->big = true;
+    clearDebugRegisters();
+    cpu->reg[0].u32 = VALUE;
+    memory->writed(DATA_ADDRESS, 0);
+
+    KSigAction& action = testContext().process->sigActions[K_SIGTRAP];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + HANDLER_OFFSET;
+    action.flags = 0;
+
+    emitByte(0xa3); // mov moffs32,eax
+    emitDword(DATA_OFFSET);
+
+    testContext().thread->debugRegs[0] = DATA_ADDRESS;
+    testContext().thread->debugRegs[7] = 3 | (1u << 16) | (3u << 18);
+    testContext().thread->updateDebugTrapActive();
+
+    runTestCPU();
+
+    if (memory->readd(DATA_ADDRESS) != VALUE) {
+        failed("data hardware breakpoint did not complete write");
+    }
+    if (action.sigInfo[0] != K_SIGTRAP) {
+        failed("data hardware breakpoint did not raise SIGTRAP");
+        action.reset();
+        clearDebugRegisters();
+        return;
+    }
+    if (action.sigInfo[2] != 4) {
+        failed("data hardware breakpoint SIGTRAP code");
+    }
+
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != 1) {
+        failed("data hardware breakpoint context trap number");
+    }
+    if (memory->readd(context + 0x4c) != HANDLER_OFFSET) {
+        failed("data hardware breakpoint context eip");
+    }
+    if ((testContext().thread->debugRegs[6] & 0xf) != 1) {
+        failed("data hardware breakpoint Dr6 B0");
+    }
+    if (testContext().thread->debugRegs[6] & 0x4000) {
+        failed("data hardware breakpoint Dr6 BS");
+    }
+    if (!testContext().thread->inSignal) {
+        failed("data hardware breakpoint did not enter SIGTRAP handler");
+    }
+    if (testContext().thread->isDebugTrapActive()) {
+        failed("data hardware breakpoint stayed active inside SIGTRAP handler");
+    }
+
+    U32 returnAddress = cpu->pop32();
+    if (returnAddress != SIG_RETURN_ADDRESS) {
+        failed("data hardware breakpoint signal return address");
+    } else {
+        onExitSignal(cpu, nullptr);
+    }
+
+    action.reset();
+    clearDebugRegisters();
+}
+
 } // namespace
 
 void testPushR16_0x050() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         runPushRegCase(reg, 16, "push r16");
     }
 }
 
 void testPushR32_0x250() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         runPushRegCase(reg, 32, "push r32");
     }
 }
 
 void testPopR16_0x058() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         runPopRegCase(reg, 16, "pop r16");
     }
 }
 
 void testPopR32_0x258() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         runPopRegCase(reg, 32, "pop r32");
     }
 }
@@ -796,6 +2013,9 @@ void testPushIb32_0x26a() {
 
 void testPopE16_0x08f() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         if (reg != R_SP) {
             runPopGroupRegCase(reg, 16, "pop e16 reg");
         }
@@ -805,6 +2025,9 @@ void testPopE16_0x08f() {
 
 void testPopE32_0x28f() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         if (reg != R_SP) {
             runPopGroupRegCase(reg, 32, "pop e32 reg");
         }
@@ -821,8 +2044,118 @@ void testPushF32_0x29c() {
     runPushF(32, "pushfd");
 }
 
+void testCliRaisesProtectionFault() {
+    runCliProtectionFault();
+}
+
+void testPrefixedCliRaisesProtectionFault() {
+    runPrefixedCliRaisesProtectionFault();
+}
+
+void testOverlongPrefixedCliDoesNotPoisonCodeCache() {
+    runOverlongPrefixedCliDoesNotPoisonCodeCache();
+}
+
+void testInt2dRaisesInterruptProtectionFault() {
+    runInt2dRaisesInterruptProtectionFault();
+}
+
+void testInt3ImmediateRaisesBreakpoint() {
+    runInt3ImmediateRaisesBreakpoint();
+}
+
+void testPortIoRaisesProtectionFault() {
+    runPortIoRaisesProtectionFault();
+}
+
+void testHltRaisesProtectionFault() {
+    runHltRaisesProtectionFault();
+}
+
+void testInvalidInterruptRaisesProtectionFault() {
+    runInvalidInterruptRaisesProtectionFault();
+}
+
+void testControlRegisterAccessRaisesProtectionFault() {
+    runControlRegisterAccessRaisesProtectionFault();
+}
+
+void testNullSegmentMoffsRaisesProtectionFault() {
+    runNullSegmentMoffsRaisesProtectionFault();
+}
+
+void testPopSsFromCodeSelectorRaisesProtectionFault() {
+    runPopSsFromCodeSelectorRaisesProtectionFault();
+}
+
+void testInstructionFetchFaultSetsExecuteBit() {
+    runInstructionFetchFaultSetsExecuteBit();
+}
+
+void testSingleStepRaisesTrap() {
+    runSingleStepTrap();
+}
+
+void testSingleStepRaisesTrapAfterRet() {
+    runSingleStepTrapAfterRet();
+}
+
+void testIcebpRaisesSingleStepTrap() {
+    runIcebpRaisesSingleStepTrap();
+}
+
+void testDivpsRaisesSimdException() {
+    runDivpsRaisesSimdException(false);
+    runDivpsRaisesSimdException(true);
+    runDivpsDoesNotRaiseDivideByZeroForNonFiniteDividend();
+    runDivpsInfInfRaisesInvalidOperation();
+}
+
+void testDivssRaisesSimdException() {
+    runDivssRaisesSimdException(false, false);
+    runDivssRaisesSimdException(true, false);
+    runDivssRaisesSimdException(false, true);
+    runDivssRaisesSimdException(true, true);
+    runDivssDoesNotRaiseDivideByZeroForNonFiniteDividend(false);
+    runDivssDoesNotRaiseDivideByZeroForNonFiniteDividend(true);
+}
+
+void testSseDivFastPathDecision() {
+    runSseDivFastPathDecision();
+}
+
+void testX87DivFastPathDecision() {
+    runX87DivFastPathDecision();
+}
+
+void testX87ExceptionSummaryState() {
+    runX87ExceptionSummaryState();
+}
+
+void testX87FwaitRaisesPendingException() {
+    runX87FwaitRaisesPendingException(true);
+    runX87FwaitRaisesPendingException(false);
+    runX87FwaitWithoutUnmaskedException(false);
+    runX87FwaitWithoutUnmaskedException(true);
+}
+
+void testHardwareBreakpointRaisesTrap() {
+    runHardwareBreakpointTrap();
+}
+
+void testHardwareBreakpointIgnoresNonExecutableAddress() {
+    runHardwareBreakpointIgnoresNonExecutableAddress();
+}
+
+void testDataHardwareBreakpointRaisesTrap() {
+    runDataHardwareBreakpointTrap();
+}
+
 void testPushE16_0x0ff() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         runPushGroupRegCase(reg, 16, "push e16 reg");
     }
     runPushMemoryCases(16, "push e16 memory");
@@ -830,6 +2163,9 @@ void testPushE16_0x0ff() {
 
 void testPushE32_0x2ff() {
     for (int reg = 0; reg < 8; ++reg) {
+        if (!testRunRegister(reg)) {
+            continue;
+        }
         runPushGroupRegCase(reg, 32, "push e32 reg");
     }
     runPushMemoryCases(32, "push e32 memory");

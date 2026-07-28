@@ -27,6 +27,27 @@ class FsZipNode;
 
 S32 translateErr(U32 e);
 
+class FsFileNode;
+
+struct FsFileTimeOverride {
+    bool active = false;
+    U64 seconds = 0;
+    U32 nanos = 0;
+};
+
+struct FsHardLinkState {
+    FsHardLinkState(U32 id, BString nativePath, U32 linkCount, U32 modeOverride);
+
+    U32 id;
+    BString nativePath;
+    U32 linkCount;
+    U32 modeOverride;
+    FsFileTimeOverride accessTimeOverride;
+    FsFileTimeOverride modifiedTimeOverride;
+    std::shared_ptr<FsFileIdentity> fileIdentity;
+    std::vector<std::weak_ptr<FsFileNode> > nodes;
+};
+
 class FsFileNode : public FsNode {
 public:
     static void getTmpPath(BString& nativePath, BString& localPath);
@@ -39,14 +60,31 @@ public:
     U32 rename(BString path) override; //return 0 if success, else errno
     bool remove() override;
     U64 lastModified() override;
+    U32 lastModifiedNano() override;
+    U64 lastAccessed() override;
+    U32 lastAccessedNano() override;
     U64 length() override;
     FsOpenNode* open(U32 flags) override;
     U32 getType(bool checkForLink) override;
     U32 getMode() override;
+    U32 setMode(U32 mode) override;
     U32 removeDir() override;
     BString getLink() override;
+    U32 getId() override;
+    U32 getHardLinkCount() override;
+    BString getNativePathForData() override;
 
     U32 setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano) override;
+
+    void setHardLinkState(const std::shared_ptr<FsHardLinkState>& state);
+    std::shared_ptr<FsHardLinkState> getHardLinkState();
+    bool isHardLinked() const;
+    U32 convertToHardLinkBacking(const std::shared_ptr<FsHardLinkState>& state);
+
+    static std::shared_ptr<FsHardLinkState> createHardLinkState(U32 id, const BString& nativePath, U32 linkCount, U32 modeOverride);
+    static std::shared_ptr<FsHardLinkState> readHardLinkMetadata(const BString& metadataNativePath);
+    static bool writeHardLinkMetadata(const BString& visibleNativePath, const std::shared_ptr<FsHardLinkState>& state);
+    static void renameXAttrSidecars(const BString& oldNativePath, const BString& newNativePath);
 
     static std::set<BString> nonExecFileFullPaths;
 private:
@@ -61,7 +99,12 @@ private:
     std::shared_ptr<FsZipNode> zipNode;
 #endif    
     friend class Fs;
+    void clearModifiedTimeOverride();
     bool isRootPath;
+    U32 modeOverride;
+    std::shared_ptr<FsHardLinkState> hardLinkState;
+    FsFileTimeOverride accessTimeOverride;
+    FsFileTimeOverride modifiedTimeOverride;
 };
 
 #endif

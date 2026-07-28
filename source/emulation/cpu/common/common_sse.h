@@ -19,6 +19,8 @@
 #ifndef __COMMON_SSE_H__
 #define __COMMON_SSE_H__
 
+bool common_sse_div_control_requires_slow_path(U32 mxcsr);
+
 #undef SSE_0
 #define SSE_0(name) void common_##name(CPU* cpu);
 #undef SSE_RR

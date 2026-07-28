@@ -32,8 +32,11 @@ S64 FsMemOpenNode::length() {
 }
 
 bool FsMemOpenNode::setLength(S64 length) {
+    if (length < 0 || (U64)length > (U64)std::numeric_limits<U32>::max()) {
+        return false;
+    }
     this->lastModifiedTime = KSystem::getSystemTimeAsMicroSeconds() / 1000l;
-    this->buffer.resize((U32)length, 0);
+    this->buffer.resize((size_t)length, 0);
     return true;
 }
 
@@ -93,22 +96,33 @@ U32 FsMemOpenNode::readNative(U8* buffer, U32 len) {
 }
 
 U32 FsMemOpenNode::writeNative(U8* buffer, U32 len) {
-    if (len==0)
+    if (len == 0) {
         return 0;
-    this->lastModifiedTime = KSystem::getSystemTimeAsMicroSeconds() / 1000l;
-    if (this->pos < (S64)this->buffer.size()) {
-        U32 todo = len;
-        if (this->buffer.size()-(U64)this->pos < len) {
-            todo = (U32)(this->buffer.size()-this->pos);
+    }
+    if (this->pos < 0) {
+        return -K_EINVAL;
+    }
+    const U64 position = (U64)this->pos;
+    if (position > std::numeric_limits<U32>::max() ||
+        len > std::numeric_limits<U32>::max() - position) {
+        return -K_EFBIG;
+    }
+    const U64 end = position + len;
+    if (end > this->buffer.max_size()) {
+        return -K_EFBIG;
+    }
+    try {
+        if (end > this->buffer.size()) {
+            this->buffer.resize((size_t)end, 0);
         }
-        len -= todo;
-        memcpy(&this->buffer[(U32)this->pos], buffer, todo);
-        this->pos+=todo;
-        buffer+=todo;
+    } catch (const std::bad_alloc&) {
+        return -K_ENOMEM;
+    } catch (const std::length_error&) {
+        return -K_ENOMEM;
     }
-    if (len) {
-        std::copy(buffer, buffer+len, std::back_inserter(this->buffer));
-    }
+    this->lastModifiedTime = KSystem::getSystemTimeAsMicroSeconds() / 1000l;
+    memcpy(&this->buffer[(size_t)position], buffer, len);
+    this->pos = end;
     return len;
 }
 
