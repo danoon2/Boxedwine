@@ -496,7 +496,7 @@ void JitFPU::dynamic_FICOM_DWORD_INTEGER_Pop(DecodedOp* op) {
 
 void JitFPU::loadFpuRegFromShort(FPURegPtr reg, MemPtr address) {
     RegPtr result = getTmpReg();
-    read(JitWidth::b16, address, result);
+    readHost(JitWidth::b16, address, result);
     movsx(JitWidth::b32, result, JitWidth::b16, result);
     regToFpuReg(reg, std::move(result));
 }

@@ -729,6 +729,9 @@ void KNativeScreenSDL::recreateMainWindow() {
         if (SDL_GetDesktopDisplayMode(0, &dm) != 0) {
             SDL_Log("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
             fullScreen = FULLSCREEN_NOTSET;
+        } else if (dm.w <= 0 || dm.h <= 0) {
+            SDL_Log("SDL_GetDesktopDisplayMode returned an invalid size: %dx%d", dm.w, dm.h);
+            fullScreen = FULLSCREEN_NOTSET;
         } else {
             if (fullScreen == FULLSCREEN_STRETCH) {
                 cx = dm.w;

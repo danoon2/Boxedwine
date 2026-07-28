@@ -14,6 +14,10 @@
 #include "testFPU.h"
 #include "testCPU.h"
 
+#if defined(BOXEDWINE_MEM_CACHE)
+#include "../../emulation/softmmu/kmemory_soft.h"
+#endif
+
 #include <cmath>
 #include <limits>
 
@@ -1387,6 +1391,43 @@ void runFILD16(bool big, S16 value, const char* name) {
     }
 }
 
+#if defined(BOXEDWINE_JIT_ARMV8) && defined(BOXEDWINE_MEM_CACHE)
+void runFILD16DoesNotRetranslateHostAddress(const char* name) {
+    constexpr S16 SOURCE_VALUE = 107;
+    constexpr S16 ALIAS_VALUE = 1840;
+    constexpr U32 OUT = MEM_BASE + 0x510;
+    U32 sourceAddress = addressOf(MEM_BASE);
+
+    begin(false);
+    writeExpected32(0, bitsOf((float)SOURCE_VALUE));
+    fninit();
+    writeI16(MEM_BASE, SOURCE_VALUE);
+
+    KMemoryData* memoryData = getMemData(memory);
+    U8* sourceHostAddress = memoryData->readCache[sourceAddress >> K_PAGE_SHIFT] + sourceAddress;
+    U32 aliasAddress = (U32)(uintptr_t)sourceHostAddress;
+    U32 aliasPage = aliasAddress & ~K_PAGE_MASK;
+    if (aliasPage == (sourceAddress & ~K_PAGE_MASK) ||
+        memory->mmap(testContext().thread, aliasPage, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+            K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0) != aliasPage) {
+        failed("%s could not prepare second-translation alias", name);
+        return;
+    }
+    memory->writew(aliasAddress, (U16)ALIAS_VALUE);
+
+    fild16(MEM_BASE, false);
+    fstTopF32(OUT, false);
+    runTestCPU();
+
+    assertFloatCloseExpected(readF32(OUT), 0, name);
+    DecodedOp* fildOp = memory->getDecodedOp(TEST_CODE_ADDRESS + 2);
+    if (!fildOp || fildOp->exceptionCount != 0) {
+        failed("%s used exception fallback after retranslating a host address", name);
+    }
+    memory->unmap(aliasPage, K_PAGE_SIZE);
+}
+#endif
+
 void runFILD32(bool big, S32 value, const char* name) {
     constexpr U32 OUT = MEM_BASE + 0x620;
 
@@ -1775,6 +1816,11 @@ void runDF(bool big) {
     runFILD16(big, 0, "fild m16int df");
     runFILD16(big, 12345, "fild m16int df");
     runFILD16(big, -10235, "fild m16int df");
+#if defined(BOXEDWINE_JIT_ARMV8) && defined(BOXEDWINE_MEM_CACHE)
+    if (!big) {
+        runFILD16DoesNotRetranslateHostAddress("fild m16int must not retranslate host address df");
+    }
+#endif
     runFILD64(big, 0, "fild m64int df");
     runFILD64(big, 1, "fild m64int df");
     runFILD64(big, -1, "fild m64int df");
