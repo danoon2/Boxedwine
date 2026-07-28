@@ -15,7 +15,6 @@ project/msvc/BoxedWine/zlib/Release/
 project/msvc/BoxedWine/BoxedWine/Test/
 project/msvc/BoxedWine/zlib/Test/
 project/msvc/BoxedWine/Test/
-project/emscripten/Build/
 project/msvc/BoxedWine/BoxedWine/Boxedwine/
 lib/sdl2/VisualC/SDL/Win32/
 lib/sdl2/VisualC/SDL/Debug/
