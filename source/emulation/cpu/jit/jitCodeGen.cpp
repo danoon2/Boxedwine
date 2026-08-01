@@ -1089,8 +1089,21 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
     } EndIf();
 }
 
-void jitRunSingleOp(CPU* cpu) {
-    cpu->runNextSingleOp();
+DYN_PTR_SIZE jitRunSingleOp(CPU* cpu) {
+    if (!cpu->runNextSingleOp() || cpu->yield || cpu->thread->terminating || cpu->debugTrapActive) {
+        return 0;
+    }
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (cpu->jitSignalPending.load(std::memory_order_acquire) || cpu->thread->pendingSignals) {
+        return 0;
+    }
+#endif
+    DecodedOp* nextOp = cpu->nextOp;
+    if (nextOp && nextOp->pfn == cpu->thread->process->startJITOp && nextOp->pfnJitCode) {
+        // Keep using the current startJIT wrapper, like normal JIT block chaining.
+        return (DYN_PTR_SIZE)nextOp->pfnJitCode;
+    }
+    return 0;
 }
 
 #if defined(BOXEDWINE_POSIX) && defined(BOXEDWINE_HOST_EXCEPTIONS)
@@ -1109,7 +1122,11 @@ U8* JitCodeGen::createSignalHandler() {
 U8* JitCodeGen::createEmulateSingleOp() {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
-    callHostFunction((void*)jitRunSingleOp, params);    
+    RegPtr nextJitBlock = getTmpReg();
+    callHostFunctionWithResult(nextJitBlock, (void*)jitRunSingleOp, params);
+    If(DYN_PTR, nextJitBlock); {
+        jmpHost(nextJitBlock);
+    } EndIf();
     blockExit();
 
     return createDynamicExecutableMemory();

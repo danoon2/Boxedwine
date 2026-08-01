@@ -1411,7 +1411,7 @@ static DecodedOp lastOp;
 void OPCALL onLastOp(CPU* cpu, DecodedOp* op) {
 }
 
-void CPU::runNextSingleOp() {
+bool CPU::runNextSingleOp() {
     DecodedOp* op = nullptr;
     try {
         op = getNextOp();
@@ -1429,7 +1429,7 @@ void CPU::runNextSingleOp() {
     }
     try {
         if (this->debugTrapActive && this->startDebugInstruction()) {
-            return;
+            return false;
         }
 #ifdef BOXEDWINE_JIT
         if (op->flags2 & OP_FLAG2_TRACED_STUB) {
@@ -1445,12 +1445,15 @@ void CPU::runNextSingleOp() {
         o.pfn = NormalCPU::getFunctionForOp(op);
         o.pfn(this, &o);
         if (this->debugTrapActive && this->finishDebugInstruction()) {
-            return;
+            return false;
         }
     } catch (...) {
         // motorhead 3dfx will trigger this when pressing enter to start a new game
+        this->nextOp = getNextOp();
+        return false;
     }
     this->nextOp = getNextOp();
+    return true;
 }
 
 #ifdef BOXEDWINE_JIT

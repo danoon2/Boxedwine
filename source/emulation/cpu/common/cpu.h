@@ -372,7 +372,7 @@ public:
     U8 fetchByte(U32* eip) override;
     bool shouldContinue(U32 eip) override;
     DecodedOp** getOpLocation(U32 eip) override;        
-    void runNextSingleOp();
+    bool runNextSingleOp(); // false when exception/debug handling requires returning to the run loop
 
 #ifdef BOXEDWINE_MULTI_THREADED
     U64 nativeHandle = 0;
