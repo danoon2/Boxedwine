@@ -13,11 +13,37 @@ from urllib.parse import parse_qsl, quote
 
 
 DEFAULT_PUBLIC_URL = "https://boxedwine.org/builds/"
+DEFAULT_DEMO_ROOT_ZIP = "boxedwine.2.zip"
+LEGACY_DEMO_ROOT_ZIP = "boxedwine.zip"
 DEMO_RUNNER_SPECS = (
     ("st", "Single Threaded", "single_threaded_dir"),
     ("mt", "Multi Threaded", "multi_threaded_dir"),
     ("st-jit", "Single Threaded JIT", "single_threaded_jit_dir"),
     ("mt-jit", "Multi Threaded JIT", "multi_threaded_jit_dir"),
+)
+WINE_WINDOWS_VERSIONS = frozenset(
+    {
+        "win11",
+        "win10",
+        "win81",
+        "win8",
+        "win2008r2",
+        "win7",
+        "win2008",
+        "vista",
+        "win2003",
+        "winxp64",
+        "winxp",
+        "win2k",
+        "winme",
+        "win98",
+        "win95",
+        "nt40",
+        "nt351",
+        "win31",
+        "win30",
+        "win20",
+    }
 )
 
 
@@ -163,6 +189,47 @@ def normalize_demo_url_params(params):
             if key
         ]
     return []
+
+
+def apply_demo_windows_version(program, url_params, windows_version):
+    if not windows_version:
+        return program, url_params
+
+    windows_version = str(windows_version).lower()
+    if windows_version not in WINE_WINDOWS_VERSIONS:
+        raise ValueError(f"Invalid Wine Windows version: {windows_version}")
+    if not program:
+        raise ValueError("A demo with windowsVersion must specify an executable")
+
+    original_args = []
+    remaining_params = []
+    for key, value in url_params:
+        if key == "args":
+            original_args.append(value)
+        else:
+            remaining_params.append((key, value))
+
+    app_name = Path(program.replace("\\", "/")).name
+    command = (
+        f'/c reg add "HKCU\\Software\\Wine\\AppDefaults\\{app_name}" '
+        f"/v Version /t REG_SZ /d {windows_version} /f "
+        f'&& "{program}"'
+    )
+    if original_args:
+        command += " " + " ".join(original_args)
+
+    remaining_params.append(("args", command))
+    return "cmd", remaining_params
+
+
+def normalize_demo_root(root, default_root):
+    if not root:
+        return default_root
+
+    root = str(root)
+    if Path(root).name != root or not root.lower().endswith(".zip"):
+        raise ValueError(f"Invalid demo root ZIP name: {root}")
+    return root
 
 
 def title_from_zip(zip_path):
@@ -947,24 +1014,34 @@ def render_demo_page(title, subtitle, intro, back_href, content):
 
 def demo_launch_url(branch_slug, build_number, mode, demo):
     params = [
-        ("root", "boxedwine.zip"),
+        ("root", demo.get("root", DEFAULT_DEMO_ROOT_ZIP)),
         (demo.get("zipParam", "app"), demo["zip"]),
     ]
-    if demo["program"]:
-        params.append(("p", demo["program"]))
-    params.extend(demo.get("urlParams", []))
+    launch_program, url_params = apply_demo_windows_version(
+        demo["program"],
+        demo.get("urlParams", []),
+        demo.get("windowsVersion"),
+    )
+    if launch_program:
+        params.append(("p", launch_program))
+    params.extend(url_params)
     query = "&".join(f"{quote(key, safe='')}={quote(value, safe='/:._-')}" for key, value in params)
     return f"build/{quote(branch_slug)}/{quote(str(build_number))}/{mode}/boxedwine.html?{query}"
 
 
 def build_demo_launch_url(mode, demo):
     params = [
-        ("root", "boxedwine.zip"),
+        ("root", demo.get("root", DEFAULT_DEMO_ROOT_ZIP)),
         (demo.get("zipParam", "app"), demo["zip"]),
     ]
-    if demo["program"]:
-        params.append(("p", demo["program"]))
-    params.extend(demo.get("urlParams", []))
+    launch_program, url_params = apply_demo_windows_version(
+        demo["program"],
+        demo.get("urlParams", []),
+        demo.get("windowsVersion"),
+    )
+    if launch_program:
+        params.append(("p", launch_program))
+    params.extend(url_params)
     query = "&".join(f"{quote(key, safe='')}={quote(value, safe='/:._-')}" for key, value in params)
     return f"{mode}/boxedwine.html?{query}"
 
@@ -995,11 +1072,26 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, runne
             old_zip.unlink()
 
     manifest = load_demo_manifest(demo_source)
+    available_zip_names = {path.name for path in demo_source.glob("*.zip")}
+    default_root = (
+        DEFAULT_DEMO_ROOT_ZIP
+        if DEFAULT_DEMO_ROOT_ZIP in available_zip_names
+        else LEGACY_DEMO_ROOT_ZIP
+    )
+    root_zip_names = {
+        DEFAULT_DEMO_ROOT_ZIP.lower(),
+        LEGACY_DEMO_ROOT_ZIP.lower(),
+    }
+    for manifest_entry in manifest.values():
+        root_name = manifest_entry.get("root", manifest_entry.get("rootZip"))
+        if root_name:
+            root_zip_names.add(normalize_demo_root(root_name, default_root).lower())
+
     demos = []
     for zip_path in sorted(demo_source.glob("*.zip"), key=lambda path: path.name.lower()):
         if not same_apps_dir:
             shutil.copy2(zip_path, apps_dir / zip_path.name)
-        if zip_path.name.lower() == "boxedwine.zip":
+        if zip_path.name.lower() in root_zip_names:
             continue
         manifest_entry = manifest.get(zip_path.name, {})
         program = manifest_entry.get("exe") or manifest_entry.get("program") or find_demo_program(zip_path)
@@ -1010,7 +1102,14 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, runne
                 "title": manifest_entry.get("title") or title_from_zip(zip_path),
                 "description": manifest_entry.get("description", ""),
                 "program": normalize_demo_program(program),
+                "root": normalize_demo_root(
+                    manifest_entry.get("root", manifest_entry.get("rootZip")),
+                    default_root,
+                ),
                 "zipParam": "overlay" if is_overlay_demo(zip_path) else "app",
+                "windowsVersion": manifest_entry.get(
+                    "windowsVersion", manifest_entry.get("winVersion")
+                ),
                 "urlParams": normalize_demo_url_params(
                     manifest_entry.get("urlParams", manifest_entry.get("extraParams"))
                 ),
@@ -1027,9 +1126,12 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, runne
         shutil.rmtree(build_dir)
     build_dir.mkdir(parents=True, exist_ok=True)
 
-    boxedwine_zip = apps_dir / "boxedwine.zip"
-    if boxedwine_zip.exists():
-        link_or_copy(boxedwine_zip, build_dir / "boxedwine.zip")
+    demo_root_zips = sorted({demo["root"] for demo in demos}, key=str.lower)
+    for root_zip_name in demo_root_zips:
+        root_zip = apps_dir / root_zip_name
+        if not root_zip.exists():
+            raise FileNotFoundError(f"Demo root ZIP not found: {root_zip}")
+        link_or_copy(root_zip, build_dir / root_zip_name)
 
     for runner in runners:
         copy_tree_contents(runner["source"], build_dir / runner["mode"], skip_zip=True)
@@ -1039,9 +1141,10 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, runne
         image_path = images_dir / f"{demo['stem']}.png"
         if image_path.exists():
             link_or_copy(image_path, build_images_dir / image_path.name)
-    if boxedwine_zip.exists():
+    for root_zip_name in demo_root_zips:
+        root_zip = apps_dir / root_zip_name
         for runner in runners:
-            link_or_copy(boxedwine_zip, build_dir / runner["mode"] / "boxedwine.zip")
+            link_or_copy(root_zip, build_dir / runner["mode"] / root_zip_name)
     for demo in demos:
         app_zip = apps_dir / demo["zip"]
         if app_zip.exists():

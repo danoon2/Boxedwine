@@ -10,7 +10,8 @@ LOCAL_PUBLIC_URL="${BUILD_SITE_PUBLIC_URL:-}"
 TITLE="${BUILD_SITE_TITLE:-Boxedwine Local Builds}"
 EMSDK_DIR="${EMSDK_DIR:-/home/james/emsdk}"
 BUILDFILES_DIR="${BUILDFILES_DIR:-/var/www/buildfiles}"
-BOXEDWINE_ZIP_URL="http://boxedwine.org/v2/demos/boxedwine.1.zip"
+BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.2.zip}"
+BOXEDWINE_GDI_ZIP_URL="${BOXEDWINE_GDI_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.gdi.2.zip}"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date -u +%Y%m%d%H%M%S)}"
@@ -226,27 +227,34 @@ for href in re.findall(r'href="([^"]+)"', text):
 for zip_name in sorted(zips):
     print(zip_name)
 PY
-        if [ "$zip_name" = "boxedwine.zip" ]; then
-            continue
-        fi
-        wget -N -P "$apps_dir" "$apps_url/$zip_name"
+        case "$zip_name" in
+            boxedwine*.zip)
+                continue
+                ;;
+            *)
+                wget -N -P "$apps_dir" "$apps_url/$zip_name"
+                ;;
+        esac
     done
 
     wget -N -P "$apps_dir" "$apps_url/demos.json" || true
 }
 
-ensure_boxedwine_zip() {
+ensure_boxedwine_zips() {
     local apps_dir="$1"
 
-    echo "Downloading boxedwine.zip from $BOXEDWINE_ZIP_URL"
+    echo "Downloading boxedwine.2.zip from $BOXEDWINE_ZIP_URL"
+    echo "Downloading boxedwine.gdi.2.zip from $BOXEDWINE_GDI_ZIP_URL"
     if [ "$DRY_RUN" = "1" ]; then
         echo "+ mkdir -p $apps_dir"
-        echo "+ wget -O $apps_dir/boxedwine.zip $BOXEDWINE_ZIP_URL"
+        echo "+ wget -O $apps_dir/boxedwine.2.zip $BOXEDWINE_ZIP_URL"
+        echo "+ wget -O $apps_dir/boxedwine.gdi.2.zip $BOXEDWINE_GDI_ZIP_URL"
         return
     fi
 
     mkdir -p "$apps_dir"
-    wget -O "$apps_dir/boxedwine.zip" "$BOXEDWINE_ZIP_URL"
+    wget -O "$apps_dir/boxedwine.2.zip" "$BOXEDWINE_ZIP_URL"
+    wget -O "$apps_dir/boxedwine.gdi.2.zip" "$BOXEDWINE_GDI_ZIP_URL"
 }
 
 copy_web_build() {
@@ -329,7 +337,7 @@ build_emscripten() {
 }
 
 generate_site() {
-    ensure_boxedwine_zip "$DEMO_SOURCE"
+    ensure_boxedwine_zips "$DEMO_SOURCE"
 
     if [ "$DRY_RUN" != "1" ]; then
         if [ ! -d "$DEMO_SOURCE" ]; then

@@ -8,6 +8,7 @@
     "c3.zip": {
       "title": "Caesar III Demo (1998 DirectDraw)",
       "exe": "c:/c3.bat",
+      "root": "boxedwine.gdi.2.zip",
       "description": "City-building strategy demo running from a Wine drive overlay."
     },
     "drowned.zip": {
@@ -18,6 +19,7 @@
     "mdkperf.zip": {
       "title": "MDK Performance Test (1999 DirectDraw)",
       "exe": "PERF_W95.EXE",
+      "root": "boxedwine.gdi.2.zip",
       "urlParams": {
         "bpp": "8",
         "resolution": "640x480"
@@ -37,11 +39,13 @@
     "TombRaider3.zip": {
       "title": "Tomb Raider III Demo (1998 D3D 6)",
       "exe": "tomb3.exe",
+      "windowsVersion": "win98",
       "description": "Classic 3D action-adventure demo."
     },
     "videodd1.zip": {
       "title": "VideoDD Benchmark (2003 DirectDraw)",
       "exe": "onedd.exe",
+      "root": "boxedwine.gdi.2.zip",
       "description": "Benchmark measures graphics speeds via DirectDraw functions."
     }
   }
