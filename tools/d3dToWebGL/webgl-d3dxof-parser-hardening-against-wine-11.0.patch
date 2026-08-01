@@ -1,0 +1,161 @@
+diff --git a/dlls/d3dxof/d3dxof.c b/dlls/d3dxof/d3dxof.c
+index 250af38..73c6ca7 100644
+--- a/dlls/d3dxof/d3dxof.c
++++ b/dlls/d3dxof/d3dxof.c
+@@ -1007,22 +1007,23 @@ static HRESULT WINAPI IDirectXFileEnumObjectImpl_GetNextDataObject(IDirectXFileE
+ 
+   /* Check if there are templates defined before the object */
+   if (!parse_templates(&This->buf, TRUE))
++  {
+     return DXFILEERR_PARSEERROR;
++  }
+ 
+   if (!This->buf.rem_bytes)
++  {
+     return DXFILEERR_NOMOREOBJECTS;
+-
++  }
+   hr = IDirectXFileDataImpl_Create(&object);
+   if (FAILED(hr))
+     return hr;
+-
+   object->pobj = HeapAlloc(GetProcessHeap(), 0, sizeof(xobject)*MAX_SUBOBJECTS);
+   if (!object->pobj)
+   {
+     hr = DXFILEERR_BADALLOC;
+     goto error;
+   }
+-
+   object->pstrings = HeapAlloc(GetProcessHeap(), 0, MAX_STRINGS_BUFFER);
+   if (!object->pstrings)
+   {
+@@ -1044,7 +1045,6 @@ static HRESULT WINAPI IDirectXFileEnumObjectImpl_GetNextDataObject(IDirectXFileE
+   This->buf.pxo = This->xobjects[This->nb_xobjects] = This->buf.pxo_tab = object->pobj;
+   This->buf.pxo->pdata = NULL;
+   This->buf.pxo->nb_subobjects = 1;
+-
+   if (!parse_object(&This->buf))
+   {
+     WARN("Object is not correct\n");
+diff --git a/dlls/d3dxof/d3dxof_private.h b/dlls/d3dxof/d3dxof_private.h
+index 9f208df..8aa733d 100644
+--- a/dlls/d3dxof/d3dxof_private.h
++++ b/dlls/d3dxof/d3dxof_private.h
+@@ -36,7 +36,7 @@
+ #define MAX_CHILDREN 200
+ #define MAX_TEMPLATES 200
+ #define MAX_OBJECTS 500
+-#define MAX_SUBOBJECTS 2000
++#define MAX_SUBOBJECTS 512
+ #define MAX_STRINGS_BUFFER 10000
+ 
+ typedef struct {
+diff --git a/dlls/d3dxof/parsing.c b/dlls/d3dxof/parsing.c
+index 149e237..e03911b 100644
+--- a/dlls/d3dxof/parsing.c
++++ b/dlls/d3dxof/parsing.c
+@@ -169,7 +169,6 @@ HRESULT parse_header(parse_buffer * buf, BYTE ** decomp_buffer_ptr)
+    *  8-11 -> Format Type (text or binary, decompressed or compressed)
+    * 12-15 -> Float Size (32 or 64 bits) */
+   DWORD header[4];
+-
+   if (!read_bytes(buf, header, sizeof(header)))
+     return DXFILEERR_BADFILETYPE;
+ 
+@@ -908,7 +907,8 @@ static BOOL parse_template_option_info(parse_buffer * buf)
+     {
+       if (get_TOKEN(buf) != TOKEN_NAME)
+         return FALSE;
+-      strcpy(cur_template->children[cur_template->nb_children], (char*)buf->value);
++      lstrcpynA(cur_template->children[cur_template->nb_children], (char *)buf->value,
++              ARRAY_SIZE(cur_template->children[cur_template->nb_children]));
+       if (check_TOKEN(buf) == TOKEN_GUID)
+         get_TOKEN(buf);
+       cur_template->nb_children++;
+@@ -970,7 +970,7 @@ static BOOL parse_template_members_list(parse_buffer * buf)
+ 
+     if (get_TOKEN(buf) != TOKEN_NAME)
+       return FALSE;
+-    strcpy(cur_member->name, (char*)buf->value);
++    lstrcpynA(cur_member->name, (char *)buf->value, ARRAY_SIZE(cur_member->name));
+ 
+     if (array)
+     {
+@@ -1059,7 +1059,8 @@ static BOOL parse_template(parse_buffer * buf)
+     return FALSE;
+   if (get_TOKEN(buf) != TOKEN_NAME)
+     return FALSE;
+-  strcpy(buf->pdxf->xtemplates[buf->pdxf->nb_xtemplates].name, (char*)buf->value);
++  lstrcpynA(buf->pdxf->xtemplates[buf->pdxf->nb_xtemplates].name, (char *)buf->value,
++          ARRAY_SIZE(buf->pdxf->xtemplates[buf->pdxf->nb_xtemplates].name));
+   if (get_TOKEN(buf) != TOKEN_OBRACE)
+     return FALSE;
+   if (get_TOKEN(buf) != TOKEN_GUID)
+@@ -1079,10 +1080,13 @@ static BOOL parse_template(parse_buffer * buf)
+ 
+ BOOL parse_templates(parse_buffer * buf, BOOL templates_only)
+ {
++  ULONG parsed = 0;
+   while (check_TOKEN(buf) != TOKEN_NONE)
+   {
+     if (templates_only && (check_TOKEN(buf) != TOKEN_TEMPLATE))
++    {
+       return TRUE;
++    }
+     if (!parse_template(buf))
+     {
+       WARN("Template is not correct\n");
+@@ -1094,6 +1098,7 @@ BOOL parse_templates(parse_buffer * buf, BOOL templates_only)
+       if (TRACE_ON(d3dxof_parsing))
+         dump_template(buf->pdxf->xtemplates, &buf->pdxf->xtemplates[buf->pdxf->nb_xtemplates - 1]);
+     }
++    ++parsed;
+   }
+   return TRUE;
+ }
+@@ -1361,6 +1366,7 @@ _exit:
+ BOOL parse_object(parse_buffer * buf)
+ {
+   ULONG i;
++  const char *template_name;
+ 
+   buf->pxo->pos_data = buf->cur_pos_data;
+   buf->pxo->ptarget = NULL;
+@@ -1369,11 +1375,12 @@ BOOL parse_object(parse_buffer * buf)
+ 
+   if (get_TOKEN(buf) != TOKEN_NAME)
+     return FALSE;
++  template_name = (const char *)buf->value;
+ 
+   /* To do template lookup */
+   for (i = 0; i < buf->pdxf->nb_xtemplates; i++)
+   {
+-    if (!stricmp((char*)buf->value, buf->pdxf->xtemplates[i].name))
++    if (!stricmp(template_name, buf->pdxf->xtemplates[i].name))
+     {
+       buf->pxt[buf->level] = &buf->pdxf->xtemplates[i];
+       memcpy(&buf->pxo->type, &buf->pdxf->xtemplates[i].class_id, 16);
+@@ -1382,14 +1389,14 @@ BOOL parse_object(parse_buffer * buf)
+   }
+   if (i == buf->pdxf->nb_xtemplates)
+   {
+-    ERR("Unknown template %s\n", (char*)buf->value);
++    ERR("Unknown template %s\n", template_name);
+     return FALSE;
+   }
+ 
+   if (check_TOKEN(buf) == TOKEN_NAME)
+   {
+     get_TOKEN(buf);
+-    strcpy(buf->pxo->name, (char*)buf->value);
++    lstrcpynA(buf->pxo->name, (char *)buf->value, ARRAY_SIZE(buf->pxo->name));
+   }
+   else
+     buf->pxo->name[0] = 0;
+@@ -1411,6 +1418,5 @@ BOOL parse_object(parse_buffer * buf)
+ 
+   /* For seeking to a possibly eof to avoid parsing another object next time */
+   check_TOKEN(buf);
+-
+   return TRUE;
+ }

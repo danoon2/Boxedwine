@@ -1,0 +1,2332 @@
+diff --git a/dlls/d3dx9_24/d3dx9_24.spec b/dlls/d3dx9_24/d3dx9_24.spec
+index 1c15a45..67fb970 100644
+--- a/dlls/d3dx9_24/d3dx9_24.spec
++++ b/dlls/d3dx9_24/d3dx9_24.spec
+@@ -130,7 +130,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_25/d3dx9_25.spec b/dlls/d3dx9_25/d3dx9_25.spec
+index 6fa19bf..9f65888 100644
+--- a/dlls/d3dx9_25/d3dx9_25.spec
++++ b/dlls/d3dx9_25/d3dx9_25.spec
+@@ -130,7 +130,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_26/d3dx9_26.spec b/dlls/d3dx9_26/d3dx9_26.spec
+index 3c1eadb..a89cacc 100644
+--- a/dlls/d3dx9_26/d3dx9_26.spec
++++ b/dlls/d3dx9_26/d3dx9_26.spec
+@@ -134,7 +134,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_27/d3dx9_27.spec b/dlls/d3dx9_27/d3dx9_27.spec
+index 3c1eadb..a89cacc 100644
+--- a/dlls/d3dx9_27/d3dx9_27.spec
++++ b/dlls/d3dx9_27/d3dx9_27.spec
+@@ -134,7 +134,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_28/d3dx9_28.spec b/dlls/d3dx9_28/d3dx9_28.spec
+index 48c143b..a9c31d5 100644
+--- a/dlls/d3dx9_28/d3dx9_28.spec
++++ b/dlls/d3dx9_28/d3dx9_28.spec
+@@ -134,7 +134,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_29/d3dx9_29.spec b/dlls/d3dx9_29/d3dx9_29.spec
+index 48c143b..a9c31d5 100644
+--- a/dlls/d3dx9_29/d3dx9_29.spec
++++ b/dlls/d3dx9_29/d3dx9_29.spec
+@@ -134,7 +134,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_30/d3dx9_30.spec b/dlls/d3dx9_30/d3dx9_30.spec
+index 48c143b..a9c31d5 100644
+--- a/dlls/d3dx9_30/d3dx9_30.spec
++++ b/dlls/d3dx9_30/d3dx9_30.spec
+@@ -134,7 +134,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_31/d3dx9_31.spec b/dlls/d3dx9_31/d3dx9_31.spec
+index 6bc1471..35114c8 100644
+--- a/dlls/d3dx9_31/d3dx9_31.spec
++++ b/dlls/d3dx9_31/d3dx9_31.spec
+@@ -133,7 +133,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_32/d3dx9_32.spec b/dlls/d3dx9_32/d3dx9_32.spec
+index 04abf61..a9934fb 100644
+--- a/dlls/d3dx9_32/d3dx9_32.spec
++++ b/dlls/d3dx9_32/d3dx9_32.spec
+@@ -133,7 +133,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_33/d3dx9_33.spec b/dlls/d3dx9_33/d3dx9_33.spec
+index 04abf61..a9934fb 100644
+--- a/dlls/d3dx9_33/d3dx9_33.spec
++++ b/dlls/d3dx9_33/d3dx9_33.spec
+@@ -133,7 +133,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_34/d3dx9_34.spec b/dlls/d3dx9_34/d3dx9_34.spec
+index 04abf61..a9934fb 100644
+--- a/dlls/d3dx9_34/d3dx9_34.spec
++++ b/dlls/d3dx9_34/d3dx9_34.spec
+@@ -133,7 +133,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_35/d3dx9_35.spec b/dlls/d3dx9_35/d3dx9_35.spec
+index 04abf61..a9934fb 100644
+--- a/dlls/d3dx9_35/d3dx9_35.spec
++++ b/dlls/d3dx9_35/d3dx9_35.spec
+@@ -133,7 +133,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_36/animation.c b/dlls/d3dx9_36/animation.c
+index 8a38c05..85e3178 100644
+--- a/dlls/d3dx9_36/animation.c
++++ b/dlls/d3dx9_36/animation.c
+@@ -32,6 +32,50 @@ struct d3dx9_animation_controller
+     UINT max_sets;
+     UINT max_tracks;
+     UINT max_events;
++
++    UINT output_count;
++    struct d3dx9_animation_output *outputs;
++
++    UINT set_count;
++    struct d3dx9_matrix_animation_set *sets;
++
++    struct d3dx9_animation_track *tracks;
++    double time;
++};
++
++struct d3dx9_animation_output
++{
++    char *name;
++    D3DXMATRIX *matrix;
++    D3DXVECTOR3 *scale;
++    D3DXQUATERNION *rotation;
++    D3DXVECTOR3 *translation;
++};
++
++struct d3dx9_matrix_animation
++{
++    char *name;
++    UINT key_count;
++    struct d3dx_matrix_key *keys;
++};
++
++struct d3dx9_matrix_animation_set
++{
++    char *name;
++    double ticks_per_second;
++    DWORD period_ticks;
++    UINT animation_count;
++    struct d3dx9_matrix_animation *animations;
++};
++
++struct d3dx9_animation_track
++{
++    D3DXPRIORITY_TYPE priority;
++    float speed;
++    float weight;
++    double position;
++    BOOL enable;
++    struct d3dx9_matrix_animation_set *set;
+ };
+ 
+ static inline struct d3dx9_animation_controller *impl_from_ID3DXAnimationController(ID3DXAnimationController *iface)
+@@ -39,6 +83,157 @@ static inline struct d3dx9_animation_controller *impl_from_ID3DXAnimationControl
+     return CONTAINING_RECORD(iface, struct d3dx9_animation_controller, ID3DXAnimationController_iface);
+ }
+ 
++static void d3dx9_matrix_animation_set_cleanup(struct d3dx9_matrix_animation_set *set)
++{
++    unsigned int i;
++
++    free(set->name);
++    for (i = 0; i < set->animation_count; ++i)
++    {
++        free(set->animations[i].name);
++        free(set->animations[i].keys);
++    }
++    free(set->animations);
++}
++
++static struct d3dx9_animation_output *d3dx9_animation_controller_find_output(
++        struct d3dx9_animation_controller *animation, const char *name)
++{
++    unsigned int i;
++
++    for (i = 0; i < animation->output_count; ++i)
++    {
++        if (!strcmp(animation->outputs[i].name, name))
++            return &animation->outputs[i];
++    }
++
++    return NULL;
++}
++
++static struct d3dx9_matrix_animation_set *d3dx9_animation_controller_find_set(
++        struct d3dx9_animation_controller *animation, const char *name)
++{
++    unsigned int i;
++
++    for (i = 0; i < animation->set_count; ++i)
++    {
++        if (!strcmp(animation->sets[i].name, name))
++            return &animation->sets[i];
++    }
++
++    return NULL;
++}
++
++static void d3dx9_matrix_key_lerp(const struct d3dx_matrix_key *a,
++        const struct d3dx_matrix_key *b, float t, D3DXMATRIX *out)
++{
++    const float *ma = (const float *)a->matrix.m;
++    const float *mb = (const float *)b->matrix.m;
++    float *mo = (float *)out->m;
++    D3DXVECTOR3 scale_a, scale_b, scale, translation_a, translation_b, translation;
++    D3DXQUATERNION rotation_a, rotation_b, rotation;
++    unsigned int i;
++
++    if (SUCCEEDED(D3DXMatrixDecompose(&scale_a, &rotation_a, &translation_a, &a->matrix))
++            && SUCCEEDED(D3DXMatrixDecompose(&scale_b, &rotation_b, &translation_b, &b->matrix)))
++    {
++        scale.x = scale_a.x + (scale_b.x - scale_a.x) * t;
++        scale.y = scale_a.y + (scale_b.y - scale_a.y) * t;
++        scale.z = scale_a.z + (scale_b.z - scale_a.z) * t;
++        translation.x = translation_a.x + (translation_b.x - translation_a.x) * t;
++        translation.y = translation_a.y + (translation_b.y - translation_a.y) * t;
++        translation.z = translation_a.z + (translation_b.z - translation_a.z) * t;
++        D3DXQuaternionSlerp(&rotation, &rotation_a, &rotation_b, t);
++        D3DXMatrixTransformation(out, NULL, NULL, &scale, NULL, &rotation, &translation);
++        return;
++    }
++
++    for (i = 0; i < 16; ++i)
++        mo[i] = ma[i] + (mb[i] - ma[i]) * t;
++}
++
++static void d3dx9_matrix_animation_sample(const struct d3dx9_matrix_animation *animation,
++        double position_ticks, D3DXMATRIX *matrix)
++{
++    const struct d3dx_matrix_key *keys = animation->keys;
++    unsigned int lo, hi;
++    float t;
++
++    if (!animation->key_count)
++    {
++        D3DXMatrixIdentity(matrix);
++        return;
++    }
++
++    if (animation->key_count == 1 || position_ticks <= keys[0].time)
++    {
++        *matrix = keys[0].matrix;
++        return;
++    }
++
++    for (hi = 1; hi < animation->key_count; ++hi)
++    {
++        if (position_ticks <= keys[hi].time)
++            break;
++    }
++
++    if (hi == animation->key_count)
++    {
++        *matrix = keys[animation->key_count - 1].matrix;
++        return;
++    }
++
++    lo = hi - 1;
++    if (keys[hi].time == keys[lo].time)
++    {
++        *matrix = keys[hi].matrix;
++        return;
++    }
++
++    t = (float)((position_ticks - keys[lo].time) / (double)(keys[hi].time - keys[lo].time));
++    d3dx9_matrix_key_lerp(&keys[lo], &keys[hi], t, matrix);
++}
++
++static void d3dx9_animation_controller_apply_set(struct d3dx9_animation_controller *animation,
++        const struct d3dx9_matrix_animation_set *set, double position)
++{
++    double position_ticks;
++    unsigned int i;
++
++    if (!set || !set->animation_count || !set->ticks_per_second)
++        return;
++
++    position_ticks = position * set->ticks_per_second;
++    if (set->period_ticks)
++        position_ticks = fmod(position_ticks, set->period_ticks);
++
++    for (i = 0; i < set->animation_count; ++i)
++    {
++        const struct d3dx9_matrix_animation *matrix_animation = &set->animations[i];
++        struct d3dx9_animation_output *output;
++        D3DXMATRIX matrix;
++
++        if (!(output = d3dx9_animation_controller_find_output(animation, matrix_animation->name)))
++            continue;
++
++        d3dx9_matrix_animation_sample(matrix_animation, position_ticks, &matrix);
++        if (output->matrix)
++            *output->matrix = matrix;
++        if (output->scale || output->rotation || output->translation)
++        {
++            D3DXVECTOR3 scale, translation;
++            D3DXQUATERNION rotation;
++
++            if (SUCCEEDED(D3DXMatrixDecompose(&scale, &rotation, &translation, &matrix)))
++            {
++                if (output->scale) *output->scale = scale;
++                if (output->rotation) *output->rotation = rotation;
++                if (output->translation) *output->translation = translation;
++            }
++        }
++    }
++}
++
+ static HRESULT WINAPI d3dx9_animation_controller_QueryInterface(ID3DXAnimationController *iface, REFIID riid, void **out)
+ {
+     TRACE("iface %p, riid %s, out %p.\n", iface, debugstr_guid(riid), out);
+@@ -75,6 +270,17 @@ static ULONG WINAPI d3dx9_animation_controller_Release(ID3DXAnimationController
+ 
+     if (!refcount)
+     {
++        unsigned int i;
++
++        for (i = 0; i < animation->output_count; ++i)
++            free(animation->outputs[i].name);
++        free(animation->outputs);
++
++        for (i = 0; i < animation->set_count; ++i)
++            d3dx9_matrix_animation_set_cleanup(&animation->sets[i]);
++        free(animation->sets);
++
++        free(animation->tracks);
+         free(animation);
+     }
+ 
+@@ -120,10 +326,37 @@ static UINT WINAPI d3dx9_animation_controller_GetMaxNumEvents(ID3DXAnimationCont
+ static HRESULT WINAPI d3dx9_animation_controller_RegisterAnimationOutput(ID3DXAnimationController *iface,
+         const char *name, D3DXMATRIX *matrix, D3DXVECTOR3 *scale, D3DXQUATERNION *rotation, D3DXVECTOR3 *translation)
+ {
+-    FIXME("iface %p, name %s, matrix %p, scale %p, rotation %p, translation %p stub.\n", iface, debugstr_a(name),
++    struct d3dx9_animation_controller *animation = impl_from_ID3DXAnimationController(iface);
++    struct d3dx9_animation_output *output;
++
++    TRACE("iface %p, name %s, matrix %p, scale %p, rotation %p, translation %p.\n", iface, debugstr_a(name),
+             matrix, scale, rotation, translation);
+ 
+-    return E_NOTIMPL;
++    if (!name || (!matrix && !scale && !rotation && !translation))
++        return D3DERR_INVALIDCALL;
++
++    if ((output = d3dx9_animation_controller_find_output(animation, name)))
++    {
++        output->matrix = matrix;
++        output->scale = scale;
++        output->rotation = rotation;
++        output->translation = translation;
++        return D3D_OK;
++    }
++
++    if (animation->output_count >= animation->max_outputs)
++        return D3DERR_INVALIDCALL;
++
++    output = &animation->outputs[animation->output_count];
++    if (!(output->name = strdup(name)))
++        return E_OUTOFMEMORY;
++    output->matrix = matrix;
++    output->scale = scale;
++    output->rotation = rotation;
++    output->translation = translation;
++    ++animation->output_count;
++
++    return D3D_OK;
+ }
+ 
+ static HRESULT WINAPI d3dx9_animation_controller_RegisterAnimationSet(ID3DXAnimationController *iface,
+@@ -144,9 +377,11 @@ static HRESULT WINAPI d3dx9_animation_controller_UnregisterAnimationSet(ID3DXAni
+ 
+ static UINT WINAPI d3dx9_animation_controller_GetNumAnimationSets(ID3DXAnimationController *iface)
+ {
+-    FIXME("iface %p stub.\n", iface);
++    struct d3dx9_animation_controller *animation = impl_from_ID3DXAnimationController(iface);
+ 
+-    return 0;
++    TRACE("iface %p.\n", iface);
++
++    return animation->set_count;
+ }
+ 
+ static HRESULT WINAPI d3dx9_animation_controller_GetAnimationSet(ID3DXAnimationController *iface,
+@@ -168,23 +403,54 @@ static HRESULT WINAPI d3dx9_animation_controller_GetAnimationSetByName(ID3DXAnim
+ static HRESULT WINAPI d3dx9_animation_controller_AdvanceTime(ID3DXAnimationController *iface, double time_delta,
+         ID3DXAnimationCallbackHandler *callback_handler)
+ {
+-    FIXME("iface %p, time_delta %.16e, callback_handler %p stub.\n", iface, time_delta, callback_handler);
++    struct d3dx9_animation_controller *animation = impl_from_ID3DXAnimationController(iface);
++    unsigned int i;
+ 
+-    return E_NOTIMPL;
++    TRACE("iface %p, time_delta %.16e, callback_handler %p.\n", iface, time_delta, callback_handler);
++
++    if (callback_handler)
++        FIXME("Animation callbacks are not implemented.\n");
++
++    animation->time += time_delta;
++    for (i = 0; i < animation->max_tracks; ++i)
++    {
++        struct d3dx9_animation_track *track = &animation->tracks[i];
++
++        if (!track->enable || !track->set)
++            continue;
++
++        track->position += time_delta * track->speed;
++        d3dx9_animation_controller_apply_set(animation, track->set, track->position);
++    }
++
++    return D3D_OK;
+ }
+ 
+ static HRESULT WINAPI d3dx9_animation_controller_Reset(ID3DXAnimationController *iface)
+ {
+-    FIXME("iface %p stub.\n", iface);
++    struct d3dx9_animation_controller *animation = impl_from_ID3DXAnimationController(iface);
++    unsigned int i;
+ 
+-    return E_NOTIMPL;
++    TRACE("iface %p.\n", iface);
++
++    animation->time = 0.0;
++    for (i = 0; i < animation->max_tracks; ++i)
++    {
++        animation->tracks[i].position = 0.0;
++        if (animation->tracks[i].enable && animation->tracks[i].set)
++            d3dx9_animation_controller_apply_set(animation, animation->tracks[i].set, 0.0);
++    }
++
++    return D3D_OK;
+ }
+ 
+ static double WINAPI d3dx9_animation_controller_GetTime(ID3DXAnimationController *iface)
+ {
+-    FIXME("iface %p stub.\n", iface);
++    struct d3dx9_animation_controller *animation = impl_from_ID3DXAnimationController(iface);
+ 
+-    return 0.0;
++    TRACE("iface %p.\n", iface);
++
++    return animation->time;
+ }
+ 
+ static HRESULT WINAPI d3dx9_animation_controller_SetTrackAnimationSet(ID3DXAnimationController *iface,
+@@ -214,49 +480,100 @@ static HRESULT WINAPI d3dx9_animation_controller_SetTrackPriority(ID3DXAnimation
+ static HRESULT WINAPI d3dx9_animation_controller_SetTrackSpeed(ID3DXAnimationController *iface,
+         UINT track, float speed)
+ {
+-    FIXME("iface %p, track %u, speed %.8e stub.\n", iface, track, speed);
++    struct d3dx9_animation_controller *animation = impl_from_ID3DXAnimationController(iface);
+ 
+-    return E_NOTIMPL;
++    TRACE("iface %p, track %u, speed %.8e.\n", iface, track, speed);
++
++    if (track >= animation->max_tracks)
++        return D3DERR_INVALIDCALL;
++
++    animation->tracks[track].speed = speed;
++    return D3D_OK;
+ }
+ 
+ static HRESULT WINAPI d3dx9_animation_controller_SetTrackWeight(ID3DXAnimationController *iface,
+         UINT track, float weight)
+ {
+-    FIXME("iface %p, track %u, weight %.8e stub.\n", iface, track, weight);
++    struct d3dx9_animation_controller *animation = impl_from_ID3DXAnimationController(iface);
+ 
+-    return E_NOTIMPL;
++    TRACE("iface %p, track %u, weight %.8e.\n", iface, track, weight);
++
++    if (track >= animation->max_tracks)
++        return D3DERR_INVALIDCALL;
++
++    animation->tracks[track].weight = weight;
++    return D3D_OK;
+ }
+ 
+ static HRESULT WINAPI d3dx9_animation_controller_SetTrackPosition(ID3DXAnimationController *iface,
+         UINT track, double position)
+ {
+-    FIXME("iface %p, track %u, position %.16e stub.\n", iface, track, position);
++    struct d3dx9_animation_controller *animation = impl_from_ID3DXAnimationController(iface);
+ 
+-    return E_NOTIMPL;
++    TRACE("iface %p, track %u, position %.16e.\n", iface, track, position);
++
++    if (track >= animation->max_tracks)
++        return D3DERR_INVALIDCALL;
++
++    animation->tracks[track].position = position;
++    if (animation->tracks[track].enable && animation->tracks[track].set)
++        d3dx9_animation_controller_apply_set(animation, animation->tracks[track].set, position);
++    return D3D_OK;
+ }
+ 
+ static HRESULT WINAPI d3dx9_animation_controller_SetTrackEnable(ID3DXAnimationController *iface,
+         UINT track, BOOL enable)
+ {
+-    FIXME("iface %p, track %u, enable %#x stub.\n", iface, track, enable);
++    struct d3dx9_animation_controller *animation = impl_from_ID3DXAnimationController(iface);
+ 
+-    return E_NOTIMPL;
++    TRACE("iface %p, track %u, enable %#x.\n", iface, track, enable);
++
++    if (track >= animation->max_tracks)
++        return D3DERR_INVALIDCALL;
++
++    animation->tracks[track].enable = enable;
++    if (enable && animation->tracks[track].set)
++        d3dx9_animation_controller_apply_set(animation, animation->tracks[track].set,
++                animation->tracks[track].position);
++    return D3D_OK;
+ }
+ 
+ static HRESULT WINAPI d3dx9_animation_controller_SetTrackDesc(ID3DXAnimationController *iface,
+         UINT track, D3DXTRACK_DESC *desc)
+ {
+-    FIXME("iface %p, track %u, desc %p stub.\n", iface, track, desc);
++    struct d3dx9_animation_controller *animation = impl_from_ID3DXAnimationController(iface);
+ 
+-    return E_NOTIMPL;
++    TRACE("iface %p, track %u, desc %p.\n", iface, track, desc);
++
++    if (!desc || track >= animation->max_tracks)
++        return D3DERR_INVALIDCALL;
++
++    animation->tracks[track].priority = desc->Priority;
++    animation->tracks[track].weight = desc->Weight;
++    animation->tracks[track].speed = desc->Speed;
++    animation->tracks[track].position = desc->Position;
++    animation->tracks[track].enable = desc->Enable;
++    if (desc->Enable && animation->tracks[track].set)
++        d3dx9_animation_controller_apply_set(animation, animation->tracks[track].set, desc->Position);
++    return D3D_OK;
+ }
+ 
+ static HRESULT WINAPI d3dx9_animation_controller_GetTrackDesc(ID3DXAnimationController *iface,
+         UINT track, D3DXTRACK_DESC *desc)
+ {
+-    FIXME("iface %p, track %u, desc %p stub.\n", iface, track, desc);
++    struct d3dx9_animation_controller *animation = impl_from_ID3DXAnimationController(iface);
+ 
+-    return E_NOTIMPL;
++    TRACE("iface %p, track %u, desc %p.\n", iface, track, desc);
++
++    if (!desc || track >= animation->max_tracks)
++        return D3DERR_INVALIDCALL;
++
++    desc->Priority = animation->tracks[track].priority;
++    desc->Weight = animation->tracks[track].weight;
++    desc->Speed = animation->tracks[track].speed;
++    desc->Position = animation->tracks[track].position;
++    desc->Enable = animation->tracks[track].enable;
++    return D3D_OK;
+ }
+ 
+ static HRESULT WINAPI d3dx9_animation_controller_SetPriorityBlend(ID3DXAnimationController *iface,
+@@ -462,12 +779,87 @@ HRESULT WINAPI D3DXCreateAnimationController(UINT max_outputs, UINT max_sets,
+     object->max_sets    = max_sets;
+     object->max_tracks  = max_tracks;
+     object->max_events  = max_events;
++    object->outputs = calloc(max_outputs, sizeof(*object->outputs));
++    object->sets = calloc(max_sets, sizeof(*object->sets));
++    object->tracks = calloc(max_tracks, sizeof(*object->tracks));
++    if (!object->outputs || !object->sets || !object->tracks)
++    {
++        free(object->outputs);
++        free(object->sets);
++        free(object->tracks);
++        free(object);
++        return E_OUTOFMEMORY;
++    }
++    for (UINT i = 0; i < max_tracks; ++i)
++    {
++        object->tracks[i].speed = 1.0f;
++        object->tracks[i].weight = 1.0f;
++        object->tracks[i].priority = D3DXPRIORITY_LOW;
++    }
+ 
+     *controller = &object->ID3DXAnimationController_iface;
+ 
+     return D3D_OK;
+ }
+ 
++HRESULT d3dx9_animation_controller_register_matrix_animation(ID3DXAnimationController *controller,
++        const char *set_name, const char *animation_name, UINT key_count, const struct d3dx_matrix_key *keys)
++{
++    struct d3dx9_animation_controller *animation;
++    struct d3dx9_matrix_animation_set *set;
++    struct d3dx9_matrix_animation *matrix_animation;
++    const char *effective_set_name = set_name ? set_name : "";
++    unsigned int i;
++
++    TRACE("controller %p, set_name %s, animation_name %s, key_count %u, keys %p.\n",
++            controller, debugstr_a(set_name), debugstr_a(animation_name), key_count, keys);
++
++    if (!controller || !animation_name || !key_count || !keys)
++        return D3DERR_INVALIDCALL;
++
++    animation = impl_from_ID3DXAnimationController(controller);
++    if (!(set = d3dx9_animation_controller_find_set(animation, effective_set_name)))
++    {
++        if (animation->set_count >= animation->max_sets)
++            return D3DERR_INVALIDCALL;
++
++        set = &animation->sets[animation->set_count++];
++        if (!(set->name = strdup(effective_set_name)))
++            return E_OUTOFMEMORY;
++        set->ticks_per_second = 4800.0;
++
++        if (!animation->tracks[0].set)
++        {
++            animation->tracks[0].set = set;
++            animation->tracks[0].enable = TRUE;
++        }
++    }
++
++    matrix_animation = realloc(set->animations, (set->animation_count + 1) * sizeof(*set->animations));
++    if (!matrix_animation)
++        return E_OUTOFMEMORY;
++    set->animations = matrix_animation;
++    matrix_animation = &set->animations[set->animation_count];
++    memset(matrix_animation, 0, sizeof(*matrix_animation));
++
++    if (!(matrix_animation->name = strdup(animation_name)))
++        return E_OUTOFMEMORY;
++    if (!(matrix_animation->keys = malloc(key_count * sizeof(*matrix_animation->keys))))
++    {
++        free(matrix_animation->name);
++        matrix_animation->name = NULL;
++        return E_OUTOFMEMORY;
++    }
++
++    memcpy(matrix_animation->keys, keys, key_count * sizeof(*matrix_animation->keys));
++    matrix_animation->key_count = key_count;
++    for (i = 0; i < key_count; ++i)
++        set->period_ticks = max(set->period_ticks, keys[i].time);
++    ++set->animation_count;
++
++    return D3D_OK;
++}
++
+ struct d3dx9_keyframed_animation_set
+ {
+     ID3DXKeyframedAnimationSet ID3DXKeyframedAnimationSet_iface;
+diff --git a/dlls/d3dx9_36/d3dx9_36.spec b/dlls/d3dx9_36/d3dx9_36.spec
+index e430426..1e16d18 100644
+--- a/dlls/d3dx9_36/d3dx9_36.spec
++++ b/dlls/d3dx9_36/d3dx9_36.spec
+@@ -29,7 +29,7 @@
+ @ stdcall D3DXComputeTangentFrameEx(ptr long long long long long long long long long ptr float float float ptr ptr)
+ @ stub D3DXConcatenateMeshes(ptr long long ptr ptr ptr ptr ptr)
+ @ stdcall D3DXConvertMeshSubsetToSingleStrip(ptr long long ptr ptr)
+-@ stub D3DXConvertMeshSubsetToStrips(ptr long long ptr ptr ptr ptr)
++@ stdcall D3DXConvertMeshSubsetToStrips(ptr long long ptr ptr ptr ptr)
+ @ stdcall D3DXCreateAnimationController(long long long long ptr)
+ @ stdcall D3DXCreateBox(ptr float float float ptr ptr)
+ @ stdcall D3DXCreateBuffer(long ptr)
+@@ -134,7 +134,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_36/d3dx9_private.h b/dlls/d3dx9_36/d3dx9_private.h
+index d47c3e8..c4a8207 100644
+--- a/dlls/d3dx9_36/d3dx9_private.h
++++ b/dlls/d3dx9_36/d3dx9_private.h
+@@ -58,6 +58,15 @@ HRESULT load_resource_into_memory(HMODULE module, HRSRC resinfo, void **buffer,
+ 
+ HRESULT write_buffer_to_file(const WCHAR *filename, ID3DXBuffer *buffer);
+ 
++struct d3dx_matrix_key
++{
++    DWORD time;
++    D3DXMATRIX matrix;
++};
++
++HRESULT d3dx9_animation_controller_register_matrix_animation(ID3DXAnimationController *controller,
++        const char *set_name, const char *animation_name, UINT key_count, const struct d3dx_matrix_key *keys);
++
+ D3DFORMAT d3dformat_from_d3dx_pixel_format_id(enum d3dx_pixel_format_id format);
+ enum d3dx_pixel_format_id d3dx_pixel_format_id_from_d3dformat(D3DFORMAT format);
+ enum d3dx_resource_type d3dx_resource_type_from_d3dresourcetype(D3DRESOURCETYPE type);
+diff --git a/dlls/d3dx9_36/effect.c b/dlls/d3dx9_36/effect.c
+index 72e216d..f0ee7e8 100644
+--- a/dlls/d3dx9_36/effect.c
++++ b/dlls/d3dx9_36/effect.c
+@@ -2181,7 +2181,6 @@ static D3DXHANDLE WINAPI d3dx_effect_GetParameterByName(ID3DXEffect *iface, D3DX
+ 
+     handle = get_parameter_handle(get_parameter_by_name(&effect->params, param, name));
+     TRACE("Returning parameter %p.\n", handle);
+-
+     return handle;
+ }
+ 
+@@ -2886,7 +2885,6 @@ static HRESULT WINAPI d3dx_effect_SetVector(ID3DXEffect *iface, D3DXHANDLE param
+     struct d3dx_parameter *param = get_valid_parameter(effect, parameter);
+ 
+     TRACE("iface %p, parameter %p, vector %p.\n", iface, parameter, vector);
+-
+     if (param && !param->element_count)
+     {
+         TRACE("Class %s.\n", debug_d3dxparameter_class(param->class));
+@@ -3591,7 +3589,6 @@ static HRESULT WINAPI d3dx_effect_SetTexture(ID3DXEffect *iface, D3DXHANDLE para
+     struct d3dx_parameter *param = get_valid_parameter(effect, parameter);
+ 
+     TRACE("iface %p, parameter %p, texture %p.\n", iface, parameter, texture);
+-
+     if (param && !param->element_count
+             && (param->type == D3DXPT_TEXTURE || param->type == D3DXPT_TEXTURE1D
+             || param->type == D3DXPT_TEXTURE2D || param->type ==  D3DXPT_TEXTURE3D
+@@ -4190,7 +4187,7 @@ static HRESULT WINAPI d3dx_effect_OnResetDevice(ID3DXEffect *iface)
+ 
+     FIXME("(%p)->(): stub\n", This);
+ 
+-    return E_NOTIMPL;
++    return D3D_OK;
+ }
+ 
+ static HRESULT WINAPI d3dx_effect_SetStateManager(ID3DXEffect *iface, ID3DXEffectStateManager *manager)
+diff --git a/dlls/d3dx9_36/font.c b/dlls/d3dx9_36/font.c
+index 67058d9..03c0a86 100644
+--- a/dlls/d3dx9_36/font.c
++++ b/dlls/d3dx9_36/font.c
+@@ -795,6 +795,8 @@ static INT WINAPI ID3DXFontImpl_DrawTextW(ID3DXFont *iface, ID3DXSprite *sprite,
+     }
+ 
+     ret = y - top;
++    if (sprite)
++        ID3DXSprite_Flush(sprite);
+ 
+ cleanup:
+     if (target != sprite)
+diff --git a/dlls/d3dx9_36/mesh.c b/dlls/d3dx9_36/mesh.c
+index e425ef4..18950c3 100644
+--- a/dlls/d3dx9_36/mesh.c
++++ b/dlls/d3dx9_36/mesh.c
+@@ -90,6 +90,8 @@ static inline struct d3dx9_mesh *impl_from_ID3DXMesh(ID3DXMesh *iface)
+     return CONTAINING_RECORD(iface, struct d3dx9_mesh, ID3DXMesh_iface);
+ }
+ 
++static HRESULT d3dx9_mesh_ensure_attribute_table(struct d3dx9_mesh *mesh);
++
+ static HRESULT WINAPI d3dx9_mesh_QueryInterface(ID3DXMesh *iface, REFIID riid, void **out)
+ {
+     TRACE("iface %p, riid %s, out %p.\n", iface, debugstr_guid(riid), out);
+@@ -130,7 +132,9 @@ static ULONG WINAPI d3dx9_mesh_Release(ID3DXMesh *iface)
+         IDirect3DIndexBuffer9_Release(mesh->index_buffer);
+         IDirect3DVertexBuffer9_Release(mesh->vertex_buffer);
+         if (mesh->vertex_declaration)
++        {
+             IDirect3DVertexDeclaration9_Release(mesh->vertex_declaration);
++        }
+         IDirect3DDevice9_Release(mesh->device);
+         free(mesh->attrib_buffer);
+         free(mesh->attrib_table);
+@@ -691,10 +695,8 @@ static HRESULT WINAPI d3dx9_mesh_CloneMesh(struct ID3DXMesh *iface, DWORD option
+ 
+     if (!clone_mesh_out)
+         return D3DERR_INVALIDCALL;
+-
+     hr = iface->lpVtbl->GetDeclaration(iface, orig_declaration);
+     if (FAILED(hr)) return hr;
+-
+     hr = D3DXCreateMesh(This->numfaces, This->numvertices, options & ~D3DXMESH_VB_SHARE,
+                         declaration, device, &clone_mesh);
+     if (FAILED(hr)) return hr;
+@@ -727,7 +729,6 @@ static HRESULT WINAPI d3dx9_mesh_CloneMesh(struct ID3DXMesh *iface, DWORD option
+         hr = convert_vertex_buffer(clone_mesh, iface);
+         if (FAILED(hr)) goto error;
+     }
+-
+     hr = iface->lpVtbl->LockIndexBuffer(iface, D3DLOCK_READONLY, &data_in);
+     if (FAILED(hr)) goto error;
+     hr = clone_mesh->lpVtbl->LockIndexBuffer(clone_mesh, 0, &data_out);
+@@ -764,7 +765,6 @@ static HRESULT WINAPI d3dx9_mesh_CloneMesh(struct ID3DXMesh *iface, DWORD option
+     }
+ 
+     *clone_mesh_out = clone_mesh;
+-
+     return D3D_OK;
+ error:
+     IUnknown_Release(clone_mesh);
+@@ -843,10 +843,14 @@ static HRESULT WINAPI d3dx9_mesh_GetAttributeTable(ID3DXMesh *iface,
+         D3DXATTRIBUTERANGE *attrib_table, DWORD *attrib_table_size)
+ {
+     struct d3dx9_mesh *mesh = impl_from_ID3DXMesh(iface);
++    HRESULT hr;
+ 
+     TRACE("iface %p, attrib_table %p, attrib_table_size %p.\n",
+             iface, attrib_table, attrib_table_size);
+ 
++    if (FAILED(hr = d3dx9_mesh_ensure_attribute_table(mesh)))
++        return hr;
++
+     if (attrib_table_size)
+         *attrib_table_size = mesh->attrib_table_size;
+ 
+@@ -1580,6 +1584,37 @@ static void fill_attribute_table(DWORD *attrib_buffer, DWORD numfaces, void *ind
+     attrib_table_size++;
+ }
+ 
++static HRESULT d3dx9_mesh_ensure_attribute_table(struct d3dx9_mesh *mesh)
++{
++    D3DXATTRIBUTERANGE *attrib_table;
++    DWORD attrib_table_size;
++    void *indices;
++    HRESULT hr;
++
++    if (mesh->attrib_table || mesh->attrib_table_size || !mesh->numfaces)
++        return D3D_OK;
++
++    attrib_table_size = count_attributes(mesh->attrib_buffer, mesh->numfaces);
++    if (!(attrib_table = calloc(attrib_table_size, sizeof(*attrib_table))))
++        return E_OUTOFMEMORY;
++
++    hr = IDirect3DIndexBuffer9_Lock(mesh->index_buffer, 0, 0, &indices, D3DLOCK_READONLY);
++    if (FAILED(hr))
++    {
++        free(attrib_table);
++        return hr;
++    }
++
++    fill_attribute_table(mesh->attrib_buffer, mesh->numfaces, indices,
++            mesh->options & D3DXMESH_32BIT, attrib_table);
++    IDirect3DIndexBuffer9_Unlock(mesh->index_buffer);
++
++    mesh->attrib_table = attrib_table;
++    mesh->attrib_table_size = attrib_table_size;
++
++    return D3D_OK;
++}
++
+ static int __cdecl attrib_entry_compare(const void *a, const void *b)
+ {
+     const DWORD *ptr_a = *(const DWORD **)a;
+@@ -1665,15 +1700,14 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
+     if (flags & (D3DXMESHOPT_VERTEXCACHE | D3DXMESHOPT_STRIPREORDER))
+     {
+         if (flags & D3DXMESHOPT_VERTEXCACHE)
+-            FIXME("D3DXMESHOPT_VERTEXCACHE not implemented.\n");
++            FIXME("D3DXMESHOPT_VERTEXCACHE not implemented, ignoring.\n");
+         if (flags & D3DXMESHOPT_STRIPREORDER)
+-            FIXME("D3DXMESHOPT_STRIPREORDER not implemented.\n");
+-        return E_NOTIMPL;
++            FIXME("D3DXMESHOPT_STRIPREORDER not implemented, ignoring.\n");
++        flags &= ~(D3DXMESHOPT_VERTEXCACHE | D3DXMESHOPT_STRIPREORDER);
+     }
+ 
+     hr = iface->lpVtbl->LockIndexBuffer(iface, 0, &indices);
+     if (FAILED(hr)) goto cleanup;
+-
+     dword_indices = malloc(This->numfaces * 3 * sizeof(DWORD));
+     if (!dword_indices) return E_OUTOFMEMORY;
+     if (This->options & D3DXMESH_32BIT) {
+@@ -1708,7 +1742,6 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
+         DWORD vertex_size = iface->lpVtbl->GetNumBytesPerVertex(iface);
+         BYTE *orig_vertices;
+         BYTE *new_vertices;
+-
+         hr = IDirect3DVertexBuffer9_GetDesc(This->vertex_buffer, &vertex_desc);
+         if (FAILED(hr)) goto cleanup;
+ 
+@@ -1732,7 +1765,6 @@ static HRESULT WINAPI d3dx9_mesh_OptimizeInplace(ID3DXMesh *iface, DWORD flags,
+         IDirect3DVertexBuffer9_Unlock(vertex_buffer);
+     } else if (vertex_remap_out) {
+         DWORD *vertex_remap_ptr;
+-
+         hr = D3DXCreateBuffer(This->numvertices * sizeof(DWORD), &vertex_remap);
+         if (FAILED(hr)) goto cleanup;
+         vertex_remap_ptr = ID3DXBuffer_GetBufferPointer(vertex_remap);
+@@ -2607,6 +2639,8 @@ struct mesh_data {
+     DWORD *normal_indices;
+ 
+     D3DXVECTOR2 *tex_coords;
++    D3DXVECTOR4 *fvf_tex_coords;
++    unsigned int fvf_tex_coord_size;
+ 
+     DWORD *vertex_colors;
+ 
+@@ -2619,6 +2653,23 @@ struct mesh_data {
+     unsigned int skin_weights_info_count;
+ };
+ 
++static unsigned int get_fvf_texcoord_size(DWORD fvf, unsigned int idx)
++{
++    switch ((fvf >> (16 + 2 * idx)) & 0x03)
++    {
++        case D3DFVF_TEXTUREFORMAT1:
++            return 1;
++        case D3DFVF_TEXTUREFORMAT2:
++            return 2;
++        case D3DFVF_TEXTUREFORMAT3:
++            return 3;
++        case D3DFVF_TEXTUREFORMAT4:
++            return 4;
++        default:
++            return 0;
++    }
++}
++
+ static HRESULT parse_texture_filename(ID3DXFileData *filedata, char **filename_out)
+ {
+     HRESULT hr;
+@@ -2650,7 +2701,6 @@ static HRESULT parse_texture_filename(ID3DXFileData *filedata, char **filename_o
+         filedata->lpVtbl->Unlock(filedata);
+         return E_OUTOFMEMORY;
+     }
+-
+     filedata->lpVtbl->Unlock(filedata);
+ 
+     return D3D_OK;
+@@ -2757,6 +2807,7 @@ static HRESULT parse_material_list(ID3DXFileData *filedata, struct mesh_data *me
+ {
+     ID3DXFileData *child = NULL;
+     unsigned int material_count;
++    unsigned int face_index_count;
+     const uint32_t *in_ptr;
+     SIZE_T nb_children;
+     SIZE_T data_size;
+@@ -2800,18 +2851,19 @@ static HRESULT parse_material_list(ID3DXFileData *filedata, struct mesh_data *me
+         WARN("Truncated data (%Id bytes).\n", data_size);
+         goto end;
+     }
+-    if (*in_ptr++ != mesh->num_poly_faces)
++    face_index_count = *in_ptr++;
++    if (face_index_count != mesh->num_poly_faces && face_index_count != 1)
+     {
+         WARN("Number of material face indices (%u) doesn't match number of faces (%u).\n",
+-             *(in_ptr - 1), mesh->num_poly_faces);
++             face_index_count, mesh->num_poly_faces);
+         goto end;
+     }
+-    if (data_size < 2 * sizeof(uint32_t) + mesh->num_poly_faces * sizeof(uint32_t))
++    if (data_size < 2 * sizeof(uint32_t) + face_index_count * sizeof(uint32_t))
+     {
+         WARN("Truncated data (%Id bytes).\n", data_size);
+         goto end;
+     }
+-    for (i = 0; i < mesh->num_poly_faces; ++i)
++    for (i = 0; i < face_index_count; ++i)
+     {
+         if (*in_ptr++ >= material_count)
+         {
+@@ -2827,7 +2879,15 @@ static HRESULT parse_material_list(ID3DXFileData *filedata, struct mesh_data *me
+         hr = E_OUTOFMEMORY;
+         goto end;
+     }
+-    memcpy(mesh->material_indices, (const uint32_t *)data + 2, mesh->num_poly_faces * sizeof(uint32_t));
++    if (face_index_count == 1)
++    {
++        for (i = 0; i < mesh->num_poly_faces; ++i)
++            mesh->material_indices[i] = *((const uint32_t *)data + 2);
++    }
++    else
++    {
++        memcpy(mesh->material_indices, (const uint32_t *)data + 2, mesh->num_poly_faces * sizeof(uint32_t));
++    }
+ 
+     hr = filedata->lpVtbl->GetChildren(filedata, &nb_children);
+     if (FAILED(hr))
+@@ -2929,6 +2989,89 @@ end:
+     return hr;
+ }
+ 
++static HRESULT parse_fvf_data(ID3DXFileData *filedata, struct mesh_data *mesh, DWORD flags)
++{
++    const DWORD *data;
++    unsigned int tex_count, tex_coord_size, i;
++    const float *tex_data;
++    DWORD fvf, dword_count;
++    SIZE_T data_size;
++    HRESULT hr;
++
++    free(mesh->fvf_tex_coords);
++    mesh->fvf_tex_coords = NULL;
++    mesh->fvf_tex_coord_size = 0;
++
++    hr = filedata->lpVtbl->Lock(filedata, &data_size, (const void **)&data);
++    if (FAILED(hr)) return hr;
++
++    /* template FVFData {
++     *     DWORD dwFVF;
++     *     DWORD nDWords;
++     *     array DWORD data[nDWords];
++     * }
++     */
++    hr = E_FAIL;
++
++    if (data_size < 2 * sizeof(DWORD))
++    {
++        WARN("Truncated data (%Id bytes).\n", data_size);
++        goto end;
++    }
++
++    fvf = data[0];
++    dword_count = data[1];
++    if (data_size < (2 + dword_count) * sizeof(DWORD))
++    {
++        WARN("Truncated data (%Id bytes, %lu DWORDs declared).\n", data_size, dword_count);
++        goto end;
++    }
++
++    tex_count = (fvf & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
++    if (fvf & ~(D3DFVF_TEXCOUNT_MASK | 0xffff0000u))
++    {
++        FIXME("Unsupported FVFData FVF %#lx.\n", fvf);
++        hr = D3D_OK;
++        goto end;
++    }
++
++    if (tex_count != 1)
++    {
++        FIXME("Unsupported FVFData texture count %u.\n", tex_count);
++        hr = D3D_OK;
++        goto end;
++    }
++
++    tex_coord_size = get_fvf_texcoord_size(fvf, 0);
++    if (!tex_coord_size || dword_count < mesh->num_vertices * tex_coord_size)
++    {
++        WARN("Invalid FVFData texture coordinate data, size %u, DWORDs %lu, vertices %u.\n",
++                tex_coord_size, dword_count, mesh->num_vertices);
++        goto end;
++    }
++
++    mesh->fvf_tex_coords = calloc(mesh->num_vertices, sizeof(*mesh->fvf_tex_coords));
++    if (!mesh->fvf_tex_coords)
++    {
++        hr = E_OUTOFMEMORY;
++        goto end;
++    }
++
++    tex_data = (const float *)(data + 2);
++    for (i = 0; i < mesh->num_vertices; ++i)
++        memcpy(&mesh->fvf_tex_coords[i], &tex_data[i * tex_coord_size], tex_coord_size * sizeof(float));
++
++    mesh->fvf &= ~(D3DFVF_TEXCOUNT_MASK | (0x3u << 16));
++    mesh->fvf |= D3DFVF_TEX1 | (fvf & (0x3u << 16));
++    mesh->fvf_tex_coord_size = tex_coord_size;
++
++    hr = D3D_OK;
++
++end:
++    filedata->lpVtbl->Unlock(filedata);
++    return hr;
++}
++
+ static HRESULT parse_vertex_colors(ID3DXFileData *filedata, struct mesh_data *mesh, DWORD flags)
+ {
+     unsigned int color_count, i;
+@@ -3215,6 +3358,7 @@ static mesh_parse_func mesh_get_parse_func(const GUID *type)
+         {&TID_D3DRMMeshNormals, parse_normals},
+         {&TID_D3DRMMeshVertexColors, parse_vertex_colors},
+         {&TID_D3DRMMeshTextureCoords, parse_texture_coords},
++        {&DXFILEOBJ_FVFData, parse_fvf_data},
+         {&TID_D3DRMMeshMaterialList, parse_material_list},
+         {&DXFILEOBJ_XSkinMeshHeader, parse_skin_mesh_header},
+         {&DXFILEOBJ_SkinWeights, parse_skin_weights_info},
+@@ -3604,8 +3748,13 @@ HRESULT WINAPI D3DXLoadSkinMeshFromXof(struct ID3DXFileData *filedata, DWORD opt
+             out_ptr += sizeof(DWORD);
+         }
+         if (mesh_data.fvf & D3DFVF_TEX1) {
+-            *(D3DXVECTOR2*)out_ptr = mesh_data.tex_coords[i];
+-            out_ptr += sizeof(D3DXVECTOR2);
++            if (mesh_data.fvf_tex_coords) {
++                memcpy(out_ptr, &mesh_data.fvf_tex_coords[i], mesh_data.fvf_tex_coord_size * sizeof(float));
++                out_ptr += mesh_data.fvf_tex_coord_size * sizeof(float);
++            } else {
++                *(D3DXVECTOR2*)out_ptr = mesh_data.tex_coords[i];
++                out_ptr += sizeof(D3DXVECTOR2);
++            }
+         }
+     }
+     if (mesh_data.fvf & D3DFVF_NORMAL) {
+@@ -3738,6 +3887,7 @@ cleanup:
+     free(mesh_data.normal_indices);
+     destroy_materials(&mesh_data);
+     free(mesh_data.tex_coords);
++    free(mesh_data.fvf_tex_coords);
+     free(mesh_data.vertex_colors);
+     free(duplications);
+     return hr;
+@@ -3984,6 +4134,216 @@ err:
+     return hr;
+ }
+ 
++static UINT frame_count_named_matrices(const D3DXFRAME *frame)
++{
++    UINT count = 0;
++
++    while (frame)
++    {
++        if (frame->Name && frame->Name[0])
++            ++count;
++        count += frame_count_named_matrices(frame->pFrameFirstChild);
++        frame = frame->pFrameSibling;
++    }
++
++    return count;
++}
++
++static HRESULT frame_register_named_matrices(D3DXFRAME *frame, ID3DXAnimationController *animation)
++{
++    HRESULT hr;
++
++    while (frame)
++    {
++        if (frame->Name && frame->Name[0])
++        {
++            hr = animation->lpVtbl->RegisterAnimationOutput(animation, frame->Name,
++                    &frame->TransformationMatrix, NULL, NULL, NULL);
++            if (FAILED(hr))
++                return hr;
++        }
++
++        if (FAILED(hr = frame_register_named_matrices(frame->pFrameFirstChild, animation)))
++            return hr;
++        frame = frame->pFrameSibling;
++    }
++
++    return D3D_OK;
++}
++
++static HRESULT parse_animation_key_matrix(ID3DXFileData *filedata, struct d3dx_matrix_key **keys_out,
++        UINT *key_count_out)
++{
++    const BYTE *data, *ptr, *end;
++    struct d3dx_matrix_key *keys = NULL;
++    DWORD key_type, key_count;
++    SIZE_T data_size;
++    unsigned int i;
++    HRESULT hr;
++
++    *keys_out = NULL;
++    *key_count_out = 0;
++
++    if (FAILED(hr = filedata->lpVtbl->Lock(filedata, &data_size, (const void **)&data)))
++        return hr;
++
++    ptr = data;
++    end = data + data_size;
++    if (end - ptr < 2 * sizeof(DWORD))
++    {
++        hr = E_FAIL;
++        goto done;
++    }
++
++    key_type = *(const DWORD *)ptr;
++    ptr += sizeof(DWORD);
++    key_count = *(const DWORD *)ptr;
++    ptr += sizeof(DWORD);
++
++    if (key_type != 4)
++    {
++        FIXME("Animation key type %lu is not implemented.\n", key_type);
++        hr = D3D_OK;
++        goto done;
++    }
++
++    if (!key_count)
++    {
++        hr = D3D_OK;
++        goto done;
++    }
++
++    if (!(keys = calloc(key_count, sizeof(*keys))))
++    {
++        hr = E_OUTOFMEMORY;
++        goto done;
++    }
++
++    for (i = 0; i < key_count; ++i)
++    {
++        DWORD value_count;
++
++        if (end - ptr < 2 * sizeof(DWORD))
++        {
++            hr = E_FAIL;
++            goto done;
++        }
++
++        keys[i].time = *(const DWORD *)ptr;
++        ptr += sizeof(DWORD);
++        value_count = *(const DWORD *)ptr;
++        ptr += sizeof(DWORD);
++
++        if (value_count != 16 || end - ptr < value_count * sizeof(float))
++        {
++            hr = E_FAIL;
++            goto done;
++        }
++
++        memcpy(&keys[i].matrix, ptr, sizeof(keys[i].matrix));
++        ptr += value_count * sizeof(float);
++    }
++
++    *keys_out = keys;
++    *key_count_out = key_count;
++    keys = NULL;
++    hr = D3D_OK;
++
++done:
++    free(keys);
++    filedata->lpVtbl->Unlock(filedata);
++    return hr;
++}
++
++static HRESULT load_animation(ID3DXFileData *filedata, const char *set_name, ID3DXAnimationController *animation)
++{
++    struct d3dx_matrix_key *keys = NULL;
++    ID3DXFileData *child = NULL;
++    char *target_name = NULL;
++    UINT key_count = 0;
++    SIZE_T child_count;
++    HRESULT hr;
++    GUID type;
++    SIZE_T i;
++
++    if (FAILED(hr = filedata->lpVtbl->GetChildren(filedata, &child_count)))
++        return hr;
++
++    for (i = 0; i < child_count; ++i)
++    {
++        if (FAILED(hr = filedata->lpVtbl->GetChild(filedata, i, &child)))
++            goto done;
++        if (FAILED(hr = child->lpVtbl->GetType(child, &type)))
++            goto done;
++
++        if (IsEqualGUID(&type, &TID_D3DRMAnimationKey))
++        {
++            free(keys);
++            keys = NULL;
++            key_count = 0;
++            if (FAILED(hr = parse_animation_key_matrix(child, &keys, &key_count)))
++                goto done;
++        }
++        else if (child->lpVtbl->IsReference(child) && IsEqualGUID(&type, &TID_D3DRMFrame))
++        {
++            free(target_name);
++            if (FAILED(hr = filedata_get_name(child, &target_name)))
++                goto done;
++        }
++
++        IUnknown_Release(child);
++        child = NULL;
++    }
++
++    if (target_name && key_count)
++        hr = d3dx9_animation_controller_register_matrix_animation(animation, set_name, target_name, key_count, keys);
++    else
++        hr = D3D_OK;
++
++done:
++    if (child) IUnknown_Release(child);
++    free(target_name);
++    free(keys);
++    return hr;
++}
++
++static HRESULT load_animation_set(ID3DXFileData *filedata, ID3DXAnimationController *animation)
++{
++    ID3DXFileData *child = NULL;
++    char *set_name = NULL;
++    SIZE_T child_count;
++    HRESULT hr;
++    GUID type;
++    SIZE_T i;
++
++    if (FAILED(hr = filedata_get_name(filedata, &set_name)))
++        return hr;
++
++    if (FAILED(hr = filedata->lpVtbl->GetChildren(filedata, &child_count)))
++        goto done;
++
++    for (i = 0; i < child_count; ++i)
++    {
++        if (FAILED(hr = filedata->lpVtbl->GetChild(filedata, i, &child)))
++            goto done;
++        if (FAILED(hr = child->lpVtbl->GetType(child, &type)))
++            goto done;
++
++        if (IsEqualGUID(&type, &TID_D3DRMAnimation))
++            hr = load_animation(child, set_name, animation);
++
++        IUnknown_Release(child);
++        child = NULL;
++        if (FAILED(hr))
++            goto done;
++    }
++
++done:
++    if (child) IUnknown_Release(child);
++    free(set_name);
++    return hr;
++}
++
+ HRESULT WINAPI D3DXLoadMeshHierarchyFromXInMemory(const void *memory, DWORD memory_size, DWORD options,
+         struct IDirect3DDevice9 *device, struct ID3DXAllocateHierarchy *alloc_hier,
+         struct ID3DXLoadUserData *load_user_data, D3DXFRAME **frame_hierarchy,
+@@ -3993,9 +4353,11 @@ HRESULT WINAPI D3DXLoadMeshHierarchyFromXInMemory(const void *memory, DWORD memo
+     ID3DXFile *d3dxfile = NULL;
+     ID3DXFileEnumObject *enumobj = NULL;
+     ID3DXFileData *filedata = NULL;
++    ID3DXFileData **animation_sets = NULL;
+     D3DXF_FILELOADMEMORY source;
+     D3DXFRAME *first_frame = NULL;
+     D3DXFRAME **next_frame = &first_frame;
++    UINT animation_set_count = 0;
+     SIZE_T i, nb_children;
+     GUID guid;
+ 
+@@ -4006,6 +4368,9 @@ HRESULT WINAPI D3DXLoadMeshHierarchyFromXInMemory(const void *memory, DWORD memo
+     if (!memory || !memory_size || !device || !frame_hierarchy || !alloc_hier)
+         return D3DERR_INVALIDCALL;
+ 
++    if (anim_controller)
++        *anim_controller = NULL;
++
+     hr = D3DXFileCreate(&d3dxfile);
+     if (FAILED(hr)) goto cleanup;
+ 
+@@ -4044,6 +4409,19 @@ HRESULT WINAPI D3DXLoadMeshHierarchyFromXInMemory(const void *memory, DWORD memo
+             } else if (IsEqualGUID(&guid, &TID_D3DRMFrame)) {
+                 hr = load_frame(filedata, options, device, alloc_hier, next_frame, load_user_data);
+                 if (FAILED(hr)) goto cleanup;
++            } else if (IsEqualGUID(&guid, &TID_D3DRMAnimationSet)) {
++                ID3DXFileData **new_animation_sets;
++
++                new_animation_sets = realloc(animation_sets,
++                        (animation_set_count + 1) * sizeof(*animation_sets));
++                if (!new_animation_sets)
++                {
++                    hr = E_OUTOFMEMORY;
++                    goto cleanup;
++                }
++                animation_sets = new_animation_sets;
++                animation_sets[animation_set_count++] = filedata;
++                filedata->lpVtbl->AddRef(filedata);
+             } else if (load_user_data) {
+                 TRACE("Loading %s as user data.\n", debugstr_guid(&guid));
+                 hr = load_user_data->lpVtbl->LoadTopLevelData(load_user_data, filedata);
+@@ -4078,12 +4456,35 @@ HRESULT WINAPI D3DXLoadMeshHierarchyFromXInMemory(const void *memory, DWORD memo
+ 
+     if (anim_controller)
+     {
+-        *anim_controller = NULL;
+-        FIXME("Animation controller creation not implemented.\n");
++        if (animation_set_count)
++        {
++            UINT output_count = max(frame_count_named_matrices(*frame_hierarchy), 1);
++
++            hr = D3DXCreateAnimationController(output_count, animation_set_count, 1, 1, anim_controller);
++            if (FAILED(hr))
++                goto cleanup;
++
++            if (FAILED(hr = frame_register_named_matrices(*frame_hierarchy, *anim_controller)))
++                goto cleanup;
++
++            for (i = 0; i < animation_set_count; ++i)
++            {
++                if (FAILED(hr = load_animation_set(animation_sets[i], *anim_controller)))
++                    goto cleanup;
++            }
++        }
+     }
+ 
+ cleanup:
++    if (FAILED(hr) && anim_controller && *anim_controller)
++    {
++        (*anim_controller)->lpVtbl->Release(*anim_controller);
++        *anim_controller = NULL;
++    }
+     if (FAILED(hr) && first_frame) D3DXFrameDestroy(first_frame, alloc_hier);
++    for (i = 0; i < animation_set_count; ++i)
++        animation_sets[i]->lpVtbl->Release(animation_sets[i]);
++    free(animation_sets);
+     if (filedata) filedata->lpVtbl->Release(filedata);
+     if (enumobj) enumobj->lpVtbl->Release(enumobj);
+     if (d3dxfile) d3dxfile->lpVtbl->Release(d3dxfile);
+@@ -4098,10 +4499,203 @@ HRESULT WINAPI D3DXCleanMesh(D3DXCLEANTYPE clean_type, ID3DXMesh *mesh_in, const
+     return E_NOTIMPL;
+ }
+ 
+-HRESULT WINAPI D3DXFrameDestroy(D3DXFRAME *frame, ID3DXAllocateHierarchy *alloc_hier)
++struct d3dx_bounding_sphere
+ {
+-    HRESULT hr;
+-    BOOL last = FALSE;
++    D3DXVECTOR3 center;
++    FLOAT radius;
++    BOOL valid;
++};
++
++static FLOAT d3dx_matrix_max_scale(const D3DXMATRIX *matrix)
++{
++    FLOAT sx = sqrtf(matrix->_11 * matrix->_11 + matrix->_12 * matrix->_12 + matrix->_13 * matrix->_13);
++    FLOAT sy = sqrtf(matrix->_21 * matrix->_21 + matrix->_22 * matrix->_22 + matrix->_23 * matrix->_23);
++    FLOAT sz = sqrtf(matrix->_31 * matrix->_31 + matrix->_32 * matrix->_32 + matrix->_33 * matrix->_33);
++
++    return max(max(sx, sy), sz);
++}
++
++static void d3dx_merge_bounding_sphere(struct d3dx_bounding_sphere *dst,
++        const D3DXVECTOR3 *center, FLOAT radius)
++{
++    D3DXVECTOR3 delta;
++    FLOAT distance;
++
++    if (!dst->valid)
++    {
++        dst->center = *center;
++        dst->radius = radius;
++        dst->valid = TRUE;
++        return;
++    }
++
++    D3DXVec3Subtract(&delta, center, &dst->center);
++    distance = D3DXVec3Length(&delta);
++
++    if (dst->radius >= distance + radius)
++        return;
++    if (radius >= distance + dst->radius)
++    {
++        dst->center = *center;
++        dst->radius = radius;
++        return;
++    }
++
++    if (distance > 0.0f)
++    {
++        FLOAT new_radius = (distance + dst->radius + radius) * 0.5f;
++        FLOAT t = (new_radius - dst->radius) / distance;
++
++        dst->center.x += delta.x * t;
++        dst->center.y += delta.y * t;
++        dst->center.z += delta.z * t;
++        dst->radius = new_radius;
++    }
++    else if (radius > dst->radius)
++    {
++        dst->radius = radius;
++    }
++}
++
++static BOOL d3dx_mesh_get_position_offset(ID3DXBaseMesh *mesh, UINT *position_offset)
++{
++    D3DVERTEXELEMENT9 declaration[MAX_FVF_DECL_SIZE];
++    DWORD fvf = mesh->lpVtbl->GetFVF(mesh);
++    unsigned int i;
++
++    if (fvf)
++    {
++        *position_offset = 0;
++        return TRUE;
++    }
++
++    if (FAILED(mesh->lpVtbl->GetDeclaration(mesh, declaration)))
++        return FALSE;
++
++    for (i = 0; declaration[i].Stream != 0xff; ++i)
++    {
++        if (!declaration[i].Stream && declaration[i].Usage == D3DDECLUSAGE_POSITION
++                && declaration[i].UsageIndex == 0)
++        {
++            *position_offset = declaration[i].Offset;
++            return TRUE;
++        }
++    }
++
++    return FALSE;
++}
++
++static HRESULT d3dx_frame_calculate_bounding_sphere_mesh(ID3DXBaseMesh *mesh,
++        const D3DXMATRIX *transform, struct d3dx_bounding_sphere *sphere)
++{
++    const BYTE *vertices;
++    D3DXVECTOR3 center;
++    FLOAT radius;
++    UINT position_offset;
++    DWORD vertex_count, stride;
++    HRESULT hr;
++
++    vertex_count = mesh->lpVtbl->GetNumVertices(mesh);
++    if (!vertex_count)
++        return D3D_OK;
++
++    stride = mesh->lpVtbl->GetNumBytesPerVertex(mesh);
++    if (!stride || !d3dx_mesh_get_position_offset(mesh, &position_offset))
++        return D3D_OK;
++
++    if (FAILED(hr = mesh->lpVtbl->LockVertexBuffer(mesh, D3DLOCK_READONLY, (void **)&vertices)))
++        return hr;
++
++    hr = D3DXComputeBoundingSphere((const D3DXVECTOR3 *)(vertices + position_offset),
++            vertex_count, stride, &center, &radius);
++    mesh->lpVtbl->UnlockVertexBuffer(mesh);
++    if (FAILED(hr))
++        return hr;
++
++    D3DXVec3TransformCoord(&center, &center, transform);
++    d3dx_merge_bounding_sphere(sphere, &center, radius * d3dx_matrix_max_scale(transform));
++
++    return D3D_OK;
++}
++
++static HRESULT d3dx_frame_calculate_bounding_sphere_frame(const D3DXFRAME *frame,
++        const D3DXMATRIX *parent_transform, struct d3dx_bounding_sphere *sphere)
++{
++    const D3DXMESHCONTAINER *container;
++    D3DXMATRIX transform;
++    HRESULT hr;
++
++    D3DXMatrixMultiply(&transform, &frame->TransformationMatrix, parent_transform);
++
++    for (container = frame->pMeshContainer; container; container = container->pNextMeshContainer)
++    {
++        if (container->MeshData.Type == D3DXMESHTYPE_MESH && container->MeshData.pMesh)
++        {
++            hr = d3dx_frame_calculate_bounding_sphere_mesh((ID3DXBaseMesh *)container->MeshData.pMesh,
++                    &transform, sphere);
++            if (FAILED(hr))
++                return hr;
++        }
++        else if (container->MeshData.Type == D3DXMESHTYPE_PMESH && container->MeshData.pPMesh)
++        {
++            hr = d3dx_frame_calculate_bounding_sphere_mesh((ID3DXBaseMesh *)container->MeshData.pPMesh,
++                    &transform, sphere);
++            if (FAILED(hr))
++                return hr;
++        }
++    }
++
++    if (frame->pFrameFirstChild)
++    {
++        hr = d3dx_frame_calculate_bounding_sphere_frame(frame->pFrameFirstChild, &transform, sphere);
++        if (FAILED(hr))
++            return hr;
++    }
++
++    if (frame->pFrameSibling)
++    {
++        hr = d3dx_frame_calculate_bounding_sphere_frame(frame->pFrameSibling, parent_transform, sphere);
++        if (FAILED(hr))
++            return hr;
++    }
++
++    return D3D_OK;
++}
++
++HRESULT WINAPI D3DXFrameCalculateBoundingSphere(const D3DXFRAME *frame_root, D3DXVECTOR3 *center,
++        FLOAT *radius)
++{
++    struct d3dx_bounding_sphere sphere = {{0.0f, 0.0f, 0.0f}, 0.0f, FALSE};
++    D3DXMATRIX identity;
++    HRESULT hr;
++
++    TRACE("frame_root %p, center %p, radius %p.\n", frame_root, center, radius);
++
++    if (!frame_root || !center || !radius)
++        return D3DERR_INVALIDCALL;
++
++    D3DXMatrixIdentity(&identity);
++    if (FAILED(hr = d3dx_frame_calculate_bounding_sphere_frame(frame_root, &identity, &sphere)))
++        return hr;
++
++    if (sphere.valid)
++    {
++        *center = sphere.center;
++        *radius = sphere.radius;
++    }
++    else
++    {
++        center->x = center->y = center->z = 0.0f;
++        *radius = 0.0f;
++    }
++
++    return D3D_OK;
++}
++
++HRESULT WINAPI D3DXFrameDestroy(D3DXFRAME *frame, ID3DXAllocateHierarchy *alloc_hier)
++{
++    HRESULT hr;
++    BOOL last = FALSE;
+ 
+     TRACE("(%p, %p)\n", frame, alloc_hier);
+ 
+@@ -4192,7 +4786,6 @@ HRESULT WINAPI D3DXLoadMeshFromXW(const WCHAR *filename, DWORD options, struct I
+             materials, effect_instances, num_materials, mesh);
+ 
+     UnmapViewOfFile(buffer);
+-
+     return hr;
+ }
+ 
+@@ -4278,7 +4871,7 @@ static HRESULT parse_frame(struct ID3DXFileData *filedata, DWORD options, struct
+         } else if (IsEqualGUID(&type, &TID_D3DRMFrameTransformMatrix)) {
+             D3DXMATRIX new_transform;
+             hr = parse_transform_matrix(child, &new_transform);
+-            D3DXMatrixMultiply(&transform, &transform, &new_transform);
++            D3DXMatrixMultiply(&transform, &new_transform, &transform);
+         } else if (IsEqualGUID(&type, &TID_D3DRMFrame)) {
+             hr = parse_frame(child, options, device, &transform, container_list, provide_flags);
+         }
+@@ -4451,9 +5044,11 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
+                     concat_decl[j].UsageIndex == mesh_decl[k].UsageIndex)
+                 {
+                     if (concat_decl[j].Usage == D3DDECLUSAGE_NORMAL) {
+-                        D3DXVec3TransformCoord((D3DXVECTOR3*)(concat_vertices + concat_decl[j].Offset),
+-                                               (D3DXVECTOR3*)(mesh_vertices + mesh_decl[k].Offset),
+-                                               &container_ptr->transform);
++                        D3DXVec3TransformNormal((D3DXVECTOR3*)(concat_vertices + concat_decl[j].Offset),
++                                                (D3DXVECTOR3*)(mesh_vertices + mesh_decl[k].Offset),
++                                                &container_ptr->transform);
++                        D3DXVec3Normalize((D3DXVECTOR3*)(concat_vertices + concat_decl[j].Offset),
++                                          (D3DXVECTOR3*)(concat_vertices + concat_decl[j].Offset));
+                     } else {
+                         memcpy(concat_vertices + concat_decl[j].Offset,
+                                mesh_vertices + mesh_decl[k].Offset,
+@@ -4481,6 +5076,7 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
+         ID3DXMesh *mesh = container_ptr->mesh;
+         const void *mesh_indices;
+         DWORD num_mesh_faces = mesh->lpVtbl->GetNumFaces(mesh);
++        DWORD num_mesh_vertices = mesh->lpVtbl->GetNumVertices(mesh);
+         DWORD i;
+ 
+         hr = mesh->lpVtbl->LockIndexBuffer(mesh, D3DLOCK_READONLY, (void**)&mesh_indices);
+@@ -4501,7 +5097,7 @@ HRESULT WINAPI D3DXLoadMeshFromXInMemory(const void *memory, DWORD memory_size,
+         }
+         mesh->lpVtbl->UnlockIndexBuffer(mesh);
+ 
+-        index_offset += num_mesh_faces * 3;
++        index_offset += num_mesh_vertices;
+     }
+ 
+     concat_mesh->lpVtbl->UnlockIndexBuffer(concat_mesh);
+@@ -7421,6 +8017,7 @@ HRESULT WINAPI D3DXComputeTangentFrameEx(ID3DXMesh *mesh, DWORD texture_in_seman
+     DWORD i, j, num_faces, num_vertices, vertex_stride;
+     D3DVERTEXELEMENT9 declaration[MAX_FVF_DECL_SIZE] = {D3DDECL_END()};
+     D3DVERTEXELEMENT9 *position_declaration = NULL, *normal_declaration = NULL;
++    D3DVERTEXELEMENT9 *texture_declaration = NULL, *tangent_declaration = NULL, *binormal_declaration = NULL;
+     DWORD weighting_method = options & (D3DXTANGENT_WEIGHT_EQUAL | D3DXTANGENT_WEIGHT_BY_AREA);
+ 
+     TRACE("mesh %p, texture_in_semantic %lu, texture_in_index %lu, u_partial_out_semantic %lu, "
+@@ -7445,23 +8042,140 @@ HRESULT WINAPI D3DXComputeTangentFrameEx(ID3DXMesh *mesh, DWORD texture_in_seman
+         return D3DERR_INVALIDCALL;
+     }
+ 
+-    if (u_partial_out_semantic != D3DX_DEFAULT)
++    if (options & ~(D3DXTANGENT_GENERATE_IN_PLACE | D3DXTANGENT_CALCULATE_NORMALS
++            | D3DXTANGENT_WEIGHT_EQUAL | D3DXTANGENT_WEIGHT_BY_AREA))
+     {
+-        FIXME("tangent vectors computation is not supported\n");
++        FIXME("Unsupported options %#lx.\n", options);
+         return E_NOTIMPL;
+     }
+ 
+-    if (v_partial_out_semantic != D3DX_DEFAULT)
++    if (u_partial_out_semantic != D3DX_DEFAULT || v_partial_out_semantic != D3DX_DEFAULT)
+     {
+-        FIXME("binormal vectors computation is not supported\n");
+-        return E_NOTIMPL;
+-    }
++        if (texture_in_semantic == D3DX_DEFAULT || u_partial_out_semantic == D3DX_DEFAULT
++                || v_partial_out_semantic == D3DX_DEFAULT)
++            return D3DERR_INVALIDCALL;
+ 
+-    if (options & ~(D3DXTANGENT_GENERATE_IN_PLACE | D3DXTANGENT_CALCULATE_NORMALS
+-            | D3DXTANGENT_WEIGHT_EQUAL | D3DXTANGENT_WEIGHT_BY_AREA))
+-    {
+-        FIXME("Unsupported options %#lx.\n", options);
+-        return E_NOTIMPL;
++        if (vertex_mapping)
++        {
++            FIXME("vertex remapping is not supported for tangent frame computation\n");
++            return E_NOTIMPL;
++        }
++
++        if (FAILED(hr = mesh->lpVtbl->GetDeclaration(mesh, declaration)))
++            return hr;
++
++        for (i = 0; declaration[i].Stream != 0xff; i++)
++        {
++            if (declaration[i].Usage == D3DDECLUSAGE_POSITION && !declaration[i].UsageIndex)
++                position_declaration = &declaration[i];
++            if (declaration[i].Usage == texture_in_semantic && declaration[i].UsageIndex == texture_in_index)
++                texture_declaration = &declaration[i];
++            if (declaration[i].Usage == u_partial_out_semantic && declaration[i].UsageIndex == u_partial_out_index)
++                tangent_declaration = &declaration[i];
++            if (declaration[i].Usage == v_partial_out_semantic && declaration[i].UsageIndex == v_partial_out_index)
++                binormal_declaration = &declaration[i];
++            if (declaration[i].Usage == normal_out_semantic && declaration[i].UsageIndex == normal_out_index)
++                normal_declaration = &declaration[i];
++        }
++
++        if (!position_declaration || !texture_declaration || !tangent_declaration || !binormal_declaration)
++            return D3DERR_INVALIDCALL;
++
++        num_faces = mesh->lpVtbl->GetNumFaces(mesh);
++        num_vertices = mesh->lpVtbl->GetNumVertices(mesh);
++        vertex_stride = mesh->lpVtbl->GetNumBytesPerVertex(mesh);
++        indices_are_32bit = mesh->lpVtbl->GetOptions(mesh) & D3DXMESH_32BIT;
++
++        if (FAILED(hr = mesh->lpVtbl->LockIndexBuffer(mesh, 0, &indices)))
++            goto done;
++
++        if (FAILED(hr = mesh->lpVtbl->LockVertexBuffer(mesh, 0, (void **)&vertices)))
++            goto done;
++
++        for (i = 0; i < num_vertices; ++i)
++        {
++            static const D3DXVECTOR3 zero = {0.0f, 0.0f, 0.0f};
++            *vertex_element_vec3(vertices, tangent_declaration, vertex_stride, i) = zero;
++            *vertex_element_vec3(vertices, binormal_declaration, vertex_stride, i) = zero;
++        }
++
++        for (i = 0; i < num_faces; ++i)
++        {
++            float determinant;
++            D3DXVECTOR3 edge1, edge2, tangent, binormal;
++            const DWORD face_indices[3] =
++            {
++                read_ib(indices, indices_are_32bit, 3 * i + 0),
++                read_ib(indices, indices_are_32bit, 3 * i + 1),
++                read_ib(indices, indices_are_32bit, 3 * i + 2)
++            };
++            const D3DXVECTOR3 p0 = read_vec3(vertices, position_declaration, vertex_stride, face_indices[0]);
++            const D3DXVECTOR3 p1 = read_vec3(vertices, position_declaration, vertex_stride, face_indices[1]);
++            const D3DXVECTOR3 p2 = read_vec3(vertices, position_declaration, vertex_stride, face_indices[2]);
++            const D3DXVECTOR3 t0 = read_vec3(vertices, texture_declaration, vertex_stride, face_indices[0]);
++            const D3DXVECTOR3 t1 = read_vec3(vertices, texture_declaration, vertex_stride, face_indices[1]);
++            const D3DXVECTOR3 t2 = read_vec3(vertices, texture_declaration, vertex_stride, face_indices[2]);
++            float du1 = t1.x - t0.x, dv1 = t1.y - t0.y;
++            float du2 = t2.x - t0.x, dv2 = t2.y - t0.y;
++
++            D3DXVec3Subtract(&edge1, &p1, &p0);
++            D3DXVec3Subtract(&edge2, &p2, &p0);
++
++            determinant = du1 * dv2 - du2 * dv1;
++            if (fabsf(determinant) > 1.0e-20f)
++            {
++                float r = 1.0f / determinant;
++                tangent.x = (edge1.x * dv2 - edge2.x * dv1) * r;
++                tangent.y = (edge1.y * dv2 - edge2.y * dv1) * r;
++                tangent.z = (edge1.z * dv2 - edge2.z * dv1) * r;
++                binormal.x = (edge2.x * du1 - edge1.x * du2) * r;
++                binormal.y = (edge2.y * du1 - edge1.y * du2) * r;
++                binormal.z = (edge2.z * du1 - edge1.z * du2) * r;
++            }
++            else
++            {
++                tangent.x = 1.0f; tangent.y = 0.0f; tangent.z = 0.0f;
++                binormal.x = 0.0f; binormal.y = 1.0f; binormal.z = 0.0f;
++            }
++
++            for (j = 0; j < 3; ++j)
++            {
++                D3DXVECTOR3 *vertex_tangent = vertex_element_vec3(vertices, tangent_declaration,
++                        vertex_stride, face_indices[j]);
++                D3DXVECTOR3 *vertex_binormal = vertex_element_vec3(vertices, binormal_declaration,
++                        vertex_stride, face_indices[j]);
++
++                D3DXVec3Add(vertex_tangent, vertex_tangent, &tangent);
++                D3DXVec3Add(vertex_binormal, vertex_binormal, &binormal);
++            }
++        }
++
++        for (i = 0; i < num_vertices; ++i)
++        {
++            D3DXVECTOR3 *tangent = vertex_element_vec3(vertices, tangent_declaration, vertex_stride, i);
++            D3DXVECTOR3 *binormal = vertex_element_vec3(vertices, binormal_declaration, vertex_stride, i);
++
++            if (normal_declaration)
++            {
++                D3DXVECTOR3 projected;
++                D3DXVECTOR3 normal = read_vec3(vertices, normal_declaration, vertex_stride, i);
++
++                D3DXVec3Scale(&projected, &normal, D3DXVec3Dot(&normal, tangent));
++                D3DXVec3Subtract(tangent, tangent, &projected);
++            }
++
++            D3DXVec3Normalize(tangent, tangent);
++            D3DXVec3Normalize(binormal, binormal);
++        }
++
++        if (mesh_out)
++        {
++            mesh->lpVtbl->AddRef(mesh);
++            *mesh_out = mesh;
++        }
++
++        hr = D3D_OK;
++        goto done;
+     }
+ 
+     if (!(options & D3DXTANGENT_CALCULATE_NORMALS))
+@@ -7636,6 +8350,8 @@ done:
+  */
+ HRESULT WINAPI D3DXComputeNormals(struct ID3DXBaseMesh *mesh, const DWORD *adjacency)
+ {
++    HRESULT hr;
++
+     TRACE("mesh %p, adjacency %p\n", mesh, adjacency);
+ 
+     if (mesh && (ID3DXMeshVtbl *)mesh->lpVtbl != &D3DXMesh_Vtbl)
+@@ -7644,10 +8360,11 @@ HRESULT WINAPI D3DXComputeNormals(struct ID3DXBaseMesh *mesh, const DWORD *adjac
+         return D3DERR_INVALIDCALL;
+     }
+ 
+-    return D3DXComputeTangentFrameEx((ID3DXMesh *)mesh, D3DX_DEFAULT, 0,
++    hr = D3DXComputeTangentFrameEx((ID3DXMesh *)mesh, D3DX_DEFAULT, 0,
+             D3DX_DEFAULT, 0, D3DX_DEFAULT, 0, D3DDECLUSAGE_NORMAL, 0,
+             D3DXTANGENT_GENERATE_IN_PLACE | D3DXTANGENT_CALCULATE_NORMALS,
+             adjacency, -1.01f, -0.01f, -1.01f, NULL, NULL);
++    return hr;
+ }
+ 
+ /*************************************************************************
+@@ -7674,10 +8391,265 @@ HRESULT WINAPI D3DXTessellateNPatches(ID3DXMesh *mesh, const DWORD *adjacency_in
+ HRESULT WINAPI D3DXConvertMeshSubsetToSingleStrip(struct ID3DXBaseMesh *mesh_in, DWORD attribute_id,
+         DWORD ib_flags, struct IDirect3DIndexBuffer9 **index_buffer, DWORD *index_count)
+ {
+-    FIXME("mesh_in %p, attribute_id %lu, ib_flags %#lx, index_buffer %p, index_count %p stub.\n",
++    IDirect3DIndexBuffer9 *new_index_buffer = NULL;
++    IDirect3DDevice9 *device = NULL;
++    D3DXATTRIBUTERANGE *attrib_table = NULL;
++    DWORD attrib_table_size = 0;
++    const WORD *indices16 = NULL;
++    const DWORD *indices32 = NULL;
++    void *src_indices = NULL;
++    void *dst_indices = NULL;
++    DWORD face_count = 0, strip_index_count = 0;
++    DWORD face_idx, range_idx, out_idx = 0;
++    DWORD options, num_faces;
++    D3DPOOL pool = D3DPOOL_DEFAULT;
++    D3DFORMAT index_format;
++    DWORD usage = 0;
++    HRESULT hr;
++
++    TRACE("mesh_in %p, attribute_id %lu, ib_flags %#lx, index_buffer %p, index_count %p.\n",
+             mesh_in, attribute_id, ib_flags, index_buffer, index_count);
+ 
+-    return E_NOTIMPL;
++    if (!mesh_in || !index_buffer || !index_count)
++        return D3DERR_INVALIDCALL;
++
++    *index_buffer = NULL;
++    *index_count = 0;
++
++    options = mesh_in->lpVtbl->GetOptions(mesh_in);
++    num_faces = mesh_in->lpVtbl->GetNumFaces(mesh_in);
++    index_format = (options & D3DXMESH_32BIT) || (ib_flags & D3DXMESH_32BIT)
++            ? D3DFMT_INDEX32 : D3DFMT_INDEX16;
++
++    if (ib_flags & D3DXMESH_IB_SYSTEMMEM)
++        pool = D3DPOOL_SYSTEMMEM;
++    else if (ib_flags & D3DXMESH_IB_MANAGED)
++        pool = D3DPOOL_MANAGED;
++
++    if (ib_flags & D3DXMESH_IB_WRITEONLY)
++        usage |= D3DUSAGE_WRITEONLY;
++    if (ib_flags & D3DXMESH_IB_DYNAMIC)
++        usage |= D3DUSAGE_DYNAMIC;
++    if (ib_flags & D3DXMESH_IB_SOFTWAREPROCESSING)
++        usage |= D3DUSAGE_SOFTWAREPROCESSING;
++
++    if (FAILED(hr = mesh_in->lpVtbl->GetAttributeTable(mesh_in, NULL, &attrib_table_size)))
++        return hr;
++
++    if (attrib_table_size)
++    {
++        if (!(attrib_table = malloc(attrib_table_size * sizeof(*attrib_table))))
++            return E_OUTOFMEMORY;
++
++        if (FAILED(hr = mesh_in->lpVtbl->GetAttributeTable(mesh_in, attrib_table, &attrib_table_size)))
++            goto done;
++
++        for (range_idx = 0; range_idx < attrib_table_size; ++range_idx)
++        {
++            if (attrib_table[range_idx].AttribId == attribute_id)
++                face_count += attrib_table[range_idx].FaceCount;
++        }
++    }
++    else if ((ID3DXMeshVtbl *)mesh_in->lpVtbl == &D3DXMesh_Vtbl)
++    {
++        struct d3dx9_mesh *mesh = impl_from_ID3DXMesh((ID3DXMesh *)mesh_in);
++
++        for (face_idx = 0; face_idx < num_faces; ++face_idx)
++        {
++            if (mesh->attrib_buffer[face_idx] == attribute_id)
++                ++face_count;
++        }
++    }
++    else
++    {
++        face_count = num_faces;
++    }
++
++    if (!face_count)
++    {
++        hr = D3D_OK;
++        goto done;
++    }
++
++    strip_index_count = 3 + (face_count - 1) * 6;
++
++    if (FAILED(hr = mesh_in->lpVtbl->GetDevice(mesh_in, &device)))
++        goto done;
++
++    if (FAILED(hr = IDirect3DDevice9_CreateIndexBuffer(device,
++            strip_index_count * (index_format == D3DFMT_INDEX32 ? sizeof(DWORD) : sizeof(WORD)),
++            usage, index_format, pool, &new_index_buffer, NULL)))
++        goto done;
++
++    if (FAILED(hr = mesh_in->lpVtbl->LockIndexBuffer(mesh_in, D3DLOCK_READONLY, &src_indices)))
++        goto done;
++
++    if (FAILED(hr = IDirect3DIndexBuffer9_Lock(new_index_buffer, 0, 0, &dst_indices, 0)))
++        goto done;
++
++    indices32 = src_indices;
++    indices16 = src_indices;
++
++    for (face_idx = 0; face_idx < num_faces; ++face_idx)
++    {
++        DWORD face_attribute = attribute_id;
++        DWORD a, b, c;
++
++        if (attrib_table_size)
++        {
++            BOOL found = FALSE;
++
++            for (range_idx = 0; range_idx < attrib_table_size; ++range_idx)
++            {
++                if (face_idx >= attrib_table[range_idx].FaceStart
++                        && face_idx < attrib_table[range_idx].FaceStart + attrib_table[range_idx].FaceCount)
++                {
++                    face_attribute = attrib_table[range_idx].AttribId;
++                    found = TRUE;
++                    break;
++                }
++            }
++            if (!found)
++                continue;
++        }
++        else if ((ID3DXMeshVtbl *)mesh_in->lpVtbl == &D3DXMesh_Vtbl)
++        {
++            struct d3dx9_mesh *mesh = impl_from_ID3DXMesh((ID3DXMesh *)mesh_in);
++
++            face_attribute = mesh->attrib_buffer[face_idx];
++        }
++
++        if (face_attribute != attribute_id)
++            continue;
++
++        if (options & D3DXMESH_32BIT)
++        {
++            a = indices32[face_idx * 3 + 0];
++            b = indices32[face_idx * 3 + 1];
++            c = indices32[face_idx * 3 + 2];
++        }
++        else
++        {
++            a = indices16[face_idx * 3 + 0];
++            b = indices16[face_idx * 3 + 1];
++            c = indices16[face_idx * 3 + 2];
++        }
++
++        if (index_format == D3DFMT_INDEX32)
++        {
++            DWORD *dst = dst_indices;
++
++            if (!out_idx)
++            {
++                dst[out_idx++] = a;
++                dst[out_idx++] = b;
++                dst[out_idx++] = c;
++            }
++            else
++            {
++                DWORD previous = dst[out_idx - 1];
++
++                dst[out_idx++] = previous;
++                dst[out_idx++] = a;
++                dst[out_idx++] = a;
++                dst[out_idx++] = a;
++                dst[out_idx++] = b;
++                dst[out_idx++] = c;
++            }
++        }
++        else
++        {
++            WORD *dst = dst_indices;
++
++            if (a > 0xffff || b > 0xffff || c > 0xffff)
++            {
++                hr = D3DERR_INVALIDCALL;
++                goto done;
++            }
++
++            if (!out_idx)
++            {
++                dst[out_idx++] = a;
++                dst[out_idx++] = b;
++                dst[out_idx++] = c;
++            }
++            else
++            {
++                WORD previous = dst[out_idx - 1];
++
++                dst[out_idx++] = previous;
++                dst[out_idx++] = a;
++                dst[out_idx++] = a;
++                dst[out_idx++] = a;
++                dst[out_idx++] = b;
++                dst[out_idx++] = c;
++            }
++        }
++    }
++
++    *index_buffer = new_index_buffer;
++    new_index_buffer = NULL;
++    *index_count = out_idx;
++    hr = D3D_OK;
++
++done:
++    if (dst_indices)
++        IDirect3DIndexBuffer9_Unlock(new_index_buffer ? new_index_buffer : *index_buffer);
++    if (src_indices)
++        mesh_in->lpVtbl->UnlockIndexBuffer(mesh_in);
++    if (new_index_buffer)
++        IDirect3DIndexBuffer9_Release(new_index_buffer);
++    if (device)
++        IDirect3DDevice9_Release(device);
++    free(attrib_table);
++    return hr;
++}
++
++HRESULT WINAPI D3DXConvertMeshSubsetToStrips(struct ID3DXBaseMesh *mesh_in, DWORD attribute_id,
++        DWORD ib_flags, struct IDirect3DIndexBuffer9 **index_buffer, DWORD *index_count,
++        struct ID3DXBuffer **strip_lengths, DWORD *strip_count)
++{
++    DWORD local_index_count = 0;
++    DWORD *lengths;
++    HRESULT hr;
++
++    TRACE("mesh_in %p, attribute_id %lu, ib_flags %#lx, index_buffer %p, index_count %p, "
++            "strip_lengths %p, strip_count %p.\n",
++            mesh_in, attribute_id, ib_flags, index_buffer, index_count, strip_lengths, strip_count);
++
++    if (!strip_lengths || !strip_count)
++        return D3DERR_INVALIDCALL;
++
++    *strip_lengths = NULL;
++    *strip_count = 0;
++
++    if (index_count)
++        *index_count = 0;
++
++    if (FAILED(hr = D3DXConvertMeshSubsetToSingleStrip(mesh_in, attribute_id,
++            ib_flags, index_buffer, &local_index_count)))
++        return hr;
++
++    if (index_count)
++        *index_count = local_index_count;
++
++    if (!local_index_count)
++        return D3D_OK;
++
++    if (FAILED(hr = D3DXCreateBuffer(sizeof(DWORD), strip_lengths)))
++    {
++        IDirect3DIndexBuffer9_Release(*index_buffer);
++        *index_buffer = NULL;
++        if (index_count)
++            *index_count = 0;
++        return hr;
++    }
++
++    lengths = ID3DXBuffer_GetBufferPointer(*strip_lengths);
++    *lengths = local_index_count;
++    *strip_count = 1;
++
++    return D3D_OK;
+ }
+ 
+ struct frame_node
+diff --git a/dlls/d3dx9_36/sprite.c b/dlls/d3dx9_36/sprite.c
+index 2fe822c..28a68f0 100644
+--- a/dlls/d3dx9_36/sprite.c
++++ b/dlls/d3dx9_36/sprite.c
+@@ -213,7 +213,9 @@ static void set_states(struct d3dx9_sprite *object)
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_CLIPPLANEENABLE, 0);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_ALPHA | D3DCOLORWRITEENABLE_BLUE |
+                                     D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_RED);
++    IDirect3DDevice9_SetRenderState(object->device, D3DRS_COLORVERTEX, TRUE);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_CULLMODE, D3DCULL_NONE);
++    IDirect3DDevice9_SetRenderState(object->device, D3DRS_DEPTHBIAS, 0);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_DIFFUSEMATERIALSOURCE, D3DMCS_COLOR1);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_ENABLEADAPTIVETESSELLATION, FALSE);
+@@ -221,15 +223,20 @@ static void set_states(struct d3dx9_sprite *object)
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_FOGENABLE, FALSE);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_INDEXEDVERTEXBLENDENABLE, FALSE);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_LIGHTING, FALSE);
++    IDirect3DDevice9_SetRenderState(object->device, D3DRS_MULTISAMPLEMASK, 0xffffffff);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_RANGEFOGENABLE, FALSE);
++    IDirect3DDevice9_SetRenderState(object->device, D3DRS_SCISSORTESTENABLE, FALSE);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_SEPARATEALPHABLENDENABLE, FALSE);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_SPECULARENABLE, FALSE);
++    IDirect3DDevice9_SetRenderState(object->device, D3DRS_SLOPESCALEDEPTHBIAS, 0);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_SRGBWRITEENABLE, FALSE);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_STENCILENABLE, FALSE);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_VERTEXBLEND, FALSE);
+     IDirect3DDevice9_SetRenderState(object->device, D3DRS_WRAP0, 0);
++    IDirect3DDevice9_SetRenderState(object->device, D3DRS_ZENABLE, FALSE);
++    IDirect3DDevice9_SetRenderState(object->device, D3DRS_ZWRITEENABLE, FALSE);
+ 
+     /* Texture stage states */
+     IDirect3DDevice9_SetTextureStageState(object->device, 0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+@@ -238,6 +245,7 @@ static void set_states(struct d3dx9_sprite *object)
+     IDirect3DDevice9_SetTextureStageState(object->device, 0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+     IDirect3DDevice9_SetTextureStageState(object->device, 0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+     IDirect3DDevice9_SetTextureStageState(object->device, 0, D3DTSS_COLOROP, D3DTOP_MODULATE);
++    IDirect3DDevice9_SetTextureStageState(object->device, 0, D3DTSS_RESULTARG, D3DTA_CURRENT);
+     IDirect3DDevice9_SetTextureStageState(object->device, 0, D3DTSS_TEXCOORDINDEX, 0);
+     IDirect3DDevice9_SetTextureStageState(object->device, 0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+     IDirect3DDevice9_SetTextureStageState(object->device, 1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+@@ -258,9 +266,7 @@ static void set_states(struct d3dx9_sprite *object)
+         IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_MINFILTER, D3DTEXF_ANISOTROPIC);
+     else IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+ 
+-    if(object->texfilter_caps & D3DPTFILTERCAPS_MIPFLINEAR)
+-        IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR);
+-    else IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_MIPFILTER, D3DTEXF_POINT);
++    IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+ 
+     IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_MIPMAPLODBIAS, 0);
+     IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_SRGBTEXTURE, 0);
+diff --git a/dlls/d3dx9_36/surface.c b/dlls/d3dx9_36/surface.c
+index 8734907..a5b9667 100644
+--- a/dlls/d3dx9_36/surface.c
++++ b/dlls/d3dx9_36/surface.c
+@@ -207,11 +207,12 @@ HRESULT WINAPI D3DXGetImageInfoFromFileW(const WCHAR *file, D3DXIMAGE_INFO *info
+         return D3DERR_INVALIDCALL;
+ 
+     if (FAILED(map_view_of_file(file, &buffer, &size)))
++    {
+         return D3DXERR_INVALIDDATA;
++    }
+ 
+     hr = D3DXGetImageInfoFromFileInMemory(buffer, size, info);
+     UnmapViewOfFile(buffer);
+-
+     return hr;
+ }
+ 
+diff --git a/dlls/d3dx9_36/xfile.c b/dlls/d3dx9_36/xfile.c
+index f7823bd..4c762f3 100644
+--- a/dlls/d3dx9_36/xfile.c
++++ b/dlls/d3dx9_36/xfile.c
+@@ -593,7 +593,6 @@ static HRESULT WINAPI d3dx9_file_CreateEnumObject(ID3DXFile *iface, const void *
+ 
+     object->ID3DXFileEnumObject_iface.lpVtbl = &d3dx9_file_enum_object_vtbl;
+     object->ref = 1;
+-
+     ret = IDirectXFile_CreateEnumObject(file->dxfile, dxfile_source, dxfile_options, &dxfile_enum_object);
+ 
+     if (ret != S_OK)
+diff --git a/dlls/d3dx9_37/d3dx9_37.spec b/dlls/d3dx9_37/d3dx9_37.spec
+index e430426..e859b29 100644
+--- a/dlls/d3dx9_37/d3dx9_37.spec
++++ b/dlls/d3dx9_37/d3dx9_37.spec
+@@ -134,7 +134,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_38/d3dx9_38.spec b/dlls/d3dx9_38/d3dx9_38.spec
+index e430426..e859b29 100644
+--- a/dlls/d3dx9_38/d3dx9_38.spec
++++ b/dlls/d3dx9_38/d3dx9_38.spec
+@@ -134,7 +134,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_39/d3dx9_39.spec b/dlls/d3dx9_39/d3dx9_39.spec
+index e430426..e859b29 100644
+--- a/dlls/d3dx9_39/d3dx9_39.spec
++++ b/dlls/d3dx9_39/d3dx9_39.spec
+@@ -134,7 +134,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_40/d3dx9_40.spec b/dlls/d3dx9_40/d3dx9_40.spec
+index e430426..e859b29 100644
+--- a/dlls/d3dx9_40/d3dx9_40.spec
++++ b/dlls/d3dx9_40/d3dx9_40.spec
+@@ -134,7 +134,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_41/d3dx9_41.spec b/dlls/d3dx9_41/d3dx9_41.spec
+index e430426..e859b29 100644
+--- a/dlls/d3dx9_41/d3dx9_41.spec
++++ b/dlls/d3dx9_41/d3dx9_41.spec
+@@ -134,7 +134,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_42/d3dx9_42.spec b/dlls/d3dx9_42/d3dx9_42.spec
+index b857564..d76d199 100644
+--- a/dlls/d3dx9_42/d3dx9_42.spec
++++ b/dlls/d3dx9_42/d3dx9_42.spec
+@@ -132,7 +132,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)
+diff --git a/dlls/d3dx9_43/d3dx9_43.spec b/dlls/d3dx9_43/d3dx9_43.spec
+index b857564..2bebf91 100644
+--- a/dlls/d3dx9_43/d3dx9_43.spec
++++ b/dlls/d3dx9_43/d3dx9_43.spec
+@@ -29,7 +29,7 @@
+ @ stdcall D3DXComputeTangentFrameEx(ptr long long long long long long long long long ptr float float float ptr ptr)
+ @ stub D3DXConcatenateMeshes(ptr long long ptr ptr ptr ptr ptr)
+ @ stdcall D3DXConvertMeshSubsetToSingleStrip(ptr long long ptr ptr)
+-@ stub D3DXConvertMeshSubsetToStrips(ptr long long ptr ptr ptr ptr)
++@ stdcall D3DXConvertMeshSubsetToStrips(ptr long long ptr ptr ptr ptr)
+ @ stdcall D3DXCreateAnimationController(long long long long ptr)
+ @ stdcall D3DXCreateBox(ptr float float float ptr ptr)
+ @ stdcall D3DXCreateBuffer(long ptr)
+@@ -132,7 +132,7 @@
+ @ stdcall D3DXFloat16To32Array(ptr ptr long)
+ @ stdcall D3DXFloat32To16Array(ptr ptr long)
+ @ stub D3DXFrameAppendChild(ptr ptr)
+-@ stub D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
++@ stdcall D3DXFrameCalculateBoundingSphere(ptr ptr ptr)
+ @ stdcall D3DXFrameDestroy(ptr ptr)
+ @ stdcall D3DXFrameFind(ptr str)
+ @ stub D3DXFrameNumNamedMatrices(ptr)

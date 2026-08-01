@@ -1,0 +1,3426 @@
+diff --git a/dlls/d3d9/d3d9_private.h b/dlls/d3d9/d3d9_private.h
+index b1e7690..aac5eab 100644
+--- a/dlls/d3d9/d3d9_private.h
++++ b/dlls/d3d9/d3d9_private.h
+@@ -43,7 +43,8 @@
+ 
+ #define D3DPRESENTFLAGS_MASK 0x00000fffu
+ 
+-#define D3D9_TEXTURE_MIPMAP_DIRTY 0x1
++#define D3D9_TEXTURE_MIPMAP_DIRTY     0x1
++#define D3D9_TEXTURE_MIPMAP_GENERATE  0x2
+ 
+ #define D3DFMT_RESZ MAKEFOURCC('R','E','S','Z')
+ #define D3D9_RESZ_CODE 0x7fa05000
+@@ -243,6 +244,7 @@ static inline struct wined3d_texture *d3d9_texture_get_draw_texture(struct d3d9_
+ struct d3d9_texture *unsafe_impl_from_IDirect3DBaseTexture9(IDirect3DBaseTexture9 *iface);
+ void d3d9_texture_flag_auto_gen_mipmap(struct d3d9_texture *texture);
+ void d3d9_texture_gen_auto_mipmap(struct d3d9_texture *texture);
++BOOL d3d9_texture_can_auto_gen_mipmap(const struct d3d9_texture *texture);
+ 
+ struct d3d9_stateblock
+ {
+diff --git a/dlls/d3d9/device.c b/dlls/d3d9/device.c
+index 5f59d10..c4af2c3 100644
+--- a/dlls/d3d9/device.c
++++ b/dlls/d3d9/device.c
+@@ -3350,11 +3350,11 @@ static HRESULT WINAPI d3d9_device_DrawPrimitiveUP(IDirect3DDevice9Ex *iface,
+     if (FAILED(hr))
+         goto done;
+ 
+-    d3d9_generate_auto_mipmaps(device);
+-    d3d9_device_upload_managed_textures(device);
+     wined3d_device_context_set_primitive_type(device->immediate_context,
+             wined3d_primitive_type_from_d3d(primitive_type), 0);
++    d3d9_generate_auto_mipmaps(device);
+     wined3d_device_apply_stateblock(device->wined3d_device, device->state);
++    d3d9_device_upload_managed_textures(device);
+ 
+     /* Instancing is ignored for non-indexed draws. */
+     wined3d_device_context_draw(device->immediate_context, vb_pos / stride, vtx_count, 0, 0);
+@@ -3419,11 +3419,11 @@ static HRESULT WINAPI d3d9_device_DrawIndexedPrimitiveUP(IDirect3DDevice9Ex *ifa
+     wined3d_stateblock_set_index_buffer(device->state, device->index_buffer.buffer,
+             wined3dformat_from_d3dformat(index_format));
+ 
+-    d3d9_generate_auto_mipmaps(device);
+-    d3d9_device_upload_managed_textures(device);
+-    wined3d_device_apply_stateblock(device->wined3d_device, device->state);
+     wined3d_device_context_set_primitive_type(device->immediate_context,
+             wined3d_primitive_type_from_d3d(primitive_type), 0);
++    d3d9_generate_auto_mipmaps(device);
++    wined3d_device_apply_stateblock(device->wined3d_device, device->state);
++    d3d9_device_upload_managed_textures(device);
+     wined3d_device_context_draw_indexed(device->immediate_context,
+             vb_pos / vertex_stride - min_vertex_idx, ib_pos / idx_fmt_size, idx_count, 0,
+             device->stateblock_state->streams[0].frequency);
+diff --git a/dlls/d3d9/texture.c b/dlls/d3d9/texture.c
+index 4de7d2e..c4241c1 100644
+--- a/dlls/d3d9/texture.c
++++ b/dlls/d3d9/texture.c
+@@ -98,8 +98,9 @@ void d3d9_texture_gen_auto_mipmap(struct d3d9_texture *texture)
+     if (texture->draw_texture)
+         wined3d_device_update_texture(texture->parent_device->wined3d_device,
+                 texture->wined3d_texture, texture->draw_texture);
+-    wined3d_device_context_generate_mipmaps(texture->parent_device->immediate_context,
+-            wined3d_texture_acquire_identity_srv(d3d9_texture_get_draw_texture(texture)));
++    if (texture->flags & D3D9_TEXTURE_MIPMAP_GENERATE)
++        wined3d_device_context_generate_mipmaps(texture->parent_device->immediate_context,
++                wined3d_texture_acquire_identity_srv(d3d9_texture_get_draw_texture(texture)));
+     texture->flags &= ~D3D9_TEXTURE_MIPMAP_DIRTY;
+ }
+ 
+@@ -109,6 +110,11 @@ void d3d9_texture_flag_auto_gen_mipmap(struct d3d9_texture *texture)
+         texture->flags |= D3D9_TEXTURE_MIPMAP_DIRTY;
+ }
+ 
++BOOL d3d9_texture_can_auto_gen_mipmap(const struct d3d9_texture *texture)
++{
++    return !!(texture->flags & D3D9_TEXTURE_MIPMAP_GENERATE);
++}
++
+ static HRESULT WINAPI d3d9_texture_2d_QueryInterface(IDirect3DTexture9 *iface, REFIID riid, void **out)
+ {
+     TRACE("iface %p, riid %s, out %p.\n", iface, debugstr_guid(riid), out);
+@@ -1291,6 +1297,7 @@ static HRESULT d3d9_texture_init(struct d3d9_texture *texture, struct d3d9_devic
+         if (hr == D3D_OK)
+         {
+             flags |= WINED3D_TEXTURE_CREATE_GENERATE_MIPMAPS;
++            texture->flags |= D3D9_TEXTURE_MIPMAP_GENERATE;
+             level_count = 0;
+         }
+         else
+diff --git a/dlls/ddraw/utils.c b/dlls/ddraw/utils.c
+index 4204587..ecfc74b 100644
+--- a/dlls/ddraw/utils.c
++++ b/dlls/ddraw/utils.c
+@@ -77,6 +77,26 @@ void ddrawformat_from_wined3dformat(DDPIXELFORMAT *DDPixelFormat, enum wined3d_f
+             DDPixelFormat->dwRGBAlphaBitMask = 0x0;
+             break;
+ 
++        case WINED3DFMT_R8G8B8A8_UNORM:
++            DDPixelFormat->dwFlags = DDPF_RGB | DDPF_ALPHAPIXELS;
++            DDPixelFormat->dwFourCC = 0;
++            DDPixelFormat->dwRGBBitCount = 32;
++            DDPixelFormat->dwRBitMask = 0x000000ff;
++            DDPixelFormat->dwGBitMask = 0x0000ff00;
++            DDPixelFormat->dwBBitMask = 0x00ff0000;
++            DDPixelFormat->dwRGBAlphaBitMask = 0xff000000;
++            break;
++
++        case WINED3DFMT_B10G10R10A2_UNORM:
++            DDPixelFormat->dwFlags = DDPF_RGB | DDPF_ALPHAPIXELS;
++            DDPixelFormat->dwFourCC = 0;
++            DDPixelFormat->dwRGBBitCount = 32;
++            DDPixelFormat->dwRBitMask = 0xc0000000;
++            DDPixelFormat->dwGBitMask = 0x3ff00000;
++            DDPixelFormat->dwBBitMask = 0x000ffc00;
++            DDPixelFormat->dwRGBAlphaBitMask = 0x000003ff;
++            break;
++
+         case WINED3DFMT_B5G6R5_UNORM:
+             DDPixelFormat->dwFlags = DDPF_RGB;
+             DDPixelFormat->dwFourCC = 0;
+@@ -410,6 +430,24 @@ enum wined3d_format_id wined3dformat_from_ddrawformat(const DDPIXELFORMAT *DDPix
+                         return WINED3DFMT_B8G8R8X8_UNORM;
+ 
+                 }
++                if( (DDPixelFormat->dwRBitMask == 0x000000FF) &&
++                    (DDPixelFormat->dwGBitMask == 0x0000FF00) &&
++                    (DDPixelFormat->dwBBitMask == 0x00FF0000) )
++                {
++                    if( (DDPixelFormat->dwFlags & DDPF_ALPHAPIXELS) &&
++                        (DDPixelFormat->dwRGBAlphaBitMask == 0xFF000000))
++                        return WINED3DFMT_R8G8B8A8_UNORM;
++                    else
++                        return WINED3DFMT_R8G8B8X8_UNORM;
++                }
++                if( (DDPixelFormat->dwFlags & DDPF_ALPHAPIXELS) &&
++                    (DDPixelFormat->dwRBitMask == 0xC0000000) &&
++                    (DDPixelFormat->dwGBitMask == 0x3FF00000) &&
++                    (DDPixelFormat->dwBBitMask == 0x000FFC00) &&
++                    (DDPixelFormat->dwRGBAlphaBitMask == 0x000003FF) )
++                {
++                    return WINED3DFMT_B10G10R10A2_UNORM;
++                }
+                 WARN("32 bit RGB pixel format does not match.\n");
+                 return WINED3DFMT_UNKNOWN;
+ 
+@@ -454,6 +492,13 @@ enum wined3d_format_id wined3dformat_from_ddrawformat(const DDPIXELFORMAT *DDPix
+                         return WINED3DFMT_L8A8_UNORM;
+                     WARN("Unknown Alpha / Lumincase bit depth combination.\n");
+                     return WINED3DFMT_UNKNOWN;
++
++                case 16:
++                    if (DDPixelFormat->dwLuminanceBitMask == 0x00ff
++                            && DDPixelFormat->dwLuminanceAlphaBitMask == 0xff00)
++                        return WINED3DFMT_L8A8_UNORM;
++                    WARN("Unknown Alpha / Luminance bit mask combination.\n");
++                    return WINED3DFMT_UNKNOWN;
+             }
+         }
+         else
+diff --git a/dlls/wined3d/device.c b/dlls/wined3d/device.c
+index efa1632..6d88ad2 100644
+--- a/dlls/wined3d/device.c
++++ b/dlls/wined3d/device.c
+@@ -577,11 +577,16 @@ static void wined3d_device_gl_create_dummy_textures(struct wined3d_device_gl *de
+     const struct wined3d_gl_info *gl_info = context_gl->gl_info;
+     unsigned int i;
+     DWORD color;
++    BYTE webgl_color[4];
+ 
+     if (d3d_info->wined3d_creation_flags & WINED3D_LEGACY_UNBOUND_RESOURCE_COLOR)
+         color = 0x000000ff;
+     else
+         color = 0x00000000;
++    webgl_color[0] = 0;
++    webgl_color[1] = 0;
++    webgl_color[2] = 0;
++    webgl_color[3] = color ? 0xff : 0x00;
+ 
+     /* Under DirectX you can sample even if no texture is bound, whereas
+      * OpenGL will only allow that when a valid texture is bound.
+@@ -589,24 +594,35 @@ static void wined3d_device_gl_create_dummy_textures(struct wined3d_device_gl *de
+      * to each texture stage when the currently set D3D texture is NULL. */
+     wined3d_context_gl_active_texture(context_gl, gl_info, 0);
+ 
+-    gl_info->gl_ops.gl.p_glGenTextures(1, &textures->tex_1d);
+-    TRACE("Dummy 1D texture given name %u.\n", textures->tex_1d);
+-    gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_1D, textures->tex_1d);
+-    gl_info->gl_ops.gl.p_glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 1, 0,
+-            GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, &color);
++    if (!wined3d_settings.webgl)
++    {
++        gl_info->gl_ops.gl.p_glGenTextures(1, &textures->tex_1d);
++        TRACE("Dummy 1D texture given name %u.\n", textures->tex_1d);
++        gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_1D, textures->tex_1d);
++        gl_info->gl_ops.gl.p_glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 1, 0,
++                GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, &color);
++    }
+ 
+     gl_info->gl_ops.gl.p_glGenTextures(1, &textures->tex_2d);
+     TRACE("Dummy 2D texture given name %u.\n", textures->tex_2d);
+     gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, textures->tex_2d);
+-    gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0,
+-            GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, &color);
++    if (wined3d_settings.webgl)
++        gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0,
++                GL_RGBA, GL_UNSIGNED_BYTE, webgl_color);
++    else
++        gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0,
++                GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, &color);
+ 
+     if (gl_info->supported[EXT_TEXTURE3D])
+     {
+         gl_info->gl_ops.gl.p_glGenTextures(1, &textures->tex_3d);
+         TRACE("Dummy 3D texture given name %u.\n", textures->tex_3d);
+         gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_3D, textures->tex_3d);
+-        GL_EXTCALL(glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 1, 1, 1, 0,
++        if (wined3d_settings.webgl)
++            GL_EXTCALL(glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 1, 1, 1, 0,
++                    GL_RGBA, GL_UNSIGNED_BYTE, webgl_color));
++        else
++            GL_EXTCALL(glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 1, 1, 1, 0,
+                     GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, &color));
+     }
+ 
+@@ -617,8 +633,12 @@ static void wined3d_device_gl_create_dummy_textures(struct wined3d_device_gl *de
+         gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_CUBE_MAP, textures->tex_cube);
+         for (i = GL_TEXTURE_CUBE_MAP_POSITIVE_X; i <= GL_TEXTURE_CUBE_MAP_NEGATIVE_Z; ++i)
+         {
+-            gl_info->gl_ops.gl.p_glTexImage2D(i, 0, GL_RGBA8, 1, 1, 0,
+-                    GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, &color);
++            if (wined3d_settings.webgl)
++                gl_info->gl_ops.gl.p_glTexImage2D(i, 0, GL_RGBA8, 1, 1, 0,
++                        GL_RGBA, GL_UNSIGNED_BYTE, webgl_color);
++            else
++                gl_info->gl_ops.gl.p_glTexImage2D(i, 0, GL_RGBA8, 1, 1, 0,
++                        GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, &color);
+         }
+     }
+ 
+@@ -637,16 +657,23 @@ static void wined3d_device_gl_create_dummy_textures(struct wined3d_device_gl *de
+ 
+     if (gl_info->supported[EXT_TEXTURE_ARRAY])
+     {
+-        gl_info->gl_ops.gl.p_glGenTextures(1, &textures->tex_1d_array);
+-        TRACE("Dummy 1D array texture given name %u.\n", textures->tex_1d_array);
+-        gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_1D_ARRAY, textures->tex_1d_array);
+-        gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_1D_ARRAY, 0, GL_RGBA8, 1, 1, 0,
+-                    GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, &color);
++        if (!wined3d_settings.webgl)
++        {
++            gl_info->gl_ops.gl.p_glGenTextures(1, &textures->tex_1d_array);
++            TRACE("Dummy 1D array texture given name %u.\n", textures->tex_1d_array);
++            gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_1D_ARRAY, textures->tex_1d_array);
++            gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_1D_ARRAY, 0, GL_RGBA8, 1, 1, 0,
++                        GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, &color);
++        }
+ 
+         gl_info->gl_ops.gl.p_glGenTextures(1, &textures->tex_2d_array);
+         TRACE("Dummy 2D array texture given name %u.\n", textures->tex_2d_array);
+         gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D_ARRAY, textures->tex_2d_array);
+-        GL_EXTCALL(glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, 1, 1, 1, 0,
++        if (wined3d_settings.webgl)
++            GL_EXTCALL(glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, 1, 1, 1, 0,
++                    GL_RGBA, GL_UNSIGNED_BYTE, webgl_color));
++        else
++            GL_EXTCALL(glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, 1, 1, 1, 0,
+                     GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, &color));
+     }
+ 
+diff --git a/dlls/wined3d/surface.c b/dlls/wined3d/surface.c
+index 067b3af..e20020f 100644
+--- a/dlls/wined3d/surface.c
++++ b/dlls/wined3d/surface.c
+@@ -26,12 +26,98 @@
+  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+  */
+ 
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
+ #include "wined3d_private.h"
+ #include "wined3d_gl.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(d3d);
+ WINE_DECLARE_DEBUG_CHANNEL(d3d_perf);
+ 
++struct wined3d_surface_profile_bucket
++{
++    ULONGLONG calls;
++    ULONGLONG total_us;
++    ULONGLONG max_us;
++    ULONGLONG pixels;
++    ULONGLONG extra0;
++    DWORD last_log;
++};
++
++static BOOL wined3d_surface_profile_enabled(void)
++{
++    static int enabled = -1;
++    const char *value;
++
++    if (enabled == -1)
++    {
++        value = getenv("BOXEDWINE_WEBGL_PROFILE");
++        enabled = value && value[0] && strcmp(value, "0");
++    }
++
++    return enabled;
++}
++
++static ULONGLONG wined3d_surface_profile_now_us(void)
++{
++    static LARGE_INTEGER freq;
++    LARGE_INTEGER counter;
++
++    if (!freq.QuadPart && !QueryPerformanceFrequency(&freq))
++        return GetTickCount64() * 1000;
++    if (!QueryPerformanceCounter(&counter))
++        return GetTickCount64() * 1000;
++
++    return counter.QuadPart * 1000000ull / freq.QuadPart;
++}
++
++static void wined3d_surface_profile_record(struct wined3d_surface_profile_bucket *bucket, const char *name,
++        ULONGLONG start_us, unsigned int pixels, unsigned int extra0)
++{
++    ULONGLONG elapsed_us;
++    DWORD now;
++
++    if (!start_us)
++        return;
++
++    elapsed_us = wined3d_surface_profile_now_us() - start_us;
++    bucket->calls++;
++    bucket->total_us += elapsed_us;
++    if (elapsed_us > bucket->max_us)
++        bucket->max_us = elapsed_us;
++    bucket->pixels += pixels;
++    bucket->extra0 += extra0;
++
++    now = GetTickCount();
++    if (!bucket->last_log)
++        bucket->last_log = now;
++    if (now - bucket->last_log < 1000)
++        return;
++
++    fprintf(stderr, "BOXEDWINE_WEBGL_PROFILE wine.%s calls=%llu total_ms=%.3f avg_us=%llu max_us=%llu mpix=%.3f extra=%llu\n",
++            name, (unsigned long long)bucket->calls, bucket->total_us / 1000.0,
++            (unsigned long long)(bucket->total_us / (bucket->calls ? bucket->calls : 1)),
++            (unsigned long long)bucket->max_us, bucket->pixels / 1000000.0,
++            (unsigned long long)bucket->extra0);
++    bucket->calls = 0;
++    bucket->total_us = 0;
++    bucket->max_us = 0;
++    bucket->pixels = 0;
++    bucket->extra0 = 0;
++    bucket->last_log = now;
++}
++
++static unsigned int wined3d_surface_profile_rect_pixels(const RECT *rect)
++{
++    LONG width = rect->right - rect->left;
++    LONG height = rect->bottom - rect->top;
++
++    return width > 0 && height > 0 ? width * height : 0;
++}
++
+ /* Works correctly only for <= 4 bpp formats. */
+ static void get_color_masks(const struct wined3d_format *format, uint32_t *masks)
+ {
+@@ -100,6 +186,122 @@ static void convert_r5g6b5_x8r8g8b8(const BYTE *src, BYTE *dst,
+     }
+ }
+ 
++static void convert_r5g6b5_a1r5g5b5(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    unsigned int x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (y = 0; y < h; ++y)
++    {
++        const WORD *src_line = (const WORD *)(src + y * pitch_in);
++        WORD *dst_line = (WORD *)(dst + y * pitch_out);
++
++        for (x = 0; x < w; ++x)
++        {
++            WORD pixel = src_line[x];
++
++            dst_line[x] = 0x8000u | ((pixel & 0xf800u) >> 1)
++                    | ((pixel & 0x07c0u) >> 1) | (pixel & 0x001fu);
++        }
++    }
++}
++
++static void convert_a1r5g5b5_r5g6b5(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    unsigned int x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (y = 0; y < h; ++y)
++    {
++        const WORD *src_line = (const WORD *)(src + y * pitch_in);
++        WORD *dst_line = (WORD *)(dst + y * pitch_out);
++
++        for (x = 0; x < w; ++x)
++        {
++            WORD pixel = src_line[x];
++
++            dst_line[x] = ((pixel & 0x7c00u) << 1)
++                    | ((pixel & 0x03e0u) << 1) | ((pixel & 0x0200u) >> 4)
++                    | (pixel & 0x001fu);
++        }
++    }
++}
++
++static inline DWORD x8r8g8b8_from_a1r5g5b5(WORD pixel)
++{
++    BYTE r = (pixel >> 10) & 0x1f;
++    BYTE g = (pixel >> 5) & 0x1f;
++    BYTE b = pixel & 0x1f;
++
++    return (pixel & 0x8000 ? 0xff000000u : 0)
++            | ((r << 3) | (r >> 2)) << 16
++            | ((g << 3) | (g >> 2)) << 8
++            | ((b << 3) | (b >> 2));
++}
++
++static inline WORD a1r5g5b5_from_x8r8g8b8(DWORD pixel)
++{
++    return (pixel & 0x80000000u ? 0x8000u : 0)
++            | ((pixel >> 9) & 0x7c00u)
++            | ((pixel >> 6) & 0x03e0u)
++            | ((pixel >> 3) & 0x001fu);
++}
++
++static void convert_a1r5g5b5_x8r8g8b8(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    unsigned int x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (y = 0; y < h; ++y)
++    {
++        const WORD *src_line = (const WORD *)(src + y * pitch_in);
++        DWORD *dst_line = (DWORD *)(dst + y * pitch_out);
++
++        for (x = 0; x < w; ++x)
++            dst_line[x] = x8r8g8b8_from_a1r5g5b5(src_line[x]);
++    }
++}
++
++static void convert_x8r8g8b8_a1r5g5b5(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    unsigned int x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (y = 0; y < h; ++y)
++    {
++        const DWORD *src_line = (const DWORD *)(src + y * pitch_in);
++        WORD *dst_line = (WORD *)(dst + y * pitch_out);
++
++        for (x = 0; x < w; ++x)
++            dst_line[x] = a1r5g5b5_from_x8r8g8b8(src_line[x] | 0xff000000u);
++    }
++}
++
++static void convert_a8r8g8b8_a1r5g5b5(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    unsigned int x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (y = 0; y < h; ++y)
++    {
++        const DWORD *src_line = (const DWORD *)(src + y * pitch_in);
++        WORD *dst_line = (WORD *)(dst + y * pitch_out);
++
++        for (x = 0; x < w; ++x)
++            dst_line[x] = a1r5g5b5_from_x8r8g8b8(src_line[x]);
++    }
++}
++
+ /* We use this for both B8G8R8A8 -> B8G8R8X8 and B8G8R8X8 -> B8G8R8A8, since
+  * in both cases we're just setting the X / Alpha channel to 0xff. */
+ static void convert_a8r8g8b8_x8r8g8b8(const BYTE *src, BYTE *dst,
+@@ -121,15 +323,391 @@ static void convert_a8r8g8b8_x8r8g8b8(const BYTE *src, BYTE *dst,
+     }
+ }
+ 
++static inline WORD rgb565_from_x8r8g8b8(DWORD pixel)
++{
++    return ((pixel >> 8) & 0xf800) | ((pixel >> 5) & 0x07e0) | ((pixel >> 3) & 0x001f);
++}
++
++static inline DWORD x8r8g8b8_from_rgb565(WORD pixel)
++{
++    BYTE r = (pixel >> 11) & 0x1f;
++    BYTE g = (pixel >> 5) & 0x3f;
++    BYTE b = pixel & 0x1f;
++
++    return 0xff000000u | ((r << 3) | (r >> 2)) << 16
++            | ((g << 2) | (g >> 4)) << 8 | ((b << 3) | (b >> 2));
++}
++
++static void build_dxt_colour_table(WORD colour0, WORD colour1, DWORD colour_table[4], BOOL bc1)
++{
++    BYTE c[4][3];
++    unsigned int i;
++
++    colour_table[0] = x8r8g8b8_from_rgb565(colour0);
++    colour_table[1] = x8r8g8b8_from_rgb565(colour1);
++
++    for (i = 0; i < 2; ++i)
++    {
++        c[i][0] = (colour_table[i] >> 16) & 0xff;
++        c[i][1] = (colour_table[i] >> 8) & 0xff;
++        c[i][2] = colour_table[i] & 0xff;
++    }
++
++    if (bc1 && colour0 <= colour1)
++    {
++        c[2][0] = (c[0][0] + c[1][0]) / 2;
++        c[2][1] = (c[0][1] + c[1][1]) / 2;
++        c[2][2] = (c[0][2] + c[1][2]) / 2;
++        colour_table[2] = 0xff000000u | c[2][0] << 16 | c[2][1] << 8 | c[2][2];
++        colour_table[3] = 0;
++    }
++    else
++    {
++        c[2][0] = (2 * c[0][0] + c[1][0]) / 3;
++        c[2][1] = (2 * c[0][1] + c[1][1]) / 3;
++        c[2][2] = (2 * c[0][2] + c[1][2]) / 3;
++        c[3][0] = (2 * c[1][0] + c[0][0]) / 3;
++        c[3][1] = (2 * c[1][1] + c[0][1]) / 3;
++        c[3][2] = (2 * c[1][2] + c[0][2]) / 3;
++        colour_table[2] = 0xff000000u | c[2][0] << 16 | c[2][1] << 8 | c[2][2];
++        colour_table[3] = 0xff000000u | c[3][0] << 16 | c[3][1] << 8 | c[3][2];
++    }
++}
++
++static unsigned int dxt_colour_distance(DWORD a, DWORD b)
++{
++    int dr = (int)((a >> 16) & 0xff) - (int)((b >> 16) & 0xff);
++    int dg = (int)((a >> 8) & 0xff) - (int)((b >> 8) & 0xff);
++    int db = (int)(a & 0xff) - (int)(b & 0xff);
++
++    return dr * dr + dg * dg + db * db;
++}
++
++static void encode_dxt_colour_block(const DWORD pixels[16], BYTE *dst)
++{
++    DWORD colour_table[4], colour_bits = 0;
++    WORD colour0 = 0, colour1 = 0xffff;
++    unsigned int i;
++
++    for (i = 0; i < 16; ++i)
++    {
++        WORD colour = rgb565_from_x8r8g8b8(pixels[i]);
++
++        colour0 = max(colour0, colour);
++        colour1 = min(colour1, colour);
++    }
++
++    if (colour0 < colour1)
++    {
++        WORD tmp = colour0;
++        colour0 = colour1;
++        colour1 = tmp;
++    }
++
++    build_dxt_colour_table(colour0, colour1, colour_table, FALSE);
++
++    for (i = 0; i < 16; ++i)
++    {
++        unsigned int best = 0, best_distance = ~0u, j;
++
++        for (j = 0; j < 4; ++j)
++        {
++            unsigned int distance = dxt_colour_distance(pixels[i], colour_table[j]);
++
++            if (distance < best_distance)
++            {
++                best = j;
++                best_distance = distance;
++            }
++        }
++        colour_bits |= best << (i * 2);
++    }
++
++    ((WORD *)dst)[0] = colour0;
++    ((WORD *)dst)[1] = colour1;
++    ((DWORD *)(dst + 4))[0] = colour_bits;
++}
++
++static void convert_x8r8g8b8_dxtn(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h,
++        BOOL src_has_alpha, BOOL dxt3)
++{
++    unsigned int bx, by, x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (by = 0; by < h; by += 4)
++    {
++        BYTE *dst_row = dst + (by / 4) * pitch_out;
++
++        for (bx = 0; bx < w; bx += 4)
++        {
++            DWORD pixels[16];
++            BYTE *block = dst_row + (bx / 4) * (dxt3 ? 16 : 8);
++
++            for (y = 0; y < 4; ++y)
++            {
++                const DWORD *src_row = (const DWORD *)(src + min(by + y, h - 1) * pitch_in);
++
++                for (x = 0; x < 4; ++x)
++                    pixels[y * 4 + x] = 0xff000000u | (src_row[min(bx + x, w - 1)] & 0x00ffffffu);
++            }
++
++            if (dxt3)
++            {
++                WORD *alpha = (WORD *)block;
++
++                for (y = 0; y < 4; ++y)
++                {
++                    const DWORD *src_row = (const DWORD *)(src + min(by + y, h - 1) * pitch_in);
++
++                    alpha[y] = 0;
++                    for (x = 0; x < 4; ++x)
++                    {
++                        DWORD src_pixel = src_row[min(bx + x, w - 1)];
++                        BYTE a = src_has_alpha ? src_pixel >> 24 : 0xff;
++
++                        alpha[y] |= (a >> 4) << (x * 4);
++                    }
++                }
++
++                encode_dxt_colour_block(pixels, block + 8);
++            }
++            else
++            {
++                encode_dxt_colour_block(pixels, block);
++            }
++        }
++    }
++}
++
++static void convert_x8r8g8b8_dxt1(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    convert_x8r8g8b8_dxtn(src, dst, pitch_in, pitch_out, w, h, FALSE, FALSE);
++}
++
++static void convert_a8r8g8b8_dxt1(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    convert_x8r8g8b8_dxtn(src, dst, pitch_in, pitch_out, w, h, TRUE, FALSE);
++}
++
++static void convert_x8r8g8b8_dxt3(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    convert_x8r8g8b8_dxtn(src, dst, pitch_in, pitch_out, w, h, FALSE, TRUE);
++}
++
++static void convert_a1r5g5b5_dxtn(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h, BOOL dxt3)
++{
++    unsigned int bx, by, x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (by = 0; by < h; by += 4)
++    {
++        BYTE *dst_row = dst + (by / 4) * pitch_out;
++
++        for (bx = 0; bx < w; bx += 4)
++        {
++            DWORD pixels[16];
++            BYTE *block = dst_row + (bx / 4) * (dxt3 ? 16 : 8);
++
++            for (y = 0; y < 4; ++y)
++            {
++                const WORD *src_row = (const WORD *)(src + min(by + y, h - 1) * pitch_in);
++
++                for (x = 0; x < 4; ++x)
++                    pixels[y * 4 + x] = x8r8g8b8_from_a1r5g5b5(src_row[min(bx + x, w - 1)]);
++            }
++
++            if (dxt3)
++            {
++                WORD *alpha = (WORD *)block;
++
++                for (y = 0; y < 4; ++y)
++                {
++                    const WORD *src_row = (const WORD *)(src + min(by + y, h - 1) * pitch_in);
++
++                    alpha[y] = 0;
++                    for (x = 0; x < 4; ++x)
++                        alpha[y] |= (src_row[min(bx + x, w - 1)] & 0x8000 ? 0xf : 0) << (x * 4);
++                }
++                encode_dxt_colour_block(pixels, block + 8);
++            }
++            else
++            {
++                encode_dxt_colour_block(pixels, block);
++            }
++        }
++    }
++}
++
++static void convert_a1r5g5b5_dxt1(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    convert_a1r5g5b5_dxtn(src, dst, pitch_in, pitch_out, w, h, FALSE);
++}
++
++static void convert_a1r5g5b5_dxt3(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    convert_a1r5g5b5_dxtn(src, dst, pitch_in, pitch_out, w, h, TRUE);
++}
++
++static void convert_a8r8g8b8_dxt3(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    convert_x8r8g8b8_dxtn(src, dst, pitch_in, pitch_out, w, h, TRUE, TRUE);
++}
++
++static void convert_dxt1_dxt3(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    unsigned int bx, by;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (by = 0; by < h; by += 4)
++    {
++        const BYTE *src_row = src + (by / 4) * pitch_in;
++        BYTE *dst_row = dst + (by / 4) * pitch_out;
++
++        for (bx = 0; bx < w; bx += 4)
++        {
++            BYTE *block = dst_row + (bx / 4) * 16;
++
++            memset(block, 0xff, 8);
++            memcpy(block + 8, src_row + (bx / 4) * 8, 8);
++        }
++    }
++}
++
++static void decode_dxt_colour_block(const BYTE *src, DWORD pixels[16], BOOL bc1)
++{
++    WORD colour0 = ((const WORD *)src)[0], colour1 = ((const WORD *)src)[1];
++    DWORD colour_table[4], colour_bits = ((const DWORD *)(src + 4))[0];
++    unsigned int i;
++
++    build_dxt_colour_table(colour0, colour1, colour_table, bc1);
++
++    for (i = 0; i < 16; ++i)
++        pixels[i] = colour_table[(colour_bits >> (i * 2)) & 0x3];
++}
++
++static void convert_dxtn_x8r8g8b8(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h, BOOL dxt3)
++{
++    unsigned int bx, by, x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (by = 0; by < h; by += 4)
++    {
++        const BYTE *src_row = src + (by / 4) * pitch_in;
++
++        for (bx = 0; bx < w; bx += 4)
++        {
++            const BYTE *block = src_row + (bx / 4) * (dxt3 ? 16 : 8);
++            DWORD pixels[16];
++
++            decode_dxt_colour_block(dxt3 ? block + 8 : block, pixels, !dxt3);
++
++            for (y = 0; y < min(4, h - by); ++y)
++            {
++                DWORD *dst_row = (DWORD *)(dst + (by + y) * pitch_out);
++
++                for (x = 0; x < min(4, w - bx); ++x)
++                {
++                    DWORD pixel = pixels[y * 4 + x];
++
++                    if (dxt3)
++                    {
++                        BYTE a = (((const WORD *)block)[y] >> (x * 4)) & 0xf;
++                        pixel = (pixel & 0x00ffffffu) | ((DWORD)(a | (a << 4)) << 24);
++                    }
++                    dst_row[bx + x] = pixel;
++                }
++            }
++        }
++    }
++}
++
++static void convert_dxt1_x8r8g8b8(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    convert_dxtn_x8r8g8b8(src, dst, pitch_in, pitch_out, w, h, FALSE);
++}
++
++static void convert_dxt3_x8r8g8b8(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    convert_dxtn_x8r8g8b8(src, dst, pitch_in, pitch_out, w, h, TRUE);
++}
++
++static void convert_dxtn_a1r5g5b5(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h, BOOL dxt3)
++{
++    unsigned int bx, by, x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (by = 0; by < h; by += 4)
++    {
++        const BYTE *src_row = src + (by / 4) * pitch_in;
++
++        for (bx = 0; bx < w; bx += 4)
++        {
++            const BYTE *block = src_row + (bx / 4) * (dxt3 ? 16 : 8);
++            DWORD pixels[16];
++
++            decode_dxt_colour_block(dxt3 ? block + 8 : block, pixels, !dxt3);
++
++            for (y = 0; y < min(4, h - by); ++y)
++            {
++                WORD *dst_row = (WORD *)(dst + (by + y) * pitch_out);
++
++                for (x = 0; x < min(4, w - bx); ++x)
++                {
++                    DWORD pixel = pixels[y * 4 + x];
++
++                    if (dxt3)
++                    {
++                        BYTE a = (((const WORD *)block)[y] >> (x * 4)) & 0xf;
++                        pixel = (pixel & 0x00ffffffu) | ((DWORD)(a | (a << 4)) << 24);
++                    }
++                    dst_row[bx + x] = a1r5g5b5_from_x8r8g8b8(pixel);
++                }
++            }
++        }
++    }
++}
++
++static void convert_dxt1_a1r5g5b5(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    convert_dxtn_a1r5g5b5(src, dst, pitch_in, pitch_out, w, h, FALSE);
++}
++
++static void convert_dxt3_a1r5g5b5(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    convert_dxtn_a1r5g5b5(src, dst, pitch_in, pitch_out, w, h, TRUE);
++}
++
+ static inline BYTE cliptobyte(int x)
+ {
+     return (BYTE)((x < 0) ? 0 : ((x > 255) ? 255 : x));
+ }
+ 
++static inline DWORD yuv_to_x8r8g8b8(BYTE y, BYTE u, BYTE v);
++static inline WORD yuv_to_r5g6b5(BYTE y, BYTE u, BYTE v);
++
+ static void convert_yuy2_x8r8g8b8(const BYTE *src, BYTE *dst,
+         unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
+ {
+-    int c2, d, e, r2 = 0, g2 = 0, b2 = 0;
+     unsigned int x, y;
+ 
+     TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
+@@ -138,32 +716,16 @@ static void convert_yuy2_x8r8g8b8(const BYTE *src, BYTE *dst,
+     {
+         const BYTE *src_line = src + y * pitch_in;
+         DWORD *dst_line = (DWORD *)(dst + y * pitch_out);
+-        for (x = 0; x < w; ++x)
++        for (x = 0; x < w; x += 2)
+         {
+-            /* YUV to RGB conversion formulas from http://en.wikipedia.org/wiki/YUV:
+-             *     C = Y - 16; D = U - 128; E = V - 128;
+-             *     R = cliptobyte((298 * C + 409 * E + 128) >> 8);
+-             *     G = cliptobyte((298 * C - 100 * D - 208 * E + 128) >> 8);
+-             *     B = cliptobyte((298 * C + 516 * D + 128) >> 8);
+-             * Two adjacent YUY2 pixels are stored as four bytes: Y0 U Y1 V .
+-             * U and V are shared between the pixels. */
+-            if (!(x & 1)) /* For every even pixel, read new U and V. */
+-            {
+-                d = (int) src_line[1] - 128;
+-                e = (int) src_line[3] - 128;
+-                r2 = 409 * e + 128;
+-                g2 = - 100 * d - 208 * e + 128;
+-                b2 = 516 * d + 128;
+-            }
+-            c2 = 298 * ((int) src_line[0] - 16);
+-            dst_line[x] = 0xff000000
+-                | cliptobyte((c2 + r2) >> 8) << 16    /* red   */
+-                | cliptobyte((c2 + g2) >> 8) << 8     /* green */
+-                | cliptobyte((c2 + b2) >> 8);         /* blue  */
+-                /* Scale RGB values to 0..255 range,
+-                 * then clip them if still not in range (may be negative),
+-                 * then shift them within DWORD if necessary. */
+-            src_line += 2;
++            BYTE y0 = src_line[2 * x + 0];
++            BYTE u = src_line[2 * x + 1];
++            BYTE y1 = src_line[2 * x + 2];
++            BYTE v = src_line[2 * x + 3];
++
++            dst_line[x + 0] = yuv_to_x8r8g8b8(y0, u, v);
++            if (x + 1 < w)
++                dst_line[x + 1] = yuv_to_x8r8g8b8(y1, u, v);
+         }
+     }
+ }
+@@ -172,7 +734,6 @@ static void convert_yuy2_r5g6b5(const BYTE *src, BYTE *dst,
+         unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
+ {
+     unsigned int x, y;
+-    int c2, d, e, r2 = 0, g2 = 0, b2 = 0;
+ 
+     TRACE("Converting %ux%u pixels, pitches %u %u\n", w, h, pitch_in, pitch_out);
+ 
+@@ -180,35 +741,177 @@ static void convert_yuy2_r5g6b5(const BYTE *src, BYTE *dst,
+     {
+         const BYTE *src_line = src + y * pitch_in;
+         WORD *dst_line = (WORD *)(dst + y * pitch_out);
+-        for (x = 0; x < w; ++x)
++        for (x = 0; x < w; x += 2)
+         {
+-            /* YUV to RGB conversion formulas from http://en.wikipedia.org/wiki/YUV:
+-             *     C = Y - 16; D = U - 128; E = V - 128;
+-             *     R = cliptobyte((298 * C + 409 * E + 128) >> 8);
+-             *     G = cliptobyte((298 * C - 100 * D - 208 * E + 128) >> 8);
+-             *     B = cliptobyte((298 * C + 516 * D + 128) >> 8);
+-             * Two adjacent YUY2 pixels are stored as four bytes: Y0 U Y1 V .
+-             * U and V are shared between the pixels. */
+-            if (!(x & 1)) /* For every even pixel, read new U and V. */
+-            {
+-                d = (int) src_line[1] - 128;
+-                e = (int) src_line[3] - 128;
+-                r2 = 409 * e + 128;
+-                g2 = - 100 * d - 208 * e + 128;
+-                b2 = 516 * d + 128;
+-            }
+-            c2 = 298 * ((int) src_line[0] - 16);
+-            dst_line[x] = (cliptobyte((c2 + r2) >> 8) >> 3) << 11   /* red   */
+-                | (cliptobyte((c2 + g2) >> 8) >> 2) << 5            /* green */
+-                | (cliptobyte((c2 + b2) >> 8) >> 3);                /* blue  */
+-                /* Scale RGB values to 0..255 range,
+-                 * then clip them if still not in range (may be negative),
+-                 * then shift them within DWORD if necessary. */
+-            src_line += 2;
++            BYTE y0 = src_line[2 * x + 0];
++            BYTE u = src_line[2 * x + 1];
++            BYTE y1 = src_line[2 * x + 2];
++            BYTE v = src_line[2 * x + 3];
++
++            dst_line[x + 0] = yuv_to_r5g6b5(y0, u, v);
++            if (x + 1 < w)
++                dst_line[x + 1] = yuv_to_r5g6b5(y1, u, v);
+         }
+     }
+ }
+ 
++static inline DWORD yuv_to_x8r8g8b8(BYTE y, BYTE u, BYTE v)
++{
++    int c = 298 * ((int)y - 16);
++    int d = (int)u - 128;
++    int e = (int)v - 128;
++
++    return 0xff000000u
++            | cliptobyte((c + 409 * e + 128) >> 8) << 16
++            | cliptobyte((c - 100 * d - 208 * e + 128) >> 8) << 8
++            | cliptobyte((c + 516 * d + 128) >> 8);
++}
++
++static inline WORD yuv_to_r5g6b5(BYTE y, BYTE u, BYTE v)
++{
++    int c = 298 * ((int)y - 16);
++    int d = (int)u - 128;
++    int e = (int)v - 128;
++
++    return (cliptobyte((c + 409 * e + 128) >> 8) >> 3) << 11
++            | (cliptobyte((c - 100 * d - 208 * e + 128) >> 8) >> 2) << 5
++            | (cliptobyte((c + 516 * d + 128) >> 8) >> 3);
++}
++
++static void convert_uyvy_x8r8g8b8(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    unsigned int x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (y = 0; y < h; ++y)
++    {
++        const BYTE *src_line = src + y * pitch_in;
++        DWORD *dst_line = (DWORD *)(dst + y * pitch_out);
++
++        for (x = 0; x < w; x += 2)
++        {
++            BYTE u = src_line[2 * x + 0];
++            BYTE y0 = src_line[2 * x + 1];
++            BYTE v = src_line[2 * x + 2];
++            BYTE y1 = src_line[2 * x + 3];
++
++            dst_line[x + 0] = yuv_to_x8r8g8b8(y0, u, v);
++            if (x + 1 < w)
++                dst_line[x + 1] = yuv_to_x8r8g8b8(y1, u, v);
++        }
++    }
++}
++
++static void convert_uyvy_r5g6b5(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    unsigned int x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (y = 0; y < h; ++y)
++    {
++        const BYTE *src_line = src + y * pitch_in;
++        WORD *dst_line = (WORD *)(dst + y * pitch_out);
++
++        for (x = 0; x < w; x += 2)
++        {
++            BYTE u = src_line[2 * x + 0];
++            BYTE y0 = src_line[2 * x + 1];
++            BYTE v = src_line[2 * x + 2];
++            BYTE y1 = src_line[2 * x + 3];
++
++            dst_line[x + 0] = yuv_to_r5g6b5(y0, u, v);
++            if (x + 1 < w)
++                dst_line[x + 1] = yuv_to_r5g6b5(y1, u, v);
++        }
++    }
++}
++
++static void convert_yv12_x8r8g8b8(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    const BYTE *v_plane = src + pitch_in * h;
++    const BYTE *u_plane = v_plane + (pitch_in / 2) * (h / 2);
++    unsigned int x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (y = 0; y < h; ++y)
++    {
++        const BYTE *y_line = src + y * pitch_in;
++        const BYTE *u_line = u_plane + (y / 2) * (pitch_in / 2);
++        const BYTE *v_line = v_plane + (y / 2) * (pitch_in / 2);
++        DWORD *dst_line = (DWORD *)(dst + y * pitch_out);
++
++        for (x = 0; x < w; ++x)
++            dst_line[x] = yuv_to_x8r8g8b8(y_line[x], u_line[x / 2], v_line[x / 2]);
++    }
++}
++
++static void convert_yv12_r5g6b5(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    const BYTE *v_plane = src + pitch_in * h;
++    const BYTE *u_plane = v_plane + (pitch_in / 2) * (h / 2);
++    unsigned int x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (y = 0; y < h; ++y)
++    {
++        const BYTE *y_line = src + y * pitch_in;
++        const BYTE *u_line = u_plane + (y / 2) * (pitch_in / 2);
++        const BYTE *v_line = v_plane + (y / 2) * (pitch_in / 2);
++        WORD *dst_line = (WORD *)(dst + y * pitch_out);
++
++        for (x = 0; x < w; ++x)
++            dst_line[x] = yuv_to_r5g6b5(y_line[x], u_line[x / 2], v_line[x / 2]);
++    }
++}
++
++static void convert_nv12_x8r8g8b8(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    const BYTE *chroma_plane = src + pitch_in * h;
++    unsigned int x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (y = 0; y < h; ++y)
++    {
++        const BYTE *y_line = src + y * pitch_in;
++        const BYTE *chroma_line = chroma_plane + (y / 2) * pitch_in;
++        DWORD *dst_line = (DWORD *)(dst + y * pitch_out);
++
++        for (x = 0; x < w; ++x)
++            dst_line[x] = yuv_to_x8r8g8b8(y_line[x], chroma_line[(x / 2) * 2],
++                    chroma_line[(x / 2) * 2 + 1]);
++    }
++}
++
++static void convert_nv12_r5g6b5(const BYTE *src, BYTE *dst,
++        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
++{
++    const BYTE *chroma_plane = src + pitch_in * h;
++    unsigned int x, y;
++
++    TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
++
++    for (y = 0; y < h; ++y)
++    {
++        const BYTE *y_line = src + y * pitch_in;
++        const BYTE *chroma_line = chroma_plane + (y / 2) * pitch_in;
++        WORD *dst_line = (WORD *)(dst + y * pitch_out);
++
++        for (x = 0; x < w; ++x)
++            dst_line[x] = yuv_to_r5g6b5(y_line[x], chroma_line[(x / 2) * 2],
++                    chroma_line[(x / 2) * 2 + 1]);
++    }
++}
++
+ struct d3dfmt_converter_desc
+ {
+     enum wined3d_format_id from, to;
+@@ -221,10 +924,43 @@ static const struct d3dfmt_converter_desc converters[] =
+ {
+     {WINED3DFMT_R32_FLOAT,      WINED3DFMT_R16_FLOAT,       convert_r32_float_r16_float},
+     {WINED3DFMT_B5G6R5_UNORM,   WINED3DFMT_B8G8R8X8_UNORM,  convert_r5g6b5_x8r8g8b8},
++    {WINED3DFMT_B5G6R5_UNORM,   WINED3DFMT_B8G8R8A8_UNORM,  convert_r5g6b5_x8r8g8b8},
++    {WINED3DFMT_B5G6R5_UNORM,   WINED3DFMT_B5G5R5A1_UNORM,  convert_r5g6b5_a1r5g5b5},
++    {WINED3DFMT_B5G5R5A1_UNORM, WINED3DFMT_B5G6R5_UNORM,    convert_a1r5g5b5_r5g6b5},
++    {WINED3DFMT_B5G5R5A1_UNORM, WINED3DFMT_B8G8R8X8_UNORM,  convert_a1r5g5b5_x8r8g8b8},
++    {WINED3DFMT_B5G5R5A1_UNORM, WINED3DFMT_B8G8R8A8_UNORM,  convert_a1r5g5b5_x8r8g8b8},
++    {WINED3DFMT_B8G8R8X8_UNORM, WINED3DFMT_B5G5R5A1_UNORM,  convert_x8r8g8b8_a1r5g5b5},
++    {WINED3DFMT_B8G8R8A8_UNORM, WINED3DFMT_B5G5R5A1_UNORM,  convert_a8r8g8b8_a1r5g5b5},
++    {WINED3DFMT_B5G5R5A1_UNORM, WINED3DFMT_DXT1,             convert_a1r5g5b5_dxt1},
++    {WINED3DFMT_B5G5R5A1_UNORM, WINED3DFMT_DXT2,             convert_a1r5g5b5_dxt3},
++    {WINED3DFMT_B5G5R5A1_UNORM, WINED3DFMT_DXT3,             convert_a1r5g5b5_dxt3},
+     {WINED3DFMT_B8G8R8A8_UNORM, WINED3DFMT_B8G8R8X8_UNORM,  convert_a8r8g8b8_x8r8g8b8},
+     {WINED3DFMT_B8G8R8X8_UNORM, WINED3DFMT_B8G8R8A8_UNORM,  convert_a8r8g8b8_x8r8g8b8},
++    {WINED3DFMT_B8G8R8A8_UNORM, WINED3DFMT_DXT1,             convert_a8r8g8b8_dxt1},
++    {WINED3DFMT_B8G8R8X8_UNORM, WINED3DFMT_DXT1,             convert_x8r8g8b8_dxt1},
++    {WINED3DFMT_B8G8R8A8_UNORM, WINED3DFMT_DXT2,             convert_a8r8g8b8_dxt3},
++    {WINED3DFMT_B8G8R8X8_UNORM, WINED3DFMT_DXT2,             convert_x8r8g8b8_dxt3},
++    {WINED3DFMT_B8G8R8A8_UNORM, WINED3DFMT_DXT3,             convert_a8r8g8b8_dxt3},
++    {WINED3DFMT_B8G8R8X8_UNORM, WINED3DFMT_DXT3,             convert_x8r8g8b8_dxt3},
++    {WINED3DFMT_DXT1,           WINED3DFMT_DXT2,             convert_dxt1_dxt3},
++    {WINED3DFMT_DXT1,           WINED3DFMT_DXT3,             convert_dxt1_dxt3},
++    {WINED3DFMT_DXT1,           WINED3DFMT_B8G8R8A8_UNORM,   convert_dxt1_x8r8g8b8},
++    {WINED3DFMT_DXT1,           WINED3DFMT_B8G8R8X8_UNORM,   convert_dxt1_x8r8g8b8},
++    {WINED3DFMT_DXT1,           WINED3DFMT_B5G5R5A1_UNORM,   convert_dxt1_a1r5g5b5},
++    {WINED3DFMT_DXT2,           WINED3DFMT_B8G8R8A8_UNORM,   convert_dxt3_x8r8g8b8},
++    {WINED3DFMT_DXT2,           WINED3DFMT_B8G8R8X8_UNORM,   convert_dxt3_x8r8g8b8},
++    {WINED3DFMT_DXT2,           WINED3DFMT_B5G5R5A1_UNORM,   convert_dxt3_a1r5g5b5},
++    {WINED3DFMT_DXT3,           WINED3DFMT_B8G8R8A8_UNORM,   convert_dxt3_x8r8g8b8},
++    {WINED3DFMT_DXT3,           WINED3DFMT_B8G8R8X8_UNORM,   convert_dxt3_x8r8g8b8},
++    {WINED3DFMT_DXT3,           WINED3DFMT_B5G5R5A1_UNORM,   convert_dxt3_a1r5g5b5},
+     {WINED3DFMT_YUY2,           WINED3DFMT_B8G8R8X8_UNORM,  convert_yuy2_x8r8g8b8},
+     {WINED3DFMT_YUY2,           WINED3DFMT_B5G6R5_UNORM,    convert_yuy2_r5g6b5},
++    {WINED3DFMT_UYVY,           WINED3DFMT_B8G8R8X8_UNORM,  convert_uyvy_x8r8g8b8},
++    {WINED3DFMT_UYVY,           WINED3DFMT_B5G6R5_UNORM,    convert_uyvy_r5g6b5},
++    {WINED3DFMT_YV12,           WINED3DFMT_B8G8R8X8_UNORM,  convert_yv12_x8r8g8b8},
++    {WINED3DFMT_YV12,           WINED3DFMT_B5G6R5_UNORM,    convert_yv12_r5g6b5},
++    {WINED3DFMT_NV12,           WINED3DFMT_B8G8R8X8_UNORM,  convert_nv12_x8r8g8b8},
++    {WINED3DFMT_NV12,           WINED3DFMT_B5G6R5_UNORM,    convert_nv12_r5g6b5},
+ };
+ 
+ static inline const struct d3dfmt_converter_desc *find_converter(enum wined3d_format_id from,
+@@ -241,6 +977,12 @@ static inline const struct d3dfmt_converter_desc *find_converter(enum wined3d_fo
+     return NULL;
+ }
+ 
++static bool format_is_yuv(enum wined3d_format_id format_id)
++{
++    return format_id == WINED3DFMT_UYVY || format_id == WINED3DFMT_YUY2
++            || format_id == WINED3DFMT_YV12 || format_id == WINED3DFMT_NV12;
++}
++
+ static struct wined3d_texture *surface_convert_format(struct wined3d_texture *src_texture,
+         unsigned int sub_resource_idx, const struct wined3d_format *dst_format)
+ {
+@@ -351,6 +1093,8 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+     struct wined3d_context_gl *context_gl;
+     unsigned int row_pitch, slice_pitch;
+     unsigned int width, height, level;
++    uint8_t *webgl_readback = NULL;
++    ULONGLONG profile_start;
+     struct wined3d_bo_address data;
+     bool restore_context = false;
+     unsigned int restore_idx;
+@@ -377,6 +1121,12 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+     context_gl = wined3d_context_gl(context);
+     gl_info = context_gl->gl_info;
+ 
++    /* Offscreen swapchains use a texture-backed framebuffer in the WebGL
++     * profile, even if the resource's legacy draw binding is DRAWABLE. */
++    if (wined3d_settings.webgl && src_location == WINED3D_LOCATION_DRAWABLE
++            && wined3d_resource_is_offscreen(resource))
++        src_location = WINED3D_LOCATION_TEXTURE_RGB;
++
+     if (resource->format->depth_size || resource->format->stencil_size)
+         wined3d_context_gl_apply_fbo_state_explicit(context_gl, GL_READ_FRAMEBUFFER,
+                 NULL, 0, resource, sub_resource_idx, src_location);
+@@ -384,6 +1134,14 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+         wined3d_context_gl_apply_fbo_state_explicit(context_gl, GL_READ_FRAMEBUFFER,
+                 resource, sub_resource_idx, NULL, 0, src_location);
+ 
++    /* BoxedWine may switch the underlying WebGL context between Wine
++     * windows, leaving WineD3D's cached read FBO binding stale. */
++    if (wined3d_settings.webgl)
++    {
++        gl_info->fbo_ops.glBindFramebuffer(GL_READ_FRAMEBUFFER, context_gl->fbo_read_binding);
++        checkGLcall("WebGL read framebuffer rebind");
++    }
++
+     /* Select the correct read buffer, and give some debug output. There is no
+      * need to keep track of the current read buffer or reset it, every part
+      * of the code that reads pixels sets the read buffer as desired. */
+@@ -392,7 +1150,8 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+         /* Mapping the primary render target which is not on a swapchain.
+          * Read from the back buffer. */
+         TRACE("Mapping offscreen render target.\n");
+-        gl_info->gl_ops.gl.p_glReadBuffer(wined3d_context_gl_get_offscreen_gl_buffer(context_gl));
++        gl_info->gl_ops.gl.p_glReadBuffer(wined3d_settings.webgl
++                ? GL_COLOR_ATTACHMENT0 : wined3d_context_gl_get_offscreen_gl_buffer(context_gl));
+         src_is_upside_down = TRUE;
+     }
+     else
+@@ -406,7 +1165,22 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+     checkGLcall("glReadBuffer");
+     wined3d_context_gl_check_fbo_status(context_gl, GL_READ_FRAMEBUFFER);
+ 
+-    if (data.buffer_object)
++    level = sub_resource_idx % texture->level_count;
++    wined3d_texture_get_pitch(texture, level, &row_pitch, &slice_pitch);
++    format_gl = wined3d_format_gl(resource->format);
++
++    if (wined3d_settings.webgl && data.buffer_object)
++    {
++        if (!(webgl_readback = malloc(slice_pitch)))
++        {
++            ERR("Failed to allocate WebGL readback memory.\n");
++            goto error;
++        }
++        GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
++        checkGLcall("glBindBuffer");
++        offset = webgl_readback;
++    }
++    else if (data.buffer_object)
+     {
+         GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, wined3d_bo_gl(data.buffer_object)->id));
+         checkGLcall("glBindBuffer");
+@@ -418,18 +1192,21 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+         checkGLcall("glBindBuffer");
+     }
+ 
+-    level = sub_resource_idx % texture->level_count;
+-    wined3d_texture_get_pitch(texture, level, &row_pitch, &slice_pitch);
+-    format_gl = wined3d_format_gl(resource->format);
+-
+     /* Setup pixel store pack state -- to glReadPixels into the correct place */
+     gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ROW_LENGTH, row_pitch / format_gl->f.byte_count);
+     checkGLcall("glPixelStorei");
+ 
+     width = wined3d_texture_get_level_width(texture, level);
+     height = wined3d_texture_get_level_height(texture, level);
++    profile_start = wined3d_surface_profile_enabled() ? wined3d_surface_profile_now_us() : 0;
+     gl_info->gl_ops.gl.p_glReadPixels(0, 0, width, height,
+             format_gl->format, format_gl->type, offset);
++    if (profile_start)
++    {
++        ULONGLONG elapsed_us = wined3d_surface_profile_now_us() - profile_start;
++        fprintf(stderr, "BOXEDWINE_WEBGL_READPIXELS wine.surface_load_location width=%u height=%u pixels=%u elapsed_us=%llu format=%u\n",
++                width, height, width * height, (unsigned long long)elapsed_us, resource->format->id);
++    }
+     checkGLcall("glReadPixels");
+ 
+     /* Reset previous pixel store pack state */
+@@ -444,7 +1221,7 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+         if (!(row = malloc(row_pitch)))
+             goto error;
+ 
+-        if (data.buffer_object)
++        if (data.buffer_object && !webgl_readback)
+         {
+             mem = GL_EXTCALL(glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_WRITE));
+             checkGLcall("glMapBuffer");
+@@ -463,11 +1240,22 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+         }
+         free(row);
+ 
+-        if (data.buffer_object)
++        if (data.buffer_object && !webgl_readback)
+             GL_EXTCALL(glUnmapBuffer(GL_PIXEL_PACK_BUFFER));
+     }
+ 
++    if (webgl_readback)
++    {
++        struct wined3d_bo_address src = {0};
++        struct wined3d_range range = {0, slice_pitch};
++
++        src.addr = webgl_readback;
++        wined3d_context_copy_bo_address(context, &data, &src, 1, &range, WINED3D_MAP_WRITE);
++    }
++
+ error:
++    free(webgl_readback);
++
+     if (data.buffer_object)
+     {
+         GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
+@@ -600,7 +1388,7 @@ static HRESULT surface_cpu_blt(struct wined3d_texture *dst_texture, unsigned int
+ {
+     unsigned int bpp, src_height, src_width, dst_height, dst_width, row_byte_count;
+     struct wined3d_device *device = dst_texture->resource.device;
+-    const struct wined3d_format *src_format, *dst_format;
++    const struct wined3d_format *src_format, *dst_format, *upload_dst_format = NULL;
+     struct wined3d_texture *converted_texture = NULL;
+     struct wined3d_bo_address src_data, dst_data;
+     unsigned int src_fmt_attrs, dst_fmt_attrs;
+@@ -664,8 +1452,12 @@ static HRESULT surface_cpu_blt(struct wined3d_texture *dst_texture, unsigned int
+ 
+         if (upload)
+         {
+-            dst_format = src_format->attrs & WINED3D_FORMAT_ATTR_BLOCKS
+-                    ? wined3d_get_format(device->adapter, WINED3DFMT_B8G8R8A8_UNORM, 0) : src_format;
++            upload_dst_format = dst_format;
++            if (wined3d_settings.webgl)
++                dst_format = wined3d_get_format(device->adapter, WINED3DFMT_B8G8R8A8_UNORM, 0);
++            else
++                dst_format = src_format->attrs & WINED3D_FORMAT_ATTR_BLOCKS
++                        ? wined3d_get_format(device->adapter, WINED3DFMT_B8G8R8A8_UNORM, 0) : src_format;
+         }
+ 
+         if (!(flags & WINED3D_BLT_RAW) && dst_format->id != src_format->id)
+@@ -724,7 +1516,6 @@ static HRESULT surface_cpu_blt(struct wined3d_texture *dst_texture, unsigned int
+     dbuf = (BYTE *)dst_map.data
+             + ((dst_box->top / dst_format->block_height) * dst_map.row_pitch)
+             + ((dst_box->left / dst_format->block_width) * dst_format->block_byte_count);
+-
+     if (src_fmt_attrs & dst_fmt_attrs & WINED3D_FORMAT_ATTR_BLOCKS)
+     {
+         TRACE("%s -> %s copy.\n", debug_d3dformat(src_format->id), debug_d3dformat(dst_format->id));
+@@ -744,6 +1535,34 @@ static HRESULT surface_cpu_blt(struct wined3d_texture *dst_texture, unsigned int
+ 
+     if ((src_fmt_attrs | dst_fmt_attrs) & WINED3D_FORMAT_ATTR_HEIGHT_SCALE)
+     {
++        unsigned int src_level = src_sub_resource_idx % src_texture->level_count;
++        unsigned int dst_level = dst_sub_resource_idx % dst_texture->level_count;
++        unsigned int src_level_width = wined3d_texture_get_level_width(src_texture, src_level);
++        unsigned int src_level_height = wined3d_texture_get_level_height(src_texture, src_level);
++        unsigned int dst_level_width = wined3d_texture_get_level_width(dst_texture, dst_level);
++        unsigned int dst_level_height = wined3d_texture_get_level_height(dst_texture, dst_level);
++
++        if (!flags && src_format->id == dst_format->id
++                && src_box->left == 0 && src_box->top == 0
++                && src_box->right == src_level_width && src_box->bottom == src_level_height
++                && dst_box->left == 0 && dst_box->top == 0
++                && dst_box->right == dst_level_width && dst_box->bottom == dst_level_height
++                && src_level_width == dst_level_width && src_level_height == dst_level_height)
++        {
++            unsigned int copy_height = src_level_height * src_format->height_scale.numerator
++                    / src_format->height_scale.denominator;
++            unsigned int row_bytes = min(src_map.row_pitch, dst_map.row_pitch);
++
++            TRACE("Copying full height-scaled surface %s in system memory.\n",
++                    debug_d3dformat(src_format->id));
++            if (!same_sub_resource)
++            {
++                for (y = 0; y < copy_height; ++y)
++                    memcpy(dbuf + y * dst_map.row_pitch, sbase + y * src_map.row_pitch, row_bytes);
++            }
++            goto release;
++        }
++
+         FIXME("Unsupported blit between height-scaled formats (src %s, dst %s).\n",
+                 debug_d3dformat(src_format->id), debug_d3dformat(dst_format->id));
+         hr = E_NOTIMPL;
+@@ -1114,20 +1933,64 @@ error:
+ release:
+     if (upload && hr == WINED3D_OK)
+     {
+-        struct wined3d_bo_address data;
++        if (wined3d_settings.webgl && upload_dst_format
++                && (upload_dst_format->attrs & WINED3D_FORMAT_ATTR_BLOCKS))
++        {
++            const struct d3dfmt_converter_desc *conv;
++
++            if (!(conv = find_converter(dst_format->id, upload_dst_format->id)))
++            {
++                FIXME("Cannot convert %s to %s for WebGL compressed blit.\n",
++                        debug_d3dformat(dst_format->id), debug_d3dformat(upload_dst_format->id));
++                hr = WINED3DERR_NOTAVAILABLE;
++            }
++            else
++            {
++                unsigned int upload_row_pitch, upload_slice_pitch;
++                struct wined3d_bo_address dst_data;
++                BYTE *src, *dst;
++
++                map_binding = dst_texture->resource.map_binding;
++                texture_level = dst_sub_resource_idx % dst_texture->level_count;
++                if (!wined3d_texture_load_location(dst_texture, dst_sub_resource_idx, context, map_binding))
++                    ERR("Failed to load the destination sub-resource into %s.\n",
++                            wined3d_debug_location(map_binding));
++
++                wined3d_texture_invalidate_location(dst_texture, dst_sub_resource_idx, ~map_binding);
++                wined3d_texture_get_pitch(dst_texture, texture_level, &upload_row_pitch, &upload_slice_pitch);
++                wined3d_texture_get_bo_address(dst_texture, dst_sub_resource_idx, &dst_data, map_binding);
++                dst = wined3d_context_map_bo_address(context, &dst_data,
++                        dst_texture->sub_resources[dst_sub_resource_idx].size, WINED3D_MAP_WRITE);
++
++                src = (BYTE *)dst_map.data + dst_box->top * dst_map.row_pitch
++                        + dst_box->left * dst_format->byte_count;
++                dst += (dst_box->top / upload_dst_format->block_height) * upload_row_pitch
++                        + (dst_box->left / upload_dst_format->block_width)
++                        * upload_dst_format->block_byte_count;
++
++                conv->convert(src, dst, dst_map.row_pitch, upload_row_pitch, dst_width, dst_height);
++                wined3d_context_unmap_bo_address(context, &dst_data, 1, &dst_range);
++                wined3d_texture_validate_location(dst_texture, dst_sub_resource_idx, map_binding);
++                wined3d_texture_invalidate_location(dst_texture, dst_sub_resource_idx, ~map_binding);
++            }
++        }
++        else
++        {
++            struct wined3d_bo_address data;
+ 
+-        data.buffer_object = 0;
+-        data.addr = dst_map.data;
++            data.buffer_object = 0;
++            data.addr = dst_map.data;
+ 
+-        texture_level = dst_sub_resource_idx % dst_texture->level_count;
++            texture_level = dst_sub_resource_idx % dst_texture->level_count;
+ 
+-        wined3d_texture_prepare_location(dst_texture, texture_level, context, WINED3D_LOCATION_TEXTURE_RGB);
+-        dst_texture->texture_ops->texture_upload_data(context, wined3d_const_bo_address(&data), dst_format,
+-                dst_box, dst_map.row_pitch, dst_map.slice_pitch, dst_texture, texture_level,
+-                WINED3D_LOCATION_TEXTURE_RGB, dst_box->left, dst_box->top, 0);
++            wined3d_texture_prepare_location(dst_texture, texture_level, context, WINED3D_LOCATION_TEXTURE_RGB);
++            dst_texture->texture_ops->texture_upload_data(context, wined3d_const_bo_address(&data), dst_format,
++                    dst_box, dst_map.row_pitch, dst_map.slice_pitch, dst_texture, texture_level,
++                    WINED3D_LOCATION_TEXTURE_RGB, dst_box->left, dst_box->top, 0);
+ 
+-        wined3d_texture_validate_location(dst_texture, texture_level, WINED3D_LOCATION_TEXTURE_RGB);
+-        wined3d_texture_invalidate_location(dst_texture, texture_level, ~WINED3D_LOCATION_TEXTURE_RGB);
++            wined3d_texture_validate_location(dst_texture, texture_level, WINED3D_LOCATION_TEXTURE_RGB);
++            wined3d_texture_invalidate_location(dst_texture, texture_level, ~WINED3D_LOCATION_TEXTURE_RGB);
++        }
+     }
+ 
+     if (upload)
+diff --git a/dlls/wined3d/texture.c b/dlls/wined3d/texture.c
+index ef9703f..984b9ee 100644
+--- a/dlls/wined3d/texture.c
++++ b/dlls/wined3d/texture.c
+@@ -45,12 +45,87 @@ bool wined3d_texture_validate_sub_resource_idx(const struct wined3d_texture *tex
+ 
+ BOOL wined3d_texture_can_use_pbo(const struct wined3d_texture *texture, const struct wined3d_d3d_info *d3d_info)
+ {
++    if (wined3d_settings.webgl && texture->resource.format_attrs & WINED3D_FORMAT_ATTR_COMPRESSED)
++        return FALSE;
++
+     if (!d3d_info->pbo || texture->resource.format->conv_byte_count || texture->resource.pin_sysmem)
+         return FALSE;
+ 
+     return TRUE;
+ }
+ 
++static bool wined3d_texture_preserve_webgl_compressed_sysmem(struct wined3d_texture *texture,
++        unsigned int sub_resource_idx, struct wined3d_context *context, const struct upload_bo *upload_bo,
++        const struct wined3d_box *box, unsigned int src_row_pitch, unsigned int src_slice_pitch)
++{
++    const struct wined3d_format *format = texture->resource.format;
++    unsigned int level, dst_row_pitch, dst_slice_pitch;
++    struct wined3d_bo_address dst_bo_address;
++    const BYTE *src_data = upload_bo->addr.addr;
++    BYTE *dst_data, *mapped_src = NULL;
++    unsigned int width, height, depth;
++    struct wined3d_range range;
++
++    if (!wined3d_settings.webgl || !(texture->resource.format_attrs & WINED3D_FORMAT_ATTR_COMPRESSED))
++        return false;
++
++    if (!wined3d_texture_prepare_location(texture, sub_resource_idx, context, WINED3D_LOCATION_SYSMEM))
++    {
++        WARN("Failed to prepare sysmem copy for compressed WebGL texture %p, %u.\n",
++                texture, sub_resource_idx);
++        return false;
++    }
++
++    if (upload_bo->addr.buffer_object)
++    {
++        mapped_src = wined3d_context_map_bo_address(context, (const struct wined3d_bo_address *)&upload_bo->addr,
++                src_slice_pitch * (box->back - box->front), WINED3D_MAP_READ);
++        src_data = mapped_src;
++    }
++
++    wined3d_texture_get_bo_address(texture, sub_resource_idx, &dst_bo_address, WINED3D_LOCATION_SYSMEM);
++    if (dst_bo_address.buffer_object)
++    {
++        range.offset = 0;
++        range.size = texture->sub_resources[sub_resource_idx].size;
++        dst_data = wined3d_context_map_bo_address(context, &dst_bo_address, range.size,
++                WINED3D_MAP_WRITE);
++    }
++    else
++    {
++        dst_data = dst_bo_address.addr;
++    }
++
++    level = sub_resource_idx % texture->level_count;
++    wined3d_texture_get_pitch(texture, level, &dst_row_pitch, &dst_slice_pitch);
++    if (format->attrs & WINED3D_FORMAT_ATTR_BLOCKS)
++    {
++        dst_data += box->front * dst_slice_pitch;
++        dst_data += (box->top / format->block_height) * dst_row_pitch;
++        dst_data += (box->left / format->block_width) * format->block_byte_count;
++    }
++    else
++    {
++        dst_data += box->front * dst_slice_pitch;
++        dst_data += box->top * dst_row_pitch;
++        dst_data += box->left * format->byte_count;
++    }
++
++    width = box->right - box->left;
++    height = box->bottom - box->top;
++    depth = box->back - box->front;
++    wined3d_format_copy_data(format, src_data, src_row_pitch, src_slice_pitch,
++            dst_data, dst_row_pitch, dst_slice_pitch, width, height, depth);
++
++    if (dst_bo_address.buffer_object)
++        wined3d_context_unmap_bo_address(context, &dst_bo_address, 1, &range);
++    if (upload_bo->addr.buffer_object)
++        wined3d_context_unmap_bo_address(context, (const struct wined3d_bo_address *)&upload_bo->addr, 0, NULL);
++
++    wined3d_texture_validate_location(texture, sub_resource_idx, WINED3D_LOCATION_SYSMEM);
++    return true;
++}
++
+ static BOOL wined3d_texture_use_pbo(const struct wined3d_texture *texture, const struct wined3d_d3d_info *d3d_info)
+ {
+     if (!wined3d_texture_can_use_pbo(texture, d3d_info))
+@@ -125,6 +200,7 @@ static void wined3d_texture_evict_sysmem(struct wined3d_texture *texture)
+     unsigned int i, sub_count;
+ 
+     if ((texture->flags & WINED3D_TEXTURE_CONVERTED)
++            || (wined3d_settings.webgl && texture->resource.format_attrs & WINED3D_FORMAT_ATTR_COMPRESSED)
+             || texture->resource.pin_sysmem
+             || texture->download_count > WINED3D_TEXTURE_DYNAMIC_MAP_THRESHOLD)
+     {
+@@ -468,6 +544,7 @@ static void wined3d_texture_create_dc(void *object)
+     struct wined3d_bo_address data;
+     D3DKMT_CREATEDCFROMMEMORY desc;
+     struct wined3d_device *device;
++    D3DDDIFORMAT dc_format;
+     NTSTATUS status;
+ 
+     TRACE("texture %p, sub_resource_idx %u.\n", idx->texture, idx->sub_resource_idx);
+@@ -478,7 +555,26 @@ static void wined3d_texture_create_dc(void *object)
+     device = texture->resource.device;
+ 
+     format = texture->resource.format;
+-    if (!format->ddi_format)
++    dc_format = format->ddi_format;
++    if (wined3d_settings.webgl)
++    {
++        switch (format->id)
++        {
++            case WINED3DFMT_B10G10R10A2_UNORM:
++            case WINED3DFMT_R8G8B8A8_UNORM:
++                dc_format = D3DDDIFMT_A8R8G8B8;
++                break;
++
++            case WINED3DFMT_R8G8B8X8_UNORM:
++                dc_format = D3DDDIFMT_X8R8G8B8;
++                break;
++
++            default:
++                break;
++        }
++    }
++
++    if (!dc_format)
+     {
+         WARN("Cannot create a DC for format %s.\n", debug_d3dformat(format->id));
+         return;
+@@ -522,7 +618,7 @@ static void wined3d_texture_create_dc(void *object)
+     if (context)
+         context_release(context);
+ 
+-    desc.Format = format->ddi_format;
++    desc.Format = dc_format;
+     desc.Width = wined3d_texture_get_level_width(texture, level);
+     desc.Height = wined3d_texture_get_level_height(texture, level);
+     desc.Pitch = row_pitch;
+@@ -2113,7 +2209,12 @@ void wined3d_texture_update_sub_resource(struct wined3d_texture *texture, unsign
+             WINED3D_LOCATION_TEXTURE_RGB, box->left, box->top, box->front);
+ 
+     wined3d_texture_validate_location(texture, sub_resource_idx, WINED3D_LOCATION_TEXTURE_RGB);
+-    wined3d_texture_invalidate_location(texture, sub_resource_idx, ~WINED3D_LOCATION_TEXTURE_RGB);
++    if (wined3d_texture_preserve_webgl_compressed_sysmem(texture, sub_resource_idx,
++            context, upload_bo, box, row_pitch, slice_pitch))
++        wined3d_texture_invalidate_location(texture, sub_resource_idx,
++                ~(WINED3D_LOCATION_TEXTURE_RGB | WINED3D_LOCATION_SYSMEM));
++    else
++        wined3d_texture_invalidate_location(texture, sub_resource_idx, ~WINED3D_LOCATION_TEXTURE_RGB);
+ }
+ 
+ struct wined3d_shader_resource_view * CDECL wined3d_texture_acquire_identity_srv(struct wined3d_texture *texture)
+diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+index 4996a24..2663b5a 100644
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -35,6 +35,46 @@
+ WINE_DEFAULT_DEBUG_CHANNEL(d3d);
+ WINE_DECLARE_DEBUG_CHANNEL(d3d_perf);
+ 
++static BOOL wined3d_texture_gl_profile_enabled(void)
++{
++    static int enabled = -1;
++    const char *value;
++
++    if (enabled == -1)
++    {
++        value = getenv("BOXEDWINE_WEBGL_PROFILE");
++        enabled = value && value[0] && strcmp(value, "0");
++    }
++
++    return enabled;
++}
++
++static ULONGLONG wined3d_texture_gl_profile_now_us(void)
++{
++    static LARGE_INTEGER freq;
++    LARGE_INTEGER counter;
++
++    if (!freq.QuadPart && !QueryPerformanceFrequency(&freq))
++        return GetTickCount64() * 1000;
++    if (!QueryPerformanceCounter(&counter))
++        return GetTickCount64() * 1000;
++
++    return counter.QuadPart * 1000000ull / freq.QuadPart;
++}
++
++static void wined3d_texture_gl_profile_readpixels(const char *name, ULONGLONG start_us,
++        unsigned int width, unsigned int height, unsigned int format_id)
++{
++    ULONGLONG elapsed_us;
++
++    if (!start_us)
++        return;
++
++    elapsed_us = wined3d_texture_gl_profile_now_us() - start_us;
++    fprintf(stderr, "BOXEDWINE_WEBGL_READPIXELS wine.%s width=%u height=%u pixels=%u elapsed_us=%llu format=%u\n",
++            name, width, height, width * height, (unsigned long long)elapsed_us, format_id);
++}
++
+ GLenum wined3d_texture_get_gl_buffer(const struct wined3d_texture *texture)
+ {
+     const struct wined3d_swapchain *swapchain = texture->swapchain;
+@@ -1221,6 +1261,60 @@ static void gltexture_delete(struct wined3d_device *device, const struct wined3d
+     tex->name = 0;
+ }
+ 
++static bool wined3d_texture_gl_get_webgl_upload_format(const struct wined3d_format *format,
++        GLenum *gl_format, GLenum *gl_type)
++{
++    switch (format->id)
++    {
++        case WINED3DFMT_B8G8R8_UNORM:
++        case WINED3DFMT_B5G6R5_UNORM:
++            *gl_format = GL_RGB;
++            *gl_type = GL_UNSIGNED_BYTE;
++            return true;
++
++        case WINED3DFMT_B8G8R8X8_UNORM:
++        case WINED3DFMT_B8G8R8X8_UNORM_SRGB:
++        case WINED3DFMT_R8G8B8X8_UNORM:
++        case WINED3DFMT_B8G8R8A8_UNORM:
++        case WINED3DFMT_B8G8R8A8_UNORM_SRGB:
++        case WINED3DFMT_B5G5R5X1_UNORM:
++        case WINED3DFMT_B5G5R5A1_UNORM:
++        case WINED3DFMT_B4G4R4X4_UNORM:
++        case WINED3DFMT_B4G4R4A4_UNORM:
++        case WINED3DFMT_B2G3R3A8_UNORM:
++        case WINED3DFMT_B10G10R10A2_UNORM:
++        case WINED3DFMT_R10G10B10A2_UNORM:
++        case WINED3DFMT_R8G8B8A8_UNORM:
++        case WINED3DFMT_R8G8B8A8_UNORM_SRGB:
++            *gl_format = GL_RGBA;
++            *gl_type = GL_UNSIGNED_BYTE;
++            return true;
++
++        case WINED3DFMT_A8_UNORM:
++        case WINED3DFMT_L8_UNORM:
++        case WINED3DFMT_R8_UNORM:
++            *gl_format = GL_RED;
++            *gl_type = GL_UNSIGNED_BYTE;
++            return true;
++
++        case WINED3DFMT_L8A8_UNORM:
++        case WINED3DFMT_UYVY:
++        case WINED3DFMT_YUY2:
++            *gl_format = GL_RG;
++            *gl_type = GL_UNSIGNED_BYTE;
++            return true;
++
++        case WINED3DFMT_YV12:
++        case WINED3DFMT_NV12:
++            *gl_format = GL_RED;
++            *gl_type = GL_UNSIGNED_BYTE;
++            return true;
++
++        default:
++            return false;
++    }
++}
++
+ /* The caller is responsible for binding the correct texture. */
+ static void wined3d_texture_gl_allocate_mutable_storage(struct wined3d_texture_gl *texture_gl,
+         GLenum gl_internal_format, const struct wined3d_format_gl *format,
+@@ -1228,8 +1322,12 @@ static void wined3d_texture_gl_allocate_mutable_storage(struct wined3d_texture_g
+ {
+     unsigned int level_count, layer_count;
+     GLsizei width, height, depth;
++    GLenum upload_format = format->format, upload_type = format->type;
+     GLenum target;
+ 
++    if (wined3d_settings.webgl)
++        wined3d_texture_gl_get_webgl_upload_format(&format->f, &upload_format, &upload_type);
++
+     level_count = texture_gl->t.level_count;
+     if (texture_gl->target == GL_TEXTURE_1D_ARRAY || texture_gl->target == GL_TEXTURE_2D_ARRAY)
+         layer_count = 1;
+@@ -1261,19 +1359,19 @@ static void wined3d_texture_gl_allocate_mutable_storage(struct wined3d_texture_g
+                 depth = wined3d_texture_get_level_depth(&texture_gl->t, level);
+                 GL_EXTCALL(glTexImage3D(target, level, gl_internal_format, width, height,
+                         target == GL_TEXTURE_2D_ARRAY ? texture_gl->t.layer_count : depth, 0,
+-                        format->format, format->type, NULL));
++                        upload_format, upload_type, NULL));
+                 checkGLcall("glTexImage3D");
+             }
+             else if (target == GL_TEXTURE_1D)
+             {
+                 gl_info->gl_ops.gl.p_glTexImage1D(target, level, gl_internal_format,
+-                        width, 0, format->format, format->type, NULL);
++                        width, 0, upload_format, upload_type, NULL);
+             }
+             else
+             {
+                 gl_info->gl_ops.gl.p_glTexImage2D(target, level, gl_internal_format, width,
+                         target == GL_TEXTURE_1D_ARRAY ? texture_gl->t.layer_count : height, 0,
+-                        format->format, format->type, NULL);
++                        upload_format, upload_type, NULL);
+                 checkGLcall("glTexImage2D");
+             }
+         }
+@@ -1524,6 +1622,203 @@ static void wined3d_fixup_alpha(const struct wined3d_format *format, const uint8
+     }
+ }
+ 
++static bool wined3d_texture_gl_upload_webgl_rgba8(const struct wined3d_format *src_format,
++        GLenum target, unsigned int level, unsigned int src_row_pitch, unsigned int src_slice_pitch,
++        unsigned int dst_x, unsigned int dst_y, unsigned int dst_z, unsigned int update_w,
++        unsigned int update_h, unsigned int update_d, const BYTE *addr, const struct wined3d_gl_info *gl_info)
++{
++    unsigned int x, y, z, upload_components, upload_row_pitch;
++    GLenum upload_format, upload_type;
++    uint8_t *upload;
++
++    if (!wined3d_texture_gl_get_webgl_upload_format(src_format, &upload_format, &upload_type))
++        return false;
++
++    switch (upload_format)
++    {
++        case GL_RGB:
++            upload_components = 3;
++            break;
++        case GL_RGBA:
++            upload_components = 4;
++            break;
++        case GL_RED:
++            upload_components = 1;
++            break;
++        case GL_RG:
++            upload_components = 2;
++            break;
++        default:
++            return false;
++    }
++
++    if (target == GL_TEXTURE_1D || target == GL_TEXTURE_1D_ARRAY)
++        return false;
++
++    upload_row_pitch = update_w * upload_components;
++    if (!(upload = malloc(upload_row_pitch * update_h)))
++    {
++        ERR("Failed to allocate upload memory.\n");
++        return false;
++    }
++
++    gl_info->gl_ops.gl.p_glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
++    for (z = 0; z < update_d; ++z)
++    {
++        const uint8_t *src_slice = addr + z * src_slice_pitch;
++
++        for (y = 0; y < update_h; ++y)
++        {
++            const uint8_t *src_row = src_slice + y * src_row_pitch;
++            uint8_t *upload_row = upload + y * upload_row_pitch;
++
++            for (x = 0; x < update_w; ++x)
++            {
++                uint8_t r, g, b;
++                uint16_t v;
++                uint32_t v32;
++
++                switch (src_format->id)
++                {
++                    case WINED3DFMT_B8G8R8_UNORM:
++                        upload_row[x * 3 + 0] = src_row[x * 3 + 2];
++                        upload_row[x * 3 + 1] = src_row[x * 3 + 1];
++                        upload_row[x * 3 + 2] = src_row[x * 3 + 0];
++                        break;
++
++                    case WINED3DFMT_B8G8R8X8_UNORM:
++                    case WINED3DFMT_B8G8R8X8_UNORM_SRGB:
++                        upload_row[x * 4 + 0] = src_row[x * 4 + 2];
++                        upload_row[x * 4 + 1] = src_row[x * 4 + 1];
++                        upload_row[x * 4 + 2] = src_row[x * 4 + 0];
++                        upload_row[x * 4 + 3] = 0xff;
++                        break;
++
++                    case WINED3DFMT_B8G8R8A8_UNORM:
++                    case WINED3DFMT_B8G8R8A8_UNORM_SRGB:
++                        upload_row[x * 4 + 0] = src_row[x * 4 + 2];
++                        upload_row[x * 4 + 1] = src_row[x * 4 + 1];
++                        upload_row[x * 4 + 2] = src_row[x * 4 + 0];
++                        upload_row[x * 4 + 3] = src_row[x * 4 + 3];
++                        break;
++
++                    case WINED3DFMT_R8G8B8X8_UNORM:
++                        upload_row[x * 4 + 0] = src_row[x * 4 + 0];
++                        upload_row[x * 4 + 1] = src_row[x * 4 + 1];
++                        upload_row[x * 4 + 2] = src_row[x * 4 + 2];
++                        upload_row[x * 4 + 3] = 0xff;
++                        break;
++
++                    case WINED3DFMT_R8G8B8A8_UNORM:
++                    case WINED3DFMT_R8G8B8A8_UNORM_SRGB:
++                        memcpy(&upload_row[x * 4], &src_row[x * 4], 4);
++                        break;
++
++                    case WINED3DFMT_B5G6R5_UNORM:
++                        v = ((const uint16_t *)src_row)[x];
++                        upload_row[x * 3 + 0] = (((v >> 11) & 0x1f) * 255 + 15) / 31;
++                        upload_row[x * 3 + 1] = (((v >> 5) & 0x3f) * 255 + 31) / 63;
++                        upload_row[x * 3 + 2] = ((v & 0x1f) * 255 + 15) / 31;
++                        break;
++
++                    case WINED3DFMT_B5G5R5A1_UNORM:
++                        v = ((const uint16_t *)src_row)[x];
++                        upload_row[x * 4 + 0] = (((v >> 10) & 0x1f) * 255 + 15) / 31;
++                        upload_row[x * 4 + 1] = (((v >> 5) & 0x1f) * 255 + 15) / 31;
++                        upload_row[x * 4 + 2] = ((v & 0x1f) * 255 + 15) / 31;
++                        upload_row[x * 4 + 3] = v & 0x8000 ? 0xff : 0x00;
++                        break;
++
++                    case WINED3DFMT_B5G5R5X1_UNORM:
++                        v = ((const uint16_t *)src_row)[x];
++                        upload_row[x * 4 + 0] = (((v >> 10) & 0x1f) * 255 + 15) / 31;
++                        upload_row[x * 4 + 1] = (((v >> 5) & 0x1f) * 255 + 15) / 31;
++                        upload_row[x * 4 + 2] = ((v & 0x1f) * 255 + 15) / 31;
++                        upload_row[x * 4 + 3] = 0xff;
++                        break;
++
++                    case WINED3DFMT_B4G4R4A4_UNORM:
++                        v = ((const uint16_t *)src_row)[x];
++                        upload_row[x * 4 + 0] = ((v >> 8) & 0x0f) * 17;
++                        upload_row[x * 4 + 1] = ((v >> 4) & 0x0f) * 17;
++                        upload_row[x * 4 + 2] = (v & 0x0f) * 17;
++                        upload_row[x * 4 + 3] = ((v >> 12) & 0x0f) * 17;
++                        break;
++
++                    case WINED3DFMT_B4G4R4X4_UNORM:
++                        v = ((const uint16_t *)src_row)[x];
++                        upload_row[x * 4 + 0] = ((v >> 8) & 0x0f) * 17;
++                        upload_row[x * 4 + 1] = ((v >> 4) & 0x0f) * 17;
++                        upload_row[x * 4 + 2] = (v & 0x0f) * 17;
++                        upload_row[x * 4 + 3] = 0xff;
++                        break;
++
++                    case WINED3DFMT_B2G3R3A8_UNORM:
++                        v = ((const uint16_t *)src_row)[x];
++                        r = (v >> 5) & 0x07;
++                        g = (v >> 2) & 0x07;
++                        b = v & 0x03;
++                        upload_row[x * 4 + 0] = (r * 255 + 3) / 7;
++                        upload_row[x * 4 + 1] = (g * 255 + 3) / 7;
++                        upload_row[x * 4 + 2] = (b * 255 + 1) / 3;
++                        upload_row[x * 4 + 3] = v >> 8;
++                        break;
++
++                    case WINED3DFMT_B10G10R10A2_UNORM:
++                        v32 = ((const uint32_t *)src_row)[x];
++                        upload_row[x * 4 + 0] = ((((v32 >> 20) & 0x3ff) * 255) + 511) / 1023;
++                        upload_row[x * 4 + 1] = ((((v32 >> 10) & 0x3ff) * 255) + 511) / 1023;
++                        upload_row[x * 4 + 2] = (((v32 & 0x3ff) * 255) + 511) / 1023;
++                        upload_row[x * 4 + 3] = ((v32 >> 30) * 255 + 1) / 3;
++                        break;
++
++                    case WINED3DFMT_R10G10B10A2_UNORM:
++                        v32 = ((const uint32_t *)src_row)[x];
++                        upload_row[x * 4 + 0] = (((v32 & 0x3ff) * 255) + 511) / 1023;
++                        upload_row[x * 4 + 1] = ((((v32 >> 10) & 0x3ff) * 255) + 511) / 1023;
++                        upload_row[x * 4 + 2] = ((((v32 >> 20) & 0x3ff) * 255) + 511) / 1023;
++                        upload_row[x * 4 + 3] = ((v32 >> 30) * 255 + 1) / 3;
++                        break;
++
++                    case WINED3DFMT_A8_UNORM:
++                    case WINED3DFMT_L8_UNORM:
++                    case WINED3DFMT_R8_UNORM:
++                    case WINED3DFMT_YV12:
++                    case WINED3DFMT_NV12:
++                        upload_row[x] = src_row[x];
++                        break;
++
++                    case WINED3DFMT_L8A8_UNORM:
++                    case WINED3DFMT_UYVY:
++                    case WINED3DFMT_YUY2:
++                        upload_row[x * 2 + 0] = src_row[x * 2 + 0];
++                        upload_row[x * 2 + 1] = src_row[x * 2 + 1];
++                        break;
++
++                    default:
++                        break;
++                }
++            }
++        }
++
++        if (target == GL_TEXTURE_2D_ARRAY || target == GL_TEXTURE_3D)
++        {
++            GL_EXTCALL(glTexSubImage3D(target, level, dst_x, dst_y, dst_z + z, update_w, update_h, 1,
++                    upload_format, upload_type, upload));
++        }
++        else
++        {
++            gl_info->gl_ops.gl.p_glTexSubImage2D(target, level, dst_x, dst_y, update_w, update_h,
++                    upload_format, upload_type, upload);
++        }
++    }
++    gl_info->gl_ops.gl.p_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
++    checkGLcall("Upload WebGL texture data");
++
++    free(upload);
++    return true;
++}
++
+ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
+         const struct wined3d_const_bo_address *src_bo_addr, const struct wined3d_format *src_format,
+         const struct wined3d_box *src_box, unsigned int src_row_pitch, unsigned int src_slice_pitch,
+@@ -1661,6 +1956,11 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
+                 src_format->upload(src_mem, converted_mem, src_row_pitch, src_slice_pitch,
+                         dst_row_pitch, dst_slice_pitch, update_w, update_h, 1);
+ 
++            if (wined3d_settings.webgl && wined3d_texture_gl_upload_webgl_rgba8(src_format, target, level,
++                    dst_row_pitch, dst_slice_pitch, dst_x, dst_y, dst_z + z, update_w, update_h, 1,
++                    converted_mem, gl_info))
++                continue;
++
+             wined3d_texture_gl_upload_bo(src_format, target, level, dst_row_pitch, dst_slice_pitch, dst_x,
+                     dst_y, dst_z + z, update_w, update_h, 1, converted_mem, srgb, dst_texture, gl_info);
+         }
+@@ -1672,6 +1972,27 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
+     {
+         const uint8_t *offset = bo.addr;
+ 
++        if (wined3d_settings.webgl && (update_d == 1 || src_slice_pitch))
++        {
++            BYTE *src_mem = bo.buffer_object
++                    ? wined3d_context_gl_map_bo_address(context_gl, &bo, src_slice_pitch * update_d, WINED3D_MAP_READ)
++                    : bo.addr;
++
++            GL_EXTCALL(glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0));
++            checkGLcall("glBindBuffer");
++
++            if (wined3d_texture_gl_upload_webgl_rgba8(src_format, target, level, src_row_pitch,
++                    src_slice_pitch, dst_x, dst_y, dst_z, update_w, update_h, update_d, src_mem, gl_info))
++            {
++                if (bo.buffer_object)
++                    wined3d_context_gl_unmap_bo_address(context_gl, &bo, 0, NULL);
++                return;
++            }
++
++            if (bo.buffer_object)
++                wined3d_context_gl_unmap_bo_address(context_gl, &bo, 0, NULL);
++        }
++
+         if (bo.buffer_object)
+         {
+             GL_EXTCALL(glBindBuffer(GL_PIXEL_UNPACK_BUFFER, wined3d_bo_gl(bo.buffer_object)->id));
+@@ -1705,7 +2026,8 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
+ }
+ 
+ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl *texture_gl,
+-        unsigned int sub_resource_idx, struct wined3d_context_gl *context_gl, const struct wined3d_bo_address *data)
++        unsigned int sub_resource_idx, struct wined3d_context_gl *context_gl, const struct wined3d_bo_address *data,
++        unsigned int src_location)
+ {
+     struct wined3d_bo_gl *bo = wined3d_bo_gl(data->buffer_object);
+     const struct wined3d_gl_info *gl_info = context_gl->gl_info;
+@@ -1714,6 +2036,7 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
+     unsigned int src_row_pitch, src_slice_pitch;
+     const struct wined3d_format_gl *format_gl;
+     BYTE *temporary_mem = NULL;
++    bool readback_done = false;
+     unsigned int level;
+     GLenum target;
+     void *mem;
+@@ -1794,16 +2117,76 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
+         mem = data->addr;
+     }
+ 
+-    if (texture_gl->t.resource.format_attrs & WINED3D_FORMAT_ATTR_COMPRESSED)
++    if (wined3d_settings.webgl && format_gl->f.download
++            && !(texture_gl->t.resource.format_attrs & WINED3D_FORMAT_ATTR_COMPRESSED)
++            && !texture_gl->t.resource.format->depth_size
++            && !texture_gl->t.resource.format->stencil_size
++            && texture_gl->t.resource.format_caps & WINED3D_FORMAT_CAP_FBO_ATTACHABLE
++            && target != GL_TEXTURE_1D_ARRAY
++            && target != GL_TEXTURE_2D_ARRAY
++            && target != GL_TEXTURE_3D)
++    {
++        TRACE("Downloading converted texture %p, %u through FBO readback, level %u, format %#x, type %#x, data %p.\n",
++                texture_gl, sub_resource_idx, level, format_gl->format, format_gl->type, mem);
++
++        wined3d_context_gl_apply_fbo_state_explicit(context_gl, GL_READ_FRAMEBUFFER,
++                &texture_gl->t.resource, sub_resource_idx, NULL, 0, src_location);
++        gl_info->gl_ops.gl.p_glReadBuffer(GL_COLOR_ATTACHMENT0);
++        checkGLcall("glReadBuffer");
++        wined3d_context_gl_check_fbo_status(context_gl, GL_READ_FRAMEBUFFER);
++
++        gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ROW_LENGTH, src_row_pitch / format_gl->f.conv_byte_count);
++        checkGLcall("glPixelStorei");
++        {
++            unsigned int read_width = wined3d_texture_get_level_width(&texture_gl->t, level);
++            unsigned int read_height = wined3d_texture_get_level_height(&texture_gl->t, level);
++            ULONGLONG profile_start = wined3d_texture_gl_profile_enabled() ? wined3d_texture_gl_profile_now_us() : 0;
++
++            if (wined3d_texture_gl_profile_enabled())
++                fprintf(stderr, "BOXEDWINE_WEBGL_READBACK_SOURCE wine.download_data texture=%p sub=%u src_location=%#x locations=%#x map_binding=%#x draw_binding=%#x access=%#x bind=%#x swapchain=%u width=%u height=%u format=%u bo=%u\n",
++                        &texture_gl->t, sub_resource_idx, src_location,
++                        (unsigned int)texture_gl->t.sub_resources[sub_resource_idx].locations,
++                        texture_gl->t.resource.map_binding, texture_gl->t.resource.draw_binding,
++                        texture_gl->t.resource.access, texture_gl->t.resource.bind_flags,
++                        !!texture_gl->t.swapchain, read_width, read_height,
++                        texture_gl->t.resource.format->id, !!bo);
++
++            gl_info->gl_ops.gl.p_glReadPixels(0, 0, read_width, read_height,
++                    format_gl->format, format_gl->type, mem);
++            wined3d_texture_gl_profile_readpixels("texture_gl_download_data_converted", profile_start,
++                    read_width, read_height, texture_gl->t.resource.format->id);
++            checkGLcall("glReadPixels");
++        }
++        gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ROW_LENGTH, 0);
++        checkGLcall("glPixelStorei");
++
++        readback_done = true;
++    }
++
++    if (!readback_done && texture_gl->t.resource.format_attrs & WINED3D_FORMAT_ATTR_COMPRESSED)
+     {
++        if (wined3d_settings.webgl)
++        {
++            FIXME("Cannot download compressed texture %p, %u from GL in WebGL mode; "
++                    "a valid sysmem copy is required.\n", texture_gl, sub_resource_idx);
++            goto done;
++        }
++
+         TRACE("Downloading compressed texture %p, %u, level %u, format %#x, type %#x, data %p.\n",
+                 texture_gl, sub_resource_idx, level, format_gl->format, format_gl->type, mem);
+ 
+         GL_EXTCALL(glGetCompressedTexImage(target, level, mem));
+         checkGLcall("glGetCompressedTexImage");
+     }
+-    else
++    else if (!readback_done)
+     {
++        if (wined3d_settings.webgl)
++        {
++            FIXME("Cannot download texture %p, %u from GL in WebGL mode; "
++                    "a valid sysmem copy is required.\n", texture_gl, sub_resource_idx);
++            goto done;
++        }
++
+         TRACE("Downloading texture %p, %u, level %u, format %#x, type %#x, data %p.\n",
+                 texture_gl, sub_resource_idx, level, format_gl->format, format_gl->type, mem);
+ 
+@@ -1835,6 +2218,7 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
+         }
+     }
+ 
++done:
+     if (bo)
+     {
+         GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
+@@ -1845,6 +2229,205 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
+     free(temporary_mem);
+ }
+ 
++static bool wined3d_texture_gl_read_pixels_webgl_rgba8(const struct wined3d_gl_info *gl_info,
++        const struct wined3d_format *format, unsigned int width, unsigned int height,
++        unsigned int row_pitch, uint8_t *dst)
++{
++    ULONGLONG profile_start;
++    uint8_t *rgba;
++    unsigned int x, y, pixel_count = width * height;
++
++    switch (format->id)
++    {
++        case WINED3DFMT_B8G8R8_UNORM:
++        case WINED3DFMT_B5G6R5_UNORM:
++        case WINED3DFMT_B5G5R5X1_UNORM:
++        case WINED3DFMT_B5G5R5A1_UNORM:
++        case WINED3DFMT_B4G4R4X4_UNORM:
++        case WINED3DFMT_B4G4R4A4_UNORM:
++        case WINED3DFMT_B2G3R3A8_UNORM:
++        case WINED3DFMT_A8_UNORM:
++        case WINED3DFMT_L8_UNORM:
++        case WINED3DFMT_L8A8_UNORM:
++        case WINED3DFMT_R8_UNORM:
++        case WINED3DFMT_R16_UNORM:
++        case WINED3DFMT_B10G10R10A2_UNORM:
++        case WINED3DFMT_B8G8R8A8_UNORM:
++        case WINED3DFMT_B8G8R8A8_UNORM_SRGB:
++        case WINED3DFMT_B8G8R8X8_UNORM:
++        case WINED3DFMT_B8G8R8X8_UNORM_SRGB:
++        case WINED3DFMT_R10G10B10A2_UNORM:
++        case WINED3DFMT_R8G8B8A8_UNORM:
++        case WINED3DFMT_R8G8B8A8_UNORM_SRGB:
++        case WINED3DFMT_R8G8B8X8_UNORM:
++            break;
++
++        default:
++            return false;
++    }
++
++    if (!(rgba = malloc(pixel_count * 4)))
++    {
++        ERR("Failed to allocate readback memory.\n");
++        return false;
++    }
++
++    profile_start = wined3d_texture_gl_profile_enabled() ? wined3d_texture_gl_profile_now_us() : 0;
++    gl_info->gl_ops.gl.p_glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
++    wined3d_texture_gl_profile_readpixels("texture_gl_webgl_rgba8_readpixels", profile_start,
++            width, height, format->id);
++    for (y = 0; y < height; ++y)
++    {
++        uint8_t *dst_row = dst + y * row_pitch;
++        const uint8_t *src_row = rgba + y * width * 4;
++
++        for (x = 0; x < width; ++x)
++        {
++            uint8_t r = src_row[x * 4 + 0], g = src_row[x * 4 + 1];
++            uint8_t b = src_row[x * 4 + 2], a = src_row[x * 4 + 3];
++
++            switch (format->id)
++            {
++                case WINED3DFMT_B8G8R8_UNORM:
++                    dst_row[x * 3 + 0] = b;
++                    dst_row[x * 3 + 1] = g;
++                    dst_row[x * 3 + 2] = r;
++                    break;
++
++                case WINED3DFMT_B5G6R5_UNORM:
++                    ((uint16_t *)dst_row)[x] = ((uint16_t)(r >> 3) << 11)
++                            | ((uint16_t)(g >> 2) << 5) | (b >> 3);
++                    break;
++
++                case WINED3DFMT_B5G5R5A1_UNORM:
++                case WINED3DFMT_B5G5R5X1_UNORM:
++                    ((uint16_t *)dst_row)[x] = (a >= 0x80 ? 0x8000 : 0)
++                            | ((uint16_t)(r >> 3) << 10) | ((uint16_t)(g >> 3) << 5) | (b >> 3);
++                    break;
++
++                case WINED3DFMT_B4G4R4A4_UNORM:
++                case WINED3DFMT_B4G4R4X4_UNORM:
++                    ((uint16_t *)dst_row)[x] = ((uint16_t)(a >> 4) << 12)
++                            | ((uint16_t)(r >> 4) << 8) | ((uint16_t)(g >> 4) << 4) | (b >> 4);
++                    break;
++
++                case WINED3DFMT_B2G3R3A8_UNORM:
++                    ((uint16_t *)dst_row)[x] = ((uint16_t)a << 8)
++                            | ((uint16_t)(r >> 5) << 5) | ((uint16_t)(g >> 5) << 2) | (b >> 6);
++                    break;
++
++                case WINED3DFMT_B10G10R10A2_UNORM:
++                    ((uint32_t *)dst_row)[x] = ((uint32_t)((a * 3 + 127) / 255) << 30)
++                            | ((uint32_t)((r * 1023 + 127) / 255) << 20)
++                            | ((uint32_t)((g * 1023 + 127) / 255) << 10)
++                            | ((uint32_t)((b * 1023 + 127) / 255));
++                    break;
++
++                case WINED3DFMT_R10G10B10A2_UNORM:
++                    ((uint32_t *)dst_row)[x] = ((uint32_t)((a * 3 + 127) / 255) << 30)
++                            | ((uint32_t)((b * 1023 + 127) / 255) << 20)
++                            | ((uint32_t)((g * 1023 + 127) / 255) << 10)
++                            | ((uint32_t)((r * 1023 + 127) / 255));
++                    break;
++
++                case WINED3DFMT_A8_UNORM:
++                    dst_row[x] = r;
++                    break;
++
++                case WINED3DFMT_L8_UNORM:
++                case WINED3DFMT_R8_UNORM:
++                    dst_row[x] = r;
++                    break;
++
++                case WINED3DFMT_L8A8_UNORM:
++                    ((uint16_t *)dst_row)[x] = (uint16_t)r | ((uint16_t)g << 8);
++                    break;
++
++                case WINED3DFMT_R16_UNORM:
++                    ((uint16_t *)dst_row)[x] = (uint16_t)r | ((uint16_t)r << 8);
++                    break;
++
++                case WINED3DFMT_B8G8R8A8_UNORM:
++                case WINED3DFMT_B8G8R8A8_UNORM_SRGB:
++                case WINED3DFMT_B8G8R8X8_UNORM:
++                case WINED3DFMT_B8G8R8X8_UNORM_SRGB:
++                    ((uint32_t *)dst_row)[x] = (uint32_t)b | ((uint32_t)g << 8)
++                            | ((uint32_t)r << 16) | ((uint32_t)a << 24);
++                    break;
++
++                case WINED3DFMT_R8G8B8A8_UNORM:
++                case WINED3DFMT_R8G8B8A8_UNORM_SRGB:
++                case WINED3DFMT_R8G8B8X8_UNORM:
++                    ((uint32_t *)dst_row)[x] = (uint32_t)r | ((uint32_t)g << 8)
++                            | ((uint32_t)b << 16) | ((uint32_t)a << 24);
++                    break;
++
++                default:
++                    break;
++            }
++        }
++    }
++
++    free(rgba);
++    return true;
++}
++
++static bool wined3d_texture_gl_readback_texture3d_webgl(struct wined3d_context_gl *context_gl,
++        struct wined3d_texture_gl *texture_gl, unsigned int level, uint32_t src_location,
++        const struct wined3d_format_gl *format_gl, unsigned int width, unsigned int height,
++        unsigned int depth, unsigned int row_pitch, unsigned int slice_pitch, uint8_t *dst)
++{
++    const struct wined3d_gl_info *gl_info = context_gl->gl_info;
++    GLuint fbo, texture_name;
++    unsigned int z;
++
++    if (!gl_info->fbo_ops.glFramebufferTextureLayer)
++        return false;
++
++    texture_name = wined3d_texture_gl_get_texture_name(texture_gl, &context_gl->c,
++            src_location == WINED3D_LOCATION_TEXTURE_SRGB);
++
++    gl_info->fbo_ops.glGenFramebuffers(1, &fbo);
++    checkGLcall("glGenFramebuffers");
++    gl_info->fbo_ops.glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
++    context_gl->fbo_read_binding = fbo;
++    context_gl->current_fbo = NULL;
++    checkGLcall("glBindFramebuffer");
++
++    gl_info->gl_ops.gl.p_glReadBuffer(GL_COLOR_ATTACHMENT0);
++    checkGLcall("glReadBuffer");
++
++    for (z = 0; z < depth; ++z)
++    {
++        uint8_t *slice = dst + z * slice_pitch;
++
++        gl_info->fbo_ops.glFramebufferTextureLayer(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
++                texture_name, level, z);
++        checkGLcall("glFramebufferTextureLayer");
++        wined3d_context_gl_check_fbo_status(context_gl, GL_READ_FRAMEBUFFER);
++
++        if (!wined3d_texture_gl_read_pixels_webgl_rgba8(gl_info,
++                &format_gl->f, width, height, row_pitch, slice))
++        {
++            ULONGLONG profile_start = wined3d_texture_gl_profile_enabled() ? wined3d_texture_gl_profile_now_us() : 0;
++
++            gl_info->gl_ops.gl.p_glReadPixels(0, 0, width, height,
++                    format_gl->format, format_gl->type, slice);
++            wined3d_texture_gl_profile_readpixels("texture_gl_download_data_slice", profile_start,
++                    width, height, texture_gl->t.resource.format->id);
++            checkGLcall("glReadPixels");
++        }
++    }
++
++    gl_info->fbo_ops.glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
++    context_gl->fbo_read_binding = 0;
++    checkGLcall("glBindFramebuffer");
++    gl_info->fbo_ops.glDeleteFramebuffers(1, &fbo);
++    checkGLcall("glDeleteFramebuffers");
++
++    return true;
++}
++
+ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+         struct wined3d_texture *src_texture, unsigned int src_sub_resource_idx, unsigned int src_location,
+         const struct wined3d_box *src_box, const struct wined3d_bo_address *dst_bo_addr,
+@@ -1921,7 +2504,8 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+             || (src_texture->flags & WINED3D_TEXTURE_CONVERTED)))
+             || target == GL_TEXTURE_1D_ARRAY)
+     {
+-        wined3d_texture_gl_download_data_slow_path(src_texture_gl, src_sub_resource_idx, context_gl, dst_bo_addr);
++        wined3d_texture_gl_download_data_slow_path(src_texture_gl, src_sub_resource_idx, context_gl,
++                dst_bo_addr, src_location);
+         return;
+     }
+ 
+@@ -1945,8 +2529,146 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+         checkGLcall("glBindBuffer");
+     }
+ 
++    if (wined3d_settings.webgl
++            && !(src_texture->resource.format_attrs & WINED3D_FORMAT_ATTR_COMPRESSED)
++            && !src_texture->resource.format->depth_size
++            && !src_texture->resource.format->stencil_size)
++    {
++        uint8_t *readback = offset, *readback_mem = NULL;
++        unsigned int readback_size = target == GL_TEXTURE_3D ? dst_slice_pitch * src_depth : dst_slice_pitch;
++
++        TRACE("Downloading texture %p, %u through FBO readback, level %u, format %#x, type %#x, data %p.\n",
++                src_texture, src_sub_resource_idx, src_level, format_gl->format, format_gl->type, offset);
++
++        if (target == GL_TEXTURE_3D && !(src_texture->resource.format_caps & WINED3D_FORMAT_CAP_FBO_ATTACHABLE))
++        {
++            FIXME("Cannot download non-FBO-attachable 3D texture %p, %u from GL in WebGL mode; "
++                    "a valid sysmem copy is required.\n", src_texture, src_sub_resource_idx);
++            goto done;
++        }
++
++        if (dst_bo)
++        {
++            if (!(readback = readback_mem = malloc(readback_size)))
++            {
++                ERR("Failed to allocate readback memory.\n");
++                GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
++                wined3d_context_gl_reference_bo(context_gl, wined3d_bo_gl(dst_bo));
++                checkGLcall("glBindBuffer");
++                return;
++            }
++
++            GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
++            checkGLcall("glBindBuffer");
++        }
++
++        if (target == GL_TEXTURE_3D)
++        {
++            if (wined3d_texture_gl_readback_texture3d_webgl(context_gl, src_texture_gl, src_level,
++                    src_location, format_gl, src_width, src_height, src_depth, dst_row_pitch,
++                    dst_slice_pitch, readback))
++            {
++                if (dst_bo)
++                {
++                    GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, wined3d_bo_gl(dst_bo)->id));
++                    checkGLcall("glBindBuffer");
++                    GL_EXTCALL(glBufferSubData(GL_PIXEL_PACK_BUFFER, (GLintptr)dst_bo_addr->addr
++                            + dst_bo->buffer_offset, readback_size, readback));
++                    checkGLcall("glBufferSubData");
++                    free(readback_mem);
++                }
++
++                if (dst_bo)
++                {
++                    GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
++                    wined3d_context_gl_reference_bo(context_gl, wined3d_bo_gl(dst_bo));
++                    checkGLcall("glBindBuffer");
++                }
++                return;
++            }
++
++            if (dst_bo)
++                free(readback_mem);
++            FIXME("Cannot download 3D texture %p, %u from GL in WebGL mode; "
++                    "a valid sysmem copy is required.\n", src_texture, src_sub_resource_idx);
++            goto done;
++        }
++        else
++        {
++            wined3d_context_gl_apply_fbo_state_explicit(context_gl, GL_READ_FRAMEBUFFER,
++                    &src_texture->resource, src_sub_resource_idx, NULL, 0, src_location);
++            gl_info->gl_ops.gl.p_glReadBuffer(GL_COLOR_ATTACHMENT0);
++            checkGLcall("glReadBuffer");
++            wined3d_context_gl_check_fbo_status(context_gl, GL_READ_FRAMEBUFFER);
++
++            if (wined3d_texture_gl_profile_enabled())
++                fprintf(stderr, "BOXEDWINE_WEBGL_READBACK_SOURCE wine.download_from_texture texture=%p sub=%u src_location=%#x locations=%#x map_binding=%#x draw_binding=%#x access=%#x bind=%#x swapchain=%u width=%u height=%u format=%u dst_bo=%u\n",
++                        src_texture, src_sub_resource_idx, src_location,
++                        (unsigned int)src_texture->sub_resources[src_sub_resource_idx].locations,
++                        src_texture->resource.map_binding, src_texture->resource.draw_binding,
++                        src_texture->resource.access, src_texture->resource.bind_flags,
++                        !!src_texture->swapchain, src_width, src_height,
++                        src_texture->resource.format->id, !!dst_bo);
++
++            if (wined3d_texture_gl_read_pixels_webgl_rgba8(gl_info,
++                    src_texture->resource.format, src_width, src_height, dst_row_pitch, readback))
++            {
++                checkGLcall("glReadPixels");
++                if (dst_bo)
++                {
++                    GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, wined3d_bo_gl(dst_bo)->id));
++                    checkGLcall("glBindBuffer");
++                    GL_EXTCALL(glBufferSubData(GL_PIXEL_PACK_BUFFER, (GLintptr)dst_bo_addr->addr
++                            + dst_bo->buffer_offset, readback_size, readback));
++                    checkGLcall("glBufferSubData");
++                    free(readback_mem);
++                }
++
++                if (dst_bo)
++                {
++                    GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
++                    wined3d_context_gl_reference_bo(context_gl, wined3d_bo_gl(dst_bo));
++                    checkGLcall("glBindBuffer");
++                }
++                return;
++            }
++
++            if (dst_bo)
++            {
++                free(readback_mem);
++                GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, wined3d_bo_gl(dst_bo)->id));
++                checkGLcall("glBindBuffer");
++            }
++
++            {
++                ULONGLONG profile_start = wined3d_texture_gl_profile_enabled() ? wined3d_texture_gl_profile_now_us() : 0;
++
++                gl_info->gl_ops.gl.p_glReadPixels(0, 0, src_width, src_height,
++                        format_gl->format, format_gl->type, offset);
++                wined3d_texture_gl_profile_readpixels("texture_gl_download_from_texture_readpixels",
++                        profile_start, src_width, src_height, src_texture->resource.format->id);
++                checkGLcall("glReadPixels");
++            }
++
++            if (dst_bo)
++            {
++                GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
++                wined3d_context_gl_reference_bo(context_gl, wined3d_bo_gl(dst_bo));
++                checkGLcall("glBindBuffer");
++            }
++            return;
++        }
++    }
++
+     if (src_texture->resource.format_attrs & WINED3D_FORMAT_ATTR_COMPRESSED)
+     {
++        if (wined3d_settings.webgl)
++        {
++            FIXME("Cannot download compressed texture %p, %u from GL in WebGL mode; "
++                    "a valid sysmem copy is required.\n", src_texture, src_sub_resource_idx);
++            goto done;
++        }
++
+         TRACE("Downloading compressed texture %p, %u, level %u, format %#x, type %#x, data %p.\n",
+                 src_texture, src_sub_resource_idx, src_level, format_gl->format, format_gl->type, offset);
+ 
+@@ -1955,6 +2677,13 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+     }
+     else
+     {
++        if (wined3d_settings.webgl)
++        {
++            FIXME("Cannot download texture %p, %u from GL in WebGL mode; "
++                    "a valid sysmem copy is required.\n", src_texture, src_sub_resource_idx);
++            goto done;
++        }
++
+         TRACE("Downloading texture %p, %u, level %u, format %#x, type %#x, data %p.\n",
+                 src_texture, src_sub_resource_idx, src_level, format_gl->format, format_gl->type, offset);
+ 
+@@ -1962,6 +2691,7 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+         checkGLcall("glGetTexImage");
+     }
+ 
++done:
+     if (dst_bo)
+     {
+         GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
+@@ -1997,6 +2727,13 @@ static BOOL wined3d_texture_gl_load_sysmem(struct wined3d_texture_gl *texture_gl
+         struct wined3d_box src_box;
+         uint32_t src_location;
+ 
++        if (wined3d_settings.webgl && texture_gl->t.resource.format_attrs & WINED3D_FORMAT_ATTR_COMPRESSED)
++        {
++            FIXME("Cannot download compressed texture %p, %u from GL in WebGL mode; "
++                    "a valid sysmem copy is required.\n", texture_gl, sub_resource_idx);
++            return FALSE;
++        }
++
+         level = sub_resource_idx % texture_gl->t.level_count;
+         wined3d_texture_get_bo_address(&texture_gl->t, sub_resource_idx, &data, dst_location);
+         src_location = sub_resource->locations & WINED3D_LOCATION_TEXTURE_RGB
+@@ -2032,14 +2769,17 @@ static BOOL wined3d_texture_load_drawable(struct wined3d_texture *texture,
+ 
+     if (texture->resource.bind_flags & WINED3D_BIND_DEPTH_STENCIL)
+     {
+-        uint32_t current = texture->sub_resources[sub_resource_idx].locations;
+         FIXME("Unimplemented copy from %s for depth/stencil buffers.\n",
+-                wined3d_debug_location(current));
++                wined3d_debug_location(texture->sub_resources[sub_resource_idx].locations));
+         return FALSE;
+     }
+ 
+     if (wined3d_resource_is_offscreen(&texture->resource))
+     {
++        if (wined3d_settings.webgl)
++            return wined3d_texture_load_location(texture, sub_resource_idx, context,
++                    WINED3D_LOCATION_TEXTURE_RGB);
++
+         ERR("Trying to load offscreen texture into WINED3D_LOCATION_DRAWABLE.\n");
+         return FALSE;
+     }
+diff --git a/dlls/wined3d/utils.c b/dlls/wined3d/utils.c
+index 2c4b60b..d711055 100644
+--- a/dlls/wined3d/utils.c
++++ b/dlls/wined3d/utils.c
+@@ -299,12 +299,17 @@ static const struct wined3d_format_ddi_info ddi_formats[] =
+     {WINED3DFMT_B8G8R8_UNORM,       D3DDDIFMT_R8G8B8},
+     {WINED3DFMT_B8G8R8A8_UNORM,     D3DDDIFMT_A8R8G8B8},
+     {WINED3DFMT_B8G8R8X8_UNORM,     D3DDDIFMT_X8R8G8B8},
++    {WINED3DFMT_R8G8B8A8_UNORM,     D3DDDIFMT_A8B8G8R8},
++    {WINED3DFMT_R8G8B8X8_UNORM,     D3DDDIFMT_X8B8G8R8},
++    {WINED3DFMT_B10G10R10A2_UNORM,  D3DDDIFMT_A2R10G10B10},
++    {WINED3DFMT_R10G10B10A2_UNORM,  D3DDDIFMT_A2B10G10R10},
+     {WINED3DFMT_B5G6R5_UNORM,       D3DDDIFMT_R5G6B5},
+     {WINED3DFMT_B5G5R5X1_UNORM,     D3DDDIFMT_X1R5G5B5},
+     {WINED3DFMT_B5G5R5A1_UNORM,     D3DDDIFMT_A1R5G5B5},
+     {WINED3DFMT_B4G4R4A4_UNORM,     D3DDDIFMT_A4R4G4B4},
+     {WINED3DFMT_B4G4R4X4_UNORM,     D3DDDIFMT_X4R4G4B4},
+     {WINED3DFMT_P8_UINT,            D3DDDIFMT_P8},
++    {WINED3DFMT_L8A8_UNORM,         D3DDDIFMT_A8L8},
+ };
+ 
+ struct wined3d_format_base_flags
+@@ -827,6 +832,24 @@ static void convert_l4a4_unorm(const BYTE *src, BYTE *dst, UINT src_row_pitch, U
+     }
+ }
+ 
++static void convert_l8a8_to_l4a4_unorm(const BYTE *src, BYTE *dst, UINT src_row_pitch, UINT src_slice_pitch,
++        UINT dst_row_pitch, UINT dst_slice_pitch, UINT width, UINT height, UINT depth)
++{
++    unsigned int x, y, z;
++
++    for (z = 0; z < depth; ++z)
++    {
++        for (y = 0; y < height; ++y)
++        {
++            const BYTE *src_row = src + z * src_slice_pitch + y * src_row_pitch;
++            BYTE *dst_row = dst + z * dst_slice_pitch + y * dst_row_pitch;
++
++            for (x = 0; x < width; ++x)
++                dst_row[x] = (src_row[x * 2] >> 4) | (src_row[x * 2 + 1] & 0xf0);
++        }
++    }
++}
++
+ static void convert_r5g5_snorm_l6_unorm(const BYTE *src, BYTE *dst, UINT src_row_pitch, UINT src_slice_pitch,
+         UINT dst_row_pitch, UINT dst_slice_pitch, UINT width, UINT height, UINT depth)
+ {
+@@ -944,6 +967,44 @@ static void convert_r5g5_snorm_l6_unorm_nv(const BYTE *src, BYTE *dst, UINT src_
+     }
+ }
+ 
++static BYTE snorm5_to_unorm8(BYTE v)
++{
++    BYTE u = (v + 16) & 0x1f;
++
++    return (u << 3) | (u >> 2);
++}
++
++static void convert_r5g5_snorm_l6_unorm_webgl(const BYTE *src, BYTE *dst, UINT src_row_pitch, UINT src_slice_pitch,
++        UINT dst_row_pitch, UINT dst_slice_pitch, UINT width, UINT height, UINT depth)
++{
++    unsigned int x, y, z;
++    const unsigned short *texel_in;
++    unsigned char *texel_out;
++
++    for (z = 0; z < depth; z++)
++    {
++        for (y = 0; y < height; y++)
++        {
++            texel_in = (const unsigned short *)(src + z * src_slice_pitch + y * src_row_pitch);
++            texel_out = dst + z * dst_slice_pitch + y * dst_row_pitch;
++            for (x = 0; x < width; x++)
++            {
++                unsigned char l = (*texel_in & 0xfc00u) >> 10;
++                unsigned char v = (*texel_in & 0x03e0u) >> 5;
++                unsigned char u = *texel_in & 0x001fu;
++
++                texel_out[0] = snorm5_to_unorm8(u);
++                texel_out[1] = (l << 2) | (l >> 4);
++                texel_out[2] = snorm5_to_unorm8(v);
++                texel_out[3] = 0xff;
++
++                texel_out += 4;
++                texel_in++;
++            }
++        }
++    }
++}
++
+ static void convert_r8g8_snorm(const BYTE *src, BYTE *dst, UINT src_row_pitch, UINT src_slice_pitch,
+         UINT dst_row_pitch, UINT dst_slice_pitch, UINT width, UINT height, UINT depth)
+ {
+@@ -969,6 +1030,33 @@ static void convert_r8g8_snorm(const BYTE *src, BYTE *dst, UINT src_row_pitch, U
+     }
+ }
+ 
++static void convert_r8g8_snorm_webgl(const BYTE *src, BYTE *dst, UINT src_row_pitch, UINT src_slice_pitch,
++        UINT dst_row_pitch, UINT dst_slice_pitch, UINT width, UINT height, UINT depth)
++{
++    unsigned int x, y, z;
++    const short *texel_in;
++    unsigned char *texel_out;
++
++    for (z = 0; z < depth; z++)
++    {
++        for (y = 0; y < height; y++)
++        {
++            texel_in = (const short *)(src + z * src_slice_pitch + y * src_row_pitch);
++            texel_out = dst + z * dst_slice_pitch + y * dst_row_pitch;
++            for (x = 0; x < width; x++)
++            {
++                const short color = *texel_in++;
++
++                texel_out[0] = (color & 0xff) + 128;
++                texel_out[1] = (color >> 8) + 128;
++                texel_out[2] = 0xff;
++
++                texel_out += 3;
++            }
++        }
++    }
++}
++
+ static void convert_r8g8_snorm_l8x8_unorm(const BYTE *src, BYTE *dst, UINT src_row_pitch, UINT src_slice_pitch,
+         UINT dst_row_pitch, UINT dst_slice_pitch, UINT width, UINT height, UINT depth)
+ {
+@@ -998,6 +1086,34 @@ static void convert_r8g8_snorm_l8x8_unorm(const BYTE *src, BYTE *dst, UINT src_r
+     }
+ }
+ 
++static void convert_r8g8_snorm_l8x8_unorm_webgl(const BYTE *src, BYTE *dst, UINT src_row_pitch, UINT src_slice_pitch,
++        UINT dst_row_pitch, UINT dst_slice_pitch, UINT width, UINT height, UINT depth)
++{
++    unsigned int x, y, z;
++    const DWORD *texel_in;
++    unsigned char *texel_out;
++
++    for (z = 0; z < depth; z++)
++    {
++        for (y = 0; y < height; y++)
++        {
++            texel_in = (const DWORD *)(src + z * src_slice_pitch + y * src_row_pitch);
++            texel_out = dst + z * dst_slice_pitch + y * dst_row_pitch;
++            for (x = 0; x < width; x++)
++            {
++                DWORD color = *texel_in++;
++
++                texel_out[0] = (color & 0xff) + 128;
++                texel_out[1] = ((color >> 8) & 0xff) + 128;
++                texel_out[2] = (color >> 16) & 0xff;
++                texel_out[3] = 0xff;
++
++                texel_out += 4;
++            }
++        }
++    }
++}
++
+ static void convert_r8g8_snorm_l8x8_unorm_nv(const BYTE *src, BYTE *dst, UINT src_row_pitch, UINT src_slice_pitch,
+         UINT dst_row_pitch, UINT dst_slice_pitch, UINT width, UINT height, UINT depth)
+ {
+@@ -1608,11 +1724,11 @@ static const struct wined3d_format_texture_info format_texture_info[] =
+     {WINED3DFMT_L4A4_UNORM,             GL_RG8,                           GL_RG8,                                 0,
+             GL_RG,                      GL_UNSIGNED_BYTE,                 2,
+             WINED3D_FORMAT_CAP_FILTERING,
+-            ARB_TEXTURE_RG,             convert_l4a4_unorm},
++            ARB_TEXTURE_RG,             convert_l4a4_unorm,              convert_l8a8_to_l4a4_unorm},
+     {WINED3DFMT_L4A4_UNORM,             GL_LUMINANCE4_ALPHA4,             GL_LUMINANCE4_ALPHA4,                   0,
+             GL_LUMINANCE_ALPHA,         GL_UNSIGNED_BYTE,                 2,
+             WINED3D_FORMAT_CAP_FILTERING,
+-            WINED3D_GL_LEGACY_CONTEXT,  convert_l4a4_unorm},
++            WINED3D_GL_LEGACY_CONTEXT,  convert_l4a4_unorm,              convert_l8a8_to_l4a4_unorm},
+     {WINED3DFMT_L16_UNORM,              GL_R16,                           GL_R16,                                 0,
+             GL_RED,                     GL_UNSIGNED_SHORT,                0,
+             WINED3D_FORMAT_CAP_TEXTURE | WINED3D_FORMAT_CAP_POSTPIXELSHADER_BLENDING | WINED3D_FORMAT_CAP_FILTERING,
+@@ -1888,6 +2004,343 @@ static void format_clear_caps(struct wined3d_format *format, unsigned int caps)
+         format->caps[i] &= ~caps;
+ }
+ 
++static bool wined3d_webgl_format_can_decompress(const struct wined3d_format *format)
++{
++    return !!format->decompress;
++}
++
++static bool wined3d_webgl_format_is_color_renderable(enum wined3d_format_id format_id)
++{
++    switch (format_id)
++    {
++        case WINED3DFMT_B8G8R8_UNORM:
++        case WINED3DFMT_B5G5R5X1_UNORM:
++        case WINED3DFMT_B4G4R4A4_UNORM:
++        case WINED3DFMT_B4G4R4X4_UNORM:
++        case WINED3DFMT_R8G8B8X8_UNORM:
++        case WINED3DFMT_B10G10R10A2_UNORM:
++        case WINED3DFMT_R10G10B10A2_UNORM:
++        case WINED3DFMT_R10G10B10A2_UINT:
++        case WINED3DFMT_R11G11B10_FLOAT:
++        case WINED3DFMT_R8G8B8A8_UNORM:
++        case WINED3DFMT_R8G8B8A8_UNORM_SRGB:
++        case WINED3DFMT_R8G8B8A8_UINT:
++        case WINED3DFMT_R8G8B8A8_SINT:
++        case WINED3DFMT_R16G16B16A16_FLOAT:
++        case WINED3DFMT_R16G16B16A16_UINT:
++        case WINED3DFMT_R16G16B16A16_SINT:
++        case WINED3DFMT_R32G32_FLOAT:
++        case WINED3DFMT_R32G32_UINT:
++        case WINED3DFMT_R32G32_SINT:
++        case WINED3DFMT_R32_FLOAT:
++        case WINED3DFMT_R32_UINT:
++        case WINED3DFMT_R32_SINT:
++        case WINED3DFMT_R8G8_UNORM:
++        case WINED3DFMT_R8G8_UINT:
++        case WINED3DFMT_R8G8_SINT:
++        case WINED3DFMT_R16_FLOAT:
++        case WINED3DFMT_R16G16_FLOAT:
++        case WINED3DFMT_R16_UINT:
++        case WINED3DFMT_R16_SINT:
++        case WINED3DFMT_R8_UNORM:
++        case WINED3DFMT_L8_UNORM:
++        case WINED3DFMT_L8A8_UNORM:
++        case WINED3DFMT_R8_UINT:
++        case WINED3DFMT_R8_SINT:
++        case WINED3DFMT_A8_UNORM:
++        case WINED3DFMT_B5G6R5_UNORM:
++        case WINED3DFMT_B5G5R5A1_UNORM:
++        case WINED3DFMT_B8G8R8A8_UNORM:
++        case WINED3DFMT_B8G8R8X8_UNORM:
++        case WINED3DFMT_B8G8R8A8_UNORM_SRGB:
++        case WINED3DFMT_B8G8R8X8_UNORM_SRGB:
++            return true;
++
++        default:
++            return false;
++    }
++}
++
++static bool wined3d_webgl_format_supports_blending(enum wined3d_format_id format_id)
++{
++    switch (format_id)
++    {
++        case WINED3DFMT_B8G8R8_UNORM:
++        case WINED3DFMT_B5G5R5X1_UNORM:
++        case WINED3DFMT_B4G4R4A4_UNORM:
++        case WINED3DFMT_B4G4R4X4_UNORM:
++        case WINED3DFMT_R8G8B8X8_UNORM:
++        case WINED3DFMT_B10G10R10A2_UNORM:
++        case WINED3DFMT_R10G10B10A2_UNORM:
++        case WINED3DFMT_R8G8B8A8_UNORM:
++        case WINED3DFMT_R8G8B8A8_UNORM_SRGB:
++        case WINED3DFMT_R8G8_UNORM:
++        case WINED3DFMT_R8_UNORM:
++        case WINED3DFMT_A8_UNORM:
++        case WINED3DFMT_B5G6R5_UNORM:
++        case WINED3DFMT_B5G5R5A1_UNORM:
++        case WINED3DFMT_B8G8R8A8_UNORM:
++        case WINED3DFMT_B8G8R8X8_UNORM:
++        case WINED3DFMT_B8G8R8A8_UNORM_SRGB:
++        case WINED3DFMT_B8G8R8X8_UNORM_SRGB:
++            return true;
++
++        default:
++            return false;
++    }
++}
++
++static bool wined3d_webgl_format_is_depth_stencil(enum wined3d_format_id format_id)
++{
++    switch (format_id)
++    {
++        case WINED3DFMT_D16_LOCKABLE:
++        case WINED3DFMT_X8D24_UNORM:
++        case WINED3DFMT_D32_FLOAT_S8X24_UINT:
++        case WINED3DFMT_D32_FLOAT:
++        case WINED3DFMT_D24_UNORM_S8_UINT:
++        case WINED3DFMT_D16_UNORM:
++        case WINED3DFMT_INTZ:
++            return true;
++
++        default:
++            return false;
++    }
++}
++
++static void wined3d_format_apply_webgl_caps(struct wined3d_format *format)
++{
++    static const unsigned int fbo_caps = WINED3D_FORMAT_CAP_FBO_ATTACHABLE
++            | WINED3D_FORMAT_CAP_FBO_ATTACHABLE_SRGB;
++    static const unsigned int rt_caps = WINED3D_FORMAT_CAP_RENDERTARGET
++            | WINED3D_FORMAT_CAP_POSTPIXELSHADER_BLENDING
++            | WINED3D_FORMAT_CAP_SRGB_WRITE;
++    static const unsigned int decompressed_texture_caps = WINED3D_FORMAT_CAP_TEXTURE
++            | WINED3D_FORMAT_CAP_FILTERING
++            | WINED3D_FORMAT_CAP_POSTPIXELSHADER_BLENDING
++            | WINED3D_FORMAT_CAP_DECOMPRESS;
++    const bool color_renderable = wined3d_webgl_format_is_color_renderable(format->id);
++    const bool depth_stencil = wined3d_webgl_format_is_depth_stencil(format->id);
++
++    format_clear_caps(format, WINED3D_FORMAT_CAP_UNORDERED_ACCESS);
++
++    format->caps[WINED3D_GL_RES_TYPE_TEX_1D] = 0;
++    format->caps[WINED3D_GL_RES_TYPE_BUFFER] &= WINED3D_FORMAT_CAP_VERTEX_ATTRIBUTE
++            | WINED3D_FORMAT_CAP_INDEX_BUFFER;
++
++    if (color_renderable)
++    {
++        unsigned int caps = WINED3D_FORMAT_CAP_RENDERTARGET | WINED3D_FORMAT_CAP_FBO_ATTACHABLE;
++
++        if (wined3d_webgl_format_supports_blending(format->id))
++            caps |= WINED3D_FORMAT_CAP_POSTPIXELSHADER_BLENDING;
++
++        format->caps[WINED3D_GL_RES_TYPE_TEX_2D] |= caps;
++        format->caps[WINED3D_GL_RES_TYPE_TEX_CUBE] |= caps;
++        format->caps[WINED3D_GL_RES_TYPE_RB] |= caps;
++
++        switch (format->id)
++        {
++            case WINED3DFMT_B5G5R5X1_UNORM:
++            case WINED3DFMT_B5G5R5A1_UNORM:
++                format->caps[WINED3D_GL_RES_TYPE_TEX_2D] |= WINED3D_FORMAT_CAP_GEN_MIPMAP;
++                format->caps[WINED3D_GL_RES_TYPE_TEX_CUBE] |= WINED3D_FORMAT_CAP_GEN_MIPMAP;
++                break;
++
++            default:
++                break;
++        }
++    }
++    else
++        format_clear_caps(format, rt_caps | WINED3D_FORMAT_CAP_FBO_ATTACHABLE_SRGB);
++
++    /* WebGL does not expose D3D-style control over sRGB framebuffer writes. */
++    format_clear_caps(format, WINED3D_FORMAT_CAP_SRGB_WRITE);
++
++    if (depth_stencil)
++    {
++        unsigned int caps = WINED3D_FORMAT_CAP_DEPTH_STENCIL | WINED3D_FORMAT_CAP_FBO_ATTACHABLE;
++
++        format->caps[WINED3D_GL_RES_TYPE_TEX_2D] |= caps;
++        format->caps[WINED3D_GL_RES_TYPE_RB] |= caps;
++    }
++    else
++        format_clear_caps(format, WINED3D_FORMAT_CAP_DEPTH_STENCIL);
++
++    if (!color_renderable && !depth_stencil)
++        format_clear_caps(format, fbo_caps);
++
++    if (wined3d_webgl_format_can_decompress(format))
++    {
++        format->caps[WINED3D_GL_RES_TYPE_TEX_2D] |= decompressed_texture_caps;
++        format->caps[WINED3D_GL_RES_TYPE_TEX_CUBE] |= decompressed_texture_caps;
++        format->caps[WINED3D_GL_RES_TYPE_TEX_3D] |= decompressed_texture_caps;
++    }
++
++    switch (format->id)
++    {
++        case WINED3DFMT_B5G6R5_UNORM:
++            format_clear_caps(format, WINED3D_FORMAT_CAP_SRGB_READ);
++            break;
++
++        case WINED3DFMT_ATI1N:
++        case WINED3DFMT_ATI2N:
++            format_clear_caps(format, WINED3D_FORMAT_CAP_TEXTURE
++                    | WINED3D_FORMAT_CAP_POSTPIXELSHADER_BLENDING
++                    | WINED3D_FORMAT_CAP_FILTERING);
++            break;
++
++        case WINED3DFMT_R5G5_SNORM_L6_UNORM:
++        case WINED3DFMT_R8G8_SNORM:
++        case WINED3DFMT_R8G8_SNORM_L8X8_UNORM:
++            if (wined3d_settings.webgl)
++                break;
++            /* fall through */
++        case WINED3DFMT_R8G8B8A8_SNORM:
++        case WINED3DFMT_R16G16_SNORM:
++            format_clear_caps(format, WINED3D_FORMAT_CAP_TEXTURE
++                    | WINED3D_FORMAT_CAP_POSTPIXELSHADER_BLENDING
++                    | WINED3D_FORMAT_CAP_FILTERING
++                    | WINED3D_FORMAT_CAP_DECOMPRESS);
++            break;
++
++        case WINED3DFMT_UYVY:
++        case WINED3DFMT_YUY2:
++        case WINED3DFMT_YV12:
++        case WINED3DFMT_NV12:
++        case WINED3DFMT_NV12_PLANAR:
++            format_clear_caps(format, WINED3D_FORMAT_CAP_BLIT);
++            break;
++
++        default:
++            break;
++    }
++}
++
++static void wined3d_format_gl_apply_webgl_format_info(struct wined3d_format_gl *format)
++{
++    switch (format->f.id)
++    {
++        case WINED3DFMT_B8G8R8_UNORM:
++            format->internal = GL_RGB8;
++            format->srgb_internal = GL_RGB8;
++            if (!format->rt_internal)
++                format->rt_internal = GL_RGB8;
++            format->format = GL_RGB;
++            format->type = GL_UNSIGNED_BYTE;
++            break;
++
++        case WINED3DFMT_B8G8R8X8_UNORM:
++        case WINED3DFMT_B8G8R8X8_UNORM_SRGB:
++        case WINED3DFMT_R8G8B8X8_UNORM:
++            format->internal = GL_RGBA8;
++            format->srgb_internal = GL_SRGB8_ALPHA8_EXT;
++            if (!format->rt_internal)
++                format->rt_internal = GL_RGBA8;
++            format->format = GL_RGBA;
++            format->type = GL_UNSIGNED_BYTE;
++            break;
++
++        case WINED3DFMT_B8G8R8A8_UNORM:
++        case WINED3DFMT_B8G8R8A8_UNORM_SRGB:
++        case WINED3DFMT_R8G8B8A8_UNORM:
++        case WINED3DFMT_R8G8B8A8_UNORM_SRGB:
++            format->internal = GL_RGBA8;
++            format->srgb_internal = GL_SRGB8_ALPHA8_EXT;
++            if (!format->rt_internal)
++                format->rt_internal = GL_RGBA8;
++            format->format = GL_RGBA;
++            format->type = GL_UNSIGNED_BYTE;
++            break;
++
++        case WINED3DFMT_B10G10R10A2_UNORM:
++        case WINED3DFMT_R10G10B10A2_UNORM:
++            format->internal = GL_RGB10_A2;
++            format->srgb_internal = GL_RGB10_A2;
++            if (!format->rt_internal)
++                format->rt_internal = GL_RGB10_A2;
++            format->format = GL_RGBA;
++            format->type = GL_UNSIGNED_BYTE;
++            break;
++
++        case WINED3DFMT_B5G6R5_UNORM:
++            format->internal = GL_RGB565;
++            format->srgb_internal = GL_RGB565;
++            if (!format->rt_internal)
++                format->rt_internal = GL_RGB565;
++            format->format = GL_RGB;
++            format->type = GL_UNSIGNED_BYTE;
++            break;
++
++        case WINED3DFMT_B5G5R5X1_UNORM:
++        case WINED3DFMT_B5G5R5A1_UNORM:
++            format->internal = GL_RGBA8;
++            format->srgb_internal = GL_RGBA8;
++            if (!format->rt_internal)
++                format->rt_internal = GL_RGBA8;
++            format->format = GL_RGBA;
++            format->type = GL_UNSIGNED_BYTE;
++            break;
++
++        case WINED3DFMT_B4G4R4X4_UNORM:
++        case WINED3DFMT_B4G4R4A4_UNORM:
++            format->internal = GL_RGBA4;
++            format->srgb_internal = GL_RGBA4;
++            if (!format->rt_internal)
++                format->rt_internal = GL_RGBA4;
++            format->format = GL_RGBA;
++            format->type = GL_UNSIGNED_BYTE;
++            break;
++
++        case WINED3DFMT_R8G8_SNORM:
++            format->internal = GL_RGB8;
++            format->srgb_internal = GL_RGB8;
++            format->format = GL_RGB;
++            format->type = GL_UNSIGNED_BYTE;
++            format->f.conv_byte_count = 3;
++            format->f.upload = convert_r8g8_snorm_webgl;
++            break;
++
++        case WINED3DFMT_R5G5_SNORM_L6_UNORM:
++            format->internal = GL_RGBA8;
++            format->srgb_internal = GL_RGBA8;
++            format->format = GL_RGBA;
++            format->type = GL_UNSIGNED_BYTE;
++            format->f.conv_byte_count = 4;
++            format->f.upload = convert_r5g5_snorm_l6_unorm_webgl;
++            break;
++
++        case WINED3DFMT_R8G8_SNORM_L8X8_UNORM:
++            format->internal = GL_RGBA8;
++            format->srgb_internal = GL_RGBA8;
++            format->format = GL_RGBA;
++            format->type = GL_UNSIGNED_BYTE;
++            format->f.conv_byte_count = 4;
++            format->f.upload = convert_r8g8_snorm_l8x8_unorm_webgl;
++            break;
++
++        default:
++            break;
++    }
++
++    if (wined3d_webgl_format_is_color_renderable(format->f.id) && !format->rt_internal)
++        format->rt_internal = format->internal;
++}
++
++static void wined3d_adapter_apply_webgl_format_caps(struct wined3d_adapter *adapter)
++{
++    unsigned int count = WINED3D_FORMAT_COUNT + ARRAY_SIZE(typeless_depth_stencil_formats);
++    unsigned int i;
++
++    TRACE("Applying WebGL-compatible format caps clamp.\n");
++
++    for (i = 0; i < count; ++i)
++    {
++        wined3d_format_gl_apply_webgl_format_info(get_format_gl_by_idx(adapter, i));
++        wined3d_format_apply_webgl_caps(get_format_by_idx(adapter, i));
++    }
++}
++
+ static enum wined3d_channel_type map_channel_type(char t)
+ {
+     switch (t)
+@@ -2158,6 +2611,37 @@ static void delete_fbo_attachment(const struct wined3d_gl_info *gl_info,
+     }
+ }
+ 
++static void read_bgra8_pixels(const struct wined3d_gl_info *gl_info,
++        unsigned int x, unsigned int y, unsigned int width, unsigned int height, uint32_t *data)
++{
++    unsigned int i, pixel_count = width * height;
++    uint8_t *rgba;
++
++    if (!wined3d_settings.webgl)
++    {
++        gl_info->gl_ops.gl.p_glReadPixels(x, y, width, height,
++                GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
++        return;
++    }
++
++    if (!(rgba = malloc(pixel_count * 4)))
++    {
++        ERR("Failed to allocate readback memory.\n");
++        return;
++    }
++
++    gl_info->gl_ops.gl.p_glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
++    for (i = 0; i < pixel_count; ++i)
++    {
++        data[i] = (uint32_t)rgba[i * 4 + 2]
++                | ((uint32_t)rgba[i * 4 + 1] << 8)
++                | ((uint32_t)rgba[i * 4 + 0] << 16)
++                | ((uint32_t)rgba[i * 4 + 3] << 24);
++    }
++
++    free(rgba);
++}
++
+ static void create_and_bind_fbo_attachment(const struct wined3d_gl_info *gl_info,
+         const struct wined3d_format_gl *format_gl,
+         enum wined3d_gl_resource_type d3d_type, GLuint *object, GLenum internal)
+@@ -2170,6 +2654,13 @@ static void create_and_bind_fbo_attachment(const struct wined3d_gl_info *gl_info
+     switch (d3d_type)
+     {
+         case WINED3D_GL_RES_TYPE_TEX_1D:
++            if (wined3d_settings.webgl)
++            {
++                TRACE("Skipping 1D FBO attachment probe for WebGL-compatible profile.\n");
++                *object = 0;
++                break;
++            }
++
+             gl_info->gl_ops.gl.p_glGenTextures(1, object);
+             gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_1D, *object);
+             gl_info->gl_ops.gl.p_glTexImage1D(GL_TEXTURE_1D, 0, internal, 16, 0, format, type, NULL);
+@@ -2281,6 +2772,14 @@ static void draw_test_quad(struct wined3d_caps_gl_ctx *ctx, const struct wined3d
+         "attribute vec4 color;\n"
+         "varying vec4 out_color;\n"
+         "\n";
++    static const char vs_webgl_header[] =
++        "#version 300 es\n"
++        "precision highp float;\n"
++        "precision highp int;\n"
++        "in vec4 pos;\n"
++        "in vec4 color;\n"
++        "out vec4 out_color;\n"
++        "\n";
+     static const char vs_body[] =
+         "void main()\n"
+         "{\n"
+@@ -2304,6 +2803,17 @@ static void draw_test_quad(struct wined3d_caps_gl_ctx *ctx, const struct wined3d
+         "{\n"
+         "    gl_FragData[0] = out_color;\n"
+         "}\n";
++    static const char fs_webgl[] =
++        "#version 300 es\n"
++        "precision highp float;\n"
++        "precision highp int;\n"
++        "in vec4 out_color;\n"
++        "layout(location = 0) out vec4 fragment_color;\n"
++        "\n"
++        "void main()\n"
++        "{\n"
++        "    fragment_color = out_color;\n"
++        "}\n";
+     const char *source[2];
+     GLuint vs_id, fs_id;
+     unsigned int i;
+@@ -2314,6 +2824,12 @@ static void draw_test_quad(struct wined3d_caps_gl_ctx *ctx, const struct wined3d
+     if (!gl_info->supported[ARB_VERTEX_BUFFER_OBJECT] || !gl_info->supported[ARB_VERTEX_SHADER]
+             || !gl_info->supported[ARB_FRAGMENT_SHADER])
+     {
++        if (wined3d_settings.webgl)
++        {
++            ERR("Cannot draw test quad without VBO and GLSL support in WebGL-compatible profile.\n");
++            return;
++        }
++
+         gl_info->gl_ops.gl.p_glDisable(GL_LIGHTING);
+         gl_info->gl_ops.gl.p_glMatrixMode(GL_MODELVIEW);
+         gl_info->gl_ops.gl.p_glLoadIdentity();
+@@ -2345,14 +2861,20 @@ static void draw_test_quad(struct wined3d_caps_gl_ctx *ctx, const struct wined3d
+         ctx->test_program_id = GL_EXTCALL(glCreateProgram());
+ 
+         vs_id = GL_EXTCALL(glCreateShader(GL_VERTEX_SHADER));
+-        source[0] = use_glsl_150 ? vs_core_header : vs_legacy_header;
++        if (wined3d_settings.webgl)
++            source[0] = vs_webgl_header;
++        else
++            source[0] = use_glsl_150 ? vs_core_header : vs_legacy_header;
+         source[1] = vs_body;
+         GL_EXTCALL(glShaderSource(vs_id, 2, source, NULL));
+         GL_EXTCALL(glAttachShader(ctx->test_program_id, vs_id));
+         GL_EXTCALL(glDeleteShader(vs_id));
+ 
+         fs_id = GL_EXTCALL(glCreateShader(GL_FRAGMENT_SHADER));
+-        source[0] = use_glsl_150 ? fs_core : fs_legacy;
++        if (wined3d_settings.webgl)
++            source[0] = fs_webgl;
++        else
++            source[0] = use_glsl_150 ? fs_core : fs_legacy;
+         GL_EXTCALL(glShaderSource(fs_id, 1, source, NULL));
+         GL_EXTCALL(glAttachShader(ctx->test_program_id, fs_id));
+         GL_EXTCALL(glDeleteShader(fs_id));
+@@ -2360,7 +2882,7 @@ static void draw_test_quad(struct wined3d_caps_gl_ctx *ctx, const struct wined3d
+         GL_EXTCALL(glBindAttribLocation(ctx->test_program_id, 0, "pos"));
+         GL_EXTCALL(glBindAttribLocation(ctx->test_program_id, 1, "color"));
+ 
+-        if (use_glsl_150)
++        if (!wined3d_settings.webgl && use_glsl_150)
+             GL_EXTCALL(glBindFragDataLocation(ctx->test_program_id, 0, "fragment_color"));
+ 
+         GL_EXTCALL(glCompileShader(vs_id));
+@@ -2535,33 +3057,23 @@ static void check_fbo_compat(struct wined3d_caps_gl_ctx *ctx, struct wined3d_for
+                 switch (type)
+                 {
+                     case WINED3D_GL_RES_TYPE_TEX_1D:
+-                        /* Rebinding texture to workaround a fglrx bug. */
+-                        gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_1D, object);
+-                        gl_info->gl_ops.gl.p_glGetTexImage(GL_TEXTURE_1D, 0, GL_BGRA,
+-                                GL_UNSIGNED_INT_8_8_8_8_REV, readback);
++                        read_bgra8_pixels(gl_info, 0, 0, 16, 1, readback);
+                         color = readback[7];
+                         break;
+ 
+                     case WINED3D_GL_RES_TYPE_TEX_2D:
+                     case WINED3D_GL_RES_TYPE_TEX_3D:
+-                        /* Rebinding texture to workaround a fglrx bug. */
+-                        gl_info->gl_ops.gl.p_glBindTexture(wined3d_gl_type_to_enum(type), object);
+-                        gl_info->gl_ops.gl.p_glGetTexImage(wined3d_gl_type_to_enum(type), 0, GL_BGRA,
+-                                GL_UNSIGNED_INT_8_8_8_8_REV, readback);
++                        read_bgra8_pixels(gl_info, 0, 0, 16, 16, readback);
+                         color = readback[7 * 16 + 7];
+                         break;
+ 
+                     case WINED3D_GL_RES_TYPE_TEX_CUBE:
+-                        /* Rebinding texture to workaround a fglrx bug. */
+-                        gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, object);
+-                        gl_info->gl_ops.gl.p_glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X_ARB, 0, GL_BGRA,
+-                                GL_UNSIGNED_INT_8_8_8_8_REV, readback);
++                        read_bgra8_pixels(gl_info, 0, 0, 16, 16, readback);
+                         color = readback[7 * 16 + 7];
+                         break;
+ 
+                     case WINED3D_GL_RES_TYPE_RB:
+-                        gl_info->gl_ops.gl.p_glReadPixels(0, 0, 16, 16,
+-                                GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, readback);
++                        read_bgra8_pixels(gl_info, 0, 0, 16, 16, readback);
+                         color = readback[7 * 16 + 7];
+                         break;
+ 
+@@ -2682,6 +3194,12 @@ static void init_format_fbo_compat_info(const struct wined3d_adapter *adapter,
+     unsigned int i, type;
+     GLuint fbo;
+ 
++    if (wined3d_settings.webgl)
++    {
++        TRACE("Skipping desktop FBO compatibility probe for WebGL-compatible profile.\n");
++        return;
++    }
++
+     if (gl_info->supported[ARB_INTERNALFORMAT_QUERY2])
+     {
+         for (i = 0; i < WINED3D_FORMAT_COUNT; ++i)
+@@ -2792,7 +3310,15 @@ static void init_format_fbo_compat_info(const struct wined3d_adapter *adapter,
+ 
+     gl_info->fbo_ops.glGenFramebuffers(1, &fbo);
+     gl_info->fbo_ops.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+-    gl_info->gl_ops.gl.p_glDrawBuffer(GL_COLOR_ATTACHMENT0);
++    if (wined3d_settings.webgl)
++    {
++        const GLenum draw_buffer = GL_COLOR_ATTACHMENT0;
++        GL_EXTCALL(glDrawBuffers(1, &draw_buffer));
++    }
++    else
++    {
++        gl_info->gl_ops.gl.p_glDrawBuffer(GL_COLOR_ATTACHMENT0);
++    }
+     gl_info->gl_ops.gl.p_glReadBuffer(GL_COLOR_ATTACHMENT0);
+ 
+     for (i = 0; i < WINED3D_FORMAT_COUNT; ++i)
+@@ -3205,7 +3731,15 @@ static BOOL check_filter(const struct wined3d_gl_info *gl_info, GLenum internal)
+     gl_info->fbo_ops.glGenFramebuffers(1, &fbo);
+     gl_info->fbo_ops.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+     gl_info->fbo_ops.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, buffer, 0);
+-    gl_info->gl_ops.gl.p_glDrawBuffer(GL_COLOR_ATTACHMENT0);
++    if (wined3d_settings.webgl)
++    {
++        const GLenum draw_buffer = GL_COLOR_ATTACHMENT0;
++        GL_EXTCALL(glDrawBuffers(1, &draw_buffer));
++    }
++    else
++    {
++        gl_info->gl_ops.gl.p_glDrawBuffer(GL_COLOR_ATTACHMENT0);
++    }
+ 
+     gl_info->gl_ops.gl.p_glViewport(0, 0, 16, 1);
+     gl_info->gl_ops.gl.p_glDisable(GL_LIGHTING);
+@@ -3228,9 +3762,8 @@ static BOOL check_filter(const struct wined3d_gl_info *gl_info, GLenum internal)
+     gl_info->gl_ops.gl.p_glVertex2f(1.0f, 1.0f);
+     gl_info->gl_ops.gl.p_glEnd();
+ 
+-    gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, buffer);
+     memset(readback, 0x7f, sizeof(readback));
+-    gl_info->gl_ops.gl.p_glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, readback);
++    read_bgra8_pixels(gl_info, 0, 0, 16, 1, readback);
+     if (compare_colour(readback[6], 0xffffffff, 5) || compare_colour(readback[6], 0x00000000, 5)
+             || compare_colour(readback[9], 0xffffffff, 5) || compare_colour(readback[9], 0x00000000, 5))
+     {
+@@ -3278,6 +3811,12 @@ static void init_format_filter_info(struct wined3d_adapter *adapter,
+     if (gl_info->supported[ARB_INTERNALFORMAT_QUERY2])
+         return;
+ 
++    if (wined3d_settings.webgl)
++    {
++        TRACE("Skipping desktop float16 filtering probe for WebGL-compatible profile.\n");
++        return;
++    }
++
+     if (!gl_info->supported[WINED3D_GL_LEGACY_CONTEXT])
+     {
+         if (vendor == HW_VENDOR_NVIDIA && gl_info->supported[ARB_TEXTURE_FLOAT])
+@@ -3748,8 +4287,12 @@ BOOL wined3d_caps_gl_ctx_test_viewport_subpixel_bits(struct wined3d_caps_gl_ctx
+     gl_info->gl_ops.gl.p_glGenTextures(1, &texture);
+     gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, texture);
+     gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+-    gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, ARRAY_SIZE(readback), 1, 0,
+-            GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
++    if (wined3d_settings.webgl)
++        gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, ARRAY_SIZE(readback), 1, 0,
++                GL_RGBA, GL_UNSIGNED_BYTE, NULL);
++    else
++        gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, ARRAY_SIZE(readback), 1, 0,
++                GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+     gl_info->fbo_ops.glGenFramebuffers(1, &fbo);
+     gl_info->fbo_ops.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+     gl_info->fbo_ops.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+@@ -3762,9 +4305,7 @@ BOOL wined3d_caps_gl_ctx_test_viewport_subpixel_bits(struct wined3d_caps_gl_ctx
+     draw_test_quad(ctx, NULL, &red);
+     checkGLcall("draw");
+ 
+-    gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, texture);
+-    gl_info->gl_ops.gl.p_glGetTexImage(GL_TEXTURE_2D, 0,
+-            GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, readback);
++    read_bgra8_pixels(gl_info, 0, 0, ARRAY_SIZE(readback), 1, readback);
+     checkGLcall("readback");
+ 
+     TRACE("Readback colors are 0x%08x, 0x%08x, 0x%08x, 0x%08x.\n",
+@@ -3831,8 +4372,12 @@ bool wined3d_caps_gl_ctx_test_filling_convention(struct wined3d_caps_gl_ctx *ctx
+     gl_info->gl_ops.gl.p_glGenTextures(1, &texture);
+     gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, texture);
+     gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+-    gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 8, 8, 0,
+-            GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
++    if (wined3d_settings.webgl)
++        gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 8, 8, 0,
++                GL_RGBA, GL_UNSIGNED_BYTE, NULL);
++    else
++        gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 8, 8, 0,
++                GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+     gl_info->fbo_ops.glGenFramebuffers(1, &fbo);
+     gl_info->fbo_ops.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+     gl_info->fbo_ops.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+@@ -3846,9 +4391,7 @@ bool wined3d_caps_gl_ctx_test_filling_convention(struct wined3d_caps_gl_ctx *ctx
+     draw_test_quad(ctx, edge_geometry, &red);
+     checkGLcall("draw");
+ 
+-    gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, texture);
+-    gl_info->gl_ops.gl.p_glGetTexImage(GL_TEXTURE_2D, 0,
+-            GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, readback);
++    read_bgra8_pixels(gl_info, 0, 0, 8, 8, (uint32_t *)readback);
+     checkGLcall("readback");
+ 
+     gl_info->gl_ops.gl.p_glDeleteTextures(1, &texture);
+@@ -3899,7 +4442,12 @@ static float wined3d_adapter_find_polyoffset_scale(struct wined3d_caps_gl_ctx *c
+     gl_info->gl_ops.gl.p_glGenTextures(1, &color);
+     gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, color);
+     gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+-    gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 1, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, 0);
++    if (wined3d_settings.webgl)
++        gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 1, 0,
++                GL_RGBA, GL_UNSIGNED_BYTE, NULL);
++    else
++        gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 1, 0,
++                GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+ 
+     gl_info->fbo_ops.glGenRenderbuffers(1, &depth);
+     gl_info->fbo_ops.glBindRenderbuffer(GL_RENDERBUFFER, depth);
+@@ -3912,7 +4460,13 @@ static float wined3d_adapter_find_polyoffset_scale(struct wined3d_caps_gl_ctx *c
+     checkGLcall("Setup framebuffer");
+ 
+     gl_info->gl_ops.gl.p_glClearColor(0.0f, 0.0f, 0.5f, 0.0f);
+-    gl_info->gl_ops.gl.p_glClearDepth(0.5f);
++    if ((wined3d_settings.webgl || gl_info->supported[ARB_ES2_COMPATIBILITY])
++            && gl_info->gl_ops.ext.p_glClearDepthf)
++        GL_EXTCALL(glClearDepthf(0.5f));
++    else if (wined3d_settings.webgl)
++        TRACE("Skipping missing glClearDepthf for WebGL-compatible profile.\n");
++    else
++        gl_info->gl_ops.gl.p_glClearDepth(0.5f);
+     gl_info->gl_ops.gl.p_glEnable(GL_DEPTH_TEST);
+     gl_info->gl_ops.gl.p_glEnable(GL_POLYGON_OFFSET_FILL);
+     gl_info->gl_ops.gl.p_glViewport(0, 0, 256, 1);
+@@ -3935,9 +4489,7 @@ static float wined3d_adapter_find_polyoffset_scale(struct wined3d_caps_gl_ctx *c
+         draw_test_quad(ctx, geometry, &blue);
+         checkGLcall("Test draw");
+ 
+-        /* Rebinding texture to workaround a fglrx bug. */
+-        gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, color);
+-        gl_info->gl_ops.gl.p_glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, readback);
++        read_bgra8_pixels(gl_info, 0, 0, 256, 1, readback);
+         checkGLcall("readback");
+ 
+         TRACE("low %02u, high %02u, cur %2u, 0=0x%08x, 125=0x%08x, 131=0x%08x, 255=0x%08x\n",
+@@ -3977,8 +4529,17 @@ static void init_format_depth_bias_scale(struct wined3d_adapter *adapter,
+ 
+         if (format->f.depth_size && (format->f.caps[WINED3D_GL_RES_TYPE_RB] & WINED3D_FORMAT_CAP_DEPTH_STENCIL))
+         {
+-            TRACE("Testing depth bias scale for format %s.\n", debug_d3dformat(format->f.id));
+-            format->f.depth_bias_scale = wined3d_adapter_find_polyoffset_scale(ctx, format->internal);
++            if (wined3d_settings.webgl)
++            {
++                TRACE("Using fixed WebGL-compatible depth bias scale for format %s.\n",
++                        debug_d3dformat(format->f.id));
++                format->f.depth_bias_scale = (float)(1u << 23);
++            }
++            else
++            {
++                TRACE("Testing depth bias scale for format %s.\n", debug_d3dformat(format->f.id));
++                format->f.depth_bias_scale = wined3d_adapter_find_polyoffset_scale(ctx, format->internal);
++            }
+ 
+             if (!(d3d_info->wined3d_creation_flags & WINED3D_NORMALIZED_DEPTH_BIAS))
+             {
+@@ -4083,6 +4644,9 @@ BOOL wined3d_adapter_gl_init_format_info(struct wined3d_adapter *adapter, struct
+ 
+     if (!init_typeless_formats(adapter)) goto fail;
+ 
++    if (wined3d_settings.webgl)
++        wined3d_adapter_apply_webgl_format_caps(adapter);
++
+     return TRUE;
+ 
+ fail:

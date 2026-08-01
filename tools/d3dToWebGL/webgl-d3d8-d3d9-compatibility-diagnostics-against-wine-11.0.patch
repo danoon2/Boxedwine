@@ -1,0 +1,48 @@
+diff --git a/dlls/d3d8/device.c b/dlls/d3d8/device.c
+index b5bf370..5e6bcd4 100644
+--- a/dlls/d3d8/device.c
++++ b/dlls/d3d8/device.c
+@@ -2508,7 +2508,8 @@ static void d3d8_device_upload_sysmem_vertex_buffers(struct d3d8_device *device,
+     map = decl->stream_map & device->sysmem_vb;
+     while (map)
+     {
+-        stream = &state->streams[wined3d_bit_scan(&map)];
++        unsigned int stream_idx = wined3d_bit_scan(&map);
++        stream = &state->streams[stream_idx];
+         dst_buffer = stream->buffer;
+         stride = stream->stride;
+ 
+diff --git a/dlls/d3d9/d3d9_main.c b/dlls/d3d9/d3d9_main.c
+index b3fcfc2..9327a4a 100644
+--- a/dlls/d3d9/d3d9_main.c
++++ b/dlls/d3d9/d3d9_main.c
+@@ -43,7 +43,7 @@ IDirect3D9 * WINAPI DECLSPEC_HOTPATCH Direct3DCreate9(UINT sdk_version)
+ 
+     if (!d3d9_init(object, FALSE, FALSE))
+     {
+-        WARN("Failed to initialize d3d9.\n");
++        ERR("Failed to initialize d3d9 for the WebGL-compatible profile.\n");
+         free(object);
+         return NULL;
+     }
+diff --git a/dlls/d3d9/directx.c b/dlls/d3d9/directx.c
+index e20fc98..b9d803b 100644
+--- a/dlls/d3d9/directx.c
++++ b/dlls/d3d9/directx.c
+@@ -498,7 +498,7 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH d3d9_CreateDevice(IDirect3D9Ex *iface, U
+     hr = device_init(object, d3d9, d3d9->wined3d, adapter, device_type, focus_window, flags, parameters, NULL);
+     if (FAILED(hr))
+     {
+-        WARN("Failed to initialize device, hr %#lx.\n", hr);
++        ERR("Failed to initialize d3d9 device for the WebGL-compatible profile, hr %#lx.\n", hr);
+         free(object);
+         return hr;
+     }
+@@ -716,6 +716,7 @@ BOOL d3d9_init(struct d3d9 *d3d9, BOOL extended, BOOL d3d9on12)
+     d3d9->wined3d_outputs = calloc(output_count, sizeof(*d3d9->wined3d_outputs));
+     if (!d3d9->wined3d_outputs)
+     {
++        ERR("Failed to allocate WebGL-compatible output table for %u outputs.\n", output_count);
+         wined3d_decref(d3d9->wined3d);
+         wined3d_mutex_unlock();
+         return FALSE;

@@ -1,0 +1,1391 @@
+diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
+index b66f400..3240f1f 100644
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -5118,6 +5118,16 @@ void wined3d_context_gl_update_stream_sources(struct wined3d_context_gl *context
+ static void apply_texture_blit_state(const struct wined3d_gl_info *gl_info, struct gl_texture *texture,
+         GLenum target, unsigned int level, enum wined3d_texture_filter_type filter)
+ {
++    if (filter == WINED3D_TEXF_POINT
++            && texture->sampler_desc.mag_filter == WINED3D_TEXF_POINT
++            && texture->sampler_desc.min_filter == WINED3D_TEXF_POINT
++            && texture->sampler_desc.mip_filter == WINED3D_TEXF_NONE
++            && texture->sampler_desc.address_u == WINED3D_TADDRESS_CLAMP
++            && texture->sampler_desc.address_v == WINED3D_TADDRESS_CLAMP
++            && texture->sampler_desc.srgb_decode == FALSE
++            && texture->sampler_desc.mip_base_level == level)
++        return;
++
+     gl_info->gl_ops.gl.p_glTexParameteri(target, GL_TEXTURE_MAG_FILTER, wined3d_gl_mag_filter(filter));
+     gl_info->gl_ops.gl.p_glTexParameteri(target, GL_TEXTURE_MIN_FILTER,
+             wined3d_gl_min_mip_filter(filter, WINED3D_TEXF_NONE));
+@@ -5208,6 +5218,12 @@ void wined3d_context_gl_draw_shaded_quad(struct wined3d_context_gl *context_gl,
+     }
+     else
+     {
++        if (wined3d_settings.webgl)
++        {
++            ERR("Cannot draw blit quad without VBO support in WebGL-compatible profile.\n");
++            return;
++        }
++
+         gl_info->gl_ops.gl.p_glBegin(GL_TRIANGLE_STRIP);
+ 
+         for (i = 0; i < ARRAY_SIZE(quad); ++i)
+@@ -5223,3 +5239,108 @@ void wined3d_context_gl_draw_shaded_quad(struct wined3d_context_gl *context_gl,
+     gl_info->gl_ops.gl.p_glTexParameteri(info.bind_target, GL_TEXTURE_MAX_LEVEL, texture_gl->t.level_count - 1);
+     wined3d_context_gl_bind_texture(context_gl, info.bind_target, 0);
+ }
++
++
++/* Context activation is done by the caller. */
++void wined3d_context_gl_draw_shaded_quads(struct wined3d_context_gl *context_gl, struct wined3d_texture_gl *texture_gl,
++        unsigned int sub_resource_idx, const RECT *src_rects, const RECT *dst_rects, unsigned int quad_count,
++        enum wined3d_texture_filter_type filter)
++{
++    const struct wined3d_gl_info *gl_info = context_gl->gl_info;
++    struct wined3d_blt_info first_info, info;
++    struct blit_vertex
++    {
++        float x, y;
++        struct wined3d_vec3 texcoord;
++    } *vertices;
++    unsigned int level, vertex_count, i;
++    SIZE dst_size;
++    float left, right, top, bottom;
++
++    if (!quad_count)
++        return;
++
++    if (!gl_info->supported[ARB_VERTEX_BUFFER_OBJECT])
++    {
++        if (wined3d_settings.webgl)
++        {
++            ERR("Cannot draw batched blit quads without VBO support in WebGL-compatible profile.\n");
++            return;
++        }
++        for (i = 0; i < quad_count; ++i)
++            wined3d_context_gl_draw_shaded_quad(context_gl, texture_gl, sub_resource_idx,
++                    &src_rects[i], &dst_rects[i], filter);
++        return;
++    }
++
++    vertex_count = quad_count * 6;
++    if (!(vertices = malloc(vertex_count * sizeof(*vertices))))
++    {
++        ERR("Failed to allocate batched blit vertices.\n");
++        for (i = 0; i < quad_count; ++i)
++            wined3d_context_gl_draw_shaded_quad(context_gl, texture_gl, sub_resource_idx,
++                    &src_rects[i], &dst_rects[i], filter);
++        return;
++    }
++
++    texture2d_get_blt_info(texture_gl, sub_resource_idx, &src_rects[0], &first_info);
++    level = sub_resource_idx % texture_gl->t.level_count;
++    wined3d_context_gl_bind_texture(context_gl, first_info.bind_target, texture_gl->texture_rgb.name);
++    apply_texture_blit_state(gl_info, &texture_gl->texture_rgb, first_info.bind_target, level, filter);
++    gl_info->gl_ops.gl.p_glTexParameteri(first_info.bind_target, GL_TEXTURE_MAX_LEVEL, level);
++
++    wined3d_context_gl_pause_transform_feedback(context_gl, FALSE);
++    wined3d_context_gl_get_rt_size(context_gl, &dst_size);
++
++    for (i = 0; i < quad_count; ++i)
++    {
++        struct blit_vertex *v = &vertices[i * 6];
++
++        texture2d_get_blt_info(texture_gl, sub_resource_idx, &src_rects[i], &info);
++
++        left = dst_rects[i].left * 2.0f / dst_size.cx - 1.0f;
++        right = dst_rects[i].right * 2.0f / dst_size.cx - 1.0f;
++        top = dst_rects[i].top * 2.0f / dst_size.cy - 1.0f;
++        bottom = dst_rects[i].bottom * 2.0f / dst_size.cy - 1.0f;
++
++        v[0].x = left;
++        v[0].y = top;
++        v[0].texcoord = info.texcoords[0];
++        v[1].x = right;
++        v[1].y = top;
++        v[1].texcoord = info.texcoords[1];
++        v[2].x = left;
++        v[2].y = bottom;
++        v[2].texcoord = info.texcoords[2];
++        v[3] = v[2];
++        v[4] = v[1];
++        v[5].x = right;
++        v[5].y = bottom;
++        v[5].texcoord = info.texcoords[3];
++    }
++
++    if (!context_gl->blit_vbo)
++        GL_EXTCALL(glGenBuffers(1, &context_gl->blit_vbo));
++    GL_EXTCALL(glBindBuffer(GL_ARRAY_BUFFER, context_gl->blit_vbo));
++
++    wined3d_context_gl_unload_numbered_arrays(context_gl);
++
++    GL_EXTCALL(glBufferData(GL_ARRAY_BUFFER, vertex_count * sizeof(*vertices), vertices, GL_STREAM_DRAW));
++    GL_EXTCALL(glVertexAttribPointer(0, 2, GL_FLOAT, FALSE, sizeof(*vertices), NULL));
++    GL_EXTCALL(glVertexAttribPointer(1, 3, GL_FLOAT, FALSE, sizeof(*vertices),
++            (void *)FIELD_OFFSET(struct blit_vertex, texcoord)));
++
++    GL_EXTCALL(glEnableVertexAttribArray(0));
++    GL_EXTCALL(glEnableVertexAttribArray(1));
++
++    gl_info->gl_ops.gl.p_glDrawArrays(GL_TRIANGLES, 0, vertex_count);
++
++    GL_EXTCALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
++    GL_EXTCALL(glDisableVertexAttribArray(1));
++    GL_EXTCALL(glDisableVertexAttribArray(0));
++    checkGLcall("batched draw");
++
++    gl_info->gl_ops.gl.p_glTexParameteri(first_info.bind_target, GL_TEXTURE_MAX_LEVEL, texture_gl->t.level_count - 1);
++    wined3d_context_gl_bind_texture(context_gl, first_info.bind_target, 0);
++    free(vertices);
++}
+diff --git a/dlls/wined3d/cs.c b/dlls/wined3d/cs.c
+index 07d4459..3c56175 100644
+--- a/dlls/wined3d/cs.c
++++ b/dlls/wined3d/cs.c
+@@ -16,6 +16,9 @@
+  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+  */
+ 
++#include <stdio.h>
++#include <stdlib.h>
++
+ #include "wined3d_private.h"
+ #include "wined3d_gl.h"
+ 
+@@ -30,6 +33,87 @@ static NTSTATUS (WINAPI *pNtWaitForAlertByThreadId)(void *addr, const LARGE_INTE
+ 
+ #define WINED3D_INITIAL_CS_SIZE 4096
+ 
++struct wined3d_profile_bucket
++{
++    ULONGLONG calls;
++    ULONGLONG total_us;
++    ULONGLONG max_us;
++    ULONGLONG pixels;
++    ULONGLONG extra0;
++    DWORD last_log;
++};
++
++static BOOL wined3d_profile_enabled(void)
++{
++    static int enabled = -1;
++    const char *value;
++
++    if (enabled == -1)
++    {
++        value = getenv("BOXEDWINE_WEBGL_PROFILE");
++        enabled = value && value[0] && strcmp(value, "0");
++    }
++
++    return enabled;
++}
++
++static ULONGLONG wined3d_profile_now_us(void)
++{
++    static LARGE_INTEGER freq;
++    LARGE_INTEGER counter;
++
++    if (!freq.QuadPart && !QueryPerformanceFrequency(&freq))
++        return GetTickCount64() * 1000;
++    if (!QueryPerformanceCounter(&counter))
++        return GetTickCount64() * 1000;
++
++    return counter.QuadPart * 1000000ull / freq.QuadPart;
++}
++
++static void wined3d_profile_record(struct wined3d_profile_bucket *bucket, const char *name,
++        ULONGLONG start_us, unsigned int pixels, unsigned int extra0)
++{
++    ULONGLONG elapsed_us;
++    DWORD now;
++
++    if (!start_us)
++        return;
++
++    elapsed_us = wined3d_profile_now_us() - start_us;
++    bucket->calls++;
++    bucket->total_us += elapsed_us;
++    if (elapsed_us > bucket->max_us)
++        bucket->max_us = elapsed_us;
++    bucket->pixels += pixels;
++    bucket->extra0 += extra0;
++
++    now = GetTickCount();
++    if (!bucket->last_log)
++        bucket->last_log = now;
++    if (now - bucket->last_log < 1000)
++        return;
++
++    fprintf(stderr, "BOXEDWINE_WEBGL_PROFILE wine.%s calls=%llu total_ms=%.3f avg_us=%llu max_us=%llu mpix=%.3f extra=%llu\n",
++            name, (unsigned long long)bucket->calls, bucket->total_us / 1000.0,
++            (unsigned long long)(bucket->total_us / (bucket->calls ? bucket->calls : 1)),
++            (unsigned long long)bucket->max_us, bucket->pixels / 1000000.0,
++            (unsigned long long)bucket->extra0);
++    bucket->calls = 0;
++    bucket->total_us = 0;
++    bucket->max_us = 0;
++    bucket->pixels = 0;
++    bucket->extra0 = 0;
++    bucket->last_log = now;
++}
++
++static unsigned int wined3d_profile_box_pixels(const struct wined3d_box *box)
++{
++    unsigned int width = box->right - box->left;
++    unsigned int height = box->bottom - box->top;
++
++    return width * height;
++}
++
+ struct wined3d_deferred_upload
+ {
+     struct wined3d_resource *resource;
+@@ -2611,13 +2695,20 @@ void wined3d_cs_map_bo_address(struct wined3d_cs *cs,
+ 
+ static void wined3d_cs_exec_blt_sub_resource(struct wined3d_cs *cs, const void *data)
+ {
++    static struct wined3d_profile_bucket buffer_bucket;
++    static struct wined3d_profile_bucket upload3d_bucket;
++    static struct wined3d_profile_bucket blt2d_bucket;
+     const struct wined3d_cs_blt_sub_resource *op = data;
++    ULONGLONG profile_start = wined3d_profile_enabled() ? wined3d_profile_now_us() : 0;
++    unsigned int profile_pixels = wined3d_profile_box_pixels(&op->dst_box);
+ 
+     if (op->dst_resource->type == WINED3D_RTYPE_BUFFER)
+     {
+         wined3d_buffer_copy(buffer_from_resource(op->dst_resource), op->dst_box.left,
+                 buffer_from_resource(op->src_resource), op->src_box.left,
+                 op->src_box.right - op->src_box.left);
++        wined3d_profile_record(&buffer_bucket, "wined3d_cs_blt_buffer", profile_start,
++                op->src_box.right - op->src_box.left, op->flags);
+     }
+     else if (op->dst_resource->type == WINED3D_RTYPE_TEXTURE_3D)
+     {
+@@ -2627,6 +2718,7 @@ static void wined3d_cs_exec_blt_sub_resource(struct wined3d_cs *cs, const void *
+         struct wined3d_context *context;
+         struct wined3d_bo_address addr;
+         unsigned int location;
++        BOOL full_update;
+ 
+         if (op->flags & ~WINED3D_BLT_RAW)
+         {
+@@ -2674,9 +2766,12 @@ static void wined3d_cs_exec_blt_sub_resource(struct wined3d_cs *cs, const void *
+         }
+ 
+         level = op->dst_sub_resource_idx % dst_texture->level_count;
+-        if (update_w == wined3d_texture_get_level_width(dst_texture, level)
++        full_update = !op->dst_box.left && !op->dst_box.top && !op->dst_box.front
++                && !op->src_box.left && !op->src_box.top && !op->src_box.front
++                && update_w == wined3d_texture_get_level_width(dst_texture, level)
+                 && update_h == wined3d_texture_get_level_height(dst_texture, level)
+-                && update_d == wined3d_texture_get_level_depth(dst_texture, level))
++                && update_d == wined3d_texture_get_level_depth(dst_texture, level);
++        if (full_update)
+         {
+             wined3d_texture_prepare_location(dst_texture, op->dst_sub_resource_idx,
+                     context, WINED3D_LOCATION_TEXTURE_RGB);
+@@ -2698,9 +2793,38 @@ static void wined3d_cs_exec_blt_sub_resource(struct wined3d_cs *cs, const void *
+                 op->dst_sub_resource_idx, WINED3D_LOCATION_TEXTURE_RGB,
+                 op->dst_box.left, op->dst_box.top, op->dst_box.front);
+         wined3d_texture_validate_location(dst_texture, op->dst_sub_resource_idx, WINED3D_LOCATION_TEXTURE_RGB);
+-        wined3d_texture_invalidate_location(dst_texture, op->dst_sub_resource_idx, ~WINED3D_LOCATION_TEXTURE_RGB);
++        if (wined3d_settings.webgl && full_update)
++        {
++            struct wined3d_bo_address dst_addr;
++            struct wined3d_range range;
++            unsigned int dst_location = dst_texture->resource.map_binding;
++
++            if (wined3d_texture_prepare_location(dst_texture, op->dst_sub_resource_idx, context, dst_location))
++            {
++                wined3d_texture_get_bo_address(dst_texture, op->dst_sub_resource_idx, &dst_addr, dst_location);
++                range.offset = 0;
++                range.size = dst_texture->sub_resources[op->dst_sub_resource_idx].size;
++                wined3d_context_copy_bo_address(context, &dst_addr, &addr, 1, &range,
++                        WINED3D_MAP_WRITE | WINED3D_MAP_DISCARD);
++                wined3d_texture_validate_location(dst_texture, op->dst_sub_resource_idx, dst_location);
++                wined3d_texture_invalidate_location(dst_texture, op->dst_sub_resource_idx,
++                        ~(WINED3D_LOCATION_TEXTURE_RGB | dst_location));
++            }
++            else
++            {
++                wined3d_texture_invalidate_location(dst_texture, op->dst_sub_resource_idx,
++                        ~WINED3D_LOCATION_TEXTURE_RGB);
++            }
++        }
++        else
++        {
++            wined3d_texture_invalidate_location(dst_texture, op->dst_sub_resource_idx,
++                    ~WINED3D_LOCATION_TEXTURE_RGB);
++        }
+ 
+         context_release(context);
++        wined3d_profile_record(&upload3d_bucket, "wined3d_cs_blt_texture3d_upload", profile_start,
++                profile_pixels, full_update ? 1 : 0);
+     }
+     else
+     {
+@@ -2708,6 +2832,8 @@ static void wined3d_cs_exec_blt_sub_resource(struct wined3d_cs *cs, const void *
+                 &op->dst_box, texture_from_resource(op->src_resource), op->src_sub_resource_idx,
+                 &op->src_box, op->flags, &op->fx, op->filter)))
+             FIXME("Blit failed.\n");
++        wined3d_profile_record(&blt2d_bucket, "wined3d_cs_blt_texture2d", profile_start,
++                profile_pixels, op->flags);
+     }
+ }
+ 
+diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
+index a9e1511..9df5a3d 100644
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -31,6 +31,8 @@
+ 
+ #include <limits.h>
+ #include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
+ 
+ #include "wined3d_private.h"
+ #include "wined3d_gl.h"
+@@ -39,6 +41,87 @@ WINE_DEFAULT_DEBUG_CHANNEL(d3d_shader);
+ WINE_DECLARE_DEBUG_CHANNEL(d3d);
+ WINE_DECLARE_DEBUG_CHANNEL(winediag);
+ 
++struct wined3d_glsl_profile_bucket
++{
++    ULONGLONG calls;
++    ULONGLONG total_us;
++    ULONGLONG max_us;
++    ULONGLONG pixels;
++    ULONGLONG extra0;
++    DWORD last_log;
++};
++
++static BOOL wined3d_glsl_profile_enabled(void)
++{
++    static int enabled = -1;
++    const char *value;
++
++    if (enabled == -1)
++    {
++        value = getenv("BOXEDWINE_WEBGL_PROFILE");
++        enabled = value && value[0] && strcmp(value, "0");
++    }
++
++    return enabled;
++}
++
++static ULONGLONG wined3d_glsl_profile_now_us(void)
++{
++    static LARGE_INTEGER freq;
++    LARGE_INTEGER counter;
++
++    if (!freq.QuadPart && !QueryPerformanceFrequency(&freq))
++        return GetTickCount64() * 1000;
++    if (!QueryPerformanceCounter(&counter))
++        return GetTickCount64() * 1000;
++
++    return counter.QuadPart * 1000000ull / freq.QuadPart;
++}
++
++static void wined3d_glsl_profile_record(struct wined3d_glsl_profile_bucket *bucket, const char *name,
++        ULONGLONG start_us, unsigned int pixels, unsigned int extra0)
++{
++    ULONGLONG elapsed_us;
++    DWORD now;
++
++    if (!start_us)
++        return;
++
++    elapsed_us = wined3d_glsl_profile_now_us() - start_us;
++    bucket->calls++;
++    bucket->total_us += elapsed_us;
++    if (elapsed_us > bucket->max_us)
++        bucket->max_us = elapsed_us;
++    bucket->pixels += pixels;
++    bucket->extra0 += extra0;
++
++    now = GetTickCount();
++    if (!bucket->last_log)
++        bucket->last_log = now;
++    if (now - bucket->last_log < 1000)
++        return;
++
++    fprintf(stderr, "BOXEDWINE_WEBGL_PROFILE wine.%s calls=%llu total_ms=%.3f avg_us=%llu max_us=%llu mpix=%.3f extra=%llu\n",
++            name, (unsigned long long)bucket->calls, bucket->total_us / 1000.0,
++            (unsigned long long)(bucket->total_us / (bucket->calls ? bucket->calls : 1)),
++            (unsigned long long)bucket->max_us, bucket->pixels / 1000000.0,
++            (unsigned long long)bucket->extra0);
++    bucket->calls = 0;
++    bucket->total_us = 0;
++    bucket->max_us = 0;
++    bucket->pixels = 0;
++    bucket->extra0 = 0;
++    bucket->last_log = now;
++}
++
++static unsigned int wined3d_glsl_profile_rect_pixels(const RECT *rect)
++{
++    LONG width = rect->right - rect->left;
++    LONG height = rect->bottom - rect->top;
++
++    return width > 0 && height > 0 ? width * height : 0;
++}
++
+ #define WINED3D_GLSL_SAMPLE_PROJECTED   0x01
+ #define WINED3D_GLSL_SAMPLE_LOD         0x02
+ #define WINED3D_GLSL_SAMPLE_GRAD        0x04
+@@ -12604,6 +12687,7 @@ struct glsl_blitter_args
+ {
+     GLenum texture_type;
+     struct color_fixup_desc fixup;
++    char p8_component;
+     unsigned short use_colour_key;
+ };
+ 
+@@ -12612,6 +12696,12 @@ struct glsl_blitter_program
+     struct wine_rb_entry entry;
+     struct glsl_blitter_args args;
+     GLuint id;
++    GLint colour_key_low_location;
++    GLint colour_key_high_location;
++    GLint size_location;
++    struct wined3d_color colour_key_low;
++    struct wined3d_color colour_key_high;
++    BOOL colour_key_valid;
+ };
+ 
+ struct wined3d_glsl_blitter
+@@ -12644,6 +12734,8 @@ static void glsl_free_blitter_program(struct wine_rb_entry *entry, void *ctx)
+ }
+ 
+ /* Context activation is done by the caller. */
++static void glsl_blit_batch_flush(void);
++
+ static void glsl_blitter_destroy(struct wined3d_blitter *blitter, struct wined3d_context *context)
+ {
+     struct wined3d_context_gl *context_gl = wined3d_context_gl(context);
+@@ -12651,6 +12743,8 @@ static void glsl_blitter_destroy(struct wined3d_blitter *blitter, struct wined3d
+     struct wined3d_glsl_blitter *glsl_blitter;
+     struct wined3d_blitter *next;
+ 
++    glsl_blit_batch_flush();
++
+     if ((next = blitter->next))
+         next->ops->blitter_destroy(next, context);
+ 
+@@ -12669,17 +12763,27 @@ static void glsl_blitter_generate_p8_shader(struct wined3d_string_buffer *buffer
+         const struct wined3d_gl_info *gl_info, const struct glsl_blitter_args *args,
+         const char *output, const char *tex_type, const char *swizzle)
+ {
+-    shader_addline(buffer, "uniform sampler1D sampler_palette;\n");
++    if (wined3d_settings.webgl)
++        shader_addline(buffer, "uniform sampler2D sampler_palette;\n");
++    else
++        shader_addline(buffer, "uniform sampler1D sampler_palette;\n");
+     shader_addline(buffer, "\nvoid main()\n{\n");
+-    /* The alpha-component contains the palette index. */
++    /* The palette index may be stored in GL_ALPHA on legacy / WebGL 1 paths,
++     * or GL_RED on newer paths. */
+     shader_addline(buffer, "    float index = texture%s(sampler, out_texcoord.%s).%c;\n",
+-            needs_legacy_glsl_syntax(gl_info) ? tex_type : "", swizzle,
+-            gl_info->supported[WINED3D_GL_LEGACY_CONTEXT] ? 'w' : 'x');
++            needs_legacy_glsl_syntax(gl_info) ? tex_type : "", swizzle, args->p8_component);
+     /* Scale the index by 255/256 and add a bias of 0.5 in order to sample in
+      * the middle. */
+     shader_addline(buffer, "    index = (index * 255.0 + 0.5) / 256.0;\n");
+-    shader_addline(buffer, "    %s = texture%s(sampler_palette, index);\n",
+-            output, needs_legacy_glsl_syntax(gl_info) ? "1D" : "");
++    if (wined3d_settings.webgl)
++    {
++        shader_addline(buffer, "    %s = texture(sampler_palette, vec2(index, 0.5));\n", output);
++    }
++    else
++    {
++        shader_addline(buffer, "    %s = texture%s(sampler_palette, index);\n",
++                output, needs_legacy_glsl_syntax(gl_info) ? "1D" : "");
++    }
+     if (args->use_colour_key)
+         shader_glsl_generate_colour_key_test(buffer, output, "colour_key.low", "colour_key.high");
+     shader_addline(buffer, "}\n");
+@@ -13071,7 +13175,6 @@ static GLuint glsl_blitter_generate_program(struct wined3d_glsl_blitter *blitter
+     ptr = buffer->buffer;
+     GL_EXTCALL(glShaderSource(vshader_id, 1, &ptr, NULL));
+     GL_EXTCALL(glAttachShader(program, vshader_id));
+-    GL_EXTCALL(glDeleteShader(vshader_id));
+ 
+     fshader_id = GL_EXTCALL(glCreateShader(GL_FRAGMENT_SHADER));
+ 
+@@ -13088,7 +13191,11 @@ static GLuint glsl_blitter_generate_program(struct wined3d_glsl_blitter *blitter
+     /* TODO: Declare the out variable with the correct type (and put it in the
+      * blitter args). */
+     if (!use_legacy_fragment_output(gl_info))
++    {
++        if (shader_glsl_use_explicit_fragment_output_location(gl_info))
++            shader_addline(buffer, "layout(location = 0) ");
+         shader_addline(buffer, "out vec4 ps_out[1];\n");
++    }
+ 
+     output = string_buffer_get(&blitter->string_buffers);
+     string_buffer_sprintf(output, "%s[0]", get_fragment_output(gl_info));
+@@ -13115,12 +13222,11 @@ static GLuint glsl_blitter_generate_program(struct wined3d_glsl_blitter *blitter
+     GL_EXTCALL(glShaderSource(fshader_id, 1, &ptr, NULL));
+     string_buffer_release(&blitter->string_buffers, buffer);
+     GL_EXTCALL(glAttachShader(program, fshader_id));
+-    GL_EXTCALL(glDeleteShader(fshader_id));
+ 
+     GL_EXTCALL(glBindAttribLocation(program, 0, "pos"));
+     GL_EXTCALL(glBindAttribLocation(program, 1, "texcoord"));
+ 
+-    if (!use_legacy_fragment_output(gl_info))
++    if (!shader_glsl_use_explicit_fragment_output_location(gl_info) && !use_legacy_fragment_output(gl_info))
+         GL_EXTCALL(glBindFragDataLocation(program, 0, "ps_out"));
+ 
+     GL_EXTCALL(glCompileShader(vshader_id));
+@@ -13129,6 +13235,8 @@ static GLuint glsl_blitter_generate_program(struct wined3d_glsl_blitter *blitter
+     print_glsl_info_log(gl_info, fshader_id, FALSE);
+     GL_EXTCALL(glLinkProgram(program));
+     shader_glsl_validate_link(gl_info, program);
++    GL_EXTCALL(glDeleteShader(vshader_id));
++    GL_EXTCALL(glDeleteShader(fshader_id));
+ 
+     GL_EXTCALL(glUseProgram(program));
+     loc = GL_EXTCALL(glGetUniformLocation(program, "sampler"));
+@@ -13149,32 +13257,69 @@ static void glsl_blitter_upload_palette(struct wined3d_glsl_blitter *blitter,
+     const struct wined3d_gl_info *gl_info = context_gl->gl_info;
+     const struct wined3d_palette *palette;
+ 
+-    palette = texture_gl->t.swapchain ? texture_gl->t.swapchain->palette : NULL;
++    if (texture_gl->t.swapchain)
++        palette = texture_gl->t.swapchain->palette;
++    else if (context_gl->c.swapchain)
++        palette = context_gl->c.swapchain->palette;
++    else if (context_gl->c.device->swapchain_count)
++        palette = context_gl->c.device->swapchains[0]->palette;
++    else
++        palette = NULL;
+ 
+     if (!blitter->palette_texture)
+         gl_info->gl_ops.gl.p_glGenTextures(1, &blitter->palette_texture);
+ 
+     wined3d_context_gl_active_texture(context_gl, gl_info, 1);
+-    gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_1D, blitter->palette_texture);
+-    gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+-    gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+-    gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+ 
+     GL_EXTCALL(glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0));
+     checkGLcall("glBindBuffer");
+ 
+-    if (palette)
++    if (wined3d_settings.webgl)
+     {
+-        gl_info->gl_ops.gl.p_glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, 256, 0, GL_BGRA,
+-                GL_UNSIGNED_INT_8_8_8_8_REV, palette->colors);
++        uint8_t data[256 * 4];
++        unsigned int i, count = palette ? 256 : 1;
++
++        gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, blitter->palette_texture);
++        gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
++        gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
++        gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
++        gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
++
++        if (!palette)
++            FIXME("P8 texture loaded without a palette.\n");
++
++        memset(data, 0, sizeof(data));
++        for (i = 0; i < count; ++i)
++        {
++            data[i * 4 + 0] = palette ? palette->colors[i].rgbRed : 0;
++            data[i * 4 + 1] = palette ? palette->colors[i].rgbGreen : 0;
++            data[i * 4 + 2] = palette ? palette->colors[i].rgbBlue : 0;
++            data[i * 4 + 3] = 0xff;
++        }
++
++        gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, count, 1, 0,
++                GL_RGBA, GL_UNSIGNED_BYTE, data);
+     }
+     else
+     {
+-        static const DWORD black;
++        gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_1D, blitter->palette_texture);
++        gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
++        gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
++        gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+ 
+-        FIXME("P8 texture loaded without a palette.\n");
+-        gl_info->gl_ops.gl.p_glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, 1, 0, GL_BGRA,
+-                GL_UNSIGNED_INT_8_8_8_8_REV, &black);
++        if (palette)
++        {
++            gl_info->gl_ops.gl.p_glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, 256, 0, GL_BGRA,
++                    GL_UNSIGNED_INT_8_8_8_8_REV, palette->colors);
++        }
++        else
++        {
++            static const DWORD black;
++
++            FIXME("P8 texture loaded without a palette.\n");
++            gl_info->gl_ops.gl.p_glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, 1, 0, GL_BGRA,
++                    GL_UNSIGNED_INT_8_8_8_8_REV, &black);
++        }
+     }
+ 
+     wined3d_context_gl_active_texture(context_gl, gl_info, 0);
+@@ -13192,6 +13337,7 @@ static struct glsl_blitter_program *glsl_blitter_get_program(struct wined3d_glsl
+     memset(&args, 0, sizeof(args));
+     args.texture_type = texture_gl->target;
+     args.fixup = texture_gl->t.resource.format->color_fixup;
++    args.p8_component = wined3d_format_gl(texture_gl->t.resource.format)->format == GL_ALPHA ? 'w' : 'x';
+     args.use_colour_key = use_colour_key;
+ 
+     if ((entry = wine_rb_get(&blitter->programs, &args)))
+@@ -13210,6 +13356,28 @@ static struct glsl_blitter_program *glsl_blitter_get_program(struct wined3d_glsl
+         free(program);
+         return NULL;
+     }
++    program->colour_key_low_location = -1;
++    program->colour_key_high_location = -1;
++    program->size_location = -1;
++    program->colour_key_valid = FALSE;
++    if (args.use_colour_key)
++    {
++        program->colour_key_low_location = GL_EXTCALL(glGetUniformLocation(program->id, "colour_key.low"));
++        program->colour_key_high_location = GL_EXTCALL(glGetUniformLocation(program->id, "colour_key.high"));
++    }
++    switch (get_complex_fixup(args.fixup))
++    {
++        case COMPLEX_FIXUP_YUY2:
++        case COMPLEX_FIXUP_UYVY:
++        case COMPLEX_FIXUP_YV12:
++        case COMPLEX_FIXUP_NV12:
++        case COMPLEX_FIXUP_YUV:
++            program->size_location = GL_EXTCALL(glGetUniformLocation(program->id, "size"));
++            break;
++
++        default:
++            break;
++    }
+ 
+     if (wine_rb_put(&blitter->programs, &program->args, &program->entry) == -1)
+     {
+@@ -13231,6 +13399,9 @@ static BOOL glsl_blitter_supported(enum wined3d_blit_op blit_op, const struct wi
+     const struct wined3d_format *src_format = src_resource->format;
+     const struct wined3d_format *dst_format = dst_resource->format;
+     bool src_ds, dst_ds;
++    bool webgl_p8_drawable;
++    bool dst_p8;
++    bool src_p8;
+     BOOL decompress;
+ 
+     if (blit_op == WINED3D_BLIT_OP_RAW_BLIT && dst_format->id == src_format->id)
+@@ -13275,7 +13446,11 @@ static BOOL glsl_blitter_supported(enum wined3d_blit_op blit_op, const struct wi
+      * compressed textures. */
+     decompress = (src_format->attrs & WINED3D_FORMAT_ATTR_COMPRESSED)
+             && !(dst_format->attrs & WINED3D_FORMAT_ATTR_COMPRESSED);
+-    if (!decompress && !(src_resource->access & WINED3D_RESOURCE_ACCESS_GPU))
++    src_p8 = get_complex_fixup(src_format->color_fixup) == COMPLEX_FIXUP_P8;
++    dst_p8 = get_complex_fixup(dst_format->color_fixup) == COMPLEX_FIXUP_P8;
++    webgl_p8_drawable = wined3d_settings.webgl && src_p8 && dst_p8
++            && dst_location == WINED3D_LOCATION_DRAWABLE;
++    if (!decompress && !(src_resource->access & WINED3D_RESOURCE_ACCESS_GPU) && !webgl_p8_drawable)
+     {
+         TRACE("Source resource does not have GPU access.\n");
+         return FALSE;
+@@ -13288,7 +13463,8 @@ static BOOL glsl_blitter_supported(enum wined3d_blit_op blit_op, const struct wi
+         return FALSE;
+     }
+ 
+-    if (!((dst_format->caps[WINED3D_GL_RES_TYPE_TEX_2D] & WINED3D_FORMAT_CAP_FBO_ATTACHABLE)
++    if (!webgl_p8_drawable
++            && !((dst_format->caps[WINED3D_GL_RES_TYPE_TEX_2D] & WINED3D_FORMAT_CAP_FBO_ATTACHABLE)
+             || (dst_resource->bind_flags & WINED3D_BIND_RENDER_TARGET)))
+     {
+         TRACE("Destination texture is not FBO attachable.\n");
+@@ -13299,6 +13475,248 @@ static BOOL glsl_blitter_supported(enum wined3d_blit_op blit_op, const struct wi
+     return TRUE;
+ }
+ 
++
++#define GLSL_BLIT_BATCH_MAX 256
++
++struct glsl_blit_batch_entry
++{
++    struct wined3d_texture_gl *src_texture_gl;
++    struct glsl_blitter_program *program;
++    unsigned int src_sub_resource_idx;
++    BOOL use_colour_key;
++    struct wined3d_color_key colour_key;
++    RECT src_rect;
++    RECT dst_rect;
++};
++
++struct glsl_blit_batch
++{
++    BOOL active;
++    struct wined3d_context_gl *context_gl;
++    struct wined3d_texture *dst_texture;
++    unsigned int dst_sub_resource_idx;
++    DWORD dst_location;
++    enum wined3d_texture_filter_type filter;
++    BOOL front_buffer;
++    unsigned int count;
++    struct glsl_blit_batch_entry entries[GLSL_BLIT_BATCH_MAX];
++};
++
++static struct glsl_blit_batch glsl_blit_batch;
++
++static const char boxedwine_webgl_multisource_batch_marker[] __attribute__((used)) = "BOXEDWINE_WEBGL_MULTISOURCE_BATCH_BLITS";
++
++static BOOL glsl_blit_batch_enabled(void)
++{
++    static int enabled = -1;
++    const char *value;
++
++    if (enabled == -1)
++    {
++        value = getenv("BOXEDWINE_WEBGL_DISABLE_BATCH_BLITS");
++        enabled = wined3d_settings.webgl && (!value || !value[0] || !strcmp(value, "0"));
++    }
++
++    return enabled;
++}
++
++static void glsl_blitter_upload_colour_key(const struct wined3d_gl_info *gl_info,
++        struct glsl_blitter_program *program, const struct wined3d_format *format,
++        const struct wined3d_color_key *colour_key)
++{
++    struct wined3d_color float_key[2];
++
++    wined3d_format_get_float_color_key(format, colour_key, float_key);
++    if (!program->colour_key_valid
++            || memcmp(&program->colour_key_low, &float_key[0], sizeof(program->colour_key_low))
++            || memcmp(&program->colour_key_high, &float_key[1], sizeof(program->colour_key_high)))
++    {
++        if (program->colour_key_low_location >= 0)
++            GL_EXTCALL(glUniform4fv(program->colour_key_low_location, 1, &float_key[0].r));
++        if (program->colour_key_high_location >= 0)
++            GL_EXTCALL(glUniform4fv(program->colour_key_high_location, 1, &float_key[1].r));
++        program->colour_key_low = float_key[0];
++        program->colour_key_high = float_key[1];
++        program->colour_key_valid = TRUE;
++    }
++}
++
++static BOOL glsl_blit_batch_target_matches(struct wined3d_context_gl *context_gl,
++        struct wined3d_texture *dst_texture, unsigned int dst_sub_resource_idx,
++        DWORD dst_location, enum wined3d_texture_filter_type filter)
++{
++    return glsl_blit_batch.active
++            && glsl_blit_batch.context_gl == context_gl
++            && glsl_blit_batch.dst_texture == dst_texture
++            && glsl_blit_batch.dst_sub_resource_idx == dst_sub_resource_idx
++            && glsl_blit_batch.dst_location == dst_location
++            && glsl_blit_batch.filter == filter;
++}
++
++static BOOL glsl_blit_batch_entries_match(const struct glsl_blit_batch_entry *entry,
++        struct wined3d_texture_gl *src_texture_gl, unsigned int src_sub_resource_idx,
++        struct glsl_blitter_program *program, const struct wined3d_color_key *colour_key)
++{
++    return entry->src_texture_gl == src_texture_gl
++            && entry->src_sub_resource_idx == src_sub_resource_idx
++            && entry->program == program
++            && entry->use_colour_key == !!colour_key
++            && (!colour_key || !memcmp(&entry->colour_key, colour_key, sizeof(*colour_key)));
++}
++
++static BOOL glsl_blit_batch_multisource_enabled(void)
++{
++    static int enabled = -1;
++    const char *value;
++
++    if (enabled == -1)
++    {
++        value = getenv("BOXEDWINE_WEBGL_DISABLE_MULTISOURCE_BATCH_BLITS");
++        enabled = !value || !value[0] || !strcmp(value, "0");
++    }
++
++    return enabled;
++}
++
++static BOOL glsl_blit_rects_overlap(const RECT *a, const RECT *b)
++{
++    return a->left < b->right && b->left < a->right && a->top < b->bottom && b->top < a->bottom;
++}
++
++static void glsl_blit_batch_flush(void)
++{
++    const struct wined3d_gl_info *gl_info;
++    BOOL drawn[GLSL_BLIT_BATCH_MAX] = {0};
++    RECT src_rects[GLSL_BLIT_BATCH_MAX];
++    RECT dst_rects[GLSL_BLIT_BATCH_MAX];
++    unsigned int i, j, group_count;
++
++    if (!glsl_blit_batch.active || !glsl_blit_batch.count)
++        return;
++
++    gl_info = glsl_blit_batch.context_gl->gl_info;
++    for (i = 0; i < glsl_blit_batch.count; ++i)
++    {
++        struct glsl_blit_batch_entry *entry = &glsl_blit_batch.entries[i];
++
++        if (drawn[i])
++            continue;
++
++        group_count = 0;
++        for (j = i; j < glsl_blit_batch.count; ++j)
++        {
++            struct glsl_blit_batch_entry *candidate = &glsl_blit_batch.entries[j];
++
++            if (drawn[j] || !glsl_blit_batch_entries_match(candidate, entry->src_texture_gl,
++                    entry->src_sub_resource_idx, entry->program,
++                    entry->use_colour_key ? &entry->colour_key : NULL))
++                continue;
++
++            src_rects[group_count] = candidate->src_rect;
++            dst_rects[group_count] = candidate->dst_rect;
++            drawn[j] = TRUE;
++            ++group_count;
++        }
++
++        GL_EXTCALL(glUseProgram(entry->program->id));
++        if (entry->use_colour_key)
++            glsl_blitter_upload_colour_key(gl_info, entry->program,
++                    entry->src_texture_gl->t.resource.format, &entry->colour_key);
++        wined3d_context_gl_draw_shaded_quads(glsl_blit_batch.context_gl, entry->src_texture_gl,
++                entry->src_sub_resource_idx, src_rects, dst_rects, group_count, glsl_blit_batch.filter);
++    }
++
++    GL_EXTCALL(glUseProgram(0));
++    if (glsl_blit_batch.front_buffer)
++        gl_info->gl_ops.gl.p_glFlush();
++
++    glsl_blit_batch.active = FALSE;
++    glsl_blit_batch.count = 0;
++}
++
++static BOOL glsl_blit_batch_enqueue(struct wined3d_context_gl *context_gl,
++        struct wined3d_texture_gl *src_texture_gl, unsigned int src_sub_resource_idx,
++        struct wined3d_texture *dst_texture, unsigned int dst_sub_resource_idx, DWORD dst_location,
++        const RECT *src_rect, const RECT *dst_rect, struct glsl_blitter_program *program,
++        enum wined3d_texture_filter_type filter, BOOL front_buffer, const struct wined3d_color_key *colour_key)
++{
++    struct glsl_blit_batch_entry *entry;
++    unsigned int i;
++
++    if (!glsl_blit_batch_enabled())
++        return FALSE;
++
++    if (!glsl_blit_batch_target_matches(context_gl, dst_texture, dst_sub_resource_idx, dst_location, filter))
++    {
++        glsl_blit_batch_flush();
++        glsl_blit_batch.active = TRUE;
++        glsl_blit_batch.context_gl = context_gl;
++        glsl_blit_batch.dst_texture = dst_texture;
++        glsl_blit_batch.dst_sub_resource_idx = dst_sub_resource_idx;
++        glsl_blit_batch.dst_location = dst_location;
++        glsl_blit_batch.filter = filter;
++        glsl_blit_batch.front_buffer = front_buffer;
++        glsl_blit_batch.count = 0;
++    }
++
++    if (glsl_blit_batch.count && !glsl_blit_batch_multisource_enabled()
++            && !glsl_blit_batch_entries_match(&glsl_blit_batch.entries[0], src_texture_gl,
++                    src_sub_resource_idx, program, colour_key))
++    {
++        glsl_blit_batch_flush();
++        glsl_blit_batch.active = TRUE;
++        glsl_blit_batch.context_gl = context_gl;
++        glsl_blit_batch.dst_texture = dst_texture;
++        glsl_blit_batch.dst_sub_resource_idx = dst_sub_resource_idx;
++        glsl_blit_batch.dst_location = dst_location;
++        glsl_blit_batch.filter = filter;
++        glsl_blit_batch.front_buffer = front_buffer;
++        glsl_blit_batch.count = 0;
++    }
++
++    for (i = 0; i < glsl_blit_batch.count; ++i)
++    {
++        if (glsl_blit_rects_overlap(&glsl_blit_batch.entries[i].dst_rect, dst_rect))
++        {
++            glsl_blit_batch_flush();
++            glsl_blit_batch.active = TRUE;
++            glsl_blit_batch.context_gl = context_gl;
++            glsl_blit_batch.dst_texture = dst_texture;
++            glsl_blit_batch.dst_sub_resource_idx = dst_sub_resource_idx;
++            glsl_blit_batch.dst_location = dst_location;
++            glsl_blit_batch.filter = filter;
++            glsl_blit_batch.front_buffer = front_buffer;
++            glsl_blit_batch.count = 0;
++            break;
++        }
++    }
++
++    if (glsl_blit_batch.count == GLSL_BLIT_BATCH_MAX)
++    {
++        glsl_blit_batch_flush();
++        glsl_blit_batch.active = TRUE;
++        glsl_blit_batch.context_gl = context_gl;
++        glsl_blit_batch.dst_texture = dst_texture;
++        glsl_blit_batch.dst_sub_resource_idx = dst_sub_resource_idx;
++        glsl_blit_batch.dst_location = dst_location;
++        glsl_blit_batch.filter = filter;
++        glsl_blit_batch.front_buffer = front_buffer;
++        glsl_blit_batch.count = 0;
++    }
++
++    entry = &glsl_blit_batch.entries[glsl_blit_batch.count++];
++    entry->src_texture_gl = src_texture_gl;
++    entry->program = program;
++    entry->src_sub_resource_idx = src_sub_resource_idx;
++    entry->use_colour_key = !!colour_key;
++    if (colour_key)
++        entry->colour_key = *colour_key;
++    entry->src_rect = *src_rect;
++    entry->dst_rect = *dst_rect;
++
++    return TRUE;
++}
++
+ static DWORD glsl_blitter_blit(struct wined3d_blitter *blitter, enum wined3d_blit_op op,
+         struct wined3d_context *context, struct wined3d_texture *src_texture, unsigned int src_sub_resource_idx,
+         DWORD src_location, const RECT *src_rect, struct wined3d_texture *dst_texture,
+@@ -13306,6 +13724,8 @@ static DWORD glsl_blitter_blit(struct wined3d_blitter *blitter, enum wined3d_bli
+         const struct wined3d_color_key *colour_key, enum wined3d_texture_filter_type filter,
+         const struct wined3d_format *resolve_format)
+ {
++    static struct wined3d_glsl_profile_bucket load_bucket, draw_state_bucket, blit_state_bucket;
++    static struct wined3d_glsl_profile_bucket program_bucket, draw_quad_bucket, flush_bucket;
+     struct wined3d_texture_gl *src_texture_gl = wined3d_texture_gl(src_texture);
+     struct wined3d_texture_gl *dst_texture_gl = wined3d_texture_gl(dst_texture);
+     struct wined3d_context_gl *context_gl = wined3d_context_gl(context);
+@@ -13317,7 +13737,9 @@ static DWORD glsl_blitter_blit(struct wined3d_blitter *blitter, enum wined3d_bli
+     struct glsl_blitter_program *program;
+     struct wined3d_blitter *next;
+     unsigned int src_level;
+-    GLint location;
++    unsigned int pixels;
++    BOOL batch_candidate, batch_target_current;
++    ULONGLONG start_us;
+     RECT d;
+ 
+     TRACE("blitter %p, op %#x, context %p, src_texture %p, src_sub_resource_idx %u, src_location %s, "
+@@ -13342,7 +13764,33 @@ static DWORD glsl_blitter_blit(struct wined3d_blitter *blitter, enum wined3d_bli
+     }
+ 
+     glsl_blitter = CONTAINING_RECORD(blitter, struct wined3d_glsl_blitter, blitter);
++    pixels = wined3d_glsl_profile_enabled() ? wined3d_glsl_profile_rect_pixels(dst_rect) : 0;
++
++    if (glsl_blit_batch.active && !glsl_blit_batch_target_matches(context_gl,
++            dst_texture, dst_sub_resource_idx, dst_location, filter))
++        glsl_blit_batch_flush();
+ 
++    if (op == WINED3D_BLIT_OP_COLOR_BLIT_ALPHATEST)
++    {
++        const struct wined3d_format *f = src_texture->resource.format;
++
++        alpha_test_key.color_space_low_value = 0;
++        alpha_test_key.color_space_high_value = ~(wined3d_mask_from_size(f->alpha_size) << f->alpha_offset);
++        colour_key = &alpha_test_key;
++    }
++    else if (op != WINED3D_BLIT_OP_COLOR_BLIT_CKEY)
++    {
++        colour_key = NULL;
++    }
++
++    batch_candidate = glsl_blit_batch_enabled() && colour_key && filter == WINED3D_TEXF_POINT
++            && (src_texture->resource.access & WINED3D_RESOURCE_ACCESS_GPU) && src_texture != dst_texture
++            && dst_texture->swapchain && dst_texture->swapchain->front_buffer == dst_texture
++            && get_complex_fixup(src_texture->resource.format->color_fixup) == COMPLEX_FIXUP_NONE;
++    batch_target_current = batch_candidate && glsl_blit_batch_target_matches(context_gl,
++            dst_texture, dst_sub_resource_idx, dst_location, filter);
++
++    start_us = wined3d_glsl_profile_enabled() ? wined3d_glsl_profile_now_us() : 0;
+     if (!(src_texture->resource.access & WINED3D_RESOURCE_ACCESS_GPU))
+     {
+         struct wined3d_resource_desc desc;
+@@ -13388,9 +13836,17 @@ static DWORD glsl_blitter_blit(struct wined3d_blitter *blitter, enum wined3d_bli
+         wined3d_texture_prepare_location(dst_texture, dst_sub_resource_idx, context, dst_location);
+     else
+         wined3d_texture_load_location(dst_texture, dst_sub_resource_idx, context, dst_location);
++    wined3d_glsl_profile_record(&load_bucket, "glsl_blit_load", start_us, pixels, op);
+ 
+-    context_gl_apply_texture_draw_state(context_gl, dst_texture, dst_sub_resource_idx, dst_location);
+-    wined3d_context_gl_apply_blit_state(context_gl, device);
++    if (!batch_target_current)
++    {
++        start_us = wined3d_glsl_profile_enabled() ? wined3d_glsl_profile_now_us() : 0;
++        context_gl_apply_texture_draw_state(context_gl, dst_texture, dst_sub_resource_idx, dst_location);
++        wined3d_glsl_profile_record(&draw_state_bucket, "glsl_blit_draw_state", start_us, pixels, dst_location);
++        start_us = wined3d_glsl_profile_enabled() ? wined3d_glsl_profile_now_us() : 0;
++        wined3d_context_gl_apply_blit_state(context_gl, device);
++        wined3d_glsl_profile_record(&blit_state_bucket, "glsl_blit_apply_blit_state", start_us, pixels, 0);
++    }
+ 
+     if (dst_location == WINED3D_LOCATION_DRAWABLE)
+     {
+@@ -13399,60 +13855,57 @@ static DWORD glsl_blitter_blit(struct wined3d_blitter *blitter, enum wined3d_bli
+         dst_rect = &d;
+     }
+ 
+-    if (op == WINED3D_BLIT_OP_COLOR_BLIT_ALPHATEST)
+-    {
+-        const struct wined3d_format *f = src_texture->resource.format;
+-
+-        alpha_test_key.color_space_low_value = 0;
+-        alpha_test_key.color_space_high_value = ~(wined3d_mask_from_size(f->alpha_size) << f->alpha_offset);
+-        colour_key = &alpha_test_key;
+-    }
+-    else if (op != WINED3D_BLIT_OP_COLOR_BLIT_CKEY)
+-    {
+-        colour_key = NULL;
+-    }
+-
++    start_us = wined3d_glsl_profile_enabled() ? wined3d_glsl_profile_now_us() : 0;
+     if (!(program = glsl_blitter_get_program(glsl_blitter, context_gl, src_texture_gl, !!colour_key)))
+     {
+         ERR("Failed to get blitter program.\n");
+         return dst_location;
+     }
+-    GL_EXTCALL(glUseProgram(program->id));
+-    switch (get_complex_fixup(program->args.fixup))
++    wined3d_glsl_profile_record(&program_bucket, "glsl_blit_program", start_us, pixels, !!colour_key);
++    start_us = wined3d_glsl_profile_enabled() ? wined3d_glsl_profile_now_us() : 0;
++    if (batch_candidate && get_complex_fixup(program->args.fixup) == COMPLEX_FIXUP_NONE
++            && glsl_blit_batch_enqueue(context_gl, src_texture_gl, src_sub_resource_idx, dst_texture,
++                    dst_sub_resource_idx, dst_location, src_rect, dst_rect, program, filter, TRUE, colour_key))
+     {
+-        case COMPLEX_FIXUP_P8:
+-            glsl_blitter_upload_palette(glsl_blitter, context_gl, src_texture_gl);
+-            break;
+-
+-        case COMPLEX_FIXUP_YUY2:
+-        case COMPLEX_FIXUP_UYVY:
+-        case COMPLEX_FIXUP_YV12:
+-        case COMPLEX_FIXUP_NV12:
+-        case COMPLEX_FIXUP_YUV:
+-            src_level = src_sub_resource_idx % src_texture->level_count;
+-            location = GL_EXTCALL(glGetUniformLocation(program->id, "size"));
+-            GL_EXTCALL(glUniform2f(location, wined3d_texture_get_level_width(src_texture, src_level),
+-                    wined3d_texture_get_level_height(src_texture, src_level)));
+-            break;
+-
+-        default:
+-            break;
++        wined3d_glsl_profile_record(&draw_quad_bucket, "glsl_blit_draw_quad_batched", start_us, pixels, filter);
+     }
+-    if (colour_key)
++    else
+     {
+-        struct wined3d_color float_key[2];
++        glsl_blit_batch_flush();
++        GL_EXTCALL(glUseProgram(program->id));
++        switch (get_complex_fixup(program->args.fixup))
++        {
++            case COMPLEX_FIXUP_P8:
++                glsl_blitter_upload_palette(glsl_blitter, context_gl, src_texture_gl);
++                break;
+ 
+-        wined3d_format_get_float_color_key(src_texture->resource.format, colour_key, float_key);
+-        location = GL_EXTCALL(glGetUniformLocation(program->id, "colour_key.low"));
+-        GL_EXTCALL(glUniform4fv(location, 1, &float_key[0].r));
+-        location = GL_EXTCALL(glGetUniformLocation(program->id, "colour_key.high"));
+-        GL_EXTCALL(glUniform4fv(location, 1, &float_key[1].r));
+-    }
+-    wined3d_context_gl_draw_shaded_quad(context_gl, src_texture_gl, src_sub_resource_idx, src_rect, dst_rect, filter);
+-    GL_EXTCALL(glUseProgram(0));
++            case COMPLEX_FIXUP_YUY2:
++            case COMPLEX_FIXUP_UYVY:
++            case COMPLEX_FIXUP_YV12:
++            case COMPLEX_FIXUP_NV12:
++            case COMPLEX_FIXUP_YUV:
++                src_level = src_sub_resource_idx % src_texture->level_count;
++                if (program->size_location >= 0)
++                    GL_EXTCALL(glUniform2f(program->size_location, wined3d_texture_get_level_width(src_texture, src_level),
++                            wined3d_texture_get_level_height(src_texture, src_level)));
++                break;
+ 
+-    if (dst_texture->swapchain && (dst_texture->swapchain->front_buffer == dst_texture))
+-        gl_info->gl_ops.gl.p_glFlush();
++            default:
++                break;
++        }
++        if (colour_key)
++            glsl_blitter_upload_colour_key(gl_info, program, src_texture->resource.format, colour_key);
++        wined3d_context_gl_draw_shaded_quad(context_gl, src_texture_gl, src_sub_resource_idx, src_rect, dst_rect, filter);
++        wined3d_glsl_profile_record(&draw_quad_bucket, "glsl_blit_draw_quad", start_us, pixels, filter);
++        GL_EXTCALL(glUseProgram(0));
++
++        if (dst_texture->swapchain && (dst_texture->swapchain->front_buffer == dst_texture))
++        {
++            start_us = wined3d_glsl_profile_enabled() ? wined3d_glsl_profile_now_us() : 0;
++            gl_info->gl_ops.gl.p_glFlush();
++            wined3d_glsl_profile_record(&flush_bucket, "glsl_blit_frontbuffer_flush", start_us, pixels, 0);
++        }
++    }
+ 
+     if (staging_texture)
+         wined3d_texture_decref(staging_texture);
+@@ -13466,6 +13919,8 @@ static void glsl_blitter_clear(struct wined3d_blitter *blitter, struct wined3d_d
+ {
+     struct wined3d_blitter *next;
+ 
++    glsl_blit_batch_flush();
++
+     if ((next = blitter->next))
+         next->ops->blitter_clear(next, device, rt_count, fb, rect_count,
+                 clear_rects, draw_rect, flags, color, depth, stencil);
+diff --git a/dlls/wined3d/surface.c b/dlls/wined3d/surface.c
+index e20020f..7d272f3 100644
+--- a/dlls/wined3d/surface.c
++++ b/dlls/wined3d/surface.c
+@@ -2236,6 +2236,9 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+         const struct wined3d_box *src_box, uint32_t flags, const struct wined3d_blt_fx *fx,
+         enum wined3d_texture_filter_type filter)
+ {
++    static struct wined3d_surface_profile_bucket acquire_bucket;
++    static struct wined3d_surface_profile_bucket blit_bucket;
++    static struct wined3d_surface_profile_bucket validate_bucket;
+     struct wined3d_texture_sub_resource *src_sub_resource, *dst_sub_resource;
+     struct wined3d_device *device = dst_texture->resource.device;
+     struct wined3d_swapchain *src_swapchain, *dst_swapchain;
+@@ -2246,11 +2249,15 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+     struct wined3d_context *context;
+     enum wined3d_blit_op blit_op;
+     RECT src_rect, dst_rect;
++    ULONGLONG profile_start;
++    unsigned int profile_pixels;
++    bool force_gpu;
+     bool src_ds, dst_ds;
+ 
+     static const DWORD simple_blit = WINED3D_BLT_SRC_CKEY
+             | WINED3D_BLT_SRC_CKEY_OVERRIDE
+             | WINED3D_BLT_ALPHA_TEST
++            | WINED3D_BLT_FORCE_GPU
+             | WINED3D_BLT_RAW;
+ 
+     TRACE("dst_texture %p, dst_sub_resource_idx %u, dst_box %s, src_texture %p, "
+@@ -2285,6 +2292,7 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+ 
+     SetRect(&src_rect, src_box->left, src_box->top, src_box->right, src_box->bottom);
+     SetRect(&dst_rect, dst_box->left, dst_box->top, dst_box->right, dst_box->bottom);
++    profile_pixels = wined3d_surface_profile_rect_pixels(&dst_rect);
+ 
+     if (!fx || !(fx->fx))
+         flags &= ~WINED3D_BLT_FX;
+@@ -2299,6 +2307,8 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+     }
+ 
+     flags &= ~(WINED3D_BLT_SYNCHRONOUS | WINED3D_BLT_DO_NOT_WAIT | WINED3D_BLT_WAIT);
++    force_gpu = !!(flags & WINED3D_BLT_FORCE_GPU);
++    flags &= ~WINED3D_BLT_FORCE_GPU;
+ 
+     if (flags & ~simple_blit)
+     {
+@@ -2334,6 +2344,19 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+     dst_ds = dst_texture->resource.format->depth_size || dst_texture->resource.format->stencil_size;
+     src_ds = src_texture->resource.format->depth_size || src_texture->resource.format->stencil_size;
+ 
++    if (wined3d_settings.webgl && convert && format_is_yuv(src_texture->resource.format->id))
++    {
++        TRACE("Using CPU fallback for WebGL YUV format conversion.\n");
++        goto cpu;
++    }
++
++    if (wined3d_settings.webgl && format_is_yuv(src_texture->resource.format->id)
++            && format_is_yuv(dst_texture->resource.format->id))
++    {
++        TRACE("Using CPU fallback for WebGL YUV blit.\n");
++        goto cpu;
++    }
++
+     if (src_ds || dst_ds)
+     {
+         TRACE("Depth/stencil blit.\n");
+@@ -2362,6 +2385,22 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+ 
+     TRACE("Colour blit.\n");
+ 
++    if (wined3d_settings.webgl && convert
++            && ((src_texture->resource.format->attrs | dst_texture->resource.format->attrs)
++            & WINED3D_FORMAT_ATTR_BLOCKS))
++    {
++        TRACE("Using CPU fallback for WebGL compressed format conversion.\n");
++        goto cpu;
++    }
++
++    if (wined3d_settings.webgl && convert
++            && (!(src_texture->resource.access & WINED3D_RESOURCE_ACCESS_GPU)
++            || !(dst_texture->resource.access & WINED3D_RESOURCE_ACCESS_GPU)))
++    {
++        TRACE("Using CPU fallback for WebGL system-memory format conversion.\n");
++        goto cpu;
++    }
++
+     /* In principle this would apply to depth blits as well, but we don't
+      * implement those in the CPU blitter at the moment. */
+     if ((dst_sub_resource->locations & dst_texture->resource.map_binding)
+@@ -2371,10 +2410,26 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+             TRACE("Not doing sysmem blit because of scaling.\n");
+         else if (convert)
+             TRACE("Not doing sysmem blit because of format conversion.\n");
++        else if (wined3d_settings.webgl && force_gpu)
++            TRACE("Not doing sysmem blit because GPU blit was requested.\n");
+         else
+             goto cpu;
+     }
+ 
++    if (wined3d_settings.webgl && scale && sub_resource_is_on_cpu(src_texture, src_sub_resource_idx)
++            && !convert && !resolve)
++    {
++        TRACE("Using CPU fallback for WebGL scaled blit from a CPU source.\n");
++        goto cpu;
++    }
++
++    if (wined3d_settings.webgl && scale && sub_resource_is_on_cpu(dst_texture, dst_sub_resource_idx)
++            && !convert && !resolve)
++    {
++        TRACE("Using CPU fallback for WebGL scaled blit to a CPU destination.\n");
++        goto cpu;
++    }
++
+     blit_op = WINED3D_BLIT_OP_COLOR_BLIT;
+     if (flags & WINED3D_BLT_SRC_CKEY_OVERRIDE)
+     {
+@@ -2390,7 +2445,7 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+     {
+         blit_op = WINED3D_BLIT_OP_COLOR_BLIT_ALPHATEST;
+     }
+-    else if ((src_sub_resource->locations & WINED3D_LOCATION_CLEARED)
++    if ((src_sub_resource->locations & WINED3D_LOCATION_CLEARED)
+             && wined3d_texture_is_full_rect(dst_texture, dst_sub_resource_idx % dst_texture->level_count, &dst_rect))
+     {
+         TRACE("Source is cleared.\n");
+@@ -2404,7 +2459,13 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+             && (dst_texture->resource.access & WINED3D_RESOURCE_ACCESS_GPU))
+     {
+         /* Upload */
+-        if (scale)
++        if (wined3d_settings.webgl && blit_op != WINED3D_BLIT_OP_COLOR_BLIT && !force_gpu)
++            goto cpu;
++        else if (wined3d_settings.webgl && force_gpu)
++            TRACE("Not doing upload because GPU blit was requested.\n");
++        else if (wined3d_settings.webgl && dst_texture->swapchain)
++            TRACE("Not doing upload because the destination is a WebGL swapchain.\n");
++        else if (scale)
+             TRACE("Not doing upload because of scaling.\n");
+         else if (convert)
+             TRACE("Not doing upload because of format conversion.\n");
+@@ -2417,8 +2478,8 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+             if (!wined3d_resource_is_offscreen(&dst_texture->resource))
+             {
+                 context = context_acquire(device, dst_texture, dst_sub_resource_idx);
+-                wined3d_texture_load_location(dst_texture, dst_sub_resource_idx,
+-                        context, dst_texture->resource.draw_binding);
++                wined3d_texture_load_location(dst_texture, dst_sub_resource_idx, context,
++                        dst_texture->resource.draw_binding);
+                 context_release(context);
+             }
+             return WINED3D_OK;
+@@ -2474,7 +2535,10 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+     if ((flags & WINED3D_BLT_RAW) || (blit_op == WINED3D_BLIT_OP_COLOR_BLIT && !scale && !convert && !resolve))
+         blit_op = WINED3D_BLIT_OP_RAW_BLIT;
+ 
++    profile_start = wined3d_surface_profile_enabled() ? wined3d_surface_profile_now_us() : 0;
+     context = context_acquire(device, dst_texture, dst_sub_resource_idx);
++    wined3d_surface_profile_record(&acquire_bucket, "texture2d_blt_context_acquire",
++            profile_start, profile_pixels, blit_op);
+ 
+     if (src_texture->resource.multisample_type != WINED3D_MULTISAMPLE_NONE && !resolve_typeless
+             && ((scale && !context->d3d_info->scaled_resolve)
+@@ -2483,6 +2547,10 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+     else
+         src_location = src_texture->resource.draw_binding;
+ 
++    if (wined3d_settings.webgl && src_location == WINED3D_LOCATION_DRAWABLE
++            && wined3d_resource_is_offscreen(&src_texture->resource))
++        src_location = WINED3D_LOCATION_TEXTURE_RGB;
++
+     if (!(dst_texture->resource.access & WINED3D_RESOURCE_ACCESS_GPU))
+         dst_location = dst_texture->resource.map_binding;
+     else if (dst_texture->resource.multisample_type != WINED3D_MULTISAMPLE_NONE
+@@ -2491,14 +2559,24 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+     else
+         dst_location = dst_texture->resource.draw_binding;
+ 
++    if (wined3d_settings.webgl && dst_location == WINED3D_LOCATION_DRAWABLE
++            && wined3d_resource_is_offscreen(&dst_texture->resource))
++        dst_location = WINED3D_LOCATION_TEXTURE_RGB;
++
++    profile_start = wined3d_surface_profile_enabled() ? wined3d_surface_profile_now_us() : 0;
+     valid_locations = device->blitter->ops->blitter_blit(device->blitter, blit_op, context,
+             src_texture, src_sub_resource_idx, src_location, &src_rect,
+             dst_texture, dst_sub_resource_idx, dst_location, &dst_rect, colour_key, filter, resolve_format);
++    wined3d_surface_profile_record(&blit_bucket, "texture2d_blt_blitter",
++            profile_start, profile_pixels, src_location | (dst_location << 8));
+ 
+     context_release(context);
+ 
++    profile_start = wined3d_surface_profile_enabled() ? wined3d_surface_profile_now_us() : 0;
+     wined3d_texture_validate_location(dst_texture, dst_sub_resource_idx, valid_locations);
+     wined3d_texture_invalidate_location(dst_texture, dst_sub_resource_idx, ~valid_locations);
++    wined3d_surface_profile_record(&validate_bucket, "texture2d_blt_validate",
++            profile_start, profile_pixels, valid_locations);
+ 
+     return WINED3D_OK;
+ 
+diff --git a/dlls/wined3d/swapchain.c b/dlls/wined3d/swapchain.c
+index 0e3cc46..5e74c0b 100644
+--- a/dlls/wined3d/swapchain.c
++++ b/dlls/wined3d/swapchain.c
+@@ -490,11 +490,20 @@ static void swapchain_blit(const struct wined3d_swapchain *swapchain,
+     struct wined3d_texture *texture = swapchain->back_buffers[0];
+     struct wined3d_device *device = swapchain->device;
+     enum wined3d_texture_filter_type filter;
++    RECT full_rect;
+     DWORD location;
+ 
+     TRACE("swapchain %p, context %p, src_rect %s, dst_rect %s.\n",
+             swapchain, context, wine_dbgstr_rect(src_rect), wine_dbgstr_rect(dst_rect));
+ 
++    if (wined3d_settings.webgl && texture->resource.format->id == WINED3DFMT_P8_UINT)
++    {
++        SetRect(&full_rect, 0, 0, wined3d_texture_get_level_width(texture, 0),
++                wined3d_texture_get_level_height(texture, 0));
++        src_rect = &full_rect;
++        dst_rect = &full_rect;
++    }
++
+     if ((src_rect->right - src_rect->left == dst_rect->right - dst_rect->left
+             && src_rect->bottom - src_rect->top == dst_rect->bottom - dst_rect->top)
+             || is_complex_fixup(texture->resource.format->color_fixup))
+diff --git a/dlls/wined3d/wined3d_gl.h b/dlls/wined3d/wined3d_gl.h
+index 00c82c7..7e528db 100644
+--- a/dlls/wined3d/wined3d_gl.h
++++ b/dlls/wined3d/wined3d_gl.h
+@@ -758,6 +758,9 @@ void wined3d_context_gl_destroy_bo(struct wined3d_context_gl *context_gl, struct
+ void wined3d_context_gl_draw_shaded_quad(struct wined3d_context_gl *context_gl, struct wined3d_texture_gl *texture_gl,
+         unsigned int sub_resource_idx, const RECT *src_rect, const RECT *dst_rect,
+         enum wined3d_texture_filter_type filter);
++void wined3d_context_gl_draw_shaded_quads(struct wined3d_context_gl *context_gl, struct wined3d_texture_gl *texture_gl,
++        unsigned int sub_resource_idx, const RECT *src_rects, const RECT *dst_rects, unsigned int quad_count,
++        enum wined3d_texture_filter_type filter);
+ void wined3d_context_gl_enable_clip_distances(struct wined3d_context_gl *context_gl, uint32_t mask);
+ void wined3d_context_gl_end_transform_feedback(struct wined3d_context_gl *context_gl);
+ void wined3d_context_gl_flush_bo_address(struct wined3d_context_gl *context_gl,
+diff --git a/include/wine/wined3d.h b/include/wine/wined3d.h
+index 9918ac6..537f01c 100644
+--- a/include/wine/wined3d.h
++++ b/include/wine/wined3d.h
+@@ -1388,6 +1388,7 @@ enum wined3d_memory_segment_group
+ #define WINED3D_BLT_SRC_CKEY_OVERRIDE                           0x00010000
+ #define WINED3D_BLT_WAIT                                        0x01000000
+ #define WINED3D_BLT_DO_NOT_WAIT                                 0x08000000
++#define WINED3D_BLT_FORCE_GPU                                   0x10000000
+ #define WINED3D_BLT_RAW                                         0x20000000
+ #define WINED3D_BLT_SYNCHRONOUS                                 0x40000000
+ #define WINED3D_BLT_ALPHA_TEST                                  0x80000000

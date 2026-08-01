@@ -1,0 +1,890 @@
+diff --git a/dlls/wined3d/buffer.c b/dlls/wined3d/buffer.c
+index 5e1f0de..7ebe709 100644
+--- a/dlls/wined3d/buffer.c
++++ b/dlls/wined3d/buffer.c
+@@ -415,7 +415,14 @@ static void buffer_resource_unload(struct wined3d_resource *resource)
+ 
+         context = context_acquire(resource->device, NULL, 0);
+ 
+-        wined3d_buffer_load_location(buffer, context, WINED3D_LOCATION_SYSMEM);
++        if (wined3d_settings.webgl && !(resource->access & WINED3D_RESOURCE_ACCESS_CPU))
++        {
++            TRACE("Dropping WebGL GPU-only buffer %p without sysmem readback.\n", buffer);
++        }
++        else
++        {
++            wined3d_buffer_load_location(buffer, context, WINED3D_LOCATION_SYSMEM);
++        }
+         wined3d_buffer_invalidate_location(buffer, WINED3D_LOCATION_BUFFER);
+         wined3d_buffer_unload_location(buffer, context, WINED3D_LOCATION_BUFFER);
+         buffer_clear_dirty_areas(buffer);
+@@ -589,6 +596,7 @@ static HRESULT buffer_resource_sub_resource_map(struct wined3d_resource *resourc
+     if (((flags & WINED3D_MAP_WRITE) && !(flags & (WINED3D_MAP_NOOVERWRITE | WINED3D_MAP_DISCARD)))
+             || (!(flags & WINED3D_MAP_WRITE) && (buffer->locations & WINED3D_LOCATION_SYSMEM))
+             || buffer->resource.pin_sysmem
++            || wined3d_settings.webgl
+             || !(buffer->flags & WINED3D_BUFFER_USE_BO))
+     {
+         if (!(buffer->locations & WINED3D_LOCATION_SYSMEM))
+@@ -1120,7 +1128,8 @@ HRESULT wined3d_buffer_gl_init(struct wined3d_buffer_gl *buffer_gl, struct wined
+         TRACE("Not creating a BO because the buffer is not GPU accessible.\n");
+     else if (!gl_info->supported[ARB_VERTEX_BUFFER_OBJECT])
+         TRACE("Not creating a BO because GL_ARB_vertex_buffer is not supported.\n");
+-    else if (!(gl_info->supported[APPLE_FLUSH_BUFFER_RANGE] || gl_info->supported[ARB_MAP_BUFFER_RANGE])
++    else if (!wined3d_settings.webgl
++            && !(gl_info->supported[APPLE_FLUSH_BUFFER_RANGE] || gl_info->supported[ARB_MAP_BUFFER_RANGE])
+             && (desc->usage & WINED3DUSAGE_DYNAMIC))
+         TRACE("Not creating a BO because the buffer has dynamic usage and no GL support.\n");
+     else
+@@ -1360,18 +1369,20 @@ static HRESULT wined3d_streaming_buffer_prepare(struct wined3d_device *device,
+             return S_OK;
+     }
+ 
+-    size = max(SB_MIN_SIZE, max(old_size * 2, min_size));
++    size = max(wined3d_settings.webgl ? 16 * 1024 * 1024 : SB_MIN_SIZE, max(old_size * 2, min_size));
+     TRACE("Growing buffer to %u bytes.\n", size);
+ 
+     desc.byte_width = size;
+     desc.usage = WINED3DUSAGE_DYNAMIC;
+-    desc.bind_flags = buffer->bind_flags;
++    desc.bind_flags = buffer->bind_flags & ~WINED3D_STREAMING_BUFFER_WEBGL_FORCE_VBO;
+     desc.access = WINED3D_RESOURCE_ACCESS_GPU | WINED3D_RESOURCE_ACCESS_MAP_W;
+     desc.misc_flags = 0;
+     desc.structure_byte_stride = 0;
+ 
+     if (SUCCEEDED(hr = wined3d_buffer_create(device, &desc, NULL, NULL, &wined3d_null_parent_ops, &wined3d_buffer)))
+     {
++        if (buffer->bind_flags & WINED3D_STREAMING_BUFFER_WEBGL_FORCE_VBO)
++            wined3d_buffer->flags |= WINED3D_BUFFER_WEBGL_FORCE_VBO;
+         if (buffer->buffer)
+             wined3d_buffer_decref(buffer->buffer);
+         buffer->buffer = wined3d_buffer;
+diff --git a/dlls/wined3d/context.c b/dlls/wined3d/context.c
+index 9495ea3..3c11a8d 100644
+--- a/dlls/wined3d/context.c
++++ b/dlls/wined3d/context.c
+@@ -294,6 +294,14 @@ void context_update_stream_info(struct wined3d_context *context, const struct wi
+             if ((UINT_PTR)element->data.addr < -state->load_base_vertex_index * element->stride)
+                 FIXME("System memory vertex data load offset is negative!\n");
+         }
++        else if (wined3d_settings.webgl && stream_info->position_transformed
++                && context->current_rt.texture && !context->current_rt.texture->swapchain
++                && (buffer->resource.usage & WINED3DUSAGE_DYNAMIC)
++                && !(buffer->flags & WINED3D_BUFFER_WEBGL_FORCE_VBO))
++        {
++            element->data.buffer_object = 0;
++            element->data.addr += (ULONG_PTR)wined3d_buffer_load_sysmem(buffer, context);
++        }
+         else
+         {
+             wined3d_buffer_load(buffer, context, state);
+diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
+index 3240f1f..2d7b506 100644
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -2885,14 +2885,20 @@ map:
+ 
+         bo->b.map_ptr = GL_EXTCALL(glMapBufferRange(bo->binding, 0, bo->size, gl_flags));
+     }
+-    else if (gl_info->supported[ARB_MAP_BUFFER_RANGE])
++    else if (gl_info->supported[ARB_MAP_BUFFER_RANGE]
++            || (wined3d_settings.webgl && gl_info->gl_ops.ext.p_glMapBufferRange))
+     {
+         bo->b.map_ptr = GL_EXTCALL(glMapBufferRange(bo->binding, 0, bo->size, wined3d_resource_gl_map_flags(bo, flags)));
+     }
+-    else
++    else if (gl_info->gl_ops.ext.p_glMapBuffer)
+     {
+         bo->b.map_ptr = GL_EXTCALL(glMapBuffer(bo->binding, wined3d_resource_gl_legacy_map_flags(flags)));
+     }
++    else
++    {
++        ERR("No buffer map entry point available for binding %#x, size %Iu, flags %#x.\n",
++                bo->binding, bo->size, flags);
++    }
+ 
+     if (bo->b.map_ptr)
+         adapter_adjust_mapped_memory(device_gl->d.adapter, bo->size);
+@@ -3084,7 +3090,18 @@ void wined3d_context_gl_copy_bo_address(struct wined3d_context_gl *context_gl,
+     }
+     else if (dst_bo && !src_bo)
+     {
+-        if ((map_flags & WINED3D_MAP_DISCARD) && (dst_bo->flags & GL_MAP_WRITE_BIT))
++        if (wined3d_settings.webgl)
++        {
++            wined3d_context_gl_bind_bo(context_gl, dst_bo->binding, dst_bo->id);
++            for (i = 0; i < range_count; ++i)
++                GL_EXTCALL(glBufferSubData(dst_bo->binding,
++                        dst_bo->b.buffer_offset + (GLintptr)dst->addr + ranges[i].offset,
++                        ranges[i].size, src->addr + ranges[i].offset));
++            checkGLcall("WebGL buffer upload");
++
++            wined3d_context_gl_reference_bo(context_gl, dst_bo);
++        }
++        else if ((map_flags & WINED3D_MAP_DISCARD) && (dst_bo->flags & GL_MAP_WRITE_BIT))
+         {
+             dst_ptr = wined3d_context_gl_map_bo_address(context_gl, dst, dst_bo->size, map_flags);
+             memcpy(dst_ptr, src->addr, dst_bo->size);
+@@ -4388,7 +4405,6 @@ struct wined3d_context *wined3d_context_gl_acquire(const struct wined3d_device *
+     }
+ 
+     wined3d_context_gl_activate(context_gl, texture, sub_resource_idx, check_context);
+-
+     return &context_gl->c;
+ }
+ 
+@@ -4466,6 +4482,135 @@ void dispatch_compute(struct wined3d_device *device, const struct wined3d_state
+     context_release(&context_gl->c);
+ }
+ 
++static DWORD wined3d_context_gl_read_index(const void *indices, unsigned int idx_size, unsigned int idx)
++{
++    return idx_size == 2 ? ((const WORD *)indices)[idx] : ((const DWORD *)indices)[idx];
++}
++
++static bool wined3d_context_gl_is_primitive_restart_index(DWORD idx, unsigned int idx_size)
++{
++    return (idx_size == 2 && idx == 0xffff) || (idx_size == 4 && idx == 0xffffffff);
++}
++
++static DWORD *wined3d_context_gl_build_webgl_flat_shading_indices(struct wined3d_context_gl *context_gl,
++        const struct wined3d_state *state, const void *indices, unsigned int idx_size,
++        int base_vertex_idx, unsigned int start_idx, unsigned int count, unsigned int *converted_count)
++{
++    unsigned int triangle_count, i, o = 0;
++    const BYTE *sysmem_indices;
++    DWORD *converted;
++    bool indexed = !!idx_size;
++
++    if (!state->extra_ps_args.flat_shading || base_vertex_idx < 0)
++        return NULL;
++
++    switch (state->primitive_type)
++    {
++        case WINED3D_PT_TRIANGLELIST:
++            triangle_count = count / 3;
++            break;
++
++        case WINED3D_PT_TRIANGLESTRIP:
++        case WINED3D_PT_TRIANGLEFAN:
++            if (count < 3)
++                return NULL;
++            triangle_count = count - 2;
++            break;
++
++        default:
++            return NULL;
++    }
++
++    if (!triangle_count)
++        return NULL;
++
++    if (indexed && state->index_buffer)
++    {
++        if (!(sysmem_indices = wined3d_buffer_load_sysmem(state->index_buffer, &context_gl->c)))
++            return NULL;
++        indices = sysmem_indices + state->index_offset + idx_size * start_idx;
++    }
++
++    if (!(converted = malloc(triangle_count * 3 * sizeof(*converted))))
++    {
++        ERR("Failed to allocate WebGL flat-shading index buffer.\n");
++        return NULL;
++    }
++
++    for (i = 0; i < triangle_count; ++i)
++    {
++        DWORD a, b, c;
++
++        if (!indexed)
++        {
++            if (state->primitive_type == WINED3D_PT_TRIANGLELIST)
++            {
++                a = start_idx + i * 3;
++                b = a + 1;
++                c = a + 2;
++            }
++            else if (state->primitive_type == WINED3D_PT_TRIANGLESTRIP)
++            {
++                a = start_idx + i;
++                b = a + 1;
++                c = a + 2;
++            }
++            else
++            {
++                a = start_idx;
++                b = start_idx + i + 1;
++                c = start_idx + i + 2;
++            }
++        }
++        else if (state->primitive_type == WINED3D_PT_TRIANGLELIST)
++        {
++            a = wined3d_context_gl_read_index(indices, idx_size, i * 3);
++            b = wined3d_context_gl_read_index(indices, idx_size, i * 3 + 1);
++            c = wined3d_context_gl_read_index(indices, idx_size, i * 3 + 2);
++        }
++        else if (state->primitive_type == WINED3D_PT_TRIANGLESTRIP)
++        {
++            a = wined3d_context_gl_read_index(indices, idx_size, i);
++            b = wined3d_context_gl_read_index(indices, idx_size, i + 1);
++            c = wined3d_context_gl_read_index(indices, idx_size, i + 2);
++        }
++        else
++        {
++            a = wined3d_context_gl_read_index(indices, idx_size, 0);
++            b = wined3d_context_gl_read_index(indices, idx_size, i + 1);
++            c = wined3d_context_gl_read_index(indices, idx_size, i + 2);
++        }
++
++        if (indexed && (wined3d_context_gl_is_primitive_restart_index(a, idx_size)
++                || wined3d_context_gl_is_primitive_restart_index(b, idx_size)
++                || wined3d_context_gl_is_primitive_restart_index(c, idx_size)))
++        {
++            free(converted);
++            return NULL;
++        }
++
++        a += base_vertex_idx;
++        b += base_vertex_idx;
++        c += base_vertex_idx;
++
++        if (state->primitive_type == WINED3D_PT_TRIANGLESTRIP && (i & 1))
++        {
++            converted[o++] = c;
++            converted[o++] = b;
++            converted[o++] = a;
++        }
++        else
++        {
++            converted[o++] = b;
++            converted[o++] = c;
++            converted[o++] = a;
++        }
++    }
++
++    *converted_count = o;
++    return converted;
++}
++
+ /* Context activation is done by the caller. */
+ static void wined3d_context_gl_draw_primitive_arrays(struct wined3d_context_gl *context_gl,
+         const struct wined3d_state *state, const void *idx_data, unsigned int idx_size, int base_vertex_idx,
+@@ -4478,6 +4623,7 @@ static void wined3d_context_gl_draw_primitive_arrays(struct wined3d_context_gl *
+     unsigned int instanced_elements[ARRAY_SIZE(si->elements)];
+     const struct wined3d_ffp_attrib_ops *ops;
+     unsigned int instanced_element_count = 0;
++    DWORD *converted_indices = NULL;
+     const void *indices;
+     unsigned int i, j;
+ 
+@@ -4485,6 +4631,69 @@ static void wined3d_context_gl_draw_primitive_arrays(struct wined3d_context_gl *
+ 
+     indices = (const char *)idx_data + idx_size * start_idx;
+ 
++    if (wined3d_settings.webgl && (converted_indices = wined3d_context_gl_build_webgl_flat_shading_indices(
++            context_gl, state, indices, idx_size, base_vertex_idx, start_idx, count, &count)))
++    {
++        indices = converted_indices;
++        idx_size = sizeof(*converted_indices);
++        idx_type = GL_UNSIGNED_INT;
++        mode = GL_TRIANGLES;
++        base_vertex_idx = 0;
++        start_idx = 0;
++        GL_EXTCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
++        checkGLcall("unbind WebGL flat-shading element array buffer");
++    }
++
++    if (wined3d_settings.webgl && idx_size == 2 && state->index_buffer
++            && (state->primitive_type == WINED3D_PT_LINESTRIP
++            || state->primitive_type == WINED3D_PT_TRIANGLESTRIP
++            || state->primitive_type == WINED3D_PT_TRIANGLEFAN))
++    {
++        const WORD *src_indices = wined3d_buffer_load_sysmem(state->index_buffer, &context_gl->c);
++
++        if (src_indices)
++        {
++            src_indices = (const WORD *)((const BYTE *)src_indices + state->index_offset) + start_idx;
++            for (i = 0; i < count; ++i)
++            {
++                if (src_indices[i] == 0xffff)
++                    break;
++            }
++
++            if (i < count)
++            {
++                if (!(converted_indices = malloc(count * sizeof(*converted_indices))))
++                {
++                    ERR("Failed to allocate WebGL converted index buffer.\n");
++                }
++                else
++                {
++                    for (i = 0; i < count; ++i)
++                        converted_indices[i] = src_indices[i];
++
++                    indices = converted_indices;
++                    idx_type = GL_UNSIGNED_INT;
++                    GL_EXTCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
++                    checkGLcall("unbind converted element array buffer");
++                }
++            }
++        }
++    }
++
++    if (wined3d_settings.webgl && idx_size && !converted_indices && si->all_vbo && state->index_buffer
++            && state->index_buffer->buffer_object)
++    {
++        GLuint index_bo = wined3d_bo_gl(state->index_buffer->buffer_object)->id;
++        GL_EXTCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_bo));
++        if (ERR_ON(d3d))
++        {
++            GLint binding = 0;
++            gl_info->gl_ops.gl.p_glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &binding);
++            TRACE("drawElements rebound index bo %u binding now %d count %u idx_size %u.\n",
++                    index_bo, binding, count, idx_size);
++        }
++    }
++
+     if (!instance_count)
+     {
+         if (!idx_size)
+@@ -4498,11 +4707,13 @@ static void wined3d_context_gl_draw_primitive_arrays(struct wined3d_context_gl *
+         {
+             GL_EXTCALL(glDrawElementsBaseVertex(mode, count, idx_type, indices, base_vertex_idx));
+             checkGLcall("glDrawElementsBaseVertex");
++            free(converted_indices);
+             return;
+         }
+ 
+         gl_info->gl_ops.gl.p_glDrawElements(mode, count, idx_type, indices);
+         checkGLcall("glDrawElements");
++        free(converted_indices);
+         return;
+     }
+ 
+@@ -4530,6 +4741,7 @@ static void wined3d_context_gl_draw_primitive_arrays(struct wined3d_context_gl *
+             GL_EXTCALL(glDrawElementsInstancedBaseVertexBaseInstance(mode, count, idx_type,
+                     indices, instance_count, base_vertex_idx, start_instance));
+             checkGLcall("glDrawElementsInstancedBaseVertexBaseInstance");
++            free(converted_indices);
+             return;
+         }
+         if (gl_info->supported[ARB_DRAW_ELEMENTS_BASE_VERTEX])
+@@ -4537,11 +4749,13 @@ static void wined3d_context_gl_draw_primitive_arrays(struct wined3d_context_gl *
+             GL_EXTCALL(glDrawElementsInstancedBaseVertex(mode, count, idx_type,
+                     indices, instance_count, base_vertex_idx));
+             checkGLcall("glDrawElementsInstancedBaseVertex");
++            free(converted_indices);
+             return;
+         }
+ 
+         GL_EXTCALL(glDrawElementsInstanced(mode, count, idx_type, indices, instance_count));
+         checkGLcall("glDrawElementsInstanced");
++        free(converted_indices);
+         return;
+     }
+ 
+@@ -4557,6 +4771,7 @@ static void wined3d_context_gl_draw_primitive_arrays(struct wined3d_context_gl *
+     if (!idx_size)
+     {
+         FIXME("Non-indexed instanced drawing is not supported.\n");
++        free(converted_indices);
+         return;
+     }
+ 
+@@ -4598,6 +4813,8 @@ static void wined3d_context_gl_draw_primitive_arrays(struct wined3d_context_gl *
+             checkGLcall("glDrawElements");
+         }
+     }
++
++    free(converted_indices);
+ }
+ 
+ static void wined3d_context_gl_draw_indirect(struct wined3d_context_gl *context_gl, const struct wined3d_state *state,
+@@ -4750,7 +4967,6 @@ void draw_primitive(struct wined3d_device *device, const struct wined3d_state *s
+         WARN("Unable to apply draw state, skipping draw.\n");
+         return;
+     }
+-
+     if (dsv && (!state->depth_stencil_state || state->depth_stencil_state->writes_ds))
+     {
+         uint32_t location = dsv->resource->draw_binding;
+@@ -4927,7 +5143,7 @@ static void wined3d_context_gl_load_numbered_arrays(struct wined3d_context_gl *c
+ 
+         if (!(stream_info->use_map & (1u << i)))
+         {
+-            if (context->numbered_array_mask & (1u << i))
++            if (wined3d_settings.webgl || (context->numbered_array_mask & (1u << i)))
+                 wined3d_context_gl_unload_numbered_array(context_gl, i);
+             if (!(context_gl->default_attrib_value_set & (1u << i)))
+                 GL_EXTCALL(glVertexAttrib4f(i, 0.0f, 0.0f, 0.0f, 0.0f));
+diff --git a/dlls/wined3d/device.c b/dlls/wined3d/device.c
+index 6d88ad2..274ef4a 100644
+--- a/dlls/wined3d/device.c
++++ b/dlls/wined3d/device.c
+@@ -3316,7 +3316,7 @@ static void update_fog_factor(float *fog_factor, struct lights_settings *ls)
+ 
+ /* Context activation is done by the caller. */
+ #define copy_and_next(dest, src, size) memcpy(dest, src, size); dest += (size)
+-static HRESULT process_vertices_strided(const struct wined3d_device *device,
++static HRESULT process_vertices_strided(struct wined3d_device *device,
+         const struct wined3d_stateblock_state *state, DWORD dwDestIndex, DWORD dwCount,
+         const struct wined3d_stream_info *stream_info, struct wined3d_buffer *dest, uint32_t flags, uint32_t dst_fvf)
+ {
+@@ -3332,6 +3332,7 @@ static HRESULT process_vertices_strided(const struct wined3d_device *device,
+     unsigned int texture_count;
+     struct lights_settings ls;
+     struct wined3d_matrix mat;
++    float material_shininess;
+     unsigned int vertex_size;
+     BOOL do_clip, lighting;
+     float min_z, max_z;
+@@ -3415,8 +3416,15 @@ static HRESULT process_vertices_strided(const struct wined3d_device *device,
+     output_colour_format = wined3d_get_format(device->adapter, WINED3DFMT_B8G8R8A8_UNORM, 0);
+     material_specular_state_colour = state->rs[WINED3D_RS_SPECULARENABLE]
+             ? &state->material.specular : &black;
+-    init_transformed_lights(&ls, state, device->adapter->d3d_info.wined3d_creation_flags
+-            & WINED3D_LEGACY_FFP_LIGHTING, lighting);
++    init_transformed_lights(&ls, state, device->wined3d->flags & WINED3D_LEGACY_FFP_LIGHTING, lighting);
++    material_shininess = state->rs[WINED3D_RS_SPECULARENABLE] ? state->material.power : 0.0f;
++    if (lighting && state->rs[WINED3D_RS_SPECULARENABLE])
++    {
++        if (material_shininess != 0.0f)
++            device->process_vertices_material_power = material_shininess;
++        else
++            material_shininess = device->process_vertices_material_power;
++    }
+ 
+     wined3d_viewport_get_z_range(&vp, &min_z, &max_z);
+ 
+@@ -3558,7 +3566,7 @@ static HRESULT process_vertices_strided(const struct wined3d_device *device,
+                 normal = NULL;
+             }
+             compute_light(&ambient, &diffuse, &specular, &ls, normal,
+-                    state->rs[WINED3D_RS_SPECULARENABLE] ? state->material.power : 0.0f);
++                    material_shininess);
+         }
+ 
+         if (dst_fvf & WINED3DFVF_DIFFUSE)
+diff --git a/dlls/wined3d/ffp_gl.c b/dlls/wined3d/ffp_gl.c
+index 8bba21c..d4f4d88 100644
+--- a/dlls/wined3d/ffp_gl.c
++++ b/dlls/wined3d/ffp_gl.c
+@@ -48,6 +48,13 @@ static void fillmode(const struct wined3d_rasterizer_state *r, const struct wine
+ {
+     enum wined3d_fill_mode mode = r ? r->desc.fill_mode : WINED3D_FILL_SOLID;
+ 
++    if (wined3d_settings.webgl)
++    {
++        if (mode != WINED3D_FILL_SOLID)
++            FIXME("Fill mode %#x is not implemented in WebGL mode, rendering as solid.\n", mode);
++        return;
++    }
++
+     switch (mode)
+     {
+         case WINED3D_FILL_POINT:
+@@ -844,6 +851,9 @@ static void state_msaa(struct wined3d_context *context, const struct wined3d_sta
+ {
+     const struct wined3d_gl_info *gl_info = wined3d_context_gl(context)->gl_info;
+ 
++    if (wined3d_settings.webgl)
++        return;
++
+     if (state->render_states[WINED3D_RS_MULTISAMPLEANTIALIAS])
+     {
+         gl_info->gl_ops.gl.p_glEnable(GL_MULTISAMPLE_ARB);
+@@ -858,6 +868,9 @@ static void state_msaa(struct wined3d_context *context, const struct wined3d_sta
+ 
+ static void line_antialias(const struct wined3d_rasterizer_state *r, const struct wined3d_gl_info *gl_info)
+ {
++    if (wined3d_settings.webgl)
++        return;
++
+     if (r && r->desc.line_antialias)
+     {
+         gl_info->gl_ops.gl.p_glEnable(GL_LINE_SMOOTH);
+@@ -1072,7 +1085,13 @@ static void viewport_miscpart(struct wined3d_context *context, const struct wine
+     else
+     {
+         wined3d_viewport_get_z_range(&state->viewports[0], &min_z, &max_z);
+-        gl_info->gl_ops.gl.p_glDepthRange(min_z, max_z);
++        if ((wined3d_settings.webgl || gl_info->supported[ARB_ES2_COMPATIBILITY])
++                && gl_info->gl_ops.ext.p_glDepthRangef)
++            GL_EXTCALL(glDepthRangef(min_z, max_z));
++        else if (wined3d_settings.webgl)
++            TRACE("Skipping missing glDepthRangef for WebGL-compatible profile.\n");
++        else
++            gl_info->gl_ops.gl.p_glDepthRange(min_z, max_z);
+         gl_info->gl_ops.gl.p_glViewport(state->viewports[0].x, state->viewports[0].y,
+                 state->viewports[0].width, state->viewports[0].height);
+     }
+diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
+index 9df5a3d..f7d9ae6 100644
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -9267,7 +9267,7 @@ static GLuint find_glsl_domain_shader(const struct wined3d_context_gl *context_g
+ 
+     if (shader_glsl_is_webgl_profile(context_gl->gl_info))
+     {
+-        ERR("Geometry shaders are not supported by the WebGL-compatible profile.\n");
++        ERR("Domain shaders are not supported by the WebGL-compatible profile.\n");
+         return 0;
+     }
+ 
+@@ -9328,7 +9328,7 @@ static GLuint find_glsl_geometry_shader(const struct wined3d_context_gl *context
+ 
+     if (shader_glsl_is_webgl_profile(context_gl->gl_info))
+     {
+-        ERR("Domain shaders are not supported by the WebGL-compatible profile.\n");
++        ERR("Geometry shaders are not supported by the WebGL-compatible profile.\n");
+         return 0;
+     }
+ 
+diff --git a/dlls/wined3d/query.c b/dlls/wined3d/query.c
+index 26e4f5e..c6fa3b4 100644
+--- a/dlls/wined3d/query.c
++++ b/dlls/wined3d/query.c
+@@ -132,6 +132,11 @@ static UINT64 get_query_result64(GLuint id, const struct wined3d_gl_info *gl_inf
+     }
+ }
+ 
++static GLenum wined3d_occlusion_query_target(void)
++{
++    return wined3d_settings.webgl ? GL_ANY_SAMPLES_PASSED : GL_SAMPLES_PASSED;
++}
++
+ static void wined3d_query_init(struct wined3d_query *query, struct wined3d_device *device,
+         enum wined3d_query_type type, const void *data, DWORD data_size,
+         const struct wined3d_query_ops *query_ops, void *parent, const struct wined3d_parent_ops *parent_ops)
+@@ -175,6 +180,64 @@ static struct wined3d_pipeline_statistics_query *wined3d_pipeline_statistics_que
+     return CONTAINING_RECORD(query, struct wined3d_pipeline_statistics_query, query);
+ }
+ 
++struct wined3d_webgl_stub_query
++{
++    struct wined3d_query query;
++    DWORD data[4];
++};
++
++static BOOL wined3d_webgl_stub_query_ops_poll(struct wined3d_query *query, uint32_t flags)
++{
++    TRACE("query %p, flags %#x.\n", query, flags);
++    return TRUE;
++}
++
++static BOOL wined3d_webgl_stub_query_ops_issue(struct wined3d_query *query, uint32_t flags)
++{
++    TRACE("query %p, flags %#x.\n", query, flags);
++    return FALSE;
++}
++
++static void wined3d_webgl_stub_query_ops_destroy(struct wined3d_query *query)
++{
++    TRACE("query %p.\n", query);
++    free(CONTAINING_RECORD(query, struct wined3d_webgl_stub_query, query));
++}
++
++static const struct wined3d_query_ops webgl_stub_query_ops =
++{
++    wined3d_webgl_stub_query_ops_poll,
++    wined3d_webgl_stub_query_ops_issue,
++    wined3d_webgl_stub_query_ops_destroy,
++};
++
++static HRESULT wined3d_webgl_stub_query_create(struct wined3d_device *device,
++        enum wined3d_query_type type, void *parent, const struct wined3d_parent_ops *parent_ops,
++        struct wined3d_query **query)
++{
++    struct wined3d_webgl_stub_query *object;
++
++    TRACE("device %p, type %#x, parent %p, parent_ops %p, query %p.\n",
++            device, type, parent, parent_ops, query);
++
++    if (!(object = calloc(1, sizeof(*object))))
++        return E_OUTOFMEMORY;
++
++    if (type == WINED3D_QUERY_TYPE_VCACHE)
++    {
++        object->data[0] = 'C' | ('A' << 8) | ('C' << 16) | ('H' << 24);
++        object->data[1] = 1;
++        object->data[2] = 24;
++    }
++
++    wined3d_query_init(&object->query, device, type, object->data,
++            sizeof(object->data), &webgl_stub_query_ops, parent, parent_ops);
++    object->query.poll_in_cs = false;
++    *query = &object->query;
++
++    return WINED3D_OK;
++}
++
+ enum wined3d_fence_result wined3d_fence_test(const struct wined3d_fence *fence,
+         struct wined3d_device *device, uint32_t flags)
+ {
+@@ -620,7 +683,7 @@ static BOOL wined3d_occlusion_query_ops_issue(struct wined3d_query *query, uint3
+             if ((context_gl = wined3d_context_gl_reacquire(oq->context_gl)))
+             {
+                 gl_info = context_gl->gl_info;
+-                GL_EXTCALL(glEndQuery(GL_SAMPLES_PASSED));
++                GL_EXTCALL(glEndQuery(wined3d_occlusion_query_target()));
+                 checkGLcall("glEndQuery()");
+             }
+             else
+@@ -640,7 +703,7 @@ static BOOL wined3d_occlusion_query_ops_issue(struct wined3d_query *query, uint3
+         }
+         gl_info = context_gl->gl_info;
+ 
+-        GL_EXTCALL(glBeginQuery(GL_SAMPLES_PASSED, oq->id));
++        GL_EXTCALL(glBeginQuery(wined3d_occlusion_query_target(), oq->id));
+         checkGLcall("glBeginQuery()");
+ 
+         context_release(&context_gl->c);
+@@ -656,7 +719,7 @@ static BOOL wined3d_occlusion_query_ops_issue(struct wined3d_query *query, uint3
+             if ((context_gl = wined3d_context_gl_reacquire(oq->context_gl)))
+             {
+                 gl_info = context_gl->gl_info;
+-                GL_EXTCALL(glEndQuery(GL_SAMPLES_PASSED));
++                GL_EXTCALL(glEndQuery(wined3d_occlusion_query_target()));
+                 checkGLcall("glEndQuery()");
+                 wined3d_query_buffer_queue_result(context_gl, query, oq->id);
+ 
+@@ -1337,6 +1400,14 @@ HRESULT wined3d_query_gl_create(struct wined3d_device *device, enum wined3d_quer
+         case WINED3D_QUERY_TYPE_PIPELINE_STATISTICS:
+             return wined3d_pipeline_query_create(device, type, parent, parent_ops, query);
+ 
++        case WINED3D_QUERY_TYPE_VCACHE:
++            if (wined3d_settings.webgl)
++            {
++                FIXME("Stubbing vertex cache query for WebGL-compatible profile.\n");
++                return wined3d_webgl_stub_query_create(device, type, parent, parent_ops, query);
++            }
++            /* fall through */
++
+         default:
+             FIXME("Unhandled query type %#x.\n", type);
+             return WINED3DERR_NOTAVAILABLE;
+diff --git a/dlls/wined3d/resource.c b/dlls/wined3d/resource.c
+index edc8b9c..36bbb02 100644
+--- a/dlls/wined3d/resource.c
++++ b/dlls/wined3d/resource.c
+@@ -392,12 +392,14 @@ GLbitfield wined3d_resource_gl_map_flags(const struct wined3d_bo_gl *bo, DWORD d
+     if (d3d_flags & WINED3D_MAP_WRITE)
+     {
+         ret |= GL_MAP_WRITE_BIT;
++        if (wined3d_settings.webgl && d3d_flags & WINED3D_MAP_DISCARD)
++            ret |= GL_MAP_INVALIDATE_BUFFER_BIT;
+         if (!bo->b.coherent)
+             ret |= GL_MAP_FLUSH_EXPLICIT_BIT;
+     }
+     if (d3d_flags & WINED3D_MAP_READ)
+         ret |= GL_MAP_READ_BIT;
+-    else
++    else if (!wined3d_settings.webgl)
+         ret |= GL_MAP_UNSYNCHRONIZED_BIT;
+ 
+     return ret;
+diff --git a/dlls/wined3d/sampler.c b/dlls/wined3d/sampler.c
+index 2f269f0..3d6feca 100644
+--- a/dlls/wined3d/sampler.c
++++ b/dlls/wined3d/sampler.c
+@@ -103,12 +103,14 @@ static void wined3d_sampler_gl_cs_init(void *object)
+             gl_info->wrap_lookup[desc->address_v - WINED3D_TADDRESS_WRAP]));
+     GL_EXTCALL(glSamplerParameteri(name, GL_TEXTURE_WRAP_R,
+             gl_info->wrap_lookup[desc->address_w - WINED3D_TADDRESS_WRAP]));
+-    GL_EXTCALL(glSamplerParameterfv(name, GL_TEXTURE_BORDER_COLOR, &desc->border_color[0]));
++    if (!wined3d_settings.webgl)
++        GL_EXTCALL(glSamplerParameterfv(name, GL_TEXTURE_BORDER_COLOR, &desc->border_color[0]));
+     GL_EXTCALL(glSamplerParameteri(name, GL_TEXTURE_MAG_FILTER,
+             wined3d_gl_mag_filter(desc->mag_filter)));
+     GL_EXTCALL(glSamplerParameteri(name, GL_TEXTURE_MIN_FILTER,
+             wined3d_gl_min_mip_filter(desc->min_filter, desc->mip_filter)));
+-    GL_EXTCALL(glSamplerParameterf(name, GL_TEXTURE_LOD_BIAS, desc->lod_bias));
++    if (!wined3d_settings.webgl)
++        GL_EXTCALL(glSamplerParameterf(name, GL_TEXTURE_LOD_BIAS, desc->lod_bias));
+     GL_EXTCALL(glSamplerParameterf(name, GL_TEXTURE_MIN_LOD, desc->min_lod));
+     GL_EXTCALL(glSamplerParameterf(name, GL_TEXTURE_MAX_LOD, desc->max_lod));
+     if (gl_info->supported[ARB_TEXTURE_FILTER_ANISOTROPIC])
+diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+index 2663b5a..4535bed 100644
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -146,6 +146,8 @@ static void ffp_blitter_clear_rendertargets(struct wined3d_device *device, unsig
+     struct wined3d_color colour_srgb;
+     struct wined3d_context *context;
+     GLbitfield clear_mask = 0;
++    GLfloat clear_depth = 0.0f;
++    bool clear_depth_buffer = false;
+     bool render_offscreen;
+     unsigned int i;
+ 
+@@ -250,12 +252,25 @@ static void ffp_blitter_clear_rendertargets(struct wined3d_device *device, unsig
+     {
+         gl_info->gl_ops.gl.p_glDepthMask(GL_TRUE);
+         context_invalidate_state(context, STATE_DEPTH_STENCIL);
+-        if (gl_info->supported[ARB_ES2_COMPATIBILITY])
++        clear_depth = depth;
++        if ((wined3d_settings.webgl || gl_info->supported[ARB_ES2_COMPATIBILITY])
++                && gl_info->gl_ops.ext.p_glClearDepthf)
++        {
+             GL_EXTCALL(glClearDepthf(depth));
++            clear_mask = clear_mask | GL_DEPTH_BUFFER_BIT;
++        }
++        else if (wined3d_settings.webgl && gl_info->gl_ops.ext.p_glClearBufferfv)
++        {
++            clear_depth_buffer = true;
++        }
++        else if (wined3d_settings.webgl)
++            TRACE("Skipping missing glClearDepthf for WebGL-compatible profile.\n");
+         else
++        {
+             gl_info->gl_ops.gl.p_glClearDepth(depth);
++            clear_mask = clear_mask | GL_DEPTH_BUFFER_BIT;
++        }
+         checkGLcall("glClearDepth");
+-        clear_mask = clear_mask | GL_DEPTH_BUFFER_BIT;
+     }
+ 
+     if (flags & WINED3DCLEAR_TARGET)
+@@ -292,7 +307,9 @@ static void ffp_blitter_clear_rendertargets(struct wined3d_device *device, unsig
+             wined3d_rendertarget_view_invalidate_location(rtv, ~rtv->resource->draw_binding);
+         }
+ 
+-        if (!gl_info->supported[ARB_FRAMEBUFFER_SRGB] && needs_srgb_write(context->d3d_info, state, fb))
++        if ((wined3d_settings.webgl && state->extra_ps_args.srgb_write)
++                || (!gl_info->supported[ARB_FRAMEBUFFER_SRGB]
++                && needs_srgb_write(context->d3d_info, state, fb)))
+         {
+             if (rt_count > 1)
+                 WARN("Clearing multiple sRGB render targets without GL_ARB_framebuffer_sRGB "
+@@ -306,7 +323,10 @@ static void ffp_blitter_clear_rendertargets(struct wined3d_device *device, unsig
+             gl_info->gl_ops.gl.p_glScissor(draw_rect->left, drawable_height - draw_rect->bottom,
+                         draw_rect->right - draw_rect->left, draw_rect->bottom - draw_rect->top);
+         }
+-        gl_info->gl_ops.gl.p_glClear(clear_mask);
++        if (clear_depth_buffer)
++            GL_EXTCALL(glClearBufferfv(GL_DEPTH, 0, &clear_depth));
++        if (clear_mask)
++            gl_info->gl_ops.gl.p_glClear(clear_mask);
+     }
+     else
+     {
+@@ -341,7 +361,10 @@ static void ffp_blitter_clear_rendertargets(struct wined3d_device *device, unsig
+                 gl_info->gl_ops.gl.p_glScissor(current_rect.left, drawable_height - current_rect.bottom,
+                           current_rect.right - current_rect.left, current_rect.bottom - current_rect.top);
+             }
+-            gl_info->gl_ops.gl.p_glClear(clear_mask);
++            if (clear_depth_buffer)
++                GL_EXTCALL(glClearBufferfv(GL_DEPTH, 0, &clear_depth));
++            if (clear_mask)
++                gl_info->gl_ops.gl.p_glClear(clear_mask);
+         }
+     }
+     context->scissor_rect_count = WINED3D_MAX_VIEWPORTS;
+@@ -3143,14 +3166,29 @@ static bool wined3d_texture_gl_clear(struct wined3d_texture *texture,
+ 
+         if (format->depth_size)
+         {
++            GLfloat clear_depth = 0.0f;
++
+             gl_info->gl_ops.gl.p_glDepthMask(GL_TRUE);
+             context_invalidate_state(&context_gl->c, STATE_DEPTH_STENCIL);
+ 
+-            if (gl_info->supported[ARB_ES2_COMPATIBILITY])
++            if ((wined3d_settings.webgl || gl_info->supported[ARB_ES2_COMPATIBILITY])
++                    && gl_info->gl_ops.ext.p_glClearDepthf)
++            {
+                 GL_EXTCALL(glClearDepthf(0.0f));
++                clear_mask |= GL_DEPTH_BUFFER_BIT;
++            }
++            else if (wined3d_settings.webgl && gl_info->gl_ops.ext.p_glClearBufferfv)
++            {
++                GL_EXTCALL(glClearBufferfv(GL_DEPTH, 0, &clear_depth));
++                checkGLcall("glClearBufferfv");
++            }
++            else if (wined3d_settings.webgl)
++                TRACE("Skipping missing glClearDepthf for WebGL-compatible profile.\n");
+             else
++            {
+                 gl_info->gl_ops.gl.p_glClearDepth(0.0);
+-            clear_mask |= GL_DEPTH_BUFFER_BIT;
++                clear_mask |= GL_DEPTH_BUFFER_BIT;
++            }
+         }
+ 
+         if (format->stencil_size)
+@@ -3171,8 +3209,11 @@ static bool wined3d_texture_gl_clear(struct wined3d_texture *texture,
+             clear_mask |= GL_COLOR_BUFFER_BIT;
+         }
+ 
+-        gl_info->gl_ops.gl.p_glClear(clear_mask);
+-        checkGLcall("clear texture");
++        if (clear_mask)
++        {
++            gl_info->gl_ops.gl.p_glClear(clear_mask);
++            checkGLcall("clear texture");
++        }
+ 
+         wined3d_texture_validate_location(texture, sub_resource_idx, location);
+         return true;
+@@ -3588,7 +3629,8 @@ void wined3d_texture_gl_apply_sampler_desc(struct wined3d_texture_gl *texture_gl
+     if (memcmp(gl_tex->sampler_desc.border_color, sampler_desc->border_color,
+             sizeof(gl_tex->sampler_desc.border_color)))
+     {
+-        gl_info->gl_ops.gl.p_glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, &sampler_desc->border_color[0]);
++        if (!wined3d_settings.webgl)
++            gl_info->gl_ops.gl.p_glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, &sampler_desc->border_color[0]);
+         memcpy(gl_tex->sampler_desc.border_color, sampler_desc->border_color,
+                 sizeof(gl_tex->sampler_desc.border_color));
+     }
+@@ -3647,7 +3689,7 @@ void wined3d_texture_gl_apply_sampler_desc(struct wined3d_texture_gl *texture_gl
+ 
+     checkGLcall("Texture parameter application");
+ 
+-    if (gl_info->supported[EXT_TEXTURE_LOD_BIAS])
++    if (!wined3d_settings.webgl && gl_info->supported[EXT_TEXTURE_LOD_BIAS])
+     {
+         gl_info->gl_ops.gl.p_glTexEnvf(GL_TEXTURE_FILTER_CONTROL_EXT,
+                 GL_TEXTURE_LOD_BIAS_EXT, sampler_desc->lod_bias);
+@@ -3668,7 +3710,7 @@ void wined3d_texture_gl_set_compatible_renderbuffer(struct wined3d_texture_gl *t
+     unsigned int width, height;
+     GLuint renderbuffer = 0;
+ 
+-    if (gl_info->supported[ARB_FRAMEBUFFER_OBJECT])
++    if (!wined3d_settings.webgl && gl_info->supported[ARB_FRAMEBUFFER_OBJECT])
+         return;
+ 
+     if (rt && rt->resource->format->id != WINED3DFMT_NULL)
+diff --git a/dlls/wined3d/wined3d_private.h b/dlls/wined3d/wined3d_private.h
+index 38532ab..67ec549 100644
+--- a/dlls/wined3d/wined3d_private.h
++++ b/dlls/wined3d/wined3d_private.h
+@@ -3111,6 +3111,7 @@ struct wined3d_device
+     struct wined3d_cs *cs;
+ 
+     struct wined3d_buffer *push_constants[WINED3D_PUSH_CONSTANTS_COUNT];
++    float process_vertices_material_power;
+ 
+     /* Context management */
+     struct wined3d_context **contexts;
+@@ -3941,6 +3942,8 @@ struct wined3d_buffer
+     SIZE_T dirty_range_count, dirty_ranges_capacity;
+ };
+ 
++#define WINED3D_BUFFER_WEBGL_FORCE_VBO 0x04
++
+ static inline struct wined3d_buffer *buffer_from_resource(struct wined3d_resource *resource)
+ {
+     return CONTAINING_RECORD(resource, struct wined3d_buffer, resource);
+diff --git a/include/wine/wined3d.h b/include/wine/wined3d.h
+index 537f01c..629cb08 100644
+--- a/include/wine/wined3d.h
++++ b/include/wine/wined3d.h
+@@ -2328,6 +2328,8 @@ struct wined3d_streaming_buffer
+     unsigned int bind_flags;
+ };
+ 
++#define WINED3D_STREAMING_BUFFER_WEBGL_FORCE_VBO 0x80000000u
++
+ void __stdcall wined3d_mutex_lock(void);
+ void __stdcall wined3d_mutex_unlock(void);
+ 

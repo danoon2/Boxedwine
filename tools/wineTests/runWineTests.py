@@ -179,12 +179,44 @@ DEFAULT_NATIVE_GRAPHICS_BASELINE = Path(__file__).with_name(
     "native-graphics-baseline-v1.json"
 )
 DEFAULT_WEBGL_DIVERGENCE_MANIFEST = Path(__file__).with_name(
-    "webgl-test-divergences-v1.json"
+    "webgl-test-divergences-v2.json"
 )
-DEFAULT_WINE_WEBGL_PATCH = (
+DEFAULT_WINE_WEBGL_PRODUCTION_PATCHES = (
     Path(__file__).resolve().parents[1]
     / "d3dToWebGL"
-    / "wine-shadowmap-webgl-against-wine-11.0.patch"
+    / "webgl-build-config-against-wine-11.0.patch",
+    Path(__file__).resolve().parents[1]
+    / "d3dToWebGL"
+    / "webgl-adapter-context-caps-against-wine-11.0.patch",
+    Path(__file__).resolve().parents[1]
+    / "d3dToWebGL"
+    / "webgl-shader-generation-glsl-es-against-wine-11.0.patch",
+    Path(__file__).resolve().parents[1]
+    / "d3dToWebGL"
+    / "webgl-texture-formats-transfers-against-wine-11.0.patch",
+    Path(__file__).resolve().parents[1]
+    / "d3dToWebGL"
+    / "webgl-blitter-batching-against-wine-11.0.patch",
+    Path(__file__).resolve().parents[1]
+    / "d3dToWebGL"
+    / "webgl-directdraw-runtime-presentation-against-wine-11.0.patch",
+    Path(__file__).resolve().parents[1]
+    / "d3dToWebGL"
+    / "webgl-d3dx9-assets-compatibility-against-wine-11.0.patch",
+    Path(__file__).resolve().parents[1]
+    / "d3dToWebGL"
+    / "webgl-d3dxof-parser-hardening-against-wine-11.0.patch",
+    Path(__file__).resolve().parents[1]
+    / "d3dToWebGL"
+    / "webgl-wined3d-draw-state-query-against-wine-11.0.patch",
+    Path(__file__).resolve().parents[1]
+    / "d3dToWebGL"
+    / "webgl-d3d8-d3d9-compatibility-diagnostics-against-wine-11.0.patch",
+)
+DEFAULT_WINE_WEBGL_TEST_PATCH = (
+    Path(__file__).resolve().parents[1]
+    / "d3dToWebGL"
+    / "webgl-tests-against-wine-11.0.patch"
 )
 NATIVE_WINE_RUNTIME_FILES = (
     "loader/wine",
@@ -1546,7 +1578,11 @@ def run_emscripten_graphics_suite(
                 "manifest_id": divergences.get("manifest_id"),
                 "source_path": divergences.get("_source_path"),
                 "sha256": divergences.get("_sha256"),
-                "combined_patch": divergences.get("_patch_path"),
+                "production_patches": divergences.get(
+                    "_validated_production_patches"
+                ),
+                "test_patch": divergences.get("_test_patch_path"),
+                "series_counts": divergences.get("_series_counts"),
                 "policy_counts": divergences.get("_policy_counts"),
             }
             if divergences is not None
@@ -1924,7 +1960,8 @@ def main(argv: list[str] | None = None) -> int:
                 try:
                     divergences = divergence_validator.load_and_validate(
                         arguments.webgl_test_divergences.expanduser().resolve(),
-                        DEFAULT_WINE_WEBGL_PATCH,
+                        DEFAULT_WINE_WEBGL_PRODUCTION_PATCHES,
+                        DEFAULT_WINE_WEBGL_TEST_PATCH,
                     )
                 except divergence_validator.DivergenceError as error:
                     raise RunnerError(str(error)) from error

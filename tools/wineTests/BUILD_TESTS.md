@@ -211,10 +211,28 @@ cp "$WS2_32_TEST_EXE" "$BOXEDWINE_DIR/tools/wineTests/ws2_32_test.exe"
 cp "$ADVAPI32_TEST_EXE" "$BOXEDWINE_DIR/tools/wineTests/advapi32_test.exe"
 ```
 
-The WebGL Wine patch adds `build-boxedwine-webgl-dlls.sh` to its Wine source
-tree. Run that script after applying
-`tools/d3dToWebGL/wine-shadowmap-webgl-against-wine-11.0.patch`; it stages the
-graphics test executables in
+The build/configuration WebGL patch adds `build-boxedwine-webgl-dlls.sh` to its
+Wine source tree. Apply the build/configuration, adapter/context/capability,
+shader/GLSL ES, texture-transfer, GLSL blitter/batching, DirectDraw
+runtime/presentation, D3DX9 assets/compatibility, D3DXOF parser hardening,
+WineD3D draw/state/query, D3D8/D3D9 compatibility/diagnostics, and test-only
+patches in order:
+
+```bash
+git apply /path/to/Boxedwine/tools/d3dToWebGL/webgl-build-config-against-wine-11.0.patch
+git apply /path/to/Boxedwine/tools/d3dToWebGL/webgl-adapter-context-caps-against-wine-11.0.patch
+git apply /path/to/Boxedwine/tools/d3dToWebGL/webgl-shader-generation-glsl-es-against-wine-11.0.patch
+git apply /path/to/Boxedwine/tools/d3dToWebGL/webgl-texture-formats-transfers-against-wine-11.0.patch
+git apply /path/to/Boxedwine/tools/d3dToWebGL/webgl-blitter-batching-against-wine-11.0.patch
+git apply /path/to/Boxedwine/tools/d3dToWebGL/webgl-directdraw-runtime-presentation-against-wine-11.0.patch
+git apply /path/to/Boxedwine/tools/d3dToWebGL/webgl-d3dx9-assets-compatibility-against-wine-11.0.patch
+git apply /path/to/Boxedwine/tools/d3dToWebGL/webgl-d3dxof-parser-hardening-against-wine-11.0.patch
+git apply /path/to/Boxedwine/tools/d3dToWebGL/webgl-wined3d-draw-state-query-against-wine-11.0.patch
+git apply /path/to/Boxedwine/tools/d3dToWebGL/webgl-d3d8-d3d9-compatibility-diagnostics-against-wine-11.0.patch
+git apply /path/to/Boxedwine/tools/d3dToWebGL/webgl-tests-against-wine-11.0.patch
+```
+
+Then run the generated script. It stages the graphics test executables in
 `boxedwine-webgl-wine-build/boxedwine-webgl-tests/`. The v6 bundle uses that
 directory's `d3d8_test.exe`, `d3d9_test.exe`, `d3dx9_43_test.exe`,
 `d3dxof_test.exe`, and `ddraw_test.exe`.
@@ -252,7 +270,7 @@ python3 tools/wineTests/runWineTests.py \
 ```
 
 The current clean official build hashes and the stable comparison artifacts
-are recorded in `webgl-test-divergences-v1.json`. Use
+are recorded in `webgl-test-divergences-v2.json`. Use
 `--no-native-graphics-baseline` for this comparison because the native exact
 baseline deliberately pins the packaged v6 executables.
 

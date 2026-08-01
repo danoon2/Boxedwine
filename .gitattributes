@@ -4,6 +4,7 @@
 * text=auto
 tools/jenkins/*.py text eol=lf
 tools/jenkins/*.sh text eol=lf
+tools/d3dToWebGL/*.patch text eol=lf
 
 ###############################################################################
 # Set default behavior for command prompt diff.

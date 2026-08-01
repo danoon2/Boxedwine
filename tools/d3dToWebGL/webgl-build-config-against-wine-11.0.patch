@@ -1,0 +1,358 @@
+diff --git a/BOXEDWINE_WEBGL_BUILD.md b/BOXEDWINE_WEBGL_BUILD.md
+new file mode 100644
+index 0000000..17297f1
+--- /dev/null
++++ b/BOXEDWINE_WEBGL_BUILD.md
+@@ -0,0 +1,99 @@
++# BoxedWine WebGL Win32 DLL Build
++
++These instructions build the Wine DLLs used by the BoxedWine WebGL
++as true Win32 DLLs. This matters because a normal Wine build
++can produce Wine builtin PE DLLs; those DLLs may contain the marker
++`Wine builtin DLL` and do not behave the same in BoxedWine.
++
++- build native Wine tools first;
++- configure the DLL build with `--host=i686-w64-mingw32`;
++- pass `--disable-kernel32`;
++- define `USE_WIN32_OPENGL` and `USE_WIN32_VULKAN`;
++- link with `-static-libgcc`.
++
++## Prerequisites
++
++On Debian or Ubuntu, install the Wine build dependencies and MinGW:
++
++```sh
++sudo apt build-dep wine
++sudo apt install mingw-w64 git flex bison
++```
++
++The 32-bit build also needs enough 32-bit development packages for Wine's
++native tools configure step. If FreeType development files are not available,
++the script configures the tools build with `--without-freetype`.
++
++## Build
++
++From the top level of this Wine source checkout:
++
++```sh
++./build-boxedwine-webgl-dlls.sh
++```
++
++By default, the script writes build intermediates to:
++
++```text
++../boxedwine-webgl-wine-build
++```
++
++and copies the final DLLs to:
++
++```text
++../boxedwine-webgl-wine-build/boxedwine-webgl-dlls
++```
++
++To choose a different build directory:
++
++```sh
++./build-boxedwine-webgl-dlls.sh --build-dir /tmp/boxedwine-webgl-wine-build
++```
++
++To choose the parallelism:
++
++```sh
++./build-boxedwine-webgl-dlls.sh --jobs 8
++```
++
++## Outputs
++
++The script builds and stages these DLLs:
++
++- `d3d8.dll`
++- `d3d9.dll`
++- `ddraw.dll`
++- `dxgi.dll`
++- `d3dx9_36.dll`
++- `d3dx9_43.dll`
++- `d3dxof.dll`
++- `wined3d.dll`
++
++It also builds and stages these Wine graphics tests:
++
++- `d3d8_test.exe`
++- `d3d9_test.exe`
++- `ddraw_test.exe`
++- `d3dx9_43_test.exe`
++- `d3dxof_test.exe`
++
++The DLLs are written to `boxedwine-webgl-dlls/`, and the test executables are
++written to `boxedwine-webgl-tests/`. The script prints each file's size and
++SHA-256 hash at the end.
++
++## Sanity Checks
++
++After a successful build, verify that `d3d9.dll` does not contain the builtin
++marker:
++
++```sh
++strings ../boxedwine-webgl-wine-build/boxedwine-webgl-dlls/d3d9.dll | grep 'Wine builtin DLL'
++```
++
++That command should print nothing.
++
++You can also confirm that `d3d9.dll` imports `wined3d.dll`:
++
++```sh
++i686-w64-mingw32-objdump -p ../boxedwine-webgl-wine-build/boxedwine-webgl-dlls/d3d9.dll | grep 'DLL Name'
++```
+diff --git a/build-boxedwine-webgl-dlls.sh b/build-boxedwine-webgl-dlls.sh
+new file mode 100755
+index 0000000..f6be68e
+--- /dev/null
++++ b/build-boxedwine-webgl-dlls.sh
+@@ -0,0 +1,178 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++usage() {
++    cat <<'EOF'
++Usage: ./build-boxedwine-webgl-dlls.sh [options]
++
++Build true Win32 Wine DLLs for BoxedWine WebGL.
++
++Options:
++  --build-dir DIR   Build/output directory.
++                    Default: ../boxedwine-webgl-wine-build
++  --jobs N          Parallel make jobs. Default: detected CPU count.
++  --help            Show this help.
++
++Outputs:
++  DIR/boxedwine-webgl-dlls/{d3d8,d3d9,ddraw,dxgi,d3dx9_36,d3dx9_43,d3dxof,wined3d}.dll
++  DIR/boxedwine-webgl-tests/{d3d8,d3d9,ddraw,d3dx9_43,d3dxof}_test.exe
++EOF
++}
++
++script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++build_dir="$(cd "$script_dir/.." && pwd)/boxedwine-webgl-wine-build"
++jobs="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 1)"
++
++while [ "$#" -gt 0 ]; do
++    case "$1" in
++        --build-dir)
++            if [ "$#" -lt 2 ]; then
++                echo "error: --build-dir requires a value" >&2
++                exit 2
++            fi
++            build_dir="$2"
++            shift 2
++            ;;
++        --jobs)
++            if [ "$#" -lt 2 ]; then
++                echo "error: --jobs requires a value" >&2
++                exit 2
++            fi
++            jobs="$2"
++            shift 2
++            ;;
++        --help|-h)
++            usage
++            exit 0
++            ;;
++        *)
++            echo "error: unknown option '$1'" >&2
++            usage >&2
++            exit 2
++            ;;
++    esac
++done
++
++case "$jobs" in
++    ''|*[!0-9]*)
++        echo "error: --jobs must be a positive integer" >&2
++        exit 2
++        ;;
++    0)
++        echo "error: --jobs must be greater than zero" >&2
++        exit 2
++        ;;
++esac
++
++require_tool() {
++    if ! command -v "$1" >/dev/null 2>&1; then
++        echo "error: required tool '$1' was not found in PATH" >&2
++        exit 1
++    fi
++}
++
++require_tool make
++require_tool gcc
++require_tool i686-w64-mingw32-gcc
++require_tool i686-w64-mingw32-objdump
++require_tool sha256sum
++require_tool strings
++
++wine_tools_dir="$build_dir/wine-tools"
++wine_win32_dir="$build_dir/wine-win32"
++output_dir="$build_dir/boxedwine-webgl-dlls"
++tests_output_dir="$build_dir/boxedwine-webgl-tests"
++
++echo "Wine source: $script_dir"
++echo "Build dir:   $build_dir"
++echo "Jobs:        $jobs"
++
++mkdir -p "$wine_tools_dir" "$wine_win32_dir" "$output_dir" "$tests_output_dir"
++
++echo
++echo "Configuring native Wine tools..."
++(
++    cd "$wine_tools_dir"
++    "$script_dir/configure" --without-x --without-freetype
++)
++
++echo
++echo "Building native Wine tools..."
++make -C "$wine_tools_dir" -j"$jobs"
++
++echo
++echo "Configuring true Win32 DLL build..."
++(
++    cd "$wine_win32_dir"
++    "$script_dir/configure" \
++        --without-x \
++        --disable-kernel32 \
++        --without-freetype \
++        --host=i686-w64-mingw32 \
++        CFLAGS="-O3 -DWINE_NO_DEBUG_MSGS -DWINE_NOWINSOCK -DUSE_WIN32_OPENGL -DUSE_WIN32_VULKAN" \
++        --with-wine-tools="$wine_tools_dir/" \
++        LDFLAGS=" -static-libgcc"
++)
++
++echo
++echo "Building DLLs and tests..."
++make -C "$wine_win32_dir" -j"$jobs" \
++    dlls/wined3d/wined3d.dll \
++    dlls/d3d9/d3d9.dll \
++    dlls/d3d8/d3d8.dll \
++    dlls/ddraw/ddraw.dll \
++    dlls/dxgi/dxgi.dll \
++    dlls/d3dx9_36/d3dx9_36.dll \
++    dlls/d3dx9_43/d3dx9_43.dll \
++    dlls/d3dxof/d3dxof.dll \
++    dlls/d3d9/tests/d3d9_test.exe \
++    dlls/d3d8/tests/d3d8_test.exe \
++    dlls/ddraw/tests/ddraw_test.exe \
++    dlls/d3dx9_43/tests/d3dx9_43_test.exe \
++    dlls/d3dxof/tests/d3dxof_test.exe
++
++echo
++echo "Copying DLLs to $output_dir..."
++cp -f "$wine_win32_dir/dlls/wined3d/wined3d.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/d3d9/d3d9.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/d3d8/d3d8.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/ddraw/ddraw.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/dxgi/dxgi.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/d3dx9_36/d3dx9_36.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/d3dx9_43/d3dx9_43.dll" "$output_dir/"
++cp -f "$wine_win32_dir/dlls/d3dxof/d3dxof.dll" "$output_dir/"
++
++echo
++echo "Copying tests to $tests_output_dir..."
++cp -f "$wine_win32_dir/dlls/d3d9/tests/d3d9_test.exe" "$tests_output_dir/"
++cp -f "$wine_win32_dir/dlls/d3d8/tests/d3d8_test.exe" "$tests_output_dir/"
++cp -f "$wine_win32_dir/dlls/ddraw/tests/ddraw_test.exe" "$tests_output_dir/"
++cp -f "$wine_win32_dir/dlls/d3dx9_43/tests/d3dx9_43_test.exe" "$tests_output_dir/"
++cp -f "$wine_win32_dir/dlls/d3dxof/tests/d3dxof_test.exe" "$tests_output_dir/"
++
++echo
++echo "DLL build output:"
++for dll in d3d8.dll d3d9.dll ddraw.dll dxgi.dll d3dx9_36.dll d3dx9_43.dll d3dxof.dll wined3d.dll; do
++    path="$output_dir/$dll"
++    printf "%-14s %10s " "$dll" "$(stat -c %s "$path")"
++    sha256sum "$path" | awk '{print $1}'
++done
++
++echo
++echo "Test build output:"
++for test in d3d8_test.exe d3d9_test.exe ddraw_test.exe d3dx9_43_test.exe d3dxof_test.exe; do
++    path="$tests_output_dir/$test"
++    printf "%-20s %10s " "$test" "$(stat -c %s "$path")"
++    sha256sum "$path" | awk '{print $1}'
++done
++
++echo
++if strings "$output_dir/d3d9.dll" | grep -q "Wine builtin DLL"; then
++    echo "warning: d3d9.dll contains 'Wine builtin DLL'; this is not the expected true Win32 output." >&2
++else
++    echo "Sanity check passed: d3d9.dll does not contain 'Wine builtin DLL'."
++fi
++
++echo
++echo "d3d9.dll imports:"
++i686-w64-mingw32-objdump -p "$output_dir/d3d9.dll" | grep "DLL Name" || true
+diff --git a/dlls/wined3d/wined3d_main.c b/dlls/wined3d/wined3d_main.c
+index 91d8dd5..8083ea4 100644
+--- a/dlls/wined3d/wined3d_main.c
++++ b/dlls/wined3d/wined3d_main.c
+@@ -31,6 +31,7 @@
+ #define VK_NO_PROTOTYPES
+ #include "wine/vulkan.h"
+ #include <vkd3d_utils.h>
++#include <stdio.h>
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(d3d);
+ WINE_DECLARE_DEBUG_CHANNEL(vkd3d);
+@@ -129,6 +130,8 @@ struct wined3d_settings wined3d_settings =
+     .max_sm_cs = UINT_MAX,
+     .renderer = WINED3D_RENDERER_AUTO,
+     .shader_backend = WINED3D_SHADER_BACKEND_AUTO,
++    .webgl = true,
++    .webgl_glsl_es = true,
+ };
+ 
+ enum wined3d_renderer CDECL wined3d_get_renderer(void)
+@@ -281,6 +284,10 @@ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
+     unsigned int tmpvalue;
+     WNDCLASSA wc;
+ 
++    snprintf(buffer, sizeof(buffer), "BoxedWine WebGL WineD3D build timestamp: %s %s\n", __DATE__, __TIME__);
++    __wine_dbg_output(buffer);
++    ERR_(winediag)("BoxedWine WebGL WineD3D loaded as wined3d.dll.\n");
++
+     wined3d_context_tls_idx = TlsAlloc();
+     if (wined3d_context_tls_idx == TLS_OUT_OF_INDEXES)
+     {
+@@ -468,8 +475,23 @@ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
+             ERR_(winediag)("Using the HLSL-based FFP backend.\n");
+             wined3d_settings.ffp_hlsl = tmpvalue;
+         }
++        if (!get_config_key_dword(hkey, appkey, env, "webgl", &tmpvalue))
++        {
++            wined3d_settings.webgl = !!tmpvalue;
++            ERR_(winediag)("%s the WebGL-compatible profile.\n",
++                    wined3d_settings.webgl ? "Using" : "Disabling");
++        }
++        if (!get_config_key_dword(hkey, appkey, env, "webgl_glsl_es", &tmpvalue))
++        {
++            wined3d_settings.webgl_glsl_es = !!tmpvalue;
++            ERR_(winediag)("%s GLSL ES output for the WebGL-compatible profile.\n",
++                    wined3d_settings.webgl_glsl_es ? "Using" : "Disabling");
++        }
+     }
+ 
++    if (wined3d_settings.webgl)
++        TRACE("WebGL-compatible profile is enabled.\n");
++
+     if (appkey) RegCloseKey( appkey );
+     if (hkey) RegCloseKey( hkey );
+ 
+diff --git a/dlls/wined3d/wined3d_private.h b/dlls/wined3d/wined3d_private.h
+index 934239e..1e9d084 100644
+--- a/dlls/wined3d/wined3d_private.h
++++ b/dlls/wined3d/wined3d_private.h
+@@ -491,6 +491,8 @@ struct wined3d_settings
+     bool check_float_constants;
+     bool cb_access_map_w;
+     bool ffp_hlsl;
++    bool webgl;
++    bool webgl_glsl_es;
+ };
+ 
+ extern struct wined3d_settings wined3d_settings;

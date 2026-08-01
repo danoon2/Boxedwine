@@ -15,11 +15,12 @@ an exploratory run whose changed counts will be reviewed before updating the
 baseline.
 
 The exact browser policy also pins
-`webgl-test-divergences-v1.json`. That manifest classifies every `skip()` and
+`webgl-test-divergences-v2.json`. That manifest classifies every `skip()` and
 `todo_wine_if()` added to Wine's graphics tests by the current WebGL patch as
 an intentional WebGL limit, unimplemented emulation, or defect to fix.
-`webglTestDivergences.py` verifies the patch hash, modified-test-file set, and
-that every added test rule is classified exactly once before Chrome launches.
+`webglTestDivergences.py` verifies every ordered patch hash, enforces the
+production/test-only file boundary, and requires every added test rule to be
+classified exactly once before Chrome launches.
 
 On Linux or WSL, the same graphics selectors can run against a native
 pure-i386 Wine 11 tree with `--native-wine-root`. The stable native comparison
@@ -235,10 +236,10 @@ The prepared `wine_tests_v6.zip` is a flat archive containing:
 - `SHA256SUMS`: hashes for all ten payload files above.
 
 The prepared graphics upload artifact is `tools/wineTests/wine_tests_v6.zip`.
-It is 11,990,316 bytes and its SHA-256 is:
+It is 11,993,458 bytes and its SHA-256 is:
 
 ```text
-b90f3ba7346042a25a0f54099156b6674787177678fddd09b16b1822e4356b30
+a6cdc0c490a4bfcb2f4c4df163ec4cba82283dd0941cbe1f1120fc39c63bff19
 ```
 
 The public native default remains `wine_tests_v4.zip`. Browser DirectDraw,

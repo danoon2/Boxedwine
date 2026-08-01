@@ -1,0 +1,366 @@
+{
+  "schema_version": 2,
+  "manifest_id": "wine11-webgl-test-divergences-v2",
+  "recorded_at": "2026-07-29",
+  "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
+  "production_patches": [
+    {
+      "patch_id": "build-config",
+      "category": "build_and_configuration",
+      "path": "tools/d3dToWebGL/webgl-build-config-against-wine-11.0.patch",
+      "sha256": "b4ffd13243997003df7d090f07bb361ce6604b1c5a20101174e70f6e58771b67"
+    },
+    {
+      "patch_id": "adapter-context-caps",
+      "category": "adapter_context_and_capabilities",
+      "path": "tools/d3dToWebGL/webgl-adapter-context-caps-against-wine-11.0.patch",
+      "sha256": "ff7078f7b9c47c5f766b5d25099d180b49978742621322f7d9e326b548b71af9"
+    },
+    {
+      "patch_id": "shader-generation-glsl-es",
+      "category": "shader_generation_and_glsl_es",
+      "path": "tools/d3dToWebGL/webgl-shader-generation-glsl-es-against-wine-11.0.patch",
+      "sha256": "ecfb77a72311ac5065fd45237f72d7f19ce428358ed2b3cfbb95a18cd9cf1c2c"
+    },
+    {
+      "patch_id": "texture-formats-transfers",
+      "category": "texture_formats_transfers_and_readback",
+      "path": "tools/d3dToWebGL/webgl-texture-formats-transfers-against-wine-11.0.patch",
+      "sha256": "d2a2277103c0750720b5ba8a5702967750f692bf4d6244a1441d2990a3adea91"
+    },
+    {
+      "patch_id": "blitter-batching",
+      "category": "glsl_blitter_and_gpu_batching",
+      "path": "tools/d3dToWebGL/webgl-blitter-batching-against-wine-11.0.patch",
+      "sha256": "f522da7a085fe1eebb571f67c08dc0934cd0fa73c63f748c17b4c2cf956978e7"
+    },
+    {
+      "patch_id": "directdraw-runtime-presentation",
+      "category": "directdraw_runtime_presentation_overlays_and_legacy_d3d",
+      "path": "tools/d3dToWebGL/webgl-directdraw-runtime-presentation-against-wine-11.0.patch",
+      "sha256": "c0d49509e4af2f92c9a8585d56b1c9b25fc9eb24762f6e83a03b409f522539f8"
+    },
+    {
+      "patch_id": "d3dx9-assets-compatibility",
+      "category": "d3dx9_assets_animation_mesh_and_compatibility",
+      "path": "tools/d3dToWebGL/webgl-d3dx9-assets-compatibility-against-wine-11.0.patch",
+      "sha256": "345f7ccd04343497eef35fe00f92af86bb0104e08b051569df873ad17002687b"
+    },
+    {
+      "patch_id": "d3dxof-parser-hardening",
+      "category": "d3dxof_parser_hardening",
+      "path": "tools/d3dToWebGL/webgl-d3dxof-parser-hardening-against-wine-11.0.patch",
+      "sha256": "2fb69da8007362dd851e87af0ec165999480cd9cf7140f490c97fc74901a14c5"
+    },
+    {
+      "patch_id": "wined3d-draw-state-query",
+      "category": "wined3d_draw_state_queries_and_resources",
+      "path": "tools/d3dToWebGL/webgl-wined3d-draw-state-query-against-wine-11.0.patch",
+      "sha256": "e6582e4f30d0259915e49e5d6a9311013c153a1de1c714d6371d052906fc8bee"
+    },
+    {
+      "patch_id": "d3d8-d3d9-compatibility-diagnostics",
+      "category": "d3d8_d3d9_compatibility_and_diagnostics",
+      "path": "tools/d3dToWebGL/webgl-d3d8-d3d9-compatibility-diagnostics-against-wine-11.0.patch",
+      "sha256": "3c88734adaa89b3a5a9660d2a790a4d2abe9f2d20144e8eda3a0d025cd6a8040"
+    }
+  ],
+  "test_patch": {
+    "patch_id": "test-expectations",
+    "path": "tools/d3dToWebGL/webgl-tests-against-wine-11.0.patch",
+    "sha256": "e192c06909ae45be954b7fb774a563f86c6228526539de62748911065eddf963"
+  },
+  "policy": "No production patch may modify Wine tests. Every added skip() and todo_wine_if() policy in the test-only patch must match exactly one classified rule.",
+  "categories": {
+    "intentional_webgl_limit": "The browser or WebGL 2 API deliberately does not expose the desktop capability or execution environment required by the test.",
+    "unimplemented_emulation": "The behavior can potentially be emulated above WebGL, but the Wine WebGL backend does not implement that emulation yet.",
+    "defect_to_fix": "The behavior should work through the current abstraction and remains a correctness or robustness defect."
+  },
+  "modified_test_files": [
+    "dlls/d3d8/tests/device.c",
+    "dlls/d3d8/tests/visual.c",
+    "dlls/d3d9/tests/device.c",
+    "dlls/d3d9/tests/visual.c",
+    "dlls/ddraw/tests/ddraw1.c",
+    "dlls/ddraw/tests/ddraw2.c",
+    "dlls/ddraw/tests/ddraw4.c",
+    "dlls/ddraw/tests/ddraw7.c",
+    "dlls/ddraw/tests/visual.c"
+  ],
+  "upstream_reference": {
+    "build": "/home/james/boxedwine-wine11-tests/build-i386",
+    "test_executable_sha256": {
+      "ddraw": "b57ac0f1df8d6bdcaa38a41dc331b4e87c889fa29edb08676e017845b215e972",
+      "d3d8": "47b10444753a22b918646537af193efb0eea3871a7a98bb7b1d26f5af5ffc9c8",
+      "d3d9": "5efbb8fdc8bb201d46d328e278b559aa52049da2ce260cdbd639445d31fc2695",
+      "d3dx9_43": "8709aa25465c1b0efb59a137e4d5f842ab9bf5f9ff60c894fdd868786811a5aa",
+      "d3dxof": "d7e2d0a4e4701f4fc5a20ae94e25bd2583c9806e302c0d8d5028434c4dc8e252"
+    },
+    "stable_native_comparison": {
+      "result": "Exact count match with the adapted v6 executables for all seven stable native groups.",
+      "runs": [
+        "/home/james/.cache/boxedwine/wineTests/runs/20260729-184756-556595",
+        "/home/james/.cache/boxedwine/wineTests/runs/20260729-184809-147273",
+        "/home/james/.cache/boxedwine/wineTests/runs/20260729-184820-835794",
+        "/home/james/.cache/boxedwine/wineTests/runs/20260729-184835-481538",
+        "/home/james/.cache/boxedwine/wineTests/runs/20260729-184903-133859"
+      ]
+    }
+  },
+  "classified_rules": [
+    {
+      "category": "intentional_webgl_limit",
+      "rationale": "These tests require browser-window, display-mode, WebGL format, multisample, synchronization, memory-budget, or front-buffer capabilities that WebGL 2 intentionally does not expose.",
+      "skip_rules": [
+        {
+          "marker": "skip(\"Could not get cursor position, skipping test.\\n\");",
+          "occurrences": 2
+        },
+        {
+          "marker": "skip(\"D3DFMT_YUY2 format conversion is not supported by WebGL.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL browser windowing does not support native foreground/topmost style transitions.\\n\");",
+          "occurrences": 4
+        },
+        {
+          "marker": "skip(\"WebGL buffer upload synchronisation does not expose desktop dynamic-map timing semantics.\\n\");",
+          "occurrences": 2
+        },
+        {
+          "marker": "skip(\"WebGL does not expose desktop D3D8 multisample CopyRects semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not expose desktop D3D8 multisample mask semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not expose desktop D3D9 multisample mask semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not expose desktop GL scaled multisample resolves.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not expose desktop packed YUV surface block semantics for %s.\\n\",",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not expose desktop user clip-distance clipping.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not preserve desktop mismatched multisample color/depth semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not preserve desktop multisampled front-buffer readback semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support D3DFMT_A32B32G32R32F render targets for this fog test.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support D3DFMT_A32B32G32R32F render targets for this texture-transform test.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL dynamic vertex-buffer staging cannot run this desktop synchronization stress test within wasm memory limits.\\n\");",
+          "occurrences": 2
+        },
+        {
+          "marker": "skip(\"WebGL exposes a single browser-backed display mode.\\n\");",
+          "occurrences": 2
+        },
+        {
+          "marker": "skip(\"WebGL uses a fixed browser-backed display mode, skipping multi-object display mode restore test.\\n\");",
+          "occurrences": 4
+        },
+        {
+          "marker": "skip(\"WebGL uses a fixed memory budget and browser-backed GPU scheduling, skipping map synchronisation stress test.\\n\");",
+          "occurrences": 2
+        }
+      ],
+      "todo_rules": []
+    },
+    {
+      "category": "unimplemented_emulation",
+      "rationale": "These desktop Direct3D and legacy DirectDraw behaviors could be translated or emulated, but the current WebGL backend has no complete implementation.",
+      "skip_rules": [
+        {
+          "marker": "skip(\"WebGL does not keep lockable depth CPU contents coherent after GPU clears.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not match desktop D3D9 non-indexed stream-frequency corner cases.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not preserve default depth contents across presentation.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not preserve desktop D3D depth-buffer copy semantics across render targets.\\n\");",
+          "occurrences": 3
+        },
+        {
+          "marker": "skip(\"WebGL does not preserve desktop D3D depth-stencil blit semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not preserve desktop multisampled depth-stencil blit semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support legacy ddraw depth surface readback.\\n\");",
+          "occurrences": 4
+        },
+        {
+          "marker": "skip(\"WebGL does not support the legacy ddraw1 execute-buffer alpha test.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support the legacy ddraw1 execute-buffer data test.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support the legacy ddraw1 execute-buffer filling convention test.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support the legacy ddraw1 execute-buffer lighting tests.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support the legacy ddraw1 execute-buffer material test.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support the legacy ddraw1 execute-buffer multiple devices test.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support the legacy ddraw1 execute-buffer shademode test.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support the legacy ddraw1 execute-buffer system-memory x-channel test.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support the legacy ddraw1 execute-buffer transform vertices test.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support the legacy ddraw1 find-device test.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support the legacy ddraw1 viewport object test.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not support the legacy ddraw1 viewport rendering test.\\n\");",
+          "occurrences": 1
+        }
+      ],
+      "todo_rules": []
+    },
+    {
+      "category": "defect_to_fix",
+      "rationale": "These rules accept or avoid mismatches that should be fixed in the Wine-to-WebGL translation, BoxedWine emulation, or test-safety path.",
+      "skip_rules": [
+        {
+          "marker": "skip(\"Skipping invalid clipper pointer refcount tests under WebGL.\\n\");",
+          "occurrences": 4
+        },
+        {
+          "marker": "skip(\"Skipping invalid output pointer test under WebGL.\\n\");",
+          "occurrences": 4
+        },
+        {
+          "marker": "skip(\"WebGL depth range and viewport edge semantics differ from this desktop D3D validation.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL depth range semantics do not match legacy ddraw depth blits.\\n\");",
+          "occurrences": 3
+        },
+        {
+          "marker": "skip(\"WebGL depth-bias precision does not match desktop D3D validation.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL fragment coordinate origin and pixel-center semantics differ from D3D9 vPos.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL rasterization rules do not match desktop D3D9 filling convention edge cases.\\n\");",
+          "occurrences": 1
+        }
+      ],
+      "todo_rules": [
+        {
+          "marker": "todo_wine_if (!is_webgl() && tests[i].todo)",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if(!is_webgl() && i == 0 && x_side == 0 && y_side == 1 && !is_win64 && !new_wow64)",
+          "occurrences": 1
+        },
+        {
+          "marker": "todo_wine_if(!is_webgl() && tests[i].vertexmode == D3DFOG_NONE) ok(color_match(color, tests[i].color_left, 1),",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if((tests[i].caps & DDSCAPS_VIDEOMEMORY && surface_desc.dwZBufferBitDepth != 16)",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if((todo || (is_webgl() && i == 5)) && !compare_color(colour, expected, 1))",
+          "occurrences": 4
+        },
+        {
+          "marker": "todo_wine_if(i == 1 && (!is_webgl() || !compare_color(color, tests[i].color_left, 1)))",
+          "occurrences": 1
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && !activateapp_testdata.received)",
+          "occurrences": 12
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && (tests[i].caps & DDSCAPS_ZBUFFER)",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && (tests[i].caps & DDSCAPS_ZBUFFER) && (*color & 0x00ffffff) != 0x00ffffff)",
+          "occurrences": 3
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && (tests[i].caps & DDSCAPS_ZBUFFER) && *color != 0)",
+          "occurrences": 3
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && (tests[i].caps & DDSCAPS_ZBUFFER) && *color != tests[i].result)",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && expected == 0x00ffffff && color != expected) ok_(__FILE__, line)(",
+          "occurrences": 1
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && tests[i].shademode == D3DSHADE_FLAT",
+          "occurrences": 8
+        },
+        {
+          "marker": "todo_wine_if(tests[i].todo && (!is_webgl() || !compare_color(color, tests[i].middle_color, 2)))",
+          "occurrences": 1
+        }
+      ]
+    }
+  ]
+}

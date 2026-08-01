@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "baseline_id": "wine11-native-pure-i386-wslg-v1",
+  "recorded_at": "2026-07-29",
+  "policy": "Exact stable native comparison subset using fresh WINEARCH=win32 prefixes.",
+  "scope_note": "The subset avoids display-mode-changing groups that do not complete under WSLg's fixed desktop mode. Run other groups with --no-native-graphics-baseline for exploratory evidence.",
+  "reference_inputs": {
+    "graphics_tests_archive": "wine_tests_v6.zip",
+    "wine_version": "wine-11.0",
+    "wine_git_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
+    "wine_source_dirty": true,
+    "runtime_sha256": {
+      "loader/wine": "ecca2a1057803880c325077439733f9b0eb14a866eccc8ed165322906ae474bd",
+      "loader/wine-preloader": "47a8bb439349264886a3aff4a3947c85797be7bbed8045beff2a205e0ce01976",
+      "server/wineserver": "9698962392ce785717844b236547c63db2c2b6f5c36d0612716921bd2c1c8d65",
+      "dlls/ntdll/ntdll.dll.so": "1bbeb8c593b4501e5c3e07b8c662c6d70d2b0ea2781ac8e01525bb3a15e881bf",
+      "dlls/win32u/win32u.dll.so": "f749deff24346a7b4492199d02e1154cacc77f209525e4b828bb9fb51e084fa9",
+      "dlls/winex11.drv/winex11.so": "44a22845ff2d49c78e9fc29181a0680df7669779a6ef04182effb14c9ba65449",
+      "dlls/opengl32/opengl32.dll.so": "70cf72b61023e7ca78acd3680a25c7b479fa31e53094a39d03a533764b91aee4",
+      "dlls/wined3d/wined3d.dll.so": "862de9007795777e07c1406c35cfaefcfbc0b3d09ba242da82b46e405d8436b9",
+      "dlls/ddraw/ddraw.dll.so": "f15d2a814dbfd481f9efe484edf6d828f51c5ae83177b4d8f1c8f6fdea13f8c0",
+      "dlls/d3d8/d3d8.dll.so": "e288a7e7aa65042b91c1165a18cdb60ed8fb5d0f86d726a15348e90581cda4f3",
+      "dlls/d3d9/d3d9.dll.so": "c4b32e595a6d09cf53deb956c0c3d8c8b70abaafbad9c74cc05ae73564efa414",
+      "dlls/d3dx9_43/d3dx9_43.dll.so": "bdb7d25f154c0baf04dae7af91aaf2f70ad47a9669a77f90fc1b60954b0e3264",
+      "dlls/d3dxof/d3dxof.dll.so": "032adb07a1c05fb04a4ecfdc3e94e9e6a57dec69bbc5d81d828244280db729cc"
+    },
+    "test_executable_sha256": {
+      "ddraw": "f17b3651e491b334e1788c60d480b3bececee2621fe94f4fd2282e002b0bfcba",
+      "d3d8": "c132f99ff3bd8547d10412a14aed127233ff001218ba5a6f81c702287d81f81f",
+      "d3d9": "1d42eb50ada90f7d2e4b9bb145c2a36ce5caac5730be9c1115e9d766b0d656b6",
+      "d3dx9_43": "a2c3dfa3c1c0aabeaa5d0a9961ad16f2066574522041caf120046b8a225e96a8",
+      "d3dxof": "2327cf9140c0b2e891fd93ae1eb9a352631072edaf8cad50eb2881fb01989811"
+    }
+  },
+  "suites": {
+    "ddraw": {
+      "refcount": {
+        "tests": 96,
+        "todo": 10,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      }
+    },
+    "d3d8": {
+      "stateblock": {
+        "tests": 9283,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      }
+    },
+    "d3d9": {
+      "stateblock": {
+        "tests": 14738,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      }
+    },
+    "d3dx9_43": {
+      "core": {
+        "tests": 1485,
+        "todo": 99,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "line": {
+        "tests": 23,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "math": {
+        "tests": 32509,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      }
+    },
+    "d3dxof": {
+      "d3dxof": {
+        "tests": 192,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      }
+    }
+  }
+}

@@ -1,0 +1,1636 @@
+diff --git a/dlls/ddraw/clipper.c b/dlls/ddraw/clipper.c
+index 3159a34..6ab2477 100644
+--- a/dlls/ddraw/clipper.c
++++ b/dlls/ddraw/clipper.c
+@@ -134,6 +134,8 @@ static HRESULT WINAPI ddraw_clipper_SetHWnd(IDirectDrawClipper *iface, DWORD fla
+     }
+ 
+     wined3d_mutex_lock();
++    if (clipper->window != window)
++        clipper->clip_list_changed = TRUE;
+     clipper->window = window;
+     wined3d_mutex_unlock();
+ 
+@@ -281,6 +283,7 @@ static HRESULT WINAPI ddraw_clipper_GetClipList(IDirectDrawClipper *iface, RECT
+ static HRESULT WINAPI ddraw_clipper_SetClipList(IDirectDrawClipper *iface, RGNDATA *region, DWORD flags)
+ {
+     struct ddraw_clipper *clipper = impl_from_IDirectDrawClipper(iface);
++    DWORD region_size;
+ 
+     TRACE("iface %p, region %p, flags %#lx.\n", iface, region, flags);
+ 
+@@ -299,12 +302,18 @@ static HRESULT WINAPI ddraw_clipper_SetClipList(IDirectDrawClipper *iface, RGNDA
+         DeleteObject(clipper->region);
+     if (!region)
+         clipper->region = NULL;
+-    else if (!(clipper->region = ExtCreateRegion(NULL, 0, region)))
++    else
+     {
+-        wined3d_mutex_unlock();
+-        ERR("Failed to create region.\n");
+-        return E_FAIL;
++        region_size = region->rdh.dwSize + (region->rdh.nRgnSize
++                ? region->rdh.nRgnSize : region->rdh.nCount * sizeof(RECT));
++        if (!(clipper->region = ExtCreateRegion(NULL, region_size, region)))
++        {
++            wined3d_mutex_unlock();
++            ERR("Failed to create region.\n");
++            return E_FAIL;
++        }
+     }
++    clipper->clip_list_changed = TRUE;
+ 
+     wined3d_mutex_unlock();
+ 
+@@ -354,13 +363,15 @@ static HRESULT WINAPI ddraw_clipper_IsClipListChanged(IDirectDrawClipper *iface,
+ {
+     struct ddraw_clipper *clipper = impl_from_IDirectDrawClipper(iface);
+ 
+-    FIXME("iface %p, changed %p stub!\n", iface, changed);
++    TRACE("iface %p, changed %p.\n", iface, changed);
+ 
+-    if (!ddraw_clipper_is_valid(clipper))
++    if (!ddraw_clipper_is_valid(clipper) || !changed)
+         return DDERR_INVALIDPARAMS;
+ 
+-    /* XXX What is safest? */
+-    *changed = FALSE;
++    wined3d_mutex_lock();
++    *changed = clipper->clip_list_changed;
++    clipper->clip_list_changed = FALSE;
++    wined3d_mutex_unlock();
+ 
+     return DD_OK;
+ }
+@@ -382,6 +393,7 @@ HRESULT ddraw_clipper_init(struct ddraw_clipper *clipper)
+ {
+     clipper->IDirectDrawClipper_iface.lpVtbl = &ddraw_clipper_vtbl;
+     clipper->ref = 1;
++    clipper->clip_list_changed = FALSE;
+ 
+     return DD_OK;
+ }
+diff --git a/dlls/ddraw/ddraw.c b/dlls/ddraw/ddraw.c
+index fb8895f..6c3ef23 100644
+--- a/dlls/ddraw/ddraw.c
++++ b/dlls/ddraw/ddraw.c
+@@ -21,6 +21,8 @@
+  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+  */
+ 
++#include <string.h>
++
+ #include "ddraw_private.h"
+ #include "ddrawi.h"
+ #include "d3dhal.h"
+@@ -32,6 +34,15 @@ WINE_DEFAULT_DEBUG_CHANNEL(ddraw);
+ static const struct ddraw *exclusive_ddraw;
+ static HWND exclusive_window;
+ 
++static BOOL ddraw_webgl_enabled(void)
++{
++    char config[256];
++    DWORD len;
++
++    len = GetEnvironmentVariableA("WINE_D3D_CONFIG", config, sizeof(config));
++    return len && len < sizeof(config) && !!strstr(config, "webgl=1");
++}
++
+ /* Device identifier. Don't relay it to WineD3D */
+ static const DDDEVICEIDENTIFIER2 deviceidentifier =
+ {
+@@ -988,6 +999,9 @@ static HRESULT ddraw_set_cooperative_level(struct ddraw *ddraw, HWND window,
+             ERR("Failed to acquire focus window, hr %#lx.\n", hr);
+             goto done;
+         }
++
++        if (ddraw_webgl_enabled() && window && GetForegroundWindow() != window)
++            SetForegroundWindow(window);
+     }
+ 
+     if (cooplevel & DDSCL_EXCLUSIVE)
+@@ -5152,6 +5166,7 @@ HRESULT ddraw_init(struct ddraw *ddraw, DWORD flags, enum wined3d_device_type de
+     ddraw->immediate_context = wined3d_device_get_immediate_context(ddraw->wined3d_device);
+ 
+     list_init(&ddraw->surface_list);
++    list_init(&ddraw->overlay_z_order_list);
+     list_init(&ddraw->d3ddevice_list);
+     return DD_OK;
+ }
+diff --git a/dlls/ddraw/ddraw_private.h b/dlls/ddraw/ddraw_private.h
+index bd1df8e..6465bdd 100644
+--- a/dlls/ddraw/ddraw_private.h
++++ b/dlls/ddraw/ddraw_private.h
+@@ -107,6 +107,10 @@ struct ddraw
+     struct wined3d_swapchain *wined3d_swapchain;
+     struct wined3d_swapchain_state_parent state_parent;
+     HWND swapchain_window;
++    RECT webgl_frontbuffer_dirty;
++    BOOL webgl_frontbuffer_dirty_valid;
++    unsigned int webgl_frontbuffer_dirty_count;
++    DWORD webgl_last_present_time;
+ 
+     /* DirectDraw things, which are not handled by WineD3D */
+     DWORD                   cooperative_level;
+@@ -128,6 +132,7 @@ struct ddraw
+      * because of IParent
+      */
+     struct list surface_list;
++    struct list overlay_z_order_list;
+ 
+     /* FVF management */
+     struct FvfToDecl       *decls;
+@@ -213,8 +218,16 @@ struct ddraw_surface
+     struct ddraw_clipper *clipper;
+     struct ddraw_palette *palette;
+ 
++    struct ddraw_surface *overlay_dst_surface;
++    RECT overlay_src_rect;
++    RECT overlay_dst_rect;
++    DDOVERLAYFX overlay_fx;
++    DWORD overlay_flags;
++    BOOL overlay_visible;
++
+     /* For the ddraw surface list */
+     struct list             surface_list_entry;
++    struct list             overlay_z_order_entry;
+ 
+     DWORD                   Handle;
+     HDC dc;
+@@ -409,6 +422,7 @@ struct ddraw_clipper
+     HWND window;
+     HRGN region;
+     BOOL initialized;
++    BOOL clip_list_changed;
+ };
+ 
+ HRESULT ddraw_clipper_init(struct ddraw_clipper *clipper);
+@@ -666,26 +680,35 @@ static inline BOOL ddraw_surface_can_be_lost(const struct ddraw_surface *surface
+ 
+ static inline struct wined3d_texture *ddraw_surface_get_default_texture(struct ddraw_surface *surface, unsigned int flags)
+ {
+-    if (surface->draw_texture)
++    if (!surface->draw_texture)
+     {
+-        if (flags & DDRAW_SURFACE_READ && !(surface->texture_location & DDRAW_SURFACE_LOCATION_DEFAULT))
+-        {
+-            wined3d_device_context_copy_sub_resource_region(surface->ddraw->immediate_context,
+-                    wined3d_texture_get_resource(surface->wined3d_texture), surface->sub_resource_idx, 0, 0, 0,
+-                    wined3d_texture_get_resource(surface->draw_texture), surface->sub_resource_idx, NULL, 0);
+-            surface->texture_location |= DDRAW_SURFACE_LOCATION_DEFAULT;
+-        }
+-
+         if (flags & DDRAW_SURFACE_WRITE)
+             surface->texture_location = DDRAW_SURFACE_LOCATION_DEFAULT;
++        return surface->wined3d_texture;
++    }
++
++    if (flags & DDRAW_SURFACE_READ && !(surface->texture_location & DDRAW_SURFACE_LOCATION_DEFAULT))
++    {
++        wined3d_device_context_copy_sub_resource_region(surface->ddraw->immediate_context,
++                wined3d_texture_get_resource(surface->wined3d_texture), surface->sub_resource_idx, 0, 0, 0,
++                wined3d_texture_get_resource(surface->draw_texture), surface->sub_resource_idx, NULL, 0);
++        surface->texture_location |= DDRAW_SURFACE_LOCATION_DEFAULT;
+     }
++
++    if (flags & DDRAW_SURFACE_WRITE)
++        surface->texture_location = DDRAW_SURFACE_LOCATION_DEFAULT;
++
+     return surface->wined3d_texture;
+ }
+ 
+ static inline struct wined3d_texture *ddraw_surface_get_draw_texture(struct ddraw_surface *surface, unsigned int flags)
+ {
+     if (!surface->draw_texture)
++    {
++        if (flags & DDRAW_SURFACE_WRITE)
++            surface->texture_location = DDRAW_SURFACE_LOCATION_DRAW;
+         return surface->wined3d_texture;
++    }
+ 
+     if (flags & DDRAW_SURFACE_READ && !(surface->texture_location & DDRAW_SURFACE_LOCATION_DRAW))
+     {
+diff --git a/dlls/ddraw/device.c b/dlls/ddraw/device.c
+index 9882c26..b6a2fcb 100644
+--- a/dlls/ddraw/device.c
++++ b/dlls/ddraw/device.c
+@@ -32,6 +32,13 @@
+ WINE_DEFAULT_DEBUG_CHANNEL(ddraw);
+ WINE_DECLARE_DEBUG_CHANNEL(winediag);
+ 
++static BOOL ddraw_webgl_enabled(void)
++{
++    const char *config = getenv("WINE_D3D_CONFIG");
++
++    return config && strstr(config, "webgl=1");
++}
++
+ /* The device ID */
+ const GUID IID_D3DDEVICE_WineD3D = {
+   0xaef72d43,
+@@ -855,10 +862,11 @@ static HRESULT WINAPI d3d_device3_DeleteViewport(IDirect3DDevice3 *iface, IDirec
+ 
+     if (device->current_viewport == vp)
+     {
+-        TRACE("Deleting current viewport, unsetting and releasing.\n");
++        TRACE("Deleting current viewport, unsetting.\n");
+ 
+         viewport_deactivate(vp);
+-        IDirect3DViewport3_Release(viewport);
++        if (device->version >= 3)
++            IDirect3DViewport3_Release(viewport);
+         device->current_viewport = NULL;
+     }
+ 
+@@ -2974,8 +2982,13 @@ static HRESULT WINAPI d3d_device3_SetLightState(IDirect3DDevice3 *iface,
+                 rs = D3DRENDERSTATE_AMBIENT;
+                 break;
+             case D3DLIGHTSTATE_FOGMODE:       /* 4 */
+-                rs = D3DRENDERSTATE_FOGVERTEXMODE;
+-                break;
++                hr = IDirect3DDevice7_SetRenderState(&device->IDirect3DDevice7_iface,
++                        D3DRENDERSTATE_FOGVERTEXMODE, value);
++                if (SUCCEEDED(hr) && ddraw_webgl_enabled())
++                    hr = IDirect3DDevice7_SetRenderState(&device->IDirect3DDevice7_iface,
++                            D3DRENDERSTATE_FOGTABLEMODE, value);
++                wined3d_mutex_unlock();
++                return hr;
+             case D3DLIGHTSTATE_FOGSTART:      /* 5 */
+                 rs = D3DRENDERSTATE_FOGSTART;
+                 break;
+@@ -3465,6 +3478,9 @@ void d3d_device_apply_state(struct d3d_device *device, BOOL clear_state)
+     d3d_device_sync_surfaces(device);
+ }
+ 
++static HRESULT ddraw_streaming_buffer_upload_vertices(struct d3d_device *device,
++        const void *vertices, UINT size, UINT stride, DWORD fvf, UINT *vb_pos);
++
+ static HRESULT d3d_device7_DrawPrimitive(IDirect3DDevice7 *iface,
+         D3DPRIMITIVETYPE primitive_type, DWORD fvf, void *vertices,
+         DWORD vertex_count, DWORD flags)
+@@ -3488,8 +3504,7 @@ static HRESULT d3d_device7_DrawPrimitive(IDirect3DDevice7 *iface,
+ 
+     wined3d_mutex_lock();
+ 
+-    if (FAILED(hr = wined3d_streaming_buffer_upload(device->wined3d_device,
+-            &device->vertex_buffer, vertices, size, stride, &vb_pos)))
++    if (FAILED(hr = ddraw_streaming_buffer_upload_vertices(device, vertices, size, stride, fvf, &vb_pos)))
+         goto done;
+ 
+     hr = wined3d_stateblock_set_stream_source(device->state, 0, device->vertex_buffer.buffer, 0, stride);
+@@ -3507,6 +3522,36 @@ done:
+     return hr;
+ }
+ 
++static HRESULT ddraw_streaming_buffer_upload_vertices(struct d3d_device *device,
++        const void *vertices, UINT size, UINT stride, DWORD fvf, UINT *vb_pos)
++{
++    BOOL fixup_zero_rhw = ddraw_webgl_enabled() && (fvf & D3DFVF_POSITION_MASK) == D3DFVF_XYZRHW;
++    void *dst_data;
++    unsigned int i;
++    HRESULT hr;
++
++    if (!fixup_zero_rhw)
++        return wined3d_streaming_buffer_upload(device->wined3d_device,
++                &device->vertex_buffer, vertices, size, stride, vb_pos);
++
++    if (FAILED(hr = wined3d_streaming_buffer_map(device->wined3d_device,
++            &device->vertex_buffer, size, stride, vb_pos, &dst_data)))
++        return hr;
++
++    /* WebGL drops pretransformed vertices with RHW 0; native ddraw treats them as visible. */
++    memcpy(dst_data, vertices, size);
++    for (i = 0; i < size / stride; ++i)
++    {
++        float *position = (float *)((BYTE *)dst_data + i * stride);
++
++        if (position[3] == 0.0f)
++            position[3] = 1.0f;
++    }
++
++    wined3d_streaming_buffer_unmap(&device->vertex_buffer);
++    return D3D_OK;
++}
++
+ static HRESULT WINAPI d3d_device7_DrawPrimitive_FPUSetup(IDirect3DDevice7 *iface,
+         D3DPRIMITIVETYPE primitive_type, DWORD fvf, void *vertices,
+         DWORD vertex_count, DWORD flags)
+@@ -3539,7 +3584,6 @@ static void setup_lighting(const struct d3d_device *device, DWORD fvf, DWORD fla
+     wined3d_stateblock_set_render_state(device->state, WINED3D_RS_LIGHTING, enable);
+ }
+ 
+-
+ static HRESULT WINAPI d3d_device3_DrawPrimitive(IDirect3DDevice3 *iface,
+         D3DPRIMITIVETYPE primitive_type, DWORD fvf, void *vertices, DWORD vertex_count,
+         DWORD flags)
+@@ -3635,8 +3679,8 @@ static HRESULT d3d_device7_DrawIndexedPrimitive(IDirect3DDevice7 *iface,
+     /* Set the D3DDevice's FVF */
+     wined3d_mutex_lock();
+ 
+-    if (FAILED(hr = wined3d_streaming_buffer_upload(device->wined3d_device, &device->vertex_buffer,
+-            (char *)vertices + (min_index * stride), (max_index + 1 - min_index) * stride, stride, &vb_pos)))
++    if (FAILED(hr = ddraw_streaming_buffer_upload_vertices(device, (char *)vertices + (min_index * stride),
++            (max_index + 1 - min_index) * stride, stride, fvf, &vb_pos)))
+         goto done;
+ 
+     if (FAILED(hr = wined3d_streaming_buffer_upload(device->wined3d_device,
+@@ -3872,7 +3916,8 @@ static HRESULT WINAPI d3d_device2_GetClipStatus(IDirect3DDevice2 *iface, D3DCLIP
+  *  (DDERR_INVALIDPARAMS if D3DDrawPrimStrideData is NULL)
+  *
+  *****************************************************************************/
+-static void pack_strided_data(BYTE *dst, DWORD count, const D3DDRAWPRIMITIVESTRIDEDDATA *src, DWORD fvf)
++static void pack_strided_data(BYTE *dst, DWORD count, const D3DDRAWPRIMITIVESTRIDEDDATA *src, DWORD fvf,
++        BOOL fixup_zero_rhw)
+ {
+     DWORD i, tex, offset;
+ 
+@@ -3888,6 +3933,8 @@ static void pack_strided_data(BYTE *dst, DWORD count, const D3DDRAWPRIMITIVESTRI
+             if (fvf & D3DFVF_XYZRHW)
+             {
+                 memcpy(dst, ((BYTE *)src->position.lpvData) + offset, 4 * sizeof(float));
++                if (fixup_zero_rhw && ((float *)dst)[3] == 0.0f)
++                    ((float *)dst)[3] = 1.0f;
+                 dst += 4 * sizeof(float);
+             }
+             else
+@@ -3952,7 +3999,8 @@ static HRESULT d3d_device7_DrawPrimitiveStrided(IDirect3DDevice7 *iface, D3DPRIM
+     if (FAILED(hr = wined3d_streaming_buffer_map(device->wined3d_device,
+             &device->vertex_buffer, dst_size, dst_stride, &vb_pos, &dst_data)))
+         goto done;
+-    pack_strided_data(dst_data, vertex_count, strided_data, fvf);
++    pack_strided_data(dst_data, vertex_count, strided_data, fvf,
++            ddraw_webgl_enabled() && (fvf & D3DFVF_POSITION_MASK) == D3DFVF_XYZRHW);
+     wined3d_streaming_buffer_unmap(&device->vertex_buffer);
+ 
+     hr = wined3d_stateblock_set_stream_source(device->state, 0, device->vertex_buffer.buffer, 0, dst_stride);
+@@ -4052,7 +4100,8 @@ static HRESULT d3d_device7_DrawIndexedPrimitiveStrided(IDirect3DDevice7 *iface,
+     if (FAILED(hr = wined3d_streaming_buffer_map(device->wined3d_device,
+             &device->vertex_buffer, vtx_dst_size, vtx_dst_stride, &vb_pos, &dst_data)))
+         goto done;
+-    pack_strided_data(dst_data, vertex_count, strided_data, fvf);
++    pack_strided_data(dst_data, vertex_count, strided_data, fvf,
++            ddraw_webgl_enabled() && (fvf & D3DFVF_POSITION_MASK) == D3DFVF_XYZRHW);
+     wined3d_streaming_buffer_unmap(&device->vertex_buffer);
+ 
+     if (FAILED(hr = wined3d_streaming_buffer_upload(device->wined3d_device,
+@@ -6031,6 +6080,10 @@ static void copy_mipmap_chain(struct d3d_device *device, struct ddraw_surface *d
+         {
+             IDirectDrawSurface7_SetColorKey(&dst->IDirectDrawSurface7_iface, ckeyflag, &ddckey);
+         }
++        else if (hr == DDERR_NOCOLORKEY)
++        {
++            IDirectDrawSurface7_SetColorKey(&dst->IDirectDrawSurface7_iface, ckeyflag, NULL);
++        }
+     }
+ 
+     src_level = src;
+@@ -6922,6 +6975,8 @@ static HRESULT d3d_device_init(struct d3d_device *device, struct ddraw *ddraw, c
+ 
+     wined3d_streaming_buffer_init(&device->vertex_buffer, WINED3D_BIND_VERTEX_BUFFER);
+     wined3d_streaming_buffer_init(&device->index_buffer, WINED3D_BIND_INDEX_BUFFER);
++    if (ddraw_webgl_enabled())
++        device->vertex_buffer.bind_flags |= WINED3D_STREAMING_BUFFER_WEBGL_FORCE_VBO;
+ 
+     /* Render to the back buffer */
+     rtv = ddraw_surface_get_rendertarget_view(target);
+diff --git a/dlls/ddraw/light.c b/dlls/ddraw/light.c
+index a7b6f77..f4a031a 100644
+--- a/dlls/ddraw/light.c
++++ b/dlls/ddraw/light.c
+@@ -189,7 +189,6 @@ static HRESULT WINAPI d3d_light_SetLight(IDirect3DLight *iface, D3DLIGHT *data)
+     light7->dcvAmbient = zero_value;
+     light7->dvPosition = data->dvPosition;
+     light7->dvDirection = data->dvDirection;
+-    light7->dvRange = data->dvRange;
+     light7->dvFalloff = data->dvFalloff;
+     light7->dvAttenuation0 = data->dvAttenuation0;
+     light7->dvAttenuation1 = data->dvAttenuation1;
+@@ -197,6 +196,17 @@ static HRESULT WINAPI d3d_light_SetLight(IDirect3DLight *iface, D3DLIGHT *data)
+     light7->dvTheta = data->dvTheta;
+     light7->dvPhi = data->dvPhi;
+ 
++    /* Older IDirect3DLight callers commonly leave the range unset, and the
++     * DX6 SDK "Lights" sample even sets a spot-light range of 1.0 while
++     * native Direct3D still lights geometry much farther away. Keep D3DLIGHT2
++     * range semantics intact, but avoid clipping legacy D3DLIGHT point / spot
++     * lights before their attenuation has a chance to contribute. */
++    if (data->dwSize < sizeof(D3DLIGHT2)
++            && (data->dltType == D3DLIGHT_POINT || data->dltType == D3DLIGHT_SPOT))
++        light7->dvRange = D3DLIGHT_RANGE_MAX;
++    else
++        light7->dvRange = data->dvRange;
++
+     wined3d_mutex_lock();
+     memcpy(&light->light, data, sizeof(*data));
+ 
+diff --git a/dlls/ddraw/main.c b/dlls/ddraw/main.c
+index faf6e13..e35beb7 100644
+--- a/dlls/ddraw/main.c
++++ b/dlls/ddraw/main.c
+@@ -21,6 +21,9 @@
+  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+  */
+ 
++#include <stdlib.h>
++#include <string.h>
++
+ #define DDRAW_INIT_GUID
+ #include "ddraw_private.h"
+ #include "rpcproxy.h"
+@@ -39,6 +42,13 @@ DWORD force_refresh_rate = 0;
+ 
+ struct ddraw_handle_table global_handle_table;
+ 
++static BOOL ddraw_webgl_enabled(void)
++{
++    const char *config = getenv("WINE_D3D_CONFIG");
++
++    return config && strstr(config, "webgl=1");
++}
++
+ /* Structure for converting DirectDrawEnumerateA to DirectDrawEnumerateExA */
+ struct callback_info
+ {
+@@ -479,11 +489,12 @@ HRESULT WINAPI DirectDrawEnumerateExA(LPDDENUMCALLBACKEXA callback, void *contex
+     {
+         /* QuickTime expects the description "DirectDraw HAL" */
+         static CHAR driver_desc[] = "DirectDraw HAL",
++        webgl_driver_desc[] = "Primary Display Driver",
+         driver_name[] = "display";
+         BOOL cont_enum;
+ 
+         TRACE("Default interface: DirectDraw HAL\n");
+-        cont_enum = callback(NULL, driver_desc, driver_name, context, 0);
++        cont_enum = callback(NULL, ddraw_webgl_enabled() ? webgl_driver_desc : driver_desc, driver_name, context, 0);
+ 
+         /* The Battle.net System Checker expects both a NULL device and a GUID-based device */
+         if (cont_enum && (flags & DDENUM_ATTACHEDSECONDARYDEVICES))
+diff --git a/dlls/ddraw/surface.c b/dlls/ddraw/surface.c
+index e6ed79a..2a9d84c 100644
+--- a/dlls/ddraw/surface.c
++++ b/dlls/ddraw/surface.c
+@@ -21,6 +21,10 @@
+  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+  */
+ 
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++
+ #include "ddraw_private.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(ddraw);
+@@ -33,6 +37,112 @@ static const struct wined3d_parent_ops ddraw_surface_wined3d_parent_ops;
+ static const struct wined3d_parent_ops ddraw_texture_wined3d_parent_ops;
+ static const struct wined3d_parent_ops ddraw_view_wined3d_parent_ops;
+ 
++struct ddraw_profile_bucket
++{
++    ULONGLONG calls;
++    ULONGLONG total_us;
++    ULONGLONG max_us;
++    ULONGLONG pixels;
++    ULONGLONG extra0;
++    DWORD last_log;
++};
++
++static BOOL ddraw_profile_enabled(void)
++{
++    static int enabled = -1;
++    const char *value;
++
++    if (enabled == -1)
++    {
++        value = getenv("BOXEDWINE_WEBGL_PROFILE");
++        enabled = value && value[0] && strcmp(value, "0");
++    }
++
++    return enabled;
++}
++
++static ULONGLONG ddraw_profile_now_us(void)
++{
++    static LARGE_INTEGER freq;
++    LARGE_INTEGER counter;
++
++    if (!freq.QuadPart && !QueryPerformanceFrequency(&freq))
++        return GetTickCount64() * 1000;
++    if (!QueryPerformanceCounter(&counter))
++        return GetTickCount64() * 1000;
++
++    return counter.QuadPart * 1000000ull / freq.QuadPart;
++}
++
++static void ddraw_profile_record(struct ddraw_profile_bucket *bucket, const char *name,
++        ULONGLONG start_us, unsigned int pixels, unsigned int extra0)
++{
++    ULONGLONG elapsed_us;
++    DWORD now;
++
++    if (!start_us)
++        return;
++
++    elapsed_us = ddraw_profile_now_us() - start_us;
++    bucket->calls++;
++    bucket->total_us += elapsed_us;
++    if (elapsed_us > bucket->max_us)
++        bucket->max_us = elapsed_us;
++    bucket->pixels += pixels;
++    bucket->extra0 += extra0;
++
++    now = GetTickCount();
++    if (!bucket->last_log)
++        bucket->last_log = now;
++    if (now - bucket->last_log < 1000)
++        return;
++
++    fprintf(stderr, "BOXEDWINE_WEBGL_PROFILE wine.%s calls=%llu total_ms=%.3f avg_us=%llu max_us=%llu mpix=%.3f extra=%llu\n",
++            name, (unsigned long long)bucket->calls, bucket->total_us / 1000.0,
++            (unsigned long long)(bucket->total_us / (bucket->calls ? bucket->calls : 1)),
++            (unsigned long long)bucket->max_us, bucket->pixels / 1000000.0,
++            (unsigned long long)bucket->extra0);
++    bucket->calls = 0;
++    bucket->total_us = 0;
++    bucket->max_us = 0;
++    bucket->pixels = 0;
++    bucket->extra0 = 0;
++    bucket->last_log = now;
++}
++
++static unsigned int ddraw_profile_rect_pixels(const RECT *rect)
++{
++    LONG width, height;
++
++    if (!rect)
++        return 0;
++    width = rect->right - rect->left;
++    height = rect->bottom - rect->top;
++    return width > 0 && height > 0 ? width * height : 0;
++}
++
++static BOOL ddraw_webgl_enabled(void)
++{
++    const char *config = getenv("WINE_D3D_CONFIG");
++
++    return config && strstr(config, "webgl=1");
++}
++
++static BOOL ddraw_webgl_bltfast_locks_enabled(void)
++{
++    static int enabled = -1;
++    const char *value;
++
++    if (enabled == -1)
++    {
++        value = getenv("BOXEDWINE_WEBGL_BLTFAST_LOCKS");
++        enabled = value && value[0] && strcmp(value, "0");
++    }
++
++    return enabled;
++}
++
++static const char boxedwine_webgl_bltfast_locks_marker[] __attribute__((used)) = "BOXEDWINE_WEBGL_BLTFAST_LOCKS";
+ static inline struct ddraw_surface *impl_from_IDirectDrawGammaControl(IDirectDrawGammaControl *iface)
+ {
+     return CONTAINING_RECORD(iface, struct ddraw_surface, IDirectDrawGammaControl_iface);
+@@ -58,6 +168,95 @@ static BOOL ddraw_gdi_is_front(struct ddraw *ddraw)
+     return surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE;
+ }
+ 
++static BOOL ddraw_surface_has_visible_overlays(const struct ddraw_surface *dst_surface);
++static HRESULT ddraw_surface_composite_overlays_to_texture(struct ddraw_surface *dst_surface,
++        struct wined3d_texture *dst_texture);
++
++static const char boxedwine_webgl_frontbuffer_present_marker[] __attribute__((used)) = "BOXEDWINE_WEBGL_FRONTBUFFER_PRESENT_MIN_RECTS";
++
++static unsigned int ddraw_webgl_frontbuffer_present_min_rects(void)
++{
++    static int value = -1;
++    const char *env;
++
++    if (value == -1)
++    {
++        env = getenv("BOXEDWINE_WEBGL_FRONTBUFFER_PRESENT_MIN_RECTS");
++        value = env && env[0] ? atoi(env) : 0;
++        if (value < 0)
++            value = 0;
++    }
++
++    return value;
++}
++
++static BOOL ddraw_webgl_frontbuffer_update_due(struct ddraw *ddraw, const RECT *rect)
++{
++    unsigned int min_rects = ddraw_webgl_frontbuffer_present_min_rects();
++    DWORD now = GetTickCount();
++
++    if (ddraw->webgl_frontbuffer_dirty_valid)
++        UnionRect(&ddraw->webgl_frontbuffer_dirty, &ddraw->webgl_frontbuffer_dirty, rect);
++    else
++    {
++        ddraw->webgl_frontbuffer_dirty = *rect;
++        ddraw->webgl_frontbuffer_dirty_valid = TRUE;
++    }
++    ++ddraw->webgl_frontbuffer_dirty_count;
++
++    if (min_rects)
++        return ddraw->webgl_frontbuffer_dirty_count >= min_rects;
++
++    if (!ddraw->webgl_last_present_time)
++        return TRUE;
++
++    if (ddraw->webgl_frontbuffer_dirty_count < 128 && now - ddraw->webgl_last_present_time >= 16)
++        return TRUE;
++
++    if (now - ddraw->webgl_last_present_time >= 33)
++        return TRUE;
++
++    return ddraw->webgl_frontbuffer_dirty_count >= 2048;
++}
++
++static HRESULT ddraw_webgl_present_frontbuffer(struct ddraw *ddraw, const RECT *rect, unsigned int swap_interval)
++{
++    static struct ddraw_profile_bucket profile_bucket;
++    RECT present_rect;
++    ULONGLONG profile_start;
++    HRESULT hr;
++
++    if (ddraw->webgl_frontbuffer_dirty_valid)
++    {
++        if (rect)
++            UnionRect(&present_rect, &ddraw->webgl_frontbuffer_dirty, rect);
++        else
++            present_rect = ddraw->webgl_frontbuffer_dirty;
++    }
++    else if (rect)
++    {
++        present_rect = *rect;
++    }
++    else
++    {
++        return DD_OK;
++    }
++
++    profile_start = ddraw_profile_enabled() ? ddraw_profile_now_us() : 0;
++    if (SUCCEEDED(hr = wined3d_swapchain_present(ddraw->wined3d_swapchain,
++            &present_rect, &present_rect, NULL, swap_interval, 0)))
++    {
++        ddraw->webgl_frontbuffer_dirty_valid = FALSE;
++        ddraw->webgl_frontbuffer_dirty_count = 0;
++        ddraw->webgl_last_present_time = GetTickCount();
++        ddraw->flags |= DDRAW_SWAPPED;
++    }
++    ddraw_profile_record(&profile_bucket, "ddraw_present_frontbuffer", profile_start,
++            ddraw_profile_rect_pixels(&present_rect), swap_interval);
++
++    return hr;
++}
++
+ /* This is slow, of course. Also, in case of locks, we can't prevent other
+  * applications from drawing to the screen while we've locked the frontbuffer.
+  * We'd like to do this in wined3d instead, but for that to work wined3d needs
+@@ -67,6 +266,10 @@ HRESULT ddraw_surface_update_frontbuffer(struct ddraw_surface *surface,
+ {
+     struct wined3d_texture *dst_texture, *wined3d_texture;
+     struct ddraw *ddraw = surface->ddraw;
++    const RECT *update_rect_ptr = rect;
++    RECT composite_rect;
++    RECT update_rect;
++    BOOL webgl = ddraw_webgl_enabled();
+     HDC surface_dc, screen_dc;
+     int x, y, w, h;
+     HRESULT hr;
+@@ -87,6 +290,7 @@ HRESULT ddraw_surface_update_frontbuffer(struct ddraw_surface *surface,
+         SetRect(&r, 0, 0, surface->surface_desc.dwWidth, surface->surface_desc.dwHeight);
+         rect = &r;
+     }
++    update_rect_ptr = rect;
+ 
+     x = rect->left;
+     y = rect->top;
+@@ -141,19 +345,52 @@ HRESULT ddraw_surface_update_frontbuffer(struct ddraw_surface *surface,
+         /* Nothing to do, we control the frontbuffer, or at least the parts we
+          * care about. */
+         if (read)
+-            return DD_OK;
++        {
++            if (webgl && ddraw->webgl_frontbuffer_dirty_valid)
++            {
++                update_rect = ddraw->webgl_frontbuffer_dirty;
++                update_rect_ptr = &update_rect;
++                read = FALSE;
++            }
++            else
++            {
++                if (webgl)
++                    return ddraw_webgl_present_frontbuffer(ddraw, NULL, 0);
++                return DD_OK;
++            }
++        }
+ 
+-        if (swap_interval)
++        if (swap_interval || webgl)
+             dst_texture = wined3d_swapchain_get_back_buffer(ddraw->wined3d_swapchain, 0);
+         else
+             dst_texture = wined3d_swapchain_get_front_buffer(ddraw->wined3d_swapchain);
+ 
+-        if (SUCCEEDED(hr = wined3d_device_context_blt(ddraw->immediate_context, dst_texture, 0, rect,
+-                ddraw_surface_get_any_texture(surface, DDRAW_SURFACE_READ), surface->sub_resource_idx, rect, 0,
+-                NULL, WINED3D_TEXF_POINT)) && swap_interval)
++        if (webgl && ddraw->webgl_frontbuffer_dirty_valid && rect)
+         {
+-            hr = wined3d_swapchain_present(ddraw->wined3d_swapchain, rect, rect, NULL, swap_interval, 0);
+-            ddraw->flags |= DDRAW_SWAPPED;
++            UnionRect(&update_rect, &ddraw->webgl_frontbuffer_dirty, rect);
++            update_rect_ptr = &update_rect;
++        }
++
++        if (webgl && ddraw_surface_has_visible_overlays(surface))
++        {
++            SetRect(&composite_rect, 0, 0, surface->surface_desc.dwWidth, surface->surface_desc.dwHeight);
++            update_rect_ptr = &composite_rect;
++        }
++
++        if (SUCCEEDED(hr = wined3d_device_context_blt(ddraw->immediate_context, dst_texture, 0, update_rect_ptr,
++                ddraw_surface_get_any_texture(surface, DDRAW_SURFACE_READ), surface->sub_resource_idx, update_rect_ptr, 0,
++                NULL, WINED3D_TEXF_POINT)) && (swap_interval || webgl))
++        {
++            if (webgl)
++            {
++                if (SUCCEEDED(hr = ddraw_surface_composite_overlays_to_texture(surface, dst_texture)))
++                    hr = ddraw_webgl_present_frontbuffer(ddraw, update_rect_ptr, swap_interval);
++            }
++            else
++            {
++                hr = wined3d_swapchain_present(ddraw->wined3d_swapchain, rect, rect, NULL, swap_interval, 0);
++                ddraw->flags |= DDRAW_SWAPPED;
++            }
+         }
+         return hr;
+     }
+@@ -195,6 +432,20 @@ HRESULT ddraw_surface_update_frontbuffer(struct ddraw_surface *surface,
+     return DD_OK;
+ }
+ 
++static HRESULT ddraw_surface_update_frontbuffer_batched(struct ddraw_surface *surface,
++        const RECT *rect, BOOL read, unsigned int swap_interval)
++{
++    struct ddraw *ddraw = surface->ddraw;
++
++    if (ddraw_webgl_enabled() && !read && !swap_interval && rect)
++    {
++        if (!ddraw_webgl_frontbuffer_update_due(ddraw, rect))
++            return DD_OK;
++    }
++
++    return ddraw_surface_update_frontbuffer(surface, rect, read, swap_interval);
++}
++
+ /*****************************************************************************
+  * IUnknown parts follow
+  *****************************************************************************/
+@@ -1345,6 +1596,10 @@ static unsigned int ddraw_swap_interval_from_flags(DWORD flags)
+     }
+ }
+ 
++static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *dst_rect,
++        struct ddraw_surface *src_surface, const RECT *src_rect, DWORD flags, DWORD fill_colour,
++        const struct wined3d_blt_fx *fx, enum wined3d_texture_filter_type filter);
++
+ static void ddraw_texture_rename_to(struct ddraw_texture *dst_texture, struct wined3d_texture *wined3d_texture,
+         struct wined3d_texture *draw_texture, struct wined3d_rendertarget_view *rtv, void *texture_memory,
+         struct wined3d_rendertarget_view *current_rtv)
+@@ -1384,12 +1639,202 @@ static void ddraw_texture_rename_to(struct ddraw_texture *dst_texture, struct wi
+     dst_texture->texture_memory = texture_memory;
+ }
+ 
++static DWORD ddraw_overlay_blt_flags(const struct ddraw_surface *overlay, DDBLTFX *fx)
++{
++    DWORD flags = DDBLT_WAIT;
++
++    memset(fx, 0, sizeof(*fx));
++    fx->dwSize = sizeof(*fx);
++
++    if (overlay->overlay_flags & DDOVER_DDFX)
++    {
++        flags |= DDBLT_DDFX;
++        fx->dwDDFX = overlay->overlay_fx.dwDDFX;
++    }
++
++    if (overlay->overlay_flags & DDOVER_KEYDESTOVERRIDE)
++    {
++        flags |= DDBLT_KEYDESTOVERRIDE;
++        fx->ddckDestColorkey = overlay->overlay_fx.dckDestColorkey;
++    }
++    else if ((overlay->overlay_flags & DDOVER_KEYDEST)
++            && (overlay->surface_desc.dwFlags & DDSD_CKDESTOVERLAY))
++    {
++        flags |= DDBLT_KEYDESTOVERRIDE;
++        fx->ddckDestColorkey = overlay->surface_desc.ddckCKDestOverlay;
++    }
++
++    if (overlay->overlay_flags & DDOVER_KEYSRCOVERRIDE)
++    {
++        flags |= DDBLT_KEYSRCOVERRIDE;
++        fx->ddckSrcColorkey = overlay->overlay_fx.dckSrcColorkey;
++    }
++    else if ((overlay->overlay_flags & DDOVER_KEYSRC)
++            && (overlay->surface_desc.dwFlags & DDSD_CKSRCOVERLAY))
++    {
++        flags |= DDBLT_KEYSRCOVERRIDE;
++        fx->ddckSrcColorkey = overlay->surface_desc.ddckCKSrcOverlay;
++    }
++
++    return flags;
++}
++
++static void ddraw_surface_get_overlay_frontbuffer_rect(struct ddraw_surface *overlay, RECT *dst_rect)
++{
++    POINT p;
++
++    *dst_rect = overlay->overlay_dst_rect;
++
++    /* The WebGL swapchain renders directly into the browser canvas, whose
++     * coordinates already match the primary surface. Translating through the
++     * host desktop window would move the overlay outside the destination. */
++    if (ddraw_webgl_enabled() || !overlay->ddraw->dest_window)
++        return;
++    p.x = 0;
++    p.y = 0;
++    ClientToScreen(overlay->ddraw->dest_window, &p);
++    OffsetRect(dst_rect, -p.x, -p.y);
++}
++
++static HRESULT ddraw_surface_blt_overlay_to_texture(struct ddraw_surface *overlay,
++        struct wined3d_texture *dst_texture)
++{
++    struct ddraw_surface *dst_surface = overlay->overlay_dst_surface;
++    struct wined3d_blt_fx wined3d_fx = {0};
++    RECT dst_rect;
++    DDBLTFX fx;
++    DWORD flags;
++
++    if (!overlay->overlay_visible || !dst_surface)
++        return DD_OK;
++
++    if (!(dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))
++        return DD_OK;
++
++    ddraw_surface_get_overlay_frontbuffer_rect(overlay, &dst_rect);
++
++    flags = ddraw_overlay_blt_flags(overlay, &fx);
++    wined3d_fx.fx = fx.dwDDFX;
++    wined3d_fx.dst_color_key.color_space_low_value = fx.ddckDestColorkey.dwColorSpaceLowValue;
++    wined3d_fx.dst_color_key.color_space_high_value = fx.ddckDestColorkey.dwColorSpaceHighValue;
++    wined3d_fx.src_color_key.color_space_low_value = fx.ddckSrcColorkey.dwColorSpaceLowValue;
++    wined3d_fx.src_color_key.color_space_high_value = fx.ddckSrcColorkey.dwColorSpaceHighValue;
++
++    return wined3d_device_context_blt(dst_surface->ddraw->immediate_context,
++            dst_texture, 0, &dst_rect,
++            ddraw_surface_get_any_texture(overlay, DDRAW_SURFACE_READ), overlay->sub_resource_idx,
++            &overlay->overlay_src_rect, flags | WINED3D_BLT_FORCE_GPU, &wined3d_fx, WINED3D_TEXF_LINEAR);
++}
++
++static HRESULT ddraw_surface_composite_overlays_to_texture(struct ddraw_surface *dst_surface,
++        struct wined3d_texture *dst_texture)
++{
++    struct ddraw_surface *overlay;
++    HRESULT hr;
++
++    if (!dst_surface || !(dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))
++        return DD_OK;
++
++    LIST_FOR_EACH_ENTRY_REV(overlay, &dst_surface->ddraw->overlay_z_order_list,
++            struct ddraw_surface, overlay_z_order_entry)
++    {
++        if (overlay->overlay_visible && overlay->overlay_dst_surface == dst_surface
++                && FAILED(hr = ddraw_surface_blt_overlay_to_texture(overlay, dst_texture)))
++            return hr;
++    }
++
++    return DD_OK;
++}
++
++static HRESULT ddraw_surface_update_overlay_frontbuffer(struct ddraw_surface *overlay)
++{
++    struct ddraw_surface *dst_surface = overlay->overlay_dst_surface;
++    struct wined3d_blt_fx wined3d_fx = {0};
++    RECT dst_rect;
++    DDBLTFX fx;
++    DWORD flags;
++    HRESULT hr;
++
++    if (!overlay->overlay_visible || !dst_surface)
++        return DD_OK;
++
++    if (!(dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))
++        return DD_OK;
++
++    if (ddraw_webgl_enabled())
++        return ddraw_surface_update_frontbuffer(dst_surface, NULL, FALSE, 0);
++
++    ddraw_surface_get_overlay_frontbuffer_rect(overlay, &dst_rect);
++
++    flags = ddraw_overlay_blt_flags(overlay, &fx);
++    wined3d_fx.fx = fx.dwDDFX;
++    wined3d_fx.dst_color_key.color_space_low_value = fx.ddckDestColorkey.dwColorSpaceLowValue;
++    wined3d_fx.dst_color_key.color_space_high_value = fx.ddckDestColorkey.dwColorSpaceHighValue;
++    wined3d_fx.src_color_key.color_space_low_value = fx.ddckSrcColorkey.dwColorSpaceLowValue;
++    wined3d_fx.src_color_key.color_space_high_value = fx.ddckSrcColorkey.dwColorSpaceHighValue;
++
++    hr = ddraw_surface_blt(dst_surface, &dst_rect, overlay, &overlay->overlay_src_rect,
++            flags, 0, &wined3d_fx, WINED3D_TEXF_LINEAR);
++    if (SUCCEEDED(hr))
++        hr = ddraw_surface_update_frontbuffer(dst_surface, &dst_rect, FALSE, 0);
++
++    return hr;
++}
++
++static BOOL ddraw_surface_is_overlay_z_ordered(const struct ddraw_surface *surface)
++{
++    return surface->overlay_z_order_entry.next != &surface->overlay_z_order_entry;
++}
++
++static BOOL ddraw_surface_is_visible_overlay_on(const struct ddraw_surface *surface,
++        const struct ddraw_surface *dst_surface)
++{
++    return surface->overlay_visible && surface->overlay_dst_surface == dst_surface;
++}
++
++static BOOL ddraw_surface_has_visible_overlays(const struct ddraw_surface *dst_surface)
++{
++    struct ddraw_surface *overlay;
++
++    if (!dst_surface || !(dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))
++        return FALSE;
++
++    LIST_FOR_EACH_ENTRY(overlay, &dst_surface->ddraw->overlay_z_order_list,
++            struct ddraw_surface, overlay_z_order_entry)
++    {
++        if (ddraw_surface_is_visible_overlay_on(overlay, dst_surface))
++            return TRUE;
++    }
++
++    return FALSE;
++}
++
++static HRESULT ddraw_surface_update_overlay_frontbuffer_z_ordered(struct ddraw_surface *dst_surface)
++{
++    struct ddraw_surface *overlay;
++    HRESULT hr;
++
++    if (!dst_surface || !(dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))
++        return DD_OK;
++
++    LIST_FOR_EACH_ENTRY(overlay, &dst_surface->ddraw->overlay_z_order_list,
++            struct ddraw_surface, overlay_z_order_entry)
++    {
++        if (ddraw_surface_is_visible_overlay_on(overlay, dst_surface)
++                && FAILED(hr = ddraw_surface_update_overlay_frontbuffer(overlay)))
++            return hr;
++    }
++
++    return DD_OK;
++}
++
+ /* FRAPS hooks IDirectDrawSurface::Flip and expects the version 1 method to be called when the
+  * game uses later interfaces. */
+ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface1_Flip(IDirectDrawSurface *iface,
+         IDirectDrawSurface *src, DWORD flags)
+ {
+     struct ddraw_surface *dst_impl = impl_from_IDirectDrawSurface(iface);
++    struct ddraw_surface *flip_impl = dst_impl;
+     struct ddraw_surface *src_impl = unsafe_impl_from_IDirectDrawSurface(src);
+     struct ddraw_texture *dst_ddraw_texture, *src_ddraw_texture;
+     struct wined3d_rendertarget_view *tmp_rtv, *current_rtv;
+@@ -1491,6 +1936,8 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface1_Flip(IDirectDrawSurface *
+ 
+     if (dst_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)
+         hr = ddraw_surface_update_frontbuffer(dst_impl, NULL, FALSE, ddraw_swap_interval_from_flags(flags));
++    else if (flip_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_OVERLAY)
++        hr = ddraw_surface_update_overlay_frontbuffer(flip_impl);
+     else
+         hr = DD_OK;
+ 
+@@ -1551,9 +1998,22 @@ static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *
+         struct ddraw_surface *src_surface, const RECT *src_rect, DWORD flags, DWORD fill_colour,
+         const struct wined3d_blt_fx *fx, enum wined3d_texture_filter_type filter)
+ {
++    static struct ddraw_profile_bucket colorfill_bucket;
++    static struct ddraw_profile_bucket depthfill_bucket;
++    static struct ddraw_profile_bucket upload_bucket;
++    static struct ddraw_profile_bucket blt_bucket;
+     struct ddraw *ddraw = dst_surface->ddraw;
+     struct wined3d_color colour;
+     DWORD wined3d_flags;
++    BOOL webgl_vram_blt;
++    ULONGLONG profile_start;
++    unsigned int profile_pixels;
++    HRESULT hr;
++
++    profile_start = ddraw_profile_enabled() ? ddraw_profile_now_us() : 0;
++    profile_pixels = ddraw_profile_rect_pixels(dst_rect);
++    if (!profile_pixels)
++        profile_pixels = dst_surface->surface_desc.dwWidth * dst_surface->surface_desc.dwHeight;
+ 
+     if (flags & DDBLT_COLORFILL)
+     {
+@@ -1567,19 +2027,33 @@ static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *
+                 dst_surface->palette, fill_colour, &colour))
+             return DDERR_INVALIDPARAMS;
+ 
+-        if (dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY)
+-            return wined3d_device_context_clear_sysmem_texture(ddraw->immediate_context,
++        if ((dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY)
++                || (ddraw_webgl_enabled()
++                && (format_is_paletteindexed(&dst_surface->surface_desc.ddpfPixelFormat)
++                || (dst_surface->surface_desc.ddsCaps.dwCaps & (DDSCAPS_TEXTURE | DDSCAPS_MIPMAP))
++                == (DDSCAPS_TEXTURE | DDSCAPS_MIPMAP))))
++        {
++            hr = wined3d_device_context_clear_sysmem_texture(ddraw->immediate_context,
+                     ddraw_surface_get_default_texture(dst_surface, location_flags),
+                     dst_surface->sub_resource_idx, dst_rect, wined3d_flags, &colour);
++            ddraw_profile_record(&colorfill_bucket, "ddraw_blt_colorfill_sysmem", profile_start,
++                    profile_pixels, 0);
++            return hr;
++        }
+ 
+         ddraw_surface_get_draw_texture(dst_surface, location_flags);
+-        return wined3d_device_context_clear_rendertarget_view(ddraw->immediate_context,
++        hr = wined3d_device_context_clear_rendertarget_view(ddraw->immediate_context,
+                 ddraw_surface_get_rendertarget_view(dst_surface),
+                 dst_rect, wined3d_flags, &colour, 0.0f, 0);
++        ddraw_profile_record(&colorfill_bucket, "ddraw_blt_colorfill_gpu", profile_start,
++                profile_pixels, 0);
++        return hr;
+     }
+ 
+     if (flags & DDBLT_DEPTHFILL)
+     {
++        HRESULT hr;
++
+         wined3d_flags = WINED3DCLEAR_ZBUFFER;
+         if (!(flags & DDBLT_ASYNC))
+             wined3d_flags |= WINED3DCLEAR_SYNCHRONOUS;
+@@ -1589,9 +2063,25 @@ static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *
+             return DDERR_INVALIDPARAMS;
+ 
+         ddraw_surface_get_draw_texture(dst_surface, dst_rect ? DDRAW_SURFACE_RW : DDRAW_SURFACE_WRITE);
+-        return wined3d_device_context_clear_rendertarget_view(ddraw->immediate_context,
++        hr = wined3d_device_context_clear_rendertarget_view(ddraw->immediate_context,
+                 ddraw_surface_get_rendertarget_view(dst_surface),
+                 dst_rect, wined3d_flags, NULL, colour.r, 0);
++        if (SUCCEEDED(hr) && ddraw_webgl_enabled())
++        {
++            hr = wined3d_device_context_clear_sysmem_texture(ddraw->immediate_context,
++                    ddraw_surface_get_default_texture(dst_surface, 0),
++                    dst_surface->sub_resource_idx, dst_rect, wined3d_flags, &colour);
++            if (SUCCEEDED(hr))
++            {
++                dst_surface->texture_location |= DDRAW_SURFACE_LOCATION_DEFAULT;
++                if (dst_surface->draw_texture)
++                    dst_surface->texture_location |= DDRAW_SURFACE_LOCATION_DRAW;
++            }
++        }
++
++        ddraw_profile_record(&depthfill_bucket, "ddraw_blt_depthfill", profile_start,
++                profile_pixels, 0);
++        return hr;
+     }
+ 
+     wined3d_flags = flags & ~DDBLT_ASYNC;
+@@ -1603,11 +2093,81 @@ static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *
+ 
+     if (!(flags & DDBLT_ASYNC))
+         wined3d_flags |= WINED3D_BLT_SYNCHRONOUS;
++    webgl_vram_blt = ddraw_webgl_enabled() && src_surface
++            && !format_is_paletteindexed(&dst_surface->surface_desc.ddpfPixelFormat)
++            && !format_is_paletteindexed(&src_surface->surface_desc.ddpfPixelFormat)
++            && !(dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY)
++            && !(src_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY)
++            && (!(dst_surface->texture_location & DDRAW_SURFACE_LOCATION_DEFAULT)
++                    || !(src_surface->texture_location & DDRAW_SURFACE_LOCATION_DEFAULT)
++                    || !(dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_OFFSCREENPLAIN)
++                    || !(src_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_OFFSCREENPLAIN)
++                    || (dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_TEXTURE)
++                    || (src_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_TEXTURE)
++                    || !(dst_surface->surface_desc.ddpfPixelFormat.dwFlags & DDPF_RGB)
++                    || !(src_surface->surface_desc.ddpfPixelFormat.dwFlags & DDPF_RGB)
++                    || dst_surface->surface_desc.ddpfPixelFormat.dwRGBBitCount != 32
++                    || src_surface->surface_desc.ddpfPixelFormat.dwRGBBitCount != 32);
++    if (webgl_vram_blt)
++        wined3d_flags |= WINED3D_BLT_FORCE_GPU;
++
++    if (ddraw_webgl_enabled() && src_surface && !fx
++            && (dst_surface->surface_desc.ddsCaps.dwCaps2 & (DDSCAPS2_TEXTUREMANAGE | DDSCAPS2_D3DTEXTUREMANAGE))
++            && (src_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY))
++    {
++        struct wined3d_map_desc src_map_desc;
++        struct wined3d_resource *src_resource;
++        struct wined3d_resource *dst_resource;
++        struct wined3d_box src_box, dst_box;
++        RECT src_update, dst_update;
++
++        if (dst_rect)
++            dst_update = *dst_rect;
++        else
++            SetRect(&dst_update, 0, 0, dst_surface->surface_desc.dwWidth, dst_surface->surface_desc.dwHeight);
++        if (src_rect)
++            src_update = *src_rect;
++        else
++            SetRect(&src_update, 0, 0, src_surface->surface_desc.dwWidth, src_surface->surface_desc.dwHeight);
++
++        if (dst_update.right - dst_update.left == src_update.right - src_update.left
++                && dst_update.bottom - dst_update.top == src_update.bottom - src_update.top)
++        {
++            wined3d_box_set(&src_box, src_update.left, src_update.top,
++                    src_update.right, src_update.bottom, 0, 1);
++            wined3d_box_set(&dst_box, dst_update.left, dst_update.top,
++                    dst_update.right, dst_update.bottom, 0, 1);
++
++            src_resource = wined3d_texture_get_resource(
++                    ddraw_surface_get_any_texture(src_surface, DDRAW_SURFACE_READ));
++            dst_resource = wined3d_texture_get_resource(
++                    ddraw_surface_get_any_texture(dst_surface, DDRAW_SURFACE_RW));
++            if (FAILED(hr = wined3d_resource_map(src_resource,
++                    src_surface->sub_resource_idx, &src_map_desc, &src_box, WINED3D_MAP_READ)))
++                return hr;
++
++            wined3d_device_context_update_sub_resource(ddraw->immediate_context,
++                    dst_resource, dst_surface->sub_resource_idx, &dst_box,
++                    src_map_desc.data, src_map_desc.row_pitch, src_map_desc.slice_pitch, 0);
++            wined3d_resource_unmap(src_resource, src_surface->sub_resource_idx);
++
++            ddraw_profile_record(&upload_bucket, "ddraw_blt_update_sub_resource", profile_start,
++                    profile_pixels, 0);
++            return DD_OK;
++        }
++    }
+ 
+-    return wined3d_device_context_blt(ddraw->immediate_context,
+-            ddraw_surface_get_any_texture(dst_surface, DDRAW_SURFACE_RW), dst_surface->sub_resource_idx, dst_rect,
+-            ddraw_surface_get_any_texture(src_surface, DDRAW_SURFACE_READ), src_surface->sub_resource_idx, src_rect,
++    hr = wined3d_device_context_blt(ddraw->immediate_context,
++            webgl_vram_blt ? ddraw_surface_get_draw_texture(dst_surface, DDRAW_SURFACE_RW)
++                    : ddraw_surface_get_any_texture(dst_surface, DDRAW_SURFACE_RW),
++            dst_surface->sub_resource_idx, dst_rect,
++            webgl_vram_blt ? ddraw_surface_get_draw_texture(src_surface, DDRAW_SURFACE_READ)
++                    : ddraw_surface_get_any_texture(src_surface, DDRAW_SURFACE_READ),
++            src_surface->sub_resource_idx, src_rect,
+             wined3d_flags, fx, filter);
++    ddraw_profile_record(&blt_bucket, "ddraw_blt", profile_start, profile_pixels,
++            webgl_vram_blt ? 1 : 0);
++    return hr;
+ }
+ 
+ static HRESULT ddraw_surface_blt_clipped(struct ddraw_surface *dst_surface, const RECT *dst_rect_in,
+@@ -1654,7 +2214,7 @@ static HRESULT ddraw_surface_blt_clipped(struct ddraw_surface *dst_surface, cons
+         if (SUCCEEDED(hr))
+             hr = ddraw_surface_blt(dst_surface, &dst_rect, src_surface, &src_rect, flags, fill_colour, fx, filter);
+         if (SUCCEEDED(hr) && (dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))
+-            hr = ddraw_surface_update_frontbuffer(dst_surface, &dst_rect, FALSE, 0);
++            hr = ddraw_surface_update_frontbuffer_batched(dst_surface, &dst_rect, FALSE, 0);
+ 
+         return hr;
+     }
+@@ -1714,7 +2274,7 @@ static HRESULT ddraw_surface_blt_clipped(struct ddraw_surface *dst_surface, cons
+ 
+         if (dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)
+         {
+-            if (FAILED(hr = ddraw_surface_update_frontbuffer(dst_surface, &clip_rect[i], FALSE, 0)))
++            if (FAILED(hr = ddraw_surface_update_frontbuffer_batched(dst_surface, &clip_rect[i], FALSE, 0)))
+                 break;
+         }
+     }
+@@ -1911,14 +2471,26 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface1_Blt(IDirectDrawSurface *i
+ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface7_Blt(IDirectDrawSurface7 *iface, RECT *dst_rect,
+         IDirectDrawSurface7 *src_surface, RECT *src_rect, DWORD flags, DDBLTFX *fx)
+ {
++    static struct ddraw_profile_bucket profile_bucket;
+     struct ddraw_surface *dst = impl_from_IDirectDrawSurface7(iface);
+     struct ddraw_surface *src = unsafe_impl_from_IDirectDrawSurface7(src_surface);
++    ULONGLONG profile_start;
++    unsigned int profile_pixels;
++    HRESULT hr;
+ 
+     TRACE("iface %p, dst_rect %s, src_surface %p, src_rect %s, flags %#lx, fx %p.\n",
+             iface, wine_dbgstr_rect(dst_rect), src_surface, wine_dbgstr_rect(src_rect), flags, fx);
+ 
+-    return ddraw_surface1_Blt(&dst->IDirectDrawSurface_iface, dst_rect,
++    profile_start = ddraw_profile_enabled() ? ddraw_profile_now_us() : 0;
++    profile_pixels = ddraw_profile_rect_pixels(dst_rect);
++    if (!profile_pixels)
++        profile_pixels = dst->surface_desc.dwWidth * dst->surface_desc.dwHeight;
++
++    hr = ddraw_surface1_Blt(&dst->IDirectDrawSurface_iface, dst_rect,
+             src ? &src->IDirectDrawSurface_iface : NULL, src_rect, flags, fx);
++    ddraw_profile_record(&profile_bucket, "ddraw_surface7_Blt_api", profile_start,
++            profile_pixels, src ? 1 : 0);
++    return hr;
+ }
+ 
+ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface4_Blt(IDirectDrawSurface4 *iface, RECT *dst_rect,
+@@ -3156,10 +3728,57 @@ static HRESULT WINAPI ddraw_surface1_EnumAttachedSurfaces(IDirectDrawSurface *if
+  *
+  *****************************************************************************/
+ static HRESULT WINAPI ddraw_surface7_EnumOverlayZOrders(IDirectDrawSurface7 *iface,
+-        DWORD Flags, void *context, LPDDENUMSURFACESCALLBACK7 cb)
++        DWORD flags, void *context, LPDDENUMSURFACESCALLBACK7 cb)
+ {
+-    FIXME("iface %p, flags %#lx, context %p, callback %p stub!\n", iface, Flags, context, cb);
++    struct ddraw_surface *surface = impl_from_IDirectDrawSurface7(iface);
++    struct ddraw_surface *overlay;
++    DDSURFACEDESC2 desc;
++
++    TRACE("iface %p, flags %#lx, context %p, callback %p.\n", iface, flags, context, cb);
++
++    if (!cb)
++        return DDERR_INVALIDPARAMS;
++
++    if (flags != DDENUMOVERLAYZ_BACKTOFRONT && flags != DDENUMOVERLAYZ_FRONTTOBACK)
++        return DDERR_INVALIDPARAMS;
+ 
++    wined3d_mutex_lock();
++    if (flags == DDENUMOVERLAYZ_FRONTTOBACK)
++    {
++        LIST_FOR_EACH_ENTRY(overlay, &surface->ddraw->overlay_z_order_list,
++                struct ddraw_surface, overlay_z_order_entry)
++        {
++            if (!ddraw_surface_is_visible_overlay_on(overlay, surface))
++                continue;
++
++            ddraw_surface7_AddRef(&overlay->IDirectDrawSurface7_iface);
++            desc = overlay->surface_desc;
++            if (cb(&overlay->IDirectDrawSurface7_iface, &desc, context) == DDENUMRET_CANCEL)
++            {
++                wined3d_mutex_unlock();
++                return DD_OK;
++            }
++        }
++    }
++    else
++    {
++        LIST_FOR_EACH_ENTRY_REV(overlay, &surface->ddraw->overlay_z_order_list,
++                struct ddraw_surface, overlay_z_order_entry)
++        {
++            if (!ddraw_surface_is_visible_overlay_on(overlay, surface))
++                continue;
++
++            ddraw_surface7_AddRef(&overlay->IDirectDrawSurface7_iface);
++            desc = overlay->surface_desc;
++            if (cb(&overlay->IDirectDrawSurface7_iface, &desc, context) == DDENUMRET_CANCEL)
++            {
++                wined3d_mutex_unlock();
++                return DD_OK;
++            }
++        }
++    }
++
++    wined3d_mutex_unlock();
+     return DD_OK;
+ }
+ 
+@@ -3942,11 +4561,12 @@ static HRESULT WINAPI ddraw_surface1_Restore(IDirectDrawSurface *iface)
+  *  Y:
+  *
+  * Returns:
+- *   DDERR_NOTAOVERLAYSURFACE, because we don't support overlays right now
++ *   A ddraw / wined3d HRESULT.
+  *****************************************************************************/
+ static HRESULT WINAPI ddraw_surface7_SetOverlayPosition(IDirectDrawSurface7 *iface, LONG x, LONG y)
+ {
+     struct ddraw_surface *surface = impl_from_IDirectDrawSurface7(iface);
++    LONG w, h;
+     HRESULT hr;
+ 
+     TRACE("iface %p, x %ld, y %ld.\n", iface, x, y);
+@@ -3954,6 +4574,13 @@ static HRESULT WINAPI ddraw_surface7_SetOverlayPosition(IDirectDrawSurface7 *ifa
+     wined3d_mutex_lock();
+     hr = wined3d_texture_set_overlay_position(surface->wined3d_texture,
+             surface->sub_resource_idx, x, y);
++    if (SUCCEEDED(hr) && surface->overlay_visible)
++    {
++        w = surface->overlay_dst_rect.right - surface->overlay_dst_rect.left;
++        h = surface->overlay_dst_rect.bottom - surface->overlay_dst_rect.top;
++        SetRect(&surface->overlay_dst_rect, x, y, x + w, y + h);
++        hr = ddraw_surface_update_overlay_frontbuffer(surface);
++    }
+     wined3d_mutex_unlock();
+ 
+     return hr;
+@@ -4007,7 +4634,7 @@ static HRESULT WINAPI ddraw_surface1_SetOverlayPosition(IDirectDrawSurface *ifac
+  *  Flags: some DDOVER_* flags
+  *
+  * Returns:
+- *  DDERR_UNSUPPORTED, because we don't support overlays
++ *  A ddraw / wined3d HRESULT.
+  *
+  *****************************************************************************/
+ static HRESULT WINAPI ddraw_surface7_UpdateOverlay(IDirectDrawSurface7 *iface, RECT *src_rect,
+@@ -4015,16 +4642,15 @@ static HRESULT WINAPI ddraw_surface7_UpdateOverlay(IDirectDrawSurface7 *iface, R
+ {
+     struct ddraw_surface *src_impl = impl_from_IDirectDrawSurface7(iface);
+     struct ddraw_surface *dst_impl = unsafe_impl_from_IDirectDrawSurface7(dst_surface);
++    struct ddraw_surface *old_overlay_dst = src_impl->overlay_dst_surface;
+     struct wined3d_texture *dst_wined3d_texture = NULL;
+     unsigned int dst_sub_resource_idx = 0;
++    BOOL was_overlay_visible = src_impl->overlay_visible;
+     HRESULT hr;
+ 
+     TRACE("iface %p, src_rect %s, dst_surface %p, dst_rect %s, flags %#lx, fx %p.\n",
+             iface, wine_dbgstr_rect(src_rect), dst_surface, wine_dbgstr_rect(dst_rect), flags, fx);
+ 
+-    if (fx)
+-        FIXME("Ignoring fx %p.\n", fx);
+-
+     wined3d_mutex_lock();
+     if (dst_impl)
+     {
+@@ -4033,6 +4659,47 @@ static HRESULT WINAPI ddraw_surface7_UpdateOverlay(IDirectDrawSurface7 *iface, R
+     }
+     hr = wined3d_texture_update_overlay(src_impl->wined3d_texture, src_impl->sub_resource_idx,
+             src_rect, dst_wined3d_texture, dst_sub_resource_idx, dst_rect, flags);
++    if (SUCCEEDED(hr))
++    {
++        if (flags & DDOVER_HIDE)
++        {
++            src_impl->overlay_visible = FALSE;
++            src_impl->overlay_dst_surface = NULL;
++            if (ddraw_webgl_enabled() && was_overlay_visible && old_overlay_dst)
++                hr = ddraw_surface_update_frontbuffer(old_overlay_dst, NULL, FALSE, 0);
++        }
++        else
++        {
++            if (src_rect)
++                src_impl->overlay_src_rect = *src_rect;
++            else
++                SetRect(&src_impl->overlay_src_rect, 0, 0,
++                        src_impl->surface_desc.dwWidth, src_impl->surface_desc.dwHeight);
++
++            if (dst_impl)
++            {
++                if (dst_rect)
++                    src_impl->overlay_dst_rect = *dst_rect;
++                else
++                    SetRect(&src_impl->overlay_dst_rect, 0, 0,
++                            dst_impl->surface_desc.dwWidth, dst_impl->surface_desc.dwHeight);
++
++                src_impl->overlay_dst_surface = dst_impl;
++                src_impl->overlay_flags = flags;
++                if (fx)
++                    src_impl->overlay_fx = *fx;
++                else
++                    memset(&src_impl->overlay_fx, 0, sizeof(src_impl->overlay_fx));
++
++                if (flags & DDOVER_SHOW)
++                    src_impl->overlay_visible = TRUE;
++                if (ddraw_webgl_enabled() && was_overlay_visible && old_overlay_dst && old_overlay_dst != dst_impl)
++                    hr = ddraw_surface_update_frontbuffer(old_overlay_dst, NULL, FALSE, 0);
++                if (SUCCEEDED(hr) && src_impl->overlay_visible)
++                    hr = ddraw_surface_update_overlay_frontbuffer(src_impl);
++            }
++        }
++    }
+     wined3d_mutex_unlock();
+ 
+     return hr_ddraw_from_wined3d(hr);
+@@ -4161,8 +4828,13 @@ static HRESULT WINAPI ddraw_surface7_UpdateOverlayZOrder(IDirectDrawSurface7 *if
+         DWORD flags, IDirectDrawSurface7 *reference)
+ {
+     struct ddraw_surface *surface = impl_from_IDirectDrawSurface7(iface);
++    struct ddraw_surface *reference_impl = unsafe_impl_from_IDirectDrawSurface7(reference);
++    struct list *prev, *next;
++    HRESULT hr = DD_OK;
+ 
+-    FIXME("iface %p, flags %#lx, reference %p stub!\n", iface, flags, reference);
++    TRACE("iface %p, flags %#lx, reference %p.\n", iface, flags, reference);
++    if (flags > DDOVERZ_INSERTINBACKOF)
++        return DDERR_INVALIDPARAMS;
+ 
+     wined3d_mutex_lock();
+     if (!(surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_OVERLAY))
+@@ -4171,6 +4843,68 @@ static HRESULT WINAPI ddraw_surface7_UpdateOverlayZOrder(IDirectDrawSurface7 *if
+         wined3d_mutex_unlock();
+         return DDERR_NOTAOVERLAYSURFACE;
+     }
++
++    if (!ddraw_surface_is_overlay_z_ordered(surface))
++        list_add_head(&surface->ddraw->overlay_z_order_list, &surface->overlay_z_order_entry);
++
++    if ((flags == DDOVERZ_INSERTINFRONTOF || flags == DDOVERZ_INSERTINBACKOF)
++            && (!reference_impl || !ddraw_surface_is_overlay_z_ordered(reference_impl)))
++    {
++        WARN("Invalid reference surface.\n");
++        wined3d_mutex_unlock();
++        return DDERR_INVALIDPARAMS;
++    }
++
++    switch (flags)
++    {
++        case DDOVERZ_SENDTOFRONT:
++            list_remove(&surface->overlay_z_order_entry);
++            list_add_head(&surface->ddraw->overlay_z_order_list, &surface->overlay_z_order_entry);
++            break;
++
++        case DDOVERZ_SENDTOBACK:
++            list_remove(&surface->overlay_z_order_entry);
++            list_add_tail(&surface->ddraw->overlay_z_order_list, &surface->overlay_z_order_entry);
++            break;
++
++        case DDOVERZ_MOVEFORWARD:
++            prev = list_prev(&surface->ddraw->overlay_z_order_list, &surface->overlay_z_order_entry);
++            if (prev)
++            {
++                list_remove(&surface->overlay_z_order_entry);
++                list_add_before(prev, &surface->overlay_z_order_entry);
++            }
++            break;
++
++        case DDOVERZ_MOVEBACKWARD:
++            next = list_next(&surface->ddraw->overlay_z_order_list, &surface->overlay_z_order_entry);
++            if (next)
++            {
++                list_remove(&surface->overlay_z_order_entry);
++                list_add_after(next, &surface->overlay_z_order_entry);
++            }
++            break;
++
++        case DDOVERZ_INSERTINFRONTOF:
++            if (surface != reference_impl)
++            {
++                list_remove(&surface->overlay_z_order_entry);
++                list_add_before(&reference_impl->overlay_z_order_entry, &surface->overlay_z_order_entry);
++            }
++            break;
++
++        case DDOVERZ_INSERTINBACKOF:
++            if (surface != reference_impl)
++            {
++                list_remove(&surface->overlay_z_order_entry);
++                list_add_after(&reference_impl->overlay_z_order_entry, &surface->overlay_z_order_entry);
++            }
++            break;
++    }
++
++    if (surface->overlay_visible && FAILED(hr = ddraw_surface_update_overlay_frontbuffer_z_ordered(surface->overlay_dst_surface)))
++        WARN("Failed to update overlay frontbuffer, hr %#lx.\n", hr);
++
+     wined3d_mutex_unlock();
+ 
+     return DD_OK;
+@@ -4428,10 +5162,13 @@ static HRESULT WINAPI ddraw_surface7_GetLOD(IDirectDrawSurface7 *iface, DWORD *M
+ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface7_BltFast(IDirectDrawSurface7 *iface,
+         DWORD dst_x, DWORD dst_y, IDirectDrawSurface7 *src_surface, RECT *src_rect, DWORD trans)
+ {
++    static struct ddraw_profile_bucket profile_bucket;
+     struct ddraw_surface *dst_impl = impl_from_IDirectDrawSurface7(iface);
+     struct ddraw_surface *src_impl = unsafe_impl_from_IDirectDrawSurface7(src_surface);
+     DWORD flags = WINED3D_BLT_SYNCHRONOUS;
+     DWORD src_w, src_h, dst_w, dst_h;
++    BOOL webgl_vram_bltfast, lock_wined3d;
++    ULONGLONG profile_start;
+     HRESULT hr = DD_OK;
+     RECT dst_rect, s;
+ 
+@@ -4465,11 +5202,32 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface7_BltFast(IDirectDrawSurfac
+         flags |= WINED3D_BLT_WAIT;
+     if (trans & DDBLTFAST_DONOTWAIT)
+         flags |= WINED3D_BLT_DO_NOT_WAIT;
+-
+-    wined3d_mutex_lock();
++    webgl_vram_bltfast = ddraw_webgl_enabled()
++            && !format_is_paletteindexed(&dst_impl->surface_desc.ddpfPixelFormat)
++            && !format_is_paletteindexed(&src_impl->surface_desc.ddpfPixelFormat)
++            && !(dst_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY)
++            && !(src_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY)
++            && (!(dst_impl->texture_location & DDRAW_SURFACE_LOCATION_DEFAULT)
++                    || !(src_impl->texture_location & DDRAW_SURFACE_LOCATION_DEFAULT)
++                    || !(dst_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_OFFSCREENPLAIN)
++                    || !(src_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_OFFSCREENPLAIN)
++                    || (dst_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_TEXTURE)
++                    || (src_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_TEXTURE)
++                    || !(dst_impl->surface_desc.ddpfPixelFormat.dwFlags & DDPF_RGB)
++                    || !(src_impl->surface_desc.ddpfPixelFormat.dwFlags & DDPF_RGB)
++                    || dst_impl->surface_desc.ddpfPixelFormat.dwRGBBitCount != 32
++                    || src_impl->surface_desc.ddpfPixelFormat.dwRGBBitCount != 32);
++    if (webgl_vram_bltfast)
++        flags |= WINED3D_BLT_FORCE_GPU;
++    lock_wined3d = !webgl_vram_bltfast || ddraw_webgl_bltfast_locks_enabled();
++
++    profile_start = ddraw_profile_enabled() ? ddraw_profile_now_us() : 0;
++    if (lock_wined3d)
++        wined3d_mutex_lock();
+     if (dst_impl->clipper)
+     {
+-        wined3d_mutex_unlock();
++        if (lock_wined3d)
++            wined3d_mutex_unlock();
+         WARN("Destination surface has a clipper set, returning DDERR_BLTFASTCANTCLIP.\n");
+         return DDERR_BLTFASTCANTCLIP;
+     }
+@@ -4477,13 +5235,22 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface7_BltFast(IDirectDrawSurfac
+     if (src_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)
+         hr = ddraw_surface_update_frontbuffer(src_impl, src_rect, TRUE, 0);
+     if (SUCCEEDED(hr))
++    {
+         hr = wined3d_device_context_blt(dst_impl->ddraw->immediate_context,
+-                ddraw_surface_get_any_texture(dst_impl, DDRAW_SURFACE_RW), dst_impl->sub_resource_idx, &dst_rect,
+-                ddraw_surface_get_any_texture(src_impl,DDRAW_SURFACE_READ), src_impl->sub_resource_idx, src_rect,
++                webgl_vram_bltfast ? ddraw_surface_get_draw_texture(dst_impl, DDRAW_SURFACE_RW)
++                        : ddraw_surface_get_any_texture(dst_impl, DDRAW_SURFACE_RW),
++                dst_impl->sub_resource_idx, &dst_rect,
++                webgl_vram_bltfast ? ddraw_surface_get_draw_texture(src_impl, DDRAW_SURFACE_READ)
++                        : ddraw_surface_get_any_texture(src_impl, DDRAW_SURFACE_READ),
++                src_impl->sub_resource_idx, src_rect,
+                 flags, NULL, WINED3D_TEXF_POINT);
++    }
+     if (SUCCEEDED(hr) && (dst_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))
+-        hr = ddraw_surface_update_frontbuffer(dst_impl, &dst_rect, FALSE, 0);
+-    wined3d_mutex_unlock();
++        hr = ddraw_surface_update_frontbuffer_batched(dst_impl, &dst_rect, FALSE, 0);
++    if (lock_wined3d)
++        wined3d_mutex_unlock();
++    ddraw_profile_record(&profile_bucket, "ddraw_surface7_BltFast_api", profile_start,
++            src_w * src_h, webgl_vram_bltfast ? (lock_wined3d ? 2 : 1) : 0);
+ 
+     switch(hr)
+     {
+@@ -6076,6 +6843,8 @@ static void STDMETHODCALLTYPE ddraw_surface_wined3d_object_destroyed(void *paren
+ 
+     /* Reduce the ddraw surface count. */
+     list_remove(&surface->surface_list_entry);
++    if (ddraw_surface_is_overlay_z_ordered(surface))
++        list_remove(&surface->overlay_z_order_entry);
+ 
+     if (surface->clipper && ddraw_clipper_is_valid(surface->clipper))
+         IDirectDrawClipper_Release(&surface->clipper->IDirectDrawClipper_iface);
+@@ -6134,6 +6903,7 @@ static void ddraw_surface_init(struct ddraw_surface *surface, struct ddraw *ddra
+     }
+ 
+     surface->first_attached = surface;
++    list_init(&surface->overlay_z_order_entry);
+ 
+     wined3d_texture_incref(surface->wined3d_texture = wined3d_texture);
+     surface->sub_resource_idx = sub_resource_idx;
+@@ -6488,6 +7258,8 @@ static HRESULT ddraw_texture_init(struct ddraw_texture *texture, struct ddraw *d
+ 
+             ddraw_update_lost_surfaces(ddraw);
+             list_add_head(&ddraw->surface_list, &mip->surface_list_entry);
++            if (mip_desc->ddsCaps.dwCaps & DDSCAPS_OVERLAY)
++                list_add_head(&ddraw->overlay_z_order_list, &mip->overlay_z_order_entry);
+ 
+             TRACE("Created ddraw surface %p.\n", mip);
+ 
+diff --git a/dlls/ddraw/viewport.c b/dlls/ddraw/viewport.c
+index 707b0f5..6fd61d2 100644
+--- a/dlls/ddraw/viewport.c
++++ b/dlls/ddraw/viewport.c
+@@ -326,6 +326,12 @@ static HRESULT WINAPI d3d_viewport_GetViewport(IDirect3DViewport3 *iface, D3DVIE
+     if (!vp)
+         return DDERR_INVALIDPARAMS;
+ 
++    if (vp->dwSize != sizeof(*vp))
++    {
++        WARN("Invalid D3DVIEWPORT size %lu.\n", vp->dwSize);
++        return DDERR_INVALIDPARAMS;
++    }
++
+     if (viewport->version == DDRAW_VIEWPORT_VERSION_NONE)
+     {
+         WARN("Viewport data was not set.\n");
+@@ -957,6 +963,12 @@ static HRESULT WINAPI d3d_viewport_GetViewport2(IDirect3DViewport3 *iface, D3DVI
+     if (!vp)
+         return DDERR_INVALIDPARAMS;
+ 
++    if (vp->dwSize != sizeof(*vp))
++    {
++        WARN("Invalid D3DVIEWPORT2 size %lu.\n", vp->dwSize);
++        return DDERR_INVALIDPARAMS;
++    }
++
+     if (viewport->version == DDRAW_VIEWPORT_VERSION_NONE)
+     {
+         WARN("Viewport data was not set.\n");
+diff --git a/include/ddraw.h b/include/ddraw.h
+index 0c14c46..33deab7 100644
+--- a/include/ddraw.h
++++ b/include/ddraw.h
+@@ -255,6 +255,18 @@ typedef struct IDirectDrawGammaControl *LPDIRECTDRAWGAMMACONTROL;
+ #define DDGBS_CANBLT				0x00000001
+ #define DDGBS_ISBLTDONE				0x00000002
+ 
++/* dwFlags for EnumOverlayZOrders */
++#define DDENUMOVERLAYZ_BACKTOFRONT		0x00000000
++#define DDENUMOVERLAYZ_FRONTTOBACK		0x00000001
++
++/* dwFlags for UpdateOverlayZOrder */
++#define DDOVERZ_SENDTOFRONT			0x00000000
++#define DDOVERZ_SENDTOBACK			0x00000001
++#define DDOVERZ_MOVEFORWARD			0x00000002
++#define DDOVERZ_MOVEBACKWARD			0x00000003
++#define DDOVERZ_INSERTINFRONTOF			0x00000004
++#define DDOVERZ_INSERTINBACKOF			0x00000005
++
+ /* dwFlags for IDirectDrawSurface7::GetFlipStatus */
+ #define DDGFS_CANFLIP           __MSABI_LONG(1)
+ #define DDGFS_ISFLIPDONE        __MSABI_LONG(2)
