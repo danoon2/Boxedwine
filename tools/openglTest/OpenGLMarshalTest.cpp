@@ -342,6 +342,18 @@
 #ifndef GL_FRAMEBUFFER
 #define GL_FRAMEBUFFER 0x8D40
 #endif
+#ifndef GL_READ_FRAMEBUFFER
+#define GL_READ_FRAMEBUFFER 0x8CA8
+#endif
+#ifndef GL_DRAW_FRAMEBUFFER
+#define GL_DRAW_FRAMEBUFFER 0x8CA9
+#endif
+#ifndef GL_DRAW_FRAMEBUFFER_BINDING
+#define GL_DRAW_FRAMEBUFFER_BINDING 0x8CA6
+#endif
+#ifndef GL_READ_FRAMEBUFFER_BINDING
+#define GL_READ_FRAMEBUFFER_BINDING 0x8CAA
+#endif
 #ifndef GL_RENDERBUFFER
 #define GL_RENDERBUFFER 0x8D41
 #endif
@@ -10473,6 +10485,154 @@ static TestResult testFramebufferTextureReadback(TestContext&) {
     return pass("framebuffer texture readbacks matched clear color");
 }
 
+static TestResult testFramebufferReadDrawSwitchOrientation(TestContext&) {
+    if (!glx.GenFramebuffers || !glx.BindFramebuffer || !glx.FramebufferTexture2D ||
+        !glx.CheckFramebufferStatus || !glx.DeleteFramebuffers) {
+        return skip("framebuffer entry points are unavailable");
+    }
+
+    GLuint textures[2] = {};
+    GLuint framebuffers[2] = {};
+    auto cleanup = [&]() {
+        glDisable(GL_SCISSOR_TEST);
+        glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+        if (framebuffers[0] || framebuffers[1]) {
+            glx.DeleteFramebuffers(2, framebuffers);
+        }
+        if (textures[0] || textures[1]) {
+            glDeleteTextures(2, textures);
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
+    };
+
+    drainGLErrors();
+    glGenTextures(2, textures);
+    glx.GenFramebuffers(2, framebuffers);
+    for (int i = 0; i < 2; ++i) {
+        glBindTexture(GL_TEXTURE_2D, textures[i]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 8, 8, 0,
+            GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glx.BindFramebuffer(GL_FRAMEBUFFER, framebuffers[i]);
+        glx.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+            GL_TEXTURE_2D, textures[i], 0);
+        GLenum status = glx.CheckFramebufferStatus(GL_FRAMEBUFFER);
+        if (status != GL_FRAMEBUFFER_COMPLETE) {
+            cleanup();
+            return fail("texture framebuffer " + std::to_string(i) +
+                " was incomplete: " + std::to_string(status));
+        }
+    }
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 8, 8);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+    // FBO A is blue with a red lower-left quadrant.
+    glx.BindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffers[0]);
+    glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(0, 0, 4, 4);
+    glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // FBO B is yellow with a green upper-right quadrant.
+    glx.BindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffers[1]);
+    glDisable(GL_SCISSOR_TEST);
+    glClearColor(1.0f, 1.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(4, 4, 4, 4);
+    glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Keep B selected for reads while changing A through the draw binding.
+    glx.BindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffers[0]);
+    glx.BindFramebuffer(GL_READ_FRAMEBUFFER, framebuffers[1]);
+    GLint drawBinding = 0;
+    GLint readBinding = 0;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawBinding);
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readBinding);
+    GLenum drawStatus = glx.CheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
+    GLenum readStatus = glx.CheckFramebufferStatus(GL_READ_FRAMEBUFFER);
+    glScissor(4, 0, 4, 4);
+    glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDisable(GL_SCISSOR_TEST);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    GLubyte bLowerLeft[4] = {};
+    GLubyte bUpperRight[4] = {};
+    glReadPixels(1, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bLowerLeft);
+    glReadPixels(6, 6, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bUpperRight);
+
+    // Reverse the independent bindings, change B, and prove A remains readable.
+    glx.BindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffers[1]);
+    glx.BindFramebuffer(GL_READ_FRAMEBUFFER, framebuffers[0]);
+    GLint swappedDrawBinding = 0;
+    GLint swappedReadBinding = 0;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &swappedDrawBinding);
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &swappedReadBinding);
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(0, 4, 4, 4);
+    glClearColor(0.0f, 1.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDisable(GL_SCISSOR_TEST);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    GLubyte aLowerLeft[4] = {};
+    GLubyte aLowerRight[4] = {};
+    GLubyte aUpperLeft[4] = {};
+    glReadPixels(1, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, aLowerLeft);
+    glReadPixels(6, 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, aLowerRight);
+    glReadPixels(1, 6, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, aUpperLeft);
+
+    // The last draw was directed to B, not to the independently bound read FBO A.
+    glx.BindFramebuffer(GL_READ_FRAMEBUFFER, framebuffers[1]);
+    GLubyte bUpperLeft[4] = {};
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    glReadPixels(1, 6, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bUpperLeft);
+    GLenum err = glGetError();
+
+    const GLubyte yellow[4] = { 255, 255, 0, 255 };
+    const GLubyte green[4] = { 0, 255, 0, 255 };
+    const GLubyte red[4] = { 255, 0, 0, 255 };
+    const GLubyte magenta[4] = { 255, 0, 255, 255 };
+    const GLubyte blue[4] = { 0, 0, 255, 255 };
+    const GLubyte cyan[4] = { 0, 255, 255, 255 };
+    bool bindingNamesMatch =
+        drawBinding == (GLint)framebuffers[0] &&
+        readBinding == (GLint)framebuffers[1] &&
+        swappedDrawBinding == (GLint)framebuffers[1] &&
+        swappedReadBinding == (GLint)framebuffers[0];
+    bool pixelsMatch =
+        glesRgbaEquals(bLowerLeft, yellow) &&
+        glesRgbaEquals(bUpperRight, green) &&
+        glesRgbaEquals(aLowerLeft, red) &&
+        glesRgbaEquals(aLowerRight, magenta) &&
+        glesRgbaEquals(aUpperLeft, blue) &&
+        glesRgbaEquals(bUpperLeft, cyan);
+    cleanup();
+
+    if (err != GL_NO_ERROR) {
+        return fail("independent framebuffer switching produced GL error " +
+            std::to_string(err));
+    }
+    if (drawStatus != GL_FRAMEBUFFER_COMPLETE ||
+        readStatus != GL_FRAMEBUFFER_COMPLETE) {
+        return fail("independently bound framebuffer was incomplete");
+    }
+    if (!bindingNamesMatch) {
+        return fail("read/draw framebuffer binding queries did not remain independent");
+    }
+    if (!pixelsMatch) {
+        return fail("read/draw framebuffer switch or lower-left orientation mismatch");
+    }
+    return pass("independent read/draw framebuffers preserved targets and orientation");
+}
+
 static TestResult testReadBufferYieldReplay(TestContext& ctx) {
     char enabled[2] = {};
     if (!GetEnvironmentVariableA("BOXEDWINE_OPENGL_READBUFFER_YIELD_TEST",
@@ -15623,6 +15783,7 @@ static std::vector<TestCase> tests() {
         { "rect-vector-inputs", testRectVectorInputs },
         { "immediate-vertex-vector-inputs", testImmediateVertexVectorInputs },
         { "fbo-texture-readback", testFramebufferTextureReadback },
+        { "framebuffer-read-draw-switch-orientation", testFramebufferReadDrawSwitchOrientation },
         { "readbuffer-yield-replay", testReadBufferYieldReplay },
         { "webgl-context-loss-restore", testWebGLContextLossRestore },
         { "framebuffer-renderbuffer-object-page-boundary", testFramebufferRenderbufferObjectPageBoundary },

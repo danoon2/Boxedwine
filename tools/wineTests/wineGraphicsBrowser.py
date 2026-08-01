@@ -104,6 +104,7 @@ GRAPHICS_SUITES = {
         (
             "wgl-context-lifecycle",
             "wgl-context-thread-switch",
+            "framebuffer-read-draw-switch-orientation",
             "readbuffer-yield-replay",
             "webgl-context-loss-restore",
             "buffer-lifecycle-growth",
@@ -317,6 +318,10 @@ def parse_graphics_result(
     requires_readbuffer_mutation = (
         suite.name == "opengl-marshal" and group == "readbuffer-yield-replay"
     )
+    requires_framebuffer_switch_execution = (
+        suite.name == "opengl-marshal"
+        and group == "framebuffer-read-draw-switch-orientation"
+    )
     requires_context_loss_restore = (
         suite.name == "opengl-marshal" and group == "webgl-context-loss-restore"
     )
@@ -463,6 +468,8 @@ def parse_graphics_result(
             if is_marshal
             else f"{failures} Wine test failures"
         )
+    elif requires_framebuffer_switch_execution and skipped:
+        reason = "framebuffer read/draw switch regression skipped"
     elif requires_buffer_lifecycle_execution and skipped:
         reason = "buffer lifecycle regression skipped"
     elif requires_element_buffer_execution and skipped:

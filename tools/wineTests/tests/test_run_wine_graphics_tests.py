@@ -470,6 +470,24 @@ class ResultParsingTests(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertEqual("buffer lifecycle regression skipped", result.reason)
 
+    def test_opengl_framebuffer_read_draw_switch_rejects_a_skip(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "framebuffer-read-draw-switch-orientation",
+            {
+                "output": (
+                    "SKIP framebuffer-read-draw-switch-orientation: "
+                    "entry point unavailable\n"
+                    "Summary: 0 passed, 0 failed, 1 skipped\n"
+                ),
+            },
+        )
+
+        self.assertFalse(result.passed)
+        self.assertEqual(
+            "framebuffer read/draw switch regression skipped", result.reason
+        )
+
     def test_opengl_element_buffer_client_array_rejects_a_skip(self):
         result = graphics.parse_graphics_result(
             graphics.GRAPHICS_SUITES["opengl-marshal"],

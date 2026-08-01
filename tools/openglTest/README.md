@@ -107,6 +107,12 @@ read buffer to `NONE`. The resumed guest read must still return the expected
 pixel because BoxedWine replays its remembered guest read-buffer selection in
 the same host callback as `glReadPixels()`.
 
+`framebuffer-read-draw-switch-orientation` creates two texture-backed FBOs,
+binds different objects to `GL_DRAW_FRAMEBUFFER` and `GL_READ_FRAMEBUFFER`,
+and switches them in both directions. Asymmetric quadrant clears verify that
+draws and reads continue to use the selected object and that lower-left guest
+coordinates keep their orientation. Browser runs reject a skipped test.
+
 `buffer-lifecycle-growth` uploads an array buffer, applies a partial update,
 orphans it with `bufferData(NULL)`, updates the orphan, and grows it with a new
 upload. Native OpenGL verifies the defined payload ranges. Browser runs also
