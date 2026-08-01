@@ -53,6 +53,154 @@
 
 static BString glExt;
 
+#ifdef __EMSCRIPTEN__
+EM_JS(void, boxedwine_record_element_array_buffer_data_js,
+    (int data, int size), {
+        if (typeof GLctx === "undefined" || !GLctx || size < 0) {
+            return;
+        }
+        var buffer = GLctx.getParameter(0x8895); // GL_ELEMENT_ARRAY_BUFFER_BINDING
+        if (!buffer) {
+            return;
+        }
+        var buffers = Module['boxedwineElementArrayBufferBytes'];
+        if (!buffers) {
+            buffers = new WeakMap();
+            Module['boxedwineElementArrayBufferBytes'] = buffers;
+        }
+        var bytes = new Uint8Array(size);
+        if (data && size) {
+            bytes.set(HEAPU8.subarray(data, data + size));
+        }
+        buffers.set(buffer, bytes);
+    });
+
+EM_JS(void, boxedwine_record_element_array_buffer_sub_data_js,
+    (int offset, int data, int size), {
+        if (typeof GLctx === "undefined" || !GLctx || offset < 0 || size <= 0 || !data) {
+            return;
+        }
+        var buffer = GLctx.getParameter(0x8895); // GL_ELEMENT_ARRAY_BUFFER_BINDING
+        var buffers = Module['boxedwineElementArrayBufferBytes'];
+        var bytes = buffer && buffers ? buffers.get(buffer) : null;
+        if (!bytes || offset + size > bytes.length) {
+            return;
+        }
+        bytes.set(HEAPU8.subarray(data, data + size), offset);
+    });
+
+EM_JS(double, boxedwine_prepare_element_array_client_draw_js,
+    (int type, int offset, int count), {
+        Module['boxedwineElementArrayClientVertexCount'] = 0;
+        if (typeof GL === "undefined" || typeof GLctx === "undefined" ||
+            !GLctx || !GL.currentContext || !GL.currentContext.clientBuffers ||
+            !GL.preDrawHandleClientVertexAttribBindings) {
+            return -1;
+        }
+
+        if (!GL.__boxedwineElementArrayClientFix) {
+            GL.__boxedwineElementArrayClientFix = true;
+            var originalPreDraw = GL.preDrawHandleClientVertexAttribBindings;
+            GL.preDrawHandleClientVertexAttribBindings = function(vertexCount) {
+                var pending = Module['boxedwineElementArrayClientVertexCount'] || 0;
+                Module['boxedwineElementArrayClientVertexCount'] = 0;
+                if (!vertexCount && pending > 0) {
+                    vertexCount = pending;
+                }
+                return originalPreDraw.call(this, vertexCount);
+            };
+        }
+
+        var needsClientUpload = false;
+        for (var attrib = 0; attrib < GL.currentContext.maxVertexAttribs; ++attrib) {
+            var clientBuffer = GL.currentContext.clientBuffers[attrib];
+            if (clientBuffer && clientBuffer.clientside && clientBuffer.enabled) {
+                needsClientUpload = true;
+                break;
+            }
+        }
+        if (!needsClientUpload || count <= 0 || offset < 0) {
+            return -1;
+        }
+
+        var elementSize = 0;
+        if (type === 0x1401) { // GL_UNSIGNED_BYTE
+            elementSize = 1;
+        } else if (type === 0x1403) { // GL_UNSIGNED_SHORT
+            elementSize = 2;
+        } else if (type === 0x1405) { // GL_UNSIGNED_INT
+            elementSize = 4;
+        } else {
+            return -1;
+        }
+
+        var buffer = GLctx.getParameter(0x8895); // GL_ELEMENT_ARRAY_BUFFER_BINDING
+        var buffers = Module['boxedwineElementArrayBufferBytes'];
+        var bytes = buffer && buffers ? buffers.get(buffer) : null;
+        var end = offset + count * elementSize;
+        if (!bytes || end > bytes.length) {
+            return -1;
+        }
+
+        var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        var maxIndex = 0;
+        if (elementSize === 1) {
+            for (var byteAt = offset; byteAt < end; ++byteAt) {
+                if (bytes[byteAt] > maxIndex) {
+                    maxIndex = bytes[byteAt];
+                }
+            }
+        } else if (elementSize === 2) {
+            for (var shortAt = offset; shortAt < end; shortAt += 2) {
+                var shortIndex = view.getUint16(shortAt, true);
+                if (shortIndex > maxIndex) {
+                    maxIndex = shortIndex;
+                }
+            }
+        } else {
+            for (var intAt = offset; intAt < end; intAt += 4) {
+                var intIndex = view.getUint32(intAt, true);
+                if (intIndex > maxIndex) {
+                    maxIndex = intIndex;
+                }
+            }
+        }
+
+        Module['boxedwineElementArrayClientVertexCount'] = maxIndex + 1;
+        return maxIndex;
+    });
+#endif
+
+void glcommon_recordElementArrayBufferData(const GLvoid* data, GLsizeiptr size) {
+#ifdef __EMSCRIPTEN__
+    if (size >= 0) {
+        boxedwine_record_element_array_buffer_data_js((int)(uintptr_t)data,
+            (int)size);
+    }
+#endif
+}
+
+void glcommon_recordElementArrayBufferSubData(GLintptr offset, const GLvoid* data,
+        GLsizeiptr size) {
+#ifdef __EMSCRIPTEN__
+    if (offset >= 0 && size > 0 && data) {
+        boxedwine_record_element_array_buffer_sub_data_js((int)offset,
+            (int)(uintptr_t)data, (int)size);
+    }
+#endif
+}
+
+U32 glcommon_prepareElementArrayClientDraw(GLenum type, GLsizei count, U32 offset) {
+#ifdef __EMSCRIPTEN__
+    double maxIndex = boxedwine_prepare_element_array_client_draw_js(
+        (int)type, (int)offset, (int)count);
+    if (maxIndex >= 0.0 && maxIndex < 4294967295.0) {
+        return (U32)maxIndex + 1;
+    }
+#endif
+    return count > 0 ? (U32)count : 0;
+}
+
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
 EM_JS(void, boxedwine_read_pixels_temp_rgba8, (int x, int y, int width, int height, int format, int type, int pixels), {
     var size = width * height * 4;
@@ -452,8 +600,8 @@ void glcommon_glDrawElements(CPU* cpu) {
 
     if (ELEMENT_ARRAY_BUFFER()) {
         p = (const GLvoid*)pARG4;
-        // :TODO: is this correct to use this count?
-        updateVertexPointers(cpu, count);
+        updateVertexPointers(cpu,
+            glcommon_prepareElementArrayClientDraw(type, count, indices));
         GL_LOG("glDrawElements mode=%x count=%d type=%x", mode, count, type);
     } else {
         p = marshalType(cpu, type, count, indices);

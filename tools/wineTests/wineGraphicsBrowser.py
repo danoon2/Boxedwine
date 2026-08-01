@@ -107,6 +107,7 @@ GRAPHICS_SUITES = {
             "readbuffer-yield-replay",
             "webgl-context-loss-restore",
             "buffer-lifecycle-growth",
+            "element-buffer-client-array-max-index",
         ),
         ("--test",),
         (),
@@ -319,6 +320,10 @@ def parse_graphics_result(
     requires_buffer_lifecycle_execution = (
         suite.name == "opengl-marshal" and group == "buffer-lifecycle-growth"
     )
+    requires_element_buffer_execution = (
+        suite.name == "opengl-marshal"
+        and group == "element-buffer-client-array-max-index"
+    )
     records = (
         _marshal_failure_records(output) if is_marshal else _failure_records(output)
     )
@@ -446,6 +451,8 @@ def parse_graphics_result(
         )
     elif requires_buffer_lifecycle_execution and skipped:
         reason = "buffer lifecycle regression skipped"
+    elif requires_element_buffer_execution and skipped:
+        reason = "element-buffer client-array regression skipped"
     else:
         reason = "ok"
 

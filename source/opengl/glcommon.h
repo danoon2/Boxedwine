@@ -37,6 +37,10 @@
 #endif
 
 U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
+void glcommon_recordElementArrayBufferData(const GLvoid* data, GLsizeiptr size);
+void glcommon_recordElementArrayBufferSubData(GLintptr offset, const GLvoid* data,
+    GLsizeiptr size);
+U32 glcommon_prepareElementArrayClientDraw(GLenum type, GLsizei count, U32 offset);
 #ifdef BOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY
 bool glcommon_testOpenGLProcAddressAvailable(const char* name);
 #endif

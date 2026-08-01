@@ -470,6 +470,24 @@ class ResultParsingTests(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertEqual("buffer lifecycle regression skipped", result.reason)
 
+    def test_opengl_element_buffer_client_array_rejects_a_skip(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "element-buffer-client-array-max-index",
+            {
+                "output": (
+                    "SKIP element-buffer-client-array-max-index: "
+                    "entry point unavailable\n"
+                    "Summary: 0 passed, 0 failed, 1 skipped\n"
+                ),
+            },
+        )
+
+        self.assertFalse(result.passed)
+        self.assertEqual(
+            "element-buffer client-array regression skipped", result.reason
+        )
+
 
 class BrowserHarnessTests(unittest.TestCase):
     def test_launch_url_selects_memory_storage_and_group_argument(self):

@@ -249,6 +249,9 @@
 #ifndef GL_INVALID_INDEX
 #define GL_INVALID_INDEX 0xFFFFFFFFu
 #endif
+#ifndef GL_SHADING_LANGUAGE_VERSION
+#define GL_SHADING_LANGUAGE_VERSION 0x8B8C
+#endif
 #ifndef GL_TEXTURE_2D
 #define GL_TEXTURE_2D 0x0DE1
 #endif
@@ -4296,18 +4299,43 @@ static TestResult testVertexAttribPointerPageBoundary(TestContext&) {
 }
 
 static GLuint makeVertexAttribRenderProgram(std::string& error) {
-    std::vector<const char*> vsParts = {
-        "#version 120\n",
-        "attribute vec2 a_pos;\n",
-        "attribute vec4 a_color;\n",
-        "varying vec4 v_color;\n",
-        "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); v_color = a_color; }\n"
-    };
-    std::vector<const char*> fsParts = {
-        "#version 120\n",
-        "varying vec4 v_color;\n",
-        "void main(){ gl_FragColor = v_color; }\n"
-    };
+    const char* shadingLanguage =
+        reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION));
+    const char* glVersion = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+    bool isGLSLES =
+        (shadingLanguage && std::strstr(shadingLanguage, "GLSL ES")) ||
+        (glVersion && std::strstr(glVersion, "BoxedWine WebGL"));
+    std::vector<const char*> vsParts;
+    std::vector<const char*> fsParts;
+    if (isGLSLES) {
+        vsParts = {
+            "#version 300 es\n",
+            "in vec2 a_pos;\n",
+            "in vec4 a_color;\n",
+            "out vec4 v_color;\n",
+            "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); v_color = a_color; }\n"
+        };
+        fsParts = {
+            "#version 300 es\n",
+            "precision mediump float;\n",
+            "in vec4 v_color;\n",
+            "out vec4 frag_color;\n",
+            "void main(){ frag_color = v_color; }\n"
+        };
+    } else {
+        vsParts = {
+            "#version 120\n",
+            "attribute vec2 a_pos;\n",
+            "attribute vec4 a_color;\n",
+            "varying vec4 v_color;\n",
+            "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); v_color = a_color; }\n"
+        };
+        fsParts = {
+            "#version 120\n",
+            "varying vec4 v_color;\n",
+            "void main(){ gl_FragColor = v_color; }\n"
+        };
+    }
 
     GLuint vs = compileShader(GL_VERTEX_SHADER, vsParts, nullptr, error);
     if (!vs) {
@@ -13177,6 +13205,143 @@ static TestResult testDrawElementsPageBoundary(TestContext&) {
     return pass("page-boundary glDrawElements rendered expected pixel");
 }
 
+static TestResult testElementBufferClientArrayMaxIndex(TestContext&) {
+    if (!glx.GenBuffers || !glx.BindBuffer || !glx.BufferData ||
+        !glx.BufferSubData || !glx.DeleteBuffers || !glx.VertexAttribPointer ||
+        !glx.EnableVertexAttribArray || !glx.DisableVertexAttribArray ||
+        !glx.VertexAttrib4fv || !glx.UseProgram || !glx.BindAttribLocation) {
+        return skip("element-buffer entry points are unavailable");
+    }
+
+    std::string error;
+    GLuint program = makeVertexAttribRenderProgram(error);
+    if (!program) {
+        return fail("element-buffer client-array program failed to build: " + error);
+    }
+
+    PageBytes vertices;
+    PageBytes initialIndices;
+    PageBytes updatedIndices;
+    if (!vertices.init(6 * 2 * sizeof(GLfloat), 32) ||
+        !initialIndices.init(12, 5) ||
+        !updatedIndices.init(3, 2)) {
+        glx.DeleteProgram(program);
+        return skip("VirtualAlloc failed for element-buffer client-array buffers");
+    }
+
+    const GLfloat vertexData[] = {
+        -0.9f, -0.8f,
+         0.0f, -0.8f,
+        -0.45f, 0.8f,
+         0.0f, -0.8f,
+         0.9f, -0.8f,
+         0.45f, 0.8f,
+    };
+    std::memcpy(vertices.data, vertexData, sizeof(vertexData));
+
+    constexpr GLintptr byteIndexOffset = 5;
+    initialIndices.data[byteIndexOffset + 0] = 0;
+    initialIndices.data[byteIndexOffset + 1] = 1;
+    initialIndices.data[byteIndexOffset + 2] = 2;
+    updatedIndices.data[0] = 3;
+    updatedIndices.data[1] = 4;
+    updatedIndices.data[2] = 5;
+
+    GLuint elementBuffer = 0;
+    glx.GenBuffers(1, &elementBuffer);
+
+    auto cleanup = [&]() {
+        glx.DisableVertexAttribArray(0);
+        glx.UseProgram(0);
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glx.DeleteBuffers(1, &elementBuffer);
+        glx.DeleteProgram(program);
+    };
+    auto failAndCleanup = [&](const std::string& message) {
+        cleanup();
+        return fail(message);
+    };
+
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, vertices.data);
+    glx.EnableVertexAttribArray(0);
+    glx.DisableVertexAttribArray(1);
+    const GLfloat green[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+    glx.VertexAttrib4fv(1, green);
+
+    glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
+    glx.BufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)initialIndices.size,
+        initialIndices.data, GL_DYNAMIC_DRAW);
+
+    glx.UseProgram(program);
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+    auto drawAndVerify = [&](GLenum type, GLintptr offset, bool expectLeft,
+            const char* phase, std::string& error) {
+        while (glGetError() != GL_NO_ERROR) {
+        }
+        glClear(GL_COLOR_BUFFER_BIT);
+        glDrawElements(GL_TRIANGLES, 3, type, (const void*)offset);
+        glFinish();
+
+        unsigned char left[4] = {};
+        unsigned char right[4] = {};
+        glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, left);
+        glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, right);
+        GLenum glError = glGetError();
+        if (glError != GL_NO_ERROR) {
+            error = std::string(phase) + " produced GL error " +
+                std::to_string(glError);
+            return false;
+        }
+        const unsigned char* drawn = expectLeft ? left : right;
+        const unsigned char* clear = expectLeft ? right : left;
+        if (!pixelIsGreenish(drawn)) {
+            error = std::string(phase) + " did not render the indexed triangle";
+            return false;
+        }
+        if (clear[0] > 32 || clear[1] > 32 || clear[2] > 32) {
+            error = std::string(phase) + " rendered the wrong indexed triangle";
+            return false;
+        }
+        return true;
+    };
+
+    if (!drawAndVerify(GL_UNSIGNED_BYTE, byteIndexOffset, true,
+            "initial unsigned-byte element-buffer draw", error)) {
+        return failAndCleanup(error);
+    }
+
+    glx.BufferSubData(GL_ELEMENT_ARRAY_BUFFER, byteIndexOffset,
+        (GLsizeiptr)updatedIndices.size, updatedIndices.data);
+    if (!drawAndVerify(GL_UNSIGNED_BYTE, byteIndexOffset, false,
+            "updated unsigned-byte element-buffer draw", error)) {
+        return failAndCleanup(error);
+    }
+
+    GLushort ushortIndices[5] = { 0, 0, 3, 4, 5 };
+    glx.BufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(ushortIndices),
+        ushortIndices, GL_DYNAMIC_DRAW);
+    if (!drawAndVerify(GL_UNSIGNED_SHORT, 4, false,
+            "unsigned-short element-buffer draw", error)) {
+        return failAndCleanup(error);
+    }
+
+    GLuint uintIndices[4] = { 0, 3, 4, 5 };
+    glx.BufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uintIndices),
+        uintIndices, GL_DYNAMIC_DRAW);
+    if (!drawAndVerify(GL_UNSIGNED_INT, 4, false,
+            "unsigned-int element-buffer draw", error)) {
+        return failAndCleanup(error);
+    }
+
+    cleanup();
+    return pass("element-buffer offsets, index widths, partial updates, and client-array maximum indices matched");
+}
+
 static void drawListTriangle(float x0, float x1, float x2) {
     glBegin(GL_TRIANGLES);
     glVertex2f(x0, -0.8f);
@@ -14731,6 +14896,7 @@ static std::vector<TestCase> tests() {
         { "multitexture-array-element-page-boundary-render", testMultiTextureArrayElementPageBoundaryRender },
         { "multitexture-array-element-mixed-storage", testMultiTextureArrayElementMixedStorage },
         { "draw-elements-page-boundary", testDrawElementsPageBoundary },
+        { "element-buffer-client-array-max-index", testElementBufferClientArrayMaxIndex },
         { "call-lists-page-boundary", testCallListsPageBoundary },
         { "draw-range-elements-page-boundary", testDrawRangeElementsPageBoundary },
         { "draw-elements-base-vertex-page-boundary", testDrawElementsBaseVertexPageBoundary },

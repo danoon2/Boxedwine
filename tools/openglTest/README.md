@@ -117,6 +117,12 @@ the guest can verify the actual bytes. The page wrapper owns padding for ST and
 ST-JIT (including both Emscripten typed-array overloads); the C++ marshaller
 owns it for worker-hosted MT and MT-JIT contexts.
 
+`element-buffer-client-array-max-index` combines a page-boundary client vertex
+array with an element-array buffer. It verifies
+nonzero element-buffer offsets, unsigned byte/short/int index widths, a partial
+index-buffer update, and sizing client uploads from the maximum referenced
+vertex rather than the draw's index count. Browser runs reject a skipped test.
+
 Build the Win32 Release target, then run:
 
 ```powershell

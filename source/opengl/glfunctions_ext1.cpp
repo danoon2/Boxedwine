@@ -34,9 +34,9 @@
 static const GLvoid* marshalBufferData(CPU* cpu, GLenum target, GLsizeiptr size, U32 address, GLsizeiptr* uploadSize) {
     *uploadSize = size;
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
-    // The page-level WebGL prototype wrapper pads single-threaded uploads and
-    // maintains their shadow bytes. Multi-threaded contexts live in a worker,
-    // where that wrapper is unavailable, so pad them in the marshaller.
+    // The page-level WebGL prototype wrapper pads single-threaded uploads.
+    // Multi-threaded contexts live in a worker where that wrapper is
+    // unavailable, so pad them in the marshaller.
     if (target == GL_ARRAY_BUFFER && size > 0) {
         constexpr GLsizeiptr padding = 256;
         *uploadSize = size + padding;
@@ -1279,6 +1279,9 @@ void glcommon_glBufferData(CPU* cpu) {
     GLsizeiptr uploadSize;
     const GLvoid* data = marshalBufferData(cpu, ARG1, ARG2, ARG3, &uploadSize);
     GL_FUNC(ext_glBufferData)(ARG1, uploadSize, data, ARG4);
+    if (ARG1 == GL_ELEMENT_ARRAY_BUFFER) {
+        glcommon_recordElementArrayBufferData(data, ARG2);
+    }
     GL_LOG ("glBufferData GLenum target=%d, GLsizeiptr size=%d, const void* data=%.08x, GLenum usage=%d",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -1289,6 +1292,9 @@ void glcommon_glBufferDataARB(CPU* cpu) {
     GLsizeiptr uploadSize;
     const GLvoid* data = marshalBufferData(cpu, ARG1, ARG2, ARG3, &uploadSize);
     GL_FUNC(ext_glBufferDataARB)(ARG1, uploadSize, data, ARG4);
+    if (ARG1 == GL_ELEMENT_ARRAY_BUFFER) {
+        glcommon_recordElementArrayBufferData(data, ARG2);
+    }
     GL_LOG ("glBufferDataARB GLenum target=%d, GLsizeiptrARB size=%d, const void* data=%.08x, GLenum usage=%d",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -1320,7 +1326,11 @@ void glcommon_glBufferStorage(CPU* cpu) {
     if (!ext_glBufferStorage)
         kpanic("ext_glBufferStorage is NULL");
     {
-    GL_FUNC(ext_glBufferStorage)(ARG1, ARG2, marshalArray<GLubyte>(cpu, ARG3, ARG2), ARG4);
+    const GLvoid* data = marshalArray<GLubyte>(cpu, ARG3, ARG2);
+    GL_FUNC(ext_glBufferStorage)(ARG1, ARG2, data, ARG4);
+    if (ARG1 == GL_ELEMENT_ARRAY_BUFFER) {
+        glcommon_recordElementArrayBufferData(data, ARG2);
+    }
     GL_LOG ("glBufferStorage GLenum target=%d, GLsizeiptr size=%d, const void* data=%.08x, GLbitfield flags=%d",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -1328,7 +1338,11 @@ void glcommon_glBufferSubData(CPU* cpu) {
     if (!ext_glBufferSubData)
         kpanic("ext_glBufferSubData is NULL");
     {
-    GL_FUNC(ext_glBufferSubData)(ARG1, ARG2, ARG3, marshalArray<GLubyte>(cpu, ARG4, ARG3));
+    const GLvoid* data = marshalArray<GLubyte>(cpu, ARG4, ARG3);
+    GL_FUNC(ext_glBufferSubData)(ARG1, ARG2, ARG3, data);
+    if (ARG1 == GL_ELEMENT_ARRAY_BUFFER) {
+        glcommon_recordElementArrayBufferSubData(ARG2, data, ARG3);
+    }
     GL_LOG ("glBufferSubData GLenum target=%d, GLintptr offset=%d, GLsizeiptr size=%d, const void* data=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -1336,7 +1350,11 @@ void glcommon_glBufferSubDataARB(CPU* cpu) {
     if (!ext_glBufferSubDataARB)
         kpanic("ext_glBufferSubDataARB is NULL");
     {
-    GL_FUNC(ext_glBufferSubDataARB)(ARG1, ARG2, ARG3, marshalArray<GLubyte>(cpu, ARG4, ARG3));
+    const GLvoid* data = marshalArray<GLubyte>(cpu, ARG4, ARG3);
+    GL_FUNC(ext_glBufferSubDataARB)(ARG1, ARG2, ARG3, data);
+    if (ARG1 == GL_ELEMENT_ARRAY_BUFFER) {
+        glcommon_recordElementArrayBufferSubData(ARG2, data, ARG3);
+    }
     GL_LOG ("glBufferSubDataARB GLenum target=%d, GLintptrARB offset=%d, GLsizeiptrARB size=%d, const void* data=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
