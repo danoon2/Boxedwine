@@ -113,9 +113,9 @@ class WebGLTestDivergenceTests(unittest.TestCase):
         self.assertEqual(
             {
                 "modified_test_files": 9,
-                "skip_calls": 65,
+                "skip_calls": 63,
                 "todo_calls": 44,
-                "unique_skip_rules": 42,
+                "unique_skip_rules": 41,
                 "unique_todo_rules": 14,
             },
             manifest["_policy_counts"],

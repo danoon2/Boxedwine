@@ -614,6 +614,69 @@ Only the test bundle needs publishing:
 - WebGL divergence manifest:
   `28aacde09a60bf3ec3d05c15c725fdc3de33f0da2f3a74acdddcd4d6b146fe37`
 
+### D3D8/D3D9 compatible depth renderbuffer synchronization
+
+On July 31, 2026 the remaining D3D8 and D3D9 `depth_buffer_test()` WebGL
+skips were removed. WebGL requires framebuffer attachments to have matching
+dimensions, while D3D permits a depth-stencil surface to be larger than the
+current render target. WineD3D already created size-compatible renderbuffers,
+but it did not preserve their contents when switching among 320x240, 480x360,
+and 640x480 render targets.
+
+The WebGL path now treats the full depth texture as the canonical backing
+store. It flushes the outgoing compatible renderbuffer into that texture and
+populates the incoming compatible renderbuffer from it. The copies use
+WineD3D's cached depth-only FBOs, avoiding per-switch FBO allocation.
+
+The focused tests passed with no todo results, failures, or skips in both
+Emscripten modes:
+
+- D3D8, 174 assertions:
+  `C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-203628-270668`
+  and
+  `C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-203708-501415`
+- D3D9, 93 assertions:
+  `C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-203417-581363`
+  and
+  `C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-203512-914791`
+
+The complete single-threaded non-JIT visual groups also passed:
+
+- D3D8: 20,852 assertions, 17 todo results, 0 failures, and 14 skips in
+  464.250 seconds:
+  `C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-204605-903867`
+- D3D9: 25,715 assertions, 40 todo results, 0 failures, and 45 skips in
+  629.359 seconds:
+  `C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-204605-901868`
+
+The final packaged inputs passed the exact browser `stateblock` baselines at
+`20260731-210129-121616` and `20260731-210129-132125`. The same executables
+passed the exact native Wine controls at `20260731-210241-152288` and
+`20260731-210241-169060` under `/home/james/.cache/boxedwine/wineTests/runs`.
+
+Final artifact identities:
+
+- `wined3d.dll` (3,982,509 bytes):
+  `ac9b5b618e4bc16cdda2823fd19c4114d743176594834290943708322d1a78ae`
+- `boxedwine.3.zip` and `TinyCore15Wine11.0-v10-candidate.zip`
+  (157,980,639 bytes):
+  `20808d47d94be5165a47c26dabb5c673009833bc4561c50b86d0168696891b96`
+- `boxedwine.gdi.3.zip` (157,980,759 bytes):
+  `b9d9a302425ba7ca0c71829f9b06c83a665f33e12c6cbf94302ed7be1c7de717`
+- `d3d8_test.exe`:
+  `e396818a5aa5ab375faa22de9e8bdf4d85f9faf310e44dfa86de095c08e5b5d1`
+- `d3d9_test.exe`:
+  `34bb4b838638d609c735c31029a737646c48755b71a4911431d5db9bad7fbb76`
+- `wine_tests_v6.zip` (11,989,560 bytes):
+  `e73c6f9212bad82893411686ce1704b585f0c03a970a2ce87d332842cc6eb01c`
+- WebGL divergence manifest:
+  `5e33b3c580dd1647f69138858eb888049c966d49f66c84a0323f53749938b3c5`
+
+The upload-ready artifacts and validation sidecars are in
+`/home/james/webgl/boxedwine-webgl-depth-sync-build-20260731/candidates`.
+The v10 base filesystem is unchanged because it intentionally contains no
+Wine/WebGL DLL payload.
+
 ## D3DX9 baseline
 
 Run the complete validated D3DX9 set with:

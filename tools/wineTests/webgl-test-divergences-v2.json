@@ -56,7 +56,7 @@
       "patch_id": "wined3d-draw-state-query",
       "category": "wined3d_draw_state_queries_and_resources",
       "path": "tools/d3dToWebGL/webgl-wined3d-draw-state-query-against-wine-11.0.patch",
-      "sha256": "e6582e4f30d0259915e49e5d6a9311013c153a1de1c714d6371d052906fc8bee"
+      "sha256": "762d71a39f9c2bc1c2cc142469893944142cd9e1f693a5e20293fdd6a618a269"
     },
     {
       "patch_id": "d3d8-d3d9-compatibility-diagnostics",
@@ -68,7 +68,7 @@
   "test_patch": {
     "patch_id": "test-expectations",
     "path": "tools/d3dToWebGL/webgl-tests-against-wine-11.0.patch",
-    "sha256": "b7f3a339fe818127680db00b9326f9e91e2f7ecf59b4de7173a4576c5f81882b"
+    "sha256": "267b1f1eac270c8dda2ef749e03b736405d0c4a9768fdc799308897d5df8ecf0"
   },
   "policy": "No production patch may modify Wine tests. Every added skip() and todo_wine_if() policy in the test-only patch must match exactly one classified rule.",
   "categories": {
@@ -194,10 +194,6 @@
         {
           "marker": "skip(\"WebGL does not match desktop D3D9 non-indexed stream-frequency corner cases.\\n\");",
           "occurrences": 1
-        },
-        {
-          "marker": "skip(\"WebGL does not preserve desktop D3D depth-buffer copy semantics across render targets.\\n\");",
-          "occurrences": 2
         },
         {
           "marker": "skip(\"WebGL does not preserve desktop D3D depth-stencil blit semantics.\\n\");",
