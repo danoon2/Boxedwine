@@ -68,7 +68,14 @@ void Jit::dynamic_movr32s16(DecodedOp* op) {
     emulateSingleOp();
 }
 void Jit::dynamic_move16s16(DecodedOp* op) {
-    emulateSingleOp();
+    RegPtr value = getReadOnlySegValue(op->reg);
+    IfEqual(JitWidth::b32, value, BOXEDWINE_INTERNAL_USER_CODE_SELECTOR); {
+        movValue(JitWidth::b32, value, BOXEDWINE_VISIBLE_USER_CODE_SELECTOR);
+    } EndIf();
+    IfEqual(JitWidth::b32, value, BOXEDWINE_INTERNAL_USER_DATA_SELECTOR); {
+        movValue(JitWidth::b32, value, BOXEDWINE_VISIBLE_USER_DATA_SELECTOR);
+    } EndIf();
+    write(JitWidth::b16, calculateEaa(op), value);
 }
 void Jit::dynamic_movs16e16(DecodedOp* op) {
     emulateSingleOp();

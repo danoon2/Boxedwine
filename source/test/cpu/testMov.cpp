@@ -648,6 +648,35 @@ void runSegmentToMemoryCases(bool bigDestination, const char* name) {
         verifySegmentsUnchanged(segValues, segAddresses, name);
         verifyFlagsUnchanged(name);
     }
+
+    const struct {
+        int seg;
+        U32 internalValue;
+    } internalSelectors[] = {
+        {CS, BOXEDWINE_INTERNAL_USER_CODE_SELECTOR},
+        {DS, BOXEDWINE_INTERNAL_USER_DATA_SELECTOR}
+    };
+    for (const auto& data : internalSelectors) {
+        U32 offset = MEM_BASE + 0x4200 + data.seg * 0x20;
+        U32 address = TEST_HEAP_ADDRESS + offset;
+        U32 regs[8];
+        U32 segValues[6];
+        U32 segAddresses[6];
+
+        newInstruction(INITIAL_FLAGS);
+        emitMovSregToRegMem(data.seg, 5, false, bigDestination);
+        pushCode32(offset);
+        initAddressRegisters(regs);
+        writeRegs(cpu, regs);
+        cpu->seg[data.seg].value = data.internalValue;
+        U32 expected = cpu->getSegValue(data.seg);
+        captureSegments(segValues, segAddresses);
+        prepareMemTarget(address, 0, 16);
+        runTestCPU();
+        verifyMemTarget(address, expected, 16, name);
+        verifySegmentsUnchanged(segValues, segAddresses, name);
+        verifyFlagsUnchanged(name);
+    }
 }
 
 void runMemoryOrRegToSegmentCases(bool bigSource, const char* name) {
