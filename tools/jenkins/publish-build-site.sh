@@ -8,8 +8,8 @@ fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SITE_DIR="$(mktemp -d)"
-BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.2.zip}"
-BOXEDWINE_GDI_ZIP_URL="${BOXEDWINE_GDI_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.gdi.2.zip}"
+BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.3.zip}"
+BOXEDWINE_GDI_ZIP_URL="${BOXEDWINE_GDI_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.gdi.3.zip}"
 REMOTE_LOCK_ACQUIRED=0
 REMOTE_HOST="${BUILD_SITE_REMOTE%%:*}"
 REMOTE_PATH="${BUILD_SITE_REMOTE#*:}"
@@ -78,8 +78,8 @@ if [ -d "$SINGLE_THREADED_DIR" ] &&
     [ -d "$SINGLE_THREADED_JIT_DIR" ] &&
     [ -d "$MULTI_THREADED_JIT_DIR" ]; then
     mkdir -p "$DEMO_SOURCE"
-    wget -O "$DEMO_SOURCE/boxedwine.2.zip" "$BOXEDWINE_ZIP_URL"
-    wget -O "$DEMO_SOURCE/boxedwine.gdi.2.zip" "$BOXEDWINE_GDI_ZIP_URL"
+    wget -O "$DEMO_SOURCE/boxedwine.3.zip" "$BOXEDWINE_ZIP_URL"
+    wget -O "$DEMO_SOURCE/boxedwine.gdi.3.zip" "$BOXEDWINE_GDI_ZIP_URL"
     DEMO_ARGS+=(
         --demo-source "$DEMO_SOURCE"
         --single-threaded-dir "$SINGLE_THREADED_DIR"

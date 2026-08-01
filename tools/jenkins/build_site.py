@@ -13,7 +13,7 @@ from urllib.parse import parse_qsl, quote
 
 
 DEFAULT_PUBLIC_URL = "https://boxedwine.org/builds/"
-DEFAULT_DEMO_ROOT_ZIP = "boxedwine.2.zip"
+DEFAULT_DEMO_ROOT_ZIP = "boxedwine.3.zip"
 LEGACY_DEMO_ROOT_ZIP = "boxedwine.zip"
 DEMO_RUNNER_SPECS = (
     ("st", "Single Threaded", "single_threaded_dir"),
@@ -1091,7 +1091,10 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, runne
     for zip_path in sorted(demo_source.glob("*.zip"), key=lambda path: path.name.lower()):
         if not same_apps_dir:
             shutil.copy2(zip_path, apps_dir / zip_path.name)
-        if zip_path.name.lower() in root_zip_names:
+        if (
+            zip_path.name.lower() in root_zip_names
+            or zip_path.name.lower().startswith("boxedwine")
+        ):
             continue
         manifest_entry = manifest.get(zip_path.name, {})
         program = manifest_entry.get("exe") or manifest_entry.get("program") or find_demo_program(zip_path)

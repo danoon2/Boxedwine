@@ -10,8 +10,8 @@ LOCAL_PUBLIC_URL="${BUILD_SITE_PUBLIC_URL:-}"
 TITLE="${BUILD_SITE_TITLE:-Boxedwine Local Builds}"
 EMSDK_DIR="${EMSDK_DIR:-/home/james/emsdk}"
 BUILDFILES_DIR="${BUILDFILES_DIR:-/var/www/buildfiles}"
-BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.2.zip}"
-BOXEDWINE_GDI_ZIP_URL="${BOXEDWINE_GDI_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.gdi.2.zip}"
+BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.3.zip}"
+BOXEDWINE_GDI_ZIP_URL="${BOXEDWINE_GDI_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.gdi.3.zip}"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date -u +%Y%m%d%H%M%S)}"
@@ -243,18 +243,18 @@ PY
 ensure_boxedwine_zips() {
     local apps_dir="$1"
 
-    echo "Downloading boxedwine.2.zip from $BOXEDWINE_ZIP_URL"
-    echo "Downloading boxedwine.gdi.2.zip from $BOXEDWINE_GDI_ZIP_URL"
+    echo "Downloading boxedwine.3.zip from $BOXEDWINE_ZIP_URL"
+    echo "Downloading boxedwine.gdi.3.zip from $BOXEDWINE_GDI_ZIP_URL"
     if [ "$DRY_RUN" = "1" ]; then
         echo "+ mkdir -p $apps_dir"
-        echo "+ wget -O $apps_dir/boxedwine.2.zip $BOXEDWINE_ZIP_URL"
-        echo "+ wget -O $apps_dir/boxedwine.gdi.2.zip $BOXEDWINE_GDI_ZIP_URL"
+        echo "+ wget -O $apps_dir/boxedwine.3.zip $BOXEDWINE_ZIP_URL"
+        echo "+ wget -O $apps_dir/boxedwine.gdi.3.zip $BOXEDWINE_GDI_ZIP_URL"
         return
     fi
 
     mkdir -p "$apps_dir"
-    wget -O "$apps_dir/boxedwine.2.zip" "$BOXEDWINE_ZIP_URL"
-    wget -O "$apps_dir/boxedwine.gdi.2.zip" "$BOXEDWINE_GDI_ZIP_URL"
+    wget -O "$apps_dir/boxedwine.3.zip" "$BOXEDWINE_ZIP_URL"
+    wget -O "$apps_dir/boxedwine.gdi.3.zip" "$BOXEDWINE_GDI_ZIP_URL"
 }
 
 copy_web_build() {

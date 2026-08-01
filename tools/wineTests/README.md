@@ -1,9 +1,12 @@
 # Wine 11 NTDLL, kernel32, ws2_32, and advapi32 tests
 
-`runWineTests.py` builds the 64-bit Linux BoxedWine release and runs the
-32-bit Wine 11 `ntdll_test.exe`, `kernel32_test.exe`, `ws2_32_test.exe`, and
-`advapi32_test.exe` groups. It exits successfully only when every selected
-group completes within its suite-specific failure ceiling.
+`runWineTests.py` is the unified Wine regression entry point. On Linux it
+builds the 64-bit BoxedWine release and runs the 32-bit Wine 11
+`ntdll_test.exe`, `kernel32_test.exe`, `ws2_32_test.exe`, and
+`advapi32_test.exe` groups. On Windows it can run D3D9 groups through the
+single-threaded non-JIT Emscripten build and Chrome. It exits successfully
+only when every selected group completes within its suite-specific failure
+ceiling.
 
 Every generated BoxedWine command uses `-novideo` to prevent host test windows
 from appearing during headless execution.
@@ -34,9 +37,11 @@ by all 33 kernel32 groups, the ws2_32 `afd` group, and all 12 advapi32 groups.
 The versioned inputs are:
 
 - BoxedWine Wine 11 filesystem:
-  `https://boxedwine.org/v2/8/TinyCore15Wine11.0.zip`
+  `https://boxedwine.org/v2/10/TinyCore15Wine11.0.zip`
 - Wine 11 tests:
   `https://boxedwine.org/v2/1/wine_tests_v4.zip`
+- Prepared local graphics-test bundle:
+  `tools/wineTests/wine_tests_v5.zip`
 
 They are cached in
 `${XDG_CACHE_HOME:-$HOME/.cache}/boxedwine/wineTests`. A nonempty cached file is
@@ -184,35 +189,29 @@ See [BUILD_TESTS.md](BUILD_TESTS.md) for the reusable Wine 11 test build
 process and the verified commands that produce all supported PE32/i386
 executables.
 
-`wine_tests_v4.zip` is a flat archive containing:
+The prepared `wine_tests_v5.zip` is a flat archive containing:
 
 - `ntdll_test.exe`: Wine 11 PE32/i386 test executable.
 - `kernel32_test.exe`: Wine 11 PE32/i386 test executable.
 - `ws2_32_test.exe`: Wine 11 PE32/i386 test executable.
 - `advapi32_test.exe`: Wine 11 PE32/i386 test executable.
+- `d3d9_test.exe`: patched Wine 11 PE32/i386 D3D9 test executable.
 - `COPYING.LIB`: Wine's LGPL license.
-- `SHA256SUMS`: hashes for all five payload files above.
+- `SHA256SUMS`: hashes for all six payload files above.
 
-The prepared upload artifact is `tools/wineTests/wine_tests_v4.zip`. Its
+The prepared graphics upload artifact is `tools/wineTests/wine_tests_v5.zip`.
+Its
 SHA-256 is:
 
 ```text
-a1f0fb582c432755bcf53be4634f711e2e08e0329587cf86bc6940bfbe9af26d
+eea5e12859f55736eb1d747f068b63a910c29e2ca6d14064a3dd9fccbf2bf3e6
 ```
 
-Upload that file without repacking it to:
-
-```text
-https://boxedwine.org/v2/1/wine_tests_v4.zip
-```
-
-After uploading, verify the public file before relying on the default runner:
-
-```bash
-curl -fL https://boxedwine.org/v2/1/wine_tests_v4.zip -o /tmp/wine_tests_v4.zip
-sha256sum /tmp/wine_tests_v4.zip
-unzip -t /tmp/wine_tests_v4.zip
-```
+The public native default remains `wine_tests_v4.zip` until v5 has been
+uploaded and verified. Browser D3D9 runs use the local v5 bundle by default;
+`--graphics-test-executable` can override it during Wine patch development.
+See [GRAPHICS_README.md](GRAPHICS_README.md) for the browser command and
+artifact layout.
 
 ## Development checks
 
@@ -223,6 +222,7 @@ artifacts or build BoxedWine:
 python3 -m unittest discover -s tools/wineTests/tests -v
 python3 -m py_compile tools/wineTests/runWineTests.py
 unzip -t tools/wineTests/wine_tests_v4.zip
+unzip -t tools/wineTests/wine_tests_v5.zip
 ```
 
 If a real group fails, inspect its log and retained root under the run directory

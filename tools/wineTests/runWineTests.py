@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Build BoxedWine and run the Wine 11 NTDLL, kernel32, ws2_32, and advapi32 tests."""
+"""Run BoxedWine's native and Emscripten Wine 11 regression suites."""
 
 from __future__ import annotations
 
 import argparse
 from datetime import datetime
+import importlib.util
 import json
 import os
 import platform
@@ -19,8 +20,8 @@ from typing import BinaryIO, Callable, NamedTuple
 from urllib.request import urlopen
 
 
-FILESYSTEM_URL = "https://boxedwine.org/v2/9/TinyCore15Wine11.0.zip"
-FILESYSTEM_CACHE_NAME = "TinyCore15Wine11.0-v8.zip"
+FILESYSTEM_URL = "https://boxedwine.org/v2/10/TinyCore15Wine11.0.zip"
+FILESYSTEM_CACHE_NAME = "TinyCore15Wine11.0-v10.zip"
 TESTS_URL = "https://boxedwine.org/v2/1/wine_tests_v4.zip"
 TESTS_CACHE_NAME = "wine_tests_v4.zip"
 TEST_EXECUTABLES = {
@@ -29,6 +30,7 @@ TEST_EXECUTABLES = {
     "ws2_32": "ws2_32_test.exe",
     "advapi32": "advapi32_test.exe",
 }
+GRAPHICS_TEST_EXECUTABLES = {"d3d9": "d3d9_test.exe"}
 
 TEST_GROUPS = (
     "atom",
@@ -112,6 +114,8 @@ ADVAPI32_TEST_GROUPS = (
     "service",
 )
 
+D3D9_TEST_GROUPS = ("d3d9ex", "device", "stateblock", "visual")
+
 FAILURE_CEILINGS = {group: 0 for group in TEST_GROUPS}
 FAILURE_CEILINGS.update({"file": 9, "virtual": 7, "wow64": 3})
 
@@ -121,6 +125,10 @@ KERNEL32_FAILURE_CEILINGS.update({"sync": 1, "loader": 62, "virtual": 109})
 WS2_32_FAILURE_CEILINGS = {"afd": 19}
 
 ADVAPI32_FAILURE_CEILINGS = {group: 0 for group in ADVAPI32_TEST_GROUPS}
+
+# Graphics ceilings are intentionally kept in this unified runner even though
+# Emscripten/Chrome uses a separate execution backend.
+D3D9_FAILURE_CEILINGS = {group: 0 for group in D3D9_TEST_GROUPS}
 
 
 class RunnerError(RuntimeError):
@@ -161,6 +169,13 @@ ADVAPI32_SUITE = SuiteConfig(
     TEST_EXECUTABLES["advapi32"],
     ADVAPI32_TEST_GROUPS,
     ADVAPI32_FAILURE_CEILINGS,
+    frozenset(),
+)
+D3D9_SUITE = SuiteConfig(
+    "d3d9",
+    GRAPHICS_TEST_EXECUTABLES["d3d9"],
+    D3D9_TEST_GROUPS,
+    D3D9_FAILURE_CEILINGS,
     frozenset(),
 )
 
@@ -276,6 +291,48 @@ def extract_test_executables(
     return destinations
 
 
+def extract_graphics_test_executable(
+    archive_path: Path, suite: SuiteConfig, destination_dir: Path
+) -> Path:
+    """Extract one root-level PE32 graphics test from a versioned Wine test bundle."""
+    archive_path = Path(archive_path)
+    destination_dir = Path(destination_dir)
+    if suite.name not in GRAPHICS_TEST_EXECUTABLES:
+        raise RunnerError(f"no bundled graphics executable is registered for {suite.name}")
+    executable_name = GRAPHICS_TEST_EXECUTABLES[suite.name]
+    if not zipfile.is_zipfile(archive_path):
+        raise RunnerError(f"not a ZIP archive: {archive_path}")
+
+    with zipfile.ZipFile(archive_path) as archive:
+        for info in archive.infolist():
+            normalized = info.filename.replace("\\", "/")
+            path = PurePosixPath(normalized)
+            if path.is_absolute() or ".." in path.parts:
+                raise RunnerError(f"unsafe ZIP entry: {info.filename}")
+        try:
+            executable = archive.read(executable_name)
+        except KeyError as error:
+            raise RunnerError(
+                f"graphics test archive is missing root-level {executable_name}"
+            ) from error
+
+    _validate_pe32_i386(executable, executable_name)
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    destination = destination_dir / executable_name
+    partial = destination.with_suffix(destination.suffix + ".part")
+    partial.unlink(missing_ok=True)
+    try:
+        with partial.open("wb") as output:
+            output.write(executable)
+        partial.replace(destination)
+    except Exception as error:
+        partial.unlink(missing_ok=True)
+        raise RunnerError(
+            f"failed to extract Wine graphics test executable: {error}"
+        ) from error
+    return destination
+
+
 def require_linux_x86_64(
     *, system_name: str | None = None, machine: str | None = None
 ) -> None:
@@ -362,7 +419,7 @@ def _summary_for_group(group: str, output: str) -> tuple[int, int, int, int] | N
         r"(\d+)\s+tests executed\s*\(\s*"
         r"(\d+)\s+marked as todo,\s*"
         r"(?:\d+\s+as flaky,\s*)?"
-        r"(\d+)\s*failures?\),\s*"
+        r"(\d+)\s*failures?\)\s*,\s*"
         r"(\d+)\s+s\s*k\s*i\s*p\s*p\s*e\s*d",
         re.MULTILINE,
     )
@@ -639,9 +696,122 @@ def run_suite(
     return results
 
 
+def _load_graphics_backend():
+    """Load the browser backend without making it a second test-policy entry point."""
+    module_name = "_boxedwine_wine_graphics_browser"
+    if module_name in sys.modules:
+        return sys.modules[module_name]
+    module_path = Path(__file__).with_name("wineGraphicsBrowser.py")
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise RunnerError(f"could not load graphics backend: {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def run_emscripten_graphics_suite(
+    suite: SuiteConfig,
+    groups: tuple[str, ...],
+    build_dir: Path,
+    filesystem: Path,
+    test_executable: Path,
+    chrome: Path | None,
+    run_dir: Path,
+    *,
+    timeout: int = 900,
+    headless: bool = False,
+    keep_browser_profile: bool = False,
+) -> list[TestResult]:
+    """Run selected graphics groups through the Chrome backend and apply ceilings."""
+    graphics = _load_graphics_backend()
+    try:
+        backend_suite = graphics.GRAPHICS_SUITES[suite.name]
+        graphics.validate_web_build(build_dir)
+        if not Path(filesystem).is_file() or not zipfile.is_zipfile(filesystem):
+            raise RunnerError(f"filesystem is not a readable ZIP: {filesystem}")
+        graphics.validate_test_executable(test_executable, backend_suite)
+        chrome_path = graphics.find_chrome(chrome)
+    except graphics.RunnerError as error:
+        raise RunnerError(str(error)) from error
+
+    results = []
+    artifacts = {}
+    for group in groups:
+        if group not in suite.groups:
+            raise RunnerError(f"unknown {suite.name} test group: {group}")
+        group_run_dir = Path(run_dir) / "graphics" / suite.name / group
+        try:
+            backend_result, backend_manifest = graphics.run_browser_test(
+                suite=backend_suite,
+                group=group,
+                build_dir=build_dir,
+                filesystem=filesystem,
+                test_executable=test_executable,
+                chrome=chrome_path,
+                run_dir=group_run_dir,
+                timeout=timeout,
+                headless=headless,
+                keep_browser_profile=keep_browser_profile,
+            )
+        except graphics.RunnerError as error:
+            raise RunnerError(str(error)) from error
+
+        failures = backend_result.failures or 0
+        ceiling = suite.failure_ceilings[group]
+        backend_failure_reason = f"{failures} Wine test failures"
+        infrastructure_passed = backend_result.passed or (
+            backend_result.failures is not None
+            and backend_result.reason == backend_failure_reason
+        )
+        if not infrastructure_passed:
+            passed = False
+            reason = backend_result.reason
+        elif failures > ceiling:
+            passed = False
+            reason = f"{failures} failures exceeds ceiling {ceiling}"
+        else:
+            passed = True
+            reason = "ok"
+        results.append(
+            TestResult(
+                group=group,
+                tests=backend_result.tests,
+                todo=backend_result.todo,
+                failures=failures,
+                skipped=backend_result.skipped,
+                ceiling=ceiling,
+                passed=passed,
+                reason=reason,
+                suite=suite.name,
+            )
+        )
+        artifacts[group] = {
+            "run_dir": str(group_run_dir),
+            "browser_manifest": str(group_run_dir / "manifest.json"),
+            "failure_records": list(backend_result.failure_records),
+            "browser_events": list(backend_result.browser_events),
+            "browser": backend_manifest.get("browser", {}),
+        }
+
+    manifest = {
+        "results": [result._asdict() for result in results],
+        "graphics_artifacts": artifacts,
+    }
+    (Path(run_dir) / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    return results
+
+
 def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
+    repo_root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(
-        description="Build BoxedWine and run the Wine 11 NTDLL, kernel32, ws2_32, and advapi32 tests."
+        description=(
+            "Run Wine 11 NTDLL, kernel32, ws2_32, advapi32, and browser "
+            "graphics tests with unified accepted-failure policy."
+        )
     )
     parser.add_argument(
         "--group",
@@ -672,6 +842,13 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="run only this advapi32 test group; may be repeated",
     )
     parser.add_argument(
+        "--d3d9-group",
+        dest="selected_d3d9_groups",
+        action="append",
+        choices=D3D9_TEST_GROUPS,
+        help="run this D3D9 group in Emscripten/Chrome; may be repeated",
+    )
+    parser.add_argument(
         "--timeout",
         type=_positive_integer,
         default=180,
@@ -698,12 +875,58 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         type=Path,
         help="existing BoxedWine executable; skips make release",
     )
+    parser.add_argument(
+        "--graphics-test-executable",
+        type=Path,
+        help="patched PE32 d3d9_test.exe; overrides --graphics-tests-archive",
+    )
+    parser.add_argument(
+        "--graphics-tests-archive",
+        type=Path,
+        default=repo_root / "tools" / "wineTests" / "wine_tests_v5.zip",
+        help="versioned Wine test bundle containing d3d9_test.exe",
+    )
+    parser.add_argument(
+        "--graphics-build-dir",
+        type=Path,
+        default=repo_root
+        / "project"
+        / "emscripten"
+        / "Deploy"
+        / "Web"
+        / "SingleThreaded",
+        help="single-threaded non-JIT Emscripten web build",
+    )
+    parser.add_argument(
+        "--graphics-filesystem",
+        type=Path,
+        default=_default_graphics_filesystem(),
+        help="versioned browser filesystem ZIP (default: local boxedwine.3.zip)",
+    )
+    parser.add_argument("--chrome", type=Path, help="Chrome executable")
+    parser.add_argument(
+        "--graphics-timeout",
+        type=_positive_integer,
+        default=900,
+        help="per-graphics-group browser timeout in seconds (default: 900)",
+    )
+    parser.add_argument(
+        "--graphics-headless",
+        action="store_true",
+        help="run graphics groups with Chrome's new headless mode",
+    )
+    parser.add_argument(
+        "--keep-graphics-browser-profile",
+        action="store_true",
+        help="retain isolated Chrome profiles created by graphics groups",
+    )
     arguments = parser.parse_args(argv)
     has_selection = (
         arguments.selected_groups is not None
         or arguments.selected_kernel32_groups is not None
         or arguments.selected_ws2_32_groups is not None
         or arguments.selected_advapi32_groups is not None
+        or arguments.selected_d3d9_groups is not None
     )
     arguments.groups = tuple(
         arguments.selected_groups or (() if has_selection else TEST_GROUPS)
@@ -720,10 +943,12 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         arguments.selected_advapi32_groups
         or (() if has_selection else ADVAPI32_TEST_GROUPS)
     )
+    arguments.d3d9_groups = tuple(arguments.selected_d3d9_groups or ())
     del arguments.selected_groups
     del arguments.selected_kernel32_groups
     del arguments.selected_ws2_32_groups
     del arguments.selected_advapi32_groups
+    del arguments.selected_d3d9_groups
     return arguments
 
 
@@ -732,6 +957,13 @@ def _default_cache_dir() -> Path:
     if cache_home:
         return Path(cache_home) / "boxedwine" / "wineTests"
     return Path.home() / ".cache" / "boxedwine" / "wineTests"
+
+
+def _default_graphics_filesystem() -> Path | None:
+    appdata = os.environ.get("APPDATA")
+    if not appdata:
+        return None
+    return Path(appdata) / "Boxedwine" / "FileSystems2" / "boxedwine.3.zip"
 
 
 def _positive_integer(value: str) -> int:
@@ -766,9 +998,56 @@ def _print_results(results: list[TestResult], run_dir: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     try:
         arguments = parse_arguments(argv)
+        repo_root = Path(__file__).resolve().parents[2]
+        native_groups_selected = any(
+            (
+                arguments.groups,
+                arguments.kernel32_groups,
+                arguments.ws2_32_groups,
+                arguments.advapi32_groups,
+            )
+        )
+        if arguments.d3d9_groups:
+            if native_groups_selected:
+                raise RunnerError(
+                    "browser graphics groups cannot currently be combined with native Linux groups"
+                )
+            if arguments.graphics_filesystem is None:
+                raise RunnerError(
+                    "--graphics-filesystem is required with --d3d9-group"
+                )
+            cache_dir = arguments.cache_dir.expanduser().resolve()
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            run_dir = _new_run_directory(cache_dir)
+            if arguments.graphics_test_executable is not None:
+                graphics_test_executable = (
+                    arguments.graphics_test_executable.expanduser().resolve()
+                )
+            else:
+                graphics_test_executable = extract_graphics_test_executable(
+                    arguments.graphics_tests_archive.expanduser().resolve(),
+                    D3D9_SUITE,
+                    run_dir / "input",
+                )
+            results = run_emscripten_graphics_suite(
+                D3D9_SUITE,
+                arguments.d3d9_groups,
+                arguments.graphics_build_dir.expanduser().resolve(),
+                arguments.graphics_filesystem.expanduser().resolve(),
+                graphics_test_executable,
+                arguments.chrome.expanduser().resolve()
+                if arguments.chrome is not None
+                else None,
+                run_dir,
+                timeout=arguments.graphics_timeout,
+                headless=arguments.graphics_headless,
+                keep_browser_profile=arguments.keep_graphics_browser_profile,
+            )
+            _print_results(results, run_dir)
+            return 0 if all(result.passed for result in results) else 1
+
         require_linux_x86_64()
 
-        repo_root = Path(__file__).resolve().parents[2]
         cache_dir = arguments.cache_dir.expanduser().resolve()
         cache_dir.mkdir(parents=True, exist_ok=True)
         filesystem = cache_dir / FILESYSTEM_CACHE_NAME

@@ -11,9 +11,9 @@ The script mirrors the existing public build site, builds fresh single-threaded,
    - Otherwise it falls back to `wget` from `https://boxedwine.org/builds/`.
 2. Hydrates demo assets for local use.
    - Demo app ZIPs and `demos.json` are refreshed when the public files are newer; unchanged local files are retained.
-   - `boxedwine.2.zip` is downloaded from `http://boxedwine.org/v2/demos/boxedwine.2.zip`.
-   - `boxedwine.gdi.2.zip` is downloaded from `http://boxedwine.org/v2/demos/boxedwine.gdi.2.zip`.
-   - A demo can select the GDI filesystem with `"root": "boxedwine.gdi.2.zip"` in `demos.json`; demos without a `root` field use `boxedwine.2.zip`.
+   - `boxedwine.3.zip` is downloaded from `http://boxedwine.org/v2/demos/boxedwine.3.zip`.
+   - `boxedwine.gdi.3.zip` is downloaded from `http://boxedwine.org/v2/demos/boxedwine.gdi.3.zip`.
+   - A demo can select the GDI filesystem with `"root": "boxedwine.gdi.3.zip"` in `demos.json`; demos without a `root` field use `boxedwine.3.zip`.
    - A demo can set an app-specific Wine compatibility version with `"windowsVersion": "win98"`. The generated launcher sets that version before starting the executable, without changing other demos.
 3. Builds the Emscripten web targets from `project/emscripten`.
    - `make release`
@@ -161,13 +161,13 @@ wsl bash -lc 'ps -ef | grep "project/emscripten/server.mjs" | grep -v grep'
 For consistency with the local workflow, the publish script also downloads:
 
 ```text
-http://boxedwine.org/v2/demos/boxedwine.2.zip
-http://boxedwine.org/v2/demos/boxedwine.gdi.2.zip
+http://boxedwine.org/v2/demos/boxedwine.3.zip
+http://boxedwine.org/v2/demos/boxedwine.gdi.3.zip
 ```
 
 and writes them as:
 
 ```text
-demos/apps/boxedwine.2.zip
-demos/apps/boxedwine.gdi.2.zip
+demos/apps/boxedwine.3.zip
+demos/apps/boxedwine.gdi.3.zip
 ```

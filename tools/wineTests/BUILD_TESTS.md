@@ -3,13 +3,12 @@
 This guide describes the reusable process for building Wine 11 test suites as
 32-bit Windows PE executables on an x86-64 Ubuntu or Debian host.
 
-BoxedWine currently supports Wine's NTDLL, kernel32, and advapi32 test suites
-plus the ws2_32 AFD group. The `runWineTests.py` runner and
-`wine_tests_v4.zip` archive require `ntdll_test.exe`, `kernel32_test.exe`,
-`ws2_32_test.exe`, and `advapi32_test.exe`. The same Wine configuration,
-architecture verification, and targeted Make workflow can build other Wine
-test suites as BoxedWine support is added. Each additional suite will also
-need corresponding runner, packaging, and expected-result configuration.
+BoxedWine currently supports Wine's NTDLL, kernel32, and advapi32 test suites,
+the ws2_32 AFD group, and D3D9 browser groups. The public native-test
+`wine_tests_v4.zip` archive contains `ntdll_test.exe`, `kernel32_test.exe`,
+`ws2_32_test.exe`, and `advapi32_test.exe`. The prepared
+`wine_tests_v5.zip` extends that flat bundle with the patched Wine 11
+`d3d9_test.exe` used by the Emscripten graphics runner.
 
 Use a native Linux filesystem for the Wine source and build directories. A
 WSL path below `/home` or `/tmp` is substantially faster than building below
@@ -210,8 +209,15 @@ cp "$WS2_32_TEST_EXE" "$BOXEDWINE_DIR/tools/wineTests/ws2_32_test.exe"
 cp "$ADVAPI32_TEST_EXE" "$BOXEDWINE_DIR/tools/wineTests/advapi32_test.exe"
 ```
 
-When rebuilding `wine_tests_v4.zip`, also copy `COPYING.LIB` from the same
-Wine source checkout and regenerate `SHA256SUMS` for all four executables and
+The WebGL Wine patch adds `build-boxedwine-webgl-dlls.sh` to its Wine source
+tree. Run that script after applying
+`tools/d3dToWebGL/wine-shadowmap-webgl-against-wine-11.0.patch`; it stages the
+graphics test executables in
+`boxedwine-webgl-wine-build/boxedwine-webgl-tests/`. The v5 bundle currently
+uses that directory's `d3d9_test.exe`.
+
+When rebuilding `wine_tests_v5.zip`, also copy `COPYING.LIB` from the same
+Wine source checkout and regenerate `SHA256SUMS` for all five executables and
 the license. The archive layout and runner verification commands are
 documented in `README.md`.
 

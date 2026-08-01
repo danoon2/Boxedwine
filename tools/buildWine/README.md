@@ -74,10 +74,10 @@ The final zip includes:
 
 ```json
 "base_filesystem": {
-  "url": "https://boxedwine.org/v2/7/TinyCore15WineBase.zip",
+  "url": "https://boxedwine.org/v2/10/TinyCore15WineBase.zip",
   "filename": "TinyCore15WineBase.zip",
-  "size": 67443325,
-  "sha256": "46769cd240696968e31182bc86808b9038916fc44cdc3ef0ff217fd942ed44c0"
+  "size": 66718539,
+  "sha256": "94dac0c3b8c995b31df85534fd8699c98485c5906f5d4d727e6bf6842ff78906"
 }
 ```
 
