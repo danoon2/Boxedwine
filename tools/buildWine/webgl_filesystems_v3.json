@@ -7,7 +7,7 @@
   "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
   "patch_manifest": {
     "path": "tools/wineTests/webgl-test-divergences-v2.json",
-    "sha256": "884b32dee777967c060aa94613e3ea6668826a34eba2f3c5493c3df26b6a6f8b"
+    "sha256": "d45deefa5a520395176ff21f7345c01bd4bc8623e8d85307175c6cc11973d540"
   },
   "webgl_directory": "home/username/.wine/drive_c/webgl",
   "dlls": {
@@ -48,7 +48,7 @@
     },
     "wined3d.dll": {
       "size": 3982469,
-      "sha256": "e82ce3d3f2b572722f42f8f9ce26fc8edbc55c107ca7908e8ff947f64b1018f6",
+      "sha256": "4b8ba863aae0f936d06eaed835b62cd0ad5eb8fb49297526d6317c66e11f6b4f",
       "required_imports": ["opengl32.dll"]
     }
   },
@@ -86,24 +86,24 @@
     "normal-v3": {
       "filename": "boxedwine.3.zip",
       "filesystem_version": "v3",
-      "size": 157980576,
-      "sha256": "e38234f93e85b1714c54f87ec3246a8275683b091219a8a4651ea7e3acd16b79",
+      "size": 157980607,
+      "sha256": "a6c2a2a0d902f2725b95f4ae58dd2a1a21acc00aae74d8ab82fa551cbc67f8d1",
       "direct_draw_renderer": "opengl",
       "wine_renderer": "gl"
     },
     "gdi-v3": {
       "filename": "boxedwine.gdi.3.zip",
       "filesystem_version": "v3",
-      "size": 157980696,
-      "sha256": "fe18720cd7b85c84764ef950e14e643ff3e0a58e6174fd3039ef8d0831670919",
+      "size": 157980727,
+      "sha256": "641f8135265c00efae5f2ec40ebfed6dd404148d23feaab969b64e95dbb63ce5",
       "direct_draw_renderer": "gdi",
       "wine_renderer": "gl"
     },
     "full-v10": {
       "filename": "TinyCore15Wine11.0-v10-candidate.zip",
       "filesystem_version": "v10-candidate",
-      "size": 157980576,
-      "sha256": "e38234f93e85b1714c54f87ec3246a8275683b091219a8a4651ea7e3acd16b79",
+      "size": 157980607,
+      "sha256": "a6c2a2a0d902f2725b95f4ae58dd2a1a21acc00aae74d8ab82fa551cbc67f8d1",
       "direct_draw_renderer": "opengl",
       "wine_renderer": "gl"
     },

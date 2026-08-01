@@ -494,6 +494,47 @@ the clean patch-series build remain present:
 C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-173601-212796
 ```
 
+### D3D9 lockable-depth capability correction
+
+On July 31, 2026 the WebGL profile stopped advertising
+`D3DFMT_D16_LOCKABLE`. WineD3D's current WebGL path does not have a complete
+GPU-to-CPU depth download after clears and draws, so the format previously
+returned stale CPU data from `LockRect()`. Standard non-lockable depth formats
+remain supported. The test-only WebGL skip was removed; Wine's existing
+unsupported-format path now records `D3DFMT_D16_LOCKABLE is not supported.`
+
+The focused clear-and-lock test passes in both Emscripten modes with 18
+assertions, 0 todo results, 0 failures, and 1 upstream skip:
+
+- single-threaded non-JIT:
+  `C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-181137-311835`
+- single-threaded JIT:
+  `C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-183527-924106`
+
+The final single-threaded non-JIT exact `visual` baseline passed 25,431
+assertions with 40 todo results, 0 failures, and 48 skips in 869.125 seconds:
+
+```text
+C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-183617-722284
+```
+
+The 28-assertion reduction from the prior baseline is entirely below Wine's
+lockable-depth capability check. The current checkpoint artifacts are:
+
+- `boxedwine.3.zip` and `TinyCore15Wine11.0-v10-candidate.zip`
+  (157,980,607 bytes):
+  `a6c2a2a0d902f2725b95f4ae58dd2a1a21acc00aae74d8ab82fa551cbc67f8d1`
+- `boxedwine.gdi.3.zip` (157,980,727 bytes):
+  `641f8135265c00efae5f2ec40ebfed6dd404148d23feaab969b64e95dbb63ce5`
+- packaged `wined3d.dll`:
+  `4b8ba863aae0f936d06eaed835b62cd0ad5eb8fb49297526d6317c66e11f6b4f`
+- packaged `d3d9_test.exe`:
+  `8f690c501950a3cd8f6e25ff5920b3eefab229390e41a5b4ecb86ce8bca133bc`
+- `wine_tests_v6.zip` (11,989,896 bytes):
+  `4fab1b0fb27a15a8f1a136acaa70b1d5bfeaa32addee2252372e72a60828185e`
+- WebGL divergence manifest:
+  `d45deefa5a520395176ff21f7345c01bd4bc8623e8d85307175c6cc11973d540`
+
 ## D3DX9 baseline
 
 Run the complete validated D3DX9 set with:

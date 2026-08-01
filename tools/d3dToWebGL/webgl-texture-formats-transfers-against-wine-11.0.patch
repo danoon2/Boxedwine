@@ -2619,7 +2619,7 @@ index 2c4b60b..d711055 100644
      {WINED3DFMT_L16_UNORM,              GL_R16,                           GL_R16,                                 0,
              GL_RED,                     GL_UNSIGNED_SHORT,                0,
              WINED3D_FORMAT_CAP_TEXTURE | WINED3D_FORMAT_CAP_POSTPIXELSHADER_BLENDING | WINED3D_FORMAT_CAP_FILTERING,
-@@ -1888,6 +2004,343 @@ static void format_clear_caps(struct wined3d_format *format, unsigned int caps)
+@@ -1888,6 +2004,342 @@ static void format_clear_caps(struct wined3d_format *format, unsigned int caps)
          format->caps[i] &= ~caps;
  }
  
@@ -2713,7 +2713,6 @@ index 2c4b60b..d711055 100644
 +{
 +    switch (format_id)
 +    {
-+        case WINED3DFMT_D16_LOCKABLE:
 +        case WINED3DFMT_X8D24_UNORM:
 +        case WINED3DFMT_D32_FLOAT_S8X24_UINT:
 +        case WINED3DFMT_D32_FLOAT:

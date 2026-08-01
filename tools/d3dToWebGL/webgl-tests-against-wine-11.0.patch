@@ -330,20 +330,6 @@ index ade80fb..c3ef14b 100644
  struct vec2
  {
      float x, y;
-@@ -1632,7 +1642,12 @@ static void test_clear_different_size_surfaces(void)
-     if (caps.NumSimultaneousRTs >= 2)
-         check_rt_color(rt2, 0x00ff0000);
- 
--    if (ds_format == D3DFMT_D16_LOCKABLE)
-+    if (is_webgl())
-+    {
-+        skip("WebGL does not keep lockable depth CPU contents coherent after GPU clears.\n");
-+        IDirect3DSurface9_Release(ds);
-+    }
-+    else if (ds_format == D3DFMT_D16_LOCKABLE)
-     {
-         hr = IDirect3DSurface9_LockRect(ds, &lr, NULL, D3DLOCK_READONLY);
-         ok(hr == D3D_OK, "Failed to lock rect, hr %#lx.\n", hr);
 @@ -2052,7 +2067,6 @@ static void test_mova(void)
          skip("Failed to create a D3D device, skipping tests.\n");
          goto done;

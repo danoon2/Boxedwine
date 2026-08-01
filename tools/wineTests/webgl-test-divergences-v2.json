@@ -26,7 +26,7 @@
       "patch_id": "texture-formats-transfers",
       "category": "texture_formats_transfers_and_readback",
       "path": "tools/d3dToWebGL/webgl-texture-formats-transfers-against-wine-11.0.patch",
-      "sha256": "c6596987dea329cea9f03b9f949efce1c11a2e32ea60c5ca8fa5baf8ee8c17ba"
+      "sha256": "54415bde32dbc6fbb7792d6f6cecbda06f916a0f245dde73e2ebe14a4a9f7314"
     },
     {
       "patch_id": "blitter-batching",
@@ -68,7 +68,7 @@
   "test_patch": {
     "patch_id": "test-expectations",
     "path": "tools/d3dToWebGL/webgl-tests-against-wine-11.0.patch",
-    "sha256": "a3e26187f8d179e09ab680cf9c873454d4557b5673f7968649f399515168da75"
+    "sha256": "cb8be8db5bae28b192c0fe85439e27a3d0371eaeb6ef8b2a101b6adf9bfc40e7"
   },
   "policy": "No production patch may modify Wine tests. Every added skip() and todo_wine_if() policy in the test-only patch must match exactly one classified rule.",
   "categories": {
@@ -191,10 +191,6 @@
       "category": "unimplemented_emulation",
       "rationale": "These desktop Direct3D and legacy DirectDraw behaviors could be translated or emulated, but the current WebGL backend has no complete implementation.",
       "skip_rules": [
-        {
-          "marker": "skip(\"WebGL does not keep lockable depth CPU contents coherent after GPU clears.\\n\");",
-          "occurrences": 1
-        },
         {
           "marker": "skip(\"WebGL does not match desktop D3D9 non-indexed stream-frequency corner cases.\\n\");",
           "occurrences": 1
