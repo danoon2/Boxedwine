@@ -289,6 +289,21 @@ class ResultParsingTests(unittest.TestCase):
             result.reason,
         )
 
+    def test_opengl_context_marshal_passes_without_browser_mutation(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "wgl-context-thread-switch",
+            {
+                "output": (
+                    "PASS wgl-context-thread-switch: context migrated\n"
+                    "Summary: 1 passed, 0 failed, 0 skipped\n"
+                )
+            },
+        )
+
+        self.assertTrue(result.passed)
+        self.assertEqual("ok", result.reason)
+
 
 class BrowserHarnessTests(unittest.TestCase):
     def test_launch_url_selects_memory_storage_and_group_argument(self):
@@ -355,6 +370,33 @@ class BrowserHarnessTests(unittest.TestCase):
                 "env BOXEDWINE_OPENGL_READBUFFER_YIELD_TEST=1 "
                 "/bin/wine OpenGLMarshalTest.exe --test "
                 "readbuffer-yield-replay;"
+            )
+        )
+
+    def test_opengl_context_command_selects_context_group(self):
+        command = graphics.build_guest_test_command(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "wgl-context-lifecycle",
+        )
+
+        self.assertIn(
+            "/bin/wine OpenGLMarshalTest.exe --test wgl-context-lifecycle;",
+            command,
+        )
+        self.assertNotIn("BOXEDWINE_OPENGL_READBUFFER_YIELD_TEST", command)
+
+    def test_multithreaded_context_switch_command_marks_known_webgl_limit(self):
+        command = graphics.build_guest_test_command(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "wgl-context-thread-switch",
+            "multi-threaded-non-jit",
+        )
+
+        self.assertTrue(
+            command.startswith(
+                "env BOXEDWINE_EXPECT_WEBGL_CONTEXT_THREAD_SWITCH_UNSUPPORTED=1 "
+                "/bin/wine OpenGLMarshalTest.exe --test "
+                "wgl-context-thread-switch;"
             )
         )
 

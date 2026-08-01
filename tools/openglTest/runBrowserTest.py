@@ -18,6 +18,14 @@ sys.path.insert(0, str(REPOSITORY_ROOT / "tools" / "wineTests"))
 import wineGraphicsBrowser as browser  # noqa: E402
 
 
+BUILD_MODES = {
+    "st": ("SingleThreaded", "single-threaded-non-jit"),
+    "mt": ("MultiThreaded", "multi-threaded-non-jit"),
+    "st-jit": ("SingleThreadedJit", "single-threaded-jit"),
+    "mt-jit": ("MultiThreadedJit", "multi-threaded-jit"),
+}
+
+
 def default_filesystem() -> Path | None:
     appdata = os.environ.get("APPDATA")
     if not appdata:
@@ -42,16 +50,26 @@ def positive_integer(value: str) -> int:
 def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Run the OpenGL read-buffer cross-yield regression through the "
-            "single-threaded Emscripten build."
+            "Run a deterministic OpenGL marshal regression through an "
+            "Emscripten/Chrome build."
         )
     )
     parser.add_argument(
         "--build-dir",
         type=Path,
-        default=REPOSITORY_ROOT / "project" / "emscripten" / "Deploy" / "Web"
-        / "SingleThreaded",
-        help="directory containing boxedwine.html/js/wasm/css",
+        help="custom directory containing boxedwine.html/js/wasm/css",
+    )
+    parser.add_argument(
+        "--build-mode",
+        choices=tuple(BUILD_MODES),
+        default="st",
+        help="Emscripten Deploy/Web build to test (default: st)",
+    )
+    parser.add_argument(
+        "--test",
+        choices=browser.GRAPHICS_SUITES["opengl-marshal"].groups,
+        default="readbuffer-yield-replay",
+        help="OpenGL marshal regression to run",
     )
     parser.add_argument(
         "--filesystem",
@@ -99,13 +117,29 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     suite = browser.GRAPHICS_SUITES["opengl-marshal"]
-    group = suite.groups[0]
-    build_dir = arguments.build_dir.expanduser().resolve()
+    group = arguments.test
+    build_directory_name, mode_name = BUILD_MODES[arguments.build_mode]
+    build_dir = (
+        arguments.build_dir.expanduser().resolve()
+        if arguments.build_dir is not None
+        else (
+            REPOSITORY_ROOT
+            / "project"
+            / "emscripten"
+            / "Deploy"
+            / "Web"
+            / build_directory_name
+        ).resolve()
+    )
     filesystem = arguments.filesystem.expanduser().resolve()
     executable = arguments.test_executable.expanduser().resolve()
     cache_dir = arguments.cache_dir.expanduser().resolve()
     run_name = (
         datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        + "-"
+        + arguments.build_mode
+        + "-"
+        + group
         + "-"
         + secrets.token_hex(3)
     )
@@ -134,6 +168,7 @@ def main(argv: list[str] | None = None) -> int:
             timeout=arguments.timeout,
             headless=arguments.headless,
             keep_browser_profile=arguments.keep_browser_profile,
+            mode=mode_name,
         )
     except browser.RunnerError as error:
         print(f"ERROR: {error}", file=sys.stderr)

@@ -100,9 +100,13 @@ GRAPHICS_SUITES = {
     "opengl-marshal": GraphicsSuite(
         "opengl-marshal",
         "OpenGLMarshalTest.exe",
-        ("readbuffer-yield-replay",),
+        (
+            "wgl-context-lifecycle",
+            "wgl-context-thread-switch",
+            "readbuffer-yield-replay",
+        ),
         ("--test",),
-        ("BOXEDWINE_OPENGL_READBUFFER_YIELD_TEST=1",),
+        (),
         "marshal",
     ),
 }
@@ -521,7 +525,27 @@ def _observer_script(token: str, group: str, result_style: str) -> str:
 </script>"""
 
 
-def build_guest_test_command(suite: GraphicsSuite, group: str) -> str:
+def _test_environment(
+    suite: GraphicsSuite, group: str, mode: str | None
+) -> tuple[str, ...]:
+    environment = list(suite.environment)
+    if suite.name == "opengl-marshal":
+        if group == "readbuffer-yield-replay":
+            environment.append("BOXEDWINE_OPENGL_READBUFFER_YIELD_TEST=1")
+        if (
+            group == "wgl-context-thread-switch"
+            and mode is not None
+            and mode.startswith("multi-threaded")
+        ):
+            environment.append(
+                "BOXEDWINE_EXPECT_WEBGL_CONTEXT_THREAD_SWITCH_UNSUPPORTED=1"
+            )
+    return tuple(environment)
+
+
+def build_guest_test_command(
+    suite: GraphicsSuite, group: str, mode: str | None = None
+) -> str:
     if group not in suite.groups:
         raise RunnerError(f"unknown {suite.name} test group: {group}")
     arguments = (
@@ -531,9 +555,10 @@ def build_guest_test_command(suite: GraphicsSuite, group: str) -> str:
         group,
     )
     wine_command = " ".join(shlex.quote(argument) for argument in arguments)
-    if suite.environment:
+    environment = _test_environment(suite, group, mode)
+    if environment:
         wine_command = " ".join(
-            ("env", *(shlex.quote(value) for value in suite.environment), wine_command)
+            ("env", *(shlex.quote(value) for value in environment), wine_command)
         )
     return (
         f"{wine_command}; test_status=$?; "
@@ -543,8 +568,10 @@ def build_guest_test_command(suite: GraphicsSuite, group: str) -> str:
     )
 
 
-def _command_override_script(suite: GraphicsSuite, group: str) -> str:
-    command_json = json.dumps(build_guest_test_command(suite, group))
+def _command_override_script(
+    suite: GraphicsSuite, group: str, mode: str | None = None
+) -> str:
+    command_json = json.dumps(build_guest_test_command(suite, group, mode))
     return f"""<script>
 (function() {{
   "use strict";
@@ -592,10 +619,14 @@ def _readbuffer_yield_mutation_script() -> str:
 
 
 def inject_test_harness(
-    html_text: str, token: str, suite: GraphicsSuite, group: str
+    html_text: str,
+    token: str,
+    suite: GraphicsSuite,
+    group: str,
+    mode: str | None = None,
 ) -> str:
     observer_script = _observer_script(token, group, suite.result_style)
-    override_script = _command_override_script(suite, group)
+    override_script = _command_override_script(suite, group, mode)
     mutation_script = (
         _readbuffer_yield_mutation_script()
         if suite.name == "opengl-marshal" and group == "readbuffer-yield-replay"
@@ -634,6 +665,7 @@ def _make_handler(
     progress: BrowserProgress,
     suite: GraphicsSuite,
     group: str,
+    mode: str | None = None,
 ) -> type[SimpleHTTPRequestHandler]:
     class GraphicsRequestHandler(SimpleHTTPRequestHandler):
         def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -678,6 +710,7 @@ def _make_handler(
                     progress.token,
                     suite,
                     group,
+                    mode,
                 )
                 self._send_bytes(injected.encode("utf-8"), "text/html; charset=utf-8")
                 return
@@ -814,6 +847,7 @@ def run_browser_test(
     timeout: int,
     headless: bool,
     keep_browser_profile: bool,
+    mode: str = "single-threaded-non-jit",
 ) -> tuple[GraphicsTestResult, dict[str, Any]]:
     started_at = datetime.now(timezone.utc)
     started_monotonic = time.monotonic()
@@ -834,7 +868,7 @@ def run_browser_test(
 
     progress = BrowserProgress(secrets.token_urlsafe(24))
     aliases = {ROOT_ALIAS: Path(filesystem), APP_ALIAS: app_zip}
-    handler = _make_handler(Path(build_dir), aliases, progress, suite, group)
+    handler = _make_handler(Path(build_dir), aliases, progress, suite, group, mode)
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
@@ -920,7 +954,7 @@ def run_browser_test(
             "platform": platform.platform(),
             "python": platform.python_version(),
         },
-        "mode": "single-threaded-non-jit",
+        "mode": mode,
         "launch_url": launch_url,
         "inputs": {
             "build_dir": str(Path(build_dir).resolve()),

@@ -1800,6 +1800,301 @@ static TestResult skip(const std::string& message) {
     return { TestResult::Skip, message };
 }
 
+struct AdditionalWglContext {
+    HWND hwnd = nullptr;
+    HDC dc = nullptr;
+    HGLRC rc = nullptr;
+};
+
+static void destroyAdditionalWglContext(TestContext& ctx, AdditionalWglContext& additional) {
+    if (wglGetCurrentContext() == additional.rc) {
+        wglMakeCurrent(nullptr, nullptr);
+    }
+    if (ctx.rc && wglGetCurrentContext() != ctx.rc) {
+        wglMakeCurrent(ctx.dc, ctx.rc);
+    }
+    if (additional.rc) {
+        wglDeleteContext(additional.rc);
+        additional.rc = nullptr;
+    }
+    if (additional.dc && additional.hwnd) {
+        ReleaseDC(additional.hwnd, additional.dc);
+        additional.dc = nullptr;
+    }
+    if (additional.hwnd) {
+        DestroyWindow(additional.hwnd);
+        additional.hwnd = nullptr;
+    }
+}
+
+static bool createAdditionalWglContext(TestContext& ctx, AdditionalWglContext& additional,
+        std::string& error) {
+    additional.hwnd = createTestWindow(ctx, "OpenGL Secondary Context Test");
+    if (!additional.hwnd) {
+        error = "secondary window creation failed";
+        return false;
+    }
+
+    additional.dc = GetDC(additional.hwnd);
+    if (!additional.dc) {
+        error = "secondary GetDC failed: " + lastWin32Error();
+        return false;
+    }
+
+    PIXELFORMATDESCRIPTOR pfd = requestedWindowPfd(24);
+    int pixelFormat = ChoosePixelFormat(additional.dc, &pfd);
+    if (!pixelFormat || !SetPixelFormat(additional.dc, pixelFormat, &pfd)) {
+        error = "secondary pixel-format setup failed: " + lastWin32Error();
+        return false;
+    }
+
+    additional.rc = wglCreateContext(additional.dc);
+    if (!additional.rc) {
+        error = "secondary wglCreateContext failed: " + lastWin32Error();
+        return false;
+    }
+    return true;
+}
+
+static bool colorMatches(const GLfloat* actual, const GLfloat* expected) {
+    for (int i = 0; i < 4; ++i) {
+        if (!nearlyEqual(actual[i], expected[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static TestResult testWGLContextLifecycle(TestContext& ctx) {
+    if (wglGetCurrentContext() != ctx.rc || wglGetCurrentDC() != ctx.dc) {
+        return fail("primary WGL context was not current at test entry");
+    }
+
+    const GLfloat primaryColor[4] = { 0.125f, 0.25f, 0.5f, 1.0f };
+    const GLfloat secondaryColor[4] = { 0.75f, 0.375f, 0.125f, 1.0f };
+    GLfloat savedColor[4] = {};
+    GLfloat actualColor[4] = {};
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, savedColor);
+    glClearColor(primaryColor[0], primaryColor[1], primaryColor[2], primaryColor[3]);
+
+    AdditionalWglContext additional;
+    auto failLifecycle = [&](const std::string& message) -> TestResult {
+        destroyAdditionalWglContext(ctx, additional);
+        if (wglGetCurrentContext() == ctx.rc) {
+            glClearColor(savedColor[0], savedColor[1], savedColor[2], savedColor[3]);
+        }
+        return fail(message);
+    };
+    std::string error;
+    if (!createAdditionalWglContext(ctx, additional, error)) {
+        return failLifecycle(error);
+    }
+    if (wglGetCurrentContext() != ctx.rc || wglGetCurrentDC() != ctx.dc) {
+        return failLifecycle("creating the secondary context changed the current context");
+    }
+
+    if (!wglMakeCurrent(additional.dc, additional.rc)) {
+        error = "selecting the secondary context failed: " + lastWin32Error();
+        return failLifecycle(error);
+    }
+    if (wglGetCurrentContext() != additional.rc || wglGetCurrentDC() != additional.dc) {
+        return failLifecycle("WGL did not report the selected secondary context and DC");
+    }
+    if (!glGetString(GL_VERSION)) {
+        return failLifecycle("secondary context had no GL_VERSION");
+    }
+    glClearColor(secondaryColor[0], secondaryColor[1], secondaryColor[2], secondaryColor[3]);
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, actualColor);
+    if (!colorMatches(actualColor, secondaryColor) || glGetError() != GL_NO_ERROR) {
+        return failLifecycle("secondary context did not retain its clear-color state");
+    }
+
+    if (!wglMakeCurrent(ctx.dc, ctx.rc)) {
+        error = "restoring the primary context failed: " + lastWin32Error();
+        return failLifecycle(error);
+    }
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, actualColor);
+    GLenum primarySelectError = glGetError();
+    bool stateIsolated = colorMatches(actualColor, primaryColor);
+    bool stateShared = colorMatches(actualColor, secondaryColor);
+    if ((!stateIsolated && !stateShared) || primarySelectError != GL_NO_ERROR) {
+        return failLifecycle("primary context exposed unexpected GL state after reselection");
+    }
+
+    if (!wglMakeCurrent(additional.dc, additional.rc)) {
+        error = "reselecting the secondary context failed: " + lastWin32Error();
+        return failLifecycle(error);
+    }
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, actualColor);
+    if (!colorMatches(actualColor, secondaryColor) || glGetError() != GL_NO_ERROR) {
+        return failLifecycle("secondary context state was not preserved across selection");
+    }
+
+    if (!wglMakeCurrent(ctx.dc, ctx.rc)) {
+        error = "final primary-context restore failed: " + lastWin32Error();
+        return failLifecycle(error);
+    }
+    if (!wglDeleteContext(additional.rc)) {
+        error = "deleting the secondary context failed: " + lastWin32Error();
+        return failLifecycle(error);
+    }
+    additional.rc = nullptr;
+    if (additional.dc && additional.hwnd) {
+        ReleaseDC(additional.hwnd, additional.dc);
+        additional.dc = nullptr;
+    }
+    if (additional.hwnd) {
+        DestroyWindow(additional.hwnd);
+        additional.hwnd = nullptr;
+    }
+
+    const GLfloat finalColor[4] = { 0.3125f, 0.1875f, 0.5625f, 1.0f };
+    glClearColor(finalColor[0], finalColor[1], finalColor[2], finalColor[3]);
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, actualColor);
+    if (wglGetCurrentContext() != ctx.rc || wglGetCurrentDC() != ctx.dc ||
+            !glGetString(GL_VERSION) || !colorMatches(actualColor, finalColor) ||
+            glGetError() != GL_NO_ERROR) {
+        glClearColor(savedColor[0], savedColor[1], savedColor[2], savedColor[3]);
+        return fail("primary context was not usable after secondary-context deletion");
+    }
+    glClearColor(savedColor[0], savedColor[1], savedColor[2], savedColor[3]);
+    return pass(std::string("secondary context selection and deletion succeeded; GL state model is ") +
+        (stateIsolated ? "isolated" : "shared"));
+}
+
+struct ContextThreadSwitchState {
+    HDC dc = nullptr;
+    HGLRC rc = nullptr;
+    DWORD failureStage = 0;
+    DWORD win32Error = 0;
+};
+
+static DWORD WINAPI contextThreadSwitchProc(void* parameter) {
+    ContextThreadSwitchState* state = static_cast<ContextThreadSwitchState*>(parameter);
+    const GLfloat mainColor[4] = { 0.2f, 0.4f, 0.6f, 1.0f };
+    const GLfloat workerColor[4] = { 0.6f, 0.3f, 0.15f, 1.0f };
+    GLfloat actualColor[4] = {};
+
+    if (!wglMakeCurrent(state->dc, state->rc)) {
+        state->failureStage = 1;
+        state->win32Error = GetLastError();
+        return 1;
+    }
+    auto failAfterBind = [state](DWORD stage) -> DWORD {
+        state->failureStage = stage;
+        if (wglGetCurrentContext() == state->rc) {
+            wglMakeCurrent(nullptr, nullptr);
+        }
+        return 1;
+    };
+    if (wglGetCurrentContext() != state->rc || wglGetCurrentDC() != state->dc) {
+        return failAfterBind(2);
+    }
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, actualColor);
+    if (!colorMatches(actualColor, mainColor) || glGetError() != GL_NO_ERROR) {
+        return failAfterBind(3);
+    }
+
+    glClearColor(workerColor[0], workerColor[1], workerColor[2], workerColor[3]);
+    glFinish();
+    if (glGetError() != GL_NO_ERROR) {
+        return failAfterBind(4);
+    }
+    if (!wglMakeCurrent(nullptr, nullptr)) {
+        state->failureStage = 5;
+        state->win32Error = GetLastError();
+        return 1;
+    }
+    if (wglGetCurrentContext() || wglGetCurrentDC()) {
+        state->failureStage = 6;
+        return 1;
+    }
+    return 0;
+}
+
+static TestResult testWGLContextThreadSwitch(TestContext& ctx) {
+    if (wglGetCurrentContext() != ctx.rc || wglGetCurrentDC() != ctx.dc) {
+        return fail("primary WGL context was not current at thread-switch entry");
+    }
+
+    const GLfloat mainColor[4] = { 0.2f, 0.4f, 0.6f, 1.0f };
+    const GLfloat workerColor[4] = { 0.6f, 0.3f, 0.15f, 1.0f };
+    GLfloat savedColor[4] = {};
+    GLfloat actualColor[4] = {};
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, savedColor);
+    glClearColor(mainColor[0], mainColor[1], mainColor[2], mainColor[3]);
+    glFinish();
+
+    if (!wglMakeCurrent(nullptr, nullptr)) {
+        return fail("unbinding the primary context before migration failed: " +
+            lastWin32Error());
+    }
+    if (wglGetCurrentContext() || wglGetCurrentDC()) {
+        return fail("primary thread still reported a current context after unbind");
+    }
+
+    ContextThreadSwitchState state = { ctx.dc, ctx.rc };
+    HANDLE thread = CreateThread(nullptr, 0, contextThreadSwitchProc, &state, 0, nullptr);
+    if (!thread) {
+        wglMakeCurrent(ctx.dc, ctx.rc);
+        glClearColor(savedColor[0], savedColor[1], savedColor[2], savedColor[3]);
+        return fail("CreateThread failed: " + lastWin32Error());
+    }
+
+    DWORD wait = WaitForSingleObject(thread, 30000);
+    DWORD threadExit = 1;
+    if (wait == WAIT_OBJECT_0) {
+        GetExitCodeThread(thread, &threadExit);
+    } else if (wait == WAIT_TIMEOUT) {
+        TerminateThread(thread, 1);
+        WaitForSingleObject(thread, 5000);
+    }
+    CloseHandle(thread);
+
+    if (!wglMakeCurrent(ctx.dc, ctx.rc)) {
+        return fail("restoring the primary context after worker exit failed: " +
+            lastWin32Error());
+    }
+    if (wait != WAIT_OBJECT_0) {
+        glClearColor(savedColor[0], savedColor[1], savedColor[2], savedColor[3]);
+        return fail(wait == WAIT_TIMEOUT ?
+            "worker timed out while making the WGL context current" :
+            "waiting for the context worker failed");
+    }
+    if (threadExit || state.failureStage) {
+        char expectedUnsupported[2] = {};
+        bool expectUnsupported = GetEnvironmentVariableA(
+            "BOXEDWINE_EXPECT_WEBGL_CONTEXT_THREAD_SWITCH_UNSUPPORTED",
+            expectedUnsupported, sizeof(expectedUnsupported)) != 0;
+        if (expectUnsupported && state.failureStage == 1) {
+            glClearColor(savedColor[0], savedColor[1], savedColor[2], savedColor[3]);
+            return skip("Emscripten direct OffscreenCanvas contexts cannot migrate "
+                "between host pthreads");
+        }
+        std::ostringstream message;
+        message << "worker context migration failed at stage " << state.failureStage;
+        if (state.win32Error) {
+            message << " with Win32 error " << state.win32Error;
+        }
+        glClearColor(savedColor[0], savedColor[1], savedColor[2], savedColor[3]);
+        return fail(message.str());
+    }
+
+    if (wglGetCurrentContext() != ctx.rc || wglGetCurrentDC() != ctx.dc) {
+        glClearColor(savedColor[0], savedColor[1], savedColor[2], savedColor[3]);
+        return fail("primary thread did not regain the migrated context");
+    }
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, actualColor);
+    if (!colorMatches(actualColor, workerColor) || !glGetString(GL_VERSION) ||
+            glGetError() != GL_NO_ERROR) {
+        glClearColor(savedColor[0], savedColor[1], savedColor[2], savedColor[3]);
+        return fail("context state was not preserved across the worker-thread migration");
+    }
+
+    glClearColor(savedColor[0], savedColor[1], savedColor[2], savedColor[3]);
+    return pass("WGL context migrated to a guest worker thread and back");
+}
+
 static TestResult testShaderStringArrays(TestContext&) {
     if (!glx.CreateShaderProgramv && !glx.GetUniformIndices && !glx.TransformFeedbackVaryings) {
         return skip("optional string-array entry points are unavailable");
@@ -13952,6 +14247,8 @@ static TestResult testMultiDrawElements(TestContext&) {
 static std::vector<TestCase> tests() {
     return {
         { "wgl-pixel-format-diagnostics", testWGLPixelFormatDiagnostics },
+        { "wgl-context-lifecycle", testWGLContextLifecycle },
+        { "wgl-context-thread-switch", testWGLContextThreadSwitch },
         { "shader-string-arrays", testShaderStringArrays },
         { "shader-page-boundary-strings", testShaderPageBoundaryStrings },
         { "shader-info-log-page-boundary", testShaderInfoLogPageBoundary },

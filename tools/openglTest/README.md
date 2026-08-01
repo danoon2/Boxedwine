@@ -69,7 +69,21 @@ when the host OpenGL driver does not expose the required functions.
 When running inside Wine/BoxedWine, use `--quiet --log opengl-test.log` if the
 console path emits cursor-control escape sequences.
 
-## Emscripten browser regression
+## Emscripten browser regressions
+
+`wgl-context-lifecycle` creates a secondary WGL context, switches between it
+and the primary context, reports whether GL state is isolated or shared,
+deletes the secondary context, and verifies the primary context remains
+usable. Emscripten currently uses one underlying WebGL context for multiple
+Wine WGL handles, so browser runs report the shared state model.
+
+`wgl-context-thread-switch` releases the primary WGL context from the main
+guest thread, makes it current on a Win32 worker thread, changes GL state,
+releases it, and makes it current on the original thread again. This covers
+the BoxedWine guest-thread transition. Single-threaded builds must pass.
+Pthread builds execute the attempted migration and report a targeted skip
+when Emscripten rejects moving a direct OffscreenCanvas context away from its
+owning host pthread; other failure stages still fail.
 
 `readbuffer-yield-replay` is a browser-only regression for the
 single-threaded yield between guest `glReadBuffer()` and `glReadPixels()`.
@@ -85,8 +99,18 @@ Build the Win32 Release target, then run:
 python tools\openglTest\runBrowserTest.py --headless
 ```
 
-The runner defaults to the single-threaded non-JIT build,
-`boxedwine.3.zip`, and
+Select a context regression and Emscripten target with:
+
+```powershell
+python tools\openglTest\runBrowserTest.py --headless `
+  --test wgl-context-lifecycle --build-mode st
+python tools\openglTest\runBrowserTest.py --headless `
+  --test wgl-context-thread-switch --build-mode mt
+```
+
+`--build-mode` accepts `st`, `mt`, `st-jit`, or `mt-jit`. The runner defaults
+to the original `readbuffer-yield-replay` test on the single-threaded non-JIT
+build, `boxedwine.3.zip`, and
 `tools\openglTest\Win32\Release\OpenGLMarshalTest.exe`. Override these with
 `--build-dir`, `--filesystem`, or `--test-executable`. Run artifacts are
 written under
