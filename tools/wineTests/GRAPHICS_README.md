@@ -175,6 +175,11 @@ every group. It always asks wineserver to stop and waits for shutdown.
 Successful prefixes are removed; failed and incomplete prefixes are retained
 with the log.
 
+Both in-source and out-of-tree Wine builds are supported. For an out-of-tree
+build, the runner reads `srcdir` from the generated `Makefile` and records the
+commit and dirty state from that source checkout while hashing runtime files
+from the selected build directory.
+
 `native-graphics-baseline-v1.json` is enabled by default in native mode. It
 pins the Wine version and source commit, the native loader/server and relevant
 DirectX/OpenGL runtime binaries, and all five v6 graphics-test executables.
@@ -234,6 +239,65 @@ Their executable hashes and build location are versioned in
 `webgl-test-divergences-v2.json`. This proves that the selected native
 comparison groups do not depend on the WebGL-only test branches; browser
 groups that exercise those branches still use the classified adapted tests.
+
+### Patched Wine WebGL-off audit
+
+On July 30, 2026 the complete production patch series was built as native
+pure-i386 Wine at:
+
+```text
+/home/james/webgl/boxedwine-webgl-wine-build/wine-native32-webgl-off
+```
+
+With `WINE_D3D_CONFIG=webgl=0,webgl_glsl_es=0`, all seven stable groups matched
+the pinned upstream counts exactly:
+
+| Group | Assertions | Todo | Failures | Skipped | Artifact |
+| --- | ---: | ---: | ---: | ---: | --- |
+| DirectDraw `refcount` | 96 | 10 | 0 | 0 | `20260730-193847-867225` |
+| D3D8 `stateblock` | 9,283 | 0 | 0 | 0 | `20260730-193900-791853` |
+| D3D9 `stateblock` | 14,738 | 0 | 0 | 0 | `20260730-193914-527956` |
+| D3DX9 `core` | 1,485 | 99 | 0 | 0 | `20260730-194510-532953` |
+| D3DX9 `line` | 23 | 0 | 0 | 0 | `20260730-193927-532582` |
+| D3DX9 `math` | 32,509 | 0 | 0 | 0 | `20260730-193927-532582` |
+| D3DXOF `d3dxof` | 192 | 0 | 0 | 0 | `20260730-194003-119040` |
+
+The artifact IDs above are directories below
+`/home/james/.cache/boxedwine/wineTests/runs/`. The temporary native build uses
+the 32-bit cross-architecture pkg-config metadata so D3DX font creation is
+covered by the `core` group.
+
+The audit then changed `wined3d_settings.webgl` and
+`wined3d_settings.webgl_glsl_es` to default to false. With
+`WINE_D3D_CONFIG` completely unset, DirectDraw `refcount`, D3D8 `stateblock`,
+and D3D9 `stateblock` again passed with the exact counts above:
+
+- DirectDraw: `20260730-194612-311594`
+- D3D8: `20260730-194623-533377`
+- D3D9: `20260730-194635-460075`
+
+The Emscripten launcher continues to set
+`WINE_D3D_CONFIG=webgl=1,webgl_glsl_es=1`. A temporary copy of
+`boxedwine.3.zip` containing the rebuilt DLLs passed the browser DirectDraw
+`refcount` group with 96 assertions, 10 todo results, and no failure or skip:
+
+```text
+/home/james/.cache/boxedwine/wineTests/runs/20260730-195319-148286
+```
+
+After that temporary-root proof, the rebuilt PE32/i386 DLLs were promoted to
+the production v3/v10 full filesystems in place. `ddraw.dll` is 867,870 bytes
+with SHA-256
+`de922af65811c0a339eb16f318e7f71b58f73f2f421446b56e4bde603b6e236b`;
+`wined3d.dll` is 3,982,469 bytes with SHA-256
+`40e06c9d00981e687645073f6cd8a0eaace8c42e5e5ed0891768f44154947725`.
+The real promoted `boxedwine.3.zip` then passed the exact browser baseline for
+DirectDraw `refcount` with the same 96 assertions, 10 todo results, and no
+failure or skip:
+
+```text
+/home/james/.cache/boxedwine/wineTests/runs/20260730-201206-240999
+```
 
 ## D3D8 baseline
 
@@ -330,12 +394,17 @@ complete unskipped loose visual executable passed 25,406 assertions with
 
 The finalized in-place inputs are:
 
-- `boxedwine.3.zip` and `TinyCore15Wine11.0-v10-candidate.zip`:
-  `8b442c8661242cc4458c5288bdef8f894bedae71d85817f0db30c20cf767e5d1`
-- `boxedwine.gdi.3.zip`:
-  `909d09f76efd1c47764ad2b81e16f8fe79ac23adfd6310acd484cb337b1a3339`
+- `boxedwine.3.zip` and `TinyCore15Wine11.0-v10-candidate.zip`
+  (157,980,267 bytes):
+  `e9fe68893f52161383f56cade02e766684b24bf55bdb1910bb2ce4b50692a907`
+- `boxedwine.gdi.3.zip` (157,980,387 bytes):
+  `f6c48eee3d3626c8a9c55c249ef29a97c3f2e2745b904d47e5332b34faaa8886`
+- single-threaded non-JIT `boxedwine.wasm`:
+  `0099722a9baf125f4096af84861b045f9b9fe33b28c6ae918d3ed9409f3416ef`
+- packaged `ddraw.dll`:
+  `dde0405570199a33762ca2500d1461817ce0ee3f0e7186225027eb25114f6712`
 - packaged `wined3d.dll`:
-  `ed1e54d53914585b35fc44fd98e3530a7e67f745a7bbbfb42e5a0729a149ca01`
+  `dec0817023792e9dbc75614d47f5da19dec2d1192727912e1ceb38664ee901ae`
 - packaged `d3d9_test.exe`:
   `1d42eb50ada90f7d2e4b9bb145c2a36ce5caac5730be9c1115e9d766b0d656b6`
 
@@ -432,9 +501,9 @@ Current run artifacts:
 The packaged `d3dx9_43_test.exe` is PE32/i386 with SHA-256
 `a2c3dfa3c1c0aabeaa5d0a9961ad16f2066574522041caf120046b8a225e96a8`.
 The packaged WebGL `d3dx9_36.dll` and `d3dx9_43.dll` hashes are
-`fade06c0d8ee0dd75bd046ecf4afc469555d9a6cb48ae52134f52308e46bb769`
+`832b447b03d7ee8c8a9cd01871dea7286eefcd4f7b7e3337cf9f3f15bc83d8a3`
 and
-`7be1c9b88ba4fb78f785f119687fd42e516d8d14de59b63ba2f5efd9841b15c5`,
+`4efb7a5554e3fb938b09a6367f414fe223014c883b26352a38daae183415d436`,
 respectively.
 
 ## D3DXOF baseline

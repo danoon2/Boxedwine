@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test testMultiThreaded multiThreaded jit automation automationMultiThreaded automationJit automationMultiThreadedJit testJit testMultiThreadedJit multiThreadedJit
+.PHONY: default all clean release test testMultiThreaded testMultiThreadedOpenGL multiThreaded jit automation automationMultiThreaded automationJit automationMultiThreadedJit testJit testMultiThreadedJit multiThreadedJit
 
 ZIP_ASSET_FILES := $(wildcard *.zip)
 SINGLE_THREADED_MEMORY_FLAGS := -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=2147483648
@@ -20,6 +20,10 @@ testMultiThreaded: export BUILD_DIR := Build/TestMultiThreaded
 testMultiThreaded: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC -DBOXEDWINE_MULTI_THREADED -pthread
 testMultiThreaded: export SHELL_FILE := shelltest.html
 testMultiThreaded: export EXTRA_LD_FLAGS := --emrun -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-multithreaded-audio.js
+testMultiThreadedOpenGL: export BUILD_DIR := Build/TestMultiThreadedOpenGL
+testMultiThreadedOpenGL: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY -pthread
+testMultiThreadedOpenGL: export SHELL_FILE := shelltest.html
+testMultiThreadedOpenGL: export EXTRA_LD_FLAGS := --emrun -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=1 -sOFFSCREENCANVASES_TO_PTHREAD=\#canvas --js-library=boxedwine-multithreaded-audio.js
 multiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -pthread
 multiThreaded: export BUILD_DIR := Build/MultiThreaded
 multiThreaded: export SHELL_FILE := shell.html
@@ -98,7 +102,7 @@ ifneq ($(make_jobs),)
 export MAKEFLAGS := -j $(make_jobs)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
-release test testMultiThreaded testJit testMultiThreadedJit multiThreaded jit automation automationMultiThreaded automationJit automationMultiThreadedJit multiThreadedJit:
+release test testMultiThreaded testMultiThreadedOpenGL testJit testMultiThreadedJit multiThreaded jit automation automationMultiThreaded automationJit automationMultiThreadedJit multiThreadedJit:
 	@$(MAKE)
 
 clean:
@@ -163,7 +167,7 @@ TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/mztools.c
 TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/unzip.c
 TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
 
-ifneq (,$(filter $(BUILD_DIR),Build/Test Build/TestMultiThreaded))
+ifneq (,$(filter $(BUILD_DIR),Build/Test Build/TestMultiThreaded Build/TestMultiThreadedOpenGL))
 SRCS := $(TEST_SOURCES)
 else ifneq (,$(filter $(BUILD_DIR),Build/TestJit Build/TestMultiThreadedJit))
 # Test JIT builds: use the test sources but swap in the WASM JIT emulation sources

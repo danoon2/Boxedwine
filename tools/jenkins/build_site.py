@@ -6,15 +6,25 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import parse_qsl, quote
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BUILD_WINE_DIR = REPO_ROOT / "tools" / "buildWine"
+if str(BUILD_WINE_DIR) not in sys.path:
+    sys.path.insert(0, str(BUILD_WINE_DIR))
+
+import webgl_filesystem
+
+
 DEFAULT_PUBLIC_URL = "https://boxedwine.org/builds/"
 DEFAULT_DEMO_ROOT_ZIP = "boxedwine.3.zip"
 LEGACY_DEMO_ROOT_ZIP = "boxedwine.zip"
+DEFAULT_DEMO_ROOT_CONFIG = BUILD_WINE_DIR / "webgl_filesystems_v3.json"
 DEMO_RUNNER_SPECS = (
     ("st", "Single Threaded", "single_threaded_dir"),
     ("mt", "Multi Threaded", "multi_threaded_dir"),
@@ -1055,21 +1065,10 @@ def demo_runners_from_args(args):
     return runners
 
 
-def update_demos(site_dir, branch, branch_slug, build_number, demo_source, runners, keep):
+def discover_demos(demo_source):
     demo_source = Path(demo_source)
-    if not demo_source.exists():
-        return
-
-    demos_dir = site_dir / "demos"
-    apps_dir = demos_dir / "apps"
-    images_dir = demos_dir / "images"
-    apps_dir.mkdir(parents=True, exist_ok=True)
-    images_dir.mkdir(parents=True, exist_ok=True)
-
-    same_apps_dir = demo_source.resolve() == apps_dir.resolve()
-    if not same_apps_dir:
-        for old_zip in apps_dir.glob("*.zip"):
-            old_zip.unlink()
+    if not demo_source.is_dir():
+        raise FileNotFoundError(f"Demo source not found: {demo_source}")
 
     manifest = load_demo_manifest(demo_source)
     available_zip_names = {path.name for path in demo_source.glob("*.zip")}
@@ -1089,8 +1088,6 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, runne
 
     demos = []
     for zip_path in sorted(demo_source.glob("*.zip"), key=lambda path: path.name.lower()):
-        if not same_apps_dir:
-            shutil.copy2(zip_path, apps_dir / zip_path.name)
         if (
             zip_path.name.lower() in root_zip_names
             or zip_path.name.lower().startswith("boxedwine")
@@ -1118,6 +1115,71 @@ def update_demos(site_dir, branch, branch_slug, build_number, demo_source, runne
                 ),
             }
         )
+    return demos
+
+
+def validate_demo_root_zips(demo_source, demos, config_path=DEFAULT_DEMO_ROOT_CONFIG):
+    demo_source = Path(demo_source)
+    config = webgl_filesystem.load_config(Path(config_path))
+    webgl_filesystem.verify_patch_series(config)
+
+    profiles_by_filename = {}
+    for profile_name, profile in config["profiles"].items():
+        filename = profile["filename"]
+        if filename in profiles_by_filename:
+            raise webgl_filesystem.ValidationError(
+                f"multiple filesystem profiles use filename {filename}"
+            )
+        profiles_by_filename[filename] = profile_name
+
+    reports = {}
+    for root_zip_name in sorted({demo["root"] for demo in demos}, key=str.lower):
+        root_zip = demo_source / root_zip_name
+        if not root_zip.is_file():
+            raise FileNotFoundError(f"Demo root ZIP not found: {root_zip}")
+        profile_name = profiles_by_filename.get(root_zip_name)
+        if profile_name is None:
+            raise webgl_filesystem.ValidationError(
+                f"Demo root ZIP is not declared in {config_path}: {root_zip_name}"
+            )
+        reports[root_zip_name] = webgl_filesystem.validate_archive(
+            root_zip,
+            config,
+            profile_name,
+        )
+    return reports
+
+
+def update_demos(
+    site_dir,
+    branch,
+    branch_slug,
+    build_number,
+    demo_source,
+    runners,
+    keep,
+    *,
+    demos=None,
+):
+    demo_source = Path(demo_source)
+    if not demo_source.exists():
+        return
+
+    if demos is None:
+        demos = discover_demos(demo_source)
+
+    demos_dir = site_dir / "demos"
+    apps_dir = demos_dir / "apps"
+    images_dir = demos_dir / "images"
+    apps_dir.mkdir(parents=True, exist_ok=True)
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    same_apps_dir = demo_source.resolve() == apps_dir.resolve()
+    if not same_apps_dir:
+        for old_zip in apps_dir.glob("*.zip"):
+            old_zip.unlink()
+        for zip_path in demo_source.glob("*.zip"):
+            shutil.copy2(zip_path, apps_dir / zip_path.name)
 
     source_images_dir = demo_source / "images"
     if source_images_dir.exists():
@@ -1229,9 +1291,49 @@ def main():
     parser.add_argument("--multi-threaded-dir")
     parser.add_argument("--single-threaded-jit-dir")
     parser.add_argument("--multi-threaded-jit-dir")
+    parser.add_argument(
+        "--demo-root-config",
+        default=DEFAULT_DEMO_ROOT_CONFIG,
+        help="pinned Wine/WebGL filesystem manifest used to validate demo roots",
+    )
+    parser.add_argument(
+        "--validate-demo-roots-only",
+        action="store_true",
+        help="validate roots referenced by demos.json and exit without changing the site",
+    )
     parser.add_argument("--keep", type=int, default=5)
     parser.add_argument("--skip-prune-removed-demo-branches", action="store_true")
     args = parser.parse_args()
+
+    demo_runners = demo_runners_from_args(args)
+    discovered_demos = None
+    if args.validate_demo_roots_only and not args.demo_source:
+        parser.error("--validate-demo-roots-only requires --demo-source")
+    if args.demo_source and (demo_runners or args.validate_demo_roots_only):
+        try:
+            discovered_demos = discover_demos(args.demo_source)
+            root_reports = validate_demo_root_zips(
+                args.demo_source,
+                discovered_demos,
+                args.demo_root_config,
+            )
+        except (
+            OSError,
+            ValueError,
+            zipfile.BadZipFile,
+            webgl_filesystem.ValidationError,
+        ) as error:
+            parser.exit(1, f"error: demo root validation failed: {error}\n")
+        for root_name, report in root_reports.items():
+            print(
+                f"Validated demo root {root_name}: "
+                f"{report['archive']['size']} bytes, "
+                f"SHA-256 {report['archive']['sha256']}"
+            )
+        if not root_reports:
+            print("No demos reference a filesystem root.")
+    if args.validate_demo_roots_only:
+        return
 
     site_dir = Path(args.site_dir)
     site_dir.mkdir(parents=True, exist_ok=True)
@@ -1268,7 +1370,6 @@ def main():
         },
     )
 
-    demo_runners = demo_runners_from_args(args)
     if args.demo_source and demo_runners:
         update_demos(
             site_dir,
@@ -1278,6 +1379,7 @@ def main():
             args.demo_source,
             demo_runners,
             args.keep,
+            demos=discovered_demos,
         )
 
     if not args.skip_prune_removed_demo_branches:

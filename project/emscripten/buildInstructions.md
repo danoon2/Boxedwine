@@ -28,3 +28,23 @@ node server.mjs <port number>
 alternatively make sure your web server returns COEP, COOP headers
 
 
+## Running The Multi-Threaded OpenGL Bootstrap Regression
+
+This browser-only target verifies that supported WebGL procedures are
+available after SDL creates the window but before Wine creates its first GL
+context:
+
+```bash
+make testMultiThreadedOpenGL
+node server.mjs --root Build/TestMultiThreadedOpenGL --port 8001
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8001/boxedwine.html?0&1&1
+```
+
+The one-test run must report `0 tests FAILED`.
+
+

@@ -8,7 +8,7 @@
       "patch_id": "build-config",
       "category": "build_and_configuration",
       "path": "tools/d3dToWebGL/webgl-build-config-against-wine-11.0.patch",
-      "sha256": "b4ffd13243997003df7d090f07bb361ce6604b1c5a20101174e70f6e58771b67"
+      "sha256": "8306cec124c5837fc26a41e7930582635d5390b576efc0006e1a009e7adc80bf"
     },
     {
       "patch_id": "adapter-context-caps",
@@ -26,19 +26,19 @@
       "patch_id": "texture-formats-transfers",
       "category": "texture_formats_transfers_and_readback",
       "path": "tools/d3dToWebGL/webgl-texture-formats-transfers-against-wine-11.0.patch",
-      "sha256": "d2a2277103c0750720b5ba8a5702967750f692bf4d6244a1441d2990a3adea91"
+      "sha256": "c6596987dea329cea9f03b9f949efce1c11a2e32ea60c5ca8fa5baf8ee8c17ba"
     },
     {
       "patch_id": "blitter-batching",
       "category": "glsl_blitter_and_gpu_batching",
       "path": "tools/d3dToWebGL/webgl-blitter-batching-against-wine-11.0.patch",
-      "sha256": "f522da7a085fe1eebb571f67c08dc0934cd0fa73c63f748c17b4c2cf956978e7"
+      "sha256": "8f2f09379df762aa9ed99104f970a1d120ad0fb21707887d29daf6188385cd12"
     },
     {
       "patch_id": "directdraw-runtime-presentation",
       "category": "directdraw_runtime_presentation_overlays_and_legacy_d3d",
       "path": "tools/d3dToWebGL/webgl-directdraw-runtime-presentation-against-wine-11.0.patch",
-      "sha256": "c0d49509e4af2f92c9a8585d56b1c9b25fc9eb24762f6e83a03b409f522539f8"
+      "sha256": "eae7481e15134d594be0b904412429f00bbd0b03c20af8a509b17c1ad93f45bb"
     },
     {
       "patch_id": "d3dx9-assets-compatibility",

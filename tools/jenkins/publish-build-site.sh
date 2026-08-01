@@ -10,6 +10,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SITE_DIR="$(mktemp -d)"
 BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.3.zip}"
 BOXEDWINE_GDI_ZIP_URL="${BOXEDWINE_GDI_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.gdi.3.zip}"
+DEMO_ROOT_CONFIG="${BUILD_SITE_DEMO_ROOT_CONFIG:-$ROOT_DIR/tools/buildWine/webgl_filesystems_v3.json}"
 REMOTE_LOCK_ACQUIRED=0
 REMOTE_HOST="${BUILD_SITE_REMOTE%%:*}"
 REMOTE_PATH="${BUILD_SITE_REMOTE#*:}"
@@ -82,6 +83,7 @@ if [ -d "$SINGLE_THREADED_DIR" ] &&
     wget -O "$DEMO_SOURCE/boxedwine.gdi.3.zip" "$BOXEDWINE_GDI_ZIP_URL"
     DEMO_ARGS+=(
         --demo-source "$DEMO_SOURCE"
+        --demo-root-config "$DEMO_ROOT_CONFIG"
         --single-threaded-dir "$SINGLE_THREADED_DIR"
         --multi-threaded-dir "$MULTI_THREADED_DIR"
         --single-threaded-jit-dir "$SINGLE_THREADED_JIT_DIR"

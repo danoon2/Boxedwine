@@ -6,10 +6,10 @@
   "reference_inputs": {
     "graphics_tests_archive": "wine_tests_v6.zip",
     "filesystem": "boxedwine.3.zip",
-    "filesystem_sha256": "8b442c8661242cc4458c5288bdef8f894bedae71d85817f0db30c20cf767e5d1",
-    "boxedwine_wasm_sha256": "24f582ca16e04b8cbdc2fee22d5e87bdf4ce2b8aa0a631f65aaebbb58c3074b5",
+    "filesystem_sha256": "e9fe68893f52161383f56cade02e766684b24bf55bdb1910bb2ce4b50692a907",
+    "boxedwine_wasm_sha256": "0099722a9baf125f4096af84861b045f9b9fe33b28c6ae918d3ed9409f3416ef",
     "webgl_test_divergence_manifest": "webgl-test-divergences-v2.json",
-    "webgl_test_divergence_manifest_sha256": "ecf90a1867922090d4481c7e4b44dc7aa795fdff09171e8fcfd4170be4225b28",
+    "webgl_test_divergence_manifest_sha256": "11c2fb0cf8ee645f4d13477bb4aa17eedcc38461b57e8d867ba19f95acce7792",
     "test_executable_sha256": {
       "ddraw": "f17b3651e491b334e1788c60d480b3bececee2621fe94f4fd2282e002b0bfcba",
       "d3d8": "c132f99ff3bd8547d10412a14aed127233ff001218ba5a6f81c702287d81f81f",

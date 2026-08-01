@@ -56,6 +56,7 @@
 #include "cpu/testXor.h"
 #include "devs/testDspAudio.h"
 #include "mmu/testSelfModifying.h"
+#include "opengl/testOpenGL.h"
 
 void testWaitPid();
 void testProcessSignalWakesSigwaitMask();
@@ -169,6 +170,10 @@ namespace {
 int totalFails = 0;
 
 const TestEntry TEST_ENTRIES[] = {
+#if defined(BOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY)
+    {testEmscriptenMtOpenGLProcAddressBootstrap,
+        "Test Emscripten MT OpenGL proc bootstrap before context", TEST_ENTRY_SERIAL},
+#else
     {testDspAudioWriteMath, "Test DSP Audio Write Math"},
     {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
 #ifdef BOXEDWINE_WASM_JIT
@@ -976,6 +981,7 @@ const TestEntry TEST_ENTRIES[] = {
         "Test native stream zero-iov recvmsg does not consume data", TEST_ENTRY_SERIAL},
     {testNativeSocketBindUnavailableAddressReturnsEaddrnotavail,
         "Test native socket bind unavailable address returns EADDRNOTAVAIL", TEST_ENTRY_SERIAL},
+#endif
 };
 
 } // namespace

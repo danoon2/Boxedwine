@@ -15,18 +15,24 @@ The script mirrors the existing public build site, builds fresh single-threaded,
    - `boxedwine.gdi.3.zip` is downloaded from `http://boxedwine.org/v2/demos/boxedwine.gdi.3.zip`.
    - A demo can select the GDI filesystem with `"root": "boxedwine.gdi.3.zip"` in `demos.json`; demos without a `root` field use `boxedwine.3.zip`.
    - A demo can set an app-specific Wine compatibility version with `"windowsVersion": "win98"`. The generated launcher sets that version before starting the executable, without changing other demos.
-3. Builds the Emscripten web targets from `project/emscripten`.
+3. Validates every filesystem root referenced by `demos.json` against
+   `tools/buildWine/webgl_filesystems_v3.json`.
+   - The patch series, declared filename, archive size and SHA-256, full ZIP CRC, PE32 DLLs and
+     imports, GL SONAME links, `ld.so.cache`, and renderer registry settings must all match.
+   - Validation runs before the four Emscripten builds, so a missing, stale, or damaged public
+     root stops the local workflow before the expensive compilation step.
+4. Builds the Emscripten web targets from `project/emscripten`.
    - `make release`
    - `make multiThreaded`
    - `make jit`
    - `make multiThreadedJit`
-4. Copies the web build outputs into the existing demo runner layout:
+5. Copies the web build outputs into the existing demo runner layout:
    - `project/emscripten/Deploy/Web/SingleThreaded`
    - `project/emscripten/Deploy/Web/MultiThreaded`
    - `project/emscripten/Deploy/Web/SingleThreadedJit`
    - `project/emscripten/Deploy/Web/MultiThreadedJit`
-5. Runs `tools/jenkins/build_site.py` against the local site directory.
-6. Starts `project/emscripten/server.mjs` with:
+6. Runs `tools/jenkins/build_site.py` against the local site directory.
+7. Starts `project/emscripten/server.mjs` with:
    - `Cross-Origin-Embedder-Policy: require-corp`
    - `Cross-Origin-Opener-Policy: same-origin`
    - `Cross-Origin-Resource-Policy: same-origin`
@@ -98,6 +104,8 @@ wsl bash -lc 'cd /mnt/c/BoxedwineGPT && tools/jenkins/local-build-site.sh --dry-
 --build-number NUM    Build number recorded in the generated site
 --emsdk DIR           Emscripten SDK directory
 --buildfiles-dir DIR  Extra web files copied like Jenkins
+--demo-root-config FILE
+                      Pinned filesystem manifest used to validate demo roots
 --host HOST           Local server host
 --port PORT           Local server port
 --skip-sync           Reuse the existing local website directory
@@ -116,6 +124,8 @@ LOCAL_BUILD_SITE_DIR       local generated site directory
 BUILD_SITE_DEMOS_SOURCE    source directory for demo zips and demos.json
 BOXEDWINE_ZIP_URL          standard demo filesystem URL
 BOXEDWINE_GDI_ZIP_URL      GDI demo filesystem URL
+BUILD_SITE_DEMO_ROOT_CONFIG
+                           pinned filesystem manifest used to validate demo roots
 BUILD_SITE_SINGLE_THREADED_DIR
 BUILD_SITE_MULTI_THREADED_DIR
 BUILD_SITE_SINGLE_THREADED_JIT_DIR
@@ -139,6 +149,22 @@ project/emscripten/Deploy/Web/MultiThreadedJit/
 ```
 
 The generated local site and server log/pid files are local runtime artifacts and should not be checked in.
+
+## Validate Demo Roots Only
+
+To verify the current downloaded roots and `demos.json` without building Emscripten or changing
+the generated site:
+
+```powershell
+wsl python3 tools/jenkins/build_site.py `
+    --site-dir project/linux/Deploy/LocalBuildSite `
+    --demo-source project/linux/Deploy/LocalBuildSite/demos/apps `
+    --validate-demo-roots-only
+```
+
+This command requires each referenced root filename to have an exact profile in
+`tools/buildWine/webgl_filesystems_v3.json`. If the public downloads are older than the pinned
+profiles, upload the current roots first; do not bypass the validation.
 
 ## Stopping The Local Server
 
@@ -171,3 +197,7 @@ and writes them as:
 demos/apps/boxedwine.3.zip
 demos/apps/boxedwine.gdi.3.zip
 ```
+
+The publish workflow passes the same pinned manifest to `build_site.py`. Root validation finishes
+before the generated site is changed and before `rsync` uploads it, so an invalid filesystem cannot
+be published through this script.

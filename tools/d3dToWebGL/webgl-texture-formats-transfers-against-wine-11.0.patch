@@ -270,10 +270,10 @@ index efa1632..6d88ad2 100644
      }
  
 diff --git a/dlls/wined3d/surface.c b/dlls/wined3d/surface.c
-index 067b3af..e20020f 100644
+index 067b3af..14d5697 100644
 --- a/dlls/wined3d/surface.c
 +++ b/dlls/wined3d/surface.c
-@@ -26,12 +26,98 @@
+@@ -26,12 +26,25 @@
   * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
   */
  
@@ -288,79 +288,6 @@ index 067b3af..e20020f 100644
  WINE_DEFAULT_DEBUG_CHANNEL(d3d);
  WINE_DECLARE_DEBUG_CHANNEL(d3d_perf);
  
-+struct wined3d_surface_profile_bucket
-+{
-+    ULONGLONG calls;
-+    ULONGLONG total_us;
-+    ULONGLONG max_us;
-+    ULONGLONG pixels;
-+    ULONGLONG extra0;
-+    DWORD last_log;
-+};
-+
-+static BOOL wined3d_surface_profile_enabled(void)
-+{
-+    static int enabled = -1;
-+    const char *value;
-+
-+    if (enabled == -1)
-+    {
-+        value = getenv("BOXEDWINE_WEBGL_PROFILE");
-+        enabled = value && value[0] && strcmp(value, "0");
-+    }
-+
-+    return enabled;
-+}
-+
-+static ULONGLONG wined3d_surface_profile_now_us(void)
-+{
-+    static LARGE_INTEGER freq;
-+    LARGE_INTEGER counter;
-+
-+    if (!freq.QuadPart && !QueryPerformanceFrequency(&freq))
-+        return GetTickCount64() * 1000;
-+    if (!QueryPerformanceCounter(&counter))
-+        return GetTickCount64() * 1000;
-+
-+    return counter.QuadPart * 1000000ull / freq.QuadPart;
-+}
-+
-+static void wined3d_surface_profile_record(struct wined3d_surface_profile_bucket *bucket, const char *name,
-+        ULONGLONG start_us, unsigned int pixels, unsigned int extra0)
-+{
-+    ULONGLONG elapsed_us;
-+    DWORD now;
-+
-+    if (!start_us)
-+        return;
-+
-+    elapsed_us = wined3d_surface_profile_now_us() - start_us;
-+    bucket->calls++;
-+    bucket->total_us += elapsed_us;
-+    if (elapsed_us > bucket->max_us)
-+        bucket->max_us = elapsed_us;
-+    bucket->pixels += pixels;
-+    bucket->extra0 += extra0;
-+
-+    now = GetTickCount();
-+    if (!bucket->last_log)
-+        bucket->last_log = now;
-+    if (now - bucket->last_log < 1000)
-+        return;
-+
-+    fprintf(stderr, "BOXEDWINE_WEBGL_PROFILE wine.%s calls=%llu total_ms=%.3f avg_us=%llu max_us=%llu mpix=%.3f extra=%llu\n",
-+            name, (unsigned long long)bucket->calls, bucket->total_us / 1000.0,
-+            (unsigned long long)(bucket->total_us / (bucket->calls ? bucket->calls : 1)),
-+            (unsigned long long)bucket->max_us, bucket->pixels / 1000000.0,
-+            (unsigned long long)bucket->extra0);
-+    bucket->calls = 0;
-+    bucket->total_us = 0;
-+    bucket->max_us = 0;
-+    bucket->pixels = 0;
-+    bucket->extra0 = 0;
-+    bucket->last_log = now;
-+}
-+
 +static unsigned int wined3d_surface_profile_rect_pixels(const RECT *rect)
 +{
 +    LONG width = rect->right - rect->left;
@@ -372,7 +299,7 @@ index 067b3af..e20020f 100644
  /* Works correctly only for <= 4 bpp formats. */
  static void get_color_masks(const struct wined3d_format *format, uint32_t *masks)
  {
-@@ -100,6 +186,122 @@ static void convert_r5g6b5_x8r8g8b8(const BYTE *src, BYTE *dst,
+@@ -100,6 +113,122 @@ static void convert_r5g6b5_x8r8g8b8(const BYTE *src, BYTE *dst,
      }
  }
  
@@ -495,7 +422,7 @@ index 067b3af..e20020f 100644
  /* We use this for both B8G8R8A8 -> B8G8R8X8 and B8G8R8X8 -> B8G8R8A8, since
   * in both cases we're just setting the X / Alpha channel to 0xff. */
  static void convert_a8r8g8b8_x8r8g8b8(const BYTE *src, BYTE *dst,
-@@ -121,15 +323,391 @@ static void convert_a8r8g8b8_x8r8g8b8(const BYTE *src, BYTE *dst,
+@@ -121,15 +250,391 @@ static void convert_a8r8g8b8_x8r8g8b8(const BYTE *src, BYTE *dst,
      }
  }
  
@@ -888,7 +815,7 @@ index 067b3af..e20020f 100644
      unsigned int x, y;
  
      TRACE("Converting %ux%u pixels, pitches %u %u.\n", w, h, pitch_in, pitch_out);
-@@ -138,32 +716,16 @@ static void convert_yuy2_x8r8g8b8(const BYTE *src, BYTE *dst,
+@@ -138,32 +643,16 @@ static void convert_yuy2_x8r8g8b8(const BYTE *src, BYTE *dst,
      {
          const BYTE *src_line = src + y * pitch_in;
          DWORD *dst_line = (DWORD *)(dst + y * pitch_out);
@@ -930,7 +857,7 @@ index 067b3af..e20020f 100644
          }
      }
  }
-@@ -172,7 +734,6 @@ static void convert_yuy2_r5g6b5(const BYTE *src, BYTE *dst,
+@@ -172,7 +661,6 @@ static void convert_yuy2_r5g6b5(const BYTE *src, BYTE *dst,
          unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
  {
      unsigned int x, y;
@@ -938,7 +865,7 @@ index 067b3af..e20020f 100644
  
      TRACE("Converting %ux%u pixels, pitches %u %u\n", w, h, pitch_in, pitch_out);
  
-@@ -180,35 +741,177 @@ static void convert_yuy2_r5g6b5(const BYTE *src, BYTE *dst,
+@@ -180,35 +668,177 @@ static void convert_yuy2_r5g6b5(const BYTE *src, BYTE *dst,
      {
          const BYTE *src_line = src + y * pitch_in;
          WORD *dst_line = (WORD *)(dst + y * pitch_out);
@@ -976,10 +903,10 @@ index 067b3af..e20020f 100644
 +            dst_line[x + 0] = yuv_to_r5g6b5(y0, u, v);
 +            if (x + 1 < w)
 +                dst_line[x + 1] = yuv_to_r5g6b5(y1, u, v);
-         }
-     }
- }
- 
++        }
++    }
++}
++
 +static inline DWORD yuv_to_x8r8g8b8(BYTE y, BYTE u, BYTE v)
 +{
 +    int c = 298 * ((int)y - 16);
@@ -1051,10 +978,10 @@ index 067b3af..e20020f 100644
 +            dst_line[x + 0] = yuv_to_r5g6b5(y0, u, v);
 +            if (x + 1 < w)
 +                dst_line[x + 1] = yuv_to_r5g6b5(y1, u, v);
-+        }
-+    }
-+}
-+
+         }
+     }
+ }
+ 
 +static void convert_yv12_x8r8g8b8(const BYTE *src, BYTE *dst,
 +        unsigned int pitch_in, unsigned int pitch_out, unsigned int w, unsigned int h)
 +{
@@ -1140,7 +1067,7 @@ index 067b3af..e20020f 100644
  struct d3dfmt_converter_desc
  {
      enum wined3d_format_id from, to;
-@@ -221,10 +924,43 @@ static const struct d3dfmt_converter_desc converters[] =
+@@ -221,10 +851,43 @@ static const struct d3dfmt_converter_desc converters[] =
  {
      {WINED3DFMT_R32_FLOAT,      WINED3DFMT_R16_FLOAT,       convert_r32_float_r16_float},
      {WINED3DFMT_B5G6R5_UNORM,   WINED3DFMT_B8G8R8X8_UNORM,  convert_r5g6b5_x8r8g8b8},
@@ -1184,7 +1111,7 @@ index 067b3af..e20020f 100644
  };
  
  static inline const struct d3dfmt_converter_desc *find_converter(enum wined3d_format_id from,
-@@ -241,6 +977,12 @@ static inline const struct d3dfmt_converter_desc *find_converter(enum wined3d_fo
+@@ -241,6 +904,12 @@ static inline const struct d3dfmt_converter_desc *find_converter(enum wined3d_fo
      return NULL;
  }
  
@@ -1197,7 +1124,7 @@ index 067b3af..e20020f 100644
  static struct wined3d_texture *surface_convert_format(struct wined3d_texture *src_texture,
          unsigned int sub_resource_idx, const struct wined3d_format *dst_format)
  {
-@@ -351,6 +1093,8 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+@@ -351,6 +1020,8 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
      struct wined3d_context_gl *context_gl;
      unsigned int row_pitch, slice_pitch;
      unsigned int width, height, level;
@@ -1206,7 +1133,7 @@ index 067b3af..e20020f 100644
      struct wined3d_bo_address data;
      bool restore_context = false;
      unsigned int restore_idx;
-@@ -377,6 +1121,12 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+@@ -377,6 +1048,12 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
      context_gl = wined3d_context_gl(context);
      gl_info = context_gl->gl_info;
  
@@ -1219,7 +1146,7 @@ index 067b3af..e20020f 100644
      if (resource->format->depth_size || resource->format->stencil_size)
          wined3d_context_gl_apply_fbo_state_explicit(context_gl, GL_READ_FRAMEBUFFER,
                  NULL, 0, resource, sub_resource_idx, src_location);
-@@ -384,6 +1134,14 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+@@ -384,6 +1061,14 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
          wined3d_context_gl_apply_fbo_state_explicit(context_gl, GL_READ_FRAMEBUFFER,
                  resource, sub_resource_idx, NULL, 0, src_location);
  
@@ -1234,7 +1161,7 @@ index 067b3af..e20020f 100644
      /* Select the correct read buffer, and give some debug output. There is no
       * need to keep track of the current read buffer or reset it, every part
       * of the code that reads pixels sets the read buffer as desired. */
-@@ -392,7 +1150,8 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+@@ -392,7 +1077,8 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
          /* Mapping the primary render target which is not on a swapchain.
           * Read from the back buffer. */
          TRACE("Mapping offscreen render target.\n");
@@ -1244,7 +1171,7 @@ index 067b3af..e20020f 100644
          src_is_upside_down = TRUE;
      }
      else
-@@ -406,7 +1165,22 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+@@ -406,7 +1092,22 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
      checkGLcall("glReadBuffer");
      wined3d_context_gl_check_fbo_status(context_gl, GL_READ_FRAMEBUFFER);
  
@@ -1268,7 +1195,7 @@ index 067b3af..e20020f 100644
      {
          GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, wined3d_bo_gl(data.buffer_object)->id));
          checkGLcall("glBindBuffer");
-@@ -418,18 +1192,21 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+@@ -418,18 +1119,21 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
          checkGLcall("glBindBuffer");
      }
  
@@ -1282,19 +1209,19 @@ index 067b3af..e20020f 100644
  
      width = wined3d_texture_get_level_width(texture, level);
      height = wined3d_texture_get_level_height(texture, level);
-+    profile_start = wined3d_surface_profile_enabled() ? wined3d_surface_profile_now_us() : 0;
++    profile_start = wined3d_profile_enabled() ? wined3d_profile_now_us() : 0;
      gl_info->gl_ops.gl.p_glReadPixels(0, 0, width, height,
              format_gl->format, format_gl->type, offset);
 +    if (profile_start)
 +    {
-+        ULONGLONG elapsed_us = wined3d_surface_profile_now_us() - profile_start;
++        ULONGLONG elapsed_us = wined3d_profile_now_us() - profile_start;
 +        fprintf(stderr, "BOXEDWINE_WEBGL_READPIXELS wine.surface_load_location width=%u height=%u pixels=%u elapsed_us=%llu format=%u\n",
 +                width, height, width * height, (unsigned long long)elapsed_us, resource->format->id);
 +    }
      checkGLcall("glReadPixels");
  
      /* Reset previous pixel store pack state */
-@@ -444,7 +1221,7 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+@@ -444,7 +1148,7 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
          if (!(row = malloc(row_pitch)))
              goto error;
  
@@ -1303,7 +1230,7 @@ index 067b3af..e20020f 100644
          {
              mem = GL_EXTCALL(glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_WRITE));
              checkGLcall("glMapBuffer");
-@@ -463,11 +1240,22 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
+@@ -463,11 +1167,22 @@ void texture2d_read_from_framebuffer(struct wined3d_texture *texture, unsigned i
          }
          free(row);
  
@@ -1327,7 +1254,7 @@ index 067b3af..e20020f 100644
      if (data.buffer_object)
      {
          GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
-@@ -600,7 +1388,7 @@ static HRESULT surface_cpu_blt(struct wined3d_texture *dst_texture, unsigned int
+@@ -600,7 +1315,7 @@ static HRESULT surface_cpu_blt(struct wined3d_texture *dst_texture, unsigned int
  {
      unsigned int bpp, src_height, src_width, dst_height, dst_width, row_byte_count;
      struct wined3d_device *device = dst_texture->resource.device;
@@ -1336,7 +1263,7 @@ index 067b3af..e20020f 100644
      struct wined3d_texture *converted_texture = NULL;
      struct wined3d_bo_address src_data, dst_data;
      unsigned int src_fmt_attrs, dst_fmt_attrs;
-@@ -664,8 +1452,12 @@ static HRESULT surface_cpu_blt(struct wined3d_texture *dst_texture, unsigned int
+@@ -664,8 +1379,12 @@ static HRESULT surface_cpu_blt(struct wined3d_texture *dst_texture, unsigned int
  
          if (upload)
          {
@@ -1351,7 +1278,7 @@ index 067b3af..e20020f 100644
          }
  
          if (!(flags & WINED3D_BLT_RAW) && dst_format->id != src_format->id)
-@@ -724,7 +1516,6 @@ static HRESULT surface_cpu_blt(struct wined3d_texture *dst_texture, unsigned int
+@@ -724,7 +1443,6 @@ static HRESULT surface_cpu_blt(struct wined3d_texture *dst_texture, unsigned int
      dbuf = (BYTE *)dst_map.data
              + ((dst_box->top / dst_format->block_height) * dst_map.row_pitch)
              + ((dst_box->left / dst_format->block_width) * dst_format->block_byte_count);
@@ -1359,7 +1286,7 @@ index 067b3af..e20020f 100644
      if (src_fmt_attrs & dst_fmt_attrs & WINED3D_FORMAT_ATTR_BLOCKS)
      {
          TRACE("%s -> %s copy.\n", debug_d3dformat(src_format->id), debug_d3dformat(dst_format->id));
-@@ -744,6 +1535,34 @@ static HRESULT surface_cpu_blt(struct wined3d_texture *dst_texture, unsigned int
+@@ -744,6 +1462,34 @@ static HRESULT surface_cpu_blt(struct wined3d_texture *dst_texture, unsigned int
  
      if ((src_fmt_attrs | dst_fmt_attrs) & WINED3D_FORMAT_ATTR_HEIGHT_SCALE)
      {
@@ -1394,7 +1321,7 @@ index 067b3af..e20020f 100644
          FIXME("Unsupported blit between height-scaled formats (src %s, dst %s).\n",
                  debug_d3dformat(src_format->id), debug_d3dformat(dst_format->id));
          hr = E_NOTIMPL;
-@@ -1114,20 +1933,64 @@ error:
+@@ -1114,20 +1860,64 @@ error:
  release:
      if (upload && hr == WINED3D_OK)
      {
@@ -1629,40 +1556,13 @@ index ef9703f..984b9ee 100644
  
  struct wined3d_shader_resource_view * CDECL wined3d_texture_acquire_identity_srv(struct wined3d_texture *texture)
 diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
-index 4996a24..2663b5a 100644
+index 4996a24..8a44252 100644
 --- a/dlls/wined3d/texture_gl.c
 +++ b/dlls/wined3d/texture_gl.c
-@@ -35,6 +35,46 @@
+@@ -35,6 +35,19 @@
  WINE_DEFAULT_DEBUG_CHANNEL(d3d);
  WINE_DECLARE_DEBUG_CHANNEL(d3d_perf);
  
-+static BOOL wined3d_texture_gl_profile_enabled(void)
-+{
-+    static int enabled = -1;
-+    const char *value;
-+
-+    if (enabled == -1)
-+    {
-+        value = getenv("BOXEDWINE_WEBGL_PROFILE");
-+        enabled = value && value[0] && strcmp(value, "0");
-+    }
-+
-+    return enabled;
-+}
-+
-+static ULONGLONG wined3d_texture_gl_profile_now_us(void)
-+{
-+    static LARGE_INTEGER freq;
-+    LARGE_INTEGER counter;
-+
-+    if (!freq.QuadPart && !QueryPerformanceFrequency(&freq))
-+        return GetTickCount64() * 1000;
-+    if (!QueryPerformanceCounter(&counter))
-+        return GetTickCount64() * 1000;
-+
-+    return counter.QuadPart * 1000000ull / freq.QuadPart;
-+}
-+
 +static void wined3d_texture_gl_profile_readpixels(const char *name, ULONGLONG start_us,
 +        unsigned int width, unsigned int height, unsigned int format_id)
 +{
@@ -1671,7 +1571,7 @@ index 4996a24..2663b5a 100644
 +    if (!start_us)
 +        return;
 +
-+    elapsed_us = wined3d_texture_gl_profile_now_us() - start_us;
++    elapsed_us = wined3d_profile_now_us() - start_us;
 +    fprintf(stderr, "BOXEDWINE_WEBGL_READPIXELS wine.%s width=%u height=%u pixels=%u elapsed_us=%llu format=%u\n",
 +            name, width, height, width * height, (unsigned long long)elapsed_us, format_id);
 +}
@@ -1679,7 +1579,7 @@ index 4996a24..2663b5a 100644
  GLenum wined3d_texture_get_gl_buffer(const struct wined3d_texture *texture)
  {
      const struct wined3d_swapchain *swapchain = texture->swapchain;
-@@ -1221,6 +1261,60 @@ static void gltexture_delete(struct wined3d_device *device, const struct wined3d
+@@ -1221,6 +1234,60 @@ static void gltexture_delete(struct wined3d_device *device, const struct wined3d
      tex->name = 0;
  }
  
@@ -1740,7 +1640,7 @@ index 4996a24..2663b5a 100644
  /* The caller is responsible for binding the correct texture. */
  static void wined3d_texture_gl_allocate_mutable_storage(struct wined3d_texture_gl *texture_gl,
          GLenum gl_internal_format, const struct wined3d_format_gl *format,
-@@ -1228,8 +1322,12 @@ static void wined3d_texture_gl_allocate_mutable_storage(struct wined3d_texture_g
+@@ -1228,8 +1295,12 @@ static void wined3d_texture_gl_allocate_mutable_storage(struct wined3d_texture_g
  {
      unsigned int level_count, layer_count;
      GLsizei width, height, depth;
@@ -1753,7 +1653,7 @@ index 4996a24..2663b5a 100644
      level_count = texture_gl->t.level_count;
      if (texture_gl->target == GL_TEXTURE_1D_ARRAY || texture_gl->target == GL_TEXTURE_2D_ARRAY)
          layer_count = 1;
-@@ -1261,19 +1359,19 @@ static void wined3d_texture_gl_allocate_mutable_storage(struct wined3d_texture_g
+@@ -1261,19 +1332,19 @@ static void wined3d_texture_gl_allocate_mutable_storage(struct wined3d_texture_g
                  depth = wined3d_texture_get_level_depth(&texture_gl->t, level);
                  GL_EXTCALL(glTexImage3D(target, level, gl_internal_format, width, height,
                          target == GL_TEXTURE_2D_ARRAY ? texture_gl->t.layer_count : depth, 0,
@@ -1776,7 +1676,7 @@ index 4996a24..2663b5a 100644
                  checkGLcall("glTexImage2D");
              }
          }
-@@ -1524,6 +1622,203 @@ static void wined3d_fixup_alpha(const struct wined3d_format *format, const uint8
+@@ -1524,6 +1595,203 @@ static void wined3d_fixup_alpha(const struct wined3d_format *format, const uint8
      }
  }
  
@@ -1980,7 +1880,7 @@ index 4996a24..2663b5a 100644
  static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
          const struct wined3d_const_bo_address *src_bo_addr, const struct wined3d_format *src_format,
          const struct wined3d_box *src_box, unsigned int src_row_pitch, unsigned int src_slice_pitch,
-@@ -1661,6 +1956,11 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
+@@ -1661,6 +1929,11 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
                  src_format->upload(src_mem, converted_mem, src_row_pitch, src_slice_pitch,
                          dst_row_pitch, dst_slice_pitch, update_w, update_h, 1);
  
@@ -1992,7 +1892,7 @@ index 4996a24..2663b5a 100644
              wined3d_texture_gl_upload_bo(src_format, target, level, dst_row_pitch, dst_slice_pitch, dst_x,
                      dst_y, dst_z + z, update_w, update_h, 1, converted_mem, srgb, dst_texture, gl_info);
          }
-@@ -1672,6 +1972,27 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
+@@ -1672,6 +1945,27 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
      {
          const uint8_t *offset = bo.addr;
  
@@ -2020,7 +1920,7 @@ index 4996a24..2663b5a 100644
          if (bo.buffer_object)
          {
              GL_EXTCALL(glBindBuffer(GL_PIXEL_UNPACK_BUFFER, wined3d_bo_gl(bo.buffer_object)->id));
-@@ -1705,7 +2026,8 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
+@@ -1705,7 +1999,8 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
  }
  
  static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl *texture_gl,
@@ -2030,7 +1930,7 @@ index 4996a24..2663b5a 100644
  {
      struct wined3d_bo_gl *bo = wined3d_bo_gl(data->buffer_object);
      const struct wined3d_gl_info *gl_info = context_gl->gl_info;
-@@ -1714,6 +2036,7 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
+@@ -1714,6 +2009,7 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
      unsigned int src_row_pitch, src_slice_pitch;
      const struct wined3d_format_gl *format_gl;
      BYTE *temporary_mem = NULL;
@@ -2038,7 +1938,7 @@ index 4996a24..2663b5a 100644
      unsigned int level;
      GLenum target;
      void *mem;
-@@ -1794,16 +2117,76 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
+@@ -1794,16 +2090,76 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
          mem = data->addr;
      }
  
@@ -2066,9 +1966,9 @@ index 4996a24..2663b5a 100644
 +        {
 +            unsigned int read_width = wined3d_texture_get_level_width(&texture_gl->t, level);
 +            unsigned int read_height = wined3d_texture_get_level_height(&texture_gl->t, level);
-+            ULONGLONG profile_start = wined3d_texture_gl_profile_enabled() ? wined3d_texture_gl_profile_now_us() : 0;
++            ULONGLONG profile_start = wined3d_profile_enabled() ? wined3d_profile_now_us() : 0;
 +
-+            if (wined3d_texture_gl_profile_enabled())
++            if (wined3d_profile_enabled())
 +                fprintf(stderr, "BOXEDWINE_WEBGL_READBACK_SOURCE wine.download_data texture=%p sub=%u src_location=%#x locations=%#x map_binding=%#x draw_binding=%#x access=%#x bind=%#x swapchain=%u width=%u height=%u format=%u bo=%u\n",
 +                        &texture_gl->t, sub_resource_idx, src_location,
 +                        (unsigned int)texture_gl->t.sub_resources[sub_resource_idx].locations,
@@ -2117,7 +2017,7 @@ index 4996a24..2663b5a 100644
          TRACE("Downloading texture %p, %u, level %u, format %#x, type %#x, data %p.\n",
                  texture_gl, sub_resource_idx, level, format_gl->format, format_gl->type, mem);
  
-@@ -1835,6 +2218,7 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
+@@ -1835,6 +2191,7 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
          }
      }
  
@@ -2125,7 +2025,7 @@ index 4996a24..2663b5a 100644
      if (bo)
      {
          GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
-@@ -1845,6 +2229,205 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
+@@ -1845,6 +2202,205 @@ static void wined3d_texture_gl_download_data_slow_path(struct wined3d_texture_gl
      free(temporary_mem);
  }
  
@@ -2172,7 +2072,7 @@ index 4996a24..2663b5a 100644
 +        return false;
 +    }
 +
-+    profile_start = wined3d_texture_gl_profile_enabled() ? wined3d_texture_gl_profile_now_us() : 0;
++    profile_start = wined3d_profile_enabled() ? wined3d_profile_now_us() : 0;
 +    gl_info->gl_ops.gl.p_glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
 +    wined3d_texture_gl_profile_readpixels("texture_gl_webgl_rgba8_readpixels", profile_start,
 +            width, height, format->id);
@@ -2309,7 +2209,7 @@ index 4996a24..2663b5a 100644
 +        if (!wined3d_texture_gl_read_pixels_webgl_rgba8(gl_info,
 +                &format_gl->f, width, height, row_pitch, slice))
 +        {
-+            ULONGLONG profile_start = wined3d_texture_gl_profile_enabled() ? wined3d_texture_gl_profile_now_us() : 0;
++            ULONGLONG profile_start = wined3d_profile_enabled() ? wined3d_profile_now_us() : 0;
 +
 +            gl_info->gl_ops.gl.p_glReadPixels(0, 0, width, height,
 +                    format_gl->format, format_gl->type, slice);
@@ -2331,7 +2231,7 @@ index 4996a24..2663b5a 100644
  static void wined3d_texture_gl_download_data(struct wined3d_context *context,
          struct wined3d_texture *src_texture, unsigned int src_sub_resource_idx, unsigned int src_location,
          const struct wined3d_box *src_box, const struct wined3d_bo_address *dst_bo_addr,
-@@ -1921,7 +2504,8 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+@@ -1921,7 +2477,8 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
              || (src_texture->flags & WINED3D_TEXTURE_CONVERTED)))
              || target == GL_TEXTURE_1D_ARRAY)
      {
@@ -2341,7 +2241,7 @@ index 4996a24..2663b5a 100644
          return;
      }
  
-@@ -1945,8 +2529,146 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+@@ -1945,8 +2502,146 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
          checkGLcall("glBindBuffer");
      }
  
@@ -2417,7 +2317,7 @@ index 4996a24..2663b5a 100644
 +            checkGLcall("glReadBuffer");
 +            wined3d_context_gl_check_fbo_status(context_gl, GL_READ_FRAMEBUFFER);
 +
-+            if (wined3d_texture_gl_profile_enabled())
++            if (wined3d_profile_enabled())
 +                fprintf(stderr, "BOXEDWINE_WEBGL_READBACK_SOURCE wine.download_from_texture texture=%p sub=%u src_location=%#x locations=%#x map_binding=%#x draw_binding=%#x access=%#x bind=%#x swapchain=%u width=%u height=%u format=%u dst_bo=%u\n",
 +                        src_texture, src_sub_resource_idx, src_location,
 +                        (unsigned int)src_texture->sub_resources[src_sub_resource_idx].locations,
@@ -2457,7 +2357,7 @@ index 4996a24..2663b5a 100644
 +            }
 +
 +            {
-+                ULONGLONG profile_start = wined3d_texture_gl_profile_enabled() ? wined3d_texture_gl_profile_now_us() : 0;
++                ULONGLONG profile_start = wined3d_profile_enabled() ? wined3d_profile_now_us() : 0;
 +
 +                gl_info->gl_ops.gl.p_glReadPixels(0, 0, src_width, src_height,
 +                        format_gl->format, format_gl->type, offset);
@@ -2488,7 +2388,7 @@ index 4996a24..2663b5a 100644
          TRACE("Downloading compressed texture %p, %u, level %u, format %#x, type %#x, data %p.\n",
                  src_texture, src_sub_resource_idx, src_level, format_gl->format, format_gl->type, offset);
  
-@@ -1955,6 +2677,13 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+@@ -1955,6 +2650,13 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
      }
      else
      {
@@ -2502,7 +2402,7 @@ index 4996a24..2663b5a 100644
          TRACE("Downloading texture %p, %u, level %u, format %#x, type %#x, data %p.\n",
                  src_texture, src_sub_resource_idx, src_level, format_gl->format, format_gl->type, offset);
  
-@@ -1962,6 +2691,7 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+@@ -1962,6 +2664,7 @@ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
          checkGLcall("glGetTexImage");
      }
  
@@ -2510,7 +2410,7 @@ index 4996a24..2663b5a 100644
      if (dst_bo)
      {
          GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
-@@ -1997,6 +2727,13 @@ static BOOL wined3d_texture_gl_load_sysmem(struct wined3d_texture_gl *texture_gl
+@@ -1997,6 +2700,13 @@ static BOOL wined3d_texture_gl_load_sysmem(struct wined3d_texture_gl *texture_gl
          struct wined3d_box src_box;
          uint32_t src_location;
  
@@ -2524,7 +2424,7 @@ index 4996a24..2663b5a 100644
          level = sub_resource_idx % texture_gl->t.level_count;
          wined3d_texture_get_bo_address(&texture_gl->t, sub_resource_idx, &data, dst_location);
          src_location = sub_resource->locations & WINED3D_LOCATION_TEXTURE_RGB
-@@ -2032,14 +2769,17 @@ static BOOL wined3d_texture_load_drawable(struct wined3d_texture *texture,
+@@ -2032,14 +2742,17 @@ static BOOL wined3d_texture_load_drawable(struct wined3d_texture *texture,
  
      if (texture->resource.bind_flags & WINED3D_BIND_DEPTH_STENCIL)
      {

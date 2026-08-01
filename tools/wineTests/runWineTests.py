@@ -377,6 +377,33 @@ def _validate_elf32_i386(path: Path, label: str) -> None:
         raise RunnerError(f"{label} is not a little-endian ELF32/i386 executable: {path}")
 
 
+def _resolve_native_wine_source_root(wine_root: Path) -> Path:
+    """Return the Wine source tree for an in-tree or out-of-tree build."""
+    makefile = wine_root / "Makefile"
+
+    if not makefile.is_file():
+        return wine_root
+
+    try:
+        lines = makefile.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return wine_root
+
+    for line in lines:
+        if not line.startswith("srcdir ="):
+            continue
+
+        value = line.partition("=")[2].strip()
+        if not value:
+            break
+        source_root = Path(value)
+        if not source_root.is_absolute():
+            source_root = wine_root / source_root
+        return source_root.resolve()
+
+    return wine_root
+
+
 def inspect_native_wine_runtime(
     wine_root: Path,
     *,
@@ -384,6 +411,7 @@ def inspect_native_wine_runtime(
 ) -> dict:
     """Validate and fingerprint a native pure-i386 Wine build tree."""
     wine_root = Path(wine_root).expanduser().resolve()
+    source_root = _resolve_native_wine_source_root(wine_root)
     runtime_paths = {
         relative: wine_root / PurePosixPath(relative)
         for relative in NATIVE_WINE_RUNTIME_FILES
@@ -415,14 +443,14 @@ def inspect_native_wine_runtime(
 
     try:
         commit_process = runner(
-            ["git", "-C", str(wine_root), "rev-parse", "HEAD"],
+            ["git", "-C", str(source_root), "rev-parse", "HEAD"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             timeout=30,
             check=False,
         )
         status_process = runner(
-            ["git", "-C", str(wine_root), "status", "--short"],
+            ["git", "-C", str(source_root), "status", "--short"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             timeout=30,
@@ -438,6 +466,7 @@ def inspect_native_wine_runtime(
 
     return {
         "wine_root": str(wine_root),
+        "wine_source_root": str(source_root),
         "wine_version": wine_version,
         "wine_git_commit": commit.lower(),
         "wine_source_dirty": bool(_decode_output(status_process.stdout).strip()),

@@ -4,6 +4,64 @@
 
 The current supported host environment is Debian or WSL running Debian/Ubuntu-style packages.
 
+## Wine 11 DirectX-to-WebGL Filesystems
+
+`webgl_filesystem.py` is the pinned build, packaging, and validation command
+for the Wine 11 PE32 DLL overrides used by Emscripten. Its checked-in
+`webgl_filesystems_v3.json` records the exact Wine commit, ordered patch
+manifest, reproducible DLL hashes, GL shim/cache hashes, and the current v3
+and v10 filesystem identities.
+
+From WSL, verify the patch inputs and perform a clean build with:
+
+```bash
+python3 tools/buildWine/webgl_filesystem.py verify-patches
+python3 tools/buildWine/webgl_filesystem.py build \
+  --work-dir /tmp/boxedwine-webgl-wine11 \
+  --wine-repository /path/to/wine \
+  --jobs 12
+```
+
+The build checks out the pinned Wine commit in a new directory, applies all
+eleven patches in manifest order, runs `git diff --check`, builds only Wine's
+native tool dependencies, and then builds the eight DLLs and five Wine
+graphics tests. The Wine-side build maps source paths to `/usr/src/wine`,
+uses the pinned commit time for `__DATE__` / `__TIME__`, and disables PE
+linker timestamps, so different checkout directories produce byte-identical
+outputs. The command rejects non-PE32 files, Wine builtin/placeholder files,
+missing imports, and hashes that differ from the manifest.
+
+Create a new candidate without modifying its input ZIP:
+
+```bash
+python3 tools/buildWine/webgl_filesystem.py package \
+  --input /path/to/boxedwine.3.zip \
+  --dll-dir /tmp/boxedwine-webgl-wine11/wine-build/boxedwine-webgl-dlls \
+  --output /tmp/candidate/boxedwine.3.zip
+```
+
+The output and its `.manifest.json` sidecar must not already exist. Packaging
+updates all eight files below
+`home/username/.wine/drive_c/webgl/`, preserves the rest of the root, and
+validates the result before publishing it.
+
+Validate the complete installed set and write final sidecars with:
+
+```bash
+python3 tools/buildWine/webgl_filesystem.py validate-set \
+  --normal /path/to/boxedwine.3.zip \
+  --gdi /path/to/boxedwine.gdi.3.zip \
+  --full /path/to/TinyCore15Wine11.0-v10-candidate.zip \
+  --base /path/to/TinyCore15WineBase-v10-candidate.zip \
+  --report /tmp/webgl-v3-v10-validation.json \
+  --write-sidecars
+```
+
+This performs full ZIP CRC validation; verifies the DLLs, GL libraries,
+`.link` targets, and `ld.so.cache`; requires normal v3 and full v10 to be
+byte-identical; requires GDI v3 to differ only at `user.reg`; and confirms
+that the v10 base has no Wine/WebGL DLL payload.
+
 ## Quick Start
 
 From this directory:

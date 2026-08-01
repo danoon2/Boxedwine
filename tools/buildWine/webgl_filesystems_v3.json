@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "manifest_id": "wine11-webgl-filesystems-v3",
+  "wine_version": "11.0",
+  "build_date": "2026-07-30",
+  "source_date_epoch": 1768319767,
+  "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
+  "patch_manifest": {
+    "path": "tools/wineTests/webgl-test-divergences-v2.json",
+    "sha256": "11c2fb0cf8ee645f4d13477bb4aa17eedcc38461b57e8d867ba19f95acce7792"
+  },
+  "webgl_directory": "home/username/.wine/drive_c/webgl",
+  "dlls": {
+    "d3d8.dll": {
+      "size": 258637,
+      "sha256": "9bc5008e24e37300dbdaafcf6a2cc06ab71a70f3cbe2c6cb6c4d4f414f0d52dc",
+      "required_imports": ["wined3d.dll"]
+    },
+    "d3d9.dll": {
+      "size": 338702,
+      "sha256": "2f27f4c63c0e503fb9aafeb6b651443baeee390edecbdd6745b5d20d096e017c",
+      "required_imports": ["wined3d.dll"]
+    },
+    "d3dx9_36.dll": {
+      "size": 848528,
+      "sha256": "832b447b03d7ee8c8a9cd01871dea7286eefcd4f7b7e3337cf9f3f15bc83d8a3",
+      "required_imports": ["d3dxof.dll", "wined3d.dll"]
+    },
+    "d3dx9_43.dll": {
+      "size": 846903,
+      "sha256": "4efb7a5554e3fb938b09a6367f414fe223014c883b26352a38daae183415d436",
+      "required_imports": ["d3dxof.dll"]
+    },
+    "d3dxof.dll": {
+      "size": 393391,
+      "sha256": "b72e45b731e1deb781de6d8a9ace4d1e602eeaa0c79816d5bc42f3dee8e2391d",
+      "required_imports": ["kernel32.dll"]
+    },
+    "ddraw.dll": {
+      "size": 867870,
+      "sha256": "dde0405570199a33762ca2500d1461817ce0ee3f0e7186225027eb25114f6712",
+      "required_imports": ["wined3d.dll"]
+    },
+    "dxgi.dll": {
+      "size": 487129,
+      "sha256": "0b4443b25112492ddb6de113b9efb75221676b09e2f0a2eeb4847f9d5aef005c",
+      "required_imports": ["wined3d.dll"]
+    },
+    "wined3d.dll": {
+      "size": 3982469,
+      "sha256": "dec0817023792e9dbc75614d47f5da19dec2d1192727912e1ceb38664ee901ae",
+      "required_imports": ["opengl32.dll"]
+    }
+  },
+  "gl_files": {
+    "lib/libGL.so.1": {
+      "size": 505096,
+      "sha256": "b5d266378258a8b31c51271f41bf1004dcc7d9af5029f9f07c3e4b31bf51e80d"
+    },
+    "lib/libEGL.so.1": {
+      "size": 39824,
+      "sha256": "3b2ed28cc9a85d823ca8325f0079cadf3fa43c2b46a97462b718de1c0eb2925d"
+    },
+    "etc/ld.so.cache": {
+      "size": 17519,
+      "sha256": "8f583cb3b78d14b7735803c92ac03d3ee2c7e59a8a18bbfeccc20b051a0fb769"
+    }
+  },
+  "gl_links": {
+    "lib/libEGL.so.link": "libEGL.so.1",
+    "lib/libgles.so.link": "libGL.so.1",
+    "lib/libGLESv1_CM.so.1.link": "libGL.so.1",
+    "lib/libGLESv1_CM.so.link": "libGL.so.1",
+    "lib/libGLESv2.so.2.link": "libGL.so.1",
+    "lib/libGLESv2.so.link": "libGL.so.1"
+  },
+  "ld_cache": {
+    "libGL.so.1": "/lib/libGL.so.1",
+    "libEGL.so.1": "/lib/libEGL.so.1",
+    "libEGL.so": "/lib/libEGL.so",
+    "libgles.so": "/lib/libgles.so",
+    "libGLESv1_CM.so.1": "/lib/libGLESv1_CM.so.1",
+    "libGLESv2.so.2": "/lib/libGLESv2.so.2"
+  },
+  "profiles": {
+    "normal-v3": {
+      "filename": "boxedwine.3.zip",
+      "filesystem_version": "v3",
+      "size": 157980267,
+      "sha256": "e9fe68893f52161383f56cade02e766684b24bf55bdb1910bb2ce4b50692a907",
+      "direct_draw_renderer": "opengl",
+      "wine_renderer": "gl"
+    },
+    "gdi-v3": {
+      "filename": "boxedwine.gdi.3.zip",
+      "filesystem_version": "v3",
+      "size": 157980387,
+      "sha256": "f6c48eee3d3626c8a9c55c249ef29a97c3f2e2745b904d47e5332b34faaa8886",
+      "direct_draw_renderer": "gdi",
+      "wine_renderer": "gl"
+    },
+    "full-v10": {
+      "filename": "TinyCore15Wine11.0-v10-candidate.zip",
+      "filesystem_version": "v10-candidate",
+      "size": 157980267,
+      "sha256": "e9fe68893f52161383f56cade02e766684b24bf55bdb1910bb2ce4b50692a907",
+      "direct_draw_renderer": "opengl",
+      "wine_renderer": "gl"
+    },
+    "base-v10": {
+      "filename": "TinyCore15WineBase-v10-candidate.zip",
+      "filesystem_version": "v10-candidate",
+      "size": 66718539,
+      "sha256": "94dac0c3b8c995b31df85534fd8699c98485c5906f5d4d727e6bf6842ff78906",
+      "base_only": true
+    }
+  }
+}

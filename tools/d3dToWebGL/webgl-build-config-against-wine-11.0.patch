@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..17297f1
 --- /dev/null
 +++ b/BOXEDWINE_WEBGL_BUILD.md
-@@ -0,0 +1,99 @@
+@@ -0,0 +1,103 @@
 +# BoxedWine WebGL Win32 DLL Build
 +
 +These instructions build the Wine DLLs used by the BoxedWine WebGL
@@ -11,11 +11,15 @@ index 0000000..17297f1
 +can produce Wine builtin PE DLLs; those DLLs may contain the marker
 +`Wine builtin DLL` and do not behave the same in BoxedWine.
 +
-+- build native Wine tools first;
++- build only the native Wine tool dependencies first;
 +- configure the DLL build with `--host=i686-w64-mingw32`;
 +- pass `--disable-kernel32`;
 +- define `USE_WIN32_OPENGL` and `USE_WIN32_VULKAN`;
 +- link with `-static-libgcc`.
++
++The script maps the checkout path to `/usr/src/wine`, fixes `SOURCE_DATE_EPOCH`
++to the pinned Wine commit, and disables PE linker timestamps. Identical patched
++source built in different directories therefore produces byte-identical files.
 +
 +## Prerequisites
 +
@@ -108,7 +112,7 @@ new file mode 100755
 index 0000000..f6be68e
 --- /dev/null
 +++ b/build-boxedwine-webgl-dlls.sh
-@@ -0,0 +1,178 @@
+@@ -0,0 +1,180 @@
 +#!/usr/bin/env bash
 +set -euo pipefail
 +
@@ -133,6 +137,8 @@ index 0000000..f6be68e
 +script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 +build_dir="$(cd "$script_dir/.." && pwd)/boxedwine-webgl-wine-build"
 +jobs="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 1)"
++SOURCE_DATE_EPOCH=1768319767
++export SOURCE_DATE_EPOCH
 +
 +while [ "$#" -gt 0 ]; do
 +    case "$1" in
@@ -209,7 +215,7 @@ index 0000000..f6be68e
 +
 +echo
 +echo "Building native Wine tools..."
-+make -C "$wine_tools_dir" -j"$jobs"
++make -C "$wine_tools_dir" -j"$jobs" __tooldeps__
 +
 +echo
 +echo "Configuring true Win32 DLL build..."
@@ -220,9 +226,9 @@ index 0000000..f6be68e
 +        --disable-kernel32 \
 +        --without-freetype \
 +        --host=i686-w64-mingw32 \
-+        CFLAGS="-O3 -DWINE_NO_DEBUG_MSGS -DWINE_NOWINSOCK -DUSE_WIN32_OPENGL -DUSE_WIN32_VULKAN" \
++        CFLAGS="-O3 -DWINE_NO_DEBUG_MSGS -DWINE_NOWINSOCK -DUSE_WIN32_OPENGL -DUSE_WIN32_VULKAN -ffile-prefix-map=$script_dir=/usr/src/wine" \
 +        --with-wine-tools="$wine_tools_dir/" \
-+        LDFLAGS=" -static-libgcc"
++        LDFLAGS=" -static-libgcc -Wl,--no-insert-timestamp"
 +)
 +
 +echo
@@ -288,10 +294,10 @@ index 0000000..f6be68e
 +echo "d3d9.dll imports:"
 +i686-w64-mingw32-objdump -p "$output_dir/d3d9.dll" | grep "DLL Name" || true
 diff --git a/dlls/wined3d/wined3d_main.c b/dlls/wined3d/wined3d_main.c
-index 91d8dd5..8083ea4 100644
+index 91d8dd5..fb7d856 100644
 --- a/dlls/wined3d/wined3d_main.c
 +++ b/dlls/wined3d/wined3d_main.c
-@@ -31,6 +31,7 @@
+@@ -31,11 +31,75 @@
  #define VK_NO_PROTOTYPES
  #include "wine/vulkan.h"
  #include <vkd3d_utils.h>
@@ -299,16 +305,84 @@ index 91d8dd5..8083ea4 100644
  
  WINE_DEFAULT_DEBUG_CHANNEL(d3d);
  WINE_DECLARE_DEBUG_CHANNEL(vkd3d);
-@@ -129,6 +130,8 @@ struct wined3d_settings wined3d_settings =
+ WINE_DECLARE_DEBUG_CHANNEL(winediag);
+
++BOOL wined3d_profile_enabled(void)
++{
++    static int enabled = -1;
++    const char *value;
++
++    if (enabled == -1)
++    {
++        value = getenv("BOXEDWINE_WEBGL_PROFILE");
++        enabled = value && value[0] && strcmp(value, "0");
++    }
++
++    return enabled;
++}
++
++ULONGLONG wined3d_profile_now_us(void)
++{
++    static LARGE_INTEGER freq;
++    LARGE_INTEGER counter;
++
++    if (!freq.QuadPart && !QueryPerformanceFrequency(&freq))
++        return GetTickCount64() * 1000;
++    if (!QueryPerformanceCounter(&counter))
++        return GetTickCount64() * 1000;
++
++    return counter.QuadPart * 1000000ull / freq.QuadPart;
++}
++
++void wined3d_profile_record(struct wined3d_profile_bucket *bucket, const char *name,
++        ULONGLONG start_us, unsigned int pixels, unsigned int extra0)
++{
++    ULONGLONG elapsed_us;
++    DWORD now;
++
++    if (!start_us)
++        return;
++
++    elapsed_us = wined3d_profile_now_us() - start_us;
++    bucket->calls++;
++    bucket->total_us += elapsed_us;
++    if (elapsed_us > bucket->max_us)
++        bucket->max_us = elapsed_us;
++    bucket->pixels += pixels;
++    bucket->extra0 += extra0;
++
++    now = GetTickCount();
++    if (!bucket->last_log)
++        bucket->last_log = now;
++    if (now - bucket->last_log < 1000)
++        return;
++
++    fprintf(stderr, "BOXEDWINE_WEBGL_PROFILE wine.%s calls=%llu total_ms=%.3f avg_us=%llu max_us=%llu mpix=%.3f extra=%llu\n",
++            name, (unsigned long long)bucket->calls, bucket->total_us / 1000.0,
++            (unsigned long long)(bucket->total_us / (bucket->calls ? bucket->calls : 1)),
++            (unsigned long long)bucket->max_us, bucket->pixels / 1000000.0,
++            (unsigned long long)bucket->extra0);
++    bucket->calls = 0;
++    bucket->total_us = 0;
++    bucket->max_us = 0;
++    bucket->pixels = 0;
++    bucket->extra0 = 0;
++    bucket->last_log = now;
++}
++
+ struct wined3d_wndproc
+ {
+     struct wined3d *wined3d;
+@@ -129,6 +193,8 @@ struct wined3d_settings wined3d_settings =
      .max_sm_cs = UINT_MAX,
      .renderer = WINED3D_RENDERER_AUTO,
      .shader_backend = WINED3D_SHADER_BACKEND_AUTO,
-+    .webgl = true,
-+    .webgl_glsl_es = true,
++    .webgl = false,
++    .webgl_glsl_es = false,
  };
  
  enum wined3d_renderer CDECL wined3d_get_renderer(void)
-@@ -281,6 +284,10 @@ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
+@@ -281,6 +347,10 @@ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
      unsigned int tmpvalue;
      WNDCLASSA wc;
  
@@ -319,7 +393,7 @@ index 91d8dd5..8083ea4 100644
      wined3d_context_tls_idx = TlsAlloc();
      if (wined3d_context_tls_idx == TLS_OUT_OF_INDEXES)
      {
-@@ -468,8 +475,23 @@ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
+@@ -468,8 +538,23 @@ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
              ERR_(winediag)("Using the HLSL-based FFP backend.\n");
              wined3d_settings.ffp_hlsl = tmpvalue;
          }
@@ -344,10 +418,10 @@ index 91d8dd5..8083ea4 100644
      if (hkey) RegCloseKey( hkey );
  
 diff --git a/dlls/wined3d/wined3d_private.h b/dlls/wined3d/wined3d_private.h
-index 934239e..1e9d084 100644
+index 934239e..3d73145 100644
 --- a/dlls/wined3d/wined3d_private.h
 +++ b/dlls/wined3d/wined3d_private.h
-@@ -491,6 +491,8 @@ struct wined3d_settings
+@@ -491,9 +491,26 @@ struct wined3d_settings
      bool check_float_constants;
      bool cb_access_map_w;
      bool ffp_hlsl;
@@ -356,3 +430,21 @@ index 934239e..1e9d084 100644
  };
  
  extern struct wined3d_settings wined3d_settings;
++BOOL wined3d_profile_enabled(void);
++
++struct wined3d_profile_bucket
++{
++    ULONGLONG calls;
++    ULONGLONG total_us;
++    ULONGLONG max_us;
++    ULONGLONG pixels;
++    ULONGLONG extra0;
++    DWORD last_log;
++};
++
++ULONGLONG wined3d_profile_now_us(void);
++void wined3d_profile_record(struct wined3d_profile_bucket *bucket, const char *name,
++        ULONGLONG start_us, unsigned int pixels, unsigned int extra0);
+
+ enum wined3d_shader_resource_type
+ {

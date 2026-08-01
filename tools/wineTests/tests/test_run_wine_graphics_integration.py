@@ -546,6 +546,40 @@ class GraphicsRunnerIntegrationTests(unittest.TestCase):
 
         self.assertIsNone(arguments.native_graphics_baseline)
 
+    def test_native_wine_source_root_supports_out_of_tree_builds(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            source = temp / "wine-source"
+            build = temp / "wine-build"
+            source.mkdir()
+            build.mkdir()
+            (build / "Makefile").write_text(
+                f"srcdir = {source}\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                source.resolve(),
+                self.runner._resolve_native_wine_source_root(build),
+            )
+
+    def test_native_wine_source_root_resolves_relative_srcdir(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            source = temp / "wine-source"
+            build = temp / "build" / "wine"
+            source.mkdir()
+            build.mkdir(parents=True)
+            (build / "Makefile").write_text(
+                "srcdir = ../../wine-source\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                source.resolve(),
+                self.runner._resolve_native_wine_source_root(build),
+            )
+
     def test_native_graphics_baseline_pins_runtime_and_test_executable(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             executable = Path(temp_dir) / "d3d9_test.exe"

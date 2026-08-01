@@ -12,6 +12,7 @@ EMSDK_DIR="${EMSDK_DIR:-/home/james/emsdk}"
 BUILDFILES_DIR="${BUILDFILES_DIR:-/var/www/buildfiles}"
 BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.3.zip}"
 BOXEDWINE_GDI_ZIP_URL="${BOXEDWINE_GDI_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.gdi.3.zip}"
+DEMO_ROOT_CONFIG="${BUILD_SITE_DEMO_ROOT_CONFIG:-$ROOT_DIR/tools/buildWine/webgl_filesystems_v3.json}"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date -u +%Y%m%d%H%M%S)}"
@@ -45,6 +46,9 @@ Options:
   --emsdk DIR           Emscripten SDK directory (default: $EMSDK_DIR)
   --buildfiles-dir DIR  Extra web build files copied like Jenkins
                         (default: $BUILDFILES_DIR)
+  --demo-root-config FILE
+                        Pinned filesystem manifest used to validate demo roots
+                        (default: $DEMO_ROOT_CONFIG)
   --host HOST           Local server host (default: $HOST)
   --port PORT           Local server port (default: $PORT)
   --skip-sync           Reuse the existing local website directory
@@ -83,6 +87,10 @@ while [ "$#" -gt 0 ]; do
             ;;
         --buildfiles-dir)
             BUILDFILES_DIR="$2"
+            shift 2
+            ;;
+        --demo-root-config)
+            DEMO_ROOT_CONFIG="$2"
             shift 2
             ;;
         --host)
@@ -257,6 +265,16 @@ ensure_boxedwine_zips() {
     wget -O "$apps_dir/boxedwine.gdi.3.zip" "$BOXEDWINE_GDI_ZIP_URL"
 }
 
+validate_demo_roots() {
+    ensure_boxedwine_zips "$DEMO_SOURCE"
+    require_command python3
+    run "$ROOT_DIR/tools/jenkins/build_site.py" \
+        --site-dir "$SITE_DIR" \
+        --demo-source "$DEMO_SOURCE" \
+        --demo-root-config "$DEMO_ROOT_CONFIG" \
+        --validate-demo-roots-only
+}
+
 copy_web_build() {
     local build_dir="$1"
     local destination_dir="$2"
@@ -337,8 +355,6 @@ build_emscripten() {
 }
 
 generate_site() {
-    ensure_boxedwine_zips "$DEMO_SOURCE"
-
     if [ "$DRY_RUN" != "1" ]; then
         if [ ! -d "$DEMO_SOURCE" ]; then
             echo "Demo source not found: $DEMO_SOURCE" >&2
@@ -367,6 +383,7 @@ generate_site() {
         --build-url "${BUILD_URL:-}" \
         --public-url "$LOCAL_PUBLIC_URL" \
         --demo-source "$DEMO_SOURCE" \
+        --demo-root-config "$DEMO_ROOT_CONFIG" \
         --single-threaded-dir "$SINGLE_THREADED_DIR" \
         --multi-threaded-dir "$MULTI_THREADED_DIR" \
         --single-threaded-jit-dir "$SINGLE_THREADED_JIT_DIR" \
@@ -388,6 +405,7 @@ start_server() {
 }
 
 mirror_site
+validate_demo_roots
 build_emscripten
 generate_site
 start_server

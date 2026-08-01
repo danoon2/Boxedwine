@@ -33,6 +33,7 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
+#include "../emscriptenGLProcAddress.h"
 #endif
 
 #ifdef __EMSCRIPTEN__
@@ -831,23 +832,18 @@ void SDLGL::iterateFormats(std::function<void(const GLPixelFormatPtr& format)> c
 
 static int sdlOpenExtensionsLoaded = false;
 
+static void* getSdlOpenGLProcAddress(const char* name) {
 #ifdef __EMSCRIPTEN__
-static bool isUnsupportedEmscriptenSdlProcAddress(const char* name) {
-    if (!strcmp(name, "glBeginQueryEXT")
-            || !strcmp(name, "glDeleteQueriesEXT")
-            || !strcmp(name, "glEndQueryEXT")
-            || !strcmp(name, "glGenQueriesEXT")
-            || !strcmp(name, "glGetQueryivEXT")
-            || !strcmp(name, "glGetQueryObjecti64vEXT")
-            || !strcmp(name, "glGetQueryObjectivEXT")
-            || !strcmp(name, "glGetQueryObjectui64vEXT")
-            || !strcmp(name, "glGetQueryObjectuivEXT")
-            || !strcmp(name, "glIsQueryEXT")
-            || !strcmp(name, "glQueryCounterEXT")) {
-        return true;
+    if (boxedwineIsUnsupportedEmscriptenGLProcAddress(name)) {
+        return nullptr;
     }
+#endif
+    return SDL_GL_GetProcAddress(name);
+}
 
-    return false;
+#ifdef BOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY
+void* SDLGL::testGetOpenGLProcAddress(const char* name) {
+    return getSdlOpenGLProcAddress(name);
 }
 #endif
 
@@ -861,11 +857,7 @@ static bool isUnsupportedEmscriptenSdlProcAddress(const char* name) {
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS)
 
 #undef GL_EXT_FUNCTION
-#ifdef __EMSCRIPTEN__
-#define GL_EXT_FUNCTION(func, RET, PARAMS) ext_gl##func = isUnsupportedEmscriptenSdlProcAddress("gl" #func) ? nullptr : (gl##func##_func)SDL_GL_GetProcAddress("gl" #func);
-#else
-#define GL_EXT_FUNCTION(func, RET, PARAMS) ext_gl##func = (gl##func##_func)SDL_GL_GetProcAddress("gl" #func);
-#endif
+#define GL_EXT_FUNCTION(func, RET, PARAMS) ext_gl##func = (gl##func##_func)getSdlOpenGLProcAddress("gl" #func);
 
 void glExtensionsLoaded();
 
@@ -1043,13 +1035,13 @@ static void sdl_glFlush(CPU* cpu) {
 }
 
 #undef GL_FUNCTION
-#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = (gl##func##_func)SDL_GL_GetProcAddress("gl" #func);
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = (gl##func##_func)getSdlOpenGLProcAddress("gl" #func);
 
 #undef GL_FUNCTION_FMT
-#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = (gl##func##_func)SDL_GL_GetProcAddress("gl" #func);
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = (gl##func##_func)getSdlOpenGLProcAddress("gl" #func);
 
 #undef GL_FUNCTION_CUSTOM
-#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) pgl##func = (gl##func##_func)SDL_GL_GetProcAddress("gl" #func);
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) pgl##func = (gl##func##_func)getSdlOpenGLProcAddress("gl" #func);
 
 #undef GL_EXT_FUNCTION
 #define GL_EXT_FUNCTION(func, RET, PARAMS)
@@ -1066,8 +1058,8 @@ static void initSdlOpenGL() {
     int99Callback[Finish] = sdl_glFinish;
     int99Callback[Flush] = sdl_glFlush;
 
-    pglFinish = (pfnglFinish)SDL_GL_GetProcAddress("glFinish");
-    pglFlush = (pfnglFlush)SDL_GL_GetProcAddress("glFlush");
+    pglFinish = (pfnglFinish)getSdlOpenGLProcAddress("glFinish");
+    pglFlush = (pfnglFlush)getSdlOpenGLProcAddress("glFlush");
 }
 
 KOpenGLPtr SDLGL::create() {

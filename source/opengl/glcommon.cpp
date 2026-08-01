@@ -23,6 +23,7 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten/html5.h>
 #include <emscripten.h>
+#include "emscriptenGLProcAddress.h"
 #endif
 #include "knativesystem.h"
 #include "glcommon.h"
@@ -74,45 +75,13 @@ static bool glReadPixelsTempBufferEnabled() {
 }
 #endif
 
-#if defined(__EMSCRIPTEN__)
-static bool isUnsupportedEmscriptenProcAddress(const char* name) {
-    if (strstr(name, "Convolution") || strstr(name, "Histogram") || strstr(name, "Minmax") || strstr(name, "SeparableFilter") || strstr(name, "ColorTable")) {
-        return true;
-    }
-
-    if (!strcmp(name, "glBeginQueryEXT")
-            || !strcmp(name, "glDeleteQueriesEXT")
-            || !strcmp(name, "glEndQueryEXT")
-            || !strcmp(name, "glGenQueriesEXT")
-            || !strcmp(name, "glGetQueryivEXT")
-            || !strcmp(name, "glGetQueryObjecti64vEXT")
-            || !strcmp(name, "glGetQueryObjectivEXT")
-            || !strcmp(name, "glGetQueryObjectui64vEXT")
-            || !strcmp(name, "glGetQueryObjectuivEXT")
-            || !strcmp(name, "glIsQueryEXT")
-            || !strcmp(name, "glQueryCounterEXT")) {
-        return true;
-    }
-
-    // Emscripten's GL proc-address shim strips vendor suffixes before lookup.
-    // That makes fixed-point OES names like glConvolutionParameterxvOES match
-    // different desktop/legacy GL entry points with incompatible wasm
-    // signatures.
-    size_t len = strlen(name);
-    if (len < 6 || strcmp(name + len - 3, "OES") != 0) {
-        return false;
-    }
-    return strstr(name, "xOES") || strstr(name, "xvOES");
-}
-#endif
-
 static bool isOpenGLProcAddressAvailable(const char* name) {
     if (!name || name[0] != 'g' || name[1] != 'l' || name[2] == 'X') {
         return false;
     }
 
 #if defined(__EMSCRIPTEN__)
-    if (isUnsupportedEmscriptenProcAddress(name)) {
+    if (boxedwineIsUnsupportedEmscriptenGLProcAddress(name)) {
         return false;
     }
 #endif
@@ -152,6 +121,12 @@ static bool isOpenGLProcAddressAvailable(const char* name) {
 void glcommon_glProcAddressAvailable(CPU* cpu) {
     EAX = isOpenGLProcAddressAvailable(marshalsz(cpu, ARG1)) ? 1 : 0;
 }
+
+#ifdef BOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY
+bool glcommon_testOpenGLProcAddressAvailable(const char* name) {
+    return isOpenGLProcAddressAvailable(name);
+}
+#endif
 
 float fARG(CPU* cpu, U32 arg) {
     struct int2Float i;
@@ -1702,7 +1677,7 @@ void gl_init(BString allowExtensions) {
 
 #undef GL_EXT_FUNCTION
 #ifdef __EMSCRIPTEN__
-#define GL_EXT_FUNCTION(func, RET, PARAMS) gl_callback[func] = isUnsupportedEmscriptenProcAddress("gl" #func) ? glcommon_unsupportedEmscriptenGL : glcommon_gl##func;
+#define GL_EXT_FUNCTION(func, RET, PARAMS) gl_callback[func] = boxedwineIsUnsupportedEmscriptenGLProcAddress("gl" #func) ? glcommon_unsupportedEmscriptenGL : glcommon_gl##func;
 #else
 #define GL_EXT_FUNCTION(func, RET, PARAMS) gl_callback[func] = glcommon_gl##func;
 #endif
@@ -1760,7 +1735,7 @@ static bool isUnsupportedEmscriptenGlIndex(U32 index) {
 #undef GL_FUNCTION_CUSTOM
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS)
 #undef GL_EXT_FUNCTION
-#define GL_EXT_FUNCTION(func, RET, PARAMS) if (index == func && isUnsupportedEmscriptenProcAddress("gl" #func)) return true;
+#define GL_EXT_FUNCTION(func, RET, PARAMS) if (index == func && boxedwineIsUnsupportedEmscriptenGLProcAddress("gl" #func)) return true;
 
 #include "glfunctions_ext.h"
 

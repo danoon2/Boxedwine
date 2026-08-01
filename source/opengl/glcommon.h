@@ -37,6 +37,9 @@
 #endif
 
 U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
+#ifdef BOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY
+bool glcommon_testOpenGLProcAddressAvailable(const char* name);
+#endif
 
 // index 0 is the gl call number
 #define ARG1 cpu->peek32(1)
