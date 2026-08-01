@@ -3,10 +3,30 @@
 `runWineTests.py` is the unified Wine regression entry point. On Linux it
 builds the 64-bit BoxedWine release and runs the 32-bit Wine 11
 `ntdll_test.exe`, `kernel32_test.exe`, `ws2_32_test.exe`, and
-`advapi32_test.exe` groups. On Windows it can run D3D9 groups through the
-single-threaded non-JIT Emscripten build and Chrome. It exits successfully
-only when every selected group completes within its suite-specific failure
-ceiling.
+`advapi32_test.exe` groups. On Windows it can run DirectDraw, D3D8, D3D9,
+D3DX9, and D3DXOF groups through the single-threaded non-JIT Emscripten build
+and Chrome.
+It exits successfully only when every selected group completes within its
+suite-specific failure policy.
+
+Browser graphics groups use the versioned exact result policy in
+`graphics-baseline-v1.json` by default. Use `--no-graphics-baseline` only for
+an exploratory run whose changed counts will be reviewed before updating the
+baseline.
+
+The exact browser policy also pins
+`webgl-test-divergences-v1.json`. That manifest classifies every `skip()` and
+`todo_wine_if()` added to Wine's graphics tests by the current WebGL patch as
+an intentional WebGL limit, unimplemented emulation, or defect to fix.
+`webglTestDivergences.py` verifies the patch hash, modified-test-file set, and
+that every added test rule is classified exactly once before Chrome launches.
+
+On Linux or WSL, the same graphics selectors can run against a native
+pure-i386 Wine 11 tree with `--native-wine-root`. The stable native comparison
+subset uses `native-graphics-baseline-v1.json` by default and the same v6 PE32
+test executables as the browser. See
+[GRAPHICS_README.md](GRAPHICS_README.md) for commands, pinned runtime inputs,
+and the WSLg display-mode limitation.
 
 Every generated BoxedWine command uses `-novideo` to prevent host test windows
 from appearing during headless execution.
@@ -41,7 +61,7 @@ The versioned inputs are:
 - Wine 11 tests:
   `https://boxedwine.org/v2/1/wine_tests_v4.zip`
 - Prepared local graphics-test bundle:
-  `tools/wineTests/wine_tests_v5.zip`
+  `tools/wineTests/wine_tests_v6.zip`
 
 They are cached in
 `${XDG_CACHE_HOME:-$HOME/.cache}/boxedwine/wineTests`. A nonempty cached file is
@@ -109,6 +129,17 @@ Other useful overrides are:
 --tests-url URL        Wine 11 test ZIP
 --timeout SECONDS      Per-group timeout (default: 180)
 ```
+
+For example, compare the D3D9 state-block group with native Wine 11:
+
+```bash
+python3 tools/wineTests/runWineTests.py \
+    --d3d9-group stateblock \
+    --native-wine-root /path/to/native-pure-i386-wine-build
+```
+
+Use `--no-native-graphics-baseline` only to explore a group or changed native
+runtime that is not in the pinned stable subset.
 
 Use `python3 tools/wineTests/runWineTests.py --help` for the complete option
 list. A local ZIP can be supplied with a `file:///...` URL.
@@ -189,29 +220,32 @@ See [BUILD_TESTS.md](BUILD_TESTS.md) for the reusable Wine 11 test build
 process and the verified commands that produce all supported PE32/i386
 executables.
 
-The prepared `wine_tests_v5.zip` is a flat archive containing:
+The prepared `wine_tests_v6.zip` is a flat archive containing:
 
 - `ntdll_test.exe`: Wine 11 PE32/i386 test executable.
 - `kernel32_test.exe`: Wine 11 PE32/i386 test executable.
 - `ws2_32_test.exe`: Wine 11 PE32/i386 test executable.
 - `advapi32_test.exe`: Wine 11 PE32/i386 test executable.
+- `d3d8_test.exe`: patched Wine 11 PE32/i386 D3D8 test executable.
 - `d3d9_test.exe`: patched Wine 11 PE32/i386 D3D9 test executable.
+- `d3dx9_43_test.exe`: patched Wine 11 PE32/i386 D3DX9 test executable.
+- `d3dxof_test.exe`: patched Wine 11 PE32/i386 D3DXOF test executable.
+- `ddraw_test.exe`: patched Wine 11 PE32/i386 DirectDraw test executable.
 - `COPYING.LIB`: Wine's LGPL license.
-- `SHA256SUMS`: hashes for all six payload files above.
+- `SHA256SUMS`: hashes for all ten payload files above.
 
-The prepared graphics upload artifact is `tools/wineTests/wine_tests_v5.zip`.
-Its
-SHA-256 is:
+The prepared graphics upload artifact is `tools/wineTests/wine_tests_v6.zip`.
+It is 11,990,316 bytes and its SHA-256 is:
 
 ```text
-eea5e12859f55736eb1d747f068b63a910c29e2ca6d14064a3dd9fccbf2bf3e6
+b90f3ba7346042a25a0f54099156b6674787177678fddd09b16b1822e4356b30
 ```
 
-The public native default remains `wine_tests_v4.zip` until v5 has been
-uploaded and verified. Browser D3D9 runs use the local v5 bundle by default;
-`--graphics-test-executable` can override it during Wine patch development.
-See [GRAPHICS_README.md](GRAPHICS_README.md) for the browser command and
-artifact layout.
+The public native default remains `wine_tests_v4.zip`. Browser DirectDraw,
+D3D8, D3D9, D3DX9, and D3DXOF runs use the local v6 bundle by default;
+`--graphics-test-executable` can override it during Wine patch development. See
+[GRAPHICS_README.md](GRAPHICS_README.md) for the browser commands and artifact
+layout.
 
 ## Development checks
 
@@ -219,10 +253,11 @@ The unit tests use temporary files and fake subprocesses; they do not download
 artifacts or build BoxedWine:
 
 ```bash
+python3 tools/wineTests/webglTestDivergences.py
 python3 -m unittest discover -s tools/wineTests/tests -v
 python3 -m py_compile tools/wineTests/runWineTests.py
 unzip -t tools/wineTests/wine_tests_v4.zip
-unzip -t tools/wineTests/wine_tests_v5.zip
+unzip -t tools/wineTests/wine_tests_v6.zip
 ```
 
 If a real group fails, inspect its log and retained root under the run directory

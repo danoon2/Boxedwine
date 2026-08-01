@@ -187,6 +187,19 @@ public:
     FPURegPtr reg;
 };
 
+void JitFPU::roundFpuResultToPrecision(FPURegPtr result) {
+    RegPtr precision = readCPU(JitWidth::b32, offsetof(CPU, fpu.cw));
+    andValue(JitWidth::b32, precision, 0x0300);
+    IfEqual(JitWidth::b32, precision, 0); {
+        precision = nullptr;
+        FPURegPtr rounded = getFPUTmp();
+        updateFPURounding();
+        fpuReg64To32(rounded, result);
+        restoreFPURounding();
+        fpuRegExtend32To64(result, rounded);
+    } EndIf();
+}
+
 void JitFPU::dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool reverse) {
     read(JitWidth::b32, calculateEaa(op), [reverse, op, callback, this](MemPtr address) {
         FPURegPtr tmp = getFPUTmp();
@@ -200,7 +213,9 @@ void JitFPU::dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool re
         } else {
             (this->*callback)(dst.reg, tmp);
         }
-        syncXmmToCPU(top, reverse ? tmp : dst.reg, 0);
+        FPURegPtr result = reverse ? tmp : dst.reg;
+        roundFpuResultToPrecision(result);
+        syncXmmToCPU(top, result, 0);
     });
 }
 
@@ -223,7 +238,9 @@ void JitFPU::dynamic_DIV_SINGLE_REAL(DecodedOp* op, bool reverse) {
         } else {
             fpuDiv(dst.reg, tmp);
         }
-        syncXmmToCPU(top, reverse ? tmp : dst.reg, 0);
+        FPURegPtr result = reverse ? tmp : dst.reg;
+        roundFpuResultToPrecision(result);
+        syncXmmToCPU(top, result, 0);
     });
 }
 
@@ -274,9 +291,11 @@ void JitFPU::dynamic_STi_ST0(DecodedOp* op, XmmXmmCallback callback, bool revers
 
     if (reverse) {
         (this->*callback)(src.reg, dst.reg);
+        roundFpuResultToPrecision(src.reg);
         syncXmmToCPUWithIndexReg(index, src.reg);
     } else {
         (this->*callback)(dst.reg, src.reg);
+        roundFpuResultToPrecision(dst.reg);
         syncXmmToCPUWithIndexReg(index, dst.reg);
     }
     if (pop) {
@@ -329,9 +348,11 @@ void JitFPU::dynamic_ST0_STj(DecodedOp* op, XmmXmmCallback callback, bool revers
     FPUReg dst(this, top, 0);
     if (reverse) {
         (this->*callback)(src.reg, dst.reg);
+        roundFpuResultToPrecision(src.reg);
         syncXmmToCPU(top, src.reg, 0);
     } else {
         (this->*callback)(dst.reg, src.reg);
+        roundFpuResultToPrecision(dst.reg);
         syncXmmToCPU(top, dst.reg, 0);
     }
 }
@@ -384,7 +405,9 @@ void JitFPU::dynamic_DOUBLE_REAL(DecodedOp* op, XmmXmmCallback callback, bool re
         } else {
             (this->*callback)(dst.reg, tmp);
         }
-        syncXmmToCPU(top, reverse ? tmp : dst.reg, 0);
+        FPURegPtr result = reverse ? tmp : dst.reg;
+        roundFpuResultToPrecision(result);
+        syncXmmToCPU(top, result, 0);
     });
 }
 
@@ -406,7 +429,9 @@ void JitFPU::dynamic_DIV_DOUBLE_REAL(DecodedOp* op, bool reverse) {
         } else {
             fpuDiv(dst.reg, tmp);
         }
-        syncXmmToCPU(top, reverse ? tmp : dst.reg, 0);
+        FPURegPtr result = reverse ? tmp : dst.reg;
+        roundFpuResultToPrecision(result);
+        syncXmmToCPU(top, result, 0);
     });
 }
 
@@ -445,7 +470,9 @@ void JitFPU::dynamic_DWORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, bool 
         } else {
             (this->*callback)(dst.reg, tmp);
         }
-        syncXmmToCPU(top, reverse ? tmp : dst.reg, 0);
+        FPURegPtr result = reverse ? tmp : dst.reg;
+        roundFpuResultToPrecision(result);
+        syncXmmToCPU(top, result, 0);
     });
 }
 
@@ -467,7 +494,9 @@ void JitFPU::dynamic_IDIV_DWORD_INTEGER(DecodedOp* op, bool reverse) {
         } else {
             fpuDiv(dst.reg, tmp);
         }
-        syncXmmToCPU(top, reverse ? tmp : dst.reg, 0);
+        FPURegPtr result = reverse ? tmp : dst.reg;
+        roundFpuResultToPrecision(result);
+        syncXmmToCPU(top, result, 0);
     });
 }
 
@@ -513,7 +542,9 @@ void JitFPU::dynamic_WORD_INTEGER(DecodedOp* op, XmmXmmCallback callback,  bool 
         } else {
             (this->*callback)(dst.reg, tmp);
         }
-        syncXmmToCPU(top, reverse ? tmp : dst.reg, 0);
+        FPURegPtr result = reverse ? tmp : dst.reg;
+        roundFpuResultToPrecision(result);
+        syncXmmToCPU(top, result, 0);
     });
 }
 
@@ -535,7 +566,9 @@ void JitFPU::dynamic_IDIV_WORD_INTEGER(DecodedOp* op, bool reverse) {
         } else {
             fpuDiv(dst.reg, tmp);
         }
-        syncXmmToCPU(top, reverse ? tmp : dst.reg, 0);
+        FPURegPtr result = reverse ? tmp : dst.reg;
+        roundFpuResultToPrecision(result);
+        syncXmmToCPU(top, result, 0);
     });
 }
 
@@ -566,9 +599,9 @@ void JitFPU::dynamic_FCHS(DecodedOp* op) {
     RegPtr top = getTopReg();
     FPUReg dst(this, top, 0);
     FPURegPtr tmp = getFPUTmp();
-    fpuXor(tmp, tmp);
-    fpuSub(tmp, dst.reg);
-    syncXmmToCPU(top, tmp, 0);
+    loadCpuFpuRegConst(tmp, offsetof(CPU, fNeg));
+    fpuXor(dst.reg, tmp);
+    syncXmmToCPU(top, dst.reg, 0);
 }
 
 void JitFPU::dynamic_FABS(DecodedOp* op) {
@@ -1026,6 +1059,7 @@ void JitFPU::dynamic_FSQRT(DecodedOp* op) {
     RegPtr top = getTopReg();
     FPUReg reg(this, top, 0);
     fpuSqrt(reg.reg, reg.reg);
+    roundFpuResultToPrecision(reg.reg);
     syncXmmToCPU(top, reg.reg, 0);
 }
 

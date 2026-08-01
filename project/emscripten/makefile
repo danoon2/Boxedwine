@@ -3,12 +3,14 @@ ifndef BUILD_DIR
 .PHONY: default all clean release test testMultiThreaded multiThreaded jit automation automationMultiThreaded automationJit automationMultiThreadedJit testJit testMultiThreadedJit multiThreadedJit
 
 ZIP_ASSET_FILES := $(wildcard *.zip)
+SINGLE_THREADED_MEMORY_FLAGS := -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=2147483648
 
 default all: release
 
 release: export BUILD_DIR := Build/Release
 release: export EXTRA_CPP_FLAGS := $(RELEASE_FLAGS)
 release: export SHELL_FILE := shell.html
+release: export EXTRA_LD_FLAGS := $(SINGLE_THREADED_MEMORY_FLAGS)
 release: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
 test: export BUILD_DIR := Build/Test
 test: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC
@@ -46,7 +48,7 @@ jit: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
 automation: export BUILD_DIR := Build/Automation
 automation: export EXTRA_CPP_FLAGS := $(RELEASE_FLAGS) -DBOXEDWINE_RECORDER
 automation: export SHELL_FILE := shell.html
-automation: export EXTRA_LD_FLAGS := --emrun -sEXIT_RUNTIME=1
+automation: export EXTRA_LD_FLAGS := --emrun -sEXIT_RUNTIME=1 $(SINGLE_THREADED_MEMORY_FLAGS)
 automation: export ASSET_FILES := boxedwine.css boxedwine-shell.js $(ZIP_ASSET_FILES)
 automationMultiThreaded: export BUILD_DIR := Build/AutomationMultiThreaded
 automationMultiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_RECORDER -pthread

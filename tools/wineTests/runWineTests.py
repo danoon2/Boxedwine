@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime
+import hashlib
 import importlib.util
 import json
 import os
@@ -30,7 +31,13 @@ TEST_EXECUTABLES = {
     "ws2_32": "ws2_32_test.exe",
     "advapi32": "advapi32_test.exe",
 }
-GRAPHICS_TEST_EXECUTABLES = {"d3d9": "d3d9_test.exe"}
+GRAPHICS_TEST_EXECUTABLES = {
+    "ddraw": "ddraw_test.exe",
+    "d3d8": "d3d8_test.exe",
+    "d3d9": "d3d9_test.exe",
+    "d3dx9_43": "d3dx9_43_test.exe",
+    "d3dxof": "d3dxof_test.exe",
+}
 
 TEST_GROUPS = (
     "atom",
@@ -114,7 +121,33 @@ ADVAPI32_TEST_GROUPS = (
     "service",
 )
 
+DDRAW_TEST_GROUPS = (
+    "d3d",
+    "ddraw1",
+    "ddraw2",
+    "ddraw4",
+    "ddraw7",
+    "ddrawmodes",
+    "dsurface",
+    "refcount",
+    "visual",
+)
+D3D8_TEST_GROUPS = ("device", "stateblock", "visual")
 D3D9_TEST_GROUPS = ("d3d9ex", "device", "stateblock", "visual")
+D3DX9_43_TEST_GROUPS = (
+    "asm",
+    "core",
+    "effect",
+    "line",
+    "math",
+    "mesh",
+    "shader",
+    "surface",
+    "texture",
+    "volume",
+    "xfile",
+)
+D3DXOF_TEST_GROUPS = ("d3dxof",)
 
 FAILURE_CEILINGS = {group: 0 for group in TEST_GROUPS}
 FAILURE_CEILINGS.update({"file": 9, "virtual": 7, "wow64": 3})
@@ -128,11 +161,316 @@ ADVAPI32_FAILURE_CEILINGS = {group: 0 for group in ADVAPI32_TEST_GROUPS}
 
 # Graphics ceilings are intentionally kept in this unified runner even though
 # Emscripten/Chrome uses a separate execution backend.
+DDRAW_FAILURE_CEILINGS = {group: 0 for group in DDRAW_TEST_GROUPS}
+D3D8_FAILURE_CEILINGS = {group: 0 for group in D3D8_TEST_GROUPS}
 D3D9_FAILURE_CEILINGS = {group: 0 for group in D3D9_TEST_GROUPS}
+D3DX9_43_FAILURE_CEILINGS = {group: 0 for group in D3DX9_43_TEST_GROUPS}
+D3DX9_43_FAILURE_CEILINGS["math"] = 1
+D3DXOF_FAILURE_CEILINGS = {group: 0 for group in D3DXOF_TEST_GROUPS}
+
+# Unlike ordinary ceilings, these graphics failures are accepted only when
+# both the summary count and exact Wine source locations match.
+GRAPHICS_ACCEPTED_FAILURE_LOCATIONS = {
+    ("d3dx9_43", "math"): frozenset({"math.c:1557"}),
+}
+GRAPHICS_FAILURE_LOCATION_RE = re.compile(r"\b([A-Za-z0-9_]+\.c:\d+):")
+DEFAULT_GRAPHICS_BASELINE = Path(__file__).with_name("graphics-baseline-v1.json")
+DEFAULT_NATIVE_GRAPHICS_BASELINE = Path(__file__).with_name(
+    "native-graphics-baseline-v1.json"
+)
+DEFAULT_WEBGL_DIVERGENCE_MANIFEST = Path(__file__).with_name(
+    "webgl-test-divergences-v1.json"
+)
+DEFAULT_WINE_WEBGL_PATCH = (
+    Path(__file__).resolve().parents[1]
+    / "d3dToWebGL"
+    / "wine-shadowmap-webgl-against-wine-11.0.patch"
+)
+NATIVE_WINE_RUNTIME_FILES = (
+    "loader/wine",
+    "loader/wine-preloader",
+    "server/wineserver",
+    "dlls/ntdll/ntdll.dll.so",
+    "dlls/win32u/win32u.dll.so",
+    "dlls/winex11.drv/winex11.so",
+    "dlls/opengl32/opengl32.dll.so",
+    "dlls/wined3d/wined3d.dll.so",
+    "dlls/ddraw/ddraw.dll.so",
+    "dlls/d3d8/d3d8.dll.so",
+    "dlls/d3d9/d3d9.dll.so",
+    "dlls/d3dx9_43/d3dx9_43.dll.so",
+    "dlls/d3dxof/d3dxof.dll.so",
+)
 
 
 class RunnerError(RuntimeError):
     """An infrastructure or result-validation failure."""
+
+
+def load_graphics_baseline(path: Path) -> dict:
+    path = Path(path)
+    try:
+        baseline = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise RunnerError(f"graphics baseline does not exist: {path}") from error
+    except (OSError, json.JSONDecodeError) as error:
+        raise RunnerError(f"could not read graphics baseline {path}: {error}") from error
+
+    if not isinstance(baseline, dict) or baseline.get("schema_version") != 1:
+        raise RunnerError(f"unsupported graphics baseline schema: {path}")
+    suites = baseline.get("suites")
+    if not isinstance(suites, dict):
+        raise RunnerError(f"graphics baseline has no suites object: {path}")
+    for suite_name, groups in suites.items():
+        if not isinstance(groups, dict):
+            raise RunnerError(
+                f"graphics baseline suite {suite_name!r} is not an object"
+            )
+        for group, expected in groups.items():
+            if not isinstance(expected, dict):
+                raise RunnerError(
+                    f"graphics baseline entry {suite_name}/{group} is not an object"
+                )
+            for field in ("tests", "todo", "failures", "skipped"):
+                value = expected.get(field)
+                if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                    raise RunnerError(
+                        f"graphics baseline {suite_name}/{group} has invalid {field}"
+                    )
+            locations = expected.get("failure_locations")
+            if not isinstance(locations, list) or not all(
+                isinstance(location, str) for location in locations
+            ):
+                raise RunnerError(
+                    f"graphics baseline {suite_name}/{group} has invalid "
+                    "failure_locations"
+                )
+            if len(set(locations)) != expected["failures"]:
+                raise RunnerError(
+                    f"graphics baseline {suite_name}/{group} failure count "
+                    "does not match its unique failure locations"
+                )
+    baseline["_source_path"] = str(path.resolve())
+    baseline["_sha256"] = _sha256(path)
+    return baseline
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def validate_graphics_baseline_inputs(
+    baseline: dict,
+    suite_name: str,
+    build_dir: Path,
+    filesystem: Path,
+    test_executable: Path,
+) -> None:
+    reference = baseline.get("reference_inputs")
+    if not isinstance(reference, dict):
+        raise RunnerError("graphics baseline has no reference_inputs object")
+    executable_hashes = reference.get("test_executable_sha256")
+    if not isinstance(executable_hashes, dict) or not isinstance(
+        executable_hashes.get(suite_name), str
+    ):
+        raise RunnerError(
+            f"graphics baseline has no executable hash for {suite_name}"
+        )
+
+    inputs = (
+        (
+            "filesystem",
+            Path(filesystem),
+            reference.get("filesystem_sha256"),
+        ),
+        (
+            "boxedwine.wasm",
+            Path(build_dir) / "boxedwine.wasm",
+            reference.get("boxedwine_wasm_sha256"),
+        ),
+        (
+            f"{suite_name} test executable",
+            Path(test_executable),
+            executable_hashes[suite_name],
+        ),
+    )
+    for label, path, expected_hash in inputs:
+        if not isinstance(expected_hash, str):
+            raise RunnerError(
+                f"graphics baseline has no SHA-256 for {label}"
+            )
+        actual_hash = _sha256(path)
+        if actual_hash.lower() != expected_hash.lower():
+            raise RunnerError(
+                f"{label} SHA-256 {actual_hash} does not match exact "
+                f"baseline {expected_hash}; use --no-graphics-baseline only "
+                "for an exploratory run"
+            )
+
+
+def validate_webgl_divergence_baseline_input(
+    baseline: dict, divergences: dict
+) -> None:
+    reference = baseline.get("reference_inputs")
+    expected_hash = (
+        reference.get("webgl_test_divergence_manifest_sha256")
+        if isinstance(reference, dict)
+        else None
+    )
+    actual_hash = divergences.get("_sha256")
+    if not isinstance(expected_hash, str) or actual_hash != expected_hash:
+        raise RunnerError(
+            f"WebGL test divergence manifest SHA-256 {actual_hash} does not "
+            f"match exact baseline {expected_hash}; review and update both "
+            "versioned policies together"
+        )
+
+
+def _validate_elf32_i386(path: Path, label: str) -> None:
+    try:
+        header = Path(path).read_bytes()[:20]
+    except OSError as error:
+        raise RunnerError(f"could not read {label}: {path}: {error}") from error
+    if (
+        len(header) < 20
+        or header[:4] != b"\x7fELF"
+        or header[4] != 1
+        or header[5] != 1
+        or struct.unpack_from("<H", header, 18)[0] != 3
+    ):
+        raise RunnerError(f"{label} is not a little-endian ELF32/i386 executable: {path}")
+
+
+def inspect_native_wine_runtime(
+    wine_root: Path,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+) -> dict:
+    """Validate and fingerprint a native pure-i386 Wine build tree."""
+    wine_root = Path(wine_root).expanduser().resolve()
+    runtime_paths = {
+        relative: wine_root / PurePosixPath(relative)
+        for relative in NATIVE_WINE_RUNTIME_FILES
+    }
+    for relative, path in runtime_paths.items():
+        if not path.is_file():
+            raise RunnerError(f"native Wine runtime file is missing: {path}")
+        if relative in ("loader/wine", "loader/wine-preloader", "server/wineserver"):
+            _validate_elf32_i386(path, relative)
+            if not os.access(path, os.X_OK):
+                raise RunnerError(f"native Wine runtime file is not executable: {path}")
+
+    try:
+        version_process = runner(
+            [str(runtime_paths["loader/wine"]), "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise RunnerError(f"could not query native Wine version: {error}") from error
+    wine_version = _decode_output(version_process.stdout).strip()
+    if version_process.returncode != 0 or not wine_version:
+        raise RunnerError(
+            "native Wine version query failed with exit code "
+            f"{version_process.returncode}"
+        )
+
+    try:
+        commit_process = runner(
+            ["git", "-C", str(wine_root), "rev-parse", "HEAD"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=30,
+            check=False,
+        )
+        status_process = runner(
+            ["git", "-C", str(wine_root), "status", "--short"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise RunnerError(f"could not inspect native Wine source tree: {error}") from error
+    commit = _decode_output(commit_process.stdout).strip()
+    if commit_process.returncode != 0 or not re.fullmatch(r"[0-9a-fA-F]{40}", commit):
+        raise RunnerError("native Wine source commit could not be determined")
+    if status_process.returncode != 0:
+        raise RunnerError("native Wine source status could not be determined")
+
+    return {
+        "wine_root": str(wine_root),
+        "wine_version": wine_version,
+        "wine_git_commit": commit.lower(),
+        "wine_source_dirty": bool(_decode_output(status_process.stdout).strip()),
+        "runtime_sha256": {
+            relative: _sha256(path) for relative, path in runtime_paths.items()
+        },
+    }
+
+
+def validate_native_graphics_baseline_inputs(
+    baseline: dict,
+    suite_name: str,
+    runtime: dict,
+    test_executable: Path,
+) -> None:
+    """Require an exact native Wine runtime and test executable match."""
+    reference = baseline.get("reference_inputs")
+    if not isinstance(reference, dict):
+        raise RunnerError("native graphics baseline has no reference_inputs object")
+    executable_hashes = reference.get("test_executable_sha256")
+    if not isinstance(executable_hashes, dict) or not isinstance(
+        executable_hashes.get(suite_name), str
+    ):
+        raise RunnerError(
+            f"native graphics baseline has no executable hash for {suite_name}"
+        )
+
+    for field in ("wine_version", "wine_git_commit"):
+        expected = reference.get(field)
+        actual = runtime.get(field)
+        if not isinstance(expected, str) or actual != expected:
+            raise RunnerError(
+                f"native Wine {field} {actual!r} does not match exact baseline "
+                f"{expected!r}; use --no-native-graphics-baseline only for an "
+                "exploratory run"
+            )
+
+    expected_runtime_hashes = reference.get("runtime_sha256")
+    actual_runtime_hashes = runtime.get("runtime_sha256")
+    if not isinstance(expected_runtime_hashes, dict) or set(
+        expected_runtime_hashes
+    ) != set(NATIVE_WINE_RUNTIME_FILES):
+        raise RunnerError(
+            "native graphics baseline does not pin every required runtime file"
+        )
+    if not isinstance(actual_runtime_hashes, dict):
+        raise RunnerError("native Wine runtime has no file hashes")
+    for relative in NATIVE_WINE_RUNTIME_FILES:
+        expected = expected_runtime_hashes[relative]
+        actual = actual_runtime_hashes.get(relative)
+        if not isinstance(expected, str) or actual != expected:
+            raise RunnerError(
+                f"native Wine {relative} SHA-256 {actual} does not match exact "
+                f"baseline {expected}; use --no-native-graphics-baseline only "
+                "for an exploratory run"
+            )
+
+    expected_executable = executable_hashes[suite_name]
+    actual_executable = _sha256(test_executable)
+    if actual_executable.lower() != expected_executable.lower():
+        raise RunnerError(
+            f"{suite_name} test executable SHA-256 {actual_executable} does not "
+            f"match exact native baseline {expected_executable}; use "
+            "--no-native-graphics-baseline only for an exploratory run"
+        )
 
 
 class SuiteConfig(NamedTuple):
@@ -171,11 +509,39 @@ ADVAPI32_SUITE = SuiteConfig(
     ADVAPI32_FAILURE_CEILINGS,
     frozenset(),
 )
+DDRAW_SUITE = SuiteConfig(
+    "ddraw",
+    GRAPHICS_TEST_EXECUTABLES["ddraw"],
+    DDRAW_TEST_GROUPS,
+    DDRAW_FAILURE_CEILINGS,
+    frozenset(),
+)
+D3D8_SUITE = SuiteConfig(
+    "d3d8",
+    GRAPHICS_TEST_EXECUTABLES["d3d8"],
+    D3D8_TEST_GROUPS,
+    D3D8_FAILURE_CEILINGS,
+    frozenset(),
+)
 D3D9_SUITE = SuiteConfig(
     "d3d9",
     GRAPHICS_TEST_EXECUTABLES["d3d9"],
     D3D9_TEST_GROUPS,
     D3D9_FAILURE_CEILINGS,
+    frozenset(),
+)
+D3DX9_43_SUITE = SuiteConfig(
+    "d3dx9_43",
+    GRAPHICS_TEST_EXECUTABLES["d3dx9_43"],
+    D3DX9_43_TEST_GROUPS,
+    D3DX9_43_FAILURE_CEILINGS,
+    frozenset(),
+)
+D3DXOF_SUITE = SuiteConfig(
+    "d3dxof",
+    GRAPHICS_TEST_EXECUTABLES["d3dxof"],
+    D3DXOF_TEST_GROUPS,
+    D3DXOF_FAILURE_CEILINGS,
     frozenset(),
 )
 
@@ -711,6 +1077,376 @@ def _load_graphics_backend():
     return module
 
 
+def _load_webgl_divergence_validator():
+    module_name = "_boxedwine_webgl_test_divergences"
+    if module_name in sys.modules:
+        return sys.modules[module_name]
+    module_path = Path(__file__).with_name("webglTestDivergences.py")
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise RunnerError(f"could not load WebGL divergence validator: {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def evaluate_graphics_result(
+    suite: SuiteConfig,
+    group: str,
+    backend_result,
+    baseline: dict | None = None,
+    *,
+    use_default_accepted_failures: bool = True,
+) -> tuple[bool, str, int, int]:
+    """Apply infrastructure checks, exact baselines, and fallback ceilings."""
+    failures = backend_result.failures or 0
+    ceiling = suite.failure_ceilings[group]
+    backend_failure_reason = f"{failures} Wine test failures"
+    infrastructure_passed = backend_result.passed or (
+        backend_result.failures is not None
+        and backend_result.reason == backend_failure_reason
+    )
+    if not infrastructure_passed:
+        return False, backend_result.reason, failures, ceiling
+
+    expected = None
+    if baseline is not None:
+        suites = baseline.get("suites", {})
+        suite_baseline = suites.get(suite.name) if isinstance(suites, dict) else None
+        if not isinstance(suite_baseline, dict):
+            return (
+                False,
+                f"exact baseline has no suite {suite.name}",
+                failures,
+                ceiling,
+            )
+        expected = suite_baseline.get(group)
+        if not isinstance(expected, dict):
+            return (
+                False,
+                f"exact baseline has no group {suite.name}/{group}",
+                failures,
+                ceiling,
+            )
+
+    accepted_locations = (
+        frozenset(expected["failure_locations"])
+        if expected is not None
+        else (
+            GRAPHICS_ACCEPTED_FAILURE_LOCATIONS.get((suite.name, group))
+            if use_default_accepted_failures
+            else None
+        )
+    )
+    if accepted_locations is not None:
+        actual_locations = frozenset(
+            match.group(1)
+            for record in backend_result.failure_records
+            if (match := GRAPHICS_FAILURE_LOCATION_RE.search(record))
+        )
+        if failures != len(accepted_locations):
+            return (
+                False,
+                f"{failures} failures does not match accepted count "
+                f"{len(accepted_locations)}",
+                failures,
+                ceiling,
+            )
+        if actual_locations != accepted_locations:
+            return (
+                False,
+                "failure identities do not match accepted set: "
+                f"{sorted(actual_locations)}",
+                failures,
+                ceiling,
+            )
+
+    if expected is not None:
+        actual_counts = {
+            "tests": backend_result.tests,
+            "todo": backend_result.todo,
+            "failures": failures,
+            "skipped": backend_result.skipped,
+        }
+        mismatches = [
+            f"{field} expected {expected[field]}, got {actual_counts[field]}"
+            for field in ("tests", "todo", "failures", "skipped")
+            if actual_counts[field] != expected[field]
+        ]
+        if mismatches:
+            return (
+                False,
+                "exact baseline mismatch: " + "; ".join(mismatches),
+                failures,
+                ceiling,
+            )
+        reason = "ok (exact baseline)"
+        if accepted_locations:
+            reason = "ok (exact baseline, accepted known failures)"
+        return True, reason, failures, ceiling
+
+    if accepted_locations is not None:
+        return True, "ok (accepted exact known failures)", failures, ceiling
+
+    if failures > ceiling:
+        return (
+            False,
+            f"{failures} failures exceeds ceiling {ceiling}",
+            failures,
+            ceiling,
+        )
+    return True, "ok", failures, ceiling
+
+
+def _graphics_result_with_reason(graphics, result, reason: str):
+    return graphics.GraphicsTestResult(
+        suite=result.suite,
+        group=result.group,
+        tests=result.tests,
+        todo=result.todo,
+        failures=result.failures,
+        skipped=result.skipped,
+        passed=False,
+        reason=reason,
+        failure_records=result.failure_records,
+        browser_events=result.browser_events,
+    )
+
+
+def _remove_generated_native_prefix(prefix: Path, group_run_dir: Path) -> None:
+    prefix = Path(prefix).resolve()
+    group_run_dir = Path(group_run_dir).resolve()
+    try:
+        prefix.relative_to(group_run_dir)
+    except ValueError as error:
+        raise RunnerError(
+            f"refusing to remove native prefix outside its run directory: {prefix}"
+        ) from error
+    shutil.rmtree(prefix)
+
+
+def run_native_wine_graphics_suite(
+    suite: SuiteConfig,
+    groups: tuple[str, ...],
+    wine_root: Path,
+    test_executable: Path,
+    run_dir: Path,
+    *,
+    timeout: int = 900,
+    baseline: dict | None = None,
+    runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+) -> list[TestResult]:
+    """Run graphics groups with a native pure-i386 Wine build and fresh prefixes."""
+    require_linux_x86_64()
+    if not os.environ.get("DISPLAY"):
+        raise RunnerError(
+            "native Wine graphics tests require DISPLAY (use WSLg or Xvfb)"
+        )
+
+    graphics = _load_graphics_backend()
+    try:
+        backend_suite = graphics.GRAPHICS_SUITES[suite.name]
+        graphics.validate_test_executable(test_executable, backend_suite)
+    except graphics.RunnerError as error:
+        raise RunnerError(str(error)) from error
+
+    runtime = inspect_native_wine_runtime(wine_root, runner=runner)
+    if baseline is not None:
+        validate_native_graphics_baseline_inputs(
+            baseline, suite.name, runtime, test_executable
+        )
+        suite_baseline = baseline.get("suites", {}).get(suite.name)
+        missing_groups = [
+            group
+            for group in groups
+            if not isinstance(suite_baseline, dict) or group not in suite_baseline
+        ]
+        if missing_groups:
+            raise RunnerError(
+                "exact native baseline has no group "
+                + ", ".join(f"{suite.name}/{group}" for group in missing_groups)
+                + "; use --no-native-graphics-baseline for an exploratory run"
+            )
+
+    wine_root = Path(wine_root).expanduser().resolve()
+    wine = wine_root / "loader" / "wine"
+    wineserver = wine_root / "server" / "wineserver"
+    results = []
+    artifacts = {}
+    for group in groups:
+        if group not in suite.groups:
+            raise RunnerError(f"unknown {suite.name} test group: {group}")
+        group_run_dir = Path(run_dir) / "native-graphics" / suite.name / group
+        prefix = group_run_dir / "prefix"
+        log_path = group_run_dir / "output.log"
+        group_run_dir.mkdir(parents=True, exist_ok=False)
+        prefix.mkdir()
+
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "WINEARCH": "win32",
+                "WINEPREFIX": str(prefix),
+                "WINEDLLOVERRIDES": "mscoree,mshtml=",
+                "WINEDEBUG": "-all",
+            }
+        )
+        command = [str(wine), str(Path(test_executable).resolve()), group]
+        output = ""
+        test_exit_code = None
+        timed_out = False
+        launch_error = None
+        try:
+            completed = runner(
+                command,
+                env=environment,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=timeout,
+                check=False,
+            )
+            output = _decode_output(completed.stdout)
+            test_exit_code = completed.returncode
+        except subprocess.TimeoutExpired as error:
+            output = _decode_output(error.output)
+            timed_out = True
+            launch_error = f"native Wine test timed out after {timeout} seconds"
+        except OSError as error:
+            launch_error = f"unable to start native Wine: {error}"
+
+        cleanup_output = ""
+        cleanup_exit_code = None
+        cleanup_wait_exit_code = None
+        cleanup_error = None
+        try:
+            cleanup = runner(
+                [str(wineserver), "-k"],
+                env=environment,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=30,
+                check=False,
+            )
+            cleanup_output = _decode_output(cleanup.stdout)
+            cleanup_exit_code = cleanup.returncode
+            if cleanup.returncode not in (0, 1):
+                cleanup_error = (
+                    "native wineserver cleanup failed with exit code "
+                    f"{cleanup.returncode}"
+                )
+            cleanup_wait = runner(
+                [str(wineserver), "-w"],
+                env=environment,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=30,
+                check=False,
+            )
+            cleanup_output += _decode_output(cleanup_wait.stdout)
+            cleanup_wait_exit_code = cleanup_wait.returncode
+            if cleanup_wait.returncode != 0:
+                cleanup_error = (
+                    "native wineserver did not stop; wait failed with exit code "
+                    f"{cleanup_wait.returncode}"
+                )
+        except subprocess.TimeoutExpired:
+            cleanup_error = "native wineserver cleanup timed out after 30 seconds"
+        except OSError as error:
+            cleanup_error = f"unable to stop native wineserver: {error}"
+
+        if output and not output.endswith("\n"):
+            output += "\n"
+        if cleanup_output:
+            output += cleanup_output
+            if not output.endswith("\n"):
+                output += "\n"
+        output += (
+            f"[native-runner] wine exit code: {test_exit_code}\n"
+            f"[native-runner] wineserver cleanup exit code: {cleanup_exit_code}\n"
+            "[native-runner] wineserver wait exit code: "
+            f"{cleanup_wait_exit_code}\n"
+        )
+        log_path.write_text(output, encoding="utf-8")
+
+        backend_result = graphics.parse_graphics_result(
+            backend_suite,
+            group,
+            {"output": output},
+            timed_out=timed_out,
+        )
+        if launch_error is not None:
+            backend_result = _graphics_result_with_reason(
+                graphics, backend_result, launch_error
+            )
+        elif cleanup_error is not None:
+            backend_result = _graphics_result_with_reason(
+                graphics, backend_result, cleanup_error
+            )
+
+        passed, reason, failures, ceiling = evaluate_graphics_result(
+            suite,
+            group,
+            backend_result,
+            baseline,
+            use_default_accepted_failures=False,
+        )
+        result = TestResult(
+            group=group,
+            tests=backend_result.tests,
+            todo=backend_result.todo,
+            failures=failures,
+            skipped=backend_result.skipped,
+            ceiling=ceiling,
+            passed=passed,
+            reason=reason,
+            suite=suite.name,
+        )
+        prefix_retained = True
+        if passed:
+            try:
+                _remove_generated_native_prefix(prefix, group_run_dir)
+                prefix_retained = False
+            except OSError as error:
+                result = result._replace(
+                    passed=False, reason=f"native prefix cleanup failed: {error}"
+                )
+
+        results.append(result)
+        artifacts[group] = {
+            "run_dir": str(group_run_dir),
+            "log": str(log_path),
+            "command": command,
+            "wine_exit_code": test_exit_code,
+            "wineserver_cleanup_exit_code": cleanup_exit_code,
+            "wineserver_wait_exit_code": cleanup_wait_exit_code,
+            "timed_out": timed_out,
+            "failure_records": list(backend_result.failure_records),
+            "prefix": str(prefix),
+            "prefix_retained": prefix_retained,
+        }
+
+    manifest = {
+        "results": [result._asdict() for result in results],
+        "native_wine_runtime": runtime,
+        "native_graphics_baseline": (
+            {
+                "schema_version": baseline.get("schema_version"),
+                "baseline_id": baseline.get("baseline_id"),
+                "source_path": baseline.get("_source_path"),
+                "sha256": baseline.get("_sha256"),
+            }
+            if baseline is not None
+            else None
+        ),
+        "native_graphics_artifacts": artifacts,
+    }
+    (Path(run_dir) / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    return results
+
+
 def run_emscripten_graphics_suite(
     suite: SuiteConfig,
     groups: tuple[str, ...],
@@ -723,8 +1459,10 @@ def run_emscripten_graphics_suite(
     timeout: int = 900,
     headless: bool = False,
     keep_browser_profile: bool = False,
+    baseline: dict | None = None,
+    divergences: dict | None = None,
 ) -> list[TestResult]:
-    """Run selected graphics groups through the Chrome backend and apply ceilings."""
+    """Run selected graphics groups and apply exact baselines or fallback ceilings."""
     graphics = _load_graphics_backend()
     try:
         backend_suite = graphics.GRAPHICS_SUITES[suite.name]
@@ -732,6 +1470,14 @@ def run_emscripten_graphics_suite(
         if not Path(filesystem).is_file() or not zipfile.is_zipfile(filesystem):
             raise RunnerError(f"filesystem is not a readable ZIP: {filesystem}")
         graphics.validate_test_executable(test_executable, backend_suite)
+        if baseline is not None:
+            validate_graphics_baseline_inputs(
+                baseline,
+                suite.name,
+                build_dir,
+                filesystem,
+                test_executable,
+            )
         chrome_path = graphics.find_chrome(chrome)
     except graphics.RunnerError as error:
         raise RunnerError(str(error)) from error
@@ -758,22 +1504,9 @@ def run_emscripten_graphics_suite(
         except graphics.RunnerError as error:
             raise RunnerError(str(error)) from error
 
-        failures = backend_result.failures or 0
-        ceiling = suite.failure_ceilings[group]
-        backend_failure_reason = f"{failures} Wine test failures"
-        infrastructure_passed = backend_result.passed or (
-            backend_result.failures is not None
-            and backend_result.reason == backend_failure_reason
+        passed, reason, failures, ceiling = evaluate_graphics_result(
+            suite, group, backend_result, baseline
         )
-        if not infrastructure_passed:
-            passed = False
-            reason = backend_result.reason
-        elif failures > ceiling:
-            passed = False
-            reason = f"{failures} failures exceeds ceiling {ceiling}"
-        else:
-            passed = True
-            reason = "ok"
         results.append(
             TestResult(
                 group=group,
@@ -797,6 +1530,28 @@ def run_emscripten_graphics_suite(
 
     manifest = {
         "results": [result._asdict() for result in results],
+        "graphics_baseline": (
+            {
+                "schema_version": baseline.get("schema_version"),
+                "baseline_id": baseline.get("baseline_id"),
+                "source_path": baseline.get("_source_path"),
+                "sha256": baseline.get("_sha256"),
+            }
+            if baseline is not None
+            else None
+        ),
+        "webgl_test_divergences": (
+            {
+                "schema_version": divergences.get("schema_version"),
+                "manifest_id": divergences.get("manifest_id"),
+                "source_path": divergences.get("_source_path"),
+                "sha256": divergences.get("_sha256"),
+                "combined_patch": divergences.get("_patch_path"),
+                "policy_counts": divergences.get("_policy_counts"),
+            }
+            if divergences is not None
+            else None
+        ),
         "graphics_artifacts": artifacts,
     }
     (Path(run_dir) / "manifest.json").write_text(
@@ -809,8 +1564,9 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     repo_root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(
         description=(
-            "Run Wine 11 NTDLL, kernel32, ws2_32, advapi32, and browser "
-            "graphics tests with unified accepted-failure policy."
+            "Run Wine 11 NTDLL, kernel32, ws2_32, advapi32, browser graphics, "
+            "and native pure-i386 Wine graphics tests with unified "
+            "accepted-failure policy."
         )
     )
     parser.add_argument(
@@ -842,11 +1598,39 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="run only this advapi32 test group; may be repeated",
     )
     parser.add_argument(
+        "--ddraw-group",
+        dest="selected_ddraw_groups",
+        action="append",
+        choices=DDRAW_TEST_GROUPS,
+        help="run this DirectDraw graphics group; may be repeated",
+    )
+    parser.add_argument(
+        "--d3d8-group",
+        dest="selected_d3d8_groups",
+        action="append",
+        choices=D3D8_TEST_GROUPS,
+        help="run this D3D8 graphics group; may be repeated",
+    )
+    parser.add_argument(
         "--d3d9-group",
         dest="selected_d3d9_groups",
         action="append",
         choices=D3D9_TEST_GROUPS,
-        help="run this D3D9 group in Emscripten/Chrome; may be repeated",
+        help="run this D3D9 graphics group; may be repeated",
+    )
+    parser.add_argument(
+        "--d3dx9-group",
+        dest="selected_d3dx9_groups",
+        action="append",
+        choices=D3DX9_43_TEST_GROUPS,
+        help="run this D3DX9_43 graphics group; may be repeated",
+    )
+    parser.add_argument(
+        "--d3dxof-group",
+        dest="selected_d3dxof_groups",
+        action="append",
+        choices=D3DXOF_TEST_GROUPS,
+        help="run this D3DXOF graphics group; may be repeated",
     )
     parser.add_argument(
         "--timeout",
@@ -878,13 +1662,16 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--graphics-test-executable",
         type=Path,
-        help="patched PE32 d3d9_test.exe; overrides --graphics-tests-archive",
+        help="patched PE32 graphics test executable; overrides --graphics-tests-archive",
     )
     parser.add_argument(
         "--graphics-tests-archive",
         type=Path,
-        default=repo_root / "tools" / "wineTests" / "wine_tests_v5.zip",
-        help="versioned Wine test bundle containing d3d9_test.exe",
+        default=repo_root / "tools" / "wineTests" / "wine_tests_v6.zip",
+        help=(
+            "versioned Wine test bundle containing DirectDraw, D3D8, D3D9, "
+            "D3DX9, and D3DXOF tests"
+        ),
     )
     parser.add_argument(
         "--graphics-build-dir",
@@ -902,6 +1689,55 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         type=Path,
         default=_default_graphics_filesystem(),
         help="versioned browser filesystem ZIP (default: local boxedwine.3.zip)",
+    )
+    baseline_options = parser.add_mutually_exclusive_group()
+    baseline_options.add_argument(
+        "--graphics-baseline",
+        type=Path,
+        dest="graphics_baseline",
+        help="exact graphics result baseline JSON",
+    )
+    baseline_options.add_argument(
+        "--no-graphics-baseline",
+        action="store_const",
+        const=None,
+        dest="graphics_baseline",
+        help="use legacy failure ceilings for an exploratory graphics run",
+    )
+    parser.set_defaults(graphics_baseline=DEFAULT_GRAPHICS_BASELINE)
+    parser.add_argument(
+        "--native-wine-root",
+        type=Path,
+        help=(
+            "native pure-i386 Wine build tree; runs selected graphics groups "
+            "natively instead of in Emscripten/Chrome"
+        ),
+    )
+    native_baseline_options = parser.add_mutually_exclusive_group()
+    native_baseline_options.add_argument(
+        "--native-graphics-baseline",
+        type=Path,
+        dest="native_graphics_baseline",
+        help="exact native pure-i386 Wine graphics result baseline JSON",
+    )
+    native_baseline_options.add_argument(
+        "--no-native-graphics-baseline",
+        action="store_const",
+        const=None,
+        dest="native_graphics_baseline",
+        help="use failure ceilings for an exploratory native Wine graphics run",
+    )
+    parser.set_defaults(
+        native_graphics_baseline=DEFAULT_NATIVE_GRAPHICS_BASELINE
+    )
+    parser.add_argument(
+        "--webgl-test-divergences",
+        type=Path,
+        default=DEFAULT_WEBGL_DIVERGENCE_MANIFEST,
+        help=(
+            "classified WebGL Wine-test divergence manifest used by browser "
+            "graphics runs"
+        ),
     )
     parser.add_argument("--chrome", type=Path, help="Chrome executable")
     parser.add_argument(
@@ -926,7 +1762,11 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         or arguments.selected_kernel32_groups is not None
         or arguments.selected_ws2_32_groups is not None
         or arguments.selected_advapi32_groups is not None
+        or arguments.selected_ddraw_groups is not None
+        or arguments.selected_d3d8_groups is not None
         or arguments.selected_d3d9_groups is not None
+        or arguments.selected_d3dx9_groups is not None
+        or arguments.selected_d3dxof_groups is not None
     )
     arguments.groups = tuple(
         arguments.selected_groups or (() if has_selection else TEST_GROUPS)
@@ -943,12 +1783,20 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         arguments.selected_advapi32_groups
         or (() if has_selection else ADVAPI32_TEST_GROUPS)
     )
+    arguments.ddraw_groups = tuple(arguments.selected_ddraw_groups or ())
+    arguments.d3d8_groups = tuple(arguments.selected_d3d8_groups or ())
     arguments.d3d9_groups = tuple(arguments.selected_d3d9_groups or ())
+    arguments.d3dx9_groups = tuple(arguments.selected_d3dx9_groups or ())
+    arguments.d3dxof_groups = tuple(arguments.selected_d3dxof_groups or ())
     del arguments.selected_groups
     del arguments.selected_kernel32_groups
     del arguments.selected_ws2_32_groups
     del arguments.selected_advapi32_groups
+    del arguments.selected_ddraw_groups
+    del arguments.selected_d3d8_groups
     del arguments.selected_d3d9_groups
+    del arguments.selected_d3dx9_groups
+    del arguments.selected_d3dxof_groups
     return arguments
 
 
@@ -1007,14 +1855,32 @@ def main(argv: list[str] | None = None) -> int:
                 arguments.advapi32_groups,
             )
         )
-        if arguments.d3d9_groups:
+        graphics_selections = tuple(
+            (suite, groups, option)
+            for suite, groups, option in (
+                (DDRAW_SUITE, arguments.ddraw_groups, "--ddraw-group"),
+                (D3D8_SUITE, arguments.d3d8_groups, "--d3d8-group"),
+                (D3D9_SUITE, arguments.d3d9_groups, "--d3d9-group"),
+                (D3DX9_43_SUITE, arguments.d3dx9_groups, "--d3dx9-group"),
+                (D3DXOF_SUITE, arguments.d3dxof_groups, "--d3dxof-group"),
+            )
+            if groups
+        )
+        if len(graphics_selections) > 1:
+            raise RunnerError(
+                "only one graphics suite can be selected per invocation"
+            )
+        if graphics_selections:
+            graphics_suite, graphics_groups, graphics_option = graphics_selections[0]
             if native_groups_selected:
                 raise RunnerError(
-                    "browser graphics groups cannot currently be combined with native Linux groups"
+                    "graphics groups cannot currently be combined with "
+                    "BoxedWine Linux groups"
                 )
-            if arguments.graphics_filesystem is None:
+            native_wine_mode = arguments.native_wine_root is not None
+            if not native_wine_mode and arguments.graphics_filesystem is None:
                 raise RunnerError(
-                    "--graphics-filesystem is required with --d3d9-group"
+                    f"--graphics-filesystem is required with {graphics_option}"
                 )
             cache_dir = arguments.cache_dir.expanduser().resolve()
             cache_dir.mkdir(parents=True, exist_ok=True)
@@ -1026,26 +1892,67 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 graphics_test_executable = extract_graphics_test_executable(
                     arguments.graphics_tests_archive.expanduser().resolve(),
-                    D3D9_SUITE,
+                    graphics_suite,
                     run_dir / "input",
                 )
-            results = run_emscripten_graphics_suite(
-                D3D9_SUITE,
-                arguments.d3d9_groups,
-                arguments.graphics_build_dir.expanduser().resolve(),
-                arguments.graphics_filesystem.expanduser().resolve(),
-                graphics_test_executable,
-                arguments.chrome.expanduser().resolve()
-                if arguments.chrome is not None
-                else None,
-                run_dir,
-                timeout=arguments.graphics_timeout,
-                headless=arguments.graphics_headless,
-                keep_browser_profile=arguments.keep_graphics_browser_profile,
-            )
+            if native_wine_mode:
+                native_graphics_baseline = (
+                    load_graphics_baseline(
+                        arguments.native_graphics_baseline.expanduser().resolve()
+                    )
+                    if arguments.native_graphics_baseline is not None
+                    else None
+                )
+                results = run_native_wine_graphics_suite(
+                    graphics_suite,
+                    graphics_groups,
+                    arguments.native_wine_root.expanduser().resolve(),
+                    graphics_test_executable,
+                    run_dir,
+                    timeout=arguments.graphics_timeout,
+                    baseline=native_graphics_baseline,
+                )
+            else:
+                graphics_baseline = (
+                    load_graphics_baseline(
+                        arguments.graphics_baseline.expanduser().resolve()
+                    )
+                    if arguments.graphics_baseline is not None
+                    else None
+                )
+                divergence_validator = _load_webgl_divergence_validator()
+                try:
+                    divergences = divergence_validator.load_and_validate(
+                        arguments.webgl_test_divergences.expanduser().resolve(),
+                        DEFAULT_WINE_WEBGL_PATCH,
+                    )
+                except divergence_validator.DivergenceError as error:
+                    raise RunnerError(str(error)) from error
+                if graphics_baseline is not None:
+                    validate_webgl_divergence_baseline_input(
+                        graphics_baseline, divergences
+                    )
+                results = run_emscripten_graphics_suite(
+                    graphics_suite,
+                    graphics_groups,
+                    arguments.graphics_build_dir.expanduser().resolve(),
+                    arguments.graphics_filesystem.expanduser().resolve(),
+                    graphics_test_executable,
+                    arguments.chrome.expanduser().resolve()
+                    if arguments.chrome is not None
+                    else None,
+                    run_dir,
+                    timeout=arguments.graphics_timeout,
+                    headless=arguments.graphics_headless,
+                    keep_browser_profile=arguments.keep_graphics_browser_profile,
+                    baseline=graphics_baseline,
+                    divergences=divergences,
+                )
             _print_results(results, run_dir)
             return 0 if all(result.passed for result in results) else 1
 
+        if arguments.native_wine_root is not None:
+            raise RunnerError("--native-wine-root requires a graphics group")
         require_linux_x86_64()
 
         cache_dir = arguments.cache_dir.expanduser().resolve()

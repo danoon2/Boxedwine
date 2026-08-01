@@ -88,6 +88,7 @@ public:
     void updateExceptionSummary();
     void guardFpuDivRegTags(RegPtr stIndex, RegPtr otherIndex, bool reverse);
     void guardFpuDivMemory(RegPtr top, RegPtr isZero);
+    void roundFpuResultToPrecision(FPURegPtr result);
 
     void dynamic_FPU_POP(RegPtr topReg, U8 amount = 1);
     void dynamic_FPU_PREP_PUSH(RegPtr topReg, bool writeTag);

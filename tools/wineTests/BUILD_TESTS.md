@@ -4,11 +4,13 @@ This guide describes the reusable process for building Wine 11 test suites as
 32-bit Windows PE executables on an x86-64 Ubuntu or Debian host.
 
 BoxedWine currently supports Wine's NTDLL, kernel32, and advapi32 test suites,
-the ws2_32 AFD group, and D3D9 browser groups. The public native-test
-`wine_tests_v4.zip` archive contains `ntdll_test.exe`, `kernel32_test.exe`,
-`ws2_32_test.exe`, and `advapi32_test.exe`. The prepared
-`wine_tests_v5.zip` extends that flat bundle with the patched Wine 11
-`d3d9_test.exe` used by the Emscripten graphics runner.
+the ws2_32 AFD group, and DirectDraw, D3D8, D3D9, D3DX9, and D3DXOF browser
+groups.
+The public native-test `wine_tests_v4.zip` archive contains `ntdll_test.exe`,
+`kernel32_test.exe`, `ws2_32_test.exe`, and `advapi32_test.exe`. The prepared
+`wine_tests_v6.zip` extends that flat bundle with the patched Wine 11
+`d3d8_test.exe`, `d3d9_test.exe`, `d3dx9_43_test.exe`, `d3dxof_test.exe`,
+and `ddraw_test.exe` used by the Emscripten graphics runner.
 
 Use a native Linux filesystem for the Wine source and build directories. A
 WSL path below `/home` or `/tmp` is substantially faster than building below
@@ -213,13 +215,46 @@ The WebGL Wine patch adds `build-boxedwine-webgl-dlls.sh` to its Wine source
 tree. Run that script after applying
 `tools/d3dToWebGL/wine-shadowmap-webgl-against-wine-11.0.patch`; it stages the
 graphics test executables in
-`boxedwine-webgl-wine-build/boxedwine-webgl-tests/`. The v5 bundle currently
-uses that directory's `d3d9_test.exe`.
+`boxedwine-webgl-wine-build/boxedwine-webgl-tests/`. The v6 bundle uses that
+directory's `d3d8_test.exe`, `d3d9_test.exe`, `d3dx9_43_test.exe`,
+`d3dxof_test.exe`, and `ddraw_test.exe`.
 
-When rebuilding `wine_tests_v5.zip`, also copy `COPYING.LIB` from the same
-Wine source checkout and regenerate `SHA256SUMS` for all five executables and
+When rebuilding `wine_tests_v6.zip`, also copy `COPYING.LIB` from the same
+Wine source checkout and regenerate `SHA256SUMS` for all nine executables and
 the license. The archive layout and runner verification commands are
 documented in `README.md`.
+
+## Build clean Wine 11 graphics comparison tests
+
+Keep a second, unmodified source/build pair at the same official Wine 11 commit
+to distinguish Wine's original test behavior from WebGL-adapted expectations.
+With the `WORK_DIR`, checkout, and `build-i386` configuration described above:
+
+```bash
+make -C "$WORK_DIR/build-i386" -j"$(nproc)" \
+    dlls/ddraw/tests/i386-windows/ddraw_test.exe \
+    dlls/d3d8/tests/i386-windows/d3d8_test.exe \
+    dlls/d3d9/tests/i386-windows/d3d9_test.exe \
+    dlls/d3dx9_43/tests/i386-windows/d3dx9_43_test.exe \
+    dlls/d3dxof/tests/i386-windows/d3dxof_test.exe
+```
+
+Verify that all five outputs are PE32/i386, then select one without changing
+the packaged v6 bundle:
+
+```bash
+python3 tools/wineTests/runWineTests.py \
+    --d3d9-group stateblock \
+    --native-wine-root /path/to/native-pure-i386-wine-build \
+    --graphics-test-executable \
+      "$WORK_DIR/build-i386/dlls/d3d9/tests/i386-windows/d3d9_test.exe" \
+    --no-native-graphics-baseline
+```
+
+The current clean official build hashes and the stable comparison artifacts
+are recorded in `webgl-test-divergences-v1.json`. Use
+`--no-native-graphics-baseline` for this comparison because the native exact
+baseline deliberately pins the packaged v6 executables.
 
 For an additional test suite, update `runWineTests.py`, its tests, the published
 archive layout, and the expected-result rules before treating the new
@@ -236,6 +271,20 @@ make -j"$(nproc)" dlls/ntdll/tests/i386-windows/ntdll_test.exe
 make -j"$(nproc)" dlls/kernel32/tests/i386-windows/kernel32_test.exe
 make -j"$(nproc)" dlls/ws2_32/tests/i386-windows/ws2_32_test.exe
 make -j"$(nproc)" dlls/advapi32/tests/i386-windows/advapi32_test.exe
+```
+
+The patched WebGL Wine build uses non-architecture-prefixed graphics targets.
+For D3D8, either run the staging script above or rebuild just the test with:
+
+```bash
+make -C /home/james/webgl/boxedwine-webgl-wine-build/wine-win32 \
+    -j"$(nproc)" dlls/d3d8/tests/d3d8_test.exe
+
+make -C /home/james/webgl/boxedwine-webgl-wine-build/wine-win32 \
+    -j"$(nproc)" dlls/d3dx9_43/tests/d3dx9_43_test.exe
+
+make -C /home/james/webgl/boxedwine-webgl-wine-build/wine-win32 \
+    -j"$(nproc)" dlls/d3dxof/tests/d3dxof_test.exe
 ```
 
 Use a new source and build directory when changing Wine versions. This avoids

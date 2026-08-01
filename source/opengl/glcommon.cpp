@@ -795,6 +795,12 @@ void glcommon_glReadPixels(CPU* cpu) {
 
     MarshalReadWritePackedPixels pixels(cpu, 2, width, height, 1, format, type, ARG7);
     GLvoid* ptr = pixels.getPtr();
+#if defined(__EMSCRIPTEN__)
+    // The single-threaded browser build may yield between guest GL calls. The
+    // browser main loop can change the read buffer after glReadBuffer returns,
+    // so replay the guest's selection in the same host callback as the read.
+    GL_FUNC(pglReadBuffer)(cpu->thread->glReadBufferMode);
+#endif
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
     if (format == GL_RGBA && type == GL_UNSIGNED_BYTE && glReadPixelsTempBufferEnabled()) {
         boxedwine_read_pixels_temp_rgba8(ARG1, ARG2, width, height, format, type, (int)(uintptr_t)ptr);

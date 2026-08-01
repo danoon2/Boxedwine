@@ -69,6 +69,32 @@ when the host OpenGL driver does not expose the required functions.
 When running inside Wine/BoxedWine, use `--quiet --log opengl-test.log` if the
 console path emits cursor-control escape sequences.
 
+## Emscripten browser regression
+
+`readbuffer-yield-replay` is a browser-only regression for the
+single-threaded yield between guest `glReadBuffer()` and `glReadPixels()`.
+The guest renders a known FBO color, selects `GL_COLOR_ATTACHMENT0`, prints an
+arm marker, and sleeps. The browser harness then changes the underlying WebGL2
+read buffer to `NONE`. The resumed guest read must still return the expected
+pixel because BoxedWine replays its remembered guest read-buffer selection in
+the same host callback as `glReadPixels()`.
+
+Build the Win32 Release target, then run:
+
+```powershell
+python tools\openglTest\runBrowserTest.py --headless
+```
+
+The runner defaults to the single-threaded non-JIT build,
+`boxedwine.3.zip`, and
+`tools\openglTest\Win32\Release\OpenGLMarshalTest.exe`. Override these with
+`--build-dir`, `--filesystem`, or `--test-executable`. Run artifacts are
+written under
+`~/.cache/boxedwine/openglTests/runs/<timestamp>` and include the manifest,
+OpenGL output, browser payload, Chrome log, HTTP log, and generated app ZIP.
+The parser also requires the browser mutation marker, so a missing or broken
+mutation cannot produce a false pass.
+
 Run the EGL ES context test directly as a Linux guest program:
 
 ```powershell

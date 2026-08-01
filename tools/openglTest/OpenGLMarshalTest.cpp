@@ -9576,6 +9576,81 @@ static TestResult testFramebufferTextureReadback(TestContext&) {
     return pass("framebuffer texture readbacks matched clear color");
 }
 
+static TestResult testReadBufferYieldReplay(TestContext& ctx) {
+    char enabled[2] = {};
+    if (!GetEnvironmentVariableA("BOXEDWINE_OPENGL_READBUFFER_YIELD_TEST",
+        enabled, sizeof(enabled))) {
+        return skip("requires the Emscripten browser read-buffer mutation harness");
+    }
+    if (!glx.GenFramebuffers || !glx.BindFramebuffer || !glx.FramebufferTexture2D ||
+        !glx.CheckFramebufferStatus || !glx.DeleteFramebuffers) {
+        return skip("framebuffer entry points are unavailable");
+    }
+
+    GLuint tex = 0;
+    GLuint fbo = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0,
+        GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glx.GenFramebuffers(1, &fbo);
+    glx.BindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glx.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+        GL_TEXTURE_2D, tex, 0);
+    GLenum status = glx.CheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &tex);
+        return fail("read-buffer yield framebuffer was incomplete: " +
+            std::to_string(status));
+    }
+
+    if (glx.UseProgram) {
+        glx.UseProgram(0);
+    }
+    glViewport(0, 0, 4, 4);
+    glClearColor(0.25f, 0.5f, 0.75f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    glFinish();
+    GLenum setupError = glGetError();
+    if (setupError != GL_NO_ERROR) {
+        glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &tex);
+        return fail("read-buffer yield setup produced GL error " +
+            std::to_string(setupError));
+    }
+
+    // Sleep yields the single-threaded Emscripten runtime so the browser
+    // harness can change host GL state without changing BoxedWine's guest state.
+    ctx.write("BOXEDWINE_OPENGL_READBUFFER_YIELD_ARMED");
+    Sleep(2000);
+
+    GLubyte pixel[4] = {};
+    glReadPixels(2, 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+    GLenum readError = glGetError();
+    glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+    glx.DeleteFramebuffers(1, &fbo);
+    glDeleteTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (readError != GL_NO_ERROR) {
+        return fail("cross-yield glReadPixels produced GL error " +
+            std::to_string(readError));
+    }
+    if (pixel[0] < 55 || pixel[0] > 75 ||
+        pixel[1] < 120 || pixel[1] > 140 ||
+        pixel[2] < 180 || pixel[2] > 200 ||
+        pixel[3] < 250) {
+        return fail("cross-yield glReadPixels did not preserve the guest read buffer");
+    }
+    return pass("guest read-buffer state was replayed after the browser yield");
+}
+
 static TestResult testFramebufferRenderbufferObjectPageBoundary(TestContext&) {
     if (!glx.CreateFramebuffers || !glx.DeleteFramebuffers ||
         !glx.CreateRenderbuffers || !glx.GenRenderbuffers || !glx.DeleteRenderbuffers ||
@@ -13994,6 +14069,7 @@ static std::vector<TestCase> tests() {
         { "rect-vector-inputs", testRectVectorInputs },
         { "immediate-vertex-vector-inputs", testImmediateVertexVectorInputs },
         { "fbo-texture-readback", testFramebufferTextureReadback },
+        { "readbuffer-yield-replay", testReadBufferYieldReplay },
         { "framebuffer-renderbuffer-object-page-boundary", testFramebufferRenderbufferObjectPageBoundary },
         { "pixel-store-pack-unpack", testPixelStorePackUnpackState },
         { "pixel-store-skip-pixels-tight-rows", testPixelStoreSkipPixelsTightRows },

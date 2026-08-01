@@ -39,7 +39,7 @@ GL_FUNCTION(Scissor, void, (GLint x, GLint y, GLsizei width, GLsizei height), (A
 GL_FUNCTION(ClipPlane, void, (GLenum plane, const GLdouble *equation), (ARG1, marshalArray<GLdouble>(cpu, ARG2, 4)),,,("glClipPlane"))
 GL_FUNCTION(GetClipPlane, void, (GLenum plane, GLdouble *equation), (ARG1, buffer.getPtr()), MarshalReadWrite<GLdouble> buffer(cpu, ARG2, 4);, ,("glGetClipPlane"))
 GL_FUNCTION(DrawBuffer, void, (GLenum mode), (ARG1),,,("glDrawBuffer"))
-GL_FUNCTION(ReadBuffer, void, (GLenum mode), (ARG1),,,("glReadBuffer"))
+GL_FUNCTION(ReadBuffer, void, (GLenum mode), (ARG1),,cpu->thread->glReadBufferMode = ARG1;,("glReadBuffer"))
 GL_FUNCTION(Enable, void, (GLenum cap), (ARG1),,,("glEnable"))
 GL_FUNCTION(Disable, void, (GLenum cap), (ARG1),,,("glDisable"))
 GL_FUNCTION_FMT(IsEnabled, GLboolean, (GLenum cap), (ARG1),EAX=,,("glIsEnabled cap=%d ret=%d", ARG1, EAX))

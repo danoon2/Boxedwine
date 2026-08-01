@@ -102,6 +102,36 @@ struct FPU_Float {
     };
 };
 
+static void prepareSoftFloatArithmetic(FPU* fpu) {
+    softfloat_roundingMode = fpu->getSoftRounding();
+    switch (fpu->cw & 0x0300) {
+    case 0x0000:
+        extF80_roundingPrecision = 32;
+        break;
+    case 0x0200:
+        extF80_roundingPrecision = 64;
+        break;
+    default:
+        extF80_roundingPrecision = 80;
+        break;
+    }
+}
+
+static double roundCachedArithmeticResult(FPU* fpu, double value) {
+    if ((fpu->cw & 0x0300) == 0) {
+        long2Double source;
+        float64_sf sourceBits;
+        FPU_Float result;
+
+        source.d = value;
+        sourceBits.v = source.l;
+        softfloat_roundingMode = fpu->getSoftRounding();
+        result.i = extF80_to_f32(f64_to_extF80(sourceBits)).v;
+        return result.f;
+    }
+    return value;
+}
+
 #define FPU_GET_TOP(fpu) (((fpu)->sw & 0x3800) >> 11)
 #define FPU_SET_TOP(fpu, val) (fpu)->sw &= ~0x3800; (fpu)->sw |= (val & 7) << 11
 
@@ -547,8 +577,9 @@ void FPU::FBST(CPU* cpu, U32 addr) {
 
 void FPU::FADD(int op1, int op2) {
     if (KSystem::useF64) {
-        this->regCache[op1].d = getF64(op1) + getF64(op2);
+        this->regCache[op1].d = roundCachedArithmeticResult(this, getF64(op1) + getF64(op2));
     } else {
+        prepareSoftFloatArithmetic(this);
         this->regs[op1] = extF80_add(this->regs[op1], this->regs[op2]);
     }
     //flags and such :)
@@ -565,8 +596,9 @@ void FPU::FDIV(int st, int other) {
         }
     }
     if (KSystem::useF64) {
-        this->regCache[st].d = getF64(st) / getF64(other);
+        this->regCache[st].d = roundCachedArithmeticResult(this, getF64(st) / getF64(other));
     } else {
+        prepareSoftFloatArithmetic(this);
         this->regs[st] = extF80_div(this->regs[st], this->regs[other]);
     }
     //flags and such :)
@@ -583,8 +615,9 @@ void FPU::FDIVR(int st, int other) {
         }
     }
     if (KSystem::useF64) {
-        this->regCache[st].d = getF64(other) / getF64(st);
+        this->regCache[st].d = roundCachedArithmeticResult(this, getF64(other) / getF64(st));
     } else {
+        prepareSoftFloatArithmetic(this);
         this->regs[st] = extF80_div(this->regs[other], this->regs[st]);
     }
     // flags and such :)
@@ -592,8 +625,9 @@ void FPU::FDIVR(int st, int other) {
 
 void FPU::FMUL(int st, int other) {
     if (KSystem::useF64) {
-        this->regCache[st].d = getF64(st) * getF64(other);
+        this->regCache[st].d = roundCachedArithmeticResult(this, getF64(st) * getF64(other));
     } else {
+        prepareSoftFloatArithmetic(this);
         this->regs[st] = extF80_mul(this->regs[st], this->regs[other]);
     }
     //flags and such :)
@@ -601,8 +635,9 @@ void FPU::FMUL(int st, int other) {
 
 void FPU::FSUB(int st, int other) {
     if (KSystem::useF64) {
-        this->regCache[st].d = getF64(st) - getF64(other);
+        this->regCache[st].d = roundCachedArithmeticResult(this, getF64(st) - getF64(other));
     } else {
+        prepareSoftFloatArithmetic(this);
         this->regs[st] = extF80_sub(this->regs[st], this->regs[other]);
     }
     //flags and such :)
@@ -610,8 +645,9 @@ void FPU::FSUB(int st, int other) {
 
 void FPU::FSUBR(int st, int other) {
     if (KSystem::useF64) {
-        this->regCache[st].d = getF64(other) - getF64(st);
+        this->regCache[st].d = roundCachedArithmeticResult(this, getF64(other) - getF64(st));
     } else {
+        prepareSoftFloatArithmetic(this);
         this->regs[st] = extF80_sub(this->regs[other], this->regs[st]);
     }
     //flags and such :)
@@ -774,7 +810,7 @@ void FPU::FRNDINT() {
         if (rounded == 0.0 && signbit(value)) {
             this->regCache[this->top].d = -0.0;
         } else {
-            this->regCache[this->top].d = (double)(S64)rounded;
+            this->regCache[this->top].d = rounded;
         }
     } else {
         this->regs[this->top] = extF80_roundToInt(this->regs[this->top], getSoftRounding(), getSoftExact());
@@ -783,18 +819,18 @@ void FPU::FRNDINT() {
 
 /*
 * from https://www.felixcloutier.com/x86/fprem
-D := exponent(ST(0)) – exponent(ST(1));
+D := exponent(ST(0)) â€“ exponent(ST(1));
 IF D < 64
     THEN
         Q := Integer(TruncateTowardZero(ST(0) / ST(1)));
-        ST(0) := ST(0) – (ST(1) * Q);
+        ST(0) := ST(0) â€“ (ST(1) * Q);
         C2 := 0;
         C0, C3, C1 := LeastSignificantBits(Q); (* Q2, Q1, Q0 *)
     ELSE
         C2 := 1;
         N := An implementation-dependent number between 32 and 63;
         QQ := Integer(TruncateTowardZero((ST(0) / ST(1)) / 2 ^ (D - N)));
-        ST(0) := ST(0) – (ST(1) * QQ * 2 ^ (D - N));
+        ST(0) := ST(0) â€“ (ST(1) * QQ * 2 ^ (D - N));
 FI;
 */
 
@@ -839,13 +875,13 @@ void FPU::FPREM(bool truncate) {
     if (F80_isinf(bottom)) {
         return;
     }
-    // D := exponent(ST(0)) – exponent(ST(1));
+    // D := exponent(ST(0)) â€“ exponent(ST(1));
     S32 d = (top.signExp & 0x7FFF) - (bottom.signExp & 0x7FFF);
     if (d < 64) {
         // Q := Integer(TruncateTowardZero(ST(0) / ST(1)));
         extFloat80_t divResult = extF80_div(top, bottom);
         S64 q = extF80_to_i64(divResult, truncate ? softfloat_round_minMag : softfloat_round_near_even, false);
-        // ST(0) := ST(0) – (ST(1) * Q);
+        // ST(0) := ST(0) â€“ (ST(1) * Q);
         regs[this->top] = extF80_sub(top, extF80_mul(bottom, i64_to_extF80(q)));
         // C2 := 0;
         FPU_SET_C2(this, 0);
@@ -866,7 +902,7 @@ void FPU::FPREM(bool truncate) {
         extFloat80_t p80 = f64_to_extF80(p64);
 
         extFloat80_t qq = extF80_roundToInt(extF80_div(extF80_div(top, bottom), p80), softfloat_round_minMag, false);
-        // ST(0) := ST(0) – (ST(1) * QQ * 2 ^ (D - N));
+        // ST(0) := ST(0) â€“ (ST(1) * QQ * 2 ^ (D - N));
         regs[this->top] = extF80_sub(top, extF80_mul(bottom, extF80_mul(qq, p80)));
     }
 }
@@ -1080,8 +1116,9 @@ void FPU::FYL2XP1() {
 
 void FPU::FSQRT() {
     if (isRegCached[top]) {
-        regCache[this->top].d = sqrt(regCache[this->top].d);
+        regCache[this->top].d = roundCachedArithmeticResult(this, sqrt(regCache[this->top].d));
     } else {
+        prepareSoftFloatArithmetic(this);
         this->regs[this->top] = extF80_sqrt(this->regs[this->top]);
     }
     //flags and such :)
@@ -1334,11 +1371,7 @@ void FPU::FXTRACT() {
 
 void FPU::FCHS() {
     if (isRegCached[top]) {
-        if (regCache[top].d == 0.0) {
-            regCache[top].d = 0.0;
-        } else {
-            regCache[top].d = -1.0 * regCache[top].d;
-        }
+        regCache[top].l ^= 0x8000000000000000ULL;
     } else {
         regs[top].signExp ^= 0x8000;
     }

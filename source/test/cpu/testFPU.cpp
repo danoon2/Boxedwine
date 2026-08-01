@@ -103,7 +103,7 @@ struct F32UnaryCase {
 const F32UnaryCase FCHS_CASES[] = {
     {0x43d80ccd, 0xc3d80ccd},
     {0xc3d80ccd, 0x43d80ccd},
-    {F32_POS_ZERO, F32_POS_ZERO},
+    {F32_POS_ZERO, F32_NEG_ZERO},
     {F32_NEG_ZERO, F32_POS_ZERO},
     {F32_POS_INF, F32_NEG_INF},
     {F32_NEG_INF, F32_POS_INF},
@@ -602,6 +602,31 @@ void runD9Control(bool big, const char* name) {
     }
 }
 
+void runD9PrecisionControl(bool big, U16 cw, U32 expected, const char* name) {
+    constexpr U32 CW_IN = MEM_BASE + 0x2b0;
+    constexpr U32 VALUE = MEM_BASE + 0x2b4;
+    constexpr U32 ONE = MEM_BASE + 0x2b8;
+    constexpr U32 OUT = MEM_BASE + 0x2bc;
+
+    begin(big);
+    fninit();
+    writeI16(CW_IN, cw);
+    writeF32Bits(VALUE, 0x3f5bb76f); /* 109.0f / 127.0f */
+    writeF32(ONE, 1.0f);
+
+    pushCode8(0xd9);
+    emitMemModRM(5, CW_IN, big); /* FLDCW */
+    fldF32(VALUE, big);
+    pushCode8(0xd8);
+    pushCode8(0xc8); /* FMUL ST(0), ST(0) */
+    pushCode8(0xd8);
+    emitMemModRM(5, ONE, big); /* FSUBR m32fp */
+    fstF32(OUT, true, big);
+
+    runTestCPU();
+    assertF32MemoryBits(OUT, expected, name);
+}
+
 void runD9StackControl(bool big, const char* name) {
     begin(big);
     fninit();
@@ -712,6 +737,26 @@ void runFRNDINTBits(bool big, U32 input, U32 expected, const char* name) {
     fldF32(MEM_BASE, big);
     pushCode8(0xd9);
     pushCode8(0xfc);
+    fstTopF32(OUT, big);
+
+    runTestCPU();
+    assertF32MemoryBits(OUT, readExpected32(0), name);
+}
+
+void runFPATANBits(bool big, U32 y, U32 x, U32 expected, const char* name) {
+    constexpr U32 Y = MEM_BASE + 0x2c0;
+    constexpr U32 X = MEM_BASE + 0x2c4;
+    constexpr U32 OUT = MEM_BASE + 0x2c8;
+
+    begin(big);
+    writeExpected32(0, expected);
+    fninit();
+    writeF32Bits(Y, y);
+    writeF32Bits(X, x);
+    fldF32(Y, big);
+    fldF32(X, big);
+    pushCode8(0xd9);
+    pushCode8(0xf3); /* FPATAN computes atan2(ST(1), ST(0)) and pops. */
     fstTopF32(OUT, big);
 
     runTestCPU();
@@ -1652,6 +1697,8 @@ void runD9(bool big) {
     }
     runD9StackOps(big, "fpu stack d9");
     runD9Control(big, "fpu control d9");
+    runD9PrecisionControl(big, 0x007f, 0x3e86d94a, "fpu single precision control d9");
+    runD9PrecisionControl(big, 0x027f, 0x3e86d949, "fpu double precision control d9");
     runD9StackControl(big, "fpu stack control d9");
     runD9FldSt0(big, "fld st0 d9");
     runFTST(big, 0.0f, FPU_EQUAL, "ftst d9");
@@ -1689,6 +1736,11 @@ void runD9(bool big) {
     runFRNDINTBits(big, 0xc019999a, 0xc0000000, "frndint d9");
     runFRNDINTBits(big, F32_POS_ZERO, F32_POS_ZERO, "frndint d9");
     runFRNDINTBits(big, F32_NEG_ZERO, F32_NEG_ZERO, "frndint d9");
+    runFRNDINTBits(big, 0x7f7fffff, 0x7f7fffff, "frndint d9 large integral");
+    runFPATANBits(big, F32_POS_ZERO, F32_POS_ZERO, F32_POS_ZERO, "fpatan d9 +0 +0");
+    runFPATANBits(big, F32_NEG_ZERO, F32_POS_ZERO, F32_NEG_ZERO, "fpatan d9 -0 +0");
+    runFPATANBits(big, F32_POS_ZERO, F32_NEG_ZERO, 0x40490fdb, "fpatan d9 +0 -0");
+    runFPATANBits(big, F32_NEG_ZERO, F32_NEG_ZERO, 0xc0490fdb, "fpatan d9 -0 -0");
     runFSCALEBits(big, 0x40400000, 0x40000000, 0x41400000, "fscale d9");
     runFSCALEBits(big, 0x40800000, 0xc0000000, 0x3f800000, "fscale d9");
     runFSCALEBits(big, 0x3fc00000, 0x40400000, 0x41400000, "fscale d9");

@@ -166,6 +166,7 @@ public:
 public:
     U32 currentContext = 0;
     U32 glLastError = 0;
+    U32 glReadBufferMode = 0x0405; // GL_BACK; kthread.h does not include OpenGL headers
     bool log = false; // syscalls
     OpenGLVetexPointer glVertextPointer; // 0 index
     BHashTable<U32, OpenGLVetexPointerPtr> glVertextPointersByIndex; // indexes greater than 0
