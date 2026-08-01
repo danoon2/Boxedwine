@@ -1110,16 +1110,24 @@ index 14d5697..c1d2308 100644
      blit_op = WINED3D_BLIT_OP_COLOR_BLIT;
      if (flags & WINED3D_BLT_SRC_CKEY_OVERRIDE)
      {
-@@ -2317,7 +2372,7 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+@@ -2317,7 +2372,15 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
      {
          blit_op = WINED3D_BLIT_OP_COLOR_BLIT_ALPHATEST;
      }
 -    else if ((src_sub_resource->locations & WINED3D_LOCATION_CLEARED)
++    if (wined3d_settings.webgl && !force_gpu && blit_op == WINED3D_BLIT_OP_COLOR_BLIT_CKEY
++            && wined3d_resource_is_offscreen(&src_texture->resource)
++            && wined3d_resource_is_offscreen(&dst_texture->resource))
++    {
++        TRACE("Using CPU fallback for WebGL color-keyed offscreen blit.\n");
++        goto cpu;
++    }
++
 +    if ((src_sub_resource->locations & WINED3D_LOCATION_CLEARED)
              && wined3d_texture_is_full_rect(dst_texture, dst_sub_resource_idx % dst_texture->level_count, &dst_rect))
      {
          TRACE("Source is cleared.\n");
-@@ -2331,7 +2386,13 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+@@ -2331,7 +2394,13 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
              && (dst_texture->resource.access & WINED3D_RESOURCE_ACCESS_GPU))
      {
          /* Upload */
@@ -1134,7 +1142,7 @@ index 14d5697..c1d2308 100644
              TRACE("Not doing upload because of scaling.\n");
          else if (convert)
              TRACE("Not doing upload because of format conversion.\n");
-@@ -2344,8 +2405,8 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+@@ -2344,8 +2413,8 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
              if (!wined3d_resource_is_offscreen(&dst_texture->resource))
              {
                  context = context_acquire(device, dst_texture, dst_sub_resource_idx);
@@ -1145,7 +1153,7 @@ index 14d5697..c1d2308 100644
                  context_release(context);
              }
              return WINED3D_OK;
-@@ -2401,7 +2462,10 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+@@ -2401,7 +2470,10 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
      if ((flags & WINED3D_BLT_RAW) || (blit_op == WINED3D_BLIT_OP_COLOR_BLIT && !scale && !convert && !resolve))
          blit_op = WINED3D_BLIT_OP_RAW_BLIT;
  
@@ -1156,7 +1164,7 @@ index 14d5697..c1d2308 100644
  
      if (src_texture->resource.multisample_type != WINED3D_MULTISAMPLE_NONE && !resolve_typeless
              && ((scale && !context->d3d_info->scaled_resolve)
-@@ -2410,6 +2474,10 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+@@ -2410,6 +2482,10 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
      else
          src_location = src_texture->resource.draw_binding;
  
@@ -1167,7 +1175,7 @@ index 14d5697..c1d2308 100644
      if (!(dst_texture->resource.access & WINED3D_RESOURCE_ACCESS_GPU))
          dst_location = dst_texture->resource.map_binding;
      else if (dst_texture->resource.multisample_type != WINED3D_MULTISAMPLE_NONE
-@@ -2418,14 +2486,24 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
+@@ -2418,14 +2494,24 @@ HRESULT texture2d_blt(struct wined3d_texture *dst_texture, unsigned int dst_sub_
      else
          dst_location = dst_texture->resource.draw_binding;
  

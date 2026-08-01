@@ -2,12 +2,12 @@
   "schema_version": 1,
   "manifest_id": "wine11-webgl-filesystems-v3",
   "wine_version": "11.0",
-  "build_date": "2026-07-30",
+  "build_date": "2026-07-31",
   "source_date_epoch": 1768319767,
   "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
   "patch_manifest": {
     "path": "tools/wineTests/webgl-test-divergences-v2.json",
-    "sha256": "11c2fb0cf8ee645f4d13477bb4aa17eedcc38461b57e8d867ba19f95acce7792"
+    "sha256": "6112effec61b1f569d759d6a8409006c087b1944d38b8d6164974ac42865da8d"
   },
   "webgl_directory": "home/username/.wine/drive_c/webgl",
   "dlls": {
@@ -38,7 +38,7 @@
     },
     "ddraw.dll": {
       "size": 867870,
-      "sha256": "dde0405570199a33762ca2500d1461817ce0ee3f0e7186225027eb25114f6712",
+      "sha256": "59046d81fe044150d1e834604860f5f7f8ffc5c9224efc90ce8f40da044d3160",
       "required_imports": ["wined3d.dll"]
     },
     "dxgi.dll": {
@@ -48,7 +48,7 @@
     },
     "wined3d.dll": {
       "size": 3982469,
-      "sha256": "dec0817023792e9dbc75614d47f5da19dec2d1192727912e1ceb38664ee901ae",
+      "sha256": "3b2b29f5275d1b40626f2783cffa1e0a142099cb4daa335b81ffb78deb487910",
       "required_imports": ["opengl32.dll"]
     }
   },
@@ -86,24 +86,24 @@
     "normal-v3": {
       "filename": "boxedwine.3.zip",
       "filesystem_version": "v3",
-      "size": 157980267,
-      "sha256": "e9fe68893f52161383f56cade02e766684b24bf55bdb1910bb2ce4b50692a907",
+      "size": 157980580,
+      "sha256": "2fad01442a3ce237dbb4a4725522b4c5ac686b4504f1770f1e10946688e6b636",
       "direct_draw_renderer": "opengl",
       "wine_renderer": "gl"
     },
     "gdi-v3": {
       "filename": "boxedwine.gdi.3.zip",
       "filesystem_version": "v3",
-      "size": 157980387,
-      "sha256": "f6c48eee3d3626c8a9c55c249ef29a97c3f2e2745b904d47e5332b34faaa8886",
+      "size": 157980700,
+      "sha256": "5f765beb539e7cf21008392acfd78fd74f7d7603e54ea8dbd3550094ff92318d",
       "direct_draw_renderer": "gdi",
       "wine_renderer": "gl"
     },
     "full-v10": {
       "filename": "TinyCore15Wine11.0-v10-candidate.zip",
       "filesystem_version": "v10-candidate",
-      "size": 157980267,
-      "sha256": "e9fe68893f52161383f56cade02e766684b24bf55bdb1910bb2ce4b50692a907",
+      "size": 157980580,
+      "sha256": "2fad01442a3ce237dbb4a4725522b4c5ac686b4504f1770f1e10946688e6b636",
       "direct_draw_renderer": "opengl",
       "wine_renderer": "gl"
     },

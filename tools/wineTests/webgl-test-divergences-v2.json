@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "manifest_id": "wine11-webgl-test-divergences-v2",
-  "recorded_at": "2026-07-29",
+  "recorded_at": "2026-07-31",
   "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
   "production_patches": [
     {
@@ -32,13 +32,13 @@
       "patch_id": "blitter-batching",
       "category": "glsl_blitter_and_gpu_batching",
       "path": "tools/d3dToWebGL/webgl-blitter-batching-against-wine-11.0.patch",
-      "sha256": "8f2f09379df762aa9ed99104f970a1d120ad0fb21707887d29daf6188385cd12"
+      "sha256": "7b49ced4bdd7b20dbdb5f4badf340cdd5b7b087109af2491d07570486a3dff23"
     },
     {
       "patch_id": "directdraw-runtime-presentation",
       "category": "directdraw_runtime_presentation_overlays_and_legacy_d3d",
       "path": "tools/d3dToWebGL/webgl-directdraw-runtime-presentation-against-wine-11.0.patch",
-      "sha256": "eae7481e15134d594be0b904412429f00bbd0b03c20af8a509b17c1ad93f45bb"
+      "sha256": "34c71d7bfc927d8fccfba3ee9b6213fbc5a91dc1ecd0b75be785377d89463e4e"
     },
     {
       "patch_id": "d3dx9-assets-compatibility",
@@ -68,7 +68,7 @@
   "test_patch": {
     "patch_id": "test-expectations",
     "path": "tools/d3dToWebGL/webgl-tests-against-wine-11.0.patch",
-    "sha256": "e192c06909ae45be954b7fb774a563f86c6228526539de62748911065eddf963"
+    "sha256": "243d7a97b6ad6e0ce5a980079d32f6ec64ca8e99335667dffeeca4c88f638ffb"
   },
   "policy": "No production patch may modify Wine tests. Every added skip() and todo_wine_if() policy in the test-only patch must match exactly one classified rule.",
   "categories": {
@@ -218,6 +218,10 @@
         {
           "marker": "skip(\"WebGL does not support legacy ddraw depth surface readback.\\n\");",
           "occurrences": 4
+        },
+        {
+          "marker": "skip(\"WebGL does not support A4R4G4B4 texture sampling for this color-key test.\\n\");",
+          "occurrences": 1
         },
         {
           "marker": "skip(\"WebGL does not support the legacy ddraw1 execute-buffer alpha test.\\n\");",

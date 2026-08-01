@@ -895,7 +895,35 @@ index ab7ddf3..d3432b7 100644
              ok((*color & 0x00ffffff) == 0x00ffffff, "Got clear result 0x%08x, expected 0xffffffff, surface %s.\n",
                      *color, tests[i].name);
              hr = IDirectDrawSurface_Unlock(surface, NULL);
-@@ -10210,8 +10261,12 @@ static void test_shademode(void)
+@@ -9903,6 +9954,12 @@ static void test_colorkey_precision(void)
+                      * Also appears to affect the testbot in some way with R5G6B5. Color keying is
+                      * terrible on WARP. */
++                    if (is_webgl())
++                    {
++                        ok(0, "WebGL source color-key blit discarded an unkeyed texel for %s.\n", tests[t].name);
++                        goto webgl_a4_colorkey_failure;
++                    }
+                     skip("Nvidia A4R4G4B4 color keying blit bug detected, skipping.\n");
++webgl_a4_colorkey_failure:
+                     IDirectDrawSurface_Release(texture);
+                     IDirectDrawSurface_Release(src);
+                     IDirectDrawSurface_Release(dst);
+@@ -9923,5 +9980,13 @@ static void test_colorkey_precision(void)
+             else
+                 ok(data[2] == (c + 1) << tests[t].shift, "Expected surface content %#x, got %#x, format %s, c=%u.\n",
+                         (c + 1) << tests[t].shift, data[2], tests[t].name, c);
+-
++            /* Keep the surface validation above independent from unsupported A4 texture sampling. */
++            if (is_webgl() && tests[t].skip_nv)
++            {
++                if (!c)
++                    skip("WebGL does not support A4R4G4B4 texture sampling for this color-key test.\n");
++                IDirectDrawSurface_Release(texture);
++                continue;
++            }
++
+             hr = IDirect3DViewport_Clear(viewport, 1, &clear_rect, D3DCLEAR_TARGET);
+@@ -10210,8 +10275,12 @@ static void test_shademode(void)
           * functionality being available. */
          /* PHONG should be the same as GOURAUD, since no hardware implements
           * this. */
@@ -908,7 +936,7 @@ index ab7ddf3..d3432b7 100644
          ok(compare_color(color1, tests[i].color1, 1), "Test %u shading has color1 %08x, expected %08x.\n",
                  i, color1, tests[i].color1);
      }
-@@ -12824,6 +12879,12 @@ static void test_depth_readback(void)
+@@ -12824,6 +12893,12 @@ static void test_depth_readback(void)
          {{ 1.0f}, { 1.0f}, {0.9f}, 0, {0xff00ff00}},
      };
  
@@ -921,7 +949,7 @@ index ab7ddf3..d3432b7 100644
      window = create_window();
      ok(!!window, "Failed to create a window.\n");
      ddraw = create_ddraw();
-@@ -14171,6 +14232,12 @@ static void test_clipper_refcount(void)
+@@ -14171,6 +14246,12 @@ static void test_clipper_refcount(void)
      BOOL changed;
      const IDirectDrawClipperVtbl *orig_vtbl;
  
@@ -934,7 +962,7 @@ index ab7ddf3..d3432b7 100644
      window = create_window();
      ddraw = create_ddraw();
      ok(!!ddraw, "Failed to create a ddraw object.\n");
-@@ -15507,7 +15574,7 @@ static void test_filling_convention(void)
+@@ -15507,7 +15588,7 @@ static void test_filling_convention(void)
                   * filling convention. The cause isn't the bottom part of the filling
                   * convention, but because wined3d will nudge geometry to the left to
                   * keep diagonals (the 'R' in test case 'edge_tris') intact. */
@@ -943,7 +971,7 @@ index ab7ddf3..d3432b7 100644
                      ok(compare_color(colour, expected, 1), "Got unexpected colour %08x, %ux%u, case %u.\n",
                              colour, x, y, i);
              }
-@@ -16443,8 +16510,15 @@ START_TEST(ddraw1)
+@@ -16443,8 +16524,15 @@ START_TEST(ddraw1)
      test_palette_complex();
      test_p8_blit();
      test_material();
@@ -961,7 +989,7 @@ index ab7ddf3..d3432b7 100644
      test_palette_gdi();
      test_palette_alpha();
      test_lost_device();
-@@ -16454,7 +16528,10 @@ START_TEST(ddraw1)
+@@ -16454,7 +16542,10 @@ START_TEST(ddraw1)
      test_color_fill();
      test_colorkey_precision();
      test_range_colorkey();
@@ -973,7 +1001,7 @@ index ab7ddf3..d3432b7 100644
      test_lockrect_invalid();
      test_yv12_overlay();
      test_offscreen_overlay();
-@@ -16463,7 +16540,10 @@ START_TEST(ddraw1)
+@@ -16463,7 +16554,10 @@ START_TEST(ddraw1)
      test_blt_z_alpha();
      test_cross_device_blt();
      test_getdc();
@@ -985,7 +1013,7 @@ index ab7ddf3..d3432b7 100644
      test_display_mode_surface_pixel_format();
      test_surface_desc_size();
      test_texture_load();
-@@ -16471,12 +16551,26 @@ START_TEST(ddraw1)
+@@ -16471,12 +16565,26 @@ START_TEST(ddraw1)
      test_depth_readback();
      test_clear();
      test_enum_surfaces();
@@ -1016,7 +1044,7 @@ index ab7ddf3..d3432b7 100644
      test_clipper_refcount();
      test_caps();
      test_d32_support();
-@@ -16485,11 +16579,22 @@ START_TEST(ddraw1)
+@@ -16485,11 +16593,22 @@ START_TEST(ddraw1)
      test_window_position();
      test_get_display_mode();
      run_for_each_device_type(test_texture_wrong_caps);

@@ -751,7 +751,7 @@ index e6ed79a..872d1ec 100644
  /*****************************************************************************
   * IUnknown parts follow
   *****************************************************************************/
-@@ -1345,6 +1589,10 @@ static unsigned int ddraw_swap_interval_from_flags(DWORD flags)
+@@ -1345,6 +1589,26 @@ static unsigned int ddraw_swap_interval_from_flags(DWORD flags)
      }
  }
  
@@ -759,10 +759,26 @@ index e6ed79a..872d1ec 100644
 +        struct ddraw_surface *src_surface, const RECT *src_rect, DWORD flags, DWORD fill_colour,
 +        const struct wined3d_blt_fx *fx, enum wined3d_texture_filter_type filter);
 +
++static BOOL ddraw_surface_webgl_offscreen_rgb_ckey_blt(const struct ddraw_surface *dst_surface,
++        const struct ddraw_surface *src_surface, DWORD flags)
++{
++    const DDPIXELFORMAT *dst_format = &dst_surface->surface_desc.ddpfPixelFormat;
++    const DDPIXELFORMAT *src_format = &src_surface->surface_desc.ddpfPixelFormat;
++
++    return ddraw_webgl_enabled()
++            && (flags & (WINED3D_BLT_SRC_CKEY | WINED3D_BLT_SRC_CKEY_OVERRIDE))
++            && (dst_format->dwFlags & DDPF_RGB)
++            && (src_format->dwFlags & DDPF_RGB)
++            && (dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_OFFSCREENPLAIN)
++            && (src_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_OFFSCREENPLAIN)
++            && !(dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_TEXTURE)
++            && !(src_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_TEXTURE);
++}
++
  static void ddraw_texture_rename_to(struct ddraw_texture *dst_texture, struct wined3d_texture *wined3d_texture,
          struct wined3d_texture *draw_texture, struct wined3d_rendertarget_view *rtv, void *texture_memory,
          struct wined3d_rendertarget_view *current_rtv)
-@@ -1384,12 +1632,202 @@ static void ddraw_texture_rename_to(struct ddraw_texture *dst_texture, struct wi
+@@ -1384,12 +1648,202 @@ static void ddraw_texture_rename_to(struct ddraw_texture *dst_texture, struct wi
      dst_texture->texture_memory = texture_memory;
  }
  
@@ -965,7 +981,7 @@ index e6ed79a..872d1ec 100644
      struct ddraw_surface *src_impl = unsafe_impl_from_IDirectDrawSurface(src);
      struct ddraw_texture *dst_ddraw_texture, *src_ddraw_texture;
      struct wined3d_rendertarget_view *tmp_rtv, *current_rtv;
-@@ -1491,6 +1929,8 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface1_Flip(IDirectDrawSurface *
+@@ -1491,6 +1945,8 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface1_Flip(IDirectDrawSurface *
  
      if (dst_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)
          hr = ddraw_surface_update_frontbuffer(dst_impl, NULL, FALSE, ddraw_swap_interval_from_flags(flags));
@@ -974,7 +990,7 @@ index e6ed79a..872d1ec 100644
      else
          hr = DD_OK;
  
-@@ -1551,9 +1991,22 @@ static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *
+@@ -1551,9 +2007,22 @@ static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *
          struct ddraw_surface *src_surface, const RECT *src_rect, DWORD flags, DWORD fill_colour,
          const struct wined3d_blt_fx *fx, enum wined3d_texture_filter_type filter)
  {
@@ -997,7 +1013,7 @@ index e6ed79a..872d1ec 100644
  
      if (flags & DDBLT_COLORFILL)
      {
-@@ -1567,19 +2020,33 @@ static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *
+@@ -1567,19 +2036,33 @@ static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *
                  dst_surface->palette, fill_colour, &colour))
              return DDERR_INVALIDPARAMS;
  
@@ -1034,7 +1050,7 @@ index e6ed79a..872d1ec 100644
          wined3d_flags = WINED3DCLEAR_ZBUFFER;
          if (!(flags & DDBLT_ASYNC))
              wined3d_flags |= WINED3DCLEAR_SYNCHRONOUS;
-@@ -1589,9 +2056,25 @@ static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *
+@@ -1589,9 +2072,25 @@ static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *
              return DDERR_INVALIDPARAMS;
  
          ddraw_surface_get_draw_texture(dst_surface, dst_rect ? DDRAW_SURFACE_RW : DDRAW_SURFACE_WRITE);
@@ -1061,7 +1077,7 @@ index e6ed79a..872d1ec 100644
      }
  
      wined3d_flags = flags & ~DDBLT_ASYNC;
-@@ -1603,11 +2086,81 @@ static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *
+@@ -1603,11 +2102,82 @@ static HRESULT ddraw_surface_blt(struct ddraw_surface *dst_surface, const RECT *
  
      if (!(flags & DDBLT_ASYNC))
          wined3d_flags |= WINED3D_BLT_SYNCHRONOUS;
@@ -1070,16 +1086,17 @@ index e6ed79a..872d1ec 100644
 +            && !format_is_paletteindexed(&src_surface->surface_desc.ddpfPixelFormat)
 +            && !(dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY)
 +            && !(src_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY)
++            && !ddraw_surface_webgl_offscreen_rgb_ckey_blt(dst_surface, src_surface, wined3d_flags)
 +            && (!(dst_surface->texture_location & DDRAW_SURFACE_LOCATION_DEFAULT)
 +                    || !(src_surface->texture_location & DDRAW_SURFACE_LOCATION_DEFAULT)
++                    || dst_surface->surface_desc.ddpfPixelFormat.dwRGBBitCount != 32
++                    || src_surface->surface_desc.ddpfPixelFormat.dwRGBBitCount != 32
 +                    || !(dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_OFFSCREENPLAIN)
 +                    || !(src_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_OFFSCREENPLAIN)
 +                    || (dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_TEXTURE)
 +                    || (src_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_TEXTURE)
 +                    || !(dst_surface->surface_desc.ddpfPixelFormat.dwFlags & DDPF_RGB)
-+                    || !(src_surface->surface_desc.ddpfPixelFormat.dwFlags & DDPF_RGB)
-+                    || dst_surface->surface_desc.ddpfPixelFormat.dwRGBBitCount != 32
-+                    || src_surface->surface_desc.ddpfPixelFormat.dwRGBBitCount != 32);
++                    || !(src_surface->surface_desc.ddpfPixelFormat.dwFlags & DDPF_RGB));
 +    if (webgl_vram_blt)
 +        wined3d_flags |= WINED3D_BLT_FORCE_GPU;
 +
@@ -1146,7 +1163,7 @@ index e6ed79a..872d1ec 100644
  }
  
  static HRESULT ddraw_surface_blt_clipped(struct ddraw_surface *dst_surface, const RECT *dst_rect_in,
-@@ -1654,7 +2207,7 @@ static HRESULT ddraw_surface_blt_clipped(struct ddraw_surface *dst_surface, cons
+@@ -1654,7 +2224,7 @@ static HRESULT ddraw_surface_blt_clipped(struct ddraw_surface *dst_surface, cons
          if (SUCCEEDED(hr))
              hr = ddraw_surface_blt(dst_surface, &dst_rect, src_surface, &src_rect, flags, fill_colour, fx, filter);
          if (SUCCEEDED(hr) && (dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))
@@ -1155,7 +1172,7 @@ index e6ed79a..872d1ec 100644
  
          return hr;
      }
-@@ -1714,7 +2267,7 @@ static HRESULT ddraw_surface_blt_clipped(struct ddraw_surface *dst_surface, cons
+@@ -1714,7 +2284,7 @@ static HRESULT ddraw_surface_blt_clipped(struct ddraw_surface *dst_surface, cons
  
          if (dst_surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)
          {
@@ -1164,7 +1181,7 @@ index e6ed79a..872d1ec 100644
                  break;
          }
      }
-@@ -1911,14 +2464,26 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface1_Blt(IDirectDrawSurface *i
+@@ -1911,14 +2481,26 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface1_Blt(IDirectDrawSurface *i
  static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface7_Blt(IDirectDrawSurface7 *iface, RECT *dst_rect,
          IDirectDrawSurface7 *src_surface, RECT *src_rect, DWORD flags, DDBLTFX *fx)
  {
@@ -1192,7 +1209,7 @@ index e6ed79a..872d1ec 100644
  }
  
  static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface4_Blt(IDirectDrawSurface4 *iface, RECT *dst_rect,
-@@ -3156,10 +3721,57 @@ static HRESULT WINAPI ddraw_surface1_EnumAttachedSurfaces(IDirectDrawSurface *if
+@@ -3156,10 +3738,57 @@ static HRESULT WINAPI ddraw_surface1_EnumAttachedSurfaces(IDirectDrawSurface *if
   *
   *****************************************************************************/
  static HRESULT WINAPI ddraw_surface7_EnumOverlayZOrders(IDirectDrawSurface7 *iface,
@@ -1252,7 +1269,7 @@ index e6ed79a..872d1ec 100644
      return DD_OK;
  }
  
-@@ -3942,11 +4554,12 @@ static HRESULT WINAPI ddraw_surface1_Restore(IDirectDrawSurface *iface)
+@@ -3942,11 +4571,12 @@ static HRESULT WINAPI ddraw_surface1_Restore(IDirectDrawSurface *iface)
   *  Y:
   *
   * Returns:
@@ -1266,7 +1283,7 @@ index e6ed79a..872d1ec 100644
      HRESULT hr;
  
      TRACE("iface %p, x %ld, y %ld.\n", iface, x, y);
-@@ -3954,6 +4567,13 @@ static HRESULT WINAPI ddraw_surface7_SetOverlayPosition(IDirectDrawSurface7 *ifa
+@@ -3954,6 +4584,13 @@ static HRESULT WINAPI ddraw_surface7_SetOverlayPosition(IDirectDrawSurface7 *ifa
      wined3d_mutex_lock();
      hr = wined3d_texture_set_overlay_position(surface->wined3d_texture,
              surface->sub_resource_idx, x, y);
@@ -1280,7 +1297,7 @@ index e6ed79a..872d1ec 100644
      wined3d_mutex_unlock();
  
      return hr;
-@@ -4007,7 +4627,7 @@ static HRESULT WINAPI ddraw_surface1_SetOverlayPosition(IDirectDrawSurface *ifac
+@@ -4007,7 +4644,7 @@ static HRESULT WINAPI ddraw_surface1_SetOverlayPosition(IDirectDrawSurface *ifac
   *  Flags: some DDOVER_* flags
   *
   * Returns:
@@ -1289,7 +1306,7 @@ index e6ed79a..872d1ec 100644
   *
   *****************************************************************************/
  static HRESULT WINAPI ddraw_surface7_UpdateOverlay(IDirectDrawSurface7 *iface, RECT *src_rect,
-@@ -4015,16 +4635,15 @@ static HRESULT WINAPI ddraw_surface7_UpdateOverlay(IDirectDrawSurface7 *iface, R
+@@ -4015,16 +4652,15 @@ static HRESULT WINAPI ddraw_surface7_UpdateOverlay(IDirectDrawSurface7 *iface, R
  {
      struct ddraw_surface *src_impl = impl_from_IDirectDrawSurface7(iface);
      struct ddraw_surface *dst_impl = unsafe_impl_from_IDirectDrawSurface7(dst_surface);
@@ -1308,7 +1325,7 @@ index e6ed79a..872d1ec 100644
      wined3d_mutex_lock();
      if (dst_impl)
      {
-@@ -4033,6 +4652,47 @@ static HRESULT WINAPI ddraw_surface7_UpdateOverlay(IDirectDrawSurface7 *iface, R
+@@ -4033,6 +4669,47 @@ static HRESULT WINAPI ddraw_surface7_UpdateOverlay(IDirectDrawSurface7 *iface, R
      }
      hr = wined3d_texture_update_overlay(src_impl->wined3d_texture, src_impl->sub_resource_idx,
              src_rect, dst_wined3d_texture, dst_sub_resource_idx, dst_rect, flags);
@@ -1356,7 +1373,7 @@ index e6ed79a..872d1ec 100644
      wined3d_mutex_unlock();
  
      return hr_ddraw_from_wined3d(hr);
-@@ -4161,8 +4821,13 @@ static HRESULT WINAPI ddraw_surface7_UpdateOverlayZOrder(IDirectDrawSurface7 *if
+@@ -4161,8 +4838,13 @@ static HRESULT WINAPI ddraw_surface7_UpdateOverlayZOrder(IDirectDrawSurface7 *if
          DWORD flags, IDirectDrawSurface7 *reference)
  {
      struct ddraw_surface *surface = impl_from_IDirectDrawSurface7(iface);
@@ -1371,7 +1388,7 @@ index e6ed79a..872d1ec 100644
  
      wined3d_mutex_lock();
      if (!(surface->surface_desc.ddsCaps.dwCaps & DDSCAPS_OVERLAY))
-@@ -4171,6 +4836,68 @@ static HRESULT WINAPI ddraw_surface7_UpdateOverlayZOrder(IDirectDrawSurface7 *if
+@@ -4171,6 +4853,68 @@ static HRESULT WINAPI ddraw_surface7_UpdateOverlayZOrder(IDirectDrawSurface7 *if
          wined3d_mutex_unlock();
          return DDERR_NOTAOVERLAYSURFACE;
      }
@@ -1440,7 +1457,7 @@ index e6ed79a..872d1ec 100644
      wined3d_mutex_unlock();
  
      return DD_OK;
-@@ -4428,10 +5155,13 @@ static HRESULT WINAPI ddraw_surface7_GetLOD(IDirectDrawSurface7 *iface, DWORD *M
+@@ -4428,10 +5172,13 @@ static HRESULT WINAPI ddraw_surface7_GetLOD(IDirectDrawSurface7 *iface, DWORD *M
  static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface7_BltFast(IDirectDrawSurface7 *iface,
          DWORD dst_x, DWORD dst_y, IDirectDrawSurface7 *src_surface, RECT *src_rect, DWORD trans)
  {
@@ -1454,7 +1471,7 @@ index e6ed79a..872d1ec 100644
      HRESULT hr = DD_OK;
      RECT dst_rect, s;
  
-@@ -4465,11 +5195,32 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface7_BltFast(IDirectDrawSurfac
+@@ -4465,11 +5212,33 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface7_BltFast(IDirectDrawSurfac
          flags |= WINED3D_BLT_WAIT;
      if (trans & DDBLTFAST_DONOTWAIT)
          flags |= WINED3D_BLT_DO_NOT_WAIT;
@@ -1465,16 +1482,17 @@ index e6ed79a..872d1ec 100644
 +            && !format_is_paletteindexed(&src_impl->surface_desc.ddpfPixelFormat)
 +            && !(dst_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY)
 +            && !(src_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY)
++            && !ddraw_surface_webgl_offscreen_rgb_ckey_blt(dst_impl, src_impl, flags)
 +            && (!(dst_impl->texture_location & DDRAW_SURFACE_LOCATION_DEFAULT)
 +                    || !(src_impl->texture_location & DDRAW_SURFACE_LOCATION_DEFAULT)
++                    || dst_impl->surface_desc.ddpfPixelFormat.dwRGBBitCount != 32
++                    || src_impl->surface_desc.ddpfPixelFormat.dwRGBBitCount != 32
 +                    || !(dst_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_OFFSCREENPLAIN)
 +                    || !(src_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_OFFSCREENPLAIN)
 +                    || (dst_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_TEXTURE)
 +                    || (src_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_TEXTURE)
 +                    || !(dst_impl->surface_desc.ddpfPixelFormat.dwFlags & DDPF_RGB)
-+                    || !(src_impl->surface_desc.ddpfPixelFormat.dwFlags & DDPF_RGB)
-+                    || dst_impl->surface_desc.ddpfPixelFormat.dwRGBBitCount != 32
-+                    || src_impl->surface_desc.ddpfPixelFormat.dwRGBBitCount != 32);
++                    || !(src_impl->surface_desc.ddpfPixelFormat.dwFlags & DDPF_RGB));
 +    if (webgl_vram_bltfast)
 +        flags |= WINED3D_BLT_FORCE_GPU;
 +    lock_wined3d = !webgl_vram_bltfast || ddraw_webgl_bltfast_locks_enabled();
@@ -1490,7 +1508,7 @@ index e6ed79a..872d1ec 100644
          WARN("Destination surface has a clipper set, returning DDERR_BLTFASTCANTCLIP.\n");
          return DDERR_BLTFASTCANTCLIP;
      }
-@@ -4477,13 +5228,22 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface7_BltFast(IDirectDrawSurfac
+@@ -4477,13 +5246,22 @@ static HRESULT WINAPI DECLSPEC_HOTPATCH ddraw_surface7_BltFast(IDirectDrawSurfac
      if (src_impl->surface_desc.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)
          hr = ddraw_surface_update_frontbuffer(src_impl, src_rect, TRUE, 0);
      if (SUCCEEDED(hr))
@@ -1517,7 +1535,7 @@ index e6ed79a..872d1ec 100644
  
      switch(hr)
      {
-@@ -6076,6 +6836,8 @@ static void STDMETHODCALLTYPE ddraw_surface_wined3d_object_destroyed(void *paren
+@@ -6076,6 +6854,8 @@ static void STDMETHODCALLTYPE ddraw_surface_wined3d_object_destroyed(void *paren
  
      /* Reduce the ddraw surface count. */
      list_remove(&surface->surface_list_entry);
@@ -1526,7 +1544,7 @@ index e6ed79a..872d1ec 100644
  
      if (surface->clipper && ddraw_clipper_is_valid(surface->clipper))
          IDirectDrawClipper_Release(&surface->clipper->IDirectDrawClipper_iface);
-@@ -6134,6 +6896,7 @@ static void ddraw_surface_init(struct ddraw_surface *surface, struct ddraw *ddra
+@@ -6134,6 +6914,7 @@ static void ddraw_surface_init(struct ddraw_surface *surface, struct ddraw *ddra
      }
  
      surface->first_attached = surface;
@@ -1534,7 +1552,7 @@ index e6ed79a..872d1ec 100644
  
      wined3d_texture_incref(surface->wined3d_texture = wined3d_texture);
      surface->sub_resource_idx = sub_resource_idx;
-@@ -6488,6 +7251,8 @@ static HRESULT ddraw_texture_init(struct ddraw_texture *texture, struct ddraw *d
+@@ -6488,6 +7269,8 @@ static HRESULT ddraw_texture_init(struct ddraw_texture *texture, struct ddraw *d
  
              ddraw_update_lost_surfaces(ddraw);
              list_add_head(&ddraw->surface_list, &mip->surface_list_entry);

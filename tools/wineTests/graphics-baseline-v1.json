@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
   "baseline_id": "wine11-webgl-st-v1",
-  "recorded_at": "2026-07-30",
+  "recorded_at": "2026-07-31",
   "policy": "Exact tests, todo, failures, skips, and accepted failure locations.",
   "reference_inputs": {
     "graphics_tests_archive": "wine_tests_v6.zip",
     "filesystem": "boxedwine.3.zip",
-    "filesystem_sha256": "e9fe68893f52161383f56cade02e766684b24bf55bdb1910bb2ce4b50692a907",
-    "boxedwine_wasm_sha256": "0099722a9baf125f4096af84861b045f9b9fe33b28c6ae918d3ed9409f3416ef",
+    "filesystem_sha256": "2fad01442a3ce237dbb4a4725522b4c5ac686b4504f1770f1e10946688e6b636",
+    "boxedwine_wasm_sha256": "005c8fd96d33c11fab8680b2502f699b848623f1f99d00ba674d1512e963a225",
     "webgl_test_divergence_manifest": "webgl-test-divergences-v2.json",
-    "webgl_test_divergence_manifest_sha256": "11c2fb0cf8ee645f4d13477bb4aa17eedcc38461b57e8d867ba19f95acce7792",
+    "webgl_test_divergence_manifest_sha256": "6112effec61b1f569d759d6a8409006c087b1944d38b8d6164974ac42865da8d",
     "test_executable_sha256": {
-      "ddraw": "f17b3651e491b334e1788c60d480b3bececee2621fe94f4fd2282e002b0bfcba",
+      "ddraw": "094a89f7799812a33c5741221ccb0cf02455f4b2f31e30bce5272ce3caae30cf",
       "d3d8": "c132f99ff3bd8547d10412a14aed127233ff001218ba5a6f81c702287d81f81f",
       "d3d9": "1d42eb50ada90f7d2e4b9bb145c2a36ce5caac5730be9c1115e9d766b0d656b6",
       "d3dx9_43": "a2c3dfa3c1c0aabeaa5d0a9961ad16f2066574522041caf120046b8a225e96a8",
@@ -28,7 +28,7 @@
         "failure_locations": []
       },
       "ddraw1": {
-        "tests": 8817,
+        "tests": 19640,
         "todo": 59,
         "failures": 0,
         "skipped": 20,

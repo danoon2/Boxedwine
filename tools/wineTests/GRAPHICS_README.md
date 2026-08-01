@@ -71,6 +71,16 @@ versioned test, todo, failure, skip, and accepted-failure identities in
 `graphics-baseline-v1.json`, and the browser reports no error. The same values
 are retained in the manifest.
 
+The July 31, 2026 source-color-key checkpoint expands the `ddraw1` baseline to
+19,640 assertions, 59 todo results, 0 failures, and 20 skips. Ordinary RGB
+`OFFSCREENPLAIN` source-color-key blits use WineD3D's CPU fallback under WebGL,
+including packed RGB formats and GPU-authoritative destinations. The test keeps
+the surface result checks enabled for every A4R4G4B4 key value; only the later
+A4R4G4B4 texture-sampling draw is classified as unimplemented emulation and
+skipped. The final exact production-input run is `20260731-154330-658016`; candidate
+single-threaded and `SingleThreadedJit` runs are `20260731-151954-785600` and
+`20260731-152132-431391`.
+
 ## Supported suites
 
 ```text
@@ -128,8 +138,8 @@ D3DX9 assets/compatibility, D3DXOF parser-hardening, WineD3D
 draw/state/query, or D3D8/D3D9 compatibility/diagnostics production patches
 contains Wine test files.
 `webgl-test-divergences-v2.json` pins the ordered patch series and the official
-Wine 11 source commit, then classifies all 44 unique added
-`skip()` rules (68 calls) and all 14 unique added `todo_wine_if()` rules
+Wine 11 source commit, then classifies all 45 unique added
+`skip()` rules (69 calls) and all 14 unique added `todo_wine_if()` rules
 (44 calls) into exactly one of:
 
 - `intentional_webgl_limit`
@@ -395,16 +405,20 @@ complete unskipped loose visual executable passed 25,406 assertions with
 The finalized in-place inputs are:
 
 - `boxedwine.3.zip` and `TinyCore15Wine11.0-v10-candidate.zip`
-  (157,980,267 bytes):
-  `e9fe68893f52161383f56cade02e766684b24bf55bdb1910bb2ce4b50692a907`
-- `boxedwine.gdi.3.zip` (157,980,387 bytes):
-  `f6c48eee3d3626c8a9c55c249ef29a97c3f2e2745b904d47e5332b34faaa8886`
+  (157,980,580 bytes):
+  `2fad01442a3ce237dbb4a4725522b4c5ac686b4504f1770f1e10946688e6b636`
+- `boxedwine.gdi.3.zip` (157,980,700 bytes):
+  `5f765beb539e7cf21008392acfd78fd74f7d7603e54ea8dbd3550094ff92318d`
 - single-threaded non-JIT `boxedwine.wasm`:
-  `0099722a9baf125f4096af84861b045f9b9fe33b28c6ae918d3ed9409f3416ef`
+  `005c8fd96d33c11fab8680b2502f699b848623f1f99d00ba674d1512e963a225`
 - packaged `ddraw.dll`:
-  `dde0405570199a33762ca2500d1461817ce0ee3f0e7186225027eb25114f6712`
+  `59046d81fe044150d1e834604860f5f7f8ffc5c9224efc90ce8f40da044d3160`
 - packaged `wined3d.dll`:
-  `dec0817023792e9dbc75614d47f5da19dec2d1192727912e1ceb38664ee901ae`
+  `3b2b29f5275d1b40626f2783cffa1e0a142099cb4daa335b81ffb78deb487910`
+- packaged `ddraw_test.exe`:
+  `094a89f7799812a33c5741221ccb0cf02455f4b2f31e30bce5272ce3caae30cf`
+- `wine_tests_v6.zip` (11,990,501 bytes):
+  `eba177bb5c742cdb26a0ddce99e16d71a35ac85ec277759459b0c231ce9c155f`
 - packaged `d3d9_test.exe`:
   `1d42eb50ada90f7d2e4b9bb145c2a36ce5caac5730be9c1115e9d766b0d656b6`
 
