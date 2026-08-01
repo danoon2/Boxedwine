@@ -2741,7 +2741,7 @@ void glcommon_glUnmapBuffer(CPU* cpu) {
     {
 
     unmapBuffer(cpu, ARG1);
-
+    glcommon_recordElementArrayBufferUnmap(ARG1);
     EAX=GL_FUNC(ext_glUnmapBuffer)(ARG1);
     GL_LOG ("glUnmapBuffer GLenum target=%d",ARG1);
     }
@@ -2750,6 +2750,8 @@ void glcommon_glUnmapBufferARB(CPU* cpu) {
     if (!ext_glUnmapBufferARB)
         kpanic("ext_glUnmapBufferARB is NULL");
     {
+    unmapBuffer(cpu, ARG1);
+    glcommon_recordElementArrayBufferUnmap(ARG1);
     EAX=GL_FUNC(ext_glUnmapBufferARB)(ARG1);
     GL_LOG ("glUnmapBufferARB GLenum target=%d",ARG1);
     }

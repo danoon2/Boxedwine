@@ -123,6 +123,12 @@ nonzero element-buffer offsets, unsigned byte/short/int index widths, a partial
 index-buffer update, and sizing client uploads from the maximum referenced
 vertex rather than the draw's index count. Browser runs reject a skipped test.
 
+`dynamic-buffer-map-sync` exercises discard-style mapped vertex and element
+buffers, a non-overlapping explicit vertex-buffer update, and split explicit
+element-buffer flushes. It verifies both rendered output and synchronization of
+mapped indices with the client-array maximum-index shadow. Browser runs reject
+a skipped test.
+
 Build the Win32 Release target, then run:
 
 ```powershell

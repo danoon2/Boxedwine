@@ -89,6 +89,72 @@ EM_JS(void, boxedwine_record_element_array_buffer_sub_data_js,
         bytes.set(HEAPU8.subarray(data, data + size), offset);
     });
 
+EM_JS(void, boxedwine_record_element_array_buffer_unmap_js,
+    (int target), {
+        if (target !== 0x8893 || typeof GL === "undefined" ||
+            typeof GLctx === "undefined" || !GLctx ||
+            typeof emscriptenWebGLGetBufferBinding !== "function") {
+            return;
+        }
+        var binding = emscriptenWebGLGetBufferBinding(target);
+        var mapping = GL.mappedBuffers ? GL.mappedBuffers[binding] : null;
+        if (!mapping || !mapping.mem || (mapping.access & 0x10)) {
+            return;
+        }
+        var buffer = GL.buffers ? GL.buffers[binding] : null;
+        var buffers = Module['boxedwineElementArrayBufferBytes'];
+        var bytes = buffer && buffers ? buffers.get(buffer) : null;
+        if (!bytes || mapping.offset < 0 || mapping.length < 0 ||
+            mapping.offset + mapping.length > bytes.length) {
+            return;
+        }
+        bytes.set(HEAPU8.subarray(mapping.mem,
+            mapping.mem + mapping.length), mapping.offset);
+    });
+
+EM_JS(int, boxedwine_flush_mapped_buffer_range_js,
+    (int target, int offset, int length), {
+        if (typeof GL === "undefined" || typeof GLctx === "undefined" ||
+            !GLctx || typeof emscriptenWebGLGetBufferBinding !== "function" ||
+            typeof emscriptenWebGLValidateMapBufferTarget !== "function") {
+            return 0;
+        }
+        if (!emscriptenWebGLValidateMapBufferTarget(target)) {
+            GL.recordError(0x0500); // GL_INVALID_ENUM
+            return 1;
+        }
+        var binding = emscriptenWebGLGetBufferBinding(target);
+        var mapping = GL.mappedBuffers ? GL.mappedBuffers[binding] : null;
+        if (!mapping || !mapping.mem || !(mapping.access & 0x10)) {
+            GL.recordError(0x0502); // GL_INVALID_OPERATION
+            return 1;
+        }
+        if (offset < 0 || length < 0 || offset + length > mapping.length) {
+            GL.recordError(0x0501); // GL_INVALID_VALUE
+            return 1;
+        }
+
+        var sourceStart = mapping.mem + offset;
+        // Emscripten's WebGL shim uploads every explicit flush at
+        // mapping.offset. Desktop GL defines offset relative to the mapped
+        // range, so preserve it in both the GPU upload and element shadow.
+        GLctx.bufferSubData(target, mapping.offset + offset,
+            HEAPU8.subarray(sourceStart, sourceStart + length));
+
+        if (target === 0x8893 && length > 0) { // GL_ELEMENT_ARRAY_BUFFER
+            var buffer = GL.buffers ? GL.buffers[binding] : null;
+            var buffers = Module['boxedwineElementArrayBufferBytes'];
+            var bytes = buffer && buffers ? buffers.get(buffer) : null;
+            var destinationOffset = mapping.offset + offset;
+            if (bytes && destinationOffset >= 0 &&
+                destinationOffset + length <= bytes.length) {
+                bytes.set(HEAPU8.subarray(sourceStart, sourceStart + length),
+                    destinationOffset);
+            }
+        }
+        return 1;
+    });
+
 EM_JS(double, boxedwine_prepare_element_array_client_draw_js,
     (int type, int offset, int count), {
         Module['boxedwineElementArrayClientVertexCount'] = 0;
@@ -187,6 +253,22 @@ void glcommon_recordElementArrayBufferSubData(GLintptr offset, const GLvoid* dat
         boxedwine_record_element_array_buffer_sub_data_js((int)offset,
             (int)(uintptr_t)data, (int)size);
     }
+#endif
+}
+
+void glcommon_recordElementArrayBufferUnmap(GLenum target) {
+#ifdef __EMSCRIPTEN__
+    boxedwine_record_element_array_buffer_unmap_js((int)target);
+#endif
+}
+
+bool glcommon_flushMappedBufferRange(GLenum target, GLintptr offset,
+        GLsizeiptr length) {
+#ifdef __EMSCRIPTEN__
+    return boxedwine_flush_mapped_buffer_range_js((int)target, (int)offset,
+        (int)length) != 0;
+#else
+    return false;
 #endif
 }
 

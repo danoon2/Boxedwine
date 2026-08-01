@@ -177,6 +177,12 @@
 #ifndef GL_MAP_INVALIDATE_RANGE_BIT
 #define GL_MAP_INVALIDATE_RANGE_BIT 0x0004
 #endif
+#ifndef GL_MAP_INVALIDATE_BUFFER_BIT
+#define GL_MAP_INVALIDATE_BUFFER_BIT 0x0008
+#endif
+#ifndef GL_MAP_FLUSH_EXPLICIT_BIT
+#define GL_MAP_FLUSH_EXPLICIT_BIT 0x0010
+#endif
 #ifndef GL_COLOR_SUM
 #define GL_COLOR_SUM 0x8458
 #endif
@@ -717,6 +723,7 @@ using PFNGLNAMEDBUFFERSUBDATAPROC = void(APIENTRY*)(GLuint, GLintptr, GLsizeiptr
 using PFNGLGETNAMEDBUFFERSUBDATAPROC = void(APIENTRY*)(GLuint, GLintptr, GLsizeiptr, void*);
 using PFNGLMAPBUFFERPROC = void* (APIENTRY*)(GLenum, GLenum);
 using PFNGLMAPBUFFERRANGEPROC = void* (APIENTRY*)(GLenum, GLintptr, GLsizeiptr, GLbitfield);
+using PFNGLFLUSHMAPPEDBUFFERRANGEPROC = void(APIENTRY*)(GLenum, GLintptr, GLsizeiptr);
 using PFNGLUNMAPBUFFERPROC = GLboolean(APIENTRY*)(GLenum);
 using PFNGLCLEARBUFFERFIPROC = void(APIENTRY*)(GLenum, GLint, GLfloat, GLint);
 using PFNGLCLEARBUFFERFVPROC = void(APIENTRY*)(GLenum, GLint, const GLfloat*);
@@ -1001,6 +1008,7 @@ struct GLFns {
     PFNGLGETNAMEDBUFFERSUBDATAPROC GetNamedBufferSubDataEXT = nullptr;
     PFNGLMAPBUFFERPROC MapBuffer = nullptr;
     PFNGLMAPBUFFERRANGEPROC MapBufferRange = nullptr;
+    PFNGLFLUSHMAPPEDBUFFERRANGEPROC FlushMappedBufferRange = nullptr;
     PFNGLUNMAPBUFFERPROC UnmapBuffer = nullptr;
     PFNGLCLEARBUFFERFIPROC ClearBufferfi = nullptr;
     PFNGLCLEARBUFFERFVPROC ClearBufferfv = nullptr;
@@ -1414,6 +1422,7 @@ static bool loadGLFunctions() {
     load(glx.GetNamedBufferSubDataEXT, "glGetNamedBufferSubDataEXT");
     load(glx.MapBuffer, "glMapBuffer");
     load(glx.MapBufferRange, "glMapBufferRange");
+    load(glx.FlushMappedBufferRange, "glFlushMappedBufferRange");
     load(glx.UnmapBuffer, "glUnmapBuffer");
     load(glx.ClearBufferfi, "glClearBufferfi");
     load(glx.ClearBufferfv, "glClearBufferfv");
@@ -13342,6 +13351,210 @@ static TestResult testElementBufferClientArrayMaxIndex(TestContext&) {
     return pass("element-buffer offsets, index widths, partial updates, and client-array maximum indices matched");
 }
 
+static TestResult testDynamicBufferMapSync(TestContext&) {
+    if (!glx.GenBuffers || !glx.BindBuffer || !glx.BufferData ||
+        !glx.MapBufferRange || !glx.FlushMappedBufferRange ||
+        !glx.UnmapBuffer || !glx.DeleteBuffers || !glx.VertexAttribPointer ||
+        !glx.EnableVertexAttribArray || !glx.DisableVertexAttribArray ||
+        !glx.VertexAttrib4fv || !glx.UseProgram || !glx.BindAttribLocation) {
+        return skip("dynamic buffer mapping entry points are unavailable");
+    }
+
+    std::string error;
+    GLuint program = makeVertexAttribRenderProgram(error);
+    if (!program) {
+        return fail("dynamic buffer map program failed to build: " + error);
+    }
+
+    PageBytes clientVertices;
+    if (!clientVertices.init(6 * 2 * sizeof(GLfloat), 32)) {
+        glx.DeleteProgram(program);
+        return skip("VirtualAlloc failed for dynamic buffer client vertices");
+    }
+
+    const GLfloat leftVertices[] = {
+        -0.9f, -0.8f,
+         0.0f, -0.8f,
+        -0.45f,  0.8f,
+    };
+    const GLfloat rightVertices[] = {
+         0.0f, -0.8f,
+         0.9f, -0.8f,
+         0.45f,  0.8f,
+    };
+    GLfloat allVertices[12] = {};
+    std::memcpy(allVertices, leftVertices, sizeof(leftVertices));
+    std::memcpy(allVertices + 6, rightVertices, sizeof(rightVertices));
+    std::memcpy(clientVertices.data, allVertices, sizeof(allVertices));
+
+    GLuint buffers[2] = {};
+    glx.GenBuffers(2, buffers);
+    GLuint vertexBuffer = buffers[0];
+    GLuint elementBuffer = buffers[1];
+
+    auto cleanup = [&]() {
+        glx.DisableVertexAttribArray(0);
+        glx.DisableVertexAttribArray(1);
+        glx.UseProgram(0);
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glx.DeleteBuffers(2, buffers);
+        glx.DeleteProgram(program);
+    };
+    auto failAndCleanup = [&](const std::string& message) {
+        cleanup();
+        return fail(message);
+    };
+    auto verifyPixels = [&](bool expectLeft, bool expectRight,
+            const char* phase, std::string& failure) {
+        glFinish();
+        unsigned char left[4] = {};
+        unsigned char right[4] = {};
+        glReadPixels(16, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, left);
+        glReadPixels(48, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, right);
+        GLenum glError = glGetError();
+        if (glError != GL_NO_ERROR) {
+            failure = std::string(phase) + " produced GL error " +
+                std::to_string(glError);
+            return false;
+        }
+        auto matches = [](const unsigned char* pixel, bool expected) {
+            if (expected) {
+                return pixelIsGreenish(pixel);
+            }
+            return pixel[0] <= 32 && pixel[1] <= 32 && pixel[2] <= 32;
+        };
+        if (!matches(left, expectLeft) || !matches(right, expectRight)) {
+            failure = std::string(phase) + " rendered unexpected mapped-buffer contents";
+            return false;
+        }
+        return true;
+    };
+    auto mapRange = [&](GLenum target, GLintptr offset, GLsizeiptr size,
+            GLbitfield flags, const void* source, const char* phase) {
+        void* mapped = glx.MapBufferRange(target, offset, size, flags);
+        if (!mapped) {
+            error = std::string(phase) + " map returned null, GL error " +
+                std::to_string(glGetError());
+            return false;
+        }
+        std::memcpy(mapped, source, (size_t)size);
+        return true;
+    };
+    auto requireNoError = [&](const char* phase) {
+        GLenum glError = glGetError();
+        if (glError == GL_NO_ERROR) {
+            return true;
+        }
+        error = std::string(phase) + " produced GL error " +
+            std::to_string(glError);
+        return false;
+    };
+
+    glx.UseProgram(program);
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glx.DisableVertexAttribArray(1);
+    const GLfloat green[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+    glx.VertexAttrib4fv(1, green);
+    while (glGetError() != GL_NO_ERROR) {
+    }
+
+    glx.BindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    glx.BufferData(GL_ARRAY_BUFFER, sizeof(allVertices), nullptr, GL_DYNAMIC_DRAW);
+    glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glx.EnableVertexAttribArray(0);
+
+    if (!mapRange(GL_ARRAY_BUFFER, 0, sizeof(leftVertices),
+            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT,
+            leftVertices, "discard vertex-buffer")) {
+        return failAndCleanup(error);
+    }
+    if (!glx.UnmapBuffer(GL_ARRAY_BUFFER)) {
+        return failAndCleanup("discard vertex-buffer unmap reported data corruption");
+    }
+    if (!requireNoError("discard vertex-buffer update")) {
+        return failAndCleanup(error);
+    }
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    if (!verifyPixels(true, false, "discard vertex-buffer draw", error)) {
+        return failAndCleanup(error);
+    }
+
+    if (!mapRange(GL_ARRAY_BUFFER, sizeof(leftVertices), sizeof(rightVertices),
+            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT |
+                GL_MAP_FLUSH_EXPLICIT_BIT,
+            rightVertices, "no-overwrite vertex-buffer")) {
+        return failAndCleanup(error);
+    }
+    glx.FlushMappedBufferRange(GL_ARRAY_BUFFER, 0, sizeof(rightVertices));
+    if (!glx.UnmapBuffer(GL_ARRAY_BUFFER)) {
+        return failAndCleanup("no-overwrite vertex-buffer unmap reported data corruption");
+    }
+    if (!requireNoError("no-overwrite vertex-buffer update")) {
+        return failAndCleanup(error);
+    }
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    if (!verifyPixels(true, true, "no-overwrite vertex-buffer draw", error)) {
+        return failAndCleanup(error);
+    }
+
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, clientVertices.data);
+    glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
+
+    const GLubyte initialIndices[3] = { 0, 1, 2 };
+    const GLubyte updatedIndices[3] = { 3, 4, 5 };
+    glx.BufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(initialIndices),
+        initialIndices, GL_DYNAMIC_DRAW);
+    if (!mapRange(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(updatedIndices),
+            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT,
+            updatedIndices, "discard element-buffer")) {
+        return failAndCleanup(error);
+    }
+    if (!glx.UnmapBuffer(GL_ELEMENT_ARRAY_BUFFER)) {
+        return failAndCleanup("discard element-buffer unmap reported data corruption");
+    }
+    if (!requireNoError("discard element-buffer update")) {
+        return failAndCleanup(error);
+    }
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_BYTE, nullptr);
+    if (!verifyPixels(false, true, "discard element-buffer draw", error)) {
+        return failAndCleanup(error);
+    }
+
+    const GLubyte initialExplicitIndices[6] = { 0, 1, 2, 0, 1, 2 };
+    const GLubyte explicitIndices[6] = { 0, 1, 2, 3, 4, 5 };
+    glx.BufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(initialExplicitIndices),
+        initialExplicitIndices, GL_DYNAMIC_DRAW);
+    if (!mapRange(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(explicitIndices),
+            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT |
+                GL_MAP_FLUSH_EXPLICIT_BIT,
+            explicitIndices, "explicit-flush element-buffer")) {
+        return failAndCleanup(error);
+    }
+    glx.FlushMappedBufferRange(GL_ELEMENT_ARRAY_BUFFER, 0, 3);
+    glx.FlushMappedBufferRange(GL_ELEMENT_ARRAY_BUFFER, 3, 3);
+    if (!glx.UnmapBuffer(GL_ELEMENT_ARRAY_BUFFER)) {
+        return failAndCleanup("explicit-flush element-buffer unmap reported data corruption");
+    }
+    if (!requireNoError("explicit-flush element-buffer update")) {
+        return failAndCleanup(error);
+    }
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_BYTE, (const void*)3);
+    if (!verifyPixels(false, true, "explicit-flush element-buffer draw", error)) {
+        return failAndCleanup(error);
+    }
+
+    cleanup();
+    return pass("dynamic vertex/index discard, no-overwrite, flush, and client-array synchronization matched");
+}
+
 static void drawListTriangle(float x0, float x1, float x2) {
     glBegin(GL_TRIANGLES);
     glVertex2f(x0, -0.8f);
@@ -14897,6 +15110,7 @@ static std::vector<TestCase> tests() {
         { "multitexture-array-element-mixed-storage", testMultiTextureArrayElementMixedStorage },
         { "draw-elements-page-boundary", testDrawElementsPageBoundary },
         { "element-buffer-client-array-max-index", testElementBufferClientArrayMaxIndex },
+        { "dynamic-buffer-map-sync", testDynamicBufferMapSync },
         { "call-lists-page-boundary", testCallListsPageBoundary },
         { "draw-range-elements-page-boundary", testDrawRangeElementsPageBoundary },
         { "draw-elements-base-vertex-page-boundary", testDrawElementsBaseVertexPageBoundary },

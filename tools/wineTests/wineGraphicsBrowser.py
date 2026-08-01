@@ -108,6 +108,7 @@ GRAPHICS_SUITES = {
             "webgl-context-loss-restore",
             "buffer-lifecycle-growth",
             "element-buffer-client-array-max-index",
+            "dynamic-buffer-map-sync",
         ),
         ("--test",),
         (),
@@ -324,6 +325,9 @@ def parse_graphics_result(
         suite.name == "opengl-marshal"
         and group == "element-buffer-client-array-max-index"
     )
+    requires_dynamic_buffer_execution = (
+        suite.name == "opengl-marshal" and group == "dynamic-buffer-map-sync"
+    )
     records = (
         _marshal_failure_records(output) if is_marshal else _failure_records(output)
     )
@@ -453,6 +457,8 @@ def parse_graphics_result(
         reason = "buffer lifecycle regression skipped"
     elif requires_element_buffer_execution and skipped:
         reason = "element-buffer client-array regression skipped"
+    elif requires_dynamic_buffer_execution and skipped:
+        reason = "dynamic buffer map regression skipped"
     else:
         reason = "ok"
 

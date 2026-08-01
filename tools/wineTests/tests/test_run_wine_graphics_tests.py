@@ -488,6 +488,21 @@ class ResultParsingTests(unittest.TestCase):
             "element-buffer client-array regression skipped", result.reason
         )
 
+    def test_opengl_dynamic_buffer_map_rejects_a_skip(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "dynamic-buffer-map-sync",
+            {
+                "output": (
+                    "SKIP dynamic-buffer-map-sync: entry point unavailable\n"
+                    "Summary: 0 passed, 0 failed, 1 skipped\n"
+                ),
+            },
+        )
+
+        self.assertFalse(result.passed)
+        self.assertEqual("dynamic buffer map regression skipped", result.reason)
+
 
 class BrowserHarnessTests(unittest.TestCase):
     def test_launch_url_selects_memory_storage_and_group_argument(self):
