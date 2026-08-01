@@ -972,8 +972,11 @@ void KThread::resumeFromPtraceStop() {
 
 void KThread::waitForPtraceResume() {
 #ifdef BOXEDWINE_MULTI_THREADED
+    if (!this->ptraceStopped.load(std::memory_order_acquire)) {
+        return;
+    }
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->ptraceCond);
-    while (this->ptraceStopped && !this->terminating) {
+    while (this->ptraceStopped.load(std::memory_order_relaxed) && !this->terminating) {
         BOXEDWINE_CONDITION_WAIT(this->ptraceCond);
     }
 #endif
