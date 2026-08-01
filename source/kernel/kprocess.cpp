@@ -324,6 +324,7 @@ void KProcess::onExec(KThread* thread) {
     syncFromHost = nullptr;
     jitCosSub = nullptr;
     jitCos = nullptr;
+	jitF64ToF80 = nullptr;
 	blockExit = nullptr;
     memset(calculateCF, 0, sizeof(calculateCF));
 #endif

@@ -1535,6 +1535,10 @@ void JitX86CodeGen::shlReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
             compiler.shlx(R32(reg), R32(reg), R32(rm));
             return;
         }
+        if (regWidth == JitWidth::b64 && rm->hardwareReg() != 1) {
+            compiler.shlx(R64(reg), R64(reg), R64(rm));
+            return;
+        }
     }
 #endif
     if (rm->hardwareReg() != 1) {

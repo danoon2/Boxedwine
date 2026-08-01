@@ -1514,11 +1514,19 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, RegPtr src) {
 }
 
 void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment) {
+    writeMemory(width, std::move(addressReg), std::move(src), std::move(customMemoryOp), std::move(failedMemoryOp), checkAlignment, false);
+}
+
+void JitCodeGen::writeWithMmuCheck(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment) {
+    writeMemory(width, std::move(addressReg), std::move(src), std::move(customMemoryOp), std::move(failedMemoryOp), checkAlignment, true);
+}
+
+void JitCodeGen::writeMemory(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment, bool forceMmuCheck) {
     RegPtr tmp = getTmpReg();
 
     shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
 #ifdef BOXEDWINE_MEM_CACHE
-    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+    if (!forceMmuCheck && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
 #ifdef _DEBUG
         writeCurrentEip(0);
 #endif        

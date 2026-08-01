@@ -154,6 +154,8 @@ public:
     void xaddReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
 
 private:
+    void writeMemory(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment, bool forceMmuCheck);
+
     bool isBlockOpBoundary(U32 eip) {
         if (eip < startingEip || eip > lastOpEip) {
             return false;
@@ -174,6 +176,8 @@ private:
     }
 
 protected:
+
+    void writeWithMmuCheck(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true);
 
     virtual U32 getBufferSize() = 0;
     virtual U32 markBufferLocation() = 0;

@@ -824,6 +824,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testSseInsertExtractShuffle_0x1c4_0x3c4_0x1c5_0x3c5_0x3c6, "Test SSE Insert/Extract/Shuffle"},
     {testCmpXchg8b_0x3c7, "Test CmpXchg8b 3c7"},
     {testBswap_0x3c8_0x3cf, "Test Bswap 3c8-3cf"},
+    {testFxsave_0x3ae, "Test Fxsave 3ae"},
+    {testFxrstor_0x3ae, "Test Fxrstor 3ae"},
     {testMmxPmovmskb_0x3d7, "Test MMX Pmovmskb 3d7"},
     {testMmxPminub_0x3da, "Test MMX Pminub 3da"},
     {testMmxPmaxub_0x3de, "Test MMX Pmaxub 3de"},

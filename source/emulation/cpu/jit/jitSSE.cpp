@@ -808,14 +808,255 @@ U8* JitSSE::createJitCos() {
     return createDynamicExecutableMemory();
 }
 
+#ifdef BOXEDWINE_64
+U8* JitSSE::createJitF64ToF80() {
+    for (U32 i = 0; i < 8; i++) {
+        RegPtr cached = readCPU(JitWidth::b8, offsetof(CPU, fpu.isRegCached) + i);
+        If(JitWidth::b8, cached); {
+            cached = nullptr;
+            RegPtr significand = readCPU(JitWidth::b64, offsetof(CPU, fpu.regCache) + i * sizeof(FPU_Reg));
+            RegPtr signExp = getTmpReg();
+            RegPtr exponent = getTmpReg();
+
+            shrValueWithDest(JitWidth::b64, signExp, significand, 48);
+            andValue(JitWidth::b32, signExp, 0x8000);
+            shrValueWithDest(JitWidth::b64, exponent, significand, 52);
+            andValue(JitWidth::b32, exponent, 0x7ff);
+            RegPtr shift = getTmpReg();
+            movValue(JitWidth::b32, shift, 12);
+            shlReg(JitWidth::b64, significand, shift);
+            shrValue(JitWidth::b64, significand, 12);
+            shift = nullptr;
+
+            IfEqual(JitWidth::b32, exponent, 0x7ff); {
+                orValue(JitWidth::b32, signExp, 0x7fff);
+                If(JitWidth::b64, significand); {
+                    movValue(JitWidth::b32, exponent, 13);
+                    shlReg(JitWidth::b64, significand, exponent);
+                    shrValue(JitWidth::b64, significand, 2);
+                    movValue(JitWidth::b64, exponent, 0xc000000000000000ULL);
+                    addReg(JitWidth::b64, significand, exponent);
+                } StartElse(); {
+                    movValue(JitWidth::b64, significand, 0x8000000000000000ULL);
+                } EndIf();
+            } StartElse(); {
+                IfNot(JitWidth::b32, exponent); {
+                    If(JitWidth::b64, significand); {
+                        clzReg(JitWidth::b64, exponent, significand);
+                        shlReg(JitWidth::b64, significand, exponent);
+                        negReg2(JitWidth::b32, exponent);
+                        addValue(JitWidth::b32, exponent, 0x3c0c);
+                        orReg(JitWidth::b32, signExp, exponent);
+                    } EndIf();
+                } StartElse(); {
+                    addValue(JitWidth::b32, exponent, 0x3c00);
+                    orReg(JitWidth::b32, signExp, exponent);
+                    movValue(JitWidth::b32, exponent, 11);
+                    shlReg(JitWidth::b64, significand, exponent);
+                    movValue(JitWidth::b64, exponent, 0x8000000000000000ULL);
+                    addReg(JitWidth::b64, significand, exponent);
+                } EndIf();
+            } EndIf();
+
+            U32 regOffset = offsetof(CPU, fpu.regs) + i * sizeof(extFloat80_t);
+            writeCPU(JitWidth::b64, regOffset + offsetof(extFloat80_t, signif), significand);
+            writeCPU(JitWidth::b16, regOffset + offsetof(extFloat80_t, signExp), signExp);
+            writeCPUValue(JitWidth::b8, offsetof(CPU, fpu.isRegCached) + i, 0);
+        } EndIf();
+    }
+    nakedReturn();
+    return createDynamicExecutableMemory();
+}
+#endif
+
 void JitSSE::createHelpers() {
     JitMMX::createHelpers();
+#ifdef BOXEDWINE_64
+    JitSSE* conversionJit = (JitSSE*)startNewJIT(cpu);
+    cpu->thread->process->jitF64ToF80 = (void*)conversionJit->createJitF64ToF80();
+    delete conversionJit;
+#endif
     JitSSE* jit = (JitSSE*)startNewJIT(cpu);
     cpu->thread->process->jitCosSub = (void*)jit->createJitCosSub();
     delete jit;
     jit = (JitSSE*)startNewJIT(cpu);
     cpu->thread->process->jitCos = (void*)jit->createJitCos();
     delete jit;
+}
+
+void JitSSE::dynamic_fxsave(DecodedOp* op) {
+#if defined(BOXEDWINE_64) && !defined(BOXEDWINE_WASM_JIT)
+    constexpr U32 FXSAVE_BYTES_WRITTEN = 288;
+
+    RegPtr converter = getTmpReg();
+    movValue(DYN_PTR, converter, (DYN_PTR_SIZE)cpu->thread->process->jitF64ToF80);
+    nakedCall(converter);
+    converter = nullptr;
+
+    RegPtr address = calculateEaa(op);
+    RegPtr pageOffset = getTmpReg();
+    andValueWithDest(JitWidth::b32, pageOffset, address, K_PAGE_MASK);
+    IfGreaterThan(JitWidth::b32, ComparisonType::Unsigned, pageOffset, K_PAGE_SIZE - FXSAVE_BYTES_WRITTEN); {
+        JitMMX::dynamic_fxsave(op);
+    } EndIf();
+    pageOffset = nullptr;
+
+    writeWithMmuCheck(JitWidth::b8, std::move(address), nullptr, [this](MemPtr hostAddress) {
+        RegPtr hostBase = calculateAddress(hostAddress);
+        hostAddress = nullptr;
+        auto output = [hostBase](U32 offset) {
+            return createMemPtr(hostBase, offset, false);
+        };
+
+        RegPtr value = readCPU(JitWidth::b16, offsetof(CPU, fpu.cw));
+        write(JitWidth::b16, output(0), value);
+
+        value = readCPU(JitWidth::b32, offsetof(CPU, fpu.sw), value);
+        andValue(JitWidth::b32, value, ~0x3800u);
+        RegPtr top = readCPU(JitWidth::b32, offsetof(CPU, fpu.top));
+        andValue(JitWidth::b32, top, 7);
+        shlValue(JitWidth::b32, top, 11);
+        orReg(JitWidth::b32, value, top);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.sw), value);
+        write(JitWidth::b16, output(2), value);
+        top = nullptr;
+
+        movValue(JitWidth::b32, value, 0);
+        RegPtr isMmx = readCPU(JitWidth::b8, offsetof(CPU, fpu.isMMXInUse));
+        If(JitWidth::b8, isMmx); {
+            movValue(JitWidth::b32, value, 0xff);
+        } StartElse(); {
+            for (U32 i = 0; i < 8; i++) {
+                RegPtr present = readCPU(JitWidth::b8, offsetof(CPU, fpu.tags) + i);
+                andValue(JitWidth::b8, present, 3);
+                compareValue(JitWidth::b8, present, TAG_Empty, JitEvaluate::NOT_EQUALS, present);
+                shlValue(JitWidth::b32, present, i);
+                orReg(JitWidth::b32, value, present);
+            }
+        } EndIf();
+        isMmx = nullptr;
+        write(JitWidth::b8, output(4), value);
+        write(JitWidth::b8, output(5), (U32)0);
+        write(JitWidth::b16, output(6), (U32)0);
+        write(JitWidth::b64, output(8), (U32)0);
+        write(JitWidth::b64, output(16), (U32)0);
+
+        value = readCPU(JitWidth::b32, offsetof(CPU, mxcsr), value);
+        write(JitWidth::b32, output(24), value);
+        write(JitWidth::b32, output(28), (U32)0xffff);
+        value = nullptr;
+
+        top = readCPU(JitWidth::b32, offsetof(CPU, fpu.top));
+        andValue(JitWidth::b32, top, 7);
+        shlValue(JitWidth::b32, top, 4);
+        for (U32 i = 0; i < 8; i++) {
+            U32 regOffset = offsetof(CPU, fpu.regs) + i * sizeof(extFloat80_t);
+            value = readCPU(JitWidth::b64, regOffset + offsetof(extFloat80_t, signif));
+            write(JitWidth::b64, createMemPtr(hostBase, top, 0, 32, false), value);
+            value = readCPU(JitWidth::b16, regOffset + offsetof(extFloat80_t, signExp), value);
+            write(JitWidth::b16, createMemPtr(hostBase, top, 0, 40, false), value);
+            subValue(JitWidth::b32, top, 16);
+            andValue(JitWidth::b32, top, 0x70);
+        }
+        top = nullptr;
+        value = nullptr;
+
+        for (U32 i = 0; i < 8; i++) {
+            SSERegPtr xmm = loadCpuXMMReg((U8)i);
+            storeXMMToMem128(xmm, output(160 + i * 16));
+        }
+    }, nullptr, false);
+#else
+    JitMMX::dynamic_fxsave(op);
+#endif
+}
+
+void JitSSE::dynamic_fxrstor(DecodedOp* op) {
+#if defined(BOXEDWINE_64) && !defined(BOXEDWINE_WASM_JIT)
+    constexpr U32 FXRSTOR_BYTES_READ = 288;
+
+    RegPtr address = calculateEaa(op);
+    RegPtr pageOffset = getTmpReg();
+    andValueWithDest(JitWidth::b32, pageOffset, address, K_PAGE_MASK);
+    IfGreaterThan(JitWidth::b32, ComparisonType::Unsigned, pageOffset, K_PAGE_SIZE - FXRSTOR_BYTES_READ); {
+        JitMMX::dynamic_fxrstor(op);
+    } EndIf();
+    pageOffset = nullptr;
+
+    read(JitWidth::b8, std::move(address), [this](MemPtr hostAddress) {
+        RegPtr hostBase = calculateAddress(hostAddress);
+        hostAddress = nullptr;
+        auto input = [hostBase](U32 offset) {
+            return createMemPtr(hostBase, offset, false);
+        };
+
+        RegPtr value = read(JitWidth::b16, input(0));
+        movzx(JitWidth::b32, value, JitWidth::b16, value);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.cw), value);
+        shrValue(JitWidth::b32, value, 10);
+        andValue(JitWidth::b32, value, 3);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.round), value);
+
+        value = read(JitWidth::b16, input(2), value);
+        movzx(JitWidth::b32, value, JitWidth::b16, value);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.sw), value);
+        shrValue(JitWidth::b32, value, 11);
+        andValue(JitWidth::b32, value, 7);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.top), value);
+
+        RegPtr tag = read(JitWidth::b8, input(4), value);
+        for (U32 i = 0; i < 8; i++) {
+            if (i) {
+                shrValue(JitWidth::b8, tag, 1);
+            }
+            RegPtr expandedTag = getTmpReg8();
+            andValueWithDest(JitWidth::b8, expandedTag, tag, 1);
+            subValue(JitWidth::b8, expandedTag, 1);
+            andValue(JitWidth::b8, expandedTag, 3);
+            writeCPU(JitWidth::b8, offsetof(CPU, fpu.tags) + i, expandedTag);
+        }
+        tag = nullptr;
+
+        value = read(JitWidth::b32, input(24), value);
+        writeCPU(JitWidth::b32, offsetof(CPU, mxcsr), value);
+        restoreFPURounding();
+        updateSseDivExceptionState();
+
+        RegPtr top = readCPU(JitWidth::b32, offsetof(CPU, fpu.top));
+        andValue(JitWidth::b32, top, 7);
+        shlValue(JitWidth::b32, top, 4);
+        for (U32 i = 0; i < 8; i++) {
+            U32 regOffset = offsetof(CPU, fpu.regs) + i * sizeof(extFloat80_t);
+            value = read(JitWidth::b64, createMemPtr(hostBase, top, 0, 32, false), value);
+            writeCPU(JitWidth::b64, regOffset + offsetof(extFloat80_t, signif), value);
+            value = read(JitWidth::b16, createMemPtr(hostBase, top, 0, 40, false), value);
+            writeCPU(JitWidth::b16, regOffset + offsetof(extFloat80_t, signExp), value);
+            subValue(JitWidth::b32, top, 16);
+            andValue(JitWidth::b32, top, 0x70);
+        }
+        top = nullptr;
+        value = nullptr;
+
+        writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.isRegCached), 0);
+        writeCPUValue(JitWidth::b32, offsetof(CPU, fpu.isRegCached) + 4, 0);
+
+        for (U32 i = 0; i < 8; i++) {
+            MemPtr source = input(160 + i * 16);
+            if (isSseRegCached((U8)i)) {
+                loadXMMFromMem128((U8)i, source);
+            } else {
+                SSERegPtr xmm = loadXMMFromMem128(SSE_TMP_INDEX, source);
+                storeCpuXMMReg(xmm, i);
+            }
+        }
+
+        writeCPUValue(JitWidth::b32, offsetof(CPU, fpuDirtyFlags), 1);
+        updateFpuDivExceptionState();
+        updateExceptionSummary();
+    }, nullptr, nullptr, false);
+#else
+    JitMMX::dynamic_fxrstor(op);
+#endif
 }
 
 void JitSSE::dynamic_FCOS(DecodedOp* op) {
