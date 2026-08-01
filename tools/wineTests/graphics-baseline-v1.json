@@ -9,11 +9,11 @@
     "filesystem_sha256": "a6c2a2a0d902f2725b95f4ae58dd2a1a21acc00aae74d8ab82fa551cbc67f8d1",
     "boxedwine_wasm_sha256": "005c8fd96d33c11fab8680b2502f699b848623f1f99d00ba674d1512e963a225",
     "webgl_test_divergence_manifest": "webgl-test-divergences-v2.json",
-    "webgl_test_divergence_manifest_sha256": "d45deefa5a520395176ff21f7345c01bd4bc8623e8d85307175c6cc11973d540",
+    "webgl_test_divergence_manifest_sha256": "16dac4bc902452121918921bd1ff563a9e858d23059a111a30e055349b260c86",
     "test_executable_sha256": {
       "ddraw": "094a89f7799812a33c5741221ccb0cf02455f4b2f31e30bce5272ce3caae30cf",
       "d3d8": "b8f6ae350a6608ce527501c57900405d8f32cfb63105b12fa314064853393005",
-      "d3d9": "8f690c501950a3cd8f6e25ff5920b3eefab229390e41a5b4ecb86ce8bca133bc",
+      "d3d9": "589e5b7e22ba8a7365d6d1336fdb171c9303412e1c1cecbf54a22079f03a6f34",
       "d3dx9_43": "12ecd5b5a4bff4a0971cb29aeec0eb667d116d20451b3d1e3e378debb25066ec",
       "d3dxof": "2de3c4efa3eb08a250aa72bb5317cd02108a0bef9a542a61e82fa2367a0593ed"
     }
@@ -130,10 +130,10 @@
         "failure_locations": []
       },
       "visual": {
-        "tests": 25431,
+        "tests": 25537,
         "todo": 40,
         "failures": 0,
-        "skipped": 48,
+        "skipped": 47,
         "failure_locations": []
       }
     },

@@ -7,7 +7,7 @@
   "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
   "patch_manifest": {
     "path": "tools/wineTests/webgl-test-divergences-v2.json",
-    "sha256": "d45deefa5a520395176ff21f7345c01bd4bc8623e8d85307175c6cc11973d540"
+    "sha256": "16dac4bc902452121918921bd1ff563a9e858d23059a111a30e055349b260c86"
   },
   "webgl_directory": "home/username/.wine/drive_c/webgl",
   "dlls": {

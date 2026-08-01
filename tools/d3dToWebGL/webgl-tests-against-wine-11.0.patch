@@ -354,19 +354,6 @@ index ade80fb..c3ef14b 100644
      hr = IDirect3DDevice9_GetDeviceCaps(device, &caps);
      ok(SUCCEEDED(hr), "Failed to get device caps, hr %#lx.\n", hr);
      if (caps.PixelShaderVersion < D3DPS_VERSION(1, 1))
-@@ -3806,6 +3818,12 @@ static void z_range_test(void)
-     static const float color_const_1[] = {1.0f, 0.0f, 0.0f, 1.0f};
-     static const float color_const_2[] = {0.0f, 0.0f, 1.0f, 1.0f};
- 
-+    if (is_webgl())
-+    {
-+        skip("WebGL does not preserve default depth contents across presentation.\n");
-+        return;
-+    }
-+
-     window = create_window();
-     d3d = Direct3DCreate9(D3D_SDK_VERSION);
-     ok(!!d3d, "Failed to create a D3D object.\n");
 @@ -4512,6 +4530,12 @@ static void test_multisample_stretch_rect(void)
      HRESULT hr;
      RECT rect;

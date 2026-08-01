@@ -68,7 +68,7 @@
   "test_patch": {
     "patch_id": "test-expectations",
     "path": "tools/d3dToWebGL/webgl-tests-against-wine-11.0.patch",
-    "sha256": "cb8be8db5bae28b192c0fe85439e27a3d0371eaeb6ef8b2a101b6adf9bfc40e7"
+    "sha256": "69c22c351dcc35b36011ef7e53b3a3a9fb57d14f1a795037adc84aceb1691bed"
   },
   "policy": "No production patch may modify Wine tests. Every added skip() and todo_wine_if() policy in the test-only patch must match exactly one classified rule.",
   "categories": {
@@ -193,10 +193,6 @@
       "skip_rules": [
         {
           "marker": "skip(\"WebGL does not match desktop D3D9 non-indexed stream-frequency corner cases.\\n\");",
-          "occurrences": 1
-        },
-        {
-          "marker": "skip(\"WebGL does not preserve default depth contents across presentation.\\n\");",
           "occurrences": 1
         },
         {
