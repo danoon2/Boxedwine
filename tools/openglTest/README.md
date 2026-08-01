@@ -14,7 +14,8 @@ evaluator map vector inputs, evaluator coordinate vector inputs, framebuffer tex
 pixel pack/unpack state, selection/feedback buffer copy-back, clip-plane and
 polygon-stipple copy-back, fog vector inputs, fog and pixel-transfer state
 getters, pixel buffer object pack/unpack paths, buffer subdata readback, mapped
-buffer writes, client pointer getters, texture object array APIs,
+buffer writes, buffer allocation/orphaning/growth, client pointer getters,
+texture object array APIs,
 fixed-function current color/index/edge vector inputs, fixed-function matrix
 vector inputs, fixed-function texcoord/raster-position vector inputs,
 immediate-mode vertex vector inputs, rect vector inputs, interleaved client
@@ -85,6 +86,19 @@ Pthread builds execute the attempted migration and report a targeted skip
 when Emscripten rejects moving a direct OffscreenCanvas context away from its
 owning host pthread; other failure stages still fail.
 
+`webgl-context-loss-restore` renders to fresh GL resources, asks the browser
+harness to force `WEBGL_lose_context`, requires both browser loss and restore
+events, verifies guest clear and texture-creation calls fail safely while the
+context remains lost, then creates fresh resources and verifies a pixel after
+restoration in single-threaded builds. The browser waits for the guest's lost-
+context probe before requesting restoration, and the runner enforces the event
+ordering. The lost-state probe permits `glGenTextures()` to reserve a nonzero
+name, but requires `glIsTexture()` to remain false and `glGetError()` to report
+context loss. Pthread builds report a targeted skip because the
+direct OffscreenCanvas context's owning guest pthread does not return to the
+browser event loop while it is running, so it cannot receive loss/restoration
+events in time. Supporting that case requires a cooperative host-thread design.
+
 `readbuffer-yield-replay` is a browser-only regression for the
 single-threaded yield between guest `glReadBuffer()` and `glReadPixels()`.
 The guest renders a known FBO color, selects `GL_COLOR_ATTACHMENT0`, prints an
@@ -92,6 +106,16 @@ arm marker, and sleeps. The browser harness then changes the underlying WebGL2
 read buffer to `NONE`. The resumed guest read must still return the expected
 pixel because BoxedWine replays its remembered guest read-buffer selection in
 the same host callback as `glReadPixels()`.
+
+`buffer-lifecycle-growth` uploads an array buffer, applies a partial update,
+orphans it with `bufferData(NULL)`, updates the orphan, and grows it with a new
+upload. Native OpenGL verifies the defined payload ranges. Browser runs also
+require one exact 256-byte zero-filled safety tail after every allocation and
+reject a skipped test. BoxedWine supplies Wine's desktop
+`glGetBufferSubData[ARB]` entry points through WebGL 2 `getBufferSubData()` so
+the guest can verify the actual bytes. The page wrapper owns padding for ST and
+ST-JIT (including both Emscripten typed-array overloads); the C++ marshaller
+owns it for worker-hosted MT and MT-JIT contexts.
 
 Build the Win32 Release target, then run:
 

@@ -23,7 +23,7 @@
 #include GLH
 #include "glcommon.h"
 #include "glMarshal.h"
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
 #include <vector>
 #endif
 
@@ -33,7 +33,10 @@
 
 static const GLvoid* marshalBufferData(CPU* cpu, GLenum target, GLsizeiptr size, U32 address, GLsizeiptr* uploadSize) {
     *uploadSize = size;
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+    // The page-level WebGL prototype wrapper pads single-threaded uploads and
+    // maintains their shadow bytes. Multi-threaded contexts live in a worker,
+    // where that wrapper is unavailable, so pad them in the marshaller.
     if (target == GL_ARRAY_BUFFER && size > 0) {
         constexpr GLsizeiptr padding = 256;
         *uploadSize = size + padding;

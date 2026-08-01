@@ -304,6 +304,172 @@ class ResultParsingTests(unittest.TestCase):
         self.assertTrue(result.passed)
         self.assertEqual("ok", result.reason)
 
+    def test_opengl_context_loss_requires_both_browser_events(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "webgl-context-loss-restore",
+            {
+                "output": (
+                    "PASS webgl-context-loss-restore: restored\n"
+                    "Summary: 1 passed, 0 failed, 0 skipped\n"
+                ),
+                "consoleTail": ["log: BOXEDWINE_WEBGL_CONTEXT_LOST"],
+            },
+        )
+
+        self.assertFalse(result.passed)
+        self.assertEqual(
+            "browser context loss/restoration events were incomplete",
+            result.reason,
+        )
+
+    def test_opengl_context_loss_passes_with_both_browser_events(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "webgl-context-loss-restore",
+            {
+                "output": (
+                    "PASS webgl-context-loss-restore: restored\n"
+                    "Summary: 1 passed, 0 failed, 0 skipped\n"
+                ),
+                "consoleTail": [
+                    "log: BOXEDWINE_WEBGL_CONTEXT_LOST",
+                    "log: BOXEDWINE_WEBGL_GUEST_LOST_PROBE texture=0",
+                    "log: BOXEDWINE_WEBGL_CONTEXT_RESTORED",
+                    "log: PASS webgl-context-loss-restore: restored",
+                ],
+            },
+        )
+
+        self.assertTrue(result.passed)
+        self.assertEqual("ok", result.reason)
+
+    def test_opengl_context_loss_rejects_events_after_guest_pass(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "webgl-context-loss-restore",
+            {
+                "output": (
+                    "PASS webgl-context-loss-restore: restored\n"
+                    "Summary: 1 passed, 0 failed, 0 skipped\n"
+                ),
+                "consoleTail": [
+                    "log: PASS webgl-context-loss-restore: restored",
+                    "log: BOXEDWINE_WEBGL_CONTEXT_LOST",
+                    "log: BOXEDWINE_WEBGL_GUEST_LOST_PROBE texture=0",
+                    "log: BOXEDWINE_WEBGL_CONTEXT_RESTORED",
+                ],
+            },
+        )
+
+        self.assertFalse(result.passed)
+        self.assertEqual(
+            "browser context loss/restoration events were incomplete",
+            result.reason,
+        )
+
+    def test_opengl_context_loss_rejects_reversed_browser_events(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "webgl-context-loss-restore",
+            {
+                "output": (
+                    "PASS webgl-context-loss-restore: restored\n"
+                    "Summary: 1 passed, 0 failed, 0 skipped\n"
+                ),
+                "consoleTail": [
+                    "log: BOXEDWINE_WEBGL_CONTEXT_RESTORED",
+                    "log: BOXEDWINE_WEBGL_CONTEXT_LOST",
+                    "log: BOXEDWINE_WEBGL_GUEST_LOST_PROBE texture=0",
+                    "log: PASS webgl-context-loss-restore: restored",
+                ],
+            },
+        )
+
+        self.assertFalse(result.passed)
+        self.assertEqual(
+            "browser context loss/restoration events were incomplete",
+            result.reason,
+        )
+
+    def test_opengl_context_loss_requires_guest_probe_between_events(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "webgl-context-loss-restore",
+            {
+                "output": (
+                    "PASS webgl-context-loss-restore: restored\n"
+                    "Summary: 1 passed, 0 failed, 0 skipped\n"
+                ),
+                "consoleTail": [
+                    "log: BOXEDWINE_WEBGL_CONTEXT_LOST",
+                    "log: BOXEDWINE_WEBGL_CONTEXT_RESTORED",
+                    "log: PASS webgl-context-loss-restore: restored",
+                ],
+            },
+        )
+
+        self.assertFalse(result.passed)
+        self.assertEqual(
+            "browser context loss/restoration events were incomplete",
+            result.reason,
+        )
+
+    def test_opengl_context_loss_preserves_guest_failure_reason(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "webgl-context-loss-restore",
+            {
+                "output": (
+                    "FAIL webgl-context-loss-restore: lost probe failed\n"
+                    "Summary: 0 passed, 1 failed, 0 skipped\n"
+                ),
+                "consoleTail": [
+                    "log: BOXEDWINE_WEBGL_CONTEXT_LOST",
+                    "log: BOXEDWINE_WEBGL_GUEST_LOST_PROBE texture=0",
+                    "log: BOXEDWINE_WEBGL_CONTEXT_RESTORED",
+                ],
+            },
+        )
+
+        self.assertFalse(result.passed)
+        self.assertEqual("1 test failures", result.reason)
+        self.assertEqual(
+            ("FAIL webgl-context-loss-restore: lost probe failed",),
+            result.failure_records,
+        )
+
+    def test_opengl_context_loss_accepts_exact_pthread_skip_without_events(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "webgl-context-loss-restore",
+            {
+                "output": (
+                    "SKIP webgl-context-loss-restore: "
+                    f"{graphics.CONTEXT_LOSS_PTHREAD_SKIP_MARKER}: known limit\n"
+                    "Summary: 0 passed, 0 failed, 1 skipped\n"
+                ),
+            },
+        )
+
+        self.assertTrue(result.passed)
+        self.assertEqual("ok", result.reason)
+
+    def test_opengl_buffer_lifecycle_rejects_a_skip(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "buffer-lifecycle-growth",
+            {
+                "output": (
+                    "SKIP buffer-lifecycle-growth: entry point unavailable\n"
+                    "Summary: 0 passed, 0 failed, 1 skipped\n"
+                ),
+            },
+        )
+
+        self.assertFalse(result.passed)
+        self.assertEqual("buffer lifecycle regression skipped", result.reason)
+
 
 class BrowserHarnessTests(unittest.TestCase):
     def test_launch_url_selects_memory_storage_and_group_argument(self):
@@ -385,6 +551,20 @@ class BrowserHarnessTests(unittest.TestCase):
         )
         self.assertNotIn("BOXEDWINE_OPENGL_READBUFFER_YIELD_TEST", command)
 
+    def test_opengl_buffer_lifecycle_command_expects_webgl_padding(self):
+        command = graphics.build_guest_test_command(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "buffer-lifecycle-growth",
+        )
+
+        self.assertTrue(
+            command.startswith(
+                "env BOXEDWINE_EXPECT_WEBGL_ARRAY_BUFFER_PADDING=1 "
+                "/bin/wine OpenGLMarshalTest.exe --test "
+                "buffer-lifecycle-growth;"
+            )
+        )
+
     def test_multithreaded_context_switch_command_marks_known_webgl_limit(self):
         command = graphics.build_guest_test_command(
             graphics.GRAPHICS_SUITES["opengl-marshal"],
@@ -398,6 +578,50 @@ class BrowserHarnessTests(unittest.TestCase):
                 "/bin/wine OpenGLMarshalTest.exe --test "
                 "wgl-context-thread-switch;"
             )
+        )
+
+    def test_opengl_context_loss_harness_forces_loss_and_restore(self):
+        source = (
+            "<html><body><script src=boxedwine-shell.js></script>"
+            "<script src=boxedwine.js></script></body></html>"
+        )
+        injected = graphics.inject_test_harness(
+            source,
+            "test-token",
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "webgl-context-loss-restore",
+            "single-threaded-non-jit",
+        )
+
+        self.assertIn("BOXEDWINE_WEBGL_CONTEXT_LOSS_ARMED", injected)
+        self.assertIn("BOXEDWINE_WEBGL_GUEST_LOST_PROBE", injected)
+        self.assertIn('context.getExtension("WEBGL_lose_context")', injected)
+        self.assertIn("extension.loseContext()", injected)
+        self.assertIn("extension.restoreContext()", injected)
+        self.assertIn("BOXEDWINE_WEBGL_CONTEXT_RESTORED", injected)
+
+    def test_multithreaded_context_loss_uses_targeted_guest_skip(self):
+        source = (
+            "<html><body><script src=boxedwine-shell.js></script>"
+            "<script src=boxedwine.js></script></body></html>"
+        )
+        injected = graphics.inject_test_harness(
+            source,
+            "test-token",
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "webgl-context-loss-restore",
+            "multi-threaded-non-jit",
+        )
+        command = graphics.build_guest_test_command(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "webgl-context-loss-restore",
+            "multi-threaded-non-jit",
+        )
+
+        self.assertNotIn("WEBGL_lose_context", injected)
+        self.assertIn(
+            "BOXEDWINE_EXPECT_WEBGL_CONTEXT_LOSS_PTHREAD_UNSUPPORTED=1",
+            command,
         )
 
     def test_opengl_harness_mutates_webgl_read_buffer_after_guest_arms(self):

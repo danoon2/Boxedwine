@@ -39,6 +39,9 @@
 #ifndef GL_NUM_EXTENSIONS
 #define GL_NUM_EXTENSIONS 0x821D
 #endif
+#ifndef GL_CONTEXT_LOST
+#define GL_CONTEXT_LOST 0x0507
+#endif
 #ifndef GL_INFO_LOG_LENGTH
 #define GL_INFO_LOG_LENGTH 0x8B84
 #endif
@@ -1393,6 +1396,13 @@ static bool loadGLFunctions() {
     load(glx.BufferData, "glBufferData");
     load(glx.BufferSubData, "glBufferSubData");
     load(glx.GetBufferSubData, "glGetBufferSubData");
+    if (!glx.GenBuffers) load(glx.GenBuffers, "glGenBuffersARB");
+    if (!glx.BindBuffer) load(glx.BindBuffer, "glBindBufferARB");
+    if (!glx.BufferData) load(glx.BufferData, "glBufferDataARB");
+    if (!glx.BufferSubData) load(glx.BufferSubData, "glBufferSubDataARB");
+    if (!glx.GetBufferSubData) {
+        load(glx.GetBufferSubData, "glGetBufferSubDataARB");
+    }
     load(glx.NamedBufferData, "glNamedBufferData");
     load(glx.NamedBufferDataEXT, "glNamedBufferDataEXT");
     load(glx.NamedBufferSubData, "glNamedBufferSubData");
@@ -1409,6 +1419,7 @@ static bool loadGLFunctions() {
     load(glx.ClearBufferData, "glClearBufferData");
     load(glx.ClearBufferSubData, "glClearBufferSubData");
     load(glx.DeleteBuffers, "glDeleteBuffers");
+    if (!glx.DeleteBuffers) load(glx.DeleteBuffers, "glDeleteBuffersARB");
     load(glx.DrawBuffers, "glDrawBuffers");
     load(glx.MultiDrawArrays, "glMultiDrawArrays");
     load(glx.MultiDrawElements, "glMultiDrawElements");
@@ -9946,6 +9957,155 @@ static TestResult testReadBufferYieldReplay(TestContext& ctx) {
     return pass("guest read-buffer state was replayed after the browser yield");
 }
 
+static bool renderContextLossProbe(const GLfloat* clearColor,
+        const GLubyte* expectedColor, std::string& error) {
+    GLuint texture = 0;
+    GLuint framebuffer = 0;
+    GLubyte pixel[4] = {};
+
+    drainGLErrors();
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0,
+        GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glx.GenFramebuffers(1, &framebuffer);
+    glx.BindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    glx.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+        GL_TEXTURE_2D, texture, 0);
+
+    GLenum status = glx.CheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status == GL_FRAMEBUFFER_COMPLETE) {
+        if (glx.UseProgram) {
+            glx.UseProgram(0);
+        }
+        glViewport(0, 0, 4, 4);
+        glClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        glReadPixels(2, 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+    }
+    GLenum glError = glGetError();
+
+    glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (framebuffer) {
+        glx.DeleteFramebuffers(1, &framebuffer);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+    if (texture) {
+        glDeleteTextures(1, &texture);
+    }
+
+    if (!texture || !framebuffer) {
+        error = "fresh texture or framebuffer allocation failed";
+        return false;
+    }
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        error = "fresh framebuffer was incomplete: " + std::to_string(status);
+        return false;
+    }
+    if (glError != GL_NO_ERROR) {
+        error = "fresh framebuffer probe produced GL error " + std::to_string(glError);
+        return false;
+    }
+    for (int i = 0; i < 4; ++i) {
+        int difference = static_cast<int>(pixel[i]) - static_cast<int>(expectedColor[i]);
+        if (difference < -3 || difference > 3) {
+            error = "fresh framebuffer pixel did not match the clear color";
+            return false;
+        }
+    }
+    return true;
+}
+
+static TestResult testWebGLContextLossRestore(TestContext& ctx) {
+    char enabled[2] = {};
+    if (!GetEnvironmentVariableA("BOXEDWINE_OPENGL_CONTEXT_LOSS_TEST",
+        enabled, sizeof(enabled))) {
+        return skip("requires the Emscripten browser context-loss harness");
+    }
+    char expectedUnsupported[2] = {};
+    if (GetEnvironmentVariableA(
+        "BOXEDWINE_EXPECT_WEBGL_CONTEXT_LOSS_PTHREAD_UNSUPPORTED",
+        expectedUnsupported, sizeof(expectedUnsupported))) {
+        return skip("PTHREAD_EVENT_LOOP_UNAVAILABLE: owning guest thread cannot "
+            "service WebGL loss events");
+    }
+    if (!glx.GenFramebuffers || !glx.BindFramebuffer || !glx.FramebufferTexture2D ||
+        !glx.CheckFramebufferStatus || !glx.DeleteFramebuffers) {
+        return skip("framebuffer entry points are unavailable");
+    }
+
+    const GLfloat beforeColor[4] = { 0.125f, 0.375f, 0.625f, 1.0f };
+    const GLubyte beforeExpected[4] = { 32, 96, 159, 255 };
+    const GLfloat afterColor[4] = { 0.625f, 0.25f, 0.375f, 1.0f };
+    const GLubyte afterExpected[4] = { 159, 64, 96, 255 };
+    std::string error;
+    if (!renderContextLossProbe(beforeColor, beforeExpected, error)) {
+        return fail("pre-loss " + error);
+    }
+
+    ctx.write("BOXEDWINE_WEBGL_CONTEXT_LOSS_ARMED");
+    // Yield long enough for the browser harness to force and report context
+    // loss. The harness deliberately waits for the guest probe marker below
+    // before requesting restoration.
+    Sleep(750);
+
+    glClearColor(0.875f, 0.125f, 0.25f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    GLuint lostTexture = 0;
+    glGenTextures(1, &lostTexture);
+    glBindTexture(GL_TEXTURE_2D, lostTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glFinish();
+    GLboolean lostTextureIsObject = glIsTexture(lostTexture);
+    GLenum lostErrors[4] = {
+        glGetError(), glGetError(), glGetError(), glGetError()
+    };
+    std::ostringstream lostProbe;
+    lostProbe << "BOXEDWINE_WEBGL_GUEST_LOST_PROBE texture=" << lostTexture
+        << " isTexture=" << static_cast<int>(lostTextureIsObject)
+        << " errors=0x" << std::hex << lostErrors[0]
+        << ",0x" << lostErrors[1] << ",0x" << lostErrors[2]
+        << ",0x" << lostErrors[3] << std::dec;
+    ctx.write(lostProbe.str());
+
+    // The browser observes the marker, requests restoration, and reports the
+    // restored event before this guest thread resumes.
+    Sleep(3000);
+
+    bool sawContextLost = false;
+    for (GLenum lostError : lostErrors) {
+        if (lostError == GL_CONTEXT_LOST ||
+                lostError == 0x9242 /* CONTEXT_LOST_WEBGL */) {
+            sawContextLost = true;
+        }
+    }
+    if (!sawContextLost) {
+        return fail("lost-context GL calls did not report context loss");
+    }
+    if (lostTextureIsObject != GL_FALSE) {
+        return fail("texture name became a live object while WebGL was lost");
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+    if (lostTexture) {
+        glDeleteTextures(1, &lostTexture);
+    }
+
+    if (wglGetCurrentContext() != ctx.rc || wglGetCurrentDC() != ctx.dc) {
+        return fail("WGL context or DC changed across WebGL restoration");
+    }
+    if (!glGetString(GL_VERSION)) {
+        return fail("restored context had no GL_VERSION");
+    }
+    if (!renderContextLossProbe(afterColor, afterExpected, error)) {
+        return fail("post-restore " + error);
+    }
+    return pass("lost-context calls failed safely and fresh resources rendered "
+        "after restoration");
+}
+
 static TestResult testFramebufferRenderbufferObjectPageBoundary(TestContext&) {
     if (!glx.CreateFramebuffers || !glx.DeleteFramebuffers ||
         !glx.CreateRenderbuffers || !glx.GenRenderbuffers || !glx.DeleteRenderbuffers ||
@@ -10353,6 +10513,169 @@ static TestResult testBufferSubDataPageBoundary(TestContext&) {
         return fail("buffer subdata readback bytes did not match");
     }
     return pass("page-boundary buffer subdata round-trip matched");
+}
+
+static TestResult testBufferLifecycleGrowth(TestContext&) {
+    std::string missing;
+    auto noteMissing = [&](bool available, const char* name) {
+        if (!available) {
+            if (!missing.empty()) missing += ", ";
+            missing += name;
+        }
+    };
+    noteMissing(glx.GenBuffers != nullptr, "glGenBuffers[ARB]");
+    noteMissing(glx.BindBuffer != nullptr, "glBindBuffer[ARB]");
+    noteMissing(glx.BufferData != nullptr, "glBufferData[ARB]");
+    noteMissing(glx.BufferSubData != nullptr, "glBufferSubData[ARB]");
+    noteMissing(glx.GetBufferSubData != nullptr, "glGetBufferSubData[ARB]");
+    noteMissing(glx.DeleteBuffers != nullptr, "glDeleteBuffers[ARB]");
+    if (!missing.empty()) {
+        return skip("buffer lifecycle entry points are unavailable: " + missing);
+    }
+
+    char webglPaddingEnabled[2] = {};
+    const bool expectWebGLPadding = GetEnvironmentVariableA(
+        "BOXEDWINE_EXPECT_WEBGL_ARRAY_BUFFER_PADDING",
+        webglPaddingEnabled, sizeof(webglPaddingEnabled)) != 0;
+    constexpr GLint webglPadding = 256;
+
+    GLuint buffer = 0;
+    glx.GenBuffers(1, &buffer);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+
+    auto cleanup = [&]() {
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        if (buffer) {
+            glx.DeleteBuffers(1, &buffer);
+        }
+    };
+    auto failAndCleanup = [&](const std::string& message) {
+        cleanup();
+        return fail(message);
+    };
+    auto expectedStorageSize = [&](size_t requestedSize) {
+        return static_cast<GLsizeiptr>(requestedSize) +
+            (expectWebGLPadding ? webglPadding : 0);
+    };
+    auto readAndVerify = [&](const std::vector<unsigned char>& expected,
+            GLsizeiptr storageSize, const char* phase, std::string& error) {
+        std::vector<unsigned char> actual(static_cast<size_t>(storageSize), 0xcd);
+        glx.GetBufferSubData(GL_ARRAY_BUFFER, 0, storageSize, actual.data());
+        GLenum glError = glGetError();
+        if (glError != GL_NO_ERROR) {
+            error = std::string(phase) + " readback produced GL error " +
+                std::to_string(glError);
+            return false;
+        }
+        if (std::memcmp(actual.data(), expected.data(), expected.size()) != 0) {
+            error = std::string(phase) + " payload bytes did not match";
+            return false;
+        }
+        if (expectWebGLPadding) {
+            for (size_t i = expected.size(); i < actual.size(); ++i) {
+                if (actual[i] != 0) {
+                    error = std::string(phase) + " padding byte " +
+                        std::to_string(i - expected.size()) + " was not zero";
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+    auto verifyStorageBoundary = [&](GLsizeiptr storageSize,
+            const char* phase, std::string& error) {
+        unsigned char beyondStorage = 0xcd;
+        glx.GetBufferSubData(GL_ARRAY_BUFFER, storageSize, 1, &beyondStorage);
+        GLenum glError = glGetError();
+        if (glError == GL_NO_ERROR) {
+            error = std::string(phase) + " storage exceeded the expected " +
+                std::to_string(storageSize) + " bytes";
+            return false;
+        }
+        if (glError != GL_INVALID_VALUE) {
+            error = std::string(phase) + " boundary probe produced GL error " +
+                std::to_string(glError) + ", expected GL_INVALID_VALUE";
+            return false;
+        }
+        return true;
+    };
+
+    std::vector<unsigned char> initial(37);
+    for (size_t i = 0; i < initial.size(); ++i) {
+        initial[i] = static_cast<unsigned char>((i * 17 + 3) & 0xff);
+    }
+    glx.BufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(initial.size()),
+        initial.data(), GL_DYNAMIC_DRAW);
+
+    GLsizeiptr storageSize = expectedStorageSize(initial.size());
+    std::string error;
+    if (!readAndVerify(initial, storageSize, "initial allocation", error) ||
+        !verifyStorageBoundary(storageSize, "initial allocation", error)) {
+        return failAndCleanup(error);
+    }
+
+    const unsigned char partialUpdate[] = { 91, 73, 55, 37, 19, 1, 222 };
+    constexpr GLintptr partialOffset = 13;
+    glx.BufferSubData(GL_ARRAY_BUFFER, partialOffset, sizeof(partialUpdate),
+        partialUpdate);
+    std::memcpy(initial.data() + partialOffset, partialUpdate,
+        sizeof(partialUpdate));
+    if (!readAndVerify(initial, storageSize, "partial update", error)) {
+        return failAndCleanup(error);
+    }
+
+    constexpr size_t orphanSize = 19;
+    glx.BufferData(GL_ARRAY_BUFFER, orphanSize, nullptr, GL_DYNAMIC_DRAW);
+    storageSize = expectedStorageSize(orphanSize);
+    if (!verifyStorageBoundary(storageSize, "null orphan", error)) {
+        return failAndCleanup(error);
+    }
+    if (expectWebGLPadding) {
+        std::vector<unsigned char> zeroed(orphanSize, 0);
+        if (!readAndVerify(zeroed, storageSize, "null orphan", error)) {
+            return failAndCleanup(error);
+        }
+    }
+
+    const unsigned char orphanUpdate[] = { 6, 12, 24, 48, 96, 192 };
+    constexpr GLintptr orphanUpdateOffset = 5;
+    glx.BufferSubData(GL_ARRAY_BUFFER, orphanUpdateOffset,
+        sizeof(orphanUpdate), orphanUpdate);
+    if (expectWebGLPadding) {
+        std::vector<unsigned char> expected(orphanSize, 0);
+        std::memcpy(expected.data() + orphanUpdateOffset, orphanUpdate,
+            sizeof(orphanUpdate));
+        if (!readAndVerify(expected, storageSize,
+                "post-orphan partial update", error)) {
+            return failAndCleanup(error);
+        }
+    } else {
+        unsigned char actual[sizeof(orphanUpdate)] = {};
+        glx.GetBufferSubData(GL_ARRAY_BUFFER, orphanUpdateOffset,
+            sizeof(actual), actual);
+        GLenum glError = glGetError();
+        if (glError != GL_NO_ERROR ||
+            std::memcmp(actual, orphanUpdate, sizeof(actual)) != 0) {
+            return failAndCleanup("post-orphan partial update did not match");
+        }
+    }
+
+    std::vector<unsigned char> grown(521);
+    for (size_t i = 0; i < grown.size(); ++i) {
+        grown[i] = static_cast<unsigned char>((i * 29 + 11) & 0xff);
+    }
+    glx.BufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(grown.size()),
+        grown.data(), GL_STREAM_READ);
+    storageSize = expectedStorageSize(grown.size());
+    if (!readAndVerify(grown, storageSize, "grown allocation", error) ||
+        !verifyStorageBoundary(storageSize, "grown allocation", error)) {
+        return failAndCleanup(error);
+    }
+
+    cleanup();
+    return pass(expectWebGLPadding
+        ? "uploads, orphaning, partial updates, 256-byte zero padding, and growth matched"
+        : "uploads, orphaning, partial updates, and growth matched");
 }
 
 static TestResult testClearBufferDataPageBoundary(TestContext&) {
@@ -14367,6 +14690,7 @@ static std::vector<TestCase> tests() {
         { "immediate-vertex-vector-inputs", testImmediateVertexVectorInputs },
         { "fbo-texture-readback", testFramebufferTextureReadback },
         { "readbuffer-yield-replay", testReadBufferYieldReplay },
+        { "webgl-context-loss-restore", testWebGLContextLossRestore },
         { "framebuffer-renderbuffer-object-page-boundary", testFramebufferRenderbufferObjectPageBoundary },
         { "pixel-store-pack-unpack", testPixelStorePackUnpackState },
         { "pixel-store-skip-pixels-tight-rows", testPixelStoreSkipPixelsTightRows },
@@ -14375,6 +14699,7 @@ static std::vector<TestCase> tests() {
         { "pbo-readpixels", testPixelPackBufferReadPixels },
         { "pbo-texture-upload", testPixelUnpackBufferTextureUpload },
         { "buffer-subdata-page-boundary", testBufferSubDataPageBoundary },
+        { "buffer-lifecycle-growth", testBufferLifecycleGrowth },
         { "clear-buffer-data-page-boundary", testClearBufferDataPageBoundary },
         { "clear-buffer-subdata-page-boundary", testClearBufferSubDataPageBoundary },
         { "named-buffer-subdata-page-boundary", testNamedBufferSubDataPageBoundary },

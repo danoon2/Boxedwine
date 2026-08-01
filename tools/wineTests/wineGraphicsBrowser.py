@@ -37,6 +37,7 @@ REQUIRED_WEB_FILES = (
     "boxedwine.wasm",
     "boxedwine.css",
 )
+CONTEXT_LOSS_PTHREAD_SKIP_MARKER = "PTHREAD_EVENT_LOOP_UNAVAILABLE"
 
 
 class RunnerError(RuntimeError):
@@ -104,6 +105,8 @@ GRAPHICS_SUITES = {
             "wgl-context-lifecycle",
             "wgl-context-thread-switch",
             "readbuffer-yield-replay",
+            "webgl-context-loss-restore",
+            "buffer-lifecycle-growth",
         ),
         ("--test",),
         (),
@@ -310,6 +313,12 @@ def parse_graphics_result(
     requires_readbuffer_mutation = (
         suite.name == "opengl-marshal" and group == "readbuffer-yield-replay"
     )
+    requires_context_loss_restore = (
+        suite.name == "opengl-marshal" and group == "webgl-context-loss-restore"
+    )
+    requires_buffer_lifecycle_execution = (
+        suite.name == "opengl-marshal" and group == "buffer-lifecycle-growth"
+    )
     records = (
         _marshal_failure_records(output) if is_marshal else _failure_records(output)
     )
@@ -323,9 +332,71 @@ def parse_graphics_result(
             for line in console_tail
         )
     )
+    context_loss_observed = (
+        isinstance(console_tail, list)
+        and any("BOXEDWINE_WEBGL_CONTEXT_LOST" in str(line) for line in console_tail)
+    )
+    context_restore_observed = (
+        isinstance(console_tail, list)
+        and any("BOXEDWINE_WEBGL_CONTEXT_RESTORED" in str(line) for line in console_tail)
+    )
+    context_guest_probe_observed = (
+        isinstance(console_tail, list)
+        and any(
+            "BOXEDWINE_WEBGL_GUEST_LOST_PROBE" in str(line)
+            for line in console_tail
+        )
+    )
+    context_events_preceded_pass_in_order = False
+    if isinstance(console_tail, list):
+        lost_index = next(
+            (
+                index
+                for index, line in enumerate(console_tail)
+                if "BOXEDWINE_WEBGL_CONTEXT_LOST" in str(line)
+            ),
+            None,
+        )
+        restored_index = next(
+            (
+                index
+                for index, line in enumerate(console_tail)
+                if "BOXEDWINE_WEBGL_CONTEXT_RESTORED" in str(line)
+            ),
+            None,
+        )
+        guest_probe_index = next(
+            (
+                index
+                for index, line in enumerate(console_tail)
+                if "BOXEDWINE_WEBGL_GUEST_LOST_PROBE" in str(line)
+            ),
+            None,
+        )
+        pass_index = next(
+            (
+                index
+                for index, line in enumerate(console_tail)
+                if "PASS webgl-context-loss-restore:" in str(line)
+            ),
+            None,
+        )
+        context_events_preceded_pass_in_order = (
+            lost_index is not None
+            and guest_probe_index is not None
+            and restored_index is not None
+            and pass_index is not None
+            and lost_index < guest_probe_index < restored_index < pass_index
+        )
     tests = todo = failures = skipped = None
     if summary is not None:
         tests, todo, failures, skipped = summary
+    context_loss_expected_pthread_skip = (
+        requires_context_loss_restore
+        and summary == (1, 0, 0, 1)
+        and "SKIP webgl-context-loss-restore:" in output
+        and CONTEXT_LOSS_PTHREAD_SKIP_MARKER in output
+    )
 
     if re.search(r"U(?:nknown|known) int 99 call:\s*\d+", output, re.IGNORECASE):
         reason = "OpenGL shim ABI mismatch"
@@ -337,6 +408,19 @@ def parse_graphics_result(
         and not readbuffer_mutation_observed
     ):
         reason = "browser read-buffer mutation did not run"
+    elif (
+        requires_context_loss_restore
+        and summary is not None
+        and not failures
+        and not context_loss_expected_pthread_skip
+        and (
+            not context_loss_observed
+            or not context_restore_observed
+            or not context_guest_probe_observed
+            or not context_events_preceded_pass_in_order
+        )
+    ):
+        reason = "browser context loss/restoration events were incomplete"
     elif summary is None:
         if timed_out:
             reason = "browser test timed out"
@@ -360,6 +444,8 @@ def parse_graphics_result(
             if is_marshal
             else f"{failures} Wine test failures"
         )
+    elif requires_buffer_lifecycle_execution and skipped:
+        reason = "buffer lifecycle regression skipped"
     else:
         reason = "ok"
 
@@ -532,6 +618,16 @@ def _test_environment(
     if suite.name == "opengl-marshal":
         if group == "readbuffer-yield-replay":
             environment.append("BOXEDWINE_OPENGL_READBUFFER_YIELD_TEST=1")
+        if group == "webgl-context-loss-restore":
+            environment.append("BOXEDWINE_OPENGL_CONTEXT_LOSS_TEST=1")
+            if mode is not None and mode.startswith("multi-threaded"):
+                environment.append(
+                    "BOXEDWINE_EXPECT_WEBGL_CONTEXT_LOSS_PTHREAD_UNSUPPORTED=1"
+                )
+        if group == "buffer-lifecycle-growth":
+            environment.append(
+                "BOXEDWINE_EXPECT_WEBGL_ARRAY_BUFFER_PADDING=1"
+            )
         if (
             group == "wgl-context-thread-switch"
             and mode is not None
@@ -618,6 +714,60 @@ def _readbuffer_yield_mutation_script() -> str:
 </script>"""
 
 
+def _context_loss_restore_script() -> str:
+    return """<script>
+(function() {
+  "use strict";
+  const armedMarker = "BOXEDWINE_WEBGL_CONTEXT_LOSS_ARMED";
+  const guestProbeMarker = "BOXEDWINE_WEBGL_GUEST_LOST_PROBE";
+  const timer = setInterval(function() {
+    try {
+      const outputElement = document.getElementById("output");
+      const output = outputElement ? outputElement.value : "";
+      if (output.indexOf(armedMarker) === -1) return;
+      if (typeof GL === "undefined" || !GL.currentContext) return;
+      const context = GL.currentContext.GLctx;
+      if (!context || !context.canvas) {
+        throw new Error("context-loss regression could not find the current WebGL canvas");
+      }
+      const extension = context.getExtension("WEBGL_lose_context");
+      if (!extension) {
+        throw new Error("WEBGL_lose_context is unavailable");
+      }
+      clearInterval(timer);
+      let lossObserved = false;
+      const restoreTimer = setInterval(function() {
+        try {
+          const currentOutputElement = document.getElementById("output");
+          const currentOutput = currentOutputElement ? currentOutputElement.value : "";
+          if (!lossObserved || currentOutput.indexOf(guestProbeMarker) === -1) return;
+          clearInterval(restoreTimer);
+          extension.restoreContext();
+          console.log("BOXEDWINE_WEBGL_CONTEXT_RESTORE_REQUESTED");
+        } catch (error) {
+          clearInterval(restoreTimer);
+          setTimeout(function() { throw error; }, 0);
+        }
+      }, 5);
+      context.canvas.addEventListener("webglcontextlost", function(event) {
+        event.preventDefault();
+        lossObserved = true;
+        console.log("BOXEDWINE_WEBGL_CONTEXT_LOST");
+      }, {once: true});
+      context.canvas.addEventListener("webglcontextrestored", function() {
+        console.log("BOXEDWINE_WEBGL_CONTEXT_RESTORED");
+      }, {once: true});
+      extension.loseContext();
+      console.log("BOXEDWINE_WEBGL_CONTEXT_LOSS_REQUESTED");
+    } catch (error) {
+      clearInterval(timer);
+      setTimeout(function() { throw error; }, 0);
+    }
+  }, 5);
+})();
+</script>"""
+
+
 def inject_test_harness(
     html_text: str,
     token: str,
@@ -627,11 +777,15 @@ def inject_test_harness(
 ) -> str:
     observer_script = _observer_script(token, group, suite.result_style)
     override_script = _command_override_script(suite, group, mode)
-    mutation_script = (
-        _readbuffer_yield_mutation_script()
-        if suite.name == "opengl-marshal" and group == "readbuffer-yield-replay"
-        else ""
-    )
+    mutation_script = ""
+    if suite.name == "opengl-marshal":
+        if group == "readbuffer-yield-replay":
+            mutation_script = _readbuffer_yield_mutation_script()
+        elif (
+            group == "webgl-context-loss-restore"
+            and (mode is None or not mode.startswith("multi-threaded"))
+        ):
+            mutation_script = _context_loss_restore_script()
     pattern = re.compile(
         r"(<script\b[^>]*\bsrc\s*=\s*"
         r"(?:[\"']boxedwine-shell\.js[\"']|boxedwine-shell\.js)"

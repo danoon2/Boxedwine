@@ -212,6 +212,17 @@
                 recordBufferData(arrayBuffer, paddedLength, padded);
                 return result;
               }
+              if (arguments.length === 3 && target === this.ARRAY_BUFFER && srcOrSize && typeof srcOrSize !== "number") {
+                var sourceData = copyBytes(srcOrSize);
+                if (sourceData) {
+                  var viewPadding = 256;
+                  var paddedView = new Uint8Array(sourceData.length + viewPadding);
+                  paddedView.set(sourceData);
+                  result = originalBufferData.call(this, target, paddedView, usage);
+                  recordBufferData(arrayBuffer, paddedView.length, paddedView);
+                  return result;
+                }
+              }
               if (arguments.length === 3 && target === this.ARRAY_BUFFER && typeof srcOrSize === "number" && srcOrSize > 0) {
                 var numericPadding = 256;
                 result = originalBufferData.call(this, target, srcOrSize + numericPadding, usage);
