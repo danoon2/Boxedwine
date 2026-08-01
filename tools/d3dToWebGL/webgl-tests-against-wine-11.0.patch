@@ -440,19 +440,6 @@ index ade80fb..c3ef14b 100644
  
      vp.X = 0;
      vp.Y = 0;
-@@ -14608,6 +14656,12 @@ static void depth_buffer2_test(void)
-         skip("Failed to create a D3D device, skipping tests.\n");
-         goto done;
-     }
-+    if (is_webgl())
-+    {
-+        skip("WebGL does not preserve desktop D3D depth-buffer copy semantics across render targets.\n");
-+        IDirect3DDevice9_Release(device);
-+        goto done;
-+    }
- 
-     vp.X = 0;
-     vp.Y = 0;
 @@ -14739,6 +14793,12 @@ static void depth_blit_test(void)
          skip("Failed to create a D3D device, skipping tests.\n");
          goto done;

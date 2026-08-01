@@ -236,10 +236,10 @@ The prepared `wine_tests_v6.zip` is a flat archive containing:
 - `SHA256SUMS`: hashes for all ten payload files above.
 
 The prepared graphics upload artifact is `tools/wineTests/wine_tests_v6.zip`.
-It is 11,989,746 bytes and its SHA-256 is:
+It is 11,989,636 bytes and its SHA-256 is:
 
 ```text
-4d476c2c915b566b3eefa7bb32c430e280432400ae3f1eff777e28dbcde04406
+9905ac1a1c83517797b8831632315c9b497df2dd4708e2dd034abeadc52b5ce8
 ```
 
 The public native default remains `wine_tests_v4.zip`. Browser DirectDraw,

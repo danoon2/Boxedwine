@@ -139,7 +139,7 @@ draw/state/query, or D3D8/D3D9 compatibility/diagnostics production patches
 contains Wine test files.
 `webgl-test-divergences-v2.json` pins the ordered patch series and the official
 Wine 11 source commit, then classifies all 42 unique added
-`skip()` rules (66 calls) and all 14 unique added `todo_wine_if()` rules
+`skip()` rules (65 calls) and all 14 unique added `todo_wine_if()` rules
 (44 calls) into exactly one of:
 
 - `intentional_webgl_limit`
@@ -571,6 +571,48 @@ Only the test bundle needs publishing:
   `4d476c2c915b566b3eefa7bb32c430e280432400ae3f1eff777e28dbcde04406`
 - WebGL divergence manifest:
   `16dac4bc902452121918921bd1ff563a9e858d23059a111a30e055349b260c86`
+
+### D3D9 partial depth copies across render targets
+
+On July 31, 2026 the WebGL-specific skip around D3D9
+`depth_buffer2_test()` was removed. The existing WineD3D path already
+preserves the partial depth updates made while switching between 640x480 and
+480x360 render targets, so no production DLL or filesystem change was needed.
+
+The focused unskipped test passed 87 assertions with 0 todo results,
+0 failures, and 0 skips in both Emscripten modes:
+
+- single-threaded non-JIT:
+  `C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-192838-838631`
+- single-threaded JIT:
+  `C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-193128-024867`
+
+The complete single-threaded non-JIT `visual` group passed 25,623 assertions
+with 40 todo results, 0 failures, and 46 skips in 879.187 seconds:
+
+```text
+C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-193239-604715
+```
+
+The exact final executable also passed native Wine's `stateblock` group:
+`/home/james/.cache/boxedwine/wineTests/runs/20260731-195454-640310`.
+
+The broader D3D9 `depth_buffer_test()` remains skipped. Its focused unskipped
+run completed 93 assertions but exposed five green-to-red pixel failures after
+switching among 320x240, 480x360, and 640x480 render targets. That is a genuine
+compatible depth-renderbuffer synchronization defect and is the next
+production implementation target; it was not converted into an accepted
+failure.
+
+The three v3/v10 filesystem ZIPs and all production DLL hashes are unchanged.
+Only the test bundle needs publishing:
+
+- packaged `d3d9_test.exe`:
+  `079d41e459b9e9929e0f667cf48bb343ad14733650b5b2ad0b505249fcff410d`
+- `wine_tests_v6.zip` (11,989,636 bytes):
+  `9905ac1a1c83517797b8831632315c9b497df2dd4708e2dd034abeadc52b5ce8`
+- WebGL divergence manifest:
+  `28aacde09a60bf3ec3d05c15c725fdc3de33f0da2f3a74acdddcd4d6b146fe37`
 
 ## D3DX9 baseline
 

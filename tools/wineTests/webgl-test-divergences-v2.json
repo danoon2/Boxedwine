@@ -68,7 +68,7 @@
   "test_patch": {
     "patch_id": "test-expectations",
     "path": "tools/d3dToWebGL/webgl-tests-against-wine-11.0.patch",
-    "sha256": "69c22c351dcc35b36011ef7e53b3a3a9fb57d14f1a795037adc84aceb1691bed"
+    "sha256": "b7f3a339fe818127680db00b9326f9e91e2f7ecf59b4de7173a4576c5f81882b"
   },
   "policy": "No production patch may modify Wine tests. Every added skip() and todo_wine_if() policy in the test-only patch must match exactly one classified rule.",
   "categories": {
@@ -197,7 +197,7 @@
         },
         {
           "marker": "skip(\"WebGL does not preserve desktop D3D depth-buffer copy semantics across render targets.\\n\");",
-          "occurrences": 3
+          "occurrences": 2
         },
         {
           "marker": "skip(\"WebGL does not preserve desktop D3D depth-stencil blit semantics.\\n\");",
