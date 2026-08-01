@@ -31,7 +31,7 @@ enum class WasmJitFlushReason : U8 {
 struct WasmJitBatchLimits {
     U32 maxBlocks = 64;
     U64 maxBatchBytes = 512 * 1024;
-    U32 urgentPendingHits = 8;
+    U32 urgentPendingHits = 64;
     U64 maxProcessOpenBytes = 4 * 1024 * 1024;
 };
 

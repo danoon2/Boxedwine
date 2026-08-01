@@ -190,6 +190,21 @@ void testWasmJitBatchPolicy() {
         testFail("batch urgent hit flush");
     }
 
+    WasmJitBatchPolicy productionHitPolicy;
+    productionHitPolicy.enqueue(50, a, 4);
+    WasmJitFlushRequest productionHitFlush;
+    for (U32 i = 0; i < 63; ++i) {
+        if (productionHitPolicy.recordPendingHit(50, productionHitFlush)) {
+            testFail("batch production urgent flush before hit 64");
+            break;
+        }
+    }
+    if (!productionHitPolicy.recordPendingHit(50, productionHitFlush) ||
+            productionHitFlush.reason != WasmJitFlushReason::PendingHits ||
+            productionHitFlush.entries != std::vector<U64>({50})) {
+        testFail("batch production urgent flush on hit 64");
+    }
+
     WasmJitBatchPolicy capPolicy(limits);
     capPolicy.enqueue(6, a, 8);
     auto capFlush = capPolicy.enqueue(7, b, 8);
@@ -741,7 +756,7 @@ void testWasmJitMtRuntimeGrouping() {
     batchStats = {};
     wasm_jit_mt_copy_runtime_batch_stats(&batchStats);
     if (batchStats.maxBlocks != 64 || batchStats.maxBatchBytes != 512 * 1024 ||
-            batchStats.urgentPendingHits != 8 ||
+            batchStats.urgentPendingHits != 64 ||
             batchStats.maxProcessOpenBytes != 4 * 1024 * 1024) {
         testFail("MT WASM runtime batch exported snapshot restores production limits");
     }
@@ -1151,13 +1166,13 @@ void testWasmJitMtPendingLifecycle() {
         testFail("MT WASM pending lifecycle does not translate or enqueue a pending block twice");
     }
     urgent->runCount = 0xff;
-    for (U32 i = 0; i < 7; ++i) {
+    for (U32 i = 0; i < 63; ++i) {
         runPending(testContext().cpu, addresses[0], urgent);
     }
     if (!(urgent->flags2 & OP_FLAG2_WASM_JIT_PENDING) || urgent->pfnJitCode ||
             urgent->runCount != 0xff || wasmJitTestMtTranslationCount() != translations ||
             wasmJitTestMtPendingCount() != 1) {
-        testFail("MT WASM pending lifecycle saturates runCount without retranslating before hit eight");
+        testFail("MT WASM pending lifecycle saturates runCount without retranslating before hit 64");
     }
     runPending(testContext().cpu, addresses[0], urgent);
     stats = wasmJitTestGetMtRuntimeStats();
@@ -1165,7 +1180,7 @@ void testWasmJitMtPendingLifecycle() {
             urgent->runCount != 0xff || wasmJitTestMtTranslationCount() != translations ||
             wasmJitTestMtPendingCount() != 0 || stats.urgentFlushes != 1 ||
             stats.groupedModules != 1 || stats.groupedFunctions != 1) {
-        testFail("MT WASM pending lifecycle flushes one group on the eighth pending hit: jit=%d pendingFlag=%d runCount=%u translations=%u/%u pending=%u urgent=%llu groups=%llu functions=%llu",
+        testFail("MT WASM pending lifecycle flushes one group on the 64th pending hit: jit=%d pendingFlag=%d runCount=%u translations=%u/%u pending=%u urgent=%llu groups=%llu functions=%llu",
             urgent->pfnJitCode != nullptr, (urgent->flags2 & OP_FLAG2_WASM_JIT_PENDING) != 0,
             urgent->runCount, wasmJitTestMtTranslationCount(), translations,
             wasmJitTestMtPendingCount(), stats.urgentFlushes, stats.groupedModules, stats.groupedFunctions);
@@ -1285,7 +1300,7 @@ void testWasmJitMtPendingLifecycle() {
         testFail("MT WASM pending lifecycle keeps CLONE_VM wrappers in separate batches");
     }
     clonePending->runCount = 0xff;
-    for (U32 i = 0; i < 8; ++i) {
+    for (U32 i = 0; i < productionLimits.urgentPendingHits; ++i) {
         runPending(cloneThread->cpu, addresses[1], clonePending);
     }
     if (!clonePending->pfnJitCode || clonePending->pfn != cloneProcess->startJITOp ||

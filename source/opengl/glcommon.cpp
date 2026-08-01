@@ -117,20 +117,34 @@ static bool isOpenGLProcAddressAvailable(const char* name) {
     }
 #endif
 
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+    // Wine resolves its GL dispatch table before it creates and makes its
+    // first context current. The cached pgl/ext_gl pointers are populated
+    // when that first context becomes current, so they are still null during
+    // this initial query. Emscripten's proc lookup is context-independent and
+    // lets us distinguish callable WebGL entry points from unsupported legacy
+    // GL functions without advertising every generated BoxedWine wrapper.
+#define BOXEDWINE_GL_PROC_AVAILABLE(proc) ((proc) != nullptr || SDL_GL_GetProcAddress(name) != nullptr)
+#else
+#define BOXEDWINE_GL_PROC_AVAILABLE(proc) ((proc) != nullptr)
+#endif
+
 #undef GL_FUNCTION
-#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) if (!strcmp(name, "gl" #func)) return pgl##func != nullptr;
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) if (!strcmp(name, "gl" #func)) return BOXEDWINE_GL_PROC_AVAILABLE(pgl##func);
 
 #undef GL_FUNCTION_FMT
-#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG) if (!strcmp(name, "gl" #func)) return pgl##func != nullptr;
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG) if (!strcmp(name, "gl" #func)) return BOXEDWINE_GL_PROC_AVAILABLE(pgl##func);
 
 #undef GL_FUNCTION_CUSTOM
-#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) if (!strcmp(name, "gl" #func)) return pgl##func != nullptr;
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) if (!strcmp(name, "gl" #func)) return BOXEDWINE_GL_PROC_AVAILABLE(pgl##func);
 
 #undef GL_EXT_FUNCTION
-#define GL_EXT_FUNCTION(func, RET, PARAMS) if (!strcmp(name, "gl" #func)) return ext_gl##func != nullptr;
+#define GL_EXT_FUNCTION(func, RET, PARAMS) if (!strcmp(name, "gl" #func)) return BOXEDWINE_GL_PROC_AVAILABLE(ext_gl##func);
 
 #include "glfunctions.h"
 #include "glfunctions_ext.h"
+
+#undef BOXEDWINE_GL_PROC_AVAILABLE
 
     return false;
 }
