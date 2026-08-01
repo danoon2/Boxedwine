@@ -134,6 +134,12 @@ one texel from a padded source row with unpack skips, and verifies through FBO
 readback that the update preserves the level size and untouched texels. It then
 generates and checks the complete mip chain. Browser runs reject a skipped test.
 
+`compressed-texture-capabilities` compares the advertised S3TC extension with
+the compressed-format list, rejects an invalid format, and, when S3TC is
+available, uploads, partially updates, and samples known DXT1, DXT3, and DXT5
+blocks. When S3TC is unavailable it instead verifies that a DXT1 upload is
+rejected. Browser runs reject a skipped test.
+
 Build the Win32 Release target, then run:
 
 ```powershell

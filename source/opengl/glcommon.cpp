@@ -530,6 +530,19 @@ static const char* getFilteredExtensionString(KProcess* process) {
                 if (hardwareExt[i] == "GL_OES_fixed_point" || hardwareExt[i] == "GL_ARB_imaging" || hardwareExt[i] == "GL_EXT_convolution" || hardwareExt[i] == "GL_EXT_histogram" || hardwareExt[i] == "GL_SGI_color_table") {
                     continue;
                 }
+                // WebGL exposes S3TC through WEBGL_compressed_texture_s3tc,
+                // while desktop GL clients (including WineD3D) look for the
+                // equivalent GL_EXT_texture_compression_s3tc capability.
+                if (hardwareExt[i] == "GL_WEBGL_compressed_texture_s3tc") {
+                    static const char* s3tcExt = "GL_EXT_texture_compression_s3tc";
+                    if ((!glExt.length() || strstr(glExt.c_str(), s3tcExt)) && !strstr(ext, s3tcExt)) {
+                        if (ext[0] != 0)
+                            strcat(ext, " ");
+                        extensionCount++;
+                        strcat(ext, s3tcExt);
+                    }
+                    continue;
+                }
 #endif
                 if (std::find(supportedExt.begin(), supportedExt.end(), hardwareExt[i]) == supportedExt.end()) {
                     continue;

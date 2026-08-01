@@ -309,6 +309,24 @@
 #ifndef GL_TEXTURE_COMPRESSED_IMAGE_SIZE
 #define GL_TEXTURE_COMPRESSED_IMAGE_SIZE 0x86A0
 #endif
+#ifndef GL_NUM_COMPRESSED_TEXTURE_FORMATS
+#define GL_NUM_COMPRESSED_TEXTURE_FORMATS 0x86A2
+#endif
+#ifndef GL_COMPRESSED_TEXTURE_FORMATS
+#define GL_COMPRESSED_TEXTURE_FORMATS 0x86A3
+#endif
+#ifndef GL_COMPRESSED_RGB_S3TC_DXT1_EXT
+#define GL_COMPRESSED_RGB_S3TC_DXT1_EXT 0x83F0
+#endif
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT1_EXT
+#define GL_COMPRESSED_RGBA_S3TC_DXT1_EXT 0x83F1
+#endif
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT3_EXT
+#define GL_COMPRESSED_RGBA_S3TC_DXT3_EXT 0x83F2
+#endif
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT5_EXT
+#define GL_COMPRESSED_RGBA_S3TC_DXT5_EXT 0x83F3
+#endif
 #ifndef GL_PIXEL_PACK_BUFFER
 #define GL_PIXEL_PACK_BUFFER 0x88EB
 #endif
@@ -796,6 +814,8 @@ using PFNGLMULTITEXIMAGE3DEXTPROC = void(APIENTRY*)(GLenum, GLenum, GLint, GLenu
 using PFNGLTEXTUREIMAGE3DEXTPROC = void(APIENTRY*)(GLuint, GLenum, GLint, GLenum, GLsizei, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*);
 using PFNGLTEXSUBIMAGE3DPROC = void(APIENTRY*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, const void*);
 using PFNGLTEXSUBIMAGE3DEXTPROC = void(APIENTRY*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, const void*);
+using PFNGLCOMPRESSEDTEXIMAGE2DPROC = void(APIENTRY*)(GLenum, GLint, GLenum, GLsizei, GLsizei, GLint, GLsizei, const void*);
+using PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC = void(APIENTRY*)(GLenum, GLint, GLint, GLint, GLsizei, GLsizei, GLenum, GLsizei, const void*);
 using PFNGLCOMPRESSEDTEXTURESUBIMAGE1DPROC = void(APIENTRY*)(GLuint, GLint, GLint, GLsizei, GLenum, GLsizei, const void*);
 using PFNGLCOMPRESSEDTEXTURESUBIMAGE2DPROC = void(APIENTRY*)(GLuint, GLint, GLint, GLint, GLsizei, GLsizei, GLenum, GLsizei, const void*);
 using PFNGLCOMPRESSEDTEXTURESUBIMAGE3DPROC = void(APIENTRY*)(GLuint, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLsizei, const void*);
@@ -1082,6 +1102,8 @@ struct GLFns {
     PFNGLTEXTUREIMAGE3DEXTPROC TextureImage3DEXT = nullptr;
     PFNGLTEXSUBIMAGE3DPROC TexSubImage3D = nullptr;
     PFNGLTEXSUBIMAGE3DEXTPROC TexSubImage3DEXT = nullptr;
+    PFNGLCOMPRESSEDTEXIMAGE2DPROC CompressedTexImage2D = nullptr;
+    PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC CompressedTexSubImage2D = nullptr;
     PFNGLCOMPRESSEDTEXTURESUBIMAGE1DPROC CompressedTextureSubImage1D = nullptr;
     PFNGLCOMPRESSEDTEXTURESUBIMAGE2DPROC CompressedTextureSubImage2D = nullptr;
     PFNGLCOMPRESSEDTEXTURESUBIMAGE3DPROC CompressedTextureSubImage3D = nullptr;
@@ -1497,6 +1519,8 @@ static bool loadGLFunctions() {
     load(glx.TextureImage3DEXT, "glTextureImage3DEXT");
     load(glx.TexSubImage3D, "glTexSubImage3D");
     load(glx.TexSubImage3DEXT, "glTexSubImage3DEXT");
+    load(glx.CompressedTexImage2D, "glCompressedTexImage2D");
+    load(glx.CompressedTexSubImage2D, "glCompressedTexSubImage2D");
     load(glx.CompressedTextureSubImage1D, "glCompressedTextureSubImage1D");
     load(glx.CompressedTextureSubImage2D, "glCompressedTextureSubImage2D");
     load(glx.CompressedTextureSubImage3D, "glCompressedTextureSubImage3D");
@@ -6798,6 +6822,339 @@ static TestResult testTexture2DArrayPageBoundaryReadback(TestContext&) {
         return fail("2D array texture readback bytes did not match");
     }
     return pass("page-boundary 2D array texture readback matched");
+}
+
+static GLuint makeCompressedTextureRenderProgram(std::string& error) {
+    const char* shadingLanguage =
+        reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION));
+    const char* glVersion = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+    bool isGLSLES =
+        (shadingLanguage && std::strstr(shadingLanguage, "GLSL ES")) ||
+        (glVersion && std::strstr(glVersion, "BoxedWine WebGL"));
+    std::vector<const char*> vsParts;
+    std::vector<const char*> fsParts;
+    if (isGLSLES) {
+        vsParts = {
+            "#version 300 es\n",
+            "in vec2 a_pos;\n",
+            "in vec2 a_uv;\n",
+            "out vec2 v_uv;\n",
+            "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); v_uv = a_uv; }\n"
+        };
+        fsParts = {
+            "#version 300 es\n",
+            "precision mediump float;\n",
+            "uniform sampler2D u_texture;\n",
+            "in vec2 v_uv;\n",
+            "out vec4 frag_color;\n",
+            "void main(){ frag_color = texture(u_texture, v_uv); }\n"
+        };
+    } else {
+        vsParts = {
+            "#version 120\n",
+            "attribute vec2 a_pos;\n",
+            "attribute vec2 a_uv;\n",
+            "varying vec2 v_uv;\n",
+            "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); v_uv = a_uv; }\n"
+        };
+        fsParts = {
+            "#version 120\n",
+            "uniform sampler2D u_texture;\n",
+            "varying vec2 v_uv;\n",
+            "void main(){ gl_FragColor = texture2D(u_texture, v_uv); }\n"
+        };
+    }
+
+    GLuint vs = compileShader(GL_VERTEX_SHADER, vsParts, nullptr, error);
+    if (!vs) {
+        return 0;
+    }
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsParts, nullptr, error);
+    if (!fs) {
+        glx.DeleteShader(vs);
+        return 0;
+    }
+
+    GLuint program = glx.CreateProgram();
+    glx.AttachShader(program, vs);
+    glx.AttachShader(program, fs);
+    glx.BindAttribLocation(program, 0, "a_pos");
+    glx.BindAttribLocation(program, 1, "a_uv");
+    glx.LinkProgram(program);
+    glx.DeleteShader(vs);
+    glx.DeleteShader(fs);
+
+    GLint linked = 0;
+    glx.GetProgramiv(program, GL_LINK_STATUS, &linked);
+    if (!linked) {
+        error = programLog(program);
+        glx.DeleteProgram(program);
+        return 0;
+    }
+    return program;
+}
+
+static void writeSolidS3TCBlock(GLenum format, unsigned short rgb565, unsigned char* block) {
+    const size_t colourOffset = format == GL_COMPRESSED_RGBA_S3TC_DXT1_EXT ? 0 : 8;
+    if (format == GL_COMPRESSED_RGBA_S3TC_DXT3_EXT) {
+        std::memset(block, 0xff, 8);
+    } else if (format == GL_COMPRESSED_RGBA_S3TC_DXT5_EXT) {
+        block[0] = 0xff;
+        block[1] = 0x00;
+        std::memset(block + 2, 0, 6);
+    }
+    block[colourOffset + 0] = (unsigned char)(rgb565 & 0xff);
+    block[colourOffset + 1] = (unsigned char)(rgb565 >> 8);
+    block[colourOffset + 2] = block[colourOffset + 0];
+    block[colourOffset + 3] = block[colourOffset + 1];
+    std::memset(block + colourOffset + 4, 0, 4);
+}
+
+static bool compressedPixelMatches(const unsigned char* pixel,
+        unsigned char red, unsigned char green, unsigned char blue) {
+    return std::abs((int)pixel[0] - red) <= 16 &&
+        std::abs((int)pixel[1] - green) <= 16 &&
+        std::abs((int)pixel[2] - blue) <= 16 && pixel[3] >= 240;
+}
+
+static bool uploadUpdateAndSampleS3TC(GLuint program, GLenum format,
+        size_t blockSize, std::string& error) {
+    std::vector<unsigned char> upload(blockSize * 2, 0);
+    std::vector<unsigned char> update(blockSize, 0);
+    writeSolidS3TCBlock(format, 0xf800, upload.data());
+    writeSolidS3TCBlock(format, 0x07e0, upload.data() + blockSize);
+    writeSolidS3TCBlock(format, 0x001f, update.data());
+
+    GLuint compressedTexture = 0;
+    GLuint outputTexture = 0;
+    GLuint fbo = 0;
+    glGenTextures(1, &compressedTexture);
+    glBindTexture(GL_TEXTURE_2D, compressedTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glx.CompressedTexImage2D(GL_TEXTURE_2D, 0, format, 8, 4, 0,
+        (GLsizei)upload.size(), upload.data());
+    GLenum uploadError = glGetError();
+    if (uploadError == GL_NO_ERROR) {
+        glx.CompressedTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 4, 4, format,
+            (GLsizei)update.size(), update.data());
+        uploadError = glGetError();
+    }
+    if (uploadError != GL_NO_ERROR) {
+        error = "compressed upload/update produced GL error " + std::to_string(uploadError);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &compressedTexture);
+        return false;
+    }
+
+    glGenTextures(1, &outputTexture);
+    glBindTexture(GL_TEXTURE_2D, outputTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 64, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glx.GenFramebuffers(1, &fbo);
+    glx.BindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glx.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+        GL_TEXTURE_2D, outputTexture, 0);
+    GLenum framebufferStatus = glx.CheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (framebufferStatus != GL_FRAMEBUFFER_COMPLETE) {
+        error = "sample framebuffer is incomplete: " + std::to_string(framebufferStatus);
+        glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &outputTexture);
+        glDeleteTextures(1, &compressedTexture);
+        return false;
+    }
+
+    const GLfloat positions[] = {
+        -1.0f, -1.0f,
+         1.0f, -1.0f,
+        -1.0f,  1.0f,
+         1.0f,  1.0f,
+    };
+    const GLfloat texcoords[] = {
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+        0.0f, 1.0f,
+        1.0f, 1.0f,
+    };
+    glViewport(0, 0, 64, 32);
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_SCISSOR_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glx.UseProgram(program);
+    GLint samplerLocation = glx.GetUniformLocation(program, "u_texture");
+    glx.Uniform1i(samplerLocation, 0);
+    glx.ActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, compressedTexture);
+    if (glx.BindBuffer) {
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+    glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, positions);
+    glx.VertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, texcoords);
+    glx.EnableVertexAttribArray(0);
+    glx.EnableVertexAttribArray(1);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glx.DisableVertexAttribArray(1);
+    glx.DisableVertexAttribArray(0);
+    glx.UseProgram(0);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    unsigned char left[4] = {};
+    unsigned char right[4] = {};
+    glReadPixels(16, 16, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, left);
+    glReadPixels(48, 16, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, right);
+    GLenum renderError = glGetError();
+
+    glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+    glx.DeleteFramebuffers(1, &fbo);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &outputTexture);
+    glDeleteTextures(1, &compressedTexture);
+
+    if (renderError != GL_NO_ERROR) {
+        error = "compressed texture sampling produced GL error " + std::to_string(renderError);
+        return false;
+    }
+    if (!compressedPixelMatches(left, 0, 0, 255)) {
+        error = "updated left block sampled as (" + std::to_string(left[0]) + ", " +
+            std::to_string(left[1]) + ", " + std::to_string(left[2]) + ", " +
+            std::to_string(left[3]) + ") instead of blue";
+        return false;
+    }
+    if (!compressedPixelMatches(right, 0, 255, 0)) {
+        error = "preserved right block sampled as (" + std::to_string(right[0]) + ", " +
+            std::to_string(right[1]) + ", " + std::to_string(right[2]) + ", " +
+            std::to_string(right[3]) + ") instead of green";
+        return false;
+    }
+    return true;
+}
+
+static TestResult testCompressedTextureCapabilities(TestContext& ctx) {
+    if (!glx.CompressedTexImage2D || !glx.CompressedTexSubImage2D ||
+        !glx.CreateProgram || !glx.BindAttribLocation || !glx.UseProgram ||
+        !glx.GetUniformLocation || !glx.Uniform1i || !glx.ActiveTexture ||
+        !glx.VertexAttribPointer || !glx.EnableVertexAttribArray ||
+        !glx.DisableVertexAttribArray || !glx.GenFramebuffers ||
+        !glx.BindFramebuffer || !glx.FramebufferTexture2D ||
+        !glx.CheckFramebufferStatus || !glx.DeleteFramebuffers) {
+        return skip("compressed upload or sampling entry points are unavailable");
+    }
+
+    drainGLErrors();
+    GLint formatCount = 0;
+    glGetIntegerv(GL_NUM_COMPRESSED_TEXTURE_FORMATS, &formatCount);
+    GLenum queryError = glGetError();
+    if (queryError != GL_NO_ERROR) {
+        return fail("compressed format count query produced GL error " + std::to_string(queryError));
+    }
+    if (formatCount < 0 || formatCount > 256) {
+        return fail("compressed format count is unreasonable: " + std::to_string(formatCount));
+    }
+
+    PageBytes formatBytes;
+    const GLint* formats = nullptr;
+    if (formatCount) {
+        if (!formatBytes.init((size_t)formatCount * sizeof(GLint), 13)) {
+            return skip("VirtualAlloc failed for page-boundary compressed format list");
+        }
+        glGetIntegerv(GL_COMPRESSED_TEXTURE_FORMATS,
+            reinterpret_cast<GLint*>(formatBytes.data));
+        queryError = glGetError();
+        if (queryError != GL_NO_ERROR) {
+            return fail("compressed format list query produced GL error " + std::to_string(queryError));
+        }
+        formats = reinterpret_cast<const GLint*>(formatBytes.data);
+    }
+
+    auto containsFormat = [formats, formatCount](GLenum candidate) {
+        for (GLint i = 0; i < formatCount; ++i) {
+            if ((GLenum)formats[i] == candidate) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool advertisesS3TC = hasExtensionString("GL_EXT_texture_compression_s3tc");
+    const bool hasDXT1 = containsFormat(GL_COMPRESSED_RGB_S3TC_DXT1_EXT) ||
+        containsFormat(GL_COMPRESSED_RGBA_S3TC_DXT1_EXT);
+    const bool hasDXT3 = containsFormat(GL_COMPRESSED_RGBA_S3TC_DXT3_EXT);
+    const bool hasDXT5 = containsFormat(GL_COMPRESSED_RGBA_S3TC_DXT5_EXT);
+    std::ostringstream capabilityDetails;
+    capabilityDetails << "compressed texture caps: s3tc=" << advertisesS3TC
+        << " count=" << formatCount << " dxt1=" << hasDXT1
+        << " dxt3=" << hasDXT3 << " dxt5=" << hasDXT5 << " formats=";
+    for (GLint i = 0; i < formatCount; ++i) {
+        if (i) {
+            capabilityDetails << ',';
+        }
+        capabilityDetails << "0x" << std::hex << formats[i] << std::dec;
+    }
+    ctx.write(capabilityDetails.str());
+    if (advertisesS3TC != (hasDXT1 && hasDXT3 && hasDXT5)) {
+        return fail("GL_EXT_texture_compression_s3tc advertisement does not match the compressed format list: " +
+            capabilityDetails.str());
+    }
+
+    const unsigned char invalidBlock[8] = {};
+    GLuint invalidTexture = 0;
+    glGenTextures(1, &invalidTexture);
+    glBindTexture(GL_TEXTURE_2D, invalidTexture);
+    drainGLErrors();
+    glx.CompressedTexImage2D(GL_TEXTURE_2D, 0, 0xdead, 4, 4, 0,
+        sizeof(invalidBlock), invalidBlock);
+    GLenum invalidError = glGetError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDeleteTextures(1, &invalidTexture);
+    if (invalidError == GL_NO_ERROR) {
+        return fail("invalid compressed format 0xdead was accepted");
+    }
+
+    if (!advertisesS3TC) {
+        GLuint rejectedTexture = 0;
+        glGenTextures(1, &rejectedTexture);
+        glBindTexture(GL_TEXTURE_2D, rejectedTexture);
+        drainGLErrors();
+        glx.CompressedTexImage2D(GL_TEXTURE_2D, 0,
+            GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, 4, 4, 0,
+            sizeof(invalidBlock), invalidBlock);
+        GLenum rejectedError = glGetError();
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &rejectedTexture);
+        if (rejectedError == GL_NO_ERROR) {
+            return fail("unadvertised S3TC DXT1 format was accepted");
+        }
+        return pass("unadvertised S3TC and invalid compressed formats were rejected consistently");
+    }
+
+    std::string error;
+    GLuint program = makeCompressedTextureRenderProgram(error);
+    if (!program) {
+        return fail("compressed texture sampling program failed to build: " + error);
+    }
+    struct FormatCase {
+        GLenum format;
+        size_t blockSize;
+        const char* name;
+    };
+    const FormatCase cases[] = {
+        { GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, 8, "DXT1" },
+        { GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, 16, "DXT3" },
+        { GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, 16, "DXT5" },
+    };
+    for (const FormatCase& formatCase : cases) {
+        if (!uploadUpdateAndSampleS3TC(program, formatCase.format,
+                formatCase.blockSize, error)) {
+            glx.DeleteProgram(program);
+            return fail(std::string(formatCase.name) + " compressed texture test failed: " + error);
+        }
+    }
+    glx.DeleteProgram(program);
+    return pass("advertised DXT1/DXT3/DXT5 uploads, updates, sampling, and invalid-format rejection matched");
 }
 
 static TestResult testCompressedTextureReadback(TestContext&) {
@@ -15203,6 +15560,7 @@ static std::vector<TestCase> tests() {
         { "dsa-texture-subimage3d-pbo-offset", testDSATextureSubImage3DPBOOffset },
         { "ext-dsa-texture-subimage3d-pbo-offset", testEXTTextureDSASubImage3DPBOOffset },
         { "texture2d-array-page-boundary-readback", testTexture2DArrayPageBoundaryReadback },
+        { "compressed-texture-capabilities", testCompressedTextureCapabilities },
         { "compressed-texture-readback", testCompressedTextureReadback },
         { "dsa-gettextureimage-page-boundary", testDSAGetTextureImagePageBoundary },
         { "ext-gettextureimage-array-readback", testEXTGetTextureImageArrayReadback },

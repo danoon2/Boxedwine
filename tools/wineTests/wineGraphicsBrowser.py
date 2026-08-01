@@ -110,6 +110,7 @@ GRAPHICS_SUITES = {
             "element-buffer-client-array-max-index",
             "dynamic-buffer-map-sync",
             "texture-level-update-mipmap-row-pitch",
+            "compressed-texture-capabilities",
         ),
         ("--test",),
         (),
@@ -333,6 +334,10 @@ def parse_graphics_result(
         suite.name == "opengl-marshal"
         and group == "texture-level-update-mipmap-row-pitch"
     )
+    requires_compressed_texture_execution = (
+        suite.name == "opengl-marshal"
+        and group == "compressed-texture-capabilities"
+    )
     records = (
         _marshal_failure_records(output) if is_marshal else _failure_records(output)
     )
@@ -466,6 +471,8 @@ def parse_graphics_result(
         reason = "dynamic buffer map regression skipped"
     elif requires_texture_level_execution and skipped:
         reason = "texture level regression skipped"
+    elif requires_compressed_texture_execution and skipped:
+        reason = "compressed texture capability regression skipped"
     else:
         reason = "ok"
 
