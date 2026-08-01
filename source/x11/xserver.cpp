@@ -445,12 +445,37 @@ int XServer::removePixmap(U32 pixmap) {
 	return BadPixmap;
 }
 
+XPBufferPtr XServer::createNewPBuffer(U32 width, U32 height, U32 depth, const VisualPtr& visual, U32 fbConfigId, bool preservedContents, U32 eventMask) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pbuffersMutex);
+	XPBufferPtr result = std::make_shared<XPBuffer>(width, height, depth, visual, fbConfigId, preservedContents, eventMask);
+	pbuffers.set(result->id, result);
+	return result;
+}
+
+XPBufferPtr XServer::getPBuffer(U32 pbuffer) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pbuffersMutex);
+	return pbuffers.get(pbuffer);
+}
+
+int XServer::removePBuffer(U32 pbuffer) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pbuffersMutex);
+	if (!pbuffers.get(pbuffer)) {
+		return BadDrawable;
+	}
+	pbuffers.remove(pbuffer);
+	return Success;
+}
+
 XDrawablePtr XServer::getDrawable(U32 xid) {
 	XDrawablePtr result = getPixmap(xid);
 	if (result) {
 		return result;
 	}
-	return getWindow(xid);
+	result = getWindow(xid);
+	if (result) {
+		return result;
+	}
+	return getPBuffer(xid);
 }
 
 void XServer::addCursor(const XCursorPtr& cursor) {

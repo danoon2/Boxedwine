@@ -19,6 +19,9 @@
 		1A0F95702C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
 		1A0F95722C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
 		1A0F95742C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
+		B0C0D0010000000000000003 /* macOpenGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0010000000000000001 /* macOpenGL.mm */; };
+		B0C0D0010000000000000004 /* macOpenGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0010000000000000001 /* macOpenGL.mm */; };
+		B0C0D0010000000000000005 /* macOpenGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0010000000000000001 /* macOpenGL.mm */; };
 		1A1551FA2632673F006E0C8A /* SDL2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; };
 		1A1551FB2632673F006E0C8A /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1A5405262A04AB4E0061653D /* libcurl.4.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A5405252A04AB4E0061653D /* libcurl.4.tbd */; };
@@ -538,6 +541,8 @@
 		1AFC479C2648471000EE5FCC /* audiounit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = audiounit.cpp; path = ../../../platform/mac/audiounit.cpp; sourceTree = "<group>"; };
 		1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMIDI.framework; path = System/Library/Frameworks/CoreMIDI.framework; sourceTree = SDKROOT; };
 		1AFC48092663FFC000EE5FCC /* pixelformat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = pixelformat.cpp; path = ../../../platform/mac/pixelformat.cpp; sourceTree = "<group>"; };
+		B0C0D0010000000000000001 /* macOpenGL.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = macOpenGL.mm; path = ../../../platform/mac/macOpenGL.mm; sourceTree = "<group>"; };
+		B0C0D0010000000000000002 /* macOpenGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = macOpenGL.h; path = ../../../platform/mac/macOpenGL.h; sourceTree = "<group>"; };
 		710091362644D42B003413C3 /* kdspaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = kdspaudio.cpp; path = ../../../platform/sdl/kdspaudio.cpp; sourceTree = "<group>"; };
 		710091372644D42B003413C3 /* knativesystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativesystem.cpp; path = ../../../platform/sdl/knativesystem.cpp; sourceTree = "<group>"; };
 		710091382644D42B003413C3 /* knativethread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativethread.cpp; path = ../../../platform/sdl/knativethread.cpp; sourceTree = "<group>"; };
@@ -859,6 +864,8 @@
 		1AFC4792264826E100EE5FCC /* mac */ = {
 			isa = PBXGroup;
 			children = (
+				B0C0D0010000000000000002 /* macOpenGL.h */,
+				B0C0D0010000000000000001 /* macOpenGL.mm */,
 				1AFC48092663FFC000EE5FCC /* pixelformat.cpp */,
 				1AFC479C2648471000EE5FCC /* audiounit.cpp */,
 				1AFC4795264827A600EE5FCC /* coremidi.cpp */,
@@ -1431,6 +1438,7 @@
 				1A80F187276EBF170032A70A /* audiounit.cpp in Sources */,
 				1A80F19B276EBF170032A70A /* AppDelegate.m in Sources */,
 				1A80F1A2276EBF170032A70A /* pixelformat.cpp in Sources */,
+				B0C0D0010000000000000003 /* macOpenGL.mm in Sources */,
 				1A55D6562A08428F002B7021 /* gzclose.c in Sources */,
 				1A80F1AC276EBF170032A70A /* imgui_impl_opengl3.cpp in Sources */,
 				1A55D6302A0841E2002B7021 /* inflate.c in Sources */,
@@ -1569,6 +1577,7 @@
 				71B498ED2D4AA31600A8AB32 /* mztools.c in Sources */,
 				71222C1C24351CBA00CDBABD /* AppDelegate.m in Sources */,
 				1AFC480B2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
+				B0C0D0010000000000000004 /* macOpenGL.mm in Sources */,
 				1A55D64C2A08428F002B7021 /* deflate.c in Sources */,
 				1A55D63E2A0841E2002B7021 /* infback.c in Sources */,
 				1A55D63A2A0841E2002B7021 /* inftrees.c in Sources */,
@@ -1687,6 +1696,7 @@
 				1AEBC3A02AABC111007ECB08 /* BoxedwineUnitTestsMain.m in Sources */,
 				1AC5F2FF2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */,
 				1AFC480D2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
+				B0C0D0010000000000000005 /* macOpenGL.mm in Sources */,
 				1A0F95742C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				7135DC65264EBCD0005D6AA6 /* knativesystem.cpp in Sources */,
 				1A0F955D2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,

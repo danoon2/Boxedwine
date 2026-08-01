@@ -19,9 +19,14 @@
 #include "boxedwine.h"
 #include "x11.h"
 
-XDrawable::XDrawable(U32 width, U32 height, U32 depth, const VisualPtr& visual, bool isWindow) : id(XServer::getNextId()), isWindow(isWindow), depth(depth), visual(visual), w(width), h(height) {
+XDrawable::XDrawable(U32 width, U32 height, U32 depth, const VisualPtr& visual, bool isWindow, bool isPBuffer) : id(XServer::getNextId()), isWindow(isWindow), isPBuffer(isPBuffer), depth(depth), visual(visual), w(width), h(height) {
 	data = nullptr;
 	setSize(width, height);
+}
+
+XPBuffer::XPBuffer(U32 width, U32 height, U32 depth, const VisualPtr& visual, U32 fbConfigId, bool preservedContents, U32 eventMask)
+	: XDrawable(width, height, depth, visual, false, true), fbConfigId(fbConfigId), preservedContents(preservedContents), eventMask(eventMask) {
+	isOpenGL = true;
 }
 
 XDrawable::~XDrawable() {
@@ -71,12 +76,15 @@ void XDrawable::setSize(U32 width, U32 height) {
 	w = width;
 	h = height;
 	bytes_per_line = calculateBytesPerLine(visual?visual->bits_per_rgb:32, width);
-	size = height * bytes_per_line;
+	size = isPBuffer ? 0 : height * bytes_per_line;
 	if (data) {
 		delete[] data;
+		data = nullptr;
 	}
-	data = new U8[size];
-	memset(data, 0, size);
+	if (size) {
+		data = new U8[size];
+		memset(data, 0, size);
+	}
 }
 
 int XDrawable::putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage* image, S32 src_x, S32 src_y, S32 dest_x, S32 dest_y, U32 width, U32 height) {

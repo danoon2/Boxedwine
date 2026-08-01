@@ -165,6 +165,8 @@ public:
     std::vector<KPollData> pollData;
 public:
     U32 currentContext = 0;
+    U32 currentDrawable = 0;
+    U32 currentReadDrawable = 0;
     U32 glLastError = 0;
     bool log = false; // syscalls
     OpenGLVetexPointer glVertextPointer; // 0 index

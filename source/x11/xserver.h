@@ -50,6 +50,9 @@ public:
 	XPixmapPtr createNewPixmap(U32 width, U32 height, U32 depth, const VisualPtr& visual);
 	XPixmapPtr getPixmap(U32 pixmap);
 	int removePixmap(U32 pixmap);
+	XPBufferPtr createNewPBuffer(U32 width, U32 height, U32 depth, const VisualPtr& visual, U32 fbConfigId, bool preservedContents, U32 eventMask);
+	XPBufferPtr getPBuffer(U32 pbuffer);
+	int removePBuffer(U32 pbuffer);
 
 	XGCPtr createGC(XDrawablePtr drawable);
 	XGCPtr getGC(U32 gc);
@@ -146,6 +149,9 @@ private:
 
 	BOXEDWINE_MUTEX pixmapsMutex;
 	BHashTable<U32, XPixmapPtr> pixmaps;
+
+	BOXEDWINE_MUTEX pbuffersMutex;
+	BHashTable<U32, XPBufferPtr> pbuffers;
 
 	BOXEDWINE_MUTEX gcsMutex;
 	BHashTable<U32, XGCPtr> gcs;		

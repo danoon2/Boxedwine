@@ -24,6 +24,10 @@
 //#include "../../source/x11/x11.h"
 #include "../../source/opengl/glcommon.h"
 
+#if defined(__APPLE__)
+#include "../mac/macOpenGL.h"
+#endif
+
 BHashTable<U32, GLPixelFormatPtr> PlatformOpenGL::formatsById;
 std::vector<GLPixelFormatPtr> PlatformOpenGL::formats;
 bool PlatformOpenGL::hardwareListLoaded;
@@ -126,10 +130,10 @@ void PlatformOpenGL::init() {
             if (drawableType & GLX_PIXMAP_BIT && !doubleBuffer) {
                 format->pf.dwFlags |= K_PFD_DRAW_TO_BITMAP | K_PFD_GENERIC_FORMAT | K_PFD_SUPPORT_GDI;
             }
-            if (drawableType & GLX_PBUFFER) {
+            if (drawableType & GLX_PBUFFER_BIT) {
                 format->pbuffer = true;
                 format->pbufferMaxWidth = getGLXFBConfigAttrib(dsp, cfg, GLX_MAX_PBUFFER_WIDTH);
-                format->pbufferMaxWidth = getGLXFBConfigAttrib(dsp, cfg, GLX_MAX_PBUFFER_HEIGHT);
+                format->pbufferMaxHeight = getGLXFBConfigAttrib(dsp, cfg, GLX_MAX_PBUFFER_HEIGHT);
                 format->pbufferMaxPixels = getGLXFBConfigAttrib(dsp, cfg, GLX_MAX_PBUFFER_PIXELS);
             }
             format->pf.cColorBits = getGLXFBConfigAttrib(dsp, cfg, GLX_BUFFER_SIZE);
@@ -183,6 +187,10 @@ void PlatformOpenGL::init() {
         format->nativeId = i;
         format->depth = format->pf.cColorBits;
         format->bitsPerPixel = format->pf.cColorBits;
+#if defined(__APPLE__)
+        macOpenGLGetPixelFormatInfo(format->nativeId, &format->pbuffer, &format->sampleBuffers, &format->samples,
+                                    &format->pbufferMaxWidth, &format->pbufferMaxHeight, &format->pbufferMaxPixels);
+#endif
         formatsById.set(format->id, format);
         formats.push_back(format);
     }

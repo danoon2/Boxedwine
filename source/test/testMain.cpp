@@ -1078,6 +1078,14 @@ int runTestTestsFromArgs(int argc, char** argv) {
 #endif
 
 extern "C" BOXEDWINE_TEST_EXPORT int runCpuTestsMac(void);
+#if defined(__TEST) && defined(__APPLE__)
+extern "C" int macOpenGLPbufferSmokeTest(void);
+extern "C" BOXEDWINE_TEST_EXPORT __attribute__((used, retain)) int runMacOpenGLPbufferSmokeTest(void);
+
+extern "C" BOXEDWINE_TEST_EXPORT __attribute__((used, retain)) int runMacOpenGLPbufferSmokeTest(void) {
+    return macOpenGLPbufferSmokeTest();
+}
+#endif
 
 extern "C" BOXEDWINE_TEST_EXPORT int runCpuTestsMac(void) {
     const char* start = getenv("BOXEDWINE_TEST_START");

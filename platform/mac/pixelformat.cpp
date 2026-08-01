@@ -30,6 +30,7 @@
 #include <OpenGL/CGLRenderers.h>
 //#include <SDL_opengl.h>
 #include "pixelformat.h"
+#include "macOpenGL.h"
 #include <string.h>
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
@@ -876,20 +877,156 @@ static const pixel_format *get_pixel_format(int format, bool allow_nondisplayabl
 
 static bool initialized = false;
 
-int getPixelFormats(PixelFormat* pfs, int maxPfs) {
+static bool ensure_pixel_formats_initialized() {
     if (!initialized) {
-        init_pixel_formats();
         initialized = true;
+        init_pixel_formats();
+    }
+    return pixel_formats && nb_formats;
+}
+
+void* macOpenGLChoosePixelFormat(U32 nativeId, int major) {
+    if (!ensure_pixel_formats_initialized()) {
+        return nullptr;
+    }
+
+    const pixel_format* pf = get_pixel_format(nativeId, true);
+    if (!pf) {
+        kwarn_fmt("Invalid macOS OpenGL pixel format %u", nativeId);
+        return nullptr;
+    }
+
+    const bool core = major >= 3;
+    CGLPixelFormatAttribute attribs[64];
+    int n = 0;
+
+    attribs[n++] = kCGLPFAMinimumPolicy;
+    attribs[n++] = kCGLPFAClosestPolicy;
+    if (pf->accelerated) {
+        attribs[n++] = kCGLPFAAccelerated;
+        attribs[n++] = kCGLPFANoRecovery;
+    } else {
+        attribs[n++] = kCGLPFARendererID;
+        attribs[n++] = (CGLPixelFormatAttribute)kCGLRendererGenericFloatID;
+    }
+    if (pf->double_buffer) {
+        attribs[n++] = kCGLPFADoubleBuffer;
+    }
+    if (!core) {
+        attribs[n++] = kCGLPFAAuxBuffers;
+        attribs[n++] = (CGLPixelFormatAttribute)pf->aux_buffers;
+    }
+
+    attribs[n++] = kCGLPFAColorSize;
+    attribs[n++] = (CGLPixelFormatAttribute)color_modes[pf->color_mode].color_bits;
+    attribs[n++] = kCGLPFAAlphaSize;
+    attribs[n++] = (CGLPixelFormatAttribute)color_modes[pf->color_mode].alpha_bits;
+    if (color_modes[pf->color_mode].is_float) {
+        attribs[n++] = kCGLPFAColorFloat;
+    }
+    attribs[n++] = kCGLPFADepthSize;
+    attribs[n++] = (CGLPixelFormatAttribute)pf->depth_bits;
+    attribs[n++] = kCGLPFAStencilSize;
+    attribs[n++] = (CGLPixelFormatAttribute)pf->stencil_bits;
+    if (pf->stereo) {
+        attribs[n++] = kCGLPFAStereo;
+    }
+    if (pf->accum_mode && !core) {
+        attribs[n++] = kCGLPFAAccumSize;
+        attribs[n++] = (CGLPixelFormatAttribute)color_modes[pf->accum_mode - 1].color_bits;
+    }
+    if (pf->pbuffer && !core) {
+        attribs[n++] = kCGLPFAPBuffer;
+    }
+    if (pf->sample_buffers && pf->samples) {
+        attribs[n++] = kCGLPFASampleBuffers;
+        attribs[n++] = (CGLPixelFormatAttribute)pf->sample_buffers;
+        attribs[n++] = kCGLPFASamples;
+        attribs[n++] = (CGLPixelFormatAttribute)pf->samples;
+    }
+    if (pf->backing_store) {
+        attribs[n++] = kCGLPFABackingStore;
+    }
+    if (core) {
+        attribs[n++] = kCGLPFAOpenGLProfile;
+        attribs[n++] = major >= 4 ? (CGLPixelFormatAttribute)kCGLOGLPVersion_GL4_Core
+                                 : (CGLPixelFormatAttribute)kCGLOGLPVersion_3_2_Core;
+    }
+    attribs[n] = (CGLPixelFormatAttribute)0;
+
+    CGLPixelFormatObj pixelFormat = nullptr;
+    GLint virtualScreens = 0;
+    CGLError error = CGLChoosePixelFormat(attribs, &pixelFormat, &virtualScreens);
+    if (error != kCGLNoError || !pixelFormat) {
+        kwarn_fmt("CGLChoosePixelFormat failed for format %u: %d %s", nativeId, error, CGLErrorString(error));
+        return nullptr;
+    }
+    return pixelFormat;
+}
+
+bool macOpenGLGetPixelFormatInfo(U32 nativeId, bool* supportsPbuffer, bool* sampleBuffers, U32* samples,
+                                U32* maxPbufferWidth, U32* maxPbufferHeight, U32* maxPbufferPixels) {
+    if (!ensure_pixel_formats_initialized()) {
+        return false;
+    }
+    const pixel_format* pf = get_pixel_format(nativeId, false);
+    if (!pf) {
+        return false;
+    }
+
+    *supportsPbuffer = pf->pbuffer;
+    *sampleBuffers = pf->sample_buffers != 0;
+    *samples = pf->samples;
+    *maxPbufferWidth = 0;
+    *maxPbufferHeight = 0;
+    *maxPbufferPixels = 0;
+
+    if (pf->pbuffer) {
+        static bool limitsInitialized = false;
+        static U32 maxWidth = 0;
+        static U32 maxHeight = 0;
+        static U32 maxPixels = 0;
+        if (!limitsInitialized) {
+            limitsInitialized = true;
+            CGLPixelFormatObj pixelFormat = (CGLPixelFormatObj)macOpenGLChoosePixelFormat(nativeId, 0);
+            CGLContextObj context = nullptr;
+            if (pixelFormat && CGLCreateContext(pixelFormat, nullptr, &context) == kCGLNoError && context) {
+                CGLContextObj previous = CGLGetCurrentContext();
+                if (CGLSetCurrentContext(context) == kCGLNoError) {
+                    GLint dimensions[2] = {0, 0};
+                    glGetIntegerv(GL_MAX_VIEWPORT_DIMS, dimensions);
+                    maxWidth = std::max(0, dimensions[0]);
+                    maxHeight = std::max(0, dimensions[1]);
+                    U64 pixels = (U64)maxWidth * maxHeight;
+                    maxPixels = pixels > 0xffffffffULL ? 0xffffffffU : (U32)pixels;
+                }
+                CGLSetCurrentContext(previous);
+                CGLReleaseContext(context);
+            }
+            if (pixelFormat) {
+                CGLReleasePixelFormat(pixelFormat);
+            }
+        }
+        *maxPbufferWidth = maxWidth;
+        *maxPbufferHeight = maxHeight;
+        *maxPbufferPixels = maxPixels;
+    }
+    return true;
+}
+
+int getPixelFormats(PixelFormat* pfs, int maxPfs) {
+    if (!ensure_pixel_formats_initialized()) {
+        return 1;
     }
     const pixel_format *pf;
     const struct color_mode *mode;
     int count = nb_displayable_formats;
-    int result = 0;
+    int result = 1;
     
-    if (count > maxPfs) {
-        count = maxPfs;
+    if (count >= maxPfs) {
+        count = maxPfs - 1;
     }
-    for (int i=1;i<=nb_formats && result < count;i++) {
+    for (int i=1;i<=nb_formats && result <= count;i++) {
 
         if (!(pf = get_pixel_format(i, FALSE))) {
             continue;
