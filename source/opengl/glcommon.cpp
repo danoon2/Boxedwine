@@ -973,8 +973,63 @@ void glcommon_glTexSubImage2D(CPU* cpu) {
     GLenum type = ARG8;
     const GLvoid* pixels = PIXEL_UNPACK_BUFFER() ? (GLvoid*)pARG9 : marshalPixels(cpu, target == GL_TEXTURE_3D ? 3 : 2, width, height, 1, format, type, ARG9, xoffset, yoffset, level);
 
+#ifdef __EMSCRIPTEN__
+    std::vector<U8> tightlyPackedPixels;
+    GLint unpackAlignment = 1;
+    GLint unpackRowLength = 0;
+    GLint unpackSkipRows = 0;
+    GLint unpackSkipPixels = 0;
+    bool restoreUnpackState = false;
+    if (!PIXEL_UNPACK_BUFFER() && pixels && width > 0 && height > 0 &&
+            type != GL_BITMAP) {
+        GL_FUNC(pglGetIntegerv)(GL_UNPACK_ALIGNMENT, &unpackAlignment);
+        GL_FUNC(pglGetIntegerv)(GL_UNPACK_ROW_LENGTH, &unpackRowLength);
+        GL_FUNC(pglGetIntegerv)(GL_UNPACK_SKIP_ROWS, &unpackSkipRows);
+        GL_FUNC(pglGetIntegerv)(GL_UNPACK_SKIP_PIXELS, &unpackSkipPixels);
+
+        GLint bytesPerPixel = get_bytes_per_pixel(format, type);
+        if (bytesPerPixel > 0 &&
+                (unpackRowLength || unpackSkipRows || unpackSkipPixels)) {
+            U64 sourcePixelsPerRow = unpackRowLength > 0
+                ? (U64)unpackRowLength : (U64)width;
+            U64 sourceRowBytes = sourcePixelsPerRow * (U64)bytesPerPixel;
+            U64 alignment = unpackAlignment > 0 ? (U64)unpackAlignment : 1;
+            sourceRowBytes = (sourceRowBytes + alignment - 1) & ~(alignment - 1);
+            U64 packedRowBytes = (U64)width * (U64)bytesPerPixel;
+            U64 packedSize = packedRowBytes * (U64)height;
+            U64 sourceOffset = (U64)unpackSkipRows * sourceRowBytes
+                + (U64)unpackSkipPixels * (U64)bytesPerPixel;
+
+            if (packedSize <= SIZE_MAX && sourceOffset <= SIZE_MAX) {
+                tightlyPackedPixels.resize((size_t)packedSize);
+                const U8* source = (const U8*)pixels + (size_t)sourceOffset;
+                for (GLsizei row = 0; row < height; ++row) {
+                    std::memcpy(tightlyPackedPixels.data()
+                            + (size_t)row * (size_t)packedRowBytes,
+                        source + (size_t)row * (size_t)sourceRowBytes,
+                        (size_t)packedRowBytes);
+                }
+                pixels = tightlyPackedPixels.data();
+                GL_FUNC(pglPixelStorei)(GL_UNPACK_ALIGNMENT, 1);
+                GL_FUNC(pglPixelStorei)(GL_UNPACK_ROW_LENGTH, 0);
+                GL_FUNC(pglPixelStorei)(GL_UNPACK_SKIP_ROWS, 0);
+                GL_FUNC(pglPixelStorei)(GL_UNPACK_SKIP_PIXELS, 0);
+                restoreUnpackState = true;
+            }
+        }
+    }
+#endif
+
     GL_LOG("glTexSubImage2D GLenum target=%x, GLint level=%d, GLint xoffset=%d, GLint yoffset=%d, GLsizei width=%d, GLsizei height=%d, GLenum format=%x, GLenum type=%x, const GLvoid* pixels=%x", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9);
     GL_FUNC(pglTexSubImage2D)(target, level, xoffset, yoffset, width, height, format, type, pixels);
+#ifdef __EMSCRIPTEN__
+    if (restoreUnpackState) {
+        GL_FUNC(pglPixelStorei)(GL_UNPACK_ALIGNMENT, unpackAlignment);
+        GL_FUNC(pglPixelStorei)(GL_UNPACK_ROW_LENGTH, unpackRowLength);
+        GL_FUNC(pglPixelStorei)(GL_UNPACK_SKIP_ROWS, unpackSkipRows);
+        GL_FUNC(pglPixelStorei)(GL_UNPACK_SKIP_PIXELS, unpackSkipPixels);
+    }
+#endif
 }
 
 // GLAPI void APIENTRY glGetPointerv( GLenum pname, GLvoid **params ) {

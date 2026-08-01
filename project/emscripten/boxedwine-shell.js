@@ -92,13 +92,6 @@
               }
               return originalBufferData.apply(this, arguments);
             };
-            var originalTexSubImage2D = contextPrototype.texSubImage2D;
-            contextPrototype.texSubImage2D = function(target, level, xoffset, yoffset, width, height, format, type) {
-              if (level > 0 && xoffset === 0 && yoffset === 0 && typeof width === "number" && typeof height === "number" && width > 0 && height > 0 && arguments.length >= 9) {
-                this.texImage2D(target, level, format, width, height, 0, format, type, null);
-              }
-              return originalTexSubImage2D.apply(this, arguments);
-            };
           }
           patchBufferData(window.WebGLRenderingContext && window.WebGLRenderingContext.prototype);
           patchBufferData(window.WebGL2RenderingContext && window.WebGL2RenderingContext.prototype);

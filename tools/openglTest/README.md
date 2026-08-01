@@ -129,6 +129,11 @@ element-buffer flushes. It verifies both rendered output and synchronization of
 mapped indices with the client-array maximum-index shadow. Browser runs reject
 a skipped test.
 
+`texture-level-update-mipmap-row-pitch` allocates a nonzero mip level, updates
+one texel from a padded source row with unpack skips, and verifies through FBO
+readback that the update preserves the level size and untouched texels. It then
+generates and checks the complete mip chain. Browser runs reject a skipped test.
+
 Build the Win32 Release target, then run:
 
 ```powershell

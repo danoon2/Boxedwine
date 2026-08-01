@@ -183,6 +183,12 @@
 #ifndef GL_MAP_FLUSH_EXPLICIT_BIT
 #define GL_MAP_FLUSH_EXPLICIT_BIT 0x0010
 #endif
+#ifndef GL_TEXTURE_BASE_LEVEL
+#define GL_TEXTURE_BASE_LEVEL 0x813C
+#endif
+#ifndef GL_TEXTURE_MAX_LEVEL
+#define GL_TEXTURE_MAX_LEVEL 0x813D
+#endif
 #ifndef GL_COLOR_SUM
 #define GL_COLOR_SUM 0x8458
 #endif
@@ -5554,6 +5560,197 @@ static TestResult testTextureSubImagePageBoundary(TestContext&) {
         return fail("texture subimage target pixel did not match");
     }
     return pass("page-boundary texture subimage matched");
+}
+
+static TestResult testTextureLevelUpdateMipmapRowPitch(TestContext&) {
+    if (!glx.GenerateMipmap || !glx.GenFramebuffers ||
+        !glx.BindFramebuffer || !glx.FramebufferTexture2D ||
+        !glx.CheckFramebufferStatus || !glx.DeleteFramebuffers) {
+        return skip("texture mipmap/framebuffer entry points are unavailable");
+    }
+
+    PageBytes upload;
+    PageBytes level1Readback;
+    PageBytes level2Readback;
+    if (!upload.init(4 * 3 * 4, 29) ||
+        !level1Readback.init(2 * 2 * 4, 13) ||
+        !level2Readback.init(4, 3)) {
+        return skip("VirtualAlloc failed for texture level regression buffers");
+    }
+
+    const unsigned char basePixel[4] = { 40, 120, 220, 255 };
+    const unsigned char initialLevel1Pixel[4] = { 10, 20, 180, 255 };
+    const unsigned char updatePixel[4] = { 230, 70, 30, 255 };
+    unsigned char basePixels[4 * 4 * 4] = {};
+    unsigned char initialLevel1[2 * 2 * 4] = {};
+    for (size_t i = 0; i < sizeof(basePixels); i += 4) {
+        std::memcpy(basePixels + i, basePixel, 4);
+    }
+    for (size_t i = 0; i < sizeof(initialLevel1); i += 4) {
+        std::memcpy(initialLevel1 + i, initialLevel1Pixel, 4);
+    }
+    std::memset(upload.data, 0x5a, upload.size);
+    std::memcpy(upload.data + (1 * 4 + 1) * 4, updatePixel, 4);
+
+    GLuint tex = 0;
+    GLuint fbo = 0;
+    glGenTextures(1, &tex);
+    glx.GenFramebuffers(1, &fbo);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0,
+        GL_RGBA, GL_UNSIGNED_BYTE, basePixels);
+    glTexImage2D(GL_TEXTURE_2D, 1, GL_RGBA, 2, 2, 0,
+        GL_RGBA, GL_UNSIGNED_BYTE, initialLevel1);
+    GLenum allocationErr = glGetError();
+    if (allocationErr != GL_NO_ERROR) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &tex);
+        return fail("texture level allocation produced GL error " +
+            std::to_string(allocationErr));
+    }
+
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 4);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, 1);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 1);
+    GLenum rowPitchStateErr = glGetError();
+    if (rowPitchStateErr != GL_NO_ERROR) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &tex);
+        return fail("texture row-pitch state setup produced GL error " +
+            std::to_string(rowPitchStateErr));
+    }
+    glTexSubImage2D(GL_TEXTURE_2D, 1, 0, 0, 1, 1,
+        GL_RGBA, GL_UNSIGNED_BYTE, upload.data);
+    GLenum partialUploadErr = glGetError();
+    if (partialUploadErr != GL_NO_ERROR) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &tex);
+        return fail("texture row-pitch partial upload produced GL error " +
+            std::to_string(partialUploadErr));
+    }
+    GLint restoredAlignment = 0;
+    GLint restoredRowLength = 0;
+    GLint restoredSkipRows = 0;
+    GLint restoredSkipPixels = 0;
+    glGetIntegerv(GL_UNPACK_ALIGNMENT, &restoredAlignment);
+    glGetIntegerv(GL_UNPACK_ROW_LENGTH, &restoredRowLength);
+    glGetIntegerv(GL_UNPACK_SKIP_ROWS, &restoredSkipRows);
+    glGetIntegerv(GL_UNPACK_SKIP_PIXELS, &restoredSkipPixels);
+    if (restoredAlignment != 1 || restoredRowLength != 4 ||
+        restoredSkipRows != 1 || restoredSkipPixels != 1) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &tex);
+        return fail("texture partial upload did not preserve unpack state");
+    }
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    GLenum rowPitchResetErr = glGetError();
+    if (rowPitchResetErr != GL_NO_ERROR) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &tex);
+        return fail("texture row-pitch state reset produced GL error " +
+            std::to_string(rowPitchResetErr));
+    }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);
+    GLenum levelRangeErr = glGetError();
+    if (levelRangeErr != GL_NO_ERROR) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &tex);
+        return fail("texture level range setup produced GL error " +
+            std::to_string(levelRangeErr));
+    }
+
+    glx.BindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glx.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+        GL_TEXTURE_2D, tex, 1);
+    GLenum updateStatus = glx.CheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (updateStatus != GL_FRAMEBUFFER_COMPLETE) {
+        glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &tex);
+        return fail("updated texture level was not framebuffer complete: " +
+            std::to_string(updateStatus));
+    }
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    glViewport(0, 0, 2, 2);
+    glReadPixels(0, 0, 2, 2, GL_RGBA, GL_UNSIGNED_BYTE,
+        level1Readback.data);
+    GLenum updateErr = glGetError();
+    if (updateErr != GL_NO_ERROR) {
+        glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &tex);
+        return fail("texture level partial update produced GL error " +
+            std::to_string(updateErr));
+    }
+    if (!rgbaEquals(level1Readback.data, updatePixel) ||
+        !rgbaEquals(level1Readback.data + 4, initialLevel1Pixel) ||
+        !rgbaEquals(level1Readback.data + 8, initialLevel1Pixel) ||
+        !rgbaEquals(level1Readback.data + 12, initialLevel1Pixel)) {
+        glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glx.DeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &tex);
+        return fail("texture row-pitch partial update did not preserve untouched texels");
+    }
+
+    glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 2);
+    glx.GenerateMipmap(GL_TEXTURE_2D);
+    glx.BindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glx.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+        GL_TEXTURE_2D, tex, 1);
+    GLenum level1Status = glx.CheckFramebufferStatus(GL_FRAMEBUFFER);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    glViewport(0, 0, 2, 2);
+    glReadPixels(0, 0, 2, 2, GL_RGBA, GL_UNSIGNED_BYTE,
+        level1Readback.data);
+    glx.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+        GL_TEXTURE_2D, tex, 2);
+    GLenum level2Status = glx.CheckFramebufferStatus(GL_FRAMEBUFFER);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    glViewport(0, 0, 1, 1);
+    glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE,
+        level2Readback.data);
+    GLenum mipErr = glGetError();
+    glx.BindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glx.DeleteFramebuffers(1, &fbo);
+    glDeleteTextures(1, &tex);
+
+    if (mipErr != GL_NO_ERROR) {
+        return fail("texture mip generation/readback produced GL error " +
+            std::to_string(mipErr));
+    }
+    if (level1Status != GL_FRAMEBUFFER_COMPLETE ||
+        level2Status != GL_FRAMEBUFFER_COMPLETE) {
+        return fail("generated texture mip levels were not framebuffer complete");
+    }
+    for (size_t i = 0; i < level1Readback.size; i += 4) {
+        if (!rgbaEquals(level1Readback.data + i, basePixel)) {
+            return fail("generated level 1 texture pixels did not match the base level");
+        }
+    }
+    if (!rgbaEquals(level2Readback.data, basePixel)) {
+        return fail("generated level 2 texture pixel did not match the base level");
+    }
+
+    return pass("texture level allocation, row-pitch partial update, and mip generation matched");
 }
 
 static TestResult testTextureSubImage2DPBOOffset(TestContext&) {
@@ -14985,6 +15182,7 @@ static std::vector<TestCase> tests() {
         { "uniform-matrix-shape-getters", testUniformMatrixShapeGetters },
         { "texture-page-boundary-upload-readback", testTexturePageBoundaryUploadReadback },
         { "texture-subimage-page-boundary", testTextureSubImagePageBoundary },
+        { "texture-level-update-mipmap-row-pitch", testTextureLevelUpdateMipmapRowPitch },
         { "texture-subimage2d-pbo-offset", testTextureSubImage2DPBOOffset },
         { "texture-image2d-ext-pbo-offset", testTextureImage2DEXTPBOOffset },
         { "multitex-image2d-ext-pbo-offset", testMultiTexImage2DEXTPBOOffset },

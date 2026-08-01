@@ -503,6 +503,21 @@ class ResultParsingTests(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertEqual("dynamic buffer map regression skipped", result.reason)
 
+    def test_opengl_texture_level_update_rejects_a_skip(self):
+        result = graphics.parse_graphics_result(
+            graphics.GRAPHICS_SUITES["opengl-marshal"],
+            "texture-level-update-mipmap-row-pitch",
+            {
+                "output": (
+                    "SKIP texture-level-update-mipmap-row-pitch: entry point unavailable\n"
+                    "Summary: 0 passed, 0 failed, 1 skipped\n"
+                ),
+            },
+        )
+
+        self.assertFalse(result.passed)
+        self.assertEqual("texture level regression skipped", result.reason)
+
 
 class BrowserHarnessTests(unittest.TestCase):
     def test_launch_url_selects_memory_storage_and_group_argument(self):
