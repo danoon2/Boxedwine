@@ -394,19 +394,6 @@ index ade80fb..c3ef14b 100644
      window = create_window();
      d3d = Direct3DCreate9(D3D_SDK_VERSION);
      ok(!!d3d, "Failed to create a D3D object.\n");
-@@ -10728,6 +10752,12 @@ static void test_fragment_coords(void)
-         skip("Failed to create a D3D device, skipping tests.\n");
-         goto done;
-     }
-+    if (is_webgl())
-+    {
-+        skip("WebGL fragment coordinate origin and pixel-center semantics differ from D3D9 vPos.\n");
-+        IDirect3DDevice9_Release(device);
-+        goto done;
-+    }
- 
-     hr = IDirect3DDevice9_GetDeviceCaps(device, &caps);
-     ok(SUCCEEDED(hr), "Failed to get device caps, hr %#lx.\n", hr);
 @@ -11906,7 +11936,6 @@ static void pixelshader_blending_test(void)
          skip("Failed to create a D3D device, skipping tests.\n");
          goto done;

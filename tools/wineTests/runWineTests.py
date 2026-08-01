@@ -1294,7 +1294,7 @@ def run_native_wine_graphics_suite(
     test_executable: Path,
     run_dir: Path,
     *,
-    timeout: int = 900,
+    timeout: int = 1200,
     baseline: dict | None = None,
     runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
 ) -> list[TestResult]:
@@ -1517,7 +1517,7 @@ def run_emscripten_graphics_suite(
     chrome: Path | None,
     run_dir: Path,
     *,
-    timeout: int = 900,
+    timeout: int = 1200,
     headless: bool = False,
     keep_browser_profile: bool = False,
     baseline: dict | None = None,
@@ -1808,8 +1808,8 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--graphics-timeout",
         type=_positive_integer,
-        default=900,
-        help="per-graphics-group browser timeout in seconds (default: 900)",
+        default=1200,
+        help="per-graphics-group timeout in seconds (default: 1200)",
     )
     parser.add_argument(
         "--graphics-headless",

@@ -292,11 +292,14 @@ make -j"$(nproc)" dlls/advapi32/tests/i386-windows/advapi32_test.exe
 ```
 
 The patched WebGL Wine build uses non-architecture-prefixed graphics targets.
-For D3D8, either run the staging script above or rebuild just the test with:
+Either run the staging script above or rebuild an individual graphics test with:
 
 ```bash
 make -C /home/james/webgl/boxedwine-webgl-wine-build/wine-win32 \
     -j"$(nproc)" dlls/d3d8/tests/d3d8_test.exe
+
+make -C /home/james/webgl/boxedwine-webgl-wine-build/wine-win32 \
+    -j"$(nproc)" dlls/d3d9/tests/d3d9_test.exe
 
 make -C /home/james/webgl/boxedwine-webgl-wine-build/wine-win32 \
     -j"$(nproc)" dlls/d3dx9_43/tests/d3dx9_43_test.exe

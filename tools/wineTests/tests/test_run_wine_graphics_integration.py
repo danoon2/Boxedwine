@@ -498,6 +498,7 @@ class GraphicsRunnerIntegrationTests(unittest.TestCase):
         arguments = self.runner.parse_arguments(["--ddraw-group", "refcount"])
 
         self.assertEqual("wine_tests_v6.zip", arguments.graphics_tests_archive.name)
+        self.assertEqual(1200, arguments.graphics_timeout)
         self.assertEqual(
             self.runner.DEFAULT_WEBGL_DIVERGENCE_MANIFEST,
             arguments.webgl_test_divergences,

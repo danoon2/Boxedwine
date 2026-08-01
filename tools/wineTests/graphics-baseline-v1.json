@@ -6,14 +6,14 @@
   "reference_inputs": {
     "graphics_tests_archive": "wine_tests_v6.zip",
     "filesystem": "boxedwine.3.zip",
-    "filesystem_sha256": "2fad01442a3ce237dbb4a4725522b4c5ac686b4504f1770f1e10946688e6b636",
+    "filesystem_sha256": "e38234f93e85b1714c54f87ec3246a8275683b091219a8a4651ea7e3acd16b79",
     "boxedwine_wasm_sha256": "005c8fd96d33c11fab8680b2502f699b848623f1f99d00ba674d1512e963a225",
     "webgl_test_divergence_manifest": "webgl-test-divergences-v2.json",
-    "webgl_test_divergence_manifest_sha256": "6112effec61b1f569d759d6a8409006c087b1944d38b8d6164974ac42865da8d",
+    "webgl_test_divergence_manifest_sha256": "884b32dee777967c060aa94613e3ea6668826a34eba2f3c5493c3df26b6a6f8b",
     "test_executable_sha256": {
       "ddraw": "094a89f7799812a33c5741221ccb0cf02455f4b2f31e30bce5272ce3caae30cf",
       "d3d8": "c132f99ff3bd8547d10412a14aed127233ff001218ba5a6f81c702287d81f81f",
-      "d3d9": "1d42eb50ada90f7d2e4b9bb145c2a36ce5caac5730be9c1115e9d766b0d656b6",
+      "d3d9": "15dae3b495e38d496ccb7858f734fce33811d84364404da8093c3d1a8f507916",
       "d3dx9_43": "a2c3dfa3c1c0aabeaa5d0a9961ad16f2066574522041caf120046b8a225e96a8",
       "d3dxof": "2327cf9140c0b2e891fd93ae1eb9a352631072edaf8cad50eb2881fb01989811"
     }
@@ -130,10 +130,10 @@
         "failure_locations": []
       },
       "visual": {
-        "tests": 25406,
+        "tests": 25459,
         "todo": 40,
         "failures": 0,
-        "skipped": 49,
+        "skipped": 48,
         "failure_locations": []
       }
     },

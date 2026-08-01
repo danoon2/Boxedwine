@@ -20,7 +20,7 @@
       "patch_id": "shader-generation-glsl-es",
       "category": "shader_generation_and_glsl_es",
       "path": "tools/d3dToWebGL/webgl-shader-generation-glsl-es-against-wine-11.0.patch",
-      "sha256": "ecfb77a72311ac5065fd45237f72d7f19ce428358ed2b3cfbb95a18cd9cf1c2c"
+      "sha256": "f12d95f8660c9f42394a5ca9fd78564948ea5a77fa78653e9cdd42b88b78971f"
     },
     {
       "patch_id": "texture-formats-transfers",
@@ -68,7 +68,7 @@
   "test_patch": {
     "patch_id": "test-expectations",
     "path": "tools/d3dToWebGL/webgl-tests-against-wine-11.0.patch",
-    "sha256": "243d7a97b6ad6e0ce5a980079d32f6ec64ca8e99335667dffeeca4c88f638ffb"
+    "sha256": "a3e26187f8d179e09ab680cf9c873454d4557b5673f7968649f399515168da75"
   },
   "policy": "No production patch may modify Wine tests. Every added skip() and todo_wine_if() policy in the test-only patch must match exactly one classified rule.",
   "categories": {
@@ -296,10 +296,6 @@
         },
         {
           "marker": "skip(\"WebGL depth-bias precision does not match desktop D3D validation.\\n\");",
-          "occurrences": 1
-        },
-        {
-          "marker": "skip(\"WebGL fragment coordinate origin and pixel-center semantics differ from D3D9 vPos.\\n\");",
           "occurrences": 1
         },
         {

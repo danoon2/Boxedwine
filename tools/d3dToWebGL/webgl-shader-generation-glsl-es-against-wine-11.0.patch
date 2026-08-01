@@ -571,7 +571,7 @@ index 3eae222..a9e1511 100644
          shader_addline(buffer, "layout(early_fragment_tests) in;\n");
  
      shader_addline(buffer, "void main()\n{\n");
-@@ -8012,7 +8238,7 @@ static GLuint shader_glsl_generate_fragment_shader(const struct wined3d_context_
+@@ -8012,10 +8238,10 @@ static GLuint shader_glsl_generate_fragment_shader(const struct wined3d_context_
       * on drivers that returns integer values. */
      if (reg_maps->vpos)
      {
@@ -580,6 +580,10 @@ index 3eae222..a9e1511 100644
                  && (context_gl->c.d3d_info->wined3d_creation_flags & WINED3D_PIXEL_CENTER_INTEGER))
              shader_addline(buffer, "vpos = floor(gl_FragCoord);\n");
          else
+             shader_addline(buffer, "vpos = gl_FragCoord;\n");
+-        shader_addline(buffer, "vpos.w = 1 / vpos.w;\n");
++        shader_addline(buffer, "vpos.w = 1.0 / vpos.w;\n");
+     }
 @@ -8096,6 +8322,19 @@ static void shader_glsl_generate_vs_epilogue(const struct wined3d_gl_info *gl_in
          else if (args->fog_src == VS_FOG_W)
              shader_addline(buffer, "%s = gl_Position.w;\n",

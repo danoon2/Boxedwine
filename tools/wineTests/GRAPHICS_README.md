@@ -47,7 +47,7 @@ The defaults use:
 - `project/emscripten/Deploy/Web/SingleThreaded`
 - `%APPDATA%\Boxedwine\FileSystems2\boxedwine.3.zip`
 - a visible isolated Chrome window
-- a 900-second timeout
+- a 1,200-second timeout
 
 Pass `--graphics-headless` for Chrome's new headless mode. A visible run is the
 primary baseline because it is closer to normal game launches.
@@ -434,6 +434,65 @@ retry exception was added:
   `C:\Users\james\.cache\boxedwine\wineTests\runs\20260730-105756-283695`
 - exact native D3D9 `stateblock` pass with the rebuilt executable:
   `/home/james/.cache/boxedwine/wineTests/runs/20260730-111138-051897`
+
+### D3D9 vPos fragment-coordinate shader correction
+
+On July 31, 2026 Wine's GLSL ES fragment-coordinate path was corrected so
+`test_fragment_coords()` no longer needs a WebGL skip. WineD3D generated
+`vpos.w = 1 / vpos.w;`; WebGL2's GLSL ES compiler rejects the mixed integer
+and floating-point division. Generating `1.0 / vpos.w` instead produces a
+valid shader. A direct WebGL2 compiler probe confirmed the original shader
+failed and the corrected shader compiled, and the test's four expected pixels
+then matched without a WebGL Y-origin adjustment.
+
+The focused 57-assertion fragment-coordinate test passes with no todo,
+failure, or skip in all three comparison modes:
+
+- single-threaded non-JIT:
+  `C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-170414-255282`
+- single-threaded JIT:
+  `C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-170414-261186`
+- native Wine:
+  `/home/james/.cache/boxedwine/wineTests/runs/20260731-164135-001859`
+
+The final clean Wine patch-series build is packaged in place without a
+version bump. Its exact inputs are:
+
+- `boxedwine.3.zip` and `TinyCore15Wine11.0-v10-candidate.zip`
+  (157,980,576 bytes):
+  `e38234f93e85b1714c54f87ec3246a8275683b091219a8a4651ea7e3acd16b79`
+- `boxedwine.gdi.3.zip` (157,980,696 bytes):
+  `fe18720cd7b85c84764ef950e14e643ff3e0a58e6174fd3039ef8d0831670919`
+- packaged `wined3d.dll`:
+  `e82ce3d3f2b572722f42f8f9ce26fc8edbc55c107ca7908e8ff947f64b1018f6`
+- packaged `d3d9_test.exe`:
+  `15dae3b495e38d496ccb7858f734fce33811d84364404da8093c3d1a8f507916`
+- `wine_tests_v6.zip` (11,990,014 bytes):
+  `0a9e9b8c33fe33648fefeaa9408939121a60fe6ea1d7e06c4b4838ad5f288487`
+- WebGL divergence manifest:
+  `884b32dee777967c060aa94613e3ea6668826a34eba2f3c5493c3df26b6a6f8b`
+
+The exact packaged D3D9 `visual` group passed 25,459 assertions with 40 todo
+results, 0 failures, and 48 skips in 910.063 seconds:
+
+```text
+C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-172027-042093
+```
+
+An otherwise clean attempt reached the runner's former 900-second limit just
+before the Wine summary. Because the previous exact pass had already taken
+867.360 seconds and this pass needed 910.063 seconds, the default graphics
+timeout is now 1,200 seconds. The incomplete timeout artifact is retained at
+`C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-170512-006839`.
+
+The same final archives also passed the exact DirectDraw `ddraw1` baseline:
+19,640 assertions, 59 todo results, 0 failures, and 20 skips in 172.500
+seconds. This confirms that the DirectDraw and color-key sources restored in
+the clean patch-series build remain present:
+
+```text
+C:\Users\james\.cache\boxedwine\wineTests\runs\20260731-173601-212796
+```
 
 ## D3DX9 baseline
 
