@@ -196,36 +196,36 @@ void glcommon_glEnableClientState(CPU* cpu) {
     GLenum cap = ARG1;
     GL_FUNC(pglEnableClientState)(cap);
     if (cap == GL_COLOR_ARRAY) {
-        cpu->thread->glColorPointer.refreshEachCall = 1;
+        cpu->thread->glColorPointer.refreshEachCall = !cpu->thread->glColorPointer.isArrayBuffer;
         cpu->thread->glColorPointer.enabled = true;
     }
     else if (cap == GL_EDGE_FLAG_ARRAY) {
-        cpu->thread->glEdgeFlagPointer.refreshEachCall = 1;
+        cpu->thread->glEdgeFlagPointer.refreshEachCall = !cpu->thread->glEdgeFlagPointer.isArrayBuffer;
         cpu->thread->glEdgeFlagPointer.enabled = true;
     }
     else if (cap == GL_FOG_COORD_ARRAY) {
-        cpu->thread->glFogPointer.refreshEachCall = 1;
+        cpu->thread->glFogPointer.refreshEachCall = !cpu->thread->glFogPointer.isArrayBuffer;
         cpu->thread->glFogPointer.enabled = true;
     }
     else if (cap == GL_INDEX_ARRAY) {
-        cpu->thread->glIndexPointer.refreshEachCall = 1;
+        cpu->thread->glIndexPointer.refreshEachCall = !cpu->thread->glIndexPointer.isArrayBuffer;
         cpu->thread->glIndexPointer.enabled = true;
     }
     else if (cap == GL_NORMAL_ARRAY) {
-        cpu->thread->glNormalPointer.refreshEachCall = 1;
+        cpu->thread->glNormalPointer.refreshEachCall = !cpu->thread->glNormalPointer.isArrayBuffer;
         cpu->thread->glNormalPointer.enabled = true;
     }
     else if (cap == GL_SECONDARY_COLOR_ARRAY) {
-        cpu->thread->glSecondaryColorPointer.refreshEachCall = 1;
+        cpu->thread->glSecondaryColorPointer.refreshEachCall = !cpu->thread->glSecondaryColorPointer.isArrayBuffer;
         cpu->thread->glSecondaryColorPointer.enabled = true;
     }
     else if (cap == GL_TEXTURE_COORD_ARRAY) {
         OpenGLVetexPointer* p = getCurrentTexCoordPointer(cpu);
-        p->refreshEachCall = 1;
+        p->refreshEachCall = !p->isArrayBuffer;
         p->enabled = true;
     }
     else if (cap == GL_VERTEX_ARRAY) {
-        cpu->thread->glVertextPointer.refreshEachCall = 1;
+        cpu->thread->glVertextPointer.refreshEachCall = !cpu->thread->glVertextPointer.isArrayBuffer;
         cpu->thread->glVertextPointer.enabled = true;
     }
 }

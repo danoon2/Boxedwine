@@ -450,6 +450,14 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
                 sdlWindowById.set(d->id, window);
             }
         }
+        // Rebinding an already-current WGL context can force an expensive driver
+        // synchronization. SDL can prove when both the context and drawable are
+        // already current on this host thread, so avoid the redundant call.
+        if (SDL_GL_GetCurrentContext() == context->context &&
+            SDL_GL_GetCurrentWindow() == window->window) {
+            context->currentWindow = window;
+            return true;
+        }
         bool result = SDL_GL_MakeCurrent(window->window, context->context) == 0;
         if (result) {
             loadSdlExtensions();

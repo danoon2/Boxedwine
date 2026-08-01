@@ -3382,14 +3382,15 @@ void glcommon_glDisableVertexAttribArray(CPU* cpu) {
         kpanic("ext_glDisableVertexAttribArray is NULL");
     {
         OpenGLVetexPointer* p = nullptr;
-        if (ARG2 == 0) {
+        if (ARG1 == 0) {
             p = &cpu->thread->glVertextPointer;
         } else {
-            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(ARG2);
+            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(ARG1);
             p = found.get();
         }
         if (p) {
             p->refreshEachCall = 0;
+            p->enabled = false;
         }
 
     GL_FUNC(ext_glDisableVertexAttribArray)(ARG1);
@@ -3926,15 +3927,16 @@ void glcommon_glEnableVertexAttribArray(CPU* cpu) {
         kpanic("ext_glEnableVertexAttribArray is NULL");
     {
         OpenGLVetexPointer* p = nullptr;
-        if (ARG2 == 0) {
+        if (ARG1 == 0) {
             p = &cpu->thread->glVertextPointer;
         }
         else {
-            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(ARG2);
+            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(ARG1);
             p = found.get();
         }
         if (p) {
-            p->refreshEachCall = 1;
+            p->refreshEachCall = !p->isArrayBuffer;
+            p->enabled = true;
         }
     GL_FUNC(ext_glEnableVertexAttribArray)(ARG1);
     GL_LOG ("glEnableVertexAttribArray GLuint index=%d",ARG1);
