@@ -271,7 +271,13 @@ void testRunCPU() {
 
     cpu->nextOp = cpu->getNextOp();
     do {
-        cpu->run();
+        try {
+            cpu->run();
+        } catch (int) {
+            // Guest memory faults install a signal handler and throw to abort
+            // the current instruction, just as runThreadSlice expects.
+            cpu->nextOp = nullptr;
+        }
     } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
 }
 
