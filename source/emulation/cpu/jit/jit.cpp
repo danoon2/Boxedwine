@@ -590,6 +590,17 @@ void Jit::dynamic_RRDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, In
     });
 }
 
+void Jit::dynamic_MRDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegReg callback, LazyFlagType flagType) {
+    tryDirect(op, [op, width, directOp, this]() {
+        RegPtr src = getReadOnlyReg(op->reg);
+        readWriteMem(width, calculateEaa(op), [width, directOp, src, this](RegPtr dst) {
+            direct_flags_op(width, directOp, dst, src);
+        });
+    }, [op, width, callback, flagType, this]() {
+        dynamic_MR(op, width, callback, flagType);
+    });
+}
+
 void Jit::dynamic_RMDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegReg callback, LazyFlagType flagType) {
     tryDirect(op, [op, width, directOp, this]() {
         RegPtr src = read(width, calculateEaa(op));
@@ -597,6 +608,16 @@ void Jit::dynamic_RMDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, In
         direct_flags_op(width, directOp, dst, src);
     }, [op, width, callback, flagType, this]() {
         dynamic_RM(op, width, callback, flagType);
+    });
+}
+
+void Jit::dynamic_MIDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegImm callback, LazyFlagType flagType) {
+    tryDirect(op, [op, width, directOp, this]() {
+        readWriteMem(width, calculateEaa(op), [op, width, directOp, this](RegPtr dst) {
+            direct_flags_op(width, directOp, dst, op->imm);
+        });
+    }, [op, width, callback, flagType, this]() {
+        dynamic_MI(op, width, callback, flagType);
     });
 }
 
@@ -621,8 +642,9 @@ void Jit::dynamic_RRDirectWithCF(DecodedOp* op, JitWidth width, JitCarryOp direc
 
 void Jit::dynamic_RMDirectWithCF(DecodedOp* op, JitWidth width, JitCarryOp directOp, InstRegReg callback, LazyFlagType flagType) {
     tryDirect(op, [op, width, directOp, this]() {
-        RegPtr src = read(width, calculateEaa(op));
+        // Keep the condition-calculation scratch registers free until CF has been materialized.
         RegPtr cf = getCF();
+        RegPtr src = read(width, calculateEaa(op));
         RegPtr dst = getReg(op->reg);
         direct_flags_op_with_cf(width, directOp, dst, src, cf);
     }, [op, width, callback, flagType, this]() {

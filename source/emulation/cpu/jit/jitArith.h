@@ -50,7 +50,7 @@ void Jit::dynamic_addr32r32(DecodedOp* op) {
     dynamic_RRDirect(op, JitWidth::b32, JitFlagOp::Add, &Jit::addReg, FLAGS_ADD32);
 }
 void Jit::dynamic_adde32r32(DecodedOp* op) {
-    dynamic_MR(op, JitWidth::b32, &Jit::addReg, FLAGS_ADD32);
+    dynamic_MRDirect(op, JitWidth::b32, JitFlagOp::Add, &Jit::addReg, FLAGS_ADD32);
 }
 void Jit::dynamic_addr32e32(DecodedOp* op) {
     dynamic_RMDirect(op, JitWidth::b32, JitFlagOp::Add, &Jit::addReg, FLAGS_ADD32);
@@ -59,7 +59,7 @@ void Jit::dynamic_add32_reg(DecodedOp* op) {
     dynamic_RIDirect(op, JitWidth::b32, JitFlagOp::Add, &Jit::addValue, FLAGS_ADD32);
 }
 void Jit::dynamic_add32_mem(DecodedOp* op) {
-    dynamic_MI(op, JitWidth::b32, &Jit::addValue, FLAGS_ADD32);
+    dynamic_MIDirect(op, JitWidth::b32, JitFlagOp::Add, &Jit::addValue, FLAGS_ADD32);
 }
 void Jit::dynamic_orr8r8(DecodedOp* op) {
     dynamic_RR(op, JitWidth::b8, &Jit::orReg, FLAGS_OR8);
@@ -95,7 +95,7 @@ void Jit::dynamic_orr32r32(DecodedOp* op) {
     dynamic_RRDirect(op, JitWidth::b32, JitFlagOp::Or, &Jit::orReg, FLAGS_OR32);
 }
 void Jit::dynamic_ore32r32(DecodedOp* op) {
-    dynamic_MR(op, JitWidth::b32, &Jit::orReg, FLAGS_OR32);
+    dynamic_MRDirect(op, JitWidth::b32, JitFlagOp::Or, &Jit::orReg, FLAGS_OR32);
 }
 void Jit::dynamic_orr32e32(DecodedOp* op) {
     dynamic_RMDirect(op, JitWidth::b32, JitFlagOp::Or, &Jit::orReg, FLAGS_OR32);
@@ -104,7 +104,7 @@ void Jit::dynamic_or32_reg(DecodedOp* op) {
     dynamic_RIDirect(op, JitWidth::b32, JitFlagOp::Or, &Jit::orValue, FLAGS_OR32);
 }
 void Jit::dynamic_or32_mem(DecodedOp* op) {
-    dynamic_MI(op, JitWidth::b32, &Jit::orValue, FLAGS_OR32);
+    dynamic_MIDirect(op, JitWidth::b32, JitFlagOp::Or, &Jit::orValue, FLAGS_OR32);
 }
 void Jit::dynamic_adcr8r8(DecodedOp* op) {
     dynamic_RR(op, JitWidth::b8, &Jit::addReg, FLAGS_ADC8, true, true);
@@ -230,7 +230,7 @@ void Jit::dynamic_andr32r32(DecodedOp* op) {
     dynamic_RRDirect(op, JitWidth::b32, JitFlagOp::And, &Jit::andReg, FLAGS_AND32);
 }
 void Jit::dynamic_ande32r32(DecodedOp* op) {
-    dynamic_MR(op, JitWidth::b32, &Jit::andReg, FLAGS_AND32);
+    dynamic_MRDirect(op, JitWidth::b32, JitFlagOp::And, &Jit::andReg, FLAGS_AND32);
 }
 void Jit::dynamic_andr32e32(DecodedOp* op) {
     dynamic_RMDirect(op, JitWidth::b32, JitFlagOp::And, &Jit::andReg, FLAGS_AND32);
@@ -239,7 +239,7 @@ void Jit::dynamic_and32_reg(DecodedOp* op) {
     dynamic_RIDirect(op, JitWidth::b32, JitFlagOp::And, &Jit::andValue, FLAGS_AND32);
 }
 void Jit::dynamic_and32_mem(DecodedOp* op) {
-    dynamic_MI(op, JitWidth::b32, &Jit::andValue, FLAGS_AND32);
+    dynamic_MIDirect(op, JitWidth::b32, JitFlagOp::And, &Jit::andValue, FLAGS_AND32);
 }
 void Jit::dynamic_subr8r8(DecodedOp* op) {
     dynamic_RR(op, JitWidth::b8, &Jit::subReg, FLAGS_SUB8);
@@ -275,7 +275,7 @@ void Jit::dynamic_subr32r32(DecodedOp* op) {
     dynamic_RRDirect(op, JitWidth::b32, JitFlagOp::Sub, &Jit::subReg, FLAGS_SUB32);
 }
 void Jit::dynamic_sube32r32(DecodedOp* op) {
-    dynamic_MR(op, JitWidth::b32, &Jit::subReg, FLAGS_SUB32);
+    dynamic_MRDirect(op, JitWidth::b32, JitFlagOp::Sub, &Jit::subReg, FLAGS_SUB32);
 }
 void Jit::dynamic_subr32e32(DecodedOp* op) {
     dynamic_RMDirect(op, JitWidth::b32, JitFlagOp::Sub, &Jit::subReg, FLAGS_SUB32);
@@ -284,7 +284,7 @@ void Jit::dynamic_sub32_reg(DecodedOp* op) {
     dynamic_RIDirect(op, JitWidth::b32, JitFlagOp::Sub, &Jit::subValue, FLAGS_SUB32);
 }
 void Jit::dynamic_sub32_mem(DecodedOp* op) {
-    dynamic_MI(op, JitWidth::b32, &Jit::subValue, FLAGS_SUB32);
+    dynamic_MIDirect(op, JitWidth::b32, JitFlagOp::Sub, &Jit::subValue, FLAGS_SUB32);
 }
 void Jit::dynamic_xorr8r8(DecodedOp* op) {
     dynamic_RR(op, JitWidth::b8, &Jit::xorReg, FLAGS_XOR8);
@@ -320,7 +320,7 @@ void Jit::dynamic_xorr32r32(DecodedOp* op) {
     dynamic_RRDirect(op, JitWidth::b32, JitFlagOp::Xor, &Jit::xorReg, FLAGS_XOR32);
 }
 void Jit::dynamic_xore32r32(DecodedOp* op) {
-    dynamic_MR(op, JitWidth::b32, &Jit::xorReg, FLAGS_XOR32);
+    dynamic_MRDirect(op, JitWidth::b32, JitFlagOp::Xor, &Jit::xorReg, FLAGS_XOR32);
 }
 void Jit::dynamic_xorr32e32(DecodedOp* op) {
     dynamic_RMDirect(op, JitWidth::b32, JitFlagOp::Xor, &Jit::xorReg, FLAGS_XOR32);
@@ -329,7 +329,7 @@ void Jit::dynamic_xor32_reg(DecodedOp* op) {
     dynamic_RIDirect(op, JitWidth::b32, JitFlagOp::Xor, &Jit::xorValue, FLAGS_XOR32);
 }
 void Jit::dynamic_xor32_mem(DecodedOp* op) {
-    dynamic_MI(op, JitWidth::b32, &Jit::xorValue, FLAGS_XOR32);
+    dynamic_MIDirect(op, JitWidth::b32, JitFlagOp::Xor, &Jit::xorValue, FLAGS_XOR32);
 }
 
 void Jit::dynamic_cmpr8r8(DecodedOp* op) {

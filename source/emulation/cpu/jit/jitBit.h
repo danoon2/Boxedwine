@@ -138,20 +138,38 @@ void Jit::dynamic_btr32(DecodedOp* op) {
     }, fallback, CF);
 }
 void Jit::dynamic_bte32r32(DecodedOp* op) {
-    btStartFlags(op);
-    IfTest(JitWidth::b32, read(JitWidth::b32, calculateEffectiveEaa(op)), btMask(0x1f, op->reg)); {
-        orCPUFlagsImmV2(CF);
-    } StartElse(); {
-        andCPUFlagsImmV2(~CF);
-    } EndIf();
+    auto fallback = [op, this]() {
+        btStartFlags(op);
+        IfTest(JitWidth::b32, read(JitWidth::b32, calculateEffectiveEaa(op)), btMask(0x1f, op->reg)); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    };
+    if (!supportsDirectFlagsForBitTest()) {
+        fallback();
+        return;
+    }
+    tryDirect(op, [op, this]() {
+        direct_bit_test(JitWidth::b32, read(JitWidth::b32, calculateEffectiveEaa(op)), getReadOnlyReg(op->reg));
+    }, fallback, CF);
 }
 void Jit::dynamic_bte32(DecodedOp* op) {
-    btStartFlags(op);
-    IfTest(JitWidth::b32, read(JitWidth::b32, calculateEaa(op)), op->imm); {
-        orCPUFlagsImmV2(CF);
-    } StartElse(); {
-        andCPUFlagsImmV2(~CF);
-    } EndIf();
+    auto fallback = [op, this]() {
+        btStartFlags(op);
+        IfTest(JitWidth::b32, read(JitWidth::b32, calculateEaa(op)), op->imm); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    };
+    if (!supportsDirectFlagsForBitTest()) {
+        fallback();
+        return;
+    }
+    tryDirect(op, [op, this]() {
+        direct_bit_test(JitWidth::b32, read(JitWidth::b32, calculateEaa(op)), op->imm);
+    }, fallback, CF);
 }
 void Jit::dynamic_btsr16r16(DecodedOp* op) {
     bool flags = btStartFlags(op);

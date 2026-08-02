@@ -692,23 +692,26 @@ enum class DirectArithmeticTestOp {
 
 enum class DirectArithmeticTestShape {
     Reg,
-    Mem,
-    Imm
+    MemSource,
+    Imm,
+    MemReg,
+    MemImm
 };
 
 struct DirectArithmeticOpInfo {
     DirectArithmeticTestOp op;
     const char* name;
-    U8 rmOpcode;
+    U8 regRmOpcode;
+    U8 rmRegOpcode;
     U8 immediateGroup;
 };
 
 constexpr DirectArithmeticOpInfo DIRECT_ARITHMETIC_OPS[] = {
-    {DirectArithmeticTestOp::Add, "add", 0x03, 0},
-    {DirectArithmeticTestOp::Sub, "sub", 0x2b, 5},
-    {DirectArithmeticTestOp::And, "and", 0x23, 4},
-    {DirectArithmeticTestOp::Or,  "or",  0x0b, 1},
-    {DirectArithmeticTestOp::Xor, "xor", 0x33, 6},
+    {DirectArithmeticTestOp::Add, "add", 0x03, 0x01, 0},
+    {DirectArithmeticTestOp::Sub, "sub", 0x2b, 0x29, 5},
+    {DirectArithmeticTestOp::And, "and", 0x23, 0x21, 4},
+    {DirectArithmeticTestOp::Or,  "or",  0x0b, 0x09, 1},
+    {DirectArithmeticTestOp::Xor, "xor", 0x33, 0x31, 6},
 };
 
 constexpr U32 DIRECT_ARITHMETIC_MEM_SRC = 0x300;
@@ -790,27 +793,42 @@ bool directArithmeticCondition(U8 condition, U32 flags) {
 
 U32 emitDirectArithmetic(const DirectArithmeticOpInfo& op, DirectArithmeticTestShape shape, U32 rhs) {
     if (shape == DirectArithmeticTestShape::Reg) {
-        testPushCode8(op.rmOpcode);
+        testPushCode8(op.regRmOpcode);
         testPushCode8(0xc2); // op eax,edx
         return 2;
     }
-    if (shape == DirectArithmeticTestShape::Mem) {
-        testPushCode8(op.rmOpcode);
+    if (shape == DirectArithmeticTestShape::MemSource) {
+        testPushCode8(op.regRmOpcode);
         testPushCode8(0x05); // op eax,[disp32]
         testPushCode32(DIRECT_ARITHMETIC_MEM_SRC);
         return 6;
     }
+    if (shape == DirectArithmeticTestShape::Imm) {
+        testPushCode8(0x81);
+        testPushCode8(0xc0 | (op.immediateGroup << 3)); // op eax,imm32
+        testPushCode32(rhs);
+        return 6;
+    }
+    if (shape == DirectArithmeticTestShape::MemReg) {
+        testPushCode8(op.rmRegOpcode);
+        testPushCode8(0x15); // op [disp32],edx
+        testPushCode32(DIRECT_ARITHMETIC_MEM_SRC);
+        return 6;
+    }
     testPushCode8(0x81);
-    testPushCode8(0xc0 | (op.immediateGroup << 3)); // op eax,imm32
+    testPushCode8(0x05 | (op.immediateGroup << 3)); // op [disp32],imm32
+    testPushCode32(DIRECT_ARITHMETIC_MEM_SRC);
     testPushCode32(rhs);
-    return 6;
+    return 10;
 }
 
 const char* directArithmeticShapeName(DirectArithmeticTestShape shape) {
     switch (shape) {
     case DirectArithmeticTestShape::Reg: return "reg";
-    case DirectArithmeticTestShape::Mem: return "mem";
-    default: return "imm";
+    case DirectArithmeticTestShape::MemSource: return "reg,mem";
+    case DirectArithmeticTestShape::Imm: return "reg,imm";
+    case DirectArithmeticTestShape::MemReg: return "mem,reg";
+    default: return "mem,imm";
     }
 }
 
@@ -824,12 +842,14 @@ void runDirectArithmeticFlagsCase(const DirectArithmeticOpInfo& op, DirectArithm
 
     testNewInstruction(0);
     cpu->big = true;
-    cpu->reg[0].u32 = lhs;        // eax: arithmetic destination
+    bool memoryDestination = shape == DirectArithmeticTestShape::MemReg || shape == DirectArithmeticTestShape::MemImm;
+    cpu->reg[0].u32 = memoryDestination ? 0x89abcdef : lhs; // eax: register arithmetic destination
     cpu->reg[2].u32 = rhs;        // edx: register source
     cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
     cpu->reg[6].u32 = 1;          // esi
     cpu->reg[7].u32 = 2;          // edi
-    context.memory->writed(TEST_HEAP_ADDRESS + DIRECT_ARITHMETIC_MEM_SRC, rhs);
+    U32 initialMemory = memoryDestination ? lhs : rhs;
+    context.memory->writed(TEST_HEAP_ADDRESS + DIRECT_ARITHMETIC_MEM_SRC, initialMemory);
 
     U32 producerLen = emitDirectArithmetic(op, shape, rhs);
     testPushCode8(0x0f); // setcc bl
@@ -840,8 +860,13 @@ void runDirectArithmeticFlagsCase(const DirectArithmeticOpInfo& op, DirectArithm
     testRunCPU();
 
     const char* shapeName = directArithmeticShapeName(shape);
-    if (cpu->reg[0].u32 != expectedResult) {
+    U32 expectedEax = memoryDestination ? 0x89abcdef : expectedResult;
+    if (cpu->reg[0].u32 != expectedEax) {
         testFail("direct %s %s condition %x result", op.name, shapeName, condition);
+    }
+    U32 expectedMemory = memoryDestination ? expectedResult : initialMemory;
+    if (context.memory->readd(TEST_HEAP_ADDRESS + DIRECT_ARITHMETIC_MEM_SRC) != expectedMemory) {
+        testFail("direct %s %s condition %x memory result", op.name, shapeName, condition);
     }
     if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
         testFail("direct %s %s condition %x flags", op.name, shapeName, condition);
@@ -863,14 +888,69 @@ void runDirectArithmeticFlagsCase(const DirectArithmeticOpInfo& op, DirectArithm
 #endif
 }
 
+void runDirectArithmeticWriteFaultCase() {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    constexpr U32 initialValue = 0x12345678;
+
+    testNewInstruction((int)(CF | ZF));
+    cpu->big = true;
+    cpu->reg[0].u32 = 0;
+    cpu->reg[2].u32 = 1;          // edx: add source
+    cpu->reg[3].u32 = 0x89abcdef; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    U32 targetAddress = cpu->seg[DS].address + DIRECT_ARITHMETIC_MEM_SRC;
+    context.memory->writed(targetAddress, initialValue);
+
+    testPushCode8(0x01);
+    testPushCode8(0x15); // add [disp32],edx
+    testPushCode32(DIRECT_ARITHMETIC_MEM_SRC);
+    testPushCode8(0x0f);
+    testPushCode8(0x92); // setb bl; fuses with add
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the add flags dead
+    testPushCode8(0xfe);
+    constexpr U32 faultHandlerOffset = 11;
+
+    KSigAction& action = context.process->sigActions[K_SIGSEGV];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + faultHandlerOffset;
+    action.flags = 0;
+
+    U32 targetPage = targetAddress & ~K_PAGE_MASK;
+    if (context.memory->mprotect(context.thread, targetPage, K_PAGE_SIZE, K_PROT_READ)) {
+        testFail("direct memory arithmetic could not protect destination page");
+        action.reset();
+        return;
+    }
+
+    testRunCPU();
+    context.memory->mprotect(context.thread, targetPage, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+
+    if (action.sigInfo[0] != K_SIGSEGV) {
+        testFail("direct memory arithmetic write did not raise SIGSEGV");
+    }
+    if (context.memory->readd(targetAddress) != initialValue) {
+        testFail("direct memory arithmetic write fault changed memory");
+    }
+    if (cpu->reg[3].u32 != 0x89abcdef) {
+        testFail("direct memory arithmetic write fault executed fused consumer");
+    }
+    action.reset();
+}
+
 } // namespace
 
 void testJitDirectArithmeticFlags() {
 #ifdef BOXEDWINE_JIT
     constexpr DirectArithmeticTestShape shapes[] = {
         DirectArithmeticTestShape::Reg,
-        DirectArithmeticTestShape::Mem,
+        DirectArithmeticTestShape::MemSource,
         DirectArithmeticTestShape::Imm,
+        DirectArithmeticTestShape::MemReg,
+        DirectArithmeticTestShape::MemImm,
     };
     for (const DirectArithmeticOpInfo& op : DIRECT_ARITHMETIC_OPS) {
         for (DirectArithmeticTestShape shape : shapes) {
@@ -881,6 +961,7 @@ void testJitDirectArithmeticFlags() {
             }
         }
     }
+    runDirectArithmeticWriteFaultCase();
 #endif
 }
 
@@ -1389,9 +1470,13 @@ void testJitDirectDoubleShiftFlags() {
 namespace {
 
 enum class DirectBitTestShape {
-    Reg,
-    Imm
+    RegReg,
+    RegImm,
+    MemReg,
+    MemImm
 };
+
+constexpr U32 DIRECT_BIT_TEST_MEM = 0x380;
 
 struct DirectBitTestCase {
     U32 value;
@@ -1412,6 +1497,8 @@ constexpr DirectBitTestCase DIRECT_BIT_TEST_CASES[] = {
 void runDirectBitTestCarryCase(DirectBitTestShape shape, U32 value, U32 bit, U8 condition) {
     TestContext& context = testContext();
     CPU* cpu = context.cpu;
+    bool memoryValue = shape == DirectBitTestShape::MemReg || shape == DirectBitTestShape::MemImm;
+    bool registerBit = shape == DirectBitTestShape::RegReg || shape == DirectBitTestShape::MemReg;
     U32 expectedCondition = (value >> (bit & 31)) & 1;
     if (condition == 3) {
         expectedCondition ^= 1; // SETNB is the inverse of SETB.
@@ -1419,35 +1506,60 @@ void runDirectBitTestCarryCase(DirectBitTestShape shape, U32 value, U32 bit, U8 
 
     testNewInstruction(0);
     cpu->big = true;
-    cpu->reg[0].u32 = value;      // eax: bit-test value
+    cpu->reg[0].u32 = memoryValue ? 0x89abcdef : value; // eax: register bit-test value
     cpu->reg[2].u32 = bit;        // edx: register bit index
     cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
     cpu->reg[6].u32 = 1;          // esi
     cpu->reg[7].u32 = 2;          // edi
 
-    U32 producerLen;
-    if (shape == DirectBitTestShape::Reg) {
+    U32 producerLen = 0;
+    if (!memoryValue && registerBit) {
         testPushCode8(0x0f);
         testPushCode8(0xa3);
         testPushCode8(0xd0); // bt eax,edx
         producerLen = 3;
-    } else {
+    } else if (!memoryValue) {
         testPushCode8(0x0f);
         testPushCode8(0xba);
         testPushCode8(0xe0); // bt eax,imm8
         testPushCode8((U8)bit);
         producerLen = 4;
+    } else if (registerBit) {
+        testPushCode8(0x0f);
+        testPushCode8(0xa3);
+        testPushCode8(0x15); // bt [disp32],edx
+        testPushCode32(DIRECT_BIT_TEST_MEM);
+        producerLen = 7;
+    } else {
+        testPushCode8(0x0f);
+        testPushCode8(0xba);
+        testPushCode8(0x25); // bt [disp32],imm8
+        testPushCode32(DIRECT_BIT_TEST_MEM);
+        testPushCode8((U8)bit);
+        producerLen = 8;
     }
     testPushCode8(0x0f);
     testPushCode8(0x90 + condition); // setb/setnb bl
     testPushCode8(0xc3);
     testPushCode8(0x39); // cmp esi,edi; makes CF dead
     testPushCode8(0xfe);
+
+    U32 valueAddress = TEST_HEAP_ADDRESS + DIRECT_BIT_TEST_MEM;
+    if (memoryValue && registerBit) {
+        valueAddress += (bit >> 5) * sizeof(U32);
+    }
+    context.memory->writed(valueAddress, value);
     testRunCPU();
 
-    const char* shapeName = shape == DirectBitTestShape::Reg ? "reg" : "imm";
-    if (cpu->reg[0].u32 != value) {
+    const char* shapeName = shape == DirectBitTestShape::RegReg ? "reg,reg" :
+        shape == DirectBitTestShape::RegImm ? "reg,imm" :
+        shape == DirectBitTestShape::MemReg ? "mem,reg" : "mem,imm";
+    U32 expectedEax = memoryValue ? 0x89abcdef : value;
+    if (cpu->reg[0].u32 != expectedEax) {
         testFail("direct bt %s condition %x value %x bit %x changed value", shapeName, condition, value, bit);
+    }
+    if (memoryValue && context.memory->readd(valueAddress) != value) {
+        testFail("direct bt %s condition %x value %x bit %x changed memory", shapeName, condition, value, bit);
     }
     if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
         testFail("direct bt %s condition %x value %x bit %x flags", shapeName, condition, value, bit);
@@ -1471,7 +1583,8 @@ void runDirectBitTestCarryCase(DirectBitTestShape shape, U32 value, U32 bit, U8 
 
 void testJitDirectBitTestCarry() {
 #ifdef BOXEDWINE_JIT
-    for (DirectBitTestShape shape : {DirectBitTestShape::Reg, DirectBitTestShape::Imm}) {
+    for (DirectBitTestShape shape : {DirectBitTestShape::RegReg, DirectBitTestShape::RegImm,
+                                    DirectBitTestShape::MemReg, DirectBitTestShape::MemImm}) {
         for (const DirectBitTestCase& test : DIRECT_BIT_TEST_CASES) {
             for (U8 condition : {2, 3}) {
                 runDirectBitTestCarryCase(shape, test.value, test.bit, condition);
