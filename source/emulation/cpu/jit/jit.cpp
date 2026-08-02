@@ -580,6 +580,77 @@ void Jit::dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFla
     }
 }
 
+void Jit::dynamic_RRDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegReg callback, LazyFlagType flagType) {
+    tryDirect(op, [op, width, directOp, this]() {
+        RegPtr dst = getReg(op->reg);
+        RegPtr src = op->reg == op->rm ? dst : getReadOnlyReg(op->rm);
+        direct_flags_op(width, directOp, dst, src);
+    }, [op, width, callback, flagType, this]() {
+        dynamic_RR(op, width, callback, flagType);
+    });
+}
+
+void Jit::dynamic_RMDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegReg callback, LazyFlagType flagType) {
+    tryDirect(op, [op, width, directOp, this]() {
+        RegPtr src = read(width, calculateEaa(op));
+        RegPtr dst = getReg(op->reg);
+        direct_flags_op(width, directOp, dst, src);
+    }, [op, width, callback, flagType, this]() {
+        dynamic_RM(op, width, callback, flagType);
+    });
+}
+
+void Jit::dynamic_RIDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegImm callback, LazyFlagType flagType) {
+    tryDirect(op, [op, width, directOp, this]() {
+        direct_flags_op(width, directOp, getReg(op->reg), op->imm);
+    }, [op, width, callback, flagType, this]() {
+        dynamic_RI(op, width, callback, flagType);
+    });
+}
+
+void Jit::dynamic_RRDirectWithCF(DecodedOp* op, JitWidth width, JitCarryOp directOp, InstRegReg callback, LazyFlagType flagType) {
+    tryDirect(op, [op, width, directOp, this]() {
+        RegPtr cf = getCF();
+        RegPtr dst = getReg(op->reg);
+        RegPtr src = op->reg == op->rm ? dst : getReadOnlyReg(op->rm);
+        direct_flags_op_with_cf(width, directOp, dst, src, cf);
+    }, [op, width, callback, flagType, this]() {
+        dynamic_RR(op, width, callback, flagType, true, true);
+    });
+}
+
+void Jit::dynamic_RMDirectWithCF(DecodedOp* op, JitWidth width, JitCarryOp directOp, InstRegReg callback, LazyFlagType flagType) {
+    tryDirect(op, [op, width, directOp, this]() {
+        RegPtr src = read(width, calculateEaa(op));
+        RegPtr cf = getCF();
+        RegPtr dst = getReg(op->reg);
+        direct_flags_op_with_cf(width, directOp, dst, src, cf);
+    }, [op, width, callback, flagType, this]() {
+        dynamic_RM(op, width, callback, flagType, true, true);
+    });
+}
+
+void Jit::dynamic_RIDirectWithCF(DecodedOp* op, JitWidth width, JitCarryOp directOp, InstRegImm callback, InstRegReg cfCallback, LazyFlagType flagType) {
+    tryDirect(op, [op, width, directOp, this]() {
+        RegPtr cf = getCF();
+        direct_flags_op_with_cf(width, directOp, getReg(op->reg), op->imm, cf);
+    }, [op, width, callback, cfCallback, flagType, this]() {
+        dynamic_RI(op, width, callback, flagType, true, true, cfCallback);
+    });
+}
+
+void Jit::dynamic_RIShiftDirect(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFlagType flagType) {
+    if (!supportsDirectFlagsForShift() || !(op->imm & 0x1f)) {
+        dynamic_RI(op, width, callback, flagType);
+        return;
+    }
+    tryDirect(op, [op, width, callback, this]() {
+        (this->*callback)(width, getReg(op->reg), op->imm);
+    }, [op, width, callback, flagType, this]() {
+        dynamic_RI(op, width, callback, flagType);
+    });
+}
+
 void Jit::dynamic_R(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagType flagType, bool writeback) {
     const LazyFlags* flags = lazyFlags[flagType];
     U32 needsToSetFlags = 0;

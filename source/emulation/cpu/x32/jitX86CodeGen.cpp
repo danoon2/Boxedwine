@@ -259,11 +259,14 @@ public:
     void emulateSingleOp() override;
 
     void addReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
+    void addRegWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, RegPtr rm) override;
     void addValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
+    void addValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) override;
     void orReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void orValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
     void subReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void subValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
+    void subValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) override;
     void andReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void andValue(JitWidth regWidth, RegPtr reg, U32 immm) override;
 #ifdef BOXEDWINE_64
@@ -383,6 +386,15 @@ public:
     void direct_cmp(JitWidth width, RegPtr left, U32 right) override;
     void direct_test(JitWidth width, RegPtr left, RegPtr right) override;
     void direct_test(JitWidth width, RegPtr left, U32 right) override;
+    void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, RegPtr src) override;
+    void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, U32 src) override;
+    void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) override;
+    void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) override;
+    void direct_neg(JitWidth width, RegPtr dst) override;
+    bool supportsDirectFlagsForShift() override { return true; }
+    bool supportsDirectFlagsForBitTest() override { return true; }
+    void direct_bit_test(JitWidth width, RegPtr value, RegPtr bit) override;
+    void direct_bit_test(JitWidth width, RegPtr value, U32 bitMask) override;
     void direct_jump(JitConditional condition, U32 address) override;
     void direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) override;
     void direct_setcc(JitConditional condition, RegPtr dst) override;
@@ -1352,6 +1364,18 @@ void JitX86CodeGen::addReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     }
 }
 
+void JitX86CodeGen::addRegWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, RegPtr rm) {
+    if (regWidth == JitWidth::b32) {
+        compiler.lea(R32(dst), Mem(R32(reg), R32(rm), 0, 0));
+#ifdef BOXEDWINE_64
+    } else if (regWidth == JitWidth::b64) {
+        compiler.lea(R64(dst), Mem(R64(reg), R64(rm), 0, 0));
+#endif
+    } else {
+        JitCodeGen::addRegWithDest(regWidth, dst, reg, rm);
+    }
+}
+
 void JitX86CodeGen::addValue(JitWidth regWidth, RegPtr reg, U32 imm) {
     if (regWidth == JitWidth::b32) {
         compiler.add(R32(reg), imm);
@@ -1361,6 +1385,18 @@ void JitX86CodeGen::addValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         compiler.add(R8(get8bitReg(reg)), (U8)imm);
     } else {
         kpanic("JitX86CodeGen::addValue");
+    }
+}
+
+void JitX86CodeGen::addValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) {
+    if (regWidth == JitWidth::b32) {
+        compiler.lea(R32(dst), Mem(R32(reg), (S32)imm));
+#ifdef BOXEDWINE_64
+    } else if (regWidth == JitWidth::b64) {
+        compiler.lea(R64(dst), Mem(R64(reg), (S32)imm));
+#endif
+    } else {
+        JitCodeGen::addValueWithDest(regWidth, dst, reg, imm);
     }
 }
 
@@ -1409,6 +1445,18 @@ void JitX86CodeGen::subValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         compiler.sub(R8(get8bitReg(reg)), (U8)imm);
     } else {
         kpanic("JitX86CodeGen::subValue");
+    }
+}
+
+void JitX86CodeGen::subValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) {
+    if (regWidth == JitWidth::b32) {
+        compiler.lea(R32(dst), Mem(R32(reg), (S32)(0U - imm)));
+#ifdef BOXEDWINE_64
+    } else if (regWidth == JitWidth::b64) {
+        compiler.lea(R64(dst), Mem(R64(reg), (S32)(0U - imm)));
+#endif
+    } else {
+        JitCodeGen::subValueWithDest(regWidth, dst, reg, imm);
     }
 }
 
@@ -5592,6 +5640,88 @@ void JitX86CodeGen::direct_test(JitWidth width, RegPtr left, U32 right) {
     } else {
         kpanic("JitX86CodeGen::direct_test");
     }
+}
+
+void JitX86CodeGen::direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, RegPtr src) {
+    switch (op) {
+    case JitFlagOp::Add:
+        addReg(width, dst, src);
+        break;
+    case JitFlagOp::Sub:
+        subReg(width, dst, src);
+        break;
+    case JitFlagOp::And:
+        andReg(width, dst, src);
+        break;
+    case JitFlagOp::Or:
+        orReg(width, dst, src);
+        break;
+    case JitFlagOp::Xor:
+        xorReg(width, dst, src);
+        break;
+    }
+}
+
+void JitX86CodeGen::direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, U32 src) {
+    switch (op) {
+    case JitFlagOp::Add:
+        addValue(width, dst, src);
+        break;
+    case JitFlagOp::Sub:
+        subValue(width, dst, src);
+        break;
+    case JitFlagOp::And:
+        andValue(width, dst, src);
+        break;
+    case JitFlagOp::Or:
+        orValue(width, dst, src);
+        break;
+    case JitFlagOp::Xor:
+        xorValue(width, dst, src);
+        break;
+    }
+}
+
+void JitX86CodeGen::direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) {
+    if (width != JitWidth::b32) {
+        kpanic("JitX86CodeGen::direct_flags_op_with_cf width");
+    }
+    compiler.bt(R32(cf), 0);
+    if (op == JitCarryOp::Adc) {
+        compiler.adc(R32(dst), R32(src));
+    } else {
+        compiler.sbb(R32(dst), R32(src));
+    }
+}
+
+void JitX86CodeGen::direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) {
+    if (width != JitWidth::b32) {
+        kpanic("JitX86CodeGen::direct_flags_op_with_cf width");
+    }
+    compiler.bt(R32(cf), 0);
+    if (op == JitCarryOp::Adc) {
+        compiler.adc(R32(dst), src);
+    } else {
+        compiler.sbb(R32(dst), src);
+    }
+}
+
+void JitX86CodeGen::direct_neg(JitWidth width, RegPtr dst) {
+    negReg2(width, dst);
+}
+
+void JitX86CodeGen::direct_bit_test(JitWidth width, RegPtr value, RegPtr bit) {
+    if (width != JitWidth::b32) {
+        kpanic("JitX86CodeGen::direct_bit_test reg width");
+    }
+    compiler.bt(R32(value), R32(bit));
+}
+
+void JitX86CodeGen::direct_bit_test(JitWidth width, RegPtr value, U32 bitMask) {
+    if (width != JitWidth::b32) {
+        kpanic("JitX86CodeGen::direct_bit_test imm width");
+    }
+    compiler.bt(R32(value), (U8)std::countr_zero(bitMask));
 }
 
 U8* JitX86CodeGen::createStartJITCode() {

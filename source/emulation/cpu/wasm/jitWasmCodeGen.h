@@ -443,6 +443,11 @@ public:
     void direct_cmp(JitWidth w, RegPtr left, U32 right) override;
     void direct_test(JitWidth w, RegPtr left, RegPtr right) override;
     void direct_test(JitWidth w, RegPtr left, U32 right) override;
+    void direct_flags_op(JitWidth w, JitFlagOp op, RegPtr dst, RegPtr src) override;
+    void direct_flags_op(JitWidth w, JitFlagOp op, RegPtr dst, U32 src) override;
+    void direct_flags_op_with_cf(JitWidth w, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) override;
+    void direct_flags_op_with_cf(JitWidth w, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) override;
+    void direct_neg(JitWidth w, RegPtr dst) override;
     void direct_jump(JitConditional cond, U32 address) override;
     void direct_cmov(JitWidth w, JitConditional cond, RegPtr dst, RegPtr src) override;
     void direct_setcc(JitConditional cond, RegPtr dst) override;

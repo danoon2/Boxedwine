@@ -296,6 +296,44 @@ void runSetWidth(bool big) {
     }
 }
 
+void verifyDirectSetFusion() {
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+    newInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = 7;         // eax
+    cpu->reg[3].u32 = 7;         // ebx
+    cpu->reg[1].u32 = REG_GUARD; // ecx
+    cpu->reg[6].u32 = 1;         // esi
+    cpu->reg[7].u32 = 2;         // edi
+
+    pushCode8(0x39); // cmp eax,ebx
+    pushCode8(0xd8);
+    pushCode8(0x0f); // setz cl
+    pushCode8(0x94);
+    pushCode8(0xc1);
+    pushCode8(0x39); // cmp esi,edi; makes the earlier flags dead
+    pushCode8(0xfe);
+    runTestCPU();
+
+    if (cpu->reg[1].u32 != ((REG_GUARD & 0xffffff00) | 1)) {
+        failed("direct set fusion result");
+    }
+
+    DecodedOp* producer = memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* set = memory->getDecodedOp(TEST_CODE_ADDRESS + 2);
+    if (!producer || !set) {
+        failed("direct set fusion metadata decode");
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode) {
+        failed("direct set fusion producer compiled entry");
+    }
+    if (!(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        failed("direct set fusion skipped op");
+    }
+#endif
+}
+
 } // namespace
 
 void testSetE8_0x190_0x19f() {
@@ -304,6 +342,7 @@ void testSetE8_0x190_0x19f() {
 
 void testSetE8_0x390_0x39f() {
     runSetWidth(true);
+    verifyDirectSetFusion();
 }
 
 #endif

@@ -206,6 +206,11 @@ public:
     void direct_cmp(JitWidth width, RegPtr left, U32 right) override;
     void direct_test(JitWidth width, RegPtr left, RegPtr right) override;
     void direct_test(JitWidth width, RegPtr left, U32 right) override;
+    void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, RegPtr src) override;
+    void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, U32 src) override;
+    void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) override;
+    void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) override;
+    void direct_neg(JitWidth width, RegPtr dst) override;
     void direct_jump(JitConditional condition, U32 address) override;
     void direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) override;
     void direct_setcc(JitConditional condition, RegPtr dst) override;
@@ -6803,6 +6808,106 @@ void JitArmV8CodeGen::direct_test(JitWidth width, RegPtr left, U32 right) {
     } else {
         kpanic("JitX86CodeGen::direct_test");
     }
+}
+
+void JitArmV8CodeGen::direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, RegPtr src) {
+    if (width != JitWidth::b32) {
+        kpanic("JitArmV8CodeGen::direct_flags_op width");
+    }
+    switch (op) {
+    case JitFlagOp::Add:
+        cfInverted = false;
+        compiler.adds(R32(dst), R32(dst), R32(src));
+        break;
+    case JitFlagOp::Sub:
+        cfInverted = true;
+        compiler.subs(R32(dst), R32(dst), R32(src));
+        break;
+    case JitFlagOp::And:
+        cfInverted = false;
+        compiler.ands(R32(dst), R32(dst), R32(src));
+        break;
+    case JitFlagOp::Or:
+        cfInverted = false;
+        compiler.orr(R32(dst), R32(dst), R32(src));
+        compiler.ands(asmjit::a64::wzr, R32(dst), R32(dst));
+        break;
+    case JitFlagOp::Xor:
+        cfInverted = false;
+        compiler.eor(R32(dst), R32(dst), R32(src));
+        compiler.ands(asmjit::a64::wzr, R32(dst), R32(dst));
+        break;
+    default:
+        kpanic("JitArmV8CodeGen::direct_flags_op");
+    }
+}
+
+void JitArmV8CodeGen::direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, U32 src) {
+    if (width != JitWidth::b32) {
+        kpanic("JitArmV8CodeGen::direct_flags_op width");
+    }
+    if ((op == JitFlagOp::Add || op == JitFlagOp::Sub) && !asmjit::a64::Utils::is_add_sub_imm(src)) {
+        direct_flags_op(width, op, dst, loadConst(src));
+        return;
+    }
+    if ((op == JitFlagOp::And || op == JitFlagOp::Or || op == JitFlagOp::Xor) &&
+        !asmjit::a64::Utils::is_logical_imm(src, 32)) {
+        direct_flags_op(width, op, dst, loadConst(src));
+        return;
+    }
+    switch (op) {
+    case JitFlagOp::Add:
+        cfInverted = false;
+        compiler.adds(R32(dst), R32(dst), src);
+        break;
+    case JitFlagOp::Sub:
+        cfInverted = true;
+        compiler.subs(R32(dst), R32(dst), src);
+        break;
+    case JitFlagOp::And:
+        cfInverted = false;
+        compiler.ands(R32(dst), R32(dst), src);
+        break;
+    case JitFlagOp::Or:
+        cfInverted = false;
+        compiler.orr(R32(dst), R32(dst), src);
+        compiler.ands(asmjit::a64::wzr, R32(dst), R32(dst));
+        break;
+    case JitFlagOp::Xor:
+        cfInverted = false;
+        compiler.eor(R32(dst), R32(dst), src);
+        compiler.ands(asmjit::a64::wzr, R32(dst), R32(dst));
+        break;
+    default:
+        kpanic("JitArmV8CodeGen::direct_flags_op");
+    }
+}
+
+void JitArmV8CodeGen::direct_neg(JitWidth width, RegPtr dst) {
+    if (width != JitWidth::b32) {
+        kpanic("JitArmV8CodeGen::direct_neg width");
+    }
+    cfInverted = true;
+    compiler.subs(R32(dst), asmjit::a64::wzr, R32(dst));
+}
+
+void JitArmV8CodeGen::direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) {
+    if (width != JitWidth::b32) {
+        kpanic("JitArmV8CodeGen::direct_flags_op_with_cf width");
+    }
+    if (op == JitCarryOp::Adc) {
+        compiler.cmp(R32(cf), 1);
+        compiler.adcs(R32(dst), R32(dst), R32(src));
+        cfInverted = false;
+    } else {
+        compiler.cmp(asmjit::a64::wzr, R32(cf));
+        compiler.sbcs(R32(dst), R32(dst), R32(src));
+        cfInverted = true;
+    }
+}
+
+void JitArmV8CodeGen::direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) {
+    direct_flags_op_with_cf(width, op, dst, loadConst(src), cf);
 }
 
 void JitArmV8CodeGen::onBlockPreCommit(DecodedOp* op) {

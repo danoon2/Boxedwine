@@ -322,6 +322,45 @@ void runCmovWidth(bool big) {
     }
 }
 
+void verifyDirectCmovFusion() {
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+    newInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = 7;          // eax
+    cpu->reg[3].u32 = 7;          // ebx
+    cpu->reg[1].u32 = DEST_VALUE; // ecx
+    cpu->reg[2].u32 = SRC_VALUE;  // edx
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    pushCode8(0x39); // cmp eax,ebx
+    pushCode8(0xd8);
+    pushCode8(0x0f); // cmovz ecx,edx
+    pushCode8(0x44);
+    pushCode8(0xca);
+    pushCode8(0x39); // cmp esi,edi; makes the earlier flags dead
+    pushCode8(0xfe);
+    runTestCPU();
+
+    if (cpu->reg[1].u32 != SRC_VALUE) {
+        failed("direct cmov fusion result");
+    }
+
+    DecodedOp* producer = memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* cmov = memory->getDecodedOp(TEST_CODE_ADDRESS + 2);
+    if (!producer || !cmov) {
+        failed("direct cmov fusion metadata decode");
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode) {
+        failed("direct cmov fusion producer compiled entry");
+    }
+    if (!(cmov->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || cmov->pfnJitCode) {
+        failed("direct cmov fusion skipped op");
+    }
+#endif
+}
+
 } // namespace
 
 void testCmovR16E16_0x140_0x14f() {
@@ -330,6 +369,7 @@ void testCmovR16E16_0x140_0x14f() {
 
 void testCmovR32E32_0x340_0x34f() {
     runCmovWidth(true);
+    verifyDirectCmovFusion();
 }
 
 #endif

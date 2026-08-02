@@ -623,7 +623,7 @@ enum class DirectType {
     SetCC
 };
 
-void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback) {
+void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback, U32 supportedFlags) {
     DecodedOp* nextOp = op->next;
     U32 skipped = 0;
     DirectType directType = DirectType::None;
@@ -639,7 +639,6 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
             directType = DirectType::Jump;
             break;
         }
-        /*
         if (nextOp->isCMovCC() && instructionInfo[nextOp->inst].readMemWidth == 0) {
             cond = getCmovConditionFromOp(nextOp);
             directType = DirectType::CMov;
@@ -650,7 +649,6 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
             directType = DirectType::SetCC;
             break;
         }
-        */
         if (instructionInfo[nextOp->inst].flagsSets) {
             break;
         }
@@ -660,7 +658,9 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
         skipped++;
         nextOp = nextOp->next;
     }
-    if (directType != DirectType::None && !nextOp->getNeededFlagsAfter(FMASK_TEST) && supportsDirectCondition(cond)) {
+    U32 unsupportedFlags = directType != DirectType::None ?
+        instructionInfo[nextOp->inst].flagsUsed & FMASK_TEST & ~supportedFlags : 0;
+    if (directType != DirectType::None && !unsupportedFlags && !nextOp->getNeededFlagsAfter(FMASK_TEST) && supportsDirectCondition(cond)) {
         DecodedOp* nextOp = op->next;
         U32 opEip = currentEip + op->len;
 
@@ -697,11 +697,11 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
             case DirectType::CMov:
             {
                 JitWidth width = nextOp->inst >= CmovO_R32R32 ? JitWidth::b32 : JitWidth::b16;
-                direct_cmov(width, cond, getReg(nextOp->reg), instructionInfo[nextOp->inst].readMemWidth ? read(width, calculateEaa(nextOp)) : getReg(nextOp->rm));
+                direct_cmov(width, cond, getReg(nextOp->reg), getReadOnlyReg(nextOp->rm));
                 break;
             }
             case DirectType::SetCC:
-                if (instructionInfo[nextOp->inst].readMemWidth) {
+                if (instructionInfo[nextOp->inst].writeMemWidth) {
                     kpanic("JitCodeGen::tryDirect set cc mem");
                 } else {
                     direct_setcc(cond, getReg8(nextOp->reg, false));

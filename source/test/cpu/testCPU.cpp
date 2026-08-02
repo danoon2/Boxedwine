@@ -680,6 +680,899 @@ void testNativeJitRunCountWraps() {
 #endif
 }
 
+namespace {
+
+enum class DirectArithmeticTestOp {
+    Add,
+    Sub,
+    And,
+    Or,
+    Xor
+};
+
+enum class DirectArithmeticTestShape {
+    Reg,
+    Mem,
+    Imm
+};
+
+struct DirectArithmeticOpInfo {
+    DirectArithmeticTestOp op;
+    const char* name;
+    U8 rmOpcode;
+    U8 immediateGroup;
+};
+
+constexpr DirectArithmeticOpInfo DIRECT_ARITHMETIC_OPS[] = {
+    {DirectArithmeticTestOp::Add, "add", 0x03, 0},
+    {DirectArithmeticTestOp::Sub, "sub", 0x2b, 5},
+    {DirectArithmeticTestOp::And, "and", 0x23, 4},
+    {DirectArithmeticTestOp::Or,  "or",  0x0b, 1},
+    {DirectArithmeticTestOp::Xor, "xor", 0x33, 6},
+};
+
+constexpr U32 DIRECT_ARITHMETIC_MEM_SRC = 0x300;
+
+constexpr U32 DIRECT_ARITHMETIC_CASES[][2] = {
+    {0, 0},
+    {1, 0},
+    {0, 1},
+    {0xffffffff, 1},
+    {0x7fffffff, 1},
+    {0x80000000, 1},
+    {0x80000000, 0xffffffff},
+    {0xaaaaaaaa, 0x55555555},
+};
+
+U32 directArithmeticParityFlag(U32 value) {
+    U8 low = (U8)value;
+    low ^= low >> 4;
+    low &= 0x0f;
+    return ((0x6996 >> low) & 1) == 0 ? PF : 0;
+}
+
+U32 directArithmeticFlags(DirectArithmeticTestOp op, U32 lhs, U32 rhs, U32& result) {
+    U32 flags = 0;
+    switch (op) {
+    case DirectArithmeticTestOp::Add:
+        result = lhs + rhs;
+        if ((U64)lhs + rhs > 0xffffffffULL) flags |= CF;
+        if ((~(lhs ^ rhs) & (lhs ^ result) & 0x80000000) != 0) flags |= OF;
+        if (((lhs ^ rhs ^ result) & 0x10) != 0) flags |= AF;
+        break;
+    case DirectArithmeticTestOp::Sub:
+        result = lhs - rhs;
+        if (lhs < rhs) flags |= CF;
+        if (((lhs ^ rhs) & (lhs ^ result) & 0x80000000) != 0) flags |= OF;
+        if (((lhs ^ rhs ^ result) & 0x10) != 0) flags |= AF;
+        break;
+    case DirectArithmeticTestOp::And:
+        result = lhs & rhs;
+        break;
+    case DirectArithmeticTestOp::Or:
+        result = lhs | rhs;
+        break;
+    case DirectArithmeticTestOp::Xor:
+        result = lhs ^ rhs;
+        break;
+    }
+    if (result == 0) flags |= ZF;
+    if (result & 0x80000000) flags |= SF;
+    flags |= directArithmeticParityFlag(result);
+    return flags;
+}
+
+bool directArithmeticCondition(U8 condition, U32 flags) {
+    bool cf = (flags & CF) != 0;
+    bool pf = (flags & PF) != 0;
+    bool zf = (flags & ZF) != 0;
+    bool sf = (flags & SF) != 0;
+    bool of = (flags & OF) != 0;
+    switch (condition) {
+    case 0x0: return of;
+    case 0x1: return !of;
+    case 0x2: return cf;
+    case 0x3: return !cf;
+    case 0x4: return zf;
+    case 0x5: return !zf;
+    case 0x6: return cf || zf;
+    case 0x7: return !cf && !zf;
+    case 0x8: return sf;
+    case 0x9: return !sf;
+    case 0xa: return pf;
+    case 0xb: return !pf;
+    case 0xc: return sf != of;
+    case 0xd: return sf == of;
+    case 0xe: return zf || (sf != of);
+    default: return !zf && (sf == of);
+    }
+}
+
+U32 emitDirectArithmetic(const DirectArithmeticOpInfo& op, DirectArithmeticTestShape shape, U32 rhs) {
+    if (shape == DirectArithmeticTestShape::Reg) {
+        testPushCode8(op.rmOpcode);
+        testPushCode8(0xc2); // op eax,edx
+        return 2;
+    }
+    if (shape == DirectArithmeticTestShape::Mem) {
+        testPushCode8(op.rmOpcode);
+        testPushCode8(0x05); // op eax,[disp32]
+        testPushCode32(DIRECT_ARITHMETIC_MEM_SRC);
+        return 6;
+    }
+    testPushCode8(0x81);
+    testPushCode8(0xc0 | (op.immediateGroup << 3)); // op eax,imm32
+    testPushCode32(rhs);
+    return 6;
+}
+
+const char* directArithmeticShapeName(DirectArithmeticTestShape shape) {
+    switch (shape) {
+    case DirectArithmeticTestShape::Reg: return "reg";
+    case DirectArithmeticTestShape::Mem: return "mem";
+    default: return "imm";
+    }
+}
+
+void runDirectArithmeticFlagsCase(const DirectArithmeticOpInfo& op, DirectArithmeticTestShape shape,
+                                  U32 lhs, U32 rhs, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 expectedResult = 0;
+    U32 expectedFlags = directArithmeticFlags(op.op, lhs, rhs, expectedResult);
+    U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = lhs;        // eax: arithmetic destination
+    cpu->reg[2].u32 = rhs;        // edx: register source
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+    context.memory->writed(TEST_HEAP_ADDRESS + DIRECT_ARITHMETIC_MEM_SRC, rhs);
+
+    U32 producerLen = emitDirectArithmetic(op, shape, rhs);
+    testPushCode8(0x0f); // setcc bl
+    testPushCode8(0x90 + condition);
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the arithmetic flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    const char* shapeName = directArithmeticShapeName(shape);
+    if (cpu->reg[0].u32 != expectedResult) {
+        testFail("direct %s %s condition %x result", op.name, shapeName, condition);
+    }
+    if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct %s %s condition %x flags", op.name, shapeName, condition);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + producerLen);
+    if (!producer || !set) {
+        testFail("direct %s %s condition %x metadata decode", op.name, shapeName, condition);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode) {
+        testFail("direct %s %s condition %x producer entry", op.name, shapeName, condition);
+    }
+    if (!(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        testFail("direct %s %s condition %x skipped set", op.name, shapeName, condition);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectArithmeticFlags() {
+#ifdef BOXEDWINE_JIT
+    constexpr DirectArithmeticTestShape shapes[] = {
+        DirectArithmeticTestShape::Reg,
+        DirectArithmeticTestShape::Mem,
+        DirectArithmeticTestShape::Imm,
+    };
+    for (const DirectArithmeticOpInfo& op : DIRECT_ARITHMETIC_OPS) {
+        for (DirectArithmeticTestShape shape : shapes) {
+            for (const auto& values : DIRECT_ARITHMETIC_CASES) {
+                for (U8 condition = 0; condition < 16; ++condition) {
+                    runDirectArithmeticFlagsCase(op, shape, values[0], values[1], condition);
+                }
+            }
+        }
+    }
+#endif
+}
+
+namespace {
+
+enum class DirectIncDecTestOp {
+    Inc,
+    Dec
+};
+
+constexpr U32 DIRECT_INC_DEC_CASES[] = {
+    0,
+    1,
+    0x0f,
+    0xffffffff,
+    0x7fffffff,
+    0x80000000,
+    0xaaaaaaaa,
+    0x55555555,
+};
+
+bool directIncDecConditionUsesCF(U8 condition) {
+    return condition == 0x2 || condition == 0x3 || condition == 0x6 || condition == 0x7;
+}
+
+void runDirectIncDecFlagsCase(DirectIncDecTestOp op, U32 value, bool oldCF, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 expectedResult = 0;
+    U32 expectedFlags = directArithmeticFlags(
+        op == DirectIncDecTestOp::Inc ? DirectArithmeticTestOp::Add : DirectArithmeticTestOp::Sub,
+        value, 1, expectedResult);
+    expectedFlags = (expectedFlags & ~CF) | (oldCF ? CF : 0);
+    U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = value;      // eax: INC/DEC destination
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    testPushCode8(oldCF ? 0xf9 : 0xf8); // stc/clc
+    testPushCode8(0xff);
+    testPushCode8(op == DirectIncDecTestOp::Inc ? 0xc0 : 0xc8); // inc/dec eax
+    testPushCode8(0x0f);
+    testPushCode8(0x90 + condition); // setcc bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the INC/DEC flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    const char* opName = op == DirectIncDecTestOp::Inc ? "inc" : "dec";
+    if (cpu->reg[0].u32 != expectedResult) {
+        testFail("direct %s condition %x old CF %d result", opName, condition, oldCF);
+    }
+    if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct %s condition %x old CF %d flags", opName, condition, oldCF);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 1);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 3);
+    if (!producer || !set) {
+        testFail("direct %s condition %x old CF %d metadata decode", opName, condition, oldCF);
+        return;
+    }
+    bool expectedDirect = !directIncDecConditionUsesCF(condition);
+    bool wasDirect = (set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) != 0;
+    if (wasDirect != expectedDirect) {
+        testFail("direct %s condition %x old CF %d selection", opName, condition, oldCF);
+    }
+    if (expectedDirect && (producer->pfn != cpu->thread->process->startJITOp ||
+        !producer->pfnJitCode || set->pfnJitCode)) {
+        testFail("direct %s condition %x old CF %d metadata", opName, condition, oldCF);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectIncDecFlags() {
+#ifdef BOXEDWINE_JIT
+    for (DirectIncDecTestOp op : {DirectIncDecTestOp::Inc, DirectIncDecTestOp::Dec}) {
+        for (U32 value : DIRECT_INC_DEC_CASES) {
+            for (bool oldCF : {false, true}) {
+                for (U8 condition = 0; condition < 16; ++condition) {
+                    runDirectIncDecFlagsCase(op, value, oldCF, condition);
+                }
+            }
+        }
+    }
+#endif
+}
+
+void testJitDirectNegFlags() {
+#ifdef BOXEDWINE_JIT
+    for (U32 value : DIRECT_INC_DEC_CASES) {
+        for (U8 condition = 0; condition < 16; ++condition) {
+            TestContext& context = testContext();
+            CPU* cpu = context.cpu;
+            U32 expectedResult = 0;
+            U32 expectedFlags = directArithmeticFlags(
+                DirectArithmeticTestOp::Sub, 0, value, expectedResult);
+            U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+            testNewInstruction(0);
+            cpu->big = true;
+            cpu->reg[0].u32 = value;      // eax: NEG destination
+            cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+            cpu->reg[6].u32 = 1;          // esi
+            cpu->reg[7].u32 = 2;          // edi
+
+            testPushCode8(0xf7);
+            testPushCode8(0xd8); // neg eax
+            testPushCode8(0x0f);
+            testPushCode8(0x90 + condition); // setcc bl
+            testPushCode8(0xc3);
+            testPushCode8(0x39); // cmp esi,edi; makes the NEG flags dead
+            testPushCode8(0xfe);
+            testRunCPU();
+
+            if (cpu->reg[0].u32 != expectedResult) {
+                testFail("direct neg condition %x result", condition);
+            }
+            if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
+                testFail("direct neg condition %x flags", condition);
+            }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+            DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+            DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 2);
+            if (!producer || !set) {
+                testFail("direct neg condition %x metadata decode", condition);
+                continue;
+            }
+            if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode ||
+                !(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+                testFail("direct neg condition %x metadata", condition);
+            }
+#endif
+        }
+    }
+#endif
+}
+
+namespace {
+
+enum class DirectCarryTestOp {
+    Adc,
+    Sbb
+};
+
+enum class DirectCarryTestShape {
+    Reg,
+    RegSelf,
+    Mem,
+    Imm
+};
+
+struct DirectCarryOpInfo {
+    DirectCarryTestOp op;
+    const char* name;
+    U8 rmOpcode;
+    U8 immediateGroup;
+};
+
+constexpr DirectCarryOpInfo DIRECT_CARRY_OPS[] = {
+    {DirectCarryTestOp::Adc, "adc", 0x13, 2},
+    {DirectCarryTestOp::Sbb, "sbb", 0x1b, 3},
+};
+
+U32 directCarryFlags(DirectCarryTestOp op, U32 lhs, U32 rhs, U32 carry, U32& result) {
+    U32 flags = 0;
+    if (op == DirectCarryTestOp::Adc) {
+        U64 fullResult = (U64)lhs + rhs + carry;
+        result = (U32)fullResult;
+        if (fullResult > 0xffffffffULL) flags |= CF;
+        if ((~(lhs ^ rhs) & (lhs ^ result) & 0x80000000) != 0) flags |= OF;
+    } else {
+        U64 fullSubtrahend = (U64)rhs + carry;
+        result = lhs - rhs - carry;
+        if ((U64)lhs < fullSubtrahend) flags |= CF;
+        if (((lhs ^ rhs) & (lhs ^ result) & 0x80000000) != 0) flags |= OF;
+    }
+    if (((lhs ^ rhs ^ result) & 0x10) != 0) flags |= AF;
+    if (result == 0) flags |= ZF;
+    if (result & 0x80000000) flags |= SF;
+    flags |= directArithmeticParityFlag(result);
+    return flags;
+}
+
+U32 emitDirectCarry(const DirectCarryOpInfo& op, DirectCarryTestShape shape, U32 rhs) {
+    if (shape == DirectCarryTestShape::Reg || shape == DirectCarryTestShape::RegSelf) {
+        testPushCode8(op.rmOpcode);
+        testPushCode8(shape == DirectCarryTestShape::Reg ? 0xc2 : 0xc0); // op eax,edx/eax
+        return 2;
+    }
+    if (shape == DirectCarryTestShape::Mem) {
+        testPushCode8(op.rmOpcode);
+        testPushCode8(0x05); // op eax,[disp32]
+        testPushCode32(DIRECT_ARITHMETIC_MEM_SRC);
+        return 6;
+    }
+    testPushCode8(0x81);
+    testPushCode8(0xc0 | (op.immediateGroup << 3)); // op eax,imm32
+    testPushCode32(rhs);
+    return 6;
+}
+
+const char* directCarryShapeName(DirectCarryTestShape shape) {
+    switch (shape) {
+    case DirectCarryTestShape::Reg: return "reg";
+    case DirectCarryTestShape::RegSelf: return "self";
+    case DirectCarryTestShape::Mem: return "mem";
+    default: return "imm";
+    }
+}
+
+void runDirectCarryFlagsCase(const DirectCarryOpInfo& op, DirectCarryTestShape shape,
+                             U32 lhs, U32 rhs, bool carry, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 effectiveRhs = shape == DirectCarryTestShape::RegSelf ? lhs : rhs;
+    U32 expectedResult = 0;
+    U32 expectedFlags = directCarryFlags(op.op, lhs, effectiveRhs, carry ? 1 : 0, expectedResult);
+    U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = lhs;        // eax: arithmetic destination
+    cpu->reg[2].u32 = rhs;        // edx: register source
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+    context.memory->writed(TEST_HEAP_ADDRESS + DIRECT_ARITHMETIC_MEM_SRC, rhs);
+
+    testPushCode8(carry ? 0xf9 : 0xf8); // stc/clc
+    U32 producerLen = emitDirectCarry(op, shape, rhs);
+    testPushCode8(0x0f);
+    testPushCode8(0x90 + condition); // setcc bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the ADC/SBB flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    const char* shapeName = directCarryShapeName(shape);
+    if (cpu->reg[0].u32 != expectedResult) {
+        testFail("direct %s %s condition %x carry %d result", op.name, shapeName, condition, carry);
+    }
+    if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct %s %s condition %x carry %d flags", op.name, shapeName, condition, carry);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 1);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 1 + producerLen);
+    if (!producer || !set) {
+        testFail("direct %s %s condition %x carry %d metadata decode", op.name, shapeName, condition, carry);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode ||
+        !(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        testFail("direct %s %s condition %x carry %d metadata", op.name, shapeName, condition, carry);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectAdcSbbFlags() {
+#ifdef BOXEDWINE_JIT
+    constexpr DirectCarryTestShape shapes[] = {
+        DirectCarryTestShape::Reg,
+        DirectCarryTestShape::RegSelf,
+        DirectCarryTestShape::Mem,
+        DirectCarryTestShape::Imm,
+    };
+    for (const DirectCarryOpInfo& op : DIRECT_CARRY_OPS) {
+        for (DirectCarryTestShape shape : shapes) {
+            for (const auto& values : DIRECT_ARITHMETIC_CASES) {
+                for (bool carry : {false, true}) {
+                    for (U8 condition = 0; condition < 16; ++condition) {
+                        runDirectCarryFlagsCase(op, shape, values[0], values[1], carry, condition);
+                    }
+                }
+            }
+        }
+    }
+#endif
+}
+
+namespace {
+
+enum class DirectShiftTestOp {
+    Shl,
+    Shr,
+    Sar
+};
+
+struct DirectShiftOpInfo {
+    DirectShiftTestOp op;
+    const char* name;
+    U8 group;
+};
+
+constexpr DirectShiftOpInfo DIRECT_SHIFT_OPS[] = {
+    {DirectShiftTestOp::Shl, "shl", 4},
+    {DirectShiftTestOp::Shr, "shr", 5},
+    {DirectShiftTestOp::Sar, "sar", 7},
+};
+
+constexpr U8 DIRECT_SHIFT_COUNTS[] = {1, 2, 7, 16, 31};
+
+bool directShiftConditionUsesOF(U8 condition) {
+    return condition < 2 || condition >= 0xc;
+}
+
+U32 directShiftFlags(DirectShiftTestOp op, U32 value, U8 count, U32& result) {
+    U32 flags = 0;
+    if (op == DirectShiftTestOp::Shl) {
+        result = value << count;
+        if ((value >> (32 - count)) & 1) flags |= CF;
+        if (count == 1 && ((value ^ result) & 0x80000000)) flags |= OF;
+    } else if (op == DirectShiftTestOp::Shr) {
+        result = value >> count;
+        if ((value >> (count - 1)) & 1) flags |= CF;
+        if (count == 1 && (value & 0x80000000)) flags |= OF;
+    } else {
+        result = value >> count;
+        if (value & 0x80000000) {
+            result |= 0xffffffffU << (32 - count);
+        }
+        if ((value >> (count - 1)) & 1) flags |= CF;
+    }
+    if (result == 0) flags |= ZF;
+    if (result & 0x80000000) flags |= SF;
+    flags |= directArithmeticParityFlag(result);
+    return flags;
+}
+
+void runDirectShiftFlagsCase(const DirectShiftOpInfo& op, U32 value, U8 count, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 expectedResult = 0;
+    U32 expectedFlags = directShiftFlags(op.op, value, count, expectedResult);
+    U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = value;      // eax: shift destination
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    testPushCode8(0xc1);
+    testPushCode8(0xc0 | (op.group << 3)); // shift eax,imm8
+    testPushCode8(count);
+    testPushCode8(0x0f);
+    testPushCode8(0x90 + condition); // setcc bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the shift flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    if (cpu->reg[0].u32 != expectedResult) {
+        testFail("direct %s count %u condition %x value %x result %x expected %x",
+            op.name, count, condition, value, cpu->reg[0].u32, expectedResult);
+    }
+    if ((count == 1 || !directShiftConditionUsesOF(condition)) &&
+        (cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct %s count %u condition %x flags", op.name, count, condition);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 3);
+    if (!producer || !set) {
+        testFail("direct %s count %u condition %x metadata decode", op.name, count, condition);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode ||
+        !(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        testFail("direct %s count %u condition %x metadata", op.name, count, condition);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectShiftFlags() {
+#ifdef BOXEDWINE_JIT
+    for (const DirectShiftOpInfo& op : DIRECT_SHIFT_OPS) {
+        for (U32 value : DIRECT_INC_DEC_CASES) {
+            for (U8 count : DIRECT_SHIFT_COUNTS) {
+                for (U8 condition = 0; condition < 16; ++condition) {
+                    runDirectShiftFlagsCase(op, value, count, condition);
+                }
+            }
+        }
+    }
+#endif
+}
+
+namespace {
+
+enum class DirectDoubleShiftTestOp {
+    Shld,
+    Shrd
+};
+
+struct DirectDoubleShiftOpInfo {
+    DirectDoubleShiftTestOp op;
+    const char* name;
+    U8 opcode;
+};
+
+constexpr DirectDoubleShiftOpInfo DIRECT_DOUBLE_SHIFT_OPS[] = {
+    {DirectDoubleShiftTestOp::Shld, "shld", 0xa4},
+    {DirectDoubleShiftTestOp::Shrd, "shrd", 0xac},
+};
+
+U32 directDoubleShiftFlags(DirectDoubleShiftTestOp op, U32 dest, U32 src, U8 count, U32& result) {
+    U32 flags = 0;
+    if (op == DirectDoubleShiftTestOp::Shld) {
+        result = (dest << count) | (src >> (32 - count));
+        if ((dest >> (32 - count)) & 1) flags |= CF;
+    } else {
+        result = (dest >> count) | (src << (32 - count));
+        if ((dest >> (count - 1)) & 1) flags |= CF;
+    }
+    if (count == 1 && ((dest ^ result) & 0x80000000)) flags |= OF;
+    if (result == 0) flags |= ZF;
+    if (result & 0x80000000) flags |= SF;
+    flags |= directArithmeticParityFlag(result);
+    return flags;
+}
+
+void runDirectDoubleShiftFlagsCase(const DirectDoubleShiftOpInfo& op,
+                                   U32 dest, U32 src, U8 count, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 expectedResult = 0;
+    U32 expectedFlags = directDoubleShiftFlags(op.op, dest, src, count, expectedResult);
+    U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = dest;       // eax: double-shift destination
+    cpu->reg[2].u32 = src;        // edx: double-shift source
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    testPushCode8(0x0f);
+    testPushCode8(op.opcode);
+    testPushCode8(0xd0); // shld/shrd eax,edx,imm8
+    testPushCode8(count);
+    testPushCode8(0x0f);
+    testPushCode8(0x90 + condition); // setcc bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the double-shift flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    if (cpu->reg[0].u32 != expectedResult) {
+        testFail("direct %s count %u condition %x dest %x src %x result %x expected %x",
+            op.name, count, condition, dest, src, cpu->reg[0].u32, expectedResult);
+    }
+    if ((count == 1 || !directShiftConditionUsesOF(condition)) &&
+        (cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct %s count %u condition %x dest %x src %x flags",
+            op.name, count, condition, dest, src);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 4);
+    if (!producer || !set) {
+        testFail("direct %s count %u condition %x metadata decode", op.name, count, condition);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode ||
+        !(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        testFail("direct %s count %u condition %x metadata", op.name, count, condition);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectDoubleShiftFlags() {
+#ifdef BOXEDWINE_JIT
+    for (const DirectDoubleShiftOpInfo& op : DIRECT_DOUBLE_SHIFT_OPS) {
+        for (const auto& values : DIRECT_ARITHMETIC_CASES) {
+            for (U8 count : DIRECT_SHIFT_COUNTS) {
+                for (U8 condition = 0; condition < 16; ++condition) {
+                    runDirectDoubleShiftFlagsCase(op, values[0], values[1], count, condition);
+                }
+            }
+        }
+    }
+#endif
+}
+
+namespace {
+
+enum class DirectBitTestShape {
+    Reg,
+    Imm
+};
+
+struct DirectBitTestCase {
+    U32 value;
+    U32 bit;
+};
+
+constexpr DirectBitTestCase DIRECT_BIT_TEST_CASES[] = {
+    {0x00000000, 0},
+    {0x00000001, 0},
+    {0x00000002, 1},
+    {0x00008000, 15},
+    {0x7fffffff, 31},
+    {0x80000000, 31},
+    {0x00000001, 32},
+    {0x00000002, 33},
+};
+
+void runDirectBitTestCarryCase(DirectBitTestShape shape, U32 value, U32 bit, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 expectedCondition = (value >> (bit & 31)) & 1;
+    if (condition == 3) {
+        expectedCondition ^= 1; // SETNB is the inverse of SETB.
+    }
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = value;      // eax: bit-test value
+    cpu->reg[2].u32 = bit;        // edx: register bit index
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    U32 producerLen;
+    if (shape == DirectBitTestShape::Reg) {
+        testPushCode8(0x0f);
+        testPushCode8(0xa3);
+        testPushCode8(0xd0); // bt eax,edx
+        producerLen = 3;
+    } else {
+        testPushCode8(0x0f);
+        testPushCode8(0xba);
+        testPushCode8(0xe0); // bt eax,imm8
+        testPushCode8((U8)bit);
+        producerLen = 4;
+    }
+    testPushCode8(0x0f);
+    testPushCode8(0x90 + condition); // setb/setnb bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes CF dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    const char* shapeName = shape == DirectBitTestShape::Reg ? "reg" : "imm";
+    if (cpu->reg[0].u32 != value) {
+        testFail("direct bt %s condition %x value %x bit %x changed value", shapeName, condition, value, bit);
+    }
+    if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct bt %s condition %x value %x bit %x flags", shapeName, condition, value, bit);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + producerLen);
+    if (!producer || !set) {
+        testFail("direct bt %s condition %x metadata decode", shapeName, condition);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode ||
+        !(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        testFail("direct bt %s condition %x metadata", shapeName, condition);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectBitTestCarry() {
+#ifdef BOXEDWINE_JIT
+    for (DirectBitTestShape shape : {DirectBitTestShape::Reg, DirectBitTestShape::Imm}) {
+        for (const DirectBitTestCase& test : DIRECT_BIT_TEST_CASES) {
+            for (U8 condition : {2, 3}) {
+                runDirectBitTestCarryCase(shape, test.value, test.bit, condition);
+            }
+        }
+    }
+#endif
+}
+
+namespace {
+
+enum class DirectRotateOneTestOp {
+    Rol,
+    Ror
+};
+
+struct DirectRotateOneOpInfo {
+    DirectRotateOneTestOp op;
+    const char* name;
+    U8 group;
+};
+
+constexpr DirectRotateOneOpInfo DIRECT_ROTATE_ONE_OPS[] = {
+    {DirectRotateOneTestOp::Rol, "rol", 0},
+    {DirectRotateOneTestOp::Ror, "ror", 1},
+};
+
+U32 directRotateOneFlags(DirectRotateOneTestOp op, U32 value, U32& result) {
+    U32 flags = 0;
+    if (op == DirectRotateOneTestOp::Rol) {
+        result = (value << 1) | (value >> 31);
+        if (result & 1) flags |= CF;
+        if (((result >> 31) ^ result) & 1) flags |= OF;
+    } else {
+        result = (value >> 1) | (value << 31);
+        if (result & 0x80000000) flags |= CF;
+        if (((result >> 31) ^ (result >> 30)) & 1) flags |= OF;
+    }
+    return flags;
+}
+
+void runDirectRotateOneFlagsCase(const DirectRotateOneOpInfo& op, U32 value, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 expectedResult = 0;
+    U32 expectedFlags = directRotateOneFlags(op.op, value, expectedResult);
+    U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = value;      // eax: rotate destination
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    testPushCode8(0xd1);
+    testPushCode8(0xc0 | (op.group << 3)); // rol/ror eax,1
+    testPushCode8(0x0f);
+    testPushCode8(0x90 + condition); // seto/setno/setb/setnb bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the rotate flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    if (cpu->reg[0].u32 != expectedResult) {
+        testFail("direct %s one condition %x value %x result %x expected %x",
+            op.name, condition, value, cpu->reg[0].u32, expectedResult);
+    }
+    if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct %s one condition %x value %x flags", op.name, condition, value);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 2);
+    if (!producer || !set) {
+        testFail("direct %s one condition %x metadata decode", op.name, condition);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode ||
+        !(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        testFail("direct %s one condition %x metadata", op.name, condition);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectRotateOneFlags() {
+#ifdef BOXEDWINE_JIT
+    constexpr U8 conditions[] = {0, 1, 2, 3};
+    for (const DirectRotateOneOpInfo& op : DIRECT_ROTATE_ONE_OPS) {
+        for (U32 value : DIRECT_INC_DEC_CASES) {
+            for (U8 condition : conditions) {
+                runDirectRotateOneFlagsCase(op, value, condition);
+            }
+        }
+    }
+#endif
+}
+
 bool testShouldRunRegister(bool fast, int reg) {
     if (!fast) {
         return true;

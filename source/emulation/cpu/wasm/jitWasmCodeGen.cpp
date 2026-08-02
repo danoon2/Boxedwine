@@ -4286,7 +4286,7 @@ static void wasmHelper_blockEnter(CPU* cpu) {
 
 // Fall back to the normal CPU interpreter for one instruction (used for
 // operations the WASM JIT doesn't inline, e.g. FPU/SSE/complex shifts).
-void jitRunSingleOp(CPU* cpu);   // defined in jitCodeGen.cpp
+DYN_PTR_SIZE jitRunSingleOp(CPU* cpu);   // defined in jitCodeGen.cpp
 static void wasmHelper_emulateSingleOp(CPU* cpu) {
     WASM_JIT_HELPER_STAT(Emulate);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
@@ -12941,6 +12941,93 @@ void JitWasmCodeGen::direct_test(JitWidth w, RegPtr left, U32 right) {
     freeScratch(result->hardwareReg());
     currentLazyFlags = lazyTypeForTest(w);
 }
+static LazyFlagType lazyTypeForDirectFlagsOp(JitWidth w, JitFlagOp op) {
+    switch (op) {
+    case JitFlagOp::Add:
+        return w == JitWidth::b8 ? FLAGS_ADD8 : w == JitWidth::b16 ? FLAGS_ADD16 : FLAGS_ADD32;
+    case JitFlagOp::Sub:
+        return lazyTypeForSub(w);
+    case JitFlagOp::And:
+        return w == JitWidth::b8 ? FLAGS_AND8 : w == JitWidth::b16 ? FLAGS_AND16 : FLAGS_AND32;
+    case JitFlagOp::Or:
+        return w == JitWidth::b8 ? FLAGS_OR8 : w == JitWidth::b16 ? FLAGS_OR16 : FLAGS_OR32;
+    case JitFlagOp::Xor:
+        return w == JitWidth::b8 ? FLAGS_XOR8 : w == JitWidth::b16 ? FLAGS_XOR16 : FLAGS_XOR32;
+    default:
+        kpanic("JitWasmCodeGen::lazyTypeForDirectFlagsOp");
+        return FLAGS_NONE;
+    }
+}
+void JitWasmCodeGen::direct_flags_op(JitWidth w, JitFlagOp op, RegPtr dst, RegPtr src) {
+    storeLazyFlagsDest(dst);
+    storeLazyFlagsSrc(src);
+    switch (op) {
+    case JitFlagOp::Add: addReg(w, dst, src); break;
+    case JitFlagOp::Sub: subReg(w, dst, src); break;
+    case JitFlagOp::And: andReg(w, dst, src); break;
+    case JitFlagOp::Or:  orReg(w, dst, src); break;
+    case JitFlagOp::Xor: xorReg(w, dst, src); break;
+    }
+    storeLazyFlagsResult(dst);
+    LazyFlagType flagType = lazyTypeForDirectFlagsOp(w, op);
+    storeLazyFlagType(flagType);
+    currentLazyFlags = flagType;
+}
+void JitWasmCodeGen::direct_flags_op(JitWidth w, JitFlagOp op, RegPtr dst, U32 src) {
+    storeLazyFlagsDest(dst);
+    storeLazyFlagsSrc(src);
+    switch (op) {
+    case JitFlagOp::Add: addValue(w, dst, src); break;
+    case JitFlagOp::Sub: subValue(w, dst, src); break;
+    case JitFlagOp::And: andValue(w, dst, src); break;
+    case JitFlagOp::Or:  orValue(w, dst, src); break;
+    case JitFlagOp::Xor: xorValue(w, dst, src); break;
+    }
+    storeLazyFlagsResult(dst);
+    LazyFlagType flagType = lazyTypeForDirectFlagsOp(w, op);
+    storeLazyFlagType(flagType);
+    currentLazyFlags = flagType;
+}
+void JitWasmCodeGen::direct_neg(JitWidth w, RegPtr dst) {
+    storeLazyFlagsSrc(dst);
+    negReg2(w, dst);
+    storeLazyFlagsResult(dst);
+    LazyFlagType flagType = w == JitWidth::b8 ? FLAGS_NEG8 : w == JitWidth::b16 ? FLAGS_NEG16 : FLAGS_NEG32;
+    storeLazyFlagType(flagType);
+    currentLazyFlags = flagType;
+}
+void JitWasmCodeGen::direct_flags_op_with_cf(JitWidth w, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) {
+    storeLazyFlagsOldCF(cf);
+    storeLazyFlagsDest(dst);
+    storeLazyFlagsSrc(src);
+    if (op == JitCarryOp::Adc) {
+        addReg(w, dst, src);
+        addReg(w, dst, cf);
+    } else {
+        subReg(w, dst, src);
+        subReg(w, dst, cf);
+    }
+    storeLazyFlagsResult(dst);
+    LazyFlagType flagType = op == JitCarryOp::Adc ? FLAGS_ADC32 : FLAGS_SBB32;
+    storeLazyFlagType(flagType);
+    currentLazyFlags = flagType;
+}
+void JitWasmCodeGen::direct_flags_op_with_cf(JitWidth w, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) {
+    storeLazyFlagsOldCF(cf);
+    storeLazyFlagsDest(dst);
+    storeLazyFlagsSrc(src);
+    if (op == JitCarryOp::Adc) {
+        addValue(w, dst, src);
+        addReg(w, dst, cf);
+    } else {
+        subValue(w, dst, src);
+        subReg(w, dst, cf);
+    }
+    storeLazyFlagsResult(dst);
+    LazyFlagType flagType = op == JitCarryOp::Adc ? FLAGS_ADC32 : FLAGS_SBB32;
+    storeLazyFlagType(flagType);
+    currentLazyFlags = flagType;
+}
 void JitWasmCodeGen::direct_jump(JitConditional cond, U32 address) {
     emitBranchBailoutCheck();
     JumpIfCondition(cond, address);
@@ -12951,6 +13038,7 @@ void JitWasmCodeGen::direct_cmov(JitWidth w, JitConditional cond, RegPtr dst, Re
     EndIf();
 }
 void JitWasmCodeGen::direct_setcc(JitConditional cond, RegPtr dst) {
+    loadGPReg(dst->emulatedReg);
     auto r = getCondition(cond, dst);
     if (r != dst) mov(JitWidth::b8, dst, r);
 }

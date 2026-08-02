@@ -73,6 +73,19 @@ enum class JitConditional {
     NLE
 };
 
+enum class JitFlagOp {
+    Add,
+    Sub,
+    And,
+    Or,
+    Xor
+};
+
+enum class JitCarryOp {
+    Adc,
+    Sbb
+};
+
 // the code will guarantee that for a single instruction, 2 DynReg's will never point to the same reg and both be read/write (see dynamic_xchgr8r8), that way we don't have to worry about clobbering
 class JitReg {
 public:
@@ -319,6 +332,13 @@ public:
     void dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, InstRegRegCF callbackWithCF = nullptr);
     void dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
     void dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFlagType flags, bool writeback = true, bool addCF = false, InstRegReg cfCallback = nullptr, InstRegImmCF callbackWithCF = nullptr);
+    void dynamic_RRDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegReg callback, LazyFlagType flags);
+    void dynamic_RMDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegReg callback, LazyFlagType flags);
+    void dynamic_RIDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegImm callback, LazyFlagType flags);
+    void dynamic_RRDirectWithCF(DecodedOp* op, JitWidth width, JitCarryOp directOp, InstRegReg callback, LazyFlagType flags);
+    void dynamic_RMDirectWithCF(DecodedOp* op, JitWidth width, JitCarryOp directOp, InstRegReg callback, LazyFlagType flags);
+    void dynamic_RIDirectWithCF(DecodedOp* op, JitWidth width, JitCarryOp directOp, InstRegImm callback, InstRegReg cfCallback, LazyFlagType flags);
+    void dynamic_RIShiftDirect(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFlagType flags);
     void dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFlagType flags, bool writeback = true, bool addCF = false, InstRegReg cfCallback = nullptr, InstRegImmCF callbackWithCF = nullptr);
     void dynamic_R(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagType flags, bool writeback = true);
     void dynamic_M(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagType flags, bool writeback = true, RegPtr tmp = nullptr);
@@ -410,10 +430,19 @@ public:
     virtual void direct_cmp(JitWidth width, RegPtr left, U32 right) = 0;
     virtual void direct_test(JitWidth width, RegPtr left, RegPtr right) = 0;
     virtual void direct_test(JitWidth width, RegPtr left, U32 right) = 0;
+    virtual void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, RegPtr src) = 0;
+    virtual void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, U32 src) = 0;
+    virtual void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) = 0;
+    virtual void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) = 0;
+    virtual void direct_neg(JitWidth width, RegPtr dst) = 0;
+    virtual bool supportsDirectFlagsForShift() { return false; }
+    virtual bool supportsDirectFlagsForBitTest() { return false; }
+    virtual void direct_bit_test(JitWidth width, RegPtr value, RegPtr bit) { kpanic("Jit::direct_bit_test reg"); }
+    virtual void direct_bit_test(JitWidth width, RegPtr value, U32 bitMask) { kpanic("Jit::direct_bit_test imm"); }
     virtual void direct_jump(JitConditional condition, U32 address) = 0;
     virtual void direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) = 0;    
     virtual void direct_setcc(JitConditional condition, RegPtr dst) = 0;
-    virtual void tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback) = 0;
+    virtual void tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback, U32 supportedFlags = FMASK_TEST) = 0;
     virtual void preCompile(DecodedOp* op, bool skippedOp = false) = 0;
     virtual void compile(DecodedOp* op) = 0;
     virtual void postCompile(DecodedOp* op) = 0;
@@ -425,6 +454,7 @@ protected:
     bool bsStartFlags(DecodedOp* op);
     void pushParam(std::vector<DynParam>& params, JitWidth width, RegPtr reg);
     void dshift(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flags);
+    void dshiftDirect(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flags);
     void dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flags);
     void dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFlagType flags);
     void dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFlagType flags);

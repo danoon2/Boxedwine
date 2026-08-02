@@ -204,6 +204,14 @@ const TestEntry TEST_ENTRIES[] = {
     {testFlagsAcrossIndirectJitBlockBoundary, "Test flags across indirect JIT block boundary"},
 #ifdef BOXEDWINE_JIT
     {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},
+    {testJitDirectArithmeticFlags, "Test JIT direct arithmetic flags"},
+    {testJitDirectIncDecFlags, "Test JIT direct INC/DEC flags"},
+    {testJitDirectNegFlags, "Test JIT direct NEG flags"},
+    {testJitDirectAdcSbbFlags, "Test JIT direct ADC/SBB flags"},
+    {testJitDirectShiftFlags, "Test JIT direct nonzero shift flags"},
+    {testJitDirectDoubleShiftFlags, "Test JIT direct nonzero double-shift flags"},
+    {testJitDirectBitTestCarry, "Test JIT direct bit-test carry"},
+    {testJitDirectRotateOneFlags, "Test JIT direct count-one rotate flags"},
 #endif
 #if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
     {testNativeJitRunCountWraps, "Test native JIT runCount wrap"},
