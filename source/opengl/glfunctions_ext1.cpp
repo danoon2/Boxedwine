@@ -921,8 +921,8 @@ void glcommon_glBinormal3dEXT(CPU* cpu) {
     if (!ext_glBinormal3dEXT)
         kpanic("ext_glBinormal3dEXT is NULL");
     {
-    GL_FUNC(ext_glBinormal3dEXT)(dARG1, dARG2, dARG3);
-    GL_LOG ("glBinormal3dEXT GLdouble bx=%f, GLdouble by=%f, GLdouble bz=%f",dARG1,dARG2,dARG3);
+    GL_FUNC(ext_glBinormal3dEXT)(dARG1, dARG3, dARG5);
+    GL_LOG ("glBinormal3dEXT GLdouble bx=%f, GLdouble by=%f, GLdouble bz=%f",dARG1,dARG3,dARG5);
     }
 }
 void glcommon_glBinormal3dvEXT(CPU* cpu) {
@@ -1225,8 +1225,8 @@ void glcommon_glBufferAddressRangeNV(CPU* cpu) {
     if (!ext_glBufferAddressRangeNV)
         kpanic("ext_glBufferAddressRangeNV is NULL");
     {
-    GL_FUNC(ext_glBufferAddressRangeNV)(ARG1, ARG2, llARG3, ARG4);
-    GL_LOG ("glBufferAddressRangeNV GLenum pname=%d, GLuint index=%d, GLuint64EXT address=" PRIu64 ", GLsizeiptr length=%d",ARG1,ARG2,llARG3,ARG4);
+    GL_FUNC(ext_glBufferAddressRangeNV)(ARG1, ARG2, llARG3, ARG5);
+    GL_LOG ("glBufferAddressRangeNV GLenum pname=%d, GLuint index=%d, GLuint64EXT address=" PRIu64 ", GLsizeiptr length=%d",ARG1,ARG2,llARG3,ARG5);
     }
 }
 void glcommon_glBufferData(CPU* cpu) {
@@ -2923,8 +2923,8 @@ void glcommon_glDeformationMap3dSGIX(CPU* cpu) {
     if (!ext_glDeformationMap3dSGIX)
         kpanic("ext_glDeformationMap3dSGIX is NULL");
     {
-    GL_FUNC(ext_glDeformationMap3dSGIX)(ARG1, dARG2, dARG3, ARG4, ARG5, dARG6, dARG7, ARG8, ARG9, dARG10, dARG11, ARG12, ARG13, marshalArray<GLdouble>(cpu, ARG14, glcommon_glDeformationMap3Count(ARG4, ARG5, ARG8, ARG9, ARG12, ARG13)));
-    GL_LOG ("glDeformationMap3dSGIX GLenum target=%d, GLdouble u1=%f, GLdouble u2=%f, GLint ustride=%d, GLint uorder=%d, GLdouble v1=%f, GLdouble v2=%f, GLint vstride=%d, GLint vorder=%d, GLdouble w1=%f, GLdouble w2=%f, GLint wstride=%d, GLint worder=%d, const GLdouble* points=%.08x",ARG1,dARG2,dARG3,ARG4,ARG5,dARG6,dARG7,ARG8,ARG9,dARG10,dARG11,ARG12,ARG13,ARG14);
+    GL_FUNC(ext_glDeformationMap3dSGIX)(ARG1, dARG2, dARG4, ARG6, ARG7, dARG8, dARG10, ARG12, ARG13, dARG14, dARG16, ARG18, ARG19, marshalArray<GLdouble>(cpu, ARG20, glcommon_glDeformationMap3Count(ARG6, ARG7, ARG12, ARG13, ARG18, ARG19)));
+    GL_LOG ("glDeformationMap3dSGIX GLenum target=%d, GLdouble u1=%f, GLdouble u2=%f, GLint ustride=%d, GLint uorder=%d, GLdouble v1=%f, GLdouble v2=%f, GLint vstride=%d, GLint vorder=%d, GLdouble w1=%f, GLdouble w2=%f, GLint wstride=%d, GLint worder=%d, const GLdouble* points=%.08x",ARG1,dARG2,dARG4,ARG6,ARG7,dARG8,dARG10,ARG12,ARG13,dARG14,dARG16,ARG18,ARG19,ARG20);
     }
 }
 void glcommon_glDeformationMap3fSGIX(CPU* cpu) {
@@ -3229,16 +3229,16 @@ void glcommon_glDepthBoundsEXT(CPU* cpu) {
     if (!ext_glDepthBoundsEXT)
         kpanic("ext_glDepthBoundsEXT is NULL");
     {
-    GL_FUNC(ext_glDepthBoundsEXT)(dARG1, dARG2);
-    GL_LOG ("glDepthBoundsEXT GLclampd zmin=%f, GLclampd zmax=%f",dARG1,dARG2);
+    GL_FUNC(ext_glDepthBoundsEXT)(dARG1, dARG3);
+    GL_LOG ("glDepthBoundsEXT GLclampd zmin=%f, GLclampd zmax=%f",dARG1,dARG3);
     }
 }
 void glcommon_glDepthBoundsdNV(CPU* cpu) {
     if (!ext_glDepthBoundsdNV)
         kpanic("ext_glDepthBoundsdNV is NULL");
     {
-    GL_FUNC(ext_glDepthBoundsdNV)(dARG1, dARG2);
-    GL_LOG ("glDepthBoundsdNV GLdouble zmin=%f, GLdouble zmax=%f",dARG1,dARG2);
+    GL_FUNC(ext_glDepthBoundsdNV)(dARG1, dARG3);
+    GL_LOG ("glDepthBoundsdNV GLdouble zmin=%f, GLdouble zmax=%f",dARG1,dARG3);
     }
 }
 void glcommon_glDepthRangeArrayv(CPU* cpu) {
@@ -3253,16 +3253,16 @@ void glcommon_glDepthRangeIndexed(CPU* cpu) {
     if (!ext_glDepthRangeIndexed)
         kpanic("ext_glDepthRangeIndexed is NULL");
     {
-    GL_FUNC(ext_glDepthRangeIndexed)(ARG1, dARG2, dARG3);
-    GL_LOG ("glDepthRangeIndexed GLuint index=%d, GLdouble n=%f, GLdouble f=%f",ARG1,dARG2,dARG3);
+    GL_FUNC(ext_glDepthRangeIndexed)(ARG1, dARG2, dARG4);
+    GL_LOG ("glDepthRangeIndexed GLuint index=%d, GLdouble n=%f, GLdouble f=%f",ARG1,dARG2,dARG4);
     }
 }
 void glcommon_glDepthRangedNV(CPU* cpu) {
     if (!ext_glDepthRangedNV)
         kpanic("ext_glDepthRangedNV is NULL");
     {
-    GL_FUNC(ext_glDepthRangedNV)(dARG1, dARG2);
-    GL_LOG ("glDepthRangedNV GLdouble zNear=%f, GLdouble zFar=%f",dARG1,dARG2);
+    GL_FUNC(ext_glDepthRangedNV)(dARG1, dARG3);
+    GL_LOG ("glDepthRangedNV GLdouble zNear=%f, GLdouble zFar=%f",dARG1,dARG3);
     }
 }
 void glcommon_glDepthRangef(CPU* cpu) {

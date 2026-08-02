@@ -485,6 +485,28 @@ bool StartUpArgs::apply() {
             openNode->close();
         }
     }
+
+    S32 fileSystemVersion = 0;
+    std::shared_ptr<FsNode> fileSystemVersionNode = Fs::getNodeFromLocalPath(B(""), B("/version.txt"), false);
+    if (fileSystemVersionNode) {
+        FsOpenNode* openNode = fileSystemVersionNode->open(K_O_RDONLY);
+        if (openNode) {
+            U8 tmp[64];
+            U32 len = openNode->readNative(tmp, 64);
+            if (len) {
+                BString version;
+                version.append((char*)tmp, len);
+                fileSystemVersion = version.trim().toInt();
+            }
+            openNode->close();
+        }
+    }
+    if (fileSystemVersion < 10) {
+        std::shared_ptr<FsNode> libGlNode = Fs::getNodeFromLocalPath(B(""), B("/lib/libGL.so.1"), false);
+        if (libGlNode) {
+            libGlNode->removeNodeFromParent();
+        }
+    }
 #endif
     KSystem::title = title;
 

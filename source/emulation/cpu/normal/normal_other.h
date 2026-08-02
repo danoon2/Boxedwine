@@ -203,8 +203,7 @@ void OPCALL normal_int80(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_int99(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 index = cpu->peek32(0);
-    callOpenGL(cpu, index);
+    callOpenGL(cpu, op->imm);
     NEXT();
 }
 void OPCALL normal_int9A(CPU* cpu, DecodedOp* op) {
