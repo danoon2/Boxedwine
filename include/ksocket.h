@@ -98,6 +98,11 @@
 #define K_IP_XFRM_POLICY  17
 #define K_IP_PASSSEC  18
 #define K_IP_TRANSPARENT  19
+#define K_IP_MULTICAST_IF 32
+#define K_IP_MULTICAST_TTL 33
+#define K_IP_MULTICAST_LOOP 34
+#define K_IP_ADD_MEMBERSHIP 35
+#define K_IP_DROP_MEMBERSHIP 36
 
 #define K_TCP_NODELAY		1	/* Turn off Nagle's algorithm. */
 #define K_TCP_MAXSEG		2	/* Limit MSS */

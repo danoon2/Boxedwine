@@ -20,8 +20,21 @@
 
 #include "kepoll.h"
 #include "kscheduler.h"
+#ifdef __EMSCRIPTEN__
+#include "kbrowsersocket.h"
+#endif
 
 #include <string.h>
+
+#ifdef __EMSCRIPTEN__
+static std::shared_ptr<KBrowserSocketObject> getBrowserSocketForFd(KThread* thread, FD fd) {
+    KFileDescriptorPtr targetFD = thread->process->getFileDescriptor(fd);
+    if (!targetFD) {
+        return nullptr;
+    }
+    return std::dynamic_pointer_cast<KBrowserSocketObject>(targetFD->kobject);
+}
+#endif
 
 KEPoll::KEPoll() : KObject(KTYPE_EPOLL) {
 }
@@ -140,6 +153,13 @@ U32 KEPoll::ctl(KMemory* memory, U32 op, FD fd, U32 address) {
     if (!targetFD) {
         return -K_EBADF;
     }
+#ifdef __EMSCRIPTEN__
+    std::shared_ptr<KBrowserSocketObject> browserSocket = std::dynamic_pointer_cast<KBrowserSocketObject>(targetFD->kobject);
+    if (browserSocket) {
+        U32 events = address ? memory->readd(address) : 0;
+        BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] epoll_ctl process=%s op=%d fd=%d browser=%d events=0x%x", KThread::currentThread()->process->name.c_str(), op, fd, browserSocket->getBrowserSocket(), events);
+    }
+#endif
 
     Data* existing = this->data[fd];
 
@@ -186,9 +206,17 @@ U32 KEPoll::wait(KThread* thread, U32 events, U32 maxevents, U32 timeout) {
         pollData.fd = next->fd;
         pollData.data = next->data;
         thread->pollData.push_back(pollData);
-        pollCount++;	
+        pollCount++;
     }
     result = internal_poll(thread, thread->pollData.data(), pollCount, timeout);
+#ifdef __EMSCRIPTEN__
+    for (KPollData& data : thread->pollData) {
+        std::shared_ptr<KBrowserSocketObject> browserSocket = getBrowserSocketForFd(thread, data.fd);
+        if (browserSocket && data.revents) {
+            BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] epoll_wait ready process=%s fd=%d browser=%d events=0x%x revents=0x%x result=%d", thread->process->name.c_str(), data.fd, browserSocket->getBrowserSocket(), data.events, data.revents, result);
+        }
+    }
+#endif
     if (result >= 0) {
         result = 0;
         for (KPollData& data : thread->pollData) {

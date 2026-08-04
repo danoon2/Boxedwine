@@ -22,8 +22,11 @@
 #include "ksocket.h"
 #include "kstat.h"
 #include "ksignal.h"
+#ifdef __EMSCRIPTEN__
+#include "kbrowsersocket.h"
+#endif
 
-KUnixSocketObject::KUnixSocketObject(U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_UNIX_SOCKET, domain, type, protocol), 
+KUnixSocketObject::KUnixSocketObject(U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_UNIX_SOCKET, domain, type, protocol),
     lockCond(std::make_shared<BoxedWineCondition>(B("KUnixSocketObject::lockCond"))), recvBuffer(128)
 {
 }
@@ -396,7 +399,6 @@ U32 KUnixSocketObject::read(KThread* thread, U32 buffer, U32 len, U32 flags) {
     if (con) {
         BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
     }
-
     return count;
 }
 
@@ -874,8 +876,14 @@ U32 KUnixSocketObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd, U3
                 d.object = f->kobject;
                 d.accessFlags = f->accessFlags;
                 msg->objects.push_back(d);
+#ifdef __EMSCRIPTEN__
+                std::shared_ptr<KBrowserSocketObject> browserSocket = std::dynamic_pointer_cast<KBrowserSocketObject>(f->kobject);
+                if (browserSocket) {
+                    BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] unix send fd process=%s fd=%d browser=%d", thread->process->name.c_str(), f->handle, browserSocket->getBrowserSocket());
+                }
+#endif
             }
-        }				
+        }
     }
     for (U32 i=0;i<hdr.msg_iovlen;i++) {
         U32 p = memory->readd(hdr.msg_iov + 8 * i);
@@ -954,6 +962,12 @@ U32 KUnixSocketObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd, U3
             KFileDescriptorPtr recvFd = thread->process->allocFileDescriptor(msg->objects[i].object, msg->objects[i].accessFlags, 0, -1, 0);
             writeCMsgHdr(thread, hdr.msg_control + i * 16, 16, K_SOL_SOCKET, K_SCM_RIGHTS);
             memory->writed(hdr.msg_control + i * 16 + 12, recvFd->handle);
+#ifdef __EMSCRIPTEN__
+            std::shared_ptr<KBrowserSocketObject> browserSocket = std::dynamic_pointer_cast<KBrowserSocketObject>(recvFd->kobject);
+            if (browserSocket) {
+                BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] unix recv fd process=%s fd=%d browser=%d", thread->process->name.c_str(), recvFd->handle, browserSocket->getBrowserSocket());
+            }
+#endif
         }
 		memory->writed(address + 20, i * 16); // msg_controllen
     }
