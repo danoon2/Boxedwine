@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boxedwine Network Gateway</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --panel-2: #eef3f1;
+      --ink: #171b22;
+      --muted: #606a78;
+      --line: #d7dde5;
+      --accent: #0d766e;
+      --accent-strong: #0a5f59;
+      --danger: #b73535;
+      --warn: #9a6500;
+      --ok: #12805c;
+      --shadow: 0 12px 32px rgba(28, 38, 54, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 32px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--warn);
+      box-shadow: 0 0 0 3px rgba(154, 101, 0, 0.12);
+    }
+
+    .dot.ok {
+      background: var(--ok);
+      box-shadow: 0 0 0 3px rgba(18, 128, 92, 0.14);
+    }
+
+    .dot.bad {
+      background: var(--danger);
+      box-shadow: 0 0 0 3px rgba(183, 53, 53, 0.13);
+    }
+
+    .button {
+      min-height: 34px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .button:hover {
+      border-color: #b8c1cb;
+      background: #fdfefe;
+    }
+
+    .button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .button.primary:hover {
+      background: var(--accent-strong);
+    }
+
+    .button.danger {
+      border-color: rgba(183, 53, 53, 0.45);
+      color: var(--danger);
+    }
+
+    .button.danger:hover {
+      background: #fff7f7;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.35fr 0.95fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .panel-body {
+      padding: 14px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .metric {
+      min-height: 74px;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+    }
+
+    .metric-value {
+      font-size: 24px;
+      line-height: 1.1;
+      font-weight: 750;
+    }
+
+    .metric-label {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 128px minmax(0, 1fr);
+      gap: 8px 12px;
+      margin: 0;
+    }
+
+    .kv dt {
+      color: var(--muted);
+    }
+
+    .kv dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 9px 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      background: #fbfcfd;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 16px;
+      text-align: center;
+    }
+
+    .activity {
+      display: grid;
+      gap: 8px;
+      max-height: 520px;
+      overflow: auto;
+      padding-right: 3px;
+    }
+
+    .event {
+      display: grid;
+      gap: 3px;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-left: 4px solid #9aa6b2;
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .event[data-type="peer"] {
+      border-left-color: var(--accent);
+    }
+
+    .event[data-type="udp"] {
+      border-left-color: #4e7fb8;
+    }
+
+    .event[data-type="tcp"] {
+      border-left-color: #7b63a9;
+    }
+
+    .event[data-type="error"] {
+      border-left-color: var(--danger);
+    }
+
+    .event-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .event-message {
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+
+    .event-time {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .event-detail {
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 14px;
+    }
+
+    .stat-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 6px;
+    }
+
+    .stat-line span:first-child {
+      color: var(--muted);
+    }
+
+    .toast {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      max-width: min(420px, calc(100% - 32px));
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: #17202a;
+      color: #fff;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 900px) {
+      header,
+      .toolbar {
+        align-items: stretch;
+      }
+
+      header {
+        flex-direction: column;
+      }
+
+      .toolbar {
+        justify-content: flex-start;
+      }
+
+      .grid,
+      .metrics,
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .kv {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <h1>Boxedwine Network Gateway</h1>
+        <div id="endpoint" class="subtitle mono">Loading...</div>
+      </div>
+      <div class="toolbar">
+        <div class="status-pill"><span id="statusDot" class="dot"></span><span id="statusText">Connecting</span></div>
+        <button id="refreshButton" class="button" type="button">Refresh</button>
+        <button id="resetButton" class="button danger" type="button">Reset Network</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Status</h2>
+          <span id="updatedAt" class="subtitle">-</span>
+        </div>
+        <div class="panel-body">
+          <div class="metrics">
+            <div class="metric">
+              <div id="peerCount" class="metric-value">0</div>
+              <div class="metric-label">Peers</div>
+            </div>
+            <div class="metric">
+              <div id="udpCount" class="metric-value">0</div>
+              <div class="metric-label">UDP Sockets</div>
+            </div>
+            <div class="metric">
+              <div id="tcpCount" class="metric-value">0</div>
+              <div class="metric-label">TCP Links</div>
+            </div>
+            <div class="metric">
+              <div id="uptime" class="metric-value">0s</div>
+              <div class="metric-label">Uptime</div>
+            </div>
+          </div>
+
+          <dl class="kv">
+            <dt>WebSocket</dt>
+            <dd id="websocketUrl" class="mono">-</dd>
+            <dt>Room Subnet</dt>
+            <dd id="roomSubnet" class="mono">-</dd>
+            <dt>Broadcast</dt>
+            <dd id="roomBroadcast" class="mono">-</dd>
+            <dt>Debug</dt>
+            <dd id="debugFlag">-</dd>
+            <dt>Authentication</dt>
+            <dd id="authState">-</dd>
+            <dt>Allowed</dt>
+            <dd id="allowRules" class="mono">-</dd>
+          </dl>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Activity</h2>
+          <span id="activityCount" class="subtitle">0 events</span>
+        </div>
+        <div class="panel-body">
+          <div id="activity" class="activity">
+            <div class="empty">No activity yet</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Peers</h2>
+          <span id="peerSummary" class="subtitle">0 connected</span>
+        </div>
+        <div class="panel-body" id="peers"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Counters</h2>
+        </div>
+        <div class="panel-body">
+          <div id="stats" class="stats-grid"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const state = {
+      timer: null,
+      lastStatus: null,
+    };
+
+    const numberFormat = new Intl.NumberFormat();
+
+    const elements = {
+      statusDot: document.getElementById("statusDot"),
+      statusText: document.getElementById("statusText"),
+      endpoint: document.getElementById("endpoint"),
+      updatedAt: document.getElementById("updatedAt"),
+      peerCount: document.getElementById("peerCount"),
+      udpCount: document.getElementById("udpCount"),
+      tcpCount: document.getElementById("tcpCount"),
+      uptime: document.getElementById("uptime"),
+      websocketUrl: document.getElementById("websocketUrl"),
+      roomSubnet: document.getElementById("roomSubnet"),
+      roomBroadcast: document.getElementById("roomBroadcast"),
+      debugFlag: document.getElementById("debugFlag"),
+      authState: document.getElementById("authState"),
+      allowRules: document.getElementById("allowRules"),
+      activity: document.getElementById("activity"),
+      activityCount: document.getElementById("activityCount"),
+      peers: document.getElementById("peers"),
+      peerSummary: document.getElementById("peerSummary"),
+      stats: document.getElementById("stats"),
+      resetButton: document.getElementById("resetButton"),
+      refreshButton: document.getElementById("refreshButton"),
+      toast: document.getElementById("toast"),
+    };
+
+    function text(value) {
+      return value == null || value === "" ? "-" : String(value);
+    }
+
+    function formatDuration(ms) {
+      const totalSeconds = Math.max(0, Math.floor((ms || 0) / 1000));
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      if (hours) return `${hours}h ${minutes}m`;
+      if (minutes) return `${minutes}m ${seconds}s`;
+      return `${seconds}s`;
+    }
+
+    function formatTime(iso) {
+      if (!iso) return "-";
+      return new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }).format(new Date(iso));
+    }
+
+    function setHealth(mode, label) {
+      elements.statusDot.className = `dot ${mode || ""}`.trim();
+      elements.statusText.textContent = label;
+    }
+
+    function showToast(message) {
+      elements.toast.textContent = message;
+      elements.toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => elements.toast.classList.remove("show"), 2400);
+    }
+
+    async function fetchStatus() {
+      const response = await fetch("/api/status", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`status ${response.status}`);
+      }
+      return response.json();
+    }
+
+    async function refresh() {
+      try {
+        const status = await fetchStatus();
+        state.lastStatus = status;
+        render(status);
+        setHealth("ok", "Online");
+      } catch (error) {
+        setHealth("bad", "Offline");
+        elements.updatedAt.textContent = "Update failed";
+      }
+    }
+
+    async function resetNetwork() {
+      if (!confirm("Reset the network gateway and disconnect all current peers?")) {
+        return;
+      }
+      elements.resetButton.disabled = true;
+      try {
+        const response = await fetch("/api/reset", { method: "POST" });
+        if (!response.ok) {
+          throw new Error(`reset ${response.status}`);
+        }
+        const status = await response.json();
+        state.lastStatus = status;
+        render(status);
+        showToast("Network reset complete");
+      } catch (error) {
+        showToast(`Reset failed: ${error.message}`);
+      } finally {
+        elements.resetButton.disabled = false;
+      }
+    }
+
+    function render(status) {
+      const peers = Array.isArray(status.peers) ? status.peers : [];
+      const stats = status.stats || {};
+      const udpSockets = peers.reduce((sum, peer) => sum + (peer.udpSockets || 0), 0);
+      const tcpLinks = peers.reduce((sum, peer) => sum + (peer.tcpSockets || 0) + (peer.virtualTcpLinks || 0), 0);
+
+      elements.endpoint.textContent = status.httpUrl || window.location.href;
+      elements.updatedAt.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      elements.peerCount.textContent = numberFormat.format(peers.length);
+      elements.udpCount.textContent = numberFormat.format(udpSockets);
+      elements.tcpCount.textContent = numberFormat.format(tcpLinks);
+      elements.uptime.textContent = formatDuration(status.uptimeMs);
+      elements.websocketUrl.textContent = text(status.websocketUrl);
+      elements.roomSubnet.textContent = text(status.roomSubnet);
+      elements.roomBroadcast.textContent = text(status.roomBroadcast);
+      elements.debugFlag.textContent = status.debug ? "enabled" : "disabled";
+      elements.authState.textContent = status.authEnabled ? `enabled (${status.authUser || "user"})` : "disabled";
+      elements.allowRules.textContent = (status.allowRules || []).map((rule) => `${rule.host}:${rule.port}`).join(", ") || "-";
+      elements.peerSummary.textContent = `${peers.length} connected`;
+
+      renderPeers(peers);
+      renderStats(stats);
+      renderActivity(status.activity || []);
+    }
+
+    function renderPeers(peers) {
+      if (!peers.length) {
+        elements.peers.innerHTML = '<div class="empty">No peers connected</div>';
+        return;
+      }
+      const rows = peers.map((peer) => {
+        const bindings = (peer.udpBindings || []).map((binding) =>
+          `<div class="mono">#${binding.socketId} ${binding.host}:${binding.port}</div>`
+        ).join("") || '<span class="subtitle">none</span>';
+        return `<tr>
+          <td class="mono">${peer.ip}</td>
+          <td>${numberFormat.format(peer.udpSockets || 0)}</td>
+          <td>${numberFormat.format((peer.tcpSockets || 0) + (peer.virtualTcpLinks || 0))}</td>
+          <td>${numberFormat.format(peer.tcpServers || 0)}</td>
+          <td>${bindings}</td>
+        </tr>`;
+      }).join("");
+      elements.peers.innerHTML = `<table>
+        <thead>
+          <tr>
+            <th>IP</th>
+            <th>UDP</th>
+            <th>TCP</th>
+            <th>Listeners</th>
+            <th>UDP Bindings</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    function renderStats(stats) {
+      const preferred = [
+        "hostTcpConnections",
+        "hostTcpBytesFromPeer",
+        "hostTcpBytesToPeer",
+        "hostUdpDatagramsFromPeer",
+        "hostUdpDatagramsToPeer",
+        "roomTcpConnections",
+        "roomTcpBytes",
+        "roomUdpDatagrams",
+        "roomUdpBytes",
+        "roomSignalsRelayed",
+        "roomSignalErrors",
+        "roomPeers",
+        "roomTcpListeners",
+      ];
+      elements.stats.innerHTML = preferred
+        .filter((key) => Object.prototype.hasOwnProperty.call(stats, key))
+        .map((key) => `<div class="stat-line"><span>${key}</span><strong>${numberFormat.format(stats[key] || 0)}</strong></div>`)
+        .join("");
+    }
+
+    function renderActivity(activity) {
+      elements.activityCount.textContent = `${activity.length} events`;
+      if (!activity.length) {
+        elements.activity.innerHTML = '<div class="empty">No activity yet</div>';
+        return;
+      }
+      elements.activity.innerHTML = activity.map((event) => {
+        const detail = event.detail && Object.keys(event.detail).length
+          ? `<div class="event-detail mono">${escapeHtml(JSON.stringify(event.detail))}</div>`
+          : "";
+        return `<div class="event" data-type="${escapeHtml(event.type || "")}">
+          <div class="event-top">
+            <div class="event-message">${escapeHtml(event.message || event.type || "event")}</div>
+            <div class="event-time">${formatTime(event.at)}</div>
+          </div>
+          ${detail}
+        </div>`;
+      }).join("");
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    elements.refreshButton.addEventListener("click", refresh);
+    elements.resetButton.addEventListener("click", resetNetwork);
+
+    refresh();
+    state.timer = setInterval(refresh, 1000);
+  </script>
+</body>
+</html>

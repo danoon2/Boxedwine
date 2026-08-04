@@ -26,6 +26,12 @@
 #include <memory>
 #include <new>
 
+#ifdef __EMSCRIPTEN__
+extern "C" {
+extern unsigned int bw_net_get_room_ipv4();
+}
+#endif
+
 #ifdef WIN32
 #undef BOOL
 #include <winsock2.h>
@@ -145,6 +151,12 @@ static U32 fallbackEth0IpAddress() {
 }
 
 static U32 eth0IpAddress() {
+#ifdef __EMSCRIPTEN__
+    U32 roomIp = bw_net_get_room_ipv4();
+    if (roomIp) {
+        return roomIp;
+    }
+#endif
     U32 ip = ipAddress();
     if (!ip || ip == 0x0100007f) {
         return fallbackEth0IpAddress();
@@ -184,6 +196,11 @@ const std::vector<KEmulatedNetworkInterface>& getEmulatedNetworkInterfaces() {
         eth0.mac[5] = 0x02;
         eth0.prefixLength = 24;
         result.push_back(eth0);
+    }
+    if (result.size() > 1) {
+        KEmulatedNetworkInterface& eth0 = result[1];
+        eth0.ipv4 = eth0IpAddress();
+        eth0.broadcast = (eth0.ipv4 & eth0.netmask) | ~eth0.netmask;
     }
     return result;
 }

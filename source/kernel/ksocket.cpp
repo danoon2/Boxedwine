@@ -24,9 +24,18 @@
 #include "kunixsocket.h"
 #include "knativesocket.h"
 #include "knetlink.h"
+#ifdef __EMSCRIPTEN__
+#include "kbrowsersocket.h"
+#endif
 
 #include <string.h>
 #include <stdio.h>
+
+#ifdef __EMSCRIPTEN__
+static bool isBrowserSocketObject(const std::shared_ptr<KSocketObject>& socket) {
+    return std::dynamic_pointer_cast<KBrowserSocketObject>(socket) != nullptr;
+}
+#endif
 
 
 BString socketAddressName(KMemory* memory, U32 address, U32 len) {
@@ -61,11 +70,21 @@ U32 ksocket(U32 domain, U32 type, U32 protocol) {
         KFileDescriptorPtr result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
         return result->handle;
     } else if (domain == K_AF_INET) {
+#ifdef __EMSCRIPTEN__
+        std::shared_ptr<KBrowserSocketObject> s = std::make_shared<KBrowserSocketObject>(domain, type, protocol);
+#else
         std::shared_ptr<KNativeSocketObject> s = std::make_shared<KNativeSocketObject>(domain, type, protocol);
+#endif
         if (s->error) {
             return s->error;
         } else {
             KFileDescriptorPtr result = KThread::currentThread()->process->allocFileDescriptor(s, K_O_RDWR, 0, -1, 0);
+#ifdef __EMSCRIPTEN__
+            if (isBrowserSocketObject(s)) {
+                std::shared_ptr<KBrowserSocketObject> browserSocket = std::dynamic_pointer_cast<KBrowserSocketObject>(s);
+                BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] ksocket process=%s fd=%d browser=%d domain=%d type=%d protocol=%d", KThread::currentThread()->process->name.c_str(), result->handle, browserSocket->getBrowserSocket(), domain, type, protocol);
+            }
+#endif
             return result->handle;
         }
     }
@@ -98,9 +117,23 @@ U32 kconnect(KThread* thread, U32 socket, U32 address, U32 len) {
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
     if (s->connected) {
+#ifdef __EMSCRIPTEN__
+        if (std::dynamic_pointer_cast<KBrowserSocketObject>(s)) {
+            std::shared_ptr<KBrowserSocketObject> browserSocket = std::dynamic_pointer_cast<KBrowserSocketObject>(s);
+            BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] repeated connect delegated process=%s fd=%d browser=%d", thread->process->name.c_str(), socket, browserSocket->getBrowserSocket());
+            return s->connect(thread, fd, address, len);
+        }
+#endif
         return -K_EISCONN;
-    }		
-    return s->connect(thread, fd, address, len);        
+    }
+    U32 result = s->connect(thread, fd, address, len);
+#ifdef __EMSCRIPTEN__
+    if (isBrowserSocketObject(s)) {
+        std::shared_ptr<KBrowserSocketObject> browserSocket = std::dynamic_pointer_cast<KBrowserSocketObject>(s);
+        BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] kconnect process=%s fd=%d browser=%d result=%d", thread->process->name.c_str(), socket, browserSocket->getBrowserSocket(), result);
+    }
+#endif
+    return result;
 }
 
 U32 klisten(KThread* thread, U32 socket, U32 backlog) {
@@ -147,7 +180,7 @@ U32 kgetsockname(KThread* thread, U32 socket, U32 address, U32 plen) {
 
 U32 kgetpeername(KThread* thread, U32 socket, U32 address, U32 plen) {
     KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
-    
+
     if (!fd) {
         return -K_EBADF;
     }
@@ -155,7 +188,14 @@ U32 kgetpeername(KThread* thread, U32 socket, U32 address, U32 plen) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->getpeername(thread, fd, address, plen);
+    U32 result = s->getpeername(thread, fd, address, plen);
+#ifdef __EMSCRIPTEN__
+    if (isBrowserSocketObject(s)) {
+        std::shared_ptr<KBrowserSocketObject> browserSocket = std::dynamic_pointer_cast<KBrowserSocketObject>(s);
+        BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] getpeername process=%s fd=%d browser=%d result=%d", thread->process->name.c_str(), socket, browserSocket->getBrowserSocket(), result);
+    }
+#endif
+    return result;
 }
 
 U32 ksocketpair(KThread* thread, U32 af, U32 type, U32 protocol, U32 socks, U32 flags) {
@@ -256,7 +296,14 @@ U32 ksetsockopt(KThread* thread, U32 socket, U32 level, U32 name, U32 value, U32
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->setsockopt(thread, fd, level, name, value, len);
+    U32 result = s->setsockopt(thread, fd, level, name, value, len);
+#ifdef __EMSCRIPTEN__
+    if (isBrowserSocketObject(s)) {
+        std::shared_ptr<KBrowserSocketObject> browserSocket = std::dynamic_pointer_cast<KBrowserSocketObject>(s);
+        BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] setsockopt process=%s fd=%d browser=%d level=%d name=%d len=%d result=%d", thread->process->name.c_str(), socket, browserSocket->getBrowserSocket(), level, name, len, result);
+    }
+#endif
+    return result;
 }
 
 U32 kgetsockopt(KThread* thread, U32 socket, U32 level, U32 name, U32 value, U32 len_address) {
@@ -269,7 +316,18 @@ U32 kgetsockopt(KThread* thread, U32 socket, U32 level, U32 name, U32 value, U32
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->getsockopt(thread, fd, level, name, value, len_address);    
+    U32 result = s->getsockopt(thread, fd, level, name, value, len_address);
+#ifdef __EMSCRIPTEN__
+    if (isBrowserSocketObject(s)) {
+        std::shared_ptr<KBrowserSocketObject> browserSocket = std::dynamic_pointer_cast<KBrowserSocketObject>(s);
+        if (level != K_SOL_SOCKET || name != K_SO_TYPE) {
+            U32 retrievedValue = value ? thread->memory->readd(value) : 0;
+            U32 retrievedLen = len_address ? thread->memory->readd(len_address) : 0;
+            BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] getsockopt process=%s fd=%d browser=%d level=%d name=%d value=%u len=%u result=%d", thread->process->name.c_str(), socket, browserSocket->getBrowserSocket(), level, name, retrievedValue, retrievedLen, result);
+        }
+    }
+#endif
+    return result;
 }
 
 #define K_SOL_SOCKET 1
