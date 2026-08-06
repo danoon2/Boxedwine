@@ -1363,22 +1363,18 @@ U32 CPU::writeCrx(U32 which, U32 value) {
 
 bool CPU::shouldContinue(U32 eip) {
     DecodedOp* op = this->memory->getDecodedOp(eip);
-#ifdef BOXEDWINE_JIT
     if (op && ((op->flags2 & OP_FLAG2_DECODED_32BIT) != 0) != this->isBig()) {
         this->memory->removeCode(this->thread, eip, 1, false);
         op = nullptr;
     }
-#endif
     return op == nullptr;
 }
 
 DecodedOp** CPU::getOpLocation(U32 eip) {
-#ifdef BOXEDWINE_JIT
     DecodedOp* op = this->memory->getDecodedOp(eip);
     if (op && ((op->flags2 & OP_FLAG2_DECODED_32BIT) != 0) != this->isBig()) {
         this->memory->removeCode(this->thread, eip, 1, false);
     }
-#endif
     return this->memory->getDecodedOpLocation(eip);
 }
 

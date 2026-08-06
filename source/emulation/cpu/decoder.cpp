@@ -6220,12 +6220,12 @@ void DecodedOp::reset() {
     this->repNotZero = 0;
     this->pfn = nullptr;    
     this->flags = 0;
+    this->flags2 = 0;
 #ifdef _DEBUG
     this->eip = 0;
 #endif
 #ifdef BOXEDWINE_JIT
     this->runCount = 0;
-    this->flags2 = 0;
     this->jitLen = 0;
     this->pfnJitCode = nullptr;
     blockStart = nullptr;
@@ -6485,11 +6485,9 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
         d.opCountSoFarInThisBlock++;
         op->len = overlongOp ? 15 : (U8)decodedOpLen;
         op->ea16 = d.ea16;
-#ifdef BOXEDWINE_JIT
         if (isBig) {
             op->flags2 |= OP_FLAG2_DECODED_32BIT;
         }
-#endif
         decodedLen += op->len;
         opCount++;
 #if defined _DEBUG

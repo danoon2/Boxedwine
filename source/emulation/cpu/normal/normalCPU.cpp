@@ -368,13 +368,11 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
     while (true) {
         op = memory->getDecodedOp(startIp);
         if (op) {
-#ifdef BOXEDWINE_JIT
             bool decodedBig = (op->flags2 & OP_FLAG2_DECODED_32BIT) != 0;
             if (decodedBig != this->isBig()) {
                 memory->removeCode(this->thread, startIp, 1, false);
                 continue;
             }
-#endif
             break;
         }
 

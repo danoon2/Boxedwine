@@ -1645,7 +1645,9 @@ public:
 #define STR_TOTAL data.disp
 
     U8 runCount;
+#endif
     U8 flags2;
+#ifdef BOXEDWINE_JIT
     U16 jitLen;
     U16 blockOpCount;
     U16 blockLen; // emulated code length of the block
