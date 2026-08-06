@@ -168,6 +168,9 @@ public:
 #endif
     bool isAddressDynamic(U32 address, U32 len);
     void threadCleanup(U32 threadId);
+#ifdef BOXEDWINE_MULTI_THREADED
+    void synchronizeDecodedOpCache(CPU* cpu, U32 observedEpoch);
+#endif
     void clearOpCache();
     void clearPageWriteCounts(U32 pageIndex);
 

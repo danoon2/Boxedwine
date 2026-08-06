@@ -14,5 +14,8 @@ void testSelfModifying();
 void testSelfModifyingMovsb();
 void testSelfModifyingFront();
 void testSelfModifyingBack();
+#ifdef BOXEDWINE_MULTI_THREADED
+void testDecodedOpInvalidationDefersCrossThreadReuse();
+#endif
 
 #endif

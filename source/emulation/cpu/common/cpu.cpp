@@ -45,6 +45,9 @@ CPU::CPU(KMemory* memory) : memory(memory) {
     this->fpu.reset();
 
     opCache = (DecodedOp***)&getMemData(memory)->opCache.pageData[0];
+#ifdef BOXEDWINE_MULTI_THREADED
+    decodedOpCacheGlobalEpoch = getMemData(memory)->opCache.getEpochAddress();
+#endif
 #ifdef BOXEDWINE_JIT_ARMV8
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[0] = 2147483648.0;
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[1] = 2147483648.0;

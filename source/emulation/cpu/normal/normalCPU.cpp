@@ -405,6 +405,15 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
 }
 
 void NormalCPU::run() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    U32 decodedOpEpoch = decodedOpCacheGlobalEpoch->load(std::memory_order_acquire);
+    if (decodedOpCacheEpoch.load(std::memory_order_relaxed) != decodedOpEpoch) {
+        // Drop the only DecodedOp pointer carried between dispatch blocks before
+        // announcing that this CPU can no longer reference an older generation.
+        nextOp = nullptr;
+        memory->synchronizeDecodedOpCache(this, decodedOpEpoch);
+    }
+#endif
 #if defined(BOXEDWINE_WASM_JIT) && !defined(__TEST)
     if (nextOp) {
         // WASM JIT fast exits can carry DecodedOp* values across code-cache

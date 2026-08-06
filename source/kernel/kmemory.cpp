@@ -1341,6 +1341,19 @@ void KMemory::threadCleanup(U32 threadId) {
     }
 }
 
+#ifdef BOXEDWINE_MULTI_THREADED
+void KMemory::synchronizeDecodedOpCache(CPU* cpu, U32 observedEpoch) {
+    if (cpu->decodedOpCacheEpoch.load(std::memory_order_relaxed)) {
+        cpu->decodedOpCacheEpoch.store(observedEpoch, std::memory_order_release);
+        return;
+    }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    if (data) {
+        data->opCache.registerThread(cpu);
+    }
+}
+#endif
+
 void KMemory::clearOpCache() {
 #if defined(BOXEDWINE_JIT)
     // Collect installed entries before the cache frees the DecodedOps, then

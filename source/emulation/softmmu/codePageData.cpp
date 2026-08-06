@@ -100,9 +100,9 @@ void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 	for (U32 i = offset; i < end; i++) {
 		if (page && page->ops[i]) {
 			if (preparedRemovalPendingDeallocs) {
-				preparedRemovalPendingDeallocs->push_back(page->ops[i]);
+				preparedRemovalPendingDeallocs->ops.push_back(page->ops[i]);
 			} else {
-				pendingDeallocs[thread->id].push_back(page->ops[i]);
+				pendingDeallocs[thread->id].ops.push_back(page->ops[i]);
 			}
 			page->ops[i] = nullptr;
 			activeOps--;
@@ -159,9 +159,9 @@ DecodedOp* DecodedOpCache::getPreviousOpAndRemoveIfOverlapping(U32 address) {
 		if (previousOpAddress + previousOp->len > address) {
 			previousPageCache->ops[previousOpAddress & K_PAGE_MASK] = nullptr;			
 			if (preparedRemovalPendingDeallocs) {
-				preparedRemovalPendingDeallocs->push_back(previousOp);
+				preparedRemovalPendingDeallocs->ops.push_back(previousOp);
 			} else {
-				pendingDeallocs[KThread::currentThread()->id].push_back(previousOp);
+				pendingDeallocs[KThread::currentThread()->id].ops.push_back(previousOp);
 			}
 			activeOps--;
 			previousOp = getPreviousOp(previousOpAddress, &previousOpAddress, &previousPageCache);
@@ -171,17 +171,32 @@ DecodedOp* DecodedOpCache::getPreviousOpAndRemoveIfOverlapping(U32 address) {
 }
 
 void DecodedOpCache::threadCleanup(U32 threadId) {
+#ifdef BOXEDWINE_MULTI_THREADED
+	auto registered = registeredThreads.find(threadId);
+	if (registered != registeredThreads.end()) {
+		registered->second->decodedOpCacheEpoch.store(0, std::memory_order_release);
+		registeredThreads.erase(registered);
+	}
+	reclaimPendingDeallocs();
+#else
 	clearPendingDeallocs(threadId);
+#endif
 }
 
 void DecodedOpCache::clear() {
 	removeAll();
 	for (auto& it : pendingDeallocs) {
-		for (auto& op : it.second) {
+		for (auto& op : it.second.ops) {
 			op->dealloc();
 		}
 	}
 	pendingDeallocs.clear();
+#ifdef BOXEDWINE_MULTI_THREADED
+	for (auto& it : registeredThreads) {
+		it.second->decodedOpCacheEpoch.store(0, std::memory_order_release);
+	}
+	registeredThreads.clear();
+#endif
 }
 
 #ifdef BOXEDWINE_JIT
@@ -218,12 +233,55 @@ void DecodedOpCache::collectAllJitBlocks(std::vector<void*>& out) {
 
 void DecodedOpCache::clearPendingDeallocs(U32 threadId) {
 	if (pendingDeallocs.count(threadId)) {
-		for (auto& op : pendingDeallocs[threadId]) {
+		for (auto& op : pendingDeallocs[threadId].ops) {
 			op->dealloc();
 		}
 		pendingDeallocs.erase(threadId);
 	}
 }
+
+void DecodedOpCache::retirePendingDeallocs(PendingDecodedOps& pending, size_t previousSize) {
+	if (pending.ops.size() == previousSize) {
+		return;
+	}
+#ifdef BOXEDWINE_MULTI_THREADED
+	pending.retirementEpoch = epoch.fetch_add(1, std::memory_order_acq_rel) + 1;
+	reclaimPendingDeallocs();
+#endif
+}
+
+#ifdef BOXEDWINE_MULTI_THREADED
+void DecodedOpCache::registerThread(CPU* cpu) {
+	if (!cpu->thread) {
+		kpanic("DecodedOpCache CPU has no thread");
+	}
+	registeredThreads[cpu->thread->id] = cpu;
+	cpu->decodedOpCacheEpoch.store(epoch.load(std::memory_order_acquire), std::memory_order_release);
+}
+
+void DecodedOpCache::reclaimPendingDeallocs() {
+	for (auto pending = pendingDeallocs.begin(); pending != pendingDeallocs.end();) {
+		bool canReclaim = pending->second.retirementEpoch != 0;
+		if (canReclaim) {
+			for (const auto& registered : registeredThreads) {
+				U32 cpuEpoch = registered.second->decodedOpCacheEpoch.load(std::memory_order_acquire);
+				if (cpuEpoch && cpuEpoch < pending->second.retirementEpoch) {
+					canReclaim = false;
+					break;
+				}
+			}
+		}
+		if (!canReclaim) {
+			++pending;
+			continue;
+		}
+		for (DecodedOp* op : pending->second.ops) {
+			op->dealloc();
+		}
+		pending = pendingDeallocs.erase(pending);
+	}
+}
+#endif
 
 void DecodedOpCache::iterateOps(U32 address, U32 len, OpCacheCallback callback, void* pData) {
 	U32 previousOpAddress = 0;
@@ -258,11 +316,22 @@ void DecodedOpCache::iterateOps(U32 address, U32 len, OpCacheCallback callback, 
 }
 
 void DecodedOpCache::remove(U32 address, U32 len, bool becauseOfWrite) {
+	PendingDecodedOps* pending = preparedRemovalPendingDeallocs;
+	if (!pending) {
+		KThread* thread = KThread::currentThread();
+		if (thread) {
+			pending = &pendingDeallocs[thread->id];
+		}
+	}
+	size_t previousPendingSize = pending ? pending->ops.size() : 0;
 	DecodedOp* prev = getPreviousOpAndRemoveIfOverlapping(address);
 	if (prev) {
 		prev->next = preparedRemovalDone ? preparedRemovalDone : DecodedOp::allocDone();
 	}
 	removeStartAt(address, len, becauseOfWrite);
+	if (pending) {
+		retirePendingDeallocs(*pending, previousPendingSize);
+	}
 }
 
 void DecodedOpCache::prepareRemoveRanges(const std::vector<std::pair<U32, U32>>& ranges) {
@@ -304,11 +373,11 @@ void DecodedOpCache::prepareRemoveRanges(const std::vector<std::pair<U32, U32>>&
 	}
 
 	auto result = pendingDeallocs.try_emplace(thread->id);
-	std::vector<DecodedOp*>& pending = result.first->second;
-	if (removalCount > pending.max_size() - pending.size()) {
+	PendingDecodedOps& pending = result.first->second;
+	if (removalCount > pending.ops.max_size() - pending.ops.size()) {
 		throw std::length_error("DecodedOp removal is too large");
 	}
-	pending.reserve(pending.size() + removalCount);
+	pending.ops.reserve(pending.ops.size() + removalCount);
 	DecodedOp* done = DecodedOp::allocDone();
 	preparedRemovalPendingDeallocs = &pending;
 	preparedRemovalDone = done;
@@ -348,7 +417,11 @@ void DecodedOpCache::add(DecodedOp* op, U32 address, U32 opCount) {
 	U32 offset = address & K_PAGE_MASK;
 	DecodedOp* prevOp = nullptr;
 
+#ifdef BOXEDWINE_MULTI_THREADED
+	reclaimPendingDeallocs();
+#else
 	clearPendingDeallocs(KThread::currentThread()->id);
+#endif
 
 	while (op) {
 #ifdef _DEBUG

@@ -45,7 +45,8 @@ static bool signalShouldInterruptWaitingThread(KThread* thread, U32 signal) {
 
 thread_local KThread* KThread::runningThread;
 
-KThread::~KThread() {  
+KThread::~KThread() {
+    memory->threadCleanup(id);
     for (auto& callback : callbacksOnExit) {
         callback(id);
     }

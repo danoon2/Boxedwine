@@ -192,4 +192,68 @@ void testSelfModifyingBack() {
     verifyReg32(0, 0x60, "self modifying back eax");
 }
 
+#ifdef BOXEDWINE_MULTI_THREADED
+#undef cpu
+#undef memory
+void testDecodedOpInvalidationDefersCrossThreadReuse() {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    KMemory* memory = context.memory;
+    newInstruction(0);
+
+    // Primary block: nop; test-end.
+    pushCode8(0x90);
+    pushCode8(0xcd);
+    pushCode8(0x97);
+
+    // Leave a second block uncached so decoding it can trigger reclamation
+    // without retiring another op into the first batch.
+    constexpr U32 secondBlockOffset = 0x100;
+    memory->writeb(TEST_CODE_ADDRESS + secondBlockOffset, 0x90);
+    memory->writeb(TEST_CODE_ADDRESS + secondBlockOffset + 1, 0xcd);
+    memory->writeb(TEST_CODE_ADDRESS + secondBlockOffset + 2, 0x97);
+
+    auto crossDispatchBoundary = [](CPU* boundaryCpu) {
+        boundaryCpu->nextOp = nullptr;
+        U32 observedEpoch = boundaryCpu->decodedOpCacheGlobalEpoch->load(std::memory_order_acquire);
+        boundaryCpu->memory->synchronizeDecodedOpCache(boundaryCpu, observedEpoch);
+    };
+
+    crossDispatchBoundary(cpu);
+    DecodedOp* oldOp = cpu->getNextOp();
+    DecodedOp* oldNext = oldOp->next;
+    OpCallback oldPfn = oldOp->pfn;
+
+    KThread* holdingThread = context.process->createThread();
+    crossDispatchBoundary(holdingThread->cpu);
+    holdingThread->cpu->nextOp = oldOp;
+
+    // Turn the nop into inc eax. Both CPUs still announce the generation in
+    // which oldOp was reachable, so it must remain intact.
+    memory->writeb(TEST_CODE_ADDRESS, 0x40);
+    crossDispatchBoundary(cpu);
+    DecodedOp* replacement = cpu->getNextOp();
+    if (replacement == oldOp) {
+        failed("invalidated DecodedOp was reused while another CPU held it");
+    }
+    if (oldOp->next != oldNext || oldOp->pfn != oldPfn) {
+        failed("invalidated DecodedOp was reset while another CPU held it");
+    }
+
+    crossDispatchBoundary(holdingThread->cpu);
+
+    // Adding an unrelated block runs reclamation. Now that both CPUs crossed
+    // the boundary, oldOp should be reset and returned to the pool.
+    cpu->eip.u32 = secondBlockOffset;
+    cpu->getNextOp();
+    if (oldOp->next || oldOp->pfn) {
+        failed("invalidated DecodedOp was not reclaimed after all CPUs advanced");
+    }
+
+    cpu->eip.u32 = 0;
+    cpu->nextOp = replacement;
+    context.process->deleteThread(holdingThread);
+}
+#endif
+
 #endif

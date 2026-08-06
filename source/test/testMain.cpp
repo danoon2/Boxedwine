@@ -840,6 +840,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testSelfModifyingFront, "Test Self Modifying Code Same Block(Previous)"},
     {testSelfModifyingBack, "Test Self Modifying Code Same Block(Next)"},
 #ifdef BOXEDWINE_MULTI_THREADED
+    {testDecodedOpInvalidationDefersCrossThreadReuse, "Test decoded op invalidation defers cross-thread reuse"},
     {testLockedInc, "Test Multi-threaded locked inc"},
     {testLockedIncAgainstPlainStore, "Test Multi-threaded locked inc against plain store"},
     {testLockedCmpXchgAgainstPlainStore, "Test Multi-threaded locked cmpxchg against plain store"},

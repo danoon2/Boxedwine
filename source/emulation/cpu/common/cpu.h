@@ -566,6 +566,13 @@ public:
     U32 wasmJitReapRetiredOnExit = 0;
     U32 wasmJitHazardRegistered = 0;
 #endif
+
+#ifdef BOXEDWINE_MULTI_THREADED
+public:
+    // Appended so generated code offsets for all established CPU fields stay stable.
+    std::atomic<U32>* decodedOpCacheGlobalEpoch = nullptr;
+    std::atomic<U32> decodedOpCacheEpoch{0};
+#endif
 };
 
 void common_prepareException(CPU* cpu, int code, int error);

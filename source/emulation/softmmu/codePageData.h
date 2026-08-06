@@ -25,6 +25,12 @@
 #include <map>
 
 class KMemory;
+class CPU;
+
+struct PendingDecodedOps {
+	std::vector<DecodedOp*> ops;
+	U32 retirementEpoch = 0;
+};
 
 class DecodedOpPageCache {
 public:
@@ -57,6 +63,10 @@ public:
 	void clearPageWriteCounts(U32 pageIndex);
 	void threadCleanup(U32 threadId);
 	void clear();
+#ifdef BOXEDWINE_MULTI_THREADED
+	std::atomic<U32>* getEpochAddress() { return &epoch; }
+	void registerThread(CPU* cpu);
+#endif
 
 private:
 	friend class BtCPU;
@@ -70,12 +80,17 @@ private:
 	U8* getWriteCounts(U32 pageIndex, bool create);
 	U8** writeCounts[0x400];
 	void clearPendingDeallocs(U32 threadId);
+	void retirePendingDeallocs(PendingDecodedOps& pending, size_t previousSize);
+#ifdef BOXEDWINE_MULTI_THREADED
+	void reclaimPendingDeallocs();
+	std::atomic<U32> epoch{1};
+	std::map<U32, CPU*> registeredThreads;
+#endif
 
-	// this will hold DecodedOp's that are ready for dealloc, but are delayed in case the current thread is referencing them while removing them
-	// Without this, there will be timing issues that only occasionally show up in debug mode, but become more obvious when running games multiple
-	// times, like with automation
-	std::map<U32, std::vector<DecodedOp*>> pendingDeallocs;
-	std::vector<DecodedOp*>* preparedRemovalPendingDeallocs = nullptr;
+	// Removed ops remain intact until every CPU that could have observed them
+	// has reached a later dispatch boundary.
+	std::map<U32, PendingDecodedOps> pendingDeallocs;
+	PendingDecodedOps* preparedRemovalPendingDeallocs = nullptr;
 	DecodedOp* preparedRemovalDone = nullptr;
 };
 
