@@ -961,6 +961,88 @@ void testSignalHandlerSegmentsUseGdtSelectors() {
     }
 }
 
+void testSignalReturnRefreshesCodeSegmentSize() {
+    constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
+    constexpr U32 SIGNAL_HANDLER = 0x12345000;
+    constexpr U32 CODE_SELECTOR = 0x557;
+
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    CPU* cpu = thread->cpu;
+    KThread::setCurrentThread(thread);
+
+    struct user_desc* code = thread->getLDT(CODE_SELECTOR >> 3);
+    code->entry_number = CODE_SELECTOR >> 3;
+    code->base_addr = TEST_CODE_ADDRESS;
+    code->limit = 0xffff;
+    code->seg_32bit = 0;
+    code->contents = 2;
+    code->read_exec_only = 0;
+    code->seg_not_present = 0;
+
+    if (!cpu->setSegment(CS, CODE_SELECTOR) || cpu->isBig()) {
+        testFail("loading 16-bit CS must select 16-bit decoding");
+    }
+
+    memory->mmap(thread, TEST_CODE_ADDRESS, K_PAGE_SIZE,
+        K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    for (U32 address = 0x102; address < 0x10c; address++) {
+        memory->writeb(TEST_CODE_ADDRESS + address, 0x90);
+    }
+    memory->writeb(TEST_CODE_ADDRESS + 0x10c, 0xc3);
+    memory->writeb(TEST_CODE_ADDRESS + 0x120, 0xeb);
+    memory->writeb(TEST_CODE_ADDRESS + 0x121, 0x0a);
+    memory->writeb(TEST_CODE_ADDRESS + 0x12c, 0xc3);
+    DecodedOp* cachedOp = cpu->getOp(TEST_CODE_ADDRESS + 0x10c, 0);
+    if (!cachedOp || cachedOp->inst != Retn16) {
+        testFail("cache 16-bit instruction before changed CS descriptor");
+    }
+    cachedOp = cpu->getOp(TEST_CODE_ADDRESS + 0x12c, 0);
+    if (!cachedOp || cachedOp->inst != Retn16) {
+        testFail("cache 16-bit branch target before changed CS descriptor");
+    }
+
+    memory->mmap(thread, SIGNAL_STACK_TOP - K_PAGE_SIZE, K_PAGE_SIZE,
+        K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    cpu->reg[4].u32 = SIGNAL_STACK_TOP;
+    cpu->eip.u32 = 0x102;
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = SIGNAL_HANDLER;
+    thread->runSignal(K_SIGUSR1, 0, 0);
+
+    // Wine's Win16 bridge changes the saved CS descriptor while handling
+    // an exception, then resumes through the signal context with the same
+    // selector. The hidden code-segment size must be reloaded as well.
+    code->seg_32bit = 1;
+
+    U32 returnAddress = cpu->pop32();
+    if (returnAddress != SIG_RETURN_ADDRESS) {
+        testFail("signal return callback address for changed CS descriptor");
+        return;
+    }
+    onExitSignal(cpu, nullptr);
+
+    if (cpu->getSegValue(CS) != CODE_SELECTOR || !cpu->isBig()) {
+        testFail("signal return must refresh code-segment size");
+    }
+    cachedOp = memory->getDecodedOp(TEST_CODE_ADDRESS + 0x10c);
+    if (!cachedOp || cachedOp->inst != Retn32) {
+        testFail("signal return must re-decode code with the new segment size");
+    }
+
+    DecodedOp* jumpOp = cpu->getOp(TEST_CODE_ADDRESS + 0x120, 0);
+    if (!jumpOp || jumpOp->inst != JmpJb || !jumpOp->data.nextJump ||
+        memory->getDecodedOp(TEST_CODE_ADDRESS + 0x12c)) {
+        testFail("32-bit branch must discard a cached 16-bit target");
+        return;
+    }
+    DecodedOp* targetOp = cpu->getOp(TEST_CODE_ADDRESS + 0x12c, 0);
+    if (!targetOp || targetOp->inst != Retn32 || *jumpOp->data.nextJump != targetOp) {
+        testFail("32-bit branch target must use the replacement decoded op");
+    }
+}
+
 void testSignalAlternateStackDeliverySemantics() {
     constexpr U32 ALT_STACK_BASE = 0x70000000;
     constexpr U32 ALT_STACK_SIZE = 0x10000;

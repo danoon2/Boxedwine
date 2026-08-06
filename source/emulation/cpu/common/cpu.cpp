@@ -597,6 +597,9 @@ U32 CPU::setSegment(U32 seg, U32 value) {
     }
     if (this->flags & VM) {
         this->setSeg(seg, value << 4, value);
+        if (seg == CS) {
+            this->setIsBig(0);
+        }
     } else {
         value = makeSegmentInternal(value);
         if ((value & 0xfffc)==0) {
@@ -621,7 +624,9 @@ U32 CPU::setSegment(U32 seg, U32 value) {
                 return 0;
             }
             this->setSeg(seg, ldt->base_addr, value);
-            if (seg == SS) {
+            if (seg == CS) {
+                this->setIsBig(ldt->seg_32bit);
+            } else if (seg == SS) {
                 if (ldt->seg_32bit) {
                     this->stackMask = 0xffffffff;
                     this->stackNotMask = 0;
@@ -1357,10 +1362,23 @@ U32 CPU::writeCrx(U32 which, U32 value) {
 }
 
 bool CPU::shouldContinue(U32 eip) {
-    return this->memory->getDecodedOp(eip) == nullptr;
+    DecodedOp* op = this->memory->getDecodedOp(eip);
+#ifdef BOXEDWINE_JIT
+    if (op && ((op->flags2 & OP_FLAG2_DECODED_32BIT) != 0) != this->isBig()) {
+        this->memory->removeCode(this->thread, eip, 1, false);
+        op = nullptr;
+    }
+#endif
+    return op == nullptr;
 }
 
 DecodedOp** CPU::getOpLocation(U32 eip) {
+#ifdef BOXEDWINE_JIT
+    DecodedOp* op = this->memory->getDecodedOp(eip);
+    if (op && ((op->flags2 & OP_FLAG2_DECODED_32BIT) != 0) != this->isBig()) {
+        this->memory->removeCode(this->thread, eip, 1, false);
+    }
+#endif
     return this->memory->getDecodedOpLocation(eip);
 }
 

@@ -52,6 +52,7 @@ void testJitSignalPendingQueuedSignal();
 void testX87ExceptionSummaryState();
 void testDefaultUserSegmentsUseGdtSelectors();
 void testSignalHandlerSegmentsUseGdtSelectors();
+void testSignalReturnRefreshesCodeSegmentSize();
 void testSignalAlternateStackDeliverySemantics();
 void testSignalOnStackWithoutConfiguredAlternateStack();
 void testSigaltstackReportsActualStackState();

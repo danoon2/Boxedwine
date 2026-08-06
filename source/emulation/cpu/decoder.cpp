@@ -6485,6 +6485,11 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
         d.opCountSoFarInThisBlock++;
         op->len = overlongOp ? 15 : (U8)decodedOpLen;
         op->ea16 = d.ea16;
+#ifdef BOXEDWINE_JIT
+        if (isBig) {
+            op->flags2 |= OP_FLAG2_DECODED_32BIT;
+        }
+#endif
         decodedLen += op->len;
         opCount++;
 #if defined _DEBUG
