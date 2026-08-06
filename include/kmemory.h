@@ -42,6 +42,7 @@ class MappedFile;
 #define GET_PAGE_PERMISSIONS(flags) (flags & PAGE_PERMISSION_MASK)
 
 class DecodedOp;
+class CPU;
 class Page;
 class KMemoryData;
 class KProcess;
