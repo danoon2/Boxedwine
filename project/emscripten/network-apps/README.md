@@ -6,8 +6,22 @@ Build Linux ELF app:
 ./build-linux-apps.sh
 ```
 
-The scripts use `clang` and the Emscripten SDK `lld` by default. Override them
-with `CLANG=/path/to/clang` or `LLD=/path/to/lld` if needed.
+Build Win32 PE versions of the network share apps:
+
+```sh
+./build-win32-apps.sh
+```
+
+The Linux script uses `clang` and the Emscripten SDK `lld` by default. Override
+them with `CLANG=/path/to/clang` or `LLD=/path/to/lld` if needed. The Win32
+script uses `clang -target i386-pc-windows-msvc` and `lld -flavor link`; set
+`PE_CLANG`, `PE_LLD`, or `PE_STRIP` to override those tools.
+
+The Win32 share binaries are PE console executables that Wine can launch like
+normal `.exe` files, but they intentionally keep using Boxedwine's Linux syscall
+path internally. That keeps the networking proof close to the already-tested
+Linux apps and avoids a separate WinSock/Win32 filesystem port. Use the
+`*-win32.zip` app zips and omit `linux=true` in the Boxedwine URL.
 
 ## Required Gateway
 
@@ -127,6 +141,12 @@ Run URL:
 http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-host&p=network-share-host&linux=true&storage=memory&overlay=home.zip&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network
 ```
 
+Win32 run URL:
+
+```text
+http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-host-win32&p=network-share-host.exe&storage=memory&overlay=home.zip&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network
+```
+
 Configured run URL:
 
 ```text
@@ -195,6 +215,12 @@ Run URL:
 
 ```text
 http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-join&p=network-share-join&linux=true&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network
+```
+
+Win32 run URL:
+
+```text
+http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-join-win32&p=network-share-join.exe&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network
 ```
 
 Configured run URL:
@@ -305,8 +331,20 @@ Peer A URL:
 http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-agent&p=network-share-agent&linux=true&storage=memory&overlay=home.zip&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network&args=--name%20alice-games%20--root%20/home/username/.wine/dosdevices/c:/host
 ```
 
+Peer A Win32 URL:
+
+```text
+http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-agent-win32&p=network-share-agent.exe&storage=memory&overlay=home.zip&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network&args=--name%20alice-games%20--root%20/home/username/.wine/dosdevices/c:/host
+```
+
 Peer B URL:
 
 ```text
 http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-agent&p=network-share-agent&linux=true&storage=memory&overlay=home.zip&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network&args=--name%20bob-tools%20--root%20/home/username/.wine/dosdevices/c:/host
+```
+
+Peer B Win32 URL:
+
+```text
+http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-agent-win32&p=network-share-agent.exe&storage=memory&overlay=home.zip&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network&args=--name%20bob-tools%20--root%20/home/username/.wine/dosdevices/c:/host
 ```

@@ -23,6 +23,10 @@ build_elf() {
   local name="$1"
   local strip="${2:-false}"
   local obj="/tmp/${name}.o"
+  if [[ ! -f "${script_dir}/${name}.S" ]]; then
+    echo "Skipping ${name}: ${name}.S not found"
+    return
+  fi
   echo "Building ${name}"
   "${clang_bin}" -target i386-unknown-linux-elf -c \
     -o "${obj}" \
@@ -41,6 +45,10 @@ build_c_elf() {
   local name="$1"
   local strip="${2:-false}"
   local obj="/tmp/${name}.o"
+  if [[ ! -f "${script_dir}/${name}.c" ]]; then
+    echo "Skipping ${name}: ${name}.c not found"
+    return
+  fi
   echo "Building ${name}"
   "${clang_bin}" -target i386-unknown-linux-elf -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -c \
     -o "${obj}" \
