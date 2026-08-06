@@ -90,6 +90,8 @@ static int socketcall(int call, u32* args) {
     return sys2(SYS_SOCKETCALL, call, (int)args);
 }
 
+#include "network-share-entry.h"
+
 static int strlen0(const char* s) {
     int n = 0;
     while (s[n]) n++;
@@ -802,11 +804,9 @@ static int apply_manifest_delta(u8* server_sockaddr) {
     return 1;
 }
 
-__attribute__((used, noinline)) void join_main(u32* stack) {
+static void join_run(int argc, char** argv) {
     u8 server_sockaddr[16] = {2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     int first_sync = 1;
-    int argc = (int)stack[0];
-    char** argv = (char**)(&stack[1]);
     parse_args(argc, argv);
 
     print("network-share-join: start\n");
@@ -867,10 +867,4 @@ __attribute__((used, noinline)) void join_main(u32* stack) {
     sys1(SYS_EXIT, 0);
 }
 
-__attribute__((naked)) void _start(void) {
-    __asm__ volatile(
-        "movl %esp, %eax\n"
-        "pushl %eax\n"
-        "call join_main\n"
-        "hlt\n");
-}
+NETWORK_SHARE_ENTRY(join_run, "network-share-join.exe")

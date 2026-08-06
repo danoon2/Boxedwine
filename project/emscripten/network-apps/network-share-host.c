@@ -81,6 +81,8 @@ static int socketcall(int call, u32* args) {
     return sys2(SYS_SOCKETCALL, call, (int)args);
 }
 
+#include "network-share-entry.h"
+
 static int strlen0(const char* s) {
     int n = 0;
     while (s[n]) n++;
@@ -667,11 +669,9 @@ static void sleep_beacon(void) {
     sys2(SYS_NANOSLEEP, (int)ts, 0);
 }
 
-__attribute__((used, noinline)) void host_main(u32* stack) {
+static void host_run(int argc, char** argv) {
     int listener_fd;
     int udp_fd;
-    int argc = (int)stack[0];
-    char** argv = (char**)(&stack[1]);
     parse_args(argc, argv);
 
     print("network-share-host: start\n");
@@ -730,10 +730,4 @@ __attribute__((used, noinline)) void host_main(u32* stack) {
     sys1(SYS_EXIT, 0);
 }
 
-__attribute__((naked)) void _start(void) {
-    __asm__ volatile(
-        "movl %esp, %eax\n"
-        "pushl %eax\n"
-        "call host_main\n"
-        "hlt\n");
-}
+NETWORK_SHARE_ENTRY(host_run, "network-share-host.exe")

@@ -126,6 +126,8 @@ static int socketcall(int call, u32* args) {
     return sys2(SYS_SOCKETCALL, call, (int)args);
 }
 
+#include "network-share-entry.h"
+
 static int strlen0(const char* s) {
     int n = 0;
     while (s[n]) n++;
@@ -1767,13 +1769,11 @@ static void sleep_tick(void) {
     sys2(SYS_NANOSLEEP, (int)ts, 0);
 }
 
-__attribute__((used, noinline)) void agent_main(u32* stack) {
+static void agent_run(int argc, char** argv) {
     int listener_fd;
     int udp_fd;
     u32 ticks = 0;
     u32 poll_ticks;
-    int argc = (int)stack[0];
-    char** argv = (char**)(&stack[1]);
     parse_args(argc, argv);
     poll_ticks = poll_seconds ? poll_seconds * 4 : 120;
 
@@ -1806,10 +1806,4 @@ __attribute__((used, noinline)) void agent_main(u32* stack) {
     }
 }
 
-__attribute__((naked)) void _start(void) {
-    __asm__ volatile(
-        "movl %esp, %eax\n"
-        "pushl %eax\n"
-        "call agent_main\n"
-        "hlt\n");
-}
+NETWORK_SHARE_ENTRY(agent_run, "network-share-agent.exe")
