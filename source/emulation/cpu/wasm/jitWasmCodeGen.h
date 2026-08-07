@@ -991,6 +991,7 @@ protected:
 #endif
     void syncStateBeforeFaultingMemoryHelper();
     U32 lastCompiledOpLen = 0;
+    bool m_emulatedCurrentOp = false;
     bool m_needsWasmMemoryPageArrays = false;
     DecodedOp* m_wasmBlockStartOp = nullptr;
     DecodedOp* m_currentWasmOp = nullptr;

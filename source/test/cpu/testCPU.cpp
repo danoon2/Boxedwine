@@ -360,10 +360,10 @@ void testWasmJitOnlyBlockEntryIsCallable() {
     }
 
     cpu->wasmJitActiveBlock = first;
-    cpu->wasmJitBailout = 0;
+    cpu->wasmJitBailout = WASM_JIT_BAILOUT_NONE;
     context.memory->removeCodeBlock(TEST_CODE_ADDRESS, first, false);
 
-    if (cpu->wasmJitBailout != 1) {
+    if (cpu->wasmJitBailout != WASM_JIT_BAILOUT_SMC) {
         testFail("wasm jit active invalidation requests bailout");
     }
     if (first->pfnJitCode || second->pfnJitCode || third->pfnJitCode) {
@@ -431,6 +431,35 @@ void testWasmJitOnlyBlockEntryIsCallable() {
     }
     if (afterRet->blockStart == branch) {
         testFail("wasm jit ret boundary does not absorb following decoded op");
+    }
+
+    testNewInstruction(0);
+    cpu->reg[3].u32 = 0; // ebx: stale fallthrough marker
+    U32 iretStack = cpu->reg[4].u32;
+    context.memory->writed(cpu->seg[SS].address + iretStack, 6); // resume at TestEnd
+    context.memory->writed(cpu->seg[SS].address + iretStack + 4, cpu->seg[CS].value);
+    context.memory->writed(cpu->seg[SS].address + iretStack + 8, cpu->flags | 2);
+
+    testPushCode8(0x31); // xor eax,eax: set ZF so jnz is not taken
+    testPushCode8(0xc0);
+    testPushCode8(0x75); // jnz to inc ebx, keeping it after iret in this block
+    testPushCode8(0x01);
+    testPushCode8(0xcf); // iret: interpreter-backed control transfer
+    testPushCode8(0x43); // must not run after iret returns from its WASM helper
+    testPushCode8(0xcd);
+    testPushCode8(0x97);
+    testRunCPU();
+
+    DecodedOp* iretBranch = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* iretOp = iretBranch && iretBranch->next ? iretBranch->next->next : nullptr;
+    DecodedOp* staleFallthrough = iretOp ? iretOp->next : nullptr;
+    if (!iretBranch || !iretOp || !staleFallthrough ||
+        iretBranch->pfn != cpu->thread->process->startJITOp ||
+        iretOp->blockStart != iretBranch || staleFallthrough->blockStart != iretBranch) {
+        testFail("wasm jit interpreter-backed branch regression setup");
+    }
+    if (cpu->reg[3].u32 != 0) {
+        testFail("wasm jit interpreter-backed branch must not execute stale fallthrough");
     }
 
     testNewInstruction(0);

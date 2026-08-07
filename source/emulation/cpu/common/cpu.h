@@ -198,6 +198,14 @@ union SSE {
 #error "JIT_RUN_COUNT must fit in DecodedOp::runCount (U8) and leave room for the JIT_RUN_COUNT + 1 sentinel"
 #endif
 
+#ifdef BOXEDWINE_WASM_JIT
+enum WasmJitBailoutReason : U32 {
+    WASM_JIT_BAILOUT_NONE,
+    WASM_JIT_BAILOUT_SMC,
+    WASM_JIT_BAILOUT_CONTROL_FLOW,
+};
+#endif
+
 class CPU: public DecodeBlockCallback {
 public:
     static CPU* allocCPU(KMemory* memory);
@@ -224,14 +232,15 @@ public:
     // Selects a compact dedicated operation in the existing single-op helper.
     // Zero retains the normal interpreter fallback behavior.
     U32 wasmJitHelperOp = 0;
-    // Self-modifying-code support: each JIT block call clears these fields.
+    // JIT bailout support: each JIT block call clears these fields.
     // Before a checked memory write, generated code records the active block's
     // first DecodedOp. If removeCodeBlock clears that block while it is active
-    // (or a post-write helper observes that its pfnJitCode was cleared), it
-    // sets wasmJitBailout=1 so generated bailout checks can exit before stale
-    // compiled bytes keep running.
+    // (or a post-write helper observes that its pfnJitCode was cleared), it sets
+    // WASM_JIT_BAILOUT_SMC so generated code exits before stale bytes run. An
+    // interpreter helper that redirects EIP sets WASM_JIT_BAILOUT_CONTROL_FLOW;
+    // that exit must preserve the redirected EIP.
     DecodedOp* wasmJitActiveBlock = nullptr;
-    U32 wasmJitBailout = 0;
+    U32 wasmJitBailout = WASM_JIT_BAILOUT_NONE;
     // Inline TLB fast-path: cached pointers to the per-page host-base
     // arrays in KMemoryData. Set up by wasmHelper_blockEnter so the JIT
     // codegen can do `wasmReadPageBaseArray[page] -> entry; if (entry)

@@ -3806,7 +3806,7 @@ static inline void boxedwine_wasm_call_block(int tableIndex, int cpuPtr, int rel
 #endif
     CPU* cpu = (CPU*)(uintptr_t)cpuPtr;
     cpu->wasmJitActiveBlock = nullptr;
-    cpu->wasmJitBailout = 0;
+    cpu->wasmJitBailout = WASM_JIT_BAILOUT_NONE;
     static bool fired = false;
     if (!fired) {
         fired = true;
@@ -4219,7 +4219,7 @@ static void wasmHelper_writeMem16(CPU* cpu) {
 static inline void checkActiveBlockAfterWrite(CPU* cpu) {
     DecodedOp* active = cpu->wasmJitActiveBlock;
     if (active && active->pfnJitCode == nullptr) {
-        cpu->wasmJitBailout = 1;
+        cpu->wasmJitBailout = WASM_JIT_BAILOUT_SMC;
     }
 }
 static void wasmHelper_writeMem32_check(CPU* cpu) {
@@ -4314,14 +4314,19 @@ static void wasmHelper_emulateSingleOp(CPU* cpu) {
     }
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperEmulateUs, profileSample, WASM_JIT_PROFILE_TIMING_SAMPLE);
 #endif
-    // Native JITs use jitRunSingleOp()'s return value to chain directly to the
-    // next compiled block. WASM returns through generated code instead, so the
-    // native chaining checks would be discarded work here.
-    cpu->runNextSingleOp();
+    // Native JITs use jitRunSingleOp()'s return value for chaining. WASM
+    // returns through generated code, but still must honor false: it means
+    // exception/debug handling changed control flow and this block is stale.
+    bool continueBlock = cpu->runNextSingleOp();
     // Interpreter-backed instructions can write code too (notably REP
     // MOVS). Mark an invalidated active block so a structured JIT backedge
     // returns to the dispatcher instead of re-entering stale WASM.
     checkActiveBlockAfterWrite(cpu);
+    if (!continueBlock) {
+        // runNextSingleOp has redirected EIP (for example to a Wine exception
+        // handler). The generated bailout must preserve it.
+        cpu->wasmJitBailout = WASM_JIT_BAILOUT_CONTROL_FLOW;
+    }
 }
 
 // Compute CF using the C++ lazy-flag machinery and stash the result in
@@ -10341,7 +10346,7 @@ void JitWasmCodeGen::emitArmSmcBailout() {
         m_emitter.emitI32Const(0);
         m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Const(1);
+        m_emitter.emitI32Const(WASM_JIT_BAILOUT_SMC);
         m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
         m_emitter.emitEnd();
         return;
@@ -10351,11 +10356,10 @@ void JitWasmCodeGen::emitArmSmcBailout() {
     m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
 }
 
-// Self-modifying-code bailout check: emitted after every JIT-inline mem
-// write. If the write hit the active block's bytes, the helper set
-// cpu->wasmJitBailout. We exit by writing the *next* op's offset to
-// cpu->eip and calling blockExit so the dispatcher resumes there with a
-// fresh decode.
+// Helper bailout check. Self-modifying code resumes at the next instruction;
+// an interpreter exception/debug bailout preserves the EIP selected by the
+// helper. The reason comparison is inside the unlikely branch, keeping the hot
+// no-bailout path to one load and branch.
 //
 // The if-body's blockExit() runs syncDirtyRegsToHost which compile-time-
 // clears m_gpDirty[]; that's wrong for the no-bailout path where the
@@ -10371,14 +10375,22 @@ void JitWasmCodeGen::emitBailoutCheck() {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Const(0);
     m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
+
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Const(0);
-    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
+    m_emitter.emitI32Load((U32)offsetof(CPU, wasmJitBailout));
+    m_emitter.emitI32Const(WASM_JIT_BAILOUT_SMC);
+    m_emitter.emitOp(WASM_I32_EQ);
+    m_emitter.emitIf();
     // currentEip is the *current* op's start (postCompile bumps it after
     // compile returns), so add op->len = lastCompiledOpLen to land at the
     // next op so the dispatcher resumes there.
     writeEip(this->currentEip + this->lastCompiledOpLen
              - cpu->seg[CS].address);
+    m_emitter.emitEnd();
+
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(WASM_JIT_BAILOUT_NONE);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
     blockExit();
     m_emitter.emitEnd();
     m_gpDirty   = savedGpDirty;
@@ -12798,6 +12810,7 @@ void JitWasmCodeGen::dynamic_wait(DecodedOp* op) {
 
 
 void JitWasmCodeGen::emulateSingleOp() {
+    m_emulatedCurrentOp = true;
     // Sync state, point cpu->eip.u32 at this op's offset (only when we may
     // be in a mixed JIT/emulate block — for pure-emulate blocks each
     // helper's NEXT() advances eip naturally and no writeEip is needed),
@@ -13278,6 +13291,7 @@ bool JitWasmCodeGen::emitDirectLoopBackedge(U32 address) {
 }
 
 void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
+    m_emulatedCurrentOp = false;
     // Reset per-instruction scratch state, then run base bookkeeping (block
     // op count, eip→buffer-pos map, preOp hook). Stash op->len for
     // emitBailoutCheck — it needs the post-write next-op EIP.
@@ -13374,6 +13388,12 @@ void JitWasmCodeGen::compile(DecodedOp* op) {
         return;
     }
     JitCodeGen::compile(op); // delegates to dynamic_* dispatch
+    if (op->isBranch() && m_emulatedCurrentOp) {
+        // Native JIT emulateSingleOp is a tail jump, so an interpreter-backed
+        // branch cannot return to stale generated code. WASM calls its helper;
+        // make that same control-transfer boundary explicit.
+        blockExit();
+    }
 }
 
 void JitWasmCodeGen::postCompile(DecodedOp* op) {
@@ -13916,7 +13936,7 @@ static void wasmJitCommitDecodedInvalidation(KMemory* memory, const std::vector<
     if (thread && thread->memory == memory && thread->cpu) {
         DecodedOp* activeBlock = thread->cpu->wasmJitActiveBlock;
         if (activeBlock && std::find(decodedOps.begin(), decodedOps.end(), activeBlock) != decodedOps.end()) {
-            thread->cpu->wasmJitBailout = 1;
+            thread->cpu->wasmJitBailout = WASM_JIT_BAILOUT_SMC;
         }
     }
 #ifdef BOXEDWINE_MULTI_THREADED
