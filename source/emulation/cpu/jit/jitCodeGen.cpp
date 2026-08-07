@@ -652,6 +652,9 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
         if (instructionInfo[nextOp->inst].flagsSets) {
             break;
         }
+        if (instructionInfo[nextOp->inst].flagsUsed & FMASK_TEST & ~supportedFlags) {
+            break;
+        }
         if (directDoesAffectFlags(nextOp)) {
             break;
         }

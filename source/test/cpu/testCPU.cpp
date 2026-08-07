@@ -972,6 +972,12 @@ enum class DirectIncDecTestOp {
     Dec
 };
 
+enum class DirectIncDecCFObserver {
+    Lahf,
+    PushF,
+    Salc
+};
+
 constexpr U32 DIRECT_INC_DEC_CASES[] = {
     0,
     1,
@@ -1041,6 +1047,81 @@ void runDirectIncDecFlagsCase(DirectIncDecTestOp op, U32 value, bool oldCF, U8 c
 #endif
 }
 
+const char* directIncDecCFObserverName(DirectIncDecCFObserver observer) {
+    switch (observer) {
+    case DirectIncDecCFObserver::Lahf: return "lahf";
+    case DirectIncDecCFObserver::PushF: return "pushf";
+    case DirectIncDecCFObserver::Salc: return "salc";
+    }
+    return "unknown";
+}
+
+void runDirectIncDecInterveningCFReaderCase(DirectIncDecTestOp op, bool oldCF,
+                                            DirectIncDecCFObserver observer) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 value = op == DirectIncDecTestOp::Inc ? 0xffffffff : 1;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = 0x12340000; // EAX receives LAHF/SALC results
+    cpu->reg[1].u32 = value;      // ECX is the INC/DEC destination
+    cpu->reg[2].u32 = 0;          // EDX receives PUSHFD/POP
+    cpu->reg[3].u32 = 0x12345678; // EBX is the SETcc destination
+    cpu->reg[6].u32 = 1;          // ESI
+    cpu->reg[7].u32 = 2;          // EDI
+
+    testPushCode8(oldCF ? 0xf9 : 0xf8); // stc/clc
+    testPushCode8(0xff);
+    testPushCode8(op == DirectIncDecTestOp::Inc ? 0xc1 : 0xc9); // inc/dec ecx
+    switch (observer) {
+    case DirectIncDecCFObserver::Lahf:
+        testPushCode8(0x9f);
+        break;
+    case DirectIncDecCFObserver::PushF:
+        testPushCode8(0x9c); // pushfd
+        testPushCode8(0x5a); // pop edx
+        break;
+    case DirectIncDecCFObserver::Salc:
+        testPushCode8(0xd6);
+        break;
+    }
+    U32 setOffset = observer == DirectIncDecCFObserver::PushF ? 5 : 4;
+    testPushCode8(0x0f);
+    testPushCode8(0x94); // setz bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the INC/DEC flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    const char* opName = op == DirectIncDecTestOp::Inc ? "inc" : "dec";
+    const char* observerName = directIncDecCFObserverName(observer);
+    if (cpu->reg[1].u32 != 0) {
+        testFail("direct %s intervening %s old CF %d result", opName, observerName, oldCF);
+    }
+    bool observedCF;
+    if (observer == DirectIncDecCFObserver::Lahf) {
+        observedCF = (cpu->reg[0].u32 & 0x100) != 0;
+    } else if (observer == DirectIncDecCFObserver::PushF) {
+        observedCF = (cpu->reg[2].u32 & CF) != 0;
+    } else {
+        observedCF = (cpu->reg[0].u32 & 0xff) != 0;
+    }
+    if (observedCF != oldCF) {
+        testFail("direct %s intervening %s old CF %d preserved CF", opName, observerName, oldCF);
+    }
+    if ((cpu->reg[3].u32 & 0xff) != 1) {
+        testFail("direct %s intervening %s old CF %d final condition", opName, observerName, oldCF);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + setOffset);
+    if (!set || (set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE)) {
+        testFail("direct %s intervening %s old CF %d selection", opName, observerName, oldCF);
+    }
+#endif
+}
+
 } // namespace
 
 void testJitDirectIncDecFlags() {
@@ -1051,6 +1132,15 @@ void testJitDirectIncDecFlags() {
                 for (U8 condition = 0; condition < 16; ++condition) {
                     runDirectIncDecFlagsCase(op, value, oldCF, condition);
                 }
+            }
+        }
+    }
+    for (DirectIncDecTestOp op : {DirectIncDecTestOp::Inc, DirectIncDecTestOp::Dec}) {
+        for (bool oldCF : {false, true}) {
+            for (DirectIncDecCFObserver observer : {DirectIncDecCFObserver::Lahf,
+                                                    DirectIncDecCFObserver::PushF,
+                                                    DirectIncDecCFObserver::Salc}) {
+                runDirectIncDecInterveningCFReaderCase(op, oldCF, observer);
             }
         }
     }
