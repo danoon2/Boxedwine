@@ -137,9 +137,6 @@
  *                               per-op stack behavior without duplicating
  *                               helper logic here.
  *
- *   bswap32                     The backend byteSwapReg32 helper is still
- *                               a conservative emulateSingleOp stub.
- *
  * Build-time defines (all opt-in via GCC_EXTRA_FLAGS unless noted)
  * ----------------------------------------------------------------
  * Every gate below is deliberate — diagnostics and verification tools, not
@@ -435,6 +432,8 @@ public:
     void dynamic_loopnz(DecodedOp* op) override;
     void hintLikelyStringLoopContinue() override;
     void dynamic_FILD_QWORD_INTEGER(DecodedOp* op) override;
+    void dynamic_fxsave(DecodedOp* op) override;
+    void dynamic_fxrstor(DecodedOp* op) override;
     void nakedCall(RegPtr reg) override;
     void nakedReturn() override;
 

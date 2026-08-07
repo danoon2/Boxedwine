@@ -30,6 +30,7 @@
 #endif
 #include "../common/cpu.h"
 #include "../common/common_fpu.h"
+#include "../common/common_other.h"
 #include "../common/common_sse2.h"
 #include "../normal/normal_strings.h"
 #include "../normal/normalCPU.h"
@@ -4276,17 +4277,31 @@ static void wasmHelper_fetchNextOp(CPU* cpu) {
 // Sync CPU lazy flags — flags are maintained in cpu->flags directly by WASM code
 static void wasmHelper_syncFlags(CPU* cpu) {}
 
-// Kept in the helper table for module import-index stability. Block-entry
-// setup is now done in wasmStartJITOp before calling the generated block,
-// which avoids one generated WASM -> imported C++ helper call per block.
-static void wasmHelper_blockEnter(CPU* cpu) {
-    WASM_JIT_HELPER_STAT(BlockEnter);
-    (void)cpu;
+enum WasmJitHelperOp : U32 {
+    WASM_JIT_HELPER_OP_NONE,
+    WASM_JIT_HELPER_OP_FXSAVE,
+    WASM_JIT_HELPER_OP_FXRSTOR,
+};
+
+// Helper-table slot 28 used to be the per-block entry helper. Block setup now
+// happens in wasmStartJITOp, but retaining and reusing the slot keeps every
+// later import index stable. A zero selector preserves its old no-op behavior.
+static void wasmHelper_specialOp(CPU* cpu) {
+    U32 helperOp = cpu->wasmJitHelperOp;
+    // Clear before touching guest memory so a fault cannot leave a stale
+    // selector for the next dedicated helper call.
+    cpu->wasmJitHelperOp = WASM_JIT_HELPER_OP_NONE;
+    if (helperOp == WASM_JIT_HELPER_OP_FXSAVE) {
+        WASM_JIT_HELPER_STAT(Sse);
+        common_fxsave(cpu, cpu->memHelperAddr);
+        checkActiveBlockAfterWrite(cpu);
+    } else if (helperOp == WASM_JIT_HELPER_OP_FXRSTOR) {
+        WASM_JIT_HELPER_STAT(Sse);
+        common_fxrstor(cpu, cpu->memHelperAddr);
+    }
 }
 
-// Fall back to the normal CPU interpreter for one instruction (used for
-// operations the WASM JIT doesn't inline, e.g. FPU/SSE/complex shifts).
-DYN_PTR_SIZE jitRunSingleOp(CPU* cpu);   // defined in jitCodeGen.cpp
+// Fall back to the normal CPU interpreter for one instruction.
 static void wasmHelper_emulateSingleOp(CPU* cpu) {
     WASM_JIT_HELPER_STAT(Emulate);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
@@ -4299,7 +4314,10 @@ static void wasmHelper_emulateSingleOp(CPU* cpu) {
     }
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperEmulateUs, profileSample, WASM_JIT_PROFILE_TIMING_SAMPLE);
 #endif
-    jitRunSingleOp(cpu);
+    // Native JITs use jitRunSingleOp()'s return value to chain directly to the
+    // next compiled block. WASM returns through generated code instead, so the
+    // native chaining checks would be discarded work here.
+    cpu->runNextSingleOp();
     // Interpreter-backed instructions can write code too (notably REP
     // MOVS). Mark an invalidated active block so a structured JIT backedge
     // returns to the dispatcher instead of re-entering stale WASM.
@@ -4462,7 +4480,7 @@ static const void* g_wasmHelperTable[] = {
     (void*)wasmHelper_cond_NL,
     (void*)wasmHelper_cond_LE,
     (void*)wasmHelper_cond_NLE,
-    (void*)wasmHelper_blockEnter,
+    (void*)wasmHelper_specialOp,
     (void*)wasmHelper_writeMem8_check,
     (void*)wasmHelper_writeMem16_check,
     (void*)wasmHelper_writeMem32_check,
@@ -6594,7 +6612,7 @@ enum WasmHelperIdx {
     HELPER_COMPUTE_ZF        = 10,
     HELPER_FILL_FLAGS        = 11,
     HELPER_COND_BASE         = 12, // add JitConditional index to this
-    HELPER_BLOCK_ENTER       = 28, // 12 + 16 condition helpers
+    HELPER_SPECIAL_OP        = 28, // legacy block-entry helper slot
     HELPER_WRITE_MEM8_CHECK  = 29,
     HELPER_WRITE_MEM16_CHECK = 30,
     HELPER_WRITE_MEM32_CHECK = 31,
@@ -9493,6 +9511,32 @@ void JitWasmCodeGen::dynamic_FILD_QWORD_INTEGER(DecodedOp* op) {
     });
 }
 
+void JitWasmCodeGen::dynamic_fxsave(DecodedOp* op) {
+    RegPtr address = calculateEaa(op);
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
+    syncStateBeforeFaultingMemoryHelper();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(WASM_JIT_HELPER_OP_FXSAVE);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitHelperOp));
+    emitArmSmcBailout();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_SPECIAL_OP);
+    emitBailoutCheck();
+    freeScratch(address->hardwareReg());
+}
+
+void JitWasmCodeGen::dynamic_fxrstor(DecodedOp* op) {
+    RegPtr address = calculateEaa(op);
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
+    syncStateBeforeFaultingMemoryHelper();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(WASM_JIT_HELPER_OP_FXRSTOR);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitHelperOp));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_SPECIAL_OP);
+    freeScratch(address->hardwareReg());
+}
+
 void JitWasmCodeGen::fpuRegExtend32To64(FPURegPtr dst, FPURegPtr src) {
     if (dst->hardwareReg() == src->hardwareReg()) {
         return;
@@ -11436,9 +11480,20 @@ void JitWasmCodeGen::bsrReg(JitWidth w, RegPtr reg, RegPtr rm) {
 void JitWasmCodeGen::absReg(JitWidth w, RegPtr reg)                          { emulateSingleOp(); }
 
 void JitWasmCodeGen::byteSwapReg32(RegPtr reg) {
-    // bswap: ((v & 0xff)<<24) | ((v & 0xff00)<<8) | ((v>>8)&0xff00) | (v>>24)
-    // Fall back to single-op emulation for correctness.
-    emulateSingleOp();
+    // rotl(v, 8) selects the original middle-low and low bytes while
+    // rotr(v, 8) selects the original high and middle-high bytes.
+    pushRegValue(reg);
+    m_emitter.emitI32Const(8);
+    m_emitter.emitOp(WASM_I32_ROTL);
+    m_emitter.emitI32Const(0x00ff00ff);
+    m_emitter.emitOp(WASM_I32_AND);
+    pushRegValue(reg);
+    m_emitter.emitI32Const(8);
+    m_emitter.emitOp(WASM_I32_ROTR);
+    m_emitter.emitI32Const((S32)0xff00ff00u);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitOp(WASM_I32_OR);
+    popToReg(JitWidth::b32, reg);
 }
 
 void JitWasmCodeGen::xchgReg(JitWidth w, RegPtr dest, RegPtr src) {

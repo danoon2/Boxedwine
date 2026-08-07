@@ -221,6 +221,9 @@ public:
     // lazy-flag state in src.u32/dst.u32.
     U32 memHelperAddr = 0;
     U32 memHelperValue = 0;
+    // Selects a compact dedicated operation in the existing single-op helper.
+    // Zero retains the normal interpreter fallback behavior.
+    U32 wasmJitHelperOp = 0;
     // Self-modifying-code support: each JIT block call clears these fields.
     // Before a checked memory write, generated code records the active block's
     // first DecodedOp. If removeCodeBlock clears that block while it is active
