@@ -30,6 +30,7 @@
 #include <sys/syscall.h>
 #elif defined(__APPLE__)
 #include <fcntl.h>
+#include <limits.h>
 #endif
 #include <sys/mman.h>
 #include <unistd.h>
@@ -75,17 +76,45 @@ static std::vector<bool> freeLinearRamPages(K_NUMBER_OF_PAGES);
 static std::unordered_set<U32> freeLinearRamBlocks;
 static std::atomic<U32> nextLinearMemoryBackingId{1};
 
+#ifdef __APPLE__
+static int createTemporaryLinearMemoryFile(const char* description, U32 id) {
+    const char* temporaryDirectory = getenv("TMPDIR");
+    if (!temporaryDirectory || !temporaryDirectory[0]) {
+        temporaryDirectory = "/tmp";
+    }
+
+    char path[PATH_MAX];
+    int pathLength = snprintf(path, sizeof(path), "%s%sbw-%s-%x-%x-XXXXXX", temporaryDirectory,
+        temporaryDirectory[strlen(temporaryDirectory) - 1] == '/' ? "" : "/", description, (U32)getpid(), id);
+    if (pathLength < 0 || (size_t)pathLength >= sizeof(path)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    int result = mkstemp(path);
+    if (result < 0) {
+        return -1;
+    }
+    if (unlink(path) != 0 || fcntl(result, F_SETFD, FD_CLOEXEC) != 0) {
+        int error = errno;
+        close(result);
+        errno = error;
+        return -1;
+    }
+    return result;
+}
+#endif
+
 static int createLinearMemoryFile(const char* description, U32 id) {
 #ifdef __linux__
     (void)id;
     return (int)syscall(SYS_memfd_create, description, MFD_CLOEXEC);
 #else
-    (void)description;
     char name[64];
     snprintf(name, sizeof(name), "/bw-%x-%x", (U32)getpid(), id);
     int result = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
     if (result < 0) {
-        return -1;
+        return createTemporaryLinearMemoryFile(description, id);
     }
     if (shm_unlink(name) != 0 || fcntl(result, F_SETFD, FD_CLOEXEC) != 0) {
         int error = errno;
