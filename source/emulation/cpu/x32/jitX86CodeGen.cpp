@@ -963,7 +963,9 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn
         }
     }
     if (tmpReg == INVALID_REG && !allowInvalidReturn) {
-        kpanic("JitX86CodeGen::getTmpReg ran out of tmp regs");
+        kpanic_fmt("JitX86CodeGen::getTmpReg ran out of tmp regs: op=%s eip=%x needs8bit=%d hint=%d used=%d%d%d%d%d%d%d%d",
+            currentOp ? currentOp->name() : "none", currentEip, needs8bitReg, hint,
+            regUsed[0], regUsed[1], regUsed[2], regUsed[3], regUsed[4], regUsed[5], regUsed[6], regUsed[7]);
     }
     return tmpReg;
 #endif

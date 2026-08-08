@@ -268,6 +268,41 @@ void runLinearMemoryRepeatedFirstTouchCase() {
     testMemory->unmap(targetAddress, pageCount * K_PAGE_SIZE);
 }
 
+void runLinearMemoryCrossPageCowRmwCase() {
+    if (ramPageLinearMemoryPageCount() != 1) {
+        return;
+    }
+
+    constexpr U32 targetOffset = K_PAGE_SIZE * 2 - 1;
+    constexpr U32 initialValue = 0x11223344;
+    constexpr U32 addend = 0x01020304;
+    U32 targetAddress = TEST_HEAP_ADDRESS + targetOffset;
+
+    newInstruction(0);
+    testMemory->writed(targetAddress, initialValue);
+
+    KMemoryData* data = getMemData(testMemory);
+    U32 firstPage = targetAddress >> K_PAGE_SHIFT;
+    MMU& firstEntry = data->mmu[firstPage];
+    RamPage retainedBacking = firstEntry.getRamPageIndex();
+    ramPageRetain(retainedBacking);
+    firstEntry.setPageType(testMemory, firstPage, PageType::CopyOnWrite);
+    data->onPageChanged(firstPage);
+
+    cpu->reg[0].u32 = targetOffset;
+    cpu->reg[7].u32 = addend;
+    pushCode8(0x01);
+    pushCode8(0x38); // add dword ptr [eax], edi
+    runTestCPU();
+
+    ramPageRelease(retainedBacking);
+    U32 expected = initialValue + addend;
+    U32 actual = testMemory->readd(targetAddress);
+    if (actual != expected) {
+        failed("linear memory cross-page COW add expected %x, got %x", expected, actual);
+    }
+}
+
 } // namespace
 
 void testSelfModifying() {
@@ -341,6 +376,7 @@ void testLinearMemoryAliasAndFaults() {
     runLinearMemoryFaultCase(true);
     runLinearMemoryFaultCase(false);
     runLinearMemoryRepeatedFirstTouchCase();
+    runLinearMemoryCrossPageCowRmwCase();
 
     U32 groupPageCount = ramPageLinearMemoryPageCount();
     if (groupPageCount > 1) {

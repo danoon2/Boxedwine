@@ -60,6 +60,13 @@ bool jitCanUseExceptionMemoryCache(DecodedOp* op) {
 bool jitMustCheckPageSpan(DecodedOp* op) {
     return op->exceptionCount == MAX_OP_EXCEPTION_COUNT || (ramPageLinearMemoryPageCount() > 1 && op->exceptionCount != 0);
 }
+
+bool jitCanSkipMemoryCachePageSpanCheck() {
+    // The legacy 4K allocator puts a guard page after every RAM page. The
+    // single-offset linear allocator uses adjacent pool pages instead, so a
+    // cached access that spans a guest-page boundary can reach unrelated RAM.
+    return KSystem::canJitUse4KPage && !ramPageUseLinearMemory();
+}
 }
 #endif
 
@@ -1370,7 +1377,7 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Me
 
         readMMU(tmp, tmp, K_NUMBER_OF_PAGES * sizeof(void*));
 
-        if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+        if (!jitCanSkipMemoryCachePageSpanCheck() && width != JitWidth::b8) {
             RegPtr offsetReg = getTmpReg();
 
             andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
@@ -1407,7 +1414,7 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Me
 
     if (width != JitWidth::b8 && checkAlignment) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-        if (KSystem::canJitUse4KPage) {
+        if (jitCanSkipMemoryCachePageSpanCheck()) {
 #ifdef _DEBUG
             writeCurrentEip(0);
 #endif
@@ -1518,7 +1525,7 @@ RegPtr JitCodeGen::read(JitWidth width, MemPtr mem, RegPtr result) {
     }
 #endif
 #ifdef BOXEDWINE_MEM_CACHE
-    if (jitCanUseExceptionMemoryCache(currentOp) && (KSystem::canJitUse4KPage || !doesSpanPage(width, mem->offset))) {
+    if (jitCanUseExceptionMemoryCache(currentOp) && (jitCanSkipMemoryCachePageSpanCheck() || !doesSpanPage(width, mem->offset))) {
 #ifdef _DEBUG
         writeCurrentEip(0);
 #endif
@@ -1577,7 +1584,7 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, RegPtr src) {
 #endif
     RegPtr tmp = getTmpReg8();
 #ifdef BOXEDWINE_MEM_CACHE
-    if (jitCanUseExceptionMemoryCache(currentOp) && (KSystem::canJitUse4KPage || !doesSpanPage(width, mem->offset))) {
+    if (jitCanUseExceptionMemoryCache(currentOp) && (jitCanSkipMemoryCachePageSpanCheck() || !doesSpanPage(width, mem->offset))) {
 #ifdef _DEBUG
         writeCurrentEip(0);
 #endif
@@ -1652,7 +1659,7 @@ void JitCodeGen::writeMemory(JitWidth width, RegPtr addressReg, RegPtr src, std:
 #endif        
         readMMU(tmp, tmp, K_NUMBER_OF_PAGES * sizeof(void*) * 2);
 
-        if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+        if (!jitCanSkipMemoryCachePageSpanCheck() && width != JitWidth::b8) {
             RegPtr offsetReg = getTmpReg();
 
             addReg(DYN_PTR, tmp, addressReg);
@@ -1695,7 +1702,7 @@ void JitCodeGen::writeMemory(JitWidth width, RegPtr addressReg, RegPtr src, std:
 
     if (width != JitWidth::b8 && checkAlignment) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-        if (KSystem::canJitUse4KPage) {
+        if (jitCanSkipMemoryCachePageSpanCheck()) {
 #ifdef _DEBUG
             writeCurrentEip(0);
 #endif
@@ -1773,7 +1780,7 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
 #endif
         shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
         readMMU(tmp, tmp, K_NUMBER_OF_PAGES * sizeof(void*) * 2);
-        if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+        if (!jitCanSkipMemoryCachePageSpanCheck() && width != JitWidth::b8) {
             RegPtr offsetReg = getTmpReg();
 
             addReg(DYN_PTR, tmp, addressReg);
@@ -1799,7 +1806,7 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
  
     if (width != JitWidth::b8) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-        if (KSystem::canJitUse4KPage) {
+        if (jitCanSkipMemoryCachePageSpanCheck()) {
 #ifdef _DEBUG
             writeCurrentEip(0);
 #endif
@@ -1853,7 +1860,7 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
 #endif
         shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);       
         readMMU(tmp, tmp, K_NUMBER_OF_PAGES * sizeof(void*) * 2);
-        if (width != JitWidth::b8 && (!KSystem::canJitUse4KPage || forceMmuCheck)) {
+        if (width != JitWidth::b8 && (!jitCanSkipMemoryCachePageSpanCheck() || forceMmuCheck)) {
             RegPtr offsetReg = getTmpReg();
 
             addReg(DYN_PTR, tmp, addressReg);
@@ -1883,7 +1890,7 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
 
     if (width != JitWidth::b8) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-        if (KSystem::canJitUse4KPage) {
+        if (jitCanSkipMemoryCachePageSpanCheck()) {
 #ifdef _DEBUG
             writeCurrentEip(0);
 #endif

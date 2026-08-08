@@ -75,10 +75,22 @@ void Jit::bitModifyMem(DecodedOp* op, JitWidth width, RegPtr address, BitModifyO
     bool flags = op->needsToSetFlags(cpu) != 0;
     U32 bitMask = width == JitWidth::b16 ? 0xf : 0x1f;
 
+#ifndef BOXEDWINE_HOST_EXCEPTIONS
+    // Without exception-backed linear memory there is no post-store fault to
+    // protect against. Materialize preserved flags before readWriteMem claims
+    // its address/value registers; the 32-bit x86 JIT has only four registers
+    // that can hold the byte result used by lazy-flag materialization.
+    if (flags) {
+        btStartFlags(op);
+    }
+#endif
+
     auto prepareWrite = [flags, op, width, bitMask, operation, registerBitIndex, this](RegPtr value) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (flags) {
             btStartFlags(op);
         }
+#endif
         RegPtr mask;
         if (registerBitIndex) {
             mask = btMask(bitMask, op->reg);
