@@ -1382,8 +1382,7 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Me
 
             andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
             addReg(DYN_PTR, tmp, addressReg);
-            clearIfSpansPage(width, offsetReg, tmp);
-            offsetReg = nullptr;
+            clearIfSpansPage(width, std::move(offsetReg), tmp);
             if (customMemoryOp) {
                 customMemoryOp(createMemPtr(std::move(tmp)));
             } else {

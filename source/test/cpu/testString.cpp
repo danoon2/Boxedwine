@@ -402,7 +402,8 @@ void verifyOverlapBytes(const U8* expected, size_t count, const char* name) {
     }
 }
 
-void runHotMovsCase(int width, bool address32, U32 count, bool backward, const char* name) {
+void runHotMovsCase(int width, bool address32, U32 count, bool backward, const char* name,
+    bool checkedMemory = false) {
     newInstruction(backward ? DF : 0);
     cpu->big = address32 ? 1 : 0;
     Seg savedDs = cpu->seg[DS];
@@ -445,6 +446,14 @@ void runHotMovsCase(int width, bool address32, U32 count, bool backward, const c
     }
     copyBytes(expectedDst, initialSrc, dataSize);
     emitCode(STRING_MOVS, width, PREFIX_REPE);
+    if (checkedMemory) {
+        DecodedOp* op = cpu->getNextOp();
+        if (!op) {
+            failed("%s decode", name);
+        } else {
+            op->exceptionCount = 1;
+        }
+    }
 
     for (int pass = 0; pass < 2; ++pass) {
         cpu->eip.u32 = 0;
@@ -538,6 +547,9 @@ void runOverlapMovsCases(int width, bool address32) {
 void runHotMovsCases(int width, bool address32) {
     runHotMovsCase(width, address32, 48, false, "string move hot forward");
     runHotMovsCase(width, address32, 48, true, "string move hot backward");
+    if (width == 1 && address32) {
+        runHotMovsCase(width, address32, 48, true, "string move checked hot backward", true);
+    }
 }
 
 void initPageBytes(U8* values, size_t count, U8 seed) {

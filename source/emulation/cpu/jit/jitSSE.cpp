@@ -1181,21 +1181,23 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     if (doDF0 && doDF1) {
         IfDF();
     }
-    if (doDF1) {        
-        RegPtr delta = getTmpReg();
-        mov(regWidth, delta, esi);
-        subReg(regWidth, delta, edi);
-        IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
-            If(regWidth, delta); {
-                // Overlapping backward copies with EDI below ESI must observe each
-                // element's previous write before reading the next lower source.
-                U32 label = MarkJumpLocation();
-                If(regWidth, ecx); {
-                    copyOneBackward();
-                    Goto(label);
+    if (doDF1) {
+        {
+            RegPtr delta = getTmpReg();
+            mov(regWidth, delta, esi);
+            subReg(regWidth, delta, edi);
+            IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
+                If(regWidth, delta); {
+                    // Overlapping backward copies with EDI below ESI must observe each
+                    // element's previous write before reading the next lower source.
+                    U32 label = MarkJumpLocation();
+                    If(regWidth, ecx); {
+                        copyOneBackward();
+                        Goto(label);
+                    } EndIf();
                 } EndIf();
             } EndIf();
-        } EndIf();
+        }
 
         // Backward direction (DF=1)
         U32 label1 = MarkJumpLocation();
@@ -1207,16 +1209,14 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         U32 label = MarkJumpLocation();
         If(regWidth, ecx); {
             RegPtr addr = getTmpReg();
-            RegPtr addrOut = getTmpReg();
 
             subValueWithDest(regWidth, addr, esi, bytesPerIter - size);
-            subValueWithDest(regWidth, addrOut, edi, bytesPerIter - size);
-
             read(JitWidth::b128, addr, [sseReg, this](MemPtr address) {
                 loadXMMFromMem128(-1, address, sseReg);
             }, onFailure);
 
-            write(JitWidth::b128, addrOut, nullptr, [sseReg, this](MemPtr address) {
+            subValueWithDest(regWidth, addr, edi, bytesPerIter - size);
+            write(JitWidth::b128, addr, nullptr, [sseReg, this](MemPtr address) {
                 storeXMMToMem128(sseReg, address);
             }, onFailure);
 
@@ -1230,20 +1230,22 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         StartElse();
     }
     if (doDF0) {
-        RegPtr delta = getTmpReg();
-        mov(regWidth, delta, edi);
-        subReg(regWidth, delta, esi);
-        IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
-            If(regWidth, delta); {
-                // Overlapping forward copies with EDI above ESI must read source
-                // elements after earlier writes have happened.
-                U32 label = MarkJumpLocation();
-                If(regWidth, ecx); {
-                    copyOneForward();
-                    Goto(label);
+        {
+            RegPtr delta = getTmpReg();
+            mov(regWidth, delta, edi);
+            subReg(regWidth, delta, esi);
+            IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
+                If(regWidth, delta); {
+                    // Overlapping forward copies with EDI above ESI must read source
+                    // elements after earlier writes have happened.
+                    U32 label = MarkJumpLocation();
+                    If(regWidth, ecx); {
+                        copyOneForward();
+                        Goto(label);
+                    } EndIf();
                 } EndIf();
             } EndIf();
-        } EndIf();
+        }
 
         // Forward direction (DF=0)
         U32 label1 = MarkJumpLocation();
