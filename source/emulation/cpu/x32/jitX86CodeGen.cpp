@@ -259,6 +259,7 @@ public:
 
     void writeEip(RegPtr eip) override;
     void writeEip(U32 eip) override;
+    U32 getAvailableTmpRegCount() override;
     bool isTmpRegAvailable() override;    
     void forceSyncBackIfNotCached(RegPtr reg) override;
     
@@ -1182,13 +1183,18 @@ void JitX86CodeGen::writeEip(U32 eip) {
     compiler.mov(Mem32(HOST_CPU, offsetof(CPU, eip.u32)), eip);
 }
 
-bool JitX86CodeGen::isTmpRegAvailable() {
-    U8 found = findTmpReg(false, -1, true);
-    if (found == INVALID_REG) {
-        return false;
+U32 JitX86CodeGen::getAvailableTmpRegCount() {
+    U32 result = 0;
+    for (int i = 0; i < NUMBER_OF_TMPS; i++) {
+        if (!regUsed[tmps[i]]) {
+            result++;
+        }
     }
-    regUsed[found] = false;
-    return true;
+    return result;
+}
+
+bool JitX86CodeGen::isTmpRegAvailable() {
+    return getAvailableTmpRegCount() != 0;
 }
 
 void JitX86CodeGen::forceSyncBackIfNotCached(RegPtr reg) {

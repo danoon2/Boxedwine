@@ -1946,10 +1946,21 @@ RegPtr JitCodeGen::readWriteMemWithLinearPostCommit(JitWidth width, RegPtr addre
             return value;
         }
     }
-#endif
-    // Keep the checked path's existing instruction sequence. Only the linear
-    // path moves guest-visible state updates until after the store.
+    RegPtr value = readWriteMem(width, std::move(addressReg), std::move(prepareWriteLinear), hint, true);
+    commitWriteLinear(value);
+    return value;
+#else
     return readWriteMem(width, std::move(addressReg), std::move(prepareWrite), hint, true);
+#endif
+}
+
+void JitCodeGen::storeJitScratch(JitWidth width, RegPtr value) {
+    writeCPU(width, offsetof(CPU, tmpReg), value);
+}
+
+RegPtr JitCodeGen::loadJitScratch(JitWidth width) {
+    RegPtr value = width == JitWidth::b8 ? getTmpReg8() : getTmpReg();
+    return readCPU(width, offsetof(CPU, tmpReg), value);
 }
 
 void JitCodeGen::xchgMemory(JitWidth width, RegPtr addressReg, RegPtr reg) {

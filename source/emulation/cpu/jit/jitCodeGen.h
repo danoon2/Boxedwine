@@ -73,6 +73,8 @@ public:
     virtual void writeCPU(JitWidth width, U32 offset, RegPtr src) = 0;
     virtual void writeCPUValue(JitWidth width, RegPtr sib, U8 lsl, U32 offset, DYN_PTR_SIZE src) = 0;
     virtual void writeCPUValue(JitWidth width, U32 offset, DYN_PTR_SIZE src) = 0;
+    void storeJitScratch(JitWidth width, RegPtr value) override;
+    RegPtr loadJitScratch(JitWidth width) override;
 
     RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1, bool forceMmuCheck = false) override;
     RegPtr readWriteMemWithLinearPostCommit(JitWidth width, RegPtr addressReg,

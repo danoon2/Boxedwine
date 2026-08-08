@@ -263,10 +263,16 @@ void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFla
         bool canCommitAfterLinearWrite = needsToSetFlags && !preservesCF;
         if (canCommitAfterLinearWrite) {
             RegPtr originalValue;
-            auto prepareWriteLinear = [&originalValue, cf, needsToSetFlags, flags, op, width, callback, cfCallback, callbackWithCF, this](RegPtr value) {
+            bool spillOriginalValue = false;
+            auto prepareWriteLinear = [&originalValue, &spillOriginalValue, cf, needsToSetFlags, flags, op, width, callback, cfCallback, callbackWithCF, this](RegPtr value) {
                 if (flags->usesDst(needsToSetFlags)) {
-                    originalValue = width == JitWidth::b8 ? getTmpReg8() : getTmpReg();
-                    mov(width, originalValue, value);
+                    spillOriginalValue = getAvailableTmpRegCount() < 1;
+                    if (spillOriginalValue) {
+                        storeJitScratch(width, value);
+                    } else {
+                        originalValue = width == JitWidth::b8 ? getTmpReg8() : getTmpReg();
+                        mov(width, originalValue, value);
+                    }
                 }
                 if (callbackWithCF) {
                     (this->*callbackWithCF)(width, value, op->imm, cf);
@@ -279,7 +285,7 @@ void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFla
                     (this->*callback)(width, value, op->imm);
                 }
             };
-            auto commitWriteLinear = [&originalValue, cf, needsToSetFlags, flagType, flags, op, this](RegPtr value) {
+            auto commitWriteLinear = [&originalValue, &spillOriginalValue, cf, needsToSetFlags, flagType, flags, op, width, this](RegPtr value) {
                 if (flags->usesOldCF(needsToSetFlags)) {
                     storeLazyFlagsOldCF(cf);
                 }
@@ -289,7 +295,8 @@ void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFla
                     storeLazyFlagsSrc(op->imm);
                 }
                 if (flags->usesDst(needsToSetFlags)) {
-                    storeLazyFlagsDest(originalValue);
+                    RegPtr destinationValue = spillOriginalValue ? loadJitScratch(width) : originalValue;
+                    storeLazyFlagsDest(destinationValue);
                 }
                 if (flags->usesResult(needsToSetFlags)) {
                     storeLazyFlagsResult(value);
@@ -420,10 +427,18 @@ void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFla
         if (canCommitAfterLinearWrite) {
             RegPtr originalValue;
             RegPtr originalSrc;
-            auto prepareWriteLinear = [&originalValue, &originalSrc, cf, needsToSetFlags, flags, op, width, callback, this](RegPtr value) {
+            bool spillOriginalValue = false;
+            auto prepareWriteLinear = [&originalValue, &originalSrc, &spillOriginalValue, cf, needsToSetFlags, flags, op, width, callback, this](RegPtr value) {
                 if (flags->usesDst(needsToSetFlags)) {
-                    originalValue = width == JitWidth::b8 ? getTmpReg8() : getTmpReg();
-                    mov(width, originalValue, value);
+                    // Preserve capacity for the source register as well as the
+                    // original memory value.
+                    spillOriginalValue = getAvailableTmpRegCount() < 2;
+                    if (spillOriginalValue) {
+                        storeJitScratch(width, value);
+                    } else {
+                        originalValue = width == JitWidth::b8 ? getTmpReg8() : getTmpReg();
+                        mov(width, originalValue, value);
+                    }
                 }
                 RegPtr src;
                 if (width == JitWidth::b8) {
@@ -441,7 +456,7 @@ void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFla
                     (this->*callback)(width, value, cf);
                 }
             };
-            auto commitWriteLinear = [&originalValue, &originalSrc, cf, needsToSetFlags, flagType, flags, this](RegPtr value) {
+            auto commitWriteLinear = [&originalValue, &originalSrc, &spillOriginalValue, cf, needsToSetFlags, flagType, flags, width, this](RegPtr value) {
                 if (flags->usesOldCF(needsToSetFlags)) {
                     storeLazyFlagsOldCF(cf);
                 }
@@ -451,7 +466,8 @@ void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFla
                     storeLazyFlagsSrc(originalSrc);
                 }
                 if (flags->usesDst(needsToSetFlags)) {
-                    storeLazyFlagsDest(originalValue);
+                    RegPtr destinationValue = spillOriginalValue ? loadJitScratch(width) : originalValue;
+                    storeLazyFlagsDest(destinationValue);
                 }
                 if (flags->usesResult(needsToSetFlags)) {
                     storeLazyFlagsResult(value);
@@ -834,24 +850,34 @@ void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagTyp
         bool canCommitAfterLinearWrite = needsToSetFlags != 0;
         if (canCommitAfterLinearWrite) {
             RegPtr originalValue;
-            auto prepareWriteLinear = [&originalValue, needsToSetFlags, flags, width, callback, this](RegPtr value) {
+            bool spillOriginalValue = false;
+            auto prepareWriteLinear = [&originalValue, &spillOriginalValue, needsToSetFlags, flags, width, callback, this](RegPtr value) {
                 if (flags->usesSrc(needsToSetFlags) || flags->usesDst(needsToSetFlags)) {
-                    originalValue = width == JitWidth::b8 ? getTmpReg8() : getTmpReg();
-                    mov(width, originalValue, value);
+                    spillOriginalValue = getAvailableTmpRegCount() < 1;
+                    if (spillOriginalValue) {
+                        storeJitScratch(width, value);
+                    } else {
+                        originalValue = width == JitWidth::b8 ? getTmpReg8() : getTmpReg();
+                        mov(width, originalValue, value);
+                    }
                 }
                 (this->*callback)(width, value);
             };
-            auto commitWriteLinear = [&cf, &originalValue, needsToSetFlags, flagType, flags, this](RegPtr value) {
+            auto commitWriteLinear = [&cf, &originalValue, &spillOriginalValue, needsToSetFlags, flagType, flags, width, this](RegPtr value) {
                 if (cf) {
                     storeLazyFlagsOldCF(std::move(cf));
                 }
                 storeLazyFlagType(flagType);
                 currentLazyFlags = flagType;
+                RegPtr sourceValue = originalValue;
+                if (spillOriginalValue && (flags->usesSrc(needsToSetFlags) || flags->usesDst(needsToSetFlags))) {
+                    sourceValue = loadJitScratch(width);
+                }
                 if (flags->usesSrc(needsToSetFlags)) {
-                    storeLazyFlagsSrc(originalValue);
+                    storeLazyFlagsSrc(sourceValue);
                 }
                 if (flags->usesDst(needsToSetFlags)) {
-                    storeLazyFlagsDest(originalValue);
+                    storeLazyFlagsDest(sourceValue);
                 }
                 if (flags->usesResult(needsToSetFlags)) {
                     storeLazyFlagsResult(value);

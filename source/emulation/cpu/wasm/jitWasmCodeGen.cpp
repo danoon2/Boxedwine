@@ -10038,10 +10038,18 @@ RegPtr JitWasmCodeGen::getStringRegEcx() { return getReg(1); }
 RegPtr JitWasmCodeGen::getStringRegEsi() { return getReg(6); }
 RegPtr JitWasmCodeGen::getStringRegEdi() { return getReg(7); }
 
+U32 JitWasmCodeGen::getAvailableTmpRegCount() {
+    U32 result = 0;
+    for (U32 i = 0; i < WASM_TMP_LOCAL_COUNT; i++) {
+        if (!m_scratchInUse[i]) {
+            result++;
+        }
+    }
+    return result;
+}
+
 bool JitWasmCodeGen::isTmpRegAvailable() {
-    for (U32 i = 0; i < WASM_TMP_LOCAL_COUNT; i++)
-        if (!m_scratchInUse[i]) return true;
-    return false;
+    return getAvailableTmpRegCount() != 0;
 }
 
 void JitWasmCodeGen::forceSyncBackIfNotCached(RegPtr reg) {

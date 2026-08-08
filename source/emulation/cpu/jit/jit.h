@@ -165,6 +165,8 @@ public:
     virtual RegPtr getTmpRegForCallResult() = 0; // just a hint to try and get the same reg used for a call result in order to prevent an extra mov
     virtual RegPtr getTmpReg(U8 reg, bool delayed = false, S8 hint = -1) = 0; // returns a tmp register pre-loaded with the emulated reg's current value
     virtual RegPtr getTmpReg8(U8 reg, bool delayed = false, S8 hint = -1) = 0;
+    virtual void storeJitScratch(JitWidth width, RegPtr value) = 0;
+    virtual RegPtr loadJitScratch(JitWidth width) = 0;
     virtual RegPtr getReadOnlySegAddress(U8 reg) = 0;
     virtual RegPtr getTmpSegAddress(U8 reg) = 0;
     virtual RegPtr getReadOnlySegValue(U8 reg) = 0;
@@ -174,6 +176,7 @@ public:
     virtual void writeCurrentEip(U32 addAmount) {
         writeEip(currentEip - cpu->seg[CS].address + addAmount);
     }
+    virtual U32 getAvailableTmpRegCount() = 0;
     virtual bool isTmpRegAvailable() = 0;
     virtual RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0);
     virtual void jmpHost(RegPtr reg) = 0;

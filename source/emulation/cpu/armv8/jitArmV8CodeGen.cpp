@@ -194,6 +194,7 @@ public:
     RegPtr getTmpIfNotTmp(RegPtr reg);
     void writeEip(RegPtr eip) override;
     void writeEip(U32 eip) override;
+    U32 getAvailableTmpRegCount() override;
     bool isTmpRegAvailable() override;    
     void forceSyncBackIfNotCached(RegPtr reg) override;
     RegPtr getConditionCalculationReg(U32 index) override;
@@ -1077,13 +1078,21 @@ void JitArmV8CodeGen::writeEip(U32 eip) {
     writeEip(reg);
 }
 
-bool JitArmV8CodeGen::isTmpRegAvailable() {
-    U8 found = findTmpReg(true);
-    if (found == 0xff) {
-        return false;
+U32 JitArmV8CodeGen::getAvailableTmpRegCount() {
+    if (disableTmps) {
+        return 0;
     }
-    regUsed[found] = false;
-    return true;
+    U32 result = 0;
+    for (int i = 0; i < NUMBER_OF_TMPS; i++) {
+        if (!regUsed[tmps[i]]) {
+            result++;
+        }
+    }
+    return result;
+}
+
+bool JitArmV8CodeGen::isTmpRegAvailable() {
+    return getAvailableTmpRegCount() != 0;
 }
 
 void JitArmV8CodeGen::forceSyncBackIfNotCached(RegPtr reg) {

@@ -127,11 +127,22 @@ void Jit::bitModifyMem(DecodedOp* op, JitWidth width, RegPtr address, BitModifyO
 
     RegPtr originalValue;
     RegPtr linearMask;
-    bool savedResetBit = operation == BitModifyOp::Reset && registerBitIndex;
-    auto prepareWriteLinear = [&originalValue, &linearMask, op, width, bitMask, operation, registerBitIndex, savedResetBit, this](RegPtr value) {
+    bool spillOriginalValue = false;
+    bool savedResetBit = false;
+    auto prepareWriteLinear = [&originalValue, &linearMask, &savedResetBit, &spillOriginalValue, op, width, bitMask, operation, registerBitIndex, this](RegPtr value) {
         if (operation != BitModifyOp::Complement) {
-            originalValue = getTmpReg();
-            mov(width, originalValue, value);
+            // BTS keeps both the original value and mask through the store,
+            // plus one register for post-store flag materialization. BTR
+            // consumes its mask before the store.
+            U32 requiredTmpCount = registerBitIndex ? (operation == BitModifyOp::Set ? 4 : 3) : 1;
+            spillOriginalValue = getAvailableTmpRegCount() < requiredTmpCount;
+            if (spillOriginalValue) {
+                storeJitScratch(width, value);
+            } else {
+                originalValue = getTmpReg();
+                mov(width, originalValue, value);
+            }
+            savedResetBit = !spillOriginalValue && operation == BitModifyOp::Reset && registerBitIndex;
         }
         if (registerBitIndex) {
             linearMask = btMask(bitMask, op->reg);
@@ -163,7 +174,7 @@ void Jit::bitModifyMem(DecodedOp* op, JitWidth width, RegPtr address, BitModifyO
             }
         }
     };
-    auto commitWriteLinear = [&originalValue, &linearMask, op, width, operation, registerBitIndex, savedResetBit, this](RegPtr value) {
+    auto commitWriteLinear = [&originalValue, &linearMask, &savedResetBit, &spillOriginalValue, op, width, bitMask, operation, registerBitIndex, this](RegPtr value) {
         btStartFlags(op);
         if (operation == BitModifyOp::Complement) {
             // The selected result bit is the inverse of the original carry.
@@ -186,18 +197,26 @@ void Jit::bitModifyMem(DecodedOp* op, JitWidth width, RegPtr address, BitModifyO
             } StartElse(); {
                 andCPUFlagsImmV2(~CF);
             } EndIf();
-        } else if (registerBitIndex) {
-            IfTest(JitWidth::b32, originalValue, linearMask); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
         } else {
-            IfTest(JitWidth::b32, originalValue, op->imm); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
+            RegPtr carryValue = spillOriginalValue ? loadJitScratch(width) : originalValue;
+            if (spillOriginalValue && registerBitIndex && !linearMask) {
+                // BTR consumes the mask while clearing the bit. Recreate it
+                // after the store, when the address registers have been freed.
+                linearMask = btMask(bitMask, op->reg);
+            }
+            if (registerBitIndex) {
+                IfTest(JitWidth::b32, carryValue, linearMask); {
+                    orCPUFlagsImmV2(CF);
+                } StartElse(); {
+                    andCPUFlagsImmV2(~CF);
+                } EndIf();
+            } else {
+                IfTest(JitWidth::b32, carryValue, op->imm); {
+                    orCPUFlagsImmV2(CF);
+                } StartElse(); {
+                    andCPUFlagsImmV2(~CF);
+                } EndIf();
+            }
         }
     };
     readWriteMemWithLinearPostCommit(width, std::move(address), std::move(prepareWrite),

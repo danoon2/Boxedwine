@@ -261,6 +261,7 @@ public:
     RegPtr getReadOnlySegAddress(U8 seg) override;
     RegPtr getTmpSegAddress(U8 seg) override;
     RegPtr getReadOnlySegValue(U8 seg) override;
+    U32    getAvailableTmpRegCount() override;
     bool   isTmpRegAvailable() override;
     void   forceSyncBackIfNotCached(RegPtr reg) override;
 

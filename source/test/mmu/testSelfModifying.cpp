@@ -252,6 +252,7 @@ void runLinearMemoryRepeatedFirstTouchCase() {
 
     runTestCPU();
 
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
     DecodedOp* store = testMemory->getDecodedOp(TEST_CODE_ADDRESS);
     if (!store || store->inst != MovE32R32) {
         failed("linear memory repeated-first-touch store was not decoded");
@@ -259,6 +260,7 @@ void runLinearMemoryRepeatedFirstTouchCase() {
         failed("linear memory repeated-first-touch store retained exception path: %u",
             (U32)store->exceptionCount);
     }
+#endif
     if (testMemory->readd(targetAddress) != value ||
             testMemory->readd(targetAddress + (pageCount - 1) * K_PAGE_SIZE) != value) {
         failed("linear memory repeated-first-touch loop did not write all pages");
