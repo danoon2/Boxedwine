@@ -403,7 +403,7 @@ public:
     U64 exceptionIp = 0;
 
     void* handleAccessException(DecodedOp* op);
-    void* startException(U32 address, bool readAddress);
+    void* startException(U64 address, bool readAddress);
 
 #endif
 

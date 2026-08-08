@@ -94,6 +94,7 @@ public:
 
     U8 hardwareReg();
     bool isLoaded() { return reg != 0xff; }
+    bool isTemporary() const { return emulatedReg == 0xff; }
     U8 emulatedReg;
     bool isHigh;
 
@@ -314,11 +315,19 @@ public:
     virtual void IfDF() = 0;
     virtual void IfSmallStack() = 0;
 
-    // these will check that the memory is valid and doesn't span a page then allow the caller to override what happens when everything is good by providing a callback, 
-    // the callback will contain the host memory address
-    virtual RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) = 0;
+    // prepareWrite may run before a linear-memory store faults. Callers that
+    // update guest-visible state in the callback must force the MMU check.
+    virtual RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1, bool forceMmuCheck = false) = 0;
+    // The checked path uses prepareWrite unchanged. The linear path uses the
+    // split callbacks so guest-visible state is committed only after its store.
+    virtual RegPtr readWriteMemWithLinearPostCommit(JitWidth width, RegPtr addressReg,
+        std::function<void(RegPtr value)> prepareWrite,
+        std::function<void(RegPtr value)> prepareWriteLinear,
+        std::function<void(RegPtr value)> commitWriteLinear, S8 hint = -1) = 0;
+    virtual void xchgMemory(JitWidth width, RegPtr addressReg, RegPtr reg) = 0;
     virtual RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) = 0;
     virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) = 0;
+    virtual void writeWithMmuCheck(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) = 0;
 
     virtual RegPtr read(JitWidth width, MemPtr address, RegPtr result = nullptr) = 0;
     virtual void write(JitWidth width, MemPtr address, RegPtr src) = 0;
@@ -451,8 +460,15 @@ public:
     virtual bool directDoesAffectFlags(DecodedOp* op) = 0;
 
 protected:
+    enum class BitModifyOp {
+        Set,
+        Reset,
+        Complement,
+    };
+
     RegPtr btMask(U32 bitMask, U32 reg);
     bool btStartFlags(DecodedOp* op);
+    void bitModifyMem(DecodedOp* op, JitWidth width, RegPtr address, BitModifyOp operation, bool registerBitIndex);
     bool bsStartFlags(DecodedOp* op);
     void pushParam(std::vector<DynParam>& params, JitWidth width, RegPtr reg);
     void dshift(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flags);

@@ -77,7 +77,7 @@ bool KSystem::useF64 = true;
 
 BOXEDWINE_CONDITION KSystem::processesCond(std::make_shared<BoxedWineCondition>(B("KSystem::processesCond")));
 
-void KSystem::init() {
+void KSystem::init(bool disableLinearMemory) {
     KSystem::adjustClock = false;
     KSystem::nextThreadId=10;
     KSystem::processes.clear();
@@ -92,6 +92,7 @@ void KSystem::init() {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
     KSystem::canJitUse4KPage = Platform::getPagePermissionGranularity() == 1 && sizeof(void*) > 4; // don't use 4k jit optimization for 32-bit since it will run out of address space easily
 #endif
+    ramPageConfigureLinearMemory(disableLinearMemory);
 }
 
 void stopNativeSocketsThread();

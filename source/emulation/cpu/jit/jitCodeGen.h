@@ -63,7 +63,10 @@ public:
     virtual bool shouldStopBlockBefore(U32 eip, DecodedOp* op) { return false; }
     virtual void readMMU(RegPtr dest, RegPtr index, U32 offset = 0) = 0;
     virtual void readMMU(RegPtr dest, U32 index) = 0;
-
+    virtual RegPtr getLinearMemoryBase(RegPtr tmp = nullptr) { kpanic("JitCodeGen::getLinearMemoryBase"); return nullptr; }
+    virtual MemPtr getLinearMemoryPtr(RegPtr address, RegPtr tmp = nullptr) {
+        return createMemPtr(getLinearMemoryBase(tmp), address);
+    }
     virtual RegPtr readCPU(JitWidth width, U32 offset, RegPtr resultReg = nullptr) override = 0;
     virtual RegPtr readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr resultReg = nullptr) override = 0;
     virtual void writeCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr src) = 0;
@@ -71,9 +74,15 @@ public:
     virtual void writeCPUValue(JitWidth width, RegPtr sib, U8 lsl, U32 offset, DYN_PTR_SIZE src) = 0;
     virtual void writeCPUValue(JitWidth width, U32 offset, DYN_PTR_SIZE src) = 0;
 
-    RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) override;
+    RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1, bool forceMmuCheck = false) override;
+    RegPtr readWriteMemWithLinearPostCommit(JitWidth width, RegPtr addressReg,
+        std::function<void(RegPtr value)> prepareWrite,
+        std::function<void(RegPtr value)> prepareWriteLinear,
+        std::function<void(RegPtr value)> commitWriteLinear, S8 hint = -1) override;
+    void xchgMemory(JitWidth width, RegPtr addressReg, RegPtr reg) override;
     RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) override;
     void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) override;
+    void writeWithMmuCheck(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) override;
 
     RegPtr read(JitWidth width, MemPtr address, RegPtr result = nullptr) override;
     void write(JitWidth width, MemPtr address, RegPtr src) override;
@@ -176,8 +185,6 @@ private:
     }
 
 protected:
-
-    void writeWithMmuCheck(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true);
 
     virtual U32 getBufferSize() = 0;
     virtual U32 markBufferLocation() = 0;

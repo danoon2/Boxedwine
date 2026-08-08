@@ -76,8 +76,9 @@
  * on the active block always slow-path through the bailout-checking
  * helper.
  *
- * The RMW path (readWriteMem) is NOT TLB-fast-pathed — see the comment
- * in jitWasmCodeGen.cpp above readWriteMem for why.
+ * The RMW path (readWriteMem) uses the writable-page table for its fast
+ * path. Its helper path validates write permission before invoking the
+ * modification callback so faulting operations remain restartable.
  *
  * Ops still routed through emulateSingleOp
  * ----------------------------------------
@@ -406,7 +407,7 @@ public:
     // --- Emulated memory read/write (with MMU) ---
     RegPtr readWriteMem(JitWidth w, RegPtr addressReg,
                         std::function<void(RegPtr)> prepareWrite,
-                        S8 hint = -1) override;
+                        S8 hint = -1, bool forceMmuCheck = false) override;
     RegPtr read(JitWidth w, RegPtr addressReg,
                 std::function<void(MemPtr)> customOp = nullptr,
                 std::function<void()> failedOp = nullptr,
@@ -415,6 +416,7 @@ public:
                std::function<void(MemPtr)> customOp = nullptr,
                std::function<void()> failedOp = nullptr,
                bool checkAlignment = true) override;
+    void writeWithMmuCheck(JitWidth w, RegPtr addressReg, RegPtr src, std::function<void(MemPtr)> customOp = nullptr, std::function<void()> failedOp = nullptr, bool checkAlignment = true) override;
     RegPtr read(JitWidth w, MemPtr address, RegPtr result = nullptr) override;
     void   write(JitWidth w, MemPtr address, RegPtr src) override;
     void   write(JitWidth w, MemPtr address, U32 imm) override;

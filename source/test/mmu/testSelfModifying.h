@@ -14,5 +14,8 @@ void testSelfModifying();
 void testSelfModifyingMovsb();
 void testSelfModifyingFront();
 void testSelfModifyingBack();
+void testLinearMemoryAliasAndFaults();
+void testLinearMemoryCloneMappings();
+void testLinearMemoryCodeInvalidation();
 
 #endif

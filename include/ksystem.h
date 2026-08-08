@@ -159,7 +159,7 @@ public:
     static U32 pageSize;
     static bool canJitUse4KPage;
 
-    static void init();
+    static void init(bool disableLinearMemory = false);
 	static void destroy();
     static U32 getNextThreadId();
 

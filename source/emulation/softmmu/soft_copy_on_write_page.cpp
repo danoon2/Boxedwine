@@ -61,6 +61,10 @@ void CopyOnWritePage::onDemmand(MMU* mmu, U32 pageIndex) {
         return;
     }
 
+    if (getMemData(memory)->materializeLinearMemoryCopyOnWriteBlock(pageIndex)) {
+        return;
+    }
+
     if (!memory->mapShared(pageIndex) && ramPageUseCount((RamPage)mmu->ramIndex) > 1) {
         RamPage ramIndex = ramPageAlloc();
         RamPage currentRamPage = mmu->getRamPageIndex();

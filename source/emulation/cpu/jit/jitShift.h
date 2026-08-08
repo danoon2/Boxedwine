@@ -792,15 +792,14 @@ void Jit::dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFla
     RegPtr src2 = getReadOnlyReg(op->reg);
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
 
-    if (needsToSetFlags) {
-        storeLazyFlagType(flagType);
-        currentLazyFlags = flagType;
-        if (flags && flags->usesSrc(needsToSetFlags)) {
-            storeLazyFlagsSrc(op->imm);
+    readWriteMem(width, calculateEaa(op), [needsToSetFlags, flagType, flags, src2, op, width, callback, this](RegPtr value) {
+        if (needsToSetFlags) {
+            storeLazyFlagType(flagType);
+            currentLazyFlags = flagType;
+            if (flags && flags->usesSrc(needsToSetFlags)) {
+                storeLazyFlagsSrc(op->imm);
+            }
         }
-    }
-
-    readWriteMem(width, calculateEaa(op), [needsToSetFlags, flags, src2, op, width, callback, this](RegPtr value) {
         if (flags && flags->usesDst(needsToSetFlags)) {
             storeLazyFlagsDest(value);
         }
@@ -808,7 +807,7 @@ void Jit::dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFla
         if (flags && flags->usesResult(needsToSetFlags)) {
             storeLazyFlagsResult(value);
         }
-    });
+    }, -1, needsToSetFlags != 0);
 }
 
 void Jit::dynamic_dshlr16r16(DecodedOp* op) {
@@ -838,11 +837,11 @@ void Jit::dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFl
             andValue(JitWidth::b32, src, 0x1f);
         }
         If(JitWidth::b8, src); {
-            storeLazyFlagType(flagType);
-            if (flags && flags->usesSrc(needsToSetFlags)) {
-                storeLazyFlagsSrc(src);
-            }
-            readWriteMem(width, calculateEaa(op), [src, needsToSetFlags, flags, op, width, callback, this](RegPtr value) {
+            readWriteMem(width, calculateEaa(op), [src, needsToSetFlags, flagType, flags, op, width, callback, this](RegPtr value) {
+                storeLazyFlagType(flagType);
+                if (flags && flags->usesSrc(needsToSetFlags)) {
+                    storeLazyFlagsSrc(src);
+                }
                 if (flags && flags->usesDst(needsToSetFlags)) {
                     storeLazyFlagsDest(value);
                 }
@@ -850,7 +849,7 @@ void Jit::dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFl
                 if (flags && flags->usesResult(needsToSetFlags)) {
                     storeLazyFlagsResult(value);
                 }
-            });
+            }, -1, true);
         } EndIf();
         currentLazyFlags = FLAGS_NULL;
     } else {

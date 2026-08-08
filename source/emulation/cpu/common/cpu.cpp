@@ -1373,21 +1373,39 @@ DecodedOp* CPU::getNextOp(U32 jumpTargetFlags) {
 }
 
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-void* CPU::startException(U32 address, bool readAddress) {
+void* CPU::startException(U64 address, bool readAddress) {
     if (this->thread->terminating) {
         return this->thread->process->blockExit;
     }
     if (this->inException) {
-        this->thread->seg_mapper(address, readAddress, !readAddress, false);
+        U32 guestAddress = (U32)address;
+        getMemData(memory)->getLinearMemoryGuestAddress(address, guestAddress);
+        this->thread->seg_mapper(guestAddress, readAddress, !readAddress, false);
         this->nextOp = getNextOp();
     }
     return 0;
 }
 
 void* CPU::handleAccessException(DecodedOp* op) {
-    if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
-        op->exceptionCount++;
-    } else if (op->blockStart) {
+    bool resolvedLinearFirstTouch = false;
+    bool singlePageLinearMemoryFault = false;
+    bool groupedLinearMemoryFault = false;
+    if (ramPageUseLinearMemory()) {
+        U32 guestAddress;
+        KMemoryData* memoryData = getMemData(memory);
+        if (memoryData->getLinearMemoryGuestAddress(exceptionAddress, guestAddress)) {
+            groupedLinearMemoryFault = ramPageLinearMemoryPageCount() > 1;
+            singlePageLinearMemoryFault = !groupedLinearMemoryFault;
+            MMU& mmu = memoryData->mmu[guestAddress >> K_PAGE_SHIFT];
+            U32 requiredPermission = exceptionReadAddress ? (PAGE_READ | PAGE_EXEC) : PAGE_WRITE;
+            resolvedLinearFirstTouch = mmu.getPageType() == PageType::Ram && !mmu.ramIndex &&
+                (mmu.flags & requiredPermission) != 0;
+        }
+    }
+    auto removeCurrentCodeBlock = [this, op]() {
+        if (!op->blockStart) {
+            return;
+        }
         U32 eipDistance = 0;
         DecodedOp* nextOp = op->blockStart;
         U32 count = 1;
@@ -1396,10 +1414,38 @@ void* CPU::handleAccessException(DecodedOp* op) {
             eipDistance += nextOp->len;
             nextOp = nextOp->next;
             count++;
-        }        
+        }
         if (nextOp == op) {
             memory->removeCodeBlock(this->eip.u32 - eipDistance, op->blockStart, false);
         }
+    };
+    if (resolvedLinearFirstTouch) {
+        if (op->exceptionCount < LINEAR_MEMORY_RECOMPILE_FAULTS) {
+            op->exceptionCount++;
+        }
+        if (op->exceptionCount >= LINEAR_MEMORY_RECOMPILE_FAULTS) {
+            // Repeated first touches usually indicate a page-walking loop. Go
+            // straight to the checked MMU path instead of taking one host
+            // exception per newly materialized guest page.
+            op->exceptionCount = MAX_OP_EXCEPTION_COUNT;
+            removeCurrentCodeBlock();
+        }
+    } else if (groupedLinearMemoryFault) {
+        if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+            op->exceptionCount++;
+        }
+        if (op->exceptionCount >= LINEAR_MEMORY_RECOMPILE_FAULTS) {
+            removeCurrentCodeBlock();
+        }
+    } else if (singlePageLinearMemoryFault) {
+        if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+            op->exceptionCount++;
+        }
+        removeCurrentCodeBlock();
+    } else if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+        op->exceptionCount++;
+    } else {
+        removeCurrentCodeBlock();
     }
     runNextSingleOp();
     return this->thread->process->blockExit;

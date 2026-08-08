@@ -58,7 +58,6 @@ public:
         bool codeAlreadyRemoved = false);
     void setPermissions(U32 permissions);
     void setFlags(U32 flags);
-
 private:
     void onPageChanged();
 };

@@ -133,10 +133,12 @@ U8* RWPage::internalGetRamPtr(MMU* mmu, U32 address, bool write) {
         KMemory* memory = KThread::currentThread()->memory;
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
         if (mmu->ramIndex == 0) {
-            RamPage ram = ramPageAlloc();
             U32 pageIndex = address >> K_PAGE_SHIFT;
-            mmu->setPage(memory, pageIndex, PageType::Ram, ram);
-            ramPageRelease(ram);
+            if (!getMemData(memory)->allocLinearMemoryBlock(pageIndex)) {
+                RamPage ram = ramPageAlloc();
+                mmu->setPage(memory, pageIndex, PageType::Ram, ram);
+                ramPageRelease(ram);
+            }
             getMemData(memory)->onPageChanged(pageIndex);
         }
     }
@@ -157,9 +159,11 @@ void RWPage::onDemmand(MMU* mmu, U32 pageIndex) {
         KMemory* memory = KThread::currentThread()->memory;
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
         if (mmu->ramIndex == 0) {
-            RamPage ram = ramPageAlloc();
-            mmu->setPage(memory, pageIndex, PageType::Ram, ram);
-            ramPageRelease(ram);
+            if (!getMemData(memory)->allocLinearMemoryBlock(pageIndex)) {
+                RamPage ram = ramPageAlloc();
+                mmu->setPage(memory, pageIndex, PageType::Ram, ram);
+                ramPageRelease(ram);
+            }
             getMemData(memory)->onPageChanged(pageIndex);
         }
     }

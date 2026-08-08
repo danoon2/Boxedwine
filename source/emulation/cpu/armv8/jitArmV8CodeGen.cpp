@@ -281,6 +281,7 @@ public:
 
     void readMMU(RegPtr dest, RegPtr index, U32 offset) override;
     void readMMU(RegPtr dest, U32 index) override;
+    RegPtr getLinearMemoryBase(RegPtr tmp = nullptr) override;
     virtual void readHost(JitWidth width, MemPtr address, RegPtr result, bool emlulatedMemory = true) override;
     virtual void writeHost(JitWidth width, MemPtr address, RegPtr src, bool emlulatedMemory = true) override;
     virtual void writeHost(JitWidth width, MemPtr address, U32 imm, bool emlulatedMemory = true) override;
@@ -2359,6 +2360,15 @@ void JitArmV8CodeGen::readMMU(RegPtr dest, RegPtr index, U32 offset) {
 
 void JitArmV8CodeGen::readMMU(RegPtr dest, U32 index) {
     compiler.ldr(R64(dest), createMem(regMMU, index * 8));
+}
+
+RegPtr JitArmV8CodeGen::getLinearMemoryBase(RegPtr tmp) {
+    if (!tmp) {
+        tmp = getTmpReg();
+    }
+    constexpr S32 offset = (S32)offsetof(KMemoryData, linearMemoryBase) - (S32)offsetof(KMemoryData, mmu);
+    compiler.ldr(R64(tmp), Mem(xMMU, offset));
+    return tmp;
 }
 
 Mem JitArmV8CodeGen::createMem(MemPtr mem) {
@@ -5673,7 +5683,7 @@ void JitArmV8CodeGen::dynamic_rdtsc(DecodedOp* op) {
 }
 
 void JitArmV8CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](MemPtr address) {
+    auto customMemoryOp = [op, this](MemPtr address) {
         U32 neededFlags = currentOp->needsToSetFlags(cpu) & ZF;
         if (neededFlags && currentOp->getNeededFlagsAfter(PF | SF | AF | CF | OF)) { // The ZF flag is set if the destination operand and EDX:EAX are equal; otherwise it is cleared. The CF, PF, AF, SF, and OF flags are unaffected.
             fillFlags();
@@ -5731,11 +5741,19 @@ void JitArmV8CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
                 compiler.mov(wEDX, R32(tmp2));
             } EndIf();
         }
-    });
+    };
+    RegPtr address = calculateEaa(op);
+    // CASP is a single restartable memory operation. The load/store-exclusive
+    // fallback can skip its store on a mismatch, so it still needs a precheck.
+    if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLRCPC)) {
+        JitCodeGen::write(JitWidth::b64, std::move(address), nullptr, std::move(customMemoryOp));
+    } else {
+        writeWithMmuCheck(JitWidth::b64, std::move(address), nullptr, std::move(customMemoryOp));
+    }
 }
 
 void JitArmV8CodeGen::dynamic_cmpxchg_lock(JitWidth width, DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [width, op, this](MemPtr mem) {
+    auto customMemoryOp = [width, op, this](MemPtr mem) {
         LazyFlagType flagType;
         
         if (width == JitWidth::b32) {
@@ -5811,7 +5829,15 @@ void JitArmV8CodeGen::dynamic_cmpxchg_lock(JitWidth width, DecodedOp* op) {
             }            
         }
         jitFlags.commit(tmp2);
-    });
+    };
+    RegPtr address = calculateEaa(op);
+    // LSE CAS is restartable. The load/store-exclusive fallback can skip its
+    // store on a mismatch, so it still needs write permission checked first.
+    if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
+        JitCodeGen::write(width, std::move(address), nullptr, std::move(customMemoryOp));
+    } else {
+        writeWithMmuCheck(width, std::move(address), nullptr, std::move(customMemoryOp));
+    }
 }
 
 void JitArmV8CodeGen::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
@@ -5881,16 +5907,18 @@ void JitArmV8CodeGen::dynamic_xchge32r32_lock(DecodedOp* op) {
             RegPtr reg = getReg(op->reg);
             compiler.swpal(R32(reg), R32(reg), Mem(R64(address)));
         } else {
-            RegPtr tmp = getTmpReg(op->reg);
             RegPtr reg = getReg(op->reg);
+            RegPtr oldValue = getTmpReg();
             RegPtr cond = getTmpReg();
             Label label = compiler.new_label();
 
             compiler.bind(label);            
 
-            compiler.ldaxr(R32(reg), Mem(R64(address)));
-            compiler.stlxr(R32(cond), R32(tmp), Mem(R64(address)));
+            // Do not update the guest register until the store succeeds.
+            compiler.ldaxr(R32(oldValue), Mem(R64(address)));
+            compiler.stlxr(R32(cond), R32(reg), Mem(R64(address)));
             compiler.cbnz(R32(cond), label);
+            compiler.mov(R32(reg), R32(oldValue));
         }
     });
 }

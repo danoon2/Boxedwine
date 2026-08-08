@@ -153,6 +153,27 @@ void testStartupArgsDefaultUtf8LocaleEnvironment() {
         testFail("explicit LC_ALL was overwritten");
     }
 }
+
+void testStartupArgsLinearMemoryOption() {
+    StartUpArgs startupArgs;
+    const char* argv[] = {"boxedwine", "-disableLinearMemory"};
+    if (!startupArgs.parseStartupArgs(2, argv) || !startupArgs.disableLinearMemory) {
+        testFail("-disableLinearMemory was not parsed");
+        return;
+    }
+
+    std::vector<BString> childArgs = startupArgs.buildArgs();
+    bool found = false;
+    for (const BString& arg : childArgs) {
+        if (arg == "-disableLinearMemory") {
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        testFail("-disableLinearMemory was not propagated to a child process");
+    }
+}
 #endif
 
 FsOpenNode* openKernelCommandLine(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
@@ -371,6 +392,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (this->disableWasmJitForWrittenCode) {
         args.push_back(B("-disableWasmJitForWrittenCode"));
     }
+    if (this->disableLinearMemory) {
+        args.push_back(B("-disableLinearMemory"));
+    }
     for (auto& a : this->args) {
         args.push_back(a);
     }
@@ -378,7 +402,7 @@ std::vector<BString> StartUpArgs::buildArgs() {
 }
 
 bool StartUpArgs::apply() {
-    KSystem::init();    
+    KSystem::init(this->disableLinearMemory);
 #ifdef BOXEDWINE_MULTI_THREADED
     KSystem::cpuAffinityCountForApp = this->cpuAffinity;
     if (KSystem::cpuAffinityCountForApp) {
@@ -976,6 +1000,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->cacheReads = true;
         }  else if (!strcmp(argv[i], "-disableWasmJitForWrittenCode")) {
             this->disableWasmJitForWrittenCode = true;
+        }  else if (!strcmp(argv[i], "-disableLinearMemory")) {
+            this->disableLinearMemory = true;
         }
         else if (!strcmp(argv[i], "-dxvk")) {
             BString dxvk;

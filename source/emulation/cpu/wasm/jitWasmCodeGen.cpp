@@ -4208,6 +4208,22 @@ static void wasmHelper_writeMem16(CPU* cpu) {
     cpu->memory->writew(cpu->memHelperAddr, (U16)cpu->memHelperValue);
 }
 
+// RMW callbacks may update guest-visible flags or registers. Preflight write
+// permission after the read, but before generated code invokes the callback,
+// so a protection or cross-page fault leaves the instruction restartable.
+static void wasmHelper_readWriteMem8(CPU* cpu) {
+    wasmHelper_readMem8(cpu);
+    cpu->memory->preflightWrite(cpu->memHelperAddr, 1);
+}
+static void wasmHelper_readWriteMem16(CPU* cpu) {
+    wasmHelper_readMem16(cpu);
+    cpu->memory->preflightWrite(cpu->memHelperAddr, 2);
+}
+static void wasmHelper_readWriteMem32(CPU* cpu) {
+    wasmHelper_readMem32(cpu);
+    cpu->memory->preflightWrite(cpu->memHelperAddr, 4);
+}
+
 // Same as the regular write helpers but additionally check whether the
 // active JIT block's pfnJitCode got cleared by removeCodeBlock — meaning
 // the write landed on the bytes we're currently executing. Used by
@@ -4493,6 +4509,9 @@ static const void* g_wasmHelperTable[] = {
     (void*)wasmHelper_movsdXmmE64,
     (void*)wasmHelper_movsdE64Xmm,
     (void*)wasmHelper_movsd32r,
+    (void*)wasmHelper_readWriteMem8,
+    (void*)wasmHelper_readWriteMem16,
+    (void*)wasmHelper_readWriteMem32,
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     (void*)wasmHelper_profileBlockExit,
     (void*)wasmHelper_profileExitNext1,
@@ -6624,14 +6643,17 @@ enum WasmHelperIdx {
     HELPER_CACHE_FLOAT      = 32,
     HELPER_MOVSD_XMM_E64    = 33,
     HELPER_MOVSD_E64_XMM    = 34,
-    HELPER_MOVSD32R         = 35,
-    HELPER_PROFILE_BLOCK_EXIT = 36,
-    HELPER_PROFILE_EXIT_NEXT1 = 37,
-    HELPER_PROFILE_EXIT_NEXT2 = 38,
-    HELPER_PROFILE_EXIT_JUMP = 39,
-    HELPER_PROFILE_EXIT_GENERIC = 40,
-    HELPER_PROFILE_INLINE_COND = 41,
-    HELPER_PROFILE_RMW = 42,
+    HELPER_MOVSD32R           = 35,
+    HELPER_READ_WRITE_MEM8    = 36,
+    HELPER_READ_WRITE_MEM16   = 37,
+    HELPER_READ_WRITE_MEM32   = 38,
+    HELPER_PROFILE_BLOCK_EXIT = 39,
+    HELPER_PROFILE_EXIT_NEXT1 = 40,
+    HELPER_PROFILE_EXIT_NEXT2 = 41,
+    HELPER_PROFILE_EXIT_JUMP = 42,
+    HELPER_PROFILE_EXIT_GENERIC = 43,
+    HELPER_PROFILE_INLINE_COND = 44,
+    HELPER_PROFILE_RMW = 45,
 };
 
 // ---------------------------------------------------------------------------
@@ -10285,6 +10307,14 @@ static U32 readHelperForWidth(JitWidth w) {
     default:            return HELPER_READ_MEM32;
     }
 }
+
+static U32 readWriteHelperForWidth(JitWidth w) {
+    switch (w) {
+    case JitWidth::b8:  return HELPER_READ_WRITE_MEM8;
+    case JitWidth::b16: return HELPER_READ_WRITE_MEM16;
+    default:            return HELPER_READ_WRITE_MEM32;
+    }
+}
 static U32 writeHelperForWidth(JitWidth w) {
     switch (w) {
     case JitWidth::b8:  return HELPER_WRITE_MEM8;
@@ -10432,7 +10462,10 @@ void JitWasmCodeGen::storeMemHelperField(U32 offset, RegPtr reg) {
 }
 
 RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
-                                     std::function<void(RegPtr)> prepareWrite, S8 hint) {
+                                     std::function<void(RegPtr)> prepareWrite, S8 hint, bool forceMmuCheck) {
+    // The writable-page fast path cannot fault after prepareWrite, and the
+    // helper path preflights writes, so both force modes share this emission.
+    (void)forceMmuCheck;
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     emitProfileSampledCall(HELPER_PROFILE_RMW,
         m_currentWasmOp ? (U32)m_currentWasmOp->inst : InstructionCount);
@@ -10478,7 +10511,7 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
         storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
         syncStateBeforeFaultingMemoryHelper();
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitCall(readHelperForWidth(w));
+        m_emitter.emitCall(readWriteHelperForWidth(w));
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitI32Load((U32)offsetof(CPU, memHelperValue));
         m_emitter.emitLocalSet(result->hardwareReg());
@@ -10842,6 +10875,10 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
     m_gpLoaded  = savedGpLoaded;
     m_segLoaded = savedSegLoaded;
     freeScratch(entryLocal);
+}
+
+void JitWasmCodeGen::writeWithMmuCheck(JitWidth w, RegPtr addressReg, RegPtr src, std::function<void(MemPtr)> customOp, std::function<void()> failedOp, bool checkAlignment) {
+    write(w, std::move(addressReg), std::move(src), std::move(customOp), std::move(failedOp), checkAlignment);
 }
 
 // Materialize a MemPtr (base + index*scale + disp) into a scratch reg as a

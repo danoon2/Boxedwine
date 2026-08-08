@@ -34,8 +34,7 @@ MappedFileCache::MappedFileCache(BString name, const std::shared_ptr<KFile>& fil
 
 MappedFileCache::~MappedFileCache() {
     if (mappingLeaseCount) {
-        kwarn_fmt("Mapped file cache %s destroyed with %u live mapping leases",
-            name.c_str(), mappingLeaseCount);
+        kwarn_fmt("Mapped file cache %s destroyed with %u live mapping leases", name.c_str(), mappingLeaseCount);
     }
     for (RamPage& page : data) {
         ramPageRelease(page);
@@ -44,6 +43,8 @@ MappedFileCache::~MappedFileCache() {
 
 RamPage MappedFileCache::getOrCreatePage(U32 pageIndex, bool shared) {
     while (true) {
+        U32 loadFirstPage = pageIndex;
+        U32 loadPageCount = 1;
         U64 generation;
         {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
@@ -55,10 +56,39 @@ RamPage MappedFileCache::getOrCreatePage(U32 pageIndex, bool shared) {
                 return data[pageIndex];
             }
             generation = mutationGeneration;
+
+            U32 blockPageCount = ramPageUseLinearMemoryFileCacheBlock() ? ramPageLinearMemoryPageCount() : 1;
+            if (blockPageCount > 1) {
+                U32 blockFirstPage = pageIndex & ~(blockPageCount - 1);
+                bool blockFits = (U64)blockFirstPage + blockPageCount - 1 <= K_MAX_MAPPED_FILE_CACHE_PAGE;
+                bool blockEmpty = blockFits;
+                for (U32 i = 0; blockEmpty && i < blockPageCount; i++) {
+                    U32 candidate = blockFirstPage + i;
+                    blockEmpty = candidate >= data.size() || !data[candidate].value;
+                }
+                if (blockEmpty) {
+                    loadFirstPage = blockFirstPage;
+                    loadPageCount = blockPageCount;
+                }
+            }
         }
 
-        RamPage loaded = ramPageAlloc();
-        file->preadNativeUncached(ramPageGet(loaded), (U64)pageIndex << K_PAGE_SHIFT, K_PAGE_SIZE);
+        RamPage loaded[16] = {};
+        if (loadPageCount > 16) {
+            kpanic("mapped file cache: unsupported native page size");
+        }
+        if (loadPageCount == 1 || !ramPageAllocLinearMemoryBlock(loaded, loadPageCount)) {
+            loadFirstPage = pageIndex;
+            loadPageCount = 1;
+            loaded[0] = ramPageAlloc();
+        } else {
+            // Recycled global-pool blocks are not cleared by the block
+            // allocator. Reads shorter than a page must retain zero-fill.
+            memset(ramPageGet(loaded[0]), 0, (size_t)loadPageCount << K_PAGE_SHIFT);
+        }
+        for (U32 i = 0; i < loadPageCount; i++) {
+            file->preadNativeUncached(ramPageGet(loaded[i]), (U64)(loadFirstPage + i) << K_PAGE_SHIFT, K_PAGE_SIZE);
+        }
 #ifdef __TEST
         std::function<void()> afterPageRead;
         {
@@ -70,7 +100,7 @@ RamPage MappedFileCache::getOrCreatePage(U32 pageIndex, bool shared) {
         }
 #endif
 
-        RamPage result;
+        RamPage result = {};
         bool installed = false;
         {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutationMutex);
@@ -83,28 +113,42 @@ RamPage MappedFileCache::getOrCreatePage(U32 pageIndex, bool shared) {
                         possiblyDirty[pageIndex] = true;
                     }
                 } else if (generation == mutationGeneration) {
-                    if (data.size() <= pageIndex) {
-                        data.resize(pageIndex + 1);
-                        possiblyDirty.resize(pageIndex + 1, false);
+                    bool targetRangeEmpty = true;
+                    for (U32 i = 0; targetRangeEmpty && i < loadPageCount; i++) {
+                        U32 candidate = loadFirstPage + i;
+                        targetRangeEmpty = candidate >= data.size() || !data[candidate].value;
                     }
-                    ramPageRetain(loaded);
-                    ramPageMarkSystem(loaded, true);
-                    data[pageIndex] = loaded;
-                    if (shared) {
-                        possiblyDirty[pageIndex] = true;
+                    if (targetRangeEmpty) {
+                        U32 loadEndPage = loadFirstPage + loadPageCount;
+                        if (data.size() < loadEndPage) {
+                            data.resize(loadEndPage);
+                            possiblyDirty.resize(loadEndPage, false);
+                        }
+                        for (U32 i = 0; i < loadPageCount; i++) {
+                            ramPageRetain(loaded[i]);
+                            ramPageMarkSystem(loaded[i], true);
+                            data[loadFirstPage + i] = loaded[i];
+                        }
+                        if (shared) {
+                            possiblyDirty[pageIndex] = true;
+                        }
+                        result = loaded[pageIndex - loadFirstPage];
+                        installed = true;
                     }
-                    result = loaded;
-                    installed = true;
                 }
             }
             if (result.value) {
-                if (!installed) {
-                    ramPageRelease(loaded);
+                for (U32 i = 0; i < loadPageCount; i++) {
+                    if (!installed || loadFirstPage + i != pageIndex) {
+                        ramPageRelease(loaded[i]);
+                    }
                 }
                 return result;
             }
         }
-        ramPageRelease(loaded);
+        for (U32 i = 0; i < loadPageCount; i++) {
+            ramPageRelease(loaded[i]);
+        }
     }
 }
 
@@ -160,8 +204,7 @@ KWritebackResult MappedFileCache::testWritebackPreparedBytes(U64 offset, const U
         [](void* opaque, std::vector<KFile::WritebackRange>& ranges) -> S32 {
             TestWritebackContext& context = *static_cast<TestWritebackContext*>(opaque);
             // Model Task 5's byte snapshot inside the mutation transaction.
-            ranges.push_back({context.offset,
-                std::vector<U8>(context.buffer, context.buffer + context.len)});
+            ranges.push_back({context.offset, std::vector<U8>(context.buffer, context.buffer + context.len)});
             (*context.afterPreparation)();
             return 0;
         });
@@ -177,9 +220,7 @@ void MappedFileCache::overlayRead(U64 offset, U8* buffer, U32 len) {
         RamPage page;
         {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
-            if (pageIndex <= std::numeric_limits<size_t>::max() &&
-                    pageIndex < data.size() &&
-                    data[(size_t)pageIndex].value) {
+            if (pageIndex <= std::numeric_limits<size_t>::max() && pageIndex < data.size() && data[(size_t)pageIndex].value) {
                 page = data[(size_t)pageIndex];
                 ramPageRetain(page);
             }
@@ -371,9 +412,7 @@ S32 MappedFileCache::snapshotWritebackRangesLocked(U64 offset, U64 len,
             KWritebackRange range;
             range.offset = writeStart;
             range.bytes.resize((size_t)byteCount);
-            memcpy(range.bytes.data(),
-                ramPageGet(data[(size_t)pageIndex]) + (size_t)(writeStart - pageStart),
-                (size_t)byteCount);
+            memcpy(range.bytes.data(), ramPageGet(data[(size_t)pageIndex]) + (size_t)(writeStart - pageStart), (size_t)byteCount);
             ranges.push_back(std::move(range));
             preparedBytes += byteCount;
         }
@@ -420,8 +459,7 @@ U32 MappedFileCache::flush(U64 offset, U64 len) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(context.cache->mutationMutex);
             {
                 BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(context.cache->mutex);
-                return context.cache->snapshotWritebackRangesLocked(
-                    context.offset, context.len, ranges, context.preparedBytes);
+                return context.cache->snapshotWritebackRangesLocked(context.offset, context.len, ranges, context.preparedBytes);
             }
         });
 
@@ -464,8 +502,7 @@ U32 MappedFileCache::retireMapping(bool& accountingCommitted) {
                     return -K_EINVAL;
                 }
                 if (context.cache->mappingLeaseCount == 1 && context.cache->writeFile) {
-                    preparationResult = context.cache->snapshotWritebackRangesLocked(
-                        0, context.cache->length, ranges, context.preparedBytes);
+                    preparationResult = context.cache->snapshotWritebackRangesLocked(0, context.cache->length, ranges, context.preparedBytes);
 #ifdef __TEST
                     context.afterPreparation = context.cache->testAfterFinalRetirementPreparationHook;
 #endif
@@ -506,7 +543,7 @@ void KMemory::shutdown() {
 }
 
 KMemory::KMemory(KProcess* process) : process(process) {
-    data = new KMemoryData(this);    
+    data = KMemoryData::create(this);
 }
 
 KMemory::~KMemory() {
@@ -518,7 +555,7 @@ KMemory::~KMemory() {
 #elif defined(BOXEDWINE_JIT)
         jitMemoryInvalidated(this, {});
 #endif
-        delete data;
+        KMemoryData::destroy(data);
     }
     if (deleteOnNextLoop) {
         delete deleteOnNextLoop;
@@ -535,7 +572,7 @@ void KMemory::cleanup() {
 #elif defined(BOXEDWINE_JIT)
         jitMemoryInvalidated(this, {});
 #endif
-        delete data;
+        KMemoryData::destroy(data);
         data = nullptr;
     }
     // don't delete dynamic memory yet, we might return to it to finish
@@ -604,8 +641,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
     bool fileMapValidated = false;
     bool mappedLeaseRetained = false;
     bool mappingCommitted = false;
-    const bool fixedReplacement =
-        (flags & K_MAP_FIXED) && !(flags & K_MAP_FIXED_NOREPLACE);
+    const bool fixedReplacement = (flags & K_MAP_FIXED) && !(flags & K_MAP_FIXED_NOREPLACE);
     std::vector<MappedFilePtr> replacementRetirements;
 
     if (0xFFFFFFFF - addr < len || len == 0) {
@@ -627,8 +663,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
             return -K_EINVAL;
         }
         const U64 firstFilePage = off >> K_PAGE_SHIFT;
-        if (firstFilePage > K_MAX_MAPPED_FILE_CACHE_PAGE ||
-            (U64)(pageCount - 1) > K_MAX_MAPPED_FILE_CACHE_PAGE - firstFilePage) {
+        if (firstFilePage > K_MAX_MAPPED_FILE_CACHE_PAGE || (U64)(pageCount - 1) > K_MAX_MAPPED_FILE_CACHE_PAGE - firstFilePage) {
             return -K_EINVAL;
         }
         if (!fd->canRead() || (!priv && (!fd->canWrite() && write))) {
@@ -678,8 +713,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
             mappedFile->file = file;
             mappedFile->shared = shared;
             mappedFile->mayWrite = priv || fd->canWrite();
-            mappedFile->systemCacheEntry = file->getOrCreateMappedFileCache(
-                file->openFile->node->path, shared && fd->canWrite());
+            mappedFile->systemCacheEntry = file->getOrCreateMappedFileCache(file->openFile->node->path, shared && fd->canWrite());
             if (!mappedFile->systemCacheEntry) {
                 return -K_EIO;
             }
@@ -752,7 +786,13 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
                     pageStart = ADDRESS_PROCESS_MMAP_START;
                 }
             }
-            if (!data->reserveAddress(pageStart, pageCount, &pageStart, false, addr == 0, PAGE_MAPPED)) {
+            bool alignForLinearMemory = data->useLinearMemoryJit() && ramPageLinearMemoryPageCount() > 1;
+            U32 alignmentPhase = 0;
+            if (mappedFile && ramPageUseLinearMemoryFileCacheBlock()) {
+                alignmentPhase = (U32)(off >> K_PAGE_SHIFT) & (ramPageLinearMemoryPageCount() - 1);
+            }
+            if (!data->reserveAddress(pageStart, pageCount, &pageStart, false,
+                addr == 0 || alignForLinearMemory, PAGE_MAPPED, alignmentPhase)) {
                 return -K_ENOMEM;
             }
             addr = pageStart << K_PAGE_SHIFT;
@@ -852,8 +892,7 @@ U32 KMemory::mprotect(KThread* thread, U32 address, U32 len, U32 prot) {
     }
     if (write) {
         const U64 protectStart = (U64)pageStart << K_PAGE_SHIFT;
-        const U64 protectEnd =
-            protectStart + ((U64)pageCount << K_PAGE_SHIFT);
+        const U64 protectEnd = protectStart + ((U64)pageCount << K_PAGE_SHIFT);
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->mappedFilesMutex);
         for (const auto& entry : process->mappedFiles) {
             const MappedFilePtr& mapping = entry.value;
@@ -902,8 +941,7 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
         }
     }
     if (roundedNewSize < roundedOldSize) {
-        U32 result = this->unmap((U32)((U64)oldaddress + roundedNewSize),
-            (U32)(roundedOldSize - roundedNewSize));
+        U32 result = this->unmap((U32)((U64)oldaddress + roundedNewSize), (U32)(roundedOldSize - roundedNewSize));
         if (result) {
             return result;
         }
@@ -1017,8 +1055,7 @@ U32 KMemory::unmapLocked(U32 address, U32 len, std::vector<MappedFilePtr>& retir
         }
         for (U32 page = pageStart; page < pageStart + pageCount; ++page) {
             if (data->mmu[page].getPageType() == PageType::Code) {
-                prepareCodeInvalidation((U32)rangeStart,
-                    (U32)(rangeEnd - rangeStart));
+                prepareCodeInvalidation((U32)rangeStart, (U32)(rangeEnd - rangeStart));
                 preparedCodeInvalidation = true;
                 break;
             }
@@ -1190,7 +1227,7 @@ void KMemory::execvReset(bool cloneVM) {
         data->execvReset();
     } else {
         // data no longer shared with parent
-        data = new KMemoryData(this);
+        data = KMemoryData::create(this);
     }
 }
 
@@ -1395,15 +1432,13 @@ void KMemory::prepareCodeInvalidation(U32 address, U32 len) {
                     prefixLen += current->len;
                     current = current->next;
                 }
-                context.blocks->push_back(
-                    {opAddress - prefixLen, blockStart, {}, {}, nullptr});
+                context.blocks->push_back({opAddress - prefixLen, blockStart, {}, {}, nullptr});
             }, &context);
 
         for (PreparedCodeInvalidationBlock& block : preparedCodeBlocks) {
             DecodedOp* current = block.blockStart;
             U32 blockOpCount = block.blockStart->blockOpCount;
-            preparedCodeRemovalRanges.push_back(
-                {block.address, block.blockStart->blockLen});
+            preparedCodeRemovalRanges.push_back({block.address, block.blockStart->blockLen});
             if (block.blockStart->pfnJitCode && jitUsesCodeMemory()) {
                 block.codeMemoryToFree = (void*)block.blockStart->pfnJitCode;
                 ++codeMemoryFreeCount;
@@ -1419,37 +1454,20 @@ void KMemory::prepareCodeInvalidation(U32 address, U32 len) {
             }
         }
         if (jitAggregatesPreparedCodeInvalidation()) {
-            for (const PreparedCodeInvalidationBlock& block :
-                    preparedCodeBlocks) {
-                if (block.decodedOps.size() >
-                        preparedBackendDecodedOps.max_size() -
-                            preparedBackendDecodedOps.size() ||
-                        block.jitOps.size() >
-                        preparedBackendJitOps.max_size() -
-                            preparedBackendJitOps.size()) {
-                    throw std::length_error(
-                        "prepared backend invalidation is too large");
+            for (const PreparedCodeInvalidationBlock& block : preparedCodeBlocks) {
+                if (block.decodedOps.size() > preparedBackendDecodedOps.max_size() - preparedBackendDecodedOps.size() || block.jitOps.size() > preparedBackendJitOps.max_size() - preparedBackendJitOps.size()) {
+                    throw std::length_error("prepared backend invalidation is too large");
                 }
-                preparedBackendDecodedOps.insert(
-                    preparedBackendDecodedOps.end(),
-                    block.decodedOps.begin(), block.decodedOps.end());
-                preparedBackendJitOps.insert(
-                    preparedBackendJitOps.end(),
-                    block.jitOps.begin(), block.jitOps.end());
+                preparedBackendDecodedOps.insert(preparedBackendDecodedOps.end(), block.decodedOps.begin(), block.decodedOps.end());
+                preparedBackendJitOps.insert(preparedBackendJitOps.end(), block.jitOps.begin(), block.jitOps.end());
             }
-            if (!preparedBackendDecodedOps.empty() ||
-                    !preparedBackendJitOps.empty()) {
-                preparedBackendInvalidations.push_back(
-                    prepareJitCodeInvalidation(this,
-                        preparedBackendDecodedOps, preparedBackendJitOps));
+            if (!preparedBackendDecodedOps.empty() || !preparedBackendJitOps.empty()) {
+                preparedBackendInvalidations.push_back(prepareJitCodeInvalidation(this, preparedBackendDecodedOps, preparedBackendJitOps));
             }
         } else {
             preparedBackendInvalidations.reserve(preparedCodeBlocks.size());
-            for (const PreparedCodeInvalidationBlock& block :
-                    preparedCodeBlocks) {
-                preparedBackendInvalidations.push_back(
-                    prepareJitCodeInvalidation(
-                        this, block.decodedOps, block.jitOps));
+            for (const PreparedCodeInvalidationBlock& block : preparedCodeBlocks) {
+                preparedBackendInvalidations.push_back(prepareJitCodeInvalidation(this, block.decodedOps, block.jitOps));
             }
         }
 #endif
@@ -1459,8 +1477,7 @@ void KMemory::prepareCodeInvalidation(U32 address, U32 len) {
             pendingCodeMemoryFrees.max_size() - pendingCodeMemoryFrees.size()) {
             throw std::length_error("pending code-memory frees are too large");
         }
-        pendingCodeMemoryFrees.reserve(
-            pendingCodeMemoryFrees.size() + codeMemoryFreeCount);
+        pendingCodeMemoryFrees.reserve(pendingCodeMemoryFrees.size() + codeMemoryFreeCount);
         codeInvalidationPrepared = true;
     } catch (...) {
         data->opCache.finishPreparedRemove();
@@ -1511,8 +1528,7 @@ void KMemory::commitPreparedCodeInvalidation() {
             nextOp = nextOp->next;
         }
     }
-    for (PreparedJitCodeInvalidation& invalidation :
-            preparedBackendInvalidations) {
+    for (PreparedJitCodeInvalidation& invalidation : preparedBackendInvalidations) {
         invalidation.commit();
     }
 #endif
@@ -1607,6 +1623,7 @@ void KMemory::clearJit(DecodedOp* op) {
 }
 
 void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (!op || !op->blockStart) {
         return;
     }
@@ -1633,8 +1650,7 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         decodedOps.push_back(nextOp);
         nextOp = nextOp->next;
     }
-    PreparedJitCodeInvalidation backendInvalidation =
-        prepareJitCodeInvalidation(this, decodedOps, jitOps);
+    PreparedJitCodeInvalidation backendInvalidation = prepareJitCodeInvalidation(this, decodedOps, jitOps);
 
     nextOp = blockOp;
     for (U32 i = 0; i < blockOpCount; i++) {
@@ -1644,8 +1660,7 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
         void* jitCode;
         if (nextOp->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
-            jitCode = __atomic_exchange_n(
-                &nextOp->pfnJitCode, nullptr, __ATOMIC_SEQ_CST);
+            jitCode = __atomic_exchange_n(&nextOp->pfnJitCode, nullptr, __ATOMIC_SEQ_CST);
         } else {
             // Relocation-free MT functions have no reclaimable shared state.
             // Their worker-local table slot is cleared by an ordered worker
@@ -1721,7 +1736,7 @@ void KMemory::addCode_nolock(U32 address, U32 len, DecodedOp* op, U32 opCount) {
     iteratePages(address, len, [this](U32 page) {
         this->data->getOrCreateCodePage(page << K_PAGE_SHIFT);
         return true;
-        });
+    });
     data->opCache.add(op, address, opCount);
 }
 
@@ -2092,7 +2107,7 @@ void KMemory::clone(KMemory* from, bool vfork) {
 
 void KMemory::cloneLocked(KMemory* from, bool vfork) {
     if (vfork) {
-        delete this->data;
+        KMemoryData::destroy(this->data);
         this->data = from->data;
         return;
     }

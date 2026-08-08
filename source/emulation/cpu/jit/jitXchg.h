@@ -34,10 +34,9 @@ void Jit::dynamic_xchgr8r8(DecodedOp* op) {
     }
 }
 void Jit::dynamic_xchge8r8(DecodedOp* op) {
-    readWriteMem(JitWidth::b8, calculateEaa(op), [op, this](RegPtr value) {
-        RegPtr reg = getReg8(op->reg);
-        xchgReg(JitWidth::b8, reg, value);
-    });
+    RegPtr address = calculateEaa(op);
+    RegPtr reg = getReg8(op->reg);
+    xchgMemory(JitWidth::b8, std::move(address), std::move(reg));
 }
 void Jit::dynamic_xchgr16r16(DecodedOp* op) {
     RegPtr reg = getReg(op->reg);
@@ -45,10 +44,9 @@ void Jit::dynamic_xchgr16r16(DecodedOp* op) {
     xchgReg(JitWidth::b16, reg, rm);
 }
 void Jit::dynamic_xchge16r16(DecodedOp* op) {
-    readWriteMem(JitWidth::b16, calculateEaa(op), [op, this](RegPtr value) {
-        RegPtr reg = getReg(op->reg);
-        xchgReg(JitWidth::b16, reg, value);
-        });
+    RegPtr address = calculateEaa(op);
+    RegPtr reg = getReg(op->reg);
+    xchgMemory(JitWidth::b16, std::move(address), std::move(reg));
 }
 void Jit::dynamic_xchgr32r32(DecodedOp* op) {
     RegPtr reg = getReg(op->reg);
@@ -56,10 +54,9 @@ void Jit::dynamic_xchgr32r32(DecodedOp* op) {
     xchgReg(JitWidth::b32, reg, rm);
 }
 void Jit::dynamic_xchge32r32(DecodedOp* op) {
-    readWriteMem(JitWidth::b32, calculateEaa(op), [op, this](RegPtr value) {
-        RegPtr reg = getReg(op->reg);
-        xchgReg(JitWidth::b32, reg, value);
-    });
+    RegPtr address = calculateEaa(op);
+    RegPtr reg = getReg(op->reg);
+    xchgMemory(JitWidth::b32, std::move(address), std::move(reg));
 }
 
 // I didn't see Quake 2 or Cinebench trigger these, so for now they are low priority for inlining

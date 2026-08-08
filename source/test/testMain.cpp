@@ -69,6 +69,7 @@ void testFileCacheIdentitySurvivesRenameAndHardLink();
 void testSharedFileMappingGrowthKeepsPagesShared();
 void testSharedFileMappingTruncateClearsResidentBytes();
 void testSharedMappedWriteIsVisibleToPread();
+void testMappedFileCacheLinearBlockAlignment();
 void testPwriteUpdatesResidentSharedMapping();
 void testExtendingPwriteAdvancesMappedFileCacheLength();
 void testMappedFileMutationOperationOrdering();
@@ -147,6 +148,7 @@ void testInotifyFollowsWatchedSymlinkTarget();
 void testInotifyPollReportsChildDirectoryDelete();
 void testInotifyAsyncSignalsSigioOnDelete();
 void testStartupArgsDefaultUtf8LocaleEnvironment();
+void testStartupArgsLinearMemoryOption();
 void testTerminatingThreadDoesNotEnterFutexWait();
 void testUnixSocketPollOutClearsPeerCondition();
 void testUnixSocketSendmsgStreamPayloadCanBeRead();
@@ -849,6 +851,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testSelfModifyingMovsb, "Test Self Modifying Code using movsb"},
     {testSelfModifyingFront, "Test Self Modifying Code Same Block(Previous)"},
     {testSelfModifyingBack, "Test Self Modifying Code Same Block(Next)"},
+    {testLinearMemoryAliasAndFaults, "Test linear-memory alias and fault handling", TEST_ENTRY_SERIAL},
+    {testLinearMemoryCloneMappings, "Test linear-memory COW and shared clone mappings", TEST_ENTRY_SERIAL},
+    {testLinearMemoryCodeInvalidation, "Test linear-memory code invalidation", TEST_ENTRY_SERIAL},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testLockedInc, "Test Multi-threaded locked inc"},
     {testLockedIncAgainstPlainStore, "Test Multi-threaded locked inc against plain store"},
@@ -879,6 +884,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testSharedFileMappingGrowthKeepsPagesShared, "Test shared file mapping stays shared after growth", TEST_ENTRY_SERIAL},
     {testSharedFileMappingTruncateClearsResidentBytes, "Test shared file mapping clears resident bytes after truncate", TEST_ENTRY_SERIAL},
     {testSharedMappedWriteIsVisibleToPread, "Test shared mapped write is visible to pread", TEST_ENTRY_SERIAL},
+    {testMappedFileCacheLinearBlockAlignment, "Test mapped-file cache linear block alignment", TEST_ENTRY_SERIAL},
     {testPwriteUpdatesResidentSharedMapping, "Test pwrite updates resident shared mapping", TEST_ENTRY_SERIAL},
     {testExtendingPwriteAdvancesMappedFileCacheLength, "Test extending pwrite advances mapped-file cache length", TEST_ENTRY_SERIAL},
     {testMappedFileMutationOperationOrdering, "Test mapped-file mutation operation ordering", TEST_ENTRY_SERIAL},
@@ -961,6 +967,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testInotifyPollReportsChildDirectoryDelete, "Test inotify poll reports child directory delete", TEST_ENTRY_SERIAL},
     {testInotifyAsyncSignalsSigioOnDelete, "Test inotify async signals SIGIO on delete", TEST_ENTRY_SERIAL},
     {testStartupArgsDefaultUtf8LocaleEnvironment, "Test startup args default UTF-8 locale environment"},
+    {testStartupArgsLinearMemoryOption, "Test startup args linear-memory option", TEST_ENTRY_SERIAL},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testTerminatingThreadDoesNotEnterFutexWait, "Test terminating thread does not enter futex wait"},
 #endif
@@ -999,6 +1006,7 @@ struct TestRunArgs {
     size_t requestedCount = 0;
     U32 workerCount = 0;
     bool fast = false;
+    bool disableLinearMemory = false;
 };
 
 TestRunArgs parseTestRunArgs(int argc, char** argv) {
@@ -1008,6 +1016,10 @@ TestRunArgs parseTestRunArgs(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         if (!strcmp(argv[i], "-fast")) {
             args.fast = true;
+            continue;
+        }
+        if (!strcmp(argv[i], "-disableLinearMemory")) {
+            args.disableLinearMemory = true;
             continue;
         }
 
@@ -1024,7 +1036,8 @@ TestRunArgs parseTestRunArgs(int argc, char** argv) {
     return args;
 }
 
-int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCount = 0, bool fast = false) {
+int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCount = 0,
+    bool fast = false, bool disableLinearMemory = false) {
     size_t entryCount = sizeof(TEST_ENTRIES) / sizeof(TEST_ENTRIES[0]);
     totalFails = 0;
     testSetFastMode(fast);
@@ -1066,7 +1079,7 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
     fflush(stdout);
     
     KSystem::startMicroCounter();
-    KSystem::init();
+    KSystem::init(disableLinearMemory);
     KSystem::videoOption = VIDEO_NO_WINDOW;
     U32 startTime = KSystem::getMilliesSinceStart();
     testRunParallel(TEST_ENTRIES + startEntry, runCount, workerCount);
@@ -1077,7 +1090,8 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
 
 int runTestTestsFromArgs(int argc, char** argv) {
     TestRunArgs args = parseTestRunArgs(argc, argv);
-    return runTestTests(args.startEntry, args.requestedCount, args.workerCount, args.fast);
+    return runTestTests(args.startEntry, args.requestedCount, args.workerCount, args.fast,
+        args.disableLinearMemory);
 }
 
 #ifdef __MACH__
