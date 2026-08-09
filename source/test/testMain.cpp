@@ -160,6 +160,9 @@ void testPollRegistrationCanSignalParentCondition();
 void testNativeSocketSetOobInlineCanBeReadBack();
 void testNativeSocketBindUnavailableAddressReturnsEaddrnotavail();
 void testNativeSocketRecvmsgReceivesOobData();
+#if defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__)
+void stopNativeSocketsThread();
+#endif
 void testNativeDatagramSocketPollDoesNotReportHangup();
 void testNativeDatagramRecvmsgPeekScattersOnce();
 void testNativeDatagramRecvmsgScattersSingleMessage();
@@ -1083,6 +1086,9 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
     KSystem::videoOption = VIDEO_NO_WINDOW;
     U32 startTime = KSystem::getMilliesSinceStart();
     testRunParallel(TEST_ENTRIES + startEntry, runCount, workerCount);
+#if defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__)
+    stopNativeSocketsThread();
+#endif
     U32 stopTime = KSystem::getMilliesSinceStart();
     printf("%d tests FAILED in %ds\n", totalFails, (stopTime - startTime) / 1000);
     return totalFails != 0;
