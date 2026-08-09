@@ -446,6 +446,7 @@ void runHotMovsCase(int width, bool address32, U32 count, bool backward, const c
     }
     copyBytes(expectedDst, initialSrc, dataSize);
     emitCode(STRING_MOVS, width, PREFIX_REPE);
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     if (checkedMemory) {
         DecodedOp* op = cpu->getNextOp();
         if (!op) {
@@ -454,6 +455,9 @@ void runHotMovsCase(int width, bool address32, U32 count, bool backward, const c
             op->exceptionCount = 1;
         }
     }
+#else
+    (void)checkedMemory;
+#endif
 
     for (int pass = 0; pass < 2; ++pass) {
         cpu->eip.u32 = 0;
@@ -547,9 +551,11 @@ void runOverlapMovsCases(int width, bool address32) {
 void runHotMovsCases(int width, bool address32) {
     runHotMovsCase(width, address32, 48, false, "string move hot forward");
     runHotMovsCase(width, address32, 48, true, "string move hot backward");
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     if (width == 1 && address32) {
         runHotMovsCase(width, address32, 48, true, "string move checked hot backward", true);
     }
+#endif
 }
 
 void initPageBytes(U8* values, size_t count, U8 seed) {
