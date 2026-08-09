@@ -2372,7 +2372,11 @@ void JitArmV8CodeGen::readMMU(RegPtr dest, U32 index) {
 }
 
 RegPtr JitArmV8CodeGen::getLinearMemoryBase(RegPtr tmp) {
-    if (!tmp) {
+    // A grouped linear-memory read can fault when another guest page in the
+    // host-page group prevents a direct mapping. Keep the address base out of
+    // the load destination so the exception context retains a valid address
+    // calculation while the instruction is handled through the MMU path.
+    if (!tmp || ramPageUseLinearMemoryAdjacent()) {
         tmp = getTmpReg();
     }
     constexpr S32 offset = (S32)offsetof(KMemoryData, linearMemoryBase) - (S32)offsetof(KMemoryData, mmu);
