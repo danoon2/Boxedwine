@@ -5662,10 +5662,14 @@ RegPtr JitX86CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
 bool JitX86CodeGen::directDoesAffectFlags(DecodedOp* op) {
     //read/write does things like address >> K_PAGE_SHIFT which will affect flags, perhaps we can make special versions of read/write for x86 if needed
     switch (op->inst) {
+    // High-byte extraction/writeback can use shifts and masks when the byte
+    // cannot be addressed directly in the allocated host register.
     case MovR8R8:
+        return op->reg > 3 || op->rm > 3;
     //case MovE8R8:
     //case MovR8E8:
     case MovR8I8:
+        return op->reg > 3;
     //case MovE8I8:
     case MovR16R16:
     //case MovE16R16:
@@ -5683,14 +5687,6 @@ bool JitX86CodeGen::directDoesAffectFlags(DecodedOp* op) {
     //case MovObAl:
     //case MovOwAx:
     //case MovOdEax:
-    case MovGwXzR8:
-    //case MovGwXzE8:
-    case MovGwSxR8:
-    //case MovGwSxE8:
-    case MovGdXzR8:
-    //case MovGdXzE8:
-    case MovGdSxR8:
-    //case MovGdSxE8:
     case MovGdXzR16:
     //case MovGdXzE16:
     case MovGdSxR16:
@@ -5698,6 +5694,11 @@ bool JitX86CodeGen::directDoesAffectFlags(DecodedOp* op) {
     case LeaR16:
     case LeaR32:
         return false;
+    case MovGwXzR8:
+    case MovGwSxR8:
+    case MovGdXzR8:
+    case MovGdSxR8:
+        return op->rm > 3;
     default:
         return true;
     }

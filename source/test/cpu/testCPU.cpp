@@ -970,6 +970,131 @@ void runDirectArithmeticWriteFaultCase() {
     action.reset();
 }
 
+void runDirectArithmeticByteMoveCases() {
+    const struct {
+        const char* name;
+        U8 code[4];
+        U32 length;
+        U32 eax;
+        U32 ecx;
+        U32 esi;
+        bool canFuse;
+    } cases[] = {
+        {"mov ah,imm",   {0xb4, 0x12},             2, 0x00001200, 0x123456a5, 0x13572468, false},
+        {"mov ah,cl",    {0x88, 0xcc},             2, 0x0000a500, 0x123456a5, 0x13572468, false},
+        {"mov cl,ah",    {0x88, 0xe1},             2, 0x00008000, 0x12345680, 0x13572468, false},
+        {"mov ch,ah",    {0x88, 0xe5},             2, 0x00008000, 0x123480a5, 0x13572468, false},
+        {"movzx si,ah",  {0x66, 0x0f, 0xb6, 0xf4}, 4, 0x00008000, 0x123456a5, 0x13570080, false},
+        {"movsx si,ah",  {0x66, 0x0f, 0xbe, 0xf4}, 4, 0x00008000, 0x123456a5, 0x1357ff80, false},
+        {"movzx esi,ah", {0x0f, 0xb6, 0xf4},       3, 0x00008000, 0x123456a5, 0x00000080, false},
+        {"movsx esi,ah", {0x0f, 0xbe, 0xf4},       3, 0x00008000, 0x123456a5, 0xffffff80, false},
+        {"mov cl,imm",   {0xb1, 0x12},             2, 0x00008000, 0x12345612, 0x13572468, true},
+        {"mov cl,al",    {0x88, 0xc1},             2, 0x00008000, 0x12345600, 0x13572468, true},
+        {"movzx esi,al", {0x0f, 0xb6, 0xf0},       3, 0x00008000, 0x123456a5, 0x00000000, true},
+        {"movsx si,al",  {0x66, 0x0f, 0xbe, 0xf0}, 4, 0x00008000, 0x123456a5, 0x13570000, true},
+    };
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+
+    for (const auto& move : cases) {
+        testNewInstruction(0);
+        cpu->big = true;
+        cpu->reg[0].u32 = 0xffff0000;
+        cpu->reg[1].u32 = 0x123456a5;
+        cpu->reg[2].u32 = 0x00018000;
+        cpu->reg[3].u32 = 0x12345678;
+        cpu->reg[6].u32 = 0x13572468;
+        cpu->reg[7].u32 = 2;
+
+        testPushCode8(0x03); // add eax,edx: result 0x8000, CF set
+        testPushCode8(0xc2);
+        for (U32 i = 0; i < move.length; ++i) {
+            testPushCode8(move.code[i]);
+        }
+        testPushCode8(0x0f); // setb bl: must observe ADD's carry across the move
+        testPushCode8(0x92);
+        testPushCode8(0xc3);
+        testPushCode8(0x39); // cmp esi,edi: makes the ADD flags dead
+        testPushCode8(0xfe);
+        testRunCPU();
+
+        if (cpu->reg[0].u32 != move.eax || cpu->reg[1].u32 != move.ecx || cpu->reg[6].u32 != move.esi) {
+            testFail("direct arithmetic across %s register result", move.name);
+        }
+        if (cpu->reg[3].u32 != 0x12345601) {
+            testFail("direct arithmetic across %s lost carry", move.name);
+        }
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+        DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+        DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 2 + move.length);
+        if (!producer || producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode || !set) {
+            testFail("direct arithmetic across %s JIT entry", move.name);
+        } else if (((set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) != 0) != move.canFuse ||
+                   (set->pfnJitCode == nullptr) != move.canFuse) {
+            testFail("direct arithmetic across %s fusion boundary", move.name);
+        }
+#endif
+    }
+}
+
+void runDirectArithmeticInterveningMemoryCase(bool store, bool indirect) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    constexpr U32 targetAddress = 0x20000000;
+    const char* name = store ? "mov [moffs],al" : indirect ? "mov al,[esi]" : "mov al,[moffs]";
+
+    testNewInstruction(0);
+    cpu->big = true;
+    // Leave this page untouched so the generated memory access must resolve it.
+    if (context.memory->mmap(context.thread, targetAddress, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+            K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0) != targetAddress) {
+        testFail("direct arithmetic across %s mmap", name);
+        return;
+    }
+    cpu->reg[0].u32 = 0x12345678;
+    cpu->reg[1].u32 = 0xffffffff;
+    cpu->reg[2].u32 = 1;
+    cpu->reg[3].u32 = 0x12345678;
+    cpu->reg[5].u32 = 2;
+    cpu->reg[6].u32 = targetAddress - cpu->seg[DS].address;
+    cpu->reg[7].u32 = 1;
+
+    testPushCode8(0x03); // add ecx,edx: must execute exactly once, producing zero
+    testPushCode8(0xca);
+    if (indirect) {
+        testPushCode8(0x8a); // mov al,[esi]
+        testPushCode8(0x06);
+    } else {
+        testPushCode8(store ? 0xa2 : 0xa0); // mov [moffs],al / mov al,[moffs]
+        testPushCode32(targetAddress - cpu->seg[DS].address);
+    }
+    testPushCode8(0x0f); // setz bl
+    testPushCode8(0x94);
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp edi,ebp: makes the ADD flags dead
+    testPushCode8(0xef);
+    testRunCPU();
+
+    if (cpu->reg[1].u32 != 0 || cpu->reg[3].u32 != 0x12345601) {
+        testFail("direct arithmetic across %s first-touch fault replayed ADD or lost flags", name);
+    }
+    if (cpu->reg[0].u32 != (store ? 0x12345678 : 0x12345600) ||
+            context.memory->readb(targetAddress) != (store ? 0x78 : 0)) {
+        testFail("direct arithmetic across %s memory result", name);
+    }
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* move = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 2);
+    if (!producer || producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode) {
+        testFail("direct arithmetic across %s producer JIT entry", name);
+    }
+    if (!move || !move->pfnJitCode || (move->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE)) {
+        testFail("direct arithmetic across %s lost faulting instruction boundary", name);
+    }
+#endif
+    context.memory->unmap(targetAddress, K_PAGE_SIZE);
+}
+
 } // namespace
 
 void testJitDirectArithmeticFlags() {
@@ -991,6 +1116,10 @@ void testJitDirectArithmeticFlags() {
         }
     }
     runDirectArithmeticWriteFaultCase();
+    runDirectArithmeticByteMoveCases();
+    runDirectArithmeticInterveningMemoryCase(false, true);
+    runDirectArithmeticInterveningMemoryCase(false, false);
+    runDirectArithmeticInterveningMemoryCase(true, false);
 #endif
 }
 

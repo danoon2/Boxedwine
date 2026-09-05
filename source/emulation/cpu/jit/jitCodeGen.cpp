@@ -670,17 +670,23 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
         if (nextOp->flags2 & OP_FLAG2_JUMP_TARGET) {
             break;
         }
+        // A fault in a skipped instruction is attributed to the producer, which
+        // may already have changed guest state. Keep memory operations separate
+        // so fault recovery cannot replay the producer's side effects.
+        if (instructionInfo[nextOp->inst].readMemWidth || instructionInfo[nextOp->inst].writeMemWidth) {
+            break;
+        }
         if (nextOp->isJumpCC()) {
             cond = getJumpConditionFromOp(nextOp);
             directType = DirectType::Jump;
             break;
         }
-        if (nextOp->isCMovCC() && instructionInfo[nextOp->inst].readMemWidth == 0) {
+        if (nextOp->isCMovCC()) {
             cond = getCmovConditionFromOp(nextOp);
             directType = DirectType::CMov;
             break;
         }
-        if (nextOp->isSetCC() && instructionInfo[nextOp->inst].writeMemWidth == 0) {
+        if (nextOp->isSetCC()) {
             cond = getSetConditionFromOp(nextOp);
             directType = DirectType::SetCC;
             break;
