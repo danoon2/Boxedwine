@@ -305,7 +305,7 @@ static U8* reserveWindowsLinearMemory(U64 size) {
     return (U8*)linearMemoryVirtualAlloc2(GetCurrentProcess(), nullptr, (SIZE_T)size, MEM_RESERVE | MEM_RESERVE_PLACEHOLDER, PAGE_NOACCESS, nullptr, 0);
 }
 
-static void mapWindowsLinearMemoryPage(U8* target, U32 slot, bool commit) {
+static void mapWindowsLinearMemoryPage(U8* target, U32 slot, bool commit, DWORD protection) {
     DWORD splitError = ERROR_SUCCESS;
     if (!VirtualFree(target, K_PAGE_SIZE, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER)) {
         // A page which was mapped before is already an exact placeholder after
@@ -313,12 +313,12 @@ static void mapWindowsLinearMemoryPage(U8* target, U32 slot, bool commit) {
         // split error if replacement also fails.
         splitError = GetLastError();
     }
-    void* result = linearMemoryMapViewOfFile3(windowsLinearRamFile, GetCurrentProcess(), target, (U64)slot * WINDOWS_LINEAR_MEMORY_SLOT_SIZE, K_PAGE_SIZE, MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, nullptr, 0);
+    void* result = linearMemoryMapViewOfFile3(windowsLinearRamFile, GetCurrentProcess(), target, (U64)slot * WINDOWS_LINEAR_MEMORY_SLOT_SIZE, K_PAGE_SIZE, MEM_REPLACE_PLACEHOLDER, protection, nullptr, 0);
     if (result != target) {
         DWORD mappingError = GetLastError();
         kpanic_fmt("linear memory: Windows page split/map failed: %u/%u", splitError, mappingError);
     }
-    if (commit && VirtualAlloc(target, K_PAGE_SIZE, MEM_COMMIT, PAGE_READWRITE) != target) {
+    if (commit && VirtualAlloc(target, K_PAGE_SIZE, MEM_COMMIT, protection) != target) {
         kpanic_fmt("linear memory: Windows RAM page commit failed: %u", GetLastError());
     }
 }
@@ -629,6 +629,12 @@ U32 ramPageUpdateLinearMemory(U8* address, U32 guestPage, const RamPage* pages, 
     if (!address || !pages || pageCount != 1) {
         return 0;
     }
+    canWrite = canRead && canWrite;
+    // Cloning and large reservations visit every guest page. An inaccessible
+    // page with no existing mapping needs neither a RAM lookup nor its lock.
+    if (!canRead && !currentMapping) {
+        return 0;
+    }
     U32 slot = 0;
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
@@ -637,13 +643,14 @@ U32 ramPageUpdateLinearMemory(U8* address, U32 guestPage, const RamPage* pages, 
             slot = it->second.linearMemorySlot;
         }
     }
-    canWrite = canRead && canWrite;
     U32 newMapping = slot && (canRead || canWrite) ? (slot << 2) | (canRead ? 1 : 0) | (canWrite ? 2 : 0) : 0;
     if (newMapping == currentMapping) {
         return newMapping;
     }
     U8* target = address + ((U64)guestPage << K_PAGE_SHIFT);
-    if (newMapping && currentMapping && (newMapping >> 2) == (currentMapping >> 2)) {
+    // VirtualProtect cannot grant write access to a view created read-only.
+    // Permission downgrades can reuse the view; upgrades need a new mapping.
+    if (newMapping && currentMapping && !canWrite && (newMapping >> 2) == (currentMapping >> 2)) {
         DWORD oldProtection;
         DWORD protection = canWrite ? PAGE_READWRITE : PAGE_READONLY;
         if (!VirtualProtect(target, K_PAGE_SIZE, protection, &oldProtection)) {
@@ -655,12 +662,10 @@ U32 ramPageUpdateLinearMemory(U8* address, U32 guestPage, const RamPage* pages, 
         kpanic_fmt("linear memory: Windows page unmap failed: %u", GetLastError());
     }
     if (newMapping) {
-        mapWindowsLinearMemoryPage(target, slot - 1, false);
-        DWORD oldProtection;
+        // Guest threads do not take memory->mutex for direct accesses. Never
+        // expose a writable alias while installing a read-only/COW/code page.
         DWORD protection = canWrite ? PAGE_READWRITE : PAGE_READONLY;
-        if (!VirtualProtect(target, K_PAGE_SIZE, protection, &oldProtection)) {
-            kpanic_fmt("linear memory: Windows page protection failed: %u", GetLastError());
-        }
+        mapWindowsLinearMemoryPage(target, slot - 1, false, protection);
     }
     return newMapping;
 #else
@@ -833,7 +838,7 @@ RamPage ramPageAlloc() {
                     kpanic("linear memory: Windows RAM section exhausted");
                 }
                 U32 slot = windowsLinearRamSlotCount++;
-                mapWindowsLinearMemoryPage(pages, slot, true);
+                mapWindowsLinearMemoryPage(pages, slot, true, PAGE_READWRITE);
                 RAM_TYPE index = ((RAM_TYPE)pages) >> K_PAGE_SHIFT;
                 refCounts[index].linearMemorySlot = slot + 1;
             } else {

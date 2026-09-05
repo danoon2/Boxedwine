@@ -1387,6 +1387,9 @@ void* CPU::startException(U64 address, bool readAddress) {
 }
 
 void* CPU::handleAccessException(DecodedOp* op) {
+    const U32 faultEip = getEipAddress();
+    U32 faultPage = 0;
+    bool linearFirstTouch = false;
     bool resolvedLinearFirstTouch = false;
     bool singlePageLinearMemoryFault = false;
     bool groupedLinearMemoryFault = false;
@@ -1396,13 +1399,28 @@ void* CPU::handleAccessException(DecodedOp* op) {
         if (memoryData->getLinearMemoryGuestAddress(exceptionAddress, guestAddress)) {
             groupedLinearMemoryFault = ramPageLinearMemoryPageCount() > 1;
             singlePageLinearMemoryFault = !groupedLinearMemoryFault;
-            MMU& mmu = memoryData->mmu[guestAddress >> K_PAGE_SHIFT];
+            faultPage = guestAddress >> K_PAGE_SHIFT;
+            MMU& mmu = memoryData->mmu[faultPage];
             U32 requiredPermission = exceptionReadAddress ? (PAGE_READ | PAGE_EXEC) : PAGE_WRITE;
-            resolvedLinearFirstTouch = mmu.getPageType() == PageType::Ram && !mmu.ramIndex &&
-                (mmu.flags & requiredPermission) != 0;
+            PageType type = mmu.getPageType();
+            linearFirstTouch = (mmu.flags & requiredPermission) != 0 &&
+                ((type == PageType::Ram && !mmu.ramIndex) || type == PageType::File ||
+                    (type == PageType::CopyOnWrite && !exceptionReadAddress));
         }
     }
-    auto removeCurrentCodeBlock = [this, op]() {
+    if (linearFirstTouch) {
+        const auto jitCode = op->pfnJitCode;
+        const U32 requiredMapping = exceptionReadAddress ? 1 : 2;
+        runNextSingleOp();
+        // Emulation can invalidate the instruction (for example a cross-page
+        // store into code). Only inspect its metadata if it still owns this code.
+        DecodedOp* faultOp = memory->getDecodedOp(faultEip);
+        if (faultOp != op || faultOp->pfnJitCode != jitCode) {
+            return this->thread->process->blockExit;
+        }
+        resolvedLinearFirstTouch = (getMemData(memory)->linearMemoryMappings[faultPage] & requiredMapping) != 0;
+    }
+    auto removeCurrentCodeBlock = [this, op, faultEip]() {
         if (!op->blockStart) {
             return;
         }
@@ -1416,7 +1434,7 @@ void* CPU::handleAccessException(DecodedOp* op) {
             count++;
         }
         if (nextOp == op) {
-            memory->removeCodeBlock(this->eip.u32 - eipDistance, op->blockStart, false);
+            memory->removeCodeBlock(faultEip - eipDistance, op->blockStart, false);
         }
     };
     if (resolvedLinearFirstTouch) {
@@ -1441,13 +1459,18 @@ void* CPU::handleAccessException(DecodedOp* op) {
         if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             op->exceptionCount++;
         }
+        // A non-materializable 4K fault must use the MMU fallback on the next
+        // compilation, even though successful first touches retain linear code.
+        op->exceptionCount = std::max<U32>(op->exceptionCount, LINEAR_MEMORY_RECOMPILE_FAULTS);
         removeCurrentCodeBlock();
     } else if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
         op->exceptionCount++;
     } else {
         removeCurrentCodeBlock();
     }
-    runNextSingleOp();
+    if (!linearFirstTouch) {
+        runNextSingleOp();
+    }
     return this->thread->process->blockExit;
 }
 #endif

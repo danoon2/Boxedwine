@@ -15,6 +15,7 @@ void testSelfModifyingMovsb();
 void testSelfModifyingFront();
 void testSelfModifyingBack();
 void testLinearMemoryAliasAndFaults();
+void testLinearMemoryFileFirstTouches();
 void testLinearMemoryCloneMappings();
 void testLinearMemoryCodeInvalidation();
 

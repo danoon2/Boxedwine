@@ -268,7 +268,94 @@ void runLinearMemoryRepeatedFirstTouchCase() {
     testMemory->unmap(targetAddress, pageCount * K_PAGE_SIZE);
 }
 
-void runLinearMemoryCrossPageCowRmwCase() {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+void runLinearMemoryFileFirstTouchCase(bool write, bool preload) {
+    constexpr U32 targetAddress = 0x20000000;
+    constexpr U32 pageCount = LINEAR_MEMORY_RECOMPILE_FAULTS;
+    constexpr U32 initialValue = 0x11223344;
+    constexpr U32 addend = 0x01020304;
+    const char* name = !write ? "file read" : preload ? "COW write" : "file write";
+
+    newInstruction(0);
+    KProcessPtr process = testContext().process;
+    U32 fd = process->memfd_create(B("linear-first-touch"), 0);
+    if ((S32)fd < 0) {
+        failed("linear memory %s memfd failed", name);
+        return;
+    }
+    std::shared_ptr<KFile> file = std::dynamic_pointer_cast<KFile>(process->getFileDescriptor(fd)->kobject);
+    if (process->ftruncate64(fd, pageCount * K_PAGE_SIZE)) {
+        failed("linear memory %s truncate failed", name);
+        process->close(fd);
+        return;
+    }
+    for (U32 page = 0; page < pageCount; page++) {
+        U32 value = initialValue;
+        if (file->pwriteNative((U8*)&value, page * K_PAGE_SIZE, sizeof(value)) != sizeof(value)) {
+            failed("linear memory %s file initialization failed", name);
+        }
+    }
+    if (testMemory->mmap(testContext().thread, targetAddress, pageCount * K_PAGE_SIZE,
+        K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, fd, 0) != targetAddress) {
+        failed("linear memory %s mmap failed", name);
+        process->close(fd);
+        return;
+    }
+
+    // Compile against ordinary RAM, then run the same instruction against
+    // fresh file/COW pages without rewriting or invalidating its code.
+    cpu->reg[0].u32 = 0x1000;
+    cpu->reg[2].u32 = addend;
+    pushCode8(write ? 0x01 : 0x8b);
+    pushCode8(0x10); // add [eax], edx / mov edx, [eax]
+    runTestCPU();
+    DecodedOp* op = testMemory->getDecodedOp(TEST_CODE_ADDRESS);
+    const auto jitCode = op->pfnJitCode;
+    if (!jitCode || op->exceptionCount) {
+        failed("linear memory %s did not start with fault-free JIT code", name);
+    }
+
+    for (U32 page = 0; page < pageCount; page++) {
+        U32 address = targetAddress + page * K_PAGE_SIZE;
+        if (preload) {
+            testMemory->readd(address);
+        }
+        PageType expectedType = preload ? PageType::CopyOnWrite : PageType::File;
+        if (getMemData(testMemory)->mmu[address >> K_PAGE_SHIFT].getPageType() != expectedType) {
+            failed("linear memory %s did not start with the expected page type", name);
+        }
+        cpu->reg[0].u32 = address - cpu->seg[DS].address;
+        cpu->reg[2].u32 = addend;
+        cpu->eip.u32 = 0;
+        cpu->nextOp = cpu->getNextOp();
+        do {
+            cpu->run();
+        } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+
+        U32 actual = write ? testMemory->readd(address) : cpu->reg[2].u32;
+        if (actual != (write ? initialValue + addend : initialValue)) {
+            failed("linear memory %s was not executed exactly once", name);
+        }
+        U32 fileValue = 0;
+        file->preadNativeUncached((U8*)&fileValue, page * K_PAGE_SIZE, sizeof(fileValue));
+        if (fileValue != initialValue) {
+            failed("linear memory %s changed private file backing", name);
+        }
+        op = testMemory->getDecodedOp(TEST_CODE_ADDRESS);
+        if (page + 1 < pageCount) {
+            if (!op || op->pfnJitCode != jitCode || op->exceptionCount != page + 1) {
+                failed("linear memory %s retired JIT code on a resolved first touch", name);
+            }
+        } else if (!op || op->pfnJitCode || op->exceptionCount != MAX_OP_EXCEPTION_COUNT) {
+            failed("linear memory %s did not retire JIT code after repeated first touches", name);
+        }
+    }
+    testMemory->unmap(targetAddress, pageCount * K_PAGE_SIZE);
+    process->close(fd);
+}
+#endif
+
+void runLinearMemoryCrossPageCowRmwCase(bool checkedMemory = false) {
     if (ramPageLinearMemoryPageCount() != 1) {
         return;
     }
@@ -293,6 +380,11 @@ void runLinearMemoryCrossPageCowRmwCase() {
     cpu->reg[7].u32 = addend;
     pushCode8(0x01);
     pushCode8(0x38); // add dword ptr [eax], edi
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (checkedMemory) {
+        cpu->getNextOp()->exceptionCount = LINEAR_MEMORY_RECOMPILE_FAULTS;
+    }
+#endif
     runTestCPU();
 
     ramPageRelease(retainedBacking);
@@ -377,6 +469,7 @@ void testLinearMemoryAliasAndFaults() {
     runLinearMemoryFaultCase(false);
     runLinearMemoryRepeatedFirstTouchCase();
     runLinearMemoryCrossPageCowRmwCase();
+    runLinearMemoryCrossPageCowRmwCase(true);
 
     U32 groupPageCount = ramPageLinearMemoryPageCount();
     if (groupPageCount > 1) {
@@ -400,6 +493,17 @@ void testLinearMemoryAliasAndFaults() {
             testMemory->unmap(secondMapping, K_PAGE_SIZE);
         }
     }
+}
+
+void testLinearMemoryFileFirstTouches() {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (!ramPageUseLinearMemory() || ramPageLinearMemoryPageCount() != 1) {
+        return;
+    }
+    runLinearMemoryFileFirstTouchCase(false, false);
+    runLinearMemoryFileFirstTouchCase(true, false);
+    runLinearMemoryFileFirstTouchCase(true, true);
+#endif
 }
 
 void testLinearMemoryCloneMappings() {

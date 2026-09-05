@@ -45,10 +45,7 @@ bool jitCanUseLinearMemory() {
 }
 
 bool jitCanUseUnconditionalLinearMemory(DecodedOp* op) {
-    if (ramPageLinearMemoryPageCount() > 1) {
-        return op->exceptionCount < LINEAR_MEMORY_RECOMPILE_FAULTS;
-    }
-    return op->exceptionCount == 0;
+    return op->exceptionCount < LINEAR_MEMORY_RECOMPILE_FAULTS;
 }
 
 #ifdef BOXEDWINE_MEM_CACHE
@@ -62,10 +59,15 @@ bool jitMustCheckPageSpan(DecodedOp* op) {
 }
 
 bool jitCanSkipMemoryCachePageSpanCheck() {
-    // The legacy 4K allocator puts a guard page after every RAM page. The
-    // single-offset linear allocator uses adjacent pool pages instead, so a
-    // cached access that spans a guest-page boundary can reach unrelated RAM.
+    // Windows retains guard pages in the backing allocator, even when the
+    // separate guest aperture is contiguous. MMU cache accesses use that backing.
+#ifdef _WIN32
+    return KSystem::canJitUse4KPage;
+#else
+    // The POSIX linear pool has adjacent backing pages, so a cached access
+    // that spans a guest-page boundary can reach unrelated RAM.
     return KSystem::canJitUse4KPage && !ramPageUseLinearMemory();
+#endif
 }
 }
 #endif

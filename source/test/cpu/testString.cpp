@@ -452,7 +452,7 @@ void runHotMovsCase(int width, bool address32, U32 count, bool backward, const c
         if (!op) {
             failed("%s decode", name);
         } else {
-            op->exceptionCount = 1;
+            op->exceptionCount = LINEAR_MEMORY_RECOMPILE_FAULTS;
         }
     }
 #else

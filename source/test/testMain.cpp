@@ -855,6 +855,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testSelfModifyingFront, "Test Self Modifying Code Same Block(Previous)"},
     {testSelfModifyingBack, "Test Self Modifying Code Same Block(Next)"},
     {testLinearMemoryAliasAndFaults, "Test linear-memory alias and fault handling", TEST_ENTRY_SERIAL},
+    {testLinearMemoryFileFirstTouches, "Test linear-memory file and COW first touches", TEST_ENTRY_SERIAL},
     {testLinearMemoryCloneMappings, "Test linear-memory COW and shared clone mappings", TEST_ENTRY_SERIAL},
     {testLinearMemoryCodeInvalidation, "Test linear-memory code invalidation", TEST_ENTRY_SERIAL},
 #ifdef BOXEDWINE_MULTI_THREADED
