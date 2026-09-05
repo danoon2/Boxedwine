@@ -203,6 +203,15 @@ public:
     void emulateSingleOp() override;
     RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0) override;
 
+    void movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend = false);
+    void dynamic_movr32e32(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b32); }
+    void dynamic_movGwXzE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b8); }
+    void dynamic_movGwSxE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b8, true); }
+    void dynamic_movGdXzE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b8); }
+    void dynamic_movGdSxE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b8, true); }
+    void dynamic_movGdXzE16(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b16); }
+    void dynamic_movGdSxE16(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b16, true); }
+
     void direct_cmp(JitWidth width, RegPtr left, RegPtr right) override;
     void direct_cmp(JitWidth width, RegPtr left, U32 right) override;
     void direct_test(JitWidth width, RegPtr left, RegPtr right) override;
@@ -284,6 +293,7 @@ public:
     void readMMU(RegPtr dest, U32 index) override;
     RegPtr getLinearMemoryBase(RegPtr tmp = nullptr) override;
     virtual void readHost(JitWidth width, MemPtr address, RegPtr result, bool emlulatedMemory = true) override;
+    void readHostValue(JitWidth width, MemPtr address, RegPtr result, bool emulatedMemory, bool signExtend);
     virtual void writeHost(JitWidth width, MemPtr address, RegPtr src, bool emlulatedMemory = true) override;
     virtual void writeHost(JitWidth width, MemPtr address, U32 imm, bool emlulatedMemory = true) override;
 
@@ -2493,6 +2503,21 @@ SSERegPtr JitArmV8CodeGen::loadSSEConst(U8 index) {
     return result;
 }
 
+void JitArmV8CodeGen::movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend) {
+    // Resolve the address and any MMU fallback before touching the guest
+    // destination, which may also be an input to the address calculation.
+    read(srcWidth, calculateEaa(op), [this, op, dstWidth, srcWidth, signExtend](MemPtr address) {
+        RegPtr dst = getReg(op->reg, -1, dstWidth != JitWidth::b32);
+        RegPtr value = dstWidth == JitWidth::b32 ? dst : getTmpReg();
+        readHostValue(srcWidth, address, value, true, signExtend);
+        if (dstWidth != JitWidth::b32) {
+            // ARM narrow loads replace the whole W register. Merge AX-sized
+            // results only after the load succeeds to preserve the upper bits.
+            mov(dstWidth, dst, value);
+        }
+    });
+}
+
 void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool emlulatedMemory) {
     // arm zero extends reads
     if (!isTmp[dest->hardwareReg()] && (width == JitWidth::b8 || width == JitWidth::b16)) {
@@ -2501,6 +2526,15 @@ void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool eml
         mov(width, dest, tmp);
         return;
     }
+    if (width == JitWidth::b8 && isRegHigh(dest)) {
+        kpanic("JitArmV8CodeGen::readHost unexpected dest");
+    }
+    readHostValue(width, mem, dest, emlulatedMemory, false);
+}
+
+void JitArmV8CodeGen::readHostValue(JitWidth width, MemPtr mem, RegPtr dest, bool emlulatedMemory, bool signExtend) {
+    // Always replace the whole W/X register, even for a byte or word load.
+    // In particular, guest ESP-EDI destinations here do not mean AH-BH.
     if (width == JitWidth::b32) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
@@ -2520,25 +2554,36 @@ void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool eml
             RegPtr addressReg = calculateAddress(mem);
             U32 op = 0x78BFC000 | dest->hardwareReg() | (addressReg->hardwareReg() << 5);
             compiler.embed_int32(op);
+            if (signExtend) {
+                compiler.sxth(R32(dest), R32(dest));
+            }
         } else
 #endif
         {
-            compiler.ldrh(R32(dest), createMem(mem));
+            if (signExtend) {
+                compiler.ldrsh(R32(dest), createMem(mem));
+            } else {
+                compiler.ldrh(R32(dest), createMem(mem));
+            }
         }
     } else if (width == JitWidth::b8) {
-        if (isRegHigh(dest)) {
-            kpanic("JitArmV8CodeGen::readHost unexpected dest");
-        }
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.ldaprb(R32(dest), createMemR(reg, sib, lsl, disp));
             RegPtr addressReg = calculateAddress(mem);
             U32 op = 0x38BFC000 | dest->hardwareReg() | (addressReg->hardwareReg() << 5);
             compiler.embed_int32(op);
+            if (signExtend) {
+                compiler.sxtb(R32(dest), R32(dest));
+            }
         } else
 #endif
         {
-            compiler.ldrb(R32(dest), createMem(mem));
+            if (signExtend) {
+                compiler.ldrsb(R32(dest), createMem(mem));
+            } else {
+                compiler.ldrb(R32(dest), createMem(mem));
+            }
         }
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {

@@ -414,6 +414,35 @@ public:
     bool directDoesAffectFlags(DecodedOp* op) override;
     RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0) override;
 
+#ifdef BOXEDWINE_64
+    void movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend = false);
+    void dynamic_movr8e8(DecodedOp* op) override { movFromMemory(op, JitWidth::b8, JitWidth::b8); }
+    void dynamic_movr16e16(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b16); }
+    void dynamic_movr32e32(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b32); }
+    void dynamic_movGwXzE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b8); }
+    void dynamic_movGwSxE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b8, true); }
+    void dynamic_movGdXzE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b8); }
+    void dynamic_movGdSxE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b8, true); }
+    void dynamic_movGdXzE16(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b16); }
+    void dynamic_movGdSxE16(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b16, true); }
+
+    void scalarSseFromMemory(DecodedOp* op, JitWidth width, U32 instruction);
+    void dynamic_addssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdAddss); }
+    void dynamic_subssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdSubss); }
+    void dynamic_mulssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdMulss); }
+    void dynamic_divssE32(DecodedOp* op) override { guardSseDiv(); scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdDivss); }
+    void dynamic_minssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdMinss); }
+    void dynamic_maxssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdMaxss); }
+    void dynamic_sqrtssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdSqrtss); }
+    void dynamic_addsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdAddsd); }
+    void dynamic_subsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdSubsd); }
+    void dynamic_mulsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdMulsd); }
+    void dynamic_divsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdDivsd); }
+    void dynamic_minsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdMinsd); }
+    void dynamic_maxsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdMaxsd); }
+    void dynamic_sqrtsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdSqrtsd); }
+#endif
+
     // FPU
     FPURegPtr getFPUTmp() override;
     void storeCpuFpuReg(FPURegPtr reg, RegPtr index) override;
@@ -2394,6 +2423,33 @@ Mem JitX86CodeGen::createMem(JitWidth width, MemPtr mem) {
 void JitX86CodeGen::readHost(JitWidth width, MemPtr address, RegPtr result, bool emlulatedMemory) {
     compiler.mov(R(width, result), createMem(width, address));
 }
+
+#ifdef BOXEDWINE_64
+void JitX86CodeGen::movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend) {
+    // Keep address calculation and MMU scratch work separate from the guest
+    // destination, including when that register also supplies the address.
+    read(srcWidth, calculateEaa(op), [this, op, dstWidth, srcWidth, signExtend](MemPtr address) {
+        RegPtr dst = dstWidth == JitWidth::b8 ? getReg8(op->reg, false) : getReg(op->reg, -1, dstWidth != JitWidth::b32);
+        if (dstWidth == srcWidth) {
+            compiler.mov(R(dstWidth, dst), createMem(srcWidth, address));
+        } else if (signExtend) {
+            compiler.movsx(R(dstWidth, dst), createMem(srcWidth, address));
+        } else {
+            compiler.movzx(R(dstWidth, dst), createMem(srcWidth, address));
+        }
+    });
+}
+
+void JitX86CodeGen::scalarSseFromMemory(DecodedOp* op, JitWidth width, U32 instruction) {
+    read(width, calculateEaa(op), [this, op, width, instruction](MemPtr address) {
+        SSERegPtr dst = loadCpuXMMReg(op->reg);
+        // Legacy scalar instructions retain the destination's upper lanes and
+        // leave it unchanged if the memory operand faults.
+        compiler.emit(instruction, XMM(dst->hardwareReg()), createMem(width, address));
+        storeCpuXMMReg(dst, op->reg);
+    });
+}
+#endif
 
 void JitX86CodeGen::writeHost(JitWidth width, MemPtr address, RegPtr src, bool emlulatedMemory) {
     compiler.mov(createMem(width, address), R(width, src));

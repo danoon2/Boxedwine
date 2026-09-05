@@ -265,6 +265,27 @@ public:
     bool   isTmpRegAvailable() override;
     void   forceSyncBackIfNotCached(RegPtr reg) override;
 
+    void dynamic_movr8e8(DecodedOp* op) override { movFromMemory(op, JitWidth::b8, JitWidth::b8); }
+    void dynamic_movr16e16(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b16); }
+    void dynamic_movr32e32(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b32); }
+    void dynamic_movGwXzE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b8); }
+    void dynamic_movGwSxE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b8, true); }
+    void dynamic_movGdXzE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b8); }
+    void dynamic_movGdSxE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b8, true); }
+    void dynamic_movGdXzE16(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b16); }
+    void dynamic_movGdSxE16(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b16, true); }
+
+    void dynamic_addssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, WASM_F32_ADD); }
+    void dynamic_subssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, WASM_F32_SUB); }
+    void dynamic_mulssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, WASM_F32_MUL); }
+    void dynamic_divssE32(DecodedOp* op) override { guardSseDiv(); scalarSseFromMemory(op, JitWidth::b32, WASM_F32_DIV); }
+    void dynamic_sqrtssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, WASM_F32_SQRT, true); }
+    void dynamic_addsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, WASM_F64_ADD); }
+    void dynamic_subsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, WASM_F64_SUB); }
+    void dynamic_mulsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, WASM_F64_MUL); }
+    void dynamic_divsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, WASM_F64_DIV); }
+    void dynamic_sqrtsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, WASM_F64_SQRT, true); }
+
     // --- EIP ---
     RegPtr readEip() override;
     void   writeEip(RegPtr eip) override;
@@ -914,6 +935,9 @@ public:
 
 protected:
     // Helpers used internally during code generation
+    void movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend = false);
+    RegPtr readMemoryValue(JitWidth width, RegPtr address, RegPtr result, bool signExtend = false);
+    void scalarSseFromMemory(DecodedOp* op, JitWidth width, U8 instruction, bool unary = false);
     void fallbackToEmulateSingleOp(const char* family);
     void dynamic_div32(DecodedOp* op, RegPtr src);
     void dynamic_idiv32(DecodedOp* op, RegPtr src);

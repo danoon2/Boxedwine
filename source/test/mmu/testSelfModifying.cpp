@@ -17,6 +17,7 @@
 #include "ksignal.h"
 #include "../../emulation/softmmu/kmemory_soft.h"
 #include "../../emulation/softmmu/soft_ram.h"
+#include <bit>
 
 #define cpu (testContext().cpu)
 #define testMemory (testContext().memory)
@@ -503,6 +504,161 @@ void testLinearMemoryFileFirstTouches() {
     runLinearMemoryFileFirstTouchCase(false, false);
     runLinearMemoryFileFirstTouchCase(true, false);
     runLinearMemoryFileFirstTouchCase(true, true);
+#endif
+}
+
+void testJitMemoryReadOperands() {
+#if defined(BOXEDWINE_WASM_JIT) || ((defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)) && defined(BOXEDWINE_HOST_EXCEPTIONS))
+    constexpr U32 targetAddress = 0x20000000;
+    constexpr U32 savedFlags = CF | PF | AF | ZF | SF | OF | DF;
+    constexpr U64 xmmHigh = 0x123456789abcdef0ULL;
+    constexpr U64 singleUpper = 0xa55a123400000000ULL;
+    const U8 scalarOpcodes[] = {0x58, 0x5c, 0x59, 0x5e, 0x5d, 0x5f, 0x51};
+    const double scalarResults[] = {12.0, 4.0, 32.0, 2.0, 4.0, 8.0, 2.0};
+#ifdef BOXEDWINE_WASM_JIT
+    const U32 faultCounts[] = {0}; // WASM uses explicit TLB checks instead of host-fault tiers.
+#else
+    const U32 faultCounts[] = {0, LINEAR_MEMORY_RECOMPILE_FAULTS, MAX_OP_EXCEPTION_COUNT};
+#endif
+    const U32 groupBytes = ramPageLinearMemoryPageCount() * K_PAGE_SIZE;
+    const U32 mappingBytes = groupBytes * 2;
+    const U32 offsets[] = {0, K_PAGE_SIZE - 1, groupBytes - 1};
+    const U32 offsetCount = groupBytes > K_PAGE_SIZE ? 3 : 2;
+
+    // Compile each load on resident RAM, then reuse its JIT code on unread
+    // file pages. Cross both guest pages and larger host-page groups, and
+    // exercise each memory fallback tier.
+    for (U32 faultCount : faultCounts) {
+        for (U32 boundary = 0; boundary < offsetCount; boundary++) {
+            for (U32 kind = 0; kind < 24; kind++) {
+                newInstruction(savedFlags);
+                const bool scalar = kind >= 10;
+                const bool single = kind >= 10 && kind < 17;
+                const U32 offset = offsets[boundary];
+                U64 fileBits = !scalar ? 0x88776655800180ffULL :
+                    single ? (U64)std::bit_cast<U32>(4.0f) : std::bit_cast<U64>(4.0);
+                const U64 initialXmm = single ? singleUpper | std::bit_cast<U32>(8.0f) : std::bit_cast<U64>(8.0);
+                testMemory->writeq(TEST_HEAP_ADDRESS + 0x1000, fileBits);
+                cpu->reg[0].u32 = 0x1000;
+                cpu->xmm[0].pi.u64[0] = initialXmm;
+                cpu->xmm[0].pi.u64[1] = xmmHigh;
+
+                if (scalar) {
+                    pushCode8(single ? 0xf3 : 0xf2);
+                    pushCode8(0x0f);
+                    pushCode8(scalarOpcodes[(kind - 10) % 7]);
+                } else if (kind < 4) {
+                    if (kind == 1) pushCode8(0x66);
+                    pushCode8(kind < 2 ? 0x8b : 0x8a);
+                } else {
+                    if (kind < 6) pushCode8(0x66);
+                    pushCode8(0x0f);
+                    pushCode8((kind & 1 ? 0xbe : 0xb6) + (kind >= 8 ? 1 : 0));
+                }
+                pushCode8(kind == 3 ? 0x20 : 0x00); // destination aliases EAX for integer loads
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+                cpu->getNextOp()->exceptionCount = faultCount;
+#endif
+                runTestCPU();
+                DecodedOp* op = testMemory->getDecodedOp(TEST_CODE_ADDRESS);
+                if (!op || !op->pfnJitCode) {
+                    failed("memory operand case %u did not compile", kind);
+                    return;
+                }
+
+                KProcessPtr process = testContext().process;
+                U32 fd = process->memfd_create(B("jit-memory-operands"), 0);
+                if ((S32)fd < 0) {
+                    failed("memory operand memfd failed");
+                    return;
+                }
+                std::shared_ptr<KFile> file = std::dynamic_pointer_cast<KFile>(process->getFileDescriptor(fd)->kobject);
+                if (process->ftruncate64(fd, mappingBytes) ||
+                    file->pwriteNative((U8*)&fileBits, offset, sizeof(fileBits)) != sizeof(fileBits) ||
+                    testMemory->mmap(testContext().thread, targetAddress, mappingBytes,
+                        K_PROT_READ, K_MAP_FIXED | K_MAP_PRIVATE, fd, 0) != targetAddress) {
+                    failed("memory operand file setup failed");
+                    process->close(fd);
+                    return;
+                }
+                const U32 initialEax = targetAddress + offset - cpu->seg[DS].address;
+                cpu->reg[0].u32 = initialEax;
+                cpu->xmm[0].pi.u64[0] = initialXmm;
+                cpu->xmm[0].pi.u64[1] = xmmHigh;
+                cpu->setFlags(savedFlags, FMASK_ALL);
+                cpu->eip.u32 = 0;
+                cpu->nextOp = cpu->getNextOp();
+                do { cpu->run(); } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+
+                U32 expectedEax = initialEax;
+                const U32 expectedIntegers[] = {
+                    0x800180ff, (initialEax & 0xffff0000) | 0x80ff,
+                    (initialEax & 0xffffff00) | 0xff, (initialEax & 0xffff00ff) | 0xff00,
+                    (initialEax & 0xffff0000) | 0xff, (initialEax & 0xffff0000) | 0xffff,
+                    0xff, 0xffffffff, 0x80ff, 0xffff80ff
+                };
+                U64 expectedXmm = initialXmm;
+                if (scalar) {
+                    double value = scalarResults[(kind - 10) % 7];
+                    expectedXmm = single ? singleUpper | std::bit_cast<U32>((float)value) : std::bit_cast<U64>(value);
+                } else {
+                    expectedEax = expectedIntegers[kind];
+                }
+                if (cpu->reg[0].u32 != expectedEax || cpu->xmm[0].pi.u64[0] != expectedXmm ||
+                    cpu->xmm[0].pi.u64[1] != xmmHigh || (cpu->flags & savedFlags) != savedFlags) {
+                    failed("memory operand case %u tier %u offset %u corrupted destination or flags",
+                        kind, faultCount, offset);
+                }
+                testMemory->unmap(targetAddress, mappingBytes);
+                process->close(fd);
+            }
+        }
+    }
+#endif
+}
+
+void testJitMemoryReadFaultState() {
+#ifdef BOXEDWINE_WASM_JIT
+    // A direct load must not mark an uninitialized destination local dirty,
+    // nor discard an earlier write when the MMU helper raises a guest fault.
+    constexpr U32 initialEdi = 0x12345678;
+    constexpr U32 writtenEdi = 0x89abcdef;
+    constexpr U32 faultOffset = 0x01000000;
+    const U8 loadOpcodes[] = {0, 0xb6, 0xbe, 0xb7, 0xbf};
+    for (bool dirty : {false, true}) {
+        for (U8 opcode : loadOpcodes) {
+            newInstruction(0);
+            cpu->reg[7].u32 = initialEdi;
+            cpu->reg[1].u32 = faultOffset;
+            U32 length = 0;
+            if (dirty) {
+                pushCode8(0xbf); // mov edi, immediate
+                testPushCode32(writtenEdi);
+                length += 5;
+            }
+            if (opcode) {
+                pushCode8(0x0f);
+                pushCode8(opcode);
+                length += 3;
+            } else {
+                pushCode8(0x8b);
+                length += 2;
+            }
+            pushCode8(0x39); // mov/movzx/movsx edi,[ecx]
+            U32 faultAddress = cpu->seg[DS].address + faultOffset;
+            testMemory->unmap(faultAddress, K_PAGE_SIZE);
+            KSigAction& action = testContext().process->sigActions[K_SIGSEGV];
+            action.reset();
+            action.handlerAndSigAction = TEST_CODE_ADDRESS + length;
+            action.flags = 0;
+            runTestCPU();
+            if (action.sigInfo[0] != K_SIGSEGV || action.sigInfo[3] != faultAddress ||
+                cpu->reg[7].u32 != (dirty ? writtenEdi : initialEdi)) {
+                failed("WASM memory load %x dirty %u did not preserve fault state", opcode, (U32)dirty);
+            }
+            action.reset();
+        }
+    }
 #endif
 }
 

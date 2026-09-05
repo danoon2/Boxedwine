@@ -10670,6 +10670,10 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
         return tmp;
     }
 
+    return readMemoryValue(w, std::move(addressReg), std::move(tmp));
+}
+
+RegPtr JitWasmCodeGen::readMemoryValue(JitWidth w, RegPtr addressReg, RegPtr tmp, bool signExtend) {
     m_needsWasmMemoryPageArrays = true;
     U32 entryLocal = allocScratch();
     auto savedGpDirty   = m_gpDirty;
@@ -10709,6 +10713,9 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
         m_emitter.emitCall(readHelperForWidth(w));
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitI32Load((U32)offsetof(CPU, memHelperValue));
+        if (signExtend) {
+            m_emitter.emitOp(w == JitWidth::b8 ? WASM_I32_EXTEND8_S : WASM_I32_EXTEND16_S);
+        }
         m_emitter.emitLocalSet(tmp->hardwareReg());
     }
     m_emitter.emitElse();
@@ -10725,8 +10732,14 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
         m_emitter.emitOp(WASM_I32_AND);
         m_emitter.emitOp(WASM_I32_ADD);
         switch (w) {
-        case JitWidth::b8:  m_emitter.emitI32Load8U(0);  break;
-        case JitWidth::b16: m_emitter.emitI32Load16U(0); break;
+        case JitWidth::b8:
+            if (signExtend) m_emitter.emitI32Load8S(0);
+            else m_emitter.emitI32Load8U(0);
+            break;
+        case JitWidth::b16:
+            if (signExtend) m_emitter.emitI32Load16S(0);
+            else m_emitter.emitI32Load16U(0);
+            break;
         default:            m_emitter.emitI32Load(0, 0); break; // align=0 (unaligned-safe)
         }
         m_emitter.emitLocalSet(tmp->hardwareReg());
@@ -11759,6 +11772,44 @@ RegPtr JitWasmCodeGen::testZeroReg(JitWidth w, RegPtr reg, RegPtr res) {
 // ---------------------------------------------------------------------------
 // Move operations
 // ---------------------------------------------------------------------------
+void JitWasmCodeGen::movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend) {
+    RegPtr address = calculateEaa(op);
+    if (dstWidth == JitWidth::b32) {
+        // The slow helper must see the old register state if the load faults.
+        // Mark the destination dirty only after both load paths have joined.
+        RegPtr dst = makeWasmReg((U8)wasmLocalForGPReg(op->reg), op->reg);
+        readMemoryValue(srcWidth, address, dst, signExtend);
+        m_gpLoaded[op->reg] = true;
+        m_gpDirty[op->reg] = true;
+    } else {
+        RegPtr dst = dstWidth == JitWidth::b8 ? getReadOnlyReg8(op->reg) : getReadOnlyReg(op->reg);
+        RegPtr value = readMemoryValue(srcWidth, address, getTmpReg(), signExtend);
+        pushRegValue(value);
+        popToReg(dstWidth, dst);
+        freeScratch(value->hardwareReg());
+    }
+}
+
+void JitWasmCodeGen::scalarSseFromMemory(DecodedOp* op, JitWidth width, U8 instruction, bool unary) {
+    read(width, calculateEaa(op), [this, op, width, instruction, unary](MemPtr address) {
+        const U32 offset = (U32)(offsetof(CPU, xmm) + op->reg * sizeof(cpu->xmm[0]));
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL); // destination for the scalar store
+        if (!unary) {
+            m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+            if (width == JitWidth::b32) m_emitter.emitF32Load(offset);
+            else m_emitter.emitF64Load(offset);
+        }
+        U32 memOffset = 0;
+        emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+        if (width == JitWidth::b32) m_emitter.emitF32Load(memOffset, 0);
+        else m_emitter.emitF64Load(memOffset, 0);
+        m_emitter.emitOp(instruction);
+        // Write only the low lane; the untouched XMM bytes need no load/merge.
+        if (width == JitWidth::b32) m_emitter.emitF32Store(offset);
+        else m_emitter.emitF64Store(offset);
+    });
+}
+
 void JitWasmCodeGen::mov(JitWidth w, RegPtr dest, RegPtr src) {
     pushRegValue(src);
     maskToWidth(w);
