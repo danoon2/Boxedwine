@@ -65,16 +65,6 @@ DecodedOp** DecodedOpCache::getLocation(U32 address) {
 	return nullptr;
 }
 
-DecodedOp* DecodedOpCache::get(U32 address) {
-	U32 pageIndex = address >> K_PAGE_SHIFT;
-	DecodedOpPageCache* page = getPageCache(pageIndex, false);
-	if (page) {
-		U32 offset = address & K_PAGE_MASK;
-		return page->ops[offset];
-	}
-	return nullptr;
-}
-
 void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 	U32 pageIndex = address >> K_PAGE_SHIFT;		
 	U32 offset = address & K_PAGE_MASK;

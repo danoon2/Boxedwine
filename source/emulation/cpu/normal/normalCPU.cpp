@@ -409,7 +409,7 @@ void NormalCPU::run() {
     if (nextOp) {
         // WASM JIT fast exits can carry DecodedOp* values across code-cache
         // invalidation; refetch from the live cache before dereferencing.
-        DecodedOp* liveOp = memory->getDecodedOp(getEipAddress());
+        DecodedOp* liveOp = getMemData(memory)->opCache.get(getEipAddress());
         if (liveOp != nextOp) {
             nextOp = liveOp;
         }
@@ -430,7 +430,15 @@ void NormalCPU::run() {
     }
 #ifdef BOXEDWINE_MULTI_THREADED
 #ifdef BOXEDWINE_JIT
+#ifdef BOXEDWINE_WASM_JIT
+    // Most dispatches have no new signal. Avoid an atomic read-modify-write
+    // in that case; a signal published after the load stays latched.
+    if (this->jitSignalPending.load(std::memory_order_acquire)) {
+        this->jitSignalPending.exchange(0, std::memory_order_acq_rel);
+    }
+#else
     this->jitSignalPending.exchange(0, std::memory_order_acq_rel);
+#endif
 #endif
     if (thread->pendingSignals && thread->runSignals()) {
         nextOp = getNextOp();

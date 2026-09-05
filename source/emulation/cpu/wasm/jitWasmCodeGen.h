@@ -989,6 +989,7 @@ protected:
     // Common tail of every IfXxx: emit the WASM `if`. The condition is
     // already on the value stack.
     void finishIf();
+    void emitMaterializedCondition(JitConditional cond, U32 conditionLocal);
 
     // Store a GP/scratch RegPtr into a CPU struct field (used to stage
     // mem-helper args — address/value — without touching lazy-flag state).

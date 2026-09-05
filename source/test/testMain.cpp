@@ -177,6 +177,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testDspAudioWriteMath, "Test DSP Audio Write Math"},
     {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
 #ifdef BOXEDWINE_WASM_JIT
+    {testWasmJitMaterializedConditions, "Test WASM JIT materialized flag conditions"},
+    {testWasmJitSseCompareConditions, "Test WASM JIT SSE compare conditions"},
     {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT subblock entries and invalidation"},
     {testExecutableFixedReplacementPreparationFailurePreservesState, "Test WASM JIT fixed replacement backend preparation is transactional", TEST_ENTRY_SERIAL},
     {testWasmJitModuleMerger, "Test WASM JIT runtime module merger"},
@@ -185,6 +187,7 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
     {testWasmJitMtCpuHazardStateIsCold, "Test MT WASM JIT CPU hazard state layout"},
+    {testWasmJitMtBoundedDispatch, "Test MT WASM JIT bounded dispatch", TEST_ENTRY_SERIAL},
     {testWasmJitMtExecDetachPreservesSharedDecodedOps, "Test MT WASM JIT exec detach preserves shared decoded ops"},
     {testWasmJitMtModuleBrokerTransport, "Test MT WASM JIT module broker transport"},
     {testWasmJitMtStandaloneModuleBroker, "Test MT WASM JIT standalone module broker"},
@@ -587,6 +590,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testX87FwaitRaisesPendingException, "Test x87 fwait raises pending exception", TEST_ENTRY_SERIAL},
     {testJitSignalPendingReset, "Test JIT signal pending reset", TEST_ENTRY_SERIAL},
     {testJitSignalPendingQueuedSignal, "Test JIT signal pending queued signal", TEST_ENTRY_SERIAL},
+    {testWasmJitSignalPendingDispatch, "Test WASM JIT signal pending dispatch", TEST_ENTRY_SERIAL},
     {testHardwareBreakpointRaisesTrap, "Test hardware breakpoint raises trap", TEST_ENTRY_SERIAL},
     {testHardwareBreakpointIgnoresNonExecutableAddress, "Test hardware breakpoint ignores non-executable address", TEST_ENTRY_SERIAL},
     {testDataHardwareBreakpointRaisesTrap, "Test data hardware breakpoint raises trap", TEST_ENTRY_SERIAL},

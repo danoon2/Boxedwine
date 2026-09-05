@@ -386,6 +386,7 @@ public:
     // Declare a local function (should be called after all imports).
     U32 addFunction(U32 typeIdx);
     void addExport(const char* name, U32 funcIdx);
+    void setFunctionName(U32 funcIdx, const char* name);
 
     // --- Code section -------------------------------------------------------
     // Begin writing the body for a local function.
@@ -481,6 +482,7 @@ private:
 
     std::vector<U32> m_localFunctions;   // type indices
     std::vector<U8>  m_exportSection;
+    std::vector<std::pair<U32, std::string>> m_functionNames;
     std::vector<U8>  m_codeSection;      // all encoded function bodies
     U32              m_codeFuncCount = 0;
 

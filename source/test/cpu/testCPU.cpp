@@ -2413,4 +2413,101 @@ void testJitSignalPendingQueuedSignal() {
 #endif
 }
 
+void testWasmJitSignalPendingDispatch() {
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    KThread* thread = context.thread;
+    const U64 signalBit = 1ULL << (K_SIGUSR1 - 1);
+    const U64 oldSigMask = thread->sigMask;
+    const auto oldAction = context.process->sigActions[K_SIGUSR1];
+
+    testNewInstruction(0);
+    testPushCode8(0x43); // inc ebx
+    testPushCode8(0xcd); testPushCode8(0x97); // TestEnd
+    while (context.codeIp < TEST_CODE_ADDRESS + 0x100) {
+        testPushCode8(0x90);
+    }
+    testPushCode8(0x47); // handler: inc edi
+    testRunCPU();
+    DecodedOp* entry = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    if (!entry || !entry->pfnJitCode) {
+        testFail("signal dispatch test requires a compiled guest block");
+        return;
+    }
+    context.process->sigActions[K_SIGUSR1].handlerAndSigAction = TEST_CODE_ADDRESS + 0x100;
+    context.process->sigActions[K_SIGUSR1].flags = 0;
+    thread->sigMask = signalBit;
+    cpu->jitSignalPending.store(0, std::memory_order_release);
+
+    auto dispatchGuest = [&]() {
+        cpu->eip.u32 = 0;
+        cpu->nextOp = entry;
+        cpu->run();
+    };
+    dispatchGuest();
+    if (cpu->reg[3].u32 != 2 || thread->inSignal) {
+        testFail("dispatch without a signal must execute guest code");
+    }
+
+    std::thread producer([thread]() { thread->queuePendingSignal(K_SIGUSR1); });
+    producer.join();
+    dispatchGuest();
+    dispatchGuest(); // The pending masked signal must survive a zero-latch dispatch.
+    if (cpu->reg[3].u32 != 4 || !(thread->pendingSignals & signalBit) ||
+            cpu->jitSignalPending.load(std::memory_order_acquire) || thread->inSignal) {
+        testFail("masked signal must remain queued while guest code runs");
+    }
+
+    auto checkHandler = [&]() {
+        if (cpu->getEipAddress() != TEST_CODE_ADDRESS + 0x100 ||
+                thread->inSignal != 1 || (thread->pendingSignals & signalBit)) {
+            testFail("pending signal must enter its handler before guest dispatch");
+            return;
+        }
+        cpu->reg[7].u32 = 0;
+        cpu->run();
+        if (cpu->reg[7].u32 != 1) {
+            testFail("pending signal handler must execute");
+        }
+        if (cpu->pop32() != SIG_RETURN_ADDRESS) {
+            testFail("pending signal handler return address");
+            return;
+        }
+        onExitSignal(cpu, nullptr);
+    };
+    thread->sigMask = 0;
+    dispatchGuest(); // Deliver even though the latch was cleared while masked.
+    checkHandler();
+    if (cpu->reg[3].u32 != 4) {
+        testFail("signal delivery must precede the interrupted guest instruction");
+    }
+
+    // Publish from another worker after run() has already checked signals.
+    // This fixes the interleaving without relying on a timing-sensitive race.
+    DecodedOp lateArrival;
+    lateArrival.runCount = JIT_RUN_COUNT + 1;
+    lateArrival.pfn = [](CPU* runningCpu, DecodedOp*) {
+        std::thread lateProducer([runningCpu]() {
+            runningCpu->thread->queuePendingSignal(K_SIGUSR1);
+        });
+        lateProducer.join();
+    };
+    cpu->eip.u32 = 0;
+    cpu->nextOp = &lateArrival;
+    cpu->run();
+    if (!cpu->jitSignalPending.load(std::memory_order_acquire) ||
+            !(thread->pendingSignals & signalBit)) {
+        testFail("signal arriving during dispatch must stay pending");
+    }
+    cpu->nextOp = entry;
+    cpu->run();
+    checkHandler();
+
+    thread->sigMask = oldSigMask;
+    context.process->sigActions[K_SIGUSR1] = oldAction;
+    cpu->nextOp = nullptr;
+#endif
+}
+
 #endif

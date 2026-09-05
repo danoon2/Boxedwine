@@ -41,7 +41,11 @@ public:
 	DecodedOpCache();
 	~DecodedOpCache();
 
-	DecodedOp* get(U32 address);
+	DecodedOp* get(U32 address) {
+		U32 pageIndex = address >> K_PAGE_SHIFT;
+		DecodedOpPageCache* page = pageData[pageIndex >> 10][pageIndex & 0x3ff];
+		return page ? page->ops[address & K_PAGE_MASK] : nullptr;
+	}
 	DecodedOp** getLocation(U32 address);
 	DecodedOp* getPreviousOpAndRemoveIfOverlapping(U32 address);
 	void remove(U32 address, U32 len, bool becauseOfWrite);
