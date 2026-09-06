@@ -1609,6 +1609,22 @@ public:
     OpCallback pfn;  
 #ifdef BOXEDWINE_JIT
     void* pfnJitCode;
+    void setJitCode(void* code) {
+        pfnJitCode = code;
+#ifdef BOXEDWINE_JIT_X64
+        if (jitEntrySlot) *jitEntrySlot = code;
+#endif
+    }
+#ifdef BOXEDWINE_JIT_X64
+    // Owned by the decoded-page cache. Detach before deferred DecodedOp reuse.
+    void** jitEntrySlot = nullptr;
+    void detachJitEntry() {
+        if (jitEntrySlot) {
+            *jitEntrySlot = nullptr;
+            jitEntrySlot = nullptr;
+        }
+    }
+#endif
 #endif
     U32 imm;
 

@@ -40,7 +40,6 @@ extern Int99Callback* int99Callback;
 void callOpenGL(CPU* cpu, U32 index);
 void callVulkan(CPU* cpu, U32 index);
 void callX11(CPU* cpu, U32 index);
-extern U32 lastGlCallTime;
 extern U32 int99CallbackSize;
 
 #define EXCEPTION_DIVIDE 0
@@ -198,6 +197,14 @@ union SSE {
 #error "JIT_RUN_COUNT must fit in DecodedOp::runCount (U8) and leave room for the JIT_RUN_COUNT + 1 sentinel"
 #endif
 
+#ifdef BOXEDWINE_WASM_JIT
+enum WasmJitBailoutReason : U32 {
+    WASM_JIT_BAILOUT_NONE,
+    WASM_JIT_BAILOUT_SMC,
+    WASM_JIT_BAILOUT_CONTROL_FLOW,
+};
+#endif
+
 class CPU: public DecodeBlockCallback {
 public:
     static CPU* allocCPU(KMemory* memory);
@@ -221,14 +228,18 @@ public:
     // lazy-flag state in src.u32/dst.u32.
     U32 memHelperAddr = 0;
     U32 memHelperValue = 0;
-    // Self-modifying-code support: each JIT block call clears these fields.
+    // Selects a compact dedicated operation in the existing single-op helper.
+    // Zero retains the normal interpreter fallback behavior.
+    U32 wasmJitHelperOp = 0;
+    // JIT bailout support: each JIT block call clears these fields.
     // Before a checked memory write, generated code records the active block's
     // first DecodedOp. If removeCodeBlock clears that block while it is active
-    // (or a post-write helper observes that its pfnJitCode was cleared), it
-    // sets wasmJitBailout=1 so generated bailout checks can exit before stale
-    // compiled bytes keep running.
+    // (or a post-write helper observes that its pfnJitCode was cleared), it sets
+    // WASM_JIT_BAILOUT_SMC so generated code exits before stale bytes run. An
+    // interpreter helper that redirects EIP sets WASM_JIT_BAILOUT_CONTROL_FLOW;
+    // that exit must preserve the redirected EIP.
     DecodedOp* wasmJitActiveBlock = nullptr;
-    U32 wasmJitBailout = 0;
+    U32 wasmJitBailout = WASM_JIT_BAILOUT_NONE;
     // Inline TLB fast-path: cached pointers to the per-page host-base
     // arrays in KMemoryData. Set up by wasmHelper_blockEnter so the JIT
     // codegen can do `wasmReadPageBaseArray[page] -> entry; if (entry)
@@ -270,6 +281,9 @@ public:
     U32 pendingDebugTrapCode = 0;
     U32 pendingDebugTrapDr6 = 0;
     DecodedOp*** opCache = nullptr;
+#ifdef BOXEDWINE_JIT_X64
+    void**** jitEntryPageGroups = nullptr;
+#endif
 
     U64 fAbs = 0x7fffffffffffffffl;
     U64 fNeg = 0x8000000000000000l;
@@ -372,7 +386,7 @@ public:
     U8 fetchByte(U32* eip) override;
     bool shouldContinue(U32 eip) override;
     DecodedOp** getOpLocation(U32 eip) override;        
-    void runNextSingleOp();
+    bool runNextSingleOp(); // false when exception/debug handling requires returning to the run loop
 
 #ifdef BOXEDWINE_MULTI_THREADED
     U64 nativeHandle = 0;
@@ -391,7 +405,7 @@ public:
     U64 exceptionIp = 0;
 
     void* handleAccessException(DecodedOp* op);
-    void* startException(U32 address, bool readAddress);
+    void* startException(U64 address, bool readAddress);
 
 #endif
 

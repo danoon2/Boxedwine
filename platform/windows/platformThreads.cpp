@@ -123,6 +123,12 @@ void syncToException(struct _EXCEPTION_POINTERS* ep) {
             }
         }
     }
+#ifdef BOXEDWINE_JIT_X64
+    KMemoryData* memoryData = getMemData(cpu->memory);
+    if (memoryData->useLinearMemoryJit()) {
+        ep->ContextRecord->R15 = (U64)memoryData->linearMemoryBase;
+    }
+#endif
 #else
     for (U32 i = 0; i < 8; i++) {
         if (regCache[i] != 0xFF) {
@@ -295,15 +301,16 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         return EXCEPTION_CONTINUE_SEARCH;
     }
 
-    bool inBinaryTranslator = cpu->memory->isCode((U8*)ep->ContextRecord->REG_IP);    
+    bool inBinaryTranslator = cpu->memory->isCode((U8*)ep->ContextRecord->REG_IP);
     if (!inBinaryTranslator) {
         return EXCEPTION_CONTINUE_SEARCH;
     }
 
     syncFromException(ep);
     //klog_fmt("exception at %llx(%d)", ep->ExceptionRecord->ExceptionInformation[1], (U32)ep->ExceptionRecord->ExceptionInformation[0]);
-    bool readException = ep->ExceptionRecord->ExceptionInformation[0] == 0;
-    void* result = cpu->startException((U32)ep->ExceptionRecord->ExceptionInformation[1], readException);
+    cpu->exceptionReadAddress = ep->ExceptionRecord->ExceptionInformation[0] == 0;
+    cpu->exceptionAddress = ep->ExceptionRecord->ExceptionInformation[1];
+    void* result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
     if (result) {
         syncToException(ep);
         ep->ContextRecord->SET_REG_IP(result);

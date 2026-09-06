@@ -29,7 +29,11 @@ void Jit::dynamic_inc16_mem16(DecodedOp* op) {
     dynamic_M(op, JitWidth::b16, &Jit::incReg, FLAGS_INC16);
 }
 void Jit::dynamic_inc32_reg(DecodedOp* op) {
-    dynamic_R(op, JitWidth::b32, &Jit::incReg, FLAGS_INC32);
+    tryDirect(op, [op, this]() {
+        direct_flags_op(JitWidth::b32, JitFlagOp::Add, getReg(op->reg), 1);
+    }, [op, this]() {
+        dynamic_R(op, JitWidth::b32, &Jit::incReg, FLAGS_INC32);
+    }, FMASK_TEST & ~CF);
 }
 void Jit::dynamic_inc32_mem32(DecodedOp* op) {
     dynamic_M(op, JitWidth::b32, &Jit::incReg, FLAGS_INC32);
@@ -47,7 +51,11 @@ void Jit::dynamic_dec16_mem16(DecodedOp* op) {
     dynamic_M(op, JitWidth::b16, &Jit::decReg, FLAGS_DEC16);
 }
 void Jit::dynamic_dec32_reg(DecodedOp* op) {
-    dynamic_R(op, JitWidth::b32, &Jit::decReg, FLAGS_DEC32);
+    tryDirect(op, [op, this]() {
+        direct_flags_op(JitWidth::b32, JitFlagOp::Sub, getReg(op->reg), 1);
+    }, [op, this]() {
+        dynamic_R(op, JitWidth::b32, &Jit::decReg, FLAGS_DEC32);
+    }, FMASK_TEST & ~CF);
 }
 void Jit::dynamic_dec32_mem32(DecodedOp* op) {
     dynamic_M(op, JitWidth::b32, &Jit::decReg, FLAGS_DEC32);

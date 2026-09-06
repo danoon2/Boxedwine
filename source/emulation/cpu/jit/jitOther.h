@@ -139,6 +139,20 @@ void Jit::dynamic_int80(DecodedOp* op) {
     emulateSingleOp();
 }
 void Jit::dynamic_int99(DecodedOp* op) {
+#if defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+    // Keep a compilation-time opt-out for comparisons with the generic path.
+    static const bool forceSlow = std::getenv("BOXEDWINE_GL_INT99_SLOW") != nullptr;
+    if (!forceSlow && op->imm <= 0xffffff) {
+        writeCurrentEip(0);
+        RegPtr call = getTmpReg();
+        movValue(JitWidth::b32, call, (op->imm << 8) | op->len);
+        storeJitScratch(JitWidth::b32, call);
+        // The callback can write guest code. Resume in a process-lifetime stub,
+        // never at a return address inside the block it may have invalidated.
+        jmpHost((DYN_PTR_SIZE)cpu->thread->process->emulateOpenGL);
+        return;
+    }
+#endif
     emulateSingleOp();
 }
 void Jit::dynamic_int9A(DecodedOp* op) {

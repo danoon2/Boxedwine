@@ -157,6 +157,11 @@ enum WasmOp : U8 {
     WASM_I64_SHR_S      = 0x87,
     WASM_I64_SHR_U      = 0x88,
     WASM_I64_CLZ        = 0x79,
+    WASM_F32_SQRT       = 0x91,
+    WASM_F32_ADD        = 0x92,
+    WASM_F32_SUB        = 0x93,
+    WASM_F32_MUL        = 0x94,
+    WASM_F32_DIV        = 0x95,
     WASM_F64_ABS        = 0x99,
     WASM_F64_NEG        = 0x9a,
     WASM_F64_CEIL       = 0x9b,
@@ -381,6 +386,7 @@ public:
     // Declare a local function (should be called after all imports).
     U32 addFunction(U32 typeIdx);
     void addExport(const char* name, U32 funcIdx);
+    void setFunctionName(U32 funcIdx, const char* name);
 
     // --- Code section -------------------------------------------------------
     // Begin writing the body for a local function.
@@ -476,6 +482,7 @@ private:
 
     std::vector<U32> m_localFunctions;   // type indices
     std::vector<U8>  m_exportSection;
+    std::vector<std::pair<U32, std::string>> m_functionNames;
     std::vector<U8>  m_codeSection;      // all encoded function bodies
     U32              m_codeFuncCount = 0;
 

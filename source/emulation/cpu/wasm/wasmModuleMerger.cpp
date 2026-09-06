@@ -18,6 +18,7 @@ struct ParsedModule {
     U32 importedFunctions = 0;
     U32 functionType = 0;
     std::vector<U8> codeBody; // includes its ULEB byte-size prefix
+    std::vector<std::pair<U32, std::string>> functionNames;
 };
 
 bool readUleb(const std::vector<U8>& bytes, size_t& pos, size_t end, U32& value) {
@@ -96,7 +97,42 @@ bool parseModule(const std::vector<U8>& bytes, ParsedModule& parsed, BString& er
         }
         size_t sectionEnd = pos + sectionSize;
 
-        if (id == 1) {
+        if (id == 0) {
+            size_t q = pos;
+            U32 length = 0;
+            if (!readUleb(bytes, q, sectionEnd, length) || length > sectionEnd - q) {
+                return fail("bad custom section name");
+            }
+            bool isName = length == 4 && std::equal(bytes.begin() + q, bytes.begin() + q + length, "name");
+            q += length;
+            // Other custom sections are optional metadata and remain ignored.
+            while (isName && q < sectionEnd) {
+                U8 subsection = bytes[q++];
+                U32 size = 0;
+                if (!readUleb(bytes, q, sectionEnd, size) || size > sectionEnd - q) {
+                    return fail("bad name subsection size");
+                }
+                size_t end = q + size;
+                if (subsection == 1) {
+                    U32 count = 0;
+                    if (!readUleb(bytes, q, end, count)) {
+                        return fail("bad function name count");
+                    }
+                    for (U32 i = 0; i < count; ++i) {
+                        U32 index = 0;
+                        if (!readUleb(bytes, q, end, index) || !readUleb(bytes, q, end, length) || length > end - q) {
+                            return fail("bad function name entry");
+                        }
+                        parsed.functionNames.emplace_back(index, std::string(bytes.begin() + q, bytes.begin() + q + length));
+                        q += length;
+                    }
+                    if (q != end) {
+                        return fail("trailing bytes in function names");
+                    }
+                }
+                q = end;
+            }
+        } else if (id == 1) {
             if (hasType) {
                 return fail("duplicate wasm type section");
             }
@@ -261,6 +297,30 @@ bool wasmJitMergeModules(const std::vector<WasmJitMergeInput>& inputs, std::vect
     appendSection(output, 3, functionPayload);
     appendSection(output, 7, exportPayload);
     appendSection(output, 10, codePayload);
+    // Each input's sole defined function moves after the shared imports.
+    // Preserve its profiling name while remapping the function index.
+    std::vector<U8> names;
+    U32 nameCount = 0;
+    for (size_t i = 0; i < parsed.size(); ++i) {
+        for (const auto& entry : parsed[i].functionNames) {
+            if (entry.first == parsed[i].importedFunctions) {
+                appendUleb(names, (U64)first.importedFunctions + i);
+                appendUleb(names, entry.second.size());
+                names.insert(names.end(), entry.second.begin(), entry.second.end());
+                nameCount++;
+                break;
+            }
+        }
+    }
+    if (nameCount) {
+        std::vector<U8> nameMap;
+        appendUleb(nameMap, nameCount);
+        nameMap.insert(nameMap.end(), names.begin(), names.end());
+        std::vector<U8> custom = {4, 'n', 'a', 'm', 'e', 1};
+        appendUleb(custom, nameMap.size());
+        custom.insert(custom.end(), nameMap.begin(), nameMap.end());
+        appendSection(output, 0, custom);
+    }
     return true;
 }
 #endif

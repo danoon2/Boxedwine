@@ -213,6 +213,13 @@ CPPFLAGS ?= $(OPTIMIZATION_FLAGS) $(TAIL_CALL_FLAG) $(COMPILE_EXCEPTION_FLAG) $(
 SHELL_LDFLAGS := $(if $(filter %.html,$(TARGET_EXEC)),--shell-file $(SHELL_FILE),)
 LDFLAGS = $(OPTIMIZATION_FLAGS) $(TAIL_CALL_FLAG) -s FORCE_FILESYSTEM -lidbfs.js -s USE_SDL=2 -s USE_ZLIB=1 $(LINK_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s INITIAL_MEMORY=536870912 $(SHELL_LDFLAGS) -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency","ERRNO_CODES","ccall","FS"]' $(EXTRA_LD_FLAGS)
 
+# Use a clean build directory when changing this option. Names are metadata;
+# instruction-level timing counters remain disabled for sampling profiles.
+ifeq ($(WASM_PROFILING),1)
+GCC_EXTRA_FLAGS += -DBOXEDWINE_WASM_JIT_NAMES
+LDFLAGS += --profiling-funcs
+endif
+
 ASSET_OUTPUTS := $(addprefix $(BUILD_DIR)/,$(ASSET_FILES))
 
 .PHONY: all copy-assets

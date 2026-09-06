@@ -73,6 +73,19 @@ enum class JitConditional {
     NLE
 };
 
+enum class JitFlagOp {
+    Add,
+    Sub,
+    And,
+    Or,
+    Xor
+};
+
+enum class JitCarryOp {
+    Adc,
+    Sbb
+};
+
 // the code will guarantee that for a single instruction, 2 DynReg's will never point to the same reg and both be read/write (see dynamic_xchgr8r8), that way we don't have to worry about clobbering
 class JitReg {
 public:
@@ -81,6 +94,7 @@ public:
 
     U8 hardwareReg();
     bool isLoaded() { return reg != 0xff; }
+    bool isTemporary() const { return emulatedReg == 0xff; }
     U8 emulatedReg;
     bool isHigh;
 
@@ -151,6 +165,8 @@ public:
     virtual RegPtr getTmpRegForCallResult() = 0; // just a hint to try and get the same reg used for a call result in order to prevent an extra mov
     virtual RegPtr getTmpReg(U8 reg, bool delayed = false, S8 hint = -1) = 0; // returns a tmp register pre-loaded with the emulated reg's current value
     virtual RegPtr getTmpReg8(U8 reg, bool delayed = false, S8 hint = -1) = 0;
+    virtual void storeJitScratch(JitWidth width, RegPtr value) = 0;
+    virtual RegPtr loadJitScratch(JitWidth width) = 0;
     virtual RegPtr getReadOnlySegAddress(U8 reg) = 0;
     virtual RegPtr getTmpSegAddress(U8 reg) = 0;
     virtual RegPtr getReadOnlySegValue(U8 reg) = 0;
@@ -160,6 +176,7 @@ public:
     virtual void writeCurrentEip(U32 addAmount) {
         writeEip(currentEip - cpu->seg[CS].address + addAmount);
     }
+    virtual U32 getAvailableTmpRegCount() = 0;
     virtual bool isTmpRegAvailable() = 0;
     virtual RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0);
     virtual void jmpHost(RegPtr reg) = 0;
@@ -301,11 +318,19 @@ public:
     virtual void IfDF() = 0;
     virtual void IfSmallStack() = 0;
 
-    // these will check that the memory is valid and doesn't span a page then allow the caller to override what happens when everything is good by providing a callback, 
-    // the callback will contain the host memory address
-    virtual RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) = 0;
+    // prepareWrite may run before a linear-memory store faults. Callers that
+    // update guest-visible state in the callback must force the MMU check.
+    virtual RegPtr readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1, bool forceMmuCheck = false) = 0;
+    // The checked path uses prepareWrite unchanged. The linear path uses the
+    // split callbacks so guest-visible state is committed only after its store.
+    virtual RegPtr readWriteMemWithLinearPostCommit(JitWidth width, RegPtr addressReg,
+        std::function<void(RegPtr value)> prepareWrite,
+        std::function<void(RegPtr value)> prepareWriteLinear,
+        std::function<void(RegPtr value)> commitWriteLinear, S8 hint = -1) = 0;
+    virtual void xchgMemory(JitWidth width, RegPtr addressReg, RegPtr reg) = 0;
     virtual RegPtr read(JitWidth width, RegPtr addressReg, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, RegPtr tmp = nullptr, bool checkAlignment = true) = 0;
     virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) = 0;
+    virtual void writeWithMmuCheck(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) = 0;
 
     virtual RegPtr read(JitWidth width, MemPtr address, RegPtr result = nullptr) = 0;
     virtual void write(JitWidth width, MemPtr address, RegPtr src) = 0;
@@ -319,6 +344,15 @@ public:
     void dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, InstRegRegCF callbackWithCF = nullptr);
     void dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
     void dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFlagType flags, bool writeback = true, bool addCF = false, InstRegReg cfCallback = nullptr, InstRegImmCF callbackWithCF = nullptr);
+    void dynamic_RRDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegReg callback, LazyFlagType flags);
+    void dynamic_MRDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegReg callback, LazyFlagType flags);
+    void dynamic_RMDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegReg callback, LazyFlagType flags);
+    void dynamic_RIDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegImm callback, LazyFlagType flags);
+    void dynamic_MIDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegImm callback, LazyFlagType flags);
+    void dynamic_RRDirectWithCF(DecodedOp* op, JitWidth width, JitCarryOp directOp, InstRegReg callback, LazyFlagType flags);
+    void dynamic_RMDirectWithCF(DecodedOp* op, JitWidth width, JitCarryOp directOp, InstRegReg callback, LazyFlagType flags);
+    void dynamic_RIDirectWithCF(DecodedOp* op, JitWidth width, JitCarryOp directOp, InstRegImm callback, InstRegReg cfCallback, LazyFlagType flags);
+    void dynamic_RIShiftDirect(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFlagType flags);
     void dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFlagType flags, bool writeback = true, bool addCF = false, InstRegReg cfCallback = nullptr, InstRegImmCF callbackWithCF = nullptr);
     void dynamic_R(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagType flags, bool writeback = true);
     void dynamic_M(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagType flags, bool writeback = true, RegPtr tmp = nullptr);
@@ -410,21 +444,38 @@ public:
     virtual void direct_cmp(JitWidth width, RegPtr left, U32 right) = 0;
     virtual void direct_test(JitWidth width, RegPtr left, RegPtr right) = 0;
     virtual void direct_test(JitWidth width, RegPtr left, U32 right) = 0;
+    virtual void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, RegPtr src) = 0;
+    virtual void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, U32 src) = 0;
+    virtual void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) = 0;
+    virtual void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) = 0;
+    virtual void direct_neg(JitWidth width, RegPtr dst) = 0;
+    virtual bool supportsDirectFlagsForShift() { return false; }
+    virtual bool supportsDirectFlagsForBitTest() { return false; }
+    virtual void direct_bit_test(JitWidth width, RegPtr value, RegPtr bit) { kpanic("Jit::direct_bit_test reg"); }
+    virtual void direct_bit_test(JitWidth width, RegPtr value, U32 bitMask) { kpanic("Jit::direct_bit_test imm"); }
     virtual void direct_jump(JitConditional condition, U32 address) = 0;
     virtual void direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) = 0;    
     virtual void direct_setcc(JitConditional condition, RegPtr dst) = 0;
-    virtual void tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback) = 0;
+    virtual void tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback, U32 supportedFlags = FMASK_TEST) = 0;
     virtual void preCompile(DecodedOp* op, bool skippedOp = false) = 0;
     virtual void compile(DecodedOp* op) = 0;
     virtual void postCompile(DecodedOp* op) = 0;
     virtual bool directDoesAffectFlags(DecodedOp* op) = 0;
 
 protected:
+    enum class BitModifyOp {
+        Set,
+        Reset,
+        Complement,
+    };
+
     RegPtr btMask(U32 bitMask, U32 reg);
     bool btStartFlags(DecodedOp* op);
+    void bitModifyMem(DecodedOp* op, JitWidth width, RegPtr address, BitModifyOp operation, bool registerBitIndex);
     bool bsStartFlags(DecodedOp* op);
     void pushParam(std::vector<DynParam>& params, JitWidth width, RegPtr reg);
     void dshift(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flags);
+    void dshiftDirect(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flags);
     void dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flags);
     void dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFlagType flags);
     void dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFlagType flags);

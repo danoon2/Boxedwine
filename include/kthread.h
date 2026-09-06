@@ -135,7 +135,7 @@ public:
     U32 debugRegs[8] = {};
     bool ptraceStopPending = false;
     U32 ptraceStopSignal = 0;
-    bool ptraceStopped = false;
+    std::atomic<bool> ptraceStopped = false;
     bool ptraceAttached = false;
     bool ptraceSingleStep = false;
     U32 ptraceTracerProcessId = 0;

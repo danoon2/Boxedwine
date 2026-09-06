@@ -37,7 +37,12 @@
 
 U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
 
-// index 0 is the gl call number
+inline U32 glStackArgAddress(CPU* cpu, U32 slot) {
+    return cpu->seg[SS].address + ((ESP + (slot << 2)) & cpu->stackMask);
+}
+
+// Both the legacy argument packet and the direct call frame have their first
+// ordinary 32-bit argument at ESP+4, so keep the hot path exactly as before.
 #define ARG1 cpu->peek32(1)
 #define ARG2 cpu->peek32(2)
 #define ARG3 cpu->peek32(3)
@@ -53,6 +58,11 @@ U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
 #define ARG13 cpu->peek32(13)
 #define ARG14 cpu->peek32(14)
 #define ARG15 cpu->peek32(15)
+#define ARG16 cpu->peek32(16)
+#define ARG17 cpu->peek32(17)
+#define ARG18 cpu->peek32(18)
+#define ARG19 cpu->peek32(19)
+#define ARG20 cpu->peek32(20)
 
 #define pARG1 ((uintptr_t)cpu->peek32(1))
 #define pARG2 ((uintptr_t)cpu->peek32(2))
@@ -120,14 +130,15 @@ U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
 #define ipARG7 ARG7
 #define ipARG8 ARG8
 
-#define llARG1 cpu->memory->readq(ARG1)
-#define llARG2 cpu->memory->readq(ARG2)
-#define llARG3 cpu->memory->readq(ARG3)
-#define llARG4 cpu->memory->readq(ARG4)
-#define llARG5 cpu->memory->readq(ARG5)
-#define llARG6 cpu->memory->readq(ARG6)
-#define llARG7 cpu->memory->readq(ARG7)
-#define llARG8 cpu->memory->readq(ARG8)
+#define llARG1 cpu->memory->readq(glStackArgAddress(cpu, 1))
+#define llARG2 cpu->memory->readq(glStackArgAddress(cpu, 2))
+#define llARG3 cpu->memory->readq(glStackArgAddress(cpu, 3))
+#define llARG4 cpu->memory->readq(glStackArgAddress(cpu, 4))
+#define llARG5 cpu->memory->readq(glStackArgAddress(cpu, 5))
+#define llARG6 cpu->memory->readq(glStackArgAddress(cpu, 6))
+#define llARG7 cpu->memory->readq(glStackArgAddress(cpu, 7))
+#define llARG8 cpu->memory->readq(glStackArgAddress(cpu, 8))
+#define llARG9 cpu->memory->readq(glStackArgAddress(cpu, 9))
 
 #define fARG1 fARG(cpu, ARG1)
 #define fARG2 fARG(cpu, ARG2)
@@ -145,17 +156,22 @@ U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
 #define fARG14 fARG(cpu, ARG14)
 #define fARG15 fARG(cpu, ARG15)
 
-#define dARG1 dARG(cpu, ARG1)
-#define dARG2 dARG(cpu, ARG2)
-#define dARG3 dARG(cpu, ARG3)
-#define dARG4 dARG(cpu, ARG4)
-#define dARG5 dARG(cpu, ARG5)
-#define dARG6 dARG(cpu, ARG6)
-#define dARG7 dARG(cpu, ARG7)
-#define dARG8 dARG(cpu, ARG8)
-#define dARG9 dARG(cpu, ARG9)
-#define dARG10 dARG(cpu, ARG10)
-#define dARG11 dARG(cpu, ARG11)
+#define dARG1 dARG(cpu, glStackArgAddress(cpu, 1))
+#define dARG2 dARG(cpu, glStackArgAddress(cpu, 2))
+#define dARG3 dARG(cpu, glStackArgAddress(cpu, 3))
+#define dARG4 dARG(cpu, glStackArgAddress(cpu, 4))
+#define dARG5 dARG(cpu, glStackArgAddress(cpu, 5))
+#define dARG6 dARG(cpu, glStackArgAddress(cpu, 6))
+#define dARG7 dARG(cpu, glStackArgAddress(cpu, 7))
+#define dARG8 dARG(cpu, glStackArgAddress(cpu, 8))
+#define dARG9 dARG(cpu, glStackArgAddress(cpu, 9))
+#define dARG10 dARG(cpu, glStackArgAddress(cpu, 10))
+#define dARG11 dARG(cpu, glStackArgAddress(cpu, 11))
+#define dARG12 dARG(cpu, glStackArgAddress(cpu, 12))
+#define dARG13 dARG(cpu, glStackArgAddress(cpu, 13))
+#define dARG14 dARG(cpu, glStackArgAddress(cpu, 14))
+#define dARG15 dARG(cpu, glStackArgAddress(cpu, 15))
+#define dARG16 dARG(cpu, glStackArgAddress(cpu, 16))
 
 float fARG(CPU* cpu, U32 arg);
 double dARG(CPU* cpu, int address);

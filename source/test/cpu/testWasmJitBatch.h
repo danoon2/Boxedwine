@@ -16,6 +16,7 @@ void testWasmJitBatchPolicy();
 void testWasmJitMappedFileRange();
 #ifdef BOXEDWINE_MULTI_THREADED
 void testWasmJitMtCpuHazardStateIsCold();
+void testWasmJitMtBoundedDispatch();
 void testWasmJitMtExecDetachPreservesSharedDecodedOps();
 void testWasmJitMtRuntimeGrouping();
 void testWasmJitMtPendingLifecycle();

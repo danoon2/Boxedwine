@@ -13,6 +13,10 @@
 
 #include "ksignal.h"
 #include "testCPU.h"
+#ifdef BOXEDWINE_JIT
+#include "../../emulation/cpu/jit/jitCodeGen.h"
+#include "../../emulation/softmmu/kmemory_soft.h"
+#endif
 #if defined(BOXEDWINE_JIT_ARMV8)
 #include "../../emulation/cpu/armv8/jitArmV8CodeGen.h"
 #endif
@@ -271,7 +275,13 @@ void testRunCPU() {
 
     cpu->nextOp = cpu->getNextOp();
     do {
-        cpu->run();
+        try {
+            cpu->run();
+        } catch (int) {
+            // Guest memory faults install a signal handler and throw to abort
+            // the current instruction, just as runThreadSlice expects.
+            cpu->nextOp = nullptr;
+        }
     } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
 }
 
@@ -354,10 +364,10 @@ void testWasmJitOnlyBlockEntryIsCallable() {
     }
 
     cpu->wasmJitActiveBlock = first;
-    cpu->wasmJitBailout = 0;
+    cpu->wasmJitBailout = WASM_JIT_BAILOUT_NONE;
     context.memory->removeCodeBlock(TEST_CODE_ADDRESS, first, false);
 
-    if (cpu->wasmJitBailout != 1) {
+    if (cpu->wasmJitBailout != WASM_JIT_BAILOUT_SMC) {
         testFail("wasm jit active invalidation requests bailout");
     }
     if (first->pfnJitCode || second->pfnJitCode || third->pfnJitCode) {
@@ -425,6 +435,35 @@ void testWasmJitOnlyBlockEntryIsCallable() {
     }
     if (afterRet->blockStart == branch) {
         testFail("wasm jit ret boundary does not absorb following decoded op");
+    }
+
+    testNewInstruction(0);
+    cpu->reg[3].u32 = 0; // ebx: stale fallthrough marker
+    U32 iretStack = cpu->reg[4].u32;
+    context.memory->writed(cpu->seg[SS].address + iretStack, 6); // resume at TestEnd
+    context.memory->writed(cpu->seg[SS].address + iretStack + 4, cpu->seg[CS].value);
+    context.memory->writed(cpu->seg[SS].address + iretStack + 8, cpu->flags | 2);
+
+    testPushCode8(0x31); // xor eax,eax: set ZF so jnz is not taken
+    testPushCode8(0xc0);
+    testPushCode8(0x75); // jnz to inc ebx, keeping it after iret in this block
+    testPushCode8(0x01);
+    testPushCode8(0xcf); // iret: interpreter-backed control transfer
+    testPushCode8(0x43); // must not run after iret returns from its WASM helper
+    testPushCode8(0xcd);
+    testPushCode8(0x97);
+    testRunCPU();
+
+    DecodedOp* iretBranch = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* iretOp = iretBranch && iretBranch->next ? iretBranch->next->next : nullptr;
+    DecodedOp* staleFallthrough = iretOp ? iretOp->next : nullptr;
+    if (!iretBranch || !iretOp || !staleFallthrough ||
+        iretBranch->pfn != cpu->thread->process->startJITOp ||
+        iretOp->blockStart != iretBranch || staleFallthrough->blockStart != iretBranch) {
+        testFail("wasm jit interpreter-backed branch regression setup");
+    }
+    if (cpu->reg[3].u32 != 0) {
+        testFail("wasm jit interpreter-backed branch must not execute stale fallthrough");
     }
 
     testNewInstruction(0);
@@ -670,6 +709,1478 @@ void testNativeJitRunCountWraps() {
 
     if (op.runCount != 0) {
         testFail("native JIT runCount wraps after a failed compile threshold");
+    }
+#endif
+}
+
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+extern DYN_PTR_SIZE jitRunOpenGL(CPU* cpu);
+extern thread_local U32 jitOpenGLFastCallCount;
+namespace {
+U32 glTestCalls;
+U32 glTestMutation;
+U32 glTestBoundary;
+bool glTestSawCompiled;
+
+void glTestCallback(CPU* cpu) {
+    ++glTestCalls;
+    if (cpu->peek32(1) != 0x11223344 || cpu->thread->marshalIndex != 0) {
+        testFail("OpenGL callback stack arguments or marshal reset");
+    }
+    cpu->reg[0].u32 = 0xaabbccdd;
+    cpu->reg[2].u32 = 0x76543210;
+    cpu->tmpReg = 0xffffffff; // callbacks must not alter the saved instruction length
+    if (glTestMutation && glTestCalls == JIT_RUN_COUNT + 5) {
+        DecodedOp* op = cpu->memory->getDecodedOp(cpu->getEipAddress());
+        glTestSawCompiled = op && op->pfnJitCode;
+        cpu->memory->writeb(glTestMutation, 0x46); // replace inc edi with inc esi
+    }
+    switch (glTestBoundary) {
+    case 1: cpu->yield = true; break;
+    case 2: cpu->thread->terminating = true; break;
+    case 3: cpu->jitSignalPending.store(1, std::memory_order_release); break;
+    case 4: cpu->thread->pendingSignals = 1; break;
+    case 5: cpu->eip.u32 = 7; throw 99; // simulate redirection to a fault handler
+    }
+}
+
+struct ScopedGlTestCallbacks {
+    Int99Callback* saved = int99Callback;
+    U32 size = int99CallbackSize;
+    Int99Callback callbacks[4] = { nullptr, nullptr, nullptr, glTestCallback };
+    ScopedGlTestCallbacks() { int99Callback = callbacks; int99CallbackSize = 4; }
+    ~ScopedGlTestCallbacks() { int99Callback = saved; int99CallbackSize = size; }
+};
+
+void prepareGlTest() {
+    testNewInstruction(0);
+    CPU* cpu = testContext().cpu;
+    cpu->yield = false;
+    cpu->thread->terminating = false;
+    cpu->thread->pendingSignals = 0;
+    cpu->jitSignalPending.store(0, std::memory_order_release);
+    cpu->memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + 4, 0x11223344);
+    glTestCalls = glTestMutation = glTestBoundary = 0;
+    glTestSawCompiled = false;
+    jitOpenGLFastCallCount = 0;
+}
+
+void emitGlTestCall() {
+    testPushCode8(0xcd);
+    testPushCode8(0x99);
+    testPushCode32(3);
+}
+}
+#endif
+
+void testJitDirectTargetInvalidation() {
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+    testNewInstruction(0);
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    const U32 targetOffset = K_PAGE_SIZE * 1024;
+    const U32 targetAddress = TEST_CODE_ADDRESS + targetOffset;
+    context.memory->mmap(context.thread, targetAddress, K_PAGE_SIZE,
+        K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    testPushCode8(0xe8); // call a separately compiled page in another cache group
+    testPushCode32(targetOffset - 5);
+    testPushCode8(0xcd); testPushCode8(0x97);
+    context.codeIp = targetAddress;
+    testPushCode8(0x46); // inc esi
+    testPushCode8(0xc3); // ret
+
+    DecodedOp* target = cpu->getOp(targetAddress, 0);
+    startNewJIT(cpu, targetAddress, target);
+    DecodedOp* caller = cpu->getOp(TEST_CODE_ADDRESS, 0);
+    startNewJIT(cpu, TEST_CODE_ADDRESS, caller);
+    if (!caller->pfnJitCode || !target->pfnJitCode || !caller->data.nextJump || *caller->data.nextJump != target) {
+        testFail("Direct JIT target invalidation setup");
+        return;
+    }
+    void* callerCode = caller->pfnJitCode;
+    DecodedOp** targetSlot = caller->data.nextJump;
+    auto runCaller = [&]() {
+        cpu->eip.u32 = 0;
+        cpu->reg[4].u32 = 4096;
+        cpu->nextOp = caller;
+        do {
+            cpu->run();
+        } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+    };
+    runCaller();
+    if (cpu->reg[6].u32 != 1 || cpu->reg[7].u32 != 0) testFail("Direct JIT initial target");
+#ifdef BOXEDWINE_MULTI_THREADED
+    cpu->eip.u32 = 0;
+    cpu->reg[4].u32 = 4096;
+    cpu->nextOp = caller;
+    cpu->jitSignalPending.store(1, std::memory_order_release);
+    caller->pfn(cpu, caller);
+    cpu->jitSignalPending.store(0, std::memory_order_release);
+    if (cpu->eip.u32 != targetOffset || cpu->reg[4].u32 != 4092 || cpu->reg[6].u32 != 1 || cpu->nextOp) {
+        testFail("Direct JIT pending signal must exit after the call push and before the target");
+    }
+#endif
+
+    context.memory->writeb(targetAddress, 0x47); // replace with inc edi
+    if (*targetSlot || caller->pfnJitCode != callerCode) {
+        testFail("Direct JIT target invalidation must clear the slot and retain the caller");
+        return;
+    }
+    runCaller(); // slot miss must reach the replacement through the run loop
+    if (cpu->reg[6].u32 != 1 || cpu->reg[7].u32 != 1) testFail("Direct JIT target miss after invalidation");
+    target = cpu->getOp(targetAddress, 0);
+    startNewJIT(cpu, targetAddress, target);
+    if (*targetSlot != target || !target->pfnJitCode || caller->pfnJitCode != callerCode) {
+        testFail("Direct JIT replacement publication");
+        return;
+    }
+    runCaller();
+    if (cpu->reg[6].u32 != 1 || cpu->reg[7].u32 != 2) testFail("Direct JIT replaced compiled target");
+    context.memory->unmap(targetAddress, K_PAGE_SIZE);
+#endif
+}
+
+void testJitEntryCacheInvalidation() {
+#ifdef BOXEDWINE_JIT_X64
+    testNewInstruction(0);
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    auto groups = getMemData(cpu->memory)->opCache.getJitPageGroups();
+    if (std::getenv("BOXEDWINE_JIT_ENTRY_CACHE_SLOW")) {
+        if (groups || cpu->jitEntryPageGroups) testFail("JIT entry cache opt-out was ignored");
+        return;
+    }
+    if (!groups || groups != cpu->jitEntryPageGroups) {
+        testFail("Compiled-entry JIT cache was not selected");
+        return;
+    }
+    for (U32 pass = 0; pass < 2; ++pass) {
+        for (U32 i = 0; i < 3; ++i) {
+            U32 address = TEST_CODE_ADDRESS + i * K_PAGE_SIZE;
+            context.codeIp = address;
+            testPushCode8(0x40); // inc eax
+            testPushCode8(0xcd); testPushCode8(0x97);
+            DecodedOp* op = cpu->getOp(address, 0);
+            U32 pageIndex = address >> K_PAGE_SHIFT;
+            if (groups[pageIndex >> 10][pageIndex & 0x3ff] || op->jitEntrySlot) {
+                testFail("Decoding alone allocated a compiled-entry page");
+                return;
+            }
+            startNewJIT(cpu, address, op);
+            auto page = groups[pageIndex >> 10][pageIndex & 0x3ff];
+            if (!page || page[address & K_PAGE_MASK] != op->pfnJitCode || !op->pfnJitCode) {
+                testFail("JIT entry cache missed a published compiled entry");
+                return;
+            }
+            context.memory->removeCodeBlock(address, op, false);
+            if (page[address & K_PAGE_MASK] || op->pfnJitCode || context.memory->getDecodedOp(address) != op) {
+                testFail("JIT entry cache retained code after JIT-only removal");
+            }
+            startNewJIT(cpu, address, op);
+            if (page[address & K_PAGE_MASK] != op->pfnJitCode || !op->pfnJitCode) {
+                testFail("JIT entry cache missed republication");
+            }
+            context.memory->writeb(address, 0x43); // invalidate and replace with inc ebx
+            if (page[address & K_PAGE_MASK]) testFail("JIT entry cache retained invalidated code");
+            DecodedOp* replacement = cpu->getOp(address, 0);
+            if (!replacement || replacement->jitEntrySlot != &page[address & K_PAGE_MASK] || page[address & K_PAGE_MASK]) {
+                testFail("JIT entry cache replacement binding");
+            }
+        }
+        context.memory->clearOpCache();
+        for (U32 i = 0; i < K_NUMBER_OF_PAGES; ++i) {
+            if (groups[i >> 10][i & 0x3ff]) testFail("JIT entry cache retained a page after clear");
+        }
+        if (groups != getMemData(cpu->memory)->opCache.getJitPageGroups()) {
+            testFail("JIT entry cache view changed during clear");
+        }
+    }
+#endif
+}
+
+void testJitOpenGLCallStateAndInvalidation() {
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+    ScopedGlTestCallbacks callbacks;
+    const bool fastEnabled = !std::getenv("BOXEDWINE_GL_INT99_SLOW");
+    for (bool mutate : { false, true }) {
+        prepareGlTest();
+        CPU* cpu = testContext().cpu;
+        constexpr U32 iterations = JIT_RUN_COUNT * 3;
+        cpu->reg[1].u32 = iterations;
+        testPushCode8(0x39); testPushCode8(0xf6); // cmp esi,esi
+        emitGlTestCall();
+        testPushCode8(0x0f); testPushCode8(0x94); testPushCode8(0xc3); // setz bl
+        if (mutate) glTestMutation = testContext().codeIp;
+        testPushCode8(0x47); // inc edi, changed by the callback after JIT compilation
+        testPushCode8(0x49); // dec ecx
+        testPushCode8(0x75); testPushCode8(0xf1); // jnz to cmp esi,esi
+        testRunCPU();
+        U32 expectedEdi = mutate ? JIT_RUN_COUNT + 4 : iterations;
+        if (glTestCalls != iterations || cpu->reg[0].u32 != 0xaabbccdd || cpu->reg[2].u32 != 0x76543210 ||
+            cpu->reg[3].u8 != 1 || cpu->reg[7].u32 != expectedEdi || cpu->reg[6].u32 != iterations - expectedEdi) {
+            testFail("OpenGL JIT callback result, flags, exact execution or modified code (mutate=%d)", mutate);
+        }
+        if (fastEnabled && !jitOpenGLFastCallCount) testFail("OpenGL dedicated JIT path was not exercised");
+        if (mutate && !glTestSawCompiled) testFail("OpenGL callback did not invalidate compiled code");
+    }
+#endif
+}
+
+void testJitOpenGLCallBoundaries() {
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+    ScopedGlTestCallbacks callbacks;
+    for (U32 boundary = 0; boundary <= 6; ++boundary) {
+        prepareGlTest();
+        CPU* cpu = testContext().cpu;
+        emitGlTestCall();
+        testPushCode8(0x43); // compiled continuation: inc ebx
+        testPushCode8(0xcd); testPushCode8(0x97); // test end / simulated fault handler
+        DecodedOp* next = cpu->getOp(TEST_CODE_ADDRESS + 6, 0);
+        startNewJIT(cpu, TEST_CODE_ADDRESS + 6, next);
+        DYN_PTR_SIZE expected = (DYN_PTR_SIZE)next->pfnJitCode;
+        if (!expected) testFail("OpenGL boundary continuation did not compile");
+        cpu->eip.u32 = 0;
+        cpu->tmpReg = (3 << 8) | 6; // nonzero index, six-byte direct ABI interrupt
+        cpu->thread->marshalIndex = 9;
+        glTestBoundary = boundary;
+        if (boundary == 6) cpu->debugTrapActive = true; // force the generic debug-aware path
+        DYN_PTR_SIZE result = jitRunOpenGL(cpu);
+        if (glTestCalls != 1 || cpu->eip.u32 != (boundary == 5 ? 7u : 6u)) {
+            testFail("OpenGL boundary %u execution or fault EIP", boundary);
+        }
+        if (boundary == 0 && result != expected) testFail("OpenGL boundary failed to chain to current compiled continuation");
+        if (boundary >= 1 && boundary <= 5 && result) testFail("OpenGL boundary %u failed to return to run loop", boundary);
+        if (boundary == 6 && jitOpenGLFastCallCount) testFail("OpenGL debug path bypassed generic instruction handling");
+        cpu->yield = false;
+        cpu->thread->terminating = false;
+        cpu->thread->pendingSignals = 0;
+        cpu->jitSignalPending.store(0, std::memory_order_release);
+        cpu->debugTrapActive = false;
+    }
+#endif
+}
+
+namespace {
+
+enum class DirectArithmeticTestOp {
+    Add,
+    Sub,
+    And,
+    Or,
+    Xor
+};
+
+enum class DirectArithmeticTestShape {
+    Reg,
+    MemSource,
+    Imm,
+    MemReg,
+    MemImm
+};
+
+struct DirectArithmeticOpInfo {
+    DirectArithmeticTestOp op;
+    const char* name;
+    U8 regRmOpcode;
+    U8 rmRegOpcode;
+    U8 immediateGroup;
+};
+
+constexpr DirectArithmeticOpInfo DIRECT_ARITHMETIC_OPS[] = {
+    {DirectArithmeticTestOp::Add, "add", 0x03, 0x01, 0},
+    {DirectArithmeticTestOp::Sub, "sub", 0x2b, 0x29, 5},
+    {DirectArithmeticTestOp::And, "and", 0x23, 0x21, 4},
+    {DirectArithmeticTestOp::Or,  "or",  0x0b, 0x09, 1},
+    {DirectArithmeticTestOp::Xor, "xor", 0x33, 0x31, 6},
+};
+
+constexpr U32 DIRECT_ARITHMETIC_MEM_SRC = 0x300;
+
+constexpr U32 DIRECT_ARITHMETIC_CASES[][2] = {
+    {0, 0},
+    {1, 0},
+    {0, 1},
+    {0xffffffff, 1},
+    {0x7fffffff, 1},
+    {0x80000000, 1},
+    {0x80000000, 0xffffffff},
+    {0xaaaaaaaa, 0x55555555},
+};
+
+U32 directArithmeticParityFlag(U32 value) {
+    U8 low = (U8)value;
+    low ^= low >> 4;
+    low &= 0x0f;
+    return ((0x6996 >> low) & 1) == 0 ? PF : 0;
+}
+
+U32 directArithmeticFlags(DirectArithmeticTestOp op, U32 lhs, U32 rhs, U32& result) {
+    U32 flags = 0;
+    switch (op) {
+    case DirectArithmeticTestOp::Add:
+        result = lhs + rhs;
+        if ((U64)lhs + rhs > 0xffffffffULL) flags |= CF;
+        if ((~(lhs ^ rhs) & (lhs ^ result) & 0x80000000) != 0) flags |= OF;
+        if (((lhs ^ rhs ^ result) & 0x10) != 0) flags |= AF;
+        break;
+    case DirectArithmeticTestOp::Sub:
+        result = lhs - rhs;
+        if (lhs < rhs) flags |= CF;
+        if (((lhs ^ rhs) & (lhs ^ result) & 0x80000000) != 0) flags |= OF;
+        if (((lhs ^ rhs ^ result) & 0x10) != 0) flags |= AF;
+        break;
+    case DirectArithmeticTestOp::And:
+        result = lhs & rhs;
+        break;
+    case DirectArithmeticTestOp::Or:
+        result = lhs | rhs;
+        break;
+    case DirectArithmeticTestOp::Xor:
+        result = lhs ^ rhs;
+        break;
+    }
+    if (result == 0) flags |= ZF;
+    if (result & 0x80000000) flags |= SF;
+    flags |= directArithmeticParityFlag(result);
+    return flags;
+}
+
+bool directArithmeticCondition(U8 condition, U32 flags) {
+    bool cf = (flags & CF) != 0;
+    bool pf = (flags & PF) != 0;
+    bool zf = (flags & ZF) != 0;
+    bool sf = (flags & SF) != 0;
+    bool of = (flags & OF) != 0;
+    switch (condition) {
+    case 0x0: return of;
+    case 0x1: return !of;
+    case 0x2: return cf;
+    case 0x3: return !cf;
+    case 0x4: return zf;
+    case 0x5: return !zf;
+    case 0x6: return cf || zf;
+    case 0x7: return !cf && !zf;
+    case 0x8: return sf;
+    case 0x9: return !sf;
+    case 0xa: return pf;
+    case 0xb: return !pf;
+    case 0xc: return sf != of;
+    case 0xd: return sf == of;
+    case 0xe: return zf || (sf != of);
+    default: return !zf && (sf == of);
+    }
+}
+
+U32 emitDirectArithmetic(const DirectArithmeticOpInfo& op, DirectArithmeticTestShape shape, U32 rhs) {
+    if (shape == DirectArithmeticTestShape::Reg) {
+        testPushCode8(op.regRmOpcode);
+        testPushCode8(0xc2); // op eax,edx
+        return 2;
+    }
+    if (shape == DirectArithmeticTestShape::MemSource) {
+        testPushCode8(op.regRmOpcode);
+        testPushCode8(0x05); // op eax,[disp32]
+        testPushCode32(DIRECT_ARITHMETIC_MEM_SRC);
+        return 6;
+    }
+    if (shape == DirectArithmeticTestShape::Imm) {
+        testPushCode8(0x81);
+        testPushCode8(0xc0 | (op.immediateGroup << 3)); // op eax,imm32
+        testPushCode32(rhs);
+        return 6;
+    }
+    if (shape == DirectArithmeticTestShape::MemReg) {
+        testPushCode8(op.rmRegOpcode);
+        testPushCode8(0x15); // op [disp32],edx
+        testPushCode32(DIRECT_ARITHMETIC_MEM_SRC);
+        return 6;
+    }
+    testPushCode8(0x81);
+    testPushCode8(0x05 | (op.immediateGroup << 3)); // op [disp32],imm32
+    testPushCode32(DIRECT_ARITHMETIC_MEM_SRC);
+    testPushCode32(rhs);
+    return 10;
+}
+
+const char* directArithmeticShapeName(DirectArithmeticTestShape shape) {
+    switch (shape) {
+    case DirectArithmeticTestShape::Reg: return "reg";
+    case DirectArithmeticTestShape::MemSource: return "reg,mem";
+    case DirectArithmeticTestShape::Imm: return "reg,imm";
+    case DirectArithmeticTestShape::MemReg: return "mem,reg";
+    default: return "mem,imm";
+    }
+}
+
+void runDirectArithmeticFlagsCase(const DirectArithmeticOpInfo& op, DirectArithmeticTestShape shape,
+                                  U32 lhs, U32 rhs, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 expectedResult = 0;
+    U32 expectedFlags = directArithmeticFlags(op.op, lhs, rhs, expectedResult);
+    U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    bool memoryDestination = shape == DirectArithmeticTestShape::MemReg || shape == DirectArithmeticTestShape::MemImm;
+    cpu->reg[0].u32 = memoryDestination ? 0x89abcdef : lhs; // eax: register arithmetic destination
+    cpu->reg[2].u32 = rhs;        // edx: register source
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+    U32 initialMemory = memoryDestination ? lhs : rhs;
+    context.memory->writed(TEST_HEAP_ADDRESS + DIRECT_ARITHMETIC_MEM_SRC, initialMemory);
+
+    U32 producerLen = emitDirectArithmetic(op, shape, rhs);
+    testPushCode8(0x0f); // setcc bl
+    testPushCode8(0x90 + condition);
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the arithmetic flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    const char* shapeName = directArithmeticShapeName(shape);
+    U32 expectedEax = memoryDestination ? 0x89abcdef : expectedResult;
+    if (cpu->reg[0].u32 != expectedEax) {
+        testFail("direct %s %s condition %x result", op.name, shapeName, condition);
+    }
+    U32 expectedMemory = memoryDestination ? expectedResult : initialMemory;
+    if (context.memory->readd(TEST_HEAP_ADDRESS + DIRECT_ARITHMETIC_MEM_SRC) != expectedMemory) {
+        testFail("direct %s %s condition %x memory result", op.name, shapeName, condition);
+    }
+    if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct %s %s condition %x flags", op.name, shapeName, condition);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + producerLen);
+    if (!producer || !set) {
+        testFail("direct %s %s condition %x metadata decode", op.name, shapeName, condition);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode) {
+        testFail("direct %s %s condition %x producer entry", op.name, shapeName, condition);
+    }
+    if (!(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        testFail("direct %s %s condition %x skipped set", op.name, shapeName, condition);
+    }
+#endif
+}
+
+void runDirectArithmeticWriteFaultCase() {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    constexpr U32 initialValue = 0x12345678;
+
+    testNewInstruction((int)(CF | ZF));
+    cpu->big = true;
+    cpu->reg[0].u32 = 0;
+    cpu->reg[2].u32 = 1;          // edx: add source
+    cpu->reg[3].u32 = 0x89abcdef; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    U32 targetAddress = cpu->seg[DS].address + DIRECT_ARITHMETIC_MEM_SRC;
+    context.memory->writed(targetAddress, initialValue);
+
+    testPushCode8(0x01);
+    testPushCode8(0x15); // add [disp32],edx
+    testPushCode32(DIRECT_ARITHMETIC_MEM_SRC);
+    testPushCode8(0x0f);
+    testPushCode8(0x92); // setb bl; fuses with add
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the add flags dead
+    testPushCode8(0xfe);
+    constexpr U32 faultHandlerOffset = 11;
+
+    KSigAction& action = context.process->sigActions[K_SIGSEGV];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + faultHandlerOffset;
+    action.flags = 0;
+
+    U32 targetPage = targetAddress & ~K_PAGE_MASK;
+    if (context.memory->mprotect(context.thread, targetPage, K_PAGE_SIZE, K_PROT_READ)) {
+        testFail("direct memory arithmetic could not protect destination page");
+        action.reset();
+        return;
+    }
+
+    testRunCPU();
+    context.memory->mprotect(context.thread, targetPage, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+
+    if (action.sigInfo[0] != K_SIGSEGV) {
+        testFail("direct memory arithmetic write did not raise SIGSEGV");
+    }
+    if (context.memory->readd(targetAddress) != initialValue) {
+        testFail("direct memory arithmetic write fault changed memory");
+    }
+    if (cpu->reg[3].u32 != 0x89abcdef) {
+        testFail("direct memory arithmetic write fault executed fused consumer");
+    }
+    action.reset();
+}
+
+void runDirectArithmeticByteMoveCases() {
+    const struct {
+        const char* name;
+        U8 code[4];
+        U32 length;
+        U32 eax;
+        U32 ecx;
+        U32 esi;
+        bool canFuse;
+    } cases[] = {
+        {"mov ah,imm",   {0xb4, 0x12},             2, 0x00001200, 0x123456a5, 0x13572468, false},
+        {"mov ah,cl",    {0x88, 0xcc},             2, 0x0000a500, 0x123456a5, 0x13572468, false},
+        {"mov cl,ah",    {0x88, 0xe1},             2, 0x00008000, 0x12345680, 0x13572468, false},
+        {"mov ch,ah",    {0x88, 0xe5},             2, 0x00008000, 0x123480a5, 0x13572468, false},
+        {"movzx si,ah",  {0x66, 0x0f, 0xb6, 0xf4}, 4, 0x00008000, 0x123456a5, 0x13570080, false},
+        {"movsx si,ah",  {0x66, 0x0f, 0xbe, 0xf4}, 4, 0x00008000, 0x123456a5, 0x1357ff80, false},
+        {"movzx esi,ah", {0x0f, 0xb6, 0xf4},       3, 0x00008000, 0x123456a5, 0x00000080, false},
+        {"movsx esi,ah", {0x0f, 0xbe, 0xf4},       3, 0x00008000, 0x123456a5, 0xffffff80, false},
+        {"mov cl,imm",   {0xb1, 0x12},             2, 0x00008000, 0x12345612, 0x13572468, true},
+        {"mov cl,al",    {0x88, 0xc1},             2, 0x00008000, 0x12345600, 0x13572468, true},
+        {"movzx esi,al", {0x0f, 0xb6, 0xf0},       3, 0x00008000, 0x123456a5, 0x00000000, true},
+        {"movsx si,al",  {0x66, 0x0f, 0xbe, 0xf0}, 4, 0x00008000, 0x123456a5, 0x13570000, true},
+    };
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+
+    for (const auto& move : cases) {
+        testNewInstruction(0);
+        cpu->big = true;
+        cpu->reg[0].u32 = 0xffff0000;
+        cpu->reg[1].u32 = 0x123456a5;
+        cpu->reg[2].u32 = 0x00018000;
+        cpu->reg[3].u32 = 0x12345678;
+        cpu->reg[6].u32 = 0x13572468;
+        cpu->reg[7].u32 = 2;
+
+        testPushCode8(0x03); // add eax,edx: result 0x8000, CF set
+        testPushCode8(0xc2);
+        for (U32 i = 0; i < move.length; ++i) {
+            testPushCode8(move.code[i]);
+        }
+        testPushCode8(0x0f); // setb bl: must observe ADD's carry across the move
+        testPushCode8(0x92);
+        testPushCode8(0xc3);
+        testPushCode8(0x39); // cmp esi,edi: makes the ADD flags dead
+        testPushCode8(0xfe);
+        testRunCPU();
+
+        if (cpu->reg[0].u32 != move.eax || cpu->reg[1].u32 != move.ecx || cpu->reg[6].u32 != move.esi) {
+            testFail("direct arithmetic across %s register result", move.name);
+        }
+        if (cpu->reg[3].u32 != 0x12345601) {
+            testFail("direct arithmetic across %s lost carry", move.name);
+        }
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+        DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+        DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 2 + move.length);
+        if (!producer || producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode || !set) {
+            testFail("direct arithmetic across %s JIT entry", move.name);
+        } else if (((set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) != 0) != move.canFuse ||
+                   (set->pfnJitCode == nullptr) != move.canFuse) {
+            testFail("direct arithmetic across %s fusion boundary", move.name);
+        }
+#endif
+    }
+}
+
+void runDirectArithmeticInterveningMemoryCase(bool store, bool indirect) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    constexpr U32 targetAddress = 0x20000000;
+    const char* name = store ? "mov [moffs],al" : indirect ? "mov al,[esi]" : "mov al,[moffs]";
+
+    testNewInstruction(0);
+    cpu->big = true;
+    // Leave this page untouched so the generated memory access must resolve it.
+    if (context.memory->mmap(context.thread, targetAddress, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+            K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0) != targetAddress) {
+        testFail("direct arithmetic across %s mmap", name);
+        return;
+    }
+    cpu->reg[0].u32 = 0x12345678;
+    cpu->reg[1].u32 = 0xffffffff;
+    cpu->reg[2].u32 = 1;
+    cpu->reg[3].u32 = 0x12345678;
+    cpu->reg[5].u32 = 2;
+    cpu->reg[6].u32 = targetAddress - cpu->seg[DS].address;
+    cpu->reg[7].u32 = 1;
+
+    testPushCode8(0x03); // add ecx,edx: must execute exactly once, producing zero
+    testPushCode8(0xca);
+    if (indirect) {
+        testPushCode8(0x8a); // mov al,[esi]
+        testPushCode8(0x06);
+    } else {
+        testPushCode8(store ? 0xa2 : 0xa0); // mov [moffs],al / mov al,[moffs]
+        testPushCode32(targetAddress - cpu->seg[DS].address);
+    }
+    testPushCode8(0x0f); // setz bl
+    testPushCode8(0x94);
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp edi,ebp: makes the ADD flags dead
+    testPushCode8(0xef);
+    testRunCPU();
+
+    if (cpu->reg[1].u32 != 0 || cpu->reg[3].u32 != 0x12345601) {
+        testFail("direct arithmetic across %s first-touch fault replayed ADD or lost flags", name);
+    }
+    if (cpu->reg[0].u32 != (store ? 0x12345678 : 0x12345600) ||
+            context.memory->readb(targetAddress) != (store ? 0x78 : 0)) {
+        testFail("direct arithmetic across %s memory result", name);
+    }
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* move = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 2);
+    if (!producer || producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode) {
+        testFail("direct arithmetic across %s producer JIT entry", name);
+    }
+    if (!move || !move->pfnJitCode || (move->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE)) {
+        testFail("direct arithmetic across %s lost faulting instruction boundary", name);
+    }
+#endif
+    context.memory->unmap(targetAddress, K_PAGE_SIZE);
+}
+
+} // namespace
+
+void testJitDirectArithmeticFlags() {
+#ifdef BOXEDWINE_JIT
+    constexpr DirectArithmeticTestShape shapes[] = {
+        DirectArithmeticTestShape::Reg,
+        DirectArithmeticTestShape::MemSource,
+        DirectArithmeticTestShape::Imm,
+        DirectArithmeticTestShape::MemReg,
+        DirectArithmeticTestShape::MemImm,
+    };
+    for (const DirectArithmeticOpInfo& op : DIRECT_ARITHMETIC_OPS) {
+        for (DirectArithmeticTestShape shape : shapes) {
+            for (const auto& values : DIRECT_ARITHMETIC_CASES) {
+                for (U8 condition = 0; condition < 16; ++condition) {
+                    runDirectArithmeticFlagsCase(op, shape, values[0], values[1], condition);
+                }
+            }
+        }
+    }
+    runDirectArithmeticWriteFaultCase();
+    runDirectArithmeticByteMoveCases();
+    runDirectArithmeticInterveningMemoryCase(false, true);
+    runDirectArithmeticInterveningMemoryCase(false, false);
+    runDirectArithmeticInterveningMemoryCase(true, false);
+#endif
+}
+
+namespace {
+
+enum class DirectIncDecTestOp {
+    Inc,
+    Dec
+};
+
+enum class DirectIncDecCFObserver {
+    Lahf,
+    PushF,
+    Salc
+};
+
+constexpr U32 DIRECT_INC_DEC_CASES[] = {
+    0,
+    1,
+    0x0f,
+    0xffffffff,
+    0x7fffffff,
+    0x80000000,
+    0xaaaaaaaa,
+    0x55555555,
+};
+
+bool directIncDecConditionUsesCF(U8 condition) {
+    return condition == 0x2 || condition == 0x3 || condition == 0x6 || condition == 0x7;
+}
+
+void runDirectIncDecFlagsCase(DirectIncDecTestOp op, U32 value, bool oldCF, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 expectedResult = 0;
+    U32 expectedFlags = directArithmeticFlags(
+        op == DirectIncDecTestOp::Inc ? DirectArithmeticTestOp::Add : DirectArithmeticTestOp::Sub,
+        value, 1, expectedResult);
+    expectedFlags = (expectedFlags & ~CF) | (oldCF ? CF : 0);
+    U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = value;      // eax: INC/DEC destination
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    testPushCode8(oldCF ? 0xf9 : 0xf8); // stc/clc
+    testPushCode8(0xff);
+    testPushCode8(op == DirectIncDecTestOp::Inc ? 0xc0 : 0xc8); // inc/dec eax
+    testPushCode8(0x0f);
+    testPushCode8(0x90 + condition); // setcc bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the INC/DEC flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    const char* opName = op == DirectIncDecTestOp::Inc ? "inc" : "dec";
+    if (cpu->reg[0].u32 != expectedResult) {
+        testFail("direct %s condition %x old CF %d result", opName, condition, oldCF);
+    }
+    if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct %s condition %x old CF %d flags", opName, condition, oldCF);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 1);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 3);
+    if (!producer || !set) {
+        testFail("direct %s condition %x old CF %d metadata decode", opName, condition, oldCF);
+        return;
+    }
+    bool expectedDirect = !directIncDecConditionUsesCF(condition);
+    bool wasDirect = (set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) != 0;
+    if (wasDirect != expectedDirect) {
+        testFail("direct %s condition %x old CF %d selection", opName, condition, oldCF);
+    }
+    if (expectedDirect && (producer->pfn != cpu->thread->process->startJITOp ||
+        !producer->pfnJitCode || set->pfnJitCode)) {
+        testFail("direct %s condition %x old CF %d metadata", opName, condition, oldCF);
+    }
+#endif
+}
+
+const char* directIncDecCFObserverName(DirectIncDecCFObserver observer) {
+    switch (observer) {
+    case DirectIncDecCFObserver::Lahf: return "lahf";
+    case DirectIncDecCFObserver::PushF: return "pushf";
+    case DirectIncDecCFObserver::Salc: return "salc";
+    }
+    return "unknown";
+}
+
+void runDirectIncDecInterveningCFReaderCase(DirectIncDecTestOp op, bool oldCF,
+                                            DirectIncDecCFObserver observer) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 value = op == DirectIncDecTestOp::Inc ? 0xffffffff : 1;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = 0x12340000; // EAX receives LAHF/SALC results
+    cpu->reg[1].u32 = value;      // ECX is the INC/DEC destination
+    cpu->reg[2].u32 = 0;          // EDX receives PUSHFD/POP
+    cpu->reg[3].u32 = 0x12345678; // EBX is the SETcc destination
+    cpu->reg[6].u32 = 1;          // ESI
+    cpu->reg[7].u32 = 2;          // EDI
+
+    testPushCode8(oldCF ? 0xf9 : 0xf8); // stc/clc
+    testPushCode8(0xff);
+    testPushCode8(op == DirectIncDecTestOp::Inc ? 0xc1 : 0xc9); // inc/dec ecx
+    switch (observer) {
+    case DirectIncDecCFObserver::Lahf:
+        testPushCode8(0x9f);
+        break;
+    case DirectIncDecCFObserver::PushF:
+        testPushCode8(0x9c); // pushfd
+        testPushCode8(0x5a); // pop edx
+        break;
+    case DirectIncDecCFObserver::Salc:
+        testPushCode8(0xd6);
+        break;
+    }
+    U32 setOffset = observer == DirectIncDecCFObserver::PushF ? 5 : 4;
+    testPushCode8(0x0f);
+    testPushCode8(0x94); // setz bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the INC/DEC flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    const char* opName = op == DirectIncDecTestOp::Inc ? "inc" : "dec";
+    const char* observerName = directIncDecCFObserverName(observer);
+    if (cpu->reg[1].u32 != 0) {
+        testFail("direct %s intervening %s old CF %d result", opName, observerName, oldCF);
+    }
+    bool observedCF;
+    if (observer == DirectIncDecCFObserver::Lahf) {
+        observedCF = (cpu->reg[0].u32 & 0x100) != 0;
+    } else if (observer == DirectIncDecCFObserver::PushF) {
+        observedCF = (cpu->reg[2].u32 & CF) != 0;
+    } else {
+        observedCF = (cpu->reg[0].u32 & 0xff) != 0;
+    }
+    if (observedCF != oldCF) {
+        testFail("direct %s intervening %s old CF %d preserved CF", opName, observerName, oldCF);
+    }
+    if ((cpu->reg[3].u32 & 0xff) != 1) {
+        testFail("direct %s intervening %s old CF %d final condition", opName, observerName, oldCF);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + setOffset);
+    if (!set || (set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE)) {
+        testFail("direct %s intervening %s old CF %d selection", opName, observerName, oldCF);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectIncDecFlags() {
+#ifdef BOXEDWINE_JIT
+    for (DirectIncDecTestOp op : {DirectIncDecTestOp::Inc, DirectIncDecTestOp::Dec}) {
+        for (U32 value : DIRECT_INC_DEC_CASES) {
+            for (bool oldCF : {false, true}) {
+                for (U8 condition = 0; condition < 16; ++condition) {
+                    runDirectIncDecFlagsCase(op, value, oldCF, condition);
+                }
+            }
+        }
+    }
+    for (DirectIncDecTestOp op : {DirectIncDecTestOp::Inc, DirectIncDecTestOp::Dec}) {
+        for (bool oldCF : {false, true}) {
+            for (DirectIncDecCFObserver observer : {DirectIncDecCFObserver::Lahf,
+                                                    DirectIncDecCFObserver::PushF,
+                                                    DirectIncDecCFObserver::Salc}) {
+                runDirectIncDecInterveningCFReaderCase(op, oldCF, observer);
+            }
+        }
+    }
+#endif
+}
+
+void testJitDirectNegFlags() {
+#ifdef BOXEDWINE_JIT
+    for (U32 value : DIRECT_INC_DEC_CASES) {
+        for (U8 condition = 0; condition < 16; ++condition) {
+            TestContext& context = testContext();
+            CPU* cpu = context.cpu;
+            U32 expectedResult = 0;
+            U32 expectedFlags = directArithmeticFlags(
+                DirectArithmeticTestOp::Sub, 0, value, expectedResult);
+            U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+            testNewInstruction(0);
+            cpu->big = true;
+            cpu->reg[0].u32 = value;      // eax: NEG destination
+            cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+            cpu->reg[6].u32 = 1;          // esi
+            cpu->reg[7].u32 = 2;          // edi
+
+            testPushCode8(0xf7);
+            testPushCode8(0xd8); // neg eax
+            testPushCode8(0x0f);
+            testPushCode8(0x90 + condition); // setcc bl
+            testPushCode8(0xc3);
+            testPushCode8(0x39); // cmp esi,edi; makes the NEG flags dead
+            testPushCode8(0xfe);
+            testRunCPU();
+
+            if (cpu->reg[0].u32 != expectedResult) {
+                testFail("direct neg condition %x result", condition);
+            }
+            if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
+                testFail("direct neg condition %x flags", condition);
+            }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+            DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+            DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 2);
+            if (!producer || !set) {
+                testFail("direct neg condition %x metadata decode", condition);
+                continue;
+            }
+            if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode ||
+                !(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+                testFail("direct neg condition %x metadata", condition);
+            }
+#endif
+        }
+    }
+#endif
+}
+
+namespace {
+
+enum class DirectCarryTestOp {
+    Adc,
+    Sbb
+};
+
+enum class DirectCarryTestShape {
+    Reg,
+    RegSelf,
+    Mem,
+    Imm
+};
+
+struct DirectCarryOpInfo {
+    DirectCarryTestOp op;
+    const char* name;
+    U8 rmOpcode;
+    U8 immediateGroup;
+};
+
+constexpr DirectCarryOpInfo DIRECT_CARRY_OPS[] = {
+    {DirectCarryTestOp::Adc, "adc", 0x13, 2},
+    {DirectCarryTestOp::Sbb, "sbb", 0x1b, 3},
+};
+
+U32 directCarryFlags(DirectCarryTestOp op, U32 lhs, U32 rhs, U32 carry, U32& result) {
+    U32 flags = 0;
+    if (op == DirectCarryTestOp::Adc) {
+        U64 fullResult = (U64)lhs + rhs + carry;
+        result = (U32)fullResult;
+        if (fullResult > 0xffffffffULL) flags |= CF;
+        if ((~(lhs ^ rhs) & (lhs ^ result) & 0x80000000) != 0) flags |= OF;
+    } else {
+        U64 fullSubtrahend = (U64)rhs + carry;
+        result = lhs - rhs - carry;
+        if ((U64)lhs < fullSubtrahend) flags |= CF;
+        if (((lhs ^ rhs) & (lhs ^ result) & 0x80000000) != 0) flags |= OF;
+    }
+    if (((lhs ^ rhs ^ result) & 0x10) != 0) flags |= AF;
+    if (result == 0) flags |= ZF;
+    if (result & 0x80000000) flags |= SF;
+    flags |= directArithmeticParityFlag(result);
+    return flags;
+}
+
+U32 emitDirectCarry(const DirectCarryOpInfo& op, DirectCarryTestShape shape, U32 rhs) {
+    if (shape == DirectCarryTestShape::Reg || shape == DirectCarryTestShape::RegSelf) {
+        testPushCode8(op.rmOpcode);
+        testPushCode8(shape == DirectCarryTestShape::Reg ? 0xc2 : 0xc0); // op eax,edx/eax
+        return 2;
+    }
+    if (shape == DirectCarryTestShape::Mem) {
+        testPushCode8(op.rmOpcode);
+        testPushCode8(0x05); // op eax,[disp32]
+        testPushCode32(DIRECT_ARITHMETIC_MEM_SRC);
+        return 6;
+    }
+    testPushCode8(0x81);
+    testPushCode8(0xc0 | (op.immediateGroup << 3)); // op eax,imm32
+    testPushCode32(rhs);
+    return 6;
+}
+
+const char* directCarryShapeName(DirectCarryTestShape shape) {
+    switch (shape) {
+    case DirectCarryTestShape::Reg: return "reg";
+    case DirectCarryTestShape::RegSelf: return "self";
+    case DirectCarryTestShape::Mem: return "mem";
+    default: return "imm";
+    }
+}
+
+void runDirectCarryFlagsCase(const DirectCarryOpInfo& op, DirectCarryTestShape shape,
+                             U32 lhs, U32 rhs, bool carry, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 effectiveRhs = shape == DirectCarryTestShape::RegSelf ? lhs : rhs;
+    U32 expectedResult = 0;
+    U32 expectedFlags = directCarryFlags(op.op, lhs, effectiveRhs, carry ? 1 : 0, expectedResult);
+    U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = lhs;        // eax: arithmetic destination
+    cpu->reg[2].u32 = rhs;        // edx: register source
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+    context.memory->writed(TEST_HEAP_ADDRESS + DIRECT_ARITHMETIC_MEM_SRC, rhs);
+
+    testPushCode8(carry ? 0xf9 : 0xf8); // stc/clc
+    U32 producerLen = emitDirectCarry(op, shape, rhs);
+    testPushCode8(0x0f);
+    testPushCode8(0x90 + condition); // setcc bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the ADC/SBB flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    const char* shapeName = directCarryShapeName(shape);
+    if (cpu->reg[0].u32 != expectedResult) {
+        testFail("direct %s %s condition %x carry %d result", op.name, shapeName, condition, carry);
+    }
+    if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct %s %s condition %x carry %d flags", op.name, shapeName, condition, carry);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 1);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 1 + producerLen);
+    if (!producer || !set) {
+        testFail("direct %s %s condition %x carry %d metadata decode", op.name, shapeName, condition, carry);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode ||
+        !(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        testFail("direct %s %s condition %x carry %d metadata", op.name, shapeName, condition, carry);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectAdcSbbFlags() {
+#ifdef BOXEDWINE_JIT
+    constexpr DirectCarryTestShape shapes[] = {
+        DirectCarryTestShape::Reg,
+        DirectCarryTestShape::RegSelf,
+        DirectCarryTestShape::Mem,
+        DirectCarryTestShape::Imm,
+    };
+    for (const DirectCarryOpInfo& op : DIRECT_CARRY_OPS) {
+        for (DirectCarryTestShape shape : shapes) {
+            for (const auto& values : DIRECT_ARITHMETIC_CASES) {
+                for (bool carry : {false, true}) {
+                    for (U8 condition = 0; condition < 16; ++condition) {
+                        runDirectCarryFlagsCase(op, shape, values[0], values[1], carry, condition);
+                    }
+                }
+            }
+        }
+    }
+#endif
+}
+
+namespace {
+
+enum class DirectShiftTestOp {
+    Shl,
+    Shr,
+    Sar
+};
+
+struct DirectShiftOpInfo {
+    DirectShiftTestOp op;
+    const char* name;
+    U8 group;
+};
+
+constexpr DirectShiftOpInfo DIRECT_SHIFT_OPS[] = {
+    {DirectShiftTestOp::Shl, "shl", 4},
+    {DirectShiftTestOp::Shr, "shr", 5},
+    {DirectShiftTestOp::Sar, "sar", 7},
+};
+
+constexpr U8 DIRECT_SHIFT_COUNTS[] = {1, 2, 7, 16, 31};
+
+bool directShiftConditionUsesOF(U8 condition) {
+    return condition < 2 || condition >= 0xc;
+}
+
+U32 directShiftFlags(DirectShiftTestOp op, U32 value, U8 count, U32& result) {
+    U32 flags = 0;
+    if (op == DirectShiftTestOp::Shl) {
+        result = value << count;
+        if ((value >> (32 - count)) & 1) flags |= CF;
+        if (count == 1 && ((value ^ result) & 0x80000000)) flags |= OF;
+    } else if (op == DirectShiftTestOp::Shr) {
+        result = value >> count;
+        if ((value >> (count - 1)) & 1) flags |= CF;
+        if (count == 1 && (value & 0x80000000)) flags |= OF;
+    } else {
+        result = value >> count;
+        if (value & 0x80000000) {
+            result |= 0xffffffffU << (32 - count);
+        }
+        if ((value >> (count - 1)) & 1) flags |= CF;
+    }
+    if (result == 0) flags |= ZF;
+    if (result & 0x80000000) flags |= SF;
+    flags |= directArithmeticParityFlag(result);
+    return flags;
+}
+
+void runDirectShiftFlagsCase(const DirectShiftOpInfo& op, U32 value, U8 count, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 expectedResult = 0;
+    U32 expectedFlags = directShiftFlags(op.op, value, count, expectedResult);
+    U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = value;      // eax: shift destination
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    testPushCode8(0xc1);
+    testPushCode8(0xc0 | (op.group << 3)); // shift eax,imm8
+    testPushCode8(count);
+    testPushCode8(0x0f);
+    testPushCode8(0x90 + condition); // setcc bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the shift flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    if (cpu->reg[0].u32 != expectedResult) {
+        testFail("direct %s count %u condition %x value %x result %x expected %x",
+            op.name, count, condition, value, cpu->reg[0].u32, expectedResult);
+    }
+    if ((count == 1 || !directShiftConditionUsesOF(condition)) &&
+        (cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct %s count %u condition %x flags", op.name, count, condition);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 3);
+    if (!producer || !set) {
+        testFail("direct %s count %u condition %x metadata decode", op.name, count, condition);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode ||
+        !(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        testFail("direct %s count %u condition %x metadata", op.name, count, condition);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectShiftFlags() {
+#ifdef BOXEDWINE_JIT
+    for (const DirectShiftOpInfo& op : DIRECT_SHIFT_OPS) {
+        for (U32 value : DIRECT_INC_DEC_CASES) {
+            for (U8 count : DIRECT_SHIFT_COUNTS) {
+                for (U8 condition = 0; condition < 16; ++condition) {
+                    runDirectShiftFlagsCase(op, value, count, condition);
+                }
+            }
+        }
+    }
+#endif
+}
+
+namespace {
+
+enum class DirectDoubleShiftTestOp {
+    Shld,
+    Shrd
+};
+
+struct DirectDoubleShiftOpInfo {
+    DirectDoubleShiftTestOp op;
+    const char* name;
+    U8 opcode;
+};
+
+constexpr DirectDoubleShiftOpInfo DIRECT_DOUBLE_SHIFT_OPS[] = {
+    {DirectDoubleShiftTestOp::Shld, "shld", 0xa4},
+    {DirectDoubleShiftTestOp::Shrd, "shrd", 0xac},
+};
+
+U32 directDoubleShiftFlags(DirectDoubleShiftTestOp op, U32 dest, U32 src, U8 count, U32& result) {
+    U32 flags = 0;
+    if (op == DirectDoubleShiftTestOp::Shld) {
+        result = (dest << count) | (src >> (32 - count));
+        if ((dest >> (32 - count)) & 1) flags |= CF;
+    } else {
+        result = (dest >> count) | (src << (32 - count));
+        if ((dest >> (count - 1)) & 1) flags |= CF;
+    }
+    if (count == 1 && ((dest ^ result) & 0x80000000)) flags |= OF;
+    if (result == 0) flags |= ZF;
+    if (result & 0x80000000) flags |= SF;
+    flags |= directArithmeticParityFlag(result);
+    return flags;
+}
+
+void runDirectDoubleShiftFlagsCase(const DirectDoubleShiftOpInfo& op,
+                                   U32 dest, U32 src, U8 count, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 expectedResult = 0;
+    U32 expectedFlags = directDoubleShiftFlags(op.op, dest, src, count, expectedResult);
+    U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = dest;       // eax: double-shift destination
+    cpu->reg[2].u32 = src;        // edx: double-shift source
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    testPushCode8(0x0f);
+    testPushCode8(op.opcode);
+    testPushCode8(0xd0); // shld/shrd eax,edx,imm8
+    testPushCode8(count);
+    testPushCode8(0x0f);
+    testPushCode8(0x90 + condition); // setcc bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the double-shift flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    if (cpu->reg[0].u32 != expectedResult) {
+        testFail("direct %s count %u condition %x dest %x src %x result %x expected %x",
+            op.name, count, condition, dest, src, cpu->reg[0].u32, expectedResult);
+    }
+    if ((count == 1 || !directShiftConditionUsesOF(condition)) &&
+        (cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct %s count %u condition %x dest %x src %x flags",
+            op.name, count, condition, dest, src);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 4);
+    if (!producer || !set) {
+        testFail("direct %s count %u condition %x metadata decode", op.name, count, condition);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode ||
+        !(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        testFail("direct %s count %u condition %x metadata", op.name, count, condition);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectDoubleShiftFlags() {
+#ifdef BOXEDWINE_JIT
+    for (const DirectDoubleShiftOpInfo& op : DIRECT_DOUBLE_SHIFT_OPS) {
+        for (const auto& values : DIRECT_ARITHMETIC_CASES) {
+            for (U8 count : DIRECT_SHIFT_COUNTS) {
+                for (U8 condition = 0; condition < 16; ++condition) {
+                    runDirectDoubleShiftFlagsCase(op, values[0], values[1], count, condition);
+                }
+            }
+        }
+    }
+#endif
+}
+
+namespace {
+
+enum class DirectBitTestShape {
+    RegReg,
+    RegImm,
+    MemReg,
+    MemImm
+};
+
+constexpr U32 DIRECT_BIT_TEST_MEM = 0x380;
+
+struct DirectBitTestCase {
+    U32 value;
+    U32 bit;
+};
+
+constexpr DirectBitTestCase DIRECT_BIT_TEST_CASES[] = {
+    {0x00000000, 0},
+    {0x00000001, 0},
+    {0x00000002, 1},
+    {0x00008000, 15},
+    {0x7fffffff, 31},
+    {0x80000000, 31},
+    {0x00000001, 32},
+    {0x00000002, 33},
+};
+
+void runDirectBitTestCarryCase(DirectBitTestShape shape, U32 value, U32 bit, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    bool memoryValue = shape == DirectBitTestShape::MemReg || shape == DirectBitTestShape::MemImm;
+    bool registerBit = shape == DirectBitTestShape::RegReg || shape == DirectBitTestShape::MemReg;
+    U32 expectedCondition = (value >> (bit & 31)) & 1;
+    if (condition == 3) {
+        expectedCondition ^= 1; // SETNB is the inverse of SETB.
+    }
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = memoryValue ? 0x89abcdef : value; // eax: register bit-test value
+    cpu->reg[2].u32 = bit;        // edx: register bit index
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    U32 producerLen = 0;
+    if (!memoryValue && registerBit) {
+        testPushCode8(0x0f);
+        testPushCode8(0xa3);
+        testPushCode8(0xd0); // bt eax,edx
+        producerLen = 3;
+    } else if (!memoryValue) {
+        testPushCode8(0x0f);
+        testPushCode8(0xba);
+        testPushCode8(0xe0); // bt eax,imm8
+        testPushCode8((U8)bit);
+        producerLen = 4;
+    } else if (registerBit) {
+        testPushCode8(0x0f);
+        testPushCode8(0xa3);
+        testPushCode8(0x15); // bt [disp32],edx
+        testPushCode32(DIRECT_BIT_TEST_MEM);
+        producerLen = 7;
+    } else {
+        testPushCode8(0x0f);
+        testPushCode8(0xba);
+        testPushCode8(0x25); // bt [disp32],imm8
+        testPushCode32(DIRECT_BIT_TEST_MEM);
+        testPushCode8((U8)bit);
+        producerLen = 8;
+    }
+    testPushCode8(0x0f);
+    testPushCode8(0x90 + condition); // setb/setnb bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes CF dead
+    testPushCode8(0xfe);
+
+    U32 valueAddress = TEST_HEAP_ADDRESS + DIRECT_BIT_TEST_MEM;
+    if (memoryValue && registerBit) {
+        valueAddress += (bit >> 5) * sizeof(U32);
+    }
+    context.memory->writed(valueAddress, value);
+    testRunCPU();
+
+    const char* shapeName = shape == DirectBitTestShape::RegReg ? "reg,reg" :
+        shape == DirectBitTestShape::RegImm ? "reg,imm" :
+        shape == DirectBitTestShape::MemReg ? "mem,reg" : "mem,imm";
+    U32 expectedEax = memoryValue ? 0x89abcdef : value;
+    if (cpu->reg[0].u32 != expectedEax) {
+        testFail("direct bt %s condition %x value %x bit %x changed value", shapeName, condition, value, bit);
+    }
+    if (memoryValue && context.memory->readd(valueAddress) != value) {
+        testFail("direct bt %s condition %x value %x bit %x changed memory", shapeName, condition, value, bit);
+    }
+    if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct bt %s condition %x value %x bit %x flags", shapeName, condition, value, bit);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + producerLen);
+    if (!producer || !set) {
+        testFail("direct bt %s condition %x metadata decode", shapeName, condition);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode ||
+        !(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        testFail("direct bt %s condition %x metadata", shapeName, condition);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectBitTestCarry() {
+#ifdef BOXEDWINE_JIT
+    for (DirectBitTestShape shape : {DirectBitTestShape::RegReg, DirectBitTestShape::RegImm,
+                                    DirectBitTestShape::MemReg, DirectBitTestShape::MemImm}) {
+        for (const DirectBitTestCase& test : DIRECT_BIT_TEST_CASES) {
+            for (U8 condition : {2, 3}) {
+                runDirectBitTestCarryCase(shape, test.value, test.bit, condition);
+            }
+        }
+    }
+#endif
+}
+
+namespace {
+
+enum class DirectRotateOneTestOp {
+    Rol,
+    Ror
+};
+
+struct DirectRotateOneOpInfo {
+    DirectRotateOneTestOp op;
+    const char* name;
+    U8 group;
+};
+
+constexpr DirectRotateOneOpInfo DIRECT_ROTATE_ONE_OPS[] = {
+    {DirectRotateOneTestOp::Rol, "rol", 0},
+    {DirectRotateOneTestOp::Ror, "ror", 1},
+};
+
+U32 directRotateOneFlags(DirectRotateOneTestOp op, U32 value, U32& result) {
+    U32 flags = 0;
+    if (op == DirectRotateOneTestOp::Rol) {
+        result = (value << 1) | (value >> 31);
+        if (result & 1) flags |= CF;
+        if (((result >> 31) ^ result) & 1) flags |= OF;
+    } else {
+        result = (value >> 1) | (value << 31);
+        if (result & 0x80000000) flags |= CF;
+        if (((result >> 31) ^ (result >> 30)) & 1) flags |= OF;
+    }
+    return flags;
+}
+
+void runDirectRotateOneFlagsCase(const DirectRotateOneOpInfo& op, U32 value, U8 condition) {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    U32 expectedResult = 0;
+    U32 expectedFlags = directRotateOneFlags(op.op, value, expectedResult);
+    U32 expectedCondition = directArithmeticCondition(condition, expectedFlags) ? 1 : 0;
+
+    testNewInstruction(0);
+    cpu->big = true;
+    cpu->reg[0].u32 = value;      // eax: rotate destination
+    cpu->reg[3].u32 = 0x12345678; // ebx: SETcc destination
+    cpu->reg[6].u32 = 1;          // esi
+    cpu->reg[7].u32 = 2;          // edi
+
+    testPushCode8(0xd1);
+    testPushCode8(0xc0 | (op.group << 3)); // rol/ror eax,1
+    testPushCode8(0x0f);
+    testPushCode8(0x90 + condition); // seto/setno/setb/setnb bl
+    testPushCode8(0xc3);
+    testPushCode8(0x39); // cmp esi,edi; makes the rotate flags dead
+    testPushCode8(0xfe);
+    testRunCPU();
+
+    if (cpu->reg[0].u32 != expectedResult) {
+        testFail("direct %s one condition %x value %x result %x expected %x",
+            op.name, condition, value, cpu->reg[0].u32, expectedResult);
+    }
+    if ((cpu->reg[3].u32 & 0xff) != expectedCondition) {
+        testFail("direct %s one condition %x value %x flags", op.name, condition, value);
+    }
+
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    DecodedOp* producer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    DecodedOp* set = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 2);
+    if (!producer || !set) {
+        testFail("direct %s one condition %x metadata decode", op.name, condition);
+        return;
+    }
+    if (producer->pfn != cpu->thread->process->startJITOp || !producer->pfnJitCode ||
+        !(set->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) || set->pfnJitCode) {
+        testFail("direct %s one condition %x metadata", op.name, condition);
+    }
+#endif
+}
+
+} // namespace
+
+void testJitDirectRotateOneFlags() {
+#ifdef BOXEDWINE_JIT
+    constexpr U8 conditions[] = {0, 1, 2, 3};
+    for (const DirectRotateOneOpInfo& op : DIRECT_ROTATE_ONE_OPS) {
+        for (U32 value : DIRECT_INC_DEC_CASES) {
+            for (U8 condition : conditions) {
+                runDirectRotateOneFlagsCase(op, value, condition);
+            }
+        }
     }
 #endif
 }
@@ -1361,6 +2872,103 @@ void testJitSignalPendingQueuedSignal() {
     thread->sigWaitMask = oldSigWaitMask;
     thread->pendingSignals = oldPendingSignals;
     context.cpu->jitSignalPending.store(oldJitSignalPending, std::memory_order_release);
+#endif
+}
+
+void testWasmJitSignalPendingDispatch() {
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    KThread* thread = context.thread;
+    const U64 signalBit = 1ULL << (K_SIGUSR1 - 1);
+    const U64 oldSigMask = thread->sigMask;
+    const auto oldAction = context.process->sigActions[K_SIGUSR1];
+
+    testNewInstruction(0);
+    testPushCode8(0x43); // inc ebx
+    testPushCode8(0xcd); testPushCode8(0x97); // TestEnd
+    while (context.codeIp < TEST_CODE_ADDRESS + 0x100) {
+        testPushCode8(0x90);
+    }
+    testPushCode8(0x47); // handler: inc edi
+    testRunCPU();
+    DecodedOp* entry = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    if (!entry || !entry->pfnJitCode) {
+        testFail("signal dispatch test requires a compiled guest block");
+        return;
+    }
+    context.process->sigActions[K_SIGUSR1].handlerAndSigAction = TEST_CODE_ADDRESS + 0x100;
+    context.process->sigActions[K_SIGUSR1].flags = 0;
+    thread->sigMask = signalBit;
+    cpu->jitSignalPending.store(0, std::memory_order_release);
+
+    auto dispatchGuest = [&]() {
+        cpu->eip.u32 = 0;
+        cpu->nextOp = entry;
+        cpu->run();
+    };
+    dispatchGuest();
+    if (cpu->reg[3].u32 != 2 || thread->inSignal) {
+        testFail("dispatch without a signal must execute guest code");
+    }
+
+    std::thread producer([thread]() { thread->queuePendingSignal(K_SIGUSR1); });
+    producer.join();
+    dispatchGuest();
+    dispatchGuest(); // The pending masked signal must survive a zero-latch dispatch.
+    if (cpu->reg[3].u32 != 4 || !(thread->pendingSignals & signalBit) ||
+            cpu->jitSignalPending.load(std::memory_order_acquire) || thread->inSignal) {
+        testFail("masked signal must remain queued while guest code runs");
+    }
+
+    auto checkHandler = [&]() {
+        if (cpu->getEipAddress() != TEST_CODE_ADDRESS + 0x100 ||
+                thread->inSignal != 1 || (thread->pendingSignals & signalBit)) {
+            testFail("pending signal must enter its handler before guest dispatch");
+            return;
+        }
+        cpu->reg[7].u32 = 0;
+        cpu->run();
+        if (cpu->reg[7].u32 != 1) {
+            testFail("pending signal handler must execute");
+        }
+        if (cpu->pop32() != SIG_RETURN_ADDRESS) {
+            testFail("pending signal handler return address");
+            return;
+        }
+        onExitSignal(cpu, nullptr);
+    };
+    thread->sigMask = 0;
+    dispatchGuest(); // Deliver even though the latch was cleared while masked.
+    checkHandler();
+    if (cpu->reg[3].u32 != 4) {
+        testFail("signal delivery must precede the interrupted guest instruction");
+    }
+
+    // Publish from another worker after run() has already checked signals.
+    // This fixes the interleaving without relying on a timing-sensitive race.
+    DecodedOp lateArrival;
+    lateArrival.runCount = JIT_RUN_COUNT + 1;
+    lateArrival.pfn = [](CPU* runningCpu, DecodedOp*) {
+        std::thread lateProducer([runningCpu]() {
+            runningCpu->thread->queuePendingSignal(K_SIGUSR1);
+        });
+        lateProducer.join();
+    };
+    cpu->eip.u32 = 0;
+    cpu->nextOp = &lateArrival;
+    cpu->run();
+    if (!cpu->jitSignalPending.load(std::memory_order_acquire) ||
+            !(thread->pendingSignals & signalBit)) {
+        testFail("signal arriving during dispatch must stay pending");
+    }
+    cpu->nextOp = entry;
+    cpu->run();
+    checkHandler();
+
+    thread->sigMask = oldSigMask;
+    context.process->sigActions[K_SIGUSR1] = oldAction;
+    cpu->nextOp = nullptr;
 #endif
 }
 

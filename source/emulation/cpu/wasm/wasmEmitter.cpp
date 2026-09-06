@@ -373,6 +373,16 @@ void WasmEmitter::appendBranchHintSection(std::vector<U8>& result) const {
     appendSection(result, WasmSection::Custom, content);
 }
 
+void WasmEmitter::setFunctionName(U32 funcIdx, const char* name) {
+    for (auto& entry : m_functionNames) {
+        if (entry.first == funcIdx) {
+            entry.second = name;
+            return;
+        }
+    }
+    m_functionNames.emplace_back(funcIdx, name);
+}
+
 void WasmEmitter::emitIf(WasmType blockType) {
     recordBranchHintIfNeeded();
     m_currentBody.push_back(WASM_IF);
@@ -474,6 +484,22 @@ std::vector<U8> WasmEmitter::finalize() {
         appendULEB128(codeContent, m_codeFuncCount);
         codeContent.insert(codeContent.end(), m_codeSection.begin(), m_codeSection.end());
         appendSection(result, WasmSection::Code, codeContent);
+    }
+
+    if (!m_functionNames.empty()) {
+        std::sort(m_functionNames.begin(), m_functionNames.end());
+        std::vector<U8> names;
+        appendULEB128(names, m_functionNames.size());
+        for (const auto& entry : m_functionNames) {
+            appendULEB128(names, entry.first);
+            appendStr(names, entry.second.c_str());
+        }
+        std::vector<U8> content;
+        appendStr(content, "name");
+        content.push_back(1); // function names subsection
+        appendULEB128(content, names.size());
+        content.insert(content.end(), names.begin(), names.end());
+        appendSection(result, WasmSection::Custom, content);
     }
 
     return result;

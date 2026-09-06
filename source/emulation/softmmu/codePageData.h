@@ -38,6 +38,9 @@ public:
 	~DecodedOpPageCache();
 	
 	DecodedOp* ops[K_PAGE_SIZE];
+#ifdef BOXEDWINE_JIT_X64
+    void** jitEntries = nullptr;
+#endif
 };
 
 typedef void (*OpCacheCallback)(U32 address, DecodedOp* op, void* pData);
@@ -46,8 +49,16 @@ class DecodedOpCache {
 public:
 	DecodedOpCache();
 	~DecodedOpCache();
+#ifdef BOXEDWINE_JIT_X64
+    void**** getJitPageGroups() const { return jitPageGroups; }
+    void** getJitEntryLocation(U32 address);
+#endif
 
-	DecodedOp* get(U32 address);
+	DecodedOp* get(U32 address) {
+		U32 pageIndex = address >> K_PAGE_SHIFT;
+		DecodedOpPageCache* page = pageData[pageIndex >> 10][pageIndex & 0x3ff];
+		return page ? page->ops[address & K_PAGE_MASK] : nullptr;
+	}
 	DecodedOp** getLocation(U32 address);
 	DecodedOp* getPreviousOpAndRemoveIfOverlapping(U32 address);
 	void remove(U32 address, U32 len, bool becauseOfWrite);
@@ -76,6 +87,11 @@ private:
 	DecodedOp* getPreviousOp(U32 address, U32* foundAddress, DecodedOpPageCache** foundPage);
 	DecodedOpPageCache* getPageCache(U32 pageIndex, bool create);
 	DecodedOpPageCache** pageData[0x400];
+#ifdef BOXEDWINE_JIT_X64
+    // 10 group bits, 10 page bits, then a 12-bit instruction-byte offset.
+    void**** jitPageGroups = nullptr;
+    void** emptyJitPageGroup[0x400] = {};
+#endif
 	DecodedOpPageCache* emptyPageCacheLevel1[0x400];
 	U8* getWriteCounts(U32 pageIndex, bool create);
 	U8** writeCounts[0x400];

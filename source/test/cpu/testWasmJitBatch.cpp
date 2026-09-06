@@ -24,6 +24,76 @@
 #endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
+void testWasmJitMtBoundedDispatch() {
+    testNewInstruction(0);
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    constexpr U32 blockCount = 96;
+    constexpr U32 blockBytes = 8;
+    std::vector<DecodedOp*> blocks;
+    for (U32 i = 0; i < blockCount; i++) {
+        testPushCode8(0x43); // inc ebx
+        testPushCode8(0xb8); testPushCode32((i + 1) * blockBytes); // mov eax,next
+        testPushCode8(0xff); testPushCode8(0xe0); // jmp eax: separate JIT blocks
+    }
+    testPushCode8(0xcd); testPushCode8(0x97);
+    for (U32 i = 0; i < blockCount; i++) {
+        U32 address = TEST_CODE_ADDRESS + i * blockBytes;
+        DecodedOp* op = cpu->getOp(address, 0);
+        startNewJIT(cpu, address, op);
+        if (!op->pfnJitCode || op->pfn != context.process->startJITOp) {
+            testFail("bounded dispatch requires compiled block entries");
+            return;
+        }
+        op->runCount = JIT_RUN_COUNT + 1;
+        blocks.push_back(op);
+    }
+    auto restart = [&]() {
+        cpu->eip.u32 = 0;
+        cpu->reg[3].u32 = 0;
+        cpu->nextOp = blocks[0];
+    };
+    restart();
+    cpu->run();
+    if (cpu->reg[3].u32 <= 1 || cpu->reg[3].u32 >= blockCount) {
+        testFail("MT dispatch must chain compiled blocks but return at a finite bound");
+    }
+    for (U32 i = 0; i < blockCount && (!cpu->nextOp || cpu->nextOp->inst != TestEnd); i++) {
+        cpu->run();
+    }
+    if (cpu->reg[3].u32 != blockCount || !cpu->nextOp || cpu->nextOp->inst != TestEnd) {
+        testFail("bounded dispatch must execute every guest block exactly once");
+    }
+
+    // Enter the compiled dispatcher directly so each stop condition is
+    // observed at the new boundary after the first guest block executes.
+    for (U32 stop = 0; stop < 7; stop++) {
+        restart();
+        switch (stop) {
+        case 0: cpu->yield = true; break;
+        case 1: context.thread->terminating = true; break;
+        case 2: context.process->terminated = true; break;
+        case 3: cpu->debugTrapActive = true; break;
+        case 4: context.thread->ptraceStopped.store(true, std::memory_order_release); break;
+        case 5: cpu->jitSignalPending.store(1, std::memory_order_release); break;
+        case 6: context.thread->pendingSignals = 1; break;
+        }
+        context.process->startJITOp(cpu, blocks[0]);
+        U32 executed = cpu->reg[3].u32;
+        cpu->yield = false;
+        context.thread->terminating = false;
+        context.process->terminated = false;
+        cpu->debugTrapActive = false;
+        context.thread->ptraceStopped.store(false, std::memory_order_release);
+        cpu->jitSignalPending.store(0, std::memory_order_release);
+        context.thread->pendingSignals = 0;
+        if (executed != 1) {
+            testFail("bounded dispatch ignored stop condition %u: executed %u blocks", stop, executed);
+        }
+    }
+    cpu->nextOp = nullptr;
+}
+
 void testWasmJitMtCpuHazardStateIsCold() {
     CPU* cpu = testContext().cpu;
     uintptr_t existingStateEnd = (uintptr_t)&cpu->big + sizeof(cpu->big) - 1;
@@ -66,12 +136,19 @@ void testWasmJitMtExecDetachPreservesSharedDecodedOps() {
 }
 #endif
 
-static std::vector<U8> makeMergeInput(S32 value, const char* memoryName = "memory") {
+static std::vector<U8> makeMergeInput(S32 value, const char* memoryName = "memory", const char* profileName = nullptr) {
     WasmEmitter emitter;
     U32 type = emitter.addFuncType({WasmType::I32, WasmType::I32}, {});
     emitter.addMemoryImport("env", memoryName);
+    if (profileName) {
+        U32 imported = emitter.addFunctionImport("env", "profile_noop", type);
+        emitter.setFunctionName(imported, "imported_helper");
+    }
     U32 function = emitter.addFunction(type);
     emitter.addExport("execute", function);
+    if (profileName) {
+        emitter.setFunctionName(function, profileName);
+    }
     emitter.beginFunction({});
     emitter.emitLocalGet(0);
     emitter.emitI32Const(value);
@@ -83,7 +160,7 @@ static std::vector<U8> makeMergeInput(S32 value, const char* memoryName = "memor
 EM_JS(int, test_run_merged_wasm, (const void* bytes, int size, int count, U32 output), {
     try {
         var module = new WebAssembly.Module(new Uint8Array(HEAPU8.buffer, bytes, size));
-        var instance = new WebAssembly.Instance(module, {env: {memory: wasmMemory}});
+        var instance = new WebAssembly.Instance(module, {env: {memory: wasmMemory, profile_noop: function() {}}});
         for (var i = 0; i < count; ++i) {
             var fn = instance.exports['b' + i];
             if (!fn) {
@@ -96,6 +173,37 @@ EM_JS(int, test_run_merged_wasm, (const void* bytes, int size, int count, U32 ou
         console.error('test_run_merged_wasm failed:', e);
         return 0;
     }
+});
+
+EM_JS(int, test_merged_wasm_names, (const void* bytes, int size, const char* first, const char* second), {
+    var module = new WebAssembly.Module(new Uint8Array(HEAPU8.buffer, bytes, size));
+    var sections = WebAssembly.Module.customSections(module, 'name');
+    if (sections.length !== 1) return 0;
+    var data = new Uint8Array(sections[0]);
+    var pos = 0;
+    function uleb() {
+        var result = 0, shift = 0, byte;
+        do {
+            if (pos >= data.length || shift >= 35) throw new Error('bad name ULEB');
+            byte = data[pos++];
+            result |= (byte & 127) << shift;
+            shift += 7;
+        } while (byte & 128);
+        return result;
+    }
+    if (data[pos++] !== 1) return 0;
+    var subsectionSize = uleb();
+    if (subsectionSize !== data.length - pos || uleb() !== 2) return 0;
+    var expected = [UTF8ToString(first), UTF8ToString(second)];
+    for (var i = 0; i < 2; ++i) {
+        // One shared function import precedes the two defined functions.
+        if (uleb() !== i + 1) return 0;
+        var length = uleb();
+        var name = new TextDecoder().decode(data.subarray(pos, pos + length));
+        pos += length;
+        if (name !== expected[i]) return 0;
+    }
+    return pos === data.length ? 1 : 0;
 });
 
 void testWasmJitModuleMerger() {
@@ -114,6 +222,18 @@ void testWasmJitModuleMerger() {
     }
     if (output[0] != 0x11223344 || output[1] != 0x55667788) {
         testFail("wasm runtime merger exports execute distinct bodies");
+    }
+
+    const char* firstName = "x86:test:file_00001000:pc_00401000";
+    std::string secondName = "x86:" + std::string(140, 'x') + ":pc_00402000";
+    std::vector<U8> namedFirst = makeMergeInput(0x11223344, "memory", firstName);
+    std::vector<U8> namedSecond = makeMergeInput(0x55667788, "memory", secondName.c_str());
+    inputs = {{&namedFirst}, {&namedSecond}};
+    if (!wasmJitMergeModules(inputs, merged, error) ||
+        !test_merged_wasm_names(merged.data(), (int)merged.size(), firstName, secondName.c_str()) ||
+        !test_run_merged_wasm(merged.data(), (int)merged.size(), 2, (U32)(uintptr_t)output) ||
+        output[0] != 0x11223344 || output[1] != 0x55667788) {
+        testFail("wasm runtime merger preserves function names with remapped indices and executable bodies");
     }
 
     std::vector<U8> incompatible = makeMergeInput(3, "otherMemory");

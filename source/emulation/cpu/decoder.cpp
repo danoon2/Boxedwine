@@ -3870,9 +3870,10 @@ public:
         fetchImm(data, op);
         if (op->imm==0x80)
             op->inst = Int80;
-        else if (op->imm==0x99)
+        else if (op->imm==0x99) {
             op->inst = Int99;
-        else if (op->imm == 0x9a)
+            op->imm = data->fetch32();
+        } else if (op->imm == 0x9a)
             op->inst = Int9A;
         else if (op->imm == 0x9b)
             op->inst = Int9B;
@@ -6228,6 +6229,9 @@ void DecodedOp::reset() {
     this->runCount = 0;
     this->jitLen = 0;
     this->pfnJitCode = nullptr;
+#ifdef BOXEDWINE_JIT_X64
+    jitEntrySlot = nullptr;
+#endif
     blockStart = nullptr;
     blockOpCount = 0;
     blockLen = 0;

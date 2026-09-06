@@ -119,6 +119,7 @@ public:
     bool forceRelativeMouse = false;
     bool cacheReads = false;
     bool disableWasmJitForWrittenCode = false;
+    bool disableLinearMemory = false;
 
 private:
     bool workingDirSet = false;

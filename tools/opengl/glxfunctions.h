@@ -47,12 +47,20 @@ const char* glXQueryExtensionsString(Display* dpy, int screen) {
 	CALL_2_R(kXQueryExtensionsString, dpy, screen);
 }
 
+static __attribute__((noinline, noclone)) const char* glXQueryServerStringHost(Display* dpy, int screen, int name) {
+	CALL_3_R(kXQueryServerString, dpy, screen, name);
+}
+
 const char* glXQueryServerString(Display* dpy, int screen, int name) {
 	if (name == GLX_VERSION)
 		return "1.3";
 	if (name == GLX_VENDOR)
 		return "BoxedWine GL";
-	CALL_3_R(kXQueryServerString, dpy, screen, name);
+	return glXQueryServerStringHost(dpy, screen, name);
+}
+
+static __attribute__((noinline, noclone)) const char* glXGetClientStringHost(Display* dpy, int name) {
+	CALL_2_R(kXGetClientString, dpy, name);
 }
 
 const char* glXGetClientString(Display* dpy, int name) {
@@ -60,7 +68,7 @@ const char* glXGetClientString(Display* dpy, int name) {
 		return "1.3";
 	if (name == GLX_VENDOR)
 		return "BoxedWine GL";
-	CALL_2_R(kXGetClientString, dpy, name);
+	return glXGetClientStringHost(dpy, name);
 }
 
 
