@@ -346,6 +346,13 @@ public:
     bool visible = false;
     XDrawablePtr drawable;
     U32 forceForegroundUntil = 0;
+#ifndef __EMSCRIPTEN__
+    U64 nextSwapTime = 0;
+    U64 swapLogStart = 0;
+    U32 swapLogFrames = 0;
+    bool swapIntervalWarning = false;
+    void paceSwap(S32 interval);
+#endif
 
     void destroy();
     void showWindow(bool show);
@@ -664,6 +671,10 @@ U32 KOpenGLSdl::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFo
     return result;
 #else
     SDLGlWindowPtr window;
+#ifdef BOXEDWINE_MSVC
+    SDL_Window* previousWindow = SDL_GL_GetCurrentWindow();
+    SDL_GLContext previousContext = SDL_GL_GetCurrentContext();
+#endif
     
     KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
         window = SDLGlWindow::createWindow(pixelFormat, major, minor, profile, flags, 100, 100, nullptr);
@@ -696,12 +707,20 @@ U32 KOpenGLSdl::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFo
 
     if (needToRestore) {
         SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
+#ifndef BOXEDWINE_MSVC
         if (restoreContext) {
             SDL_GL_MakeCurrent(window->window, restoreContext->context);
         } else {
             SDL_GL_MakeCurrent(window->window, nullptr);
         }
+#endif
     }
+#ifdef BOXEDWINE_MSVC
+    // SDL_GL_CreateContext makes the temporary window current. Detach it before
+    // destroying that window, otherwise SDL can retain a dangling current-window
+    // pointer and skip binding the real drawable when its allocation is reused.
+    SDL_GL_MakeCurrent(previousContext ? previousWindow : nullptr, previousContext);
+#endif
     window->destroy(); // will run on main thread (thus block this thread for a bit)
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
@@ -795,7 +814,70 @@ void KOpenGLSdl::glResizeWindow(const std::shared_ptr<XWindow>& wnd) {
     }
 }
 
+#ifndef __EMSCRIPTEN__
+static U32 eglVsyncFps() {
+    static U32 fps = []() -> U32 {
+        const char* value = getenv("BOXEDWINE_EGL_VSYNC_FPS");
+        if (value && *value) {
+            char* end = nullptr;
+            long parsed = strtol(value, &end, 10);
+            if (!*end && parsed >= 0 && parsed <= 1000) {
+                return (U32)parsed;
+            }
+            kwarn("Invalid BOXEDWINE_EGL_VSYNC_FPS; using 60");
+        }
+        // Old games can advance their simulation once per synchronized frame.
+        // Host VSync alone would let them run at 240 FPS on a 240 Hz monitor.
+        return 60;
+    }();
+    return fps;
+}
+
+void SDLGlWindow::paceSwap(S32 interval) {
+    U32 fps = eglVsyncFps();
+    U64 now = KSystem::getMicroCounter();
+    if (interval > 0 && fps) {
+        U64 period = (1000000 + fps - 1) / fps;
+        if (nextSwapTime && now < nextSwapTime) {
+            while (now < nextSwapTime) {
+                // Include rendering and the host swap in the frame budget.
+                // Sleep without spinning; carry small sleep overruns forward
+                // so millisecond timer rounding doesn't reduce 60 FPS to 56.
+                SDL_Delay((U32)((nextSwapTime - now + 999) / 1000));
+                now = KSystem::getMicroCounter();
+            }
+            nextSwapTime = now - nextSwapTime < period ? nextSwapTime + period : now + period;
+        } else {
+            // A slow render or a paused debugger must not cause catch-up swaps.
+            nextSwapTime = now + period;
+        }
+    } else {
+        nextSwapTime = 0;
+    }
+
+    static bool logSwaps = getenv("BOXEDWINE_EGL_SWAP_LOG") != nullptr;
+    if (logSwaps) {
+        if (!swapLogStart) {
+            swapLogStart = now;
+        } else {
+            ++swapLogFrames;
+            if (now - swapLogStart >= 2000000) {
+                klog_fmt("EGL swaps: drawable=%u interval=%d cap=%u fps=%.2f",
+                    drawable ? drawable->id : 0, interval, fps,
+                    swapLogFrames * 1000000.0 / (now - swapLogStart));
+                swapLogStart = now;
+                swapLogFrames = 0;
+            }
+        }
+    }
+}
+#endif
+
 void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>& d) {
+    if (d->eglSwapInterval >= 0 && !d->isWindow) {
+        if (pglFlush) pglFlush();
+        return;
+    }
     if (d->isPBuffer) {
         pglFlush();
         return;
@@ -840,13 +922,26 @@ void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>
             context = contextsById.get(thread->currentContext);
         }
         if (context) {
+            if (d->eglSwapInterval >= 0) {
+                macOpenGLSetSwapInterval(context->context, d->eglSwapInterval);
+            }
             macOpenGLSwapBuffers(context->context);
         }
 #else
+        if (d->eglSwapInterval >= 0 && SDL_GL_GetSwapInterval() != d->eglSwapInterval &&
+                SDL_GL_SetSwapInterval(d->eglSwapInterval) != 0 && !window->swapIntervalWarning) {
+            kwarn_fmt("EGL native swap interval unavailable: %s", SDL_GetError());
+            window->swapIntervalWarning = true;
+        }
         if (pglFlush) {
             pglFlush();
         }
         SDL_GL_SwapWindow(window->window);
+#endif
+#ifndef __EMSCRIPTEN__
+        if (d->eglSwapInterval >= 0) {
+            window->paceSwap(d->eglSwapInterval);
+        }
 #endif
         presented = true;
 #ifdef __EMSCRIPTEN__
@@ -1137,6 +1232,9 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
                 sdlWindowById.set(d->id, window);
             }
         }
+#ifdef __EMSCRIPTEN__
+        bool createdContext = !context->context;
+#endif
         if (!context->context) {
 #ifdef __EMSCRIPTEN__
             XWindowPtr drawableWindow;
@@ -1220,6 +1318,18 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
 #endif
         if (result) {
             loadSdlExtensions();
+#ifdef __EMSCRIPTEN__
+            if (createdContext && !context->webglContext) {
+                // SDL's renderer can leave attributes enabled on the canvas's
+                // default VAO before the first guest GL context is created.
+                // A new context must start with all vertex arrays disabled.
+                GLint attributeCount = 0;
+                pglGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &attributeCount);
+                for (GLint i = 0; i < attributeCount; ++i) {
+                    ext_glDisableVertexAttribArray(i);
+                }
+            }
+#endif
 #ifdef _DEBUG
             enableDebug();
 #endif

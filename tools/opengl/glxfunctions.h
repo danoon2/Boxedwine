@@ -136,7 +136,8 @@ static int boxedwineIsGlProcAddressAvailable(const char* procName) {
 	uintptr_t result;
 	if (!procName || procName[0] != 'g' || procName[1] != 'l' || procName[2] == 'X')
 		return 1;
-	__asm__ volatile("push %2\n\tpush %1\n\tint $0x99\n\taddl $8, %%esp":"=a"(result):"i"(kGlProcAddressAvailable), "g"(procName):"memory");
+	// The helper has a C frame: supply one argument and a dummy return address.
+	__asm__ volatile("push %2\n\tpush $0\n\tint $0x99\n\t.long %c1\n\taddl $8, %%esp":"=a"(result):"i"(kGlProcAddressAvailable), "g"(procName):"memory", "cc");
 	return result != 0;
 }
 

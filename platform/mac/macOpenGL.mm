@@ -144,6 +144,16 @@ void macOpenGLSwapBuffers(void* context) {
     }
 }
 
+void macOpenGLSetSwapInterval(void* context, int interval) {
+    if (!context) {
+        return;
+    }
+    @autoreleasepool {
+        GLint value = interval;
+        CGLSetParameter([getContext(context) CGLContextObj], kCGLCPSwapInterval, &value);
+    }
+}
+
 void macOpenGLUpdateContext(void* context) {
     if (!context) {
         return;

@@ -328,6 +328,15 @@ static bool isOpenGLProcAddressAvailable(const char* name) {
 #define BOXEDWINE_GL_PROC_AVAILABLE(proc) ((proc) != nullptr)
 #endif
 
+    // These two core functions have backend callbacks rather than generated
+    // pgl entries, but must still be discoverable through EGL and GLX.
+    if (!strcmp(name, "glFinish")) {
+        return BOXEDWINE_GL_PROC_AVAILABLE(int99Callback && Finish < int99CallbackSize ? int99Callback[Finish] : nullptr);
+    }
+    if (!strcmp(name, "glFlush")) {
+        return BOXEDWINE_GL_PROC_AVAILABLE(int99Callback && Flush < int99CallbackSize ? int99Callback[Flush] : nullptr);
+    }
+
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) if (!strcmp(name, "gl" #func)) return BOXEDWINE_GL_PROC_AVAILABLE(pgl##func);
 
@@ -349,6 +358,11 @@ static bool isOpenGLProcAddressAvailable(const char* name) {
 }
 
 void glcommon_glProcAddressAvailable(CPU* cpu) {
+#ifndef __EMSCRIPTEN__
+    // Wine resolves its core GL dispatch table before creating a context.
+    // Initialize the native backend so those cached entry points are populated.
+    KNativeSystem::getOpenGL();
+#endif
     EAX = isOpenGLProcAddressAvailable(marshalsz(cpu, ARG1)) ? 1 : 0;
 }
 

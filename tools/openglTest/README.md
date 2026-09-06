@@ -49,6 +49,22 @@ cd tools/openglTest
 bash build_egl_real_es_context_test.sh
 ```
 
+This rebuilds and stages `libEGL.so.1`, `libGLESv2.so.2`, and `libGL.so.1`
+beside the test. It needs 32-bit gcc plus EGL/GLES2 and desktop GL headers.
+The test calls the actual libraries, including `eglGetProcAddress`, and repeats
+EGL/GL callbacks past the JIT warmup threshold.
+
+Check the guest calling convention natively in WSL, without a graphics driver:
+
+```bash
+bash tools/openglTest/run_egl_calling_convention_test.sh
+```
+
+This intercepts `int99` in the built 32-bit libraries and checks callback
+indices, argument slots, return values, extension wrappers, 64-bit timeouts,
+float arguments, and EGL/GLX proc-address lookup. Expected result:
+`PASS EGL/GLES calling convention (20 callbacks)`.
+
 ## Run
 
 ```powershell
@@ -175,8 +191,68 @@ mutation cannot produce a false pass.
 Run the EGL ES context test directly as a Linux guest program:
 
 ```powershell
-project\msvc\BoxedWine\Release\BoxedWine.exe `
-  -root "C:\Boxedwine\tools\openglTest\Win32\Release" `
-  -zip "C:\Users\james\AppData\Roaming\Boxedwine\FileSystems2\TinyCore15Wine11.0.zip" `
-  /EGLRealESContextTest
+New-Item -ItemType Directory -Force tmp\egl-validation\root | Out-Null
+project\msvc\BoxedWine\x64\Release\BoxedWine.exe `
+  -root "$PWD\tmp\egl-validation\root" `
+  -zip "$env:APPDATA\Boxedwine\FileSystems2\TinyCore15Wine11.0.zip" `
+  -mount "$PWD\tools\openglTest\Win32\Release" /egl-test `
+  -env LD_LIBRARY_PATH=/egl-test/lib `
+  /egl-test/EGLRealESContextTest
 ```
+
+Expected result: `PASS real ES pbuffer context, VBO draw, and texture sample`.
+Set the host environment variable `BOXEDWINE_GL_INT99_SLOW=1` to repeat through
+the generic native JIT interrupt handler; remove it afterward.
+
+After building the desired Emscripten target, run the same EGL guest test in
+headless Chrome:
+
+```powershell
+python tools\openglTest\runEGLBrowserTest.py --build-mode st
+```
+
+`--build-mode` accepts `st`, `mt`, `st-jit`, and `mt-jit`. Use `--filesystem`
+to select another guest filesystem ZIP. Artifacts go under `tmp/egl-validation`
+by default, with a separate browser profile per run. The guest test checks
+core GL function lookup before context creation (matching Wine startup),
+initial vertex-array state, and that creating a secondary context preserves the
+current context and its GL state, in addition to rendering and ABI checks.
+
+The native desktop GL resize regression covers an EGL/X11 window shrinking and
+growing before its first presentation, then resizing again while visible:
+
+```powershell
+wsl -e bash -lc 'cd /mnt/c/Boxedwine2/tools/openglTest && bash build_egl_window_resize_test.sh'
+project\msvc\BoxedWine\x64\Release\BoxedWine.exe `
+  -root "$PWD\tmp\egl-validation\root" `
+  -zip "$env:APPDATA\Boxedwine\FileSystems2\TinyCore15Wine11.0.zip" `
+  -mount "$PWD\tools\openglTest\Win32\Release" /egl-test `
+  -env LD_LIBRARY_PATH=/egl-test/lib `
+  /egl-test/EGLWindowResizeTest
+```
+
+It measures rendered sample counts to check the actual native framebuffer size,
+checks `eglQuerySurface`, and verifies that resizing preserves the GL viewport.
+Expected: `PASS EGL window resize before and after first presentation`.
+This test requires desktop GL occlusion queries and is not a WebGL test.
+
+The same build script also builds `EGLSwapIntervalTest`. Run it with the same
+native command, replacing `/egl-test/EGLWindowResizeTest` with
+`/egl-test/EGLSwapIntervalTest`. It measures actual swap durations, checks the
+default interval of one, disabling VSync, clamping to the advertised range,
+independent surface state across context switches, errors, and unpaced pbuffers.
+Expected: `PASS EGL swap interval pacing, clamping, surface state, and errors`.
+
+Native SDL EGL windows honor the guest's swap interval. Synchronized windows
+also default to a 60 FPS compatibility limit, since some old games advance
+animation once per frame even on a 240 Hz host display. Interval zero disables
+both native VSync and this limit. The host environment variable
+`BOXEDWINE_EGL_VSYNC_FPS` overrides the limit (1–1000), or `0` uses only the host's
+VSync. The physical monitor mode and the reported XRandR refresh rate are unchanged.
+This pacing applies to native EGL windows; browser presentation is unchanged.
+
+Set host `BOXEDWINE_EGL_SWAP_LOG=1` to log measured FPS every two seconds.
+For a timing regression on a 60 Hz host, set host `BOXEDWINE_EGL_VSYNC_FPS=20`
+and add guest `-env EGL_TEST_VSYNC_FPS=20` to the command above. The lower limit
+lets the test distinguish VSync on from off even when the desktop compositor
+limits unsynchronized swaps. Run timing tests without other heavy workloads.

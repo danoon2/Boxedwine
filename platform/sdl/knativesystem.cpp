@@ -132,7 +132,9 @@ void KNativeSystem::changeScreenSize(U32 cx, U32 cy) {
 }
 
 void KNativeSystem::moveWindow(const XWindowPtr& wnd) {
-    if (opengl && opengl->isActive()) {
+    // Wine can resize an EGL drawable before its first swap makes it visible.
+    // The backend checks whether this X window has an existing GL window.
+    if (opengl) {
         opengl->glResizeWindow(wnd);
     }
 }

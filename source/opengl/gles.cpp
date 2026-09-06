@@ -21,6 +21,12 @@
 #define EGL_FALSE 0
 #define EGL_TRUE 1
 #define EGL_SUCCESS 0x3000
+#define EGL_BAD_CONTEXT 0x3006
+#define EGL_BAD_DISPLAY 0x3008
+#define EGL_BAD_PARAMETER 0x300C
+#define EGL_BAD_SURFACE 0x300D
+#define EGL_DRAW 0x3059
+#define EGL_READ 0x305A
 #define EGL_DONT_CARE 0xFFFFFFFF
 #define EGL_VENDOR 0x3053
 #define EGL_VERSION 0x3054
@@ -467,6 +473,7 @@ static void eglCreateWindowSurface(CPU* cpu, U32 config, U32 nativeWindow) {
     }
     eglLastWindowSurfaceConfig = config;
     win->isOpenGL = true;
+    win->eglSwapInterval = 1;
     KNativeSystem::getOpenGL()->glCreateWindow(thread, win, cfg);
     EAX = win->id;
 }
@@ -501,6 +508,7 @@ void gl_common_EglCreatePbufferSurface(CPU* cpu) {
     }
     VisualPtr visual = server->getVisual(cfg->visualId);
     XPixmapPtr pixmap = server->createNewPixmap(width, height, cfg->glPixelFormat->depth, visual);
+    if (pixmap) pixmap->eglSwapInterval = 1;
     EAX = pixmap ? pixmap->id : 0;
 }
 
@@ -510,6 +518,7 @@ void gl_common_EglDestroySurface(CPU* cpu) {
     if (win) {
         KNativeSystem::getOpenGL()->glDestroyWindow(cpu->thread, win);
         win->isOpenGL = false;
+        win->eglSwapInterval = -1;
     } else {
         server->removePixmap(ARG2);
     }
@@ -540,8 +549,12 @@ void gl_common_EglMakeCurrent(CPU* cpu) {
             return;
         }
     }
-    thread->currentContext = ctx;
     EAX = KNativeSystem::getOpenGL()->glMakeCurrent(thread, d, ctx) ? EGL_TRUE : EGL_FALSE;
+    if (EAX) {
+        thread->currentContext = ctx;
+        thread->currentDrawable = draw;
+        thread->currentReadDrawable = read;
+    }
     if (eglLog()) {
 #ifdef __EMSCRIPTEN__
         klog_fmt("boxedwine EGL: eglMakeCurrent draw=%u read=%u ctx=%u drawable=%u -> %u webgl=%d",
@@ -563,6 +576,26 @@ void gl_common_EglSwapBuffers(CPU* cpu) {
 }
 
 void gl_common_EglSwapInterval(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    if (ARG1 != 1) {
+        thread->eglLastError = EGL_BAD_DISPLAY;
+        EAX = EGL_FALSE;
+        return;
+    }
+    if (!thread->currentContext) {
+        thread->eglLastError = EGL_BAD_CONTEXT;
+        EAX = EGL_FALSE;
+        return;
+    }
+    XDrawablePtr d = XServer::getServer()->getDrawable(thread->currentDrawable);
+    if (!d) {
+        thread->eglLastError = EGL_BAD_SURFACE;
+        EAX = EGL_FALSE;
+        return;
+    }
+    // EGL clamps to the config's advertised [0, 1] range. The interval belongs
+    // to the draw surface and takes effect at its next swap, not at bind time.
+    d->eglSwapInterval = (S32)ARG2 > 0 ? 1 : 0;
     EAX = EGL_TRUE;
 }
 
@@ -571,7 +604,14 @@ void gl_common_EglGetCurrentContext(CPU* cpu) {
 }
 
 void gl_common_EglGetCurrentSurface(CPU* cpu) {
-    EAX = 0;
+    if (ARG1 == EGL_DRAW) {
+        EAX = cpu->thread->currentDrawable;
+    } else if (ARG1 == EGL_READ) {
+        EAX = cpu->thread->currentReadDrawable;
+    } else {
+        cpu->thread->eglLastError = EGL_BAD_PARAMETER;
+        EAX = 0;
+    }
 }
 
 void gl_common_EglGetCurrentDisplay(CPU* cpu) {
@@ -599,12 +639,18 @@ void gl_common_EglQuerySurface(CPU* cpu) {
 }
 
 void gl_common_EglGetError(CPU* cpu) {
-    EAX = EGL_SUCCESS;
+    EAX = cpu->thread->eglLastError;
+    cpu->thread->eglLastError = EGL_SUCCESS;
 }
 
 void gl_common_EglReleaseThread(CPU* cpu) {
     EAX = KNativeSystem::getOpenGL()->glMakeCurrent(cpu->thread, nullptr, 0) ? EGL_TRUE : EGL_FALSE;
-    cpu->thread->currentContext = 0;
+    if (EAX) {
+        cpu->thread->currentContext = 0;
+        cpu->thread->currentDrawable = 0;
+        cpu->thread->currentReadDrawable = 0;
+        cpu->thread->eglLastError = EGL_SUCCESS;
+    }
 }
 
 void gl_common_EglWaitGL(CPU* cpu) {
