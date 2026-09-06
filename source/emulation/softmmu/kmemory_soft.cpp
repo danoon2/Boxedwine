@@ -318,7 +318,7 @@ void KMemoryData::addCallback(OpCallback func) {
 // don't need to add a mutex, memory->mutex should be locked when call except for construction and execv (which should only have 1 thread)
 void KMemoryData::allocPages(KThread* thread, U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const std::shared_ptr<MappedFile>& mappedFile, const RamPage* ramPages) {
 #ifdef _DEBUG
-    if (page + pageCount >= K_NUMBER_OF_PAGES) {
+    if ((U64)page + pageCount > K_NUMBER_OF_PAGES) {
         kpanic("KMemoryData::allocPages page out of bound");
     }
     if (mappedFile && ramPages) {

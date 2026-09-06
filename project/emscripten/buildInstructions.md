@@ -27,6 +27,17 @@ node server.mjs <port number>
 
 alternatively make sure your web server returns COEP, COOP headers
 
+## WASM JIT cache compatibility
+
+The current cache version is `v6`. Record new cache ZIPs with this build;
+`v5` modules embed an older CPU layout and are rejected. Keep the cache version
+in `boxedwine-shell.js`, `jitWasmCodeGen.cpp`, and the offline cache pipeline
+in sync whenever generated modules become incompatible with the runtime.
+
+Run `node testJitCacheVersion.mjs` to check old-cache rejection, current-cache
+imports in ST/MT loaders, and flat-to-grouped pipeline round trips. The test
+uses `binaryen_js.js` from this directory, or accepts its path as an argument.
+
 ## Profiling the WASM JIT
 
 Build a clean checkout with `make multiThreadedJit WASM_PROFILING=1`

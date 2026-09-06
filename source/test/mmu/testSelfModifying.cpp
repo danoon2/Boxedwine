@@ -507,6 +507,77 @@ void testLinearMemoryFileFirstTouches() {
 #endif
 }
 
+void testLinearMemoryWraparound() {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    const U32 groupBytes = ramPageLinearMemoryPageCount() * K_PAGE_SIZE;
+    const U32 highAddress = 0U - groupBytes;
+    constexpr U32 iterations = 1000;
+
+    // Exercise scalar loads/stores, read-modify-write, and the widest native
+    // loads/stores. Map complete host-page groups so the fault comes from the
+    // end of the aperture, not an unmapped guest page in a partial group.
+    for (U32 variant = 0; variant < 5; variant++) {
+        newInstruction(0);
+        U32 flags = K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS;
+        // The unrounded length must not overflow mmap's 32-bit address check.
+        if (testMemory->mmap(testContext().thread, highAddress, groupBytes - 1,
+                K_PROT_READ | K_PROT_WRITE, flags, -1, 0) != highAddress ||
+            testMemory->mmap(testContext().thread, 0, groupBytes,
+                K_PROT_READ | K_PROT_WRITE, flags, -1, 0) != 0) {
+            failed("linear memory wraparound mmap failed");
+            return;
+        }
+        testMemory->memset(highAddress, 0, groupBytes);
+        testMemory->memset(0, 0, groupBytes);
+        const U32 width = variant < 3 ? 4 : 16;
+        const U32 address = 0U - width / 2;
+        for (U32 i = 0; i < width; i++) {
+            testMemory->writeb(address + i, 0x20 + i);
+            reinterpret_cast<U8*>(&cpu->xmm[0])[i] = 0x80 + i;
+        }
+        cpu->reg[0].u32 = 0x83828180;
+        cpu->reg[1].u32 = iterations;
+
+        CodeHolder code;
+        initCode(code);
+        Assembler a(&code);
+        Label loop = a.new_label();
+        check(a.bind(loop), "bind wraparound loop");
+        U32 offset = address - TEST_HEAP_ADDRESS;
+        switch (variant) {
+        case 0: check(a.mov(eax, dword_ptr(offset)), "wraparound load"); break;
+        case 1: check(a.mov(dword_ptr(offset), eax), "wraparound store"); break;
+        case 2: check(a.add(dword_ptr(offset), 1), "wraparound add"); break;
+        case 3: check(a.movdqu(xmm0, xmmword_ptr(offset)), "wraparound vector load"); break;
+        case 4: check(a.movdqu(xmmword_ptr(offset), xmm0), "wraparound vector store"); break;
+        }
+        check(a.dec(ecx), "wraparound loop count");
+        check(a.jnz(loop), "wraparound loop branch");
+        pushGeneratedCode(code);
+        runTestCPU();
+
+        if (variant == 0) {
+            verifyReg32(0, 0x23222120, "linear memory wraparound load");
+        } else if (variant == 2) {
+            if (testMemory->readd(address) != 0x23222120 + iterations) {
+                failed("linear memory wraparound add was not applied exactly once per iteration");
+            }
+        } else {
+            for (U32 i = 0; i < width; i++) {
+                U8 actual = variant == 3 ? reinterpret_cast<U8*>(&cpu->xmm[0])[i] : testMemory->readb(address + i);
+                U8 expected = (variant == 3 ? 0x20 : 0x80) + i;
+                if (actual != expected) {
+                    failed("linear memory wraparound variant %u byte %u: expected %x, got %x",
+                        variant, i, expected, actual);
+                }
+            }
+        }
+        testMemory->unmap(highAddress, groupBytes);
+        testMemory->unmap(0, groupBytes);
+    }
+#endif
+}
+
 void testJitMemoryReadOperands() {
 #if defined(BOXEDWINE_WASM_JIT) || ((defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)) && defined(BOXEDWINE_HOST_EXCEPTIONS))
     constexpr U32 targetAddress = 0x20000000;

@@ -7,7 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const WASM_MAGIC = Buffer.from([0x00, 0x61, 0x73, 0x6d]);
-const CACHE_NAME_RE = /^v5-([0-9a-f]{8})-([0-9a-f]{8})\.wasm$/i;
+const CACHE_NAME_RE = /^v6-([0-9a-f]{8})-([0-9a-f]{8})\.wasm$/i;
 const GROUPED_MANIFEST = 'boxedwine-jit-grouped-manifest.json';
 const PROFILE_NAME = 'boxedwine-jit-profile.txt';
 
@@ -31,7 +31,7 @@ Options:
   --binaryen-js PATH       Optimize wasm modules with Binaryen JS/WASM.
                            Defaults to ./binaryen_js.js if present.
   --flat                   Binaryen-optimize the per-block modules and re-emit
-                           a flat cache zip (same v5-*.wasm layout + manifest),
+                           a flat cache zip (same v6-*.wasm layout + manifest),
                            skipping grouping, direct-call rewriting and profile
                            split hints. Use this as the ungrouped baseline;
                            both flat and grouped output remain per-build, so
@@ -60,7 +60,7 @@ Produces the current BoxedWine wasm JIT merged grouped-cache format:
   groups/group-XXXX.wasm
   boxedwine-jit-grouped-manifest.json
 
-The input must contain v5 cache module names and boxedwine-jit-manifest.json.`);
+The input must contain v6 cache module names and boxedwine-jit-manifest.json.`);
 }
 
 function parseArgs(argv) {
@@ -1199,8 +1199,8 @@ async function main() {
   const manifest = inputCache.manifest;
   const entries = inputCache.entries;
   const embeddedProfileText = inputCache.profileText;
-  if (manifest.cacheVersion !== 'v5') {
-    throw new Error(`Input cache version ${manifest.cacheVersion || 'unknown'} is not v5; record a new cache with this build`);
+  if (manifest.cacheVersion !== 'v6') {
+    throw new Error(`Input cache version ${manifest.cacheVersion || 'unknown'} is not v6; record a new cache with this build`);
   }
   const runtime = manifest.runtime;
   if (!runtime?.cpu || !runtime?.scheduler ||
@@ -1249,6 +1249,7 @@ async function main() {
     }));
     const flatManifest = {
       version: 1,
+      cacheVersion: 'v6',
       generatedAt: new Date().toISOString(),
       entryCount: entries.length,
       runtime: manifest.runtime,
@@ -1387,7 +1388,7 @@ async function main() {
   const groupedManifest = {
     version: 2,
     format: 'boxedwine-wasm-jit-grouped-cache',
-    cacheVersion: 'v5',
+    cacheVersion: 'v6',
     mt: isMtInput,
     source: {
       inputZip: opts.inputZip,

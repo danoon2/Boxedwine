@@ -439,6 +439,14 @@ U64 ramPageLinearMemoryApertureSize() {
     return (U64)1 << 32;
 }
 
+static U64 getLinearMemoryReservationSize() {
+    // Native JIT accesses may span the end of the 32-bit guest address space.
+    // Keep a protected host page after the aperture so those accesses fault
+    // into the checked MMU path instead of reaching an unrelated host mapping.
+    return ramPageLinearMemoryApertureSize() +
+        ((U64)Platform::getPageAllocationGranularity() << K_PAGE_SHIFT);
+}
+
 static U64 getLinearMemoryDataSize(U64 dataSize) {
 #if (defined(__linux__) || defined(__APPLE__)) && (defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8))
     U64 pageSize = (U64)sysconf(_SC_PAGESIZE);
@@ -454,7 +462,7 @@ U8* ramPageReserveLinearMemoryData(U64 dataSize, U8** linearMemoryAddress) {
         return nullptr;
     }
     U64 prefixSize = getLinearMemoryDataSize(dataSize);
-    U64 totalSize = prefixSize + ramPageLinearMemoryApertureSize();
+    U64 totalSize = prefixSize + getLinearMemoryReservationSize();
     U8* result = (U8*)mmap(nullptr, totalSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
     if (result == MAP_FAILED) {
         kwarn_fmt("linear memory: adjacent reservation failed, using legacy MMU: %s", strerror(errno));
@@ -477,7 +485,7 @@ void ramPageReleaseLinearMemoryData(U8* data, U64 dataSize) {
 #if (defined(__linux__) || defined(__APPLE__)) && (defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8))
     if (data) {
         U64 prefixSize = getLinearMemoryDataSize(dataSize);
-        munmap(data, prefixSize + ramPageLinearMemoryApertureSize());
+        munmap(data, prefixSize + getLinearMemoryReservationSize());
     }
 #endif
 }
@@ -487,7 +495,7 @@ U8* ramPageReserveLinearMemory() {
     if (!ramPageUseLinearMemory()) {
         return nullptr;
     }
-    U8* result = (U8*)mmap(nullptr, ramPageLinearMemoryApertureSize(), PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+    U8* result = (U8*)mmap(nullptr, getLinearMemoryReservationSize(), PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
     if (result == MAP_FAILED) {
         kwarn_fmt("linear memory: aperture reservation failed, using legacy MMU: %s", strerror(errno));
         return nullptr;
@@ -497,7 +505,7 @@ U8* ramPageReserveLinearMemory() {
     if (!ramPageUseLinearMemory()) {
         return nullptr;
     }
-    U8* result = reserveWindowsLinearMemory(ramPageLinearMemoryApertureSize());
+    U8* result = reserveWindowsLinearMemory(getLinearMemoryReservationSize());
     if (!result) {
         kwarn_fmt("linear memory: Windows aperture reservation failed, using legacy MMU: %u", GetLastError());
     }
@@ -510,11 +518,11 @@ U8* ramPageReserveLinearMemory() {
 void ramPageReleaseLinearMemory(U8* address) {
 #if (defined(__linux__) || defined(__APPLE__)) && (defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8))
     if (address) {
-        munmap(address, ramPageLinearMemoryApertureSize());
+        munmap(address, getLinearMemoryReservationSize());
     }
 #elif defined(BOXEDWINE_WINDOWS_LINEAR_MEMORY)
     if (address) {
-        releaseWindowsLinearMemory(address, ramPageLinearMemoryApertureSize());
+        releaseWindowsLinearMemory(address, getLinearMemoryReservationSize());
     }
 #endif
 }
@@ -524,13 +532,13 @@ void ramPageResetLinearMemory(U8* address) {
     if (!address) {
         return;
     }
-    U64 size = ramPageLinearMemoryApertureSize();
+    U64 size = getLinearMemoryReservationSize();
     void* result = mmap(address, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | MAP_NORESERVE, -1, 0);
     if (result == MAP_FAILED) {
         kpanic_fmt("linear memory: aperture reset failed: %s", strerror(errno));
     }
 #elif defined(BOXEDWINE_WINDOWS_LINEAR_MEMORY)
-    if (address && !resetWindowsLinearMemory(address, ramPageLinearMemoryApertureSize())) {
+    if (address && !resetWindowsLinearMemory(address, getLinearMemoryReservationSize())) {
         kpanic_fmt("linear memory: Windows aperture reset failed: %u", GetLastError());
     }
 #endif

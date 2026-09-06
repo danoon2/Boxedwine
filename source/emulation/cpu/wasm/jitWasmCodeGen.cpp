@@ -2515,7 +2515,7 @@ EM_JS(void, boxedwine_wasm_test_reset_runtime_batching_js, (), {
 //   Module.wasmJitInstalledByTableIndex   reverse map for free-block cleanup
 //   Module.wasmJitProfileSplitTargets     blockStart hex -> target hex hints
 //
-// The cache key convention is 'v5-<eip hex8>-<blockHash hex8>'; it is computed
+// The cache key convention is 'v6-<eip hex8>-<blockHash hex8>'; it is computed
 // inline here (rather than calling a shell-defined helper) so these EM_JS
 // bodies stay self-contained and never depend on which shell page loaded us.
 // ---------------------------------------------------------------------------
@@ -2659,7 +2659,7 @@ EM_JS(int, boxedwine_wasm_lookup_cached,
         }
     }
     var eipKey = hex32(eip);
-    var key = 'v5-' + eipKey + '-' + hex32(blockHash);
+    var key = 'v6-' + eipKey + '-' + hex32(blockHash);
     // Per-process identity. DecodedOp pointers are per guest process, so
     // grouped reloc arrays, installed exports and group instances must all
     // be keyed by (key, memId): wineserver and wine map the same libraries
@@ -2929,7 +2929,7 @@ EM_JS(void, boxedwine_wasm_save_block,
     function hex32(v) { return ('00000000' + ((v >>> 0).toString(16))).slice(-8); }
     var eipKey = hex32(eip);
     var hashKey = hex32(blockHash);
-    var key = 'v5-' + eipKey + '-' + hashKey;
+    var key = 'v6-' + eipKey + '-' + hashKey;
     var binary = new Uint8Array(HEAPU8.buffer, bytes >>> 0, size).slice();
     if (!Module.wasmJitStats) {
         Module.wasmJitStats = { hits: 0, misses: 0, eipMisses: 0, hashMisses: 0, stale: 0, cachedInstalls: 0, freshCompiled: 0, saved: 0, eipMissSamples: [], hashMissSamples: [] };
@@ -2997,7 +2997,7 @@ EM_JS(void, wasm_jit_js_store_entry, (U32 eip, U32 blockHash, const void* bytes,
     function hex32(v) { return ('00000000' + ((v >>> 0).toString(16))).slice(-8); }
     var eipKey = hex32(eip);
     var hashKey = hex32(blockHash);
-    var key = 'v5-' + eipKey + '-' + hashKey;
+    var key = 'v6-' + eipKey + '-' + hashKey;
     var binary = new Uint8Array(HEAPU8.buffer, bytes >>> 0, size).slice();
     if (!Module.wasmJitCache) Module.wasmJitCache = new Map();
     if (!Module.wasmJitCacheEips) Module.wasmJitCacheEips = new Set();
@@ -3635,7 +3635,7 @@ EM_JS(int, boxedwine_wasm_install_existing_mt,
 EM_JS(void, wasm_jit_mt_populate_js_cache_entry,
       (U32 eip, U32 blockHash, const void* bytes, int size),
 {
-    var key = 'v5-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
+    var key = 'v6-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
               '-'   + ('00000000' + ((blockHash >>> 0).toString(16))).slice(-8);
     var binary = new Uint8Array(HEAPU8.buffer, bytes >>> 0, size).slice();
     if (!Module.wasmJitCache) Module.wasmJitCache = new Map();
@@ -3708,7 +3708,7 @@ EM_JS(void, wasm_jit_mt_populate_js_meta_entry,
        U32 cpuBlockInstructionCountOffset, U32 cpuYieldOffset, U32 contextTimeRemainingPtr,
        U32 relocCount),
 {
-    var key = 'v5-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
+    var key = 'v6-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
               '-'   + ('00000000' + ((blockHash >>> 0).toString(16))).slice(-8);
     Module.wasmJitRuntimeConstants = {
         version: 1,
@@ -14868,7 +14868,7 @@ void wasmJitTestRetireMtSlot(int tableIndex) {
 //
 // Export is handled in JavaScript by saveJitModules(). This import hook reads
 // a zip staged at WASM_JIT_IMPORT_PATH on the virtual FS and stores each
-// v5-xxxxxxxx-hhhhhhhh.wasm entry into the JS cache via
+// v6-xxxxxxxx-hhhhhhhh.wasm entry into the JS cache via
 // wasm_jit_js_store_entry(). It doubles as the exported sentinel
 // (Module._wasm_jit_import_from_file) that boxedwine-shell.js uses to detect
 // a persistence-capable single-threaded build.
@@ -14887,7 +14887,7 @@ extern "C" void wasm_jit_import_from_file() {
         if (unzGetCurrentFileInfo(uf, &fi, filename, sizeof(filename),
                                    nullptr, 0, nullptr, 0) == UNZ_OK
             && fi.uncompressed_size > 0) {
-            if (strncmp(filename, "v5-", 3) != 0) {
+            if (strncmp(filename, "v6-", 3) != 0) {
                 ret = unzGoToNextFile(uf);
                 continue;
             }

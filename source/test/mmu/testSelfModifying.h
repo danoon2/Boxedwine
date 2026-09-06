@@ -16,6 +16,7 @@ void testSelfModifyingFront();
 void testSelfModifyingBack();
 void testLinearMemoryAliasAndFaults();
 void testLinearMemoryFileFirstTouches();
+void testLinearMemoryWraparound();
 void testJitMemoryReadOperands();
 void testJitMemoryReadFaultState();
 void testLinearMemoryCloneMappings();
