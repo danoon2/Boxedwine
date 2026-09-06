@@ -212,6 +212,16 @@ const TestEntry TEST_ENTRIES[] = {
     {testFlagsAcrossIndirectJitBlockBoundary, "Test flags across indirect JIT block boundary"},
 #ifdef BOXEDWINE_JIT
     {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},
+#ifndef BOXEDWINE_WASM_JIT
+    {testJitDirectTargetInvalidation, "Test JIT direct target invalidation"},
+#endif
+#ifdef BOXEDWINE_JIT_X64
+    {testJitEntryCacheInvalidation, "Test JIT compiled-entry cache invalidation"},
+#endif
+#if defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+    {testJitOpenGLCallStateAndInvalidation, "Test JIT OpenGL state and code invalidation", TEST_ENTRY_SERIAL},
+    {testJitOpenGLCallBoundaries, "Test JIT OpenGL call boundaries", TEST_ENTRY_SERIAL},
+#endif
     {testJitDirectArithmeticFlags, "Test JIT direct arithmetic flags"},
     {testJitDirectIncDecFlags, "Test JIT direct INC/DEC flags"},
     {testJitDirectNegFlags, "Test JIT direct NEG flags"},

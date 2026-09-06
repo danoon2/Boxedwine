@@ -17,6 +17,7 @@
  */
 
 #include "boxedwine.h"
+#include <chrono>
 
 #ifdef BOXEDWINE_JIT
 #include "jitCodeGen.h"
@@ -447,7 +448,7 @@ static DecodedOp* removeJITBlock(DecodedOp* op) {
 	U32 count = op->blockOpCount;
 
     for (U32 i = 0; i < count; i++) {
-        op->pfnJitCode = nullptr;
+        op->setJitCode(nullptr);
         op->jitLen = 0;
         op->pfn = NormalCPU::getFunctionForOp(op);
         op->blockStart = nullptr;
@@ -861,6 +862,11 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         jit = startNewJIT(cpu);
         cpu->thread->process->emulateSingleOp = jit->createEmulateSingleOp();
         delete jit;
+#if defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+        jit = startNewJIT(cpu);
+        cpu->thread->process->emulateOpenGL = jit->createEmulateOpenGL();
+        delete jit;
+#endif
         jit = startNewJIT(cpu);
         cpu->thread->process->startJITOp = (OpCallback)jit->createStartJITCode();
         delete jit;
@@ -1010,6 +1016,24 @@ void JitCodeGen::jumpInBlock(U32 address) {
     JumpInBlock(address);
 }
 
+bool JitCodeGen::jumpToCachedJitEntry(U32 eip) {
+#ifdef BOXEDWINE_JIT_X64
+    void** entry = getMemData(cpu->memory)->opCache.getJitEntryLocation(eip);
+    if (entry) {
+        RegPtr jit = getTmpReg();
+        movValue(DYN_PTR, jit, (DYN_PTR_SIZE)entry);
+        readHost(DYN_PTR, createMemPtr(jit, 0), jit, false);
+        If(DYN_PTR, jit); {
+            jmpHost(jit);
+        } EndIf();
+        return true;
+    }
+#else
+    (void)eip;
+#endif
+    return false;
+}
+
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
 void JitCodeGen::blockNext1(U32 eip, DecodedOp* op) {
     exitToRunLoopIfPendingSignal(eip);
@@ -1017,7 +1041,7 @@ void JitCodeGen::blockNext1(U32 eip, DecodedOp* op) {
     //     *(op->nextJump) = cpu->getNextOp();
     // }
     // cpu->nextOp = *(op->nextJump);
-    if (op->data.nextJump) { // don't code for it if it hasn't happened, this gives about a 1% performance boost by keeping the code more compact
+    if (!jumpToCachedJitEntry(eip) && op->data.nextJump) { // omit the decoded-op lookup when a compiled-entry slot is available
         RegPtr opReg = getTmpReg();
         movValue(DYN_PTR, opReg, (DYN_PTR_SIZE)op);
         // ebx = op->nextJump
@@ -1051,7 +1075,7 @@ void JitCodeGen::blockNext2(U32 eip, DecodedOp* op) {
     // }
     // cpu->nextOp = op->next;
 
-    if (op->next) {
+    if (!jumpToCachedJitEntry(eip) && op->next) {
         RegPtr opReg = getTmpReg();
         movValue(DYN_PTR, opReg, (DYN_PTR_SIZE)op);
 
@@ -1109,13 +1133,28 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
     RegPtr pageReg = getTmpReg();
     shrValueWithDest(JitWidth::b32, pageReg, eipReg, K_PAGE_SHIFT);
 
+#ifdef BOXEDWINE_JIT_X64
+    if (getMemData(cpu->memory)->opCache.getJitPageGroups()) {
+        RegPtr groupReg = getTmpReg();
+        shrValueWithDest(JitWidth::b32, groupReg, pageReg, 10);
+        RegPtr tmp = readCPU(DYN_PTR, offsetof(CPU, jitEntryPageGroups));
+        readHost(DYN_PTR, createMemPtr(tmp, groupReg, DYN_PTR_LSL, 0), tmp, false);
+        andValue(JitWidth::b32, pageReg, 0x3ff);
+        readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
+        If(DYN_PTR, tmp); {
+            andValueWithDest(JitWidth::b32, pageReg, eipReg, K_PAGE_MASK);
+            readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
+            If(DYN_PTR, tmp); {
+                jmpHost(tmp);
+            } EndIf();
+        } EndIf();
+        return;
+    }
+#endif
     RegPtr firstPageIndexReg = getTmpReg();
     shrValueWithDest(JitWidth::b32, firstPageIndexReg, pageReg, 10);
-
     RegPtr tmp = readCPU(DYN_PTR, offsetof(CPU, opCache));
     readHost(DYN_PTR, createMemPtr(tmp, firstPageIndexReg, DYN_PTR_LSL, 0), tmp, false);
-
-    // page & 0x3ff
     andValue(JitWidth::b32, pageReg, 0x3ff);
     readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
     // tmp contains page of DecodedOp*
@@ -1133,8 +1172,8 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
     } EndIf();
 }
 
-DYN_PTR_SIZE jitRunSingleOp(CPU* cpu) {
-    if (!cpu->runNextSingleOp() || cpu->yield || cpu->thread->terminating || cpu->debugTrapActive) {
+static DYN_PTR_SIZE jitNextBlockAfterHostCall(CPU* cpu) {
+    if (cpu->yield || cpu->thread->terminating || cpu->debugTrapActive) {
         return 0;
     }
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -1149,6 +1188,52 @@ DYN_PTR_SIZE jitRunSingleOp(CPU* cpu) {
     }
     return 0;
 }
+
+DYN_PTR_SIZE jitRunSingleOp(CPU* cpu) {
+    if (!cpu->runNextSingleOp()) {
+        return 0;
+    }
+    return jitNextBlockAfterHostCall(cpu);
+}
+
+#if defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+#ifdef __TEST
+thread_local U32 jitOpenGLFastCallCount = 0;
+#endif
+DYN_PTR_SIZE jitRunOpenGL(CPU* cpu) {
+    if (cpu->debugTrapActive) {
+        return jitRunSingleOp(cpu);
+    }
+#ifdef __TEST
+    jitOpenGLFastCallCount++;
+#endif
+    // Consume the per-instruction scratch value before calling host code, which
+    // can change scratch state or invalidate the originating decoded/JIT block.
+    const U32 call = cpu->tmpReg;
+    try {
+        callOpenGL(cpu, call >> 8);
+        cpu->eip.u32 += call & 0xff;
+    } catch (...) {
+        // Match runNextSingleOp: a guest fault can redirect EIP to a handler.
+        cpu->nextOp = cpu->getNextOp();
+        return 0;
+    }
+    cpu->nextOp = cpu->getNextOp();
+    return jitNextBlockAfterHostCall(cpu);
+}
+
+U8* JitCodeGen::createEmulateOpenGL() {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(JitCallParamType::CPU));
+    RegPtr nextJitBlock = getTmpReg();
+    callHostFunctionWithResult(nextJitBlock, (void*)jitRunOpenGL, params);
+    If(DYN_PTR, nextJitBlock); {
+        jmpHost(nextJitBlock);
+    } EndIf();
+    blockExit();
+    return createDynamicExecutableMemory();
+}
+#endif
 
 #if defined(BOXEDWINE_POSIX) && defined(BOXEDWINE_HOST_EXCEPTIONS)
 void signalHandler(CPU* cpu);
@@ -1175,6 +1260,60 @@ U8* JitCodeGen::createEmulateSingleOp() {
 
     return createDynamicExecutableMemory();
 }
+
+#ifndef BOXEDWINE_WASM_JIT
+// Native sampling profilers see generated code as anonymous addresses. Record
+// compilation-time ranges on request, without instrumenting block execution.
+static void recordNativeJitBlock(CPU* cpu, U8* hostAddress, U32 hostSize, U32 guestAddress, U32 guestSize) {
+    static const char* path = std::getenv("BOXEDWINE_JIT_MAP");
+    if (!path || !*path) {
+        return;
+    }
+    static BOXEDWINE_MUTEX mapMutex;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mapMutex);
+    static BWriteFile file;
+    static bool initialized = false;
+    if (!initialized) {
+        initialized = true;
+        if (!file.createNew(path)) {
+            kwarn_fmt("Could not create BOXEDWINE_JIT_MAP: %s", path);
+            return;
+        }
+        file.write("# Boxedwine native JIT map v1\n");
+        file.write("# unix_us\thost_address_hex\thost_size\tguest_pid\tguest_address_hex\tguest_size\tfile_offset_hex\tmodule\n");
+    }
+    if (!file.isOpen()) {
+        return;
+    }
+    BString module = cpu->thread->process->getModuleName(guestAddress);
+    module.replace('\t', ' ');
+    module.replace('\r', ' ');
+    module.replace('\n', ' ');
+    U32 offset = cpu->thread->process->getModuleEip(guestAddress);
+    const U64 timestamp = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    file.writeFormat("%llu\t%llx\t%u\t%u\t%x\t%u\t%x\t%s\n",
+        (unsigned long long)timestamp,
+        (unsigned long long)(uintptr_t)hostAddress, hostSize, cpu->thread->process->id,
+        guestAddress, guestSize, offset, module.c_str());
+    // A profiler may stop the process without running its destructors.
+    file.flush();
+    static const char* bytesPath = std::getenv("BOXEDWINE_JIT_BYTES");
+    if (bytesPath && *bytesPath) {
+        static BWriteFile bytesFile(bytesPath);
+        if (bytesFile.isOpen()) {
+            const U64 host = (U64)(uintptr_t)hostAddress;
+            // Eight native-endian U32 words, then exactly hostSize code bytes.
+            const U32 header[] = { (U32)timestamp, (U32)(timestamp >> 32),
+                (U32)host, (U32)(host >> 32), hostSize,
+                cpu->thread->process->id, guestAddress, guestSize };
+            bytesFile.write((const U8*)header, sizeof(header));
+            bytesFile.write(hostAddress, hostSize);
+            bytesFile.flush();
+        }
+    }
+}
+#endif
 
 void JitCodeGen::commitJIT(DecodedOp* op) {
     if (!blockOpCount) {
@@ -1221,7 +1360,12 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
             nextOp->flags2 |= OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE;
         } else {
             bufferIndex = getBufferLocation(bufferIndex);
-            nextOp->pfnJitCode = begin + bufferIndex;
+#ifdef BOXEDWINE_JIT_X64
+            if (!nextOp->jitEntrySlot) {
+                getMemData(cpu->memory)->opCache.getJitEntryLocation(address);
+            }
+#endif
+            nextOp->setJitCode(begin + bufferIndex);
             nextOp->jitLen = 0;
             nextOp->pfn = cpu->thread->process->startJITOp;
             if (lastJitOp) {
@@ -1245,6 +1389,9 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
         getMemData(cpu->memory)->jitAddressToEip[(U8*)lastJitOp->pfnJitCode] = JitData(lastJitOp->jitLen, lastJitEip - cpu->seg[CS].address);
 #endif
     }
+#ifndef BOXEDWINE_WASM_JIT
+    recordNativeJitBlock(cpu, begin, size, startingEip, emulatedLen);
+#endif
 }
 
 RegPtr JitCodeGen::getZF() {

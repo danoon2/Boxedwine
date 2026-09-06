@@ -153,7 +153,9 @@ public:
     void doJIT(U32 address, DecodedOp* op);
     void onTestEnd(DecodedOp* op) override;
     void jumpToEipIfCached(RegPtr eip);
+    bool jumpToCachedJitEntry(U32 eip);
     U8* createEmulateSingleOp();    
+    U8* createEmulateOpenGL();
     U8* createCalculationCF(LazyFlagType lazyFlagType);
     void getCF(LazyFlagType lazyFlagType, RegPtr result);
     RegPtr getStringRegEcx() override;

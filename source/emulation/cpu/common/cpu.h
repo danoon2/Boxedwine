@@ -40,7 +40,6 @@ extern Int99Callback* int99Callback;
 void callOpenGL(CPU* cpu, U32 index);
 void callVulkan(CPU* cpu, U32 index);
 void callX11(CPU* cpu, U32 index);
-extern U32 lastGlCallTime;
 extern U32 int99CallbackSize;
 
 #define EXCEPTION_DIVIDE 0
@@ -282,6 +281,9 @@ public:
     U32 pendingDebugTrapCode = 0;
     U32 pendingDebugTrapDr6 = 0;
     DecodedOp*** opCache = nullptr;
+#ifdef BOXEDWINE_JIT_X64
+    void**** jitEntryPageGroups = nullptr;
+#endif
 
     U64 fAbs = 0x7fffffffffffffffl;
     U64 fNeg = 0x8000000000000000l;

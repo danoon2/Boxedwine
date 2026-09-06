@@ -1463,7 +1463,6 @@ static Int99Callback gl_callback[GL_FUNC_COUNT];
 
 Int99Callback* int99Callback;
 U32 int99CallbackSize;
-U32 lastGlCallTime;
 
 void gl_init(BString allowExtensions) {
     int99Callback=gl_callback;
@@ -1518,7 +1517,6 @@ void gl_init(BString allowExtensions) {
 #else
 Int99Callback* int99Callback;
 U32 int99CallbackSize;
-U32 lastGlCallTime;
 void gl_init() {
     int99CallbackSize=0;
 }
@@ -1529,7 +1527,6 @@ void callOpenGL(CPU* cpu, U32 index) {
     //KNativeWindow::getNativeWindow()->preOpenGLCall(index);
     if (index < int99CallbackSize && int99Callback[index]) {
         cpu->thread->marshalIndex = 0;
-        lastGlCallTime = KSystem::getMilliesSinceStart();
         int99Callback[index](cpu);
     } else 
 #endif

@@ -1510,7 +1510,7 @@ void KMemory::commitPreparedCodeInvalidation() {
             if (nextOp->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
                 __atomic_exchange_n(&nextOp->pfnJitCode, nullptr, __ATOMIC_SEQ_CST);
             } else {
-                nextOp->pfnJitCode = nullptr;
+                nextOp->setJitCode(nullptr);
             }
 #endif
             nextOp->blockStart = nullptr;
@@ -1522,7 +1522,7 @@ void KMemory::commitPreparedCodeInvalidation() {
             nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
             nextOp->flags &= ~OP_FLAG_JIT;
 #if !defined(BOXEDWINE_WASM_JIT) || !defined(BOXEDWINE_MULTI_THREADED)
-            nextOp->pfnJitCode = nullptr;
+            nextOp->setJitCode(nullptr);
 #endif
             nextOp->jitLen = 0;
             nextOp = nextOp->next;
@@ -1609,7 +1609,7 @@ void KMemory::clearJit(DecodedOp* op) {
     for (U32 i = 0; i < blockOpCount; i++) {
         nextOp->flags &= ~OP_FLAG_JIT;
         nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
-        nextOp->pfnJitCode = nullptr;
+        nextOp->setJitCode(nullptr);
         nextOp->jitLen = 0;
         nextOp->blockStart = nullptr;
         nextOp->blockOpCount = 0;
@@ -1667,7 +1667,7 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
             // message, so the branch's historical benign-stale dispatch is
             // sufficient and keeps ordinary JIT calls free of wasm atomics.
             jitCode = nextOp->pfnJitCode;
-            nextOp->pfnJitCode = nullptr;
+            nextOp->setJitCode(nullptr);
         }
 #else
         void* jitCode = nextOp->pfnJitCode;
@@ -1682,7 +1682,7 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         nextOp->flags &= ~OP_FLAG_JIT;
         jitLen += nextOp->jitLen;
 #if !defined(BOXEDWINE_WASM_JIT) || !defined(BOXEDWINE_MULTI_THREADED)
-        nextOp->pfnJitCode = nullptr;
+        nextOp->setJitCode(nullptr);
 #endif
         nextOp->jitLen = 0;
         nextOp = nextOp->next;

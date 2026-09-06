@@ -383,6 +383,7 @@ public:
 #ifdef BOXEDWINE_JIT
     OpCallback startJITOp = nullptr;
     void* emulateSingleOp = nullptr;
+    void* emulateOpenGL = nullptr;
 #ifdef BOXEDWINE_POSIX
     void* signalHandler = nullptr;
 #endif

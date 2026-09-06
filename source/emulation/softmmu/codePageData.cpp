@@ -37,10 +37,16 @@ DecodedOpPageCache::DecodedOpPageCache() {
 DecodedOpPageCache::~DecodedOpPageCache() {
 	for (U32 i = 0; i < K_PAGE_SIZE; i++) {
 		if (ops[i]) {
+#ifdef BOXEDWINE_JIT_X64
+            ops[i]->detachJitEntry();
+#endif
 			ops[i]->dealloc();
 			activeOps--;
 		}
 	}
+#ifdef BOXEDWINE_JIT_X64
+    std::free(jitEntries);
+#endif
 }
 
 DecodedOpCache::DecodedOpCache() {
@@ -49,10 +55,23 @@ DecodedOpCache::DecodedOpCache() {
 		pageData[i] = emptyPageCacheLevel1;
 	}
 	memset(writeCounts, 0, sizeof(writeCounts));
+#ifdef BOXEDWINE_JIT_X64
+    if (!std::getenv("BOXEDWINE_JIT_ENTRY_CACHE_SLOW")) {
+        jitPageGroups = (void****)std::malloc(FIRST_INDEX_SIZE * sizeof(void***));
+        if (jitPageGroups) {
+            for (U32 first = 0; first < FIRST_INDEX_SIZE; ++first) {
+                jitPageGroups[first] = emptyJitPageGroup;
+            }
+        }
+    }
+#endif
 }
 
 DecodedOpCache::~DecodedOpCache() {
 	removeAll();
+#ifdef BOXEDWINE_JIT_X64
+    std::free(jitPageGroups);
+#endif
 }
 
 DecodedOp** DecodedOpCache::getLocation(U32 address) {
@@ -62,8 +81,39 @@ DecodedOp** DecodedOpCache::getLocation(U32 address) {
 		U32 offset = address & K_PAGE_MASK;
 		return &page->ops[offset];
 	}
-	return nullptr;
+    return nullptr;
 }
+
+#ifdef BOXEDWINE_JIT_X64
+void** DecodedOpCache::getJitEntryLocation(U32 address) {
+    if (!jitPageGroups) return nullptr;
+    U32 pageIndex = address >> K_PAGE_SHIFT;
+    U32 firstIndex = GET_FIRST_INDEX_FROM_PAGE(pageIndex);
+    if (jitPageGroups[firstIndex] == emptyJitPageGroup) {
+        void*** group = (void***)std::calloc(SECOND_INDEX_SIZE, sizeof(void**));
+        if (!group) return nullptr;
+        jitPageGroups[firstIndex] = group;
+    }
+    DecodedOpPageCache* page = getPageCache(pageIndex, true);
+    if (!page->jitEntries) {
+        void** entries = (void**)std::calloc(K_PAGE_SIZE, sizeof(void*));
+        if (entries) {
+            // Decoding alone does not need a compiled-entry array. Bind any
+            // existing instructions before publishing this page to the JIT.
+            for (U32 offset = 0; offset < K_PAGE_SIZE; ++offset) {
+                DecodedOp* op = page->ops[offset];
+                if (op) {
+                    op->jitEntrySlot = &entries[offset];
+                    entries[offset] = op->pfnJitCode;
+                }
+            }
+            page->jitEntries = entries;
+            jitPageGroups[firstIndex][pageIndex & 0x3ff] = entries;
+        }
+    }
+    return page->jitEntries ? &page->jitEntries[address & K_PAGE_MASK] : nullptr;
+}
+#endif
 
 void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 	U32 pageIndex = address >> K_PAGE_SHIFT;		
@@ -94,6 +144,9 @@ void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 			} else {
 				pendingDeallocs[thread->id].push_back(page->ops[i]);
 			}
+#ifdef BOXEDWINE_JIT_X64
+            page->ops[i]->detachJitEntry();
+#endif
 			page->ops[i] = nullptr;
 			activeOps--;
 		}
@@ -146,7 +199,10 @@ DecodedOp* DecodedOpCache::getPreviousOpAndRemoveIfOverlapping(U32 address) {
 
 	if (previousOp) {
 		// does previousOp span into address, if so then remove it
-		if (previousOpAddress + previousOp->len > address) {
+        if (previousOpAddress + previousOp->len > address) {
+#ifdef BOXEDWINE_JIT_X64
+            previousOp->detachJitEntry();
+#endif
 			previousPageCache->ops[previousOpAddress & K_PAGE_MASK] = nullptr;			
 			if (preparedRemovalPendingDeallocs) {
 				preparedRemovalPendingDeallocs->push_back(previousOp);
@@ -310,6 +366,16 @@ void DecodedOpCache::finishPreparedRemove() {
 }
 
 void DecodedOpCache::removeAll() {
+#ifdef BOXEDWINE_JIT_X64
+    if (jitPageGroups) {
+        for (U32 first = 0; first < FIRST_INDEX_SIZE; ++first) {
+            if (jitPageGroups[first] != emptyJitPageGroup) {
+                std::free(jitPageGroups[first]);
+                jitPageGroups[first] = emptyJitPageGroup;
+            }
+        }
+    }
+#endif
 	for (U32 firstIndex = 0; firstIndex < FIRST_INDEX_SIZE; firstIndex++) {
 		if (pageData[firstIndex] != emptyPageCacheLevel1) {
 			for (U32 secondIndex = 0; secondIndex < SECOND_INDEX_SIZE; secondIndex++) {
@@ -360,6 +426,12 @@ void DecodedOpCache::add(DecodedOp* op, U32 address, U32 opCount) {
 		}
 #endif
 		page->ops[offset] = op;
+#ifdef BOXEDWINE_JIT_X64
+        if (page->jitEntries) {
+            op->jitEntrySlot = &page->jitEntries[offset];
+            *op->jitEntrySlot = op->pfnJitCode;
+        }
+#endif
 		address += op->len;
 		activeOps++;
 		opCount--;		

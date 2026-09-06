@@ -13,6 +13,10 @@
 
 #include "ksignal.h"
 #include "testCPU.h"
+#ifdef BOXEDWINE_JIT
+#include "../../emulation/cpu/jit/jitCodeGen.h"
+#include "../../emulation/softmmu/kmemory_soft.h"
+#endif
 #if defined(BOXEDWINE_JIT_ARMV8)
 #include "../../emulation/cpu/armv8/jitArmV8CodeGen.h"
 #endif
@@ -705,6 +709,253 @@ void testNativeJitRunCountWraps() {
 
     if (op.runCount != 0) {
         testFail("native JIT runCount wraps after a failed compile threshold");
+    }
+#endif
+}
+
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+extern DYN_PTR_SIZE jitRunOpenGL(CPU* cpu);
+extern thread_local U32 jitOpenGLFastCallCount;
+namespace {
+U32 glTestCalls;
+U32 glTestMutation;
+U32 glTestBoundary;
+bool glTestSawCompiled;
+
+void glTestCallback(CPU* cpu) {
+    ++glTestCalls;
+    if (cpu->peek32(1) != 0x11223344 || cpu->thread->marshalIndex != 0) {
+        testFail("OpenGL callback stack arguments or marshal reset");
+    }
+    cpu->reg[0].u32 = 0xaabbccdd;
+    cpu->reg[2].u32 = 0x76543210;
+    cpu->tmpReg = 0xffffffff; // callbacks must not alter the saved instruction length
+    if (glTestMutation && glTestCalls == JIT_RUN_COUNT + 5) {
+        DecodedOp* op = cpu->memory->getDecodedOp(cpu->getEipAddress());
+        glTestSawCompiled = op && op->pfnJitCode;
+        cpu->memory->writeb(glTestMutation, 0x46); // replace inc edi with inc esi
+    }
+    switch (glTestBoundary) {
+    case 1: cpu->yield = true; break;
+    case 2: cpu->thread->terminating = true; break;
+    case 3: cpu->jitSignalPending.store(1, std::memory_order_release); break;
+    case 4: cpu->thread->pendingSignals = 1; break;
+    case 5: cpu->eip.u32 = 7; throw 99; // simulate redirection to a fault handler
+    }
+}
+
+struct ScopedGlTestCallbacks {
+    Int99Callback* saved = int99Callback;
+    U32 size = int99CallbackSize;
+    Int99Callback callbacks[4] = { nullptr, nullptr, nullptr, glTestCallback };
+    ScopedGlTestCallbacks() { int99Callback = callbacks; int99CallbackSize = 4; }
+    ~ScopedGlTestCallbacks() { int99Callback = saved; int99CallbackSize = size; }
+};
+
+void prepareGlTest() {
+    testNewInstruction(0);
+    CPU* cpu = testContext().cpu;
+    cpu->yield = false;
+    cpu->thread->terminating = false;
+    cpu->thread->pendingSignals = 0;
+    cpu->jitSignalPending.store(0, std::memory_order_release);
+    cpu->memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + 4, 0x11223344);
+    glTestCalls = glTestMutation = glTestBoundary = 0;
+    glTestSawCompiled = false;
+    jitOpenGLFastCallCount = 0;
+}
+
+void emitGlTestCall() {
+    testPushCode8(0xcd);
+    testPushCode8(0x99);
+    testPushCode32(3);
+}
+}
+#endif
+
+void testJitDirectTargetInvalidation() {
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+    testNewInstruction(0);
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    const U32 targetOffset = K_PAGE_SIZE * 1024;
+    const U32 targetAddress = TEST_CODE_ADDRESS + targetOffset;
+    context.memory->mmap(context.thread, targetAddress, K_PAGE_SIZE,
+        K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    testPushCode8(0xe8); // call a separately compiled page in another cache group
+    testPushCode32(targetOffset - 5);
+    testPushCode8(0xcd); testPushCode8(0x97);
+    context.codeIp = targetAddress;
+    testPushCode8(0x46); // inc esi
+    testPushCode8(0xc3); // ret
+
+    DecodedOp* target = cpu->getOp(targetAddress, 0);
+    startNewJIT(cpu, targetAddress, target);
+    DecodedOp* caller = cpu->getOp(TEST_CODE_ADDRESS, 0);
+    startNewJIT(cpu, TEST_CODE_ADDRESS, caller);
+    if (!caller->pfnJitCode || !target->pfnJitCode || !caller->data.nextJump || *caller->data.nextJump != target) {
+        testFail("Direct JIT target invalidation setup");
+        return;
+    }
+    void* callerCode = caller->pfnJitCode;
+    DecodedOp** targetSlot = caller->data.nextJump;
+    auto runCaller = [&]() {
+        cpu->eip.u32 = 0;
+        cpu->reg[4].u32 = 4096;
+        cpu->nextOp = caller;
+        do {
+            cpu->run();
+        } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+    };
+    runCaller();
+    if (cpu->reg[6].u32 != 1 || cpu->reg[7].u32 != 0) testFail("Direct JIT initial target");
+#ifdef BOXEDWINE_MULTI_THREADED
+    cpu->eip.u32 = 0;
+    cpu->reg[4].u32 = 4096;
+    cpu->nextOp = caller;
+    cpu->jitSignalPending.store(1, std::memory_order_release);
+    caller->pfn(cpu, caller);
+    cpu->jitSignalPending.store(0, std::memory_order_release);
+    if (cpu->eip.u32 != targetOffset || cpu->reg[4].u32 != 4092 || cpu->reg[6].u32 != 1 || cpu->nextOp) {
+        testFail("Direct JIT pending signal must exit after the call push and before the target");
+    }
+#endif
+
+    context.memory->writeb(targetAddress, 0x47); // replace with inc edi
+    if (*targetSlot || caller->pfnJitCode != callerCode) {
+        testFail("Direct JIT target invalidation must clear the slot and retain the caller");
+        return;
+    }
+    runCaller(); // slot miss must reach the replacement through the run loop
+    if (cpu->reg[6].u32 != 1 || cpu->reg[7].u32 != 1) testFail("Direct JIT target miss after invalidation");
+    target = cpu->getOp(targetAddress, 0);
+    startNewJIT(cpu, targetAddress, target);
+    if (*targetSlot != target || !target->pfnJitCode || caller->pfnJitCode != callerCode) {
+        testFail("Direct JIT replacement publication");
+        return;
+    }
+    runCaller();
+    if (cpu->reg[6].u32 != 1 || cpu->reg[7].u32 != 2) testFail("Direct JIT replaced compiled target");
+    context.memory->unmap(targetAddress, K_PAGE_SIZE);
+#endif
+}
+
+void testJitEntryCacheInvalidation() {
+#ifdef BOXEDWINE_JIT_X64
+    testNewInstruction(0);
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    auto groups = getMemData(cpu->memory)->opCache.getJitPageGroups();
+    if (std::getenv("BOXEDWINE_JIT_ENTRY_CACHE_SLOW")) {
+        if (groups || cpu->jitEntryPageGroups) testFail("JIT entry cache opt-out was ignored");
+        return;
+    }
+    if (!groups || groups != cpu->jitEntryPageGroups) {
+        testFail("Compiled-entry JIT cache was not selected");
+        return;
+    }
+    for (U32 pass = 0; pass < 2; ++pass) {
+        for (U32 i = 0; i < 3; ++i) {
+            U32 address = TEST_CODE_ADDRESS + i * K_PAGE_SIZE;
+            context.codeIp = address;
+            testPushCode8(0x40); // inc eax
+            testPushCode8(0xcd); testPushCode8(0x97);
+            DecodedOp* op = cpu->getOp(address, 0);
+            U32 pageIndex = address >> K_PAGE_SHIFT;
+            if (groups[pageIndex >> 10][pageIndex & 0x3ff] || op->jitEntrySlot) {
+                testFail("Decoding alone allocated a compiled-entry page");
+                return;
+            }
+            startNewJIT(cpu, address, op);
+            auto page = groups[pageIndex >> 10][pageIndex & 0x3ff];
+            if (!page || page[address & K_PAGE_MASK] != op->pfnJitCode || !op->pfnJitCode) {
+                testFail("JIT entry cache missed a published compiled entry");
+                return;
+            }
+            context.memory->removeCodeBlock(address, op, false);
+            if (page[address & K_PAGE_MASK] || op->pfnJitCode || context.memory->getDecodedOp(address) != op) {
+                testFail("JIT entry cache retained code after JIT-only removal");
+            }
+            startNewJIT(cpu, address, op);
+            if (page[address & K_PAGE_MASK] != op->pfnJitCode || !op->pfnJitCode) {
+                testFail("JIT entry cache missed republication");
+            }
+            context.memory->writeb(address, 0x43); // invalidate and replace with inc ebx
+            if (page[address & K_PAGE_MASK]) testFail("JIT entry cache retained invalidated code");
+            DecodedOp* replacement = cpu->getOp(address, 0);
+            if (!replacement || replacement->jitEntrySlot != &page[address & K_PAGE_MASK] || page[address & K_PAGE_MASK]) {
+                testFail("JIT entry cache replacement binding");
+            }
+        }
+        context.memory->clearOpCache();
+        for (U32 i = 0; i < K_NUMBER_OF_PAGES; ++i) {
+            if (groups[i >> 10][i & 0x3ff]) testFail("JIT entry cache retained a page after clear");
+        }
+        if (groups != getMemData(cpu->memory)->opCache.getJitPageGroups()) {
+            testFail("JIT entry cache view changed during clear");
+        }
+    }
+#endif
+}
+
+void testJitOpenGLCallStateAndInvalidation() {
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+    ScopedGlTestCallbacks callbacks;
+    const bool fastEnabled = !std::getenv("BOXEDWINE_GL_INT99_SLOW");
+    for (bool mutate : { false, true }) {
+        prepareGlTest();
+        CPU* cpu = testContext().cpu;
+        constexpr U32 iterations = JIT_RUN_COUNT * 3;
+        cpu->reg[1].u32 = iterations;
+        testPushCode8(0x39); testPushCode8(0xf6); // cmp esi,esi
+        emitGlTestCall();
+        testPushCode8(0x0f); testPushCode8(0x94); testPushCode8(0xc3); // setz bl
+        if (mutate) glTestMutation = testContext().codeIp;
+        testPushCode8(0x47); // inc edi, changed by the callback after JIT compilation
+        testPushCode8(0x49); // dec ecx
+        testPushCode8(0x75); testPushCode8(0xf1); // jnz to cmp esi,esi
+        testRunCPU();
+        U32 expectedEdi = mutate ? JIT_RUN_COUNT + 4 : iterations;
+        if (glTestCalls != iterations || cpu->reg[0].u32 != 0xaabbccdd || cpu->reg[2].u32 != 0x76543210 ||
+            cpu->reg[3].u8 != 1 || cpu->reg[7].u32 != expectedEdi || cpu->reg[6].u32 != iterations - expectedEdi) {
+            testFail("OpenGL JIT callback result, flags, exact execution or modified code (mutate=%d)", mutate);
+        }
+        if (fastEnabled && !jitOpenGLFastCallCount) testFail("OpenGL dedicated JIT path was not exercised");
+        if (mutate && !glTestSawCompiled) testFail("OpenGL callback did not invalidate compiled code");
+    }
+#endif
+}
+
+void testJitOpenGLCallBoundaries() {
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+    ScopedGlTestCallbacks callbacks;
+    for (U32 boundary = 0; boundary <= 6; ++boundary) {
+        prepareGlTest();
+        CPU* cpu = testContext().cpu;
+        emitGlTestCall();
+        testPushCode8(0x43); // compiled continuation: inc ebx
+        testPushCode8(0xcd); testPushCode8(0x97); // test end / simulated fault handler
+        DecodedOp* next = cpu->getOp(TEST_CODE_ADDRESS + 6, 0);
+        startNewJIT(cpu, TEST_CODE_ADDRESS + 6, next);
+        DYN_PTR_SIZE expected = (DYN_PTR_SIZE)next->pfnJitCode;
+        if (!expected) testFail("OpenGL boundary continuation did not compile");
+        cpu->eip.u32 = 0;
+        cpu->tmpReg = (3 << 8) | 6; // nonzero index, six-byte direct ABI interrupt
+        cpu->thread->marshalIndex = 9;
+        glTestBoundary = boundary;
+        if (boundary == 6) cpu->debugTrapActive = true; // force the generic debug-aware path
+        DYN_PTR_SIZE result = jitRunOpenGL(cpu);
+        if (glTestCalls != 1 || cpu->eip.u32 != (boundary == 5 ? 7u : 6u)) {
+            testFail("OpenGL boundary %u execution or fault EIP", boundary);
+        }
+        if (boundary == 0 && result != expected) testFail("OpenGL boundary failed to chain to current compiled continuation");
+        if (boundary >= 1 && boundary <= 5 && result) testFail("OpenGL boundary %u failed to return to run loop", boundary);
+        if (boundary == 6 && jitOpenGLFastCallCount) testFail("OpenGL debug path bypassed generic instruction handling");
+        cpu->yield = false;
+        cpu->thread->terminating = false;
+        cpu->thread->pendingSignals = 0;
+        cpu->jitSignalPending.store(0, std::memory_order_release);
+        cpu->debugTrapActive = false;
     }
 #endif
 }

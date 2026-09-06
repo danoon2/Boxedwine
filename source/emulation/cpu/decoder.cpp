@@ -6229,6 +6229,9 @@ void DecodedOp::reset() {
     this->flags2 = 0;
     this->jitLen = 0;
     this->pfnJitCode = nullptr;
+#ifdef BOXEDWINE_JIT_X64
+    jitEntrySlot = nullptr;
+#endif
     blockStart = nullptr;
     blockOpCount = 0;
     blockLen = 0;
