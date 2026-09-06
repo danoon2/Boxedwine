@@ -21,6 +21,7 @@
 
 #include "jitX86CodeGen.h"
 #include "../jit/jitSSE.h"
+#include "../../softmmu/soft_ram.h"
 #include <array>
 
 #undef u8
@@ -69,6 +70,12 @@ static U8 XMMtmps[] = { 12, 13, 14, 15 };
 #endif
 #define HOST_MMU asmjit::x86::r15
 #define HOST_CPU asmjit::x86::r13
+#if defined(BOXEDWINE_64) && defined(_WIN32)
+// R15 is the hot linear-memory base on Windows. MMU fallback paths acquire a
+// temporary table base only while emitting the lookup, leaving R14 available
+// to the ordinary temporary-register allocator.
+#define HOST_LINEAR_MEMORY asmjit::x86::r15
+#endif
 #define NUMBER_OF_REGS 16
 #define NUMBER_OF_XMM_REG 16
 #define NUMBER_OF_XMM_TMPS 4
@@ -79,7 +86,7 @@ static U8 XMMtmps[] = { 12, 13, 14, 15 };
 static bool isVolitile[] = { true, true, true, false, false, false, false, false, true, true, true, true, false, false, false, false };
 static bool isSseVolitile[] = { true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false };
 #else
-// RBX, RBP, RSP, and R12–R15 are non volitile
+// RBX, RBP, RSP, and R12-R15 are non volitile
 static bool isVolitile[] = { true, true, true, false, false, false, true, true, true, true, true, true, false, false, false, false };
 static bool isSseVolitile[] = { true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false };
 #endif
@@ -252,6 +259,7 @@ public:
 
     void writeEip(RegPtr eip) override;
     void writeEip(U32 eip) override;
+    U32 getAvailableTmpRegCount() override;
     bool isTmpRegAvailable() override;    
     void forceSyncBackIfNotCached(RegPtr reg) override;
     
@@ -259,11 +267,14 @@ public:
     void emulateSingleOp() override;
 
     void addReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
+    void addRegWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, RegPtr rm) override;
     void addValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
+    void addValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) override;
     void orReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void orValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
     void subReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void subValue(JitWidth regWidth, RegPtr reg, U32 imm) override;
+    void subValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) override;
     void andReg(JitWidth regWidth, RegPtr reg, RegPtr rm) override;
     void andValue(JitWidth regWidth, RegPtr reg, U32 immm) override;
 #ifdef BOXEDWINE_64
@@ -311,6 +322,8 @@ public:
 
     void readMMU(RegPtr dest, RegPtr index, U32 offset = 0) override;
     void readMMU(RegPtr dest, U32 index) override;
+    RegPtr getLinearMemoryBase(RegPtr tmp = nullptr) override;
+    MemPtr getLinearMemoryPtr(RegPtr address, RegPtr tmp = nullptr) override;
     void readHost(JitWidth width, MemPtr address, RegPtr result, bool emlulatedMemory = true) override;
     void writeHost(JitWidth width, MemPtr address, RegPtr src, bool emlulatedMemory = true) override;
     void writeHost(JitWidth width, MemPtr address, U32 value, bool emlulatedMemory = true) override;
@@ -383,6 +396,15 @@ public:
     void direct_cmp(JitWidth width, RegPtr left, U32 right) override;
     void direct_test(JitWidth width, RegPtr left, RegPtr right) override;
     void direct_test(JitWidth width, RegPtr left, U32 right) override;
+    void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, RegPtr src) override;
+    void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, U32 src) override;
+    void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) override;
+    void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) override;
+    void direct_neg(JitWidth width, RegPtr dst) override;
+    bool supportsDirectFlagsForShift() override { return true; }
+    bool supportsDirectFlagsForBitTest() override { return true; }
+    void direct_bit_test(JitWidth width, RegPtr value, RegPtr bit) override;
+    void direct_bit_test(JitWidth width, RegPtr value, U32 bitMask) override;
     void direct_jump(JitConditional condition, U32 address) override;
     void direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) override;
     void direct_setcc(JitConditional condition, RegPtr dst) override;
@@ -391,6 +413,35 @@ public:
 
     bool directDoesAffectFlags(DecodedOp* op) override;
     RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0) override;
+
+#ifdef BOXEDWINE_64
+    void movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend = false);
+    void dynamic_movr8e8(DecodedOp* op) override { movFromMemory(op, JitWidth::b8, JitWidth::b8); }
+    void dynamic_movr16e16(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b16); }
+    void dynamic_movr32e32(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b32); }
+    void dynamic_movGwXzE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b8); }
+    void dynamic_movGwSxE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b8, true); }
+    void dynamic_movGdXzE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b8); }
+    void dynamic_movGdSxE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b8, true); }
+    void dynamic_movGdXzE16(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b16); }
+    void dynamic_movGdSxE16(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b16, true); }
+
+    void scalarSseFromMemory(DecodedOp* op, JitWidth width, U32 instruction);
+    void dynamic_addssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdAddss); }
+    void dynamic_subssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdSubss); }
+    void dynamic_mulssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdMulss); }
+    void dynamic_divssE32(DecodedOp* op) override { guardSseDiv(); scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdDivss); }
+    void dynamic_minssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdMinss); }
+    void dynamic_maxssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdMaxss); }
+    void dynamic_sqrtssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, asmjit::x86::Inst::kIdSqrtss); }
+    void dynamic_addsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdAddsd); }
+    void dynamic_subsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdSubsd); }
+    void dynamic_mulsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdMulsd); }
+    void dynamic_divsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdDivsd); }
+    void dynamic_minsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdMinsd); }
+    void dynamic_maxsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdMaxsd); }
+    void dynamic_sqrtsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, asmjit::x86::Inst::kIdSqrtsd); }
+#endif
 
     // FPU
     FPURegPtr getFPUTmp() override;
@@ -897,7 +948,7 @@ void JitX86CodeGen::emulateSingleOp() {
 }
 
 bool JitX86CodeGen::isHintAvailable(S8 hint) {
-    return (hint >= 0 && isTmp[hint] && !regUsed[hint]);
+    return hint >= 0 && isTmp[hint] && !regUsed[hint];
 }
 
 U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn) {
@@ -920,7 +971,10 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn
         return findTmpReg(false, hint);
     }
     if (!allowInvalidReturn) {
-        kpanic("JitX86CodeGen::getTmpReg ran out of tmp regs");
+        kpanic_fmt("JitX86CodeGen::getTmpReg ran out of tmp regs: op=%s eip=%x needs8bit=%d hint=%d tmpUsed=%d%d%d%d%d exceptions=%d",
+            currentOp ? currentOp->name() : "none", currentEip, needs8bitReg, hint,
+            regUsed[tmps[0]], regUsed[tmps[1]], regUsed[tmps[2]], regUsed[tmps[3]], regUsed[tmps[4]],
+            currentOp ? currentOp->exceptionCount : 0);
     }
     return INVALID_REG;
 #else
@@ -941,7 +995,9 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn
         }
     }
     if (tmpReg == INVALID_REG && !allowInvalidReturn) {
-        kpanic("JitX86CodeGen::getTmpReg ran out of tmp regs");
+        kpanic_fmt("JitX86CodeGen::getTmpReg ran out of tmp regs: op=%s eip=%x needs8bit=%d hint=%d used=%d%d%d%d%d%d%d%d",
+            currentOp ? currentOp->name() : "none", currentEip, needs8bitReg, hint,
+            regUsed[0], regUsed[1], regUsed[2], regUsed[3], regUsed[4], regUsed[5], regUsed[6], regUsed[7]);
     }
     return tmpReg;
 #endif
@@ -1161,13 +1217,18 @@ void JitX86CodeGen::writeEip(U32 eip) {
     compiler.mov(Mem32(HOST_CPU, offsetof(CPU, eip.u32)), eip);
 }
 
-bool JitX86CodeGen::isTmpRegAvailable() {
-    U8 found = findTmpReg(false, -1, true);
-    if (found == INVALID_REG) {
-        return false;
+U32 JitX86CodeGen::getAvailableTmpRegCount() {
+    U32 result = 0;
+    for (int i = 0; i < NUMBER_OF_TMPS; i++) {
+        if (!regUsed[tmps[i]]) {
+            result++;
+        }
     }
-    regUsed[found] = false;
-    return true;
+    return result;
+}
+
+bool JitX86CodeGen::isTmpRegAvailable() {
+    return getAvailableTmpRegCount() != 0;
 }
 
 void JitX86CodeGen::forceSyncBackIfNotCached(RegPtr reg) {
@@ -1352,6 +1413,18 @@ void JitX86CodeGen::addReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     }
 }
 
+void JitX86CodeGen::addRegWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, RegPtr rm) {
+    if (regWidth == JitWidth::b32) {
+        compiler.lea(R32(dst), Mem(R32(reg), R32(rm), 0, 0));
+#ifdef BOXEDWINE_64
+    } else if (regWidth == JitWidth::b64) {
+        compiler.lea(R64(dst), Mem(R64(reg), R64(rm), 0, 0));
+#endif
+    } else {
+        JitCodeGen::addRegWithDest(regWidth, dst, reg, rm);
+    }
+}
+
 void JitX86CodeGen::addValue(JitWidth regWidth, RegPtr reg, U32 imm) {
     if (regWidth == JitWidth::b32) {
         compiler.add(R32(reg), imm);
@@ -1361,6 +1434,18 @@ void JitX86CodeGen::addValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         compiler.add(R8(get8bitReg(reg)), (U8)imm);
     } else {
         kpanic("JitX86CodeGen::addValue");
+    }
+}
+
+void JitX86CodeGen::addValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) {
+    if (regWidth == JitWidth::b32) {
+        compiler.lea(R32(dst), Mem(R32(reg), (S32)imm));
+#ifdef BOXEDWINE_64
+    } else if (regWidth == JitWidth::b64) {
+        compiler.lea(R64(dst), Mem(R64(reg), (S32)imm));
+#endif
+    } else {
+        JitCodeGen::addValueWithDest(regWidth, dst, reg, imm);
     }
 }
 
@@ -1409,6 +1494,18 @@ void JitX86CodeGen::subValue(JitWidth regWidth, RegPtr reg, U32 imm) {
         compiler.sub(R8(get8bitReg(reg)), (U8)imm);
     } else {
         kpanic("JitX86CodeGen::subValue");
+    }
+}
+
+void JitX86CodeGen::subValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 imm) {
+    if (regWidth == JitWidth::b32) {
+        compiler.lea(R32(dst), Mem(R32(reg), (S32)(0U - imm)));
+#ifdef BOXEDWINE_64
+    } else if (regWidth == JitWidth::b64) {
+        compiler.lea(R64(dst), Mem(R64(reg), (S32)(0U - imm)));
+#endif
+    } else {
+        JitCodeGen::subValueWithDest(regWidth, dst, reg, imm);
     }
 }
 
@@ -1533,6 +1630,10 @@ void JitX86CodeGen::shlReg(JitWidth regWidth, RegPtr reg, RegPtr rm) {
     if (hasBMI2) {
         if (regWidth == JitWidth::b32 && rm->hardwareReg() != 1) {
             compiler.shlx(R32(reg), R32(reg), R32(rm));
+            return;
+        }
+        if (regWidth == JitWidth::b64 && rm->hardwareReg() != 1) {
+            compiler.shlx(R64(reg), R64(reg), R64(rm));
             return;
         }
     }
@@ -2171,6 +2272,17 @@ void JitX86CodeGen::idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegP
 #include "../../softmmu/kmemory_soft.h"
 void JitX86CodeGen::readMMU(RegPtr dest, RegPtr index, U32 offset) {
 #ifdef BOXEDWINE_64
+#ifdef _WIN32
+    if (getMemData(cpu->memory)->useLinearMemoryJit()) {
+        RegPtr mmuBase = dest;
+        if (dest->hardwareReg() == index->hardwareReg()) {
+            mmuBase = getTmpReg();
+        }
+        compiler.mov(R64(mmuBase), (U64)getMemData(cpu->memory)->mmu);
+        compiler.mov(R64(dest), Mem(R64(mmuBase), RN(index), 3, offset));
+        return;
+    }
+#endif
     compiler.mov(R64(dest), Mem(HOST_MMU, RN(index), 3, offset));
 #else
     compiler.mov(R32(dest), Mem((U32)getMemData(KThread::currentThread()->memory)->mmu, RN(index), 2));
@@ -2179,10 +2291,55 @@ void JitX86CodeGen::readMMU(RegPtr dest, RegPtr index, U32 offset) {
 
 void JitX86CodeGen::readMMU(RegPtr dest, U32 index) {
 #ifdef BOXEDWINE_64
+#ifdef _WIN32
+    if (getMemData(cpu->memory)->useLinearMemoryJit()) {
+        compiler.mov(R64(dest), (U64)getMemData(cpu->memory)->mmu);
+        compiler.mov(R64(dest), Mem(R64(dest), index * 8));
+        return;
+    }
+#endif
     compiler.mov(R64(dest), Mem(HOST_MMU, index * 8));
 #else
     compiler.mov(R32(dest), Mem((U32)getMemData(KThread::currentThread()->memory)->mmu + index * 4));
 #endif
+}
+
+RegPtr JitX86CodeGen::getLinearMemoryBase(RegPtr tmp) {
+#ifdef BOXEDWINE_64
+#ifdef _WIN32
+    if (getMemData(cpu->memory)->useLinearMemoryJit()) {
+        (void)tmp;
+        return std::shared_ptr<JitReg>(new JitReg(HOST_LINEAR_MEMORY.id(), INVALID_REG), [](JitReg* reg) { delete reg; });
+    }
+#endif
+    if (!tmp) {
+        tmp = getTmpReg();
+    }
+    constexpr S32 offset = (S32)offsetof(KMemoryData, linearMemoryBase) - (S32)offsetof(KMemoryData, mmu);
+    compiler.mov(R64(tmp), Mem(HOST_MMU, offset));
+    return tmp;
+#else
+    kpanic("JitX86CodeGen::getLinearMemoryBase");
+    return nullptr;
+#endif
+}
+
+MemPtr JitX86CodeGen::getLinearMemoryPtr(RegPtr address, RegPtr tmp) {
+#ifdef BOXEDWINE_64
+    if (ramPageUseLinearMemoryAdjacent()) {
+        KMemoryData* data = getMemData(KThread::currentThread()->memory);
+        U64 offset = (U8*)data->linearMemoryBase - (U8*)data->mmu;
+        if (offset > 0x7fffffff) {
+            kpanic("JitX86CodeGen::getLinearMemoryPtr offset");
+        }
+        RegPtr base = std::shared_ptr<JitReg>(new JitReg(HOST_MMU.id(), INVALID_REG), [](JitReg* reg) { delete reg; });
+        return createMemPtr(base, address, 0, (U32)offset, false);
+    }
+#else
+    (void)address;
+    (void)tmp;
+#endif
+    return JitCodeGen::getLinearMemoryPtr(address, tmp);
 }
 
 Mem JitX86CodeGen::createMem(JitWidth width, MemPtr mem) {
@@ -2191,7 +2348,7 @@ Mem JitX86CodeGen::createMem(JitWidth width, MemPtr mem) {
     }
 #ifdef BOXEDWINE_64
     U32 disp = mem->offset;
-    if (disp > 0x7fffff) {
+    if (disp > 0x7fffffff) {
         RegPtr tmp = getTmpReg();
         movValue(JitWidth::b32, tmp, disp);
         addReg(JitWidth::b64, tmp, mem->rm);
@@ -2266,6 +2423,33 @@ Mem JitX86CodeGen::createMem(JitWidth width, MemPtr mem) {
 void JitX86CodeGen::readHost(JitWidth width, MemPtr address, RegPtr result, bool emlulatedMemory) {
     compiler.mov(R(width, result), createMem(width, address));
 }
+
+#ifdef BOXEDWINE_64
+void JitX86CodeGen::movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend) {
+    // Keep address calculation and MMU scratch work separate from the guest
+    // destination, including when that register also supplies the address.
+    read(srcWidth, calculateEaa(op), [this, op, dstWidth, srcWidth, signExtend](MemPtr address) {
+        RegPtr dst = dstWidth == JitWidth::b8 ? getReg8(op->reg, false) : getReg(op->reg, -1, dstWidth != JitWidth::b32);
+        if (dstWidth == srcWidth) {
+            compiler.mov(R(dstWidth, dst), createMem(srcWidth, address));
+        } else if (signExtend) {
+            compiler.movsx(R(dstWidth, dst), createMem(srcWidth, address));
+        } else {
+            compiler.movzx(R(dstWidth, dst), createMem(srcWidth, address));
+        }
+    });
+}
+
+void JitX86CodeGen::scalarSseFromMemory(DecodedOp* op, JitWidth width, U32 instruction) {
+    read(width, calculateEaa(op), [this, op, width, instruction](MemPtr address) {
+        SSERegPtr dst = loadCpuXMMReg(op->reg);
+        // Legacy scalar instructions retain the destination's upper lanes and
+        // leave it unchanged if the memory operand faults.
+        compiler.emit(instruction, XMM(dst->hardwareReg()), createMem(width, address));
+        storeCpuXMMReg(dst, op->reg);
+    });
+}
+#endif
 
 void JitX86CodeGen::writeHost(JitWidth width, MemPtr address, RegPtr src, bool emlulatedMemory) {
     compiler.mov(createMem(width, address), R(width, src));
@@ -4842,8 +5026,10 @@ void JitX86CodeGen::dynamic_arithE32R32_lock(DecodedOp* op, std::function<void(R
         } else {
             reg = getReadOnlyReg(op->reg);
         }
-        callback(reg, address);        
+        callback(reg, address);
+        address = nullptr;
         updateFlagsIfNecessary();
+        reg = nullptr;
     });
 }
 
@@ -4856,8 +5042,10 @@ void JitX86CodeGen::dynamic_arithE16R16_lock(DecodedOp* op, std::function<void(R
         } else {
             reg = getReadOnlyReg(op->reg);
         }
-        callback(reg, address);        
+        callback(reg, address);
+        address = nullptr;
         updateFlagsIfNecessary();
+        reg = nullptr;
     });
 }
 void JitX86CodeGen::dynamic_arithE8R8_lock(DecodedOp* op, std::function<void(RegPtr dest, MemPtr address)> callback, bool writeReg) {
@@ -4869,14 +5057,17 @@ void JitX86CodeGen::dynamic_arithE8R8_lock(DecodedOp* op, std::function<void(Reg
         } else {
             reg = getReadOnlyReg8(op->reg);
         }
-        callback(reg, address);        
+        callback(reg, address);
+        address = nullptr;
         updateFlagsIfNecessary();
+        reg = nullptr;
     });
 }
 
 void JitX86CodeGen::dynamic_arithE32_lock(DecodedOp* op, std::function<void(MemPtr address)> callback) {
     JitCodeGen::write(JitWidth::b32, calculateEaa(op), nullptr, [op, callback, this](MemPtr address) {
         callback(address);
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -4884,12 +5075,14 @@ void JitX86CodeGen::dynamic_arithE32_lock(DecodedOp* op, std::function<void(MemP
 void JitX86CodeGen::dynamic_arithE16_lock(DecodedOp* op, std::function<void(MemPtr address)> callback) {
     JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [op, callback, this](MemPtr address) {
         callback(address);
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
 void JitX86CodeGen::dynamic_arithE8_lock(DecodedOp* op, std::function<void(MemPtr address)> callback) {
     JitCodeGen::write(JitWidth::b8, calculateEaa(op), nullptr, [op, callback, this](MemPtr address) {
         callback(address);
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5198,6 +5391,7 @@ void JitX86CodeGen::dynamic_btse32_lock(DecodedOp* op) {
         U8 imm = std::countr_zero(op->imm);
         this->compiler.lock();
         this->compiler.bts(createMem(JitWidth::b32, address), (U8)imm);
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5208,6 +5402,7 @@ void JitX86CodeGen::dynamic_btse16_lock(DecodedOp* op) {
         U8 imm = std::countr_zero(op->imm);
         this->compiler.lock();
         this->compiler.bts(createMem(JitWidth::b16, address), (U8)imm);
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5218,6 +5413,8 @@ void JitX86CodeGen::dynamic_btse32r32_lock(DecodedOp* op) {
         andValue(JitWidth::b32, reg, 0x1f);
         this->compiler.lock();
         this->compiler.bts(createMem(JitWidth::b32, address), R32(reg));
+        reg = nullptr;
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5228,6 +5425,8 @@ void JitX86CodeGen::dynamic_btse16r16_lock(DecodedOp* op) {
         andValue(JitWidth::b16, reg, 0xf);
         this->compiler.lock();
         this->compiler.bts(createMem(JitWidth::b16, address), R16(reg));
+        reg = nullptr;
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5238,6 +5437,7 @@ void JitX86CodeGen::dynamic_btre32_lock(DecodedOp* op) {
         U8 imm = std::countr_zero(op->imm);
         this->compiler.lock();
         this->compiler.btr(createMem(JitWidth::b32, address), (U8)imm);
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5247,6 +5447,7 @@ void JitX86CodeGen::dynamic_btre16_lock(DecodedOp* op) {
         U8 imm = std::countr_zero(op->imm);
         this->compiler.lock();
         this->compiler.btr(createMem(JitWidth::b16, address), (U8)imm);
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5256,6 +5457,8 @@ void JitX86CodeGen::dynamic_btre32r32_lock(DecodedOp* op) {
         andValue(JitWidth::b32, reg, 0x1f);
         this->compiler.lock();
         this->compiler.btr(createMem(JitWidth::b32, address), R32(reg));
+        reg = nullptr;
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5265,6 +5468,8 @@ void JitX86CodeGen::dynamic_btre16r16_lock(DecodedOp* op) {
         andValue(JitWidth::b16, reg, 0xf);
         this->compiler.lock();
         this->compiler.btr(createMem(JitWidth::b16, address), R16(reg));
+        reg = nullptr;
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5275,6 +5480,7 @@ void JitX86CodeGen::dynamic_btce32_lock(DecodedOp* op) {
         U8 imm = std::countr_zero(op->imm);
         this->compiler.lock();
         this->compiler.btc(createMem(JitWidth::b32, address), (U8)imm);
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5284,6 +5490,7 @@ void JitX86CodeGen::dynamic_btce16_lock(DecodedOp* op) {
         U8 imm = std::countr_zero(op->imm);
         this->compiler.lock();
         this->compiler.btc(createMem(JitWidth::b16, address), (U8)imm);
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5293,6 +5500,8 @@ void JitX86CodeGen::dynamic_btce32r32_lock(DecodedOp* op) {
         andValue(JitWidth::b32, reg, 0x1f);
         this->compiler.lock();
         this->compiler.btc(createMem(JitWidth::b32, address), R32(reg));
+        reg = nullptr;
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5302,6 +5511,8 @@ void JitX86CodeGen::dynamic_btce16r16_lock(DecodedOp* op) {
         andValue(JitWidth::b16, reg, 0xf);
         this->compiler.lock();
         this->compiler.btc(createMem(JitWidth::b16, address), R16(reg));
+        reg = nullptr;
+        address = nullptr;
         updateFlagsIfNecessary();
     });
 }
@@ -5451,10 +5662,14 @@ RegPtr JitX86CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
 bool JitX86CodeGen::directDoesAffectFlags(DecodedOp* op) {
     //read/write does things like address >> K_PAGE_SHIFT which will affect flags, perhaps we can make special versions of read/write for x86 if needed
     switch (op->inst) {
+    // High-byte extraction/writeback can use shifts and masks when the byte
+    // cannot be addressed directly in the allocated host register.
     case MovR8R8:
+        return op->reg > 3 || op->rm > 3;
     //case MovE8R8:
     //case MovR8E8:
     case MovR8I8:
+        return op->reg > 3;
     //case MovE8I8:
     case MovR16R16:
     //case MovE16R16:
@@ -5472,14 +5687,6 @@ bool JitX86CodeGen::directDoesAffectFlags(DecodedOp* op) {
     //case MovObAl:
     //case MovOwAx:
     //case MovOdEax:
-    case MovGwXzR8:
-    //case MovGwXzE8:
-    case MovGwSxR8:
-    //case MovGwSxE8:
-    case MovGdXzR8:
-    //case MovGdXzE8:
-    case MovGdSxR8:
-    //case MovGdSxE8:
     case MovGdXzR16:
     //case MovGdXzE16:
     case MovGdSxR16:
@@ -5487,6 +5694,11 @@ bool JitX86CodeGen::directDoesAffectFlags(DecodedOp* op) {
     case LeaR16:
     case LeaR32:
         return false;
+    case MovGwXzR8:
+    case MovGwSxR8:
+    case MovGdXzR8:
+    case MovGdSxR8:
+        return op->rm > 3;
     default:
         return true;
     }
@@ -5590,6 +5802,88 @@ void JitX86CodeGen::direct_test(JitWidth width, RegPtr left, U32 right) {
     }
 }
 
+void JitX86CodeGen::direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, RegPtr src) {
+    switch (op) {
+    case JitFlagOp::Add:
+        addReg(width, dst, src);
+        break;
+    case JitFlagOp::Sub:
+        subReg(width, dst, src);
+        break;
+    case JitFlagOp::And:
+        andReg(width, dst, src);
+        break;
+    case JitFlagOp::Or:
+        orReg(width, dst, src);
+        break;
+    case JitFlagOp::Xor:
+        xorReg(width, dst, src);
+        break;
+    }
+}
+
+void JitX86CodeGen::direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, U32 src) {
+    switch (op) {
+    case JitFlagOp::Add:
+        addValue(width, dst, src);
+        break;
+    case JitFlagOp::Sub:
+        subValue(width, dst, src);
+        break;
+    case JitFlagOp::And:
+        andValue(width, dst, src);
+        break;
+    case JitFlagOp::Or:
+        orValue(width, dst, src);
+        break;
+    case JitFlagOp::Xor:
+        xorValue(width, dst, src);
+        break;
+    }
+}
+
+void JitX86CodeGen::direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) {
+    if (width != JitWidth::b32) {
+        kpanic("JitX86CodeGen::direct_flags_op_with_cf width");
+    }
+    compiler.bt(R32(cf), 0);
+    if (op == JitCarryOp::Adc) {
+        compiler.adc(R32(dst), R32(src));
+    } else {
+        compiler.sbb(R32(dst), R32(src));
+    }
+}
+
+void JitX86CodeGen::direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) {
+    if (width != JitWidth::b32) {
+        kpanic("JitX86CodeGen::direct_flags_op_with_cf width");
+    }
+    compiler.bt(R32(cf), 0);
+    if (op == JitCarryOp::Adc) {
+        compiler.adc(R32(dst), src);
+    } else {
+        compiler.sbb(R32(dst), src);
+    }
+}
+
+void JitX86CodeGen::direct_neg(JitWidth width, RegPtr dst) {
+    negReg2(width, dst);
+}
+
+void JitX86CodeGen::direct_bit_test(JitWidth width, RegPtr value, RegPtr bit) {
+    if (width != JitWidth::b32) {
+        kpanic("JitX86CodeGen::direct_bit_test reg width");
+    }
+    compiler.bt(R32(value), R32(bit));
+}
+
+void JitX86CodeGen::direct_bit_test(JitWidth width, RegPtr value, U32 bitMask) {
+    if (width != JitWidth::b32) {
+        kpanic("JitX86CodeGen::direct_bit_test imm width");
+    }
+    compiler.bt(R32(value), (U8)std::countr_zero(bitMask));
+}
+
 U8* JitX86CodeGen::createStartJITCode() {
     for (int i = 0; i < NUMBER_OF_XMM_REG; i++) {
         if (!isSseVolitile[i]) {
@@ -5612,7 +5906,16 @@ U8* JitX86CodeGen::createStartJITCode() {
     IfNot(JitWidth::b32, tmpReg); {
         compiler.push(asmjit::x86::rax);
     } EndIf();    
-    compiler.mov(HOST_MMU, (U64)getMemData(KThread::currentThread()->memory)->mmu);
+    KMemoryData* memoryData = getMemData(KThread::currentThread()->memory);
+#ifdef _WIN32
+    if (memoryData->useLinearMemoryJit()) {
+        compiler.mov(HOST_LINEAR_MEMORY, (U64)memoryData->linearMemoryBase);
+    } else {
+        compiler.mov(HOST_MMU, (U64)memoryData->mmu);
+    }
+#else
+    compiler.mov(HOST_MMU, (U64)memoryData->mmu);
+#endif
     
     compiler.mov(HOST_CPU, params[0]);
     compiler.mov(RN(tmpReg), Mem(params[1], offsetof(DecodedOp, pfnJitCode)));

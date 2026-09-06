@@ -194,6 +194,7 @@ public:
     RegPtr getTmpIfNotTmp(RegPtr reg);
     void writeEip(RegPtr eip) override;
     void writeEip(U32 eip) override;
+    U32 getAvailableTmpRegCount() override;
     bool isTmpRegAvailable() override;    
     void forceSyncBackIfNotCached(RegPtr reg) override;
     RegPtr getConditionCalculationReg(U32 index) override;
@@ -202,10 +203,24 @@ public:
     void emulateSingleOp() override;
     RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0) override;
 
+    void movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend = false);
+    void dynamic_movr32e32(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b32); }
+    void dynamic_movGwXzE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b8); }
+    void dynamic_movGwSxE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b8, true); }
+    void dynamic_movGdXzE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b8); }
+    void dynamic_movGdSxE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b8, true); }
+    void dynamic_movGdXzE16(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b16); }
+    void dynamic_movGdSxE16(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b16, true); }
+
     void direct_cmp(JitWidth width, RegPtr left, RegPtr right) override;
     void direct_cmp(JitWidth width, RegPtr left, U32 right) override;
     void direct_test(JitWidth width, RegPtr left, RegPtr right) override;
     void direct_test(JitWidth width, RegPtr left, U32 right) override;
+    void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, RegPtr src) override;
+    void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, U32 src) override;
+    void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) override;
+    void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) override;
+    void direct_neg(JitWidth width, RegPtr dst) override;
     void direct_jump(JitConditional condition, U32 address) override;
     void direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) override;
     void direct_setcc(JitConditional condition, RegPtr dst) override;
@@ -276,7 +291,9 @@ public:
 
     void readMMU(RegPtr dest, RegPtr index, U32 offset) override;
     void readMMU(RegPtr dest, U32 index) override;
+    RegPtr getLinearMemoryBase(RegPtr tmp = nullptr) override;
     virtual void readHost(JitWidth width, MemPtr address, RegPtr result, bool emlulatedMemory = true) override;
+    void readHostValue(JitWidth width, MemPtr address, RegPtr result, bool emulatedMemory, bool signExtend);
     virtual void writeHost(JitWidth width, MemPtr address, RegPtr src, bool emlulatedMemory = true) override;
     virtual void writeHost(JitWidth width, MemPtr address, U32 imm, bool emlulatedMemory = true) override;
 
@@ -1071,13 +1088,21 @@ void JitArmV8CodeGen::writeEip(U32 eip) {
     writeEip(reg);
 }
 
-bool JitArmV8CodeGen::isTmpRegAvailable() {
-    U8 found = findTmpReg(true);
-    if (found == 0xff) {
-        return false;
+U32 JitArmV8CodeGen::getAvailableTmpRegCount() {
+    if (disableTmps) {
+        return 0;
     }
-    regUsed[found] = false;
-    return true;
+    U32 result = 0;
+    for (int i = 0; i < NUMBER_OF_TMPS; i++) {
+        if (!regUsed[tmps[i]]) {
+            result++;
+        }
+    }
+    return result;
+}
+
+bool JitArmV8CodeGen::isTmpRegAvailable() {
+    return getAvailableTmpRegCount() != 0;
 }
 
 void JitArmV8CodeGen::forceSyncBackIfNotCached(RegPtr reg) {
@@ -2356,6 +2381,19 @@ void JitArmV8CodeGen::readMMU(RegPtr dest, U32 index) {
     compiler.ldr(R64(dest), createMem(regMMU, index * 8));
 }
 
+RegPtr JitArmV8CodeGen::getLinearMemoryBase(RegPtr tmp) {
+    // A grouped linear-memory read can fault when another guest page in the
+    // host-page group prevents a direct mapping. Keep the address base out of
+    // the load destination so the exception context retains a valid address
+    // calculation while the instruction is handled through the MMU path.
+    if (!tmp || ramPageUseLinearMemoryAdjacent()) {
+        tmp = getTmpReg();
+    }
+    constexpr S32 offset = (S32)offsetof(KMemoryData, linearMemoryBase) - (S32)offsetof(KMemoryData, mmu);
+    compiler.ldr(R64(tmp), Mem(xMMU, offset));
+    return tmp;
+}
+
 Mem JitArmV8CodeGen::createMem(MemPtr mem) {
     if (mem->sib) {
         return createMem(mem->rm, mem->sib, mem->lsl, mem->offset);
@@ -2465,6 +2503,21 @@ SSERegPtr JitArmV8CodeGen::loadSSEConst(U8 index) {
     return result;
 }
 
+void JitArmV8CodeGen::movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend) {
+    // Resolve the address and any MMU fallback before touching the guest
+    // destination, which may also be an input to the address calculation.
+    read(srcWidth, calculateEaa(op), [this, op, dstWidth, srcWidth, signExtend](MemPtr address) {
+        RegPtr dst = getReg(op->reg, -1, dstWidth != JitWidth::b32);
+        RegPtr value = dstWidth == JitWidth::b32 ? dst : getTmpReg();
+        readHostValue(srcWidth, address, value, true, signExtend);
+        if (dstWidth != JitWidth::b32) {
+            // ARM narrow loads replace the whole W register. Merge AX-sized
+            // results only after the load succeeds to preserve the upper bits.
+            mov(dstWidth, dst, value);
+        }
+    });
+}
+
 void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool emlulatedMemory) {
     // arm zero extends reads
     if (!isTmp[dest->hardwareReg()] && (width == JitWidth::b8 || width == JitWidth::b16)) {
@@ -2473,6 +2526,15 @@ void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool eml
         mov(width, dest, tmp);
         return;
     }
+    if (width == JitWidth::b8 && isRegHigh(dest)) {
+        kpanic("JitArmV8CodeGen::readHost unexpected dest");
+    }
+    readHostValue(width, mem, dest, emlulatedMemory, false);
+}
+
+void JitArmV8CodeGen::readHostValue(JitWidth width, MemPtr mem, RegPtr dest, bool emlulatedMemory, bool signExtend) {
+    // Always replace the whole W/X register, even for a byte or word load.
+    // In particular, guest ESP-EDI destinations here do not mean AH-BH.
     if (width == JitWidth::b32) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
@@ -2492,25 +2554,36 @@ void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool eml
             RegPtr addressReg = calculateAddress(mem);
             U32 op = 0x78BFC000 | dest->hardwareReg() | (addressReg->hardwareReg() << 5);
             compiler.embed_int32(op);
+            if (signExtend) {
+                compiler.sxth(R32(dest), R32(dest));
+            }
         } else
 #endif
         {
-            compiler.ldrh(R32(dest), createMem(mem));
+            if (signExtend) {
+                compiler.ldrsh(R32(dest), createMem(mem));
+            } else {
+                compiler.ldrh(R32(dest), createMem(mem));
+            }
         }
     } else if (width == JitWidth::b8) {
-        if (isRegHigh(dest)) {
-            kpanic("JitArmV8CodeGen::readHost unexpected dest");
-        }
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
             // compiler.ldaprb(R32(dest), createMemR(reg, sib, lsl, disp));
             RegPtr addressReg = calculateAddress(mem);
             U32 op = 0x38BFC000 | dest->hardwareReg() | (addressReg->hardwareReg() << 5);
             compiler.embed_int32(op);
+            if (signExtend) {
+                compiler.sxtb(R32(dest), R32(dest));
+            }
         } else
 #endif
         {
-            compiler.ldrb(R32(dest), createMem(mem));
+            if (signExtend) {
+                compiler.ldrsb(R32(dest), createMem(mem));
+            } else {
+                compiler.ldrb(R32(dest), createMem(mem));
+            }
         }
 #ifdef BOXEDWINE_64
     } else if (width == JitWidth::b64) {
@@ -5668,7 +5741,7 @@ void JitArmV8CodeGen::dynamic_rdtsc(DecodedOp* op) {
 }
 
 void JitArmV8CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](MemPtr address) {
+    auto customMemoryOp = [op, this](MemPtr address) {
         U32 neededFlags = currentOp->needsToSetFlags(cpu) & ZF;
         if (neededFlags && currentOp->getNeededFlagsAfter(PF | SF | AF | CF | OF)) { // The ZF flag is set if the destination operand and EDX:EAX are equal; otherwise it is cleared. The CF, PF, AF, SF, and OF flags are unaffected.
             fillFlags();
@@ -5726,11 +5799,19 @@ void JitArmV8CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
                 compiler.mov(wEDX, R32(tmp2));
             } EndIf();
         }
-    });
+    };
+    RegPtr address = calculateEaa(op);
+    // CASP is a single restartable memory operation. The load/store-exclusive
+    // fallback can skip its store on a mismatch, so it still needs a precheck.
+    if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLRCPC)) {
+        JitCodeGen::write(JitWidth::b64, std::move(address), nullptr, std::move(customMemoryOp));
+    } else {
+        writeWithMmuCheck(JitWidth::b64, std::move(address), nullptr, std::move(customMemoryOp));
+    }
 }
 
 void JitArmV8CodeGen::dynamic_cmpxchg_lock(JitWidth width, DecodedOp* op) {
-    JitCodeGen::write(JitWidth::b16, calculateEaa(op), nullptr, [width, op, this](MemPtr mem) {
+    auto customMemoryOp = [width, op, this](MemPtr mem) {
         LazyFlagType flagType;
         
         if (width == JitWidth::b32) {
@@ -5806,7 +5887,15 @@ void JitArmV8CodeGen::dynamic_cmpxchg_lock(JitWidth width, DecodedOp* op) {
             }            
         }
         jitFlags.commit(tmp2);
-    });
+    };
+    RegPtr address = calculateEaa(op);
+    // LSE CAS is restartable. The load/store-exclusive fallback can skip its
+    // store on a mismatch, so it still needs write permission checked first.
+    if (rt.cpu_features().has(asmjit::CpuFeatures::ARM::kLSE)) {
+        JitCodeGen::write(width, std::move(address), nullptr, std::move(customMemoryOp));
+    } else {
+        writeWithMmuCheck(width, std::move(address), nullptr, std::move(customMemoryOp));
+    }
 }
 
 void JitArmV8CodeGen::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
@@ -5876,16 +5965,18 @@ void JitArmV8CodeGen::dynamic_xchge32r32_lock(DecodedOp* op) {
             RegPtr reg = getReg(op->reg);
             compiler.swpal(R32(reg), R32(reg), Mem(R64(address)));
         } else {
-            RegPtr tmp = getTmpReg(op->reg);
             RegPtr reg = getReg(op->reg);
+            RegPtr oldValue = getTmpReg();
             RegPtr cond = getTmpReg();
             Label label = compiler.new_label();
 
             compiler.bind(label);            
 
-            compiler.ldaxr(R32(reg), Mem(R64(address)));
-            compiler.stlxr(R32(cond), R32(tmp), Mem(R64(address)));
+            // Do not update the guest register until the store succeeds.
+            compiler.ldaxr(R32(oldValue), Mem(R64(address)));
+            compiler.stlxr(R32(cond), R32(reg), Mem(R64(address)));
             compiler.cbnz(R32(cond), label);
+            compiler.mov(R32(reg), R32(oldValue));
         }
     });
 }
@@ -6803,6 +6894,106 @@ void JitArmV8CodeGen::direct_test(JitWidth width, RegPtr left, U32 right) {
     } else {
         kpanic("JitX86CodeGen::direct_test");
     }
+}
+
+void JitArmV8CodeGen::direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, RegPtr src) {
+    if (width != JitWidth::b32) {
+        kpanic("JitArmV8CodeGen::direct_flags_op width");
+    }
+    switch (op) {
+    case JitFlagOp::Add:
+        cfInverted = false;
+        compiler.adds(R32(dst), R32(dst), R32(src));
+        break;
+    case JitFlagOp::Sub:
+        cfInverted = true;
+        compiler.subs(R32(dst), R32(dst), R32(src));
+        break;
+    case JitFlagOp::And:
+        cfInverted = false;
+        compiler.ands(R32(dst), R32(dst), R32(src));
+        break;
+    case JitFlagOp::Or:
+        cfInverted = false;
+        compiler.orr(R32(dst), R32(dst), R32(src));
+        compiler.ands(asmjit::a64::wzr, R32(dst), R32(dst));
+        break;
+    case JitFlagOp::Xor:
+        cfInverted = false;
+        compiler.eor(R32(dst), R32(dst), R32(src));
+        compiler.ands(asmjit::a64::wzr, R32(dst), R32(dst));
+        break;
+    default:
+        kpanic("JitArmV8CodeGen::direct_flags_op");
+    }
+}
+
+void JitArmV8CodeGen::direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, U32 src) {
+    if (width != JitWidth::b32) {
+        kpanic("JitArmV8CodeGen::direct_flags_op width");
+    }
+    if ((op == JitFlagOp::Add || op == JitFlagOp::Sub) && !asmjit::a64::Utils::is_add_sub_imm(src)) {
+        direct_flags_op(width, op, dst, loadConst(src));
+        return;
+    }
+    if ((op == JitFlagOp::And || op == JitFlagOp::Or || op == JitFlagOp::Xor) &&
+        !asmjit::a64::Utils::is_logical_imm(src, 32)) {
+        direct_flags_op(width, op, dst, loadConst(src));
+        return;
+    }
+    switch (op) {
+    case JitFlagOp::Add:
+        cfInverted = false;
+        compiler.adds(R32(dst), R32(dst), src);
+        break;
+    case JitFlagOp::Sub:
+        cfInverted = true;
+        compiler.subs(R32(dst), R32(dst), src);
+        break;
+    case JitFlagOp::And:
+        cfInverted = false;
+        compiler.ands(R32(dst), R32(dst), src);
+        break;
+    case JitFlagOp::Or:
+        cfInverted = false;
+        compiler.orr(R32(dst), R32(dst), src);
+        compiler.ands(asmjit::a64::wzr, R32(dst), R32(dst));
+        break;
+    case JitFlagOp::Xor:
+        cfInverted = false;
+        compiler.eor(R32(dst), R32(dst), src);
+        compiler.ands(asmjit::a64::wzr, R32(dst), R32(dst));
+        break;
+    default:
+        kpanic("JitArmV8CodeGen::direct_flags_op");
+    }
+}
+
+void JitArmV8CodeGen::direct_neg(JitWidth width, RegPtr dst) {
+    if (width != JitWidth::b32) {
+        kpanic("JitArmV8CodeGen::direct_neg width");
+    }
+    cfInverted = true;
+    compiler.subs(R32(dst), asmjit::a64::wzr, R32(dst));
+}
+
+void JitArmV8CodeGen::direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) {
+    if (width != JitWidth::b32) {
+        kpanic("JitArmV8CodeGen::direct_flags_op_with_cf width");
+    }
+    if (op == JitCarryOp::Adc) {
+        compiler.cmp(R32(cf), 1);
+        compiler.adcs(R32(dst), R32(dst), R32(src));
+        cfInverted = false;
+    } else {
+        compiler.cmp(asmjit::a64::wzr, R32(cf));
+        compiler.sbcs(R32(dst), R32(dst), R32(src));
+        cfInverted = true;
+    }
+}
+
+void JitArmV8CodeGen::direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) {
+    direct_flags_op_with_cf(width, op, dst, loadConst(src), cf);
 }
 
 void JitArmV8CodeGen::onBlockPreCommit(DecodedOp* op) {

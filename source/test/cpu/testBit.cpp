@@ -411,6 +411,38 @@ void runBitCases(BitOp op, int width, const BitCase* cases, size_t count, const 
     }
 }
 
+void runBtsMemRegPreservesLazyZFCase() {
+    constexpr U32 baseValue = 0;
+    constexpr U32 bit = 3;
+    U32 linear = TEST_HEAP_ADDRESS + MEM_BASE;
+
+    newInstruction(0);
+    cpu->big = true;
+    pushCode8(0x08);
+    pushCode8(0xc9); // or cl, cl
+    pushCode8(0x0f);
+    pushCode8(0xab);
+    pushCode8(0x10); // bts dword ptr [eax], edx
+    emitSetccMem(0x92, SETCC_RESULT, true);
+    emitSetccMem(0x94, SETCC_RESULT + 1, true);
+
+    cpu->reg[R_AX].u32 = MEM_BASE;
+    cpu->reg[R_CX].u32 = 1;
+    cpu->reg[R_DX].u32 = bit;
+    prepareMemory(linear, 32, baseValue);
+    memory->writeb(TEST_HEAP_ADDRESS + SETCC_RESULT, 0xcc);
+    memory->writeb(TEST_HEAP_ADDRESS + SETCC_RESULT + 1, 0xcc);
+    runTestCPU();
+
+    verifyMemory(linear, 32, 1u << bit, "bts [eax],edx preserves lazy zf");
+    if (memory->readb(TEST_HEAP_ADDRESS + SETCC_RESULT) != 0) {
+        failed("bts [eax],edx carry result");
+    }
+    if (memory->readb(TEST_HEAP_ADDRESS + SETCC_RESULT + 1) != 0) {
+        failed("bts [eax],edx zf result");
+    }
+}
+
 void runGroup8RegCase(BitOp op, int width, int dst, const BitCase& data, int flagMode, const char* name) {
     char caseName[160];
     snprintf(caseName, sizeof(caseName), "%s %s reg dst=%d base=%x bit=%u mode=%d", name, bitName(op), dst, data.base, data.bit, flagMode);
@@ -599,7 +631,10 @@ void runScanCases(ScanOp op, int width, const ScanCase* cases, size_t count, con
 void testBtE16R16_0x1a3() { runBitCases(BIT_BT, 16, BIT_CASES_16, caseCount(BIT_CASES_16), "bt e16,r16 1a3"); }
 void testBtE32R32_0x3a3() { runBitCases(BIT_BT, 32, BIT_CASES_32, caseCount(BIT_CASES_32), "bt e32,r32 3a3"); }
 void testBtsE16R16_0x1ab() { runBitCases(BIT_BTS, 16, BIT_CASES_16, caseCount(BIT_CASES_16), "bts e16,r16 1ab"); }
-void testBtsE32R32_0x3ab() { runBitCases(BIT_BTS, 32, BIT_CASES_32, caseCount(BIT_CASES_32), "bts e32,r32 3ab"); }
+void testBtsE32R32_0x3ab() {
+    runBitCases(BIT_BTS, 32, BIT_CASES_32, caseCount(BIT_CASES_32), "bts e32,r32 3ab");
+    runBtsMemRegPreservesLazyZFCase();
+}
 void testBtrE16R16_0x1b3() { runBitCases(BIT_BTR, 16, BIT_CASES_16, caseCount(BIT_CASES_16), "btr e16,r16 1b3"); }
 void testBtrE32R32_0x3b3() { runBitCases(BIT_BTR, 32, BIT_CASES_32, caseCount(BIT_CASES_32), "btr e32,r32 3b3"); }
 void testBtcE16R16_0x1bb() { runBitCases(BIT_BTC, 16, BIT_CASES_16, caseCount(BIT_CASES_16), "btc e16,r16 1bb"); }

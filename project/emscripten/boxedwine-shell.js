@@ -524,12 +524,13 @@
             return zipFiles;
         }
         // ---------------------------------------------------------------
-        // WASM JIT persistent-cache key convention: 'v5-<eip>-<blockHash>'
+        // WASM JIT persistent-cache key convention: 'v6-<eip>-<blockHash>'
         // where both values are 8-digit lowercase hex. Must stay in sync
         // with the inline key construction in the EM_JS bodies in
         // source/emulation/cpu/wasm/jitWasmCodeGen.cpp.
         // ---------------------------------------------------------------
-        var BOXEDWINE_WASM_JIT_CACHE_VERSION = 'v5';
+        // v6 adds CPU::wasmJitHelperOp, shifting the offsets embedded in v5 modules.
+        var BOXEDWINE_WASM_JIT_CACHE_VERSION = 'v6';
         function boxedwineWasmJitHex32(value) {
             return ('00000000' + ((value >>> 0).toString(16))).slice(-8);
         }
@@ -1497,7 +1498,7 @@ function fetchServerJitCache(callback) {
 }
 
 // Parse a JIT cache zip buffer and load its contents:
-//   v5-*.wasm                            flat block modules -> wasmJitCache
+//   v6-*.wasm                            flat block modules -> wasmJitCache
 //   groups/*.wasm                        merged group modules (pipeline output)
 //   boxedwine-jit-grouped-manifest.json  group entry map + direct-call stats +
 //                                        profile-guided split hints

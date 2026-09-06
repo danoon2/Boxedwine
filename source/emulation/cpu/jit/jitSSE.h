@@ -616,6 +616,8 @@ public:
 	void dynamic_lfence(DecodedOp* op) override { lfence(); }
 	void dynamic_mfence(DecodedOp* op) override { mfence(); }
 	void dynamic_clflush(DecodedOp* op) override;
+	void dynamic_fxsave(DecodedOp* op) override;
+	void dynamic_fxrstor(DecodedOp* op) override;
 	void dynamic_FCOS(DecodedOp* op) override;
 	void dynamic_FSIN(DecodedOp* op) override;
 
@@ -624,6 +626,7 @@ public:
 	void createHelpers() override;
 	void movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) override;
 private:
+	U8* createJitF64ToF80();
 	U8* createJitCosSub();
 	U8* createJitCos();
 };

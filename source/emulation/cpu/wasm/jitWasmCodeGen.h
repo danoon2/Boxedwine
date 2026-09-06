@@ -76,8 +76,9 @@
  * on the active block always slow-path through the bailout-checking
  * helper.
  *
- * The RMW path (readWriteMem) is NOT TLB-fast-pathed — see the comment
- * in jitWasmCodeGen.cpp above readWriteMem for why.
+ * The RMW path (readWriteMem) uses the writable-page table for its fast
+ * path. Its helper path validates write permission before invoking the
+ * modification callback so faulting operations remain restartable.
  *
  * Ops still routed through emulateSingleOp
  * ----------------------------------------
@@ -136,9 +137,6 @@
  *                               through the interpreter preserves the exact
  *                               per-op stack behavior without duplicating
  *                               helper logic here.
- *
- *   bswap32                     The backend byteSwapReg32 helper is still
- *                               a conservative emulateSingleOp stub.
  *
  * Build-time defines (all opt-in via GCC_EXTRA_FLAGS unless noted)
  * ----------------------------------------------------------------
@@ -263,8 +261,30 @@ public:
     RegPtr getReadOnlySegAddress(U8 seg) override;
     RegPtr getTmpSegAddress(U8 seg) override;
     RegPtr getReadOnlySegValue(U8 seg) override;
+    U32    getAvailableTmpRegCount() override;
     bool   isTmpRegAvailable() override;
     void   forceSyncBackIfNotCached(RegPtr reg) override;
+
+    void dynamic_movr8e8(DecodedOp* op) override { movFromMemory(op, JitWidth::b8, JitWidth::b8); }
+    void dynamic_movr16e16(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b16); }
+    void dynamic_movr32e32(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b32); }
+    void dynamic_movGwXzE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b8); }
+    void dynamic_movGwSxE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b16, JitWidth::b8, true); }
+    void dynamic_movGdXzE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b8); }
+    void dynamic_movGdSxE8(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b8, true); }
+    void dynamic_movGdXzE16(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b16); }
+    void dynamic_movGdSxE16(DecodedOp* op) override { movFromMemory(op, JitWidth::b32, JitWidth::b16, true); }
+
+    void dynamic_addssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, WASM_F32_ADD); }
+    void dynamic_subssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, WASM_F32_SUB); }
+    void dynamic_mulssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, WASM_F32_MUL); }
+    void dynamic_divssE32(DecodedOp* op) override { guardSseDiv(); scalarSseFromMemory(op, JitWidth::b32, WASM_F32_DIV); }
+    void dynamic_sqrtssE32(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b32, WASM_F32_SQRT, true); }
+    void dynamic_addsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, WASM_F64_ADD); }
+    void dynamic_subsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, WASM_F64_SUB); }
+    void dynamic_mulsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, WASM_F64_MUL); }
+    void dynamic_divsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, WASM_F64_DIV); }
+    void dynamic_sqrtsdXmmE64(DecodedOp* op) override { scalarSseFromMemory(op, JitWidth::b64, WASM_F64_SQRT, true); }
 
     // --- EIP ---
     RegPtr readEip() override;
@@ -409,7 +429,7 @@ public:
     // --- Emulated memory read/write (with MMU) ---
     RegPtr readWriteMem(JitWidth w, RegPtr addressReg,
                         std::function<void(RegPtr)> prepareWrite,
-                        S8 hint = -1) override;
+                        S8 hint = -1, bool forceMmuCheck = false) override;
     RegPtr read(JitWidth w, RegPtr addressReg,
                 std::function<void(MemPtr)> customOp = nullptr,
                 std::function<void()> failedOp = nullptr,
@@ -418,6 +438,7 @@ public:
                std::function<void(MemPtr)> customOp = nullptr,
                std::function<void()> failedOp = nullptr,
                bool checkAlignment = true) override;
+    void writeWithMmuCheck(JitWidth w, RegPtr addressReg, RegPtr src, std::function<void(MemPtr)> customOp = nullptr, std::function<void()> failedOp = nullptr, bool checkAlignment = true) override;
     RegPtr read(JitWidth w, MemPtr address, RegPtr result = nullptr) override;
     void   write(JitWidth w, MemPtr address, RegPtr src) override;
     void   write(JitWidth w, MemPtr address, U32 imm) override;
@@ -435,6 +456,8 @@ public:
     void dynamic_loopnz(DecodedOp* op) override;
     void hintLikelyStringLoopContinue() override;
     void dynamic_FILD_QWORD_INTEGER(DecodedOp* op) override;
+    void dynamic_fxsave(DecodedOp* op) override;
+    void dynamic_fxrstor(DecodedOp* op) override;
     void nakedCall(RegPtr reg) override;
     void nakedReturn() override;
 
@@ -443,6 +466,11 @@ public:
     void direct_cmp(JitWidth w, RegPtr left, U32 right) override;
     void direct_test(JitWidth w, RegPtr left, RegPtr right) override;
     void direct_test(JitWidth w, RegPtr left, U32 right) override;
+    void direct_flags_op(JitWidth w, JitFlagOp op, RegPtr dst, RegPtr src) override;
+    void direct_flags_op(JitWidth w, JitFlagOp op, RegPtr dst, U32 src) override;
+    void direct_flags_op_with_cf(JitWidth w, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) override;
+    void direct_flags_op_with_cf(JitWidth w, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) override;
+    void direct_neg(JitWidth w, RegPtr dst) override;
     void direct_jump(JitConditional cond, U32 address) override;
     void direct_cmov(JitWidth w, JitConditional cond, RegPtr dst, RegPtr src) override;
     void direct_setcc(JitConditional cond, RegPtr dst) override;
@@ -907,6 +935,9 @@ public:
 
 protected:
     // Helpers used internally during code generation
+    void movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend = false);
+    RegPtr readMemoryValue(JitWidth width, RegPtr address, RegPtr result, bool signExtend = false);
+    void scalarSseFromMemory(DecodedOp* op, JitWidth width, U8 instruction, bool unary = false);
     void fallbackToEmulateSingleOp(const char* family);
     void dynamic_div32(DecodedOp* op, RegPtr src);
     void dynamic_idiv32(DecodedOp* op, RegPtr src);
@@ -958,6 +989,7 @@ protected:
     // Common tail of every IfXxx: emit the WASM `if`. The condition is
     // already on the value stack.
     void finishIf();
+    void emitMaterializedCondition(JitConditional cond, U32 conditionLocal);
 
     // Store a GP/scratch RegPtr into a CPU struct field (used to stage
     // mem-helper args — address/value — without touching lazy-flag state).
@@ -987,6 +1019,7 @@ protected:
 #endif
     void syncStateBeforeFaultingMemoryHelper();
     U32 lastCompiledOpLen = 0;
+    bool m_emulatedCurrentOp = false;
     bool m_needsWasmMemoryPageArrays = false;
     DecodedOp* m_wasmBlockStartOp = nullptr;
     DecodedOp* m_currentWasmOp = nullptr;

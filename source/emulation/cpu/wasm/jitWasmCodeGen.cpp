@@ -30,6 +30,7 @@
 #endif
 #include "../common/cpu.h"
 #include "../common/common_fpu.h"
+#include "../common/common_other.h"
 #include "../common/common_sse2.h"
 #include "../normal/normal_strings.h"
 #include "../normal/normalCPU.h"
@@ -66,6 +67,8 @@ void wasmJitTestSetFailInvalidationPreparation(bool fail) {
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op);
 
 static constexpr U32 WASM_FMASK_TEST = CF | PF | AF | ZF | SF | OF;
+// Preserve the x86 overflow flag before minizip undefines OF in ST builds.
+static constexpr U32 WASM_OVERFLOW_FLAG = OF;
 static_assert(WASM_LOCAL_COUNT <= 0xff,
               "JitReg/MMXRegInternal store WASM local ids in U8 fields");
 
@@ -1074,7 +1077,7 @@ static void wasmJitRecordHelperDetail(WasmJitHelperDetail detail) {
 
 #ifdef BOXEDWINE_MULTI_THREADED
 #ifndef WASM_JIT_MT_CHAIN_BLOCK_LIMIT
-#define WASM_JIT_MT_CHAIN_BLOCK_LIMIT 2
+#define WASM_JIT_MT_CHAIN_BLOCK_LIMIT 32
 #endif
 static constexpr U32 WASM_JIT_CHAIN_BLOCK_LIMIT = WASM_JIT_MT_CHAIN_BLOCK_LIMIT;
 #else
@@ -2245,6 +2248,8 @@ static void wasmPrepareBlockEnter(CPU* cpu, KMemoryData* memoryData) {
 // or -1 on failure.
 // ---------------------------------------------------------------------------
 // Single-threaded build: use Emscripten's addFunction helper.
+// WASM i32 pointer arguments arrive signed in EM_JS. Typed-array byte offsets
+// must be unsigned even when Emscripten rewrites HEAP indexing for >2 GiB heaps.
 EM_JS(int, boxedwine_wasm_instantiate,
       (const void* bytes, int size, const void** importFns, int importCount),
 {
@@ -2264,14 +2269,14 @@ EM_JS(int, boxedwine_wasm_instantiate,
             throw new Error('out of memory');
         }
 #endif
-        var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
+        var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes >>> 0, size);
         var mod = new WebAssembly.Module(wasmBytes);
 
         // Build the helper imports object.  Each entry in importFns is a C++
         // function pointer that already lives in wasmTable (since all Emscripten
         // functions are in the table).
         var helpers = {};
-        var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+        var view = new Int32Array(HEAP32.buffer, importFns >>> 0, importCount);
         for (var i = 0; i < importCount; i++) {
             helpers['fn_' + i] = wasmTable.get(view[i]);
         }
@@ -2372,9 +2377,9 @@ EM_JS(int, boxedwine_wasm_instantiate_runtime_batch, (const void* bytes, int siz
             throw new Error('out of memory');
         }
 #endif
-        var module = new WebAssembly.Module(new Uint8Array(HEAPU8.buffer, bytes, size));
+        var module = new WebAssembly.Module(new Uint8Array(HEAPU8.buffer, bytes >>> 0, size));
         var helpers = {};
-        var imports = new Int32Array(HEAP32.buffer, importFns, importCount);
+        var imports = new Int32Array(HEAP32.buffer, importFns >>> 0, importCount);
         for (var i = 0; i < importCount; ++i) {
             helpers['fn_' + i] = wasmTable.get(imports[i]);
         }
@@ -2404,7 +2409,7 @@ EM_JS(int, boxedwine_wasm_instantiate_runtime_batch, (const void* bytes, int siz
         var group = {module: module, instance: instance, slots: new Set(allocated)};
         Module.wasmJitRuntimeGroups.set(groupId, group);
         for (var i = 0; i < allocated.length; ++i) {
-            HEAP32[(outputSlots >> 2) + i] = allocated[i];
+            HEAP32[(outputSlots >>> 2) + i] = allocated[i];
             Module.wasmJitRuntimeGroupBySlot.set(allocated[i], groupId);
         }
         Module.wasmJitRuntimeModuleCount = (Module.wasmJitRuntimeModuleCount || 0) + 1;
@@ -2510,7 +2515,7 @@ EM_JS(void, boxedwine_wasm_test_reset_runtime_batching_js, (), {
 //   Module.wasmJitInstalledByTableIndex   reverse map for free-block cleanup
 //   Module.wasmJitProfileSplitTargets     blockStart hex -> target hex hints
 //
-// The cache key convention is 'v5-<eip hex8>-<blockHash hex8>'; it is computed
+// The cache key convention is 'v6-<eip hex8>-<blockHash hex8>'; it is computed
 // inline here (rather than calling a shell-defined helper) so these EM_JS
 // bodies stay self-contained and never depend on which shell page loaded us.
 // ---------------------------------------------------------------------------
@@ -2654,7 +2659,7 @@ EM_JS(int, boxedwine_wasm_lookup_cached,
         }
     }
     var eipKey = hex32(eip);
-    var key = 'v5-' + eipKey + '-' + hex32(blockHash);
+    var key = 'v6-' + eipKey + '-' + hex32(blockHash);
     // Per-process identity. DecodedOp pointers are per guest process, so
     // grouped reloc arrays, installed exports and group instances must all
     // be keyed by (key, memId): wineserver and wine map the same libraries
@@ -2761,7 +2766,7 @@ EM_JS(int, boxedwine_wasm_lookup_cached,
         }
 
         var helpers = {};
-        var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+        var view = new Int32Array(HEAP32.buffer, importFns >>> 0, importCount);
         for (var i = 0; i < importCount; i++) {
             helpers['fn_' + i] = wasmTable.get(view[i]);
         }
@@ -2875,7 +2880,7 @@ EM_JS(int, boxedwine_wasm_lookup_cached,
             Module.wasmJitCompiledCache.set(key, mod);
         }
         var helpers = {};
-        var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+        var view = new Int32Array(HEAP32.buffer, importFns >>> 0, importCount);
         for (var i = 0; i < importCount; i++) {
             helpers['fn_' + i] = wasmTable.get(view[i]);
         }
@@ -2924,8 +2929,8 @@ EM_JS(void, boxedwine_wasm_save_block,
     function hex32(v) { return ('00000000' + ((v >>> 0).toString(16))).slice(-8); }
     var eipKey = hex32(eip);
     var hashKey = hex32(blockHash);
-    var key = 'v5-' + eipKey + '-' + hashKey;
-    var binary = new Uint8Array(HEAPU8.buffer, bytes, size).slice();
+    var key = 'v6-' + eipKey + '-' + hashKey;
+    var binary = new Uint8Array(HEAPU8.buffer, bytes >>> 0, size).slice();
     if (!Module.wasmJitStats) {
         Module.wasmJitStats = { hits: 0, misses: 0, eipMisses: 0, hashMisses: 0, stale: 0, cachedInstalls: 0, freshCompiled: 0, saved: 0, eipMissSamples: [], hashMissSamples: [] };
     }
@@ -2992,8 +2997,8 @@ EM_JS(void, wasm_jit_js_store_entry, (U32 eip, U32 blockHash, const void* bytes,
     function hex32(v) { return ('00000000' + ((v >>> 0).toString(16))).slice(-8); }
     var eipKey = hex32(eip);
     var hashKey = hex32(blockHash);
-    var key = 'v5-' + eipKey + '-' + hashKey;
-    var binary = new Uint8Array(HEAPU8.buffer, bytes, size).slice();
+    var key = 'v6-' + eipKey + '-' + hashKey;
+    var binary = new Uint8Array(HEAPU8.buffer, bytes >>> 0, size).slice();
     if (!Module.wasmJitCache) Module.wasmJitCache = new Map();
     if (!Module.wasmJitCacheEips) Module.wasmJitCacheEips = new Set();
     if (!Module.wasmJitCacheEipHashes) Module.wasmJitCacheEipHashes = new Map();
@@ -3033,16 +3038,16 @@ EM_JS(int, boxedwine_wasm_instantiate_mt,
       (const void* bytes, int size, const void** importFns, int importCount, int* nextSlotPtr,
        U32 moduleId, U32 memoryId, U32 memoryIncarnation, S32 brokerEnabled, S32* lookupResultPtr),
 {
-    HEAP32[lookupResultPtr >> 2] = 0;
+    HEAP32[lookupResultPtr >>> 2] = 0;
     try {
-        var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
+        var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes >>> 0, size);
         var lookup = globalThis.bwWasmJitBrokerGetOrCompile(moduleId, memoryId, memoryIncarnation,
             wasmBytes, brokerEnabled !== 0, 1, 1);
         var mod = lookup.module;
-        HEAP32[lookupResultPtr >> 2] = lookup.source;
+        HEAP32[lookupResultPtr >>> 2] = lookup.source;
 
         var helpers = {};
-        var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+        var view = new Int32Array(HEAP32.buffer, importFns >>> 0, importCount);
         for (var i = 0; i < importCount; i++) {
             helpers['fn_' + i] = wasmTable.get(view[i]);
         }
@@ -3061,7 +3066,7 @@ EM_JS(int, boxedwine_wasm_instantiate_mt,
         // nextSlotPtr points to g_wasmTableNextSlot (int32_t) in the main
         // WASM module's linear memory, which is SharedArrayBuffer in pthreads
         // builds, making Atomics operations valid and cross-worker safe.
-        var nextSlotTA = new Int32Array(HEAPU8.buffer, nextSlotPtr, 1);
+        var nextSlotTA = new Int32Array(HEAPU8.buffer, nextSlotPtr >>> 0, 1);
 
         // Lazy-initialize the counter to the current table size.
         // Atomics.compareExchange(ta, index, expected, replacement): if the
@@ -3137,8 +3142,8 @@ EM_JS(void, boxedwine_wasm_release_broker_memory_mt,
     (U32 memoryId, U32 memoryIncarnation, const U32* moduleIds, U32 count,
      const S32* tableSlots, U32 slotCount, S32 retireOwner,
      U32 groupKind, U32 groupIdentity, S32 releaseGroupInstance), {
-    var ids = count ? Array.from(new Uint32Array(HEAPU8.buffer, moduleIds, count)) : [];
-    var slots = slotCount ? Array.from(new Int32Array(HEAPU8.buffer, tableSlots, slotCount)) : [];
+    var ids = count ? Array.from(new Uint32Array(HEAPU8.buffer, moduleIds >>> 0, count)) : [];
+    var slots = slotCount ? Array.from(new Int32Array(HEAPU8.buffer, tableSlots >>> 0, slotCount)) : [];
     var groupInstanceKeys = [];
     if (releaseGroupInstance && typeof globalThis.bwWasmJitMtGroupInstanceKey === 'function') {
         groupInstanceKeys.push(globalThis.bwWasmJitMtGroupInstanceKey(
@@ -3156,7 +3161,7 @@ EM_JS(void, boxedwine_wasm_release_broker_memory_mt,
 EM_JS(void, boxedwine_wasm_release_broker_batches_mt,
     (const U32* records, U32 recordCount, const U32* moduleIds,
      const S32* tableSlots), {
-    var rows = new Uint32Array(HEAPU8.buffer, records, recordCount * 10);
+    var rows = new Uint32Array(HEAPU8.buffer, records >>> 0, recordCount * 10);
     for (var i = 0; i < recordCount; ++i) {
         var base = i * 10;
         var moduleOffset = rows[base + 2] >>> 0;
@@ -3164,9 +3169,9 @@ EM_JS(void, boxedwine_wasm_release_broker_batches_mt,
         var slotOffset = rows[base + 4] >>> 0;
         var slotCount = rows[base + 5] >>> 0;
         var ids = moduleCount ? Array.from(new Uint32Array(
-            HEAPU8.buffer, moduleIds + moduleOffset * 4, moduleCount)) : [];
+            HEAPU8.buffer, (moduleIds >>> 0) + moduleOffset * 4, moduleCount)) : [];
         var slots = slotCount ? Array.from(new Int32Array(
-            HEAPU8.buffer, tableSlots + slotOffset * 4, slotCount)) : [];
+            HEAPU8.buffer, (tableSlots >>> 0) + slotOffset * 4, slotCount)) : [];
         var groupInstanceKeys = [];
         if (rows[base + 9] &&
                 typeof globalThis.bwWasmJitMtGroupInstanceKey === 'function') {
@@ -3215,7 +3220,7 @@ EM_JS(int, boxedwine_wasm_instantiate_group_mt,
        int* nextSlotPtr, const char* exportNamePtr, U32 groupKind, U32 groupIdentity, U32 memoryId,
        U32 memoryIncarnation, U32 moduleId, U32 representedBlockCount, S32 brokerEnabled, S32* lookupResultPtr),
 {
-    HEAP32[lookupResultPtr >> 2] = 0;
+    HEAP32[lookupResultPtr >>> 2] = 0;
     try {
         if (typeof globalThis.bwWasmJitMtGroupInstanceKey !== 'function') {
             throw new Error('missing MT group instance key helper');
@@ -3236,12 +3241,12 @@ EM_JS(int, boxedwine_wasm_instantiate_group_mt,
         var inst = globalThis.bwJitMtGroupInstances.get(instanceKey);
         var reusedInstance = !!inst;
         if (!inst) {
-            var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
+            var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes >>> 0, size);
             var lookup = globalThis.bwWasmJitBrokerGetOrCompile(moduleId, memoryId, memoryIncarnation,
                 wasmBytes, brokerEnabled !== 0, 2, representedBlockCount);
-            HEAP32[lookupResultPtr >> 2] = lookup.source;
+            HEAP32[lookupResultPtr >>> 2] = lookup.source;
             var helpers = {};
-            var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+            var view = new Int32Array(HEAP32.buffer, importFns >>> 0, importCount);
             for (var i = 0; i < importCount; i++) {
                 helpers['fn_' + i] = wasmTable.get(view[i]);
             }
@@ -3269,7 +3274,7 @@ EM_JS(int, boxedwine_wasm_instantiate_group_mt,
             return -1;
         }
 
-        var nextSlotTA = new Int32Array(HEAPU8.buffer, nextSlotPtr, 1);
+        var nextSlotTA = new Int32Array(HEAPU8.buffer, nextSlotPtr >>> 0, 1);
         Atomics.compareExchange(nextSlotTA, 0, 0, wasmTable.length);
         var slot = Atomics.add(nextSlotTA, 0, 1);
         while (slot >= wasmTable.length) {
@@ -3303,9 +3308,9 @@ EM_JS(int, boxedwine_wasm_instantiate_runtime_group_mt,
        U32 groupIdentity, U32 moduleId, U32 memoryId, U32 memoryIncarnation,
        S32 brokerEnabled, S32* lookupResultPtr),
 {
-    HEAP32[lookupResultPtr >> 2] = 0;
+    HEAP32[lookupResultPtr >>> 2] = 0;
     for (var i = 0; i < entryCount; ++i) {
-        HEAP32[(outputSlots >> 2) + i] = -1;
+        HEAP32[(outputSlots >>> 2) + i] = -1;
     }
     var instanceKey;
     var inst;
@@ -3342,11 +3347,11 @@ EM_JS(int, boxedwine_wasm_instantiate_runtime_group_mt,
             if (!globalThis.bwWasmJitMtCanConstructFreshGroup(memoryId, memoryIncarnation)) {
                 return -2;
             }
-            var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
+            var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes >>> 0, size);
             var lookup = globalThis.bwWasmJitBrokerGetOrCompile(
                 moduleId, memoryId, memoryIncarnation, wasmBytes,
                 brokerEnabled !== 0, 2, entryCount);
-            HEAP32[lookupResultPtr >> 2] = lookup.source;
+            HEAP32[lookupResultPtr >>> 2] = lookup.source;
 #ifdef __TEST
             if (lookup.source === 1) {
                 Module.wasmJitMtRuntimeGroupConstructionCount =
@@ -3354,7 +3359,7 @@ EM_JS(int, boxedwine_wasm_instantiate_runtime_group_mt,
             }
 #endif
             var helpers = {};
-            var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+            var view = new Int32Array(HEAP32.buffer, importFns >>> 0, importCount);
             for (var i = 0; i < importCount; ++i) {
                 helpers['fn_' + i] = wasmTable.get(view[i]);
             }
@@ -3402,7 +3407,7 @@ EM_JS(int, boxedwine_wasm_instantiate_runtime_group_mt,
             functions.push(fn);
         }
 
-        var nextSlotTA = new Int32Array(HEAPU8.buffer, nextSlotPtr, 1);
+        var nextSlotTA = new Int32Array(HEAPU8.buffer, nextSlotPtr >>> 0, 1);
         Atomics.compareExchange(nextSlotTA, 0, 0, wasmTable.length);
         reservedSlot = Atomics.add(nextSlotTA, 0, entryCount);
         var lastReservedSlot = reservedSlot + entryCount - 1;
@@ -3420,7 +3425,7 @@ EM_JS(int, boxedwine_wasm_instantiate_runtime_group_mt,
             var slot = reservedSlot + i;
             wasmTable.set(slot, functions[i]);
             installedCount = i + 1;
-            HEAP32[(outputSlots >> 2) + i] = slot;
+            HEAP32[(outputSlots >>> 2) + i] = slot;
 #ifdef __TEST
             if (Module.wasmJitTestFailMtRuntimeGroupAfterSlots >= 0 &&
                     installedCount >= Module.wasmJitTestFailMtRuntimeGroupAfterSlots) {
@@ -3449,7 +3454,7 @@ EM_JS(int, boxedwine_wasm_instantiate_runtime_group_mt,
             globalThis.bwWasmJitMtForgetGroupInstance(instanceKey);
         }
         for (var i = 0; i < entryCount; ++i) {
-            HEAP32[(outputSlots >> 2) + i] = -1;
+            HEAP32[(outputSlots >>> 2) + i] = -1;
         }
         var oom = !forcedFailure && error && error.bwWasmJitBrokerOom === true;
         if (oom && typeof globalThis.bwWasmJitMtBlockFreshGroupConstruction === 'function') {
@@ -3457,7 +3462,7 @@ EM_JS(int, boxedwine_wasm_instantiate_runtime_group_mt,
                 memoryId, memoryIncarnation);
         }
         if (!forcedFailure && !oom) {
-            console.error('boxedwine_wasm_instantiate_runtime_group_mt failed:', error);
+            err('boxedwine_wasm_instantiate_runtime_group_mt failed: ' + error);
         }
         return oom ? -1 : 0;
     }
@@ -3471,7 +3476,7 @@ EM_JS(int, boxedwine_wasm_install_existing_group_mt,
        int tableIndex, const char* exportNamePtr, U32 groupKind, U32 groupIdentity, U32 memoryId,
        U32 memoryIncarnation, U32 moduleId, U32 representedBlockCount, S32 brokerEnabled, S32* lookupResultPtr),
 {
-    HEAP32[lookupResultPtr >> 2] = 0;
+    HEAP32[lookupResultPtr >>> 2] = 0;
     try {
         if (tableIndex < 0) {
             return 0;
@@ -3498,12 +3503,12 @@ EM_JS(int, boxedwine_wasm_install_existing_group_mt,
         var inst = globalThis.bwJitMtGroupInstances.get(instanceKey);
         var reusedInstance = !!inst;
         if (!inst) {
-            var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
+            var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes >>> 0, size);
             var lookup = globalThis.bwWasmJitBrokerGetOrCompile(moduleId, memoryId, memoryIncarnation,
                 wasmBytes, brokerEnabled !== 0, 2, representedBlockCount);
-            HEAP32[lookupResultPtr >> 2] = lookup.source;
+            HEAP32[lookupResultPtr >>> 2] = lookup.source;
             var helpers = {};
-            var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+            var view = new Int32Array(HEAP32.buffer, importFns >>> 0, importCount);
             for (var i = 0; i < importCount; i++) {
                 helpers['fn_' + i] = wasmTable.get(view[i]);
             }
@@ -3555,7 +3560,7 @@ EM_JS(int, boxedwine_wasm_install_existing_mt,
       (const void* bytes, int size, const void** importFns, int importCount, int tableIndex,
        U32 moduleId, U32 memoryId, U32 memoryIncarnation, S32 brokerEnabled, S32* lookupResultPtr),
 {
-    HEAP32[lookupResultPtr >> 2] = 0;
+    HEAP32[lookupResultPtr >>> 2] = 0;
     try {
         if (tableIndex < 0) {
             return 0;
@@ -3564,14 +3569,14 @@ EM_JS(int, boxedwine_wasm_install_existing_mt,
             return 1;
         }
 
-        var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes, size);
+        var wasmBytes = new Uint8Array(HEAPU8.buffer, bytes >>> 0, size);
         var lookup = globalThis.bwWasmJitBrokerGetOrCompile(moduleId, memoryId, memoryIncarnation,
             wasmBytes, brokerEnabled !== 0, 1, 1);
         var mod = lookup.module;
-        HEAP32[lookupResultPtr >> 2] = lookup.source;
+        HEAP32[lookupResultPtr >>> 2] = lookup.source;
 
         var helpers = {};
-        var view = new Int32Array(HEAP32.buffer, importFns, importCount);
+        var view = new Int32Array(HEAP32.buffer, importFns >>> 0, importCount);
         for (var i = 0; i < importCount; i++) {
             helpers['fn_' + i] = wasmTable.get(view[i]);
         }
@@ -3630,9 +3635,9 @@ EM_JS(int, boxedwine_wasm_install_existing_mt,
 EM_JS(void, wasm_jit_mt_populate_js_cache_entry,
       (U32 eip, U32 blockHash, const void* bytes, int size),
 {
-    var key = 'v5-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
+    var key = 'v6-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
               '-'   + ('00000000' + ((blockHash >>> 0).toString(16))).slice(-8);
-    var binary = new Uint8Array(HEAPU8.buffer, bytes, size).slice();
+    var binary = new Uint8Array(HEAPU8.buffer, bytes >>> 0, size).slice();
     if (!Module.wasmJitCache) Module.wasmJitCache = new Map();
     Module.wasmJitCache.set(key, binary);
 });
@@ -3703,7 +3708,7 @@ EM_JS(void, wasm_jit_mt_populate_js_meta_entry,
        U32 cpuBlockInstructionCountOffset, U32 cpuYieldOffset, U32 contextTimeRemainingPtr,
        U32 relocCount),
 {
-    var key = 'v5-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
+    var key = 'v6-' + ('00000000' + ((eip >>> 0).toString(16))).slice(-8) +
               '-'   + ('00000000' + ((blockHash >>> 0).toString(16))).slice(-8);
     Module.wasmJitRuntimeConstants = {
         version: 1,
@@ -3805,7 +3810,7 @@ static inline void boxedwine_wasm_call_block(int tableIndex, int cpuPtr, int rel
 #endif
     CPU* cpu = (CPU*)(uintptr_t)cpuPtr;
     cpu->wasmJitActiveBlock = nullptr;
-    cpu->wasmJitBailout = 0;
+    cpu->wasmJitBailout = WASM_JIT_BAILOUT_NONE;
     static bool fired = false;
     if (!fired) {
         fired = true;
@@ -3913,7 +3918,20 @@ EM_JS(int, boxedwine_wasm_slot_check, (int tableIndex, int cpuPtr, int opPtr),
 
 #ifdef BOXEDWINE_MULTI_THREADED
 static bool lazyInstallWasmJitBlockForWorker(int tableIndex);
-static bool wasmJitSlotReadyForWorker(int tableIndex, CPU* cpu, DecodedOp* op);
+static __attribute__((noinline)) bool wasmJitPrepareSlotForWorker(int tableIndex, CPU* cpu, DecodedOp* op,
+        std::vector<U8>& ready);
+
+// Keep the already-installed case small enough to inline into block dispatch.
+// Visibility belongs to this worker, not to the shared DecodedOp. MT indices
+// are never reused, so a verified entry needs no invalidation or generation
+// check. Byte entries avoid the packed-bit lookup on every compiled call.
+static inline bool wasmJitSlotReadyForWorker(int tableIndex, CPU* cpu, DecodedOp* op) {
+    static thread_local std::vector<U8> ready;
+    if (tableIndex > 0 && (size_t)tableIndex < ready.size() && ready[(size_t)tableIndex]) {
+        return true;
+    }
+    return wasmJitPrepareSlotForWorker(tableIndex, cpu, op, ready);
+}
 
 // One owner hazard can safely cover consecutive compiled calls because a CPU
 // stays attached to one KMemory incarnation until reset/exec. Retirements use
@@ -4016,80 +4034,104 @@ static void disableWasmJitBlockAfterSlotMiss(DecodedOp* op) {
 // ---------------------------------------------------------------------------
 void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
 #ifdef BOXEDWINE_MULTI_THREADED
+    U32 chainedBlocks = 0;
+    do {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
-    bool profileSample = wasmJitProfileStartEntry();
-    U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
-    U64 startPreCallNs = profileStartNs;
+        bool profileSample = wasmJitProfileStartEntry();
+        U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
+        U64 startPreCallNs = profileStartNs;
 #endif
-    void* jitCode = wasmJitMtLoadPublishedCode(op);
-    if (jitCode) {
-        // Guard against cross-worker table visibility. Readiness cannot be
-        // cached on DecodedOp because DecodedOp is shared, while table slot
-        // visibility is local to the worker that performs call_indirect; the
-        // per-worker cache makes the JS slot_check a one-time cost per slot.
-        int tableIndex = (int)(uintptr_t)jitCode;
-        bool needsRelocHazard =
-            (op->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) != 0;
-        if (!needsRelocHazard) {
-            // wasmTable is worker-local: a purge posted by another worker
-            // cannot run on this worker in the middle of this synchronous
-            // call. With no shared relocation array to dereference, the
-            // atomic publication load above is sufficient; a slot miss simply
-            // falls back if retirement already removed lazy-install metadata.
-            wasmJitMtLeaveCpu(cpu);
-            if (!wasmJitSlotReadyForWorker(tableIndex, cpu, op)) {
+        void* jitCode = wasmJitMtLoadPublishedCode(op);
+        if (jitCode) {
+            // Guard against cross-worker table visibility. Readiness cannot be
+            // cached on DecodedOp because DecodedOp is shared, while table slot
+            // visibility is local to the worker that performs call_indirect; the
+            // per-worker cache makes the JS slot_check a one-time cost per slot.
+            int tableIndex = (int)(uintptr_t)jitCode;
+            bool needsRelocHazard =
+                (op->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) != 0;
+            if (!needsRelocHazard) {
+                // wasmTable is worker-local: a purge posted by another worker
+                // cannot run on this worker in the middle of this synchronous
+                // call. With no shared relocation array to dereference, the
+                // atomic publication load above is sufficient; a slot miss simply
+                // falls back if retirement already removed lazy-install metadata.
+                wasmJitMtLeaveCpu(cpu);
+                if (!wasmJitSlotReadyForWorker(tableIndex, cpu, op)) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
-                wasmJitProfileSlotMiss();
+                    wasmJitProfileSlotMiss();
 #endif
-                disableWasmJitBlockAfterSlotMiss(op);
-                NormalCPU::getFunctionForOp(op)(cpu, op);
-                return;
-            }
-            U8 wasmJitSetupFlags =
-                op->flags2 & OP_FLAG2_WASM_JIT_MEM_ARRAYS;
-            if (wasmJitSetupFlags) {
-                KMemoryData* memoryData = nullptr;
-                if (wasmMemoryPageArraysNeedRefresh(cpu, &memoryData)) {
-                    wasmPrepareBlockEnter(cpu, memoryData);
+                    disableWasmJitBlockAfterSlotMiss(op);
+                    NormalCPU::getFunctionForOp(op)(cpu, op);
+                    return;
                 }
-            }
-            WASM_JIT_PROFILE_ONLY(if (profileSample) { wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPreCallUs, startPreCallNs); })
-            boxedwine_wasm_call_block(tableIndex, (int)(uintptr_t)cpu, 0);
-            WASM_JIT_PROFILE_ONLY(if (profileSample) { U64 startPostCallNs = wasmJitProfileNowNs(); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPostCallUs, startPostCallNs); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartUs, profileStartNs); })
-            return;
-        }
-        WasmJitMtActiveCall activeCall(cpu, tableIndex, op, jitCode);
-        if (!activeCall.canCall()) {
-            return;
-        }
-        if (!wasmJitSlotReadyForWorker(tableIndex, cpu, op)) {
+                U8 wasmJitSetupFlags =
+                    op->flags2 & OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+                if (wasmJitSetupFlags) {
+                    KMemoryData* memoryData = nullptr;
+                    if (wasmMemoryPageArraysNeedRefresh(cpu, &memoryData)) {
+                        wasmPrepareBlockEnter(cpu, memoryData);
+                    }
+                }
+                WASM_JIT_PROFILE_ONLY(if (profileSample) { wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPreCallUs, startPreCallNs); })
+                boxedwine_wasm_call_block(tableIndex, (int)(uintptr_t)cpu, 0);
+                WASM_JIT_PROFILE_ONLY(if (profileSample) { U64 startPostCallNs = wasmJitProfileNowNs(); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPostCallUs, startPostCallNs); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartUs, profileStartNs); })
+            } else {
+                WasmJitMtActiveCall activeCall(cpu, tableIndex, op, jitCode);
+                if (!activeCall.canCall()) {
+                    return;
+                }
+                if (!wasmJitSlotReadyForWorker(tableIndex, cpu, op)) {
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
-            wasmJitProfileSlotMiss();
+                    wasmJitProfileSlotMiss();
 #endif
-            disableWasmJitBlockAfterSlotMiss(op);
-            activeCall.finish(false);
-            NormalCPU::getFunctionForOp(op)(cpu, op);
+                    disableWasmJitBlockAfterSlotMiss(op);
+                    activeCall.finish(false);
+                    NormalCPU::getFunctionForOp(op)(cpu, op);
+                    return;
+                }
+                U8 wasmJitSetupFlags = op->flags2 & OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+                if (wasmJitSetupFlags) {
+                    KMemoryData* memoryData = nullptr;
+                    if (wasmMemoryPageArraysNeedRefresh(cpu, &memoryData)) {
+                        wasmPrepareBlockEnter(cpu, memoryData);
+                    }
+                }
+                WASM_JIT_PROFILE_ONLY(if (profileSample) { wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPreCallUs, startPreCallNs); })
+                boxedwine_wasm_call_block(tableIndex, (int)(uintptr_t)cpu, (int)wasmJitRelocBaseForTable(tableIndex));
+                WASM_JIT_PROFILE_ONLY(if (profileSample) { U64 startPostCallNs = wasmJitProfileNowNs(); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPostCallUs, startPostCallNs); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartUs, profileStartNs); })
+                // nextOp is updated by the WASM block itself (via helper call).
+                activeCall.finish(cpu->nextOp && !cpu->yield &&
+                    !cpu->thread->terminating &&
+                    cpu->nextOp->pfn == cpu->thread->process->startJITOp);
+            }
+        } else {
+            // A stale pfn can still enter this callback after its published slot
+            // was cleared. It is a quiescent point for any carried owner hazard.
+            wasmJitMtLeaveCpu(cpu);
             return;
         }
-        U8 wasmJitSetupFlags = op->flags2 & OP_FLAG2_WASM_JIT_MEM_ARRAYS;
-        if (wasmJitSetupFlags) {
-            KMemoryData* memoryData = nullptr;
-            if (wasmMemoryPageArraysNeedRefresh(cpu, &memoryData)) {
-                wasmPrepareBlockEnter(cpu, memoryData);
-            }
+        // Keep the outer run loop's interruption points between compiled calls.
+        // The bound also limits time before normal thread bookkeeping resumes.
+        if (++chainedBlocks >= WASM_JIT_CHAIN_BLOCK_LIMIT || cpu->yield ||
+                cpu->thread->terminating || cpu->thread->process->terminated ||
+                cpu->debugTrapActive ||
+                cpu->thread->ptraceStopped.load(std::memory_order_acquire) ||
+                cpu->jitSignalPending.load(std::memory_order_acquire) ||
+                cpu->thread->pendingSignals || !cpu->nextOp) {
+            return;
         }
-        WASM_JIT_PROFILE_ONLY(if (profileSample) { wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPreCallUs, startPreCallNs); })
-        boxedwine_wasm_call_block(tableIndex, (int)(uintptr_t)cpu, (int)wasmJitRelocBaseForTable(tableIndex));
-        WASM_JIT_PROFILE_ONLY(if (profileSample) { U64 startPostCallNs = wasmJitProfileNowNs(); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartPostCallUs, startPostCallNs); wasmJitProfileAddElapsedScaled(g_wasmJitProfileStartUs, profileStartNs); })
-        // nextOp is updated by the WASM block itself (via helper call).
-        activeCall.finish(cpu->nextOp && !cpu->yield &&
-            !cpu->thread->terminating &&
-            cpu->nextOp->pfn == cpu->thread->process->startJITOp);
-    } else {
-        // A stale pfn can still enter this callback after its published slot
-        // was cleared. It is a quiescent point for any carried owner hazard.
-        wasmJitMtLeaveCpu(cpu);
-    }
+        // A compiled exit can retain a DecodedOp across invalidation. Apply
+        // the same live-cache refresh as NormalCPU::run before dereferencing it.
+#ifdef __TEST
+        // TestEnd is a harness sentinel rather than a guest dispatch target.
+        if (cpu->nextOp->inst == TestEnd) {
+            return;
+        }
+#endif
+        op = getMemData(cpu->memory)->opCache.get(cpu->getEipAddress());
+        cpu->nextOp = op;
+    } while (wasmJitCanChainTo(cpu, op) && op->runCount > JIT_RUN_COUNT);
 #else
     U32 chainedBlocks = 0;
     U32 chainedInstructionCount = 0;
@@ -4207,6 +4249,22 @@ static void wasmHelper_writeMem16(CPU* cpu) {
     cpu->memory->writew(cpu->memHelperAddr, (U16)cpu->memHelperValue);
 }
 
+// RMW callbacks may update guest-visible flags or registers. Preflight write
+// permission after the read, but before generated code invokes the callback,
+// so a protection or cross-page fault leaves the instruction restartable.
+static void wasmHelper_readWriteMem8(CPU* cpu) {
+    wasmHelper_readMem8(cpu);
+    cpu->memory->preflightWrite(cpu->memHelperAddr, 1);
+}
+static void wasmHelper_readWriteMem16(CPU* cpu) {
+    wasmHelper_readMem16(cpu);
+    cpu->memory->preflightWrite(cpu->memHelperAddr, 2);
+}
+static void wasmHelper_readWriteMem32(CPU* cpu) {
+    wasmHelper_readMem32(cpu);
+    cpu->memory->preflightWrite(cpu->memHelperAddr, 4);
+}
+
 // Same as the regular write helpers but additionally check whether the
 // active JIT block's pfnJitCode got cleared by removeCodeBlock — meaning
 // the write landed on the bytes we're currently executing. Used by
@@ -4218,7 +4276,7 @@ static void wasmHelper_writeMem16(CPU* cpu) {
 static inline void checkActiveBlockAfterWrite(CPU* cpu) {
     DecodedOp* active = cpu->wasmJitActiveBlock;
     if (active && active->pfnJitCode == nullptr) {
-        cpu->wasmJitBailout = 1;
+        cpu->wasmJitBailout = WASM_JIT_BAILOUT_SMC;
     }
 }
 static void wasmHelper_writeMem32_check(CPU* cpu) {
@@ -4261,7 +4319,16 @@ static void wasmHelper_fetchNextOp(CPU* cpu) {
     WasmJitProfileTimer profileTimer(g_wasmJitProfileFetchNextUs, profileSample, WASM_JIT_PROFILE_TIMING_SAMPLE);
 #endif
     if (!cpu->thread->terminating) {
-        cpu->nextOp = cpu->getNextOp();
+        // Fetch from the current memory's cache: exec can replace KMemoryData.
+        // A miss still takes the normal decoding and instruction-fault path.
+        DecodedOp* nextOp = nullptr;
+        if (cpu->thread->process) {
+            nextOp = getMemData(cpu->memory)->opCache.get(cpu->getEipAddress());
+            if (!nextOp) {
+                nextOp = cpu->getNextOp();
+            }
+        }
+        cpu->nextOp = nextOp;
         if (wasmJitRecordActive()) {
             wasmJitRecordFetchNextTransition(cpu, cpu->nextOp);
         }
@@ -4276,17 +4343,31 @@ static void wasmHelper_fetchNextOp(CPU* cpu) {
 // Sync CPU lazy flags — flags are maintained in cpu->flags directly by WASM code
 static void wasmHelper_syncFlags(CPU* cpu) {}
 
-// Kept in the helper table for module import-index stability. Block-entry
-// setup is now done in wasmStartJITOp before calling the generated block,
-// which avoids one generated WASM -> imported C++ helper call per block.
-static void wasmHelper_blockEnter(CPU* cpu) {
-    WASM_JIT_HELPER_STAT(BlockEnter);
-    (void)cpu;
+enum WasmJitHelperOp : U32 {
+    WASM_JIT_HELPER_OP_NONE,
+    WASM_JIT_HELPER_OP_FXSAVE,
+    WASM_JIT_HELPER_OP_FXRSTOR,
+};
+
+// Helper-table slot 28 used to be the per-block entry helper. Block setup now
+// happens in wasmStartJITOp, but retaining and reusing the slot keeps every
+// later import index stable. A zero selector preserves its old no-op behavior.
+static void wasmHelper_specialOp(CPU* cpu) {
+    U32 helperOp = cpu->wasmJitHelperOp;
+    // Clear before touching guest memory so a fault cannot leave a stale
+    // selector for the next dedicated helper call.
+    cpu->wasmJitHelperOp = WASM_JIT_HELPER_OP_NONE;
+    if (helperOp == WASM_JIT_HELPER_OP_FXSAVE) {
+        WASM_JIT_HELPER_STAT(Sse);
+        common_fxsave(cpu, cpu->memHelperAddr);
+        checkActiveBlockAfterWrite(cpu);
+    } else if (helperOp == WASM_JIT_HELPER_OP_FXRSTOR) {
+        WASM_JIT_HELPER_STAT(Sse);
+        common_fxrstor(cpu, cpu->memHelperAddr);
+    }
 }
 
-// Fall back to the normal CPU interpreter for one instruction (used for
-// operations the WASM JIT doesn't inline, e.g. FPU/SSE/complex shifts).
-void jitRunSingleOp(CPU* cpu);   // defined in jitCodeGen.cpp
+// Fall back to the normal CPU interpreter for one instruction.
 static void wasmHelper_emulateSingleOp(CPU* cpu) {
     WASM_JIT_HELPER_STAT(Emulate);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
@@ -4299,11 +4380,19 @@ static void wasmHelper_emulateSingleOp(CPU* cpu) {
     }
     WasmJitProfileTimer profileTimer(g_wasmJitProfileHelperEmulateUs, profileSample, WASM_JIT_PROFILE_TIMING_SAMPLE);
 #endif
-    jitRunSingleOp(cpu);
+    // Native JITs use jitRunSingleOp()'s return value for chaining. WASM
+    // returns through generated code, but still must honor false: it means
+    // exception/debug handling changed control flow and this block is stale.
+    bool continueBlock = cpu->runNextSingleOp();
     // Interpreter-backed instructions can write code too (notably REP
     // MOVS). Mark an invalidated active block so a structured JIT backedge
     // returns to the dispatcher instead of re-entering stale WASM.
     checkActiveBlockAfterWrite(cpu);
+    if (!continueBlock) {
+        // runNextSingleOp has redirected EIP (for example to a Wine exception
+        // handler). The generated bailout must preserve it.
+        cpu->wasmJitBailout = WASM_JIT_BAILOUT_CONTROL_FLOW;
+    }
 }
 
 // Compute CF using the C++ lazy-flag machinery and stash the result in
@@ -4462,7 +4551,7 @@ static const void* g_wasmHelperTable[] = {
     (void*)wasmHelper_cond_NL,
     (void*)wasmHelper_cond_LE,
     (void*)wasmHelper_cond_NLE,
-    (void*)wasmHelper_blockEnter,
+    (void*)wasmHelper_specialOp,
     (void*)wasmHelper_writeMem8_check,
     (void*)wasmHelper_writeMem16_check,
     (void*)wasmHelper_writeMem32_check,
@@ -4470,6 +4559,9 @@ static const void* g_wasmHelperTable[] = {
     (void*)wasmHelper_movsdXmmE64,
     (void*)wasmHelper_movsdE64Xmm,
     (void*)wasmHelper_movsd32r,
+    (void*)wasmHelper_readWriteMem8,
+    (void*)wasmHelper_readWriteMem16,
+    (void*)wasmHelper_readWriteMem32,
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     (void*)wasmHelper_profileBlockExit,
     (void*)wasmHelper_profileExitNext1,
@@ -6053,8 +6145,8 @@ EM_JS(void, wasmJitTestResetMtRuntimeGroupConstructorStats, (), {
 EM_JS(void, wasmJitTestCopyMtRuntimeGroupConstructorStats,
         (WasmJitMtRuntimeGroupConstructorStatsSnapshot* snapshot), {
     var stats = globalThis.bwWasmJitMtRuntimeGroupConstructorStats || {};
-    HEAPU32[(snapshot >> 2) + 0] = stats.moduleAttempts || 0;
-    HEAPU32[(snapshot >> 2) + 1] = stats.instanceAttempts || 0;
+    HEAPU32[(snapshot >>> 2) + 0] = stats.moduleAttempts || 0;
+    HEAPU32[(snapshot >>> 2) + 1] = stats.instanceAttempts || 0;
 });
 
 WasmJitMtRuntimeGroupConstructorStatsSnapshot wasmJitTestGetMtRuntimeGroupConstructorStats() {
@@ -6555,17 +6647,11 @@ static inline U32 wasmJitRelocBaseForTable(int tableIndex) {
 }
 
 #ifdef BOXEDWINE_MULTI_THREADED
-// Per-worker slot readiness. Worker wasmTable visibility is per host thread
-// (the shared DecodedOp can't carry it), and MT table indices are monotonic.
-// Once a slot is verified in this worker, the ready bit remains valid for that
-// index; retirement prevents the index from being published or reused. The
-// first call per (slot, worker) pays the JS slot_check (+ lazy install); every
-// later call is a thread_local vector read.
-static bool wasmJitSlotReadyForWorker(int tableIndex, CPU* cpu, DecodedOp* op) {
-    static thread_local std::vector<bool> ready;
-    if (tableIndex > 0 && (size_t)tableIndex < ready.size() && ready[(size_t)tableIndex]) {
-        return true;
-    }
+// Only the first call per (slot, worker) needs JS visibility checks and lazy
+// installation. Keep that work and cache growth out of the dispatch fast path;
+// noinline prevents LLVM from folding it back into the small readiness check.
+static bool wasmJitPrepareSlotForWorker(int tableIndex, CPU* cpu, DecodedOp* op,
+        std::vector<U8>& ready) {
     if (!boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
         if (!lazyInstallWasmJitBlockForWorker(tableIndex) ||
             !boxedwine_wasm_slot_check(tableIndex, (int)(uintptr_t)cpu, (int)(uintptr_t)op)) {
@@ -6573,9 +6659,9 @@ static bool wasmJitSlotReadyForWorker(int tableIndex, CPU* cpu, DecodedOp* op) {
         }
     }
     if ((size_t)tableIndex >= ready.size()) {
-        ready.resize((size_t)tableIndex + 64, false);
+        ready.resize((size_t)tableIndex + 64, 0);
     }
-    ready[(size_t)tableIndex] = true;
+    ready[(size_t)tableIndex] = 1;
     return true;
 }
 #endif
@@ -6594,21 +6680,24 @@ enum WasmHelperIdx {
     HELPER_COMPUTE_ZF        = 10,
     HELPER_FILL_FLAGS        = 11,
     HELPER_COND_BASE         = 12, // add JitConditional index to this
-    HELPER_BLOCK_ENTER       = 28, // 12 + 16 condition helpers
+    HELPER_SPECIAL_OP        = 28, // legacy block-entry helper slot
     HELPER_WRITE_MEM8_CHECK  = 29,
     HELPER_WRITE_MEM16_CHECK = 30,
     HELPER_WRITE_MEM32_CHECK = 31,
     HELPER_CACHE_FLOAT      = 32,
     HELPER_MOVSD_XMM_E64    = 33,
     HELPER_MOVSD_E64_XMM    = 34,
-    HELPER_MOVSD32R         = 35,
-    HELPER_PROFILE_BLOCK_EXIT = 36,
-    HELPER_PROFILE_EXIT_NEXT1 = 37,
-    HELPER_PROFILE_EXIT_NEXT2 = 38,
-    HELPER_PROFILE_EXIT_JUMP = 39,
-    HELPER_PROFILE_EXIT_GENERIC = 40,
-    HELPER_PROFILE_INLINE_COND = 41,
-    HELPER_PROFILE_RMW = 42,
+    HELPER_MOVSD32R           = 35,
+    HELPER_READ_WRITE_MEM8    = 36,
+    HELPER_READ_WRITE_MEM16   = 37,
+    HELPER_READ_WRITE_MEM32   = 38,
+    HELPER_PROFILE_BLOCK_EXIT = 39,
+    HELPER_PROFILE_EXIT_NEXT1 = 40,
+    HELPER_PROFILE_EXIT_NEXT2 = 41,
+    HELPER_PROFILE_EXIT_JUMP = 42,
+    HELPER_PROFILE_EXIT_GENERIC = 43,
+    HELPER_PROFILE_INLINE_COND = 44,
+    HELPER_PROFILE_RMW = 45,
 };
 
 // ---------------------------------------------------------------------------
@@ -9493,6 +9582,32 @@ void JitWasmCodeGen::dynamic_FILD_QWORD_INTEGER(DecodedOp* op) {
     });
 }
 
+void JitWasmCodeGen::dynamic_fxsave(DecodedOp* op) {
+    RegPtr address = calculateEaa(op);
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
+    syncStateBeforeFaultingMemoryHelper();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(WASM_JIT_HELPER_OP_FXSAVE);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitHelperOp));
+    emitArmSmcBailout();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_SPECIAL_OP);
+    emitBailoutCheck();
+    freeScratch(address->hardwareReg());
+}
+
+void JitWasmCodeGen::dynamic_fxrstor(DecodedOp* op) {
+    RegPtr address = calculateEaa(op);
+    storeMemHelperField((U32)offsetof(CPU, memHelperAddr), address);
+    syncStateBeforeFaultingMemoryHelper();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(WASM_JIT_HELPER_OP_FXRSTOR);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitHelperOp));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_SPECIAL_OP);
+    freeScratch(address->hardwareReg());
+}
+
 void JitWasmCodeGen::fpuRegExtend32To64(FPURegPtr dst, FPURegPtr src) {
     if (dst->hardwareReg() == src->hardwareReg()) {
         return;
@@ -9967,10 +10082,18 @@ RegPtr JitWasmCodeGen::getStringRegEcx() { return getReg(1); }
 RegPtr JitWasmCodeGen::getStringRegEsi() { return getReg(6); }
 RegPtr JitWasmCodeGen::getStringRegEdi() { return getReg(7); }
 
+U32 JitWasmCodeGen::getAvailableTmpRegCount() {
+    U32 result = 0;
+    for (U32 i = 0; i < WASM_TMP_LOCAL_COUNT; i++) {
+        if (!m_scratchInUse[i]) {
+            result++;
+        }
+    }
+    return result;
+}
+
 bool JitWasmCodeGen::isTmpRegAvailable() {
-    for (U32 i = 0; i < WASM_TMP_LOCAL_COUNT; i++)
-        if (!m_scratchInUse[i]) return true;
-    return false;
+    return getAvailableTmpRegCount() != 0;
 }
 
 void JitWasmCodeGen::forceSyncBackIfNotCached(RegPtr reg) {
@@ -10236,6 +10359,14 @@ static U32 readHelperForWidth(JitWidth w) {
     default:            return HELPER_READ_MEM32;
     }
 }
+
+static U32 readWriteHelperForWidth(JitWidth w) {
+    switch (w) {
+    case JitWidth::b8:  return HELPER_READ_WRITE_MEM8;
+    case JitWidth::b16: return HELPER_READ_WRITE_MEM16;
+    default:            return HELPER_READ_WRITE_MEM32;
+    }
+}
 static U32 writeHelperForWidth(JitWidth w) {
     switch (w) {
     case JitWidth::b8:  return HELPER_WRITE_MEM8;
@@ -10297,7 +10428,7 @@ void JitWasmCodeGen::emitArmSmcBailout() {
         m_emitter.emitI32Const(0);
         m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Const(1);
+        m_emitter.emitI32Const(WASM_JIT_BAILOUT_SMC);
         m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
         m_emitter.emitEnd();
         return;
@@ -10307,11 +10438,10 @@ void JitWasmCodeGen::emitArmSmcBailout() {
     m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
 }
 
-// Self-modifying-code bailout check: emitted after every JIT-inline mem
-// write. If the write hit the active block's bytes, the helper set
-// cpu->wasmJitBailout. We exit by writing the *next* op's offset to
-// cpu->eip and calling blockExit so the dispatcher resumes there with a
-// fresh decode.
+// Helper bailout check. Self-modifying code resumes at the next instruction;
+// an interpreter exception/debug bailout preserves the EIP selected by the
+// helper. The reason comparison is inside the unlikely branch, keeping the hot
+// no-bailout path to one load and branch.
 //
 // The if-body's blockExit() runs syncDirtyRegsToHost which compile-time-
 // clears m_gpDirty[]; that's wrong for the no-bailout path where the
@@ -10327,14 +10457,22 @@ void JitWasmCodeGen::emitBailoutCheck() {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Const(0);
     m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitActiveBlock));
+
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitI32Const(0);
-    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
+    m_emitter.emitI32Load((U32)offsetof(CPU, wasmJitBailout));
+    m_emitter.emitI32Const(WASM_JIT_BAILOUT_SMC);
+    m_emitter.emitOp(WASM_I32_EQ);
+    m_emitter.emitIf();
     // currentEip is the *current* op's start (postCompile bumps it after
     // compile returns), so add op->len = lastCompiledOpLen to land at the
     // next op so the dispatcher resumes there.
     writeEip(this->currentEip + this->lastCompiledOpLen
              - cpu->seg[CS].address);
+    m_emitter.emitEnd();
+
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(WASM_JIT_BAILOUT_NONE);
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitBailout));
     blockExit();
     m_emitter.emitEnd();
     m_gpDirty   = savedGpDirty;
@@ -10376,7 +10514,10 @@ void JitWasmCodeGen::storeMemHelperField(U32 offset, RegPtr reg) {
 }
 
 RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
-                                     std::function<void(RegPtr)> prepareWrite, S8 hint) {
+                                     std::function<void(RegPtr)> prepareWrite, S8 hint, bool forceMmuCheck) {
+    // The writable-page fast path cannot fault after prepareWrite, and the
+    // helper path preflights writes, so both force modes share this emission.
+    (void)forceMmuCheck;
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     emitProfileSampledCall(HELPER_PROFILE_RMW,
         m_currentWasmOp ? (U32)m_currentWasmOp->inst : InstructionCount);
@@ -10422,7 +10563,7 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
         storeMemHelperField((U32)offsetof(CPU, memHelperAddr), addressReg);
         syncStateBeforeFaultingMemoryHelper();
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitCall(readHelperForWidth(w));
+        m_emitter.emitCall(readWriteHelperForWidth(w));
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitI32Load((U32)offsetof(CPU, memHelperValue));
         m_emitter.emitLocalSet(result->hardwareReg());
@@ -10573,6 +10714,10 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
         return tmp;
     }
 
+    return readMemoryValue(w, std::move(addressReg), std::move(tmp));
+}
+
+RegPtr JitWasmCodeGen::readMemoryValue(JitWidth w, RegPtr addressReg, RegPtr tmp, bool signExtend) {
     m_needsWasmMemoryPageArrays = true;
     U32 entryLocal = allocScratch();
     auto savedGpDirty   = m_gpDirty;
@@ -10612,6 +10757,9 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
         m_emitter.emitCall(readHelperForWidth(w));
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitI32Load((U32)offsetof(CPU, memHelperValue));
+        if (signExtend) {
+            m_emitter.emitOp(w == JitWidth::b8 ? WASM_I32_EXTEND8_S : WASM_I32_EXTEND16_S);
+        }
         m_emitter.emitLocalSet(tmp->hardwareReg());
     }
     m_emitter.emitElse();
@@ -10628,8 +10776,14 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
         m_emitter.emitOp(WASM_I32_AND);
         m_emitter.emitOp(WASM_I32_ADD);
         switch (w) {
-        case JitWidth::b8:  m_emitter.emitI32Load8U(0);  break;
-        case JitWidth::b16: m_emitter.emitI32Load16U(0); break;
+        case JitWidth::b8:
+            if (signExtend) m_emitter.emitI32Load8S(0);
+            else m_emitter.emitI32Load8U(0);
+            break;
+        case JitWidth::b16:
+            if (signExtend) m_emitter.emitI32Load16S(0);
+            else m_emitter.emitI32Load16U(0);
+            break;
         default:            m_emitter.emitI32Load(0, 0); break; // align=0 (unaligned-safe)
         }
         m_emitter.emitLocalSet(tmp->hardwareReg());
@@ -10786,6 +10940,10 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
     m_gpLoaded  = savedGpLoaded;
     m_segLoaded = savedSegLoaded;
     freeScratch(entryLocal);
+}
+
+void JitWasmCodeGen::writeWithMmuCheck(JitWidth w, RegPtr addressReg, RegPtr src, std::function<void(MemPtr)> customOp, std::function<void()> failedOp, bool checkAlignment) {
+    write(w, std::move(addressReg), std::move(src), std::move(customOp), std::move(failedOp), checkAlignment);
 }
 
 // Materialize a MemPtr (base + index*scale + disp) into a scratch reg as a
@@ -11436,9 +11594,20 @@ void JitWasmCodeGen::bsrReg(JitWidth w, RegPtr reg, RegPtr rm) {
 void JitWasmCodeGen::absReg(JitWidth w, RegPtr reg)                          { emulateSingleOp(); }
 
 void JitWasmCodeGen::byteSwapReg32(RegPtr reg) {
-    // bswap: ((v & 0xff)<<24) | ((v & 0xff00)<<8) | ((v>>8)&0xff00) | (v>>24)
-    // Fall back to single-op emulation for correctness.
-    emulateSingleOp();
+    // rotl(v, 8) selects the original middle-low and low bytes while
+    // rotr(v, 8) selects the original high and middle-high bytes.
+    pushRegValue(reg);
+    m_emitter.emitI32Const(8);
+    m_emitter.emitOp(WASM_I32_ROTL);
+    m_emitter.emitI32Const(0x00ff00ff);
+    m_emitter.emitOp(WASM_I32_AND);
+    pushRegValue(reg);
+    m_emitter.emitI32Const(8);
+    m_emitter.emitOp(WASM_I32_ROTR);
+    m_emitter.emitI32Const((S32)0xff00ff00u);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitOp(WASM_I32_OR);
+    popToReg(JitWidth::b32, reg);
 }
 
 void JitWasmCodeGen::xchgReg(JitWidth w, RegPtr dest, RegPtr src) {
@@ -11647,6 +11816,44 @@ RegPtr JitWasmCodeGen::testZeroReg(JitWidth w, RegPtr reg, RegPtr res) {
 // ---------------------------------------------------------------------------
 // Move operations
 // ---------------------------------------------------------------------------
+void JitWasmCodeGen::movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend) {
+    RegPtr address = calculateEaa(op);
+    if (dstWidth == JitWidth::b32) {
+        // The slow helper must see the old register state if the load faults.
+        // Mark the destination dirty only after both load paths have joined.
+        RegPtr dst = makeWasmReg((U8)wasmLocalForGPReg(op->reg), op->reg);
+        readMemoryValue(srcWidth, address, dst, signExtend);
+        m_gpLoaded[op->reg] = true;
+        m_gpDirty[op->reg] = true;
+    } else {
+        RegPtr dst = dstWidth == JitWidth::b8 ? getReadOnlyReg8(op->reg) : getReadOnlyReg(op->reg);
+        RegPtr value = readMemoryValue(srcWidth, address, getTmpReg(), signExtend);
+        pushRegValue(value);
+        popToReg(dstWidth, dst);
+        freeScratch(value->hardwareReg());
+    }
+}
+
+void JitWasmCodeGen::scalarSseFromMemory(DecodedOp* op, JitWidth width, U8 instruction, bool unary) {
+    read(width, calculateEaa(op), [this, op, width, instruction, unary](MemPtr address) {
+        const U32 offset = (U32)(offsetof(CPU, xmm) + op->reg * sizeof(cpu->xmm[0]));
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL); // destination for the scalar store
+        if (!unary) {
+            m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+            if (width == JitWidth::b32) m_emitter.emitF32Load(offset);
+            else m_emitter.emitF64Load(offset);
+        }
+        U32 memOffset = 0;
+        emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+        if (width == JitWidth::b32) m_emitter.emitF32Load(memOffset, 0);
+        else m_emitter.emitF64Load(memOffset, 0);
+        m_emitter.emitOp(instruction);
+        // Write only the low lane; the untouched XMM bytes need no load/merge.
+        if (width == JitWidth::b32) m_emitter.emitF32Store(offset);
+        else m_emitter.emitF64Store(offset);
+    });
+}
+
 void JitWasmCodeGen::mov(JitWidth w, RegPtr dest, RegPtr src) {
     pushRegValue(src);
     maskToWidth(w);
@@ -11827,7 +12034,66 @@ void JitWasmCodeGen::setFlags(RegPtr flags, U32 mask) {
 void JitWasmCodeGen::writeFlags(RegPtr flags) {
     writeCPU(JitWidth::b32, (U32)offsetof(CPU, flags), flags);
 }
+void JitWasmCodeGen::emitMaterializedCondition(JitConditional cond, U32 condLocal) {
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    emitProfileSampledCall(HELPER_PROFILE_INLINE_COND);
+#endif
+    U32 flagsLocal = allocScratch();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, flags));
+    m_emitter.emitLocalSet(flagsLocal);
+    m_emitter.emitLocalGet(flagsLocal);
+    U32 mask;
+    switch (cond) {
+    case JitConditional::O: case JitConditional::NO: mask = WASM_OVERFLOW_FLAG; break;
+    case JitConditional::B: case JitConditional::NB: mask = CF; break;
+    case JitConditional::Z: case JitConditional::NZ: mask = ZF; break;
+    case JitConditional::BE: case JitConditional::NBE: mask = CF | ZF; break;
+    case JitConditional::S: case JitConditional::NS: mask = SF; break;
+    case JitConditional::P: case JitConditional::NP: mask = PF; break;
+    default:
+        // Signed comparisons test SF != OF. Align OF (bit 11) with
+        // SF (bit 7), preserving ZF separately for LE/NLE below.
+        m_emitter.emitLocalGet(flagsLocal);
+        m_emitter.emitI32Const(4);
+        m_emitter.emitOp(WASM_I32_SHR_U);
+        m_emitter.emitOp(WASM_I32_XOR);
+        mask = SF;
+        break;
+    }
+    m_emitter.emitI32Const((S32)mask);
+    m_emitter.emitOp(WASM_I32_AND);
+    if (cond == JitConditional::LE || cond == JitConditional::NLE) {
+        m_emitter.emitLocalGet(flagsLocal);
+        m_emitter.emitI32Const(ZF);
+        m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitOp(WASM_I32_OR);
+    }
+    // x86 condition encodings pair each predicate with its inverse.
+    if ((U32)cond & 1) {
+        m_emitter.emitOp(WASM_I32_EQZ);
+    } else {
+        m_emitter.emitI32Const(0);
+        m_emitter.emitOp(WASM_I32_NE);
+    }
+    m_emitter.emitLocalSet(condLocal);
+    freeScratch(flagsLocal);
+}
 RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
+    if (currentLazyFlags == FLAGS_NONE) {
+        // SSE comparisons and explicit flag writes already materialized
+        // EFLAGS. Evaluate the condition without a helper or GP cache flush.
+        U32 condLocal = allocScratch();
+        emitMaterializedCondition(cond, condLocal);
+        RegPtr tmp = makeWasmReg((U8)condLocal, 0xff);
+        if (res && res != tmp) {
+            mov(JitWidth::b8, res, tmp);
+            freeScratch(condLocal);
+            return res;
+        }
+        return tmp;
+    }
+
     U32 resultSignMask = 0;
     switch (currentLazyFlags) {
     case FLAGS_ADD8:
@@ -12147,24 +12413,30 @@ RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
         return tmp;
     }
 
-    // Per-condition helper stashes 0/1 in cpu->tmpReg. Done this way (rather
-    // than one helper taking a condition parameter) because our helper
-    // import signature is (i32)->() — a condition arg would have to go
-    // through a CPU scratch field, and every candidate (src.u32, dst.u32,
-    // etc.) is already reserved for lazy-flag state.
-    syncDirtyRegsToHost();
+    // Both paths only read flag state and write a scratch local (or tmpReg),
+    // so dirty GP locals remain valid across this runtime branch.
+    auto tmp = getTmpReg();
+    bool checkMaterialized = currentLazyFlags == FLAGS_NULL;
+    if (checkMaterialized) {
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Load8U((U32)offsetof(CPU, lazyFlagType));
+        m_emitter.emitI32Const((S32)FLAGS_NONE);
+        m_emitter.emitOp(WASM_I32_EQ);
+        m_emitter.emitIf();
+        emitMaterializedCondition(cond, tmp->hardwareReg());
+        m_emitter.emitElse();
+    }
+    // The per-condition helper has signature (CPU*)->void and writes tmpReg.
+    // Other incoming lazy states still need their original flag formula.
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(HELPER_COND_BASE + (U32)cond);
-
-    // Always load the helper result into a scratch first. `res` may be a
-    // GP register; writing its local directly via emitLocalSet would
-    // clobber the upper bytes. If the caller gave us a `res`, copy via
-    // mov(b8) which merges correctly for GP regs and scratch alike.
-    auto tmp = getTmpReg();
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Load((U32)offsetof(CPU, tmpReg));
     m_emitter.emitLocalSet(tmp->hardwareReg());
-    m_gpLoaded.fill(false);
+    if (checkMaterialized) {
+        m_emitter.emitEnd();
+    }
+    // SETcc may target part of a GP register; merge through mov(b8) below.
     if (res && res != tmp) {
         mov(JitWidth::b8, res, tmp);
         freeScratch(tmp->hardwareReg());
@@ -12743,6 +13015,7 @@ void JitWasmCodeGen::dynamic_wait(DecodedOp* op) {
 
 
 void JitWasmCodeGen::emulateSingleOp() {
+    m_emulatedCurrentOp = true;
     // Sync state, point cpu->eip.u32 at this op's offset (only when we may
     // be in a mixed JIT/emulate block — for pure-emulate blocks each
     // helper's NEXT() advances eip naturally and no writeEip is needed),
@@ -12941,6 +13214,93 @@ void JitWasmCodeGen::direct_test(JitWidth w, RegPtr left, U32 right) {
     freeScratch(result->hardwareReg());
     currentLazyFlags = lazyTypeForTest(w);
 }
+static LazyFlagType lazyTypeForDirectFlagsOp(JitWidth w, JitFlagOp op) {
+    switch (op) {
+    case JitFlagOp::Add:
+        return w == JitWidth::b8 ? FLAGS_ADD8 : w == JitWidth::b16 ? FLAGS_ADD16 : FLAGS_ADD32;
+    case JitFlagOp::Sub:
+        return lazyTypeForSub(w);
+    case JitFlagOp::And:
+        return w == JitWidth::b8 ? FLAGS_AND8 : w == JitWidth::b16 ? FLAGS_AND16 : FLAGS_AND32;
+    case JitFlagOp::Or:
+        return w == JitWidth::b8 ? FLAGS_OR8 : w == JitWidth::b16 ? FLAGS_OR16 : FLAGS_OR32;
+    case JitFlagOp::Xor:
+        return w == JitWidth::b8 ? FLAGS_XOR8 : w == JitWidth::b16 ? FLAGS_XOR16 : FLAGS_XOR32;
+    default:
+        kpanic("JitWasmCodeGen::lazyTypeForDirectFlagsOp");
+        return FLAGS_NONE;
+    }
+}
+void JitWasmCodeGen::direct_flags_op(JitWidth w, JitFlagOp op, RegPtr dst, RegPtr src) {
+    storeLazyFlagsDest(dst);
+    storeLazyFlagsSrc(src);
+    switch (op) {
+    case JitFlagOp::Add: addReg(w, dst, src); break;
+    case JitFlagOp::Sub: subReg(w, dst, src); break;
+    case JitFlagOp::And: andReg(w, dst, src); break;
+    case JitFlagOp::Or:  orReg(w, dst, src); break;
+    case JitFlagOp::Xor: xorReg(w, dst, src); break;
+    }
+    storeLazyFlagsResult(dst);
+    LazyFlagType flagType = lazyTypeForDirectFlagsOp(w, op);
+    storeLazyFlagType(flagType);
+    currentLazyFlags = flagType;
+}
+void JitWasmCodeGen::direct_flags_op(JitWidth w, JitFlagOp op, RegPtr dst, U32 src) {
+    storeLazyFlagsDest(dst);
+    storeLazyFlagsSrc(src);
+    switch (op) {
+    case JitFlagOp::Add: addValue(w, dst, src); break;
+    case JitFlagOp::Sub: subValue(w, dst, src); break;
+    case JitFlagOp::And: andValue(w, dst, src); break;
+    case JitFlagOp::Or:  orValue(w, dst, src); break;
+    case JitFlagOp::Xor: xorValue(w, dst, src); break;
+    }
+    storeLazyFlagsResult(dst);
+    LazyFlagType flagType = lazyTypeForDirectFlagsOp(w, op);
+    storeLazyFlagType(flagType);
+    currentLazyFlags = flagType;
+}
+void JitWasmCodeGen::direct_neg(JitWidth w, RegPtr dst) {
+    storeLazyFlagsSrc(dst);
+    negReg2(w, dst);
+    storeLazyFlagsResult(dst);
+    LazyFlagType flagType = w == JitWidth::b8 ? FLAGS_NEG8 : w == JitWidth::b16 ? FLAGS_NEG16 : FLAGS_NEG32;
+    storeLazyFlagType(flagType);
+    currentLazyFlags = flagType;
+}
+void JitWasmCodeGen::direct_flags_op_with_cf(JitWidth w, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) {
+    storeLazyFlagsOldCF(cf);
+    storeLazyFlagsDest(dst);
+    storeLazyFlagsSrc(src);
+    if (op == JitCarryOp::Adc) {
+        addReg(w, dst, src);
+        addReg(w, dst, cf);
+    } else {
+        subReg(w, dst, src);
+        subReg(w, dst, cf);
+    }
+    storeLazyFlagsResult(dst);
+    LazyFlagType flagType = op == JitCarryOp::Adc ? FLAGS_ADC32 : FLAGS_SBB32;
+    storeLazyFlagType(flagType);
+    currentLazyFlags = flagType;
+}
+void JitWasmCodeGen::direct_flags_op_with_cf(JitWidth w, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) {
+    storeLazyFlagsOldCF(cf);
+    storeLazyFlagsDest(dst);
+    storeLazyFlagsSrc(src);
+    if (op == JitCarryOp::Adc) {
+        addValue(w, dst, src);
+        addReg(w, dst, cf);
+    } else {
+        subValue(w, dst, src);
+        subReg(w, dst, cf);
+    }
+    storeLazyFlagsResult(dst);
+    LazyFlagType flagType = op == JitCarryOp::Adc ? FLAGS_ADC32 : FLAGS_SBB32;
+    storeLazyFlagType(flagType);
+    currentLazyFlags = flagType;
+}
 void JitWasmCodeGen::direct_jump(JitConditional cond, U32 address) {
     emitBranchBailoutCheck();
     JumpIfCondition(cond, address);
@@ -12951,6 +13311,7 @@ void JitWasmCodeGen::direct_cmov(JitWidth w, JitConditional cond, RegPtr dst, Re
     EndIf();
 }
 void JitWasmCodeGen::direct_setcc(JitConditional cond, RegPtr dst) {
+    loadGPReg(dst->emulatedReg);
     auto r = getCondition(cond, dst);
     if (r != dst) mov(JitWidth::b8, dst, r);
 }
@@ -13135,6 +13496,7 @@ bool JitWasmCodeGen::emitDirectLoopBackedge(U32 address) {
 }
 
 void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
+    m_emulatedCurrentOp = false;
     // Reset per-instruction scratch state, then run base bookkeeping (block
     // op count, eip→buffer-pos map, preOp hook). Stash op->len for
     // emitBailoutCheck — it needs the post-write next-op EIP.
@@ -13231,6 +13593,12 @@ void JitWasmCodeGen::compile(DecodedOp* op) {
         return;
     }
     JitCodeGen::compile(op); // delegates to dynamic_* dispatch
+    if (op->isBranch() && m_emulatedCurrentOp) {
+        // Native JIT emulateSingleOp is a tail jump, so an interpreter-backed
+        // branch cannot return to stale generated code. WASM calls its helper;
+        // make that same control-transfer boundary explicit.
+        blockExit();
+    }
 }
 
 void JitWasmCodeGen::postCompile(DecodedOp* op) {
@@ -13272,6 +13640,18 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
         m_directLoopOpen = false;
     }
     m_emitter.endFunction();
+#ifdef BOXEDWINE_WASM_JIT_NAMES
+    // Names are metadata only. Keep guest address attribution out of normal
+    // builds, where module size also affects runtime batching decisions.
+    BString module = cpu->thread->process->getModuleName(this->startingEip);
+    const char* basename = strrchr(module.c_str(), '/');
+    char name[320];
+    snprintf(name, sizeof(name), "x86:p%u:%s:file_%08x:pc_%08x:ops_%u",
+        cpu->thread->process->id, basename ? basename + 1 : module.c_str(),
+        cpu->thread->process->getModuleEip(this->startingEip),
+        this->startingEip, this->blockOpCount);
+    m_emitter.setFunctionName(m_emitter.numImportedFunctions(), name);
+#endif
     m_wasmBinary = m_emitter.finalize();
 
     if (m_wasmBinary.empty()) return;
@@ -13773,7 +14153,7 @@ static void wasmJitCommitDecodedInvalidation(KMemory* memory, const std::vector<
     if (thread && thread->memory == memory && thread->cpu) {
         DecodedOp* activeBlock = thread->cpu->wasmJitActiveBlock;
         if (activeBlock && std::find(decodedOps.begin(), decodedOps.end(), activeBlock) != decodedOps.end()) {
-            thread->cpu->wasmJitBailout = 1;
+            thread->cpu->wasmJitBailout = WASM_JIT_BAILOUT_SMC;
         }
     }
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -14488,7 +14868,7 @@ void wasmJitTestRetireMtSlot(int tableIndex) {
 //
 // Export is handled in JavaScript by saveJitModules(). This import hook reads
 // a zip staged at WASM_JIT_IMPORT_PATH on the virtual FS and stores each
-// v5-xxxxxxxx-hhhhhhhh.wasm entry into the JS cache via
+// v6-xxxxxxxx-hhhhhhhh.wasm entry into the JS cache via
 // wasm_jit_js_store_entry(). It doubles as the exported sentinel
 // (Module._wasm_jit_import_from_file) that boxedwine-shell.js uses to detect
 // a persistence-capable single-threaded build.
@@ -14507,7 +14887,7 @@ extern "C" void wasm_jit_import_from_file() {
         if (unzGetCurrentFileInfo(uf, &fi, filename, sizeof(filename),
                                    nullptr, 0, nullptr, 0) == UNZ_OK
             && fi.uncompressed_size > 0) {
-            if (strncmp(filename, "v5-", 3) != 0) {
+            if (strncmp(filename, "v6-", 3) != 0) {
                 ret = unzGoToNextFile(uf);
                 continue;
             }

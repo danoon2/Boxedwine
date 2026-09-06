@@ -153,6 +153,27 @@ void testStartupArgsDefaultUtf8LocaleEnvironment() {
         testFail("explicit LC_ALL was overwritten");
     }
 }
+
+void testStartupArgsLinearMemoryOption() {
+    StartUpArgs startupArgs;
+    const char* argv[] = {"boxedwine", "-disableLinearMemory"};
+    if (!startupArgs.parseStartupArgs(2, argv) || !startupArgs.disableLinearMemory) {
+        testFail("-disableLinearMemory was not parsed");
+        return;
+    }
+
+    std::vector<BString> childArgs = startupArgs.buildArgs();
+    bool found = false;
+    for (const BString& arg : childArgs) {
+        if (arg == "-disableLinearMemory") {
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        testFail("-disableLinearMemory was not propagated to a child process");
+    }
+}
 #endif
 
 FsOpenNode* openKernelCommandLine(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
@@ -371,6 +392,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (this->disableWasmJitForWrittenCode) {
         args.push_back(B("-disableWasmJitForWrittenCode"));
     }
+    if (this->disableLinearMemory) {
+        args.push_back(B("-disableLinearMemory"));
+    }
     for (auto& a : this->args) {
         args.push_back(a);
     }
@@ -378,7 +402,7 @@ std::vector<BString> StartUpArgs::buildArgs() {
 }
 
 bool StartUpArgs::apply() {
-    KSystem::init();    
+    KSystem::init(this->disableLinearMemory);
     klog_fmt("BoxedWine build timestamp: %s %s", __DATE__, __TIME__);
 #ifdef BOXEDWINE_MULTI_THREADED
     KSystem::cpuAffinityCountForApp = this->cpuAffinity;
@@ -484,6 +508,28 @@ bool StartUpArgs::apply() {
                 }
             }
             openNode->close();
+        }
+    }
+
+    S32 fileSystemVersion = 0;
+    std::shared_ptr<FsNode> fileSystemVersionNode = Fs::getNodeFromLocalPath(B(""), B("/version.txt"), false);
+    if (fileSystemVersionNode) {
+        FsOpenNode* openNode = fileSystemVersionNode->open(K_O_RDONLY);
+        if (openNode) {
+            U8 tmp[64];
+            U32 len = openNode->readNative(tmp, 64);
+            if (len) {
+                BString version;
+                version.append((char*)tmp, len);
+                fileSystemVersion = version.trim().toInt();
+            }
+            openNode->close();
+        }
+    }
+    if (fileSystemVersion < 10) {
+        std::shared_ptr<FsNode> libGlNode = Fs::getNodeFromLocalPath(B(""), B("/lib/libGL.so.1"), false);
+        if (libGlNode) {
+            libGlNode->removeNodeFromParent();
         }
     }
 #endif
@@ -971,6 +1017,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->cacheReads = true;
         }  else if (!strcmp(argv[i], "-disableWasmJitForWrittenCode")) {
             this->disableWasmJitForWrittenCode = true;
+        }  else if (!strcmp(argv[i], "-disableLinearMemory")) {
+            this->disableLinearMemory = true;
         }
         else if (!strcmp(argv[i], "-dxvk")) {
             BString dxvk;

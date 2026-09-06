@@ -27,6 +27,7 @@
 #import <XCTest/XCTest.h>
 
 int runCpuTestsMac(void);
+int runMacOpenGLPbufferSmokeTest(void);
 
 @interface BoxedwineUnitTests : XCTestCase
 
@@ -44,6 +45,10 @@ int runCpuTestsMac(void);
 
 - (void)testExample {
     XCTAssert(runCpuTestsMac() == 0);
+}
+
+- (void)testMacOpenGLPbuffer {
+    XCTAssertEqual(runMacOpenGLPbufferSmokeTest(), 1);
 }
 
 @end

@@ -29,6 +29,9 @@
 #include "../../x11/x11.h"
 #include "../../source/ui/mainui.h"
 #include "../../platform/sdl/sdlcallback.h"
+#ifdef __APPLE__
+#include "../../../platform/mac/macOpenGL.h"
+#endif
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -469,6 +472,7 @@ class SDLGlContext {
 public:
     SDLGlContext(U32 id, SDL_GLContext context, const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags) : id(id), context(context), pixelFormat(pixelFormat), major(major), minor(minor), profile(profile), flags(flags) {}
     SDLGlWindowPtr currentWindow;
+    SDLGlWindowPtr currentPbufferWindow;
 
     const U32 id;
     SDL_GLContext context;
@@ -498,6 +502,8 @@ public:
     void glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd, const CLXFBConfigPtr& cfg) override;
     void glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd) override;
     void glResizeWindow(const std::shared_ptr<XWindow>& wnd) override;
+    bool glCreatePbuffer(KThread* thread, const std::shared_ptr<XDrawable>& pbuffer, const CLXFBConfigPtr& cfg) override;
+    void glDestroyPbuffer(KThread* thread, const std::shared_ptr<XDrawable>& pbuffer) override;
     bool isActive() override;
     bool presentedSinceLastCheck() override;
 
@@ -516,7 +522,10 @@ public:
     static BHashTable<U32, SDLGlContextPtr> contextsById;    
 
     static BOXEDWINE_MUTEX windowMutex;
-    static BHashTable<U32, SDLGlWindowPtr> sdlWindowById;    
+    static BHashTable<U32, SDLGlWindowPtr> sdlWindowById;
+
+    static BOXEDWINE_MUTEX pbufferMutex;
+    static BHashTable<U32, void*> pbuffersById;
 };
 
 typedef std::shared_ptr<KOpenGLSdl> KOpenGLSdlPtr;
@@ -529,9 +538,34 @@ BHashTable<U32, SDLGlContextPtr> KOpenGLSdl::contextsById;
 BOXEDWINE_MUTEX KOpenGLSdl::windowMutex;
 BHashTable<U32, SDLGlWindowPtr> KOpenGLSdl::sdlWindowById;
 
+BOXEDWINE_MUTEX KOpenGLSdl::pbufferMutex;
+BHashTable<U32, void*> KOpenGLSdl::pbuffersById;
+
 KOpenGLSdl::~KOpenGLSdl() {
-    sdlWindowById.clear();
-    contextsById.clear();
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
+        for (auto& context : contextsById) {
+#ifdef __APPLE__
+            macOpenGLDestroyContext(context.value->context);
+#else
+            SDL_GL_DeleteContext(context.value->context);
+#endif
+        }
+        contextsById.clear();
+    }
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pbufferMutex);
+#ifdef __APPLE__
+        for (auto& pbuffer : pbuffersById) {
+            macOpenGLDestroyPbuffer(pbuffer.value);
+        }
+#endif
+        pbuffersById.clear();
+    }
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+        sdlWindowById.clear();
+    }
     shownGlWindows = 0;
 }
 
@@ -609,6 +643,25 @@ U32 KOpenGLSdl::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFo
     SDLGlContextPtr sdlContext = std::make_shared<SDLGlContext>(result, nullptr, pixelFormat, major, minor, profile, flags);
     contextsById.set(result, sdlContext);
     return result;
+#elif defined(__APPLE__)
+    SDLGlContextPtr sharedContext;
+    if (sharedContextId) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
+        sharedContext = contextsById.get(sharedContextId);
+        if (!sharedContext) {
+            return 0;
+        }
+    }
+    void* nativeContext = macOpenGLCreateContext(pixelFormat->nativeId, major, minor, profile, flags,
+                                                  sharedContext ? sharedContext->context : nullptr);
+    if (!nativeContext) {
+        return 0;
+    }
+
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
+    U32 result = nextId++;
+    contextsById.set(result, std::make_shared<SDLGlContext>(result, (SDL_GLContext)nativeContext, pixelFormat, major, minor, profile, flags));
+    return result;
 #else
     SDLGlWindowPtr window;
     
@@ -683,7 +736,11 @@ void KOpenGLSdl::glDestroyContext(KThread* thread, U32 contextId) {
      * WebGL contexts that own a private worker canvas. */
 #else
     if (context) {
+#ifdef __APPLE__
+        macOpenGLDestroyContext(context->context);
+#else
         SDL_GL_DeleteContext(context->context);
+#endif
     }
 #endif
     contextsById.remove(contextId);
@@ -712,6 +769,21 @@ void KOpenGLSdl::glResizeWindow(const std::shared_ptr<XWindow>& wnd) {
         window = sdlWindowById.get(wnd->id);
     }
     if (window) {
+#ifdef __APPLE__
+        std::vector<SDLGlContextPtr> contexts;
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
+        for (auto& context : contextsById) {
+            if (context.value->currentWindow == window) {
+                contexts.push_back(context.value);
+            }
+        }
+        KNativeSystem::getCurrentInput()->runOnUiThread([&window, &wnd, &contexts]() {
+            SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
+            for (auto& context : contexts) {
+                macOpenGLUpdateContext(context->context);
+            }
+            });
+#else
         KNativeSystem::getCurrentInput()->runOnUiThread([&window, &wnd]() {
 #if defined(__EMSCRIPTEN__)
             resizeWebGLCanvas(window->window, wnd->width(), wnd->height());
@@ -719,10 +791,15 @@ void KOpenGLSdl::glResizeWindow(const std::shared_ptr<XWindow>& wnd) {
             SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
 #endif
             });
+#endif
     }
 }
 
 void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>& d) {
+    if (d->isPBuffer) {
+        pglFlush();
+        return;
+    }
     SDLGlWindowPtr window;
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
@@ -756,14 +833,20 @@ void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>
         if (!usePrivateThreadCanvas) {
             resizeWebGLCanvas(window->window, d->width(), d->height());
         }
+#elif defined(__APPLE__)
+        SDLGlContextPtr context;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
+            context = contextsById.get(thread->currentContext);
+        }
+        if (context) {
+            macOpenGLSwapBuffers(context->context);
+        }
 #else
         if (pglFlush) {
             pglFlush();
         }
         SDL_GL_SwapWindow(window->window);
-#ifdef __EMSCRIPTEN__
-        resizeWebGLCanvas(window->window, d->width(), d->height());
-#endif
 #endif
         presented = true;
 #ifdef __EMSCRIPTEN__
@@ -784,18 +867,97 @@ void KOpenGLSdl::glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>&
         KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
             window = SDLGlWindow::createWindow(cfg->glPixelFormat, 0, 0, 0, 0, wnd->width(), wnd->height(), wnd);
             });
-        window->drawable = wnd;
-        sdlWindowById.set(wnd->id, window);
+        if (window) {
+            window->drawable = wnd;
+            sdlWindowById.set(wnd->id, window);
 #ifdef __EMSCRIPTEN__
-        if (!deferGlWindowShowUntilSwap())
+            if (!deferGlWindowShowUntilSwap()) {
+                window->showWindow(true);
+            }
 #endif
-        window->showWindow(true);
+        }
     }
 }
 
 void KOpenGLSdl::glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+#ifdef __APPLE__
+    SDLGlWindowPtr window = sdlWindowById.get(wnd->id);
+    if (window) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
+        for (auto& context : contextsById) {
+            if (context.value->currentWindow == window) {
+                macOpenGLDetachContext(context.value->context);
+                context.value->currentWindow = nullptr;
+            }
+        }
+    }
+#endif
     sdlWindowById.remove(wnd->id);
+}
+
+bool KOpenGLSdl::glCreatePbuffer(KThread* thread, const std::shared_ptr<XDrawable>& pbuffer, const CLXFBConfigPtr& cfg) {
+    (void)thread;
+#ifdef __APPLE__
+    void* nativePbuffer = macOpenGLCreatePbuffer(pbuffer->width(), pbuffer->height());
+    if (nativePbuffer) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pbufferMutex);
+        pbuffersById.set(pbuffer->id, nativePbuffer);
+        return true;
+    }
+
+    // CGL advertises pbuffer-capable formats on modern Apple Silicon, but
+    // CGLCreatePBuffer returns kCGLBadDrawable. Apple recommends an off-screen
+    // window (or FBO) as the replacement, and a hidden Cocoa view preserves the
+    // default-framebuffer semantics expected by GLX clients.
+    SDLGlWindowPtr window;
+    KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
+        window = SDLGlWindow::createWindow(cfg->glPixelFormat, 0, 0, 0, 0, pbuffer->width(), pbuffer->height(), nullptr);
+        });
+    if (!window) {
+        return false;
+    }
+    window->drawable = pbuffer;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+    sdlWindowById.set(pbuffer->id, window);
+    return true;
+#else
+    (void)cfg;
+    return false;
+#endif
+}
+
+void KOpenGLSdl::glDestroyPbuffer(KThread* thread, const std::shared_ptr<XDrawable>& pbuffer) {
+    (void)thread;
+#ifdef __APPLE__
+    void* nativePbuffer = nullptr;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pbufferMutex);
+        nativePbuffer = pbuffersById.get(pbuffer->id);
+        pbuffersById.remove(pbuffer->id);
+    }
+    macOpenGLDestroyPbuffer(nativePbuffer);
+
+    SDLGlWindowPtr window;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+        window = sdlWindowById.get(pbuffer->id);
+        if (window) {
+            sdlWindowById.remove(pbuffer->id);
+        }
+    }
+    if (window) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
+        for (auto& context : contextsById) {
+            if (context.value->currentPbufferWindow == window) {
+                macOpenGLDetachContext(context.value->context);
+                context.value->currentPbufferWindow = nullptr;
+            }
+        }
+    }
+#else
+    (void)pbuffer;
+#endif
 }
 
 GLPixelFormatPtr KOpenGLSdl::getFormat(U32 pixelFormatId) {
@@ -879,7 +1041,10 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
         context = contextsById.get(contextId);
-    }        
+    }
+    if (contextId && !context) {
+        return false;
+    }
     if (!context) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
         context = contextsById.get(thread->currentContext);
@@ -888,6 +1053,7 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
                 context->currentWindow->drawable = nullptr;
             }
             context->currentWindow = nullptr;
+            context->currentPbufferWindow = nullptr;
         }
 #ifdef __EMSCRIPTEN__
         if (context && context->webglContext) {
@@ -897,11 +1063,54 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
                 SDL_GL_MakeCurrent(nullptr, 0);
                 });
         }
+#elif defined(__APPLE__)
+        macOpenGLClearCurrent();
 #else
         SDL_GL_MakeCurrent(nullptr, 0);
 #endif
         return true;
     } else {
+        if (d->isPBuffer) {
+            void* nativePbuffer = nullptr;
+            {
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pbufferMutex);
+                nativePbuffer = pbuffersById.get(d->id);
+            }
+#ifdef __APPLE__
+            if (nativePbuffer && macOpenGLMakeCurrentPbuffer(context->context, nativePbuffer)) {
+                context->currentWindow = nullptr;
+                context->currentPbufferWindow = nullptr;
+                loadSdlExtensions();
+#ifdef _DEBUG
+                enableDebug();
+#endif
+                return true;
+            }
+            if (!nativePbuffer) {
+                SDLGlWindowPtr pbufferWindow;
+                {
+                    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+                    pbufferWindow = sdlWindowById.get(d->id);
+                }
+                bool attached = false;
+                if (pbufferWindow) {
+                    KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
+                        attached = macOpenGLSetWindow(context->context, pbufferWindow->window);
+                        });
+                }
+                if (attached && macOpenGLMakeCurrent(context->context)) {
+                    context->currentWindow = nullptr;
+                    context->currentPbufferWindow = pbufferWindow;
+                    loadSdlExtensions();
+#ifdef _DEBUG
+                    enableDebug();
+#endif
+                    return true;
+                }
+            }
+#endif
+            return false;
+        }
         SDLGlWindowPtr window;
 
         {
@@ -991,7 +1200,22 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
                 result = SDL_GL_MakeCurrent(window->window, context->context) == 0;
                 });
         }
+#elif defined(__APPLE__)
+        bool attached = false;
+        KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
+            attached = macOpenGLSetWindow(context->context, window->window);
+            });
+        result = attached && macOpenGLMakeCurrent(context->context);
 #else
+        // Rebinding an already-current WGL context can force an expensive driver
+        // synchronization. SDL can prove when both the context and drawable are
+        // already current on this host thread, so avoid the redundant call.
+        if (SDL_GL_GetCurrentContext() == context->context &&
+            SDL_GL_GetCurrentWindow() == window->window) {
+            context->currentWindow = window;
+            context->currentPbufferWindow = nullptr;
+            return true;
+        }
         result = SDL_GL_MakeCurrent(window->window, context->context) == 0;
 #endif
         if (result) {
@@ -1000,7 +1224,10 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             enableDebug();
 #endif
             context->currentWindow = window;
+            context->currentPbufferWindow = nullptr;
+#ifdef __EMSCRIPTEN__
             window->showWindow(true);
+#endif
             return true;
         } else {
             kwarn_fmt("KOpenGLSdl::glMakeCurrent SDL_GL_MakeCurrent failed: %s", SDL_GetError());

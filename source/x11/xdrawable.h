@@ -23,7 +23,7 @@ class XGC;
 
 class XDrawable {
 public:
-	XDrawable(U32 width, U32 height, U32 depth, const VisualPtr& visual, bool isWindow);
+	XDrawable(U32 width, U32 height, U32 depth, const VisualPtr& visual, bool isWindow, bool isPBuffer = false);
 	virtual ~XDrawable();
 
 	const U32 id;
@@ -55,6 +55,7 @@ public:
 	virtual void setDirty() {};
 	bool isDirty = false;
 	const bool isWindow;
+	const bool isPBuffer;
 	bool isOpenGL = false;
 
 protected:	
@@ -71,6 +72,17 @@ private:
 	BOXEDWINE_MUTEX mutex;
 	U32 w;
 	U32 h;
+};
+
+#define XPBufferPtr std::shared_ptr<XPBuffer>
+
+class XPBuffer : public XDrawable {
+public:
+	XPBuffer(U32 width, U32 height, U32 depth, const VisualPtr& visual, U32 fbConfigId, bool preservedContents, U32 eventMask);
+
+	const U32 fbConfigId;
+	const bool preservedContents;
+	const U32 eventMask;
 };
 
 #endif

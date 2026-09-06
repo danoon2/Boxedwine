@@ -630,36 +630,36 @@ void glcommon_glEnableClientState(CPU* cpu) {
     GLenum cap = ARG1;
     GL_FUNC(pglEnableClientState)(cap);
     if (cap == GL_COLOR_ARRAY) {
-        cpu->thread->glColorPointer.refreshEachCall = 1;
+        cpu->thread->glColorPointer.refreshEachCall = !cpu->thread->glColorPointer.isArrayBuffer;
         cpu->thread->glColorPointer.enabled = true;
     }
     else if (cap == GL_EDGE_FLAG_ARRAY) {
-        cpu->thread->glEdgeFlagPointer.refreshEachCall = 1;
+        cpu->thread->glEdgeFlagPointer.refreshEachCall = !cpu->thread->glEdgeFlagPointer.isArrayBuffer;
         cpu->thread->glEdgeFlagPointer.enabled = true;
     }
     else if (cap == GL_FOG_COORD_ARRAY) {
-        cpu->thread->glFogPointer.refreshEachCall = 1;
+        cpu->thread->glFogPointer.refreshEachCall = !cpu->thread->glFogPointer.isArrayBuffer;
         cpu->thread->glFogPointer.enabled = true;
     }
     else if (cap == GL_INDEX_ARRAY) {
-        cpu->thread->glIndexPointer.refreshEachCall = 1;
+        cpu->thread->glIndexPointer.refreshEachCall = !cpu->thread->glIndexPointer.isArrayBuffer;
         cpu->thread->glIndexPointer.enabled = true;
     }
     else if (cap == GL_NORMAL_ARRAY) {
-        cpu->thread->glNormalPointer.refreshEachCall = 1;
+        cpu->thread->glNormalPointer.refreshEachCall = !cpu->thread->glNormalPointer.isArrayBuffer;
         cpu->thread->glNormalPointer.enabled = true;
     }
     else if (cap == GL_SECONDARY_COLOR_ARRAY) {
-        cpu->thread->glSecondaryColorPointer.refreshEachCall = 1;
+        cpu->thread->glSecondaryColorPointer.refreshEachCall = !cpu->thread->glSecondaryColorPointer.isArrayBuffer;
         cpu->thread->glSecondaryColorPointer.enabled = true;
     }
     else if (cap == GL_TEXTURE_COORD_ARRAY) {
         OpenGLVetexPointer* p = getCurrentTexCoordPointer(cpu);
-        p->refreshEachCall = 1;
+        p->refreshEachCall = !p->isArrayBuffer;
         p->enabled = true;
     }
     else if (cap == GL_VERTEX_ARRAY) {
-        cpu->thread->glVertextPointer.refreshEachCall = 1;
+        cpu->thread->glVertextPointer.refreshEachCall = !cpu->thread->glVertextPointer.isArrayBuffer;
         cpu->thread->glVertextPointer.enabled = true;
     }
 }
@@ -1381,8 +1381,8 @@ void gl_common_XCreateContext(CPU* cpu) {
     info.read(memory, ARG2);
     U32 pixelFormatId = memory->readd(info.visual); // pixel format index is in visual.ext_data (first member)
     KOpenGLPtr gl = KNativeSystem::getOpenGL();
-
-    EAX = gl->glCreateContext(thread, gl->getFormat(pixelFormatId), 0, 0, 0, 0, shareList);
+    GLPixelFormatPtr format = gl->getFormat(pixelFormatId);
+    EAX = format ? gl->glCreateContext(thread, format, 0, 0, 0, 0, shareList) : 0;
 }
 
 // void glXDestroyContext(Display* dpy, GLXContext ctx) {
@@ -1397,12 +1397,18 @@ void gl_common_XMakeCurrent(CPU* cpu) {
     XDrawablePtr d = server->getDrawable(ARG2);
     U32 ctx = ARG3;
 
-    if (ctx && !d) {
+    if ((!ctx && ARG2) || (ctx && !d)) {
         EAX = False;
         return;
     }    
-    EAX = KNativeSystem::getOpenGL()->glMakeCurrent(thread, d, ctx) ? True : False;
-    thread->currentContext = ctx;
+    if (KNativeSystem::getOpenGL()->glMakeCurrent(thread, d, ctx)) {
+        thread->currentContext = ctx;
+        thread->currentDrawable = ARG2;
+        thread->currentReadDrawable = ARG2;
+        EAX = True;
+    } else {
+        EAX = False;
+    }
 }
 
 // void pglXCopyContext(Display* dpy, GLXContext src, GLXContext dst, unsigned long mask)
@@ -1412,7 +1418,9 @@ void gl_common_XCopyContext(CPU* cpu) {
 
 // Bool glXQueryVersion(Display* dpy, int* maj, int* min)
 void gl_common_XQueryVersion(CPU* cpu) {
-    kpanic("glXQueryVersion");
+    cpu->memory->writed(ARG2, 1);
+    cpu->memory->writed(ARG3, 3);
+    EAX = True;
 }
 
 // Bool glXIsDirect(Display* dpy, GLXContext ctx)
@@ -1422,12 +1430,12 @@ void gl_common_XIsDirect(CPU* cpu) {
 
 // GLXContext glXGetCurrentContext(void)
 void gl_common_XGetCurrentContext(CPU* cpu) {
-    kpanic("glXGetCurrentContext");
+    EAX = cpu->thread->currentContext;
 }
 
 // GLXDrawable glXGetCurrentDrawable(void)
 void gl_common_XGetCurrentDrawable(CPU* cpu) {
-    kpanic("glXGetCurrentDrawable");
+    EAX = cpu->thread->currentDrawable;
 }
 
 // const char* glXQueryExtensionsString(Display* dpy, int screen)
@@ -1527,7 +1535,27 @@ void gl_common_XChooseFBConfig(CPU* cpu) {
 
     std::vector<CLXFBConfigPtr> foundCfgs;
     server->iterateFbConfigs([=, &foundCfgs](const CLXFBConfigPtr& cfg) {
+        U32 availableDrawableTypes = 0;
+        if (cfg->glPixelFormat->pf.dwFlags & K_PFD_DRAW_TO_WINDOW) {
+            availableDrawableTypes |= GLX_WINDOW_BIT;
+        }
+        if (cfg->glPixelFormat->pf.dwFlags & K_PFD_DRAW_TO_BITMAP) {
+            availableDrawableTypes |= GLX_PIXMAP_BIT;
+        }
+        if (cfg->glPixelFormat->pbuffer) {
+            availableDrawableTypes |= GLX_PBUFFER_BIT;
+        }
+        if (drawableType && (availableDrawableTypes & drawableType) != drawableType) {
+            return true;
+        }
+        U32 availableRenderType = cfg->glPixelFormat->pf.iPixelType == K_PFD_TYPE_RGBA ? GLX_RGBA_BIT : GLX_COLOR_INDEX_BIT;
+        if (renderType && (availableRenderType & renderType) != renderType) {
+            return true;
+        }
         if (samples && samples > cfg->glPixelFormat->samples) {
+            return true;
+        }
+        if (sampleBuffers && sampleBuffers > (U32)cfg->glPixelFormat->sampleBuffers) {
             return true;
         }
         if (cAuxBits && cAuxBits > cfg->glPixelFormat->pf.cAuxBuffers) {
@@ -1547,6 +1575,15 @@ void gl_common_XChooseFBConfig(CPU* cpu) {
             return true;
         }
         if (cAlphaBits && cAlphaBits > cfg->glPixelFormat->pf.cAlphaBits) {
+            return true;
+        }
+        if (cRedBits && cRedBits > cfg->glPixelFormat->pf.cRedBits) {
+            return true;
+        }
+        if (cGreenBits && cGreenBits > cfg->glPixelFormat->pf.cGreenBits) {
+            return true;
+        }
+        if (cBlueBits && cBlueBits > cfg->glPixelFormat->pf.cBlueBits) {
             return true;
         }
         if (bufferSize && bufferSize > cfg->glPixelFormat->depth) {
@@ -1614,6 +1651,12 @@ void gl_common_XGetFBConfigAttrib(CPU* cpu) {
         break;
     case GLX_VISUAL_ID:
         memory->writed(ARG4, cfg->visualId);
+        break;
+    case GLX_X_RENDERABLE:
+        memory->writed(ARG4, True);
+        break;
+    case GLX_CONFIG_CAVEAT:
+        memory->writed(ARG4, (cfg->glPixelFormat->pf.dwFlags & K_PFD_GENERIC_FORMAT) ? GLX_SLOW_CONFIG : GLX_NONE);
         break;
     case GLX_DRAWABLE_TYPE:
     {
@@ -1758,22 +1801,164 @@ void gl_common_XGetVisualFromFBConfig(CPU* cpu) {
 
 // GLXPbuffer glXCreatePbuffer(Display* dpy, GLXFBConfig config, const int* attribList)
 void gl_common_XCreatePbuffer(CPU* cpu) {
-    kpanic("glXCreatePbuffer");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
+    if (!cfg || !cfg->glPixelFormat->pbuffer) {
+        EAX = 0;
+        return;
+    }
+
+    U32 width = 0;
+    U32 height = 0;
+    bool largest = false;
+    bool preservedContents = false;
+    U32 eventMask = 0;
+    U32 attribList = ARG3;
+    while (attribList) {
+        U32 attribute = cpu->memory->readd(attribList);
+        attribList += 4;
+        if (!attribute) {
+            break;
+        }
+        U32 value = cpu->memory->readd(attribList);
+        attribList += 4;
+        switch (attribute) {
+        case GLX_PBUFFER_WIDTH:
+            width = value;
+            break;
+        case GLX_PBUFFER_HEIGHT:
+            height = value;
+            break;
+        case GLX_LARGEST_PBUFFER:
+            largest = value != 0;
+            break;
+        case GLX_PRESERVED_CONTENTS:
+            preservedContents = value != 0;
+            break;
+        case GLX_EVENT_MASK:
+            eventMask = value;
+            break;
+        default:
+            kwarn_fmt("glXCreatePbuffer unsupported attribute %x", attribute);
+            EAX = 0;
+            return;
+        }
+    }
+    if (!width || !height) {
+        EAX = 0;
+        return;
+    }
+
+    const GLPixelFormatPtr& format = cfg->glPixelFormat;
+    if (format->pbufferMaxWidth && width > format->pbufferMaxWidth) {
+        if (!largest) {
+            EAX = 0;
+            return;
+        }
+        width = format->pbufferMaxWidth;
+    }
+    if (format->pbufferMaxHeight && height > format->pbufferMaxHeight) {
+        if (!largest) {
+            EAX = 0;
+            return;
+        }
+        height = format->pbufferMaxHeight;
+    }
+    if (format->pbufferMaxPixels && (U64)width * height > format->pbufferMaxPixels) {
+        if (!largest) {
+            EAX = 0;
+            return;
+        }
+        U32 allowedHeight = format->pbufferMaxPixels / width;
+        if (!allowedHeight) {
+            width = std::min(width, format->pbufferMaxPixels);
+            allowedHeight = 1;
+        }
+        height = std::min(height, allowedHeight);
+    }
+
+    VisualPtr visual = server->getVisual(cfg->visualId);
+    if (!visual) {
+        EAX = 0;
+        return;
+    }
+    XPBufferPtr pbuffer = server->createNewPBuffer(width, height, cfg->depth, visual, cfg->fbId, preservedContents, eventMask);
+    if (!KNativeSystem::getOpenGL()->glCreatePbuffer(thread, pbuffer, cfg)) {
+        server->removePBuffer(pbuffer->id);
+        EAX = 0;
+        return;
+    }
+    EAX = pbuffer->id;
 }
 
 // void glXDestroyPbuffer(Display* dpy, GLXPbuffer pbuf)
 void gl_common_XDestroyPbuffer(CPU* cpu) {
-    kpanic("glXDestroyPbuffer");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XPBufferPtr pbuffer = server->getPBuffer(ARG2);
+    if (!pbuffer) {
+        return;
+    }
+    if (thread->currentDrawable == pbuffer->id) {
+        if (KNativeSystem::getOpenGL()->glMakeCurrent(thread, nullptr, 0)) {
+            thread->currentContext = 0;
+            thread->currentDrawable = 0;
+            thread->currentReadDrawable = 0;
+        }
+    }
+    KNativeSystem::getOpenGL()->glDestroyPbuffer(thread, pbuffer);
+    server->removePBuffer(pbuffer->id);
 }
 
 // void glXQueryDrawable(Display* dpy, GLXDrawable draw, int attribute, unsigned int* value)
 void gl_common_XQueryDrawable(CPU* cpu) {
-    kpanic("glXQueryDrawable");
+    XDrawablePtr drawable = XServer::getServer()->getDrawable(ARG2);
+    if (!drawable) {
+        return;
+    }
+    U32 value = 0;
+    switch (ARG3) {
+    case GLX_WIDTH:
+        value = drawable->width();
+        break;
+    case GLX_HEIGHT:
+        value = drawable->height();
+        break;
+    case GLX_FBCONFIG_ID:
+        if (drawable->isPBuffer) {
+            value = std::static_pointer_cast<XPBuffer>(drawable)->fbConfigId;
+        }
+        break;
+    case GLX_PRESERVED_CONTENTS:
+        if (drawable->isPBuffer) {
+            value = std::static_pointer_cast<XPBuffer>(drawable)->preservedContents;
+        }
+        break;
+    case GLX_EVENT_MASK:
+        if (drawable->isPBuffer) {
+            value = std::static_pointer_cast<XPBuffer>(drawable)->eventMask;
+        }
+        break;
+    default:
+        kwarn_fmt("glXQueryDrawable unsupported attribute %x", ARG3);
+        return;
+    }
+    cpu->memory->writed(ARG4, value);
 }
 
 // GLXContext glXCreateNewContext(Display* dpy, GLXFBConfig config, int renderType, GLXContext shareList, Bool direct)
 void gl_common_XCreateNewContext(CPU* cpu) {
-    kpanic("glXCreateNewContext");
+    CLXFBConfigPtr cfg = XServer::getServer()->getFbConfig(ARG2);
+    if (!cfg || (ARG3 != GLX_RGBA_TYPE && ARG3 != GLX_COLOR_INDEX_TYPE)) {
+        EAX = 0;
+        return;
+    }
+    if ((ARG3 == GLX_RGBA_TYPE) != (cfg->glPixelFormat->pf.iPixelType == K_PFD_TYPE_RGBA)) {
+        EAX = 0;
+        return;
+    }
+    EAX = KNativeSystem::getOpenGL()->glCreateContext(cpu->thread, cfg->glPixelFormat, 0, 0, 0, 0, ARG4);
 }
 
 // Bool glXMakeContextCurrent(Display* dpy, GLXDrawable draw, GLXDrawable read, GLXContext ctx)
@@ -1781,8 +1966,9 @@ void gl_common_XMakeContextCurrent(CPU* cpu) {
     U32 draw = ARG2;
     U32 read = ARG3;
     U32 ctx = ARG4;
-    if (read && read != draw) {
-        kpanic("glXMakeContextCurrent");
+    if ((!ctx && (draw || read)) || (ctx && (!draw || !read)) || read != draw) {
+        EAX = False;
+        return;
     }
 
     KThread* thread = cpu->thread;
@@ -1793,8 +1979,14 @@ void gl_common_XMakeContextCurrent(CPU* cpu) {
         EAX = False;
         return;
     }
-    thread->currentContext = ctx;
-    EAX = KNativeSystem::getOpenGL()->glMakeCurrent(thread, d, ctx) ? True : False;
+    if (KNativeSystem::getOpenGL()->glMakeCurrent(thread, d, ctx)) {
+        thread->currentContext = ctx;
+        thread->currentDrawable = draw;
+        thread->currentReadDrawable = read;
+        EAX = True;
+    } else {
+        EAX = False;
+    }
 }
 
 // GLXPixmap glXCreatePixmap(Display* dpy, GLXFBConfig config, Pixmap pixmap, const int* attrib_list)
@@ -1860,6 +2052,10 @@ void gl_common_XCreateContextAttribsARB(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
+    if (!cfg) {
+        EAX = 0;
+        return;
+    }
     U32 share_context = ARG3;
     //U32 direct = ARG4;
     U32 attribList = ARG5;
@@ -1950,7 +2146,6 @@ static_assert(GL_FUNC_COUNT > kEglQueryString, "GL_FUNC_COUNT must include EGL i
 
 Int99Callback* int99Callback;
 U32 int99CallbackSize;
-U32 lastGlCallTime;
 void gl_init_egl_callbacks(Int99Callback* gl_callback);
 
 #if defined(__EMSCRIPTEN__)
@@ -2018,7 +2213,6 @@ void gl_init(BString allowExtensions) {
 #else
 Int99Callback* int99Callback;
 U32 int99CallbackSize;
-U32 lastGlCallTime;
 void gl_init() {
     int99CallbackSize=0;
 }
@@ -2152,7 +2346,6 @@ void callOpenGL(CPU* cpu, U32 index) {
 #endif
     if (index < int99CallbackSize && int99Callback[index]) {
         cpu->thread->marshalIndex = 0;
-        lastGlCallTime = KSystem::getMilliesSinceStart();
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
         if (!glCanRunOnCurrentThread(index)) {
             sdlDispatch([cpu, index]() -> U32 {

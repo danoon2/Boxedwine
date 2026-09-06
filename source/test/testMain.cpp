@@ -70,6 +70,7 @@ void testFileCacheIdentitySurvivesRenameAndHardLink();
 void testSharedFileMappingGrowthKeepsPagesShared();
 void testSharedFileMappingTruncateClearsResidentBytes();
 void testSharedMappedWriteIsVisibleToPread();
+void testMappedFileCacheLinearBlockAlignment();
 void testPwriteUpdatesResidentSharedMapping();
 void testExtendingPwriteAdvancesMappedFileCacheLength();
 void testMappedFileMutationOperationOrdering();
@@ -148,6 +149,7 @@ void testInotifyFollowsWatchedSymlinkTarget();
 void testInotifyPollReportsChildDirectoryDelete();
 void testInotifyAsyncSignalsSigioOnDelete();
 void testStartupArgsDefaultUtf8LocaleEnvironment();
+void testStartupArgsLinearMemoryOption();
 void testTerminatingThreadDoesNotEnterFutexWait();
 void testUnixSocketPollOutClearsPeerCondition();
 void testUnixSocketSendmsgStreamPayloadCanBeRead();
@@ -159,6 +161,9 @@ void testPollRegistrationCanSignalParentCondition();
 void testNativeSocketSetOobInlineCanBeReadBack();
 void testNativeSocketBindUnavailableAddressReturnsEaddrnotavail();
 void testNativeSocketRecvmsgReceivesOobData();
+#if defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__)
+void stopNativeSocketsThread();
+#endif
 void testNativeDatagramSocketPollDoesNotReportHangup();
 void testNativeDatagramRecvmsgPeekScattersOnce();
 void testNativeDatagramRecvmsgScattersSingleMessage();
@@ -177,6 +182,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testDspAudioWriteMath, "Test DSP Audio Write Math"},
     {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
 #ifdef BOXEDWINE_WASM_JIT
+    {testWasmJitMaterializedConditions, "Test WASM JIT materialized flag conditions"},
+    {testWasmJitSseCompareConditions, "Test WASM JIT SSE compare conditions"},
     {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT subblock entries and invalidation"},
     {testExecutableFixedReplacementPreparationFailurePreservesState, "Test WASM JIT fixed replacement backend preparation is transactional", TEST_ENTRY_SERIAL},
     {testWasmJitModuleMerger, "Test WASM JIT runtime module merger"},
@@ -185,6 +192,7 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
     {testWasmJitMtCpuHazardStateIsCold, "Test MT WASM JIT CPU hazard state layout"},
+    {testWasmJitMtBoundedDispatch, "Test MT WASM JIT bounded dispatch", TEST_ENTRY_SERIAL},
     {testWasmJitMtExecDetachPreservesSharedDecodedOps, "Test MT WASM JIT exec detach preserves shared decoded ops"},
     {testWasmJitMtModuleBrokerTransport, "Test MT WASM JIT module broker transport"},
     {testWasmJitMtStandaloneModuleBroker, "Test MT WASM JIT standalone module broker"},
@@ -209,6 +217,24 @@ const TestEntry TEST_ENTRIES[] = {
     {testFlagsAcrossIndirectJitBlockBoundary, "Test flags across indirect JIT block boundary"},
 #ifdef BOXEDWINE_JIT
     {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},
+#ifndef BOXEDWINE_WASM_JIT
+    {testJitDirectTargetInvalidation, "Test JIT direct target invalidation"},
+#endif
+#ifdef BOXEDWINE_JIT_X64
+    {testJitEntryCacheInvalidation, "Test JIT compiled-entry cache invalidation"},
+#endif
+#if defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+    {testJitOpenGLCallStateAndInvalidation, "Test JIT OpenGL state and code invalidation", TEST_ENTRY_SERIAL},
+    {testJitOpenGLCallBoundaries, "Test JIT OpenGL call boundaries", TEST_ENTRY_SERIAL},
+#endif
+    {testJitDirectArithmeticFlags, "Test JIT direct arithmetic flags"},
+    {testJitDirectIncDecFlags, "Test JIT direct INC/DEC flags"},
+    {testJitDirectNegFlags, "Test JIT direct NEG flags"},
+    {testJitDirectAdcSbbFlags, "Test JIT direct ADC/SBB flags"},
+    {testJitDirectShiftFlags, "Test JIT direct nonzero shift flags"},
+    {testJitDirectDoubleShiftFlags, "Test JIT direct nonzero double-shift flags"},
+    {testJitDirectBitTestCarry, "Test JIT direct bit-test carry"},
+    {testJitDirectRotateOneFlags, "Test JIT direct count-one rotate flags"},
 #endif
 #if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
     {testNativeJitRunCountWraps, "Test native JIT runCount wrap"},
@@ -579,11 +605,13 @@ const TestEntry TEST_ENTRIES[] = {
     {testX87FwaitRaisesPendingException, "Test x87 fwait raises pending exception", TEST_ENTRY_SERIAL},
     {testJitSignalPendingReset, "Test JIT signal pending reset", TEST_ENTRY_SERIAL},
     {testJitSignalPendingQueuedSignal, "Test JIT signal pending queued signal", TEST_ENTRY_SERIAL},
+    {testWasmJitSignalPendingDispatch, "Test WASM JIT signal pending dispatch", TEST_ENTRY_SERIAL},
     {testHardwareBreakpointRaisesTrap, "Test hardware breakpoint raises trap", TEST_ENTRY_SERIAL},
     {testHardwareBreakpointIgnoresNonExecutableAddress, "Test hardware breakpoint ignores non-executable address", TEST_ENTRY_SERIAL},
     {testDataHardwareBreakpointRaisesTrap, "Test data hardware breakpoint raises trap", TEST_ENTRY_SERIAL},
     {testDefaultUserSegmentsUseGdtSelectors, "Test default user segments use GDT selectors", TEST_ENTRY_SERIAL},
     {testSignalHandlerSegmentsUseGdtSelectors, "Test signal handler segments use GDT selectors", TEST_ENTRY_SERIAL},
+    {testSignalReturnRefreshesCodeSegmentSize, "Test signal return refreshes code segment size", TEST_ENTRY_SERIAL},
     {testSignalAlternateStackDeliverySemantics, "Test alternate signal stack delivery semantics", TEST_ENTRY_SERIAL},
     {testSignalOnStackWithoutConfiguredAlternateStack, "Test SA_ONSTACK without an alternate stack", TEST_ENTRY_SERIAL},
     {testSigaltstackReportsActualStackState, "Test sigaltstack reports actual stack state", TEST_ENTRY_SERIAL},
@@ -829,6 +857,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testSseInsertExtractShuffle_0x1c4_0x3c4_0x1c5_0x3c5_0x3c6, "Test SSE Insert/Extract/Shuffle"},
     {testCmpXchg8b_0x3c7, "Test CmpXchg8b 3c7"},
     {testBswap_0x3c8_0x3cf, "Test Bswap 3c8-3cf"},
+    {testFxsave_0x3ae, "Test Fxsave 3ae"},
+    {testFxrstor_0x3ae, "Test Fxrstor 3ae"},
     {testMmxPmovmskb_0x3d7, "Test MMX Pmovmskb 3d7"},
     {testMmxPminub_0x3da, "Test MMX Pminub 3da"},
     {testMmxPmaxub_0x3de, "Test MMX Pmaxub 3de"},
@@ -844,7 +874,15 @@ const TestEntry TEST_ENTRIES[] = {
     {testSelfModifyingMovsb, "Test Self Modifying Code using movsb"},
     {testSelfModifyingFront, "Test Self Modifying Code Same Block(Previous)"},
     {testSelfModifyingBack, "Test Self Modifying Code Same Block(Next)"},
+    {testLinearMemoryAliasAndFaults, "Test linear-memory alias and fault handling", TEST_ENTRY_SERIAL},
+    {testLinearMemoryFileFirstTouches, "Test linear-memory file and COW first touches", TEST_ENTRY_SERIAL},
+    {testLinearMemoryWraparound, "Test linear-memory wraparound loads and stores", TEST_ENTRY_SERIAL},
+    {testJitMemoryReadOperands, "Test JIT memory operand fault recovery", TEST_ENTRY_SERIAL},
+    {testJitMemoryReadFaultState, "Test JIT memory load preserves fault state", TEST_ENTRY_SERIAL},
+    {testLinearMemoryCloneMappings, "Test linear-memory COW and shared clone mappings", TEST_ENTRY_SERIAL},
+    {testLinearMemoryCodeInvalidation, "Test linear-memory code invalidation", TEST_ENTRY_SERIAL},
 #ifdef BOXEDWINE_MULTI_THREADED
+    {testDecodedOpInvalidationDefersCrossThreadReuse, "Test decoded op invalidation defers cross-thread reuse"},
     {testLockedInc, "Test Multi-threaded locked inc"},
     {testLockedIncAgainstPlainStore, "Test Multi-threaded locked inc against plain store"},
     {testLockedCmpXchgAgainstPlainStore, "Test Multi-threaded locked cmpxchg against plain store"},
@@ -874,6 +912,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testSharedFileMappingGrowthKeepsPagesShared, "Test shared file mapping stays shared after growth", TEST_ENTRY_SERIAL},
     {testSharedFileMappingTruncateClearsResidentBytes, "Test shared file mapping clears resident bytes after truncate", TEST_ENTRY_SERIAL},
     {testSharedMappedWriteIsVisibleToPread, "Test shared mapped write is visible to pread", TEST_ENTRY_SERIAL},
+    {testMappedFileCacheLinearBlockAlignment, "Test mapped-file cache linear block alignment", TEST_ENTRY_SERIAL},
     {testPwriteUpdatesResidentSharedMapping, "Test pwrite updates resident shared mapping", TEST_ENTRY_SERIAL},
     {testExtendingPwriteAdvancesMappedFileCacheLength, "Test extending pwrite advances mapped-file cache length", TEST_ENTRY_SERIAL},
     {testMappedFileMutationOperationOrdering, "Test mapped-file mutation operation ordering", TEST_ENTRY_SERIAL},
@@ -956,6 +995,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testInotifyPollReportsChildDirectoryDelete, "Test inotify poll reports child directory delete", TEST_ENTRY_SERIAL},
     {testInotifyAsyncSignalsSigioOnDelete, "Test inotify async signals SIGIO on delete", TEST_ENTRY_SERIAL},
     {testStartupArgsDefaultUtf8LocaleEnvironment, "Test startup args default UTF-8 locale environment"},
+    {testStartupArgsLinearMemoryOption, "Test startup args linear-memory option", TEST_ENTRY_SERIAL},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testTerminatingThreadDoesNotEnterFutexWait, "Test terminating thread does not enter futex wait"},
 #endif
@@ -995,6 +1035,7 @@ struct TestRunArgs {
     size_t requestedCount = 0;
     U32 workerCount = 0;
     bool fast = false;
+    bool disableLinearMemory = false;
 };
 
 TestRunArgs parseTestRunArgs(int argc, char** argv) {
@@ -1004,6 +1045,10 @@ TestRunArgs parseTestRunArgs(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         if (!strcmp(argv[i], "-fast")) {
             args.fast = true;
+            continue;
+        }
+        if (!strcmp(argv[i], "-disableLinearMemory")) {
+            args.disableLinearMemory = true;
             continue;
         }
 
@@ -1020,7 +1065,8 @@ TestRunArgs parseTestRunArgs(int argc, char** argv) {
     return args;
 }
 
-int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCount = 0, bool fast = false) {
+int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCount = 0,
+    bool fast = false, bool disableLinearMemory = false) {
     size_t entryCount = sizeof(TEST_ENTRIES) / sizeof(TEST_ENTRIES[0]);
     totalFails = 0;
     testSetFastMode(fast);
@@ -1062,10 +1108,13 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
     fflush(stdout);
     
     KSystem::startMicroCounter();
-    KSystem::init();
+    KSystem::init(disableLinearMemory);
     KSystem::videoOption = VIDEO_NO_WINDOW;
     U32 startTime = KSystem::getMilliesSinceStart();
     testRunParallel(TEST_ENTRIES + startEntry, runCount, workerCount);
+#if defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__)
+    stopNativeSocketsThread();
+#endif
     U32 stopTime = KSystem::getMilliesSinceStart();
     printf("%d tests FAILED in %ds\n", totalFails, (stopTime - startTime) / 1000);
     return totalFails != 0;
@@ -1073,7 +1122,8 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
 
 int runTestTestsFromArgs(int argc, char** argv) {
     TestRunArgs args = parseTestRunArgs(argc, argv);
-    return runTestTests(args.startEntry, args.requestedCount, args.workerCount, args.fast);
+    return runTestTests(args.startEntry, args.requestedCount, args.workerCount, args.fast,
+        args.disableLinearMemory);
 }
 
 #ifdef __MACH__
@@ -1084,6 +1134,14 @@ int runTestTestsFromArgs(int argc, char** argv) {
 #endif
 
 extern "C" BOXEDWINE_TEST_EXPORT int runCpuTestsMac(void);
+#if defined(__TEST) && defined(__APPLE__)
+extern "C" int macOpenGLPbufferSmokeTest(void);
+extern "C" BOXEDWINE_TEST_EXPORT __attribute__((used, retain)) int runMacOpenGLPbufferSmokeTest(void);
+
+extern "C" BOXEDWINE_TEST_EXPORT __attribute__((used, retain)) int runMacOpenGLPbufferSmokeTest(void) {
+    return macOpenGLPbufferSmokeTest();
+}
+#endif
 
 extern "C" BOXEDWINE_TEST_EXPORT int runCpuTestsMac(void) {
     const char* start = getenv("BOXEDWINE_TEST_START");

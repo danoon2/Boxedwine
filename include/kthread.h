@@ -135,7 +135,7 @@ public:
     U32 debugRegs[8] = {};
     bool ptraceStopPending = false;
     U32 ptraceStopSignal = 0;
-    bool ptraceStopped = false;
+    std::atomic<bool> ptraceStopped = false;
     bool ptraceAttached = false;
     bool ptraceSingleStep = false;
     U32 ptraceTracerProcessId = 0;
@@ -165,6 +165,8 @@ public:
     std::vector<KPollData> pollData;
 public:
     U32 currentContext = 0;
+    U32 currentDrawable = 0;
+    U32 currentReadDrawable = 0;
     U32 glLastError = 0;
     U32 glReadBufferMode = 0x0405; // GL_BACK; kthread.h does not include OpenGL headers
     bool log = false; // syscalls

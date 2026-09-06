@@ -178,7 +178,7 @@ void Jit::dynamic_pushA16(DecodedOp* op) {
     subValue(JitWidth::b32, esp, 16);
 
     // 8x 2 byte pushes is 128 bits, if we have permission and space on one page to write this, then we only need to do the memory checks once
-    write(JitWidth::b128, esp, nullptr, [this](MemPtr address) {
+    writeWithMmuCheck(JitWidth::b128, esp, nullptr, [this](MemPtr address) {
         for (int i = 0; i < 8; i++) {
             address->offset = 2 * i;
             address->emulatedAddress = false;
@@ -203,7 +203,7 @@ void Jit::dynamic_pushA32(DecodedOp* op) {
     subValue(JitWidth::b32, esp, 32);
 
     // 8x 4 byte pushes is 256 bits, if we have permission and space on one page to write this, then we only need to do the memory checks once
-    write(JitWidth::b256, esp, nullptr, [this](MemPtr address) {
+    writeWithMmuCheck(JitWidth::b256, esp, nullptr, [this](MemPtr address) {
         for (int i = 0; i < 8; i++) {
             address->offset = 4 * i;
             address->emulatedAddress = false;

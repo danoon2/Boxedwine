@@ -15,6 +15,8 @@
 #include "../../io/fsfilenode.h"
 #include "../../io/fsmemnode.h"
 #include "../../io/fsmemopennode.h"
+#include "../../emulation/softmmu/kmemory_soft.h"
+#include "../../emulation/softmmu/soft_ram.h"
 #include "../../util/bnativeheap.h"
 #ifdef BOXEDWINE_JIT
 #include "../../emulation/cpu/jit/jitCodeGen.h"
@@ -841,6 +843,126 @@ done:
     KThread::setCurrentThread(context.thread);
     if (process) {
         if ((S32)fd >= 0) process->close(fd);
+        KSystem::eraseProcess(process->id);
+        process = nullptr;
+    }
+    cleanupRoot(root);
+}
+
+void testMappedFileCacheLinearBlockAlignment() {
+    if (!ramPageUseLinearMemoryFileCacheBlock()) {
+        return;
+    }
+    TestContext& context = testContext();
+    const U32 groupPageCount = ramPageLinearMemoryPageCount();
+    const U32 firstFilePage = 1;
+    const U32 mappingPageCount = groupPageCount * 2 - firstFilePage;
+    const U32 filePageCount = firstFilePage + mappingPageCount;
+    const BString path = B("/tmp/mapped-linear-cache-block");
+    const BString root = B("tmp/test-mapped-linear-cache-block-root");
+    KThread* thread = nullptr;
+    KProcessPtr process;
+    std::shared_ptr<KFile> file;
+    U32 fd = (U32)-1;
+    U32 mappedAddress = 0;
+
+    cleanupRoot(root);
+    initTestFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp"));
+    Fs::makeLocalDirs(B("/proc"));
+    setTestProcNode();
+
+    process = createProcessWithMemory(&thread);
+    fd = process->open(path, K_O_CREAT | K_O_TRUNC | K_O_RDWR, 0666);
+    if ((S32)fd < 0) {
+        testFail("linear cache block open failed fd=%d", (S32)fd);
+        goto done;
+    }
+    if (process->ftruncate64(fd, (U64)filePageCount << K_PAGE_SHIFT)) {
+        testFail("linear cache block truncate failed");
+        goto done;
+    }
+    file = std::dynamic_pointer_cast<KFile>(process->getFileDescriptor(fd)->kobject);
+    for (U32 page = 0; page < filePageCount; page++) {
+        U32 value = 0x51000000U | page;
+        if (file->pwriteNative((U8*)&value, (U64)page << K_PAGE_SHIFT,
+                sizeof(value)) != sizeof(value)) {
+            testFail("linear cache block page %u initialization failed", page);
+            goto done;
+        }
+    }
+
+    KThread::setCurrentThread(thread);
+    mappedAddress = process->memory->mmap(thread, 0,
+        mappingPageCount << K_PAGE_SHIFT, K_PROT_READ | K_PROT_WRITE,
+        K_MAP_SHARED, fd, (U64)firstFilePage << K_PAGE_SHIFT);
+    if (mappedAddress >= (U32)-4095) {
+        testFail("linear cache block mmap failed: %x", mappedAddress);
+        mappedAddress = 0;
+        goto done;
+    }
+    if (((mappedAddress >> K_PAGE_SHIFT) & (groupPageCount - 1)) != firstFilePage) {
+        testFail("linear cache block mmap phase did not match the file offset: %x",
+            mappedAddress);
+    }
+
+    {
+        U32 fullGroupAddress = mappedAddress +
+            (groupPageCount - firstFilePage) * K_PAGE_SIZE;
+        U32 fullGroupFilePage = groupPageCount;
+        for (U32 i = 0; i < groupPageCount; i++) {
+            expectU32("linear cache block mapped value",
+                process->memory->readd(fullGroupAddress + i * K_PAGE_SIZE),
+                0x51000000U | (fullGroupFilePage + i));
+        }
+
+        KMemoryData* memoryData = getMemData(process->memory);
+        U32 guestPage = fullGroupAddress >> K_PAGE_SHIFT;
+        RamPage firstRamPage = memoryData->mmu[guestPage].getRamPageIndex();
+        if (!memoryData->linearMemoryMappings[guestPage]) {
+            testFail("linear cache block was not installed in the aperture");
+        }
+        for (U32 i = 0; i < groupPageCount; i++) {
+            RamPage ramPage = memoryData->mmu[guestPage + i].getRamPageIndex();
+            if (ramPageGet(ramPage) !=
+                    ramPageGet(firstRamPage) + ((U64)i << K_PAGE_SHIFT)) {
+                testFail("linear cache block was not contiguous at page %u", i);
+                break;
+            }
+        }
+        if (memoryData->linearMemoryMappings[guestPage]) {
+            for (U32 i = 0; i < groupPageCount; i++) {
+                U32 aliasValue = *(volatile U32*)(memoryData->linearMemoryBase +
+                    fullGroupAddress + i * K_PAGE_SIZE);
+                expectU32("linear cache block alias value", aliasValue,
+                    0x51000000U | (fullGroupFilePage + i));
+            }
+            U32 updatedValue = 0x76543210;
+            if (file->pwriteNative((U8*)&updatedValue,
+                    (U64)(fullGroupFilePage + 1) << K_PAGE_SHIFT,
+                    sizeof(updatedValue)) != sizeof(updatedValue)) {
+                testFail("linear cache block coherent update failed");
+            } else {
+                expectU32("linear cache block coherent mapped update",
+                    process->memory->readd(fullGroupAddress + K_PAGE_SIZE), updatedValue);
+                expectU32("linear cache block coherent alias update",
+                    *(volatile U32*)(memoryData->linearMemoryBase +
+                        fullGroupAddress + K_PAGE_SIZE), updatedValue);
+            }
+        }
+    }
+
+done:
+    if (process && mappedAddress) {
+        KThread::setCurrentThread(thread);
+        process->memory->unmap(mappedAddress,
+            mappingPageCount << K_PAGE_SHIFT);
+    }
+    KThread::setCurrentThread(context.thread);
+    if (process) {
+        if ((S32)fd >= 0) {
+            process->close(fd);
+        }
         KSystem::eraseProcess(process->id);
         process = nullptr;
     }

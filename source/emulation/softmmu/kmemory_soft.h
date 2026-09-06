@@ -37,23 +37,36 @@ public:
 class KMemoryData {
 public:
     static void shutdown();
+    static KMemoryData* create(KMemory* memory);
+    static void destroy(KMemoryData* data);
     
-    KMemoryData(KMemory* memory);
+    KMemoryData(KMemory* memory, bool enableLinearMemory, U8* adjacentLinearMemoryBase = nullptr, const std::shared_ptr<LinearMemoryBacking>& backing = nullptr);
     ~KMemoryData();
 
     void addCallback(OpCallback func);
     Page* getPage(U32 page) {return mmu[page].getPage();};
     bool isPageValid(U32 page);
     void allocPages(KThread* thread, U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const std::shared_ptr<MappedFile>& mappedFile, const RamPage* ramPages = nullptr);
-    bool reserveAddress(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped, bool alignNative, U32 reservedFlag);
+    bool reserveAddress(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped, bool alignNative, U32 reservedFlag, U32 alignmentPhase = 0);
     void protectPage(KThread* thread, U32 i, U32 permissions);
     void setPagesInvalid(U32 page, U32 pageCount, bool codeAlreadyPrepared = false);
     bool isPageAllocated(U32 page);
     bool isPageNative(U32 page);
     void execvReset();    
     void onPageChanged(U32 page);
+    bool allocLinearMemoryBlock(U32 page);
+    bool materializeLinearMemoryCopyOnWriteBlock(U32 page);
+    bool getLinearMemoryGuestAddress(U64 hostAddress, U32& guestAddress);
+    bool useLinearMemoryJit() const;
 
     KMemory* memory;
+    U8* linearMemoryBase = nullptr;
+    std::shared_ptr<LinearMemoryBacking> linearMemoryBacking;
+    bool linearMemoryAdjacent = false;
+    bool resettingLinearMemory = false;
+    // One entry per guest page. The dense table avoids allocation churn when
+    // mappings are repeatedly installed and removed.
+    std::vector<U32> linearMemoryMappings;
 
     MMU mmu[K_NUMBER_OF_PAGES];
 #ifdef BOXEDWINE_MEM_CACHE

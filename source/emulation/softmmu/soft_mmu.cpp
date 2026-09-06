@@ -43,6 +43,7 @@ void MMU::setPage(KMemory* memory, U32 page, PageType type, RamPage ram,
         this->type = 0;
         canReadRam = 0;
         canWriteRam = 0;
+        pad = 0;
         return;
     }
     // I have seen ramIndex == ram.value but it was moving from PageType::File to PageType::CopyOnWrite

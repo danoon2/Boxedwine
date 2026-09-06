@@ -15,6 +15,8 @@
 #include "testCPU.h"
 #include "testX86Util.h"
 #include "testAsmJit.h"
+#include "ksignal.h"
+#include "../../emulation/cpu/common/common_other.h"
 
 #define cpu (testContext().cpu)
 #define memory (testContext().memory)
@@ -1844,6 +1846,255 @@ void runBswapCases(const char* name) {
     }
 }
 
+void emitFxsave(U32 offset) {
+    pushCode8(0x0f);
+    pushCode8(0xae);
+    pushCode8(0x05);
+    pushCode32(offset);
+}
+
+void emitFxrstor(U32 offset) {
+    pushCode8(0x0f);
+    pushCode8(0xae);
+    pushCode8(0x0d);
+    pushCode32(offset);
+}
+
+void initializeFxsaveState(bool zeroXmm0) {
+    cpu->fpu.FINIT();
+    cpu->fpu.SetCW(0x027f);
+    cpu->fpu.SetSW((3 << 11) | 0x20);
+    for (int i = 0; i < 8; i++) {
+        cpu->fpu.LD80(i, 0x8123456789abc000ULL + i, (U16)(0x3ff0 + i));
+        cpu->fpu.tags[i] = (i == 2 || i == 6) ? TAG_Empty : TAG_Valid;
+        cpu->xmm[i].pi.u64[0] = 0x1020304050607000ULL + i;
+        cpu->xmm[i].pi.u64[1] = 0x8899aabbccddee00ULL + i;
+    }
+    if (zeroXmm0) {
+        cpu->xmm[0].pi.u64[0] = 0;
+        cpu->xmm[0].pi.u64[1] = 0;
+    }
+    cpu->setMxcsr(0x3f80);
+}
+
+void initializeFxsaveCachedX87() {
+    static constexpr U64 VALUES[8] = {
+        0x3ff8000000000000ULL, // 1.5
+        0x0000000000000001ULL, // minimum subnormal
+        0x8000000000000000ULL, // -0.0
+        0x7ff0000000000000ULL, // infinity
+        0x7ff8123456789abcULL, // quiet NaN with payload
+        0xc004000000000000ULL, // -2.5
+        0x000fffffffffffffULL, // maximum subnormal
+        0xfff0000000000000ULL, // negative infinity
+    };
+    for (U32 i = 0; i < 8; i++) {
+        cpu->fpu.regCache[i].l = VALUES[i];
+        cpu->fpu.isRegCached[i] = true;
+    }
+}
+
+void initializeFxsaveImage(U32 offset) {
+    memory->memset(cpu->seg[DS].address + offset, (char)0xa5, 512);
+}
+
+void verifyFxsaveImage(U32 actualOffset, U32 expectedOffset, const char* name) {
+    U32 actualAddress = cpu->seg[DS].address + actualOffset;
+    U32 expectedAddress = cpu->seg[DS].address + expectedOffset;
+    for (U32 i = 0; i < 512; i++) {
+        U8 actual = memory->readb(actualAddress + i);
+        U8 expected = memory->readb(expectedAddress + i);
+        if (actual != expected) {
+            failed("%s byte %u expected %02x got %02x", name, i, expected, actual);
+            return;
+        }
+    }
+}
+
+void runFxsaveSamePage() {
+    constexpr U32 ACTUAL = MEM_BASE + 0xa100;
+    constexpr U32 EXPECTED = MEM_BASE + 0xb100;
+
+    newInstruction(0);
+    initializeFxsaveImage(ACTUAL);
+    initializeFxsaveImage(EXPECTED);
+    initializeFxsaveState(true);
+    initializeFxsaveCachedX87();
+    common_fxsave(cpu, cpu->seg[DS].address + EXPECTED);
+
+    initializeFxsaveState(false);
+    initializeFxsaveCachedX87();
+    pushCode8(0x66); // pxor verifies that the inline stores see JIT-cached XMM state
+    pushCode8(0x0f);
+    pushCode8(0xef);
+    pushCode8(0xc0);
+    emitFxsave(ACTUAL);
+    runTestCPU();
+
+    verifyFxsaveImage(ACTUAL, EXPECTED, "fxsave same-page inline path");
+    for (U32 i = 0; i < 8; i++) {
+        if (cpu->fpu.isRegCached[i]) {
+            failed("fxsave did not synchronize cached x87 register %u", i);
+            break;
+        }
+    }
+}
+
+void runFxsaveCrossPage() {
+    constexpr U32 ACTUAL = MEM_BASE + 0xc000 + K_PAGE_SIZE - 200;
+    constexpr U32 EXPECTED = MEM_BASE + 0xe100;
+
+    newInstruction(0);
+    initializeFxsaveImage(ACTUAL);
+    initializeFxsaveImage(EXPECTED);
+    initializeFxsaveState(false);
+    common_fxsave(cpu, cpu->seg[DS].address + EXPECTED);
+
+    emitFxsave(ACTUAL);
+    runTestCPU();
+
+    verifyFxsaveImage(ACTUAL, EXPECTED, "fxsave cross-page fallback");
+}
+
+void runFxsaveReadOnlyPage() {
+    constexpr U32 TARGET = MEM_BASE + 0xf100;
+    constexpr U32 INSTRUCTION_LENGTH = 7;
+
+    newInstruction(0);
+    initializeFxsaveImage(TARGET);
+    initializeFxsaveState(false);
+    emitFxsave(TARGET);
+
+    KSigAction& action = testContext().process->sigActions[K_SIGSEGV];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + INSTRUCTION_LENGTH;
+    action.flags = 0;
+
+    U32 targetPage = (cpu->seg[DS].address + TARGET) & ~K_PAGE_MASK;
+    if (memory->mprotect(testContext().thread, targetPage, K_PAGE_SIZE, K_PROT_READ)) {
+        failed("fxsave could not protect destination page");
+        action.reset();
+        return;
+    }
+
+    runTestCPU();
+    memory->mprotect(testContext().thread, targetPage, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+
+    if (action.sigInfo[0] != K_SIGSEGV) {
+        failed("fxsave read-only destination did not raise SIGSEGV");
+    }
+    action.reset();
+}
+
+void initializeFxrstorSource(U32 offset) {
+    initializeFxsaveImage(offset);
+    initializeFxsaveState(false);
+    cpu->fpu.SetCW(0x0a7a);
+    cpu->fpu.SetSW((5 << 11) | FPU_SW_IE);
+    cpu->setMxcsr(0x3d80);
+    common_fxsave(cpu, cpu->seg[DS].address + offset);
+}
+
+void clearFxrstorState() {
+    cpu->fpu.FINIT();
+    for (U32 i = 0; i < 8; i++) {
+        cpu->fpu.regCache[i].l = 0x4000000000000000ULL + i;
+        cpu->fpu.isRegCached[i] = true;
+        cpu->xmm[i].pi.u64[0] = 0xdeadbeef00000000ULL + i;
+        cpu->xmm[i].pi.u64[1] = 0xcafebabe00000000ULL + i;
+    }
+    cpu->setMxcsr(0x1f80);
+    cpu->fpuDirtyFlags = 0;
+}
+
+void verifyFxrstorDerivedState(const char* name) {
+    if (cpu->fpu.top != 5) {
+        failed("%s restored top expected 5 got %u", name, cpu->fpu.top);
+    }
+    if (cpu->fpu.round != ROUND_Up) {
+        failed("%s restored rounding expected %u got %u", name, ROUND_Up, cpu->fpu.round);
+    }
+    if (!cpu->fpu.divExceptionsUnmasked) {
+        failed("%s did not update x87 exception state", name);
+    }
+    if (!cpu->sseDivExceptionsUnmasked) {
+        failed("%s did not update SSE exception state", name);
+    }
+    if (cpu->fpuDirtyFlags != 1) {
+        failed("%s did not set fpuDirtyFlags", name);
+    }
+    for (U32 i = 0; i < 8; i++) {
+        if (cpu->fpu.isRegCached[i]) {
+            failed("%s did not invalidate cached x87 register %u", name, i);
+            break;
+        }
+    }
+}
+
+void runFxrstorSamePage() {
+    constexpr U32 SOURCE = MEM_BASE + 0x0100;
+    constexpr U32 ACTUAL = MEM_BASE + 0x1100;
+
+    newInstruction(0);
+    initializeFxrstorSource(SOURCE);
+    initializeFxsaveImage(ACTUAL);
+    clearFxrstorState();
+
+    emitFxrstor(SOURCE);
+    emitFxsave(ACTUAL); // verifies in-block visibility of JIT-cached XMM registers
+    runTestCPU();
+
+    verifyFxsaveImage(ACTUAL, SOURCE, "fxrstor same-page inline path");
+    verifyFxrstorDerivedState("fxrstor same-page inline path");
+}
+
+void runFxrstorCrossPage() {
+    constexpr U32 SOURCE = MEM_BASE + 0x2000 + K_PAGE_SIZE - 200;
+    constexpr U32 ACTUAL = MEM_BASE + 0x4100;
+
+    newInstruction(0);
+    initializeFxrstorSource(SOURCE);
+    clearFxrstorState();
+
+    emitFxrstor(SOURCE);
+    runTestCPU();
+
+    initializeFxsaveImage(ACTUAL);
+    common_fxsave(cpu, cpu->seg[DS].address + ACTUAL);
+    verifyFxsaveImage(ACTUAL, SOURCE, "fxrstor cross-page fallback");
+    verifyFxrstorDerivedState("fxrstor cross-page fallback");
+}
+
+void runFxrstorUnreadablePage() {
+    constexpr U32 SOURCE = MEM_BASE + 0x5100;
+    constexpr U32 INSTRUCTION_LENGTH = 7;
+
+    newInstruction(0);
+    initializeFxrstorSource(SOURCE);
+    clearFxrstorState();
+    emitFxrstor(SOURCE);
+
+    KSigAction& action = testContext().process->sigActions[K_SIGSEGV];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + INSTRUCTION_LENGTH;
+    action.flags = 0;
+
+    U32 sourcePage = (cpu->seg[DS].address + SOURCE) & ~K_PAGE_MASK;
+    if (memory->mprotect(testContext().thread, sourcePage, K_PAGE_SIZE, K_PROT_NONE)) {
+        failed("fxrstor could not protect source page");
+        action.reset();
+        return;
+    }
+
+    runTestCPU();
+    memory->mprotect(testContext().thread, sourcePage, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+
+    if (action.sigInfo[0] != K_SIGSEGV) {
+        failed("fxrstor unreadable source did not raise SIGSEGV");
+    }
+    action.reset();
+}
+
 } // namespace
 
 void testBoundR16M16_0x062() {
@@ -1976,6 +2227,18 @@ void testStc_0x2f9() {
 
 void testBswap_0x3c8_0x3cf() {
     runBswapCases("bswap 3c8-3cf");
+}
+
+void testFxsave_0x3ae() {
+    runFxsaveSamePage();
+    runFxsaveCrossPage();
+    runFxsaveReadOnlyPage();
+}
+
+void testFxrstor_0x3ae() {
+    runFxrstorSamePage();
+    runFxrstorCrossPage();
+    runFxrstorUnreadablePage();
 }
 
 #endif

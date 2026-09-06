@@ -71,6 +71,170 @@ RegPtr Jit::btMask(U32 bitMask, U32 reg) {
     return mask;
 }
 
+void Jit::bitModifyMem(DecodedOp* op, JitWidth width, RegPtr address, BitModifyOp operation, bool registerBitIndex) {
+    bool flags = op->needsToSetFlags(cpu) != 0;
+    U32 bitMask = width == JitWidth::b16 ? 0xf : 0x1f;
+
+#ifndef BOXEDWINE_HOST_EXCEPTIONS
+    // Without exception-backed linear memory there is no post-store fault to
+    // protect against. Materialize preserved flags before readWriteMem claims
+    // its address/value registers; the 32-bit x86 JIT has only four registers
+    // that can hold the byte result used by lazy-flag materialization.
+    if (flags) {
+        btStartFlags(op);
+    }
+#endif
+
+    auto prepareWrite = [flags, op, width, bitMask, operation, registerBitIndex, this](RegPtr value) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        if (flags) {
+            btStartFlags(op);
+        }
+#endif
+        RegPtr mask;
+        if (registerBitIndex) {
+            mask = btMask(bitMask, op->reg);
+        }
+        if (flags) {
+            if (registerBitIndex) {
+                IfTest(JitWidth::b32, value, mask); {
+                    orCPUFlagsImmV2(CF);
+                } StartElse(); {
+                    andCPUFlagsImmV2(~CF);
+                } EndIf();
+            } else {
+                IfTest(JitWidth::b32, value, op->imm); {
+                    orCPUFlagsImmV2(CF);
+                } StartElse(); {
+                    andCPUFlagsImmV2(~CF);
+                } EndIf();
+            }
+        }
+        if (operation == BitModifyOp::Set) {
+            if (registerBitIndex) {
+                orReg(width, value, mask);
+            } else {
+                orValue(width, value, op->imm);
+            }
+        } else if (operation == BitModifyOp::Reset) {
+            if (registerBitIndex) {
+                notReg2(width, mask);
+                andReg(width, value, mask);
+            } else {
+                andValue(width, value, ~op->imm);
+            }
+        } else {
+            if (registerBitIndex) {
+                xorReg(width, value, mask);
+            } else {
+                xorValue(width, value, op->imm);
+            }
+        }
+    };
+
+    if (!flags) {
+        readWriteMem(width, std::move(address), std::move(prepareWrite));
+        return;
+    }
+
+    RegPtr originalValue;
+    RegPtr linearMask;
+    bool spillOriginalValue = false;
+    bool savedResetBit = false;
+    auto prepareWriteLinear = [&originalValue, &linearMask, &savedResetBit, &spillOriginalValue, op, width, bitMask, operation, registerBitIndex, this](RegPtr value) {
+        if (operation != BitModifyOp::Complement) {
+            // BTS keeps both the original value and mask through the store,
+            // plus one register for post-store flag materialization. BTR
+            // consumes its mask before the store.
+            U32 requiredTmpCount = registerBitIndex ? (operation == BitModifyOp::Set ? 4 : 3) : 1;
+            spillOriginalValue = getAvailableTmpRegCount() < requiredTmpCount;
+            if (spillOriginalValue) {
+                storeJitScratch(width, value);
+            } else {
+                originalValue = getTmpReg();
+                mov(width, originalValue, value);
+            }
+            savedResetBit = !spillOriginalValue && operation == BitModifyOp::Reset && registerBitIndex;
+        }
+        if (registerBitIndex) {
+            linearMask = btMask(bitMask, op->reg);
+        }
+        if (savedResetBit) {
+            // BTR consumes the mask while clearing the bit. Save just the old
+            // bit so the mask register does not have to survive the store.
+            andReg(width, originalValue, linearMask);
+        }
+        if (operation == BitModifyOp::Set) {
+            if (registerBitIndex) {
+                orReg(width, value, linearMask);
+            } else {
+                orValue(width, value, op->imm);
+            }
+        } else if (operation == BitModifyOp::Reset) {
+            if (registerBitIndex) {
+                notReg2(width, linearMask);
+                andReg(width, value, linearMask);
+                linearMask = nullptr;
+            } else {
+                andValue(width, value, ~op->imm);
+            }
+        } else {
+            if (registerBitIndex) {
+                xorReg(width, value, linearMask);
+            } else {
+                xorValue(width, value, op->imm);
+            }
+        }
+    };
+    auto commitWriteLinear = [&originalValue, &linearMask, &savedResetBit, &spillOriginalValue, op, width, bitMask, operation, registerBitIndex, this](RegPtr value) {
+        btStartFlags(op);
+        if (operation == BitModifyOp::Complement) {
+            // The selected result bit is the inverse of the original carry.
+            if (registerBitIndex) {
+                IfTest(JitWidth::b32, value, linearMask); {
+                    andCPUFlagsImmV2(~CF);
+                } StartElse(); {
+                    orCPUFlagsImmV2(CF);
+                } EndIf();
+            } else {
+                IfTest(JitWidth::b32, value, op->imm); {
+                    andCPUFlagsImmV2(~CF);
+                } StartElse(); {
+                    orCPUFlagsImmV2(CF);
+                } EndIf();
+            }
+        } else if (savedResetBit) {
+            If(width, originalValue); {
+                orCPUFlagsImmV2(CF);
+            } StartElse(); {
+                andCPUFlagsImmV2(~CF);
+            } EndIf();
+        } else {
+            RegPtr carryValue = spillOriginalValue ? loadJitScratch(width) : originalValue;
+            if (spillOriginalValue && registerBitIndex && !linearMask) {
+                // BTR consumes the mask while clearing the bit. Recreate it
+                // after the store, when the address registers have been freed.
+                linearMask = btMask(bitMask, op->reg);
+            }
+            if (registerBitIndex) {
+                IfTest(JitWidth::b32, carryValue, linearMask); {
+                    orCPUFlagsImmV2(CF);
+                } StartElse(); {
+                    andCPUFlagsImmV2(~CF);
+                } EndIf();
+            } else {
+                IfTest(JitWidth::b32, carryValue, op->imm); {
+                    orCPUFlagsImmV2(CF);
+                } StartElse(); {
+                    andCPUFlagsImmV2(~CF);
+                } EndIf();
+            }
+        }
+    };
+    readWriteMemWithLinearPostCommit(width, std::move(address), std::move(prepareWrite),
+        std::move(prepareWriteLinear), std::move(commitWriteLinear));
+}
+
 void Jit::dynamic_btr16r16(DecodedOp* op) {
     btStartFlags(op);
     IfTest(JitWidth::b32, getReadOnlyReg(op->reg), btMask(0xf, op->rm)); {
@@ -104,36 +268,72 @@ void Jit::dynamic_bte16(DecodedOp* op) {
     } EndIf();
 }
 void Jit::dynamic_btr32r32(DecodedOp* op) {
-    btStartFlags(op);
-    IfTest(JitWidth::b32, getReadOnlyReg(op->reg), btMask(0x1f, op->rm)); {
-        orCPUFlagsImmV2(CF);
-    } StartElse(); {
-        andCPUFlagsImmV2(~CF);
-    } EndIf();
+    auto fallback = [op, this]() {
+        btStartFlags(op);
+        IfTest(JitWidth::b32, getReadOnlyReg(op->reg), btMask(0x1f, op->rm)); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    };
+    if (!supportsDirectFlagsForBitTest()) {
+        fallback();
+        return;
+    }
+    tryDirect(op, [op, this]() {
+        direct_bit_test(JitWidth::b32, getReadOnlyReg(op->reg), getReadOnlyReg(op->rm));
+    }, fallback, CF);
 }
 void Jit::dynamic_btr32(DecodedOp* op) {
-    btStartFlags(op);
-    IfTest(JitWidth::b32, getReadOnlyReg(op->reg), op->imm); {
-        orCPUFlagsImmV2(CF);
-    } StartElse(); {
-        andCPUFlagsImmV2(~CF);
-    } EndIf();
+    auto fallback = [op, this]() {
+        btStartFlags(op);
+        IfTest(JitWidth::b32, getReadOnlyReg(op->reg), op->imm); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    };
+    if (!supportsDirectFlagsForBitTest()) {
+        fallback();
+        return;
+    }
+    tryDirect(op, [op, this]() {
+        direct_bit_test(JitWidth::b32, getReadOnlyReg(op->reg), op->imm);
+    }, fallback, CF);
 }
 void Jit::dynamic_bte32r32(DecodedOp* op) {
-    btStartFlags(op);
-    IfTest(JitWidth::b32, read(JitWidth::b32, calculateEffectiveEaa(op)), btMask(0x1f, op->reg)); {
-        orCPUFlagsImmV2(CF);
-    } StartElse(); {
-        andCPUFlagsImmV2(~CF);
-    } EndIf();
+    auto fallback = [op, this]() {
+        btStartFlags(op);
+        IfTest(JitWidth::b32, read(JitWidth::b32, calculateEffectiveEaa(op)), btMask(0x1f, op->reg)); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    };
+    if (!supportsDirectFlagsForBitTest()) {
+        fallback();
+        return;
+    }
+    tryDirect(op, [op, this]() {
+        direct_bit_test(JitWidth::b32, read(JitWidth::b32, calculateEffectiveEaa(op)), getReadOnlyReg(op->reg));
+    }, fallback, CF);
 }
 void Jit::dynamic_bte32(DecodedOp* op) {
-    btStartFlags(op);
-    IfTest(JitWidth::b32, read(JitWidth::b32, calculateEaa(op)), op->imm); {
-        orCPUFlagsImmV2(CF);
-    } StartElse(); {
-        andCPUFlagsImmV2(~CF);
-    } EndIf();
+    auto fallback = [op, this]() {
+        btStartFlags(op);
+        IfTest(JitWidth::b32, read(JitWidth::b32, calculateEaa(op)), op->imm); {
+            orCPUFlagsImmV2(CF);
+        } StartElse(); {
+            andCPUFlagsImmV2(~CF);
+        } EndIf();
+    };
+    if (!supportsDirectFlagsForBitTest()) {
+        fallback();
+        return;
+    }
+    tryDirect(op, [op, this]() {
+        direct_bit_test(JitWidth::b32, read(JitWidth::b32, calculateEaa(op)), op->imm);
+    }, fallback, CF);
 }
 void Jit::dynamic_btsr16r16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -161,31 +361,10 @@ void Jit::dynamic_btsr16(DecodedOp* op) {
     orValue(JitWidth::b16, reg, op->imm);
 }
 void Jit::dynamic_btse16r16(DecodedOp* op) {
-    bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b16, calculateEffectiveEaa(op), [flags, op, this](RegPtr value) {
-        RegPtr mask = btMask(0xf, op->reg);
-        if (flags) {
-            IfTest(JitWidth::b32, value, mask); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
-        }
-        orReg(JitWidth::b16, value, mask);
-    });
+    bitModifyMem(op, JitWidth::b16, calculateEffectiveEaa(op), BitModifyOp::Set, true);
 }
 void Jit::dynamic_btse16(DecodedOp* op) {
-    bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b16, calculateEaa(op), [flags, op, this](RegPtr value) {
-        if (flags) {
-            IfTest(JitWidth::b32, value, op->imm); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
-        }
-        orValue(JitWidth::b16, value, op->imm);
-    });
+    bitModifyMem(op, JitWidth::b16, calculateEaa(op), BitModifyOp::Set, false);
 }
 void Jit::dynamic_btsr32r32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -213,31 +392,10 @@ void Jit::dynamic_btsr32(DecodedOp* op) {
     orValue(JitWidth::b32, reg, op->imm);
 }
 void Jit::dynamic_btse32r32(DecodedOp* op) {
-    bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b32, calculateEffectiveEaa(op), [flags, op, this](RegPtr value) {
-        RegPtr mask = btMask(0x1f, op->reg);
-        if (flags) {
-            IfTest(JitWidth::b32, value, mask); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
-        }
-        orReg(JitWidth::b32, value, mask);
-    });
+    bitModifyMem(op, JitWidth::b32, calculateEffectiveEaa(op), BitModifyOp::Set, true);
 }
 void Jit::dynamic_btse32(DecodedOp* op) {
-    bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b32, calculateEaa(op), [flags, op, this](RegPtr value) {
-        if (flags) {
-            IfTest(JitWidth::b32, value, op->imm); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
-        }
-        orValue(JitWidth::b32, value, op->imm);
-    });
+    bitModifyMem(op, JitWidth::b32, calculateEaa(op), BitModifyOp::Set, false);
 }
 void Jit::dynamic_btrr16r16(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -266,32 +424,10 @@ void Jit::dynamic_btrr16(DecodedOp* op) {
     andValue(JitWidth::b16, reg, ~op->imm);
 }
 void Jit::dynamic_btre16r16(DecodedOp* op) {
-    bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b16, calculateEffectiveEaa(op), [flags, op, this](RegPtr value) {
-        RegPtr mask = btMask(0xf, op->reg);
-        if (flags) {
-            IfTest(JitWidth::b32, value, mask); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
-        }
-        notReg2(JitWidth::b16, mask);
-        andReg(JitWidth::b16, value, mask);
-    });
+    bitModifyMem(op, JitWidth::b16, calculateEffectiveEaa(op), BitModifyOp::Reset, true);
 }
 void Jit::dynamic_btre16(DecodedOp* op) {
-    bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b16, calculateEaa(op), [flags, op, this](RegPtr value) {
-        if (flags) {
-            IfTest(JitWidth::b32, value, op->imm); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
-        }
-        andValue(JitWidth::b16, value, ~op->imm);
-    });
+    bitModifyMem(op, JitWidth::b16, calculateEaa(op), BitModifyOp::Reset, false);
 }
 void Jit::dynamic_btrr32r32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -320,32 +456,10 @@ void Jit::dynamic_btrr32(DecodedOp* op) {
     andValue(JitWidth::b32, reg, ~op->imm);
 }
 void Jit::dynamic_btre32r32(DecodedOp* op) {
-    bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b32, calculateEffectiveEaa(op), [flags, op, this](RegPtr value) {
-        RegPtr mask = btMask(0x1f, op->reg);
-        if (flags) {
-            IfTest(JitWidth::b32, value, mask); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
-        }
-        notReg2(JitWidth::b32, mask);
-        andReg(JitWidth::b32, value, mask);
-    });
+    bitModifyMem(op, JitWidth::b32, calculateEffectiveEaa(op), BitModifyOp::Reset, true);
 }
 void Jit::dynamic_btre32(DecodedOp* op) {
-    bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b32, calculateEaa(op), [flags, op, this](RegPtr value) {
-        if (flags) {
-            IfTest(JitWidth::b32, value, op->imm); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
-        }
-        andValue(JitWidth::b32, value, ~op->imm);
-    });
+    bitModifyMem(op, JitWidth::b32, calculateEaa(op), BitModifyOp::Reset, false);
 }
 
 void Jit::dynamic_btcr16r16(DecodedOp* op) {
@@ -374,31 +488,10 @@ void Jit::dynamic_btcr16(DecodedOp* op) {
     xorValue(JitWidth::b16, reg, op->imm);
 }
 void Jit::dynamic_btce16r16(DecodedOp* op) {
-    bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b16, calculateEffectiveEaa(op), [flags, op, this](RegPtr value) {
-        RegPtr mask = btMask(0xf, op->reg);
-        if (flags) {
-            IfTest(JitWidth::b32, value, mask); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
-        }
-        xorReg(JitWidth::b16, value, mask);
-    });
+    bitModifyMem(op, JitWidth::b16, calculateEffectiveEaa(op), BitModifyOp::Complement, true);
 }
 void Jit::dynamic_btce16(DecodedOp* op) {
-    bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b16, calculateEaa(op), [flags, op, this](RegPtr value) {
-        if (flags) {
-            IfTest(JitWidth::b32, value, op->imm); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
-        }
-        xorValue(JitWidth::b16, value, op->imm);
-    });
+    bitModifyMem(op, JitWidth::b16, calculateEaa(op), BitModifyOp::Complement, false);
 }
 void Jit::dynamic_btcr32r32(DecodedOp* op) {
     bool flags = btStartFlags(op);
@@ -426,31 +519,10 @@ void Jit::dynamic_btcr32(DecodedOp* op) {
     xorValue(JitWidth::b32, reg, op->imm);
 }
 void Jit::dynamic_btce32r32(DecodedOp* op) {
-    bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b32, calculateEffectiveEaa(op), [flags, op, this](RegPtr value) {
-        RegPtr mask = btMask(0x1f, op->reg);
-        if (flags) {
-            IfTest(JitWidth::b32, value, mask); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
-        }
-        xorReg(JitWidth::b32, value, mask);
-    });
+    bitModifyMem(op, JitWidth::b32, calculateEffectiveEaa(op), BitModifyOp::Complement, true);
 }
 void Jit::dynamic_btce32(DecodedOp* op) {
-    bool flags = btStartFlags(op);
-    readWriteMem(JitWidth::b32, calculateEaa(op), [flags, op, this](RegPtr value) {
-        if (flags) {
-            IfTest(JitWidth::b32, value, op->imm); {
-                orCPUFlagsImmV2(CF);
-            } StartElse(); {
-                andCPUFlagsImmV2(~CF);
-            } EndIf();
-        }
-        xorValue(JitWidth::b32, value, op->imm);
-    });
+    bitModifyMem(op, JitWidth::b32, calculateEaa(op), BitModifyOp::Complement, false);
 }
 // bsf/bsr The ZF flag is set to 1 if the source operand is 0; otherwise, the ZF flag is cleared. The CF, OF, SF, AF, and PF flags are undefined.
 // If the content of the source operand is 0, the content of the destination operand is undefined, but on hardware it looks like it just leaves dst untouched.

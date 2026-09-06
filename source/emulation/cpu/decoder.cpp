@@ -3870,9 +3870,10 @@ public:
         fetchImm(data, op);
         if (op->imm==0x80)
             op->inst = Int80;
-        else if (op->imm==0x99)
+        else if (op->imm==0x99) {
             op->inst = Int99;
-        else if (op->imm == 0x9a)
+            op->imm = data->fetch32();
+        } else if (op->imm == 0x9a)
             op->inst = Int9A;
         else if (op->imm == 0x9b)
             op->inst = Int9B;
@@ -6224,14 +6225,17 @@ void DecodedOp::reset() {
     this->repNotZero = 0;
     this->pfn = nullptr;    
     this->flags = 0;
+    this->flags2 = 0;
 #ifdef _DEBUG
     this->eip = 0;
 #endif
 #ifdef BOXEDWINE_JIT
     this->runCount = 0;
-    this->flags2 = 0;
     this->jitLen = 0;
     this->pfnJitCode = nullptr;
+#ifdef BOXEDWINE_JIT_X64
+    jitEntrySlot = nullptr;
+#endif
     blockStart = nullptr;
     blockOpCount = 0;
     blockLen = 0;
@@ -6489,6 +6493,9 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
         d.opCountSoFarInThisBlock++;
         op->len = overlongOp ? 15 : (U8)decodedOpLen;
         op->ea16 = d.ea16;
+        if (isBig) {
+            op->flags2 |= OP_FLAG2_DECODED_32BIT;
+        }
         decodedLen += op->len;
         opCount++;
 #if defined _DEBUG

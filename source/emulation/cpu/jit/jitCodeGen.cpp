@@ -17,6 +17,7 @@
  */
 
 #include "boxedwine.h"
+#include <chrono>
 
 #ifdef BOXEDWINE_JIT
 #include "jitCodeGen.h"
@@ -33,6 +34,44 @@ bool wasmJitCompilationPaused();
 #endif
 
 void clearJitBlock(const std::vector<void*>& jitOps);
+
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+namespace {
+bool jitCanUseLinearMemory() {
+    if (!ramPageUseLinearMemory()) {
+        return false;
+    }
+    KThread* thread = KThread::currentThread();
+    return thread && thread->memory && getMemData(thread->memory)->useLinearMemoryJit();
+}
+
+bool jitCanUseUnconditionalLinearMemory(DecodedOp* op) {
+    return op->exceptionCount < LINEAR_MEMORY_RECOMPILE_FAULTS;
+}
+
+#ifdef BOXEDWINE_MEM_CACHE
+bool jitCanUseExceptionMemoryCache(DecodedOp* op) {
+    return op->exceptionCount < MAX_OP_EXCEPTION_COUNT;
+}
+#endif
+
+bool jitMustCheckPageSpan(DecodedOp* op) {
+    return op->exceptionCount == MAX_OP_EXCEPTION_COUNT || (ramPageLinearMemoryPageCount() > 1 && op->exceptionCount != 0);
+}
+
+bool jitCanSkipMemoryCachePageSpanCheck() {
+    // Windows retains guard pages in the backing allocator, even when the
+    // separate guest aperture is contiguous. MMU cache accesses use that backing.
+#ifdef _WIN32
+    return KSystem::canJitUse4KPage;
+#else
+    // The POSIX linear pool has adjacent backing pages, so a cached access
+    // that spans a guest-page boundary can reach unrelated RAM.
+    return KSystem::canJitUse4KPage && !ramPageUseLinearMemory();
+#endif
+}
+}
+#endif
 
 static JitLifecycleCallbacks g_jitLifecycleCallbacks;
 
@@ -243,7 +282,6 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
         }
         // could be ret, call, int.  Basically this is an instruction where we are not guaranteed to see a next instruction
         if (nextOp->isBranch() && !nextOp->isDirectJumpBranch()) {
-            {
             // Stop on a ret unless a known direct branch reaches code after it.
             if (nextOp->isRet() && furthestJump < eip + nextOp->len) {
                 hasTerminalRet = true;
@@ -280,7 +318,6 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             if (!nextOp->next) {
                 // since we couldn't figure out if the next byte is part of a valid instruction, we are done looking
                 break;
-            }
             }
         }
         if (nextOp->isDirectJumpBranch() && (eip + nextOp->len + nextOp->imm) < this->startingEip) {
@@ -411,7 +448,7 @@ static DecodedOp* removeJITBlock(DecodedOp* op) {
 	U32 count = op->blockOpCount;
 
     for (U32 i = 0; i < count; i++) {
-        op->pfnJitCode = nullptr;
+        op->setJitCode(nullptr);
         op->jitLen = 0;
         op->pfn = NormalCPU::getFunctionForOp(op);
         op->blockStart = nullptr;
@@ -623,7 +660,7 @@ enum class DirectType {
     SetCC
 };
 
-void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback) {
+void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback, U32 supportedFlags) {
     DecodedOp* nextOp = op->next;
     U32 skipped = 0;
     DirectType directType = DirectType::None;
@@ -634,24 +671,31 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
         if (nextOp->flags2 & OP_FLAG2_JUMP_TARGET) {
             break;
         }
+        // A fault in a skipped instruction is attributed to the producer, which
+        // may already have changed guest state. Keep memory operations separate
+        // so fault recovery cannot replay the producer's side effects.
+        if (instructionInfo[nextOp->inst].readMemWidth || instructionInfo[nextOp->inst].writeMemWidth) {
+            break;
+        }
         if (nextOp->isJumpCC()) {
             cond = getJumpConditionFromOp(nextOp);
             directType = DirectType::Jump;
             break;
         }
-        /*
-        if (nextOp->isCMovCC() && instructionInfo[nextOp->inst].readMemWidth == 0) {
+        if (nextOp->isCMovCC()) {
             cond = getCmovConditionFromOp(nextOp);
             directType = DirectType::CMov;
             break;
         }
-        if (nextOp->isSetCC() && instructionInfo[nextOp->inst].writeMemWidth == 0) {
+        if (nextOp->isSetCC()) {
             cond = getSetConditionFromOp(nextOp);
             directType = DirectType::SetCC;
             break;
         }
-        */
         if (instructionInfo[nextOp->inst].flagsSets) {
+            break;
+        }
+        if (instructionInfo[nextOp->inst].flagsUsed & FMASK_TEST & ~supportedFlags) {
             break;
         }
         if (directDoesAffectFlags(nextOp)) {
@@ -660,7 +704,8 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
         skipped++;
         nextOp = nextOp->next;
     }
-    if (directType != DirectType::None && !nextOp->getNeededFlagsAfter(FMASK_TEST) && supportsDirectCondition(cond)) {
+    U32 unsupportedFlags = directType != DirectType::None ? instructionInfo[nextOp->inst].flagsUsed & FMASK_TEST & ~supportedFlags : 0;
+    if (directType != DirectType::None && !unsupportedFlags && !nextOp->getNeededFlagsAfter(FMASK_TEST) && supportsDirectCondition(cond)) {
         DecodedOp* nextOp = op->next;
         U32 opEip = currentEip + op->len;
 
@@ -697,11 +742,11 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
             case DirectType::CMov:
             {
                 JitWidth width = nextOp->inst >= CmovO_R32R32 ? JitWidth::b32 : JitWidth::b16;
-                direct_cmov(width, cond, getReg(nextOp->reg), instructionInfo[nextOp->inst].readMemWidth ? read(width, calculateEaa(nextOp)) : getReg(nextOp->rm));
+                direct_cmov(width, cond, getReg(nextOp->reg), getReadOnlyReg(nextOp->rm));
                 break;
             }
             case DirectType::SetCC:
-                if (instructionInfo[nextOp->inst].readMemWidth) {
+                if (instructionInfo[nextOp->inst].writeMemWidth) {
                     kpanic("JitCodeGen::tryDirect set cc mem");
                 } else {
                     direct_setcc(cond, getReg8(nextOp->reg, false));
@@ -817,6 +862,11 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
         jit = startNewJIT(cpu);
         cpu->thread->process->emulateSingleOp = jit->createEmulateSingleOp();
         delete jit;
+#if defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+        jit = startNewJIT(cpu);
+        cpu->thread->process->emulateOpenGL = jit->createEmulateOpenGL();
+        delete jit;
+#endif
         jit = startNewJIT(cpu);
         cpu->thread->process->startJITOp = (OpCallback)jit->createStartJITCode();
         delete jit;
@@ -966,6 +1016,24 @@ void JitCodeGen::jumpInBlock(U32 address) {
     JumpInBlock(address);
 }
 
+bool JitCodeGen::jumpToCachedJitEntry(U32 eip) {
+#ifdef BOXEDWINE_JIT_X64
+    void** entry = getMemData(cpu->memory)->opCache.getJitEntryLocation(eip);
+    if (entry) {
+        RegPtr jit = getTmpReg();
+        movValue(DYN_PTR, jit, (DYN_PTR_SIZE)entry);
+        readHost(DYN_PTR, createMemPtr(jit, 0), jit, false);
+        If(DYN_PTR, jit); {
+            jmpHost(jit);
+        } EndIf();
+        return true;
+    }
+#else
+    (void)eip;
+#endif
+    return false;
+}
+
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
 void JitCodeGen::blockNext1(U32 eip, DecodedOp* op) {
     exitToRunLoopIfPendingSignal(eip);
@@ -973,7 +1041,7 @@ void JitCodeGen::blockNext1(U32 eip, DecodedOp* op) {
     //     *(op->nextJump) = cpu->getNextOp();
     // }
     // cpu->nextOp = *(op->nextJump);
-    if (op->data.nextJump) { // don't code for it if it hasn't happened, this gives about a 1% performance boost by keeping the code more compact
+    if (!jumpToCachedJitEntry(eip) && op->data.nextJump) { // omit the decoded-op lookup when a compiled-entry slot is available
         RegPtr opReg = getTmpReg();
         movValue(DYN_PTR, opReg, (DYN_PTR_SIZE)op);
         // ebx = op->nextJump
@@ -1007,7 +1075,7 @@ void JitCodeGen::blockNext2(U32 eip, DecodedOp* op) {
     // }
     // cpu->nextOp = op->next;
 
-    if (op->next) {
+    if (!jumpToCachedJitEntry(eip) && op->next) {
         RegPtr opReg = getTmpReg();
         movValue(DYN_PTR, opReg, (DYN_PTR_SIZE)op);
 
@@ -1065,13 +1133,28 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
     RegPtr pageReg = getTmpReg();
     shrValueWithDest(JitWidth::b32, pageReg, eipReg, K_PAGE_SHIFT);
 
+#ifdef BOXEDWINE_JIT_X64
+    if (getMemData(cpu->memory)->opCache.getJitPageGroups()) {
+        RegPtr groupReg = getTmpReg();
+        shrValueWithDest(JitWidth::b32, groupReg, pageReg, 10);
+        RegPtr tmp = readCPU(DYN_PTR, offsetof(CPU, jitEntryPageGroups));
+        readHost(DYN_PTR, createMemPtr(tmp, groupReg, DYN_PTR_LSL, 0), tmp, false);
+        andValue(JitWidth::b32, pageReg, 0x3ff);
+        readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
+        If(DYN_PTR, tmp); {
+            andValueWithDest(JitWidth::b32, pageReg, eipReg, K_PAGE_MASK);
+            readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
+            If(DYN_PTR, tmp); {
+                jmpHost(tmp);
+            } EndIf();
+        } EndIf();
+        return;
+    }
+#endif
     RegPtr firstPageIndexReg = getTmpReg();
     shrValueWithDest(JitWidth::b32, firstPageIndexReg, pageReg, 10);
-
     RegPtr tmp = readCPU(DYN_PTR, offsetof(CPU, opCache));
     readHost(DYN_PTR, createMemPtr(tmp, firstPageIndexReg, DYN_PTR_LSL, 0), tmp, false);
-
-    // page & 0x3ff
     andValue(JitWidth::b32, pageReg, 0x3ff);
     readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
     // tmp contains page of DecodedOp*
@@ -1089,9 +1172,68 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
     } EndIf();
 }
 
-void jitRunSingleOp(CPU* cpu) {
-    cpu->runNextSingleOp();
+static DYN_PTR_SIZE jitNextBlockAfterHostCall(CPU* cpu) {
+    if (cpu->yield || cpu->thread->terminating || cpu->debugTrapActive) {
+        return 0;
+    }
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (cpu->jitSignalPending.load(std::memory_order_acquire) || cpu->thread->pendingSignals) {
+        return 0;
+    }
+#endif
+    DecodedOp* nextOp = cpu->nextOp;
+    if (nextOp && nextOp->pfn == cpu->thread->process->startJITOp && nextOp->pfnJitCode) {
+        // Keep using the current startJIT wrapper, like normal JIT block chaining.
+        return (DYN_PTR_SIZE)nextOp->pfnJitCode;
+    }
+    return 0;
 }
+
+DYN_PTR_SIZE jitRunSingleOp(CPU* cpu) {
+    if (!cpu->runNextSingleOp()) {
+        return 0;
+    }
+    return jitNextBlockAfterHostCall(cpu);
+}
+
+#if defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+#ifdef __TEST
+thread_local U32 jitOpenGLFastCallCount = 0;
+#endif
+DYN_PTR_SIZE jitRunOpenGL(CPU* cpu) {
+    if (cpu->debugTrapActive) {
+        return jitRunSingleOp(cpu);
+    }
+#ifdef __TEST
+    jitOpenGLFastCallCount++;
+#endif
+    // Consume the per-instruction scratch value before calling host code, which
+    // can change scratch state or invalidate the originating decoded/JIT block.
+    const U32 call = cpu->tmpReg;
+    try {
+        callOpenGL(cpu, call >> 8);
+        cpu->eip.u32 += call & 0xff;
+    } catch (...) {
+        // Match runNextSingleOp: a guest fault can redirect EIP to a handler.
+        cpu->nextOp = cpu->getNextOp();
+        return 0;
+    }
+    cpu->nextOp = cpu->getNextOp();
+    return jitNextBlockAfterHostCall(cpu);
+}
+
+U8* JitCodeGen::createEmulateOpenGL() {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(JitCallParamType::CPU));
+    RegPtr nextJitBlock = getTmpReg();
+    callHostFunctionWithResult(nextJitBlock, (void*)jitRunOpenGL, params);
+    If(DYN_PTR, nextJitBlock); {
+        jmpHost(nextJitBlock);
+    } EndIf();
+    blockExit();
+    return createDynamicExecutableMemory();
+}
+#endif
 
 #if defined(BOXEDWINE_POSIX) && defined(BOXEDWINE_HOST_EXCEPTIONS)
 void signalHandler(CPU* cpu);
@@ -1109,11 +1251,69 @@ U8* JitCodeGen::createSignalHandler() {
 U8* JitCodeGen::createEmulateSingleOp() {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
-    callHostFunction((void*)jitRunSingleOp, params);    
+    RegPtr nextJitBlock = getTmpReg();
+    callHostFunctionWithResult(nextJitBlock, (void*)jitRunSingleOp, params);
+    If(DYN_PTR, nextJitBlock); {
+        jmpHost(nextJitBlock);
+    } EndIf();
     blockExit();
 
     return createDynamicExecutableMemory();
 }
+
+#ifndef BOXEDWINE_WASM_JIT
+// Native sampling profilers see generated code as anonymous addresses. Record
+// compilation-time ranges on request, without instrumenting block execution.
+static void recordNativeJitBlock(CPU* cpu, U8* hostAddress, U32 hostSize, U32 guestAddress, U32 guestSize) {
+    static const char* path = std::getenv("BOXEDWINE_JIT_MAP");
+    if (!path || !*path) {
+        return;
+    }
+    static BOXEDWINE_MUTEX mapMutex;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mapMutex);
+    static BWriteFile file;
+    static bool initialized = false;
+    if (!initialized) {
+        initialized = true;
+        if (!file.createNew(path)) {
+            kwarn_fmt("Could not create BOXEDWINE_JIT_MAP: %s", path);
+            return;
+        }
+        file.write("# Boxedwine native JIT map v1\n");
+        file.write("# unix_us\thost_address_hex\thost_size\tguest_pid\tguest_address_hex\tguest_size\tfile_offset_hex\tmodule\n");
+    }
+    if (!file.isOpen()) {
+        return;
+    }
+    BString module = cpu->thread->process->getModuleName(guestAddress);
+    module.replace('\t', ' ');
+    module.replace('\r', ' ');
+    module.replace('\n', ' ');
+    U32 offset = cpu->thread->process->getModuleEip(guestAddress);
+    const U64 timestamp = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    file.writeFormat("%llu\t%llx\t%u\t%u\t%x\t%u\t%x\t%s\n",
+        (unsigned long long)timestamp,
+        (unsigned long long)(uintptr_t)hostAddress, hostSize, cpu->thread->process->id,
+        guestAddress, guestSize, offset, module.c_str());
+    // A profiler may stop the process without running its destructors.
+    file.flush();
+    static const char* bytesPath = std::getenv("BOXEDWINE_JIT_BYTES");
+    if (bytesPath && *bytesPath) {
+        static BWriteFile bytesFile(bytesPath);
+        if (bytesFile.isOpen()) {
+            const U64 host = (U64)(uintptr_t)hostAddress;
+            // Eight native-endian U32 words, then exactly hostSize code bytes.
+            const U32 header[] = { (U32)timestamp, (U32)(timestamp >> 32),
+                (U32)host, (U32)(host >> 32), hostSize,
+                cpu->thread->process->id, guestAddress, guestSize };
+            bytesFile.write((const U8*)header, sizeof(header));
+            bytesFile.write(hostAddress, hostSize);
+            bytesFile.flush();
+        }
+    }
+}
+#endif
 
 void JitCodeGen::commitJIT(DecodedOp* op) {
     if (!blockOpCount) {
@@ -1160,7 +1360,12 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
             nextOp->flags2 |= OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE;
         } else {
             bufferIndex = getBufferLocation(bufferIndex);
-            nextOp->pfnJitCode = begin + bufferIndex;
+#ifdef BOXEDWINE_JIT_X64
+            if (!nextOp->jitEntrySlot) {
+                getMemData(cpu->memory)->opCache.getJitEntryLocation(address);
+            }
+#endif
+            nextOp->setJitCode(begin + bufferIndex);
             nextOp->jitLen = 0;
             nextOp->pfn = cpu->thread->process->startJITOp;
             if (lastJitOp) {
@@ -1184,6 +1389,9 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
         getMemData(cpu->memory)->jitAddressToEip[(U8*)lastJitOp->pfnJitCode] = JitData(lastJitOp->jitLen, lastJitEip - cpu->seg[CS].address);
 #endif
     }
+#ifndef BOXEDWINE_WASM_JIT
+    recordNativeJitBlock(cpu, begin, size, startingEip, emulatedLen);
+#endif
 }
 
 RegPtr JitCodeGen::getZF() {
@@ -1280,12 +1488,43 @@ void JitCodeGen::orCPUFlags(RegPtr flags) {
 }
 
 RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, RegPtr tmp, bool checkAlignment) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (jitCanUseLinearMemory() && jitCanUseUnconditionalLinearMemory(currentOp)) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        if (ramPageUseLinearMemoryAdjacent()) {
+            if (!tmp) {
+                tmp = getTmpReg8();
+            }
+            MemPtr hostAddress = getLinearMemoryPtr(addressReg, tmp);
+            if (customMemoryOp) {
+                customMemoryOp(std::move(hostAddress));
+                return nullptr;
+            } else {
+                readHost(width, hostAddress, tmp);
+            }
+            return tmp;
+        } else {
+            if (!tmp && !customMemoryOp) {
+                tmp = getTmpReg8();
+            }
+            RegPtr base = getLinearMemoryBase(tmp);
+            if (customMemoryOp) {
+                customMemoryOp(createMemPtr(std::move(base), std::move(addressReg)));
+                return nullptr;
+            } else {
+                readHost(width, createMemPtr(base, addressReg), tmp);
+            }
+            return tmp ? tmp : base;
+        }
+    }
+#endif
     if (!tmp) {
         tmp = getTmpReg8();
     }
-
 #ifdef BOXEDWINE_MEM_CACHE
-    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+    if (jitCanUseExceptionMemoryCache(currentOp)) {
 #ifdef _DEBUG
         writeCurrentEip(0);
 #endif
@@ -1293,20 +1532,20 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Me
 
         readMMU(tmp, tmp, K_NUMBER_OF_PAGES * sizeof(void*));
 
-        if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+        if (!jitCanSkipMemoryCachePageSpanCheck() && width != JitWidth::b8) {
             RegPtr offsetReg = getTmpReg();
 
             andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
             addReg(DYN_PTR, tmp, addressReg);
-            clearIfSpansPage(width, offsetReg, tmp);
+            clearIfSpansPage(width, std::move(offsetReg), tmp);
             if (customMemoryOp) {
-                customMemoryOp(createMemPtr(tmp));
+                customMemoryOp(createMemPtr(std::move(tmp)));
             } else {
                 readHost(width, createMemPtr(tmp), tmp);
             }
         } else {
             if (customMemoryOp) {
-                customMemoryOp(createMemPtr(tmp, addressReg));
+                customMemoryOp(createMemPtr(std::move(tmp), std::move(addressReg)));
             } else {
                 readHost(width, createMemPtr(tmp, addressReg), tmp);
             }
@@ -1329,11 +1568,11 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Me
 
     if (width != JitWidth::b8 && checkAlignment) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-        if (KSystem::canJitUse4KPage) {
+        if (jitCanSkipMemoryCachePageSpanCheck()) {
 #ifdef _DEBUG
             writeCurrentEip(0);
 #endif
-            if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT) {
+            if (jitMustCheckPageSpan(currentOp)) {
                 clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
             }
         } else
@@ -1357,7 +1596,7 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Me
     if (customMemoryOp) {
         // regs are not used after this, so give them back
         addressReg = nullptr;
-        customMemoryOp(createMemPtr(tmp, offsetReg));
+        customMemoryOp(createMemPtr(std::move(tmp), std::move(offsetReg)));
     } else {
         // mov eax, [eax+reg]
         readHost(width, createMemPtr(tmp, offsetReg), tmp);
@@ -1429,8 +1668,18 @@ RegPtr JitCodeGen::read(JitWidth width, MemPtr mem, RegPtr result) {
     if (!result) {
         result = getTmpReg8();
     }
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (jitCanUseLinearMemory() && jitCanUseUnconditionalLinearMemory(currentOp)) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        RegPtr base = getLinearMemoryBase(result);
+        readHost(width, createMemPtr(base, mem->offset), result);
+        return result;
+    }
+#endif
 #ifdef BOXEDWINE_MEM_CACHE
-    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && (KSystem::canJitUse4KPage || !doesSpanPage(width, mem->offset))) {
+    if (jitCanUseExceptionMemoryCache(currentOp) && (jitCanSkipMemoryCachePageSpanCheck() || !doesSpanPage(width, mem->offset))) {
 #ifdef _DEBUG
         writeCurrentEip(0);
 #endif
@@ -1477,9 +1726,19 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, RegPtr src) {
         write(width, calculateAddress(mem), src);
         return;
     }
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (jitCanUseLinearMemory() && jitCanUseUnconditionalLinearMemory(currentOp)) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        RegPtr base = getLinearMemoryBase();
+        writeHost(width, createMemPtr(base, mem->offset), src);
+        return;
+    }
+#endif
     RegPtr tmp = getTmpReg8();
 #ifdef BOXEDWINE_MEM_CACHE
-    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && (KSystem::canJitUse4KPage || !doesSpanPage(width, mem->offset))) {
+    if (jitCanUseExceptionMemoryCache(currentOp) && (jitCanSkipMemoryCachePageSpanCheck() || !doesSpanPage(width, mem->offset))) {
 #ifdef _DEBUG
         writeCurrentEip(0);
 #endif
@@ -1509,35 +1768,65 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, RegPtr src) {
         emulateSingleOp();
     } EndIf();
 
-    andValueNative(tmp, ~0xfff);    
+    andValueNative(tmp, ~0xfff);
     writeHost(width, createMemPtr(tmp, address & K_PAGE_MASK), src);
 }
 
 void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment) {
-    RegPtr tmp = getTmpReg();
+    writeMemory(width, std::move(addressReg), std::move(src), std::move(customMemoryOp), std::move(failedMemoryOp), checkAlignment, false);
+}
 
+void JitCodeGen::writeWithMmuCheck(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment) {
+    writeMemory(width, std::move(addressReg), std::move(src), std::move(customMemoryOp), std::move(failedMemoryOp), checkAlignment, true);
+}
+
+void JitCodeGen::writeMemory(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment, bool forceMmuCheck) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (jitCanUseLinearMemory() && !forceMmuCheck && jitCanUseUnconditionalLinearMemory(currentOp)) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        if (ramPageUseLinearMemoryAdjacent()) {
+            MemPtr hostAddress = getLinearMemoryPtr(addressReg);
+            if (customMemoryOp) {
+                customMemoryOp(std::move(hostAddress));
+            } else {
+                writeHost(width, hostAddress, src);
+            }
+        } else {
+            RegPtr base = getLinearMemoryBase();
+            if (customMemoryOp) {
+                customMemoryOp(createMemPtr(std::move(base), std::move(addressReg)));
+            } else {
+                writeHost(width, createMemPtr(base, addressReg), src);
+            }
+        }
+        return;
+    }
+#endif
+    RegPtr tmp = getTmpReg();
     shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
 #ifdef BOXEDWINE_MEM_CACHE
-    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+    if (!forceMmuCheck && jitCanUseExceptionMemoryCache(currentOp)) {
 #ifdef _DEBUG
         writeCurrentEip(0);
 #endif        
         readMMU(tmp, tmp, K_NUMBER_OF_PAGES * sizeof(void*) * 2);
 
-        if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+        if (!jitCanSkipMemoryCachePageSpanCheck() && width != JitWidth::b8) {
             RegPtr offsetReg = getTmpReg();
 
             addReg(DYN_PTR, tmp, addressReg);
             andValueWithDest(JitWidth::b32, offsetReg, addressReg, K_PAGE_MASK);
             clearIfSpansPage(width, std::move(offsetReg), tmp);
             if (customMemoryOp) {
-                customMemoryOp(createMemPtr(tmp));
+                customMemoryOp(createMemPtr(std::move(tmp)));
             } else {
                 writeHost(width, createMemPtr(tmp), src);
             }
         } else {
             if (customMemoryOp) {
-                customMemoryOp(createMemPtr(tmp, addressReg));
+                customMemoryOp(createMemPtr(std::move(tmp), std::move(addressReg)));
             } else {
                 writeHost(width, createMemPtr(tmp, addressReg), src);
             }
@@ -1567,11 +1856,11 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
 
     if (width != JitWidth::b8 && checkAlignment) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-        if (KSystem::canJitUse4KPage) {
+        if (jitCanSkipMemoryCachePageSpanCheck()) {
 #ifdef _DEBUG
             writeCurrentEip(0);
 #endif
-            if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT) {
+            if (jitMustCheckPageSpan(currentOp)) {
                 clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
             }
 
@@ -1598,6 +1887,9 @@ void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::funct
 
     MemPtr mem = createMemPtr(std::move(tmp), std::move(offsetReg));
     if (customMemoryOp) {
+        if (!pushedAddress) {
+            addressReg = nullptr;
+        }
         customMemoryOp(std::move(mem));
     } else {
         writeHost(width, std::move(mem), src);
@@ -1612,8 +1904,28 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
         writeHost(width, mem, imm);
         return;
     }
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (jitCanUseLinearMemory() && jitCanUseUnconditionalLinearMemory(currentOp)) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        if (ramPageUseLinearMemoryAdjacent() && (mem->rm || mem->sib)) {
+            RegPtr addressReg = calculateAddress(mem);
+            writeHost(width, getLinearMemoryPtr(addressReg), imm);
+        } else {
+            RegPtr base = getLinearMemoryBase();
+            if (mem->rm || mem->sib) {
+                RegPtr addressReg = calculateAddress(mem);
+                writeHost(width, createMemPtr(base, addressReg), imm);
+            } else {
+                writeHost(width, createMemPtr(base, mem->offset), imm);
+            }
+        }
+        return;
+    }
+#endif
 #ifdef BOXEDWINE_MEM_CACHE
-    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+    if (jitCanUseExceptionMemoryCache(currentOp)) {
         RegPtr tmp = getTmpReg();
         RegPtr addressReg = calculateAddress(mem);
 
@@ -1622,7 +1934,7 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
 #endif
         shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);
         readMMU(tmp, tmp, K_NUMBER_OF_PAGES * sizeof(void*) * 2);
-        if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+        if (!jitCanSkipMemoryCachePageSpanCheck() && width != JitWidth::b8) {
             RegPtr offsetReg = getTmpReg();
 
             addReg(DYN_PTR, tmp, addressReg);
@@ -1648,11 +1960,11 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
  
     if (width != JitWidth::b8) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-        if (KSystem::canJitUse4KPage) {
+        if (jitCanSkipMemoryCachePageSpanCheck()) {
 #ifdef _DEBUG
             writeCurrentEip(0);
 #endif
-            if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT) {
+            if (jitMustCheckPageSpan(currentOp)) {
                 clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
             }
         } else 
@@ -1671,17 +1983,38 @@ void JitCodeGen::write(JitWidth width, MemPtr mem, U32 imm) {
     writeHost(width, createMemPtr(tmp, offsetReg, 0, 0), imm);
 }
 
-RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint) {
+RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint, bool forceMmuCheck) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (jitCanUseLinearMemory() && !forceMmuCheck && jitCanUseUnconditionalLinearMemory(currentOp)) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        if (ramPageUseLinearMemoryAdjacent()) {
+            RegPtr value = getTmpRegWithHint(hint);
+            MemPtr hostAddress = getLinearMemoryPtr(addressReg);
+            readHost(width, hostAddress, value);
+            prepareWrite(value);
+            writeHost(width, hostAddress, value);
+            return value;
+        } else {
+            RegPtr base = getLinearMemoryBase();
+            RegPtr value = getTmpReg();
+            readHost(width, createMemPtr(base, addressReg), value);
+            prepareWrite(value);
+            writeHost(width, createMemPtr(base, addressReg), value);
+            return value;
+        }
+    }
+#endif
     RegPtr tmp = getTmpRegWithHint(hint);
-
 #ifdef BOXEDWINE_MEM_CACHE
-    if (currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+    if (jitCanUseExceptionMemoryCache(currentOp)) {
 #ifdef _DEBUG
         writeCurrentEip(0);
 #endif
         shrValueWithDest(JitWidth::b32, tmp, addressReg, K_PAGE_SHIFT);       
         readMMU(tmp, tmp, K_NUMBER_OF_PAGES * sizeof(void*) * 2);
-        if (!KSystem::canJitUse4KPage && width != JitWidth::b8) {
+        if (width != JitWidth::b8 && (!jitCanSkipMemoryCachePageSpanCheck() || forceMmuCheck)) {
             RegPtr offsetReg = getTmpReg();
 
             addReg(DYN_PTR, tmp, addressReg);
@@ -1711,17 +2044,17 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
 
     if (width != JitWidth::b8) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-        if (KSystem::canJitUse4KPage) {
+        if (jitCanSkipMemoryCachePageSpanCheck()) {
 #ifdef _DEBUG
             writeCurrentEip(0);
 #endif
-            if (currentOp->exceptionCount == MAX_OP_EXCEPTION_COUNT) {
+            if (forceMmuCheck || jitMustCheckPageSpan(currentOp)) {
                 clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
             }
-        } else 
+        } else
 #endif
         {
-            // make sure we only use the fast path if the entire read will take place on the same page
+            // Non-adjacent host pages cannot service one direct access.
             clearMMUPermissionIfSpansPage(width, offsetReg, tmp);
         }
     }
@@ -1741,6 +2074,80 @@ RegPtr JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function
 
     writeHost(width, createMemPtr(tmp, offsetReg, 0, 0), tmpReg2);
     return tmpReg2;
+}
+
+RegPtr JitCodeGen::readWriteMemWithLinearPostCommit(JitWidth width, RegPtr addressReg,
+    std::function<void(RegPtr value)> prepareWrite,
+    std::function<void(RegPtr value)> prepareWriteLinear,
+    std::function<void(RegPtr value)> commitWriteLinear, S8 hint) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (jitCanUseLinearMemory() && jitCanUseUnconditionalLinearMemory(currentOp)) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        if (ramPageUseLinearMemoryAdjacent()) {
+            RegPtr value = getTmpRegWithHint(hint);
+            MemPtr hostAddress = getLinearMemoryPtr(addressReg);
+            readHost(width, hostAddress, value);
+            prepareWriteLinear(value);
+            writeHost(width, std::move(hostAddress), value);
+            addressReg = nullptr;
+            commitWriteLinear(value);
+            return value;
+        } else {
+            RegPtr base = getLinearMemoryBase();
+            RegPtr value = getTmpReg();
+            MemPtr hostAddress = createMemPtr(base, addressReg);
+            readHost(width, hostAddress, value);
+            prepareWriteLinear(value);
+            writeHost(width, std::move(hostAddress), value);
+            base = nullptr;
+            addressReg = nullptr;
+            commitWriteLinear(value);
+            return value;
+        }
+    }
+    RegPtr value = readWriteMem(width, std::move(addressReg), std::move(prepareWriteLinear), hint, true);
+    commitWriteLinear(value);
+    return value;
+#else
+    return readWriteMem(width, std::move(addressReg), std::move(prepareWrite), hint, true);
+#endif
+}
+
+void JitCodeGen::storeJitScratch(JitWidth width, RegPtr value) {
+    writeCPU(width, offsetof(CPU, tmpReg), value);
+}
+
+RegPtr JitCodeGen::loadJitScratch(JitWidth width) {
+    RegPtr value = width == JitWidth::b8 ? getTmpReg8() : getTmpReg();
+    return readCPU(width, offsetof(CPU, tmpReg), value);
+}
+
+void JitCodeGen::xchgMemory(JitWidth width, RegPtr addressReg, RegPtr reg) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (jitCanUseLinearMemory() && jitCanUseUnconditionalLinearMemory(currentOp)) {
+#ifdef _DEBUG
+        writeCurrentEip(0);
+#endif
+        RegPtr oldValue = width == JitWidth::b8 ? getTmpReg8() : getTmpReg();
+        if (ramPageUseLinearMemoryAdjacent()) {
+            MemPtr hostAddress = getLinearMemoryPtr(addressReg);
+            readHost(width, hostAddress, oldValue);
+            writeHost(width, hostAddress, reg);
+        } else {
+            RegPtr base = getLinearMemoryBase();
+            MemPtr hostAddress = createMemPtr(base, addressReg);
+            readHost(width, hostAddress, oldValue);
+            writeHost(width, hostAddress, reg);
+        }
+        mov(width, reg, oldValue);
+        return;
+    }
+#endif
+    readWriteMem(width, std::move(addressReg), [this, width, reg](RegPtr value) {
+        xchgReg(width, reg, value);
+    }, -1, true);
 }
 
 RegPtr JitCodeGen::getFlagDestReadOnly(RegPtr result) {

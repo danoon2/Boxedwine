@@ -25,7 +25,9 @@
 
 U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
     if (p->isArrayBuffer) {
-        klog("updateVertexPointer might have failed");
+        // VBO pointers are offsets into the currently bound host buffer. They do
+        // not reference guest memory and must never be refreshed or marshalled.
+        p->refreshEachCall = 0;
         return 0;
     }
 
@@ -36,8 +38,8 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
 
         if (!datasize) {
             U8* ramPtr = cpu->memory->getRamPtr(p->ptr, 1, false);
-            p->marshal_size = 0;
             if (ramPtr != p->marshal || p->lastMarshalledPtr != p->ptr) {
+                p->marshal_size = 0;
                 p->marshal = ramPtr;
                 p->lastMarshalledPtr = p->ptr;
                 return 1;

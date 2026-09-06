@@ -25,6 +25,12 @@
 #include <map>
 
 class KMemory;
+class CPU;
+
+struct PendingDecodedOps {
+	std::vector<DecodedOp*> ops;
+	U32 retirementEpoch = 0;
+};
 
 class DecodedOpPageCache {
 public:
@@ -32,6 +38,9 @@ public:
 	~DecodedOpPageCache();
 	
 	DecodedOp* ops[K_PAGE_SIZE];
+#ifdef BOXEDWINE_JIT_X64
+    void** jitEntries = nullptr;
+#endif
 };
 
 typedef void (*OpCacheCallback)(U32 address, DecodedOp* op, void* pData);
@@ -40,8 +49,16 @@ class DecodedOpCache {
 public:
 	DecodedOpCache();
 	~DecodedOpCache();
+#ifdef BOXEDWINE_JIT_X64
+    void**** getJitPageGroups() const { return jitPageGroups; }
+    void** getJitEntryLocation(U32 address);
+#endif
 
-	DecodedOp* get(U32 address);
+	DecodedOp* get(U32 address) {
+		U32 pageIndex = address >> K_PAGE_SHIFT;
+		DecodedOpPageCache* page = pageData[pageIndex >> 10][pageIndex & 0x3ff];
+		return page ? page->ops[address & K_PAGE_MASK] : nullptr;
+	}
 	DecodedOp** getLocation(U32 address);
 	DecodedOp* getPreviousOpAndRemoveIfOverlapping(U32 address);
 	void remove(U32 address, U32 len, bool becauseOfWrite);
@@ -57,6 +74,10 @@ public:
 	void clearPageWriteCounts(U32 pageIndex);
 	void threadCleanup(U32 threadId);
 	void clear();
+#ifdef BOXEDWINE_MULTI_THREADED
+	std::atomic<U32>* getEpochAddress() { return &epoch; }
+	void registerThread(CPU* cpu);
+#endif
 
 private:
 	friend class BtCPU;
@@ -66,16 +87,26 @@ private:
 	DecodedOp* getPreviousOp(U32 address, U32* foundAddress, DecodedOpPageCache** foundPage);
 	DecodedOpPageCache* getPageCache(U32 pageIndex, bool create);
 	DecodedOpPageCache** pageData[0x400];
+#ifdef BOXEDWINE_JIT_X64
+    // 10 group bits, 10 page bits, then a 12-bit instruction-byte offset.
+    void**** jitPageGroups = nullptr;
+    void** emptyJitPageGroup[0x400] = {};
+#endif
 	DecodedOpPageCache* emptyPageCacheLevel1[0x400];
 	U8* getWriteCounts(U32 pageIndex, bool create);
 	U8** writeCounts[0x400];
 	void clearPendingDeallocs(U32 threadId);
+	void retirePendingDeallocs(PendingDecodedOps& pending, size_t previousSize);
+#ifdef BOXEDWINE_MULTI_THREADED
+	void reclaimPendingDeallocs();
+	std::atomic<U32> epoch{1};
+	std::map<U32, CPU*> registeredThreads;
+#endif
 
-	// this will hold DecodedOp's that are ready for dealloc, but are delayed in case the current thread is referencing them while removing them
-	// Without this, there will be timing issues that only occasionally show up in debug mode, but become more obvious when running games multiple
-	// times, like with automation
-	std::map<U32, std::vector<DecodedOp*>> pendingDeallocs;
-	std::vector<DecodedOp*>* preparedRemovalPendingDeallocs = nullptr;
+	// Removed ops remain intact until every CPU that could have observed them
+	// has reached a later dispatch boundary.
+	std::map<U32, PendingDecodedOps> pendingDeallocs;
+	PendingDecodedOps* preparedRemovalPendingDeallocs = nullptr;
 	DecodedOp* preparedRemovalDone = nullptr;
 };
 

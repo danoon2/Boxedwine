@@ -372,35 +372,53 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
     if (!this->thread->process) // exit was called, don't need to pre-cache the next block
         return nullptr;
 
-    DecodedOp* op = memory->getDecodedOp(startIp);
-    if (!op) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
+    DecodedOp* op = nullptr;
+    while (true) {
         op = memory->getDecodedOp(startIp);
-        if (!op) {
-            U32 opCount = 0;
-            U32 eipLen = 0;
-            U32 address = startIp;
-
-            op = decodeBlock(this, startIp, this->isBig(), opCount, eipLen);
-            if (!op) {
-                return nullptr;
+        if (op) {
+            bool decodedBig = (op->flags2 & OP_FLAG2_DECODED_32BIT) != 0;
+            if (decodedBig != this->isBig()) {
+                memory->removeCode(this->thread, startIp, 1, false);
+                continue;
             }
-            DecodedOp* nextOp = op;
+            break;
+        }
 
-            while (nextOp) {
-                if (!nextOp->pfn) {
-                    nextOp->pfn = getFunctionForOp(nextOp);
+        bool cacheFilledWhileLocking = false;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
+            op = memory->getDecodedOp(startIp);
+            if (op) {
+                cacheFilledWhileLocking = true;
+            } else {
+                U32 opCount = 0;
+                U32 eipLen = 0;
+                U32 address = startIp;
+
+                op = decodeBlock(this, startIp, this->isBig(), opCount, eipLen);
+                if (!op) {
+                    return nullptr;
                 }
-                if (memory->isAddressDynamic(address, nextOp->len)) {
-                    nextOp->flags |= OP_FLAG_NO_JIT;
+                DecodedOp* nextOp = op;
+
+                while (nextOp) {
+                    if (!nextOp->pfn) {
+                        nextOp->pfn = getFunctionForOp(nextOp);
+                    }
+                    if (memory->isAddressDynamic(address, nextOp->len)) {
+                        nextOp->flags |= OP_FLAG_NO_JIT;
 #ifdef BOXEDWINE_JIT
-                    nextOp->runCount = JIT_RUN_COUNT + 1;
+                        nextOp->runCount = JIT_RUN_COUNT + 1;
 #endif
+                    }
+                    address += nextOp->len;
+                    nextOp = nextOp->next;
                 }
-                address += nextOp->len;
-                nextOp = nextOp->next;
+                this->thread->memory->addCode_nolock(startIp, eipLen, op, opCount);
             }
-            this->thread->memory->addCode_nolock(startIp, eipLen, op, opCount);            
+        }
+        if (!cacheFilledWhileLocking) {
+            break;
         }
     }
 #ifdef BOXEDWINE_JIT
@@ -413,11 +431,20 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
 }
 
 void NormalCPU::run() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    U32 decodedOpEpoch = decodedOpCacheGlobalEpoch->load(std::memory_order_acquire);
+    if (decodedOpCacheEpoch.load(std::memory_order_relaxed) != decodedOpEpoch) {
+        // Drop the only DecodedOp pointer carried between dispatch blocks before
+        // announcing that this CPU can no longer reference an older generation.
+        nextOp = nullptr;
+        memory->synchronizeDecodedOpCache(this, decodedOpEpoch);
+    }
+#endif
 #if defined(BOXEDWINE_WASM_JIT) && !defined(__TEST)
     if (nextOp) {
         // WASM JIT fast exits can carry DecodedOp* values across code-cache
         // invalidation; refetch from the live cache before dereferencing.
-        DecodedOp* liveOp = memory->getDecodedOp(getEipAddress());
+        DecodedOp* liveOp = getMemData(memory)->opCache.get(getEipAddress());
         if (liveOp != nextOp) {
             nextOp = liveOp;
         }
@@ -438,7 +465,15 @@ void NormalCPU::run() {
     }
 #ifdef BOXEDWINE_MULTI_THREADED
 #ifdef BOXEDWINE_JIT
+#ifdef BOXEDWINE_WASM_JIT
+    // Most dispatches have no new signal. Avoid an atomic read-modify-write
+    // in that case; a signal published after the load stays latched.
+    if (this->jitSignalPending.load(std::memory_order_acquire)) {
+        this->jitSignalPending.exchange(0, std::memory_order_acq_rel);
+    }
+#else
     this->jitSignalPending.exchange(0, std::memory_order_acq_rel);
+#endif
 #endif
     if (thread->pendingSignals && thread->runSignals()) {
         nextOp = getNextOp();

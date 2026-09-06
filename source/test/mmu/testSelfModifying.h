@@ -14,5 +14,16 @@ void testSelfModifying();
 void testSelfModifyingMovsb();
 void testSelfModifyingFront();
 void testSelfModifyingBack();
+void testLinearMemoryAliasAndFaults();
+void testLinearMemoryFileFirstTouches();
+void testLinearMemoryWraparound();
+void testJitMemoryReadOperands();
+void testJitMemoryReadFaultState();
+void testLinearMemoryCloneMappings();
+void testLinearMemoryCodeInvalidation();
+
+#ifdef BOXEDWINE_MULTI_THREADED
+void testDecodedOpInvalidationDefersCrossThreadReuse();
+#endif
 
 #endif

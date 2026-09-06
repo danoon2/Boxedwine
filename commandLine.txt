@@ -27,6 +27,8 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -disableHideCursor : will prevent the cursor from being hidden
 
+-disableLinearMemory : Disable linear memory and use the legacy guarded MMU memory cache.
+
 -dpiAware: will prevent Windows from scaling the screen if you are using display scaling.
 
 -forceRelativeMouse : will force mouse capture and relative mouse input.  This is useful if the mouse doesn't work right in some games.

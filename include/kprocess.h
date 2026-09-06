@@ -383,6 +383,7 @@ public:
 #ifdef BOXEDWINE_JIT
     OpCallback startJITOp = nullptr;
     void* emulateSingleOp = nullptr;
+    void* emulateOpenGL = nullptr;
 #ifdef BOXEDWINE_POSIX
     void* signalHandler = nullptr;
 #endif
@@ -391,6 +392,7 @@ public:
     void* blockExit = nullptr;
     void* jitCosSub = nullptr;
     void* jitCos = nullptr;
+    void* jitF64ToF80 = nullptr;
     void* calculateCF[FLAGS_NULL] = {};
 #endif
 #ifdef BOXEDWINE_MULTI_THREADED    

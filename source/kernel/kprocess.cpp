@@ -320,10 +320,12 @@ void KProcess::onExec(KThread* thread) {
 #ifdef BOXEDWINE_JIT
     startJITOp = nullptr;
     emulateSingleOp = nullptr;
+    emulateOpenGL = nullptr;
     syncToHost = nullptr;
     syncFromHost = nullptr;
     jitCosSub = nullptr;
     jitCos = nullptr;
+	jitF64ToF80 = nullptr;
 	blockExit = nullptr;
     memset(calculateCF, 0, sizeof(calculateCF));
 #endif

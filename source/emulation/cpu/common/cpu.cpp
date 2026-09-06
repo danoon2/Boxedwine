@@ -45,6 +45,12 @@ CPU::CPU(KMemory* memory) : memory(memory) {
     this->fpu.reset();
 
     opCache = (DecodedOp***)&getMemData(memory)->opCache.pageData[0];
+#ifdef BOXEDWINE_MULTI_THREADED
+    decodedOpCacheGlobalEpoch = getMemData(memory)->opCache.getEpochAddress();
+#endif
+#ifdef BOXEDWINE_JIT_X64
+    jitEntryPageGroups = getMemData(memory)->opCache.getJitPageGroups();
+#endif
 #ifdef BOXEDWINE_JIT_ARMV8
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[0] = 2147483648.0;
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[1] = 2147483648.0;
@@ -594,6 +600,9 @@ U32 CPU::setSegment(U32 seg, U32 value) {
     }
     if (this->flags & VM) {
         this->setSeg(seg, value << 4, value);
+        if (seg == CS) {
+            this->setIsBig(0);
+        }
     } else {
         value = makeSegmentInternal(value);
         if ((value & 0xfffc)==0) {
@@ -618,7 +627,9 @@ U32 CPU::setSegment(U32 seg, U32 value) {
                 return 0;
             }
             this->setSeg(seg, ldt->base_addr, value);
-            if (seg == SS) {
+            if (seg == CS) {
+                this->setIsBig(ldt->seg_32bit);
+            } else if (seg == SS) {
                 if (ldt->seg_32bit) {
                     this->stackMask = 0xffffffff;
                     this->stackNotMask = 0;
@@ -1354,10 +1365,19 @@ U32 CPU::writeCrx(U32 which, U32 value) {
 }
 
 bool CPU::shouldContinue(U32 eip) {
-    return this->memory->getDecodedOp(eip) == nullptr;
+    DecodedOp* op = this->memory->getDecodedOp(eip);
+    if (op && ((op->flags2 & OP_FLAG2_DECODED_32BIT) != 0) != this->isBig()) {
+        this->memory->removeCode(this->thread, eip, 1, false);
+        op = nullptr;
+    }
+    return op == nullptr;
 }
 
 DecodedOp** CPU::getOpLocation(U32 eip) {
+    DecodedOp* op = this->memory->getDecodedOp(eip);
+    if (op && ((op->flags2 & OP_FLAG2_DECODED_32BIT) != 0) != this->isBig()) {
+        this->memory->removeCode(this->thread, eip, 1, false);
+    }
     return this->memory->getDecodedOpLocation(eip);
 }
 
@@ -1373,21 +1393,57 @@ DecodedOp* CPU::getNextOp(U32 jumpTargetFlags) {
 }
 
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
-void* CPU::startException(U32 address, bool readAddress) {
+void* CPU::startException(U64 address, bool readAddress) {
     if (this->thread->terminating) {
         return this->thread->process->blockExit;
     }
     if (this->inException) {
-        this->thread->seg_mapper(address, readAddress, !readAddress, false);
+        U32 guestAddress = (U32)address;
+        getMemData(memory)->getLinearMemoryGuestAddress(address, guestAddress);
+        this->thread->seg_mapper(guestAddress, readAddress, !readAddress, false);
         this->nextOp = getNextOp();
     }
     return 0;
 }
 
 void* CPU::handleAccessException(DecodedOp* op) {
-    if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
-        op->exceptionCount++;
-    } else if (op->blockStart) {
+    const U32 faultEip = getEipAddress();
+    U32 faultPage = 0;
+    bool linearFirstTouch = false;
+    bool resolvedLinearFirstTouch = false;
+    bool singlePageLinearMemoryFault = false;
+    bool groupedLinearMemoryFault = false;
+    if (ramPageUseLinearMemory()) {
+        U32 guestAddress;
+        KMemoryData* memoryData = getMemData(memory);
+        if (memoryData->getLinearMemoryGuestAddress(exceptionAddress, guestAddress)) {
+            groupedLinearMemoryFault = ramPageLinearMemoryPageCount() > 1;
+            singlePageLinearMemoryFault = !groupedLinearMemoryFault;
+            faultPage = guestAddress >> K_PAGE_SHIFT;
+            MMU& mmu = memoryData->mmu[faultPage];
+            U32 requiredPermission = exceptionReadAddress ? (PAGE_READ | PAGE_EXEC) : PAGE_WRITE;
+            PageType type = mmu.getPageType();
+            linearFirstTouch = (mmu.flags & requiredPermission) != 0 &&
+                ((type == PageType::Ram && !mmu.ramIndex) || type == PageType::File ||
+                    (type == PageType::CopyOnWrite && !exceptionReadAddress));
+        }
+    }
+    if (linearFirstTouch) {
+        const auto jitCode = op->pfnJitCode;
+        const U32 requiredMapping = exceptionReadAddress ? 1 : 2;
+        runNextSingleOp();
+        // Emulation can invalidate the instruction (for example a cross-page
+        // store into code). Only inspect its metadata if it still owns this code.
+        DecodedOp* faultOp = memory->getDecodedOp(faultEip);
+        if (faultOp != op || faultOp->pfnJitCode != jitCode) {
+            return this->thread->process->blockExit;
+        }
+        resolvedLinearFirstTouch = (getMemData(memory)->linearMemoryMappings[faultPage] & requiredMapping) != 0;
+    }
+    auto removeCurrentCodeBlock = [this, op, faultEip]() {
+        if (!op->blockStart) {
+            return;
+        }
         U32 eipDistance = 0;
         DecodedOp* nextOp = op->blockStart;
         U32 count = 1;
@@ -1396,12 +1452,45 @@ void* CPU::handleAccessException(DecodedOp* op) {
             eipDistance += nextOp->len;
             nextOp = nextOp->next;
             count++;
-        }        
-        if (nextOp == op) {
-            memory->removeCodeBlock(this->eip.u32 - eipDistance, op->blockStart, false);
         }
+        if (nextOp == op) {
+            memory->removeCodeBlock(faultEip - eipDistance, op->blockStart, false);
+        }
+    };
+    if (resolvedLinearFirstTouch) {
+        if (op->exceptionCount < LINEAR_MEMORY_RECOMPILE_FAULTS) {
+            op->exceptionCount++;
+        }
+        if (op->exceptionCount >= LINEAR_MEMORY_RECOMPILE_FAULTS) {
+            // Repeated first touches usually indicate a page-walking loop. Go
+            // straight to the checked MMU path instead of taking one host
+            // exception per newly materialized guest page.
+            op->exceptionCount = MAX_OP_EXCEPTION_COUNT;
+            removeCurrentCodeBlock();
+        }
+    } else if (groupedLinearMemoryFault) {
+        if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+            op->exceptionCount++;
+        }
+        if (op->exceptionCount >= LINEAR_MEMORY_RECOMPILE_FAULTS) {
+            removeCurrentCodeBlock();
+        }
+    } else if (singlePageLinearMemoryFault) {
+        if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+            op->exceptionCount++;
+        }
+        // A non-materializable 4K fault must use the MMU fallback on the next
+        // compilation, even though successful first touches retain linear code.
+        op->exceptionCount = std::max<U32>(op->exceptionCount, LINEAR_MEMORY_RECOMPILE_FAULTS);
+        removeCurrentCodeBlock();
+    } else if (op->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+        op->exceptionCount++;
+    } else {
+        removeCurrentCodeBlock();
     }
-    runNextSingleOp();
+    if (!linearFirstTouch) {
+        runNextSingleOp();
+    }
     return this->thread->process->blockExit;
 }
 #endif
@@ -1411,7 +1500,7 @@ static DecodedOp lastOp;
 void OPCALL onLastOp(CPU* cpu, DecodedOp* op) {
 }
 
-void CPU::runNextSingleOp() {
+bool CPU::runNextSingleOp() {
     DecodedOp* op = nullptr;
     try {
         op = getNextOp();
@@ -1429,7 +1518,7 @@ void CPU::runNextSingleOp() {
     }
     try {
         if (this->debugTrapActive && this->startDebugInstruction()) {
-            return;
+            return false;
         }
 #ifdef BOXEDWINE_JIT
         if (op->flags2 & OP_FLAG2_TRACED_STUB) {
@@ -1445,12 +1534,15 @@ void CPU::runNextSingleOp() {
         o.pfn = NormalCPU::getFunctionForOp(op);
         o.pfn(this, &o);
         if (this->debugTrapActive && this->finishDebugInstruction()) {
-            return;
+            return false;
         }
     } catch (...) {
         // motorhead 3dfx will trigger this when pressing enter to start a new game
+        this->nextOp = getNextOp();
+        return false;
     }
     this->nextOp = getNextOp();
+    return true;
 }
 
 #ifdef BOXEDWINE_JIT

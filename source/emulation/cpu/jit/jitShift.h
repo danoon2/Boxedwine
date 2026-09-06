@@ -109,14 +109,23 @@ void Jit::writeRol32Flags(RegPtr reg) {
 }
 
 void Jit::dynamic_rol32_reg_op(DecodedOp* op) {
-    if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        // op->imm already masked                
-        RegPtr reg = getReg(op->reg);
-        rolValue(JitWidth::b32, reg, op->imm);
-        writeRol32Flags(reg);        
+    auto fallback = [op, this]() {
+        if (op->needsToSetFlags(cpu) & (CF | OF)) {
+            // op->imm already masked
+            RegPtr reg = getReg(op->reg);
+            rolValue(JitWidth::b32, reg, op->imm);
+            writeRol32Flags(reg);
+        } else {
+            dynamic_RI(op, JitWidth::b32, &Jit::rolValue, FLAGS_NULL);
+        }
+    };
+    if (supportsDirectFlagsForShift() && (op->imm & 0x1f) == 1) {
+        tryDirect(op, [op, this]() {
+            rolValue(JitWidth::b32, getReg(op->reg), op->imm);
+        }, fallback, CF | OF);
     } else {
-        dynamic_RI(op, JitWidth::b32, &Jit::rolValue, FLAGS_NULL);
-    }    
+        fallback();
+    }
 }
 void Jit::dynamic_rol32_mem_op(DecodedOp* op) {
     if (op->needsToSetFlags(cpu) & (CF | OF)) {
@@ -253,14 +262,22 @@ void Jit::writeRor32Flags(RegPtr reg) {
 }
 
 void Jit::dynamic_ror32_reg_op(DecodedOp* op) {
-    if (op->needsToSetFlags(cpu) & (CF | OF)) {
-        // op->imm already masked                
-        RegPtr reg = getReg(op->reg);
-        rorValue(JitWidth::b32, reg, op->imm);
-
-        writeRor32Flags(reg);
+    auto fallback = [op, this]() {
+        if (op->needsToSetFlags(cpu) & (CF | OF)) {
+            // op->imm already masked
+            RegPtr reg = getReg(op->reg);
+            rorValue(JitWidth::b32, reg, op->imm);
+            writeRor32Flags(reg);
+        } else {
+            dynamic_RI(op, JitWidth::b32, &Jit::rorValue, FLAGS_NULL);
+        }
+    };
+    if (supportsDirectFlagsForShift() && (op->imm & 0x1f) == 1) {
+        tryDirect(op, [op, this]() {
+            rorValue(JitWidth::b32, getReg(op->reg), op->imm);
+        }, fallback, CF | OF);
     } else {
-        dynamic_RI(op, JitWidth::b32, &Jit::rorValue, FLAGS_NULL);
+        fallback();
     }
 }
 void Jit::dynamic_ror32_mem_op(DecodedOp* op) {
@@ -650,7 +667,7 @@ void Jit::dynamic_shl16cl_mem_op(DecodedOp* op) {
     dynamic_M_Cl(op, JitWidth::b16, &Jit::shlReg, FLAGS_SHL16);
 }
 void Jit::dynamic_shl32_reg_op(DecodedOp* op) {
-    dynamic_RI(op, JitWidth::b32, &Jit::shlValue, FLAGS_SHL32);
+    dynamic_RIShiftDirect(op, JitWidth::b32, &Jit::shlValue, FLAGS_SHL32);
 }
 void Jit::dynamic_shl32_mem_op(DecodedOp* op) {
     dynamic_MI(op, JitWidth::b32, &Jit::shlValue, FLAGS_SHL32);
@@ -686,7 +703,7 @@ void Jit::dynamic_shr16cl_mem_op(DecodedOp* op) {
     dynamic_M_Cl(op, JitWidth::b16, &Jit::shrReg, FLAGS_SHR16);
 }
 void Jit::dynamic_shr32_reg_op(DecodedOp* op) {
-    dynamic_RI(op, JitWidth::b32, &Jit::shrValue, FLAGS_SHR32);
+    dynamic_RIShiftDirect(op, JitWidth::b32, &Jit::shrValue, FLAGS_SHR32);
 }
 void Jit::dynamic_shr32_mem_op(DecodedOp* op) {
     dynamic_MI(op, JitWidth::b32, &Jit::shrValue, FLAGS_SHR32);
@@ -722,7 +739,7 @@ void Jit::dynamic_sar16cl_mem_op(DecodedOp* op) {
     dynamic_M_Cl(op, JitWidth::b16, &Jit::sarReg, FLAGS_SAR16);
 }
 void Jit::dynamic_sar32_reg_op(DecodedOp* op) {
-    dynamic_RI(op, JitWidth::b32, &Jit::sarValue, FLAGS_SAR32);
+    dynamic_RIShiftDirect(op, JitWidth::b32, &Jit::sarValue, FLAGS_SAR32);
 }
 void Jit::dynamic_sar32_mem_op(DecodedOp* op) {
     dynamic_MI(op, JitWidth::b32, &Jit::sarValue, FLAGS_SAR32);
@@ -756,20 +773,33 @@ void Jit::dshift(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlag
     }
 }
 
+void Jit::dshiftDirect(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flagType) {
+    if (!supportsDirectFlagsForShift() || !(op->imm & 0x1f)) {
+        dshift(op, width, callback, flagType);
+        return;
+    }
+    tryDirect(op, [op, width, callback, this]() {
+        RegPtr dest = getReg(op->reg);
+        RegPtr src = op->reg == op->rm ? dest : getReadOnlyReg(op->rm);
+        (this->*callback)(width, dest, src, op->imm);
+    }, [op, width, callback, flagType, this]() {
+        dshift(op, width, callback, flagType);
+    });
+}
+
 void Jit::dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFlagType flagType) {
     const LazyFlags* flags = lazyFlags[flagType];
     RegPtr src2 = getReadOnlyReg(op->reg);
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
 
-    if (needsToSetFlags) {
-        storeLazyFlagType(flagType);
-        currentLazyFlags = flagType;
-        if (flags && flags->usesSrc(needsToSetFlags)) {
-            storeLazyFlagsSrc(op->imm);
+    readWriteMem(width, calculateEaa(op), [needsToSetFlags, flagType, flags, src2, op, width, callback, this](RegPtr value) {
+        if (needsToSetFlags) {
+            storeLazyFlagType(flagType);
+            currentLazyFlags = flagType;
+            if (flags && flags->usesSrc(needsToSetFlags)) {
+                storeLazyFlagsSrc(op->imm);
+            }
         }
-    }
-
-    readWriteMem(width, calculateEaa(op), [needsToSetFlags, flags, src2, op, width, callback, this](RegPtr value) {
         if (flags && flags->usesDst(needsToSetFlags)) {
             storeLazyFlagsDest(value);
         }
@@ -777,7 +807,7 @@ void Jit::dshiftM(DecodedOp* op, JitWidth width, InstRegRegImm callback, LazyFla
         if (flags && flags->usesResult(needsToSetFlags)) {
             storeLazyFlagsResult(value);
         }
-    });
+    }, -1, needsToSetFlags != 0);
 }
 
 void Jit::dynamic_dshlr16r16(DecodedOp* op) {
@@ -787,7 +817,7 @@ void Jit::dynamic_dshle16r16(DecodedOp* op) {
     dshiftM(op, JitWidth::b16, &Jit::shldValue, FLAGS_DSHL16);
 }
 void Jit::dynamic_dshlr32r32(DecodedOp* op) {
-    dshift(op, JitWidth::b32, &Jit::shldValue, FLAGS_DSHL32);
+    dshiftDirect(op, JitWidth::b32, &Jit::shldValue, FLAGS_DSHL32);
 }
 void Jit::dynamic_dshle32r32(DecodedOp* op) {
     dshiftM(op, JitWidth::b32, &Jit::shldValue, FLAGS_DSHL32);
@@ -807,11 +837,11 @@ void Jit::dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFl
             andValue(JitWidth::b32, src, 0x1f);
         }
         If(JitWidth::b8, src); {
-            storeLazyFlagType(flagType);
-            if (flags && flags->usesSrc(needsToSetFlags)) {
-                storeLazyFlagsSrc(src);
-            }
-            readWriteMem(width, calculateEaa(op), [src, needsToSetFlags, flags, op, width, callback, this](RegPtr value) {
+            readWriteMem(width, calculateEaa(op), [src, needsToSetFlags, flagType, flags, op, width, callback, this](RegPtr value) {
+                storeLazyFlagType(flagType);
+                if (flags && flags->usesSrc(needsToSetFlags)) {
+                    storeLazyFlagsSrc(src);
+                }
                 if (flags && flags->usesDst(needsToSetFlags)) {
                     storeLazyFlagsDest(value);
                 }
@@ -819,7 +849,7 @@ void Jit::dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFl
                 if (flags && flags->usesResult(needsToSetFlags)) {
                     storeLazyFlagsResult(value);
                 }
-            });
+            }, -1, true);
         } EndIf();
         currentLazyFlags = FLAGS_NULL;
     } else {
@@ -884,7 +914,7 @@ void Jit::dynamic_dshre16r16(DecodedOp* op) {
     dshiftM(op, JitWidth::b16, &Jit::shrdValue, FLAGS_DSHR16);
 }
 void Jit::dynamic_dshrr32r32(DecodedOp* op) {
-    dshift(op, JitWidth::b32, &Jit::shrdValue, FLAGS_DSHR32);
+    dshiftDirect(op, JitWidth::b32, &Jit::shrdValue, FLAGS_DSHR32);
 }
 void Jit::dynamic_dshre32r32(DecodedOp* op) {
     dshiftM(op, JitWidth::b32, &Jit::shrdValue, FLAGS_DSHR32);

@@ -30,6 +30,8 @@ struct RamPage {
 	RAM_TYPE value = 0;
 };
 
+class LinearMemoryBacking;
+
 RamPage ramPageAlloc();
 RamPage ramPageAllocNativeContinuous(U8* native, U32 pageCount);
 RamPage ramPageAllocNative(U8* native);
@@ -41,6 +43,26 @@ void ramPageMarkSystem(RamPage page, bool isSystem);
 bool ramPageIsSystem(RamPage page);
 bool ramPageIsNative(RamPage page);
 
+// Native 64-bit JIT memory aperture. Pool-backed RAM is shared between the normal
+// soft-MMU address and a 4 GiB guest-address-shaped alias.
+void ramPageConfigureLinearMemory(bool disabled);
+bool ramPageUseLinearMemory();
+bool ramPageUseLinearMemoryAdjacent();
+bool ramPageUseLinearMemoryBacking();
+bool ramPageUseLinearMemoryFileCacheBlock();
+constexpr U32 LINEAR_MEMORY_RECOMPILE_FAULTS = 3;
+U32 ramPageLinearMemoryPageCount();
+U64 ramPageLinearMemoryApertureSize();
+bool ramPageAllocLinearMemoryBlock(RamPage* pages, U32 pageCount);
+std::shared_ptr<LinearMemoryBacking> ramPageCreateLinearMemoryBacking();
+bool ramPageAllocLinearMemoryBackingBlock(std::shared_ptr<LinearMemoryBacking>& backing, U32 guestPage, RamPage* pages, U32 pageCount);
+U8* ramPageReserveLinearMemoryData(U64 dataSize, U8** linearMemoryAddress);
+void ramPageReleaseLinearMemoryData(U8* data, U64 dataSize);
+U8* ramPageReserveLinearMemory();
+void ramPageReleaseLinearMemory(U8* address);
+void ramPageResetLinearMemory(U8* address);
+void ramPageRemoveLinearMemory(U8* address, U32 guestPage, U32 pageCount);
+U32 ramPageUpdateLinearMemory(U8* address, U32 guestPage, const RamPage* pages, U32 pageCount, bool canRead, bool canWrite, U32 currentMapping);
 void shutdownRam();
 
 inline U8* ramPageGet(RamPage page) {
