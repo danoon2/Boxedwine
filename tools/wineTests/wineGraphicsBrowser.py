@@ -52,6 +52,8 @@ class GraphicsSuite:
     group_arguments: tuple[str, ...] = ()
     environment: tuple[str, ...] = ()
     result_style: str = "wine"
+    redirect_output: bool = False
+    cleanup_wait_seconds: int | None = None
 
 
 GRAPHICS_SUITES = {
@@ -426,6 +428,11 @@ def parse_graphics_result(
         reason = "OpenGL shim ABI mismatch"
     elif browser_events:
         reason = "browser error: " + browser_events[-1]
+    elif suite.cleanup_wait_seconds is not None and (
+        timed_out or browser_exited_early or not payload.get("cleanupWaitSatisfied")
+        or not re.search(r"(?m)^BOXEDWINE_WINESERVER_CLEANUP_OK\s*$", output)
+    ):
+        reason = "browser cleanup observation did not complete"
     elif (
         requires_readbuffer_mutation
         and summary is not None
@@ -515,26 +522,32 @@ def build_launch_url(port: int, suite: GraphicsSuite, group: str) -> str:
     return f"http://127.0.0.1:{port}/boxedwine.html?{query}"
 
 
-def _observer_script(token: str, group: str, result_style: str) -> str:
+def _observer_script(token: str, group: str, result_style: str,
+                     cleanup_wait_seconds: int | None = None) -> str:
     token_json = json.dumps(token)
     group_json = json.dumps(group)
     result_style_json = json.dumps(result_style)
     progress_path_json = json.dumps(PROGRESS_PATH)
+    cleanup_wait_json = json.dumps(None if cleanup_wait_seconds is None else cleanup_wait_seconds * 1000)
     return f"""<script>
 (function() {{
   "use strict";
   const token = {token_json};
   const group = {group_json};
   const resultStyle = {result_style_json};
+  const cleanupWaitMs = {cleanup_wait_json};
   const endpoint = {progress_path_json} + "?token=" + encodeURIComponent(token);
   const consoleTail = [];
   const browserEvents = [];
   let complete = false;
   let lastSignature = "";
   let posting = false;
+  let cleanupObservedAt = null;
+  let cleanupWaitSatisfied = false;
 
   function stringify(value) {{
     if (typeof value === "string") return value;
+    if (value && typeof value.stack === "string") return value.stack;
     try {{ return JSON.stringify(value); }} catch (error) {{ return String(value); }}
   }}
 
@@ -554,7 +567,8 @@ def _observer_script(token: str, group: str, result_style: str) -> str:
       message: String(event.message || "unknown browser error"),
       source: String(event.filename || ""),
       line: Number(event.lineno || 0),
-      column: Number(event.colno || 0)
+      column: Number(event.colno || 0),
+      stack: String(event.error && event.error.stack || "")
     }});
   }});
   window.addEventListener("unhandledrejection", function(event) {{
@@ -582,6 +596,7 @@ def _observer_script(token: str, group: str, result_style: str) -> str:
       status: statusElement ? statusElement.textContent : "",
       heapBytes: heapBytes,
       browserEvents: browserEvents.slice(),
+      cleanupWaitSatisfied: cleanupWaitSatisfied,
       consoleTail: consoleTail.slice(),
       userAgent: navigator.userAgent,
       href: location.href,
@@ -626,8 +641,18 @@ def _observer_script(token: str, group: str, result_style: str) -> str:
   const timer = setInterval(function() {{
     const outputElement = document.getElementById("output");
     const output = outputElement ? outputElement.value : "";
-    if (!complete && (browserEvents.length > 0 || hasTestSummary(output) ||
-        output.indexOf("Boxedwine shutdown") !== -1)) {{
+    const hasSummary = hasTestSummary(output);
+    if (cleanupWaitMs !== null) {{
+      const cleanOutput = output.replace(/\\u001b\\[[0-?]*[ -/]*[@-~]/g, "").replace(/\\r/g, "\\n");
+      if (hasSummary && /^BOXEDWINE_WINESERVER_CLEANUP_OK\\s*$/m.test(cleanOutput) && cleanupObservedAt === null) {{
+        cleanupObservedAt = performance.now();
+      }}
+      cleanupWaitSatisfied = cleanupObservedAt !== null && performance.now() - cleanupObservedAt >= cleanupWaitMs;
+    }}
+    const finished = cleanupWaitMs === null
+        ? hasSummary || output.indexOf("Boxedwine shutdown") !== -1
+        : cleanupWaitSatisfied;
+    if (!complete && (browserEvents.length > 0 || finished)) {{
       complete = true;
       clearInterval(timer);
       post("complete");
@@ -690,8 +715,12 @@ def build_guest_test_command(
         wine_command = " ".join(
             ("env", *(shlex.quote(value) for value in environment), wine_command)
         )
+    # Standalone MinGW probes can otherwise produce Wine console cursor moves
+    # instead of spaces. Replay their output through the guest Linux shell.
+    redirect = " > /tmp/boxedwine-graphics-test.log 2>&1" if suite.redirect_output else ""
+    replay = "printf '\\r\\n'; cat /tmp/boxedwine-graphics-test.log; " if suite.redirect_output else ""
     return (
-        f"{wine_command}; test_status=$?; "
+        f"{wine_command}{redirect}; test_status=$?; {replay}"
         "/opt/wine/bin/wineserver -k && "
         "echo BOXEDWINE_WINESERVER_CLEANUP_OK; "
         "exit $test_status"
@@ -802,6 +831,45 @@ def _context_loss_restore_script() -> str:
 </script>"""
 
 
+def _redirected_probe_output_script() -> str:
+    # Read the isolated guest log directly: terminal replay can overwrite or
+    # lose buffered output when a short-lived probe destroys its last window.
+    return r"""<script>
+(function() {
+  const timer = setInterval(function() {
+    try {
+      const fs = typeof FS !== 'undefined' ? FS : Module.FS;
+      const text = fs.readFile(
+        '/root/app/__boxedwine_graphics_app.zip/tmp/boxedwine-graphics-test.log',
+        {encoding: 'utf8'});
+      if (!/tests executed[^]*skipped\./.test(text)) return;
+      const output = document.getElementById('output');
+      if (!output) return;
+      clearInterval(timer);
+      output.value += '\n' + text + '\n';
+      console.log('BOXEDWINE_REDIRECTED_PROBE_OUTPUT\n' + text);
+    } catch (error) {
+      // The runtime or the guest log may not exist yet.
+    }
+  }, 100);
+})();
+</script>"""
+
+
+def _worker_error_observer_script() -> str:
+    # Pthread failures otherwise reach the page as an ErrorEvent without the
+    # original worker's WASM stack. Capture it before Emscripten forwards it.
+    return """if (typeof document === 'undefined' && typeof addEventListener === 'function') {
+  addEventListener('error', function(event) {
+    console.error('BOXEDWINE_WORKER_ERROR ' + JSON.stringify({
+      message: event.message, stack: String(event.error && event.error.stack || ''),
+      source: event.filename, line: event.lineno, column: event.colno
+    }));
+  });
+}
+"""
+
+
 def inject_test_harness(
     html_text: str,
     token: str,
@@ -809,7 +877,9 @@ def inject_test_harness(
     group: str,
     mode: str | None = None,
 ) -> str:
-    observer_script = _observer_script(token, group, suite.result_style)
+    observer_script = _observer_script(token, group, suite.result_style, suite.cleanup_wait_seconds)
+    if suite.redirect_output:
+        observer_script += _redirected_probe_output_script()
     override_script = _command_override_script(suite, group, mode)
     mutation_script = ""
     if suite.name == "opengl-marshal":
@@ -901,6 +971,10 @@ def _make_handler(
                     mode,
                 )
                 self._send_bytes(injected.encode("utf-8"), "text/html; charset=utf-8")
+                return
+            if request_path == "boxedwine.js" and suite.cleanup_wait_seconds is not None:
+                script = _worker_error_observer_script().encode("utf-8") + (build_dir / "boxedwine.js").read_bytes()
+                self._send_bytes(script, "application/javascript; charset=utf-8")
                 return
             if request_path in aliases:
                 self._send_file(aliases[request_path])
@@ -1143,6 +1217,7 @@ def run_browser_test(
             "python": platform.python_version(),
         },
         "mode": mode,
+        "cleanup_wait_seconds": suite.cleanup_wait_seconds,
         "launch_url": launch_url,
         "inputs": {
             "build_dir": str(Path(build_dir).resolve()),

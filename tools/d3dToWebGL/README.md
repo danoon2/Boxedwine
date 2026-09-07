@@ -1,5 +1,22 @@
 # Wine 11 DirectX-to-WebGL patch series
 
+The September 7 candidate uses
+[`webgl-test-divergences-v4.json`](../wineTests/webgl-test-divergences-v4.json).
+Apply production patches 1–10 below, then
+`webgl-graphics-correctness-against-wine-11.0.patch`,
+`webgl-clip-plane-state-against-wine-11.0.patch`,
+`webgl-zero-clip-capability-against-wine-11.0.patch`, and
+`webgl-depth-range-against-wine-11.0.patch`, then the separate
+`webgl-tests-viewport-against-wine-11.0.patch` test adaptation.
+Apply only this complete test patch, without any earlier test adaptation.
+It restores D3D9 viewport coverage and removes DirectDraw's broad white-pixel
+viewport TODO. See [`WEBGL_DEPTH.md`](../wineTests/WEBGL_DEPTH.md) for the depth
+bridge correction and validation; both a new browser build and filesystem are
+required. The [v3 manifest](../wineTests/webgl-test-divergences-v3.json) retains
+the previous A4/clip-plane candidate described in
+[`WEBGL_FIXES.md`](../wineTests/WEBGL_FIXES.md).
+The original v2 series below remains the reproducible published-v11 input.
+
 Apply these patches, in order, to the official Wine 11 source commit
 `db11d0fe6a169c457e23d007e20404643d067aa8`:
 

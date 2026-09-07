@@ -66,6 +66,37 @@ class AppZipTests(unittest.TestCase):
 
 
 class ResultParsingTests(unittest.TestCase):
+    def test_cleanup_probe_requires_marker_and_completed_observation(self):
+        suite = graphics.GraphicsSuite("shutdown", "probe.exe", ("stateblock",), cleanup_wait_seconds=15)
+        summary = wine_output(shutdown=False)
+        for output, observed, passed in (
+            (summary, False, False),
+            (summary + "command: echo BOXEDWINE_WINESERVER_CLEANUP_OK\n", True, False),
+            (summary + "BOXEDWINE_WINESERVER_CLEANUP_OK\n", False, False),
+            (summary + "BOXEDWINE_WINESERVER_CLEANUP_OK\n", True, True),
+        ):
+            with self.subTest(output=output, observed=observed):
+                result = graphics.parse_graphics_result(suite, "stateblock", {
+                    "output": output, "cleanupWaitSatisfied": observed})
+                self.assertEqual(passed, result.passed)
+
+    def test_cleanup_probe_rejects_timeout_after_passing_summary(self):
+        suite = graphics.GraphicsSuite("shutdown", "probe.exe", ("stateblock",), cleanup_wait_seconds=15)
+        result = graphics.parse_graphics_result(suite, "stateblock", {
+            "output": wine_output() + "BOXEDWINE_WINESERVER_CLEANUP_OK\n",
+            "cleanupWaitSatisfied": True}, timed_out=True)
+        self.assertFalse(result.passed)
+        self.assertEqual("browser cleanup observation did not complete", result.reason)
+
+    def test_cleanup_probe_rejects_late_worker_error(self):
+        suite = graphics.GraphicsSuite("shutdown", "probe.exe", ("stateblock",), cleanup_wait_seconds=15)
+        result = graphics.parse_graphics_result(suite, "stateblock", {
+            "output": wine_output() + "BOXEDWINE_WINESERVER_CLEANUP_OK\n",
+            "cleanupWaitSatisfied": True,
+            "browserEvents": [{"kind": "error", "message": "late worker trap"}]})
+        self.assertFalse(result.passed)
+        self.assertIn("late worker trap", result.reason)
+
     def test_zero_failure_summary_without_shutdown_passes(self):
         result = graphics.parse_graphics_result(
             graphics.GRAPHICS_SUITES["d3d9"],
@@ -607,6 +638,22 @@ class BrowserHarnessTests(unittest.TestCase):
         self.assertTrue(command.startswith("/bin/wine d3d9_test.exe stateblock;"))
         self.assertIn("/opt/wine/bin/wineserver -k", command)
         self.assertIn("BOXEDWINE_WINESERVER_CLEANUP_OK", command)
+
+    def test_probe_output_replay_preserves_guest_exit_status(self):
+        suite = graphics.GraphicsSuite("probe", "probe.exe", ("caps",), redirect_output=True)
+        command = graphics.build_guest_test_command(suite, "caps")
+        self.assertIn("probe.exe caps > /tmp/boxedwine-graphics-test.log 2>&1; test_status=$?;", command)
+        self.assertTrue(command.endswith("exit $test_status"))
+        self.assertLess(command.index("cat /tmp/"), command.index("/opt/wine/bin/wineserver"))
+
+    def test_redirected_log_capture_is_limited_to_opted_in_probes(self):
+        html = '<body><script src="boxedwine-shell.js"></script></body>'
+        ordinary = graphics.inject_test_harness(html, "token", graphics.GRAPHICS_SUITES["d3d9"], "visual")
+        probe = graphics.GraphicsSuite("probe", "probe.exe", ("caps",), redirect_output=True)
+        redirected = graphics.inject_test_harness(html, "token", probe, "caps")
+        self.assertNotIn("BOXEDWINE_REDIRECTED_PROBE_OUTPUT", ordinary)
+        self.assertIn("BOXEDWINE_REDIRECTED_PROBE_OUTPUT", redirected)
+        self.assertIn("/root/app/__boxedwine_graphics_app.zip/tmp/boxedwine-graphics-test.log", redirected)
 
     def test_opengl_command_sets_harness_environment_and_test_selector(self):
         command = graphics.build_guest_test_command(

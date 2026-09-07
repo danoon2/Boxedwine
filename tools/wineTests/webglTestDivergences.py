@@ -131,13 +131,11 @@ def _validate_patch_hash(expected_hash: object, path: Path, label: str) -> None:
 
 def load_and_validate(
     manifest_path: Path,
-    production_patch_paths: tuple[Path, ...] | list[Path],
-    test_patch_path: Path,
+    production_patch_paths: tuple[Path, ...] | list[Path] | None = None,
+    test_patch_path: Path | None = None,
 ) -> dict:
     """Load a v2 manifest and require an exact ordered patch-series boundary."""
     manifest_path = Path(manifest_path)
-    production_patch_paths = tuple(Path(path) for path in production_patch_paths)
-    test_patch_path = Path(test_patch_path)
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except FileNotFoundError as error:
@@ -156,6 +154,23 @@ def load_and_validate(
     production_entries = manifest.get("production_patches")
     if not isinstance(production_entries, list) or not production_entries:
         raise DivergenceError("production_patches must be a nonempty array")
+    repo_root = Path(__file__).resolve().parents[2]
+
+    def manifest_patch_path(entry):
+        value = entry.get("path") if isinstance(entry, dict) else None
+        if not isinstance(value, str) or not value or ":" in value or "\\" in value:
+            raise DivergenceError("patch path must be relative to the repository")
+        path = (repo_root / value).resolve()
+        if Path(value).is_absolute() or not path.is_relative_to(repo_root):
+            raise DivergenceError(f"patch path escapes repository: {value}")
+        return path
+
+    if production_patch_paths is None:
+        production_patch_paths = [manifest_patch_path(entry) for entry in production_entries]
+    production_patch_paths = tuple(Path(path) for path in production_patch_paths)
+    if test_patch_path is None:
+        test_patch_path = manifest_patch_path(manifest.get("test_patch"))
+    test_patch_path = Path(test_patch_path)
     if len(production_entries) != len(production_patch_paths):
         raise DivergenceError(
             "production patch count does not match divergence manifest: "
@@ -301,7 +316,6 @@ def load_and_validate(
 
 
 def main(argv: list[str] | None = None) -> int:
-    repo_root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(
         description="Validate the Wine WebGL production/test patch split."
     )
@@ -320,54 +334,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--test-patch",
         type=Path,
-        default=repo_root
-        / "tools"
-        / "d3dToWebGL"
-        / "webgl-tests-against-wine-11.0.patch",
+        help="test-only patch override; defaults to the selected manifest",
     )
     arguments = parser.parse_args(argv)
-    production_patches = arguments.production_patches or [
-        repo_root
-        / "tools"
-        / "d3dToWebGL"
-        / "webgl-build-config-against-wine-11.0.patch",
-        repo_root
-        / "tools"
-        / "d3dToWebGL"
-        / "webgl-adapter-context-caps-against-wine-11.0.patch",
-        repo_root
-        / "tools"
-        / "d3dToWebGL"
-        / "webgl-shader-generation-glsl-es-against-wine-11.0.patch",
-        repo_root
-        / "tools"
-        / "d3dToWebGL"
-        / "webgl-texture-formats-transfers-against-wine-11.0.patch",
-        repo_root
-        / "tools"
-        / "d3dToWebGL"
-        / "webgl-blitter-batching-against-wine-11.0.patch",
-        repo_root
-        / "tools"
-        / "d3dToWebGL"
-        / "webgl-directdraw-runtime-presentation-against-wine-11.0.patch",
-        repo_root
-        / "tools"
-        / "d3dToWebGL"
-        / "webgl-d3dx9-assets-compatibility-against-wine-11.0.patch",
-        repo_root
-        / "tools"
-        / "d3dToWebGL"
-        / "webgl-d3dxof-parser-hardening-against-wine-11.0.patch",
-        repo_root
-        / "tools"
-        / "d3dToWebGL"
-        / "webgl-wined3d-draw-state-query-against-wine-11.0.patch",
-        repo_root
-        / "tools"
-        / "d3dToWebGL"
-        / "webgl-d3d8-d3d9-compatibility-diagnostics-against-wine-11.0.patch",
-    ]
+    production_patches = arguments.production_patches
     try:
         manifest = load_and_validate(
             arguments.manifest,

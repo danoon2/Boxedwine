@@ -6,6 +6,13 @@ The current supported host environment is Debian or WSL running Debian/Ubuntu-st
 
 ## Wine 11 DirectX-to-WebGL Filesystems
 
+The September 7 graphics candidate is documented in
+[`WEBGL_DEPTH.md`](../wineTests/WEBGL_DEPTH.md) and pinned separately by
+`webgl_filesystems_candidate.json`. Select that config explicitly to build or
+validate the A4 texture, clip-capability, and viewport depth fixes. The depth
+fix also requires a new BoxedWine browser runtime. The published v11 config
+below continues to identify the existing release.
+
 The local and published demo sites use the single v11 `TinyCore15Wine11.0.zip`
 release pinned in `webgl_filesystems_v11.json`. It includes the branch's direct
 int99 GL/EGL/GLES stubs and the current patched WebGL DLLs. GDI is a per-demo

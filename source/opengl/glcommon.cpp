@@ -21,6 +21,7 @@
 #ifdef BOXEDWINE_OPENGL
 #include GLH
 #ifdef __EMSCRIPTEN__
+#include <GLES2/gl2.h>
 #include <emscripten/html5.h>
 #include <emscripten.h>
 #include "emscriptenGLProcAddress.h"
@@ -314,6 +315,10 @@ static bool isOpenGLProcAddressAvailable(const char* name) {
     if (boxedwineIsUnsupportedEmscriptenGLProcAddress(name)) {
         return false;
     }
+    // This core entry uses our typed WebGL wrapper, not SDL's desktop lookup.
+    if (!strcmp(name, "glDepthRange")) {
+        return true;
+    }
 #endif
 
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
@@ -429,6 +434,16 @@ void glcommon_glClearDepth(CPU* cpu) {
     }
 #endif
     GL_LOG("glClearDepth GLclampd depth=%f", dARG1);
+}
+
+void glcommon_glDepthRange(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    // The desktop proc-address entry does not update WebGL depth state.
+    glDepthRangef((GLfloat)dARG1, (GLfloat)dARG3);
+#else
+    GL_FUNC(pglDepthRange)(dARG1, dARG3);
+#endif
+    GL_LOG("glDepthRange GLclampd near=%f, GLclampd far=%f", dARG1, dARG3);
 }
 
 void glcommon_glDepthFunc(CPU* cpu) {

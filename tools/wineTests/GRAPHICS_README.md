@@ -16,6 +16,13 @@ text area to the runner and reports completion when the selected Wine group
 prints its final test summary. A graceful `Boxedwine shutdown` is also
 recognized, but is not required after an authoritative Wine summary.
 
+The September graphics candidate, its focused regressions, and reproducible Wine
+patch series are documented in [WEBGL_FIXES.md](WEBGL_FIXES.md).
+The following viewport depth correction is documented in [WEBGL_DEPTH.md](WEBGL_DEPTH.md).
+The multithreaded JIT cleanup investigation and optional
+`runGraphicsProbe.py --cleanup-wait-seconds` check are documented in
+[WEBGL_SHUTDOWN.md](WEBGL_SHUTDOWN.md).
+
 ## DirectDraw baseline
 
 Start with Wine's small DirectDraw `refcount` group:
@@ -100,6 +107,12 @@ reliable.
 
 ## Exact result baseline
 
+The September 6 v11 refresh and exception audit are recorded in
+[WEBGL_REVIEW.md](WEBGL_REVIEW.md). The July baseline remains the accepted
+reference while newly exposed failures are investigated. That review also
+documents an independent clip-plane probe that detects a defect hidden by a
+whole-test WebGL skip.
+
 `graphics-baseline-v1.json` covers every supported DirectDraw, D3D8, D3D9,
 D3DX9, and D3DXOF group. It records exact assertion, todo, failure, and skip
 counts plus accepted Wine source locations. The default runner rejects any
@@ -138,8 +151,8 @@ D3DX9 assets/compatibility, D3DXOF parser-hardening, WineD3D
 draw/state/query, or D3D8/D3D9 compatibility/diagnostics production patches
 contains Wine test files.
 `webgl-test-divergences-v2.json` pins the ordered patch series and the official
-Wine 11 source commit, then classifies all 42 unique added
-`skip()` rules (65 calls) and all 14 unique added `todo_wine_if()` rules
+Wine 11 source commit, then classifies all 41 unique added
+`skip()` rules (63 calls) and all 14 unique added `todo_wine_if()` rules
 (44 calls) into exactly one of:
 
 - `intentional_webgl_limit`

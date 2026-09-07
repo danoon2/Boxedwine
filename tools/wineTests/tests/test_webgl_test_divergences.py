@@ -150,6 +150,25 @@ class WebGLTestDivergenceTests(unittest.TestCase):
             ),
         )
 
+    def test_selected_manifest_resolves_its_own_patch_series(self):
+        for version, patch_count, skip_count, todo_count in ((2, 10, 63, 44), (3, 13, 62, 44), (4, 14, 61, 43)):
+            with self.subTest(version=version):
+                manifest = self.module.load_and_validate(
+                    DEFAULT_MANIFEST.with_name(f"webgl-test-divergences-v{version}.json")
+                )
+                self.assertEqual(patch_count, manifest["_series_counts"]["production_patches"])
+                self.assertEqual(skip_count, manifest["_policy_counts"]["skip_calls"])
+                self.assertEqual(todo_count, manifest["_policy_counts"]["todo_calls"])
+
+    def test_manifest_derived_patch_cannot_escape_repository(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manifest = json.loads(DEFAULT_MANIFEST.read_text())
+            manifest["production_patches"][0]["path"] = "../outside.patch"
+            path = Path(temp_dir) / "manifest.json"
+            path.write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(self.module.DivergenceError, "escapes repository"):
+                self.module.load_and_validate(path)
+
     def test_unclassified_added_skip_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)

@@ -1989,8 +1989,6 @@ def main(argv: list[str] | None = None) -> int:
                 try:
                     divergences = divergence_validator.load_and_validate(
                         arguments.webgl_test_divergences.expanduser().resolve(),
-                        DEFAULT_WINE_WEBGL_PRODUCTION_PATCHES,
-                        DEFAULT_WINE_WEBGL_TEST_PATCH,
                     )
                 except divergence_validator.DivergenceError as error:
                     raise RunnerError(str(error)) from error
