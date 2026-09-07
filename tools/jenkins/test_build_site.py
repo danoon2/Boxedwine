@@ -3,6 +3,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 from unittest import mock
 
 import build_site
@@ -15,6 +16,37 @@ def create_zip(path, files=None):
 
 
 class DemoRootSelectionTests(unittest.TestCase):
+    def test_v11_migrates_old_gdi_roots_and_leaves_other_demos_at_default(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            demo_source = Path(temp_dir)
+            for name in ("TinyCore15Wine11.0.zip", "boxedwine.3.zip", "boxedwine.gdi.3.zip"):
+                create_zip(demo_source / name)
+            for name in ("gdi.zip", "normal.zip", "explicit.zip"):
+                create_zip(demo_source / name, {"game.exe": b""})
+            (demo_source / "demos.json").write_text(json.dumps({"demos": {
+                "gdi.zip": {"exe": "game.exe", "root": "boxedwine.gdi.3.zip"},
+                "normal.zip": {"exe": "game.exe", "root": "boxedwine.3.zip"},
+                "explicit.zip": {"exe": "game.exe", "directDrawRenderer": "gdi"},
+            }}))
+            demos = {demo["zip"]: demo for demo in build_site.discover_demos(demo_source)}
+
+        self.assertEqual({"gdi.zip", "normal.zip", "explicit.zip"}, set(demos))
+        for name, expected in (("gdi.zip", "gdi"), ("normal.zip", None), ("explicit.zip", "gdi")):
+            demo = demos[name]
+            self.assertEqual("TinyCore15Wine11.0.zip", demo["root"])
+            self.assertEqual(expected, demo["directDrawRenderer"])
+            for url in (
+                build_site.build_demo_launch_url("st", demo),
+                build_site.demo_launch_url("branch", "1", "mt-jit", demo),
+            ):
+                query = parse_qs(urlsplit(url).query)
+                if expected is None:
+                    self.assertEqual(["game.exe"], query["p"])
+                    self.assertNotIn("args", query)
+                else:
+                    self.assertEqual(["cmd"], query["p"])
+                    self.assertIn(f'/v DirectDrawRenderer /t REG_SZ /d {expected} /f && "game.exe"', query["args"][0])
+
     def test_per_demo_root_is_used_and_root_zips_are_not_demos(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
@@ -233,6 +265,33 @@ class DemoRootValidationTests(unittest.TestCase):
 
 
 class DemoWindowsVersionTests(unittest.TestCase):
+    def test_renderer_and_windows_version_share_one_launcher_and_preserve_args(self):
+        demo = {
+            "zip": "game.zip", "program": "Game Folder/game.exe",
+            "windowsVersion": "win98", "directDrawRenderer": "gdi",
+            "urlParams": [("args", "-setup"), ("bpp", "16")],
+        }
+        query = parse_qs(urlsplit(build_site.demo_launch_url("branch", "1", "mt", demo)).query)
+        self.assertEqual(["cmd"], query["p"])
+        self.assertEqual(["16"], query["bpp"])
+        self.assertEqual(1, len(query["args"]))
+        self.assertEqual(
+            '/c reg add "HKCU\\Software\\Wine\\Direct3D" '
+            '/v DirectDrawRenderer /t REG_SZ /d gdi /f && '
+            'reg add "HKCU\\Software\\Wine\\AppDefaults\\game.exe" '
+            '/v Version /t REG_SZ /d win98 /f && "Game Folder/game.exe" -setup',
+            query["args"][0],
+        )
+
+    def test_renderer_can_wrap_an_existing_batch_file(self):
+        program, params = build_site.apply_demo_settings("c:/c3.bat", [], direct_draw_renderer="gdi")
+        self.assertEqual("cmd", program)
+        self.assertTrue(dict(params)["args"].endswith('&& "c:/c3.bat"'))
+
+    def test_invalid_renderer_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Invalid DirectDraw renderer"):
+            build_site.apply_demo_settings("game.exe", [], direct_draw_renderer="invalid")
+
     def test_windows_version_wraps_only_the_selected_demo(self):
         tomb_demo = {
             "zip": "TombRaider3.zip",

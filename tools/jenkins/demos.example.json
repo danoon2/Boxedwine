@@ -8,7 +8,7 @@
     "c3.zip": {
       "title": "Caesar III Demo (1998 DirectDraw)",
       "exe": "c:/c3.bat",
-      "root": "boxedwine.gdi.3.zip",
+      "directDrawRenderer": "gdi",
       "description": "City-building strategy demo running from a Wine drive overlay."
     },
     "drowned.zip": {
@@ -30,7 +30,7 @@
     "mdkperf.zip": {
       "title": "MDK Performance Test (1999 DirectDraw)",
       "exe": "PERF_W95.EXE",
-      "root": "boxedwine.gdi.3.zip",
+      "directDrawRenderer": "gdi",
       "urlParams": {
         "bpp": "8",
         "resolution": "640x480"
@@ -56,7 +56,7 @@
     "videodd1.zip": {
       "title": "VideoDD Benchmark (2003 DirectDraw)",
       "exe": "onedd.exe",
-      "root": "boxedwine.gdi.3.zip",
+      "directDrawRenderer": "gdi",
       "description": "Benchmark measures graphics speeds via DirectDraw functions."
     }
   }

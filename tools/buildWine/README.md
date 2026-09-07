@@ -6,6 +6,31 @@ The current supported host environment is Debian or WSL running Debian/Ubuntu-st
 
 ## Wine 11 DirectX-to-WebGL Filesystems
 
+The local and published demo sites use the single v11 `TinyCore15Wine11.0.zip`
+release pinned in `webgl_filesystems_v11.json`. It includes the branch's direct
+int99 GL/EGL/GLES stubs and the current patched WebGL DLLs. GDI is a per-demo
+launch setting; a separate GDI filesystem is not required.
+
+Validate the exact upload artifact from WSL with:
+
+```bash
+python3 tools/buildWine/webgl_filesystem.py validate \
+  --config tools/buildWine/webgl_filesystems_v11.json --profile full-v11 \
+  --filesystem /path/to/TinyCore15Wine11.0.zip --write-sidecar
+```
+
+The v11 `TinyCore15WineBase.zip` uses the same GL/EGL/GLES libraries, links,
+and loader cache, without Wine or an initialized `.wine` prefix. Validate it with:
+
+```bash
+python3 tools/buildWine/webgl_filesystem.py validate \
+  --config tools/buildWine/webgl_filesystems_v11.json --profile base-v11 \
+  --filesystem /path/to/TinyCore15WineBase.zip --write-sidecar
+```
+
+The following v3/v10 commands and manifest remain available for historical
+filesystem reproduction and validation.
+
 `webgl_filesystem.py` is the pinned build, packaging, and validation command
 for the Wine 11 PE32 DLL overrides used by Emscripten. Its checked-in
 `webgl_filesystems_v3.json` records the exact Wine commit, ordered patch
@@ -132,14 +157,17 @@ The final zip includes:
 
 ```json
 "base_filesystem": {
-  "url": "https://boxedwine.org/v2/10/TinyCore15WineBase.zip",
+  "url": "https://boxedwine.org/v2/11/TinyCore15WineBase.zip",
   "filename": "TinyCore15WineBase.zip",
-  "size": 66718539,
-  "sha256": "94dac0c3b8c995b31df85534fd8699c98485c5906f5d4d727e6bf6842ff78906"
+  "size": 69911741,
+  "sha256": "93af8a5be6ede0ac7922c193ca4e9f34a52217fefd2b4b12cc9f0449ed3f57ef"
 }
 ```
 
 If `TinyCore15WineBase.zip` already exists locally, the script verifies that it is a valid zip and that it matches the configured size and SHA-256. If the file is stale, such as an older v5 base with the same filename, it is downloaded again before packaging.
+
+Upload the exact validated v11 base ZIP to that URL before running builds that
+download it. Older copies at the same URL will fail the size/hash check.
 
 If a config does not provide `size` or `sha256`, the script tries a remote `HEAD` request and compares `Content-Length` as a fallback.
 

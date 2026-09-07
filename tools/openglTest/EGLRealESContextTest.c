@@ -46,7 +46,8 @@ static void test_shader_compile(void) {
     glDeleteShader(shader);
 }
 
-static void test_program_vbo_draw(void) {
+static void test_program_vbo_draw(EGLDisplay display, EGLConfig config,
+        EGLSurface surface, EGLContext context) {
     const char* vertexSource =
         "attribute vec2 a_pos;\n"
         "void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }\n";
@@ -88,6 +89,20 @@ static void test_program_vbo_draw(void) {
     glUseProgram(program);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * (int)sizeof(float), (const void*)0);
+
+    // Creating another guest context on the browser's shared canvas must not
+    // disable the vertex arrays already configured by the original context.
+    const EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
+    EGLContext secondary = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
+    GLint enabled = GL_FALSE;
+    if (!secondary || !eglMakeCurrent(display, surface, surface, secondary) ||
+        !eglMakeCurrent(display, surface, surface, context)) {
+        fail("GLES secondary context switch");
+    }
+    glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &enabled);
+    if (enabled != GL_TRUE) fail("secondary context disabled the original vertex array");
+    if (!eglDestroyContext(display, secondary)) fail("GLES secondary context cleanup");
+
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -397,7 +412,7 @@ void _start(void) {
         fail("GLES clear/readpixels color");
     }
     test_shader_compile();
-    test_program_vbo_draw();
+    test_program_vbo_draw(display, config, surface, context);
     test_texture_sample_draw();
 
     if (!eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) ||

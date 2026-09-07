@@ -64,6 +64,22 @@ static SDL_GLContext toSDLGLContext(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context) {
     return (SDL_GLContext)(uintptr_t)context;
 }
 
+EM_JS(bool, boxedwineNeedsInitialVertexArrayReset, (), {
+    var gl = GL.currentContext && GL.currentContext.GLctx;
+    if (!gl) {
+        return false;
+    }
+    if (!Module.__boxedwineInitializedGuestGLContexts) {
+        Module.__boxedwineInitializedGuestGLContexts = new WeakSet();
+    }
+    var initialized = Module.__boxedwineInitializedGuestGLContexts;
+    if (initialized.has(gl)) {
+        return false;
+    }
+    initialized.add(gl);
+    return true;
+});
+
 static bool useThreadWebGLCanvas() {
     const char* value = getenv("BOXEDWINE_WEBGL_THREAD_CANVAS");
     return !value || !value[0] || value[0] != '0';
@@ -1319,10 +1335,12 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
         if (result) {
             loadSdlExtensions();
 #ifdef __EMSCRIPTEN__
-            if (createdContext && !context->webglContext) {
+            if (createdContext && !context->webglContext && boxedwineNeedsInitialVertexArrayReset()) {
                 // SDL's renderer can leave attributes enabled on the canvas's
                 // default VAO before the first guest GL context is created.
-                // A new context must start with all vertex arrays disabled.
+                // SDL context handles on the same canvas reuse one WebGL
+                // context. Reset it only on first guest use; resetting another
+                // handle would disable an existing Wine context's arrays.
                 GLint attributeCount = 0;
                 pglGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &attributeCount);
                 for (GLint i = 0; i < attributeCount; ++i) {
@@ -1336,7 +1354,11 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             context->currentWindow = window;
             context->currentPbufferWindow = nullptr;
 #ifdef __EMSCRIPTEN__
-            window->showWindow(true);
+            // Capability probes bind contexts without ever presenting a frame.
+            // Keep GDI visible until the guest actually swaps the GL window.
+            if (!deferGlWindowShowUntilSwap()) {
+                window->showWindow(true);
+            }
 #endif
             return true;
         } else {

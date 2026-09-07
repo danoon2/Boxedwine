@@ -133,7 +133,22 @@
 			Config.resolution = getResolution();
 			Config.ddrawOverridePath = getDDrawOverridePath();
 			Config.payloadZipFile = "app.zip";
-			Config.d_drive = "/d_drive";
+            configureBrowserStorage();
+        }
+        function configureBrowserStorage() {
+            // IDBFS names databases after their mount points. Keep each game's
+            // Wine prefix and D: drive together, independent of build or root ZIP.
+            let key = "";
+            if (Config.appZipFile.length > 0) {
+                key = "app/" + encodeURIComponent(decodeUrlValue(Config.appZipFile));
+            } else if (Config.extraZipFiles.length > 0) {
+                key = "overlay/" + Config.extraZipFiles.map(function(name) {
+                    return encodeURIComponent(decodeUrlValue(name));
+                }).join("+");
+            }
+            // Desktop/upload launches without an archive retain their existing storage.
+            ROOT = key ? "/root/" + key : "/root";
+            Config.d_drive = key ? "/d_drive/" + key : "/d_drive";
         }
         function getStorageMode() {
             var storage = getParameter("storage").trim().toLowerCase();
@@ -616,8 +631,8 @@
         }
         function initBrowserFilesystem(callback) {
     		console.log("Use Storage mode: "+Config.storageMode);
-			FS.mkdir(ROOT);
-			FS.mkdir(Config.d_drive);
+            FS.mkdirTree(ROOT);
+            FS.mkdirTree(Config.d_drive);
 			if (Config.storageMode == STORAGE_INDEXED_DB) {
 	  			FS.mount(IDBFS, {autoPersist: true}, ROOT);
 	  			if (Config.persist_d_drive) {

@@ -813,7 +813,7 @@ def create_parser() -> argparse.ArgumentParser:
     validate = subparsers.add_parser("validate", help="validate one filesystem ZIP")
     add_config_argument(validate)
     validate.add_argument("--filesystem", type=Path, required=True)
-    validate.add_argument("--profile", choices=("normal-v3", "gdi-v3", "full-v10", "base-v10"))
+    validate.add_argument("--profile", help="profile name declared in the selected config")
     validate.add_argument("--report", type=Path)
     validate.add_argument("--write-sidecar", action="store_true")
 

@@ -130,7 +130,7 @@ private:
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
     U32 additionalSDLWindowFlags = 0;
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     U8* emscriptenSoftwareBuffer = nullptr;
     U32 emscriptenSoftwareBufferSize = 0;
     bool emscriptenSoftwareDirty = false;

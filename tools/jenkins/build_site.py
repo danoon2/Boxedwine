@@ -22,9 +22,11 @@ import webgl_filesystem
 
 
 DEFAULT_PUBLIC_URL = "https://boxedwine.org/builds/"
-DEFAULT_DEMO_ROOT_ZIP = "boxedwine.3.zip"
+DEFAULT_DEMO_ROOT_ZIP = "TinyCore15Wine11.0.zip"
 LEGACY_DEMO_ROOT_ZIP = "boxedwine.zip"
-DEFAULT_DEMO_ROOT_CONFIG = BUILD_WINE_DIR / "webgl_filesystems_v3.json"
+PREVIOUS_DEMO_ROOT_ZIP = "boxedwine.3.zip"
+PREVIOUS_GDI_ROOT_ZIP = "boxedwine.gdi.3.zip"
+DEFAULT_DEMO_ROOT_CONFIG = BUILD_WINE_DIR / "webgl_filesystems_v11.json"
 DEMO_RUNNER_SPECS = (
     ("st", "Single Threaded", "single_threaded_dir"),
     ("mt", "Multi Threaded", "multi_threaded_dir"),
@@ -201,15 +203,20 @@ def normalize_demo_url_params(params):
     return []
 
 
-def apply_demo_windows_version(program, url_params, windows_version):
-    if not windows_version:
+def apply_demo_settings(program, url_params, windows_version=None, direct_draw_renderer=None):
+    if not windows_version and direct_draw_renderer is None:
         return program, url_params
 
-    windows_version = str(windows_version).lower()
-    if windows_version not in WINE_WINDOWS_VERSIONS:
-        raise ValueError(f"Invalid Wine Windows version: {windows_version}")
+    if windows_version:
+        windows_version = str(windows_version).lower()
+        if windows_version not in WINE_WINDOWS_VERSIONS:
+            raise ValueError(f"Invalid Wine Windows version: {windows_version}")
+    if direct_draw_renderer is not None:
+        direct_draw_renderer = str(direct_draw_renderer).lower()
+        if direct_draw_renderer not in {"opengl", "gdi"}:
+            raise ValueError(f"Invalid DirectDraw renderer: {direct_draw_renderer}")
     if not program:
-        raise ValueError("A demo with windowsVersion must specify an executable")
+        raise ValueError("A demo with launch settings must specify an executable")
 
     original_args = []
     remaining_params = []
@@ -219,12 +226,19 @@ def apply_demo_windows_version(program, url_params, windows_version):
         else:
             remaining_params.append((key, value))
 
-    app_name = Path(program.replace("\\", "/")).name
-    command = (
-        f'/c reg add "HKCU\\Software\\Wine\\AppDefaults\\{app_name}" '
-        f"/v Version /t REG_SZ /d {windows_version} /f "
-        f'&& "{program}"'
-    )
+    commands = []
+    if direct_draw_renderer is not None:
+        commands.append(
+            'reg add "HKCU\\Software\\Wine\\Direct3D" '
+            f'/v DirectDrawRenderer /t REG_SZ /d {direct_draw_renderer} /f'
+        )
+    if windows_version:
+        app_name = Path(program.replace("\\", "/")).name
+        commands.append(
+            f'reg add "HKCU\\Software\\Wine\\AppDefaults\\{app_name}" '
+            f"/v Version /t REG_SZ /d {windows_version} /f"
+        )
+    command = '/c ' + ' && '.join([*commands, f'"{program}"'])
     if original_args:
         command += " " + " ".join(original_args)
 
@@ -1027,10 +1041,11 @@ def demo_launch_url(branch_slug, build_number, mode, demo):
         ("root", demo.get("root", DEFAULT_DEMO_ROOT_ZIP)),
         (demo.get("zipParam", "app"), demo["zip"]),
     ]
-    launch_program, url_params = apply_demo_windows_version(
+    launch_program, url_params = apply_demo_settings(
         demo["program"],
         demo.get("urlParams", []),
         demo.get("windowsVersion"),
+        demo.get("directDrawRenderer"),
     )
     if launch_program:
         params.append(("p", launch_program))
@@ -1044,10 +1059,11 @@ def build_demo_launch_url(mode, demo):
         ("root", demo.get("root", DEFAULT_DEMO_ROOT_ZIP)),
         (demo.get("zipParam", "app"), demo["zip"]),
     ]
-    launch_program, url_params = apply_demo_windows_version(
+    launch_program, url_params = apply_demo_settings(
         demo["program"],
         demo.get("urlParams", []),
         demo.get("windowsVersion"),
+        demo.get("directDrawRenderer"),
     )
     if launch_program:
         params.append(("p", launch_program))
@@ -1075,6 +1091,8 @@ def discover_demos(demo_source):
     default_root = (
         DEFAULT_DEMO_ROOT_ZIP
         if DEFAULT_DEMO_ROOT_ZIP in available_zip_names
+        else PREVIOUS_DEMO_ROOT_ZIP
+        if PREVIOUS_DEMO_ROOT_ZIP in available_zip_names
         else LEGACY_DEMO_ROOT_ZIP
     )
     root_zip_names = {
@@ -1095,6 +1113,17 @@ def discover_demos(demo_source):
             continue
         manifest_entry = manifest.get(zip_path.name, {})
         program = manifest_entry.get("exe") or manifest_entry.get("program") or find_demo_program(zip_path)
+        root = normalize_demo_root(
+            manifest_entry.get("root", manifest_entry.get("rootZip")), default_root
+        )
+        renderer = manifest_entry.get("directDrawRenderer")
+        if default_root == DEFAULT_DEMO_ROOT_ZIP and root.lower() in {
+            LEGACY_DEMO_ROOT_ZIP.lower(), PREVIOUS_DEMO_ROOT_ZIP.lower(),
+            PREVIOUS_GDI_ROOT_ZIP.lower(), "boxedwine.2.zip", "boxedwine.gdi.2.zip",
+        }:
+            if renderer is None and root.lower().startswith("boxedwine.gdi."):
+                renderer = "gdi"
+            root = default_root
         demos.append(
             {
                 "zip": zip_path.name,
@@ -1102,10 +1131,8 @@ def discover_demos(demo_source):
                 "title": manifest_entry.get("title") or title_from_zip(zip_path),
                 "description": manifest_entry.get("description", ""),
                 "program": normalize_demo_program(program),
-                "root": normalize_demo_root(
-                    manifest_entry.get("root", manifest_entry.get("rootZip")),
-                    default_root,
-                ),
+                "root": root,
+                "directDrawRenderer": renderer,
                 "zipParam": "overlay" if is_overlay_demo(zip_path) else "app",
                 "windowsVersion": manifest_entry.get(
                     "windowsVersion", manifest_entry.get("winVersion")

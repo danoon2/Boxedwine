@@ -27,7 +27,26 @@ that BoxedWine can create and bind a real OpenGL ES pbuffer context through the
 guest `libEGL.so.1` stub, then run GL clear/readback and shader-source compile
 calls on that ES context. It also links an ES2 shader program, uploads vertex
 data through a VBO, draws into the pbuffer, uploads/samples a texture, and
-verifies the rendered pixels.
+verifies the rendered pixels. The VBO draw creates and activates a secondary
+EGL context after enabling its position array, then returns to the original
+context and verifies that the array remains enabled and the draw still works.
+
+Browser presentation regression: launch the Tomb Raider III demo with a fresh
+Wine prefix (`storage=memory` on its demo URL), click **OK** in the welcome
+dialog, and verify that the graphics setup dialog and its background render.
+Then accept the graphics settings and verify that the game replaces the GDI
+dialog. Wine's graphics probes create, bind, and destroy GL contexts without
+presenting a frame. These contexts must not hide GDI, and their GL state must
+not affect GDI drawing. Browser GDI uses the separate 2D presentation canvas;
+single-threaded guest GL takes over on its first buffer swap.
+
+Continue into the jungle in the single-threaded Tomb Raider III demo and check
+Lara's shadow and the edges of the foliage. The shadow should darken the ground
+while preserving its texture, and leaves should not have pale outlines. The
+SDL WebGL canvas retains framebuffer alpha and uses premultiplied composition;
+its black CSS background prevents the white page from showing through partially
+transparent pixels. Apply that background only to the main `#canvas`, since the
+separate GDI presentation canvas must remain transparent when GL is visible.
 
 ## Build
 
@@ -217,6 +236,8 @@ by default, with a separate browser profile per run. The guest test checks
 core GL function lookup before context creation (matching Wine startup),
 initial vertex-array state, and that creating a secondary context preserves the
 current context and its GL state, in addition to rendering and ABI checks.
+Add `--use-filesystem-libraries` to validate the libraries packaged in that ZIP
+instead of overlaying the locally built GL/EGL/GLES stubs.
 
 The native desktop GL resize regression covers an EGL/X11 window shrinking and
 growing before its first presentation, then resizing again while visible:

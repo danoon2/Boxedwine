@@ -32,7 +32,7 @@
 #include <emscripten/html5.h>
 #endif
 
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
 #include <emscripten/emscripten.h>
 
 EM_JS(void, boxedwinePresentSoftwareFrame, (const U32* pixels, int width, int height), {
@@ -56,11 +56,15 @@ EM_JS(void, boxedwinePresentSoftwareFrame, (const U32* pixels, int width, int he
         rgba[j + 2] = pixel & 0xff;
         rgba[j + 3] = 0xff;
     }
-    postMessage({
-        cmd: 'callHandler',
-        handler: 'boxedwinePresentSoftwareFrame',
-        args: [width, height, rgba.buffer, presentState]
-    }, [rgba.buffer]);
+    if (typeof document !== 'undefined') {
+        Module.boxedwinePresentSoftwareFrame(width, height, rgba.buffer, presentState);
+    } else {
+        postMessage({
+            cmd: 'callHandler',
+            handler: 'boxedwinePresentSoftwareFrame',
+            args: [width, height, rgba.buffer, presentState]
+        }, [rgba.buffer]);
+    }
 });
 #endif
 
@@ -75,14 +79,14 @@ static void ensureEmscriptenCanvasSize(U32 width, U32 height) {
 }
 #endif
 
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
 EM_JS(void, boxedwineSetWebGLPresentSize, (int width, int height), {
     Module.__boxedwineWebGLPresentWidth = width;
     Module.__boxedwineWebGLPresentHeight = height;
 });
 #endif
 
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
 static bool useEmscriptenSoftwareRenderer(bool skipRenderer) {
     return KSystem::videoOption != VIDEO_NO_WINDOW && !skipRenderer;
 }
@@ -122,7 +126,7 @@ KNativeScreenSDL::KNativeScreenSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scal
 
 KNativeScreenSDL::~KNativeScreenSDL() {
     destroyMainWindow();
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     delete[] emscriptenSoftwareBuffer;
 #endif
 }
@@ -133,7 +137,7 @@ KNativeInputPtr KNativeScreenSDL::getInput() {
 
 void KNativeScreenSDL::setScreenSize(U32 cx, U32 cy) {
     input->setScreenSize(cx, cy);
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     boxedwineSetWebGLPresentSize(cx, cy);
 #endif
 
@@ -221,6 +225,14 @@ void KNativeScreenSDL::showWindow(bool show) {
         DISPATCH_MAIN_THREAD_BLOCK_END
     } else {
         showOnDraw = false;
+#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+        // Single-threaded GL draws directly into #canvas. GDI uses a separate
+        // 2D canvas so capability probes cannot corrupt SDL renderer state.
+        EM_ASM({
+            var canvas = document.getElementById('boxedwine-webgl-canvas-0');
+            if (canvas) canvas.style.visibility = $0 ? 'visible' : 'hidden';
+        }, show);
+#endif
         if (!show) {
             SDL_HideWindow(window);
             visible = false;            
@@ -275,7 +287,7 @@ void KNativeScreenSDL::clear() {
         SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
         SDL_RenderClear(renderer);
     }
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     const bool skipRenderer = skipHiddenEmscriptenRenderer(visible, showOnDraw);
     if (!renderer && !emscriptenSoftwareDisabled && useEmscriptenSoftwareRenderer(skipRenderer)) {
         U32 size = screenWidth() * screenHeight() * 4;
@@ -429,7 +441,7 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         dstrect.h = wnd->sdlTextureHeight * (int)input->scaleY / 100;
         SDL_RenderCopy(renderer, wnd->sdlTexture, nullptr, &dstrect);
     }
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     if (!renderer && !emscriptenSoftwareDisabled && useEmscriptenSoftwareRenderer(skipRenderer)) {
         U32 bufferSize = screenWidth() * screenHeight() * 4;
         if (emscriptenSoftwareBufferSize < bufferSize) {
@@ -484,7 +496,7 @@ void KNativeScreenSDL::present() {
         SDL_RenderPresent(renderer);
         presented = true;
     }
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     if (!renderer && !emscriptenSoftwareDisabled && useEmscriptenSoftwareRenderer(skipRenderer) && emscriptenSoftwareBuffer) {
         if (showOnDraw) {
             showWindow(true);
@@ -895,7 +907,9 @@ void KNativeScreenSDL::destroyMainWindow() {
 }
 
 bool KNativeScreenSDL::ensureRenderer() {
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
+    // SDL GL contexts on #canvas share the guest's WebGL state. Present GDI
+    // through the independent software canvas in both browser threading modes.
     return false;
 #endif
     if (renderer || !window) {
@@ -940,7 +954,7 @@ void KNativeScreenSDL::recreateMainWindow() {
 #endif
         
         visible = false;
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL)
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
         emscriptenSoftwareDisabled = false;
 #endif
 

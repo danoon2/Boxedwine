@@ -10,9 +10,8 @@ LOCAL_PUBLIC_URL="${BUILD_SITE_PUBLIC_URL:-}"
 TITLE="${BUILD_SITE_TITLE:-Boxedwine Local Builds}"
 EMSDK_DIR="${EMSDK_DIR:-/home/james/emsdk}"
 BUILDFILES_DIR="${BUILDFILES_DIR:-/var/www/buildfiles}"
-BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.3.zip}"
-BOXEDWINE_GDI_ZIP_URL="${BOXEDWINE_GDI_ZIP_URL:-http://boxedwine.org/v2/demos/boxedwine.gdi.3.zip}"
-DEMO_ROOT_CONFIG="${BUILD_SITE_DEMO_ROOT_CONFIG:-$ROOT_DIR/tools/buildWine/webgl_filesystems_v3.json}"
+BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-http://boxedwine.org/v2/11/TinyCore15Wine11.0.zip}"
+DEMO_ROOT_CONFIG="${BUILD_SITE_DEMO_ROOT_CONFIG:-$ROOT_DIR/tools/buildWine/webgl_filesystems_v11.json}"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date -u +%Y%m%d%H%M%S)}"
@@ -230,7 +229,7 @@ for href in re.findall(r'href="([^"]+)"', text):
     if query.endswith(".html"):
         query = query[:-5]
     for key, value in parse_qsl(query, keep_blank_values=True):
-        if key in {"root", "app", "overlay"} and value.endswith(".zip"):
+        if key in {"app", "overlay"} and value.endswith(".zip"):
             zips.add(value)
 for zip_name in sorted(zips):
     print(zip_name)
@@ -251,18 +250,15 @@ PY
 ensure_boxedwine_zips() {
     local apps_dir="$1"
 
-    echo "Downloading boxedwine.3.zip from $BOXEDWINE_ZIP_URL"
-    echo "Downloading boxedwine.gdi.3.zip from $BOXEDWINE_GDI_ZIP_URL"
+    echo "Downloading TinyCore15Wine11.0.zip from $BOXEDWINE_ZIP_URL"
     if [ "$DRY_RUN" = "1" ]; then
         echo "+ mkdir -p $apps_dir"
-        echo "+ wget -O $apps_dir/boxedwine.3.zip $BOXEDWINE_ZIP_URL"
-        echo "+ wget -O $apps_dir/boxedwine.gdi.3.zip $BOXEDWINE_GDI_ZIP_URL"
+        echo "+ wget -O $apps_dir/TinyCore15Wine11.0.zip $BOXEDWINE_ZIP_URL"
         return
     fi
 
     mkdir -p "$apps_dir"
-    wget -O "$apps_dir/boxedwine.3.zip" "$BOXEDWINE_ZIP_URL"
-    wget -O "$apps_dir/boxedwine.gdi.3.zip" "$BOXEDWINE_GDI_ZIP_URL"
+    wget -O "$apps_dir/TinyCore15Wine11.0.zip" "$BOXEDWINE_ZIP_URL"
 }
 
 validate_demo_roots() {

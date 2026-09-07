@@ -25,6 +25,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-mode", choices=BUILD_MODES, default="st")
     parser.add_argument("--filesystem", type=Path)
+    parser.add_argument("--use-filesystem-libraries", action="store_true",
+                        help="test the GL/EGL/GLES libraries installed in the filesystem ZIP")
     parser.add_argument("--chrome", type=Path)
     parser.add_argument("--timeout", type=int, default=90)
     parser.add_argument("--output-dir", type=Path, default=REPOSITORY_ROOT / "tmp/egl-validation")
@@ -37,6 +39,8 @@ def main() -> int:
     build = REPOSITORY_ROOT / "project/emscripten/Build" / BUILD_MODES[args.build_mode]
     stage = Path(__file__).resolve().parent / "Win32/Release"
     inputs = ["EGLRealESContextTest", "lib/libEGL.so.1", "lib/libGLESv2.so.2", "lib/libGL.so.1"]
+    if args.use_filesystem_libraries:
+        inputs = ["EGLRealESContextTest"]
     for path in [filesystem, build / "boxedwine.html", build / "boxedwine.wasm", *(stage / name for name in inputs)]:
         if not path.is_file():
             parser.error(f"missing {path}; build the runtime and build_egl_real_es_context_test.sh first")
