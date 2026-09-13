@@ -14,6 +14,7 @@
 #include "../cpu/testCPU.h"
 #include "kscheduler.h"
 #include "ksignal.h"
+#include "../../io/fsfilenode.h"
 #include <atomic>
 #include <chrono>
 #include <thread>
@@ -523,7 +524,142 @@ void testLastThreadDeletionRetainsMemoryWrapper() {
     process = nullptr;
 }
 
+void testExitGroupPublishesStatusAfterCleanup() {
+    TestContext& context = testContext();
+    KProcessPtr child = createWaitChild(context.process, context.process->groupId, false);
+    child->memory = KMemory::create(child.get());
+    KThread* childThread = child->createThread();
+    const U32 childId = child->id;
+    const U64 signalBit = 1ULL << (K_SIGCHLD - 1);
+    KSigAction oldAction = context.process->sigActions[K_SIGCHLD];
+    U64 oldMask = context.thread->sigMask;
+    U64 oldPending = context.process->pendingSignals;
+    U64 oldThreadPending = context.thread->pendingSignals;
+    context.process->sigActions[K_SIGCHLD].handlerAndSigAction = TEST_CODE_ADDRESS;
+    context.process->sigActions[K_SIGCHLD].sigInfo[3] = 0;
+    context.thread->sigMask |= signalBit;
+    context.process->pendingSignals &= ~signalBit;
+    context.thread->pendingSignals &= ~signalBit;
+    bool reachedCleanup = false;
+    bool notifiedBeforeCleanup = false;
+    U32 reapedDuringCleanup = 0;
+    U32 statusDuringCleanup = 0;
+    child->setTestBeforeCleanupProcessHook([&]() {
+        reachedCleanup = true;
+        notifiedBeforeCleanup = context.process->sigActions[K_SIGCHLD].sigInfo[3] == childId;
+        // Reproduce a parent's nonblocking wait at the exact publication gap,
+        // without relying on host scheduling or making cleanup artificially slow.
+        KThread::setCurrentThread(context.thread);
+        context.memory->writed(STATUS_ADDRESS, 0xdeadbeef);
+        reapedDuringCleanup = KSystem::waitpid(context.thread, childId, STATUS_ADDRESS, K_WNOHANG);
+        statusDuringCleanup = context.memory->readd(STATUS_ADDRESS);
+        KThread::setCurrentThread(childThread);
+    });
+
+    KThread::setCurrentThread(childThread);
+    child->exitgroup(childThread, 7);
+    KThread::setCurrentThread(context.thread);
+    child->setTestBeforeCleanupProcessHook({});
+    U32 reapedAfterCleanup = KSystem::waitpid(context.thread, childId, STATUS_ADDRESS, K_WNOHANG);
+    U32 finalStatus = context.memory->readd(STATUS_ADDRESS);
+    U32 notifiedChild = context.process->sigActions[K_SIGCHLD].sigInfo[3];
+    U32 notifiedStatus = context.process->sigActions[K_SIGCHLD].sigInfo[5];
+    child->deleteThread(childThread);
+    eraseIfPresent(childId);
+    context.process->sigActions[K_SIGCHLD] = oldAction;
+    context.process->pendingSignals = oldPending;
+    context.thread->pendingSignals = oldThreadPending;
+    context.thread->sigMask = oldMask;
+
+    if (!reachedCleanup || notifiedBeforeCleanup) {
+        testFail("exit_group notified the parent before process cleanup completed");
+    }
+    expectWaitResult("wait during exit_group cleanup", reapedDuringCleanup, 0);
+    expectWaitResult("wait during cleanup leaves status untouched", statusDuringCleanup, 0xdeadbeef);
+    expectWaitResult("wait after exit_group cleanup", reapedAfterCleanup, childId);
+    expectWaitResult("wait after cleanup reports final exit status", finalStatus, 7 << 8);
+    expectWaitResult("SIGCHLD reports child after cleanup", notifiedChild, childId);
+    expectWaitResult("SIGCHLD reports final exit status", notifiedStatus, 7);
+}
+
 static std::function<void(CPU*)> threadStartTestEntry;
+
+void testWaitPidPublicationLockOrder() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    TestContext& context = testContext();
+    std::shared_ptr<FsNode> previousProc = KSystem::procNode;
+    KSystem::setProcNode(Fs::createFileNode(B("/proc"), B(""), B(""), true, nullptr));
+    bool heldProcessTableWhileWaiting = false;
+    for (bool traced : {false, true}) {
+        KProcessPtr child = createWaitChild(context.process, context.process->groupId, true, 7);
+        if (traced) {
+            child->ptraceTracerProcessId = context.process->id;
+            child->ptraceTraceeThreadId = child->id;
+        }
+        std::promise<void> started;
+        U32 result = 0;
+        std::thread waiter;
+        {
+            // Keep the outer publication lock unavailable. A reaper must not
+            // take processesCond first: publishers acquire them in that order.
+            std::unique_lock<std::recursive_mutex> publication(KSystem::processPublicationMutex);
+            waiter = std::thread([&]() {
+                KThread::setCurrentThread(context.thread);
+                started.set_value();
+                result = KSystem::waitpid(context.thread, child->id, 0, K_WNOHANG);
+                KThread::setCurrentThread(nullptr);
+            });
+            started.get_future().wait();
+            for (U32 attempt = 0; attempt < 100; ++attempt) {
+                if (KSystem::processesCond->m.try_lock()) {
+                    KSystem::processesCond->m.unlock();
+                } else {
+                    heldProcessTableWhileWaiting = true;
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
+        waiter.join();
+        expectWaitResult("reap under publication contention", result, child->id);
+    }
+    KProcessPtr runningChild = createWaitChild(context.process, context.process->groupId, false);
+    U32 waitedResult = 0;
+    std::thread sleeper([&]() {
+        KThread::setCurrentThread(context.thread);
+        waitedResult = KSystem::waitpid(context.thread, runningChild->id, 0, 0);
+        KThread::setCurrentThread(nullptr);
+    });
+    bool asleep = false;
+    for (U32 attempt = 0; attempt < 1000 && !asleep; ++attempt) {
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(context.thread->waitingCondSync);
+            asleep = context.thread->waitingCond == KSystem::processesCond;
+        }
+        if (!asleep) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+    bool publicationAvailable = KSystem::processPublicationMutex.try_lock();
+    if (publicationAvailable) {
+        KSystem::processPublicationMutex.unlock();
+    }
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
+        runningChild->terminated = true;
+        KSystem::wakeThreadsWaitingOnProcessStateChanged();
+    }
+    sleeper.join();
+    expectWaitResult("blocking wait resumes after child exit", waitedResult, runningChild->id);
+    KSystem::setProcNode(previousProc);
+    if (!asleep || !publicationAvailable) {
+        testFail("blocking waitpid prevented process publication while asleep");
+    }
+    if (heldProcessTableWhileWaiting) {
+        testFail("waitpid held the process-table lock while waiting for process publication");
+    }
+#endif
+}
 
 void testThreadStartPublishesHandleBeforeEntry() {
 #ifdef BOXEDWINE_MULTI_THREADED

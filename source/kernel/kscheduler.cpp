@@ -114,7 +114,7 @@ void terminateOtherThread(const KProcessPtr& process, U32 threadId) {
     KThread* thread = process->getThreadById(threadId);
     if (thread) {
         unscheduleThread(thread);
-        delete thread;
+        process->deleteThread(thread);
     }
 }
 
@@ -276,7 +276,8 @@ bool runSlice() {
         }
         // this is how we signal to delete the current thread, since we can't delete it in the syscall, maybe we should use smart_ptr for threads
         if (currentThread->terminating) {
-            delete currentThread;
+            KProcessPtr process = currentThread->process;
+            process->deleteThread(currentThread);
         } else if (currentThread->ptraceStopped) {
             node->remove();
         } else if (!currentThread->waitingCond) {

@@ -59,12 +59,14 @@
 #include "opengl/testOpenGL.h"
 
 void testWaitPid();
+void testWaitPidPublicationLockOrder();
 void testProcessSignalWakesSigwaitMask();
 void testBlockedThreadSignalStartsHandler();
 void testBlockedThreadSigquitStartsHandlerImmediately();
 void testMemoryThreadCleanupUsesMemoryMutex();
 void testPtraceResumeCannotLoseWakeup();
 void testLastThreadDeletionRetainsMemoryWrapper();
+void testExitGroupPublishesStatusAfterCleanup();
 void testTerminationPinsThreadDuringLookup();
 void testThreadStartPublishesHandleBeforeEntry();
 void testHardLinksShareIdentityDataAndXattrs();
@@ -901,6 +903,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testLockedMemoryOrdering, "Test Multi-threaded locked memory ordering"},
 #endif
     {testWaitPid, "Test waitpid child selection"},
+    {testWaitPidPublicationLockOrder, "Test waitpid process publication lock order", TEST_ENTRY_SERIAL},
     {testProcessSignalWakesSigwaitMask, "Test process signal wakes sigwait mask"},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testBlockedThreadSignalStartsHandler, "Test blocked thread signal starts handler"},
@@ -909,6 +912,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testPtraceResumeCannotLoseWakeup, "Test ptrace resume cannot lose wakeup", TEST_ENTRY_SERIAL},
 #endif
     {testLastThreadDeletionRetainsMemoryWrapper, "Test last thread deletion retains memory wrapper", TEST_ENTRY_SERIAL},
+    {testExitGroupPublishesStatusAfterCleanup, "Test exit_group publishes status after cleanup", TEST_ENTRY_SERIAL},
     {testTerminationPinsThreadDuringLookup, "Test termination pins thread during lookup", TEST_ENTRY_SERIAL},
     {testThreadStartPublishesHandleBeforeEntry, "Test thread start publishes handle before entry", TEST_ENTRY_SERIAL},
     {testHardLinksShareIdentityDataAndXattrs, "Test hard links share identity, data, and xattrs", TEST_ENTRY_SERIAL},

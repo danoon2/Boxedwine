@@ -491,6 +491,12 @@ void KProcess::cleanupProcess() {
     // last lease begins writeback. KFile owners retained by the cache remain
     // valid after descriptor teardown.
     if (memory) {
+        if (cloneVM) {
+            // Forced exit reaches this path without exitgroup(). Detach the
+            // child wrapper before cleanup can destroy its parent's memory.
+            memory->execvReset(true);
+            cloneVM = false;
+        }
         memory->cleanup();
     }
     this->retireAllMappedFiles();
@@ -530,10 +536,41 @@ U32 KProcess::getThreadCount() {
 
 void KProcess::deleteThread(KThread* thread) {
     thread->cleanup();
-    if (this->getThreadCount() == 0) {
+    bool lastThread = this->getThreadCount() == 0;
+    if (lastThread) {
         cleanupProcess();
     }
     delete thread;
+    if (lastThread) {
+        KProcessPtr parent = KSystem::getProcess(this->parentId);
+        bool forcedExitCompleted = false;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
+            if (!this->terminated && this->signaled == K_SIGKILL) {
+                // Publish death only after the last thread has released the
+                // process resources. A zombie must not retain files or sockets.
+                this->exitCode = 0;
+                this->terminated = true;
+                forcedExitCompleted = true;
+            }
+        }
+        if (forcedExitCompleted) {
+            {
+                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->exitOrExecCond);
+                BOXEDWINE_CONDITION_SIGNAL_ALL(this->exitOrExecCond);
+            }
+            if (parent && parent->getThreadCount()) {
+                if (parent->sigActions[K_SIGCHLD].handlerAndSigAction != K_SIG_DFL &&
+                        parent->sigActions[K_SIGCHLD].handlerAndSigAction != K_SIG_IGN) {
+                    parent->signalCHLD(K_CLD_KILLED, this->id, this->userId, K_SIGKILL);
+                }
+            } else {
+                KSystem::eraseProcess(this->id);
+            }
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
+            KSystem::wakeThreadsWaitingOnProcessStateChanged();
+        }
+    }
     // don't call into getProcess while holding threadsCondition
     if (!this->terminated && this->getThreadCount() == 0) {
         KProcessPtr parent = KSystem::getProcess(this->parentId);
@@ -2484,30 +2521,28 @@ void KProcess::killAllThreads(KThread* exceptThisThread) {
 
 U32 KProcess::exitgroup(KThread* thread, U32 code) {
     KProcessPtr parent = KSystem::getProcess(this->parentId);
-    if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_DFL) {
-        if (parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_IGN) {
-            parent->signalCHLD(K_CLD_EXITED, this->id, this->userId, code);
-        }
-    }
 
     killAllThreads(thread);
-
-    {
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
-        this->terminated = true;
-    }
 
     thread->cleanup(); // must happen before we clear memory
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
         this->threads.clear();
     }
-    if (cloneVM) {
-        // make sure the shared memory is unhooked from parent
-        this->memory->execvReset(cloneVM);
-    }
     this->cleanupProcess(); // release RAM, sockets, etc now.  No reason to wait to do that until waitpid is called
-    this->exitCode = code;
+
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
+        // A parent may poll waitpid even before SIGCHLD or a condition wake.
+        // Publish the final status and reapable state together, after resources
+        // are released, so that it cannot observe the initial zero exit code.
+        this->exitCode = code;
+        this->terminated = true;
+    }
+    if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction != K_SIG_DFL &&
+            parent->sigActions[K_SIGCHLD].handlerAndSigAction != K_SIG_IGN) {
+        parent->signalCHLD(K_CLD_EXITED, this->id, this->userId, code);
+    }
 
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->exitOrExecCond);
@@ -3702,6 +3737,13 @@ void KProcess::printStack() {
 
 U32 KProcess::signal(U32 signal) {
     if (signal == K_SIGKILL) {
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
+            if (this->terminated) {
+                return 0;
+            }
+            this->signaled = K_SIGKILL;
+        }
         KThread* currentThread = KThread::currentThread();
         if (currentThread->process->id != id) {
             currentThread = nullptr;

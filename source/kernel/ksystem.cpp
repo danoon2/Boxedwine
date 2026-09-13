@@ -478,6 +478,11 @@ U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
     U32 parentId = thread->process->id;
     U32 parentGroupId = thread->process->groupId;
 
+#ifdef BOXEDWINE_MULTI_THREADED
+    // Reaping removes the /proc entry too. Match publication and lookup's
+    // outer lock order before taking the process table's condition mutex.
+    std::unique_lock<std::recursive_mutex> publicationLock(processPublicationMutex);
+#endif
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
 
     while (!process) {
@@ -537,9 +542,18 @@ U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
         if (!process) {
             if (options & 1) { // WNOHANG
                 return 0;
-            } else {                
+            } else {
+#ifdef BOXEDWINE_MULTI_THREADED
+                // A child must be able to publish or exit while we sleep.
+                publicationLock.unlock();
+#endif
                 BOXEDWINE_CONDITION_WAIT(processesCond);
 #ifdef BOXEDWINE_MULTI_THREADED
+                // wait() reacquires processesCond. Drop it before restoring
+                // the outer lock, then rescan child state in the loop.
+                boxedWineCriticalSection.unlock();
+                publicationLock.lock();
+                boxedWineCriticalSection.lock();
 				if (KThread::currentThread()->terminating) {
 					return -K_EINTR;
 				}
@@ -1077,6 +1091,7 @@ std::shared_ptr<MappedFileCache> KSystem::getOrCreateFileCache(
 }
 
 void KSystem::internalEraseProcess(U32 id) {
+    // Caller holds processPublicationMutex before processesCond.
     KSystem::processes.remove(id);
     if (KSystem::procNode) {
         KSystem::procNode->removeChildByName(BString::valueOf(id));

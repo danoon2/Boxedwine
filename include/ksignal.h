@@ -102,6 +102,7 @@
 #define K_POLL_HUP        6   /* device disconnected */
 
 #define K_CLD_EXITED 1
+#define K_CLD_KILLED 2
 
 U32 syscall_signalstack(U32 ss, U32 oss);
 U32 syscall_signalfd4(KThread* thread, S32 fildes, U32 mask, U32 maskSize, U32 flags);

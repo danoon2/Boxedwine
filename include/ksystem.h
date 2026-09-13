@@ -222,6 +222,9 @@ public:
 private:
     friend class KFile;
     friend class KProcess;
+#ifdef __TEST
+    friend void testWaitPidPublicationLockOrder();
+#endif
 
     // Low-level mmap reconciliation. KFile is the only caller so the required
     // filePos -> identity ordering cannot be bypassed by a new mapping path.
