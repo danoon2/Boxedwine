@@ -1,0 +1,1856 @@
+{
+  "schema_version": 1,
+  "source": {
+    "path": "C:\\Boxedwine2\\tmp\\cc39\\sphere-probe-windows\\result.json",
+    "sha256": "b2150c8da975a93327d61bdc8d60d2cf91eb15075eea6c26e4b48b6bd821fe47"
+  },
+  "checks": 326,
+  "observations": [
+    {
+      "case": "zero-and-x",
+      "hr": "00000000",
+      "center": [
+        7.99999952,
+        0.0,
+        0.0
+      ],
+      "radius": 0.0
+    },
+    {
+      "case": "epsilon-and-x",
+      "hr": "00000000",
+      "center": [
+        5.33336639,
+        0.0,
+        0.0
+      ],
+      "radius": 5.33326626
+    },
+    {
+      "case": "tiny-and-x",
+      "hr": "00000000",
+      "center": [
+        5.33333302,
+        0.0,
+        0.0
+      ],
+      "radius": 5.33333302
+    },
+    {
+      "case": "negative-zero-and-x",
+      "hr": "00000000",
+      "center": [
+        7.99999952,
+        0.0,
+        0.0
+      ],
+      "radius": 0.0
+    },
+    {
+      "case": "translated-zero-mesh",
+      "hr": "00000000",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radius": 0.0
+    },
+    {
+      "case": "transformed-zero",
+      "hr": "00000000",
+      "center": [
+        5.33333302,
+        0.0,
+        0.0
+      ],
+      "radius": 5.33333302
+    },
+    {
+      "case": "unequal-containers",
+      "hr": "00000000",
+      "center": [
+        28.9999981,
+        1.4999999,
+        0.99999994
+      ],
+      "radius": 73.001709
+    },
+    {
+      "case": "child-siblings",
+      "hr": "00000000",
+      "center": [
+        28.9999981,
+        1.4999999,
+        0.99999994
+      ],
+      "radius": 73.001709
+    },
+    {
+      "case": "root-sibling",
+      "hr": "00000000",
+      "center": [
+        2.33333325,
+        1.33333325,
+        0.99999994
+      ],
+      "radius": 6.67499399
+    },
+    {
+      "case": "transformed-child-siblings",
+      "hr": "00000000",
+      "center": [
+        21.0,
+        4.16666651,
+        1.4999999
+      ],
+      "radius": 26.1968994
+    },
+    {
+      "case": "nested-children",
+      "hr": "00000000",
+      "center": [
+        21.0,
+        9.33333302,
+        1.9999999
+      ],
+      "radius": 29.3900928
+    },
+    {
+      "case": "reflected-scale",
+      "hr": "00000000",
+      "center": [
+        -4.66666651,
+        3.99999981,
+        0.99999994
+      ],
+      "radius": 13.370779
+    },
+    {
+      "case": "empty-frame",
+      "hr": "00000000",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radius": 0.0
+    },
+    {
+      "case": "symmetric",
+      "hr": "00000000",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radius": 1.41421342
+    },
+    {
+      "case": "rotation",
+      "hr": "00000000",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radius": 1.41421356
+    },
+    {
+      "case": "uniform-scale",
+      "hr": "00000000",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radius": 2.82842684
+    },
+    {
+      "case": "shear",
+      "hr": "00000000",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radius": 2.23606777
+    },
+    {
+      "case": "rotation-parent-scale",
+      "hr": "00000000",
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radius": 1.9999999
+    }
+  ],
+  "points": [
+    {
+      "case": "zero-and-x",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "zero-and-x",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        8.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        8.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "zero-and-x",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        8.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        8.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "epsilon-and-x",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        9.99999975e-05,
+        0.0,
+        0.0
+      ],
+      "world": [
+        9.99999975e-05,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "epsilon-and-x",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        8.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        8.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "epsilon-and-x",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        8.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        8.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "tiny-and-x",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        9.99999968e-21,
+        0.0,
+        0.0
+      ],
+      "world": [
+        9.99999968e-21,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "tiny-and-x",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        8.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        8.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "tiny-and-x",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        8.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        8.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "negative-zero-and-x",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "negative-zero-and-x",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        8.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        8.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "negative-zero-and-x",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        8.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        8.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "translated-zero-mesh",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        3.0,
+        -4.0,
+        2.0
+      ]
+    },
+    {
+      "case": "translated-zero-mesh",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        3.0,
+        -4.0,
+        2.0
+      ]
+    },
+    {
+      "case": "translated-zero-mesh",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "world": [
+        3.0,
+        -4.0,
+        2.0
+      ]
+    },
+    {
+      "case": "transformed-zero",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        -3.0,
+        4.0,
+        -2.0
+      ],
+      "world": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "transformed-zero",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        5.0,
+        4.0,
+        -2.0
+      ],
+      "world": [
+        8.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "transformed-zero",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        5.0,
+        4.0,
+        -2.0
+      ],
+      "world": [
+        8.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "unequal-containers",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "unequal-containers",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        9.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        9.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "unequal-containers",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        1.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "unequal-containers",
+      "mesh": 0,
+      "index": 3,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "unequal-containers",
+      "mesh": 0,
+      "index": 4,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "unequal-containers",
+      "mesh": 0,
+      "index": 5,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "unequal-containers",
+      "mesh": 1,
+      "index": 0,
+      "included": true,
+      "local": [
+        10.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        10.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "unequal-containers",
+      "mesh": 1,
+      "index": 1,
+      "included": true,
+      "local": [
+        10.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        10.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "unequal-containers",
+      "mesh": 1,
+      "index": 2,
+      "included": true,
+      "local": [
+        12.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        12.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "unequal-containers",
+      "mesh": 2,
+      "index": 0,
+      "included": true,
+      "local": [
+        100.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        100.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "unequal-containers",
+      "mesh": 2,
+      "index": 1,
+      "included": true,
+      "local": [
+        100.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        100.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "unequal-containers",
+      "mesh": 2,
+      "index": 2,
+      "included": true,
+      "local": [
+        102.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        102.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "child-siblings",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "child-siblings",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        9.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        9.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "child-siblings",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        1.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "child-siblings",
+      "mesh": 0,
+      "index": 3,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "child-siblings",
+      "mesh": 0,
+      "index": 4,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "child-siblings",
+      "mesh": 0,
+      "index": 5,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "child-siblings",
+      "mesh": 1,
+      "index": 0,
+      "included": true,
+      "local": [
+        10.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        10.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "child-siblings",
+      "mesh": 1,
+      "index": 1,
+      "included": true,
+      "local": [
+        10.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        10.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "child-siblings",
+      "mesh": 1,
+      "index": 2,
+      "included": true,
+      "local": [
+        12.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        12.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "child-siblings",
+      "mesh": 2,
+      "index": 0,
+      "included": true,
+      "local": [
+        100.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        100.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "child-siblings",
+      "mesh": 2,
+      "index": 1,
+      "included": true,
+      "local": [
+        100.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        100.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "child-siblings",
+      "mesh": 2,
+      "index": 2,
+      "included": true,
+      "local": [
+        102.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        102.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "root-sibling",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "root-sibling",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        9.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        9.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "root-sibling",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        1.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "root-sibling",
+      "mesh": 0,
+      "index": 3,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "root-sibling",
+      "mesh": 0,
+      "index": 4,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "root-sibling",
+      "mesh": 0,
+      "index": 5,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "root-sibling",
+      "mesh": 1,
+      "index": 0,
+      "included": false,
+      "local": [
+        10.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        10.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "root-sibling",
+      "mesh": 1,
+      "index": 1,
+      "included": false,
+      "local": [
+        10.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        10.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "root-sibling",
+      "mesh": 1,
+      "index": 2,
+      "included": false,
+      "local": [
+        12.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        12.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "root-sibling",
+      "mesh": 2,
+      "index": 0,
+      "included": false,
+      "local": [
+        100.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        100.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "root-sibling",
+      "mesh": 2,
+      "index": 1,
+      "included": false,
+      "local": [
+        100.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        100.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "root-sibling",
+      "mesh": 2,
+      "index": 2,
+      "included": false,
+      "local": [
+        102.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        102.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "transformed-child-siblings",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        5.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "transformed-child-siblings",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        9.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        21.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "transformed-child-siblings",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        1.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        5.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "transformed-child-siblings",
+      "mesh": 0,
+      "index": 3,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        5.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "transformed-child-siblings",
+      "mesh": 0,
+      "index": 4,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        5.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "transformed-child-siblings",
+      "mesh": 0,
+      "index": 5,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        5.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "transformed-child-siblings",
+      "mesh": 1,
+      "index": 0,
+      "included": true,
+      "local": [
+        10.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        23.0,
+        11.0,
+        3.0
+      ]
+    },
+    {
+      "case": "transformed-child-siblings",
+      "mesh": 1,
+      "index": 1,
+      "included": true,
+      "local": [
+        10.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        23.0,
+        13.0,
+        3.0
+      ]
+    },
+    {
+      "case": "transformed-child-siblings",
+      "mesh": 1,
+      "index": 2,
+      "included": true,
+      "local": [
+        12.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        27.0,
+        13.0,
+        3.0
+      ]
+    },
+    {
+      "case": "transformed-child-siblings",
+      "mesh": 2,
+      "index": 0,
+      "included": true,
+      "local": [
+        100.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        43.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "transformed-child-siblings",
+      "mesh": 2,
+      "index": 1,
+      "included": true,
+      "local": [
+        100.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        43.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "transformed-child-siblings",
+      "mesh": 2,
+      "index": 2,
+      "included": true,
+      "local": [
+        102.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        47.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "nested-children",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        5.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "nested-children",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        9.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        21.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "nested-children",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        1.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        5.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "nested-children",
+      "mesh": 0,
+      "index": 3,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        5.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "nested-children",
+      "mesh": 0,
+      "index": 4,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        5.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "nested-children",
+      "mesh": 0,
+      "index": 5,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        5.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "case": "nested-children",
+      "mesh": 1,
+      "index": 0,
+      "included": true,
+      "local": [
+        10.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        23.0,
+        11.0,
+        3.0
+      ]
+    },
+    {
+      "case": "nested-children",
+      "mesh": 1,
+      "index": 1,
+      "included": true,
+      "local": [
+        10.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        23.0,
+        13.0,
+        3.0
+      ]
+    },
+    {
+      "case": "nested-children",
+      "mesh": 1,
+      "index": 2,
+      "included": true,
+      "local": [
+        12.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        27.0,
+        13.0,
+        3.0
+      ]
+    },
+    {
+      "case": "nested-children",
+      "mesh": 2,
+      "index": 0,
+      "included": true,
+      "local": [
+        100.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        43.0,
+        21.0,
+        3.0
+      ]
+    },
+    {
+      "case": "nested-children",
+      "mesh": 2,
+      "index": 1,
+      "included": true,
+      "local": [
+        100.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        43.0,
+        23.0,
+        3.0
+      ]
+    },
+    {
+      "case": "nested-children",
+      "mesh": 2,
+      "index": 2,
+      "included": true,
+      "local": [
+        102.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        47.0,
+        23.0,
+        3.0
+      ]
+    },
+    {
+      "case": "reflected-scale",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        -2.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "reflected-scale",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        9.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        -18.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "reflected-scale",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        1.0,
+        3.0,
+        1.0
+      ],
+      "world": [
+        -2.0,
+        9.0,
+        1.0
+      ]
+    },
+    {
+      "case": "reflected-scale",
+      "mesh": 0,
+      "index": 3,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        -2.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "reflected-scale",
+      "mesh": 0,
+      "index": 4,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        -2.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "reflected-scale",
+      "mesh": 0,
+      "index": 5,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "world": [
+        -2.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "case": "symmetric",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        0.0
+      ],
+      "world": [
+        1.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "case": "symmetric",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        -1.0,
+        -1.0,
+        0.0
+      ],
+      "world": [
+        -1.0,
+        -1.0,
+        0.0
+      ]
+    },
+    {
+      "case": "symmetric",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        0.25
+      ],
+      "world": [
+        0.0,
+        0.0,
+        0.25
+      ]
+    },
+    {
+      "case": "symmetric",
+      "mesh": 0,
+      "index": 3,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        -0.25
+      ],
+      "world": [
+        0.0,
+        0.0,
+        -0.25
+      ]
+    },
+    {
+      "case": "rotation",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        0.0
+      ],
+      "world": [
+        -0.199999988,
+        1.4000001,
+        0.0
+      ]
+    },
+    {
+      "case": "rotation",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        -1.0,
+        -1.0,
+        0.0
+      ],
+      "world": [
+        0.199999988,
+        -1.4000001,
+        0.0
+      ]
+    },
+    {
+      "case": "rotation",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        0.25
+      ],
+      "world": [
+        0.0,
+        0.0,
+        0.25
+      ]
+    },
+    {
+      "case": "rotation",
+      "mesh": 0,
+      "index": 3,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        -0.25
+      ],
+      "world": [
+        0.0,
+        0.0,
+        -0.25
+      ]
+    },
+    {
+      "case": "uniform-scale",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        0.0
+      ],
+      "world": [
+        2.0,
+        2.0,
+        0.0
+      ]
+    },
+    {
+      "case": "uniform-scale",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        -1.0,
+        -1.0,
+        0.0
+      ],
+      "world": [
+        -2.0,
+        -2.0,
+        0.0
+      ]
+    },
+    {
+      "case": "uniform-scale",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        0.25
+      ],
+      "world": [
+        0.0,
+        0.0,
+        0.5
+      ]
+    },
+    {
+      "case": "uniform-scale",
+      "mesh": 0,
+      "index": 3,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        -0.25
+      ],
+      "world": [
+        0.0,
+        0.0,
+        -0.5
+      ]
+    },
+    {
+      "case": "shear",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        1.0,
+        1.0,
+        0.0
+      ],
+      "world": [
+        1.0,
+        2.0,
+        0.0
+      ]
+    },
+    {
+      "case": "shear",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        -1.0,
+        -1.0,
+        0.0
+      ],
+      "world": [
+        -1.0,
+        -2.0,
+        0.0
+      ]
+    },
+    {
+      "case": "shear",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        0.25
+      ],
+      "world": [
+        0.0,
+        0.0,
+        0.25
+      ]
+    },
+    {
+      "case": "shear",
+      "mesh": 0,
+      "index": 3,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        -0.25
+      ],
+      "world": [
+        0.0,
+        0.0,
+        -0.25
+      ]
+    },
+    {
+      "case": "rotation-parent-scale",
+      "mesh": 0,
+      "index": 0,
+      "included": true,
+      "local": [
+        0.600000024,
+        -0.800000012,
+        0.0
+      ],
+      "world": [
+        2.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "rotation-parent-scale",
+      "mesh": 0,
+      "index": 1,
+      "included": true,
+      "local": [
+        -0.600000024,
+        0.800000012,
+        0.0
+      ],
+      "world": [
+        -2.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "case": "rotation-parent-scale",
+      "mesh": 0,
+      "index": 2,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        0.25
+      ],
+      "world": [
+        0.0,
+        0.0,
+        0.25
+      ]
+    },
+    {
+      "case": "rotation-parent-scale",
+      "mesh": 0,
+      "index": 3,
+      "included": true,
+      "local": [
+        0.0,
+        0.0,
+        -0.25
+      ],
+      "world": [
+        0.0,
+        0.0,
+        -0.25
+      ]
+    }
+  ]
+}

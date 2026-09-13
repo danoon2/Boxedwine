@@ -1,0 +1,584 @@
+{
+  "schema_version": 1,
+  "source": "C:\\Boxedwine2\\tmp\\cc39\\texgen-capture2-windows\\result.json",
+  "source_sha256": "33da1b27f7cd1d4da9bf99628149f119869bca1f2a9639b1902543f633317716",
+  "checks": 2236,
+  "values": {
+    "stage=0 mode=normal pose=0 normalize=0 texture=0": [
+      0.600000024,
+      0.0,
+      0.800000012,
+      1.0
+    ],
+    "stage=0 mode=normal pose=0 normalize=0 texture=1": [
+      -0.449999988,
+      0.649999976,
+      2.70000005,
+      0.5
+    ],
+    "stage=0 mode=normal pose=0 normalize=1 texture=0": [
+      0.600000024,
+      0.0,
+      0.800000012,
+      1.0
+    ],
+    "stage=0 mode=normal pose=0 normalize=1 texture=1": [
+      -0.449999988,
+      0.649999976,
+      2.70000005,
+      0.5
+    ],
+    "stage=0 mode=normal pose=1 normalize=0 texture=0": [
+      -0.600000024,
+      0.800000012,
+      0.0,
+      1.0
+    ],
+    "stage=0 mode=normal pose=1 normalize=0 texture=1": [
+      -0.850000024,
+      -0.950000048,
+      1.39999998,
+      0.5
+    ],
+    "stage=0 mode=normal pose=1 normalize=1 texture=0": [
+      -0.600000024,
+      0.800000012,
+      0.0,
+      1.0
+    ],
+    "stage=0 mode=normal pose=1 normalize=1 texture=1": [
+      -0.850000024,
+      -0.950000048,
+      1.39999998,
+      0.5
+    ],
+    "stage=0 mode=normal pose=2 normalize=0 texture=0": [
+      -1.20000005,
+      -0.400000006,
+      0.0,
+      1.0
+    ],
+    "stage=0 mode=normal pose=2 normalize=0 texture=1": [
+      -1.45000005,
+      0.850000024,
+      1.54999995,
+      0.5
+    ],
+    "stage=0 mode=normal pose=2 normalize=1 texture=0": [
+      -0.948683321,
+      -0.316227764,
+      0.0,
+      1.0
+    ],
+    "stage=0 mode=normal pose=2 normalize=1 texture=1": [
+      -1.30339861,
+      0.724341631,
+      1.48717079,
+      0.5
+    ],
+    "stage=0 mode=position pose=0 normalize=0 texture=0": [
+      -0.75,
+      0.5,
+      2.0,
+      1.0
+    ],
+    "stage=0 mode=position pose=0 normalize=0 texture=1": [
+      -1.0,
+      0.5,
+      5.4375,
+      0.5
+    ],
+    "stage=0 mode=position pose=0 normalize=1 texture=0": [
+      -0.75,
+      0.5,
+      2.0,
+      1.0
+    ],
+    "stage=0 mode=position pose=0 normalize=1 texture=1": [
+      -1.0,
+      0.5,
+      5.4375,
+      0.5
+    ],
+    "stage=0 mode=position pose=1 normalize=0 texture=0": [
+      1.75,
+      -1.0,
+      1.25,
+      1.0
+    ],
+    "stage=0 mode=position pose=1 normalize=0 texture=1": [
+      -0.125,
+      2.375,
+      3.3125,
+      0.5
+    ],
+    "stage=0 mode=position pose=1 normalize=1 texture=0": [
+      1.75,
+      -1.0,
+      1.25,
+      1.0
+    ],
+    "stage=0 mode=position pose=1 normalize=1 texture=1": [
+      -0.125,
+      2.375,
+      3.3125,
+      0.5
+    ],
+    "stage=0 mode=position pose=2 normalize=0 texture=0": [
+      -0.125,
+      -1.0,
+      3.75,
+      1.0
+    ],
+    "stage=0 mode=position pose=2 normalize=0 texture=1": [
+      -1.0625,
+      3.625,
+      8.78125,
+      0.5
+    ],
+    "stage=0 mode=position pose=2 normalize=1 texture=0": [
+      -0.125,
+      -1.0,
+      3.75,
+      1.0
+    ],
+    "stage=0 mode=position pose=2 normalize=1 texture=1": [
+      -1.0625,
+      3.625,
+      8.78125,
+      0.5
+    ],
+    "stage=0 mode=reflection pose=0 normalize=0 texture=0": [
+      -0.970944107,
+      0.227921143,
+      0.0729347691,
+      1.0
+    ],
+    "stage=0 mode=reflection pose=0 normalize=0 texture=1": [
+      -1.17849183,
+      -0.0554143488,
+      1.63860559,
+      0.5
+    ],
+    "stage=0 mode=reflection pose=0 normalize=1 texture=0": [
+      -0.970944107,
+      0.227921143,
+      0.0729347691,
+      1.0
+    ],
+    "stage=0 mode=reflection pose=0 normalize=1 texture=1": [
+      -1.17849183,
+      -0.0554143488,
+      1.63860559,
+      0.5
+    ],
+    "stage=0 mode=reflection pose=1 normalize=0 texture=0": [
+      -0.19816947,
+      0.826408625,
+      0.527046263,
+      1.0
+    ],
+    "stage=0 mode=reflection pose=1 normalize=0 texture=1": [
+      -0.642482579,
+      -0.726089835,
+      2.35363483,
+      0.5
+    ],
+    "stage=0 mode=reflection pose=1 normalize=1 texture=0": [
+      -0.19816947,
+      0.826408625,
+      0.527046263,
+      1.0
+    ],
+    "stage=0 mode=reflection pose=1 normalize=1 texture=1": [
+      -0.642482579,
+      -0.726089835,
+      2.35363483,
+      0.5
+    ],
+    "stage=0 mode=reflection pose=2 normalize=0 texture=0": [
+      0.307747334,
+      -0.144216284,
+      0.965734184,
+      1.0
+    ],
+    "stage=0 mode=reflection pose=2 normalize=0 texture=1": [
+      -0.632180393,
+      0.949191511,
+      3.10453153,
+      0.5
+    ],
+    "stage=0 mode=reflection pose=2 normalize=1 texture=0": [
+      0.180270374,
+      -0.186708599,
+      0.965734184,
+      1.0
+    ],
+    "stage=0 mode=reflection pose=2 normalize=1 texture=1": [
+      -0.706541955,
+      1.01293004,
+      3.1364007,
+      0.5
+    ],
+    "stage=0 mode=sphere pose=0 normalize=0 texture=0": [
+      0.143471658,
+      0.583692074,
+      1.0,
+      0.0
+    ],
+    "stage=0 mode=sphere pose=0 normalize=0 texture=1": [
+      0.217658848,
+      -0.375538111,
+      1.96413212,
+      0.0
+    ],
+    "stage=0 mode=sphere pose=0 normalize=1 texture=0": [
+      0.143471658,
+      0.583692074,
+      1.0,
+      0.0
+    ],
+    "stage=0 mode=sphere pose=0 normalize=1 texture=1": [
+      0.217658848,
+      -0.375538111,
+      1.96413212,
+      0.0
+    ],
+    "stage=0 mode=sphere pose=1 normalize=0 texture=0": [
+      0.398121536,
+      0.924854755,
+      1.0,
+      0.0
+    ],
+    "stage=0 mode=sphere pose=1 normalize=0 texture=1": [
+      0.430274457,
+      -0.887282133,
+      1.90046968,
+      0.0
+    ],
+    "stage=0 mode=sphere pose=1 normalize=1 texture=0": [
+      0.398121536,
+      0.924854755,
+      1.0,
+      0.0
+    ],
+    "stage=0 mode=sphere pose=1 normalize=1 texture=1": [
+      0.430274457,
+      -0.887282133,
+      1.90046968,
+      0.0
+    ],
+    "stage=0 mode=sphere pose=2 normalize=0 texture=0": [
+      0.950468481,
+      0.288901865,
+      1.0,
+      0.0
+    ],
+    "stage=0 mode=sphere pose=2 normalize=0 texture=1": [
+      0.547459722,
+      0.0666472018,
+      1.76238289,
+      0.0
+    ],
+    "stage=0 mode=sphere pose=2 normalize=1 texture=0": [
+      0.84430927,
+      0.143393949,
+      1.0,
+      0.0
+    ],
+    "stage=0 mode=sphere pose=2 normalize=1 texture=1": [
+      0.458003134,
+      0.28490907,
+      1.78892269,
+      0.0
+    ],
+    "stage=1 mode=normal pose=0 normalize=0 texture=0": [
+      0.600000024,
+      0.0,
+      0.800000012,
+      1.0
+    ],
+    "stage=1 mode=normal pose=0 normalize=0 texture=1": [
+      -0.449999988,
+      0.649999976,
+      2.70000005,
+      0.5
+    ],
+    "stage=1 mode=normal pose=0 normalize=1 texture=0": [
+      0.600000024,
+      0.0,
+      0.800000012,
+      1.0
+    ],
+    "stage=1 mode=normal pose=0 normalize=1 texture=1": [
+      -0.449999988,
+      0.649999976,
+      2.70000005,
+      0.5
+    ],
+    "stage=1 mode=normal pose=1 normalize=0 texture=0": [
+      -0.600000024,
+      0.800000012,
+      0.0,
+      1.0
+    ],
+    "stage=1 mode=normal pose=1 normalize=0 texture=1": [
+      -0.850000024,
+      -0.950000048,
+      1.39999998,
+      0.5
+    ],
+    "stage=1 mode=normal pose=1 normalize=1 texture=0": [
+      -0.600000024,
+      0.800000012,
+      0.0,
+      1.0
+    ],
+    "stage=1 mode=normal pose=1 normalize=1 texture=1": [
+      -0.850000024,
+      -0.950000048,
+      1.39999998,
+      0.5
+    ],
+    "stage=1 mode=normal pose=2 normalize=0 texture=0": [
+      -1.20000005,
+      -0.400000006,
+      0.0,
+      1.0
+    ],
+    "stage=1 mode=normal pose=2 normalize=0 texture=1": [
+      -1.45000005,
+      0.850000024,
+      1.54999995,
+      0.5
+    ],
+    "stage=1 mode=normal pose=2 normalize=1 texture=0": [
+      -0.948683321,
+      -0.316227764,
+      0.0,
+      1.0
+    ],
+    "stage=1 mode=normal pose=2 normalize=1 texture=1": [
+      -1.30339861,
+      0.724341631,
+      1.48717079,
+      0.5
+    ],
+    "stage=1 mode=position pose=0 normalize=0 texture=0": [
+      -0.75,
+      0.5,
+      2.0,
+      1.0
+    ],
+    "stage=1 mode=position pose=0 normalize=0 texture=1": [
+      -1.0,
+      0.5,
+      5.4375,
+      0.5
+    ],
+    "stage=1 mode=position pose=0 normalize=1 texture=0": [
+      -0.75,
+      0.5,
+      2.0,
+      1.0
+    ],
+    "stage=1 mode=position pose=0 normalize=1 texture=1": [
+      -1.0,
+      0.5,
+      5.4375,
+      0.5
+    ],
+    "stage=1 mode=position pose=1 normalize=0 texture=0": [
+      1.75,
+      -1.0,
+      1.25,
+      1.0
+    ],
+    "stage=1 mode=position pose=1 normalize=0 texture=1": [
+      -0.125,
+      2.375,
+      3.3125,
+      0.5
+    ],
+    "stage=1 mode=position pose=1 normalize=1 texture=0": [
+      1.75,
+      -1.0,
+      1.25,
+      1.0
+    ],
+    "stage=1 mode=position pose=1 normalize=1 texture=1": [
+      -0.125,
+      2.375,
+      3.3125,
+      0.5
+    ],
+    "stage=1 mode=position pose=2 normalize=0 texture=0": [
+      -0.125,
+      -1.0,
+      3.75,
+      1.0
+    ],
+    "stage=1 mode=position pose=2 normalize=0 texture=1": [
+      -1.0625,
+      3.625,
+      8.78125,
+      0.5
+    ],
+    "stage=1 mode=position pose=2 normalize=1 texture=0": [
+      -0.125,
+      -1.0,
+      3.75,
+      1.0
+    ],
+    "stage=1 mode=position pose=2 normalize=1 texture=1": [
+      -1.0625,
+      3.625,
+      8.78125,
+      0.5
+    ],
+    "stage=1 mode=reflection pose=0 normalize=0 texture=0": [
+      -0.970944107,
+      0.227921143,
+      0.0729347691,
+      1.0
+    ],
+    "stage=1 mode=reflection pose=0 normalize=0 texture=1": [
+      -1.17849183,
+      -0.0554143488,
+      1.63860559,
+      0.5
+    ],
+    "stage=1 mode=reflection pose=0 normalize=1 texture=0": [
+      -0.970944107,
+      0.227921143,
+      0.0729347691,
+      1.0
+    ],
+    "stage=1 mode=reflection pose=0 normalize=1 texture=1": [
+      -1.17849183,
+      -0.0554143488,
+      1.63860559,
+      0.5
+    ],
+    "stage=1 mode=reflection pose=1 normalize=0 texture=0": [
+      -0.19816947,
+      0.826408625,
+      0.527046263,
+      1.0
+    ],
+    "stage=1 mode=reflection pose=1 normalize=0 texture=1": [
+      -0.642482579,
+      -0.726089835,
+      2.35363483,
+      0.5
+    ],
+    "stage=1 mode=reflection pose=1 normalize=1 texture=0": [
+      -0.19816947,
+      0.826408625,
+      0.527046263,
+      1.0
+    ],
+    "stage=1 mode=reflection pose=1 normalize=1 texture=1": [
+      -0.642482579,
+      -0.726089835,
+      2.35363483,
+      0.5
+    ],
+    "stage=1 mode=reflection pose=2 normalize=0 texture=0": [
+      0.307747334,
+      -0.144216284,
+      0.965734184,
+      1.0
+    ],
+    "stage=1 mode=reflection pose=2 normalize=0 texture=1": [
+      -0.632180393,
+      0.949191511,
+      3.10453153,
+      0.5
+    ],
+    "stage=1 mode=reflection pose=2 normalize=1 texture=0": [
+      0.180270374,
+      -0.186708599,
+      0.965734184,
+      1.0
+    ],
+    "stage=1 mode=reflection pose=2 normalize=1 texture=1": [
+      -0.706541955,
+      1.01293004,
+      3.1364007,
+      0.5
+    ],
+    "stage=1 mode=sphere pose=0 normalize=0 texture=0": [
+      0.143471658,
+      0.583692074,
+      1.0,
+      0.0
+    ],
+    "stage=1 mode=sphere pose=0 normalize=0 texture=1": [
+      0.217658848,
+      -0.375538111,
+      1.96413212,
+      0.0
+    ],
+    "stage=1 mode=sphere pose=0 normalize=1 texture=0": [
+      0.143471658,
+      0.583692074,
+      1.0,
+      0.0
+    ],
+    "stage=1 mode=sphere pose=0 normalize=1 texture=1": [
+      0.217658848,
+      -0.375538111,
+      1.96413212,
+      0.0
+    ],
+    "stage=1 mode=sphere pose=1 normalize=0 texture=0": [
+      0.398121536,
+      0.924854755,
+      1.0,
+      0.0
+    ],
+    "stage=1 mode=sphere pose=1 normalize=0 texture=1": [
+      0.430274457,
+      -0.887282133,
+      1.90046968,
+      0.0
+    ],
+    "stage=1 mode=sphere pose=1 normalize=1 texture=0": [
+      0.398121536,
+      0.924854755,
+      1.0,
+      0.0
+    ],
+    "stage=1 mode=sphere pose=1 normalize=1 texture=1": [
+      0.430274457,
+      -0.887282133,
+      1.90046968,
+      0.0
+    ],
+    "stage=1 mode=sphere pose=2 normalize=0 texture=0": [
+      0.950468481,
+      0.288901865,
+      1.0,
+      0.0
+    ],
+    "stage=1 mode=sphere pose=2 normalize=0 texture=1": [
+      0.547459722,
+      0.0666472018,
+      1.76238289,
+      0.0
+    ],
+    "stage=1 mode=sphere pose=2 normalize=1 texture=0": [
+      0.84430927,
+      0.143393949,
+      1.0,
+      0.0
+    ],
+    "stage=1 mode=sphere pose=2 normalize=1 texture=1": [
+      0.458003134,
+      0.28490907,
+      1.78892269,
+      0.0
+    ]
+  }
+}
