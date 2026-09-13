@@ -263,8 +263,10 @@ void SDLGlWindow::showWindow(bool show) {
                         }
                     }
                 }
-                SDL_ShowWindow(window);
-                SDL_RaiseWindow(window);                
+                if (KSystem::videoOption == VIDEO_NORMAL) {
+                    SDL_ShowWindow(window);
+                    SDL_RaiseWindow(window);
+                }
                 if (shownGlWindows == 1) {
                     KNativeSystem::showScreen(false);
                 }

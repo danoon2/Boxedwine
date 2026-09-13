@@ -15,6 +15,9 @@
 #include "testCPU.h"
 #include "testX86Util.h"
 #include "testAsmJit.h"
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+#include "../../emulation/cpu/jit/jitCodeGen.h"
+#endif
 
 #define cpu (testContext().cpu)
 #define memory (testContext().memory)
@@ -558,6 +561,83 @@ void runHotMovsCases(int width, bool address32) {
 #endif
 }
 
+// Segment-based overlap cases use the interpreter fallback. Exercise the
+// compiled flat-address copy too, including the small-overlap scalar loop.
+void runHotFlatOverlapMovsCases(int width, U32 profileCount) {
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+    for (U8 prefix : {PREFIX_REPE, PREFIX_REPNE}) {
+        for (bool backward : {false, true}) {
+            for (U32 separation : {0u, (U32)width, 7u, 8u}) {
+                newInstruction(backward ? DF : 0);
+                Seg savedDs = cpu->seg[DS];
+                Seg savedEs = cpu->seg[ES];
+                bool savedHasDs = cpu->thread->process->hasSetSeg[DS];
+                bool savedHasEs = cpu->thread->process->hasSetSeg[ES];
+                cpu->seg[DS].address = cpu->seg[ES].address = 0;
+                cpu->thread->process->hasSetSeg[DS] = false;
+                cpu->thread->process->hasSetSeg[ES] = false;
+                if (width == 2) pushCode8(0x66);
+                emitCode(STRING_MOVS, width, prefix);
+                pushCode8(0xcd);
+                pushCode8(0x97);
+                DecodedOp* op = cpu->getNextOp();
+                // The test dispatcher compiles immediately, which otherwise
+                // leaves an untraced MOVS as an interpreter stub. Model the
+                // recorded profile of a previously executed twelve-item copy.
+                op->runCount = JIT_RUN_COUNT + 1;
+                // One sample selects the vector path; twenty samples of
+                // twelve elements select the 64-bit fallback used by Motorhead.
+                op->STR_COUNT = profileCount;
+                op->STR_TOTAL = 12 * profileCount;
+                op->DF0 = !backward;
+                op->DF1 = backward;
+                startNewJIT(cpu, TEST_CODE_ADDRESS, op);
+
+                // Reuse compiled code with nonzero and zero counts.
+                // Motorhead copies twelve dwords
+                // with EDI = ESI + 4 to propagate the first value.
+                for (U32 count : {12u, 0u, 1u, 17u}) {
+                    U8 expected[OVERLAP_SIZE];
+                    initOverlapBytes(expected, sizeof(expected));
+                    writeOverlapBytes(expected, sizeof(expected));
+                    U32 last = backward && count ? (count - 1) * width : 0;
+                    U32 src = last + (backward ? separation : 0);
+                    U32 dst = last + (backward ? 0 : separation);
+                    cpu->eip.u32 = 0;
+                    cpu->setFlags(backward ? DF : 0, FMASK_ALL);
+                    cpu->reg[R_SI].u32 = TEST_HEAP_ADDRESS + OVERLAP_BASE + src;
+                    cpu->reg[R_DI].u32 = TEST_HEAP_ADDRESS + OVERLAP_BASE + dst;
+                    cpu->reg[R_CX].u32 = count;
+                    for (U32 i = 0; i < count; ++i) {
+                        U32 value = readCaseValue(expected, src, width);
+                        writeCaseValue(expected, dst, width, value);
+                        src += backward ? -width : width;
+                        dst += backward ? -width : width;
+                    }
+                    runTestCPU();
+                    verifyOverlapBytes(expected, sizeof(expected), "hot flat MOVS overlap");
+                    if (cpu->reg[R_CX].u32 != 0 ||
+                            cpu->reg[R_SI].u32 != TEST_HEAP_ADDRESS + OVERLAP_BASE + src ||
+                            cpu->reg[R_DI].u32 != TEST_HEAP_ADDRESS + OVERLAP_BASE + dst ||
+                            (actualFlags(cpu, true) & FLAG_MASK) != (backward ? DF : 0)) {
+                        failed("hot flat MOVS overlap width=%d separation=%u count=%u DF=%d",
+                            width, separation, count, backward);
+                    }
+                }
+                op = memory->getDecodedOp(TEST_CODE_ADDRESS);
+                if (!op || !op->pfnJitCode || (op->flags2 & OP_FLAG2_TRACED_STUB)) {
+                    failed("hot flat MOVS overlap did not exercise compiled code");
+                }
+                cpu->seg[DS] = savedDs;
+                cpu->seg[ES] = savedEs;
+                cpu->thread->process->hasSetSeg[DS] = savedHasDs;
+                cpu->thread->process->hasSetSeg[ES] = savedHasEs;
+            }
+        }
+    }
+#endif
+}
+
 void initPageBytes(U8* values, size_t count, U8 seed) {
     for (size_t i = 0; i < count; ++i) {
         values[i] = (U8)(seed + ((i * 13 + 7) & 0x7f));
@@ -764,6 +844,8 @@ void testMovsb_0x2a4() {
     runStringCases(STRING_MOVS, 1, true, MOVE_CASES, caseCount(MOVE_CASES));
     runOverlapMovsCases(1, true);
     runHotMovsCases(1, true);
+    runHotFlatOverlapMovsCases(1, 1);
+    runHotFlatOverlapMovsCases(1, 20);
     runPageBoundaryCases(STRING_MOVS, 1, true);
 }
 
@@ -771,6 +853,8 @@ void testMovsw_0x0a5() {
     runStringCases(STRING_MOVS, 2, false, MOVE_CASES, caseCount(MOVE_CASES));
     runOverlapMovsCases(2, false);
     runHotMovsCases(2, false);
+    runHotFlatOverlapMovsCases(2, 1);
+    runHotFlatOverlapMovsCases(2, 20);
     runPageBoundaryCases(STRING_MOVS, 2, false);
 }
 
@@ -778,6 +862,8 @@ void testMovsd_0x2a5() {
     runStringCases(STRING_MOVS, 4, true, MOVE_CASES, caseCount(MOVE_CASES));
     runOverlapMovsCases(4, true);
     runHotMovsCases(4, true);
+    runHotFlatOverlapMovsCases(4, 1);
+    runHotFlatOverlapMovsCases(4, 20);
     runPageBoundaryCases(STRING_MOVS, 4, true);
 }
 

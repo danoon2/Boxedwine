@@ -529,10 +529,10 @@ void Jit::dynamic_btce32(DecodedOp* op) {
 bool Jit::bsStartFlags(DecodedOp* op) {
     U32 flagsNeeded = op->needsToSetFlags(cpu);
     if (flagsNeeded) {
-        if (currentLazyFlags != FLAGS_NONE) {
-            storeLazyFlagType(FLAGS_NONE);
-            currentLazyFlags = FLAGS_NONE;
-        }
+        // A jump can enter this instruction with different lazy flags than
+        // the preceding generated instruction. Always publish the new ZF.
+        storeLazyFlagType(FLAGS_NONE);
+        currentLazyFlags = FLAGS_NONE;
     }
     return flagsNeeded != 0;
 }

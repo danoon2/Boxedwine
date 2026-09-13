@@ -626,6 +626,54 @@ void runScanCases(ScanOp op, int width, const ScanCase* cases, size_t count, con
     }
 }
 
+// A compiled instruction may be entered without executing the instruction
+// before it. In particular, another block can leave different lazy flags.
+void runScanInteriorEntryCase(ScanOp op, int width) {
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+    for (bool fromMemory : {false, true}) {
+        newInstruction(0);
+        cpu->big = width == 32;
+        emitScanRegReg(op, R_CX, R_SI);
+        emitSetccMem(0x94, SETCC_RESULT, cpu->big);
+        U32 entryOffset = testContext().codeIp - TEST_CODE_ADDRESS;
+        if (fromMemory) {
+            emitScanRegMem(op, R_CX, MEM_BASE, cpu->big);
+        } else {
+            emitScanRegReg(op, R_CX, R_SI);
+        }
+        emitSetccMem(0x94, SETCC_RESULT + 1, cpu->big);
+        cpu->reg[R_SI].u32 = 8;
+        memory->writed(TEST_HEAP_ADDRESS + MEM_BASE, 8);
+        runTestCPU();
+
+        DecodedOp* entry = memory->getDecodedOp(TEST_CODE_ADDRESS + entryOffset);
+        if (!entry || !entry->pfnJitCode) {
+            failed("%s %d-bit interior entry was not compiled", scanName(op), width);
+            continue;
+        }
+        for (U32 value : {0u, 8u}) {
+            cpu->reg[R_SI].u32 = value;
+            cpu->reg[R_CX].u32 = 0x12345555;
+            memory->writed(TEST_HEAP_ADDRESS + MEM_BASE, value);
+            // Arrange for stale lazy ZF to disagree with the scan's new ZF.
+            cpu->lazyFlagType = FLAGS_SUB32;
+            cpu->result.u32 = value ? 0 : 1;
+            cpu->eip.u32 = entryOffset;
+            cpu->nextOp = entry;
+            do {
+                cpu->run();
+            } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+            U32 expected = !value ? 0x12345555 : width == 16 ? 0x12340003 : 3;
+            if (memory->readb(TEST_HEAP_ADDRESS + SETCC_RESULT + 1) != (value == 0)
+                    || cpu->reg[R_CX].u32 != expected) {
+                failed("%s %d-bit interior %s entry with value=%u", scanName(op), width,
+                    fromMemory ? "memory" : "register", value);
+            }
+        }
+    }
+#endif
+}
+
 } // namespace
 
 void testBtE16R16_0x1a3() { runBitCases(BIT_BT, 16, BIT_CASES_16, caseCount(BIT_CASES_16), "bt e16,r16 1a3"); }
@@ -641,9 +689,9 @@ void testBtcE16R16_0x1bb() { runBitCases(BIT_BTC, 16, BIT_CASES_16, caseCount(BI
 void testBtcE32R32_0x3bb() { runBitCases(BIT_BTC, 32, BIT_CASES_32, caseCount(BIT_CASES_32), "btc e32,r32 3bb"); }
 void testGroup8E16Ib_0x1ba() { runGroup8Cases(16, BIT_CASES_16, caseCount(BIT_CASES_16), "group8 e16,ib 1ba"); }
 void testGroup8E32Ib_0x3ba() { runGroup8Cases(32, BIT_CASES_32, caseCount(BIT_CASES_32), "group8 e32,ib 3ba"); }
-void testBsfR16E16_0x1bc() { runScanCases(SCAN_BSF, 16, BSF_CASES_16, caseCount(BSF_CASES_16), "bsf r16,e16 1bc"); }
-void testBsfR32E32_0x3bc() { runScanCases(SCAN_BSF, 32, BSF_CASES_32, caseCount(BSF_CASES_32), "bsf r32,e32 3bc"); }
-void testBsrR16E16_0x1bd() { runScanCases(SCAN_BSR, 16, BSR_CASES_16, caseCount(BSR_CASES_16), "bsr r16,e16 1bd"); }
-void testBsrR32E32_0x3bd() { runScanCases(SCAN_BSR, 32, BSR_CASES_32, caseCount(BSR_CASES_32), "bsr r32,e32 3bd"); }
+void testBsfR16E16_0x1bc() { runScanCases(SCAN_BSF, 16, BSF_CASES_16, caseCount(BSF_CASES_16), "bsf r16,e16 1bc"); runScanInteriorEntryCase(SCAN_BSF, 16); }
+void testBsfR32E32_0x3bc() { runScanCases(SCAN_BSF, 32, BSF_CASES_32, caseCount(BSF_CASES_32), "bsf r32,e32 3bc"); runScanInteriorEntryCase(SCAN_BSF, 32); }
+void testBsrR16E16_0x1bd() { runScanCases(SCAN_BSR, 16, BSR_CASES_16, caseCount(BSR_CASES_16), "bsr r16,e16 1bd"); runScanInteriorEntryCase(SCAN_BSR, 16); }
+void testBsrR32E32_0x3bd() { runScanCases(SCAN_BSR, 32, BSR_CASES_32, caseCount(BSR_CASES_32), "bsr r32,e32 3bd"); runScanInteriorEntryCase(SCAN_BSR, 32); }
 
 #endif
