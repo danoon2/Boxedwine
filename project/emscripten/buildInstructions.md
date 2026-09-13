@@ -86,6 +86,32 @@ WASM and manifests (excluding generation timestamps), and executes all 64
 synthetic memory-reading exports after each of eleven pipeline runs. The
 uncached control must change the input bytes, so a no-op optimizer cannot pass.
 
+## Separating linker and optimizer build time
+
+Emscripten's `EMPROFILE=1` writes structured profiling events under
+`$TMPDIR/emscripten_toolchain_profiler_logs`. Use a new temporary directory
+for each compile/link phase, retain the command's actual exit code and logs,
+and summarize the completed trace:
+
+```text
+python3 summarizeBuildProfile.py /path/to/phase-temp/emscripten_toolchain_profiler_logs --build-exit-code 0 --output new-profile-report.json
+```
+
+Replace the example zero with the observed exit code. The report fails for
+failed builds, malformed or incomplete traces, clock reversals and duplicate
+process records. It preserves source hashes and refuses to overwrite a report.
+Emscripten may leave a process status unrecorded at normal `atexit`; the
+separately captured build status remains required.
+
+The `link`, `binaryen` and nested `wasm_opt` blocks distinguish linker work
+from WebAssembly optimization. Timings are inclusive: do not add `wasm_opt`
+to its `binaryen` parent. `busy_seconds` merges overlapping intervals across
+compiler processes; `process_seconds` sums durations and may exceed wall time.
+Neither measures CPU self time. Retain the outer phase's wall-clock measurement
+to include work outside the profiled blocks. Profiling can perturb build time;
+compare emitted output hashes with the ordinary build before reusing its
+runtime validation.
+
 ## Profiling the WASM JIT
 
 Build a clean checkout with `make multiThreadedJit WASM_PROFILING=1`
