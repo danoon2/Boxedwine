@@ -202,6 +202,7 @@ public:
 	const U32 c_class;
 
 	void draw();
+	int copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U32 data, U32 bytes_per_line, S32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height) override;
 	void setDirty() override;
 	XWindowPtr getWindowFromPoint(S32 screenX, S32 screenY);
 

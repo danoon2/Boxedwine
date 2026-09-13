@@ -29,6 +29,9 @@ class XServer {
 public:	
 	static XServer* getServer(bool existingOnly = false);
 	static void shutdown();
+#ifdef __TEST
+	static void testImageIncludeInferiors();
+#endif
 
 	XServer();
 	

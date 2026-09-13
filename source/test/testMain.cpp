@@ -59,6 +59,8 @@
 #include "opengl/testOpenGL.h"
 
 void testWaitPid();
+void testX11ImageIncludeInferiors();
+void testX11ImageScanlinePadding();
 void testWaitPidPublicationLockOrder();
 void testProcessSignalWakesSigwaitMask();
 void testBlockedThreadSignalStartsHandler();
@@ -907,6 +909,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testLockedMemoryOrdering, "Test Multi-threaded locked memory ordering"},
 #endif
     {testWaitPid, "Test waitpid child selection"},
+    {testX11ImageIncludeInferiors, "Test X11 image IncludeInferiors and child coordinates"},
+    {testX11ImageScanlinePadding, "Test X11 image scanline padding"},
     {testWaitPidPublicationLockOrder, "Test waitpid process publication lock order", TEST_ENTRY_SERIAL},
     {testProcessSignalWakesSigwaitMask, "Test process signal wakes sigwait mask"},
 #ifdef BOXEDWINE_MULTI_THREADED

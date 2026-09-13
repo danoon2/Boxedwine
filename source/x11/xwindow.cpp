@@ -882,6 +882,32 @@ void XWindow::setDirty() {
 	}
 }
 
+int XWindow::copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U32 data, U32 bytes_per_line, S32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height) {
+	int result = XDrawable::copyImageData(thread, gc, data, bytes_per_line, bits_per_pixel, src_x, src_y, dst_x, dst_y, width, height);
+	if (result != Success || !gc || gc->values.subwindow_mode != IncludeInferiors) {
+		return result;
+	}
+	// Wine uploads a whole-window GDI surface with IncludeInferiors even when
+	// its EGL client child survives the last D3D context. Update the covered
+	// child pixels too, instead of compositing their old backing data over it.
+	iterateMappedChildrenBackToFront([&](const XWindowPtr& child) {
+		if (child->c_class != InputOutput || child->getDepth() != getDepth()) {
+			return true;
+		}
+		S64 left = std::max<S64>(std::max<S64>(0, dst_x), child->left);
+		S64 top = std::max<S64>(std::max<S64>(0, dst_y), child->top);
+		S64 right = std::min<S64>(std::min<S64>(this->width(), (S64)dst_x + width), (S64)child->left + child->width());
+		S64 bottom = std::min<S64>(std::min<S64>(this->height(), (S64)dst_y + height), (S64)child->top + child->height());
+		if (right > left && bottom > top) {
+			result = child->copyImageData(thread, gc, data, bytes_per_line, bits_per_pixel,
+				src_x + (S32)(left - dst_x), src_y + (S32)(top - dst_y),
+				(S32)(left - child->left), (S32)(top - child->top), (U32)(right - left), (U32)(bottom - top));
+		}
+		return result == Success;
+	});
+	return result;
+}
+
 void XWindow::draw() {
 	if (c_class == InputOnly || !isMapped) {
 		return;
@@ -892,9 +918,9 @@ void XWindow::draw() {
 		colorMap->buildCache();
 		palette = colorMap->nativePixels;
 	}
-	S32 screenX = left;
-	S32 screenY = top;
-	//windowToScreen(screenX, screenY);
+	S32 screenX = 0;
+	S32 screenY = 0;
+	windowToScreen(screenX, screenY);
 	lockData();
 	KNativeSystem::getScreen()->putBitsOnWnd(id, data, visual?visual->bits_per_rgb:32, bytes_per_line, screenX, screenY, width(), height(), palette, isDirty);
 	unlockData();

@@ -2488,12 +2488,74 @@ static void x11_CreateImage(CPU* cpu) {
         bitmap_unit = 16;
     }
     if (bytes_per_line == 0) {
-        bytes_per_line = roundUp((bits_per_pixel * width / 8), bitmap_pad);
+        // XCreateImage's scanline padding is measured in bits, not bytes.
+        bytes_per_line = roundUp(bits_per_pixel * width, bitmap_pad) / 8;
     }
     U32 image = thread->process->alloc(thread, sizeof(XImage));
     XImage::set(memory, image, width, height, offset, format, data, bitmap_pad, depth, bytes_per_line, bits_per_pixel, visual.red_mask, visual.green_mask, visual.blue_mask);
     EAX = image;
 }
+
+#ifdef __TEST
+#include "../test/cpu/testCPU.h"
+
+void testX11ImageScanlinePadding() {
+    testNewInstruction(0);
+    CPU* cpu = testContext().cpu;
+    KMemory* memory = cpu->memory;
+    const struct { U32 width, depth, pad, suppliedPitch, expectedPitch; } cases[] = {
+        {153, 32, 32, 0, 612}, // Wine's partial GDI text upload.
+        {154, 24, 32, 0, 616}, {1, 32, 32, 0, 4},
+        {5, 16, 32, 0, 12}, {3, 8, 32, 0, 4},
+        {3, 8, 16, 0, 4}, {3, 8, 8, 0, 3},
+        {1, 1, 8, 0, 1}, {9, 1, 8, 0, 2},
+        {17, 1, 16, 0, 4}, {33, 1, 32, 0, 8},
+        {153, 32, 32, 1024, 1024} // Preserve an explicit client stride.
+    };
+    for (const auto& row : cases) {
+        U32 args[] = {0, 0, row.depth, ZPixmap, 0, TEST_HEAP_ADDRESS,
+            row.width, 3, row.pad, row.suppliedPitch};
+        for (U32 i = 0; i < 10; ++i) {
+            memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + (i + 1) * 4, args[i]);
+        }
+        x11_CreateImage(cpu);
+        U32 address = EAX;
+        if (!address) { testFail("XCreateImage failed"); continue; }
+        XImage image;
+        XImage::read(memory, address, &image);
+        if ((U32)image.bytes_per_line != row.expectedPitch) {
+            testFail("XCreateImage width=%u depth=%u pad=%u stride=%d expected=%u",
+                row.width, row.depth, row.pad, image.bytes_per_line, row.expectedPitch);
+        }
+        if (row.width == 153 && !row.suppliedPitch) {
+            // A row-dependent pattern catches the observed shifted scanlines
+            // through the actual image-upload operation, beyond header checks.
+            for (U32 y = 0; y < 3; ++y) {
+                for (U32 x = 0; x < 153; ++x) {
+                    memory->writed(TEST_HEAP_ADDRESS + (y * 153 + x) * 4, 0x11000000 + y * 0x10000 + x);
+                }
+            }
+            VisualPtr visual = std::make_shared<Visual>();
+            visual->bits_per_rgb = 32;
+            auto drawable = std::make_shared<XDrawable>(153, 3, 32, visual, false, false);
+            auto gc = std::make_shared<XGC>(drawable);
+            if (drawable->putImage(cpu->thread, gc, &image, 0, 0, 0, 0, 153, 3) != Success) {
+                testFail("XCreateImage test upload failed");
+            }
+            U32 incorrect = 0;
+            for (U32 y = 0; y < 3; ++y) {
+                for (U32 x = 0; x < 153; ++x) {
+                    U32 pixel;
+                    memcpy(&pixel, drawable->getData() + y * drawable->getBytesPerLine() + x * 4, 4);
+                    incorrect += pixel != 0x11000000 + y * 0x10000 + x;
+                }
+            }
+            if (incorrect) testFail("XCreateImage shifted %u uploaded pixels", incorrect);
+        }
+        cpu->thread->process->free(address);
+    }
+}
+#endif
 
 static void x11_DisplayName(CPU* cpu) {
     kpanic("x11_DisplayName");
