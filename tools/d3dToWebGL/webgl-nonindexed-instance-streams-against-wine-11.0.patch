@@ -1,0 +1,32 @@
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -4804,6 +4804,29 @@
+     unsigned int i, j;
+ 
+     ops = &gl_info->ffp_attrib_ops;
++
++    if (wined3d_settings.webgl && !idx_size && !instance_count
++            && !gl_info->supported[ARB_INSTANCED_ARRAYS])
++    {
++        /* A non-indexed D3D9 draw ignores the instance count, but still
++         * consumes the first value of each per-instance stream. The software
++         * instancing path leaves these arrays disabled; refresh their values
++         * instead of reusing the last instance from an earlier draw. */
++        for (i = 0; i < ARRAY_SIZE(si->elements); ++i)
++        {
++            const struct wined3d_stream_info_element *element = &si->elements[i];
++            const BYTE *ptr;
++
++            if (!(si->use_map & (1u << i))
++                    || !(state->streams[element->stream_idx].flags & WINED3DSTREAMSOURCE_INSTANCEDATA))
++                continue;
++            ptr = element->data.addr;
++            if (element->data.buffer_object)
++                ptr += (ULONG_PTR)wined3d_buffer_load_sysmem(state->streams[element->stream_idx].buffer,
++                        &context_gl->c);
++            ops->generic[element->format->emit_idx](i, ptr);
++        }
++    }
+ 
+     indices = (const char *)idx_data + idx_size * start_idx;
+ 

@@ -1,0 +1,14 @@
+diff --git a/dlls/wined3d/device.c b/dlls/wined3d/device.c
+--- a/dlls/wined3d/device.c
++++ b/dlls/wined3d/device.c
+@@ -3418,7 +3418,9 @@
+             ? &state->material.specular : &black;
+     init_transformed_lights(&ls, state, device->wined3d->flags & WINED3D_LEGACY_FFP_LIGHTING, lighting);
+     material_shininess = state->rs[WINED3D_RS_SPECULARENABLE] ? state->material.power : 0.0f;
+-    if (lighting && state->rs[WINED3D_RS_SPECULARENABLE])
++    /* Zero power disables legacy specular lighting. Later ProcessVertices
++     * preserves the preceding nonzero exponent instead. */
++    if (!ls.legacy_lighting && lighting && state->rs[WINED3D_RS_SPECULARENABLE])
+     {
+         if (material_shininess != 0.0f)
+             device->process_vertices_material_power = material_shininess;

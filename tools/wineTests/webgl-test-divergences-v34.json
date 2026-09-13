@@ -1,0 +1,548 @@
+{
+  "schema_version": 2,
+  "manifest_id": "wine11-webgl-test-divergences-v34",
+  "recorded_at": "2026-09-12",
+  "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
+  "production_patches": [
+    {
+      "patch_id": "build-config",
+      "category": "build_and_configuration",
+      "path": "tools/d3dToWebGL/webgl-build-config-against-wine-11.0.patch",
+      "sha256": "8306cec124c5837fc26a41e7930582635d5390b576efc0006e1a009e7adc80bf"
+    },
+    {
+      "patch_id": "adapter-context-caps",
+      "category": "adapter_context_and_capabilities",
+      "path": "tools/d3dToWebGL/webgl-adapter-context-caps-against-wine-11.0.patch",
+      "sha256": "ff7078f7b9c47c5f766b5d25099d180b49978742621322f7d9e326b548b71af9"
+    },
+    {
+      "patch_id": "shader-generation-glsl-es",
+      "category": "shader_generation_and_glsl_es",
+      "path": "tools/d3dToWebGL/webgl-shader-generation-glsl-es-against-wine-11.0.patch",
+      "sha256": "f12d95f8660c9f42394a5ca9fd78564948ea5a77fa78653e9cdd42b88b78971f"
+    },
+    {
+      "patch_id": "texture-formats-transfers",
+      "category": "texture_formats_transfers_and_readback",
+      "path": "tools/d3dToWebGL/webgl-texture-formats-transfers-against-wine-11.0.patch",
+      "sha256": "54415bde32dbc6fbb7792d6f6cecbda06f916a0f245dde73e2ebe14a4a9f7314"
+    },
+    {
+      "patch_id": "blitter-batching",
+      "category": "glsl_blitter_and_gpu_batching",
+      "path": "tools/d3dToWebGL/webgl-blitter-batching-against-wine-11.0.patch",
+      "sha256": "7b49ced4bdd7b20dbdb5f4badf340cdd5b7b087109af2491d07570486a3dff23"
+    },
+    {
+      "patch_id": "directdraw-runtime-presentation",
+      "category": "directdraw_runtime_presentation_overlays_and_legacy_d3d",
+      "path": "tools/d3dToWebGL/webgl-directdraw-runtime-presentation-against-wine-11.0.patch",
+      "sha256": "34c71d7bfc927d8fccfba3ee9b6213fbc5a91dc1ecd0b75be785377d89463e4e"
+    },
+    {
+      "patch_id": "d3dx9-assets-compatibility",
+      "category": "d3dx9_assets_animation_mesh_and_compatibility",
+      "path": "tools/d3dToWebGL/webgl-d3dx9-assets-compatibility-against-wine-11.0.patch",
+      "sha256": "345f7ccd04343497eef35fe00f92af86bb0104e08b051569df873ad17002687b"
+    },
+    {
+      "patch_id": "d3dxof-parser-hardening",
+      "category": "d3dxof_parser_hardening",
+      "path": "tools/d3dToWebGL/webgl-d3dxof-parser-hardening-against-wine-11.0.patch",
+      "sha256": "2fb69da8007362dd851e87af0ec165999480cd9cf7140f490c97fc74901a14c5"
+    },
+    {
+      "patch_id": "wined3d-draw-state-query",
+      "category": "wined3d_draw_state_queries_and_resources",
+      "path": "tools/d3dToWebGL/webgl-wined3d-draw-state-query-against-wine-11.0.patch",
+      "sha256": "762d71a39f9c2bc1c2cc142469893944142cd9e1f693a5e20293fdd6a618a269"
+    },
+    {
+      "patch_id": "d3d8-d3d9-compatibility-diagnostics",
+      "category": "d3d8_d3d9_compatibility_and_diagnostics",
+      "path": "tools/d3dToWebGL/webgl-d3d8-d3d9-compatibility-diagnostics-against-wine-11.0.patch",
+      "sha256": "3c88734adaa89b3a5a9660d2a790a4d2abe9f2d20144e8eda3a0d025cd6a8040"
+    },
+    {
+      "patch_id": "graphics-correctness",
+      "category": "texture_conversion_and_capability_correctness",
+      "path": "tools/d3dToWebGL/webgl-graphics-correctness-against-wine-11.0.patch",
+      "sha256": "3e10a98affb511ccf0be1855e19a79fa88b1b804cae949e8f0d3f85d98fe0c55"
+    },
+    {
+      "patch_id": "clip-plane-state",
+      "category": "directdraw_cpu_clip_state",
+      "path": "tools/d3dToWebGL/webgl-clip-plane-state-against-wine-11.0.patch",
+      "sha256": "632f956b176b8cf89eef8b19d977d9f8b3199cdf3d91ac80855ec0d99b3e7994"
+    },
+    {
+      "patch_id": "zero-clip-capability",
+      "category": "d3d9_zero_capability_validation",
+      "path": "tools/d3dToWebGL/webgl-zero-clip-capability-against-wine-11.0.patch",
+      "sha256": "74622ea431a33b12c5c41789a60b1307f1259d48d9758d6c45da04fc3a91cc04"
+    },
+    {
+      "patch_id": "depth-range",
+      "category": "viewport_depth_range",
+      "path": "tools/d3dToWebGL/webgl-depth-range-against-wine-11.0.patch",
+      "sha256": "f6f638506b83ab39dcf88e22bd8609a86de6ee649984fb76c08ac217de5730e8"
+    },
+    {
+      "patch_id": "depth-bias",
+      "category": "depth_bias_calibration",
+      "path": "tools/d3dToWebGL/webgl-depth-bias-against-wine-11.0.patch",
+      "sha256": "1c16f8a84de87790529656003d2534dad76fa40a75b4e8def483e2fc78a9d3cd"
+    },
+    {
+      "patch_id": "depth-copy",
+      "category": "depth_stencil_copy_and_indexed_blend_capabilities",
+      "path": "tools/d3dToWebGL/webgl-depth-copy-against-wine-11.0.patch",
+      "sha256": "c38a2e6ed0c289c47f5d297cb12b1e72f0558055da92350a1a902e98b1aeaa15"
+    },
+    {
+      "patch_id": "depth-readback",
+      "category": "depth_stencil_readback_and_system_memory_blits",
+      "path": "tools/d3dToWebGL/webgl-depth-readback-against-wine-11.0.patch",
+      "sha256": "ecb9e242fb676108b44f0f408c747f858633853d172e92b0aee3060a8618a6bd"
+    },
+    {
+      "patch_id": "stencil-clear",
+      "category": "cpu_depth_stencil_clear",
+      "path": "tools/d3dToWebGL/webgl-stencil-clear-against-wine-11.0.patch",
+      "sha256": "4251c56e5b2952b8950a25a2113012599f4655d53ad6a6f155e96bf3aacf1062"
+    },
+    {
+      "patch_id": "point-size-capability",
+      "category": "point_size_capability",
+      "path": "tools/d3dToWebGL/webgl-point-size-capability-against-wine-11.0.patch",
+      "sha256": "ead6881c38db1b86986d0582751d370cc6746e5906e3b93dfc4a031d46386dcd"
+    },
+    {
+      "patch_id": "point-sprite-origin",
+      "category": "point_sprite_shader_coordinates",
+      "path": "tools/d3dToWebGL/webgl-point-sprite-origin-against-wine-11.0.patch",
+      "sha256": "34a938ae3abf4133bb72bacb49ab13485f02a3274e6e0d577c04a215acef8640"
+    },
+    {
+      "patch_id": "context-state",
+      "category": "context_state_restoration",
+      "path": "tools/d3dToWebGL/webgl-context-state-against-wine-11.0.patch",
+      "sha256": "4f06fd3485552c2f312bd5795a3cac3d821a0c51f634d79a2c77d9637ccd3589"
+    },
+    {
+      "patch_id": "presentation-state",
+      "category": "presentation_state_restoration",
+      "path": "tools/d3dToWebGL/webgl-presentation-state-against-wine-11.0.patch",
+      "sha256": "6215c6f6322b4a36945c5b5b57846a40dee2ff425a161d162bb83a0e3b0dbb9d"
+    },
+    {
+      "patch_id": "self-blit",
+      "category": "overlapping_gpu_copies",
+      "path": "tools/d3dToWebGL/webgl-self-blit-against-wine-11.0.patch",
+      "sha256": "04565baba115a6ed89ede91b3429d52748e8989a41a30a0a8c3c7ba97e07d56e"
+    },
+    {
+      "patch_id": "alpha-test-outputs",
+      "category": "shader_generation_and_glsl_es",
+      "path": "tools/d3dToWebGL/webgl-alpha-test-outputs-against-wine-11.0.patch",
+      "sha256": "ddbd92085f77c6f22f45d336d99b235019aaa56603d482f51a61bc808e7d8d52"
+    },
+    {
+      "patch_id": "context-backend-lifecycle",
+      "category": "wined3d_draw_state_queries_and_resources",
+      "path": "tools/d3dToWebGL/webgl-context-backend-lifecycle-against-wine-11.0.patch",
+      "sha256": "be05e5b314e8f417b7f6618a4ad07737c5961e075582ee9bbba539460d90d317"
+    },
+    {
+      "patch_id": "multisample-color-copy",
+      "category": "wined3d_draw_state_queries_and_resources",
+      "path": "tools/d3dToWebGL/webgl-multisample-color-copy-against-wine-11.0.patch",
+      "sha256": "f895b63c8669ebdfc63baf476cd4a99eb48c7a14e2bc9ef7ff524e3cb3a2edb2"
+    },
+    {
+      "patch_id": "shared-context-owner",
+      "category": "wined3d_draw_state_queries_and_resources",
+      "path": "tools/d3dToWebGL/webgl-shared-context-owner-against-wine-11.0.patch",
+      "sha256": "16fd47b1dfa359ccf2f4e027912f22bbdda2275b18e7a52a7f799d5d5e15993e"
+    },
+    {
+      "patch_id": "d3dxof-object-limit",
+      "category": "d3dxof_parser_hardening",
+      "path": "tools/d3dToWebGL/webgl-d3dxof-object-limit-against-wine-11.0.patch",
+      "sha256": "c9a8ca4614b581fc798d00fb2d779d635983ef718e29c3bf8c0e4e6a189f44ed"
+    },
+    {
+      "patch_id": "format-storage",
+      "category": "texture_formats_transfers_and_readback",
+      "path": "tools/d3dToWebGL/webgl-format-storage-against-wine-11.0.patch",
+      "sha256": "360e9721f8471af4f5fbf170e3920c29107424e9dc1347425e062e57506c0263"
+    },
+    {
+      "patch_id": "rgb10-transfers",
+      "category": "texture_formats_transfers_and_readback",
+      "path": "tools/d3dToWebGL/webgl-rgb10-transfers-against-wine-11.0.patch",
+      "sha256": "324d037292eb76645186aa1d1a9e834b9774a77e2dd0194710ebf77f982c1ee8"
+    },
+    {
+      "patch_id": "format-sample-policy",
+      "category": "adapter_context_and_capabilities",
+      "path": "tools/d3dToWebGL/webgl-format-sample-policy-against-wine-11.0.patch",
+      "sha256": "5561ea57beb5fd9d8ed6a1efa3a2dd1bcdd3c2bcbf6364ffc90189edb46023a5"
+    },
+    {
+      "patch_id": "float-capabilities",
+      "category": "adapter_context_and_capabilities",
+      "path": "tools/d3dToWebGL/webgl-float-capabilities-against-wine-11.0.patch",
+      "sha256": "2ce63bd95f2f22f46f51c897cfaf47a0da1bc3c11f75fcccdc7fbaa13477ecfb"
+    },
+    {
+      "patch_id": "ffp-normal-texgen",
+      "category": "shader_generation_and_glsl_es",
+      "path": "tools/d3dToWebGL/webgl-ffp-normal-texgen-against-wine-11.0.patch",
+      "sha256": "167c1e51d53ea5c85236e8c04ef7cbd62c5ad5b4a3e951697613b2af559ef509"
+    },
+    {
+      "patch_id": "vertex-fog",
+      "category": "shader_generation_and_glsl_es",
+      "path": "tools/d3dToWebGL/webgl-vertex-fog-against-wine-11.0.patch",
+      "sha256": "deb4919046d5aed37bd8988077826a9132b01baaa23f88c10fb090a77f761198"
+    },
+    {
+      "patch_id": "d3dx-tangent-frame",
+      "category": "d3dx9_assets_animation_mesh_and_compatibility",
+      "path": "tools/d3dToWebGL/webgl-d3dx-tangent-frame-against-wine-11.0.patch",
+      "sha256": "e8f5858b727f6ab875a70cd1f8d075613c05bf793184f161bef26aec6ec006c0"
+    },
+    {
+      "patch_id": "d3dx-state-lifecycle",
+      "category": "d3dx9_assets_animation_mesh_and_compatibility",
+      "path": "tools/d3dToWebGL/webgl-d3dx-state-lifecycle-against-wine-11.0.patch",
+      "sha256": "de7a99d4f7587d769c679b4eecd07ec19ec6870495fcf21961c0969c2c56eb18"
+    },
+    {
+      "patch_id": "d3dx-frame-sphere",
+      "category": "d3dx9_assets_animation_mesh_and_compatibility",
+      "path": "tools/d3dToWebGL/webgl-d3dx-frame-sphere-against-wine-11.0.patch",
+      "sha256": "0d9ede275aa2e663c0ed4a546f91efd23ad1bdba7c8ebe83e9707e528eb370c2"
+    },
+    {
+      "patch_id": "generated-texcoords",
+      "category": "shader_generation_and_glsl_es",
+      "path": "tools/d3dToWebGL/webgl-generated-texcoords-against-wine-11.0.patch",
+      "sha256": "ad8071df1c5582fedf66e2d2f2821f11c5b34128d21bf8b55ed8df55ce77fcbb"
+    },
+    {
+      "patch_id": "ffp-failure-recovery",
+      "category": "shader_generation_and_glsl_es",
+      "path": "tools/d3dToWebGL/webgl-ffp-failure-recovery-against-wine-11.0.patch",
+      "sha256": "11e9652bba066b51f775a6766e035fa71d0ec71ee32e3a2ccf04e4acdfe70e1f"
+    },
+    {
+      "patch_id": "mapped-buffer-uploads",
+      "category": "buffer_streaming_and_synchronization",
+      "path": "tools/d3dToWebGL/webgl-mapped-buffer-uploads-against-wine-11.0.patch",
+      "sha256": "e82762db9ac4a8d0cc940367cd36ed77c1fa88afb6e69b82d56384f3368ef30e"
+    },
+    {
+      "patch_id": "glsl-program-failure",
+      "category": "shader_generation_and_glsl_es",
+      "path": "tools/d3dToWebGL/webgl-glsl-program-failure-against-wine-11.0.patch",
+      "sha256": "f19f8cd2d75c0c8aa8f00554b80e092087f5655f23bb617f171db4eda746e238"
+    },
+    {
+      "patch_id": "flat-shading-indices",
+      "category": "rasterization_and_draw_state",
+      "path": "tools/d3dToWebGL/webgl-flat-shading-indices-against-wine-11.0.patch",
+      "sha256": "4dc58cbf63fe14aeb8b22c46f6c7f47e5cce99f1fb93b5ba1430d2943647f274"
+    },
+    {
+      "patch_id": "nonindexed-instance-streams",
+      "category": "buffer_streaming_and_synchronization",
+      "path": "tools/d3dToWebGL/webgl-nonindexed-instance-streams-against-wine-11.0.patch",
+      "sha256": "a336e0caacb0dab388ae95859200357d9b9eedbbf6987a21923fc4d652ab0b16"
+    },
+    {
+      "patch_id": "legacy-specular-power",
+      "category": "fixed_function_lighting",
+      "path": "tools/d3dToWebGL/webgl-legacy-specular-power-against-wine-11.0.patch",
+      "sha256": "32de53c932d479b73b5360c9f61b38c62fb6eb699d2c1bf7133f29d841786d1f"
+    }
+  ],
+  "test_patch": {
+    "patch_id": "webgl-tests-legacy-complete",
+    "path": "tools/d3dToWebGL/webgl-tests-legacy-complete-against-wine-11.0.patch",
+    "sha256": "5758557f0cc719575af1324f998fa9ba13477b64354708348cd6591078748e9a"
+  },
+  "policy": "No production patch may modify Wine tests. Every added skip() and todo_wine_if() policy in the test-only patch must match exactly one classified rule.",
+  "categories": {
+    "intentional_webgl_limit": "The browser or WebGL 2 API deliberately does not expose the desktop capability or execution environment required by the test.",
+    "unimplemented_emulation": "The behavior can potentially be emulated above WebGL, but the Wine WebGL backend does not implement that emulation yet.",
+    "defect_to_fix": "The behavior should work through the current abstraction and remains a correctness or robustness defect."
+  },
+  "modified_test_files": [
+    "dlls/d3d8/tests/device.c",
+    "dlls/d3d8/tests/visual.c",
+    "dlls/d3d9/tests/device.c",
+    "dlls/d3d9/tests/visual.c",
+    "dlls/ddraw/tests/ddraw1.c",
+    "dlls/ddraw/tests/ddraw2.c",
+    "dlls/ddraw/tests/ddraw4.c",
+    "dlls/ddraw/tests/ddraw7.c",
+    "dlls/ddraw/tests/visual.c",
+    "dlls/d3dx9_36/tests/surface.c"
+  ],
+  "upstream_reference": {
+    "build": "/home/james/boxedwine-wine11-tests/build-i386",
+    "test_executable_sha256": {
+      "ddraw": "b57ac0f1df8d6bdcaa38a41dc331b4e87c889fa29edb08676e017845b215e972",
+      "d3d8": "47b10444753a22b918646537af193efb0eea3871a7a98bb7b1d26f5af5ffc9c8",
+      "d3d9": "5efbb8fdc8bb201d46d328e278b559aa52049da2ce260cdbd639445d31fc2695",
+      "d3dx9_43": "8709aa25465c1b0efb59a137e4d5f842ab9bf5f9ff60c894fdd868786811a5aa",
+      "d3dxof": "d7e2d0a4e4701f4fc5a20ae94e25bd2583c9806e302c0d8d5028434c4dc8e252"
+    },
+    "stable_native_comparison": {
+      "result": "Exact count match with the adapted v6 executables for all seven stable native groups.",
+      "runs": [
+        "/home/james/.cache/boxedwine/wineTests/runs/20260729-184756-556595",
+        "/home/james/.cache/boxedwine/wineTests/runs/20260729-184809-147273",
+        "/home/james/.cache/boxedwine/wineTests/runs/20260729-184820-835794",
+        "/home/james/.cache/boxedwine/wineTests/runs/20260729-184835-481538",
+        "/home/james/.cache/boxedwine/wineTests/runs/20260729-184903-133859"
+      ]
+    }
+  },
+  "classified_rules": [
+    {
+      "category": "intentional_webgl_limit",
+      "rationale": "These tests require browser-window, display-mode, WebGL format, multisample, synchronization, memory-budget, or front-buffer capabilities that WebGL 2 intentionally does not expose.",
+      "skip_rules": [
+        {
+          "marker": "skip(\"Could not get cursor position, skipping test.\\n\");",
+          "occurrences": 2
+        },
+        {
+          "marker": "skip(\"WebGL browser windowing does not support native foreground/topmost style transitions.\\n\");",
+          "occurrences": 4
+        },
+        {
+          "marker": "skip(\"WebGL buffer upload synchronisation does not expose desktop dynamic-map timing semantics.\\n\");",
+          "occurrences": 2
+        },
+        {
+          "marker": "skip(\"WebGL does not expose desktop D3D8 multisample CopyRects semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not expose desktop D3D8 multisample mask semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not expose desktop D3D9 multisample mask semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not expose desktop GL scaled multisample resolves.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"User clip planes are not supported by this device.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not preserve desktop mismatched multisample color/depth semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not preserve desktop multisampled front-buffer readback semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL exposes a single browser-backed display mode.\\n\");",
+          "occurrences": 2
+        },
+        {
+          "marker": "skip(\"WebGL uses a fixed browser-backed display mode, skipping multi-object display mode restore test.\\n\");",
+          "occurrences": 4
+        },
+        {
+          "marker": "skip(\"WebGL uses a fixed memory budget and browser-backed GPU scheduling, skipping map synchronisation stress test.\\n\");",
+          "occurrences": 2
+        }
+      ],
+      "todo_rules": []
+    },
+    {
+      "category": "unimplemented_emulation",
+      "rationale": "These desktop Direct3D and legacy DirectDraw behaviors could be translated or emulated, but the current WebGL backend has no complete implementation.",
+      "skip_rules": [
+        {
+          "marker": "skip(\"WebGL does not preserve desktop multisampled depth-stencil blit semantics.\\n\");",
+          "occurrences": 1
+        }
+      ],
+      "todo_rules": []
+    },
+    {
+      "category": "defect_to_fix",
+      "rationale": "These rules accept or avoid mismatches that should be fixed in the Wine-to-WebGL translation, BoxedWine emulation, or test-safety path.",
+      "skip_rules": [
+        {
+          "marker": "skip(\"Skipping malformed clipper pointers after valid ownership checks.\\n\");",
+          "occurrences": 4
+        },
+        {
+          "marker": "skip(\"Skipping invalid output pointer test under WebGL.\\n\");",
+          "occurrences": 4
+        }
+      ],
+      "todo_rules": [
+        {
+          "marker": "todo_wine_if (!is_webgl() && tests[i].todo)",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if(!is_webgl() && i == 0 && x_side == 0 && y_side == 1 && !is_win64 && !new_wow64)",
+          "occurrences": 1
+        },
+        {
+          "marker": "todo_wine_if(!is_webgl() && tests[i].vertexmode == D3DFOG_NONE) ok(color_match(color, tests[i].color_left, 1),",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if((tests[i].caps & DDSCAPS_VIDEOMEMORY && surface_desc.dwZBufferBitDepth != 16)",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if((todo || (is_webgl() && i == 5)) && !compare_color(colour, expected, 1))",
+          "occurrences": 3
+        },
+        {
+          "marker": "todo_wine_if(i == 1 && (!is_webgl() || !compare_color(color, tests[i].color_left, 1)))",
+          "occurrences": 1
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && !activateapp_testdata.received)",
+          "occurrences": 12
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && (tests[i].caps & DDSCAPS_ZBUFFER)",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && (tests[i].caps & DDSCAPS_ZBUFFER) && (*color & 0x00ffffff) != 0x00ffffff)",
+          "occurrences": 3
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && (tests[i].caps & DDSCAPS_ZBUFFER) && *color != 0)",
+          "occurrences": 3
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && (tests[i].caps & DDSCAPS_ZBUFFER) && *color != tests[i].result)",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if(tests[i].todo && (!is_webgl() || !compare_color(color, tests[i].middle_color, 2)))",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "category": "intentional_webgl_limit",
+      "rationale": "The runtime format query reports D3DERR_NOTAVAILABLE. Run the complete original test whenever RGBA32F surface render targets are supported; unexpected query errors remain assertion failures.",
+      "skip_rules": [
+        {
+          "marker": "skip(\"D3DFMT_A32B32G32R32F render targets are unavailable.\\n\");",
+          "occurrences": 1
+        }
+      ],
+      "todo_rules": []
+    },
+    {
+      "category": "defect_to_fix",
+      "rationale": "Retain upstream fog TODO behavior only on native Wine, where the original unmuted test still has 120 pixel mismatches and 48 unexpected successes. All WebGL fog assertions are strict.",
+      "skip_rules": [],
+      "todo_rules": [
+        {
+          "marker": "todo_wine_if (!is_webgl() && ((fog_mode_tests[pixel_mode] != D3DFOG_NONE && (vs_mode == VS_MODE_FFP || (!ortho_fog && vs_mode == VS_MODE_RHW)))",
+          "occurrences": 1
+        }
+      ]
+    }
+  ],
+  "restored_assertions": [
+    {
+      "source": "dlls/d3dx9_36/tests/surface.c",
+      "function": "test_D3DXLoadSurface",
+      "count": 8,
+      "description": "Existing multisampled surface copied/preserved ARGB checks become strict under WebGL; native desktop Wine retains upstream TODO behavior. No assertions or skips are added or removed."
+    },
+    {
+      "source": "dlls/d3d9/tests/visual.c",
+      "function": "test_fog",
+      "description": "Restore the complete original test when the queried RGBA32F render target is available. WebGL TODO allowance removed; native Wine TODO behavior retained. Expected pixels and tolerances unchanged."
+    },
+    {
+      "source": "dlls/d3d9/tests/visual.c",
+      "function": "test_texture_transform_flags",
+      "description": "Restore the complete original test when the queried RGBA32F render target is available. Remove obsolete upstream TODO verified successful on native Wine and all four browser modes. Expected pixels and tolerances unchanged."
+    },
+    {
+      "source": "dlls/d3d8/tests/visual.c",
+      "function": "test_dynamic_map_synchronization",
+      "description": "Restore the unchanged original 200-by-200 fixed upload test. Native Windows and four browser modes pass; the adaptive map-hazard test stays separate.",
+      "restored_checks": 120020
+    },
+    {
+      "source": "dlls/d3d9/tests/visual.c",
+      "function": "test_dynamic_map_synchronization",
+      "description": "Restore the unchanged original 200-by-200 fixed upload test. Native Windows and four browser modes pass; the adaptive map-hazard test stays separate.",
+      "restored_checks": 160425
+    },
+    {
+      "source": "dlls/d3d9/tests/visual.c",
+      "function": "stream_test",
+      "description": "Restore all 64 original non-indexed pixels (256 pixel/API checks) across sixteen cases. Original indexed assertions, colors and tolerances remain unchanged."
+    },
+    {
+      "source": "dlls/d3d9/tests/visual.c",
+      "function": "test_flat_fan_convention",
+      "description": "Add the unchanged native-verified 440-check fan body: 72 exact pixels across six draw routes, nonzero starts/base vertices and three culling settings."
+    },
+    {
+      "source": "dlls/d3d9/tests/device.c",
+      "function": "test_surface_blocks",
+      "description": "Restore original YUY2/UYVY resource creation and layout checks. CPU scratch resources and capability-dependent GPU acceptance remain distinct; original unsupported dynamic-texture skips remain."
+    },
+    {
+      "source": "dlls/ddraw/tests/ddraw{1,2,4,7}.c",
+      "function": "test_clipper_refcount",
+      "description": "Execute original valid object ownership checks and final release checks before skipping malformed vtable/pointer cases on WebGL. Desktop malformed-pointer coverage is unchanged."
+    },
+    {
+      "source": "dlls/ddraw/tests/ddraw{1,2,4,7}.c",
+      "function": "test_shademode",
+      "description": "Remove eight conditional WebGL flat-color TODO wrappers and restore the ddraw1 entry call. Original native-verified colors and tolerances are unchanged."
+    },
+    {
+      "source": "dlls/ddraw/tests/ddraw1.c",
+      "function": "test_lighting, test_specular_lighting, test_alphatest",
+      "description": "Restore three unchanged original execute-buffer bodies and their entry calls after native and four-mode qualification. Original colors, assertions and tolerances remain."
+    },
+    {
+      "source": "dlls/ddraw/tests/ddraw4.c",
+      "function": "test_specular_lighting",
+      "description": "Restore the original native-verified CPU specular expectations. The previous changed zero-power table fails 42 checks on native Windows. No assertion-count or tolerance change."
+    },
+    {
+      "source": "dlls/d3d9/tests/visual.c",
+      "function": "test_format_conversion",
+      "description": "Replace two unconditional YUY2 format-conversion skips with explicit D3DERR_NOTAVAILABLE assertions for the tested unsupported capability. This is not YUV pixel or game-fallback acceptance."
+    },
+    {
+      "source": "dlls/ddraw/tests/ddraw1.c",
+      "function": "test_execute_data, test_viewport_object, test_find_device, test_material, test_viewport, test_sysmem_x_channel, test_transform_vertices, test_multiple_devices, test_filling_convention",
+      "description": "Restore nine native-referenced original bodies after all four modes pass. Remove only three stale viewport size TODO annotations; preserve the upstream multiple-device material-handle TODO. Original predicates, colors and tolerances remain. Adds 2279 checks and one existing TODO per mode; removes nine broad skips. Restoring the original filling body also removes its WebGL-only case-5 TODO expansion; the other three files retain their separately tracked rule."
+    }
+  ]
+}

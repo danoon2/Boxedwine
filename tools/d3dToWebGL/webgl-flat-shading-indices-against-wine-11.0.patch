@@ -1,0 +1,29 @@
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -4755,11 +4755,21 @@
+             return NULL;
+         }
+ 
+-        a += base_vertex_idx;
+-        b += base_vertex_idx;
+-        c += base_vertex_idx;
+-
+-        if (state->primitive_type == WINED3D_PT_TRIANGLESTRIP && (i & 1))
++        /* The vertex attribute pointers already include load_base_vertex_index
++         * when the backend cannot apply the base vertex in the draw call. */
++        a += base_vertex_idx - state->load_base_vertex_index;
++        b += base_vertex_idx - state->load_base_vertex_index;
++        c += base_vertex_idx - state->load_base_vertex_index;
++
++        if (state->primitive_type == WINED3D_PT_TRIANGLEFAN)
++        {
++            /* D3D fans take the flat color from the first rim vertex, not
++             * the center. Rotate cyclically to preserve the winding. */
++            converted[o++] = c;
++            converted[o++] = a;
++            converted[o++] = b;
++        }
++        else if (state->primitive_type == WINED3D_PT_TRIANGLESTRIP && (i & 1))
+         {
+             converted[o++] = c;
+             converted[o++] = b;
