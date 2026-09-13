@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "manifest_id": "wine11-webgl-p8-copy-presentation-candidate-20260912",
+  "wine_version": "11.0",
+  "build_date": "2026-09-12",
+  "source_date_epoch": 1768319767,
+  "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
+  "patch_manifest": {
+    "path": "tools/wineTests/webgl-test-divergences-v38.json",
+    "sha256": "1bf0d25f19e8e5ed5e1c27f66487e9ba8e4456dbe73a82ba5abd69ad604281a4"
+  },
+  "webgl_directory": "home/username/.wine/drive_c/webgl",
+  "dlls": {
+    "d3d8.dll": {
+      "size": 258637,
+      "sha256": "9bc5008e24e37300dbdaafcf6a2cc06ab71a70f3cbe2c6cb6c4d4f414f0d52dc",
+      "required_imports": [
+        "wined3d.dll"
+      ]
+    },
+    "d3d9.dll": {
+      "size": 338702,
+      "sha256": "7a0719a95cc97f8c36535d4d5248c1eb1fba7cee1384f5e280c549fc65a70768",
+      "required_imports": [
+        "wined3d.dll"
+      ]
+    },
+    "d3dx9_36.dll": {
+      "size": 848528,
+      "sha256": "41072e1385cfa01ac13c4f363d29eddf0d19a50477ed04f1ab28f538dc287ed4",
+      "required_imports": [
+        "d3dxof.dll",
+        "wined3d.dll"
+      ]
+    },
+    "d3dx9_43.dll": {
+      "size": 846903,
+      "sha256": "209c1d0712894e6567bfb21a22144e6d8886f48f6803c9b921eff2c6730facfe",
+      "required_imports": [
+        "d3dxof.dll"
+      ]
+    },
+    "d3dxof.dll": {
+      "size": 393747,
+      "sha256": "7e6843f282b0514da7d20a0bf4a66bab69340ef5e0d4d9044faf96a0d4db5a47",
+      "required_imports": [
+        "kernel32.dll"
+      ]
+    },
+    "ddraw.dll": {
+      "size": 867870,
+      "sha256": "1f6f9e86ca250639eb72506f3cb767aada0d842d52fc93d00791254a468ca080",
+      "required_imports": [
+        "wined3d.dll"
+      ]
+    },
+    "dxgi.dll": {
+      "size": 487129,
+      "sha256": "0b4443b25112492ddb6de113b9efb75221676b09e2f0a2eeb4847f9d5aef005c",
+      "required_imports": [
+        "wined3d.dll"
+      ]
+    },
+    "wined3d.dll": {
+      "size": 3995384,
+      "sha256": "beb442e3f2a1d8b9834c2e647692060297609e6a4d4e30147f37737ad8d8f46d",
+      "required_imports": [
+        "opengl32.dll"
+      ]
+    }
+  },
+  "gl_files": {
+    "lib/libGL.so.1": {
+      "size": 398636,
+      "sha256": "86789e96c9808351390615dfd9dbf8b25e8618c93864d9a0c4ad1f7e088f2042"
+    },
+    "lib/libEGL.so.1": {
+      "size": 31540,
+      "sha256": "77bd700810be70af752a56c1d5745f1d73fe2aa7ca8ca8f98692223e137f93ca"
+    },
+    "lib/libGLESv2.so.2": {
+      "size": 398636,
+      "sha256": "86490aea022aa3d3cd38b46968e5bac7a31893028b470aa81b58873b74f4aa02"
+    },
+    "etc/ld.so.cache": {
+      "size": 17519,
+      "sha256": "8f583cb3b78d14b7735803c92ac03d3ee2c7e59a8a18bbfeccc20b051a0fb769"
+    }
+  },
+  "gl_links": {
+    "lib/libEGL.so.link": "libEGL.so.1",
+    "lib/libgles.so.link": "libGLESv2.so.2",
+    "lib/libGLESv1_CM.so.1.link": "libGLESv2.so.2",
+    "lib/libGLESv1_CM.so.link": "libGLESv2.so.2",
+    "lib/libGLESv2.so.link": "libGLESv2.so.2"
+  },
+  "ld_cache": {
+    "libGL.so.1": "/lib/libGL.so.1",
+    "libEGL.so.1": "/lib/libEGL.so.1",
+    "libEGL.so": "/lib/libEGL.so",
+    "libgles.so": "/lib/libgles.so",
+    "libGLESv1_CM.so.1": "/lib/libGLESv1_CM.so.1",
+    "libGLESv2.so.2": "/lib/libGLESv2.so.2"
+  },
+  "profiles": {
+    "full-candidate": {
+      "filename": "TinyCore15Wine11.0-p8-presentation.zip",
+      "filesystem_version": "11",
+      "size": 166758407,
+      "sha256": "6734841dda16c9272decae95ba2b31d7d66785e16de7db6d6dce23184368808c",
+      "direct_draw_renderer": "opengl",
+      "wine_renderer": "gl"
+    },
+    "base-v11": {
+      "filename": "TinyCore15WineBase.zip",
+      "filesystem_version": "11",
+      "size": 69911741,
+      "sha256": "93af8a5be6ede0ac7922c193ca4e9f34a52217fefd2b4b12cc9f0449ed3f57ef",
+      "base_only": true
+    }
+  }
+}

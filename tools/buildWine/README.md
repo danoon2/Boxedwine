@@ -6,17 +6,49 @@ The current supported host environment is Debian or WSL running Debian/Ubuntu-st
 
 ## Wine 11 DirectX-to-WebGL Filesystems
 
-The September 7 graphics candidate is documented in
-[`WEBGL_DEPTH.md`](../wineTests/WEBGL_DEPTH.md) and pinned separately by
-`webgl_filesystems_candidate.json`. Select that config explicitly to build or
-validate the A4 texture, clip-capability, and viewport depth fixes. The depth
-fix also requires a new BoxedWine browser runtime. The published v11 config
-below continues to identify the existing release.
+### Current v38 candidate
 
-The local and published demo sites use the single v11 `TinyCore15Wine11.0.zip`
-release pinned in `webgl_filesystems_v11.json`. It includes the branch's direct
-int99 GL/EGL/GLES stubs and the current patched WebGL DLLs. GDI is a per-demo
-launch setting; a separate GDI filesystem is not required.
+[`webgl_filesystems_p8_copy.json`](webgl_filesystems_p8_copy.json) pins the
+current Wine 11 candidate, `TinyCore15Wine11.0-p8-presentation.zip`. It records
+the Wine source commit, eight WebGL DLL identities, GL libraries and loader
+cache, and the exact full and base archive hashes. Its
+[v38 patch manifest](../wineTests/webgl-test-divergences-v38.json) selects
+48 production patches and one complete Wine graphics-test adaptation.
+See the [patch guide](../d3dToWebGL/README.md) for the ordered corrections and
+the [graphics testing guide](../wineTests/GRAPHICS_README.md) for the matching
+baseline and ST JIT / MT JIT test commands.
+
+Select the candidate config explicitly. From the repository root in WSL:
+
+```bash
+python3 tools/buildWine/webgl_filesystem.py verify-patches \
+  --config tools/buildWine/webgl_filesystems_p8_copy.json
+python3 tools/buildWine/webgl_filesystem.py build \
+  --config tools/buildWine/webgl_filesystems_p8_copy.json \
+  --work-dir /tmp/boxedwine-webgl-v38 \
+  --wine-repository /path/to/wine --jobs 12
+python3 tools/buildWine/webgl_filesystem.py validate \
+  --config tools/buildWine/webgl_filesystems_p8_copy.json --profile full-candidate \
+  --filesystem /path/to/TinyCore15Wine11.0-p8-presentation.zip --write-sidecar
+```
+
+The build command produces the WebGL DLLs and Wine graphics tests in a new
+work directory. The validation command checks the existing full archive,
+including its exact size and hash. Use the matching Boxedwine browser runtime
+with this candidate; the graphics fixes also include host-side changes.
+
+The Explorer startup correction and WebGL DLL updates affect Wine files in
+the full root. The candidate retains the published v11 base archive:
+`TinyCore15WineBase.zip` contains neither `/opt/wine` nor the `.wine` prefix,
+and its GL shims and loader cache are unchanged.
+
+### Published v11 release
+
+[`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) continues to pin the
+published `TinyCore15Wine11.0.zip` release and its WebGL DLLs. Demo scripts
+use this profile by default; see the [demo site instructions](../jenkins/instructions.md)
+for selecting a candidate filesystem. GDI is a per-demo launch setting;
+a separate GDI filesystem is not required.
 
 Validate the exact upload artifact from WSL with:
 
@@ -34,6 +66,8 @@ python3 tools/buildWine/webgl_filesystem.py validate \
   --config tools/buildWine/webgl_filesystems_v11.json --profile base-v11 \
   --filesystem /path/to/TinyCore15WineBase.zip --write-sidecar
 ```
+
+### Historical v3/v10 filesystems
 
 The following v3/v10 commands and manifest remain available for historical
 filesystem reproduction and validation.
