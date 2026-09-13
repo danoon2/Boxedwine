@@ -1214,6 +1214,16 @@ void KMemory::preflightWrite(U32 address, U32 len) {
 }
 
 void KMemory::execvReset(bool cloneVM) {
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (cloneVM) {
+        KThread* thread = KThread::currentThread();
+        if (thread && thread->memory == this) {
+            // KThread::reset() runs after the memory switch. Unregister from
+            // the shared cache now, while it still identifies this CPU.
+            threadCleanup(thread->id);
+        }
+    }
+#endif
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
     // Full-owner invalidation retires every broker/table slot through the MT
     // module registry. Do not sweep DecodedOps first: exec can run inside a

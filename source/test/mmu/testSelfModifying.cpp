@@ -871,6 +871,69 @@ void testLinearMemoryCodeInvalidation() {
 #ifdef BOXEDWINE_MULTI_THREADED
 #undef cpu
 #undef memory
+void testDecodedOpPreparedMultiRangeRemoval() {
+    // No registered CPU protects the retired ops. Reclamation must still keep
+    // the prepared transaction's bookkeeping alive until its last range.
+    DecodedOpCache cache;
+    for (U32 address : {0x1000u, 0x2000u}) {
+        DecodedOp* op = DecodedOp::alloc();
+        op->inst = Nop;
+        op->len = 1;
+#ifdef _DEBUG
+        op->eip = address;
+#endif
+        cache.add(op, address, 1);
+    }
+    cache.prepareRemoveRanges({{0x1000, 1}, {0x2000, 1}});
+    cache.remove(0x1000, 1, false);
+    cache.remove(0x2000, 1, false);
+    cache.finishPreparedRemove();
+    if (cache.get(0x1000) || cache.get(0x2000)) {
+        failed("Prepared removal must invalidate every range");
+    }
+}
+
+void testDecodedOpCacheCloneExecDetach() {
+    TestContext& context = testContext();
+    KProcessPtr child = KProcess::create();
+    child->memory = KMemory::create(child.get());
+    child->memory->clone(context.memory, true);
+    KThread* childThread = child->createThread();
+    CPU* childCpu = childThread->cpu;
+    auto& parentCache = getMemData(context.memory)->opCache;
+    child->memory->synchronizeDecodedOpCache(childCpu,
+        parentCache.getEpochAddress()->load(std::memory_order_acquire));
+
+    {
+        ChangeThread current(childThread);
+        child->memory->execvReset(true);
+        childThread->reset();
+    }
+    auto& childCache = getMemData(child->memory)->opCache;
+    if (childCpu->decodedOpCacheGlobalEpoch != childCache.getEpochAddress()) {
+        failed("CLONE_VM exec must rebind the CPU to its new decoded-op epoch");
+    }
+    child->memory->synchronizeDecodedOpCache(childCpu,
+        childCache.getEpochAddress()->load(std::memory_order_acquire));
+    U32 childEpoch = childCpu->decodedOpCacheEpoch.load(std::memory_order_acquire);
+
+    // Keep the CPU alive while detecting a stale registration, so the
+    // negative control fails without writing to an already freed CPU.
+    context.memory->clearOpCache();
+    if (!childEpoch || childCpu->decodedOpCacheEpoch.load(std::memory_order_acquire) != childEpoch) {
+        failed("parent cache cleanup must not write to the detached child's CPU");
+    }
+    child->memory->clearOpCache();
+    if (childCpu->decodedOpCacheEpoch.load(std::memory_order_acquire)) {
+        failed("new child cache must own the CPU registration after exec");
+    }
+
+    child->deleteThread(childThread);
+    if (KSystem::getProcess(child->id)) {
+        KSystem::eraseProcess(child->id);
+    }
+}
+
 void testDecodedOpInvalidationDefersCrossThreadReuse() {
     TestContext& context = testContext();
     CPU* cpu = context.cpu;

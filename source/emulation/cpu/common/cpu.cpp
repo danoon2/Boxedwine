@@ -44,13 +44,6 @@ CPU::CPU(KMemory* memory) : memory(memory) {
     this->reset();
     this->fpu.reset();
 
-    opCache = (DecodedOp***)&getMemData(memory)->opCache.pageData[0];
-#ifdef BOXEDWINE_MULTI_THREADED
-    decodedOpCacheGlobalEpoch = getMemData(memory)->opCache.getEpochAddress();
-#endif
-#ifdef BOXEDWINE_JIT_X64
-    jitEntryPageGroups = getMemData(memory)->opCache.getJitPageGroups();
-#endif
 #ifdef BOXEDWINE_JIT_ARMV8
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[0] = 2147483648.0;
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[1] = 2147483648.0;
@@ -176,6 +169,16 @@ void CPU::reset() {
     this->stackNotMask = 0;
     this->stackMask = 0xFFFFFFFF;
     this->nextOp = nullptr;
+    // exec after CLONE_VM can replace KMemoryData without replacing the CPU.
+    // Bind every cached lookup to the new address space on reset as well as
+    // construction; the old shared cache may outlive this CPU.
+    opCache = (DecodedOp***)&getMemData(memory)->opCache.pageData[0];
+#ifdef BOXEDWINE_MULTI_THREADED
+    decodedOpCacheGlobalEpoch = getMemData(memory)->opCache.getEpochAddress();
+#endif
+#ifdef BOXEDWINE_JIT_X64
+    jitEntryPageGroups = getMemData(memory)->opCache.getJitPageGroups();
+#endif
 #ifdef BOXEDWINE_JIT
     this->jitSignalPending.store(0, std::memory_order_release);
 #endif

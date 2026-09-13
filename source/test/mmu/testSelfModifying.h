@@ -24,6 +24,8 @@ void testLinearMemoryCodeInvalidation();
 
 #ifdef BOXEDWINE_MULTI_THREADED
 void testDecodedOpInvalidationDefersCrossThreadReuse();
+void testDecodedOpCacheCloneExecDetach();
+void testDecodedOpPreparedMultiRangeRemoval();
 #endif
 
 #endif

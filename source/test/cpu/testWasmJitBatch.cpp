@@ -1398,6 +1398,9 @@ void testWasmJitMtPendingLifecycle() {
     testContext().memory->cleanup();
     bool cleanupCancelled = wasmJitTestMtPendingCount() == 0;
     testContext().memory->execvReset(true);
+    // Production exec resets the surviving CPU after replacing its memory.
+    // This fixture bypasses KThread::reset(), so rebind its cached lookups here.
+    testContext().cpu->reset();
     restoreMappings();
     if (!cleanupCancelled) {
         testFail("MT WASM pending lifecycle cleanup cancels every pending entry");
@@ -1646,6 +1649,8 @@ void testWasmJitPendingLifecycle() {
     testContext().memory->cleanup();
     bool teardownCancelledPending = wasmJitTestPendingCount() == 0;
     testContext().memory->execvReset(true);
+    // Match the CPU reset that follows memory replacement in production exec.
+    testContext().cpu->reset();
     restoreMappings();
     if (!teardownCancelledPending) {
         testFail("pending lifecycle teardown cancels pending block");

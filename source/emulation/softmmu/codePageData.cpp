@@ -307,7 +307,11 @@ void DecodedOpCache::registerThread(CPU* cpu) {
 
 void DecodedOpCache::reclaimPendingDeallocs() {
 	for (auto pending = pendingDeallocs.begin(); pending != pendingDeallocs.end();) {
-		bool canReclaim = pending->second.retirementEpoch != 0;
+		// A prepared transaction reuses this map entry and its reserved vector
+		// across all removal ranges. Even without active CPUs, erasing it after
+		// the first range leaves the next range writing through a stale pointer.
+		bool canReclaim = &pending->second != preparedRemovalPendingDeallocs &&
+			pending->second.retirementEpoch != 0;
 		if (canReclaim) {
 			for (const auto& registered : registeredThreads) {
 				U32 cpuEpoch = registered.second->decodedOpCacheEpoch.load(std::memory_order_acquire);
@@ -432,6 +436,9 @@ void DecodedOpCache::prepareRemoveRanges(const std::vector<std::pair<U32, U32>>&
 void DecodedOpCache::finishPreparedRemove() {
 	preparedRemovalPendingDeallocs = nullptr;
 	preparedRemovalDone = nullptr;
+#ifdef BOXEDWINE_MULTI_THREADED
+	reclaimPendingDeallocs();
+#endif
 }
 
 void DecodedOpCache::removeAll() {

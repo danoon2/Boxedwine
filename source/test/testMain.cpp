@@ -887,6 +887,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testLinearMemoryCodeInvalidation, "Test linear-memory code invalidation", TEST_ENTRY_SERIAL},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testDecodedOpInvalidationDefersCrossThreadReuse, "Test decoded op invalidation defers cross-thread reuse"},
+    {testDecodedOpCacheCloneExecDetach, "Test decoded op cache CLONE_VM exec detach"},
+    {testDecodedOpPreparedMultiRangeRemoval, "Test decoded op prepared multi-range removal"},
     {testLockedInc, "Test Multi-threaded locked inc"},
     {testLockedIncAgainstPlainStore, "Test Multi-threaded locked inc against plain store"},
     {testLockedCmpXchgAgainstPlainStore, "Test Multi-threaded locked cmpxchg against plain store"},
