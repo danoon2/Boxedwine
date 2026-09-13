@@ -55,6 +55,20 @@
 static BString glExt;
 
 #ifdef __EMSCRIPTEN__
+EM_JS(void, boxedwine_get_internalformat_sample_count_js,
+    (int target, int internalformat, int bufSize, int params), {
+        if (bufSize < 0 || (bufSize > 0 && !params)) {
+            GL.recordError(0x0501); // GL_INVALID_VALUE
+            return;
+        }
+        // WebGL exposes the sample list, but not GL_NUM_SAMPLE_COUNTS.
+        // Querying that desktop pname directly would generate INVALID_ENUM.
+        var samples = GLctx.getInternalformatParameter(target, internalformat, 0x80A9); // GL_SAMPLES
+        if (samples !== null && bufSize > 0) {
+            HEAP32[params >>> 2] = samples.length;
+        }
+    });
+
 EM_JS(void, boxedwine_record_element_array_buffer_data_js,
     (int data, int size), {
         if (typeof GLctx === "undefined" || !GLctx || size < 0) {
@@ -261,6 +275,18 @@ void glcommon_recordElementArrayBufferUnmap(GLenum target) {
 #ifdef __EMSCRIPTEN__
     boxedwine_record_element_array_buffer_unmap_js((int)target);
 #endif
+}
+
+bool glcommon_getInternalformatSampleCount(GLenum target, GLenum internalformat,
+        GLenum pname, GLsizei bufSize, GLint* params) {
+#ifdef __EMSCRIPTEN__
+    if (pname == 0x9380) { // GL_NUM_SAMPLE_COUNTS
+        boxedwine_get_internalformat_sample_count_js((int)target, (int)internalformat,
+            (int)bufSize, (int)(uintptr_t)params);
+        return true;
+    }
+#endif
+    return false;
 }
 
 bool glcommon_flushMappedBufferRange(GLenum target, GLintptr offset,
@@ -531,7 +557,14 @@ void glcommon_glSelectBuffer(CPU* cpu) {
 }
 
 // changed this to an invalid value to fix motorhead under windows.  I will need to reevaluate why it was necessary for ma
-static const char* addedExt[] = { "WGL_ARB_create_context_Invalid" };
+static const char* addedExt[] = {
+#ifdef __EMSCRIPTEN__
+    // WebGL supplies sample lists; our wrapper also supplies their length.
+    // Wine's WGL dispatch requires this extension before exposing the query.
+    "GL_ARB_internalformat_query",
+#endif
+    "WGL_ARB_create_context_Invalid"
+};
 
 static const char* getFilteredExtensionString(KProcess* process) {
 #ifdef DISABLE_GL_EXTENSIONS
@@ -542,6 +575,7 @@ static const char* getFilteredExtensionString(KProcess* process) {
     static const char* webglFallbackExt =
         "GL_ARB_fragment_shader "
         "GL_ARB_framebuffer_object "
+        "GL_ARB_internalformat_query "
         "GL_ARB_shading_language_100 "
         "GL_ARB_texture_non_power_of_two "
         "GL_ARB_vertex_buffer_object "
@@ -550,7 +584,7 @@ static const char* getFilteredExtensionString(KProcess* process) {
         "GL_EXT_texture3D "
         "WGL_ARB_create_context_Invalid";
     if (!emscripten_webgl_get_current_context()) {
-        process->numberOfExtensions = 9;
+        process->numberOfExtensions = 10;
         return webglFallbackExt;
     }
 #endif

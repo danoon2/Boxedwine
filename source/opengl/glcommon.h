@@ -41,6 +41,8 @@ void glcommon_recordElementArrayBufferData(const GLvoid* data, GLsizeiptr size);
 void glcommon_recordElementArrayBufferSubData(GLintptr offset, const GLvoid* data,
     GLsizeiptr size);
 void glcommon_recordElementArrayBufferUnmap(GLenum target);
+bool glcommon_getInternalformatSampleCount(GLenum target, GLenum internalformat,
+    GLenum pname, GLsizei bufSize, GLint* params);
 bool glcommon_flushMappedBufferRange(GLenum target, GLintptr offset,
     GLsizeiptr length);
 U32 glcommon_prepareElementArrayClientDraw(GLenum type, GLsizei count, U32 offset);

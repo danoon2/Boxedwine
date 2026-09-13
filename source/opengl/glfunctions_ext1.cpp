@@ -6278,9 +6278,21 @@ void glcommon_glGetInternalformati64v(CPU* cpu) {
 void glcommon_glGetInternalformativ(CPU* cpu) {
     if (!ext_glGetInternalformativ)
         kpanic("ext_glGetInternalformativ is NULL");
+    const GLsizei bufSize = (GLsizei)ARG4;
+    if (bufSize <= 0) {
+        // Validate the call without treating a negative count as an unsigned
+        // guest allocation or marshalling a zero-length destination.
+        GLint unused = 0;
+        if (!glcommon_getInternalformatSampleCount(ARG1, ARG2, ARG3, bufSize, &unused)) {
+            GL_FUNC(ext_glGetInternalformativ)(ARG1, ARG2, ARG3, bufSize, &unused);
+        }
+        return;
+    }
     {
-        MarshalReadWrite<GLint> params(cpu, ARG5, ARG4);
-        GL_FUNC(ext_glGetInternalformativ)(ARG1, ARG2, ARG3, ARG4, params.getPtr());
+        MarshalReadWrite<GLint> params(cpu, ARG5, bufSize);
+        if (!glcommon_getInternalformatSampleCount(ARG1, ARG2, ARG3, bufSize, params.getPtr())) {
+            GL_FUNC(ext_glGetInternalformativ)(ARG1, ARG2, ARG3, bufSize, params.getPtr());
+        }
         GL_LOG ("glGetInternalformativ GLenum target=%d, GLenum internalformat=%d, GLenum pname=%d, GLsizei bufSize=%d, GLint* params=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5);
     }
 }
