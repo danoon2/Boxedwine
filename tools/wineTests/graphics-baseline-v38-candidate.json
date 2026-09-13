@@ -1,0 +1,305 @@
+{
+  "schema_version": 1,
+  "baseline_id": "wine11-webgl-v38-p8-copy-presentation-candidate-20260912",
+  "recorded_at": "2026-09-12",
+  "policy": "Native references qualify P8 RGB copies on all four DirectDraw interfaces. The private default candidate passes exact copy/alpha data and all palette states in ST JIT and MT JIT. Preserve the failed previous-default observations. Make eight original RGB checks per DirectDraw interface strict only for WebGL. Immediate front-buffer presentation is now the default; diagnostic batching remains opt-in. Complete affected JIT integration is required. Performance, user-owned game acceptance, other browsers/GPUs and window-size behavior remain separate.",
+  "reference_inputs": {
+    "graphics_tests_archive": "wine_tests_graphics_p8_copy.zip",
+    "filesystem": "TinyCore15Wine11.0-p8-presentation.zip",
+    "filesystem_sha256": "6734841dda16c9272decae95ba2b31d7d66785e16de7db6d6dce23184368808c",
+    "boxedwine_wasm_sha256": "b91eb07be6d42cec2e5370d9d0a894037479d73667c6f9ba1a3f7a51caf3e2e9",
+    "webgl_test_divergence_manifest": "webgl-test-divergences-v38.json",
+    "webgl_test_divergence_manifest_sha256": "1bf0d25f19e8e5ed5e1c27f66487e9ba8e4456dbe73a82ba5abd69ad604281a4",
+    "test_executable_sha256": {
+      "ddraw": "047fc7146b85af5cb509f1fc11febcd101f8fc7870d155a266591580124a2781",
+      "d3d8": "c64540bd8564e648b157cadaeffbb9775284a6f9095aa2092b565622a397ecfd",
+      "d3d9": "afb1e61bf6c29e852e5ff5cba4627c48206221742db664e9bd71fcd4c6ca50b2",
+      "d3dx9_43": "84472d36d279e6cc1870bc155c81ebe192aa804ff77564a3762dbb70a2b9ec64",
+      "d3dxof": "2de3c4efa3eb08a250aa72bb5317cd02108a0bef9a542a61e82fa2367a0593ed"
+    },
+    "graphics_tests_archive_sha256": "73649327741c1ca8c39e67eeedcefc5c962d8b6e8308288ed7446119386fe2d7"
+  },
+  "suites": {
+    "ddraw": {
+      "d3d": {
+        "tests": 2499,
+        "todo": 11,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "ddraw1": {
+        "tests": 23069,
+        "todo": 52,
+        "failures": 0,
+        "skipped": 6,
+        "failure_locations": []
+      },
+      "ddraw2": {
+        "tests": 25611,
+        "todo": 77,
+        "failures": 0,
+        "skipped": 8,
+        "failure_locations": []
+      },
+      "ddraw4": {
+        "tests": 28831,
+        "todo": 123,
+        "failures": 0,
+        "skipped": 9,
+        "failure_locations": []
+      },
+      "ddraw7": {
+        "tests": 33248,
+        "todo": 160,
+        "failures": 0,
+        "skipped": 9,
+        "failure_locations": []
+      },
+      "ddrawmodes": {
+        "tests": 113,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "dsurface": {
+        "tests": 1187,
+        "todo": 3,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "refcount": {
+        "tests": 96,
+        "todo": 10,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "visual": {
+        "tests": 279,
+        "todo": 1,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      }
+    },
+    "d3d8": {
+      "device": {
+        "tests": 54846,
+        "todo": 36,
+        "failures": 0,
+        "skipped": 13,
+        "failure_locations": []
+      },
+      "stateblock": {
+        "tests": 9283,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "visual": {
+        "tests": 142020,
+        "todo": 23,
+        "failures": 0,
+        "skipped": 11,
+        "failure_locations": []
+      }
+    },
+    "d3d9": {
+      "d3d9ex": {
+        "tests": 2104,
+        "todo": 77,
+        "failures": 0,
+        "skipped": 45,
+        "failure_locations": []
+      },
+      "device": {
+        "tests": 56770,
+        "todo": 127,
+        "failures": 0,
+        "skipped": 23,
+        "failure_locations": []
+      },
+      "stateblock": {
+        "tests": 14738,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "visual": {
+        "tests": 204429,
+        "todo": 53,
+        "failures": 0,
+        "skipped": 32,
+        "failure_locations": []
+      }
+    },
+    "d3dx9_43": {
+      "asm": {
+        "tests": 40,
+        "todo": 3,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "core": {
+        "tests": 1485,
+        "todo": 99,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "effect": {
+        "tests": 234068,
+        "todo": 60,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "line": {
+        "tests": 23,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "math": {
+        "tests": 32509,
+        "todo": 0,
+        "failures": 1,
+        "skipped": 0,
+        "failure_locations": [
+          "math.c:1557"
+        ]
+      },
+      "mesh": {
+        "tests": 132301,
+        "todo": 9,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "shader": {
+        "tests": 5734482,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "surface": {
+        "tests": 3396,
+        "todo": 128,
+        "failures": 0,
+        "skipped": 1,
+        "failure_locations": []
+      },
+      "texture": {
+        "tests": 461275,
+        "todo": 55,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "volume": {
+        "tests": 263237,
+        "todo": 23,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "xfile": {
+        "tests": 42,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      }
+    },
+    "d3dxof": {
+      "d3dxof": {
+        "tests": 192,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      }
+    }
+  },
+  "runtime_candidate": {
+    "parent": {
+      "path": "C:\\Boxedwine2\\tools\\wineTests\\graphics-baseline-v37-candidate.json",
+      "bytes": 9147,
+      "sha256": "f79f93b7f44b6c9546f9d37253895633d7c093e51dca6ad372c37c0cca9a3e44"
+    },
+    "source_manifest": {
+      "path": "C:\\Boxedwine2\\tmp\\cc53\\sample-mask-host-source\\source-manifest.json",
+      "bytes": 202904,
+      "sha256": "a5628ec1e3f75990ad9f4584c7fa9560a2815cd35601cb3285eb6c75352e93d3"
+    },
+    "runtimes": {
+      "st-jit": {
+        "boxedwine-shell.js": {
+          "path": "C:\\Boxedwine2\\tmp\\cc53\\sample-mask-mode-st-jit\\runtime\\boxedwine-shell.js",
+          "bytes": 99821,
+          "sha256": "1ae2a0e34ebda027f1f5a74ef196c57c6cd69dc3d5f277960906506437f892b3"
+        },
+        "boxedwine.css": {
+          "path": "C:\\Boxedwine2\\tmp\\cc53\\sample-mask-mode-st-jit\\runtime\\boxedwine.css",
+          "bytes": 5048,
+          "sha256": "c27a76f8fae5fc3cb4b814167be531b321cf72d1b38f403329ebd65b06f64dbb"
+        },
+        "boxedwine.html": {
+          "path": "C:\\Boxedwine2\\tmp\\cc53\\sample-mask-mode-st-jit\\runtime\\boxedwine.html",
+          "bytes": 2623,
+          "sha256": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d"
+        },
+        "boxedwine.js": {
+          "path": "C:\\Boxedwine2\\tmp\\cc53\\sample-mask-mode-st-jit\\runtime\\boxedwine.js",
+          "bytes": 298484,
+          "sha256": "c20f6adb8f95fafb7b3023d5a05e038580fb9d71c964ff6c280801c3e75cb792"
+        },
+        "boxedwine.wasm": {
+          "path": "C:\\Boxedwine2\\tmp\\cc53\\sample-mask-mode-st-jit\\runtime\\boxedwine.wasm",
+          "bytes": 4794375,
+          "sha256": "b91eb07be6d42cec2e5370d9d0a894037479d73667c6f9ba1a3f7a51caf3e2e9"
+        }
+      },
+      "mt-jit": {
+        "boxedwine-shell.js": {
+          "path": "C:\\Boxedwine2\\tmp\\cc53\\sample-mask-mode-mt-jit\\runtime\\boxedwine-shell.js",
+          "bytes": 99821,
+          "sha256": "1ae2a0e34ebda027f1f5a74ef196c57c6cd69dc3d5f277960906506437f892b3"
+        },
+        "boxedwine.css": {
+          "path": "C:\\Boxedwine2\\tmp\\cc53\\sample-mask-mode-mt-jit\\runtime\\boxedwine.css",
+          "bytes": 5048,
+          "sha256": "c27a76f8fae5fc3cb4b814167be531b321cf72d1b38f403329ebd65b06f64dbb"
+        },
+        "boxedwine.html": {
+          "path": "C:\\Boxedwine2\\tmp\\cc53\\sample-mask-mode-mt-jit\\runtime\\boxedwine.html",
+          "bytes": 2623,
+          "sha256": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d"
+        },
+        "boxedwine.js": {
+          "path": "C:\\Boxedwine2\\tmp\\cc53\\sample-mask-mode-mt-jit\\runtime\\boxedwine.js",
+          "bytes": 390327,
+          "sha256": "695c861456918875d0eb3f5bb0e2a3beaac3d98947745ca25750bb2d7a898100"
+        },
+        "boxedwine.wasm": {
+          "path": "C:\\Boxedwine2\\tmp\\cc53\\sample-mask-mode-mt-jit\\runtime\\boxedwine.wasm",
+          "bytes": 4906170,
+          "sha256": "65bfe895dc3bdf0f099d7b83647c96ce7e9618990c31dd6c17b2904cc7200603"
+        }
+      }
+    },
+    "counts_unchanged": false,
+    "qualification_modes": [
+      "st-jit",
+      "mt-jit"
+    ]
+  }
+}
