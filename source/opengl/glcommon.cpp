@@ -2412,14 +2412,14 @@ static void callOpenGLCallback(CPU* cpu, U32 index) {
     int99Callback[index](cpu);
 }
 
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+#if defined(BOXEDWINE_OPENGL) && defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
 static bool useThreadWebGLCanvas() {
     const char* value = getenv("BOXEDWINE_WEBGL_THREAD_CANVAS");
     return !value || !value[0] || value[0] != '0';
 }
 #endif
 
-#ifdef __EMSCRIPTEN__
+#if defined(BOXEDWINE_OPENGL) && defined(__EMSCRIPTEN__)
 static bool isThreadWebGLControlCallback(U32 index) {
     switch (index) {
     case kXCreateContext:
@@ -2500,7 +2500,7 @@ static bool isThreadWebGLControlCallback(U32 index) {
 }
 #endif
 
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+#if defined(BOXEDWINE_OPENGL) && defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
 static bool glCanRunOnCurrentThread(U32 index) {
     if (isMainthread() || emscripten_webgl_get_current_context()) {
         return true;

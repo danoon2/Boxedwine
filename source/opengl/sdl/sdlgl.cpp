@@ -507,7 +507,8 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
     S32 x = 0;
     S32 y = 0;
     KNativeSystem::getScreen()->getPos(x, y);
-    SDL_Window* window = SDL_CreateWindow("OpenGL Window", x, y, cx, cy, sdlFlags);
+    const char* title = KSystem::title.length() ? KSystem::title.c_str() : "OpenGL Window";
+    SDL_Window* window = SDL_CreateWindow(title, x, y, cx, cy, sdlFlags);
 
     if (!window) {
         kwarn_fmt("Couldn't create window: %s", SDL_GetError());
@@ -697,9 +698,11 @@ void SDLGlWindow::showWindow(bool show) {
                         }
                     }
                 }
-                SDL_ShowWindow(window);
-                SDL_RaiseWindow(window);                
-                forceForegroundUntil = KSystem::getMilliesSinceStart() + 2000;
+                if (KSystem::videoOption == VIDEO_NORMAL) {
+                    SDL_ShowWindow(window);
+                    SDL_RaiseWindow(window);
+                    forceForegroundUntil = KSystem::getMilliesSinceStart() + 2000;
+                }
                 if (shownGlWindows == 1) {
                     KNativeSystem::showScreen(false);
                 }

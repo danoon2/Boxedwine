@@ -178,6 +178,7 @@ void testNativeDatagramRecvmsgPeekScattersOnce();
 void testNativeDatagramRecvmsgScattersSingleMessage();
 void testNativeDatagramRecvmsgReportsTruncation();
 void testNativeStreamRecvmsgZeroIovDoesNotConsumeData();
+void testGuestWritePreservesPartialProgress();
 
 namespace {
 
@@ -1044,6 +1045,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testNativeSocketBindUnavailableAddressReturnsEaddrnotavail,
         "Test native socket bind unavailable address returns EADDRNOTAVAIL", TEST_ENTRY_SERIAL},
 #endif
+    {testGuestWritePreservesPartialProgress, "Test guest write preserves partial progress"},
 };
 
 } // namespace

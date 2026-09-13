@@ -719,11 +719,22 @@ void runCmpXchg8bCase(const CmpXchg8bCase& data, bool lockPrefix, bool unaligned
 
     newInstruction(INITIAL_FLAGS);
     cpu->big = true;
+    if (flagMode >= 3) {
+        // Keep a lazy comparison live through SETC, then consume only the ZF
+        // written by CMPXCHG8B. HotSpot's counter updates use this flag pattern.
+        pushCode8(0x81); pushCode8(0xfe); // cmp esi,imm32
+        pushCode32(flagMode == 3 ? 0 : (REG_GUARD | (0x0100 + R_SI)));
+        pushCode8(0x0f); pushCode8(0x92); // setc byte ptr [result+1]
+        emitDirectAddressModRM(0, CMPXCHG_SETCC_RESULT + 1, true);
+    }
     emitCmpXchg8bMem(address, lockPrefix);
     if (flagMode == 1) {
         emitCmpEaxEax();
-    } else if (flagMode == 2) {
+    } else if (flagMode >= 2) {
         emitSetzMem(CMPXCHG_SETCC_RESULT, true);
+        if (flagMode >= 3) {
+            emitCmpEaxEax(); // The remaining flags from CMPXCHG8B are dead.
+        }
     }
 
     initRegisters(expectedRegs);
@@ -747,14 +758,14 @@ void runCmpXchg8bCase(const CmpXchg8bCase& data, bool lockPrefix, bool unaligned
     verifyMem64Target(linear, expectedMemory, caseName);
     if (flagMode == 0) {
         verifyCmpXchgFlags(expectedFlags, caseName);
-    } else if (flagMode == 2 && memory->readb(cpu->seg[DS].address + CMPXCHG_SETCC_RESULT) != (U8)(equal ? 1 : 0)) {
+    } else if (flagMode >= 2 && memory->readb(cpu->seg[DS].address + CMPXCHG_SETCC_RESULT) != (U8)(equal ? 1 : 0)) {
         failed("%s setz", caseName);
     }
 }
 
 void runCmpXchg8bCases(const char* name) {
     for (size_t i = 0; i < caseCount(CMPXCHG8B_CASES); ++i) {
-        for (int flagMode = 0; flagMode < 3; ++flagMode) {
+        for (int flagMode = 0; flagMode < 5; ++flagMode) {
             for (int lockPrefix = 0; lockPrefix < 2; ++lockPrefix) {
                 runCmpXchg8bCase(CMPXCHG8B_CASES[i], lockPrefix != 0, false, false, flagMode, name);
                 runCmpXchg8bCase(CMPXCHG8B_CASES[i], lockPrefix != 0, true, false, flagMode, name);

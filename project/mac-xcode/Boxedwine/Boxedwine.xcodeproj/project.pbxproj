@@ -84,10 +84,6 @@
 		1A80F2D3276EBF170032A70A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
 		1A80F2D4276EBF170032A70A /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
 		1A80F2D8276EBF170032A70A /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		1A80F2DA276EBF170032A70A /* libOSMesa.8.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7143267F883900CDBC74 /* libOSMesa.8.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		1A80F2DB276EBF170032A70A /* libglapi.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7144267F883900CDBC74 /* libglapi.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		1A80F2DC276EBF170032A70A /* libc++abi.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7139267EB86400CDBC74 /* libc++abi.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		1A80F2DD276EBF170032A70A /* libc++.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B713B267EB86500CDBC74 /* libc++.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		1AC5F2FB2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */; };
 		1AC5F2FD2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */; };
 		1AC5F2FF2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */; };
@@ -157,32 +153,12 @@
 		7140974E2D4AA57300D10110 /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097472D4AA57300D10110 /* glew.cpp */; };
 		714097512D4AA57300D10110 /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097472D4AA57300D10110 /* glew.cpp */; };
 		714097542D4AA57300D10110 /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097472D4AA57300D10110 /* glew.cpp */; };
-		715CD03F2D715DCA00917EF6 /* libiconv.2.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD0302D715DCA00917EF6 /* libiconv.2.dylib */; };
-		715CD0402D715DCA00917EF6 /* libiconv.2.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD0302D715DCA00917EF6 /* libiconv.2.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		715CD0472D715DCA00917EF6 /* liblzma.5.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD0342D715DCA00917EF6 /* liblzma.5.dylib */; };
-		715CD0482D715DCA00917EF6 /* liblzma.5.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD0342D715DCA00917EF6 /* liblzma.5.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		715CD0492D715DCA00917EF6 /* libxml2.2.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD0352D715DCA00917EF6 /* libxml2.2.dylib */; };
-		715CD04A2D715DCA00917EF6 /* libxml2.2.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD0352D715DCA00917EF6 /* libxml2.2.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		715CD05A2D715F4400917EF6 /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD02F2D715DCA00917EF6 /* libLLVM.dylib */; };
-		715CD05B2D715F4400917EF6 /* libLLVM.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD02F2D715DCA00917EF6 /* libLLVM.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		715CD0672D71763C00917EF6 /* libffi.8.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 715CD02D2D715DCA00917EF6 /* libffi.8.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		715CD0682D71764C00917EF6 /* libedit.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 715CD0322D715DCA00917EF6 /* libedit.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		715CD0692D71765B00917EF6 /* libz.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 715CD02C2D715DCA00917EF6 /* libz.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		715CD06A2D71766D00917EF6 /* libzstd.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 715CD0332D715DCA00917EF6 /* libzstd.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		715CD06B2D71767F00917EF6 /* libicuuc.76.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 715CD02E2D715DCA00917EF6 /* libicuuc.76.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		715CD06C2D71769000917EF6 /* libicudata.76.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 715CD0362D715DCA00917EF6 /* libicudata.76.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		715F8429244115580038F5A4 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
-		718B713D267EB86500CDBC74 /* libc++abi.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7139267EB86400CDBC74 /* libc++abi.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		718B713F267EB86500CDBC74 /* libc++.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B713B267EB86500CDBC74 /* libc++.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		718B7145267F883900CDBC74 /* libOSMesa.8.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7143267F883900CDBC74 /* libOSMesa.8.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		718B7146267F883900CDBC74 /* libglapi.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7144267F883900CDBC74 /* libglapi.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		718F07632D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
 		718F07662D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
 		718F07672D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
 		718F076A2D31C20F00D41270 /* libMoltenVK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 718F07692D31C20F00D41270 /* libMoltenVK.dylib */; };
 		718F07782D31C23F00D41270 /* libMoltenVK.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718F07772D31C23F00D41270 /* libMoltenVK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		71A24F0E2E6BA582007573AB /* libncurses.6.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD0312D715DCA00917EF6 /* libncurses.6.dylib */; };
-		71A24F0F2E6BA582007573AB /* libncurses.6.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD0312D715DCA00917EF6 /* libncurses.6.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		71A2787E2E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A2787C2E6E3A2D007573AB /* MacPlatformSwift.swift */; };
 		71A2787F2E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A2787C2E6E3A2D007573AB /* MacPlatformSwift.swift */; };
 		71B4910C2D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E02D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c */; };
@@ -429,12 +405,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				715CD0482D715DCA00917EF6 /* liblzma.5.dylib in Embed Frameworks */,
 				1A1551FB2632673F006E0C8A /* SDL2.framework in Embed Frameworks */,
-				715CD05B2D715F4400917EF6 /* libLLVM.dylib in Embed Frameworks */,
-				715CD04A2D715DCA00917EF6 /* libxml2.2.dylib in Embed Frameworks */,
-				71A24F0F2E6BA582007573AB /* libncurses.6.dylib in Embed Frameworks */,
-				715CD0402D715DCA00917EF6 /* libiconv.2.dylib in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -456,10 +427,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 6;
 			files = (
-				1A80F2DA276EBF170032A70A /* libOSMesa.8.dylib in CopyFiles */,
-				1A80F2DB276EBF170032A70A /* libglapi.0.dylib in CopyFiles */,
-				1A80F2DC276EBF170032A70A /* libc++abi.1.dylib in CopyFiles */,
-				1A80F2DD276EBF170032A70A /* libc++.1.dylib in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -480,17 +447,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				715CD06C2D71769000917EF6 /* libicudata.76.dylib in CopyFiles */,
-				715CD06B2D71767F00917EF6 /* libicuuc.76.dylib in CopyFiles */,
-				715CD06A2D71766D00917EF6 /* libzstd.1.dylib in CopyFiles */,
-				715CD0692D71765B00917EF6 /* libz.1.dylib in CopyFiles */,
-				715CD0682D71764C00917EF6 /* libedit.0.dylib in CopyFiles */,
-				715CD0672D71763C00917EF6 /* libffi.8.dylib in CopyFiles */,
 				718F07782D31C23F00D41270 /* libMoltenVK.dylib in CopyFiles */,
-				718B7145267F883900CDBC74 /* libOSMesa.8.dylib in CopyFiles */,
-				718B7146267F883900CDBC74 /* libglapi.0.dylib in CopyFiles */,
-				718B713D267EB86500CDBC74 /* libc++abi.1.dylib in CopyFiles */,
-				718B713F267EB86500CDBC74 /* libc++.1.dylib in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -591,26 +548,9 @@
 		7140973F2D4AA53F00D10110 /* pugixml.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = pugixml.cpp; sourceTree = "<group>"; };
 		714097472D4AA57300D10110 /* glew.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = glew.cpp; sourceTree = "<group>"; };
 		7140975E2D4AA57B00D10110 /* glew.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = glew.h; sourceTree = "<group>"; };
-		715CD02C2D715DCA00917EF6 /* libz.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.1.dylib; path = ../../../lib/mac/precompiledMac/libz.1.dylib; sourceTree = "<group>"; };
-		715CD02D2D715DCA00917EF6 /* libffi.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libffi.8.dylib; path = ../../../lib/mac/precompiledMac/libffi.8.dylib; sourceTree = "<group>"; };
-		715CD02E2D715DCA00917EF6 /* libicuuc.76.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libicuuc.76.dylib; path = ../../../lib/mac/precompiledMac/libicuuc.76.dylib; sourceTree = "<group>"; };
-		715CD02F2D715DCA00917EF6 /* libLLVM.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libLLVM.dylib; path = ../../../lib/mac/precompiledMac/libLLVM.dylib; sourceTree = "<group>"; };
-		715CD0302D715DCA00917EF6 /* libiconv.2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libiconv.2.dylib; path = ../../../lib/mac/precompiledMac/libiconv.2.dylib; sourceTree = "<group>"; };
-		715CD0312D715DCA00917EF6 /* libncurses.6.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libncurses.6.dylib; path = ../../../lib/mac/precompiledMac/libncurses.6.dylib; sourceTree = "<group>"; };
-		715CD0322D715DCA00917EF6 /* libedit.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libedit.0.dylib; path = ../../../lib/mac/precompiledMac/libedit.0.dylib; sourceTree = "<group>"; };
-		715CD0332D715DCA00917EF6 /* libzstd.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libzstd.1.dylib; path = ../../../lib/mac/precompiledMac/libzstd.1.dylib; sourceTree = "<group>"; };
-		715CD0342D715DCA00917EF6 /* liblzma.5.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = liblzma.5.dylib; path = ../../../lib/mac/precompiledMac/liblzma.5.dylib; sourceTree = "<group>"; };
-		715CD0352D715DCA00917EF6 /* libxml2.2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libxml2.2.dylib; path = ../../../lib/mac/precompiledMac/libxml2.2.dylib; sourceTree = "<group>"; };
-		715CD0362D715DCA00917EF6 /* libicudata.76.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libicudata.76.dylib; path = ../../../lib/mac/precompiledMac/libicudata.76.dylib; sourceTree = "<group>"; };
 		715F7C152440EA840038F5A4 /* libz.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libz.a; path = ../../../lib/mac/precompiledMac/libz.a; sourceTree = "<group>"; };
 		715F7C162440EA840038F5A4 /* libminizip.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libminizip.a; path = ../../../lib/mac/precompiledMac/libminizip.a; sourceTree = "<group>"; };
 		715F8427244115580038F5A4 /* Media.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Media.xcassets; sourceTree = "<group>"; };
-		718B7124267EA76F00CDBC74 /* libc++abi.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++abi.1.dylib"; path = "../../../lib/mac/precompiledMac/libc++abi.1.dylib"; sourceTree = "<group>"; };
-		718B7125267EA77000CDBC74 /* libc++.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++.1.dylib"; path = "../../../lib/mac/precompiledMac/libc++.1.dylib"; sourceTree = "<group>"; };
-		718B7139267EB86400CDBC74 /* libc++abi.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++abi.1.dylib"; path = "../../../lib/mac/precompiledMac/libc++abi.1.dylib"; sourceTree = "<group>"; };
-		718B713B267EB86500CDBC74 /* libc++.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++.1.dylib"; path = "../../../lib/mac/precompiledMac/libc++.1.dylib"; sourceTree = "<group>"; };
-		718B7143267F883900CDBC74 /* libOSMesa.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOSMesa.8.dylib; path = ../../../lib/mac/precompiledMac/libOSMesa.8.dylib; sourceTree = "<group>"; };
-		718B7144267F883900CDBC74 /* libglapi.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglapi.0.dylib; path = ../../../lib/mac/precompiledMac/libglapi.0.dylib; sourceTree = "<group>"; };
 		718F07612D31C1C600D41270 /* kvulkanSDL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = kvulkanSDL.h; path = ../../../platform/sdl/kvulkanSDL.h; sourceTree = "<group>"; };
 		718F07622D31C1C600D41270 /* kvulkanSDL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = kvulkanSDL.cpp; path = ../../../platform/sdl/kvulkanSDL.cpp; sourceTree = "<group>"; };
 		718F07692D31C20F00D41270 /* libMoltenVK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libMoltenVK.dylib; path = ../../../lib/mac/vulkan/lib/libMoltenVK.dylib; sourceTree = "<group>"; };
@@ -622,8 +562,6 @@
 		718F07752D31C23800D41270 /* libvulkan.1.3.296.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libvulkan.1.3.296.dylib; path = ../../../lib/mac/vulkan/lib/libvulkan.1.3.296.dylib; sourceTree = "<group>"; };
 		718F07772D31C23F00D41270 /* libMoltenVK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libMoltenVK.dylib; path = ../../../lib/mac/vulkan/lib/libMoltenVK.dylib; sourceTree = "<group>"; };
 		71A2787C2E6E3A2D007573AB /* MacPlatformSwift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlatformSwift.swift; sourceTree = "<group>"; };
-		71B2D2F82668170000010AB6 /* libOSMesa.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOSMesa.8.dylib; path = ../../../lib/mac/precompiledMac/libOSMesa.8.dylib; sourceTree = "<group>"; };
-		71B2D30926681CCA00010AB6 /* libglapi.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglapi.0.dylib; path = ../../../lib/mac/precompiledMac/libglapi.0.dylib; sourceTree = "<group>"; };
 		71B4905E2D4AA1B800A8AB32 /* extF80M_isSignalingNaN.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = extF80M_isSignalingNaN.c; sourceTree = "<group>"; };
 		71B4905F2D4AA1B800A8AB32 /* s_commonNaNToExtF80UI.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = s_commonNaNToExtF80UI.c; sourceTree = "<group>"; };
 		71B490602D4AA1B800A8AB32 /* s_commonNaNToF32UI.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = s_commonNaNToF32UI.c; sourceTree = "<group>"; };
@@ -753,19 +691,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				718F076A2D31C20F00D41270 /* libMoltenVK.dylib in Frameworks */,
-				715CD0492D715DCA00917EF6 /* libxml2.2.dylib in Frameworks */,
 				1A5405262A04AB4E0061653D /* libcurl.4.tbd in Frameworks */,
 				71222C7424351CBA00CDBABD /* OpenGL.framework in Frameworks */,
 				71222C7524351CBA00CDBABD /* Carbon.framework in Frameworks */,
 				1AFC47A626489F7700EE5FCC /* CoreMIDI.framework in Frameworks */,
 				71222C7624351CBA00CDBABD /* ForceFeedback.framework in Frameworks */,
 				71222C7724351CBA00CDBABD /* AudioToolbox.framework in Frameworks */,
-				71A24F0E2E6BA582007573AB /* libncurses.6.dylib in Frameworks */,
-				715CD05A2D715F4400917EF6 /* libLLVM.dylib in Frameworks */,
 				71222C7824351CBA00CDBABD /* CoreAudio.framework in Frameworks */,
-				715CD03F2D715DCA00917EF6 /* libiconv.2.dylib in Frameworks */,
 				1A1551FA2632673F006E0C8A /* SDL2.framework in Frameworks */,
-				715CD0472D715DCA00917EF6 /* liblzma.5.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -920,26 +853,11 @@
 		712227752433E8C400CDBABD /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				715CD0322D715DCA00917EF6 /* libedit.0.dylib */,
-				715CD02D2D715DCA00917EF6 /* libffi.8.dylib */,
-				715CD0302D715DCA00917EF6 /* libiconv.2.dylib */,
-				715CD0362D715DCA00917EF6 /* libicudata.76.dylib */,
-				715CD02E2D715DCA00917EF6 /* libicuuc.76.dylib */,
-				715CD02F2D715DCA00917EF6 /* libLLVM.dylib */,
-				715CD0342D715DCA00917EF6 /* liblzma.5.dylib */,
-				715CD0312D715DCA00917EF6 /* libncurses.6.dylib */,
-				715CD0352D715DCA00917EF6 /* libxml2.2.dylib */,
-				715CD02C2D715DCA00917EF6 /* libz.1.dylib */,
-				715CD0332D715DCA00917EF6 /* libzstd.1.dylib */,
 				718F076F2D31C21E00D41270 /* libvulkan.dylib */,
 				718F076D2D31C21B00D41270 /* libvulkan.1.dylib */,
 				718F076B2D31C21600D41270 /* libvulkan.1.3.296.dylib */,
 				718F07692D31C20F00D41270 /* libMoltenVK.dylib */,
 				1A5405252A04AB4E0061653D /* libcurl.4.tbd */,
-				718B7125267EA77000CDBC74 /* libc++.1.dylib */,
-				718B7124267EA76F00CDBC74 /* libc++abi.1.dylib */,
-				71B2D30926681CCA00010AB6 /* libglapi.0.dylib */,
-				71B2D2F82668170000010AB6 /* libOSMesa.8.dylib */,
 				1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */,
 				1A1551E82632656D006E0C8A /* SDL2.framework */,
 				1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */,
@@ -1194,10 +1112,6 @@
 				718F07752D31C23800D41270 /* libvulkan.1.3.296.dylib */,
 				718F07732D31C23200D41270 /* libvulkan.1.dylib */,
 				718F07712D31C22A00D41270 /* libvulkan.dylib */,
-				718B7144267F883900CDBC74 /* libglapi.0.dylib */,
-				718B7143267F883900CDBC74 /* libOSMesa.8.dylib */,
-				718B713B267EB86500CDBC74 /* libc++.1.dylib */,
-				718B7139267EB86400CDBC74 /* libc++abi.1.dylib */,
 				7100912D2644D3F7003413C3 /* platform */,
 				1A1550EA2632615F006E0C8A /* lib */,
 				715F8427244115580038F5A4 /* Media.xcassets */,
@@ -1249,6 +1163,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1A80F2DE276EBF170032A70A /* Build configuration list for PBXNativeTarget "BoxedwineAutomation" */;
 			buildPhases = (
+				2AB674AA3FA04ACF896B4B77 /* Remove Retired Mesa Libraries */,
 				1A80F092276EBF170032A70A /* Sources */,
 				1A80F2C9276EBF170032A70A /* Frameworks */,
 				1A80F2D2276EBF170032A70A /* Resources */,
@@ -1291,6 +1206,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 71222C7C24351CBA00CDBABD /* Build configuration list for PBXNativeTarget "Boxedwine" */;
 			buildPhases = (
+				65D5E9501396472283B57873 /* Remove Retired Mesa Libraries */,
 				71222BCC24351CBA00CDBABD /* Sources */,
 				71222C7324351CBA00CDBABD /* Frameworks */,
 				71222C7A24351CBA00CDBABD /* Resources */,
@@ -1836,7 +1752,6 @@
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
-					BOXEDWINE_OPENGL_OSMESA,
 					__MACOSX_CORE__,
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 				);
@@ -1892,7 +1807,6 @@
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
-					BOXEDWINE_OPENGL_OSMESA,
 					__MACOSX_CORE__,
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 				);
@@ -2006,7 +1920,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/../../../lib/mac/vulkan/lib",
-					"$(PROJECT_DIR)/../../../lib/mac/precompiledMac",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
@@ -2066,7 +1979,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/../../../lib/mac/vulkan/lib",
-					"$(PROJECT_DIR)/../../../lib/mac/precompiledMac",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				ONLY_ACTIVE_ARCH = YES;
@@ -2339,6 +2251,70 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+		65D5E9501396472283B57873 /* Remove Retired Mesa Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ("$(SRCROOT)/../remove-mesa-libraries.sh");
+			name = "Remove Retired Mesa Libraries";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libLLVM.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libOSMesa.8.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libc++.1.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libc++abi.1.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libedit.0.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libffi.8.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libglapi.0.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libiconv.2.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libicudata.76.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libicuuc.76.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/liblzma.5.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libncurses.6.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libxml2.2.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libz.1.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libzstd.1.dylib",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/libOSMesa.8.dylib",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/libglapi.0.dylib",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/libc++.1.dylib",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/libc++abi.1.dylib",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/bin/sh \"$SRCROOT/../remove-mesa-libraries.sh\"\n";
+		};
+		2AB674AA3FA04ACF896B4B77 /* Remove Retired Mesa Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ("$(SRCROOT)/../remove-mesa-libraries.sh");
+			name = "Remove Retired Mesa Libraries";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libLLVM.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libOSMesa.8.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libc++.1.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libc++abi.1.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libedit.0.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libffi.8.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libglapi.0.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libiconv.2.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libicudata.76.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libicuuc.76.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/liblzma.5.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libncurses.6.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libxml2.2.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libz.1.dylib",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libzstd.1.dylib",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/libOSMesa.8.dylib",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/libglapi.0.dylib",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/libc++.1.dylib",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/libc++abi.1.dylib",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/bin/sh \"$SRCROOT/../remove-mesa-libraries.sh\"\n";
+		};
 	};
 	rootObject = 71FBFCA52433B815003F17F1 /* Project object */;
 }

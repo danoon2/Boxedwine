@@ -5743,8 +5743,16 @@ void JitArmV8CodeGen::dynamic_rdtsc(DecodedOp* op) {
 void JitArmV8CodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
     auto customMemoryOp = [op, this](MemPtr address) {
         U32 neededFlags = currentOp->needsToSetFlags(cpu) & ZF;
-        if (neededFlags && currentOp->getNeededFlagsAfter(PF | SF | AF | CF | OF)) { // The ZF flag is set if the destination operand and EDX:EAX are equal; otherwise it is cleared. The CF, PF, AF, SF, and OF flags are unaffected.
-            fillFlags();
+        if (neededFlags) {
+            if (currentOp->getNeededFlagsAfter(PF | SF | AF | CF | OF)) {
+                // CMPXCHG8B changes only ZF; preserve other live flags.
+                fillFlags();
+            } else {
+                // ZF is written directly below. A later branch/SETZ must not
+                // derive it from the lazy arithmetic result that preceded CAS.
+                storeLazyFlagType(FLAGS_NONE);
+                currentLazyFlags = FLAGS_NONE;
+            }
         }
         RegPtr addressReg = calculateAddress(address);
         RegPtr offsetReg = getTmpReg();

@@ -170,10 +170,13 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         mov(regWidth, delta, esi);
         subReg(regWidth, delta, edi);
         IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
-            U32 label = MarkJumpLocation();
             If(regWidth, delta); {
-                copyOneBackward();
-                Goto(label);
+                // Delta is fixed; only the remaining count terminates copying.
+                U32 label = MarkJumpLocation();
+                If(regWidth, ecx); {
+                    copyOneBackward();
+                    Goto(label);
+                } EndIf();
             } EndIf();
         } EndIf();
 
@@ -212,10 +215,13 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         mov(regWidth, delta, edi);
         subReg(regWidth, delta, esi);
         IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
-            U32 label = MarkJumpLocation();
             If(regWidth, delta); {
-                copyOneForward();
-                Goto(label);
+                // Preserve sequential writes for overlap, stopping at ECX=0.
+                U32 label = MarkJumpLocation();
+                If(regWidth, ecx); {
+                    copyOneForward();
+                    Goto(label);
+                } EndIf();
             } EndIf();
         } EndIf();
 

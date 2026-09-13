@@ -71,8 +71,6 @@
 #define ASMJIT_NO_X86
 #define BOXEDWINE_MULTI_THREADED
 #define MAP_BOXEDWINE MAP_JIT
-// libraries not built for x64
-#define BOXEDWINE_OPENGL_OSMESA
 #else
 #undef BOXEDWINE_MAC_JIT
 #define BOXEDWINE_JIT

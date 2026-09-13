@@ -140,6 +140,9 @@ void macOpenGLSwapBuffers(void* context) {
         return;
     }
     @autoreleasepool {
+        // flushBuffer presents double-buffered contexts. Single-buffered
+        // drawables also need their queued front-buffer drawing submitted.
+        glFlush();
         [getContext(context) flushBuffer];
     }
 }
