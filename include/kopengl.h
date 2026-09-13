@@ -31,6 +31,9 @@ public:
     virtual U32 glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFormat>& pixelFormat, int major, int minor, int profile, int flags, U32 sharedContext) = 0;
     virtual void glDestroyContext(KThread* thread, U32 contextId) = 0;
     virtual bool glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>& d, U32 contextId) = 0;
+    // Cooperative guest threads can share a host thread. Restore its binding
+    // before a GL call after another guest thread selected or released a context.
+    virtual bool glRestoreCurrentContext(KThread* thread) { return true; }
     virtual void glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>& d) = 0;
     virtual void glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd, const CLXFBConfigPtr& cfg) = 0;
     virtual void glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd) = 0;

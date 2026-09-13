@@ -515,6 +515,9 @@ public:
     bool threadCanvas = false;
     bool sharedThreadCanvas = false;
     bool webglContext = false;
+#ifndef BOXEDWINE_MULTI_THREADED
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE sdlWebGLContext = 0;
+#endif
 #endif
 };
 
@@ -527,6 +530,9 @@ public:
     U32 glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFormat>& pixelFormat, int major, int minor, int profile, int flags, U32 sharedContext) override;
     void glDestroyContext(KThread* thread, U32 contextId) override;
     bool glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>& d, U32 contextId) override;
+#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
+    bool glRestoreCurrentContext(KThread* thread) override;
+#endif
     void glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>& d) override;
     void glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd, const CLXFBConfigPtr& cfg) override;
     void glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd) override;
@@ -1255,6 +1261,35 @@ static void loadSdlExtensions() {
 void enableDebug();
 #endif
 
+#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
+bool KOpenGLSdl::glRestoreCurrentContext(KThread* thread) {
+    if (!thread->currentContext) {
+        return true;
+    }
+    SDLGlContextPtr context = contextsById.get(thread->currentContext);
+    if (!context || !context->context) {
+        return false;
+    }
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE handle = context->webglContext
+            ? toWebGLContext(context->context) : context->sdlWebGLContext;
+    if (!handle) {
+        return false;
+    }
+    if (emscripten_webgl_get_current_context() == handle) {
+        return true;
+    }
+    // SDL's EGL handle is opaque and need not identify the WebGL context.
+    // Select the saved WebGL handle without recreating a drawable or trusting
+    // SDL's cached current-window/context pair after another guest thread ran.
+    bool restored = emscripten_webgl_make_context_current(handle) == EMSCRIPTEN_RESULT_SUCCESS
+            && emscripten_webgl_get_current_context() == handle;
+    if (!restored) {
+        kwarn_fmt("Could not restore guest GL context %u", thread->currentContext);
+    }
+    return restored;
+}
+#endif
+
 bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>& d, U32 contextId) {
     SDLGlContextPtr context;
     {
@@ -1281,6 +1316,11 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             KNativeSystem::getCurrentInput()->runOnUiThread([]() {
                 SDL_GL_MakeCurrent(nullptr, 0);
                 });
+#ifndef BOXEDWINE_MULTI_THREADED
+            // A cooperative restore selects WebGL directly. SDL may already
+            // consider itself unbound, so ensure the actual binding is cleared.
+            emscripten_webgl_make_context_current(0);
+#endif
         }
 #elif defined(__APPLE__)
         macOpenGLClearCurrent();
@@ -1430,6 +1470,18 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
                 result = SDL_GL_MakeCurrent(window->window, context->context) == 0;
                 });
+#ifndef BOXEDWINE_MULTI_THREADED
+            if (result) {
+                if (createdContext) {
+                    context->sdlWebGLContext = emscripten_webgl_get_current_context();
+                }
+                // Emscripten's EGL shim retains only the most recently created
+                // WebGL handle. Rebinding an older SDL context must select its
+                // original WebGL handle, including its client-array metadata.
+                result = context->sdlWebGLContext &&
+                        emscripten_webgl_make_context_current(context->sdlWebGLContext) == EMSCRIPTEN_RESULT_SUCCESS;
+            }
+#endif
         }
 #elif defined(__APPLE__)
         bool attached = false;

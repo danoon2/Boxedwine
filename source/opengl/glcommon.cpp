@@ -2273,7 +2273,9 @@ static bool useThreadWebGLCanvas() {
     const char* value = getenv("BOXEDWINE_WEBGL_THREAD_CANVAS");
     return !value || !value[0] || value[0] != '0';
 }
+#endif
 
+#ifdef __EMSCRIPTEN__
 static bool isThreadWebGLControlCallback(U32 index) {
     switch (index) {
     case kXCreateContext:
@@ -2352,7 +2354,9 @@ static bool isThreadWebGLControlCallback(U32 index) {
         return false;
     }
 }
+#endif
 
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
 static bool glCanRunOnCurrentThread(U32 index) {
     if (isMainthread() || emscripten_webgl_get_current_context()) {
         return true;
@@ -2375,6 +2379,23 @@ void callOpenGL(CPU* cpu, U32 index) {
 #endif
     if (index < int99CallbackSize && int99Callback[index]) {
         cpu->thread->marshalIndex = 0;
+#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
+        // Guest-current state is thread-local, but WebGL's current binding is
+        // shared by every cooperatively scheduled guest thread in ST builds.
+        // Keep binding/lifetime controls callable even if an old context is gone.
+        if ((!isThreadWebGLControlCallback(index) || index == kXSwapBuffers || index == kEglSwapBuffers)
+                && !KNativeSystem::getOpenGL()->glRestoreCurrentContext(cpu->thread)) {
+            if (index == kEglSwapBuffers) {
+                cpu->thread->eglLastError = 0x3006; // EGL_BAD_CONTEXT
+            } else {
+                cpu->thread->glLastError = index == GetError ? 0 : GL_INVALID_OPERATION;
+            }
+            // glGetError must report the failed restore too; returning zero
+            // here would turn a missing host context into apparent success.
+            EAX = index == GetError ? GL_INVALID_OPERATION : 0;
+            return;
+        }
+#endif
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
         if (!glCanRunOnCurrentThread(index)) {
             sdlDispatch([cpu, index]() -> U32 {
