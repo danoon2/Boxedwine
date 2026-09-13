@@ -1,0 +1,93 @@
+diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -13127,6 +13127,7 @@
+     const char *tex_type = NULL, *swizzle = NULL, *ptr;
+     unsigned int i;
+     GLint loc;
++    const char *fault = getenv("BW_TEST_BLITTER_FAULT");
+ 
+     for (i = 0; i < ARRAY_SIZE(texture_data); ++i)
+     {
+@@ -13200,6 +13201,12 @@
+ 
+     string_buffer_release(&blitter->string_buffers, output);
+ 
++    /* Test-only: the real compiler must reject this selected source. */
++    if (args->use_colour_key && fault && !strcmp(fault, "compile"))
++    {
++        shader_addline(buffer, "\n#error BW_TEST_BLITTER_COMPILE_FAILURE\n");
++        ERR("BW_TEST_BLITTER_INJECT mode=compile program=%u shader=%u\n", program, fshader_id);
++    }
+     ptr = buffer->buffer;
+     GL_EXTCALL(glShaderSource(fshader_id, 1, &ptr, NULL));
+     string_buffer_release(&blitter->string_buffers, buffer);
+@@ -13215,7 +13222,23 @@
+     print_glsl_info_log(gl_info, vshader_id, FALSE);
+     GL_EXTCALL(glCompileShader(fshader_id));
+     print_glsl_info_log(gl_info, fshader_id, FALSE);
++    /* Test-only: compiling remains valid; a missing feedback output fails link. */
++    if (args->use_colour_key && fault && !strcmp(fault, "link"))
++    {
++        const char *varying = "bw_test_missing_blitter_output";
++        GL_EXTCALL(glTransformFeedbackVaryings(program, 1, &varying, GL_INTERLEAVED_ATTRIBS));
++        ERR("BW_TEST_BLITTER_INJECT mode=link program=%u\n", program);
++    }
+     GL_EXTCALL(glLinkProgram(program));
++    /* Observe actual results without changing the production decision. */
++    {
++        GLint vertex_ok, fragment_ok, linked;
++        GL_EXTCALL(glGetShaderiv(vshader_id, GL_COMPILE_STATUS, &vertex_ok));
++        GL_EXTCALL(glGetShaderiv(fshader_id, GL_COMPILE_STATUS, &fragment_ok));
++        GL_EXTCALL(glGetProgramiv(program, GL_LINK_STATUS, &linked));
++        ERR("BW_TEST_BLITTER_STATUS program=%u keyed=%u vertex=%d fragment=%d linked=%d\n",
++                program, args->use_colour_key, vertex_ok, fragment_ok, linked);
++    }
+     shader_glsl_validate_link(gl_info, program);
+     GL_EXTCALL(glDeleteShader(vshader_id));
+     GL_EXTCALL(glDeleteShader(fshader_id));
+@@ -13323,7 +13346,11 @@
+     args.use_colour_key = use_colour_key;
+ 
+     if ((entry = wine_rb_get(&blitter->programs, &args)))
+-        return WINE_RB_ENTRY_VALUE(entry, struct glsl_blitter_program, entry);
++    {
++        program = WINE_RB_ENTRY_VALUE(entry, struct glsl_blitter_program, entry);
++        ERR("BW_TEST_BLITTER_REQUEST keyed=%u cached=1 program=%u\n", use_colour_key, program->id);
++        return program;
++    }
+ 
+     if (!(program = malloc(sizeof(*program))))
+     {
+@@ -13335,9 +13362,11 @@
+     if (!(program->id = glsl_blitter_generate_program(blitter, gl_info, &args)))
+     {
+         WARN("Failed to generate blitter program.\n");
++        ERR("BW_TEST_BLITTER_REQUEST keyed=%u cached=0 program=0\n", use_colour_key);
+         free(program);
+         return NULL;
+     }
++    ERR("BW_TEST_BLITTER_REQUEST keyed=%u cached=0 program=%u\n", use_colour_key, program->id);
+     program->colour_key_low_location = -1;
+     program->colour_key_high_location = -1;
+     program->size_location = -1;
+@@ -13801,6 +13830,7 @@
+             return dst_location;
+         }
+ 
++        ERR("BW_TEST_BLITTER_STAGING_CREATE texture=%p keyed=%u\n", staging_texture, !!colour_key);
+         wined3d_box_set(&upload_box, 0, 0, desc.width, desc.height, 0, desc.depth);
+         wined3d_texture_upload_from_texture(staging_texture, 0, 0, 0, 0,
+                 src_texture, src_sub_resource_idx, &upload_box);
+@@ -13890,7 +13920,10 @@
+     }
+ 
+     if (staging_texture)
+-        wined3d_texture_decref(staging_texture);
++    {
++        ULONG remaining = wined3d_texture_decref(staging_texture);
++        ERR("BW_TEST_BLITTER_STAGING_RELEASE texture=%p remaining=%lu\n", staging_texture, remaining);
++    }
+ 
+     return dst_location;
+ }

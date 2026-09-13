@@ -1,0 +1,68 @@
+diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -13127,6 +13127,7 @@
+     const char *tex_type = NULL, *swizzle = NULL, *ptr;
+     unsigned int i;
+     GLint loc;
++    BOOL linked;
+ 
+     for (i = 0; i < ARRAY_SIZE(texture_data); ++i)
+     {
+@@ -13216,9 +13217,14 @@
+     GL_EXTCALL(glCompileShader(fshader_id));
+     print_glsl_info_log(gl_info, fshader_id, FALSE);
+     GL_EXTCALL(glLinkProgram(program));
+-    shader_glsl_validate_link(gl_info, program);
++    linked = shader_glsl_validate_link(gl_info, program);
+     GL_EXTCALL(glDeleteShader(vshader_id));
+     GL_EXTCALL(glDeleteShader(fshader_id));
++    if (!linked)
++    {
++        GL_EXTCALL(glDeleteProgram(program));
++        return 0;
++    }
+ 
+     GL_EXTCALL(glUseProgram(program));
+     loc = GL_EXTCALL(glGetUniformLocation(program, "sampler"));
+@@ -13323,7 +13329,10 @@
+     args.use_colour_key = use_colour_key;
+ 
+     if ((entry = wine_rb_get(&blitter->programs, &args)))
+-        return WINE_RB_ENTRY_VALUE(entry, struct glsl_blitter_program, entry);
++    {
++        program = WINE_RB_ENTRY_VALUE(entry, struct glsl_blitter_program, entry);
++        return program->id ? program : NULL;
++    }
+ 
+     if (!(program = malloc(sizeof(*program))))
+     {
+@@ -13335,7 +13344,10 @@
+     if (!(program->id = glsl_blitter_generate_program(blitter, gl_info, &args)))
+     {
+         WARN("Failed to generate blitter program.\n");
+-        free(program);
++        /* Avoid recompiling the same rejected WebGL program on every blit. */
++        if (!wined3d_settings.webgl
++                || wine_rb_put(&blitter->programs, &program->args, &program->entry) == -1)
++            free(program);
+         return NULL;
+     }
+     program->colour_key_low_location = -1;
+@@ -13841,7 +13853,7 @@
+     if (!(program = glsl_blitter_get_program(glsl_blitter, context_gl, src_texture_gl, !!colour_key)))
+     {
+         ERR("Failed to get blitter program.\n");
+-        return dst_location;
++        goto done;
+     }
+     wined3d_profile_record(&program_bucket, "glsl_blit_program", start_us, pixels, !!colour_key);
+     start_us = wined3d_profile_enabled() ? wined3d_profile_now_us() : 0;
+@@ -13889,6 +13901,7 @@
+         }
+     }
+ 
++done:
+     if (staging_texture)
+         wined3d_texture_decref(staging_texture);
+ 

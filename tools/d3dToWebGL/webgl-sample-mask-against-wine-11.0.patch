@@ -1,0 +1,296 @@
+--- a/dlls/wined3d/adapter_gl.c
++++ b/dlls/wined3d/adapter_gl.c
+@@ -177,6 +177,7 @@
+     {"GL_EXT_color_buffer_half_float",     EXT_COLOR_BUFFER_HALF_FLOAT   },
+     {"GL_EXT_float_blend",                 EXT_FLOAT_BLEND               },
+     {"GL_OES_texture_float_linear",        OES_TEXTURE_FLOAT_LINEAR      },
++    {"GL_OES_sample_variables",            OES_SAMPLE_VARIABLES          },
+     {"GL_EXT_blend_color",                  EXT_BLEND_COLOR               },
+     {"GL_EXT_blend_equation_separate",      EXT_BLEND_EQUATION_SEPARATE   },
+     {"GL_EXT_blend_func_separate",          EXT_BLEND_FUNC_SEPARATE       },
+@@ -5240,6 +5241,7 @@
+     d3d_info->filling_convention_offset = gl_info->filling_convention_offset;
+     d3d_info->persistent_map = !!gl_info->supported[ARB_BUFFER_STORAGE];
+     d3d_info->ffp_hlsl = wined3d_settings.ffp_hlsl;
++    d3d_info->non_maskable_multisample_only = wined3d_settings.webgl && !gl_info->supported[OES_SAMPLE_VARIABLES];
+ 
+     if (wined3d_settings.webgl)
+     {
+--- a/dlls/wined3d/directx.c
++++ b/dlls/wined3d/directx.c
+@@ -1994,6 +1994,10 @@
+         return WINED3DERR_NOTAVAILABLE;
+     }
+ 
++    /* NONMASKABLE quality levels remain usable without shader sample masks. */
++    if (adapter->d3d_info.non_maskable_multisample_only && multisample_type > WINED3D_MULTISAMPLE_NON_MASKABLE)
++        return WINED3DERR_NOTAVAILABLE;
++
+     format = wined3d_get_format(adapter, surface_format_id, 0);
+ 
+     if (multisample_type && !(format->multisample_types & 1u << (multisample_type - 1)))
+--- a/dlls/wined3d/ffp_gl.c
++++ b/dlls/wined3d/ffp_gl.c
+@@ -998,6 +998,9 @@
+ 
+ static void state_sample_mask_w(struct wined3d_context *context, const struct wined3d_state *state, DWORD state_id)
+ {
++    /* WebGL implements the state in the generated fragment shader. */
++    if (wined3d_settings.webgl && wined3d_context_gl(context)->gl_info->supported[OES_SAMPLE_VARIABLES])
++        return;
+     WARN("Unsupported in local OpenGL implementation: glSampleMaski.\n");
+ }
+ 
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -238,6 +238,7 @@
+     GLint fog_scale_location;
+     GLint alpha_test_ref_location;
+     GLint color_key_location;
++    GLint webgl_sample_mask_location;
+ };
+ 
+ struct glsl_cs_program
+@@ -289,6 +290,7 @@
+     struct glsl_shader_prog_link *glsl_program;
+     GLenum vertex_color_clamp;
+     BOOL rasterization_disabled;
++    BOOL webgl_sample_mask;
+ };
+ 
+ struct glsl_ps_compiled_shader
+@@ -439,12 +441,14 @@
+         return 120;
+ }
+ 
+-static void shader_glsl_add_version_declaration(struct wined3d_string_buffer *buffer,
+-        const struct wined3d_gl_info *gl_info)
++static void shader_glsl_add_version_declaration_mask(struct wined3d_string_buffer *buffer,
++        const struct wined3d_gl_info *gl_info, BOOL sample_mask)
+ {
+     if (shader_glsl_use_webgl_glsl_es(gl_info))
+     {
+         shader_addline(buffer, "#version 300 es\n");
++        if (sample_mask)
++            shader_addline(buffer, "#extension GL_OES_sample_variables : require\n");
+         shader_addline(buffer, "precision highp float;\n");
+         shader_addline(buffer, "precision highp int;\n");
+         shader_addline(buffer, "precision highp sampler2D;\n");
+@@ -456,6 +460,12 @@
+     }
+ 
+     shader_addline(buffer, "#version %u\n", shader_glsl_get_version(gl_info));
++}
++
++static void shader_glsl_add_version_declaration(struct wined3d_string_buffer *buffer,
++        const struct wined3d_gl_info *gl_info)
++{
++    shader_glsl_add_version_declaration_mask(buffer, gl_info, FALSE);
+ }
+ 
+ static unsigned int shader_glsl_full_ffp_varyings(const struct wined3d_gl_info *gl_info)
+@@ -8063,7 +8073,8 @@
+     shader_glsl_generate_alpha_test(buffer, gl_info, args->alpha_test_func + 1);
+ 
+     if (reg_maps->sample_mask)
+-        shader_addline(buffer, "gl_SampleMask[0] = floatBitsToInt(sample_mask);\n");
++        shader_addline(buffer, "gl_SampleMask[0] = floatBitsToInt(sample_mask)%s;\n",
++                args->webgl_sample_mask ? " & wined3d_sample_mask" : "");
+ 
+     if (reg_maps->stencil_ref)
+         shader_addline(buffer, "gl_FragStencilRefARB = floatBitsToInt(stencil_ref);\n");
+@@ -8096,7 +8107,9 @@
+     priv_ctx.cur_ps_args = args;
+     priv_ctx.string_buffers = string_buffers;
+ 
+-    shader_glsl_add_version_declaration(buffer, gl_info);
++    shader_glsl_add_version_declaration_mask(buffer, gl_info, args->webgl_sample_mask);
++    if (args->webgl_sample_mask)
++        shader_addline(buffer, "uniform int wined3d_sample_mask;\n");
+ 
+     shader_glsl_enable_extensions(buffer, gl_info);
+     if (!shader_glsl_use_webgl_glsl_es(gl_info))
+@@ -8264,6 +8277,8 @@
+         shader_addline(buffer, "layout(early_fragment_tests) in;\n");
+ 
+     shader_addline(buffer, "void main()\n{\n");
++    if (args->webgl_sample_mask)
++        shader_addline(buffer, "gl_SampleMask[0] = wined3d_sample_mask;\n");
+ 
+     if (reg_maps->sample_mask)
+         shader_addline(buffer, "float sample_mask = uintBitsToFloat(0xffffffffu);\n");
+@@ -10156,7 +10171,9 @@
+             tss_const_map |= 1u << stage;
+     }
+ 
+-    shader_glsl_add_version_declaration(buffer, gl_info);
++    shader_glsl_add_version_declaration_mask(buffer, gl_info, settings->webgl_sample_mask);
++    if (settings->webgl_sample_mask)
++        shader_addline(buffer, "uniform int wined3d_sample_mask;\n");
+ 
+     if (!shader_glsl_use_webgl_glsl_es(gl_info) && shader_glsl_use_explicit_attrib_location(gl_info))
+         shader_addline(buffer, "#extension GL_ARB_explicit_attrib_location : enable\n");
+@@ -10268,6 +10285,8 @@
+     }
+ 
+     shader_addline(buffer, "void main()\n{\n");
++    if (settings->webgl_sample_mask)
++        shader_addline(buffer, "gl_SampleMask[0] = wined3d_sample_mask;\n");
+ 
+     if (legacy_syntax)
+     {
+@@ -10630,6 +10649,8 @@
+     ps->fog_end_location = GL_EXTCALL(glGetUniformLocation(program_id, "ffp_fog.end"));
+     ps->fog_scale_location = GL_EXTCALL(glGetUniformLocation(program_id, "ffp_fog.scale"));
+ 
++    ps->webgl_sample_mask_location = wined3d_settings.webgl
++            ? GL_EXTCALL(glGetUniformLocation(program_id, "wined3d_sample_mask")) : -1;
+     ps->alpha_test_ref_location = GL_EXTCALL(glGetUniformLocation(program_id, "alpha_test_ref"));
+ 
+     ps->color_key_location = GL_EXTCALL(glGetUniformLocation(program_id, "color_key"));
+@@ -10894,6 +10915,7 @@
+         pshader = state->shader[WINED3D_SHADER_TYPE_PIXEL];
+         find_ps_compile_args(state, pshader, context_gl->c.stream_info.position_transformed,
+                 &ps_compile_args, &context_gl->c);
++        ps_compile_args.webgl_sample_mask = ctx_data->webgl_sample_mask;
+         ps_id = find_glsl_fragment_shader(context_gl, priv, pshader, &ps_compile_args);
+         ps_list = &pshader->linked_programs;
+     }
+@@ -10904,6 +10926,7 @@
+         struct ffp_frag_settings settings;
+ 
+         wined3d_ffp_get_fs_settings(state, d3d_info, &settings);
++        settings.webgl_sample_mask = ctx_data->webgl_sample_mask;
+         ffp_shader = shader_glsl_find_ffp_fragment_shader(priv, &settings, context_gl);
+         ps_id = ffp_shader->id;
+         ps_list = &ffp_shader->linked_programs;
+@@ -11312,11 +11335,50 @@
+ 
+ static void shader_glsl_update_legacy_states(struct wined3d_context_gl *context_gl, const struct wined3d_state *state);
+ 
++static BOOL shader_glsl_needs_webgl_sample_mask(const struct wined3d_context_gl *context_gl,
++        const struct wined3d_state *state)
++{
++    const struct wined3d_resource *resource = NULL;
++    unsigned int i, samples, mask;
++
++    if (!shader_glsl_use_webgl_glsl_es(context_gl->gl_info)
++            || !context_gl->gl_info->supported[OES_SAMPLE_VARIABLES])
++        return FALSE;
++
++    for (i = 0; i < WINED3D_MAX_RENDER_TARGETS; ++i)
++    {
++        if (state->fb.render_targets[i])
++        {
++            resource = state->fb.render_targets[i]->resource;
++            break;
++        }
++    }
++    if (!resource && state->fb.depth_stencil)
++        resource = state->fb.depth_stencil->resource;
++    if (!resource || resource->multisample_type < WINED3D_MULTISAMPLE_2_SAMPLES)
++        return FALSE;
++
++    samples = resource->multisample_type;
++    mask = wined3d_mask_from_size(samples);
++    /* Preserve normal alpha-to-coverage when all actual samples are enabled. */
++    return (state->sample_mask & mask) != mask;
++}
++
+ static void shader_glsl_apply_draw_state(void *shader_priv, struct wined3d_context *context,
+         const struct wined3d_state *state)
+ {
+     struct wined3d_context_gl *context_gl = wined3d_context_gl(context);
++    const struct wined3d_gl_info *gl_info = context_gl->gl_info;
++    struct glsl_context_data *ctx_data = context->shader_backend_data;
+     struct shader_glsl_priv *priv = shader_priv;
++    BOOL sample_mask = shader_glsl_needs_webgl_sample_mask(context_gl, state);
++
++    /* Target switches can change this even when the D3D mask is unchanged. */
++    if (sample_mask != ctx_data->webgl_sample_mask)
++    {
++        ctx_data->webgl_sample_mask = sample_mask;
++        context->shader_update_mask |= 1u << WINED3D_SHADER_TYPE_PIXEL;
++    }
+ 
+     shader_glsl_update_legacy_states(context_gl, state);
+ 
+@@ -11329,8 +11391,6 @@
+ 
+     if (wined3d_settings.webgl)
+     {
+-        const struct glsl_context_data *ctx_data = context->shader_backend_data;
+-
+         context_gl->shader_program_failed = !ctx_data->glsl_program || ctx_data->glsl_program->link_failed;
+         if (context_gl->shader_program_failed)
+             return;
+@@ -11338,6 +11398,13 @@
+ 
+     if (context->constant_update_mask)
+         shader_glsl_load_constants(priv, context, state);
++
++    /* Update on every masked draw, including reuse of a shared cached program. */
++    if (sample_mask && ctx_data->glsl_program->ps.webgl_sample_mask_location != -1)
++    {
++        GL_EXTCALL(glUniform1i(ctx_data->glsl_program->ps.webgl_sample_mask_location, state->sample_mask));
++        checkGLcall("load WebGL sample mask");
++    }
+ }
+ 
+ static void shader_glsl_update_compute_program(struct shader_glsl_priv *priv,
+--- a/dlls/wined3d/texture.c
++++ b/dlls/wined3d/texture.c
+@@ -1931,6 +1931,13 @@
+     {
+         const struct wined3d_format *format = wined3d_get_format(device->adapter, desc->format, desc->bind_flags);
+ 
++        if (device->adapter->d3d_info.non_maskable_multisample_only
++                && desc->multisample_type > WINED3D_MULTISAMPLE_NON_MASKABLE)
++        {
++            WARN("Maskable multisampling requires sample-mask support.\n");
++            return WINED3DERR_NOTAVAILABLE;
++        }
++
+         if (desc->multisample_type == WINED3D_MULTISAMPLE_NON_MASKABLE
+                 && desc->multisample_quality >= wined3d_popcount(format->multisample_types))
+         {
+--- a/dlls/wined3d/wined3d_gl.h
++++ b/dlls/wined3d/wined3d_gl.h
+@@ -241,6 +241,7 @@
+     EXT_COLOR_BUFFER_HALF_FLOAT,
+     EXT_FLOAT_BLEND,
+     OES_TEXTURE_FLOAT_LINEAR,
++    OES_SAMPLE_VARIABLES,
+ 
+     WINED3D_GL_EXT_COUNT,
+ };
+--- a/dlls/wined3d/wined3d_private.h
++++ b/dlls/wined3d/wined3d_private.h
+@@ -246,6 +246,7 @@
+     uint32_t persistent_map : 1;
+     uint32_t gpu_push_constants : 1;
+     uint32_t ffp_hlsl : 1;
++    uint32_t non_maskable_multisample_only : 1;
+     enum wined3d_feature_level feature_level;
+ 
+     DWORD multisample_draw_location;
+@@ -1504,7 +1505,8 @@
+     DWORD rt_alpha_swizzle : 8; /* WINED3D_MAX_RENDER_TARGETS, 8 */
+     DWORD dual_source_blend : 1;
+     DWORD projected : 4;
+-    DWORD padding : 13;
++    DWORD webgl_sample_mask : 1;
++    DWORD padding : 12;
+ };
+ 
+ enum fog_src_type
+@@ -2693,7 +2695,8 @@
+     unsigned char pointsprite : 1;
+     unsigned char flatshading : 1;
+     unsigned char alpha_test_func : 3;
+-    unsigned char padding : 2;
++    unsigned char webgl_sample_mask : 1;
++    unsigned char padding : 1;
+ };
+ 
+ struct ffp_frag_desc

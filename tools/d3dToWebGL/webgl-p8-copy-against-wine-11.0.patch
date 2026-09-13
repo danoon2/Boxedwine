@@ -1,0 +1,78 @@
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -13307,12 +13307,17 @@
+ 
+ /* Context activation is done by the caller. */
+ static void glsl_blitter_upload_palette(struct wined3d_glsl_blitter *blitter,
+-        struct wined3d_context_gl *context_gl, const struct wined3d_texture_gl *texture_gl)
++        struct wined3d_context_gl *context_gl, const struct wined3d_texture_gl *texture_gl,
++        BOOL identity_palette)
+ {
+     const struct wined3d_gl_info *gl_info = context_gl->gl_info;
+     const struct wined3d_palette *palette;
+ 
+-    if (texture_gl->t.swapchain)
++    /* Offscreen P8-to-RGB copies convert indices to opaque grayscale.
++     * Window presentation instead applies the display palette. */
++    if (identity_palette)
++        palette = NULL;
++    else if (texture_gl->t.swapchain)
+         palette = texture_gl->t.swapchain->palette;
+     else if (context_gl->c.swapchain)
+         palette = context_gl->c.swapchain->palette;
+@@ -13332,7 +13337,7 @@
+     if (wined3d_settings.webgl)
+     {
+         uint8_t data[256 * 4];
+-        unsigned int i, count = palette ? 256 : 1;
++        unsigned int i, count = palette || identity_palette ? 256 : 1;
+ 
+         gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, blitter->palette_texture);
+         gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+@@ -13340,15 +13345,15 @@
+         gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+         gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+ 
+-        if (!palette)
++        if (!palette && !identity_palette)
+             FIXME("P8 texture loaded without a palette.\n");
+ 
+         memset(data, 0, sizeof(data));
+         for (i = 0; i < count; ++i)
+         {
+-            data[i * 4 + 0] = palette ? palette->colors[i].rgbRed : 0;
+-            data[i * 4 + 1] = palette ? palette->colors[i].rgbGreen : 0;
+-            data[i * 4 + 2] = palette ? palette->colors[i].rgbBlue : 0;
++            data[i * 4 + 0] = palette ? palette->colors[i].rgbRed : identity_palette ? i : 0;
++            data[i * 4 + 1] = palette ? palette->colors[i].rgbGreen : identity_palette ? i : 0;
++            data[i * 4 + 2] = palette ? palette->colors[i].rgbBlue : identity_palette ? i : 0;
+             data[i * 4 + 3] = 0xff;
+         }
+ 
+@@ -13366,6 +13371,16 @@
+         {
+             gl_info->gl_ops.gl.p_glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, 256, 0, GL_BGRA,
+                     GL_UNSIGNED_INT_8_8_8_8_REV, palette->colors);
++        }
++        else if (identity_palette)
++        {
++            DWORD colors[256];
++            unsigned int i;
++
++            for (i = 0; i < ARRAY_SIZE(colors); ++i)
++                colors[i] = 0xff000000u | i * 0x00010101u;
++            gl_info->gl_ops.gl.p_glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, ARRAY_SIZE(colors), 0,
++                    GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, colors);
+         }
+         else
+         {
+@@ -13937,7 +13952,8 @@
+         switch (get_complex_fixup(program->args.fixup))
+         {
+             case COMPLEX_FIXUP_P8:
+-                glsl_blitter_upload_palette(glsl_blitter, context_gl, src_texture_gl);
++                glsl_blitter_upload_palette(glsl_blitter, context_gl, src_texture_gl,
++                        dst_location != WINED3D_LOCATION_DRAWABLE);
+                 break;
+ 
+             case COMPLEX_FIXUP_YUY2:

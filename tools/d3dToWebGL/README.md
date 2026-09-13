@@ -1,21 +1,24 @@
 # Wine 11 DirectX-to-WebGL patch series
 
-The September 7 candidate uses
-[`webgl-test-divergences-v4.json`](../wineTests/webgl-test-divergences-v4.json).
-Apply production patches 1–10 below, then
-`webgl-graphics-correctness-against-wine-11.0.patch`,
-`webgl-clip-plane-state-against-wine-11.0.patch`,
-`webgl-zero-clip-capability-against-wine-11.0.patch`, and
-`webgl-depth-range-against-wine-11.0.patch`, then the separate
-`webgl-tests-viewport-against-wine-11.0.patch` test adaptation.
-Apply only this complete test patch, without any earlier test adaptation.
-It restores D3D9 viewport coverage and removes DirectDraw's broad white-pixel
-viewport TODO. See [`WEBGL_DEPTH.md`](../wineTests/WEBGL_DEPTH.md) for the depth
-bridge correction and validation; both a new browser build and filesystem are
-required. The [v3 manifest](../wineTests/webgl-test-divergences-v3.json) retains
-the previous A4/clip-plane candidate described in
-[`WEBGL_FIXES.md`](../wineTests/WEBGL_FIXES.md).
-The original v2 series below remains the reproducible published-v11 input.
+The current series is pinned by
+[`webgl-test-divergences-v38.json`](../wineTests/webgl-test-divergences-v38.json).
+It contains 48 production patches and one separate, complete Wine graphics-test
+adaptation. The [v38 inventory](../wineTests/webgl-patch-inventory-v38.json)
+records every affected file, patch order, category and SHA-256 hash.
+
+Versions 2 through 37 retain earlier test selections for reproducing historical
+results. Their test patches are alternatives, not incremental layers: apply
+only the test patch named by the selected manifest.
+
+Production patch replay and test-policy validation establish reproducibility,
+not graphics conformance. The standalone probes in `tools/wineTests/tests/`
+cover context transitions, copies, packed formats, capabilities, D3DX behavior,
+mapped buffers and shader-failure recovery. The browser harness runs those
+probes and Wine's graphics tests against the selected runtime and filesystem.
+
+## Production patch order
+
+The first ten layers provide the original WebGL implementation:
 
 Apply these patches, in order, to the official Wine 11 source commit
 `db11d0fe6a169c457e23d007e20404643d067aa8`:
@@ -62,8 +65,6 @@ Apply these patches, in order, to the official Wine 11 source commit
 10. `webgl-d3d8-d3d9-compatibility-diagnostics-against-wine-11.0.patch`
    contains D3D8 system-memory stream iteration cleanup and explicit D3D9
    initialization, device, and output-table failure diagnostics.
-11. `webgl-tests-against-wine-11.0.patch`
-   contains only the WebGL-specific Wine graphics-test adaptations.
 
 Production patches must not modify files below a Wine `dlls/*/tests/`
 directory.
@@ -91,66 +92,113 @@ The July 30, 2026 audit found no unused WebGL helper. The retained feature
 marker strings and the controls below are intentional diagnostics or A/B
 fallbacks, not demo defaults.
 
+
+The manifest appends these corrections after production patch 10, in order:
+
+11. `webgl-graphics-correctness-against-wine-11.0.patch`
+12. `webgl-clip-plane-state-against-wine-11.0.patch`
+13. `webgl-zero-clip-capability-against-wine-11.0.patch`
+14. `webgl-depth-range-against-wine-11.0.patch`
+15. `webgl-depth-bias-against-wine-11.0.patch`
+16. `webgl-depth-copy-against-wine-11.0.patch`
+17. `webgl-depth-readback-against-wine-11.0.patch`
+18. `webgl-stencil-clear-against-wine-11.0.patch`
+19. `webgl-point-size-capability-against-wine-11.0.patch`
+20. `webgl-point-sprite-origin-against-wine-11.0.patch`
+21. `webgl-context-state-against-wine-11.0.patch`
+22. `webgl-presentation-state-against-wine-11.0.patch`
+23. `webgl-self-blit-against-wine-11.0.patch`
+24. `webgl-alpha-test-outputs-against-wine-11.0.patch`
+25. `webgl-context-backend-lifecycle-against-wine-11.0.patch`
+26. `webgl-multisample-color-copy-against-wine-11.0.patch`
+27. `webgl-shared-context-owner-against-wine-11.0.patch`
+28. `webgl-d3dxof-object-limit-against-wine-11.0.patch`
+29. `webgl-format-storage-against-wine-11.0.patch`
+30. `webgl-rgb10-transfers-against-wine-11.0.patch`
+31. `webgl-format-sample-policy-against-wine-11.0.patch`
+32. `webgl-float-capabilities-against-wine-11.0.patch`
+33. `webgl-ffp-normal-texgen-against-wine-11.0.patch`
+34. `webgl-vertex-fog-against-wine-11.0.patch`
+35. `webgl-d3dx-tangent-frame-against-wine-11.0.patch`
+36. `webgl-d3dx-state-lifecycle-against-wine-11.0.patch`
+37. `webgl-d3dx-frame-sphere-against-wine-11.0.patch`
+38. `webgl-generated-texcoords-against-wine-11.0.patch`
+39. `webgl-ffp-failure-recovery-against-wine-11.0.patch`
+40. `webgl-mapped-buffer-uploads-against-wine-11.0.patch`
+41. `webgl-glsl-program-failure-against-wine-11.0.patch`
+42. `webgl-flat-shading-indices-against-wine-11.0.patch`
+43. `webgl-nonindexed-instance-streams-against-wine-11.0.patch`
+44. `webgl-legacy-specular-power-against-wine-11.0.patch`
+45. `webgl-blitter-failure-against-wine-11.0.patch`
+46. `webgl-sample-mask-against-wine-11.0.patch`
+47. `webgl-p8-copy-against-wine-11.0.patch`
+48. `webgl-frontbuffer-immediate-against-wine-11.0.patch`
+
 ## Runtime controls
 
-- `WINE_D3D_CONFIG=webgl=1,webgl_glsl_es=1` enables the production WebGL path.
-  The Emscripten launcher sets this explicitly; an unconfigured native Wine
-  run leaves both settings disabled.
+- `WINE_D3D_CONFIG=webgl=1,webgl_glsl_es=1` enables the WebGL path. The
+  Emscripten launcher sets it explicitly; native Wine leaves it disabled by default.
 - `BOXEDWINE_WEBGL_PROFILE=1` enables WineD3D and DirectDraw timing counters.
-- `BOXEDWINE_WEBGL_BLTFAST_LOCKS=1` restores the older DirectDraw
-  `BltFast` lock path for A/B diagnosis.
+- `BOXEDWINE_WEBGL_BLTFAST_LOCKS=1` restores the older DirectDraw `BltFast`
+  lock path for comparison.
 - `BOXEDWINE_WEBGL_FRONTBUFFER_PRESENT_MIN_RECTS=N` overrides the diagnostic
-  dirty-rectangle threshold. Unset or zero uses the normal time/count
-  heuristic.
-- `BOXEDWINE_WEBGL_DISABLE_BATCH_BLITS=1` disables GLSL blit batches for A/B
-  diagnosis.
+  dirty-rectangle threshold. Unset or empty selects one rectangle, so the last
+  update is presented even when the application stops drawing. Explicit zero
+  retains the old time/count heuristic, which requires another graphics call.
+- `BOXEDWINE_WEBGL_DISABLE_BATCH_BLITS=1` disables GLSL blit batches.
 - `BOXEDWINE_WEBGL_DISABLE_MULTISOURCE_BATCH_BLITS=1` retains batching but
   prevents a batch from spanning multiple source textures.
 
-All `BOXEDWINE_WEBGL_*` controls are off by default. They are retained because
-they isolate presentation and batching regressions without requiring another
-DLL build.
+Leave the diagnostic overrides unset for normal operation.
 
-Later layers intentionally modify different hunks in some of the same files.
-Check and apply each patch before moving to the next one:
+## Validation and application
 
-```bash
-git apply --check /path/to/Boxedwine/tools/d3dToWebGL/webgl-build-config-against-wine-11.0.patch
-git apply         /path/to/Boxedwine/tools/d3dToWebGL/webgl-build-config-against-wine-11.0.patch
-git apply --check /path/to/Boxedwine/tools/d3dToWebGL/webgl-adapter-context-caps-against-wine-11.0.patch
-git apply         /path/to/Boxedwine/tools/d3dToWebGL/webgl-adapter-context-caps-against-wine-11.0.patch
-git apply --check /path/to/Boxedwine/tools/d3dToWebGL/webgl-shader-generation-glsl-es-against-wine-11.0.patch
-git apply         /path/to/Boxedwine/tools/d3dToWebGL/webgl-shader-generation-glsl-es-against-wine-11.0.patch
-git apply --check /path/to/Boxedwine/tools/d3dToWebGL/webgl-texture-formats-transfers-against-wine-11.0.patch
-git apply         /path/to/Boxedwine/tools/d3dToWebGL/webgl-texture-formats-transfers-against-wine-11.0.patch
-git apply --check /path/to/Boxedwine/tools/d3dToWebGL/webgl-blitter-batching-against-wine-11.0.patch
-git apply         /path/to/Boxedwine/tools/d3dToWebGL/webgl-blitter-batching-against-wine-11.0.patch
-git apply --check /path/to/Boxedwine/tools/d3dToWebGL/webgl-directdraw-runtime-presentation-against-wine-11.0.patch
-git apply         /path/to/Boxedwine/tools/d3dToWebGL/webgl-directdraw-runtime-presentation-against-wine-11.0.patch
-git apply --check /path/to/Boxedwine/tools/d3dToWebGL/webgl-d3dx9-assets-compatibility-against-wine-11.0.patch
-git apply         /path/to/Boxedwine/tools/d3dToWebGL/webgl-d3dx9-assets-compatibility-against-wine-11.0.patch
-git apply --check /path/to/Boxedwine/tools/d3dToWebGL/webgl-d3dxof-parser-hardening-against-wine-11.0.patch
-git apply         /path/to/Boxedwine/tools/d3dToWebGL/webgl-d3dxof-parser-hardening-against-wine-11.0.patch
-git apply --check /path/to/Boxedwine/tools/d3dToWebGL/webgl-wined3d-draw-state-query-against-wine-11.0.patch
-git apply         /path/to/Boxedwine/tools/d3dToWebGL/webgl-wined3d-draw-state-query-against-wine-11.0.patch
-git apply --check /path/to/Boxedwine/tools/d3dToWebGL/webgl-d3d8-d3d9-compatibility-diagnostics-against-wine-11.0.patch
-git apply         /path/to/Boxedwine/tools/d3dToWebGL/webgl-d3d8-d3d9-compatibility-diagnostics-against-wine-11.0.patch
-git apply --check /path/to/Boxedwine/tools/d3dToWebGL/webgl-tests-against-wine-11.0.patch
-git apply         /path/to/Boxedwine/tools/d3dToWebGL/webgl-tests-against-wine-11.0.patch
-```
-
-`tools/wineTests/webgl-test-divergences-v2.json` pins the ordered patch hashes and
-classifies every added `skip()` and `todo_wine_if()` in the test-only patch.
-Validate the boundary and classifications from the Boxedwine checkout:
+Run the policy validator from the Boxedwine checkout before applying patches:
 
 ```bash
-python3 tools/wineTests/webglTestDivergences.py
+python3 tools/wineTests/webglTestDivergences.py \
+  --manifest tools/wineTests/webgl-test-divergences-v38.json
 ```
 
-The validator rejects production test hunks, non-test files in the test patch,
-production/test overlap, unclassified test policies, and patch hash changes.
+The validator checks patch hashes, forbids production changes to Wine test
+files, rejects non-test files in the complete test adaptation, and requires
+every added skip or TODO policy to have a classification. Both Git-format and
+plain unified production diffs participate in those checks. The optional
+`--inventory-output /tmp/webgl-patch-inventory.json` writes the categorized map.
 
-For the clean pinned build, deterministic PE32 output validation, filesystem
-packaging, and v3/v10 ZIP validator, use
-`tools/buildWine/webgl_filesystem.py` as documented in
-`tools/buildWine/README.md`.
+Use a separate, clean Wine checkout at
+`db11d0fe6a169c457e23d007e20404643d067aa8`. From the Boxedwine checkout, apply
+the production list in manifest order:
+
+```bash
+python3 - /path/to/clean/wine-11.0 <<'PY'
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+repo = Path.cwd()
+source = Path(sys.argv[1]).resolve()
+manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v38.json").read_text())
+head = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
+if head != manifest["wine_source_commit"]:
+    raise SystemExit("Wine checkout is not at the pinned source commit")
+if subprocess.check_output(["git", "-C", str(source), "status", "--porcelain"]):
+    raise SystemExit("Use a clean Wine checkout")
+for entry in manifest["production_patches"]:
+    patch = str(repo / entry["path"])
+    subprocess.run(["git", "-C", str(source), "apply", "--check", patch], check=True)
+    subprocess.run(["git", "-C", str(source), "apply", patch], check=True)
+PY
+```
+
+For test builds, apply only
+`webgl-tests-p8-copy-against-wine-11.0.patch` after the production series.
+The failure-injection patches under `tools/wineTests/tests/` are separate
+diagnostic builds and must not enter production DLLs. Their control variants
+target the earlier series identified in their filenames.
+
+The Wine 11 Explorer startup-timeout patch under `tools/buildWine/patches/`
+is a separate base-filesystem fix selected by `wine_builds.json`.
+For deterministic PE32 output validation and filesystem packaging, see the
+existing [`tools/buildWine/README.md`](../buildWine/README.md).

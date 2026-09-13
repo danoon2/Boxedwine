@@ -1,0 +1,13 @@
+--- a/dlls/ddraw/surface.c
++++ b/dlls/ddraw/surface.c
+@@ -175,7 +175,9 @@
+     if (value == -1)
+     {
+         env = getenv("BOXEDWINE_WEBGL_FRONTBUFFER_PRESENT_MIN_RECTS");
+-        value = env && env[0] ? atoi(env) : 0;
++        /* Without an eventual flush, batching can leave the last update
++         * invisible when the application stops drawing. Keep it opt-in. */
++        value = env && env[0] ? atoi(env) : 1;
+         if (value < 0)
+             value = 0;
+     }
