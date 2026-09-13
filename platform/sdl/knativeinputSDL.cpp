@@ -472,11 +472,7 @@ bool KNativeInputSDL::waitForEvent(U32 ms) {
 #ifdef BOXEDWINE_MULTI_THREADED
         if (e.type == sdlCustomEvent) {
             SdlCallback* callback = (SdlCallback*)e.user.data1;
-            if (callback->pfn) {
-                callback->result = (U32)callback->pfn();
-            }
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(callback->cond);
-            BOXEDWINE_CONDITION_SIGNAL(callback->cond);
+            callback->run();
             return true;
         }
 #endif
@@ -516,9 +512,7 @@ bool KNativeInputSDL::processEvents() {
             customCount++;
 #endif
             SdlCallback* callback = (SdlCallback*)e.user.data1;
-            callback->result = (U32)callback->pfn();
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(callback->cond);
-            BOXEDWINE_CONDITION_SIGNAL(callback->cond);
+            callback->run();
         } else
 #endif
             if (!handlSdlEvent(&e)) {
@@ -754,9 +748,7 @@ void KNativeInputSDL::processCustomEvents(std::function<bool(bool isKeyDown, int
 #ifdef BOXEDWINE_MULTI_THREADED
         else if (e.type == sdlCustomEvent) {
             SdlCallback* callback = (SdlCallback*)e.user.data1;
-            callback->result = (U32)callback->pfn();
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(callback->cond);
-            BOXEDWINE_CONDITION_SIGNAL(callback->cond);
+            callback->run();
         }
 #endif
     }

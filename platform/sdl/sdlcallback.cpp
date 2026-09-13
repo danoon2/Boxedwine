@@ -48,6 +48,13 @@ void freeSdlCallback(SdlCallback* callback) {
     freeSdlCallbacks = callback;
 }
 
+void SdlCallback::run() {
+    result = pfn();
+    std::unique_lock<std::mutex> lock(cond->m);
+    completed = true;
+    cond->c.notify_one();
+}
+
 U32 sdlDispatch(std::function<U32()> p) {
     if (isMainthread()) {
         return p();
@@ -56,8 +63,19 @@ U32 sdlDispatch(std::function<U32()> p) {
     callback->pfn = p;
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(callback->cond);
-        SDL_PushEvent(&callback->sdlEvent);
-        BOXEDWINE_CONDITION_WAIT(callback->cond);
+        callback->completed = false;
+        if (SDL_PushEvent(&callback->sdlEvent) != 1) {
+            callback->pfn = nullptr;
+            freeSdlCallback(callback);
+            kpanic("Failed to queue SDL callback");
+            return 0;
+        }
+        // This is a host call whose captures can refer to the caller's stack.
+        // Guest signals, termination, and spurious wakeups must not release or
+        // recycle it while the UI thread still owns the queued callback.
+        callback->cond->c.wait(boxedWineCriticalSection, [callback]() {
+            return callback->completed;
+        });
     }
     U32 result = callback->result;
     callback->pfn = nullptr;

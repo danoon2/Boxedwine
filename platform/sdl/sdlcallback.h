@@ -29,7 +29,10 @@ public:
     BOXEDWINE_CONDITION cond;
     std::function<U32()> pfn;
     U32 result = 0;
+    bool completed = false;
     SdlCallback* next = nullptr;
+
+    void run();
 };
 
 U32 sdlDispatch(std::function<U32()> p);
