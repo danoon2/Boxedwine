@@ -2253,7 +2253,7 @@ static void callOpenGLCallback(CPU* cpu, U32 index) {
     int99Callback[index](cpu);
 }
 
-#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+#if defined(BOXEDWINE_OPENGL) && defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
 static bool useThreadWebGLCanvas() {
     const char* value = getenv("BOXEDWINE_WEBGL_THREAD_CANVAS");
     return !value || !value[0] || value[0] != '0';
