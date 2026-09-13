@@ -4,7 +4,8 @@ import { deflateRawSync, inflateRawSync } from 'node:zlib';
 import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { optimizerIdentity, OptimizerCache } from './boxedwine-optimizer-cache.mjs';
 
 const WASM_MAGIC = Buffer.from([0x00, 0x61, 0x73, 0x6d]);
 const CACHE_NAME_RE = /^v6-([0-9a-f]{8})-([0-9a-f]{8})\.wasm$/i;
@@ -30,6 +31,10 @@ function usage() {
 Options:
   --binaryen-js PATH       Optimize wasm modules with Binaryen JS/WASM.
                            Defaults to ./binaryen_js.js if present.
+  --optimizer-cache-dir PATH
+                           Reuse optimized module bytes from this directory.
+                           Keys include input bytes, optimizer files and passes.
+                           Omit this option to run the optimizer every time.
   --flat                   Binaryen-optimize the per-block modules and re-emit
                            a flat cache zip (same v6-*.wasm layout + manifest),
                            skipping grouping, direct-call rewriting and profile
@@ -66,6 +71,7 @@ The input must contain v6 cache module names and boxedwine-jit-manifest.json.`);
 function parseArgs(argv) {
   const opts = {
     binaryenJs: null,
+    optimizerCacheDir: null,
     flat: false,
     directCalls: true,
     directCallKinds: new Set(['next1', 'next2']),
@@ -89,6 +95,12 @@ function parseArgs(argv) {
       opts.binaryenJs = argv[++i];
     } else if (arg.startsWith('--binaryen-js=')) {
       opts.binaryenJs = arg.slice('--binaryen-js='.length);
+    } else if (arg === '--optimizer-cache-dir') {
+      opts.optimizerCacheDir = argv[++i];
+      if (!opts.optimizerCacheDir || opts.optimizerCacheDir.startsWith('--')) throw new Error('--optimizer-cache-dir requires a path');
+    } else if (arg.startsWith('--optimizer-cache-dir=')) {
+      opts.optimizerCacheDir = arg.slice('--optimizer-cache-dir='.length);
+      if (!opts.optimizerCacheDir) throw new Error('--optimizer-cache-dir requires a path');
     } else if (arg === '--flat') {
       opts.flat = true;
     } else if (arg === '--no-direct-calls') {
@@ -1099,12 +1111,16 @@ function findDefaultBinaryenJs() {
   return null;
 }
 
-async function loadBinaryen(path) {
+async function loadBinaryen(path, toolFiles) {
   const binaryenPath = resolve(path);
   const imported = await import(pathToFileURL(binaryenPath).href);
   const mod = imported.default ?? imported.Binaryen ?? imported;
   if (typeof mod === 'function') {
-    return await mod({ locateFile(file) { return resolve(dirname(binaryenPath), file); } });
+    return await mod({ locateFile(file) {
+      const path = resolve(dirname(binaryenPath), file);
+      if (existsSync(path)) toolFiles.add(path);
+      return path;
+    } });
   }
   return mod;
 }
@@ -1225,18 +1241,30 @@ async function main() {
 
   const binaryenJs = opts.binaryenJs ? resolve(opts.binaryenJs) : findDefaultBinaryenJs();
   if (!binaryenJs) throw new Error('Could not find binaryen_js.js; pass --binaryen-js PATH');
-  const binaryen = await loadBinaryen(binaryenJs);
+  const loadStarted = performance.now();
+  const toolFiles = new Set([binaryenJs, fileURLToPath(import.meta.url)]);
+  const binaryen = await loadBinaryen(binaryenJs, toolFiles);
+  const cache = opts.optimizerCacheDir ? new OptimizerCache(opts.optimizerCacheDir,
+    await optimizerIdentity([...toolFiles], { passes: LOCAL_PASSES, optimizeLevel: 2,
+      shrinkLevel: 0, features: binaryen.Features, node: process.versions.node })) : null;
+  console.log(`OPTIMIZER_TIMING phase=load-and-identity milliseconds=${(performance.now() - loadStarted).toFixed(3)}`);
+  const optimizeStarted = performance.now();
 
   let optimized = 0;
   let wasmBefore = 0;
   let wasmAfter = 0;
   for (const entry of entries) {
     wasmBefore += entry.data.length;
-    entry.data = optimizeWasm(binaryen, entry.data);
+    const input = entry.data;
+    entry.data = cache ? await cache.optimize(input, () => optimizeWasm(binaryen, input))
+      : optimizeWasm(binaryen, input);
     optimized++;
     entry.wasmBytes = entry.data.length;
     wasmAfter += entry.data.length;
   }
+
+  console.log(`OPTIMIZER_TIMING phase=modules milliseconds=${(performance.now() - optimizeStarted).toFixed(3)}`);
+  if (cache) console.log(`OPTIMIZER_CACHE hits=${cache.hits} misses=${cache.misses} invalid=${cache.invalid}`);
 
   if (opts.flat) {
     // Re-emit the optimized per-block modules in the original flat layout.

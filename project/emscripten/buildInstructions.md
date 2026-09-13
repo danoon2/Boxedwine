@@ -43,6 +43,49 @@ Run `node testJitCacheVersion.mjs` to check old-cache rejection, current-cache
 imports in ST/MT loaders, and flat-to-grouped pipeline round trips. The test
 uses `binaryen_js.js` from this directory, or accepts its path as an argument.
 
+## Reusing offline optimizer output
+
+The offline pipeline can retain Binaryen's per-module output between runs:
+
+```text
+node boxedwine-wasm-jit-cache-pipeline.mjs --optimizer-cache-dir ../../tmp/jit-optimizer-cache input.zip output.zip
+```
+
+This cache is separate from the guest JIT cache version and runtime compatibility
+checks. Both flat and grouped pipelines can reuse it. Keys include the input WASM
+bytes, optimizer JS and assets requested through `locateFile`, pipeline/cache
+implementation, pass order and settings, and Node version. Use a self-contained
+Binaryen bundle such as the supplied `binaryen_js.js`; arbitrary wrapper modules
+with additional imports are not covered by this dependency tracking.
+
+Each entry stores a hash of its output. Damaged entries are recomputed; writes
+publish a complete record atomically. The cache reports hits, misses, and invalid
+entries. Omit `--optimizer-cache-dir` for an uncached control. The pipeline also
+reports optimizer loading/identity time and per-module optimization/cache time
+as `OPTIMIZER_TIMING` records. These are offline build timings, not game frame times.
+ZIP manifests still contain generation timestamps, so compare WASM payloads and
+manifest content excluding `generatedAt` when validating cached output.
+
+Lightweight cache and integration checks use a fake optimizer:
+
+```text
+node testOptimizerCache.mjs
+node testOptimizerPipeline.mjs
+```
+
+Validate the actual bundled optimizer separately from browser/compiler work:
+
+```text
+node validateOptimizerCache.mjs ../../tmp/optimizer-validation
+```
+
+The output directory must be new. An optional second argument selects a
+self-contained Binaryen bundle. The validator keeps every input, log, output
+and timing sample. It checks cold misses and warm hits, compares flat/grouped
+WASM and manifests (excluding generation timestamps), and executes all 64
+synthetic memory-reading exports after each of eleven pipeline runs. The
+uncached control must change the input bytes, so a no-op optimizer cannot pass.
+
 ## Profiling the WASM JIT
 
 Build a clean checkout with `make multiThreadedJit WASM_PROFILING=1`
