@@ -1,0 +1,156 @@
+{
+  "kind": "raw-rgb10",
+  "checks": [
+    {
+      "label": "packed upload",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "label": "complete",
+      "actual": 36053,
+      "expected": 36053,
+      "passed": true
+    },
+    {
+      "label": "read implementation query",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "label": "packed read error",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "label": "all 21 packed pixels",
+      "actual": [
+        2098179,
+        1125177406,
+        2248256633,
+        3371335860,
+        199447791,
+        1322527018,
+        2445606245,
+        3568685472,
+        396797403,
+        1519876630,
+        2642955857,
+        3766035084,
+        594147015,
+        1717226242,
+        2840305469,
+        3963384696,
+        791496627,
+        1914575854,
+        3037654057,
+        4160733284,
+        987796639
+      ],
+      "expected": [
+        2098179,
+        1125177406,
+        2248256633,
+        3371335860,
+        199447791,
+        1322527018,
+        2445606245,
+        3568685472,
+        396797403,
+        1519876630,
+        2642955857,
+        3766035084,
+        594147015,
+        1717226242,
+        2840305469,
+        3963384696,
+        791496627,
+        1914575854,
+        3037654057,
+        4160733284,
+        987796639
+      ],
+      "passed": true
+    },
+    {
+      "label": "partial packed upload",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "label": "partial read error",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "label": "partial and preserved pixels",
+      "actual": [
+        2098179,
+        1125177406,
+        2248256633,
+        3371335860,
+        199447791,
+        1322527018,
+        2445606245,
+        3568685472,
+        1,
+        1023,
+        1048576,
+        3766035084,
+        594147015,
+        1717226242,
+        2840305469,
+        1073741824,
+        2147483650,
+        3221225475,
+        3037654057,
+        4160733284,
+        987796639
+      ],
+      "expected": [
+        2098179,
+        1125177406,
+        2248256633,
+        3371335860,
+        199447791,
+        1322527018,
+        2445606245,
+        3568685472,
+        1,
+        1023,
+        1048576,
+        3766035084,
+        594147015,
+        1717226242,
+        2840305469,
+        1073741824,
+        2147483650,
+        3221225475,
+        3037654057,
+        4160733284,
+        987796639
+      ],
+      "passed": true
+    },
+    {
+      "label": "cleanup",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "readFormat": 6408,
+  "readType": 33640,
+  "observationSeconds": 15,
+  "passed": true
+}

@@ -1,0 +1,183 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Floating-point render targets</title>
+<canvas width="2" height="2"></canvas>
+<pre id="result">Running</pre>
+<script>
+const report = {kind: "standalone-webgl-float-targets", wine: false, checks: [], errors: [], additionalChecks: 0, multisampleAllocations: []};
+addEventListener("error", e => report.errors.push(String(e.message)));
+addEventListener("unhandledrejection", e => report.errors.push(String(e.reason)));
+function check(label, actual, expected) {
+  report.checks.push({label, actual, expected, passed: JSON.stringify(actual) === JSON.stringify(expected)});
+}
+try {
+  const gl = document.querySelector("canvas").getContext("webgl2", {antialias: false});
+  if (!gl) throw Error("WebGL 2 unavailable");
+  const debug = gl.getExtension("WEBGL_debug_renderer_info");
+  report.environment = {userAgent: navigator.userAgent, version: gl.getParameter(gl.VERSION),
+    renderer: gl.getParameter(debug ? debug.UNMASKED_RENDERER_WEBGL : gl.RENDERER),
+    extensions: gl.getSupportedExtensions()};
+  // RGBA32F texture storage is core WebGL2; rendering to it requires the extension.
+  // Checking completeness must let Wine discover unsupported targets without drawing to one.
+  const capabilityTexture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, capabilityTexture);
+  gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, 2, 2);
+  const capabilityFbo = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, capabilityFbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, capabilityTexture, 0);
+  check("capability allocation before extension", gl.getError(), gl.NO_ERROR);
+  const beforeExtension = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+  report.framebufferStatusBeforeExtension = beforeExtension;
+  check("RGBA32F not renderable before extension", beforeExtension === gl.FRAMEBUFFER_COMPLETE, false);
+  check("unsupported capability query error", gl.getError(), gl.NO_ERROR);
+  report.colorBufferFloatEnabled = !!gl.getExtension("EXT_color_buffer_float");
+  if (!report.colorBufferFloatEnabled) throw Error("Optional EXT_color_buffer_float unavailable");
+  // Renderability does not imply 32-bit float blending or any multisample count.
+  // EXT_float_blend is enabled implicitly with color-buffer-float when supported.
+  report.floatBlendAvailable = gl.getSupportedExtensions().includes("EXT_float_blend");
+  report.formatSamples = {};
+  check("RGBA32F renderable after extension", gl.checkFramebufferStatus(gl.FRAMEBUFFER), gl.FRAMEBUFFER_COMPLETE);
+  check("supported capability query error", gl.getError(), gl.NO_ERROR);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(capabilityFbo);
+  gl.bindTexture(gl.TEXTURE_2D, null); gl.deleteTexture(capabilityTexture);
+  const vertexSource = `#version 300 es
+    const vec2 p[3] = vec2[3](vec2(-1.,-1.),vec2(3.,-1.),vec2(-1.,3.));
+    void main() { gl_Position = vec4(p[gl_VertexID], 0., 1.); }`;
+  const fragmentSource = `#version 300 es
+    precision highp float;
+    uniform bool sample_input;
+    uniform highp sampler2D input_texture;
+    layout(location=0) out vec4 color;
+    void main() { color = sample_input ? texelFetch(input_texture, ivec2(gl_FragCoord.xy), 0)
+                                      : vec4(.25, 2., -.5, .75); }`;
+  report.shaders = {vertexSource, fragmentSource};
+  function shader(type, source) {
+    const object = gl.createShader(type);
+    gl.shaderSource(object, source); gl.compileShader(object);
+    if (!gl.getShaderParameter(object, gl.COMPILE_STATUS)) throw Error(gl.getShaderInfoLog(object));
+    return object;
+  }
+  const vs = shader(gl.VERTEX_SHADER, vertexSource), fs = shader(gl.FRAGMENT_SHADER, fragmentSource);
+  const program = gl.createProgram();
+  gl.attachShader(program, vs); gl.attachShader(program, fs); gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  gl.viewport(0, 0, 2, 2);
+  const sample = gl.getUniformLocation(program, "sample_input");
+  gl.uniform1i(sample, 0);
+  gl.uniform1i(gl.getUniformLocation(program, "input_texture"), 0);
+  const colors = new Float32Array([-.5,.25,2,.75, 2,-.5,.75,.25, .25,2,-.5,.75, .75,.25,2,-.5]);
+  function texture(format, data = null) {
+    const object = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, object);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    if (data) gl.texImage2D(gl.TEXTURE_2D, 0, format, 2, 2, 0, gl.RGBA, gl.FLOAT, data);
+    else gl.texStorage2D(gl.TEXTURE_2D, 1, format, 2, 2);
+    return object;
+  }
+  const input = texture(gl.RGBA32F, colors);
+  check("RGBA32F source upload", gl.getError(), gl.NO_ERROR);
+  const fbo = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  const formats = [
+    ["R16F", gl.R16F, [.25,0,0,1]], ["RG16F", gl.RG16F, [.25,2,0,1]],
+    ["RGBA16F", gl.RGBA16F, [.25,2,-.5,.75]], ["R32F", gl.R32F, [.25,0,0,1]],
+    ["RG32F", gl.RG32F, [.25,2,0,1]], ["RGBA32F", gl.RGBA32F, [.25,2,-.5,.75]],
+  ];
+  for (const [name, format, expected] of formats) {
+    // Record the driver-specific list; an empty list is valid. The following
+    // allocation/error check also rejects an invalid capability query.
+    report.formatSamples[name] = Array.from(gl.getInternalformatParameter(gl.RENDERBUFFER, format, gl.SAMPLES));
+    for (const storage of ["texture", "renderbuffer"]) {
+      let target;
+      if (storage === "texture") {
+        target = texture(format);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0);
+      } else {
+        target = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, target);
+        gl.renderbufferStorage(gl.RENDERBUFFER, format, 2, 2);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, target);
+      }
+      const label = name + " " + storage;
+      check(label + " allocation", gl.getError(), gl.NO_ERROR);
+      const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+      check(label + " framebuffer", status, gl.FRAMEBUFFER_COMPLETE);
+      if (status === gl.FRAMEBUFFER_COMPLETE) {
+        gl.bindTexture(gl.TEXTURE_2D, input);
+        gl.uniform1i(sample, 0); gl.drawArrays(gl.TRIANGLES, 0, 3);
+        check(label + " draw", gl.getError(), gl.NO_ERROR);
+        const pixels = new Float32Array(16);
+        gl.readPixels(0, 0, 2, 2, gl.RGBA, gl.FLOAT, pixels);
+        check(label + " float readback", gl.getError(), gl.NO_ERROR);
+        check(label + " unclamped values", Array.from(pixels), [...expected,...expected,...expected,...expected]);
+        if (name === "RGBA32F") {
+          gl.uniform1i(sample, 1); gl.drawArrays(gl.TRIANGLES, 0, 3);
+          check(label + " sampled draw", gl.getError(), gl.NO_ERROR);
+          gl.readPixels(0, 0, 2, 2, gl.RGBA, gl.FLOAT, pixels);
+          check(label + " sampled readback", gl.getError(), gl.NO_ERROR);
+          check(label + " sampled values", Array.from(pixels), Array.from(colors));
+        }
+      }
+      if (storage === "texture") gl.deleteTexture(target);
+      else gl.deleteRenderbuffer(target);
+    }
+  }
+  for (const [name, format, expected] of formats) {
+    const counts = report.formatSamples[name];
+    ++report.additionalChecks;
+    check(name + " sample list", counts.every((n,i) => Number.isInteger(n) && n > 0 && (!i || counts[i-1] > n)), true);
+    for (const count of counts) {
+      report.additionalChecks += 9;
+      const label = name + " samples=" + count;
+      const rb = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+      gl.renderbufferStorageMultisample(gl.RENDERBUFFER, count, format, 2, 2);
+      check(label + " allocation", gl.getError(), gl.NO_ERROR);
+      const actualSamples = gl.getRenderbufferParameter(gl.RENDERBUFFER, gl.RENDERBUFFER_SAMPLES);
+      check(label + " allocated samples", actualSamples, count);
+      const source = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, source);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, rb);
+      const sourceStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+      check(label + " source framebuffer", sourceStatus, gl.FRAMEBUFFER_COMPLETE);
+      const resolved = texture(format);
+      const destination = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, destination);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, resolved, 0);
+      check(label + " resolve texture allocation", gl.getError(), gl.NO_ERROR);
+      const destinationStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+      check(label + " destination framebuffer", destinationStatus, gl.FRAMEBUFFER_COMPLETE);
+      report.multisampleAllocations.push({name, requestedSamples: count, actualSamples, sourceStatus, destinationStatus});
+      if (sourceStatus === gl.FRAMEBUFFER_COMPLETE && destinationStatus === gl.FRAMEBUFFER_COMPLETE) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, source);
+        gl.bindTexture(gl.TEXTURE_2D, input); gl.uniform1i(sample, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        check(label + " draw", gl.getError(), gl.NO_ERROR);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, source);
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, destination);
+        gl.blitFramebuffer(0, 0, 2, 2, 0, 0, 2, 2, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+        check(label + " resolve", gl.getError(), gl.NO_ERROR);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, destination);
+        const pixels = new Float32Array(16);
+        gl.readPixels(0, 0, 2, 2, gl.RGBA, gl.FLOAT, pixels);
+        check(label + " read", gl.getError(), gl.NO_ERROR);
+        check(label + " unclamped values", Array.from(pixels), [...expected,...expected,...expected,...expected]);
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.bindTexture(gl.TEXTURE_2D, null); gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+      gl.deleteFramebuffer(source); gl.deleteFramebuffer(destination);
+      gl.deleteTexture(resolved); gl.deleteRenderbuffer(rb);
+    }
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fbo);
+  gl.bindTexture(gl.TEXTURE_2D, null); gl.deleteTexture(input);
+  gl.bindVertexArray(null); gl.deleteVertexArray(vao);
+  gl.useProgram(null); gl.deleteProgram(program); gl.deleteShader(vs); gl.deleteShader(fs);
+  gl.finish();
+  check("final GL error", gl.getError(), gl.NO_ERROR);
+} catch (error) {
+  report.errors.push(String(error.stack || error));
+}
+setTimeout(async () => {
+  report.observationSeconds = 15;
+  report.passed = report.checks.length === 73 + report.additionalChecks && report.checks.every(c => c.passed) && !report.errors.length;
+  document.getElementById("result").textContent = JSON.stringify(report, null, 2);
+  await fetch("/result" + location.search, {method: "POST", body: JSON.stringify(report)});
+}, 15000);
+</script>

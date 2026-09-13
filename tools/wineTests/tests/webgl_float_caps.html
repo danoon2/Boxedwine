@@ -1,0 +1,127 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Float renderability, blending and filtering</title>
+<canvas width="16" height="16"></canvas><pre id="result">Running</pre>
+<script>
+const report = {kind: "standalone-webgl-float-capabilities", wine: false, checks: [], errors: [], formats: []};
+addEventListener("error", e => report.errors.push(String(e.message)));
+addEventListener("unhandledrejection", e => report.errors.push(String(e.reason)));
+function check(label, actual, expected) {
+  report.checks.push({label, actual, expected, passed: JSON.stringify(actual) === JSON.stringify(expected)});
+}
+try {
+  const gl = document.querySelector("canvas").getContext("webgl2", {antialias: false});
+  if (!gl) throw Error("WebGL 2 unavailable");
+  const debug = gl.getExtension("WEBGL_debug_renderer_info");
+  report.environment = {userAgent: navigator.userAgent, version: gl.getParameter(gl.VERSION),
+    renderer: gl.getParameter(debug ? debug.UNMASKED_RENDERER_WEBGL : gl.RENDERER), extensions: gl.getSupportedExtensions()};
+  const floatColor = !!gl.getExtension("EXT_color_buffer_float");
+  const halfColor = !!gl.getExtension("EXT_color_buffer_half_float");
+  const floatBlend = !!gl.getExtension("EXT_float_blend");
+  const floatLinear = !!gl.getExtension("OES_texture_float_linear");
+  report.enabled = {floatColor, halfColor, floatBlend, floatLinear};
+  const vsSource = `#version 300 es
+    const vec2 p[3]=vec2[3](vec2(-1.),vec2(3.,-1.),vec2(-1.,3.));
+    void main(){gl_Position=vec4(p[gl_VertexID],0.,1.);}`;
+  const fsSource = `#version 300 es
+    precision highp float;
+    uniform highp sampler2D input_texture;
+    uniform int mode;
+    uniform vec4 value;
+    out vec4 color;
+    void main(){
+      vec2 uv = mode==3 ? vec2(.1875)+gl_FragCoord.xy*.625 : vec2(mode==2?.375:.25);
+      color = mode==0 ? value : texture(input_texture,uv)*.25+.25;
+    }`;
+  function shader(type, source) {
+    const object = gl.createShader(type);gl.shaderSource(object, source);gl.compileShader(object);
+    if (!gl.getShaderParameter(object, gl.COMPILE_STATUS)) throw Error(gl.getShaderInfoLog(object));
+    return object;
+  }
+  const vs=shader(gl.VERTEX_SHADER,vsSource), fs=shader(gl.FRAGMENT_SHADER,fsSource), program=gl.createProgram();
+  gl.attachShader(program,vs);gl.attachShader(program,fs);gl.linkProgram(program);
+  if (!gl.getProgramParameter(program,gl.LINK_STATUS)) throw Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+  const mode=gl.getUniformLocation(program,"mode"), value=gl.getUniformLocation(program,"value");
+  gl.uniform1i(gl.getUniformLocation(program,"input_texture"),0);
+  const vao=gl.createVertexArray();gl.bindVertexArray(vao);gl.viewport(0,0,16,16);
+  const fbo=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);
+  function texture(internal, channels, data=null) {
+    const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+    if (data) gl.texImage2D(gl.TEXTURE_2D,0,internal,2,2,0,channels==1?gl.RED:channels==2?gl.RG:gl.RGBA,gl.FLOAT,data);
+    else gl.texStorage2D(gl.TEXTURE_2D,1,internal,16,16);
+    return t;
+  }
+  const output=texture(gl.RGBA8,4);
+  const formats=[['R16F',gl.R16F,1,16],['RG16F',gl.RG16F,2,16],['RGBA16F',gl.RGBA16F,4,16],
+    ['R32F',gl.R32F,1,32],['RG32F',gl.RG32F,2,32],['RGBA32F',gl.RGBA32F,4,32]];
+  for (const [name,internal,channels,bits] of formats) {
+    const rendering=floatColor || (bits==16 && halfColor);
+    const blending=rendering && (bits==16 || floatBlend), filtering=bits==16 || floatLinear;
+    const row={name,channels,bits,rendering,blending,filtering,operations:[]};report.formats.push(row);
+    const inputValues=new Float32Array(4*channels);
+    for(let pixel=0;pixel<4;++pixel) for(let c=0;c<channels;++c) inputValues[pixel*channels+c]=-.5+pixel+c*.125;
+    const input=texture(internal,channels,inputValues);
+    check(name+' texture upload',gl.getError(),gl.NO_ERROR);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,output,0);
+    check(name+' normalized framebuffer',gl.checkFramebufferStatus(gl.FRAMEBUFFER),gl.FRAMEBUFFER_COMPLETE);
+    gl.disable(gl.BLEND);
+    for(const sampling of [1,2,3]) {
+      if(sampling!=1 && !filtering) continue;
+      gl.uniform1i(mode,sampling);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,sampling==2?gl.LINEAR:gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,sampling==3?gl.LINEAR:gl.NEAREST);
+      gl.clearColor(.1,.2,.3,.4);gl.clear(gl.COLOR_BUFFER_BIT);gl.drawArrays(gl.TRIANGLES,0,3);
+      check(name+' filter mode '+sampling+' draw',gl.getError(),gl.NO_ERROR);
+      const pixels=new Uint8Array(16*16*4);pixels.fill(0xcc);
+      gl.readPixels(0,0,16,16,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+      check(name+' filter mode '+sampling+' read',gl.getError(),gl.NO_ERROR);
+      const actual=[],expected=[];
+      for(const y of [3,11]) for(const x of [3,11]) for(let c=0;c<channels;++c) {
+        const v=pixels[(y*16+x)*4+c], wanted=Math.round(((sampling==1?-.5:.25)*.25+.25+c*.03125)*255);
+        actual.push(v);expected.push(wanted);
+      }
+      check(name+' filter mode '+sampling+' pixels',actual.every((v,i)=>Math.abs(v-expected[i])<=1),true);
+      row.operations.push({operation:['','point','linear-mag','linear-min'][sampling],actual,expected});
+    }
+    gl.bindTexture(gl.TEXTURE_2D,null);gl.deleteTexture(input);
+    // Allocation is legal without color-buffer extensions; completeness is the capability test.
+    const target=texture(internal,channels);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,target,0);
+    check(name+' target allocation',gl.getError(),gl.NO_ERROR);
+    const complete=gl.checkFramebufferStatus(gl.FRAMEBUFFER)==gl.FRAMEBUFFER_COMPLETE;
+    check(name+' target renderability',complete,rendering);
+    if(complete) {
+      gl.bindTexture(gl.TEXTURE_2D,null);gl.uniform1i(mode,0);
+      for(const blend of [false,true]) {
+        if(blend && !blending) continue;
+        const src=blend?[.5,.25,1.5,.125]:[.25,2,-.5,.75],wanted=blend?[.75,2.25,1,.875]:src;
+        if(blend){gl.enable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.ONE,gl.ONE);}else gl.disable(gl.BLEND);
+        gl.uniform4fv(value,src);gl.drawArrays(gl.TRIANGLES,0,3);
+        check(name+' '+(blend?'blend':'render')+' draw',gl.getError(),gl.NO_ERROR);
+        const pixels=new Float32Array(16*16*4);pixels.fill(-999);
+        gl.readPixels(0,0,16,16,gl.RGBA,gl.FLOAT,pixels);
+        check(name+' '+(blend?'blend':'render')+' read',gl.getError(),gl.NO_ERROR);
+        const actual=[],expected=[];
+        for(const y of [3,11]) for(const x of [3,11]) for(let c=0;c<channels;++c){actual.push(pixels[(y*16+x)*4+c]);expected.push(wanted[c]);}
+        check(name+' '+(blend?'blend':'render')+' unclamped values',actual,expected);
+        row.operations.push({operation:blend?'blend':'render',actual,expected});
+      }
+    }
+    gl.deleteTexture(target);
+  }
+  gl.disable(gl.BLEND);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(fbo);gl.deleteTexture(output);
+  gl.bindVertexArray(null);gl.deleteVertexArray(vao);gl.useProgram(null);gl.deleteProgram(program);gl.deleteShader(vs);gl.deleteShader(fs);
+  gl.finish();check('final error',gl.getError(),gl.NO_ERROR);
+} catch(error) {report.errors.push(String(error.stack||error));}
+setTimeout(async()=>{
+  report.observationSeconds=15;
+  report.passed=report.formats.length==6 && report.checks.length>0 && report.checks.every(c=>c.passed) && !report.errors.length;
+  document.getElementById('result').textContent=JSON.stringify(report,null,2);
+  await fetch('/result'+location.search,{method:'POST',body:JSON.stringify(report)});
+},15000);
+</script>

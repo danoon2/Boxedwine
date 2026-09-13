@@ -1,0 +1,39 @@
+<!doctype html><meta charset="utf-8"><canvas width="7" height="3"></canvas><pre id="result"></pre>
+<script>
+const report={kind:"raw-rgb10",checks:[],errors:[]};
+function check(label,actual,expected){report.checks.push({label,actual,expected,passed:JSON.stringify(actual)===JSON.stringify(expected)});}
+try {
+ const gl=document.querySelector('canvas').getContext('webgl2',{antialias:false});
+ if(!gl)throw Error('WebGL2 unavailable');
+ const debug=gl.getExtension('WEBGL_debug_renderer_info');
+ report.environment={userAgent:navigator.userAgent,renderer:gl.getParameter(debug?debug.UNMASKED_RENDERER_WEBGL:gl.RENDERER)};
+ const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+ const input=new Uint32Array(21);
+ for(let i=0;i<21;i++)input[i]=((i%4)<<30)|(((i*47+2)%1024)<<20)|(((i*53+1)%1024)<<10)|((i*59+3)%1024);
+ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB10_A2,7,3,0,gl.RGBA,gl.UNSIGNED_INT_2_10_10_10_REV,input);
+ check('packed upload',gl.getError(),gl.NO_ERROR);
+ const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);
+ gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);
+ check('complete',gl.checkFramebufferStatus(gl.FRAMEBUFFER),gl.FRAMEBUFFER_COMPLETE);
+ report.readFormat=gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT);
+ report.readType=gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE);
+ check('read implementation query',gl.getError(),gl.NO_ERROR);
+ // ES 3.0 requires this read pair for RGB10_A2 independently of the preferred pair above.
+ const output=new Uint32Array(21).fill(0xcccccccc);
+ gl.readPixels(0,0,7,3,gl.RGBA,gl.UNSIGNED_INT_2_10_10_10_REV,output);
+ check('packed read error',gl.getError(),gl.NO_ERROR);
+ check('all 21 packed pixels',Array.from(output),Array.from(input));
+ const partial=new Uint32Array([1,1023,1048576,1073741824,2147483650,3221225475]);
+ gl.texSubImage2D(gl.TEXTURE_2D,0,1,1,3,2,gl.RGBA,gl.UNSIGNED_INT_2_10_10_10_REV,partial);
+ check('partial packed upload',gl.getError(),gl.NO_ERROR);
+ for(let y=0;y<2;y++)for(let x=0;x<3;x++)input[(y+1)*7+x+1]=partial[y*3+x];
+ output.fill(0xcccccccc);
+ gl.readPixels(0,0,7,3,gl.RGBA,gl.UNSIGNED_INT_2_10_10_10_REV,output);
+ check('partial read error',gl.getError(),gl.NO_ERROR);
+ check('partial and preserved pixels',Array.from(output),Array.from(input));
+ gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(f);gl.deleteTexture(t);
+ check('cleanup',gl.getError(),gl.NO_ERROR);
+}catch(e){report.errors.push(String(e.stack||e));}
+setTimeout(async()=>{report.observationSeconds=15;report.passed=!report.errors.length&&report.checks.every(x=>x.passed);
+ document.querySelector('pre').textContent=JSON.stringify(report);await fetch('/result'+location.search,{method:'POST',body:JSON.stringify(report)});},15000);
+</script>
