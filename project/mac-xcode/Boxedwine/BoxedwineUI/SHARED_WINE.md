@@ -1,0 +1,35 @@
+# Shared Wine packages
+
+The native library stores each exact Wine filesystem once at `WinePackages/<sha256>.zip`. New imports, demos, Wine test copies, restored backups, and newly created Notepad entries record a `winePackage` reference containing the complete ZIP's SHA-256, byte count, Wine version, and filesystem version. Two builds with the same Wine version are separate packages when their bytes differ. The ZIP is read-only; each app keeps its own writable Windows root, registry, settings, installer, and saves.
+
+Library format 7 prevents older launchers from opening an environment with the wrong Wine package. `savedWineVersion` remains for compatibility with old entries and self-contained backups. A legacy entry with a saved version but no package reference still resolves its private `WindowsSupport/wine.zip`. Legacy entries that follow the library default retain that behavior. The imported default uses `WindowsSupport/imported-wine.json`; switching to the bundled package keeps the imported reference available for switching back. A bundled ZIP can coexist with one managed copy, which lets pinned apps survive changes to the app bundle.
+
+The first use of a Wine package validates the complete ZIP and metadata and saves a small validation receipt at `WineValidation/<sha256>.json`. Later checks hash the complete ZIP in bounded chunks and reuse the receipt only for identical bytes and the current validator revision. Receipts persist across launcher restarts and can be deleted safely; missing, damaged, outdated, or unwritable receipts fall back to full validation. New imports copy into a uniquely named staging file, verify its checksum against the source, synchronize it, and publish without overwriting an existing content identity. Existing packages must match before reuse. Checksum progress shows bytes checked rather than names of files inside Wine; demo archive extraction still shows the files it unpacks. Launch and recovery verify the reference's metadata and hash, and never substitute a different package for a pinned app. The launcher caches successful validation per package URL while the file's size, modification date, and identity remain unchanged.
+
+## Migration
+
+At startup, the launcher shares packages saved with active and removed apps, plus the older imported default, and collects unused packages. Interrupted sharing is retried at the next startup. Storage cleanup is automatic; Settings has no manual optimization button. Operations run away from the UI thread; launches and other library changes wait while sharing runs.
+
+For each saved app, migration verifies and publishes the shared package, commits the app's reference to `library.json`, then removes only its matching private ZIP. The first format upgrade also saves the prior metadata as `library-vN-backup.json`. That metadata file is not a complete app backup or an automatic rollback mechanism. Windows files are not migrated or reconfigured. A partially deleted app is left for the existing deletion workflow.
+
+Cancellation or a failed metadata write preserves the private ZIP. An interruption after the reference commit leaves a redundant private ZIP that the next run can remove. It can also supply the exact recorded package if the shared copy is missing. Missing, malformed or linked storage is reported and kept. A problem with one app does not prevent other eligible apps from being shared.
+
+## Backups and test copies
+
+Exported `.boxedwinebackup` packages remain self-contained. Their `Application/WindowsSupport/wine.zip` contains the app's exact Wine package and is covered by the backup manifest's hashes. The exported app metadata clears the local shared reference; existing backup formats remain supported. Restoration validates the entire backup, puts Wine in the destination library's shared store, and creates a new independent Windows root. Restoring into a library that already has the package reuses it.
+
+Wine test copies copy the original's Windows files and settings into a new app directory, excluding any older private Wine ZIP. They pin the selected package and never modify the original app's reference or Windows environment.
+
+## Package lifetime
+
+Collection retains packages referenced by active apps, Removed Apps (including interrupted deletions), the imported library default, and ready app/runtime recovery records. Copying, cleaning, unreadable, or unsupported journals defer collection conservatively; legacy runtime recovery records without a hash do too. Removing an app from the library does not release its package. Permanent deletion releases it only after the app's final metadata removal, and other references continue to keep it alive.
+
+Collection runs after commits, completed cleanup/deletion, runtime changes, and startup sharing. Failed collection leaves files available for the next automatic cleanup. Unreferenced package files and abandoned managed staging files can then be removed; exported backups and arbitrary files are not collected. App storage estimates describe the app's own files, with shared Wine accounted for separately rather than charged to every app.
+
+## Verification
+
+The Swift suite passed with 136 executed tests and one opt-in real-Wine test skipped. Shared-package coverage includes deduplication, exact build identity, independent app roots, active/removed/default/recovery retention, metadata-write failure, interrupted migration and retry, cancellation during a real validated package copy, portable backup restoration, and rejection of missing, replaced, symbolic-linked or multiply-linked packages. Final Debug and Release builds both passed their eighteen-image packaging audits.
+
+In the isolated sandboxed native app, startup migrated five private ZIPs to three exact shared packages (Wine 6, 10 and 11), removing 319,330,435 bytes of duplicate package data. Every other app-file hash and every pre-existing app metadata value was unchanged at the migration checkpoint. Drowned God then rendered its game scene using the shared Wine 11 path and stopped with exit code 0. A native Wine 6 app backup contained the full matching ZIP; native restoration created an independent app, matched all eleven exported non-Wine file hashes, and reused the same Wine 6 reference without adding a fourth package. Settings' Optimize Wine Storage completed again successfully.
+
+The regular six-app library subsequently migrated three saved app ZIPs and its older imported default into one identical read-only Wine 11 package, removing 488,244,762 bytes of duplicate package data. Existing app metadata values and all non-Wine app files were preserved, the prior library metadata was backed up, and legacy default-following entries retained that behavior. The bundled default and its selection stayed unchanged. The rebuilt Debug launcher remains open with the migrated library. These byte totals describe logical duplicate data removed, not a measurement of physical space recovered on APFS. Runtime verification covers the observed Drowned God session, not compatibility of every game or Wine version.

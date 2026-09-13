@@ -424,20 +424,25 @@ pipeline {
                         }
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                rm -rf bin/Boxedwine.app
-                                rm -rf Deploy/Mac/Boxedwine.app
-                                mkdir -p Deploy/Mac
-                                /bin/bash buildRelease.sh
-                                if [ ! -d "bin/Boxedwine.app" ] 
-                                then
-                                    echo "bin/Boxedwine.app DOES NOT exists."
-                                    exit 999
+                                set -euo pipefail
+                                : "${BOXEDWINE_SIGN_NAME:?Set the Developer ID Application signing identity}"
+                                : "${BOXEDWINE_KEYCHAIN_PROFILE:?Set the notarization keychain profile}"
+                                if [ "$BOXEDWINE_SIGN_NAME" = - ]; then
+                                    echo "Jenkins requires Developer ID signing, not ad-hoc signing." >&2
+                                    exit 1
                                 fi
-                                codesign --force --deep --verify --verbose --timestamp --sign "$BOXEDWINE_SIGN_NAME" --options runtime --entitlements ./Boxedwine/Boxedwine/Boxedwine.entitlements ./bin/Boxedwine.app
-                                cd bin                                
+                                mkdir -p Deploy/Mac
+                                rm -f Deploy/Mac/Boxedwine.zip bin/BoxedwineUpload.zip bin/Boxedwine.zip
+                                rm -f bin/native-build-audit.json bin/native-signing-audit.json bin/notary-result.json
+                                /bin/sh buildRelease.sh
+                                /bin/sh signNative.sh bin/Boxedwine.app "$BOXEDWINE_SIGN_NAME"
+                                cd bin
                                 /usr/bin/ditto -c -k --sequesterRsrc --keepParent "Boxedwine.app" "BoxedwineUpload.zip"
-                                xcrun notarytool submit BoxedwineUpload.zip --keychain-profile "$BOXEDWINE_KEYCHAIN_PROFILE" --wait
+                                xcrun notarytool submit BoxedwineUpload.zip --keychain-profile "$BOXEDWINE_KEYCHAIN_PROFILE" --wait --output-format json > notary-result.json
+                                /usr/bin/python3 -c 'import json, sys; result = json.load(open("notary-result.json")); print("Notarization:", result.get("id"), result.get("status")); sys.exit(0 if result.get("status") == "Accepted" else 1)'
                                 xcrun stapler staple -v Boxedwine.app
+                                xcrun stapler validate Boxedwine.app
+                                /usr/bin/codesign --verify --deep --strict Boxedwine.app
                                 rm BoxedwineUpload.zip
                                 /usr/bin/ditto -c -k --sequesterRsrc --keepParent "Boxedwine.app" "Boxedwine.zip"
                                 cd ..
@@ -446,6 +451,11 @@ pipeline {
                         }
                         dir("project/mac-xcode") {
                             stash includes: 'Deploy/Mac/**', name: 'macArmv8'                            
+                        }
+                    }
+                    post {
+                        always {
+                            archiveArtifacts artifacts: 'project/mac-xcode/bin/native-build-audit.json,project/mac-xcode/bin/native-signing-audit.json,project/mac-xcode/bin/notary-result.json', allowEmptyArchive: true
                         }
                     }
                 }

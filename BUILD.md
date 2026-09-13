@@ -22,7 +22,7 @@ There are no dependencies.
 
 ## Mac
 
-You need to install XCode 15 or later.  You can do this from the App Store on your Mac.  Boxedwine supports the old Intel Macs and the new M series.
+The native Mac UI needs Xcode with Swift 6 and a macOS 15 or newer SDK (validated with Xcode 26.5). The current native app targets Apple Silicon and macOS 15 or later.
 
 https://developer.apple.com/xcode/
 
@@ -33,6 +33,12 @@ sh fetchDepends.sh
 This only needs to be done once, after you download the source
 
 After that, in XCode you just need to open project/mac-xcode/Boxedwine.xcworkspace
+
+For the experimental SwiftUI launcher, see [Native macOS preview](project/mac-xcode/Boxedwine/BoxedwineUI/README.md). Its `BoxedwineUI` scheme and build script build the native UI and the `Boxedwine` emulator with the old Mac UI disabled, currently targeting Apple Silicon and macOS 15+. All Mac targets use native OpenGL and omit software Mesa and its dependency libraries; the downloaded dependency archive may still contain these unused build inputs. Debug enables unsandboxed debugging; the `Boxedwine` scheme waits to attach to a launched emulator, and `BoxedwineUI-Sandbox` tests sandbox behavior. Debug, Sandbox, and Release builds include a bundle audit; [release preparation](project/mac-xcode/Boxedwine/BoxedwineUI/RELEASE.md) records the remaining distribution work.
+
+Jenkins uses `project/mac-xcode/buildRelease.sh` to archive the native UI with its embedded emulator as `bin/Boxedwine.app`, without a Wine filesystem. It then uses `signNative.sh` with the existing Developer ID identity, audits every embedded binary, and notarizes and staples the app before packaging `Deploy/Mac/Boxedwine.zip`. See [Jenkins Mac builds](project/mac-xcode/Boxedwine/BoxedwineUI/RELEASE.md#jenkins-mac-builds) for worker requirements and local verification.
+
+The native demo catalog and icons are downloaded at build time using the shared pin in `resources/demo-catalog.lock.json`. An exact verified cache works offline. Local Xcode builds warn and omit demos if the pinned package is unavailable; Jenkins fails instead. No catalog fallback is stored in Git. See [Shared demo catalog](resources/DEMO_CATALOG.md) for cache settings and publishing updates.
 
 ## Linux
 

@@ -1,0 +1,12 @@
+{
+  "https://www.boxedwine.org/demos/java8jre.zip": {
+    "version": 8,
+    "bytes": 57937992,
+    "sha256": "49d383292739818e620bffe60c59a1e77aa3c48140a5be840d6b39e787866247"
+  },
+  "https://www.boxedwine.org/demos/java17jre.zip": {
+    "version": 17,
+    "bytes": 39289773,
+    "sha256": "7d0c21b3fe4198bdca1025d8d27cf312c992c6e5b4d8ecc12b2ef7ca2303dc2a"
+  }
+}

@@ -7,50 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1A0F95592C912BD100E5A9BF /* knativescreenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */; };
 		1A0F955B2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */; };
 		1A0F955D2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */; };
-		1A0F955F2C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */; };
 		1A0F95612C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */; };
 		1A0F95632C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */; };
-		1A0F95652C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */; };
 		1A0F95672C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */; };
 		1A0F95692C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */; };
-		1A0F95702C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
 		1A0F95722C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
 		1A0F95742C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
-		B0C0D0010000000000000003 /* macOpenGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0010000000000000001 /* macOpenGL.mm */; };
-		B0C0D0010000000000000004 /* macOpenGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0010000000000000001 /* macOpenGL.mm */; };
-		B0C0D0010000000000000005 /* macOpenGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0010000000000000001 /* macOpenGL.mm */; };
-		1A1551FA2632673F006E0C8A /* SDL2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; };
-		1A1551FB2632673F006E0C8A /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		1A5405262A04AB4E0061653D /* libcurl.4.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A5405252A04AB4E0061653D /* libcurl.4.tbd */; };
 		1A5405292A054D460061653D /* libcurl.4.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A5405252A04AB4E0061653D /* libcurl.4.tbd */; };
-		1A55D62E2A0841E2002B7021 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6242A0841E1002B7021 /* inflate.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		1A55D6302A0841E2002B7021 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6242A0841E1002B7021 /* inflate.c */; };
-		1A55D6322A0841E2002B7021 /* make_vms.com in Resources */ = {isa = PBXBuildFile; fileRef = 1A55D6252A0841E1002B7021 /* make_vms.com */; };
 		1A55D6342A0841E2002B7021 /* make_vms.com in Resources */ = {isa = PBXBuildFile; fileRef = 1A55D6252A0841E1002B7021 /* make_vms.com */; };
-		1A55D6362A0841E2002B7021 /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6272A0841E2002B7021 /* inffast.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		1A55D6382A0841E2002B7021 /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6272A0841E2002B7021 /* inffast.c */; };
-		1A55D63A2A0841E2002B7021 /* inftrees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6282A0841E2002B7021 /* inftrees.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		1A55D63C2A0841E2002B7021 /* inftrees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6282A0841E2002B7021 /* inftrees.c */; };
-		1A55D63E2A0841E2002B7021 /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D62A2A0841E2002B7021 /* infback.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		1A55D6402A0841E2002B7021 /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D62A2A0841E2002B7021 /* infback.c */; };
-		1A55D64C2A08428F002B7021 /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6412A08428E002B7021 /* deflate.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		1A55D64E2A08428F002B7021 /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6412A08428E002B7021 /* deflate.c */; };
-		1A55D6502A08428F002B7021 /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6422A08428F002B7021 /* crc32.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		1A55D6522A08428F002B7021 /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6422A08428F002B7021 /* crc32.c */; };
-		1A55D6542A08428F002B7021 /* gzclose.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6432A08428F002B7021 /* gzclose.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		1A55D6562A08428F002B7021 /* gzclose.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6432A08428F002B7021 /* gzclose.c */; };
-		1A55D6582A08428F002B7021 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6452A08428F002B7021 /* zutil.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		1A55D65A2A08428F002B7021 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6452A08428F002B7021 /* zutil.c */; };
-		1A55D65C2A08428F002B7021 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6462A08428F002B7021 /* compress.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		1A55D65E2A08428F002B7021 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6462A08428F002B7021 /* compress.c */; };
-		1A55D6602A08428F002B7021 /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6482A08428F002B7021 /* uncompr.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		1A55D6622A08428F002B7021 /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6482A08428F002B7021 /* uncompr.c */; };
-		1A55D6642A08428F002B7021 /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6492A08428F002B7021 /* adler32.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		1A55D6662A08428F002B7021 /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6492A08428F002B7021 /* adler32.c */; };
-		1A55D6692A0842E8002B7021 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6672A0842E8002B7021 /* trees.c */; settings = {COMPILER_FLAGS = "-w"; }; };
 		1A55D66B2A0842E8002B7021 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6672A0842E8002B7021 /* trees.c */; };
 		1A80F0DC276EBF170032A70A /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091362644D42B003413C3 /* kdspaudio.cpp */; };
 		1A80F0F6276EBF170032A70A /* imgui_draw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228662433EE5300CDBABD /* imgui_draw.cpp */; };
@@ -84,25 +61,11 @@
 		1A80F2D3276EBF170032A70A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
 		1A80F2D4276EBF170032A70A /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
 		1A80F2D8276EBF170032A70A /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		1AC5F2FB2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */; };
 		1AC5F2FD2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */; };
 		1AC5F2FF2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */; };
 		1AEBC3A02AABC111007ECB08 /* BoxedwineUnitTestsMain.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC39B2AABC108007ECB08 /* BoxedwineUnitTestsMain.m */; };
 		1AEBC3A72AABC248007ECB08 /* BoxedwineUnitTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC3A62AABC248007ECB08 /* BoxedwineUnitTests.m */; };
-		1AFC479A26483DDF00EE5FCC /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4793264826FD00EE5FCC /* knativecoreaudio.cpp */; };
-		1AFC479E2648471000EE5FCC /* audiounit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC479C2648471000EE5FCC /* audiounit.cpp */; };
-		1AFC47A626489F7700EE5FCC /* CoreMIDI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */; };
-		1AFC47A826489FB200EE5FCC /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
-		1AFC480B2663FFC000EE5FCC /* pixelformat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC48092663FFC000EE5FCC /* pixelformat.cpp */; };
 		1AFC480D2663FFC000EE5FCC /* pixelformat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC48092663FFC000EE5FCC /* pixelformat.cpp */; };
-		710091432644D42C003413C3 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091362644D42B003413C3 /* kdspaudio.cpp */; };
-		710091462644D42C003413C3 /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091372644D42B003413C3 /* knativesystem.cpp */; };
-		710091492644D42C003413C3 /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091382644D42B003413C3 /* knativethread.cpp */; };
-		7100914C2644D42C003413C3 /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091392644D42C003413C3 /* knativeaudio.cpp */; };
-		7100914F2644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
-		7100915E2644D44E003413C3 /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091542644D44E003413C3 /* platform.cpp */; };
-		710091612644D44E003413C3 /* platformThreads.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091552644D44E003413C3 /* platformThreads.cpp */; };
-		710091642644D44E003413C3 /* platformThreads-x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091562644D44E003413C3 /* platformThreads-x64.cpp */; };
 		7108C9342E64EB9000F6CF63 /* imgui.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712227AC2433EE5300CDBABD /* imgui.cpp */; };
 		7108C9352E64EB9000F6CF63 /* imgui_draw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228662433EE5300CDBABD /* imgui_draw.cpp */; };
 		7108C9362E64EB9000F6CF63 /* imgui_widgets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712227A42433EE5300CDBABD /* imgui_widgets.cpp */; };
@@ -110,20 +73,6 @@
 		7108C93A2E64EBAD00F6CF63 /* imgui_impl_sdl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7122285E2433EE5300CDBABD /* imgui_impl_sdl.cpp */; };
 		7108C93B2E64EBAD00F6CF63 /* imgui_impl_opengl3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228262433EE5300CDBABD /* imgui_impl_opengl3.cpp */; };
 		7108C93C2E64EC8800F6CF63 /* libcurl.4.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A5405252A04AB4E0061653D /* libcurl.4.tbd */; };
-		7120545F244D074000C3CB1B /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
-		71222BE824351CBA00CDBABD /* imgui_draw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228662433EE5300CDBABD /* imgui_draw.cpp */; };
-		71222BED24351CBA00CDBABD /* imgui_impl_sdl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7122285E2433EE5300CDBABD /* imgui_impl_sdl.cpp */; };
-		71222BFF24351CBA00CDBABD /* imgui_widgets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712227A42433EE5300CDBABD /* imgui_widgets.cpp */; };
-		71222C1C24351CBA00CDBABD /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCB12433B815003F17F1 /* AppDelegate.m */; };
-		71222C2324351CBA00CDBABD /* imgui_impl_opengl3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228262433EE5300CDBABD /* imgui_impl_opengl3.cpp */; };
-		71222C3D24351CBA00CDBABD /* imgui.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712227AC2433EE5300CDBABD /* imgui.cpp */; };
-		71222C5824351CBA00CDBABD /* imguitinyfiledialogs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228622433EE5300CDBABD /* imguitinyfiledialogs.cpp */; };
-		71222C7424351CBA00CDBABD /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227872433EE2700CDBABD /* OpenGL.framework */; };
-		71222C7524351CBA00CDBABD /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227852433EE1200CDBABD /* Carbon.framework */; };
-		71222C7624351CBA00CDBABD /* ForceFeedback.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227832433EDE700CDBABD /* ForceFeedback.framework */; };
-		71222C7724351CBA00CDBABD /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 712227812433EDCE00CDBABD /* AudioToolbox.framework */; };
-		71222C7824351CBA00CDBABD /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7122277D2433ED7C00CDBABD /* CoreAudio.framework */; };
-		71222C7B24351CBA00CDBABD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
 		7135DC12264EBCD0005D6AA6 /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
 		7135DC13264EBCD0005D6AA6 /* platformThreads.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091552644D44E003413C3 /* platformThreads.cpp */; };
 		7135DC1D264EBCD0005D6AA6 /* platformThreads-x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091562644D44E003413C3 /* platformThreads-x64.cpp */; };
@@ -149,17 +98,10 @@
 		7135DCA2264EBCD0005D6AA6 /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		714097412D4AA53F00D10110 /* pugixml.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7140973F2D4AA53F00D10110 /* pugixml.cpp */; };
 		714097452D4AA53F00D10110 /* pugixml.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7140973F2D4AA53F00D10110 /* pugixml.cpp */; };
-		714097462D4AA53F00D10110 /* pugixml.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7140973F2D4AA53F00D10110 /* pugixml.cpp */; };
-		7140974E2D4AA57300D10110 /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097472D4AA57300D10110 /* glew.cpp */; };
 		714097512D4AA57300D10110 /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097472D4AA57300D10110 /* glew.cpp */; };
 		714097542D4AA57300D10110 /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097472D4AA57300D10110 /* glew.cpp */; };
-		715F8429244115580038F5A4 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
 		718F07632D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
-		718F07662D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
 		718F07672D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
-		718F076A2D31C20F00D41270 /* libMoltenVK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 718F07692D31C20F00D41270 /* libMoltenVK.dylib */; };
-		718F07782D31C23F00D41270 /* libMoltenVK.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718F07772D31C23F00D41270 /* libMoltenVK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		71A2787E2E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A2787C2E6E3A2D007573AB /* MacPlatformSwift.swift */; };
 		71A2787F2E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A2787C2E6E3A2D007573AB /* MacPlatformSwift.swift */; };
 		71B4910C2D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E02D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c */; };
 		71B4910D2D4AA1B800A8AB32 /* s_mul64To128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E72D4AA1B800A8AB32 /* s_mul64To128.c */; };
@@ -232,77 +174,6 @@
 		71B491B12D4AA1B800A8AB32 /* s_roundPackToF64.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490F02D4AA1B800A8AB32 /* s_roundPackToF64.c */; };
 		71B491B32D4AA1B800A8AB32 /* s_le128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E42D4AA1B800A8AB32 /* s_le128.c */; };
 		71B491B52D4AA1B800A8AB32 /* s_normSubnormalF32Sig.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490EC2D4AA1B800A8AB32 /* s_normSubnormalF32Sig.c */; };
-		71B4928A2D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E02D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c */; settings = {COMPILER_FLAGS = "-w"; }; };
-		71B4928B2D4AA1B800A8AB32 /* s_mul64To128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E72D4AA1B800A8AB32 /* s_mul64To128.c */; };
-		71B4928D2D4AA1B800A8AB32 /* f32_to_extF80.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D72D4AA1B800A8AB32 /* f32_to_extF80.c */; };
-		71B492902D4AA1B800A8AB32 /* s_shiftRightJam32.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490F52D4AA1B800A8AB32 /* s_shiftRightJam32.c */; };
-		71B492912D4AA1B800A8AB32 /* i32_to_extF80.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D92D4AA1B800A8AB32 /* i32_to_extF80.c */; };
-		71B492982D4AA1B800A8AB32 /* extF80_sub.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D02D4AA1B800A8AB32 /* extF80_sub.c */; };
-		71B492992D4AA1B800A8AB32 /* s_extF80UIToCommonNaN.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490622D4AA1B800A8AB32 /* s_extF80UIToCommonNaN.c */; };
-		71B4929D2D4AA1B800A8AB32 /* extF80_lt_quiet.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490CB2D4AA1B800A8AB32 /* extF80_lt_quiet.c */; };
-		71B4929E2D4AA1B800A8AB32 /* s_normSubnormalF64Sig.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490ED2D4AA1B800A8AB32 /* s_normSubnormalF64Sig.c */; };
-		71B4929F2D4AA1B800A8AB32 /* s_f32UIToCommonNaN.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490632D4AA1B800A8AB32 /* s_f32UIToCommonNaN.c */; };
-		71B492A32D4AA1B800A8AB32 /* s_addMagsExtF80.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490DC2D4AA1B800A8AB32 /* s_addMagsExtF80.c */; };
-		71B492A42D4AA1B800A8AB32 /* s_approxRecipSqrt_1Ks.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490DF2D4AA1B800A8AB32 /* s_approxRecipSqrt_1Ks.c */; };
-		71B492A62D4AA1B800A8AB32 /* s_shortShiftLeft128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490F92D4AA1B800A8AB32 /* s_shortShiftLeft128.c */; };
-		71B492A72D4AA1B800A8AB32 /* softfloat_state.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490FE2D4AA1B800A8AB32 /* softfloat_state.c */; };
-		71B492A82D4AA1B800A8AB32 /* extF80_to_i32_r_minMag.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D42D4AA1B800A8AB32 /* extF80_to_i32_r_minMag.c */; };
-		71B492AA2D4AA1B800A8AB32 /* i64_to_extF80.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490DA2D4AA1B800A8AB32 /* i64_to_extF80.c */; };
-		71B492AC2D4AA1B800A8AB32 /* extF80_mul.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490CC2D4AA1B800A8AB32 /* extF80_mul.c */; };
-		71B492B32D4AA1B800A8AB32 /* s_shiftRightJam64Extra.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490F72D4AA1B800A8AB32 /* s_shiftRightJam64Extra.c */; };
-		71B492B42D4AA1B800A8AB32 /* s_countLeadingZeros8.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E12D4AA1B800A8AB32 /* s_countLeadingZeros8.c */; };
-		71B492BB2D4AA1B800A8AB32 /* s_subMagsExtF80.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490FD2D4AA1B800A8AB32 /* s_subMagsExtF80.c */; };
-		71B492BE2D4AA1B800A8AB32 /* s_normRoundPackToF64.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490EA2D4AA1B800A8AB32 /* s_normRoundPackToF64.c */; };
-		71B492BF2D4AA1B800A8AB32 /* s_propagateNaNExtF80UI.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490652D4AA1B800A8AB32 /* s_propagateNaNExtF80UI.c */; };
-		71B492C42D4AA1B800A8AB32 /* s_shortShiftRightJam64.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490FA2D4AA1B800A8AB32 /* s_shortShiftRightJam64.c */; };
-		71B492C52D4AA1B800A8AB32 /* s_mul64ByShifted32To128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E62D4AA1B800A8AB32 /* s_mul64ByShifted32To128.c */; };
-		71B492C62D4AA1B800A8AB32 /* s_approxRecip32_1.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490DE2D4AA1B800A8AB32 /* s_approxRecip32_1.c */; settings = {COMPILER_FLAGS = "-w"; }; };
-		71B492C92D4AA1B800A8AB32 /* s_countLeadingZeros64.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E32D4AA1B800A8AB32 /* s_countLeadingZeros64.c */; };
-		71B492CB2D4AA1B800A8AB32 /* extF80_add.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490C32D4AA1B800A8AB32 /* extF80_add.c */; };
-		71B492CC2D4AA1B800A8AB32 /* s_sub128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490FC2D4AA1B800A8AB32 /* s_sub128.c */; };
-		71B492CD2D4AA1B800A8AB32 /* s_lt128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E52D4AA1B800A8AB32 /* s_lt128.c */; };
-		71B492CF2D4AA1B800A8AB32 /* s_propagateNaNF64UI.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490672D4AA1B800A8AB32 /* s_propagateNaNF64UI.c */; };
-		71B492D02D4AA1B800A8AB32 /* extF80_eq_signaling.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490C62D4AA1B800A8AB32 /* extF80_eq_signaling.c */; };
-		71B492D12D4AA1B800A8AB32 /* extF80_eq.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490C52D4AA1B800A8AB32 /* extF80_eq.c */; };
-		71B492D42D4AA1B800A8AB32 /* s_add128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490DB2D4AA1B800A8AB32 /* s_add128.c */; };
-		71B492D72D4AA1B800A8AB32 /* s_propagateNaNF32UI.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490662D4AA1B800A8AB32 /* s_propagateNaNF32UI.c */; };
-		71B492DA2D4AA1B800A8AB32 /* s_normRoundPackToExtF80.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E82D4AA1B800A8AB32 /* s_normRoundPackToExtF80.c */; };
-		71B492DB2D4AA1B800A8AB32 /* extF80_to_f32.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D12D4AA1B800A8AB32 /* extF80_to_f32.c */; };
-		71B492DD2D4AA1B800A8AB32 /* s_normRoundPackToF32.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E92D4AA1B800A8AB32 /* s_normRoundPackToF32.c */; };
-		71B492DE2D4AA1B800A8AB32 /* s_roundToI64.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490F22D4AA1B800A8AB32 /* s_roundToI64.c */; };
-		71B492E42D4AA1B800A8AB32 /* s_roundPackToExtF80.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490EE2D4AA1B800A8AB32 /* s_roundPackToExtF80.c */; };
-		71B492E62D4AA1B800A8AB32 /* s_countLeadingZeros32.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E22D4AA1B800A8AB32 /* s_countLeadingZeros32.c */; };
-		71B492EC2D4AA1B800A8AB32 /* s_roundToI32.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490F12D4AA1B800A8AB32 /* s_roundToI32.c */; };
-		71B492F12D4AA1B800A8AB32 /* extF80_to_i64.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D52D4AA1B800A8AB32 /* extF80_to_i64.c */; };
-		71B492F22D4AA1B800A8AB32 /* s_normSubnormalExtF80Sig.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490EB2D4AA1B800A8AB32 /* s_normSubnormalExtF80Sig.c */; };
-		71B492F32D4AA1B800A8AB32 /* s_approxRecip_1Ks.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490DD2D4AA1B800A8AB32 /* s_approxRecip_1Ks.c */; };
-		71B492F62D4AA1B800A8AB32 /* extF80_div.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490C42D4AA1B800A8AB32 /* extF80_div.c */; };
-		71B492F72D4AA1B800A8AB32 /* extF80M_isSignalingNaN.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B4905E2D4AA1B800A8AB32 /* extF80M_isSignalingNaN.c */; };
-		71B492F82D4AA1B800A8AB32 /* s_commonNaNToF64UI.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490612D4AA1B800A8AB32 /* s_commonNaNToF64UI.c */; };
-		71B492F92D4AA1B800A8AB32 /* s_roundToUI32.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490F32D4AA1B800A8AB32 /* s_roundToUI32.c */; };
-		71B492FB2D4AA1B800A8AB32 /* extF80_isSignalingNaN.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490C72D4AA1B800A8AB32 /* extF80_isSignalingNaN.c */; };
-		71B492FC2D4AA1B800A8AB32 /* s_commonNaNToExtF80UI.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B4905F2D4AA1B800A8AB32 /* s_commonNaNToExtF80UI.c */; };
-		71B492FD2D4AA1B800A8AB32 /* extF80_le_quiet.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490C92D4AA1B800A8AB32 /* extF80_le_quiet.c */; };
-		71B492FE2D4AA1B800A8AB32 /* softfloat_raiseFlags.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490682D4AA1B800A8AB32 /* softfloat_raiseFlags.c */; };
-		71B493002D4AA1B800A8AB32 /* f64_to_extF80.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D82D4AA1B800A8AB32 /* f64_to_extF80.c */; };
-		71B493012D4AA1B800A8AB32 /* s_f64UIToCommonNaN.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490642D4AA1B800A8AB32 /* s_f64UIToCommonNaN.c */; };
-		71B493022D4AA1B800A8AB32 /* extF80_rem.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490CD2D4AA1B800A8AB32 /* extF80_rem.c */; };
-		71B493072D4AA1B800A8AB32 /* extF80_sqrt.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490CF2D4AA1B800A8AB32 /* extF80_sqrt.c */; };
-		71B493092D4AA1B800A8AB32 /* s_roundPackToF32.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490EF2D4AA1B800A8AB32 /* s_roundPackToF32.c */; };
-		71B4930D2D4AA1B800A8AB32 /* extF80_lt.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490CA2D4AA1B800A8AB32 /* extF80_lt.c */; };
-		71B493102D4AA1B800A8AB32 /* s_shortShiftRightJam64Extra.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490FB2D4AA1B800A8AB32 /* s_shortShiftRightJam64Extra.c */; };
-		71B493122D4AA1B800A8AB32 /* s_commonNaNToF32UI.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490602D4AA1B800A8AB32 /* s_commonNaNToF32UI.c */; };
-		71B493142D4AA1B800A8AB32 /* extF80_to_f64.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D22D4AA1B800A8AB32 /* extF80_to_f64.c */; };
-		71B493192D4AA1B800A8AB32 /* s_shiftRightJam128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490F82D4AA1B800A8AB32 /* s_shiftRightJam128.c */; };
-		71B4931A2D4AA1B800A8AB32 /* extF80_to_i64_r_minMag.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D62D4AA1B800A8AB32 /* extF80_to_i64_r_minMag.c */; };
-		71B4931C2D4AA1B800A8AB32 /* extF80_le.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490C82D4AA1B800A8AB32 /* extF80_le.c */; };
-		71B4931E2D4AA1B800A8AB32 /* extF80_roundToInt.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490CE2D4AA1B800A8AB32 /* extF80_roundToInt.c */; };
-		71B4931F2D4AA1B800A8AB32 /* s_shiftRightJam64.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490F62D4AA1B800A8AB32 /* s_shiftRightJam64.c */; };
-		71B493242D4AA1B800A8AB32 /* s_roundToUI64.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490F42D4AA1B800A8AB32 /* s_roundToUI64.c */; };
-		71B493282D4AA1B800A8AB32 /* extF80_to_i32.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D32D4AA1B800A8AB32 /* extF80_to_i32.c */; };
-		71B4932F2D4AA1B800A8AB32 /* s_roundPackToF64.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490F02D4AA1B800A8AB32 /* s_roundPackToF64.c */; };
-		71B493312D4AA1B800A8AB32 /* s_le128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E42D4AA1B800A8AB32 /* s_le128.c */; };
-		71B493332D4AA1B800A8AB32 /* s_normSubnormalF32Sig.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490EC2D4AA1B800A8AB32 /* s_normSubnormalF32Sig.c */; };
 		71B4933D2D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E02D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c */; };
 		71B4933E2D4AA1B800A8AB32 /* s_mul64To128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E72D4AA1B800A8AB32 /* s_mul64To128.c */; };
 		71B493402D4AA1B800A8AB32 /* f32_to_extF80.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D72D4AA1B800A8AB32 /* f32_to_extF80.c */; };
@@ -382,10 +253,10 @@
 		71B497EC2D4AA31600A8AB32 /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B495BF2D4AA31600A8AB32 /* ioapi.c */; };
 		71B497F72D4AA31600A8AB32 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B495CF2D4AA31600A8AB32 /* unzip.c */; };
 		71B497FE2D4AA31600A8AB32 /* mztools.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B495CD2D4AA31600A8AB32 /* mztools.c */; };
-		71B498C32D4AA31600A8AB32 /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B495D12D4AA31600A8AB32 /* zip.c */; settings = {COMPILER_FLAGS = "-w"; }; };
-		71B498DB2D4AA31600A8AB32 /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B495BF2D4AA31600A8AB32 /* ioapi.c */; };
-		71B498E62D4AA31600A8AB32 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B495CF2D4AA31600A8AB32 /* unzip.c */; };
-		71B498ED2D4AA31600A8AB32 /* mztools.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B495CD2D4AA31600A8AB32 /* mztools.c */; };
+		B0C0D0010000000000000003 /* macOpenGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0010000000000000001 /* macOpenGL.mm */; };
+		B0C0D0010000000000000005 /* macOpenGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0010000000000000001 /* macOpenGL.mm */; };
+		E33AE60414B5982E105E80B9 = { isa = PBXBuildFile; fileRef = B10826AECCAA0D8805FF8E66; };
+		7F40DDE09A1C456F9B942CC1 /* Runtime AppIcon in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -399,17 +270,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		1A1551FC2632673F006E0C8A /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				1A1551FB2632673F006E0C8A /* SDL2.framework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		1A80F2D6276EBF170032A70A /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -439,16 +299,6 @@
 				7135DCA2264EBCD0005D6AA6 /* SDL2.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		718B712A267EA8C800CDBC74 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				718F07782D31C23F00D41270 /* libMoltenVK.dylib in CopyFiles */,
-			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -498,8 +348,6 @@
 		1AFC479C2648471000EE5FCC /* audiounit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = audiounit.cpp; path = ../../../platform/mac/audiounit.cpp; sourceTree = "<group>"; };
 		1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMIDI.framework; path = System/Library/Frameworks/CoreMIDI.framework; sourceTree = SDKROOT; };
 		1AFC48092663FFC000EE5FCC /* pixelformat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = pixelformat.cpp; path = ../../../platform/mac/pixelformat.cpp; sourceTree = "<group>"; };
-		B0C0D0010000000000000001 /* macOpenGL.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = macOpenGL.mm; path = ../../../platform/mac/macOpenGL.mm; sourceTree = "<group>"; };
-		B0C0D0010000000000000002 /* macOpenGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = macOpenGL.h; path = ../../../platform/mac/macOpenGL.h; sourceTree = "<group>"; };
 		710091362644D42B003413C3 /* kdspaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = kdspaudio.cpp; path = ../../../platform/sdl/kdspaudio.cpp; sourceTree = "<group>"; };
 		710091372644D42B003413C3 /* knativesystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativesystem.cpp; path = ../../../platform/sdl/knativesystem.cpp; sourceTree = "<group>"; };
 		710091382644D42B003413C3 /* knativethread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativethread.cpp; path = ../../../platform/sdl/knativethread.cpp; sourceTree = "<group>"; };
@@ -541,7 +389,7 @@
 		71222B212435140300CDBABD /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		71222B232435140300CDBABD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		71222B262435140300CDBABD /* BoxedwineTest.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BoxedwineTest.entitlements; sourceTree = "<group>"; };
-		71222C7F24351CBA00CDBABD /* Boxedwine.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Boxedwine.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		71222C7F24351CBA00CDBABD /* BoxedwineEngine.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineEngine.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7135DCA6264EBCD0005D6AA6 /* BoxedwineTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7140973D2D4AA53F00D10110 /* pugiconfig.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = pugiconfig.hpp; sourceTree = "<group>"; };
 		7140973E2D4AA53F00D10110 /* pugixml.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = pugixml.hpp; sourceTree = "<group>"; };
@@ -655,10 +503,13 @@
 		71FBFCB32433B817003F17F1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		71FBFCB82433B817003F17F1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		71FBFCBB2433B817003F17F1 /* Boxedwine.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Boxedwine.entitlements; sourceTree = "<group>"; };
+		B0C0D0010000000000000001 /* macOpenGL.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = macOpenGL.mm; path = ../../../platform/mac/macOpenGL.mm; sourceTree = "<group>"; };
+		B0C0D0010000000000000002 /* macOpenGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = macOpenGL.h; path = ../../../platform/mac/macOpenGL.h; sourceTree = "<group>"; };
+		B10826AECCAA0D8805FF8E66 = { isa = PBXFileReference; path = "UI/NativeLibraryCommands.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		7108C4942E64A7FF00F6CF63 /* source */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); name = source; path = ../../../source; sourceTree = "<group>"; };
+		7108C4942E64A7FF00F6CF63 /* source */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DA385C9FB77E4F72230322AF, ); explicitFileTypes = {}; explicitFolders = (); name = source; path = ../../../source; sourceTree = "<group>"; };
 		7108C81E2E64A83200F6CF63 /* include */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); name = include; path = ../../../include; sourceTree = "<group>"; };
 		71B9CBEE2F2FAF080081F9C1 /* asmjit */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = asmjit; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -683,22 +534,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		71222C7324351CBA00CDBABD /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				718F076A2D31C20F00D41270 /* libMoltenVK.dylib in Frameworks */,
-				1A5405262A04AB4E0061653D /* libcurl.4.tbd in Frameworks */,
-				71222C7424351CBA00CDBABD /* OpenGL.framework in Frameworks */,
-				71222C7524351CBA00CDBABD /* Carbon.framework in Frameworks */,
-				1AFC47A626489F7700EE5FCC /* CoreMIDI.framework in Frameworks */,
-				71222C7624351CBA00CDBABD /* ForceFeedback.framework in Frameworks */,
-				71222C7724351CBA00CDBABD /* AudioToolbox.framework in Frameworks */,
-				71222C7824351CBA00CDBABD /* CoreAudio.framework in Frameworks */,
-				1A1551FA2632673F006E0C8A /* SDL2.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1106,6 +941,8 @@
 		71FBFCA42433B815003F17F1 = {
 			isa = PBXGroup;
 			children = (
+				8E80476FB59F0EA52EDFB8BE,
+				017D1786C656098FAD23FF45,
 				7108C81E2E64A83200F6CF63 /* include */,
 				7108C4942E64A7FF00F6CF63 /* source */,
 				718F07772D31C23F00D41270 /* libMoltenVK.dylib */,
@@ -1125,16 +962,17 @@
 			);
 			sourceTree = "<group>";
 		};
-		71FBFCAE2433B815003F17F1 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				71222C7F24351CBA00CDBABD /* Boxedwine.app */,
-				7135DCA6264EBCD0005D6AA6 /* BoxedwineTest.app */,
-				1A80F2E1276EBF170032A70A /* BoxedwineAutomation.app */,
-				1AEBC3922AABC0A9007ECB08 /* BoxedwineUnitTests.xctest */,
+		71FBFCAE2433B815003F17F1 = {
+			"isa" = "PBXGroup";
+			"name" = "Products";
+			"children" = (
+				"69B153CE0F56B0DFF3697802",
+				"71222C7F24351CBA00CDBABD",
+				"7135DCA6264EBCD0005D6AA6",
+				"1A80F2E1276EBF170032A70A",
+				"1AEBC3922AABC0A9007ECB08",
 			);
-			name = Products;
-			sourceTree = "<group>";
+			"sourceTree" = "<group>";
 		};
 		71FBFCAF2433B815003F17F1 /* Boxedwine */ = {
 			isa = PBXGroup;
@@ -1202,30 +1040,28 @@
 			productReference = 1AEBC3922AABC0A9007ECB08 /* BoxedwineUnitTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		71222BCB24351CBA00CDBABD /* Boxedwine */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 71222C7C24351CBA00CDBABD /* Build configuration list for PBXNativeTarget "Boxedwine" */;
-			buildPhases = (
-				65D5E9501396472283B57873 /* Remove Retired Mesa Libraries */,
-				71222BCC24351CBA00CDBABD /* Sources */,
-				71222C7324351CBA00CDBABD /* Frameworks */,
-				71222C7A24351CBA00CDBABD /* Resources */,
-				1A1551FC2632673F006E0C8A /* Embed Frameworks */,
-				718B712A267EA8C800CDBC74 /* CopyFiles */,
+		71222BCB24351CBA00CDBABD = {
+			"fileSystemSynchronizedGroups" = (
+				"8E80476FB59F0EA52EDFB8BE",
+				"7108C4942E64A7FF00F6CF63",
+				"7108C81E2E64A83200F6CF63",
 			);
-			buildRules = (
+			"productReference" = "71222C7F24351CBA00CDBABD";
+			"productType" = "com.apple.product-type.application";
+			"buildConfigurationList" = "B8BF1BA4859AEFE4878674BB";
+			"productName" = "Boxedwine";
+			"isa" = "PBXNativeTarget";
+			"buildPhases" = (
+				"BC0261000000000000000001",
+				"0A92B7B2F821078392FA55D3",
+				"C47A2B39C38DA462A89788CF",
+				"7F40DDE09A1C456F9B942CC2",
 			);
-			dependencies = (
+			"dependencies" = (
 			);
-			fileSystemSynchronizedGroups = (
-				7108C4942E64A7FF00F6CF63 /* source */,
-				7108C81E2E64A83200F6CF63 /* include */,
-				71B9CBEE2F2FAF080081F9C1 /* asmjit */,
+			"name" = "Boxedwine";
+			"buildRules" = (
 			);
-			name = Boxedwine;
-			productName = Boxedwine;
-			productReference = 71222C7F24351CBA00CDBABD /* Boxedwine.app */;
-			productType = "com.apple.product-type.application";
 		};
 		7135DC10264EBCD0005D6AA6 /* BoxedwineTest */ = {
 			isa = PBXNativeTarget;
@@ -1253,43 +1089,44 @@
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		71FBFCA52433B815003F17F1 /* Project object */ = {
-			isa = PBXProject;
-			attributes = {
-				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1620;
-				ORGANIZATIONNAME = Boxedwine;
-				TargetAttributes = {
-					1A80F091276EBF170032A70A = {
-						LastSwiftMigration = 1640;
+		71FBFCA52433B815003F17F1 = {
+			"buildConfigurationList" = "71FBFCA82433B815003F17F1";
+			"targets" = (
+				"ECC0BCD82CEB6DC3C5EDED10",
+				"71222BCB24351CBA00CDBABD",
+				"1A80F091276EBF170032A70A",
+				"7135DC10264EBCD0005D6AA6",
+				"1AEBC3912AABC0A9007ECB08",
+			);
+			"developmentRegion" = "en";
+			"knownRegions" = (
+				"en",
+				"Base",
+			);
+			"isa" = "PBXProject";
+			"compatibilityVersion" = "Xcode 9.3";
+			"productRefGroup" = "71FBFCAE2433B815003F17F1";
+			"projectDirPath" = "";
+			"attributes" = {
+				"BuildIndependentTargetsInParallel" = "YES";
+				"LastUpgradeCheck" = "1620";
+				"ORGANIZATIONNAME" = "Boxedwine";
+				"TargetAttributes" = {
+					"71222BCB24351CBA00CDBABD" = {
+						"LastSwiftMigration" = "1640";
 					};
-					1AEBC3912AABC0A9007ECB08 = {
-						CreatedOnToolsVersion = 14.2;
-						TestTargetID = 7135DC10264EBCD0005D6AA6;
+					"1A80F091276EBF170032A70A" = {
+						"LastSwiftMigration" = "1640";
 					};
-					71222BCB24351CBA00CDBABD = {
-						LastSwiftMigration = 1640;
+					"1AEBC3912AABC0A9007ECB08" = {
+						"TestTargetID" = "7135DC10264EBCD0005D6AA6";
+						"CreatedOnToolsVersion" = "14.2";
 					};
 				};
 			};
-			buildConfigurationList = 71FBFCA82433B815003F17F1 /* Build configuration list for PBXProject "Boxedwine" */;
-			compatibilityVersion = "Xcode 9.3";
-			developmentRegion = en;
-			hasScannedForEncodings = 0;
-			knownRegions = (
-				en,
-				Base,
-			);
-			mainGroup = 71FBFCA42433B815003F17F1;
-			productRefGroup = 71FBFCAE2433B815003F17F1 /* Products */;
-			projectDirPath = "";
-			projectRoot = "";
-			targets = (
-				71222BCB24351CBA00CDBABD /* Boxedwine */,
-				1A80F091276EBF170032A70A /* BoxedwineAutomation */,
-				7135DC10264EBCD0005D6AA6 /* BoxedwineTest */,
-				1AEBC3912AABC0A9007ECB08 /* BoxedwineUnitTests */,
-			);
+			"hasScannedForEncodings" = "0";
+			"projectRoot" = "";
+			"mainGroup" = "71FBFCA42433B815003F17F1";
 		};
 /* End PBXProject section */
 
@@ -1311,16 +1148,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		71222C7A24351CBA00CDBABD /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				71222C7B24351CBA00CDBABD /* Assets.xcassets in Resources */,
-				1A55D6322A0841E2002B7021 /* make_vms.com in Resources */,
-				715F8429244115580038F5A4 /* Media.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		7135DC9E264EBCD0005D6AA6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1328,6 +1155,12 @@
 				7135DC9F264EBCD0005D6AA6 /* Assets.xcassets in Resources */,
 				7135DCA0264EBCD0005D6AA6 /* MainMenu.xib in Resources */,
 			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7F40DDE09A1C456F9B942CC2 /* Runtime Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (7F40DDE09A1C456F9B942CC1 /* Runtime AppIcon in Resources */);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
@@ -1464,130 +1297,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				1AEBC3A72AABC248007ECB08 /* BoxedwineUnitTests.m in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		71222BCC24351CBA00CDBABD /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				1A55D65C2A08428F002B7021 /* compress.c in Sources */,
-				710091432644D42C003413C3 /* kdspaudio.cpp in Sources */,
-				71222BE824351CBA00CDBABD /* imgui_draw.cpp in Sources */,
-				1A55D6502A08428F002B7021 /* crc32.c in Sources */,
-				71222BED24351CBA00CDBABD /* imgui_impl_sdl.cpp in Sources */,
-				71A2787E2E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */,
-				710091612644D44E003413C3 /* platformThreads.cpp in Sources */,
-				714097462D4AA53F00D10110 /* pugixml.cpp in Sources */,
-				71222BFF24351CBA00CDBABD /* imgui_widgets.cpp in Sources */,
-				1A0F95702C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
-				7120545F244D074000C3CB1B /* MacPlatform.m in Sources */,
-				7100915E2644D44E003413C3 /* platform.cpp in Sources */,
-				7100914F2644D42C003413C3 /* sdlcallback.cpp in Sources */,
-				1A55D6582A08428F002B7021 /* zutil.c in Sources */,
-				1A55D62E2A0841E2002B7021 /* inflate.c in Sources */,
-				1AFC479E2648471000EE5FCC /* audiounit.cpp in Sources */,
-				71B498C32D4AA31600A8AB32 /* zip.c in Sources */,
-				71B498DB2D4AA31600A8AB32 /* ioapi.c in Sources */,
-				71B498E62D4AA31600A8AB32 /* unzip.c in Sources */,
-				71B498ED2D4AA31600A8AB32 /* mztools.c in Sources */,
-				71222C1C24351CBA00CDBABD /* AppDelegate.m in Sources */,
-				1AFC480B2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
-				B0C0D0010000000000000004 /* macOpenGL.mm in Sources */,
-				1A55D64C2A08428F002B7021 /* deflate.c in Sources */,
-				1A55D63E2A0841E2002B7021 /* infback.c in Sources */,
-				1A55D63A2A0841E2002B7021 /* inftrees.c in Sources */,
-				71222C2324351CBA00CDBABD /* imgui_impl_opengl3.cpp in Sources */,
-				718F07662D31C1C600D41270 /* kvulkanSDL.cpp in Sources */,
-				1A55D6542A08428F002B7021 /* gzclose.c in Sources */,
-				1A55D6602A08428F002B7021 /* uncompr.c in Sources */,
-				710091462644D42C003413C3 /* knativesystem.cpp in Sources */,
-				1AFC479A26483DDF00EE5FCC /* knativecoreaudio.cpp in Sources */,
-				7100914C2644D42C003413C3 /* knativeaudio.cpp in Sources */,
-				710091492644D42C003413C3 /* knativethread.cpp in Sources */,
-				71222C3D24351CBA00CDBABD /* imgui.cpp in Sources */,
-				1A55D6642A08428F002B7021 /* adler32.c in Sources */,
-				1AFC47A826489FB200EE5FCC /* coremidi.cpp in Sources */,
-				1A0F955F2C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */,
-				1AC5F2FB2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */,
-				71B4928A2D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c in Sources */,
-				71B4928B2D4AA1B800A8AB32 /* s_mul64To128.c in Sources */,
-				71B4928D2D4AA1B800A8AB32 /* f32_to_extF80.c in Sources */,
-				71B492902D4AA1B800A8AB32 /* s_shiftRightJam32.c in Sources */,
-				71B492912D4AA1B800A8AB32 /* i32_to_extF80.c in Sources */,
-				71B492982D4AA1B800A8AB32 /* extF80_sub.c in Sources */,
-				71B492992D4AA1B800A8AB32 /* s_extF80UIToCommonNaN.c in Sources */,
-				71B4929D2D4AA1B800A8AB32 /* extF80_lt_quiet.c in Sources */,
-				71B4929E2D4AA1B800A8AB32 /* s_normSubnormalF64Sig.c in Sources */,
-				71B4929F2D4AA1B800A8AB32 /* s_f32UIToCommonNaN.c in Sources */,
-				71B492A32D4AA1B800A8AB32 /* s_addMagsExtF80.c in Sources */,
-				71B492A42D4AA1B800A8AB32 /* s_approxRecipSqrt_1Ks.c in Sources */,
-				71B492A62D4AA1B800A8AB32 /* s_shortShiftLeft128.c in Sources */,
-				71B492A72D4AA1B800A8AB32 /* softfloat_state.c in Sources */,
-				71B492A82D4AA1B800A8AB32 /* extF80_to_i32_r_minMag.c in Sources */,
-				71B492AA2D4AA1B800A8AB32 /* i64_to_extF80.c in Sources */,
-				71B492AC2D4AA1B800A8AB32 /* extF80_mul.c in Sources */,
-				71B492B32D4AA1B800A8AB32 /* s_shiftRightJam64Extra.c in Sources */,
-				71B492B42D4AA1B800A8AB32 /* s_countLeadingZeros8.c in Sources */,
-				71B492BB2D4AA1B800A8AB32 /* s_subMagsExtF80.c in Sources */,
-				71B492BE2D4AA1B800A8AB32 /* s_normRoundPackToF64.c in Sources */,
-				71B492BF2D4AA1B800A8AB32 /* s_propagateNaNExtF80UI.c in Sources */,
-				71B492C42D4AA1B800A8AB32 /* s_shortShiftRightJam64.c in Sources */,
-				71B492C52D4AA1B800A8AB32 /* s_mul64ByShifted32To128.c in Sources */,
-				71B492C62D4AA1B800A8AB32 /* s_approxRecip32_1.c in Sources */,
-				71B492C92D4AA1B800A8AB32 /* s_countLeadingZeros64.c in Sources */,
-				71B492CB2D4AA1B800A8AB32 /* extF80_add.c in Sources */,
-				71B492CC2D4AA1B800A8AB32 /* s_sub128.c in Sources */,
-				71B492CD2D4AA1B800A8AB32 /* s_lt128.c in Sources */,
-				71B492CF2D4AA1B800A8AB32 /* s_propagateNaNF64UI.c in Sources */,
-				71B492D02D4AA1B800A8AB32 /* extF80_eq_signaling.c in Sources */,
-				71B492D12D4AA1B800A8AB32 /* extF80_eq.c in Sources */,
-				71B492D42D4AA1B800A8AB32 /* s_add128.c in Sources */,
-				71B492D72D4AA1B800A8AB32 /* s_propagateNaNF32UI.c in Sources */,
-				71B492DA2D4AA1B800A8AB32 /* s_normRoundPackToExtF80.c in Sources */,
-				71B492DB2D4AA1B800A8AB32 /* extF80_to_f32.c in Sources */,
-				71B492DD2D4AA1B800A8AB32 /* s_normRoundPackToF32.c in Sources */,
-				71B492DE2D4AA1B800A8AB32 /* s_roundToI64.c in Sources */,
-				71B492E42D4AA1B800A8AB32 /* s_roundPackToExtF80.c in Sources */,
-				71B492E62D4AA1B800A8AB32 /* s_countLeadingZeros32.c in Sources */,
-				71B492EC2D4AA1B800A8AB32 /* s_roundToI32.c in Sources */,
-				71B492F12D4AA1B800A8AB32 /* extF80_to_i64.c in Sources */,
-				71B492F22D4AA1B800A8AB32 /* s_normSubnormalExtF80Sig.c in Sources */,
-				71B492F32D4AA1B800A8AB32 /* s_approxRecip_1Ks.c in Sources */,
-				71B492F62D4AA1B800A8AB32 /* extF80_div.c in Sources */,
-				71B492F72D4AA1B800A8AB32 /* extF80M_isSignalingNaN.c in Sources */,
-				71B492F82D4AA1B800A8AB32 /* s_commonNaNToF64UI.c in Sources */,
-				71B492F92D4AA1B800A8AB32 /* s_roundToUI32.c in Sources */,
-				71B492FB2D4AA1B800A8AB32 /* extF80_isSignalingNaN.c in Sources */,
-				71B492FC2D4AA1B800A8AB32 /* s_commonNaNToExtF80UI.c in Sources */,
-				71B492FD2D4AA1B800A8AB32 /* extF80_le_quiet.c in Sources */,
-				71B492FE2D4AA1B800A8AB32 /* softfloat_raiseFlags.c in Sources */,
-				71B493002D4AA1B800A8AB32 /* f64_to_extF80.c in Sources */,
-				71B493012D4AA1B800A8AB32 /* s_f64UIToCommonNaN.c in Sources */,
-				71B493022D4AA1B800A8AB32 /* extF80_rem.c in Sources */,
-				71B493072D4AA1B800A8AB32 /* extF80_sqrt.c in Sources */,
-				71B493092D4AA1B800A8AB32 /* s_roundPackToF32.c in Sources */,
-				71B4930D2D4AA1B800A8AB32 /* extF80_lt.c in Sources */,
-				71B493102D4AA1B800A8AB32 /* s_shortShiftRightJam64Extra.c in Sources */,
-				71B493122D4AA1B800A8AB32 /* s_commonNaNToF32UI.c in Sources */,
-				71B493142D4AA1B800A8AB32 /* extF80_to_f64.c in Sources */,
-				7140974E2D4AA57300D10110 /* glew.cpp in Sources */,
-				71B493192D4AA1B800A8AB32 /* s_shiftRightJam128.c in Sources */,
-				71B4931A2D4AA1B800A8AB32 /* extF80_to_i64_r_minMag.c in Sources */,
-				71B4931C2D4AA1B800A8AB32 /* extF80_le.c in Sources */,
-				71B4931E2D4AA1B800A8AB32 /* extF80_roundToInt.c in Sources */,
-				71B4931F2D4AA1B800A8AB32 /* s_shiftRightJam64.c in Sources */,
-				71B493242D4AA1B800A8AB32 /* s_roundToUI64.c in Sources */,
-				71B493282D4AA1B800A8AB32 /* extF80_to_i32.c in Sources */,
-				71B4932F2D4AA1B800A8AB32 /* s_roundPackToF64.c in Sources */,
-				71B493312D4AA1B800A8AB32 /* s_le128.c in Sources */,
-				71B493332D4AA1B800A8AB32 /* s_normSubnormalF32Sig.c in Sources */,
-				1A55D6362A0841E2002B7021 /* inffast.c in Sources */,
-				1A0F95652C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */,
-				71222C5824351CBA00CDBABD /* imguitinyfiledialogs.cpp in Sources */,
-				1A55D6692A0842E8002B7021 /* trees.c in Sources */,
-				710091642644D44E003413C3 /* platformThreads-x64.cpp in Sources */,
-				1A0F95592C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1876,128 +1585,6 @@
 			};
 			name = Release;
 		};
-		71222C7D24351CBA00CDBABD /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
-				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = Boxedwine/Boxedwine.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = NHYAMS3B9Z;
-				ENABLE_HARDENED_RUNTIME = YES;
-				EXCLUDED_ARCHS = "";
-				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					SIMDE_NO_NATIVE,
-					BOXEDWINE_64,
-					BOXEDWINE_ZLIB,
-					"SDL2=1",
-					"GLH=<SDL_opengl.h>",
-					BOXEDWINE_OPENGL_SDL,
-					BOXEDWINE_GLHANDLE_ARB_POINTER,
-					BOXEDWINE_POSIX,
-					BOXEDWINE_RECORDER,
-					BOXEDWINE_CORE_AUDIO,
-					BOXEDWINE_MAC_JIT,
-					__MACOSX_CORE__,
-					BOXEDWINE_VULKAN,
-					BOXED_NO_EXCEPTIONS,
-					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
-				);
-				GCC_PREPROCESSOR_DEFINITIONS_NOT_USED_IN_PRECOMPS = "";
-				"GCC_PREPROCESSOR_DEFINITIONS_NOT_USED_IN_PRECOMPS[arch=*]" = "";
-				HEADER_SEARCH_PATHS = "";
-				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/../../../lib/mac/vulkan/lib",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
-				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OBJC_BRIDGING_HEADER = "Boxedwine/Boxedwine-Bridging-Header.h";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 6.0;
-				SYSTEM_HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/../../../lib/glew/include",
-					"$(SRCROOT)/../../../lib/imgui",
-					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
-					"$(SRCROOT)/../../../lib/simde",
-					"$(SRCROOT)/../../../lib/pugixml/src",
-					"$(SRCROOT)/../../../lib/asmjit",
-				);
-			};
-			name = Debug;
-		};
-		71222C7E24351CBA00CDBABD /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
-				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = Boxedwine/Boxedwine.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = NHYAMS3B9Z;
-				ENABLE_HARDENED_RUNTIME = YES;
-				EXCLUDED_ARCHS = "";
-				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					SIMDE_NO_NATIVE,
-					BOXEDWINE_64,
-					BOXEDWINE_ZLIB,
-					"SDL2=1",
-					"GLH=<SDL_opengl.h>",
-					BOXEDWINE_OPENGL_SDL,
-					BOXEDWINE_GLHANDLE_ARB_POINTER,
-					BOXEDWINE_POSIX,
-					BOXEDWINE_RECORDER,
-					BOXEDWINE_CORE_AUDIO,
-					BOXEDWINE_MAC_JIT,
-					__MACOSX_CORE__,
-					BOXEDWINE_VULKAN,
-				);
-				HEADER_SEARCH_PATHS = "";
-				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/../../../lib/mac/vulkan/lib",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				ONLY_ACTIVE_ARCH = YES;
-				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
-				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OBJC_BRIDGING_HEADER = "Boxedwine/Boxedwine-Bridging-Header.h";
-				SWIFT_VERSION = 6.0;
-				SYSTEM_HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/../../../lib/glew/include",
-					"$(SRCROOT)/../../../lib/imgui",
-					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
-					"$(SRCROOT)/../../../lib/simde",
-					"$(SRCROOT)/../../../lib/pugixml/src",
-					"$(SRCROOT)/../../../lib/asmjit",
-				);
-			};
-			name = Release;
-		};
 		7135DCA4264EBCD0005D6AA6 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -2205,84 +1792,1341 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		1A80F2DE276EBF170032A70A /* Build configuration list for PBXNativeTarget "BoxedwineAutomation" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				1A80F2DF276EBF170032A70A /* Debug */,
-				1A80F2E0276EBF170032A70A /* Release */,
+		1A80F2DE276EBF170032A70A = {
+			"isa" = "XCConfigurationList";
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+			"buildConfigurations" = (
+				"1A80F2DF276EBF170032A70A",
+				"BAB86CC7B8957741EBA81946",
+				"1A80F2E0276EBF170032A70A",
 			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
 		};
-		1AEBC39A2AABC0A9007ECB08 /* Build configuration list for PBXNativeTarget "BoxedwineUnitTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				1AEBC3982AABC0A9007ECB08 /* Debug */,
-				1AEBC3992AABC0A9007ECB08 /* Release */,
+		1AEBC39A2AABC0A9007ECB08 = {
+			"isa" = "XCConfigurationList";
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+			"buildConfigurations" = (
+				"1AEBC3982AABC0A9007ECB08",
+				"69E95C85A9C88FDD947217B1",
+				"1AEBC3992AABC0A9007ECB08",
 			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
 		};
-		71222C7C24351CBA00CDBABD /* Build configuration list for PBXNativeTarget "Boxedwine" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				71222C7D24351CBA00CDBABD /* Debug */,
-				71222C7E24351CBA00CDBABD /* Release */,
+		7135DCA3264EBCD0005D6AA6 = {
+			"isa" = "XCConfigurationList";
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+			"buildConfigurations" = (
+				"7135DCA4264EBCD0005D6AA6",
+				"D53E1EF8525CF22BB7599F1A",
+				"7135DCA5264EBCD0005D6AA6",
 			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
 		};
-		7135DCA3264EBCD0005D6AA6 /* Build configuration list for PBXNativeTarget "BoxedwineTest" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				7135DCA4264EBCD0005D6AA6 /* Debug */,
-				7135DCA5264EBCD0005D6AA6 /* Release */,
+		71FBFCA82433B815003F17F1 = {
+			"isa" = "XCConfigurationList";
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+			"buildConfigurations" = (
+				"71FBFCBC2433B817003F17F1",
+				"26927E88E96EF84B58102892",
+				"71FBFCBD2433B817003F17F1",
 			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		71FBFCA82433B815003F17F1 /* Build configuration list for PBXProject "Boxedwine" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				71FBFCBC2433B817003F17F1 /* Debug */,
-				71FBFCBD2433B817003F17F1 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-		65D5E9501396472283B57873 /* Remove Retired Mesa Libraries */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = ();
-			inputPaths = ("$(SRCROOT)/../remove-mesa-libraries.sh");
-			name = "Remove Retired Mesa Libraries";
-			outputPaths = (
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libLLVM.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libOSMesa.8.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libc++.1.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libc++abi.1.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libedit.0.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libffi.8.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libglapi.0.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libiconv.2.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libicudata.76.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libicuuc.76.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/liblzma.5.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libncurses.6.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libxml2.2.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libz.1.dylib",
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libzstd.1.dylib",
-				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/libOSMesa.8.dylib",
-				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/libglapi.0.dylib",
-				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/libc++.1.dylib",
-				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/libc++abi.1.dylib",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"$SRCROOT/../remove-mesa-libraries.sh\"\n";
+/* Native macOS launcher and runtime */
+		E4CB65BF801940A59261A901 = { isa = PBXFileReference; path = "Core/LibraryOperationGate.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		E4CB65BF801940A59261A902 = { isa = PBXBuildFile; fileRef = E4CB65BF801940A59261A901; };
+		F8F8B03D258B4DE28F522B0F = { isa = PBXFileReference; path = "Core/WinePackageValidator.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F8F8B03D258B4DE28F522B10 = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B0F; };
+		F8F8B03D258B4DE28F522B0D = { isa = PBXFileReference; path = "Core/BoxedwineArguments.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F8F8B03D258B4DE28F522B0E = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B0D; };
+		F8F8B03D258B4DE28F522B0B = { isa = PBXFileReference; path = "Core/JavaSupport.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F8F8B03D258B4DE28F522B0C = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B0B; };
+		F8F8B03D258B4DE28F522B09 = { isa = PBXFileReference; path = "Core/JavaJar.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F8F8B03D258B4DE28F522B0A = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B09; };
+		F8F8B03D258B4DE28F522B07 = { isa = PBXFileReference; path = "Core/SharedWine.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F8F8B03D258B4DE28F522B08 = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B07; };
+		F8F8B03D258B4DE28F522B05 = { isa = PBXFileReference; path = "Core/WineCatalog.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F8F8B03D258B4DE28F522B06 = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B05; };
+		F8F8B03D258B4DE28F522B03 = { isa = PBXFileReference; path = "Core/WineConfiguration.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F8F8B03D258B4DE28F522B04 = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B03; };
+		F8F8B03D258B4DE28F522B01 = { isa = PBXFileReference; path = "Core/WindowsCompatibility.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F8F8B03D258B4DE28F522B02 = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B01; };
+		3A45E3663FD06F16C527FCBB = { isa = PBXFileReference; path = "Core/DemoCatalog.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		BA63040F14BFBDA9F713D402 = { isa = PBXBuildFile; fileRef = 3A45E3663FD06F16C527FCBB; };
+		D73844CF228208DB3DBB44B6 = { isa = PBXFileReference; path = "Core/DemoDownload.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		68A46DBE4C3A6111AF3456CE = { isa = PBXBuildFile; fileRef = D73844CF228208DB3DBB44B6; };
+		A273EC1AB138E2C67FBCAFE1 = { isa = PBXFileReference; path = "Core/DemoInstall.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		3F5D11DB9BC9AAD3CE2E3ED4 = { isa = PBXBuildFile; fileRef = A273EC1AB138E2C67FBCAFE1; };
+		BF449A2EA947D286FEB7BDD9 = { isa = PBXFileReference; path = "UI/DemosView.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		9F3F5FB170351DE4B2F6C664 = { isa = PBXBuildFile; fileRef = BF449A2EA947D286FEB7BDD9; };
+		7EC544580A21C04DD95196FE = { isa = PBXFileReference; path = "ZipSupport/ZipIO.c"; lastKnownFileType = sourcecode.c.c; sourceTree = "<group>"; };
+		C7EEFDC590AD63A125B43ACA = { isa = PBXBuildFile; fileRef = 7EC544580A21C04DD95196FE; };
+		6E60F51B52BE3DA7D507F134 = { isa = PBXFileReference; path = "ZipSupport/ZipReader.c"; lastKnownFileType = sourcecode.c.c; sourceTree = "<group>"; };
+		8C8DC4EE20DB2113842F1555 = { isa = PBXBuildFile; fileRef = 6E60F51B52BE3DA7D507F134; };
+		CD6897E8AE463429A18F7419 = { isa = PBXFileReference; path = "ZipSupport/ZipSupport.c"; lastKnownFileType = sourcecode.c.c; sourceTree = "<group>"; };
+		2E3E754D7DF5B92D478AC91D = { isa = PBXBuildFile; fileRef = CD6897E8AE463429A18F7419; };
+		F3CABEDACBBE41C99ABE4003 = { isa = PBXFileReference; path = "UI/OperationRecoveryView.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F3CABEDACBBE41C99ABE4004 = { isa = PBXBuildFile; fileRef = F3CABEDACBBE41C99ABE4003; };
+		F3CABEDACBBE41C99ABE4001 = { isa = PBXFileReference; path = "Core/OperationRecovery.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F3CABEDACBBE41C99ABE4002 = { isa = PBXBuildFile; fileRef = F3CABEDACBBE41C99ABE4001; };
+		F3CABEDACBBE41C99ABE6001 = { isa = PBXFileReference; path = "Core/LaunchLog.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F3CABEDACBBE41C99ABE6002 = { isa = PBXBuildFile; fileRef = F3CABEDACBBE41C99ABE6001; };
+		F3CABEDACBBE41C99ABE5001 = { isa = PBXFileReference; path = "Core/WineTrial.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F3CABEDACBBE41C99ABE5002 = { isa = PBXBuildFile; fileRef = F3CABEDACBBE41C99ABE5001; };
+		F3CABEDACBBE41C99ABE5003 = { isa = PBXFileReference; path = "UI/WineTrialView.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F3CABEDACBBE41C99ABE5004 = { isa = PBXBuildFile; fileRef = F3CABEDACBBE41C99ABE5003; };
+		F3CABEDACBBE41C99ABE3001 = { isa = PBXFileReference; path = "Core/AppStorage.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F3CABEDACBBE41C99ABE3002 = { isa = PBXBuildFile; fileRef = F3CABEDACBBE41C99ABE3001; };
+		F3CABEDACBBE41C99ABE2001 = { isa = PBXFileReference; path = "Core/AppBackup.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		F3CABEDACBBE41C99ABE2002 = { isa = PBXBuildFile; fileRef = F3CABEDACBBE41C99ABE2001; };
+		61CE496CA46654D51C39CA76 = { isa = PBXFileReference; path = "Core/RuntimePackage.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		40CD8730557C71076E6612B1 = { isa = PBXBuildFile; fileRef = 61CE496CA46654D51C39CA76; };
+		395953AD925BBAE7D185F0DF = { isa = PBXFileReference; path = "UI/LibraryManagementView.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		CF620D014ADC91FB3E6B2957 = { isa = PBXBuildFile; fileRef = 395953AD925BBAE7D185F0DF; };
+		02CBE464F34120CE26F79833 = { isa = PBXFileReference; path = "Core/ImportOperation.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		67093D2C3388DFD31745C70B = { isa = PBXBuildFile; fileRef = 02CBE464F34120CE26F79833; };
+		64D41EA6C8231F683E766BCE = { isa = PBXFileReference; path = "Core/WindowsIcon.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		6EF6DE6E63C037DDDE861463 = { isa = PBXBuildFile; fileRef = 64D41EA6C8231F683E766BCE; };
+		2FC1E0193AB1FDB0A348182B = { isa = PBXFileReference; path = "Core/ProgramCandidate.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		A7B9DC580224274390FF70C3 = { isa = PBXBuildFile; fileRef = 2FC1E0193AB1FDB0A348182B; };
+		A976CEE4F0158A5B004000F8 = { isa = PBXFileReference; path = "UI/ProgramChooserView.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		9878282A3C66219582980F53 = { isa = PBXBuildFile; fileRef = A976CEE4F0158A5B004000F8; };
+
+		69B153CE0F56B0DFF3697802 = {
+			"isa" = "PBXFileReference";
+			"path" = "Boxedwine.app";
+			"lastKnownFileType" = "wrapper.application";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
 		};
+		7499518CCE71528704D1DD3C = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A55D6462A08428F002B7021";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		8034BFEF8484DE30EF72D3F8 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "710091362644D42B003413C3";
+		};
+		840CE3B9D1B26264A0FDE7A2 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A55D6422A08428F002B7021";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		11F86F5F017A607AA48D079D = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "710091552644D44E003413C3";
+		};
+		51AA19218823EE3A89C7D176 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "7140973F2D4AA53F00D10110";
+		};
+		F2840A23F9DA22FB46F20B11 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A0F956E2C91326600E5A9BF";
+		};
+		000FE0618CB6A55B3E16C70C = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "7120545D244D074000C3CB1B";
+		};
+		D66651F31F66F92B2618C98B = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "710091542644D44E003413C3";
+		};
+		CB306392DDE999DF5D56A418 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "7100913A2644D42C003413C3";
+		};
+		9E1D4175A6961EA002ED3999 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A55D6452A08428F002B7021";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		616661EC6CF4FF50F206D8B4 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A55D6242A0841E1002B7021";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		6E97133ABD6281563C8CC4A0 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1AFC479C2648471000EE5FCC";
+		};
+		2E743157715DCF0DED786E82 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B495D12D4AA31600A8AB32";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		EC7E235BEA5C84AC5B9E4226 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B495BF2D4AA31600A8AB32";
+		};
+		4E4675454A7FD84BBC8CD978 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B495CF2D4AA31600A8AB32";
+		};
+		4B89435A544C92D49228DFF3 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B495CD2D4AA31600A8AB32";
+		};
+		005F73CFC2EB2CB673E97C66 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1AFC48092663FFC000EE5FCC";
+		};
+		D1ABE85958F641BEF990FAB0 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "B0C0D0010000000000000001";
+		};
+		CB604C85DA61F216D74F671C = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A55D6412A08428E002B7021";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		1C1A93D494B5154F7EA1619C = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A55D62A2A0841E2002B7021";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		124BDAE20AF72C1ECCF385F0 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A55D6282A0841E2002B7021";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		9F88E18E4828AFB831A419EB = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "718F07622D31C1C600D41270";
+		};
+		D930F79DD63F7229AA0DDD20 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A55D6432A08428F002B7021";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		298421AD66606B9221B25C45 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A55D6482A08428F002B7021";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		9D7D355386A1E0514AEF3281 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "710091372644D42B003413C3";
+		};
+		6AED1E0E4E235C659E4BAEFF = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1AFC4793264826FD00EE5FCC";
+		};
+		C8C0083EE055EE751D32D911 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "710091392644D42C003413C3";
+		};
+		D1A45B55D8129C35631C4E37 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "710091382644D42B003413C3";
+		};
+		ADDF58419D57FFF2DD470EEF = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A55D6492A08428F002B7021";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		56B7746AAE634A49F63CC44A = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1AFC4795264827A600EE5FCC";
+		};
+		0C9BD401D99CB5A4B9F5F00F = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A0F95552C912BD000E5A9BF";
+		};
+		202BDE4269A2E6FB41537694 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1AC5F2F92772D9D6001D0FCA";
+		};
+		9DB12DA94D6FB93398ABC148 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490E02D4AA1B800A8AB32";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		9341C4E3845C93E423032FFA = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490E72D4AA1B800A8AB32";
+		};
+		E3845BAFF02D038DBBD47B50 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490D72D4AA1B800A8AB32";
+		};
+		4A601533C4ED9A9D9D890FEB = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490F52D4AA1B800A8AB32";
+		};
+		F2F29B50CF068459F4AAF6C0 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490D92D4AA1B800A8AB32";
+		};
+		9645D2CCB0D6F18FC9B2788C = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490D02D4AA1B800A8AB32";
+		};
+		F017233B3B7F8D23717EE064 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490622D4AA1B800A8AB32";
+		};
+		4C5029EC8AD15CDD18DC6263 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490CB2D4AA1B800A8AB32";
+		};
+		431B71FF811C8B4EC73AE970 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490ED2D4AA1B800A8AB32";
+		};
+		D97582B306E80C4AE196B2ED = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490632D4AA1B800A8AB32";
+		};
+		158C7A46D522E34E7D83FA78 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490DC2D4AA1B800A8AB32";
+		};
+		D660DF42255065FD8EF39563 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490DF2D4AA1B800A8AB32";
+		};
+		F61FE5D399FD7F52F26BA964 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490F92D4AA1B800A8AB32";
+		};
+		CB88FDF0C9414118FDB72F44 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490FE2D4AA1B800A8AB32";
+		};
+		69E889D078A19F9169DB227D = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490D42D4AA1B800A8AB32";
+		};
+		19B9E84C38065576E63E5B8C = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490DA2D4AA1B800A8AB32";
+		};
+		3D1CF5691A6E061FBD815EDC = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490CC2D4AA1B800A8AB32";
+		};
+		FB107D6F5E6D05285DC08454 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490F72D4AA1B800A8AB32";
+		};
+		1823C8D8445F8F933891FE89 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490E12D4AA1B800A8AB32";
+		};
+		430751CE9B66948ECAB043AD = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490FD2D4AA1B800A8AB32";
+		};
+		3FD0F87934E8423833EB5E48 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490EA2D4AA1B800A8AB32";
+		};
+		EF74374979EDBA7E763077F0 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490652D4AA1B800A8AB32";
+		};
+		4741E3AA3C8A068998C27DCC = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490FA2D4AA1B800A8AB32";
+		};
+		E03C88A17067C37C59C8BC0A = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490E62D4AA1B800A8AB32";
+		};
+		DD36D2EB90CCB9DC581CDB42 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490DE2D4AA1B800A8AB32";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		93BD421271E0944F9BB566C2 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490E32D4AA1B800A8AB32";
+		};
+		7B6272DFD3092E1298E4BC87 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490C32D4AA1B800A8AB32";
+		};
+		B3D87172715A2392BBDF1B7D = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490FC2D4AA1B800A8AB32";
+		};
+		9175801C0281334C10AE4852 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490E52D4AA1B800A8AB32";
+		};
+		7DFD910CF69E3122F102B86A = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490672D4AA1B800A8AB32";
+		};
+		A09876AE074F684EBE946A81 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490C62D4AA1B800A8AB32";
+		};
+		AAD749159F938E6EFD400C00 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490C52D4AA1B800A8AB32";
+		};
+		9BD71677477BF3733064BE58 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490DB2D4AA1B800A8AB32";
+		};
+		79A1059338F78081BA51B0D5 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490662D4AA1B800A8AB32";
+		};
+		33BC2A943D643B8DDFB770EA = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490E82D4AA1B800A8AB32";
+		};
+		3D8183924C90C8038F8E69A3 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490D12D4AA1B800A8AB32";
+		};
+		BF72D401BCE1925F62FB7A9F = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490E92D4AA1B800A8AB32";
+		};
+		F94E8205D2427A03932831DD = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490F22D4AA1B800A8AB32";
+		};
+		7DAB98D078AB9921702361B7 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490EE2D4AA1B800A8AB32";
+		};
+		AFB346EBC79F2373B9254E82 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490E22D4AA1B800A8AB32";
+		};
+		50E6524491CC81170CDE96AD = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490F12D4AA1B800A8AB32";
+		};
+		DB435CEC4E0A2DF31AAF1382 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490D52D4AA1B800A8AB32";
+		};
+		9AC473B87C05B481444EE632 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490EB2D4AA1B800A8AB32";
+		};
+		B2BE17164D6CCD65134BC76B = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490DD2D4AA1B800A8AB32";
+		};
+		4616838BC1F5B139A5E0DB58 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490C42D4AA1B800A8AB32";
+		};
+		6611BDB848C1A7BD4519FD4D = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B4905E2D4AA1B800A8AB32";
+		};
+		3A25E2C8F5E7662E247973D6 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490612D4AA1B800A8AB32";
+		};
+		2F59DEDBC622A1C2E2B69427 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490F32D4AA1B800A8AB32";
+		};
+		B65CC1F80033A49E8A7C255B = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490C72D4AA1B800A8AB32";
+		};
+		E714A6B645109189CEE4E9B1 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B4905F2D4AA1B800A8AB32";
+		};
+		9B216036C31F97784358490C = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490C92D4AA1B800A8AB32";
+		};
+		6B2AF4847B0B954CCBAE0596 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490682D4AA1B800A8AB32";
+		};
+		CE85FBD2A295B0E8CC5D1877 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490D82D4AA1B800A8AB32";
+		};
+		2B42A521B96B01C7D42B1E94 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490642D4AA1B800A8AB32";
+		};
+		0DC452388B6D5F47EE31362E = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490CD2D4AA1B800A8AB32";
+		};
+		57B8E454C282A19097355C05 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490CF2D4AA1B800A8AB32";
+		};
+		79878748F1FD4EA75258C212 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490EF2D4AA1B800A8AB32";
+		};
+		4EED0A733E21DA6FDB03CB7E = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490CA2D4AA1B800A8AB32";
+		};
+		8B67CE71A32C819BC6B9F000 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490FB2D4AA1B800A8AB32";
+		};
+		623D67FC4735B87D32F44673 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490602D4AA1B800A8AB32";
+		};
+		07CD1768FC481331C6711E1E = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490D22D4AA1B800A8AB32";
+		};
+		551C014A1ECC6535AC10766F = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "714097472D4AA57300D10110";
+		};
+		F0295CB4B5CDB608C9A9D683 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490F82D4AA1B800A8AB32";
+		};
+		15BD1F2E4CAF91F6B4666BBE = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490D62D4AA1B800A8AB32";
+		};
+		0E071E88408AC917B8B9F340 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490C82D4AA1B800A8AB32";
+		};
+		4933A8A9F4D03B4D9F02F848 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490CE2D4AA1B800A8AB32";
+		};
+		2FE7D91DB91C80093813F7B4 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490F62D4AA1B800A8AB32";
+		};
+		0FBA632305299C6E6B961A95 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490F42D4AA1B800A8AB32";
+		};
+		253A2998A8944EF7203CDB3C = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490D32D4AA1B800A8AB32";
+		};
+		C49B7CD57BC210930B6559E3 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490F02D4AA1B800A8AB32";
+		};
+		DC2C00C2086E9DA56E182D7E = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490E42D4AA1B800A8AB32";
+		};
+		DF4B1A3FAA512F0E746E8632 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71B490EC2D4AA1B800A8AB32";
+		};
+		24F23A92C26ABF7C84616C84 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A55D6272A0841E2002B7021";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		3D1302344569B7944F20FEB9 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A0F95572C912BD100E5A9BF";
+		};
+		396F296FF28D556A83CE7769 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A55D6672A0842E8002B7021";
+			"settings" = {
+				"COMPILER_FLAGS" = "-w";
+			};
+		};
+		BBFB8D83FAC8749D11522FC9 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "710091562644D44E003413C3";
+		};
+		3463D7729A9A3CE773D83C83 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A0F95542C912BD000E5A9BF";
+		};
+		0A92B7B2F821078392FA55D3 = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"7499518CCE71528704D1DD3C",
+				"8034BFEF8484DE30EF72D3F8",
+				"840CE3B9D1B26264A0FDE7A2",
+				"11F86F5F017A607AA48D079D",
+				"51AA19218823EE3A89C7D176",
+				"F2840A23F9DA22FB46F20B11",
+				"000FE0618CB6A55B3E16C70C",
+				"D66651F31F66F92B2618C98B",
+				"CB306392DDE999DF5D56A418",
+				"9E1D4175A6961EA002ED3999",
+				"616661EC6CF4FF50F206D8B4",
+				"6E97133ABD6281563C8CC4A0",
+				"2E743157715DCF0DED786E82",
+				"EC7E235BEA5C84AC5B9E4226",
+				"4E4675454A7FD84BBC8CD978",
+				"4B89435A544C92D49228DFF3",
+				"005F73CFC2EB2CB673E97C66",
+				"D1ABE85958F641BEF990FAB0",
+				"CB604C85DA61F216D74F671C",
+				"1C1A93D494B5154F7EA1619C",
+				"124BDAE20AF72C1ECCF385F0",
+				"9F88E18E4828AFB831A419EB",
+				"D930F79DD63F7229AA0DDD20",
+				"298421AD66606B9221B25C45",
+				"9D7D355386A1E0514AEF3281",
+				"6AED1E0E4E235C659E4BAEFF",
+				"C8C0083EE055EE751D32D911",
+				"D1A45B55D8129C35631C4E37",
+				"ADDF58419D57FFF2DD470EEF",
+				"56B7746AAE634A49F63CC44A",
+				"0C9BD401D99CB5A4B9F5F00F",
+				"202BDE4269A2E6FB41537694",
+				"9DB12DA94D6FB93398ABC148",
+				"9341C4E3845C93E423032FFA",
+				"E3845BAFF02D038DBBD47B50",
+				"4A601533C4ED9A9D9D890FEB",
+				"F2F29B50CF068459F4AAF6C0",
+				"9645D2CCB0D6F18FC9B2788C",
+				"F017233B3B7F8D23717EE064",
+				"4C5029EC8AD15CDD18DC6263",
+				"431B71FF811C8B4EC73AE970",
+				"D97582B306E80C4AE196B2ED",
+				"158C7A46D522E34E7D83FA78",
+				"D660DF42255065FD8EF39563",
+				"F61FE5D399FD7F52F26BA964",
+				"CB88FDF0C9414118FDB72F44",
+				"69E889D078A19F9169DB227D",
+				"19B9E84C38065576E63E5B8C",
+				"3D1CF5691A6E061FBD815EDC",
+				"FB107D6F5E6D05285DC08454",
+				"1823C8D8445F8F933891FE89",
+				"430751CE9B66948ECAB043AD",
+				"3FD0F87934E8423833EB5E48",
+				"EF74374979EDBA7E763077F0",
+				"4741E3AA3C8A068998C27DCC",
+				"E03C88A17067C37C59C8BC0A",
+				"DD36D2EB90CCB9DC581CDB42",
+				"93BD421271E0944F9BB566C2",
+				"7B6272DFD3092E1298E4BC87",
+				"B3D87172715A2392BBDF1B7D",
+				"9175801C0281334C10AE4852",
+				"7DFD910CF69E3122F102B86A",
+				"A09876AE074F684EBE946A81",
+				"AAD749159F938E6EFD400C00",
+				"9BD71677477BF3733064BE58",
+				"79A1059338F78081BA51B0D5",
+				"33BC2A943D643B8DDFB770EA",
+				"3D8183924C90C8038F8E69A3",
+				"BF72D401BCE1925F62FB7A9F",
+				"F94E8205D2427A03932831DD",
+				"7DAB98D078AB9921702361B7",
+				"AFB346EBC79F2373B9254E82",
+				"50E6524491CC81170CDE96AD",
+				"DB435CEC4E0A2DF31AAF1382",
+				"9AC473B87C05B481444EE632",
+				"B2BE17164D6CCD65134BC76B",
+				"4616838BC1F5B139A5E0DB58",
+				"6611BDB848C1A7BD4519FD4D",
+				"3A25E2C8F5E7662E247973D6",
+				"2F59DEDBC622A1C2E2B69427",
+				"B65CC1F80033A49E8A7C255B",
+				"E714A6B645109189CEE4E9B1",
+				"9B216036C31F97784358490C",
+				"6B2AF4847B0B954CCBAE0596",
+				"CE85FBD2A295B0E8CC5D1877",
+				"2B42A521B96B01C7D42B1E94",
+				"0DC452388B6D5F47EE31362E",
+				"57B8E454C282A19097355C05",
+				"79878748F1FD4EA75258C212",
+				"4EED0A733E21DA6FDB03CB7E",
+				"8B67CE71A32C819BC6B9F000",
+				"623D67FC4735B87D32F44673",
+				"07CD1768FC481331C6711E1E",
+				"551C014A1ECC6535AC10766F",
+				"F0295CB4B5CDB608C9A9D683",
+				"15BD1F2E4CAF91F6B4666BBE",
+				"0E071E88408AC917B8B9F340",
+				"4933A8A9F4D03B4D9F02F848",
+				"2FE7D91DB91C80093813F7B4",
+				"0FBA632305299C6E6B961A95",
+				"253A2998A8944EF7203CDB3C",
+				"C49B7CD57BC210930B6559E3",
+				"DC2C00C2086E9DA56E182D7E",
+				"DF4B1A3FAA512F0E746E8632",
+				"24F23A92C26ABF7C84616C84",
+				"3D1302344569B7944F20FEB9",
+				"396F296FF28D556A83CE7769",
+				"BBFB8D83FAC8749D11522FC9",
+				"3463D7729A9A3CE773D83C83",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		D37DA97228D33C304427C702 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "718F07692D31C20F00D41270";
+		};
+		7FB3E4E6F572E3F74BFA8A7D = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A5405252A04AB4E0061653D";
+		};
+		3381CE37F88986E2DACCFCAC = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "712227872433EE2700CDBABD";
+		};
+		AC45B664891420261891ECC3 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "712227852433EE1200CDBABD";
+		};
+		00CDC6375094C78C1F537AD6 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1AFC47A526489F7700EE5FCC";
+		};
+		3216483D3D8DA83A1027B254 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "712227832433EDE700CDBABD";
+		};
+		3F658C17B3308FC4EE10F4D8 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "712227812433EDCE00CDBABD";
+		};
+		F3AB56931DC82BFBA95EC93B = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "7122277D2433ED7C00CDBABD";
+		};
+		7C1D9ECFA58B48047D548CF7 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A1551E82632656D006E0C8A";
+		};
+		C47A2B39C38DA462A89788CF = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"D37DA97228D33C304427C702",
+				"7FB3E4E6F572E3F74BFA8A7D",
+				"3381CE37F88986E2DACCFCAC",
+				"AC45B664891420261891ECC3",
+				"00CDC6375094C78C1F537AD6",
+				"3216483D3D8DA83A1027B254",
+				"3F658C17B3308FC4EE10F4D8",
+				"F3AB56931DC82BFBA95EC93B",
+				"7C1D9ECFA58B48047D548CF7",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		A832316743B6EA8A0F3D1EB6 = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"CODE_SIGN_ENTITLEMENTS" = "BoxedwineUI/Boxedwine-Development.entitlements";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"CODE_SIGN_INJECT_BASE_ENTITLEMENTS" = "NO";
+				"GCC_PREPROCESSOR_DEFINITIONS" = (
+					"SIMDE_NO_NATIVE",
+					"BOXEDWINE_64",
+					"BOXEDWINE_ZLIB",
+					"SDL2=1",
+					"GLH=<SDL_opengl.h>",
+					"BOXEDWINE_OPENGL_SDL",
+					"BOXEDWINE_GLHANDLE_ARB_POINTER",
+					"BOXEDWINE_POSIX",
+					"BOXEDWINE_CORE_AUDIO",
+					"BOXEDWINE_MAC_JIT",
+					"__MACOSX_CORE__",
+					"BOXEDWINE_VULKAN",
+					"BOXEDWINE_DISABLE_UI",
+					"BOXEDWINE_NATIVE_RUNTIME",
+					"DEBUG=1",
+					"BOXEDWINE_DEVELOPMENT",
+				);
+				"ONLY_ACTIVE_ARCH" = "NO";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"CLANG_CXX_LANGUAGE_STANDARD" = "c++20";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.native.runtime";
+				"INFOPLIST_FILE" = "$(DERIVED_FILE_DIR)/Versioned-Info.plist";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+				"WRAPPER_NAME" = "BoxedwineEngine.app";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Boxedwine Windows App";
+				"MACOSX_DEPLOYMENT_TARGET" = "15.0";
+				"DEAD_CODE_STRIPPING" = "YES";
+				"GCC_OPTIMIZATION_LEVEL" = "0";
+				"OTHER_CODE_SIGN_FLAGS" = "-i $(PRODUCT_BUNDLE_IDENTIFIER) --options runtime";
+				"FRAMEWORK_SEARCH_PATHS" = "$(PROJECT_DIR)/../../../lib/mac";
+				"LIBRARY_SEARCH_PATHS" = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../../../lib/mac/vulkan/lib",
+				);
+				"CODE_SIGN_STYLE" = "Manual";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../../../../Frameworks",
+				);
+				"HEADER_SEARCH_PATHS" = "";
+				"SWIFT_VERSION" = "6.0";
+				"PRODUCT_NAME" = "Boxedwine";
+				"OTHER_CPLUSPLUSFLAGS" = "$(OTHER_CFLAGS)";
+				"CODE_SIGN_IDENTITY" = "-";
+				"ARCHS" = "arm64";
+				"SKIP_INSTALL" = "YES";
+				"ENABLE_APP_SANDBOX" = "NO";
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"EXCLUDED_ARCHS" = "";
+				"SYSTEM_HEADER_SEARCH_PATHS" = (
+					"$(SRCROOT)/../../../lib/glew/include",
+					"$(SRCROOT)/../../../lib/imgui",
+					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
+					"$(SRCROOT)/../../../lib/simde",
+					"$(SRCROOT)/../../../lib/pugixml/src",
+					"$(SRCROOT)/../../../lib/asmjit",
+				);
+			};
+		};
+		90FF7A278F49E3BA5C3351BD = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"CODE_SIGN_ENTITLEMENTS" = "BoxedwineUI/Boxedwine.entitlements";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"CODE_SIGN_INJECT_BASE_ENTITLEMENTS" = "NO";
+				"GCC_PREPROCESSOR_DEFINITIONS" = (
+					"SIMDE_NO_NATIVE",
+					"BOXEDWINE_64",
+					"BOXEDWINE_ZLIB",
+					"SDL2=1",
+					"GLH=<SDL_opengl.h>",
+					"BOXEDWINE_OPENGL_SDL",
+					"BOXEDWINE_GLHANDLE_ARB_POINTER",
+					"BOXEDWINE_POSIX",
+					"BOXEDWINE_CORE_AUDIO",
+					"BOXEDWINE_MAC_JIT",
+					"__MACOSX_CORE__",
+					"BOXEDWINE_VULKAN",
+					"BOXEDWINE_DISABLE_UI",
+					"BOXEDWINE_NATIVE_RUNTIME",
+				);
+				"ONLY_ACTIVE_ARCH" = "NO";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"CLANG_CXX_LANGUAGE_STANDARD" = "c++20";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.native.runtime";
+				"INFOPLIST_FILE" = "$(DERIVED_FILE_DIR)/Versioned-Info.plist";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+				"WRAPPER_NAME" = "BoxedwineEngine.app";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Boxedwine Windows App";
+				"MACOSX_DEPLOYMENT_TARGET" = "15.0";
+				"DEAD_CODE_STRIPPING" = "YES";
+				"GCC_OPTIMIZATION_LEVEL" = "2";
+				"OTHER_CODE_SIGN_FLAGS" = "-i $(PRODUCT_BUNDLE_IDENTIFIER) --options runtime";
+				"FRAMEWORK_SEARCH_PATHS" = "$(PROJECT_DIR)/../../../lib/mac";
+				"LIBRARY_SEARCH_PATHS" = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../../../lib/mac/vulkan/lib",
+				);
+				"CODE_SIGN_STYLE" = "Manual";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../../../../Frameworks",
+				);
+				"HEADER_SEARCH_PATHS" = "";
+				"SWIFT_VERSION" = "6.0";
+				"PRODUCT_NAME" = "Boxedwine";
+				"OTHER_CPLUSPLUSFLAGS" = "$(OTHER_CFLAGS)";
+				"CODE_SIGN_IDENTITY" = "-";
+				"ARCHS" = "arm64";
+				"SKIP_INSTALL" = "YES";
+				"ENABLE_APP_SANDBOX" = "YES";
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"EXCLUDED_ARCHS" = "";
+				"SYSTEM_HEADER_SEARCH_PATHS" = (
+					"$(SRCROOT)/../../../lib/glew/include",
+					"$(SRCROOT)/../../../lib/imgui",
+					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
+					"$(SRCROOT)/../../../lib/simde",
+					"$(SRCROOT)/../../../lib/pugixml/src",
+					"$(SRCROOT)/../../../lib/asmjit",
+				);
+			};
+		};
+		B8BF1BA4859AEFE4878674BB = {
+			"isa" = "XCConfigurationList";
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+			"buildConfigurations" = (
+				"A832316743B6EA8A0F3D1EB6",
+				"C5398A2945B450D8CA261D2F",
+				"90FF7A278F49E3BA5C3351BD",
+			);
+		};
+		DA385C9FB77E4F72230322AF = {
+			"isa" = "PBXFileSystemSynchronizedBuildFileExceptionSet";
+			"target" = "71222BCB24351CBA00CDBABD";
+			"membershipExceptions" = (
+				"ui/boxedwineui.h",
+				"ui/controls/ImGuiLayout.cpp",
+				"ui/controls/ImGuiLayout.h",
+				"ui/controls/appChooserDlg.cpp",
+				"ui/controls/appChooserDlg.h",
+				"ui/controls/appbar.cpp",
+				"ui/controls/appbar.h",
+				"ui/controls/baseDlg.cpp",
+				"ui/controls/baseDlg.h",
+				"ui/controls/baseView.cpp",
+				"ui/controls/baseView.h",
+				"ui/controls/containersView.cpp",
+				"ui/controls/containersView.h",
+				"ui/controls/downloadDlg.cpp",
+				"ui/controls/downloadDlg.h",
+				"ui/controls/helpView.cpp",
+				"ui/controls/helpView.h",
+				"ui/controls/installView.cpp",
+				"ui/controls/installView.h",
+				"ui/controls/listView.cpp",
+				"ui/controls/listView.h",
+				"ui/controls/listViewItem.cpp",
+				"ui/controls/listViewItem.h",
+				"ui/controls/menubar.cpp",
+				"ui/controls/menubar.h",
+				"ui/controls/okDlg.cpp",
+				"ui/controls/okDlg.h",
+				"ui/controls/optionsView.cpp",
+				"ui/controls/optionsView.h",
+				"ui/controls/spinnerControl.cpp",
+				"ui/controls/spinnerControl.h",
+				"ui/controls/uiSettings.cpp",
+				"ui/controls/uiSettings.h",
+				"ui/controls/unzipDlg.cpp",
+				"ui/controls/unzipDlg.h",
+				"ui/controls/waitDlg.cpp",
+				"ui/controls/waitDlg.h",
+				"ui/controls/yesNoDlg.cpp",
+				"ui/controls/yesNoDlg.h",
+				"ui/data/appFile.cpp",
+				"ui/data/appFile.h",
+				"ui/data/boxedApp.cpp",
+				"ui/data/boxedApp.h",
+				"ui/data/boxedContainer.cpp",
+				"ui/data/boxedContainer.h",
+				"ui/data/boxedReg.cpp",
+				"ui/data/boxedReg.h",
+				"ui/data/boxedTexture.cpp",
+				"ui/data/boxedTexture.h",
+				"ui/data/boxedwineData.cpp",
+				"ui/data/boxedwineData.h",
+				"ui/data/configFile.cpp",
+				"ui/data/configFile.h",
+				"ui/data/globalSettings.cpp",
+				"ui/data/globalSettings.h",
+				"ui/data/javaJarInfo.cpp",
+				"ui/data/javaJarInfo.h",
+				"ui/mainui.cpp",
+				"ui/mainui.h",
+				"ui/opengl/platformhelper.cpp",
+				"ui/platformhelper.h",
+				"ui/utils/boxedTranslation.cpp",
+				"ui/utils/boxedTranslation.h",
+				"ui/utils/imgui_markdown.h",
+				"ui/utils/readIcons.cpp",
+				"ui/utils/readIcons.h",
+				"ui/utils/uihelper.cpp",
+				"ui/utils/uihelper.h",
+			);
+		};
+		200B6132DD0709EBAC25E2E2 = {
+			"isa" = "PBXFileReference";
+			"path" = "Core/Library.swift";
+			"lastKnownFileType" = "sourcecode.swift";
+			"sourceTree" = "<group>";
+		};
+		B9D1FDF9AB22234E14C71F6D = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "200B6132DD0709EBAC25E2E2";
+		};
+		48679D22D52E6CF3D11B53A0 = {
+			"isa" = "PBXFileReference";
+			"path" = "Core/RuntimeSession.swift";
+			"lastKnownFileType" = "sourcecode.swift";
+			"sourceTree" = "<group>";
+		};
+		024630932937EFB1FDC4385D = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "48679D22D52E6CF3D11B53A0";
+		};
+		401E5D6B41822EC45C290564 = {
+			"isa" = "PBXFileReference";
+			"path" = "UI/BoxedwineNativeApp.swift";
+			"lastKnownFileType" = "sourcecode.swift";
+			"sourceTree" = "<group>";
+		};
+		8B5708C2EA258BEB434BFCA0 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "401E5D6B41822EC45C290564";
+		};
+		B1466C52137F58AEC3FAB213 = {
+			"isa" = "PBXFileReference";
+			"path" = "UI/LibraryStore.swift";
+			"lastKnownFileType" = "sourcecode.swift";
+			"sourceTree" = "<group>";
+		};
+		344AD27D466F81DD1BE503E6 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "B1466C52137F58AEC3FAB213";
+		};
+		76432D88BE8500CC14CDF56D = {
+			"isa" = "PBXFileReference";
+			"path" = "UI/LibraryView.swift";
+			"lastKnownFileType" = "sourcecode.swift";
+			"sourceTree" = "<group>";
+		};
+		13F54A39CDE341CD7198B608 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "76432D88BE8500CC14CDF56D";
+		};
+		46A224790684DC51BD16C032 = {
+			"path" = "BoxedwineUI.entitlements";
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.plist.entitlements";
+			"sourceTree" = "<group>";
+		};
+		6CDCA3325659ACEA543BE196 = {
+			"path" = "Boxedwine.entitlements";
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.plist.entitlements";
+			"sourceTree" = "<group>";
+		};
+		017D1786C656098FAD23FF45 = {
+			"path" = "BoxedwineUI";
+			"isa" = "PBXGroup";
+			"sourceTree" = "<group>";
+			"children" = (
+				"B10826AECCAA0D8805FF8E66",
+				"3A45E3663FD06F16C527FCBB",
+				"D73844CF228208DB3DBB44B6",
+				"A273EC1AB138E2C67FBCAFE1",
+				"F8F8B03D258B4DE28F522B01",
+				"F8F8B03D258B4DE28F522B03",
+				"F8F8B03D258B4DE28F522B05",
+				"F8F8B03D258B4DE28F522B07",
+				"F8F8B03D258B4DE28F522B0F",
+				"E4CB65BF801940A59261A901",
+				"F8F8B03D258B4DE28F522B0B",
+				"F8F8B03D258B4DE28F522B0D",
+				"F8F8B03D258B4DE28F522B09",
+				"BF449A2EA947D286FEB7BDD9",
+				"02CBE464F34120CE26F79833",
+				"395953AD925BBAE7D185F0DF",
+				"61CE496CA46654D51C39CA76",
+				"F3CABEDACBBE41C99ABE2001",
+				"F3CABEDACBBE41C99ABE3001",
+				"F3CABEDACBBE41C99ABE4001",
+				"F3CABEDACBBE41C99ABE4003",
+				"F3CABEDACBBE41C99ABE6001",
+				"F3CABEDACBBE41C99ABE5001",
+				"F3CABEDACBBE41C99ABE5003",
+				"CD6897E8AE463429A18F7419",
+				"6E60F51B52BE3DA7D507F134",
+				"7EC544580A21C04DD95196FE",
+				"64D41EA6C8231F683E766BCE",
+				"2FC1E0193AB1FDB0A348182B",
+				"A976CEE4F0158A5B004000F8",
+				"200B6132DD0709EBAC25E2E2",
+				"48679D22D52E6CF3D11B53A0",
+				"401E5D6B41822EC45C290564",
+				"B1466C52137F58AEC3FAB213",
+				"76432D88BE8500CC14CDF56D",
+				"46A224790684DC51BD16C032",
+				"6CDCA3325659ACEA543BE196",
+				"DDABFB1C78669D593FAE30AA",
+				"C276D4DF99E7D32AB3DC8019",
+			);
+		};
+		2D95EA56694976314BC18CCD = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				E33AE60414B5982E105E80B9,
+				"BA63040F14BFBDA9F713D402",
+				"68A46DBE4C3A6111AF3456CE",
+				"3F5D11DB9BC9AAD3CE2E3ED4",
+				"F8F8B03D258B4DE28F522B02",
+				"F8F8B03D258B4DE28F522B04",
+				"F8F8B03D258B4DE28F522B06",
+				"F8F8B03D258B4DE28F522B08",
+				"F8F8B03D258B4DE28F522B10",
+				E4CB65BF801940A59261A902,
+				"F8F8B03D258B4DE28F522B0C",
+				"F8F8B03D258B4DE28F522B0E",
+				"F8F8B03D258B4DE28F522B0A",
+				"9F3F5FB170351DE4B2F6C664",
+				67093D2C3388DFD31745C70B,
+				F3CABEDACBBE41C99ABE2002,
+				F3CABEDACBBE41C99ABE3002,
+				F3CABEDACBBE41C99ABE4002,
+				F3CABEDACBBE41C99ABE4004,
+				F3CABEDACBBE41C99ABE6002,
+				F3CABEDACBBE41C99ABE5002,
+				F3CABEDACBBE41C99ABE5004,
+				CF620D014ADC91FB3E6B2957,
+				40CD8730557C71076E6612B1,
+				2E3E754D7DF5B92D478AC91D,
+				8C8DC4EE20DB2113842F1555,
+				C7EEFDC590AD63A125B43ACA,
+				6EF6DE6E63C037DDDE861463,
+				A7B9DC580224274390FF70C3,
+				9878282A3C66219582980F53,
+				"B9D1FDF9AB22234E14C71F6D",
+				"024630932937EFB1FDC4385D",
+				"8B5708C2EA258BEB434BFCA0",
+				"344AD27D466F81DD1BE503E6",
+				"13F54A39CDE341CD7198B608",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		4942E2BB1E7E3608541C8326 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "715F8427244115580038F5A4";
+		};
+		6CB04E2BC9A1D8B20CF1109F = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+				"4942E2BB1E7E3608541C8326",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		A5C28182A1BF2977CE95CEC5 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1A1551E82632656D006E0C8A";
+			"settings" = {
+				"ATTRIBUTES" = (
+					"CodeSignOnCopy",
+				);
+			};
+		};
+		BD6150FE14FA7E11B5A166AC = {
+			"buildActionMask" = "2147483647";
+			"dstSubfolderSpec" = "10";
+			"isa" = "PBXCopyFilesBuildPhase";
+			"runOnlyForDeploymentPostprocessing" = "0";
+			"dstPath" = "";
+			"files" = (
+				"A5C28182A1BF2977CE95CEC5",
+			);
+			"name" = "Embed Frameworks";
+		};
+		C9EE78910AA3F6245838F6AF = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "718F07772D31C23F00D41270";
+			"settings" = {
+				"ATTRIBUTES" = (
+					"CodeSignOnCopy",
+				);
+			};
+		};
+
+
+		0A492E193E27452E6F358092 = {
+			"isa" = "PBXCopyFilesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"dstPath" = "";
+			"dstSubfolderSpec" = "10";
+			"files" = (
+				"C9EE78910AA3F6245838F6AF",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		411B74A0203DA8FBF24DCE86 = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "71222C7F24351CBA00CDBABD";
+			"settings" = {
+				"ATTRIBUTES" = (
+					"CodeSignOnCopy",
+				);
+			};
+		};
+		C980CCB3EECDC212A5F8465E = {
+			"isa" = "PBXCopyFilesBuildPhase";
+			"buildActionMask" = "2147483647";
+			"dstPath" = "Contents/Helpers";
+			"dstSubfolderSpec" = "1";
+			"name" = "Embed Runtime";
+			"files" = (
+				"411B74A0203DA8FBF24DCE86",
+			);
+			"runOnlyForDeploymentPostprocessing" = "0";
+		};
+		492255DA4CEEB268BD54B5C2 = {
+			"isa" = "PBXShellScriptBuildPhase";
+			"buildActionMask" = "2147483647";
+			"files" = (
+			);
+			"name" = "Prepare Native Bundle";
+			"inputPaths" = (
+			);
+			"outputPaths" = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/BundlePreparation.txt",
+			);
+			"alwaysOutOfDate" = "1";
+			"runOnlyForDeploymentPostprocessing" = "0";
+			"shellPath" = "/bin/sh";
+			"shellScript" = "set -eu\n/bin/sh \"$SRCROOT/BoxedwineUI/prepare-native-bundle.sh\"\n";
+		};
+		0D7BE42980D9C9B45E82FBF0 = {
+			"isa" = "PBXContainerItemProxy";
+			"containerPortal" = "71FBFCA52433B815003F17F1";
+			"remoteGlobalIDString" = "71222BCB24351CBA00CDBABD";
+			"remoteInfo" = "Boxedwine";
+			"proxyType" = "1";
+		};
+		403B9941503D96E350199ADB = {
+			"isa" = "PBXTargetDependency";
+			"target" = "71222BCB24351CBA00CDBABD";
+			"targetProxy" = "0D7BE42980D9C9B45E82FBF0";
+		};
+		7BEFF74F8D5AD748F3042196 = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"CODE_SIGN_ENTITLEMENTS" = "BoxedwineUI/BoxedwineUI-Development.entitlements";
+				"ENABLE_DEBUG_DYLIB" = "NO";
+				"CODE_SIGN_INJECT_BASE_ENTITLEMENTS" = "NO";
+				"SWIFT_INCLUDE_PATHS" = "$(SRCROOT)/BoxedwineUI/ZipSupport/include";
+				"INFOPLIST_KEY_NSPrincipalClass" = "NSApplication";
+				"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.utilities";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.native";
+				"EXECUTABLE_NAME" = "BoxedwineUI";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"ONLY_ACTIVE_ARCH" = "NO";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Boxedwine";
+				"MACOSX_DEPLOYMENT_TARGET" = "15.0";
+				"OTHER_CODE_SIGN_FLAGS" = "--options runtime";
+				"CODE_SIGN_STYLE" = "Manual";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				"SWIFT_VERSION" = "6.0";
+				"PRODUCT_NAME" = "Boxedwine";
+				"CODE_SIGN_IDENTITY" = "-";
+				"INFOPLIST_KEY_NSHumanReadableCopyright" = "Copyright © 2026 The Boxedwine Team. GPL-2.0-or-later.";
+				"ARCHS" = "arm64";
+				"ENABLE_APP_SANDBOX" = "NO";
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"INFOPLIST_FILE" = "$(DERIVED_FILE_DIR)/Versioned-Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited) BOXEDWINE_DEVELOPMENT";
+			};
+		};
+		0B262351910CF72FD8DA38D9 = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"CODE_SIGN_ENTITLEMENTS" = "BoxedwineUI/BoxedwineUI.entitlements";
+				"CODE_SIGN_INJECT_BASE_ENTITLEMENTS" = "NO";
+				"SWIFT_INCLUDE_PATHS" = "$(SRCROOT)/BoxedwineUI/ZipSupport/include";
+				"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.utilities";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.native";
+				"EXECUTABLE_NAME" = "BoxedwineUI";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"ONLY_ACTIVE_ARCH" = "NO";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Boxedwine";
+				"MACOSX_DEPLOYMENT_TARGET" = "15.0";
+				"OTHER_CODE_SIGN_FLAGS" = "--options runtime";
+				"CODE_SIGN_STYLE" = "Manual";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				"SWIFT_VERSION" = "6.0";
+				"PRODUCT_NAME" = "Boxedwine";
+				"CODE_SIGN_IDENTITY" = "-";
+				"INFOPLIST_KEY_NSHumanReadableCopyright" = "Copyright © 2026 The Boxedwine Team. GPL-2.0-or-later.";
+				"ARCHS" = "arm64";
+				"ENABLE_APP_SANDBOX" = "YES";
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"INFOPLIST_FILE" = "$(DERIVED_FILE_DIR)/Versioned-Info.plist";
+				"INFOPLIST_KEY_NSPrincipalClass" = "NSApplication";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited)";
+			};
+		};
+		1D6FF872B3D34449A4676DB3 = {
+			"isa" = "XCConfigurationList";
+			"defaultConfigurationIsVisible" = "0";
+			"defaultConfigurationName" = "Release";
+			"buildConfigurations" = (
+				"7BEFF74F8D5AD748F3042196",
+				"64EAC424DDAD78FC0C12B967",
+				"0B262351910CF72FD8DA38D9",
+			);
+		};
+		ECC0BCD82CEB6DC3C5EDED10 = {
+			"productReference" = "69B153CE0F56B0DFF3697802";
+			"productType" = "com.apple.product-type.application";
+			"buildConfigurationList" = "1D6FF872B3D34449A4676DB3";
+			"productName" = "Boxedwine";
+			"isa" = "PBXNativeTarget";
+			"buildPhases" = (
+				"BC0261000000000000000002",
+				"2D95EA56694976314BC18CCD",
+				"6CB04E2BC9A1D8B20CF1109F",
+				"C980CCB3EECDC212A5F8465E",
+				"BD6150FE14FA7E11B5A166AC",
+				"0A492E193E27452E6F358092",
+				"492255DA4CEEB268BD54B5C2",
+			);
+			"dependencies" = (
+				"403B9941503D96E350199ADB",
+			);
+			"name" = "BoxedwineUI";
+			"buildRules" = (
+			);
+		};
+
+		8E80476FB59F0EA52EDFB8BE = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); name = "asmjit (native runtime)"; path = ../../../lib/asmjit/asmjit; sourceTree = "<group>"; };
+
 		2AB674AA3FA04ACF896B4B77 /* Remove Retired Mesa Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -2315,6 +3159,326 @@
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"$SRCROOT/../remove-mesa-libraries.sh\"\n";
 		};
+
+		26927E88E96EF84B58102892 = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"CLANG_WARN_DOCUMENTATION_COMMENTS" = "YES";
+				"CLANG_WARN_UNGUARDED_AVAILABILITY" = "YES_AGGRESSIVE";
+				"CLANG_WARN_DIRECT_OBJC_ISA_USAGE" = "YES_ERROR";
+				"CLANG_ENABLE_OBJC_ARC" = "YES";
+				"CLANG_WARN_SUSPICIOUS_MOVE" = "YES";
+				"CLANG_WARN__DUPLICATE_METHOD_MATCH" = "YES";
+				"CLANG_ENABLE_OBJC_WEAK" = "YES";
+				"CLANG_CXX_LIBRARY" = "libc++";
+				"CLANG_WARN_INFINITE_RECURSION" = "YES";
+				"GCC_WARN_UNDECLARED_SELECTOR" = "YES";
+				"DEAD_CODE_STRIPPING" = "YES";
+				"MACOSX_DEPLOYMENT_TARGET" = "10.15";
+				"CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION" = "YES_AGGRESSIVE";
+				"SDKROOT" = "macosx";
+				"CLANG_CXX_LANGUAGE_STANDARD" = "c++20";
+				"ENABLE_TESTABILITY" = "YES";
+				"CLANG_WARN_BOOL_CONVERSION" = "YES";
+				"CLANG_WARN_UNREACHABLE_CODE" = "YES";
+				"ENABLE_STRICT_OBJC_MSGSEND" = "YES";
+				"CLANG_ANALYZER_NONNULL" = "YES";
+				"CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING" = "YES";
+				"CLANG_WARN_STRICT_PROTOTYPES" = "YES";
+				"CLANG_WARN_ENUM_CONVERSION" = "YES";
+				"CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER" = "YES";
+				"GCC_PREPROCESSOR_DEFINITIONS" = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				"GCC_WARN_64_TO_32_BIT_CONVERSION" = "YES";
+				"CLANG_WARN_EMPTY_BODY" = "YES";
+				"GCC_WARN_UNINITIALIZED_AUTOS" = "YES_AGGRESSIVE";
+				"GCC_WARN_ABOUT_RETURN_TYPE" = "YES_ERROR";
+				"CLANG_WARN_COMMA" = "YES";
+				"GCC_DYNAMIC_NO_PIC" = "NO";
+				"GCC_C_LANGUAGE_STANDARD" = "gnu11";
+				"GCC_WARN_UNUSED_VARIABLE" = "YES";
+				"CLANG_WARN_RANGE_LOOP_ANALYSIS" = "YES";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"CLANG_WARN_INT_CONVERSION" = "YES";
+				"ALWAYS_SEARCH_USER_PATHS" = "NO";
+				"CLANG_WARN_OBJC_ROOT_CLASS" = "YES_ERROR";
+				"CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS" = "YES";
+				"COPY_PHASE_STRIP" = "NO";
+				"CLANG_WARN_CONSTANT_CONVERSION" = "YES";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+				"GCC_NO_COMMON_BLOCKS" = "YES";
+				"GCC_OPTIMIZATION_LEVEL" = "0";
+				"MTL_ENABLE_DEBUG_INFO" = "INCLUDE_SOURCE";
+				"ONLY_ACTIVE_ARCH" = "YES";
+				"CLANG_WARN_NON_LITERAL_NULL_CONVERSION" = "YES";
+				"MTL_FAST_MATH" = "YES";
+				"GCC_WARN_UNUSED_FUNCTION" = "YES";
+				"CLANG_WARN_OBJC_LITERAL_CONVERSION" = "YES";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF" = "YES";
+			};
+			"name" = "Sandbox";
+		};
+		64EAC424DDAD78FC0C12B967 = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Sandbox";
+			"buildSettings" = {
+				"CODE_SIGN_ENTITLEMENTS" = "BoxedwineUI/BoxedwineUI.entitlements";
+				"ENABLE_DEBUG_DYLIB" = "NO";
+				"CODE_SIGN_INJECT_BASE_ENTITLEMENTS" = "NO";
+				"SWIFT_INCLUDE_PATHS" = "$(SRCROOT)/BoxedwineUI/ZipSupport/include";
+				"INFOPLIST_KEY_NSPrincipalClass" = "NSApplication";
+				"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.utilities";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.native";
+				"EXECUTABLE_NAME" = "BoxedwineUI";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"ONLY_ACTIVE_ARCH" = "NO";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Boxedwine";
+				"MACOSX_DEPLOYMENT_TARGET" = "15.0";
+				"OTHER_CODE_SIGN_FLAGS" = "--options runtime";
+				"CODE_SIGN_STYLE" = "Manual";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				"SWIFT_VERSION" = "6.0";
+				"PRODUCT_NAME" = "Boxedwine";
+				"CODE_SIGN_IDENTITY" = "-";
+				"INFOPLIST_KEY_NSHumanReadableCopyright" = "Copyright © 2026 The Boxedwine Team. GPL-2.0-or-later.";
+				"ARCHS" = "arm64";
+				"ENABLE_APP_SANDBOX" = "YES";
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"INFOPLIST_FILE" = "$(DERIVED_FILE_DIR)/Versioned-Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited)";
+			};
+		};
+		C5398A2945B450D8CA261D2F = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Sandbox";
+			"buildSettings" = {
+				"CODE_SIGN_ENTITLEMENTS" = "BoxedwineUI/Boxedwine.entitlements";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"CODE_SIGN_INJECT_BASE_ENTITLEMENTS" = "NO";
+				"GCC_PREPROCESSOR_DEFINITIONS" = (
+					"SIMDE_NO_NATIVE",
+					"BOXEDWINE_64",
+					"BOXEDWINE_ZLIB",
+					"SDL2=1",
+					"GLH=<SDL_opengl.h>",
+					"BOXEDWINE_OPENGL_SDL",
+					"BOXEDWINE_GLHANDLE_ARB_POINTER",
+					"BOXEDWINE_POSIX",
+					"BOXEDWINE_CORE_AUDIO",
+					"BOXEDWINE_MAC_JIT",
+					"__MACOSX_CORE__",
+					"BOXEDWINE_VULKAN",
+					"BOXEDWINE_DISABLE_UI",
+					"BOXEDWINE_NATIVE_RUNTIME",
+				);
+				"ONLY_ACTIVE_ARCH" = "NO";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"CLANG_CXX_LANGUAGE_STANDARD" = "c++20";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.native.runtime";
+				"INFOPLIST_FILE" = "$(DERIVED_FILE_DIR)/Versioned-Info.plist";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+				"WRAPPER_NAME" = "BoxedwineEngine.app";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Boxedwine Windows App";
+				"MACOSX_DEPLOYMENT_TARGET" = "15.0";
+				"DEAD_CODE_STRIPPING" = "YES";
+				"GCC_OPTIMIZATION_LEVEL" = "2";
+				"OTHER_CODE_SIGN_FLAGS" = "-i $(PRODUCT_BUNDLE_IDENTIFIER) --options runtime";
+				"FRAMEWORK_SEARCH_PATHS" = "$(PROJECT_DIR)/../../../lib/mac";
+				"LIBRARY_SEARCH_PATHS" = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../../../lib/mac/vulkan/lib",
+				);
+				"CODE_SIGN_STYLE" = "Manual";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../../../../Frameworks",
+				);
+				"HEADER_SEARCH_PATHS" = "";
+				"SWIFT_VERSION" = "6.0";
+				"PRODUCT_NAME" = "Boxedwine";
+				"OTHER_CPLUSPLUSFLAGS" = "$(OTHER_CFLAGS)";
+				"CODE_SIGN_IDENTITY" = "-";
+				"ARCHS" = "arm64";
+				"SKIP_INSTALL" = "YES";
+				"ENABLE_APP_SANDBOX" = "YES";
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"EXCLUDED_ARCHS" = "";
+				"SYSTEM_HEADER_SEARCH_PATHS" = (
+					"$(SRCROOT)/../../../lib/glew/include",
+					"$(SRCROOT)/../../../lib/imgui",
+					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
+					"$(SRCROOT)/../../../lib/simde",
+					"$(SRCROOT)/../../../lib/pugixml/src",
+					"$(SRCROOT)/../../../lib/asmjit",
+				);
+			};
+		};
+		BAB86CC7B8957741EBA81946 = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"CODE_SIGN_ENTITLEMENTS" = "Boxedwine/BoxedwineX64-Automation.entitlements";
+				"SYSTEM_HEADER_SEARCH_PATHS" = (
+					"$(SRCROOT)/../../../lib/glew/include",
+					"$(SRCROOT)/../../../lib/imgui",
+					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
+					"$(SRCROOT)/../../../lib/simde",
+					"$(SRCROOT)/../../../lib/pugixml/src",
+					"$(SRCROOT)/../../../lib/asmjit",
+				);
+				"GCC_PREPROCESSOR_DEFINITIONS" = (
+					"SIMDE_NO_NATIVE",
+					"BOXEDWINE_64",
+					"BOXEDWINE_ZLIB",
+					"SDL2=1",
+					"GLH=<SDL_opengl.h>",
+					"BOXEDWINE_OPENGL_SDL",
+					"BOXEDWINE_GLHANDLE_ARB_POINTER",
+					"BOXEDWINE_POSIX",
+					"BOXEDWINE_RECORDER",
+					"BOXEDWINE_CORE_AUDIO",
+					"BOXEDWINE_MAC_JIT",
+					"__MACOSX_CORE__",
+					"BOXEDWINE_UI_LAUNCH_IN_PROCESS",
+				);
+				"CLANG_ENABLE_MODULES" = "YES";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine";
+				"CLANG_CXX_LANGUAGE_STANDARD" = "c++20";
+				"MACOSX_DEPLOYMENT_TARGET" = "11.0";
+				"DEVELOPMENT_ASSET_PATHS" = "";
+				"DEAD_CODE_STRIPPING" = "YES";
+				"LIBRARY_SEARCH_PATHS" = "$(inherited)";
+				"FRAMEWORK_SEARCH_PATHS" = "$(PROJECT_DIR)/../../../lib/mac";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				"HEADER_SEARCH_PATHS" = "";
+				"SWIFT_VERSION" = "6.0";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"OTHER_CPLUSPLUSFLAGS" = "$(OTHER_CFLAGS)";
+				"ARCHS" = "$(ARCHS_STANDARD)";
+				"SWIFT_OBJC_BRIDGING_HEADER" = "Boxedwine/BoxedwineAutomation-Bridging-Header.h";
+				"ENABLE_HARDENED_RUNTIME" = "YES";
+				"EXCLUDED_ARCHS" = "";
+				"INFOPLIST_FILE" = "BoxedwineX64-Info.plist";
+				"COMBINE_HIDPI_IMAGES" = "YES";
+			};
+			"name" = "Sandbox";
+		};
+		D53E1EF8525CF22BB7599F1A = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				"GCC_PREPROCESSOR_DEFINITIONS" = (
+					"SIMDE_NO_NATIVE",
+					"BOXEDWINE_64",
+					"BOXEDWINE_ZLIB",
+					"SDL2=1",
+					"GLH=<SDL_opengl.h>",
+					"BOXEDWINE_OPENGL_SDL",
+					"BOXEDWINE_GLHANDLE_ARB_POINTER",
+					"BOXEDWINE_POSIX",
+					"BOXEDWINE_CORE_AUDIO",
+					"BOXEDWINE_MAC_JIT",
+					"BOXED_NO_EXCEPTIONS",
+					"__TEST",
+					"__DEBUG",
+					"BOXEDWINE_UI_LAUNCH_IN_PROCESS",
+				);
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"SYSTEM_HEADER_SEARCH_PATHS" = (
+					"$(SRCROOT)/../../../lib/glew/include",
+					"$(SRCROOT)/../../../lib/imgui",
+					"$(SRCROOT)/../../../lib/sdl2/include",
+					"$(SRCROOT)/../../../lib/simde",
+					"$(SRCROOT)/../../../lib/asmjit",
+				);
+				"INFOPLIST_FILE" = "BoxedwineTestX64-Info.plist";
+				"MACOSX_DEPLOYMENT_TARGET" = "11.0";
+				"CLANG_CXX_LANGUAGE_STANDARD" = "c++20";
+				"CODE_SIGN_ENTITLEMENTS" = "BoxedwineTest/BoxedwineTest.entitlements";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"FRAMEWORK_SEARCH_PATHS" = "$(PROJECT_DIR)/../../../lib/mac";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine";
+				"COMBINE_HIDPI_IMAGES" = "YES";
+				"DEAD_CODE_STRIPPING" = "YES";
+			};
+			"name" = "Sandbox";
+		};
+		69E95C85A9C88FDD947217B1 = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"BUNDLE_LOADER" = "$(TEST_HOST)";
+				"DEVELOPMENT_TEAM" = "S9HH8A437X";
+				"MARKETING_VERSION" = "1.0";
+				"MACOSX_DEPLOYMENT_TARGET" = "13.1";
+				"CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER" = "YES";
+				"CLANG_CXX_LANGUAGE_STANDARD" = "gnu++20";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"TEST_HOST" = "$(BUILT_PRODUCTS_DIR)/BoxedwineTest.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BoxedwineTest";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"SWIFT_EMIT_LOC_STRINGS" = "NO";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "boxedwine.org.BoxedwineUnitTests";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"DEAD_CODE_STRIPPING" = "YES";
+			};
+			"name" = "Sandbox";
+		};
+		DDABFB1C78669D593FAE30AA = {
+			"isa" = "PBXFileReference";
+			"path" = "Boxedwine-Development.entitlements";
+			"lastKnownFileType" = "text.plist.entitlements";
+			"sourceTree" = "<group>";
+		};
+		C276D4DF99E7D32AB3DC8019 = {
+			"isa" = "PBXFileReference";
+			"path" = "BoxedwineUI-Development.entitlements";
+			"lastKnownFileType" = "text.plist.entitlements";
+			"sourceTree" = "<group>";
+		};
+		BC0261000000000000000001 = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ("$(SRCROOT)/../../../include/boxedwine.h", "$(SRCROOT)/BoxedwineUI/Tools/prepare-version-plist.py");
+			name = "Prepare Boxedwine Version";
+			outputPaths = ("$(DERIVED_FILE_DIR)/Versioned-Info.plist");
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\n/usr/bin/python3 \"$SRCROOT/BoxedwineUI/Tools/prepare-version-plist.py\" --header \"$SRCROOT/../../../include/boxedwine.h\" --output \"$DERIVED_FILE_DIR/Versioned-Info.plist\"\n";
+		};
+		BC0261000000000000000002 = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ("$(SRCROOT)/../../../include/boxedwine.h", "$(SRCROOT)/BoxedwineUI/Tools/prepare-version-plist.py", "$(SRCROOT)/BoxedwineUI/Info.plist");
+			name = "Prepare Boxedwine Version";
+			outputPaths = ("$(DERIVED_FILE_DIR)/Versioned-Info.plist");
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\n/usr/bin/python3 \"$SRCROOT/BoxedwineUI/Tools/prepare-version-plist.py\" --header \"$SRCROOT/../../../include/boxedwine.h\" --output \"$DERIVED_FILE_DIR/Versioned-Info.plist\" --template \"$SRCROOT/BoxedwineUI/Info.plist\"\n";
+		};
+
 	};
 	rootObject = 71FBFCA52433B815003F17F1 /* Project object */;
 }

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>LSApplicationCategoryType</key>
+	<string>$(INFOPLIST_KEY_LSApplicationCategoryType)</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>$(INFOPLIST_KEY_NSHumanReadableCopyright)</string>
+	<key>NSPrincipalClass</key>
+	<string>$(INFOPLIST_KEY_NSPrincipalClass)</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>com.apple.package</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Boxedwine App Backup</string>
+			<key>UTTypeIdentifier</key>
+			<string>org.boxedwine.app-backup</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>boxedwinebackup</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+</dict>
+</plist>

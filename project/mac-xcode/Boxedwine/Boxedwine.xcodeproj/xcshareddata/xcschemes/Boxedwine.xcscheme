@@ -1,28 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1620"
+   LastUpgradeVersion = "2650"
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES">
-      <PreActions>
-         <ExecutionAction
-            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
-            <ActionContent
-               title = "Run Script"
-               scriptText = "# Type a script or drag a script file from your workspace to insert its path.&#10;cd ${PROJECT_DIR}/../&#10;sh fetchDepends.sh&#10;">
-               <EnvironmentBuildable>
-                  <BuildableReference
-                     BuildableIdentifier = "primary"
-                     BlueprintIdentifier = "71222BCB24351CBA00CDBABD"
-                     BuildableName = "Boxedwine.app"
-                     BlueprintName = "Boxedwine"
-                     ReferencedContainer = "container:Boxedwine.xcodeproj">
-                  </BuildableReference>
-               </EnvironmentBuildable>
-            </ActionContent>
-         </ExecutionAction>
-      </PreActions>
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -32,9 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "71222BCB24351CBA00CDBABD"
+               BlueprintIdentifier = "ECC0BCD82CEB6DC3C5EDED10"
                BuildableName = "Boxedwine.app"
-               BlueprintName = "Boxedwine"
+               BlueprintName = "BoxedwineUI"
                ReferencedContainer = "container:Boxedwine.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -44,18 +26,17 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES">
-      <Testables>
-      </Testables>
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      launchStyle = "0"
+      launchStyle = "1"
       useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "NO"
-      debugDocumentVersioning = "NO"
+      debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES">
       <BuildableProductRunnable
@@ -63,7 +44,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "71222BCB24351CBA00CDBABD"
-            BuildableName = "Boxedwine.app"
+            BuildableName = "BoxedwineEngine.app"
             BlueprintName = "Boxedwine"
             ReferencedContainer = "container:Boxedwine.xcodeproj">
          </BuildableReference>
@@ -79,9 +60,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "71222BCB24351CBA00CDBABD"
+            BlueprintIdentifier = "ECC0BCD82CEB6DC3C5EDED10"
             BuildableName = "Boxedwine.app"
-            BlueprintName = "Boxedwine"
+            BlueprintName = "BoxedwineUI"
             ReferencedContainer = "container:Boxedwine.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
