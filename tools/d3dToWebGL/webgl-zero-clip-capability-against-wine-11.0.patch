@@ -1,0 +1,24 @@
+diff --git a/dlls/d3d9/device.c b/dlls/d3d9/device.c
+index c4af2c3ce..9e3c7a4b8
+--- a/dlls/d3d9/device.c
++++ b/dlls/d3d9/device.c
+@@ -2566,6 +2566,9 @@ static HRESULT WINAPI d3d9_device_SetClipPlane(IDirect3DDevice9Ex *iface, DWORD
+ 
+     TRACE("iface %p, index %lu, plane %p.\n", iface, index, plane);
+ 
++    if (!device->max_user_clip_planes)
++        return D3DERR_INVALIDCALL;
++
+     index = min(index, device->max_user_clip_planes - 1);
+ 
+     wined3d_mutex_lock();
+@@ -2581,6 +2584,9 @@ static HRESULT WINAPI d3d9_device_GetClipPlane(IDirect3DDevice9Ex *iface, DWORD
+ 
+     TRACE("iface %p, index %lu, plane %p.\n", iface, index, plane);
+ 
++    if (!device->max_user_clip_planes)
++        return D3DERR_INVALIDCALL;
++
+     index = min(index, device->max_user_clip_planes - 1);
+ 
+     wined3d_mutex_lock();

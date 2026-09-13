@@ -1,0 +1,39 @@
+diff --git a/dlls/ddraw/ddraw_private.h b/dlls/ddraw/ddraw_private.h
+index 7f2dd9e74..318b4e896
+--- a/dlls/ddraw/ddraw_private.h
++++ b/dlls/ddraw/ddraw_private.h
+@@ -376,6 +376,7 @@ struct d3d_device
+     D3DMATRIXHANDLE          world, proj, view;
+ 
+     struct wined3d_vec4 user_clip_planes[D3DMAXUSERCLIPPLANES];
++    DWORD unsupported_user_clip_planes;
+ 
+     struct wined3d_stateblock *recording, *state, *update_state;
+     const struct wined3d_stateblock_state *stateblock_state;
+diff --git a/dlls/ddraw/device.c b/dlls/ddraw/device.c
+index 8fc486566..fb6b51e4e
+--- a/dlls/ddraw/device.c
++++ b/dlls/ddraw/device.c
+@@ -6474,9 +6474,13 @@ static HRESULT d3d_device7_SetClipPlane(IDirect3DDevice7 *iface, DWORD idx, D3DV
+         device->user_clip_planes[idx] = *wined3d_plane;
+         if (hr == WINED3DERR_INVALIDCALL)
+         {
++            /* Keep unsupported GPU planes available to CPU visibility queries. */
++            device->unsupported_user_clip_planes |= 1u << idx;
+             WARN("Clip plane %lu is not supported.\n", idx);
+             hr = D3D_OK;
+         }
++        else if (SUCCEEDED(hr))
++            device->unsupported_user_clip_planes &= ~(1u << idx);
+     }
+     wined3d_mutex_unlock();
+ 
+@@ -6524,7 +6528,7 @@ static HRESULT d3d_device7_GetClipPlane(IDirect3DDevice7 *iface, DWORD idx, D3DV
+         return DDERR_INVALIDPARAMS;
+ 
+     wined3d_mutex_lock();
+-    if (idx < WINED3D_MAX_CLIP_DISTANCES)
++    if (idx < WINED3D_MAX_CLIP_DISTANCES && !(device->unsupported_user_clip_planes & (1u << idx)))
+         memcpy(plane, &device->stateblock_state->clip_planes[idx], sizeof(struct wined3d_vec4));
+     else
+     {

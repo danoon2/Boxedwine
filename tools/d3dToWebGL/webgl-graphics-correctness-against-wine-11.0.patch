@@ -1,0 +1,372 @@
+diff --git a/dlls/wined3d/adapter_gl.c b/dlls/wined3d/adapter_gl.c
+index 33c8c4f39..e9516aa46 100644
+--- a/dlls/wined3d/adapter_gl.c
++++ b/dlls/wined3d/adapter_gl.c
+@@ -1131,7 +1131,7 @@ static void wined3d_adapter_apply_webgl_d3d_info(struct wined3d_d3d_info *d3d_in
+     d3d_info->limits.cs_version = 0;
+ 
+     d3d_info->limits.max_rt_count = min(d3d_info->limits.max_rt_count, 4);
+-    d3d_info->limits.max_clip_distances = min(d3d_info->limits.max_clip_distances, 8);
++    d3d_info->limits.max_clip_distances = 0;
+     d3d_info->limits.sample_count = min(d3d_info->limits.sample_count, 1);
+ 
+     d3d_info->shader_double_precision = false;
+@@ -3069,7 +3069,11 @@ static void wined3d_adapter_init_limits(struct wined3d_gl_info *gl_info)
+     gl_info->limits.arb_ps_instructions = 0;
+     gl_info->limits.arb_ps_temps = 0;
+ 
+-    gl_info->gl_ops.gl.p_glGetIntegerv(GL_MAX_CLIP_DISTANCES, &gl_max);
++    /* WebGL 2 has no user clip distances, and we do not emulate them yet.
++     * Do not query the desktop enum or advertise planes that cannot render. */
++    gl_max = 0;
++    if (!wined3d_settings.webgl)
++        gl_info->gl_ops.gl.p_glGetIntegerv(GL_MAX_CLIP_DISTANCES, &gl_max);
+     gl_info->limits.user_clip_distances = min(WINED3D_MAX_CLIP_DISTANCES, gl_max);
+     TRACE("Clip plane support - max planes %d.\n", gl_max);
+ 
+diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+index e7a4d798a..3a87b0892 100644
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -1618,12 +1618,191 @@ static void wined3d_fixup_alpha(const struct wined3d_format *format, const uint8
+     }
+ }
+ 
++/* Dispatch once per row. Keeping the format switch inside the nested pixel
++ * loops makes GCC 13's -O3 loop unswitching drop some low-valued format cases,
++ * leaving the upload buffer uninitialized (including A4R4G4B4). */
++static bool wined3d_texture_gl_convert_webgl_row(enum wined3d_format_id format_id,
++        const uint8_t *src_row, uint8_t *upload_row, unsigned int width)
++{
++    unsigned int x;
++    uint8_t r, g, b;
++    uint16_t v;
++    uint32_t v32;
++
++    switch (format_id)
++    {
++        case WINED3DFMT_B8G8R8_UNORM:
++            for (x = 0; x < width; ++x)
++            {
++                upload_row[x * 3 + 0] = src_row[x * 3 + 2];
++                upload_row[x * 3 + 1] = src_row[x * 3 + 1];
++                upload_row[x * 3 + 2] = src_row[x * 3 + 0];
++            }
++            break;
++
++        case WINED3DFMT_B8G8R8X8_UNORM:
++        case WINED3DFMT_B8G8R8X8_UNORM_SRGB:
++            for (x = 0; x < width; ++x)
++            {
++                upload_row[x * 4 + 0] = src_row[x * 4 + 2];
++                upload_row[x * 4 + 1] = src_row[x * 4 + 1];
++                upload_row[x * 4 + 2] = src_row[x * 4 + 0];
++                upload_row[x * 4 + 3] = 0xff;
++            }
++            break;
++
++        case WINED3DFMT_B8G8R8A8_UNORM:
++        case WINED3DFMT_B8G8R8A8_UNORM_SRGB:
++            for (x = 0; x < width; ++x)
++            {
++                upload_row[x * 4 + 0] = src_row[x * 4 + 2];
++                upload_row[x * 4 + 1] = src_row[x * 4 + 1];
++                upload_row[x * 4 + 2] = src_row[x * 4 + 0];
++                upload_row[x * 4 + 3] = src_row[x * 4 + 3];
++            }
++            break;
++
++        case WINED3DFMT_R8G8B8X8_UNORM:
++            for (x = 0; x < width; ++x)
++            {
++                upload_row[x * 4 + 0] = src_row[x * 4 + 0];
++                upload_row[x * 4 + 1] = src_row[x * 4 + 1];
++                upload_row[x * 4 + 2] = src_row[x * 4 + 2];
++                upload_row[x * 4 + 3] = 0xff;
++            }
++            break;
++
++        case WINED3DFMT_R8G8B8A8_UNORM:
++        case WINED3DFMT_R8G8B8A8_UNORM_SRGB:
++            for (x = 0; x < width; ++x)
++            {
++                memcpy(&upload_row[x * 4], &src_row[x * 4], 4);
++            }
++            break;
++
++        case WINED3DFMT_B5G6R5_UNORM:
++            for (x = 0; x < width; ++x)
++            {
++                v = ((const uint16_t *)src_row)[x];
++                upload_row[x * 3 + 0] = (((v >> 11) & 0x1f) * 255 + 15) / 31;
++                upload_row[x * 3 + 1] = (((v >> 5) & 0x3f) * 255 + 31) / 63;
++                upload_row[x * 3 + 2] = ((v & 0x1f) * 255 + 15) / 31;
++            }
++            break;
++
++        case WINED3DFMT_B5G5R5A1_UNORM:
++            for (x = 0; x < width; ++x)
++            {
++                v = ((const uint16_t *)src_row)[x];
++                upload_row[x * 4 + 0] = (((v >> 10) & 0x1f) * 255 + 15) / 31;
++                upload_row[x * 4 + 1] = (((v >> 5) & 0x1f) * 255 + 15) / 31;
++                upload_row[x * 4 + 2] = ((v & 0x1f) * 255 + 15) / 31;
++                upload_row[x * 4 + 3] = v & 0x8000 ? 0xff : 0x00;
++            }
++            break;
++
++        case WINED3DFMT_B5G5R5X1_UNORM:
++            for (x = 0; x < width; ++x)
++            {
++                v = ((const uint16_t *)src_row)[x];
++                upload_row[x * 4 + 0] = (((v >> 10) & 0x1f) * 255 + 15) / 31;
++                upload_row[x * 4 + 1] = (((v >> 5) & 0x1f) * 255 + 15) / 31;
++                upload_row[x * 4 + 2] = ((v & 0x1f) * 255 + 15) / 31;
++                upload_row[x * 4 + 3] = 0xff;
++            }
++            break;
++
++        case WINED3DFMT_B4G4R4A4_UNORM:
++            for (x = 0; x < width; ++x)
++            {
++                v = ((const uint16_t *)src_row)[x];
++                upload_row[x * 4 + 0] = ((v >> 8) & 0x0f) * 17;
++                upload_row[x * 4 + 1] = ((v >> 4) & 0x0f) * 17;
++                upload_row[x * 4 + 2] = (v & 0x0f) * 17;
++                upload_row[x * 4 + 3] = ((v >> 12) & 0x0f) * 17;
++            }
++            break;
++
++        case WINED3DFMT_B4G4R4X4_UNORM:
++            for (x = 0; x < width; ++x)
++            {
++                v = ((const uint16_t *)src_row)[x];
++                upload_row[x * 4 + 0] = ((v >> 8) & 0x0f) * 17;
++                upload_row[x * 4 + 1] = ((v >> 4) & 0x0f) * 17;
++                upload_row[x * 4 + 2] = (v & 0x0f) * 17;
++                upload_row[x * 4 + 3] = 0xff;
++            }
++            break;
++
++        case WINED3DFMT_B2G3R3A8_UNORM:
++            for (x = 0; x < width; ++x)
++            {
++                v = ((const uint16_t *)src_row)[x];
++                r = (v >> 5) & 0x07;
++                g = (v >> 2) & 0x07;
++                b = v & 0x03;
++                upload_row[x * 4 + 0] = (r * 255 + 3) / 7;
++                upload_row[x * 4 + 1] = (g * 255 + 3) / 7;
++                upload_row[x * 4 + 2] = (b * 255 + 1) / 3;
++                upload_row[x * 4 + 3] = v >> 8;
++            }
++            break;
++
++        case WINED3DFMT_B10G10R10A2_UNORM:
++            for (x = 0; x < width; ++x)
++            {
++                v32 = ((const uint32_t *)src_row)[x];
++                upload_row[x * 4 + 0] = ((((v32 >> 20) & 0x3ff) * 255) + 511) / 1023;
++                upload_row[x * 4 + 1] = ((((v32 >> 10) & 0x3ff) * 255) + 511) / 1023;
++                upload_row[x * 4 + 2] = (((v32 & 0x3ff) * 255) + 511) / 1023;
++                upload_row[x * 4 + 3] = ((v32 >> 30) * 255 + 1) / 3;
++            }
++            break;
++
++        case WINED3DFMT_R10G10B10A2_UNORM:
++            for (x = 0; x < width; ++x)
++            {
++                v32 = ((const uint32_t *)src_row)[x];
++                upload_row[x * 4 + 0] = (((v32 & 0x3ff) * 255) + 511) / 1023;
++                upload_row[x * 4 + 1] = ((((v32 >> 10) & 0x3ff) * 255) + 511) / 1023;
++                upload_row[x * 4 + 2] = ((((v32 >> 20) & 0x3ff) * 255) + 511) / 1023;
++                upload_row[x * 4 + 3] = ((v32 >> 30) * 255 + 1) / 3;
++            }
++            break;
++
++        case WINED3DFMT_A8_UNORM:
++        case WINED3DFMT_L8_UNORM:
++        case WINED3DFMT_R8_UNORM:
++        case WINED3DFMT_YV12:
++        case WINED3DFMT_NV12:
++            for (x = 0; x < width; ++x)
++            {
++                upload_row[x] = src_row[x];
++            }
++            break;
++
++        case WINED3DFMT_L8A8_UNORM:
++        case WINED3DFMT_UYVY:
++        case WINED3DFMT_YUY2:
++            for (x = 0; x < width; ++x)
++            {
++                upload_row[x * 2 + 0] = src_row[x * 2 + 0];
++                upload_row[x * 2 + 1] = src_row[x * 2 + 1];
++            }
++            break;
++
++        default:
++            return false;
++    }
++    return true;
++}
++
+ static bool wined3d_texture_gl_upload_webgl_rgba8(const struct wined3d_format *src_format,
+         GLenum target, unsigned int level, unsigned int src_row_pitch, unsigned int src_slice_pitch,
+         unsigned int dst_x, unsigned int dst_y, unsigned int dst_z, unsigned int update_w,
+         unsigned int update_h, unsigned int update_d, const BYTE *addr, const struct wined3d_gl_info *gl_info)
+ {
+-    unsigned int x, y, z, upload_components, upload_row_pitch;
++    unsigned int y, z, upload_components, upload_row_pitch;
+     GLenum upload_format, upload_type;
+     uint8_t *upload;
+ 
+@@ -1668,132 +1847,11 @@ static bool wined3d_texture_gl_upload_webgl_rgba8(const struct wined3d_format *s
+             const uint8_t *src_row = src_slice + y * src_row_pitch;
+             uint8_t *upload_row = upload + y * upload_row_pitch;
+ 
+-            for (x = 0; x < update_w; ++x)
++            if (!wined3d_texture_gl_convert_webgl_row(src_format->id, src_row, upload_row, update_w))
+             {
+-                uint8_t r, g, b;
+-                uint16_t v;
+-                uint32_t v32;
+-
+-                switch (src_format->id)
+-                {
+-                    case WINED3DFMT_B8G8R8_UNORM:
+-                        upload_row[x * 3 + 0] = src_row[x * 3 + 2];
+-                        upload_row[x * 3 + 1] = src_row[x * 3 + 1];
+-                        upload_row[x * 3 + 2] = src_row[x * 3 + 0];
+-                        break;
+-
+-                    case WINED3DFMT_B8G8R8X8_UNORM:
+-                    case WINED3DFMT_B8G8R8X8_UNORM_SRGB:
+-                        upload_row[x * 4 + 0] = src_row[x * 4 + 2];
+-                        upload_row[x * 4 + 1] = src_row[x * 4 + 1];
+-                        upload_row[x * 4 + 2] = src_row[x * 4 + 0];
+-                        upload_row[x * 4 + 3] = 0xff;
+-                        break;
+-
+-                    case WINED3DFMT_B8G8R8A8_UNORM:
+-                    case WINED3DFMT_B8G8R8A8_UNORM_SRGB:
+-                        upload_row[x * 4 + 0] = src_row[x * 4 + 2];
+-                        upload_row[x * 4 + 1] = src_row[x * 4 + 1];
+-                        upload_row[x * 4 + 2] = src_row[x * 4 + 0];
+-                        upload_row[x * 4 + 3] = src_row[x * 4 + 3];
+-                        break;
+-
+-                    case WINED3DFMT_R8G8B8X8_UNORM:
+-                        upload_row[x * 4 + 0] = src_row[x * 4 + 0];
+-                        upload_row[x * 4 + 1] = src_row[x * 4 + 1];
+-                        upload_row[x * 4 + 2] = src_row[x * 4 + 2];
+-                        upload_row[x * 4 + 3] = 0xff;
+-                        break;
+-
+-                    case WINED3DFMT_R8G8B8A8_UNORM:
+-                    case WINED3DFMT_R8G8B8A8_UNORM_SRGB:
+-                        memcpy(&upload_row[x * 4], &src_row[x * 4], 4);
+-                        break;
+-
+-                    case WINED3DFMT_B5G6R5_UNORM:
+-                        v = ((const uint16_t *)src_row)[x];
+-                        upload_row[x * 3 + 0] = (((v >> 11) & 0x1f) * 255 + 15) / 31;
+-                        upload_row[x * 3 + 1] = (((v >> 5) & 0x3f) * 255 + 31) / 63;
+-                        upload_row[x * 3 + 2] = ((v & 0x1f) * 255 + 15) / 31;
+-                        break;
+-
+-                    case WINED3DFMT_B5G5R5A1_UNORM:
+-                        v = ((const uint16_t *)src_row)[x];
+-                        upload_row[x * 4 + 0] = (((v >> 10) & 0x1f) * 255 + 15) / 31;
+-                        upload_row[x * 4 + 1] = (((v >> 5) & 0x1f) * 255 + 15) / 31;
+-                        upload_row[x * 4 + 2] = ((v & 0x1f) * 255 + 15) / 31;
+-                        upload_row[x * 4 + 3] = v & 0x8000 ? 0xff : 0x00;
+-                        break;
+-
+-                    case WINED3DFMT_B5G5R5X1_UNORM:
+-                        v = ((const uint16_t *)src_row)[x];
+-                        upload_row[x * 4 + 0] = (((v >> 10) & 0x1f) * 255 + 15) / 31;
+-                        upload_row[x * 4 + 1] = (((v >> 5) & 0x1f) * 255 + 15) / 31;
+-                        upload_row[x * 4 + 2] = ((v & 0x1f) * 255 + 15) / 31;
+-                        upload_row[x * 4 + 3] = 0xff;
+-                        break;
+-
+-                    case WINED3DFMT_B4G4R4A4_UNORM:
+-                        v = ((const uint16_t *)src_row)[x];
+-                        upload_row[x * 4 + 0] = ((v >> 8) & 0x0f) * 17;
+-                        upload_row[x * 4 + 1] = ((v >> 4) & 0x0f) * 17;
+-                        upload_row[x * 4 + 2] = (v & 0x0f) * 17;
+-                        upload_row[x * 4 + 3] = ((v >> 12) & 0x0f) * 17;
+-                        break;
+-
+-                    case WINED3DFMT_B4G4R4X4_UNORM:
+-                        v = ((const uint16_t *)src_row)[x];
+-                        upload_row[x * 4 + 0] = ((v >> 8) & 0x0f) * 17;
+-                        upload_row[x * 4 + 1] = ((v >> 4) & 0x0f) * 17;
+-                        upload_row[x * 4 + 2] = (v & 0x0f) * 17;
+-                        upload_row[x * 4 + 3] = 0xff;
+-                        break;
+-
+-                    case WINED3DFMT_B2G3R3A8_UNORM:
+-                        v = ((const uint16_t *)src_row)[x];
+-                        r = (v >> 5) & 0x07;
+-                        g = (v >> 2) & 0x07;
+-                        b = v & 0x03;
+-                        upload_row[x * 4 + 0] = (r * 255 + 3) / 7;
+-                        upload_row[x * 4 + 1] = (g * 255 + 3) / 7;
+-                        upload_row[x * 4 + 2] = (b * 255 + 1) / 3;
+-                        upload_row[x * 4 + 3] = v >> 8;
+-                        break;
+-
+-                    case WINED3DFMT_B10G10R10A2_UNORM:
+-                        v32 = ((const uint32_t *)src_row)[x];
+-                        upload_row[x * 4 + 0] = ((((v32 >> 20) & 0x3ff) * 255) + 511) / 1023;
+-                        upload_row[x * 4 + 1] = ((((v32 >> 10) & 0x3ff) * 255) + 511) / 1023;
+-                        upload_row[x * 4 + 2] = (((v32 & 0x3ff) * 255) + 511) / 1023;
+-                        upload_row[x * 4 + 3] = ((v32 >> 30) * 255 + 1) / 3;
+-                        break;
+-
+-                    case WINED3DFMT_R10G10B10A2_UNORM:
+-                        v32 = ((const uint32_t *)src_row)[x];
+-                        upload_row[x * 4 + 0] = (((v32 & 0x3ff) * 255) + 511) / 1023;
+-                        upload_row[x * 4 + 1] = ((((v32 >> 10) & 0x3ff) * 255) + 511) / 1023;
+-                        upload_row[x * 4 + 2] = ((((v32 >> 20) & 0x3ff) * 255) + 511) / 1023;
+-                        upload_row[x * 4 + 3] = ((v32 >> 30) * 255 + 1) / 3;
+-                        break;
+-
+-                    case WINED3DFMT_A8_UNORM:
+-                    case WINED3DFMT_L8_UNORM:
+-                    case WINED3DFMT_R8_UNORM:
+-                    case WINED3DFMT_YV12:
+-                    case WINED3DFMT_NV12:
+-                        upload_row[x] = src_row[x];
+-                        break;
+-
+-                    case WINED3DFMT_L8A8_UNORM:
+-                    case WINED3DFMT_UYVY:
+-                    case WINED3DFMT_YUY2:
+-                        upload_row[x * 2 + 0] = src_row[x * 2 + 0];
+-                        upload_row[x * 2 + 1] = src_row[x * 2 + 1];
+-                        break;
+-
+-                    default:
+-                        break;
+-                }
++                gl_info->gl_ops.gl.p_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
++                free(upload);
++                return false;
+             }
+         }
+ 
+diff --git a/dlls/wined3d/stateblock.c b/dlls/wined3d/stateblock.c
+index 33fca433e..931e9b4a0 100644
+--- a/dlls/wined3d/stateblock.c
++++ b/dlls/wined3d/stateblock.c
+@@ -4019,6 +4019,7 @@ void CDECL wined3d_device_apply_stateblock(struct wined3d_device *device,
+         struct wined3d_extra_vs_args args;
+ 
+         args.clip_planes = state->rs[WINED3D_RS_CLIPPING] ? state->rs[WINED3D_RS_CLIPPLANEENABLE] : 0;
++        args.clip_planes &= (1u << device->adapter->d3d_info.limits.max_clip_distances) - 1;
+         args.pixel_fog = (state->rs[WINED3D_RS_FOGTABLEMODE] != WINED3D_FOG_NONE);
+         args.flat_shading = state->rs[WINED3D_RS_SHADEMODE] == WINED3D_SHADE_FLAT;
+         args.ortho_fog = (proj->_14 == 0.0f && proj->_24 == 0.0f && proj->_34 == 0.0f && proj->_44 == 1.0f);
