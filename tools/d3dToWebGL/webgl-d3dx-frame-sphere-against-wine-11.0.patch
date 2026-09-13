@@ -1,0 +1,209 @@
+diff --git a/dlls/d3dx9_36/mesh.c b/dlls/d3dx9_36/mesh.c
+--- a/dlls/d3dx9_36/mesh.c
++++ b/dlls/d3dx9_36/mesh.c
+@@ -4502,60 +4502,9 @@
+ struct d3dx_bounding_sphere
+ {
+     D3DXVECTOR3 center;
+-    FLOAT radius;
+-    BOOL valid;
++    FLOAT radius_squared;
++    UINT64 vertex_count;
+ };
+-
+-static FLOAT d3dx_matrix_max_scale(const D3DXMATRIX *matrix)
+-{
+-    FLOAT sx = sqrtf(matrix->_11 * matrix->_11 + matrix->_12 * matrix->_12 + matrix->_13 * matrix->_13);
+-    FLOAT sy = sqrtf(matrix->_21 * matrix->_21 + matrix->_22 * matrix->_22 + matrix->_23 * matrix->_23);
+-    FLOAT sz = sqrtf(matrix->_31 * matrix->_31 + matrix->_32 * matrix->_32 + matrix->_33 * matrix->_33);
+-
+-    return max(max(sx, sy), sz);
+-}
+-
+-static void d3dx_merge_bounding_sphere(struct d3dx_bounding_sphere *dst,
+-        const D3DXVECTOR3 *center, FLOAT radius)
+-{
+-    D3DXVECTOR3 delta;
+-    FLOAT distance;
+-
+-    if (!dst->valid)
+-    {
+-        dst->center = *center;
+-        dst->radius = radius;
+-        dst->valid = TRUE;
+-        return;
+-    }
+-
+-    D3DXVec3Subtract(&delta, center, &dst->center);
+-    distance = D3DXVec3Length(&delta);
+-
+-    if (dst->radius >= distance + radius)
+-        return;
+-    if (radius >= distance + dst->radius)
+-    {
+-        dst->center = *center;
+-        dst->radius = radius;
+-        return;
+-    }
+-
+-    if (distance > 0.0f)
+-    {
+-        FLOAT new_radius = (distance + dst->radius + radius) * 0.5f;
+-        FLOAT t = (new_radius - dst->radius) / distance;
+-
+-        dst->center.x += delta.x * t;
+-        dst->center.y += delta.y * t;
+-        dst->center.z += delta.z * t;
+-        dst->radius = new_radius;
+-    }
+-    else if (radius > dst->radius)
+-    {
+-        dst->radius = radius;
+-    }
+-}
+ 
+ static BOOL d3dx_mesh_get_position_offset(ID3DXBaseMesh *mesh, UINT *position_offset)
+ {
+@@ -4586,13 +4535,13 @@
+ }
+ 
+ static HRESULT d3dx_frame_calculate_bounding_sphere_mesh(ID3DXBaseMesh *mesh,
+-        const D3DXMATRIX *transform, struct d3dx_bounding_sphere *sphere)
+-{
++        const D3DXMATRIX *transform, struct d3dx_bounding_sphere *sphere, BOOL radius_pass)
++{
++    const D3DXVECTOR3 *position;
++    D3DXVECTOR3 transformed, delta;
+     const BYTE *vertices;
+-    D3DXVECTOR3 center;
+-    FLOAT radius;
+     UINT position_offset;
+-    DWORD vertex_count, stride;
++    DWORD vertex_count, stride, i;
+     HRESULT hr;
+ 
+     vertex_count = mesh->lpVtbl->GetNumVertices(mesh);
+@@ -4606,22 +4555,35 @@
+     if (FAILED(hr = mesh->lpVtbl->LockVertexBuffer(mesh, D3DLOCK_READONLY, (void **)&vertices)))
+         return hr;
+ 
+-    hr = D3DXComputeBoundingSphere((const D3DXVECTOR3 *)(vertices + position_offset),
+-            vertex_count, stride, &center, &radius);
++    for (i = 0; i < vertex_count; ++i)
++    {
++        position = (const D3DXVECTOR3 *)(vertices + position_offset + i * stride);
++        /* Native ignores local zero positions, even if the frame translates them. */
++        if (!position->x && !position->y && !position->z)
++            continue;
++
++        D3DXVec3TransformCoord(&transformed, position, transform);
++        if (radius_pass)
++        {
++            D3DXVec3Subtract(&delta, &transformed, &sphere->center);
++            sphere->radius_squared = max(sphere->radius_squared, D3DXVec3LengthSq(&delta));
++        }
++        else
++        {
++            D3DXVec3Add(&sphere->center, &sphere->center, &transformed);
++            ++sphere->vertex_count;
++        }
++    }
+     mesh->lpVtbl->UnlockVertexBuffer(mesh);
+-    if (FAILED(hr))
+-        return hr;
+-
+-    D3DXVec3TransformCoord(&center, &center, transform);
+-    d3dx_merge_bounding_sphere(sphere, &center, radius * d3dx_matrix_max_scale(transform));
+ 
+     return D3D_OK;
+ }
+ 
+ static HRESULT d3dx_frame_calculate_bounding_sphere_frame(const D3DXFRAME *frame,
+-        const D3DXMATRIX *parent_transform, struct d3dx_bounding_sphere *sphere)
++        const D3DXMATRIX *parent_transform, struct d3dx_bounding_sphere *sphere, BOOL radius_pass)
+ {
+     const D3DXMESHCONTAINER *container;
++    const D3DXFRAME *child;
+     D3DXMATRIX transform;
+     HRESULT hr;
+ 
+@@ -4632,30 +4594,23 @@
+         if (container->MeshData.Type == D3DXMESHTYPE_MESH && container->MeshData.pMesh)
+         {
+             hr = d3dx_frame_calculate_bounding_sphere_mesh((ID3DXBaseMesh *)container->MeshData.pMesh,
+-                    &transform, sphere);
++                    &transform, sphere, radius_pass);
+             if (FAILED(hr))
+                 return hr;
+         }
+         else if (container->MeshData.Type == D3DXMESHTYPE_PMESH && container->MeshData.pPMesh)
+         {
+             hr = d3dx_frame_calculate_bounding_sphere_mesh((ID3DXBaseMesh *)container->MeshData.pPMesh,
+-                    &transform, sphere);
++                    &transform, sphere, radius_pass);
+             if (FAILED(hr))
+                 return hr;
+         }
+     }
+ 
+-    if (frame->pFrameFirstChild)
+-    {
+-        hr = d3dx_frame_calculate_bounding_sphere_frame(frame->pFrameFirstChild, &transform, sphere);
+-        if (FAILED(hr))
+-            return hr;
+-    }
+-
+-    if (frame->pFrameSibling)
+-    {
+-        hr = d3dx_frame_calculate_bounding_sphere_frame(frame->pFrameSibling, parent_transform, sphere);
+-        if (FAILED(hr))
++    /* Traverse the root's descendants, not its own siblings. */
++    for (child = frame->pFrameFirstChild; child; child = child->pFrameSibling)
++    {
++        if (FAILED(hr = d3dx_frame_calculate_bounding_sphere_frame(child, &transform, sphere, radius_pass)))
+             return hr;
+     }
+ 
+@@ -4665,7 +4620,7 @@
+ HRESULT WINAPI D3DXFrameCalculateBoundingSphere(const D3DXFRAME *frame_root, D3DXVECTOR3 *center,
+         FLOAT *radius)
+ {
+-    struct d3dx_bounding_sphere sphere = {{0.0f, 0.0f, 0.0f}, 0.0f, FALSE};
++    struct d3dx_bounding_sphere sphere = {{0.0f, 0.0f, 0.0f}, 0.0f, 0};
+     D3DXMATRIX identity;
+     HRESULT hr;
+ 
+@@ -4675,22 +4630,21 @@
+         return D3DERR_INVALIDCALL;
+ 
+     D3DXMatrixIdentity(&identity);
+-    if (FAILED(hr = d3dx_frame_calculate_bounding_sphere_frame(frame_root, &identity, &sphere)))
++    if (FAILED(hr = d3dx_frame_calculate_bounding_sphere_frame(frame_root, &identity, &sphere, FALSE)))
+         return hr;
+ 
+-    if (sphere.valid)
+-    {
+-        *center = sphere.center;
+-        *radius = sphere.radius;
+-    }
+-    else
+-    {
+-        center->x = center->y = center->z = 0.0f;
+-        *radius = 0.0f;
+-    }
+-
++    if (sphere.vertex_count)
++    {
++        D3DXVec3Scale(&sphere.center, &sphere.center, 1.0f / sphere.vertex_count);
++        if (FAILED(hr = d3dx_frame_calculate_bounding_sphere_frame(frame_root, &identity, &sphere, TRUE)))
++            return hr;
++    }
++
++    *center = sphere.center;
++    *radius = sqrtf(sphere.radius_squared);
+     return D3D_OK;
+ }
++
+ 
+ HRESULT WINAPI D3DXFrameDestroy(D3DXFRAME *frame, ID3DXAllocateHierarchy *alloc_hier)
+ {

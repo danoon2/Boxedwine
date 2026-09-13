@@ -1,0 +1,75 @@
+diff --git a/dlls/d3dx9_36/sprite.c b/dlls/d3dx9_36/sprite.c
+--- a/dlls/d3dx9_36/sprite.c
++++ b/dlls/d3dx9_36/sprite.c
+@@ -266,7 +266,8 @@
+         IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_MINFILTER, D3DTEXF_ANISOTROPIC);
+     else IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+ 
+-    IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
++    IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_MIPFILTER,
++            object->texfilter_caps & D3DPTFILTERCAPS_MIPFLINEAR ? D3DTEXF_LINEAR : D3DTEXF_POINT);
+ 
+     IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_MIPMAPLODBIAS, 0);
+     IDirect3DDevice9_SetSamplerState(object->device, 0, D3DSAMP_SRGBTEXTURE, 0);
+@@ -291,7 +292,6 @@
+ 
+ /* TODO: Implement flags:
+ D3DXSPRITE_BILLBOARD: makes the sprite always face the camera
+-D3DXSPRITE_DONOTMODIFY_RENDERSTATE: name says it all
+ D3DXSPRITE_OBJECTSPACE: do not change device transforms
+ D3DXSPRITE_SORT_DEPTH_BACKTOFRONT: sort by position
+ D3DXSPRITE_SORT_DEPTH_FRONTTOBACK: sort by position
+@@ -299,7 +299,7 @@
+ */
+ /* Seems like alpha blending is always enabled, regardless of D3DXSPRITE_ALPHABLEND flag */
+     if(flags & (D3DXSPRITE_BILLBOARD |
+-                D3DXSPRITE_DONOTMODIFY_RENDERSTATE | D3DXSPRITE_OBJECTSPACE |
++                D3DXSPRITE_OBJECTSPACE |
+                 D3DXSPRITE_SORT_DEPTH_BACKTOFRONT))
+         FIXME("Flags unsupported: %#lx.\n", flags);
+     /* These flags should only matter to performance */
+@@ -335,8 +335,9 @@
+         IDirect3DStateBlock9_Capture(This->stateblock); /* Save current state */
+     }
+ 
+-    /* Apply device state */
+-    set_states(This);
++    /* Apply device state unless the caller supplies its own setup. */
++    if (!(flags & D3DXSPRITE_DONOTMODIFY_RENDERSTATE))
++        set_states(This);
+ 
+     This->flags=flags;
+     This->ready=TRUE;
+diff --git a/dlls/d3dx9_36/font.c b/dlls/d3dx9_36/font.c
+--- a/dlls/d3dx9_36/font.c
++++ b/dlls/d3dx9_36/font.c
+@@ -795,8 +795,6 @@
+     }
+ 
+     ret = y - top;
+-    if (sprite)
+-        ID3DXSprite_Flush(sprite);
+ 
+ cleanup:
+     if (target != sprite)
+diff --git a/dlls/d3dx9_36/effect.c b/dlls/d3dx9_36/effect.c
+--- a/dlls/d3dx9_36/effect.c
++++ b/dlls/d3dx9_36/effect.c
+@@ -4175,6 +4175,17 @@
+ 
+     TRACE("iface %p.\n", iface);
+ 
++    /* Cached state blocks can retain default-pool resources. Begin recreates
++     * them lazily and captures the device state after reset. */
++    for (i = 0; i < effect->technique_count; ++i)
++    {
++        if (effect->techniques[i].saved_state)
++        {
++            IDirect3DStateBlock9_Release(effect->techniques[i].saved_state);
++            effect->techniques[i].saved_state = NULL;
++        }
++    }
++
+     for (i = 0; i < effect->params.count; ++i)
+         walk_parameter_tree(&effect->params.parameters[i].param, param_on_lost_device, NULL);
+ 

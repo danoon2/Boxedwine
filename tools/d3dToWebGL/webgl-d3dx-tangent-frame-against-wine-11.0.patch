@@ -1,0 +1,87 @@
+diff --git a/dlls/d3dx9_36/mesh.c b/dlls/d3dx9_36/mesh.c
+--- a/dlls/d3dx9_36/mesh.c
++++ b/dlls/d3dx9_36/mesh.c
+@@ -8064,6 +8064,31 @@
+         if (FAILED(hr = mesh->lpVtbl->GetDeclaration(mesh, declaration)))
+             return hr;
+ 
++        if (!(options & D3DXTANGENT_GENERATE_IN_PLACE))
++        {
++            IDirect3DDevice9 *device;
++            ID3DXMesh *clone;
++
++            if (!mesh_out)
++                return D3DERR_INVALIDCALL;
++            if (FAILED(hr = mesh->lpVtbl->GetDevice(mesh, &device)))
++                return hr;
++            hr = mesh->lpVtbl->CloneMesh(mesh, mesh->lpVtbl->GetOptions(mesh), declaration, device, &clone);
++            IDirect3DDevice9_Release(device);
++            if (FAILED(hr))
++                return hr;
++
++            hr = D3DXComputeTangentFrameEx(clone, texture_in_semantic, texture_in_index,
++                    u_partial_out_semantic, u_partial_out_index, v_partial_out_semantic, v_partial_out_index,
++                    normal_out_semantic, normal_out_index, options | D3DXTANGENT_GENERATE_IN_PLACE,
++                    adjacency, partial_edge_threshold, singular_point_threshold, normal_edge_threshold, NULL, NULL);
++            if (FAILED(hr))
++                clone->lpVtbl->Release(clone);
++            else
++                *mesh_out = clone;
++            return hr;
++        }
++
+         for (i = 0; declaration[i].Stream != 0xff; i++)
+         {
+             if (declaration[i].Usage == D3DDECLUSAGE_POSITION && !declaration[i].UsageIndex)
+@@ -8080,6 +8105,15 @@
+ 
+         if (!position_declaration || !texture_declaration || !tangent_declaration || !binormal_declaration)
+             return D3DERR_INVALIDCALL;
++
++        if (options & D3DXTANGENT_CALCULATE_NORMALS)
++        {
++            hr = D3DXComputeTangentFrameEx(mesh, D3DX_DEFAULT, 0, D3DX_DEFAULT, 0, D3DX_DEFAULT, 0,
++                    normal_out_semantic, normal_out_index, options, adjacency, partial_edge_threshold,
++                    singular_point_threshold, normal_edge_threshold, NULL, NULL);
++            if (FAILED(hr))
++                return hr;
++        }
+ 
+         num_faces = mesh->lpVtbl->GetNumFaces(mesh);
+         num_vertices = mesh->lpVtbl->GetNumVertices(mesh);
+@@ -8154,18 +8188,35 @@
+         {
+             D3DXVECTOR3 *tangent = vertex_element_vec3(vertices, tangent_declaration, vertex_stride, i);
+             D3DXVECTOR3 *binormal = vertex_element_vec3(vertices, binormal_declaration, vertex_stride, i);
++            D3DXVECTOR3 sum, difference;
+ 
+             if (normal_declaration)
+             {
+                 D3DXVECTOR3 projected;
+                 D3DXVECTOR3 normal = read_vec3(vertices, normal_declaration, vertex_stride, i);
+ 
++                D3DXVec3Normalize(&normal, &normal);
+                 D3DXVec3Scale(&projected, &normal, D3DXVec3Dot(&normal, tangent));
+                 D3DXVec3Subtract(tangent, tangent, &projected);
++                D3DXVec3Scale(&projected, &normal, D3DXVec3Dot(&normal, binormal));
++                D3DXVec3Subtract(binormal, binormal, &projected);
+             }
+ 
+             D3DXVec3Normalize(tangent, tangent);
+             D3DXVec3Normalize(binormal, binormal);
++
++            /* Rotate both partials equally around their angular bisector. */
++            D3DXVec3Add(&sum, tangent, binormal);
++            D3DXVec3Subtract(&difference, tangent, binormal);
++            if (D3DXVec3LengthSq(&sum) > 0.0f && D3DXVec3LengthSq(&difference) > 0.0f)
++            {
++                D3DXVec3Normalize(&sum, &sum);
++                D3DXVec3Normalize(&difference, &difference);
++                D3DXVec3Add(tangent, &sum, &difference);
++                D3DXVec3Subtract(binormal, &sum, &difference);
++                D3DXVec3Normalize(tangent, tangent);
++                D3DXVec3Normalize(binormal, binormal);
++            }
+         }
+ 
+         if (mesh_out)
