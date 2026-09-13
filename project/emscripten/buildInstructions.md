@@ -112,6 +112,26 @@ to include work outside the profiled blocks. Profiling can perturb build time;
 compare emitted output hashes with the ordinary build before reusing its
 runtime validation.
 
+On POSIX, Emscripten's compile-only path uses `os.execvp` to replace Python
+with Clang. Its profiler atexit handler and enclosing block exits never run,
+so those compiler traces are unfinished even when compilation succeeds.
+
+`profileCompiler.py` is an optional adapter for that POSIX exec path. It waits
+for the compiler subprocess, allowing Emscripten's profiling blocks and atexit
+handler to finish. It requires `EMPROFILE=1`, preserves compiler arguments,
+standard streams and ordinary exit codes, and reports a signal as `128 + signal`.
+Use it only for diagnostics; waiting in an extra Python wrapper adds overhead.
+For example, with isolated output directories and explicit installed SDK paths:
+
+```sh
+profile_dir="$(mktemp -d)"
+printf 'release: export BUILD_DIR := %s\nrelease: export ASSET_FILES := boxedwine-shell.js boxedwine.css\n' \
+  "$profile_dir/build" > "$profile_dir/isolate.mk"
+EMPROFILE=1 TMPDIR="$profile_dir" make -f makefile -f "$profile_dir/isolate.mk" release \
+  CC='python3 /path/to/project/emscripten/profileCompiler.py /path/to/emscripten/emcc.py' \
+  CXX='python3 /path/to/project/emscripten/profileCompiler.py /path/to/emscripten/em++.py'
+```
+
 ## Profiling the WASM JIT
 
 Build a clean checkout with `make multiThreadedJit WASM_PROFILING=1`
