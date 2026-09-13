@@ -122,7 +122,7 @@ public:
 
 	bool trace = false;
 	bool traceGC = false;
-	bool isDisplayDirty = false;
+	std::atomic<bool> isDisplayDirty = false;
 
 	CLXFBConfigPtr getFbConfig(U32 id);	
 	U32 getFbConfigCount();

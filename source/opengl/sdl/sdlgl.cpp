@@ -549,6 +549,11 @@ public:
 
     static BOXEDWINE_MUTEX contextMutex;
     static BHashTable<U32, SDLGlContextPtr> contextsById;    
+#ifdef __EMSCRIPTEN__
+    // GDI presentation runs on the UI thread. Query this without taking the
+    // context lock, which a guest thread may hold while awaiting a UI callback.
+    static std::atomic<bool> hasContexts;
+#endif
 
     static BOXEDWINE_MUTEX windowMutex;
     static BHashTable<U32, SDLGlWindowPtr> sdlWindowById;
@@ -563,6 +568,9 @@ U32 KOpenGLSdl::nextId = 1;
 
 BOXEDWINE_MUTEX KOpenGLSdl::contextMutex;
 BHashTable<U32, SDLGlContextPtr> KOpenGLSdl::contextsById;
+#ifdef __EMSCRIPTEN__
+std::atomic<bool> KOpenGLSdl::hasContexts(false);
+#endif
 
 BOXEDWINE_MUTEX KOpenGLSdl::windowMutex;
 BHashTable<U32, SDLGlWindowPtr> KOpenGLSdl::sdlWindowById;
@@ -581,6 +589,9 @@ KOpenGLSdl::~KOpenGLSdl() {
 #endif
         }
         contextsById.clear();
+#ifdef __EMSCRIPTEN__
+        hasContexts = false;
+#endif
     }
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pbufferMutex);
@@ -681,6 +692,7 @@ U32 KOpenGLSdl::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFo
     U32 result = nextId++;
     SDLGlContextPtr sdlContext = std::make_shared<SDLGlContext>(result, nullptr, pixelFormat, major, minor, profile, flags);
     contextsById.set(result, sdlContext);
+    hasContexts = true;
     return result;
 #elif defined(__APPLE__)
     SDLGlContextPtr sharedContext;
@@ -795,9 +807,27 @@ void KOpenGLSdl::glDestroyContext(KThread* thread, U32 contextId) {
     }
 #endif
     contextsById.remove(contextId);
+#ifdef __EMSCRIPTEN__
+    hasContexts = contextsById.size() != 0;
+    if (context && !hasContexts) {
+        // A threaded Wine command stream can release its final context after
+        // the application's GDI upload was skipped while GL was still active.
+        // Schedule that backing image again now that software can be shown.
+        if (XServer* server = XServer::getServer(true)) {
+            server->isDisplayDirty = true;
+        }
+    }
+#endif
 }
 
 bool KOpenGLSdl::isActive() {
+#ifdef __EMSCRIPTEN__
+    // Wine retains an EGL surface on the HWND after releasing its D3D device.
+    // Its last frame must not suppress GDI once every GL context is gone.
+    if (!hasContexts) {
+        return false;
+    }
+#endif
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
     for (auto& w : sdlWindowById) {
         if (w.value->visible) {

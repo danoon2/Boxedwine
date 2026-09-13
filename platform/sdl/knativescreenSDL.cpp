@@ -95,16 +95,14 @@ static bool useEmscriptenSoftwareRenderer(bool skipRenderer) {
 static bool skipHiddenEmscriptenRenderer(bool visible, bool showOnDraw) {
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     KOpenGLPtr openGL = KNativeSystem::getOpenGL();
-#ifdef BOXEDWINE_MULTI_THREADED
-    if (openGL && openGL->isActive() && !visible && !showOnDraw) {
-        return true;
-    }
-#else
+    // Threaded GL shares the browser presentation canvas with software frames.
+    // A focus repaint must not resize it to the desktop while GL is displayed.
     if (openGL && openGL->isActive()) {
         return true;
     }
-#endif
-    return !visible && !showOnDraw;
+    // A cached GL surface can outlive its final context and leave GDI hidden.
+    // Allow the next software frame to bring the desktop back in that case.
+    return false;
 #else
     return false;
 #endif
@@ -501,7 +499,11 @@ void KNativeScreenSDL::present() {
     }
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     if (!renderer && !emscriptenSoftwareDisabled && useEmscriptenSoftwareRenderer(skipRenderer) && emscriptenSoftwareBuffer) {
-        if (showOnDraw) {
+        if (showOnDraw || !visible) {
+            KOpenGLPtr openGL = KNativeSystem::getOpenGL();
+            if (openGL && !openGL->isActive()) {
+                openGL->hideCurrentWindow();
+            }
             showWindow(true);
         }
         if (emscriptenSoftwareDirty) {
