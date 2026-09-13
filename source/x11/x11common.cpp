@@ -585,7 +585,9 @@ static void x11_QueryPointer(CPU* cpu) {
     memory->writed(ARG7, x);
     memory->writed(ARG8, y);
     memory->writed(ARG9, server->getInputModifiers());
-    EAX = Success;
+    // XQueryPointer returns a Bool indicating the same screen, not an X11
+    // status code. All windows here belong to our single emulated screen.
+    EAX = True;
 }
 
 // int XmbTextListToTextProperty(Display* display, char** list, int count, XICCEncodingStyle style, XTextProperty* text_prop_return)

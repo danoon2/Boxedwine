@@ -216,6 +216,9 @@ U32 KNativeScreenSDL::getLastUpdateTime() {
 }
 
 void KNativeScreenSDL::showWindow(bool show) {
+    if (show && XServer::getServer(true)) {
+        XServer::getServer()->setFakeFullScreenWindow(nullptr);
+    }
     if (show == visible) {
         return;
     }

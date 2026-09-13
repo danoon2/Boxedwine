@@ -514,9 +514,7 @@ int XServer::destroyWindow(U32 window) {
 	if (w->id == grabbedId) {
 		ungrabPointer(0);
 	}
-	if (fakeFullScreenWnd && fakeFullScreenWnd->id == window) {
-		fakeFullScreenWnd = nullptr;
-	}
+	clearFakeFullScreenWindow(w);
 	return Success;
 }
 
@@ -1044,6 +1042,7 @@ int XServer::unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 }
 
 void XServer::mouseMove(S32 x, S32 y, bool relative) {	
+	XWindowPtr presentedWindow = getFakeFullScreenWindow();
 	if (isGrabbed) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
 		XWindowPtr grabbed = getWindow(grabbedId);
@@ -1064,8 +1063,8 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 			if (!(grabbedMask & PointerMotionMask)) {
 				return;
 			}
-			if (fakeFullScreenWnd) {
-				fakeFullScreenWnd->windowToScreen(x, y);
+			if (presentedWindow) {
+				presentedWindow->windowToScreen(x, y);
 			}
 			grabbed->motionNotify(grabbedDisplay, x, y);
 			return;
@@ -1074,11 +1073,12 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 		}
 	}
 	if (root) { // might not be set at the very start
+		// Hit testing and the delivered event must use the same desktop coords.
+		if (presentedWindow) {
+			presentedWindow->windowToScreen(x, y);
+		}
 		XWindowPtr wnd = root->getWindowFromPoint(x, y);
 		if (wnd) {
-			if (fakeFullScreenWnd) {
-				fakeFullScreenWnd->windowToScreen(x, y);
-			}
 			if (wnd != pointerWindow) {
 				pointerMoved(pointerWindow, wnd, x, y, NotifyNormal);
 				pointerWindow = wnd;
@@ -1092,8 +1092,9 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 }
 
 void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
-	if (fakeFullScreenWnd) {
-		fakeFullScreenWnd->windowToScreen(x, y);
+	XWindowPtr presentedWindow = getFakeFullScreenWindow();
+	if (presentedWindow) {
+		presentedWindow->windowToScreen(x, y);
 	}
 	if (isGrabbed) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);

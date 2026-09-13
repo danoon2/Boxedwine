@@ -359,8 +359,9 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
     *x = xFromScreen(*x);
     *y = yFromScreen(*y);
 
-    if (XServer::getServer(true) && XServer::getServer()->fakeFullScreenWnd) {
-        XServer::getServer()->fakeFullScreenWnd->screenToWindow(*x, *y);
+    XWindowPtr presentedWindow = XServer::getServer(true) ? XServer::getServer()->getFakeFullScreenWindow() : nullptr;
+    if (presentedWindow) {
+        presentedWindow->windowToScreen(*x, *y);
     }
     return checkMousePos(*x, *y, false);
 }
@@ -374,8 +375,9 @@ void KNativeInputSDL::setMousePos(int x, int y) {
     }
 #endif
 
-    if (XServer::getServer(true) && XServer::getServer()->fakeFullScreenWnd) {
-        XServer::getServer()->fakeFullScreenWnd->screenToWindow(x, y);
+    XWindowPtr presentedWindow = XServer::getServer(true) ? XServer::getServer()->getFakeFullScreenWindow() : nullptr;
+    if (presentedWindow) {
+        presentedWindow->screenToWindow(x, y);
     }
     x = xToScreen(x);
     y = yToScreen(y);

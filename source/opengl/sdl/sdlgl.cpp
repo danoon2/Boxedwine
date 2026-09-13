@@ -347,7 +347,7 @@ static bool useSharedThreadWebGLCanvas(U32 width, U32 height, const XWindowPtr& 
 
 class SDLGlWindow : public std::enable_shared_from_this<SDLGlWindow> {
 public:
-    SDLGlWindow(SDL_Window* window, const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, bool ownsWindow = true) : window(window), pixelFormat(pixelFormat), major(major), minor(minor), profile(profile), flags(flags), ownsWindow(ownsWindow) {}
+    SDLGlWindow(SDL_Window* window, const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, bool ownsWindow = true, const XWindowPtr& inputWindow = nullptr) : window(window), pixelFormat(pixelFormat), major(major), minor(minor), profile(profile), flags(flags), ownsWindow(ownsWindow), inputWindow(inputWindow) {}
     ~SDLGlWindow() {
         destroy();
     }
@@ -361,6 +361,9 @@ public:
     const bool ownsWindow;
     bool visible = false;
     XDrawablePtr drawable;
+    // Context unbinding clears drawable, but the presented window still owns
+    // input until GDI or another GL window is shown.
+    std::weak_ptr<XWindow> inputWindow;
     U32 forceForegroundUntil = 0;
 #ifndef __EMSCRIPTEN__
     U64 nextSwapTime = 0;
@@ -378,6 +381,9 @@ public:
 typedef std::shared_ptr<SDLGlWindow> SDLGlWindowPtr;
 
 void SDLGlWindow::destroy() {
+    if (XServer::getServer(true)) {
+        XServer::getServer()->clearFakeFullScreenWindow(inputWindow.lock());
+    }
     if (window) {
         DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
             if (window) {
@@ -413,7 +419,7 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
         // The offscreen canvas can only have one browser-side owner. Reuse the
         // main SDL window record instead of creating another SDL GL window.
         resizeWebGLCanvas(screen->window, cx, cy);
-        return std::make_shared<SDLGlWindow>(screen->window, pixelFormat, 3, 0, profile | BOXEDWINE_GL_PROFILE_ES, flags, false);
+        return std::make_shared<SDLGlWindow>(screen->window, pixelFormat, 3, 0, profile | BOXEDWINE_GL_PROFILE_ES, flags, false, wnd);
     }
 #endif
 #ifdef __EMSCRIPTEN__
@@ -488,7 +494,7 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
 #ifdef __EMSCRIPTEN__
     resizeWebGLCanvas(window, cx, cy);
 #endif
-    return std::make_shared<SDLGlWindow>(window, pixelFormat, major, minor, profile, flags);
+    return std::make_shared<SDLGlWindow>(window, pixelFormat, major, minor, profile, flags, true, wnd);
 }
 
 class SDLGlContext {
@@ -593,6 +599,14 @@ KOpenGLSdl::~KOpenGLSdl() {
 }
 
 void SDLGlWindow::showWindow(bool show) {
+    if (XServer::getServer(true)) {
+        XWindowPtr inputWindow = this->inputWindow.lock();
+        if (show) {
+            XServer::getServer()->setFakeFullScreenWindow(inputWindow);
+        } else {
+            XServer::getServer()->clearFakeFullScreenWindow(inputWindow);
+        }
+    }
     U32 now = KSystem::getMilliesSinceStart();
     if (show) {
         KOpenGLSdlPtr gl = std::dynamic_pointer_cast<KOpenGLSdl>(KNativeSystem::getOpenGL());
@@ -991,6 +1005,9 @@ void KOpenGLSdl::glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>&
 }
 
 void KOpenGLSdl::glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd) {
+    if (XServer::getServer(true)) {
+        XServer::getServer()->clearFakeFullScreenWindow(wnd);
+    }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
 #ifdef __APPLE__
     SDLGlWindowPtr window = sdlWindowById.get(wnd->id);

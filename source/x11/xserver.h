@@ -47,7 +47,18 @@ public:
 
 	XWindowPtr createNewWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width, const VisualPtr& visual);
 	XWindowPtr getWindow(U32 window);
-	void setFakeFullScreenWindow(XWindowPtr wnd) {fakeFullScreenWnd = wnd;}
+	void setFakeFullScreenWindow(const XWindowPtr& wnd) {
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fakeFullScreenMutex);
+		fakeFullScreenWnd = wnd;
+	}
+	XWindowPtr getFakeFullScreenWindow() {
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fakeFullScreenMutex);
+		return fakeFullScreenWnd;
+	}
+	void clearFakeFullScreenWindow(const XWindowPtr& wnd) {
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fakeFullScreenMutex);
+		if (fakeFullScreenWnd == wnd) fakeFullScreenWnd = nullptr;
+	}
 	int destroyWindow(U32 window);
 
 	XPixmapPtr createNewPixmap(U32 width, U32 height, U32 depth, const VisualPtr& visual);
@@ -95,11 +106,6 @@ public:
 
 	XWindowPtr inputFocus;
 	bool inputFocusIsPointerRoot = false;
-	// the main sdl window is the emulated desktop
-	// in order to handle opengl or vulkan the main sdl window changes and emulates just that one window that is using opengl or vulkan
-	// so if that opengl/vulkan window is not full screen, then it will have a non zero x,y coord which will throw off the mouse
-	// to get around this, we track the current non full screen opengl/vulkan window and adjust the mouse pos using its x,y pos.
-	XWindowPtr fakeFullScreenWnd; 
 	U32 inputFocusRevertTo = 0;
 	XWindowPtr selectionWindow;
 	U32 selectionOwner = 0;
@@ -123,6 +129,10 @@ public:
 	void iterateFbConfigs(std::function<bool(const CLXFBConfigPtr& cfg)> callback);
 
 private:
+	// A presented GL/Vulkan window occupies the host client area. Map its input
+	// back to guest desktop coordinates, including its parent window offsets.
+	BOXEDWINE_MUTEX fakeFullScreenMutex;
+	XWindowPtr fakeFullScreenWnd;
 	static std::atomic_int nextId;
 	static XServer* server;
 
