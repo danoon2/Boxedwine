@@ -1,5 +1,10 @@
 # Wine 11 NTDLL, kernel32, ws2_32, and advapi32 tests
 
+For browser graphics tests, focused probes, game captures and CI, use
+the existing [graphics guide](GRAPHICS_README.md). The current Wine patch
+series is pinned by [the v38 manifest](webgl-test-divergences-v38.json);
+earlier manifests retain their historical test selections.
+
 `runWineTests.py` is the unified Wine regression entry point. On Linux it
 builds the 64-bit BoxedWine release and runs the 32-bit Wine 11
 `ntdll_test.exe`, `kernel32_test.exe`, `ws2_32_test.exe`, and

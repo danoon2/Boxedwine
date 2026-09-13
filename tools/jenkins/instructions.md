@@ -260,3 +260,84 @@ to those preserved copies where supported. Updating `demos/apps` for a later
 build therefore cannot change the archives used by an earlier build created
 with this generator. Existing historical sites are not rewritten or assigned
 retroactive identities. The normal `--keep` pruning policy still applies.
+
+## Wine graphics CI
+
+`run_graphics_ci.py` runs the complete configured four-mode Wine graphics grid
+against immutable inputs, then independently audits results, full browser logs,
+cleanup and suite coverage. It preserves the first failed attempt and reports
+unrun groups as failures. The wrapper does not build, download or publish inputs.
+
+Create a JSON file on the test worker using these fields. Paths are absolute
+or relative to the configuration file. Replace the example paths and hashes
+with a reviewed input set; do not regenerate expected counts from CI output.
+
+```json
+{
+  "schema_version": 1,
+  "filesystem": "inputs/TinyCore15Wine11.0.zip",
+  "tests_archive": "inputs/wine_tests_graphics.zip",
+  "tests_archive_sha256": "REVIEWED_ARCHIVE_SHA256",
+  "baseline": "inputs/expected.json",
+  "baseline_sha256": "REVIEWED_BASELINE_SHA256",
+  "divergences": "inputs/webgl-test-divergences.json",
+  "builds": {
+    "single-threaded-non-jit": "runtime/st",
+    "single-threaded-jit": "runtime/st-jit",
+    "multi-threaded-non-jit": "runtime/mt",
+    "multi-threaded-jit": "runtime/mt-jit"
+  },
+  "timeout_seconds": 1800,
+  "headless": true
+}
+```
+
+The baseline already pins the root, divergence manifest and executable bytes.
+The two additional hashes pin the complete test ZIP and the baseline itself.
+The runner records every runtime file's hash before and after execution.
+Keep the immutable build manifests identifying the source revision and local
+changes alongside the runtime directories; a checkout revision alone does
+not establish the provenance of an existing Wasm binary.
+
+Run from the repository root with Python 3.10+ and installed desktop Chrome:
+
+```powershell
+python tools/jenkins/run_graphics_ci.py --config C:/ci/graphics.json --output tmp/graphics-preflight --prepare-only
+python tools/jenkins/run_graphics_ci.py --config C:/ci/graphics.json --output tmp/graphics-full
+```
+
+Preflight returns zero when inputs validate, writes `state: prepared` with
+`passed: false`, and produces no JUnit results or browser launch. The real run
+returns zero only after both audits and the unchanged-input check pass. It
+retains `inputs.json`, `command.json`, `status.json`, `artifact-audit.json`,
+`coverage-audit.json`, `junit.xml` and each group's complete matrix artifacts.
+Expected upstream failures still require their exact Wine exit status; they
+are not general failure allowances.
+
+The per-group timeout includes startup and fifteen seconds of cleanup
+observation. A full run may take many hours on the interpreter. Stop-on-failure
+does not erase partial group logs. Investigate a failure before deciding on a
+new run; never merge duplicate successful retries over the original evidence.
+
+
+`graphics.Jenkinsfile` is an opt-in Pipeline definition. Configure a dedicated
+Windows GPU worker with label `boxedwine-graphics-windows` and one executor,
+then point a Pipeline from SCM job to `tools/jenkins/graphics.Jenkinsfile`.
+Set `BOXEDWINE_GRAPHICS_CONFIG` to the reviewed JSON file and optionally set
+`BOXEDWINE_GRAPHICS_PYTHON` (default: `python`). The template schedules a weekly
+Sunday run, serializes overlapping builds and archives JSON/log/XML artifacts
+even after failure. Keep immutable inputs outside workspace cleanup.
+
+Validate Chrome acceleration and the worker account in a manual job before
+enabling its schedule. The template has not been deployed or validated on a
+Jenkins worker by these local changes. Run the lightweight wrapper checks with
+`python tools/jenkins/test_graphics_ci.py`; they use synthetic artifacts and
+launch no browser, emulator or compiler.
+
+## Application-only overlays
+
+`prepare_demo_overlay.py SOURCE.zip OUTPUT.zip --include PATH --report REPORT.json`
+creates a deterministic ZIP containing explicitly selected regular files under
+`home/username/.wine/drive_c/`. Repeat `--include`; use a trailing slash to select
+a directory. Both output paths must be new. The report records source and member
+hashes and omitted paths. Packaging does not validate the application's startup.

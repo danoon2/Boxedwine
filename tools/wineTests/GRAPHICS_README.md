@@ -1,27 +1,129 @@
 # Wine graphics tests in Emscripten and native Wine
 
-`runWineTests.py` remains the single Wine test entry point and accepted-result
-policy. Its `wineGraphicsBrowser.py` backend can run one Wine 11 DirectDraw,
-D3D8, D3D9, D3DX9, or D3DXOF test group inside the single-threaded non-JIT
-Emscripten build. The unified CLI exposes DirectDraw, D3D8, D3D9, D3DX9,
-and D3DXOF. It can also run a stable comparison subset against a native
-pure-i386 Wine 11 build. The browser backend creates a temporary flat app ZIP,
-serves the selected versioned BoxedWine filesystem without copying it, and
-launches a separate Chrome profile.
+`runWineTests.py` is the unified Wine test entry point and accepted-result
+policy. Its `wineGraphicsBrowser.py` backend runs DirectDraw, D3D8, D3D9,
+D3DX9 and D3DXOF groups in an isolated Chrome profile with in-memory storage.
+Select the runtime mode and inputs explicitly; the CLI defaults retain the
+earlier published baseline and single-threaded non-JIT build.
 
-The runner does not modify the production `boxedwine.html` or
-`boxedwine-shell.js`. Its local HTTP server injects a test-only observer into
-the served HTML. The observer sends periodic copies of the BoxedWine output
-text area to the runner and reports completion when the selected Wine group
-prints its final test summary. A graceful `Boxedwine shutdown` is also
-recognized, but is not required after an authoritative Wine summary.
+The current candidate uses [the v38 patch manifest](webgl-test-divergences-v38.json)
+and [reviewed v38 counts](graphics-baseline-v38-candidate.json). Build the Wine
+test executables using [BUILD_TESTS.md](BUILD_TESTS.md). Match their archive and
+filesystem to the baseline hashes; a matching filename is insufficient.
+Use ST JIT and MT JIT for focused development runs.
 
-The September graphics candidate, its focused regressions, and reproducible Wine
-patch series are documented in [WEBGL_FIXES.md](WEBGL_FIXES.md).
-The following viewport depth correction is documented in [WEBGL_DEPTH.md](WEBGL_DEPTH.md).
-The multithreaded JIT cleanup investigation and optional
-`runGraphicsProbe.py --cleanup-wait-seconds` check are documented in
-[WEBGL_SHUTDOWN.md](WEBGL_SHUTDOWN.md).
+## Run a Wine graphics group
+
+For example, with a frozen ST JIT runtime and matching Wine inputs:
+
+```powershell
+python tools/wineTests/runWineTests.py `
+  --d3d9-group stateblock `
+  --graphics-mode single-threaded-jit `
+  --graphics-build-dir C:/graphics/st-jit `
+  --graphics-filesystem C:/graphics/TinyCore15Wine11.0.zip `
+  --graphics-tests-archive C:/graphics/wine_tests_graphics.zip `
+  --graphics-baseline tools/wineTests/graphics-baseline-v38-candidate.json `
+  --webgl-test-divergences tools/wineTests/webgl-test-divergences-v38.json `
+  --graphics-cleanup-wait-seconds 15
+```
+
+Use `--ddraw-group`, `--d3d8-group`, `--d3d9-group`, `--d3dx9-group`, or
+`--d3dxof-group` to select groups. `--graphics-test-executable` can supply one
+PE32 executable directly. `--graphics-headless` selects headless Chrome.
+`--native-wine-root` selects the native comparison path; browser cleanup
+options do not apply to that path. Run `--help` for the full suite selections.
+
+Exact baselines include assertions, TODOs, failures, skips and failure records.
+The live Wine runner also requires the shell exit status to match the failure
+count capped at 255. A passing summary cannot hide a missing or wrong exit
+status. `--no-graphics-baseline` is for exploration, not acceptance.
+
+## Completion and retained artifacts
+
+The browser backend hashes runtime files, the root ZIP, the test executable
+and the generated app ZIP before serving them. It verifies those inputs again
+after execution and fails a run whose inputs changed. `build-identity.json`,
+the browser manifest and the launch URL share a build ID. Source revision and
+dirty-state labels are explicit optional inputs, never inferred from a checkout
+for an existing binary. Use `--graphics-build-commit FULL_OBJECT_ID` and
+`--graphics-build-source-dirty true` when those labels are known.
+
+The shell records the test status before wineserver cleanup, records both kill
+and wait status, and emits the cleanup marker only after the wait succeeds.
+The observation period catches late browser errors. Partial guest output,
+startup state and per-cycle logs remain available after a timeout. Once the
+server receives a completion payload, older progress requests cannot replace it.
+
+Each run retains manifests, guest output, the complete Chrome log, browser
+payload, HTTP log and generated app ZIP. A repeated focused probe records each
+cycle's assertions, process result and cleanup rather than trusting the final
+cycle alone. Ordinary historical artifacts without exit-status metadata remain
+readable; they do not provide current exit-status evidence.
+
+## Matrices and independent audits
+
+`runGraphicsMatrix.py` accepts repeated `--build MODE=DIR` selections plus
+`--filesystem`, `--tests-archive`, `--baseline`, `--divergences` and a new
+`--output` directory. Use `--full` to include large visual groups and
+`--stop-on-failure` to preserve the first failure and an incomplete matrix.
+Its runtime-candidate baseline changes only the selected runtime identity;
+reviewed assertion and failure expectations are preserved.
+
+`auditGraphicsMatrix.py MATRIX.json --output AUDIT.json` checks retained
+Chrome diagnostics and completed cleanup for every recorded row.
+`auditGraphicsCoverage.py --help` describes the stricter full-grid audit,
+which requires all groups in all five suites and all four configured modes.
+Count reviews cannot waive assertion failures, timeouts or browser warnings.
+These auditors read existing evidence without launching a browser.
+
+The opt-in [Jenkins graphics pipeline](../jenkins/graphics.Jenkinsfile) and its
+input configuration are documented in the existing
+[Jenkins instructions](../jenkins/instructions.md#wine-graphics-ci).
+
+## Focused probes and game checks
+
+- `runGraphicsProbe.py` runs the versioned standalone probes with explicit
+  executable, filesystem, build directory, mode and output. `--repeat` retains
+  every launch; `--cleanup-wait-seconds 15` requires late-error observation.
+  D3DX, texgen, mapped-buffer and shader-failure probes have additional audits
+  against pinned reference records. Fault-injection options require the separate
+  test-only Wine patches and are not production configuration.
+- `buildPointSizeProbes.py` and `buildFloatVisualProbes.py` prepare focused Wine
+  visual tests. Use a matching configured Wine source/build pair and serialize
+  access to it; the builders preserve the original source and executable.
+- `runWebGLFloatSamples.py` and `runWebGLRGB10Transfers.py` test raw browser
+  formats and transfers. The extension and sample-list controls provide
+  restricted-capability comparisons; their auditors inspect pixels and errors.
+- `buildSampleMaskProbes.py` / `runSampleMaskProbe.py` cover mask transitions,
+  cached programs, target changes and extension absence. `buildP8CopyProbe.py`
+  / `runP8CopyProbe.py` cover offscreen palette conversion and final display.
+- `prepareGameCapture.py` prepares isolated inputs for `captureGame.mjs`.
+  `compareGameFrames.py` compares equal-sized compositor frames with explicit
+  regions and tolerances. Install `requirements-frames.txt` for frame analysis.
+  Native canvas dimensions, lifecycle events and frame hashes are retained.
+- `runMechWarriorProbe.py`, `runSdkInputProbe.py`, `runShadowMapProbe.py` and
+  `runCursorQueryProbe.mjs` drive specific scene/input checkpoints. The cursor
+  tools include pointer-lock and GDI checks. `runGamePerformanceControl.py`
+  validates the presentation-timing observer using a controlled workload.
+- `runProcessKillProbe.py` runs the existing Linux process-lifetime probes
+  through the shared browser harness with process-return observation.
+
+Use each tool's `--help` or its documented positional arguments. Run browser
+graphics tests serially without another game or graphics workload on the host.
+Wine suite results, focused probes, game frames and performance measurements
+provide separate evidence; none alone establishes compatibility with every game.
+
+`indexWebglTestPolicy.py` and `indexWebglTestChanges.py` map policy edits and
+every test hunk to exact upstream/patched source locations. They expose removed
+assertions and changed predicates without deciding whether those changes are
+acceptable or updating the baseline.
+
+## Earlier published baselines and native comparison
+
+The following retained reference material describes the earlier public bundles
+and native comparison workflows. Use the explicit current candidate inputs and
+completion requirements above when testing this branch.
 
 ## DirectDraw baseline
 
@@ -69,14 +171,11 @@ Each invocation creates a timestamped directory below
 - `server.log`: local HTTP requests
 - `input/<suite>-<group>.zip`: the exact generated app ZIP
 
-The injected harness runs the Wine test through `/bin/sh` and attempts to stop
-wineserver after the test exits. Some Emscripten Wine runs leave service
-processes alive after printing the final summary, so the runner treats that
-group-specific summary as authoritative and terminates only its isolated
-Chrome process tree. A normal run passes only when Wine reports the exact
-versioned test, todo, failure, skip, and accepted-failure identities in
-`graphics-baseline-v1.json`, and the browser reports no error. The same values
-are retained in the manifest.
+The current injected harness runs the Wine test through `/bin/sh`, records
+the test exit status, and waits for wineserver cleanup. The exact baseline
+counts and failure identities remain required; use the cleanup-observation
+option described above to detect late browser errors. The older counts below
+document the published baseline and do not replace the selected v38 manifest.
 
 The July 31, 2026 source-color-key checkpoint expands the `ddraw1` baseline to
 19,640 assertions, 59 todo results, 0 failures, and 20 skips. Ordinary RGB
