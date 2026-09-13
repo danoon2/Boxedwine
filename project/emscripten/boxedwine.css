@@ -70,6 +70,8 @@ div.emscripten_border {
 /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
 canvas.emscripten {
     border: 0px none;
+    /* Keep the keyboard focus indicator outside the guest framebuffer. */
+    outline-offset: 2px;
     height: 100%;
     width: 100%;
 }
@@ -85,6 +87,22 @@ div.emscripten_border > canvas.emscripten {
 canvas.boxedwine-webgl-canvas {
     pointer-events: none;
     z-index: 1;
+}
+/* Keep both drawing layers in the fullscreen top layer. SDL may set inline
+   sizes and letterbox padding on its canvas; the shared frame supplies those
+   bounds here so display and mouse coordinates stay aligned. */
+#dropzone:fullscreen {
+    background: black;
+    padding: 0;
+}
+#dropzone:fullscreen div.emscripten_border {
+    width: min(100vw, calc(100vh * var(--boxedwine-canvas-aspect)));
+}
+#dropzone:fullscreen canvas.emscripten {
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 #console {
     box-sizing: border-box;

@@ -1248,6 +1248,7 @@
             }
             return originalGetContext(type, attributes);
           };
+          setupCanvasFullscreen(canvas);
           setupPointerLock(canvas);
           canvas.width  = 800;
           canvas.height = 600;
@@ -1374,6 +1375,19 @@ function toggleConsole() {
         console.style.display = 'none';
     }
 }
+// Fullscreen must include SDL's input/GL canvas and the sibling presentation
+// canvas used by GDI and pthread GL. A fullscreen canvas hides its siblings,
+// even when their CSS z-index would normally place them above it.
+function setupCanvasFullscreen(canvas) {
+    var target = document.getElementById('dropzone');
+    if (!target || !target.contains(canvas)) return;
+    ['requestFullscreen', 'webkitRequestFullscreen', 'webkitRequestFullScreen'].forEach(function(name) {
+        if (typeof canvas[name] === 'function' && typeof target[name] === 'function') {
+            canvas[name] = function(options) { return target[name](options); };
+        }
+    });
+}
+
 function toggleSound() {
     var el = document.getElementById('soundToggle');
     Config.isSoundEnabled = el.checked;
