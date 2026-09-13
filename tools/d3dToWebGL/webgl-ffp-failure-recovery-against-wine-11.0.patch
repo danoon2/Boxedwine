@@ -1,0 +1,96 @@
+--- a/dlls/wined3d/shader.c
++++ b/dlls/wined3d/shader.c
+@@ -2542,14 +2542,27 @@
+     {
+         struct wined3d_ffp_vs_settings *settings = shader->byte_code;
+         struct wined3d_shader_desc desc;
++        struct vkd3d_shader_code code;
++        HRESULT hr;
+ 
+         if (!ffp_hlsl_compile_vs(settings, &desc, device))
++        {
++            shader->initialization_failed = true;
++            ERR("Failed to compile fixed-function vertex shader.\n");
+             return;
++        }
+         free(settings);
+-        if (FAILED(shader_set_function(shader, &desc, WINED3D_SHADER_TYPE_VERTEX, NULL,
+-                device->adapter->d3d_info.limits.vs_uniform_count)))
+-        {
+-            shader_cleanup(shader);
++        shader->byte_code = NULL;
++        hr = shader_set_function(shader, &desc, WINED3D_SHADER_TYPE_VERTEX, NULL,
++                device->adapter->d3d_info.limits.vs_uniform_count);
++        code.code = (void *)desc.byte_code;
++        code.size = 0;
++        vkd3d_shader_free_shader_code(&code);
++        if (FAILED(hr))
++        {
++            /* The cached object owns partial initialization until its final release. */
++            shader->initialization_failed = true;
++            ERR("Failed to initialize fixed-function vertex shader, hr %#lx.\n", hr);
+             return;
+         }
+     }
+@@ -2558,14 +2571,27 @@
+     {
+         struct ffp_frag_settings *settings = shader->byte_code;
+         struct wined3d_shader_desc desc;
++        struct vkd3d_shader_code code;
++        HRESULT hr;
+ 
+         if (!ffp_hlsl_compile_ps(settings, &desc))
++        {
++            shader->initialization_failed = true;
++            ERR("Failed to compile fixed-function pixel shader.\n");
+             return;
++        }
+         free(settings);
+-        if (FAILED(shader_set_function(shader, &desc, WINED3D_SHADER_TYPE_PIXEL, NULL,
+-                device->adapter->d3d_info.limits.ps_uniform_count)))
+-        {
+-            shader_cleanup(shader);
++        shader->byte_code = NULL;
++        hr = shader_set_function(shader, &desc, WINED3D_SHADER_TYPE_PIXEL, NULL,
++                device->adapter->d3d_info.limits.ps_uniform_count);
++        code.code = (void *)desc.byte_code;
++        code.size = 0;
++        vkd3d_shader_free_shader_code(&code);
++        if (FAILED(hr))
++        {
++            /* The cached object owns partial initialization until its final release. */
++            shader->initialization_failed = true;
++            ERR("Failed to initialize fixed-function pixel shader, hr %#lx.\n", hr);
+             return;
+         }
+     }
+--- a/dlls/wined3d/cs.c
++++ b/dlls/wined3d/cs.c
+@@ -1094,6 +1094,17 @@
+     const struct wined3d_cs_draw *op = data;
+     unsigned int i;
+ 
++    /* FFP compilation runs on the command stream. Do not submit an incomplete
++     * cached shader to the backend; later draws may use a different valid shader. */
++    for (i = 0; i < WINED3D_SHADER_TYPE_GRAPHICS_COUNT; ++i)
++    {
++        if (state->shader[i] && state->shader[i]->initialization_failed)
++        {
++            WARN("Skipping draw with failed shader %p.\n", state->shader[i]);
++            return;
++        }
++    }
++
+     base_vertex_idx = 0;
+     if (!op->parameters.indirect)
+     {
+--- a/dlls/wined3d/wined3d_private.h
++++ b/dlls/wined3d/wined3d_private.h
+@@ -4349,6 +4349,7 @@
+     bool load_local_constsF;
+     bool is_ffp_vs;
+     bool is_ffp_ps;
++    bool initialization_failed;
+     enum vkd3d_shader_source_type source_type;
+     const struct wined3d_shader_frontend *frontend;
+     void *frontend_data;

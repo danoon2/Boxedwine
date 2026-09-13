@@ -43,12 +43,27 @@ def _patch_lines(patch_path: Path) -> list[str]:
 
 
 def modified_patch_files(patch_path: Path) -> set[str]:
-    """Return every file modified by a git-format patch."""
-    return {
-        match.group(1)
-        for line in _patch_lines(patch_path)
-        if (match := PATCH_PATH_RE.match(line))
-    }
+    """Return paths from Git and plain unified diffs, excluding hunk contents."""
+    paths = set()
+    old_remaining = new_remaining = 0
+    for line in _patch_lines(patch_path):
+        if old_remaining or new_remaining:
+            if line.startswith(" "):
+                old_remaining -= 1
+                new_remaining -= 1
+            elif line.startswith("-"):
+                old_remaining -= 1
+            elif line.startswith("+"):
+                new_remaining -= 1
+            continue
+        if match := re.match(r"^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@", line):
+            old_remaining = int(match.group(1)) if match.group(1) is not None else 1
+            new_remaining = int(match.group(2)) if match.group(2) is not None else 1
+        elif match := PATCH_PATH_RE.match(line):
+            paths.add(match.group(1))
+        elif match := re.match(r"^(?:--- a/|\+\+\+ b/)([^\t]+)", line):
+            paths.add(match.group(1))
+    return paths
 
 
 def added_test_policy_lines(patch_path: Path) -> tuple[set[str], Counter, Counter]:
@@ -315,6 +330,38 @@ def load_and_validate(
     return manifest
 
 
+def build_inventory(manifest: dict) -> dict:
+    """Describe every file in an already validated production/test patch set."""
+    files: dict[str, dict] = {}
+    patches = []
+    for entry in manifest["_validated_production_patches"]:
+        paths = sorted(modified_patch_files(Path(entry["path"])))
+        patches.append({
+            "patch_id": entry["patch_id"], "category": entry["category"],
+            "filename": Path(entry["path"]).name, "sha256": entry["sha256"],
+            "files": paths,
+        })
+        for path in paths:
+            row = files.setdefault(path, {"path": path, "patches": [], "categories": []})
+            row["patches"].append(entry["patch_id"])
+            if entry["category"] not in row["categories"]:
+                row["categories"].append(entry["category"])
+    test_path = Path(manifest["_test_patch_path"])
+    test_files = sorted(modified_patch_files(test_path))
+    return {
+        "schema_version": 1,
+        "manifest_id": manifest["manifest_id"],
+        "manifest_sha256": manifest["_sha256"],
+        "wine_source_commit": manifest.get("wine_source_commit"),
+        "production_patches": patches,
+        "production_files": [files[path] for path in sorted(files)],
+        "test_patch": {"filename": test_path.name, "sha256": sha256(test_path), "files": test_files},
+        "counts": {"production_patches": len(patches), "production_files": len(files),
+                   "test_files": len(test_files), **manifest["_policy_counts"]},
+        "classified_rules": manifest["classified_rules"],
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Validate the Wine WebGL production/test patch split."
@@ -323,6 +370,11 @@ def main(argv: list[str] | None = None) -> int:
         "--manifest",
         type=Path,
         default=Path(__file__).with_name("webgl-test-divergences-v2.json"),
+    )
+    parser.add_argument(
+        "--inventory-output",
+        type=Path,
+        help="write the validated, categorized inventory of every patched Wine file",
     )
     parser.add_argument(
         "--production-patch",
@@ -348,6 +400,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {error}")
         return 1
     counts = manifest["_policy_counts"]
+    if arguments.inventory_output:
+        inventory = build_inventory(manifest)
+        arguments.inventory_output.parent.mkdir(parents=True, exist_ok=True)
+        arguments.inventory_output.write_text(
+            json.dumps(inventory, indent=2) + "\n", encoding="utf-8"
+        )
     print(
         f"{manifest.get('manifest_id', 'WebGL divergence manifest')}: "
         f"{manifest['_series_counts']['production_patches']} production patches, "

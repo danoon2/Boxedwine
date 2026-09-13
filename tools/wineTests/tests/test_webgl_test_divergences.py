@@ -103,6 +103,36 @@ class WebGLTestDivergenceTests(unittest.TestCase):
             "classified_rules": classified_rules,
         }
 
+    def test_inventory_keeps_all_layers_of_a_shared_production_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            patches = [temp / "base.patch", temp / "fix.patch"]
+            patches[0].write_text(
+                "diff --git a/configure.ac b/configure.ac\n"
+                "diff --git a/dlls/wined3d/context.c b/dlls/wined3d/context.c\n",
+                encoding="utf-8")
+            patches[1].write_text(
+                "diff --git a/dlls/wined3d/context.c b/dlls/wined3d/context.c\n",
+                encoding="utf-8")
+            tests = temp / "tests.patch"
+            tests.write_text("diff --git a/dlls/ddraw/tests/ddraw7.c b/dlls/ddraw/tests/ddraw7.c\n",
+                             encoding="utf-8")
+            manifest = self.manifest_for(patches, tests,
+                modified_test_files=["dlls/ddraw/tests/ddraw7.c"], classified_rules=[])
+            manifest["manifest_id"] = "inventory-fixture"
+            manifest["production_patches"][0]["category"] = "base"
+            manifest["production_patches"][1]["category"] = "correction"
+            path = temp / "manifest.json"
+            path.write_text(json.dumps(manifest), encoding="utf-8")
+            validated = self.module.load_and_validate(path, patches, tests)
+            inventory = self.module.build_inventory(validated)
+            self.assertEqual(inventory["counts"]["production_files"], 2)
+            self.assertEqual(inventory["test_patch"]["files"], ["dlls/ddraw/tests/ddraw7.c"])
+            context = next(row for row in inventory["production_files"]
+                           if row["path"] == "dlls/wined3d/context.c")
+            self.assertEqual(context["patches"], ["production-1", "production-2"])
+            self.assertEqual(context["categories"], ["base", "correction"])
+
     def test_default_manifest_classifies_every_test_policy_change(self):
         manifest = self.module.load_and_validate(
             DEFAULT_MANIFEST,
@@ -151,7 +181,12 @@ class WebGLTestDivergenceTests(unittest.TestCase):
         )
 
     def test_selected_manifest_resolves_its_own_patch_series(self):
-        for version, patch_count, skip_count, todo_count in ((2, 10, 63, 44), (3, 13, 62, 44), (4, 14, 61, 43)):
+        for version, patch_count, skip_count, todo_count in (
+            (2, 10, 63, 44), (3, 13, 62, 44), (4, 14, 61, 43), (5, 15, 59, 43),
+            (6, 16, 58, 43), (7, 17, 51, 43), (8, 18, 51, 43), (9, 20, 51, 43),
+            (10, 21, 51, 43), (11, 22, 51, 43), (12, 23, 51, 43), (13, 24, 51, 43),
+            (14, 25, 51, 43), (15, 26, 51, 43),
+        ):
             with self.subTest(version=version):
                 manifest = self.module.load_and_validate(
                     DEFAULT_MANIFEST.with_name(f"webgl-test-divergences-v{version}.json")

@@ -1,0 +1,39 @@
+diff --git a/dlls/wined3d/ffp_hlsl.c b/dlls/wined3d/ffp_hlsl.c
+--- a/dlls/wined3d/ffp_hlsl.c
++++ b/dlls/wined3d/ffp_hlsl.c
+@@ -334,6 +334,21 @@
+                 shader_addline(&texcoord, "float4(normal, 1.0)");
+                 break;
+ 
++            case WINED3DTSS_TCI_CAMERASPACEPOSITION:
++                shader_addline(&texcoord, "ec_pos");
++                break;
++
++            case WINED3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR:
++                shader_addline(&texcoord, "float4(reflect(ffp_normalize(ec_pos.xyz), normal), 1.0)");
++                break;
++
++            case WINED3DTSS_TCI_SPHEREMAP:
++                shader_addline(buffer, "    float3 reflect%u = reflect(ffp_normalize(ec_pos.xyz), normal);\n", i);
++                shader_addline(buffer, "    float sphere_scale%u = 2.0 * length(float3(reflect%u.xy, reflect%u.z - 1.0));\n",
++                        i, i, i);
++                shader_addline(&texcoord, "float4(reflect%u.xy / sphere_scale%u + 0.5, 1.0, 0.0)", i, i);
++                break;
++
+             default:
+                 FIXME("Unhandled texgen %#x.\n", settings->texgen[i]);
+                 break;
+diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -9721,8 +9721,8 @@
+ 
+             case WINED3DTSS_TCI_SPHEREMAP:
+                 shader_addline(buffer, "r = reflect(ffp_normalize(ec_pos.xyz), normal);\n");
+-                shader_addline(buffer, "m = 2.0 * length(vec3(r.x, r.y, r.z + 1.0));\n");
+-                shader_addline(texcoord, "vec4(r.x / m + 0.5, r.y / m + 0.5, 0.0, 1.0)");
++                shader_addline(buffer, "m = 2.0 * length(vec3(r.x, r.y, r.z - 1.0));\n");
++                shader_addline(texcoord, "vec4(r.x / m + 0.5, r.y / m + 0.5, 1.0, 0.0)");
+                 break;
+ 
+             default:

@@ -1,0 +1,38 @@
+diff --git a/dlls/wined3d/buffer.c b/dlls/wined3d/buffer.c
+--- a/dlls/wined3d/buffer.c
++++ b/dlls/wined3d/buffer.c
+@@ -43,7 +43,7 @@
+ 
+ static void wined3d_buffer_evict_sysmem(struct wined3d_buffer *buffer)
+ {
+-    if (buffer->resource.pin_sysmem)
++    if (buffer->resource.pin_sysmem || (wined3d_settings.webgl && buffer->resource.map_count))
+     {
+         TRACE("Not evicting system memory for buffer %p.\n", buffer);
+         return;
+@@ -501,6 +501,10 @@
+     else if (buffer->resource.map_count)
+     {
+         WARN("Loading mapped buffer.\n");
++        /* WebGL maps system memory. Applications may write more geometry
++         * between draws without unlocking, so each draw needs a fresh upload. */
++        if (wined3d_settings.webgl && (buffer->locations & WINED3D_LOCATION_SYSMEM))
++            wined3d_buffer_invalidate_location(buffer, ~WINED3D_LOCATION_SYSMEM);
+     }
+ 
+     if (!(buffer->flags & WINED3D_BUFFER_USE_BO))
+@@ -715,7 +719,14 @@
+     }
+ 
+     if (!buffer->map_ptr)
++    {
++        /* A draw may have uploaded this mapping before the application made
++         * its final writes. Do not reuse that snapshot after the last unlock. */
++        if (wined3d_settings.webgl && (buffer->locations & WINED3D_LOCATION_SYSMEM)
++                && (buffer->locations & WINED3D_LOCATION_BUFFER))
++            wined3d_buffer_invalidate_location(buffer, ~WINED3D_LOCATION_SYSMEM);
+         return WINED3D_OK;
++    }
+ 
+     context = context_acquire(device, NULL, 0);
+ 

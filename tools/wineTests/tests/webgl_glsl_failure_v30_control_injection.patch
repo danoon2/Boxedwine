@@ -1,0 +1,82 @@
+diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -594,10 +594,40 @@
+         }
+     }
+ 
+-    GL_EXTCALL(glShaderSource(shader, 1, &src, NULL));
++    /* Test-only: submit invalid source to the real compiler for selected phases. */
++    {
++        char mode[16], phase[16];
++        GLint type;
++        const char *error = NULL;
++        if (GetEnvironmentVariableA("BW_TEST_GLSL_FAILURE", mode, sizeof(mode))
++                && !strcmp(mode, "compile")
++                && GetEnvironmentVariableA("BW_TEST_GLSL_PHASE", phase, sizeof(phase)))
++        {
++            GL_EXTCALL(glGetShaderiv(shader, GL_SHADER_TYPE, &type));
++            if (!strcmp(phase, "vertex") && type == GL_VERTEX_SHADER)
++                error = "\n#error BW_TEST_GLSL_COMPILE_VERTEX\n";
++            if (!strcmp(phase, "pixel") && type == GL_FRAGMENT_SHADER)
++                error = "\n#error BW_TEST_GLSL_COMPILE_PIXEL\n";
++        }
++        if (error)
++        {
++            const char *sources[] = {src, error};
++            ERR("BW_TEST_GLSL_COMPILE phase=%s shader=%u\n", phase, shader);
++            GL_EXTCALL(glShaderSource(shader, 2, sources, NULL));
++        }
++        else
++            GL_EXTCALL(glShaderSource(shader, 1, &src, NULL));
++    }
+     checkGLcall("glShaderSource");
+     GL_EXTCALL(glCompileShader(shader));
+     checkGLcall("glCompileShader");
++    /* Test-only observation; this does not alter the production decision. */
++    {
++        GLint status, type;
++        GL_EXTCALL(glGetShaderiv(shader, GL_COMPILE_STATUS, &status));
++        GL_EXTCALL(glGetShaderiv(shader, GL_SHADER_TYPE, &type));
++        ERR("BW_TEST_GLSL_COMPILE_STATUS shader=%u type=%x success=%d\n", shader, type, status);
++    }
+     print_glsl_info_log(gl_info, shader, FALSE);
+ }
+ 
+@@ -11036,9 +11066,36 @@
+         list_add_head(ps_list, &entry->ps.shader_entry);
+     }
+ 
++    /* Test-only: both shaders compile, but this absent output prevents linking. */
++    {
++        char mode[16], phase[16];
++        if (GetEnvironmentVariableA("BW_TEST_GLSL_FAILURE", mode, sizeof(mode))
++                && !strcmp(mode, "link")
++                && GetEnvironmentVariableA("BW_TEST_GLSL_PHASE", phase, sizeof(phase))
++                && (!strcmp(phase, "vertex") || !strcmp(phase, "pixel")))
++        {
++            const char *varying = "BW_TEST_GLSL_MISSING_VARYING";
++            ERR("BW_TEST_GLSL_LINK phase=%s program=%u\n", phase, program_id);
++            GL_EXTCALL(glTransformFeedbackVaryings(program_id, 1, &varying, GL_INTERLEAVED_ATTRIBS));
++        }
++    }
+     /* Link the program */
+     TRACE("Linking GLSL shader program %u.\n", program_id);
+     GL_EXTCALL(glLinkProgram(program_id));
++    /* Test-only observation, including attached shader status at link time. */
++    {
++        GLint status, compiled;
++        GLsizei count, i;
++        GLuint attached[6];
++        GL_EXTCALL(glGetProgramiv(program_id, GL_LINK_STATUS, &status));
++        GL_EXTCALL(glGetAttachedShaders(program_id, 6, &count, attached));
++        ERR("BW_TEST_GLSL_LINK_STATUS program=%u success=%d attached=%d\n", program_id, status, count);
++        for (i = 0; i < count; ++i)
++        {
++            GL_EXTCALL(glGetShaderiv(attached[i], GL_COMPILE_STATUS, &compiled));
++            ERR("BW_TEST_GLSL_ATTACHED program=%u shader=%u compiled=%d\n", program_id, attached[i], compiled);
++        }
++    }
+     shader_glsl_validate_link(gl_info, program_id);
+ 
+     shader_glsl_init_vs_uniform_locations(gl_info, priv, program_id, &entry->vs,

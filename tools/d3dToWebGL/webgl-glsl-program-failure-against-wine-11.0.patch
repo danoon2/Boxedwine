@@ -1,0 +1,265 @@
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -4361,7 +4361,7 @@
+     context->last_was_blit = FALSE;
+     context->last_was_ffp_blit = FALSE;
+ 
+-    return TRUE;
++    return !context_gl->shader_program_failed;
+ }
+ 
+ static void wined3d_context_gl_apply_compute_state(struct wined3d_context_gl *context_gl,
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -261,7 +261,8 @@
+     unsigned int constant_version;
+     DWORD shader_controlled_clip_distances : 1;
+     DWORD clip_distance_mask : 8; /* WINED3D_MAX_CLIP_DISTANCES, 8 */
+-    DWORD padding : 23;
++    DWORD link_failed : 1;
++    DWORD padding : 22;
+ };
+ 
+ struct glsl_program_key
+@@ -601,79 +602,102 @@
+     print_glsl_info_log(gl_info, shader, FALSE);
+ }
+ 
++/* Failure diagnostics must remain available when TRACE and FIXME are disabled. */
++static void shader_glsl_dump_failure_log(const struct wined3d_gl_info *gl_info, GLuint id, BOOL program)
++{
++    const char *ptr, *end, *line;
++    GLint length = 0;
++    GLsizei written = 0;
++    char *log;
++
++    if (program)
++        GL_EXTCALL(glGetProgramiv(id, GL_INFO_LOG_LENGTH, &length));
++    else
++        GL_EXTCALL(glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length));
++    if (length <= 1)
++        return;
++    if (!(log = malloc(length)))
++    {
++        ERR("Unable to allocate %d bytes for the GLSL failure log.\n", length);
++        return;
++    }
++    if (program)
++        GL_EXTCALL(glGetProgramInfoLog(id, length, &written, log));
++    else
++        GL_EXTCALL(glGetShaderInfoLog(id, length, &written, log));
++    ptr = log;
++    end = ptr + min(max(written, 0), length - 1);
++    while ((line = wined3d_get_line(&ptr, end)))
++        ERR("GLSL %s %u log: %.*s%s", program ? "program" : "shader", id, (int)(ptr - line), line,
++                ptr > line && ptr[-1] == '\n' ? "" : "\n");
++    free(log);
++}
++
+ /* Context activation is done by the caller. */
+ static void shader_glsl_dump_program_source(const struct wined3d_gl_info *gl_info, GLuint program)
+ {
+-    GLint i, shader_count, source_size = -1;
++    GLint shader_count = 0, type, compiled, length;
++    GLsizei count = 0, written;
+     GLuint *shaders;
+-    char *source = NULL;
++    unsigned int i;
+ 
+     GL_EXTCALL(glGetProgramiv(program, GL_ATTACHED_SHADERS, &shader_count));
++    if (shader_count <= 0)
++        return;
+     if (!(shaders = calloc(shader_count, sizeof(*shaders))))
+     {
+         ERR("Failed to allocate shader array memory.\n");
+         return;
+     }
+-
+-    GL_EXTCALL(glGetAttachedShaders(program, shader_count, NULL, shaders));
+-    for (i = 0; i < shader_count; ++i)
++    GL_EXTCALL(glGetAttachedShaders(program, shader_count, &count, shaders));
++    for (i = 0; i < count; ++i)
+     {
+         const char *ptr, *end, *line;
+-        GLint tmp;
+-
+-        GL_EXTCALL(glGetShaderiv(shaders[i], GL_SHADER_SOURCE_LENGTH, &tmp));
+-
+-        if (source_size < tmp)
+-        {
+-            free(source);
+-
+-            if (!(source = malloc(tmp)))
+-            {
+-                ERR("Failed to allocate %d bytes for shader source.\n", tmp);
+-                free(shaders);
+-                return;
+-            }
+-            source_size = tmp;
+-        }
+-
+-        GL_EXTCALL(glGetShaderSource(shaders[i], source_size, NULL, source));
++        char *source;
++
++        GL_EXTCALL(glGetShaderiv(shaders[i], GL_SHADER_TYPE, &type));
++        GL_EXTCALL(glGetShaderiv(shaders[i], GL_COMPILE_STATUS, &compiled));
++        ERR("GLSL program %u shader %u type %s compiled %d.\n",
++                program, shaders[i], debug_gl_shader_type(type), compiled);
++        shader_glsl_dump_failure_log(gl_info, shaders[i], FALSE);
++        GL_EXTCALL(glGetShaderiv(shaders[i], GL_SHADER_SOURCE_LENGTH, &length));
++        if (length <= 1)
++        {
++            ERR("GLSL program %u shader %u has no source.\n", program, shaders[i]);
++            continue;
++        }
++        if (!(source = malloc(length)))
++        {
++            ERR("Failed to allocate %d bytes for shader source.\n", length);
++            continue;
++        }
++        written = 0;
++        GL_EXTCALL(glGetShaderSource(shaders[i], length, &written, source));
+         ptr = source;
+-        end = &ptr[tmp - 1];
+-
+-        FIXME("Shader %u:\n", shaders[i]);
+-        GL_EXTCALL(glGetShaderiv(shaders[i], GL_SHADER_TYPE, &tmp));
+-        FIXME("    GL_SHADER_TYPE: %s.\n", debug_gl_shader_type(tmp));
+-        GL_EXTCALL(glGetShaderiv(shaders[i], GL_COMPILE_STATUS, &tmp));
+-        FIXME("    GL_COMPILE_STATUS: %d.\n", tmp);
+-        FIXME("\n");
++        end = ptr + min(max(written, 0), length - 1);
+         while ((line = wined3d_get_line(&ptr, end)))
+-        {
+-            FIXME("    %.*s", (int)(ptr - line), line);
+-        }
+-        FIXME("\n");
+-    }
+-
+-    free(source);
++            ERR("GLSL program %u shader %u source: %.*s%s", program, shaders[i], (int)(ptr - line), line,
++                    ptr > line && ptr[-1] == '\n' ? "" : "\n");
++        free(source);
++    }
+     free(shaders);
+ }
+ 
+-/* Context activation is done by the caller. */
+-void shader_glsl_validate_link(const struct wined3d_gl_info *gl_info, GLuint program)
+-{
+-    GLint tmp;
+-
+-    if (!TRACE_ON(d3d_shader) && !FIXME_ON(d3d_shader))
+-        return;
+-
+-    GL_EXTCALL(glGetProgramiv(program, GL_LINK_STATUS, &tmp));
+-    if (!tmp)
+-    {
+-        FIXME("Program %u link status invalid.\n", program);
+-        if (!wined3d_settings.webgl)
+-            shader_glsl_dump_program_source(gl_info, program);
+-    }
+-
+-    print_glsl_info_log(gl_info, program, TRUE);
++/* The result is a state decision, independent of enabled diagnostic channels. */
++BOOL shader_glsl_validate_link(const struct wined3d_gl_info *gl_info, GLuint program)
++{
++    GLint linked = GL_FALSE;
++
++    GL_EXTCALL(glGetProgramiv(program, GL_LINK_STATUS, &linked));
++    if (!linked)
++    {
++        ERR("GLSL program %u link status invalid.\n", program);
++        shader_glsl_dump_failure_log(gl_info, program, TRUE);
++        shader_glsl_dump_program_source(gl_info, program);
++    }
++    else
++        print_glsl_info_log(gl_info, program, TRUE);
++    return linked;
+ }
+ 
+ static struct vkd3d_shader_resource_binding *create_resource_bindings(const struct wined3d_gl_info *gl_info,
+@@ -10673,6 +10697,7 @@
+     entry->cs.id = shader_id;
+     entry->constant_version = 0;
+     entry->shader_controlled_clip_distances = 0;
++    entry->link_failed = 0;
+     add_glsl_program_entry(priv, entry);
+ 
+     TRACE("Attaching GLSL shader object %u to program %u.\n", shader_id, program_id);
+@@ -10911,6 +10936,7 @@
+     entry->cs.id = 0;
+     entry->constant_version = 0;
+     entry->shader_controlled_clip_distances = 0;
++    entry->link_failed = 0;
+     /* Add the hash table entry */
+     add_glsl_program_entry(priv, entry);
+ 
+@@ -11039,7 +11065,11 @@
+     /* Link the program */
+     TRACE("Linking GLSL shader program %u.\n", program_id);
+     GL_EXTCALL(glLinkProgram(program_id));
+-    shader_glsl_validate_link(gl_info, program_id);
++    entry->link_failed = !shader_glsl_validate_link(gl_info, program_id);
++    /* A failed link has no active interface. Keep the failed key cached, but
++     * never query its uniforms or leave an earlier program drawing this state. */
++    if (wined3d_settings.webgl && entry->link_failed)
++        return;
+ 
+     shader_glsl_init_vs_uniform_locations(gl_info, priv, program_id, &entry->vs,
+             vshader ? vshader->limits->constant_float : 0);
+@@ -11229,7 +11259,7 @@
+     set_glsl_shader_program(context_gl, state, priv, ctx_data);
+     glsl_program = ctx_data->glsl_program;
+ 
+-    if (glsl_program)
++    if (glsl_program && !(wined3d_settings.webgl && glsl_program->link_failed))
+     {
+         program_id = glsl_program->id;
+         current_vertex_color_clamp = glsl_program->vs.vertex_color_clamp;
+@@ -11273,7 +11303,7 @@
+         GL_EXTCALL(glUseProgram(program_id));
+         checkGLcall("glUseProgram");
+ 
+-        if (glsl_program)
++        if (glsl_program && !(wined3d_settings.webgl && glsl_program->link_failed))
+             context_gl->c.constant_update_mask |= glsl_program->constant_update_mask;
+     }
+ 
+@@ -11296,6 +11326,15 @@
+ 
+     if (context->shader_update_mask & ~(1u << WINED3D_SHADER_TYPE_COMPUTE))
+         shader_glsl_update_graphics_program(priv, context_gl, state);
++
++    if (wined3d_settings.webgl)
++    {
++        const struct glsl_context_data *ctx_data = context->shader_backend_data;
++
++        context_gl->shader_program_failed = !ctx_data->glsl_program || ctx_data->glsl_program->link_failed;
++        if (context_gl->shader_program_failed)
++            return;
++    }
+ 
+     if (context->constant_update_mask)
+         shader_glsl_load_constants(priv, context, state);
+--- a/dlls/wined3d/wined3d_gl.h
++++ b/dlls/wined3d/wined3d_gl.h
+@@ -386,7 +386,7 @@
+ 
+ void install_gl_compat_wrapper(struct wined3d_gl_info *gl_info, enum wined3d_gl_extension ext);
+ void print_glsl_info_log(const struct wined3d_gl_info *gl_info, GLuint id, BOOL program);
+-void shader_glsl_validate_link(const struct wined3d_gl_info *gl_info, GLuint program);
++BOOL shader_glsl_validate_link(const struct wined3d_gl_info *gl_info, GLuint program);
+ GLenum wined3d_buffer_gl_binding_from_bind_flags(const struct wined3d_gl_info *gl_info, uint32_t bind_flags);
+ void wined3d_check_gl_call(const struct wined3d_gl_info *gl_info,
+         const char *file, unsigned int line, const char *name);
+@@ -637,7 +637,8 @@
+     uint32_t needs_set : 1;
+     uint32_t internal_format_set : 1;
+     uint32_t valid : 1;
+-    uint32_t padding : 25;
++    uint32_t shader_program_failed : 1;
++    uint32_t padding : 24;
+ 
+     uint32_t default_attrib_value_set;
+ 

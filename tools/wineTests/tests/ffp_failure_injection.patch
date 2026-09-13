@@ -1,0 +1,88 @@
+--- a/dlls/wined3d/shader.c
++++ b/dlls/wined3d/shader.c
+@@ -2330,6 +2330,13 @@
+     TRACE("shader %p, byte_code %p, size %#Ix, type %s, float_const_count %u.\n",
+             shader, desc->byte_code, desc->byte_code_size, debug_shader_type(type), float_const_count);
+ 
++    if (shader->test_ffp_failure && getenv("BW_TEST_FFP_FAILURE")
++            && !strcmp(getenv("BW_TEST_FFP_FAILURE"), "early"))
++    {
++        ERR("BW_TEST_FFP_INIT_early %s\n", debug_shader_type(type));
++        return E_OUTOFMEMORY;
++    }
++
+     if (!desc->byte_code)
+         return WINED3DERR_INVALIDCALL;
+ 
+@@ -2416,6 +2423,13 @@
+ 
+     if (FAILED(hr = shader_get_registers_used(shader, float_const_count)))
+         return hr;
++
++    if (shader->test_ffp_failure && getenv("BW_TEST_FFP_FAILURE")
++            && !strcmp(getenv("BW_TEST_FFP_FAILURE"), "late"))
++    {
++        ERR("BW_TEST_FFP_INIT_late %s\n", debug_shader_type(type));
++        return E_OUTOFMEMORY;
++    }
+ 
+     shader->load_local_constsF = shader->lconst_inf_or_nan;
+ 
+@@ -2545,6 +2559,8 @@
+         struct vkd3d_shader_code code;
+         HRESULT hr;
+ 
++        shader->test_ffp_failure = (settings->texgen[0] & 0xffff0000) == WINED3DTSS_TCI_CAMERASPACEPOSITION;
++
+         if (!ffp_hlsl_compile_vs(settings, &desc, device))
+         {
+             shader->initialization_failed = true;
+@@ -2573,6 +2589,8 @@
+         struct wined3d_shader_desc desc;
+         struct vkd3d_shader_code code;
+         HRESULT hr;
++
++        shader->test_ffp_failure = settings->op[0].cop == WINED3D_TOP_SUBTRACT;
+ 
+         if (!ffp_hlsl_compile_ps(settings, &desc))
+         {
+--- a/dlls/wined3d/wined3d_private.h
++++ b/dlls/wined3d/wined3d_private.h
+@@ -4349,6 +4349,7 @@
+     bool load_local_constsF;
+     bool is_ffp_vs;
+     bool is_ffp_ps;
++    bool test_ffp_failure; /* Test-only fault injection. */
+     bool initialization_failed;
+     enum vkd3d_shader_source_type source_type;
+     const struct wined3d_shader_frontend *frontend;
+--- a/dlls/wined3d/ffp_hlsl.c
++++ b/dlls/wined3d/ffp_hlsl.c
+@@ -947,6 +947,13 @@
+         return false;
+     }
+ 
++    if (getenv("BW_TEST_FFP_FAILURE") && !strcmp(getenv("BW_TEST_FFP_FAILURE"), "compile")
++            && ((settings->texgen[0] & 0xffff0000) == WINED3DTSS_TCI_CAMERASPACEPOSITION))
++    {
++        ERR("BW_TEST_FFP_COMPILE vs\n");
++        shader_addline(&string, "#error BW_TEST_FFP_COMPILE_vs\n");
++    }
++
+     if (!compile_hlsl_shader(&string, &sm1, "vs_2_a"))
+     {
+         string_buffer_free(&string);
+@@ -973,6 +980,13 @@
+         return false;
+     }
+ 
++    if (getenv("BW_TEST_FFP_FAILURE") && !strcmp(getenv("BW_TEST_FFP_FAILURE"), "compile")
++            && (settings->op[0].cop == WINED3D_TOP_SUBTRACT))
++    {
++        ERR("BW_TEST_FFP_COMPILE ps\n");
++        shader_addline(&string, "#error BW_TEST_FFP_COMPILE_ps\n");
++    }
++
+     if (!compile_hlsl_shader(&string, &sm1, "ps_2_a"))
+     {
+         string_buffer_free(&string);
