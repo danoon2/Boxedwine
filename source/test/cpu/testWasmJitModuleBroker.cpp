@@ -1255,6 +1255,84 @@ void testWasmJitMtStandaloneModuleBroker() {
     wasmJitTestSetMtModuleBrokerEnabled(oldEnabled);
 }
 
+void testWasmJitMtRetirementScanOrdering() {
+    struct RestoreSettings {
+        S32 broker = wasmJitTestSetMtModuleBrokerEnabled(1);
+        bool persistence = wasmJitTestSetMtPersistenceActive(false);
+        ~RestoreSettings() {
+            wasmJitTestBeforeMtRetirementLock(nullptr, nullptr);
+            wasmJitTestSetMtPersistenceActive(persistence);
+            wasmJitTestSetMtModuleBrokerEnabled(broker);
+        }
+    } restore;
+
+    std::vector<U8> first = makeBrokerStoreModule(0x11223344);
+    std::vector<U8> second = makeBrokerStoreModule(0x55667788);
+    std::vector<WasmJitMergeInput> inputs = {{&first}, {&second}};
+    std::vector<U8> merged;
+    BString error;
+    if (!wasmJitMergeModules(inputs, merged, error)) {
+        testFail("MT WASM retirement ordering module setup: %s", error.c_str());
+        return;
+    }
+
+    for (bool retireOwner : {false, true}) {
+        int group = wasm_jit_mt_register_group(merged.data(), (int)merged.size());
+        U32 key = 0xcaf00000 + (U32)group * 8;
+        wasm_jit_mt_register_group_entry(group, key, key, "b0", 1);
+        wasm_jit_mt_register_group_entry(group, key + 4, key + 4, "b1", 1);
+        int firstSlot = wasmJitTestInstantiateMtGroupEntry(group, 0, testContext().memory);
+        int activeSlot = wasmJitTestInstantiateMtGroupEntry(group, 1, testContext().memory);
+        if (firstSlot <= 0 || activeSlot <= 0 ||
+                !wasmJitTestSetMtGroupRelocValue(activeSlot, 0, 0x12345678)) {
+            testFail("MT WASM retirement ordering relocation setup");
+            wasmJitTestInvalidateMtBrokerMemory(testContext().memory);
+            return;
+        }
+
+        struct Interleave {
+            CPU* cpu;
+            int slot;
+            bool retireOwner;
+            bool called = false;
+        } interleave{CPU::allocCPU(testContext().memory), activeSlot, retireOwner};
+
+        // Force the schedule where another CPU enters the still-published
+        // sibling and then an invalidator retires it, just before the reaper
+        // acquires the retirement lock. A scan from before this point cannot
+        // safely reclaim the newly retired slot or its entire owner.
+        wasmJitTestBeforeMtRetirementLock([](void* arg) {
+            auto& state = *static_cast<Interleave*>(arg);
+            state.called = true;
+            wasmJitTestSetMtActiveSlot(state.cpu, state.slot);
+            if (state.retireOwner) {
+                wasmJitTestInvalidateMtBrokerMemoryId(
+                    (U32)(uintptr_t)testContext().memory);
+            } else {
+                wasmJitTestRetireMtSlot(state.slot);
+            }
+        }, &interleave);
+        wasmJitTestRetireMtSlot(firstSlot);
+        wasmJitTestBeforeMtRetirementLock(nullptr, nullptr);
+
+        bool retained = wasmJitTestHasMtSlotMetadata(activeSlot);
+        U32 relocation = wasmJitTestGetMtGroupRelocValue(activeSlot, 0);
+        if (!interleave.called || !retained || relocation != 0x12345678) {
+            testFail("MT WASM retirement scan protects a late active call: owner=%d called=%d metadata=%d relocation=%x",
+                retireOwner, interleave.called, retained, relocation);
+        }
+        wasmJitTestSetMtActiveSlot(interleave.cpu, -1);
+        delete interleave.cpu;
+        wasmJitTestReapMtRetiredSlots(testContext().memory);
+        if (wasmJitTestHasMtSlotMetadata(firstSlot) ||
+                wasmJitTestHasMtSlotMetadata(activeSlot) ||
+                !testWasmJitBrokerSlotIsClear(firstSlot) ||
+                !testWasmJitBrokerSlotIsClear(activeSlot)) {
+            testFail("MT WASM retirement ordering reclaims slots after quiescence: owner=%d", retireOwner);
+        }
+    }
+}
+
 void testWasmJitMtGroupedModuleBroker() {
     S32 oldEnabled = wasmJitTestSetMtModuleBrokerEnabled(1);
     struct RestoreMtPersistenceTest {

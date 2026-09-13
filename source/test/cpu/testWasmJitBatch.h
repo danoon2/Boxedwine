@@ -14,6 +14,7 @@
 void testWasmJitModuleMerger();
 void testWasmJitBatchPolicy();
 void testWasmJitMappedFileRange();
+void testWasmJitColdStringStub();
 #ifdef BOXEDWINE_MULTI_THREADED
 void testWasmJitMtCpuHazardStateIsCold();
 void testWasmJitMtBoundedDispatch();

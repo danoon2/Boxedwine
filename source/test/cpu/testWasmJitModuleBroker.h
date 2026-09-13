@@ -15,6 +15,7 @@ void testWasmJitMtStandaloneModuleBroker();
 void testWasmJitMtModuleBrokerLifecycle();
 void testWasmJitMtModuleBrokerThreadStartOwner();
 void testWasmJitMtGroupedModuleBroker();
+void testWasmJitMtRetirementScanOrdering();
 void testWasmJitMtModuleBrokerPreloadSelection();
 void testWasmJitMtModuleBrokerExecIncarnation();
 void testWasmJitMtModuleBrokerPreloadDiagnostics();

@@ -592,6 +592,16 @@ static U32 g_wasmJitMtNextRuntimeGroupIdentity = 1;
 static std::mutex g_wasmJitMtHazardCpuMutex;
 static std::unordered_set<CPU*> g_wasmJitMtHazardCpus;
 
+#ifdef __TEST
+static thread_local void (*g_wasmJitTestBeforeMtRetirementLock)(void*) = nullptr;
+static thread_local void* g_wasmJitTestBeforeMtRetirementLockArg = nullptr;
+
+void wasmJitTestBeforeMtRetirementLock(void (*callback)(void*), void* arg) {
+    g_wasmJitTestBeforeMtRetirementLock = callback;
+    g_wasmJitTestBeforeMtRetirementLockArg = arg;
+}
+#endif
+
 static void wasmJitMtRegisterCpu(CPU* cpu) {
     if (!cpu || cpu->wasmJitHazardRegistered) {
         return;
@@ -13532,6 +13542,9 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
         }
         m_preCompileBlockHash = wasmJitHashDecodedOp(m_preCompileBlockHash, op);
     }
+    // Shared Jit/JitSSE emitters use currentOp for string direction and
+    // warmup state, just as they do in the native backends.
+    currentOp = op;
     m_currentWasmOp = op;
     m_scratchInUse.fill(false);
     m_f64ScratchInUse.fill(false);
@@ -14489,28 +14502,41 @@ static void wasmJitMtTryReapRetired(KMemory* memory) {
         return;
     }
 
-    std::vector<U32> activeSlots;
     U32 memoryId = memory ? (U32)(uintptr_t)memory : 0;
+    std::vector<WasmJitMtReleaseBatch> releases;
     {
-        std::lock_guard<std::mutex> hazardLock(g_wasmJitMtHazardCpuMutex);
-        for (CPU* cpu : g_wasmJitMtHazardCpus) {
-            U32 tableIndex = __atomic_load_n(
-                &cpu->wasmJitActiveTableIndex, __ATOMIC_SEQ_CST);
-            if (tableIndex) {
-                __atomic_store_n(&cpu->wasmJitReapRetiredOnExit,
-                    1, __ATOMIC_SEQ_CST);
-                tableIndex = __atomic_load_n(
+#ifdef __TEST
+        if (auto callback = g_wasmJitTestBeforeMtRetirementLock) {
+            // One shot, so the simulated retirement can itself try reaping.
+            g_wasmJitTestBeforeMtRetirementLock = nullptr;
+            callback(g_wasmJitTestBeforeMtRetirementLockArg);
+        }
+#endif
+        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
+        // Freeze the retirement list before scanning hazards. Otherwise a
+        // newly retired slot/owner could be reclaimed using a scan taken
+        // before its last active call entered. Keep this lock through reclaim
+        // so other reapers also cannot erase a hazard's owner metadata.
+        std::vector<U32> activeSlots;
+        {
+            // Lock order: block metadata, then CPU registry. Registration
+            // takes only the registry lock; unregister releases it before
+            // invoking a reaper.
+            std::lock_guard<std::mutex> hazardLock(g_wasmJitMtHazardCpuMutex);
+            for (CPU* cpu : g_wasmJitMtHazardCpus) {
+                U32 tableIndex = __atomic_load_n(
                     &cpu->wasmJitActiveTableIndex, __ATOMIC_SEQ_CST);
                 if (tableIndex) {
-                    activeSlots.push_back(tableIndex);
+                    __atomic_store_n(&cpu->wasmJitReapRetiredOnExit,
+                        1, __ATOMIC_SEQ_CST);
+                    tableIndex = __atomic_load_n(
+                        &cpu->wasmJitActiveTableIndex, __ATOMIC_SEQ_CST);
+                    if (tableIndex) {
+                        activeSlots.push_back(tableIndex);
+                    }
                 }
             }
         }
-    }
-
-    std::vector<WasmJitMtReleaseBatch> releases;
-    {
-        std::lock_guard<std::mutex> lock(g_wasmBlockBinariesMutex);
         for (auto retiredIt = g_wasmJitMtRetiredOwners.begin();
                 retiredIt != g_wasmJitMtRetiredOwners.end();) {
             const WasmJitMtRetiredOwner& retired = retiredIt->second;

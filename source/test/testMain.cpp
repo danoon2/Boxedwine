@@ -193,6 +193,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testWasmJitModuleMerger, "Test WASM JIT runtime module merger"},
     {testWasmJitBatchPolicy, "Test WASM JIT runtime batch policy"},
     {testWasmJitMappedFileRange, "Test WASM JIT mapped file range"},
+    {testWasmJitColdStringStub, "Test WASM JIT cold string fallback"},
 #endif
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
     {testWasmJitMtCpuHazardStateIsCold, "Test MT WASM JIT CPU hazard state layout"},
@@ -201,6 +202,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testWasmJitMtModuleBrokerTransport, "Test MT WASM JIT module broker transport"},
     {testWasmJitMtStandaloneModuleBroker, "Test MT WASM JIT standalone module broker"},
     {testWasmJitMtGroupedModuleBroker, "Test MT WASM JIT grouped module broker"},
+    {testWasmJitMtRetirementScanOrdering, "Test MT WASM JIT retirement scan ordering", TEST_ENTRY_SERIAL},
     {testWasmJitMtModuleBrokerLifecycle, "Test MT WASM JIT module broker lifecycle"},
     {testWasmJitMtModuleBrokerThreadStartOwner, "Test MT WASM JIT thread-start owner"},
     {testWasmJitMtModuleBrokerPreloadSelection, "Test MT WASM JIT preload selection"},

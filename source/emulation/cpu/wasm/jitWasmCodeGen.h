@@ -1322,6 +1322,7 @@ U32 wasmJitTestGetMtGroupIndexForSlot(int tableIndex);
 WasmJitMtRetirementStateSnapshot wasmJitTestGetMtRetirementState(CPU* cpu);
 void wasmJitTestSetMtActiveSlot(CPU* cpu, int tableIndex);
 void wasmJitTestReapMtRetiredSlots(KMemory* memory);
+void wasmJitTestBeforeMtRetirementLock(void (*callback)(void*), void* arg);
 void wasmJitTestRetireMtSlot(int tableIndex);
 U32 wasmJitTestGetMtGroupInstanceIdentity(U32 groupIdx);
 U64 wasmJitTestMtRuntimeGroupRetainedBytes();

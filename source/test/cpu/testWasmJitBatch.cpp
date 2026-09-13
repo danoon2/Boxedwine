@@ -23,6 +23,36 @@
 #include <pthread.h>
 #endif
 
+void testWasmJitColdStringStub() {
+    testNewInstruction(0);
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    cpu->big = 1;
+    // Zero-based segments select the shared REP MOVS emitter.
+    Seg savedDs = cpu->seg[DS];
+    Seg savedEs = cpu->seg[ES];
+    bool savedHasDs = context.process->hasSetSeg[DS];
+    bool savedHasEs = context.process->hasSetSeg[ES];
+    cpu->seg[DS].address = cpu->seg[ES].address = 0;
+    context.process->hasSetSeg[DS] = context.process->hasSetSeg[ES] = false;
+
+    U32 address = context.codeIp;
+    testPushCode8(0xf3); testPushCode8(0xa4); // rep movsb
+    testPushCode8(0xcd); testPushCode8(0x97); // TestEnd
+    DecodedOp* op = cpu->getOp(address, 0);
+    op->runCount = 0;
+    startNewJIT(cpu, address, op);
+    bool markedStub = (op->flags2 & OP_FLAG2_TRACED_STUB) != 0;
+
+    cpu->seg[DS] = savedDs;
+    cpu->seg[ES] = savedEs;
+    context.process->hasSetSeg[DS] = savedHasDs;
+    context.process->hasSetSeg[ES] = savedHasEs;
+    if (!markedStub) {
+        testFail("cold REP MOVS must mark its decoded instruction for traced fallback");
+    }
+}
+
 #ifdef BOXEDWINE_MULTI_THREADED
 void testWasmJitMtBoundedDispatch() {
     testNewInstruction(0);
