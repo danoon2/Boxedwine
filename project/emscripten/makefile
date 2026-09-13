@@ -219,6 +219,19 @@ CPPFLAGS ?= $(OPTIMIZATION_FLAGS) $(TAIL_CALL_FLAG) $(COMPILE_EXCEPTION_FLAG) $(
 SHELL_LDFLAGS := $(if $(filter %.html,$(TARGET_EXEC)),--shell-file $(SHELL_FILE),)
 LDFLAGS = $(OPTIMIZATION_FLAGS) $(TAIL_CALL_FLAG) -s FORCE_FILESYSTEM -lidbfs.js -s USE_SDL=2 -s USE_ZLIB=1 -sFULL_ES3 -s STACK_SIZE=1048576 $(LINK_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s INITIAL_MEMORY=536870912 $(SHELL_LDFLAGS) -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency","ERRNO_CODES","ccall","FS"]' $(EXTRA_LD_FLAGS)
 
+# ASan substitutes its own pthread argument. Keep module-broker owner lookup
+# working in diagnostic builds while retaining sanitizer thread registration.
+ifneq (,$(findstring -fsanitize=address,$(OPTIMIZATION_FLAGS)))
+ifneq (,$(findstring -DBOXEDWINE_WASM_JIT,$(EXTRA_CPP_FLAGS)))
+ifneq (,$(findstring -DBOXEDWINE_MULTI_THREADED,$(EXTRA_CPP_FLAGS)))
+ASAN_PTHREAD_OBJ := $(BUILD_DIR)/boxedwine-asan-pthread.o
+ALL += $(ASAN_PTHREAD_OBJ)
+DEPS += $(ASAN_PTHREAD_OBJ:.o=.d)
+LDFLAGS += -Wl,--wrap=pthread_create -Wl,--wrap=emscripten_builtin_pthread_create -Wl,--export=boxedwine_asan_take_thread_start_arg
+endif
+endif
+endif
+
 # Use a clean build directory when changing this option. Names are metadata;
 # instruction-level timing counters remain disabled for sampling profiles.
 ifeq ($(WASM_PROFILING),1)
@@ -231,6 +244,12 @@ ASSET_OUTPUTS := $(addprefix $(BUILD_DIR)/,$(ASSET_FILES))
 .PHONY: all copy-assets
 
 all: $(BUILD_DIR)/$(TARGET_EXEC) copy-assets
+
+ifneq ($(ASAN_PTHREAD_OBJ),)
+$(ASAN_PTHREAD_OBJ): boxedwine-asan-pthread.cpp
+	@$(MKDIR_P) $(dir $@)
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+endif
 
 copy-assets: $(ASSET_OUTPUTS)
 

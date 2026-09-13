@@ -1170,7 +1170,12 @@
                 return;
             }
             testRunDispatchStats.runMessages += 1;
-            var owner = takeThreadStartOwner(message.arg);
+            var startArg = message.arg;
+            if (typeof wasmExports !== 'undefined' &&
+                    typeof wasmExports.boxedwine_asan_take_thread_start_arg === 'function') {
+                startArg = wasmExports.boxedwine_asan_take_thread_start_arg(startArg >>> 0) >>> 0;
+            }
+            var owner = takeThreadStartOwner(startArg);
             if (owner.result === 0) {
                 if (proxyMainBootstrapOwnerPending) {
                     proxyMainBootstrapOwnerPending = false;
