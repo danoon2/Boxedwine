@@ -1,0 +1,34 @@
+diff --git a/dlls/wined3d/utils.c b/dlls/wined3d/utils.c
+--- a/dlls/wined3d/utils.c
++++ b/dlls/wined3d/utils.c
+@@ -2265,8 +2265,9 @@
+         case WINED3DFMT_B5G6R5_UNORM:
+             format->internal = GL_RGB565;
+             format->srgb_internal = GL_RGB565;
+-            if (!format->rt_internal)
+-                format->rt_internal = GL_RGB565;
++            /* WebGL multisample resolves require identical storage formats.
++             * Discard the desktop RGB8 render-target fallback. */
++            format->rt_internal = GL_RGB565;
+             format->format = GL_RGB;
+             format->type = GL_UNSIGNED_BYTE;
+             break;
+diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -1374,7 +1374,15 @@
+     GLenum target;
+ 
+     if (wined3d_settings.webgl)
++    {
+         wined3d_texture_gl_get_webgl_upload_format(&format->f, &upload_format, &upload_type);
++        /* Even a NULL allocation must use a valid format/type combination. */
++        if (gl_internal_format == GL_RGB10_A2)
++        {
++            upload_format = GL_RGBA;
++            upload_type = GL_UNSIGNED_INT_2_10_10_10_REV;
++        }
++    }
+ 
+     level_count = texture_gl->t.level_count;
+     if (texture_gl->target == GL_TEXTURE_1D_ARRAY || texture_gl->target == GL_TEXTURE_2D_ARRAY)

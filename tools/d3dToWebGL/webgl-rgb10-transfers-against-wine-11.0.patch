@@ -1,0 +1,160 @@
+diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -1330,12 +1330,16 @@
+         case WINED3DFMT_B4G4R4X4_UNORM:
+         case WINED3DFMT_B4G4R4A4_UNORM:
+         case WINED3DFMT_B2G3R3A8_UNORM:
+-        case WINED3DFMT_B10G10R10A2_UNORM:
+-        case WINED3DFMT_R10G10B10A2_UNORM:
+         case WINED3DFMT_R8G8B8A8_UNORM:
+         case WINED3DFMT_R8G8B8A8_UNORM_SRGB:
+             *gl_format = GL_RGBA;
+             *gl_type = GL_UNSIGNED_BYTE;
++            return true;
++
++        case WINED3DFMT_B10G10R10A2_UNORM:
++        case WINED3DFMT_R10G10B10A2_UNORM:
++            *gl_format = GL_RGBA;
++            *gl_type = GL_UNSIGNED_INT_2_10_10_10_REV;
+             return true;
+ 
+         case WINED3DFMT_A8_UNORM:
+@@ -1809,25 +1813,17 @@
+             break;
+ 
+         case WINED3DFMT_B10G10R10A2_UNORM:
++            /* Keep all ten bits; only exchange the packed red/blue fields. */
+             for (x = 0; x < width; ++x)
+             {
+                 v32 = ((const uint32_t *)src_row)[x];
+-                upload_row[x * 4 + 0] = ((((v32 >> 20) & 0x3ff) * 255) + 511) / 1023;
+-                upload_row[x * 4 + 1] = ((((v32 >> 10) & 0x3ff) * 255) + 511) / 1023;
+-                upload_row[x * 4 + 2] = (((v32 & 0x3ff) * 255) + 511) / 1023;
+-                upload_row[x * 4 + 3] = ((v32 >> 30) * 255 + 1) / 3;
++                ((uint32_t *)upload_row)[x] = (v32 & 0xc00ffc00)
++                        | ((v32 >> 20) & 0x3ff) | ((v32 & 0x3ff) << 20);
+             }
+             break;
+ 
+         case WINED3DFMT_R10G10B10A2_UNORM:
+-            for (x = 0; x < width; ++x)
+-            {
+-                v32 = ((const uint32_t *)src_row)[x];
+-                upload_row[x * 4 + 0] = (((v32 & 0x3ff) * 255) + 511) / 1023;
+-                upload_row[x * 4 + 1] = ((((v32 >> 10) & 0x3ff) * 255) + 511) / 1023;
+-                upload_row[x * 4 + 2] = ((((v32 >> 20) & 0x3ff) * 255) + 511) / 1023;
+-                upload_row[x * 4 + 3] = ((v32 >> 30) * 255 + 1) / 3;
+-            }
++            memcpy(upload_row, src_row, width * sizeof(uint32_t));
+             break;
+ 
+         case WINED3DFMT_A8_UNORM:
+@@ -1857,7 +1853,7 @@
+     return true;
+ }
+ 
+-static bool wined3d_texture_gl_upload_webgl_rgba8(const struct wined3d_format *src_format,
++static bool wined3d_texture_gl_upload_webgl_converted(const struct wined3d_format *src_format,
+         GLenum target, unsigned int level, unsigned int src_row_pitch, unsigned int src_slice_pitch,
+         unsigned int dst_x, unsigned int dst_y, unsigned int dst_z, unsigned int update_w,
+         unsigned int update_h, unsigned int update_d, const BYTE *addr, const struct wined3d_gl_info *gl_info)
+@@ -2070,7 +2066,7 @@
+                 src_format->upload(src_mem, converted_mem, src_row_pitch, src_slice_pitch,
+                         dst_row_pitch, dst_slice_pitch, update_w, update_h, 1);
+ 
+-            if (wined3d_settings.webgl && wined3d_texture_gl_upload_webgl_rgba8(src_format, target, level,
++            if (wined3d_settings.webgl && wined3d_texture_gl_upload_webgl_converted(src_format, target, level,
+                     dst_row_pitch, dst_slice_pitch, dst_x, dst_y, dst_z + z, update_w, update_h, 1,
+                     converted_mem, gl_info))
+                 continue;
+@@ -2095,7 +2091,7 @@
+             GL_EXTCALL(glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0));
+             checkGLcall("glBindBuffer");
+ 
+-            if (wined3d_texture_gl_upload_webgl_rgba8(src_format, target, level, src_row_pitch,
++            if (wined3d_texture_gl_upload_webgl_converted(src_format, target, level, src_row_pitch,
+                     src_slice_pitch, dst_x, dst_y, dst_z, update_w, update_h, update_d, src_mem, gl_info))
+             {
+                 if (bo.buffer_object)
+@@ -2343,10 +2339,12 @@
+     free(temporary_mem);
+ }
+ 
+-static bool wined3d_texture_gl_read_pixels_webgl_rgba8(const struct wined3d_gl_info *gl_info,
++static bool wined3d_texture_gl_read_pixels_webgl_color(const struct wined3d_gl_info *gl_info,
+         const struct wined3d_format *format, unsigned int width, unsigned int height,
+         unsigned int row_pitch, uint8_t *dst)
+ {
++    const bool packed_rgb10 = format->id == WINED3DFMT_B10G10R10A2_UNORM
++            || format->id == WINED3DFMT_R10G10B10A2_UNORM;
+     ULONGLONG profile_start;
+     uint8_t *rgba;
+     unsigned int x, y, pixel_count = width * height;
+@@ -2387,7 +2385,9 @@
+     }
+ 
+     profile_start = wined3d_profile_enabled() ? wined3d_profile_now_us() : 0;
+-    gl_info->gl_ops.gl.p_glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
++    /* ES 3.0 also requires this packed read type for RGB10_A2 surfaces. */
++    gl_info->gl_ops.gl.p_glReadPixels(0, 0, width, height, GL_RGBA,
++            packed_rgb10 ? GL_UNSIGNED_INT_2_10_10_10_REV : GL_UNSIGNED_BYTE, rgba);
+     wined3d_texture_gl_profile_readpixels("texture_gl_webgl_rgba8_readpixels", profile_start,
+             width, height, format->id);
+     for (y = 0; y < height; ++y)
+@@ -2399,6 +2399,16 @@
+         {
+             uint8_t r = src_row[x * 4 + 0], g = src_row[x * 4 + 1];
+             uint8_t b = src_row[x * 4 + 2], a = src_row[x * 4 + 3];
++
++            if (packed_rgb10)
++            {
++                uint32_t value = ((const uint32_t *)src_row)[x];
++
++                if (format->id == WINED3DFMT_B10G10R10A2_UNORM)
++                    value = (value & 0xc00ffc00) | ((value >> 20) & 0x3ff) | ((value & 0x3ff) << 20);
++                ((uint32_t *)dst_row)[x] = value;
++                continue;
++            }
+ 
+             switch (format->id)
+             {
+@@ -2428,20 +2438,6 @@
+                 case WINED3DFMT_B2G3R3A8_UNORM:
+                     ((uint16_t *)dst_row)[x] = ((uint16_t)a << 8)
+                             | ((uint16_t)(r >> 5) << 5) | ((uint16_t)(g >> 5) << 2) | (b >> 6);
+-                    break;
+-
+-                case WINED3DFMT_B10G10R10A2_UNORM:
+-                    ((uint32_t *)dst_row)[x] = ((uint32_t)((a * 3 + 127) / 255) << 30)
+-                            | ((uint32_t)((r * 1023 + 127) / 255) << 20)
+-                            | ((uint32_t)((g * 1023 + 127) / 255) << 10)
+-                            | ((uint32_t)((b * 1023 + 127) / 255));
+-                    break;
+-
+-                case WINED3DFMT_R10G10B10A2_UNORM:
+-                    ((uint32_t *)dst_row)[x] = ((uint32_t)((a * 3 + 127) / 255) << 30)
+-                            | ((uint32_t)((b * 1023 + 127) / 255) << 20)
+-                            | ((uint32_t)((g * 1023 + 127) / 255) << 10)
+-                            | ((uint32_t)((r * 1023 + 127) / 255));
+                     break;
+ 
+                 case WINED3DFMT_A8_UNORM:
+@@ -2520,7 +2516,7 @@
+         checkGLcall("glFramebufferTextureLayer");
+         wined3d_context_gl_check_fbo_status(context_gl, GL_READ_FRAMEBUFFER);
+ 
+-        if (!wined3d_texture_gl_read_pixels_webgl_rgba8(gl_info,
++        if (!wined3d_texture_gl_read_pixels_webgl_color(gl_info,
+                 &format_gl->f, width, height, row_pitch, slice))
+         {
+             ULONGLONG profile_start = wined3d_profile_enabled() ? wined3d_profile_now_us() : 0;
+@@ -2963,7 +2959,7 @@
+                         !!src_texture->swapchain, src_width, src_height,
+                         src_texture->resource.format->id, !!dst_bo);
+ 
+-            if (wined3d_texture_gl_read_pixels_webgl_rgba8(gl_info,
++            if (wined3d_texture_gl_read_pixels_webgl_color(gl_info,
+                     src_texture->resource.format, src_width, src_height, dst_row_pitch, readback))
+             {
+                 checkGLcall("glReadPixels");

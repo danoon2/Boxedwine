@@ -1,0 +1,72 @@
+diff --git a/dlls/wined3d/utils.c b/dlls/wined3d/utils.c
+--- a/dlls/wined3d/utils.c
++++ b/dlls/wined3d/utils.c
+@@ -2327,8 +2327,37 @@
+         format->rt_internal = format->internal;
+ }
+ 
++static void wined3d_format_gl_query_webgl_samples(struct wined3d_format_gl *format,
++        const struct wined3d_gl_info *gl_info)
++{
++    GLint count = 0, samples[sizeof(format->f.multisample_types) * CHAR_BIT] = {0};
++    unsigned int i;
++
++    /* Replace any earlier desktop inference, including bits on formats whose
++     * render-target support was removed by the WebGL capability mapping. */
++    format->f.multisample_types = 0;
++    if (!format->internal || !(format->f.caps[WINED3D_GL_RES_TYPE_RB]
++            & (WINED3D_FORMAT_CAP_RENDERTARGET | WINED3D_FORMAT_CAP_DEPTH_STENCIL)))
++        return;
++    if (!gl_info->supported[ARB_INTERNALFORMAT_QUERY])
++        return;
++
++    GL_EXTCALL(glGetInternalformativ(GL_RENDERBUFFER, format->internal, GL_NUM_SAMPLE_COUNTS, 1, &count));
++    if (count <= 0)
++        return;
++    count = min(count, ARRAY_SIZE(samples));
++    GL_EXTCALL(glGetInternalformativ(GL_RENDERBUFFER, format->internal, GL_SAMPLES, count, samples));
++    checkGLcall("query final WebGL format sample counts");
++    for (i = 0; i < count; ++i)
++    {
++        if (samples[i] > 0 && samples[i] <= sizeof(format->f.multisample_types) * CHAR_BIT)
++            format->f.multisample_types |= 1u << (samples[i] - 1);
++    }
++}
++
+ static void wined3d_adapter_apply_webgl_format_caps(struct wined3d_adapter *adapter)
+ {
++    const struct wined3d_gl_info *gl_info = &wined3d_adapter_gl(adapter)->gl_info;
+     unsigned int count = WINED3D_FORMAT_COUNT + ARRAY_SIZE(typeless_depth_stencil_formats);
+     unsigned int i;
+ 
+@@ -2338,6 +2367,7 @@
+     {
+         wined3d_format_gl_apply_webgl_format_info(get_format_gl_by_idx(adapter, i));
+         wined3d_format_apply_webgl_caps(get_format_by_idx(adapter, i));
++        wined3d_format_gl_query_webgl_samples(get_format_gl_by_idx(adapter, i), gl_info);
+     }
+ }
+ 
+@@ -3541,6 +3571,11 @@
+     }
+ 
+     query_view_class(format);
++
++    /* WebGL mappings below can change the actual renderbuffer format. Query
++     * samples only after those mappings, not against the desktop table. */
++    if (wined3d_settings.webgl)
++        return;
+ 
+     if (format->internal && format->f.caps[WINED3D_GL_RES_TYPE_RB]
+             & (WINED3D_FORMAT_CAP_RENDERTARGET | WINED3D_FORMAT_CAP_DEPTH_STENCIL)
+diff --git a/dlls/wined3d/adapter_gl.c b/dlls/wined3d/adapter_gl.c
+--- a/dlls/wined3d/adapter_gl.c
++++ b/dlls/wined3d/adapter_gl.c
+@@ -1066,7 +1066,6 @@
+         ARB_FRAGMENT_PROGRAM_SHADOW,
+         ARB_FRAMEBUFFER_SRGB,
+         ARB_GEOMETRY_SHADER4,
+-        ARB_INTERNALFORMAT_QUERY,
+         ARB_INTERNALFORMAT_QUERY2,
+         ARB_MAP_BUFFER_ALIGNMENT,
+         ARB_MAP_BUFFER_RANGE,

@@ -1,0 +1,122 @@
+diff --git a/dlls/wined3d/utils.c b/dlls/wined3d/utils.c
+--- a/dlls/wined3d/utils.c
++++ b/dlls/wined3d/utils.c
+@@ -2030,6 +2030,7 @@
+         case WINED3DFMT_R16G16B16A16_UINT:
+         case WINED3DFMT_R16G16B16A16_SINT:
+         case WINED3DFMT_R32G32_FLOAT:
++        case WINED3DFMT_R32G32B32A32_FLOAT:
+         case WINED3DFMT_R32G32_UINT:
+         case WINED3DFMT_R32G32_SINT:
+         case WINED3DFMT_R32_FLOAT:
+@@ -2107,7 +2108,27 @@
+     }
+ }
+ 
+-static void wined3d_format_apply_webgl_caps(struct wined3d_format *format)
++static unsigned int wined3d_webgl_format_float_bits(enum wined3d_format_id id)
++{
++    switch (id)
++    {
++        case WINED3DFMT_R16_FLOAT:
++        case WINED3DFMT_R16G16_FLOAT:
++        case WINED3DFMT_R16G16B16A16_FLOAT:
++            return 16;
++        case WINED3DFMT_R32_FLOAT:
++        case WINED3DFMT_R32G32_FLOAT:
++        case WINED3DFMT_R32G32B32A32_FLOAT:
++            return 32;
++        case WINED3DFMT_R11G11B10_FLOAT:
++            return 11;
++        default:
++            return 0;
++    }
++}
++
++static void wined3d_format_apply_webgl_caps(struct wined3d_format *format,
++        const struct wined3d_gl_info *gl_info)
+ {
+     static const unsigned int fbo_caps = WINED3D_FORMAT_CAP_FBO_ATTACHABLE
+             | WINED3D_FORMAT_CAP_FBO_ATTACHABLE_SRGB;
+@@ -2118,7 +2139,12 @@
+             | WINED3D_FORMAT_CAP_FILTERING
+             | WINED3D_FORMAT_CAP_POSTPIXELSHADER_BLENDING
+             | WINED3D_FORMAT_CAP_DECOMPRESS;
+-    const bool color_renderable = wined3d_webgl_format_is_color_renderable(format->id);
++    const unsigned int float_bits = wined3d_webgl_format_float_bits(format->id);
++    const bool color_renderable = wined3d_webgl_format_is_color_renderable(format->id)
++            && (!float_bits || gl_info->supported[EXT_COLOR_BUFFER_FLOAT]
++            || (float_bits == 16 && gl_info->supported[EXT_COLOR_BUFFER_HALF_FLOAT]));
++    const bool blending = float_bits ? (color_renderable && (float_bits != 32
++            || gl_info->supported[EXT_FLOAT_BLEND])) : wined3d_webgl_format_supports_blending(format->id);
+     const bool depth_stencil = wined3d_webgl_format_is_depth_stencil(format->id);
+ 
+     format_clear_caps(format, WINED3D_FORMAT_CAP_UNORDERED_ACCESS);
+@@ -2127,11 +2153,27 @@
+     format->caps[WINED3D_GL_RES_TYPE_BUFFER] &= WINED3D_FORMAT_CAP_VERTEX_ATTRIBUTE
+             | WINED3D_FORMAT_CAP_INDEX_BUFFER;
+ 
++    if (float_bits)
++    {
++        unsigned int i;
++
++        /* Desktop table/probe flags do not describe the browser's optional
++         * float extensions. Half-float filtering is core WebGL 2; 32-bit
++         * float filtering and blending have separate extension requirements. */
++        format_clear_caps(format, WINED3D_FORMAT_CAP_FILTERING | WINED3D_FORMAT_CAP_POSTPIXELSHADER_BLENDING);
++        if (float_bits != 32 || gl_info->supported[OES_TEXTURE_FLOAT_LINEAR])
++        {
++            for (i = 0; i < ARRAY_SIZE(format->caps); ++i)
++                if (format->caps[i] & WINED3D_FORMAT_CAP_TEXTURE)
++                    format->caps[i] |= WINED3D_FORMAT_CAP_FILTERING;
++        }
++    }
++
+     if (color_renderable)
+     {
+         unsigned int caps = WINED3D_FORMAT_CAP_RENDERTARGET | WINED3D_FORMAT_CAP_FBO_ATTACHABLE;
+ 
+-        if (wined3d_webgl_format_supports_blending(format->id))
++        if (blending)
+             caps |= WINED3D_FORMAT_CAP_POSTPIXELSHADER_BLENDING;
+ 
+         format->caps[WINED3D_GL_RES_TYPE_TEX_2D] |= caps;
+@@ -2366,7 +2408,7 @@
+     for (i = 0; i < count; ++i)
+     {
+         wined3d_format_gl_apply_webgl_format_info(get_format_gl_by_idx(adapter, i));
+-        wined3d_format_apply_webgl_caps(get_format_by_idx(adapter, i));
++        wined3d_format_apply_webgl_caps(get_format_by_idx(adapter, i), gl_info);
+         wined3d_format_gl_query_webgl_samples(get_format_gl_by_idx(adapter, i), gl_info);
+     }
+ }
+diff --git a/dlls/wined3d/adapter_gl.c b/dlls/wined3d/adapter_gl.c
+--- a/dlls/wined3d/adapter_gl.c
++++ b/dlls/wined3d/adapter_gl.c
+@@ -173,6 +173,10 @@
+     {"GL_ATI_texture_mirror_once",          ATI_TEXTURE_MIRROR_ONCE       },
+ 
+     /* EXT */
++    {"GL_EXT_color_buffer_float",          EXT_COLOR_BUFFER_FLOAT        },
++    {"GL_EXT_color_buffer_half_float",     EXT_COLOR_BUFFER_HALF_FLOAT   },
++    {"GL_EXT_float_blend",                 EXT_FLOAT_BLEND               },
++    {"GL_OES_texture_float_linear",        OES_TEXTURE_FLOAT_LINEAR      },
+     {"GL_EXT_blend_color",                  EXT_BLEND_COLOR               },
+     {"GL_EXT_blend_equation_separate",      EXT_BLEND_EQUATION_SEPARATE   },
+     {"GL_EXT_blend_func_separate",          EXT_BLEND_FUNC_SEPARATE       },
+diff --git a/dlls/wined3d/wined3d_gl.h b/dlls/wined3d/wined3d_gl.h
+--- a/dlls/wined3d/wined3d_gl.h
++++ b/dlls/wined3d/wined3d_gl.h
+@@ -236,6 +236,12 @@
+     WINED3D_GL_VERSION_3_2,
+     WINED3D_GLSL_130,
+ 
++    /* WebGL capability-only extensions; no additional entry points. */
++    EXT_COLOR_BUFFER_FLOAT,
++    EXT_COLOR_BUFFER_HALF_FLOAT,
++    EXT_FLOAT_BLEND,
++    OES_TEXTURE_FLOAT_LINEAR,
++
+     WINED3D_GL_EXT_COUNT,
+ };
+ 
