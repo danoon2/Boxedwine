@@ -1,0 +1,79 @@
+diff --git a/dlls/wined3d/ffp_hlsl.c b/dlls/wined3d/ffp_hlsl.c
+--- a/dlls/wined3d/ffp_hlsl.c
++++ b/dlls/wined3d/ffp_hlsl.c
+@@ -243,6 +243,8 @@
+     shader_addline(buffer, "    float4 pos : POSITION;\n");
+     shader_addline(buffer, "    float4 diffuse : COLOR0;\n");
+     shader_addline(buffer, "    float4 specular : COLOR1;\n");
++    if (settings->fog_mode != WINED3D_FFP_VS_FOG_OFF)
++        shader_addline(buffer, "    float fog : FOG;\n");
+     for (unsigned int i = 0; i < WINED3D_MAX_FFP_TEXTURES; ++i)
+     {
+         if (((settings->texgen[i] & 0xffff0000) != WINED3DTSS_TCI_PASSTHRU) || (settings->texcoords & (1u << i)))
+@@ -280,6 +282,9 @@
+             shader_addline(buffer, "    ec_pos += i.blend_weight[%u] * mul(c.modelview_matrices[%u], float4(i.pos.xyz, 1.0));\n", i, i);
+ 
+         shader_addline(buffer, "    o.pos = mul(c.projection_matrix, ec_pos);\n");
++        /* Vertex fog uses camera-space Z before the homogeneous divide. */
++        if (settings->fog_is_vertex && settings->fog_mode == WINED3D_FFP_VS_FOG_DEPTH)
++            shader_addline(buffer, "    float vertex_fog_depth = abs(ec_pos.z);\n");
+         shader_addline(buffer, "    ec_pos /= ec_pos.w;\n\n");
+     }
+ 
+@@ -347,18 +352,20 @@
+             break;
+ 
+         case WINED3D_FFP_VS_FOG_FOGCOORD:
+-            shader_addline(buffer, "    o.specular.w = i.specular.w;\n");
++            shader_addline(buffer, "    o.fog = i.specular.w;\n");
+             break;
+ 
+         case WINED3D_FFP_VS_FOG_RANGE:
+-            shader_addline(buffer, "    o.specular.w = length(ec_pos.xyz);\n");
++            shader_addline(buffer, "    o.fog = length(ec_pos.xyz);\n");
+             break;
+ 
+         case WINED3D_FFP_VS_FOG_DEPTH:
+             if (settings->transformed)
+-                shader_addline(buffer, "    o.specular.w = ec_pos.z;\n");
++                shader_addline(buffer, "    o.fog = ec_pos.z;\n");
++            else if (settings->fog_is_vertex)
++                shader_addline(buffer, "    o.fog = vertex_fog_depth;\n");
+             else
+-                shader_addline(buffer, "    o.specular.w = abs(ec_pos.z);\n");
++                shader_addline(buffer, "    o.fog = abs(ec_pos.z);\n");
+             break;
+     }
+ 
+diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -8331,6 +8331,7 @@
+ {
+     const struct wined3d_shader_reg_maps *reg_maps = &shader->reg_maps;
+     const BOOL legacy_syntax = needs_legacy_glsl_syntax(gl_info);
++    const char *fog_coord = legacy_syntax ? "gl_FogFragCoord" : "ffp_varying_fogcoord";
+     unsigned int i;
+ 
+     /* Unpack outputs. */
+@@ -8353,15 +8354,13 @@
+             shader_addline(buffer, "%s = vs_in0.z;\n",
+                     legacy_syntax ? "gl_FogFragCoord" : "ffp_varying_fogcoord");
+         else if (args->fog_src == VS_FOG_FFP_FACTOR_LINEAR)
+-            shader_addline(buffer, "%s = clamp((ffp_fog.end - ffp_varying_specular.w) * ffp_fog.scale, 0.0, 1.0);\n",
+-                    legacy_syntax ? "gl_FogFragCoord" : "ffp_varying_fogcoord");
++            shader_addline(buffer, "%s = clamp((ffp_fog.end - %s) * ffp_fog.scale, 0.0, 1.0);\n",
++                    fog_coord, fog_coord);
+         else if (args->fog_src == VS_FOG_FFP_FACTOR_EXP)
+-            shader_addline(buffer, "%s = exp(-ffp_fog.density * ffp_varying_specular.w);\n",
+-                    legacy_syntax ? "gl_FogFragCoord" : "ffp_varying_fogcoord");
++            shader_addline(buffer, "%s = exp(-ffp_fog.density * %s);\n", fog_coord, fog_coord);
+         else if (args->fog_src == VS_FOG_FFP_FACTOR_EXP2)
+-            shader_addline(buffer, "%s = exp(-ffp_fog.density * ffp_fog.density"
+-                    " * ffp_varying_specular.w * ffp_varying_specular.w);\n",
+-                    legacy_syntax ? "gl_FogFragCoord" : "ffp_varying_fogcoord");
++            shader_addline(buffer, "%s = exp(-ffp_fog.density * ffp_fog.density * %s * %s);\n",
++                    fog_coord, fog_coord, fog_coord);
+         else if (!reg_maps->fog)
+         {
+             if (reg_maps->output_registers & (1u << (8 + 1)))

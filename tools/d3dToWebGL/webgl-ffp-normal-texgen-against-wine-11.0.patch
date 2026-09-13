@@ -1,0 +1,14 @@
+diff --git a/dlls/wined3d/ffp_hlsl.c b/dlls/wined3d/ffp_hlsl.c
+--- a/dlls/wined3d/ffp_hlsl.c
++++ b/dlls/wined3d/ffp_hlsl.c
+@@ -325,6 +325,10 @@
+                     continue;
+                 break;
+ 
++            case WINED3DTSS_TCI_CAMERASPACENORMAL:
++                shader_addline(&texcoord, "float4(normal, 1.0)");
++                break;
++
+             default:
+                 FIXME("Unhandled texgen %#x.\n", settings->texgen[i]);
+                 break;
