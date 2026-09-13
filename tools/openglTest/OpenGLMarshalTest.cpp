@@ -10760,6 +10760,11 @@ static bool renderContextLossProbe(const GLfloat* clearColor,
         error = "fresh framebuffer probe produced GL error " + std::to_string(glError);
         return false;
     }
+    GLenum cleanupError = glGetError();
+    if (cleanupError != GL_NO_ERROR) {
+        error = "fresh framebuffer cleanup produced GL error " + std::to_string(cleanupError);
+        return false;
+    }
     for (int i = 0; i < 4; ++i) {
         int difference = static_cast<int>(pixel[i]) - static_cast<int>(expectedColor[i]);
         if (difference < -3 || difference > 3) {
@@ -10811,6 +10816,14 @@ static TestResult testWebGLContextLossRestore(TestContext& ctx) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glFinish();
     GLboolean lostTextureIsObject = glIsTexture(lostTexture);
+    // WebGL objects created while lost are already invalidated. Release the
+    // Emscripten texture name before allowing restoration; passing its old
+    // WebGL object to deleteTexture after restoration is INVALID_OPERATION.
+    // The browser waits for the marker below before restoring the context.
+    glBindTexture(GL_TEXTURE_2D, 0);
+    if (lostTexture) {
+        glDeleteTextures(1, &lostTexture);
+    }
     GLenum lostErrors[4] = {
         glGetError(), glGetError(), glGetError(), glGetError()
     };
@@ -10839,9 +10852,12 @@ static TestResult testWebGLContextLossRestore(TestContext& ctx) {
     if (lostTextureIsObject != GL_FALSE) {
         return fail("texture name became a live object while WebGL was lost");
     }
-    glBindTexture(GL_TEXTURE_2D, 0);
-    if (lostTexture) {
-        glDeleteTextures(1, &lostTexture);
+    for (GLenum lostError : lostErrors) {
+        if (lostError != GL_NO_ERROR && lostError != GL_CONTEXT_LOST &&
+                lostError != 0x9242 /* CONTEXT_LOST_WEBGL */) {
+            return fail("lost-context calls produced unexpected GL error " +
+                std::to_string(lostError));
+        }
     }
 
     if (wglGetCurrentContext() != ctx.rc || wglGetCurrentDC() != ctx.dc) {
@@ -10849,6 +10865,10 @@ static TestResult testWebGLContextLossRestore(TestContext& ctx) {
     }
     if (!glGetString(GL_VERSION)) {
         return fail("restored context had no GL_VERSION");
+    }
+    GLenum restoreError = glGetError();
+    if (restoreError != GL_NO_ERROR) {
+        return fail("restored context produced GL error " + std::to_string(restoreError));
     }
     if (!renderContextLossProbe(afterColor, afterExpected, error)) {
         return fail("post-restore " + error);

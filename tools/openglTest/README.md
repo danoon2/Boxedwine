@@ -129,7 +129,10 @@ restoration in single-threaded builds. The browser waits for the guest's lost-
 context probe before requesting restoration, and the runner enforces the event
 ordering. The lost-state probe permits `glGenTextures()` to reserve a nonzero
 name, but requires `glIsTexture()` to remain false and `glGetError()` to report
-context loss. Pthread builds report a targeted skip because the
+context loss. It deletes that name before authorizing restoration: WebGL objects
+created while lost are invalid, including when passed to deletion after restore.
+The test also checks restoration and fresh-resource cleanup errors before any
+helper can drain them. Pthread builds report a targeted skip because the
 direct OffscreenCanvas context's owning guest pthread does not return to the
 browser event loop while it is running, so it cannot receive loss/restoration
 events in time. Supporting that case requires a cooperative host-thread design.
