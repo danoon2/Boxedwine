@@ -991,6 +991,10 @@ void KNativeScreenSDL::recreateMainWindow() {
             } else if (input->width == (U32)dm.w && input->height == (U32)dm.h) {
                 flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
             }
+#ifndef __EMSCRIPTEN__
+            // Browser layout scales the canvas with CSS. SDL's reported desktop
+            // can still be the initial 800x600 canvas, so fitting to it would
+            // leave a second scale in the guest mouse-coordinate conversion.
             if (cx > dm.w || cy > dm.h) {
                 cx = dm.w;
                 cy = dm.h;
@@ -998,6 +1002,7 @@ void KNativeScreenSDL::recreateMainWindow() {
                 input->scaleY = dm.h * 100 / input->height;
                 flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
             }
+#endif
         }
 
         window = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, flags);

@@ -41,6 +41,12 @@ extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenMouseMove(int x, int y) 
     }
 }
 
+extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenPointerLock(U32 enabled) {
+    // SDL's virtual cursor (including warps and polling) requires its own
+    // relative mode as well as the browser's pointer lock.
+    SDL_SetRelativeMouseMode(enabled ? SDL_TRUE : SDL_FALSE);
+}
+
 extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenMouseButton(U32 down, U32 button, int x, int y) {
     KNativeScreenPtr screen = KNativeSystem::getScreen();
     KNativeInputPtr input = screen ? screen->getInput() : nullptr;
@@ -79,6 +85,10 @@ static void boxedwineInstallEmscriptenInputHandlers() {
 
     var capturingMouse = false;
 
+    document.addEventListener('pointerlockchange', function() {
+        _boxedwineEmscriptenPointerLock(document.pointerLockElement === canvas ? 1 : 0);
+    }, false);
+
     function activeCanvasRect() {
         var presentCanvas = document.getElementById('boxedwine-webgl-canvas-0');
         if (presentCanvas && presentCanvas.width && presentCanvas.height) {
@@ -91,17 +101,28 @@ static void boxedwineInstallEmscriptenInputHandlers() {
     }
 
     function canvasPoint(event, allowOutside) {
+        // Also retry on input if lock was acquired before SDL's window existed.
+        _boxedwineEmscriptenPointerLock(document.pointerLockElement === canvas ? 1 : 0);
+        // Pointer lock freezes clientX/Y. SDL consumes movementX/Y and keeps
+        // its virtual cursor in sync with guest warps; do not replace those
+        // events with absolute coordinates from the fixed browser pointer.
+        if (document.pointerLockElement === canvas) {
+            capturingMouse = false;
+            return null;
+        }
         var rectCanvas = activeCanvasRect();
         var rect = rectCanvas.getBoundingClientRect();
-        if (!rect.width || !rect.height || !canvas.width || !canvas.height) {
+        if (!rect.width || !rect.height || !rectCanvas.width || !rectCanvas.height) {
             return null;
         }
         if (!allowOutside && (event.clientX < rect.left || event.clientX >= rect.right || event.clientY < rect.top || event.clientY >= rect.bottom)) {
             return null;
         }
         return {
-            x: Math.max(0, Math.min(canvas.width - 1, Math.round((event.clientX - rect.left) * canvas.width / rect.width))),
-            y: Math.max(0, Math.min(canvas.height - 1, Math.round((event.clientY - rect.top) * canvas.height / rect.height)))
+            // A worker's placeholder canvas can retain its initial 800x600
+            // attributes. Use the pixels of the layer the user actually sees.
+            x: Math.max(0, Math.min(rectCanvas.width - 1, Math.round((event.clientX - rect.left) * rectCanvas.width / rect.width))),
+            y: Math.max(0, Math.min(rectCanvas.height - 1, Math.round((event.clientY - rect.top) * rectCanvas.height / rect.height)))
         };
     }
 
