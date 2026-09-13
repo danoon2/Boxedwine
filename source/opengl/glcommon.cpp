@@ -1111,12 +1111,6 @@ void glcommon_glReadPixels(CPU* cpu) {
 
     MarshalReadWritePackedPixels pixels(cpu, 2, width, height, 1, format, type, ARG7);
     GLvoid* ptr = pixels.getPtr();
-#if defined(__EMSCRIPTEN__)
-    // The single-threaded browser build may yield between guest GL calls. The
-    // browser main loop can change the read buffer after glReadBuffer returns,
-    // so replay the guest's selection in the same host callback as the read.
-    GL_FUNC(pglReadBuffer)(cpu->thread->glReadBufferMode);
-#endif
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
     if (format == GL_RGBA && type == GL_UNSIGNED_BYTE && glReadPixelsTempBufferEnabled()) {
         boxedwine_read_pixels_temp_rgba8(ARG1, ARG2, width, height, format, type, (int)(uintptr_t)ptr);
@@ -2264,7 +2258,36 @@ static bool isUnsupportedEmscriptenGlIndex(U32 index) {
 }
 #endif
 
+#if defined(BOXEDWINE_OPENGL) && defined(__EMSCRIPTEN__)
+EM_JS(void, boxedwine_restore_transfer_framebuffers_js, (), {
+    var gl = typeof GLctx !== 'undefined' && GLctx;
+    if (!gl || typeof gl.blitFramebuffer !== 'function') {
+        return;
+    }
+    var read = gl.getParameter(0x8CAA); // READ_FRAMEBUFFER_BINDING
+    var draw = gl.getParameter(0x8CA6); // DRAW_FRAMEBUFFER_BINDING
+    var buffer = gl.getParameter(0x0C02); // READ_BUFFER, belonging to read
+    if (read !== draw) {
+        // Compositing can leave the driver's bindings different from WebGL's
+        // exposed bindings. Reapply both without yielding between this and the
+        // copy or readback; separate guest GL calls can straddle a browser frame.
+        gl.bindFramebuffer(0x8D40, null); // FRAMEBUFFER
+        gl.bindFramebuffer(0x8CA8, read); // READ_FRAMEBUFFER
+        gl.bindFramebuffer(0x8CA9, draw); // DRAW_FRAMEBUFFER
+    }
+    // A readBuffer call after compositing can update the wrong backend FBO.
+    // Rebinding alone does not repair that per-FBO state. Preserve the exposed
+    // selection (including NONE) instead of using the thread's last GL call.
+    gl.readBuffer(buffer);
+});
+#endif
+
 static void callOpenGLCallback(CPU* cpu, U32 index) {
+#if defined(BOXEDWINE_OPENGL) && defined(__EMSCRIPTEN__)
+    if (index == BlitFramebuffer || index == BlitFramebufferEXT || index == ReadPixels) {
+        boxedwine_restore_transfer_framebuffers_js();
+    }
+#endif
     int99Callback[index](cpu);
 }
 
