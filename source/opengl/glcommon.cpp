@@ -23,6 +23,7 @@
 #ifdef __EMSCRIPTEN__
 #include <GLES2/gl2.h>
 #include <emscripten/html5.h>
+#include <emscripten/html5_webgl.h>
 #include <emscripten.h>
 #include "emscriptenGLProcAddress.h"
 #endif
@@ -437,6 +438,14 @@ double dARG(CPU* cpu, int address) {
 #ifndef DISABLE_GL_EXTENSIONS
 static const char* extentions[] = {
 #include "glfunctions_ext_def.h"
+#ifdef __EMSCRIPTEN__
+    // Capability-only WebGL extensions. Preserve the browser's actual list so
+    // Wine can distinguish float storage, rendering, blending and filtering.
+    "GL_EXT_color_buffer_float",
+    "GL_EXT_color_buffer_half_float",
+    "GL_EXT_float_blend",
+    "GL_OES_texture_float_linear",
+#endif
 };
 #endif
 
@@ -588,8 +597,20 @@ static const char* getFilteredExtensionString(KProcess* process) {
         return webglFallbackExt;
     }
 #endif
+#ifdef __EMSCRIPTEN__
+    // Explicit enabling bypasses Emscripten's filtered default extension list.
+    // Keep availability tied to this actual context, including the disabled case.
+    const char* sampleVariablesExt = "GL_OES_sample_variables";
+    bool sampleVariables = (!glExt.length() || strstr(glExt.c_str(), sampleVariablesExt))
+            && emscripten_webgl_enable_extension(emscripten_webgl_get_current_context(), "OES_sample_variables");
+    thread_local static char* extensionStrings[2] = {};
+    thread_local static U32 extensionCounts[2] = {};
+    char*& ext = extensionStrings[sampleVariables ? 1 : 0];
+    U32& extensionCount = extensionCounts[sampleVariables ? 1 : 0];
+#else
     static char* ext;
     static U32 extensionCount;
+#endif
 
     if (!ext) {
         const char* result = (const char*)GL_FUNC(pglGetString)(GL_EXTENSIONS);
@@ -597,6 +618,10 @@ static const char* getFilteredExtensionString(KProcess* process) {
         for (U32 i = 0; i < sizeof(addedExt) / sizeof(*addedExt); i++) {
             len += (U32)strlen(addedExt[i]) + 1;
         }
+#ifdef __EMSCRIPTEN__
+        if (sampleVariables)
+            len += (U32)strlen(sampleVariablesExt) + 1;
+#endif
         ext = new char[len];
         memset(ext, 0, len);
 
@@ -646,6 +671,14 @@ static const char* getFilteredExtensionString(KProcess* process) {
             strcat(ext, addedExt[i]);
         }
     }
+#ifdef __EMSCRIPTEN__
+    if (sampleVariables && !strstr(ext, sampleVariablesExt)) {
+        if (ext[0])
+            strcat(ext, " ");
+        strcat(ext, sampleVariablesExt);
+        extensionCount++;
+    }
+#endif
     process->numberOfExtensions = extensionCount;
     return ext;
 #endif

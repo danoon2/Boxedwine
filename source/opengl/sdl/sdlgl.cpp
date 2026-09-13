@@ -1504,6 +1504,9 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
         if (result) {
             loadSdlExtensions();
 #ifdef __EMSCRIPTEN__
+            // Wine's masked shader variants require explicit per-context enabling.
+            // A missing extension is handled by guest capability filtering.
+            emscripten_webgl_enable_extension(emscripten_webgl_get_current_context(), "OES_sample_variables");
             if (createdContext && !context->webglContext && boxedwineNeedsInitialVertexArrayReset()) {
                 // SDL's renderer can leave attributes enabled on the canvas's
                 // default VAO before the first guest GL context is created.
