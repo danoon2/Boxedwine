@@ -19,6 +19,7 @@ BUILD_RESULT="${BUILD_RESULT:-LOCAL}"
 KEEP="${BUILD_SITE_KEEP:-5}"
 SKIP_SYNC="${LOCAL_BUILD_SITE_SKIP_SYNC:-0}"
 SKIP_BUILD="${LOCAL_BUILD_SITE_SKIP_BUILD:-0}"
+CLEAN_BUILD="${LOCAL_BUILD_SITE_CLEAN_BUILD:-0}"
 NO_SERVER="${LOCAL_BUILD_SITE_NO_SERVER:-0}"
 DRY_RUN=0
 
@@ -52,6 +53,7 @@ Options:
   --port PORT           Local server port (default: $PORT)
   --skip-sync           Reuse the existing local website directory
   --skip-build          Reuse existing Emscripten Deploy/Web outputs
+  --clean-build         Recompile from scratch instead of reusing objects
   --no-server           Generate the site but do not start a serve
   --dry-run             Print the workflow without changing files
   -h, --help            Show this help
@@ -108,6 +110,10 @@ while [ "$#" -gt 0 ]; do
             SKIP_BUILD=1
             shift
             ;;
+        --clean-build)
+            CLEAN_BUILD=1
+            shift
+            ;;
         --no-server)
             NO_SERVER=1
             shift
@@ -127,6 +133,25 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
+
+if [ "$SKIP_BUILD" = "1" ] && [ "$CLEAN_BUILD" = "1" ]; then
+    echo "--skip-build and --clean-build cannot be combined." >&2
+    exit 2
+fi
+
+time_phase() {
+    local phase="$1"
+    shift
+    if [ "$DRY_RUN" = "1" ]; then
+        echo "+ measure $phase"
+        "$@"
+        return
+    fi
+    local started=$SECONDS
+    # Keep errexit active inside called functions. A failed phase stays fatal.
+    "$@"
+    printf 'BUILD_TIMING phase=%s seconds=%s\n' "$phase" "$((SECONDS - started))"
+}
 
 require_command() {
     if ! command -v "$1" >/dev/null 2>&1; then
@@ -262,7 +287,6 @@ ensure_boxedwine_zips() {
 }
 
 validate_demo_roots() {
-    ensure_boxedwine_zips "$DEMO_SOURCE"
     require_command python3
     run "$ROOT_DIR/tools/jenkins/build_site.py" \
         --site-dir "$SITE_DIR" \
@@ -307,14 +331,20 @@ build_emscripten() {
         echo "+ source $EMSDK_DIR/emsdk_env.sh"
         echo "+ cd $EMSCRIPTEN_DIR"
         echo "+ rm -rf Deploy/Web"
-        echo "+ make clean"
-        echo "+ make release"
+        if [ "$CLEAN_BUILD" = "1" ]; then
+            echo "+ make clean"
+        fi
+        echo "+ make release BUILD_PHASE=compile"
+        echo "+ make release BUILD_PHASE=all"
         echo "+ copy Build/Release to $SINGLE_THREADED_DIR"
-        echo "+ make multiThreaded"
+        echo "+ make multiThreaded BUILD_PHASE=compile"
+        echo "+ make multiThreaded BUILD_PHASE=all"
         echo "+ copy Build/MultiThreaded to $MULTI_THREADED_DIR"
-        echo "+ make jit"
+        echo "+ make jit BUILD_PHASE=compile"
+        echo "+ make jit BUILD_PHASE=all"
         echo "+ copy Build/Jit to $SINGLE_THREADED_JIT_DIR"
-        echo "+ make multiThreadedJit"
+        echo "+ make multiThreadedJit BUILD_PHASE=compile"
+        echo "+ make multiThreadedJit BUILD_PHASE=all"
         echo "+ copy Build/MultiThreadedJit to $MULTI_THREADED_JIT_DIR"
         return
     fi
@@ -323,31 +353,37 @@ build_emscripten() {
     source "$EMSDK_DIR/emsdk_env.sh"
     cd "$EMSCRIPTEN_DIR"
     rm -rf Deploy/Web
-    make clean
-    make release
+    if [ "$CLEAN_BUILD" = "1" ]; then
+        time_phase clean make clean
+    fi
+    time_phase release-compile make release BUILD_PHASE=compile
+    time_phase release-link make release BUILD_PHASE=all
     if [ ! -f "Build/Release/boxedwine.wasm" ]; then
         echo "Build/Release/boxedwine.wasm was not created." >&2
         exit 1
     fi
-    copy_web_build "$EMSCRIPTEN_DIR/Build/Release" "$SINGLE_THREADED_DIR"
-    make multiThreaded
+    time_phase release-copy copy_web_build "$EMSCRIPTEN_DIR/Build/Release" "$SINGLE_THREADED_DIR"
+    time_phase multiThreaded-compile make multiThreaded BUILD_PHASE=compile
+    time_phase multiThreaded-link make multiThreaded BUILD_PHASE=all
     if [ ! -f "Build/MultiThreaded/boxedwine.wasm" ]; then
         echo "Build/MultiThreaded/boxedwine.wasm was not created." >&2
         exit 1
     fi
-    copy_web_build "$EMSCRIPTEN_DIR/Build/MultiThreaded" "$MULTI_THREADED_DIR"
-    make jit
+    time_phase multiThreaded-copy copy_web_build "$EMSCRIPTEN_DIR/Build/MultiThreaded" "$MULTI_THREADED_DIR"
+    time_phase jit-compile make jit BUILD_PHASE=compile
+    time_phase jit-link make jit BUILD_PHASE=all
     if [ ! -f "Build/Jit/boxedwine.wasm" ]; then
         echo "Build/Jit/boxedwine.wasm was not created." >&2
         exit 1
     fi
-    copy_web_build "$EMSCRIPTEN_DIR/Build/Jit" "$SINGLE_THREADED_JIT_DIR"
-    make multiThreadedJit
+    time_phase jit-copy copy_web_build "$EMSCRIPTEN_DIR/Build/Jit" "$SINGLE_THREADED_JIT_DIR"
+    time_phase multiThreadedJit-compile make multiThreadedJit BUILD_PHASE=compile
+    time_phase multiThreadedJit-link make multiThreadedJit BUILD_PHASE=all
     if [ ! -f "Build/MultiThreadedJit/boxedwine.wasm" ]; then
         echo "Build/MultiThreadedJit/boxedwine.wasm was not created." >&2
         exit 1
     fi
-    copy_web_build "$EMSCRIPTEN_DIR/Build/MultiThreadedJit" "$MULTI_THREADED_JIT_DIR"
+    time_phase multiThreadedJit-copy copy_web_build "$EMSCRIPTEN_DIR/Build/MultiThreadedJit" "$MULTI_THREADED_JIT_DIR"
 }
 
 generate_site() {
@@ -400,8 +436,9 @@ start_server() {
     run node "$EMSCRIPTEN_DIR/server.mjs" --root "$SITE_DIR" --port "$PORT" --host "$HOST"
 }
 
-mirror_site
-validate_demo_roots
+time_phase site-sync mirror_site
+time_phase root-download ensure_boxedwine_zips "$DEMO_SOURCE"
+time_phase root-validation validate_demo_roots
 build_emscripten
-generate_site
+time_phase site-generation generate_site
 start_server

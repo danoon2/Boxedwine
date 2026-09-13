@@ -2,7 +2,7 @@
 
 `local-build-site.sh` builds a local copy of the Boxedwine web demo site so Emscripten builds can be tested in a browser before publishing anything.
 
-The script mirrors the existing public build site, builds fresh single-threaded, multi-threaded, single-threaded JIT, and multi-threaded JIT Emscripten outputs, places those outputs into the same layout used by the published site, regenerates the demo pages, and starts a local static server with the headers required by the multi-threaded builds.
+The script mirrors the existing public build site, builds single-threaded, multi-threaded, single-threaded JIT, and multi-threaded JIT Emscripten outputs, places those outputs into the same layout used by the published site, regenerates the demo pages, and starts a local static server with the headers required by the multi-threaded builds.
 
 ## What It Does
 
@@ -76,6 +76,32 @@ http://127.0.0.1:8000/demos/
 
 ## Faster Local Iteration
 
+Local builds now reuse each mode's compiled objects. The makefile records
+compiler identity and compilation/link settings as separate dependencies.
+Changed flags (including `WASM_PROFILING`) invalidate the affected build
+configuration; changed headers and link inputs are tracked normally. Removing
+a source or deleting a generated `.js`/`.wasm` also forces the necessary work.
+The first build after introducing configuration tracking recompiles existing
+objects that have no configuration record.
+
+Use `--clean-build` (or `LOCAL_BUILD_SITE_CLEAN_BUILD=1`) for a full rebuild.
+It cannot be combined with `--skip-build`. Build logs include `BUILD_TIMING`
+records for download, root validation, each mode's compilation/link/copy,
+and site generation. The link phase includes Emscripten's Wasm optimization;
+these records do not yet split the compiler's internal optimizer/linker steps.
+
+The underlying makefile supports `make jit BUILD_PHASE=compile` followed by
+`make jit BUILD_PHASE=all` for the same separation. Ordinary `make jit` still
+builds the complete output.
+
+Dependency and workflow checks use fake tools and do not run an emulator or
+GPU workload:
+
+```bash
+python3 project/emscripten/test_build_config.py -v
+python3 tools/jenkins/test_local_build_site.py -v
+```
+
 Reuse the already mirrored site and already built Emscripten outputs:
 
 ```powershell
@@ -126,6 +152,7 @@ wsl bash -lc 'cd /mnt/c/BoxedwineGPT && tools/jenkins/local-build-site.sh --dry-
 --port PORT           Local server port
 --skip-sync           Reuse the existing local website directory
 --skip-build          Reuse existing Emscripten Deploy/Web outputs
+--clean-build         Recompile from scratch instead of reusing objects
 --no-server           Generate the site but do not start a server
 --dry-run             Print the workflow without changing files
 ```
