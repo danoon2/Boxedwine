@@ -1,5 +1,12 @@
 # OpenGL Marshal Test
 
+`runBrowserTest.py` and `runEGLBrowserTest.py` now save the shared runtime/root
+identity in `build-identity.json`, their manifest and the launch URL's `buildid`.
+Use `--build-commit FULL_OBJECT_ID --build-source-dirty true` for known build
+labels; otherwise provenance remains explicitly unknown. Every runtime input
+is checked before and after the run. A changed input invalidates the result.
+Generic EGL roots may omit WineD3D and record that absence explicitly.
+
 Small Win32/WGL OpenGL test harness for exercising API shapes that are easy to
 mis-marshal in BoxedWine.
 
@@ -144,6 +151,8 @@ arm marker, and sleeps. The browser harness then changes the underlying WebGL2
 read buffer to `NONE`. The resumed guest read must still return the expected
 pixel because BoxedWine replays its remembered guest read-buffer selection in
 the same host callback as `glReadPixels()`.
+This page-mutation probe accepts only `--build-mode st` and `st-jit`; the CLI
+rejects pthread modes because their direct WebGL context belongs to a worker.
 
 `framebuffer-read-draw-switch-orientation` creates two texture-backed FBOs,
 binds different objects to `GL_DRAW_FRAMEBUFFER` and `GL_READ_FRAMEBUFFER`,
@@ -271,7 +280,7 @@ Native SDL EGL windows honor the guest's swap interval. Synchronized windows
 also default to a 60 FPS compatibility limit, since some old games advance
 animation once per frame even on a 240 Hz host display. Interval zero disables
 both native VSync and this limit. The host environment variable
-`BOXEDWINE_EGL_VSYNC_FPS` overrides the limit (1–1000), or `0` uses only the host's
+`BOXEDWINE_EGL_VSYNC_FPS` overrides the limit (1â€“1000), or `0` uses only the host's
 VSync. The physical monitor mode and the reported XRandR refresh rate are unchanged.
 This pacing applies to native EGL windows; browser presentation is unchanged.
 
@@ -280,3 +289,56 @@ For a timing regression on a 60 Hz host, set host `BOXEDWINE_EGL_VSYNC_FPS=20`
 and add guest `-env EGL_TEST_VSYNC_FPS=20` to the command above. The lower limit
 lets the test distinguish VSync on from off even when the desktop compositor
 limits unsynchronized swaps. Run timing tests without other heavy workloads.
+
+## Browser cleanup and library selection
+
+The runner also requires the standalone wineserver-cleanup marker and then
+observes the browser for fifteen seconds. A passing assertion or a targeted
+pthread skip cannot bypass cleanup; a timeout or browser error during that
+observation fails the run. `--cleanup-wait-seconds` changes the positive
+observation duration. Keep it at least fifteen seconds for branch acceptance.
+After Chrome exits, the launcher audits its full log and rejects unexpected GL
+diagnostics, uncaught exceptions and GPU process failures. The manifest stores
+each diagnostic with its log line. The only permitted messages are bounded
+negative API probes: three buffer-boundary errors, one invalid compressed
+upload (two when S3TC is unavailable), and the forced context-loss notification.
+These allowances require the corresponding test's PASS marker and never permit
+other errors, additional occurrences, or failed cleanup. Missing or empty logs
+also fail. An independent artifact audit remains part of branch acceptance.
+
+`runEGLBrowserTest.py` now uses the shared isolated-browser backend. It requires
+the probe's exact pass line, a successful Linux process exit, fifteen seconds
+of observation, and a clean audit of the complete final Chrome stderr. It
+retains redirected output, browser errors, the launch URL, input hashes and
+the Chrome profile. The reported single check represents the complete EGL
+executable; it is not a Wine assertion count. No Wine process is launched.
+
+Use `--build-dir` and `--executable` to select frozen inputs. With
+`--use-filesystem-libraries`, the app ZIP contains only the probe and clears
+`LD_LIBRARY_PATH`, so the root supplies GL/EGL/GLES. Without that option, the
+runner packages the three libraries in `lib` beside the executable; use
+`--library-dir` to select another bundle. The options are mutually exclusive.
+The selected source and bundled-library hashes appear in `egl-audit.json`.
+
+
+## Fullscreen compositor control
+
+The standalone fullscreen layer control runs with:
+
+```sh
+node project/emscripten/testCanvasFullscreen.mjs
+node tools/openglTest/runCanvasFullscreenTest.mjs CHROME PLAYWRIGHT_MODULE NEW_OUTPUT
+python tools/openglTest/auditCanvasFullscreenTest.py NEW_OUTPUT --output NEW_AUDIT.json
+```
+
+The Chrome control uses the production HTML's canvas order and checks the
+bare `canvas` selector used by Emscripten's fullscreen sizing. It retains original-target and fixed-target compositor
+screenshots, switches between the two canvas layers, checks keyboard input
+and actual pointer lock, then exits fullscreen. It needs an isolated browser
+and no concurrent graphics workload. Its scene uses two diagnostic 2D canvases;
+it is a browser layer/input test, not an OpenGL or game rendering oracle.
+The separate auditor requires all nine checkpoints, verifies retained source
+and image hashes, checks 81 compositor pixels against the fixture colors and
+audits the complete Chrome log. It needs Pillow from
+`tools/wineTests/requirements-frames.txt`. The browser driver alone establishes
+DOM/input behavior; the pixel audit is required to establish visible layering.

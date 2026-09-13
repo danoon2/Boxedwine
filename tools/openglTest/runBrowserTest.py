@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict, replace
 from datetime import datetime
 import json
 import os
@@ -16,6 +17,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPOSITORY_ROOT / "tools" / "wineTests"))
 
 import wineGraphicsBrowser as browser  # noqa: E402
+from auditGraphicsMatrix import diagnostics  # noqa: E402
 
 
 BUILD_MODES = {
@@ -24,6 +26,34 @@ BUILD_MODES = {
     "st-jit": ("SingleThreadedJit", "single-threaded-jit"),
     "mt-jit": ("MultiThreadedJit", "multi-threaded-jit"),
 }
+
+
+def audit_browser_output(group: str, log: str, guest_output: str) -> dict:
+    """Allow only bounded diagnostics from this group's deliberate bad calls."""
+    budget = {}
+    guest_output = browser.normalize_output(guest_output)
+    if f"PASS {group}:" in guest_output:
+        if group == "buffer-lifecycle-growth":
+            # verifyStorageBoundary reads one byte beyond initial, orphaned,
+            # and grown storage; each call requires GL_INVALID_VALUE.
+            budget["[.WebGL-context] GL_INVALID_VALUE: glMapBufferRange: "
+                   "Mapped range does not fit into buffer dimensions."] = 3
+        elif group == "compressed-texture-capabilities":
+            # One 0xdead upload, plus a rejected DXT1 upload when unavailable.
+            count = (1 if "compressed texture caps: s3tc=1 " in guest_output else
+                     2 if "compressed texture caps: s3tc=0 " in guest_output else 0)
+            budget["WebGL: INVALID_ENUM: compressedTexImage2D: invalid format"] = count
+        elif group == "webgl-context-loss-restore":
+            budget["WebGL: CONTEXT_LOST_WEBGL: loseContext: context lost"] = 1
+    expected, unexpected = [], []
+    for item in diagnostics(log):
+        signature = item["signature"]
+        if budget.get(signature, 0):
+            budget[signature] -= 1
+            expected.append(item)
+        else:
+            unexpected.append(item)
+    return {"expected": expected, "unexpected": unexpected}
 
 
 def default_filesystem() -> Path | None:
@@ -85,6 +115,8 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="PE32 OpenGLMarshalTest.exe",
     )
     parser.add_argument("--chrome", type=Path, help="Chrome executable")
+    parser.add_argument("--build-commit", help="explicit full runtime commit label (default: unknown)")
+    parser.add_argument("--build-source-dirty", choices=("true", "false", "unknown"), default="unknown")
     parser.add_argument(
         "--cache-dir",
         type=Path,
@@ -103,11 +135,23 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="run Chrome in headless mode",
     )
     parser.add_argument(
+        "--cleanup-wait-seconds",
+        type=positive_integer,
+        default=15,
+        help="observe the browser after wineserver cleanup (default: 15 seconds)",
+    )
+    parser.add_argument(
         "--keep-browser-profile",
         action="store_true",
         help="retain the isolated Chrome profile",
     )
-    return parser.parse_args(argv)
+    arguments = parser.parse_args(argv)
+    if arguments.test == "readbuffer-yield-replay" and arguments.build_mode in ("mt", "mt-jit"):
+        parser.error(
+            "readbuffer-yield-replay requires --build-mode st or st-jit: "
+            "its browser-page mutation cannot access a direct pthread WebGL context"
+        )
+    return arguments
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -116,7 +160,11 @@ def main(argv: list[str] | None = None) -> int:
         print("--filesystem is required when APPDATA is unavailable", file=sys.stderr)
         return 2
 
-    suite = browser.GRAPHICS_SUITES["opengl-marshal"]
+    suite = replace(
+        browser.GRAPHICS_SUITES["opengl-marshal"],
+        cleanup_wait_seconds=arguments.cleanup_wait_seconds,
+        exit_status_policy="zero",
+    )
     group = arguments.test
     build_directory_name, mode_name = BUILD_MODES[arguments.build_mode]
     build_dir = (
@@ -169,8 +217,25 @@ def main(argv: list[str] | None = None) -> int:
             headless=arguments.headless,
             keep_browser_profile=arguments.keep_browser_profile,
             mode=mode_name,
+            build_commit=arguments.build_commit,
+            build_source_dirty={"true": True, "false": False, "unknown": None}[arguments.build_source_dirty],
         )
-    except browser.RunnerError as error:
+        # Read the complete final log after Chrome exits, including diagnostics
+        # emitted after the guest summary and cleanup marker.
+        log = (run_dir / "chrome.log").read_text(encoding="utf-8", errors="replace")
+        if not log.strip():
+            raise browser.RunnerError("browser stderr is empty")
+        guest_output = (run_dir / "opengl.log").read_text(encoding="utf-8", errors="replace")
+        output_audit = audit_browser_output(group, log, guest_output)
+        if output_audit["unexpected"]:
+            result = replace(result, passed=False,
+                             reason=f"{len(output_audit['unexpected'])} unexpected browser diagnostics")
+        if result.failure_records and result.passed:
+            result = replace(result, passed=False, reason="guest failure records present")
+        manifest["browser_diagnostics"] = output_audit
+        manifest["result"] = asdict(result)
+        (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    except (browser.RunnerError, OSError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 2
 
@@ -186,6 +251,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {record}")
         for event in result.browser_events:
             print(f"  {event}")
+        for diagnostic in output_audit["unexpected"]:
+            print(f"  chrome.log:{diagnostic['line']}: {diagnostic['message']}")
     print(json.dumps(manifest["result"], sort_keys=True))
     return 0 if result.passed else 1
 

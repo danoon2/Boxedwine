@@ -1,0 +1,2 @@
+# Optional final-canvas comparisons and game UI checkpoint runners use Pillow.
+Pillow>=10.0
