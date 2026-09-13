@@ -703,6 +703,7 @@ GLint components_in_format(GLenum format )
       case GL_STENCIL_INDEX:
       case GL_DEPTH_COMPONENT:
       case GL_RED:
+      case GL_RED_INTEGER:
       case GL_GREEN:
       case GL_BLUE:
       case GL_ALPHA:
@@ -711,10 +712,13 @@ GLint components_in_format(GLenum format )
          return 1;
       case GL_LUMINANCE_ALPHA:
       case GL_RG:
+      case GL_RG_INTEGER:
      return 2;
       case GL_RGB:
+      case GL_RGB_INTEGER:
      return 3;
       case GL_RGBA:
+      case GL_RGBA_INTEGER:
      return 4;
       case GL_BGR:
      return 3;

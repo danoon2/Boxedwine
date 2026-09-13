@@ -433,6 +433,9 @@ public:
 
     ~MarshalReadWritePackedPixels();
     GLvoid* getPtr();
+    bool isPacked() const { return packed; }
+    // getPtr() computes the CPU span, including pack skips and row padding.
+    U32 getByteLength() const { return len; }
 };
 
 #endif

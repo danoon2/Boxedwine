@@ -284,16 +284,35 @@ U32 glcommon_prepareElementArrayClientDraw(GLenum type, GLsizei count, U32 offse
     return count > 0 ? (U32)count : 0;
 }
 
+#ifdef __EMSCRIPTEN__
+EM_JS_DEPS(boxedwine_read_pixels_client, "$heapObjectForWebGLType");
+EM_JS(void, boxedwine_read_pixels_client, (int x, int y, int width, int height, int format, int type, int pixels, int byteLength), {
+    var heap = heapObjectForWebGLType(type);
+    var address = pixels >>> 0;
+    var size = byteLength >>> 0;
+    // Emscripten's fallback for heaps above 2 GB sizes this view using UNPACK
+    // state. Use the marshaller's PACK span, without a large WebGL dstOffset.
+    var view = heap.subarray(address / heap.BYTES_PER_ELEMENT,
+        (address + size) / heap.BYTES_PER_ELEMENT);
+    GLctx.readPixels(x, y, width, height, format, type, view);
+});
+#endif
+
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
-EM_JS(void, boxedwine_read_pixels_temp_rgba8, (int x, int y, int width, int height, int format, int type, int pixels), {
-    var size = width * height * 4;
+EM_JS(void, boxedwine_read_pixels_temp_rgba8, (int x, int y, int width, int height, int format, int type, int pixels, int byteLength), {
+    var size = byteLength >>> 0;
     var buffer = Module['boxedwineReadPixelsTempRGBA8'];
     if (!buffer || buffer.length < size) {
         buffer = new Uint8Array(size);
         Module['boxedwineReadPixelsTempRGBA8'] = buffer;
     }
-    GLctx.readPixels(x, y, width, height, format, type, buffer);
-    HEAPU8.set(buffer.subarray(0, size), pixels);
+    var view = buffer.subarray(0, size);
+    var address = pixels >>> 0;
+    // Preserve skipped pixels, row padding, and all destination bytes if GL
+    // rejects the read. The host pack state determines the actual write layout.
+    view.set(HEAPU8.subarray(address, address + size));
+    GLctx.readPixels(x, y, width, height, format, type, view);
+    HEAPU8.set(view, address);
 });
 
 static bool glReadPixelsTempBufferEnabled() {
@@ -1112,8 +1131,14 @@ void glcommon_glReadPixels(CPU* cpu) {
     MarshalReadWritePackedPixels pixels(cpu, 2, width, height, 1, format, type, ARG7);
     GLvoid* ptr = pixels.getPtr();
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
-    if (format == GL_RGBA && type == GL_UNSIGNED_BYTE && glReadPixelsTempBufferEnabled()) {
-        boxedwine_read_pixels_temp_rgba8(ARG1, ARG2, width, height, format, type, (int)(uintptr_t)ptr);
+    if (!pixels.isPacked() && format == GL_RGBA && type == GL_UNSIGNED_BYTE && glReadPixelsTempBufferEnabled()) {
+        boxedwine_read_pixels_temp_rgba8(ARG1, ARG2, width, height, format, type, (int)(uintptr_t)ptr, pixels.getByteLength());
+    } else
+#endif
+#ifdef __EMSCRIPTEN__
+    if (!pixels.isPacked()) {
+        boxedwine_read_pixels_client(ARG1, ARG2, width, height, format, type,
+            (int)(uintptr_t)ptr, pixels.getByteLength());
     } else
 #endif
     {
