@@ -63,6 +63,7 @@ public:
     void glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd) override;
     void glResizeWindow(const std::shared_ptr<XWindow>& wnd) override;
     bool isActive() override;
+    bool presentedSinceLastCheck() override;
 
     GLPixelFormatPtr getFormat(U32 pixelFormatId) override;
     void warpMouse(int x, int y) override;
@@ -70,6 +71,7 @@ public:
     void hideCurrentWindow() override {} // os mesa doesn't have a native window
 
     U32 lastUpdateTime = 0;
+    bool presented = false;
 
     static BOXEDWINE_MUTEX contextMutex;
     static U32 nextId;
@@ -149,6 +151,12 @@ bool KOpenGLMesa::isActive() {
     return contextsById.size() > 0;
 }
 
+bool KOpenGLMesa::presentedSinceLastCheck() {
+    bool result = presented;
+    presented = false;
+    return result;
+}
+
 void KOpenGLMesa::glResizeWindow(const std::shared_ptr<XWindow>& wnd) {
     // makeCurrent handle buffer size    
 }
@@ -170,7 +178,7 @@ U32 KOpenGLMesa::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelF
     attribs[n++] = pixelFormat->pf.cStencilBits;
     attribs[n++] = OSMESA_ACCUM_BITS;
     attribs[n++] = pixelFormat->pf.cAccumRedBits;
-    if (profile) {
+    if (profile && !(profile & BOXEDWINE_GL_PROFILE_ES)) {
         attribs[n++] = OSMESA_PROFILE;
         attribs[n++] = OSMESA_CORE_PROFILE;
     }
@@ -215,6 +223,7 @@ void KOpenGLMesa::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable
         }
     }    
     lastUpdateTime = KSystem::getMilliesSinceStart();
+    presented = true;
 }
 
 void KOpenGLMesa::glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd, const CLXFBConfigPtr& cfg) {

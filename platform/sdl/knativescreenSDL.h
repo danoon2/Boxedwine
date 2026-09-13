@@ -114,6 +114,7 @@ public:
     
 private:
     friend class KVulkdanSDLImpl;
+    friend class SDLGlWindow;
 
     bool visible = false;
     bool showOnDraw = true;

@@ -139,6 +139,9 @@
     <ClCompile Include="..\..\..\..\source\opengl\glcommon.cpp">
       <Filter>opengl</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\opengl\gles.cpp">
+      <Filter>opengl</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\opengl\glfunctions_ext1.cpp">
       <Filter>opengl</Filter>
     </ClCompile>

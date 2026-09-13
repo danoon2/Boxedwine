@@ -27,6 +27,7 @@
 #define GL_LOG if (0) klog_fmt
 #define GL_LOG_NO_FMT if (0) klog
 
+#define BOXEDWINE_GL_PROFILE_ES 0x80000000u
 
 #ifdef BOXEDWINE_OPENGL_ES
 #define GL_FUNC(name) es_##name
@@ -36,6 +37,16 @@
 #endif
 
 U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p);
+void glcommon_recordElementArrayBufferData(const GLvoid* data, GLsizeiptr size);
+void glcommon_recordElementArrayBufferSubData(GLintptr offset, const GLvoid* data,
+    GLsizeiptr size);
+void glcommon_recordElementArrayBufferUnmap(GLenum target);
+bool glcommon_flushMappedBufferRange(GLenum target, GLintptr offset,
+    GLsizeiptr length);
+U32 glcommon_prepareElementArrayClientDraw(GLenum type, GLsizei count, U32 offset);
+#ifdef BOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY
+bool glcommon_testOpenGLProcAddressAvailable(const char* name);
+#endif
 
 inline U32 glStackArgAddress(CPU* cpu, U32 slot) {
     return cpu->seg[SS].address + ((ESP + (slot << 2)) & cpu->stackMask);
@@ -63,6 +74,9 @@ inline U32 glStackArgAddress(CPU* cpu, U32 slot) {
 #define ARG18 cpu->peek32(18)
 #define ARG19 cpu->peek32(19)
 #define ARG20 cpu->peek32(20)
+#define ARG21 cpu->peek32(21)
+#define ARG22 cpu->peek32(22)
+#define ARG23 cpu->peek32(23)
 
 #define pARG1 ((uintptr_t)cpu->peek32(1))
 #define pARG2 ((uintptr_t)cpu->peek32(2))
@@ -79,6 +93,14 @@ inline U32 glStackArgAddress(CPU* cpu, U32 slot) {
 #define pARG13 ((uintptr_t)cpu->peek32(13))
 #define pARG14 ((uintptr_t)cpu->peek32(14))
 #define pARG15 ((uintptr_t)cpu->peek32(15))
+#define pARG16 ((uintptr_t)cpu->peek32(16))
+#define pARG17 ((uintptr_t)cpu->peek32(17))
+#define pARG18 ((uintptr_t)cpu->peek32(18))
+#define pARG19 ((uintptr_t)cpu->peek32(19))
+#define pARG20 ((uintptr_t)cpu->peek32(20))
+#define pARG21 ((uintptr_t)cpu->peek32(21))
+#define pARG22 ((uintptr_t)cpu->peek32(22))
+#define pARG23 ((uintptr_t)cpu->peek32(23))
 
 #define bARG1 (cpu->peek32(1) & 0xFF)
 #define bARG2 (cpu->peek32(2) & 0xFF)
@@ -95,6 +117,14 @@ inline U32 glStackArgAddress(CPU* cpu, U32 slot) {
 #define bARG13 (cpu->peek32(13) & 0xFF)
 #define bARG14 (cpu->peek32(14) & 0xFF)
 #define bARG15 (cpu->peek32(15) & 0xFF)
+#define bARG16 (cpu->peek32(16) & 0xFF)
+#define bARG17 (cpu->peek32(17) & 0xFF)
+#define bARG18 (cpu->peek32(18) & 0xFF)
+#define bARG19 (cpu->peek32(19) & 0xFF)
+#define bARG20 (cpu->peek32(20) & 0xFF)
+#define bARG21 (cpu->peek32(21) & 0xFF)
+#define bARG22 (cpu->peek32(22) & 0xFF)
+#define bARG23 (cpu->peek32(23) & 0xFF)
 
 #define sARG1 (cpu->peek32(1) & 0xFFFF)
 #define sARG2 (cpu->peek32(2) & 0xFFFF)
@@ -111,6 +141,14 @@ inline U32 glStackArgAddress(CPU* cpu, U32 slot) {
 #define sARG13 (cpu->peek32(13) & 0xFFFF)
 #define sARG14 (cpu->peek32(14) & 0xFFFF)
 #define sARG15 (cpu->peek32(15) & 0xFFFF)
+#define sARG16 (cpu->peek32(16) & 0xFFFF)
+#define sARG17 (cpu->peek32(17) & 0xFFFF)
+#define sARG18 (cpu->peek32(18) & 0xFFFF)
+#define sARG19 (cpu->peek32(19) & 0xFFFF)
+#define sARG20 (cpu->peek32(20) & 0xFFFF)
+#define sARG21 (cpu->peek32(21) & 0xFFFF)
+#define sARG22 (cpu->peek32(22) & 0xFFFF)
+#define sARG23 (cpu->peek32(23) & 0xFFFF)
 
 #define hARG1 ARG1
 #define hARG2 ARG2
@@ -139,6 +177,20 @@ inline U32 glStackArgAddress(CPU* cpu, U32 slot) {
 #define llARG7 cpu->memory->readq(glStackArgAddress(cpu, 7))
 #define llARG8 cpu->memory->readq(glStackArgAddress(cpu, 8))
 #define llARG9 cpu->memory->readq(glStackArgAddress(cpu, 9))
+#define llARG10 cpu->memory->readq(glStackArgAddress(cpu, 10))
+#define llARG11 cpu->memory->readq(glStackArgAddress(cpu, 11))
+#define llARG12 cpu->memory->readq(glStackArgAddress(cpu, 12))
+#define llARG13 cpu->memory->readq(glStackArgAddress(cpu, 13))
+#define llARG14 cpu->memory->readq(glStackArgAddress(cpu, 14))
+#define llARG15 cpu->memory->readq(glStackArgAddress(cpu, 15))
+#define llARG16 cpu->memory->readq(glStackArgAddress(cpu, 16))
+#define llARG17 cpu->memory->readq(glStackArgAddress(cpu, 17))
+#define llARG18 cpu->memory->readq(glStackArgAddress(cpu, 18))
+#define llARG19 cpu->memory->readq(glStackArgAddress(cpu, 19))
+#define llARG20 cpu->memory->readq(glStackArgAddress(cpu, 20))
+#define llARG21 cpu->memory->readq(glStackArgAddress(cpu, 21))
+#define llARG22 cpu->memory->readq(glStackArgAddress(cpu, 22))
+#define llARG23 cpu->memory->readq(glStackArgAddress(cpu, 23))
 
 #define fARG1 fARG(cpu, ARG1)
 #define fARG2 fARG(cpu, ARG2)
@@ -155,6 +207,14 @@ inline U32 glStackArgAddress(CPU* cpu, U32 slot) {
 #define fARG13 fARG(cpu, ARG13)
 #define fARG14 fARG(cpu, ARG14)
 #define fARG15 fARG(cpu, ARG15)
+#define fARG16 fARG(cpu, ARG16)
+#define fARG17 fARG(cpu, ARG17)
+#define fARG18 fARG(cpu, ARG18)
+#define fARG19 fARG(cpu, ARG19)
+#define fARG20 fARG(cpu, ARG20)
+#define fARG21 fARG(cpu, ARG21)
+#define fARG22 fARG(cpu, ARG22)
+#define fARG23 fARG(cpu, ARG23)
 
 #define dARG1 dARG(cpu, glStackArgAddress(cpu, 1))
 #define dARG2 dARG(cpu, glStackArgAddress(cpu, 2))
@@ -172,6 +232,13 @@ inline U32 glStackArgAddress(CPU* cpu, U32 slot) {
 #define dARG14 dARG(cpu, glStackArgAddress(cpu, 14))
 #define dARG15 dARG(cpu, glStackArgAddress(cpu, 15))
 #define dARG16 dARG(cpu, glStackArgAddress(cpu, 16))
+#define dARG17 dARG(cpu, glStackArgAddress(cpu, 17))
+#define dARG18 dARG(cpu, glStackArgAddress(cpu, 18))
+#define dARG19 dARG(cpu, glStackArgAddress(cpu, 19))
+#define dARG20 dARG(cpu, glStackArgAddress(cpu, 20))
+#define dARG21 dARG(cpu, glStackArgAddress(cpu, 21))
+#define dARG22 dARG(cpu, glStackArgAddress(cpu, 22))
+#define dARG23 dARG(cpu, glStackArgAddress(cpu, 23))
 
 float fARG(CPU* cpu, U32 arg);
 double dARG(CPU* cpu, int address);

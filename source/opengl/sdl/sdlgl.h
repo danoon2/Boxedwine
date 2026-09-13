@@ -26,6 +26,9 @@ class SDLGL {
 public:
 	static KOpenGLPtr create();
 	static void iterateFormats(std::function<void(const GLPixelFormatPtr& format)> callback);
+#ifdef BOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY
+	static void* testGetOpenGLProcAddress(const char* name);
+#endif
 };
 
 #endif

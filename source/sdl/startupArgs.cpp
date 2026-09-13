@@ -26,7 +26,8 @@
 #include "devinput.h"
 #include "devdsp.h"
 #include "procselfexe.h"
-#include "cpuinfo.h"
+// Use the guest /proc header, not asmjit's identically named cpuinfo.h.
+#include "../../include/cpuinfo.h"
 #include "bufferaccess.h"
 #include "meminfo.h"
 #include "procstat.h"
@@ -860,6 +861,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             }
             i++;
 #endif
+        } else if (!strcmp(argv[i], "-hideWindow")) {
+            this->videoOption = VIDEO_HIDE_WINDOW;
         } else if (!strcmp(argv[i], "-novideo")) {
 #ifdef BOXEDWINE_MSVC
             this->videoOption = VIDEO_HIDE_WINDOW;
@@ -948,6 +951,12 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i++;
         } else if (!strcmp(argv[i], "-opengl")) {
             this->openGlLib = argv[i+1];
+#if defined(__MACH__) && !defined(BOXEDWINE_OPENGL_OSMESA)
+            if (this->openGlLib == "osmesa") {
+                klog("Software Mesa is no longer included on macOS; using native OpenGL.");
+                this->openGlLib = BString::empty;
+            }
+#endif
             i++;
         }
         else if (!strcmp(argv[i], "-ttyPrepend")) { // used to send tty back to WaitDlg for winetricks when BOXEDWINE_UI_LAUNCH_IN_PROCESS is not defined

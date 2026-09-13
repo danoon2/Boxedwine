@@ -20,8 +20,19 @@
 
 #ifdef BOXEDWINE_OPENGL
 #include GLH
+#ifdef __EMSCRIPTEN__
+#include <emscripten/html5.h>
+#include <emscripten.h>
+#include "emscriptenGLProcAddress.h"
+#endif
 #include "knativesystem.h"
 #include "glcommon.h"
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+#include <SDL.h>
+#include <emscripten/html5_webgl.h>
+#include <emscripten/threading.h>
+#include "../../platform/sdl/sdlcallback.h"
+#endif
 
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG)
@@ -41,6 +52,325 @@
 #endif
 
 static BString glExt;
+
+#ifdef __EMSCRIPTEN__
+EM_JS(void, boxedwine_record_element_array_buffer_data_js,
+    (int data, int size), {
+        if (typeof GLctx === "undefined" || !GLctx || size < 0) {
+            return;
+        }
+        var buffer = GLctx.getParameter(0x8895); // GL_ELEMENT_ARRAY_BUFFER_BINDING
+        if (!buffer) {
+            return;
+        }
+        var buffers = Module['boxedwineElementArrayBufferBytes'];
+        if (!buffers) {
+            buffers = new WeakMap();
+            Module['boxedwineElementArrayBufferBytes'] = buffers;
+        }
+        var bytes = new Uint8Array(size);
+        if (data && size) {
+            bytes.set(HEAPU8.subarray(data, data + size));
+        }
+        buffers.set(buffer, bytes);
+    });
+
+EM_JS(void, boxedwine_record_element_array_buffer_sub_data_js,
+    (int offset, int data, int size), {
+        if (typeof GLctx === "undefined" || !GLctx || offset < 0 || size <= 0 || !data) {
+            return;
+        }
+        var buffer = GLctx.getParameter(0x8895); // GL_ELEMENT_ARRAY_BUFFER_BINDING
+        var buffers = Module['boxedwineElementArrayBufferBytes'];
+        var bytes = buffer && buffers ? buffers.get(buffer) : null;
+        if (!bytes || offset + size > bytes.length) {
+            return;
+        }
+        bytes.set(HEAPU8.subarray(data, data + size), offset);
+    });
+
+EM_JS(void, boxedwine_record_element_array_buffer_unmap_js,
+    (int target), {
+        if (target !== 0x8893 || typeof GL === "undefined" ||
+            typeof GLctx === "undefined" || !GLctx ||
+            typeof emscriptenWebGLGetBufferBinding !== "function") {
+            return;
+        }
+        var binding = emscriptenWebGLGetBufferBinding(target);
+        var mapping = GL.mappedBuffers ? GL.mappedBuffers[binding] : null;
+        if (!mapping || !mapping.mem || (mapping.access & 0x10)) {
+            return;
+        }
+        var buffer = GL.buffers ? GL.buffers[binding] : null;
+        var buffers = Module['boxedwineElementArrayBufferBytes'];
+        var bytes = buffer && buffers ? buffers.get(buffer) : null;
+        if (!bytes || mapping.offset < 0 || mapping.length < 0 ||
+            mapping.offset + mapping.length > bytes.length) {
+            return;
+        }
+        bytes.set(HEAPU8.subarray(mapping.mem,
+            mapping.mem + mapping.length), mapping.offset);
+    });
+
+EM_JS(int, boxedwine_flush_mapped_buffer_range_js,
+    (int target, int offset, int length), {
+        if (typeof GL === "undefined" || typeof GLctx === "undefined" ||
+            !GLctx || typeof emscriptenWebGLGetBufferBinding !== "function" ||
+            typeof emscriptenWebGLValidateMapBufferTarget !== "function") {
+            return 0;
+        }
+        if (!emscriptenWebGLValidateMapBufferTarget(target)) {
+            GL.recordError(0x0500); // GL_INVALID_ENUM
+            return 1;
+        }
+        var binding = emscriptenWebGLGetBufferBinding(target);
+        var mapping = GL.mappedBuffers ? GL.mappedBuffers[binding] : null;
+        if (!mapping || !mapping.mem || !(mapping.access & 0x10)) {
+            GL.recordError(0x0502); // GL_INVALID_OPERATION
+            return 1;
+        }
+        if (offset < 0 || length < 0 || offset + length > mapping.length) {
+            GL.recordError(0x0501); // GL_INVALID_VALUE
+            return 1;
+        }
+
+        var sourceStart = mapping.mem + offset;
+        // Emscripten's WebGL shim uploads every explicit flush at
+        // mapping.offset. Desktop GL defines offset relative to the mapped
+        // range, so preserve it in both the GPU upload and element shadow.
+        GLctx.bufferSubData(target, mapping.offset + offset,
+            HEAPU8.subarray(sourceStart, sourceStart + length));
+
+        if (target === 0x8893 && length > 0) { // GL_ELEMENT_ARRAY_BUFFER
+            var buffer = GL.buffers ? GL.buffers[binding] : null;
+            var buffers = Module['boxedwineElementArrayBufferBytes'];
+            var bytes = buffer && buffers ? buffers.get(buffer) : null;
+            var destinationOffset = mapping.offset + offset;
+            if (bytes && destinationOffset >= 0 &&
+                destinationOffset + length <= bytes.length) {
+                bytes.set(HEAPU8.subarray(sourceStart, sourceStart + length),
+                    destinationOffset);
+            }
+        }
+        return 1;
+    });
+
+EM_JS(double, boxedwine_prepare_element_array_client_draw_js,
+    (int type, int offset, int count), {
+        Module['boxedwineElementArrayClientVertexCount'] = 0;
+        if (typeof GL === "undefined" || typeof GLctx === "undefined" ||
+            !GLctx || !GL.currentContext || !GL.currentContext.clientBuffers ||
+            !GL.preDrawHandleClientVertexAttribBindings) {
+            return -1;
+        }
+
+        if (!GL.__boxedwineElementArrayClientFix) {
+            GL.__boxedwineElementArrayClientFix = true;
+            var originalPreDraw = GL.preDrawHandleClientVertexAttribBindings;
+            GL.preDrawHandleClientVertexAttribBindings = function(vertexCount) {
+                var pending = Module['boxedwineElementArrayClientVertexCount'] || 0;
+                Module['boxedwineElementArrayClientVertexCount'] = 0;
+                if (!vertexCount && pending > 0) {
+                    vertexCount = pending;
+                }
+                return originalPreDraw.call(this, vertexCount);
+            };
+        }
+
+        var needsClientUpload = false;
+        for (var attrib = 0; attrib < GL.currentContext.maxVertexAttribs; ++attrib) {
+            var clientBuffer = GL.currentContext.clientBuffers[attrib];
+            if (clientBuffer && clientBuffer.clientside && clientBuffer.enabled) {
+                needsClientUpload = true;
+                break;
+            }
+        }
+        if (!needsClientUpload || count <= 0 || offset < 0) {
+            return -1;
+        }
+
+        var elementSize = 0;
+        if (type === 0x1401) { // GL_UNSIGNED_BYTE
+            elementSize = 1;
+        } else if (type === 0x1403) { // GL_UNSIGNED_SHORT
+            elementSize = 2;
+        } else if (type === 0x1405) { // GL_UNSIGNED_INT
+            elementSize = 4;
+        } else {
+            return -1;
+        }
+
+        var buffer = GLctx.getParameter(0x8895); // GL_ELEMENT_ARRAY_BUFFER_BINDING
+        var buffers = Module['boxedwineElementArrayBufferBytes'];
+        var bytes = buffer && buffers ? buffers.get(buffer) : null;
+        var end = offset + count * elementSize;
+        if (!bytes || end > bytes.length) {
+            return -1;
+        }
+
+        var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        var maxIndex = 0;
+        if (elementSize === 1) {
+            for (var byteAt = offset; byteAt < end; ++byteAt) {
+                if (bytes[byteAt] > maxIndex) {
+                    maxIndex = bytes[byteAt];
+                }
+            }
+        } else if (elementSize === 2) {
+            for (var shortAt = offset; shortAt < end; shortAt += 2) {
+                var shortIndex = view.getUint16(shortAt, true);
+                if (shortIndex > maxIndex) {
+                    maxIndex = shortIndex;
+                }
+            }
+        } else {
+            for (var intAt = offset; intAt < end; intAt += 4) {
+                var intIndex = view.getUint32(intAt, true);
+                if (intIndex > maxIndex) {
+                    maxIndex = intIndex;
+                }
+            }
+        }
+
+        Module['boxedwineElementArrayClientVertexCount'] = maxIndex + 1;
+        return maxIndex;
+    });
+#endif
+
+void glcommon_recordElementArrayBufferData(const GLvoid* data, GLsizeiptr size) {
+#ifdef __EMSCRIPTEN__
+    if (size >= 0) {
+        boxedwine_record_element_array_buffer_data_js((int)(uintptr_t)data,
+            (int)size);
+    }
+#endif
+}
+
+void glcommon_recordElementArrayBufferSubData(GLintptr offset, const GLvoid* data,
+        GLsizeiptr size) {
+#ifdef __EMSCRIPTEN__
+    if (offset >= 0 && size > 0 && data) {
+        boxedwine_record_element_array_buffer_sub_data_js((int)offset,
+            (int)(uintptr_t)data, (int)size);
+    }
+#endif
+}
+
+void glcommon_recordElementArrayBufferUnmap(GLenum target) {
+#ifdef __EMSCRIPTEN__
+    boxedwine_record_element_array_buffer_unmap_js((int)target);
+#endif
+}
+
+bool glcommon_flushMappedBufferRange(GLenum target, GLintptr offset,
+        GLsizeiptr length) {
+#ifdef __EMSCRIPTEN__
+    return boxedwine_flush_mapped_buffer_range_js((int)target, (int)offset,
+        (int)length) != 0;
+#else
+    return false;
+#endif
+}
+
+U32 glcommon_prepareElementArrayClientDraw(GLenum type, GLsizei count, U32 offset) {
+#ifdef __EMSCRIPTEN__
+    double maxIndex = boxedwine_prepare_element_array_client_draw_js(
+        (int)type, (int)offset, (int)count);
+    if (maxIndex >= 0.0 && maxIndex < 4294967295.0) {
+        return (U32)maxIndex + 1;
+    }
+#endif
+    return count > 0 ? (U32)count : 0;
+}
+
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+EM_JS(void, boxedwine_read_pixels_temp_rgba8, (int x, int y, int width, int height, int format, int type, int pixels), {
+    var size = width * height * 4;
+    var buffer = Module['boxedwineReadPixelsTempRGBA8'];
+    if (!buffer || buffer.length < size) {
+        buffer = new Uint8Array(size);
+        Module['boxedwineReadPixelsTempRGBA8'] = buffer;
+    }
+    GLctx.readPixels(x, y, width, height, format, type, buffer);
+    HEAPU8.set(buffer.subarray(0, size), pixels);
+});
+
+static bool glReadPixelsTempBufferEnabled() {
+    static int enabled = -1;
+    if (enabled == -1) {
+        const char* value = getenv("BOXEDWINE_GL_READPIXELS_TEMP_BUFFER");
+        enabled = (!value || !value[0]) ? 1 : value[0] != '0';
+    }
+    return enabled != 0;
+}
+#endif
+
+static bool isOpenGLProcAddressAvailable(const char* name) {
+    if (!name || name[0] != 'g' || name[1] != 'l' || name[2] == 'X') {
+        return false;
+    }
+
+#if defined(__EMSCRIPTEN__)
+    if (boxedwineIsUnsupportedEmscriptenGLProcAddress(name)) {
+        return false;
+    }
+#endif
+
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+    // Wine resolves its GL dispatch table before it creates and makes its
+    // first context current. The cached pgl/ext_gl pointers are populated
+    // when that first context becomes current, so they are still null during
+    // this initial query. Emscripten's proc lookup is context-independent and
+    // lets us distinguish callable WebGL entry points from unsupported legacy
+    // GL functions without advertising every generated BoxedWine wrapper.
+#define BOXEDWINE_GL_PROC_AVAILABLE(proc) ((proc) != nullptr || SDL_GL_GetProcAddress(name) != nullptr)
+#else
+#define BOXEDWINE_GL_PROC_AVAILABLE(proc) ((proc) != nullptr)
+#endif
+
+    // These two core functions have backend callbacks rather than generated
+    // pgl entries, but must still be discoverable through EGL and GLX.
+    if (!strcmp(name, "glFinish")) {
+        return BOXEDWINE_GL_PROC_AVAILABLE(int99Callback && Finish < int99CallbackSize ? int99Callback[Finish] : nullptr);
+    }
+    if (!strcmp(name, "glFlush")) {
+        return BOXEDWINE_GL_PROC_AVAILABLE(int99Callback && Flush < int99CallbackSize ? int99Callback[Flush] : nullptr);
+    }
+
+#undef GL_FUNCTION
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) if (!strcmp(name, "gl" #func)) return BOXEDWINE_GL_PROC_AVAILABLE(pgl##func);
+
+#undef GL_FUNCTION_FMT
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG) if (!strcmp(name, "gl" #func)) return BOXEDWINE_GL_PROC_AVAILABLE(pgl##func);
+
+#undef GL_FUNCTION_CUSTOM
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) if (!strcmp(name, "gl" #func)) return BOXEDWINE_GL_PROC_AVAILABLE(pgl##func);
+
+#undef GL_EXT_FUNCTION
+#define GL_EXT_FUNCTION(func, RET, PARAMS) if (!strcmp(name, "gl" #func)) return BOXEDWINE_GL_PROC_AVAILABLE(ext_gl##func);
+
+#include "glfunctions.h"
+#include "glfunctions_ext.h"
+
+#undef BOXEDWINE_GL_PROC_AVAILABLE
+
+    return false;
+}
+
+void glcommon_glProcAddressAvailable(CPU* cpu) {
+#ifndef __EMSCRIPTEN__
+    // Wine resolves its core GL dispatch table before creating a context.
+    // Initialize the native backend so those cached entry points are populated.
+    KNativeSystem::getOpenGL();
+#endif
+    EAX = isOpenGLProcAddressAvailable(marshalsz(cpu, ARG1)) ? 1 : 0;
+}
+
+#ifdef BOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY
+bool glcommon_testOpenGLProcAddressAvailable(const char* name) {
+    return isOpenGLProcAddressAvailable(name);
+}
+#endif
 
 float fARG(CPU* cpu, U32 arg) {
     struct int2Float i;
@@ -90,6 +420,39 @@ void glcommon_glViewport(CPU* cpu) {
     GL_FUNC(pglViewport)(x, y, width, height);
 }
 
+void glcommon_glClearDepth(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    glClearDepth(dARG1);
+#else
+    if (GL_FUNC(pglClearDepth)) {
+        GL_FUNC(pglClearDepth)(dARG1);
+    }
+#endif
+    GL_LOG("glClearDepth GLclampd depth=%f", dARG1);
+}
+
+void glcommon_glDepthFunc(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    glDepthFunc(ARG1);
+#else
+    if (GL_FUNC(pglDepthFunc)) {
+        GL_FUNC(pglDepthFunc)(ARG1);
+    }
+#endif
+    GL_LOG("glDepthFunc GLenum func=%d", ARG1);
+}
+
+void glcommon_glDepthMask(CPU* cpu) {
+#if defined(__EMSCRIPTEN__)
+    glDepthMask((GLboolean)ARG1);
+#else
+    if (GL_FUNC(pglDepthMask)) {
+        GL_FUNC(pglDepthMask)((GLboolean)ARG1);
+    }
+#endif
+    GL_LOG("glDepthMask GLboolean flag=%d", ARG1);
+}
+
 static GLfloat* feedbackBuffer;
 static GLsizei feedbackBufferSize;
 static GLsizei feedbackSize;
@@ -136,9 +499,94 @@ void glcommon_glSelectBuffer(CPU* cpu) {
 // changed this to an invalid value to fix motorhead under windows.  I will need to reevaluate why it was necessary for ma
 static const char* addedExt[] = { "WGL_ARB_create_context_Invalid" };
 
+static const char* getFilteredExtensionString(KProcess* process) {
+#ifdef DISABLE_GL_EXTENSIONS
+    process->numberOfExtensions = 1;
+    return "GL_EXT_texture3D";
+#else
+#ifdef __EMSCRIPTEN__
+    static const char* webglFallbackExt =
+        "GL_ARB_fragment_shader "
+        "GL_ARB_framebuffer_object "
+        "GL_ARB_shading_language_100 "
+        "GL_ARB_texture_non_power_of_two "
+        "GL_ARB_vertex_buffer_object "
+        "GL_ARB_vertex_shader "
+        "GL_EXT_framebuffer_object "
+        "GL_EXT_texture3D "
+        "WGL_ARB_create_context_Invalid";
+    if (!emscripten_webgl_get_current_context()) {
+        process->numberOfExtensions = 9;
+        return webglFallbackExt;
+    }
+#endif
+    static char* ext;
+    static U32 extensionCount;
+
+    if (!ext) {
+        const char* result = (const char*)GL_FUNC(pglGetString)(GL_EXTENSIONS);
+        U32 len = result ? (U32)strlen(result) + 1 : 1;
+        for (U32 i = 0; i < sizeof(addedExt) / sizeof(*addedExt); i++) {
+            len += (U32)strlen(addedExt[i]) + 1;
+        }
+        ext = new char[len];
+        memset(ext, 0, len);
+
+        if (result) {
+            std::vector<BString> hardwareExt;
+            std::vector<BString> supportedExt;
+            B(result).split(' ', hardwareExt);
+            for (U32 i = 0; i < sizeof(extentions) / sizeof(char*); i++) {
+                supportedExt.push_back(BString::copy(extentions[i]));
+            }
+            for (U32 i = 0; i < hardwareExt.size(); i++) {
+#if defined(__EMSCRIPTEN__)
+                if (hardwareExt[i] == "GL_OES_fixed_point" || hardwareExt[i] == "GL_ARB_imaging" || hardwareExt[i] == "GL_EXT_convolution" || hardwareExt[i] == "GL_EXT_histogram" || hardwareExt[i] == "GL_SGI_color_table") {
+                    continue;
+                }
+                // WebGL exposes S3TC through WEBGL_compressed_texture_s3tc,
+                // while desktop GL clients (including WineD3D) look for the
+                // equivalent GL_EXT_texture_compression_s3tc capability.
+                if (hardwareExt[i] == "GL_WEBGL_compressed_texture_s3tc") {
+                    static const char* s3tcExt = "GL_EXT_texture_compression_s3tc";
+                    if ((!glExt.length() || strstr(glExt.c_str(), s3tcExt)) && !strstr(ext, s3tcExt)) {
+                        if (ext[0] != 0)
+                            strcat(ext, " ");
+                        extensionCount++;
+                        strcat(ext, s3tcExt);
+                    }
+                    continue;
+                }
+#endif
+                if (std::find(supportedExt.begin(), supportedExt.end(), hardwareExt[i]) == supportedExt.end()) {
+                    continue;
+                }
+
+                if (!glExt.length() || strstr(glExt.c_str(), hardwareExt[i].c_str())) {
+                    if (ext[0] != 0)
+                        strcat(ext, " ");
+                    extensionCount++;
+                    strcat(ext, hardwareExt[i].c_str());
+                }
+            }
+        }
+
+        for (U32 i = 0; i < sizeof(addedExt) / sizeof(*addedExt); i++) {
+            if (ext[0] != 0)
+                strcat(ext, " ");
+            extensionCount++;
+            strcat(ext, addedExt[i]);
+        }
+    }
+    process->numberOfExtensions = extensionCount;
+    return ext;
+#endif
+}
+
 void glcommon_glGetIntegerv(CPU* cpu) {
     GLenum pname = ARG1;
     if (pname == GL_NUM_EXTENSIONS) {
+        getFilteredExtensionString(cpu->thread->process.get());
         cpu->memory->writed(ARG2, cpu->thread->process->numberOfExtensions);
     } else {
         MarshalReadWrite<GLint> buffer(cpu, ARG2, getSize(ARG1));
@@ -261,8 +709,8 @@ void glcommon_glDrawElements(CPU* cpu) {
 
     if (ELEMENT_ARRAY_BUFFER()) {
         p = (const GLvoid*)pARG4;
-        // :TODO: is this correct to use this count?
-        updateVertexPointers(cpu, count);
+        updateVertexPointers(cpu,
+            glcommon_prepareElementArrayClientDraw(type, count, indices));
         GL_LOG("glDrawElements mode=%x count=%d type=%x", mode, count, type);
     } else {
         p = marshalType(cpu, type, count, indices);
@@ -293,54 +741,37 @@ void printOpenGLInfo() {
 // GLAPI const GLubyte* APIENTRY glGetString( GLenum name ) {
 void glcommon_glGetString(CPU* cpu) {
     U32 name = ARG1;
-    const char* result = (const char*)GL_FUNC(pglGetString)(name);
+    const char* result;
+#ifdef __EMSCRIPTEN__
+    switch (name) {
+    case GL_VENDOR:
+        result = "BoxedWine";
+        break;
+    case GL_RENDERER:
+        result = "BoxedWine WebGL";
+        break;
+    case GL_VERSION:
+        result = "3.0 BoxedWine WebGL";
+        break;
+    case 0x8B8C: /* GL_SHADING_LANGUAGE_VERSION */
+        result = "3.00 BoxedWine WebGL";
+        break;
+    default:
+        if (!emscripten_webgl_get_current_context()) {
+            EAX = 0;
+            return;
+        }
+        result = (const char*)GL_FUNC(pglGetString)(name);
+        break;
+    }
+#else
+    result = (const char*)GL_FUNC(pglGetString)(name);
+#endif
     KProcess* process = cpu->thread->process.get();
 
     if (name == GL_EXTENSIONS) {
-#ifdef DISABLE_GL_EXTENSIONS
-        result = "GL_EXT_texture3D";
-#else
-        static char* ext;
-        if (!ext) {
-            U32 len = (U32)strlen(result)+1;
-            for (U32 i = 0; i < sizeof(addedExt) / sizeof(*addedExt); i++) {
-                len += (U32)strlen(addedExt[i])+1;
-            }
-            ext = new char[len];
-            memset(ext, 0, len);
-        }
-        if (ext[0]==0) {
-            std::vector<BString> hardwareExt;
-            std::vector<BString> supportedExt;
-            B(result).split(' ', hardwareExt);
-            for (U32 i=0;i<sizeof(extentions)/sizeof(char*);i++) {
-                supportedExt.push_back(BString::copy(extentions[i]));
-            }
-            process->numberOfExtensions = 0;
-            for (U32 i=0;i<hardwareExt.size();i++) {
-                if (std::find(supportedExt.begin(), supportedExt.end(), hardwareExt[i]) == supportedExt.end()) {
-                    continue;
-                }
-
-                if (!glExt.length() || strstr(glExt.c_str(), hardwareExt[i].c_str())) {
-                    if (ext[0]!=0)
-                        strcat(ext, " ");
-                    process->numberOfExtensions++;
-                    strcat(ext, hardwareExt[i].c_str());
-                }
-            }
-            for (U32 i = 0; i < sizeof(addedExt) / sizeof(*addedExt); i++) {
-                if (ext[0] != 0)
-                    strcat(ext, " ");
-                process->numberOfExtensions++;
-                strcat(ext, addedExt[i]);
-            }
-
-        }
-        result = ext;
-#endif
+        result = getFilteredExtensionString(process);
         GL_LOG("glGetString GLenum name=GL_EXTENSIONS ret=%s", result);
-    } else {
     }
 
     if (name == GL_EXTENSIONS && !cpu->thread->process->glStringsiExtensions) {
@@ -569,8 +1000,63 @@ void glcommon_glTexSubImage2D(CPU* cpu) {
     GLenum type = ARG8;
     const GLvoid* pixels = PIXEL_UNPACK_BUFFER() ? (GLvoid*)pARG9 : marshalPixels(cpu, target == GL_TEXTURE_3D ? 3 : 2, width, height, 1, format, type, ARG9, xoffset, yoffset, level);
 
+#ifdef __EMSCRIPTEN__
+    std::vector<U8> tightlyPackedPixels;
+    GLint unpackAlignment = 1;
+    GLint unpackRowLength = 0;
+    GLint unpackSkipRows = 0;
+    GLint unpackSkipPixels = 0;
+    bool restoreUnpackState = false;
+    if (!PIXEL_UNPACK_BUFFER() && pixels && width > 0 && height > 0 &&
+            type != GL_BITMAP) {
+        GL_FUNC(pglGetIntegerv)(GL_UNPACK_ALIGNMENT, &unpackAlignment);
+        GL_FUNC(pglGetIntegerv)(GL_UNPACK_ROW_LENGTH, &unpackRowLength);
+        GL_FUNC(pglGetIntegerv)(GL_UNPACK_SKIP_ROWS, &unpackSkipRows);
+        GL_FUNC(pglGetIntegerv)(GL_UNPACK_SKIP_PIXELS, &unpackSkipPixels);
+
+        GLint bytesPerPixel = get_bytes_per_pixel(format, type);
+        if (bytesPerPixel > 0 &&
+                (unpackRowLength || unpackSkipRows || unpackSkipPixels)) {
+            U64 sourcePixelsPerRow = unpackRowLength > 0
+                ? (U64)unpackRowLength : (U64)width;
+            U64 sourceRowBytes = sourcePixelsPerRow * (U64)bytesPerPixel;
+            U64 alignment = unpackAlignment > 0 ? (U64)unpackAlignment : 1;
+            sourceRowBytes = (sourceRowBytes + alignment - 1) & ~(alignment - 1);
+            U64 packedRowBytes = (U64)width * (U64)bytesPerPixel;
+            U64 packedSize = packedRowBytes * (U64)height;
+            U64 sourceOffset = (U64)unpackSkipRows * sourceRowBytes
+                + (U64)unpackSkipPixels * (U64)bytesPerPixel;
+
+            if (packedSize <= SIZE_MAX && sourceOffset <= SIZE_MAX) {
+                tightlyPackedPixels.resize((size_t)packedSize);
+                const U8* source = (const U8*)pixels + (size_t)sourceOffset;
+                for (GLsizei row = 0; row < height; ++row) {
+                    std::memcpy(tightlyPackedPixels.data()
+                            + (size_t)row * (size_t)packedRowBytes,
+                        source + (size_t)row * (size_t)sourceRowBytes,
+                        (size_t)packedRowBytes);
+                }
+                pixels = tightlyPackedPixels.data();
+                GL_FUNC(pglPixelStorei)(GL_UNPACK_ALIGNMENT, 1);
+                GL_FUNC(pglPixelStorei)(GL_UNPACK_ROW_LENGTH, 0);
+                GL_FUNC(pglPixelStorei)(GL_UNPACK_SKIP_ROWS, 0);
+                GL_FUNC(pglPixelStorei)(GL_UNPACK_SKIP_PIXELS, 0);
+                restoreUnpackState = true;
+            }
+        }
+    }
+#endif
+
     GL_LOG("glTexSubImage2D GLenum target=%x, GLint level=%d, GLint xoffset=%d, GLint yoffset=%d, GLsizei width=%d, GLsizei height=%d, GLenum format=%x, GLenum type=%x, const GLvoid* pixels=%x", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9);
     GL_FUNC(pglTexSubImage2D)(target, level, xoffset, yoffset, width, height, format, type, pixels);
+#ifdef __EMSCRIPTEN__
+    if (restoreUnpackState) {
+        GL_FUNC(pglPixelStorei)(GL_UNPACK_ALIGNMENT, unpackAlignment);
+        GL_FUNC(pglPixelStorei)(GL_UNPACK_ROW_LENGTH, unpackRowLength);
+        GL_FUNC(pglPixelStorei)(GL_UNPACK_SKIP_ROWS, unpackSkipRows);
+        GL_FUNC(pglPixelStorei)(GL_UNPACK_SKIP_PIXELS, unpackSkipPixels);
+    }
+#endif
 }
 
 // GLAPI void APIENTRY glGetPointerv( GLenum pname, GLvoid **params ) {
@@ -609,7 +1095,21 @@ void glcommon_glReadPixels(CPU* cpu) {
     GL_LOG("glReadPixels GLint x=%d, GLint y=%d, GLsizei width=%d, GLsizei height=%d, GLenum format=%d, GLenum type=%d, GLvoid *pixels=%.08x", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
 
     MarshalReadWritePackedPixels pixels(cpu, 2, width, height, 1, format, type, ARG7);
-    GL_FUNC(pglReadPixels)(ARG1, ARG2, width, height, format, type, pixels.getPtr());
+    GLvoid* ptr = pixels.getPtr();
+#if defined(__EMSCRIPTEN__)
+    // The single-threaded browser build may yield between guest GL calls. The
+    // browser main loop can change the read buffer after glReadBuffer returns,
+    // so replay the guest's selection in the same host callback as the read.
+    GL_FUNC(pglReadBuffer)(cpu->thread->glReadBufferMode);
+#endif
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+    if (format == GL_RGBA && type == GL_UNSIGNED_BYTE && glReadPixelsTempBufferEnabled()) {
+        boxedwine_read_pixels_temp_rgba8(ARG1, ARG2, width, height, format, type, (int)(uintptr_t)ptr);
+    } else
+#endif
+    {
+        GL_FUNC(pglReadPixels)(ARG1, ARG2, width, height, format, type, ptr);
+    }
 }
 
 void OPENGL_CALL_TYPE debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {
@@ -1656,9 +2156,17 @@ void gl_common_XSwapBuffers(CPU* cpu) {
 #include "glfunctions.h"
 
 static Int99Callback gl_callback[GL_FUNC_COUNT];
+static_assert(GL_FUNC_COUNT > kEglQueryString, "GL_FUNC_COUNT must include EGL int99 callbacks");
 
 Int99Callback* int99Callback;
 U32 int99CallbackSize;
+void gl_init_egl_callbacks(Int99Callback* gl_callback);
+
+#if defined(__EMSCRIPTEN__)
+static void glcommon_unsupportedEmscriptenGL(CPU* cpu) {
+    EAX = 0;
+}
+#endif
 
 void gl_init(BString allowExtensions) {
     int99Callback=gl_callback;
@@ -1675,10 +2183,14 @@ void gl_init(BString allowExtensions) {
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS) gl_callback[func] = glcommon_gl##func;
 
 #undef GL_EXT_FUNCTION
+#ifdef __EMSCRIPTEN__
+#define GL_EXT_FUNCTION(func, RET, PARAMS) gl_callback[func] = boxedwineIsUnsupportedEmscriptenGLProcAddress("gl" #func) ? glcommon_unsupportedEmscriptenGL : glcommon_gl##func;
+#else
 #define GL_EXT_FUNCTION(func, RET, PARAMS) gl_callback[func] = glcommon_gl##func;
+#endif
 
 #include "glfunctions.h"      
-    
+
     gl_callback[kXCreateContext] = gl_common_XCreateContext;
     gl_callback[kXDestroyContext] = gl_common_XDestroyContext;
     gl_callback[kXMakeCurrent] = gl_common_XMakeCurrent;
@@ -1708,6 +2220,8 @@ void gl_init(BString allowExtensions) {
     gl_callback[kXCreateContextAttribsARB] = gl_common_XCreateContextAttribsARB;
     gl_callback[kXSwapIntervalEXT] = gl_common_XSwapIntervalEXT;
     gl_callback[kXSwapBuffers] = gl_common_XSwapBuffers;
+    gl_callback[kGlProcAddressAvailable] = glcommon_glProcAddressAvailable;
+    gl_init_egl_callbacks(gl_callback);
 }
 
 #else
@@ -1718,13 +2232,145 @@ void gl_init() {
 }
 #endif
 
+#if defined(BOXEDWINE_OPENGL) && defined(__EMSCRIPTEN__)
+static bool isUnsupportedEmscriptenGlIndex(U32 index) {
+#undef GL_FUNCTION
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG)
+#undef GL_FUNCTION_FMT
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG)
+#undef GL_FUNCTION_CUSTOM
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS)
+#undef GL_EXT_FUNCTION
+#define GL_EXT_FUNCTION(func, RET, PARAMS) if (index == func && boxedwineIsUnsupportedEmscriptenGLProcAddress("gl" #func)) return true;
+
+#include "glfunctions_ext.h"
+
+    return false;
+}
+#endif
+
+static void callOpenGLCallback(CPU* cpu, U32 index) {
+    int99Callback[index](cpu);
+}
+
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+static bool useThreadWebGLCanvas() {
+    const char* value = getenv("BOXEDWINE_WEBGL_THREAD_CANVAS");
+    return !value || !value[0] || value[0] != '0';
+}
+
+static bool isThreadWebGLControlCallback(U32 index) {
+    switch (index) {
+    case kXCreateContext:
+    case kXDestroyContext:
+    case kXMakeCurrent:
+    case kXCopyContext:
+    case kXQueryVersion:
+    case kXIsDirect:
+    case kXGetCurrentContext:
+    case kXGetCurrentDrawable:
+    case kXQueryExtensionsString:
+    case kXQueryServerString:
+    case kXGetClientString:
+    case kXChooseFBConfig:
+    case kXGetFBConfigAttrib:
+    case kXGetFBConfigs:
+    case kXGetVisualFromFBConfig:
+    case kXCreatePbuffer:
+    case kXDestroyPbuffer:
+    case kXQueryDrawable:
+    case kXCreateNewContext:
+    case kXMakeContextCurrent:
+    case kXCreatePixmap:
+    case kXDestroyPixmap:
+    case kXCreateWindow:
+    case kXDestroyWindow:
+    case kXCreateContextAttribsARB:
+    case kXSwapIntervalEXT:
+    case kXSwapBuffers:
+    case kGlProcAddressAvailable:
+    case kEglGetDisplay:
+    case kEglInitialize:
+    case kEglTerminate:
+    case kEglQueryString:
+    case kEglGetConfigs:
+    case kEglChooseConfig:
+    case kEglGetConfigAttrib:
+    case kEglBindAPI:
+    case kEglCreateContext:
+    case kEglDestroyContext:
+    case kEglCreateWindowSurface:
+    case kEglCreatePbufferSurface:
+    case kEglDestroySurface:
+    case kEglMakeCurrent:
+    case kEglSwapBuffers:
+    case kEglSwapInterval:
+    case kEglGetCurrentContext:
+    case kEglGetCurrentSurface:
+    case kEglGetCurrentDisplay:
+    case kEglQuerySurface:
+    case kEglGetError:
+    case kEglReleaseThread:
+    case kEglWaitGL:
+    case kEglWaitNative:
+    case kEglCopyBuffers:
+    case kEglSurfaceAttrib:
+    case kEglBindTexImage:
+    case kEglReleaseTexImage:
+    case kEglCreateSync:
+    case kEglDestroySync:
+    case kEglClientWaitSync:
+    case kEglGetSyncAttrib:
+    case kEglWaitSync:
+    case kEglCreateImage:
+    case kEglDestroyImage:
+    case kEglCreatePbufferFromClientBuffer:
+    case kEglCreatePixmapSurface:
+    case kEglCreatePlatformPixmapSurface:
+    case kEglCreatePlatformWindowSurface:
+    case kEglGetPlatformDisplay:
+    case kEglQueryAPI:
+    case kEglQueryContext:
+    case kEglWaitClient:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static bool glCanRunOnCurrentThread(U32 index) {
+    if (isMainthread() || emscripten_webgl_get_current_context()) {
+        return true;
+    }
+    if (!useThreadWebGLCanvas()) {
+        return false;
+    }
+    return isThreadWebGLControlCallback(index);
+}
+#endif
+
 void callOpenGL(CPU* cpu, U32 index) {
 #ifdef BOXEDWINE_OPENGL
     //KNativeWindow::getNativeWindow()->preOpenGLCall(index);
+#ifdef __EMSCRIPTEN__
+    if (isUnsupportedEmscriptenGlIndex(index)) {
+        EAX = 0;
+        return;
+    }
+#endif
     if (index < int99CallbackSize && int99Callback[index]) {
         cpu->thread->marshalIndex = 0;
-        int99Callback[index](cpu);
-    } else 
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
+        if (!glCanRunOnCurrentThread(index)) {
+            sdlDispatch([cpu, index]() -> U32 {
+                callOpenGLCallback(cpu, index);
+                return 0;
+                });
+            return;
+        }
+#endif
+        callOpenGLCallback(cpu, index);
+    } else
 #endif
 {
         kpanic_fmt("Uknown int 99 call: %d", index);

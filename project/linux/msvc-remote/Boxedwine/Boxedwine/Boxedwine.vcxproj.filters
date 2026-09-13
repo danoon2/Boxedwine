@@ -250,6 +250,9 @@
     <ClCompile Include="..\..\..\..\..\source\opengl\glcommon.cpp">
       <Filter>source\opengl</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\opengl\gles.cpp">
+      <Filter>source\opengl</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\opengl\glext.cpp">
       <Filter>source\opengl</Filter>
     </ClCompile>

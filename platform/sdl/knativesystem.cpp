@@ -48,6 +48,12 @@ static KVulkanPtr vulkan;
 bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
     U32 flags = SDL_INIT_EVENTS;
 
+#ifdef __APPLE__
+    if (videoOption == VIDEO_HIDE_WINDOW) {
+        SDL_SetHintWithPriority(SDL_HINT_MAC_BACKGROUND_APP, "1", SDL_HINT_OVERRIDE);
+    }
+#endif
+
     if (videoOption != VIDEO_NO_WINDOW) {
         flags |= SDL_INIT_VIDEO;
     }
@@ -129,7 +135,8 @@ void KNativeSystem::changeScreenSize(U32 cx, U32 cy) {
 }
 
 void KNativeSystem::moveWindow(const XWindowPtr& wnd) {
-    if (opengl && opengl->isActive()) {
+    // Wine can resize an EGL drawable before its first visible swap.
+    if (opengl) {
         opengl->glResizeWindow(wnd);
     }
 }

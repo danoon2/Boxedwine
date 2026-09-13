@@ -57,6 +57,8 @@ public:
 	const bool isWindow;
 	const bool isPBuffer;
 	bool isOpenGL = false;
+	// -1 leaves presentation policy to the backend for non-EGL drawables.
+	S32 eglSwapInterval = -1;
 
 protected:	
 

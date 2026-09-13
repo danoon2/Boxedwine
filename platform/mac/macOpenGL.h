@@ -25,6 +25,7 @@ bool macOpenGLMakeCurrent(void* context);
 bool macOpenGLMakeCurrentPbuffer(void* context, void* pbuffer);
 void macOpenGLClearCurrent();
 void macOpenGLSwapBuffers(void* context);
+void macOpenGLSetSwapInterval(void* context, int interval);
 void macOpenGLUpdateContext(void* context);
 void macOpenGLDetachContext(void* context);
 

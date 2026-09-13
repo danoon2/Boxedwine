@@ -144,6 +144,9 @@ void KNativeScreenSDL::showWindow(bool show) {
                 SDL_RaiseWindow(window);
             }
             visible = true;
+            if (KSystem::videoOption != VIDEO_NORMAL) {
+                return;
+            }
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST) && defined(BOXEDWINE_UI_LAUNCH_IN_PROCESS)
             if (uiIsRunning()) {
                 uiShutdown();
@@ -766,6 +769,9 @@ void KNativeScreenSDL::recreateMainWindow() {
             }
         }
 
+        if (KSystem::videoOption == VIDEO_HIDE_WINDOW) {
+            flags &= ~SDL_WINDOW_FULLSCREEN_DESKTOP;
+        }
         window = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, flags);
         if (!window) {
             klog_fmt("SDL_CreateWindow failed: %s", SDL_GetError());

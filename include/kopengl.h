@@ -38,6 +38,7 @@ public:
     virtual bool glCreatePbuffer(KThread* thread, const std::shared_ptr<XDrawable>& pbuffer, const CLXFBConfigPtr& cfg) { return false; }
     virtual void glDestroyPbuffer(KThread* thread, const std::shared_ptr<XDrawable>& pbuffer) {}
     virtual bool isActive() = 0;
+    virtual bool presentedSinceLastCheck() = 0;
     virtual GLPixelFormatPtr getFormat(U32 pixelFormatId) = 0;
     virtual void warpMouse(int x, int y) = 0;
     virtual U32 getLastUpdateTime() = 0;

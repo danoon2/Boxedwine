@@ -21,13 +21,38 @@
 #ifdef BOXEDWINE_OPENGL
 #include GLH
 #include "glcommon.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 extern BHashTable<BString, void*> glFunctionMap;
 
 const char* glIsLoaded[GL_FUNC_COUNT];
 
+#ifdef __EMSCRIPTEN__
+EM_JS(void, boxedwineGetBufferSubDataJS,
+    (int target, int offset, int size, int data), {
+        if (!GLctx || typeof GLctx.getBufferSubData !== "function") {
+            GL.recordError(0x0502); // GL_INVALID_OPERATION
+            return;
+        }
+        GLctx.getBufferSubData(target, offset, HEAPU8, data, size);
+    });
+
+static void OPENGL_CALL_TYPE boxedwineGetBufferSubData(
+        GLenum target, GLintptr offset, GLsizeiptr size, void* data) {
+    boxedwineGetBufferSubDataJS((int)target, (int)offset, (int)size,
+        (int)(uintptr_t)data);
+}
+#endif
+
 void glExtensionsLoaded() {
-
-
+#ifdef __EMSCRIPTEN__
+    // WebGL 2 exposes getBufferSubData(), but GLES does not define the C API,
+    // so Emscripten has no glGetBufferSubData symbol for SDL to resolve.
+    // Supply the desktop GL entry points Wine expects through the WebGL call.
+    ext_glGetBufferSubData = boxedwineGetBufferSubData;
+    ext_glGetBufferSubDataARB = boxedwineGetBufferSubData;
+#endif
 }
 #endif

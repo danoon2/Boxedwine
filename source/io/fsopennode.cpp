@@ -74,7 +74,11 @@ U32 FsOpenNode::write(KThread* thread, U32 address, U32 len,
     memory->performOnMemory(address, len, true, [&result, this, &cache](U8* ram, U32 len) {
         U32 written = this->writeNative(ram, len);
         if ((S32)written < 0) {
-            result = written;
+            // Earlier guest pages may already have been written. Report that
+            // progress so a retry does not duplicate data (such as queued audio).
+            if (!result) {
+                result = written;
+            }
             return false;
         }
         if ((S32)written > 0) {

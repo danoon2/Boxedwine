@@ -986,9 +986,8 @@ void GlobalSettings::setOpenGlTypeOnStartupArgs(U32 type) {
         type = GlobalSettings::getDefaultOpenGL();
     }
 #ifdef __MACH__
-    if (type != OPENGL_TYPE_NATIVE) {
-        GlobalSettings::startUpArgs.openGlLib = "osmesa";
-    }
+    // Older Mac containers may still select software Mesa. Use native OpenGL.
+    GlobalSettings::startUpArgs.openGlLib = BString::empty;
 #endif
 #ifdef BOXEDWINE_MSVC
     if (type != OPENGL_TYPE_NATIVE) {

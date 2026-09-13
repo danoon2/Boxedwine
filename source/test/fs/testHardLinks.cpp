@@ -15,6 +15,7 @@
 #include "../../io/fsfilenode.h"
 #include "../../io/fsmemnode.h"
 #include "../../io/fsmemopennode.h"
+#include "../../io/fsvirtualopennode.h"
 #include "../../emulation/softmmu/kmemory_soft.h"
 #include "../../emulation/softmmu/soft_ram.h"
 #include "../../util/bnativeheap.h"
@@ -6898,6 +6899,73 @@ void testInotifyAsyncSignalsSigioOnDelete() {
     KSystem::eraseProcess(process->id);
     process->memory = nullptr;
     cleanupRoot(root);
+}
+
+namespace {
+class PartialWriteStream final : public FsVirtualOpenNode {
+public:
+    PartialWriteStream() : FsVirtualOpenNode(
+        std::make_shared<FsMemNode>(0, 0, B("/test-partial-write")), K_O_WRONLY) {}
+
+    U32 readNative(U8*, U32) override { return -K_EINVAL; }
+    U32 writeNative(U8* data, U32 len) override {
+        if (calls++ == failCall) {
+            return failure;
+        }
+        bytes.insert(bytes.end(), data, data + len);
+        return len;
+    }
+
+    U32 calls = 0;
+    U32 failCall = 1;
+    U32 failure = -K_EWOULDBLOCK;
+    std::vector<U8> bytes;
+};
+}
+
+void testGuestWritePreservesPartialProgress() {
+    TestContext& context = testContext();
+    // A single guest write is split at guest page boundaries. Filling an audio
+    // queue on one chunk must not cause the already accepted prefix to be retried.
+    for (U32 offset : {0u, 8u, K_PAGE_SIZE - 8u}) {
+        const U32 address = TEST_HEAP_ADDRESS + offset;
+        const U32 length = K_PAGE_SIZE * 2;
+        const U32 firstChunk = K_PAGE_SIZE - offset;
+        std::vector<U8> input(length);
+        for (U32 i = 0; i < length; ++i) {
+            input[i] = (U8)((i * 37 + i / K_PAGE_SIZE) & 0xff);
+        }
+        context.memory->memcpy(address, input.data(), length);
+
+        for (U32 failure : {(U32)-K_EWOULDBLOCK, (U32)-K_EIO, 0u}) {
+            PartialWriteStream stream;
+            stream.failure = failure;
+            U32 result = stream.write(context.thread, address, length, nullptr);
+            if (result != firstChunk || stream.bytes.size() != firstChunk) {
+                testFail("partial write offset=%u error=%d expected %u accepted bytes, returned %d, stored %zu",
+                    offset, (S32)failure, firstChunk, (S32)result, stream.bytes.size());
+                continue;
+            }
+            stream.failCall = 0xffffffffu;
+            U32 remaining = stream.write(context.thread, address + result, length - result, nullptr);
+            if (remaining != length - result || stream.bytes != input) {
+                testFail("partial write retry offset=%u error=%d duplicated or lost data", offset, (S32)failure);
+            }
+        }
+
+        PartialWriteStream blocked;
+        blocked.failCall = 0;
+        U32 result = blocked.write(context.thread, address, length, nullptr);
+        if (result != (U32)-K_EWOULDBLOCK || !blocked.bytes.empty()) {
+            testFail("write with no progress must preserve EWOULDBLOCK");
+        }
+
+        PartialWriteStream full;
+        full.failCall = 0xffffffffu;
+        if (full.write(context.thread, address, length, nullptr) != length || full.bytes != input) {
+            testFail("successful cross-page write must return the complete byte count");
+        }
+    }
 }
 
 #endif

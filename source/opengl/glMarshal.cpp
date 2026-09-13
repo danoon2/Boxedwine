@@ -425,6 +425,9 @@ U32 getMappedBufferAddress(CPU* cpu, GLenum target, GLvoid* buffer, U32 size) {
 }
 
 U32 mapBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 offset, U32 size) {
+    if (!buffer || !size) {
+        return 0;
+    }
     if (bufferedTargets.contains(target)) {
         kwarn("mapBufferRange already mapped");
     }

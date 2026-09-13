@@ -1,0 +1,15 @@
+diff --git a/src/opengl_utils.c b/src/opengl_utils.c
+index 8222f10..920f02e 100644
+--- a/src/opengl_utils.c
++++ b/src/opengl_utils.c
+@@ -194,7 +194,9 @@ void oglu_init()
+     wglGetExtensionsStringARB = (PFNWGLGETEXTENSIONSSTRINGARBPROC)xwglGetProcAddress("wglGetExtensionsStringARB");
+ 
+     glTexBuffer = (PFNGLTEXBUFFERPROC)xwglGetProcAddress("glTexBuffer");
+-    glGetIntegerv = (PFNGLGETINTEGERVPROC)xwglGetProcAddress("glGetIntegerv");
++    // OpenGL 1.1 functions are DLL exports, not WGL extension entry points.
++    // Wine returns NULL for these via wglGetProcAddress.
++    glGetIntegerv = (PFNGLGETINTEGERVPROC)real_GetProcAddress(g_oglu_hmodule, "glGetIntegerv");
+     glGetStringi = (PFNGLGETSTRINGIPROC)xwglGetProcAddress("glGetStringi");
+ 
+     char* glversion = (char*)glGetString(GL_VERSION);
