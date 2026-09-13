@@ -1,0 +1,200 @@
+diff --git a/dlls/wined3d/utils.c b/dlls/wined3d/utils.c
+--- a/dlls/wined3d/utils.c
++++ b/dlls/wined3d/utils.c
+@@ -2867,7 +2867,6 @@
+         source[1] = vs_body;
+         GL_EXTCALL(glShaderSource(vs_id, 2, source, NULL));
+         GL_EXTCALL(glAttachShader(ctx->test_program_id, vs_id));
+-        GL_EXTCALL(glDeleteShader(vs_id));
+ 
+         fs_id = GL_EXTCALL(glCreateShader(GL_FRAGMENT_SHADER));
+         if (wined3d_settings.webgl)
+@@ -2876,7 +2875,6 @@
+             source[0] = use_glsl_150 ? fs_core : fs_legacy;
+         GL_EXTCALL(glShaderSource(fs_id, 1, source, NULL));
+         GL_EXTCALL(glAttachShader(ctx->test_program_id, fs_id));
+-        GL_EXTCALL(glDeleteShader(fs_id));
+ 
+         GL_EXTCALL(glBindAttribLocation(ctx->test_program_id, 0, "pos"));
+         GL_EXTCALL(glBindAttribLocation(ctx->test_program_id, 1, "color"));
+@@ -2890,6 +2888,10 @@
+         print_glsl_info_log(gl_info, fs_id, FALSE);
+         GL_EXTCALL(glLinkProgram(ctx->test_program_id));
+         shader_glsl_validate_link(gl_info, ctx->test_program_id);
++        /* Emscripten releases the shader name immediately on deletion. Keep it
++         * alive until compilation and linking have finished. */
++        GL_EXTCALL(glDeleteShader(vs_id));
++        GL_EXTCALL(glDeleteShader(fs_id));
+     }
+     GL_EXTCALL(glUseProgram(ctx->test_program_id));
+ 
+@@ -4419,13 +4421,16 @@
+     /* One pixel was drawn, check if it is the expected one */
+     return readback[3][3] == 0xffff0000;
+ }
+-static float wined3d_adapter_find_polyoffset_scale(struct wined3d_caps_gl_ctx *ctx, GLenum format)
++static float wined3d_adapter_find_polyoffset_scale(struct wined3d_caps_gl_ctx *ctx,
++        const struct wined3d_format_gl *format_gl)
+ {
+     const struct wined3d_gl_info *gl_info = ctx->gl_info;
+     static const struct wined3d_color blue = {0.0f, 0.0f, 1.0f, 1.0f};
++    const GLenum format = format_gl->internal;
+     GLuint fbo, color, depth;
+     unsigned int low = 0, high = 32, cur;
+     uint32_t readback[256];
++    const GLfloat clear_depth = 0.5f;
+     static const struct wined3d_vec3 geometry[] =
+     {
+         {-1.0f, -1.0f, -1.0f},
+@@ -4448,24 +4453,49 @@
+         gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 1, 0,
+                 GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+ 
+-    gl_info->fbo_ops.glGenRenderbuffers(1, &depth);
+-    gl_info->fbo_ops.glBindRenderbuffer(GL_RENDERBUFFER, depth);
+-    gl_info->fbo_ops.glRenderbufferStorage(GL_RENDERBUFFER, format, 256, 1);
++    if (wined3d_settings.webgl)
++    {
++        /* Match the depth texture used by the non-multisampled render path.
++         * A browser may give a renderbuffer different depth precision. */
++        gl_info->gl_ops.gl.p_glGenTextures(1, &depth);
++        gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, depth);
++        gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
++        gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, format, 256, 1, 0,
++                format_gl->format, format_gl->type, NULL);
++    }
++    else
++    {
++        gl_info->fbo_ops.glGenRenderbuffers(1, &depth);
++        gl_info->fbo_ops.glBindRenderbuffer(GL_RENDERBUFFER, depth);
++        gl_info->fbo_ops.glRenderbufferStorage(GL_RENDERBUFFER, format, 256, 1);
++    }
+ 
+     gl_info->fbo_ops.glGenFramebuffers(1, &fbo);
+     gl_info->fbo_ops.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+     gl_info->fbo_ops.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);
+-    gl_info->fbo_ops.glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
++    if (wined3d_settings.webgl)
++        gl_info->fbo_ops.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
++    else
++        gl_info->fbo_ops.glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
++    if (wined3d_settings.webgl)
++        gl_info->gl_ops.gl.p_glReadBuffer(GL_COLOR_ATTACHMENT0);
+     checkGLcall("Setup framebuffer");
+ 
+     gl_info->gl_ops.gl.p_glClearColor(0.0f, 0.0f, 0.5f, 0.0f);
+-    if ((wined3d_settings.webgl || gl_info->supported[ARB_ES2_COMPATIBILITY])
+-            && gl_info->gl_ops.ext.p_glClearDepthf)
+-        GL_EXTCALL(glClearDepthf(0.5f));
+-    else if (wined3d_settings.webgl)
+-        TRACE("Skipping missing glClearDepthf for WebGL-compatible profile.\n");
+-    else
+-        gl_info->gl_ops.gl.p_glClearDepth(0.5f);
++    if (!wined3d_settings.webgl)
++        gl_info->gl_ops.gl.p_glClearDepth(clear_depth);
++    if (wined3d_settings.webgl)
++    {
++        /* Browser contexts may inherit state from an earlier device. In
++         * particular, a disabled depth write mask also prevents depth clears. */
++        gl_info->gl_ops.gl.p_glDepthMask(GL_TRUE);
++        gl_info->gl_ops.gl.p_glDepthFunc(GL_LESS);
++        gl_info->gl_ops.gl.p_glDepthRange(0.0, 1.0);
++        gl_info->gl_ops.gl.p_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
++        gl_info->gl_ops.gl.p_glDisable(GL_SCISSOR_TEST);
++        gl_info->gl_ops.gl.p_glDisable(GL_CULL_FACE);
++        gl_info->gl_ops.gl.p_glDisable(GL_BLEND);
++    }
+     gl_info->gl_ops.gl.p_glEnable(GL_DEPTH_TEST);
+     gl_info->gl_ops.gl.p_glEnable(GL_POLYGON_OFFSET_FILL);
+     gl_info->gl_ops.gl.p_glViewport(0, 0, 256, 1);
+@@ -4481,7 +4511,15 @@
+         }
+         cur = (low + high) / 2;
+ 
+-        gl_info->gl_ops.gl.p_glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
++        if (wined3d_settings.webgl)
++        {
++            /* Match the WebGL render path: the desktop clear-depth entry is
++             * not usable on every bridge, and glClearDepthf may be hidden. */
++            GL_EXTCALL(glClearBufferfv(GL_DEPTH, 0, &clear_depth));
++            gl_info->gl_ops.gl.p_glClear(GL_COLOR_BUFFER_BIT);
++        }
++        else
++            gl_info->gl_ops.gl.p_glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+         /* The post viewport transform Z of the geometry runs from 0.0 to 0.5. We want to push it another
+          * 0.25 so that the Z buffer content (0.5) cuts the quad off at half the screen. */
+         gl_info->gl_ops.gl.p_glPolygonOffset(0.0f, (float)(1u << cur) * 0.25f);
+@@ -4506,9 +4544,14 @@
+     }
+ 
+     gl_info->gl_ops.gl.p_glDeleteTextures(1, &color);
+-    gl_info->fbo_ops.glDeleteRenderbuffers(1, &depth);
++    if (wined3d_settings.webgl)
++        gl_info->gl_ops.gl.p_glDeleteTextures(1, &depth);
++    else
++        gl_info->fbo_ops.glDeleteRenderbuffers(1, &depth);
+     gl_info->fbo_ops.glDeleteFramebuffers(1, &fbo);
+     gl_info->fbo_ops.glBindFramebuffer(GL_FRAMEBUFFER, 0);
++    if (wined3d_settings.webgl)
++        gl_info->gl_ops.gl.p_glReadBuffer(GL_BACK);
+     checkGLcall("Delete framebuffer");
+ 
+     gl_info->gl_ops.gl.p_glDisable(GL_DEPTH_TEST);
+@@ -4520,25 +4563,33 @@
+         struct wined3d_caps_gl_ctx *ctx)
+ {
+     const struct wined3d_d3d_info *d3d_info = &adapter->d3d_info;
++    const struct wined3d_gl_info *gl_info = ctx->gl_info;
++    GLuint vao = 0;
++    GLint previous_vao;
+     unsigned int i;
+ 
++    if (wined3d_settings.webgl)
++    {
++        /* Previous devices may leave enabled attributes without buffers. WebGL
++         * validates those even when the calibration shader does not use them. */
++        gl_info->gl_ops.gl.p_glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &previous_vao);
++        GL_EXTCALL(glGenVertexArrays(1, &vao));
++        GL_EXTCALL(glBindVertexArray(vao));
++    }
++
+     for (i = 0; i < WINED3D_FORMAT_COUNT; ++i)
+     {
+         struct wined3d_format_gl *format = get_format_gl_by_idx(adapter, i);
+ 
+         if (format->f.depth_size && (format->f.caps[WINED3D_GL_RES_TYPE_RB] & WINED3D_FORMAT_CAP_DEPTH_STENCIL))
+         {
+-            if (wined3d_settings.webgl)
+-            {
+-                TRACE("Using fixed WebGL-compatible depth bias scale for format %s.\n",
+-                        debug_d3dformat(format->f.id));
+-                format->f.depth_bias_scale = (float)(1u << 23);
+-            }
+-            else
+-            {
+-                TRACE("Testing depth bias scale for format %s.\n", debug_d3dformat(format->f.id));
+-                format->f.depth_bias_scale = wined3d_adapter_find_polyoffset_scale(ctx, format->internal);
+-            }
++            /* The final WebGL capability clamp runs below. Do not probe
++             * desktop-only depth formats before that clamp. */
++            if (wined3d_settings.webgl && !wined3d_webgl_format_is_depth_stencil(format->f.id))
++                continue;
++
++            TRACE("Testing depth bias scale for format %s.\n", debug_d3dformat(format->f.id));
++            format->f.depth_bias_scale = wined3d_adapter_find_polyoffset_scale(ctx, format);
+ 
+             if (!(d3d_info->wined3d_creation_flags & WINED3D_NORMALIZED_DEPTH_BIAS))
+             {
+@@ -4551,6 +4602,12 @@
+                     format->f.depth_bias_scale /= 1u << format->f.depth_size;
+             }
+         }
++    }
++
++    if (wined3d_settings.webgl)
++    {
++        GL_EXTCALL(glBindVertexArray(previous_vao));
++        GL_EXTCALL(glDeleteVertexArrays(1, &vao));
+     }
+ }
+ 

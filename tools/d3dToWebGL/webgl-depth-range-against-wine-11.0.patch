@@ -1,0 +1,16 @@
+diff --git a/dlls/wined3d/ffp_gl.c b/dlls/wined3d/ffp_gl.c
+index d4f4d8803..28264773a
+--- a/dlls/wined3d/ffp_gl.c
++++ b/dlls/wined3d/ffp_gl.c
+@@ -1088,9 +1088,9 @@ static void viewport_miscpart(struct wined3d_context *context, const struct wine
+         if ((wined3d_settings.webgl || gl_info->supported[ARB_ES2_COMPATIBILITY])
+                 && gl_info->gl_ops.ext.p_glDepthRangef)
+             GL_EXTCALL(glDepthRangef(min_z, max_z));
+-        else if (wined3d_settings.webgl)
+-            TRACE("Skipping missing glDepthRangef for WebGL-compatible profile.\n");
+         else
++            /* Wine may hide glDepthRangef behind desktop extension/version checks.
++             * The GL 1.0 entry remains available through BoxedWine's WebGL bridge. */
+             gl_info->gl_ops.gl.p_glDepthRange(min_z, max_z);
+         gl_info->gl_ops.gl.p_glViewport(state->viewports[0].x, state->viewports[0].y,
+                 state->viewports[0].width, state->viewports[0].height);
