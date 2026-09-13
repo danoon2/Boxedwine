@@ -1,0 +1,38 @@
+diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -1125,7 +1125,11 @@
+             blit_op = WINED3D_BLIT_OP_COLOR_BLIT;
+     }
+ 
+-    if (!fbo_blitter_supported(blit_op, context_gl->gl_info,
++    /* WebGL framebuffer blits require a single-sample destination. Let the
++     * shader blitter draw colour copies into multisampled render targets. */
++    if ((wined3d_settings.webgl && blit_op == WINED3D_BLIT_OP_COLOR_BLIT
++            && wined3d_texture_gl_is_multisample_location(wined3d_texture_gl(dst_texture), dst_location))
++            || !fbo_blitter_supported(blit_op, context_gl->gl_info,
+             src_resource, src_location, dst_resource, dst_location))
+     {
+         if (!(next = blitter->next))
+@@ -3181,8 +3185,19 @@
+     else /* texture2d_blt_fbo() will load the source location if necessary. */
+         src_location = WINED3D_LOCATION_TEXTURE_RGB;
+ 
+-    texture2d_blt_fbo(texture->resource.device, context, WINED3D_TEXF_POINT, texture,
+-            sub_resource_idx, src_location, &rect, texture, sub_resource_idx, dst_location, &rect, NULL);
++    if (wined3d_settings.webgl && dst_location == WINED3D_LOCATION_RB_MULTISAMPLE)
++    {
++        struct wined3d_blitter *blitter = texture->resource.device->blitter;
++
++        /* CPU copies can make a texture location current before the target is
++         * loaded for rendering. Use the shader fallback for this upload too. */
++        blitter->ops->blitter_blit(blitter, WINED3D_BLIT_OP_COLOR_BLIT, context, texture,
++                sub_resource_idx, src_location, &rect, texture, sub_resource_idx,
++                dst_location, &rect, NULL, WINED3D_TEXF_POINT, NULL);
++    }
++    else
++        texture2d_blt_fbo(texture->resource.device, context, WINED3D_TEXF_POINT, texture,
++                sub_resource_idx, src_location, &rect, texture, sub_resource_idx, dst_location, &rect, NULL);
+ 
+     return TRUE;
+ }

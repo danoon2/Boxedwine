@@ -1,0 +1,80 @@
+diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -90,6 +90,19 @@
+     const struct wined3d_gl_info *gl_info = context_gl->gl_info;
+ 
+     TRACE("context_gl %p, target %#x, fbo %u.\n", context_gl, target, fbo);
++
++    if (wined3d_settings.webgl && target == GL_READ_FRAMEBUFFER)
++    {
++        /* Re-establish both bindings for transfers. Presentation can leave
++         * the browser's underlying framebuffer state different from its
++         * exposed bindings; rebinding the same object alone is insufficient. */
++        gl_info->fbo_ops.glBindFramebuffer(GL_FRAMEBUFFER, 0);
++        gl_info->fbo_ops.glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
++        gl_info->fbo_ops.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, context_gl->fbo_draw_binding);
++        context_gl->fbo_read_binding = fbo;
++        checkGLcall("restore WebGL transfer framebuffer bindings");
++        return;
++    }
+ 
+     switch (target)
+     {
+diff --git a/dlls/wined3d/swapchain.c b/dlls/wined3d/swapchain.c
+--- a/dlls/wined3d/swapchain.c
++++ b/dlls/wined3d/swapchain.c
+@@ -244,6 +244,15 @@
+     {
+         if (!desc->windowed)
+             SetRect(&d, 0, 0, desc->backbuffer_width, desc->backbuffer_height);
++        else if (wined3d_settings.webgl)
++        {
++            HWND window = dst_window_override ? dst_window_override : swapchain->state.device_window;
++
++            /* Present may succeed after the device window was destroyed, and
++             * a live destination override must still receive a valid rect. */
++            if (!GetClientRect(window, &d))
++                SetRectEmpty(&d);
++        }
+         else
+             GetClientRect(swapchain->win_handle, &d);
+         dst_rect = &d;
+@@ -606,7 +615,8 @@
+     else
+     {
+         RECT client_rect;
+-        GetClientRect(swapchain->win_handle, &client_rect);
++        if (!GetClientRect(swapchain->win_handle, &client_rect) && wined3d_settings.webgl)
++            return false;
+         width = client_rect.right - client_rect.left;
+         height = client_rect.bottom - client_rect.top;
+     }
+@@ -627,6 +637,11 @@
+     const struct wined3d_gl_info *gl_info;
+     struct wined3d_context_gl *context_gl;
+     struct wined3d_context *context;
++
++    /* Keep command-stream completion and buffer-discard handling, but do not
++     * copy to a drawable whose window no longer exists. */
++    if (wined3d_settings.webgl && !IsWindow(swapchain->win_handle))
++        return;
+ 
+     context = context_acquire(swapchain->device, swapchain->front_buffer, 0);
+     context_gl = wined3d_context_gl(context);
+diff --git a/dlls/wined3d/texture.c b/dlls/wined3d/texture.c
+--- a/dlls/wined3d/texture.c
++++ b/dlls/wined3d/texture.c
+@@ -162,7 +162,11 @@
+     else
+     {
+         RECT client_rect;
+-        GetClientRect(window, &client_rect);
++        if (!GetClientRect(window, &client_rect) && wined3d_settings.webgl)
++        {
++            SetRectEmpty(rect);
++            return;
++        }
+         drawable_height = client_rect.bottom - client_rect.top;
+     }
+ 

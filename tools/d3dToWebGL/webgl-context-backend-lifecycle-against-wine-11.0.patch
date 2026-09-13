@@ -1,0 +1,14 @@
+diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -1403,7 +1403,9 @@
+         gl_info->fbo_ops.glBindFramebuffer(GL_READ_FRAMEBUFFER, context_gl->fbo_read_binding);
+         gl_info->fbo_ops.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, context_gl->fbo_draw_binding);
+         checkGLcall("restore WebGL framebuffer bindings");
+-        if (context->device && context->shader_backend_data)
++        /* Context data exists before shader-private initialization and can
++         * survive until after the device backend has been freed. */
++        if (context->device && context->device->shader_priv && context->shader_backend_data)
+             context->device->shader_backend->shader_disable(context->device->shader_priv, context);
+         if (context->state_table)
+             for (state = 0; state <= STATE_HIGHEST; ++state)

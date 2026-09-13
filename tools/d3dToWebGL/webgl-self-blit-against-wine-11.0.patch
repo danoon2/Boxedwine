@@ -1,0 +1,74 @@
+diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -730,6 +730,49 @@
+             device, context, debug_d3dtexturefiltertype(filter), src_texture, src_sub_resource_idx,
+             wined3d_debug_location(src_location), wine_dbgstr_rect(src_rect), dst_texture,
+             dst_sub_resource_idx, wined3d_debug_location(dst_location), wine_dbgstr_rect(dst_rect), resolve_format);
++
++    /* WebGL forbids blitting an image to itself, including non-overlapping
++     * regions. Snapshot the source region before an overlapping or scaled
++     * copy so that writing the destination cannot change subsequent reads. */
++    if (wined3d_settings.webgl && src_texture == dst_texture
++            && src_sub_resource_idx == dst_sub_resource_idx && src_location == dst_location
++            && !wined3d_texture_gl_is_multisample_location(wined3d_texture_gl(src_texture), src_location))
++    {
++        struct wined3d_resource_desc desc;
++        struct wined3d_texture *staging;
++        RECT staging_rect;
++        HRESULT hr;
++
++        if (EqualRect(src_rect, dst_rect))
++            return;
++
++        desc.resource_type = WINED3D_RTYPE_TEXTURE_2D;
++        desc.format = src_texture->resource.format->id;
++        desc.multisample_type = WINED3D_MULTISAMPLE_NONE;
++        desc.multisample_quality = 0;
++        desc.usage = WINED3DUSAGE_CS;
++        desc.bind_flags = 0;
++        desc.access = WINED3D_RESOURCE_ACCESS_GPU;
++        desc.width = abs(src_rect->right - src_rect->left);
++        desc.height = abs(src_rect->bottom - src_rect->top);
++        desc.depth = 1;
++        desc.size = 0;
++        if (FAILED(hr = wined3d_texture_create(device, &desc, 1, 1, 0, NULL, NULL,
++                &wined3d_null_parent_ops, &staging)))
++        {
++            ERR("Failed to create self-blit staging texture, hr %#lx.\n", hr);
++            return;
++        }
++
++        SetRect(&staging_rect, 0, 0, desc.width, desc.height);
++        texture2d_blt_fbo(device, context, WINED3D_TEXF_NONE, src_texture, src_sub_resource_idx,
++                src_location, src_rect, staging, 0, WINED3D_LOCATION_TEXTURE_RGB, &staging_rect, NULL);
++        wined3d_texture_validate_location(staging, 0, WINED3D_LOCATION_TEXTURE_RGB);
++        texture2d_blt_fbo(device, context, filter, staging, 0, WINED3D_LOCATION_TEXTURE_RGB,
++                &staging_rect, dst_texture, dst_sub_resource_idx, dst_location, dst_rect, resolve_format);
++        wined3d_texture_decref(staging);
++        return;
++    }
+ 
+     resolve = wined3d_texture_gl_is_multisample_location(wined3d_texture_gl(src_texture), src_location);
+     scaled_resolve = resolve
+diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -3591,7 +3591,7 @@
+     }
+ 
+     cur_mask = context_gl->current_fbo ? &context_gl->current_fbo->rt_mask : &context_gl->draw_buffers_mask;
+-    if (rt_mask != *cur_mask)
++    if (wined3d_settings.webgl || rt_mask != *cur_mask)
+     {
+         wined3d_context_gl_apply_draw_buffers(context_gl, rt_mask);
+         *cur_mask = rt_mask;
+@@ -3642,7 +3642,7 @@
+             color_location, fb->depth_stencil ? fb->depth_stencil->resource->draw_binding : 0);
+ 
+     cur_mask = context_gl->current_fbo ? &context_gl->current_fbo->rt_mask : &context_gl->draw_buffers_mask;
+-    if (rt_mask != *cur_mask)
++    if (wined3d_settings.webgl || rt_mask != *cur_mask)
+     {
+         wined3d_context_gl_apply_draw_buffers(context_gl, rt_mask);
+         *cur_mask = rt_mask;

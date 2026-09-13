@@ -1,0 +1,18 @@
+diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -7903,6 +7903,14 @@
+     if (alpha_func != WINED3D_CMP_NEVER)
+         shader_addline(buffer, "if (!(%s[0].a %s alpha_test_ref))\n",
+                 get_fragment_output(gl_info), comparison_operator[alpha_func - WINED3D_CMP_NEVER]);
++    else if (shader_glsl_use_webgl_glsl_es(gl_info))
++    {
++        /* An unconditional discard makes the following color outputs dead.
++         * WebGL then rejects draws with enabled color buffers but no linked
++         * output. ALPHAREF is normalized from its low byte to [0, 1], so this
++         * uniform-dependent branch always discards while keeping outputs live. */
++        shader_addline(buffer, "if (alpha_test_ref >= 0.0)\n");
++    }
+     shader_addline(buffer, "    discard;\n");
+ }
+ 

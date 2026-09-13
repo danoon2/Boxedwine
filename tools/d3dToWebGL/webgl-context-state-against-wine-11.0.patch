@@ -1,0 +1,39 @@
+diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -1378,6 +1378,35 @@
+         context_gl->valid = 1;
+     }
+     context_gl->needs_set = 0;
++
++    if (wined3d_settings.webgl)
++    {
++        /* Logical contexts can share one WebGL context. Its current bindings
++         * may have been changed while this Wine context was inactive. */
++        const struct wined3d_gl_info *gl_info = context_gl->gl_info;
++        struct wined3d_context *context = &context_gl->c;
++        unsigned int state;
++
++        gl_info->fbo_ops.glBindFramebuffer(GL_READ_FRAMEBUFFER, context_gl->fbo_read_binding);
++        gl_info->fbo_ops.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, context_gl->fbo_draw_binding);
++        checkGLcall("restore WebGL framebuffer bindings");
++        if (context->device && context->shader_backend_data)
++            context->device->shader_backend->shader_disable(context->device->shader_priv, context);
++        if (context->state_table)
++            for (state = 0; state <= STATE_HIGHEST; ++state)
++                if (context->state_table[state].representative && !STATE_IS_COMPUTE(state))
++                    context_invalidate_state(context, state);
++        context->last_was_blit = FALSE;
++        context->last_was_ffp_blit = FALSE;
++        context_gl->default_attrib_value_set = 0;
++        /* Reconcile both WebGL state and Emscripten's client-array tracking.
++         * Blits also need unused attributes disabled before their next draw. */
++        for (state = 0; state < gl_info->limits.vertex_attribs; ++state)
++            GL_EXTCALL(glDisableVertexAttribArray(state));
++        context->numbered_array_mask = 0;
++        context->update_primitive_type = 1;
++        context->update_multisample_state = 1;
++    }
+ 
+     return TRUE;
+ }

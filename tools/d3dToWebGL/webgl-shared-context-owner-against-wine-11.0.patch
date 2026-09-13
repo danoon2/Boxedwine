@@ -1,0 +1,91 @@
+diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -31,6 +31,17 @@
+ WINE_DECLARE_DEBUG_CHANNEL(d3d_perf);
+ WINE_DECLARE_DEBUG_CHANNEL(d3d_sync);
+ 
++/* TLS identifies the guest thread's context, not the owner of shared WebGL
++ * state. Keep the owner separate so an idle device on another thread cannot
++ * leave this context's state cache valid after changing that shared state. */
++static void *webgl_active_context;
++
++void wined3d_context_gl_invalidate_shared_state(void)
++{
++    if (wined3d_settings.webgl)
++        InterlockedExchangePointer(&webgl_active_context, NULL);
++}
++
+ #define WINED3D_MAX_FBO_ENTRIES 64
+ #define WINED3D_ALL_LAYERS (~0u)
+ 
+@@ -1421,6 +1432,7 @@
+         context->numbered_array_mask = 0;
+         context->update_primitive_type = 1;
+         context->update_multisample_state = 1;
++        InterlockedExchangePointer(&webgl_active_context, context_gl);
+     }
+ 
+     return TRUE;
+@@ -1428,6 +1440,7 @@
+ 
+ static void context_restore_gl_context(const struct wined3d_gl_info *gl_info, HDC dc, HGLRC gl_ctx)
+ {
++    wined3d_context_gl_invalidate_shared_state();
+     if (!wglMakeCurrent(dc, gl_ctx))
+     {
+         ERR("Failed to restore GL context %p on device context %p, last error %#lx.\n",
+@@ -1645,6 +1658,7 @@
+     else if (wglGetCurrentContext() && !wglMakeCurrent(NULL, NULL))
+         ERR("Failed to disable GL context.\n");
+ 
++    wined3d_context_gl_invalidate_shared_state();
+     if (!wglDeleteContext(context_gl->gl_ctx))
+     {
+         unsigned int err = GetLastError();
+@@ -1673,7 +1687,8 @@
+ {
+     struct wined3d_context_gl *old = wined3d_context_gl_get_current();
+ 
+-    if (old == context_gl)
++    if (old == context_gl && (!context_gl || !wined3d_settings.webgl
++            || InterlockedCompareExchangePointer(&webgl_active_context, NULL, NULL) == context_gl))
+     {
+         TRACE("Already using D3D context %p.\n", context_gl);
+         return TRUE;
+@@ -4492,7 +4507,8 @@
+         if (!wined3d_context_gl_set_current(context_gl))
+             ERR("Failed to activate the new context.\n");
+     }
+-    else if (context_gl->needs_set)
++    else if (context_gl->needs_set || (wined3d_settings.webgl
++            && InterlockedCompareExchangePointer(&webgl_active_context, NULL, NULL) != context_gl))
+     {
+         wined3d_context_gl_set_gl_context(context_gl);
+     }
+diff --git a/dlls/wined3d/wined3d_gl.h b/dlls/wined3d/wined3d_gl.h
+--- a/dlls/wined3d/wined3d_gl.h
++++ b/dlls/wined3d/wined3d_gl.h
+@@ -776,6 +776,7 @@
+ void wined3d_context_gl_free_so_statistics_query(struct wined3d_so_statistics_query *query);
+ void wined3d_context_gl_free_timestamp_query(struct wined3d_timestamp_query *query);
+ struct wined3d_context_gl *wined3d_context_gl_get_current(void);
++void wined3d_context_gl_invalidate_shared_state(void);
+ GLenum wined3d_context_gl_get_offscreen_gl_buffer(const struct wined3d_context_gl *context_gl);
+ const unsigned int *wined3d_context_gl_get_tex_unit_mapping(const struct wined3d_context_gl *context_gl,
+         const struct wined3d_shader_version *shader_version, unsigned int *base, unsigned int *count);
+diff --git a/dlls/wined3d/adapter_gl.c b/dlls/wined3d/adapter_gl.c
+--- a/dlls/wined3d/adapter_gl.c
++++ b/dlls/wined3d/adapter_gl.c
+@@ -249,8 +249,9 @@
+ 
+ static void wined3d_caps_gl_ctx_destroy(const struct wined3d_caps_gl_ctx *ctx)
+ {
+-    const struct wined3d_gl_info *gl_info = ctx->gl_info;
+-
++    const struct wined3d_gl_info *gl_info;
++    wined3d_context_gl_invalidate_shared_state();
++    gl_info = ctx->gl_info;
+     TRACE("Destroying caps GL context.\n");
+ 
+     /* Both glDeleteProgram and glDeleteBuffers silently ignore 0 IDs but
