@@ -44,6 +44,28 @@
 #include <string>
 #endif
 
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_WEBGL_COUNTERS)
+class ProfileWebGLBinding {
+public:
+    ProfileWebGLBinding() : before(emscripten_webgl_get_current_context()) {}
+    ~ProfileWebGLBinding() {
+        if (emscripten_webgl_get_current_context() != before) {
+            glcommon_recordWebGLContextChange();
+        }
+    }
+private:
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE before;
+};
+
+template <typename F> static auto profileWebGLBinding(F&& bind) {
+    ProfileWebGLBinding profile;
+    return bind();
+}
+#define BOXEDWINE_PROFILE_WEBGL_BINDING(call) profileWebGLBinding([&]() { return call; })
+#else
+#define BOXEDWINE_PROFILE_WEBGL_BINDING(call) call
+#endif
+
 static std::atomic_int shownGlWindows;
 
 typedef void (GLAPIENTRY *pfnglFinish)();
@@ -279,7 +301,7 @@ static EMSCRIPTEN_WEBGL_CONTEXT_HANDLE createWebGLContextForTarget(const char* t
 #ifdef BOXEDWINE_MULTI_THREADED
     attributes.proxyContextToMainThread = EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW;
 #endif
-    return emscripten_webgl_create_context(target, &attributes);
+    return BOXEDWINE_PROFILE_WEBGL_BINDING(emscripten_webgl_create_context(target, &attributes));
 }
 
 static EMSCRIPTEN_WEBGL_CONTEXT_HANDLE createWebGLContext(U32 major, U32 minor) {
@@ -591,7 +613,7 @@ KOpenGLSdl::~KOpenGLSdl() {
 #ifdef __APPLE__
             macOpenGLDestroyContext(context.value->context);
 #else
-            SDL_GL_DeleteContext(context.value->context);
+            BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_DeleteContext(context.value->context));
 #endif
         }
         contextsById.clear();
@@ -741,17 +763,17 @@ U32 KOpenGLSdl::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFo
                 restoreContext = contextsById.get(thread->currentContext);
             }
             needToRestore = true;
-            SDL_GL_MakeCurrent(window->window, sharedContext->context);
+            BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_MakeCurrent(window->window, sharedContext->context));
             SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
         }
     }
     // Mac requires this on the main thread, but Windows make current will fail if its not on the same thread as create context    
 #ifdef BOXEDWINE_MSVC
-    SDL_GLContext context = SDL_GL_CreateContext(window->window);
+    SDL_GLContext context = BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_CreateContext(window->window));
 #else
     SDL_GLContext context;
     KNativeSystem::getCurrentInput()->runOnUiThread([&context, &window]() {
-        context = SDL_GL_CreateContext(window->window);
+        context = BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_CreateContext(window->window));
         });
 #endif    
 
@@ -759,9 +781,9 @@ U32 KOpenGLSdl::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFo
         SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
 #ifndef BOXEDWINE_MSVC
         if (restoreContext) {
-            SDL_GL_MakeCurrent(window->window, restoreContext->context);
+            BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_MakeCurrent(window->window, restoreContext->context));
         } else {
-            SDL_GL_MakeCurrent(window->window, nullptr);
+            BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_MakeCurrent(window->window, nullptr));
         }
 #endif
     }
@@ -769,7 +791,7 @@ U32 KOpenGLSdl::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFo
     // SDL_GL_CreateContext makes the temporary window current. Detach it before
     // destroying that window, otherwise SDL can retain a dangling current-window
     // pointer and skip binding the real drawable when its allocation is reused.
-    SDL_GL_MakeCurrent(previousContext ? previousWindow : nullptr, previousContext);
+    BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_MakeCurrent(previousContext ? previousWindow : nullptr, previousContext));
 #endif
     window->destroy(); // will run on main thread (thus block this thread for a bit)
 
@@ -789,10 +811,10 @@ void KOpenGLSdl::glDestroyContext(KThread* thread, U32 contextId) {
 #ifdef __EMSCRIPTEN__
     if (context && context->webglContext) {
         if (thread && thread->currentContext == contextId) {
-            emscripten_webgl_make_context_current(0);
+            BOXEDWINE_PROFILE_WEBGL_BINDING(emscripten_webgl_make_context_current(0));
         }
         if (!context->sharedThreadCanvas) {
-            emscripten_webgl_destroy_context(toWebGLContext(context->context));
+            BOXEDWINE_PROFILE_WEBGL_BINDING(emscripten_webgl_destroy_context(toWebGLContext(context->context)));
         }
         if (context->threadCanvas && !context->sharedThreadCanvas && context->canvasSelector.length()) {
             boxedwineUnregisterThreadWebGLCanvas(context->canvasSelector.c_str());
@@ -808,7 +830,7 @@ void KOpenGLSdl::glDestroyContext(KThread* thread, U32 contextId) {
 #ifdef __APPLE__
         macOpenGLDestroyContext(context->context);
 #else
-        SDL_GL_DeleteContext(context->context);
+        BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_DeleteContext(context->context));
 #endif
     }
 #endif
@@ -1281,7 +1303,7 @@ bool KOpenGLSdl::glRestoreCurrentContext(KThread* thread) {
     // SDL's EGL handle is opaque and need not identify the WebGL context.
     // Select the saved WebGL handle without recreating a drawable or trusting
     // SDL's cached current-window/context pair after another guest thread ran.
-    bool restored = emscripten_webgl_make_context_current(handle) == EMSCRIPTEN_RESULT_SUCCESS
+    bool restored = BOXEDWINE_PROFILE_WEBGL_BINDING(emscripten_webgl_make_context_current(handle)) == EMSCRIPTEN_RESULT_SUCCESS
             && emscripten_webgl_get_current_context() == handle;
     if (!restored) {
         kwarn_fmt("Could not restore guest GL context %u", thread->currentContext);
@@ -1311,21 +1333,21 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
         }
 #ifdef __EMSCRIPTEN__
         if (context && context->webglContext) {
-            emscripten_webgl_make_context_current(0);
+            BOXEDWINE_PROFILE_WEBGL_BINDING(emscripten_webgl_make_context_current(0));
         } else {
             KNativeSystem::getCurrentInput()->runOnUiThread([]() {
-                SDL_GL_MakeCurrent(nullptr, 0);
+                BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_MakeCurrent(nullptr, 0));
                 });
 #ifndef BOXEDWINE_MULTI_THREADED
             // A cooperative restore selects WebGL directly. SDL may already
             // consider itself unbound, so ensure the actual binding is cleared.
-            emscripten_webgl_make_context_current(0);
+            BOXEDWINE_PROFILE_WEBGL_BINDING(emscripten_webgl_make_context_current(0));
 #endif
         }
 #elif defined(__APPLE__)
         macOpenGLClearCurrent();
 #else
-        SDL_GL_MakeCurrent(nullptr, 0);
+        BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_MakeCurrent(nullptr, 0));
 #endif
         return true;
     } else {
@@ -1437,7 +1459,7 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             }
             if (!context->context) {
                 KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
-                    context->context = SDL_GL_CreateContext(window->window);
+                    context->context = BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_CreateContext(window->window));
                     });
                 context->threadCanvas = false;
                 context->webglContext = false;
@@ -1448,7 +1470,7 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             }
 #else
             KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
-                context->context = SDL_GL_CreateContext(window->window);
+                context->context = BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_CreateContext(window->window));
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
                 resizeWebGLCanvas(window->window, d->width(), d->height());
 #endif
@@ -1465,10 +1487,10 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             boxedwineRegisterThreadWebGLCanvas(context->canvasSelector.c_str(), d->width(), d->height());
         }
         if (context->webglContext) {
-            result = emscripten_webgl_make_context_current(toWebGLContext(context->context)) == EMSCRIPTEN_RESULT_SUCCESS;
+            result = BOXEDWINE_PROFILE_WEBGL_BINDING(emscripten_webgl_make_context_current(toWebGLContext(context->context))) == EMSCRIPTEN_RESULT_SUCCESS;
         } else {
             KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
-                result = SDL_GL_MakeCurrent(window->window, context->context) == 0;
+                result = BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_MakeCurrent(window->window, context->context)) == 0;
                 });
 #ifndef BOXEDWINE_MULTI_THREADED
             if (result) {
@@ -1479,7 +1501,7 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
                 // WebGL handle. Rebinding an older SDL context must select its
                 // original WebGL handle, including its client-array metadata.
                 result = context->sdlWebGLContext &&
-                        emscripten_webgl_make_context_current(context->sdlWebGLContext) == EMSCRIPTEN_RESULT_SUCCESS;
+                        BOXEDWINE_PROFILE_WEBGL_BINDING(emscripten_webgl_make_context_current(context->sdlWebGLContext)) == EMSCRIPTEN_RESULT_SUCCESS;
             }
 #endif
         }
@@ -1499,7 +1521,7 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             context->currentPbufferWindow = nullptr;
             return true;
         }
-        result = SDL_GL_MakeCurrent(window->window, context->context) == 0;
+        result = BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_MakeCurrent(window->window, context->context)) == 0;
 #endif
         if (result) {
             loadSdlExtensions();

@@ -29,6 +29,10 @@
 
 #define BOXEDWINE_GL_PROFILE_ES 0x80000000u
 
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_WEBGL_COUNTERS)
+void glcommon_recordWebGLContextChange();
+#endif
+
 #ifdef BOXEDWINE_OPENGL_ES
 #define GL_FUNC(name) es_##name
 #include "es/esopengl.h"

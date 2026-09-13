@@ -2350,6 +2350,32 @@ static bool isUnsupportedEmscriptenGlIndex(U32 index) {
 }
 #endif
 
+#if defined(BOXEDWINE_OPENGL) && defined(__EMSCRIPTEN__) && defined(BOXEDWINE_WEBGL_COUNTERS)
+#include "glCounters.h"
+
+static GLCallCounters glCallCounters;
+
+void glcommon_recordWebGLContextChange() {
+    glCallCounters.record(GLCallCounters::contextChanges);
+}
+
+extern "C" EMSCRIPTEN_KEEPALIVE unsigned boxedwine_gl_counter_version() {
+    return 1;
+}
+
+extern "C" EMSCRIPTEN_KEEPALIVE unsigned boxedwine_gl_counter_count() {
+    return GLCallCounters::count;
+}
+
+extern "C" EMSCRIPTEN_KEEPALIVE const char* boxedwine_gl_counter_name(unsigned index) {
+    return GLCallCounters::name(index);
+}
+
+extern "C" EMSCRIPTEN_KEEPALIVE std::uint64_t boxedwine_gl_counter_get(unsigned index) {
+    return glCallCounters.get(index);
+}
+#endif
+
 #if defined(BOXEDWINE_OPENGL) && defined(__EMSCRIPTEN__)
 EM_JS(void, boxedwine_restore_transfer_framebuffers_js, (), {
     var gl = typeof GLctx !== 'undefined' && GLctx;
@@ -2379,6 +2405,9 @@ static void callOpenGLCallback(CPU* cpu, U32 index) {
     if (index == BlitFramebuffer || index == BlitFramebufferEXT || index == ReadPixels) {
         boxedwine_restore_transfer_framebuffers_js();
     }
+#endif
+#if defined(BOXEDWINE_OPENGL) && defined(__EMSCRIPTEN__) && defined(BOXEDWINE_WEBGL_COUNTERS)
+    glCallCounters.record(index);
 #endif
     int99Callback[index](cpu);
 }
@@ -2513,6 +2542,9 @@ void callOpenGL(CPU* cpu, U32 index) {
 #endif
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
         if (!glCanRunOnCurrentThread(index)) {
+#ifdef BOXEDWINE_WEBGL_COUNTERS
+            glCallCounters.record(GLCallCounters::mainThreadDispatches);
+#endif
             sdlDispatch([cpu, index]() -> U32 {
                 callOpenGLCallback(cpu, index);
                 return 0;
