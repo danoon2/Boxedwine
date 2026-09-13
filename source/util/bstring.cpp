@@ -127,7 +127,6 @@ BString::BString() {
 
 BString::BString(U32 size, char value) {
     data = allocNewData();
-    data->str = getNewString(SMALLEST_LEVEL);
     data->len = size-1;
     data->level = getLevel();
     data->str = getNewString(data->level);
