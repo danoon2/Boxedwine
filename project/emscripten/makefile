@@ -10,6 +10,8 @@ ifeq ($(WEBGL_COUNTERS),1)
 WEBGL_COUNTER_JIT_EXPORTS := ,ccall
 endif
 
+BUILD_PHASE ?= all
+
 default all: release
 
 release: export BUILD_DIR := Build/Release
@@ -108,13 +110,14 @@ export MAKEFLAGS := -j $(make_jobs)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
 release test testMultiThreaded testMultiThreadedOpenGL testJit testMultiThreadedJit multiThreaded jit automation automationMultiThreaded automationJit automationMultiThreadedJit multiThreadedJit:
-	@$(MAKE)
+	@$(MAKE) $(BUILD_PHASE)
 
 clean:
 	$(RM) -r Build
 
 else
 
+.DEFAULT_GOAL := all
 CC = emcc
 CXX = em++
 TARGET_EXEC ?= boxedwine.html
@@ -208,8 +211,10 @@ ALL := $(OBJS)
 ALL += $(SOFT_OBJS)
 DEPS := $(ALL:.o=.d)
 
-$(OBJS): INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/simde
-$(SOFT_OBJS): INCLUDES := -I../../lib/softfloat/source/include -I../../lib/softfloat/source -I../../lib/softfloat/source/8086-SSE
+COMMON_INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/simde
+SOFTFLOAT_INCLUDES := -I../../lib/softfloat/source/include -I../../lib/softfloat/source -I../../lib/softfloat/source/8086-SSE
+$(OBJS): INCLUDES := $(COMMON_INCLUDES)
+$(SOFT_OBJS): INCLUDES := $(SOFTFLOAT_INCLUDES)
 
 CXXFLAGS ?= -std=c++20
 OPTIMIZATION_FLAGS ?= -O2
@@ -237,8 +242,8 @@ endif
 endif
 endif
 
-# Use a clean build directory when changing this option. Names are metadata;
-# instruction-level timing counters remain disabled for sampling profiles.
+# Configuration dependencies below rebuild objects when this option changes.
+# Names are metadata; instruction-level timing counters remain disabled.
 ifeq ($(WASM_PROFILING),1)
 GCC_EXTRA_FLAGS += -DBOXEDWINE_WASM_JIT_NAMES
 LDFLAGS += --profiling-funcs
@@ -253,12 +258,41 @@ endif
 
 ASSET_OUTPUTS := $(addprefix $(BUILD_DIR)/,$(ASSET_FILES) $(WEBGL_COUNTER_ASSETS))
 
-.PHONY: all copy-assets
+.PHONY: all compile copy-assets FORCE_BUILD_CONFIG
+
+# Export settings as environment values, not shell-quoted command arguments.
+# The helper preserves the stamp mtime when the settings/compiler are unchanged.
+PYTHON ?= python3
+COMPILE_CONFIG := $(BUILD_DIR)/.compile-config.json
+LINK_CONFIG := $(BUILD_DIR)/.link-config.json
+export BW_BUILD_CC = $(CC)
+export BW_BUILD_CXX = $(CXX)
+export BW_BUILD_AS = $(AS)
+export BW_BUILD_CPPFLAGS = $(CPPFLAGS)
+export BW_BUILD_CFLAGS = $(CFLAGS)
+export BW_BUILD_CXXFLAGS = $(CXXFLAGS)
+export BW_BUILD_ASFLAGS = $(ASFLAGS)
+export BW_BUILD_COMMON_INCLUDES = $(COMMON_INCLUDES)
+export BW_BUILD_SOFTFLOAT_INCLUDES = $(SOFTFLOAT_INCLUDES)
+export BW_BUILD_WASM_EXCEPTION_CPPFLAGS = $(WASM_EXCEPTION_CPPFLAGS)
+export BW_BUILD_LDFLAGS = $(LDFLAGS)
+export BW_BUILD_OBJECTS = $(ALL)
+export BW_BUILD_TARGET = $(BUILD_DIR)/$(TARGET_EXEC)
+
+FORCE_BUILD_CONFIG:
+
+$(COMPILE_CONFIG): FORCE_BUILD_CONFIG
+	@$(PYTHON) update-build-config.py compile "$@"
+
+$(LINK_CONFIG): FORCE_BUILD_CONFIG
+	@$(PYTHON) update-build-config.py link "$@"
+
+compile: $(ALL)
 
 all: $(BUILD_DIR)/$(TARGET_EXEC) copy-assets
 
 ifneq ($(ASAN_PTHREAD_OBJ),)
-$(ASAN_PTHREAD_OBJ): boxedwine-asan-pthread.cpp
+$(ASAN_PTHREAD_OBJ): boxedwine-asan-pthread.cpp $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 endif
@@ -272,25 +306,25 @@ $(ASSET_OUTPUTS): $(BUILD_DIR)/%: %
 #$(TEST_BUILD_DIR)/boxedwineTest: $(TEST_OBJS)
 #	$(CC) $(TEST_OBJS) -o $@ $(LDFLAGS)
 
-ifneq (,$(filter $(BUILD_DIR),Build/TestMultiThreadedJit Build/MultiThreadedJit Build/AutomationMultiThreadedJit))
-$(BUILD_DIR)/$(TARGET_EXEC): boxedwine-wasm-jit-module-broker.js
-endif
+LINK_INPUTS := $(if $(filter %.html,$(TARGET_EXEC)),$(SHELL_FILE),)
+LINK_INPUTS += $(if $(findstring boxedwine-wasm-jit-module-broker.js,$(EXTRA_LD_FLAGS)),boxedwine-wasm-jit-module-broker.js,)
+LINK_INPUTS += $(if $(findstring boxedwine-multithreaded-audio.js,$(EXTRA_LD_FLAGS)),boxedwine-multithreaded-audio.js,)
 
-$(BUILD_DIR)/$(TARGET_EXEC): $(ALL)
+$(BUILD_DIR)/$(TARGET_EXEC): $(ALL) $(LINK_CONFIG) $(LINK_INPUTS)
 	@$(CC) $(ALL) -o $@ $(LDFLAGS)
 
 # assembly
-$(BUILD_DIR)/%.s.o: %.s
+$(BUILD_DIR)/%.s.o: %.s $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
 	@$(AS) $(ASFLAGS) -c $< -o $@
 
 # c source
-$(BUILD_DIR)/%.c.o: %.c
+$(BUILD_DIR)/%.c.o: %.c $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
-	@$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
 # c++ source
-$(BUILD_DIR)/%.cpp.o: %.cpp
+$(BUILD_DIR)/%.cpp.o: %.cpp $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
@@ -318,12 +352,12 @@ WASM_EXCEPTION_CPPFLAGS = $(CPPFLAGS)
 endif
 
 $(BUILD_DIR)/$(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp.o: \
-        $(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp
+        $(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
 	@$(CXX) $(WASM_EXCEPTION_CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 $(BUILD_DIR)/$(PROJDIR)/source/kernel/kscheduler.cpp.o: \
-        $(PROJDIR)/source/kernel/kscheduler.cpp
+        $(PROJDIR)/source/kernel/kscheduler.cpp $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
 	@$(CXX) $(WASM_EXCEPTION_CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 

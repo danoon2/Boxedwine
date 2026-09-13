@@ -1,8 +1,13 @@
 # Emscripten Build
 
-There are 2 builds for the Web
-- Single Threaded. Target Release
-- Multi-Threaded. Target multiThreaded
+The four browser targets are `release`, `jit`, `multiThreaded`, and
+`multiThreadedJit`. Each target retains its own object directory.
+
+The configuration dependency records compiler paths/versions, make flags,
+`EMCC_CFLAGS`, and `SOURCE_DATE_EPOCH`. Changing or removing either environment
+setting recompiles and relinks; unchanged settings preserve the existing
+objects and outputs. Keep a fixed `SOURCE_DATE_EPOCH` when comparing cold and
+incremental builds, since the executable embeds `__DATE__` and `__TIME__`.
 
 
 ## Build
@@ -44,7 +49,7 @@ Build a clean checkout with `make multiThreadedJit WASM_PROFILING=1`
 (or `make jit WASM_PROFILING=1`). Keep the usual optimization flags. This
 preserves Emscripten function names and adds names to generated guest blocks,
 including functions remapped into runtime module groups. Switching this option
-requires rebuilding objects; make does not track changes to compiler flags.
+rebuilds objects through the makefile's compiler/configuration dependencies.
 
 Generated names contain the guest process, mapped file basename, file offset,
 linear x86 instruction address, and block instruction count. An unmapped block
