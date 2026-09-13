@@ -65,6 +65,8 @@ void testBlockedThreadSigquitStartsHandlerImmediately();
 void testMemoryThreadCleanupUsesMemoryMutex();
 void testPtraceResumeCannotLoseWakeup();
 void testLastThreadDeletionRetainsMemoryWrapper();
+void testTerminationPinsThreadDuringLookup();
+void testThreadStartPublishesHandleBeforeEntry();
 void testHardLinksShareIdentityDataAndXattrs();
 void testFileCacheIdentitySurvivesRenameAndHardLink();
 void testSharedFileMappingGrowthKeepsPagesShared();
@@ -907,6 +909,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testPtraceResumeCannotLoseWakeup, "Test ptrace resume cannot lose wakeup", TEST_ENTRY_SERIAL},
 #endif
     {testLastThreadDeletionRetainsMemoryWrapper, "Test last thread deletion retains memory wrapper", TEST_ENTRY_SERIAL},
+    {testTerminationPinsThreadDuringLookup, "Test termination pins thread during lookup", TEST_ENTRY_SERIAL},
+    {testThreadStartPublishesHandleBeforeEntry, "Test thread start publishes handle before entry", TEST_ENTRY_SERIAL},
     {testHardLinksShareIdentityDataAndXattrs, "Test hard links share identity, data, and xattrs", TEST_ENTRY_SERIAL},
     {testFileCacheIdentitySurvivesRenameAndHardLink, "Test mapped-file cache identity survives rename and hard link", TEST_ENTRY_SERIAL},
     {testSharedFileMappingGrowthKeepsPagesShared, "Test shared file mapping stays shared after growth", TEST_ENTRY_SERIAL},

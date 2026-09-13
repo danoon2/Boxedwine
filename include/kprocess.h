@@ -257,6 +257,13 @@ public:
     void iterateThreads(std::function<bool(KThread*)> callback);
     void iterateThreadIds(std::function<bool(U32)> callback);
 
+#ifdef BOXEDWINE_MULTI_THREADED
+    void requestThreadTermination(U32 threadId);
+#ifdef __TEST
+    static void setTestBeforeThreadTerminationHook(const std::function<void()>& hook);
+#endif
+#endif
+
     // syscalls    
     U32 access(BString path, U32 mode);
     U32 alarm(U32 seconds);    

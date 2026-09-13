@@ -219,9 +219,12 @@ bool platformHasBMI2();
 void ATOMIC_WRITE64(U64* pTarget, U64 value);
 
 using PlatformThreadFunction = void* (*)(void*);
+// Entry receives CPU* after native handle/affinity setup. On success it may
+// already have exited and deleted the KThread/CPU before this call returns.
 S32 platformStartThread(KThread* thread, PlatformThreadFunction entry);
 #ifdef __TEST
 void platformJoinThread(KThread* thread);
+void platformSetTestBeforeThreadHandlePublishedHook(const std::function<void()>& hook);
 #endif
 #endif
 

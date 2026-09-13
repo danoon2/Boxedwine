@@ -47,32 +47,67 @@ void KNativeThread::sleep(U32 ms) {
 
 #ifdef BOXEDWINE_MULTI_THREADED
 
+#ifdef __TEST
+static std::function<void()> testBeforeThreadHandlePublishedHook;
+void platformSetTestBeforeThreadHandlePublishedHook(const std::function<void()>& hook) {
+    testBeforeThreadHandlePublishedHook = hook;
+}
+#endif
+
 #if defined(_DEBUG) && defined(BOXEDWINE_MSVC)
 void platformSetThreadDescription(KThread* thread);
 #endif
 
+static void* platformThreadEntryAfterSetup(void* arg) {
+    CPU* cpu = static_cast<CPU*>(arg);
+    PlatformThreadFunction entry;
+    {
+        std::lock_guard<std::mutex> lock(cpu->nativeStartMutex);
+        entry = cpu->nativeEntry;
+        cpu->nativeEntry = nullptr;
+    }
+    return entry(cpu);
+}
+
 S32 platformStartThread(KThread* thread, PlatformThreadFunction entry) {
     CPU* cpu = thread->cpu;
+    // Release this gate only after the creator's last access to thread/CPU.
+    // The worker may immediately exit and free both when entry is called.
+    std::lock_guard<std::mutex> startLock(cpu->nativeStartMutex);
+    cpu->nativeEntry = entry;
 #ifdef __EMSCRIPTEN__
     pthread_t cppThread;
-    int result = pthread_create(&cppThread, nullptr, entry, cpu);
+    int result = pthread_create(&cppThread, nullptr, platformThreadEntryAfterSetup, cpu);
     if (result) {
+        cpu->nativeEntry = nullptr;
         return result;
     }
+#ifdef __TEST
+    if (testBeforeThreadHandlePublishedHook) {
+        testBeforeThreadHandlePublishedHook();
+    }
+#endif
     cpu->nativeHandle = (U64)cppThread;
 #ifndef __TEST
     pthread_detach(cppThread);
 #endif
 #elif defined(__TEST)
-    cpu->nativeHandle = (U64)new std::thread(entry, cpu);
+    std::thread* cppThread = new std::thread(platformThreadEntryAfterSetup, cpu);
+    if (testBeforeThreadHandlePublishedHook) {
+        testBeforeThreadHandlePublishedHook();
+    }
+    cpu->nativeHandle = (U64)cppThread;
 #else
-    std::thread cppThread = std::thread(entry, cpu);
+    std::thread cppThread = std::thread(platformThreadEntryAfterSetup, cpu);
     cpu->nativeHandle = (U64)cppThread.native_handle();
 #if defined(_DEBUG) && defined(BOXEDWINE_MSVC)
     platformSetThreadDescription(thread);
 #endif
     cppThread.detach();
 #endif
+    if (!thread->process->isSystemProcess() && KSystem::cpuAffinityCountForApp) {
+        Platform::setCpuAffinityForThread(thread, KSystem::cpuAffinityCountForApp);
+    }
     return 0;
 }
 

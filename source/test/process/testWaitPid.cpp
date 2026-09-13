@@ -17,6 +17,7 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <future>
 
 namespace {
 
@@ -520,6 +521,90 @@ void testLastThreadDeletionRetainsMemoryWrapper() {
 
     KSystem::eraseProcess(processId);
     process = nullptr;
+}
+
+static std::function<void(CPU*)> threadStartTestEntry;
+
+void testThreadStartPublishesHandleBeforeEntry() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    KProcessPtr process = KProcess::create();
+    process->memory = KMemory::create(process.get());
+    KThread* child = process->createThread();
+    U32 processId = process->id;
+    child->cpu->nativeHandle = 0;
+    std::promise<void> entered;
+    std::future<void> entryReached = entered.get_future();
+    U64 observedHandle = 0;
+    bool ranBeforePublication = false;
+    threadStartTestEntry = [&](CPU* cpu) {
+        observedHandle = cpu->nativeHandle;
+        entered.set_value();
+    };
+    platformSetTestBeforeThreadHandlePublishedHook([&]() {
+        // A real entry may exit and delete the CPU at this point. Keep it
+        // allocated in the negative control while observing the same ordering.
+        ranBeforePublication = entryReached.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready;
+    });
+    S32 result = platformStartThread(child, [](void* arg) -> void* {
+        threadStartTestEntry(static_cast<CPU*>(arg));
+        return nullptr;
+    });
+    if (!result) {
+        platformJoinThread(child);
+    }
+    platformSetTestBeforeThreadHandlePublishedHook({});
+    threadStartTestEntry = {};
+    if (result || ranBeforePublication || !observedHandle) {
+        testFail("thread entry ran before native handle publication");
+    }
+    process->deleteThread(child);
+    KSystem::eraseProcess(processId);
+#endif
+}
+
+void testTerminationPinsThreadDuringLookup() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    KProcessPtr process = KProcess::create();
+    process->memory = KMemory::create(process.get());
+    KThread* target = process->createThread();
+    U32 processId = process->id;
+    U32 threadId = target->id;
+    std::promise<void> lookupReached;
+    std::promise<void> releaseLookup;
+    std::shared_future<void> release = releaseLookup.get_future().share();
+    KProcess::setTestBeforeThreadTerminationHook([&]() {
+        lookupReached.set_value();
+        release.wait();
+    });
+
+    std::thread terminator([&]() { terminateOtherThread(process, threadId); });
+    lookupReached.get_future().wait();
+    std::promise<void> removalStarted;
+    std::promise<void> removalFinished;
+    std::future<void> removed = removalFinished.get_future();
+    std::thread remover([&]() {
+        removalStarted.set_value();
+        // Removal is the point after which another host thread may delete the
+        // object. Keep it allocated here so the negative control is safe.
+        process->removeThread(target);
+        removalFinished.set_value();
+    });
+    removalStarted.get_future().wait();
+    bool removedDuringLookup = removed.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready;
+    releaseLookup.set_value();
+    remover.join();
+    terminator.join();
+    KProcess::setTestBeforeThreadTerminationHook({});
+    if (removedDuringLookup) {
+        testFail("thread removal invalidated an in-progress termination lookup");
+    }
+    if (!target->terminating) {
+        testFail("termination request was not delivered to the protected thread");
+    }
+    process->deleteThread(target);
+    process->requestThreadTermination(threadId); // Already removed is harmless.
+    KSystem::eraseProcess(processId);
+#endif
 }
 
 #endif

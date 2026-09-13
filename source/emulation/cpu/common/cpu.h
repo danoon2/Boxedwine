@@ -391,6 +391,11 @@ public:
 #ifdef BOXEDWINE_MULTI_THREADED
     U64 nativeHandle = 0;
     U32 tmpLockAddress = 0;
+    // The native entry can delete this CPU, so keep it behind the creator's
+    // handle publication and affinity setup. The pthread argument stays CPU*
+    // because the WASM module broker uses it to find the pending start owner.
+    std::mutex nativeStartMutex;
+    void* (*nativeEntry)(void*) = nullptr;
 #endif
 
 #ifdef BOXEDWINE_HOST_EXCEPTIONS

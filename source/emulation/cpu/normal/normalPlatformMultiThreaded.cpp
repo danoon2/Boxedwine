@@ -131,27 +131,10 @@ void scheduleThread(KThread* thread) {
         kpanic_fmt("platformStartThread failed: %d", result);
         return;
     }
-    if (!thread->process->isSystemProcess() && KSystem::cpuAffinityCountForApp) {
-        Platform::setCpuAffinityForThread(thread, KSystem::cpuAffinityCountForApp);
-    }
 }
 
 void terminateOtherThread(const KProcessPtr& process, U32 threadId) {
-    KThread* thread = process->getThreadById(threadId);
-    if (thread) {
-        BOXEDWINE_CONDITION cond;
-        {
-            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
-            thread->terminating = true;
-            cond = thread->waitingCond;
-        }
-
-        if (cond) {
-            cond->lock();
-            cond->signalAll();
-            cond->unlock();
-        }
-    }
+    process->requestThreadTermination(threadId);
 
     while (true) {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(process->threadRemovedCondition);

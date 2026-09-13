@@ -2428,13 +2428,50 @@ U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 t
         newThread->cpu->reg[4].u32+=8;
         newThread->cpu->eip.u32 = newThread->cpu->peek32(0);
         //klog("starting %d/%d", newThread->process->id, newThread->id);
+        U32 newThreadId = newThread->id;
         scheduleThread(newThread);
-        return newThread->id;
+        return newThreadId;
     } else {
         kpanic_fmt("sys_clone does not implement flags: %X", flags);
         return 0;
     }
 }
+
+#ifdef BOXEDWINE_MULTI_THREADED
+#ifdef __TEST
+static std::function<void()> testBeforeThreadTerminationHook;
+void KProcess::setTestBeforeThreadTerminationHook(const std::function<void()>& hook) {
+    testBeforeThreadTerminationHook = hook;
+}
+#endif
+
+void KProcess::requestThreadTermination(U32 threadId) {
+    BOXEDWINE_CONDITION cond;
+    {
+        // Removal allows the owning host thread to delete the KThread. Keep
+        // the lookup and its last dereference inside the same critical section.
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+        KThread* thread = threads[threadId];
+        if (thread) {
+#ifdef __TEST
+            if (testBeforeThreadTerminationHook) {
+                testBeforeThreadTerminationHook();
+            }
+#endif
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
+            thread->terminating = true;
+            cond = thread->waitingCond;
+        }
+    }
+    // Waking may acquire another condition. Only the retained condition is
+    // needed here; never hold the thread-list lock across that operation.
+    if (cond) {
+        cond->lock();
+        cond->signalAll();
+        cond->unlock();
+    }
+}
+#endif
 
 void KProcess::killAllThreads(KThread* exceptThisThread) {
     iterateThreadIds([this, exceptThisThread](U32 id) {
