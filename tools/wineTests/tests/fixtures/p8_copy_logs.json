@@ -1,0 +1,29 @@
+{
+  "scope": "Exact captured logs, compressed losslessly for parser failure-gate tests; this fixture preparation adds no graphics execution.",
+  "logs": [
+    {
+      "label": "native",
+      "file": "p8_copy_native.log.gz",
+      "bytes": 291430,
+      "sha256": "fb36a944c5074ae30683367297dbbc8a4e7384b98ee88be1fb3c8833e03a3200",
+      "compressed_sha256": "02428be37c4bc0944ef2ef48ac9266acad4231b663c6cf450af16a321f6f653c",
+      "source": "C:\\Boxedwine2\\tmp\\cc54\\p8-display-native\\guest.log"
+    },
+    {
+      "label": "browser",
+      "file": "p8_copy_browser.log.gz",
+      "bytes": 292298,
+      "sha256": "af5f8b01bb57949fe14476661843c060b626e63c34059e2b330ca2a7d3a81f23",
+      "compressed_sha256": "8be840e09394cd865382d9aa4d4f02c9d3673d294d4a0b51bb67e33f5f12cd08",
+      "source": "C:\\Boxedwine2\\tmp\\cc54\\p8-display-default-st-jit\\guest.log"
+    },
+    {
+      "label": "chrome",
+      "file": "p8_copy_chrome.log.gz",
+      "bytes": 1730334,
+      "sha256": "be48d0f37d601edcc3bb6144d7a20732270a68b0e41f3e90713d35e447269c36",
+      "compressed_sha256": "d832326dae00c41f2995c437d2ac2aeef2cd8fe333c0897b45bf2c718e45852f",
+      "source": "C:\\Boxedwine2\\tmp\\cc54\\p8-display-default-st-jit\\chrome.log"
+    }
+  ]
+}
