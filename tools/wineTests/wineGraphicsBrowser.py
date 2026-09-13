@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 import hashlib
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -18,12 +18,18 @@ import shutil
 import signal
 import struct
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse
 import zipfile
+
+BUILD_WINE_DIR = Path(__file__).resolve().parents[1] / "buildWine"
+if str(BUILD_WINE_DIR) not in sys.path:
+    sys.path.insert(0, str(BUILD_WINE_DIR))
+import webgl_build_identity as build_ids
 
 
 PROGRESS_PATH = "/__boxedwine_graphics_progress"
@@ -38,6 +44,7 @@ REQUIRED_WEB_FILES = (
     "boxedwine.css",
 )
 CONTEXT_LOSS_PTHREAD_SKIP_MARKER = "PTHREAD_EVENT_LOOP_UNAVAILABLE"
+TEST_EXIT_MARKER = "BOXEDWINE_TEST_EXIT"
 
 
 class RunnerError(RuntimeError):
@@ -54,6 +61,12 @@ class GraphicsSuite:
     result_style: str = "wine"
     redirect_output: bool = False
     cleanup_wait_seconds: int | None = None
+    repeat_count: int = 1
+    cleanup_marker: str = "BOXEDWINE_WINESERVER_CLEANUP_OK"
+    # None permits re-reading historical artifacts that did not record status.
+    # Live Wine runners select "wine" (failure count capped at 255); probes
+    # select "zero" because their process return conventions can differ.
+    exit_status_policy: str | None = None
 
 
 GRAPHICS_SUITES = {
@@ -134,6 +147,7 @@ class GraphicsTestResult:
     reason: str
     failure_records: tuple[str, ...]
     browser_events: tuple[str, ...]
+    exit_status: int | None = None
 
 
 class BrowserProgress:
@@ -148,9 +162,13 @@ class BrowserProgress:
 
     def update(self, payload: dict[str, Any]) -> None:
         with self.lock:
+            # Requests can arrive out of order. Once completion is published,
+            # an older in-flight progress report must not replace its artifacts.
+            if self.completed.is_set():
+                return
             self.latest = payload
-        if payload.get("kind") == "complete":
-            self.completed.set()
+            if payload.get("kind") == "complete":
+                self.completed.set()
 
     def snapshot(self) -> dict[str, Any]:
         with self.lock:
@@ -222,17 +240,27 @@ def create_test_app_zip(
 
 
 _ANSI_PATTERN = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+_MIPS_PATTERN = re.compile(
+    r"\[MIPS\] count=[0-9]+ raw=[0-9]+ avg=[0-9]+ min=[0-9]+ max=[0-9]+ "
+    r"warmAvg=[0-9]+ warmSamples=[0-9]+(?=\n|$)"
+)
 
 
 def normalize_output(output: str) -> str:
     output = _ANSI_PATTERN.sub("", output).replace("\r", "\n")
-    return re.sub(r"(?m)^[ \t]*\[MIPS\][^\n]*(?:\n|$)", "", output)
+    # Host logging can interrupt Wine's terminal output in the middle of a
+    # summary digit. Remove only the complete known record, preserving the
+    # surrounding guest bytes and unknown diagnostics for strict validation.
+    return _MIPS_PATTERN.sub("", output)
 
 
 def _summary_for_group(group: str, output: str) -> tuple[int, int, int, int] | None:
     wrapped_decimal = r"\d+(?:[ \t]*\n+[ \t]*\d+)*"
+    # SDL's host log can split Wine's four-digit thread ID. Recognize that
+    # exact record only inside the ID; leave arbitrary diagnostics untouched.
+    thread_id = r"[0-9a-fA-F](?:(?:Showing Window\n+)?[0-9a-fA-F]){3}"
     pattern = re.compile(
-        rf"(?:^|\n)\s*[0-9a-fA-F]{{4}}:{re.escape(group)}:\s*"
+        rf"(?:^|\n)\s*{thread_id}:{re.escape(group)}:\s*"
         rf"({wrapped_decimal})\s+tests executed\s*\(\s*"
         rf"({wrapped_decimal})\s+marked as todo,\s*"
         rf"(?:{wrapped_decimal}\s+as flaky,\s*)?"
@@ -303,6 +331,25 @@ def _browser_event_records(payload: dict[str, Any]) -> tuple[str, ...]:
     return tuple(records)
 
 
+def parse_test_exit_status(output: str, policy: str | None,
+                           failures: int | None) -> tuple[int | None, str | None]:
+    """Validate the guest shell's standalone status, independently of cleanup."""
+    if policy is None:
+        return None, None
+    if policy not in ("wine", "zero"):
+        raise ValueError(f"unknown test exit status policy: {policy}")
+    statuses = re.findall(rf"(?m)^{TEST_EXIT_MARKER}:([^\n]*)$", normalize_output(output))
+    if len(statuses) != 1 or not re.fullmatch(r"[0-9]{1,3}", statuses[0].strip()):
+        return None, "test exit status missing, duplicated, or invalid"
+    status = int(statuses[0])
+    if status > 255:
+        return None, "test exit status missing, duplicated, or invalid"
+    expected = min(failures, 255) if policy == "wine" and failures is not None else 0
+    if status != expected:
+        return status, f"test exit status {status} does not match expected {expected}"
+    return status, None
+
+
 def parse_graphics_result(
     suite: GraphicsSuite,
     group: str,
@@ -313,6 +360,9 @@ def parse_graphics_result(
 ) -> GraphicsTestResult:
     if group not in suite.groups:
         raise RunnerError(f"unknown {suite.name} test group: {group}")
+    if suite.repeat_count > 1:
+        return _parse_repeated_graphics_result(suite, group, payload,
+            timed_out=timed_out, browser_exited_early=browser_exited_early)
 
     raw_output = payload.get("output", "")
     output = normalize_output(raw_output if isinstance(raw_output, str) else "")
@@ -417,6 +467,7 @@ def parse_graphics_result(
     tests = todo = failures = skipped = None
     if summary is not None:
         tests, todo, failures, skipped = summary
+    exit_status, exit_problem = parse_test_exit_status(output, suite.exit_status_policy, failures)
     context_loss_expected_pthread_skip = (
         requires_context_loss_restore
         and summary == (1, 0, 0, 1)
@@ -430,7 +481,7 @@ def parse_graphics_result(
         reason = "browser error: " + browser_events[-1]
     elif suite.cleanup_wait_seconds is not None and (
         timed_out or browser_exited_early or not payload.get("cleanupWaitSatisfied")
-        or not re.search(r"(?m)^BOXEDWINE_WINESERVER_CLEANUP_OK\s*$", output)
+        or not re.search(rf"(?m)^{re.escape(suite.cleanup_marker)}\s*$", output)
     ):
         reason = "browser cleanup observation did not complete"
     elif (
@@ -469,6 +520,8 @@ def parse_graphics_result(
             if is_marshal
             else "Wine test executed zero assertions"
         )
+    elif exit_problem:
+        reason = exit_problem
     elif failures:
         reason = (
             f"{failures} test failures"
@@ -501,29 +554,82 @@ def parse_graphics_result(
         reason=reason,
         failure_records=records,
         browser_events=browser_events,
+        exit_status=exit_status,
     )
 
 
-def build_launch_url(port: int, suite: GraphicsSuite, group: str) -> str:
+def repeated_cycle_results(suite: GraphicsSuite, group: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
+    captured = payload.get("repeatedLogs") or {}
+    logs = captured.get("cycles", {})
+    timeline = captured.get("timeline", "")
+    single = replace(suite, repeat_count=1, cleanup_wait_seconds=None, exit_status_policy=None)
+    rows = []
+    for cycle in range(1, suite.repeat_count + 1):
+        result = parse_graphics_result(single, group, {"output": logs.get(str(cycle), "")})
+        statuses = re.findall(rf"(?m)^BW_CYCLE_RESULT_{cycle}:(\d+)\s*$", timeline)
+        endings = re.findall(rf"(?m)^BW_CYCLE_END_{cycle}:(\d+)\s*$", timeline)
+        reason = result.reason
+        if result.passed and statuses != ["0"]:
+            reason = "probe exit status missing, duplicated, or nonzero"
+        elif result.passed and endings != ["0"]:
+            reason = "Wine cleanup status missing, duplicated, or nonzero"
+        result = replace(result, passed=reason == "ok", reason=reason)
+        rows.append({"cycle": cycle, "result": asdict(result)})
+    return rows
+
+
+def _parse_repeated_graphics_result(suite, group, payload, **kwargs):
+    overall = parse_graphics_result(replace(suite, repeat_count=1, exit_status_policy=None), group, payload, **kwargs)
+    rows = repeated_cycle_results(suite, group, payload)
+    failed = next((row for row in rows if not row["result"]["passed"]), None)
+    reason = overall.reason
+    if overall.passed and failed:
+        reason = f"cycle {failed['cycle']}: {failed['result']['reason']}"
+    totals = {}
+    for field in ("tests", "todo", "failures", "skipped"):
+        observed = [row["result"][field] for row in rows if row["result"][field] is not None]
+        totals[field] = sum(observed) if observed else None
+    return replace(overall, **totals, passed=reason == "ok", reason=reason,
+        failure_records=tuple(f"cycle {row['cycle']}: {record}"
+            for row in rows for record in row["result"]["failure_records"]))
+
+
+def _save_repeated_logs(run_dir: Path, count: int, payload: dict[str, Any],
+                        saved: dict[str, str]) -> None:
+    captured = payload.get("repeatedLogs") or {}
+    for cycle in range(count + 1):
+        name = f"cycle-{cycle:03d}.log" if cycle else "cycle-timeline.log"
+        text = (captured.get("cycles", {}).get(str(cycle)) if cycle
+                else captured.get("timeline"))
+        if isinstance(text, str) and saved.get(name) != text:
+            (run_dir / name).write_text(text, encoding="utf-8")
+            saved[name] = text
+
+
+def build_launch_url(port: int, suite: GraphicsSuite, group: str,
+                     build_id: str | None = None) -> str:
     if group not in suite.groups:
         raise RunnerError(f"unknown {suite.name} test group: {group}")
-    query = urlencode(
-        {
-            "root": ROOT_ALIAS,
-            "app": APP_ALIAS,
-            "p": suite.executable,
-            "args": group,
-            "auto": "true",
-            "sound": "false",
-            "storage": "memory",
-            "regressionBuild": "1",
-        }
-    )
+    parameters = {
+        "root": ROOT_ALIAS,
+        "app": APP_ALIAS,
+        "p": suite.executable,
+        "args": group,
+        "auto": "true",
+        "sound": "false",
+        "storage": "memory",
+        "regressionBuild": "1",
+    }
+    if build_id is not None:
+        parameters["buildid"] = build_id
+    query = urlencode(parameters)
     return f"http://127.0.0.1:{port}/boxedwine.html?{query}"
 
 
 def _observer_script(token: str, group: str, result_style: str,
-                     cleanup_wait_seconds: int | None = None) -> str:
+                     cleanup_wait_seconds: int | None = None,
+                     cleanup_marker: str = "BOXEDWINE_WINESERVER_CLEANUP_OK",
+                     require_exit_status: bool = False) -> str:
     token_json = json.dumps(token)
     group_json = json.dumps(group)
     result_style_json = json.dumps(result_style)
@@ -536,6 +642,9 @@ def _observer_script(token: str, group: str, result_style: str,
   const group = {group_json};
   const resultStyle = {result_style_json};
   const cleanupWaitMs = {cleanup_wait_json};
+  const cleanupMarker = {json.dumps(cleanup_marker)};
+  const requireExitStatus = {json.dumps(require_exit_status)};
+  const testExitMarker = {json.dumps(TEST_EXIT_MARKER + ':')};
   const endpoint = {progress_path_json} + "?token=" + encodeURIComponent(token);
   const consoleTail = [];
   const browserEvents = [];
@@ -579,6 +688,18 @@ def _observer_script(token: str, group: str, result_style: str,
     }});
   }});
 
+  function startupState() {{
+    return {{
+      runDependencies: typeof runDependencies === "number" ? runDependencies : null,
+      runtimeInitialized: typeof runtimeInitialized === "boolean" ? runtimeInitialized : null,
+      calledRun: typeof Module !== "undefined" ? !!Module.calledRun : false,
+      unusedWorkers: typeof PThread !== "undefined" ? PThread.unusedWorkers.length : null,
+      loadedUnusedWorkers: typeof PThread !== "undefined"
+          ? PThread.unusedWorkers.filter(worker => worker.loaded).length : null,
+      runningWorkers: typeof PThread !== "undefined" ? PThread.runningWorkers.length : null
+    }};
+  }}
+
   function payload(kind) {{
     const outputElement = document.getElementById("output");
     const statusElement = document.getElementById("status");
@@ -592,9 +713,13 @@ def _observer_script(token: str, group: str, result_style: str,
     }} catch (error) {{}}
     return {{
       kind: kind,
-      output: outputElement ? outputElement.value : "",
+      output: capturedOutput(),
+      repeatedLogs: globalThis.boxedwineRepeatedLogs || null,
+      repeatRevision: globalThis.boxedwineRepeatRevision || 0,
+      redirectedRevision: globalThis.boxedwineRedirectedRevision || 0,
       status: statusElement ? statusElement.textContent : "",
       heapBytes: heapBytes,
+      startup: startupState(),
       browserEvents: browserEvents.slice(),
       cleanupWaitSatisfied: cleanupWaitSatisfied,
       consoleTail: consoleTail.slice(),
@@ -621,12 +746,21 @@ def _observer_script(token: str, group: str, result_style: str,
         /s\\s*k\\s*i\\s*p\\s*p\\s*e\\s*d/.test(tail);
   }}
 
+  function capturedOutput() {{
+    const element = document.getElementById("output");
+    const logs = globalThis.boxedwineRepeatedLogs;
+    return (element ? element.value : "") + (globalThis.boxedwineRedirectedOutput
+        ? "\\n" + globalThis.boxedwineRedirectedOutput : "") + (logs
+        ? "\\n" + Object.values(logs.cycles).join("\\n") + "\\n" + logs.timeline : "");
+  }}
+
   function post(kind) {{
     if (posting && kind !== "complete") return;
     const value = payload(kind);
     const signature = kind + "|" + value.output.length + "|" + value.status +
         "|" + value.heapBytes + "|" + value.browserEvents.length +
-        "|" + value.consoleTail.length;
+        "|" + JSON.stringify(value.startup) +
+        "|" + value.consoleTail.length + "|" + value.repeatRevision + "|" + value.redirectedRevision;
     if (kind !== "complete" && signature === lastSignature) return;
     lastSignature = signature;
     posting = true;
@@ -640,17 +774,18 @@ def _observer_script(token: str, group: str, result_style: str,
 
   const timer = setInterval(function() {{
     const outputElement = document.getElementById("output");
-    const output = outputElement ? outputElement.value : "";
+    const output = capturedOutput();
     const hasSummary = hasTestSummary(output);
+    const cleanOutput = output.replace(/\\u001b\\[[0-?]*[ -/]*[@-~]/g, "").replace(/\\r/g, "\\n");
+    const hasExitStatus = !requireExitStatus || cleanOutput.split("\\n").some(line => line.startsWith(testExitMarker));
     if (cleanupWaitMs !== null) {{
-      const cleanOutput = output.replace(/\\u001b\\[[0-?]*[ -/]*[@-~]/g, "").replace(/\\r/g, "\\n");
-      if (hasSummary && /^BOXEDWINE_WINESERVER_CLEANUP_OK\\s*$/m.test(cleanOutput) && cleanupObservedAt === null) {{
+      if (hasSummary && hasExitStatus && cleanOutput.split("\\n").some(line => line.trimEnd() === cleanupMarker) && cleanupObservedAt === null) {{
         cleanupObservedAt = performance.now();
       }}
       cleanupWaitSatisfied = cleanupObservedAt !== null && performance.now() - cleanupObservedAt >= cleanupWaitMs;
     }}
     const finished = cleanupWaitMs === null
-        ? hasSummary || output.indexOf("Boxedwine shutdown") !== -1
+        ? (hasSummary && hasExitStatus) || output.indexOf("Boxedwine shutdown") !== -1
         : cleanupWaitSatisfied;
     if (!complete && (browserEvents.length > 0 || finished)) {{
       complete = true;
@@ -715,14 +850,36 @@ def build_guest_test_command(
         wine_command = " ".join(
             ("env", *(shlex.quote(value) for value in environment), wine_command)
         )
+    if suite.repeat_count > 1:
+        cycles = " ".join(str(i) for i in range(1, suite.repeat_count + 1))
+        return (
+            f"for cycle in {cycles}; do "
+            "echo BW_CYCLE_START_$cycle >> /tmp/boxedwine-repeat-timeline; "
+            f"{wine_command} > /tmp/boxedwine-repeat-$cycle.log 2>&1; "
+            "test_status=$?; echo BW_CYCLE_RESULT_$cycle:$test_status >> /tmp/boxedwine-repeat-timeline; "
+            "echo BW_CYCLE_KILL_$cycle >> /tmp/boxedwine-repeat-timeline; "
+            "/opt/wine/bin/wineserver -k >> /tmp/boxedwine-repeat-$cycle.log 2>&1; "
+            "kill_status=$?; echo BW_CYCLE_KILL_STATUS_$cycle:$kill_status >> /tmp/boxedwine-repeat-timeline; "
+            "/opt/wine/bin/wineserver -w >> /tmp/boxedwine-repeat-$cycle.log 2>&1; "
+            "cleanup_status=$?; echo BW_CYCLE_END_$cycle:$cleanup_status >> /tmp/boxedwine-repeat-timeline; "
+            "done; echo BOXEDWINE_WINESERVER_CLEANUP_OK >> /tmp/boxedwine-repeat-timeline; exit 0"
+        )
     # Standalone MinGW probes can otherwise produce Wine console cursor moves
     # instead of spaces. Replay their output through the guest Linux shell.
     redirect = " > /tmp/boxedwine-graphics-test.log 2>&1" if suite.redirect_output else ""
     replay = "printf '\\r\\n'; cat /tmp/boxedwine-graphics-test.log; " if suite.redirect_output else ""
+    status_marker = (f"printf '\\n{TEST_EXIT_MARKER}:%s\\n' \"$test_status\"; "
+                     if suite.exit_status_policy is not None else "")
+    # -k also exits one when the server has already stopped (for example while
+    # replaying a large guest log). Wait for its lock to be released in either
+    # case, and preserve both statuses instead of treating that as a timeout.
     return (
-        f"{wine_command}{redirect}; test_status=$?; {replay}"
-        "/opt/wine/bin/wineserver -k && "
-        "echo BOXEDWINE_WINESERVER_CLEANUP_OK; "
+        f"{wine_command}{redirect}; test_status=$?; {replay}{status_marker}"
+        "/opt/wine/bin/wineserver -k; kill_status=$?; "
+        "echo BOXEDWINE_WINESERVER_KILL_STATUS:$kill_status; "
+        "/opt/wine/bin/wineserver -w; cleanup_status=$?; "
+        "echo BOXEDWINE_WINESERVER_WAIT_STATUS:$cleanup_status; "
+        "if [ $cleanup_status -eq 0 ]; then echo BOXEDWINE_WINESERVER_CLEANUP_OK; fi; "
         "exit $test_status"
     )
 
@@ -834,19 +991,23 @@ def _context_loss_restore_script() -> str:
 def _redirected_probe_output_script() -> str:
     # Read the isolated guest log directly: terminal replay can overwrite or
     # lose buffered output when a short-lived probe destroys its last window.
+    # Publish partial logs too, so a crash or timeout retains its last test phase.
     return r"""<script>
 (function() {
+  globalThis.boxedwineRedirectedOutput = '';
+  globalThis.boxedwineRedirectedRevision = 0;
   const timer = setInterval(function() {
     try {
       const fs = typeof FS !== 'undefined' ? FS : Module.FS;
       const text = fs.readFile(
         '/root/app/__boxedwine_graphics_app.zip/tmp/boxedwine-graphics-test.log',
         {encoding: 'utf8'});
+      if (text !== globalThis.boxedwineRedirectedOutput) {
+        globalThis.boxedwineRedirectedOutput = text;
+        ++globalThis.boxedwineRedirectedRevision;
+      }
       if (!/tests executed[^]*skipped\./.test(text)) return;
-      const output = document.getElementById('output');
-      if (!output) return;
       clearInterval(timer);
-      output.value += '\n' + text + '\n';
       console.log('BOXEDWINE_REDIRECTED_PROBE_OUTPUT\n' + text);
     } catch (error) {
       // The runtime or the guest log may not exist yet.
@@ -854,6 +1015,32 @@ def _redirected_probe_output_script() -> str:
   }, 100);
 })();
 </script>"""
+
+
+def _repeated_probe_output_script(count: int) -> str:
+    return r"""<script>
+(function() {
+  const logs = globalThis.boxedwineRepeatedLogs = {cycles: {}, timeline: ''};
+  globalThis.boxedwineRepeatRevision = 0;
+  setInterval(function() {
+    try {
+      const fs = typeof FS !== 'undefined' ? FS : Module.FS;
+      const root = '/root/app/__boxedwine_graphics_app.zip/tmp/boxedwine-repeat-';
+      for (let cycle = 0; cycle <= REPEAT_COUNT; ++cycle) {
+        try {
+          const text = fs.readFile(root + (cycle ? cycle + '.log' : 'timeline'), {encoding: 'utf8'});
+          const previous = cycle ? logs.cycles[cycle] : logs.timeline;
+          if (text !== previous) {
+            if (cycle) logs.cycles[cycle] = text;
+            else logs.timeline = text;
+            ++globalThis.boxedwineRepeatRevision;
+          }
+        } catch (_) {} // A later cycle may not have started yet.
+      }
+    } catch (_) {} // Runtime not initialized yet.
+  }, 250);
+})();
+</script>""".replace("REPEAT_COUNT", str(count))
 
 
 def _worker_error_observer_script() -> str:
@@ -877,8 +1064,11 @@ def inject_test_harness(
     group: str,
     mode: str | None = None,
 ) -> str:
-    observer_script = _observer_script(token, group, suite.result_style, suite.cleanup_wait_seconds)
-    if suite.redirect_output:
+    observer_script = _observer_script(token, group, suite.result_style, suite.cleanup_wait_seconds,
+        suite.cleanup_marker, suite.exit_status_policy is not None and suite.repeat_count == 1)
+    if suite.repeat_count > 1:
+        observer_script += _repeated_probe_output_script(suite.repeat_count)
+    elif suite.redirect_output:
         observer_script += _redirected_probe_output_script()
     override_script = _command_override_script(suite, group, mode)
     mutation_script = ""
@@ -926,6 +1116,10 @@ def _make_handler(
     mode: str | None = None,
 ) -> type[SimpleHTTPRequestHandler]:
     class GraphicsRequestHandler(SimpleHTTPRequestHandler):
+        # Reuse connections for the concurrent pthread script downloads.
+        # Every response has a length or a status that forbids a body.
+        protocol_version = "HTTP/1.1"
+
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             super().__init__(*args, directory=str(build_dir), **kwargs)
 
@@ -1110,6 +1304,8 @@ def run_browser_test(
     headless: bool,
     keep_browser_profile: bool,
     mode: str = "single-threaded-non-jit",
+    build_commit: str | None = None,
+    build_source_dirty: bool | None = None,
 ) -> tuple[GraphicsTestResult, dict[str, Any]]:
     started_at = datetime.now(timezone.utc)
     started_monotonic = time.monotonic()
@@ -1120,6 +1316,20 @@ def run_browser_test(
     app_zip = create_test_app_zip(
         test_executable, suite, input_dir / f"{suite.name}-{group}.zip"
     )
+    # Hash before serving. A checkout label is supplied explicitly, never inferred
+    # from the current Git state for a previously built runtime. Generic GL/EGL
+    # roots may omit WineD3D; its absence remains explicit in the shared identity.
+    try:
+        identity = build_ids.build_identity(mode=mode,
+            runtime=build_ids.runtime_identity(build_dir),
+            filesystem=build_ids.root_identity(filesystem, require_wined3d=False),
+            commit=build_commit, source_dirty=build_source_dirty)
+        input_identities = {"test_executable": build_ids.file_identity(test_executable),
+                            "app_zip": build_ids.file_identity(app_zip)}
+    except (OSError, ValueError, zipfile.BadZipFile) as error:
+        raise RunnerError(f"Cannot identify browser inputs: {error}") from error
+    identity_path = run_dir / "build-identity.json"
+    identity_path.write_text(json.dumps(identity, indent=2) + "\n", encoding="utf-8")
     profile_dir = run_dir / "chrome-profile"
     profile_dir.mkdir()
     chrome_log_path = run_dir / "chrome.log"
@@ -1135,7 +1345,7 @@ def run_browser_test(
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
     port = int(server.server_address[1])
-    launch_url = build_launch_url(port, suite, group)
+    launch_url = build_launch_url(port, suite, group, identity["id"])
     chrome_command = build_chrome_command(
         chrome, profile_dir, launch_url, headless=headless
     )
@@ -1151,6 +1361,7 @@ def run_browser_test(
 
     timed_out = False
     browser_exited_early = False
+    saved_cycle_logs: dict[str, str] = {}
     process: subprocess.Popen[Any] | None = None
     with chrome_log_path.open("wb") as chrome_log:
         popen_kwargs["stdout"] = chrome_log
@@ -1158,6 +1369,8 @@ def run_browser_test(
             process = subprocess.Popen(chrome_command, **popen_kwargs)
             deadline = time.monotonic() + timeout
             while not progress.completed.wait(timeout=0.25):
+                if suite.repeat_count > 1:
+                    _save_repeated_logs(run_dir, suite.repeat_count, progress.snapshot(), saved_cycle_logs)
                 if process.poll() is not None:
                     browser_exited_early = True
                     break
@@ -1192,6 +1405,25 @@ def run_browser_test(
         timed_out=timed_out,
         browser_exited_early=browser_exited_early,
     )
+    # Keep the original identity and a failed result when served inputs change.
+    # Hashing only after execution would mislabel the bytes that produced a pass.
+    input_problems = []
+    checked_inputs = [(Path(build_dir) / name, entry)
+                      for name, entry in identity["runtime"].items()]
+    checked_inputs += [(Path(filesystem), identity["filesystem"]["archive"]),
+                       (Path(test_executable), input_identities["test_executable"]),
+                       (app_zip, input_identities["app_zip"])]
+    for path, expected in checked_inputs:
+        try:
+            if build_ids.file_identity(path) != expected:
+                input_problems.append(f"Input changed during browser run: {path}")
+        except OSError as error:
+            input_problems.append(f"Cannot verify browser input {path}: {error}")
+    if input_problems:
+        result = replace(result, passed=False,
+            reason="; ".join([result.reason, *input_problems]))
+    if suite.repeat_count > 1:
+        _save_repeated_logs(run_dir, suite.repeat_count, payload, saved_cycle_logs)
 
     if not keep_browser_profile:
         try:
@@ -1218,17 +1450,20 @@ def run_browser_test(
         },
         "mode": mode,
         "cleanup_wait_seconds": suite.cleanup_wait_seconds,
+        "cleanup_marker": suite.cleanup_marker,
+        "exit_status_policy": suite.exit_status_policy if suite.repeat_count == 1 else None,
         "launch_url": launch_url,
+        "build_identity": identity,
+        "input_identity_verified": not input_problems,
+        "input_identity_problems": input_problems,
         "inputs": {
             "build_dir": str(Path(build_dir).resolve()),
-            "boxedwine_wasm_sha256": _sha256(
-                Path(build_dir) / "boxedwine.wasm"
-            ),
+            "boxedwine_wasm_sha256": identity["runtime"]["boxedwine.wasm"]["sha256"],
             "filesystem": str(Path(filesystem).resolve()),
-            "filesystem_sha256": _sha256(filesystem),
+            "filesystem_sha256": identity["filesystem"]["archive"]["sha256"],
             "test_executable": str(Path(test_executable).resolve()),
-            "test_executable_sha256": _sha256(test_executable),
-            "app_zip_sha256": _sha256(app_zip),
+            "test_executable_sha256": input_identities["test_executable"]["sha256"],
+            "app_zip_sha256": input_identities["app_zip"]["sha256"],
             "chrome": str(Path(chrome).resolve()),
         },
         "browser": {
@@ -1240,6 +1475,7 @@ def run_browser_test(
             "heap_bytes": payload.get("heapBytes"),
         },
         "artifacts": {
+            "build_identity": str(identity_path),
             (
                 "opengl_log" if suite.result_style == "marshal" else "wine_log"
             ): str(output_log_path),
@@ -1249,6 +1485,9 @@ def run_browser_test(
         },
         "result": asdict(result),
     }
+    if suite.repeat_count > 1:
+        manifest["repeat_count"] = suite.repeat_count
+        manifest["cycle_results"] = repeated_cycle_results(suite, group, payload)
     (run_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )

@@ -1,4 +1,6 @@
 import importlib.util
+from dataclasses import dataclass
+import json
 from pathlib import Path
 import struct
 import sys
@@ -499,6 +501,7 @@ class GraphicsRunnerIntegrationTests(unittest.TestCase):
 
         self.assertEqual("wine_tests_v6.zip", arguments.graphics_tests_archive.name)
         self.assertEqual(1200, arguments.graphics_timeout)
+        self.assertIsNone(arguments.graphics_cleanup_wait_seconds)
         self.assertEqual(
             self.runner.DEFAULT_WEBGL_DIVERGENCE_MANIFEST,
             arguments.webgl_test_divergences,
@@ -511,6 +514,71 @@ class GraphicsRunnerIntegrationTests(unittest.TestCase):
             self.runner.DEFAULT_GRAPHICS_BASELINE,
             arguments.graphics_baseline,
         )
+
+    def test_graphics_cleanup_wait_rejects_invalid_or_native_configuration(self):
+        for extra in (["--graphics-cleanup-wait-seconds", "-1"],
+                ["--graphics-cleanup-wait-seconds", "60", "--graphics-timeout", "60"],
+                ["--graphics-cleanup-wait-seconds", "15", "--native-wine-root", "wine"]):
+            with self.subTest(extra=extra), self.assertRaises(SystemExit):
+                self.runner.parse_arguments(["--d3d9-group", "stateblock", *extra])
+
+    def test_cleanup_failure_is_rejected_even_when_all_assertions_match(self):
+        @dataclass(frozen=True)
+        class BackendSuite:
+            name: str = "d3d9"
+            groups: tuple = ("stateblock",)
+            cleanup_wait_seconds: int | None = None
+            exit_status_policy: str | None = None
+
+        backend_suite = BackendSuite()
+        backend_result = types.SimpleNamespace(tests=10, todo=0, failures=0, skipped=0,
+                passed=False, reason="browser cleanup observation did not complete",
+                failure_records=(), browser_events=())
+        backend = types.SimpleNamespace(
+                GRAPHICS_SUITES={"d3d9": backend_suite}, RunnerError=RuntimeError,
+                validate_web_build=mock.Mock(), validate_test_executable=mock.Mock(),
+                find_chrome=mock.Mock(return_value=Path("chrome")),
+                run_browser_test=mock.Mock(return_value=(backend_result, {"browser": {}})))
+        arguments = self.runner.parse_arguments(["--d3d9-group", "stateblock",
+                "--graphics-cleanup-wait-seconds", "15"])
+        baseline = {"suites": {"d3d9": {"stateblock": {
+                "tests": 10, "todo": 0, "failures": 0, "skipped": 0, "failure_locations": []}}}}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            filesystem = root / "root.zip"
+            filesystem.write_bytes(b"zip")
+            with mock.patch.object(self.runner, "_load_graphics_backend", return_value=backend), \
+                    mock.patch.object(self.runner.zipfile, "is_zipfile", return_value=True), \
+                    mock.patch.object(self.runner, "validate_graphics_baseline_inputs"):
+                results = self.runner.run_emscripten_graphics_suite(
+                        self.runner.D3D9_SUITE, ("stateblock",), root, filesystem,
+                        root / "d3d9_test.exe", None, root,
+                        cleanup_wait_seconds=arguments.graphics_cleanup_wait_seconds, baseline=baseline)
+            manifest = json.loads((root / "manifest.json").read_text())
+        self.assertFalse(results[0].passed)
+        self.assertEqual("browser cleanup observation did not complete", results[0].reason)
+        self.assertEqual(15, backend.run_browser_test.call_args.kwargs["suite"].cleanup_wait_seconds)
+        self.assertEqual("wine", backend.run_browser_test.call_args.kwargs["suite"].exit_status_policy)
+        self.assertEqual(15, manifest["graphics_cleanup_wait_seconds"])
+        self.assertIsNone(backend_suite.cleanup_wait_seconds)
+
+    def test_known_failure_baseline_cannot_waive_wrong_process_exit(self):
+        graphics = self.runner._load_graphics_backend()
+        suite = graphics.replace(graphics.GRAPHICS_SUITES["d3dx9_43"], exit_status_policy="wine")
+        baseline = {"suites": {"d3dx9_43": {"math": {
+            "tests": 1, "todo": 0, "failures": 1, "skipped": 0,
+            "failure_locations": ["math.c:1557"]}}}}
+        for status, passed in ((1, True), (0, False), (7, False)):
+            with self.subTest(status=status):
+                result = graphics.parse_graphics_result(suite, "math", {"output":
+                    "math.c:1557: Test failed: expected control\n"
+                    "0020:math: 1 tests executed (0 marked as todo, 1 failures), 0 skipped.\n"
+                    f"BOXEDWINE_TEST_EXIT:{status}\n"})
+                verdict = self.runner.evaluate_graphics_result(self.runner.D3DX9_43_SUITE,
+                    "math", result, baseline)
+                self.assertEqual(passed, verdict[0])
+                if not passed:
+                    self.assertIn("test exit status", verdict[1])
 
     def test_exact_graphics_baseline_can_be_disabled_for_exploration(self):
         arguments = self.runner.parse_arguments(
@@ -785,7 +853,7 @@ class GraphicsRunnerIntegrationTests(unittest.TestCase):
             )
             backend = types.SimpleNamespace(
                 GRAPHICS_SUITES={
-                    "d3d9": types.SimpleNamespace(name="d3d9", groups=("stateblock",))
+                    "d3d9": self.runner._load_graphics_backend().GRAPHICS_SUITES["d3d9"]
                 },
                 RunnerError=RuntimeError,
                 validate_web_build=mock.Mock(),
@@ -798,6 +866,11 @@ class GraphicsRunnerIntegrationTests(unittest.TestCase):
             suite = self.runner.D3D9_SUITE._replace(
                 groups=("stateblock",), failure_ceilings={"stateblock": 1}
             )
+
+            arguments = self.runner.parse_arguments([
+                "--d3d9-group", "stateblock", "--graphics-mode", "multi-threaded-jit",
+                "--graphics-build-commit", "a" * 40, "--graphics-build-source-dirty", "true"
+            ])
 
             with (
                 mock.patch.object(
@@ -813,7 +886,16 @@ class GraphicsRunnerIntegrationTests(unittest.TestCase):
                     executable,
                     None,
                     run_dir,
+                    mode=arguments.graphics_mode,
+                    build_commit=arguments.graphics_build_commit,
+                    build_source_dirty=arguments.graphics_build_source_dirty == "true",
                 )
+                self.assertEqual("multi-threaded-jit",
+                                 backend.run_browser_test.call_args.kwargs["mode"])
+                self.assertEqual("a" * 40, backend.run_browser_test.call_args.kwargs["build_commit"])
+                self.assertIs(True, backend.run_browser_test.call_args.kwargs["build_source_dirty"])
+                manifest = json.loads((run_dir / "manifest.json").read_text())
+                self.assertEqual("multi-threaded-jit", manifest["graphics_mode"])
 
         self.assertTrue(results[0].passed)
         self.assertEqual(1, results[0].failures)
@@ -842,7 +924,7 @@ class GraphicsRunnerIntegrationTests(unittest.TestCase):
             )
             backend = types.SimpleNamespace(
                 GRAPHICS_SUITES={
-                    "d3d9": types.SimpleNamespace(name="d3d9", groups=("stateblock",))
+                    "d3d9": self.runner._load_graphics_backend().GRAPHICS_SUITES["d3d9"]
                 },
                 RunnerError=RuntimeError,
                 validate_web_build=mock.Mock(),

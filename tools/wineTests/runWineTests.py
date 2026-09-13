@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 from datetime import datetime
 import hashlib
 import importlib.util
@@ -1518,15 +1519,23 @@ def run_emscripten_graphics_suite(
     run_dir: Path,
     *,
     timeout: int = 1200,
+    cleanup_wait_seconds: int | None = None,
+    mode: str = "single-threaded-non-jit",
+    build_commit: str | None = None,
+    build_source_dirty: bool | None = None,
     headless: bool = False,
     keep_browser_profile: bool = False,
     baseline: dict | None = None,
     divergences: dict | None = None,
 ) -> list[TestResult]:
     """Run selected graphics groups and apply exact baselines or fallback ceilings."""
+    if cleanup_wait_seconds is not None and not 0 <= cleanup_wait_seconds < timeout:
+        raise RunnerError("graphics cleanup wait must be nonnegative and shorter than the timeout")
     graphics = _load_graphics_backend()
     try:
-        backend_suite = graphics.GRAPHICS_SUITES[suite.name]
+        backend_suite = replace(graphics.GRAPHICS_SUITES[suite.name], exit_status_policy="wine")
+        if cleanup_wait_seconds is not None:
+            backend_suite = replace(backend_suite, cleanup_wait_seconds=cleanup_wait_seconds)
         graphics.validate_web_build(build_dir)
         if not Path(filesystem).is_file() or not zipfile.is_zipfile(filesystem):
             raise RunnerError(f"filesystem is not a readable ZIP: {filesystem}")
@@ -1559,6 +1568,9 @@ def run_emscripten_graphics_suite(
                 chrome=chrome_path,
                 run_dir=group_run_dir,
                 timeout=timeout,
+                mode=mode,
+                build_commit=build_commit,
+                build_source_dirty=build_source_dirty,
                 headless=headless,
                 keep_browser_profile=keep_browser_profile,
             )
@@ -1618,6 +1630,8 @@ def run_emscripten_graphics_suite(
             else None
         ),
         "graphics_artifacts": artifacts,
+        "graphics_mode": mode,
+        "graphics_cleanup_wait_seconds": cleanup_wait_seconds,
     }
     (Path(run_dir) / "manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
@@ -1812,16 +1826,37 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="per-graphics-group timeout in seconds (default: 1200)",
     )
     parser.add_argument(
+        "--graphics-cleanup-wait-seconds",
+        type=int,
+        help="require Wine cleanup and observe this many seconds for late browser errors",
+    )
+    parser.add_argument(
+        "--graphics-mode",
+        choices=("single-threaded-non-jit", "multi-threaded-non-jit",
+                 "single-threaded-jit", "multi-threaded-jit"),
+        default="single-threaded-non-jit",
+        help="runtime mode of --graphics-build-dir, recorded by the browser harness",
+    )
+    parser.add_argument(
         "--graphics-headless",
         action="store_true",
         help="run graphics groups with Chrome's new headless mode",
     )
+    parser.add_argument("--graphics-build-commit",
+        help="explicit full commit label for the selected runtime (default: unknown)")
+    parser.add_argument("--graphics-build-source-dirty", choices=("true", "false", "unknown"),
+        default="unknown", help="explicit source state for the selected runtime")
     parser.add_argument(
         "--keep-graphics-browser-profile",
         action="store_true",
         help="retain isolated Chrome profiles created by graphics groups",
     )
     arguments = parser.parse_args(argv)
+    if arguments.graphics_cleanup_wait_seconds is not None:
+        if not 0 <= arguments.graphics_cleanup_wait_seconds < arguments.graphics_timeout:
+            parser.error("graphics cleanup wait must be nonnegative and shorter than the timeout")
+        if arguments.native_wine_root is not None:
+            parser.error("--graphics-cleanup-wait-seconds applies only to browser graphics runs")
     has_selection = (
         arguments.selected_groups is not None
         or arguments.selected_kernel32_groups is not None
@@ -2007,6 +2042,11 @@ def main(argv: list[str] | None = None) -> int:
                     else None,
                     run_dir,
                     timeout=arguments.graphics_timeout,
+                    mode=arguments.graphics_mode,
+                    build_commit=arguments.graphics_build_commit,
+                    build_source_dirty={"true": True, "false": False, "unknown": None}[
+                        arguments.graphics_build_source_dirty],
+                    cleanup_wait_seconds=arguments.graphics_cleanup_wait_seconds,
                     headless=arguments.graphics_headless,
                     keep_browser_profile=arguments.keep_graphics_browser_profile,
                     baseline=graphics_baseline,
