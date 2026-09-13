@@ -61,6 +61,9 @@
 void testWaitPid();
 void testX11ImageIncludeInferiors();
 void testX11ImageScanlinePadding();
+#if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
+void testSDLGlWindowRemovalLockOrder();
+#endif
 void testWaitPidPublicationLockOrder();
 void testProcessSignalWakesSigwaitMask();
 void testBlockedThreadSignalStartsHandler();
@@ -911,6 +914,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testWaitPid, "Test waitpid child selection"},
     {testX11ImageIncludeInferiors, "Test X11 image IncludeInferiors and child coordinates"},
     {testX11ImageScanlinePadding, "Test X11 image scanline padding"},
+#if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
+    {testSDLGlWindowRemovalLockOrder, "Test SDL GL window removal lock order", TEST_ENTRY_SERIAL},
+#endif
     {testWaitPidPublicationLockOrder, "Test waitpid process publication lock order", TEST_ENTRY_SERIAL},
     {testProcessSignalWakesSigwaitMask, "Test process signal wakes sigwait mask"},
 #ifdef BOXEDWINE_MULTI_THREADED

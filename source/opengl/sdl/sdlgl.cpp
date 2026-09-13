@@ -591,10 +591,12 @@ KOpenGLSdl::~KOpenGLSdl() {
 #endif
         pbuffersById.clear();
     }
+    BHashTable<U32, SDLGlWindowPtr> windows;
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
-        sdlWindowById.clear();
+        swap(windows, sdlWindowById);
     }
+    windows.clear();
     shownGlWindows = 0;
 }
 
@@ -988,13 +990,22 @@ void KOpenGLSdl::glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>&
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
         window = sdlWindowById.get(wnd->id);
     }
-    if (!window) {        
+    if (!window) {
         KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+            // Another caller may have created the window while this callback
+            // was queued. Keep creation and publication on the UI thread.
+            window = sdlWindowById.get(wnd->id);
+            if (window) {
+                return;
+            }
             window = SDLGlWindow::createWindow(cfg->glPixelFormat, 0, 0, 0, 0, wnd->width(), wnd->height(), wnd);
+            if (window) {
+                window->drawable = wnd;
+                sdlWindowById.set(wnd->id, window);
+            }
             });
         if (window) {
-            window->drawable = wnd;
-            sdlWindowById.set(wnd->id, window);
 #ifdef __EMSCRIPTEN__
             if (!deferGlWindowShowUntilSwap()) {
                 window->showWindow(true);
@@ -1008,21 +1019,71 @@ void KOpenGLSdl::glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>
     if (XServer::getServer(true)) {
         XServer::getServer()->clearFakeFullScreenWindow(wnd);
     }
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+    // The last reference dispatches destruction to the UI thread. That thread
+    // can be inside a GDI draw waiting for windowMutex in isActive().
+    SDLGlWindowPtr window;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+        window = sdlWindowById.get(wnd->id);
 #ifdef __APPLE__
-    SDLGlWindowPtr window = sdlWindowById.get(wnd->id);
-    if (window) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
-        for (auto& context : contextsById) {
-            if (context.value->currentWindow == window) {
-                macOpenGLDetachContext(context.value->context);
-                context.value->currentWindow = nullptr;
+        if (window) {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
+            for (auto& context : contextsById) {
+                if (context.value->currentWindow == window) {
+                    macOpenGLDetachContext(context.value->context);
+                    context.value->currentWindow = nullptr;
+                }
             }
         }
-    }
 #endif
-    sdlWindowById.remove(wnd->id);
+        sdlWindowById.remove(wnd->id);
+    }
 }
+
+#if defined(__TEST) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
+#include "../../test/cpu/testCPU.h"
+
+void testSDLGlWindowRemovalLockOrder() {
+    extern U32 sdlCustomEvent;
+    if (SDL_InitSubSystem(SDL_INIT_EVENTS) != 0) {
+        testFail("Could not initialize SDL callback events: %s", SDL_GetError());
+        return;
+    }
+    if (!sdlCustomEvent) {
+        sdlCustomEvent = SDL_RegisterEvents(1);
+    }
+    KOpenGLSdl gl;
+    XWindowPtr wnd = std::make_shared<XWindow>(0, nullptr, 1, 1, 32, 0, 0, 0, 0, nullptr);
+    // A borrowed window is opaque here: its destructor queues the production
+    // callback but must not call SDL_DestroyWindow on this token.
+    SDL_Window* borrowed = reinterpret_cast<SDL_Window*>(&gl);
+    KOpenGLSdl::sdlWindowById.set(wnd->id,
+        std::make_shared<SDLGlWindow>(borrowed, nullptr, 0, 0, 0, 0, false));
+    std::thread worker([&]() { gl.glDestroyWindow(nullptr, wnd); });
+    SDL_Event event = {};
+    U32 start = SDL_GetTicks();
+    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, sdlCustomEvent, sdlCustomEvent) != 1) {
+        if (SDL_GetTicks() - start > 5000) {
+            // Fail boundedly instead of hanging the unit runner on a missing callback.
+            kpanic("GL window removal did not queue its SDL callback");
+        }
+        SDL_Delay(1);
+    }
+    // Reproduce the UI side of the cycle without blocking the test: the worker
+    // is waiting for this queued callback, so its map lock must be available.
+    bool unlocked = KOpenGLSdl::windowMutex.try_lock();
+    if (unlocked) {
+        KOpenGLSdl::windowMutex.unlock();
+    }
+    static_cast<SdlCallback*>(event.user.data1)->run();
+    worker.join();
+    bool removed = KOpenGLSdl::sdlWindowById.size() == 0;
+    SDL_QuitSubSystem(SDL_INIT_EVENTS);
+    if (!unlocked || !removed) {
+        testFail("GL window removal retained the map lock while awaiting its UI callback");
+    }
+}
+#endif
 
 bool KOpenGLSdl::glCreatePbuffer(KThread* thread, const std::shared_ptr<XDrawable>& pbuffer, const CLXFBConfigPtr& cfg) {
     (void)thread;
@@ -1244,25 +1305,34 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
         {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
             window = sdlWindowById.get(d->id);
-            if (window && context->pixelFormat->nativeId != window->pixelFormat->nativeId) {
-                window->destroy();
-                sdlWindowById.remove(d->id);
-                window = nullptr;
-            }
-            if (!window) {
-                XWindowPtr drawableWindow;
-                if (d && d->isWindow) {
-                    drawableWindow = std::dynamic_pointer_cast<XWindow>(d);
+        }
+        if (!window || context->pixelFormat->nativeId != window->pixelFormat->nativeId) {
+            // Do not hold the map lock while waiting for the UI thread. Recheck
+            // under the lock there so concurrent callers reuse a compatible
+            // window that another caller just published.
+            KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+                window = sdlWindowById.get(d->id);
+                if (window && context->pixelFormat->nativeId != window->pixelFormat->nativeId) {
+                    window->destroy();
+                    sdlWindowById.remove(d->id);
+                    window = nullptr;
                 }
-                KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
+                if (!window) {
+                    XWindowPtr drawableWindow;
+                    if (d && d->isWindow) {
+                        drawableWindow = std::dynamic_pointer_cast<XWindow>(d);
+                    }
                     window = SDLGlWindow::createWindow(context->pixelFormat, context->major, context->minor, context->profile, context->flags, d->width(), d->height(), drawableWindow);
-                    });
-                if (!window || !window->window) {
-                    kwarn("KOpenGLSdl::glMakeCurrent failed to create an SDL GL window");
-                    return false;
+                    if (window && window->window) {
+                        window->drawable = d;
+                        sdlWindowById.set(d->id, window);
+                    }
                 }
-                window->drawable = d;
-                sdlWindowById.set(d->id, window);
+                });
+            if (!window || !window->window) {
+                kwarn("KOpenGLSdl::glMakeCurrent failed to create an SDL GL window");
+                return false;
             }
         }
 #ifdef __EMSCRIPTEN__
