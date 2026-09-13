@@ -1,0 +1,100 @@
+diff --git a/dlls/wined3d/adapter_gl.c b/dlls/wined3d/adapter_gl.c
+--- a/dlls/wined3d/adapter_gl.c
++++ b/dlls/wined3d/adapter_gl.c
+@@ -1117,6 +1117,16 @@
+ 
+     for (i = 0; i < ARRAY_SIZE(desktop_only_extensions); ++i)
+         gl_info->supported[desktop_only_extensions[i]] = FALSE;
++
++    /* Desktop GL version promotion can imply indexed blend state even when
++     * the WebGL bridge has no entry points for it. Keep the ordinary color
++     * mask path usable without advertising independent render-target masks. */
++    if (!gl_info->gl_ops.ext.p_glColorMaski || !gl_info->gl_ops.ext.p_glEnablei
++            || !gl_info->gl_ops.ext.p_glDisablei)
++        gl_info->supported[EXT_DRAW_BUFFERS2] = FALSE;
++    if (!gl_info->supported[EXT_DRAW_BUFFERS2] || !gl_info->gl_ops.ext.p_glBlendFuncSeparatei
++            || !gl_info->gl_ops.ext.p_glBlendEquationSeparatei)
++        gl_info->supported[ARB_DRAW_BUFFERS_BLEND] = FALSE;
+ 
+     gl_info->supported[WINED3D_GL_LEGACY_CONTEXT] = FALSE;
+ }
+diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -575,6 +575,7 @@
+     const struct wined3d_gl_info *gl_info = context_gl->gl_info;
+     const struct wined3d_format *format;
+     GLbitfield mask = 0;
++    GLboolean scissor_enabled;
+ 
+     if (!wined3d_settings.webgl || previous == current)
+         return;
+@@ -585,6 +586,11 @@
+     if (format->stencil_size)
+         mask |= GL_STENCIL_BUFFER_BIT;
+ 
++    /* Internal preservation copies must not inherit the application's scissor.
++     * Restore it because this helper can also run while applying draw state. */
++    scissor_enabled = gl_info->gl_ops.gl.p_glIsEnabled(GL_SCISSOR_TEST);
++    gl_info->gl_ops.gl.p_glDisable(GL_SCISSOR_TEST);
++
+     if (previous)
+     {
+         texture_gl->current_renderbuffer = previous;
+@@ -620,6 +626,29 @@
+     }
+ 
+     texture_gl->current_renderbuffer = current;
++    if (scissor_enabled)
++        gl_info->gl_ops.gl.p_glEnable(GL_SCISSOR_TEST);
++}
++
++/* Select the full backing texture before depth-only transfer FBOs are bound.
++ * Leaving a compatible renderbuffer selected would clip the source copy or
++ * later flush stale destination data over the newly copied texture. */
++void wined3d_context_gl_flush_depth_stencil(struct wined3d_context_gl *context_gl,
++        struct wined3d_texture *texture, unsigned int sub_resource_idx, DWORD location)
++{
++    struct wined3d_texture_gl *texture_gl = wined3d_texture_gl(texture);
++    const struct wined3d_renderbuffer_entry *previous = texture_gl->current_renderbuffer;
++    struct wined3d_rendertarget_info ds_info = {{0}};
++
++    if (!wined3d_settings.webgl || !previous)
++        return;
++
++    ds_info.resource = &texture->resource;
++    ds_info.sub_resource_idx = sub_resource_idx;
++    ds_info.layer_count = 1;
++    texture_gl->current_renderbuffer = NULL;
++    wined3d_context_gl_sync_compatible_renderbuffer(context_gl, texture_gl, &ds_info, location, previous);
++    context_invalidate_state(&context_gl->c, STATE_FRAMEBUFFER);
+ }
+ 
+ static void wined3d_context_gl_generate_fbo_key(const struct wined3d_context_gl *context_gl,
+diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -996,6 +996,11 @@
+     else
+         wined3d_texture_prepare_location(dst_texture, dst_sub_resource_idx, context, dst_location);
+ 
++    /* Flush both surfaces before binding either transfer FBO: flushing the
++     * destination also changes the read framebuffer binding. */
++    wined3d_context_gl_flush_depth_stencil(context_gl, src_texture, src_sub_resource_idx, src_location);
++    wined3d_context_gl_flush_depth_stencil(context_gl, dst_texture, dst_sub_resource_idx, dst_location);
++
+     wined3d_context_gl_apply_fbo_state_explicit(context_gl, GL_READ_FRAMEBUFFER, NULL, 0,
+             &src_texture->resource, src_sub_resource_idx, src_location);
+     wined3d_context_gl_check_fbo_status(context_gl, GL_READ_FRAMEBUFFER);
+diff --git a/dlls/wined3d/wined3d_gl.h b/dlls/wined3d/wined3d_gl.h
+--- a/dlls/wined3d/wined3d_gl.h
++++ b/dlls/wined3d/wined3d_gl.h
+@@ -746,6 +746,8 @@
+ void wined3d_context_gl_apply_fbo_state_explicit(struct wined3d_context_gl *context_gl, GLenum target,
+         struct wined3d_resource *rt, unsigned int rt_sub_resource_idx,
+         struct wined3d_resource *ds, unsigned int ds_sub_resource_idx, uint32_t location);
++void wined3d_context_gl_flush_depth_stencil(struct wined3d_context_gl *context_gl,
++        struct wined3d_texture *texture, unsigned int sub_resource_idx, DWORD location);
+ void wined3d_context_gl_bind_bo(struct wined3d_context_gl *context_gl, GLenum binding, GLuint name);
+ void wined3d_context_gl_bind_dummy_textures(const struct wined3d_context_gl *context_gl);
+ void wined3d_context_gl_bind_texture(struct wined3d_context_gl *context_gl, GLenum target, GLuint name);

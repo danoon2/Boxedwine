@@ -1,0 +1,11 @@
+diff --git a/dlls/wined3d/surface.c b/dlls/wined3d/surface.c
+--- a/dlls/wined3d/surface.c
++++ b/dlls/wined3d/surface.c
+@@ -2060,6 +2060,7 @@
+                     || (view->format->stencil_size && !(flags & WINED3DCLEAR_STENCIL)))
+                 FIXME("Clearing %#x on %s.\n", flags, debug_d3dformat(view->format->id));
+ 
++            c.g = stencil & wined3d_mask_from_size(view->format->stencil_size);
+             wined3d_rendertarget_view_get_box(view, &box_view);
+             if (wined3d_box_intersect(&box_clip, &box_view, &box))
+                 cpu_blitter_clear_rtv(view, &box_clip, &c);

@@ -1,0 +1,345 @@
+diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -2487,6 +2487,237 @@
+     return true;
+ }
+ 
++/* WebGL cannot read depth with glReadPixels or glGetTexImage. Encode the
++ * sampled float bits into RGBA8, then convert to the resource's CPU layout.
++ * Stencil is reconstructed with eight masked stencil tests. */
++static GLuint wined3d_webgl_readback_program(const struct wined3d_gl_info *gl_info, bool stencil)
++{
++    static const char vs_source[] =
++            "#version 300 es\n"
++            "void main() { vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);"
++            "gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }\n";
++    static const char depth_source[] =
++            "#version 300 es\nprecision highp float; precision highp int;\n"
++            "uniform highp sampler2D depth_texture; uniform int level;"
++            "layout(location=0) out vec4 color;\n"
++            "void main() { uint v = floatBitsToUint(texelFetch(depth_texture, ivec2(gl_FragCoord.xy), level).r);"
++            "color = vec4(uvec4(v, v >> 8, v >> 16, v >> 24) & 255u) / 255.0; }\n";
++    static const char stencil_source[] =
++            "#version 300 es\nprecision highp float;\n"
++            "uniform float bit_value; layout(location=0) out vec4 color;\n"
++            "void main() { color = vec4(bit_value, 0.0, 0.0, 0.0); }\n";
++    const char *vs_text = vs_source, *fs_text = stencil ? stencil_source : depth_source;
++    GLuint vs, fs, program;
++    GLint linked;
++
++    vs = GL_EXTCALL(glCreateShader(GL_VERTEX_SHADER));
++    fs = GL_EXTCALL(glCreateShader(GL_FRAGMENT_SHADER));
++    program = GL_EXTCALL(glCreateProgram());
++    GL_EXTCALL(glShaderSource(vs, 1, &vs_text, NULL));
++    GL_EXTCALL(glShaderSource(fs, 1, &fs_text, NULL));
++    GL_EXTCALL(glCompileShader(vs));
++    GL_EXTCALL(glCompileShader(fs));
++    GL_EXTCALL(glAttachShader(program, vs));
++    GL_EXTCALL(glAttachShader(program, fs));
++    GL_EXTCALL(glLinkProgram(program));
++    GL_EXTCALL(glGetProgramiv(program, GL_LINK_STATUS, &linked));
++    if (!linked)
++    {
++        print_glsl_info_log(gl_info, vs, FALSE);
++        print_glsl_info_log(gl_info, fs, FALSE);
++        print_glsl_info_log(gl_info, program, TRUE);
++        GL_EXTCALL(glDeleteProgram(program));
++        program = 0;
++    }
++    GL_EXTCALL(glDeleteShader(vs));
++    GL_EXTCALL(glDeleteShader(fs));
++    return program;
++}
++
++static bool wined3d_texture_gl_readback_depth_webgl(struct wined3d_texture_gl *texture_gl,
++        unsigned int sub_resource_idx, struct wined3d_context_gl *context_gl,
++        const struct wined3d_bo_address *dst, unsigned int row_pitch)
++{
++    struct wined3d_texture *texture = &texture_gl->t;
++    const struct wined3d_gl_info *gl_info = context_gl->gl_info;
++    const struct wined3d_format *format = texture->resource.format;
++    unsigned int level = sub_resource_idx % texture->level_count;
++    unsigned int width = wined3d_texture_get_level_width(texture, level);
++    unsigned int height = wined3d_texture_get_level_height(texture, level);
++    GLint read_fbo, draw_fbo, vao, pack_buffer, unpack_buffer, pack_row, pack_skip_rows, pack_skip_pixels, pack_alignment, location;
++    GLuint fbo, color, readback_vao, source, program;
++    GLint min_filter, mag_filter, compare_mode;
++    uint8_t *pixels, *output;
++    unsigned int x, y, bit;
++    GLboolean dither, discard, coverage, alpha_coverage;
++    bool success = false;
++
++    if (texture_gl->target != GL_TEXTURE_2D || texture->resource.multisample_type != WINED3D_MULTISAMPLE_NONE)
++        return false;
++    if (format->id != WINED3DFMT_D16_UNORM && format->id != WINED3DFMT_D16_LOCKABLE
++            && format->id != WINED3DFMT_X8D24_UNORM && format->id != WINED3DFMT_D24_UNORM_S8_UINT)
++        return false;
++    if (!(pixels = malloc((SIZE_T)width * height * 4)))
++        return false;
++    if (!(output = calloc(height, row_pitch)))
++    {
++        free(pixels);
++        return false;
++    }
++    if (!context_gl->webgl_depth_readback_program)
++        context_gl->webgl_depth_readback_program = wined3d_webgl_readback_program(gl_info, false);
++    if (format->stencil_size && !context_gl->webgl_stencil_readback_program)
++        context_gl->webgl_stencil_readback_program = wined3d_webgl_readback_program(gl_info, true);
++    if (!context_gl->webgl_depth_readback_program
++            || (format->stencil_size && !context_gl->webgl_stencil_readback_program))
++        goto free_memory;
++
++    wined3d_context_gl_flush_depth_stencil(context_gl, texture, sub_resource_idx, WINED3D_LOCATION_TEXTURE_RGB);
++    gl_info->gl_ops.gl.p_glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_fbo);
++    gl_info->gl_ops.gl.p_glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fbo);
++    gl_info->gl_ops.gl.p_glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
++    gl_info->gl_ops.gl.p_glGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING, &pack_buffer);
++    gl_info->gl_ops.gl.p_glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING, &unpack_buffer);
++    gl_info->gl_ops.gl.p_glGetIntegerv(GL_PACK_ROW_LENGTH, &pack_row);
++    gl_info->gl_ops.gl.p_glGetIntegerv(GL_PACK_SKIP_ROWS, &pack_skip_rows);
++    gl_info->gl_ops.gl.p_glGetIntegerv(GL_PACK_SKIP_PIXELS, &pack_skip_pixels);
++    gl_info->gl_ops.gl.p_glGetIntegerv(GL_PACK_ALIGNMENT, &pack_alignment);
++    dither = gl_info->gl_ops.gl.p_glIsEnabled(GL_DITHER);
++    discard = gl_info->gl_ops.gl.p_glIsEnabled(GL_RASTERIZER_DISCARD);
++    coverage = gl_info->gl_ops.gl.p_glIsEnabled(GL_SAMPLE_COVERAGE);
++    alpha_coverage = gl_info->gl_ops.gl.p_glIsEnabled(GL_SAMPLE_ALPHA_TO_COVERAGE);
++    /* This helper can follow a differently sized blit. Apply and invalidate
++     * the complete blit state, then leave it invalid for the following draw. */
++    context_gl->c.last_was_blit = FALSE;
++    /* A DirectDraw depth fill can leave this context without a current color
++     * target. The readback viewport is determined by the source texture. */
++    {
++        SIZE size = {width, height};
++        wined3d_context_gl_apply_blit_state_for_size(context_gl, texture->resource.device, &size);
++    }
++    gl_info->gl_ops.gl.p_glDisable(GL_DITHER);
++    gl_info->gl_ops.gl.p_glDisable(GL_RASTERIZER_DISCARD);
++    gl_info->gl_ops.gl.p_glDisable(GL_SAMPLE_COVERAGE);
++    gl_info->gl_ops.gl.p_glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
++    GL_EXTCALL(glGenVertexArrays(1, &readback_vao));
++    GL_EXTCALL(glBindVertexArray(readback_vao));
++    GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
++    GL_EXTCALL(glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0));
++    gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ROW_LENGTH, 0);
++    gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_SKIP_ROWS, 0);
++    gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_SKIP_PIXELS, 0);
++    gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ALIGNMENT, 1);
++    gl_info->gl_ops.gl.p_glGenTextures(1, &color);
++    gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, color);
++    gl_info->gl_ops.gl.p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
++    gl_info->fbo_ops.glGenFramebuffers(1, &fbo);
++    gl_info->fbo_ops.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
++    gl_info->fbo_ops.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);
++    gl_info->gl_ops.gl.p_glReadBuffer(GL_COLOR_ATTACHMENT0);
++    gl_info->gl_ops.gl.p_glViewport(0, 0, width, height);
++    source = wined3d_texture_gl_get_texture_name(texture_gl, &context_gl->c, false);
++    gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, source);
++    /* The bridge does not expose sampler objects on every supported profile.
++     * Restore these texture parameters before returning to Wine's state cache. */
++    gl_info->gl_ops.gl.p_glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, &min_filter);
++    gl_info->gl_ops.gl.p_glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, &mag_filter);
++    gl_info->gl_ops.gl.p_glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, &compare_mode);
++    gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
++    gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
++    gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
++    program = context_gl->webgl_depth_readback_program;
++    GL_EXTCALL(glUseProgram(program));
++    location = GL_EXTCALL(glGetUniformLocation(program, "depth_texture"));
++    GL_EXTCALL(glUniform1i(location, 0));
++    location = GL_EXTCALL(glGetUniformLocation(program, "level"));
++    GL_EXTCALL(glUniform1i(location, level));
++    if (gl_info->fbo_ops.glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
++        goto restore_state;
++    gl_info->gl_ops.gl.p_glDrawArrays(GL_TRIANGLES, 0, 3);
++    gl_info->gl_ops.gl.p_glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
++    for (y = 0; y < height; ++y)
++        for (x = 0; x < width; ++x)
++        {
++            const uint8_t *p = pixels + 4 * ((SIZE_T)y * width + x);
++            union { uint32_t bits; float value; } depth;
++            uint32_t value;
++            depth.bits = p[0] | (p[1] << 8) | (p[2] << 16) | ((uint32_t)p[3] << 24);
++            value = (uint32_t)(depth.value * (format->depth_size == 16 ? 65535.0 : 16777215.0) + 0.5);
++            if (format->byte_count == 2)
++                ((uint16_t *)(output + y * row_pitch))[x] = value;
++            else
++                ((uint32_t *)(output + y * row_pitch))[x] = format->stencil_size ? value << 8 : value;
++        }
++    if (format->stencil_size)
++    {
++        static const GLfloat zero[4] = {0};
++        program = context_gl->webgl_stencil_readback_program;
++        gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, 0);
++        gl_info->fbo_ops.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
++                GL_TEXTURE_2D, source, level);
++        GL_EXTCALL(glUseProgram(program));
++        GL_EXTCALL(glClearBufferfv(GL_COLOR, 0, zero));
++        gl_info->gl_ops.gl.p_glEnable(GL_STENCIL_TEST);
++        gl_info->gl_ops.gl.p_glStencilMask(0);
++        gl_info->gl_ops.gl.p_glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
++        gl_info->gl_ops.gl.p_glEnable(GL_BLEND);
++        GL_EXTCALL(glBlendEquation(GL_FUNC_ADD));
++        gl_info->gl_ops.gl.p_glBlendFunc(GL_ONE, GL_ONE);
++        location = GL_EXTCALL(glGetUniformLocation(program, "bit_value"));
++        for (bit = 0; bit < 8; ++bit)
++        {
++            gl_info->gl_ops.gl.p_glStencilFunc(GL_EQUAL, 1u << bit, 1u << bit);
++            GL_EXTCALL(glUniform1f(location, (1u << bit) / 255.0f));
++            gl_info->gl_ops.gl.p_glDrawArrays(GL_TRIANGLES, 0, 3);
++        }
++        gl_info->gl_ops.gl.p_glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
++        for (y = 0; y < height; ++y)
++            for (x = 0; x < width; ++x)
++                ((uint32_t *)(output + y * row_pitch))[x] |= pixels[4 * ((SIZE_T)y * width + x)];
++    }
++    if (dst->buffer_object)
++    {
++        struct wined3d_bo_gl *bo = wined3d_bo_gl(dst->buffer_object);
++        GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, bo->id));
++        GL_EXTCALL(glBufferSubData(GL_PIXEL_PACK_BUFFER, (GLintptr)dst->addr + bo->b.buffer_offset,
++                (SIZE_T)height * row_pitch, output));
++        wined3d_context_gl_reference_bo(context_gl, bo);
++    }
++    else
++        memcpy(dst->addr, output, (SIZE_T)height * row_pitch);
++    success = true;
++
++restore_state:
++    GL_EXTCALL(glUseProgram(0));
++    gl_info->gl_ops.gl.p_glBindTexture(GL_TEXTURE_2D, source);
++    gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
++    gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
++    gl_info->gl_ops.gl.p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, compare_mode);
++    GL_EXTCALL(glBindVertexArray(vao));
++    GL_EXTCALL(glDeleteVertexArrays(1, &readback_vao));
++    GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, pack_buffer));
++    GL_EXTCALL(glBindBuffer(GL_PIXEL_UNPACK_BUFFER, unpack_buffer));
++    gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ROW_LENGTH, pack_row);
++    gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_SKIP_ROWS, pack_skip_rows);
++    gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_SKIP_PIXELS, pack_skip_pixels);
++    gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ALIGNMENT, pack_alignment);
++    gl_info->fbo_ops.glBindFramebuffer(GL_READ_FRAMEBUFFER, read_fbo);
++    gl_info->fbo_ops.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fbo);
++    gl_info->fbo_ops.glDeleteFramebuffers(1, &fbo);
++    gl_info->gl_ops.gl.p_glDeleteTextures(1, &color);
++    if (dither) gl_info->gl_ops.gl.p_glEnable(GL_DITHER);
++    if (discard) gl_info->gl_ops.gl.p_glEnable(GL_RASTERIZER_DISCARD);
++    if (coverage) gl_info->gl_ops.gl.p_glEnable(GL_SAMPLE_COVERAGE);
++    if (alpha_coverage) gl_info->gl_ops.gl.p_glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
++    context_gl->c.last_was_blit = FALSE;
++    context_invalidate_state(&context_gl->c, STATE_FRAMEBUFFER);
++    checkGLcall("WebGL depth readback");
++free_memory:
++    free(output);
++    free(pixels);
++    return success;
++}
++
+ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+         struct wined3d_texture *src_texture, unsigned int src_sub_resource_idx, unsigned int src_location,
+         const struct wined3d_box *src_box, const struct wined3d_bo_address *dst_bo_addr,
+@@ -2553,6 +2784,14 @@
+         return;
+     }
+ 
++    if (wined3d_settings.webgl && src_texture->resource.format->depth_size)
++    {
++        if (!wined3d_texture_gl_readback_depth_webgl(src_texture_gl, src_sub_resource_idx, context_gl,
++                dst_bo_addr, dst_row_pitch))
++            ERR("Failed WebGL depth download.\n");
++        return;
++    }
++
+     wined3d_texture_gl_bind_and_dirtify(src_texture_gl, context_gl, srgb);
+ 
+     format_gl = wined3d_format_gl(src_texture->resource.format);
+@@ -2766,6 +3005,17 @@
+     struct wined3d_texture_sub_resource *sub_resource;
+ 
+     sub_resource = &texture_gl->t.sub_resources[sub_resource_idx];
++
++    if (wined3d_settings.webgl && texture_gl->t.resource.format->depth_size)
++    {
++        struct wined3d_bo_address data;
++        unsigned int row_pitch, slice_pitch;
++
++        wined3d_texture_get_bo_address(&texture_gl->t, sub_resource_idx, &data, dst_location);
++        wined3d_texture_get_pitch(&texture_gl->t, sub_resource_idx % texture_gl->t.level_count,
++                &row_pitch, &slice_pitch);
++        return wined3d_texture_gl_readback_depth_webgl(texture_gl, sub_resource_idx, context_gl, &data, row_pitch);
++    }
+ 
+     /* We cannot download data from multisample textures directly. */
+     if (wined3d_texture_gl_is_multisample_location(texture_gl, WINED3D_LOCATION_TEXTURE_RGB)
+diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -1471,6 +1471,11 @@
+ 
+         if (context_gl->dummy_arbfp_prog)
+             GL_EXTCALL(glDeleteProgramsARB(1, &context_gl->dummy_arbfp_prog));
++
++        if (context_gl->webgl_depth_readback_program)
++            GL_EXTCALL(glDeleteProgram(context_gl->webgl_depth_readback_program));
++        if (context_gl->webgl_stencil_readback_program)
++            GL_EXTCALL(glDeleteProgram(context_gl->webgl_stencil_readback_program));
+ 
+         if (context_gl->blit_vbo)
+             GL_EXTCALL(glDeleteBuffers(1, &context_gl->blit_vbo));
+@@ -3279,17 +3284,16 @@
+ }
+ 
+ /* Context activation is done by the caller. */
+-void wined3d_context_gl_apply_blit_state(struct wined3d_context_gl *context_gl, const struct wined3d_device *device)
++void wined3d_context_gl_apply_blit_state_for_size(struct wined3d_context_gl *context_gl,
++        const struct wined3d_device *device, const SIZE *size)
+ {
+     struct wined3d_context *context = &context_gl->c;
+     const struct wined3d_gl_info *gl_info;
+-    SIZE rt_size;
++    SIZE rt_size = *size;
+ 
+     TRACE("Setting up context %p for blitting.\n", context);
+ 
+     gl_info = context_gl->gl_info;
+-
+-    wined3d_context_gl_get_rt_size(context_gl, &rt_size);
+ 
+     if (context->last_was_blit)
+     {
+@@ -3353,6 +3357,14 @@
+     context_gl->blit_size = rt_size;
+ 
+     checkGLcall("blit state application");
++}
++
++void wined3d_context_gl_apply_blit_state(struct wined3d_context_gl *context_gl, const struct wined3d_device *device)
++{
++    SIZE size;
++
++    wined3d_context_gl_get_rt_size(context_gl, &size);
++    wined3d_context_gl_apply_blit_state_for_size(context_gl, device, &size);
+ }
+ 
+ static BOOL have_framebuffer_attachment(unsigned int rt_count, struct wined3d_rendertarget_view * const *rts,
+diff --git a/dlls/wined3d/wined3d_gl.h b/dlls/wined3d/wined3d_gl.h
+--- a/dlls/wined3d/wined3d_gl.h
++++ b/dlls/wined3d/wined3d_gl.h
+@@ -700,6 +700,7 @@
+     GLfloat colour[4], fog_start, fog_end, fog_colour[4];
+ 
+     GLuint dummy_arbfp_prog;
++    GLuint webgl_depth_readback_program, webgl_stencil_readback_program;
+ 
+     struct
+     {
+@@ -741,6 +742,8 @@
+ GLuint wined3d_context_gl_allocate_vram_chunk_buffer(struct wined3d_context_gl *context_gl,
+         unsigned int pool, size_t size);
+ void wined3d_context_gl_apply_blit_state(struct wined3d_context_gl *context_gl, const struct wined3d_device *device);
++void wined3d_context_gl_apply_blit_state_for_size(struct wined3d_context_gl *context_gl,
++        const struct wined3d_device *device, const SIZE *size);
+ BOOL wined3d_context_gl_apply_clear_state(struct wined3d_context_gl *context_gl, const struct wined3d_state *state,
+         unsigned int rt_count, const struct wined3d_fb_state *fb);
+ void wined3d_context_gl_apply_fbo_state_explicit(struct wined3d_context_gl *context_gl, GLenum target,

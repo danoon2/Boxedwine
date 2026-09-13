@@ -1,0 +1,57 @@
+diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -2218,6 +2218,14 @@
+         if (!string_buffer_resize(buffer, ret))
+             return;
+     }
++}
++
++static const char *shader_glsl_point_sprite_texcoord(void)
++{
++    /* WebGL cannot select the lower-left origin used by the desktop GL path. */
++    return wined3d_settings.webgl
++            ? "vec4(gl_PointCoord.x, 1.0 - gl_PointCoord.y, 0.0, 0.0)"
++            : "vec4(gl_PointCoord.xy, 0.0, 0.0)";
+ }
+ 
+ static const char *shader_glsl_shader_input_name(const struct wined3d_gl_info *gl_info)
+@@ -7000,7 +7008,8 @@
+             }
+             else if (args->pointsprite && shader_match_semantic(semantic_name, WINED3D_DECL_USAGE_TEXCOORD))
+             {
+-                shader_addline(buffer, "ps_in[%u] = vec4(gl_PointCoord.xy, 0.0, 0.0);\n", input->register_idx);
++                shader_addline(buffer, "ps_in[%u] = %s;\n",
++                        input->register_idx, shader_glsl_point_sprite_texcoord());
+             }
+             else if (input->sysval_semantic == WINED3D_SV_IS_FRONT_FACE)
+             {
+@@ -7044,8 +7053,8 @@
+         else if (shader_match_semantic(semantic_name, WINED3D_DECL_USAGE_TEXCOORD))
+         {
+             if (args->pointsprite)
+-                shader_addline(buffer, "ps_in[%u] = vec4(gl_PointCoord.xy, 0.0, 0.0);\n",
+-                        shader->u.ps.input_reg_map[input->register_idx]);
++                shader_addline(buffer, "ps_in[%u] = %s;\n",
++                        shader->u.ps.input_reg_map[input->register_idx], shader_glsl_point_sprite_texcoord());
+             else if (args->vp_mode == WINED3D_VP_MODE_NONE && args->texcoords_initialized & (1u << semantic_idx))
+                 shader_addline(buffer, "ps_in[%u]%s = %s[%u]%s;\n",
+                         shader->u.ps.input_reg_map[input->register_idx], reg_mask,
+@@ -8273,7 +8282,7 @@
+         {
+             i = wined3d_bit_scan(&map);
+             if (args->pointsprite)
+-                shader_addline(buffer, "ffp_texcoord[%u] = vec4(gl_PointCoord.xy, 0.0, 0.0);\n", i);
++                shader_addline(buffer, "ffp_texcoord[%u] = %s;\n", i, shader_glsl_point_sprite_texcoord());
+             else if (args->texcoords_initialized & (1u << i))
+                 shader_addline(buffer, "ffp_texcoord[%u] = %s[%u];\n", i,
+                         legacy_syntax ? "gl_TexCoord" : "ffp_varying_texcoord", i);
+@@ -10240,7 +10249,7 @@
+         if (tex_map & (1u << stage))
+         {
+             if (settings->pointsprite)
+-                shader_addline(buffer, "ffp_texcoord[%u] = vec4(gl_PointCoord.xy, 0.0, 0.0);\n", stage);
++                shader_addline(buffer, "ffp_texcoord[%u] = %s;\n", stage, shader_glsl_point_sprite_texcoord());
+             else if (settings->texcoords_initialized & (1u << stage))
+                 shader_addline(buffer, "ffp_texcoord[%u] = %s[%u];\n",
+                         stage, legacy_syntax ? "gl_TexCoord" : "ffp_varying_texcoord", stage);

@@ -1,0 +1,13 @@
+diff --git a/dlls/wined3d/adapter_gl.c b/dlls/wined3d/adapter_gl.c
+--- a/dlls/wined3d/adapter_gl.c
++++ b/dlls/wined3d/adapter_gl.c
+@@ -5205,7 +5205,8 @@
+     d3d_info->limits.texture_size = gl_info->limits.texture_size;
+     d3d_info->limits.sample_count = gl_info->limits.samples;
+ 
+-    gl_info->gl_ops.gl.p_glGetFloatv(gl_info->supported[WINED3D_GL_LEGACY_CONTEXT]
++    /* WebGL exposes the aliased point-size range, not the desktop range. */
++    gl_info->gl_ops.gl.p_glGetFloatv(wined3d_settings.webgl || gl_info->supported[WINED3D_GL_LEGACY_CONTEXT]
+             ? GL_ALIASED_POINT_SIZE_RANGE : GL_POINT_SIZE_RANGE, f);
+     d3d_info->limits.pointsize_max = f[1];
+     TRACE("Maximum point size support - max point size %.8e.\n", f[1]);
