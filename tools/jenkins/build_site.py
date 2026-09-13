@@ -19,6 +19,7 @@ if str(BUILD_WINE_DIR) not in sys.path:
     sys.path.insert(0, str(BUILD_WINE_DIR))
 
 import webgl_filesystem
+import webgl_build_identity
 
 
 DEFAULT_PUBLIC_URL = "https://boxedwine.org/builds/"
@@ -1050,6 +1051,9 @@ def demo_launch_url(branch_slug, build_number, mode, demo):
     if launch_program:
         params.append(("p", launch_program))
     params.extend(url_params)
+    if mode in demo.get("buildIdentities", {}):
+        params = [(key, value) for key, value in params if key != "buildid"]
+        params.append(("buildid", demo["buildIdentities"][mode]))
     query = "&".join(f"{quote(key, safe='')}={quote(value, safe='/:._-')}" for key, value in params)
     return f"build/{quote(branch_slug)}/{quote(str(build_number))}/{mode}/boxedwine.html?{query}"
 
@@ -1068,6 +1072,9 @@ def build_demo_launch_url(mode, demo):
     if launch_program:
         params.append(("p", launch_program))
     params.extend(url_params)
+    if mode in demo.get("buildIdentities", {}):
+        params = [(key, value) for key, value in params if key != "buildid"]
+        params.append(("buildid", demo["buildIdentities"][mode]))
     query = "&".join(f"{quote(key, safe='')}={quote(value, safe='/:._-')}" for key, value in params)
     return f"{mode}/boxedwine.html?{query}"
 
@@ -1177,6 +1184,24 @@ def validate_demo_root_zips(demo_source, demos, config_path=DEFAULT_DEMO_ROOT_CO
     return reports
 
 
+def demo_build_identities(demo_source, runners, root_reports, *, commit=None):
+    roots = {}
+    for name, report in root_reports.items():
+        value = webgl_build_identity.root_identity(Path(demo_source) / name)
+        if value["archive"]["sha256"] != report["archive"]["sha256"]:
+            raise ValueError(f"Demo root changed after validation: {name}")
+        if value["webgl_wined3d"]["sha256"] != report["dlls"]["wined3d.dll"]["sha256"]:
+            raise ValueError(f"Demo WineD3D changed after validation: {name}")
+        roots[name] = value
+    result = {}
+    for runner in runners:
+        runtime = webgl_build_identity.runtime_identity(Path(runner["source"]))
+        result[runner["mode"]] = {name: webgl_build_identity.build_identity(
+            mode=runner["mode"], runtime=runtime, filesystem=value, commit=commit)
+            for name, value in roots.items()}
+    return result
+
+
 def update_demos(
     site_dir,
     branch,
@@ -1187,6 +1212,7 @@ def update_demos(
     keep,
     *,
     demos=None,
+    build_identities=None,
 ):
     demo_source = Path(demo_source)
     if not demo_source.exists():
@@ -1194,6 +1220,10 @@ def update_demos(
 
     if demos is None:
         demos = discover_demos(demo_source)
+    if build_identities is not None:
+        demos = [{**demo, "buildIdentities": {
+            runner["mode"]: build_identities[runner["mode"]][demo["root"]]["id"]
+            for runner in runners}} for demo in demos]
 
     demos_dir = site_dir / "demos"
     apps_dir = demos_dir / "apps"
@@ -1223,7 +1253,7 @@ def update_demos(
         root_zip = apps_dir / root_zip_name
         if not root_zip.exists():
             raise FileNotFoundError(f"Demo root ZIP not found: {root_zip}")
-        link_or_copy(root_zip, build_dir / root_zip_name)
+        shutil.copy2(root_zip, build_dir / root_zip_name)
 
     for runner in runners:
         copy_tree_contents(runner["source"], build_dir / runner["mode"], skip_zip=True)
@@ -1234,14 +1264,28 @@ def update_demos(
         if image_path.exists():
             link_or_copy(image_path, build_images_dir / image_path.name)
     for root_zip_name in demo_root_zips:
-        root_zip = apps_dir / root_zip_name
+        root_zip = build_dir / root_zip_name
         for runner in runners:
             link_or_copy(root_zip, build_dir / runner["mode"] / root_zip_name)
     for demo in demos:
         app_zip = apps_dir / demo["zip"]
         if app_zip.exists():
+            preserved_app = build_dir / demo["zip"]
+            shutil.copy2(app_zip, preserved_app)
             for runner in runners:
-                link_or_copy(app_zip, build_dir / runner["mode"] / demo["zip"])
+                link_or_copy(preserved_app, build_dir / runner["mode"] / demo["zip"])
+
+    if build_identities is not None:
+        # Check the actual launch files before publishing their identity map.
+        for runner in runners:
+            runtime_dir = build_dir / runner["mode"]
+            actual = webgl_build_identity.runtime_identity(runtime_dir)
+            for root_name, identity in build_identities[runner["mode"]].items():
+                if actual != identity["runtime"]:
+                    raise ValueError(f"Demo runtime changed while copying: {runner['mode']}")
+                if webgl_build_identity.root_identity(runtime_dir / root_name) != identity["filesystem"]:
+                    raise ValueError(f"Demo root changed while copying: {root_name}")
+        write_json(build_dir / "graphics-builds.json", {"schema_version": 1, "builds": build_identities})
 
     render_build_demo_html(build_dir, branch, build_number, demos, runners)
     prune_old_demo_builds(site_dir, branch_slug, keep)
@@ -1334,6 +1378,7 @@ def main():
 
     demo_runners = demo_runners_from_args(args)
     discovered_demos = None
+    build_identities = None
     if args.validate_demo_roots_only and not args.demo_source:
         parser.error("--validate-demo-roots-only requires --demo-source")
     if args.demo_source and (demo_runners or args.validate_demo_roots_only):
@@ -1344,6 +1389,9 @@ def main():
                 discovered_demos,
                 args.demo_root_config,
             )
+            if demo_runners and not args.validate_demo_roots_only:
+                build_identities = demo_build_identities(args.demo_source, demo_runners,
+                    root_reports, commit=args.commit)
         except (
             OSError,
             ValueError,
@@ -1407,6 +1455,7 @@ def main():
             demo_runners,
             args.keep,
             demos=discovered_demos,
+            build_identities=build_identities,
         )
 
     if not args.skip_prune_removed_demo_branches:

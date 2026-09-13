@@ -334,5 +334,73 @@ class DemoWindowsVersionTests(unittest.TestCase):
             )
 
 
+class DemoBuildIdentityTests(unittest.TestCase):
+    def test_all_mode_links_resolve_to_copied_runtime_and_root_identities(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            source = base / 'source'
+            source.mkdir()
+            root = source / 'TinyCore15Wine11.0.zip'
+            create_zip(root, {build_site.webgl_build_identity.WINE_DLL: b'fixture DLL'})
+            create_zip(source / 'game.zip', {'game.exe': b'fixture game'})
+            runners = []
+            for mode in ('st', 'mt', 'st-jit', 'mt-jit'):
+                runtime = base / mode
+                runtime.mkdir()
+                for name in build_site.webgl_build_identity.RUNTIME_FILES:
+                    (runtime / name).write_text(mode + '-' + name)
+                runners.append({'mode': mode, 'label': mode, 'source': runtime})
+            root_id = build_site.webgl_build_identity.root_identity(root)
+            reports = {root.name: {'archive': root_id['archive'],
+                       'dlls': {'wined3d.dll': root_id['webgl_wined3d']}}}
+            identities = build_site.demo_build_identities(source, runners, reports, commit='a' * 40)
+            demos = build_site.discover_demos(source)
+            build_site.update_demos(base / 'site', 'branch', 'branch', '1', source,
+                                   runners, 5, demos=demos, build_identities=identities)
+            self.assertNotIn('buildIdentities', demos[0], 'Do not mutate the caller\'s input manifest')
+            output = base / 'site/demos/build/branch/1'
+            stored = json.loads((output / 'graphics-builds.json').read_text())['builds']
+            self.assertEqual(identities, stored)
+            page = (output / 'index.html').read_text()
+            latest = (base / 'site/demos/index.html').read_text()
+            for runner in runners:
+                mode = runner['mode']
+                value = stored[mode][root.name]
+                self.assertIn('buildid=' + value['id'], page)
+                self.assertIn('buildid=' + value['id'], latest)
+                self.assertEqual(build_site.webgl_build_identity.runtime_identity(output / mode), value['runtime'])
+                self.assertEqual(build_site.webgl_build_identity.root_identity(output / mode / root.name), value['filesystem'])
+
+            old_app = (output / 'st/game.zip').read_bytes()
+            create_zip(root, {build_site.webgl_build_identity.WINE_DLL: b'new fixture DLL'})
+            create_zip(source / 'game.zip', {'game.exe': b'new fixture game'})
+            updated_root = build_site.webgl_build_identity.root_identity(root)
+            updated_reports = {root.name: {'archive': updated_root['archive'],
+                'dlls': {'wined3d.dll': updated_root['webgl_wined3d']}}}
+            updated = build_site.demo_build_identities(source, runners, updated_reports, commit='a' * 40)
+            build_site.update_demos(base / 'site', 'branch', 'branch', '2', source,
+                                   runners, 5, demos=demos, build_identities=updated)
+            for runner in runners:
+                mode = runner['mode']
+                self.assertEqual(root_id, build_site.webgl_build_identity.root_identity(output / mode / root.name))
+                self.assertEqual(old_app, (output / mode / 'game.zip').read_bytes())
+                self.assertNotEqual(stored[mode][root.name]['id'], updated[mode][root.name]['id'])
+
+    def test_stale_root_validation_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / 'root.zip'
+            create_zip(root, {build_site.webgl_build_identity.WINE_DLL: b'fixture'})
+            with self.assertRaisesRegex(ValueError, 'changed after validation'):
+                build_site.demo_build_identities(base, [], {root.name: {'archive': {'sha256': '0' * 64}}})
+
+    def test_generated_identity_replaces_an_extra_parameter(self):
+        demo = {'zip': 'game.zip', 'program': 'game.exe', 'urlParams': [('buildid', 'stale')],
+                'buildIdentities': {'st': 'bwgl-reviewed'}}
+        for url in (build_site.build_demo_launch_url('st', demo),
+                    build_site.demo_launch_url('branch', '1', 'st', demo)):
+            self.assertEqual(['bwgl-reviewed'], parse_qs(urlsplit(url).query)['buildid'])
+
+
 if __name__ == "__main__":
     unittest.main()

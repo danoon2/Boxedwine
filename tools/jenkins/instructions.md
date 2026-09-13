@@ -246,3 +246,17 @@ be published through this script.
 uploading a release. `BUILD_SITE_DEMO_ROOT_CONFIG` selects a different manifest.
 The GDI ZIP download is no longer needed. Upload the exact validated v11 archive
 before running either script against the default URL.
+
+Newly generated demo builds retain `graphics-builds.json` beside their build
+index. Every launch link includes a `buildid` that identifies the supplied
+commit label, execution mode, all five runtime files, the root ZIP and its
+WebGL `wined3d.dll`. The full SHA-256 values remain in that JSON file. An
+unknown source commit or dirty state stays unknown; a commit label alone
+does not establish the provenance of an existing runtime binary.
+
+The generator verifies the launch files against those identities. Each new
+build keeps its own root and application ZIPs, and the mode directories link
+to those preserved copies where supported. Updating `demos/apps` for a later
+build therefore cannot change the archives used by an earlier build created
+with this generator. Existing historical sites are not rewritten or assigned
+retroactive identities. The normal `--keep` pruning policy still applies.
