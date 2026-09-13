@@ -129,6 +129,12 @@ The script cleans its temporary build outputs at startup, but it leaves the comp
 
 The build is driven by `wine_builds.json`.
 
+Wine 11.0 includes `wine11_explorer_startup_timeout.patch`, which allows up to
+two minutes for Explorer to become ready during cold emulated startup. The
+wait ends as soon as Explorer becomes idle or exits. This avoids selecting a
+display driver before Explorer has initialized the desktop; it does not add
+a fixed startup delay.
+
 At a high level, the script:
 
 1. Checks that the host environment has the commands and Debian packages needed for a 32-bit Wine build.

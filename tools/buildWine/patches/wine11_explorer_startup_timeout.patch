@@ -1,0 +1,15 @@
+diff --git a/dlls/win32u/winstation.c b/dlls/win32u/winstation.c
+--- a/dlls/win32u/winstation.c
++++ b/dlls/win32u/winstation.c
+@@ -874,7 +874,10 @@ HWND get_desktop_window(void)
+         {
+             NtResumeThread( thread, NULL );
+             TRACE_(win)( "started explorer\n" );
+-            NtUserWaitForInputIdle( process, 10000, FALSE );
++            /* Cold emulated startup can take longer than ten seconds. Keep
++             * waiting for Explorer's desktop before selecting a display driver.
++             * The wait still returns early if Explorer exits. */
++            NtUserWaitForInputIdle( process, 120000, FALSE );
+             NtClose( thread );
+             NtClose( process );
+         }

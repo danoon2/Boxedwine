@@ -129,6 +129,11 @@
       "reason": "Avoid setupapi crash during DLL detach"
     },
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_explorer_startup_timeout.patch",
+      "reason": "Allow Explorer to initialize during cold emulated startup before loading the display driver"
+    },
+    {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },
