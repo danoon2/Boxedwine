@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "manifest_id": "wine11-webgl-filesystems-v11",
+  "manifest_id": "wine11-webgl-filesystems-v11-v38-20260914",
   "wine_version": "11.0",
-  "build_date": "2026-09-06",
+  "build_date": "2026-09-14",
   "source_date_epoch": 1768319767,
   "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
   "patch_manifest": {
-    "path": "tools/wineTests/webgl-test-divergences-v2.json",
-    "sha256": "5e33b3c580dd1647f69138858eb888049c966d49f66c84a0323f53749938b3c5"
+    "path": "tools/wineTests/webgl-test-divergences-v38.json",
+    "sha256": "1bf0d25f19e8e5ed5e1c27f66487e9ba8e4456dbe73a82ba5abd69ad604281a4"
   },
   "webgl_directory": "home/username/.wine/drive_c/webgl",
   "dlls": {
@@ -20,14 +20,14 @@
     },
     "d3d9.dll": {
       "size": 338702,
-      "sha256": "2f27f4c63c0e503fb9aafeb6b651443baeee390edecbdd6745b5d20d096e017c",
+      "sha256": "7a0719a95cc97f8c36535d4d5248c1eb1fba7cee1384f5e280c549fc65a70768",
       "required_imports": [
         "wined3d.dll"
       ]
     },
     "d3dx9_36.dll": {
       "size": 848528,
-      "sha256": "832b447b03d7ee8c8a9cd01871dea7286eefcd4f7b7e3337cf9f3f15bc83d8a3",
+      "sha256": "41072e1385cfa01ac13c4f363d29eddf0d19a50477ed04f1ab28f538dc287ed4",
       "required_imports": [
         "d3dxof.dll",
         "wined3d.dll"
@@ -35,21 +35,21 @@
     },
     "d3dx9_43.dll": {
       "size": 846903,
-      "sha256": "4efb7a5554e3fb938b09a6367f414fe223014c883b26352a38daae183415d436",
+      "sha256": "209c1d0712894e6567bfb21a22144e6d8886f48f6803c9b921eff2c6730facfe",
       "required_imports": [
         "d3dxof.dll"
       ]
     },
     "d3dxof.dll": {
-      "size": 393391,
-      "sha256": "b72e45b731e1deb781de6d8a9ace4d1e602eeaa0c79816d5bc42f3dee8e2391d",
+      "size": 393747,
+      "sha256": "7e6843f282b0514da7d20a0bf4a66bab69340ef5e0d4d9044faf96a0d4db5a47",
       "required_imports": [
         "kernel32.dll"
       ]
     },
     "ddraw.dll": {
       "size": 867870,
-      "sha256": "59046d81fe044150d1e834604860f5f7f8ffc5c9224efc90ce8f40da044d3160",
+      "sha256": "1f6f9e86ca250639eb72506f3cb767aada0d842d52fc93d00791254a468ca080",
       "required_imports": [
         "wined3d.dll"
       ]
@@ -62,8 +62,8 @@
       ]
     },
     "wined3d.dll": {
-      "size": 3982509,
-      "sha256": "ac9b5b618e4bc16cdda2823fd19c4114d743176594834290943708322d1a78ae",
+      "size": 3995384,
+      "sha256": "beb442e3f2a1d8b9834c2e647692060297609e6a4d4e30147f37737ad8d8f46d",
       "required_imports": [
         "opengl32.dll"
       ]
@@ -106,8 +106,8 @@
     "full-v11": {
       "filename": "TinyCore15Wine11.0.zip",
       "filesystem_version": "11",
-      "size": 166749366,
-      "sha256": "8e8d4e8f1506376feac607bb391f2f383d21b53e42a4736c908007465304a964",
+      "size": 167004093,
+      "sha256": "8bdf466e88abce7c5254a659b7d8d05ed79dda79d5a832ea10eb6b9b80f74c66",
       "direct_draw_renderer": "opengl",
       "wine_renderer": "gl"
     },

@@ -42,13 +42,21 @@ the full root. The candidate retains the published v11 base archive:
 `TinyCore15WineBase.zip` contains neither `/opt/wine` nor the `.wine` prefix,
 and its GL shims and loader cache are unchanged.
 
-### Published v11 release
+### v11 demo upload artifact
 
-[`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) continues to pin the
-published `TinyCore15Wine11.0.zip` release and its WebGL DLLs. Demo scripts
+[`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) pins the September 14
+`TinyCore15Wine11.0.zip` upload artifact. It combines the hosted September 13
+filesystem with the tested v38 WebGL DLLs, preserving the hosted Wine,
+CNC DDraw and Glide updates. Its GL/EGL/GLES libraries and base archive are
+unchanged. Demo scripts
 use this profile by default; see the [demo site instructions](../jenkins/instructions.md)
 for selecting a candidate filesystem. GDI is a per-demo launch setting;
 a separate GDI filesystem is not required.
+
+Upload the exact matching archive to
+[`v2/11/TinyCore15Wine11.0.zip`](http://boxedwine.org/v2/11/TinyCore15Wine11.0.zip)
+before running jobs that download it. An earlier archive at that URL will fail
+the profile's size or SHA-256 check.
 
 Validate the exact upload artifact from WSL with:
 
